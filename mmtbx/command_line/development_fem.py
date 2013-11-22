@@ -1,8 +1,8 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.development.fem
 
 from __future__ import division
+import mmtbx.command_line
 import mmtbx.f_model
-import mmtbx.utils
 import mmtbx.maps
 import iotbx.phil
 import iotbx.pdb
@@ -15,8 +15,9 @@ import time
 import sys
 import random
 
-master_phil = iotbx.phil.parse("""
-include scope mmtbx.utils.cmdline_input_phil_str
+def get_master_phil () :
+  return mmtbx.command_line.generate_master_phil_with_inputs(
+    phil_string="""
 random_seed=2679941
   .type = int
 output {
@@ -33,7 +34,10 @@ output {
     .style = bold output_dir
 }
 include scope libtbx.phil.interface.tracking_params
-""", process_includes=True)
+""",
+    enable_twin_law=False)
+
+master_phil = get_master_phil()
 master_params = master_phil # for phenix GUI
 
 def manage_random_seed(random_seed):
@@ -43,7 +47,7 @@ def manage_random_seed(random_seed):
   flex.set_random_seed(random_seed)
 
 def run(args, command_name = "phenix.development.fem", log = sys.stdout):
-  cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+  cmdline = mmtbx.command_line.load_model_and_data(
     args=args,
     master_phil=master_phil,
     out=log,
@@ -107,7 +111,7 @@ class launcher (runtime_utils.target_with_save_result) :
     return run(args=self.args, log=sys.stdout)
 
 def validate_params (params) :
-  return mmtbx.utils.validate_input_params(params)
+  return mmtbx.command_line.validate_input_params(params)
 
 if(__name__ == "__main__"):
   t0 = time.time()

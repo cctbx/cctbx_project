@@ -1,21 +1,23 @@
 
 from __future__ import division
-import iotbx.phil
 from libtbx import easy_pickle
 import sys
 
-master_phil = iotbx.phil.parse("""
-include scope mmtbx.utils.cmdline_input_phil_str
+def master_phil () :
+  from mmtbx.command_line import generate_master_phil_with_inputs
+  return generate_master_phil_with_inputs(
+    enable_automatic_twin_detection=True,
+    phil_string="""\
 output_file = fmodel.pkl
   .type = path
-""", process_includes=True)
+""")
 
 def run (args, out=sys.stdout) :
-  import mmtbx.utils
-  cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+  import mmtbx.command_line
+  cmdline = mmtbx.command_line.load_model_and_data(
     update_f_part1_for="refinement",
     args=args,
-    master_phil=master_phil,
+    master_phil=master_phil(),
     process_pdb_file=False,
     out=out,
     usage_string="mmtbx.fmodel_simple model.pdb data.mtz [options]")

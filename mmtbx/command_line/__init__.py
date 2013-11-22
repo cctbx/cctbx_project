@@ -1,4 +1,7 @@
 
+# XXX this module is tested implicitly in many other regression tests, but
+# needs more thorough testing on its own
+
 """
 Generic wrapper for bootstrapping high-level applications which rely on some
 combination of model and data, with special attention to geometry restraints
@@ -39,9 +42,13 @@ input {
 
 def generate_master_phil_with_inputs (
     phil_string,
-    enable_automatic_twin_detection=True,
+    enable_twin_law=True,
+    enable_automatic_twin_detection=False,
     enable_experimental_phases=False,
-    enable_pdb_interpretation_params=False) :
+    enable_pdb_interpretation_params=False,
+    enable_stop_for_unknowns=None,
+    enable_full_geometry_params=False,
+    as_phil_string=False) :
   import iotbx.phil
   phil_extra_dict = {
     "phases" : "",
@@ -53,7 +60,7 @@ def generate_master_phil_with_inputs (
     phil_extra_dict["twin_law"] = """
       skip_twin_detection = False
         .type = bool"""
-  else :
+  elif (enable_twin_law) :
     phil_extra_dict["twin_law"] = """
       twin_law = None
         .type = str
@@ -68,16 +75,44 @@ def generate_master_phil_with_inputs (
         .type = bool
         .short_caption = Use experimental phases (Hendrickson-Lattman coefficients)
       """
-  if (enable_pdb_interpretation_params) :
+  if (enable_pdb_interpretation_params) or (enable_full_geometry_params) :
+    stop_for_unknowns_params = ""
+    if (enable_stop_for_unknowns is not None) :
+      stop_for_unknowns_params = """
+        stop_for_unknowns = %s
+          .type = bool""" % enable_stop_for_unknowns
     phil_extra_dict["pdb_interpretation"] = """
-      mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
-      """
+      pdb_interpretation {
+        include scope mmtbx.monomer_library.pdb_interpretation.master_params
+        %s
+      }""" % (stop_for_unknowns_params)
+    if (enable_full_geometry_params) :
+      phil_extra_dict["pdb_interpretation"] += """
+        geometry_restraints
+          .alias = refinement.geometry_restraints
+        {
+          edits
+            .short_caption = Custom geometry restraints
+          {
+            include scope mmtbx.monomer_library.pdb_interpretation.geometry_restraints_edits_str
+          }
+          remove {
+            include scope mmtbx.monomer_library.pdb_interpretation.geometry_restraints_remove_str
+          }
+        }"""
   cmdline_input_phil_str = cmdline_input_phil_base_str % phil_extra_dict
   master_phil_str = """
     %s
     %s
   """ % (cmdline_input_phil_str, phil_string)
+  if (as_phil_string) :
+    return master_phil_str
   return iotbx.phil.parse(master_phil_str, process_includes=True)
+
+def generic_simple_input_phil () :
+  return generate_master_phil_with_inputs(
+    phil_string="",
+    enable_automatic_twin_detection=True)
 
 class load_model_and_data (object) :
   """
@@ -108,10 +143,13 @@ class load_model_and_data (object) :
       update_f_part1_for="refinement",
       out=sys.stdout,
       process_pdb_file=True,
+      use_conformation_dependent_library=False, # FIXME
       require_data=True,
       create_fmodel=True,
       prefer_anomalous=None,
       force_non_anomalous=False,
+      set_wavelength_from_model_header=False,
+      set_inelastic_form_factors=None,
       usage_string=None) :
     import mmtbx.monomer_library.pdb_interpretation
     import mmtbx.monomer_library.server
@@ -127,9 +165,10 @@ class load_model_and_data (object) :
           master_phil.as_str(prefix="  ")))
     if (force_non_anomalous) :
       assert (not prefer_anomalous)
+    assert (set_inelastic_form_factors in [None, "sasaki", "henke"])
     self.args = args
     self.master_phil = master_phil
-    self.processed_pdb_file = None
+    self.processed_pdb_file = self.pdb_inp = None
     self.geometry = None
     self.sequence = None
     self.fmodel = None
@@ -190,7 +229,7 @@ class load_model_and_data (object) :
         cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
         self.cif_objects.append((file_name, cif_obj))
     # SYMMETRY HANDLING
-    use_symmetry = pdb_symm = None
+    self.crystal_symmetry = pdb_symm = None
     if (hkl_symm is not None) :
       use_symmetry = hkl_symm
     for pdb_file_name in params.input.pdb.file_name :
@@ -198,15 +237,15 @@ class load_model_and_data (object) :
       if (pdb_symm is not None) :
         break
     from iotbx.symmetry import combine_model_and_data_symmetry
-    use_symmetry = combine_model_and_data_symmetry(
+    self.crystal_symmetry = combine_model_and_data_symmetry(
       model_symmetry=pdb_symm,
       data_symmetry=hkl_symm)
-    if (use_symmetry is not None) and (self.f_obs is not None) :
+    if (self.crystal_symmetry is not None) and (self.f_obs is not None) :
       self.f_obs = self.f_obs.customized_copy(
-        crystal_symmetry=use_symmetry).eliminate_sys_absent().set_info(
+        crystal_symmetry=self.crystal_symmetry).eliminate_sys_absent().set_info(
           self.f_obs.info())
       self.r_free_flags = self.r_free_flags.customized_copy(
-        crystal_symmetry=use_symmetry).eliminate_sys_absent().set_info(
+        crystal_symmetry=self.crystal_symmetry).eliminate_sys_absent().set_info(
           self.r_free_flags.info())
     # EXPERIMENTAL PHASES
     target_name = "ml"
@@ -221,7 +260,8 @@ class load_model_and_data (object) :
           phases_in = file_reader.any_file(phases_file)
           phases_in.check_file_type("hkl")
         phases_in.file_server.err = out # redirect error output
-        point_group = use_symmetry.space_group().build_derived_point_group()
+        space_group = self.crystal_symmetry.space_group()
+        point_group = space_group.build_derived_point_group()
         hl_coeffs = mmtbx.utils.determine_experimental_phases(
           reflection_file_server = phases_in.file_server,
           parameters             = params.input.experimental_phases,
@@ -253,7 +293,7 @@ class load_model_and_data (object) :
       processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
         cif_objects=self.cif_objects,
         pdb_interpretation_params=pdb_interp_params,
-        crystal_symmetry=use_symmetry,
+        crystal_symmetry=self.crystal_symmetry,
         use_neutron_distances=params.input.scattering_table=="neutron",
         stop_for_unknowns=getattr(pdb_interp_params, "stop_for_unknowns",False),
         log=out)
@@ -261,29 +301,59 @@ class load_model_and_data (object) :
         processed_pdb_files_srv.process_pdb_files(
           raw_records = pdb_raw_records,
           stop_if_duplicate_labels = False,
-          allow_missing_symmetry=(use_symmetry is None) and (not require_data))
+          allow_missing_symmetry=\
+            (self.crystal_symmetry is None) and (not require_data))
       self.geometry = self.processed_pdb_file.geometry_restraints_manager(
         show_energies=False)
       assert (self.geometry is not None)
       self.xray_structure = self.processed_pdb_file.xray_structure()
       chain_proxies = self.processed_pdb_file.all_chain_proxies
       self.pdb_hierarchy = chain_proxies.pdb_hierarchy
+      # FIXME note that the cdl parameter is always included in the parameters
+      # for pdb_interpretation regardless of whether it is actually used by
+      # the app in question
+      if use_conformation_dependent_library :
+        if pdb_interp_params.cdl :
+          from mmtbx.conformation_dependent_library import setup_restraints
+          from mmtbx.conformation_dependent_library import update_restraints
+          from mmtbx import restraints
+          restraints_manager = restraints.manager(geometry=self.geometry)
+          cdl_proxies = setup_restraints(restraints_manager)
+          update_restraints(
+            hierarchy=self.pdb_hierarchy,
+            restraints_manager=restraints_manager,
+            current_geometry=self.xray_structure,
+            cdl_proxies=cdl_proxies,
+            log=out,
+            verbose=True)
     else :
-      pdb_file_object = pdb_file(
+      pdb_file_object = mmtbx.utils.pdb_file(
         pdb_file_names=params.input.pdb.file_name,
         cif_objects=self.cif_objects,
-        crystal_symmetry=use_symmetry,
+        crystal_symmetry=self.crystal_symmetry,
         log=out)
-      pdb_in = pdb_file_object.pdb_inp
-      self.pdb_hierarchy = pdb_in.construct_hierarchy()
+      self.pdb_inp = pdb_file_object.pdb_inp
+      self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
       self.pdb_hierarchy.atoms().reset_i_seq()
-      self.xray_structure = pdb_in.xray_structure_simple(
-        crystal_symmetry=use_symmetry)
+      self.xray_structure = self.pdb_inp.xray_structure_simple(
+        crystal_symmetry=self.crystal_symmetry)
+    # wavelength
+    if (set_wavelength_from_model_header and params.input.wavelength is None) :
+      wavelength = self.pdb_inp.extract_wavelength()
+      if (wavelength is not None) :
+        print >> out, ""
+        print >> out, "Using wavelength = %g from PDB header" % wavelength
+        params.input.wavelength = wavelength
     # set scattering table
     if (data_and_flags is not None) :
       self.xray_structure.scattering_type_registry(
         d_min=self.f_obs.d_min(),
         table=params.input.scattering_table)
+      if ((params.input.wavelength is not None) and
+          (set_inelastic_form_factors is not None)) :
+        self.xray_structure.set_inelastic_form_factors(
+          photon=params.input.wavelength,
+          table=set_inelastic_form_factors)
       make_sub_header("xray_structure summary", out=out)
       self.xray_structure.scattering_type_registry().show(out = out)
       self.xray_structure.show_summary(f=out)

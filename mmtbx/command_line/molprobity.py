@@ -2,7 +2,6 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 
 from __future__ import division
-import iotbx.phil
 from libtbx.utils import Sorry, multi_out
 from libtbx import easy_pickle
 from libtbx import Auto
@@ -11,8 +10,12 @@ import os.path
 import sys
 
 def get_master_phil () :
-  return iotbx.phil.parse("""
-include scope mmtbx.utils.cmdline_input_phil_str
+  from mmtbx.command_line import generate_master_phil_with_inputs
+  return generate_master_phil_with_inputs(
+    enable_automatic_twin_detection=True,
+    enable_pdb_interpretation_params=True,
+    enable_stop_for_unknowns=False,
+    phil_string="""
 molprobity {
   outliers_only = True
     .type = bool
@@ -55,8 +58,7 @@ pdb_interpretation {
   include scope mmtbx.monomer_library.pdb_interpretation.master_params
   stop_for_unknowns = True
     .type = bool
-}
-""", process_includes=True)
+}""")
 
 usage_string = """\
 phenix.molprobity model.pdb [data.mtz] [options ...]
@@ -76,8 +78,8 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
         (not libtbx.env.has_module("probe"))) :
     raise ImportError("Reduce and/or Probe not configured.")
   import mmtbx.validation.molprobity
-  import mmtbx.utils
-  cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+  import mmtbx.command_line
+  cmdline = mmtbx.command_line.load_model_and_data(
     args=args,
     master_phil=get_master_phil(),
     require_data=False,
@@ -85,6 +87,7 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
     process_pdb_file=True,
     usage_string=usage_string,
     prefer_anomalous=True,
+    use_conformation_dependent_library=True,
     out=out)
   params = cmdline.params
   fmodel = cmdline.fmodel

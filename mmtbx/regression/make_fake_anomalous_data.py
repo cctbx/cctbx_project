@@ -360,6 +360,7 @@ END""")
   if (os.path.exists(pdb_file)) :
     os.remove(pdb_file)
   f = open(pdb_file, "w")
+  f.write("""REMARK 200  WAVELENGTH OR RANGE        (A) : 1.116\n""")
   f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
   f.close()
   return pdb_file

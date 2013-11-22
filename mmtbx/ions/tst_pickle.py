@@ -8,6 +8,7 @@ from types import MethodType
 
 import libtbx
 from mmtbx.command_line.water_screen import master_phil
+import mmtbx.command_line
 from mmtbx import ions
 from mmtbx.ions import environment
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
@@ -18,10 +19,10 @@ def exercise():
   mtz_file, pdb_file = generate_zinc_inputs(anonymize = False)
   null_out = libtbx.utils.null_out()
 
-  cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+  cmdline = mmtbx.command_line.load_model_and_data(
     args = [pdb_file, mtz_file, "wavelength={}".format(wavelength),
             "use_phaser=False"],
-    master_phil = master_phil,
+    master_phil = master_phil(),
     out = null_out,
     process_pdb_file = True,
     create_fmodel = True,

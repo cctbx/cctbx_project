@@ -1,14 +1,15 @@
-from __future__ import division
 
-import libtbx.phil
+from __future__ import division
 import libtbx.load_env
-from libtbx.utils import Usage
 from libtbx import Auto
 import sys
 import os
 
-master_phil = libtbx.phil.parse("""
-include scope mmtbx.utils.cmdline_input_phil_str
+def master_phil () :
+  from mmtbx.command_line import generate_master_phil_with_inputs
+  return generate_master_phil_with_inputs(
+    enable_automatic_twin_detection=True,
+    phil_string="""
 hetatms_only = True
   .type = bool
 skip_xtal_solution_mols = False
@@ -29,30 +30,27 @@ write_coot_script = True
   .type = bool
 write_maps = Auto
   .type = bool
-""", process_includes=True)
+""")
 
 common_xtal_mols = [
   "SO4", "GOL", "EDO", "PEG", "ACT", "BME",
 ]
 
 def run (args, out=sys.stdout) :
-  if (len(args) == 0) or (args == ["--help"]) :
-    raise Usage("""\
+  usage_string = """\
 mmtbx.show_suspicious_residues [model] [data] [options...]
 
 Flag bad residues based on fit to electron density.  By default, only HETATM
 records will be inspected.
-
-Full parameters:
-%s
-""" % master_phil.as_str(prefix="  "))
+"""
   from mmtbx import real_space_correlation
-  from mmtbx.utils import cmdline_load_pdb_and_data
-  cmdline = cmdline_load_pdb_and_data(
+  from mmtbx.command_line import load_model_and_data
+  cmdline = load_model_and_data(
     args=args,
-    master_phil=master_phil,
+    master_phil=master_phil(),
     out=out,
-    process_pdb_file=False)
+    process_pdb_file=False,
+    usage_string=usage_string)
   params = cmdline.params
   ignore_list = []
   if (params.skip_xtal_solution_mols) :

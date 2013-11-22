@@ -1,13 +1,17 @@
 
 from __future__ import division
 from libtbx.str_utils import make_header
-from libtbx.utils import Usage, Sorry
+from libtbx.utils import Sorry
 from libtbx import Auto
-import libtbx.phil
 import sys
 
-master_phil = libtbx.phil.parse("""
-include scope mmtbx.utils.cmdline_input_phil_str
+def master_phil () :
+  from mmtbx.command_line import generate_master_phil_with_inputs
+  return generate_master_phil_with_inputs(
+    enable_automatic_twin_detection=True,
+    enable_pdb_interpretation_params=True,
+    enable_stop_for_unknowns=False,
+    phil_string="""
 include scope mmtbx.ions.ion_master_phil
 debug = True
   .type = bool
@@ -17,29 +21,20 @@ wavelength = None
   .type = float
 nproc = Auto
   .type = int
-pdb_interpretation {
-  include scope mmtbx.monomer_library.pdb_interpretation.master_params
-  stop_for_unknowns = False
-    .type = bool
-}
-""", process_includes=True)
+""")
 
 def run (args, out=sys.stdout) :
-  if (len(args) == 0) or ("--help" in args) :
-    raise Usage("""\
+  usage_string = """
 mmtbx.water_screen model.pdb data.mtz [options ...]
 
 Utility to flag waters that may actually be elemental ions, based on local
 environment, electron density maps, and atomic properties.
-
-Full parameters:
-%s
-""" % master_phil.as_str(prefix=" "))
+"""
   from mmtbx import ions
-  import mmtbx.utils
-  cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+  import mmtbx.command_line
+  cmdline = mmtbx.command_line.load_model_and_data(
     args=args,
-    master_phil=master_phil,
+    master_phil=master_phil(),
     out=out,
     process_pdb_file=True,
     create_fmodel=True,

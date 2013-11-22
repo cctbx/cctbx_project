@@ -3,29 +3,28 @@
 Template for writing simple applications which take as input a data file
 (amplitudes or intensities plus R-free flags) and a PDB file.  Note that the
 script can be modified to also process the covalent geometry of the model by
-setting PROCESS_PDB_FILE=True, but this also requires the CCP4 monomer library.
+setting PROCESS_PDB_FILE=True, but this also requires the CCP4 monomer
+library.
 """
 
 from __future__ import division
-import iotbx.phil
+import mmtbx.command_line
 import sys
 
 PROCESS_PDB_FILE = False
 
-master_phil = iotbx.phil.parse("""
-include scope mmtbx.utils.cmdline_input_phil_str
-""", process_includes=True)
+def master_phil () :
+  return mmtbx.command_line.generic_simple_input_phil()
 
 def run (args, out=sys.stdout) :
-  import mmtbx.utils
   # this wrapper loads the data and flags (or raises an error if additional
   # input is needed), reads the PDB file, optionally processes the geometry,
   # and creates an fmodel object using the data, flags, and xray.structure
   # object from the PDB file.
-  cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+  cmdline = mmtbx.command_line.load_model_and_data(
     update_f_part1_for="map",
     args=args,
-    master_phil=master_phil,
+    master_phil=master_phil(),
     out=out,
     process_pdb_file=PROCESS_PDB_FILE,
     create_fmodel=True,

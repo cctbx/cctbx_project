@@ -1,4 +1,6 @@
 
+# TODO tests!
+
 """
 Post-fitting cleanup of ligand positions to match NCS operations present in
 protein model.  This can be used to recover cases where one copy is placed
@@ -39,7 +41,6 @@ write_sampled_pdbs = False
 """
 
 master_phil_str = """
-include scope mmtbx.utils.cmdline_input_phil_str
 ligand_code = LIG
   .type = str
 add_to_model = True
@@ -52,8 +53,10 @@ output_map = None
 """ % ncs_ligand_phil
 
 def master_phil () :
-  import libtbx.phil
-  return libtbx.phil.parse(master_phil_str, process_includes=True)
+  from mmtbx.command_line import generate_master_phil_with_inputs
+  return generate_master_phil_with_inputs(
+    phil_string=master_phil_str,
+    enable_automatic_twin_detection=True)
 
 def resid_str (atom) :
   labels = atom.fetch_labels()
@@ -577,10 +580,11 @@ def apply_ligand_ncs (
 
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
-  from mmtbx.utils import cmdline_load_pdb_and_data
-  cmdline = cmdline_load_pdb_and_data(
+  from mmtbx.command_line import load_model_and_data
+  cmdline = load_model_and_data(
     args=args,
     master_phil=master_phil(),
+    update_f_part1_for="maps",
     out=out,
     process_pdb_file=False)
   pdb_hierarchy = cmdline.pdb_hierarchy

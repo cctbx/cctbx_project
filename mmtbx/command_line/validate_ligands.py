@@ -1,12 +1,15 @@
 
 from __future__ import division
 from libtbx.str_utils import make_sub_header
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import Sorry
 import os
 import sys
 
-master_phil_str = """
-include scope mmtbx.utils.cmdline_input_phil_str
+def master_phil () :
+  from mmtbx.command_line import generate_master_phil_with_inputs
+  return generate_master_phil_with_inputs(
+    enable_automatic_twin_detection=True,
+    phil_string="""
 ligand_code = None
   .type = str
   .multiple = True
@@ -16,30 +19,28 @@ only_segid = None
   .type = str
 verbose = False
   .type = bool
-"""
+""")
 
 def run (args, out=sys.stdout) :
-  if (len(args) == 0) or ("--help" in args) :
-    raise Usage("""\
+  usage_string = """\
 mmtbx.validate_ligands model.pdb data.mtz LIGAND_CODE [...]
 
 Print out basic statistics for residue(s) with the given code(s), including
 electron density values/CC.
-""")
+"""
   import mmtbx.validation.ligands
-  import mmtbx.utils
-  import iotbx.phil
-  master_phil = iotbx.phil.parse(master_phil_str, process_includes=True)
+  import mmtbx.command_line
   args_ = []
   for arg in args :
     if (len(arg) == 3) and arg.isalnum() and (not os.path.exists(arg)) :
       args_.append("ligand_code=%s" % arg)
     else :
       args_.append(arg)
-  cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+  cmdline = mmtbx.command_line.load_model_and_data(
     args=args_,
-    master_phil=master_phil,
-    process_pdb_file=False)
+    master_phil=master_phil(),
+    process_pdb_file=False,
+    usage_string=usage_string)
   params = cmdline.params
   if (params.ligand_code is None) or (len(params.ligand_code) == 0) :
     raise Sorry("Ligand code required!")

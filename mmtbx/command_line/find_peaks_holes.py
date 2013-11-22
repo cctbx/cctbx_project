@@ -8,15 +8,17 @@ from mmtbx import utils
 from scitbx.array_family import flex
 from libtbx.str_utils import make_header, format_value
 from libtbx import runtime_utils
-from libtbx.utils import Usage, Sorry
+from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import adopt_init_args, group_args
-from cStringIO import StringIO
 import os
 import sys
 
-master_phil = libtbx.phil.parse("""
-%s
+def get_master_phil () :
+  from mmtbx.command_line import generate_master_phil_with_inputs
+  return generate_master_phil_with_inputs(
+    enable_automatic_twin_detection=True,
+    phil_string="""
 find_peaks
   .style = auto_align
 {
@@ -55,9 +57,9 @@ write_maps = True
 output_file_prefix = peaks_holes
   .type = str
 include scope libtbx.phil.interface.tracking_params
-""" % utils.cmdline_input_phil_str,
-  process_includes=True)
+""")
 
+master_phil = get_master_phil()
 master_params = master_phil # for phenix GUI
 
 class peaks_holes_container (object) :
@@ -458,23 +460,21 @@ def find_peaks_holes (
 
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
-  if (len(args) == 0) :
-    phil_out = StringIO()
-    master_phil.show(out=phil_out)
-    raise Usage("""
+  import mmtbx.command_line
+  usage_string = """\
 mmtbx.find_peaks_holes - difference map analysis
   Prints a summary of all peaks and holes above the specified cutoff in the
   mFo-DFc map, and flag any water molecules with suspiciously high peaks
   (possible ions).  Will also check the anomalous map if available.
-
-%s""" % phil_out.getvalue())
-  cmdline = utils.cmdline_load_pdb_and_data(
+"""
+  cmdline = mmtbx.command_line.load_model_and_data(
     args=args,
     master_phil=master_phil,
     out=out,
     process_pdb_file=False,
     create_fmodel=True,
-    prefer_anomalous=True)
+    prefer_anomalous=True,
+    usage_string=usage_string)
   fmodel = cmdline.fmodel
   params = cmdline.params
   if (params.wavelength is not None) :
@@ -513,16 +513,8 @@ mmtbx.find_peaks_holes - difference map analysis
   return result
 
 def validate_params (params, callback=None) :
-  if params.input.pdb.file_name is None :
-    raise Sorry("No PDB file defined.")
-  elif params.input.xray_data.file_name is None :
-    raise Sorry("No reflection file defined.")
-  elif params.input.xray_data.labels is None :
-    raise Sorry("No labels chosen for reflection data.")
-  elif (params.input.xray_data.r_free_flags.label is None) :
-    raise Sorry("R-free flags not defined.  If you are trying to run this "+
-      "program with a reflections file that is missing R-free flags, use "+
-      "the reflection file editor to generate a new tests set.")
+  from mmtbx.command_line import validate_input_params
+  validate_input_params(params)
   if (params.find_peaks.map_next_to_model.min_model_peak_dist < 0) :
     raise Sorry("The parameter 'Minimum distance from model' must be at least"+
       " zero.")
