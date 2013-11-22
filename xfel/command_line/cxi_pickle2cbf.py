@@ -15,7 +15,8 @@ from xfel.cxi.cspad_ana.parse_calib import calib2sections
 master_phil = libtbx.phil.parse("""
 pickle_file = None
   .type = str
-  .help = Path to file to convert
+  .help = Path to file(s) to convert
+  .multiple = True
 old_metrology = None
   .type = str
   .help = Path to original metrology this file was created with.  If none, use run 4.
@@ -47,7 +48,7 @@ if (__name__ == "__main__") :
   params = master_phil.fetch(sources=user_phil).extract()
   if (params.pickle_file is None) :
     master_phil.show()
-    raise Usage("pickle_file must be defined (either pickle_file=XXX, or the file path alone).")
+    raise Usage("pickle_file must be defined (either pickle_file=XXX, or the file path(s) alone).")
   assert params.detector is not None
   assert params.plot is not None
 
@@ -61,28 +62,7 @@ if (__name__ == "__main__") :
       "xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
   assert os.path.isdir(params.new_metrology) or os.path.isfile(params.new_metrology)
 
-  # Read the pickle file and pull the tiles out of it
-  img = easy_pickle.load(params.pickle_file)
-
-  tiles = {}
-  data = img['DATA']
-
   sections = calib2sections(params.old_metrology)
-  for p in xrange(len(sections)):
-    for s in xrange(len(sections[p])):
-
-      # Pull the sensor block from the image, and rotate it back to
-      # the "lying down" convention.
-      c = sections[p][s].corners_asic()
-      k = (int(round(-sections[p][s].angle / 90.0)) + 1) % 4
-      for a in xrange(2):
-        asic = data.matrix_copy_block(
-          i_row=c[a][0],
-          i_column=c[a][1],
-          n_rows=c[a][2] - c[a][0],
-          n_columns=c[a][3] - c[a][1])
-        tiles[(0, p, s, a)] = asic.matrix_rot90(k)
-
 
   # Read the new metrology, either from a calibration directory or an optical metrology
   # flat file
@@ -117,8 +97,31 @@ if (__name__ == "__main__") :
       metro = read_optical_metrology_from_flat_file(params.new_metrology, params.detector, img['PIXEL_SIZE'],
                                                     asic_dimension, asic_gap, plot=params.plot)
 
-  # Write the cbf file
-  destpath = os.path.splitext(params.pickle_file)[0] + ".cbf"
+  for filename in params.pickle_file:
+    # Read the pickle file and pull the tiles out of it
+    img = easy_pickle.load(filename)
 
-  write_cspad_cbf(tiles, metro, metro_style, img['TIMESTAMP'], destpath,
-                  img['WAVELENGTH'], img['DISTANCE'])
+    tiles = {}
+    data = img['DATA']
+
+
+    for p in xrange(len(sections)):
+      for s in xrange(len(sections[p])):
+
+        # Pull the sensor block from the image, and rotate it back to
+        # the "lying down" convention.
+        c = sections[p][s].corners_asic()
+        k = (int(round(-sections[p][s].angle / 90.0)) + 1) % 4
+        for a in xrange(2):
+          asic = data.matrix_copy_block(
+            i_row=c[a][0],
+            i_column=c[a][1],
+            n_rows=c[a][2] - c[a][0],
+            n_columns=c[a][3] - c[a][1])
+          tiles[(0, p, s, a)] = asic.matrix_rot90(k)
+
+    # Write the cbf file
+    destpath = os.path.splitext(filename)[0] + ".cbf"
+
+    write_cspad_cbf(tiles, metro, metro_style, img['TIMESTAMP'], destpath,
+                    img['WAVELENGTH'], img['DISTANCE'])
