@@ -80,6 +80,8 @@ class reader(object):
             i_obs, sigma = (float(flds[j]), float(flds[j+1]))
           except KeyboardInterrupt: raise
           except Exception:
+            if (flds[j] == "*"*len(flds[j])) : # XXX overload
+              continue
             raise FormatError, line_error
           # XXX scalepack uses I=0, sigmaI=-1 to denote a missing Friedel
           # mate
