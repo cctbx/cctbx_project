@@ -57,8 +57,23 @@ def run_call_back(flags, space_group_info):
       anomalous_flag=anomalous_flag,
       verbose=flags.Verbose)
 
+def exercise_overloads () :
+  open("overloads.sca", "w").write("""\
+    1
+ -987
+    50.000    50.000    80.000    90.000    90.000   120.000 p3121
+  19   2   3 ******* 47482.6 ******* 26861.1
+  19   2   2 16333.4 17143.9 38472.0 22574.8
+  19   2   1 49448.5 24728.9 28427.6 18873.9
+  19   2   0 34296.1 24479.1 25846.4 22660.4
+  19   2  -1 27513.6 23318.8 30341.0 19273.1""")
+  file_in = merge.reader(file_handle=open("overloads.sca"))
+  arrays = file_in.as_miller_arrays()
+  assert (len(arrays[0].indices()) == 8)
+
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  exercise_overloads()
 
 if (__name__ == "__main__"):
   run()
