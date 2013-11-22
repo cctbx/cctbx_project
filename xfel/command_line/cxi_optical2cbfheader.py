@@ -7,7 +7,7 @@ from __future__ import division
 
 import sys, os
 import libtbx.phil
-from libtbx.utils import Usage
+from libtbx.utils import Usage, Sorry
 from xfel.cftbx.detector.cspad_cbf_tbx import read_optical_metrology_from_flat_file
 from xfel.cftbx.detector.cspad_cbf_tbx import asic_dimension, asic_gap, write_cspad_cbf
 
