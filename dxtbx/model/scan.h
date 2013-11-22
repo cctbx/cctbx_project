@@ -220,6 +220,7 @@ namespace dxtbx { namespace model {
      */
     Scan& operator+=(const Scan &rhs) {
       double eps = 1e-6;
+      DXTBX_ASSERT(std::abs(oscillation_[1]) > 0.0);
       DXTBX_ASSERT(image_range_[1] + 1 == rhs.image_range_[0]);
       DXTBX_ASSERT(std::abs(oscillation_[1] - rhs.oscillation_[1]) < eps);
       DXTBX_ASSERT(std::abs(get_oscillation_range()[1] -
