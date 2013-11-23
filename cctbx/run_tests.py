@@ -46,6 +46,7 @@ tst_list = (
   "$D/translation_search/boost_python/tst_translation_search.py",
   "$D/geometry_restraints/tst_ext.py",
   "$D/geometry_restraints/tst_proxy_registry.py",
+  "$D/geometry_restraints/tst_nb_clashscore.py",
   "$D/adp_restraints/tst_ext.py",
   "$D/regression/tst_math_module.py",
   ["$D/regression/tst_krivy_gruber.py", "--Quick"],
