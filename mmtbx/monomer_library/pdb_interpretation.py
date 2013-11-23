@@ -23,6 +23,7 @@ from cStringIO import StringIO
 import string
 import sys, os
 import time
+import math
 
 # see iotbx/pdb/common_residue_names.h; additionally here only: U I
 ad_hoc_single_atom_residue_element_types = """\
@@ -135,7 +136,7 @@ master_params_str = """\
     .help = Use Conformation Dependent Library (CDL) \
       for geometry minimization restraints
     .style = bold
-  correct_hydrogens = True
+  correct_hydrogens = False
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
   automatic_linking
@@ -1922,16 +1923,18 @@ class add_planarity_proxies(object):
           registry_process_result=registry_process_result,
           lines=["plane id: " + str(plane.plane_id)])
 
+
 #def add_nonbonded_iseq_residue_pairs(nonbonded_params, xray_structure):
-#  site_labels = xray_structure.scatterers().extract_labels()
-#  for i, label_i in enumerate(site_labels):
-#    for j, label_j in enumerate(site_labels):
-#      if label_i == label_j:
-#        nonbonded_params.residue_self_pair_table.setdefault(
-#          i)[j] = True
-#      else:
-#        nonbonded_params.residue_self_pair_table.setdefault(
-#          i)[j] = False
+  #site_labels = xray_structure.scatterers().extract_labels()
+  #for i, label_i in enumerate(site_labels):
+    #for j, label_j in enumerate(site_labels):
+      #if label_i == label_j:
+        #nonbonded_params.residue_self_pair_table.setdefault(
+          #i)[j] = True
+      #else:
+        #nonbonded_params.residue_self_pair_table.setdefault(
+          #i)[j] = False
+  #return nonbond_table
 
 # XXX TODO synonymes
 def ener_lib_as_nonbonded_params(
@@ -4470,11 +4473,13 @@ class build_all_chain_proxies(object):
       default_distance=self.params.default_vdw_distance,
       minimum_distance=self.params.min_vdw_distance,
       const_shrink_donor_acceptor=self.params.const_shrink_donor_acceptor)
+
     #add_nonbonded_iseq_residue_pairs(
-    #       nonbonded_params=nonbonded_params,
-    #       xray_structure=self.extract_xray_structure())
+           #nonbonded_params=nonbonded_params,
+           #xray_structure=self.extract_xray_structure())
     #print tuple(nonbonded_params.residue_self_pair_table)
     #STOP()
+
     if(self.params.nonbonded_weight is None):
       nonbonded_weight = 100 # c_rep in prolsq repulsion function
       if(assume_hydrogens_all_missing) :
@@ -4804,7 +4809,9 @@ class process(object):
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
+        show_nonbonded_clashscore=False,
         hard_minimum_bond_distance_model=0.001,
+        hard_minimum_nonbonded_distance=0.001,
         external_energy_function=None,
         ramachandran_atom_selection=None,
         den_manager=None,
@@ -4845,6 +4852,7 @@ class process(object):
         pair_proxies = self._geometry_restraints_manager.pair_proxies(
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
           site_labels=site_labels)
+        self._geometry_restraints_manager._site_lables = site_labels
         params = self.all_chain_proxies.params
         pair_proxies.bond_proxies.show_histogram_of_model_distances(
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
@@ -4954,8 +4962,25 @@ class process(object):
             timer.elapsed())
           flush_log(self.log)
         if not self.for_dihedral_reference:
-          self.clash_guard()
+          self.clash_guard(hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance)
+
+        # get the value for calculation of nonbonded clashscore
+        xrs = self.xray_structure()
+        self._geometry_restraints_manager._hd_sel = xrs.hd_selection()
+        self._geometry_restraints_manager._site_lables = site_labels
+        # Display nonbonded clashscore
+        if show_nonbonded_clashscore:
+          nb_clash_info = self.geometry_restraints_manager()
+          nb_clash_info.get_nonbonded_clashscore()
+          nb_clashscore_without_sym_op = nb_clash_info.nonbonded_clash_info.nb_clashscore_without_sym_op
+          nb_clash_due_to_sym_op = nb_clash_info.nonbonded_clash_info.nb_clashscore_due_to_sym_op
+          print >> self.log, '\n  clashscore, without clashes due to symmetry operation: {0:.2f}'.format(
+            nb_clashscore_without_sym_op)
+          print >> self.log, '  clashscore, only due to symmetry operation: {0:.2f}\n'.format(
+            nb_clash_due_to_sym_op)
+
     return self._geometry_restraints_manager
+
 
   def clash_guard(self, hard_minimum_nonbonded_distance=0.001):
     params = self.all_chain_proxies.params.clash_guard
@@ -5043,6 +5068,9 @@ class process(object):
       out=out,
       prefix=prefix)
 
+    def clash_score(self):
+      return 'Clash Score'
+
 def run(
       args,
       params=None,
@@ -5050,6 +5078,8 @@ def run(
       substitute_non_crystallographic_unit_cell_if_necessary=False,
       return_all_processed_pdb_files=False,
       max_atoms=None,
+      assume_hydrogens_all_missing=True,
+      hard_minimum_nonbonded_distance=0.001,
       log=None):
   if (log is None): log = sys.stdout
   mon_lib_srv = server.server()
@@ -5083,7 +5113,10 @@ def run(
         =substitute_non_crystallographic_unit_cell_if_necessary,
       max_atoms=max_atoms,
       log=log)
-    processed_pdb_file.geometry_restraints_manager()
+
+    processed_pdb_file.geometry_restraints_manager(
+      assume_hydrogens_all_missing=assume_hydrogens_all_missing,
+      hard_minimum_bond_distance_model=hard_minimum_nonbonded_distance)
     processed_pdb_file.xray_structure()
 
     if 0:
@@ -5111,6 +5144,9 @@ def run(
   if (len(pdb_file_names) > 0):
     return processed_pdb_file
   return None
+
+
+
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
