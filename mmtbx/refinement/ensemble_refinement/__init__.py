@@ -711,7 +711,7 @@ class run_ensemble_refinement(object):
           "~{0:5d} {1:7.2f} {2:7.2f} | {3:2.1f} {4:2.1f} | {5:2.1f} {6:2.1f} | {7:2.1f} {8:2.1f} | {9:4.0f} | {10:5.2f} {11:5.2f}"\
           .format(self.macro_cycle,
                   self.time,
-                  self.time / self.total_time,
+                  100 * self.time / self.total_time,
                   100*self.fmodel_current.r_work(),
                   100*self.fmodel_current.r_free(),
                   100*self.fmodel_running.r_work(),
