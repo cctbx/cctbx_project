@@ -54,6 +54,8 @@ class manager(object):
 
   def reset_internals(self):
     self._sites_cart_used_for_pair_proxies = None
+    self._site_lables = None
+    self._hd_sel = None
     self._flags_bond_used_for_pair_proxies = False
     self._flags_nonbonded_used_for_pair_proxies = False
     self._pair_proxies = None
@@ -1058,6 +1060,59 @@ class manager(object):
         sites_cart=sites_cart, site_labels=site_labels, f=f)
       print >> f
 
+  def get_nonbonded_clashscore(self,
+                               sites_cart       = None,
+                               site_labels      = None,
+                               hd_sel           = None,
+                               full_connectivty_table = None):
+      '''
+      Construct nonbonded_clash_info, the non-bonded clashss lists and scores
+
+      Arguments:
+      sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
+      site_labels: a list of lables such as " HA  LEU A  38 ", for each atom
+      hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is a Hydrogen or not
+      full_connectivty_table: full_connectivty_table[i] is a dictinary constaining a
+                              list of all atoms connected to atom i
+
+      Note:
+      Be aware to the parameters:
+         assume_hydrogens_all_missing=False,
+         hard_minimum_nonbonded_distance=0.0
+
+      The defult values of these are True and 0.001, which will alter
+      the size of the vdw bonds and the clashes that being counted
+      '''
+      if sites_cart==None:
+        sites_cart = self._sites_cart_used_for_pair_proxies
+      if site_labels==None:
+        site_labels = self._site_lables
+      if hd_sel==None:
+        hd_sel = self._hd_sel
+      if full_connectivty_table==None:
+        table_bonds = self.shell_sym_tables[0]
+        full_connectivty_table = table_bonds.full_simple_connectivity()
+
+      # test that changes during refinment are reflected in both sites_cart and lables
+      # test how they corespond to the full_connectivty_table
+      assert len(sites_cart) == len(site_labels)
+
+      proxies_info_nonbonded = self._pair_proxies.nonbonded_proxies.get_sorted(
+        by_value="delta",
+        sites_cart=sites_cart,
+        site_labels=site_labels)
+
+      if proxies_info_nonbonded != None:
+        nonbonded_list = proxies_info_nonbonded[0]
+      else:
+        nonbonded_list = []
+
+      self.nonbonded_clash_info = nonbonded_clashscore(
+        nonbonded_list=nonbonded_list,
+        hd_sel=hd_sel,
+        full_connectivty_table=full_connectivty_table,
+        sites_cart=sites_cart)
+
 def construct_non_crystallographic_conserving_bonds_and_angles(
       sites_cart,
       edge_list_bonds,
@@ -1152,3 +1207,296 @@ def format_distances_for_error_message(
             sd = "%.6g" % dist
           result.append("distance: %s - %s: %s%s" % (si, sj, sd, ss))
   return result
+
+
+########################################################################
+class nonbonded_clashscore(object):
+  """
+  Object processing information on non-bonded steric clashes. When the
+  distance between atoms is smaller than the Van Der Waals distance.
+
+  @author: Youval Dar (LBL 2013)
+  """
+
+  #----------------------------------------------------------------------
+  def __init__(self,
+               nonbonded_list,
+               hd_sel,
+               full_connectivty_table,
+               sites_cart
+               ):
+    """
+    Arguments:
+    nonbonded_list: a list with items in the following format
+                    ([pdb labels], i_seq, j_seq, model, vdw_distance, sym_op_j, rt_mx)
+                    i_seq,j_seq: position of residues in the pdb file
+                    model: The pdb or other model distance
+                    vdw_distance: Van Der Waals distance
+                    sym_op_j: is this a product of a symmetry opeation
+                    rt_mx: Rotation matrix for symmetry operation
+
+    hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is a Hydrogen or not
+    full_connectivty_table: full_connectivty_table[i] is a dictinary constaining a
+                            list of all atoms connected to atom i
+    sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
+    """
+    # clean_out = easy_run.fully_buffered()
+    self.nonbonded_list = nonbonded_list
+    self.hd_sel = hd_sel
+    self.full_connectivty_table = full_connectivty_table
+    self.sites_cart = sites_cart
+
+    if nonbonded_list != []:
+      try:
+        clashlist = self.clashscore_clash_list()
+      except TypeError:
+        # When proxies_info_nonbonded are not available
+        clashlist = [[],[]]
+      except Exception as e:
+        raise Sorry('Unexpected error processing proxies_info_nonbonded')
+      # Collect, seperatly, clashes due to symmetry operation and those that are not
+      self.nb_clash_proxies_due_to_sym_op = clashlist[0]
+      self.nb_clash_proxies_without_sym_op = clashlist[1]
+      self.nb_clash_proxies_all_clashes = clashlist[0] + clashlist[1]
+      # clashscore is the number of serious steric overlaps (>0.4A) per 1000 atoms
+      n_atoms = len(self.sites_cart)
+      clashscore_due_to_sym_op = len(clashlist[0])*1000/n_atoms
+      clashscore_without_sym_op = len(clashlist[1])*1000/n_atoms
+      clashscore_all_clashes = clashscore_due_to_sym_op + clashscore_without_sym_op
+      #
+      self.nb_clashscore_due_to_sym_op = clashscore_due_to_sym_op
+      self.nb_clashscore_without_sym_op = clashscore_without_sym_op
+      self.nb_clashscore_all_clashes = clashscore_all_clashes
+    else:
+      self.nb_clashscore_due_to_sym_op = 0
+      self.nb_clashscore_without_sym_op = 0
+      self.nb_clashscore_all_clashes = 0
+      #
+      self.nb_clash_proxies_due_to_sym_op = []
+      self.nb_clash_proxies_without_sym_op = []
+      self.nb_clash_proxies_all_clashes = []
+
+  def is_1_5_interaction(self,i_seq,j_seq):
+    '''(int,int) -> bool
+    Check if we have 1-5 interaction between two hydrogen and heavy atom
+
+    arguments:
+    i_seq,j_seq :  are the number of the atoms we are checking in the pdb table
+
+    retruns:
+    True if we have 1-5 hydrogen and heavy atom interaction
+    '''
+    # check if we have hydrogen - heavy atom interaction
+    xor = lambda a,b: (a or b) and not (a and b)
+    if xor(self.hd_sel[i_seq],self.hd_sel[j_seq]):
+      # starting with hydrogen will make process shorter
+      if not self.hd_sel[i_seq]:
+        i_seq,j_seq = j_seq,i_seq
+      # build connection table of i_seq, 4 steps deep
+      atoms_numbers = dict([(i_seq, 0)]) # i_seq is in zero distance
+      used_connections = {i_seq}
+      new_connections = {i_seq}
+      for i in range(2,6):
+        connections = set()
+        for key in new_connections:
+          # add all new connetions for the current step
+          connections = connections.union(set(self.full_connectivty_table[key]))
+        # Remove the connection that were already used
+        new_connections = connections - used_connections
+        # Add the new connection to the used once
+        used_connections = used_connections.union(connections)
+        # Add the new atoms with their distance from key
+        for new_atom in new_connections:
+          atoms_numbers[new_atom] = i
+      # Check if j_seq in the is 1-5 connection
+      return (j_seq in atoms_numbers) and (atoms_numbers[j_seq] == 5)
+    else:
+      return False
+
+  def get_clash_keys(self,record):
+    '''(str) -> str,str,str
+
+    Collect atoms keys and coordinates
+
+    Argumets:
+    record : a clash record, for example:
+    (['pdb=" HA  LEU A  38 "', 'pdb="HD23 LEU A  38 "'], 523, 532, 1.8108674716831155, 2.44, '', None)
+
+    Returns:
+    clash_vec: a unique key for a clash. for example: '0.144,0.323,1.776,0.154,0.327,1.786'
+    key1,key2: are the atoms keys. for example ' HA  LEU A  38 ' or ' CB ASN A  55 sym.op.'
+    '''
+    # get atoms keys
+    record = list(record)
+    key1 = record[0][0][5:-1] + record[5]
+    key2 = record[0][1][5:-1] + record[5]
+    # get coordinates
+    atomi_xyz = self.sites_cart[record[1]]
+    atomj_xyz = self.sites_cart[record[2]]
+    # make tupe containing both atom coordinates
+    vec = atomi_xyz + atomj_xyz
+    # creat a string from vec
+    clash_vec = '{0:.3f},{1:.3f},{2:.3f},{3:.3f},{4:.3f},{5:.3f}'.format(*vec)
+    # make key1 always smaller than key2
+    if key1 > key2:
+      key1,key2 = key2,key1
+    return clash_vec,key1,key2
+
+  @staticmethod
+  def cos_vec(u,v):
+    '''(tuple,tuple) -> float
+
+    Calculate the cosine used to evaluate wheather the atoms
+    coliding are inline or not
+
+    Arguments:
+    u,v: lists containing x1,y1,z1,x2,y2,z2 coordinates
+    Returns:
+    cos_angle: the cosine of the angle between center of the common atom
+    and the mid point between the other two atoms.
+    '''
+    # Calculate dot product
+    u_dot_v = lambda u,v: (u[0]*v[0]+u[1]*v[1]+u[2]*v[2])
+    # Calculate mid point between to atoms
+    u_mid_v = lambda u,v: [(x+y)/2 for (x,y) in zip(u,v)]
+    # find the length of a vector
+    u_len = lambda u: math.sqrt(u[0]**2 + u[1]**2 + u[2]**2)
+    # Move vector to the origin
+    make_vec = lambda u1,u2: [(x-y) for (x,y) in zip(u1,u2)]
+    v1 = v[0:3]
+    v2 = v[3:6]
+    u1 = u[0:3]
+    u2 = u[3:6]
+    # find the common atoms
+    if v1 == u1:
+      mid_uv = u_mid_v(u2,v2)
+      vec1 = make_vec(v1,mid_uv)
+      vec2 = make_vec(u2,v2)
+    elif v1 == u2:
+      mid_uv = u_mid_v(u1,v2)
+      vec1 = make_vec(v1,mid_uv)
+      vec2 = make_vec(u1,v2)
+    elif v2 == u1:
+      mid_uv = u_mid_v(u2,v1)
+      vec1 = make_vec(v2,mid_uv)
+      vec2 = make_vec(u2,v1)
+    else: #v2 == u2
+      mid_uv = u_mid_v(u1,v1)
+      vec1 = make_vec(v2,mid_uv)
+      vec2 = make_vec(u1,v1)
+    # return the cosine of the angle between the two vectors
+    try:
+      cos_angle = abs(u_dot_v(vec1,vec2)/u_len(vec1)/u_len(vec2))
+    except ZeroDivisionError:
+      cos_angle = 1
+    return cos_angle
+
+
+  #def model_distance(i_seq,j_seq):
+    #'''(int,int)  -> float
+    #Calculates the distance between atoms i_seq and j_seq
+
+    #Arguments:
+    #i_seq,j_seq: atoms numbers in the our model
+
+    #Returns:
+    #dist: distance
+    #'''
+    #dist =  [(x-y)**2 for (x,y) in zip(self.sites_cart[i_seq],self.sites_cart[j_seq])]
+    #dist = math.sqrt(sum(dist))
+    #return dist
+
+  def clashscore_clash_list(self):
+    '''(self) -> [list,list]
+    Collect inforamtion of clashing nonbonded proxies (neighboring atoms) for clash
+    score calculation.
+    - proxies considered to clash when model_distance - van_der_waals_distance < -0.41
+    - For every atom consider only worst clash
+    - Do not double count in-line clashes.
+       for example, C-H1  H2-...
+       if both C and H1 are clashing with H2 count only the worst of them
+    - Exclude 1-5 interaction of Hydrogen and heavy atom
+
+    Retruns:
+    clashing_atoms_list: a sub list of self.nonbonded_list
+    '''
+    clashing_atoms_list = [[],[]]
+    clashing_atoms_dict = {}
+    # clashing_atoms_dict[atom_key] = [all clashes information for this atom]
+    # clashing_atoms_dict[' HA  ASP A  44 '] = [[atom1,vec1, i_seq, j_seq1,model)],
+    #                                           [atom2, vec2,i_seq, j_seq2,model]...]
+    # vec = [delta_x,delta_y,delta_z] , the difference between the atoms coordinates
+    clashes_dict = {}
+    # clashes_dict[vec] = [atom1, atom2, clash_record]
+    # vec uniquly define a clash, regardless of atoms order
+
+    for rec in self.nonbonded_list:
+      i_seq = rec[1]
+      j_seq = rec[2]
+      model = rec[3]
+      #model = rec[3]
+      vdw = rec[4]
+      symop = rec[5]
+      delta = model - vdw
+      # check for clash
+      if (delta < -0.41):
+        # Check of 1-5 interaction
+        if not self.is_1_5_interaction(i_seq, j_seq):
+          clash_vec,key1,key2 = self.get_clash_keys(rec)
+          clash_key = '::'.join([key1,key2,symop])
+          if clash_key not in clashes_dict:
+            # record new clash
+            clashes_dict[clash_key] = [key1,key2,rec]
+            if key1 not in clashing_atoms_dict: clashing_atoms_dict[key1] = []
+            if key2 not in clashing_atoms_dict: clashing_atoms_dict[key2] = []
+            clashing_atoms_dict[key1].append([key2,clash_vec,clash_key,symop,model])
+            clashing_atoms_dict[key2].append([key1,clash_vec,clash_key,symop,model])
+
+    for key in clashing_atoms_dict:
+      # for atoms that clash more than once, check for inline clashes
+      if len(clashing_atoms_dict[key]) > 1:
+        temp_clash_list = []
+        n_clashes = len(clashing_atoms_dict[key])
+        # itereate over all clash combination
+        for i in range(n_clashes-1):
+          for j in range(i+1,n_clashes):
+            vec_i = clashing_atoms_dict[key][i][1]
+            vec_j = clashing_atoms_dict[key][j][1]
+            u = map(float,vec_i.split(','))
+            v = map(float,vec_j.split(','))
+            cos_angle = 0
+            if not [0.0,0.0,0.0] in [u,v]:
+              # Do not calculate cos_angle when atoms are overlapping
+              if clashing_atoms_dict[key][i][3] == '':
+                # ignore clashes that are cause by symmetry operation
+                cos_angle = self.cos_vec(u,v)
+            # atoms consider to be inline if cosine of the angle between vectors > 0.866
+            if cos_angle > 0.867 and (vec_i != vec_j):
+              # for inline clashes keep the closer two(compare models)
+              if clashing_atoms_dict[key][i][4] < clashing_atoms_dict[key][j][4]:
+                temp_clash_list.append(clashing_atoms_dict[key][i])
+                # remove clash from clashes_dict
+                remove_key = clashing_atoms_dict[key][j][2]
+                if remove_key in clashes_dict: del clashes_dict[remove_key]
+              else:
+                temp_clash_list.append(clashing_atoms_dict[key][j])
+                # remove clash from clashes_dict
+                remove_key = clashing_atoms_dict[key][i][2]
+                if remove_key in clashes_dict: del clashes_dict[remove_key]
+            else:
+              # clashes are not inline, keep both
+              temp_clash_list.append(clashing_atoms_dict[key][j])
+              temp_clash_list.append(clashing_atoms_dict[key][i])
+        clashing_atoms_dict[key] = temp_clash_list
+
+    # collect results
+
+    for (key,val) in clashes_dict.iteritems():
+      if key.split('::')[2] != '':
+        # not due to symmetry operation
+        clashing_atoms_list[0].append(val[2])
+      else:
+        # due to symmetry operation
+        clashing_atoms_list[1].append(val[2])
+
+    return clashing_atoms_list
