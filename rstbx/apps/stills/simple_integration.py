@@ -246,6 +246,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       #print "SORTED LIST OF ",len(sorted_cl), "with sigma",fitted_rayleigh.distribution.sigma
       indexed_pairs = []
       correction_vectors = []
+      self.correction_vectors = []
       for icand in xrange(len(sorted_cl)):
         # somewhat arbitrary sigma = 1.0 cutoff for outliers
         if (sorted_cl[icand]-inv_cdf[icand])/fitted_rayleigh.distribution.sigma > 1.0:
@@ -269,6 +270,26 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
             radial, azimuthal = spots[indexed_pairs[-1]["spot"]].get_radial_and_azimuthal_size(
               self.inputai.xbeam()/pxlsz, self.inputai.ybeam()/pxlsz)
             print "RADIALpx %5.3f AZIMUTpx %5.3f"%(radial,azimuthal)
+
+        # Store a list of correction vectors in self.
+        radial, azimuthal = spots[indexed_pairs[-1]['spot']].get_radial_and_azimuthal_size(
+          self.inputai.xbeam()/pxlsz, self.inputai.ybeam()/pxlsz)
+        self.correction_vectors.append(
+          dict(obscenter=(float(self.inputpd['size1']) / 2,
+                          float(self.inputpd['size2']) / 2),
+               refinedcenter=(self.inputai.xbeam() / pxlsz,
+                              self.inputai.ybeam() / pxlsz),
+               obsspot=(spots[indexed_pairs[-1]['spot']].ctr_mass_x(),
+                        spots[indexed_pairs[-1]['spot']].ctr_mass_y()),
+               predspot=(self.predicted[indexed_pairs[-1]['pred']][0] / pxlsz,
+                         self.predicted[indexed_pairs[-1]['pred']][1] / pxlsz),
+               hkl=(self.hkllist[indexed_pairs[-1]['pred']][0],
+                    self.hkllist[indexed_pairs[-1]['pred']][1],
+                    self.hkllist[indexed_pairs[-1]['pred']][2]),
+               setting_id=self.setting_id,
+               radial=radial,
+               azimuthal=azimuthal))
+
       print "After outlier rejection %d indexed spotfinder spots remain."%len(indexed_pairs)
       if False:
         rayleigh_cdf = [

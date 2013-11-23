@@ -279,6 +279,10 @@ class IntegrateCharacters:
             max_signal = [getattr(a,"max_signal",None) for a in local["results"]],
             current_orientation = [getattr(a,"current_orientation",None) for a in local["results"]],
             current_cb_op_to_primitive = [getattr(a,"current_cb_op_to_primitive",None) for a in local["results"]],
+            correction_vectors = [getattr(a, 'correction_vectors', None)
+                                  for a in local['results']],
+            effective_tiling = self.files.images[0].get_tile_manager(
+              self.horizons_phil).effective_tiling_as_flex_int()
           )
           G = open(file,"wb")
           pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
