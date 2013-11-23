@@ -1900,7 +1900,6 @@ rstbx/apps/stills/__init__.py -text
 rstbx/apps/stills/ersatz_nexus.cpp -text
 rstbx/apps/stills/ersatz_nexus.h -text
 rstbx/apps/stills/simple_integration.h -text
-rstbx/apps/stills/simple_integration.py -text
 rstbx/apps/stills/stills_integration.py -text
 rstbx/array_family/__init__.py -text
 rstbx/array_family/ext.cpp -text
@@ -2006,7 +2005,6 @@ rstbx/indexing_api/tools.py -text
 rstbx/libtbx_config -text
 rstbx/new_horizons/__init__.py -text
 rstbx/new_horizons/index.py -text
-rstbx/new_horizons/oscillation_shots.py -text
 rstbx/new_horizons/pixel_spread.py -text
 rstbx/new_horizons/speckfinder.py -text
 rstbx/new_horizons/spot_shape.py -text
