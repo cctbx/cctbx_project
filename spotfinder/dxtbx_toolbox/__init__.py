@@ -30,7 +30,7 @@ class Distl:
           (2463,2527):"Pilatus-6M",
           (1475,1679):"Pilatus-2M",
           (487,195):"Pilatus-300K",
-        }.get(panel.get_image_size(),None)
+        }.get(panel.get_image_size(),"")
       print special_vendortype
       SF.set_tiling(special_vendortype)
 
