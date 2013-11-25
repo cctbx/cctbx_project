@@ -183,7 +183,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       assert cbf.get_axis_depends_on(axis0) == axis1
 
       try:
-        size = tuple(cbf.get_image_size(i))
+        size = tuple(cbf.get_image_size_fs(i))
       except Exception, e:
         if "CBF_NOTFOUND" in e.message:
           # no array data in the file, it's probably just a cbf header.  Get the image size elsewhere
@@ -274,7 +274,10 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
         image.reshape(flex.grid(*image_size))
 
-        self._raw_data.append(image)
+        if hasattr(image, "iround"):
+          self._raw_data.append(image.iround())
+        else:
+          self._raw_data.append(image)
 
         try:
           cbf.next_row()
