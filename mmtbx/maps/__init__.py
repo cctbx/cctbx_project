@@ -422,10 +422,9 @@ def map_coefficients_from_fmodel(
       exclude_free_r_reflections=params.exclude_free_r_reflections,
       ncs_average=getattr(params, "ncs_average", False),
       post_processing_callback=post_processing_callback,
-      pdb_hierarchy=pdb_hierarchy)
+      pdb_hierarchy=pdb_hierarchy,
+      merge_anomalous=True)
     if (coeffs is None) : return None
-    if(coeffs.anomalous_flag()) :
-      coeffs = coeffs.average_bijvoet_mates()
     if(params.sharpening):
       from mmtbx import map_tools
       coeffs, b_sharp = map_tools.sharp_map(
@@ -443,7 +442,6 @@ def map_coefficients_from_fmodel(
       "kicked=%s, sharpening=%s, isotropize=%s, anomalous=%s.") %
         (params.map_type, params.kicked, params.sharpening, params.isotropize,
          fmodel.f_obs().anomalous_flag()))
-  # XXX is this redundant?
   if(coeffs.anomalous_flag()) :
     coeffs = coeffs.average_bijvoet_mates()
   return coeffs
@@ -517,6 +515,8 @@ class compute_map_coefficients(object):
           post_processing_callback = post_processing_callback,
           pdb_hierarchy            = pdb_hierarchy)
         if("mtz" in mcp.format and coeffs is not None):
+          if coeffs.anomalous_flag() :
+            coeffs = coeffs.average_bijvoet_mates()
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):
             self.mtz_dataset = coeffs.as_mtz_dataset(
