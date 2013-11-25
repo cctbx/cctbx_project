@@ -2450,6 +2450,14 @@ spotfinder/diffraction/imagefiles.py -text
 spotfinder/distl_license -text
 spotfinder/doc/distl_svn_history -text
 spotfinder/doc/labelit_svn_history -text
+spotfinder/dxtbx_toolbox/SConscript -text
+spotfinder/dxtbx_toolbox/__init__.py -text
+spotfinder/dxtbx_toolbox/distl.cpp -text
+spotfinder/dxtbx_toolbox/distl.h -text
+spotfinder/dxtbx_toolbox/ext.cpp -text
+spotfinder/dxtbx_toolbox/libdistl.cpp -text
+spotfinder/dxtbx_toolbox/libdistl.h -text
+spotfinder/dxtbx_toolbox/practical_heuristics.py -text
 spotfinder/exception.py -text
 spotfinder/libtbx_config -text
 spotfinder/math_support/__init__.py -text

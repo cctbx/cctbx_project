@@ -57,6 +57,13 @@ def spotfinder_factory(absrundir,frames,phil_params):
     Spotfinder.images.update(result.images)
   return Spotfinder
 
+def dxtbx_spotfinder_factory(phil_params):
+
+  from dxtbx.format.Registry import Registry
+  reader = Registry.find(phil_params.distl.image[0])
+  from spotfinder.dxtbx_toolbox.practical_heuristics import heuristics_base
+  Spotfinder = heuristics_base(phil_params)
+  return Spotfinder
 
 class DistlOrganizer(object):
 
@@ -64,10 +71,15 @@ class DistlOrganizer(object):
     self.rundir = os.getcwd()
     self.verbose = verbose
     self.phil_params = kwargs["phil_params"]
+    if self.phil_params.distl.dxtbx:
+      self.set_dxtbx_input()
+      return
     if kwargs.has_key('argument_module'):
       # new interface
       self.setCommandInput(kwargs['argument_module'])
-    #print '\n'.join(self.Files.filenames())
+
+  def set_dxtbx_input(self):
+    pass
 
   def setCommandInput(self,argument_module):
     from spotfinder.diffraction.imagefiles import spotfinder_image_files as ImageFiles
@@ -85,9 +97,11 @@ class DistlOrganizer(object):
 
   def printSpots(self):
     '''spotfinder and pickle implicitly assumes ADSC format'''
-    S = spotfinder_factory(self.rundir,self.Files,self.phil_params)
-    self.S = S
-    for frame in self.frames:
-      if self.verbose:
-        pretty_image_stats(S,frame)
-        notes(S,self.frames[0])
+    if self.phil_params.distl.dxtbx:
+      self.S = S = dxtbx_spotfinder_factory(self.phil_params)
+    else:
+      self.S = S = spotfinder_factory(self.rundir,self.Files,self.phil_params)
+      for frame in self.frames:
+        if self.verbose:
+          pretty_image_stats(S,frame)
+          notes(S,self.frames[0])
