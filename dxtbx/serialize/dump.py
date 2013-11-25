@@ -80,7 +80,7 @@ def imageset_to_string(obj, compact=False):
     string = json.dumps(imageset_to_dict(obj), indent=2)
 
     # Hack to make more readable
-    string = compact_simple_lists(string)
+    #string = compact_simple_lists(string)
 
   else:
     string = json.dumps(imageset_to_dict(obj), separators=(',',':'))
