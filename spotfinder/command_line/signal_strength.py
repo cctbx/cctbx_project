@@ -73,7 +73,7 @@ distl {
 }
 """ % spotfinder.inner_phil_str
 
-master_params = libtbx.phil.parse("""\
+master_params_defs = """\
 distl {
   image = None
     .type = str
@@ -89,6 +89,9 @@ distl {
   verbose = False
     .type = bool
     .help="Lengthy spot printout"
+  dxtbx = False
+    .type = bool
+    .help="Switch algorithms to dxtbx models"
   bins {
     verbose = False
       .type = bool
@@ -103,7 +106,9 @@ distl {
 }
 
 %s
-"""%(spotfinder.labelit_related_commands)+additional_spotfinder_phil_defs)
+"""%(spotfinder.labelit_related_commands)+additional_spotfinder_phil_defs
+
+master_params = libtbx.phil.parse(master_params_defs)
 
 def run(args, command_name="distl.signal_strength"):
   help_str="""explanation:

@@ -296,11 +296,11 @@ private:
         void screen_spots();
 public:
         void imgresolution();
-private:
+public:
         // Utilities
         double resol_to_r2(const double) const;
         double r2_to_resol(const double) const;
-        double xy2resol(const double, const double) const;
+        virtual double xy2resol(const double, const double) const;
 
         //! Convert x,y pixel coordinates to resolution
         /*! Gives exact same answer as xy2resol() to 12 decimal places.
