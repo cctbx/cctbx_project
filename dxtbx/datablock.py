@@ -295,14 +295,28 @@ class DataBlockFactory(object):
 
 if __name__ == '__main__':
 
-  import sys
+  from optparse import OptionParser
+  usage = "usage: %prog [options] /path/to/image/files"
+  parser = OptionParser(usage)
+
+  # Print verbose output
+  parser.add_option(
+    "-v", "--verbose",
+    dest = "verbose",
+    action = "store_true", default = False,
+    help = "Write extra output")
+
+  # Parse the command line arguments
+  (options, args) = parser.parse_args()
+  if len(args) == 0:
+    parser.print_help()
 
   # Get the data blocks from the input files
   # We've set verbose to print out files as they're tested.
-  datablock_list = DataBlockFactory.from_filenames(sys.argv[1:], verbose=True)
+  datablocks = DataBlockFactory.from_filenames(args, verbose=options.verbose)
 
   # Loop through the data blocks
-  for i, datablock in enumerate(datablock_list):
+  for i, datablock in enumerate(datablocks):
 
     # Extract any sweeps
     try:
