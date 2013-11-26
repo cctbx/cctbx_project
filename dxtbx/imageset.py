@@ -459,6 +459,12 @@ class ImageSet(object):
     ''' Set the beam model.'''
     self.reader().set_beam(beam)
 
+  def get_goniometer(self, index=None):
+    return self.reader().get_goniometer(index)
+
+  def get_scan(self, index=None):
+    return self.reader().get_scan(index)
+
   def get_image_size(self, index=0):
     ''' Get the image size. '''
     return self.reader().get_image_size(index)
