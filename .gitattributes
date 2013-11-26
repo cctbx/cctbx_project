@@ -538,6 +538,7 @@ dxtbx/tests/model/tst_pixel_to_millimeter.py -text
 dxtbx/tests/model/tst_ray_intersection.py -text
 dxtbx/tests/model/tst_scan_data.py -text
 dxtbx/tests/model/tst_scan_helpers.py -text
+dxtbx/tests/model/tst_to_from_dict.py -text
 dxtbx/tests/omega_scan.cbf -text svneol=unset#unset
 dxtbx/tests/phi_scan_001.cbf -text svneol=unset#unset
 dxtbx/tests/serialize/tst_serialize.py -text
