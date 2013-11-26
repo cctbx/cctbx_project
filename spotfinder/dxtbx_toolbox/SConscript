@@ -1,7 +1,7 @@
 Import("env_spotfinder_boost_python_ext")
 env = env_spotfinder_boost_python_ext.Clone()
 
-env.Prepend(LIBS=["spotfinder","omptbx"])
+env.Prepend(LIBS=["dxtbxspotfinder","spotfinder","omptbx"])
 pyd = env.SharedLibrary(
   target="#lib/spotfinder_dxtbx_ext",
   source=["ext.cpp",])
