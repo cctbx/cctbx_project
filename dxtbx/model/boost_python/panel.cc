@@ -362,6 +362,7 @@ namespace dxtbx { namespace model { namespace boost_python {
         return_value_policy<manage_new_object>())
       .staticmethod("from_dict")
       .def("is_", &panel_is)
+      .def("is_similar_to", &Panel::is_similar_to)
       .def_pickle(PanelPickleSuite());
   }
 

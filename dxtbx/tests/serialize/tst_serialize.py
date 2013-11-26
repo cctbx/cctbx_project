@@ -12,6 +12,7 @@ class Test(object):
     self.tst_scan()
     self.tst_sweep()
     self.tst_null_sweep()
+    self.tst_cspad_hierarchy()
 
   def tst_beam(self):
     from dxtbx.serialize import beam
@@ -36,41 +37,6 @@ class Test(object):
     print 'OK'
 
   def tst_detector(self):
-    self.tst_panel()
-    print 'OK'
-
-  def tst_panel(self):
-    from dxtbx.serialize.detector import panel_to_dict, panel_from_dict
-    from dxtbx.model import Panel
-    p1 = Panel("UNKNOWN", "Panel",
-               (1, 0, 0), (0, 1, 0), (0, 0, 1),
-               (0.072, 0.072),
-               (1000, 2000), (0, 100))
-    d = panel_to_dict(p1)
-    p2 = panel_from_dict(d)
-    assert(d['type'] == "UNKNOWN")
-    assert(d['name'] == "Panel")
-    assert(d['fast_axis'] == (1, 0, 0))
-    assert(d['slow_axis'] == (0, 1, 0))
-    assert(d['origin'] == (0, 0, 1))
-    assert(d['pixel_size'] == (0.072, 0.072))
-    assert(d['image_size'] == (1000, 2000))
-    assert(d['trusted_range'] == (0, 100))
-    assert(p1 == p2)
-
-    # Test with a template and partial dictionary
-    d2 = { 'name' : 'PanelName', 'origin' : (0, 0, 2) }
-    p3 = panel_from_dict(d2, d)
-    assert(p3.get_type() == "UNKNOWN")
-    assert(p3.get_name() == "PanelName")
-    assert(p3.get_fast_axis() == (1, 0, 0))
-    assert(p3.get_slow_axis() == (0, 1, 0))
-    assert(p3.get_origin() == (0, 0, 2))
-    assert(p3.get_pixel_size() == (0.072, 0.072))
-    assert(p3.get_image_size() == (1000, 2000))
-    assert(p3.get_trusted_range() == (0, 100))
-
-    assert(p2 != p3)
     print 'OK'
 
   def tst_goniometer(self):
@@ -201,6 +167,44 @@ class Test(object):
     assert(abs(s.get_exposure_times()[0] - 0.2) < eps)
     print 'OK'
 
+  def tst_cspad_hierarchy(self):
+    from dxtbx.serialize import dump, load
+    from dxtbx.imageset import ImageSetFactory
+    import libtbx.load_env
+    import os
+    from glob import glob
+    try:
+      path = libtbx.env.dist_path('dials_regression')
+    except Exception:
+      print "No dials_regression directory found"
+      return
+
+    # Get the imageset
+    filename = os.path.join(path, "spotfinding_test_data", "idx*.cbf")
+    imageset = ImageSetFactory.new(glob(filename))
+    assert(len(imageset) == 1)
+    imageset = imageset[0]
+
+    # Dump and reload
+    import tempfile
+    temp = tempfile.TemporaryFile()
+    dump.imageset(imageset, temp)
+    temp.flush()
+    temp.seek(0)
+    imageset2 = load.imageset(temp)
+
+    # Check they're are the same
+    assert(imageset2.get_beam() == imageset.get_beam())
+    d1 = imageset.get_detector()
+    d2 = imageset2.get_detector()
+    assert(len(d1) == len(d2))
+    for i, (p1, p2) in enumerate(zip(d1, d2)):
+      assert(p1 == p2)
+    assert(imageset2.get_detector() == imageset.get_detector())
+    assert(imageset2 == imageset)
+
+    # Test passed
+    print 'OK'
 
 if __name__ == '__main__':
   test = Test()

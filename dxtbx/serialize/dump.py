@@ -77,13 +77,15 @@ def imageset_to_string(obj, compact=False):
 
   # Return as a JSON string
   if compact == False:
-    string = json.dumps(imageset_to_dict(obj), indent=2)
+    string = json.dumps(imageset_to_dict(obj),
+      indent=2, ensure_ascii=True)
 
     # Hack to make more readable
     #string = compact_simple_lists(string)
 
   else:
-    string = json.dumps(imageset_to_dict(obj), separators=(',',':'))
+    string = json.dumps(imageset_to_dict(obj),
+      separators=(',',':'), ensure_ascii=True)
 
   # Return the string
   return string

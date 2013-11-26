@@ -46,8 +46,8 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::dict result;
     result["direction"] = obj.get_direction();
     result["wavelength"] = obj.get_wavelength();
-    result["divergence"] = obj.get_divergence();
-    result["sigma_divergence"] = obj.get_sigma_divergence();
+    result["divergence"] = rad_as_deg(obj.get_divergence());
+    result["sigma_divergence"] = rad_as_deg(obj.get_sigma_divergence());
     result["polarization_normal"] = obj.get_polarization_normal();
     result["polarization_fraction"] = obj.get_polarization_fraction();
     return result;
@@ -58,8 +58,10 @@ namespace dxtbx { namespace model { namespace boost_python {
     return new Beam(
       boost::python::extract< vec3<double> >(obj["direction"]),
       boost::python::extract< double >(obj["wavelength"]),
-      boost::python::extract< double >(obj.get("divergence", 0.0)),
-      boost::python::extract< double >(obj.get("sigma_divergence", 0.0)),
+      deg_as_rad(
+        boost::python::extract< double >(obj.get("divergence", 0.0))),
+      deg_as_rad(
+        boost::python::extract< double >(obj.get("sigma_divergence", 0.0))),
       boost::python::extract< vec3<double> >(
         obj.get("polarization_normal", vec3<double>(0.0, 1.0, 0.0))),
       boost::python::extract< double >(obj.get("polarization_fraction", 0.999)));

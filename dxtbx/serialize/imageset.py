@@ -83,8 +83,8 @@ def basic_imageset_to_dict(imageset):
   return OrderedDict([
       ("__id__", "imageset"),
       ("filenames", filename_to_absolute(imageset.paths())),
-      ("beam", beam.to_dict(imageset.get_beam())),
-      ("detector", detector.to_dict(imageset.get_detector()))])
+      ("beam", imageset.get_beam().to_dict()),
+      ("detector", imageset.get_detector().to_dict())])
 
 def imagesweep_to_dict(sweep):
   ''' Convert a sweep to a dictionary
@@ -103,10 +103,10 @@ def imagesweep_to_dict(sweep):
   return OrderedDict([
       ("__id__", "imageset"),
       ("template", filename_to_absolute(sweep.get_template())),
-      ("beam", beam.to_dict(sweep.get_beam())),
-      ("detector", detector.to_dict(sweep.get_detector())),
-      ("goniometer", goniometer.to_dict(sweep.get_goniometer())),
-      ("scan", scan.to_dict(sweep.get_scan()))])
+      ("beam", sweep.get_beam().to_dict()),
+      ("detector", sweep.get_detector().to_dict()),
+      ("goniometer", sweep.get_goniometer().to_dict()),
+      ("scan", sweep.get_scan().to_dict())])
 
 def imageset_to_dict(imageset):
   ''' Convert the imageset to a dictionary
@@ -170,7 +170,6 @@ def imagesweep_from_dict(d):
     sweep = ImageSetFactory.from_template(template, image_range)[0]
   except Exception:
     sweep = NullSweep(template)
-    sweep.set_scan(scan.from_dict(d.get('scan')))
 
   # Get the existing models as dictionaries
   beam_dict = beam.to_dict(sweep.get_beam())
@@ -182,7 +181,7 @@ def imagesweep_from_dict(d):
   sweep.set_beam(beam.from_dict(d.get('beam'), beam_dict))
   sweep.set_goniometer(goniometer.from_dict(d.get('goniometer'), gonio_dict))
   sweep.set_detector(detector.from_dict(d.get('detector'), detector_dict))
-#    sweep.set_scan(scan.from_dict(d.get('scan'), scan_dict))
+  sweep.set_scan(scan.from_dict(d.get('scan'), scan_dict))
 
   # Return the sweep
   return sweep
