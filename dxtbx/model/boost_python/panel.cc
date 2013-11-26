@@ -150,12 +150,9 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::dict result;
     result["name"] = obj.get_name();
     result["type"] = obj.get_type();
-    result["local_fast_axis"] = obj.get_local_fast_axis();
-    result["local_slow_axis"] = obj.get_local_slow_axis();
-    result["local_origin"] = obj.get_local_origin();
-    result["parent_fast_axis"] = obj.get_parent_fast_axis();
-    result["parent_slow_axis"] = obj.get_parent_slow_axis();
-    result["parent_origin"] = obj.get_parent_origin();
+    result["fast_axis"] = obj.get_local_fast_axis();
+    result["slow_axis"] = obj.get_local_slow_axis();
+    result["origin"] = obj.get_local_origin();
     return result;
   }
 
@@ -164,21 +161,13 @@ namespace dxtbx { namespace model { namespace boost_python {
     PanelBase *result = new PanelBase();
     result->set_name(boost::python::extract<std::string>(obj["name"]));
     result->set_type(boost::python::extract<std::string>(obj["type"]));
-    if (obj.has_key("local_fast_axis") &&
-        obj.has_key("local_slow_axis") &&
-        obj.has_key("local_origin")) {
+    if (obj.has_key("fast_axis") &&
+        obj.has_key("slow_axis") &&
+        obj.has_key("origin")) {
       result->set_local_frame(
-        boost::python::extract< vec3<double> >(obj["local_fast_axis"]),
-        boost::python::extract< vec3<double> >(obj["local_slow_axis"]),
-        boost::python::extract< vec3<double> >(obj["local_origin"]));
-    }
-    if (obj.has_key("parent_fast_axis") &&
-        obj.has_key("parent_slow_axis") &&
-        obj.has_key("parent_origin")) {
-      result->set_parent_frame(
-        boost::python::extract< vec3<double> >(obj["parent_fast_axis"]),
-        boost::python::extract< vec3<double> >(obj["parent_slow_axis"]),
-        boost::python::extract< vec3<double> >(obj["parent_origin"]));
+        boost::python::extract< vec3<double> >(obj["fast_axis"]),
+        boost::python::extract< vec3<double> >(obj["slow_axis"]),
+        boost::python::extract< vec3<double> >(obj["origin"]));
     }
     return result;
   }
@@ -188,12 +177,9 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::dict result;
     result["name"] = obj.get_name();
     result["type"] = obj.get_type();
-    result["local_fast_axis"] = obj.get_local_fast_axis();
-    result["local_slow_axis"] = obj.get_local_slow_axis();
-    result["local_origin"] = obj.get_local_origin();
-    result["parent_fast_axis"] = obj.get_parent_fast_axis();
-    result["parent_slow_axis"] = obj.get_parent_slow_axis();
-    result["parent_origin"] = obj.get_parent_origin();
+    result["fast_axis"] = obj.get_local_fast_axis();
+    result["slow_axis"] = obj.get_local_slow_axis();
+    result["origin"] = obj.get_local_origin();
     result["image_size"] = obj.get_image_size();
     result["pixel_size"] = obj.get_pixel_size();
     result["trusted_range"] = obj.get_trusted_range();
@@ -205,21 +191,13 @@ namespace dxtbx { namespace model { namespace boost_python {
     Panel *result = new Panel();
     result->set_name(boost::python::extract<std::string>(obj["name"]));
     result->set_type(boost::python::extract<std::string>(obj["type"]));
-    if (obj.has_key("local_fast_axis") &&
-        obj.has_key("local_slow_axis") &&
-        obj.has_key("local_origin")) {
+    if (obj.has_key("fast_axis") &&
+        obj.has_key("slow_axis") &&
+        obj.has_key("origin")) {
       result->set_local_frame(
-        boost::python::extract< vec3<double> >(obj["local_fast_axis"]),
-        boost::python::extract< vec3<double> >(obj["local_slow_axis"]),
-        boost::python::extract< vec3<double> >(obj["local_origin"]));
-    }
-    if (obj.has_key("parent_fast_axis") &&
-        obj.has_key("parent_slow_axis") &&
-        obj.has_key("parent_origin")) {
-      result->set_parent_frame(
-        boost::python::extract< vec3<double> >(obj["parent_fast_axis"]),
-        boost::python::extract< vec3<double> >(obj["parent_slow_axis"]),
-        boost::python::extract< vec3<double> >(obj["parent_origin"]));
+        boost::python::extract< vec3<double> >(obj["fast_axis"]),
+        boost::python::extract< vec3<double> >(obj["slow_axis"]),
+        boost::python::extract< vec3<double> >(obj["origin"]));
     }
     result->set_image_size(
       boost::python::extract< vec2<std::size_t> >(obj["image_size"]));
@@ -246,6 +224,18 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("fast_axis"),
           arg("slow_axis"),
           arg("origin")))
+      .def("get_local_fast_axis",
+        &PanelFrame::get_local_fast_axis)
+      .def("get_local_slow_axis",
+        &PanelFrame::get_local_slow_axis)
+      .def("get_local_origin",
+        &PanelFrame::get_local_origin)
+      .def("get_parent_fast_axis",
+        &PanelFrame::get_parent_fast_axis)
+      .def("get_parent_slow_axis",
+        &PanelFrame::get_parent_slow_axis)
+      .def("get_parent_origin",
+        &PanelFrame::get_parent_origin)
       .def("get_local_d_matrix",
         &PanelFrame::get_local_d_matrix)
       .def("get_parent_d_matrix",

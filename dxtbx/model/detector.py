@@ -221,7 +221,6 @@ class PanelGroupRoot(PanelGroup):
           queue.append(child)
 
 
-
 def detectorbase_getstate(self):
   version = 1
   return (version, self.__dict__, [p for p in self])
@@ -268,6 +267,33 @@ class Detector(DetectorBase):
     d = DetectorBase.to_dict(self)
     d['hierarchy'] = self._root.to_dict()
     return d
+
+  @staticmethod
+  def from_dict(d):
+    ''' Convert a dictionary to a detector model. '''
+    obj = Detector()
+    panels = d['panels']
+    for p in panels:
+      obj.add_panel(Panel.from_dict(p))
+    Detector._group_or_panel_from_dict(d['hierarchy'], obj.hierarchy())
+    return obj
+
+  @staticmethod
+  def _group_or_panel_from_dict(d, obj):
+    ''' Convert a dictionary to a group or panel and add to model. '''
+    base = PanelBase.from_dict(d)
+    obj.set_type(base.get_type())
+    obj.set_name(base.get_name())
+    obj.set_local_frame(
+      base.get_local_fast_axis(),
+      base.get_local_slow_axis(),
+      base.get_local_origin())
+    for child in d['children']:
+      if 'panel' in child:
+        index = child['panel']
+        obj.add_panel(obj.root()._container[index])
+      else:
+        Detector._group_or_panel_from_dict(child, obj.add_group())
 
 
 class detector_factory:
