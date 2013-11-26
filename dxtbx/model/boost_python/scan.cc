@@ -32,6 +32,13 @@ namespace dxtbx { namespace model { namespace boost_python {
     return angles;
   }
 
+  static
+  vec2<double> deg_as_rad(vec2<double> angles) {
+    angles[0] = deg_as_rad(angles[0]);
+    angles[1] = deg_as_rad(angles[1]);
+    return angles;
+  }
+
   std::string scan_to_string(const Scan &scan) {
     std::stringstream ss;
     ss << scan;
@@ -53,7 +60,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   boost::python::dict to_dict<Scan>(const Scan &obj) {
     boost::python::dict result;
     result["image_range"] = obj.get_image_range();
-    result["oscillation"] = obj.get_oscillation();
+    result["oscillation"] = rad_as_deg(obj.get_oscillation());
     result["exposure_time"] = boost::python::list(obj.get_exposure_times());
     result["epochs"] = boost::python::list(obj.get_epochs());
     return result;
@@ -97,9 +104,9 @@ namespace dxtbx { namespace model { namespace boost_python {
       for (std::size_t i = 0; i < nl; ++i) {
         result.push_back(boost::python::extract<double>(obj[i]));
       }
-      double e0 = result.back();
+      double e0 = result[result.size()-1];
       double de = e0 - result[result.size()-2];
-      for (std::size_t i = nl; i < num; ++i) {
+      for (std::size_t i = 0; i < num-nl; ++i) {
         result.push_back(e0 + (i+1) * de);
       }
     } else {
@@ -113,7 +120,8 @@ namespace dxtbx { namespace model { namespace boost_python {
   template <>
   Scan* from_dict<Scan>(boost::python::dict obj) {
     vec2<int> ir = boost::python::extract< vec2<int> >(obj["image_range"]);
-    vec2<double> osc = boost::python::extract< vec2<double> >(obj["oscillation"]);
+    vec2<double> osc = deg_as_rad(
+      boost::python::extract< vec2<double> >(obj["oscillation"]));
     DXTBX_ASSERT(ir[1] >= ir[0]);
     std::size_t num = ir[1] - ir[0] + 1;
     return new Scan(ir, osc,

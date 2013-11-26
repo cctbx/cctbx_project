@@ -252,6 +252,13 @@ class Detector(DetectorBase):
     ''' Return the hierarchy. '''
     return self._root
 
+  def is_similar_to(self, rhs):
+    ''' Check if the detectors are similar (i.e. only differ in terms of
+    things that could change per experiment. '''
+    if len(self) != len(rhs):
+      return False
+    return all(p1.is_similar_to(p2) for p1, p2 in zip(self, rhs))
+
   def __eq__(self, rhs):
     ''' Check that this is equal to another group. '''
     if not isinstance(rhs, Detector):
@@ -275,7 +282,8 @@ class Detector(DetectorBase):
     panels = d['panels']
     for p in panels:
       obj.add_panel(Panel.from_dict(p))
-    Detector._group_or_panel_from_dict(d['hierarchy'], obj.hierarchy())
+    if 'hierarchy' in d:
+      Detector._group_or_panel_from_dict(d['hierarchy'], obj.hierarchy())
     return obj
 
   @staticmethod

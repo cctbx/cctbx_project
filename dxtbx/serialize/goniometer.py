@@ -20,13 +20,9 @@ def to_dict(gonio):
       A dictionary of the parameters
 
   '''
-  from collections import OrderedDict
   if gonio == None:
     return None
-
-  return OrderedDict([
-      ('rotation_axis', gonio.get_rotation_axis()),
-      ('fixed_rotation', gonio.get_fixed_rotation())])
+  return gonio.to_dict()
 
 def from_dict(d, t=None):
   ''' Convert the dictionary to a goniometer model
@@ -49,5 +45,4 @@ def from_dict(d, t=None):
     d = dict(t.items() + d.items())
 
   # Create the model from the dictionary
-  return Goniometer(tuple(d['rotation_axis']),
-                    tuple(d['fixed_rotation']))
+  return Goniometer.from_dict(d)

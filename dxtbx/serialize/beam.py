@@ -20,15 +20,9 @@ def to_dict(beam):
       A dictionary of the parameters
 
   '''
-  from collections import OrderedDict
   if beam == None:
     return None
-
-  return OrderedDict([
-      ('direction', beam.get_direction()),
-      ('wavelength', beam.get_wavelength()),
-      ('divergence', beam.get_divergence()),
-      ('sigma_divergence', beam.get_sigma_divergence())])
+  return beam.to_dict()
 
 def from_dict(d, t=None):
   ''' Convert the dictionary to a beam model
@@ -51,7 +45,4 @@ def from_dict(d, t=None):
     d = dict(t.items() + d.items())
 
   # Create the model from the dictionary
-  return Beam(tuple(d['direction']),
-              float(d['wavelength']),
-              float(d['divergence']),
-              float(d['sigma_divergence']))
+  return Beam.from_dict(d)
