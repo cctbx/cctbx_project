@@ -173,13 +173,16 @@ class DataBlock(object):
     calls the understand methods of each parent down to the bottom level.
     Just calling the format class understand method directly can result
     in problems. This is really a workaround for a bug in the way that
-    the format understand method works. '''
+    the format understand method works. Furthermore, the FormatStill
+    class does not have an understand method so we have to check that
+    the "understand" method is present in the class dictionary before
+    we actually do the call. '''
     from dxtbx.format.Format import Format
     mro = self._format_class.mro()[::-1]
     if len(mro) <= 2 or mro[0] != object or mro[1] != Format:
       return False
     for m in mro[2:]:
-      if m.understand(filename) == False:
+      if "understand" in m.__dict__ and m.understand(filename) == False:
         return False
     return True
 
@@ -302,7 +305,11 @@ if __name__ == '__main__':
   for i, datablock in enumerate(datablock_list):
 
     # Extract any sweeps
-    sweeps = datablock.extract_sweeps()
+    try:
+      sweeps = datablock.extract_sweeps()
+    except Exception:
+      sweeps = []
+
     stills = datablock.extract_stills()
 
     print "-" * 80
