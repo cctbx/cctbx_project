@@ -141,12 +141,24 @@ class DataBlock(object):
     format class, otherwise an exception will be raised. '''
     from os.path import abspath
 
-    # Check the image is not already here and can be understood
+    # Recursively check whether any of the children understand
+    # image_file, in which case they are preferred over the parent
+    # format.
+    def better_understood_by_child(format_class, image_file):
+      for child in format_class._children:
+        if child.understand(image_file):
+          return True
+      return False
+
+    # Check the image is not already here and can be understood and is not
+    # better understood by a child format class
     filename = abspath(filename)
     if filename in self._images:
       raise RuntimeError('%s already in data block' % filename)
     if not self.understand(filename):
       raise RuntimeError('cannot understand file: %s' % filename)
+    if better_understood_by_child(self.format_class(), filename):
+      raise RuntimeError('%s is better understood by a child format' % filename)
 
     # Get the meta data
     if len(self._images) > 0:
@@ -154,7 +166,6 @@ class DataBlock(object):
     else:
       last = None
     self._images[filename] = self._create_record(filename, last)
-
 
   def understand(self, filename):
     ''' Check if the data block format understands the given file. This
@@ -259,11 +270,12 @@ class DataBlockFactory(object):
     ''' Create a list of data blocks from a list of filenames. '''
     datablock_list = []
     for f in filenames:
-      if verbose: print 'Loading file: %s' % f
       try:
         datablock_list[-1].append(f)
       except Exception:
+        if verbose: print 'Starting datablock %d' % len(datablock_list)
         datablock_list.append(DataBlockFactory.create_single([f]))
+      if verbose: print 'Loaded file: %s' % f
     return datablock_list
 
   @staticmethod
