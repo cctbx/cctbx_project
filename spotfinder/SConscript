@@ -42,6 +42,9 @@ lib_spotfinder_sources = [
   "core_toolbox/hough.cpp",
   "core_toolbox/distl.cpp",
   "core_toolbox/spotfilter.cpp",
+]
+
+lib_dxtbxspotfinder_sources = [
   "dxtbx_toolbox/libdistl.cpp",
   "dxtbx_toolbox/distl.cpp",
 ]
@@ -51,6 +54,9 @@ else:                          builder = envlm.SharedLibrary
 builder(
     target="#lib/spotfinder",
     source=lib_spotfinder_sources)
+builder(
+    target="#lib/dxtbxspotfinder",
+    source=lib_dxtbxspotfinder_sources)
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
