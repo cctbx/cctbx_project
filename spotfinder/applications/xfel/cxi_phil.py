@@ -1,3 +1,5 @@
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
+
 from __future__ import division
 #Phil parameters required to process data from Stanford LCLS CXI instrument
 
@@ -35,30 +37,26 @@ def cxi_versioned_extract(*args):
                 ).extract().detector_format_version
 
   if cxi_version in ["CXI 3.1","CXI 3.2"]:
-    from spotfinder.applications.xfel import cxi_run3
-    # run 3 tiles from distl.find_active_area, plus initial tile translations
-    #   derived from a lysozyme powder pattern, before auxiliary adjustments from Bragg spots
-    run_3_tiling_arguments = [
-       "distl.detector_tiling=%s"%cxi_run3.run3_cxi_limits().as_string(),
-    ] + cxi_run3.lysozyme_calibration()
-
-    working_phil.merge_command_line(run_3_tiling_arguments)
-
     working_extract = working_phil.command_extractor
 
-    corrected_auxiliary_translations = [ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,
-                               0,1,0,0,0,0,0,0,0,0,-1,3,-1,4,2,0,3,0,0,0,
-                               0,0,0,0,1,3,-1,4,4,0,-1,1,0,4,3,-3,2,-1,1,3,
-                               0,0,5,0,-1,2,0,0,1,0,0,0,-1,1,0,2,2,1,2,-1,
-                               2,0,1,2,1,1,1,-6,0,0,2,3,0,2,2,3,2,-2,0,0,
-                               0,0,0,0,0,0,0,0,-2,1,0,0,0,2,0,0,0,0,0,0,]
+    # Three sensors were disabled at this time.  The 2D-translations
+    # will have (32 - 3) * 2 * 2 = 116 components.
+    corrected_auxiliary_translations = [
+        7,   3,   7,   3,   6,   1,   6,   1,   8,   5,   8,   5,   6,   5,   6,   5,
+       12,   2,  12,   2,  12,  -2,  12,  -2,   9,   1,   9,   1,   8,  -2,   8,  -2,
+        7,  -3,   7,  -3,   9,  -3,   9,  -3,   8,  -1,   8,  -1,  14,  -7,  14,  -7,
+        1,   0,   1,   0,   9,  -9,   9,  -9,   7,  -7,   7,  -7,  -5,  -5,  -5,  -5,
+       -5,  -3,  -5,  -3,  -5, -12,  -5, -12,  -2, -12,  -2, -12,  -9,  -8,  -9,  -8,
+       -8,  -9,  -8,  -9, -11,  -8, -11,  -8,  -8,  -8,  -8,  -8,  -7,   0,  -7,   0,
+       -5,   0,  -5,   0, -12,   0, -12,   0, -10,  -3, -10,  -3,   0,   0,   0,   0,
+       -4,   4,  -4,   4]
+
     from scitbx.array_family import flex
-    total_tile_translations = flex.int(
-      [int(a) for a in working_extract.distl.tile_translations]
-      )+flex.int(corrected_auxiliary_translations)
+    total_tile_translations = flex.int(corrected_auxiliary_translations)
 
     TT = list(total_tile_translations)
     working_extract.distl.tile_translations = TT
+    working_extract.distl.quad_translations = [-23, 17, 17, 14, -21, -17, 22, -12]
 
     return working_extract
   elif cxi_version in ["CXI 4.1"]:
