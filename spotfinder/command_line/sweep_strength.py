@@ -44,6 +44,9 @@ distl {
       .type = bool
       .help="Extend the binning all the way to detector corner, otherwise to outermost spot on first image"
   }
+  dxtbx = False
+    .type = bool
+    .help="Switch algorithms to dxtbx models"
 }
 
 %s
@@ -123,6 +126,9 @@ def as_columns(spotfinder_results):
 
 def plot(spotfinder_results, file_name):
   try:
+    import matplotlib
+    matplotlib.use('Agg') # use a non-interactive backend
+    # http://matplotlib.org/faq/howto_faq.html#generate-images-without-having-a-window-appear
     from matplotlib import pyplot
   except ImportError:
     raise Sorry("matplotlib must be installed to generate a plot.")
