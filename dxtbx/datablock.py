@@ -98,6 +98,8 @@ class DataBlock(object):
     ''' Extract all the stills as an image set. '''
     from dxtbx.imageset2 import ImageSetFactory
     stills = [k for k, r in self._images.iteritems() if r.template == None]
+    if len(stills) == 0:
+      return []
     return ImageSetFactory.make_imageset(stills, self._format_class)
 
   def extract_sweeps(self):
