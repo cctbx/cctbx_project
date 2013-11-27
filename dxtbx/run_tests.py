@@ -5,9 +5,11 @@ import libtbx.load_env
 tst_list = (
     "$D/tests/tst_dxtbx.py",
     "$D/tests/tst_imageset.py",
+    "$D/tests/tst_datablock.py",
     "$D/tests/command_line/tst_to_xds.py",
     "$D/tests/model/tst_beam.py",
     "$D/tests/model/tst_detector.py",
+    "$D/tests/model/tst_detector2.py",
     "$D/tests/model/tst_parallax_correction.py",
     "$D/tests/model/tst_pickle.py",
     "$D/tests/model/tst_pixel_to_millimeter.py",
