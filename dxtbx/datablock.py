@@ -479,4 +479,9 @@ class DataBlockFactory(object):
     ''' Decode a datablock from a pickle file. '''
     import cPickle as pickle
     with open(filename, 'rb') as infile:
-      return pickle.load(infile)
+      obj = pickle.load(infile)
+      if isinstance(obj, list):
+        assert(all(isinstance(db, DataBlock) for db in obj))
+      else:
+        assert(isinstance(obj, DataBlock))
+      return obj
