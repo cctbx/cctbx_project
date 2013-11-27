@@ -92,7 +92,7 @@ if __name__ == '__main__':
           separators=(',',':'), ensure_ascii=True)
       else:
         json.dump(dictionary, open(options.output, "w"),
-          indent=indent, ensure_ascii=True)
+          indent=2, ensure_ascii=True)
     elif ext == '.pickle':
       pickle.dump(datablocks, open(options.output, "wb"),
         protocol=pickle.HIGHEST_PROTOCOL)
