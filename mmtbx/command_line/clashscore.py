@@ -25,6 +25,10 @@ nuclear = False
 time_limit = 120
   .type = int
   .help = '''Time limit (sec) for Reduce optimization'''
+
+b_factor_cutoff = None
+  .type = int
+  .help = '''B factor cutoff for use with MolProbity'''
 """)
 
 usage_string = """\
@@ -36,6 +40,7 @@ Options:
   keep_hydrogens=True   keep input hydrogen files (otherwise regenerate)
   nuclear=False         use nuclear x-H distances and vdW radii
   verbose=True          verbose text output
+  b_factor_cutoff=40    B factor cutoff for clash analysis
 
 Example:
 
@@ -59,7 +64,8 @@ def run (args, out=sys.stdout, quiet=None) :
     keep_hydrogens=params.keep_hydrogens,
     nuclear=params.nuclear,
     out=out,
-    verbose=params.verbose and not quiet)
+    verbose=params.verbose and not quiet,
+    b_factor_cutoff=params.b_factor_cutoff)
   if params.verbose:
     result.show_old_output(out=out)
 
