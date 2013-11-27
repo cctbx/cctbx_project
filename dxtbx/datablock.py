@@ -325,20 +325,57 @@ class DataBlockFactory(object):
   ''' Class for creating DataBlock instances'''
 
   @staticmethod
-  def from_filenames(filenames, verbose=False):
-    ''' Create a list of data blocks from a list of filenames. '''
-    return DataBlockFactory.create_list(filenames, verbose)
+  def from_args(args, verbose=False, unhandled=None):
+    ''' Try to load datablocks from any recognised format. '''
+    if unhandled is None:
+      unhandled = []
+    unhandled1 = []
+    unhandled2 = []
+
+    # First try as image files
+    datablocks = DataBlockFactory.from_filenames(args, verbose, unhandled1)
+
+    # Now try as JSON files
+    if len(unhandled1) > 0:
+      for filename in unhandled1:
+        try:
+          datablocks.extend(DataBlockFactory.from_json_file(filename))
+          if verbose: print 'Loaded datablock(s) from %s' % filename
+        except Exception:
+          unhandled2.append(filename)
+
+    # Now try as pickle files
+    if len(unhandled2) > 0:
+      for filename in unhandled2:
+        try:
+          datablocks.extend(DataBlockFactory.from_pickle_file(filename))
+          if verbose: print 'Loaded datablock(s) from %s' % filename
+        except Exception:
+          unhandled.append(filename)
+
+    # Return the data blocks
+    return datablocks
 
   @staticmethod
-  def create_list(filenames, verbose=False):
+  def from_filenames(filenames, verbose=False, unhandled=None):
+    ''' Create a list of data blocks from a list of filenames. '''
+    return DataBlockFactory.create_list(filenames, verbose, unhandled)
+
+  @staticmethod
+  def create_list(filenames, verbose=False, unhandled=None):
     ''' Create a list of data blocks from a list of filenames. '''
     datablock_list = []
     for f in filenames:
       try:
         datablock_list[-1].append(f)
       except Exception:
+        try:
+          datablock_list.append(DataBlockFactory.create_single([f]))
+        except Exception:
+          if unhandled is not None:
+            unhandled.append(f)
+          continue
         if verbose: print 'Starting datablock %d' % len(datablock_list)
-        datablock_list.append(DataBlockFactory.create_single([f]))
       if verbose: print 'Loaded file: %s' % f
     return datablock_list
 
@@ -436,3 +473,10 @@ class DataBlockFactory(object):
     ''' Decode a datablock from a JSON file. '''
     with open(filename, 'r') as infile:
       return DataBlockFactory.from_json(infile.read())
+
+  @staticmethod
+  def from_pickle_file(filename):
+    ''' Decode a datablock from a pickle file. '''
+    import cPickle as pickle
+    with open(filename, 'rb') as infile:
+      return pickle.load(infile)
