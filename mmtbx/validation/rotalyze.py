@@ -52,7 +52,7 @@ class rotamer (residue) :
     s_occ = format_value("%.2f", self.occupancy)
     s_score = format_value("%.1f", self.score)
     chis = list(self.chi_angles)
-    return "%s:%s:%s:%s:%s" % (self.id_str_old(), s_occ, s_score,
+    return "%s:%s:%s:%s:%s" % (self.id_str(), s_occ, s_score,
       self.format_chi_angles(pad=True, sep=":"), self.rotamer_name)
 
 class rotalyze (validation) :

@@ -77,20 +77,20 @@ def exercise_ramalyze():
     for x in [0, 1, 168, 169, 713, 714, 715, 716, 717, 718, 719, 720, 721, 722]:
       selected_lines.append(output_lines[x])
     assert not show_diff("\n".join(selected_lines), """\
-A  15   SER:35.07:-83.26:131.88:Favored:General
-A  16   SER:0.74:-111.53:71.36:Allowed:General
-A 191   ASP:2.66:-42.39:121.87:Favored:Pre-proline
-A 192   PRO:0.31:-39.12:-31.84:Allowed:Trans-proline
-B 368   LYS:56.44:-62.97:-53.28:Favored:General
-B 369   GLU:8.89:-44.36:-45.50:Favored:General
-B 370   LYS:40.00:-50.00:-39.06:Favored:General
-B 371   VAL:68.24:-60.38:-51.85:Favored:Isoleucine or valine
-B 372   LEU:0.02:-61.13:-170.23:OUTLIER:General
-B 373   ARG:0.02:60.09:-80.26:OUTLIER:General
-B 374   ALA:0.13:-37.21:-36.12:Allowed:General
-B 375   LEU:11.84:-89.81:-41.45:Favored:General
-B 376   ASN:84.33:-58.30:-41.39:Favored:General
-B 377   GLU:30.88:-56.79:-21.74:Favored:General""")
+ A  15  SER:35.07:-83.26:131.88:Favored:General
+ A  16  SER:0.74:-111.53:71.36:Allowed:General
+ A 191  ASP:2.66:-42.39:121.87:Favored:Pre-proline
+ A 192  PRO:0.31:-39.12:-31.84:Allowed:Trans-proline
+ B 368  LYS:56.44:-62.97:-53.28:Favored:General
+ B 369  GLU:8.89:-44.36:-45.50:Favored:General
+ B 370  LYS:40.00:-50.00:-39.06:Favored:General
+ B 371  VAL:68.24:-60.38:-51.85:Favored:Isoleucine or valine
+ B 372  LEU:0.02:-61.13:-170.23:OUTLIER:General
+ B 373  ARG:0.02:60.09:-80.26:OUTLIER:General
+ B 374  ALA:0.13:-37.21:-36.12:Allowed:General
+ B 375  LEU:11.84:-89.81:-41.45:Favored:General
+ B 376  ASN:84.33:-58.30:-41.39:Favored:General
+ B 377  GLU:30.88:-56.79:-21.74:Favored:General""")
 
   # Exercise 2
   regression_pdb = libtbx.env.find_in_repositories(
@@ -141,17 +141,17 @@ B 377   GLU:30.88:-56.79:-21.74:Favored:General""")
     for x in [0, 1, 6, 7, 8, 9, 10, 44, 45, 46, 47]:
       selected_lines.append(output_lines[x])
     assert not show_diff("\n".join(selected_lines), """\
-A   2  ATHR:33.85:-106.92:144.23:Favored:General
-A   2  BTHR:37.07:-97.44:137.00:Favored:General
-A   7  AILE:98.76:-61.91:-44.35:Favored:Isoleucine or valine
-A   7  BILE:61.50:-56.21:-51.56:Favored:Isoleucine or valine
-A   8  AVAL:23.11:-50.35:-49.64:Favored:Isoleucine or valine
-A   8  BVAL:12.01:-83.20:-12.14:Favored:Isoleucine or valine
-A   8  CVAL:73.11:-61.22:-36.49:Favored:Isoleucine or valine
-A  43  AASP:51.81:-94.64:5.45:Favored:General
-A  43  BASP:56.98:-88.69:-0.12:Favored:General
-A  44   TYR:1.76:-133.10:58.75:Allowed:General
-A  45   ALA:57.37:-86.61:-8.57:Favored:General""")
+ A   2 ATHR:33.85:-106.92:144.23:Favored:General
+ A   2 BTHR:37.07:-97.44:137.00:Favored:General
+ A   7 AILE:98.76:-61.91:-44.35:Favored:Isoleucine or valine
+ A   7 BILE:61.50:-56.21:-51.56:Favored:Isoleucine or valine
+ A   8 AVAL:23.11:-50.35:-49.64:Favored:Isoleucine or valine
+ A   8 BVAL:12.01:-83.20:-12.14:Favored:Isoleucine or valine
+ A   8 CVAL:73.11:-61.22:-36.49:Favored:Isoleucine or valine
+ A  43 AASP:51.81:-94.64:5.45:Favored:General
+ A  43 BASP:56.98:-88.69:-0.12:Favored:General
+ A  44  TYR:1.76:-133.10:58.75:Allowed:General
+ A  45  ALA:57.37:-86.61:-8.57:Favored:General""")
 
   # Exercise 3: 2plx excerpt (unusual icode usage)
   import iotbx.pdb.hierarchy
