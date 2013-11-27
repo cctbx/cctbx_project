@@ -72,7 +72,7 @@ class ramachandran (residue) :
       self.altloc, self.resname)
 
   def format_old (self) :
-    return "%s:%.2f:%.2f:%.2f:%s:%s" % (self.id_str_old(), self.score,
+    return "%s:%.2f:%.2f:%.2f:%s:%s" % (self.id_str(), self.score,
       self.phi, self.psi, self.ramalyze_type(),
       res_types[self.res_type].capitalize())
 
