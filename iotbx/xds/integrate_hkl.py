@@ -190,3 +190,49 @@ class reader:
     self.alfbet0.append(tuple(tokens[15:17]))
     self.alfbet1.append(tuple(tokens[17:19]))
     self.psi.append(tokens[19])
+
+  def as_miller_arrays(self,
+                       crystal_symmetry=None,
+                       force_symmetry=False,
+                       merge_equivalents=True,
+                       base_array_info=None):
+    if (base_array_info is None):
+      base_array_info = miller.array_info(source_type="xds_integrate_hkl")
+    from cctbx.array_family import flex
+    from cctbx import crystal, miller, sgtbx, uctbx
+    crystal_symmetry = crystal.symmetry(
+      unit_cell=self.unit_cell, 
+      space_group_info=sgtbx.space_group_info(number=self.space_group))
+    indices = flex.miller_index(self.hkl)
+    miller_set = miller.set(crystal_symmetry, indices)
+    return (miller.array(
+      miller_set, data=flex.double(self.iobs), sigmas=flex.double(self.sigma))
+            .set_info(base_array_info.customized_copy(
+              labels=["iobs", "sigma_iobs"])),
+            miller.array(miller_set, data=flex.vec3_double(self.xyzcal))
+            .set_info(base_array_info.customized_copy(
+              labels=["xyzcal"])),
+            miller.array(miller_set, data=flex.vec3_double(self.xyzobs))
+            .set_info(base_array_info.customized_copy(
+              labels=["xyzobs"])),
+            miller.array(miller_set, data=flex.double(self.rlp))
+            .set_info(base_array_info.customized_copy(
+              labels=["rlp"])),
+            miller.array(miller_set, data=flex.double(self.peak))
+            .set_info(base_array_info.customized_copy(
+              labels=["peak"])),
+            miller.array(miller_set, data=flex.double(self.corr))
+            .set_info(base_array_info.customized_copy(
+              labels=["corr"])),
+            miller.array(miller_set, data=flex.double(self.maxc))
+            .set_info(base_array_info.customized_copy(
+              labels=["maxc"])),
+            miller.array(miller_set, data=flex.vec2_double(self.alfbet0))
+            .set_info(base_array_info.customized_copy(
+              labels=["alfbet0"])),
+            miller.array(miller_set, data=flex.vec2_double(self.alfbet1))
+            .set_info(base_array_info.customized_copy(
+              labels=["alfbet1"])),
+            miller.array(miller_set, data=flex.double(self.psi))
+            .set_info(base_array_info.customized_copy(
+              labels=["psi"])))

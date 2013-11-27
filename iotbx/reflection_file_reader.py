@@ -9,6 +9,7 @@ from iotbx.dtrek import reflnlist_reader as dtrek_reflnlist_reader
 from iotbx.shelx import hklf as shelx_hklf
 from iotbx.shelx import crystal_symmetry_from_ins
 from iotbx.xds.read_ascii import reader as xds_ascii_reader
+from iotbx.xds.integrate_hkl import reader as xds_integrate_hkl_reader
 from iotbx.solve.fpfm_reader import reader as solve_fpfm_reader
 from iotbx.option_parser import option_parser
 from cctbx import miller
@@ -81,6 +82,12 @@ def try_all_readers(file_name):
   except KeyboardInterrupt: raise
   except Exception: pass
   else: return ("xds_ascii", content)
+  try:
+    content = xds_integrate_hkl_reader()
+    content.read_file(file_name)
+  except KeyboardInterrupt: raise
+  except Exception: pass
+  else: return ("xds_integrate_hkl", content)
   try: content = solve_fpfm_reader(file_name=file_name)
   except KeyboardInterrupt: raise
   except Exception: pass
