@@ -522,11 +522,14 @@ class _Tiles(object):
             return None
 
           panel = detector[readout]
-          d_min = panel.get_resolution_at_pixel(beam, (x, y))
-        else:
-          d_min = detector[0].get_resolution_at_pixel(beam, (x, y))
 
-        return d_min
+        else:
+          panel = detector[0]
+
+        if panel.get_distance() > 0:
+          return panel.get_resolution_at_pixel(beam, (x, y))
+        else:
+          return None
 
     def get_detector_distance (self) :
         detector = self.raw_image.get_detector()
