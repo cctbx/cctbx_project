@@ -45,6 +45,16 @@ class Test(object):
     handle.cut
     handle.variance_model
 
+    from iotbx.reflection_file_reader import any_reflection_file
+    file_in = any_reflection_file(filename)
+    assert file_in.file_type() == 'xds_integrate_hkl'
+    miller_arrays = file_in.as_miller_arrays()
+    assert len(miller_arrays) == 10
+    assert miller_arrays[0].space_group().type().number() == handle.space_group
+    content = file_in.file_content()
+    assert content.beam_vector == (-0.001316, 0.001644, 1.020927)
+    assert content.wavelength == 0.9795
+
     print 'OK'
 
 if __name__ == '__main__':
