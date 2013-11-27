@@ -547,11 +547,11 @@ class find_outliers_from_matches(find_outliers):
     first_time_through = status_with_marked_outliers is None
 
     # update spot positions
-    self.observed_spots = flex.vec2_double([(m.Xo,m.Yo) for m in matches])
-    self.predicted_spots = flex.vec2_double([(m.Xc,m.Yc) for m in matches])
+    self.observed_spots = flex.vec2_double([(m.x_obs,m.y_obs) for m in matches])
+    self.predicted_spots = flex.vec2_double([(m.x_calc,m.y_calc) for m in matches])
 
     # store Miller indices
-    self.hkl = [m.H for m in matches]
+    self.hkl = [m.miller_index for m in matches]
 
     current_status = self.get_new_status( old_status = status_with_marked_outliers )
     return self.update_detail(horizon_phil,current_status,first_time_through,verbose)
