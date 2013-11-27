@@ -621,9 +621,9 @@ namespace dxtbx { namespace model {
       return image_size_.const_ref().all_eq(
               rhs.image_size_.const_ref())
           && pixel_size_.const_ref().all_approx_equal(
-              rhs.pixel_size_.const_ref(), 1e-7)
-          && trusted_range_.const_ref().all_approx_equal(
-              rhs.trusted_range_.const_ref(), 1e-7);
+              rhs.pixel_size_.const_ref(), 1e-7);
+//          && trusted_range_.const_ref().all_approx_equal(
+//              rhs.trusted_range_.const_ref(), 1e-7);
     }
 
     friend std::ostream& operator<<(std::ostream &os, const Panel &p);
