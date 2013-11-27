@@ -14,9 +14,8 @@ from __future__ import division
 
 class ImageRecord(object):
   ''' Record for storing image metadata. '''
-  def __init__(self, mtime=None, beam=None, detector=None,
-               goniometer=None, scan=None, template=None, index=None):
-    self.mtime = mtime
+  def __init__(self, beam=None, detector=None, goniometer=None, scan=None,
+               template=None, index=None):
     self.beam = beam
     self.detector = detector
     self.goniometer = goniometer
@@ -25,7 +24,6 @@ class ImageRecord(object):
     self.index = index
 
   def clone(self, rhs):
-    self.mtime = rhs.mtime
     self.beam = rhs.beam
     self.detector = rhs.detector
     self.goniometer = rhs.goniometer
@@ -34,8 +32,7 @@ class ImageRecord(object):
     self.index = rhs.index
 
   def __eq__(self, rhs):
-    return (self.mtime == rhs.mtime and
-            self.beam == rhs.beam and
+    return (self.beam == rhs.beam and
             self.detector == rhs.detector and
             self.goniometer == rhs.goniometer and
             self.scan == rhs.scan and
@@ -99,39 +96,28 @@ class DataBlock(object):
     from dxtbx.imageset2 import ImageSetFactory
     stills = [k for k, r in self._images.iteritems() if r.template == None]
     if len(stills) == 0:
-      return []
+      return None
     return ImageSetFactory.make_imageset(stills, self._format_class)
 
   def extract_sweeps(self):
     ''' Extract all the sweeps from the block. '''
     from dxtbx.imageset2 import ImageSetFactory
-    from itertools import groupby
     from dxtbx.format.FormatStill import FormatStill
 
     # Check we're not using stills
-    assert(not issubclass(self._format_class, FormatStill))
     sweeps = []
+    if issubclass(self._format_class, FormatStill):
+      return sweeps
 
     # Get consecutive groups of scans (which should correspond to sweeps)
-    groups = groupby(self._images.itervalues(), key=lambda r: r.scan)
-    for scan, records in groups:
-      records = list(records)
-      if scan is not None and len(records) > 0:
-        templates = [r.template for r in records]
-        indices = [r.index for r in records]
-        if templates[0] is not None:
-          assert(len(indices) > 0)
-          assert(templates.count(templates[0]) == len(templates))
-          assert(all(j == i+1 for i, j in zip(indices[:-1], indices[1:])))
-          sweep = ImageSetFactory.make_sweep(
-              templates[0],
-              indices,
-              self._format_class,
-              records[0].beam,
-              records[0].detector,
-              records[0].goniometer,
-              records[0].scan)
-          sweeps.append(sweep)
+    for group in self.iter_sweep_groups():
+      filenames, records = zip(*group)
+      indices = [r.index for r in records]
+      sweep = ImageSetFactory.make_sweep(
+        records[0].template, indices, self._format_class,
+        records[0].beam, records[0].detector,
+        records[0].goniometer, records[0].scan)
+      sweeps.append(sweep)
 
     # Return the list of sweeps
     return sweeps
@@ -189,7 +175,6 @@ class DataBlock(object):
   def _create_record(self, filename, last=None):
     ''' Get any information about the image we can and create a record. '''
     from dxtbx.sweep_filenames import template_regex
-    from os.path import getmtime
 
     # Read the image
     fmt = self._format_class(filename)
@@ -218,16 +203,19 @@ class DataBlock(object):
         d = last.detector
       if last.goniometer == g:
         g = last.goniometer
-      try:
-        if last.template == template and last.index + 1 == index:
-          last.scan += s
-          s = last.scan
-      except Exception:
-        pass
+
+      # If all models are the same the last models then try to
+      # see if we can create a sweep from the scan and template
+      if b is last.beam and d is last.detector and g is last.goniometer:
+        try:
+          if last.template == template and last.index + 1 == index:
+            last.scan += s
+            s = last.scan
+        except Exception:
+          pass
 
     # Create the record and return
     return ImageRecord(
-        mtime=getmtime(filename),
         beam=b, detector=d, goniometer=g, scan=s,
         template=template, index=index)
 
@@ -244,20 +232,93 @@ class DataBlock(object):
     ''' Check if two blocks are not equal. '''
     return not self.__eq__(rhs)
 
-  def __getstate__(self):
-    ''' Return the dict for pickling. '''
-    return self.__dict__
+  def iter_groups(self):
+    ''' Iterate between groups of images. '''
+    from itertools import groupby
+    groups = groupby(self._images.iteritems(), key=lambda r: r[1].scan)
+    for scan, group in groups:
+      group = list(group)
+      filenames, records = zip(*group)
+      assert(len(records) > 0)
+      if scan is not None and records[0].template is not None:
+        templates = [r.template for r in records]
+        indices = [r.index for r in records]
+        assert(len(indices) > 0)
+        assert(templates.count(templates[0]) == len(templates))
+        assert(all(j == i+1 for i, j in zip(indices[:-1], indices[1:])))
+        assert(scan.get_image_range() == (indices[0], indices[-1]))
+        yield (group, True)
+      else:
+        yield (group, False)
 
-  def __setstate__(self, state):
-    ''' Update the dict from pickling. On reload, update any records for
-    images that have changed since the class was pickled. '''
-    from os.path import getmtime
-    self.__dict__.update(state)
-    last = None
-    for filename, image in self._images.iteritems():
-      if getmtime(filename) > image.mtime:
-        image.clone(self._create_record(filename, last))
-      last = image
+  def iter_sweep_groups(self):
+    ''' Iterate over sweep groups. '''
+    for group, sflag in self.iter_groups():
+      if sflag == True:
+        yield group
+
+  def iter_still_groups(self):
+    ''' Iterate over still groups. '''
+    for group, sflag in self.iter_groups():
+      if slag == False:
+        yield group
+
+  def to_dict(self):
+    ''' Convert the datablock to a dictionary '''
+    from collections import OrderedDict
+
+    # Get the lists of models
+    b, d, g, s = zip(*[(i.beam, i.detector, i.goniometer, i.scan)
+      for i in self._images.itervalues()])
+
+    # Get the set of unique models
+    b = OrderedDict([(bb, None) for bb in b if bb is not None])
+    d = OrderedDict([(dd, None) for dd in d if dd is not None])
+    g = OrderedDict([(gg, None) for gg in g if gg is not None])
+    s = OrderedDict([(ss, None) for ss in s if ss is not None])
+
+    # Create the data block dictionary
+    result = OrderedDict()
+    result['__id__'] = 'DataBlock'
+    result['imagesets'] = []
+
+    # Convert the sweeps and imagesets to dictionaries
+    for group, sflag in self.iter_groups():
+      if sflag:
+        filename, record = group[0]
+        result['imagesets'].append(OrderedDict([
+          ('__id__', 'ImageSweep'),
+          ('template',   record.template),
+          ('beam',       b.keys().index(record.beam)),
+          ('detector',   d.keys().index(record.detector)),
+          ('goniometer', g.keys().index(record.goniometer)),
+          ('scan',       s.keys().index(record.scan))
+        ]))
+      else:
+        image_list = []
+        for filename, record in group:
+          image_dict = OrderedDict()
+          image_dict['filename'] = filename
+          if record.beam:
+            image_dict['beam'] = b.keys().index(record.beam)
+          if record.detector:
+            image_dict['detector'] = d.keys().index(record.detector)
+          if record.goniometer:
+            image_dict['goniometer'] = g.keys().index(record.goniometer)
+          if record.scan:
+            image_dict['scan'] = s.keys().index(record.scan)
+          image_list.append(image_dict)
+        result['imagesets'].append(OrderedDict([
+          ('__id__', 'ImageSet'), ('images', image_list)]))
+
+    # Add the models to the dictionary
+    result['beam'] = [bb.to_dict() for bb in b]
+    result['detector'] = [dd.to_dict() for dd in d]
+    result['goniometer'] = [gg.to_dict() for gg in g]
+    result['scan'] = [ss.to_dict() for ss in s]
+
+    # Return the data block as a dictionary
+    return result
 
 
 class DataBlockFactory(object):
@@ -292,6 +353,90 @@ class DataBlockFactory(object):
     # Create the datablock
     return DataBlock(filenames)
 
+  @staticmethod
+  def from_dict(d):
+    ''' Create the datablock from a dictionary. '''
+    from collections import OrderedDict
+    from dxtbx.format.Registry import Registry
+    from dxtbx.model import Beam, Detector, Goniometer, Scan
+
+    # If we have a list, extract for each dictionary in the list
+    if isinstance(d, list):
+      return [DataBlockFactory.from_dict(dd) for dd in d]
+    elif not isinstance(d, dict):
+      raise RuntimeError('unknown datablock dictionary type')
+    assert(d['__id__'] == 'DataBlock')
+
+    # Get the list of models
+    blist = d.get('beam', [])
+    dlist = d.get('detector', [])
+    glist = d.get('goniometer', [])
+    slist = d.get('scan', [])
+
+    # Create the dictionary of records
+    records = OrderedDict()
+    for imageset in d['imagesets']:
+
+      # Add a sweep
+      if imageset['__id__'] == 'ImageSweep':
+        beam = Beam.from_dict(blist[imageset['beam']])
+        detector = Detector.from_dict(dlist[imageset['detector']])
+        goniometer = Goniometer.from_dict(glist[imageset['goniometer']])
+        scan = Scan.from_dict(slist[imageset['scan']])
+        template = imageset['template']
+        pfx = template.split('#')[0]
+        sfx = template.split('#')[-1]
+        template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
+        i0, i1 = scan.get_image_range()
+        for i in range(i0, i1 + 1):
+          record = ImageRecord()
+          record.beam = beam
+          record.detector = detector
+          record.goniometer = goniometer
+          record.scan = scan
+          record.template = template
+          record.index = i
+          records[template_format % i] = record
+
+      # Add an imageset
+      elif imageset['__id__'] == 'ImageSet':
+        for image in imageset['images']:
+          record = ImageRecord()
+          if image.get('beam', None):
+            record.beam = Beam.from_dict(blist[image['beam']])
+          if image.get('detector', None):
+            record.detector = Detector.from_dict(dlist[image['detector']])
+          if image.get('goniometer', None):
+            record.goniometer = Goniometer.from_dict(glist[image['goniometer']])
+          if image.get('scan', None):
+            record.scan = Scan.from_dict(slist[image['scan']])
+          records[image['filename']] = record
+      else:
+        raise RuntimeError('unknown imageset id %s' % imageset['__id__'])
+
+    # Get the format class from the first image
+    format_class = Registry.find(records.keys()[0])
+
+    # Return the datablock
+    datablock = DataBlock()
+    datablock._images = records
+    datablock._format_class = format_class
+    return datablock
+
+  @staticmethod
+  def from_json(string):
+    ''' Decode a datablock from JSON string. '''
+    from dxtbx.serialize.load import _decode_dict
+    import json
+    return DataBlockFactory.from_dict(json.loads(
+      string, object_hook=_decode_dict))
+
+  @staticmethod
+  def from_json_file(filename):
+    ''' Decode a datablock from a JSON file. '''
+    with open(filename, 'r') as infile:
+      return DataBlockFactory.from_json(infile.read())
+
 
 if __name__ == '__main__':
 
@@ -306,6 +451,13 @@ if __name__ == '__main__':
     action = "store_true", default = False,
     help = "Write extra output")
 
+  # Write the datablock to JSON
+  parser.add_option(
+    "-o", "--output",
+    dest = "output",
+    type = "string", default = None,
+    help = "The output JSON file")
+
   # Parse the command line arguments
   (options, args) = parser.parse_args()
   if len(args) == 0:
@@ -319,19 +471,22 @@ if __name__ == '__main__':
   for i, datablock in enumerate(datablocks):
 
     # Extract any sweeps
-    try:
-      sweeps = datablock.extract_sweeps()
-    except Exception:
-      sweeps = []
+    sweeps = datablock.extract_sweeps()
 
+    # Extract any stills
     stills = datablock.extract_stills()
+    if not stills:
+      num_stills = 0
+    else:
+      num_stills = len(stills)
 
+    # Print some data block info
     print "-" * 80
     print "DataBlock %d" % i
     print "  format: %s" % str(datablock.format_class())
     print "  num images: %d" % len(datablock)
     print "  num sweeps: %d" % len(sweeps)
-    print "  num stills: %d" % len(stills)
+    print "  num stills: %d" % num_stills
 
     # Loop through all the sweeps
     for j, sweep in enumerate(sweeps):
@@ -342,3 +497,10 @@ if __name__ == '__main__':
       print sweep.get_goniometer()
       print sweep.get_detector()
       print sweep.get_scan()
+
+  # Write the datablock to a JSON file
+  if options.output:
+    import json
+    dictionary = [db.to_dict() for db in datablocks]
+    json.dump(dictionary, open(options.output, "w"),
+      indent=2, ensure_ascii=True)
