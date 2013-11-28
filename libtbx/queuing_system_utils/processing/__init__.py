@@ -161,7 +161,8 @@ class Job(object):
 
 
   @property
-  def jobid (self) :
+  def jobid (self):
+
     return getattr(self.status, "jobid", None)
 
   def start(self):
@@ -422,7 +423,7 @@ def PBS(
 
 def Condor(
   name = "libtbx_python",
-  command = "condor_submit",
+  command = None,
   asynchronous = True,
   input = None,
   include = None,
@@ -448,6 +449,53 @@ def Condor(
 
   else:
     raise RuntimeError, "Condor does not support synchronous submission"
+
+  if input is None:
+    from libtbx.queuing_system_utils.processing import transfer
+    input = transfer.TemporaryFile
+
+  if include is None:
+    include = get_libtbx_env_setpaths()
+
+  return QueueHandler(
+    submitter = submitter,
+    input = input,
+    include = include,
+    root = name,
+    save_error = save_error,
+    display_stderr = display_stderr,
+    )
+
+
+def Slurm(
+  name = "libtbx_python",
+  command = None,
+  asynchronous = True,
+  input = None,
+  include = None,
+  poller = None,
+  handler = None,
+  save_error = False,
+  display_stderr = True,
+  ):
+
+  from libtbx.queuing_system_utils.processing import submission
+
+  if asynchronous:
+    command = process_command_line( command = command, default = [ "sbatch" ] )
+
+    if poller is None:
+      from libtbx.queuing_system_utils.processing import polling
+      poller = polling.CentralPoller.Slurm()
+
+    submitter = submission.AsynchronousCmdLine.Slurm(
+      poller = poller,
+      command = command,
+      )
+
+  else:
+    command = process_command_line( command = command, default = [ "srun" ] )
+    submitter = submission.SlurmStream( command = command )
 
   if input is None:
     from libtbx.queuing_system_utils.processing import transfer
@@ -519,11 +567,25 @@ def condor_evaluate(command):
     )
 
 
+def slurm_evaluate(command):
+
+  from libtbx.queuing_system_utils.processing import polling
+
+  return polling.SinglePoller(
+    command = process_command_line(
+      command = command,
+      default = [ "squeue", "-o", "%t", "-h", "-j" ],
+      ),
+    evaluate = polling.slurm_single_evaluate,
+    )
+
+
 INTERFACE_FOR = {
   "sge": ( SGE, sge_evaluate ),
   "lsf": ( LSF, lsf_evaluate ),
   "pbs": ( PBS, pbs_evaluate ),
   "condor": ( Condor, condor_evaluate ),
+  "slurm": ( Slurm, slurm_evaluate )
   }
 
 def qsub (

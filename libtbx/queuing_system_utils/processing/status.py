@@ -92,6 +92,45 @@ class Synchronous(JobStatus):
     return ( stdout, stderr, self.process.poll() )
 
 
+class SlurmStream(object):
+  """
+  Specialized handler for Slurm, because file handles of the shell are redirected
+
+  Note that this can fill the buffers, resulting in the job never completing
+  """
+
+  def __init__(self, process, additional):
+
+    self.process = process
+    self.additional = additional
+
+
+  def is_finished(self):
+
+    return self.process.poll() is not None
+
+
+  def terminate(self):
+
+    self.process.terminate()
+
+
+  def results(self):
+
+    assert self.is_finished()
+
+    stdout = self.process.stdout.read()
+    stderr = self.process.stderr.read()
+    return ( stdout, stderr, self.process.poll() )
+
+
+  def cleanup(self):
+
+    for fname in self.additional:
+      if os.path.exists( fname ):
+        os.remove( fname )
+
+
 class Asynchronous(JobStatus):
   """
   Handler for asynchronous jobs
@@ -174,6 +213,23 @@ echo exit_status $? 1>&2
 
     else:
       return ( self.get_stdout(), "", exit_code )
+
+
+class SlurmStdStreamStrategy(StdStreamStrategy):
+  """
+  Stdstream strategy specifically for Slurm (different script)
+  """
+
+  SCRIPT = \
+"""\
+#!/bin/sh
+source %s
+srun %s 2>&1 << EOF
+%s
+EOF
+
+echo exit_status $? 1>&2
+"""
 
 
 class AccountingStrategy(Asynchronous):
