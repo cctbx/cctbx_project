@@ -656,8 +656,8 @@ class generic_flex_image: public FlexImage<double>{
 
   }
 
-  inline scitbx::vec2<double> tile_readout_to_picture(
-    int const& tile, int const& islow,int const& ifast) const {
+  inline scitbx::vec2<double> tile_readout_to_picture_f(
+    int const& tile, double const& islow, double const& ifast) const {
 
     scitbx::vec2<double> fpicture =
         transformations[tile].inverse() * (
@@ -665,6 +665,14 @@ class generic_flex_image: public FlexImage<double>{
 
     return fpicture;
   }
+
+  inline scitbx::vec2<double> tile_readout_to_picture(
+    int const& tile, int const& islow, int const& ifast) const {
+
+    return tile_readout_to_picture_f(
+      tile, double(islow), double(ifast));
+  }
+
   inline af::shared<double> picture_to_readout_f(double const& i,double const& j)
    const {
     af::shared<double> z;
