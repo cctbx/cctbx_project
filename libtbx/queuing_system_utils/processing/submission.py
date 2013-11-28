@@ -71,11 +71,33 @@ EOF
   def LSF(cls, command = [ "bsub" ]):
 
     return cls(
-      command = command + [ "-K" ],
+      cmds = command + [ "-K" ],
       name = "-J",
       out = "-o",
       err = "-e",
       )
+
+
+class SlurmStream(object):
+  """
+  Submits jobs synchronously to Slurm srun, using redirected file handles for
+  standard streams
+  """
+
+  def __init__(self, command):
+
+    self.cmds = command + [ "-Q" ]
+
+
+  def __call__(self, name, executable, script, include, cleanup):
+
+    process = execute( args = self.cmds + [ executable ] )
+    process.stdin.write( script )
+    process.stdin.close()
+
+    from libtbx.queuing_system_utils.processing import status
+
+    return status.SlurmStream( process = process, additional = cleanup )
 
 
 class AsynchronousCmdLine(Submission):
@@ -164,6 +186,23 @@ class AsynchronousCmdLine(Submission):
       extract = generic_jobid_extract,
       poller = poller,
       handler = status.StdStreamStrategy,
+      )
+
+
+  @classmethod
+  def Slurm(cls, poller, command = [ "sbatch" ]):
+
+    from libtbx.queuing_system_utils.processing import status
+
+    return cls(
+      cmds = command,
+      qdel = [ "scancel" ],
+      name = "-J",
+      out = "-o",
+      err = "-e",
+      extract = slurm_jobid_extract,
+      poller = poller,
+      handler = status.SlurmStdStreamStrategy,
       )
 
 
@@ -293,6 +332,16 @@ def condor_jobid_extract(output):
   return match.group(1)
 
 
+def slurm_jobid_extract(output):
+
+  match = SLURM_JOBID_EXTRACT_REGEX().search( output )
+
+  if not match:
+    raise RuntimeError, "Unexpected response from queuing system"
+
+  return match.group(1)
+
+
 # Regex caching
 from libtbx.queuing_system_utils.processing import util
 
@@ -304,3 +353,6 @@ CONDOR_JOBID_EXTRACT_REGEX = util.get_lazy_initialized_regex(
   pattern = r"\d+ job\(s\) submitted to cluster (\d+)\.",
   )
 
+SLURM_JOBID_EXTRACT_REGEX = util.get_lazy_initialized_regex(
+  pattern = r"Submitted batch job (\d+)"
+  )

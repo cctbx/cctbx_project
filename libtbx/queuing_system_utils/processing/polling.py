@@ -55,6 +55,29 @@ def pbs_single_evaluate(out, err):
   return state.group(1) == "C"
 
 
+SLURM_SEARCH_REGEX = util.get_lazy_initialized_regex(
+  pattern = r"slurm_load_jobs error: Invalid job id specified",
+  )
+SLURM_CODES = set( [ "PD", "R", "CA", "CF", "CG", "CD", "F", "TO", "NF" ] )
+
+def slurm_single_evaluate(out, err):
+  "Evaluates Slurm text output in single mode"
+
+  if err:
+    if SLURM_SEARCH_REGEX().search( err ):
+      return True
+
+    else:
+      raise RuntimeError, "Slurm error:\n%s" % err
+
+  state = out.strip()
+
+  if state not in SLURM_CODES:
+    raise RuntimeError, "Unexpected response from queue:\n%s" % out
+
+  return state == "CD"
+
+
 class SinglePoller(object):
   """
   Polls status for single jobs
@@ -99,6 +122,15 @@ class SinglePoller(object):
   def PBS(cls):
 
     return cls( command = [ "qstat", "-f" ], evaluate = pbs_single_evaluate )
+
+
+  @classmethod
+  def Slurm(cls):
+
+    return cls(
+      command = [ "squeue", "-o", "%t", "-h", "-j" ],
+      evaluate = slurm_single_evaluate,
+      )
 
 
 class CentralPoller(object):
@@ -158,27 +190,53 @@ class CentralPoller(object):
 
 
   @classmethod
-  def SGE(cls):
+  def SGE(cls, waittime = 5):
 
-    return cls( command = [ "qstat", "-xml" ], evaluate = sge_xml_evaluate )
-
-
-  @classmethod
-  def LSF(cls):
-
-    return cls( command = [ "bjobs" ], evaluate = lsf_text_evaluate )
+    return cls(
+      command = [ "qstat", "-xml" ],
+      evaluate = sge_xml_evaluate,
+      waittime = waittime,
+      )
 
 
   @classmethod
-  def PBS(cls):
+  def LSF(cls, waittime = 5):
 
-    return cls( command = [ "qstat", "-x" ], evaluate = pbs_xml_evaluate )
+    return cls(
+      command = [ "bjobs" ],
+      evaluate = lsf_text_evaluate,
+      waittime = waittime,
+      )
 
 
   @classmethod
-  def Condor(cls):
+  def PBS(cls, waittime = 5):
 
-    return cls( command = [ "condor_q", "-xml" ], evaluate = condor_xml_evaluate )
+    return cls(
+      command = [ "qstat", "-x" ],
+      evaluate = pbs_xml_evaluate,
+      waittime = waittime,
+      )
+
+
+  @classmethod
+  def Condor(cls, waittime = 5):
+
+    return cls(
+      command = [ "condor_q", "-xml" ],
+      evaluate = condor_xml_evaluate,
+      waittime = waittime,
+      )
+
+
+  @classmethod
+  def Slurm(cls, waittime = 0.5):
+
+    return cls(
+      command = [ "squeue", "-h", "-o", "%i %t" ],
+      evaluate = slurm_text_evaluate,
+      waittime = waittime,
+      )
 
 
 def sge_xml_evaluate(out, running, completed):
@@ -263,3 +321,22 @@ def lsf_text_evaluate(out, running, completed):
     jobid = match.group( 1 )
     running.add( jobid )
 
+
+def slurm_text_evaluate(out, running, completed):
+  "Parses Slurm squeue text output"
+
+  for line in out.splitlines():
+    pieces = line.split()
+
+    if len( pieces ) != 2:
+      raise RuntimeError, "Unexpected response from queue: '%s'" % line
+
+    ( jobid, status ) = pieces
+
+    assert status in SLURM_CODES
+
+    if status == "CD":
+      completed.add( jobid )
+
+    else:
+      running.add( jobid )
