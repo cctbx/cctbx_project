@@ -392,6 +392,7 @@ dxtbx/array_family/boost_python/flex_panel.cc -text
 dxtbx/array_family/flex.py -text
 dxtbx/boost_python/ext.cpp -text
 dxtbx/boost_python/to_ewald_sphere_helpers.cc -text
+dxtbx/command_line/export_bitmaps.py -text
 dxtbx/command_line/import_datablock.py -text
 dxtbx/command_line/overload.py -text
 dxtbx/command_line/print_header.py -text
