@@ -159,8 +159,12 @@ namespace dxtbx { namespace model { namespace boost_python {
   template <>
   PanelBase* from_dict<PanelBase>(boost::python::dict obj) {
     PanelBase *result = new PanelBase();
-    result->set_name(boost::python::extract<std::string>(obj["name"]));
-    result->set_type(boost::python::extract<std::string>(obj["type"]));
+    if (obj.has_key("name")) {
+      result->set_name(boost::python::extract<std::string>(obj["name"]));
+    }
+    if (obj.has_key("type")) {
+      result->set_type(boost::python::extract<std::string>(obj["type"]));
+    }
     if (obj.has_key("fast_axis") &&
         obj.has_key("slow_axis") &&
         obj.has_key("origin")) {
@@ -189,8 +193,12 @@ namespace dxtbx { namespace model { namespace boost_python {
   template <>
   Panel* from_dict<Panel>(boost::python::dict obj) {
     Panel *result = new Panel();
-    result->set_name(boost::python::extract<std::string>(obj["name"]));
-    result->set_type(boost::python::extract<std::string>(obj["type"]));
+    if (obj.has_key("name")) {
+      result->set_name(boost::python::extract<std::string>(obj["name"]));
+    }
+    if (obj.has_key("type")) {
+      result->set_type(boost::python::extract<std::string>(obj["type"]));
+    }
     if (obj.has_key("fast_axis") &&
         obj.has_key("slow_axis") &&
         obj.has_key("origin")) {
