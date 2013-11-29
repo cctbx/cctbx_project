@@ -12,6 +12,7 @@ CCD          3072 3072  102  102 adsc-q315-2x2-binned
 CCD          2048 2048   64   64 rayonix-ccd-135
 CCD          2048 2048   79   79 rayonix-ccd-165
 CCD          3072 3072   73   73 rayonix-ccd-225
+CCD          2880 2880   78   78 rayonix-ccd-250
 CCD          4096 4096   73   73 rayonix-ccd-300
 CCD          4096 4096   79   79 rayonix-ccd-325
 IMAGE_PLATE  1200 1200  150  150 mar-180
