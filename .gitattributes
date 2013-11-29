@@ -70,6 +70,8 @@ cctbx/command_line/space_group_info.py svneol=native#text/x-python
 cctbx/command_line/subgroups.py -text
 cctbx/command_line/version.py -text
 cctbx/command_line/wavelength_units.py svneol=native#text/x-python
+cctbx/crystal/crystal_model/__init__.py -text
+cctbx/crystal/crystal_model/serialize.py -text
 cctbx/crystal/distance_based_connectivity.py -text
 cctbx/crystal/tst_distance_based_connectivity.py svneol=native#text/x-python
 cctbx/crystal_orientation.h -text
@@ -172,6 +174,8 @@ cctbx/regression/random_generator_state.pickle -text
 cctbx/regression/structure_ideal.pickle -text
 cctbx/regression/structure_start.pickle -text
 cctbx/regression/tst_adp_constraints_cartesian.py -text
+cctbx/regression/tst_crystal_model.py -text
+cctbx/regression/tst_crystal_model_serialize.py -text
 cctbx/regression/tst_direct_scaling.py -text
 cctbx/regression/tst_fourier_transform_real_part_at_x.py -text
 cctbx/regression/tst_grouped_data.py -text
