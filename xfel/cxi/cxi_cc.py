@@ -153,6 +153,15 @@ def run_cc(params,output):
          print >>output, this_label,array.observation_type()
          uniform.append(array.as_intensity_array())
          break
+       if this_label.find("iobs")>=0:
+         """This test is added for the use case of unmerged anomalous data without
+            an isomorphous reference (in other words, mark1).  Without this,
+            the unmerged reflections are not picked up by the cc comparison.
+            Indicates that this section probably has to be reanalyzed and redesigned.
+         """
+         print >>output, this_label,array.observation_type()
+         uniform.append(array.as_intensity_array())
+         break
        if this_label.find("imean")>=0:
          print >>output, this_label,array.observation_type()
          uniform.append(array.as_intensity_array())
