@@ -83,10 +83,10 @@ def detect_osx_version () :
   major, minor, rev = version.split(".")
   return int(major)
 
-def copy_file (src_path, dest_path) :
+def copy_file (src_path, dest_path, executable=None) :
   assert os.path.isfile(src_path)
   open(dest_path, "wb").write(open(src_path, "rb").read())
-  if os.access(src_path, os.X_OK) :
+  if os.access(src_path, os.X_OK) or executable :
     mode = os.stat(dest_path).st_mode
     os.chmod(dest_path, mode | stat.S_IXUSR)
 
