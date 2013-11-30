@@ -48,21 +48,24 @@ class EDFImage:
      if self.parameters.has_key(attribute):
        self.parameters[attribute]=float(self.parameters[attribute])
 
-   self.type_size = {'SignedInteger':4, 'UnsignedShort':2}[self.parameters['DataType']]
+   self.type_size = {'SignedInteger':4, 'UnsignedShort':2, 'Float':4}[self.parameters['DataType']]
    assert self.parameters['Size']==self.parameters['Dim_1']*self.parameters['Dim_2']*self.type_size
 
  def read(self):
    self.obj.seek(self.headersize)
 
    endian_code = {'LowByteFirst':'<','HighByteFirst':'>'}[self.parameters['ByteOrder']]
-   type_code = {'SignedInteger':'i','UnsignedInteger':'I','UnsignedShort':'H'}[self.parameters['DataType']]
+   type_code = {'SignedInteger':'i','UnsignedInteger':'I','UnsignedShort':'H','Float':'f'}[self.parameters['DataType']]
 
    assert self.parameters['DataType'] == 'SignedInteger' or 'UnsignedShort'
    # if it is unsigned int, a flex.int() will exceed type limits
 
    rawdata = self.obj.read(self.parameters['Size'])
    uncoded_data = struct.unpack(endian_code+type_code*(self.parameters['Dim_2']*self.parameters['Dim_1']),rawdata)
-   self.linearintdata = flex.int(uncoded_data)
+   if type_code == 'f':
+    self.linearintdata = flex.double(uncoded_data).iround()
+   else:
+    self.linearintdata = flex.int(uncoded_data)
    self.linearintdata.reshape(flex.grid((self.parameters['Dim_2'],self.parameters['Dim_1'])))
 
 if __name__=="__main__":
