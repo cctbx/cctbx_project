@@ -26,7 +26,7 @@ cases = ["ana/myo2_3_00001.cbf",
 "pilatus_2M_graeme/insulin_1_fixed_0043.img",
 "pilatus_2M_graeme/insulin_1_fixed_0289.img",
 ]
-dirpath = "/net/sunbird/raid1/sauter/rawdata/pilatus"
+dirpath = "/net/cci/dials/from_sunbird/sauter/rawdata/pilatus"
 
 def generate_paths():
   for item in cases:

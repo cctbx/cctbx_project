@@ -42,7 +42,7 @@ def multi_thread():
     item.wait()
 
 if __name__=="__main__":
-  ABS_DATA_TEMPLATE = "/net/sunbird/raid1/sauter/rawdata/pilatus/ssrl_P6/all/I3_1_%04d.cbf"
+  ABS_DATA_TEMPLATE = "/net/cci/dials/from_sunbird/sauter/rawdata/pilatus/ssrl_P6/all/I3_1_%04d.cbf"
   HOST = "viper"
   PORT = "8125"
   N_CLIENT_THREADS = 48
