@@ -246,7 +246,8 @@ class installer (object) :
       self.call("./configure %s" % " ".join(configure_args), log=log)
       self.call("make -j %d" % self.nproc, log=log)
       targets = "bininstall libinstall libainstall inclinstall sharedinstall"
-      self.call("make -j %d %s"% (self.nproc, targets), log=log)
+      # XXX don't parallelize here - sometimes breaks on Mac
+      self.call("make %s"% (targets), log=log)
       self.chdir("Mac", log=log)
       self.call("make install_Python install_pythonw install_versionedtools",
         log=log)
