@@ -48,7 +48,7 @@ def integrate_one_image(data):
 
 if __name__=="__main__":
 
-  dirname = "/net/sunbird/raid1/sauter/rawdata/L291/lyso/sept02/new_test/"
+  dirname = "/net/cci/dials/from_sunbird/sauter/rawdata/L291/lyso/sept02/new_test/"
   files = """2011-02-20T19:15Z39:482_00734.pickle
 2011-02-20T19:18Z25:271_00708.pickle
 2011-02-20T19:20Z12:239_00917.pickle
