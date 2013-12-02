@@ -57,6 +57,46 @@ cleanup_and_exit() {
 }
 trap "cleanup_and_exit 1" HUP INT QUIT TERM
 
+# The copy_phil() functions copies a phil file from ${1} to ${2}.phil.
+# Included phil files are processed recursively, and written to
+# ${2}.1.phil, ${2}.2.phil, ${2}.1.1.phil, etc.  Files are modified to
+# reflect changes to the file names of included files.
+#
+# Beware!  The copy_phil() function has side effects: it changes the
+# IFS as well as the working directory.
+copy_phil() {
+    # Clear the internal field separator to avoid consuming leading
+    # white space while reading the phil file.  Set the working
+    # directory to the directory of the input file.  This emulates
+    # cpp(1)-like behaviour of "include file" statements.
+    IFS=""
+    cd `dirname "${1}"`
+
+    rm -f "${2}.phil"
+    while read -r _line; do
+        if echo "${_line}" | grep -q \
+            "^[[:space:]]*include[[:space:]]\+file[[:space:]]\+"; then
+            # Recursion step: replace the name of the included file
+            # with a generic, safe name based on destination path.
+            # Then recursively copy the included file.
+            _n=`ls                             \
+                | grep "^${2}\.[0-9]*\.phil\$" \
+                | wc -l                        \
+                | awk '{ print $0 + 1; }'`
+            _dst="${2}.${_n}"
+            _inc=`basename "${_dst}"`
+            _src=`echo "${_line}" \
+                | awk '{ $1 = $2 = ""; print substr($0, 3); }'`
+            echo "include file ${_inc}.phil" >> "${2}.phil"
+            copy_phil "${_src}" "${_dst}"
+            cd `dirname "${1}"`
+        else
+            # Base case: line-by-line copy of input to output.
+            echo "${_line}" >> "${2}.phil"
+        fi
+    done < "${1}"
+}
+
 args=`getopt c:i:o:p:q:r:st:x: $*`
 if test $? -ne 0; then
     echo "Usage: lsf.sh -c config -r run-num [-i input] [-o output] [-p num-cpu] [-q queue] [-t trial] [-x exp]" > /dev/stderr
@@ -262,13 +302,38 @@ if test -z "${trial}"; then
 fi
 out="${out}/${trial}"
 
-# Write a configuration file for the analysis of each stream by
-# substituting the directory names with appropriate directories in
-# ${out}, and appending the stream number to the base name.  Create a
-# run-script for each job, as well as a convenience script to submit
-# all the jobs to the queue.  XXX Dump the environment in here, too?
-# XXX What about an option to submit all streams to a single host, so
-# as to do averaging?
+# Copy the pyana configuration file, while substituting paths to any
+# phil files, and recursively copying them, too.  Then write a
+# configuration file for the analysis of each stream by substituting
+# the directory names with appropriate directories in ${out}, and
+# appending the stream number to the base name.  Create a run-script
+# for each job, as well as a convenience script to submit all the jobs
+# to the queue.  XXX If the same phil file is referenced more than
+# once, there will be identical copies.  XXX Dump the environment in
+# here, too?
+nphil="0"
+oifs=${IFS}
+IFS=""
+opwd=`pwd`
+while read -r line; do
+    if echo "${line}" | grep -q "^[[:space:]]*xtal_target[[:space:]]*="; then
+        nphil=`expr "${nphil}" \+ 1`
+        dst="params_${nphil}"
+        src=`echo "${line}"           \
+            | awk -F= '{ print $2; }' \
+            | sed -e "s/^[[:space:]]*//" -e "s/[[:space:]]*\$//"`
+        echo "${line}"                      \
+            | awk -F= -vdst="${out}/${dst}" \
+                '{ printf("%s= %s.phil\n", $1, dst); }' \
+            >> "${tmpdir}/pyana.cfg"
+        copy_phil "${src}" "${tmpdir}/${dst}"
+    else
+        echo "${line}" >> "${tmpdir}/pyana.cfg"
+    fi
+done < "${cfg}"
+cd "${opwd}"
+IFS=${oifs}
+
 cat > "${tmpdir}/submit.sh" << EOF
 #! /bin/sh
 
@@ -281,7 +346,7 @@ for s in ${streams}; do
         -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1s${s}-:" \
         -e "s/RUN_NO/${run_int}/g"                                             \
         -e "s:\(trial_id[[:space:]]*=\).*:\1${trial}:"                         \
-        "${cfg}" > "${tmpdir}/pyana_s${s}.cfg"
+        "${tmpdir}/pyana.cfg" > "${tmpdir}/pyana_s${s}.cfg"
 
     # Process each stream on a single host as a base-1 indexed job,
     # because base-0 will not work.  Allocate no more than ${nproc}
@@ -335,6 +400,7 @@ EOF
     test "X${single_host}" = "Xyes" && break
 done
 
+cp -p "${cfg}" "${tmpdir}/pyana.cfg"
 chmod 755 "${tmpdir}/submit.sh"
 
 # Create all directories for the output from the analysis.  This
@@ -352,8 +418,8 @@ ssh -S "${tmpdir}/control.socket" ${NODE} \
 # Submit the analysis of all streams to the queueing system from
 # ${NODE}.
 scp -o "ControlPath ${tmpdir}/control.socket" -pq \
-    "${cfg}"                         "${NODE}:${out}/pyana.cfg"
-scp -o "ControlPath ${tmpdir}/control.socket" -pq \
+    "${tmpdir}"/params_*.phil                     \
+    "${tmpdir}"/pyana.cfg                         \
     "${tmpdir}"/pyana_s[0-9N][0-9N].cfg           \
     "${tmpdir}"/pyana_s[0-9N][0-9N].sh            \
     "${tmpdir}/submit.sh"             "${NODE}:${out}"
