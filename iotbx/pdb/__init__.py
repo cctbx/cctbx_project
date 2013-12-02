@@ -1278,7 +1278,10 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
           elif (field.strip() == "NULL") :
             wavelengths.append(None)
           else :
-            wavelengths.append(float(field.strip()))
+            try :
+              wavelengths.append(float(field.strip()))
+            except ValueError :
+              wavelengths.append(None)
         if (first_only) :
           if (len(wavelengths) > 0) :
             return wavelengths[0]
