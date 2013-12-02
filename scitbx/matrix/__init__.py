@@ -702,6 +702,9 @@ class rec(object):
         if self(ir,ic) != other[ir,ic]: return False
     return True
 
+  def __ne__(self, other):
+    return not self.__eq__(other)
+
   def resolve_partitions(self):
     nr,nc = self.n
     result_nr = 0
