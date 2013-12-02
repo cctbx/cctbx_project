@@ -1,12 +1,13 @@
 #!/usr/bin/env python
-# FormatTIFFRayonix.py
+# FormatTIFFRayonixESRF.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
 #
 #   This code is distributed under the BSD license, a copy of which is
 #   included in the root directory of this package.
 #
-# An implementation of the TIFF image reader for Rayonix images. Inherits from
-# FormatTIFF.
+# Sub class of FormatTiffRayonix to deal with images who have beam centers
+# specified in pixels
+#
 
 from __future__ import division
 
@@ -21,31 +22,12 @@ class FormatTIFFRayonixESRF(FormatTIFFRayonix):
   @staticmethod
   def understand(image_file):
     '''Check to see if this looks like an Rayonix TIFF format image,
-    i.e. we can make sense of it. This simply checks that records which
-    describe the size of the image match with the TIFF records which do
-    the same.'''
+    i.e. we can make sense of it.  Returns true if the beam center is specified
+    in pixels.'''
 
     width, height, depth, order, bytes = FormatTIFFRayonix.get_tiff_header(
         image_file)
 
-    # ESRF instruments (with the beam centre in mm not in pixels) appear
-    # to not have the detector serial number in the comments block.
-
-    serial_number = -1
-
-    for record in bytes[2464:2464+512].strip().split('\n'):
-      if 'detector serial number' in record.lower():
-        serial_number = int(record.split()[-1])
-
-    if serial_number > 0:
-      return False
-
-    #return True
-    # NKS This simply cannot be the only criterion used to identify ESRF images
-    #  since some APS beamlines also pass this test.  If worried about beam
-    #  center in mm, must test explicitly for this.  Rely on a heuristic rule:
-    #  beam center must be in the general neighborhood of the middle of the
-    #  detector in pixels, otherwise it's in mm.
     import struct
     from scitbx.matrix import col
     from dxtbx.format.FormatTIFFHelpers import LITTLE_ENDIAN, BIG_ENDIAN
@@ -62,8 +44,9 @@ class FormatTIFFRayonixESRF(FormatTIFFRayonix):
                                 struct.unpack(format+'ii',bytes[offset+644:offset+652]))
 
     disagreement = header_beam_center[0]/detector_center_px[0]
-    return disagreement < 0.5  # if header was in mm, disagreement should be
-                               # approximately the pixel size in mm
+    return header_beam_center[0] > 0 and header_beam_center[1] > 0 \
+           and disagreement < 0.5  # if header was in mm, disagreement should be
+                                   # approximately the pixel size in mm
 
   def __init__(self, image_file):
     '''Initialise the image structure from the given file, including a
@@ -73,38 +56,6 @@ class FormatTIFFRayonixESRF(FormatTIFFRayonix):
     FormatTIFFRayonix.__init__(self, image_file)
 
     return
-
-  def _detector(self):
-    '''Return a model for a simple detector, which at the moment insists
-    that the offsets and rotations are all 0.0.'''
-
-    starts, ends, offset, width = self._get_rayonix_scan_angles()
-    rotations = self._get_rayonix_detector_rotations()
-
-    # assert that two-theta offset is 0.0
-
-    assert(starts[0] == 0.0)
-    assert(ends[0] == 0.0)
-
-    # assert that the rotations are all 0.0
-
-    assert(rotations[0] == 0.0)
-    assert(rotations[1] == 0.0)
-    assert(rotations[2] == 0.0)
-
-    distance = self._get_rayonix_distance()
-    beam_x, beam_y = self._get_rayonix_beam_xy()
-    pixel_size = self._get_rayonix_pixel_size()
-    image_size = self._tiff_width, self._tiff_height
-    overload = struct.unpack(
-        self._i, self._tiff_header_bytes[1128:1132])[0]
-    underload = 0
-
-    beam = beam_x * pixel_size[0], beam_y * pixel_size[1]
-
-    return self._detector_factory.simple(
-        'CCD', distance, beam, '+x', '-y', pixel_size,
-        image_size, (underload, overload), [])
 
   def _goniometer(self):
     '''Return a model for goniometer corresponding to the values stored
