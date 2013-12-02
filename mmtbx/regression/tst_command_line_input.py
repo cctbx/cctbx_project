@@ -7,6 +7,7 @@ from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_run
 import libtbx.load_env
+from cStringIO import StringIO
 import os.path
 
 def exercise_simple () :
@@ -145,8 +146,35 @@ def exercise_example () :
   result = easy_run.fully_buffered(" ".join(args)).raise_if_errors()
   assert ("""CC(obs-calc): 0.999""" in result.stdout_lines)
 
+def exercise_cns_input () :
+  from mmtbx.regression import make_fake_anomalous_data
+  pdb_file, mtz_file = make_fake_anomalous_data.generate_cd_cl_inputs(
+    file_base="tst_cmdline_cns")
+  from iotbx.file_reader import any_file
+  mtz_in = any_file("tst_cmdline_cns.mtz")
+  f_obs = mtz_in.file_server.miller_arrays[0].average_bijvoet_mates()
+  flags = mtz_in.file_server.miller_arrays[1].average_bijvoet_mates()
+  f = open("tst_cmdline_cns.hkl", "w")
+  out = StringIO()
+  f_obs.export_as_cns_hkl(
+    file_object=out,
+    r_free_flags=flags)
+  # get rid of embedded symmetry
+  for line in out.getvalue().splitlines() :
+    if (not "{" in line) :
+      f.write("%s\n" % line)
+  f.close()
+  cmdline = mmtbx.command_line.load_model_and_data(
+    args=["tst_cmdline_cns.pdb", "tst_cmdline_cns.hkl"],
+    master_phil=mmtbx.command_line.generic_simple_input_phil(),
+    process_pdb_file=False,
+    create_fmodel=True,
+    out=null_out())
+  cmdline.crystal_symmetry.show_summary()
+
 if (__name__ == "__main__") :
   exercise_simple()
   exercise_combine_symmetry()
   exercise_example()
+  exercise_cns_input()
   print "OK"

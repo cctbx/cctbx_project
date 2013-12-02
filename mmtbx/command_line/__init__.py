@@ -195,6 +195,14 @@ class load_model_and_data (object) :
     params = self.working_phil.extract()
     if len(params.input.pdb.file_name) == 0 :
       raise Sorry("At least one PDB file is required as input.")
+    self.cif_file_names = params.input.monomers.file_name
+    self.pdb_file_names = params.input.pdb.file_name
+    # SYMMETRY HANDLING - PDB FILES
+    self.crystal_symmetry = pdb_symm = None
+    for pdb_file_name in params.input.pdb.file_name :
+      pdb_symm = crystal_symmetry_from_any.extract_from(pdb_file_name)
+      if (pdb_symm is not None) :
+        break
     # DATA INPUT
     data_and_flags = hkl_symm = hkl_in = None
     if (params.input.xray_data.file_name is None) :
@@ -206,8 +214,24 @@ class load_model_and_data (object) :
       make_sub_header("Processing X-ray data", out=out)
       hkl_in = file_reader.any_file(params.input.xray_data.file_name)
       hkl_in.check_file_type("hkl")
+      hkl_server = hkl_in.file_server
+      symm = hkl_server.miller_arrays[0].crystal_symmetry()
+      if ((symm is None) or
+          (symm.space_group() is None) or
+          (symm.unit_cell() is None)) :
+        if (pdb_symm is not None) :
+          from iotbx.reflection_file_utils import reflection_file_server
+          print >> out, "No symmetry in X-ray data file - using PDB symmetry:"
+          pdb_symm.show_summary(f=out, prefix="  ")
+          hkl_server = reflection_file_server(
+            crystal_symmetry=pdb_symm,
+            reflection_files=[hkl_in.file_object])
+        else :
+          raise Sorry("No crystal symmetry information found in input files.")
+      if (hkl_server is None) :
+        hkl_server = hkl_in.file_server
       data_and_flags = mmtbx.utils.determine_data_and_flags(
-        reflection_file_server=hkl_in.file_server,
+        reflection_file_server=hkl_server,
         parameters=params.input.xray_data,
         data_parameter_scope="input.xray_data",
         flags_parameter_scope="input.xray_data.r_free_flags",
@@ -222,20 +246,13 @@ class load_model_and_data (object) :
       self.r_free_flags = data_and_flags.r_free_flags
       self.miller_arrays = hkl_in.file_server.miller_arrays
       hkl_symm = self.raw_data.crystal_symmetry()
-    self.cif_file_names = params.input.monomers.file_name
-    self.pdb_file_names = params.input.pdb.file_name
     if len(self.cif_file_names) > 0 :
       for file_name in self.cif_file_names :
         cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
         self.cif_objects.append((file_name, cif_obj))
-    # SYMMETRY HANDLING
-    self.crystal_symmetry = pdb_symm = None
+    # SYMMETRY HANDLING - COMBINED
     if (hkl_symm is not None) :
       use_symmetry = hkl_symm
-    for pdb_file_name in params.input.pdb.file_name :
-      pdb_symm = crystal_symmetry_from_any.extract_from(pdb_file_name)
-      if (pdb_symm is not None) :
-        break
     from iotbx.symmetry import combine_model_and_data_symmetry
     self.crystal_symmetry = combine_model_and_data_symmetry(
       model_symmetry=pdb_symm,
