@@ -1261,6 +1261,9 @@ def validate_params (params, callback=None) :
         "providing a sequence file.")
   if (params.scaling.gui.output_dir is None) :
     raise Sorry("Please specify an output directory.")
+  twin_params = params.scaling.input.optional.symmetry.twinning_parameters
+  if (twin_params.fraction is not None) and (twin_params.fraction >= 0.5) :
+    raise Sorry("The twin fraction (if defined) must be less than 0.5.")
   return True
 
 if (__name__ == "__main__") :
