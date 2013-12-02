@@ -66,6 +66,9 @@ class FormatTIFFRayonix(FormatTIFF):
     width, height, depth, order, bytes = FormatTIFF.get_tiff_header(
         image_file)
 
+    # comment block - where the detector serial number may (or may not) be stored
+    # comments = bytes[1024+1440:1024+1440+512]
+    
     self._header_size = 4096
 
     if order == FormatTIFF.LITTLE_ENDIAN:
