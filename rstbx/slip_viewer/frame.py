@@ -202,10 +202,16 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
     detector = self.pyslip.tiles.raw_image.get_detector()
     beam     = self.pyslip.tiles.raw_image.get_beam()
+    # FIXME assumes all detector elements use the same millimeter-to-pixel convention
     if detector[0].get_distance() > 0:
       if len(detector) > 1:
-        beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(  # FIXME assumes all detector elements use the same
-          detector.hierarchy().get_beam_centre(beam.get_s0()))               # millimeter-to-pixel convention
+        h = detector.hierarchy()
+        if len(h) > 0:
+          beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
+            detector.hierarchy().get_beam_centre(beam.get_s0()))
+        else:
+          beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
+            detector[0].get_beam_centre(beam.get_s0()))
       else:
         beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
           detector[0].get_beam_centre(beam.get_s0()))
