@@ -10,12 +10,12 @@ import libtbx
 from mmtbx.command_line.water_screen import master_phil
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
 from mmtbx import ions
-from mmtbx.ions.svm import ion_class, ion_vector, predict_ion, CLASSIFIER
+from mmtbx.ions.svm import ion_class, ion_vector, predict_ion, get_classifier
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
 import mmtbx.command_line
 
 def exercise () :
-  if CLASSIFIER is None:
+  if get_classifier() is None:
     print "Skipping {}".format(os.path.split(__file__)[1])
     return
 
