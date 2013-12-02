@@ -92,4 +92,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatTIFFRayonixESRF.understand(arg)
+    print FormatTIFFRayonixSPring8BL32XU.understand(arg)
