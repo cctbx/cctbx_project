@@ -35,15 +35,23 @@ CLASSIFIER_PATH = libtbx.env.find_in_repositories(
   test = os.path.isfile
   )
 
-try:
-  with open(CLASSIFIER_PATH) as f:
-    CLASSIFIER = load(f)
-except IOError as err:
-  CLASSIFIER = None
-  if err.errno != errno.ENOENT:
-    raise err
+CLASSIFIER = None
+_TRIED = None
 
 ALLOWED_IONS = [ions.WATER_RES_NAMES[0]] + ["MN", "ZN", "FE", "NI", "CA"]
+
+def get_classifier():
+  global CLASSIFIER, _TRIED
+  if CLASSIFIER is None and not _TRIED:
+    _TRIED = True
+    try:
+      with open(CLASSIFIER_PATH) as f:
+        CLASSIFIER = load(f)
+    except IOError as err:
+      if err.errno != errno.ENOENT:
+        raise err
+
+  return CLASSIFIER
 
 def ion_class(chem_env):
   """
@@ -52,7 +60,7 @@ def ion_class(chem_env):
 
   Parameters
   ----------
-  chem_env: mmtbx.ions.environment.ChemicalEnvironment
+  chem_env : mmtbx.ions.environment.ChemicalEnvironment
       The object to extract the class from.
   Returns
   -------
@@ -70,9 +78,9 @@ def ion_vector(chem_env, scatter_env):
 
   Parameters
   ----------
-  chem_env: mmtbx.ions.environment.ChemicalEnvironment
+  chem_env : mmtbx.ions.environment.ChemicalEnvironment
       A object containing information about the chemical environment at a site.
-  scatter_env: mmtbx.ions.environment.ScatteringEnvironment, optional
+  scatter_env : mmtbx.ions.environment.ScatteringEnvironment, optional
       An object containing information about the scattering environment at a
       site.
 
@@ -99,7 +107,7 @@ def ion_vector(chem_env, scatter_env):
     ion_anomalous_vector(scatter_env),
     ))
 
-def ion_model_vector(scatter_env):
+def ion_model_vector(scatter_env, nearest_res = 0.5):
   """
   Creates a vector containing information about the general properties of the
   model in which the site is found. Currently this only includes the minimum
@@ -107,17 +115,25 @@ def ion_model_vector(scatter_env):
 
   Parameters
   ----------
-  scatter_env: mmtbx.ions.environment.ScatteringEnvironment
+  scatter_env : mmtbx.ions.environment.ScatteringEnvironment
       An object containing information about the scattering environment at a
       site.
+  nearest_res : float, optional
+      If not None, the nearest value to round d_min to. Default value is 0.5
+      angstroms.
 
   Returns
   -------
   numpy.array of float
       A vector containing quantitative properties for classification.
   """
+  d_min = scatter_env.d_min
+  if nearest_res is not None:
+    # Rounds d_min to the nearest value divisible by nearest_res
+    factor = 1 / nearest_res
+    d_min = round(d_min * factor) / factor
   return np.array([
-    scatter_env.d_min,
+    d_min,
     ], dtype = float)
 
 def ion_electron_density_vector(scatter_env):
@@ -129,7 +145,7 @@ def ion_electron_density_vector(scatter_env):
 
   Parameters
   ----------
-  scatter_env: mmtbx.ions.environment.ScatteringEnvironment
+  scatter_env : mmtbx.ions.environment.ScatteringEnvironment
       An object containing information about the scattering environment at a
       site.
 
@@ -153,9 +169,9 @@ def ion_b_factor_occ_vector(scatter_env, elements = None):
 
   Parameters
   ----------
-  scatter_env: mmtbx.ions.environment.Environment
+  scatter_env : mmtbx.ions.environment.Environment
       The object to extract features from.
-  elements: list of str, optional
+  elements : list of str, optional
       A list of elements to compare the experimental b-factors against. If
       unset, takes the list from mmtbx.ions.ALLOWED_IONS.
 
@@ -182,9 +198,9 @@ def ion_geometry_vector(chem_env, geometry_names = None):
 
   Parameters
   ----------
-  chem_env: mmtbx.ions.environment.ChemicalEnvironment
+  chem_env : mmtbx.ions.environment.ChemicalEnvironment
       A object containing information about the chemical environment at a site.
-  geometry_names: list of str, optional
+  geometry_names : list of str, optional
       A list of geometry names to check for. If unset, take names from
       mmtbx.ions.SUPPORTED_GEOMETRY_NAMES.
 
@@ -208,9 +224,9 @@ def ion_nearby_atoms_vector(chem_env, environments = None):
 
   Parameters
   ----------
-  chem_env: mmtbx.ions.environment.ChemicalEnvironment
+  chem_env : mmtbx.ions.environment.ChemicalEnvironment
       A object containing information about the chemical environment at a site.
-  environments: list of int, optional
+  environments : list of int, optional
       A list of environments to check for. If unset, takes values from
       mmtbx.ions.environment.N_SUPPORTED_ENVIRONMENTS.
 
@@ -232,9 +248,9 @@ def ion_valence_vector(chem_env, elements = None):
 
   Parameters
   ----------
-  chem_env: mmtbx.ions.environment.ChemicalEnvironment
+  chem_env : mmtbx.ions.environment.ChemicalEnvironment
       A object containing information about the chemical environment at a site.
-  elements: list of str, optional
+  elements : list of str, optional
       A list of elements to compare the experimental BVS and VECSUM
       against. If unset, takes the list from mmtbx.ions.ALLOWED_IONS.
 
@@ -264,13 +280,13 @@ def ion_anomalous_vector(scatter_env, elements = None, ratios = True):
 
   Parameters
   ----------
-  scatter_env: mmtbx.ions.environment.ScatteringEnvironment
+  scatter_env : mmtbx.ions.environment.ScatteringEnvironment
       An object containing information about the scattering environment at a
       site.
-  elements: list of str, optional
+  elements : list of str, optional
       A list of elements to compare the experimental f'' against. If unset,
       takes the list from mmtbx.ions.ALLOWED_IONS.
-  ratios: bool, optional
+  ratios : bool, optional
       If False, instead of calculating ratios, just return a vector of the
       wavelength, f', and f''.
 
@@ -308,15 +324,15 @@ def predict_ion(chem_env, scatter_env, elements = None):
 
   Parameters
   ----------
-  chem_env: mmtbx.ions.environment.ChemicalEnvironment
+  chem_env : mmtbx.ions.environment.ChemicalEnvironment
       A object containing information about the chemical environment at a site.
-  scatter_env: mmtbx.ions.environment.ScatteringEnvironment, optional
+  scatter_env : mmtbx.ions.environment.ScatteringEnvironment, optional
       An object containing information about the scattering environment at a
       site.
-  elements: list of str
+  elements : list of str
      A list of elements to include within the prediction. Must be a subset of
      CLASSIFIER.classes_
-  anomalous: bool, optional
+  anomalous : bool, optional
      Indicates whether to use the ion classifier trained with anomalous data.
 
   Returns
@@ -329,18 +345,19 @@ def predict_ion(chem_env, scatter_env, elements = None):
   --------
   sklearn.svm
   """
-  if CLASSIFIER is None:
+  classifier = get_classifier()
+
+  if classifier is None:
     return None
 
   vector = ion_vector(chem_env, scatter_env)
-  probs = CLASSIFIER.predict_proba(vector)[0]
-  lst = zip(CLASSIFIER.classes_, probs)
+  probs = classifier.predict_proba(vector)[0]
+  lst = zip(classifier.classes_, probs)
   lst.sort(key = lambda x: -x[-1])
 
   if elements is not None:
     for element in elements:
-      if element not in CLASSIFIER.classes_:
-        print CLASSIFIER.classes_
+      if element not in classifier.classes_:
         raise Sorry("Unsupported element '{}'".format(element))
 
     # Filter out elements the caller does not care about
@@ -364,7 +381,7 @@ def _flatten_list(lst):
 
   Parameters
   ----------
-  lst: list or list of list or list of list of list or ...
+  lst : list or list of list or list of list of list or ...
       A list to be flattened
 
   Returns
