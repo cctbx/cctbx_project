@@ -209,6 +209,9 @@ DETECTOR_SN=%(DETECTOR_SN)d;
     WriteADSC(fileout,mod_data,self.size1,self.size2,endian)
 
   def __getattr__(self, attr):
+    # Returns the computed attribute value or raises an AttributeError
+    # exception.  This method is only called when an attribute could
+    # not be looked up in the usual places.
     if   attr=='size1' : return self.parameters['SIZE1']
     elif attr=='size2' : return self.parameters['SIZE2']
     elif attr=='npixels' : return self.parameters['SIZE1'] * self.parameters['SIZE2']
@@ -223,6 +226,7 @@ DETECTOR_SN=%(DETECTOR_SN)d;
     elif attr=='deltaphi' : return self.parameters.get('OSC_RANGE',0.0)
     elif attr=='twotheta' : return self.parameters.get('TWOTHETA',0.0)
     elif attr=='serial_number' : return self.parameters['DETECTOR_SN']
+    raise AttributeError
 
   def show_header(self, out=None):
     if (out is None) :
