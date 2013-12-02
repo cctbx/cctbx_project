@@ -6,7 +6,7 @@ def exercise_basis_of_mirror_plane_with_normal():
   from cctbx.math_module import basis_of_mirror_plane_with_normal
   for u in [(1,0,0), (0,1,0), (0,0,1), (1,1,0), (1,1,1), (0,-1,1), (-1,1,1)]:
     u = mat.col(u)
-    v,w = [ mat.col(x) for x in basis_of_mirror_plane_with_normal(u) ]
+    v,w = [ mat.col(x) for x in basis_of_mirror_plane_with_normal(u.elems) ]
     assert u.dot(v) == 0
     assert u.dot(w) == 0
     assert abs(v.cross(w)) != 0
