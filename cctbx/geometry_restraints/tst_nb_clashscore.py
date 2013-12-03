@@ -5,6 +5,8 @@ from cStringIO import StringIO
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
+from scitbx.array_family import flex
+import libtbx
 import unittest
 
 #from cctbx.array_family import flex
@@ -23,14 +25,8 @@ Test non-bonded clashscore
 @author Youval Dar (LBL 2013)
 '''
 
-class test_nb_clashscore(unittest.TestCase):
-
-  def setUp(self):
-    '''
-    Called to perform set-up steps prior to running any of the testing methods
-    '''
-    # Raw data for the test cases
-    self.raw_records0 = """\
+# Raw data for the test cases
+raw_records0 = """\
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
 ATOM   1271  N   ILE A  83      31.347   4.310 -43.960  1.00  9.97           N
 ATOM   1272  CA  ILE A  83      32.076   3.503 -44.918  1.00 19.49           C
@@ -85,7 +81,8 @@ ATOM   1320 HG21 THR A  85      32.000   0.780 -50.908  1.00 14.50           H
 ATOM   1321 HG22 THR A  85      33.420   1.251 -50.402  1.00 14.50           H
 ATOM   1322 HG23 THR A  85      32.116   1.932 -49.835  1.00 14.50           H
 """.splitlines()
-    self.raw_records1 = """\
+    
+raw_records1 = """\
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
 HETATM 1819  N   NPH A 117      23.870  15.268 -50.490  1.00 25.06           N
 HETATM 1820  CA  NPH A 117      23.515  14.664 -49.210  1.00 22.94           C
@@ -228,7 +225,7 @@ ATOM   1956  HB3 SER A 124      22.034  18.250 -48.682  1.00 24.00           H
 ATOM   1957  HG  SER A 124      21.984  20.856 -49.068  1.00 27.42           H
 """.splitlines()
 
-    self.raw_records2 = '''\
+raw_records2 = '''\
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
 HETATM 1819  N   NPH A 117      24.064  15.944 -50.623  1.00 25.06           N
 HETATM 1820  CA  NPH A 117      23.709  15.340 -49.343  1.00 22.94           C
@@ -279,6 +276,23 @@ ATOM   1956  HB3 SER B 124      22.084  18.454 -48.612  1.00 24.00           H
 ATOM   1957  HG  SER B 124      21.258  20.773 -49.552  1.00 27.42           H
 '''.splitlines()
 
+raw_records3="""\n
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 21 21 21    4
+ATOM      1  N   LYS     1       5.000   5.000   5.000  1.00 20.00           N
+ATOM      1  N   LYS     2       6.000   5.000   5.000  1.00 20.00           N
+ATOM      1  N   LYS     4       5.000   5.500   5.500  1.00 20.00           N
+TER
+END
+"""
+
+class test_nb_clashscore(unittest.TestCase):
+
+  #def setUp(self):
+    #'''
+    #Called to perform set-up steps prior to running any of the testing methods
+    #'''
+    
+
   def test_inline_angle(self):
     '''
     Test cos_vec(u,v)
@@ -307,32 +321,32 @@ ATOM   1957  HG  SER B 124      21.258  20.773 -49.552  1.00 27.42           H
     for i in [0,1]:
       grm = self.process_raw_records(i)
 
-      nb_clash_sym = grm.nonbonded_clash_info.nb_clashscore_due_to_sym_op
+      nb_clash_sym = grm.nb_clashscore_due_to_sym_op
       expected = [38.46,0][i]
       msg = outstring.format('symmetry related clashscore', expected, nb_clash_sym)
       self.assertAlmostEqual(nb_clash_sym, expected, delta=0.01,msg=msg)
       #
-      nb_clash_no_sym = grm.nonbonded_clash_info.nb_clashscore_without_sym_op
+      nb_clash_no_sym = grm.nb_clashscore_without_sym_op
       expected = [0,28.77][i]
       msg = outstring.format('non-symmetry related clashscore', expected, nb_clash_no_sym)
       self.assertAlmostEqual(nb_clash_no_sym, expected, delta=0.01,msg=msg)
       #
-      nb_clash_total = grm.nonbonded_clash_info.nb_clashscore_all_clashes
+      nb_clash_total = grm.nb_clashscore_all_clashes
       expected = [38.46,28.77][i]
       msg = outstring.format('total clashscore', expected, nb_clash_total)
       self.assertAlmostEqual(nb_clash_total, expected, delta=0.01,msg=msg)
       #
-      nb_list_sym = len(grm.nonbonded_clash_info.nb_clash_proxies_due_to_sym_op)
+      nb_list_sym = len(grm.nb_clash_proxies_due_to_sym_op)
       expected = [2,0][i]
       msg = outstring.format('Number of clashes, symmetry related', expected, nb_list_sym)
       self.assertEqual(nb_list_sym, expected,msg=msg)
       #
-      nb_list_no_sym = len(grm.nonbonded_clash_info.nb_clash_proxies_without_sym_op)
+      nb_list_no_sym = len(grm.nb_clash_proxies_without_sym_op)
       expected = [0,4][i]
       msg = outstring.format('Number of clashes, not symmetry related', expected, nb_list_no_sym)
       self.assertEqual(nb_list_no_sym, expected, msg=msg)
       #
-      nb_list_all = len(grm.nonbonded_clash_info.nb_clash_proxies_all_clashes)
+      nb_list_all = len(grm.nb_clash_proxies_all_clashes)
       expected = [2,4][i]
       msg = outstring.format('Total number of clashes', expected, nb_list_all)
       self.assertEqual(nb_list_all, expected, msg=msg)
@@ -349,12 +363,12 @@ ATOM   1957  HG  SER B 124      21.258  20.773 -49.552  1.00 27.42           H
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
     grm = self.process_raw_records(2)
-    nb_clashscore_total = grm.nonbonded_clash_info.nb_clashscore_all_clashes
+    nb_clashscore_total = grm.nb_clashscore_all_clashes
     expected = 127.66
     msg = outstring.format('Total clashscore', expected, nb_clashscore_total)
     self.assertAlmostEqual(nb_clashscore_total, expected, delta=0.1,msg=msg)
     #
-    #nb_list_all = len(grm.nonbonded_clash_info.nb_clash_proxies_all_clashes)
+    #nb_list_all = len(grm.nb_clash_proxies_all_clashes)
     #expected = 6
     #msg = outstring.format('Total number of clashes', expected, nb_list_all)
     #self.assertEqual(nb_list_all, expected, msg=msg)
@@ -386,6 +400,45 @@ ATOM   1957  HG  SER B 124      21.258  20.773 -49.552  1.00 27.42           H
     Test that coordinate change, due to refinment process, is correctly
     accounted for
     '''
+    
+  def test_atom_selection(self):
+    '''Test that working correctly when atom is removed'''
+    outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
+    mon_lib_srv = monomer_library.server.server()
+    ener_lib = monomer_library.server.ener_lib()
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv    = mon_lib_srv,
+      ener_lib       = ener_lib,
+      raw_records    = raw_records3,
+      force_symmetry = True)
+    grm = processed_pdb_file.geometry_restraints_manager(
+      show_energies      = False,
+      plain_pairs_radius = 5.0)
+    xrs = processed_pdb_file.xray_structure()
+    sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(xrs,grm)
+    nb_clashscore = grm.get_nonbonded_clashscore(sites_cart=sites_cart,
+                                                      site_labels=site_labels,
+                                                      hd_sel=hd_sel,
+                                                      full_connectivty_table=full_connectivty_table)
+    expected = 1000
+    result = nb_clashscore.nb_clashscore_all_clashes
+    msg = outstring.format('Selection related clashscore', expected, result)
+    self.assertEqual(result, expected, msg=msg)
+    # Select
+    sel = flex.bool([True, True, False])
+    grm = grm.select(selection=sel)
+    xrs = xrs.select(selection=sel)
+    sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(xrs,grm)
+    nb_clashscore = grm.get_nonbonded_clashscore(sites_cart=sites_cart,
+                                                      site_labels=site_labels,
+                                                      hd_sel=hd_sel,
+                                                      full_connectivty_table=full_connectivty_table)
+    expected = 500
+    result = nb_clashscore.nb_clashscore_all_clashes
+    msg = outstring.format('Selection related clashscore', expected, result)
+    self.assertEqual(result, expected, msg=msg)
+    
+    
 
   def process_raw_records(self,raw_record_number):
     '''(int) -> geomerty_restraints object
@@ -394,9 +447,9 @@ ATOM   1957  HG  SER B 124      21.258  20.773 -49.552  1.00 27.42           H
     raw_record_number: select whcih raw records to use
     '''
     records = []
-    if raw_record_number == 0: records = self.raw_records0
-    elif raw_record_number == 1: records = self.raw_records1
-    elif raw_record_number == 2: records = self.raw_records2
+    if raw_record_number == 0: records = raw_records0
+    elif raw_record_number == 1: records = raw_records1
+    elif raw_record_number == 2: records = raw_records2
     else: print ('Wrong raw_records number')
     # create a geometry_restraints_manager (grm)
     log = StringIO()
@@ -413,14 +466,41 @@ ATOM   1957  HG  SER B 124      21.258  20.773 -49.552  1.00 27.42           H
       )
     # get geometry restraints object
     #grm = pdb.geometry_restraints_manager()
-
     grm = pdb.geometry_restraints_manager(
       assume_hydrogens_all_missing=False,
       hard_minimum_nonbonded_distance=0.0)
 
-    grm.get_nonbonded_clashscore()
-    return grm
+    xrs = pdb.xray_structure()
+    sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(xrs,grm)
+    
+    return grm.get_nonbonded_clashscore(sites_cart=sites_cart,
+                                        site_labels=site_labels,
+                                        hd_sel=hd_sel,
+                                        full_connectivty_table=full_connectivty_table)
+  
+  def get_clashscore_param(self,xrs,grm):
+    '''
+    Process input parameters for non_bonded_clashscore
+    
+    Arguments:
+    xrs: xray_structure object
+    grm: geometry restraints manager object
+    
+    Returns:
+    sites_cart,site_labels,hd_sel,full_connectivty_table
+    '''
+    hd_sel = xrs.hd_selection()
+    sites_cart = xrs.sites_cart()
+    site_labels = xrs.scatterers().extract_labels()
+    
+    table_bonds = grm.shell_sym_tables[0]
+    full_connectivty_table = table_bonds.full_simple_connectivity()
+    return sites_cart,site_labels,hd_sel,full_connectivty_table
 
 
 if (__name__ == "__main__"):
-  unittest.main()
+  try:
+    tmp = libtbx.env.find_dist_path(module_name='chem_data')
+    unittest.main()
+  except RuntimeError:
+    pass
