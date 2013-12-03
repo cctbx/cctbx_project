@@ -1212,8 +1212,6 @@ def format_distances_for_error_message(
           result.append("distance: %s - %s: %s%s" % (si, sj, sd, ss))
   return result
 
-
-########################################################################
 class nonbonded_clashscore(object):
   """
   Object processing information on non-bonded steric clashes. When the
@@ -1222,7 +1220,6 @@ class nonbonded_clashscore(object):
   @author: Youval Dar (LBL 2013)
   """
 
-  #----------------------------------------------------------------------
   def __init__(self,
                nonbonded_list,
                hd_sel,
@@ -1244,12 +1241,10 @@ class nonbonded_clashscore(object):
                             list of all atoms connected to atom i
     sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
     """
-    # clean_out = easy_run.fully_buffered()
     self.nonbonded_list = nonbonded_list
     self.hd_sel = hd_sel
     self.full_connectivty_table = full_connectivty_table
     self.sites_cart = sites_cart
-
     if nonbonded_list != []:
       try:
         clashlist = self.clashscore_clash_list()
@@ -1395,21 +1390,6 @@ class nonbonded_clashscore(object):
       cos_angle = 1
     return cos_angle
 
-
-  #def model_distance(i_seq,j_seq):
-    #'''(int,int)  -> float
-    #Calculates the distance between atoms i_seq and j_seq
-
-    #Arguments:
-    #i_seq,j_seq: atoms numbers in the our model
-
-    #Returns:
-    #dist: distance
-    #'''
-    #dist =  [(x-y)**2 for (x,y) in zip(self.sites_cart[i_seq],self.sites_cart[j_seq])]
-    #dist = math.sqrt(sum(dist))
-    #return dist
-
   def clashscore_clash_list(self):
     '''(self) -> [list,list]
     Collect inforamtion of clashing nonbonded proxies (neighboring atoms) for clash
@@ -1433,7 +1413,6 @@ class nonbonded_clashscore(object):
     clashes_dict = {}
     # clashes_dict[vec] = [atom1, atom2, clash_record]
     # vec uniquly define a clash, regardless of atoms order
-
     for rec in self.nonbonded_list:
       i_seq = rec[1]
       j_seq = rec[2]
@@ -1455,7 +1434,6 @@ class nonbonded_clashscore(object):
             if key2 not in clashing_atoms_dict: clashing_atoms_dict[key2] = []
             clashing_atoms_dict[key1].append([key2,clash_vec,clash_key,symop,model])
             clashing_atoms_dict[key2].append([key1,clash_vec,clash_key,symop,model])
-
     for key in clashing_atoms_dict:
       # for atoms that clash more than once, check for inline clashes
       if len(clashing_atoms_dict[key]) > 1:
@@ -1492,9 +1470,7 @@ class nonbonded_clashscore(object):
               temp_clash_list.append(clashing_atoms_dict[key][j])
               temp_clash_list.append(clashing_atoms_dict[key][i])
         clashing_atoms_dict[key] = temp_clash_list
-
     # collect results
-
     for (key,val) in clashes_dict.iteritems():
       if key.split('::')[2] != '':
         # not due to symmetry operation
