@@ -117,6 +117,7 @@ cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
 cctbx/maptbx/SConscript -text
 cctbx/maptbx/asymmetric_map.cpp svneol=native#text/plain
 cctbx/maptbx/asymmetric_map.h svneol=native#text/plain
+cctbx/maptbx/asymmetric_map_ext.cpp svneol=native#text/plain
 cctbx/maptbx/blobs_cmd.cpp svneol=native#text/plain
 cctbx/maptbx/boost_python/grid_indices_around_sites.cpp svneol=native#text/plain
 cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x-python
@@ -134,6 +135,7 @@ cctbx/maptbx/skeletons.cpp svneol=native#text/plain
 cctbx/maptbx/skeletons.h svneol=native#text/plain
 cctbx/maptbx/sphericity.h -text
 cctbx/maptbx/standard_deviations_around_sites.hpp svneol=native#text/plain
+cctbx/maptbx/tst_asymmetric_map.py svneol=native#text/x-python
 cctbx/maptbx/tst_ccp.py -text
 cctbx/maptbx/tst_get_percentile_cutoffs.py -text
 cctbx/maptbx/tst_map_peak_3d_as_2d.py -text

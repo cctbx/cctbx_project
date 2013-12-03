@@ -1,6 +1,9 @@
 #ifndef CCTBX_MAPTBX_ASYMMETRIC_MAP_H
 #define CCTBX_MAPTBX_ASYMMETRIC_MAP_H
 
+#include <scitbx/array_family/tiny.h>
+#include <scitbx/array_family/tiny_algebra.h>
+#include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/accessors/c_interval_grid.h>
 #include <cctbx/sgtbx/space_group_type.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
