@@ -14,31 +14,31 @@ import sys, math
 class manager(object):
 
   def __init__(self,
-               crystal_symmetry=None,
-               model_indices=None,
-               conformer_indices=None,
-               sym_excl_indices=None,
-               site_symmetry_table=None,
-               donor_acceptor_excl_groups=None,
-               bond_params_table=None,
-               shell_sym_tables=None,
-               nonbonded_params=None,
-               nonbonded_types=None,
-               nonbonded_charges=None,
-               nonbonded_function=None,
-               nonbonded_distance_cutoff=None,
-               nonbonded_buffer=1,
-               angle_proxies=None,
-               dihedral_proxies=None,
-               reference_dihedral_proxies=None,
-               ncs_dihedral_proxies=None,
-               chirality_proxies=None,
-               planarity_proxies=None,
-               generic_restraints_manager=None,
-               external_energy_function=None,
-               plain_pairs_radius=None,
-               max_reasonable_bond_distance=None,
-               min_cubicle_edge=5):
+        crystal_symmetry=None,
+        model_indices=None,
+        conformer_indices=None,
+        sym_excl_indices=None,
+        site_symmetry_table=None,
+        donor_acceptor_excl_groups=None,
+        bond_params_table=None,
+        shell_sym_tables=None,
+        nonbonded_params=None,
+        nonbonded_types=None,
+        nonbonded_charges=None,
+        nonbonded_function=None,
+        nonbonded_distance_cutoff=None,
+        nonbonded_buffer=1,
+        angle_proxies=None,
+        dihedral_proxies=None,
+        reference_dihedral_proxies=None,
+        ncs_dihedral_proxies=None,
+        chirality_proxies=None,
+        planarity_proxies=None,
+        generic_restraints_manager=None,
+        external_energy_function=None,
+        plain_pairs_radius=None,
+        max_reasonable_bond_distance=None,
+        min_cubicle_edge=5):
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -80,7 +80,7 @@ class manager(object):
     return result
 
   def rigid_clusters_due_to_dihedrals_and_planes(self,
-                                                 constrain_dihedrals_with_sigma_less_than):
+        constrain_dihedrals_with_sigma_less_than):
     result = []
     if (self.dihedral_proxies is not None):
       assert constrain_dihedrals_with_sigma_less_than > 0
@@ -94,12 +94,12 @@ class manager(object):
     return result
 
   def construct_tardy_tree(self,
-                           sites=None,
-                           sites_cart=None,
-                           selection=None,
-                           omit_bonds_with_slack_greater_than=0,
-                           constrain_dihedrals_with_sigma_less_than=10,
-                           near_singular_hinges_angular_tolerance_deg=5):
+        sites=None,
+        sites_cart=None,
+        selection=None,
+        omit_bonds_with_slack_greater_than=0,
+        constrain_dihedrals_with_sigma_less_than=10,
+        near_singular_hinges_angular_tolerance_deg=5):
     assert [sites_cart, sites].count(None) == 1
     from scitbx.graph import tardy_tree
     from scitbx import matrix
@@ -118,18 +118,18 @@ class manager(object):
       sites=sites,
       edge_list=self.simple_edge_list(
         omit_slack_greater_than
-        =omit_bonds_with_slack_greater_than),
+          =omit_bonds_with_slack_greater_than),
       external_clusters=self.rigid_clusters_due_to_dihedrals_and_planes(
         constrain_dihedrals_with_sigma_less_than
-        =constrain_dihedrals_with_sigma_less_than),
+          =constrain_dihedrals_with_sigma_less_than),
       fixed_vertices=fixed_vertices_bool.iselection(),
       near_singular_hinges_angular_tolerance_deg
-      =near_singular_hinges_angular_tolerance_deg)
+        =near_singular_hinges_angular_tolerance_deg)
 
   def reduce_for_tardy(self,
-                       tardy_tree,
-                       omit_bonds_with_slack_greater_than=0,
-                       include_den_restraints=False):
+        tardy_tree,
+        omit_bonds_with_slack_greater_than=0,
+        include_den_restraints=False):
     from cctbx import sgtbx
     from scitbx.graph.utils import construct_edge_sets
     #
@@ -149,7 +149,7 @@ class manager(object):
           for sym_op in sym_ops:
             if (sym_op.is_unit_mx()):
               if (  bond_params_table[i][j].slack
-                    > omit_bonds_with_slack_greater_than):
+                  > omit_bonds_with_slack_greater_than):
                 continue
               if (j not in loop_edge_sets[i]):
                 continue
@@ -164,7 +164,7 @@ class manager(object):
       for proxy in self.angle_proxies:
         i,j,k = proxy.i_seqs
         if (   j in loop_edge_sets[i]
-               or j in loop_edge_sets[k]):
+            or j in loop_edge_sets[k]):
           result.append(proxy)
       if (result.size() == 0):
         return None
@@ -206,14 +206,14 @@ class manager(object):
     return self._sites_cart_used_for_pair_proxies
 
   def new_including_isolated_sites(self,
-                                   n_additional_sites,
-                                   model_indices=None,
-                                   conformer_indices=None,
-                                   sym_excl_indices=None,
-                                   donor_acceptor_excl_groups=None,
-                                   site_symmetry_table=None,
-                                   nonbonded_types=None,
-                                   nonbonded_charges=None):
+        n_additional_sites,
+        model_indices=None,
+        conformer_indices=None,
+        sym_excl_indices=None,
+        donor_acceptor_excl_groups=None,
+        site_symmetry_table=None,
+        nonbonded_types=None,
+        nonbonded_charges=None):
     assert n_additional_sites >= 0
     assert (model_indices is None) == (self.model_indices is None)
     assert (conformer_indices is None) == (self.conformer_indices is None)
@@ -243,7 +243,7 @@ class manager(object):
       # XXX should become site_symmetry_table.concatenate()
       new_site_symmetry_table = self.site_symmetry_table.deep_copy()
       new_site_symmetry_table.reserve(new_site_symmetry_table.indices().size()
-                                      + n_additional_sites)
+                                    + n_additional_sites)
       for i_seq in xrange(n_additional_sites):
         new_site_symmetry_table.process(site_symmetry_table.get(i_seq))
       site_symmetry_table = new_site_symmetry_table
@@ -332,7 +332,7 @@ class manager(object):
     selected_shell_sym_tables = None
     if (self.shell_sym_tables is not None):
       selected_shell_sym_tables = [shell_sym_table.proxy_select(iselection)
-                                   for shell_sym_table in self.shell_sym_tables]
+        for shell_sym_table in self.shell_sym_tables]
       if (len(self.shell_sym_tables) > 0):
         n_seqs[self.shell_sym_tables[0].size()] += 1
     selected_nonbonded_types = None
@@ -470,11 +470,11 @@ class manager(object):
     self.external_energy_function = energy_function
 
   def pair_proxies(self,
-                   sites_cart=None,
-                   flags=None,
-                   asu_is_inside_epsilon=None,
-                   bonded_distance_cutoff_epsilon=None,
-                   site_labels=None):
+        sites_cart=None,
+        flags=None,
+        asu_is_inside_epsilon=None,
+        bonded_distance_cutoff_epsilon=None,
+        site_labels=None):
     if (bonded_distance_cutoff_epsilon is None):
       bonded_distance_cutoff_epsilon = 1.e-6
     if (self.crystal_symmetry is None):
@@ -485,7 +485,7 @@ class manager(object):
     bonded_distance_cutoff = -1
     def check_bonded_distance_cutoff(sites_frac=None, sites_cart=None):
       if (    self.max_reasonable_bond_distance is not None
-              and bonded_distance_cutoff > self.max_reasonable_bond_distance):
+          and bonded_distance_cutoff > self.max_reasonable_bond_distance):
         lines = format_distances_for_error_message(
           pair_sym_table=self.shell_sym_tables[0],
           larger_than=3,
@@ -513,24 +513,24 @@ class manager(object):
       return False
     if (self.nonbonded_types is None):
       if (    self._pair_proxies is None
-              and self.shell_sym_tables is not None
-              and self.crystal_symmetry is not None
-              and self.site_symmetry_table is not None):
+          and self.shell_sym_tables is not None
+          and self.crystal_symmetry is not None
+          and self.site_symmetry_table is not None):
         unit_cell = self.crystal_symmetry.unit_cell()
         sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
         for shell_sym_table in self.shell_sym_tables:
           bonded_distance_cutoff = max(bonded_distance_cutoff,
-                                       flex.max_default(
-                                         values=crystal.get_distances(
-                                           pair_sym_table=shell_sym_table,
-                                           orthogonalization_matrix=orthogonalization_matrix,
-                                           sites_frac=sites_frac),
-                                         default=0))
+            flex.max_default(
+              values=crystal.get_distances(
+                pair_sym_table=shell_sym_table,
+                orthogonalization_matrix=orthogonalization_matrix,
+                sites_frac=sites_frac),
+              default=0))
         check_bonded_distance_cutoff(sites_frac=sites_frac)
         bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
         asu_mappings = crystal.symmetry.asu_mappings(self.crystal_symmetry,
-                                                     buffer_thickness=bonded_distance_cutoff,
-                                                     asu_is_inside_epsilon=asu_is_inside_epsilon)
+          buffer_thickness=bonded_distance_cutoff,
+          asu_is_inside_epsilon=asu_is_inside_epsilon)
         asu_mappings.process_sites_frac(
           original_sites=sites_frac,
           site_symmetry_table=self.site_symmetry_table)
@@ -552,10 +552,10 @@ class manager(object):
           bond_params_table=self.bond_params_table,
           min_cubicle_edge=self.min_cubicle_edge)
     elif (sites_cart is not None
-          and (self._sites_cart_used_for_pair_proxies is None
-               or flags_are_different()
-               or self._sites_cart_used_for_pair_proxies.max_distance(
-                 sites_cart) > self.effective_nonbonded_buffer)):
+            and (self._sites_cart_used_for_pair_proxies is None
+              or flags_are_different()
+              or self._sites_cart_used_for_pair_proxies.max_distance(
+                sites_cart) > self.effective_nonbonded_buffer)):
       self.n_updates_pair_proxies += 1
       self._sites_cart_used_for_pair_proxies = sites_cart.deep_copy()
       if (flags is None):
@@ -589,21 +589,21 @@ class manager(object):
           if (bonded_distance_cutoff < 0):
             for shell_sym_table in self.shell_sym_tables:
               bonded_distance_cutoff = max(bonded_distance_cutoff,
-                                           flex.max_default(
-                                             values=crystal.get_distances(
-                                               pair_sym_table=shell_sym_table,
-                                               sites_cart=sites_cart),
-                                             default=0))
+                flex.max_default(
+                  values=crystal.get_distances(
+                    pair_sym_table=shell_sym_table,
+                    sites_cart=sites_cart),
+                  default=0))
             check_bonded_distance_cutoff(sites_cart=sites_cart)
             bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
             asu_mappings = \
               crystal.direct_space_asu.non_crystallographic_asu_mappings(
                 sites_cart=sites_cart,
                 min_unit_cell_length=
-                2*current_nonbonded_distance_cutoff_plus_buffer)
+                  2*current_nonbonded_distance_cutoff_plus_buffer)
         else:
           if (   bonded_distance_cutoff < 0
-                 or self.plain_pairs_radius is not None):
+              or self.plain_pairs_radius is not None):
             unit_cell = self.crystal_symmetry.unit_cell()
             sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
           if (self.plain_pairs_radius is not None):
@@ -611,22 +611,22 @@ class manager(object):
           if (bonded_distance_cutoff < 0):
             for shell_sym_table in self.shell_sym_tables:
               bonded_distance_cutoff = max(bonded_distance_cutoff,
-                                           flex.max_default(
-                                             values=crystal.get_distances(
-                                               pair_sym_table=shell_sym_table,
-                                               orthogonalization_matrix=orthogonalization_matrix,
-                                               sites_frac=sites_frac),
-                                             default=0))
+                flex.max_default(
+                  values=crystal.get_distances(
+                    pair_sym_table=shell_sym_table,
+                    orthogonalization_matrix=orthogonalization_matrix,
+                    sites_frac=sites_frac),
+                  default=0))
             check_bonded_distance_cutoff(sites_frac=sites_frac)
             bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
           if (asu_mappings is None
               or asu_mappings.buffer_thickness()
-              < current_nonbonded_distance_cutoff_plus_buffer):
+                 < current_nonbonded_distance_cutoff_plus_buffer):
             asu_mappings = crystal.symmetry.asu_mappings(self.crystal_symmetry,
-                                                         buffer_thickness=max(
-                                                           bonded_distance_cutoff,
-                                                           current_nonbonded_distance_cutoff_plus_buffer),
-                                                         asu_is_inside_epsilon=asu_is_inside_epsilon)
+              buffer_thickness=max(
+                bonded_distance_cutoff,
+                current_nonbonded_distance_cutoff_plus_buffer),
+              asu_is_inside_epsilon=asu_is_inside_epsilon)
             asu_mappings.process_sites_frac(
               original_sites=sites_frac,
               site_symmetry_table=self.site_symmetry_table)
@@ -634,8 +634,8 @@ class manager(object):
         if (shell_asu_tables is None):
           shell_asu_tables = [
             crystal.pair_asu_table(asu_mappings=asu_mappings)
-            .add_pair_sym_table(sym_table=shell_sym_table)
-            for shell_sym_table in self.shell_sym_tables]
+              .add_pair_sym_table(sym_table=shell_sym_table)
+                for shell_sym_table in self.shell_sym_tables]
         self._pair_proxies = geometry_restraints.pair_proxies(
           flags=flags,
           bond_params_table=self.bond_params_table,
@@ -648,7 +648,7 @@ class manager(object):
           nonbonded_types=self.nonbonded_types,
           nonbonded_charges=self.nonbonded_charges,
           nonbonded_distance_cutoff_plus_buffer
-          =current_nonbonded_distance_cutoff_plus_buffer,
+            =current_nonbonded_distance_cutoff_plus_buffer,
           min_cubicle_edge=self.min_cubicle_edge)
         introspection.virtual_memory_info().update_max()
         if (self._pair_proxies.nonbonded_proxies is None):
@@ -688,7 +688,7 @@ class manager(object):
 
   def update_plain_pair_sym_table(self, sites_frac):
     asu_mappings = crystal.symmetry.asu_mappings(self.crystal_symmetry,
-                                                 buffer_thickness=self.plain_pairs_radius)
+      buffer_thickness=self.plain_pairs_radius)
     asu_mappings.process_sites_frac(
       original_sites=sites_frac,
       site_symmetry_table=self.site_symmetry_table)
@@ -698,16 +698,16 @@ class manager(object):
     introspection.virtual_memory_info().update_max()
 
   def energies_sites(self,
-                     sites_cart,
-                     flags=None,
-                     custom_nonbonded_function=None,
-                     compute_gradients=False,
-                     gradients=None,
-                     disable_asu_cache=False,
-                     normalization=False,
-                     external_energy_function=None,
-                     extension_objects=[],
-                     site_labels=None):
+        sites_cart,
+        flags=None,
+        custom_nonbonded_function=None,
+        compute_gradients=False,
+        gradients=None,
+        disable_asu_cache=False,
+        normalization=False,
+        external_energy_function=None,
+        extension_objects=[],
+        site_labels=None):
     if(external_energy_function is not None):
       assert self.external_energy_function is None
     else:
@@ -739,7 +739,7 @@ class manager(object):
     if (flags.angle):     angle_proxies = self.angle_proxies
     if (flags.dihedral):  dihedral_proxies = self.dihedral_proxies
     if (flags.reference_dihedral):  \
-       reference_dihedral_proxies = self.reference_dihedral_proxies
+      reference_dihedral_proxies = self.reference_dihedral_proxies
     if (flags.ncs_dihedral): ncs_dihedral_proxies = self.ncs_dihedral_proxies
     if (flags.chirality): chirality_proxies = self.chirality_proxies
     if (flags.planarity): planarity_proxies = self.planarity_proxies
@@ -776,7 +776,7 @@ class manager(object):
         weight = type_weights
       else:
         weight = (  type_weights[type_indices[i]]
-                    + type_weights[type_indices[j]]) * 0.5
+                  + type_weights[type_indices[j]]) * 0.5
       delta = variables[i] - variables[j]
       term = weight * delta
       residual_sum += term * delta
@@ -828,20 +828,20 @@ class manager(object):
     return gradients
 
   def update_atom_nonbonded_type (self,
-                                  i_seq,
-                                  nonbonded_type,
-                                  charge=0) :
+        i_seq,
+        nonbonded_type,
+        charge=0) :
     if (self.nonbonded_types is not None) :
       self.nonbonded_types[i_seq] = nonbonded_type
     if (self.nonbonded_charges is not None) :
       self.nonbonded_charges[i_seq] = charge
 
   def show_interactions(self,
-                        flags=None,
-                        sites_cart=None,
-                        site_labels=None,
-                        i_seq=None,
-                        f=None):
+        flags=None,
+        sites_cart=None,
+        site_labels=None,
+        i_seq=None,
+        f=None):
     if (f is None): f = sys.stdout
     pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
     if (sites_cart is None):
@@ -1000,10 +1000,10 @@ class manager(object):
             print >> f, "  vdw_distance: %.6g" % proxy.vdw_distance
 
   def show_sorted(self,
-                  flags=None,
-                  sites_cart=None,
-                  site_labels=None,
-                  f=None):
+        flags=None,
+        sites_cart=None,
+        site_labels=None,
+        f=None):
     if (f is None): f = sys.stdout
     pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
     if (sites_cart is None):
@@ -1114,15 +1114,15 @@ class manager(object):
     return nonbonded_clash_info
 
 def construct_non_crystallographic_conserving_bonds_and_angles(
-  sites_cart,
-  edge_list_bonds,
-  edge_list_angles,
-  bond_weight=100,
-  angle_weight=50,
-  vdw_distance=1.2,
-  non_crystallographic_unit_cell_buffer_layer=5,
-  asu_mappings_buffer_thickness=5,
-  max_reasonable_bond_distance=10):
+      sites_cart,
+      edge_list_bonds,
+      edge_list_angles,
+      bond_weight=100,
+      angle_weight=50,
+      vdw_distance=1.2,
+      non_crystallographic_unit_cell_buffer_layer=5,
+      asu_mappings_buffer_thickness=5,
+      max_reasonable_bond_distance=10):
   import cctbx.crystal.coordination_sequences
   from cctbx import uctbx
   from scitbx import matrix
@@ -1150,7 +1150,7 @@ def construct_non_crystallographic_conserving_bonds_and_angles(
     pair_asu_table=bond_asu_table,
     max_shell=3)
   shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
-                      for shell_asu_table in shell_asu_tables]
+    for shell_asu_table in shell_asu_tables]
   nonbonded_types = flex.std_string(bond_params_table.size(), "Default")
   nonbonded_params = geometry_restraints.nonbonded_params()
   nonbonded_params.distance_table.setdefault(
@@ -1166,12 +1166,12 @@ def construct_non_crystallographic_conserving_bonds_and_angles(
     max_reasonable_bond_distance=max_reasonable_bond_distance)
 
 def format_distances_for_error_message(
-  pair_sym_table,
-  larger_than,
-  orthogonalization_matrix,
-  sites_frac,
-  sites_cart,
-  site_labels):
+      pair_sym_table,
+      larger_than,
+      orthogonalization_matrix,
+      sites_frac,
+      sites_cart,
+      site_labels):
   assert [sites_frac, sites_cart].count(None) == 1
   if (site_labels is not None):
     if (sites_frac is not None):
