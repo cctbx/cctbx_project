@@ -41,11 +41,15 @@ class manager(object):
     else:
       torsion_ncs_groups = \
         self.torsion_ncs_groups.select(iselection=selection)
+
     return manager(
       geometry=geometry,
       ncs_groups=ncs_groups,
       torsion_ncs_groups=torsion_ncs_groups,
-      normalization=self.normalization)
+      normalization=self.normalization,
+      use_amber=self.use_amber,
+      amber_mdgx_structs=self.amber_mdgx_structs,
+      )
 
   def energies_sites(self,
         sites_cart,
@@ -54,7 +58,8 @@ class manager(object):
         custom_nonbonded_function=None,
         compute_gradients=False,
         gradients=None,
-        disable_asu_cache=False):
+        disable_asu_cache=False,
+        ):
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
       gradients=gradients,
