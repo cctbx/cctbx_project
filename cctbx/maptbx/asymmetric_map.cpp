@@ -53,6 +53,7 @@ scitbx::af::shared< std::complex<double > > asymmetric_map::structure_factors(
   CCTBX_ASSERT( fftmap.accessor().focus().all_eq(fft.n_real()) );
   fft.forward(fftmap);
   grid_t cmplxpad(fft.n_complex(), fft.n_complex());
+  CCTBX_ASSERT( cmplxpad.size_1d()*2UL == fftmap.accessor().size_1d() );
   scitbx::af::versa< cmplx, grid_t > cmap( fftmap.handle(), cmplxpad);
   bool anomalous_flag = false, conjugate_flag = true;
   cctbx::maptbx::structure_factors::from_map<double> frommap(
@@ -162,8 +163,8 @@ void asymmetric_map::copy_to_asu_box(const scitbx::int3 &map_size,
   const scitbx::int3 &padded_map_size, const double *cell_data)
 {
   //! @todo: code duplication, see atom_mask
-  //! @todo: test grid for compatiblity with the troup, see
-  //     crystal_form::determin_grid
+  //! @todo: test grid for compatiblity with the group, see
+  //     crystal_form::determine_grid
   scitbx::int3 grid = map_size;
   CCTBX_ASSERT( this->unit_cell_grid_size().as_tiny().all_eq(grid) );
   asu::rvector3_t box_min, box_max;

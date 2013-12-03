@@ -78,7 +78,7 @@ static std::ostream & write_head(std::ostream &text_stream,
   text_stream << '\n' << std::setw(8) << ntitle << " !NTITLE\n";
   text_stream << std::setw(264) << std::left << " REMARKS iotbx::xplor" << '\n';
   if( !remark.empty() )
-    text_stream << std::setw(264) << (" REMARKS "+remark).c_str() << '\n';
+    text_stream << std::setw(264) << (" REMARKS "+remark) << '\n';
   text_stream << std::right;
   for(short j=0; j<3; ++j)
     text_stream
