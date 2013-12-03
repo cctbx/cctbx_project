@@ -527,8 +527,8 @@ class ener_lib(process_cif_mixin):
     for row in get_rows(cif_object, "energy", "_lib_atom"):
       entry = cif_types.energy_lib_atom(**dict(row))
       if use_neutron_distances:
-        if entry.vdw_radius_neuton is not None:
-          entry.vdw_radius = entry.vdw_radius_neuton
+        if entry.vdw_radius_neutron is not None:
+          entry.vdw_radius = entry.vdw_radius_neutron
       self.lib_atom[entry.type] = entry
 
   def convert_lib_vdw(self, cif_object):
