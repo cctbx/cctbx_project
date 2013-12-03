@@ -63,7 +63,7 @@ atomic properties.
     pdb_hierarchy = cmdline.pdb_hierarchy,
     fmodel = cmdline.fmodel,
     geometry_restraints_manager = cmdline.geometry,
-    wavelength = params.wavelength,
+    wavelength = params.input.wavelength,
     params = params,
     verbose = params.debug,
     nproc = params.nproc,
@@ -94,6 +94,7 @@ def dump_sites (manager):
   # Atom object. Instead, gather what properties we want and store them in a
   # second list
   fo_map = manager.get_map("mFo")
+  fofc_map = manager.get_map("mFo-DFc")
 
   properties = \
     [(
@@ -104,11 +105,13 @@ def dump_sites (manager):
       ScatteringEnvironment(
         atom.i_seq,
         manager,
-        fo_map)
+        fo_map,
+        fofc_map),
       )
      for atom in atoms]
 
   del fo_map
+  del fofc_map
 
   return properties
 

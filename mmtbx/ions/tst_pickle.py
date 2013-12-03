@@ -57,6 +57,7 @@ def exercise():
     )
 
   fo_map = manager.get_map("mFo")
+  fofc_map = manager.get_map("mFo-DFc")
 
   for atom_props in manager.atoms_to_props.values():
     chem_env = environment.ChemicalEnvironment(
@@ -75,7 +76,7 @@ def exercise():
         assert getattr(chem_env, attr) == getattr(new_chem_env, attr)
 
     scatter_env = environment.ScatteringEnvironment(
-      atom_props.i_seq, manager, fo_map
+      atom_props.i_seq, manager, fo_map, fofc_map
       )
     new_scatter_env = loads(dumps(scatter_env))
     for attr in dir(scatter_env):
@@ -84,6 +85,7 @@ def exercise():
         assert getattr(scatter_env, attr) == getattr(new_scatter_env, attr)
 
   del fo_map
+  del fofc_map
 
   print "OK"
 

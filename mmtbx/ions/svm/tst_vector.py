@@ -59,6 +59,7 @@ def exercise():
     )
 
   fo_map = manager.get_map("mFo")
+  fofc_map = manager.get_map("mFo-DFc")
 
   for atom_props in manager.atoms_to_props.values():
     chem_env = ChemicalEnvironment(
@@ -67,7 +68,7 @@ def exercise():
       manager
       )
     scatter_env = ScatteringEnvironment(
-      atom_props.i_seq, manager, fo_map
+      atom_props.i_seq, manager, fo_map, fofc_map
       )
     vector = ion_vector(chem_env, scatter_env)
     resname = ion_class(chem_env)
@@ -75,6 +76,7 @@ def exercise():
     assert resname != ""
 
   del fo_map
+  del fofc_map
 
   print "OK"
 
