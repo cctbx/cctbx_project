@@ -141,7 +141,8 @@ class molprobity (slots_getstate_setstate) :
         ignore_hd=(not nuclear))
     if (fmodel is not None) :
       if (flags.rfactors) :
-        self.data_stats = experimental.data_statistics(fmodel)
+        self.data_stats = experimental.data_statistics(fmodel,
+          n_bins=n_bins_data)
       if (flags.waters) :
         self.waters = waters.waters(
           pdb_hierarchy=pdb_hierarchy,

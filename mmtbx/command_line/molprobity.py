@@ -30,6 +30,8 @@ molprobity {
     .help = '''Use nuclear hydrogen positions'''
   min_cc_two_fofc = 0.8
     .type = float
+  n_bins = 10
+    .type = int
 }
 output {
   quiet = False
@@ -117,7 +119,8 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
     keep_hydrogens=params.molprobity.keep_hydrogens,
     nuclear=params.molprobity.nuclear,
     save_probe_unformatted_file=probe_file,
-    min_cc_two_fofc=params.molprobity.min_cc_two_fofc)
+    min_cc_two_fofc=params.molprobity.min_cc_two_fofc,
+    n_bins_data=params.molprobity.n_bins)
   if (not params.output.quiet) :
     out2 = multi_out()
     out2.register("stdout", out)
