@@ -24,7 +24,7 @@ public:
     FloatType p=0., q=0., r=0., s=0.;
     for(std::size_t i=0; i < y.size(); i++) {
       FloatType d_ = y[i];
-      SCITBX_ASSERT(d_>0);
+      if(d_<=0) goto done;
       FloatType d = std::log(d_);
       FloatType v = x[i]*x[i];
       p += d;
@@ -32,8 +32,8 @@ public:
       r += (v*v);
       s += (v*d);
     }
-    int n = y.size();
     if(r != 0) {
+      int n = y.size();
       FloatType den = n-q*q/r;
       if(den != 0) {
         FloatType u = (p-s*q/r)/den;
@@ -41,6 +41,7 @@ public:
         a = std::exp(u);
       }
     }
+  done: ;
   }
 
   compute(
@@ -55,9 +56,9 @@ public:
     FloatType p=0., q=0., r=0., s=0.;
     for(std::size_t i=0; i < y.size(); i++) {
       FloatType zi_ = z[i];
-      SCITBX_ASSERT(zi_ != 0);
+      if(zi_==0) goto done;
       FloatType d_ = y[i]/zi_;
-      SCITBX_ASSERT(d_>0);
+      if(d_<=0) goto done;
       FloatType d = std::log(d_);
       FloatType v = x[i]*x[i];
       p += d;
@@ -65,8 +66,8 @@ public:
       r += (v*v);
       s += (v*d);
     }
-    int n = y.size();
     if(r != 0) {
+      int n = y.size();
       FloatType den = n-q*q/r;
       if(den != 0) {
         FloatType u = (p-s*q/r)/den;
@@ -74,6 +75,7 @@ public:
         a = std::exp(u);
       }
     }
+  done: ;
   }
 };
 }}} // namespace scitbx::math::gaussian_fit_1d_analytical
