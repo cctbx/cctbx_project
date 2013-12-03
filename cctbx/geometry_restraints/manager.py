@@ -1060,8 +1060,8 @@ class manager(object):
 
   def get_nonbonded_clashscore(self,
                                sites_cart,
-                               site_labels,
-                               hd_sel):
+                               hd_sel,
+                               site_labels=None):
     '''
     Construct nonbonded_clash_info, the non-bonded clashss lists and scores
 
@@ -1087,11 +1087,6 @@ class manager(object):
     sites_cart = xrs.sites_cart()
     site_labels = xrs.scatterers().extract_labels()
     '''
-
-    # test that changes during refinment are reflected in both sites_cart and lables
-    # test how they corespond to the full_connectivty_table
-    assert len(sites_cart) == len(site_labels)
-
     pair_proxies = self.pair_proxies(
           sites_cart=sites_cart,
           site_labels=site_labels)
@@ -1386,7 +1381,7 @@ class nonbonded_clashscore(object):
     except ZeroDivisionError:
       cos_angle = 1
     return cos_angle
-  
+
 
   def clashscore_clash_list(self):
     '''(self) -> [list,list]
@@ -1420,7 +1415,7 @@ class nonbonded_clashscore(object):
       symop = rec[5]
       delta = model - vdw
       # check for clash
-      if (delta < -0.41): 
+      if (delta < -0.41):
         # Check of 1-5 interaction
         if not self.is_1_5_interaction(i_seq, j_seq):
           clash_vec,key1,key2 = self.get_clash_keys(rec)
