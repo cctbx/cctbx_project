@@ -81,7 +81,7 @@ ATOM   1320 HG21 THR A  85      32.000   0.780 -50.908  1.00 14.50           H
 ATOM   1321 HG22 THR A  85      33.420   1.251 -50.402  1.00 14.50           H
 ATOM   1322 HG23 THR A  85      32.116   1.932 -49.835  1.00 14.50           H
 """.splitlines()
-    
+
 raw_records1 = """\
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
 HETATM 1819  N   NPH A 117      23.870  15.268 -50.490  1.00 25.06           N
@@ -291,7 +291,7 @@ class test_nb_clashscore(unittest.TestCase):
     #'''
     #Called to perform set-up steps prior to running any of the testing methods
     #'''
-    
+
 
   def test_inline_angle(self):
     '''
@@ -400,7 +400,7 @@ class test_nb_clashscore(unittest.TestCase):
     Test that coordinate change, due to refinment process, is correctly
     accounted for
     '''
-    
+
   def test_atom_selection(self):
     '''Test that working correctly when atom is removed'''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
@@ -416,10 +416,10 @@ class test_nb_clashscore(unittest.TestCase):
       plain_pairs_radius = 5.0)
     xrs = processed_pdb_file.xray_structure()
     sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(xrs,grm)
-    nb_clashscore = grm.get_nonbonded_clashscore(sites_cart=sites_cart,
-                                                      site_labels=site_labels,
-                                                      hd_sel=hd_sel,
-                                                      full_connectivty_table=full_connectivty_table)
+    nb_clashscore = grm.get_nonbonded_clashscore(
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      hd_sel=hd_sel)
     expected = 1000
     result = nb_clashscore.nb_clashscore_all_clashes
     msg = outstring.format('Selection related clashscore', expected, result)
@@ -429,16 +429,16 @@ class test_nb_clashscore(unittest.TestCase):
     grm = grm.select(selection=sel)
     xrs = xrs.select(selection=sel)
     sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(xrs,grm)
-    nb_clashscore = grm.get_nonbonded_clashscore(sites_cart=sites_cart,
-                                                      site_labels=site_labels,
-                                                      hd_sel=hd_sel,
-                                                      full_connectivty_table=full_connectivty_table)
+    nb_clashscore = grm.get_nonbonded_clashscore(
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      hd_sel=hd_sel)
     expected = 500
     result = nb_clashscore.nb_clashscore_all_clashes
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
-    
-    
+
+
 
   def process_raw_records(self,raw_record_number):
     '''(int) -> geomerty_restraints object
@@ -472,27 +472,26 @@ class test_nb_clashscore(unittest.TestCase):
 
     xrs = pdb.xray_structure()
     sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(xrs,grm)
-    
+
     return grm.get_nonbonded_clashscore(sites_cart=sites_cart,
                                         site_labels=site_labels,
-                                        hd_sel=hd_sel,
-                                        full_connectivty_table=full_connectivty_table)
-  
+                                        hd_sel=hd_sel)
+
   def get_clashscore_param(self,xrs,grm):
     '''
     Process input parameters for non_bonded_clashscore
-    
+
     Arguments:
     xrs: xray_structure object
     grm: geometry restraints manager object
-    
+
     Returns:
     sites_cart,site_labels,hd_sel,full_connectivty_table
     '''
     hd_sel = xrs.hd_selection()
     sites_cart = xrs.sites_cart()
     site_labels = xrs.scatterers().extract_labels()
-    
+
     table_bonds = grm.shell_sym_tables[0]
     full_connectivty_table = table_bonds.full_simple_connectivity()
     return sites_cart,site_labels,hd_sel,full_connectivty_table
