@@ -187,6 +187,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["image_size"] = obj.get_image_size();
     result["pixel_size"] = obj.get_pixel_size();
     result["trusted_range"] = obj.get_trusted_range();
+    result["mask"] = boost::python::list(obj.get_mask());
     return result;
   }
 
@@ -206,6 +207,12 @@ namespace dxtbx { namespace model { namespace boost_python {
         boost::python::extract< vec3<double> >(obj["fast_axis"]),
         boost::python::extract< vec3<double> >(obj["slow_axis"]),
         boost::python::extract< vec3<double> >(obj["origin"]));
+    }
+    if (obj.has_key("mask")) {
+      scitbx::af::shared<int4> mask =
+        boost::python::extract< scitbx::af::shared<int4> >(
+          boost::python::extract<boost::python::list>(obj["mask"]));
+      result->set_mask(mask.const_ref());
     }
     result->set_image_size(
       boost::python::extract< vec2<std::size_t> >(obj["image_size"]));

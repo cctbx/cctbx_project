@@ -486,8 +486,8 @@ namespace dxtbx { namespace model {
 
     /** Set the mask */
     void set_mask(const scitbx::af::const_ref<int4> &mask) {
-      mask_.resize(0);
-      std::copy(mask.begin(), mask.end(), mask_.begin());
+      mask_.clear();
+      std::copy(mask.begin(), mask.end(), std::back_inserter(mask_));
     }
 
     /** Add an element to the mask */
