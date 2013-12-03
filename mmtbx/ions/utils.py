@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
 from libtbx.utils import null_out
 from math import sqrt
@@ -12,16 +12,20 @@ def anonymize_ions (hierarchy, log=sys.stdout) :
   structure, but a new xray structure can be obtained by calling
   hierarchy.extract_xray_structure(crystal_symmetry).
   """
-  from cctbx.eltbx import sasaki
-  from cctbx.eltbx import chemical_elements
-  elements = chemical_elements.proper_upper_list()
+  from cctbx.eltbx import sasaki, chemical_elements
+  from mmtbx.ions.parameters import get_server
+  from mmtbx.ions import WATER_RES_NAMES
+  ion_resnames = set(chemical_elements.proper_upper_list())
+  for resname in get_server().params["_lib_charge.resname"]:
+    if resname not in WATER_RES_NAMES:
+      ion_resnames.add(resname)
   n_converted = 0
   hierarchy = hierarchy.deep_copy()
   for model in hierarchy.models() :
     for chain in model.chains() :
       for residue_group in chain.residue_groups() :
         for atom_group in residue_group.atom_groups() :
-          if (atom_group.resname.strip() in elements) :
+          if (atom_group.resname.strip() in ion_resnames) :
             atoms = atom_group.atoms()
             id_strs = []
             for atom in atoms :
