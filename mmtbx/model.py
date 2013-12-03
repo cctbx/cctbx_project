@@ -1069,34 +1069,39 @@ class manager(object):
       occupancy_flags = []
       for i in range(1, new_xray_structure.scatterers().size()+1):
         occupancy_flags.append([flex.size_t([ms+i-1])])
-    if(self.refinement_flags.individual_sites):
+    if(self.refinement_flags is not None and
+       self.refinement_flags.individual_sites):
       ssites = flex.bool(new_xray_structure.scatterers().size(), True)
     else: ssites = None
     # add flags
-    if(self.refinement_flags.torsion_angles):
+    if(self.refinement_flags is not None and
+       self.refinement_flags.torsion_angles):
       ssites_tors = flex.bool(new_xray_structure.scatterers().size(), True)
     else: ssites_tors = None
     #
     sadp_iso, sadp_aniso = None, None
     if (refine_adp=="isotropic"):
       nxrs_ui = new_xray_structure.use_u_iso()
-      if(self.refinement_flags.adp_individual_iso or nxrs_ui.count(True)>0):
+      if((self.refinement_flags is not None and
+          self.refinement_flags.adp_individual_iso) or nxrs_ui.count(True)>0):
         sadp_iso = nxrs_ui
         sadp_aniso = flex.bool(sadp_iso.size(), False)
       else: sadp_iso = None
     if(refine_adp=="anisotropic"):
       nxrs_ua = new_xray_structure.use_u_aniso()
-      if(self.refinement_flags.adp_individual_aniso or nxrs_ua.count(True)>0):
+      if((self.refinement_flags is not None and
+          self.refinement_flags.adp_individual_aniso) or nxrs_ua.count(True)>0):
         sadp_aniso = nxrs_ua
         sadp_iso = flex.bool(sadp_aniso.size(), False)
       else: sadp_aniso = None
-    self.refinement_flags.inflate(
-      sites_individual       = ssites,
-      sites_torsion_angles   = ssites_tors,
-      adp_individual_iso     = sadp_iso,
-      adp_individual_aniso   = sadp_aniso,
-      s_occupancies          = occupancy_flags,
-      size_all               = ms)#torsion_angles
+    if(self.refinement_flags is not None):
+      self.refinement_flags.inflate(
+        sites_individual       = ssites,
+        sites_torsion_angles   = ssites_tors,
+        adp_individual_iso     = sadp_iso,
+        adp_individual_aniso   = sadp_aniso,
+        s_occupancies          = occupancy_flags,
+        size_all               = ms)#torsion_angles
     #
     self._append_pdb_atoms(
       new_xray_structure=new_xray_structure,
