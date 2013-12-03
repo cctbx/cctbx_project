@@ -4789,7 +4789,7 @@ class process(object):
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
-        show_nonbonded_clashscore=True,
+        show_nonbonded_clashscore=False,
         hard_minimum_bond_distance_model=0.001,
         hard_minimum_nonbonded_distance=0.001,
         external_energy_function=None,
@@ -4954,9 +4954,9 @@ class process(object):
             hd_sel=hd_sel)
           nb_clashscore_without_sym_op = nb_clash_info.nb_clashscore_without_sym_op
           nb_clash_due_to_sym_op = nb_clash_info.nb_clashscore_due_to_sym_op
-          s='\n  clashscore, without clashes due to symmetry operation: {0:.2f}'
+          s='\n  Nonbonded clashscore, without clashes due to symmetry operation: {0:.2f}'
           print >> self.log, s.format(nb_clashscore_without_sym_op)
-          s='  clashscore, only due to symmetry operation: {0:.2f}\n'
+          s='  Nonbonded clashscore, only due to symmetry operation: {0:.2f}\n'
           print >> self.log, s.format(nb_clash_due_to_sym_op)
     return self._geometry_restraints_manager
 
