@@ -4,12 +4,29 @@ from cStringIO import StringIO
 from libtbx.test_utils import approx_equal, show_diff
 from scitbx import matrix
 from cctbx import crystal, sgtbx, uctbx
-from cctbx.crystal.crystal_model import crystal_model
+from cctbx.crystal.crystal_model import crystal_model, \
+     crystal_model_from_mosflm_matrix
 
 def random_rotation():
   import random
   from scitbx.math import euler_angles_as_matrix
   return euler_angles_as_matrix([random.uniform(0,360) for i in xrange(3)])
+
+def exercise_crystal_model_from_mosflm_matrix():
+  mosflm_matrix = map(float, ''' -0.00495480 -0.01491776  0.00238445
+  0.01505572 -0.00661190 -0.00149401
+  0.00585043  0.00438127  0.00586415
+       0.000       0.000       0.000
+  -0.2932645  -0.8829514   0.3665960
+   0.8911171  -0.3913446  -0.2296951
+   0.3462750   0.2593185   0.9015806
+     57.7822     57.7822    150.0931     90.0000     90.0000     90.0000
+       0.000       0.000       0.000'''.split())
+  A = mosflm_matrix[:9]
+  unit_cell = uctbx.unit_cell(mosflm_matrix[21:27])
+  cm = crystal_model_from_mosflm_matrix(A, unit_cell=unit_cell)
+  assert approx_equal(cm.get_unit_cell().parameters(),
+                      unit_cell.parameters(), eps=1.0e-2)
 
 def exercise_crystal_model():
 
@@ -158,9 +175,9 @@ Crystal:
   model_minimum = model.change_basis(cb_op_to_minimum)
   assert uc_minimum.is_similar_to(model_minimum.get_unit_cell())
 
-
 def run():
   exercise_crystal_model()
+  exercise_crystal_model_from_mosflm_matrix()
 
 if __name__ == '__main__':
   from libtbx.utils import show_times_at_exit
