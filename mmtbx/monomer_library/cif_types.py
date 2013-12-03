@@ -1309,7 +1309,7 @@ _lib_atom.ion_radius:float
 _lib_atom.element
 _lib_atom.valency:int
 _lib_atom.sp:int
-_lib_atom.vdw_radius_neuton:float
+_lib_atom.vdw_radius_neutron:float
   """
 
 class energy_lib_vdw(looped_data):
