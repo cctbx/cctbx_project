@@ -386,11 +386,12 @@ class test_nb_clashscore(unittest.TestCase):
     - test when C and H-C are in different residues
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
-    grm = self.process_raw_records(2)
-    nb_clashscore_total = grm.nb_clashscore_all_clashes
-    expected = 127.66
-    msg = outstring.format('Total clashscore', expected, nb_clashscore_total)
-    self.assertAlmostEqual(nb_clashscore_total, expected, delta=0.1,msg=msg)
+    for use_site_labels in [True,False]:
+      grm = self.process_raw_records(2,use_site_labels=use_site_labels)
+      nb_clashscore_total = grm.nb_clashscore_all_clashes
+      expected = 127.66
+      msg = outstring.format('Total clashscore', expected, nb_clashscore_total)
+      self.assertAlmostEqual(nb_clashscore_total, expected, delta=0.1,msg=msg)
     #
     #nb_list_all = len(grm.nb_clash_proxies_all_clashes)
     #expected = 6
@@ -530,7 +531,7 @@ class test_nb_clashscore(unittest.TestCase):
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
 
-  def process_raw_records(self,raw_record_number):
+  def process_raw_records(self,raw_record_number,use_site_labels=True):
     '''(int) -> geomerty_restraints object
 
     Argument:
@@ -559,13 +560,14 @@ class test_nb_clashscore(unittest.TestCase):
       hard_minimum_nonbonded_distance=0.0)
 
     xrs = pdb.xray_structure()
-    sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(xrs,grm)
+    sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(
+      xrs,grm,use_site_labels=use_site_labels)
 
     return grm.get_nonbonded_clashscore(sites_cart=sites_cart,
                                         site_labels=site_labels,
                                         hd_sel=hd_sel)
 
-  def get_clashscore_param(self,xrs,grm):
+  def get_clashscore_param(self,xrs,grm,use_site_labels=True):
     '''
     Process input parameters for non_bonded_clashscore
 
@@ -578,7 +580,10 @@ class test_nb_clashscore(unittest.TestCase):
     '''
     hd_sel = xrs.hd_selection()
     sites_cart = xrs.sites_cart()
-    site_labels = xrs.scatterers().extract_labels()
+    if use_site_labels:
+      site_labels = xrs.scatterers().extract_labels()
+    else:
+      site_labels = None
 
     table_bonds = grm.shell_sym_tables[0]
     full_connectivty_table = table_bonds.full_simple_connectivity()
