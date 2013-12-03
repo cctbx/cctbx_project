@@ -1923,19 +1923,6 @@ class add_planarity_proxies(object):
           registry_process_result=registry_process_result,
           lines=["plane id: " + str(plane.plane_id)])
 
-
-#def add_nonbonded_iseq_residue_pairs(nonbonded_params, xray_structure):
-  #site_labels = xray_structure.scatterers().extract_labels()
-  #for i, label_i in enumerate(site_labels):
-    #for j, label_j in enumerate(site_labels):
-      #if label_i == label_j:
-        #nonbonded_params.residue_self_pair_table.setdefault(
-          #i)[j] = True
-      #else:
-        #nonbonded_params.residue_self_pair_table.setdefault(
-          #i)[j] = False
-  #return nonbond_table
-
 # XXX TODO synonymes
 def ener_lib_as_nonbonded_params(
       ener_lib,
@@ -4473,13 +4460,6 @@ class build_all_chain_proxies(object):
       default_distance=self.params.default_vdw_distance,
       minimum_distance=self.params.min_vdw_distance,
       const_shrink_donor_acceptor=self.params.const_shrink_donor_acceptor)
-
-    #add_nonbonded_iseq_residue_pairs(
-           #nonbonded_params=nonbonded_params,
-           #xray_structure=self.extract_xray_structure())
-    #print tuple(nonbonded_params.residue_self_pair_table)
-    #STOP()
-
     if(self.params.nonbonded_weight is None):
       nonbonded_weight = 100 # c_rep in prolsq repulsion function
       if(assume_hydrogens_all_missing) :
@@ -5112,30 +5092,10 @@ def run(
         =substitute_non_crystallographic_unit_cell_if_necessary,
       max_atoms=max_atoms,
       log=log)
-
     processed_pdb_file.geometry_restraints_manager(
       assume_hydrogens_all_missing=assume_hydrogens_all_missing,
       hard_minimum_bond_distance_model=hard_minimum_nonbonded_distance)
     processed_pdb_file.xray_structure()
-
-    if 0:
-      geometry_restraints_manager = processed_pdb_file.geometry_restraints_manager()
-      sites_cart = processed_pdb_file.all_chain_proxies.sites_cart_exact()
-      site_labels = [atom.id_str()
-                     for atom in processed_pdb_file.all_chain_proxies.pdb_atoms]
-      lines = StringIO()
-      #geometry_restraints_manager.show_interactions(
-      geometry_restraints_manager.show_sorted(
-        sites_cart=sites_cart,
-        site_labels=site_labels,
-        f=lines)
-      filename = "%s.geo" % file_name.split(".")[0]
-      print "\n\n\tWriting restraints to",filename
-      f=file(filename, "wb")
-      f.write(lines.getvalue())
-      f.close()
-      #sys.exit()
-
     if (return_all_processed_pdb_files):
       all_processed_pdb_files.append(processed_pdb_file)
   if (return_all_processed_pdb_files):
@@ -5143,9 +5103,6 @@ def run(
   if (len(pdb_file_names) > 0):
     return processed_pdb_file
   return None
-
-
-
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
