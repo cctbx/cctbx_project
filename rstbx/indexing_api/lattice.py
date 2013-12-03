@@ -162,23 +162,26 @@ class _(boost.python.injector, dps_extended):
   @staticmethod
   def get_new_detector(old_detector,origin_offset):
     import copy
-    new_panels = []
-    for panel in old_detector:
-      new_panel = copy.deepcopy(panel)
-      new_panel.set_local_frame(fast_axis=panel.get_fast_axis(),
-                          slow_axis=panel.get_slow_axis(),
-                          origin=matrix.col(panel.get_origin()) + origin_offset)
-      new_panels.append(new_panel)
-    return new_panels
+    new_detector = copy.deepcopy(old_detector)
+
+    if len(new_detector) > 1 and len(new_detector.hierarchy()) > 1:
+      h = new_detector.hierarchy()
+      h.set_local_frame(fast_axis=h.get_fast_axis(),
+                        slow_axis=h.get_slow_axis(),
+                        origin=matrix.col(h.get_origin()) + origin_offset)
+    else:
+      for panel in new_detector:
+        panel.set_local_frame(fast_axis=panel.get_fast_axis(),
+                              slow_axis=panel.get_slow_axis(),
+                              origin=matrix.col(panel.get_origin()) + origin_offset)
+
+    return new_detector
 
   def get_origin_offset_score(self,trial_origin_offset):
     trial_detector = dps_extended.get_new_detector(self.detector,trial_origin_offset)
-    import dxtbx.array_family.flex
-    from dxtbx.model import Detector
-    new_trial_detector = Detector(dxtbx.array_family.flex.panel(
-      trial_detector))
+
     reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
-      self.raw_spot_input, new_trial_detector, self.inv_wave, self.S0_vector, self.axis,
+      self.raw_spot_input, trial_detector, self.inv_wave, self.S0_vector, self.axis,
       self.panelID)
 
     return self.sum_score_detail(reciprocal_space_vectors)
@@ -187,7 +190,10 @@ class _(boost.python.injector, dps_extended):
       """Local scope: find the optimal origin-offset closest to the current overall detector position
          (local minimum, simple minimization)"""
       # construct two vectors that are perpendicular to the beam.  Gives a basis for refining beam
-      beamr0 = self.S0_vector.cross(self.axis).normalize()
+      if self.axis is None:
+        beamr0 = self.S0_vector.cross(matrix.col((1,0,0))).normalize()
+      else:
+        beamr0 = self.S0_vector.cross(self.axis).normalize()
       beamr1 = beamr0.cross(self.S0_vector).normalize()
       beamr2 = beamr1.cross(self.S0_vector).normalize()
 
@@ -247,11 +253,7 @@ class _(boost.python.injector, dps_extended):
 
         show_plot(widegrid = 2 * grid + 1, excursi = scores)
 
-      import dxtbx.array_family.flex
-      from dxtbx.model import Detector
-
-      return Detector(dxtbx.array_family.flex.panel(
-          dps_extended.get_new_detector(self.detector, trial_origin_offset)))
+      return dps_extended.get_new_detector(self.detector, trial_origin_offset)
 
   def get_basis_general(self):
     """

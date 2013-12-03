@@ -47,12 +47,12 @@ struct dps_extended: public rstbx::dps_core {
 af::shared< scitbx::vec3<double> > raw_spot_positions_mm_to_reciprocal_space_xyz(
   pointlist,
   dxtbx::model::Detector const&, double const&,
-  scitbx::vec3<double> const& , scitbx::vec3<double> const&
+  scitbx::vec3<double> const& , scitbx::vec3<double> const&, af::shared<int>
 );
 af::shared< scitbx::vec3<double> > raw_spot_positions_mm_to_reciprocal_space_xyz(
   pointlist,
   dxtbx::model::Detector const&, double const&,
-  scitbx::vec3<double> const& , scitbx::vec3<double> const&, af::shared<int>
+  scitbx::vec3<double> const& , af::shared<int>
 );
 
 } //namespace

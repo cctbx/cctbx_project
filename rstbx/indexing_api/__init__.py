@@ -52,17 +52,14 @@ class _(boost.python.injector, ext.dps_extended):
       ):
 
     if panelID is None:
-      from dxtbx.model import Detector
-      #detector_interface = Detector(detector)
-      detector_interface = detector
-      return raw_spot_positions_mm_to_reciprocal_space_xyz (
-        raw_spot_input, detector_interface, inverse_wave, beam, axis )
       panelID = flex.int(len(raw_spot_input),0)
 
-    from dxtbx_model_ext import Detector
-    detector_interface = Detector(detector)
-    return raw_spot_positions_mm_to_reciprocal_space_xyz (
-        raw_spot_input, detector_interface, inverse_wave, beam, axis, panelID )
+    if axis is None:
+      return raw_spot_positions_mm_to_reciprocal_space_xyz (
+          raw_spot_input, detector, inverse_wave, beam, panelID )
+    else:
+      return raw_spot_positions_mm_to_reciprocal_space_xyz (
+          raw_spot_input, detector, inverse_wave, beam, axis, panelID )
 
     """Assumptions:
     1) the raw_spot_input is in the same units of measure as the origin vector (mm).

@@ -101,35 +101,6 @@ af::shared< scitbx::vec3<double> >
 rstbx::indexing_api::raw_spot_positions_mm_to_reciprocal_space_xyz(
   pointlist raw_spot_input,
   dxtbx::model::Detector const& detector, double const& inverse_wave,
-  scitbx::vec3<double> const& S0_vector, scitbx::vec3<double> const& axis
-){
-
-  // it is not clear how we will plug in to this function if and when
-  // we need to use a derived detector class with a different implemented
-  // behavior of get_lab_coord().
-
-  af::shared< scitbx::vec3<double> > reciprocal_space_vectors;
-  // with a single panel only, all the convenience functions work for us
-  for (int n = 0; n != raw_spot_input.size(); ++n) {
-    // tile surface to laboratory transformation
-    scitbx::vec2<double> raw_spot(raw_spot_input[n][0],raw_spot_input[n][1]);
-    scitbx::vec3<double> lab_direct = detector[0].get_lab_coord(raw_spot);
-
-    // laboratory direct to reciprocal space xyz transformation
-    scitbx::vec3<double> lab_recip = (lab_direct.normalize() * inverse_wave) - S0_vector;
-
-      // raw_spot_input[n][2] MUST be given in degrees.
-    reciprocal_space_vectors.push_back( lab_recip.rotate_around_origin(
-      axis, -raw_spot_input[n][2] * scitbx::constants::pi_180) );
-  }
-  return reciprocal_space_vectors;
-
-}
-
-af::shared< scitbx::vec3<double> >
-rstbx::indexing_api::raw_spot_positions_mm_to_reciprocal_space_xyz(
-  pointlist raw_spot_input,
-  dxtbx::model::Detector const& detector, double const& inverse_wave,
   scitbx::vec3<double> const& S0_vector, scitbx::vec3<double> const& axis, af::shared<int> panelID
 ){
 
@@ -152,6 +123,36 @@ rstbx::indexing_api::raw_spot_positions_mm_to_reciprocal_space_xyz(
       // raw_spot_input[n][2] MUST be given in degrees.
     reciprocal_space_vectors.push_back( lab_recip.rotate_around_origin(
       axis, -raw_spot_input[n][2] * scitbx::constants::pi_180) );
+  }
+  return reciprocal_space_vectors;
+
+}
+
+af::shared< scitbx::vec3<double> >
+rstbx::indexing_api::raw_spot_positions_mm_to_reciprocal_space_xyz(
+  pointlist raw_spot_input,
+  dxtbx::model::Detector const& detector, double const& inverse_wave,
+  scitbx::vec3<double> const& S0_vector, af::shared<int> panelID
+){
+
+  // it is not clear how we will plug in to this function if and when
+  // we need to use a derived detector class with a different implemented
+  // behavior of get_lab_coord().
+
+  af::shared< scitbx::vec3<double> > reciprocal_space_vectors;
+  // with a single panel only, all the convenience functions work for us
+  for (int n = 0; n != raw_spot_input.size(); ++n) {
+    int pid = panelID[n];
+
+    // tile surface to laboratory transformation
+    scitbx::vec2<double> raw_spot(raw_spot_input[n][0],raw_spot_input[n][1]);
+    scitbx::vec3<double> lab_direct = detector[pid].get_lab_coord(raw_spot);
+
+    // laboratory direct to reciprocal space xyz transformation
+    scitbx::vec3<double> lab_recip = (lab_direct.normalize() * inverse_wave) - S0_vector;
+
+      // raw_spot_input[n][2] MUST be given in degrees.
+    reciprocal_space_vectors.push_back(lab_recip);
   }
   return reciprocal_space_vectors;
 
