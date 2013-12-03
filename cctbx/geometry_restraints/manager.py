@@ -9,6 +9,7 @@ from libtbx import introspection
 from libtbx import adopt_init_args
 from libtbx import dict_with_default_0
 from libtbx.utils import Sorry
+
 import sys, math
 
 class manager(object):
@@ -56,6 +57,7 @@ class manager(object):
     self._sites_cart_used_for_pair_proxies = None
     self._site_lables = None
     self._hd_sel = None
+    self._proxies_info_nonbonded = None
     self._flags_bond_used_for_pair_proxies = False
     self._flags_nonbonded_used_for_pair_proxies = False
     self._pair_proxies = None
@@ -1061,10 +1063,10 @@ class manager(object):
       print >> f
 
   def get_nonbonded_clashscore(self,
-                               sites_cart       = None,
-                               site_labels      = None,
-                               hd_sel           = None,
-                               full_connectivty_table = None):
+                               sites_cart,
+                               site_labels,
+                               hd_sel,
+                               full_connectivty_table):
     '''
     Construct nonbonded_clash_info, the non-bonded clashss lists and scores
 
@@ -1074,34 +1076,37 @@ class manager(object):
     hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is a Hydrogen or not
     full_connectivty_table: full_connectivty_table[i] is a dictinary constaining a
                             list of all atoms connected to atom i
+    
+    Return:
+       self.nonbonded_clash_info
 
     Note:
     Be aware to the parameters:
        assume_hydrogens_all_missing=False,
        hard_minimum_nonbonded_distance=0.0
-
+       
     The defult values of these are True and 0.001, which will alter
     the size of the vdw bonds and the clashes that being counted
+    
+    Getting input variables from xray_structure   
+    xrs = processed_pdb_file.xray_structure()  
+    hd_sel = xrs.hd_selection()
+    sites_cart = xrs.sites_cart()
+    site_labels = xrs.scatterers().extract_labels()
+    
+    table_bonds = self.shell_sym_tables[0]
+    full_connectivty_table = table_bonds.full_simple_connectivity()
     '''
-    if site_labels == None and self._site_lables==None:
-      raise Sorry('insufficient information: provide log info when processing the pdb data')
-
-    if sites_cart==None:
-      sites_cart = self._sites_cart_used_for_pair_proxies
-    if site_labels==None:
-      site_labels = self._site_lables
-    if hd_sel==None:
-      hd_sel = self._hd_sel
-    if full_connectivty_table==None:
-      table_bonds = self.shell_sym_tables[0]
-      full_connectivty_table = table_bonds.full_simple_connectivity()
 
     # test that changes during refinment are reflected in both sites_cart and lables
     # test how they corespond to the full_connectivty_table
-
     assert len(sites_cart) == len(site_labels)
+    
+    pair_proxies = self.pair_proxies(
+          sites_cart=sites_cart,
+          site_labels=site_labels)
 
-    proxies_info_nonbonded = self._pair_proxies.nonbonded_proxies.get_sorted(
+    proxies_info_nonbonded = pair_proxies.nonbonded_proxies.get_sorted(
       by_value="delta",
       sites_cart=sites_cart,
       site_labels=site_labels)
@@ -1111,11 +1116,12 @@ class manager(object):
     else:
       nonbonded_list = []
 
-    self.nonbonded_clash_info = nonbonded_clashscore(
+    nonbonded_clash_info = nonbonded_clashscore(
       nonbonded_list=nonbonded_list,
       hd_sel=hd_sel,
       full_connectivty_table=full_connectivty_table,
       sites_cart=sites_cart)
+    return nonbonded_clash_info
 
 def construct_non_crystallographic_conserving_bonds_and_angles(
   sites_cart,
