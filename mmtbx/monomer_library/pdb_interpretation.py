@@ -4809,7 +4809,7 @@ class process(object):
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
-        show_nonbonded_clashscore=False,
+        show_nonbonded_clashscore=True,
         hard_minimum_bond_distance_model=0.001,
         hard_minimum_nonbonded_distance=0.001,
         external_energy_function=None,
@@ -4834,7 +4834,7 @@ class process(object):
             ramachandran_atom_selection=ramachandran_atom_selection,
             den_manager=den_manager,
             reference_manager=reference_manager,
-            log=self.log)
+            log=self.log)   
       if (self.log is not None):
         print >> self.log, \
           "  Time building geometry restraints manager: %.2f seconds" % (
@@ -4848,11 +4848,10 @@ class process(object):
         print >> self.log
         flush_log(self.log)
         site_labels = [atom.id_str()
-          for atom in self.all_chain_proxies.pdb_atoms]
+                       for atom in self.all_chain_proxies.pdb_atoms]
         pair_proxies = self._geometry_restraints_manager.pair_proxies(
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
           site_labels=site_labels)
-        self._geometry_restraints_manager._site_lables = site_labels
         params = self.all_chain_proxies.params
         pair_proxies.bond_proxies.show_histogram_of_model_distances(
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
@@ -4964,16 +4963,21 @@ class process(object):
         if not self.for_dihedral_reference:
           self.clash_guard(hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance)
 
-        # get the value for calculation of nonbonded clashscore
-        xrs = self.xray_structure()
-        self._geometry_restraints_manager._hd_sel = xrs.hd_selection()
-        self._geometry_restraints_manager._site_lables = site_labels
+        
         # Display nonbonded clashscore
         if show_nonbonded_clashscore:
-          nb_clash_info = self.geometry_restraints_manager()
-          nb_clash_info.get_nonbonded_clashscore()
-          nb_clashscore_without_sym_op = nb_clash_info.nonbonded_clash_info.nb_clashscore_without_sym_op
-          nb_clash_due_to_sym_op = nb_clash_info.nonbonded_clash_info.nb_clashscore_due_to_sym_op
+          grm = self.geometry_restraints_manager()
+          xrs = self.xray_structure()
+          sites_cart = xrs.sites_cart()
+          hd_sel = xrs.hd_selection()
+          table_bonds = grm.shell_sym_tables[0]
+          full_connectivty_table = table_bonds.full_simple_connectivity()
+          nb_clash_info = grm.get_nonbonded_clashscore(sites_cart=sites_cart,
+                                                       site_labels=site_labels,
+                                                       hd_sel=hd_sel,
+                                                       full_connectivty_table=full_connectivty_table)
+          nb_clashscore_without_sym_op = nb_clash_info.nb_clashscore_without_sym_op
+          nb_clash_due_to_sym_op = nb_clash_info.nb_clashscore_due_to_sym_op
           print >> self.log, '\n  clashscore, without clashes due to symmetry operation: {0:.2f}'.format(
             nb_clashscore_without_sym_op)
           print >> self.log, '  clashscore, only due to symmetry operation: {0:.2f}\n'.format(
