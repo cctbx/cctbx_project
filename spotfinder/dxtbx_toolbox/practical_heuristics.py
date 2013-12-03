@@ -37,8 +37,12 @@ class heuristics_base(object):
     data = img.get_raw_data()
     scan = img.get_scan()
     print scan
-    print scan.get_oscillation()
-    RR = scan.get_oscillation_range()
+    if scan is None:
+      print "No scan"
+      RR = (0,1)
+    else:
+      print scan.get_oscillation()
+      RR = scan.get_oscillation_range()
 
     from spotfinder.dxtbx_toolbox import Distl
 
