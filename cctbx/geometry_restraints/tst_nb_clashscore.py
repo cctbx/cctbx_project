@@ -6,8 +6,9 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from scitbx.array_family import flex
-import libtbx
+import libtbx.load_env
 import unittest
+import os.path
 
 #from cctbx.array_family import flex
 #from cctbx import geometry_restraints
@@ -498,8 +499,10 @@ class test_nb_clashscore(unittest.TestCase):
 
 
 if (__name__ == "__main__"):
-  try:
-    tmp = libtbx.env.find_dist_path(module_name='chem_data')
+  chem_data = libtbx.env.find_in_repositories(
+    relative_path="chem_data/geostd",
+    test=os.path.isdir)
+  if (chem_data is None) :
+    print "chem_data not present, skipping"
+  else :
     unittest.main()
-  except RuntimeError:
-    pass
