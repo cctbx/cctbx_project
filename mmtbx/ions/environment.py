@@ -36,12 +36,13 @@ chem_carboxy, \
 METAL_SERVER = server()
 
 class ScatteringEnvironment (object):
-  def __init__(self, i_seq, manager, fo_map):
+  def __init__(self, i_seq, manager, fo_map, fofc_map):
     atom = manager.pdb_atoms[i_seq]
     self.d_min = manager.fmodel.f_obs().d_min()
     self.wavelength = manager.wavelength
     self.fp, self.fpp = manager.get_fp(i_seq), manager.get_fpp(i_seq)
-    self.electron_density = _fit_gaussian(manager, atom.xyz, fo_map)
+    self.fo_density = _fit_gaussian(manager, atom.xyz, fo_map)
+    self.fofc_density = _fit_gaussian(manager, atom.xyz, fofc_map)
     self.b_iso = manager.get_b_iso(i_seq)
     self.occ = atom.occ
 
@@ -82,9 +83,9 @@ class ChemicalEnvironment (object):
 
     Parameters
     ----------
-    element: str
+    element : str
         The element identity to calculate valences for.
-    charge: int, optional
+    charge : int, optional
         The charge to calculate valences for.
 
     Returns
@@ -116,10 +117,10 @@ class ChemicalEnvironment (object):
 
     Parameters
     ----------
-    contacts: list of mmtbx.ions.atom_contact
+    contacts : list of mmtbx.ions.atom_contact
         The contact objects to examine the chemical environments of. Generally
         created by Manager.find_nearby_atoms.
-    manager: mmtbx.ions.Manager
+    manager : mmtbx.ions.Manager
         The ions manager that created contact. Used for auxillary information
         such as bond connectivity.
 
@@ -132,7 +133,7 @@ class ChemicalEnvironment (object):
       """
       Parameters
       ----------
-      seq: int
+      seq : int
           The atom.i_seq to find the neighbors of.
 
       Returns
@@ -234,13 +235,13 @@ def _get_points_within_radius(point, radius, radius_step = 0.2,
 
   Parameters
   ----------
-  point: tuple of float, float, float
+  point : tuple of float, float, float
       X, Y, Z, coordinates to center the sampling around.
-  radius: float
+  radius : float
       Max radius around the center to sample.
-  radius_step: float, optional
+  radius_step : float, optional
       Steps along the radius to use when sampling.
-  angle_step: float, optional
+  angle_step : float, optional
       Steps around each radii distance to use when sampling. Amount is in
       radians.
 
@@ -274,12 +275,12 @@ def _fit_gaussian(manager, site_cart, real_map, radius = 1.6):
 
   Parameters
   ----------
-  manager: mmtbx.ions.Manager
-  site_cart: tuple of float, float, float
-      The site's cartesian coordinates to sample the density around
-  real_map: ...
+  manager : mmtbx.ions.Manager
+  site_cart : tuple of float, float, float
+      The site's cartesian coordinates to sample the density around.
+  real_map : scitbx.array_family.flex
       Real space map of the electron density in the unit cell.
-  radius: float, optional
+  radius : float, optional
       The max radius to use for sampling.
 
   Returns

@@ -155,8 +155,8 @@ def ion_electron_density_vector(scatter_env):
       A vector containing quantitative properties for classification.
   """
   return np.array([
-    scatter_env.electron_density[0],
-    scatter_env.electron_density[1],
+    scatter_env.fo_density[0],
+    scatter_env.fo_density[1],
     ], dtype = float)
 
 def ion_b_factor_occ_vector(scatter_env, elements = None):
