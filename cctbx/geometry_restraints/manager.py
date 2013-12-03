@@ -1319,12 +1319,13 @@ class nonbonded_clashscore(object):
 
     Returns:
     clash_vec: a unique key for a clash. for example: '0.144,0.323,1.776,0.154,0.327,1.786'
-    key1,key2: are the atoms keys. for example ' HA  LEU A  38 ' or ' CB ASN A  55 sym.op.'
+    key1,key2: are the atoms keys. for example ' HA  LEU A  38 ::120::' or ' CB ASN A  55 ::52::sym.op.'
     '''
     # get atoms keys
     record = list(record)
-    key1 = record[0][0][5:-1] + record[5]
-    key2 = record[0][1][5:-1] + record[5]
+    key = '{0}::{1}::{2}'
+    key1 = key.format(record[0][0][5:-1],record[1],record[5])
+    key2 = key.format(record[0][1][5:-1],record[2],record[5])
     # get coordinates
     atomi_xyz = self.sites_cart[record[1]]
     atomj_xyz = self.sites_cart[record[2]]
@@ -1385,6 +1386,7 @@ class nonbonded_clashscore(object):
     except ZeroDivisionError:
       cos_angle = 1
     return cos_angle
+  
 
   def clashscore_clash_list(self):
     '''(self) -> [list,list]
@@ -1418,11 +1420,15 @@ class nonbonded_clashscore(object):
       symop = rec[5]
       delta = model - vdw
       # check for clash
-      if (delta < -0.41):
+      if (delta < -0.41): 
         # Check of 1-5 interaction
         if not self.is_1_5_interaction(i_seq, j_seq):
           clash_vec,key1,key2 = self.get_clash_keys(rec)
-          clash_key = '::'.join([key1,key2,symop])
+          # clash_key is a string a string that uniquly identify each clash
+          if i_seq>j_seq:
+            clash_key = '::'.join([key1,key2,symop,str(j_seq),str(i_seq)])
+          else:
+            clash_key = '::'.join([key1,key2,symop,str(i_seq),str(j_seq)])
           if clash_key not in clashes_dict:
             # record new clash
             clashes_dict[clash_key] = [key1,key2,rec]
@@ -1443,11 +1449,16 @@ class nonbonded_clashscore(object):
             u = map(float,vec_i.split(','))
             v = map(float,vec_j.split(','))
             cos_angle = 0
-            if not [0.0,0.0,0.0] in [u,v]:
-              # Do not calculate cos_angle when atoms are overlapping
-              if clashing_atoms_dict[key][i][3] == '':
-                # ignore clashes that are cause by symmetry operation
-                cos_angle = self.cos_vec(u,v)
+            # test inline only if the two atoms, clashing with the
+            # common atom, are connected
+            clashing_atom_1 = int(clashing_atoms_dict[key][i][0].split('::')[1])
+            clashing_atom_2 = int(clashing_atoms_dict[key][j][0].split('::')[1])
+            if clashing_atom_1 in self.full_connectivty_table[clashing_atom_2]:
+              if not [0.0,0.0,0.0] in [u,v]:
+                # Do not calculate cos_angle when atoms are overlapping
+                if clashing_atoms_dict[key][i][3] == '':
+                  # ignore clashes that are cause by symmetry operation
+                  cos_angle = self.cos_vec(u,v)
             # atoms consider to be inline if cosine of the angle between vectors > 0.866
             if cos_angle > 0.867 and (vec_i != vec_j):
               # for inline clashes keep the closer two(compare models)
