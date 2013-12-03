@@ -9,7 +9,6 @@ from libtbx import introspection
 from libtbx import adopt_init_args
 from libtbx import dict_with_default_0
 from libtbx.utils import Sorry
-
 import sys, math
 
 class manager(object):
@@ -55,9 +54,6 @@ class manager(object):
 
   def reset_internals(self):
     self._sites_cart_used_for_pair_proxies = None
-    self._site_lables = None
-    self._hd_sel = None
-    self._proxies_info_nonbonded = None
     self._flags_bond_used_for_pair_proxies = False
     self._flags_nonbonded_used_for_pair_proxies = False
     self._pair_proxies = None
