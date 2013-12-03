@@ -5,8 +5,11 @@ from cStringIO import StringIO
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-from scitbx.array_family import flex
+from cctbx.array_family import flex
+from cctbx import xray
+#from mmtbx import utils
 import libtbx.load_env
+import mmtbx.model
 import unittest
 import os.path
 
@@ -27,6 +30,10 @@ Test non-bonded clashscore
 '''
 
 # Raw data for the test cases
+
+mon_lib_srv = monomer_library.server.server()
+ener_lib = monomer_library.server.ener_lib()
+
 raw_records0 = """\
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
 ATOM   1271  N   ILE A  83      31.347   4.310 -43.960  1.00  9.97           N
@@ -278,13 +285,29 @@ ATOM   1957  HG  SER B 124      21.258  20.773 -49.552  1.00 27.42           H
 '''.splitlines()
 
 raw_records3="""\n
-CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 21 21 21    4
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
 ATOM      1  N   LYS     1       5.000   5.000   5.000  1.00 20.00           N
 ATOM      1  N   LYS     2       6.000   5.000   5.000  1.00 20.00           N
 ATOM      1  N   LYS     4       5.000   5.500   5.500  1.00 20.00           N
 TER
 END
 """
+
+raw_records4='''\n
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+SCALE1      0.050000  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.050000  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.050000        0.00000
+ATOM      1  N   LYS     1       5.000   5.000   5.000  1.00 20.00           N
+ATOM      2  N   LYS     2       6.000   5.000   5.000  1.00 20.00           N
+ATOM      3  N   LYS     4       5.000   5.500   5.500  1.00 20.00           N
+TER
+HETATM    4  O   HOH     1       5.500   5.000   5.000  1.00 10.00           O
+HETATM    5  O   HOH     2       6.500   5.000   5.000  1.00 10.00           O
+HETATM    6  O   HOH     3       5.500   5.500   5.500  1.00 10.00           O
+TER
+END'''
+
 
 class test_nb_clashscore(unittest.TestCase):
 
@@ -405,8 +428,6 @@ class test_nb_clashscore(unittest.TestCase):
   def test_atom_selection(self):
     '''Test that working correctly when atom is removed'''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
-    mon_lib_srv = monomer_library.server.server()
-    ener_lib = monomer_library.server.ener_lib()
     processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,
@@ -439,7 +460,75 @@ class test_nb_clashscore(unittest.TestCase):
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
 
-
+  def test_labels_and_addition_scatterers(self):
+    '''
+    Test clashes when adding scatterers
+    Test water scatterers with and without labels
+    '''
+    outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv    = mon_lib_srv,
+      ener_lib       = ener_lib,
+      raw_records    = raw_records3,
+      force_symmetry = True)
+    geometry = processed_pdb_file.geometry_restraints_manager(
+      show_energies      = False,
+      plain_pairs_radius = 5.0)
+    xrs = processed_pdb_file.xray_structure()
+    nb_clashscore = geometry.get_nonbonded_clashscore(
+      sites_cart  = xrs.sites_cart(),
+      site_labels = xrs.scatterers().extract_labels(),
+      hd_sel      = xrs.hd_selection())
+    expected = 1000
+    result = nb_clashscore.nb_clashscore_all_clashes
+    msg = outstring.format('Selection related clashscore', expected, result)
+    self.assertEqual(result, expected, msg=msg)
+    # Add water scatterers
+    restraints_manager = mmtbx.restraints.manager(geometry = geometry,
+      normalization = False)
+    mol = mmtbx.model.manager(
+      restraints_manager = restraints_manager,
+      xray_structure = xrs,
+      pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+    #
+    new_scatterers = flex.xray_scatterer(
+      xrs.scatterers().size(),
+      xray.scatterer(occupancy = 1, b = 10, scattering_type = "O"))
+    new_sites_frac = xrs.unit_cell().fractionalize(xrs.sites_cart()+[0.5,0,0])
+    new_scatterers.set_sites(new_sites_frac)
+    new_xrs = xray.structure(
+      special_position_settings = xrs,
+      scatterers                = new_scatterers)
+    mol.add_solvent(
+      solvent_xray_structure = new_xrs,
+      refine_occupancies     = False,
+      refine_adp             = "isotropic")
+    nb_clashscore = mol.restraints_manager.geometry.get_nonbonded_clashscore(
+      sites_cart  = mol.xray_structure.sites_cart(),
+      site_labels = mol.xray_structure.scatterers().extract_labels(),
+      hd_sel      = mol.xray_structure.hd_selection())
+    expected = 2500
+    result = nb_clashscore.nb_clashscore_all_clashes
+    msg = outstring.format('Selection related clashscore', expected, result)
+    self.assertEqual(result, expected, msg=msg)
+    # Test the modified pdb data with scatterers lables
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv    = mon_lib_srv,
+      ener_lib       = ener_lib,
+      raw_records    = raw_records4,
+      force_symmetry = True)
+    geometry = processed_pdb_file.geometry_restraints_manager(
+      show_energies      = False,
+      plain_pairs_radius = 5.0)
+    xrs = processed_pdb_file.xray_structure()
+    nb_clashscore = geometry.get_nonbonded_clashscore(
+      sites_cart  = xrs.sites_cart(),
+      site_labels = xrs.scatterers().extract_labels(),
+      hd_sel      = xrs.hd_selection())
+    expected = 2500
+    result = nb_clashscore.nb_clashscore_all_clashes
+    msg = outstring.format('Selection related clashscore', expected, result)
+    self.assertEqual(result, expected, msg=msg)
 
   def process_raw_records(self,raw_record_number):
     '''(int) -> geomerty_restraints object
@@ -454,8 +543,6 @@ class test_nb_clashscore(unittest.TestCase):
     else: print ('Wrong raw_records number')
     # create a geometry_restraints_manager (grm)
     log = StringIO()
-    mon_lib_srv = mmtbx.monomer_library.server.server()
-    ener_lib = mmtbx.monomer_library.server.ener_lib()
     # process pdb data
     pdb = monomer_library.pdb_interpretation.process(
       file_name=None,
