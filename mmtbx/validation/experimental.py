@@ -1,6 +1,7 @@
 
 from __future__ import division
 from mmtbx.validation import residue, atom, validation
+from libtbx.str_utils import format_value
 from libtbx import slots_getstate_setstate
 from libtbx.utils import null_out
 import sys
@@ -47,11 +48,12 @@ class data_statistics (slots_getstate_setstate) :
     "n_refl_outer",
   ]
   def __init__ (self, fmodel, n_bins=10) :
+    # FIXME n_bins should be automatic by default
     f_obs = fmodel.f_obs().deep_copy()
-    f_obs.setup_binner(n_bins=10)
+    f_obs.setup_binner(n_bins=n_bins)
     self.d_max = f_obs.d_max_min()[0]
     self.d_min = f_obs.d_min()
-    self.info = fmodel.info()
+    self.info = fmodel.info(n_bins=n_bins)
     self.n_refl = f_obs.indices().size()
     self.r_free = self.info.r_free
     self.r_work = self.info.r_work
@@ -83,8 +85,10 @@ class data_statistics (slots_getstate_setstate) :
       self.info.completeness_in_range*100, self.completeness_outer*100)
     print >> out, "%sR-work                = %8.4f (%.4f)" % (prefix,
       self.r_work, self.r_work_outer)
-    print >> out, "%sR-free                = %8.4f (%.4f)" % (prefix,
-      self.r_free, self.r_free_outer)
+    print >> out, "%sR-free                = %8.4f (%s)" % (prefix,
+      self.r_free, format_value("%.4f", self.r_free_outer))
+    self.info.show_rwork_rfree_number_completeness(prefix=prefix, out=out,
+      title="By resolution bin:")
 
 class real_space (validation) :
   """
