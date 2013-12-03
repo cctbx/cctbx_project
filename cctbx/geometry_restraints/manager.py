@@ -1065,8 +1065,7 @@ class manager(object):
   def get_nonbonded_clashscore(self,
                                sites_cart,
                                site_labels,
-                               hd_sel,
-                               full_connectivty_table):
+                               hd_sel):
     '''
     Construct nonbonded_clash_info, the non-bonded clashss lists and scores
 
@@ -1074,9 +1073,7 @@ class manager(object):
     sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
     site_labels: a list of lables such as " HA  LEU A  38 ", for each atom
     hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is a Hydrogen or not
-    full_connectivty_table: full_connectivty_table[i] is a dictinary constaining a
-                            list of all atoms connected to atom i
-    
+
     Return:
        self.nonbonded_clash_info
 
@@ -1084,24 +1081,21 @@ class manager(object):
     Be aware to the parameters:
        assume_hydrogens_all_missing=False,
        hard_minimum_nonbonded_distance=0.0
-       
+
     The defult values of these are True and 0.001, which will alter
     the size of the vdw bonds and the clashes that being counted
-    
-    Getting input variables from xray_structure   
-    xrs = processed_pdb_file.xray_structure()  
+
+    Getting input variables from xray_structure
+    xrs = processed_pdb_file.xray_structure()
     hd_sel = xrs.hd_selection()
     sites_cart = xrs.sites_cart()
     site_labels = xrs.scatterers().extract_labels()
-    
-    table_bonds = self.shell_sym_tables[0]
-    full_connectivty_table = table_bonds.full_simple_connectivity()
     '''
 
     # test that changes during refinment are reflected in both sites_cart and lables
     # test how they corespond to the full_connectivty_table
     assert len(sites_cart) == len(site_labels)
-    
+
     pair_proxies = self.pair_proxies(
           sites_cart=sites_cart,
           site_labels=site_labels)
@@ -1119,7 +1113,7 @@ class manager(object):
     nonbonded_clash_info = nonbonded_clashscore(
       nonbonded_list=nonbonded_list,
       hd_sel=hd_sel,
-      full_connectivty_table=full_connectivty_table,
+      full_connectivty_table=self.shell_sym_tables[0].full_simple_connectivity(),
       sites_cart=sites_cart)
     return nonbonded_clash_info
 
