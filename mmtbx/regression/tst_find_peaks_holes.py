@@ -31,6 +31,12 @@ def exercise () :
   peaks_holes.get_summary().show(out=out3)
   lines = out3.getvalue().splitlines()
   assert ("""  anomalous > 3:                      0""" in lines)
+  out3 = StringIO()
+  peaks_holes = find_peaks_holes.run(
+    args=[pdb_file, mtz_file, "include_peaks_near_model=True",],
+    out=out3)
+  lines = out3.getvalue().splitlines()
+  assert ("""  mFo-DFc >  9:                       1""" in lines)
   os.remove(mtz_file)
   os.remove(pdb_file)
 
