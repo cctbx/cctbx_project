@@ -270,7 +270,7 @@ class atom_info (atom_base) :
   """
   __slots__ = atom_base.__atom_slots__ + ["symop"]
 
-  def id_str (self, ignore_altloc=True) :
+  def id_str (self, ignore_altloc=False) :
     base = "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
     if (not ignore_altloc) :
       base += "%1s" % self.altloc
