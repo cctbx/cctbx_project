@@ -30,6 +30,14 @@ map_cutoff = 3.0
 anom_map_cutoff = 3.0
   .type = float
   .short_caption = Anomalous map cutoff (sigma)
+include_peaks_near_model = False
+  .type = bool
+  .short_caption = Don't filter peaks by distance to model
+  .help = By default, the program will only display peaks that map to points \
+    outside of the current model, ignoring those that overlap with atoms.  \
+    Setting this option to True is equivalent to specifying a distance \
+    cutoff of zero for the filtering step.
+  .style = OnChange:toggle_min_model_peak_dist
 wavelength = None
   .type = float
   .help = Optional parameter, if defined this will cause all atoms to be \
@@ -282,6 +290,7 @@ def find_peaks_holes (
     filter_peaks_by_2fofc=None,
     use_phaser_if_available=True,
     return_llg_map=False,
+    include_peaks_near_model=False,
     out=None) :
   """
   Find peaks and holes in mFo-DFc map, plus flag solvent atoms with
@@ -292,6 +301,8 @@ def find_peaks_holes (
   if (out is None) : out = sys.stdout
   if (params is None) :
     params = master_phil.fetch().extract().find_peaks
+  if (include_peaks_near_model) :
+    params.map_next_to_model.min_model_peak_dist = 0
   pdb_atoms = pdb_hierarchy.atoms()
   unit_cell = fmodel.xray_structure.unit_cell()
   from mmtbx import find_peaks
@@ -487,12 +498,13 @@ mmtbx.find_peaks_holes - difference map analysis
   result, llg_map = find_peaks_holes(
     fmodel=fmodel,
     pdb_hierarchy=cmdline.pdb_hierarchy,
-    params=cmdline.params.find_peaks,
-    map_cutoff=cmdline.params.map_cutoff,
-    anom_map_cutoff=cmdline.params.anom_map_cutoff,
-    filter_peaks_by_2fofc=cmdline.params.filter_peaks_by_2fofc,
+    params=params.find_peaks,
+    map_cutoff=params.map_cutoff,
+    anom_map_cutoff=params.anom_map_cutoff,
+    filter_peaks_by_2fofc=params.filter_peaks_by_2fofc,
     use_phaser_if_available=True,
     return_llg_map=True,
+    include_peaks_near_model=params.include_peaks_near_model,
     out=out)
   prefix = cmdline.params.output_file_prefix
   if (cmdline.params.write_pdb) :
