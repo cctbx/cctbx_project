@@ -312,10 +312,12 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
     show(log=log, results=results, params=params, detail=detail)
   return results
 
-def show(log, results, params, detail):
+def show(log, results, detail, params=None, map_1_name=None, map_2_name=None):
+  assert params is not None or [map_1_name,map_2_name].count(None)==0
+  if([map_1_name,map_2_name].count(None)==2):
+    map_1_name,map_2_name = params.map_1.type, params.map_2.type
   print >> log
-  print >> log, "Rho1 = %s, Rho2 = %s"%(params.map_1.type,
-    params.map_2.type)
+  print >> log, "Rho1 = %s, Rho2 = %s"%(map_1_name, map_2_name)
   print >> log
   if(detail == "atom"):
     print >> log, " <----id string---->  occ     ADP      CC   Rho1   Rho2"
