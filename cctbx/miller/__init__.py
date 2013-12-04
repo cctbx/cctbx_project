@@ -3676,6 +3676,18 @@ class array(set):
       array_names=array_names,
       r_free_flags=r_free_flags)
 
+  def export_as_scalepack_unmerged (self,
+      file_object=None,
+      file_name=None,
+      batch_numbers=None,
+      spindle_flags=None) :
+    from iotbx.scalepack.no_merge_original_index import writer
+    writer(i_obs=self,
+      file_object=file_object,
+      file_name=file_name,
+      batch_numbers=batch_numbers,
+      spindle_flags=spindle_flags)
+
   def as_mtz_dataset(self,
         column_root_label,
         column_types=None,

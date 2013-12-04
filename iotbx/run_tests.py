@@ -74,6 +74,7 @@ tst_list = (
   "$D/xds/tests/tst_integrate_hkl.py",
   "$D/xds/tests/tst_spots_xds.py",
   "$D/regression/tst_pdb_as_cif.py",
+  "$D/scalepack/tst_no_merge_original_index.py",
   )
 
 def run():

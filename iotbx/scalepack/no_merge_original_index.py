@@ -9,24 +9,89 @@ import sys, os
 import boost.python
 scalepack_ext = boost.python.import_ext("iotbx_scalepack_ext")
 
+# scalepack manual, edition 5, page 132
+# no merge
+# original index
+# the output will also contain the original (not unique) hkl for each
+# reflection. This is designed for MAD/local scaling work. The
+# original index modifier only works with the default INCLUDE
+# NO PARTIALS. The output will consist of the original hkl, unique
+# hkl, batch number, a flag (0 = centric, 1 = I+, 2 = I-), another flag
+# (0 = hkl reflecting above the spindle, 1 = hkl reflecting below the
+# spindle), the asymmetric unit of the reflection, I (scaled, Lorentz
+# and Polarization corrected), and the s of I. The format is
+# (6i4, i6, 2i2, i3, 2f8.1).
+#
+#    orig. hkl   uniq. hkl    b# c s  a       I    sigI
+#    0   0   3   0   0   3    14 0 0  1    -1.8     1.3
+
+def writer (
+    i_obs,
+    file_object=None,
+    file_name=None,
+    batch_numbers=None,
+    spindle_flags=None) :
+  n_refl = len(i_obs.indices())
+  assert i_obs.anomalous_flag()
+  assert i_obs.is_xray_intensity_array() and i_obs.sigmas() is not None
+  # create substitute for batch number and spindle flag - these are impossible
+  # to determine from the input array
+  if (type(batch_numbers).__name__ == "array") :
+    assert batch_numbers.indices().all_eq(i_obs.indices())
+    batch_numbers = batch_numbers.data()
+  elif (batch_numbers is None) :
+    batch_numbers = flex.int(n_refl, 0)
+  if (type(spindle_flags).__name__ == "array") :
+    assert spindle_flags.indices().all_eq(i_obs.indices())
+    spindle_flags = spindle_flags.data()
+  elif (spindle_flags is None) :
+    spindle_flags = flex.int(n_refl, 0)
+  assert len(batch_numbers) == len(spindle_flags) == n_refl
+  assert ([file_object, file_name].count(None) == 1)
+  if (file_object is None) :
+    file_object = open(file_name, "w")
+  f = file_object
+  space_group = i_obs.space_group()
+  # generate array for the centric/I+/I- flag
+  centric_flags = i_obs.centric_flags().data()
+  i_obs_asu = i_obs.as_non_anomalous_array().map_to_asu()
+  i_obs_asu_anom = i_obs.map_to_asu()
+  friedel_mate_flags = ~(i_obs_asu.indices() == i_obs_asu_anom.indices())
+  centric_tags = flex.int(n_refl, 1)
+  centric_tags.set_selected(friedel_mate_flags.iselection(), 2)
+  centric_tags.set_selected(centric_flags.iselection(), 0)
+  # generate isym array
+  uniq_indices = i_obs.indices().deep_copy()
+  #uniq_indices_anom = i_obs.indices().deep_copy()
+  isym = flex.int(n_refl, 0)
+  miller.map_to_asu_isym(space_group.type(), False, uniq_indices, isym)
+  #miller.map_to_asu_isym(space_group.type(), False, uniq_indices_anom,
+  #  isym)
+  # write out symmetry operators
+  n_smx = space_group.n_smx()
+  f.write("%5d %s\n" % (n_smx, i_obs.space_group_info()))
+  for smx in space_group.smx() :
+    smx_rot = smx.as_int_array()[0:9]
+    smx_tra = smx.as_int_array()[9:]
+    for r in smx_rot :
+      f.write("%3d" % r)
+    f.write("\n")
+    for t in smx_tra :
+      f.write("%3d" % t)
+    f.write("\n")
+  # write out reflections
+  for i_refl, (h,k,l) in enumerate(i_obs.indices()) :
+    (h_asu, k_asu, l_asu) = uniq_indices[i_refl]
+    c_flag = centric_tags[i_refl]
+    asu_number = abs(isym[i_refl]) + 1 # XXX is this correct?
+    spindle_flag = spindle_flags[i_refl]
+    batch = batch_numbers[i_refl]
+    f.write("%4d%4d%4d%4d%4d%4d%6d%2d%2d%3d%8.1f%8.1f\n" %
+      (h, k, l, h_asu, k_asu, l_asu, batch, c_flag, spindle_flag,
+      asu_number, i_obs.data()[i_refl], i_obs.sigmas()[i_refl]))
+  file_object.close()
+
 class reader(object):
-
-  # scalepack manual, edition 5, page 132
-  # no merge
-  # original index
-  # the output will also contain the original (not unique) hkl for each
-  # reflection. This is designed for MAD/local scaling work. The
-  # original index modifier only works with the default INCLUDE
-  # NO PARTIALS. The output will consist of the original hkl, unique
-  # hkl, batch number, a flag (0 = centric, 1 = I+, 2 = I-), another flag
-  # (0 = hkl reflecting above the spindle, 1 = hkl reflecting below the
-  # spindle), the asymmetric unit of the reflection, I (scaled, Lorentz
-  # and Polarization corrected), and the s of I. The format is
-  # (6i4, i6, 2i2, i3, 2f8.1).
-  #
-  #    orig. hkl   uniq. hkl    b# c s  a       I    sigI
-  #    0   0   3   0   0   3    14 0 0  1    -1.8     1.3
-
   def __init__(self, file_name, header_only=False):
     self.file_name = os.path.normpath(file_name)
     f = open(file_name)
