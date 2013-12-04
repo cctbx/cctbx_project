@@ -45,6 +45,7 @@ class Test2:
     self.tst_flat()
     #self.tst_get_uninitialized_D_matrix()
     self.tst_get_valid_D_matrix()
+    self.tst_copy_and_reference()
 
   def tst_flat(self):
     ''' Test the flat hierarchy. '''
@@ -225,7 +226,47 @@ class Test2:
 
     print 'OK'
 
+  def tst_copy_and_reference(self):
+    from copy import deepcopy
 
+    # Get the detector hierarchy
+    root = self.detector.hierarchy()
+
+    # Get the panels in the hierarchy
+    p1 = root[0][0]
+    p2 = root[0][1]
+    p3 = root[1][0]
+    p4 = root[1][1]
+
+    # Check panels are the same
+    assert(p1.is_(self.detector[0]))
+    assert(p2.is_(self.detector[1]))
+    assert(p3.is_(self.detector[2]))
+    assert(p4.is_(self.detector[3]))
+
+    # Copy the detector
+    new_detector = deepcopy(self.detector)
+
+    # Check they're the same
+    assert(new_detector == self.detector)
+
+    # Add an offset to propagate
+    root = new_detector.hierarchy()
+    root.set_local_frame((1, 0, 0), (0, 1, 0), (0, 0, 10))
+
+    # Get the panels in the hierarchy
+    p1 = root[0][0]
+    p2 = root[0][1]
+    p3 = root[1][0]
+    p4 = root[1][1]
+
+    # Check panels are the same
+    assert(p1.is_(new_detector[0]))
+    assert(p2.is_(new_detector[1]))
+    assert(p3.is_(new_detector[2]))
+    assert(p4.is_(new_detector[3]))
+
+    print 'OK'
 
 if __name__ == '__main__':
   #test = Test()

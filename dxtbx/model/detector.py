@@ -221,23 +221,6 @@ class PanelGroupRoot(PanelGroup):
           queue.append(child)
 
 
-def detectorbase_getstate(self):
-  version = 1
-  return (version, self.__dict__, [p for p in self])
-
-def detectorbase_setstate(self, state):
-  assert(len(state) == 3)
-  assert(state[0] == 1)
-  self.__dict__.update(state[1])
-  for p in state[2]:
-    self.add_panel_by_pointer(p)
-
-
-DetectorBase.__getstate__ = detectorbase_getstate
-DetectorBase.__setstate__ = detectorbase_setstate
-DetectorBase.__getstate_manages_dict__ = 1
-
-
 class Detector(DetectorBase):
   ''' The detector class. '''
   def __init__(self, panel=None):
@@ -303,6 +286,29 @@ class Detector(DetectorBase):
       else:
         Detector._group_or_panel_from_dict(child, obj.add_group())
 
+  def __getstate__(self):
+    ''' Get the state for pickling. '''
+    version = 1
+    panels_list = []
+    for p1 in self:
+      p3 = p1
+      for p2 in self.hierarchy().iter_panels():
+        if p1.is_(p2):
+          p3 = p2
+          break
+      panels_list.append(p3)
+    return (version, self.__dict__, panels_list)
+
+  def __setstate__(self, state):
+    ''' Set the state from pickling. '''
+    assert(len(state) == 3)
+    assert(state[0] == 1)
+    self.__dict__.update(state[1])
+    for p in state[2]:
+      self.add_panel_by_pointer(p)
+
+  # Manage the object dictionary
+  __getstate_manages_dict__ = 1
 
 class detector_factory:
   '''A factory class for detector objects, which will encapsulate standard
