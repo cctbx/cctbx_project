@@ -306,6 +306,7 @@ class Detector(DetectorBase):
     self.__dict__.update(state[1])
     for p in state[2]:
       self.add_panel_by_pointer(p)
+    assert(all(p in self for p in self.hierarchy().iter_panels()))
 
   # Manage the object dictionary
   __getstate_manages_dict__ = 1
