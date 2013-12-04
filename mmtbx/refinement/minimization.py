@@ -28,7 +28,7 @@ class lbfgs(object):
                      iso_restraints           = None,
                      h_params                 = None,
                      qblib_params             = None,
-                     macro                    = None,
+                     macro_cycle              = None,
                      u_min                    = adptbx.b_as_u(-5.0),
                      u_max                    = adptbx.b_as_u(1000.0),
                      collect_monitor          = True):
@@ -47,7 +47,7 @@ class lbfgs(object):
 # QBLIB INSERT
     self.qblib_params = qblib_params
     if(self.qblib_params is not None and self.qblib_params.qblib):
-        self.macro = macro
+        self.macro = macro_cycle
         self.qblib_cycle_count = 0
         self.tmp_XYZ = None
         self.XYZ_diff_curr=None
@@ -163,14 +163,14 @@ class lbfgs(object):
                self.tmp_XYZ = self.model.xray_structure.sites_cart()
         else:
           self.tmp_XYZ = self.model.xray_structure.sites_cart()
-        if (self.macro != self.qblib_params.macro_cycle_to_skip):
+        if (self.macro_cycle != self.qblib_params.macro_cycle_to_skip):
           qblib_call = qb_refinement.QBblib_call_manager(
             hierarchy = self.model.pdb_hierarchy(),
             xray_structure=self.model.xray_structure,
             geometry_residuals = self.stereochemistry_residuals,
             qblib_params=self.qblib_params,
             diff_curr=self.XYZ_diff_curr,
-            macro=self.macro,
+            macro=self.macro_cycle,
             micro=self.qblib_cycle_count,
             )
           try:
