@@ -92,18 +92,21 @@ class _Format(FormatPYunspecified):
       WAVELENGTH=kwargs['WAVELENGTH'])
     self.detectorbase = _ImgDict(kwargs['DATA'], parameters)
 
+    # Attempt to apply tile translations only for detectors that
+    # support it.
     version_lookup = detector_format_version(
       kwargs['DETECTOR_ADDRESS'],
       kwargs['TIME_TUPLE'][0])
-    params = cxi_phil.cxi_versioned_extract(
-      "distl.detector_format_version=" + version_lookup)
+    if version_lookup is not None:
+      params = cxi_phil.cxi_versioned_extract(
+        "distl.detector_format_version=" + version_lookup)
 
-    # Necessary to keep the phil parameters for subsequent calls to
-    # get_tile_manager().
-    horizons_phil = params.persist.commands
+      # Necessary to keep the phil parameters for subsequent calls to
+      # get_tile_manager().
+      horizons_phil = params.persist.commands
 
-    self.detectorbase.translate_tiles(horizons_phil)
-    self.detectorbase.horizons_phil_cache = deepcopy(horizons_phil)
+      self.detectorbase.translate_tiles(horizons_phil)
+      self.detectorbase.horizons_phil_cache = deepcopy(horizons_phil)
 
     # From Format.setup().
     goniometer_instance = self._goniometer()
