@@ -1252,6 +1252,7 @@ iotbx/regression/tst_reindex.py -text
 iotbx/regression/tst_simple_map_coefficients.py -text
 iotbx/regression/tst_split_models.py -text
 iotbx/regression/tst_symmetry.py -text
+iotbx/scalepack/tst_no_merge_original_index.py -text
 iotbx/shelx/errors.py -text
 iotbx/shelx/fcf.py -text
 iotbx/shelx/fvar_encoding.py svneol=native#text/x-python
