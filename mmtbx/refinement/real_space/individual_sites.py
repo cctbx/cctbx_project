@@ -8,6 +8,39 @@ from mmtbx import utils
 from libtbx.test_utils import approx_equal
 from cctbx import crystal
 
+class easy(object):
+  """
+  Simplest interface to most automated and fast real-space refinement.
+  To keep it simple not all parameters are exposed.
+  """
+  def __init__(
+        self,
+        map_data,
+        xray_structure,
+        pdb_hierarchy,
+        geometry_restraints_manager,
+        selection=None,
+        log=None):
+    adopt_init_args(self, locals())
+    from mmtbx.refinement.real_space import weight
+    w = weight.run(
+      map_data                    = map_data,
+      xray_structure              = self.xray_structure,
+      pdb_hierarchy               = self.pdb_hierarchy,
+      geometry_restraints_manager = geometry_restraints_manager,
+      log                         = log)
+    if(selection is None):
+      selection = flex.bool(self.xray_structure.scatterers().size(), True)
+    refine_object = simple(
+      target_map = map_data,
+      selection  = selection,
+      geometry_restraints_manager = geometry_restraints_manager.geometry)
+    refine_object.refine(weight = w, xray_structure = self.xray_structure)
+    self.rmsd_bonds, self.rmsd_angles = refine_object.rmsds()
+    self.xray_structure=self.xray_structure.replace_sites_cart(
+      new_sites=refine_object.sites_cart(), selection=None)
+    self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+
 class simple(object):
   def __init__(
         self,
@@ -58,7 +91,7 @@ class simple(object):
           site_label       = None,
           tolerance        = 1)
     return sites_cart
-    
+
   def rmsds(self):
     b,a = None,None
     es = self.geometry_restraints_manager.energies_sites(
@@ -268,4 +301,3 @@ class box_refinement_manager(object):
       iselection, sites_cart_refined)
     self.xray_structure.set_sites_cart(sites_cart_moving)
     self.sites_cart = self.xray_structure.sites_cart()
-
