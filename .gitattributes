@@ -1856,6 +1856,7 @@ mmtbx/validation/cbetadev.py svneol=native#text/x-python
 mmtbx/validation/clashscore.py svneol=native#text/x-python
 mmtbx/validation/convert_lists.py -text
 mmtbx/validation/datasets.py -text
+mmtbx/validation/ensembles.py -text
 mmtbx/validation/experimental.py svneol=native#text/x-python
 mmtbx/validation/graphics.py svneol=native#text/x-python
 mmtbx/validation/ligands.py -text
