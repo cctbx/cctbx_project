@@ -356,3 +356,28 @@ def equally_spaced_points_on_vector(start, end, n=None, step=None):
     points.extend(dr * i + start)
   points.append(end)
   return points
+
+def five_number_summary(data):
+  """
+  Returns the Tukey five number summary (min, lower hinge, median, upper hinge,
+  max) for a sequence of observations. This function gives the same results
+  as R's fivenum function.
+  """
+  sorts = sorted(data)
+  n = len(sorts)
+  if n % 2:
+    med = sorts[n // 2]
+    lower = sorts[:((n // 2) + 1)]
+    upper = sorts[(n // 2):]
+  else:
+    med = (sorts[n//2] + sorts[n//2 - 1]) / 2
+    lower = sorts[:(n // 2)]
+    upper = sorts[(n // 2):]
+  n = len(lower)
+  if n % 2:
+    lhinge = lower[n // 2]
+    uhinge = upper[n // 2]
+  else:
+    lhinge = (lower[n//2] + lower[n//2 - 1]) / 2
+    uhinge = (upper[n//2] + upper[n//2 - 1]) / 2
+  return sorts[0], lhinge, med, uhinge, sorts[-1]
