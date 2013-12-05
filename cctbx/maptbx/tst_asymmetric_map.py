@@ -5,10 +5,11 @@ import boost.python
 ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_asymmetric_map_ext import *
 from cctbx.array_family import flex
+from cctbx import maptbx
 
-def run():
-  group = space_group_info("P21");
-  print "Group: ", group.type().lookup_symbol()
+def run_group(symbol):
+  group = space_group_info(symbol);
+  print "\n=="
   elements = ('C', 'N', 'O', 'H')*11
   struc = random_structure.xray_structure(
     space_group_info = group,
@@ -16,27 +17,43 @@ def run():
     general_positions_only = False,
     elements = elements,
     min_distance = 1.0)
-  print "Structure: ", struc
   struc.show_summary()
   d_min = 2.
   fc = struc.structure_factors(d_min=d_min).f_calc()
-  print "FC: ", fc
-  fc.show_summary()
-  fftmap = fc.fft_map()
-  print "Map: ", fftmap
-  fftmap.statistics().show_summary()
+  symmetry_flags = maptbx.use_space_group_symmetry
+  fftmap = fc.fft_map(symmetry_flags = symmetry_flags)
+  grid_size = fftmap.real_map().accessor().focus()
+
+  # grid_tags = maptbx.grid_tags(grid_size)
+  # grid_tags.build(fftmap.space_group_info().type(), fftmap.symmetry_flags())
+  # print "grid_tags:\n", dir(grid_tags)
+  # grid_tags.verify(real_map)
+
+  print "FFT grid_size = ", grid_size
   amap = asymmetric_map(struc.space_group().type(), fftmap.real_map())
-  print "Asu map: ", amap
   afc = amap.structure_factors(fc.indices())
-  print "ASU FC: ", afc
   afftmap = amap.map_for_fft()
-  print "ASU map for fft: ", afftmap
+  print "whole cell map size: ", afftmap.accessor().focus()
   adata = amap.data()
-  print "ASU data: ", adata
+  acc = adata.accessor()
+  print "Asu map size: ", acc.origin(), " ", acc.last(), " ", acc.focus(), \
+      " ", acc.all()
   df = flex.abs(afc - fc.data())
   r1 = flex.sum(df) / flex.sum(flex.abs(fc.data()))
   print "R1: ", r1
-  assert r1 < 1.e-4
+  assert r1 < 1.e-5
+
+  adata2 = adata.deep_copy()*2.
+  amap2 = asymmetric_map(struc.space_group().type(), adata2, grid_size)
+  afc2 = amap2.structure_factors(fc.indices())
+  df2 = flex.abs(afc2*.5-fc.data())
+  r12 = flex.sum(df2) / flex.sum(flex.abs(fc.data()))
+  print "R1 again: ", r12
+  assert r12 < 1.e-5
+
+def run():
+  for i in xrange(1,231):
+    run_group(i);
 
 if (__name__ == "__main__"):
   run()
