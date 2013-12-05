@@ -2,39 +2,41 @@ import libtbx.load_env
 import os
 Import("env_base", "env_etc")
 
+env = env_base.Clone(
+  SHLINKFLAGS=env_etc.shlinkflags,
+  LIBS=["iotbx_xplor", "cctbx_sgtbx_asu", "cctbx", "omptbx", env_etc.libm]
+)
+env_etc.include_registry.append(
+  env=env,
+  paths=env_etc.cctbx_common_includes)
+
+sources = [
+  "asymmetric_map.cpp"
+]
 if env_etc.cxx11_is_available:
-  env = env_base.Clone(
-    SHLINKFLAGS=env_etc.shlinkflags,
-    LIBS=["iotbx_xplor", "cctbx_sgtbx_asu", "cctbx", "omptbx", env_etc.libm]
-  )
-  env_etc.include_registry.append(
-    env=env,
-    paths=env_etc.cctbx_common_includes)
-
-  sources = [
+  sources.extend([
     "skeletons.cpp",
-    "dijkstra.cpp",
-    "asymmetric_map.cpp"
-  ]
+    "dijkstra.cpp"])
 
-  if (env_etc.static_libraries): builder = env.StaticLibrary
-  else:                          builder = env.SharedLibrary
-  builder(
-    target="#lib/asymmetric_map",
-    source=sources)
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
+builder(
+  target="#lib/asymmetric_map",
+  source=sources)
 
+if env_etc.cxx11_is_available:
   envexe = env.Clone();
   envexe.Prepend(LIBS=["asymmetric_map"])
   envexe.Program(target="#bin/cctbx_blobs", source="blobs_cmd.cpp")
 
-  if (not env_etc.no_boost_python):
-    Import("env_cctbx_boost_python_ext")
-    env_bpl = env_cctbx_boost_python_ext.Clone()
-    env_etc.include_registry.append(
-      env=env_bpl,
-      paths=env_etc.cctbx_common_includes)
-    env_bpl.Prepend(LIBS=["asymmetric_map", "iotbx_xplor", "cctbx_sgtbx_asu",
-      "cctbx", "omptbx"])
-    env_bpl.SharedLibrary(
-      target="#lib/cctbx_asymmetric_map_ext",
-      source=["asymmetric_map_ext.cpp"])
+if (not env_etc.no_boost_python):
+  Import("env_cctbx_boost_python_ext")
+  env_bpl = env_cctbx_boost_python_ext.Clone()
+  env_etc.include_registry.append(
+    env=env_bpl,
+    paths=env_etc.cctbx_common_includes)
+  env_bpl.Prepend(LIBS=["asymmetric_map", "iotbx_xplor", "cctbx_sgtbx_asu",
+    "cctbx", "omptbx"])
+  env_bpl.SharedLibrary(
+    target="#lib/cctbx_asymmetric_map_ext",
+    source=["asymmetric_map_ext.cpp"])

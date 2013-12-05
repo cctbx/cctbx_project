@@ -1,6 +1,14 @@
 #ifndef CCTBX_MAPTBX_ASYMMETRIC_MAP_H
 #define CCTBX_MAPTBX_ASYMMETRIC_MAP_H
 
+#include <boost/config.hpp>
+#include <utility>
+#ifdef BOOST_NO_CXX11_RVALUE_REFERENCES
+#  include <boost/tr1/utility.hpp>
+#  include <boost/move/utility.hpp>
+namespace std { using namespace tr1; using boost::move; }
+#endif
+
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/array_family/flex_types.h>
@@ -163,6 +171,7 @@ public:
     this->copy_to_asu_box(grid, padded_grid_size, cell_data.begin());
   }
 
+#ifndef BOOST_NO_CXX11_RVALUE_REFERENCES
   //! Creates asymmetric map from asymmetric unit sized map
   /*! asu_data is invalid after this call */
   asymmetric_map(const sgtbx::space_group_type &group, data_type && asu_data,
@@ -171,11 +180,12 @@ public:
   {
     //! @todo: test for grid_size and asu_data compatibility
   }
+#endif
 
   //! Creates asymmetric map from asymmetric unit sized map
   /*! asu_data is invalid after this call */
   asymmetric_map(const sgtbx::space_group_type &group,
-    scitbx::af::versa<double, scitbx::af::flex_grid<> > && asu_data,
+    scitbx::af::versa<double, scitbx::af::flex_grid<> > asu_data,
     const scitbx::af::int3 &grid_size) : asu_(group),
     optimized_asu_(asu_,grid_size)
   {
@@ -184,7 +194,11 @@ public:
     CCTBX_ASSERT( acc.nd() == 3U );
     asu_grid_t grid(af::adapt(acc.origin()), af::adapt(acc.last()));
     CCTBX_ASSERT( acc.size_1d() == grid.size_1d() );
+#ifdef BOOST_NO_CXX11_RVALUE_REFERENCES
+    data_ = data_type(asu_data.handle(), grid);
+#else
     data_ = std::move(data_type(asu_data.handle(), grid));
+#endif
   }
 
 private:
@@ -267,11 +281,11 @@ public:
   // not implemented, do I really need this one ?
   // unit_cell_map_t symmetry_expanded_unit_cell_map() const;
 
-  enum class format : short { xplor };
+  enum format { xplor };
 
   //! Saves asymmetric map into xplor formatted file
   void save(const std::string &file_name, const uctbx::unit_cell &unit_cell,
-    format f=format::xplor) const;
+    format f=xplor) const;
 
   //! Timings for profiling
   mutable std::string map_for_fft_times_, fill_density_times_, fill_fft_times_;

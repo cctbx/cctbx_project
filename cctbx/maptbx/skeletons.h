@@ -1,6 +1,19 @@
 //// DO NOT USE. UNDER CONSTRUCTION.
+#include <boost/config.hpp>
 
-#include <array>
+#ifdef  BOOST_NO_CXX11_HDR_ARRAY
+#  include <boost/tr1/array.hpp>
+namespace std { using namespace tr1; }
+#else
+#  include <array>
+#endif
+#ifdef BOOST_NO_CXX11_HDR_TUPLE
+#  include <boost/tr1/tuple.hpp>
+namespace std { using namespace tr1; }
+#else
+#  include <tuple>
+#endif
+
 #include <set>
 #include <vector>
 
