@@ -60,6 +60,9 @@ class FormatTIFFRayonixXPP(FormatTIFFRayonix):
     proper model of the experiment.'''
 
     assert(self.understand(image_file))
+
+    from iotbx.detectors.mar import MARImage
+    MARImage._read_header_asserts = lambda self: None
     FormatTIFFRayonix.__init__(self, image_file)
 
     return
