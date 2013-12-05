@@ -9,20 +9,22 @@ from libtbx.test_utils import approx_equal
 from cctbx import crystal
 
 class simple(object):
-  def __init__(self,
-               target_map,
-               selection,
-               real_space_gradients_delta,
-               selection_real_space=None,
-               geometry_restraints_manager=None,
-               max_iterations=150):
+  def __init__(
+        self,
+        target_map,
+        selection,
+        geometry_restraints_manager,
+        real_space_gradients_delta=1./4,
+        selection_real_space=None,
+        max_iterations=150):
     adopt_init_args(self, locals())
     self.lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
-        max_iterations = max_iterations)
-    self.lbfgs_exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
-      ignore_line_search_failed_step_at_lower_bound = True,
-      ignore_line_search_failed_step_at_upper_bound = True,
-      ignore_line_search_failed_maxfev              = True)
+      max_iterations = max_iterations)
+    self.lbfgs_exception_handling_params = scitbx.lbfgs.\
+      exception_handling_parameters(
+        ignore_line_search_failed_step_at_lower_bound = True,
+        ignore_line_search_failed_step_at_upper_bound = True,
+        ignore_line_search_failed_maxfev              = True)
     self.refined = None
     self.crystal_symmetry = None
     self.site_symmetry_table = None
@@ -56,6 +58,14 @@ class simple(object):
           site_label       = None,
           tolerance        = 1)
     return sites_cart
+    
+  def rmsds(self):
+    b,a = None,None
+    es = self.geometry_restraints_manager.energies_sites(
+      sites_cart = self.sites_cart())
+    a = es.angle_deviations()[2]
+    b = es.bond_deviations()[2]
+    return b,a
 
 class diff_map(object):
   def __init__(self,
@@ -258,3 +268,83 @@ class box_refinement_manager(object):
       iselection, sites_cart_refined)
     self.xray_structure.set_sites_cart(sites_cart_moving)
     self.sites_cart = self.xray_structure.sites_cart()
+
+def optimal_weight(
+      map_data,
+      xray_structure,
+      pdb_hierarchy,
+      geometry_restraints_manager,
+      rms_bonds_limit=0.02,
+      rms_angles_limit=2.5,
+      real_space_gradients_delta=1./4,
+      max_iterations = 100,
+      range_size=10,
+      n_ranges=5,
+      log=None,
+      prefix=""):
+  """
+Fast determination of optimal data/restraints weight for real-space refinement.
+  """
+  # split chains into chunks
+  result = []
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      if(chain.is_protein() or chain.is_na()):
+        residue_range_sel = flex.size_t()
+        cntr = 0
+        for rg in chain.residue_groups():
+          i_seqs = rg.atoms().extract_i_seq()
+          cntr += 1
+          if(cntr<10):
+            residue_range_sel.extend(i_seqs)
+          else:
+            result.append(residue_range_sel)
+            residue_range_sel = flex.size_t()
+            residue_range_sel.extend(i_seqs)
+            cntr = 0
+        if(len(result)==0):
+          assert residue_range_sel.size()>0
+          result.append(residue_range_sel)
+  if(log is not None):
+    print >> log, "%s number of chunks: %d"%(prefix, len(result))
+  # randomly pick chunks
+  random_chunks = []
+  import random
+  for i in xrange(n_ranges):
+    random_chunks.append(random.choice(xrange(len(result))))
+  if(log is not None):
+    print >> log, "%s random chunks:"%prefix, random_chunks
+  # setup refinery
+  import mmtbx.refinement.real_space.individual_sites
+  xrs_dc = xray_structure.deep_copy_scatterers()
+  sel_all = flex.bool(xrs_dc.scatterers().size(), True)
+  grm_dc = geometry_restraints_manager.select(sel_all)
+  ro = mmtbx.refinement.real_space.individual_sites.box_refinement_manager(
+    xray_structure              = xrs_dc,
+    target_map                  = map_data,
+    geometry_restraints_manager = grm_dc.geometry,
+    real_space_gradients_delta  = real_space_gradients_delta,
+    max_iterations              = max_iterations)
+  optimal_weights = flex.double()
+  # loop over chunks: determine best weight for each chunk
+  for chunk in random_chunks:
+    sel = result[chunk]
+    sel = flex.bool(xrs_dc.scatterers().size(), sel)
+    ro.refine(
+      selection        = sel,
+      rms_bonds_limit  = rms_bonds_limit,
+      rms_angles_limit = rms_angles_limit)
+    if(log is not None):
+      print >> log,"%s chunk %d optimal weight"%(prefix,chunk,ro.weight_optimal)
+    if(ro.weight_optimal is not None):
+      optimal_weights.append(ro.weight_optimal)
+  # select overall best weight
+  mean = flex.mean(optimal_weights)
+  sel  = optimal_weights < mean*3
+  sel &= optimal_weights > mean/3
+  if(sel.count(True)>0):
+    optimal_weights = optimal_weights.select(sel)
+  weight = flex.mean(optimal_weights)
+  if(log is not None):
+    print >> log, "%s overall best weight: %9.4f"%(prefix, weight)
+  return weight

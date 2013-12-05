@@ -1749,6 +1749,8 @@ mmtbx/refinement/real_space/tst_fit_water.py -text
 mmtbx/refinement/real_space/tst_individual_sites_1.py -text
 mmtbx/refinement/real_space/tst_monitor.py -text
 mmtbx/refinement/real_space/tst_rigid_body.py -text
+mmtbx/refinement/real_space/tst_weight.py -text
+mmtbx/refinement/real_space/weight.py -text
 mmtbx/refinement/refinement_flags.py -text
 mmtbx/refinement/select_best_starting_model.py -text
 mmtbx/refinement/tardy.py svneol=native#text/x-python
