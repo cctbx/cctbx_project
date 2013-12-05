@@ -112,7 +112,7 @@ class MARImage(DetectorImageBase):
         end_xtal_to_detector = struct.unpack(format+'i',rawdata)[0]/1000.
         #assert start_xtal_to_detector == end_xtal_to_detector
         #that assertion would've been nice but ESRF BM14 frames fail; instead:
-        assert start_xtal_to_detector>0.
+        #assert the distance is greater than zero in _read_header_asserts
         parameters['DISTANCE'] = start_xtal_to_detector
 
         f.seek(offset+772)
@@ -172,7 +172,7 @@ class MARImage(DetectorImageBase):
         f.seek(offset+700)
         rawdata = f.read(4)
         end_twotheta = struct.unpack(format+'i',rawdata)[0]/1000.
-        assert start_twotheta == end_twotheta
+        self._assert_matching_twothetas = start_twotheta == end_twotheta
         parameters['TWOTHETA'] = start_twotheta
 
         f.seek(offset+908)
@@ -183,6 +183,13 @@ class MARImage(DetectorImageBase):
         f.close()
 
       self.parameters=parameters
+
+      self._read_header_asserts()
+
+  def _read_header_asserts(self):
+    ''' move a couple asserts here that aren't always desireable for un-initialized data '''
+    assert self.parameters['DISTANCE'] > 0
+    assert self._assert_matching_twothetas
 
   def dataoffset(self):
     return 4096
