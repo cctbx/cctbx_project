@@ -86,6 +86,30 @@ class ramachandran (residue) :
       self.c_alphas[2].xyz)
     return ram_out
 
+class ramachandran_ensemble (residue) :
+  """Container for results for an ensemble of residues"""
+  __slots__ = ramachandran.__slots__
+  def __init__ (self, all_results) :
+    self._copy_constructor(all_results[0])
+    self.res_type = all_results[0].res_type
+    self.rama_type = [ r.rama_type for r in all_results ]
+    from scitbx.array_family import flex
+    self.phi = flex.double([ r.phi for r in all_results ])
+    self.psi = flex.double([ r.psi for r in all_results ])
+    self.score = flex.double([ r.score for r in all_results ])
+
+  def phi_min_max_mean (self) :
+    return self.phi.min_max_mean()
+
+  def psi_min_max_mean (self) :
+    return self.psi.min_max_mean()
+
+  def score_statistics (self) :
+    return self.score.min_max_mean()
+
+  def phi_range (self) :
+    pass
+
 class ramalyze (validation) :
   __slots__ = validation.__slots__ + ["out_percent", "fav_percent",
     "n_allowed", "n_favored", "n_type", ]

@@ -111,6 +111,9 @@ class residue (entity) :
   residue objects from the PDB hierarchy.
   """
   __slots__ = entity.__slots__ + __residue_attr__ + ["occupancy"]
+  def _copy_constructor (self, other) :
+    for attr in __residue_attr__ :
+      setattr(self, attr, getattr(other, attr))
 
   def assert_all_attributes_defined (self) :
     for name in self.__residue_attr__ :

@@ -58,6 +58,10 @@ class molprobity (slots_getstate_setstate) :
   re-calculation of R-factors and real-space correlation.
   """
 
+  # XXX this is used to distinguish objects of this type from an older (and
+  # now obsolete) class in the phenix tree.
+  molprobity_version_number = 5
+
   __slots__ = [
     "ramalyze",
     "rotalyze",

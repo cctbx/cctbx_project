@@ -55,6 +55,27 @@ class rotamer (residue) :
     return "%s:%s:%s:%s:%s" % (self.id_str(), s_occ, s_score,
       self.format_chi_angles(pad=True, sep=":"), self.rotamer_name)
 
+class rotamer_ensemble (residue) :
+  """Container for validation results for an ensemble of residues."""
+  __slots__ = rotamer.__slots__
+  def __init__ (self, all_results) :
+    self._copy_constructor(all_results[0])
+    self.score = [ r.score for r in all_results ]
+    self.rotamer_name = [ r.rotamer_name for r in all_results ]
+    self.chi_angles = [ r.chi_angles for r in all_results ]
+
+  def rotamer_frequencies (self) :
+    rotamers = []
+    for rot_id in set(self.rotamer_name) :
+      n_rotamer = self.rotamer_name.count(rot_id)
+      rotamers.append((rot_id, n_rotamer))
+    return sorted(rotamers, lambda a,b: cmp(b[1], a[1]))
+
+  def as_string (self) :
+    rotamers = self.rotamer_frequencies()
+    rot_out = [ "%s (%d)" % (rid, n_rot) for (rid, n_rot) in rotamers ]
+    return "%-20s %s" % (self.id_str(), ", ".join(rot_out))
+
 class rotalyze (validation) :
   __slots__ = validation.__slots__ + ["out_percent"]
   program_description = "Analyze protein sidechain rotamers"
