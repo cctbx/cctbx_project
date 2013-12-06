@@ -100,7 +100,7 @@ namespace dxtbx { namespace model {
       DXTBX_ASSERT(d1.length() > 0);
       DXTBX_ASSERT(d2.length() > 0);
       DXTBX_ASSERT((double)(d1 * d2) < EPS);
-      update_local_frame(d1, d2, d0);
+      update_local_frame(d1.normalize(), d2.normalize(), d0);
     }
 
     /**
@@ -368,7 +368,7 @@ namespace dxtbx { namespace model {
 
       // Update the global frame and check it's correct
       update_global_frame();
-      double EPS = 1e-7;
+      double EPS = 1e-6;
       DXTBX_ASSERT(get_fast_axis().const_ref().all_approx_equal(d1.const_ref(), EPS));
       DXTBX_ASSERT(get_slow_axis().const_ref().all_approx_equal(d2.const_ref(), EPS));
       DXTBX_ASSERT(get_origin().const_ref().all_approx_equal(d0.const_ref(), EPS));
