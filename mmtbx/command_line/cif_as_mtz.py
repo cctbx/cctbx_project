@@ -42,7 +42,8 @@ good crystallographic practice. Be prepared to justify why you have excluded
 any data from your final refinement!
 """
 
-def run(args, command_name = "phenix.cif_as_mtz"):
+def run(args, command_name = "phenix.cif_as_mtz", 
+       return_as_miller_arrays=False):
   if (len(args) == 0): args = ["--help"]
   try:
     command_line = (iotbx_option_parser(
@@ -124,7 +125,7 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     raise Sorry(("%s is not a suitable column label.  MTZ format requires "+
       "an uppercase letter as the first character, and only alphanumeric "+
       "characters or hyphens in the rest of the string.")% output_r_free_label)
-  process_files(
+  result=process_files(
     file_name=file_name,
     crystal_symmetry=crystal_symmetry,
     pdb_file_name=command_line.options.use_model,
@@ -137,8 +138,12 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     map_to_asu=command_line.options.map_to_asu,
     remove_systematic_absences=command_line.options.remove_systematic_absences,
     incompatible_flags_to_work_set=command_line.options.incompatible_flags_to_work_set,
+    return_as_miller_arrays=return_as_miller_arrays,
     ignore_bad_sigmas=command_line.options.ignore_bad_sigmas,
     extend_flags=command_line.options.extend_flags)
+
+  if return_as_miller_arrays:
+    return result
 
 def process_files (file_name,
                    crystal_symmetry,
@@ -153,6 +158,7 @@ def process_files (file_name,
                    remove_systematic_absences=False,
                    incompatible_flags_to_work_set=False,
                    ignore_bad_sigmas=False,
+                   return_as_miller_arrays=False,
                    extend_flags=False) :
   mtz_object = extract(
     file_name                       = file_name,
@@ -166,7 +172,12 @@ def process_files (file_name,
     remove_systematic_absences      = remove_systematic_absences,
     incompatible_flags_to_work_set  = incompatible_flags_to_work_set,
     ignore_bad_sigmas               = ignore_bad_sigmas,
+    return_as_miller_arrays         = return_as_miller_arrays,
     extend_flags                    = extend_flags)
+
+  if return_as_miller_arrays:
+    return mtz_object
+
   if(mtz_object is not None):
     if (pdb_file_name):
       pdb_raw_records = smart_open.for_reading(
@@ -231,7 +242,8 @@ def extract(file_name,
             remove_systematic_absences,
             incompatible_flags_to_work_set=False,
             ignore_bad_sigmas=False,
-            extend_flags=False):
+            extend_flags=False,
+            return_as_miller_arrays=False):
   import iotbx.cif
   from cctbx import miller
   base_array_info = miller.array_info(
@@ -325,6 +337,8 @@ def extract(file_name,
       for ma in miller_arrays.values() :
         all_arrays.append(ma)
     complete_set = make_joined_set(all_arrays)
+  if return_as_miller_arrays:
+    miller_array_list=[]
   for i, (data_name, miller_arrays) in enumerate(all_miller_arrays.iteritems()):
     for ma in miller_arrays.values():
       ma = ma.customized_copy(
@@ -403,6 +417,8 @@ def extract(file_name,
                 raise
           ma = merging.array().customized_copy(
             crystal_symmetry=ma).set_info(ma.info())
+        elif return_as_miller_arrays: # allow non-unique set 
+          pass
         else:
           n_all = ma.indices().size()
           sel_unique = ma.unique_under_symmetry_selection()
@@ -437,6 +453,11 @@ def extract(file_name,
       # Get rid of fake (0,0,0) reflection in some CIFs
       ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),
         negate=True).set_info(ma.info())
+
+      if return_as_miller_arrays:
+        miller_array_list.append(ma)
+        continue  # don't make a dataset
+
       column_labels.add(label)
       dec = None
       if ("FWT" in label) :
@@ -449,7 +470,10 @@ def extract(file_name,
         column_root_label=label,
         label_decorator=dec,
         column_types=column_types)
-  return mtz_object
+  if return_as_miller_arrays:
+    return miller_array_list
+  else:
+    return mtz_object
 
 ########################################################################
 # PHENIX GUI ROUTINES
