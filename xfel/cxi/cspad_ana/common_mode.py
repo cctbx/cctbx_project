@@ -41,6 +41,7 @@ class common_mode_correction(mod_event_info):
                dark_stddev=None,
                mask_path=None,
                gain_map_path=None,
+               gain_map_level=None,
                cache_image=True,
                roi=None,
                laser_1_status=None,
@@ -58,6 +59,10 @@ class common_mode_correction(mod_event_info):
     @param dark_stddev     Path to input standard deviation dark
                            image, required if @p dark_path is given
     @param mask_path       Path to input mask.  Pixels to mask out should be set to -2
+    @param gain_map_path   Path to input gain map.  Multplied times the image.
+    @param gain_map_level  If set, all the '1' pixels in the gain_map are set to this multiplier
+                           and all the '0' pixels in the gain_map are set to '1'. If not set,
+                           use the values in the gain_map directly
     @param laser_1_status  0 or 1 to indicate that the laser should be off or on respectively
     @param laser_4_status  0 or 1 to indicate that the laser should be off or on respectively
     @param laser_wait_time Length of time in milliseconds to wait after a laser
@@ -75,6 +80,7 @@ class common_mode_correction(mod_event_info):
     self.dark_stddev_path = cspad_tbx.getOptEvalOrString(dark_stddev)
     self.mask_path = cspad_tbx.getOptEvalOrString(mask_path)
     gain_map_path = cspad_tbx.getOptString(gain_map_path)
+    self.gain_map_level = cspad_tbx.getOptFloat(gain_map_level)
     self.common_mode_correction = cspad_tbx.getOptString(common_mode_correction)
     self.photon_threshold = cspad_tbx.getOptFloat(photon_threshold)
     self.two_photon_threshold = cspad_tbx.getOptFloat(two_photon_threshold)
@@ -146,9 +152,13 @@ class common_mode_correction(mod_event_info):
 
     self.gain_map = None
     if gain_map_path is not None:
-      self.gain_map
       gain_dict = easy_pickle.load(gain_map_path)
       self.gain_map = gain_dict['DATA']
+      if self.gain_map_level is not None:
+        sel = flex.bool([bool(f) for f in self.gain_map])
+        sel.reshape(flex.grid(self.gain_map.focus()))
+        self.gain_map = self.gain_map.set_selected(~sel, self.gain_map_level)
+        self.gain_map = self.gain_map.set_selected(sel, 1)
       assert isinstance(self.gain_map, flex.double)
 
 
@@ -214,7 +224,6 @@ class common_mode_correction(mod_event_info):
       else:
         (self.beam_center, self.active_areas) = cspad_tbx.cbcaa(
           self.config, self.sections)
-
 
   def common_mode(self, img, stddev, mask):
     """The common_mode() function returns the mode of image stored in
