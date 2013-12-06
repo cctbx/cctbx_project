@@ -105,7 +105,7 @@ class NpyImage(DetectorImageBase):
                            "CXI 8.1","CXI 8.d","XPP 8.1","XPP 8.marccd"]:
       if horizons_phil.distl.tile_translations==None and \
          horizons_phil.distl.detector_tiling is not None:
-          horizons_phil.distl.tile_translations = [0]*(len(horizons_phil.distl.detector_tiling)/2)
+          horizons_phil.distl.tile_translations = [0]*(int(len(horizons_phil.distl.detector_tiling)/2))
 
 
   # This is nop, because all the data has been read by readHeader().
