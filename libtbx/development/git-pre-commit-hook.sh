@@ -75,7 +75,7 @@ for f in $textfiles; do
     egrep -Hn "$FORBIDDEN" "$f"  && \
         echo "\nTabs, or trailing spaces at the end of line;\nNOT COMMITING\n" \
         && exit 5
-    egrep -Hn ".{81}" "$f" && \
+    egrep -Hn ".{91}" "$f" && \
         echo "\nToo long lines in $f;\n NOT COMMITING\n" \
         && exit 9
     # the following is probably pointless
