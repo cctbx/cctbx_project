@@ -3,10 +3,11 @@ from __future__ import division
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
-import sys
+import sys,time,math
 import numpy
 
 from libtbx import easy_pickle
+import libtbx.load_env
 from libtbx.option_parser import option_parser
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana import cspad_tbx
@@ -49,6 +50,17 @@ class fake_evt(object):
   def getCsPadQuads(self, address, env):
     return self._data3d
 
+  def getTime(self):
+    class fakeTime(object):
+      def __init__(self):
+        t = time.time()
+        s = int(math.floor(t))
+        self.s = s
+        self.n = int(round((t - s) * 1000))
+
+      def seconds(self): return self.s
+      def nanoseconds(self): return self.n
+    return fakeTime()
 
 def run(args):
   command_line = (option_parser()
@@ -64,9 +76,9 @@ def run(args):
   if args[0].endswith('.npy'):
     data = numpy.load(args[0])
     det = convert_2x2(data)
-  elif args[0].endswith('.txt'):
+  elif args[0].endswith('.txt') or args[0].endswith('.gain'):
     raw_data = numpy.loadtxt(args[0])
-    assert raw_data.shape == (5920, 388)
+    assert raw_data.shape in [(5920, 388), (11840, 194)]
     det = convert_detector(raw_data)
   det = flex.double(det.astype(numpy.float64))
   img_diff = det
@@ -80,23 +92,47 @@ def run(args):
 
 def convert_detector(raw_data):
   # https://confluence.slac.stanford.edu/display/PCDS/CSPad+metrology+and+calibration+files%2C+links
-  calib_dir = "/reg/d/ana11/cxi/data/CSPAD-metrology/run4/CxiDs1.0:Cspad.0"
+  calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
   sections = parse_calib.calib2sections(calib_dir)
   data3d = []
-  asic_start = 0
-  for i_quad in range(4):
-    asic_size = 185 * 388
-    section_size = asic_size * 2
-    quad_start = i_quad * section_size * 4
-    quad_asics = []
-    for i_2x2 in range(4):
-      for i_asic in range(2):
-        asic_end = asic_start + 185
-        quad_asics.append(raw_data[asic_start:asic_end, :])
-        asic_start = asic_end
-    quad_data = numpy.dstack(quad_asics)
-    quad_data = numpy.rollaxis(quad_data, 2,0)
-    data3d.append(fake_cspad_ElementV2(quad_data, i_quad))
+  if raw_data.shape == (5920,388):
+    asic_start = 0
+    for i_quad in range(4):
+      asic_size = 185 * 388
+      section_size = asic_size * 2
+      quad_start = i_quad * section_size * 4
+      quad_asics = []
+      for i_2x2 in range(4):
+        for i_asic in range(2):
+          asic_end = asic_start + 185
+          quad_asics.append(raw_data[asic_start:asic_end, :])
+          asic_start = asic_end
+      quad_data = numpy.dstack(quad_asics)
+      quad_data = numpy.rollaxis(quad_data, 2,0)
+      data3d.append(fake_cspad_ElementV2(quad_data, i_quad))
+  else:
+    asic_start = 0
+    quad_order = [2,3,0,1]
+    for i_quad in range(4):
+      asic_size = 185 * 194
+      section_size = asic_size * 4
+      quad_start = i_quad * section_size * 4
+      quad_asics = []
+      for i_2x2 in range(4):
+        for i_asic in range(2):
+          asic_end = asic_start + 185
+          a = raw_data[asic_start:asic_end, :]
+          asic_start = asic_end
+
+          asic_end = asic_start + 185
+          b = raw_data[asic_start:asic_end, :]
+          asic_start = asic_end
+
+          quad_asics.append(numpy.concatenate((a,b),axis=1))
+      quad_data = numpy.dstack(quad_asics)
+      quad_data = numpy.rollaxis(quad_data, 2,0)
+      data3d.append(fake_cspad_ElementV2(quad_data, quad_order[i_quad]))
+
   env = fake_env(fake_config())
   evt = fake_evt(data3d)
   return cspad_tbx.CsPadDetector('CxiDs1-0|Cspad-0', evt, env, sections)
