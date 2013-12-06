@@ -309,10 +309,11 @@ class MultiFileReader(ReaderBase):
     '''Get the scan instance at given index.'''
     if isinstance(index, tuple):
       scan = self.get_format(index[0]).get_scan()
-      scan.set_image_range((index[0] + 1, index[1]))
+      n = index[1] - index[0] - 1
+      image_range = (scan.get_image_range()[0], scan.get_image_range()[0] + n)
+      scan.set_image_range(image_range)
     else:
       scan = self.get_format(index).get_scan()
-
     return scan
 
   def read(self, index=None):
