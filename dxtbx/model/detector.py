@@ -74,6 +74,25 @@ class PanelGroup(PanelBase):
           self.get_slow_axis(),
           self.get_origin())
 
+  def set_frame(self, fast_axis, slow_axis, origin):
+    ''' Set the local frame.
+
+    Set's it's own global plane and then, after updating it's local
+    frame, propagates the frame down to it's children.
+
+    Params:
+        fast_axis The fast axis of the virtual detector plane
+        slow_axis The slow axis of the virtual detector plane
+        origin The origin vector to the virtual detector plane
+
+    '''
+    PanelBase.set_frame(self, fast_axis, slow_axis, origin)
+    for child in self:
+      child.set_parent_frame(
+          self.get_fast_axis(),
+          self.get_slow_axis(),
+          self.get_origin())
+
   def add_group(self):
     ''' Add a new group to this group.
 

@@ -229,6 +229,11 @@ namespace dxtbx { namespace model { namespace boost_python {
     using namespace boost::python;
 
     class_<PanelFrame>("PanelFrame")
+      .def("set_frame",
+        &PanelFrame::set_frame, (
+          arg("fast_axis"),
+          arg("slow_axis"),
+          arg("origin")))
       .def("set_local_frame",
         &PanelFrame::set_local_frame, (
           arg("fast_axis"),

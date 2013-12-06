@@ -87,6 +87,23 @@ namespace dxtbx { namespace model {
     virtual ~PanelFrame() {}
 
     /**
+     * Set the global frame. Normalize the d1 and d2 axes and update the
+     * local frame with this new information.
+     * @param d1 The fast axis
+     * @param d2 The slow axis
+     * @param d0 The origin vector.
+     */
+    void set_frame(const vec3<double> &d1,
+                   const vec3<double> &d2,
+                   const vec3<double> &d0) {
+      const double EPS = 1e-7;
+      DXTBX_ASSERT(d1.length() > 0);
+      DXTBX_ASSERT(d2.length() > 0);
+      DXTBX_ASSERT((double)(d1 * d2) < EPS);
+      update_local_frame(d1, d2, d0);
+    }
+
+    /**
      * Set the local frame. Normalize the d1 and d2 axes and update the
      * global frame with this new information.
      * @param d1 The fast axis
@@ -320,6 +337,41 @@ namespace dxtbx { namespace model {
       } catch(dxtbx::error) {
         normal_origin_ = vec2<double>(0, 0);
       }
+    }
+
+    /**
+     */
+    void update_local_frame(const vec3<double> &d1,
+                            const vec3<double> &d2,
+                            const vec3<double> &d0) {
+
+      // Construct the parent orientation matrix
+      mat3<double> parent_orientation(
+        parent_fast_axis_[0], parent_slow_axis_[0], parent_normal_[0],
+        parent_fast_axis_[1], parent_slow_axis_[1], parent_normal_[1],
+        parent_fast_axis_[2], parent_slow_axis_[2], parent_normal_[2]);
+
+      // The new global d matrix
+      mat3<double> d(
+        d1[0], d2[0], d0[0],
+        d1[1], d2[1], d0[1],
+        d1[2], d2[2], d0[2]);
+
+      // Calculate the new local d matrix
+      d_[2] -= parent_origin_[0];
+      d_[5] -= parent_origin_[1];
+      d_[8] -= parent_origin_[2];
+      mat3<double> ld = parent_orientation.inverse() * d;
+      local_fast_axis_ = vec3<double>(ld[0], ld[3], ld[6]);
+      local_slow_axis_ = vec3<double>(ld[1], ld[4], ld[7]);
+      local_origin_ = vec3<double>(ld[2], ld[5], ld[8]);
+
+      // Update the global frame and check it's correct
+      update_global_frame();
+      double EPS = 1e-7;
+      DXTBX_ASSERT(get_fast_axis().const_ref().all_approx_equal(d1.const_ref(), EPS));
+      DXTBX_ASSERT(get_slow_axis().const_ref().all_approx_equal(d2.const_ref(), EPS));
+      DXTBX_ASSERT(get_origin().const_ref().all_approx_equal(d0.const_ref(), EPS));
     }
 
     vec3<double> local_origin_;
