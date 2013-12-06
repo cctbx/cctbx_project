@@ -1481,6 +1481,7 @@ mmtbx/cablam/fingerprints/threeten_general.pickle -text
 mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
+mmtbx/command_line/altloc_remediate.py -text
 mmtbx/command_line/analyze_peptides.py -text
 mmtbx/command_line/b_factor_statistics.py -text
 mmtbx/command_line/cablam_training.py -text
