@@ -285,7 +285,7 @@ class refinement_monitor(object):
     self.phers           .append(flex.mean_default(fmodel.phase_errors(),0) )
     geom = model.geometry_statistics(
       ignore_hd = not self.neutron_refinement,
-      force_restraints_model = model.restraints_manager.use_amber,
+      force_restraints_model = getattr(model.restraints_manager, "use_amber", False),
       )
     if(geom is not None):
       self.as_ave          .append(geom.a_mean                      )
