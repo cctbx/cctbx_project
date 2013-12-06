@@ -1736,6 +1736,7 @@ def exercise_flex_vec3_double():
 def exercise_flex_vec2_double():
   #flex.exercise_triple(flex.vec2_double, as_double=True)
   a = flex.vec2_double(((1,2), (-2,3), (3,4)))
+  assert approx_equal(a.parts(), [(1,-2,3), (2,3,4)])
   assert approx_equal(a.min(), (-2.0,2.0))
   assert approx_equal(a.max(), (3.0,4.0))
   assert approx_equal(a.sum(), (2.0,9.0))

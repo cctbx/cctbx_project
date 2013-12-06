@@ -44,6 +44,21 @@ namespace scitbx { namespace serialization { namespace single_buffered {
 namespace scitbx { namespace af {
 namespace {
 
+  boost::python::tuple
+  parts(
+    versa<vec2<double>, flex_grid<> > const& O)
+  {
+    tiny<versa<double, flex_grid<> >, 2> result;
+    std::size_t n = O.size();
+    for(std::size_t i=0;i<2;i++) {
+      result[i].resize(O.accessor());
+      for(std::size_t j=0;j<n;j++) {
+        result[i][j] = O[j][i];
+      }
+    }
+    return boost::python::make_tuple(result[0], result[1]);
+  }
+
   flex<vec2<double> >::type*
   join(
     af::const_ref<double> const& x,
@@ -324,6 +339,7 @@ namespace boost_python {
       .def("max_distance", max_distance)
       .def("rms_difference", rms_difference)
       .def("rms_length", rms_length)
+      .def("parts", parts)
     ;
   }
 
