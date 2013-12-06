@@ -358,9 +358,9 @@ namespace dxtbx { namespace model {
         d1[2], d2[2], d0[2]);
 
       // Calculate the new local d matrix
-      d_[2] -= parent_origin_[0];
-      d_[5] -= parent_origin_[1];
-      d_[8] -= parent_origin_[2];
+      d[2] -= parent_origin_[0];
+      d[5] -= parent_origin_[1];
+      d[8] -= parent_origin_[2];
       mat3<double> ld = parent_orientation.inverse() * d;
       local_fast_axis_ = vec3<double>(ld[0], ld[3], ld[6]);
       local_slow_axis_ = vec3<double>(ld[1], ld[4], ld[7]);
