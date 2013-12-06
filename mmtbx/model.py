@@ -1144,7 +1144,10 @@ class manager(object):
       self.restraints_manager = mmtbx.restraints.manager(
         geometry      = geometry,
         ncs_groups    = self.restraints_manager.ncs_groups,
-        normalization = self.restraints_manager.normalization)
+        normalization = self.restraints_manager.normalization,
+        #use_amber     = self.restraints_manager.use_amber,
+        #amber_mdgx_structs = self.restraints_manager.amber_mdgx_structs,
+        )
       if (self.restraints_manager.ncs_groups is not None):
         self.restraints_manager.ncs_groups.register_additional_isolated_sites(
           number=number_of_new_atoms)
@@ -1306,6 +1309,7 @@ class manager(object):
   def geometry_statistics(self,
                           ignore_hd,
                           ignore_side_chain=False,
+                          force_restraints_model=False,
                           molprobity_scores = False):
     if(self.restraints_manager is None): return None
     sites_cart = self.xray_structure.sites_cart()
@@ -1328,6 +1332,7 @@ class manager(object):
       main_chain_selection = main_chain_selection,
       ignore_side_chain    = ignore_side_chain,
       restraints_manager   = self.restraints_manager,
+      force_restraints_model = force_restraints_model,
       molprobity_scores    = molprobity_scores)
 
   def show_geometry_statistics(self,
@@ -1342,6 +1347,7 @@ class manager(object):
     timer = user_plus_sys_time()
     result = self.geometry_statistics(ignore_hd = ignore_hd,
                                       ignore_side_chain = ignore_side_chain,
+                                      force_restraints_model = True,
                                       )
     result.show(message = message, out = out)
     time_model_show += timer.elapsed()

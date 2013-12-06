@@ -19,6 +19,7 @@ class geometry(object):
                main_chain_selection = None,
                ignore_side_chain = False,
                n_histogram_slots = 10,
+               force_restraints_model = False,
                molprobity_scores=False):
 
     zero1 = [0, 0, 0, 0, 0]
@@ -41,7 +42,9 @@ class geometry(object):
       sites_cart = sites_cart.select(~hd_selection)
     energies_sites = \
       restraints_manager.energies_sites(sites_cart        = sites_cart,
-                                        compute_gradients = True)
+                                        compute_gradients = True,
+                                        force_restraints_model=force_restraints_model,
+        )
     esg = energies_sites.geometry
     bond_proxies_simple = restraints_manager.geometry.pair_proxies(sites_cart = sites_cart).bond_proxies.simple
     b_deviations = esg.bond_deviations()
@@ -594,7 +597,9 @@ class model(object):
                use_molprobity=True,
                ncs_manager=None):
     self.geometry = model.geometry_statistics(ignore_hd = ignore_hd,
-      molprobity_scores=use_molprobity)
+      molprobity_scores=use_molprobity,
+      force_restraints_model=True,
+      )
     self.content = model_content(model)
     self.adp = adp(model)
     self.tls_groups = model.tls_groups

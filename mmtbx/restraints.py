@@ -58,6 +58,7 @@ class manager(object):
         custom_nonbonded_function=None,
         compute_gradients=False,
         gradients=None,
+        force_restraints_model=False,
         disable_asu_cache=False,
         ):
     result = scitbx.restraints.energies(
@@ -69,7 +70,7 @@ class manager(object):
     if (self.geometry is None):
       result.geometry = None
     else:
-      if (self.use_amber) :
+      if (self.use_amber and not force_restraints_model) :
         geometry_energy = self.geometry.energies_sites(
           sites_cart=sites_cart,
           flags=geometry_flags,
