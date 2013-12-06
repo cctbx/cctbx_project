@@ -5094,7 +5094,7 @@ def run(
       log=log)
     processed_pdb_file.geometry_restraints_manager(
       assume_hydrogens_all_missing=assume_hydrogens_all_missing,
-      hard_minimum_bond_distance_model=hard_minimum_nonbonded_distance)
+      hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance)
     processed_pdb_file.xray_structure()
     if (return_all_processed_pdb_files):
       all_processed_pdb_files.append(processed_pdb_file)
