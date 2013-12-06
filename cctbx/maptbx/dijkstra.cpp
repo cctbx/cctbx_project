@@ -1,16 +1,12 @@
 // UNDER CONSTRUCTION
+#include <utility>
 
 #include "skeletons.h"
 #include <boost/graph/connected_components.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/config.hpp>
-#ifdef BOOST_NO_CXX11_RVALUE_REFERENCES
-#  include <boost/tr1/utility.hpp>
-#  include <boost/move/utility.hpp>
-namespace std { using namespace tr1; }
-#else
-#  include <utility>
-#endif
+#include <boost/tr1/utility.hpp>
+#include <boost/move/utility.hpp>
 
 #include <cctbx/error.h>
 

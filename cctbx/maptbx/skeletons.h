@@ -1,18 +1,11 @@
 //// DO NOT USE. UNDER CONSTRUCTION.
 #include <boost/config.hpp>
 
-#ifdef  BOOST_NO_CXX11_HDR_ARRAY
-#  include <boost/tr1/array.hpp>
-namespace std { using namespace tr1; }
-#else
-#  include <array>
-#endif
-#ifdef BOOST_NO_CXX11_HDR_TUPLE
-#  include <boost/tr1/tuple.hpp>
-namespace std { using namespace tr1; }
-#else
-#  include <tuple>
-#endif
+#include <tuple>
+#include <array>
+
+// #include <boost/tr1/array.hpp>
+// #include <boost/tr1/tuple.hpp>
 
 #include <set>
 #include <vector>
@@ -42,6 +35,11 @@ typedef scitbx::af::versa<unsigned,cctbx::maptbx::asymmetric_map::asu_grid_t >
 using std::tuple;
 using std::array;
 using std::get;
+
+// using std::tr1::tuple;
+// using std::tr1::array;
+// using std::tr1::get;
+
 
 typedef scitbx::vec3<int> int3_t;
 typedef tuple< int3_t, double > xyzm_t;

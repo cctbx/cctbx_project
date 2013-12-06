@@ -4,9 +4,9 @@
 #include <boost/config.hpp>
 #include <utility>
 #ifdef BOOST_NO_CXX11_RVALUE_REFERENCES
-#  include <boost/tr1/utility.hpp>
-#  include <boost/move/utility.hpp>
-namespace std { using namespace tr1; using boost::move; }
+// #  include <boost/tr1/utility.hpp>
+// #  include <boost/move/utility.hpp>
+// namespace std { using boost::move; }
 #endif
 
 #include <scitbx/array_family/tiny.h>
@@ -208,10 +208,12 @@ private:
   {}
 
 public:
+#ifndef BOOST_NO_CXX11_RVALUE_REFERENCES
   //! C++11 style shallow move constructor
   asymmetric_map(asymmetric_map &&amap) : data_(std::move(amap.data_)),
     asu_(std::move(amap.asu_)), optimized_asu_(std::move(amap.optimized_asu_))
   {}
+#endif
 
   asymmetric_map explicit_copy() const
   {
