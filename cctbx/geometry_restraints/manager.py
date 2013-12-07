@@ -1058,10 +1058,13 @@ class manager(object):
         sites_cart=sites_cart, site_labels=site_labels, f=f)
       print >> f
 
-  def get_nonbonded_clashscore(self,
-                               sites_cart,
-                               hd_sel,
-                               site_labels=None):
+  def get_nonbonded_clashscore(
+    self,
+    sites_cart,
+    hd_sel,
+    site_labels=None,
+    include_water_water_clash=True,
+    only_water_water_clash=False):
     '''
     Construct nonbonded_clash_info, the non-bonded clashss lists and scores
 
@@ -1069,6 +1072,12 @@ class manager(object):
     sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
     site_labels: a list of lables such as " HA  LEU A  38 ", for each atom
     hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is a Hydrogen or not
+    include_water_water_clash: when False, water-water clashes will not be counted
+    only_water_water_clas: When True, only water-water clashes will be counted
+
+    NOTE:
+    As of Dec. 2013 manipulation of scatterers can produce scatteres which
+    have no lables. In that case, water interaction score will not be accurate
 
     Return:
        self.nonbonded_clash_info
@@ -1086,6 +1095,8 @@ class manager(object):
     hd_sel = xrs.hd_selection()
     sites_cart = xrs.sites_cart()
     site_labels = xrs.scatterers().extract_labels()
+
+    @author: Youval Dar, LBL 12-2013
     '''
     pair_proxies = self.pair_proxies(
           sites_cart=sites_cart,
@@ -1105,7 +1116,9 @@ class manager(object):
       nonbonded_list=nonbonded_list,
       hd_sel=hd_sel,
       full_connectivty_table=self.shell_sym_tables[0].full_simple_connectivity(),
-      sites_cart=sites_cart)
+      sites_cart=sites_cart,
+      include_water_water_clash=include_water_water_clash,
+      only_water_water_clash=only_water_water_clash)
     return nonbonded_clash_info
 
 def construct_non_crystallographic_conserving_bonds_and_angles(
@@ -1211,12 +1224,14 @@ class nonbonded_clashscore(object):
   @author: Youval Dar (LBL 2013)
   """
 
-  def __init__(self,
-               nonbonded_list,
-               hd_sel,
-               full_connectivty_table,
-               sites_cart
-               ):
+  def __init__(
+    self,
+    nonbonded_list,
+    hd_sel,
+    full_connectivty_table,
+    sites_cart,
+    include_water_water_clash=True,
+    only_water_water_clash=False):
     """
     Arguments:
     nonbonded_list: a list with items in the following format
@@ -1231,19 +1246,25 @@ class nonbonded_clashscore(object):
     full_connectivty_table: full_connectivty_table[i] is a dictinary constaining a
                             list of all atoms connected to atom i
     sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
+    include_water_water_clash: when False, water-water clashes will not be counted
+    only_water_water_clas: When True, only water-water clashes will be counted
     """
     self.nonbonded_list = nonbonded_list
     self.hd_sel = hd_sel
     self.full_connectivty_table = full_connectivty_table
     self.sites_cart = sites_cart
+    self.include_water_water_clash = include_water_water_clash
+    self.only_water_water_clash = only_water_water_clash
     if nonbonded_list != []:
       try:
         clashlist = self.clashscore_clash_list()
       except TypeError:
         # When proxies_info_nonbonded are not available
         clashlist = [[],[]]
+      except Sorry as e:
+        raise Sorry(e)
       except Exception as e:
-        raise Sorry('Unexpected error processing proxies_info_nonbonded')
+        raise Sorry('Unexpected error processing proxies_info_nonbonded in clashscore_clash_list()')
       # Collect, seperatly, clashes due to symmetry operation and those that are not
       self.nb_clash_proxies_due_to_sym_op = clashlist[0]
       self.nb_clash_proxies_without_sym_op = clashlist[1]
@@ -1395,7 +1416,7 @@ class nonbonded_clashscore(object):
     - Exclude 1-5 interaction of Hydrogen and heavy atom
 
     Retruns:
-    clashing_atoms_list: a sub list of self.nonbonded_list
+    clashing_atoms_list: [[list of clashes due to sym operation],[list of clashes not due to sym operation]]
     '''
     clashing_atoms_list = [[],[]]
     clashing_atoms_dict = {}
@@ -1410,12 +1431,25 @@ class nonbonded_clashscore(object):
       i_seq = rec[1]
       j_seq = rec[2]
       model = rec[3]
-      #model = rec[3]
       vdw = rec[4]
       symop = rec[5]
       delta = model - vdw
+      if self.include_water_water_clash and (not self.only_water_water_clash):
+        # check all clashes
+        check_if_clash = True
+      else:
+        atom1_is_water = ('HOH' == rec[0][0][10:13])
+        atom2_is_water = ('HOH' == rec[0][1][10:13])
+        if (not self.include_water_water_clash) and (not self.only_water_water_clash):
+          # Do not check water-water clashes
+          check_if_clash =  not (atom1_is_water and atom2_is_water)
+        elif self.include_water_water_clash and self.only_water_water_clash:
+          # check only water-water clashes
+          check_if_clash =  atom1_is_water and atom2_is_water
+        else:
+          raise Sorry('Bad water-water nonbonded clashscore interaction selection')
       # check for clash
-      if (delta < -0.41):
+      if (delta < -0.41) and check_if_clash:
         # Check of 1-5 interaction
         if not self.is_1_5_interaction(i_seq, j_seq):
           clash_vec,key1,key2 = self.get_clash_keys(rec)
@@ -1472,13 +1506,12 @@ class nonbonded_clashscore(object):
               temp_clash_list.append(clashing_atoms_dict[key][j])
               temp_clash_list.append(clashing_atoms_dict[key][i])
         clashing_atoms_dict[key] = temp_clash_list
-    # collect results
     for (key,val) in clashes_dict.iteritems():
       if key.split('::')[2] != '':
-        # not due to symmetry operation
+        # not to symmetry operation
         clashing_atoms_list[0].append(val[2])
       else:
-        # due to symmetry operation
+        # not due to symmetry operation
         clashing_atoms_list[1].append(val[2])
 
     return clashing_atoms_list
