@@ -376,7 +376,6 @@ class test_nb_clashscore(unittest.TestCase):
       self.assertEqual(nb_list_all, expected, msg=msg)
 
 
-
   def test_inline_clash(self):
     '''
     Test clashes of C with H-C.
@@ -408,17 +407,12 @@ class test_nb_clashscore(unittest.TestCase):
     '''
     Test that overlapping atoms are being counted
     '''
-    a = 1
 
   def test_symmetry_clash(self):
     '''
     Test that clshes due to symmetry operation are being counted properly
     '''
 
-  def test_remove_add_atoms(self):
-    '''
-    Test replacing atoms identified properly
-    '''
 
   def test_change_site_cart(self):
     '''
