@@ -103,6 +103,11 @@ _d                                4
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
     miller_arrays[0].map_to_asu(), column_names=miller_arrays[0].info().labels)
   for array in miller_arrays[1:]:
+    labels = array.info().labels
+    if len(labels) > 1 :
+      for label in labels :
+        if label.startswith("wavelength_id") :
+          labels.remove(label)
     mas_as_cif_block.add_miller_array(
       array=array.map_to_asu(), column_names=array.info().labels)
   s = StringIO()
@@ -616,7 +621,7 @@ def exercise_mmcif_structure_factors():
   assert len(miller_arrays) == 11
   f_calc = find_miller_array_from_labels(
     miller_arrays, ','.join([
-      'crystal_id=2', '_refln.F_calc', '_refln.phase_calc']))
+      'crystal_id=2', 'wavelength_id=1', '_refln.F_calc', '_refln.phase_calc']))
   assert f_calc.is_complex_array()
   assert f_calc.size() == 4
   #

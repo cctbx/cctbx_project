@@ -300,13 +300,15 @@ class miller_array_builder(crystal_symmetry_builder):
     '_refln_A': None,
   }
 
-  def __init__(self, cif_block, base_array_info=None):
+  def __init__(self, cif_block, base_array_info=None, wavelengths=None):
     crystal_symmetry_builder.__init__(self, cif_block)
     if base_array_info is not None:
       self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
         other_symmetry=base_array_info.crystal_symmetry_from_file,
       force=True)
     self._arrays = OrderedDict()
+    if (wavelengths is None) :
+      wavelengths = {}
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")
     refln_containing_loops = self.get_miller_indices_containing_loops()
@@ -323,8 +325,11 @@ class miller_array_builder(crystal_symmetry_builder):
             key.endswith('crystal_id') or
             key.endswith('scale_group_code')):
           data = as_int_or_none_if_all_question_marks(value, column_name=key)
-          if data is None: continue
+          if data is None:
+            continue
           counts = data.counts()
+          if key.endswith('wavelength_id'):
+            wavelength_ids = counts.keys()
           if len(counts) == 1: continue
           array = miller.array(
             miller.set(self.crystal_symmetry, self.indices).auto_anomalous(), data)
@@ -344,6 +349,7 @@ class miller_array_builder(crystal_symmetry_builder):
               if 'index_' in label: continue
               key = label
               labels = [label]
+              wavelength = None
               if (key.endswith('wavelength_id') or
                     key.endswith('crystal_id') or
                     key.endswith('scale_group_code')):
@@ -354,6 +360,7 @@ class miller_array_builder(crystal_symmetry_builder):
               if w_id is not None:
                 key_suffix += '_%i' %w_id
                 labels.insert(0, "wavelength_id=%i" %w_id)
+                wavelength = wavelengths.get(w_id, None)
               if crys_id is not None:
                 key_suffix += '_%i' %crys_id
                 labels.insert(0, "crystal_id=%i" %crys_id)
@@ -384,7 +391,8 @@ class miller_array_builder(crystal_symmetry_builder):
                   array.set_sigmas(sigmas.data())
                   info = array.info()
                   array.set_info(
-                    info.customized_copy(labels=info.labels+[sigmas_label]))
+                    info.customized_copy(labels=info.labels+[sigmas_label],
+                      wavelength=wavelength))
                   continue
               elif 'PHWT' in key:
                 phwt_label = label
@@ -493,6 +501,10 @@ class miller_array_builder(crystal_symmetry_builder):
                 if isinstance(array.data(), flex.int):
                   array = array.customized_copy(data=array.data().as_double())
               array.set_info(base_array_info.customized_copy(labels=labels))
+              if (array.is_xray_amplitude_array() or
+                  array.is_xray_amplitude_array()):
+                info = array.info()
+                array.set_info(info.customized_copy(wavelength=wavelength))
               self._arrays.setdefault(key, array)
     for key, array in self._arrays.copy().iteritems():
       if (   key.endswith('_minus') or '_minus_' in key
@@ -673,3 +685,30 @@ and have an optional esd in brackets associated with it"""
   if isinstance(string, float):
     return string
   return float(string.strip('\'').strip('"').split('(')[0])
+
+def get_wavelengths (cif_block) :
+  for loop in cif_block.loops.values():
+    for key in loop.keys():
+      if ("_diffrn_radiation_wavelength." in key) :
+        wavelength_ids = loop.get("_diffrn_radiation_wavelength.id")
+        wavelength_strs = loop.get("_diffrn_radiation_wavelength.wavelength")
+        if (not None in [wavelength_ids, wavelength_strs]) :
+          wl_ = {}
+          for wavelength_id,wavelength in zip(wavelength_ids,wavelength_strs):
+            try :
+              wl_id = int(wavelength_id)
+              wl_[int(wavelength_id)] = float(wavelength)
+            except ValueError :
+              pass
+          return wl_
+        else :
+          return None
+  wavelength_id = cif_block.get("_diffrn_radiation_wavelength.id")
+  wavelength_str = cif_block.get("_diffrn_radiation_wavelength.wavelength")
+  if (not None in [wavelength_id, wavelength_str]) :
+    try :
+      wl_id = int(wavelength_id)
+      return { int(wavelength_id) : float(wavelength_str) }
+    except ValueError :
+      pass
+  return None

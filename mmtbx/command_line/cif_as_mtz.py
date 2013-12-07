@@ -291,12 +291,6 @@ def extract(file_name,
         elif ("pdbx_anom_difference" in l) :
           label = "DANO"
           break
-    if label is not None:
-      label_base = label
-      i = 1
-      while label in column_labels:
-        label = label_base + "-%i" %(i)
-        i += 1
     return label
 
   for (data_name, miller_arrays) in all_miller_arrays.iteritems():
@@ -380,11 +374,16 @@ def extract(file_name,
       if wavelength_id is not None and w_id > 0 and w_id != wavelength_id:
         continue
       if w_id > 0 and wavelength_id is None:
-        label += "%i" %w_id
+        if (label in column_labels) :
+          label += "%i" %w_id
+        #print "label is", label
       if w_id not in datasets:
+        wavelength = ma.info().wavelength
+        if (wavelength is None) :
+          wavelength = 0
         datasets[w_id] = crystal.add_dataset(
           name="dataset",
-          wavelength=0)
+          wavelength=wavelength)
       dataset = datasets[w_id]
       # if all sigmas for an array are set to zero either raise an error, or set sigmas to None
       if ma.sigmas() is not None and (ma.sigmas() == 0).count(False) == 0:
@@ -458,7 +457,6 @@ def extract(file_name,
         miller_array_list.append(ma)
         continue  # don't make a dataset
 
-      column_labels.add(label)
       dec = None
       if ("FWT" in label) :
         dec = iotbx.mtz.ccp4_label_decorator()
@@ -466,6 +464,12 @@ def extract(file_name,
       column_types = None
       if ("PHI" in label) and (ma.is_real_array()) :
         column_types = "P"
+      label_base = label
+      i = 1
+      while label in column_labels:
+        label = label_base + "-%i" %(i)
+        i += 1
+      column_labels.add(label)
       dataset.add_miller_array(ma,
         column_root_label=label,
         label_decorator=dec,
