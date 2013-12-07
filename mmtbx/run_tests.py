@@ -130,6 +130,7 @@ tst_list = (
   "$D/refinement/tst_select_best_starting_model.py",
   "$D/regression/tst_refine_anomalous_substructure.py",
   "$D/regression/tst_command_line_input.py",
+  "$D/regression/tst_cif_as_mtz_wavelengths.py",
   )
 
 def run():
