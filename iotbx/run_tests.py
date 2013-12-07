@@ -75,6 +75,7 @@ tst_list = (
   "$D/xds/tests/tst_spots_xds.py",
   "$D/regression/tst_pdb_as_cif.py",
   "$D/scalepack/tst_no_merge_original_index.py",
+  "$D/regression/tst_export_scalepack_unmerged.py",
   )
 
 def run():
