@@ -524,6 +524,7 @@ class cctbx_data_structures_from_cif(object):
           data_block_name, file_path)
       raise RuntimeError(msg)
     errors = []
+    wavelengths = {}
     for key, block in cif_model.items():
       if data_block_name is not None and key != data_block_name: continue
       for builder in data_structure_builders:
@@ -531,8 +532,12 @@ class cctbx_data_structures_from_cif(object):
           if '_atom_site_fract_x' in block or '_atom_site_Cartn_x' in block:
             self.xray_structures.setdefault(key, builder(block).structure)
         elif builder == builders.miller_array_builder:
+          block_wavelengths = builders.get_wavelengths(block)
+          if (block_wavelengths is not None) :
+            wavelengths = block_wavelengths
           if base_array_info is not None:
             base_array_info = base_array_info.customized_copy(labels=[key])
           if '_refln_index_h' in block or '_refln.index_h' in block:
             self.miller_arrays.setdefault(
-              key, builder(block, base_array_info=base_array_info).arrays())
+              key, builder(block, base_array_info=base_array_info,
+                wavelengths=wavelengths).arrays())

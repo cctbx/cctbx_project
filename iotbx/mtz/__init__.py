@@ -455,7 +455,8 @@ class _(boost.python.injector, ext.object):
       crystal_symmetry = cctbx.crystal.symmetry(
         unit_cell=crystal.unit_cell().change_basis(cb_op=cb_op),
         space_group_info=new_space_group_info,
-        assert_is_compatible_unit_cell=assert_is_compatible_unit_cell)
+        assert_is_compatible_unit_cell=assert_is_compatible_unit_cell,
+        raise_sorry_if_incompatible_unit_cell=True)
       crystal.set_unit_cell_parameters(
         crystal_symmetry.unit_cell().parameters())
     # transform & symmetrize per-batch unit cell to support Scala 6.0 (NKS)
@@ -1052,7 +1053,7 @@ def miller_array_as_mtz_dataset(self,
       crystal_name="crystal",
       project_name="project",
       dataset_name="dataset",
-      wavelength=1.0):
+      wavelength=0.0):
   if (title is None):
     title = str(self.info())
   if (title is None):
