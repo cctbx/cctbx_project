@@ -32,7 +32,7 @@ def writer (
     batch_numbers=None,
     spindle_flags=None) :
   n_refl = len(i_obs.indices())
-  assert i_obs.anomalous_flag()
+  assert (not i_obs.is_unique_set_under_symmetry())
   assert i_obs.is_xray_intensity_array() and i_obs.sigmas() is not None
   # create substitute for batch number and spindle flag - these are impossible
   # to determine from the input array
