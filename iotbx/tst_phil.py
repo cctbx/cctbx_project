@@ -153,12 +153,24 @@ nproc = None
   master_phil_str = """
 data = None
   .type = path
+space_group = None
+  .type = space_group
+unit_cell = None
+  .type = unit_cell
 """
   pcl = iotbx.phil.process_command_line_with_files(
-    args=["tst_iotbx_phil.hkl"],
+    args=[
+      "tst_iotbx_phil.hkl",
+      "P6122",
+      "50,50,40,90,90,120",
+    ],
     master_phil_string=master_phil_str,
-    reflection_file_def="data")
+    reflection_file_def="data",
+    space_group_def="space_group",
+    unit_cell_def="unit_cell")
   params = pcl.work.extract()
+  assert (str(params.space_group) == "P 61 2 2")
+  assert (str(params.unit_cell) == "(50, 50, 40, 90, 90, 120)")
   from iotbx.file_reader import any_file
   try :
     hkl_in = any_file(params.data, force_type="hkl")

@@ -114,6 +114,8 @@ class process_command_line_with_files (object) :
                 directory_def=None,
                 integer_def=None,
                 float_def=None,
+                space_group_def=None,
+                unit_cell_def=None,
                 usage_string=None) :
     assert (master_phil is not None) or (master_phil_string is not None)
     if (master_phil_string is not None) :
@@ -139,6 +141,8 @@ Full parameters:
     self.directory_def = directory_def
     self.integer_def = integer_def
     self.float_def = float_def
+    self.space_group_def = space_group_def
+    self.unit_cell_def = unit_cell_def
     self._type_counts = {}
     self._cache = {}
     cai=libtbx.phil.command_line.argument_interpreter(master_phil=self.master)
@@ -209,6 +213,23 @@ Full parameters:
           pass
         else :
           return libtbx.phil.parse("%s=%g" % (self.float_def, float_value))
+      if (self.space_group_def is not None) :
+        try :
+          space_group_info = sgtbx.space_group_info(arg)
+        except RuntimeError : # XXX should really be ValueError
+          pass
+        else :
+          return libtbx.phil.parse("%s=%s" % (self.space_group_def,
+            space_group_info))
+      if (self.unit_cell_def is not None) and (arg.count(",") >= 2) :
+        try :
+          uc_params = tuple([ float(x) for x in arg.split(",") ])
+          unit_cell = uctbx.unit_cell(uc_params)
+        except Exception : # XXX should really be ValueError
+          pass
+        else :
+          return libtbx.phil.parse("%s=%s" % (self.unit_cell_def,
+            ",".join([ "%g"%x for x in unit_cell.parameters() ])))
     return self.process_other(arg)
 
   def process_other (self, arg) :
