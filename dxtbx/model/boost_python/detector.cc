@@ -75,7 +75,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     using namespace boost::python;
 
     // Export a Detector base class
-    class_ <Detector> ("DetectorBase")
+    class_ <Detector> ("Detector")
       .def(init<const Panel&>())
       .def(init<const scitbx::af::const_ref<Panel>&>())
       .def("add_panel",
@@ -98,6 +98,7 @@ namespace dxtbx { namespace model { namespace boost_python {
         iterator<Detector, return_internal_reference<> >())
       .def("__eq__", &Detector::operator==)
       .def("__ne__", &Detector::operator!=)
+      .def("is_similar_to", &Detector::is_similar_to)
       .def("get_max_resolution",
         &Detector::get_max_resolution, (arg("s0")))
       .def("get_ray_intersection",

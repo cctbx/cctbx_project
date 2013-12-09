@@ -135,6 +135,18 @@ namespace dxtbx { namespace model {
       return !(*this == detector);
     }
 
+    /** Check if the detectors are similar */
+    bool is_similar_to(const Detector &rhs) const {
+      bool similar = panel_list_->size() == rhs.panel_list_->size();
+      if (similar) {
+        for (std::size_t i = 0; i < panel_list_->size(); ++i) {
+          similar = similar && ((*panel_list_)[i].is_similar_to(
+            (*rhs.panel_list_)[i]));
+        }
+      }
+      return similar;
+    }
+
     /** Get the maximum resolution of the detector */
     double get_max_resolution(vec3<double> s0) const {
       double d_min = 0;

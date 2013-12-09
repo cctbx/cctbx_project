@@ -12,7 +12,7 @@ from __future__ import division
 import pycbf
 
 from FormatCBFMultiTile import FormatCBFMultiTile
-from dxtbx.model.detector import Detector
+from dxtbx.model.detector import HierarchicalDetector
 from scitbx.matrix import sqr, col
 from libtbx.utils import Sorry
 
@@ -162,7 +162,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
     cbf = self._cbf_handle
 
-    d = Detector()
+    d = HierarchicalDetector()
 
     for i in xrange(cbf.count_elements()):
       ele_id = cbf.get_element_id(i)
