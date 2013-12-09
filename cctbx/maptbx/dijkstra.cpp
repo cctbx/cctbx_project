@@ -5,8 +5,6 @@
 #include <boost/graph/connected_components.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/config.hpp>
-#include <boost/tr1/utility.hpp>
-#include <boost/move/utility.hpp>
 
 #include <cctbx/error.h>
 

@@ -2395,6 +2395,7 @@ scitbx/suffixtree/word.hxx -text
 scitbx/tst_cubicle_neighbors.py svneol=native#text/x-python
 scitbx/tst_r3_utils.py svneol=native#text/x-python
 scitbx/tst_smoothing.py -text
+scitbx/util/cpu_timer.h svneol=native#text/plain
 scitbx/wigner/SConscript -text
 scitbx/wigner/__init__.py -text
 scitbx/wigner/ext.cpp -text

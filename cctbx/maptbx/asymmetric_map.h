@@ -190,7 +190,8 @@ public:
     optimized_asu_(asu_,grid_size)
   {
     //! @todo: test for grid_size and asu_data compatibility
-    const auto &acc = asu_data.accessor();
+    // const auto &acc = asu_data.accessor();
+    const scitbx::af::flex_grid<> &acc =  asu_data.accessor();
     CCTBX_ASSERT( acc.nd() == 3U );
     asu_grid_t grid(af::adapt(acc.origin()), af::adapt(acc.last()));
     CCTBX_ASSERT( acc.size_1d() == grid.size_1d() );
