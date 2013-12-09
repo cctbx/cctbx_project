@@ -467,6 +467,8 @@ class common_mode_correction(mod_event_info):
 
     if self.gain_map is not None:
       self.cspad_img *= self.gain_map
+      if self.gain_map_level is not None:
+        self.cspad_img /= 2
 
     if self.cache_image:
       # Store the image in the event.
