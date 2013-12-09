@@ -15,7 +15,7 @@ from __future__ import division
 import math
 import pycbf
 from scitbx import matrix
-from dxtbx_model_ext import Panel, PanelBase, DetectorBase
+from dxtbx_model_ext import Panel, PanelBase, Detector
 from dxtbx_model_ext import SimplePxMmStrategy, ParallaxCorrectedPxMmStrategy
 from detector_helpers import detector_helper_sensors
 from detector_helpers import find_undefined_value
@@ -182,6 +182,12 @@ class PanelGroup(PanelBase):
     ''' Check that this is not equal to another group. '''
     return not self.__eq__(other)
 
+  def is_similar_to(self, other):
+    ''' Check is the hierarchy is similar. '''
+    if len(self) != len(other):
+      return False
+    return all(a.is_similar_to(b) for a, b in zip(self, other))
+
   def to_dict(self):
     ''' Convert the panel group to a dictionary. '''
     d = PanelBase.to_dict(self)
@@ -240,14 +246,33 @@ class PanelGroupRoot(PanelGroup):
           queue.append(child)
 
 
-class Detector(DetectorBase):
+def detector__getstate__(self):
+  ''' Get the state for pickling. '''
+  version = 1
+  return (version, self.__dict__, [p for p in self])
+
+def detector__setstate__(self, state):
+  ''' Set the state from pickling. '''
+  assert(len(state) == 3)
+  assert(state[0] == 1)
+  self.__dict__.update(state[1])
+  for p in state[2]:
+    self.add_panel(p)
+
+
+Detector.__getstate__ = detector__getstate__
+Detector.__setstate__ = detector__setstate__
+Detector.__getstate_manages_dict__ = 1
+
+
+class HierarchicalDetector(Detector):
   ''' The detector class. '''
   def __init__(self, panel=None):
     ''' Construct the detector. '''
     if panel == None:
-      super(Detector, self).__init__()
+      super(HierarchicalDetector, self).__init__()
     else:
-      super(Detector, self).__init__(panel)
+      super(HierarchicalDetector, self).__init__(panel)
     self._root = PanelGroupRoot(self)
 
   def hierarchy(self):
@@ -257,15 +282,17 @@ class Detector(DetectorBase):
   def is_similar_to(self, rhs):
     ''' Check if the detectors are similar (i.e. only differ in terms of
     things that could change per experiment. '''
-    if len(self) != len(rhs):
+    if not isinstance(rhs, HierarchicalDetector):
       return False
-    return all(p1.is_similar_to(p2) for p1, p2 in zip(self, rhs))
+    return (self._root.is_similar_to(rhs._root) and
+            super(HierarchicalDetector, self).is_similar_to(rhs))
 
   def __eq__(self, rhs):
     ''' Check that this is equal to another group. '''
-    if not isinstance(rhs, Detector):
+    if not isinstance(rhs, HierarchicalDetector):
       return False
-    return self._root == rhs._root and super(Detector, self).__eq__(rhs)
+    return (self._root == rhs._root and
+            super(HierarchicalDetector, self).__eq__(rhs))
 
   def __ne__(self, other):
     ''' Check that this is not equal to another group. '''
@@ -273,19 +300,20 @@ class Detector(DetectorBase):
 
   def to_dict(self):
     ''' Return the class as a dictionary. '''
-    d = DetectorBase.to_dict(self)
+    d = Detector.to_dict(self)
     d['hierarchy'] = self._root.to_dict()
     return d
 
   @staticmethod
   def from_dict(d):
     ''' Convert a dictionary to a detector model. '''
-    obj = Detector()
+    obj = HierarchicalDetector()
     panels = d['panels']
     for p in panels:
       obj.add_panel(Panel.from_dict(p))
     if 'hierarchy' in d:
-      Detector._group_or_panel_from_dict(d['hierarchy'], obj.hierarchy())
+      HierarchicalDetector._group_or_panel_from_dict(
+        d['hierarchy'], obj.hierarchy())
     return obj
 
   @staticmethod
@@ -303,7 +331,7 @@ class Detector(DetectorBase):
         index = child['panel']
         obj.add_panel(obj.root()._container[index])
       else:
-        Detector._group_or_panel_from_dict(child, obj.add_group())
+        HierarchicalDetector._group_or_panel_from_dict(child, obj.add_group())
 
   def __getstate__(self):
     ''' Get the state for pickling. '''

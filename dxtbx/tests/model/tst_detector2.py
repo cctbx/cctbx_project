@@ -1,11 +1,11 @@
 
 from __future__ import division
-from dxtbx.model import Detector
+from dxtbx.model import HierarchicalDetector
 
 class Test2:
 
   def __init__(self):
-    detector = Detector()
+    detector = HierarchicalDetector()
     panel1 = detector.add_panel()
     panel1.set_name("P1")
     panel1.set_type("P")
