@@ -41,7 +41,7 @@ class BrukerImage (DetectorImageBase):
 if __name__=="__main__":
   import sys
   if len(sys.argv)<2:
-    pass#file = "/net/adder/raid1/sauter/rawdata/mckee/bruker/lyziph6p5_01_0001.sfrm"
+    pass#file = "/net/cci/dials/from_adder/sauter/rawdata/mckee/bruker/lyziph6p5_01_0001.sfrm"
   else:
     file = sys.argv[1]
   B = BrukerImage(file)
