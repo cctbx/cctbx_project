@@ -319,13 +319,14 @@ class residue_bfactor (residue) : # TODO
 
 #-----------------------------------------------------------------------
 class validation (slots_getstate_setstate) :
-  __slots__ = ["n_outliers", "n_total", "results"]
+  __slots__ = ["n_outliers", "n_total", "results", "_cache"]
   program_description = None
   output_header = None
   def __init__ (self) :
     self.n_outliers = 0
     self.n_total = 0
     self.results = []
+    self._cache = None
 
   def get_outliers_count_and_fraction(self):
     if (self.n_total != 0):
@@ -377,6 +378,38 @@ class validation (slots_getstate_setstate) :
 
   def as_gui_table_data (self) :
     return []
+
+  def find_residue (self, other=None, residue_id_str=None) :
+    assert ([other, residue_id_str].count(None) == 1)
+    if (other is not None) :
+      if hasattr(other, "residue_group_id_str") :
+        residue_id_str = other.residue_group_id_str()
+      elif hasattr(other, "id_str") :
+        residue_id_str = other.id_str()
+      else :
+        residue_id_str = str(other)
+    if (self._cache is None) :
+      self._cache = {}
+      for result in self.results :
+        result_id_str = result.residue_group_id_str()
+        self._cache[result_id_str] = result
+    return self._cache.get(residue_id_str, None)
+
+  def find_atom_group (self, other=None, atom_group_id_str=None) :
+    assert ([other, atom_group_id_str].count(None) == 1)
+    if (other is not None) :
+      if hasattr(other, "atom_group_group_id_str") :
+        atom_group_id_str = other.atom_group_group_id_str()
+      elif hasattr(other, "id_str") :
+        atom_group_id_str = other.id_str()
+      else :
+        atom_group_id_str = str(other)
+    if (self._cache is None) :
+      self._cache = {}
+      for result in self.results :
+        result_id_str = result.atom_group_group_id_str()
+        self._cache[result_id_str] = result
+    return self._cache.get(atom_group_id_str, None)
 
 molprobity_cmdline_phil_str = """
   model = None
