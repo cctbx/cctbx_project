@@ -1,19 +1,23 @@
 
+# TODO tests
+
 from __future__ import division
 from mmtbx.validation import ramalyze
 from mmtbx.validation import rotalyze
 from libtbx import slots_getstate_setstate_default_initializer
+from libtbx.utils import null_out
 from libtbx import easy_mp
 from libtbx import Auto
 import sys
 
 class ensemble_validation (object) :
   def __init__ (self,
-      pdb_hierarchies,
+      pdb_hierarchies, # XXX these must be single-conformer
       reference_hierarchy=None,
       nproc=Auto,
       log=sys.stdout) :
     self.pdb_hierarchies = pdb_hierarchies
+    self.selection_caches = [h.atom_selection_cache() for h in pdb_hierarchies]
     if (reference_hierarchy == None) :
       reference_hierarchy = self.pdb_hierarchies[0]
     self.residue_ids = []
@@ -37,18 +41,18 @@ class ensemble_validation (object) :
           i_res = self.residue_id_dict.get(id_str)
           assert (i_res is not None)
           self.residue_ensembles[i_res].append(residue)
-    validations = easy_mp.pool_map(
+    self.validations = easy_mp.pool_map(
       fixed_func=self.validate_single_model,
       iterable=range(len(pdb_hierarchies)),
       processes=nproc)
     rama_by_residue = combine_model_validation_results(
-      validation_objects=[ rama for rama, rota in validations ],
+      validation_objects=[ rama for rama, rota in self.validations ],
       ensemble_result_class=ramalyze.ramachandran_ensemble,
       residue_ids=self.residue_ids,
       ignore_unexpected_residues=False,
       log=log)
     rota_by_residue = combine_model_validation_results(
-      validation_objects=[ rota for rama, rota in validations ],
+      validation_objects=[ rota for rama, rota in self.validations ],
       ensemble_result_class=rotalyze.rotamer_ensemble,
       residue_ids=self.residue_ids,
       ignore_unexpected_residues=False,
@@ -77,6 +81,40 @@ class ensemble_validation (object) :
   def show (self, out=sys.stdout, prefix="") :
     for residue in self.residue_data :
       residue.show(out=out, prefix=prefix)
+
+  def get_validated_residues_in_selection (self,
+      selection,
+      require_n_residues=None,
+      log=None) :
+    if (log is None) : log = null_out()
+    results = []
+    i_model = 0
+    while (i_model < len(self.pdb_hierarchies)) :
+      hierarchy = self.pdb_hierarchies[i_model]
+      sel_cache = self.selection_caches[i_model]
+      rama, rota = self.validations[i_model]
+      i_model += 1
+      isel = sel_cache.selection(selection).iselection()
+      hierarchy_sel = hierarchy.select(isel)
+      residue_groups = hierarchy_sel.only_model().only_chain().residue_groups()
+      if (require_n_residues is not None) :
+        if (len(residue_groups) != require_n_residues) :
+          results.append(None)
+          continue
+      reject = False
+      for residue_group in residue_groups :
+        atom_group = residue_group.only_atom_group()
+        rama_result = rama.find_atom_group(other=atom_group)
+        rota_result = rota.find_atom_group(other=atom_group)
+        assert (not None in [rama_result, rota_result]), atom_group.id_str()
+        if (rama_result.is_outlier()) or (rota_result.is_outlier()) :
+          reject = True
+          break
+      if (reject) :
+        results.append(None)
+      else :
+        results.append(hierarchy_sel)
+    return results
 
 class residue_analysis (slots_getstate_setstate_default_initializer) :
   __slots__ = ["id_str", "rama", "rota", "residues"]
