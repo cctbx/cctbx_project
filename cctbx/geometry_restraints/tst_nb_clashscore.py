@@ -308,6 +308,14 @@ HETATM    6  O   HOH     3       5.500   5.500   5.500  1.00 10.00           O
 TER
 END'''
 
+raw_records5="""\n
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+ATOM      1  N   LYS     1       5.000   5.000   5.000  1.00 20.00           N
+ATOM      1  N   LYS     2       6.000   5.000   5.000  1.00 20.00           N
+ATOM      1  N   LYS     3       5.000   5.500   5.500  1.00 20.00           N
+ATOM      1  N   LYS     4       5.000   5.500   5.500  1.00 20.00           N
+""".splitlines()
+
 
 class test_nb_clashscore(unittest.TestCase):
 
@@ -343,7 +351,7 @@ class test_nb_clashscore(unittest.TestCase):
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
     for i in [0,1]:
-      grm = self.process_raw_records(i)
+      grm = self.process_raw_records(raw_record_number=i)
 
       nb_clash_sym = grm.nb_clashscore_due_to_sym_op
       expected = [38.46,0][i]
@@ -386,7 +394,8 @@ class test_nb_clashscore(unittest.TestCase):
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
     for use_site_labels in [True,False]:
-      grm = self.process_raw_records(2,use_site_labels=use_site_labels)
+      grm = self.process_raw_records(raw_record_number=2,
+                                     use_site_labels=use_site_labels)
       nb_clashscore_total = grm.nb_clashscore_all_clashes
       expected = 127.66
       msg = outstring.format('Total clashscore', expected, nb_clashscore_total)
@@ -402,23 +411,39 @@ class test_nb_clashscore(unittest.TestCase):
     '''
     Test that 1-5 clashes are not being counted
     '''
+    outstring = '1-5 Interaction test error. {}'
+    grm = self.process_raw_records(raw_record_number=0)
+    # check that direction of function calling does not matter
+    tst = nb.is_1_5_interaction(21, 33,grm.hd_sel,grm.full_connectivty_table)
+    msg = outstring.format('Test results depand on atoms order')
+    self.assertTrue(tst,msg=msg)
+    tst = nb.is_1_5_interaction(33, 21,grm.hd_sel,grm.full_connectivty_table)
+    self.assertTrue(tst,msg=msg)
+    # check 1-4 interaction
+    tst = nb.is_1_5_interaction(33, 20,grm.hd_sel,grm.full_connectivty_table)
+    msg = outstring.format('Test fails on 1-4 interaction')
+    self.assertFalse(tst,msg=msg)
+    # check 1-6 interaction
+    tst = nb.is_1_5_interaction(33, 38,grm.hd_sel,grm.full_connectivty_table)
+    msg = outstring.format('Test fails on 1-6 interaction')
+    self.assertFalse(tst,msg=msg)
+    # test 1-5 interaction of atoms other then hydrogen
+    tst = nb.is_1_5_interaction(38, 25,grm.hd_sel,grm.full_connectivty_table)
+    msg = outstring.format('Test fails on 1-5 non hydrogen interaction')
+    self.assertFalse(tst,msg=msg)
+    # test 1-5 interaction of two hydrogens
+    tst = nb.is_1_5_interaction(33, 31,grm.hd_sel,grm.full_connectivty_table)
+    msg = outstring.format('Test fails on 1-5 two hydrogen interaction')
+    self.assertFalse(tst,msg=msg)
 
   def test_overlap_atoms(self):
     '''
     Test that overlapping atoms are being counted
     '''
-
-  def test_symmetry_clash(self):
-    '''
-    Test that clshes due to symmetry operation are being counted properly
-    '''
-
-
-  def test_change_site_cart(self):
-    '''
-    Test that coordinate change, due to refinment process, is correctly
-    accounted for
-    '''
+    msg = 'Overlapping atoms are not counted properly.'
+    grm = self.process_raw_records(raw_record_number=5,
+                                    nonbonded_distance_threshold=None)
+    self.assertEqual(grm.nb_clashscore_all_clashes, 1500,msg)
 
   def test_atom_selection(self):
     '''Test that working correctly when atom is removed'''
@@ -457,7 +482,7 @@ class test_nb_clashscore(unittest.TestCase):
 
   def test_labels_and_addition_scatterers(self):
     '''
-    Test clashes when adding scatterers
+    Test clashes when adding and movning scatterers
     Test water scatterers with and without labels
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
@@ -525,16 +550,27 @@ class test_nb_clashscore(unittest.TestCase):
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
 
-  def process_raw_records(self,raw_record_number,use_site_labels=True):
-    '''(int) -> geomerty_restraints object
+  def process_raw_records(
+    self,
+    raw_record_number,
+    use_site_labels=True,
+    hard_minimum_nonbonded_distance=0,
+    nonbonded_distance_threshold=0.5):
+    '''(int,bool,int,int) -> geomerty_restraints object
+    hard_minimum_nonbonded_distance: by defult this value is 0.01 which will prevent testing
+                                     closer nonbonded interaction
+    nonbonded_distance_threshold: 0.5 is the default, it does not allow overlapping atoms
+                                  to test overlapping atoms use "None"
 
     Argument:
     raw_record_number: select whcih raw records to use
+    use_site_labels: use site_labels (atom description) or leave as None
     '''
     records = []
     if raw_record_number == 0: records = raw_records0
     elif raw_record_number == 1: records = raw_records1
     elif raw_record_number == 2: records = raw_records2
+    elif raw_record_number == 5: records = raw_records5
     else: print ('Wrong raw_records number')
     # create a geometry_restraints_manager (grm)
     log = StringIO()
@@ -551,7 +587,8 @@ class test_nb_clashscore(unittest.TestCase):
     #grm = pdb.geometry_restraints_manager()
     grm = pdb.geometry_restraints_manager(
       assume_hydrogens_all_missing=False,
-      hard_minimum_nonbonded_distance=0.0)
+      hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
+      nonbonded_distance_threshold=None)
 
     xrs = pdb.xray_structure()
     sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(
