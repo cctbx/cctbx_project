@@ -1065,7 +1065,8 @@ class manager(object):
     site_labels=None,
     include_water_water_clash=True,
     only_water_water_clash=False):
-    '''
+    '''(multiple arguments) -> nonbonded_clashscore obj
+
     Construct nonbonded_clash_info, the non-bonded clashss lists and scores
 
     Arguments:
@@ -1082,7 +1083,7 @@ class manager(object):
     Return:
        self.nonbonded_clash_info
 
-    Note:
+    NOTE:
     Be aware to the parameters:
        assume_hydrogens_all_missing=False,
        hard_minimum_nonbonded_distance=0.0
@@ -1090,11 +1091,35 @@ class manager(object):
     The defult values of these are True and 0.001, which will alter
     the size of the vdw bonds and the clashes that being counted
 
-    Getting input variables from xray_structure
-    xrs = processed_pdb_file.xray_structure()
-    hd_sel = xrs.hd_selection()
+    As of Dec. 2013 manipulation of scatterers can produce scatteres whish
+    have no lables. In that case, water interaction score will not be accurate
+
+
+    Usage example:
+    mon_lib_srv = mmtbx.monomer_library.server.server()
+    ener_lib = mmtbx.monomer_library.server.ener_lib()
+
+    pdb = monomer_library.pdb_interpretation.process(
+      file_name=None,
+      raw_records=records,
+      substitute_non_crystallographic_unit_cell_if_necessary=True,
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib)
+
+    grm = pdb.geometry_restraints_manager(
+      assume_hydrogens_all_missing=False,
+      hard_minimum_nonbonded_distance=0.0))
+
+    xrs = pdb.xray_structure()
     sites_cart = xrs.sites_cart()
     site_labels = xrs.scatterers().extract_labels()
+    hd_sel = xrs.hd_selection()
+
+    nb_clash_info = grm.get_nonbonded_clashscore(
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      hd_sel=hd_sel)
+
 
     @author: Youval Dar, LBL 12-2013
     '''
@@ -1241,7 +1266,6 @@ class nonbonded_clashscore(object):
                     vdw_distance: Van Der Waals distance
                     sym_op_j: is this a product of a symmetry opeation
                     rt_mx: Rotation matrix for symmetry operation
-
     hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is a Hydrogen or not
     full_connectivty_table: full_connectivty_table[i] is a dictinary constaining a
                             list of all atoms connected to atom i
@@ -1258,9 +1282,15 @@ class nonbonded_clashscore(object):
     if nonbonded_list != []:
       try:
         clashlist = self.clashscore_clash_list()
-      except TypeError:
+      except TypeError as e:
         # When proxies_info_nonbonded are not available
-        clashlist = [[],[]]
+        if e == "vec3_double' object is not callable":
+          raise Sorry(e)
+        else:
+          clashlist = [[],[]]
+          print e
+      except Sorry as e:
+        raise Sorry(e)
       except Sorry as e:
         raise Sorry(e)
       except Exception as e:
@@ -1287,21 +1317,25 @@ class nonbonded_clashscore(object):
       self.nb_clash_proxies_without_sym_op = []
       self.nb_clash_proxies_all_clashes = []
 
-  def is_1_5_interaction(self,i_seq,j_seq):
-    '''(int,int) -> bool
+  @staticmethod
+  def is_1_5_interaction(i_seq,j_seq,hd_sel,full_connectivty_table):
+    '''(int,int,bool array,list of lists of int) -> bool
     Check if we have 1-5 interaction between two hydrogen and heavy atom
 
     arguments:
-    i_seq,j_seq :  are the number of the atoms we are checking in the pdb table
+    i_seq,j_seq:  are the number of the atoms we are checking in the pdb table
+    hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is a Hydrogen or not
+    full_connectivty_table: full_connectivty_table[i] is a dictinary constaining a
+                            list of all atoms connected to atom
 
     retruns:
     True if we have 1-5 hydrogen and heavy atom interaction
     '''
     # check if we have hydrogen - heavy atom interaction
     xor = lambda a,b: (a or b) and not (a and b)
-    if xor(self.hd_sel[i_seq],self.hd_sel[j_seq]):
+    if xor(hd_sel[i_seq],hd_sel[j_seq]):
       # starting with hydrogen will make process shorter
-      if not self.hd_sel[i_seq]:
+      if not hd_sel[i_seq]:
         i_seq,j_seq = j_seq,i_seq
       # build connection table of i_seq, 4 steps deep
       atoms_numbers = dict([(i_seq, 0)]) # i_seq is in zero distance
@@ -1311,7 +1345,7 @@ class nonbonded_clashscore(object):
         connections = set()
         for key in new_connections:
           # add all new connetions for the current step
-          connections = connections.union(set(self.full_connectivty_table[key]))
+          connections = connections.union(set(full_connectivty_table[key]))
         # Remove the connection that were already used
         new_connections = connections - used_connections
         # Add the new connection to the used once
@@ -1319,7 +1353,7 @@ class nonbonded_clashscore(object):
         # Add the new atoms with their distance from key
         for new_atom in new_connections:
           atoms_numbers[new_atom] = i
-      # Check if j_seq in the is 1-5 connection
+      # return true if j_seq in the is 1-5 connection
       return (j_seq in atoms_numbers) and (atoms_numbers[j_seq] == 5)
     else:
       return False
@@ -1451,7 +1485,7 @@ class nonbonded_clashscore(object):
       # check for clash
       if (delta < -0.41) and check_if_clash:
         # Check of 1-5 interaction
-        if not self.is_1_5_interaction(i_seq, j_seq):
+        if not self.is_1_5_interaction(i_seq, j_seq,self.hd_sel,self.full_connectivty_table):
           clash_vec,key1,key2 = self.get_clash_keys(rec)
           # clash_key is a string a string that uniquly identify each clash
           if i_seq>j_seq:
@@ -1506,6 +1540,7 @@ class nonbonded_clashscore(object):
               temp_clash_list.append(clashing_atoms_dict[key][j])
               temp_clash_list.append(clashing_atoms_dict[key][i])
         clashing_atoms_dict[key] = temp_clash_list
+    f = open('RM_clash_results','w')
     for (key,val) in clashes_dict.iteritems():
       if key.split('::')[2] != '':
         # not to symmetry operation
@@ -1513,5 +1548,4 @@ class nonbonded_clashscore(object):
       else:
         # not due to symmetry operation
         clashing_atoms_list[1].append(val[2])
-
     return clashing_atoms_list
