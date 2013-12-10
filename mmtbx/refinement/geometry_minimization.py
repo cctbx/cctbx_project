@@ -248,9 +248,8 @@ class run2(object):
       bad_hydrogen_count, corrected_hydrogen_count = \
           correct_hydrogen_geometries(
             self.pdb_hierarchy,
-            sites_cart         = self.sites_cart,
             restraints_manager = self.restraints_manager,
-            verbose=True,
+            sites_cart         = self.sites_cart,
             )
       if len(corrected_hydrogen_count):
         print >> log, "  Number of hydrogens corrected : %d" % len(corrected_hydrogen_count)

@@ -1,12 +1,12 @@
-def correct_hydrogen_geometries(hierarchy,
-                                xray_structure=None,
-                                sites_cart=None,
-                                restraints_manager=None,
-                                verbose=False,
-                                ):
+def get_bad_hydrogen_i_seqs(hierarchy,
+                            restraints_manager=None,
+                            xray_structure=None,
+                            sites_cart=None,
+                            verbose=False,
+                            ):
   from cctbx import geometry
-
-  def get_bonded(atom_group, atom, exclude=[]):
+  
+  def get_bonded(atom_group, atom, exclude=[]): # slow
     min_d2=1000
     min_atom=None
     for atom1 in atom_group.atoms():
@@ -34,7 +34,7 @@ def correct_hydrogen_geometries(hierarchy,
 
   def get_angles(atom_group, atom, verbose=False):
     bad_hydrogen_count = 0
-    corrected_hydrogen_count = 0
+    corrected_hydrogen_count = []
     bonded = get_bonded(atom_group, atom)
     if not bonded:
       bad_hydrogen_count+=1
@@ -62,65 +62,38 @@ def correct_hydrogen_geometries(hierarchy,
       if angle>95.:
         atom.xyz = tuple(xyz)
         if verbose: print '  Inverted "%s" ' % (atom.format_atom_record()[:26])
-        corrected_hydrogen_count+=1
+        corrected_hydrogen_count.append(atom.i_seq)
     return bad_hydrogen_count, corrected_hydrogen_count
 
-  def get_angles_from_rm(restraints_manager,
-                         xray_structure,
-                         verbose=False,
-                         ):
-    bad_hydrogen_count = 0
-    corrected_hydrogen_count = []
-    angle_proxies_simple = restraints_manager.geometry.angle_proxies
-    scatterers = xray_structure.scatterers()
-    sites_cart = xray_structure.sites_cart()
-    for proxy in angle_proxies_simple:
-      i_seq, j_seq, k_seq = proxy.i_seqs
-      if(scatterers[i_seq].element_symbol() in ["H", "D"] or
-         scatterers[k_seq].element_symbol() in ["H", "D"]
-         ):
-        if(scatterers[i_seq].element_symbol() in ["H", "D"] and
-           scatterers[k_seq].element_symbol() in ["H", "D"]
-           ):
-          continue
-        if(scatterers[i_seq].element_symbol() in ["H", "D"]):
-          i_h = i_seq
-          ## site_i = scatterers[i_seq].site
-          ## site_k = scatterers[k_seq].site
-          site_i = sites_cart[i_seq]
-          site_k = sites_cart[k_seq]
-        else:
-          i_h = k_seq
-          ## site_i = scatterers[k_seq].site
-          ## site_k = scatterers[i_seq].site
-          site_i = sites_cart[k_seq]
-          site_k = sites_cart[i_seq]
-        #### site_j = scatterers[j_seq].site
-        site_j = sites_cart[j_seq]
+  def get_i_seqs(hierarchy):
+    bad_hydrogen_count=0
+    corrected_hydrogen_count=[]
+    for model in hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          #if len(residue_group.atom_groups())>1: continue
+          for atom_group_i, atom_group in enumerate(residue_group.atom_groups()):
+            for i, atom in enumerate(atom_group.atoms()):
+              if atom.element.strip() in ["H", "D", "T"]:
+                rc = get_angles(atom_group, atom, verbose=verbose)
+                bad_hydrogen_count += rc[0]
+                corrected_hydrogen_count += rc[1]
+    return corrected_hydrogen_count, None
 
-        if i_h in corrected_hydrogen_count: continue
+  def get_i_seqs_from_restraints_manager(
+      hierarchy,
+      restraints_manager,
+      xray_structure = None,
+      sites_cart = None,
+      ):
+    if sites_cart is None and xray_structure:
+      sites_cart = xray_structure.sites_cart()
+    if sites_cart is None:
+      xray_structure = hierarchy.extract_xray_structure()
+      sites_cart = xray_structure.sites_cart()
 
-        angle = geometry.angle((site_i, site_j, site_k)).angle_model
-        if angle<85.:
-          xyz=[0,0,0]
-          xyz[0] = site_j[0]*2-site_i[0]
-          xyz[1] = site_j[1]*2-site_i[1]
-          xyz[2] = site_j[2]*2-site_i[2]
-          angle = geometry.angle((xyz, site_j, site_k)).angle_model
-          if angle>95.:
-            sites_cart[i_h] = tuple(xyz)
-            #if verbose: print "    %s" % scatterers[i_h].label
-            corrected_hydrogen_count.append(i_h)
-    xray_structure.set_sites_cart(sites_cart)
-    return bad_hydrogen_count, corrected_hydrogen_count
-
-  def get_angles_from_rm2(restraints_manager,
-                          hierarchy,
-                          sites_cart,
-                          verbose=False,
-                          ):
-    bad_hydrogen_count = 0
-    corrected_hydrogen_count = []
+    i_seqs=[]
+    xyzs=[]
     angle_proxies_simple = restraints_manager.geometry.angle_proxies
     atoms = hierarchy.atoms()
     for proxy in angle_proxies_simple:
@@ -142,7 +115,7 @@ def correct_hydrogen_geometries(hierarchy,
           site_k = sites_cart[i_seq]
         site_j = sites_cart[j_seq]
 
-        if i_h in corrected_hydrogen_count: continue
+        if i_h in i_seqs: continue
 
         angle = geometry.angle((site_i, site_j, site_k)).angle_model
         if angle<85.:
@@ -152,49 +125,47 @@ def correct_hydrogen_geometries(hierarchy,
           xyz[2] = site_j[2]*2-site_i[2]
           angle = geometry.angle((xyz, site_j, site_k)).angle_model
           if angle>95.:
-            sites_cart[i_h] = tuple(xyz)
-            #if verbose: print "    %s" % atoms[i_h].quote()
-            corrected_hydrogen_count.append(i_h)
-    return bad_hydrogen_count, corrected_hydrogen_count
+            xyzs.append(tuple(xyz))
+            i_seqs.append(i_h)
+    return i_seqs, xyzs
 
-  ####
+  if restraints_manager:
+    i_seqs, xyzs = get_i_seqs_from_restraints_manager(
+      hierarchy,
+      restraints_manager,
+      xray_structure=xray_structure,
+      sites_cart=sites_cart,
+      )
+  else:
+    i_seqs, xyzs = get_i_seqs(hierarchy)
+  return i_seqs, xyzs
 
+def correct_hydrogen_geometries(hierarchy,
+                                restraints_manager=None,
+                                xray_structure=None,
+                                sites_cart=None,
+                                verbose=False,
+                                ):
+  assert xray_structure or sites_cart
   bad_hydrogen_count=0
   corrected_hydrogen_count=0
   if len(hierarchy.models())>1:
     print "  \nModel files with more than one model are ignored\n"
     return bad_hydrogen_count, corrected_hydrogen_count
-  if restraints_manager and xray_structure:
-    bad_hydrogen_count, corrected_hydrogen_count = \
-        get_angles_from_rm(restraints_manager,
-                           xray_structure,
-                           verbose=verbose,
-          )
-  elif restraints_manager and sites_cart:
-    bad_hydrogen_count, corrected_hydrogen_count = \
-        get_angles_from_rm2(restraints_manager,
-                            hierarchy,
-                            sites_cart,
-                            verbose=verbose,
-          )
-  else:
-    # depreciated !!!!
-    for model in hierarchy.models():
-      for chain in model.chains():
-        for residue_group in chain.residue_groups():
-          #
-          # needs to be removed
-          #
-          #if len(residue_group.atom_groups())>1: continue
-          for atom_group_i, atom_group in enumerate(residue_group.atom_groups()):
-            for i, atom in enumerate(atom_group.atoms()):
-              if atom.element.strip() in ["H", "D", "T"]:
-                rc = get_angles(atom_group, atom, verbose=verbose)
-                bad_hydrogen_count += rc[0]
-                corrected_hydrogen_count += rc[1]
-    if xray_structure:
-      sites_cart = hierarchy.atoms().extract_xyz()
-      xray_structure.set_sites_cart(sites_cart)
-    corrected_hydrogen_count = [corrected_hydrogen_count]
+
+  i_seqs, xyzs = get_bad_hydrogen_i_seqs(hierarchy,
+                                         restraints_manager=restraints_manager,
+                                         xray_structure=xray_structure,
+                                         sites_cart=sites_cart,
+                                         )
+  assert len(i_seqs)==len(xyzs)
+  if xray_structure:
+    sites_cart = xray_structure.sites_cart()
+  for i_seq, xyz in zip(i_seqs, xyzs):
+    sites_cart[i_seq] = xyz
+  if xray_structure:
+    xray_structure.set_sites_cart(sites_cart)
+  corrected_hydrogen_count = i_seqs
   return bad_hydrogen_count, corrected_hydrogen_count
 
+  
