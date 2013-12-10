@@ -15,6 +15,7 @@ from libtbx import smart_open
 import mmtbx.utils
 import iotbx.pdb
 import iotbx.phil
+import libtbx.callbacks
 
 """
 Notes on CIF (source: http://www.ccp4.ac.uk/html/mtz2various.html)
@@ -323,14 +324,13 @@ def extract(file_name,
   mtz_crystals = {}
   mtz_object.set_hkl_base(unit_cell=unit_cell)
   from iotbx.reflection_file_utils import cif_status_flags_as_int_r_free_flags
-  complete_set = None
-  if (extend_flags) :
-    from iotbx.reflection_file_utils import make_joined_set
-    all_arrays = []
-    for (data_name, miller_arrays) in all_miller_arrays.iteritems() :
-      for ma in miller_arrays.values() :
-        all_arrays.append(ma)
-    complete_set = make_joined_set(all_arrays)
+  # generate list of all reflections (for checking R-free flags)
+  from iotbx.reflection_file_utils import make_joined_set
+  all_arrays = []
+  for (data_name, miller_arrays) in all_miller_arrays.iteritems() :
+    for ma in miller_arrays.values() :
+      all_arrays.append(ma)
+  complete_set = make_joined_set(all_arrays)
   if return_as_miller_arrays:
     miller_array_list=[]
   for i, (data_name, miller_arrays) in enumerate(all_miller_arrays.iteritems()):
@@ -373,7 +373,7 @@ def extract(file_name,
           break
       if wavelength_id is not None and w_id > 0 and w_id != wavelength_id:
         continue
-      if w_id > 0 and wavelength_id is None:
+      if w_id > 1 and wavelength_id is None:
         if (label in column_labels) :
           label += "%i" %w_id
         #print "label is", label
@@ -437,18 +437,26 @@ def extract(file_name,
         ma = ma.map_to_asu().set_info(ma.info())
       if(remove_systematic_absences):
         ma = ma.remove_systematic_absences()
-      if (label.startswith(output_r_free_label)) and (extend_flags) :
-        missing_set = complete_set.lone_set(other=ma)
-        if (len(missing_set.indices()) > 0) :
-          from cctbx import r_free_utils
-          ma = r_free_utils.extend_flags(
-            r_free_flags=ma,
-            test_flag_value=0,
-            array_label=label,
-            complete_set=complete_set,
-            preserve_input_values=True,
-            allow_uniform_flags=True,
-            log=sys.stdout)
+      if (label.startswith(output_r_free_label)) :
+        n_missing = len(complete_set.lone_set(other=ma).indices())
+        if (n_missing > 0) :
+          if (extend_flags) :
+            from cctbx import r_free_utils
+            ma = r_free_utils.extend_flags(
+              r_free_flags=ma,
+              test_flag_value=0,
+              array_label=label,
+              complete_set=complete_set,
+              preserve_input_values=True,
+              allow_uniform_flags=True,
+              log=sys.stdout)
+          else :
+            libtbx.warn(("%d reflections do not have R-free flags in the "+
+              "array '%s' - this may "+
+              "cause problems if you try to use the MTZ file for refinement "+
+              "or map calculation.  We recommend that you extend the flags "+
+              "to cover all reflections (--extend-flags on the command line).")
+              % (n_missing, label))
       # Get rid of fake (0,0,0) reflection in some CIFs
       ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),
         negate=True).set_info(ma.info())
@@ -553,6 +561,9 @@ options {
     .short_caption = Move incompatible flags to work set
   ignore_bad_sigmas = False
     .type = bool
+  extend_flags = False
+    .type = bool
+    .short_caption = Extend incomplete R-free flags
   show_log = True
     .type = bool
 }
@@ -567,6 +578,7 @@ def run2 (args,
           check_params=True,
           params=None) :
   import mmtbx.command_line.fetch_pdb
+  libtbx.call_back.set_warning_log(sys.stderr)
   parameter_interpreter = master_phil.command_line_argument_interpreter(
     home_scope="")
   pdb_file = None
@@ -634,7 +646,8 @@ def run2 (args,
     remove_systematic_absences=params.options.eliminate_sys_absent,
     incompatible_flags_to_work_set=\
       params.options.incompatible_flags_to_work_set,
-    ignore_bad_sigmas=params.options.ignore_bad_sigmas)
+    ignore_bad_sigmas=params.options.ignore_bad_sigmas,
+    extend_flags=params.options.extend_flags)
   return (params.output_file_name, n_refl)
 
 def validate_params (params) :
