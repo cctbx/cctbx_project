@@ -1702,10 +1702,12 @@ mmtbx/monomer_library/bondlength_defaults.py -text
 mmtbx/monomer_library/cif_triage.py svneol=native#text/x-python
 mmtbx/monomer_library/conformation_dependent_restraints.py svneol=native#text/x-python
 mmtbx/monomer_library/conv_v2_v3.py svneol=native#text/x-python
+mmtbx/monomer_library/correct_hydrogen_geometries.py -text
 mmtbx/monomer_library/idealized_aa.py -text
 mmtbx/monomer_library/linking_utils.py -text
 mmtbx/monomer_library/rna_sugar_pucker_analysis.py svneol=native#text/x-python
 mmtbx/monomer_library/rotamer_utils.py svneol=native#text/x-python
+mmtbx/monomer_library/tst_chg.py -text
 mmtbx/monomer_library/tst_cif_triage.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_conformation_dependent_restraints.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_geo_reduce_for_tardy.py svneol=native#text/x-python
@@ -1775,6 +1777,7 @@ mmtbx/regression/make_fake_anomalous_data.py -text
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_alignment.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
+mmtbx/regression/tst_altloc_remediate.py -text
 mmtbx/regression/tst_anomalous_substructure.py -text
 mmtbx/regression/tst_b_factor_statistics.py -text
 mmtbx/regression/tst_cablam.py -text
