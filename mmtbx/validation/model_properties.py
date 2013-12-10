@@ -112,6 +112,7 @@ class xray_structure_statistics (validation) :
   ]
   def __init__ (self, pdb_hierarchy, xray_structure, ignore_hd=True,
       collect_outliers=True) :
+    validation.__init__(self)
     assert len(xray_structure.scatterers()) != 0
     from cctbx import adptbx
     from scitbx.array_family import flex
