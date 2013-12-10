@@ -448,10 +448,6 @@ class set(crystal.symmetry):
       if (isinstance(self, array) and self.is_real_array()):
         print >> f, prefix + "Anomalous signal: %.4f" % (
           no_sys_abs.anomalous_signal())
-    if (self.info() is not None) and isinstance(self.info(), array_info) :
-      wavelength = self.info().wavelength
-      if (wavelength is not None) :
-        print >> f, prefix + "Wavelength: %.4f" % wavelength
     return self
 
   def show_completeness(self, reflections_per_bin = 500, out = None):
@@ -1836,6 +1832,14 @@ class array(set):
     Return the associated info object, or None if undefined.
     """
     return self._info
+
+  def show_comprehensive_summary(self, f=None, prefix=""):
+    set.show_comprehensive_summary(self, f=f, prefix=prefix)
+    if (self.info() is not None) and isinstance(self.info(), array_info) :
+      wavelength = self.info().wavelength
+      if (wavelength is not None) :
+        print >> f, prefix + "Wavelength: %.4f" % wavelength
+    return self
 
   def observation_type(self):
     return self._observation_type
