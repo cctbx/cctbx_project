@@ -144,7 +144,8 @@ class restraint_validation (validation) :
       restraint_proxies,
       unit_cell,
       ignore_hd=True,
-      sigma_cutoff=4.0) :
+      sigma_cutoff=4.0,
+      outliers_only=True) :
     validation.__init__(self)
     self.z_min = self.z_max = self.z_mean = None
     deviations_method = getattr(energies_sites, "%s_deviations" %
@@ -168,7 +169,8 @@ class restraint_validation (validation) :
       unit_cell=unit_cell,
       sites_cart=sites_cart,
       pdb_atoms=pdb_atoms,
-      sigma_cutoff=sigma_cutoff))
+      sigma_cutoff=sigma_cutoff,
+      outliers_only=outliers_only))
     self.n_outliers = len(self.results)
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
@@ -224,7 +226,7 @@ class bonds (restraint_validation) :
   def get_result_class (self) : return bond
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
-      sigma_cutoff) :
+      sigma_cutoff, outliers_only=True) :
     from scitbx.array_family import flex
     site_labels = flex.bool(sites_cart.size(), True).iselection()
     sorted_table, not_shown = proxies.get_sorted(
@@ -249,6 +251,9 @@ class bonds (restraint_validation) :
         xyz=get_mean_xyz(bond_atoms))
       if (outlier.score > sigma_cutoff) :
         outliers.append(outlier)
+      elif (not outliers_only) :
+        outlier.outlier=False
+        outliers.append(outlier)
     return outliers
 
 class angles (restraint_validation) :
@@ -258,7 +263,7 @@ class angles (restraint_validation) :
   def get_result_class (self) : return angle
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
-      sigma_cutoff) :
+      sigma_cutoff, outliers_only=True) :
     import cctbx.geometry_restraints
     sorted = _get_sorted(proxies,
       unit_cell=unit_cell,
@@ -281,6 +286,9 @@ class angles (restraint_validation) :
         xyz=proxy_atoms[1].xyz)
       if (outlier.score > sigma_cutoff) :
         outliers.append(outlier)
+      elif (not outliers_only) :
+        outlier.outlier=False
+        outliers.append(outlier)
     return outliers
 
 class dihedrals (restraint_validation) :
@@ -289,7 +297,7 @@ class dihedrals (restraint_validation) :
   def get_result_class (self) : return dihedral
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
-      sigma_cutoff) :
+      sigma_cutoff, outliers_only=True) :
     import cctbx.geometry_restraints
     sorted = _get_sorted(proxies,
       unit_cell=unit_cell,
@@ -312,6 +320,9 @@ class dihedrals (restraint_validation) :
         outlier=True)
       if (outlier.score > sigma_cutoff) :
         outliers.append(outlier)
+      elif (not outliers_only) :
+        outlier.outlier=False
+        outliers.append(outlier)
     return outliers
 
 class chiralities (restraint_validation) :
@@ -320,7 +331,7 @@ class chiralities (restraint_validation) :
   def get_result_class (self) : return chirality
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
-      sigma_cutoff) :
+      sigma_cutoff, outliers_only=True) :
     import cctbx.geometry_restraints
     sorted = _get_sorted(proxies,
       unit_cell=None,
@@ -342,6 +353,9 @@ class chiralities (restraint_validation) :
         xyz=get_mean_xyz(proxy_atoms))
       if (outlier.score > sigma_cutoff) :
         outliers.append(outlier)
+      elif (not outliers_only) :
+        outlier.outlier=False
+        outliers.append(outlier)
     return outliers
 
 class planarities (restraint_validation) :
@@ -350,7 +364,7 @@ class planarities (restraint_validation) :
   def get_result_class (self) : return planarity
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
-      sigma_cutoff) :
+      sigma_cutoff, outliers_only=True) :
     import cctbx.geometry_restraints
     from scitbx.array_family import flex
     site_labels = flex.bool(sites_cart.size(), True).iselection()
@@ -365,7 +379,6 @@ class planarities (restraint_validation) :
       i_seqs = [ a[0] for a in plane_atoms ]
       deviation = max([ a[1] / a[2] for a in plane_atoms ])
       plane_atoms_ = get_atoms_info(pdb_atoms, iselection=i_seqs)
-      if (deviation < sigma_cutoff) : continue
       outlier = planarity(
         atoms_info=plane_atoms_,
         rms_deltas=rms_delta,
@@ -374,7 +387,11 @@ class planarities (restraint_validation) :
         score=deviation,
         outlier=True,
         xyz=get_mean_xyz(plane_atoms_))
-      outliers.append(outlier)
+      if (outlier.score > sigma_cutoff) :
+        outliers.append(outlier)
+      elif (not outliers_only) :
+        outlier.outlier=False
+        outliers.append(outlier)
     return outliers
 
 def get_mean_xyz (atoms) :
@@ -439,7 +456,8 @@ class combined (slots_getstate_setstate) :
       xray_structure,
       geometry_restraints_manager,
       ignore_hd=True,
-      sigma_cutoff=4.0) :
+      sigma_cutoff=4.0,
+      outliers_only=True) :
     from mmtbx import restraints
     restraints_manager = restraints.manager(
       geometry=geometry_restraints_manager)
@@ -468,7 +486,8 @@ class combined (slots_getstate_setstate) :
         restraint_proxies=restraint_proxies,
         unit_cell=xray_structure.unit_cell(),
         ignore_hd=ignore_hd,
-        sigma_cutoff=sigma_cutoff)
+        sigma_cutoff=sigma_cutoff,
+        outliers_only=outliers_only)
       setattr(self, geo_type, rv)
 
   def show (self, out=sys.stdout, prefix="", verbose=True) :
