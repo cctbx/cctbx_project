@@ -117,7 +117,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
   assert detector in ['CxiDs1', 'XppDs1']
 
   from xfel.metrology.flatfile import parse_metrology
-  quadrants = parse_metrology(path, detector, plot, old_style_diff_path)
+  quadrants = parse_metrology(path, detector, plot, old_style_diff_path=old_style_diff_path)
 
   # rotate sensors 6 and 7 180 degrees
   for q_id, sensor in quadrants.iteritems():
