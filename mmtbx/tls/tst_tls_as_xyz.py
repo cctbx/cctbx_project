@@ -3,6 +3,9 @@ from scitbx import matrix
 from mmtbx.tls import tls_as_xyz
 from libtbx import group_args
 from libtbx.test_utils import approx_equal
+import mmtbx.tls.tools
+import iotbx.pdb
+from scitbx.array_family import flex
 
 def print_step(m):
   print "-"*80
@@ -847,12 +850,12 @@ Lz=  -0.27975   0.83925  -0.46625
  -0.36000001  1.53000009 -0.06000000    0.00000000  0.00000000  0.00000000   -0.36000001  1.53000009 -0.06000000
   0.08000001 -0.06000000  0.08000001    0.00000000  0.00000000  0.00000000    0.08000001 -0.06000000  0.08000001
 
-***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base 
+***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base
   0.04857142 -0.08232684 -0.09121538    0.04857135 -0.08232674 -0.09121536
  -0.08232684  0.19281989  0.14534362   -0.08232674  0.19282031  0.14534359
  -0.09121536  0.14534362  0.56860864   -0.09121536  0.14534360  0.56860870
 
-***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base 
+***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base
   0.11000001 -0.05000000 -0.05000000    0.11000045 -0.04999994 -0.05000009
  -0.05000000  0.34999996 -0.28999996   -0.04999993  0.34999999 -0.29000005
  -0.05000000 -0.28999996  0.34999996   -0.05000011 -0.29000002  0.34999990
@@ -862,7 +865,7 @@ Vx=   0.57735   0.57735   0.57735
 Vy=   0.81650  -0.40825  -0.40825
 Vz=   0.00000   0.70711  -0.70711
 
-***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base 
+***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base
   0.01000000  0.00000000  0.00000000    0.01000007  0.00000024  0.00000011
   0.00000000  0.16000001  0.00000000    0.00000024  0.16000026  0.00000005
   0.00000000  0.00000000  0.64000005    0.00000010  0.00000008  0.63999987
@@ -965,12 +968,12 @@ Lz=   0.70711  -0.70711   0.00000
   0.00000000  0.00000000  0.00000000    0.00000000  0.02351111  0.00000000    0.00000000  0.02351111  0.00000000
   0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.02183827    0.00000000  0.00000000  0.02183827
 
-***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base 
+***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base
   0.01000003  0.00000000  0.00000000    0.01000003  0.00000000  0.00000000
   0.00000000  0.16000001  0.00000000    0.00000000  0.16000001  0.00000000
   0.00000001  0.00000000  0.63999999    0.00000001  0.00000000  0.64000005
 
-***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base 
+***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base
   0.32500002 -0.31500000  0.00000000    0.32500002 -0.31500000  0.00000000
  -0.31500000  0.32500002  0.00000000   -0.31500000  0.32500002  0.00000000
   0.00000000  0.00000000  0.16000001    0.00000000  0.00000000  0.16000001
@@ -980,7 +983,7 @@ Vx=   0.70711   0.70711   0.00000
 Vy=   0.00000   0.00000   1.00000
 Vz=   0.70711  -0.70711   0.00000
 
-***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base 
+***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base
   0.01000000  0.00000000  0.00000000    0.01000003  0.00000000  0.00000000
   0.00000000  0.16000001  0.00000000    0.00000000  0.16000001  0.00000000
   0.00000000  0.00000000  0.64000005    0.00000001  0.00000000  0.63999999
@@ -1083,12 +1086,12 @@ Lz=  -0.27975   0.83925  -0.46625
   0.00000000  0.00000000  0.00000000    0.00000000  0.02351111  0.00000000    0.00000000  0.02351111  0.00000000
   0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.02183827    0.00000000  0.00000000  0.02183827
 
-***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base 
+***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base
   0.04857142 -0.08232684 -0.09121538    0.04857143 -0.08232684 -0.09121537
  -0.08232684  0.19281989  0.14534362   -0.08232683  0.19281989  0.14534362
  -0.09121536  0.14534362  0.56860864   -0.09121535  0.14534362  0.56860870
 
-***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base 
+***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base
   0.11000001 -0.05000000 -0.05000000    0.11000003 -0.05000000 -0.05000000
  -0.05000000  0.34999996 -0.28999996   -0.05000000  0.35000002 -0.28999996
  -0.05000000 -0.28999996  0.34999996   -0.05000002 -0.28999999  0.34999996
@@ -1098,7 +1101,7 @@ Vx=   0.57735   0.57735   0.57735
 Vy=   0.81650  -0.40825  -0.40825
 Vz=   0.00000   0.70711  -0.70711
 
-***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base 
+***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base
   0.01000000  0.00000000  0.00000000    0.01000002  0.00000000  0.00000001
   0.00000000  0.16000001  0.00000000    0.00000001  0.16000001  0.00000000
   0.00000000  0.00000000  0.64000005    0.00000006 -0.00000001  0.63999981
@@ -1201,12 +1204,12 @@ Lz=   0.70711  -0.70711   0.00000
  -0.36000001  1.53000009 -0.06000000    0.00000000  0.02351111  0.00000000   -0.36000001  1.55351114 -0.06000000
   0.08000001 -0.06000000  0.08000001    0.00000000  0.00000000  0.02183827    0.08000001 -0.06000000  0.10183828
 
-***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base 
+***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base
   0.01000003  0.00000000  0.00000000    0.01000002  0.00000003  0.00000001
   0.00000000  0.16000001  0.00000000    0.00000003  0.15999997  0.00000001
   0.00000001  0.00000000  0.63999999    0.00000001  0.00000001  0.63999999
 
-***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base 
+***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base
   0.32500002 -0.31500000  0.00000000    0.32499999 -0.31499997  0.00000003
  -0.31500000  0.32500002  0.00000000   -0.31499997  0.32499999  0.00000002
   0.00000000  0.00000000  0.16000001    0.00000003  0.00000002  0.15999997
@@ -1216,7 +1219,7 @@ Vx=   0.70711   0.70711   0.00000
 Vy=   0.00000   0.00000   1.00000
 Vz=   0.70711  -0.70711   0.00000
 
-***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base 
+***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base
   0.01000000  0.00000000  0.00000000    0.01000002  0.00000003  0.00000000
   0.00000000  0.16000001  0.00000000    0.00000003  0.15999997  0.00000001
   0.00000000  0.00000000  0.64000005    0.00000000  0.00000001  0.63999993
@@ -1319,12 +1322,12 @@ Lz=  -0.27975   0.83925  -0.46625
  -0.36000001  1.53000009 -0.06000000    0.00000000  0.02351111  0.00000000   -0.36000001  1.55351114 -0.06000000
   0.08000001 -0.06000000  0.08000001    0.00000000  0.00000000  0.02183827    0.08000001 -0.06000000  0.10183828
 
-***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base 
+***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base
   0.04857142 -0.08232684 -0.09121538    0.04857135 -0.08232686 -0.09121538
  -0.08232684  0.19281989  0.14534362   -0.08232677  0.19282031  0.14534362
  -0.09121536  0.14534362  0.56860864   -0.09121539  0.14534360  0.56860858
 
-***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base 
+***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base
   0.11000001 -0.05000000 -0.05000000    0.11000040 -0.04999991 -0.05000012
  -0.05000000  0.34999996 -0.28999996   -0.04999998  0.34999990 -0.28999999
  -0.05000000 -0.28999996  0.34999996   -0.05000018 -0.28999999  0.34999993
@@ -1334,7 +1337,7 @@ Vx=   0.57735   0.57735   0.57735
 Vy=   0.81650  -0.40825  -0.40825
 Vz=   0.00000   0.70711  -0.70711
 
-***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base 
+***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base
   0.01000000  0.00000000  0.00000000    0.01000003  0.00000015  0.00000007
   0.00000000  0.16000001  0.00000000    0.00000025  0.16000028  0.00000013
   0.00000000  0.00000000  0.64000005    0.00000006  0.00000013  0.63999975
@@ -1434,7 +1437,7 @@ def exercise_24():
   r = tls_as_xyz.decompose_tls(T=T, L=L, S=S)
   print
   compare(e, r)
-  
+
 def exercise_31():
   # getTLS3_test031.mes
   e = extract(s=getTLS3_test031)
@@ -1451,7 +1454,7 @@ def exercise_31():
   r = tls_as_xyz.decompose_tls(T=T, L=L, S=S)
   print
   compare(e, r)
-  
+
 def exercise_34():
   # getTLS3_test034.mes
   e = extract(s=getTLS3_test034)
@@ -1469,7 +1472,7 @@ def exercise_34():
   r = tls_as_xyz.decompose_tls(T=T, L=L, S=S)
   print
   compare(e, r)
-  
+
 def exercise_41():
   # getTLS3_test041.mes
   e = extract(s=getTLS3_test041)
@@ -1487,7 +1490,7 @@ def exercise_41():
   r = tls_as_xyz.decompose_tls(T=T, L=L, S=S)
   print
   compare(e, r)
-  
+
 def exercise_44():
   # getTLS3_test044.mes
   e = extract(s=getTLS3_test044)
@@ -1506,16 +1509,459 @@ def exercise_44():
   print
   compare(e, r)
 
+# Ensemble generation tests ####################################################
+
+def generate_input_pdb(T,L,S, pdb_lines, prefix):
+  pi = iotbx.pdb.input(source_info=None, lines=pdb_lines)
+  ph = pi.construct_hierarchy()
+  xrs = pi.xray_structure_simple()
+  sel = [flex.bool(xrs.scatterers().size(), True).iselection()]
+  tlsos = mmtbx.tls.tools.generate_tlsos(
+    selections     = sel,
+    xray_structure = xrs,
+    T=[T.as_sym_mat3()],
+    L=[L.as_sym_mat3()],
+    S=[S])
+  u_cart_from_tls = mmtbx.tls.tools.u_cart_from_tls(
+    sites_cart = xrs.sites_cart(),
+    selections = sel,
+    tlsos      = tlsos)
+  for u in u_cart_from_tls:
+    print list(u)
+  xrs.convert_to_anisotropic()
+  xrs.set_u_cart(u_cart=u_cart_from_tls)
+  ph.adopt_xray_structure(xrs)
+  of = open("%s_start.pdb"%prefix, "w")
+  mmtbx.tls.tools.remark_3_tls(tlsos=tlsos, selection_strings=["all"], out=of)
+  of.close()
+  ph.write_pdb_file(
+    file_name        = "%s_start.pdb"%prefix,
+    open_append      = True,
+    crystal_symmetry = xrs.crystal_symmetry())
+
+def generate_ensemble(pdb_lines, T,L,S, prefix):
+  # read inputs
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_lines)
+  xrs = pdb_inp.xray_structure_simple()
+  xrs.convert_to_isotropic()
+  xrs = xrs.set_b_iso(value=0)
+  sites_cart = xrs.sites_cart()
+  h = pdb_inp.construct_hierarchy()
+  states = mmtbx.utils.states(xray_structure=xrs, pdb_hierarchy=h)
+  #
+  #remark_3_records = pdb_inp.extract_remark_iii_records(3)
+  #tls_extract = mmtbx.tls.tools.tls_from_pdb_inp(
+  #  remark_3_records = remark_3_records,
+  #  pdb_hierarchy = h)
+  #assert len(tls_extract.tls_params)==1
+  #tlso = tls_extract.tls_params[0]
+  #print "Input T:", tlso.t
+  #print "      L:", tlso.l
+  #print "      S:", tlso.s
+  #T = matrix.sym(sym_mat3=tlso.t)
+  #L = matrix.sym(sym_mat3=tlso.l)#*sc #???
+  #S = matrix.sqr(tlso.s)
+  # run through steps
+  r = tls_as_xyz.decompose_tls(T=T, L=L, S=S)
+  # iteratable
+  print
+  print "GENERATING SHIFTED MODELs:"
+  for trial in xrange(499):
+    print "MODEL #%d"%trial
+    dx0,dy0,dz0 = tls_as_xyz.step_i__get_dxdydz(L_L=r.b_o.L_L, R_PL=r.b_o.R_PL)
+    d_r_M_V  = tls_as_xyz.step_j(h_o=r.h_o)
+    sites_cart_new = flex.vec3_double()
+    for site_cart in sites_cart:
+      r_L = r.b_o.R_PL.transpose() * site_cart
+      d_r_M_L = tls_as_xyz.step_i__compute_delta_L_r_dp(
+        r_L=r_L,c_o=r.c_o,e_o=r.e_o,dx0=dx0,dy0=dy0,dz0=dz0, R_PL=r.b_o.R_PL)
+      d_r_M = tls_as_xyz.step_k(d_r_M_L=d_r_M_L, d_r_M_V=d_r_M_V)
+      sites_cart_new.append(matrix.col(site_cart) + d_r_M)
+    #
+    states.add(sites_cart = sites_cart_new)
+  states.write(file_name = "%s_ensemble.pdb"%prefix)
+
+pdb_str = """\n
+REMARK this is PDB formatted CH3-HN-CO-CH3-mod.xyz file
+CRYST1    6.000    6.000    3.000  90.00  90.00  90.00    P 1
+ATOM      1  N    ALA    1       1.500   0.000   0.000  1.00  0.91      E
+ATOM      1  CA   ALA    1       0.000   0.000   0.000  1.00  0.91      E
+ATOM      1  CB   ALA    1       0.000   1.500   0.000  1.00  0.91      E
+ATOM      1  C    ALA    1       0.000   0.000   1.500  1.00  0.91      E
+ATOM      1  O    ALA    1      -1.000  -1.000   2.000  1.00  0.91      E
+end
+"""
+
+getTLS_test111="""\n
+** control information -NOT FOR COMPARISON- SKIP IT**
+
+rms and rms2 Libration around i,j,k
+dx ,dy ,dz = 0.2000000 0.0000000 0.0000000
+dx2,dy2,dz2= 0.0400000 0.0000000 0.0000000
+vectors defining the principal Libration axes
+   1.00000   0.00000   0.00000
+   0.00000   1.00000   0.00000
+
+rotation axes pass through the points in the L-system
+ parallel to i : (wix,wiy,wiz)=    0.00000   0.00000   0.00000
+ parallel to j : (wjx,wjy,wjz)=    0.00000   0.00000   0.00000
+ parallel to k : (wkx,wky,wkz)=    0.00000   0.00000   0.00000
+correlation shifts sx,sy,sz for the libration axes
+  0.000000  0.000000  0.000000
+
+rms and rms2 Vibration along x,y,z
+tx ,ty ,tz = 0.0000000 0.0000000 0.0000000
+tx2,ty2,tz2= 0.0000000 0.0000000 0.0000000
+vectors defining the principal Vibration axes
+   1.00000   0.00000   0.00000
+   0.00000   1.00000   0.00000
+
+principal Libration axes (orthonormal L base)
+L1=   1.00000   0.00000   0.00000
+L2=   0.00000   1.00000   0.00000
+L3=   0.00000   0.00000   1.00000
+
+principal Vibration axes (orthonormal V base)
+V1=   1.00000   0.00000   0.00000
+V2=   0.00000   1.00000   0.00000
+V3=   0.00000   0.00000   1.00000
+
+TLS matrices from Libration in the L-base
+  0.00000000  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+TLS matrices from Libration in the M-base
+  0.00000000  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+V matrix from Vibration in the V-base
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+V matrix from Vibration in the M-base
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+
+
+************* INFORMATION FOR COMPARISON **********
+
+***  T[M] L[M] S[M] *** total TLS matrices in the main base (initial information) ***
+  0.00000000  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  Lx Ly Lz       *** principal Libration axes (orthonormal L base)
+Lx=   1.00000   0.00000   0.00000
+Ly=   0.00000   1.00000   0.00000
+Lz=   0.00000   0.00000   1.00000
+
+***  T[L] L[L] S[L] *** total TLS matrices in the L base ***
+  0.00000000  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  dx2 dy2 dz2     *** rms^2: Libration around lx,ly,lz
+   0.0400000   0.0000000   0.0000000
+
+***  dx  dy  dz      *** rms  : Libration around lx,ly,lz
+   0.2000000   0.0000000   0.0000000
+
+***  Wlx[L] Wly[L] Wlz[L] *** rotation axes pass through the points in the L-base
+ Wlx, axis parallel to lx : (wix,wiy,wiz)=    0.00000   0.00000   0.00000
+ Wly, axis parallel to ly : (wjx,wjy,wjz)=    0.00000   0.00000   0.00000
+ Wlz, axis parallel to lz : (wkx,wky,wkz)=    0.00000   0.00000   0.00000
+
+***  Wlx[M] Wly[M] Wlz[M] *** rotation axes pass through the points in the M-base
+ Wlx, axis parallel to lx : (wix,wiy,wiz)=    0.00000   0.00000   0.00000
+ Wly, axis parallel to ly : (wjx,wjy,wjz)=    0.00000   0.00000   0.00000
+ Wlz, axis parallel to lz : (wkx,wky,wkz)=    0.00000   0.00000   0.00000
+
+***  sx sy sz              *** correlation shifts sx,sy,sz for the libration axes
+  0.000000  0.000000  0.000000
+
+***  CW[L] CS[L] C[L]=CW[L]+CS[L] *** translation matrices from libration in the L base ***
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  Vx Vy Vz       *** principal Vibration axes (orthonormal V base)
+Vx=   1.00000   0.00000   0.00000
+Vy=   0.00000   1.00000   0.00000
+Vz=   0.00000   0.00000   1.00000
+
+***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+"""
+
+getTLS_test112="""\n
+** control information -NOT FOR COMPARISON- SKIP IT**
+
+rms and rms2 Libration around i,j,k
+dx ,dy ,dz = 0.2000000 0.0000000 0.0000000
+dx2,dy2,dz2= 0.0400000 0.0000000 0.0000000
+vectors defining the principal Libration axes
+   1.00000   0.00000   0.00000
+   0.00000   1.00000   0.00000
+
+rotation axes pass through the points in the L-system
+ parallel to i : (wix,wiy,wiz)=    0.00000   1.00000  -1.00000
+ parallel to j : (wjx,wjy,wjz)=    0.00000   0.00000   0.00000
+ parallel to k : (wkx,wky,wkz)=    0.00000   0.00000   0.00000
+correlation shifts sx,sy,sz for the libration axes
+  0.000000  0.000000  0.000000
+
+rms and rms2 Vibration along x,y,z
+tx ,ty ,tz = 0.0000000 0.0000000 0.0000000
+tx2,ty2,tz2= 0.0000000 0.0000000 0.0000000
+vectors defining the principal Vibration axes
+   1.00000   0.00000   0.00000
+   0.00000   1.00000   0.00000
+
+principal Libration axes (orthonormal L base)
+L1=   1.00000   0.00000   0.00000
+L2=   0.00000   1.00000   0.00000
+L3=   0.00000   0.00000   1.00000
+
+principal Vibration axes (orthonormal V base)
+V1=   1.00000   0.00000   0.00000
+V2=   0.00000   1.00000   0.00000
+V3=   0.00000   0.00000   1.00000
+
+TLS matrices from Libration in the L-base
+  0.00000000  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.00000000 -0.04000000 -0.04000000
+  0.00000000  0.04000000  0.04000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.04000000  0.04000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+TLS matrices from Libration in the M-base
+  0.00000000  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.00000000 -0.04000000 -0.04000000
+  0.00000000  0.04000000  0.04000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.04000000  0.04000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+V matrix from Vibration in the V-base
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+V matrix from Vibration in the M-base
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+
+
+************* INFORMATION FOR COMPARISON **********
+
+***  T[M] L[M] S[M] *** total TLS matrices in the main base (initial information) ***
+  0.00000000  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.00000000 -0.04000000 -0.04000000
+  0.00000000  0.04000000  0.04000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.04000000  0.04000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  Lx Ly Lz       *** principal Libration axes (orthonormal L base)
+Lx=   1.00000   0.00000   0.00000
+Ly=   0.00000   1.00000   0.00000
+Lz=   0.00000   0.00000   1.00000
+
+***  T[L] L[L] S[L] *** total TLS matrices in the L base ***
+  0.00000000  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.00000000 -0.04000000 -0.04000000
+  0.00000000  0.04000000  0.04000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.04000000  0.04000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  dx2 dy2 dz2     *** rms^2: Libration around lx,ly,lz
+   0.0400000   0.0000000   0.0000000
+
+***  dx  dy  dz      *** rms  : Libration around lx,ly,lz
+   0.2000000   0.0000000   0.0000000
+
+***  Wlx[L] Wly[L] Wlz[L] *** rotation axes pass through the points in the L-base
+ Wlx, axis parallel to lx : (wix,wiy,wiz)=    0.00000   1.00000  -1.00000
+ Wly, axis parallel to ly : (wjx,wjy,wjz)=    0.00000   0.00000   0.00000
+ Wlz, axis parallel to lz : (wkx,wky,wkz)=    0.00000   0.00000   0.00000
+
+***  Wlx[M] Wly[M] Wlz[M] *** rotation axes pass through the points in the M-base
+ Wlx, axis parallel to lx : (wix,wiy,wiz)=    0.00000   1.00000  -1.00000
+ Wly, axis parallel to ly : (wjx,wjy,wjz)=    0.00000   0.00000   0.00000
+ Wlz, axis parallel to lz : (wkx,wky,wkz)=    0.00000   0.00000   0.00000
+
+***  sx sy sz              *** correlation shifts sx,sy,sz for the libration axes
+  0.000000  0.000000  0.000000
+
+***  CW[L] CS[L] C[L]=CW[L]+CS[L] *** translation matrices from libration in the L base ***
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.04000000  0.04000000    0.00000000  0.00000000  0.00000000    0.00000000  0.04000000  0.04000000
+  0.00000000  0.04000000  0.04000000    0.00000000  0.00000000  0.00000000    0.00000000  0.04000000  0.04000000
+
+***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  Vx Vy Vz       *** principal Vibration axes (orthonormal V base)
+Vx=   1.00000   0.00000   0.00000
+Vy=   0.00000   1.00000   0.00000
+Vz=   0.00000   0.00000   1.00000
+
+***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+"""
+
+getTLS_test113="""\n
+** control information -NOT FOR COMPARISON- SKIP IT**
+
+rms and rms2 Libration around i,j,k
+dx ,dy ,dz = 0.2000000 0.0000000 0.0000000
+dx2,dy2,dz2= 0.0400000 0.0000000 0.0000000
+vectors defining the principal Libration axes
+   1.00000   0.00000   0.00000
+   0.00000   1.00000   0.00000
+
+rotation axes pass through the points in the L-system
+ parallel to i : (wix,wiy,wiz)=    0.00000   0.00000   0.00000
+ parallel to j : (wjx,wjy,wjz)=    0.00000   0.00000   0.00000
+ parallel to k : (wkx,wky,wkz)=    0.00000   0.00000   0.00000
+correlation shifts sx,sy,sz for the libration axes
+  2.000000  0.000000  0.000000
+
+rms and rms2 Vibration along x,y,z
+tx ,ty ,tz = 0.0000000 0.0000000 0.0000000
+tx2,ty2,tz2= 0.0000000 0.0000000 0.0000000
+vectors defining the principal Vibration axes
+   1.00000   0.00000   0.00000
+   0.00000   1.00000   0.00000
+
+principal Libration axes (orthonormal L base)
+L1=   1.00000   0.00000   0.00000
+L2=   0.00000   1.00000   0.00000
+L3=   0.00000   0.00000   1.00000
+
+principal Vibration axes (orthonormal V base)
+V1=   1.00000   0.00000   0.00000
+V2=   0.00000   1.00000   0.00000
+V3=   0.00000   0.00000   1.00000
+
+TLS matrices from Libration in the L-base
+  0.16000001  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.08000001  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+TLS matrices from Libration in the M-base
+  0.16000001  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.08000001  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+V matrix from Vibration in the V-base
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+V matrix from Vibration in the M-base
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000
+
+
+************* INFORMATION FOR COMPARISON **********
+
+***  T[M] L[M] S[M] *** total TLS matrices in the main base (initial information) ***
+  0.16000001  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.08000001  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  Lx Ly Lz       *** principal Libration axes (orthonormal L base)
+Lx=   1.00000   0.00000   0.00000
+Ly=   0.00000   1.00000   0.00000
+Lz=   0.00000   0.00000   1.00000
+
+***  T[L] L[L] S[L] *** total TLS matrices in the L base ***
+  0.16000001  0.00000000  0.00000000    0.04000000  0.00000000  0.00000000    0.08000001  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  dx2 dy2 dz2     *** rms^2: Libration around lx,ly,lz
+   0.0400000   0.0000000   0.0000000
+
+***  dx  dy  dz      *** rms  : Libration around lx,ly,lz
+   0.2000000   0.0000000   0.0000000
+
+***  Wlx[L] Wly[L] Wlz[L] *** rotation axes pass through the points in the L-base
+ Wlx, axis parallel to lx : (wix,wiy,wiz)=    0.00000   0.00000   0.00000
+ Wly, axis parallel to ly : (wjx,wjy,wjz)=    0.00000   0.00000   0.00000
+ Wlz, axis parallel to lz : (wkx,wky,wkz)=    0.00000   0.00000   0.00000
+
+***  Wlx[M] Wly[M] Wlz[M] *** rotation axes pass through the points in the M-base
+ Wlx, axis parallel to lx : (wix,wiy,wiz)=    0.00000   0.00000   0.00000
+ Wly, axis parallel to ly : (wjx,wjy,wjz)=    0.00000   0.00000   0.00000
+ Wlz, axis parallel to lz : (wkx,wky,wkz)=    0.00000   0.00000   0.00000
+
+***  sx sy sz              *** correlation shifts sx,sy,sz for the libration axes
+  2.000000  0.000000  0.000000
+
+***  CW[L] CS[L] C[L]=CW[L]+CS[L] *** translation matrices from libration in the L base ***
+  0.00000000  0.00000000  0.00000000    0.16000001  0.00000000  0.00000000    0.16000001  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  V[L]        V[L]=T[L]-C[L]     *** vibration matrix in the L-base
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  V[M]        V[M]=RML*VM*RMLtr     *** vibration matrix in the M-base
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+
+***  Vx Vy Vz       *** principal Vibration axes (orthonormal V base)
+Vx=   1.00000   0.00000   0.00000
+Vy=   0.00000   1.00000   0.00000
+Vz=   0.00000   0.00000   1.00000
+
+***  V[V]        V[V]=RMVtr*VM*RMV  *** vibration matrix in the V-base
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.00000000    0.00000000  0.00000000  0.00000000
+"""
+
+def exercises():
+  for pdb_lines, prefix in [(getTLS_test111, "getTLS_test111"),
+                            (getTLS_test112, "getTLS_test112"),
+                            #(getTLS_test113, "getTLS_test113")
+                           ]:
+    e = extract(s=pdb_lines)
+    r = tls_as_xyz.decompose_tls(T=e.T_M, L=e.L_M, S=e.S_M)
+    compare(e, r)
+    generate_input_pdb(T=e.T_M, L=e.L_M, S=e.S_M, pdb_lines=pdb_str, prefix=prefix)
+    generate_ensemble( T=e.T_M, L=e.L_M, S=e.S_M, pdb_lines=pdb_str, prefix=prefix)
+
 
 if (__name__ == "__main__"):
-  exercise_01()
-  exercise_04()
-  exercise_11()
-  exercise_14()
-  exercise_21()
-  #
-  exercise_24()
-  exercise_31()
-  exercise_34()
-  exercise_41()
-  exercise_44()
+  # TLS decomposition
+  if(1):
+    exercise_01()
+    exercise_04()
+    exercise_11()
+    exercise_14()
+    exercise_21()
+    exercise_24()
+    exercise_31()
+    exercise_34()
+    exercise_41()
+    exercise_44()
+  # Ensemble generation
+  if(1):
+    exercises()
