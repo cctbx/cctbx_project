@@ -4628,6 +4628,7 @@ class process(object):
         show_nonbonded_clashscore=False,
         hard_minimum_bond_distance_model=0.001,
         hard_minimum_nonbonded_distance=0.001,
+        nonbonded_distance_threshold=0.5,
         external_energy_function=None,
         ramachandran_atom_selection=None,
         den_manager=None,
@@ -4777,7 +4778,8 @@ class process(object):
             timer.elapsed())
           flush_log(self.log)
         if not self.for_dihedral_reference:
-          self.clash_guard(hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance)
+          self.clash_guard(hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
+                           nonbonded_distance_threshold=nonbonded_distance_threshold)
         # Display nonbonded clashscore
         if show_nonbonded_clashscore:
           grm = self.geometry_restraints_manager()
@@ -4797,8 +4799,15 @@ class process(object):
     return self._geometry_restraints_manager
 
 
-  def clash_guard(self, hard_minimum_nonbonded_distance=0.001):
+  def clash_guard(self,
+                  hard_minimum_nonbonded_distance=0.001,
+                  nonbonded_distance_threshold=0.5):
     params = self.all_chain_proxies.params.clash_guard
+    if nonbonded_distance_threshold != 0.5:
+      # only if nonbonded_distance_threshold is not the default
+      # use it, otherwise use the parameters
+      # passed by self.all_chain_proxies.params.clash_guard
+      params.nonbonded_distance_threshold = nonbonded_distance_threshold
     if (params.nonbonded_distance_threshold is None): return
     geo = self._geometry_restraints_manager
     n_below_threshold = (
@@ -4895,6 +4904,7 @@ def run(
       max_atoms=None,
       assume_hydrogens_all_missing=True,
       hard_minimum_nonbonded_distance=0.001,
+      nonbonded_distance_threshold=0.5,
       log=None):
   if (log is None): log = sys.stdout
   mon_lib_srv = server.server()
@@ -4930,7 +4940,8 @@ def run(
       log=log)
     processed_pdb_file.geometry_restraints_manager(
       assume_hydrogens_all_missing=assume_hydrogens_all_missing,
-      hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance)
+      hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
+      nonbonded_distance_threshold=nonbonded_distance_threshold)
     processed_pdb_file.xray_structure()
     if (return_all_processed_pdb_files):
       all_processed_pdb_files.append(processed_pdb_file)
