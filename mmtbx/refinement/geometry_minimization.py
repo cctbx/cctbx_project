@@ -166,6 +166,7 @@ class run2(object):
                rmsd_angles_termination_cutoff = 0,
                alternate_nonbonded_off_on     = False,
                cdl                            = False,
+               correct_hydrogens=False,
                log                            = None):
     self.log = log
     if self.log is None:
@@ -180,6 +181,7 @@ class run2(object):
     if(cdl):
       from mmtbx.conformation_dependent_library import setup_restraints
       self.cdl_proxies = setup_restraints(restraints_manager)
+    self.correct_hydrogens = correct_hydrogens
     if(alternate_nonbonded_off_on and number_of_macro_cycles % 2 != 0):
       number_of_macro_cycles += 1
     import scitbx.lbfgs
@@ -203,6 +205,7 @@ class run2(object):
       print >> self.log, "  macro-cycle:", i_macro_cycle
       if(alternate_nonbonded_off_on and i_macro_cycle<=number_of_macro_cycles/2):
         geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
+      self.correct_hydrogen_geometries(log)
       self.update_cdl_restraints(macro_cycle=i_macro_cycle)
       self.minimized = lbfgs(
         sites_cart                      = self.sites_cart,
@@ -237,6 +240,23 @@ class run2(object):
           cdl_proxies=self.cdl_proxies,
           log=self.log,
           verbose=False)
+
+  def correct_hydrogen_geometries(self, log):
+    if self.correct_hydrogens:
+      from mmtbx.monomer_library.correct_hydrogen_geometries import \
+        correct_hydrogen_geometries
+      bad_hydrogen_count, corrected_hydrogen_count = \
+          correct_hydrogen_geometries(
+            self.pdb_hierarchy,
+            sites_cart         = self.sites_cart,
+            restraints_manager = self.restraints_manager,
+            verbose=True,
+            )
+      if len(corrected_hydrogen_count):
+        print >> log, "  Number of hydrogens corrected : %d" % len(corrected_hydrogen_count)
+      if bad_hydrogen_count:
+        print >> log, "  Number of uncorrected         : %d" % (
+          bad_hydrogen_count-len(corrected_hydrogen_count))
 
   def show(self):
     es = self.restraints_manager.geometry.energies_sites(

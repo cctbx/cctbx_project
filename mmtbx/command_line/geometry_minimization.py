@@ -229,6 +229,7 @@ def run_minimization(
       pdb_hierarchy,
       params,
       cdl,
+      correct_hydrogens,
       log):
   o = mmtbx.refinement.geometry_minimization.run2(
     sites_cart                     = sites_cart,
@@ -248,6 +249,7 @@ def run_minimization(
     rmsd_angles_termination_cutoff = params.rmsd_angles_termination_cutoff,
     alternate_nonbonded_off_on     = params.alternate_nonbonded_off_on,
     cdl=cdl,
+    correct_hydrogens=correct_hydrogens,
     log                            = log)
 
 class run(object):
@@ -388,6 +390,7 @@ class run(object):
       restraints_manager = self.grm, params = self.params.minimization,
       pdb_hierarchy = self.pdb_hierarchy,
       cdl=self.params.pdb_interpretation.cdl,
+      correct_hydrogens=self.params.pdb_interpretation.correct_hydrogens,
       log = self.log)
 
   def write_pdb_file(self, prefix):

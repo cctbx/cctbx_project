@@ -384,7 +384,7 @@ def correct_occupancies(hierarchy):
 def run(rargs):
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
     master_phil=master_phil,
-    home_scope="spreader")
+    home_scope="altloc_remediate")
   #
   phils = []
   phil_args = []
@@ -407,11 +407,11 @@ def run(rargs):
   #working_phil.show()
   working_params = working_phil.extract()
 
-  if not getattr(working_params, "spreader", False):
-    raise Sorry('Must have a "spreader" scope in phil file')
-  in_scope = working_params.spreader.input
-  control = working_params.spreader.control
-  output = working_params.spreader.output
+  if not getattr(working_params, "altloc_remediate", False):
+    raise Sorry('Must have a "altloc_remediate" scope in phil file')
+  in_scope = working_params.altloc_remediate.input
+  control = working_params.altloc_remediate.control
+  output = working_params.altloc_remediate.output
   #
   for i, pdb in enumerate(pdbs):
     if i==0 and not in_scope.pdb_file_name:
