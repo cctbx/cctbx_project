@@ -46,7 +46,8 @@ if (__name__ == "__main__") :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
   params = master_phil.fetch(sources=user_phil).extract()
-  if (params.pickle_file is None) :
+  assert params.pickle_file is not None
+  if len(params.pickle_file) == 0 :
     master_phil.show()
     raise Usage("pickle_file must be defined (either pickle_file=XXX, or the file path(s) alone).")
   assert params.detector is not None
