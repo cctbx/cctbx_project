@@ -39,8 +39,11 @@ class reflections_handler (iotbx.gui_tools.manager) :
     self.minimum_data_score = minimum_data_score
     self.prefer_amplitudes = prefer_amplitudes
 
-  def get_miller_array (self, file_name, labels) :
-    hkl_file = self.get_file(file_name=file_name)
+  def get_miller_array (self, labels, file_name=None, file_param_name=None) :
+    hkl_file = self.get_file(file_name=file_name,
+      file_param_name=file_param_name)
+    if (hkl_file is None) :
+      return None
     for array in hkl_file.file_server.miller_arrays :
       array_label_string = array.info().label_string()
       array_labels = array.info().labels
@@ -50,8 +53,8 @@ class reflections_handler (iotbx.gui_tools.manager) :
         return array
     return None
 
-  def get_wavelength (self, file_name, labels) :
-    array = self.get_miller_array(file_name=file_name, labels=labels)
+  def get_wavelength (self, *args, **kwds) :
+    array = self.get_miller_array(*args, **kwds)
     if (array is not None) :
       info = array.info()
       if (info is not None) :
