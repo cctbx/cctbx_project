@@ -66,7 +66,7 @@ mtz_file {
   try :
     miller_arrays = run_and_reload(params, "tst1.mtz")
   except Sorry, e :
-    assert ("not suitable for" in str(e))
+    assert ("inconsistent with" in str(e)), str(e)
   else :
     raise Exception_expected
   params.mtz_file.miller_array[0].output_labels = ['F-obs(+)', 'SIGF-obs(+)',
@@ -105,17 +105,17 @@ mtz_file {
   try :
     run_and_reload(params, "tst1.mtz")
   except Sorry, e :
-    assert ("too many output labels" in str(e))
+    assert ("too many column labels" in str(e)), str(e)
   else :
     raise Exception_expected
-  params.mtz_file.miller_array[0].output_labels = ["F-obs", "SIGF-obs"]
+  params.mtz_file.miller_array[0].output_labels = ["I-obs", "SIGI-obs"]
   miller_arrays = run_and_reload(params, "tst1.mtz")
   assert (not miller_arrays[0].anomalous_flag())
   params.mtz_file.miller_array[1].anomalous_data = "anomalous"
   try :
     run_and_reload(params, "tst1.mtz")
   except Sorry, e :
-    assert ("not enough output labels" in str(e))
+    assert ("not specified enough" in str(e)), str(e)
   else :
     raise Exception_expected
   params.mtz_file.miller_array[1].output_labels = ['R-free-flags(+)',
@@ -139,13 +139,14 @@ mtz_file {
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.miller_array[0].remove_negatives = True
   miller_arrays = run_and_reload(params, "tst1.mtz")
-  assert (miller_arrays[0].data().size() == 331)
+  n_refl = miller_arrays[0].data().size()
+  assert (n_refl == 331), n_refl
   # scale to maximum value
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.miller_array[0].scale_max = 2000.
   miller_arrays = run_and_reload(params, "tst1.mtz")
   data3 = miller_arrays[0].data()
-  assert (flex.max(data3) == 2000.)
+  assert (flex.max(data3) == 2000.), flex.max(data3)
   # apply isotropic B-factor
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.miller_array[0].add_b_iso = 20.0
@@ -659,8 +660,10 @@ def exercise_command_line () :
     relative_path="phenix_regression/reflection_files/enk_r1A.mtz",
     test=os.path.isfile)
   log = null_out()
-  test_file = "tst%d-1.mtz" % os.getpid()
-  test_file2 = "tst%d-2.mtz" % os.getpid()
+  test_file = "tst_hkl_editor_cmdline-1.mtz"
+  test_file2 = "tst_hkl_editor_cmdline-2.mtz"
+  if os.path.exists(test_file2) :
+    os.remove(test_file2)
   try :
     p = reflection_file_editor.run(
       args=[file1, file2, "dry_run=True"],
@@ -717,7 +720,7 @@ def exercise_command_line () :
     args=[file1, file2, "resolve_label_conflicts=True", "extend=False",
           "export_for_ccp4=True", "preserve_input_values=False",
           "output_file=%s" % test_file2],
-    out=log)
+    )#out=log)
   mtz_in = file_reader.any_file(test_file2)
   miller_arrays = mtz_in.file_object.as_miller_arrays()
   assert (len(set(miller_arrays[-2].data())) == 5)
