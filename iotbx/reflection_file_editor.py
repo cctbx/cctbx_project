@@ -329,7 +329,7 @@ class process_arrays (object) :
     if (self.wavelength is None) :
       file_wavelengths = {}
       for miller_array in miller_arrays :
-        if (not is_experimental_data_array(miller_array)) : continue
+        if (not miller_array.is_xray_data_array()) : continue
         info = miller_array.info()
         if (info is not None) :
           if (not info.source in file_wavelengths) :
@@ -417,81 +417,11 @@ class process_arrays (object) :
     #-------------------------------------------------------------------
     # MAIN LOOP
     i = 0
-    special_labels = ["i_obs,sigma", "Intensity+-,SigmaI+-"]
     r_free_arrays = []
     for (array_params, file_name, miller_array) in \
         zip(params.mtz_file.miller_array, file_names, miller_arrays) :
-      array_name = "%s:%s" % (file_name, array_params.labels)
-      if params.verbose :
-        print >> log, "Processing %s" % array_name
-      if array_params.d_max is not None and array_params.d_max <= 0 :
-        array_params.d_max = None
-      if array_params.d_min is not None and array_params.d_min <= 0 :
-        array_params.d_min = None
-      output_array = None # this will eventually be the final processed array
-      output_labels = array_params.output_labels
-      if (output_labels is None) and (array_params.column_root_label is None) :
-        raise Sorry("Missing output labels for %s!" % array_name)
-      if (array_params.column_root_label is not None) :
-        output_labels = None
       info = miller_array.info()
-      if not None in [array_params.scale_factor, array_params.scale_max] :
-        raise Sorry("The parameters scale_factor and scale_max are " +
-          "mutually exclusive.")
-      if not False in [array_params.remove_negatives,
-                       array_params.massage_intensities] :
-        raise Sorry("The parameters remove_negatives and massage_intensities "+
-          "are mutually exclusive.")
-      if DEBUG :
-        print >> log, "  Starting size:  %d" % miller_array.data().size()
-        if miller_array.sigmas() is not None :
-          print >> log, "         sigmas:  %d" % miller_array.sigmas().size()
-
-      is_experimental_data = is_experimental_data_array(miller_array)
-
-      #-----------------------------------------------------------------
-      # OUTPUT LABELS SANITY CHECK
-      labels_base = re.sub(",merged$", "", array_params.labels)
-      input_labels = labels_base.split(",")
-      if (output_labels is not None) :
-        if (miller_array.anomalous_flag()) :
-          if (array_params.anomalous_data == "merged") :
-            if (labels_base in special_labels) :
-              if (len(output_labels) != 2) :
-                raise Sorry(("There are too many output labels for the array "+
-                  "%s, which is being converted to non-anomalous data. "+
-                  "Labels such as I,SIGI are appropriate, or F,SIGF if you "+
-                  "are converting the array to amplitudes.  (Current output "+
-                  "labels: %s)") % (array_name, ",".join(output_labels)))
-            elif (len(output_labels) == len(input_labels)) :
-              raise Sorry(("There are too many output labels for the array "
-                "%s, which is being converted to non-anomalous data. "+
-                "The total number of columns will be halved in the output "+
-                "array, and the labels should not have trailing (+) or (-).") %
-                array_name)
-          elif (labels_base in special_labels) and (len(output_labels) != 4) :
-            raise Sorry(("There are not enough output labels for the array "+
-              "%s. For Scalepack or d*TREK files containing anomalous "+
-              "data, you must specify exactly four column labels (e.g. "+
-              "I(+),SIGI(+),I(-),SIGI(-), or F(+),SIGF(+),F(-),SIGF(-) "+
-              "if you are converting the array to amplitudes).") %
-              array_name)
-        elif (array_params.anomalous_data == "anomalous") :
-          if (len(output_labels) != (len(input_labels) * 2)) :
-            raise Sorry(("There are not enough output labels for the array "
-              "%s, which is being converted to anomalous data. "+
-              "The total number of columns will be doubled in the output "+
-              "array, and the labels should be repeated with '(+)' and "+
-              "'(-)'.") % array_name)
-        if (miller_array.is_xray_reconstructed_amplitude_array()) :
-          # FIXME this needs to be handled better - but it should at least
-          # catch files from CCP4 data processing
-          if ((len(output_labels) != 5) and
-              (not array_params.anomalous_data == "merged")) :
-            raise Sorry(("The array in %s with labels %s will be output as "+
-              "amplitudes and anomalous differences with sigmas, plus ISYM. "+
-              "Five columns will be written, but %d labels were specified.") %
-              (file_name, array_params.labels, len(output_labels)))
+      array_name = "%s:%s" % (file_name, array_params.labels)
 
       #-----------------------------------------------------------------
       # APPLY SYMMETRY
@@ -511,26 +441,26 @@ class process_arrays (object) :
             "can ignore this by setting disable_unit_cell_check=True (in "+
             "the GUI, enable \"Disable unit cell isomorphism check\").") %
             (array_name, str(array_uc), str(input_symm.unit_cell())))
-      new_array = miller_array.customized_copy(
+      miller_array = miller_array.customized_copy(
         crystal_symmetry=input_symm).map_to_asu()
       if params.mtz_file.crystal_symmetry.expand_to_p1 :
-        new_array = new_array.expand_to_p1()
+        miller_array = miller_array.expand_to_p1()
       elif change_symmetry :
-        new_array = new_array.expand_to_p1()
-        new_array = new_array.customized_copy(crystal_symmetry=output_symm)
-      if not new_array.is_unique_set_under_symmetry() :
-        if new_array.is_integer_array() and not is_rfree_array(new_array,info):
+        miller_array = miller_array.expand_to_p1()
+        miller_array = miller_array.customized_copy(crystal_symmetry=output_symm)
+      if not miller_array.is_unique_set_under_symmetry() :
+        if miller_array.is_integer_array() and not is_rfree_array(miller_array,info):
           raise Sorry(("The data in %s cannot be merged because they are in "+
             "integer format.  If you wish to change symmetry (or the input "+
             "data are unmerged), you must omit this array.  (Note also that "+
             "merging will fail for R-free flags if the flags for symmetry-"+
             "related reflections are not identical.)") % array_name)
-        new_array = new_array.merge_equivalents().array()
+        miller_array = miller_array.merge_equivalents().array()
 
       if DEBUG :
-        print >> log, "  Adjusted size:  %d" % new_array.data().size()
+        print >> log, "  Adjusted size:  %d" % miller_array.data().size()
         if miller_array.sigmas() is not None :
-          print >> log, "         sigmas:  %d" % new_array.sigmas().size()
+          print >> log, "         sigmas:  %d" % miller_array.sigmas().size()
 
       #-----------------------------------------------------------------
       # CHANGE OF BASIS
@@ -541,230 +471,37 @@ class process_arrays (object) :
           raise Sorry("You may not change symmetry when change_of_basis is "+
             "defined.")
 
-      #-----------------------------------------------------------------
-      # OTHER FILTERING
-      if DEBUG :
-        print >> log, "  Resolution before resolution filter: %.2f - %.2f" % (
-          new_array.d_max_min())
-      # first the array-specific cutoff
-      new_array = new_array.resolution_filter(
-        d_min=array_params.d_min,
-        d_max=array_params.d_max)
-      if DEBUG :
-        print >> log, "              after resolution filter: %.2f - %.2f" % (
-          new_array.d_max_min())
-      # now apply the global cutoff
-      new_array = new_array.resolution_filter(
-          d_min=params.mtz_file.d_min,
-          d_max=params.mtz_file.d_max)
-      if DEBUG :
-        print >> log, "  Truncated size: %d" % new_array.data().size()
-        if new_array.sigmas() is not None :
-          print >> log, "          sigmas: %d" % new_array.sigmas().size()
-      if (new_array.anomalous_flag() and
-          array_params.anomalous_data == "merged") :
-        print >> log, ("Converting array %s from anomalous to non-anomalous." %
-                       array_name)
-        if (not new_array.is_xray_intensity_array()) :
-          new_array = new_array.average_bijvoet_mates()
-        else :
-          new_array = new_array.f_sq_as_f()
-          new_array = new_array.average_bijvoet_mates()
-          new_array = new_array.f_as_f_sq()
-          new_array.set_observation_type_xray_intensity()
-      elif ((not new_array.anomalous_flag()) and
-            (array_params.anomalous_data == "anomalous")) :
-        new_array = new_array.generate_bijvoet_mates()
-      if (array_params.scale_max is not None) :
-        print >> log, ("Scaling %s such that the maximum value is: %.6g" %
-                       (array_name, array_params.scale_max))
-        new_array = new_array.apply_scaling(target_max=array_params.scale_max)
-      elif (array_params.scale_factor is not None) :
-        print >> log, ("Multiplying data in %s with the factor: %.6g" %
-                       (array_name, array_params.scale_factor))
-        new_array = new_array.apply_scaling(factor=array_params.scale_factor)
-      if (array_params.remove_negatives) :
-        if (new_array.is_real_array()) :
-          print >> log, "Removing negatives from %s" % array_name
-          new_array = new_array.select(new_array.data() > 0)
-          if (new_array.sigmas() is not None) :
-            new_array = new_array.select(new_array.sigmas() > 0)
-        else :
-          raise Sorry("remove_negatives not applicable to %s." % array_name)
-      elif (array_params.massage_intensities) :
-        if (new_array.is_xray_intensity_array()) :
-          if array_params.output_as == "amplitudes" :
-            new_array = new_array.enforce_positive_amplitudes()
-          else :
-            raise Sorry(("You must output %s as amplitudes to use the "+
-              "massage_intensities option.") % array_name)
-        else :
-          raise Sorry("The parameter massage_intensities is only valid for "+
-            "X-ray intensity arrays.")
-      if (array_params.filter_by_signal_to_noise is not None) :
-        if (not is_experimental_data) :
-          raise Sorry(("Filtering by signal-to-noise is only supported for "+
-            "amplitudes or intensities (failed on %s:%s).") %
-            (file_name, array_params.labels))
-        elif (array_params.filter_by_signal_to_noise <= 0) :
-          raise Sorry(("A value greater than zero is required for the "+
-            "cutoff for filtering by signal to noise ratio (failed array: "+
-            "%s:%s).") % (file_name, array_params.labels))
-        sigmas = new_array.sigmas()
-        if (sigmas is None) :
-          raise Sorry(("Sigma values must be defined to filter by signal "+
-            "to noise ratio (failed on %s:%s).") % (file_name,
-              array_params.labels))
-        elif (not sigmas.all_ne(0.0)) :
-          # XXX should it just remove these too?
-          raise Sorry(("The sigma values for the array %s:%s include one or "+
-            "more zeros - filtering by signal to noise not supported.") %
-            (file_name, array_params.labels))
-        data = new_array.data()
-        new_array = new_array.select(
-          (data / sigmas) > array_params.filter_by_signal_to_noise)
-      # leave the default as [0]*6 to make the format clear, but reset to
-      # None if unchanged
-      if (array_params.add_b_aniso == [0,0,0,0,0,0]) :
-        array_params.add_b_aniso = None
-      if ((array_params.add_b_iso is not None) or
-          (array_params.add_b_aniso is not None)) :
-        if (not isinstance(new_array.data(), flex.double) and
-                isinstance(new_array.data(), flex.complex_double)) :
-          raise Sorry(("Applying a B-factor to the data in %s is not "+
-            "permitted.") % array_name)
-        if (array_params.add_b_iso is not None) :
-          new_array = new_array.apply_debye_waller_factors(
-            b_iso=array_params.add_b_iso,
-            apply_to_sigmas=True)
-        if (array_params.add_b_aniso is not None) :
-          new_array = new_array.apply_debye_waller_factors(
-            b_cart=array_params.add_b_aniso,
-            apply_to_sigmas=True)
-      if (array_params.shuffle_values) :
-        print >> log, "Shuffling values for %s" % array_name
-        combined_array = None
-        tmp_array = new_array.deep_copy()
-        tmp_array.setup_binner(n_bins=min(100, tmp_array.indices().size()))
-        for i_bin in tmp_array.binner().range_used() :
-          bin_sel = tmp_array.binner().selection(i_bin)
-          bin_array = tmp_array.select(bin_sel)
-          perm = flex.random_permutation(bin_array.data().size())
-          sigmas = bin_array.sigmas()
-          if (sigmas is not None) :
-            sigmas = sigmas.select(perm)
-          data = bin_array.data().select(perm)
-          bin_array = bin_array.customized_copy(data=data, sigmas=sigmas)
-          if (combined_array is None) :
-            combined_array = bin_array.deep_copy()
-          else :
-            combined_array = combined_array.concatenate(bin_array)
-        if (combined_array.indices().size() != new_array.indices().size()) :
-          raise RuntimeError("Array size changed: %d versus %d" %
-            (combined_array.indices().size(), new_array.indices().size()))
-        new_array = combined_array
-      if (array_params.reset_values_to) :
-        if (not isinstance(new_array.data(), flex.double) and
-            not isinstance(new_array.data(), flex.int)) :
-          raise Sorry("Resetting the values for %s is not permitted." %
-            array_name)
-        print >> log, "Resetting values for %s to %g" % (array_name,
-          array_params.reset_values_to)
-        data = new_array.data().deep_copy()
-        new_value = array_params.reset_values_to
-        if isinstance(data, flex.int) :
-          new_value = int(new_value)
-        data.fill(new_value)
-        new_array = new_array.customized_copy(data=data)
-
-      #-----------------------------------------------------------------
-      # MISCELLANEOUS
-      if new_array.is_xray_intensity_array() :
-        if (array_params.output_as in ["amplitudes", "amplitudes_fw"]) :
-          if (array_params.output_as == "amplitudes") :
-            output_array = new_array.f_sq_as_f()
-          else :
-            from cctbx import french_wilson
-            output_array = french_wilson.french_wilson_scale(
-              miller_array=new_array,
-              log=log)
-          output_array.set_observation_type_xray_amplitude()
-          if (array_types[i] is not None) :
-            array_types[i] = re.sub("J", "F", array_types[i])
-          start_label = None
-          if ((output_labels is not None) and
-              (output_labels[0].upper().startswith("I"))) :
-            raise Sorry(("The output labels for the array %s:%s (%s) are not "+
-              "suitable for amplitudes; please change them to something "+
-              "with an 'F', or leave this array as intensities") %
-              (file_name, array_params.labels, " ".join(output_labels)))
-      elif new_array.is_xray_amplitude_array() :
-        if array_params.output_as == "intensities" :
-          output_array = new_array.f_as_f_sq()
-          output_array.set_observation_type_xray_intensity()
-          if (array_types[i] is not None) :
-            array_types[i] = re.sub("F", "J", array_types[i])
-          if ((output_labels is not None) and
-              array_params.column_root_label.upper().startswith("F")) :
-              raise Sorry("The root label '%s' is not appropriate for "+
-                "amplitudes." % array_params.column_root_label)
-          elif output_labels[0].upper().startswith("F") :
-            raise Sorry(("The output labels for the array %s:%s (%s) are not "+
-              "suitable for intensities; please change them to something "+
-              "with an 'I', or leave this array as amplitudes.") %
-              (file_name, array_params.labels, " ".join(output_labels)))
-      if (array_params.force_type != "auto") :
-        if (not is_experimental_data) :
-          raise Sorry(("You may only override the output observation type for "+
-            "amplitudes or intensities - the data in %s:%s are unsupported.") %
-            (file_name, array_params.labels))
-        if (array_params.force_type == "amplitudes") :
-          output_array = new_array.set_observation_type_xray_amplitude()
-          if (array_types[i] is not None) :
-            array_types[i] = re.sub("J", "F", array_types[i])
-        elif (array_params.force_type == "intensities") :
-          output_array = new_array.set_observation_type_xray_intensity()
-          if (array_types[i] is not None) :
-            array_types[i] = re.sub("F", "J", array_types[i])
-      if output_array is None :
-        output_array = new_array
+      output_array = modify_array(
+        miller_array=miller_array,
+        array_params=array_params,
+        array_name=array_name,
+        array_info=info,
+        log=log,
+        verbose=params.verbose)
+      output_array = output_array.resolution_filter(
+        d_min=params.mtz_file.d_min,
+        d_max=params.mtz_file.d_max)
       if (len(params.mtz_file.exclude_reflection) > 0) :
         for hkl in params.mtz_file.exclude_reflection :
           output_array = output_array.delete_index(hkl)
-
-      # check column_root_label
-      if (array_params.column_root_label is not None) :
-        root_label = array_params.column_root_label.upper()
-        if (output_array.is_xray_intensity_array()) :
-          if (not root_label.startswith("I")) :
-            raise Sorry(("The specified base column label for the array '%s' "+
-              "is inconsistent with the output array type (intensities). "+
-              "Please use 'I' (either case) as the first character in the "+
-              "label.") % (array_name))
-        elif (output_array.is_xray_amplitude_array()) :
-          if (not root_label.startswith("F")) :
-            raise Sorry(("The specified base column label for the array '%s' "+
-              "is inconsistent with the output array type (amplitudes). "+
-              "Please use 'F' (either case) as the first character in the "+
-              "label.") % (array_name))
-        else :
-          if (root_label == "I") or (root_label == "F") :
-            raise Sorry(("You have specified the base column label '%s' "+
-              "for the array '%s', which is neither intensities nor "+
-              "amplitudes; the base labels 'I' and 'F' are reserverd "+
-              "for these array data types .") %
-              (array_params.column_root_label, array_name))
 
       #-----------------------------------------------------------------
       # OUTPUT
       assert isinstance(output_array, cctbx.miller.array)
       default_label = array_params.column_root_label
-      if (output_labels is not None) :
+      output_labels = array_params.output_labels
+      if (default_label is not None) :
+        output_labels = None
+      else :
         default_label = 2 * string.uppercase[i]
       column_types = None
       import iotbx.mtz
       default_types = iotbx.mtz.default_column_types(output_array)
       if (array_types[i] is not None) :
+        if output_array.is_xray_amplitude_array() :
+          array_types[i] = re.sub("J", "F", array_types[i])
+        elif output_array.is_xray_intensity_array() :
+          array_types[i] = re.sub("F", "J", array_types[i])
         if len(default_types) == len(array_types[i]) :
           print >> log, "Recovering original column types %s" % array_types[i]
           column_types = array_types[i]
@@ -774,8 +511,8 @@ class process_arrays (object) :
           "from the input file.  If you think the parameters were correct, "+
           "this is probably a bug; please contact bugs@phenix-online.org "+
           "with a description of the problem.")
-      if is_rfree_array(new_array, info) :
-        r_free_arrays.append((new_array, info, output_labels,
+      if is_rfree_array(output_array, info) :
+        r_free_arrays.append((output_array, info, output_labels,
           array_params.column_root_label, file_name))
       else :
         if DEBUG :
@@ -824,7 +561,7 @@ class process_arrays (object) :
       if (r_free_params.relative_to_complete_set) :
         combined_set = complete_set
       elif (combined_set is not None) :
-        self.check_and_warn_about_incomplete_r_free_flags(combined_set)
+        check_and_warn_about_incomplete_r_free_flags(combined_set)
       i = 0
       for (new_array, info, output_labels, root_label, file_name) in \
           r_free_arrays :
@@ -860,7 +597,7 @@ class process_arrays (object) :
           assert isinstance(new_data, flex.bool)
           r_free_flags = new_array.array(data=new_data)
         r_free_flags = r_free_flags.map_to_asu()
-        generate_bijvoet_mates = False
+        generate_bijvoet_mates = (array_params.anomalous_data=="anomalous")
         if not r_free_flags.is_unique_set_under_symmetry() :
           r_free_flags = r_free_flags.merge_equivalents().array()
         if (r_free_flags.anomalous_flag()) :
@@ -909,6 +646,11 @@ class process_arrays (object) :
           column_types="I",
           out=log)
         if (output_labels is not None) :
+          validate_output_labels(
+            miller_array=output_array,
+            array_params=array_params,
+            array_name=array_name,
+            output_labels=output_labels)
           for label in output_labels :
             labels.append(label)
             label_files.append(file_name)
@@ -941,7 +683,7 @@ class process_arrays (object) :
       if (r_free_params.relative_to_complete_set) :
         combined_set = complete_set
       else :
-        self.check_and_warn_about_incomplete_r_free_flags(combined_set)
+        check_and_warn_about_incomplete_r_free_flags(combined_set)
       # XXX this used to generate the test set from the actually complete set,
       # but the fraction free needs to be relative to the
       new_r_free_array = combined_set.generate_r_free_flags(
@@ -1060,18 +802,6 @@ class process_arrays (object) :
     self.mtz_object = None
     return n_refl
 
-  def check_and_warn_about_incomplete_r_free_flags (self, combined_set) :
-    completeness = combined_set.completeness()
-    if (completeness < 0.99) :
-      warnings.warn(("The arrays in the input file are incomplete "+
-        "(%.1f%% of reflections missing), so the newly generated R-free "+
-        "flags will be incomplete as well.  This will not cause a problem "+
-        "for refinement, but may result in inconsistent flags later on if "+
-        "you collect additional data.  You can disable this warning by "+
-        "clicking the box labeled \"Generate flags relative to maximum "+
-        "complete set\" in the R-free options dialog window.") %
-        (100 * (1-completeness)), UserWarning)
-
 #-----------------------------------------------------------------------
 # TODO get rid of these two (need to make sure they aren't imported elsewhere)
 def get_r_free_stats (*args, **kwds) :
@@ -1099,11 +829,6 @@ def get_best_resolution (miller_arrays, input_symm=None) :
     except Exception, e :
       pass
   return (best_d_max, best_d_min)
-
-def is_experimental_data_array (miller_array) :
-  return (miller_array.is_xray_amplitude_array() or
-          miller_array.is_xray_intensity_array() or
-          miller_array.is_xray_reconstructed_amplitude_array())
 
 def is_rfree_array (miller_array, array_info) :
   from iotbx import reflection_file_utils
@@ -1152,6 +877,357 @@ def guess_array_output_labels (miller_array) :
       output_labels = [ "%s(+)" % labels[0], "%s(-)" % labels[0] ]
   return output_labels
 
+def modify_array (
+    miller_array,
+    array_name,
+    array_params,
+    array_info=None,
+    verbose=True,
+    debug=False,
+    log=sys.stdout) :
+  """
+  Perform various manipulations on a Miller array.  This can be applied to
+  any data type, although certain options are limited to experimental data.
+  """
+  from scitbx.array_family import flex
+  output_labels = array_params.output_labels
+  if (output_labels is None) and (array_params.column_root_label is None) :
+    raise Sorry("Missing output labels for %s!" % array_name)
+  if (array_params.column_root_label is not None) :
+    output_labels = None
+  labels_base = re.sub(",merged$", "", array_params.labels)
+  input_labels = labels_base.split(",")
+  if not None in [array_params.scale_factor, array_params.scale_max] :
+    raise Sorry("The parameters scale_factor and scale_max are " +
+      "mutually exclusive.")
+  if not False in [array_params.remove_negatives,
+                   array_params.massage_intensities] :
+    raise Sorry("The parameters remove_negatives and massage_intensities "+
+      "are mutually exclusive.")
+  if debug :
+    print >> log, "  Starting size:  %d" % miller_array.data().size()
+    if miller_array.sigmas() is not None :
+      print >> log, "         sigmas:  %d" % miller_array.sigmas().size()
+  if verbose :
+    print >> log, "Processing %s" % array_name
+  if array_params.d_max is not None and array_params.d_max <= 0 :
+    array_params.d_max = None
+  if array_params.d_min is not None and array_params.d_min <= 0 :
+    array_params.d_min = None
+  output_labels = array_params.output_labels
+  if (output_labels is None) and (array_params.column_root_label is None) :
+    raise Sorry("Missing output labels for %s!" % array_name)
+  if (array_params.column_root_label is not None) :
+    output_labels = None
+  wavelength = getattr(array_info, "wavelength", None)
+  if not None in [array_params.scale_factor, array_params.scale_max] :
+    raise Sorry("The parameters scale_factor and scale_max are " +
+      "mutually exclusive.")
+  if not False in [array_params.remove_negatives,
+                   array_params.massage_intensities] :
+    raise Sorry("The parameters remove_negatives and massage_intensities "+
+      "are mutually exclusive.")
+  if debug :
+    print >> log, "  Starting size:  %d" % miller_array.data().size()
+    if miller_array.sigmas() is not None :
+      print >> log, "         sigmas:  %d" % miller_array.sigmas().size()
+  if debug :
+    print >> log, "  Resolution before resolution filter: %.2f - %.2f" % (
+      miller_array.d_max_min())
+  # go ahead and perform the array-specific cutoff
+  miller_array = miller_array.resolution_filter(
+    d_min=array_params.d_min,
+    d_max=array_params.d_max)
+  if debug :
+    print >> log, "              after resolution filter: %.2f - %.2f" % (
+      miller_array.d_max_min())
+    print >> log, "  Truncated size: %d" % miller_array.data().size()
+    if miller_array.sigmas() is not None :
+      frint >> log, "          sigmas: %d" % miller_array.sigmas().size()
+  # anomalous manipulation
+  if (miller_array.anomalous_flag() and
+      array_params.anomalous_data == "merged") :
+    print >> log, ("Converting array %s from anomalous to non-anomalous." %
+                   array_name)
+    if (not miller_array.is_xray_intensity_array()) :
+      miller_array = miller_array.average_bijvoet_mates()
+      if miller_array.is_xray_reconstructed_amplitude_array() :
+        miller_array.set_observation_type_xray_amplitude()
+    else :
+      miller_array = miller_array.f_sq_as_f()
+      miller_array = miller_array.average_bijvoet_mates()
+      miller_array = miller_array.f_as_f_sq()
+      miller_array.set_observation_type_xray_intensity()
+  elif ((not miller_array.anomalous_flag()) and
+        (array_params.anomalous_data == "anomalous")) :
+    print >> log, "Generating Bijvoet mates for %s" % array_name
+    miller_array = miller_array.generate_bijvoet_mates()
+  # scale factors
+  if (array_params.scale_max is not None) :
+    print >> log, ("Scaling %s such that the maximum value is: %.6g" %
+                   (array_name, array_params.scale_max))
+    miller_array = miller_array.apply_scaling(target_max=array_params.scale_max)
+  elif (array_params.scale_factor is not None) :
+    print >> log, ("Multiplying data in %s with the factor: %.6g" %
+                   (array_name, array_params.scale_factor))
+    miller_array = miller_array.apply_scaling(factor=array_params.scale_factor)
+  # Since this function has many built-in consistency checks, we always run
+  # it even for non-experimental arrays
+  miller_array = modify_experimental_data_array(
+    miller_array=miller_array,
+    array_name=array_name,
+    array_params=array_params,
+    log=log)
+  # Information removal for running control experiments - normally these
+  # would be used on experimental data, but there is no reason why they can't
+  # be applied to other array types.
+  if (array_params.shuffle_values) :
+    print >> log, "Shuffling values for %s" % array_name
+    combined_array = None
+    tmp_array = miller_array.deep_copy()
+    tmp_array.setup_binner(n_bins=min(100, tmp_array.indices().size()))
+    for i_bin in tmp_array.binner().range_used() :
+      bin_sel = tmp_array.binner().selection(i_bin)
+      bin_array = tmp_array.select(bin_sel)
+      perm = flex.random_permutation(bin_array.data().size())
+      sigmas = bin_array.sigmas()
+      if (sigmas is not None) :
+        sigmas = sigmas.select(perm)
+      data = bin_array.data().select(perm)
+      bin_array = bin_array.customized_copy(data=data, sigmas=sigmas)
+      if (combined_array is None) :
+        combined_array = bin_array.deep_copy()
+      else :
+        combined_array = combined_array.concatenate(bin_array)
+    if (combined_array.indices().size() != miller_array.indices().size()) :
+      raise RuntimeError("Array size changed: %d versus %d" %
+        (combined_array.indices().size(), miller_array.indices().size()))
+    miller_array = combined_array
+  if (array_params.reset_values_to) :
+    if (not miller_array.is_real_array() and
+        not miller_array.is_integer_array()) :
+      raise Sorry("Resetting the values for %s is not permitted." %
+        array_name)
+    print >> log, "Resetting values for %s to %g" % (array_name,
+      array_params.reset_values_to)
+    data = miller_array.data().deep_copy()
+    new_value = array_params.reset_values_to
+    if miller_array.is_integer_array() :
+      new_value = int(new_value)
+    data.fill(new_value)
+    miller_array = miller_array.customized_copy(data=data)
+  if (array_params.force_type != "auto") :
+    if (not miller_array.is_xray_data_array()) :
+      raise Sorry(("You may only override the output observation type for "+
+        "amplitudes or intensities - the data in %s are unsupported.") %
+        array_name)
+    if (array_params.force_type == "amplitudes") :
+      miller_array = miller_array.set_observation_type_xray_amplitude()
+    elif (array_params.force_type == "intensities") :
+      miller_array = miller_array.set_observation_type_xray_intensity()
+  if (not is_rfree_array(miller_array, array_info)) :
+    if (array_params.column_root_label is not None) :
+      validate_column_root_label(
+        miller_array=miller_array,
+        array_name=array_name,
+        root_label=array_params.column_root_label)
+    elif (output_labels is not None) :
+      validate_output_labels(
+        miller_array=miller_array,
+        array_params=array_params,
+        array_name=array_name,
+        output_labels=output_labels)
+  return miller_array
+
+def modify_experimental_data_array (
+    miller_array,
+    array_name,
+    array_params,
+    log=sys.stdout) :
+  """
+  Manipulations common to amplitude and intensity arrays only.
+  """
+  # negative intensity/amplitude remediation
+  if (array_params.remove_negatives) :
+    if (miller_array.is_real_array()) :
+      print >> log, "Removing negatives from %s" % array_name
+      miller_array = miller_array.select(miller_array.data() > 0)
+      if (miller_array.sigmas() is not None) :
+        miller_array = miller_array.select(miller_array.sigmas() > 0)
+    else :
+      raise Sorry("remove_negatives not applicable to %s." % array_name)
+  elif (array_params.massage_intensities) :
+    if (miller_array.is_xray_intensity_array()) :
+      if array_params.output_as == "amplitudes" :
+        miller_array = miller_array.enforce_positive_amplitudes()
+      else :
+        raise Sorry(("You must output %s as amplitudes to use the "+
+          "massage_intensities option.") % array_name)
+    else :
+      raise Sorry("The parameter massage_intensities is only valid for "+
+        "X-ray intensity arrays.")
+  # I/sigma filtering
+  if (array_params.filter_by_signal_to_noise is not None) :
+    if (not miller_array.is_xray_data_array()) :
+      raise Sorry(("Filtering by signal-to-noise is only supported for "+
+        "amplitudes or intensities (failed on %s).") % array_name)
+    elif (array_params.filter_by_signal_to_noise <= 0) :
+      raise Sorry(("A value greater than zero is required for the "+
+        "cutoff for filtering by signal to noise ratio (failed array: %s).") %
+        array_name)
+    sigmas = miller_array.sigmas()
+    if (sigmas is None) :
+      raise Sorry(("Sigma values must be defined to filter by signal "+
+        "to noise ratio (failed on %s).") % array_name)
+    elif (not sigmas.all_ne(0.0)) :
+      # XXX should it just remove these too?
+      raise Sorry(("The sigma values for the array %s include one or "+
+        "more zeros - filtering by signal to noise not supported.") %
+        array_name)
+    data = miller_array.data()
+    miller_array = miller_array.select(
+      (data / sigmas) > array_params.filter_by_signal_to_noise)
+  # apply B-factors
+  # leave the default as [0]*6 to make the format clear, but reset to
+  # None if unchanged
+  if (array_params.add_b_aniso == [0,0,0,0,0,0]) :
+    array_params.add_b_aniso = None
+  if ((array_params.add_b_iso is not None) or
+      (array_params.add_b_aniso is not None)) :
+    if (not miller_array.is_real_array() and
+        not miller_array.is_complex_array()) :
+      raise Sorry(("Applying a B-factor to the data in %s is not "+
+        "permitted.") % array_name)
+    if (array_params.add_b_iso is not None) :
+      miller_array = miller_array.apply_debye_waller_factors(
+        b_iso=array_params.add_b_iso,
+        apply_to_sigmas=True)
+    if (array_params.add_b_aniso is not None) :
+      miller_array = miller_array.apply_debye_waller_factors(
+        b_cart=array_params.add_b_aniso,
+        apply_to_sigmas=True)
+  # data type manipulation
+  if miller_array.is_xray_intensity_array() :
+    if (array_params.output_as in ["amplitudes", "amplitudes_fw"]) :
+      if (array_params.output_as == "amplitudes") :
+        miller_array = miller_array.f_sq_as_f()
+      else :
+        from cctbx import french_wilson
+        miller_array = french_wilson.french_wilson_scale(
+          miller_array=miller_array,
+          log=log)
+      miller_array.set_observation_type_xray_amplitude()
+  elif miller_array.is_xray_amplitude_array() :
+    if array_params.output_as == "intensities" :
+      miller_array = miller_array.f_as_f_sq()
+      miller_array.set_observation_type_xray_intensity()
+  return miller_array
+
+def validate_output_labels (
+    miller_array,
+    array_name,
+    array_params,
+    output_labels) :
+  """
+  Check output labels for consistency with selected options (done before the
+  array undergoes most modifications).
+  """
+  def raise_sorry_if_wrong_number_of_labels (n_expected) :
+    assert (n_expected is not None)
+    msg_extra = "If you are "+ \
+        "unsure which labels to provide, use the simpler column root label "+ \
+        "instead, which will be expanded as necessary. (Note that the " + \
+        "number of input labels from non-MTZ file formats does not " + \
+        "necessarily correspond to the expected number of output labels.)"
+    n_used = len(output_labels)
+    msg_expected = "%d are" % n_expected
+    if (n_expected == 1) :
+      msg_expected = "%d is" % n_expected
+    msg_used = "labels \"%s\" have" % " ".join(output_labels)
+    if (n_used == 1) :
+      msg_used = "label \"%s\" has" % " ".join(output_labels)
+    if (n_expected > n_used) :
+      raise Sorry(("You have not specified enough MTZ column labels for the "+
+        "array %s; only the %s been specified, but %s "+
+        "required for the output array after processing.  " + msg_extra) %
+        (array_name, msg_used, msg_expected))
+    elif (n_expected < n_used) :
+      raise Sorry(("You have specified too many column labels for the array "+
+        "%s; the %s been specified, but only %s are allowed "+
+        "for the output array after processing.  " + msg_extra) %
+        (array_name, msg_used, msg_expected))
+  n_expected = None
+  if (miller_array.is_xray_reconstructed_amplitude_array()) :
+    # FIXME this needs to be handled better - but it should at least
+    # catch files from CCP4 data processing
+    if ((len(output_labels) != 5) and
+        (not array_params.anomalous_data == "merged")) :
+      raise Sorry(("The array %s will be output as "+
+        "amplitudes and anomalous differences with sigmas, plus ISYM. "+
+        "Five columns will be written, but %d labels were specified.") %
+        (array_name, len(output_labels)))
+    n_expected = 5
+  elif (miller_array.anomalous_flag()) :
+    if miller_array.is_real_array() :
+      if (miller_array.sigmas() is not None) :
+        n_expected = 4
+      else :
+        n_expected = 2
+    elif miller_array.is_complex_array() :
+      assert miller_array.sigmas() is not None
+      n_expected = 4
+    elif miller_array.is_hendrickson_lattman_array() :
+      n_expected = 8
+    else :
+      n_expected = 2
+  else :
+    if miller_array.is_real_array() :
+      if (miller_array.sigmas() is not None) :
+        n_expected = 2
+      else :
+        n_expected = 1
+    elif miller_array.is_complex_array() :
+      assert miller_array.sigmas() is not None
+      n_expected = 2
+    elif miller_array.is_hendrickson_lattman_array() :
+      n_expected = 4
+    else :
+      n_expected = 1
+  raise_sorry_if_wrong_number_of_labels(n_expected)
+  if miller_array.is_xray_data_array() :
+    validate_column_root_label(
+      miller_array=miller_array,
+      root_label = output_labels[0].upper(),
+      array_name=array_name)
+  return True
+
+def validate_column_root_label (miller_array, root_label, array_name) :
+  """
+  Check the root MTZ label for a Miller array to ensure consistency with
+  data type - this is done after the array has been processed.
+  """
+  root_label = root_label.upper()
+  if (miller_array.is_xray_intensity_array()) :
+    if (not root_label.startswith("I")) :
+      raise Sorry(("The column label prefix for the array '%s' "+
+        "is inconsistent with the output array type (intensities). "+
+        "Please use 'I' (either case) as the first character in the "+
+        "label.") % (array_name))
+  elif (miller_array.is_xray_amplitude_array()) :
+    if (not root_label.startswith("F")) :
+      raise Sorry(("The specified column label prefix for the array '%s' "+
+        "is inconsistent with the output array type (amplitudes). "+
+        "Please use 'F' (either case) as the first character in the "+
+        "label.") % (array_name))
+  else :
+    if (root_label == "I") or (root_label == "F") :
+      raise Sorry(("You have specified the column label prefix '%s' "+
+        "for the array '%s', which is neither intensities nor "+
+        "amplitudes; the base labels 'I' and 'F' are reserved "+
+        "for these array data types .") %
+        (root_label, array_name))
+  return True
+
 # XXX the requirement for defined crystal symmetry in phil input files is
 # problematic for automation, where labels and operations are very
 # standardized.  so I added this to identify unique symmetry information
@@ -1195,6 +1271,18 @@ def resolve_symmetry (file_symmetries, current_space_group, current_unit_cell):
   if (len(unit_cells) > 0) and (current_unit_cell is None) :
     consensus_unit_cell = unit_cells[0]
   return (consensus_space_group, consensus_unit_cell)
+
+def check_and_warn_about_incomplete_r_free_flags (combined_set) :
+  completeness = combined_set.completeness()
+  if (completeness < 0.99) :
+    warnings.warn(("The arrays in the input file are incomplete "+
+      "(%.1f%% of reflections missing), so the newly generated R-free "+
+      "flags will be incomplete as well.  This will not cause a problem "+
+      "for refinement, but may result in inconsistent flags later on if "+
+      "you collect additional data.  You can disable this warning by "+
+      "clicking the box labeled \"Generate flags relative to maximum "+
+      "complete set\" in the R-free options dialog window.") %
+      (100 * (1-completeness)), UserWarning)
 
 def usage (out=sys.stdout, attributes_level=0) :
   print >> out, """

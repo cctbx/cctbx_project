@@ -1886,6 +1886,9 @@ class array(set):
     from cctbx.xray import observation_types
     return isinstance(self.observation_type(), observation_types.intensity)
 
+  def is_xray_data_array (self) :
+    return (self.is_xray_amplitude_array() or self.is_xray_intensity_array())
+
   def copy(self):
     return (array(
       miller_set=self,
