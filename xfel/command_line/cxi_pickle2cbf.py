@@ -56,14 +56,16 @@ if (__name__ == "__main__") :
   if params.old_metrology is None:
     params.old_metrology=libtbx.env.find_in_repositories(
       "xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
-  assert os.path.isdir(params.old_metrology)
+  if os.path.isdir(params.old_metrology):
+    sections = calib2sections(params.old_metrology)
+  else:
+    from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
+    assert params.old_metrology in xpp_active_areas
 
   if params.new_metrology is None:
     params.new_metrology=libtbx.env.find_in_repositories(
       "xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
   assert os.path.isdir(params.new_metrology) or os.path.isfile(params.new_metrology)
-
-  sections = calib2sections(params.old_metrology)
 
   # Read the new metrology, either from a calibration directory or an optical metrology
   # flat file
@@ -105,21 +107,42 @@ if (__name__ == "__main__") :
     tiles = {}
     data = img['DATA']
 
+    if os.path.isdir(params.old_metrology):
 
-    for p in xrange(len(sections)):
-      for s in xrange(len(sections[p])):
+      for p in xrange(len(sections)):
+        for s in xrange(len(sections[p])):
 
-        # Pull the sensor block from the image, and rotate it back to
-        # the "lying down" convention.
-        c = sections[p][s].corners_asic()
-        k = (int(round(-sections[p][s].angle / 90.0)) + 1) % 4
-        for a in xrange(2):
-          asic = data.matrix_copy_block(
-            i_row=c[a][0],
-            i_column=c[a][1],
-            n_rows=c[a][2] - c[a][0],
-            n_columns=c[a][3] - c[a][1])
-          tiles[(0, p, s, a)] = asic.matrix_rot90(k)
+          # Pull the sensor block from the image, and rotate it back to
+          # the "lying down" convention.
+          c = sections[p][s].corners_asic()
+          k = (int(round(-sections[p][s].angle / 90.0)) + 1) % 4
+          for a in xrange(2):
+            asic = data.matrix_copy_block(
+              i_row=c[a][0],
+              i_column=c[a][1],
+              n_rows=c[a][2] - c[a][0],
+              n_columns=c[a][3] - c[a][1])
+            tiles[(0, p, s, a)] = asic.matrix_rot90(k)
+
+    else:
+      active_areas = xpp_active_areas[params.old_metrology]['active_areas']
+      rotations    = xpp_active_areas[params.old_metrology]['rotations']
+      assert len(active_areas) // 4 == len(rotations) == 64
+
+      active_areas = [(active_areas[(i*4)+0],
+                       active_areas[(i*4)+1],
+                       active_areas[(i*4)+2],
+                       active_areas[(i*4)+3]) for i in xrange(64)]
+
+      tile_id = 0
+
+      for p in xrange(4):
+        for s in xrange(8):
+          for a in xrange(2):
+            x1,y1,x2,y2 = active_areas[tile_id]
+            block = data[x1:x2,y1:y2]
+            tiles[(0, p, s, a)] = block.matrix_rot90(-rotations[tile_id])
+            tile_id += 1
 
     # Write the cbf file
     destpath = os.path.splitext(filename)[0] + ".cbf"

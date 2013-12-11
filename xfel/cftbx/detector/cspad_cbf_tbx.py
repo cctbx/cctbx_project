@@ -119,17 +119,36 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
   from xfel.metrology.flatfile import parse_metrology
   quadrants = parse_metrology(path, detector, plot, old_style_diff_path=old_style_diff_path)
 
-  # rotate sensors 6 and 7 180 degrees
-  for q_id, sensor in quadrants.iteritems():
-    six = sensor[6]
-    svn = sensor[7]
-    assert len(six) == 4 and len(svn) == 4
-    sensor[6] = [six[2],six[3],six[0],six[1]]
-    sensor[7] = [svn[2],svn[3],svn[0],svn[1]]
-    quadrants[q_id] = sensor
+  #if plot:
+    #print "Showing un-adjusted, parsed metrology from flatfile"
+    #import matplotlib.pyplot as plt
+    #from matplotlib.patches import Polygon
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111, aspect='equal')
+    #cents = []
+
+    #for q_id, quadrant in quadrants.iteritems():
+      #for s_id, sensor in quadrant.iteritems():
+        #ax.add_patch(Polygon([p[0:2] for p in sensor], closed=True, color='green', fill=False, hatch='/'))
+        #cents.append(center(sensor)[0:2])
+
+    #for i, c in enumerate(cents):
+      #ax.annotate(i*2,c)
+    #ax.set_xlim((0, 200000))
+    #ax.set_ylim((0, 200000))
+    #plt.show()
 
   quadrants_trans = {}
   if detector == "CxiDs1":
+    # rotate sensors 6 and 7 180 degrees
+    for q_id, quadrant in quadrants.iteritems():
+      six = quadrant[6]
+      svn = quadrant[7]
+      assert len(six) == 4 and len(svn) == 4
+      quadrant[6] = [six[2],six[3],six[0],six[1]]
+      quadrant[7] = [svn[2],svn[3],svn[0],svn[1]]
+      quadrants[q_id] = quadrant
+
     # apply transformations: bring to order (slow, fast) <=> (column,
      # row).  This takes care of quadrant rotations
     for (q, sensors) in quadrants.iteritems():
@@ -186,11 +205,20 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
       N += 1
     o /= N
 
-    for (q, sensors) in quadrants.iteritems():
+    rot_mat = matrix.col((0,0,1)).axis_and_angle_as_r3_rotation_matrix(180,deg=True)
+    sensors_to_rotate = [4,5,10,11,12,13,14,15,16,17,18,19,22,23,24,25]
+
+    for (q, quadrant) in quadrants.iteritems():
       quadrants_trans[q] = {}
-      for (s, vertices) in sensors.iteritems():
-        quadrants_trans[q][s] = [matrix.col(((-v[1] - (-o[1]))/1000, (+v[0] - (+o[0]))/1000, v[2]/1000))
-                                     for v in quadrants[q][s]]
+      for (s, vertices) in quadrant.iteritems():
+        # move to origin, rotate 180 degrees around origin, and scale
+        vertices = [rot_mat*(v-o)/1000 for v in vertices]
+
+        #rotate a subset of the sensors into position (determined emperically)
+        if (q*8)+s in sensors_to_rotate:
+          vertices = [vertices[2],vertices[3],vertices[0],vertices[1]]
+
+        quadrants_trans[q][s] = vertices
 
 
   if plot:
@@ -199,20 +227,20 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
     fig = plt.figure()
     ax = fig.add_subplot(111, aspect='equal')
 
-    a = []; b = []; c = []; d = []; cents = []
+    a = []; b = []; c = []; d = []; cents = {}
 
     for q_id, q in quadrants_trans.iteritems():
       q_c = matrix.col((0,0,0))
       for s_id, s in q.iteritems():
         q_c += center(s)
       q_c /= len(q)
-      cents.append(q_c)
+      cents["Q%d"%q_id] = q_c
       for s_id, s in q.iteritems():
         sensor = ((s[0][0], s[0][1]),
                   (s[1][0], s[1][1]),
                   (s[2][0], s[2][1]),
                   (s[3][0], s[3][1]))
-        cents.append(center([matrix.col(v) for v in sensor]))
+        cents["S%d"%((q_id*8)+s_id)] = center([matrix.col(v) for v in sensor])
         ax.add_patch(Polygon(sensor, closed=True, color='green', fill=False, hatch='/'))
 
         a.append(s[0]); b.append(s[1]); c.append(s[2]); d.append(s[3])
@@ -220,12 +248,12 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
     ax.set_xlim((-100, 100))
     ax.set_ylim((-100, 100))
     plt.scatter([v[0] for v in a], [v[1] for v in a], c = 'black')
-    for i, v in enumerate(a):
-        ax.annotate(i*2, (v[0],v[1]))
+    for i, v in cents.iteritems():
+        ax.annotate(i, (v[0],v[1]))
     plt.scatter([v[0] for v in b], [v[1] for v in b], c = 'yellow')
     #plt.scatter([v[0] for v in c], [v[1] for v in c], c = 'yellow')
     plt.scatter([v[0] for v in d], [v[1] for v in d], c = 'yellow')
-    plt.scatter([v[0] for v in cents], [v[1] for v in cents], c = 'red')
+    plt.scatter([v[0] for v in cents.values()], [v[1] for v in cents.values()], c = 'red')
     plt.show()
 
   null_ori = matrix.col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
