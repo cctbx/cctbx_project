@@ -1540,7 +1540,6 @@ class nonbonded_clashscore(object):
               temp_clash_list.append(clashing_atoms_dict[key][j])
               temp_clash_list.append(clashing_atoms_dict[key][i])
         clashing_atoms_dict[key] = temp_clash_list
-    f = open('RM_clash_results','w')
     for (key,val) in clashes_dict.iteritems():
       if key.split('::')[2] != '':
         # not to symmetry operation
