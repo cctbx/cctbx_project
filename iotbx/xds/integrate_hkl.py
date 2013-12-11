@@ -199,7 +199,7 @@ class reader:
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="xds_integrate_hkl")
     from cctbx.array_family import flex
-    from cctbx import crystal, miller, sgtbx, uctbx
+    from cctbx import crystal, miller, sgtbx
     crystal_symmetry = crystal.symmetry(
       unit_cell=self.unit_cell, 
       space_group_info=sgtbx.space_group_info(number=self.space_group))

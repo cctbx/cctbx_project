@@ -116,7 +116,7 @@ def run (args, out=sys.stdout) :
           (batch_numbers.info().label_string(),
            i_obs.info().label_string())
         if (not params.ignore_batch) :
-          raise Sorry(msg + 
+          raise Sorry(msg +
             "You can suppress this warning by specifying ignore_batch=True.")
         else :
           print >> out, msg + "The batch numbers will not be output."
