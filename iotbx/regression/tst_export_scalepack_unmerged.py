@@ -11,7 +11,7 @@ def exercise_mtz () : pass # TODO
 
 def exercise_scalepack () :
   sca_in = """\
-    4 i41             
+    4 i41
   1  0  0  0  1  0  0  0  1
   0  0  0
  -1  0  0  0 -1  0  0  0  1
@@ -55,7 +55,7 @@ def exercise_cif () :
   # .cif input
   cif_in = """\
 data_r2etdsf
-# 
+#
 _cell.entry_id      2etd
 _cell.length_a      80.4540
 _cell.length_b      85.2590
