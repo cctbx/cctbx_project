@@ -43,7 +43,8 @@ def exercise_reflections () :
   flags = f_obs_merged.generate_r_free_flags()
   # single dataset
   mtz_dataset = f_obs_merged.as_mtz_dataset(
-    column_root_label="F-obs")
+    column_root_label="F-obs",
+    wavelength=1.54)
   mtz_dataset.add_miller_array(flags,
     column_root_label="R-free-flags")
   file_name = "tst_iotbs_gui_tools.mtz"
@@ -59,6 +60,8 @@ def exercise_reflections () :
   assert (hkl_handler.get_rfree_labels(file_name=file_name, neutron=False) ==
           hkl_handler.get_rfree_labels(file_name=file_name, neutron=True) ==
           ['R-free-flags'])
+  assert approx_equal(1.54, hkl_handler.get_wavelength(file_name=file_name,
+                              labels="F-obs,SIGF-obs"))
   # join X/N datasets
   hkl_handler = reflections.reflections_handler(allowed_param_names=phil_names)
   data_neutron = flex.random_double(n_refl)

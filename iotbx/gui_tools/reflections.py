@@ -39,6 +39,25 @@ class reflections_handler (iotbx.gui_tools.manager) :
     self.minimum_data_score = minimum_data_score
     self.prefer_amplitudes = prefer_amplitudes
 
+  def get_miller_array (self, file_name, labels) :
+    hkl_file = self.get_file(file_name=file_name)
+    for array in hkl_file.file_server.miller_arrays :
+      array_label_string = array.info().label_string()
+      array_labels = array.info().labels
+      if ((array_label_string == labels) or
+          (array_labels == labels) or
+          (",".join(array_labels) == labels)) :
+        return array
+    return None
+
+  def get_wavelength (self, file_name, labels) :
+    array = self.get_miller_array(file_name=file_name, labels=labels)
+    if (array is not None) :
+      info = array.info()
+      if (info is not None) :
+        return info.wavelength
+    return None
+
   def check_symmetry (self, *args, **kwds) :
     hkl_file = self.get_file(*args, **kwds)
     hkl_server = hkl_file.file_server
