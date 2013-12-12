@@ -1526,6 +1526,7 @@ mmtbx/command_line/model_vs_data.py -text
 mmtbx/command_line/model_vs_sequence.py -text
 mmtbx/command_line/molprobity.py svneol=native#text/x-python
 mmtbx/command_line/mon_lib_cif_triage.py svneol=native#text/x-python
+mmtbx/command_line/mp_geo.py -text
 mmtbx/command_line/mtz2map.py -text
 mmtbx/command_line/nqh_minimize.py -text
 mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
@@ -1872,6 +1873,7 @@ mmtbx/validation/graphics.py svneol=native#text/x-python
 mmtbx/validation/ligands.py -text
 mmtbx/validation/model_properties.py svneol=native#text/x-python
 mmtbx/validation/molprobity/__init__.py -text
+mmtbx/validation/molprobity/mp_geo.py -text
 mmtbx/validation/molprobity/nqh_minimize.py -text
 mmtbx/validation/ramalyze.py svneol=native#text/x-python
 mmtbx/validation/regression/__init__.py svneol=native#text/x-python
