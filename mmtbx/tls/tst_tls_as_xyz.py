@@ -5071,7 +5071,7 @@ def generate_ensemble(pdb_lines, r, prefix):
   xrs = xrs.set_b_iso(value=0)
   sites_cart = xrs.sites_cart()
   h = pdb_inp.construct_hierarchy()
-  states = mmtbx.utils.states(xray_structure=xrs, pdb_hierarchy=h)
+  #states = mmtbx.utils.states(xray_structure=xrs, pdb_hierarchy=h)
   #
   #remark_3_records = pdb_inp.extract_remark_iii_records(3)
   #tls_extract = mmtbx.tls.tools.tls_from_pdb_inp(
@@ -5088,24 +5088,13 @@ def generate_ensemble(pdb_lines, r, prefix):
   # run through steps
   #r = tls_as_xyz.decompose_tls(T=T, L=L, S=S)
   # iteratable
-  log = sys.stdout
-  print >> log
-  print >> log, "GENERATING SHIFTED MODELs:"
-  for trial in xrange(499):
-    print >> log, "MODEL #%d"%trial
-    dx0,dy0,dz0 = tls_as_xyz.step_i__get_dxdydz(
-      L_L=r.b_o.L_L, R_PL=r.b_o.R_PL, log = log)
-    d_r_M_V  = tls_as_xyz.step_j(h_o=r.h_o, log = log)
-    sites_cart_new = flex.vec3_double()
-    for site_cart in sites_cart:
-      r_L = r.b_o.R_PL.transpose() * site_cart
-      d_r_M_L = tls_as_xyz.step_i__compute_delta_L_r_dp(
-        r_L=r_L,c_o=r.c_o,e_o=r.e_o,dx0=dx0,dy0=dy0,dz0=dz0, R_PL=r.b_o.R_PL)
-      d_r_M = tls_as_xyz.step_k(d_r_M_L=d_r_M_L, d_r_M_V=d_r_M_V)
-      sites_cart_new.append(matrix.col(site_cart) + d_r_M)
-    #
-    states.add(sites_cart = sites_cart_new)
-  states.write(file_name = "%s_ensemble.pdb"%prefix)
+  tls_as_xyz.ensemble_generator(
+    decompose_tls_object = r,
+    pdb_hierarchy        = h,
+    xray_structure       = xrs,
+    n_models             = 499, # that's how many my version of Pymol can show
+    log                  = sys.stdout).write_pdb_file(
+      file_name="%s_ensemble.pdb"%prefix)
 
 def run_core(lines, prefix, comp, generate):
   log = open("%s.log"%prefix, "w")
