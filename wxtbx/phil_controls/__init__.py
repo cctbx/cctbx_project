@@ -9,6 +9,7 @@ class PhilCtrl (object) :
     self.phil_name = None
     self.optional = False
     self._none_is_auto = False
+    self._wxtbx_style = 0
 
   def SetUseAuto (self, enable=True) :
     self._none_is_auto = enable
@@ -59,6 +60,14 @@ class PhilCtrl (object) :
     if (original_window is not None) :
       event.SetOriginalWindow(original_window)
     self.GetEventHandler().ProcessEvent(event)
+
+  def GetWxtbxStyle (self) :
+    return self._wxtbx_style
+
+  def SetWxtbxStyle (self, style) :
+    assert isinstance(style, int)
+    self._wxtbx_style = style
+    return self
 
 wxEVT_PHIL_CONTROL = wx.NewEventType()
 EVT_PHIL_CONTROL = wx.PyEventBinder(wxEVT_PHIL_CONTROL, 1)

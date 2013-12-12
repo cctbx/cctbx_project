@@ -2610,11 +2610,13 @@ wxtbx/phil_controls/floatctrl.py -text
 wxtbx/phil_controls/floats.py -text
 wxtbx/phil_controls/intctrl.py -text
 wxtbx/phil_controls/ints.py -text
+wxtbx/phil_controls/misc_ctrls.py -text
 wxtbx/phil_controls/numbers.py -text
 wxtbx/phil_controls/path.py -text
 wxtbx/phil_controls/simple_dialogs.py -text
 wxtbx/phil_controls/space_group.py -text
 wxtbx/phil_controls/strctrl.py -text
+wxtbx/phil_controls/strings.py -text
 wxtbx/phil_controls/symop.py -text
 wxtbx/phil_controls/text_base.py -text
 wxtbx/phil_controls/tree.py -text
