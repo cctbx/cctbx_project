@@ -14,7 +14,6 @@ class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
       kwds['value'] = ""
     super(ValidatedTextCtrl, self).__init__(*args, **kwds)
     style = self.GetWindowStyle()
-    style = self.GetWindowStyle()
     if (not style & wx.TE_PROCESS_ENTER) :
       style |= wx.TE_PROCESS_ENTER
       self.SetWindowStyle(style)
@@ -31,8 +30,8 @@ class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
       assert isinstance(val, str)
       return val
 
-  def OnEnter (self) :
-    self.Validate()
+  def OnEnter (self, evt=None) :
+    #self.Validate()
     self.DoSendEvent()
 
   def CreateValidator (self) :
@@ -114,6 +113,6 @@ class TextCtrlValidator (wx.PyValidator) :
       return False
 
   def OnEnter (self, event) :
-    self.Validate(None)
+    #self.Validate(None)
     ctrl = self.GetWindow()
     ctrl.DoSendEvent()
