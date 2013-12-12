@@ -1881,6 +1881,7 @@ mmtbx/validation/regression/run_restraints.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_cbetadev.py -text
 mmtbx/validation/regression/tst_clashscore.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_molprobity.py svneol=native#text/x-python
+mmtbx/validation/regression/tst_mp_geo.py -text
 mmtbx/validation/regression/tst_nqh_minimize.py -text
 mmtbx/validation/regression/tst_ramalyze.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_restraints.py svneol=native#text/x-python

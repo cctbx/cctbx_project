@@ -123,6 +123,7 @@ tst_list = (
   "$D/regression/tst_mtz2map.py",
   "$D/validation/regression/tst_waters.py",
   "$D/validation/regression/tst_nqh_minimize.py",
+  "$D/validation/regression/tst_mp_geo.py",
   "$D/validation/regression/tst_rotalyze.py",
   "$D/validation/regression/tst_ramalyze.py",
   "$D/validation/regression/tst_cbetadev.py",
