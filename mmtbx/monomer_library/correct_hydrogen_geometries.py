@@ -5,7 +5,7 @@ def get_bad_hydrogen_i_seqs(hierarchy,
                             verbose=False,
                             ):
   from cctbx import geometry
-  
+
   def get_bonded(atom_group, atom, exclude=[]): # slow
     min_d2=1000
     min_atom=None
@@ -167,5 +167,3 @@ def correct_hydrogen_geometries(hierarchy,
     xray_structure.set_sites_cart(sites_cart)
   corrected_hydrogen_count = i_seqs
   return bad_hydrogen_count, corrected_hydrogen_count
-
-  

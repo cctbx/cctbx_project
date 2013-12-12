@@ -1,3 +1,9 @@
+
+from __future__ import division
+from libtbx import easy_run
+import libtbx.load_env
+import StringIO
+
 l1r_pdb = """
 HETATM 3890  C1 AL1R A1247      21.777  10.761  29.793  0.50  4.10           C
 HETATM 3891  C2 AL1R A1247      21.624  12.183  29.278  0.50 23.99           C
@@ -298,10 +304,14 @@ L1R   H25     C25     C9          119.98 3.000
 L1R   H25     C25     C5          120.05 3.000
 L1R   C9      C25     C5          119.97 3.000
 """
-import StringIO
-from libtbx import easy_run
 
 def run():
+  if (not libtbx.env.has_module("phenix")) :
+    print "phenix not configured, skipping"
+    return
+  elif (not libtbx.env.find_in_repositories("chem_data")) :
+    print "chem_data not configured, skipping"
+    return
   f=file("l1r.pdb", "wb")
   f.write(l1r_pdb)
   f.close()
@@ -344,7 +354,7 @@ def run():
   else:
     assert 0
   print "OK"
-  
+
 
 if __name__=="__main__":
   run()
