@@ -176,9 +176,9 @@ class common_mode_correction(mod_event_info):
     self.config = cspad_tbx.getConfig(self.address, env)
     if self.config is None:
       if self.address == 'XppGon-0|marccd-0':
-        # Kludge for the MAR at XPP.
-        self.active_areas = flex.int([0, 0, 4500, 4500])
-        self.beam_center = [4500 // 2, 4500 // 2]
+        #mod_mar.py will set these during its event function
+        self.active_areas = None
+        self.beam_center = None
       else:
         self.logger.error("beginjob(): no config")
     else:
@@ -284,7 +284,12 @@ class common_mode_correction(mod_event_info):
 #        return
     if not hasattr(self, 'active_areas') or self.active_areas is None or \
        not hasattr(self, 'beam_center')  or self.beam_center  is None:
-      (self.beam_center, self.active_areas) = \
+      if self.address == 'XppGon-0|marccd-0':
+        # the module mod_mar needs to have been called before this one to set this up
+        self.beam_center = evt.get("marccd_beam_center")
+        self.active_areas = evt.get("marccd_active_areas")
+      else:
+        (self.beam_center, self.active_areas) = \
           cspad_tbx.cbcaa(self.config, self.sections)
 
     if self.filter_laser_1_status is not None:
