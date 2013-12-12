@@ -1,6 +1,10 @@
-from __future__ import division
 
+from __future__ import division
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
+from wxtbx import phil_controls
+from libtbx.utils import Sorry
+from libtbx.phil import tokenizer
+import libtbx.phil
 import wx
 import sys
 
@@ -25,7 +29,7 @@ class StrCtrl (ValidatedTextCtrl) :
 
   def GetPhilValue (self) :
     self.Validate()
-    val_str = self.GetValue()
+    val_str = self.GetValue().strip()
     if (val_str in ["", "none", "None"]) :
       return self.ReturnNoneIfOptional()
     return val_str
@@ -35,7 +39,7 @@ class StrCtrl (ValidatedTextCtrl) :
     if (value is None) :
       return "None"
     else :
-      return '"""%s"""' % value
+      return parse_str(value)
 
   def FormatValue (self, value) :
     return str(value)
@@ -57,15 +61,24 @@ class StrCtrl (ValidatedTextCtrl) :
 class StrValidator (TextCtrlValidator) :
   def CheckFormat (self, value) :
     window = self.GetWindow()
-    if (";" in value) :
-      raise ValueError("Semicolons are not allowed in text input.")
-    if (len(value) > window.GetMaxLength()) :
+    if ("$" in value) :
+      raise ValueError("The dollar symbol ($) may not be used here.")
+    elif (len(value) > window.GetMaxLength()) :
       raise ValueError("Value must be %d characters or less." %
         window.GetMaxLength())
     elif (len(value) < window.GetMinLength()) :
       raise ValueError("Value must be at least %d characters." %
         window.GetMinLength())
     return value # XXX does anything else need to be done here?
+
+def parse_str (value) :
+  try :
+    word = tokenizer.word(value, quote_token='"""')
+    phil_string = str(word)
+  except ValueError, e :
+    raise Sorry(str(e))
+  else :
+    return phil_string
 
 if (__name__ == "__main__") :
   app = wx.App(0)
@@ -79,20 +92,42 @@ if (__name__ == "__main__") :
     name="Output file prefix")
   ctrl2.SetOptional(False)
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
+  btn2 = wx.Button(panel, -1, "Toggle title", pos=(200, 360))
+  master_phil = libtbx.phil.parse("""
+    title = None
+      .type = str
+    prefix = None
+      .type = str""")
   def OnOkay (evt) :
+    print """title = %s""" % ctrl1.GetStringValue()
+    title_phil = libtbx.phil.parse("""title = %s""" % ctrl1.GetStringValue())
+    prefix_phil = libtbx.phil.parse("""prefix = %s""" % ctrl2.GetStringValue())
+    p = master_phil.fetch(sources=[title_phil, prefix_phil]).extract()
+    print "title recycled via phil:", p.title
+    print "prefix recycled via phil:", p.prefix
     value1 = ctrl1.GetPhilValue()
     value2 = ctrl2.GetPhilValue()
-    print value1
-    print value2
+    assert (p.title == value1), value1
+    assert (p.prefix == value2)
   assert (ctrl1.GetPhilValue() is None)
   assert (ctrl1.GetStringValue() == "None")
+  inp_str = """This string has bad; characters f\""""
+  ctrl1.SetValue(inp_str)
+  assert (ctrl1.GetPhilValue() == inp_str)
+  #assert (ctrl1.GetStringValue() == '"This string has bad; characters f\\""')
+  title_phil = libtbx.phil.parse("""title = %s""" % ctrl1.GetStringValue())
+  p = master_phil.fetch(source=title_phil).extract()
+  assert (p.title == inp_str)
   assert (ctrl2.GetPhilValue() == "refine")
   assert (ctrl2.GetStringValue() == '"""refine"""')
-  frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
-  import wxtbx.phil_controls
   def OnChange (evt) :
     pass
-  frame.Bind(wxtbx.phil_controls.EVT_PHIL_CONTROL, OnChange)
+  def OnToggle (evt) :
+    if (ctrl1.IsEnabled()) : ctrl1.Enable(False)
+    else : ctrl1.Enable()
+  frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
+  frame.Bind(phil_controls.EVT_PHIL_CONTROL, OnChange)
+  frame.Bind(wx.EVT_BUTTON, OnToggle, btn2)
   frame.Fit()
   frame.Show()
   app.MainLoop()

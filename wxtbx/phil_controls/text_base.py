@@ -1,6 +1,7 @@
-from __future__ import division
 
+from __future__ import division
 from wxtbx import phil_controls
+import wxtbx
 from libtbx.utils import Abort
 from libtbx import Auto
 import wx
@@ -13,6 +14,8 @@ class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
       saved_value = kwds['value']
       kwds['value'] = ""
     super(ValidatedTextCtrl, self).__init__(*args, **kwds)
+    font = wx.Font(wxtbx.default_font_size, wx.MODERN, wx.NORMAL, wx.NORMAL)
+    self.SetFont(font)
     style = self.GetWindowStyle()
     if (not style & wx.TE_PROCESS_ENTER) :
       style |= wx.TE_PROCESS_ENTER

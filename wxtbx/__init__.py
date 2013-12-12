@@ -1,4 +1,14 @@
 from __future__ import division
+import wx
+
+global default_font_size
+
+if (wx.Platform == '__WXMSW__') :
+  default_font_size = 9
+elif (wx.Platform == '__WXMAC__') :
+  default_font_size = 12
+else :
+  default_font_size = 11
 
 class MouseWheelTransparencyMixin (object) :
   """
