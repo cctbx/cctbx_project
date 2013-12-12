@@ -112,6 +112,9 @@ class distl_hitfinder(object):
     else:
       raise RuntimeError("Unsupported device %s" % self.address)
 
+    if self.beam_center is None:
+      self.beam_center = [0,0]
+
     self.hitfinder_d = cspad_tbx.dpack(
       active_areas=self.active_areas,
       beam_center_x=pixel_size * self.beam_center[0],

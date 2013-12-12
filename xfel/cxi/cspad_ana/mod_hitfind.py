@@ -175,6 +175,8 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       evt.put(True, "skip_event")
       return
 
+    device = cspad_tbx.address_split(self.address)[2]
+
     # ***** HITFINDING ***** XXX For hitfinding it may be interesting
     # to look at the fraction of subzero pixels in the dark-corrected
     # image.
@@ -210,6 +212,9 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       #       pixel value of the central ASICS.  This filter was added to avoid high-background
       #       false positives.
       elif (self.m_distl_min_peaks is not None):
+        if device == 'marccd':
+          self.hitfinder_d['BEAM_CENTER_X'] = self.beam_center[0]
+          self.hitfinder_d['BEAM_CENTER_Y'] = self.beam_center[1]
 
         peak_heights,outvalue = self.distl_filter(
           self.address,
@@ -249,13 +254,12 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                      (env.subprocess(), self.nshots, self.timestamp))
 
     # See r17537 of mod_average.py.
-    device = cspad_tbx.address_split(self.address)[2]
     if device == 'Cspad':
       pixel_size = cspad_tbx.pixel_size
       saturated_value = cspad_tbx.dynamic_range
     elif device == 'marccd':
-      pixel_size = 0.079346
-      saturated_value = 2**16 - 1
+      pixel_size = evt.get("marccd_pixel_size")
+      saturated_value = evt.get("marccd_saturated_value")
 
     d = cspad_tbx.dpack(
       active_areas=self.active_areas,
