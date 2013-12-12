@@ -65,6 +65,7 @@ tst_list = (
   "$D/dynamics/tst_cartesian_dynamics.py",
   "$D/dynamics/tst_sa.py",
   "$D/tls/tst_tls.py",
+  "$D/tls/tst_tls_as_xyz.py",
   "$D/tls/tst_get_t_scheme.py",
   "$D/tls/tst_tls_refinement_fft.py",
   "$D/examples/f_model_manager.py",
