@@ -8,6 +8,8 @@ import math
 
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.detector_formats import detector_format_version as detector_format_function
+from xfel.detector_formats import reverse_timestamp
 
 # alternate implementation of hitfinder, use the idea of running spotfinder
 #   on the data from the innermost four sensors.  Once this is done, a hit is
@@ -32,6 +34,11 @@ class distl_hitfinder(object):
             "distl.bins.verbose=False",
             self.asic_filter,
             ]
+
+    detector_format_version = detector_format_function(
+      address, reverse_timestamp(timestamp)[0])
+    assert detector_format_version is not None
+    args += ["distl.detector_format_version=%s" % detector_format_version]
 
     from xfel.phil_preferences import load_cxi_phil
     horizons_phil = load_cxi_phil(self.m_xtal_target, args)

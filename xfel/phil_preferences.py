@@ -41,4 +41,23 @@ def load_cxi_phil(path, args=[]):
   for item in consume:
     args.remove(item)
 
-  return horizons_phil.extract()
+  if len(args) > 0:
+    raise Sorry("Not all arguments processed")
+
+  params = horizons_phil.extract()
+  assert params.distl.detector_format_version is not None
+  message = "deprecated: %s and detector_format_version should not be specified in your phil file. Remove them from phil files of the form cxi-7.1.phil or xpp-7.1.phil, included from your xtal_target phil file"
+  if params.distl.tile_translations is not None:
+    raise Sorry(message%"tile_translations")
+  if params.distl.quad_translations is not None:
+    raise Sorry(message%"quad_translations")
+
+  from spotfinder.applications.xfel.cxi_phil import cxi_versioned_extract
+  args = ["distl.detector_format_version=%s"%params.distl.detector_format_version]
+
+  versioned_extract = cxi_versioned_extract(args).persist.commands
+
+  params.distl.quad_translations = versioned_extract.distl.quad_translations
+  params.distl.tile_translations = versioned_extract.distl.tile_translations
+
+  return params

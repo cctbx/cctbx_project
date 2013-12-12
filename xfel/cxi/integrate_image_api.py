@@ -7,6 +7,8 @@ def integrate_one_image(data, **kwargs):
   from libtbx.utils import Sorry
   from spotfinder.exception import SpotfinderError
   from labelit.exception import AutoIndexError
+  from xfel.detector_formats import detector_format_version as detector_format_function
+  from xfel.detector_formats import reverse_timestamp
 
   basename = kwargs.get("integration_basename")
   if (basename is None):
@@ -34,6 +36,11 @@ def integrate_one_image(data, **kwargs):
           "difflimit_sigma_cutoff=2.0",
           #"indexing.open_wx_viewer=True"
           ]
+
+  detector_format_version = detector_format_function(
+    data['DETECTOR_ADDRESS'], reverse_timestamp(data['TIMESTAMP'])[0])
+  assert detector_format_version is not None
+  args += ["distl.detector_format_version=%s" % detector_format_version]
 
   from xfel.phil_preferences import load_cxi_phil
   horizons_phil = load_cxi_phil(data["xtal_target"], args)
