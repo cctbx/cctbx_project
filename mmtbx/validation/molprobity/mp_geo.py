@@ -57,6 +57,7 @@ def run(args):
     strict_conflict_handling = True,
     use_neutron_distances    = use_neutron_distances,
     force_symmetry           = True,
+    substitute_non_crystallographic_unit_cell_if_necessary=True,
     log                      = log)
   grm = processed_pdb_file.geometry_restraints_manager()
   rc = get_bond_and_angle_outliers(
