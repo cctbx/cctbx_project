@@ -328,6 +328,8 @@ class boxes(object):
       print >> log, prefix, "step along edges   :", self.ga,self.gb,self.gc
       print >> log, prefix, "points per box edge:", ba,bb,bc
       print >> log, prefix, "number of boxes    :", (nba+1)*(nbb+1)*(nbc+1)
+      print >> log, prefix, "Vbox/Vcall         :", \
+        box_size_a*box_size_b*box_size_c/unit_cell.volume()
     def regroup(be):
       maxe = be[len(be)-1][1]
       step = int(maxe/len(be))
