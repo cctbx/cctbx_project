@@ -30,6 +30,12 @@ def exercise(n, use_dumps=False):
       obj = easy_pickle.load(
         file_name=file_name, faster_but_using_more_memory=False)
       print "  load direct: %.2f s" % (time.time()-t0)
+  # XXX pickling and unpickling of libtbx.Auto
+  # couldn't think of a better place to test this...
+  from libtbx import Auto
+  a = easy_pickle.dumps(Auto)
+  b = easy_pickle.loads(a)
+  assert (b is Auto) and (b == Auto)
 
 def run(args):
   assert len(args) in [0,1]
