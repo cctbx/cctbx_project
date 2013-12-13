@@ -256,13 +256,20 @@ def resolve_dm_map(
       pdb_inp,
       use_model_hl,
       fill,
-      input_text=None):
+      solvent_content_attenuator=0.1,
+      mask_cycles  = 2,
+      minor_cycles = 2,
+      input_text   = None):
   """
   Compute Resolve DM map
   """
+  input_text="""
+keep_missing
+"""
   from solve_resolve.resolve_python import density_modify_in_memory
-  sol_cont = mmtbx.utils.f_000(
-    xray_structure = fmodel.xray_structure).solvent_fraction-0.1
+  import mmtbx.utils
+  sol_cont = mmtbx.utils.f_000(xray_structure =
+    fmodel.xray_structure).solvent_fraction-solvent_content_attenuator
   hl_model = None
   if(use_model_hl):
     hl_model = miller.set(crystal_symmetry=fmodel.f_obs().crystal_symmetry(),
@@ -271,16 +278,19 @@ def resolve_dm_map(
         data=fmodel.f_model_phases_as_hl_coefficients(
           map_calculation_helper=None))
   f_obs = fmodel.f_obs()
+  f_obs = f_obs.array(
+      data = f_obs.data(),
+      sigmas = flex.double(f_obs.indices().size(), 1.0))  # must be present
   if(fill):
     data = f_obs.data()
     sigmas = f_obs.sigmas()
     complete_set = f_obs.complete_set()
     n_missing =  complete_set.indices().size() - f_obs.indices().size()
     complete_set = complete_set.array(
-      data = flex.double(complete_set.indices().size(), 0.01),
-      sigmas = flex.double(complete_set.indices().size(), -1.0))
+      data = flex.double(complete_set.indices().size(), 0.01), # must be > 0.0
+      sigmas = flex.double(complete_set.indices().size(), -1.0))  # must be -1.0
     f_obs = f_obs.complete_with(other=complete_set)
-    assert f_obs.data().size()==f_obs.indices().size()==f_obs.sigmas().size()
+    #assert f_obs.data().size()==f_obs.indices().size()==f_obs.sigmas().size()
   if pdb_inp:
     denmod_with_model=True
   else:
@@ -290,8 +300,8 @@ def resolve_dm_map(
     hendrickson_lattman = hl_model,
     map_coeffs_start    = map_coeffs,
     solvent_content     = sol_cont,
-    mask_cycles         = 5,
-    minor_cycles        = 10,
+    mask_cycles         = mask_cycles,
+    minor_cycles        = minor_cycles,
     pdb_inp             = pdb_inp,
     denmod_with_model   = denmod_with_model,
     verbose             = False,
