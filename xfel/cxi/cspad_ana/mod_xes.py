@@ -45,21 +45,11 @@ class mod_xes(average_tbx.average_mixin):
     parameters, except @p address are optional, and hence need not be
     defined in pyana.cfg.
 
-    @param address         Address string XXX Que?!
-    @param pickle_dirname     Directory portion of output pickle file
+    @param address         Full data source address of the DAQ device
+    @param pickle_dirname  Directory portion of output pickle file
                            XXX mean, mu?
-    @param pickle_basename    Filename prefix of output pickle file
+    @param pickle_basename Filename prefix of output pickle file
                            image XXX mean, mu?
-    @param calib_dir       Directory with calibration information
-    @param dark_path       Path to input dark image
-    @param dark_stddev     Path to input dark standard deviation
-    @param flags           inactive:  Eliminate the inactive pixels
-                           noelastic: Eliminate elastic scattering
-                           nohot:     Eliminate the hot pixels.
-                           nonoise:   Eliminate nosiy pixels.
-    @param n               The number of shots to process, or as many
-                           as possible if undefined XXX Sort of
-                           redundant with pyana
     """
     super(mod_xes, self).__init__(
       address=address,

@@ -33,7 +33,7 @@ class mod_average(average_tbx.average_mixin):
     parameters, except @p address are optional, and hence need not be
     defined in pyana.cfg.
 
-    @param address Address string XXX Que?!
+    @param address Full data source address of the DAQ device
     """
 
     super(mod_average, self).__init__(address=address, **kwds)
@@ -47,18 +47,14 @@ class mod_average(average_tbx.average_mixin):
     """
 
     super(mod_average, self).event(evt, env)
-    if (evt.get("skip_event")):
+    if evt.get('skip_event'):
       return
-
-    self.logger.info("shot number %i" %self._nmemb)
+    self.logger.info("Shot number %i"  % self._nmemb)
 
 
   def endjob(self, env):
-    """The endjob() function finalises the mean and standard deviation
-    images and writes them to disk.  The distance and wavelength
-    written to the standard deviation image is actually the average
-    distance and wavelength, since standard deviations of those
-    quantities do not make much sense in visualisation.
+    """The endjob() function writes the mean and standard deviation images
+    to disk.
 
     @param env Environment object
     """
