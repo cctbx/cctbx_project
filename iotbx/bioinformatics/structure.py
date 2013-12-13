@@ -1,7 +1,7 @@
 
 from __future__ import division
 from libtbx.utils import Sorry
-from libtbx import adopt_init_args
+from libtbx import slots_getstate_setstate_default_initializer
 import libtbx.utils
 import cStringIO
 import urllib2
@@ -41,10 +41,9 @@ def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp",
     f.close()
   return blast_out
 
-class blast_hit (object) :
-  def __init__ (self, hit_num, pdb_id, chain_id, evalue, length, identity,
-      positives, all_ids=()) :
-    adopt_init_args(self, locals())
+class blast_hit (slots_getstate_setstate_default_initializer) :
+  __slots__ = [ "hit_num", "pdb_id", "chain_id", "evalue", "length",
+      "identity", "positives", "all_ids", ]
 
   def show (self, out=None) :
     if (out is None) : out = sys.stdout
