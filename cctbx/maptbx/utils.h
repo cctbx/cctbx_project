@@ -158,12 +158,76 @@ void hoppe_gassman_modification(af::ref<DataType, af::c_grid<3> > map_data,
 }
 
 template <typename DataType>
+af::versa<DataType, af::c_grid<3> > set_box_copy(
+  DataType const& value,
+  af::ref<DataType, af::c_grid<3> > map_data_to,
+  af::tiny<int, 3> const& start,
+  af::tiny<int, 3> const& end)
+{
+  af::c_grid<3> a = map_data_to.accessor();
+  for(int i = 0; i < 3; i++) {
+    //std::cout<<end[i]<<" "<<a[i]<<std::endl;
+    //std::cout<<" "<<std::endl;
+    CCTBX_ASSERT(start[i]>=0 && start[i]<=a[i]);
+    CCTBX_ASSERT(end[i]>=0   && end[i]<=a[i]);
+  }
+  af::versa<DataType, af::c_grid<3> > result_map(a,
+    af::init_functor_null<DataType>());
+  af::ref<DataType, af::c_grid<3> > result_map_ref = result_map.ref();
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+        if(i>=start[0]&&i<end[0] &&
+           j>=start[1]&&j<end[1] &&
+           k>=start[2]&&k<end[2]) {
+          result_map_ref(i,j,k) = value;
+        }
+        else {
+          result_map_ref(i,j,k) = map_data_to(i,j,k);
+        }
+  }}}
+  return result_map;
+}
+
+template <typename DataType>
+void set_box(
+  DataType const& value,
+  af::ref<DataType, af::c_grid<3> > map_data_to,
+  af::tiny<int, 3> const& start,
+  af::tiny<int, 3> const& end)
+{
+  af::c_grid<3> a = map_data_to.accessor();
+  for(int i = 0; i < 3; i++) {
+    CCTBX_ASSERT(start[i]>=0 && start[i]<=a[i]);
+    CCTBX_ASSERT(end[i]>=0   && end[i]<=a[i]);
+  }
+  int ii=0;
+  for (int i = start[0]; i < end[0]; i++) {
+    int jj=0;
+    for (int j = start[1]; j < end[1]; j++) {
+      int kk=0;
+      for (int k = start[2]; k < end[2]; k++) {
+        map_data_to(i,j,k) = value;
+        kk+=1;
+      }
+      jj+=1;
+    }
+    ii+=1;
+  }
+}
+
+template <typename DataType>
 void set_box(
   af::const_ref<DataType, af::c_grid<3> > const& map_data_from,
   af::ref<DataType, af::c_grid<3> > map_data_to,
   af::tiny<int, 3> const& start,
   af::tiny<int, 3> const& end)
 {
+  af::c_grid<3> a = map_data_to.accessor();
+  for(int i = 0; i < 3; i++) {
+    CCTBX_ASSERT(start[i]>=0 && start[i]<=a[i]);
+    CCTBX_ASSERT(end[i]>=0   && end[i]<=a[i]);
+  }
   int ii=0;
   for (int i = start[0]; i < end[0]; i++) {
     int jj=0;
