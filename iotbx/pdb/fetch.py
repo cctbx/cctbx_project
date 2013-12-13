@@ -21,6 +21,7 @@
 from __future__ import division
 from libtbx.utils import Sorry, null_out
 from libtbx import smart_open
+from libtbx import Auto
 import libtbx.utils
 import libtbx.load_env
 from cStringIO import StringIO
@@ -44,7 +45,8 @@ def validate_pdb_ids (id_list) :
       raise Sorry(str(e))
 
 def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
-    force_download=False) :
+    force_download=False,
+    local_cache=None) :
   """
   Locate and open a data file for the specified PDB ID and format, either in a
   local mirror or online.
@@ -64,6 +66,21 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
 
   id = id.lower()
   if (not force_download) :
+    if (local_cache is not None) and (data_type == "pdb") :
+      from iotbx.file_reader import guess_file_type
+      if (local_cache is Auto) :
+        local_cache = os.getcwd()
+      cache_files = os.listdir(local_cache)
+      for file_name in cache_files :
+        if (len(file_name) > 4) :
+          file_id = re.sub("^pdb", "", file_name)[0:4]
+          if (file_id.lower() == id) :
+            if (guess_file_type(file_name) == "pdb") :
+              file_name = os.path.join(local_cache, file_name)
+              print >> log, "Reading from cache directory:"
+              print >> log, "  " + file_name
+              f = smart_open.for_reading(file_name)
+              return f
     # try local mirror for PDB and X-ray data files first, if it exists
     if (data_type == "pdb") and ("PDB_MIRROR_PDB" in os.environ) :
       subdir = os.path.join(os.environ["PDB_MIRROR_PDB"], id[1:3])
@@ -160,12 +177,13 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       return gzip.GzipFile(fileobj=StringIO(data.read()))
   return data
 
-def load_pdb_structure (id, format="pdb", allow_unknowns=False) :
+def load_pdb_structure (id, format="pdb", allow_unknowns=False,
+    local_cache=None) :
   """
   Simple utility method to load the PDB hierarchy and xray structure objects
   directly (without intermediate files).
   """
-  data = fetch(id=id, format=format, log=null_out())
+  data = fetch(id=id, format=format, log=null_out(), local_cache=local_cache)
   import iotbx.pdb.hierarchy
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=data.read())
   hierarchy = pdb_in.hierarchy
