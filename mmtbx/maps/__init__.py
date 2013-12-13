@@ -848,7 +848,7 @@ def fem(fmodel):
     crystal_gridding = crystal_gridding,
     fill_mode        = "resolve_dm")
 
-  mc_orig = ko.complete_set
+  mc_orig = ko.complete_set.deep_copy()
   print "starting FEM..."
   map_data   = ko.map_data.deep_copy()
   map_dataK1 = map_data.deep_copy()
@@ -857,6 +857,21 @@ def fem(fmodel):
   #
   # I think this is the same
   if(1):
+    ### Filter by omit mask
+    if(0):
+      # Filter by OMIT map, works only in P1, so it is disabled.
+      # Also, it is not clear this is the best place to call it.
+      oo = mmtbx.maps.omit(
+        crystal_gridding = crystal_gridding,
+        fmodel = fmodel.deep_copy(),
+        box_size_as_unit_cell_fraction = 0.01,
+        reset_below_sigma = 0.5)
+      omit_mask = oo.map_result
+      sel = omit_mask < 1.
+      omit_mask = omit_mask.set_selected( sel, 0)
+      omit_mask = omit_mask.set_selected(~sel, 1)
+      map_data = map_data * omit_mask
+    ###
     fem = maptbx.local_scale(
       map_data         = map_data,
       crystal_gridding = crystal_gridding,
@@ -926,80 +941,4 @@ def fem(fmodel):
   else: loop = [1]
   for i in loop:
     maptbx.sharpen(map_data=map_fem, index_span=1, n_averages=2)
-  #
-  return sffm(miller_array=mc_orig, map_data=map_fem)
-
-class omit(object):
-  def __init__(
-        self,
-        crystal_gridding,
-        fmodel,
-        box_size_as_unit_cell_fraction = 0.1):
-    b = maptbx.boxes(
-      n_real     = crystal_gridding.n_real(),
-      unit_cell  = fmodel.f_obs().crystal_symmetry().unit_cell(),
-      box_size_as_unit_cell_fraction = box_size_as_unit_cell_fraction)
-    import mmtbx.f_model
-    import cctbx.miller
-    def get_map(fmodel, map_type, fill, ref_mc=None):
-      f_map = fmodel.electron_density_map(
-        update_f_part1=False).map_coefficients(
-          map_type     = map_type,
-          isotropize   = True,
-          fill_missing = fill)
-      if(ref_mc is not None):
-        f_map = f_map.complete_with(ref_mc, scale=True)
-      fft_map = cctbx.miller.fft_map(
-        crystal_gridding     = crystal_gridding,
-        fourier_coefficients = f_map)
-      fft_map.apply_sigma_scaling()
-      return fft_map.real_map_unpadded(), f_map
-    f_map_data_orig, map_coeffs_orig = \
-      get_map(fmodel=fmodel, map_type="2mFo-DFc", fill=True)
-    f_model = fmodel.f_model_scaled_with_k1()
-    fft_map = cctbx.miller.fft_map(
-      crystal_gridding     = crystal_gridding,
-      fourier_coefficients = f_model)
-    fft_map.apply_volume_scaling()
-    f_model_map_data = fft_map.real_map_unpadded()
-    zero_complex_ma = f_model.customized_copy(data = f_model.data()*0)
-    self.map_result = flex.double(flex.grid(b.n_real))
-    for s,e in zip(b.starts, b.ends):
-      box = maptbx.copy(f_model_map_data, s, e)
-      box.reshape(flex.grid(box.all()))
-      maptbx.reset(data=box, substitute_value=0.0, less_than_threshold=1.e+99, logical_operator="or")
-      tmp = f_model_map_data.deep_copy()
-      maptbx.set_box(
-        map_data_from = box,
-        map_data_to   = tmp,
-        start         = s,
-        end           = e)
-      f_model_ = f_model.structure_factors_from_map(
-        map            = tmp,
-        use_scale      = True,
-        anomalous_flag = False,
-        use_sg         = False)
-      fmodel_ = mmtbx.f_model.manager(
-        f_obs        = fmodel.f_obs(),
-        r_free_flags = fmodel.r_free_flags(),
-        f_calc       = f_model_,
-        f_mask       = zero_complex_ma)
-      f_map_data, junk = get_map(fmodel=fmodel_, map_type="2mFo-DFc",
-        fill=False, ref_mc=map_coeffs_orig)
-      box = maptbx.copy(f_map_data, s, e)
-      box.reshape(flex.grid(box.all()))
-      maptbx.set_box(
-        map_data_from = box,
-        map_data_to   = self.map_result,
-        start         = s,
-        end           = e)
-    for i in [0,0.1,0.2,0.3,0.4,0.5]:
-      maptbx.intersection(
-        map_data_1 = f_map_data_orig,
-        map_data_2 = self.map_result,
-        threshold  = i)
-    self.map_coefficients = junk.structure_factors_from_map(
-      map            = self.map_result,
-      use_scale      = True,
-      anomalous_flag = False,
-      use_sg         = False)
+  return sffm(miller_array=mc_orig, map_data=map_fem), ko.complete_set
