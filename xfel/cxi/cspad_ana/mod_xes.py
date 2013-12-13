@@ -1,4 +1,4 @@
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # $Id$
 """First- and second-order statistics for CS-PAD images
@@ -92,7 +92,7 @@ class mod_xes(average_tbx.average_mixin):
     self.stats_logger.info("SKEWNESS %.3f %s" %(evt_time, stats.skew))
     self.stats_logger.info("KURTOSIS %.3f %s" %(evt_time, stats.kurtosis))
 
-    #if self.nmemb % 1000 == 0 or math.log(self.nmemb, 2) % 1 == 0:
+    #if self._nmemb % 1000 == 0 or math.log(self._nmemb, 2) % 1 == 0:
       #self.endjob(env)
 
   def endjob(self, env):
@@ -102,27 +102,28 @@ class mod_xes(average_tbx.average_mixin):
     @param env Environment object
     """
 
-    super(mod_xes, self).endjob(env)
-    if (self.nmemb > 0):
+    stats = super(mod_xes, self).endjob(env)
+    if stats is None:
+      return
+
+    if stats['nmemb'] > 0:
       if (self.pickle_dirname  is not None or
           self.pickle_basename is not None):
         if (not os.path.isdir(self.pickle_dirname)):
           os.makedirs(self.pickle_dirname)
         d = dict(
-          sum_img = self.sum_img,
-          sumsq_img = self.sumsq_img,
-          nmemb = self.nmemb,
+          sum_img = stats['mean_img'],
+          sumsq_img = stats['std_img'],
+          nmemb = stats['nmemb'],
           sifoil = self.sifoil,
         )
         pickle_path = os.path.join(self.pickle_dirname,
                                    self.pickle_basename+str(env.subprocess())+".pickle")
         easy_pickle.dump(pickle_path, d)
-        self.logger.info(
-          "Pickle written to %s" % self.pickle_dirname)
+        self.logger.info("Pickle written to %s" % self.pickle_dirname)
 
-    if (self.nfail == 0):
-      self.logger.info(
-        "%d images processed" % self.nmemb)
+    if stats['nfail'] == 0:
+      self.logger.info("%d images processed" % stats['nmemb'])
     else:
       self.logger.warning(
-        "%d images processed, %d failed" % (self.nmemb, self.nfail))
+        "%d images processed, %d failed" % (stats['nmemb'], stats['nfail']))
