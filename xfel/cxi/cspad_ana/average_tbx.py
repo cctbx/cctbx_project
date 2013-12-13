@@ -90,11 +90,18 @@ class average_mixin(common_mode.common_mode_correction):
     self._have_std = self.stddev_basename is not None or \
                      self.stddev_dirname is not None
 
-    # Start a server process which holds the Python objects and allows
-    # other processes to manipulate them using proxies.  Use separate
-    # queues for the big images in an attempt to prevent operations
-    # from blocking if the queue's consumer and producer are running
-    # in series.
+    # Start a server process which holds a set of Python objects that
+    # other processes can manipulate using proxies.  The queues will
+    # be used in endjob() to pass images between the worker processes,
+    # and the lock will ensure the transfer is treated as a critical
+    # section.  There is therefore the risk of a hang if the queues
+    # cannot hold all the data one process will supply before another
+    # empties it.
+    #
+    # In an attempt to alleviate this issue, separate queues are used
+    # for the potentially big images.  The hope is to prevent
+    # producers from blocking while consumers are locked out by using
+    # more buffers.
     mgr = multiprocessing.Manager()
     self._lock = mgr.Lock()
     self._metadata = mgr.dict()
