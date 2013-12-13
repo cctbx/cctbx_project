@@ -31,26 +31,22 @@ class average_mixin(common_mode.common_mode_correction):
                noise_threshold=7,
                elastic_threshold=9,
                symnoise_threshold=4,
-               n=None,
                **kwds):
     """
-    @param address         Address string XXX Que?!
+    @param address         Full data source address of the DAQ device
     @param avg_dirname     Directory portion of output average image
-                           XXX mean, mu?
+                           XXX mean
     @param avg_basename    Filename prefix of output average image XXX
-                           mean, mu?
+                           mean
     @param flags inactive:  Eliminate the inactive pixels
                  noelastic: Eliminate elastic scattering
                  nohot:     Eliminate the hot pixels
                  nonoise:   Eliminate noisy pixels
                  symnoise:  Symmetrically eliminate noisy pixels
-    @param n     The number of shots to process, or as many as
-                 possible if undefined XXX Sort of redundant with
-                 pyana
     @param stddev_dirname  Directory portion of output standard
-                           deviation image XXX sigma?
+                           deviation image XXX std
     @param stddev_basename Filename prefix of output standard
-                           deviation image XXX sigma?
+                           deviation image XXX std
     @param max_dirname     Directory portion of output maximum
                            projection image
     @param max_basename    Filename prefix of output maximum
@@ -66,7 +62,6 @@ class average_mixin(common_mode.common_mode_correction):
     self.avg_dirname = cspad_tbx.getOptString(avg_dirname)
     self.detector = cspad_tbx.address_split(address)[0]
     self.flags = cspad_tbx.getOptStrings(flags, default = [])
-    self.nmemb_max = cspad_tbx.getOptInteger(n)
     self.stddev_basename = cspad_tbx.getOptString(stddev_basename)
     self.stddev_dirname = cspad_tbx.getOptString(stddev_dirname)
     self.max_basename = cspad_tbx.getOptString(max_basename)
@@ -135,15 +130,13 @@ class average_mixin(common_mode.common_mode_correction):
 
   def event(self, evt, env):
     """The event() function is called for every L1Accept transition.
-    Once self.nmemb_max shots are accumulated, this function turns
-    into a nop.
 
     @param evt Event data object, a configure object
     @param env Environment object
     """
 
     super(average_mixin, self).event(evt, env)
-    if (evt.get("skip_event")):
+    if evt.get('skip_event'):
       return
 
     # Get the distance for the detectors that should have it, and set
@@ -155,13 +148,10 @@ class average_mixin(common_mode.common_mode_correction):
       if distance is None:
         self._nfail += 1
         self.logger.warning("event(): no distance, shot skipped")
-        evt.put(True, "skip_event")
+        evt.put(True, 'skip_event')
         return
     else:
       distance = float('nan')
-
-    if self.nmemb_max is not None and self._nmemb >= self.nmemb_max:
-      return
 
     if ("skew" in self.flags):
       # Take out inactive pixels
@@ -188,7 +178,7 @@ class average_mixin(common_mode.common_mode_correction):
       if stats.skew < skew_threshold:
         self._nfail += 1
         self.logger.warning("event(): skew < %f, shot skipped" % skew_threshold)
-        evt.put(True, "skip_event")
+        evt.put(True, 'skip_event')
         return
       #self.cspad_img *= stats.skew
 
@@ -293,7 +283,12 @@ class average_mixin(common_mode.common_mode_correction):
 
 
   def endjob(self, env):
-    """
+    """The endjob() function finalises the mean and standard deviation
+    images.  The distance and wavelength in all images is actually the
+    mean distance and wavelength, since standard deviations or maximum
+    values of those quantities do not make much sense in
+    visualisation.
+
     @param env Environment object
     @return    A dictionary object with accumulated statistics or @c
                none if the contribution from the worker process is
