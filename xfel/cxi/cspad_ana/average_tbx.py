@@ -16,14 +16,6 @@ from xfel.cxi.cspad_ana import cspad_tbx
 
 
 class average_mixin(common_mode.common_mode_correction):
-
-  sum_img = None
-  sumsq_img = None
-  max_img = None
-  sum_distance = None
-  sum_time = None
-  sum_wavelength = None
-
   def __init__(self,
                address,
                avg_dirname=None,
@@ -96,50 +88,24 @@ class average_mixin(common_mode.common_mode_correction):
       background_dict = easy_pickle.load(background_path)
       self.background_img = background_dict['DATA']
 
-    self.do_max_image = self.max_basename is not None or self.max_dirname is not None
+    self._have_max = self.max_basename is not None or \
+                     self.max_dirname is not None
+    self._have_mean = self.avg_basename is not None or \
+                      self.avg_dirname is not None
+    self._have_std = self.stddev_basename is not None or \
+                     self.stddev_dirname is not None
 
-    # Initialise all totals to zero.  self._tot_peers is a bit field
-    # where a bit is set if the partial sum from the corresponding
-    # worker process is pending.  self._time_base and self._tot_time
-    # are two-long arrays of seconds and milliseconds, where the first
-    # array gives the base time, and the second array gives the total
-    # time with respect to the base time.  XXX Hardcoding the detector
-    # size is not nice.
-    self._tot_lock = multiprocessing.Lock()
-
-    self._time_base = multiprocessing.Array('L', 2, lock=False)
-    self._tot_distance = multiprocessing.Value('d', 0, lock=False)
-    self._tot_nfail = multiprocessing.Value('L', 0, lock=False)
-    self._tot_nmemb = multiprocessing.Value('L', 0, lock=False)
-    self._tot_peers = multiprocessing.Value('L', 0, lock=False)
-    self._tot_time = multiprocessing.Array('l', 2, lock=False)
-    self._tot_wavelength = multiprocessing.Value('d', 0, lock=False)
-
-    device = cspad_tbx.address_split(address)[2]
-    if device == 'Andor':
-      # XXX Maximum size of Andor 2048 x 2048, commonly binned to 128
-      # x 128.
-      self._tot_sum = multiprocessing.Array('d', 128 * 128, lock=False)
-      self._tot_ssq = multiprocessing.Array('d', 128 * 128, lock=False)
-      self._tot_max = multiprocessing.Array('d', 128 * 128, lock=False)
-    elif device == 'Cspad':
-      self._tot_sum = multiprocessing.Array('d', 1765 * 1765, lock=False)
-      self._tot_ssq = multiprocessing.Array('d', 1765 * 1765, lock=False)
-      self._tot_max = multiprocessing.Array('d', 1765 * 1765, lock=False)
-    elif device == 'Cspad2x2':
-      self._tot_sum = multiprocessing.Array('d', 370 * 391, lock=False)
-      self._tot_ssq = multiprocessing.Array('d', 370 * 391, lock=False)
-      self._tot_max = multiprocessing.Array('d', 370 * 391, lock=False)
-    elif device == 'marccd':
-      self._tot_sum = multiprocessing.Array('d', 4500 * 4500, lock=False)
-      self._tot_ssq = multiprocessing.Array('d', 4500 * 4500, lock=False)
-      self._tot_max = multiprocessing.Array('d', 4500 * 4500, lock=False)
-    elif device == 'pnCCD':
-      self._tot_sum = multiprocessing.Array('d', 1024 * 1024, lock=False)
-      self._tot_ssq = multiprocessing.Array('d', 1024 * 1024, lock=False)
-      self._tot_max = multiprocessing.Array('d', 1024 * 1024, lock=False)
-    else:
-      raise RuntimeError("Unsupported device %s" % address)
+    # Start a server process which holds the Python objects and allows
+    # other processes to manipulate them using proxies.  Use separate
+    # queues for the big images in an attempt to prevent operations
+    # from blocking if the queue's consumer and producer are running
+    # in series.
+    mgr = multiprocessing.Manager()
+    self._lock = mgr.Lock()
+    self._metadata = mgr.dict()
+    self._queue_max = mgr.Queue()
+    self._queue_sum = mgr.Queue()
+    self._queue_ssq = mgr.Queue()
 
 
   def beginjob(self, evt, env):
@@ -153,14 +119,18 @@ class average_mixin(common_mode.common_mode_correction):
 
     super(average_mixin, self).beginjob(evt, env)
 
-    # Record the base time only once.  Assuming an average run length
-    # of ten minutes, five minutes past the start of a run is a good
-    # base time.
-    self._tot_lock.acquire()
-    if self._time_base[0] == 0 and self._time_base[1] == 0:
-      self._time_base[0] = cspad_tbx.evt_time(evt)[0] + 5 * 60
-      self._time_base[1] = 500
-    self._tot_lock.release()
+    self._nfail = 0
+    self._nmemb = 0
+
+    # The time_base metadata item is a two-long array of seconds and
+    # milliseconds, and it must be recorded only once.  It indicates
+    # the base time, which is subtracted from all per-shot times.
+    # Assuming an average run length of ten minutes, five minutes past
+    # the start of a run is a good base time.
+    self._lock.acquire()
+    if 'time_base' not in self._metadata.keys():
+      self._metadata['time_base'] = (cspad_tbx.evt_time(evt)[0] + 5 * 60, 500)
+    self._lock.release()
 
 
   def event(self, evt, env):
@@ -183,14 +153,14 @@ class average_mixin(common_mode.common_mode_correction):
        self.detector == 'XppGon':
       distance = cspad_tbx.env_distance(self.address, env, self._detz_offset)
       if distance is None:
-        self.nfail += 1
+        self._nfail += 1
         self.logger.warning("event(): no distance, shot skipped")
         evt.put(True, "skip_event")
         return
     else:
       distance = float('nan')
 
-    if (self.nmemb_max is not None and self.nmemb >= self.nmemb_max):
+    if self.nmemb_max is not None and self._nmemb >= self.nmemb_max:
       return
 
     if ("skew" in self.flags):
@@ -216,7 +186,7 @@ class average_mixin(common_mode.common_mode_correction):
       # XXX This skew threshold probably needs fine-tuning
       skew_threshold = 0.35
       if stats.skew < skew_threshold:
-        self.nfail += 1
+        self._nfail += 1
         self.logger.warning("event(): skew < %f, shot skipped" % skew_threshold)
         evt.put(True, "skip_event")
         return
@@ -275,143 +245,175 @@ class average_mixin(common_mode.common_mode_correction):
     if self.background_path is not None:
       self.cspad_img -= self.background_img
 
-    t = cspad_tbx.evt_time(evt)
-    if (self.nmemb == 0):
-      # If this is a worker process, set its corresponding bit in the
-      # bit field since it will contribute a partial sum.
-      if (env.subprocess() >= 0):
-        self._tot_lock.acquire()
-        self._tot_peers.value |= (1 << env.subprocess())
-        self._tot_lock.release()
-      self.sum_distance = distance
-      self.sum_img = self.cspad_img.deep_copy()
-      if self.do_max_image:
-        self.max_img = self.cspad_img.deep_copy()
-      self.sumsq_img = flex.pow2(self.cspad_img)
-      self.sum_wavelength = self.wavelength
-      self.sum_time = (t[0] - self._time_base[0],
-                       t[1] - self._time_base[1])
+
+    # t and self._sum_time are a two-long arrays of seconds and
+    # milliseconds which hold time with respect to the base time.
+    t = [t1 - t2 for (t1, t2) in zip(cspad_tbx.evt_time(evt),
+                                     self._metadata['time_base'])]
+    if self._nmemb == 0:
+      # The peers metadata item is a bit field where a bit is set if
+      # the partial sum from the corresponding worker process is
+      # pending.  If this is the first frame a worker process sees,
+      # set its corresponding bit in the bit field since it will
+      # contribute a partial sum.
+      if env.subprocess() >= 0:
+        self._lock.acquire()
+        if 'peers' in self._metadata.keys():
+          self._metadata['peers'] |= (1 << env.subprocess())
+        else:
+          self._metadata['peers'] = (1 << env.subprocess())
+        self._lock.release()
+
+      self._sum_distance = distance
+      self._sum_time = (t[0], t[1])
+      self._sum_wavelength = self.wavelength
+
+      if self._have_max:
+        self._max_img = self.cspad_img.deep_copy()
+      if self._have_mean:
+        self._sum_img = self.cspad_img.deep_copy()
+      if self._have_std:
+        self._ssq_img = flex.pow2(self.cspad_img)
 
     else:
-      self.sum_distance += distance
-      self.sum_img += self.cspad_img
-      if self.do_max_image:
-        s = self.cspad_img > self.max_img
-        self.max_img.as_1d().set_selected(s.as_1d(), self.cspad_img.as_1d().select(s.as_1d()))
-      self.sumsq_img += flex.pow2(self.cspad_img)
-      self.sum_wavelength += self.wavelength
-      self.sum_time = (self.sum_time[0] + (t[0] - self._time_base[0]),
-                       self.sum_time[1] + (t[1] - self._time_base[1]))
+      self._sum_distance += distance
+      self._sum_time = (self._sum_time[0] + t[0], self._sum_time[1] + t[1])
+      self._sum_wavelength += self.wavelength
 
-    self.nmemb += 1
+      if self._have_max:
+        sel = (self.cspad_img > self._max_img).as_1d()
+        self._max_img.as_1d().set_selected(
+          sel, self.cspad_img.as_1d().select(sel))
+      if self._have_mean:
+        self._sum_img += self.cspad_img
+      if self._have_std:
+        self._ssq_img += flex.pow2(self.cspad_img)
 
-    if 0:
-      stats = scitbx.math.basic_statistics(flex_cspad_img.as_double().as_1d())
-      self.logger.info("average pixel value: %.3f" %stats.mean)
-      self.logger.info("stddev pixel value: %.3f" %stats.biased_standard_deviation)
+    self._nmemb += 1
 
 
   def endjob(self, env):
     """
     @param env Environment object
+    @return    A dictionary object with accumulated statistics or @c
+               none if the contribution from the worker process is
+               accounted for elsewhere
     """
+
+    from Queue import Empty
+
     super(average_mixin, self).endjob(env)
 
-    # This entire function is protected by self._tot_lock to guard
-    # against race conditions.
-    self._tot_lock.acquire()
+    # This entire function is protected by self._lock to guard against
+    # race conditions.
+    self._lock.acquire()
 
-    # Add the partial sums to the grand total and clear the bit field
-    # for the worker process.
-    if (self.nmemb > 0):
-      self._tot_distance.value += self.sum_distance
-      self._tot_nfail.value += self.nfail
-      self._tot_nmemb.value += self.nmemb
-      self._tot_time[0] += self.sum_time[0]
-      self._tot_time[1] += self.sum_time[1]
-      self._tot_wavelength.value += self.sum_wavelength
+    # Attempt to get all the information from the shared objects,
+    # without blocking.
+    try:
+      queue_max = self._queue_max.get_nowait()
+      queue_sum = self._queue_sum.get_nowait()
+      queue_ssq = self._queue_ssq.get_nowait()
 
-      # XXX @rwgk: is this really the way to do it?  Need something
-      # like the numpy bridge for Python arrays.  Also, _tot_sum ->
-      # _tot_img_sum, _tot_ssq -> _tot_img_ssq
-      for i in xrange(len(self._tot_sum)):
-        self._tot_sum[i] += self.sum_img.as_1d()[i]
-        self._tot_ssq[i] += self.sumsq_img.as_1d()[i]
-        if self.do_max_image:
-          self._tot_max[i] = max(self._tot_max[i],self.max_img.as_1d()[i])
+      queue_distance = self._metadata['distance']
+      queue_nfail = self._metadata['nfail']
+      queue_nmemb = self._metadata['nmemb']
+      queue_time = self._metadata['time']
+      queue_wavelength = self._metadata['wavelength']
+    except Empty, KeyError:
+      pass
 
-      if (env.subprocess() >= 0):
-        self._tot_peers.value &= ~(1 << env.subprocess())
-
-    # XXX Ugly hack: self.nfail and self.nmemb are reset to zero here.
-    # Thus, all worker processes except the last one to finish will
-    # appear to have processed zero images.  The proper fix will
-    # probably require making self.sum_img and self.sumsq_img
-    # "private".
-    self.avg_distance = 0
-    self.avg_img = flex.double(self._tot_sum)
-    self.avg_time = (0, 0)
-    self.avg_wavelength = 0
-    self.nfail = 0
-    self.nmemb = 0
-    self.stddev_img = flex.double(self._tot_ssq)
-    if self.do_max_image:
-      self.max_img = flex.double(self._tot_max)
-
-    # If all worker processes have contributed their partial sums,
-    # finalise the average and standard deviation.
-    if (self._tot_peers.value == 0):
-      self.nfail = self._tot_nfail.value
-      self.nmemb = self._tot_nmemb.value
-
-      if (self.nmemb != 0):
-        # Accumulating floating-point numbers introduces errors, which
-        # may cause negative variances.  Since a two-pass approach is
-        # unacceptable, the standard deviation is clamped at zero.
-        self.avg_img = flex.double(self._tot_sum) / self.nmemb
-        self.stddev_img = flex.double(self._tot_ssq) \
-            - flex.double(self._tot_sum) * self.avg_img
-        self.avg_distance = self._tot_distance.value / self.nmemb
-        self.avg_time = (
-          self._time_base[0] + int(round(self._tot_time[0] / self.nmemb)),
-          self._time_base[1] + int(round(self._tot_time[1] / self.nmemb)))
-        self.avg_wavelength = self._tot_wavelength.value / self.nmemb
-        if self.do_max_image:
-          self.max_img = flex.double(self._tot_max)
-
-        self.stddev_img.set_selected(self.stddev_img < 0, 0)
-        if (self.nmemb == 1):
-          self.stddev_img = flex.sqrt(self.stddev_img)
+    # If a complete set of items could be retrieved from the shared
+    # objects, add them to this process's partial sums.  If only a
+    # subset of the expected items could be retrieved from the shared
+    # objects, log an error and proceed.
+    items = [not self._have_max or 'queue_max' in locals(),
+             not self._have_mean or 'queue_sum' in locals(),
+             not self._have_std or 'queue_ssq' in locals(),
+             'queue_distance' in locals(),
+             'queue_nfail' in locals(),
+             'queue_nmemb' in locals(),
+             'queue_time' in locals(),
+             'queue_wavelength' in locals()]
+    if items.count(False) == 0:
+      if self._have_max:
+        if hasattr(self, '_max_img'):
+          sel = (queue_max > self._max_img).as_1d()
+          self._max_img.as_1d().set_selected(sel, queue_max.as_1d().select(sel))
         else:
-          self.stddev_img = flex.sqrt(self.stddev_img / (self.nmemb - 1))
+          self._max_img = queue_max
+      if self._have_mean:
+        self._sum_img = getattr(self, '_sum_img', 0) + queue_sum
+      if self._have_std:
+        self._ssq_img = getattr(self, '_ssq_img', 0) + queue_ssq
 
-    # Resize the images to their proper dimensions.  XXX Hardcoded
-    # detector size... again!
-    if len(self._tot_sum) == 128 * 128:
-      self.avg_img.resize(flex.grid(128, 128))
-      self.stddev_img.resize(flex.grid(128, 128))
-      if self.do_max_image:
-        self.max_img.resize(flex.grid(128, 128))
-    elif len(self._tot_sum) == 1765 * 1765:
-      self.avg_img.resize(flex.grid(1765, 1765))
-      self.stddev_img.resize(flex.grid(1765, 1765))
-      if self.do_max_image:
-        self.max_img.resize(flex.grid(1765, 1765))
-    elif len(self._tot_sum) == 370 * 391:
-      self.avg_img.resize(flex.grid(370, 391))
-      self.stddev_img.resize(flex.grid(370, 391))
-      if self.do_max_image:
-        self.max_img.resize(flex.grid(370, 391))
-    elif len(self._tot_sum) == 4500 * 4500:
-      self.avg_img.resize(flex.grid(4500, 4500))
-      self.stddev_img.resize(flex.grid(4500, 4500))
-      if self.do_max_image:
-        self.max_img.resize(flex.grid(4500, 4500))
-    elif len(self._tot_sum) == 1024 * 1024:
-      self.avg_img.resize(flex.grid(1024, 1024))
-      self.stddev_img.resize(flex.grid(1024, 1024))
-      if self.do_max_image:
-        self.max_img.resize(flex.grid(1024, 1024))
-    else:
-      raise RuntimeError("Unsupported detector size")
-    self._tot_lock.release()
+      self._sum_distance = getattr(self, '_sum_distance', 0) + queue_distance
+      self._nfail = getattr(self, '_nfail', 0) + queue_nfail
+      self._nmemb = getattr(self, '_nmemb', 0) +  queue_nmemb
+      self._sum_time = (getattr(self, '_sum_time', (0, 0))[0] + queue_time[0],
+                        getattr(self, '_sum_time', (0, 0))[1] + queue_time[1])
+      self._sum_wavelength = getattr(self, '_sum_wavelength', 0) + \
+                             queue_wavelength
+
+    elif items.count(True) > 0:
+      self.logger.error("Queue holds incomplete set of data items")
+
+    # Clear the bit field for the worker process.
+    if env.subprocess() >= 0:
+      self._metadata['peers'] &= ~(1 << env.subprocess())
+
+    if self._metadata.get('peers', -1) > 0:
+      # There are other processes left.  Place the accumulated sums
+      # back in the shared objects.  If this ever blocks, the buffer
+      # size of the queues will probably have to be increased.
+      if self._nmemb > 0:
+        self._metadata['distance'] = self._sum_distance
+        self._metadata['nfail'] = self._nfail
+        self._metadata['nmemb'] = self._nmemb
+        self._metadata['time'] = self._sum_time
+        self._metadata['wavelength'] = self._sum_wavelength
+
+        if self._have_max:
+          self._queue_max.put(self._max_img)
+        if self._have_mean:
+          self._queue_sum.put(self._sum_img)
+        if self._have_std:
+          self._queue_ssq.put(self._ssq_img)
+
+      self._lock.release()
+      return None
+
+    # This is the last worker process, all others must have
+    # contributed their partial sums.  Finalise the max, mean, and
+    # standard deviation images if requested.
+    d = {'nfail': self._nfail,
+         'nmemb': self._nmemb}
+    if self._nmemb > 0:
+      d['distance'] = self._sum_distance / self._nmemb
+      d['time'] = (
+        self._metadata['time_base'][0] +
+        int(round(self._sum_time[0] / self._nmemb)),
+        self._metadata['time_base'][1] +
+        int(round(self._sum_time[1] / self._nmemb)))
+      d['wavelength'] = self._sum_wavelength / self._nmemb
+
+      if self._have_max:
+        d['max_img'] = self._max_img
+      if self._have_mean or self._have_std:
+        mean_img = self._sum_img / self._nmemb
+      if self._have_mean:
+        d['mean_img'] = mean_img
+      if self._have_std:
+        # Accumulating floating-point numbers introduces errors,
+        # which may cause negative variances.  Since a two-pass
+        # approach is unacceptable, the standard deviation is
+        # clamped at zero.
+        d['std_img'] = self._ssq_img - self._sum_img * mean_img
+        d['std_img'].set_selected(d['std_img'] < 0, 0)
+        if self._nmemb == 1:
+          d['std_img'] = flex.sqrt(d['std_img'])
+        else:
+          d['std_img'] = flex.sqrt(d['std_img'] / (self._nmemb - 1))
+
+    self._lock.release()
+    return d

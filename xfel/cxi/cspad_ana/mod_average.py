@@ -36,10 +36,7 @@ class mod_average(average_tbx.average_mixin):
     @param address Address string XXX Que?!
     """
 
-    super(mod_average, self).__init__(
-      address=address,
-      **kwds
-    )
+    super(mod_average, self).__init__(address=address, **kwds)
 
 
   def event(self, evt, env):
@@ -53,7 +50,7 @@ class mod_average(average_tbx.average_mixin):
     if (evt.get("skip_event")):
       return
 
-    self.logger.info("shot number %i" %self.nmemb)
+    self.logger.info("shot number %i" %self._nmemb)
 
 
   def endjob(self, env):
@@ -66,7 +63,9 @@ class mod_average(average_tbx.average_mixin):
     @param env Environment object
     """
 
-    super(mod_average, self).endjob(env)
+    stats = super(mod_average, self).endjob(env)
+    if stats is None:
+      return
 
     device = cspad_tbx.address_split(self.address)[2]
     if device == 'Cspad':
@@ -74,11 +73,11 @@ class mod_average(average_tbx.average_mixin):
       pixel_size = cspad_tbx.pixel_size
       saturated_value = cspad_tbx.dynamic_range
     elif device == 'marccd':
-      beam_center = tuple(t // 2 for t in self.avg_img.focus())
+      beam_center = tuple(t // 2 for t in d['mean_img'].focus())
       pixel_size = 0.079346
       saturated_value = 2**16 - 1
 
-    if self.nmemb > 0:
+    if stats['nmemb'] > 0:
       if self.avg_dirname  is not None or \
          self.avg_basename is not None:
         d = cspad_tbx.dpack(
@@ -86,15 +85,14 @@ class mod_average(average_tbx.average_mixin):
           address=self.address,
           beam_center_x=pixel_size * beam_center[0],
           beam_center_y=pixel_size * beam_center[1],
-          data=self.avg_img,
-          distance=self.avg_distance,
+          data=stats['mean_img'],
+          distance=stats['distance'],
           pixel_size=pixel_size,
           saturated_value=saturated_value,
-          timestamp=cspad_tbx.evt_timestamp(self.avg_time),
-          wavelength=self.avg_wavelength)
+          timestamp=cspad_tbx.evt_timestamp(stats['time']),
+          wavelength=stats['wavelength'])
         p = cspad_tbx.dwritef(d, self.avg_dirname, self.avg_basename)
-        self.logger.info(
-          "Average written to %s" % p)
+        self.logger.info("Average written to %s" % p)
 
       if self.stddev_dirname  is not None or \
          self.stddev_basename is not None:
@@ -103,15 +101,14 @@ class mod_average(average_tbx.average_mixin):
           address=self.address,
           beam_center_x=pixel_size * beam_center[0],
           beam_center_y=pixel_size * beam_center[1],
-          data=self.stddev_img,
-          distance=self.avg_distance,
+          data=stats['std_img'],
+          distance=stats['distance'],
           pixel_size=pixel_size,
           saturated_value=saturated_value,
-          timestamp=cspad_tbx.evt_timestamp(self.avg_time),
-          wavelength=self.avg_wavelength)
+          timestamp=cspad_tbx.evt_timestamp(stats['time']),
+          wavelength=stats['wavelength'])
         p = cspad_tbx.dwritef(d, self.stddev_dirname, self.stddev_basename)
-        self.logger.info(
-          "Standard deviation written to %s" % p)
+        self.logger.info("Standard deviation written to %s" % p)
 
       if self.max_dirname  is not None or \
          self.max_basename is not None:
@@ -120,19 +117,17 @@ class mod_average(average_tbx.average_mixin):
           address=self.address,
           beam_center_x=pixel_size * beam_center[0],
           beam_center_y=pixel_size * beam_center[1],
-          data=self.max_img,
-          distance=self.avg_distance,
+          data=stats['max_img'],
+          distance=stats['distance'],
           pixel_size=pixel_size,
           saturated_value=saturated_value,
-          timestamp=cspad_tbx.evt_timestamp(self.avg_time),
-          wavelength=self.avg_wavelength)
+          timestamp=cspad_tbx.evt_timestamp(stats['time']),
+          wavelength=stats['wavelength'])
         p = cspad_tbx.dwritef(d, self.max_dirname, self.max_basename)
-        self.logger.info(
-          "Max written to %s" % p)
+        self.logger.info("Max written to %s" % p)
 
-    if (self.nfail == 0):
-      self.logger.info(
-        "%d images processed" % self.nmemb)
+    if stats['nfail'] == 0:
+      self.logger.info("%d images processed" % stats['nmemb'])
     else:
       self.logger.warning(
-        "%d images processed, %d failed" % (self.nmemb, self.nfail))
+        "%d images processed, %d failed" % (stats['nmemb'], stats['nfail']))
