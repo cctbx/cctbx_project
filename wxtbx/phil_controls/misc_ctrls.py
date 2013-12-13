@@ -10,7 +10,25 @@ WXTBX_ELEMENTS_CTRL_ALLOW_CLUSTERS = 2
 
 clusters = ['TX']
 
+class ElementCtrl (strctrl.StrCtrl) :
+  """"
+  Control for entering a single element symbol or scattering type, using
+  phil str type
+  """
+  def __init__ (self, *args, **kwds) :
+    elements_style = kwds.get('style', 0)
+    kwds['style'] = 0
+    strctrl.StrCtrl.__init__(self, *args, **kwds)
+    self.SetWxtbxStyle(elements_style)
+
+  def CreateValidator (self) :
+    return SingleElementValidator()
+
 class ElementsCtrl (strings.StringsCtrl) :
+  """
+  Control for entering a list of elements (comma- or space-separated) or
+  scattering types, using phil strings type
+  """
   def __init__ (self, *args, **kwds) :
     elements_style = kwds.get('style', 0)
     kwds['style'] = 0
@@ -21,12 +39,15 @@ class ElementsCtrl (strings.StringsCtrl) :
     return ElementsValidator()
 
 class ElementsValidator (strings.StringsValidator) :
+  single_element = False
   def CheckFormat (self, value) :
     from cctbx.eltbx import chemical_elements
     allowed = chemical_elements.proper_upper_list()
     ctrl = self.GetWindow()
     style = ctrl.GetWxtbxStyle()
     elem_strings = strings.parse_strings(value)
+    if (self.single_element) and (len(elem_strings) > 1) :
+      raise ValueError("Only a single element may be specified here!")
     for elem in elem_strings :
       elem = elem.upper()
       if (elem == "AX") and (style & WXTBX_ELEMENTS_CTRL_ALLOW_AX) :
@@ -37,8 +58,12 @@ class ElementsValidator (strings.StringsValidator) :
         raise ValueError("'%s' is not a valid element symbol." % elem)
     return elem_strings
 
+class SingleElementValidator (ElementsValidator) :
+  single_element = True
+
 # TODO pop-up help
 class AtomSelectionCtrl (strctrl.StrCtrl) :
+  """Control for editing an atom selection (phil atom_selection type)"""
   def __init__ (self, *args, **kwds) :
     size = kwds.get('size', None)
     if (size is None) :
