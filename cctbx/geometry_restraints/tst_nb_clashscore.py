@@ -358,7 +358,7 @@ class test_nb_clashscore(unittest.TestCase):
       msg = outstring.format('symmetry related clashscore', expected, nb_clash_sym)
       self.assertAlmostEqual(nb_clash_sym, expected, delta=0.01,msg=msg)
       #
-      nb_clash_no_sym = grm.nb_clashscore_without_sym_op
+      nb_clash_no_sym = grm.nb_clashscore_simple
       expected = [0,28.77][i]
       msg = outstring.format('non-symmetry related clashscore', expected, nb_clash_no_sym)
       self.assertAlmostEqual(nb_clash_no_sym, expected, delta=0.01,msg=msg)
@@ -373,7 +373,7 @@ class test_nb_clashscore(unittest.TestCase):
       msg = outstring.format('Number of clashes, symmetry related', expected, nb_list_sym)
       self.assertEqual(nb_list_sym, expected,msg=msg)
       #
-      nb_list_no_sym = len(grm.nb_clash_proxies_without_sym_op)
+      nb_list_no_sym = len(grm.nb_clash_proxies_simple)
       expected = [0,4][i]
       msg = outstring.format('Number of clashes, not symmetry related', expected, nb_list_no_sym)
       self.assertEqual(nb_list_no_sym, expected, msg=msg)
@@ -446,7 +446,9 @@ class test_nb_clashscore(unittest.TestCase):
     self.assertEqual(grm.nb_clashscore_all_clashes, 1500,msg)
 
   def test_atom_selection(self):
-    '''Test that working correctly when atom is removed'''
+    '''
+    Test that working correctly when atom is removed
+    '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
     processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv    = mon_lib_srv,
@@ -479,6 +481,37 @@ class test_nb_clashscore(unittest.TestCase):
     result = nb_clashscore.nb_clashscore_all_clashes
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
+  
+  def test_solvent(self):
+    '''
+    Test if solvent is counted properly
+    
+    Consider solvent as (O, O-H, H-O-H, O-D, D-O-D) or any
+    other single, double and triple atoms molecules
+    '''
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv    = mon_lib_srv,
+      ener_lib       = ener_lib,
+      raw_records    = raw_records4,
+      force_symmetry = True)
+    geometry = processed_pdb_file.geometry_restraints_manager(
+      show_energies      = False,
+      plain_pairs_radius = 5.0)
+    xrs = processed_pdb_file.xray_structure()
+    grm = geometry.get_nonbonded_clashscore(
+      sites_cart  = xrs.sites_cart(),
+      site_labels = xrs.scatterers().extract_labels(),
+      hd_sel      = xrs.hd_selection())
+    
+    clashscore_total = grm.nb_clashscore_all_clashes
+    clashscore_due_to_sym_op = grm.nb_clashscore_due_to_sym_op
+    clashscore_solvent_solvent = grm.nb_clashscore_solvent_solvent
+    clashscore_simple = grm.nb_clashscore_simple
+    
+    outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
+    expected = 2500
+    msg = outstring.format('Total clashscore', expected, clashscore_solvent_solvent)
+    self.assertEqual(clashscore_solvent_solvent, expected,msg=msg)
 
   def test_labels_and_addition_scatterers(self):
     '''
@@ -570,12 +603,13 @@ class test_nb_clashscore(unittest.TestCase):
     if raw_record_number == 0: records = raw_records0
     elif raw_record_number == 1: records = raw_records1
     elif raw_record_number == 2: records = raw_records2
+    elif raw_record_number == 4: records = raw_records4
     elif raw_record_number == 5: records = raw_records5
     else: print ('Wrong raw_records number')
     # create a geometry_restraints_manager (grm)
     log = StringIO()
     # process pdb data
-    pdb = monomer_library.pdb_interpretation.process(
+    pdb_processed_file = monomer_library.pdb_interpretation.process(
       file_name=None,
       raw_records=records,
       substitute_non_crystallographic_unit_cell_if_necessary=True,
@@ -585,14 +619,16 @@ class test_nb_clashscore(unittest.TestCase):
       )
     # get geometry restraints object
     #grm = pdb.geometry_restraints_manager()
-    grm = pdb.geometry_restraints_manager(
+    grm = pdb_processed_file.geometry_restraints_manager(
       assume_hydrogens_all_missing=False,
       hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
-      nonbonded_distance_threshold=None)
+      nonbonded_distance_threshold=nonbonded_distance_threshold)
 
-    xrs = pdb.xray_structure()
+    xrs = pdb_processed_file.xray_structure()
     sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(
-      xrs,grm,use_site_labels=use_site_labels)
+      xrs,
+      grm,
+      use_site_labels=use_site_labels)
 
     return grm.get_nonbonded_clashscore(sites_cart=sites_cart,
                                         site_labels=site_labels,
