@@ -481,11 +481,11 @@ class test_nb_clashscore(unittest.TestCase):
     result = nb_clashscore.nb_clashscore_all_clashes
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
-  
+
   def test_solvent(self):
     '''
     Test if solvent is counted properly
-    
+
     Consider solvent as (O, O-H, H-O-H, O-D, D-O-D) or any
     other single, double and triple atoms molecules
     '''
@@ -502,12 +502,12 @@ class test_nb_clashscore(unittest.TestCase):
       sites_cart  = xrs.sites_cart(),
       site_labels = xrs.scatterers().extract_labels(),
       hd_sel      = xrs.hd_selection())
-    
+
     clashscore_total = grm.nb_clashscore_all_clashes
     clashscore_due_to_sym_op = grm.nb_clashscore_due_to_sym_op
     clashscore_solvent_solvent = grm.nb_clashscore_solvent_solvent
     clashscore_simple = grm.nb_clashscore_simple
-    
+
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
     expected = 2500
     msg = outstring.format('Total clashscore', expected, clashscore_solvent_solvent)
