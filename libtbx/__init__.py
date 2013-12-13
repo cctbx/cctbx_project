@@ -39,8 +39,20 @@ def _real_imag(complex_number):
 __builtins__["real_imag"] = _real_imag
 
 class AutoType(object):
+  """
+  Class for creating the Auto instance, which mimics the behavior of None
+  with respect to the 'is' and '==' operators; this is used throughout
+  CCTBX to indicate parameters that should be determined automatically.
+  """
+  singleton = None
 
   def __str__(self): return "Auto"
+  def __eq__ (self, other) :
+    return (type(other) is self.__class__)
+  def __new__ (cls) :
+    if (cls.singleton is None) :
+      cls.singleton = super(AutoType, cls).__new__(cls)
+    return cls.singleton
 
 Auto = AutoType()
 
