@@ -1062,9 +1062,7 @@ class manager(object):
     self,
     sites_cart,
     hd_sel,
-    site_labels=None,
-    include_water_water_clash=True,
-    only_water_water_clash=False):
+    site_labels=None):
     '''(multiple arguments) -> nonbonded_clashscore obj
 
     Construct nonbonded_clash_info, the non-bonded clashss lists and scores
@@ -1073,8 +1071,6 @@ class manager(object):
     sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
     site_labels: a list of lables such as " HA  LEU A  38 ", for each atom
     hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is a Hydrogen or not
-    include_water_water_clash: when False, water-water clashes will not be counted
-    only_water_water_clas: When True, only water-water clashes will be counted
 
     NOTE:
     As of Dec. 2013 manipulation of scatterers can produce scatteres which
@@ -1141,9 +1137,8 @@ class manager(object):
       nonbonded_list=nonbonded_list,
       hd_sel=hd_sel,
       full_connectivty_table=self.shell_sym_tables[0].full_simple_connectivity(),
-      sites_cart=sites_cart,
-      include_water_water_clash=include_water_water_clash,
-      only_water_water_clash=only_water_water_clash)
+      connectivty_table_2=self.shell_sym_tables[2].full_simple_connectivity(),
+      sites_cart=sites_cart)
     return nonbonded_clash_info
 
 def construct_non_crystallographic_conserving_bonds_and_angles(
@@ -1254,9 +1249,8 @@ class nonbonded_clashscore(object):
     nonbonded_list,
     hd_sel,
     full_connectivty_table,
-    sites_cart,
-    include_water_water_clash=True,
-    only_water_water_clash=False):
+    connectivty_table_2,
+    sites_cart):
     """
     Arguments:
     nonbonded_list: a list with items in the following format
@@ -1269,16 +1263,15 @@ class nonbonded_clashscore(object):
     hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is a Hydrogen or not
     full_connectivty_table: full_connectivty_table[i] is a dictinary constaining a
                             list of all atoms connected to atom i
+    connectivty_table_2: connectivty_table[i] is a dictinary constaining a
+                         list of all atoms connected to atom i
     sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
-    include_water_water_clash: when False, water-water clashes will not be counted
-    only_water_water_clas: When True, only water-water clashes will be counted
     """
     self.nonbonded_list = nonbonded_list
     self.hd_sel = hd_sel
     self.full_connectivty_table = full_connectivty_table
+    self.connectivty_table_2 = connectivty_table_2
     self.sites_cart = sites_cart
-    self.include_water_water_clash = include_water_water_clash
-    self.only_water_water_clash = only_water_water_clash
     if nonbonded_list != []:
       try:
         clashlist = self.clashscore_clash_list()
@@ -1287,34 +1280,37 @@ class nonbonded_clashscore(object):
         if e == "vec3_double' object is not callable":
           raise Sorry(e)
         else:
-          clashlist = [[],[]]
+          clashlist = [[],[],[]]
           print e
-      except Sorry as e:
-        raise Sorry(e)
       except Sorry as e:
         raise Sorry(e)
       except Exception as e:
         raise Sorry('Unexpected error processing proxies_info_nonbonded in clashscore_clash_list()')
       # Collect, seperatly, clashes due to symmetry operation and those that are not
       self.nb_clash_proxies_due_to_sym_op = clashlist[0]
-      self.nb_clash_proxies_without_sym_op = clashlist[1]
-      self.nb_clash_proxies_all_clashes = clashlist[0] + clashlist[1]
+      self.nb_clash_proxies_solvent_solvent = clashlist[1]
+      self.nb_clash_proxies_simple = clashlist[2]
+      self.nb_clash_proxies_all_clashes = clashlist[0] + clashlist[1] + clashlist[2]
       # clashscore is the number of serious steric overlaps (>0.4A) per 1000 atoms
       n_atoms = len(self.sites_cart)
       clashscore_due_to_sym_op = len(clashlist[0])*1000/n_atoms
-      clashscore_without_sym_op = len(clashlist[1])*1000/n_atoms
-      clashscore_all_clashes = clashscore_due_to_sym_op + clashscore_without_sym_op
+      clashscore_solvent_solvent = len(clashlist[1])*1000/n_atoms
+      clashscore_simple = len(clashlist[2])*1000/n_atoms
+      clashscore_all_clashes = clashscore_due_to_sym_op + clashscore_solvent_solvent + clashscore_simple
       #
       self.nb_clashscore_due_to_sym_op = clashscore_due_to_sym_op
-      self.nb_clashscore_without_sym_op = clashscore_without_sym_op
+      self.nb_clashscore_solvent_solvent = clashscore_solvent_solvent
+      self.nb_clashscore_simple = clashscore_simple
       self.nb_clashscore_all_clashes = clashscore_all_clashes
     else:
       self.nb_clashscore_due_to_sym_op = 0
-      self.nb_clashscore_without_sym_op = 0
+      self.nb_clashscore_solvent_solvent = 0
+      self.nb_clashscore_simple = 0
       self.nb_clashscore_all_clashes = 0
       #
       self.nb_clash_proxies_due_to_sym_op = []
-      self.nb_clash_proxies_without_sym_op = []
+      self.nb_clash_proxies_solvent_solvent = []
+      self.nb_clash_proxies_simple = []
       self.nb_clash_proxies_all_clashes = []
 
   @staticmethod
@@ -1370,6 +1366,7 @@ class nonbonded_clashscore(object):
     Returns:
     clash_vec: a unique key for a clash. for example: '0.144,0.323,1.776,0.154,0.327,1.786'
     key1,key2: are the atoms keys. for example ' HA  LEU A  38 ::120::' or ' CB ASN A  55 ::52::sym.op.'
+               "atom1 label::atom1 number::sym.op""
     '''
     # get atoms keys
     record = list(record)
@@ -1437,9 +1434,27 @@ class nonbonded_clashscore(object):
       cos_angle = 1
     return cos_angle
 
+  @staticmethod
+  def are_both_solvent(key,connectivty_table_2):
+    '''(str,dict) -> bool
+    retrun true if the two atoms, which number is specified in "key" are single, double or tripple atom molecule
+
+    Arguments:
+    connectivty_table_2: connectivty_table[i] is a dictinary constaining a
+                         list of all atoms connected to atom i
+    key: a list "atom1 lable::atom1 number::sym.op.::atom2 label::atom2 number::sym.op."
+
+    Return True is both atoms have no connection to atoms two bonds apart
+    '''
+    key = key.split('::')
+    i = int(key[1])
+    j = int(key[4])
+    i_is_solvent = list(connectivty_table_2[i])==[]
+    j_is_solvent = list(connectivty_table_2[j])==[]
+    return i_is_solvent and j_is_solvent
 
   def clashscore_clash_list(self):
-    '''(self) -> [list,list]
+    '''(self) -> [list,list,list]
     Collect inforamtion of clashing nonbonded proxies (neighboring atoms) for clash
     score calculation.
     - proxies considered to clash when model_distance - van_der_waals_distance < -0.41
@@ -1450,9 +1465,9 @@ class nonbonded_clashscore(object):
     - Exclude 1-5 interaction of Hydrogen and heavy atom
 
     Retruns:
-    clashing_atoms_list: [[list of clashes due to sym operation],[list of clashes not due to sym operation]]
+    clashing_atoms_list: [[list of clashes due to sym operation],[list of solvent-solvent clashes],[list of all other clashes]]
     '''
-    clashing_atoms_list = [[],[]]
+    clashing_atoms_list = [[],[],[]]
     clashing_atoms_dict = {}
     # clashing_atoms_dict[atom_key] = [all clashes information for this atom]
     # clashing_atoms_dict[' HA  ASP A  44 '] = [[atom1,vec1, i_seq, j_seq1,model)],
@@ -1468,30 +1483,16 @@ class nonbonded_clashscore(object):
       vdw = rec[4]
       symop = rec[5]
       delta = model - vdw
-      if self.include_water_water_clash and (not self.only_water_water_clash):
-        # check all clashes
-        check_if_clash = True
-      else:
-        atom1_is_water = ('HOH' == rec[0][0][10:13])
-        atom2_is_water = ('HOH' == rec[0][1][10:13])
-        if (not self.include_water_water_clash) and (not self.only_water_water_clash):
-          # Do not check water-water clashes
-          check_if_clash =  not (atom1_is_water and atom2_is_water)
-        elif self.include_water_water_clash and self.only_water_water_clash:
-          # check only water-water clashes
-          check_if_clash =  atom1_is_water and atom2_is_water
-        else:
-          raise Sorry('Bad water-water nonbonded clashscore interaction selection')
       # check for clash
-      if (delta < -0.41) and check_if_clash:
+      if (delta < -0.41):
         # Check of 1-5 interaction
         if not self.is_1_5_interaction(i_seq, j_seq,self.hd_sel,self.full_connectivty_table):
           clash_vec,key1,key2 = self.get_clash_keys(rec)
           # clash_key is a string a string that uniquly identify each clash
-          if i_seq>j_seq:
-            clash_key = '::'.join([key1,key2,symop,str(j_seq),str(i_seq)])
+          if key1>key2:
+            clash_key = '::'.join([key2,key1])
           else:
-            clash_key = '::'.join([key1,key2,symop,str(i_seq),str(j_seq)])
+            clash_key = '::'.join([key1,key2])
           if clash_key not in clashes_dict:
             # record new clash
             clashes_dict[clash_key] = [key1,key2,rec]
@@ -1544,7 +1545,10 @@ class nonbonded_clashscore(object):
       if key.split('::')[2] != '':
         # not to symmetry operation
         clashing_atoms_list[0].append(val[2])
-      else:
-        # not due to symmetry operation
+      elif self.are_both_solvent(key,self.connectivty_table_2):
+        # solvent-solvent clashes
         clashing_atoms_list[1].append(val[2])
+      else:
+        # not due to symmetry operation or solvent-solvent, simple clashes
+        clashing_atoms_list[2].append(val[2])
     return clashing_atoms_list
