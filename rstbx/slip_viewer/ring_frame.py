@@ -60,7 +60,7 @@ class RingSettingsPanel(wx.Panel):
     # have a non-linear slider.
     self._radius = 100
     self._center = [0, 0]
-    radius_max = 1000
+    radius_max = 2000
     radius_min = 10
 
     # Radius controls.
@@ -128,8 +128,22 @@ class RingSettingsPanel(wx.Panel):
     import math
     jitter = 6
 
-    beam_pixel_fast, beam_pixel_slow = \
-        self._pyslip.tiles.raw_image.get_beam_center_pixels_fast_slow()
+    detector = self._pyslip.tiles.raw_image.get_detector()
+    beam     = self._pyslip.tiles.raw_image.get_beam()
+    # FIXME assumes all detector elements use the same millimeter-to-pixel convention
+    if detector[0].get_distance() > 0:
+      if len(detector) > 1:
+        h = detector.hierarchy()
+        if len(h) > 0:
+          beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
+            detector.hierarchy().get_beam_centre(beam.get_s0()))
+        else:
+          beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
+            detector[0].get_beam_centre(beam.get_s0()))
+      else:
+        beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
+          detector[0].get_beam_centre(beam.get_s0()))
+
 
     beam_pixel_fast += self._center[0]
     beam_pixel_slow += self._center[1]
