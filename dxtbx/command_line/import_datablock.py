@@ -1,3 +1,4 @@
+from __future__ import division
 from dxtbx.datablock import DataBlockFactory
 
 if __name__ == '__main__':

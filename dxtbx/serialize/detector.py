@@ -36,7 +36,7 @@ def from_dict(d, t=None):
 
   '''
   from dxtbx.model import Detector, HierarchicalDetector
-  from dxtbx.array_family import flex
+  from dxtbx.array_family import flex # import dependency
 
   # If None, return None
   if d == None:

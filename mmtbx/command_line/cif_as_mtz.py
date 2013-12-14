@@ -1,21 +1,23 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.cif_as_mtz
 
-import sys, os, re
-import string
-from cctbx.array_family import flex
-from libtbx import runtime_utils
-from cctbx import crystal
+from __future__ import division
+import mmtbx.utils
 from iotbx.option_parser import iotbx_option_parser
-from libtbx.utils import Sorry
 from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import crystal_symmetry_from_pdb
-import iotbx.mtz
-from libtbx import smart_open
-import mmtbx.utils
-import iotbx.pdb
 import iotbx.phil
-import libtbx.callbacks
+import iotbx.mtz
+import iotbx.pdb
+from cctbx.array_family import flex
+from cctbx import crystal
+from libtbx import runtime_utils
+from libtbx.utils import Sorry
+from libtbx import smart_open
+import libtbx.callbacks # import dependency
+import string
+import re
+import os
+import sys
 
 """
 Notes on CIF (source: http://www.ccp4.ac.uk/html/mtz2various.html)
@@ -43,7 +45,7 @@ good crystallographic practice. Be prepared to justify why you have excluded
 any data from your final refinement!
 """
 
-def run(args, command_name = "phenix.cif_as_mtz", 
+def run(args, command_name = "phenix.cif_as_mtz",
        return_as_miller_arrays=False):
   if (len(args) == 0): args = ["--help"]
   try:
@@ -416,7 +418,7 @@ def extract(file_name,
                 raise
           ma = merging.array().customized_copy(
             crystal_symmetry=ma).set_info(ma.info())
-        elif return_as_miller_arrays: # allow non-unique set 
+        elif return_as_miller_arrays: # allow non-unique set
           pass
         else:
           n_all = ma.indices().size()

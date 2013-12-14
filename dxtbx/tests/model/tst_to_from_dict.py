@@ -1,3 +1,4 @@
+from __future__ import division
 
 class TestBeam:
   def __call__(self):
@@ -58,7 +59,7 @@ class TestScan:
 class TestDetector:
   def __call__(self):
 
-    from dxtbx.model import Detector, Panel
+    from dxtbx.model import Detector, Panel # import dependency
 
     d1 = Detector()
     p = d1.add_panel()

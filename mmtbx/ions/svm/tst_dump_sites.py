@@ -6,7 +6,7 @@ import os
 from pickle import load
 
 # We must make sure to import sklearn before boost python
-import sklearn.svm
+import sklearn.svm # import dependency
 
 import libtbx
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs

@@ -201,7 +201,7 @@ class reader:
     from cctbx.array_family import flex
     from cctbx import crystal, miller, sgtbx
     crystal_symmetry = crystal.symmetry(
-      unit_cell=self.unit_cell, 
+      unit_cell=self.unit_cell,
       space_group_info=sgtbx.space_group_info(number=self.space_group))
     indices = flex.miller_index(self.hkl)
     miller_set = miller.set(crystal_symmetry, indices)

@@ -1,3 +1,4 @@
+from __future__ import division
 import os, sys
 from libtbx import phil
 import libtbx.phil.command_line
@@ -19,13 +20,13 @@ altloc_remediate
     residue_selection = None
       .type = str
       .multiple = True
-      .short_caption = Use this selection to 
+      .short_caption = Use this selection to
       .help = The
   }
   control
   {
     correct_alt_loc = True
-      .type = bool 
+      .type = bool
     spread_alt_loc = False
       .type = bool
     use_geometry_as_spread_criteria = True
@@ -137,7 +138,7 @@ def get_alt_loc_type(residue_group, verbose=False):
   atom_names = []
   atom_names_h = []
   for atom in residue_group.atoms():
-    if atom.name.strip() not in atom_names_h: 
+    if atom.name.strip() not in atom_names_h:
         atom_names_h.append(atom.name.strip())
     if atom.parent().altloc.strip():
       altloc_list_h.add(atom.name.strip())
@@ -364,7 +365,7 @@ def correct_altloc(hierarchy, max_c_beta_deviation=0.2, verbose=False):
         spread_to_c_alpha(three[2], spread_altlocs, pre_peptide=False)
 
   hierarchy.atoms().reset_serial()
-  if verbose: hierarchy.show()  
+  if verbose: hierarchy.show()
   return hierarchy
 
 def correct_occupancies(hierarchy):

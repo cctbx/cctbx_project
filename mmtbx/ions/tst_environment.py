@@ -13,8 +13,8 @@ import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
 
 from mmtbx.ions.environment import chem_carboxy, chem_amide, chem_backbone, \
-     chem_water, chem_sulfate, chem_phosphate, chem_disulfide, \
-     chem_nitrogen_primary, chem_nitrogen_secondary, chem_nitrogen_tertiary, \
+     chem_water, chem_phosphate, \
+     chem_nitrogen_primary, chem_nitrogen_secondary, \
      chem_chlorine, chem_oxygen, chem_nitrogen, chem_sulfur
 
 def exercise () :

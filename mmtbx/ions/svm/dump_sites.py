@@ -14,13 +14,9 @@ from cPickle import dump
 import sys
 
 from cctbx.eltbx import sasaki
-from iotbx.file_reader import any_file
 from libtbx.str_utils import make_header
-from libtbx.utils import Usage
-from libtbx.phil import parse
 from mmtbx import ions
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
-from mmtbx.ions.parameters import get_server
 from mmtbx.ions.svm.utils import iterate_sites
 import mmtbx.command_line
 
