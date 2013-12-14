@@ -672,6 +672,9 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
             if atom_1 is None or atom_2 is None:
               continue
             # handle altlocs ########
+            if (key_hash.get(atom_1) == None) or \
+               (key_hash.get(atom_2) == None):
+              continue
             drawn_key = key_hash[atom_1]+key_hash[atom_2]
             if drawn_key in drawn_bonds:
               continue
