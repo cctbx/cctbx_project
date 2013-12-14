@@ -1447,6 +1447,7 @@ mmtbx/building/__init__.py -text
 mmtbx/building/disorder/__init__.py -text
 mmtbx/building/disorder/tst.py -text
 mmtbx/building/extend_sidechains.py -text
+mmtbx/building/make_library.py -text
 mmtbx/building/tst.py -text
 mmtbx/building/tst_extend_sidechains.py -text
 mmtbx/bulk_solvent/scaler.py -text
@@ -1511,6 +1512,7 @@ mmtbx/command_line/flip_peptides.py -text
 mmtbx/command_line/fmodel.py -text
 mmtbx/command_line/fmodel_simple.py -text
 mmtbx/command_line/fobs_minus_fobs_map.py -text
+mmtbx/command_line/get_related_ensemble.py -text
 mmtbx/command_line/grow_density.py -text
 mmtbx/command_line/interpolate.py -text
 mmtbx/command_line/kinemage.py svneol=native#text/x-python
