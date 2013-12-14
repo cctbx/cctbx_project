@@ -77,7 +77,6 @@ def crystal_to_string(obj, compact=False):
 
   '''
   import json
-  import textwrap
   from dials.model.serialize.crystal import crystal_to_dict
   from dxtbx.serialize.dump import compact_simple_lists
 

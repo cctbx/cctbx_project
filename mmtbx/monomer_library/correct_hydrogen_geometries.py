@@ -1,3 +1,5 @@
+from __future__ import division
+
 def get_bad_hydrogen_i_seqs(hierarchy,
                             restraints_manager=None,
                             xray_structure=None,

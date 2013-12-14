@@ -1,7 +1,7 @@
 
 from __future__ import division
 from dxtbx.model import Beam, Goniometer
-from dxtbx.model import Panel, Detector, HierarchicalDetector, Scan, PanelGroup
+from dxtbx.model import Panel, HierarchicalDetector, Scan, PanelGroup
 
 def pickle_then_unpickle(obj):
   '''Pickle to a temp file then un-pickle.'''

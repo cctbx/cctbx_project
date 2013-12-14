@@ -26,9 +26,8 @@ import libtbx
 from libtbx.utils import Sorry
 from mmtbx import ions
 from mmtbx.ions.environment import N_SUPPORTED_ENVIRONMENTS
-from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES, \
-     find_coordination_geometry
-from mmtbx.ions.parameters import MetalParameters, get_server
+from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES
+from mmtbx.ions.parameters import get_server
 
 CLASSIFIER_PATH = libtbx.env.find_in_repositories(
   relative_path = "chem_data/classifiers/ions_svm.pkl",

@@ -4,13 +4,13 @@ from __future__ import division
 import os
 
 # We must make sure to import sklearn before boost python
-import sklearn.svm
+import sklearn.svm # import dependency
 
 import libtbx
 from mmtbx.command_line.water_screen import master_phil
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
 from mmtbx import ions
-from mmtbx.ions.svm import ion_class, ion_vector, predict_ion, get_classifier
+from mmtbx.ions.svm import ion_class, predict_ion, get_classifier
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
 import mmtbx.command_line
 

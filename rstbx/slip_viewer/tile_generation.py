@@ -517,9 +517,9 @@ class _Tiles(object):
         d_min = None
         detector = self.raw_image.get_detector()
         beam = self.raw_image.get_beam()
-	if detector is None or beam is None:
-	  return None
-	beam = beam.get_s0()
+        if detector is None or beam is None:
+          return None
+        beam = beam.get_s0()
 
         if len(detector) > 1:
           if readout is None:
