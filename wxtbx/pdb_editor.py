@@ -623,7 +623,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     if (new_name != atom.name) :
       atom_group = atom.parent()
       for other_atom in atom_group.atoms() :
-        if (other_atom.name == new_name) and (atom is not other_atom) :
+        if (other_atom.name == new_name) and (atom != other_atom) :
           confirm_action(("The atom group to which this atom belongs already "+
           "has another atom named \"%s\".  Are you sure you want to rename "+
           "the selected atom?") % new_name)
@@ -1267,7 +1267,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     chain = residue_group.parent()
     index = None
     for k, other_rg in enumerate(chain.residue_groups()) :
-      if (other_rg is residue_group) :
+      if (other_rg == residue_group) :
         index = k+1
         break
     assert (index is not None)
