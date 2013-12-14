@@ -160,35 +160,34 @@ END
   # run method
   params = select_best_starting_model.master_phil.extract()
   params.rigid_body_refine = False
+  model_names = [
+    "tst_start_model_1.pdb",
+    "tst_start_model_2.pdb",
+    "tst_start_model_3.pdb",
+    "tst_start_model_4.pdb",
+    "tst_start_model_5.pdb",
+  ]
   result = select_best_starting_model.select_model(
-    model_file_names=[
-      "tst_start_model_1.pdb",
-      "tst_start_model_2.pdb",
-      "tst_start_model_3.pdb",
-      "tst_start_model_4.pdb",
-      "tst_start_model_5.pdb"],
+    model_names=model_names,
+    model_data=None,
     f_obs=f_obs,
     r_free_flags=flags,
     params=params,
     skip_twin_detection=True,
     log=null_out())
   #result.show(verbose=True)
-  assert (result.best_model_file == "tst_start_model_4.pdb")
+  assert (result.best_model_name == "tst_start_model_4.pdb")
   params.rigid_body_refine = True
   result = select_best_starting_model.select_model(
-    model_file_names=[
-      "tst_start_model_1.pdb",
-      "tst_start_model_2.pdb",
-      "tst_start_model_3.pdb",
-      "tst_start_model_4.pdb",
-      "tst_start_model_5.pdb"],
+    model_names=model_names,
+    model_data=None,
     f_obs=f_obs,
     r_free_flags=flags,
     params=params,
     skip_twin_detection=True,
     log=null_out())
   #result.show(verbose=True)
-  assert (result.best_model_file == "tst_start_model_1.pdb")
+  assert (result.best_model_name == "tst_start_model_1.pdb")
 
 def exercise_misc () :
   from mmtbx.refinement import select_best_starting_model
