@@ -17,14 +17,19 @@ url_base = "http://www.rcsb.org/pdb/rest"
 url_search = url_base + "/search"
 
 def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
-    protein_only=False, data_only=False, identity_cutoff=None) :
+    protein_only=False, data_only=False, identity_cutoff=None, log=None,
+    sort_by_resolution=False) :
   """Generate the full XML for a multi-part query with generic search options,
   starting from the basic query passed by another function, post it to the
   RCSB's web service, and return a list of matching PDB IDs."""
+  if (log is None) :
+    log = libtbx.utils.null_out()
   queries = []
   if (query_xml is not None) :
     queries.append(query_xml)
+  print >> log, "Setting up RCSB server query:"
   if (xray_only) :
+    print >> log, "  limiting to X-ray structures"
     xray_query = "<queryType>org.pdb.query.simple.ExpTypeQuery</queryType>\n"+\
       "<mvStructure.expMethod.value>X-RAY</mvStructure.expMethod.value>"
     if (data_only) :
@@ -36,18 +41,23 @@ def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
       "</refine.ls_d_res_high.comparator>"
     if (d_min is not None) :
       assert (d_min >= 0)
+      print >> log, "  applying resolution cutoff d_min > %f" % d_min
       base_clause += \
         "\n<refine.ls_d_res_high.min>%f</refine.ls_d_res_high.min>" % d_min
     if (d_max is not None) :
       assert (d_max >= 0)
+      print >> log, "  applying resolution cutoff d_min < %f" % d_max
       base_clause += \
         "\n<refine.ls_d_res_high.max>%f</refine.ls_d_res_high.max>" % d_max
     queries.append(base_clause)
   if (protein_only) :
+    print >> log, "  excluding non-protein models"
     queries.append(
       "<queryType>org.pdb.query.simple.ChainTypeQuery</queryType>\n" +
       "<containsProtein>Y</containsProtein>")
   if (identity_cutoff is not None) :
+    print >> log, "  filtering based on sequence identity < %d %%" % \
+      int(identity_cutoff)
     assert (identity_cutoff > 0) and (identity_cutoff <= 100)
     queries.append(
       "<queryType>org.pdb.query.simple.HomologueReductionQuery</queryType>\n"+
@@ -72,12 +82,20 @@ def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
 </orgPdbCompositeQuery>
 """ % (queries_string)
   parsed = parseString(query_str)
-  result = libtbx.utils.urlopen(url_search, query_str).read()
+  url_final = url_search
+  if (sort_by_resolution) :
+    url_final += "/?sortfield=Resolution"
+    print >> log, "  will sort by resolution"
+  print >> log, "  executing HTTP request..."
+  result = libtbx.utils.urlopen(url_final, query_str).read()
   return result.splitlines()
 
 def sequence_search (sequence, **kwds) :
   search_type = kwds.pop("search_type", "blast")
   expect = kwds.pop("expect", 0.01)
+  min_identity = kwds.pop("min_identity", 0.0)
+  if (min_identity <= 1) :
+    min_identity *= 100
   """
   Homology search for an amino acid sequence.  The advantage of using this
   service over the NCBI/EBI BLAST servers (in iotbx.pdb.fetch) is the ability
@@ -89,8 +107,9 @@ def sequence_search (sequence, **kwds) :
       <description>Sequence Search (expect = %g, search = %s)</description>
       <sequence>%s</sequence>
       <eCutOff>%g</eCutOff>
+      <sequenceIdentityCutoff>%g</sequenceIdentityCutoff>
     <searchTool>%s</searchTool>""" % (expect, search_type, sequence, expect,
-      search_type)
+      min_identity, search_type)
   return post_query(query_str, **kwds)
 
 def chemical_id_search (resname, **kwds) :
