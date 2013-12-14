@@ -12,6 +12,7 @@ from libtbx import slots_getstate_setstate
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_mp
 import libtbx.phil
+import os.path
 import sys
 
 master_phil = libtbx.phil.parse("""
@@ -102,7 +103,8 @@ def ucf (unit_cell) :
 
 class select_model (object) :
   def __init__ (self,
-      model_file_names,
+      model_names,
+      model_data,
       f_obs,
       r_free_flags,
       params=None,
@@ -111,7 +113,20 @@ class select_model (object) :
       log=sys.stdout) :
     if (params is None) :
       params = master_phil.extract()
-    self.model_file_names = model_file_names
+    self.model_names = model_names
+    if (model_data is None) :
+      from iotbx.file_reader import any_file
+      model_data = []
+      for file_name in model_names :
+        if (not os.path.isfile(file_name)) :
+          raise RuntimeError("model_data is None, but %s is not a file." %
+            file_name)
+        model_in = any_file(file_name,
+          force_type="pdb",
+          raise_sorry_if_errors=True).file_object
+        pdb_hierarchy = model_in.construct_hierarchy()
+        xray_structure = model_in.xray_structure_simple()
+        model_data.append((pdb_hierarchy, xray_structure))
     self.model_symmetries = []
     self.models_accepted = []
     self.model_r_frees = []
@@ -123,7 +138,7 @@ class select_model (object) :
     self.best_xray_structure = None
     self.best_pdb_hierarchy = None
     self.best_result = None
-    self.best_model_file = None
+    self.best_model_name = None
     from mmtbx.pdb_symmetry import rms_difference
     from iotbx import file_reader
     data_symmetry = f_obs.crystal_symmetry()
@@ -138,19 +153,15 @@ class select_model (object) :
     print >> log, "  unit cell:    %s" % ucf(data_unit_cell)
     pdb_hierarchies = []
     xray_structures = []
-    for k, file_name in enumerate(model_file_names) :
-      model_in = file_reader.any_file(file_name,
-        force_type="pdb",
-        raise_sorry_if_errors=True)
-      pdb_hierarchy = model_in.file_object.construct_hierarchy()
+    for k, file_name in enumerate(model_names) :
+      pdb_hierarchy, xray_structure = model_data[k]
       pdb_hierarchy.atoms().reset_i_seq()
       pdb_hierarchies.append(pdb_hierarchy)
-      xray_structure = model_in.file_object.xray_structure_simple()
       model_symmetry = xray_structure.crystal_symmetry()
       self.model_symmetries.append(model_symmetry)
       if (model_symmetry is None) :
         print >> log, "Model %d is missing symmetry records:" % (k+1)
-        print >> log, "  file:  %s" % file_name
+        print >> log, "  source:  %s" % file_name
         xray_structures.append(None)
         continue
       model_unit_cell = model_symmetry.unit_cell()
@@ -164,7 +175,7 @@ class select_model (object) :
           is_compatible_sg = True
       if (not is_compatible_sg) :
         print >> log, "Model %d has incompatible space group:" % (k+1)
-        print >> log, "  file:  %s" % file_name
+        print >> log, "  source:  %s" % file_name
         print >> log, "  space group: %s" % model_space_group.info()
         xray_structures.append(None)
         continue
@@ -181,8 +192,8 @@ class select_model (object) :
           is_similar_cell = True
       if (not is_similar_cell) :
         print >> log, "Model %d has incompatible space group:" % (k+1)
-        print >> log, "  file:  %s" % file_name
-        print >> log, "  model: %s" % ucf(model_unit_cell.parameters())
+        print >> log, "  source: %s" % file_name
+        print >> log, "  model:  %s" % ucf(model_unit_cell.parameters())
         xray_structures.append(None)
         continue
       else :
@@ -206,7 +217,7 @@ class select_model (object) :
         self.best_xray_structure = result.xray_structure
         self.best_pdb_hierarchy = pdb_hierarchies[i_result]
         self.best_result = result
-        self.best_model_file = self.model_file_names[i_result]
+        self.best_model_name = self.model_names[i_result]
     self.show(out=log, verbose=True)
 
   def show (self, out=sys.stdout, verbose=False) :
@@ -215,13 +226,13 @@ class select_model (object) :
     else :
       print >> out, ""
       print >> out, "Best starting model:"
-      print >> out, "  file: %s" % self.best_model_file
+      print >> out, "  source: %s" % self.best_model_name
       self.best_result.show(out=out, prefix="    ")
       print >> out, ""
       if (verbose) and (len(self.evaluations) > 1) :
         print >> out, "Other suitable models:"
         for i_other, other in self.evaluations[1:] :
-          print >> out, "  file: %s" % self.model_file_names[i_other]
+          print >> out, "  source: %s" % self.model_names[i_other]
           other.show(out=out, prefix="    ")
         print >> out, ""
 
@@ -242,7 +253,7 @@ class select_model (object) :
     xray_structure, pdb_hierarchy = self.get_best_model()
     f = open(file_name, "w")
     f.write("REMARK original PDB file:\n")
-    f.write("REMARK   %s\n" % self.best_model_file)
+    f.write("REMARK   %s\n" % self.best_model_name)
     f.write(pdb_hierarchy.as_pdb_string(crystal_symmetry=xray_structure))
     f.close()
 

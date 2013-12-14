@@ -52,8 +52,17 @@ rigid-body refinement on suitable models if requested.""")
     data_parameter_scope="input.data",
     flags_parameter_scope="input.data.r_free_flags",
     log=out)
+  model_data = []
+  for file_name in params.input.model :
+    model_in = cmdline.get_file(
+      file_name=file_name,
+      force_type="pdb").file_object
+    pdb_hierarchy = model_in.construct_hierarchy()
+    xray_structure = model_in.xray_structure_simple()
+    model_data.append((pdb_hierarchy, xray_structure))
   result = select_best_starting_model.select_model(
-    model_file_names=params.input.model,
+    model_names=params.input.model,
+    model_data=model_data,
     f_obs=data_and_flags.f_obs,
     r_free_flags=data_and_flags.r_free_flags,
     params=params,
