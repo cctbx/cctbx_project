@@ -536,7 +536,11 @@ class density_modification(object):
       flex.arg(phase_source.data()), flex.arg(phase_source_initial.data()))
     self.mean_fom = flex.mean(fom)
     fom = f_obs_active.array(data=fom)
-    fom.setup_binner(reflections_per_bin=1000)
+    if fom.data().size()<1000: # 2013-12-14 was hard-wired at 1000 tt
+      reflections_per_bin=fom.data().size()
+    else:
+      reflections_per_bin=1000 
+    fom.setup_binner(reflections_per_bin=reflections_per_bin)
     self.mean_fom_binned = fom.mean(use_binning=True)
 
   def show_cycle_summary(self, out=None):
