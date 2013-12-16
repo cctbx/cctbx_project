@@ -4625,7 +4625,7 @@ class process(object):
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
-        show_nonbonded_clashscore=False,
+        show_nonbonded_clashscore=True,
         hard_minimum_bond_distance_model=0.001,
         hard_minimum_nonbonded_distance=0.001,
         nonbonded_distance_threshold=0.5,
@@ -4790,12 +4790,22 @@ class process(object):
             sites_cart=sites_cart,
             site_labels=site_labels,
             hd_sel=hd_sel)
-          nb_clashscore_without_sym_op = nb_clash_info.nb_clashscore_without_sym_op
-          nb_clash_due_to_sym_op = nb_clash_info.nb_clashscore_due_to_sym_op
-          s='\n  Nonbonded clashscore, without clashes due to symmetry operation: {0:.2f}'
-          print >> self.log, s.format(nb_clashscore_without_sym_op)
-          s='  Nonbonded clashscore, only due to symmetry operation: {0:.2f}\n'
-          print >> self.log, s.format(nb_clash_due_to_sym_op)
+
+          clashscore_simple = nb_clash_info.nb_clashscore_simple
+          clashscore_due_to_sym_op = nb_clash_info.nb_clashscore_due_to_sym_op
+          clashscore_solvent_solvent = nb_clash_info.nb_clashscore_solvent_solvent
+          clashscore_all_clashes = nb_clash_info.nb_clashscore_all_clashes
+          #
+          print >> self.log, '\n  Nonbonded clashscore'
+          s='  Without symmetry operation and solvent-solvent clashes:   {0:.2f}'
+          print >> self.log, s.format(clashscore_simple)
+          s='  Due to symmetry operation:                                {0:.2f}'
+          print >> self.log, s.format(clashscore_due_to_sym_op)
+          s='  Solvent-solvent:                                          {0:.2f}'
+          print >> self.log, s.format(clashscore_solvent_solvent)
+          s='  Total:                                                    {0:.2f}\n'
+          print >> self.log, s.format(clashscore_all_clashes)
+
     return self._geometry_restraints_manager
 
 
