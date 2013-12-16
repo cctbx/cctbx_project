@@ -180,8 +180,15 @@ class run_command_list (object) :
         long_jobs.append(result.command)
         long_runtimes.append(result.wall_time)
       if output_junit_xml:
-        tc = TestCase('Test', result.command, result.wall_time,
-                      '\n'.join(result.stdout_lines), '\n'.join(result.stderr_lines))
+        tc = TestCase(name=result.command,
+                      classname=result.command,
+                      elapsed_sec=result.wall_time,
+                      stdout='\n'.join(result.stdout_lines),
+                      stderr='\n'.join(result.stderr_lines))
+        if result.return_code != 0:
+          tc.add_failure_info(message='exit code %d' %result.return_code)
+        if len(result.stderr_lines):
+          tc.add_error_info(output='\n'.join(result.stderr_lines))
         test_cases.append(tc)
 
     if output_junit_xml:
