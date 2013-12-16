@@ -22,6 +22,11 @@ quiet = False
   .type = bool
 run_in_tmp_dir = False
   .type = bool
+output_junit_xml = False
+  .type = bool
+  .help = "Create junit-style xml output"
+          "Requires junit_xml module:"
+          "  https://pypi.python.org/pypi/junit-xml"
 """)
 
 def run (args) :
@@ -52,6 +57,13 @@ def run (args) :
     if (len(cwd_files) > 0) :
       raise Sorry("Please run this program in an empty directory.")
 
+  if params.output_junit_xml:
+    try:
+      import junit_xml
+    except ImportError, e:
+      raise Sorry(
+        "Cannot import junit_xml. Try running with output_junit_xml=False")
+
   if (len(params.directory) == 0) and (len(params.module) == 0) :
     raise Sorry("Please specify modules and/or directories to test.")
   all_tests = []
@@ -79,7 +91,8 @@ def run (args) :
     cmd_list=all_tests,
     nprocs=params.nproc,
     log=log,
-    quiet=params.quiet)
+    quiet=params.quiet,
+    output_junit_xml=params.output_junit_xml)
   log.close()
   print """
 ============================================================================

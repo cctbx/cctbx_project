@@ -108,7 +108,8 @@ class run_command_list (object) :
                 nprocs=1,
                 out=sys.stdout,
                 log=None,
-                quiet=False) :
+                quiet=False,
+                output_junit_xml=False) :
     if (log is None) : log = null_out()
     self.out = multi_out()
     self.log = log
@@ -160,6 +161,9 @@ class run_command_list (object) :
     long_jobs = []
     long_runtimes = []
     runtimes = []
+    if output_junit_xml:
+      from junit_xml import TestSuite, TestCase
+      test_cases = []
     for result in self.results :
       finished += 1
       runtimes.append(result.wall_time)
@@ -175,6 +179,16 @@ class run_command_list (object) :
       if (result.wall_time > max_time) :
         long_jobs.append(result.command)
         long_runtimes.append(result.wall_time)
+      if output_junit_xml:
+        tc = TestCase('Test', result.command, result.wall_time,
+                      '\n'.join(result.stdout_lines), '\n'.join(result.stderr_lines))
+        test_cases.append(tc)
+
+    if output_junit_xml:
+      ts = TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
+      with open('output.xml', 'wb') as f:
+        print >> f, TestSuite.to_xml_string([ts], prettyprint=True)
+
     if (libtbx.env.has_module("scitbx")) :
       from scitbx.array_family import flex
       print >> self.out, "Distribution of test runtimes:"
