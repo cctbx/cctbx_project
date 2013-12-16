@@ -20,7 +20,7 @@ def print_step(s, log):
 def run(pdb_file_name,
         n_models,
         log,
-        eps=1.e-6,
+        eps=1.e-7,
         output_file_name="ensemble.pdb"):
   pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
@@ -85,7 +85,7 @@ class ensemble_generator(object):
   def write_pdb_file(self, file_name):
     self.states.write(file_name = file_name)
 
-def step_i__get_dxdydz(L_L, R_PL, log, eps=1.e-9):
+def step_i__get_dxdydz(L_L, R_PL, log, eps=1.e-7):
   """
   Generation of shifts from screw rotations.
   """
@@ -93,9 +93,9 @@ def step_i__get_dxdydz(L_L, R_PL, log, eps=1.e-9):
   L_ = L_L.as_sym_mat3()
   Lxx, Lyy, Lzz = L_[0], L_[1], L_[2]
   dx0, dy0, dz0 = 0, 0, 0
-  if(Lxx != 0): dx0 = random.normalvariate(0,Lxx)
-  if(Lyy != 0): dy0 = random.normalvariate(0,Lyy)
-  if(Lzz != 0): dz0 = random.normalvariate(0,Lzz)
+  if(abs(Lxx)>eps): dx0 = random.normalvariate(0,Lxx)
+  if(abs(Lyy)>eps): dy0 = random.normalvariate(0,Lyy)
+  if(abs(Lzz)>eps): dz0 = random.normalvariate(0,Lzz)
   print >> log, "  dx0, dy0, dz0:", dx0, dy0, dz0
   return dx0, dy0, dz0
 
@@ -150,6 +150,9 @@ class decompose_tls(object):
     steps a) - h).
     """
     self.log = log
+    self.ff = "%12.9f"
+    self.eps = 1.e-9
+    print >> self.log, "Small is defined as:", self.eps
     self.T, self.L, self.S = T, L, S
     print_step("Input TLS matrices:", self.log)
     self.show_matrix(x=self.T, prefix="  ", title="T_M")
@@ -166,7 +169,7 @@ class decompose_tls(object):
 
   def show_matrix(self, x, title, prefix="  "):
     print >> self.log, prefix, title
-    f = "%11.6f %11.6f %11.6f"
+    f = "%s %s %s"%(self.ff,self.ff,self.ff)
     print >> self.log, prefix, f%(x[0], x[1], x[2])
     print >> self.log, prefix, f%(x[3], x[4], x[5])
     print >> self.log, prefix, f%(x[6], x[7], x[8])
@@ -174,41 +177,41 @@ class decompose_tls(object):
 
   def show_vector(self, x, title, prefix="  "):
     print >> self.log, prefix, title
-    print >> self.log, prefix, "%10.6f"%x[0]
-    print >> self.log, prefix, "%10.6f"%x[1]
-    print >> self.log, prefix, "%10.6f"%x[2]
+    print >> self.log, prefix, self.ff%x[0]
+    print >> self.log, prefix, self.ff%x[1]
+    print >> self.log, prefix, self.ff%x[2]
     print >> self.log
 
-  def eigen_system_default_handler(self, m, eps=1.e-9):
+  def eigen_system_default_handler(self, m):
     es = eigensystem.real_symmetric(m.as_sym_mat3())
     vals, vecs = es.values(), es.vectors()
-    print >> self.log, "  eigen values :", " ".join(["%11.6f"%i for i in vals])
-    print >> self.log, "  eigen vectors:", " ".join(["%11.6f"%i for i in vecs])
+    print >> self.log, "  eigen values :", " ".join([self.ff%i for i in vals])
+    print >> self.log, "  eigen vectors:", " ".join([self.ff%i for i in vecs])
     assert vals[0]>=vals[1]>=vals[2]
     # case 1: all different
-    if(abs(vals[0]-vals[1])>=eps and
-       abs(vals[1]-vals[2])>=eps and
-       abs(vals[0]-vals[2])>=eps):
+    if(abs(vals[0]-vals[1])>=self.eps and
+       abs(vals[1]-vals[2])>=self.eps and
+       abs(vals[0]-vals[2])>=self.eps):
       l_1 = matrix.col((vecs[0], vecs[1], vecs[2]))
       l_2 = matrix.col((vecs[3], vecs[4], vecs[5]))
       l_3 = matrix.col((vecs[6], vecs[7], vecs[8]))
       l_x, l_y, l_z = l_3, l_2, l_1
       vals = [vals[2], vals[1], vals[0]]
-      print >> self.log, "re-assign: l_x, l_y, l_z = 3, 2, 1"
+      print >> self.log, "re-assign: x, y, z = 3, 2, 1"
       tmp = l_x.cross(l_y) - l_z
-      if(abs(tmp[0])>eps or abs(tmp[1])>eps or abs(tmp[2])>eps):
+      if(abs(tmp[0])>self.eps or abs(tmp[1])>self.eps or abs(tmp[2])>self.eps):
         print >> self.log, "  convert to right-handed"
         l_z = -1. * l_z
     # case 2: all three coincide
-    elif(abs(vals[0]-vals[1])<eps and
-         abs(vals[1]-vals[2])<eps and
-         abs(vals[0]-vals[2])<eps):
+    elif(abs(vals[0]-vals[1])<self.eps and
+         abs(vals[1]-vals[2])<self.eps and
+         abs(vals[0]-vals[2])<self.eps):
       l_x = matrix.col((1, 0, 0))
       l_y = matrix.col((0, 1, 0))
       l_z = matrix.col((0, 0, 1))
-    elif([abs(vals[0]-vals[1])<eps,
-          abs(vals[1]-vals[2])<eps,
-          abs(vals[0]-vals[2])<eps].count(True)==1):
+    elif([abs(vals[0]-vals[1])<self.eps,
+          abs(vals[1]-vals[2])<self.eps,
+          abs(vals[0]-vals[2])<self.eps].count(True)==1):
       l_x = matrix.col((1, 0, 0))
       l_y = matrix.col((0, 1, 0))
       l_z = matrix.col((0, 0, 1))
@@ -235,14 +238,14 @@ class decompose_tls(object):
       #l_y = l_y/math.sqrt(l_y[0]**2+l_y[1]**2+l_y[2]**2)
       #l_x = l_y.cross(l_z)
     #
-    print >> self.log, "  eigen values :", " ".join(["%11.6f"%i for i in vals])
+    print >> self.log, "  eigen values :", " ".join([self.ff%i for i in vals])
     print >> self.log, "  eigen vectors:"
     self.show_vector(x=l_x, title="vector x")
     self.show_vector(x=l_y, title="vector y")
     self.show_vector(x=l_z, title="vector z")
     return group_args(x=l_x, y=l_y, z=l_z, vals=vals)
 
-  def step_a(self, T, L, S, eps=1.e-6):
+  def step_a(self, T, L, S):
     """
     Shift origin into reaction center. New S' must be symmetric as result of
     origin shift.
@@ -255,8 +258,8 @@ class decompose_tls(object):
                L_[3], -(L_[0]+L_[2]),         L_[5],
       -(L_[1]+L_[2]),          L_[3],         L_[4]))
     self.show_matrix(x=m, title="m")
-    if(abs(m.determinant())<eps):
-      print >> self.log, "  det(m)<", eps
+    if(abs(m.determinant())<self.eps):
+      print >> self.log, "  det(m)<", self.eps
       T_p = T
       L_p = L
       S_p = S
@@ -298,7 +301,7 @@ class decompose_tls(object):
       S_p = S_p,
       p   = p)
 
-  def step_b(self, T_p, L_p, S_p, eps = 1.e-6):
+  def step_b(self, T_p, L_p, S_p):
     """
     Principal libration axes and transition to L-base.
     """
@@ -329,7 +332,7 @@ class decompose_tls(object):
       S_L  = S_L,
       R_PL = R_PL)
 
-  def step_c(self, T_L, L_L, S_L, eps = 1.e-6):
+  def step_c(self, T_L, L_L, S_L):
     """
     Position of rotation axes.
     """
@@ -342,15 +345,15 @@ class decompose_tls(object):
     wz_ly=0
     wx_lz=0
     wy_lz=0
-    if(Lxx != 0):
-      if(abs(S_L[2])>eps): wy_lx =-S_L[2]/Lxx
-      if(abs(S_L[1])>eps): wz_lx = S_L[1]/Lxx
-    if(Lyy != 0):
-      if(abs(S_L[5])>eps): wx_ly = S_L[5]/Lyy
-      if(abs(S_L[3])>eps): wz_ly =-S_L[3]/Lyy
-    if(Lzz != 0):
-      if(abs(S_L[7])>eps): wx_lz =-S_L[7]/Lzz
-      if(abs(S_L[6])>eps): wy_lz = S_L[6]/Lzz
+    if(abs(Lxx)>self.eps):
+      if(abs(S_L[2])>self.eps): wy_lx =-S_L[2]/Lxx
+      if(abs(S_L[1])>self.eps): wz_lx = S_L[1]/Lxx
+    if(abs(Lyy)>self.eps):
+      if(abs(S_L[5])>self.eps): wx_ly = S_L[5]/Lyy
+      if(abs(S_L[3])>self.eps): wz_ly =-S_L[3]/Lyy
+    if(abs(Lzz)>self.eps):
+      if(abs(S_L[7])>self.eps): wx_lz =-S_L[7]/Lzz
+      if(abs(S_L[6])>self.eps): wy_lz = S_L[6]/Lzz
     w_lx = matrix.col((0,wy_lx,wz_lx))
     w_ly = matrix.col((wx_ly,0,wz_ly))
     w_lz = matrix.col((wx_lz,wy_lz,0))
@@ -369,48 +372,50 @@ class decompose_tls(object):
     self.show_vector(x=w_lz, title="w_lz")
     return result
 
-  def step_d(self, S_L, L_L, T_L, eps=1.e-6):
+  def step_d(self, S_L, L_L, T_L):
     """
     Minimization of correlation between translation and rotation.
     """
     print_step("Step d:", self.log)
+    tS=0
     L_ = L_L.as_sym_mat3()
     Lxx, Lyy, Lzz = L_[0], L_[1], L_[2]
     T_ = T_L.as_sym_mat3()
     Txx, Tyy, Tzz = T_[0], T_[1], T_[2]
     Sxx, Syy, Szz = S_L[0], S_L[4], S_L[8]
-    if(abs(Lxx)<eps): Lxx=0
-    if(abs(Lyy)<eps): Lyy=0
-    if(abs(Lzz)<eps): Lzz=0
+    if(abs(Lxx)<self.eps): Lxx=0
+    if(abs(Lyy)<self.eps): Lyy=0
+    if(abs(Lzz)<self.eps): Lzz=0
     sqrt = math.sqrt
     TxxLxx = Txx*Lxx
     TyyLyy = Tyy*Lyy
     TzzLzz = Tzz*Lzz
-    assert TxxLxx >= 0 and TyyLyy >= 0 and TzzLzz >= 0
-    tmin = max(Sxx-sqrt(TxxLxx), Syy-sqrt(TyyLyy), Szz-sqrt(TzzLzz))
-    tmax = min(Sxx+sqrt(TxxLxx), Syy+sqrt(TyyLyy), Szz+sqrt(TzzLzz))
-    print >> self.log, "  tmin, tmax:", tmin,tmax
-    if(abs(tmin)<eps): tmin=0
-    if(abs(tmax)<eps): tmax=0
-    tS=None
-    if(tmin>tmax): assert 0 # must never happen, otherwise S is wrong
-    if(abs(tmin-tmax)<eps): tS=0
-    if(tmin<tmax):
-      trS_L_over3 = S_L.trace()/3.
-      if(tmin<=trS_L_over3 and tmax>=trS_L_over3):
-        tS = trS_L_over3
-      else:
-        tmp1 = abs(trS_L_over3-tmin)
-        tmp2 = abs(trS_L_over3-tmax)
-        if(tmp1<tmp2): tS = tmin
-        else:          tS = tmax
-    assert tS is not None
+    if(TxxLxx >= 0 and TyyLyy >= 0 and TzzLzz >= 0):
+      tmin = max(Sxx-sqrt(TxxLxx), Syy-sqrt(TyyLyy), Szz-sqrt(TzzLzz))
+      tmax = min(Sxx+sqrt(TxxLxx), Syy+sqrt(TyyLyy), Szz+sqrt(TzzLzz))
+      print >> self.log, "  tmin, tmax:", tmin,tmax
+      if(abs(tmin)<self.eps): tmin=0
+      if(abs(tmax)<self.eps): tmax=0
+      # tmin>tmax must never happen, otherwise S is wrong. Assertion is not in
+      # place because this actually happens due to numerical roundings
+      if(abs(tmin-tmax)<self.eps): tS=0
+      if(tmin<tmax):
+        trS_L_over3 = S_L.trace()/3.
+        if(tmin<=trS_L_over3 and tmax>=trS_L_over3):
+          tS = trS_L_over3
+        else:
+          tmp1 = abs(trS_L_over3-tmin)
+          tmp2 = abs(trS_L_over3-tmax)
+          if(tmp1<tmp2): tS = tmin
+          else:          tS = tmax
+    else:
+      print >> self.log, "  tmin, tmax:", None, None
     S_C = S_L - matrix.sqr((tS,0,0, 0,tS,0, 0,0,tS))
     print >> self.log, "  tS:", tS
     self.show_matrix(x=S_C, title="S_C")
     return S_C
 
-  def step_e(self, S_C, L_L, eps=1.e-9):
+  def step_e(self, S_C, L_L):
     """
     Find screw components of libration.
     """
@@ -418,9 +423,9 @@ class decompose_tls(object):
     L_ = L_L.as_sym_mat3()
     Lxx, Lyy, Lzz = L_[0], L_[1], L_[2]
     sx_bar,sy_bar,sz_bar=0,0,0
-    if(abs(Lxx)>eps): sx_bar = S_C[0]/Lxx
-    if(abs(Lyy)>eps): sy_bar = S_C[4]/Lyy
-    if(abs(Lzz)>eps): sz_bar = S_C[8]/Lzz
+    if(abs(Lxx)>self.eps): sx_bar = S_C[0]/Lxx
+    if(abs(Lyy)>self.eps): sy_bar = S_C[4]/Lyy
+    if(abs(Lzz)>self.eps): sz_bar = S_C[8]/Lzz
     result = group_args(sx_bar = sx_bar, sy_bar = sy_bar, sz_bar = sz_bar)
     print >> self.log, "  sx_bar:", result.sx_bar
     print >> self.log, "  sy_bar:", result.sy_bar
@@ -465,7 +470,7 @@ class decompose_tls(object):
       C_L  = C_L,
       C_LS = C_LS)
 
-  def step_h(self, V_L, b_o, eps=1.e-6):
+  def step_h(self, V_L, b_o):
     """
     Three uncorrelated translations.
     """
