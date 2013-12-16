@@ -31,6 +31,8 @@ altloc_remediate
       .type = bool
     use_geometry_as_spread_criteria = True
       .type = bool
+    block_alt_loc = False
+      .type = bool
   }
   output
   {
@@ -39,6 +41,9 @@ altloc_remediate
       .short_caption = Output file
       .help = Defaults to current directory
       .style = bold new_file file_type:pdb
+    display = False
+      .type = bool
+      .short_caption = Display the residues only, no remediation
   }
 }
 """
@@ -51,6 +56,8 @@ if False:
 master_phil = phil.parse(master_phil_string)
 
 mainchain = set(["CA", "C", "N", "O"])
+partial1 = set(["C", "O"])
+partial2 = set(["N", "H", "HA"])
 
 def check_for_exchange_hd(residue_group, remove):
   if len(remove)!=2: return remove
@@ -102,6 +109,8 @@ def all_mainchain_alt_loc(hierarchy):
     blank = None
     atoms = set()
     move_blank_to_alt_locs = False
+    move_CO_to_alt_locs = False
+    move_NH_to_alt_locs = False
     for atom_group_i, atom_group in enumerate(residue_group.atom_groups()):
       if not atom_group.altloc.strip():
         blank = atom_group
@@ -110,25 +119,54 @@ def all_mainchain_alt_loc(hierarchy):
       for atom in atom_group.atoms():
         atoms.add(atom.name.strip())
       if atoms.intersection(mainchain):
-        move_blank_to_alt_locs = True
+        if atoms.intersection(partial1) and not atoms.intersection(partial2):
+          move_CO_to_alt_locs = True
+        elif atoms.intersection(partial2) and not atoms.intersection(partial1):
+          move_NH_to_alt_locs = True
+        else:
+          move_blank_to_alt_locs = True
         break
+    if 0:
+      print 'move_blank_to_alt_locs',move_blank_to_alt_locs
+      print 'move_CO_to_alt_locs   ',move_CO_to_alt_locs
+      print 'move_NH_to_alt_locs   ',move_NH_to_alt_locs
+    moving_atoms = []
+    moving_group = None
     if move_blank_to_alt_locs:
-      blank = None
       for atom_group_i, atom_group in enumerate(residue_group.atom_groups()):
         if not atom_group.altloc.strip():
-          blank = atom_group
+          moving_group = atom_group
+          moving_atoms = atom_group.atoms()
           continue
-        if blank is None: break
-      for atom in blank.atoms():
+        if moving_group is None: break # blank group must be first?
+    else:
+      if move_CO_to_alt_locs:
+        for atom_group_i, atom_group in enumerate(residue_group.atom_groups()):
+          if atom_group.altloc.strip(): continue
+          for atom in atom_group.atoms():
+            if atom.name.strip() in partial1:
+              moving_atoms.append(atom)
+              moving_group = atom_group
+      if move_NH_to_alt_locs:
+        for atom_group_i, atom_group in enumerate(residue_group.atom_groups()):
+          if atom_group.altloc.strip(): continue
+          for atom in atom_group.atoms():
+            if atom.name.strip() in partial2:
+              moving_atoms.append(atom)
+              moving_group = atom_group
+
+    if moving_atoms:
+      for atom in moving_atoms:
         for atom_group_i, atom_group in enumerate(residue_group.atom_groups()):
           if not atom_group.altloc.strip(): continue
           atom_group.append_atom(atom.detached_copy())
-        blank.remove_atom(atom)
-      residue_group.remove_atom_group(blank)
+        moving_group.remove_atom(atom)
+      if len(moving_group.atoms())==0:
+        residue_group.remove_atom_group(moving_group)
   return hierarchy
 
 def general_corrections(hierarchy):
-  hierarchy =  all_mainchain_alt_loc(hierarchy)
+  hierarchy = all_mainchain_alt_loc(hierarchy)
   hierarchy = adjust_hydrogen_alt_locs(hierarchy)
   return hierarchy
 
@@ -158,6 +196,10 @@ def get_alt_loc_type(residue_group, verbose=False):
       print 'difference',altloc_list.difference(mainchain)
     else:
       assert 0
+  elif altloc_list.intersection(partial1)==partial1:
+    return 'partial'
+  elif altloc_list.intersection(partial2)==partial2:
+    return 'partial'
   else:
     return "sidechain only"
   assert 0
@@ -248,15 +290,19 @@ def get_altloc_data(hierarchy):
   return rc
 
 def print_residue_group(residue_group):
-  print 'residue_group'
+  print 'residue_group', residue_group.resseq
   atom_names = []
   for atom_group in residue_group.atom_groups():
-    print atom_group.altloc
+    print '  altloc "%s"' % atom_group.altloc
     for i, atom in enumerate(atom_group.atoms()):
-      print i, atom.format_atom_record()
+      print "    %2d %s" % (i, atom.format_atom_record())
       if atom.name.strip() not in atom_names: atom_names.append(atom.name.strip())
-  print 'atoms',len(atom_names)
-  print 'end'
+  #print 'atoms',len(atom_names)
+  #print 'end'
+
+def display_model(hierarchy):
+  for residue_group in hierarchy.residue_groups():
+    print_residue_group(residue_group)
 
 def atom_name_in_atom_group(atom_group, atom):
   for tmp in atom_group.atoms():
@@ -289,11 +335,9 @@ def spread_to_c_alpha(residue_group,
       for atom in atom_group.atoms():
         if atom.name.strip() not in atoms: return False
     return True
-  pre = set(["N", "H", "HA"])
-  post = set(["C", "O"])
-  atoms = pre
+  atoms = partial1
   if pre_peptide:
-    atoms = post
+    atoms = partial2
   if not _check_atom_groups_ok(residue_group, atoms):
     print 'not spreading to'
     assert 0
@@ -317,7 +361,6 @@ def spread_to_c_alpha(residue_group,
       if atom.name.strip() in atoms:
         for sa in spread_atoms:
           spread_atoms[sa].append(atom.detached_copy())
-        if verbose: print 'removing',atom.quote()
         atom_group.remove_atom(atom)
   for sa in sorted(spread_atoms):
     if not sa.strip(): continue
@@ -327,6 +370,7 @@ def spread_to_c_alpha(residue_group,
     for new_atom in spread_atoms[sa]:
       if verbose: print 'adding to "%s" <- %s' % (sa, atom.quote())
       atom_group.append_atom(new_atom)
+  if pre_peptide: assert 0
 
 def spread_to_residue(residue_group):
   blank_atom_group = residue_group.atom_groups()[0]
@@ -366,6 +410,26 @@ def correct_altloc(hierarchy, max_c_beta_deviation=0.2, verbose=False):
 
   hierarchy.atoms().reset_serial()
   if verbose: hierarchy.show()
+  return hierarchy
+
+def block_alt_loc(hierarchy):
+  for residue_group in hierarchy.residue_groups():
+    moving_group = None
+    if len(residue_group.atom_groups())==1: continue
+    for atom_group in residue_group.atom_groups():
+      if not atom_group.altloc.strip():
+        moving_group = atom_group
+        break
+    if moving_group:
+      for atom in moving_group.atoms():
+        for atom_group_i, atom_group in enumerate(residue_group.atom_groups()):
+          if not atom_group.altloc.strip(): continue
+          atom_group.append_atom(atom.detached_copy())
+        moving_group.remove_atom(atom)
+      if len(moving_group.atoms())==0:
+        residue_group.remove_atom_group(moving_group)
+
+  hierarchy.atoms().reset_serial()
   return hierarchy
 
 def correct_occupancies(hierarchy):
@@ -413,6 +477,9 @@ def run(rargs):
   in_scope = working_params.altloc_remediate.input
   control = working_params.altloc_remediate.control
   output = working_params.altloc_remediate.output
+  if control.block_alt_loc and control.correct_alt_loc:
+    raise Sorry('''Block residue altlocs are not consider "correct".
+  To block residues set control.correct_alt_loc=False''')
   #
   for i, pdb in enumerate(pdbs):
     if i==0 and not in_scope.pdb_file_name:
@@ -430,6 +497,8 @@ def run(rargs):
       output.file_name += "_spread"
     if control.correct_alt_loc:
       output.file_name += "_correct"
+    if control.block_alt_loc:
+      output.file_name += "_block"
     output.file_name += ".pdb"
     output.file_name = os.path.join(d, output.file_name)
   #
@@ -445,6 +514,9 @@ def run(rargs):
   pdb_inp = iotbx.pdb.input(in_scope.pdb_file_name)
   hierarchy = pdb_inp.construct_hierarchy()
   #hierarchy.show()
+  if output.display:
+    display_model(hierarchy)
+    return
   hierarchy = general_corrections(hierarchy)
 
   if control.spread_alt_loc:
@@ -452,6 +524,9 @@ def run(rargs):
 
   if control.correct_alt_loc:
     hierarchy = correct_altloc(hierarchy)
+
+  if control.block_alt_loc:
+    hierarchy = block_alt_loc(hierarchy)
 
   correct_occupancies(hierarchy)
 
