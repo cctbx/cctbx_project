@@ -187,8 +187,8 @@ class run_command_list (object) :
                       stderr='\n'.join(result.stderr_lines))
         if result.return_code != 0:
           tc.add_failure_info(message='exit code %d' %result.return_code)
-        if len(result.stderr_lines):
-          tc.add_error_info(output='\n'.join(result.stderr_lines))
+        #if len(result.stderr_lines):
+          #tc.add_error_info(output='\n'.join(result.stderr_lines))
         test_cases.append(tc)
 
     if output_junit_xml:
