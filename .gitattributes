@@ -1450,6 +1450,7 @@ mmtbx/building/extend_sidechains.py -text
 mmtbx/building/make_library.py -text
 mmtbx/building/tst.py -text
 mmtbx/building/tst_extend_sidechains.py -text
+mmtbx/building/tst_make_library.py -text
 mmtbx/bulk_solvent/scaler.py -text
 mmtbx/bulk_solvent/tst_aniso_scaler.py -text
 mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling.py -text
