@@ -33,8 +33,8 @@ def exercise_mp_geo():
   mp_geo.run(args)
   f = file('mp_geo.out', 'rb')
   lines = f.readlines()
-  assert 'mp_geo.pdb: A:  10: :B:ASP:CG--OD1:1.839:31.054\n' in lines
-  assert 'mp_geo.pdb: A:  10: :B:ASP:OD1-CG-OD2:109.733:5.486\n' in lines
+  assert 'mp_geo.pdb: A:  10: :B:ASP:CG--OD1:1.839:31.054:PROTEIN\n' in lines
+  assert 'mp_geo.pdb: A:  10: :B:ASP:OD1-CG-OD2:109.733:5.486:PROTEIN\n' in lines
   f.close()
 
 if (__name__ == "__main__"):
