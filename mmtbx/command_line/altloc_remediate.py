@@ -335,9 +335,9 @@ def spread_to_c_alpha(residue_group,
       for atom in atom_group.atoms():
         if atom.name.strip() not in atoms: return False
     return True
-  atoms = partial1
+  atoms = partial2
   if pre_peptide:
-    atoms = partial2
+    atoms = partial1
   if not _check_atom_groups_ok(residue_group, atoms):
     print 'not spreading to'
     assert 0
@@ -370,7 +370,6 @@ def spread_to_c_alpha(residue_group,
     for new_atom in spread_atoms[sa]:
       if verbose: print 'adding to "%s" <- %s' % (sa, atom.quote())
       atom_group.append_atom(new_atom)
-  if pre_peptide: assert 0
 
 def spread_to_residue(residue_group):
   blank_atom_group = residue_group.atom_groups()[0]
