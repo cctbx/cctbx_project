@@ -13,7 +13,6 @@ import os
 import mmtbx.secondary_structure
 import sys
 from cStringIO import StringIO
-import amber_adaptbx.amber_geometry_minimization
 
 base_params_str = """\
 silent = False
@@ -79,9 +78,6 @@ selection = all
   .help = Atom selection string: selected atoms are subject to move
   .short_caption = Atom selection
   .input_size = 400
-amber {
-  include scope amber_adaptbx.master_phil_str
-}
 minimization
   .help = Geometry minimization parameters
   .short_caption = Minimization parameters
@@ -133,6 +129,7 @@ minimization
     .short_caption = Planarity
   }
 }
+  include scope mmtbx.geometry_restraints.external.external_energy_params_str
 """ % base_params_str
 
 def master_params():
@@ -268,6 +265,7 @@ def run_minimization_amber (
       log,
       prmtop,
       ambcrd):
+  import amber_adaptbx.amber_geometry_minimization
   o = amber_adaptbx.amber_geometry_minimization.run(
     sites_cart                     = sites_cart,
     restraints_manager             = restraints_manager,
@@ -423,7 +421,10 @@ class run(object):
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
     broadcast(m=prefix, log = self.log)
     self.sites_cart = self.xray_structure.sites_cart()
-    if (self.params.amber.use_amber):
+    use_amber = False
+    if hasattr(self.params, "amber"):
+      use_amber = self.params.amber.use_amber
+    if (use_amber):
       run_minimization_amber(
           sites_cart = self.sites_cart,
           selection = self.selection,
