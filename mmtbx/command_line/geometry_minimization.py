@@ -13,6 +13,7 @@ import os
 import mmtbx.secondary_structure
 import sys
 from cStringIO import StringIO
+import amber_adaptbx.amber_geometry_minimization
 
 base_params_str = """\
 silent = False
@@ -78,6 +79,9 @@ selection = all
   .help = Atom selection string: selected atoms are subject to move
   .short_caption = Atom selection
   .input_size = 400
+amber {
+  include scope amber_adaptbx.master_phil_str
+}
 minimization
   .help = Geometry minimization parameters
   .short_caption = Minimization parameters
@@ -99,6 +103,9 @@ minimization
     .type = float
     .help = stop after reaching specified cutoff value
   rmsd_angles_termination_cutoff = 0
+    .type = float
+    .help = stop after reaching specified cutoff value
+  grmsd_termination_cutoff = 0
     .type = float
     .help = stop after reaching specified cutoff value
   move
@@ -252,6 +259,36 @@ def run_minimization(
     correct_hydrogens=correct_hydrogens,
     log                            = log)
 
+def run_minimization_amber (
+      sites_cart,
+      selection,
+      restraints_manager,
+      pdb_hierarchy,
+      params,
+      log,
+      prmtop,
+      ambcrd):
+  o = amber_adaptbx.amber_geometry_minimization.run(
+    sites_cart                     = sites_cart,
+    restraints_manager             = restraints_manager,
+    pdb_hierarchy = pdb_hierarchy,
+    max_number_of_iterations       = params.max_iterations,
+    number_of_macro_cycles         = params.macro_cycles,
+    selection                      = selection,
+    bond                           = params.move.bond,
+    nonbonded                      = params.move.nonbonded,
+    angle                          = params.move.angle,
+    dihedral                       = params.move.dihedral,
+    chirality                      = params.move.chirality,
+    planarity                      = params.move.planarity,
+    generic_restraints             = False,
+    grmsd_termination_cutoff       = params.grmsd_termination_cutoff,
+    alternate_nonbonded_off_on     = params.alternate_nonbonded_off_on,
+    log                            = log,
+    prmtop                         = prmtop,
+    ambcrd                         = ambcrd)
+
+
 class run(object):
   _pdb_suffix = "minimized"
   def __init__(self, args, log, use_directory_prefix=True):
@@ -386,12 +423,23 @@ class run(object):
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
     broadcast(m=prefix, log = self.log)
     self.sites_cart = self.xray_structure.sites_cart()
-    run_minimization(sites_cart = self.sites_cart, selection = self.selection,
-      restraints_manager = self.grm, params = self.params.minimization,
-      pdb_hierarchy = self.pdb_hierarchy,
-      cdl=self.params.pdb_interpretation.cdl,
-      correct_hydrogens=self.params.pdb_interpretation.correct_hydrogens,
-      log = self.log)
+    if (self.params.amber.use_amber):
+      run_minimization_amber(
+          sites_cart = self.sites_cart,
+          selection = self.selection,
+          restraints_manager = self.grm,
+          params = self.params.minimization,
+          pdb_hierarchy = self.pdb_hierarchy,
+          log = self.log,
+          prmtop = self.params.amber.topology_file_name,
+          ambcrd = self.params.amber.coordinate_file_name)
+    else:
+      run_minimization(sites_cart = self.sites_cart, selection = self.selection,
+        restraints_manager = self.grm, params = self.params.minimization,
+        pdb_hierarchy = self.pdb_hierarchy,
+        cdl=self.params.pdb_interpretation.cdl,
+        correct_hydrogens=self.params.pdb_interpretation.correct_hydrogens,
+        log = self.log)
 
   def write_pdb_file(self, prefix):
     broadcast(m=prefix, log = self.log)
