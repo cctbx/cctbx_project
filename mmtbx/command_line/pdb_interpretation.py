@@ -69,7 +69,9 @@ def run(args):
     if (work_params.build_geometry_restraints_manager):
       processed_pdb_file.geometry_restraints_manager(
         params_edits=work_params.geometry_restraints.edits,
-        params_remove=work_params.geometry_restraints.remove)
+        params_remove=work_params.geometry_restraints.remove,
+        show_nonbonded_clashscore=work_params.pdb_interpretation.nonbonded_clashscore,
+        )
     if (work_params.build_xray_structure):
       processed_pdb_file.xray_structure()
     processed_pdb_files.append(processed_pdb_file)
