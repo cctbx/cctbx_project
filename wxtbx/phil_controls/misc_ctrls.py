@@ -56,7 +56,10 @@ class ElementsValidator (strings.StringsValidator) :
         pass
       elif (not elem in allowed) :
         raise ValueError("'%s' is not a valid element symbol." % elem)
-    return elem_strings
+    if (self.single_element) :
+      return elem_strings[0]
+    else :
+      return elem_strings
 
 class SingleElementValidator (ElementsValidator) :
   single_element = True
@@ -85,21 +88,31 @@ if (__name__ == "__main__") :
   app = wx.App(0)
   frame = wx.Frame(None, -1, "Strings control test")
   panel = wx.Panel(frame, -1, size=(720,400))
+  txt0 = wx.StaticText(panel, -1, "Scatterer:", pos=(20,80))
+  sc_ctrl = ElementCtrl(panel, -1, pos=(200,80), size=(120,-1),
+      name="Scatterer",
+      style=WXTBX_ELEMENTS_CTRL_ALLOW_AX|WXTBX_ELEMENTS_CTRL_ALLOW_CLUSTERS)
   txt1 = wx.StaticText(panel, -1, "Elements:", pos=(20,180))
   elems_ctrl = ElementsCtrl(panel, -1, pos=(200,180), size=(120,-1),
       name="Elements", style=wx.TE_PROCESS_ENTER)
   txt2 = wx.StaticText(panel, -1, "Atom selection:", pos=(20,240))
   sel_ctrl = AtomSelectionCtrl(panel, -1, pos=(200,240), name="Selection")
   def OnUpdate (evt) :
+    print "OnUpdate:"
+    print "  current scatterer:", sc_ctrl.GetPhilValue()
     elems = elems_ctrl.GetPhilValue()
-    print "Current elements:", elems
+    print "  current elements:", elems
     sel = sel_ctrl.GetPhilValue()
-    print "Atom selection:", sel
+    print "  atom selection:", sel
   def OnOkay (evt) :
-    print "elems:", elems_ctrl.GetPhilValue()
-    print "elems phil:", elems_ctrl.GetStringValue()
-    print "selection:", sel_ctrl.GetPhilValue()
-    print "selection phil:", sel_ctrl.GetStringValue()
+    print "OnOkay:"
+    print "  scatterer:", sc_ctrl.GetPhilValue()
+    print "  scatterer phil:", sc_ctrl.GetStringValue()
+    print "  elems:", elems_ctrl.GetPhilValue()
+    print "  elems phil:", elems_ctrl.GetStringValue()
+    print "  selection:", sel_ctrl.GetPhilValue()
+    print "  selection phil:", sel_ctrl.GetStringValue()
+  frame.Bind(phil_controls.EVT_PHIL_CONTROL, OnUpdate, sc_ctrl)
   frame.Bind(phil_controls.EVT_PHIL_CONTROL, OnUpdate, elems_ctrl)
   frame.Bind(phil_controls.EVT_PHIL_CONTROL, OnUpdate, sel_ctrl)
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
