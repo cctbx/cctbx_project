@@ -13,7 +13,10 @@ class StringsCtrl (ValidatedTextCtrl) :
 
   def GetPhilValue (self) :
     self.Validate()
-    return parse_strings(self.GetValue())
+    vals = parse_strings(self.GetValue())
+    if (len(vals) == 0) :
+      return None
+    return vals
 
   def FormatValue (self, value) :
     return " ".join([ str(w) for w in strings_as_words(value) ])
