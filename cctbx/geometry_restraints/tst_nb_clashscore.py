@@ -31,8 +31,13 @@ Test non-bonded clashscore
 
 # Raw data for the test cases
 
-mon_lib_srv = monomer_library.server.server()
-ener_lib = monomer_library.server.ener_lib()
+chem_data = libtbx.env.find_in_repositories(
+  relative_path="chem_data/geostd",
+  test=os.path.isdir)
+
+if chem_data is not None:
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
 
 raw_records0 = """\
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
@@ -658,9 +663,6 @@ class test_nb_clashscore(unittest.TestCase):
 
 
 if (__name__ == "__main__"):
-  chem_data = libtbx.env.find_in_repositories(
-    relative_path="chem_data/geostd",
-    test=os.path.isdir)
   if (chem_data is None) :
     print "chem_data not present, skipping"
   else :
