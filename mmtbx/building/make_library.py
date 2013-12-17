@@ -474,3 +474,79 @@ def extract_and_superpose (
     reference_hierarchy=reference_hierarchy,
     related_chains=related_chains,
     nproc=params.nproc)
+
+def extract_peptide_fragments_by_sequence (
+    pdb_hierarchy,
+    sequence,
+    renumber_from=None,
+    mainchain_only=False,
+    remove_hydrogens=True,
+    reset_chain_id='A',
+    reset_icode=' ') :
+  from iotbx.pdb import amino_acid_codes
+  import iotbx.pdb.hierarchy
+  aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
+  fragments = []
+  def make_hierarchy () :
+    root = iotbx.pdb.hierarchy.root()
+    model = iotbx.pdb.hierarchy.model()
+    chain = iotbx.pdb.hierarchy.chain(id=reset_chain_id)
+    root.append_model(model)
+    model.append_chain(chain)
+    return root
+  def find_next_matching_atom_group (residue_groups, i_res, i_seq) :
+    for next_atom_group in residue_groups[i_res].atom_groups() :
+      seq_code = aa_3_as_1.get(next_atom_group.resname)
+      if (seq_code == sequence[i_seq]) or (sequence[i_seq] in ['.','X']) :
+        return next_atom_group
+    return None
+  for chain in pdb_hierarchy.only_model().chains() :
+    if chain.is_protein() :
+      i_res = 0
+      residue_groups = chain.residue_groups()
+      while (i_res < len(residue_groups)) :
+        atom_group = find_next_matching_atom_group(residue_groups,i_res,0)
+        if (atom_group is not None) :
+          fragment = [atom_group]
+          for i_seq in range(1, len(sequence)) :
+            j_res = i_res + i_seq
+            if (j_res >= len(residue_groups)) :
+              fragment = []
+              break
+            next_atom_group = find_next_matching_atom_group(residue_groups,
+              i_res=j_res, i_seq=i_seq)
+            if (next_atom_group is not None) :
+              fragment.append(next_atom_group)
+            else :
+              fragment = []
+              break
+          if (len(fragment) > 0) :
+            assert len(fragment) == len(sequence)
+            root = make_hierarchy()
+            new_chain = root.only_model().only_chain()
+            for i_group, next_atom_group in enumerate(fragment) :
+              resseq = next_atom_group.parent().resseq
+              icode = next_atom_group.parent().icode
+              if (renumber_from is not None) :
+                resseq = "%4d" % (renumber_from + i_group)
+              if (reset_icode is not None) :
+                icode = reset_icode
+              new_residue_group = iotbx.pdb.hierarchy.residue_group(
+                resseq=resseq,
+                icode=icode)
+              new_chain.append_residue_group(new_residue_group)
+              new_residue_group.append_atom_group(
+                next_atom_group.detached_copy())
+            sel = None
+            sel_cache = root.atom_selection_cache()
+            if (mainchain_only) :
+              sel = sel_cache.selection(
+                "name C or name O or name N or name CA or name CB")
+            elif (remove_hydrogens) :
+              sel = sel_cache.selection("not (element H or element D)")
+            if (sel is not None) :
+              assert (sel.count(True) > 0)
+              root = root.select(sel)
+            fragments.append(root)
+        i_res += 1
+  return fragments
