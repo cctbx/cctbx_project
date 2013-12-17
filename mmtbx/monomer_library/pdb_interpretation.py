@@ -4625,7 +4625,7 @@ class process(object):
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
-        show_nonbonded_clashscore=True,
+        show_nonbonded_clashscore=False,
         hard_minimum_bond_distance_model=0.001,
         hard_minimum_nonbonded_distance=0.001,
         nonbonded_distance_threshold=0.5,
