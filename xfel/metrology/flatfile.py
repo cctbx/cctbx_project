@@ -1053,6 +1053,40 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
       raise RuntimeError("Syntax error")
   stream.close()
 
+  if plot:
+    def center(coords):
+      """ Returns the average of a list of vectors
+      @param coords List of vectors to return the center of
+      """
+      for c in coords:
+        if 'avg' not in locals():
+          avg = c
+        else:
+          avg += c
+      return avg / len(coords)
+
+    print "Showing un-adjusted, parsed metrology"
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Polygon
+    fig = plt.figure()
+    ax = fig.add_subplot(111, aspect='equal')
+    cents = []
+
+    for q_id, quadrant in quadrants.iteritems():
+      s = []
+      for s_id, sensor_pt in quadrant.iteritems():
+        s.append(sensor_pt)
+        if len(s) == 4:
+          ax.add_patch(Polygon([p[0:2] for p in s], closed=True, color='green', fill=False, hatch='/'))
+          cents.append(center(s)[0:2])
+          s = []
+
+    for i, c in enumerate(cents):
+      ax.annotate("%d:%d"%(i//8,i%8),c)
+    ax.set_xlim((0, 200000))
+    ax.set_ylim((0, 200000))
+    plt.show()
+
   # More error checking and resolve out-of-order definitions.
   l_diff = []
   s_diff = []
@@ -1591,10 +1625,37 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
   print "new active areas", len(aa_new), aa_new
 
+
+  if plot:
+    print "Showing active areas"
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Polygon
+    fig = plt.figure()
+    ax = fig.add_subplot(111, aspect='equal')
+    cents = []
+
+    for item in [(aa_new[(i*4)+0],
+                 aa_new[(i*4)+1],
+                 aa_new[(i*4)+2],
+                 aa_new[(i*4)+3]) for i in range(64)]:
+      x1,y1,x2,y2 = item
+      tile = [(x1,y1),(x2,y1),(x2,y2),(x1,y2)]
+      ax.add_patch(Polygon(tile, closed=True, color='green', fill=False, hatch='/'))
+      cents.append(center([matrix.col(p) for p in tile])[0:2])
+
+    for i, c in enumerate(cents):
+      ax.annotate(i,c)
+    ax.set_xlim((0, 2000))
+    ax.set_ylim((0, 2000))
+    plt.show()
+
+
   return quadrants_lsq
 
 
 # phenix.python flatfile.py 2011-08-10-Metrology.txt
 if __name__ == '__main__':
-  #parse_metrology(sys.argv[1],old_style_diff_path='/global/homes/h/hattne/projects/phenix-src/cxi_xdr_xes/cftbx/metrology/CSPad/run4/CxiDs1.0:Cspad.0')
-  parse_metrology(sys.argv[1],old_style_diff_path='/reg/neh/home1/hattne/projects/phenix-src/cxi_xdr_xes/cftbx/metrology/CSPad/run4/CxiDs1.0:Cspad.0')
+  import libtbx.load_env
+  assert len(sys.argv[1:]) == 1
+  parse_metrology(sys.argv[1],
+                  old_style_diff_path=libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0"))
