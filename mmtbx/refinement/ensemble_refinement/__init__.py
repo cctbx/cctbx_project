@@ -237,6 +237,7 @@ ensemble_refinement {
       include scope mmtbx.find_peaks.master_params
     }
   }
+  include scope mmtbx.geometry_restraints.external.external_energy_params_str
 }
 refinement.geometry_restraints.edits
   .short_caption = Edit geometry restraints
@@ -708,7 +709,7 @@ class run_ensemble_refinement(object):
         print >> self.log, "    MC        Time     |  Current  |  Rolling  |   Total   | Temp |  Grad Wxray "
         print >> self.log, "          (ps)     (%) |   Rw   Rf |   Rw   Rf |   Rw   Rf |  (K) |   X/G       "
       print >> self.log, \
-          "~{0:5d} {1:7.2f} {2:7.2f} | {3:2.1f} {4:2.1f} | {5:2.1f} {6:2.1f} | {7:2.1f} {8:2.1f} | {9:4.0f} | {10:5.2f} {11:5.2f}"\
+          "~{0:5d} {1:7.2f} {2:7.2f} | {3:4.1f} {4:4.1f} | {5:4.1f} {6:4.1f} | {7:4.1f} {8:4.1f} | {9:4.0f} | {10:5.2f} {11:5.2f}"\
           .format(self.macro_cycle,
                   self.time,
                   100 * self.time / self.total_time,
@@ -1813,6 +1814,22 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
     raise Sorry("Multiple models not supported.")
   xray_structure = xsfppf.xray_structures[0].deep_copy_scatterers()
 
+  # TODO Amber hooks
+  amber_mdgx_structs = use_amber = None
+  if hasattr(params.ensemble_refinement, "amber") :
+    use_amber = params.ensemble_refinement.amber.use_amber
+    if (use_amber) :
+      amber_params = params.ensemble_refinement.amber
+      import amber_adaptbx
+      make_header("Initializing AMBER", out=log)
+      print >> log, "  topology: %s" % amber_params.topology_file_name
+      amber_mdgx_structs = amber_adaptbx.get_amber_structs(
+        prmtop=amber_params.topology_file_name,
+        ambcrd=amber_params.coordinate_file_name)
+      if (params.hydrogens.refine.lower() == "auto") :
+      #  params.hydrogens.refine = "individual"
+        params.hydrogens.force_riding_adp = True
+
   # Geometry manager
   sctr_keys = \
          xray_structure.scattering_type_registry().type_count_dict().keys()
@@ -1832,7 +1849,9 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
 
   restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,
-      normalization = True)
+      normalization = True,
+      use_amber     = use_amber,
+      amber_mdgx_structs = amber_mdgx_structs)
 
   # Refinement flags
   class rf:
