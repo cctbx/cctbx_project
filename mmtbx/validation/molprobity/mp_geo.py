@@ -64,12 +64,25 @@ def run(args):
          pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
          xray_structure=processed_pdb_file.xray_structure(),
          geometry_restraints_manager=grm)
-  #rc.show(out=out, prefix="  ")
+
+  #get chain types
+  chain_types = {}
+  for chain in processed_pdb_file.all_chain_proxies.\
+                 pdb_hierarchy.models()[0].chains() :
+    chain_id = chain.id
+    main_conf = chain.conformers()[0]
+    if chain_types.get(chain_id) not in ["NA", "PROTEIN"]:
+      if (main_conf.is_na()) :
+        chain_types[chain_id] = "NA"
+      elif (main_conf.is_protein()):
+        chain_types[chain_id] = "PROTEIN"
+      else:
+        chain_types[chain_id] = "UNK"
   outliers = []
   #bonds
   for result in rc.bonds.results:
     atom_info = result.atoms_info[0]
-    # label:chain:number:ins:alt:type:measure:value:sigmas
+    # label:chain:number:ins:alt:type:measure:value:sigmas:class
     atoms_str = get_atoms_str(atoms_info=result.atoms_info)
     altloc = get_altloc(atoms_info=result.atoms_info)
     outliers.append( [atom_info.chain_id,
@@ -79,12 +92,13 @@ def run(args):
                       atom_info.resname,
                       atoms_str,
                       result.model,
-                      result.score] )
+                      result.score,
+                      chain_types[atom_info.chain_id]] )
   #angles
   for result in rc.angles.results:
     #print dir(result)
     atom_info = result.atoms_info[0]
-    # label:chain:number:ins:alt:type:measure:value:sigmas
+    # label:chain:number:ins:alt:type:measure:value:sigmas:class
     atoms_str = get_atoms_str(atoms_info=result.atoms_info)
     altloc = get_altloc(atoms_info=result.atoms_info)
     outliers.append( [atom_info.chain_id,
@@ -94,12 +108,13 @@ def run(args):
                       atom_info.resname,
                       atoms_str,
                       result.model,
-                      result.score] )
+                      result.score,
+                      chain_types[atom_info.chain_id]] )
   #print output
   #print >> out, "#bonds:%d:%d" % (rc.bonds.n_outliers, rc.bonds.n_total)
   #print >> out, "#angles:%d:%d" % (rc.angles.n_outliers, rc.angles.n_total)
   for outlier in outliers:
-    print >> out, "%s:%2s:%s:%s:%s:%s:%s:%.3f:%.3f" % (
+    print >> out, "%s:%2s:%s:%s:%s:%s:%s:%.3f:%.3f:%s" % (
       basename, outlier[0], outlier[1], outlier[2], outlier[3],
-      outlier[4], outlier[5], outlier[6], outlier[7])
+      outlier[4], outlier[5], outlier[6], outlier[7], outlier[8])
   out.close()
