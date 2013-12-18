@@ -304,10 +304,8 @@ class boxes(object):
                unit_cell,
                box_size_step=None,
                box_size_as_unit_cell_fraction=None,
-               show=True,
                log=None,
                prefix=""):
-    if(log is not None): log = sys.stdout
     a,b,c = unit_cell.parameters()[:3]
     self.n_real = n_real
     self.ga,self.gb,self.gc = a/self.n_real[0], b/self.n_real[1], c/self.n_real[2]
@@ -321,7 +319,7 @@ class boxes(object):
     ba,bb,bc = int(box_size_a/self.ga), int(box_size_b/self.gb), int(box_size_c/self.gc)
     nba,nbb,nbc = self.n_real[0]//ba, self.n_real[1]//bb, self.n_real[2]//bc
     nla,nlb,nlc = self.n_real[0]%ba,  self.n_real[1]%bb,  self.n_real[2]%bc
-    if(show):
+    if(log):
       print >> log, prefix, "unit cell edges    :", a, b, c
       print >> log, prefix, "box dimensions     :", box_size_a, box_size_b, box_size_c
       print >> log, prefix, "n1,n2,n3           :", self.n_real
@@ -351,7 +349,6 @@ class boxes(object):
       be_ = self._box_edges(n_real_1d = self.n_real[i], step=b)
       be_ = regroup(be_)
       be.append(be_)
-      if(show): print >> log, prefix, "box edges %d:"%i, be_
     self.starts = []
     self.ends = []
     for i in be[0]:

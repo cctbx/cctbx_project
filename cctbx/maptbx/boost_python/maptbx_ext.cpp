@@ -462,6 +462,17 @@ namespace {
       arg("start"),
       arg("end")));
 
+    def("copy_box",
+      (void(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+         af::ref<double, af::c_grid<3> >,
+         af::tiny<int, 3> const&,
+         af::tiny<int, 3> const&)) copy_box, (
+      arg("map_data_from"),
+      arg("map_data_to"),
+      arg("start"),
+      arg("end")));
+
     def("eight_point_interpolation",
       (double(*)
         (af::const_ref<double, af::c_grid_padded<3> > const&,
