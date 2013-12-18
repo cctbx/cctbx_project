@@ -217,6 +217,29 @@ void set_box(
 }
 
 template <typename DataType>
+void copy_box(
+  af::const_ref<DataType, af::c_grid<3> > const& map_data_from,
+  af::ref<DataType, af::c_grid<3> > map_data_to,
+  af::tiny<int, 3> const& start,
+  af::tiny<int, 3> const& end)
+{
+  af::c_grid<3> a1 = map_data_to.accessor();
+  af::c_grid<3> a2 = map_data_from.accessor();
+  for(int i = 0; i < 3; i++) {
+    CCTBX_ASSERT(a1[i]==a2[i]);
+    CCTBX_ASSERT(start[i]>=0 && start[i]<=a1[i]);
+    CCTBX_ASSERT(end[i]>=0   && end[i]<=a1[i]);
+  }
+  for (int i = start[0]; i < end[0]; i++) {
+    for (int j = start[1]; j < end[1]; j++) {
+      for (int k = start[2]; k < end[2]; k++) {
+        map_data_to(i,j,k) = map_data_from(i,j,k);
+      }
+    }
+  }
+}
+
+template <typename DataType>
 void set_box(
   af::const_ref<DataType, af::c_grid<3> > const& map_data_from,
   af::ref<DataType, af::c_grid<3> > map_data_to,
