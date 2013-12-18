@@ -29,12 +29,16 @@ ATOM     79  OD2BASP A  10      10.016  16.689  26.852  0.50 20.20           O
 
 def exercise_mp_geo():
   open('mp_geo.pdb', 'w').write(pdb_str_1)
-  args = ['mp_geo.pdb', 'mp_geo.out']
+  args = ['pdb=mp_geo.pdb',
+          'out_file=mp_geo.out',
+          'outliers_only=False',
+          'bonds_and_angles=True']
   mp_geo.run(args)
   f = file('mp_geo.out', 'rb')
   lines = f.readlines()
   assert 'mp_geo.pdb: A:  10: :B:ASP:CG--OD1:1.839:31.054:PROTEIN\n' in lines
-  assert 'mp_geo.pdb: A:  10: :B:ASP:OD1-CG-OD2:109.733:5.486:PROTEIN\n' in lines
+  assert \
+    'mp_geo.pdb: A:  10: :B:ASP:OD1-CG-OD2:109.733:5.486:PROTEIN\n' in lines
   f.close()
 
 if (__name__ == "__main__"):
