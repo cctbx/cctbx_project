@@ -149,8 +149,8 @@ def run(args):
   elif do_kinemage:
     print >> out, rc.bonds.kinemage_header
     for result in rc.bonds.results:
-      print >> result.as_kinemage()
+      print >> out, result.as_kinemage()
     print >> out, rc.angles.kinemage_header
     for result in rc.angles.results:
-      print >> result.as_kinemage()
+      print >> out, result.as_kinemage()
   out.close()
