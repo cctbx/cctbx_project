@@ -117,8 +117,8 @@ def convert_detector(raw_data):
     use_v1_2_metrology = True
     if use_v1_2_metrology:
       from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
-      rotations = xpp_active_areas['XPP 1.2.1']['rotations']
-      active_areas = xpp_active_areas['XPP 1.2.1']['active_areas']
+      rotations = xpp_active_areas['XPP 8.1']['rotations']
+      active_areas = xpp_active_areas['XPP 8.1']['active_areas']
       det = flex.double([0]*(1765*1765))
       det.reshape(flex.grid((1765,1765)))
       for i in xrange(64):
