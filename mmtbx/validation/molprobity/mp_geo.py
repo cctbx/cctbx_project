@@ -3,20 +3,38 @@ from __future__ import division
 import os
 from mmtbx.validation import restraints
 from mmtbx.monomer_library import server, pdb_interpretation
-from libtbx.utils import Usage
+import iotbx.phil
 from cStringIO import StringIO
+
+def get_master_phil():
+  return iotbx.phil.parse(
+    input_string="""
+  mp_geo {
+    pdb = None
+      .type = path
+    out_file = None
+      .type = path
+    bonds_and_angles = False
+      .type = bool
+    kinemage = False
+      .type = bool
+    outliers_only = False
+      .type = bool
+  }
+  """,process_includes=True)
 
 def get_bond_and_angle_outliers(
       pdb_hierarchy,
       xray_structure,
       geometry_restraints_manager,
+      outliers_only=False,
       type=None):
   rc = restraints.combined(
          pdb_hierarchy=pdb_hierarchy,
          xray_structure=xray_structure,
          geometry_restraints_manager=geometry_restraints_manager,
          ignore_hd=True,
-         outliers_only=False) #get them all
+         outliers_only=outliers_only)
   return rc
 
 def get_atoms_str(atoms_info):
@@ -41,14 +59,25 @@ def get_altloc(atoms_info):
   return altloc
 
 def run(args):
-  if len(args) != 2:
-    raise Usage(
-      "mmtbx.mp_geo input.pdb out_file")
-  file_name = args[0]
-  out_file = args[1]
+  master_phil = get_master_phil()
+  import iotbx.utils
+  input_objects = iotbx.utils.process_command_line_inputs(
+    args=args,
+    master_phil=master_phil,
+      input_types=("pdb",))
+  work_phil = master_phil.fetch(sources=input_objects["phil"])
+  work_params = work_phil.extract()
+  file_name = work_params.mp_geo.pdb
+  out_file = work_params.mp_geo.out_file
+  do_bonds_and_angles = work_params.mp_geo.bonds_and_angles
+  do_kinemage = work_params.mp_geo.kinemage
+  outliers_only = work_params.mp_geo.outliers_only
   log = StringIO()
   basename = os.path.basename(file_name)
-  out = file(out_file, 'w')
+  if do_bonds_and_angles:
+    out = file(out_file, 'w')
+  if do_kinemage:
+    out = file(out_file, 'a')
   use_neutron_distances = False
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv              = server.server(),
@@ -63,7 +92,8 @@ def run(args):
   rc = get_bond_and_angle_outliers(
          pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
          xray_structure=processed_pdb_file.xray_structure(),
-         geometry_restraints_manager=grm)
+         geometry_restraints_manager=grm,
+         outliers_only=outliers_only)
 
   #get chain types
   chain_types = {}
@@ -110,11 +140,17 @@ def run(args):
                       result.model,
                       result.score,
                       chain_types[atom_info.chain_id]] )
-  #print output
-  #print >> out, "#bonds:%d:%d" % (rc.bonds.n_outliers, rc.bonds.n_total)
-  #print >> out, "#angles:%d:%d" % (rc.angles.n_outliers, rc.angles.n_total)
-  for outlier in outliers:
-    print >> out, "%s:%2s:%s:%s:%s:%s:%s:%.3f:%.3f:%s" % (
-      basename, outlier[0], outlier[1], outlier[2], outlier[3],
-      outlier[4], outlier[5], outlier[6], outlier[7], outlier[8])
+
+  if do_bonds_and_angles:
+    for outlier in outliers:
+      print >> out, "%s:%2s:%s:%s:%s:%s:%s:%.3f:%.3f:%s" % (
+        basename, outlier[0], outlier[1], outlier[2], outlier[3],
+        outlier[4], outlier[5], outlier[6], outlier[7], outlier[8])
+  elif do_kinemage:
+    print >> out, rc.bonds.kinemage_header
+    for result in rc.bonds.results:
+      print >> result.as_kinemage()
+    print >> out, rc.angles.kinemage_header
+    for result in rc.angles.results:
+      print >> result.as_kinemage()
   out.close()
