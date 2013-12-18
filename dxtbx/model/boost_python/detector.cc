@@ -77,7 +77,6 @@ namespace dxtbx { namespace model { namespace boost_python {
     // Export a Detector base class
     class_ <Detector> ("Detector")
       .def(init<const Panel&>())
-      .def(init<const scitbx::af::const_ref<Panel>&>())
       .def("add_panel",
         (Panel&(Detector::*)())&Detector::add_panel,
         return_internal_reference<>())

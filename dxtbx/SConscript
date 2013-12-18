@@ -30,14 +30,10 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       "boost_python/to_ewald_sphere_helpers.cc",
       "boost_python/ext.cpp"])
 
-  pixel_to_millimetre = env.StaticLibrary(
-    target="#/lib/dxtbx_model_pixel_to_millimeter",
-    source=['model/pixel_to_millimeter.cc'])
-
-  env.Prepend(LIBS=['dxtbx_model_pixel_to_millimeter'])
   model = env.SharedLibrary(
     target='#/lib/dxtbx_model_ext', 
     source=[
+      'model/pixel_to_millimeter.cc',
       'model/boost_python/beam.cc',
       'model/boost_python/goniometer.cc',
       'model/boost_python/kappa_goniometer.cc',
@@ -49,8 +45,3 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       'model/boost_python/pixel_to_millimeter.cc',
       'model/boost_python/model_ext.cc'])
       
-  array_family = env.SharedLibrary(
-    target='#/lib/dxtbx_array_family_flex_ext', 
-    source=[
-      'array_family/boost_python/flex_panel.cc',
-      'array_family/boost_python/flex_ext.cc']) 
