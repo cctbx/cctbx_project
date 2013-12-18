@@ -249,10 +249,10 @@ def cxi_versioned_extract(*args):
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.  For the
     # XPP CSPAD, this is effectively correcting for the beam center.
-    working_extract.distl.quad_translations = [0, 0,
-                                               0, 0,
-                                               0, 0,
-                                               0, 0]
+    working_extract.distl.quad_translations = [0, 1,
+                                               0, 1,
+                                               0, 1,
+                                               0, 1]
     return working_extract
 
 
