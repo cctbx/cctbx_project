@@ -264,6 +264,8 @@ def run(args):
     params=work_params,
     log=out)
   scaler.scale_all()
+  if scaler.n_accepted == 0:
+    return None
 # --- End of x scaling
   scaler.uc_values = unit_cell_distribution()
   for icell in xrange(len(scaler.frames["unit_cell"])):
@@ -450,7 +452,7 @@ if (__name__ == "__main__"):
     sys.argv.remove("--plots")
     show_plots = True
   result = run(args=sys.argv[1:])
-  if (show_plots) :
+  if (result is not None and show_plots) :
     try :
       result.plots.show_all_pyplot()
       from wxtbx.command_line import loggraph

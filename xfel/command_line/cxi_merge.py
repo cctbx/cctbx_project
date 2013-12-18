@@ -162,6 +162,8 @@ def get_observations (data_dirs,data_subset):
   print "Step 1.  Get a list of all files"
   file_names = []
   for dir_name in data_dirs :
+    if not os.path.isdir(dir_name):
+      continue
     for file_name in os.listdir(dir_name):
       if (file_name.endswith("_00000.pickle")):
         if data_subset==0 or \
@@ -1285,6 +1287,8 @@ def run(args):
     params=work_params,
     log=out)
   scaler.scale_all(frame_files)
+  if scaler.n_accepted == 0:
+    return None
   scaler.show_unit_cell_histograms()
   if (work_params.rescale_with_average_cell) :
     average_cell_abc = scaler.uc_values.get_average_cell_dimensions()
@@ -1663,7 +1667,7 @@ if (__name__ == "__main__"):
     sys.argv.remove("--plots")
     show_plots = True
   result = run(args=sys.argv[1:])
-  if (show_plots) :
+  if (result is not None and show_plots) :
     try :
       result.plots.show_all_pyplot()
       from wxtbx.command_line import loggraph
