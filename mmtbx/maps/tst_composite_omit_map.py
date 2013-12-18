@@ -121,6 +121,7 @@ def run():
     fmodel           = fmodel.deep_copy(),
     map_type         = "Fo",
     n_debias_cycles  = 1,
+    neutral_colume_box_cushion_width = 0,
     box_size_as_unit_cell_fraction=0.05)
   assert approx_equal(r1.r, r2.r)
   def r_factor(x,y):
