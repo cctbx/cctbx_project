@@ -361,6 +361,65 @@ def metro_phil_to_basis_dict(metro):
 
   return bd
 
+def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, saturations):
+  """ Adds tables to cbf handle that won't already exsist if the cbf file is just a header
+  @ param wavelength Wavelength in angstroms
+  @ param timestamp String formatted timestamp for the image
+  @ param saturations Array of satruation values, one for each element """
+
+  """Data items in the DIFFRN_RADIATION category describe
+   the radiation used for measuring diffraction intensities,
+   its collimation and monochromatization before the sample.
+
+   Post-sample treatment of the beam is described by data
+   items in the DIFFRN_DETECTOR category."""
+  cbf.add_category("diffrn_radiation", ["diffrn_id","wavelength_id","probe"])
+  cbf.add_row(["DS1","WAVELENGTH1","x-ray"])
+
+  """ Data items in the DIFFRN_RADIATION_WAVELENGTH category describe
+   the wavelength of the radiation used in measuring the diffraction
+   intensities. Items may be looped to identify and assign weights
+   to distinct wavelength components from a polychromatic beam."""
+  cbf.add_category("diffrn_radiation_wavelength", ["id","wavelength","wt"])
+  cbf.add_row(["WAVELENGTH1","%f"%wavelength,"1.0"])
+
+  """Data items in the DIFFRN_MEASUREMENT category record details
+   about the device used to orient and/or position the crystal
+   during data measurement and the manner in which the
+   diffraction data were measured."""
+  cbf.add_category("diffrn_measurement",["diffrn_id","id","number_of_axes","method","details"])
+  cbf.add_row(["DS1","INJECTION","0","electrospray","crystals injected by electrospray"])
+
+  """ Data items in the DIFFRN_SCAN category describe the parameters of one
+     or more scans, relating axis positions to frames."""
+  cbf.add_category("diffrn_scan",["id","frame_id_start","frame_id_end","frames"])
+  cbf.add_row(["SCAN1","FRAME1","FRAME1","1"])
+
+  """Data items in the DIFFRN_SCAN_FRAME category describe
+   the relationships of particular frames to scans."""
+  cbf.add_category("diffrn_scan_frame",["frame_id","frame_number","integration_time","scan_id","date"])
+  cbf.add_row(["FRAME1","1","0.0","SCAN1",timestamp])
+
+  """ Data items in the ARRAY_INTENSITIES category record the
+   information required to recover the intensity data from
+   the set of data values stored in the ARRAY_DATA category."""
+  # More detail here: http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/Carray_intensities.html
+  array_names = []
+  cbf.find_category("diffrn_data_frame")
+  while True:
+    try:
+      cbf.find_column("array_id")
+      array_names.append(cbf.get_value())
+      cbf.next_row()
+    except Exception, e:
+      assert "CBF_NOTFOUND" in e.message
+      break
+
+  cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","undefined_value"])
+  for i, array_name in enumerate(array_names):
+    cbf.add_row([array_name,str(i+1),"linear","1.0","0.1",str(saturations[i]),"0.0"])
+
+
 def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, distance, verbose = True, header_only = False):
   assert metro_style in ['calibdir','flatfile','cbf']
   if metro_style == 'calibdir':
@@ -429,24 +488,6 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
   cbf.add_category("diffrn_source", ["diffrn_id","source","type"])
   cbf.add_row(["DS1","xfel","LCLS CXI Endstation"])
 
-  """Data items in the DIFFRN_RADIATION category describe
-   the radiation used for measuring diffraction intensities,
-   its collimation and monochromatization before the sample.
-
-   Post-sample treatment of the beam is described by data
-   items in the DIFFRN_DETECTOR category."""
-  if not header_only:
-    cbf.add_category("diffrn_radiation", ["diffrn_id","wavelength_id","probe"])
-    cbf.add_row(["DS1","WAVELENGTH1","x-ray"])
-
-  """ Data items in the DIFFRN_RADIATION_WAVELENGTH category describe
-   the wavelength of the radiation used in measuring the diffraction
-   intensities. Items may be looped to identify and assign weights
-   to distinct wavelength components from a polychromatic beam."""
-  if not header_only:
-    cbf.add_category("diffrn_radiation_wavelength", ["id","wavelength","wt"])
-    cbf.add_row(["WAVELENGTH1","%f"%wavelength,"1.0"])
-
   """Data items in the DIFFRN_DETECTOR category describe the
    detector used to measure the scattered radiation, including
    any analyser and post-sample collimation."""
@@ -482,25 +523,8 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
   for i, tilename in enumerate(tilestrs):
     cbf.add_row(["FRAME1","ELE_"+tilename,"ARRAY_"+tilename,"%d"%(i+1)])
 
-  """Data items in the DIFFRN_MEASUREMENT category record details
-   about the device used to orient and/or position the crystal
-   during data measurement and the manner in which the
-   diffraction data were measured."""
   if not header_only:
-    cbf.add_category("diffrn_measurement",["diffrn_id","id","number_of_axes","method","details"])
-    cbf.add_row(["DS1","INJECTION","0","electrospray","crystals injected by electrospray"])
-
-  """ Data items in the DIFFRN_SCAN category describe the parameters of one
-     or more scans, relating axis positions to frames."""
-  if not header_only:
-    cbf.add_category("diffrn_scan",["id","frame_id_start","frame_id_end","frames"])
-    cbf.add_row(["SCAN1","FRAME1","FRAME1","1"])
-
-  """Data items in the DIFFRN_SCAN_FRAME category describe
-   the relationships of particular frames to scans."""
-  if not header_only:
-    cbf.add_category("diffrn_scan_frame",["frame_id","frame_number","integration_time","scan_id","date"])
-    cbf.add_row(["FRAME1","1","0.0","SCAN1",timestamp])
+    add_frame_specific_cbf_tables(cbf, wavelength, timestamp, [metro[k].saturation for k in tilekeys])
 
   """Data items in the AXIS category record the information required
      to describe the various goniometer, detector, source and other
@@ -595,15 +619,6 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
 
   # rest of these involve the binary data
   if not header_only:
-
-    """ Data items in the ARRAY_INTENSITIES category record the
-     information required to recover the intensity data from
-     the set of data values stored in the ARRAY_DATA category."""
-    # More detail here: http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/Carray_intensities.html
-    cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","undefined_value"])
-    for i, (tilename, tilekey) in enumerate(zip(tilestrs,tilekeys)):
-      cbf.add_row(["ARRAY_"+ tilename,str(i+1),"linear","1.0","0.1",str(metro[tilekey].saturation),"0.0"])
-
     """ Data items in the ARRAY_STRUCTURE category record the organization and
        encoding of array data in the ARRAY_DATA category."""
     cbf.add_category("array_structure",["id","encoding_type","compression_type","byte_order"])
