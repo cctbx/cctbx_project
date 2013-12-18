@@ -64,7 +64,9 @@ def random_structure (params) :
   element_unit = ['O']*19 + ['N']*18 + ['C']*62 + ['S']*1
   element_pallet = element_unit * (1 + ( target_number_scatterers//len(element_unit) ))
   assert len(element_pallet) >= target_number_scatterers
-  elements = element_pallet[:target_number_scatterers]
+  # XXX Ersatz hard limit to prevent excessive execution time of
+  # xray_structure() below.
+  elements = element_pallet[:min(1000, target_number_scatterers)]
 
   xs = random_structure.xray_structure(
     space_group_info = params.target_space_group,
