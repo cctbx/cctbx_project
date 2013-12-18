@@ -183,9 +183,14 @@ class common_mode_correction(mod_event_info):
         self.logger.error("beginjob(): no config")
     else:
       if self.address == 'XppGon-0|Cspad-0':
-        # need a timestamp to set these.  Set them in event()
-        self.active_areas = None
-        self.beam_center = None
+        evt_time = cspad_tbx.evt_time(evt) # tuple of seconds, milliseconds
+        timestamp = cspad_tbx.evt_timestamp(evt_time) # human readable format
+        from xfel.detector_formats import detector_format_version, reverse_timestamp
+        from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
+        version_lookup = detector_format_version(self.address, reverse_timestamp(timestamp)[0])
+        assert version_lookup is not None
+        self.active_areas = xpp_active_areas[version_lookup]['active_areas']
+        self.beam_center = [1765 // 2, 1765 // 2]
       else:
         (self.beam_center, self.active_areas) = cspad_tbx.cbcaa(
           self.config, self.sections)
