@@ -998,9 +998,9 @@ def exercise_boxing():
   cs=crystal.symmetry(
     unit_cell=(21,37,58,80,111,117),
     space_group_symbol="P1")
-  maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), show=True,
+  maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(),
     box_size_as_unit_cell_fraction=0.1)
-  maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), show=True,
+  maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), 
     box_size_step=10)
 
 def exercise_hoppe_gassman_modification__and__convert_to_non_negative():
@@ -1033,7 +1033,7 @@ def exercise_set_box():
   cs=crystal.symmetry(
     unit_cell=(21,37,58,80,111,117),
     space_group_symbol="P1")
-  be = maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), show=True,
+  be = maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), 
     box_size_as_unit_cell_fraction=0.1)
   #
   m1 = flex.double([-1 for i in xrange(n)])
