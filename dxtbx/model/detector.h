@@ -59,14 +59,6 @@ namespace dxtbx { namespace model {
       panel_list_->push_back(new Panel(panel));
     }
 
-    /** Construct from a list of panels */
-    Detector(const scitbx::af::const_ref<Panel> &panels)
-      : panel_list_(new panel_list_type()) {
-      for (std::size_t i = 0; i < panels.size(); ++i) {
-        panel_list_->push_back(new Panel(panels[i]));
-      }
-    }
-
     /** Virtual destructor */
     virtual ~Detector() {}
 

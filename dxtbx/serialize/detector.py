@@ -1,4 +1,3 @@
-from __future__ import division
 #!/usr/bin/env python
 #
 # dxtbx.serialize.detector.py
@@ -9,6 +8,8 @@ from __future__ import division
 #
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
+
+from __future__ import division
 
 def to_dict(detector):
   ''' Convert the detector model to a dictionary
@@ -36,7 +37,6 @@ def from_dict(d, t=None):
 
   '''
   from dxtbx.model import Detector, HierarchicalDetector
-  from dxtbx.array_family import flex # import dependency
 
   # If None, return None
   if d == None:
