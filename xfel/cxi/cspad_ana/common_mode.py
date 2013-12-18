@@ -155,6 +155,7 @@ class common_mode_correction(mod_event_info):
       gain_dict = easy_pickle.load(gain_map_path)
       self.gain_map = gain_dict['DATA']
       if self.gain_map_level is not None:
+        cspad_tbx.dynamic_range *= self.gain_map_level
         sel = flex.bool([bool(f) for f in self.gain_map])
         sel.reshape(flex.grid(self.gain_map.focus()))
         self.gain_map = self.gain_map.set_selected(~sel, self.gain_map_level)
