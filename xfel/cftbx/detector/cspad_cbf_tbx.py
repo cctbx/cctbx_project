@@ -419,6 +419,43 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, saturations):
   for i, array_name in enumerate(array_names):
     cbf.add_row([array_name,str(i+1),"linear","1.0","0.1",str(saturations[i]),"0.0"])
 
+def copy_cbf_header(src_cbf):
+  """ Given a cbf handle, copy the header tables only to a new cbf handle instance
+  @param src_cbf cbf_handle instance that has the header information
+  @return cbf_wrapper instance with the header information from the source """
+  dst_cbf = cbf_wrapper()
+  dst_cbf.new_datablock("dummy")
+
+  categories = ["diffrn",
+                "diffrn_source",
+                "diffrn_detector",
+                "diffrn_detector_axis",
+                "diffrn_detector_element",
+                "diffrn_data_frame",
+                "array_structure_list",
+                "array_structure_list_axis",
+                "axis",
+                "diffrn_scan_axis",
+                "diffrn_scan_frame_axis"]
+
+  for cat in categories:
+    src_cbf.find_category(cat)
+    columns = []
+    for i in xrange(src_cbf.count_columns()):
+      src_cbf.select_column(i)
+      columns.append(src_cbf.column_name())
+
+    dst_cbf.add_category(cat, columns)
+
+    for i in xrange(src_cbf.count_rows()):
+      src_cbf.select_row(i)
+      row = []
+      for j in xrange(src_cbf.count_columns()):
+        src_cbf.select_column(j)
+        row.append(src_cbf.get_value())
+      dst_cbf.add_row(row)
+
+  return dst_cbf
 
 def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, distance, verbose = True, header_only = False):
   assert metro_style in ['calibdir','flatfile','cbf']
