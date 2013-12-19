@@ -10,6 +10,7 @@ import os
 import sys
 import time
 import libtbx
+from libtbx.utils import Usage
 
 master_phil = libtbx.phil.parse("""
   xtc_dir = None
