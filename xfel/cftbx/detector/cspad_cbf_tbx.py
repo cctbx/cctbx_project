@@ -419,6 +419,58 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, saturations):
   for i, array_name in enumerate(array_names):
     cbf.add_row([array_name,str(i+1),"linear","1.0","0.1",str(saturations[i]),"0.0"])
 
+def add_tiles_to_cbf(cbf, tiles, verbose = False):
+  array_names = []
+  cbf.find_category("diffrn_data_frame")
+  while True:
+    try:
+      cbf.find_column("array_id")
+      array_names.append(cbf.get_value())
+      cbf.next_row()
+    except Exception, e:
+      assert "CBF_NOTFOUND" in e.message
+      break
+
+  """ Data items in the ARRAY_STRUCTURE category record the organization and
+  encoding of array data in the ARRAY_DATA category."""
+  cbf.add_category("array_structure",["id","encoding_type","compression_type","byte_order"])
+  for array_name in array_names:
+    cbf.add_row([array_name,"signed 64-bit real IEEE","canonical","little_endian"])
+
+  """ Data items in the ARRAY_DATA category are the containers for the array data
+  items described in the category ARRAY_STRUCTURE. """
+  cbf.add_category("array_data",["array_id","binary_id","data"])
+
+  if verbose:
+    print "Compressing tiles...",
+
+  for i, (tilekey, array_name) in enumerate(zip(sorted(tiles.keys()), array_names)):
+    focus = tiles[tilekey].focus()
+
+    cbf.add_row([array_name,str(i+1)])
+
+    binary_id = i+1
+    data = tiles[tilekey].as_double().copy_to_byte_str()
+    elsize = 8
+    elements = len(tiles[tilekey])
+    byteorder = "little_endian"
+    dimfast = focus[1]
+    dimmid = focus[0]
+    dimslow = 1
+    padding = 0
+
+    cbf.set_realarray_wdims_fs(\
+      pycbf.CBF_CANONICAL,
+      binary_id,
+      data,
+      elsize,
+      elements,
+      byteorder,
+      dimfast,
+      dimmid,
+      dimslow,
+      padding)
+
 def copy_cbf_header(src_cbf):
   """ Given a cbf handle, copy the header tables only to a new cbf handle instance
   @param src_cbf cbf_handle instance that has the header information
@@ -654,49 +706,8 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
     cbf.add_row(["AXIS_"+tilename+"_F","AXIS_"+tilename+"_F","0.0","%f"%(metro[tilekey].pixel_size[0])])
     cbf.add_row(["AXIS_"+tilename+"_S","AXIS_"+tilename+"_S","0.0","%f"%(metro[tilekey].pixel_size[1])])
 
-  # rest of these involve the binary data
   if not header_only:
-    """ Data items in the ARRAY_STRUCTURE category record the organization and
-       encoding of array data in the ARRAY_DATA category."""
-    cbf.add_category("array_structure",["id","encoding_type","compression_type","byte_order"])
-
-    for tilename in tilestrs:
-      cbf.add_row(["ARRAY_"+tilename,"signed 64-bit real IEEE","canonical","little_endian"])
-
-    """ Data items in the ARRAY_STRUCTURE category record the organization and
-       encoding of array data in the ARRAY_DATA category."""
-    cbf.add_category("array_data",["array_id","binary_id","data"])
-
-    if verbose:
-      print "Compressing tiles...",
-
-    for i, tilekey in enumerate(tilekeys):
-      detector, quadrant, sensor, asic = tilekey
-      focus = tiles[tilekey].focus()
-
-      cbf.add_row(["ARRAY_" + tilestrs[i],str(i+1)])
-
-      binary_id = i+1
-      data = tiles[tilekey].as_double().copy_to_byte_str()
-      elsize = 8
-      elements = len(tiles[tilekey])
-      byteorder = "little_endian"
-      dimfast = focus[1]
-      dimmid = focus[0]
-      dimslow = 1
-      padding = 0
-
-      cbf.set_realarray_wdims_fs(\
-        pycbf.CBF_CANONICAL,
-        binary_id,
-        data,
-        elsize,
-        elements,
-        byteorder,
-        dimfast,
-        dimmid,
-        dimslow,
-        padding)
+    add_tiles_to_cbf(cbf, tiles)
 
   cbf.write_widefile(destpath,pycbf.CBF,\
       pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
