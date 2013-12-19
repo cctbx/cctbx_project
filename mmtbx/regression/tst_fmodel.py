@@ -580,9 +580,87 @@ def exercise_f_model_no_scales(symbol = "C 2"):
   assert approx_equal(flex.mean(fm/fc), 6)
   assert approx_equal(flex.mean(fmns/fc), 1)
 
+def exercise_6_instantiate_consistency(symbol = "C 2"):
+  random.seed(0)
+  flex.set_random_seed(0)
+  for scale in [1.e-4, 1.0, 1.e+4]:
+    for k_sol in [0, 0.3]:
+      for b_sol in [0, 50]:
+        for set_h_occ_to_zero in [True, False]:
+          for update_f_part1_for in [None, "map"]:
+            for apply_scale_to in ["f_obs", "f_model"]:
+              # Simulate Fobs START
+              x = random_structure.xray_structure(
+                space_group_info       = sgtbx.space_group_info(symbol=symbol),
+                elements               =(("O","N","C")*3+("H",)*10),
+                volume_per_atom        = 50,
+                min_distance           = 3,
+                general_positions_only = True,
+                random_u_iso           = True,
+                random_occupancy       = False)
+              x.scattering_type_registry(table="wk1995")
+              x.set_occupancies(value=0.8, selection = x.hd_selection())
+              f_calc = x.structure_factors(d_min = 2.0).f_calc()
+              print f_calc.data().size()
+              mask_manager = mmtbx.masks.manager(miller_array = f_calc)
+              f_mask = mask_manager.shell_f_masks(xray_structure = x)[0]
+              assert flex.mean(abs(f_mask).data()) > 0
+              b_cart=adptbx.random_traceless_symmetry_constrained_b_cart(
+                crystal_symmetry=x.crystal_symmetry())
+              u_star = adptbx.u_cart_as_u_star(x.unit_cell(), adptbx.b_as_u(b_cart))
+              k_anisotropic = mmtbx.f_model.ext.k_anisotropic(f_calc.indices(), u_star)
+              ss = 1./flex.pow2(f_calc.d_spacings().data()) / 4.
+              k_mask = mmtbx.f_model.ext.k_mask(ss, k_sol, b_sol)
+              if(apply_scale_to=="f_model"):
+                k_isotropic = flex.double(f_calc.data().size(), scale)
+              else:
+                k_isotropic = flex.double(f_calc.data().size(), 1)
+              f_model_data = scale*k_anisotropic*(f_calc.data()+k_mask*f_mask.data())
+              f_model = f_calc.customized_copy(data = f_model_data)
+              f_obs = abs(f_model)
+              if(apply_scale_to=="f_obs"):
+                f_obs = f_obs.customized_copy(data = f_obs.data()*scale)
+              r_free_flags = f_obs.generate_r_free_flags()
+              # Simulate Fobs END
+              if(set_h_occ_to_zero):
+                x.set_occupancies(value=0.0, selection = x.hd_selection())
+              x.shake_sites_in_place(mean_distance=5)
+              sel = x.random_remove_sites_selection(fraction=0.3)
+              x = x.select(sel)
+              fmodel = mmtbx.f_model.manager(
+                xray_structure = x,
+                f_obs          = f_obs,
+                r_free_flags   = r_free_flags)
+              fmodel.update_all_scales(fast=True, show=False,
+                update_f_part1_for=update_f_part1_for)
+              f_part1_data = fmodel.f_calc().data()*flex.random_double(
+                fmodel.f_calc().data().size())
+              f_part1 = fmodel.f_calc().customized_copy(data = f_part1_data)
+              fmodel.update(f_part1 = f_part1)
+              r1 = fmodel.r_work()
+              #
+              zero=fmodel.f_calc().customized_copy(data=fmodel.f_calc().data()*0)
+              fmodel_dc  = mmtbx.f_model.manager(
+                f_obs         = fmodel.f_obs(),
+                r_free_flags  = fmodel.r_free_flags(),
+                k_isotropic   = fmodel.k_isotropic(),
+                k_anisotropic = fmodel.k_anisotropic(),
+                f_calc        = fmodel.f_model_no_scales(),
+                f_part1       = fmodel.f_part1(),
+                f_part2       = fmodel.f_part2(),
+                f_mask        = zero)
+              r2 = fmodel_dc.r_work()
+              if(0):
+                print "r1=%8.6f r2=%8.6f fp1=%6.3f fp2=%6.3f fc=%6.3f"%(r1, r2,
+                  flex.mean(abs(fmodel.f_part1()).data()), \
+                  flex.mean(abs(fmodel.f_part2()).data()), \
+                  flex.mean(abs(fmodel.f_calc()).data())), \
+                  "set_h_occ_to_zero=", set_h_occ_to_zero,\
+                  "update_f_part1_for=", update_f_part1_for
+              assert approx_equal(r1, r2), [r1, r2]
 
-def run(args):
-  assert len(args) == 0
+def run():
+  exercise_6_instantiate_consistency()
   exercise_f_model_no_scales()
   exercise_top_largest_f_obs_f_model_differences()
   exercise_5_bulk_sol_and_scaling()
@@ -594,5 +672,4 @@ def run(args):
   print format_cpu_times()
 
 if (__name__ == "__main__"):
-  import sys
-  run(args=sys.argv[1:])
+  run()
