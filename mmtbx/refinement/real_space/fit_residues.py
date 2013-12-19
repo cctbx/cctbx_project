@@ -137,4 +137,4 @@ class manager(object):
         sm.xray_structure.set_sites_cart(sites_cart)
         #print "ref: %6.4f"%(time.time()-t0)
     sm.pdb_hierarchy.adopt_xray_structure(sm.xray_structure)
-    sm.update(xray_structure = sm.xray_structure)
+    sm.update(xray_structure = sm.xray_structure, accept_as_is=False)

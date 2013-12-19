@@ -20,23 +20,34 @@ class easy(object):
         pdb_hierarchy,
         geometry_restraints_manager,
         selection=None,
+        rms_bonds_limit=0.015,
+        rms_angles_limit=2.0,
+        w = None,
         log=None):
     adopt_init_args(self, locals())
-    from mmtbx.refinement.real_space import weight
-    w = weight.run(
-      map_data                    = map_data,
-      xray_structure              = self.xray_structure,
-      pdb_hierarchy               = self.pdb_hierarchy,
-      geometry_restraints_manager = geometry_restraints_manager,
-      log                         = log)
+    es = geometry_restraints_manager.geometry.energies_sites(
+      sites_cart = xray_structure.sites_cart())
+    self.rmsd_angles_start = es.angle_deviations()[2]
+    self.rmsd_bonds_start  = es.bond_deviations()[2]
+    self.w = w
+    if(self.w is None):
+      from mmtbx.refinement.real_space import weight
+      self.w = weight.run(
+        map_data                    = map_data,
+        xray_structure              = self.xray_structure,
+        pdb_hierarchy               = self.pdb_hierarchy,
+        geometry_restraints_manager = geometry_restraints_manager,
+        rms_bonds_limit             = rms_bonds_limit,
+        rms_angles_limit            = rms_angles_limit,
+        log                         = log)
     if(selection is None):
       selection = flex.bool(self.xray_structure.scatterers().size(), True)
     refine_object = simple(
-      target_map = map_data,
-      selection  = selection,
+      target_map                  = map_data,
+      selection                   = selection,
       geometry_restraints_manager = geometry_restraints_manager.geometry)
-    refine_object.refine(weight = w, xray_structure = self.xray_structure)
-    self.rmsd_bonds, self.rmsd_angles = refine_object.rmsds()
+    refine_object.refine(weight = self.w, xray_structure = self.xray_structure)
+    self.rmsd_bonds_final, self.rmsd_angles_final = refine_object.rmsds()
     self.xray_structure=self.xray_structure.replace_sites_cart(
       new_sites=refine_object.sites_cart(), selection=None)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
@@ -227,7 +238,6 @@ class refinery(object):
     elif(weight <= 100. ): self.weight_sample_rate=10.
     elif(weight <= 1000.): self.weight_sample_rate=100.
 
-
 class box_refinement_manager(object):
   def __init__(self,
                xray_structure,
@@ -295,8 +305,7 @@ class box_refinement_manager(object):
     sites_cart_box_refined = real_space_result.sites_cart_result
     sites_cart_box_refined_shifted_back = \
       sites_cart_box_refined + box.shift_to_map_boxed_sites_back
-    sites_cart_refined = sites_cart_box_refined_shifted_back.select(
-                           sel)
+    sites_cart_refined = sites_cart_box_refined_shifted_back.select(sel)
     sites_cart_moving = sites_cart_moving.set_selected(
       iselection, sites_cart_refined)
     self.xray_structure.set_sites_cart(sites_cart_moving)
