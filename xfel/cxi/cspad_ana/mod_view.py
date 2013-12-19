@@ -16,7 +16,6 @@ from __future__ import division
 
 __version__ = "$Revision$"
 
-import Queue
 import multiprocessing
 import thread
 import threading
@@ -28,9 +27,31 @@ from rstbx.viewer.frame import XrayFrame
 from xfel.cxi.cspad_ana import common_mode, cspad_tbx
 
 
+class _ImgDict(NpyImage):
+  """Minimal iotbx detector class for in-memory dictionary
+  representation of NpyImage images.  This class must be defined at
+  the top level of the module so that it can be pickled.
+  """
+
+  def __init__(self, data, parameters):
+    # self.vendortype is required to guess the beam centre convention.
+
+    super(_ImgDict, self).__init__('')
+    self.parameters = parameters
+    self.vendortype = 'npy_raw'
+    self.bin_safe_set_data(data)
+
+  def readHeader(self):
+    pass
+
+  def read(self):
+    pass
+
+
 class _Format(FormatPYunspecified):
   """Minimal Format class for in-memory dxtbx representation of
-  FormatPYunspecified images.
+  FormatPYunspecified images.  This class must be defined at the top
+  level of the module so that it can be pickled.
   """
 
   def __init__(self, **kwargs):
@@ -48,26 +69,6 @@ class _Format(FormatPYunspecified):
 
     from spotfinder.applications.xfel import cxi_phil
     from xfel.detector_formats import detector_format_version
-
-    class _ImgDict(NpyImage):
-      """Minimal iotbx detector class for in-memory dictionary
-      representation of NpyImage images.
-      """
-
-      def __init__(self, data, parameters):
-        """self.vendortype is required to guess the beam centre convention.
-        """
-
-        super(_ImgDict, self).__init__('')
-        self.parameters = parameters
-        self.vendortype = 'npy_raw'
-        self.bin_safe_set_data(data)
-
-      def readHeader(self):
-        pass
-
-      def read(self):
-        pass
 
     # From Format.__init__().
     self._goniometer_factory = goniometer_factory
@@ -276,6 +277,7 @@ def _xray_frame_process(queue, linger=True, wait=None):
   has exited.
   """
 
+  from Queue import Empty
   import rstbx.viewer
 
   # Start the viewer's main loop in its own thread, and get the
@@ -305,10 +307,10 @@ def _xray_frame_process(queue, linger=True, wait=None):
       # if the viewer process exits during this call.  XXX This may be
       # dangerous!
       try:
-        send_data(rstbx.viewer.image(_Format(**payload[0])), payload[1])
+        send_data(rstbx.viewer.image(payload[0]), payload[1])
       except Exception:
         pass
-    except Queue.Empty:
+    except Empty:
       pass
 
 
@@ -327,7 +329,7 @@ class mod_view(common_mode.common_mode_correction):
                **kwds):
     """The mod_view class constructor XXX.
 
-    @param address         Address string XXX Que?!
+    @param address         Full data source address of the DAQ device
     @param calib_dir       Directory with calibration information
     @param common_mode_correction The type of common mode correction to apply
     @param dark_path       Path to input average dark image
@@ -458,19 +460,14 @@ class mod_view(common_mode.common_mode_correction):
       # it a new image, and ensure not to hang if the viewer process
       # exits.  Because of multithreading/multiprocessing semantics,
       # self._queue.empty() is unreliable.
-      #
-      # XXX Could in principle construct the Format object here, but
-      # that will not not work until all the components of a Format
-      # instance are pickleable.
-      img_obj = (dict(BEAM_CENTER=beam_center,
+      fmt = _Format(BEAM_CENTER=beam_center,
                       DATA=self.img_sum / self.nvalid,
                       DETECTOR_ADDRESS=self.address,
                       DISTANCE=distance,
                       PIXEL_SIZE=pixel_size,
                       SATURATED_VALUE=saturated_value,
                       TIME_TUPLE=cspad_tbx.evt_time(evt),
-                      WAVELENGTH=self.wavelength),
-                 title)
+                      WAVELENGTH=self.wavelength)
 
       while not self._queue.empty():
         if not self._proc.is_alive():
@@ -478,7 +475,7 @@ class mod_view(common_mode.common_mode_correction):
           return
       while True:
         try:
-          self._queue.put(img_obj, timeout=1)
+          self._queue.put((fmt, title), timeout=1)
           break
         except Exception:
           pass
