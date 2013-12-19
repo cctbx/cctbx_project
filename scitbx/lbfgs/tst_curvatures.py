@@ -12,12 +12,16 @@ def lbfgs_run(target_evaluator,
               min_iterations=0,
               max_iterations=None,
               traditional_convergence_test=1,
+              traditional_convergence_test_eps=None,
               use_curvatures=False,verbose=False):
   from scitbx import lbfgs as scitbx_lbfgs
   ext = scitbx_lbfgs.ext
   minimizer = ext.minimizer(target_evaluator.n)
   minimizer.error = None
-  if (traditional_convergence_test):
+  if (traditional_convergence_test and traditional_convergence_test_eps is not None):
+    is_converged = ext.traditional_convergence_test(n = target_evaluator.n,
+      eps = traditional_convergence_test_eps)
+  elif (traditional_convergence_test):
     is_converged = ext.traditional_convergence_test(target_evaluator.n)
   else:
     raise RuntimeError
@@ -75,15 +79,22 @@ class lbfgs_with_curvatures_mix_in(object):
             b) last line: call the lbfgs_with_curvatures_mix_in constructor
        2. compute_functional_and_gradients() returns (double functional, flex.double gradients)
        3. curvatures() returns flex.double curvatures == diagonal elements of Hessian matrix
+
+     Exposed variable traditional_convergence_test_eps gives some flexibility
+     to the application program to specify the epsilon value for hitting 
+     convergence.  Choosing the right value avoids unnecessary minimization
+     iterations that optimize the target functional to the last decimal place.
   """
 
   def __init__(self, min_iterations=0, max_iterations=1000,
+        traditional_convergence_test_eps=None,
         use_curvatures=True):
     self.n = len(self.x)
     self.minimizer = lbfgs_run(
         target_evaluator=self,
         min_iterations=min_iterations,
         max_iterations=max_iterations,
+        traditional_convergence_test_eps=traditional_convergence_test_eps,
         use_curvatures=use_curvatures)
 
   def __call__(self, requests_f_and_g, requests_diag):
@@ -125,6 +136,7 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
     lbfgs_with_curvatures_mix_in.__init__(self,
       min_iterations=0,
       max_iterations=1000,
+      traditional_convergence_test_eps=0.1,
       use_curvatures=use_curvatures)
     if self.verbose:
       print ["%8.5f"%a for a in self.x[0::2]]
