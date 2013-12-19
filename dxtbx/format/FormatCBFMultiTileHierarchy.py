@@ -274,10 +274,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
         image.reshape(flex.grid(*image_size))
 
-        if hasattr(image, "iround"):
-          self._raw_data.append(image.iround())
-        else:
-          self._raw_data.append(image)
+        self._raw_data.append(image)
 
         try:
           cbf.next_row()

@@ -25,7 +25,6 @@ class mod_cspad_cbf(mod_event_info):
                address,
                metrology=None,
                dark_path=None,
-               dark_stddev=None,
                mask_path=None,
                gain_map_path=None,
                gain_map_level=None,
@@ -37,8 +36,6 @@ class mod_cspad_cbf(mod_event_info):
     @param address         Address string XXX Que?!
     @param metrology       CBF header containing metrology info
     @param dark_path       Path to input average dark image
-    @param dark_stddev     Path to input standard deviation dark
-                           image, required if @p dark_path is given
     @param mask_path       Path to input mask.  Pixels to mask out should be set to -2
     @param gain_map_path   Path to input gain map.  Multplied times the image.
     @param gain_map_level  If set, all the '1' pixels in the gain_map are set to this multiplier
@@ -49,7 +46,6 @@ class mod_cspad_cbf(mod_event_info):
     super(mod_cspad_cbf, self).__init__(address=address, **kwds)
 
     self.dark_path = cspad_tbx.getOptEvalOrString(dark_path)
-    self.dark_stddev_path = cspad_tbx.getOptEvalOrString(dark_stddev)
     self.mask_path = cspad_tbx.getOptEvalOrString(mask_path)
     gain_map_path = cspad_tbx.getOptString(gain_map_path)
     self.gain_map_level = cspad_tbx.getOptFloat(gain_map_level)
@@ -70,16 +66,8 @@ class mod_cspad_cbf(mod_event_info):
     # ADU scales must match up.
     self.dark_img = None
     if (self.dark_path is not None):
-      assert self.dark_stddev_path is not None
-      #dark_dict = easy_pickle.load(self.dark_path)
-      #assert "ADU_SCALE" not in dark_dict # force use of recalculated dark
-      #self.dark_img = dark_dict['DATA']
-      #assert isinstance(self.dark_img, flex.double)
-
-      #dark_stddev_dict = easy_pickle.load(self.dark_stddev_path)
-      #self.dark_stddev = dark_stddev_dict['DATA']
-      #assert isinstance(self.dark_stddev, flex.double)
-      #self.dark_mask = (self.dark_stddev > 0)
+      reader = Registry.find(self.dark_path)
+      self.dark_img = reader(self.dark_path)
 
     # Load the mask image and ensure it is signed and at least 32 bits
     # wide, since it will be used for differencing.
@@ -92,15 +80,17 @@ class mod_cspad_cbf(mod_event_info):
 
     self.gain_map = None
     if gain_map_path is not None:
-      pass
-      #gain_dict = easy_pickle.load(gain_map_path)
-      #self.gain_map = gain_dict['DATA']
-      #if self.gain_map_level is not None:
-      #  sel = flex.bool([bool(f) for f in self.gain_map])
-      #  sel.reshape(flex.grid(self.gain_map.focus()))
-      #  self.gain_map = self.gain_map.set_selected(~sel, self.gain_map_level)
-      #  self.gain_map = self.gain_map.set_selected(sel, 1)
-      #assert isinstance(self.gain_map, flex.double)
+      reader = Registry.find(gain_map_path)
+      gain_img = reader(gain_map_path)
+      self.gain_map = [gain_img.get_raw_data(i) for i in xrange(len(gain_img.get_detector()))]
+      if self.gain_map_level is not None:
+        cspad_tbx.dynamic_range *= self.gain_map_level
+        for i, map in enumerate(self.gain_map):
+          sel = flex.bool([bool(f) for f in map])
+          sel.reshape(flex.grid(map.focus()))
+          map = map.set_selected(~sel, self.gain_map_level)
+          self.gain_map[i] = map.set_selected(sel, 1)
+      assert False not in [isinstance(map, flex.double) for map in self.gain_map]
 
 
   def beginjob(self, evt, env):
@@ -169,6 +159,18 @@ class mod_cspad_cbf(mod_event_info):
           for a in xrange(2):
             tiles[(0,quad.quad(),s,a)] = flex.double(sensor[:,194*a:194*(a+1)].astype(np.float64))
 
+      # If a dark image was provided, subtract it from the image.
+      if (self.dark_img is not None):
+        assert len(tiles) == len(self.dark_img.get_detector())
+        for i, k in enumerate(sorted(tiles)):
+          tiles[k] -= self.dark_img.get_raw_data(i)
+
+      # If a gain map was provided, multiply it times the image
+      if self.gain_map is not None:
+        assert len(tiles) == len(self.gain_map)
+        for i, k in enumerate(sorted(tiles)):
+          tiles[k] *= self.gain_map[i]
+
       cspad_cbf_tbx.add_tiles_to_cbf(cbf,tiles)
 
       self.logger.info("Processed %s"%self.timestamp)
@@ -183,20 +185,11 @@ class mod_cspad_cbf(mod_event_info):
       self.logger.warning("event(): no image, shot skipped")
       evt.put(True, "skip_event")
       return
-    #self.cspad_img = flex.double(self.cspad_img.astype(numpy.float64))
-
-    # If a dark image was provided, subtract it from the image.  There
-    # is no point in doing common-mode correction unless the dark
-    # image was subtracted.
-    #if (self.dark_img is not None):
-    #  self.cspad_img -= self.dark_img
 
     #if (self.mask_img is not None):
     #  sel = self.mask_img == -2
     #  self.cspad_img.set_selected(sel, -2)
 
-    #if self.gain_map is not None:
-    #  self.cspad_img *= self.gain_map
 
   def endjob(self, env):
     """
