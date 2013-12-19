@@ -472,6 +472,10 @@ class ImageSet(object):
       raise IndexError('Index out of range')
     return self._indices[index]
 
+  def complete_set(self):
+    ''' Return the set of all images (i.e. not just the subset). '''
+    return ImageSet(self.reader(), models=self._models)
+
 
 class SweepFileList(object):
   '''Class implementing a file list interface for sweep templates.'''
@@ -632,6 +636,11 @@ class ImageSweep(ImageSet):
   def set_scan(self, scan):
     ''' Set the scan model. '''
     self._scan = scan
+
+  def complete_set(self):
+    ''' Return the set of all images (i.e. not just the subset). '''
+    return ImageSweep(self.reader(), beam=self._beam, detector=self._detector,
+                      goniometer=self._goniometer, scan=self._scan)
 
   def to_array(self, item=None, panel=0):
     ''' Read all the files in the sweep and convert them into an array
