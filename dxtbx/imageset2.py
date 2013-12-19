@@ -312,7 +312,7 @@ class MultiFileReader(ReaderBase):
 class ImageSet(object):
   ''' A class exposing the external image set interface. '''
 
-  def __init__(self, reader, indices=None):
+  def __init__(self, reader, indices=None, models=None):
     ''' Initialise the ImageSet object.
 
     Params:
@@ -334,10 +334,10 @@ class ImageSet(object):
       self._indices = range(len(self.reader().get_image_paths()))
 
     # Cache the models
-    self._beam = dict()
-    self._detector = dict()
-    self._goniometer = dict()
-    self._scan = dict()
+    if models is None:
+      self._models = dict()
+    else:
+      self._models = models
 
   def __getitem__(self, item):
     ''' Get an item from the image set stream.
@@ -355,7 +355,7 @@ class ImageSet(object):
     '''
     if isinstance(item, slice):
       indices = self._indices[item]
-      return ImageSet(self.reader(), indices)
+      return ImageSet(self.reader(), indices, self._models)
     else:
       return self.reader().read(self._indices[item])
 
@@ -389,57 +389,68 @@ class ImageSet(object):
     ''' Validate all the images in the image set. Can take a long time. '''
     return self.reader().is_valid(self._indices)
 
+  def get_image_models(self, index=None, no_read=False):
+    ''' Get the models for the image.'''
+    path = self.get_path(index)
+    if path not in self._models:
+      models = {}
+      if not no_read:
+        image_index = self._image_index(index)
+        try:
+          models['detector'] = self.reader().get_detector(image_index)
+        except Exception:
+          models['detector'] = None
+        try:
+          models['goniometer'] = self.reader().get_goniometer(image_index)
+        except Exception:
+          models['goniometer'] = None
+        try:
+          models['beam'] = self.reader().get_beam(image_index)
+        except Exception:
+          models['beam'] = None
+        try:
+          models['scan'] = self.reader().get_scan(image_index)
+        except Exception:
+          models['scan'] = None
+      else:
+        models['detector'] = None
+        models['beam'] = None
+        models['goniometer'] = None
+        models['scan'] = None
+      self._models[path] = models
+    return self._models[path]
+
   def get_detector(self, index=None):
     ''' Get the detector. '''
-    path = self.reader().get_path(index)
-    if path not in self._detector:
-      detector = self.reader().get_detector(self._image_index(index))
-      self._detector[path] = detector
-    return self._detector[path]
+    return self.get_image_models(index)['detector']
 
   def set_detector(self, detector, index=None):
     ''' Set the detector model.'''
-    path = self.reader().get_path(index)
-    self._detector[path] = detector
+    self.get_image_models(index)['detector'] = detector
 
   def get_beam(self, index=None):
     ''' Get the beam. '''
-    path = self.reader().get_path(index)
-    if path not in self._beam:
-      beam = self.reader().get_beam(self._image_index(index))
-      self._beam[path] = beam
-    return self._beam[path]
+    return self.get_image_models(index)['beam']
 
   def set_beam(self, beam, index=None):
     ''' Set the beam model.'''
-    path = self.reader().get_path(index)
-    self._beam[path] = beam
+    self.get_image_models(index)['beam'] = beam
 
   def get_goniometer(self, index=None):
     ''' Get the goniometer model. '''
-    path = self.reader().get_path(index)
-    if path not in self._goniometer:
-      goniometer = self.reader().get_goniometer(self._image_index(index))
-      self._goniometer[path] = goniometer
-    return self._goniometer[path]
+    return self.get_image_models(index)['goniometer']
 
   def set_goniometer(self, goniometer, index=None):
     ''' Set the goniometer model. '''
-    path = self.reader().get_path(index)
-    self._goniometer[path] = goniometer
+    self.get_image_models(index)['goniometer'] = goniometer
 
   def get_scan(self, index=None):
     ''' Get the scan model. '''
-    path = self.reader().get_path(index)
-    if path not in self._scan:
-      scan = self.reader().get_scan(self._image_index(index))
-      self._scan[path] = scan
-    return self._scan[path]
+    return self.get_image_models(index)['scan']
 
   def set_scan(self, scan, index=None):
     ''' Set the scan model. '''
-    path = self.reader().get_path(index)
-    self._scan[path] = scan
+    self.get_image_models(index)['scan'] = scan
 
   def get_detectorbase(self, index):
     ''' Get the detector base instance for the given index. '''
@@ -449,10 +460,14 @@ class ImageSet(object):
     ''' Return the image set reader. '''
     return self._reader
 
+  def get_path(self, index):
+    ''' Get the path for the index '''
+    return self.reader().get_path(self._image_index(index))
+
   def _image_index(self, index=None):
     ''' Convert image set index to image index.'''
     if index == None:
-      return None
+      return self._indices[0]
     elif index < 0 or index >= len(self._indices):
       raise IndexError('Index out of range')
     return self._indices[index]

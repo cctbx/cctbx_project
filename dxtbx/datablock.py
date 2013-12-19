@@ -94,10 +94,17 @@ class DataBlock(object):
   def extract_stills(self):
     ''' Extract all the stills as an image set. '''
     from dxtbx.imageset2 import ImageSetFactory
-    stills = [k for k, r in self._images.iteritems() if r.template == None]
-    if len(stills) == 0:
+    filenames, records = zip(*[(k, r) for k, r in self._images.iteritems() if
+                               r.template == None])
+    if len(filenames) == 0:
       return None
-    return ImageSetFactory.make_imageset(stills, self._format_class)
+    imageset = ImageSetFactory.make_imageset(filenames, self._format_class)
+    for i, r in enumerate(records):
+      imageset.set_beam(r.beam, i)
+      imageset.set_detector(r.detector, i)
+      imageset.set_goniometer(r.goniometer, i)
+      imageset.set_scan(r.scan, i)
+    return imageset
 
   def extract_sweeps(self):
     ''' Extract all the sweeps from the block. '''
@@ -260,7 +267,7 @@ class DataBlock(object):
   def iter_still_groups(self):
     ''' Iterate over still groups. '''
     for group, sflag in self.iter_groups():
-      if slag == False:
+      if sflag == False:
         yield group
 
   def to_dict(self):
