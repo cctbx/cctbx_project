@@ -60,10 +60,11 @@ class mod_dump(common_mode.common_mode_correction):
     if device == 'Cspad':
       pixel_size = cspad_tbx.pixel_size
       saturated_value = cspad_tbx.dynamic_range
+      output_filename = self._basename 
     elif device == 'marccd':
       pixel_size = 0.079346
       saturated_value = 2**16 - 1
-      self._basename  += evt.get('mccd_name')
+      output_filename = self._basename + evt.get('mccd_name') + "_"
 
     d = cspad_tbx.dpack(
       active_areas=self.active_areas,
@@ -77,4 +78,7 @@ class mod_dump(common_mode.common_mode_correction):
       timestamp=self.timestamp,
       wavelength=self.wavelength)
 
-    cspad_tbx.dwritef(d, self._dirname, self._basename)
+    cspad_tbx.dwritef(d, self._dirname, output_filename)
+    output_filename = None
+
+
