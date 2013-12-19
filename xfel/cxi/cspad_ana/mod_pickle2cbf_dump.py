@@ -1,6 +1,6 @@
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
-# $Id: mod_cbf_dump.py 18310 2013-09-28 01:05:21Z hattne $
+# $Id: mod_pickle2cbf_dump.py 18310 2013-09-28 01:05:21Z hattne $
 
 """Output image to the file system.
 """
@@ -17,7 +17,7 @@ from parse_calib import calib2sections
 import os
 import libtbx.load_env
 
-class mod_cbf_dump(common_mode.common_mode_correction):
+class mod_pickle2cbf_dump(common_mode.common_mode_correction):
   """Class for outputting cbf images to the file system within the pyana
   analysis framework.
   """
@@ -29,7 +29,7 @@ class mod_cbf_dump(common_mode.common_mode_correction):
                calib_dir=None,
                metrology=None,
                **kwds):
-    """The mod_cbf_dump class constructor stores the parameters passed from
+    """The mod_pickle2cbf_dump class constructor stores the parameters passed from
     the pyana configuration file in instance variables.
 
     @param address      Full data source address of the DAQ device
@@ -48,7 +48,7 @@ class mod_cbf_dump(common_mode.common_mode_correction):
       self._calib_dir = libtbx.env.find_in_repositories(
               "xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
 
-    super(mod_cbf_dump, self).__init__(address=address, calib_dir=self._calib_dir, **kwds)
+    super(mod_pickle2cbf_dump, self).__init__(address=address, calib_dir=self._calib_dir, **kwds)
 
     self._basename = cspad_tbx.getOptString(out_basename)
     self._dirname = cspad_tbx.getOptString(out_dirname)
@@ -64,7 +64,7 @@ class mod_cbf_dump(common_mode.common_mode_correction):
     @param env Environment object
     """
 
-    super(mod_cbf_dump, self).event(evt, env)
+    super(mod_pickle2cbf_dump, self).event(evt, env)
     if (evt.get('skip_event')):
       return
 
