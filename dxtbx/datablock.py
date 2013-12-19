@@ -424,7 +424,10 @@ class DataBlockFactory(object):
       # Add a sweep
       if imageset['__id__'] == 'ImageSweep':
         beam = Beam.from_dict(blist[imageset['beam']])
-        detector = Detector.from_dict(dlist[imageset['detector']])
+        if 'hierarchy' in dlist[imageset['detector']]:
+          detector = HierarchicalDetector.from_dict(dlist[imageset['detector']])
+        else:
+          detector = Detector.from_dict(dlist[imageset['detector']])
         goniometer = Goniometer.from_dict(glist[imageset['goniometer']])
         scan = Scan.from_dict(slist[imageset['scan']])
         template = imageset['template']
