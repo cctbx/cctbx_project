@@ -1,5 +1,4 @@
 from __future__ import division
-#from cctbx.geometry_restraints import manager
 from cctbx.geometry_restraints.manager import nonbonded_clashscore as nb
 from cStringIO import StringIO
 from mmtbx import monomer_library
@@ -7,7 +6,7 @@ import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from cctbx.array_family import flex
 from cctbx import xray
-#from mmtbx import utils
+from libtbx.utils import Sorry
 import libtbx.load_env
 import mmtbx.model
 import unittest
@@ -321,6 +320,15 @@ ATOM      1  N   LYS     3       5.000   5.500   5.500  1.00 20.00           N
 ATOM      1  N   LYS     4       5.000   5.500   5.500  1.00 20.00           N
 """.splitlines()
 
+raw_records6="""\n
+CRYST1   44.060   35.400   48.340  90.00  95.00  90.00 C 1 2 1       8
+HETATM  410  O3' A44 B  17      21.829   8.287   7.189  1.00 36.66           O
+HETATM  411  C2' A44 B  17      23.214   6.318   6.661  1.00 33.97           C
+HETATM  412  O2' A44 B  17      23.644   7.009   5.493  1.00 33.08           O
+HETATM  413  z!# A44 B  17      24.403   5.690   7.395  1.00 32.76           C
+""".splitlines()
+
+
 
 class test_nb_clashscore(unittest.TestCase):
 
@@ -405,11 +413,6 @@ class test_nb_clashscore(unittest.TestCase):
       expected = 127.66
       msg = outstring.format('Total clashscore', expected, nb_clashscore_total)
       self.assertAlmostEqual(nb_clashscore_total, expected, delta=0.1,msg=msg)
-    #
-    #nb_list_all = len(grm.nb_clash_proxies_all_clashes)
-    #expected = 6
-    #msg = outstring.format('Total number of clashes', expected, nb_list_all)
-    #self.assertEqual(nb_list_all, expected, msg=msg)
 
 
   def test_1_5_clash(self):
@@ -587,6 +590,10 @@ class test_nb_clashscore(unittest.TestCase):
     result = nb_clashscore.nb_clashscore_all_clashes
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
+    
+  def test_unknown_pair_type(self):
+    '''Make sure unknown pair types are not processed'''
+    self.assertRaises(Sorry,self.process_raw_records,raw_record_number=6)
 
   def process_raw_records(
     self,
@@ -610,6 +617,7 @@ class test_nb_clashscore(unittest.TestCase):
     elif raw_record_number == 2: records = raw_records2
     elif raw_record_number == 4: records = raw_records4
     elif raw_record_number == 5: records = raw_records5
+    elif raw_record_number == 6: records = raw_records6
     else: print ('Wrong raw_records number')
     # create a geometry_restraints_manager (grm)
     log = StringIO()
