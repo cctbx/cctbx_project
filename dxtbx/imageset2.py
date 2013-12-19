@@ -623,6 +623,7 @@ class ImageSweep(ImageSet):
     return self._scan
 
   def set_beam(self, beam):
+    ''' Set the beam. '''
     self._beam = beam
 
   def set_goniometer(self, goniometer):
