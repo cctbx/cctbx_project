@@ -63,6 +63,7 @@ class mod_dump(common_mode.common_mode_correction):
     elif device == 'marccd':
       pixel_size = 0.079346
       saturated_value = 2**16 - 1
+      self._basename  += evt.get('mccd_name')
 
     d = cspad_tbx.dpack(
       active_areas=self.active_areas,
