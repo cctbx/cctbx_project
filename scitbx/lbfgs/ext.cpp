@@ -297,7 +297,9 @@ struct raw_lbfgs_wrappers
     {
       using namespace boost::python;
       class_<w_t>("traditional_convergence_test")
-        .def(init<std::size_t, optional<double> >())
+        .def(init<std::size_t, optional<double> >((
+          arg("n"),
+          arg("eps")=1.e-5)))
         .def("n", &w_t::n)
         .def("eps", &w_t::eps)
         .def("__call__", call)
