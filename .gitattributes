@@ -1597,6 +1597,7 @@ mmtbx/geometry/boost_python/indexing.hpp -text
 mmtbx/geometry/boost_python/primitive_ext.cpp -text
 mmtbx/geometry/boost_python/shared_types_ext.cpp -text
 mmtbx/geometry/boost_python/sphere_surface_sampling_ext.cpp -text
+mmtbx/geometry/boost_python/topology_ext.cpp -text
 mmtbx/geometry/boost_python/volume_ext.cpp -text
 mmtbx/geometry/clash.hpp -text
 mmtbx/geometry/clash.hxx -text
@@ -1621,7 +1622,9 @@ mmtbx/geometry/tests/tst_clash.py -text
 mmtbx/geometry/tests/tst_primitive.py -text
 mmtbx/geometry/tests/tst_shared_types.py -text
 mmtbx/geometry/tests/tst_sphere_surface_sampling.py -text
+mmtbx/geometry/tests/tst_topology.py -text
 mmtbx/geometry/tests/tst_volume.py -text
+mmtbx/geometry/topology.py -text
 mmtbx/geometry/volume.py -text
 mmtbx/geometry_restraints/SConscript -text
 mmtbx/geometry_restraints/__init__.py -text
