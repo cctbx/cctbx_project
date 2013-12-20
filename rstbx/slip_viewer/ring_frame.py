@@ -144,11 +144,10 @@ class RingSettingsPanel(wx.Panel):
         beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
           detector[0].get_beam_centre(beam.get_s0()))
 
+    avg_distance = -sum([p.get_distance() for p in detector])/len(detector)
 
     beam_pixel_fast += self._center[0]
     beam_pixel_slow += self._center[1]
-
-    data = self._pyslip.tiles.raw_image.get_raw_data()
 
     def PointsOnCircle(center, radius, count):
       for r in range(count):
@@ -168,7 +167,15 @@ class RingSettingsPanel(wx.Panel):
           r /= 2
           total = 0.0
           for point in PointsOnCircle((beam_pixel_fast+i,beam_pixel_slow+j),self._radius+r,360):
-	    total += data[int(round(point[1])),int(round(point[0]))]
+            mm = detector[0].pixel_to_millimeter(point)
+            mm = (mm[0],mm[1],avg_distance)
+            pid = detector.get_panel_intersection(mm)
+            if pid > 0:
+              px = detector[pid].get_ray_intersection_px(mm)
+              px = [int(round(px[0])),int(round(px[1]))]
+              data = self._pyslip.tiles.raw_image.get_raw_data(pid)
+              if px[0] >= 0 and px[0] < data.focus()[1] and px[1] >= 0 and px[1] < data.focus()[0]:
+                total += data[px[1],px[0]]
           if total > best:
             best = total
             bestc = [self._center[0]+i,self._center[1]+j]

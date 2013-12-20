@@ -176,6 +176,20 @@ namespace dxtbx { namespace model {
       return pxy;
     }
 
+    /** finds the panel id with which s1 intersects.  Returns -1 if none do. **/
+    int get_panel_intersection(vec3<double> s1) {
+      int found_panel = -1;
+      for (std::size_t i = 0; i < panel_list_->size(); ++i) {
+        vec2<double> intersection = (*panel_list_)[i].get_ray_intersection(s1);
+        if ((*panel_list_)[i].is_coord_valid_mm(intersection)) {
+          DXTBX_ASSERT(found_panel < 0);
+          found_panel = (int)i;
+        }
+      }
+      return found_panel;
+    }
+
+
     /** Check if any panels intersect */
 //    bool do_panels_intersect() const {
 //      for (std::size_t j = 0; j < panel_list_->size()-1; ++j) {
