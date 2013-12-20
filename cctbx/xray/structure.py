@@ -485,6 +485,7 @@ class structure(crystal.special_position_settings):
     else:
       assert selection.size() == s.size()
       s.set_occupancies(values, selection)
+    return self
 
   def coordinate_degrees_of_freedom_counts(self, selection=None):
     assert selection is None or selection.size() == self._scatterers.size()
