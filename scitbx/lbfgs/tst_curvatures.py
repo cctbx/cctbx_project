@@ -81,7 +81,7 @@ class lbfgs_with_curvatures_mix_in(object):
        3. curvatures() returns flex.double curvatures == diagonal elements of Hessian matrix
 
      Exposed variable traditional_convergence_test_eps gives some flexibility
-     to the application program to specify the epsilon value for hitting 
+     to the application program to specify the epsilon value for hitting
      convergence.  Choosing the right value avoids unnecessary minimization
      iterations that optimize the target functional to the last decimal place.
   """
@@ -136,7 +136,6 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
     lbfgs_with_curvatures_mix_in.__init__(self,
       min_iterations=0,
       max_iterations=1000,
-      traditional_convergence_test_eps=0.1,
       use_curvatures=use_curvatures)
     if self.verbose:
       print ["%8.5f"%a for a in self.x[0::2]]
