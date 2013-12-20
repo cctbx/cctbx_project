@@ -296,38 +296,22 @@ class crystal_gridding_tags(crystal_gridding):
 
 class boxes(object):
   """
-  Split unit cell into boxes where each box is a cube with edge size
-  box_size_as_unit_cell_fraction.
+  Split box defined by n_real into boxes where each box is a fraction of the
+  whole box.
   """
   def __init__(self,
                n_real,
-               unit_cell,
-               box_size_step=None,
-               box_size_as_unit_cell_fraction=None,
+               fraction=None,
                log=None,
                prefix=""):
-    a,b,c = unit_cell.parameters()[:3]
     self.n_real = n_real
-    self.ga,self.gb,self.gc = a/self.n_real[0], b/self.n_real[1], c/self.n_real[2]
-    assert [box_size_step, box_size_as_unit_cell_fraction].count(None) == 1
-    if(box_size_as_unit_cell_fraction is not None):
-      f = box_size_as_unit_cell_fraction**(1./3)
-      box_size_a, box_size_b, box_size_c = a*f, b*f, c*f
-    else:
-      box_size_a, box_size_b, box_size_c = \
-        box_size_step,box_size_step,box_size_step
-    ba,bb,bc = int(box_size_a/self.ga), int(box_size_b/self.gb), int(box_size_c/self.gc)
-    nba,nbb,nbc = self.n_real[0]//ba, self.n_real[1]//bb, self.n_real[2]//bc
-    nla,nlb,nlc = self.n_real[0]%ba,  self.n_real[1]%bb,  self.n_real[2]%bc
+    f = fraction**(1./3)
+    ba,bb,bc = int(n_real[0]*f), int(n_real[1]*f), int(n_real[2]*f)
     if(log):
-      print >> log, prefix, "unit cell edges    :", a, b, c
-      print >> log, prefix, "box dimensions     :", box_size_a, box_size_b, box_size_c
-      print >> log, prefix, "n1,n2,n3           :", self.n_real
-      print >> log, prefix, "step along edges   :", self.ga,self.gb,self.gc
+      print >> log, prefix, "n1,n2,n3 (n_real)  :", n_real
       print >> log, prefix, "points per box edge:", ba,bb,bc
-      print >> log, prefix, "number of boxes    :", (nba+1)*(nbb+1)*(nbc+1)
-      print >> log, prefix, "Vbox/Vcall         :", \
-        box_size_a*box_size_b*box_size_c/unit_cell.volume()
+      print >> log, prefix, "Vbox/Vall          :", \
+        n_real[0]*f*n_real[1]*f*n_real[2]*f/(n_real[0]*n_real[1]*n_real[2])
     def regroup(be):
       maxe = be[len(be)-1][1]
       step = int(maxe/len(be))
@@ -356,6 +340,7 @@ class boxes(object):
         for k in be[2]:
           self.starts.append([i[0],j[0],k[0]])
           self.ends.append([i[1],j[1],k[1]])
+    if(log): print >> log, prefix, "number of boxes    :", len(self.starts)
 
   def _box_edges(self, n_real_1d, step):
     limits = []
@@ -889,9 +874,8 @@ class local_scale(object):
     self.map_result = None
     self.map_coefficients = None
     b = boxes(
-      n_real     = crystal_gridding.n_real(),
-      unit_cell  = crystal_symmetry.unit_cell(),
-      box_size_step = 10)
+      n_real   = crystal_gridding.n_real(),
+      fraction = 0.03)
     # Loop over boxes, fill map_result with one box at a time
     self.map_result = flex.double(flex.grid(b.n_real))
     for s,e in zip(b.starts, b.ends):
