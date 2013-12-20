@@ -199,7 +199,6 @@ def run(args, log = sys.stdout):
   mmtbx_pdb_file = mmtbx.utils.pdb_file(
     pdb_file_names   = pdb_file_names,
     crystal_symmetry = crystal_symmetry,
-    use_elbow        = False,
     log              = sys.stdout)
   if(len(mmtbx_pdb_file.pdb_inp.xray_structures_simple())>1): #XXX support multi-models
     raise Sorry("Multiple model file not supported in this tool.")
