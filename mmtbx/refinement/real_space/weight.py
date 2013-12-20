@@ -14,6 +14,7 @@ def run(
       max_iterations = 100,
       range_size=10,
       n_ranges=10,
+      default_weight=50,
       log=None,
       prefix=""):
   """
@@ -78,7 +79,7 @@ of individual sites.
   sel &= optimal_weights > mean/3
   if(sel.count(True)>0):
     optimal_weights = optimal_weights.select(sel)
-  weight = flex.mean(optimal_weights)
+  weight = flex.mean_default(optimal_weights, default_weight)
   if(log is not None):
     print >> log, "%s overall best weight: %9.4f"%(prefix, weight)
   return weight
