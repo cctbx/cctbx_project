@@ -452,7 +452,9 @@ if (__name__ == "__main__"):
     sys.argv.remove("--plots")
     show_plots = True
   result = run(args=sys.argv[1:])
-  if (result is not None and show_plots) :
+  if result is None:
+    sys.exit(1)
+  if (show_plots) :
     try :
       result.plots.show_all_pyplot()
       from wxtbx.command_line import loggraph
