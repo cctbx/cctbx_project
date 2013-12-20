@@ -23,8 +23,7 @@ class omit_p1_specific(object):
         crystal_gridding,
         fmodel,
         map_type,
-        box_size_as_unit_cell_fraction=None,
-        box_size_step=None):
+        box_size_as_fraction=None):
     sgt = fmodel.f_obs().space_group().type()
     assert sgt.number() == 1
     def get_map(fmodel, map_type, external_complete_set=None):
@@ -45,10 +44,8 @@ class omit_p1_specific(object):
     zero_complex_ma = f_model.customized_copy(
       data = flex.complex_double(f_model.data().size(), 0))
     b = maptbx.boxes(
-      n_real     = f_model_map_data.focus(),
-      unit_cell  = fmodel.f_obs().crystal_symmetry().unit_cell(),
-      box_size_as_unit_cell_fraction = box_size_as_unit_cell_fraction,
-      box_size_step = box_size_step)
+      n_real   = f_model_map_data.focus(),
+      fraction = box_size_as_fraction)
     self.map_result = flex.double(flex.grid(b.n_real))
     self.r = flex.double()
     for s,e in zip(b.starts, b.ends):
@@ -115,14 +112,14 @@ def run():
     crystal_gridding = crystal_gridding,
     fmodel           = fmodel.deep_copy(),
     map_type         = "Fo",
-    box_size_as_unit_cell_fraction=0.05)
+    box_size_as_fraction=0.05)
   r2 = cfom.run(
     crystal_gridding = crystal_gridding,
     fmodel           = fmodel.deep_copy(),
     map_type         = "Fo",
     n_debias_cycles  = 1,
     neutral_colume_box_cushion_width = 0,
-    box_size_as_unit_cell_fraction=0.05)
+    box_size_as_fraction=0.05)
   assert approx_equal(r1.r, r2.r)
   def r_factor(x,y):
     x = flex.abs(abs(x).data())

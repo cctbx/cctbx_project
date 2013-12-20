@@ -18,7 +18,7 @@ class run(object):
         crystal_gridding,
         fmodel,
         map_type,
-        box_size_as_unit_cell_fraction=0.03,
+        box_size_as_fraction=0.03,
         n_debias_cycles=2,
         resolution_factor=0.25,
         neutral_colume_box_cushion_width=1,
@@ -48,10 +48,9 @@ class run(object):
     asu_map = asu_map_ext.asymmetric_map(sgt, f_model_map_data)
     f_model_map_data_asu = asu_map.data()
     b = maptbx.boxes(
-      n_real     = f_model_map_data_asu.focus(),
-      unit_cell  = fmodel.f_obs().crystal_symmetry().unit_cell(),
-      box_size_as_unit_cell_fraction = box_size_as_unit_cell_fraction,
-      log = log)
+      n_real   = f_model_map_data_asu.focus(),
+      fraction = box_size_as_fraction,
+      log      = log)
     self.map_result_asu = flex.double(flex.grid(b.n_real))
     assert f_model_map_data_asu.focus()==b.n_real
     assert b.n_real==self.map_result_asu.focus()
