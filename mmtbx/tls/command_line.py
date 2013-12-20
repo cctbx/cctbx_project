@@ -74,9 +74,6 @@ def run(args, command_name = "phenix.tls"):
     .option("--silent",
       action="store_true",
       help="Suppress output to the screen.")
-    .option("--use_elbow",
-      action="store_false",
-      help="Use eLBOW if there are unknown ligands in PDB file (available in PHENIX only).")
     ).process(args=args)
   #
   log = sys.stdout
@@ -109,7 +106,6 @@ def run(args, command_name = "phenix.tls"):
     pdb_file_names   = processed_args.pdb_file_names,
     cif_objects      = processed_args.cif_objects,
     crystal_symmetry = processed_args.crystal_symmetry,
-    use_elbow        = command_line.options.use_elbow,
     log              = log)
   #
   if(not command_line.options.silent):

@@ -2034,16 +2034,17 @@ class pdb_file(object):
                      crystal_symmetry=None,
                      cif_objects=[],
                      log=None,
-                     use_elbow = False,
+                     ignore_unknown_nonbonded_energy_types=False,
                      use_neutron_distances = False):
     if(log is None): log = sys.stdout
     self.processed_pdb_files_srv = None
     self.processed_pdb_file = None
     self.cif_objects = cif_objects
     self.crystal_symmetry = crystal_symmetry
-    self.use_elbow = use_elbow
     self.pdb_file_names = pdb_file_names
     self.use_neutron_distances = use_neutron_distances
+    self.ignore_unknown_nonbonded_energy_types = \
+      ignore_unknown_nonbonded_energy_types
     pdb_combined = combine_unique_pdb_files(file_names = pdb_file_names)
     pdb_combined.report_non_unique(out = log)
     if(len(pdb_combined.unique_file_names) == 0):
@@ -2055,39 +2056,7 @@ class pdb_file(object):
       self.pdb_inp.crystal_symmetry(crystal_symmetry = crystal_symmetry)
 
   def set_ppf(self, stop_if_duplicate_labels=True, log=None):
-    if (log is None) :
-      log = StringIO()
-    # XXX do not write a file
-    if(len(self.cif_objects) == 0 and self.use_elbow):
-      t = time.ctime().split() # to make it safe to remove files
-      time_stamp = "_"+t[4]+"_"+t[1].upper()+"_"+t[2]+"_"+t[3][:-3].replace(":","h")
-      prefix = os.path.basename(self.pdb_file_names[0])
-      from elbow.scripts import elbow_on_pdb_file
-      from elbow.command_line import join_cif_files
-      if len(sys.argv)>1: del sys.argv[1:]
-      rc = elbow_on_pdb_file.run("\n".join(self.pdb_raw_records),
-                                 model_vs_data=True,
-                                 silent=True,
-                                 )
-      cif_file = prefix+time_stamp+".cif"
-      if rc is not None:
-        # XXX now there are three return values
-        hierarchy, cifs, something_else = rc
-        if cifs:
-          cif_lines = []
-          for key in cifs:
-            lines = cifs[key]
-            if lines:
-              cif_lines.append(lines)
-          rc = join_cif_files.run(cif_lines, cif_file, no_file_access=True)
-          if rc:
-            f=file(cif_file, "wb")
-            f.write(rc)
-            f.close()
-      if(os.path.isfile(cif_file)):
-        self.cif_objects.append((cif_file,
-          mmtbx.monomer_library.server.read_cif(file_name = cif_file)))
-    # XXX
+    if(log is None): log = StringIO()
     pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
     pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
     pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
@@ -2103,6 +2072,11 @@ class pdb_file(object):
     self.processed_pdb_file, self.pdb_inp = \
       self.processed_pdb_files_srv.process_pdb_files(raw_records =
         self.pdb_raw_records, stop_if_duplicate_labels = stop_if_duplicate_labels)
+    msg = self.processed_pdb_file.all_chain_proxies.fatal_problems_message(
+      ignore_unknown_scattering_types=False,
+      ignore_unknown_nonbonded_energy_types=
+        self.ignore_unknown_nonbonded_energy_types)
+    if(msg is not None): raise Sorry(msg)
 
 def model_simple(pdb_file_names,
                  log = None,
@@ -2111,18 +2085,13 @@ def model_simple(pdb_file_names,
                  crystal_symmetry = None,
                  plain_pairs_radius = 5,
                  refinement_flags = None,
-                 use_elbow = True,
                  scattering_table = None,
                  d_min = None):
-  #
-  if (not libtbx.env.has_module("elbow")) :
-    use_elbow = False
   cryst1 = None
   mmtbx_pdb_file = pdb_file(
     pdb_file_names   = pdb_file_names,
     cif_objects      = cif_objects,
     crystal_symmetry = crystal_symmetry,
-    use_elbow        = use_elbow,
     log              = log)
   mmtbx_pdb_file.set_ppf()
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
