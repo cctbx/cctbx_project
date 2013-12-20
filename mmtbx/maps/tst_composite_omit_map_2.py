@@ -107,7 +107,7 @@ def run(args):
       crystal_gridding = crystal_gridding,
       fmodel = fmodel.deep_copy(),
       n_debias_cycles = i,
-      box_size_as_unit_cell_fraction = 0.01)
+      box_size_as_fraction = 0.01)
     mco = oo.map_coefficients
     print i, get_cc(mc1=mco, mc2=F, xrs=xrs1),\
              get_cc(mc1=mco, mc2=F, xrs=xrs2)
