@@ -26,9 +26,9 @@ class TestGraph(unittest.TestCase):
 
   def test_manipulation(self):
 
-    self.assertEqual( self.graph.add_vertex( name = "CA" ), 0 )
-    self.assertEqual( self.graph.add_vertex( name = "C" ), 1 )
-    self.assertEqual( self.graph.add_vertex( name = "C" ), 2 )
+    self.assertEqual( self.graph.add_vertex( label = "CA" ), 0 )
+    self.assertEqual( self.graph.add_vertex( label = "C" ), 1 )
+    self.assertEqual( self.graph.add_vertex( label = "C" ), 2 )
 
     res = self.graph.add_edge( vertex1 = 0, vertex2 = 1, weight = 1.5 )
     self.assertEqual( len( res ), 2 )
@@ -89,10 +89,13 @@ class TestGraph(unittest.TestCase):
 
     callback = collector()
 
+    import operator
+
     topology.mcgregor_common_subgraphs_unique(
       graph1 = leu,
       graph2 = asn,
-      tolerance = 0.1,
+      vertex_equality = operator.eq,
+      edge_equality = lambda l, r: abs( l - r ) <= 0.1,
       callback = callback,
       )
     self.assertEqual( len( callback.collected ), 13 )

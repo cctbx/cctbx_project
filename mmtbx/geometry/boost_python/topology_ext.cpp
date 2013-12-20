@@ -9,7 +9,6 @@
 #include <boost/graph/mcgregor_common_subgraphs.hpp>
 
 #include <string>
-#include <cmath>
 #include <utility>
 
 namespace mmtbx
@@ -67,82 +66,84 @@ bool operator()(
 
 };
 
-template< typename PropertyMapFirst, typename PropertyMapSecond, typename FloatType >
-class distance_map_equivalent
+template< typename PropertyMapFirst, typename PropertyMapSecond >
+class python_property_equivalent
 {
 private:
   const PropertyMapFirst m_property_map1;
   const PropertyMapSecond m_property_map2;
-  FloatType m_tolerance;
+  boost::python::object m_callable;
 
 public:
 
-distance_map_equivalent(
+python_property_equivalent(
   PropertyMapFirst const property_map1,
   PropertyMapSecond const property_map2,
-  FloatType const& tolerance
+  boost::python::object callable
   )
   : m_property_map1( property_map1 ), m_property_map2( property_map2 ),
-    m_tolerance( tolerance )
+    m_callable( callable )
 {}
 
 template< typename ItemFirst, typename ItemSecond >
 bool operator()(ItemFirst const item1, ItemSecond const item2)
 {
-  typename PropertyMapFirst::value_type distance1 = get(m_property_map1, item1);
-  typename PropertyMapSecond::value_type distance2 = get(m_property_map2, item2);
+  typename PropertyMapFirst::value_type property1 = get(m_property_map1, item1);
+  typename PropertyMapSecond::value_type property2 = get(m_property_map2, item2);
 
-  return std::fabs( distance1 - distance2 ) < m_tolerance;
+  return m_callable( property1, property2 );
 }
 
 };
 
-template< typename PropertyMapFirst, typename PropertyMapSecond, typename FloatType >
-distance_map_equivalent< PropertyMapFirst, PropertyMapSecond, FloatType >
-make_distance_map_equivalent(
+template< typename PropertyMapFirst, typename PropertyMapSecond >
+python_property_equivalent< PropertyMapFirst, PropertyMapSecond >
+make_python_property_equivalent(
   PropertyMapFirst const property_map1,
   PropertyMapSecond const property_map2,
-  FloatType const& tolerance
+  boost::python::object callable
   )
 {
-  return distance_map_equivalent<PropertyMapFirst, PropertyMapSecond, FloatType>(
+  return python_property_equivalent< PropertyMapFirst, PropertyMapSecond >(
     property_map1,
     property_map2,
-    tolerance
+    callable
     );
 }
 
-template< typename GraphType, typename FloatType >
+template< typename GraphType >
 void
 mcgregor_subgraphs(
   GraphType const& graph1,
   GraphType const& graph2,
-  FloatType const& tolerance,
-  boost::python::object callable
+  boost::python::object vertex_equality,
+  boost::python::object edge_equality,
+  boost::python::object callback
   )
 {
   // Vertex equality
   typedef typename boost::property_map< GraphType, boost::vertex_name_t>::const_type vertex_name_map_t;
-  typedef boost::property_map_equivalent< vertex_name_map_t, vertex_name_map_t > vertex_comp_t;
-  vertex_comp_t vertex_comp = boost::make_property_map_equivalent(
+  typedef python_property_equivalent< vertex_name_map_t, vertex_name_map_t > vertex_comp_t;
+  vertex_comp_t vertex_comp = make_python_property_equivalent(
     boost::get( boost::vertex_name_t(), graph1 ),
-    boost::get( boost::vertex_name_t(), graph2 )
+    boost::get( boost::vertex_name_t(), graph2 ),
+    vertex_equality
     );
 
   // Edge equality
   typedef typename boost::property_map< GraphType, boost::edge_weight_t >::const_type edge_weight_map_t;
-  typedef distance_map_equivalent< edge_weight_map_t, edge_weight_map_t, FloatType > edge_comp_t;
-  edge_comp_t edge_comp = make_distance_map_equivalent(
+  typedef python_property_equivalent< edge_weight_map_t, edge_weight_map_t > edge_comp_t;
+  edge_comp_t edge_comp = make_python_property_equivalent(
     boost::get( boost::edge_weight_t(), graph1 ),
     boost::get( boost::edge_weight_t(), graph2 ),
-    tolerance
+    edge_equality
     );
 
   // Callback
   mcg_python_callback_adaptor< GraphType, GraphType > mcg_callback(
     graph1,
     graph2,
-    callable
+    callback
     );
 
   boost::mcgregor_common_subgraphs_unique(
@@ -217,22 +218,24 @@ static void wrap()
 
   class_< graph_type >( "graph", no_init )
     .def( init<>() )
-    .def( "add_vertex", &add_vertex, arg( "name" ) )
+    .def( "add_vertex", &add_vertex, arg( "label" ) )
     .def( "add_edge", &add_edge, ( arg( "vertex1" ), arg( "vertex2" ), arg( "weight" ) ) )
     ;
 
   void (*mcsg_unique_ptr)(
     graph_type const&,
     graph_type const&,
-    WeightType const&,
+    boost::python::object,
+    boost::python::object,
     boost::python::object
     ) =
-    &mcgregor_subgraphs< graph_type, WeightType >;
+    &mcgregor_subgraphs< graph_type >;
 
   def(
     "mcgregor_common_subgraphs_unique",
     mcsg_unique_ptr,
-    ( arg( "graph1" ), arg( "graph2" ), arg( "tolerance" ), arg( "callback" ) )
+    ( arg( "graph1" ), arg( "graph2" ),
+      arg( "vertex_equality" ), arg( "edge_equality" ), arg( "callback" ) )
     );
 }
 
@@ -245,5 +248,5 @@ static void wrap()
 
 BOOST_PYTHON_MODULE(mmtbx_geometry_topology_ext)
 {
-  mmtbx::geometry::graph::python_exports< std::string, double >::wrap();
+  mmtbx::geometry::graph::python_exports< boost::python::object, boost::python::object >::wrap();
 }
