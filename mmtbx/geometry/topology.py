@@ -5,6 +5,7 @@ ext = boost.python.import_ext( "mmtbx_geometry_topology_ext" )
 from mmtbx_geometry_topology_ext import *
 
 import math
+import operator
 
 class Atom(object):
   """
@@ -30,7 +31,7 @@ class Molecule(object):
 
   def add(self, atom):
 
-    descriptor = self.graph.add_vertex( name = atom.label )
+    descriptor = self.graph.add_vertex( label = atom.label )
     ( x2, y2, z2 ) = atom.coordinates
     assert descriptor not in self.atom_for
 
@@ -57,7 +58,15 @@ class Match(object):
   Geometry and label-based correspondence matching
   """
 
-  def __init__(self, molecule1, molecule2, is_valid, tolerance = 0.1, maxsteps = 500):
+  def __init__(
+    self,
+    molecule1,
+    molecule2,
+    is_valid,
+    maxsteps = 500,
+    vertex_equality = operator.eq,
+    edge_equality = operator.eq
+    ):
 
     self.molecule1 = molecule1.atom_for
     self.molecule2 = molecule2.atom_for
@@ -69,7 +78,8 @@ class Match(object):
     mcgregor_common_subgraphs_unique(
       graph1 = molecule1.graph,
       graph2 = molecule2.graph,
-      tolerance = tolerance,
+      vertex_equality = vertex_equality,
+      edge_equality = edge_equality,
       callback = self,
       )
 
@@ -86,11 +96,8 @@ class Match(object):
     if len( match ) <= len( self.best ):
       self.steps += 1
 
-    elif self.is_valid(
-      molecule1 = self.molecule1,
-      molecule2 = self.molecule2,
-      match = match,
-      ):
+    elif ( self.is_valid( ( self.molecule1[ m[0] ] for m in match ) )
+      and self.is_valid( ( self.molecule2[ m[1] ] for m in match ) ) ):
       self.best = match
       self.steps = 0
 
@@ -100,12 +107,9 @@ class Match(object):
     return self.steps <= self.maxsteps
 
 
-def is_valid_sidechain(molecule1, molecule2, match):
+def is_valid_sidechain(molecule):
 
-  return (
-    ( "CA" in set( [ molecule1[ m[0] ].label for m in match ] ) )
-    and ( "CA" in set( [ molecule2[ m[1] ].label for m in match] ) )
-    )
+  return any( m.label == "CA" for m in molecule )
 
 
 def sidechain_match(molecule1, molecule2, tolerance = 0.1):
@@ -114,7 +118,7 @@ def sidechain_match(molecule1, molecule2, tolerance = 0.1):
     molecule1 = molecule1,
     molecule2 = molecule2,
     is_valid = is_valid_sidechain,
-    tolerance = tolerance,
+    edge_equality = lambda l, r: abs( l - r ) <= tolerance,
     )
 
   return m.remapped()
