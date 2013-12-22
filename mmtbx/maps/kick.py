@@ -5,6 +5,8 @@ from mmtbx import map_tools
 from cctbx import miller
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
+import mmtbx.f_model
+from cctbx import maptbx
 
 def get_map(map_coeffs, crystal_gridding):
   fft_map = miller.fft_map(
@@ -226,6 +228,7 @@ class run(object):
     m = intersect(m, md_com1, use_average=False)
     m = intersect(m, md_com2, use_average=False)
     # final: experimental (m2)
+    #  cut obvious noise
     m2 = m.deep_copy()
     maptbx.reset(
       data=m2,
@@ -233,13 +236,21 @@ class run(object):
       less_than_threshold=0.5,
       greater_than_threshold=-9999,
       use_and=True)
-    for i in xrange(3): # may not be needed given that unsharp mask is used below
+    #  smooth binary edges
+    for i in xrange(3): # may not be needed given that unsharp mask is used below?
       maptbx.map_box_average(
         map_data   = m2,
         cutoff     = 0.6,
         index_span = 1)
+    # should I repear maptbx.reset() again?
+    #  deblur using unsharp mask
+    #  equalize histogram
     maptbx.sharpen(map_data=m2, index_span=1, n_averages=2)
     # final, real final (m)
+    
+    m  = maptbx.volume_scale(map = m,  n_bins = 10000).map_data()
+    m2 = maptbx.volume_scale(map = m2, n_bins = 10000).map_data()
+    
     self.mc_result  = self.map_coeffs_from_map(map_data=m)
     self.mc_result2 = self.map_coeffs_from_map(map_data=m2)
 
