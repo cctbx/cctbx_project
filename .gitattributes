@@ -1692,6 +1692,7 @@ mmtbx/map_tools.py -text
 mmtbx/maps/__init__.py -text
 mmtbx/maps/composite_omit_map.py -text
 mmtbx/maps/fobs_minus_fobs_map.py -text
+mmtbx/maps/kick.py -text
 mmtbx/maps/superpose.py -text
 mmtbx/maps/tst_composite_omit_map.py -text
 mmtbx/maps/tst_composite_omit_map_2.py -text
