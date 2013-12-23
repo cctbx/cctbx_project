@@ -7,6 +7,7 @@ from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 import mmtbx.f_model
 from cctbx import maptbx
+import mmtbx.maps.composite_omit_map
 
 def get_map(map_coeffs, crystal_gridding):
   fft_map = miller.fft_map(
@@ -42,7 +43,7 @@ def randomize_struture_factors(map_coeffs, number_of_kicks, phases_only=False):
                                 (0.7, 0.04, 4),
                                 (0.8, 0.03, 3),
                                 (0.9, 0.02, 2),
-                                (1.0, 0.01, 1),
+                                (1.0, 0.01, 1)
                                ])
     if(phases_only): ar = 0
     sel = flex.random_bool(map_coeffs.size(), rc)
@@ -227,32 +228,8 @@ class run(object):
     m = intersect(m, md_fm,   use_average=True)
     m = intersect(m, md_com1, use_average=False)
     m = intersect(m, md_com2, use_average=False)
-    # final: experimental (m2)
-    #  cut obvious noise
-    m2 = m.deep_copy()
-    maptbx.reset(
-      data=m2,
-      substitute_value=0.0,
-      less_than_threshold=0.5,
-      greater_than_threshold=-9999,
-      use_and=True)
-    #  smooth binary edges
-    for i in xrange(3): # may not be needed given that unsharp mask is used below?
-      maptbx.map_box_average(
-        map_data   = m2,
-        cutoff     = 0.6,
-        index_span = 1)
-    # should I repear maptbx.reset() again?
-    #  deblur using unsharp mask
-    #  equalize histogram
-    maptbx.sharpen(map_data=m2, index_span=1, n_averages=2)
-    # final, real final (m)
-    
-    m  = maptbx.volume_scale(map = m,  n_bins = 10000).map_data()
-    m2 = maptbx.volume_scale(map = m2, n_bins = 10000).map_data()
-    
-    self.mc_result  = self.map_coeffs_from_map(map_data=m)
-    self.mc_result2 = self.map_coeffs_from_map(map_data=m2)
+    self.map_data_result = m
+    self.mc_result  = self.map_coeffs_from_map(map_data=self.map_data_result)
 
   def write_mc(self, file_name="mc.mtz"):
     mtz_dataset = self.mc_orig.as_mtz_dataset(column_root_label="mc_orig")
@@ -271,11 +248,6 @@ class run(object):
     mtz_dataset.add_miller_array(
       miller_array=self.mc_result,
       column_root_label="mc_result")
-
-    mtz_dataset.add_miller_array(
-      miller_array=self.mc_result2,
-      column_root_label="mc_result2")
-
     mtz_object = mtz_dataset.mtz_object()
     mtz_object.write(file_name = file_name)
 
@@ -296,140 +268,3 @@ class run(object):
         xray_structure = fmodel.xray_structure)
       fmodel.update_all_scales(update_f_part1_for="refinement")
     return fmodel
-
-
-#    mc_1 = oo.map_coefficients
-#    self.complete_set = mc_1
-#    self.partial_set = mc_1
-#
-#    #self.complete_set = map_tools.electron_density_map(
-#    #  fmodel=fmodel).map_coefficients(
-#    #    map_type            = self.map_type,
-#    #    isotropize          = True,
-#    #    fill_missing        = True,
-#    #    fill_missing_method = fill_mode)
-#    #self.partial_set = map_tools.electron_density_map(
-#    #  fmodel=fmodel).map_coefficients(
-#    #    map_type     = self.map_type,
-#    #    isotropize   = True,
-#    #    fill_missing = False)
-#    self.missing = self.complete_set.lone_set(self.partial_set)
-#    # initialize result map
-#    map_data = None
-#    # utility function
-#    def compute_map_and_combine(map_coeffs, crystal_gridding, map_data):
-#      fft_map = miller.fft_map(
-#        crystal_gridding     = crystal_gridding,
-#        fourier_coefficients = map_coeffs)
-#      fft_map.apply_sigma_scaling()
-#      m = fft_map.real_map_unpadded()
-#      if(mask_data is not None):
-#        maptbx.remove_single_node_peaks(
-#          map_data   = m,
-#          mask_data  = mask_data,
-#          cutoff     = 1,
-#          index_span = 2)
-#      if(map_data is None): map_data = m
-#      else:
-#        for i in [0,0.1,0.2,0.3,0.4,0.5]:
-#          maptbx.intersection(
-#            map_data_1 = m,
-#            map_data_2 = map_data,
-#            threshold  = i)
-#        map_data = (m+map_data)/2
-#      return map_data
-#    # shake Fmap
-#    if(shake_f_map):
-#      print "shake map coefficients cycles:"
-#      for it in xrange(macro_cycles):
-#        print "  %d"%it
-#        if(0): # may need do this if filling mode is f_model
-#          sel = flex.random_bool(self.missing.data().size(), 0.5)
-#          missing = self.missing.select(sel)
-#          missing = missing.randomize_amplitude_and_phase(
-#            amplitude_error=0.1,
-#            phase_error_deg=60)
-#        else: missing = self.missing
-#        mc = self.call_run_kick_loop(map_coeffs=self.partial_set)
-#        mc = mc.complete_with(other=missing, scale=True)
-#        if(shake_completeness):
-#          mc = mc.select(flex.random_bool(mc.size(), 0.95))
-#        map_data = compute_map_and_combine(
-#          map_coeffs       = mc,
-#          crystal_gridding = crystal_gridding,
-#          map_data         = map_data)
-#    # shake Fmodel
-#    if(shake_f_model):
-#      print "shake f_model cycles:"
-#      f_model = fmodel.f_model_no_scales()
-#      zero = fmodel.f_calc().customized_copy(data = fmodel.f_calc().data()*0)
-#      fmodel_dc  = mmtbx.f_model.manager(
-#        f_obs         = fmodel.f_obs(),
-#        r_free_flags  = fmodel.r_free_flags(),
-#        k_isotropic   = fmodel.k_isotropic(),
-#        k_anisotropic = fmodel.k_anisotropic(),
-#        f_calc        = fmodel.f_model_no_scales(),
-#        f_part1       = fmodel.f_part1(),
-#        f_part2       = fmodel.f_part2(),
-#        f_mask        = zero)
-#      r1 = fmodel.r_work()
-#      r2 = fmodel_dc.r_work()
-#      assert approx_equal(r1, r2, 1.e-4), [r1, r2]
-#      def get_mc(fm):
-#       return fm.electron_density_map(
-#         update_f_part1=False).map_coefficients(
-#           map_type     = self.map_type,
-#           isotropize   = True,
-#           fill_missing = False)
-#      for it in xrange(macro_cycles):
-#        print "  %d"%it
-#        f_model_kick = self.call_run_kick_loop(map_coeffs=f_model)
-#        fmodel_dc = self.recreate_r_free_flags(fmodel = fmodel_dc)
-#        fmodel_dc.update(f_calc = f_model_kick)
-#        mc = get_mc(fm=fmodel_dc)
-#        if(0): # may need do this if filling mode is f_model
-#          sel = flex.random_bool(self.missing.data().size(), 0.5)
-#          missing = self.missing.select(sel)
-#          missing = missing.randomize_amplitude_and_phase(
-#            amplitude_error=0.1,
-#            phase_error_deg=60)
-#        else: missing = self.missing
-#        mc = mc.complete_with(missing, scale=True)
-#        if(shake_completeness):
-#          mc = mc.select(flex.random_bool(mc.size(), 0.95))
-#        map_data = compute_map_and_combine(
-#          map_coeffs       = mc,
-#          crystal_gridding = crystal_gridding,
-#          map_data         = map_data)
-#    # XXX see what it does to waters
-#    if(mask_data is not None):
-#      maptbx.remove_single_node_peaks(
-#        map_data   = map_data,
-#        mask_data  = mask_data,
-#        cutoff     = 1,
-#        index_span = 2)
-#    #
-#    for i in xrange(3):
-#      maptbx.map_box_average(
-#        map_data   = map_data,
-#        cutoff     = 0.5,
-#        index_span = 1)
-#    # set to zero negative map values
-#    maptbx.reset(
-#      data=map_data,
-#      substitute_value=0.0,
-#      less_than_threshold=0.0,
-#      greater_than_threshold=-9999,
-#      use_and=True)
-#    #
-#    sd = map_data.sample_standard_deviation()
-#    map_data = map_data/sd
-#    self.map_data = map_data
-#    self.map_coefficients = self.complete_set.structure_factors_from_map(
-#      map            = self.map_data,
-#      use_scale      = True,
-#      anomalous_flag = False,
-#      use_sg         = False)
-#
-#
-#
