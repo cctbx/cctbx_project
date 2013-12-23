@@ -12,6 +12,7 @@ import sys
 from mmtbx import map_tools
 from cctbx import miller
 from cctbx import maptbx
+import mmtbx.maps.kick
 
 map_coeff_params_base_str = """\
   map_coefficients
@@ -432,9 +433,15 @@ def map_coefficients_from_fmodel(
         b_sharp    = params.sharpening_b_factor)
   else:
     if(params.map_type.count("anom")==0):
-      coeffs = kick(
+      if(fmodel is None):
+        fmodel = map_calculation_server.fmodel
+      crystal_gridding = fmodel.f_obs().crystal_gridding(
+        d_min              = fmodel.f_obs().d_min(),
+        resolution_factor  = 0.25)
+      coeffs = mmtbx.maps.kick.run(
         fmodel   = e_map_obj.fmodel,
-        map_type = params.map_type).map_coefficients
+        crystal_gridding=crystal_gridding,
+        map_type = params.map_type).mc_result
   # XXX need to figure out why this happens
   if (coeffs is None) :
     raise RuntimeError(("Map coefficient generation failed (map_type=%s, "
