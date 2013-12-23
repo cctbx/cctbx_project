@@ -1699,6 +1699,7 @@ mmtbx/maps/tst_composite_omit_map.py -text
 mmtbx/maps/tst_composite_omit_map_2.py -text
 mmtbx/maps/tst_utils.py -text
 mmtbx/maps/utils.py -text
+mmtbx/masks/__init__.py -text
 mmtbx/masks/atom_mask.cpp svneol=native#text/plain
 mmtbx/masks/atom_mask.h svneol=native#text/plain
 mmtbx/masks/grid_symop.h svneol=native#text/plain

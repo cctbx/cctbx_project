@@ -15,10 +15,8 @@ from cctbx import xray
 from libtbx.test_utils import approx_equal, is_below_limit
 from libtbx.utils import format_cpu_times
 from cctbx.development import debug_utils
+import mmtbx.masks
 
-# cStringIO does not work
-#  import cStringIO
-# cout = cStringIO.StringIO("\n")
 cout = StringIO.StringIO()
 
 # modified cctbx.sgtbx.space_group_info.any_compatible_unit_cell
@@ -644,31 +642,6 @@ def exercise_mask_data_2(space_group_info, n_sites=100, d_min=2.0,
       r = flex.sum( flex.abs( fm1 - fm2 ) ) / flex.sum( fm1 + fm2 )
       assert approx_equal(r, 0.0)
 
-def get_mask_data(xrs, d_min=None, resolution_factor=None, n_real=None):
-  from cctbx.masks import vdw_radii_from_xray_structure
-  atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
-  if(n_real is None):
-    assert [d_min, resolution_factor].count(None) == 0
-    asu_mask = masks.atom_mask(
-      unit_cell                = xrs.unit_cell(),
-      group                    = xrs.space_group(),
-      resolution               = d_min,
-      grid_step_factor         = resolution_factor,
-      solvent_radius           = 1.0,
-      shrink_truncation_radius = 1.0)
-  else:
-    assert [d_min, resolution_factor].count(None) == 2
-    asu_mask = masks.atom_mask(
-      unit_cell                = xrs.unit_cell(),
-      space_group              = xrs.space_group(),
-      gridding_n_real          = n_real,
-      solvent_radius           = 1.0,
-      shrink_truncation_radius = 1.0)
-  asu_mask.compute(xrs.sites_frac(), atom_radii)
-  mask_data = asu_mask.mask_data_whole_uc()
-  mask_data = mask_data / xrs.space_group().order_z()
-  return asu_mask, mask_data
-
 def exercise_mask_data_3(space_group_info, n_sites=100, d_min=2.0,
                          resolution_factor=1./4):
   from cctbx import maptbx
@@ -677,11 +650,25 @@ def exercise_mask_data_3(space_group_info, n_sites=100, d_min=2.0,
     elements=(("O","N","C")*(n_sites//3+1))[:n_sites],
     volume_per_atom=50,
     min_distance=1.5)
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell         = xrs.unit_cell(),
+    space_group_info  = xrs.space_group_info(),
+    symmetry_flags    = maptbx.use_space_group_symmetry,
+    resolution_factor = resolution_factor,
+    d_min             = d_min)
+  n_real = crystal_gridding.n_real()
   dummy_set = xrs.structure_factors(d_min = d_min).f_calc()
   xrs.shake_sites_in_place(mean_distance=10)
   xrs_p1 = xrs.expand_to_p1(sites_mod_positive=True)
-  asu_mask, mask_data1 = get_mask_data(xrs=xrs, d_min=dummy_set.d_min(),
-    resolution_factor=resolution_factor)
+  mo1 = mmtbx.masks.mask_from_xray_structure(
+    xray_structure=xrs,
+    p1=False,
+    solvent_radius=1,
+    shrink_truncation_radius=1,
+    for_structure_factors=True,
+    n_real=n_real)
+  asu_mask, mask_data1 = mo1.asu_mask, mo1.mask_data
+  assert mask_data1.focus()==n_real
   # get Fmask option 1
   f_mask_1 = dummy_set.set().array(
     data = asu_mask.structure_factors(dummy_set.indices()))
@@ -689,8 +676,14 @@ def exercise_mask_data_3(space_group_info, n_sites=100, d_min=2.0,
   f_mask_2 = dummy_set.structure_factors_from_map(map=mask_data1,
     use_scale = True, anomalous_flag = False, use_sg = True)
   # get Fmask option 3
-  junk, mask_data2 = get_mask_data(xrs=xrs_p1, n_real = mask_data1.focus())
-  f_mask_3 = dummy_set.structure_factors_from_map(map=mask_data2,
+  mo3 = mmtbx.masks.mask_from_xray_structure(
+    xray_structure=xrs,
+    p1=True,
+    solvent_radius=1,
+    shrink_truncation_radius=1,
+    for_structure_factors=True,
+    n_real=n_real)
+  f_mask_3 = dummy_set.structure_factors_from_map(map=mo3.mask_data,
     use_scale = True, anomalous_flag = False, use_sg = False) # Note use_sg = False !
   #
   assert approx_equal(f_mask_1.data(), f_mask_2.data())

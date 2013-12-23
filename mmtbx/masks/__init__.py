@@ -13,7 +13,7 @@ from libtbx.utils import Sorry
 from libtbx import introspection
 from libtbx import adopt_init_args
 from copy import deepcopy
-import masks
+import mmtbx.masks
 
 number_of_mask_calculations = 0
 
@@ -152,7 +152,7 @@ class asu_mask(object):
     self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
       self.xray_structure)
     if(d_min is not None):
-      self.asu_mask = masks.atom_mask(
+      self.asu_mask = atom_mask(
         unit_cell                = self.xray_structure.unit_cell(),
         group                    = self.xray_structure.space_group(),
         resolution               = self.d_min,
@@ -328,3 +328,26 @@ class manager(object):
       ignore_hydrogen_atoms       = mp.ignore_hydrogens,
       solvent_radius              = mp.solvent_radius,
       shrink_truncation_radius    = mp.shrink_truncation_radius)
+
+class mask_from_xray_structure(object):
+  def __init__(
+        self,
+        xray_structure,
+        p1,
+        solvent_radius,
+        shrink_truncation_radius,
+        for_structure_factors,
+        n_real):
+    xrs = xray_structure
+    if(p1): xrs = xrs.expand_to_p1(sites_mod_positive=True)
+    atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
+    self.asu_mask = mmtbx.masks.atom_mask(
+      unit_cell                = xrs.unit_cell(),
+      space_group              = xrs.space_group(),
+      gridding_n_real          = n_real,
+      solvent_radius           = solvent_radius,
+      shrink_truncation_radius = shrink_truncation_radius)
+    self.asu_mask.compute(xrs.sites_frac(), atom_radii)
+    self.mask_data = self.asu_mask.mask_data_whole_uc()
+    if(for_structure_factors):
+      self.mask_data = self.mask_data / xrs.space_group().order_z()

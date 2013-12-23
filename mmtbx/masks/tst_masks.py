@@ -1,5 +1,5 @@
 from __future__ import division
-from mmtbx import masks
+#from mmtbx import masks
 from cctbx.eltbx import van_der_waals_radii
 from cctbx import maptbx
 from cctbx import xray
@@ -11,6 +11,11 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import math
 import sys
+#import boost.python
+#ext = boost.python.import_ext("mmtbx_masks_ext")
+#from mmtbx_masks_ext import *
+from cctbx.masks import around_atoms
+import mmtbx.masks
 
 def structure_init(site,sg,cell):
   symmetry = crystal.symmetry(unit_cell=cell,
@@ -48,7 +53,7 @@ def exercise_1():
        step = step)
      shrink_truncation_radius = 0.0
      solvent_radius = 0.0
-     m = masks.around_atoms(
+     m = around_atoms(
        structure.unit_cell(),
        structure.space_group().order_z(),
        xyzf,
@@ -80,7 +85,7 @@ def exercise_1():
          step = step)
        shrink_truncation_radius = 0.0
        solvent_radius = 0.0
-       m = masks.around_atoms(
+       m = around_atoms(
          structure.unit_cell(),
          structure.space_group().order_z(),
          xyzf,
@@ -109,7 +114,7 @@ def exercise_1():
          step = step)
        shrink_truncation_radius = 0.0
        solvent_radius = 0.0
-       m = masks.around_atoms(
+       m = around_atoms(
           structure.unit_cell(),
           structure.space_group().order_z(),
           xyzf,
@@ -149,7 +154,7 @@ def exercise_2():
   nxyz = crystal_gridding.n_real()
   shrink_truncation_radius = 1.0
   solvent_radius = 1.0
-  m1 = masks.around_atoms(
+  m1 = around_atoms(
     structure.unit_cell(),
     structure.space_group().order_z(),
     structure.sites_frac(),
@@ -162,14 +167,14 @@ def exercise_2():
   assert flex.max(m1.data) == 1
   assert flex.min(m1.data) == 0
   assert m1.data.size() == m1.data.count(1) + m1.data.count(0)
-  m2 = masks.bulk_solvent(
+  m2 = mmtbx.masks.bulk_solvent(
     xray_structure=structure,
     gridding_n_real=nxyz,
     ignore_zero_occupancy_atoms = False,
     solvent_radius=solvent_radius,
     shrink_truncation_radius=shrink_truncation_radius)
   assert m2.data.all_eq(m1.data)
-  m3 = masks.bulk_solvent(
+  m3 = mmtbx.masks.bulk_solvent(
     xray_structure=structure,
     grid_step=step,
     ignore_zero_occupancy_atoms = False,
@@ -235,7 +240,7 @@ def exercise_centrics(space_group_info, n_sites=10):
       anomalous_flag=anomalous_flag)
     for shrink_truncation_radius in [0, .5*6**.5]:
       for solvent_radius in [0, .5*5**.5]:
-        bulk_solvent_mask = masks.bulk_solvent(
+        bulk_solvent_mask = mmtbx.masks.bulk_solvent(
           xray_structure=structure,
           grid_step=0.5,
           ignore_zero_occupancy_atoms = False,
@@ -289,7 +294,7 @@ def tst2_run(angles, nspacing, af ):
     unit_cell = structure1.unit_cell(),
     step = step)
   #
-  m1 = masks.around_atoms(
+  m1 = around_atoms(
     structure1.unit_cell(),
     structure1.space_group().order_z(),
     xyzf1,
@@ -298,7 +303,7 @@ def tst2_run(angles, nspacing, af ):
     solvent_radius1,
     shrink_truncation_radius, explicit_distance=False, debug=True )
   #
-  m2 = masks.around_atoms(
+  m2 = around_atoms(
     structure2.unit_cell(),
     structure2.space_group().order_z(),
     xyzf2,
@@ -307,7 +312,7 @@ def tst2_run(angles, nspacing, af ):
     solvent_radius2,
     shrink_truncation_radius, explicit_distance=False, debug=True )
   #
-  m3 = masks.around_atoms(
+  m3 = around_atoms(
     structure1.unit_cell(),
     structure1.space_group().order_z(),
     xyzf1,
@@ -316,7 +321,7 @@ def tst2_run(angles, nspacing, af ):
     solvent_radius1,
     shrink_truncation_radius, explicit_distance=True, debug=True)
   #
-  m4 = masks.around_atoms(
+  m4 = around_atoms(
     structure2.unit_cell(),
     structure2.space_group().order_z(),
     xyzf2,
