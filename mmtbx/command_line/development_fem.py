@@ -14,6 +14,7 @@ import os.path
 import time
 import sys
 import random
+import mmtbx.maps.fem
 
 def get_master_phil () :
   return mmtbx.command_line.generate_master_phil_with_inputs(
@@ -94,15 +95,12 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   fmodel.update_all_scales(update_f_part1_for="refinement")
   #
   #### Compute FEM start
-  fem, kick  = mmtbx.maps.fem(fmodel=fmodel)
+  fem = mmtbx.maps.fem.run(fmodel=fmodel).mc_result
   #### Compute FEM end
   mtz_dataset = mc_orig.as_mtz_dataset(column_root_label="2mFoDFc")
   mtz_dataset.add_miller_array(
     miller_array=fem,
     column_root_label=params.output.column_root_label)
-  mtz_dataset.add_miller_array(
-    miller_array=kick,
-    column_root_label="KICK")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = params.output.file_name)
   return os.path.abspath(params.output.file_name)
