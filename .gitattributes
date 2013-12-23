@@ -1691,6 +1691,7 @@ mmtbx/ligands/xtal_screens.py -text
 mmtbx/map_tools.py -text
 mmtbx/maps/__init__.py -text
 mmtbx/maps/composite_omit_map.py -text
+mmtbx/maps/fem.py -text
 mmtbx/maps/fobs_minus_fobs_map.py -text
 mmtbx/maps/kick.py -text
 mmtbx/maps/superpose.py -text
