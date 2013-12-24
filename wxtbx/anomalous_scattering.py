@@ -38,7 +38,10 @@ class AnomPlot (wxtbx.plots.plot_container) :
     ax = self.figure.add_subplot(111)
     labels = []
     for element in elements :
-      scatt_table = table_module.table(element.upper())
+      try :
+        scatt_table = table_module.table(element.upper())
+      except ValueError, e :
+        raise Sorry(str(e))
       fp = []
       fdp = []
       for x in x_points :
