@@ -101,7 +101,7 @@ namespace cctbx { namespace eltbx {
         }
       }
       if (exception_if_no_match && (exact || !m_entry)) {
-        throw error(
+        throw std::invalid_argument(
           "Unknown scattering type label: " + std::string(work_label));
       }
       return m_entry;
