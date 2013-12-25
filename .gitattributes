@@ -144,6 +144,8 @@ cctbx/maptbx/tst_real_space_refinement_simple.py svneol=native#text/x-python
 cctbx/maptbx/tst_real_space_target_and_gradients.py -text
 cctbx/math/SConscript -text
 cctbx/math/time_trigonometry.cpp -text
+cctbx/merging/__init__.py -text
+cctbx/merging/brehm_diederichs.py -text
 cctbx/miller/amplitude_normalisation.h -text
 cctbx/miller/boost_python/amplitude_normalisation.cpp -text
 cctbx/miller/boost_python/f_calc_map.cpp -text

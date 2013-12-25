@@ -127,6 +127,7 @@ tst_list = (
    "$D/maptbx/tst_get_percentile_cutoffs.py",
    "$D/regression/tst_sphericity.py",
    "$D/regression/tst_miller_statistics.py",
+   "$D/merging/brehm_diederichs.py",
   )
 
 def run():
