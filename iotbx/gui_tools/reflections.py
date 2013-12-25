@@ -168,7 +168,7 @@ class reflections_handler (iotbx.gui_tools.manager) :
   def has_phases (self, *args, **kwds) :
     return len(self.get_experimental_phase_labels(*args, **kwds)) > 0
 
-  def get_phase_deg_labels (self, *args, **kwds) :
+  def get_phase_arrays (self, *args, **kwds) :
     hkl_file = self.get_file(*args, **kwds)
     labels = []
     if hkl_file is not None :
@@ -182,7 +182,21 @@ class reflections_handler (iotbx.gui_tools.manager) :
         parameter_name=None,
         return_all_valid_arrays=True,
         minimum_score=1)
-      labels = [ array.info().label_string() for array in miller_arrays ]
+      return miller_arrays
+    return []
+
+  def get_phase_deg_labels (self, *args, **kwds) :
+    miller_arrays = self.get_phase_arrays(*args, **kwds)
+    return [ array.info().label_string() for array in miller_arrays ]
+
+  def get_phase_column_labels (self, *args, **kwds) :
+    labels = []
+    miller_arrays = self.get_phase_arrays(*args, **kwds)
+    for array in miller_arrays :
+      for label in array.info().labels :
+        if label.upper().startswith("PH") :
+          labels.append(label)
+          break
     return labels
 
   def get_data_arrays (self, *args, **kwds) :
@@ -229,13 +243,14 @@ class reflections_handler (iotbx.gui_tools.manager) :
     return extract_labels(self.get_data_arrays(*args, **kwds))
 
   def get_amplitude_arrays (self, *args, **kwds) :
+    allow_conversion = kwds.pop('allow_conversion', False)
     hkl_file = self.get_file(*args, **kwds)
     if hkl_file is not None :
       hkl_server = hkl_file.file_server
       miller_arrays = hkl_server.get_amplitudes(
         file_name               = None,
         labels                  = None,
-        convert_to_amplitudes_if_necessary = False,
+        convert_to_amplitudes_if_necessary = allow_conversion,
         parameter_scope         = "",
         parameter_name          = "",
         return_all_valid_arrays = True,
@@ -246,6 +261,14 @@ class reflections_handler (iotbx.gui_tools.manager) :
 
   def get_amplitude_labels (self, *args, **kwds) :
     return extract_labels(self.get_amplitude_arrays(*args, **kwds))
+
+  def get_amplitude_column_labels (self, *args, **kwds) :
+    miller_arrays = self.get_amplitude_arrays(*args, **kwds)
+    labels = []
+    for array in miller_arrays :
+      # XXX what about anomalous data?
+      labels.extend(array.info().labels[0])
+    return labels
 
   def get_intensity_arrays (self, *args, **kwds) :
     miller_arrays = self.get_data_arrays(*args, **kwds)
@@ -274,9 +297,7 @@ class reflections_handler (iotbx.gui_tools.manager) :
 
   def get_anomalous_data_labels (self, *args, **kwds) :
     kwds = dict(kwds) # XXX gross...
-    allow_dano = kwds.get("allow_reconstructed_amplitudes", True)
-    if ("allow_reconstructed_amplitudes" in kwds) :
-      del kwds["allow_reconstructed_amplitudes"]
+    allow_dano = kwds.pop("allow_reconstructed_amplitudes", True)
     hkl_file = self.get_file(*args, **kwds)
     labels = []
     if hkl_file is not None :
@@ -300,6 +321,7 @@ class reflections_handler (iotbx.gui_tools.manager) :
     return (len(self.get_anomalous_data_labels(*args, **kwds)) > 0)
 
   def get_fmodel_labels (self, *args, **kwds) :
+    first_column_only = kwds.pop('first_column_only', False)
     hkl_file = self.get_file(*args, **kwds)
     labels_list = []
     if (hkl_file is not None) :
@@ -309,7 +331,10 @@ class reflections_handler (iotbx.gui_tools.manager) :
           if (labels.startswith("F-model") or
               labels.upper().startswith("FMODEL") or
               labels.upper().startswith("FC")) :
-            labels_list.append(labels)
+            if (first_column_only) :
+              labels_list.append(miller_array.info().labels[0])
+            else :
+              labels_list.append(labels)
     return labels_list
 
   def get_map_coeff_labels (self, *args, **kwds) :
@@ -364,6 +389,14 @@ class reflections_handler (iotbx.gui_tools.manager) :
         if (labels.startswith("DELFWT") or labels.startswith("FOFC")) :
           labels_list.append(labels)
     return labels_list
+
+  def get_amplitude_column_labels (self, *args, **kwds) :
+    miller_arrays = self.get_amplitude_arrays(*args, **kwds)
+    labels = []
+    for array in miller_arrays :
+      # XXX what about anomalous data?
+      labels.extend(array.info().labels[0])
+    return labels
 
   def d_max_min (self, file_name=None, file_param_name=None,
       array_name=None, array_names=None) :

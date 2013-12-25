@@ -224,6 +224,15 @@ def exercise_reflections () :
   assert (hkl_handler.get_fmodel_labels(file_name=file_name) ==
     ['F-model,PHF-model'])
   assert (hkl_handler.get_amplitude_labels(file_name=file_name) == [])
+  phi_labels = hkl_handler.get_phase_deg_labels(file_name=file_name)
+  assert (len(phi_labels)  == 4)
+  phi_cols = hkl_handler.get_phase_column_labels(file_name=file_name)
+  assert (phi_cols == ['PHF-model','PH2FOFCWT','PHFOFCWT','PH2FOFCWT_no_fill'])
+  assert (len(hkl_handler.get_amplitude_column_labels(file_name=file_name,
+              allow_conversion=True)) == 0)
+  fc_cols = hkl_handler.get_fmodel_labels(file_name=file_name,
+    first_column_only=True)
+  assert (fc_cols == ['F-model'])
   hkl_server = file_reader.any_file(file_name).file_server
   map_labels = reflections.get_map_coeff_labels(hkl_server)
   assert (map_labels == ['2FOFCWT,PH2FOFCWT', 'FOFCWT,PHFOFCWT',
