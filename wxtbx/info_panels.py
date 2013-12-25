@@ -452,7 +452,7 @@ if (__name__ == "__main__") :
   hkl1 = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/wizards/partial_refine_001_map_coeffs.mtz",
     test=os.path.isfile)
-  img1 = "/net/sunbird/raid1/sauter/jcsg/1vph/data/jcsg/ssrl1/9_2/20040718/TB0723W/11318/11318_2_017.img"
+  img1 = "/net/cci/dials/jcsg/1vph/data/jcsg/ssrl1/9_2/20040718/TB0723W/11318/11318_2_017.img"
   assert (not None in [pdb1, hkl1])
   app = wx.App(0)
   frame1 = ReflectionFileInfo(None)
