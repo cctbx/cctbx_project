@@ -5,6 +5,11 @@ from cctbx.array_family import flex
 from libtbx.development.timers import Profiler
 from cctbx import miller as miller_ext
 import math
+from cctbx.merging import update_wij_rij
+"""
+This module implements algorithm 2 from "Breaking the indexing ambiguity in
+serial crystallography", Wolfgang Brehm & Kay Diederichs, Acta Cryst. D70 (2014)
+"""
 class algorithm2:
 
   def __init__(self, data, lattice_id, resort=False, verbose=True):
@@ -108,39 +113,43 @@ class algorithm2:
           j_start = self.lattices[index_selected[j]]
 
           if asymmetric%2 == 1: # up - up
-            #update_wij_rij(millers_i, millers_j, data_i, data_j, i_start, j_start, i, j, wij_, rij_, sign, use_weights)
-            matches = miller_ext.match_indices(indices_i, indices_j)
-            intensities_i = flex.double()
-            intensities_j = flex.double()
-            for pair in matches.pairs():
+            update_wij_rij(i,j,indices_i,indices_j,self.data.data(), self.data.data(),
+                           i_start, j_start, wij_, rij_, 1., use_weights)
+            #matches = miller_ext.match_indices(indices_i, indices_j)
+            #intensities_i = flex.double()
+            #intensities_j = flex.double()
+            #for pair in matches.pairs():
                #print indices_i[pair[0]], indices_j[pair[1]],i_start,j_start,self.data.data()[i_start+pair[0]],self.data.data()[j_start+pair[1]]
 
-               intensities_i.append( self.data.data()[i_start+pair[0]] )
-               intensities_j.append( self.data.data()[j_start+pair[1]] )
-            corr = flex.linear_correlation(intensities_i, intensities_j)
-            if corr.is_well_defined():
-              if use_weights:
-                wij_[(i,j)] = corr.n()
-                wij_[(j,i)] = corr.n()
-              rij_[(i,j)] = corr.coefficient()
-              rij_[(j,i)] = corr.coefficient()
+            #   intensities_i.append( self.data.data()[i_start+pair[0]] )
+            #   intensities_j.append( self.data.data()[j_start+pair[1]] )
+            #corr = flex.linear_correlation(intensities_i, intensities_j)
+            #if corr.is_well_defined():
+            #  print i,j,corr.coefficient(),corr.n()
+            #  if use_weights:
+            #    wij_[(i,j)] = corr.n()
+            #    wij_[(j,i)] = corr.n()
+            #  rij_[(i,j)] = corr.coefficient()
+            #  rij_[(j,i)] = corr.coefficient()
 
           if asymmetric >= 2: # down - up
-            matches_rev = miller_ext.match_indices(indices_i_rev, indices_j)
-            intensities_i = flex.double()
-            intensities_j = flex.double()
-            for pair in matches_rev.pairs():
+            update_wij_rij(i,j,indices_i_rev,indices_j,twin_data.data(), self.data.data(),
+                           i_start, j_start, wij_, rij_, -1., use_weights)
+            #matches_rev = miller_ext.match_indices(indices_i_rev, indices_j)
+            #intensities_i = flex.double()
+            #intensities_j = flex.double()
+            #for pair in matches_rev.pairs():
                #print indices_i_rev[pair[0]], indices_j[pair[1]],i_start,j_start,twin_data.data()[i_start+pair[0]],self.data.data()[j_start+pair[1]]
 
-               intensities_i.append( twin_data.data()[i_start+pair[0]] )
-               intensities_j.append( self.data.data()[j_start+pair[1]] )
-            corr = flex.linear_correlation(intensities_i, intensities_j)
-            if corr.is_well_defined():
-              if use_weights:
-                wij_[(i,j)] += corr.n()
-                wij_[(j,i)] += corr.n()
-              rij_[(i,j)] -= corr.coefficient()
-              rij_[(j,i)] -= corr.coefficient()
+            #   intensities_i.append( twin_data.data()[i_start+pair[0]] )
+            #   intensities_j.append( self.data.data()[j_start+pair[1]] )
+            #corr = flex.linear_correlation(intensities_i, intensities_j)
+            #if corr.is_well_defined():
+            #  if use_weights:
+            #    wij_[(i,j)] += corr.n()
+            #    wij_[(j,i)] += corr.n()
+            #  rij_[(i,j)] -= corr.coefficient()
+            #  rij_[(j,i)] -= corr.coefficient()
 
       rij.append(rij_)
       wij.append(wij_)
@@ -315,6 +324,7 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
 
 def reassemble(patchwork,verbose=False):
   resorted = [patchwork[0]]
+  refkeys = resorted[0].keys()
   for ip in xrange(1,len(patchwork)):
     reference = resorted[-1]
     refkeys = reference.keys()
