@@ -174,11 +174,13 @@ class any_reflection_file(object):
         info.source = info_source
         info.crystal_symmetry_from_file = crystal.symmetry(
           unit_cell=miller_array.unit_cell(),
-          space_group_info=miller_array.space_group_info())
+          space_group_info=miller_array.space_group_info(),
+          raise_sorry_if_incompatible_unit_cell=True)
         result.append(miller_array.customized_copy(
           crystal_symmetry=miller_array.join_symmetry(
             other_symmetry=crystal_symmetry,
-            force=force_symmetry))
+            force=force_symmetry,
+            raise_sorry_if_incompatible_unit_cell=True))
               .set_info(info)
               .set_observation_type(miller_array.observation_type()))
       return result
