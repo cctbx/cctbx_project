@@ -45,7 +45,7 @@ good crystallographic practice. Be prepared to justify why you have excluded
 any data from your final refinement!
 """
 
-def run(args, command_name = "phenix.cif_as_mtz",
+def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
        return_as_miller_arrays=False):
   if (len(args) == 0): args = ["--help"]
   try:
@@ -116,7 +116,7 @@ def run(args, command_name = "phenix.cif_as_mtz",
       crystal_symmetry = crystal_symmetry_from_pdb.extract_from(
          file_name=command_line.options.use_model)
   if(len(command_line.args) > 1):
-    print "%d arguments are given from the command line:"% \
+    print >> out, "%d arguments are given from the command line:"% \
       len(command_line.args), command_line.args
     raise Sorry("Please specify one reflection cif file.")
   file_name = command_line.args[0]
@@ -143,7 +143,8 @@ def run(args, command_name = "phenix.cif_as_mtz",
     incompatible_flags_to_work_set=command_line.options.incompatible_flags_to_work_set,
     return_as_miller_arrays=return_as_miller_arrays,
     ignore_bad_sigmas=command_line.options.ignore_bad_sigmas,
-    extend_flags=command_line.options.extend_flags)
+    extend_flags=command_line.options.extend_flags,
+    log=out)
 
   if return_as_miller_arrays:
     return result
@@ -162,7 +163,8 @@ def process_files (file_name,
                    incompatible_flags_to_work_set=False,
                    ignore_bad_sigmas=False,
                    return_as_miller_arrays=False,
-                   extend_flags=False) :
+                   extend_flags=False,
+                   log=sys.stdout) :
   mtz_object = extract(
     file_name                       = file_name,
     crystal_symmetry                = crystal_symmetry,
@@ -176,7 +178,8 @@ def process_files (file_name,
     incompatible_flags_to_work_set  = incompatible_flags_to_work_set,
     ignore_bad_sigmas               = ignore_bad_sigmas,
     return_as_miller_arrays         = return_as_miller_arrays,
-    extend_flags                    = extend_flags)
+    extend_flags                    = extend_flags,
+    log                             = log)
 
   if return_as_miller_arrays:
     return mtz_object
@@ -246,7 +249,8 @@ def extract(file_name,
             incompatible_flags_to_work_set=False,
             ignore_bad_sigmas=False,
             extend_flags=False,
-            return_as_miller_arrays=False):
+            return_as_miller_arrays=False,
+            log=sys.stdout):
   import iotbx.cif
   from cctbx import miller
   base_array_info = miller.array_info(
@@ -268,8 +272,20 @@ def extract(file_name,
           label = "FOBS"
         elif miller_array.is_xray_intensity_array():
           label = "IOBS"
+        elif l.endswith(".phase_meas") :
+          label = "PHIM"
         break
-      elif miller_array.anomalous_flag():
+      elif ("_calc" in l) :
+        if miller_array.is_xray_amplitude_array():
+          label = "FC"
+        elif miller_array.is_xray_intensity_array():
+          label = "ICALC"
+        elif l.endswith(".F_calc") :
+          label = "FC"
+        elif l.endswith(".phase_calc") :
+          label = "PHIC"
+        break
+      elif miller_array.anomalous_flag() :
         if miller_array.is_xray_amplitude_array():
           label = "F"
         elif miller_array.is_xray_intensity_array():
@@ -288,11 +304,11 @@ def extract(file_name,
           label = "FWT"
           break
       elif (miller_array.is_real_array()) :
-        if (l.endswith(".phase_calc")) :
-          label = "PHIC"
-          break
-        elif ("pdbx_anom_difference" in l) :
+        if ("pdbx_anom_difference" in l) :
           label = "DANO"
+          break
+        elif (l.endswith(".fom")) :
+          label = "FOM"
           break
     return label
 
@@ -341,7 +357,10 @@ def extract(file_name,
         crystal_symmetry=crystal_symmetry).set_info(ma.info())
       labels = ma.info().labels
       label = get_label(ma)
-      if label is None: continue
+      if label is None:
+        print >> log, "Can't determine output label for %s - skipping." % \
+          ma.info().label_string()
+        continue
       elif label.startswith(output_r_free_label):
         ma, _ = cif_status_flags_as_int_r_free_flags(
           ma, test_flag_value="f")
@@ -390,7 +409,7 @@ def extract(file_name,
       # if all sigmas for an array are set to zero either raise an error, or set sigmas to None
       if ma.sigmas() is not None and (ma.sigmas() == 0).count(False) == 0:
         if ignore_bad_sigmas:
-          print "Warning: bad sigmas, setting sigmas to None."
+          print >> log, "Warning: bad sigmas, setting sigmas to None."
           ma.set_sigmas(None)
         else:
           raise Sorry(
@@ -398,13 +417,14 @@ def extract(file_name,
   Add --ignore_bad_sigmas to command arguments to leave out sigmas from mtz file.""")
       if not ma.is_unique_set_under_symmetry():
         if merge_non_unique_under_symmetry:
-          print "Warning: merging non-unique data"
+          print >> log, "Warning: merging non-unique data"
           if (label.startswith(output_r_free_label)
               and incompatible_flags_to_work_set):
             merging = ma.merge_equivalents(
               incompatible_flags_replacement=0)
             if merging.n_incompatible_flags > 0:
-              print "Warning: %i reflections were placed in the working set " \
+              print >> log, \
+                    "Warning: %i reflections were placed in the working set " \
                     "because of incompatible flags between equivalents." %(
                       merging.n_incompatible_flags)
           else:
