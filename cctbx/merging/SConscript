@@ -1,0 +1,6 @@
+Import("env_cctbx_boost_python_ext")
+env = env_cctbx_boost_python_ext.Clone()
+env.Prepend(LIBS=["cctbx"])
+env.SharedLibrary(target="#lib/cctbx_merging_ext", source=[
+  "ext.cpp",
+])
