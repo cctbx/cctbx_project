@@ -446,7 +446,7 @@ class miller_array_builder(crystal_symmetry_builder):
                     self._arrays[key].set_info(
                       info.customized_copy(labels=info.labels+[key_b]))
                     continue
-              elif ('phase_' in key and not key.endswith('_meas') and
+              elif ('phase_' in key and not "_meas" in key and
                     self.crystal_symmetry.space_group() is not None):
                 alt_key1 = label.replace('phase_', 'F_')
                 alt_key2 = alt_key1 + '_au'
