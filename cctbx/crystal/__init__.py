@@ -238,11 +238,14 @@ class symmetry(object):
     return self.space_group().build_derived_patterson_group() \
         == self.space_group()
 
-  def join_symmetry(self, other_symmetry, force=False):
+  def join_symmetry(self, other_symmetry, force=False,
+      raise_sorry_if_incompatible_unit_cell=False):
     if (other_symmetry is None):
       return symmetry(
-         unit_cell=self.unit_cell(),
-         space_group_info=self.space_group_info())
+        unit_cell=self.unit_cell(),
+        space_group_info=self.space_group_info(),
+        raise_sorry_if_incompatible_unit_cell=
+          raise_sorry_if_incompatible_unit_cell)
     if (force == False):
       strong = self
       weak = other_symmetry
@@ -256,8 +259,10 @@ class symmetry(object):
     if (space_group_info is None):
       space_group_info = weak.space_group_info()
     return symmetry(
-       unit_cell=unit_cell,
-       space_group_info=space_group_info)
+      unit_cell=unit_cell,
+      space_group_info=space_group_info,
+      raise_sorry_if_incompatible_unit_cell=
+        raise_sorry_if_incompatible_unit_cell)
 
   def subtract_continuous_allowed_origin_shifts(self, translation_cart):
     uc = self.unit_cell()
