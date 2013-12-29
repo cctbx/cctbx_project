@@ -259,5 +259,6 @@ class manager:
       frames['odd_numbered'].append(is_odd_numbered(items[24][1:-1]))
       frames['orientation'].append(CO)
       frames['unit_cell'].append(CO.unit_cell())
+      frames['unique_file_names'].append(items[24])
     stream.close()
     return frames
