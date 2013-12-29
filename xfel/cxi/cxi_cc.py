@@ -136,7 +136,10 @@ def correlation(self,other):
              math.sqrt(N * sum_yy - sum_y**2))
     return slope,offset,corr,N
 
-def run_cc(params,output):
+def run_cc(params,reindexing_op,output):
+  if reindexing_op is not "h,k,l":
+    print """Recalculating after reindexing the new data with %s
+     (it is necessary to pick which indexing choice gives the sensible CC iso):"""%reindexing_op
   data_SR = mtz.object(params.scaling.mtz_file)
   data_d0 = mtz.object(params.output.prefix+"_s0_"+params.scaling.algorithm+".mtz")
   data_d1 = mtz.object(params.output.prefix+"_s1_"+params.scaling.algorithm+".mtz")
@@ -175,6 +178,10 @@ def run_cc(params,output):
   # reference.
   if not params.merge_anomalous and not uniform[0].anomalous_flag():
       uniform[0] = uniform[0].generate_bijvoet_mates()
+
+  for x in [1,2,3]:
+    # reindex the experimental data
+    uniform[x] = uniform[x].change_basis(reindexing_op).map_to_asu()
 
   d_max_min = uniform[1].d_max_min()
   for x in [0,1,2,3]:
@@ -255,16 +262,18 @@ def run_cc(params,output):
   oe_scale_all = scale_factor(selected_uniform[2],selected_uniform[3],
     weights = flex.pow(selected_uniform[2].sigmas(),-2)
             + flex.pow(selected_uniform[3].sigmas(),-2),)
-  print >>output, "Scale factors iso/int", ref_scale_all,oe_scale_all
 
   ref_riso_all = r1_factor(selected_uniform[1],selected_uniform[0],
                        scale_factor = ref_scale_all)
   oe_rint_all = r1_factor(selected_uniform[2],selected_uniform[3],
                        scale_factor = oe_scale_all)
-  print >>output, "R factors Riso = %.1f%%, Rint = %.1f%%"%(100.*ref_riso_all, 100.*oe_rint_all)
 
   print >>output
-  print >> output, "Table of Scaling Results:"
+  if reindexing_op == "h,k,l":
+    print >> output, "Table of Scaling Results:"
+  else:
+    print >> output, "Table of Scaling Results Reindexing as %s:"%reindexing_op
+
   from libtbx import table_utils
   table_header = ["","","","CC","","CC","","R","R","Scale","Scale"]
   table_header2 = ["Bin","Resolution Range","Completeness","int","N","iso","N","int","iso","int","iso"]

@@ -186,7 +186,8 @@ class manager:
                    offset = flex.double( [a[4] for a in ALL] ),
              odd_numbered = flex.bool( [is_odd_numbered(a[14]) for a in ALL] ),
               orientation = orientations,
-                unit_cell = [CO.unit_cell() for CO in orientations] )
+                unit_cell = [CO.unit_cell() for CO in orientations],
+         unique_file_name = [a[14] for a in ALL] )
 
   def merging_schema_tables(self,runtag):
     return [("`"+runtag+"_observation`","""

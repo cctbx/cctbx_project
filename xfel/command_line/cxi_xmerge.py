@@ -441,8 +441,16 @@ def run(args):
   print >> out, table_utils.format(
     table_data, has_header=1, justify='center', delim=' ')
 
+  reindexing_ops = {"h,k,l":0} # get a list of all reindexing ops for this dataset
+  if work_params.merging.reverse_lookup is not None:
+    for key in scaler.reverse_lookup:
+      if reindexing_ops.get(scaler.reverse_lookup[key], None) is None:
+        reindexing_ops[scaler.reverse_lookup[key]]=0
+      reindexing_ops[scaler.reverse_lookup[key]]+=1
+
   from xfel.cxi.cxi_cc import run_cc
-  run_cc(work_params,output=out)
+  for key in reindexing_ops.keys():
+    run_cc(work_params,reindexing_op=key,output=out)
 
   return result
 

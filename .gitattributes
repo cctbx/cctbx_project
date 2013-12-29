@@ -2660,6 +2660,7 @@ xfel/cftbx/detector/cspad_cbf_tbx.py -text
 xfel/cftbx/detector/generic_detector.py -text
 xfel/command_line/__init__.py -text
 xfel/command_line/auto_submit.py -text
+xfel/command_line/brehm_diederichs.py -text
 xfel/command_line/convert_gain_map.py -text
 xfel/command_line/cxi_diff.py -text
 xfel/command_line/cxi_index.py -text
