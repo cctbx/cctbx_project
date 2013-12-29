@@ -15,9 +15,9 @@ def run (params) :
     for array in data_SR.as_miller_arrays():
        this_label = array.info().label_string().lower()
        if this_label.find("iobs")>=0:
-         return array.as_intensity_array()
+         return array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
        if this_label.find("imean")>=0:
-         return array.as_intensity_array()
+         return array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
     raise Exception("mtz did not contain expected label Iobs or IMEAN")
 
   pdb_in = file_reader.any_file(params.model, force_type="pdb")
@@ -44,7 +44,7 @@ def run (params) :
     params         = params2).f_model
   if not params.merge_anomalous:
     f_model = f_model.generate_bijvoet_mates()
-  i_model = f_model.as_intensity_array()
+  i_model = f_model.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
 
   return i_model
 
