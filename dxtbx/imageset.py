@@ -486,6 +486,139 @@ class ImageSet(object):
       raise IndexError('Index out of range')
     return self._indices[index]
 
+class MemImageSet(object):
+  ''' A class exposing the external image set interface, but instead of a file list, uses
+  an already instantiated list of Format objects. '''
+
+  def __init__(self, images, indices=None):
+    ''' Initialise the MemImageSet object.
+
+    Params:
+        images: list of Format objects
+        indices: list of indices into the images list
+
+    '''
+    # If no list of images is set then throw an exception
+    if images is None:
+      raise ValueError("MemImageSet needs a list of images!")
+
+    # Save the images
+    self._images = images
+
+    # Set the array range or get the range from the list of images
+    if indices is not None:
+      assert len(indices) == len(images)
+      self._indices = indices
+    else:
+      self._indices = range(len(images))
+
+  def __getitem__(self, item):
+    ''' Get an item from the image set.
+
+    If the item is an index, read and return the image at the given index.
+    Otherwise, if the item is a slice, then create a new MemImageSet object
+    with the given number of array indices from the slice.
+
+    Params:
+        item The index or slice
+
+    Returns:
+        An image or new ImageSet object
+
+    '''
+    if isinstance(item, slice):
+      indices = self._indices[item]
+      return MemImageSet(self._images, indices)
+    else:
+      img = self._images[self._indices[item]]
+      return tuple([img.get_raw_data(i) for i in xrange(len(self.get_detector()))])
+
+  def __len__(self):
+    ''' Return the number of images in this image set. '''
+    return len(self._indices)
+
+  def __str__(self):
+    ''' Return the array indices of the image set as a string. '''
+    return str(self._indices)
+
+  def __iter__(self):
+    ''' Iterate over the array indices and read each image in turn. '''
+    for j in self._indices:
+      img = self._images[j]
+      yield tuple([img.get_raw_data(i) for i in xrange(len(self.get_detector()))])
+
+  def __cmp__(self, other):
+    ''' Compare this image set to another. '''
+    return self._images == other._images
+
+  def indices(self):
+    ''' Return the indices in the image set. '''
+    return list(self._indices)
+
+  def paths(self):
+    ''' Return a list of filenames referenced by this set. '''
+    raise NotImplementedError("No path list for an in-memory image set")
+
+  def is_valid(self):
+    ''' Validate all the images in the image set. Can take a long time. '''
+    #return self.reader().is_valid(self._indices)
+    return True
+
+  def get_detector(self, index=None):
+    ''' Get the detector. '''
+    if index is None:
+      index = self._indices[0]
+    return self._images[index].get_detector()
+
+  def set_detector(self, detector):
+    ''' Set the detector model.'''
+    for img in self._images:
+      img._detector = detector
+
+  def get_beam(self, index=None):
+    ''' Get the beam. '''
+    if index is None:
+      index = self._indices[0]
+    return self._images[index].get_beam()
+
+  def set_beam(self, beam):
+    ''' Set the beam model.'''
+    for img in self._images:
+      img._beam = beam
+
+  def get_goniometer(self, index=None):
+    if index is None:
+      index = self._indices[0]
+    return self._images[index].get_goniometer()
+
+  def get_scan(self, index=None):
+    if index is None:
+      index = self._indices[0]
+    return self._images[index].get_scan()
+
+  def get_image_size(self, index=0):
+    ''' Get the image size. '''
+    if index is None:
+      index = self._indices[0]
+    return self._images[index].get_image_size()
+
+  def get_detectorbase(self, index=None):
+    ''' Get the detector base instance for the given index. '''
+    if index is None:
+      index = self._indices[0]
+    return self._images[index].get_detector_base()
+
+  def reader(self):
+    ''' Return the image set reader. '''
+    raise NotImplementedError("MemImageSet has no reader")
+
+  def _image_index(self, index=None):
+    ''' Convert image set index to image index.'''
+    if index == None:
+      return None
+    elif index < 0 or index >= len(self._indices):
+      raise IndexError('Index out of range')
+    return self._indices[index]
 
 class SweepFileList(object):
   '''Class implementing a file list interface for sweep templates.'''
