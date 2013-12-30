@@ -507,7 +507,6 @@ class MemImageSet(object):
 
     # Set the array range or get the range from the list of images
     if indices is not None:
-      assert len(indices) == len(images)
       self._indices = indices
     else:
       self._indices = range(len(images))
