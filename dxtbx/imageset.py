@@ -486,9 +486,10 @@ class ImageSet(object):
       raise IndexError('Index out of range')
     return self._indices[index]
 
-class MemImageSet(object):
+class MemImageSet(ImageSet):
   ''' A class exposing the external image set interface, but instead of a file list, uses
-  an already instantiated list of Format objects. '''
+  an already instantiated list of Format objects. Derives from ImageSet for clarity and for
+  the dials importer, but overrides all of ImageSet's methods '''
 
   def __init__(self, images, indices=None):
     ''' Initialise the MemImageSet object.
