@@ -10,8 +10,6 @@ import libtbx.phil
 import sys
 
 omit_map_phil = libtbx.phil.parse("""
-box_size_as_fraction = 0.03
-  .type = float
 n_debias_cycles = 2
   .type = int
 neutral_colume_box_cushion_width = 1
