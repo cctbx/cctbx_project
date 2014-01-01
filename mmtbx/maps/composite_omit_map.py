@@ -6,7 +6,19 @@ import boost.python
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 import mmtbx.f_model
 import cctbx.miller
+import libtbx.phil
 import sys
+
+omit_map_phil = libtbx.phil.parse("""
+box_size_as_fraction = 0.03
+  .type = float
+n_debias_cycles = 2
+  .type = int
+neutral_colume_box_cushion_width = 1
+  .type = float
+full_resolution_map = False
+  .type = bool
+""")
 
 class run(object):
   """
@@ -23,6 +35,8 @@ class run(object):
         resolution_factor=0.25,
         neutral_colume_box_cushion_width=1,
         full_resolution_map=False,
+        fill_missing=False,
+        exclude_free_r_reflections=False,
         log=sys.stdout):
     sgt = fmodel.f_obs().space_group().type()
     def get_map(fmodel, map_type, fft_map_ref):
@@ -30,7 +44,8 @@ class run(object):
         update_f_part1=False).map_coefficients(
           map_type     = map_type,
           isotropize   = True,
-          fill_missing = False)
+          exclude_free_r_reflections=exclude_free_r_reflections,
+          fill_missing = fill_missing)
       fft_map = cctbx.miller.fft_map(
         crystal_gridding     = fft_map_ref,
         fourier_coefficients = f_map)
