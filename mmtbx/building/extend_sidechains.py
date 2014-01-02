@@ -187,7 +187,6 @@ def refit_residues (
     anneal=False,
     verbose=True,
     out=sys.stdout) :
-  from mmtbx.command_line import real_space_refine
   from mmtbx.refinement.real_space import fit_residue
   from mmtbx.rotamer import rotamer_eval
   import mmtbx.monomer_library.server
@@ -207,7 +206,7 @@ def refit_residues (
   print >> ppdb_out, ""
   hierarchy = processed_pdb.all_chain_proxies.pdb_hierarchy
   xrs = processed_pdb.xray_structure()
-  grm = real_space_refine.get_geometry_restraints_manager(
+  grm = building.get_restraints_manager(
     processed_pdb_file = processed_pdb,
     xray_structure     = xrs)
   target_map = fmodel.map_coefficients(
