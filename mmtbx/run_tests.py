@@ -137,6 +137,7 @@ tst_list = (
   "$D/regression/tst_refine_anomalous_substructure.py",
   "$D/regression/tst_command_line_input.py",
   "$D/regression/tst_cif_as_mtz_wavelengths.py",
+  "$D/building/tst_extend_sidechains.py",
   )
 
 def run():

@@ -20,6 +20,27 @@ def reprocess_pdb (pdb_hierarchy, crystal_symmetry, cif_objects, out) :
     crystal_symmetry=crystal_symmetry,
     log=out)
 
+def get_restraints_manager (processed_pdb_file, xray_structure,
+    log=sys.stdout) :
+  import mmtbx.restraints
+  has_hd = None
+  if(xray_structure is not None):
+    sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
+    has_hd = "H" in sctr_keys or "D" in sctr_keys
+  geometry = processed_pdb_file.geometry_restraints_manager(
+    show_energies                = False,
+    show_nonbonded_clashscore    = False,
+    params_edits                 = None,
+    plain_pairs_radius           = 5,
+    hydrogen_bond_proxies        = None,
+    assume_hydrogens_all_missing = not has_hd)
+  restraints_manager = mmtbx.restraints.manager(
+    geometry      = geometry,
+    normalization = True)
+  if(xray_structure is not None):
+    restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
+  return restraints_manager
+
 def get_nearby_water_selection (
     pdb_hierarchy,
     xray_structure,
@@ -36,6 +57,21 @@ def iter_residue_groups (hierarchy) :
   for chain in hierarchy.only_model().chains() :
     for residue_group in chain.residue_groups() :
       yield residue_group
+
+def extract_iselection (pdb_objects) :
+  from scitbx.array_family import flex
+  isel = flex.size_t()
+  for pdb_obj in pdb_objects :
+    isel.extend(pdb_obj.atoms().extract_i_seq())
+  assert not isel.all_eq(0)
+  return isel
+
+def remove_sidechain_atoms (pdb_objects) :
+  for pdb_obj in pdb_objects :
+    atoms = pdb_obj.atoms()
+    for atom in atoms :
+      if (not atom.name.strip() in ["CA","C","N","O","CB"]) :
+        atom.parent().remove_atom(atom)
 
 #-----------------------------------------------------------------------
 # MAP-RELATED
@@ -166,20 +202,24 @@ class box_build_refine_base (object) :
       selection_buffer_radius=5,
       box_cushion=2,
       target_map_rsr=None,
+      geometry_restraints_manager=None,
       debug=False) :
     adopt_init_args(self, locals())
     import mmtbx.restraints
     import mmtbx.utils
     from scitbx.array_family import flex
-    if (self.processed_pdb_file is None) :
-      self.processed_pdb_file = reprocess_pdb(
-        pdb_hierarchy=pdb_hierarchy,
-        cif_objects=cif_objects,
-        crystal_symmetry=xray_structure,
-        out=out)
     self.iselection = selection.iselection()
+    if (geometry_restraints_manager is None) :
+      if (self.processed_pdb_file is None) :
+        self.processed_pdb_file = reprocess_pdb(
+          pdb_hierarchy=pdb_hierarchy,
+          cif_objects=cif_objects,
+          crystal_symmetry=xray_structure,
+          out=out)
+      self.geometry_restraints_manager = \
+        self.processed_pdb_file.geometry_restraints_manager(show_energies=False)
     grm = mmtbx.restraints.manager(
-      geometry=self.processed_pdb_file.geometry_restraints_manager(show_energies=False),
+      geometry=self.geometry_restraints_manager,
       normalization = True)
     self.selection_within = xray_structure.selection_within(
       radius    = selection_buffer_radius,
@@ -346,18 +386,17 @@ class box_build_refine_base (object) :
       selection=self.others_in_box,
       reference_sigma=0.1)
     self.real_space_refine()
-    mmtbx.refinement.real_space.fit_residue.manager(
-      target_map           = self.target_map_box,
-      mon_lib_srv          = mon_lib_srv,
-      special_position_settings = \
-        self.box.xray_structure_box.special_position_settings(),
-      residue              = residue,
-      sites_cart_all       = None,
-      rotamer_manager      = rotamer_manager,
-      debug                = False,# XXX
-      torsion_search_all_start = 0,
-      torsion_search_all_stop  = 360,
-      torsion_search_all_step  = 5)
+    mmtbx.refinement.real_space.fit_residue.run(
+      target_map=self.target_map_box,
+      residue=residue,
+      xray_structure=self.box.xray_structure_box,
+      mon_lib_srv=mon_lib_srv,
+      rotamer_manager=rotamer_manager,
+      geometry_restraints_manager=self.box_restraints_manager,
+      real_space_gradients_delta=self.d_min*self.resolution_factor,
+      rms_bonds_limit=0.01,
+      rms_angles_limit=1.0,
+      backbone_sample_angle=20)
 
   def update_coordinates (self, sites_cart) :
     """

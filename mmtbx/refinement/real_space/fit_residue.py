@@ -17,6 +17,9 @@ class run(object):
                xray_structure,
                mon_lib_srv,
                rotamer_manager,
+               # FIXME this actually needs to be an mmtbx.restraints.manager
+               # object, not cctbx.geometry_restraints.manager.manager - the
+               # keyword should be changed to reflect this
                geometry_restraints_manager,
                real_space_gradients_delta,
                selection_radius = 5,
@@ -26,6 +29,7 @@ class run(object):
     adopt_init_args(self, locals())
     self.backbone_atom_names = ["N", "CA", "O", "CB", "C"]
     self.residue_iselection = self.residue.atoms().extract_i_seq()
+    assert (not self.residue_iselection.all_eq(0))
     self.residue_selection = flex.bool(
       xray_structure.scatterers().size(), self.residue_iselection)
     self.residue_backbone_selection = flex.size_t()
