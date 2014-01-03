@@ -45,6 +45,20 @@ S = "P n a 21"
 ua = None
 sa = None
 """)
+  # make sure Unicode strings work!
+  custom = iotbx.phil.parse(input_string=u"""\
+U = 1 2 3 90 105 90
+S = P21
+""")
+  assert not show_diff(
+    master.fetch(source=custom).extract_format().as_str(), """\
+u = 10 12 13 80 90 100
+s = "P 21 21 21"
+U = 1 2 3 90 105 90
+S = "P 1 21 1"
+ua = Auto
+sa = Auto
+""")
   #
   master = iotbx.phil.parse(input_string="""\
 s=None
