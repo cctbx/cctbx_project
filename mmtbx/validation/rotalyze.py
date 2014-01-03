@@ -107,7 +107,6 @@ class rotalyze (validation) :
           chain_id = chain.id
         for rg in chain.residue_groups():
           all_dict = construct_complete_sidechain(rg)
-          #print all_dict
           for atom_group in rg.atom_groups() :
             coords = get_center(atom_group)
             resname = atom_group.resname
@@ -319,13 +318,20 @@ def get_center (residue):
       return atom.xyz
   return None
 
+def has_alternate_heavy_atoms(atoms):
+  for atom in atoms:
+    if not atom.element_is_hydrogen():
+      return True
+  return False
+
 def construct_complete_sidechain(residue_group):
   if (residue_group is not None):
     complete_dict = {}
     atom_dict = {}
     for ag in residue_group.atom_groups():
+      if not has_alternate_heavy_atoms(ag.atoms()):
+        continue
       for atom in ag.atoms():
-        #if atom.name not in atom_dict:
         #handle hydrogen/deuterium swaps
         if atom_dict.get(atom.name) == None:
           if atom_dict.get(atom.name.replace("H","D",1)) != None:

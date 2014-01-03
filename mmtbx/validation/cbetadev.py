@@ -95,7 +95,7 @@ class cbetadev (validation) :
                     sub=" "+sub
                   resCB = relevant_atoms[" CB "]
                   result = cbeta(
-                    chain_id=chain.id,
+                    chain_id=chain_id,
                     resname=residue.resname,
                     resseq=residue.resseq,
                     icode=residue.icode,
