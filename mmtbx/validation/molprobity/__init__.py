@@ -98,6 +98,8 @@ class molprobity (slots_getstate_setstate) :
       outliers_only=True) :
     for name in self.__slots__ :
       setattr(self, name, None)
+    if (xray_structure is None) and (fmodel is not None) :
+      xray_structure = fmodel.xray_structure
     self.crystal_symmetry = crystal_symmetry
     if (crystal_symmetry is None) and (fmodel is not None) :
       self.crystal_symmetry = fmodel.f_obs().crystal_symmetry()
@@ -540,6 +542,15 @@ class residue_multi_criterion (residue) :
         return values
     return [ numpy.NaN ] * 4
 
+  def is_map_outlier (self, cc_min=0.8) :
+    import numpy
+    b_iso, cc, two_fofc, fmodel = self.get_real_space_plot_values()
+    if (cc == numpy.NaN) :
+      return None
+    elif (cc < cc_min) :
+      return True
+    return False
+
   def get_outlier_plot_values (self) :
     import numpy
     y = []
@@ -607,7 +618,7 @@ class multi_criterion_view (slots_getstate_setstate) :
     residue_validation = self.residues.get(residue_group.id_str(), None)
     if (residue_validation is None) :
       raise RuntimeError("Can't find residue '%s'" % residue_group.id_str())
-    return residue_validation.outliers
+    return residue_validation
 
   def data (self) :
     return sorted(self.residues.values())

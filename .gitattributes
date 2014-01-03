@@ -1489,6 +1489,7 @@ mmtbx/chemical_components/tst.py -text
 mmtbx/command_line/altloc_remediate.py -text
 mmtbx/command_line/analyze_peptides.py -text
 mmtbx/command_line/b_factor_statistics.py -text
+mmtbx/command_line/build_alt_confs.py -text
 mmtbx/command_line/cablam_training.py -text
 mmtbx/command_line/cablam_validate.py -text
 mmtbx/command_line/cbetadev.py -text

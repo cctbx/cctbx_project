@@ -1,6 +1,8 @@
 
 from __future__ import division
+from libtbx.str_utils import make_sub_header
 from libtbx import group_args
+import libtbx.phil
 from math import sqrt
 import sys
 
@@ -157,6 +159,22 @@ def coord_stats_with_flips (sites1, sites2, atoms) :
     rmsd=min(rmsd_no_flip, rmsd_flip),
     max_dev=min(max_deviation_no_flip, max_deviation_flip))
 
+def coord_stats_for_atom_groups (residue1, residue2) :
+  from scitbx.array_family import flex
+  sites1 = flex.vec3_double()
+  sites2 = flex.vec3_double()
+  atoms = []
+  for atom1 in residue1.atoms() :
+    found = False
+    for atom2 in residue2.atoms() :
+      if (atom2.name == atom1.name) :
+        assert (not found)
+        found = True
+        atoms.append(atom1)
+        sites1.append(atom1.xyz)
+        sites2.append(atom2.xyz)
+  return coord_stats_with_flips(sites1, sites2, atoms)
+
 #-----------------------------------------------------------------------
 # MAP STUFF
 def get_partial_omit_map (
@@ -222,3 +240,123 @@ def negate_surrounding_sites (map_data, xray_structure, iselection,
       negate_selection        = negate_selection,
       atom_radius             = radius)
   return target_map
+
+filter_params_str = """
+  discard_outliers = *rama *rota *cbeta *geo *map
+    .type = choice(multi=True)
+  min_model_map_cc = 0.85
+    .type = float
+  use_difference_map = True
+    .type = bool
+  sampling_radius = 2.5
+    .type = float
+"""
+
+def is_validation_outlier (validation, params) :
+  filters = params.discard_outliers
+  outlier = False
+  if (validation.is_rotamer_outlier()) and ("rota" in filters) :
+    outlier = True
+  if (validation.is_ramachandran_outlier()) and ("rama" in filters) :
+    outlier = True
+  if (validation.is_cbeta_outlier()) and ("cbeta" in filters) :
+    outlier = True
+  if (validation.is_geometry_outlier()) and ("geo" in filters) :
+    outlier = True
+  if (validation.is_clash_outlier()) and ("clash" in filters) :
+    outlier = True
+  if ((validation.is_map_outlier(cc_min=params.min_model_map_cc)) and
+      ("map" in filters)) :
+    outlier = True
+  return outlier
+
+def filter_before_build (
+    pdb_hierarchy,
+    fmodel,
+    geometry_restraints_manager,
+    selection=None,
+    params=None,
+    verbose=True,
+    log=sys.stdout) :
+  """
+  Pick residues suitable for building alternate conformations - by default,
+  this means no MolProbity/geometry outliers, good fit to map, no missing
+  atoms, and no pre-existing alternates, but with significant difference
+  density nearby.
+  """
+  from mmtbx.validation import molprobity
+  from mmtbx.rotamer import rotamer_eval
+  import mmtbx.monomer_library.server
+  from mmtbx import building
+  from iotbx.pdb import common_residue_names_get_class
+  from scitbx.array_family import flex
+  if (selection is None) :
+    selection = flex.bool(fmodel.xray_structure.scatterers().size(), True)
+  pdb_hierarchy.atoms().reset_i_seq()
+  full_validation = molprobity.molprobity(
+    pdb_hierarchy=pdb_hierarchy,
+    fmodel=fmodel,
+    geometry_restraints_manager=geometry_restraints_manager,
+    outliers_only=False)
+  if (verbose) :
+    full_validation.show(out=log)
+  multi_criterion = full_validation.as_multi_criterion_view()
+  if (params is None) :
+    params = libtbx.phil.parse(filter_params_str).extract()
+  mon_lib_srv = mmtbx.monomer_library.server.server()
+  two_fofc_map, fofc_map = building.get_difference_maps(fmodel=fmodel)
+  residues = []
+  filters = params.discard_outliers
+  make_sub_header("Identifying candidates for building", out=log)
+  for chain in pdb_hierarchy.only_model().chains() :
+    if (not chain.is_protein()) :
+      continue
+    for residue_group in chain.residue_groups() :
+      atom_groups = residue_group.atom_groups()
+      id_str = residue_group.id_str()
+      i_seqs = residue_group.atoms().extract_i_seq()
+      residue_sel = selection.select(i_seqs)
+      if (not residue_sel.all_eq(True)) :
+        continue
+      if (len(atom_groups) > 1) :
+        print >> log, "  %s is already multi-conformer" % id_str
+        continue
+      atom_group = atom_groups[0]
+      res_class = common_residue_names_get_class(atom_group.resname)
+      if (res_class != "common_amino_acid") :
+        print >> log, "  %s: non-standard residue" % id_str
+        continue
+      missing_atoms = rotamer_eval.eval_residue_completeness(
+        residue=atom_group,
+        mon_lib_srv=mon_lib_srv,
+        ignore_hydrogens=True)
+      if (len(missing_atoms) > 0) :
+        print >> log, "  %s: missing %d atoms" % (id_str, len(missing_atoms))
+        continue
+      validation = multi_criterion.get_residue_group_data(residue_group)
+      is_outlier = is_validation_outlier(validation, params)
+      if (is_outlier) :
+        print >> log, "  %s" % str(validation)
+        continue
+      if (params.use_difference_map) :
+        i_seqs_no_hd = building.get_non_hydrogen_atom_indices(residue_group)
+        map_stats = building.local_density_quality(
+          fofc_map=fofc_map,
+          two_fofc_map=two_fofc_map,
+          atom_selection=i_seqs_no_hd,
+          xray_structure=fmodel.xray_structure,
+          radius=params.sampling_radius)
+        if ((map_stats.number_of_atoms_in_difference_holes() == 0) and
+            (map_stats.fraction_of_nearby_grid_points_above_cutoff()==0)) :
+          if (verbose) :
+            print >> log, "  no difference density for %s" % id_str
+          continue
+      residues.append(residue_group.only_atom_group())
+  if (len(residues) == 0) :
+    raise Sorry("No residues passed the filtering criteria.")
+  if (verbose) :
+    print >> log, ""
+    print >> log, "Alternate conformations will be tried for these residues:"
+    for residue in residues :
+      print >> log, "  %s" % residue.id_str()
+  return residues
