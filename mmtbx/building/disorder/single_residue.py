@@ -16,6 +16,7 @@ from __future__ import division
 from mmtbx.building import extend_sidechains
 from mmtbx.building import disorder
 from mmtbx import building
+from libtbx.str_utils import make_header, make_sub_header
 from libtbx import adopt_init_args, Auto
 from libtbx.utils import null_out
 from libtbx import easy_mp
@@ -122,7 +123,7 @@ class rebuild_residue (object) :
     pdb_hierarchy.atoms().set_xyz(sites_new)
     return building.atom_group_as_hierarchy(new_atom_group)
 
-params_str = """
+build_params_str = """
   expected_occupancy = 0.4
     .type = float
   window_size = 2
@@ -237,6 +238,7 @@ def process_results (
     params,
     log=sys.stdout) :
   assert (len(residues_in) == len(new_residues))
+  n_alternates = 0
   residues_out = []
   for h in new_residues :
     if (h is not None) :
@@ -253,36 +255,45 @@ def process_results (
   for main_conf, new_conf in zip(residues_in, residues_out) :
     if (new_conf is None) : continue
     stats = disorder.coord_stats_for_atom_groups(main_conf, new_conf)
-    if (stats.rmsd > 0.5) :
-      if (params.rescore) :
-        fofc_max = 0
-        for atom in new_conf.atoms() :
-          name = atom.name.strip()
-          site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
-          fofc_value = fofc_map.eight_point_interpolation(site_frac)
-          if ((not name in ["N","C","O","CA", "CB"]) or
-              ((name == "O") and (new_conf.resname in ["GLY", "ALA"]))) :
-            if (fofc_value > fofc_max) :
-              fofc_max = fofc_value
-        if (fofc_max < params.map_thresholds.starting_fofc_min_sc_single) :
-          continue
-        print >> log, "  %s: RMSD=%5.3f  max. change=%.2f  max(Fo-Fc)=%.1f" % \
-          (main_conf.id_str(), stats.rmsd, stats.max_dev, fofc_max)
-      else :
-        print >> log, "  %s: RMSD=%5.3f  max. change=%.2f" % \
-          (main_conf.id_str(), stats.rmsd, stats.max_dev)
-      residue_group = main_conf.parent()
-      main_conf.altloc = 'A'
-      for atom in main_conf.atoms() :
-        atom.segid = "XXXX"
-        atom.occ = 1.0 - params.expected_occupancy
-      alt_conf = new_conf.detached_copy()
-      alt_conf.altloc = 'B'
-      for atom in alt_conf.atoms() :
-        atom.segid = "XXXX"
-        atom.occ = params.expected_occupancy
-      residue_group.append_atom_group(alt_conf)
-  spread_alternates(pdb_hierarchy, params, log=log)
+    skip = False
+    flag = ""
+    if (params.rescore) :
+      fofc_max = 0
+      for atom in new_conf.atoms() :
+        name = atom.name.strip()
+        site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
+        fofc_value = fofc_map.eight_point_interpolation(site_frac)
+        if ((not name in ["N","C","O","CA", "CB"]) or
+            ((name == "O") and (new_conf.resname in ["GLY", "ALA"]))) :
+          if (fofc_value > fofc_max) :
+            fofc_max = fofc_value
+      if (fofc_max < params.map_thresholds.starting_fofc_min_sc_single) :
+        skip = True
+      if (not skip) : flag = " ***"
+      print >> log, "  %s: RMSD=%5.3f  max. change=%.2f  max(Fo-Fc)=%.1f%s" \
+        % (main_conf.id_str(), stats.rmsd, stats.max_dev, fofc_max, flag)
+    else :
+      if (not skip) : flag = " ***"
+      print >> log, "  %s: RMSD=%5.3f  max. change=%.2f%s" % \
+        (main_conf.id_str(), stats.rmsd, stats.max_dev, flag)
+    if (stats.rmsd < 0.5) :
+      skip = True
+    if (skip) : continue
+    residue_group = main_conf.parent()
+    main_conf.altloc = 'A'
+    for atom in main_conf.atoms() :
+      atom.occ = 1.0 - params.expected_occupancy
+      atom.segid = "OLD1"
+    alt_conf = new_conf.detached_copy()
+    alt_conf.altloc = 'B'
+    for atom in alt_conf.atoms() :
+      atom.segid = "NEW1"
+      atom.occ = params.expected_occupancy
+    residue_group.append_atom_group(alt_conf)
+    n_alternates += 1
+  if (n_alternates > 0) :
+    spread_alternates(pdb_hierarchy, params, log=log)
+  return n_alternates
 
 def spread_alternates (pdb_hierarchy, params, log) :
   print >> log, ""
@@ -293,20 +304,20 @@ def spread_alternates (pdb_hierarchy, params, log) :
     main_conf.altloc = 'A'
     for atom in main_conf.atoms() :
       atom.occ = 1.0 - params.expected_occupancy
-      atom.segid = 'ZZZZ'
+      atom.segid = "OLD2"
     alt_conf = main_conf.detached_copy()
     alt_conf.altloc = 'B'
     for atom in alt_conf.atoms() :
       atom.occ = params.expected_occupancy
-      atom.segid = 'ZZZZ'
+      atom.segid = 'NEW2'
     residue_group.append_atom_group(alt_conf)
   for chain in pdb_hierarchy.only_model().chains() :
     residue_groups = chain.residue_groups()
     for i_res, residue_group in enumerate(residue_groups) :
       atom_groups = residue_group.atom_groups()
       if (len(atom_groups) > 1) :
-        segid = residue_group.atoms()[0].segid
-        if (segid != 'XXXX') :
+        segid = atom_groups[-1].atoms()[0].segid
+        if (segid != 'NEW1') :
           continue
         if (i_res > 0) :
           prev_group = residue_groups[i_res - 1]
@@ -316,3 +327,132 @@ def spread_alternates (pdb_hierarchy, params, log) :
           next_group = residue_groups[i_res + 1]
           if (len(next_group.atom_groups()) == 1) :
             split_residue(next_group)
+
+def real_space_refine (
+    pdb_hierarchy,
+    fmodel,
+    cif_objects,
+    out) :
+  from scitbx.array_family import flex
+  make_sub_header("Real-space refinement", out=out)
+  fmodel.info().show_targets(out=out, text="Rebuilt model")
+  processed_pdb_file = building.reprocess_pdb(
+    pdb_hierarchy=pdb_hierarchy,
+    cif_objects=cif_objects,
+    crystal_symmetry=fmodel.xray_structure,
+    out=null_out())
+  # get the 2mFo-DFc map without alternates!
+  two_fofc_map = fmodel.two_fofc_map(exclude_free_r_reflections=True)
+  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  pdb_atoms = pdb_hierarchy.atoms()
+  xray_structure = processed_pdb_file.xray_structure()
+  geometry_restraints_manager = processed_pdb_file.geometry_restraints_manager(
+    show_energies=False)
+  fmodel.update_xray_structure(xray_structure)
+  sele_cache = pdb_hierarchy.atom_selection_cache()
+  # this will include both the newly built residues and the original atoms,
+  # including residues split to allow for backbone flexibility.
+  sele_split = sele_cache.selection(
+    "segid NEW1 or segid NEW2 or segid OLD1 or segid OLD2")
+  assert (len(sele_split) > 0)
+  k = 0
+  while (k < len(sele_split)) :
+    if (sele_split[k]) :
+      current_fragment = flex.size_t()
+      while (sele_split[k]) :
+        current_fragment.append(k)
+        k += 1
+      print >> out, "  refining %d atoms..." % len(current_fragment)
+      frag_selection = flex.bool(sele_split.size(), current_fragment)
+      box = building.box_build_refine_base(
+        pdb_hierarchy=pdb_hierarchy,
+        xray_structure=xray_structure,
+        processed_pdb_file=processed_pdb_file,
+        target_map=two_fofc_map,
+        selection=frag_selection,
+        d_min=fmodel.f_obs().d_min(),
+        out=out)
+      box.restrain_atoms("segid OLD1 or segid OLD2", 0.02)
+      box.restrain_atoms("segid NEW1", 0.05)
+      # first fix the geometry of adjacent residues
+      box.real_space_refine("segid NEW2")
+      # now the entire B conformer
+      box.real_space_refine("segid NEW1 or segid NEW2")
+      sites_new = box.update_original_coordinates()
+      xray_structure.set_sites_cart(sites_new)
+      pdb_atoms.set_xyz(sites_new)
+    else :
+      k += 1
+  fmodel.update_xray_structure(xray_structure)
+  fmodel.info().show_targets(out=out, text="After real-space refinement")
+  return pdb_hierarchy
+
+master_phil_str = """
+building {
+  %s
+}
+prefilter {
+  include scope mmtbx.building.disorder.filter_params_str
+}""" % build_params_str
+
+def build_cycle (pdb_hierarchy,
+    fmodel,
+    geometry_restraints_manager,
+    params,
+    selection=None,
+    cif_objects=(),
+    nproc=Auto,
+    out=sys.stdout,
+    i_cycle=0) :
+  from mmtbx import restraints
+  from scitbx.array_family import flex
+  hd_sel = fmodel.xray_structure.hd_selection()
+  n_hydrogen = hd_sel.count(True)
+  if (n_hydrogen > 0) :
+    print >> out, "WARNING: %d hydrogen atoms will be removed!" % n_hydrogen
+    non_hd_sel = ~hd_sel
+    pdb_hierarchy = pdb_hierarchy.select(non_hd_sel)
+    xray_structure = fmodel.xray_structure.select(non_hd_sel)
+    fmodel.update_xray_structure(xray_structure)
+    geometry_restraints_manager = geometry_restraints_manager.select(non_hd_sel)
+  if isinstance(selection, str) :
+    sele_cache = pdb_hierarchy.atom_selection_cache()
+    selection = sele_cache.selection(selection)
+  make_header("Build cycle %d" % i_cycle, out=out)
+  candidate_residues = disorder.filter_before_build(
+    pdb_hierarchy=pdb_hierarchy,
+    fmodel=fmodel,
+    geometry_restraints_manager=geometry_restraints_manager,
+    selection=selection,
+    params=params.prefilter,
+    verbose=True,
+    log=out)
+  restraints_manager = restraints.manager(
+    geometry=geometry_restraints_manager,
+    normalization=True)
+  make_sub_header("Finding alternate conformations", out=out)
+  fmodel.info().show_rfactors_targets_scales_overall(out=out)
+  new_residues = find_all_alternates(
+    residues=candidate_residues,
+    pdb_hierarchy=pdb_hierarchy,
+    restraints_manager=restraints_manager,
+    fmodel=fmodel,
+    params=params.building,
+    nproc=params.nproc,
+    log=out).results
+  n_alternates = process_results(
+    pdb_hierarchy=pdb_hierarchy,
+    fmodel=fmodel,
+    residues_in=candidate_residues,
+    new_residues=new_residues,
+    params=params.building,
+    log=out)
+  if (n_alternates == 0) :
+    print >> out, "No alternates built this round."
+    return pdb_hierarchy
+  pdb_hierarchy = real_space_refine(
+    pdb_hierarchy=pdb_hierarchy,
+    fmodel=fmodel,
+    cif_objects=cif_objects,
+    out=out)
+  return pdb_hierarchy
