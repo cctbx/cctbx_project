@@ -17,7 +17,7 @@ class unit_cell_converters(object):
     s = libtbx.phil.str_from_words(words=words)
     if (s is None): return None
     if (s is Auto): return Auto
-    return uctbx.unit_cell(s)
+    return uctbx.unit_cell(str(s))
 
   def as_words(self, python_object, master):
     if (python_object is None):
@@ -37,7 +37,7 @@ class space_group_converters(object):
     symbol = libtbx.phil.str_from_words(words)
     if (symbol is None): return None
     if (symbol is Auto): return Auto
-    return sgtbx.space_group_info(symbol=symbol)
+    return sgtbx.space_group_info(symbol=str(symbol))
 
   def as_words(self, python_object, master):
     if (python_object is None):
