@@ -370,15 +370,21 @@ class box_build_refine_base (object) :
         selection,
         reference_sigma,
         limit=1.0,
+        reset_first=True,
         top_out_potential=False) :
     """
     Apply harmonic reference restraints to the selected atoms, wiping out
     any previously existing harmonic restraints.
     """
     assert (reference_sigma > 0)
+    if isinstance(selection, str) :
+      selection = self.box.pdb_hierarchy_box.atom_selection_cache().selection(
+        selection).iselection()
+      assert (len(selection) > 0)
     sites_cart_box = self.box.xray_structure_box.sites_cart()
     reference_sites = sites_cart_box.select(selection)
-    self.reference_manager_box.remove_coordinate_restraints()
+    if (reset_first) :
+      self.reference_manager_box.remove_coordinate_restraints()
     self.reference_manager_box.add_coordinate_restraints(
         sites_cart = reference_sites,
         selection  = selection,
@@ -394,6 +400,9 @@ class box_build_refine_base (object) :
     import mmtbx.refinement.real_space.individual_sites
     if (selection is None) :
       selection = self.selection_all_box
+    elif isinstance(selection, str) :
+      selection = self.box.pdb_hierarchy_box.atom_selection_cache().selection(
+        selection).iselection()
     rsr_simple_refiner = mmtbx.refinement.real_space.individual_sites.simple(
       target_map                  = self.target_map_rsr_box,
       selection                   = selection,
