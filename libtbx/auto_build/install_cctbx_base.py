@@ -560,6 +560,7 @@ class installer (object) :
         "--with-gtk-prefix=\"%s\"" % self.base_dir,
         "--with-gtk-exec-prefix=\"%s\"" % os.path.join(self.base_dir, "lib"),
         "--enable-graphics_ctx",
+        "--enable-unicode",
       ])
     self.set_cppflags_ldflags_tmp()
     print >> self.log, "  building wxWidgets with options:"
@@ -576,6 +577,7 @@ class installer (object) :
       "BUILD_STC=0",
       "BUILD_GIZMOS=0",
       "BUILD_DLLWIDGET=0",
+      "UNICODE=1",
     ]
     if (cocoa) :
       os.environ['CFLAGS'] = "-arch x86_64"
