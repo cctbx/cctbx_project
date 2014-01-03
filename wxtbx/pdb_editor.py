@@ -1991,8 +1991,11 @@ class PDBTreeFrame (wx.Frame) :
     reset_serial = self._serial_box.GetValue()
     if (reset_serial) :
       self._hierarchy.atoms().reset_serial()
-    f.write(self._hierarchy.as_pdb_string(
-      crystal_symmetry=self._crystal_symmetry))
+    pdb_out = self._hierarchy.as_pdb_string(
+      crystal_symmetry=self._crystal_symmetry)
+    for line in pdb_out.splitlines() :
+      if (not line.startswith("BREAK")) :
+        f.write("%s\n" % line)
     f.write("END")
     f.close()
     self._tree.SaveChanges()
