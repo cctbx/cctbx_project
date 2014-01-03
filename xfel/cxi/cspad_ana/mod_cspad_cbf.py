@@ -151,6 +151,12 @@ class mod_cspad_cbf(mod_event_info):
       cbf.find_column("displacement")
       cbf.set_value(str(-distance))
 
+      # Explicitly reset the detector object now that the distance is set correctly
+      self.cspad_img._detector_instance = self.cspad_img._detector()
+
+      # Explicitly set up the beam object now that the tables are all loaded correctly
+      self.cspad_img._beam_instance = self.cspad_img._beam()
+
       # Get the data and add it to the cbf handle
       tiles = {}
       for quad in quads:
@@ -171,6 +177,7 @@ class mod_cspad_cbf(mod_event_info):
         for i, k in enumerate(sorted(tiles)):
           tiles[k] *= self.gain_map[i]
 
+      # add the pixel data
       cspad_cbf_tbx.add_tiles_to_cbf(cbf,tiles)
 
       self.logger.info("Processed %s"%self.timestamp)
