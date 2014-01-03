@@ -73,6 +73,45 @@ def remove_sidechain_atoms (pdb_objects) :
       if (not atom.name.strip() in ["CA","C","N","O","CB"]) :
         atom.parent().remove_atom(atom)
 
+def get_non_hydrogen_atom_indices (pdb_object) :
+  from scitbx.array_family import flex
+  i_seqs_no_hd = flex.size_t()
+  for atom in pdb_object.atoms() :
+    if (atom.element.strip() not in ["H","D"]) :
+      i_seqs_no_hd.append(atom.i_seq)
+  return i_seqs_no_hd
+
+def get_window_around_residue (residue, window_size=2) :
+  residue_group = residue.parent()
+  chain = residue_group.parent()
+  all_residues = chain.residue_groups()
+  sel_residues = []
+  for i_res, other_rg in enumerate(all_residues) :
+    if (other_rg == residue_group) :
+      for j_res in range(-window_size, window_size+1) :
+        k_res = i_res + j_res
+        if (k_res >= 0) and (k_res < len(all_residues)) :
+          sel_residues.append(all_residues[k_res])
+  assert (len(sel_residues) > 0)
+  return sel_residues
+
+def atom_group_as_hierarchy (atom_group) :
+  import iotbx.pdb.hierarchy
+  old_rg = atom_group.parent()
+  assert (old_rg is not None)
+  old_chain = old_rg.parent()
+  root = iotbx.pdb.hierarchy.root()
+  model = iotbx.pdb.hierarchy.model()
+  chain = iotbx.pdb.hierarchy.chain(id=old_chain.id)
+  residue_group = iotbx.pdb.hierarchy.residue_group(
+    resseq=old_rg.resseq,
+    icode=old_rg.icode)
+  residue_group.append_atom_group(atom_group.detached_copy())
+  chain.append_residue_group(residue_group)
+  model.append_chain(chain)
+  root.append_model(model)
+  return root
+
 #-----------------------------------------------------------------------
 # MAP-RELATED
 class local_density_quality (object) :
@@ -373,7 +412,10 @@ class box_build_refine_base (object) :
         (refined.rms_bonds_final, refined.rms_angles_final)
     return refined.weight_final
 
-  def fit_residue_in_box (self, mon_lib_srv=None, rotamer_manager=None) :
+  def fit_residue_in_box (self,
+      mon_lib_srv=None,
+      rotamer_manager=None,
+      backbone_sample_angle=20) :
     import mmtbx.refinement.real_space.fit_residue
     if (mon_lib_srv is None) :
       import mmtbx.monomer_library.server
@@ -396,7 +438,7 @@ class box_build_refine_base (object) :
       real_space_gradients_delta=self.d_min*self.resolution_factor,
       rms_bonds_limit=0.01,
       rms_angles_limit=1.0,
-      backbone_sample_angle=20)
+      backbone_sample_angle=backbone_sample_angle)
 
   def update_coordinates (self, sites_cart) :
     """
