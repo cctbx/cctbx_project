@@ -318,7 +318,7 @@ def get_center (residue):
       return atom.xyz
   return None
 
-def has_alternate_heavy_atoms(atoms):
+def has_heavy_atoms(atoms):
   for atom in atoms:
     if not atom.element_is_hydrogen():
       return True
@@ -329,7 +329,7 @@ def construct_complete_sidechain(residue_group):
     complete_dict = {}
     atom_dict = {}
     for ag in residue_group.atom_groups():
-      if not has_alternate_heavy_atoms(ag.atoms()):
+      if not has_heavy_atoms(ag.atoms()):
         continue
       for atom in ag.atoms():
         #handle hydrogen/deuterium swaps

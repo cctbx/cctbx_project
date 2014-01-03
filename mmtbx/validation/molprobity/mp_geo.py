@@ -27,6 +27,7 @@ def get_bond_and_angle_outliers(
       pdb_hierarchy,
       xray_structure,
       geometry_restraints_manager,
+      use_segids,
       outliers_only=False,
       type=None):
   rc = restraints.combined(
@@ -34,7 +35,8 @@ def get_bond_and_angle_outliers(
          xray_structure=xray_structure,
          geometry_restraints_manager=geometry_restraints_manager,
          ignore_hd=True,
-         outliers_only=outliers_only)
+         outliers_only=outliers_only,
+         use_segids_in_place_of_chainids=use_segids)
   return rc
 
 def get_atoms_str(atoms_info):
@@ -79,6 +81,7 @@ def run(args):
   if do_kinemage:
     out = file(out_file, 'a')
   use_neutron_distances = False
+  from mmtbx.validation import utils
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv              = server.server(),
     ener_lib                 = server.ener_lib(),
@@ -89,17 +92,22 @@ def run(args):
     substitute_non_crystallographic_unit_cell_if_necessary=True,
     log                      = log)
   grm = processed_pdb_file.geometry_restraints_manager()
+  use_segids = utils.use_segids_in_place_of_chainids(
+                 hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   rc = get_bond_and_angle_outliers(
          pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
          xray_structure=processed_pdb_file.xray_structure(),
          geometry_restraints_manager=grm,
+         use_segids=use_segids,
          outliers_only=outliers_only)
-
   #get chain types
   chain_types = {}
   for chain in processed_pdb_file.all_chain_proxies.\
                  pdb_hierarchy.models()[0].chains() :
-    chain_id = chain.id
+    if use_segids:
+      chain_id = utils.get_segid_as_chainid(chain=chain)
+    else:
+      chain_id = chain.id
     main_conf = chain.conformers()[0]
     if chain_types.get(chain_id) not in ["NA", "PROTEIN"]:
       if (main_conf.is_na()) :
@@ -115,7 +123,8 @@ def run(args):
     # label:chain:number:ins:alt:type:measure:value:sigmas:class
     atoms_str = get_atoms_str(atoms_info=result.atoms_info)
     altloc = get_altloc(atoms_info=result.atoms_info)
-    outliers.append( [atom_info.chain_id,
+    chain_id = atom_info.chain_id
+    outliers.append( [chain_id,
                       atom_info.resseq,
                       atom_info.icode,
                       altloc,
@@ -131,7 +140,8 @@ def run(args):
     # label:chain:number:ins:alt:type:measure:value:sigmas:class
     atoms_str = get_atoms_str(atoms_info=result.atoms_info)
     altloc = get_altloc(atoms_info=result.atoms_info)
-    outliers.append( [atom_info.chain_id,
+    chain_id = atom_info.chain_id
+    outliers.append( [chain_id,
                       atom_info.resseq,
                       atom_info.icode,
                       altloc,

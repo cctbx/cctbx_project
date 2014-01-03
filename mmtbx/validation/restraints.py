@@ -145,7 +145,8 @@ class restraint_validation (validation) :
       unit_cell,
       ignore_hd=True,
       sigma_cutoff=4.0,
-      outliers_only=True) :
+      outliers_only=True,
+      use_segids_in_place_of_chainids=False) :
     validation.__init__(self)
     self.z_min = self.z_max = self.z_mean = None
     deviations_method = getattr(energies_sites, "%s_deviations" %
@@ -170,7 +171,8 @@ class restraint_validation (validation) :
       sites_cart=sites_cart,
       pdb_atoms=pdb_atoms,
       sigma_cutoff=sigma_cutoff,
-      outliers_only=outliers_only))
+      outliers_only=outliers_only,
+      use_segids_in_place_of_chainids=use_segids_in_place_of_chainids))
     self.n_outliers = len(self.results)
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
@@ -226,7 +228,8 @@ class bonds (restraint_validation) :
   def get_result_class (self) : return bond
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
-      sigma_cutoff, outliers_only=True) :
+      sigma_cutoff, outliers_only=True,
+      use_segids_in_place_of_chainids=False) :
     from scitbx.array_family import flex
     site_labels = flex.bool(sites_cart.size(), True).iselection()
     sorted_table, not_shown = proxies.get_sorted(
@@ -237,7 +240,8 @@ class bonds (restraint_validation) :
     for restraint_info in sorted_table :
       (i_seqs, ideal, model, slack, delta, sigma, weight, residual, sym_op_j,
        rt_mx) = restraint_info
-      bond_atoms = get_atoms_info(pdb_atoms, iselection=i_seqs)
+      bond_atoms = get_atoms_info(pdb_atoms, iselection=i_seqs,
+        use_segids_in_place_of_chainids=use_segids_in_place_of_chainids)
       outlier = bond(
         atoms_info=bond_atoms,
         target=ideal,
@@ -263,12 +267,14 @@ class angles (restraint_validation) :
   def get_result_class (self) : return angle
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
-      sigma_cutoff, outliers_only=True) :
+      sigma_cutoff, outliers_only=True,
+      use_segids_in_place_of_chainids=False) :
     import cctbx.geometry_restraints
     sorted = _get_sorted(proxies,
       unit_cell=unit_cell,
       sites_cart=sites_cart,
-      pdb_atoms=pdb_atoms)
+      pdb_atoms=pdb_atoms,
+      use_segids_in_place_of_chainids=use_segids_in_place_of_chainids)
     outliers = []
     for proxy, proxy_atoms in sorted :
       restraint = cctbx.geometry_restraints.angle(
@@ -297,7 +303,8 @@ class dihedrals (restraint_validation) :
   def get_result_class (self) : return dihedral
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
-      sigma_cutoff, outliers_only=True) :
+      sigma_cutoff, outliers_only=True,
+      use_segids_in_place_of_chainids=False) :
     import cctbx.geometry_restraints
     sorted = _get_sorted(proxies,
       unit_cell=unit_cell,
@@ -331,7 +338,8 @@ class chiralities (restraint_validation) :
   def get_result_class (self) : return chirality
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
-      sigma_cutoff, outliers_only=True) :
+      sigma_cutoff, outliers_only=True,
+      use_segids_in_place_of_chainids=False) :
     import cctbx.geometry_restraints
     sorted = _get_sorted(proxies,
       unit_cell=None,
@@ -364,7 +372,8 @@ class planarities (restraint_validation) :
   def get_result_class (self) : return planarity
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
-      sigma_cutoff, outliers_only=True) :
+      sigma_cutoff, outliers_only=True,
+      use_segids_in_place_of_chainids=False) :
     import cctbx.geometry_restraints
     from scitbx.array_family import flex
     site_labels = flex.bool(sites_cart.size(), True).iselection()
@@ -401,15 +410,20 @@ def get_mean_xyz (atoms) :
     sum += col(atom.xyz)
   return sum / len(atoms)
 
-def get_atoms_info (pdb_atoms, iselection) :
+def get_atoms_info (pdb_atoms, iselection,
+      use_segids_in_place_of_chainids=False) :
   proxy_atoms = []
   for n, i_seq in enumerate(iselection):
     atom = pdb_atoms[i_seq]
     labels = atom.fetch_labels()
+    if use_segids_in_place_of_chainids:
+      chain_id = atom.segid
+    else:
+      chain_id = labels.chain_id
     info = atom_info(
       name=atom.name,
       element=atom.element,
-      chain_id=labels.chain_id,
+      chain_id=chain_id,
       resseq=labels.resseq,
       icode=labels.icode,
       resname=labels.resname,
@@ -424,7 +438,8 @@ def _get_sorted (O,
         unit_cell,
         sites_cart,
         pdb_atoms,
-        by_value="residual") :
+        by_value="residual",
+        use_segids_in_place_of_chainids=False) :
   assert by_value in ["residual", "delta"]
   if (O.size() == 0): return []
   import cctbx.geometry_restraints
@@ -441,7 +456,8 @@ def _get_sorted (O,
     proxy = O[i_proxy]
     sigma = cctbx.geometry_restraints.weight_as_sigma(proxy.weight)
     score = sqrt(residuals[i_proxy]) / sigma
-    proxy_atoms = get_atoms_info(pdb_atoms, iselection=proxy.i_seqs)
+    proxy_atoms = get_atoms_info(pdb_atoms, iselection=proxy.i_seqs,
+      use_segids_in_place_of_chainids=use_segids_in_place_of_chainids)
     sorted_table.append((proxy, proxy_atoms))
   return sorted_table
 
@@ -457,7 +473,8 @@ class combined (slots_getstate_setstate) :
       geometry_restraints_manager,
       ignore_hd=True,
       sigma_cutoff=4.0,
-      outliers_only=True) :
+      outliers_only=True,
+      use_segids_in_place_of_chainids=False) :
     from mmtbx import restraints
     restraints_manager = restraints.manager(
       geometry=geometry_restraints_manager)
@@ -487,7 +504,8 @@ class combined (slots_getstate_setstate) :
         unit_cell=xray_structure.unit_cell(),
         ignore_hd=ignore_hd,
         sigma_cutoff=sigma_cutoff,
-        outliers_only=outliers_only)
+        outliers_only=outliers_only,
+        use_segids_in_place_of_chainids=use_segids_in_place_of_chainids)
       setattr(self, geo_type, rv)
 
   def show (self, out=sys.stdout, prefix="", verbose=True) :

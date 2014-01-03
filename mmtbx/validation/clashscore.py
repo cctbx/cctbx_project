@@ -81,7 +81,10 @@ class clashscore(validation):
         print "\nUsing nuclear cloud x-H distances and vdW radii"
     import iotbx.pdb.hierarchy
     from scitbx.array_family import flex
+    from mmtbx.validation import utils
     n_models = len(pdb_hierarchy.models())
+    use_segids = utils.use_segids_in_place_of_chainids(
+                   hierarchy=pdb_hierarchy)
     for i_mod, model in enumerate(pdb_hierarchy.models()):
       r = iotbx.pdb.hierarchy.root()
       mdc = model.detached_copy()
@@ -126,6 +129,7 @@ class clashscore(validation):
         time_limit=time_limit,
         largest_occupancy=occ_max,
         b_factor_cutoff=b_factor_cutoff,
+        use_segids=use_segids,
         verbose=verbose)
       if (save_modified_hierarchy) :
         self.pdb_hierarchy = pdb.hierarchy.\
@@ -203,11 +207,13 @@ class probe_clashscore_manager(object):
                time_limit=120,
                largest_occupancy=10,
                b_factor_cutoff=None,
+               use_segids=False,
                verbose=False):
     assert (libtbx.env.has_module(name="reduce") and
             libtbx.env.has_module(name="probe"))
 
     self.b_factor_cutoff = b_factor_cutoff
+    self.use_segids=use_segids
     ogt = 10
     blt = self.b_factor_cutoff
     if largest_occupancy < ogt:
@@ -282,8 +288,8 @@ class probe_clashscore_manager(object):
       name, pat, type, srcAtom, targAtom, min_gap, gap, \
       kissEdge2BullsEye, dot2BE, dot2SC, spike, score, stype, \
       ttype, x, y, z, sBval, tBval = line.split(":")
-      atom1 = decode_atom_string(srcAtom)
-      atom2 = decode_atom_string(targAtom)
+      atom1 = decode_atom_string(srcAtom, self.use_segids)
+      atom2 = decode_atom_string(targAtom, self.use_segids)
       if (cmp(srcAtom,targAtom) < 0):
         atoms = [ atom1, atom2 ]
       else:
@@ -359,13 +365,22 @@ class probe_clashscore_manager(object):
         (self.n_clashes_b_cutoff*1000) / self.natoms_b_cutoff
     self.clashscore_b_cutoff = clashscore_b_cutoff
 
-def decode_atom_string (atom_str) :
+def decode_atom_string (atom_str, use_segids=False) :
   # Example:
   # ' A  49 LEU HD11B'
-  return atom_info(
-    chain_id=atom_str[0:2],
-    resseq=atom_str[2:6],
-    icode=atom_str[6],
-    resname=atom_str[7:10],
-    altloc=atom_str[15],
-    name=atom_str[11:15])
+  if not use_segids:
+    return atom_info(
+      chain_id=atom_str[0:2],
+      resseq=atom_str[2:6],
+      icode=atom_str[6],
+      resname=atom_str[7:10],
+      altloc=atom_str[15],
+      name=atom_str[11:15])
+  else:
+    return atom_info(
+      chain_id=atom_str[0:4],
+      resseq=atom_str[4:8],
+      icode=atom_str[8],
+      resname=atom_str[9:12],
+      altloc=atom_str[17],
+      name=atom_str[13:17])
