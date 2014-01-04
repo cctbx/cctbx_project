@@ -401,7 +401,7 @@ class scaling_manager (intensity_data) :
     self.i_model = i_model
     self.ref_bravais_type = bravais_lattice(
       miller_set.space_group_info().type().number())
-    intensity_data.__init__(self, i_model.size())
+    intensity_data.__init__(self, miller_set.size())
     self.reverse_lookup = None
     if params.merging.reverse_lookup is not None:
       self.reverse_lookup = easy_pickle.load(params.merging.reverse_lookup)
@@ -472,7 +472,7 @@ class scaling_manager (intensity_data) :
       nproc = libtbx.introspection.number_of_processors()
 
     db_mgr = manager(self.params)
-    db_mgr.initialize_db(self.i_model.indices())
+    db_mgr.initialize_db(self.miller_set.indices())
 
     # Input files are supplied to the scaling processes on demand by
     # means of a queue.
@@ -646,8 +646,8 @@ class scaling_manager (intensity_data) :
     print >> self.log, ""
     print >> self.log, "#" * 80
     print >> self.log, "OUTPUT FILES"
-    Iobs_all = flex.double(self.i_model.size())
-    SigI_all = flex.double(self.i_model.size())
+    Iobs_all = flex.double(self.miller_set.size())
+    SigI_all = flex.double(self.miller_set.size())
     for i in xrange(len(Iobs_all)):
       if (self.summed_weight[i] > 0.):
         Iobs_all[i] = self.summed_wt_I[i] / self.summed_weight[i]
@@ -667,11 +667,12 @@ class scaling_manager (intensity_data) :
         space_group_info=self.miller_set.space_group_info())
     else :
       final_symm = self.miller_set
-    all_obs = self.i_model.customized_copy(
+    all_obs = miller.array(
+      miller_set=self.miller_set.customized_copy(
+        crystal_symmetry=final_symm),
       data=Iobs_all,
-      sigmas=SigI_all,
-      crystal_symmetry=final_symm).resolution_filter(
-      d_min=self.params.d_min).set_observation_type_xray_intensity()
+      sigmas=SigI_all).resolution_filter(
+        d_min=self.params.d_min).set_observation_type_xray_intensity()
     mtz_file = "%s.mtz" % self.params.output.prefix
     all_obs = all_obs.select(all_obs.data() > 0)
     mtz_out = all_obs.as_mtz_dataset(
@@ -850,31 +851,11 @@ class scaling_manager (intensity_data) :
       # Finished applying the binwise I/sigma filter---------------------------------------
 
     print "Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities."
-    # Match up the observed intensities against the reference data
-    # set, i_model, instead of the pre-generated miller set,
-    # miller_set.
-
     assert len(observations_original_index.indices()) == len(observations.indices())
 
-    matches = miller.match_multi_indices(
-      miller_indices_unique=self.i_model.indices(),
-      miller_indices=observations.indices())
     data = frame_data(self.n_refl, file_name)
     data.set_indexed_cell(indexed_cell)
     data.d_min = observations.d_min()
-    # Update the count for each matched reflection.  This counts
-    # reflections with negative intensities, too.
-    data.completeness += matches.number_of_matches(0).as_int()
-
-    data.wavelength = wavelength
-
-    # Initialise first- and second-order statistics.
-    N = 0
-    sum_xx = 0
-    sum_xy = 0
-    sum_yy = 0
-    sum_x = 0
-    sum_y = 0
 
     if self.params.raw_data.sdfac_auto is True:
       I_over_sig = observations.data()/observations.sigmas()
@@ -893,38 +874,83 @@ class scaling_manager (intensity_data) :
       corrected_sigmas = observations.sigmas() * SDFAC
       observations = observations.customized_copy(sigmas = corrected_sigmas)
 
-    for pair in matches.pairs():
+    # Ensure that match_multi_indices() will return identical results
+    # when a frame's observations are matched against the
+    # pre-generated Miller set, self.miller_set, and the reference
+    # data set, self.i_model.  The implication is that the same match
+    # can be used to map Miller indices to array indices for intensity
+    # accumulation, and for determination of the correlation
+    # coefficient in the presence of a scaling reference.
+    if self.i_model is not None:
+      assert (self.i_model.indices() ==
+              self.miller_set.indices()).count(False) == 0
 
-      if self.params.scaling.simulation is not None:
+    matches = miller.match_multi_indices(
+      miller_indices_unique=self.miller_set.indices(),
+      miller_indices=observations.indices())
+
+    if self.params.model is None:
+      # Because no correlation is computed, the correlation
+      # coefficient is fixed at zero.  Setting slope = 1 means
+      # intensities are added without applying a scale factor.
+      data.n_obs += 1
+      sum_x = 0
+      sum_y = 0
+      for pair in matches.pairs():
+        if observations.data()[pair[1]] <= 0:
+          data.n_rejected += 1
+        else:
+          sum_y += observations.data()[pair[1]]
+      N = data.n_obs - data.n_rejected
+
+      slope = 1
+      offset = 0
+      corr = 0
+
+    else:
+      sum_xx = 0
+      sum_xy = 0
+      sum_yy = 0
+      sum_x = 0
+      sum_y = 0
+
+      for pair in matches.pairs():
+        if self.params.scaling.simulation is not None:
           observations.data()[pair[1]] = self.i_model.data()[pair[0]]     # SIM
           observations.sigmas()[pair[1]] = self.i_model.sigmas()[pair[0]] # SIM
 
-      data.n_obs += 1
-      if (observations.data()[pair[1]] <= 0):
-        data.n_rejected += 1
-        continue
-      # Update statistics using reference intensities (I_r), and
-      # observed intensities (I_o).
-      I_r = self.i_model.data()[pair[0]]
-      I_o = observations.data()[pair[1]]
-      N      += 1
-      sum_xx += I_r**2
-      sum_yy += I_o**2
-      sum_xy += I_r * I_o
-      sum_x  += I_r
-      sum_y  += I_o
-    # Linearly fit I_r to I_o, i.e. find slope and offset such that
-    # I_o = slope * I_r + offset, optimal in a least-squares sense.
-    # XXX This is backwards, really.
-    if (N * sum_xx - sum_x**2)==0:
-      print "Skipping frame with",N,sum_xx,sum_x**2
-      return null_data(file_name=file_name,
-                       log_out=out.getvalue(),
-                       low_signal=True)
-    slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
-    offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
-    corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
-             math.sqrt(N * sum_yy - sum_y**2))
+        data.n_obs += 1
+        if observations.data()[pair[1]] <= 0:
+          data.n_rejected += 1
+          continue
+        # Update statistics using reference intensities (I_r), and
+        # observed intensities (I_o).
+        I_r = self.i_model.data()[pair[0]]
+        I_o = observations.data()[pair[1]]
+        sum_xx += I_r**2
+        sum_yy += I_o**2
+        sum_xy += I_r * I_o
+        sum_x += I_r
+        sum_y += I_o
+      # Linearly fit I_r to I_o, i.e. find slope and offset such that
+      # I_o = slope * I_r + offset, optimal in a least-squares sense.
+      # XXX This is backwards, really.
+      N = data.n_obs - data.n_rejected
+      if (N * sum_xx - sum_x**2) == 0:
+        print "Skipping frame with",N,sum_xx,sum_x**2
+        return null_data(file_name=file_name,
+                         log_out=out.getvalue(),
+                         low_signal=True)
+      slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
+      offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
+      corr = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
+                                             math.sqrt(N * sum_yy - sum_y**2))
+
+    # Update the count for each matched reflection.  This counts
+    # reflections with non-positive intensities, too.
+    data.completeness += matches.number_of_matches(0).as_int()
+    data.corr = corr
+    data.wavelength = wavelength
 
     if self.params.postrefinement.enable: #New code prototype postrefinement; assumes mosaicity=0 & monochromatic
       from scitbx import lbfgs
@@ -1089,7 +1115,7 @@ class scaling_manager (intensity_data) :
         sigmas = (observations.sigmas()/scaler).select(fat_selection)
       )
       matches = miller.match_multi_indices(
-        miller_indices_unique=self.i_model.indices(),
+        miller_indices_unique=self.miller_set.indices(),
         miller_indices=observations.indices())
 
     if not self.params.scaling.enable or self.params.postrefinement.enable: # Do not scale anything
@@ -1188,10 +1214,12 @@ class scaling_manager (intensity_data) :
       # ahead of doing this, section simply plots calc & obs...
       # ******************************************************
       print "For %d reflections, got slope %f, correlation %f" % \
-          (N, slope, corr)
-      print "average obs",sum_y/N, "average calc",sum_x/N, "offset",offset
+        (data.n_obs - data.n_rejected, slope, corr)
+      print "average obs", sum_y / (data.n_obs - data.n_rejected), \
+        "average calc", sum_x / (data.n_obs - data.n_rejected), \
+        "offset",offset
       print "Rejected %d reflections with negative intensities" % \
-          (len(matches.pairs()) - N)
+        data.n_rejected
 
       reference= flex.double()
       observed=flex.double()
@@ -1207,37 +1235,13 @@ class scaling_manager (intensity_data) :
       plt.plot(flex.log10(observed),flex.log10(reference),"r.")
       plt.show()
 
-    data.corr = corr
     print >> out, "For %d reflections, got slope %f, correlation %f" % \
-        (N, slope, corr)
+        (data.n_obs - data.n_rejected, slope, corr)
     print >> out, "average obs",sum_y/N, "average calc",sum_x/N
     print >> out, "Rejected %d reflections with negative intensities" % \
-        (len(matches.pairs()) - N)
+        data.n_rejected
 
-    if (self.params.model is None) :
-      print "No scaling reference, so no correlation filter"
-      data.accept = True
-      for pair in matches.pairs():
-        if (observations.data()[pair[1]] <= 0) :
-          continue
-        Intensity = observations.data()[pair[1]]
-
-        # Add the reflection as a two-tuple of intensity and I/sig(I)
-        # to the dictionary of observations.
-        index = self.i_model.indices()[pair[0]]
-        isigi = (Intensity,
-                 observations.data()[pair[1]] / observations.sigmas()[pair[1]])
-        if (index in data.ISIGI):
-          data.ISIGI[index].append(isigi)
-        else:
-          data.ISIGI[index] = [isigi]
-
-        sigma = observations.sigmas()[pair[1]]
-        variance = sigma * sigma
-        data.summed_N[pair[0]] += 1
-        data.summed_wt_I[pair[0]] += Intensity / variance
-        data.summed_weight[pair[0]] += 1. / variance
-    elif (corr > self.params.min_corr) :
+    if (self.params.model is None) or (corr > self.params.min_corr):
       data.accept = True
       for pair in matches.pairs():
         if (observations.data()[pair[1]] <= 0) :
@@ -1246,10 +1250,10 @@ class scaling_manager (intensity_data) :
 
         # Add the reflection as a two-tuple of intensity and I/sig(I)
         # to the dictionary of observations.
-        index = self.i_model.indices()[pair[0]]
+        index = self.miller_set.indices()[pair[0]]
         isigi = (Intensity,
                  observations.data()[pair[1]] / observations.sigmas()[pair[1]])
-        if (index in data.ISIGI):
+        if index in data.ISIGI:
           data.ISIGI[index].append(isigi)
         else:
           data.ISIGI[index] = [isigi]
@@ -1258,7 +1262,7 @@ class scaling_manager (intensity_data) :
         variance = sigma * sigma
         data.summed_N[pair[0]] += 1
         data.summed_wt_I[pair[0]] += Intensity / variance
-        data.summed_weight[pair[0]] += 1. / variance
+        data.summed_weight[pair[0]] += 1 / variance
     else :
       print >> out, "Skipping these data - correlation too low."
     data.set_log_out(out.getvalue())
@@ -1299,21 +1303,24 @@ def run(args):
     i_model = run(work_params)
     work_params.target_unit_cell = i_model.unit_cell()
     work_params.target_space_group = i_model.space_group_info()
+    i_model.show_summary()
   else:
-    from xfel.cxi.merging.general_fcalc import random_structure
-    i_model = random_structure(work_params)
-  i_model.show_summary()
+    i_model = None
 
   print >> out, "Target unit cell and space group:"
   print >> out, "  ", work_params.target_unit_cell
   print >> out, "  ", work_params.target_space_group
 
+  # Adjust the minimum d-spacing of the generated Miller set to assure
+  # that the desired high-resolution limit is included even if the
+  # observed unit cell differs slightly from the target.
   miller_set = symmetry(
       unit_cell=work_params.target_unit_cell,
       space_group_info=work_params.target_space_group
     ).build_miller_set(
       anomalous_flag=not work_params.merge_anomalous,
-      d_min=work_params.d_min)
+      d_min=work_params.d_min / math.pow(
+        1 + work_params.unit_cell_length_tolerance, 1 / 3))
 
   frame_files = get_observations(work_params.data, work_params.data_subset)
   scaler = scaling_manager(
@@ -1348,18 +1355,19 @@ def run(args):
   print >> out, "\n"
 
   # Sum the observations of I and I/sig(I) for each reflection.
-  sum_I = flex.double(i_model.size(), 0.)
-  sum_I_SIGI = flex.double(i_model.size(), 0.)
-  for i in xrange(i_model.size()) :
-    index = i_model.indices()[i]
+  sum_I = flex.double(miller_set.size(), 0.)
+  sum_I_SIGI = flex.double(miller_set.size(), 0.)
+  for i in xrange(miller_set.size()) :
+    index = miller_set.indices()[i]
     if index in scaler.ISIGI :
       for t in scaler.ISIGI[index]:
         sum_I[i] += t[0]
         sum_I_SIGI[i] += t[1]
 
-  j_model = i_model.customized_copy(unit_cell=work_params.target_unit_cell)
+  miller_set_avg = miller_set.customized_copy(
+    unit_cell=work_params.target_unit_cell)
   table1 = show_overall_observations(
-    obs=j_model,
+    obs=miller_set_avg,
     redundancy=scaler.completeness,
     summed_wt_I=scaler.summed_wt_I,
     summed_weight=scaler.summed_weight,
@@ -1369,10 +1377,13 @@ def run(args):
     out=out,
     work_params=work_params)
   print >> out, ""
-  n_refl, corr = scaler.get_overall_correlation(sum_I)
+  if work_params.model is not None:
+    n_refl, corr = scaler.get_overall_correlation(sum_I)
+  else:
+    n_refl, corr = ((scaler.completeness > 0).count(True), 0)
   print >> out, "\n"
   table2 = show_overall_observations(
-    obs=j_model,
+    obs=miller_set_avg,
     redundancy=scaler.summed_N,
     summed_wt_I=scaler.summed_wt_I,
     summed_weight=scaler.summed_weight,

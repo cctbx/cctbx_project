@@ -13,6 +13,7 @@ from cctbx import uctbx
 from iotbx import mtz
 from libtbx.utils import Usage, multi_out
 from libtbx import easy_pickle
+import math
 import os
 import time
 import sys
@@ -45,7 +46,7 @@ class xscaling_manager (scaling_manager) :
       self.n_accepted = (self.frames["cc"]>self.params.min_corr).count(True)
       self.n_low_corr = (self.frames["cc"]>self.params.min_corr).count(False)
       statsy = flex.mean_and_variance(self.frames["cc"])
-      print >> self.log, "%5d images, individual image correlection coefficients are %6.3f +/- %5.3f"%(
+      print >> self.log, "%5d images, individual image correlation coefficients are %6.3f +/- %5.3f"%(
                len(self.frames["cc"]),
                statsy.mean(),  statsy.unweighted_sample_standard_deviation(),
                )
@@ -241,10 +242,9 @@ def run(args):
     i_model = run(work_params)
     work_params.target_unit_cell = i_model.unit_cell()
     work_params.target_space_group = i_model.space_group_info()
+    i_model.show_summary()
   else:
-    from xfel.cxi.merging.general_fcalc import random_structure
-    i_model = random_structure(work_params)
-  i_model.show_summary()
+    i_model = None
 
   print >> out, "Target unit cell and space group:"
   print >> out, "  ", work_params.target_unit_cell
@@ -255,7 +255,8 @@ def run(args):
       space_group_info=work_params.target_space_group
     ).build_miller_set(
       anomalous_flag=not work_params.merge_anomalous,
-      d_min=work_params.d_min)
+      d_min=work_params.d_min / math.pow(
+        1 + work_params.unit_cell_length_tolerance, 1 / 3))
 
 # ---- Augment this code with any special procedures for x scaling
   scaler = xscaling_manager(
@@ -328,7 +329,7 @@ def run(args):
 
   # --------- New code ------------------
     #sanity check
-    for mod,obs in zip(i_model.indices(),scaler.millers["merged_asu_hkl"]):
+    for mod,obs in zip(miller_set.indices(), scaler.millers["merged_asu_hkl"]):
       if mod!=obs: raise Exception("miller index lists inconsistent--check d_min are equal for merge and xmerge scripts")
       assert mod==obs
 
@@ -367,11 +368,11 @@ def run(args):
         scaler.rejected_fractions = scaler.n_rejected[irej]/scaler.n_obs[irej]
   # ---------- End of new code ----------------
 
-    j_model = i_model.customized_copy(
+    miller_set_avg = miller_set.customized_copy(
       unit_cell=work_params.target_unit_cell)
 
     table1 = show_overall_observations(
-      obs=j_model,
+      obs=miller_set_avg,
       redundancy=scaler.completeness,
       summed_wt_I=scaler.summed_wt_I,
       summed_weight=scaler.summed_weight,
@@ -381,10 +382,13 @@ def run(args):
       out=out,
       work_params=work_params)
     print >> out, ""
-    n_refl, corr = scaler.get_overall_correlation(sum_I)
+    if work_params.model is not None:
+      n_refl, corr = scaler.get_overall_correlation(sum_I)
+    else:
+      n_refl, corr = ((scaler.completeness > 0).count(True), 0)
     print >> out, "\n"
     table2 = show_overall_observations(
-      obs=j_model,
+      obs=miller_set_avg,
       redundancy=scaler.summed_N,
       summed_wt_I=scaler.summed_wt_I,
       summed_weight=scaler.summed_weight,
@@ -419,17 +423,17 @@ def run(args):
   # resolution bin.
   from libtbx import table_utils
 
-  j_model.setup_binner(
+  miller_set_avg.setup_binner(
     d_max=100000, d_min=work_params.d_min, n_bins=work_params.output.n_bins)
   table_data = [["Bin", "Resolution Range", "# images"]]
   if work_params.model is None:
     appropriate_min_corr = -1.1 # lowest possible c.c.
   else:
     appropriate_min_corr = work_params.min_corr
-  for i_bin in j_model.binner().range_used():
+  for i_bin in miller_set_avg.binner().range_used():
     col_count = '%8d' % results.count_frames(
-      appropriate_min_corr, j_model.binner().selection(i_bin))
-    col_legend = '%-13s' % j_model.binner().bin_legend(
+      appropriate_min_corr, miller_set_avg.binner().selection(i_bin))
+    col_legend = '%-13s' % miller_set_avg.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_bin_range=False,
       show_d_range=True, show_counts=False)
     table_data.append(['%3d' % i_bin, col_legend, col_count])
