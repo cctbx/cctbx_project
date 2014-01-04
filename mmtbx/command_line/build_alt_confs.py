@@ -13,6 +13,8 @@ nproc = Auto
 output {
   file_name = refined.pdb
     .type = path
+  verbose = False
+    .type = bool
 }
 include scope mmtbx.building.disorder.single_residue.master_phil_str
 """)
@@ -36,6 +38,7 @@ def run (args, out=None) :
     cif_objects=cmdline.cif_objects,
     selection=params.selection,
     nproc=params.nproc,
+    verbose=params.output.verbose,
     out=out)
   # TODO real-space refinement of multi-conformer model
   f = open(params.output.file_name, "w")

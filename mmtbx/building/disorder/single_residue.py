@@ -20,6 +20,7 @@ from libtbx.str_utils import make_header, make_sub_header
 from libtbx import adopt_init_args, Auto
 from libtbx.utils import null_out
 from libtbx import easy_mp
+import time
 import sys
 
 class rebuild_residue (object) :
@@ -61,8 +62,7 @@ class rebuild_residue (object) :
     sel_residues = building.get_window_around_residue(
       residue=atom_group,
       window_size=window_size)
-    print >> log, "  %d residues extracted" % len(sel_residues)
-    print >> log, "  removing sidechain atoms..."
+    # get rid of sidechains and refine mainchain
     building.remove_sidechain_atoms(sel_residues)
     pdb_atoms = pdb_hierarchy.atoms()
     all_mc_sel = pdb_atoms.extract_i_seq()
@@ -80,7 +80,7 @@ class rebuild_residue (object) :
       target_map=self.target_map,
       geometry_restraints_manager=restraints_manager.geometry,
       d_min=self.d_min,
-      out=log,
+      out=null_out(),
       debug=True)
     box.restrain_atoms(
       selection=box.others_in_box,
@@ -124,10 +124,12 @@ class rebuild_residue (object) :
     return building.atom_group_as_hierarchy(new_atom_group)
 
 build_params_str = """
-  expected_occupancy = 0.4
-    .type = float
+  expected_occupancy = None
+    .type = float(value_min=0.1,value_max=0.9)
   window_size = 2
     .type = int
+  rmsd_min = 0.5
+    .type = float
   rescore = True
     .type = bool
   map_thresholds {
@@ -147,9 +149,12 @@ def find_alternate_residue (residue,
     fmodel,
     restraints_manager,
     params,
+    verbose=False,
     log=None) :
   if (log is None) :
     log = null_out()
+  if (verbose) :
+    print >> log, "  building %s" % residue.id_str()
   from scitbx.array_family import flex
   selection = flex.size_t()
   window = building.get_window_around_residue(residue,
@@ -157,44 +162,83 @@ def find_alternate_residue (residue,
   for pdb_object in window :
     selection.extend(pdb_object.atoms().extract_i_seq())
   assert (len(selection) > 0) and (not selection.all_eq(0))
-  two_fofc_map, fofc_map = disorder.get_partial_omit_map(
-    fmodel=fmodel,
-    selection=selection,
-    selection_delete=None,#nearby_water_selection,
-    negate_surrounding=True,
-    partial_occupancy=1.0 - params.expected_occupancy)
-  rebuild = rebuild_residue(
-    target_map=fofc_map,
-    pdb_hierarchy=pdb_hierarchy,
-    xray_structure=fmodel.xray_structure,
-    geometry_restraints_manager=restraints_manager,
-    d_min=fmodel.f_obs().d_min())
-  new_hierarchy = rebuild(atom_group=residue,
-    window_size=params.window_size,
-    log=log)
-  if (params.rescore) :
-    unit_cell = fmodel.xray_structure.unit_cell()
-    sc_total = sc_fofc_sum = sc_two_fofc_sum = 0
-    for atom in new_hierarchy.atoms() :
-      name = atom.name.strip()
-      site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
-      two_fofc_value = two_fofc_map.eight_point_interpolation(site_frac)
-      fofc_value = fofc_map.eight_point_interpolation(site_frac)
-      if (name in ["N","C","O","CA", "CB"]) :
-        if (two_fofc_value < params.map_thresholds.two_fofc_min_mc) :
-          return None
-      else :
-        sc_total += 1
-        sc_fofc_sum += fofc_value
-        sc_two_fofc_sum += two_fofc_value
-    if (sc_total > 0) :
-      sc_fofc_mean = sc_fofc_sum / sc_total
-      sc_two_fofc_mean = sc_two_fofc_sum / sc_total
-      if (sc_fofc_mean < params.map_thresholds.fofc_min_sc_mean) :
-        return None
-      if (sc_two_fofc_mean < params.map_thresholds.two_fofc_min_sc_mean) :
-        return None
-  return new_hierarchy
+  occupancies = []
+  if (params.expected_occupancy is not None) :
+    assert (0.1 <= params.expected_occupancy <= 0.9)
+    occupancies = [ params.expected_occupancy ]
+  else :
+    occupancies = [ 0.2, 0.3, 0.4, 0.5 ]
+  trials = []
+  sites_start_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
+  xrs_start = fmodel.xray_structure.deep_copy_scatterers()
+  for occupancy in occupancies :
+    two_fofc_map, fofc_map = disorder.get_partial_omit_map(
+      fmodel=fmodel,
+      selection=selection,
+      selection_delete=None,#nearby_water_selection,
+      negate_surrounding=True,
+      partial_occupancy=1.0 - occupancy)
+    fmodel.update_xray_structure(xrs_start, update_f_calc=True)
+    rebuild = rebuild_residue(
+      target_map=fofc_map,
+      pdb_hierarchy=pdb_hierarchy,
+      xray_structure=fmodel.xray_structure,
+      geometry_restraints_manager=restraints_manager,
+      d_min=fmodel.f_obs().d_min())
+    new_hierarchy = rebuild(atom_group=residue,
+      window_size=params.window_size,
+      log=log)
+    reject = False
+    if (params.rescore) :
+      unit_cell = fmodel.xray_structure.unit_cell()
+      sc_total = sc_fofc_sum = sc_two_fofc_sum = 0
+      for atom in new_hierarchy.atoms() :
+        name = atom.name.strip()
+        site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
+        two_fofc_value = two_fofc_map.eight_point_interpolation(site_frac)
+        fofc_value = fofc_map.eight_point_interpolation(site_frac)
+        if (name in ["N","C","O","CA", "CB"]) :
+          if (two_fofc_value < params.map_thresholds.two_fofc_min_mc) :
+            if (verbose) :
+              print >> log, "      %s: bad 2Fo-fc (%.2f)" % (name,
+                two_fofc_value)
+            reject = True
+            break
+        else :
+          sc_total += 1
+          sc_fofc_sum += fofc_value
+          sc_two_fofc_sum += two_fofc_value
+      if (sc_total > 0) :
+        sc_fofc_mean = sc_fofc_sum / sc_total
+        sc_two_fofc_mean = sc_two_fofc_sum / sc_total
+        if (sc_fofc_mean < params.map_thresholds.fofc_min_sc_mean) :
+          if (verbose) :
+            print >> log, "      bad sidechain Fo-Fc (mean=%.2f)" % sc_fofc_mean
+          reject = True
+        elif (sc_two_fofc_mean < params.map_thresholds.two_fofc_min_sc_mean) :
+          if (verbose) :
+            print >> log, "      bad sidechain 2Fo-Fc (mean=%.2f)" % \
+              sc_two_fofc_mean
+          reject = True
+    if (not reject) :
+      trials.append(new_hierarchy)
+  sites_end_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
+  assert sites_start_1d.all_eq(sites_end_1d)
+  if (len(trials) == 0) :
+    return None
+  elif (len(trials) == 1) :
+    return trials[0]
+  else :
+    rmsd_max = 0
+    best_trial = None
+    for new_hierarchy in trials :
+      alt_conf = new_hierarchy.only_model().only_chain().only_residue_group().\
+        only_atom_group()
+      stats = disorder.coord_stats_for_atom_groups(residue, alt_conf)
+      if (stats.rmsd > rmsd_max) :
+        rmsd_max = stats.rmsd
+        best_trial = new_hierarchy
+    return best_trial
 
 class find_all_alternates (object) :
   """
@@ -207,6 +251,7 @@ class find_all_alternates (object) :
       restraints_manager,
       params,
       nproc=Auto,
+      verbose=False,
       log=sys.stdout) :
     adopt_init_args(self, locals())
     nproc = easy_mp.get_processes(nproc)
@@ -228,6 +273,7 @@ class find_all_alternates (object) :
       fmodel=self.fmodel,
       restraints_manager=self.restraints_manager,
       params=self.params,
+      verbose=self.verbose,
       log=log)
 
 def process_results (
@@ -236,6 +282,7 @@ def process_results (
     residues_in,
     new_residues,
     params,
+    verbose=False,
     log=sys.stdout) :
   assert (len(residues_in) == len(new_residues))
   n_alternates = 0
@@ -257,6 +304,8 @@ def process_results (
     stats = disorder.coord_stats_for_atom_groups(main_conf, new_conf)
     skip = False
     flag = ""
+    if (stats.rmsd < params.rmsd_min) :
+      skip = True
     if (params.rescore) :
       fofc_max = 0
       for atom in new_conf.atoms() :
@@ -276,19 +325,20 @@ def process_results (
       if (not skip) : flag = " ***"
       print >> log, "  %s: RMSD=%5.3f  max. change=%.2f%s" % \
         (main_conf.id_str(), stats.rmsd, stats.max_dev, flag)
-    if (stats.rmsd < 0.5) :
-      skip = True
     if (skip) : continue
     residue_group = main_conf.parent()
     main_conf.altloc = 'A'
+    new_occ = 0.5
+    if (params.expected_occupancy is not None) :
+      new_occ = params.expected_occupancy
     for atom in main_conf.atoms() :
-      atom.occ = 1.0 - params.expected_occupancy
+      atom.occ = 1.0 - new_occ
       atom.segid = "OLD1"
     alt_conf = new_conf.detached_copy()
     alt_conf.altloc = 'B'
     for atom in alt_conf.atoms() :
       atom.segid = "NEW1"
-      atom.occ = params.expected_occupancy
+      atom.occ = new_occ
     residue_group.append_atom_group(alt_conf)
     n_alternates += 1
   if (n_alternates > 0) :
@@ -300,15 +350,18 @@ def spread_alternates (pdb_hierarchy, params, log) :
   print >> log, "Splitting adjacent residues..."
   def split_residue (residue_group) :
     print >> log, "  %s" % residue_group.id_str()
+    new_occ = 0.5
+    if (params.expected_occupancy is not None) :
+      new_occ = params.expected_occupancy
     main_conf = residue_group.only_atom_group()
     main_conf.altloc = 'A'
     for atom in main_conf.atoms() :
-      atom.occ = 1.0 - params.expected_occupancy
+      atom.occ = 1.0 - new_occ
       atom.segid = "OLD2"
     alt_conf = main_conf.detached_copy()
     alt_conf.altloc = 'B'
     for atom in alt_conf.atoms() :
-      atom.occ = params.expected_occupancy
+      atom.occ = new_occ
       atom.segid = 'NEW2'
     residue_group.append_atom_group(alt_conf)
   for chain in pdb_hierarchy.only_model().chains() :
@@ -403,9 +456,11 @@ def build_cycle (pdb_hierarchy,
     cif_objects=(),
     nproc=Auto,
     out=sys.stdout,
+    verbose=False,
     i_cycle=0) :
   from mmtbx import restraints
   from scitbx.array_family import flex
+  t_start = time.time()
   hd_sel = fmodel.xray_structure.hd_selection()
   n_hydrogen = hd_sel.count(True)
   if (n_hydrogen > 0) :
@@ -425,7 +480,7 @@ def build_cycle (pdb_hierarchy,
     geometry_restraints_manager=geometry_restraints_manager,
     selection=selection,
     params=params.prefilter,
-    verbose=True,
+    verbose=verbose,
     log=out)
   restraints_manager = restraints.manager(
     geometry=geometry_restraints_manager,
@@ -439,6 +494,7 @@ def build_cycle (pdb_hierarchy,
     fmodel=fmodel,
     params=params.building,
     nproc=params.nproc,
+    verbose=verbose,
     log=out).results
   n_alternates = process_results(
     pdb_hierarchy=pdb_hierarchy,
@@ -446,13 +502,16 @@ def build_cycle (pdb_hierarchy,
     residues_in=candidate_residues,
     new_residues=new_residues,
     params=params.building,
+    verbose=verbose,
     log=out)
   if (n_alternates == 0) :
     print >> out, "No alternates built this round."
-    return pdb_hierarchy
-  pdb_hierarchy = real_space_refine(
-    pdb_hierarchy=pdb_hierarchy,
-    fmodel=fmodel,
-    cif_objects=cif_objects,
-    out=out)
+  else :
+    pdb_hierarchy = real_space_refine(
+      pdb_hierarchy=pdb_hierarchy,
+      fmodel=fmodel,
+      cif_objects=cif_objects,
+      out=out)
+  t_end = time.time()
+  print >> out, "Build time: %.1fs" % (t_end - t_start)
   return pdb_hierarchy
