@@ -2704,7 +2704,6 @@ xfel/cxi/gfx/trials_plot.py -text
 xfel/cxi/gfx/wx_detectors.py -text
 xfel/cxi/integrate_image_api.py -text
 xfel/cxi/merging/__init__.py -text
-xfel/cxi/merging/general_fcalc.py -text
 xfel/cxi/strong_zulu.py -text
 xfel/cxi/util.py -text
 xfel/libtbx_config -text
