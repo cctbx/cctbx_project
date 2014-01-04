@@ -29,8 +29,8 @@ def run (params) :
   # adjust the cutoff of the generated intensities to assure that
   # statistics will be reported to the desired high-resolution limit
   # even if the observed unit cell differs slightly from the reference.
-  ISO_ALLOWANCE = 0.1 # isomorphous recip cell volume changes no more than 10%
-  params2.high_resolution = params.d_min / math.pow( (1.+ISO_ALLOWANCE),(1./3.) )
+  params2.high_resolution = params.d_min / math.pow(
+    1 + params.unit_cell_length_tolerance, 1 / 3)
   if params.d_max is not None:
     params2.low_resolution = params.d_max
   params2.output.type = "real"
@@ -79,8 +79,8 @@ def random_structure (params) :
   # adjust the cutoff of the generated intensities to assure that
   # statistics will be reported to the desired high-resolution limit
   # even if the observed unit cell differs slightly from the reference.
-  ISO_ALLOWANCE = 0.1 # isomorphous recip cell volume changes no more than 10%
-  params2.high_resolution = params.d_min / math.pow( (1.+ISO_ALLOWANCE),(1./3.) )
+  params2.high_resolution = params.d_min / math.pow(
+    1 + params.unit_cell_length_tolerance, 1 / 3)
   params2.output.type = "real"
   if (params.include_bulk_solvent) :
     print "Sorry, can't include bulk solvent for randomly-generated sites."

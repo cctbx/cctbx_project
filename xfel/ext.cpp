@@ -319,7 +319,7 @@ private:
   std::vector<std::set<int> > reflection_frame;
 
   /*
-   * Lower limit on correlation coefficent.
+   * Lower limit on correlation coefficient.
    */
   double reflection_frame_min_corr;
 
