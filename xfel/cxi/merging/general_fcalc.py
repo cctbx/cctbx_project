@@ -50,8 +50,15 @@ def run (params) :
 
 def random_structure (params) :
 
-  """We're going to do some very approximate stuff here. Given a unit cell & SG, will put
-     typical atomic contents in the unit cell & get structure factors."""
+  """We're going to do some very approximate stuff here.  Given a unit
+   cell & SG, will put typical atomic contents in the unit cell & get
+   structure factors.
+
+  XXX This function is no longer called from either
+  command_line/cxi_merge.py nor command_line/cxi_xmerge.py; it could
+  probably be removed.
+  """
+
   import random
   random.seed(0)
   from scitbx.array_family import flex
