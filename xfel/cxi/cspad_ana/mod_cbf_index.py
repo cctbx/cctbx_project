@@ -16,6 +16,9 @@ __version__ = ""
 from xfel.cxi.cspad_ana.mod_cspad_cbf import mod_cspad_cbf
 from xfel.cxi.cspad_ana import cspad_tbx
 
+import os
+from libtbx.utils import Sorry
+
 class mod_cbf_index(mod_cspad_cbf):
   """Class for indexing a cbf image
   """
@@ -23,6 +26,7 @@ class mod_cbf_index(mod_cspad_cbf):
   def __init__(self,
                out_dirname,
                out_basename,
+               target_phil = None,
                **kwds):
     """The mod_cbf_index class constructor stores the parameters passed from
     the pyana configuration file in instance variables.
@@ -36,6 +40,23 @@ class mod_cbf_index(mod_cspad_cbf):
     self._basename = cspad_tbx.getOptString(out_basename)
     self._dirname = cspad_tbx.getOptString(out_dirname)
 
+    # get default parameters
+    sysconfig = SystemConfig()
+    params = sysconfig.config()
+
+    # load custom parameters
+    target_path = cspad_tbx.getOptString(target_phil)
+    if target_path is None:
+      self.dials_phil = params.extract()
+    else:
+      if not os.path.isfile(target_path):
+        raise Sorry("Target not found: " + target_path)
+      from iotbx.phil import parse
+      source = parse(file_name=target_path,process_includes=True)
+      self.dials_phil = params.fetch(source = source).extract()
+
+    # create the spot finder
+    self.spotfinder = SpotFinderFactory.from_parameters(self.dials_phil)
 
   def event(self, evt, env):
     """The event() function is called for every L1Accept transition.  It
@@ -50,17 +71,9 @@ class mod_cbf_index(mod_cspad_cbf):
     if (evt.get('skip_event')):
       return
 
-    # get default parameters
-    sysconfig = SystemConfig()
-    params = sysconfig.config().extract()
-    params.spotfinder.threshold.sigma_strong = 7
-
-    # create the spot finder
-    find_spots = SpotFinderFactory.from_parameters(params)
-
     # spotfind
     imgset = MemImageSet([self.cspad_img])
-    reflections = find_spots(imgset)
+    reflections = self.spotfinder(imgset)
     if len(reflections) < 16:
       self.logger.info("Not enough spots into index")
       evt.put(True, "skip_event")
