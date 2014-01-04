@@ -246,7 +246,8 @@ class manager:
               'offset': flex.double(),
               'odd_numbered': flex.bool(),
               'orientation': [],
-              'unit_cell': []}
+              'unit_cell': [],
+              'unique_file_name': []}
     stream = open(self.params.output.prefix + '_frame.db', 'r')
     for row in stream:
       items = row.split()
@@ -259,6 +260,6 @@ class manager:
       frames['odd_numbered'].append(is_odd_numbered(items[24][1:-1]))
       frames['orientation'].append(CO)
       frames['unit_cell'].append(CO.unit_cell())
-      frames['unique_file_names'].append(items[24])
+      frames['unique_file_name'].append(items[24])
     stream.close()
     return frames
