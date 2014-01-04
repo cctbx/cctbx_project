@@ -1,6 +1,7 @@
 
 from __future__ import division
 from libtbx.str_utils import make_sub_header
+from libtbx.utils import Sorry
 from libtbx import group_args
 import libtbx.phil
 from math import sqrt
@@ -165,6 +166,7 @@ def coord_stats_for_atom_groups (residue1, residue2) :
   sites2 = flex.vec3_double()
   atoms = []
   for atom1 in residue1.atoms() :
+    if (atom1.element.strip() in ["H","D"]) : continue
     found = False
     for atom2 in residue2.atoms() :
       if (atom2.name == atom1.name) :

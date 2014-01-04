@@ -170,7 +170,7 @@ class xray_structure_statistics (validation) :
             outlier = occupancy(
               pdb_atom=atom,
               occupancy=occ,
-              b_iso=adptbx.u_as_b(u_iso[i_seq]),
+              b_iso=adptbx.u_as_b(u_isos[i_seq]),
               outlier=True)
             self.zero_occ.append(outlier)
 

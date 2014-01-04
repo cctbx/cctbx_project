@@ -225,6 +225,7 @@ class atom_base (slots_getstate_setstate) :
     "xyz",
     "symop",
     "occupancy",
+    "b_iso",
   ]
   __atom_slots__ = __residue_attr__ + __atom_attr__
   # XXX __slots__ should be left empty here
@@ -390,10 +391,13 @@ class validation (slots_getstate_setstate) :
         residue_id_str = str(other)
     if (self._cache is None) :
       self._cache = {}
-      for result in self.results :
+      for i_res, result in enumerate(self.results) :
         result_id_str = result.residue_group_id_str()
-        self._cache[result_id_str] = result
-    return self._cache.get(residue_id_str, None)
+        self._cache[result_id_str] = i_res
+    i_res = self._cache.get(residue_id_str, None)
+    if (i_res is not None) :
+      return self.results[i_res]
+    return None
 
   def find_atom_group (self, other=None, atom_group_id_str=None) :
     assert ([other, atom_group_id_str].count(None) == 1)
@@ -406,10 +410,13 @@ class validation (slots_getstate_setstate) :
         atom_group_id_str = str(other)
     if (self._cache is None) :
       self._cache = {}
-      for result in self.results :
+      for i_res, result in enumerate(self.results) :
         result_id_str = result.atom_group_group_id_str()
-        self._cache[result_id_str] = result
-    return self._cache.get(atom_group_id_str, None)
+        self._cache[result_id_str] = i_res
+    i_res = self._cache.get(atom_group_id_str, None)
+    if (i_res is not None) :
+      return self.results[i_res]
+    return None
 
 molprobity_cmdline_phil_str = """
   model = None
