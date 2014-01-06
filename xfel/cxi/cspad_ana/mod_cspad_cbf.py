@@ -137,7 +137,7 @@ class mod_cspad_cbf(mod_event_info):
       # Set up the dxtbx object and its cbf handle
       self.cspad_img = copy.deepcopy(self.base_dxtbx)
       self.cspad_img._cbf_handle = cbf = cspad_cbf_tbx.copy_cbf_header(self.base_cbf)
-      cbf.set_datablockname("cspad_" + self.timestamp)
+      cbf.set_datablockname(self.address + "_" + self.timestamp)
 
       quads = evt.getCsPadQuads(self.address, env)
       n_asics = sum([len(quad.data()) for quad in quads]) * 2
