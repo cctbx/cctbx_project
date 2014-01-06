@@ -539,6 +539,7 @@ class installer (object) :
     config_opts = [
       "--disable-mediactrl",
       "--with-opengl",
+      "--enable-unicode",
       "--prefix=\"%s\"" % self.base_dir,
     ]
     if (self.options.debug) :
@@ -560,7 +561,6 @@ class installer (object) :
         "--with-gtk-prefix=\"%s\"" % self.base_dir,
         "--with-gtk-exec-prefix=\"%s\"" % os.path.join(self.base_dir, "lib"),
         "--enable-graphics_ctx",
-        "--enable-unicode",
       ])
     self.set_cppflags_ldflags_tmp()
     print >> self.log, "  building wxWidgets with options:"
