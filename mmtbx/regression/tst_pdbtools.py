@@ -777,7 +777,6 @@ ATOM     19  O  BHOH A   4       4.132   9.963   7.800  0.50 15.00           O
   cmd = "phenix.pdbtools tst_pdbtools_alt_confs.pdb remove_alt_confs=True"
   run_command(command=cmd, verbose=False)
   pdb_new = open("tst_pdbtools_alt_confs.pdb_modified.pdb").read()
-  print """'%s'""" % pdb_new
   assert (pdb_new == """\
 ATOM      1  O   HOH A   2       5.131   5.251   5.823  1.00 10.00           O
 ATOM      2  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
@@ -788,6 +787,22 @@ ATOM      6  O   HOH A   3       1.132   5.963   7.065  1.00 15.00           O
 TER
 END
 """)
+  cmd = "phenix.pdbtools tst_pdbtools_alt_confs.pdb remove_alt_confs=True " +\
+    "always_keep_one_conformer=True"
+  run_command(command=cmd, verbose=False)
+  pdb_new = open("tst_pdbtools_alt_confs.pdb_modified.pdb").read()
+  assert (pdb_new == """\
+ATOM      1  O   HOH A   2       5.131   5.251   5.823  1.00 10.00           O
+ATOM      2  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM      3  CB  LYS A  32       9.193   8.732  12.170  1.00 12.23           C
+ATOM      4  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM      5  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+ATOM      6  O   HOH A   3       1.132   5.963   7.065  1.00 15.00           O
+ATOM      7  O   HOH A   4       4.132   9.963   7.800  1.00 15.00           O
+TER
+END
+""")
+
 
 def exercise(args):
   if ("--show-everything" in args):
