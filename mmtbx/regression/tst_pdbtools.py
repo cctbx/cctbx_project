@@ -803,6 +803,41 @@ TER
 END
 """)
 
+def exercise_normalize_occupancies () :
+  pdb_in = """\
+ATOM     16  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
+ATOM     60  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM     63  CB ALYS A  32       9.197   8.686  12.246  0.29 14.71           C
+ATOM     64  CB BLYS A  32       9.193   8.732  12.170  0.41 12.23           C
+ATOM     74  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM     77  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+ATOM     18  O  AHOH B   3       1.132   5.963   7.065  0.80 15.00           O
+ATOM     18  O  BHOH B   3       1.132   5.963   7.065  0.50 15.00           O
+ATOM     19  O  AHOH B   4       4.132   9.963   7.800  0.50 15.00           O
+ATOM     20  O  BHOH B   4       4.132   9.963   7.800  0.40 15.00           O
+ATOM     21 ZN   ZN  C   5       8.000  12.124  11.900  0.75 20.00          ZN
+"""
+  open("tst_pdbtools_norm_occ.pdb", "w").write(pdb_in)
+  cmd = "phenix.pdbtools tst_pdbtools_norm_occ.pdb occupancies.normalize=True selection='not element ZN'"
+  run_command(command=cmd, verbose=False)
+  pdb_new = open("tst_pdbtools_norm_occ.pdb_modified.pdb").read()
+  assert (pdb_new == """\
+ATOM      1  O  AHOH A   2       5.131   5.251   5.823  1.00 10.00           O
+ATOM      2  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM      3  CB ALYS A  32       9.197   8.686  12.246  0.59 14.71           C
+ATOM      4  CB BLYS A  32       9.193   8.732  12.170  0.41 12.23           C
+ATOM      5  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM      6  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+TER
+ATOM      7  O  AHOH B   3       1.132   5.963   7.065  0.50 15.00           O
+ATOM      8  O  BHOH B   3       1.132   5.963   7.065  0.50 15.00           O
+ATOM      9  O  AHOH B   4       4.132   9.963   7.800  0.60 15.00           O
+ATOM     10  O  BHOH B   4       4.132   9.963   7.800  0.40 15.00           O
+TER
+ATOM     11 ZN   ZN  C   5       8.000  12.124  11.900  0.75 20.00          Zn
+TER
+END
+""")
 
 def exercise(args):
   if ("--show-everything" in args):
@@ -834,6 +869,7 @@ def exercise(args):
   exercise_change_of_basis()
   exercise_move_waters()
   exercise_remove_alt_confs()
+  exercise_normalize_occupancies()
 
 if (__name__ == "__main__"):
   show_times_at_exit()

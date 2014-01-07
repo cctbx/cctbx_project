@@ -1,3 +1,11 @@
+
+"""
+Common manipulations of (macromolecular) model files.  This module is used
+as a standalone program, phenix.pdbtools, but some components are also used
+in phenix.refine, and it is also a dumping ground for individual related
+functions.
+"""
+
 from __future__ import division
 import iotbx.phil
 from mmtbx.refinement import rigid_body
@@ -114,6 +122,11 @@ occupancies
     .type = float
     .help = Set all or selected occupancies to given value
     .short_caption=Set occupancies to
+  normalize = False
+    .type = bool
+    .help = Reset the sum of occupancies for each residue to 1.0.  Note that \
+      this will be performed before any atoms are removed.
+    .short_caption = Reset total occupancy to 1
 }
 rotate_about_axis
   .style = box
@@ -499,27 +512,38 @@ class modify(object):
         selection = selection.indices)
 
   def _process_occupancies(self, selection):
-    if(self.params.occupancies.randomize):
-      self._print_action(
-        text = "Randomizing occupancies",
-        selection = selection)
+    def check_if_already_modified() :
       if (self._occupancies_modified):
         raise Sorry("Can't modify occupancies (already modified).")
       else:
         self._occupancies_modified = True
+    if(self.params.occupancies.randomize):
+      self._print_action(
+        text = "Randomizing occupancies",
+        selection = selection)
+      check_if_already_modified()
       self.xray_structure.shake_occupancies(selection=selection.flags)
     if(self.params.occupancies.set is not None):
       self._print_action(
         text = "Setting occupancies to: %8.3f"% \
                 self.params.occupancies.set,
         selection = selection)
-      if (self._occupancies_modified):
-        raise Sorry("Can't modify occupancies (already modified).")
-      else:
-        self._occupancies_modified = True
+      check_if_already_modified()
       self.xray_structure.set_occupancies(
           value = self.params.occupancies.set,
           selection = selection.flags)
+    # FIXME since this is done *before* any atoms are removed from the
+    # structure, it may not always have the desired effect
+    if (self.params.occupancies.normalize) :
+      self._print_action(
+        text = "Resetting total occupancy to 1.0",
+        selection = selection)
+      check_if_already_modified()
+      normalize_occupancies(
+        hierarchy=self.pdb_hierarchy,
+        selection=selection.flags,
+        xray_structure=self.xray_structure,
+        log=self.log)
 
   def report_number_of_atoms_to_be_removed(self):
     if (    self.remove_selection is not None
@@ -611,6 +635,10 @@ def set_atomic_charge (
     print >> log, "  %s : set charge to %s" % (atom.id_str(), charge)
 
 def truncate_to_poly_ala(hierarchy):
+  """
+  Remove all protein sidechain atoms beyond C-alpha (as well as all hydrogens).
+  Does not change the chemical identity of the residues.
+  """
   import iotbx.pdb.amino_acid_codes
   aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
   ala_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
@@ -629,6 +657,12 @@ def truncate_to_poly_ala(hierarchy):
                 ag.remove_atom(atom=atom)
 
 def remove_alt_confs (hierarchy, always_keep_one_conformer=False) :
+  """
+  Remove all alternate conformers from the hierarchy.  Depending on the
+  value of always_keep_one_conformer, this will either remove any atom_group
+  with altloc other than blank or 'A', or it will remove any atom_group
+  beyond the first conformer found.
+  """
   for model in hierarchy.models() :
     for chain in model.chains() :
       for residue_group in chain.residue_groups() :
@@ -662,7 +696,60 @@ def remove_alt_confs (hierarchy, always_keep_one_conformer=False) :
   new_occ = flex.double(atoms.size(), 1.0)
   atoms.set_occ(new_occ)
 
+def normalize_occupancies (hierarchy, selection=None,
+    xray_structure=None, log=None) :
+  """
+  Reset the sum of occupancies for each residue_group to 1.0.  This will fail
+  if any (selected) atom_group has non-uniform occupancies.
+  """
+  if (log is None) : log = null_out()
+  for model in hierarchy.models() :
+    for chain in model.chains() :
+      for residue_group in chain.residue_groups() :
+        i_seqs = residue_group.atoms().extract_i_seq()
+        if (selection is not None) :
+          selection_rg = selection.select(i_seqs)
+          if (not selection_rg.all_eq(True)) :
+            continue
+        atom_groups = residue_group.atom_groups()
+        occupancy_sum = 0
+        for atom_group in atom_groups :
+          atom_occ = atom_group.atoms().extract_occ()
+          if (len(atom_occ) == 0) :
+            residue_group.remove_atom_group(atom_group)
+            continue
+          if (atom_group.altloc.strip() == '') :
+            continue
+          if (not atom_occ.all_eq(atom_occ[0])) :
+            raise Sorry("Non-uniform occupancies for atom_group '%s'" %
+              atom_group.id_str())
+          occupancy_sum += atom_occ[0]
+        if (occupancy_sum != 1.0) :
+          print >> log, "  residue_group '%s': occupancy=%.2f" % \
+            (residue_group.id_str(), occupancy_sum)
+        gap = 1.0 - occupancy_sum
+        reset = False
+        n_groups = len(atom_groups)
+        for atom_group in atom_groups :
+          atoms = atom_group.atoms()
+          if (atom_group.altloc.strip() == '') or (n_groups == 1.0) :
+            print >> log, "    altloc ' ': set occupancy to 1.0"
+            atoms.set_occ(flex.double(len(atoms), 1.0))
+          elif (not reset) :
+            occ = atoms.extract_occ()
+            atoms.set_occ(occ + flex.double(len(atoms), gap))
+            print >> log, "    altloc '%s': set occupancy to %.2f" % \
+              (atom_group.altloc, atoms[0].occ)
+            reset = True
+  occ = hierarchy.atoms().extract_occ()
+  if (xray_structure is not None) :
+    xray_structure.scatterers().set_occupancies(occ)
+
 def convert_semet_to_met (pdb_hierarchy, xray_structure) :
+  """
+  Change the chemical identity of MSE residues to MET, without changing
+  coordinates.
+  """
   n_mse = 0
   scatterers = xray_structure.scatterers()
   for i_seq, atom in enumerate(pdb_hierarchy.atoms()) :
@@ -712,6 +799,13 @@ def write_model_file(pdb_hierarchy, crystal_symmetry, file_name, output_format):
 
 # XXX only works for one MODEL at present
 def move_waters (pdb_hierarchy, xray_structure, out) :
+  """
+  Re-arranges the PDB hierarchy so that waters are located at the end of the
+  atom list.  This is done automatically in phenix.refine if water picking is
+  enabled, but the routine here is more flexible.  (Note that there is some
+  overlap in functionality with mmtbx.command_line.sort_hetatms, but the
+  latter module is significantly more complicated.)
+  """
   if (len(pdb_hierarchy.models()) > 1) :
     raise Sorry("Rearranging water molecules is not supported for "+
       "multi-MODEL structures.")
