@@ -387,7 +387,8 @@ class massage_data(object):
     if output_type == "sca":
       import iotbx.scalepack.merge
       iotbx.scalepack.merge.write(
-        file_name=output_file,miller_array=self.final_array)
+        file_name=output_file,miller_array=self.final_array,
+        scale_intensities_for_scalepack_merge=True) # scales only if necessary
     if output_type == "mtz":
       base_label=None
       if self.final_array.is_xray_intensity_array():
