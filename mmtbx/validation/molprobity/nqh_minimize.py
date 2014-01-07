@@ -57,10 +57,18 @@ def run(args):
       restrain += " or"
     else:
       is_first = False
-    selection += " (chain '%s' and resseq %s and resname %s)" % \
-                  (flip[0:2], flip[2:6].strip(), flip[7:])
-    restrain += " (chain '%s' and resseq %s and resname %s)" % \
-                  (flip[0:2], flip[2:6].strip(), flip[7:])
+    if (len(flip) == 10): #not an altloc
+      selection += " (chain '%s' and resseq %s and resname %s)" % \
+        (flip[0:2], flip[2:6].strip(), flip[7:])
+      restrain += " (chain '%s' and resseq %s and resname %s)" % \
+        (flip[0:2], flip[2:6].strip(), flip[7:])
+    else: #is an alternate
+      selection += \
+        " (chain '%s' and resseq %s and resname %s and altid '%s')" % \
+        (flip[0:2], flip[2:6].strip(), flip[7:10], flip[-1:])
+      restrain += \
+        " (chain '%s' and resseq %s and resname %s and altid '%s')" % \
+        (flip[0:2], flip[2:6].strip(), flip[7:10], flip[-1:])
   selection += " )"
   restrain += " )"
   sigma = "reference_restraints.coordinate_sigma=0.05"
@@ -78,8 +86,10 @@ def run(args):
   f = file(filename, 'rb')
   for line in f.readlines():
     if line.startswith("ATOM  "):
-      id_str = line[17:26]
-      key = id_str[3:5]+id_str[5:]+' '+id_str[0:3]
+      id_str = line[16:26]
+      key = id_str[4:6]+id_str[6:]+' '+id_str[1:4]
+      if id_str[0] != ' ':
+        key = key+"    %s" % id_str[0]
       if key in flipped_residues:
         print >> out, line.strip()
   out.close()
@@ -100,8 +110,10 @@ def run(args):
   min_file = file(os.path.join(temp_dir, ofn), 'rb')
   for line in min_file.readlines():
     if line.startswith("ATOM  "):
-      id_str = line[17:26]
-      check_key = id_str[3:5]+id_str[5:]+' '+id_str[0:3]
+      id_str = line[16:26]
+      check_key = id_str[4:6]+id_str[6:]+' '+id_str[1:4]
+      if id_str[0] != ' ':
+        check_key = check_key+"    %s" % id_str[0]
       if check_key in flipped_residues:
         key = line[12:26]
         coords = line[30:54]
