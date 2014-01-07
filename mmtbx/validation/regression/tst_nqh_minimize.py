@@ -7,6 +7,7 @@ import time
 
 pdb_str_1 = \
 """USER  MOD Single : A  49 GLN     :FLIP  amide:sc=   0.595  F(o=-3.2!,f=0.59)
+USER  MOD Single : A  60 ASN    B:FLIP  amide:sc= -0.0622  F(o=-0.92,f=-0.062)
 ATOM    321  N   ARG A  42      32.478  30.917  22.269  1.00  5.73           N
 ATOM    322  CA  ARG A  42      31.200  30.329  22.780  1.00  6.97           C
 ATOM    323  C   ARG A  42      30.210  30.509  21.650  1.00  7.15           C
@@ -46,6 +47,20 @@ ATOM      0  HG2 GLN A  49      27.975  26.632  24.207  1.00 15.82           H  
 ATOM      0  HG3 GLN A  49      27.624  28.150  24.142  1.00 15.82           H   new
 ATOM      0 HE21 GLN A  49      29.437  26.210  25.805  1.00 20.67           H   new
 ATOM      0 HE22 GLN A  49      29.592  26.954  27.086  1.00 20.67           H   new
+ATOM    467  N  BASN A  60      19.993  20.884  14.049  1.00 12.38           N
+ATOM    468  CA BASN A  60      19.065  21.352  12.999  1.00 13.94           C
+ATOM    469  C  BASN A  60      19.442  22.745  12.510  1.00 14.16           C
+ATOM    470  O  BASN A  60      18.571  23.610  12.289  1.00 14.26           O
+ATOM    471  CB BASN A  60      17.586  21.282  13.461  1.00 19.23           C
+ATOM    472  CG BASN A  60      16.576  21.258  12.315  1.00 22.65           C
+ATOM    473  OD1BASN A  60      16.924  20.586  11.216  1.00 25.45           O   flip
+ATOM    474  ND2BASN A  60      15.440  21.819  12.378  1.00 24.09           N   flip
+ATOM      0  H  BASN A  60      20.401  20.147  13.878  1.00 12.38           H   new
+ATOM      0  HA BASN A  60      19.150  20.747  12.246  1.00 13.94           H   new
+ATOM      0  HB2BASN A  60      17.464  20.487  14.004  1.00 19.23           H   new
+ATOM      0  HB3BASN A  60      17.398  22.045  14.029  1.00 19.23           H   new
+ATOM      0 HD21BASN A  60      15.213  22.253  13.085  1.00 24.09           H   new
+ATOM      0 HD22BASN A  60      14.897  21.766  11.714  1.00 24.09           H   new
 END
 """
 
@@ -71,7 +86,7 @@ def exercise_nqh_minimize():
   nqh_minimize.run(args)
   v1 = run_validation('modelFH.pdb', ignore_hd=True)
   v2 = run_validation('modelFH_reg.pdb', ignore_hd=True)
-  assert v1.bonds.n_outliers == 2
+  assert v1.bonds.n_outliers == 3
   assert v2.bonds.n_outliers == 0
 
 if (__name__ == "__main__"):
