@@ -101,7 +101,7 @@ def run(args):
   else:
     import libtbx.load_env
     if not libtbx.env.has_module("phenix_regression"):
-      print "Sorry: phenix_regression not available."
+      print "skipping test: phenix_regression not available."
       return
     file_name = libtbx.env.find_in_repositories(
       relative_path="phenix_regression/pdb/atp.pdb",
