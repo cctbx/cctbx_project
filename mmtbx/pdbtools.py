@@ -144,6 +144,11 @@ remove_alt_confs = False
     resets the occupancies of the remaining atoms to 1.0.
   .short_caption = Remove alternate conformers
   .style = noauto
+always_keep_one_conformer = False
+  .type = bool
+  .help = Modifies behavior of remove_alt_confs so that residues with no \
+    conformer labeled blank or A are not deleted.  Silent if remove_alt_confs \
+    is False.
 set_chemical_element_simple_if_necessary = None
   .type = bool
   .short_caption = Guess element field if necessary
@@ -623,20 +628,34 @@ def truncate_to_poly_ala(hierarchy):
               if (atom.name not in ala_atom_names):
                 ag.remove_atom(atom=atom)
 
-def remove_alt_confs (hierarchy) :
+def remove_alt_confs (hierarchy, always_keep_one_conformer=False) :
   for model in hierarchy.models() :
     for chain in model.chains() :
       for residue_group in chain.residue_groups() :
         atom_groups = residue_group.atom_groups()
         assert (len(atom_groups) > 0)
-        #if (len(atom_groups) == 1) : continue
-        for atom_group in atom_groups :
-          if (not atom_group.altloc in ["", "A"]) :
+        if always_keep_one_conformer :
+          if (len(atom_groups) == 1) and (atom_groups[0].altloc == '') :
+            continue
+          atom_groups_and_occupancies = []
+          for atom_group in atom_groups :
+            if (atom_group.altloc == '') :
+              continue
+            mean_occ = flex.mean(atom_group.atoms().extract_occ())
+            atom_groups_and_occupancies.append((atom_group, mean_occ))
+          atom_groups_and_occupancies.sort(lambda a,b: cmp(b[1], a[1]))
+          for atom_group, occ in atom_groups_and_occupancies[1:] :
             residue_group.remove_atom_group(atom_group=atom_group)
-          else :
-            atom_group.altloc = ""
-        if (len(residue_group.atom_groups()) == 0) :
-          chain.remove_residue_group(residue_group=residue_group)
+          single_conf, occ = atom_groups_and_occupancies[0]
+          single_conf.altloc = ''
+        else :
+          for atom_group in atom_groups :
+            if (not atom_group.altloc in ["", "A"]) :
+              residue_group.remove_atom_group(atom_group=atom_group)
+            else :
+              atom_group.altloc = ""
+          if (len(residue_group.atom_groups()) == 0) :
+            chain.remove_residue_group(residue_group=residue_group)
       if (len(chain.residue_groups()) == 0) :
         model.remove_chain(chain=chain)
   atoms = hierarchy.atoms()
@@ -872,7 +891,8 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
     utils.print_header("Removing alternate conformations", out = log)
     pdb_atoms = pdb_hierarchy.atoms()
     pdb_atoms.reset_i_seq()
-    remove_alt_confs(hierarchy = pdb_hierarchy)
+    remove_alt_confs(hierarchy = pdb_hierarchy,
+      always_keep_one_conformer=params.modify.always_keep_one_conformer)
     pdb_atoms = pdb_hierarchy.atoms()
     xray_structure = xray_structure.select(pdb_atoms.extract_i_seq())
     xray_structure.set_occupancies(1.0)
