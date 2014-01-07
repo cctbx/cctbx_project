@@ -69,6 +69,9 @@ class mod_cspad_cbf(mod_event_info):
       reader = Registry.find(self.dark_path)
       self.dark_img = reader(self.dark_path)
 
+      # read the data, causing the data to be cached so multi-processing will work
+      self.dark_img.get_raw_data()
+
     # Load the mask image and ensure it is signed and at least 32 bits
     # wide, since it will be used for differencing.
     self.mask_img = None

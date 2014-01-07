@@ -18,6 +18,7 @@ from xfel.cxi.cspad_ana import cspad_tbx
 
 import os
 from libtbx.utils import Sorry
+from dials.model.serialize import dump
 
 class mod_cbf_index(mod_cspad_cbf):
   """Class for indexing a cbf image
@@ -74,10 +75,17 @@ class mod_cbf_index(mod_cspad_cbf):
     # spotfind
     imgset = MemImageSet([self.cspad_img])
     reflections = self.spotfinder(imgset)
-    if len(reflections) < 16:
-      self.logger.info("Not enough spots into index")
+
+    if len(reflections) < self.dials_phil.refinement.reflections.minimum_number_of_reflections:
+      self.logger.info("Not enough spots to index")
       evt.put(True, "skip_event")
       return
+
+    # dump the reflections pickle
+    t = self.timestamp
+    s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
+    dest_path = os.path.join(self._dirname, self._basename + s + ".pickle")
+    dump.reflections(reflections, dest_path)
 
     # index
     from dials_regression.indexing_test_data.i04_weak_data.run_indexing_api import run as run_index
@@ -87,5 +95,4 @@ class mod_cbf_index(mod_cspad_cbf):
     except Exception, e:
       self.logger.info("Couldn't index, " + e.message)
       evt.put(True, "skip_event")
-      return
 
