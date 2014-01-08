@@ -30,7 +30,9 @@ def writer (
     file_object=None,
     file_name=None,
     batch_numbers=None,
-    spindle_flags=None) :
+    spindle_flags=None,
+    scale_intensities_for_scalepack_merge=False,
+    out=sys.stdout) :
   n_refl = len(i_obs.indices())
   assert (not i_obs.is_unique_set_under_symmetry())
   assert i_obs.is_xray_intensity_array() and i_obs.sigmas() is not None
@@ -80,15 +82,24 @@ def writer (
       f.write("%3d" % t)
     f.write("\n")
   # write out reflections
+
+  if scale_intensities_for_scalepack_merge: # 2014-01-07 TT
+    from iotbx.scalepack.merge import scale_intensities_if_necessary
+    i_obs=scale_intensities_if_necessary(i_obs,out=out) 
+
+  from iotbx.scalepack.merge import format_f8_1_or_i8 # Sorry if out of range
   for i_refl, (h,k,l) in enumerate(i_obs.indices()) :
     (h_asu, k_asu, l_asu) = uniq_indices[i_refl]
     c_flag = centric_tags[i_refl]
     asu_number = abs(isym[i_refl]) + 1 # XXX is this correct?
     spindle_flag = spindle_flags[i_refl]
     batch = batch_numbers[i_refl]
-    f.write("%4d%4d%4d%4d%4d%4d%6d%2d%2d%3d%8.1f%8.1f\n" %
+    i_formatted=format_f8_1_or_i8((h,k,l),"intensity",i_obs.data()[i_refl])
+    s_formatted=format_f8_1_or_i8((h,k,l),"sigma",i_obs.sigmas()[i_refl])
+
+    f.write("%4d%4d%4d%4d%4d%4d%6d%2d%2d%3d%s%s\n" %
       (h, k, l, h_asu, k_asu, l_asu, batch, c_flag, spindle_flag,
-      asu_number, i_obs.data()[i_refl], i_obs.sigmas()[i_refl]))
+      asu_number, i_formatted,s_formatted,))
   file_object.close()
 
 class reader(object):
