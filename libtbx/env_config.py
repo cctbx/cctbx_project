@@ -758,7 +758,8 @@ Wait for the command to finish, then try again.""" % vars())
         use_environment_flags=command_line.options.use_environment_flags,
         force_32bit=command_line.options.force_32bit,
         msvc_arch_flag=command_line.options.msvc_arch_flag,
-        enable_cxx11=command_line.options.enable_cxx11)
+        enable_cxx11=command_line.options.enable_cxx11,
+        old_division=command_line.options.old_division)
       self.build_options.get_flags_from_environment()
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
@@ -1028,7 +1029,10 @@ Wait for the command to finish, then try again.""" % vars())
         return ['', '/usr/bin/arch -i386 '][self.build_options.force_32bit]
       cmd = ""
       if (source_is_py or source_is_python_exe):
-        cmd += ' %s"$LIBTBX_PYEXE"%s' % (pre_cmd(), qnew)
+        qnew_tmp = qnew
+        if (self.build_options.old_division) :
+          qnew_tmp = ""
+        cmd += ' %s"$LIBTBX_PYEXE"%s' % (pre_cmd(), qnew_tmp)
       start_python = False
       if (source_is_py):
         if (len(source_specific_dispatcher_include(
@@ -1077,11 +1081,14 @@ Wait for the command to finish, then try again.""" % vars())
       print >>f, '@set %s=%s;%%%s%%' % (n, v, n)
     print >>f, '@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value()
     write_dispatcher_include(where="before_command")
+    qnew_tmp = qnew
+    if (self.build_options.old_division) :
+      qnew_tmp = ""
     if source_file.ext().lower() == '.py':
       print >>f, '@"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
-        qnew, source_file.bat_value())
+        qnew_tmp, source_file.bat_value())
     elif source_file.basename().lower() == 'python.exe':
-      print >>f, '@"%%LIBTBX_PYEXE%%"%s %%*' % qnew
+      print >>f, '@"%%LIBTBX_PYEXE%%"%s %%*' % qnew_tmp
     else:
       print >>f, '@"%s" %%*' % source_file.bat_value()
     f.close()
@@ -1820,7 +1827,8 @@ class build_options:
         use_environment_flags=False,
         force_32bit=False,
         msvc_arch_flag=default_msvc_arch_flag,
-        enable_cxx11=default_enable_cxx11):
+        enable_cxx11=default_enable_cxx11,
+        old_division=False):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1873,6 +1881,7 @@ class build_options:
     print >> f, "Use opt_resources if available:", self.opt_resources
     print >> f, "Use environment flags:", self.use_environment_flags
     print >> f, "Enable C++11:", self.enable_cxx11
+    print >> f, "Force true division:", (not self.old_division)
     if( self.use_environment_flags ):
       print >>f, "  CXXFLAGS = ", self.env_cxxflags
       print >>f, "  CFLAGS = ", self.env_cflags
@@ -2079,6 +2088,10 @@ class pre_process_args:
       action="store_true",
       default=default_enable_cxx11,
       help="use C++11 standard")
+    parser.option(None, "--old_division",
+      action="store_true",
+      default=False,
+      help="Don't force 'true division' behavior in dispatchers")
     self.command_line = parser.process(args=args)
     if (len(self.command_line.args) == 0):
       raise RuntimeError(
@@ -2231,6 +2244,8 @@ def unpickle():
   # XXX backward compatibility 2011-07-05
   if (not hasattr(env.build_options, "enable_cuda")):
     env.build_options.enable_cuda = False
+  if (not hasattr(env.build_options, "old_division")) :
+    env.build_options.old_division = False
   # XXX backward incompatibility 2011-10
   if not hasattr(env, 'relocatable'):
     print ("Please re-configure from scratch your cctbx_build:"
