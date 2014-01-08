@@ -60,11 +60,11 @@ class NullSweep(object):
 
 def filename_to_absolute(filename):
   ''' Convert filenames to absolute form. '''
-  import os
+  from os.path import abspath
   if isinstance(filename, list):
-    return [os.path.abspath(f) for f in filename]
+    return [abspath(f) for f in filename]
 
-  return os.path.abspath(filename)
+  return abspath(filename)
 
 def basic_imageset_to_dict(imageset):
   ''' Convert an imageset to a dictionary
@@ -154,9 +154,10 @@ def imagesweep_from_dict(d):
   '''Construct and image sweep from the dictionary.'''
   from dxtbx.imageset import ImageSetFactory
   from dxtbx.serialize import beam, detector, goniometer, scan
+  from os.path import abspath, expanduser, expandvars
 
   # Get the template (required)
-  template = str(d['template'])
+  template = abspath(expanduser(expandvars(str(d['template']))))
 
   # If the scan isn't set, find all available files
   scan_dict = d.get('scan')
