@@ -157,11 +157,21 @@ def format_f8_1_or_i8(h, label, value):
         str(h).replace(" ",""), label, value))
   return result
 
+def scale_intensities_if_necessary(miller_array,out=sys.stdout):
+    value=miller_array.data().min_max_mean().max
+    max_value=0.9999e+08
+    if value > max_value: # scale it
+      miller_array=miller_array.deep_copy().apply_scaling(target_max=max_value) 
+      print >>out,"NOTE: Scaled array (max=%s) to fit in Scalepack format" %(
+         str(max_value))
+    return miller_array
+
 def write(file_name=None, file_object=None, miller_array=None,
           space_group_symbol=None,
           line_1="    1",
           line_2=" -987",
-          scale_intensities_for_scalepack_merge=False):
+          scale_intensities_for_scalepack_merge=False,
+          out=sys.stdout):
   
   assert [file_name, file_object].count(None) == 1
   assert miller_array.is_xray_intensity_array() or \
@@ -178,12 +188,7 @@ def write(file_name=None, file_object=None, miller_array=None,
       space_group_symbol = space_group_symbol.replace(" ", "").lower()
 
   if scale_intensities_for_scalepack_merge: # 2014-01-07 TT
-    value=miller_array.data().min_max_mean().max
-    max_value=1.0e+07
-    if value > max_value: # scale it
-      miller_array=miller_array.deep_copy().apply_scaling(target_max=max_value) 
-      print "NOTE: Scaled array (max=%s) to fit in Scalepack format" %(
-         str(max_value))
+    miller_array=scale_intensities_if_necessary(miller_array,out=out)
 
   print >> file_object, line_1
   print >> file_object, line_2

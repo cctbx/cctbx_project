@@ -3693,13 +3693,16 @@ class array(set):
       file_object=None,
       file_name=None,
       batch_numbers=None,
-      spindle_flags=None) :
+      spindle_flags=None,
+      scale_intensities_for_scalepack_merge=False) :
     from iotbx.scalepack.no_merge_original_index import writer
     writer(i_obs=self,
       file_object=file_object,
       file_name=file_name,
       batch_numbers=batch_numbers,
-      spindle_flags=spindle_flags)
+      spindle_flags=spindle_flags,
+      scale_intensities_for_scalepack_merge=
+        scale_intensities_for_scalepack_merge)
 
   def as_mtz_dataset(self,
         column_root_label,
