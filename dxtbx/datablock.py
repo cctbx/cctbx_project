@@ -347,6 +347,7 @@ class DataBlockFactory(object):
       unhandled = []
     unhandled1 = []
     unhandled2 = []
+    unhandled3 = []
 
     # First try as image files
     datablocks = DataBlockFactory.from_filenames(args, verbose, unhandled1)
@@ -366,6 +367,15 @@ class DataBlockFactory(object):
         try:
           datablocks.extend(DataBlockFactory.from_pickle_file(filename))
           if verbose: print 'Loaded datablock(s) from %s' % filename
+        except Exception:
+          unhandled3.append(filename)
+
+    # Now try as imageset json files
+    if len(unhandled3) > 0:
+      for filename in unhandled3:
+        try:
+          datablocks.append(DataBlockFactory.from_imageset_json_file(filename))
+          if verbose: print 'Loaded datablock from %s' % filename
         except Exception:
           unhandled.append(filename)
 
@@ -504,3 +514,88 @@ class DataBlockFactory(object):
       else:
         assert(isinstance(obj, DataBlock))
       return obj
+
+  @staticmethod
+  def from_sweep(imageset):
+    ''' Create the data block from the sweep. '''
+
+    # Initialise the datablock
+    datablock = DataBlock(imageset.paths())
+
+    # Get the beam
+    try:
+      beam = imageset.get_beam()
+    except Exception:
+      beam = None
+
+    # Get the detector
+    try:
+      detector = imageset.get_detector()
+    except Exception:
+      detector = None
+
+    # Get the goniometer
+    try:
+      gonio = imageset.get_goniometer()
+    except Exception:
+      gonio = None
+
+    # Get the scan
+    try:
+      scan = imageset.get_scan()
+    except Exception:
+      scan = None
+
+    # Get the records and set all the models
+    records = datablock.metadata()
+    for fname, record in records:
+      record.beam = beam
+      record.detector = detector
+      record.goniometer = gonio
+      record.scan = scan
+
+    # Return the datablock
+    return datablock
+
+  @staticmethod
+  def from_imageset(imageset):
+    ''' Create the data block from the imageset. '''
+
+    # Initialise the datablock
+    datablock = DataBlock(imageset.paths())
+
+    # Get the records and set all the models
+    records = datablock.metadata()
+    for i, (fname, record) in enumerate(records):
+      record.beam = imageset.get_beam(i)
+      record.detector = imageset.get_detector(i)
+      record.goniometer = imageset.get_gonio(i)
+      record.scan = imageset.get_scan(i)
+
+    # Return the datablock
+    return datablock
+
+  @staticmethod
+  def from_imageset_json(string):
+    ''' Load a datablock from a sweep json. '''
+    from dxtbx.serialize import load
+    from dxtbx.imageset import ImageSet, ImageSweep
+
+    # Load the imageset and create a datablock from the filenames
+    imageset = load.imageset(string)
+    if isinstance(imageset, ImageSweep):
+      return DataBlockFactory.from_sweep(imageset)
+    else:
+      return DataBlockFactory.from_imageset(imageset)
+
+  @staticmethod
+  def from_imageset_json_file(filename):
+    ''' Load a datablock from a sweep file. '''
+    from dxtbx.serialize import load
+    from dxtbx.imageset import ImageSet, ImageSweep
+    # Load the imageset and create a datablock from the filenames
+    imageset = load.imageset(filename)
+    if isinstance(imageset, ImageSweep):
+      return DataBlockFactory.from_sweep(imageset)
+    else:
+      return DataBlockFactory.from_imageset(imageset)
