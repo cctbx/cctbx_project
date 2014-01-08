@@ -420,6 +420,10 @@ class ImageSet(object):
       self._models[path] = models
     return self._models[path]
 
+  def get_image_size(self, panel=0, index=None):
+    ''' Get the image size. '''
+    return self.get_detector()[panel].get_image_size()
+
   def get_detector(self, index=None):
     ''' Get the detector. '''
     return self.get_image_models(index)['detector']
@@ -717,8 +721,12 @@ class ImageSweep(ImageSet):
     if isinstance(item, slice):
       if item.step != None:
         raise IndexError('Sweeps must be sequential')
-      return ImageSweep(self.reader(), self._indices[item], self._beam,
-        self._goniometer, self._detector, self._scan[item])
+      if self._scan is None:
+        scan = None
+      else:
+        scan = self._scan[item]
+      return ImageSweep(self.reader(), self._indices[item],
+        self._beam, self._goniometer, self._detector, scan)
     else:
       return self.reader().read(self._indices[item])
 
@@ -731,30 +739,38 @@ class ImageSweep(ImageSet):
     ''' Get the array range. '''
     return (self._indices[0], self._indices[-1] + 1)
 
-  def get_beam(self):
+  def get_image_size(self, panel=0, index=None):
+    ''' Get the image size. '''
+    return self.get_detector()[panel].get_image_size()
+
+  def get_beam(self, index=None):
     ''' Get the beam. '''
     if self._beam == None:
       self._beam = self.reader().get_beam()
     return self._beam
 
-  def get_detector(self):
+  def get_detector(self, index=None):
     ''' Get the detector. '''
     if self._detector == None:
       self._detector = self.reader().get_detector()
     return self._detector
 
-  def get_goniometer(self):
+  def get_goniometer(self, index=None):
     ''' Get goniometer, '''
     if self._goniometer == None:
       self._goniometer = self.reader().get_goniometer()
     return self._goniometer
 
-  def get_scan(self):
+  def get_scan(self, index=None):
     ''' Get the scan.'''
     if self._scan == None:
       self._scan = sum(
         (self.reader().get_scan(i) for i in self._indices[1:]),
         self.reader().get_scan(self._indices[0]))
+    if index is not None:
+      if index < 0 or index >= self._scan.get_num_images():
+        raise IndexError('index out of range')
+      return self._scan[index]
     return self._scan
 
   def set_beam(self, beam):

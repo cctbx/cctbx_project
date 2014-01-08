@@ -450,7 +450,6 @@ class TestImageSet(object):
     print 'OK'
 
   def tst_get_detectorbase(self, imageset, indices, outside_index):
-    imageset.get_detectorbase()
     for i in indices:
       imageset.get_detectorbase(i)
 
@@ -622,7 +621,6 @@ class TestImageSweep(object):
     print 'OK'
 
   def tst_get_detectorbase(self, sweep, indices, outside_index):
-    sweep.get_detectorbase()
     for i in indices:
       sweep.get_detectorbase(i)
 
@@ -721,13 +719,13 @@ class TestImageSweep(object):
     assert(gonio2 == gonio)
     assert(detector2 == detector)
 
-    # Get the models from an index back and check they're not the same
+    # Get the models from an index back and check they're the same
     beam2 = sweep.get_beam(0)
     gonio2 = sweep.get_goniometer(0)
     detector2 = sweep.get_detector(0)
-    assert(beam2 != beam)
-    assert(gonio2 != gonio)
-    assert(detector2 != detector)
+    assert(beam2 == beam)
+    assert(gonio2 == gonio)
+    assert(detector2 == detector)
 
     # Get a sub sweep
     sub_sweep = sweep[3:7]
@@ -744,9 +742,9 @@ class TestImageSweep(object):
     beam2 = sub_sweep.get_beam(0)
     gonio2 = sub_sweep.get_goniometer(0)
     detector2 = sub_sweep.get_detector(0)
-    assert(beam2 != beam)
-    assert(gonio2 != gonio)
-    assert(detector2 != detector)
+    assert(beam2 == beam)
+    assert(gonio2 == gonio)
+    assert(detector2 == detector)
 
 
 class TestImageSetFactory(object):
