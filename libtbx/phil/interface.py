@@ -491,19 +491,23 @@ class index (object) :
     self.merge_phil(phil_object=phil_object)
 
   # Safe wrapper of merge_phil for phil strings
-  def update (self, phil_string, only_scope=None) :
+  def update (self, phil_string, only_scope=None, raise_sorry=True) :
     try :
       phil_object = self.parse(phil_string)
       new_phil = self.master_phil.fetch(source=phil_object)
     except KeyboardInterrupt :
       raise
     except Exception, e :
-      self.log(str(e))
-      self.log(str(phil_string))
-      raise Sorry("An unknown error occurred parsing internal parameters. "+
-                  "This is probably a bug; if the program was launched with "+
-                  "the argument --debug, further information will be printed "+
-                  "to the console.")
+      print str(e)
+      print "bad string:"
+      print str(phil_string)
+      if (raise_sorry) :
+        raise Sorry("An unknown error occurred parsing internal parameters. "+
+          "This is probably a bug; if the program was launched with "+
+          "the argument --debug, further information will be printed "+
+          "to the console.")
+      else :
+        raise
     self.merge_phil(phil_object=phil_object, only_scope=only_scope)
 
   def adopt_phil(self, phil_object=None, phil_string=None, phil_file=None):
