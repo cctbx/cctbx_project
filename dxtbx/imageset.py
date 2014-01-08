@@ -15,15 +15,7 @@ class ReaderBase(object):
   '''The imageset reader base class.'''
 
   def __init__(self):
-
-    # Save some overidden models. If these models are not set, then
-    # getting the models defers to the reader. Otherwise, if they are
-    # set and the get functions are called without an index then
-    # these models will be returned
-    self._beam = None
-    self._detector = None
-    self._goniometer = None
-    self._scan = None
+    pass
 
   def __cmp__(self, other):
     pass
@@ -53,51 +45,15 @@ class ReaderBase(object):
     pass
 
   def get_detector(self, index=None):
-    if index is None and self._detector is not None:
-      return self._detector
-
-    return self.read_detector(index)
-
-  def set_detector(self, detector):
-    if self._detector == None:
-      self._detector = self.get_detector()
-    assert(self._detector.is_similar_to(detector))
-    self._detector = detector
-
-  def get_beam(self, index=None):
-    if index is None and self._beam is not None:
-      return self._beam
-
-    return self.read_beam(index)
-
-  def set_beam(self, beam):
-    self._beam = beam
+    pass
 
   def get_goniometer(self, index=None):
-    if index is None and self._goniometer is not None:
-      return self._goniometer
+    pass
 
-    return self.read_goniometer(index)
-
-  def set_goniometer(self, goniometer):
-    self._goniometer = goniometer
-
-  def set_scan(self, scan):
-    if self._scan == None:
-      self._scan = self.get_scan()
-    assert(len(self._scan) == len(scan))
-    self._scan = scan
+  def get_beam(self, index=None):
+    pass
 
   def get_scan(self, index=None):
-    pass
-
-  def read_detector(self, index=None):
-    pass
-
-  def read_goniometer(self, index=None):
-    pass
-
-  def read_beam(self, index=None):
     pass
 
 class SingleFileReader(ReaderBase):
@@ -127,10 +83,6 @@ class SingleFileReader(ReaderBase):
     else:
       return [filenames[i] for i in indices]
 
-  def get_image_size(self, panel=0):
-    '''Get the image size from the detector.'''
-    return self._format.get_detector()[panel].get_image_size()
-
   def get_format(self, index=None):
     '''Get the format instance'''
     return self._format
@@ -155,27 +107,21 @@ class SingleFileReader(ReaderBase):
     '''Get the detector base instance.'''
     return self._format.get_detectorbase(index)
 
-  def read_detector(self, index=None):
+  def get_detector(self, index=None):
     '''Get the detector instance.'''
     return self._format.get_detector(index)
 
-  def read_beam(self, index=None):
+  def get_beam(self, index=None):
     '''Get the beam instance.'''
     return self._format.get_beam(index)
 
-  def read_goniometer(self, index=None):
+  def get_goniometer(self, index=None):
     '''Get the goniometer instance.'''
     return self._format.get_goniometer(index)
 
   def get_scan(self, index=None):
     '''Get the scan instance.'''
-    if isinstance(index, tuple):
-      scan = self._format.get_scan(index[0])
-      scan.set_image_range((index[0] + 1, index[1]))
-    else:
-      scan = self._format.get_scan(index)
-
-    return scan
+    return self._format.get_scan(index)
 
 
 class MultiFileState(object):
@@ -293,28 +239,21 @@ class MultiFileReader(ReaderBase):
     '''Get the detector base instance at given index.'''
     return self.get_format(index).get_detectorbase()
 
-  def read_detector(self, index=None):
+  def get_detector(self, index=None):
     '''Get the detector instance at given index.'''
     return self.get_format(index).get_detector()
 
-  def read_beam(self, index=None):
+  def get_beam(self, index=None):
     '''Get the beam instance at given index.'''
     return self.get_format(index).get_beam()
 
-  def read_goniometer(self, index=None):
+  def get_goniometer(self, index=None):
     '''Get the goniometer instance at given index.'''
     return self.get_format(index).get_goniometer()
 
   def get_scan(self, index=None):
     '''Get the scan instance at given index.'''
-    if isinstance(index, tuple):
-      scan = self.get_format(index[0]).get_scan()
-      n = index[1] - index[0] - 1
-      image_range = (scan.get_image_range()[0], scan.get_image_range()[0] + n)
-      scan.set_image_range(image_range)
-    else:
-      scan = self.get_format(index).get_scan()
-    return scan
+    return self.get_format(index).get_scan()
 
   def read(self, index=None):
     '''Read the image frame at the given index.'''
@@ -373,7 +312,7 @@ class MultiFileReader(ReaderBase):
 class ImageSet(object):
   ''' A class exposing the external image set interface. '''
 
-  def __init__(self, reader, indices=None):
+  def __init__(self, reader, indices=None, models=None):
     ''' Initialise the ImageSet object.
 
     Params:
@@ -394,6 +333,12 @@ class ImageSet(object):
     else:
       self._indices = range(len(self.reader().get_image_paths()))
 
+    # Cache the models
+    if models is None:
+      self._models = dict()
+    else:
+      self._models = models
+
   def __getitem__(self, item):
     ''' Get an item from the image set stream.
 
@@ -410,7 +355,7 @@ class ImageSet(object):
     '''
     if isinstance(item, slice):
       indices = self._indices[item]
-      return ImageSet(self.reader(), indices)
+      return ImageSet(self.reader(), indices, self._models)
     else:
       return self.reader().read(self._indices[item])
 
@@ -444,33 +389,70 @@ class ImageSet(object):
     ''' Validate all the images in the image set. Can take a long time. '''
     return self.reader().is_valid(self._indices)
 
+  def get_image_models(self, index=None, no_read=False):
+    ''' Get the models for the image.'''
+    path = self.get_path(index)
+    if path not in self._models:
+      models = {}
+      if not no_read:
+        image_index = self._image_index(index)
+        try:
+          models['detector'] = self.reader().get_detector(image_index)
+        except Exception:
+          models['detector'] = None
+        try:
+          models['goniometer'] = self.reader().get_goniometer(image_index)
+        except Exception:
+          models['goniometer'] = None
+        try:
+          models['beam'] = self.reader().get_beam(image_index)
+        except Exception:
+          models['beam'] = None
+        try:
+          models['scan'] = self.reader().get_scan(image_index)
+        except Exception:
+          models['scan'] = None
+      else:
+        models['detector'] = None
+        models['beam'] = None
+        models['goniometer'] = None
+        models['scan'] = None
+      self._models[path] = models
+    return self._models[path]
+
   def get_detector(self, index=None):
     ''' Get the detector. '''
-    return self.reader().get_detector(self._image_index(index))
+    return self.get_image_models(index)['detector']
 
-  def set_detector(self, detector):
+  def set_detector(self, detector, index=None):
     ''' Set the detector model.'''
-    self.reader().set_detector(detector)
+    self.get_image_models(index)['detector'] = detector
 
   def get_beam(self, index=None):
     ''' Get the beam. '''
-    return self.reader().get_beam(self._image_index(index))
+    return self.get_image_models(index)['beam']
 
-  def set_beam(self, beam):
+  def set_beam(self, beam, index=None):
     ''' Set the beam model.'''
-    self.reader().set_beam(beam)
+    self.get_image_models(index)['beam'] = beam
 
   def get_goniometer(self, index=None):
-    return self.reader().get_goniometer(index)
+    ''' Get the goniometer model. '''
+    return self.get_image_models(index)['goniometer']
+
+  def set_goniometer(self, goniometer, index=None):
+    ''' Set the goniometer model. '''
+    self.get_image_models(index)['goniometer'] = goniometer
 
   def get_scan(self, index=None):
-    return self.reader().get_scan(index)
+    ''' Get the scan model. '''
+    return self.get_image_models(index)['scan']
 
-  def get_image_size(self, index=0):
-    ''' Get the image size. '''
-    return self.reader().get_image_size(index)
+  def set_scan(self, scan, index=None):
+    ''' Set the scan model. '''
+    self.get_image_models(index)['scan'] = scan
 
-  def get_detectorbase(self, index=None):
+  def get_detectorbase(self, index):
     ''' Get the detector base instance for the given index. '''
     return self.reader().get_detectorbase(self._image_index(index))
 
@@ -478,13 +460,22 @@ class ImageSet(object):
     ''' Return the image set reader. '''
     return self._reader
 
+  def get_path(self, index):
+    ''' Get the path for the index '''
+    return self.reader().get_path(self._image_index(index))
+
   def _image_index(self, index=None):
     ''' Convert image set index to image index.'''
     if index == None:
-      return None
+      return self._indices[0]
     elif index < 0 or index >= len(self._indices):
       raise IndexError('Index out of range')
     return self._indices[index]
+
+  def complete_set(self):
+    ''' Return the set of all images (i.e. not just the subset). '''
+    return ImageSet(self.reader(), models=self._models)
+
 
 class MemImageSet(ImageSet):
   ''' A class exposing the external image set interface, but instead of a file list, uses
@@ -620,6 +611,7 @@ class MemImageSet(ImageSet):
       raise IndexError('Index out of range')
     return self._indices[index]
 
+
 class SweepFileList(object):
   '''Class implementing a file list interface for sweep templates.'''
 
@@ -680,8 +672,33 @@ class SweepFileList(object):
 class ImageSweep(ImageSet):
   ''' A class exposing the external sweep interface. '''
 
-  def __init__(self, reader, indices=None):
+  def __init__(self, reader, indices=None,
+               beam=None, goniometer=None,
+               detector=None, scan=None):
+    ''' Create the sweep.
+
+    If the models are given here. They are used, otherwise the models
+    are read from the files themselves, with the beam, detector and
+    goniometer taken from the first image and the scan read from the
+    whole range of images. The scan must be consistent with the indices
+    given if both are specified.
+
+    Params:
+        reader The reader class
+        indices The list of image indices
+        beam The beam model
+        goniometer The goniometer model
+        detector The detector model
+        scan The scan model
+
+    '''
     ImageSet.__init__(self, reader, indices)
+    if scan is not None:
+      assert(scan.get_num_images() == (self._indices[-1] - self._indices[0] + 1))
+    self._beam = beam
+    self._goniometer = goniometer
+    self._detector = detector
+    self._scan = scan
 
   def __getitem__(self, item):
     ''' Get an item from the sweep stream.
@@ -700,8 +717,8 @@ class ImageSweep(ImageSet):
     if isinstance(item, slice):
       if item.step != None:
         raise IndexError('Sweeps must be sequential')
-      indices = self._indices[item]
-      return ImageSweep(self.reader(), indices)
+      return ImageSweep(self.reader(), self._indices[item], self._beam,
+        self._goniometer, self._detector, self._scan[item])
     else:
       return self.reader().read(self._indices[item])
 
@@ -714,25 +731,52 @@ class ImageSweep(ImageSet):
     ''' Get the array range. '''
     return (self._indices[0], self._indices[-1] + 1)
 
-  def get_goniometer(self, index=None):
+  def get_beam(self):
+    ''' Get the beam. '''
+    if self._beam == None:
+      self._beam = self.reader().get_beam()
+    return self._beam
+
+  def get_detector(self):
+    ''' Get the detector. '''
+    if self._detector == None:
+      self._detector = self.reader().get_detector()
+    return self._detector
+
+  def get_goniometer(self):
     ''' Get goniometer, '''
-    return self.reader().get_goniometer(self._image_index(index))
+    if self._goniometer == None:
+      self._goniometer = self.reader().get_goniometer()
+    return self._goniometer
+
+  def get_scan(self):
+    ''' Get the scan.'''
+    if self._scan == None:
+      self._scan = sum(
+        (self.reader().get_scan(i) for i in self._indices[1:]),
+        self.reader().get_scan(self._indices[0]))
+    return self._scan
+
+  def set_beam(self, beam):
+    ''' Set the beam. '''
+    self._beam = beam
 
   def set_goniometer(self, goniometer):
     ''' Set the goniometer model '''
-    self.reader().set_goniometer(goniometer)
+    self._goniometer = goniometer
+
+  def set_detector(self, detector):
+    ''' Set the detector model. '''
+    self._detector = detector
 
   def set_scan(self, scan):
-    self.reader().set_scan(scan)
+    ''' Set the scan model. '''
+    self._scan = scan
 
-  def get_scan(self, index=None):
-    ''' Get the scan. '''
-    if index == None:
-      index = self.get_array_range()
-    else:
-      index = self._image_index(index)
-
-    return self.reader().get_scan(index)
+  def complete_set(self):
+    ''' Return the set of all images (i.e. not just the subset). '''
+    return ImageSweep(self.reader(), beam=self._beam, detector=self._detector,
+                      goniometer=self._goniometer, scan=self._scan)
 
   def to_array(self, item=None, panel=0):
     ''' Read all the files in the sweep and convert them into an array
@@ -761,9 +805,6 @@ class ImageSweep(ImageSet):
 
   def _to_array_all(self, panel=0):
     ''' Get the array from all the sweep elements. '''
-
-    # FIXME this should be using flex arrays not numpy ones as we want
-    # to be able to pass the data to cctbx C++ code...
 
     from scitbx.array_family import flex
 
@@ -1145,7 +1186,8 @@ class ImageSetFactory(object):
     return image_set
 
   @staticmethod
-  def make_sweep(template, indices, format_class=None):
+  def make_sweep(template, indices, format_class=None, beam=None,
+                 detector=None, goniometer=None, scan=None):
     '''Create a sweep'''
     import os
     from dxtbx.format.Registry import Registry
@@ -1183,12 +1225,19 @@ class ImageSetFactory(object):
 
     # Set the image range
     array_range = (min(indices) - 1, max(indices))
+    if scan is not None:
+      assert(array_range == scan.get_array_range())
 
     # Create the sweep file list
     filenames = SweepFileList(template_format, array_range)
 
     # Create the sweep object
-    sweep = ImageSweep(MultiFileReader(format_class, filenames))
+    sweep = ImageSweep(
+      MultiFileReader(format_class, filenames),
+      beam=beam,
+      detector=detector,
+      goniometer=goniometer,
+      scan=scan)
 
     # Return the sweep
     return sweep

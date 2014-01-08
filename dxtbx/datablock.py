@@ -87,13 +87,13 @@ class DataBlock(object):
 
   def extract_all(self):
     ''' Extract all the images as an image set. '''
-    from dxtbx.imageset2 import ImageSetFactory
+    from dxtbx.imageset import ImageSetFactory
     return ImageSetFactory.make_imageset(
         self._images.keys(), self._format_class)
 
   def extract_stills(self):
     ''' Extract all the stills as an image set. '''
-    from dxtbx.imageset2 import ImageSetFactory
+    from dxtbx.imageset import ImageSetFactory
 
     # Get the list of filename, records for the still images
     stills = [(k, r) for k, r in self._images.iteritems()
@@ -117,7 +117,7 @@ class DataBlock(object):
 
   def extract_sweeps(self):
     ''' Extract all the sweeps from the block. '''
-    from dxtbx.imageset2 import ImageSetFactory
+    from dxtbx.imageset import ImageSetFactory
     from dxtbx.format.FormatStill import FormatStill
 
     # Check we're not using stills
