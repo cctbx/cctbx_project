@@ -117,8 +117,12 @@ class wrapper_of_use_case_bp3(object):
     the_tiles = raw_image.get_tile_manager(phil_params).effective_tiling_as_flex_int(
       reapply_peripheral_margin=True,encode_inactive_as_zeroes=True)
     self.ucbp3.set_active_areas( the_tiles )
-    self.ucbp3.set_sensor_model( thickness_mm = 0.5, mu_rho = 8.36644, # CS_PAD detector at 1.3 Angstrom
+
+    if phil_params.integration.signal_penetration==0.0:
+      self.ucbp3.set_sensor_model( thickness_mm = 0.0, mu_rho = 8.36644, signal_penetration = 0.0 )
+    else: self.ucbp3.set_sensor_model( thickness_mm = 0.5, mu_rho = 8.36644, # CS_PAD detector at 1.3 Angstrom
       signal_penetration = phil_params.integration.signal_penetration)
+      # XXX still very buggy; how do penetration & thickness relate?
 
     if sub != None and phil_params.integration.subpixel_joint_model.translations is not None:
       raise Exception("Cannot use both subpixel mechanisms simultaneously")
