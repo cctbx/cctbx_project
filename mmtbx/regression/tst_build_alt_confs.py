@@ -5,6 +5,7 @@ from mmtbx.command_line import fmodel
 from mmtbx.validation import rotalyze
 from iotbx import file_reader
 from libtbx.utils import null_out
+import libtbx.load_env
 
 def exercise () :
   # derivative of 1yjp, with alternate conformation Asn3 in different rotamer,
@@ -153,5 +154,8 @@ END
   assert (rota_out == rota_in)
 
 if (__name__ == "__main__") :
-  exercise()
-  print "OK"
+  if (not libtbx.env.has_module("probe")) :
+    print "probe not available, skipping this test"
+  else :
+    exercise()
+    print "OK"
