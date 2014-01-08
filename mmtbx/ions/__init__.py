@@ -12,6 +12,7 @@ only prints out messages to the log.
 from __future__ import division
 from mmtbx.ions.parameters import server, MetalParameters
 from mmtbx.ions.geometry import find_coordination_geometry
+from mmtbx import validation
 from cctbx import crystal, adptbx
 from cctbx.eltbx import sasaki, henke
 from scitbx.matrix import col, distance_from_plane
@@ -1505,6 +1506,20 @@ class _validate_ion_wrapper (object) :
       return i_seq, correct
     except KeyboardInterrupt :
       return (None, None)
+
+class ion_result (validation.atom):
+  """
+  Class for validation results for an ion site. This includes information about
+  both the atom modeled at that site as well as its chemical and scattering
+  environment.
+  """
+  __slots__ = validation.atom.__slots__ + ["chem_env", "scatter_env"]
+
+  def show (self, out = sys.stdout, prefix = ""):
+    pass
+  def show_brief (self, out = sys.stdout, prefix = ""):
+    # Print brief statistics for lines in a table
+    pass
 
 class water_result (object):
   """
