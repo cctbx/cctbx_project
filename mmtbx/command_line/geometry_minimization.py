@@ -158,7 +158,9 @@ def process_input_files(inputs, params, log):
   if (params.file_name is not None) :
     pdb_file_names.append(params.file_name)
   cs = inputs.crystal_symmetry
+  is_non_crystallographic_unit_cell = False
   if(cs is None):
+    is_non_crystallographic_unit_cell = True
     import iotbx.pdb
     pdb_combined = combine_unique_pdb_files(file_names = pdb_file_names)
     cs = iotbx.pdb.input(source_info = None, lines = flex.std_string(
@@ -191,6 +193,8 @@ def process_input_files(inputs, params, log):
     )
   processed_pdb_file, junk = processed_pdb_files_srv.\
     process_pdb_files(pdb_file_names = pdb_file_names) # XXX remove junk
+  processed_pdb_file.is_non_crystallographic_unit_cell = \
+    is_non_crystallographic_unit_cell # XXX bad hack
   return processed_pdb_file
 
 def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
@@ -368,6 +372,8 @@ class run(object):
       self.pdb_file_names.append(self.params.file_name)
     self.processed_pdb_file = process_input_files(inputs=self.inputs,
       params=self.params, log=self.log)
+    self.output_crystal_symmetry = \
+      not self.processed_pdb_file.is_non_crystallographic_unit_cell
     self.xray_structure = self.processed_pdb_file.xray_structure()
     self.pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
 
@@ -457,8 +463,11 @@ class run(object):
     if (self.use_directory_prefix) and (directory is not None) :
       ofn = os.path.join(directory, ofn)
     print >> self.log, "  output file name:", ofn
-    self.pdb_hierarchy.write_pdb_file(file_name = ofn, crystal_symmetry =
-      self.xray_structure.crystal_symmetry())
+    if (self.output_crystal_symmetry) :
+      self.pdb_hierarchy.write_pdb_file(file_name = ofn, crystal_symmetry =
+        self.xray_structure.crystal_symmetry())
+    else :
+      self.pdb_hierarchy.write_pdb_file(file_name = ofn)
     self.output_file_name = os.path.abspath(ofn)
 
   def write_geo_file(self, prefix):
