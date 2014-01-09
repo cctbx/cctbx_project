@@ -5,6 +5,7 @@ from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from iotbx.pdb import common_residue_names_get_class
 import iotbx.phil
 from mmtbx.monomer_library import pdb_interpretation
+from mmtbx.validation import utils
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
 from libtbx import easy_run
@@ -131,11 +132,12 @@ Example:
       else:
         ep_angle = outlier[1][2]
       print "%s:%.3f:%s:%.3f:%s" % (outlier[0],
-                                      delta_angle,
-                                      is_delta_outlier,
-                                      ep_angle,
-                                      is_epsilon_outlier)
+                                    delta_angle,
+                                    is_delta_outlier,
+                                    ep_angle,
+                                    is_epsilon_outlier)
     print "\n-----------------------------------------------"
+
     print "Bond Length Outliers:"
     print "#residue:atom_1:atom_2:num_sigmas"
     for outlier in self.bond_outliers:
@@ -164,117 +166,28 @@ Example:
 
   def run_suitename(self):
     suite_validation = []
-    suitename = "phenix.suitename -report -"
-    backbone_dihedrals = self.get_rna_backbone_dihedrals()
+    suitename = "phenix.suitename -report -pointIDfields 7 -altIDfield 6  -"
+    backbone_dihedrals = utils.get_rna_backbone_dihedrals(
+                         self.processed_pdb_file)
     suitename_out = easy_run.fully_buffered(suitename,
                          stdin_lines=backbone_dihedrals).stdout_lines
     for line in suitename_out:
       if line.startswith(' :'):
         temp = line.split(":")
-        key = ' '+temp[5][0:3]+temp[2]+temp[3]+temp[4]
-        suite = temp[5][9:11]
-        suiteness = temp[5][12:17]
-        temp2 = temp[5].split(" ")
+        key = temp[5]+temp[6][0:3]+temp[2]+temp[3]+temp[4]
+        suite = temp[6][9:11]
+        suiteness = temp[6][12:17]
+        temp2 = temp[6].split(" ")
         if '!!' in line:
-          suite_validation.append(
-            [key,suite,suiteness,temp2[len(temp2)-1]])
+          if (temp2[3] == 'trig'):
+            suite_validation.append(
+              [key,suite,suiteness,temp2[6]])
+          else:
+            suite_validation.append(
+              [key,suite,suiteness, None])
         elif not self.outliers_only:
           suite_validation.append([key,suite,suiteness])
     return suite_validation
-
-  def match_dihedral_to_name(self, atoms):
-    name = None
-    alpha = ["O3'","P","O5'","C5'"]
-    beta = ["P","O5'","C5'","C4'"]
-    gamma = ["O5'","C5'","C4'","C3'"]
-    delta = ["C5'","C4'","C3'","O3'"]
-    epsilon = ["C4'","C3'","O3'","P"]
-    zeta = ["C3'","O3'","P","O5'"]
-    if atoms == alpha:
-      name = "alpha"
-    elif atoms == beta:
-      name = "beta"
-    elif atoms == gamma:
-      name = "gamma"
-    elif atoms == delta:
-      name = "delta"
-    elif atoms == epsilon:
-      name = "epsilon"
-    elif atoms == zeta:
-      name = "zeta"
-    return name
-
-  def get_rna_backbone_dihedrals(self):
-    bb_dihedrals = {}
-    formatted_out = []
-    sites_cart = self.processed_pdb_file.all_chain_proxies.sites_cart
-    i_seq_name_hash = self.build_name_hash(
-                      pdb_hierarchy=self.pdb_hierarchy)
-    geometry = self.processed_pdb_file.geometry_restraints_manager()
-    dihedral_proxies = geometry.dihedral_proxies
-    for dp in dihedral_proxies:
-      atoms = []
-      for i in dp.i_seqs:
-        atoms.append(i_seq_name_hash[i][0:4].strip())
-      name = self.match_dihedral_to_name(atoms=atoms)
-      if name is not None:
-        restraint = geometry_restraints.dihedral(
-                                                 sites_cart=sites_cart,
-                                                 proxy=dp)
-        key = i_seq_name_hash[dp.i_seqs[1]][5:]
-        try:
-          bb_dihedrals[key][name]=restraint.angle_model
-        except Exception:
-          bb_dihedrals[key] = {}
-          bb_dihedrals[key][name]=restraint.angle_model
-    for key in bb_dihedrals.keys():
-      resname = key[0:3]
-      chainID = key[3:5]
-      resnum = key[5:9]
-      i_code = key[9:]
-      try:
-        alpha = "%.3f" % bb_dihedrals[key]['alpha']
-      except Exception:
-        alpha = '__?__'
-      try:
-        beta = "%.3f" % bb_dihedrals[key]['beta']
-      except Exception:
-        beta = '__?__'
-      try:
-        gamma = "%.3f" % bb_dihedrals[key]['gamma']
-      except Exception:
-        gamma = '__?__'
-      try:
-        delta = "%.3f" % bb_dihedrals[key]['delta']
-      except Exception:
-        delta = '__?__'
-      try:
-        epsilon = "%.3f" % bb_dihedrals[key]['epsilon']
-      except Exception:
-        epsilon = '__?__'
-      try:
-        zeta = "%.3f" % bb_dihedrals[key]['zeta']
-      except Exception:
-        zeta = '__?__'
-      eval = "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s" \
-             % (" ",
-                "1",
-                chainID,
-                resnum,
-                i_code,
-                resname,
-                alpha,
-                beta,
-                gamma,
-                delta,
-                epsilon,
-                zeta)
-      formatted_out.append(eval)
-    formatted_out.sort()
-    backbone_dihedrals = ""
-    for line in formatted_out:
-      backbone_dihedrals += line+'\n'
-    return backbone_dihedrals
 
   def bond_and_angle_evaluate(self):
     bond_hash = {}
@@ -285,7 +198,7 @@ Example:
     geometry = self.processed_pdb_file.geometry_restraints_manager()
     assert (geometry is not None)
     flags = geometry_restraints.flags.flags(default=True)
-    i_seq_name_hash = self.build_name_hash(
+    i_seq_name_hash = utils.build_name_hash(
       pdb_hierarchy=\
         self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
     pair_proxies = geometry.pair_proxies(
@@ -392,12 +305,6 @@ Example:
                                        ana.o3p_distance_c1p_outbound_line]
     return outliers
 
-  def build_name_hash(self, pdb_hierarchy):
-    i_seq_name_hash = dict()
-    for atom in pdb_hierarchy.atoms():
-      i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
-    return i_seq_name_hash
-
 class rna_pucker_ref(object):
 
   def __init__(self):
@@ -491,7 +398,7 @@ ATOM    195  C4    A A  23      17.924   9.737   1.988  1.00 13.37           C
       r.pucker_evaluate(hierarchy=self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
       assert not r.pucker_states[0].is_2p
       assert r.pucker_states[1].is_2p
-    i_seq_name_hash = self.build_name_hash(
+    i_seq_name_hash = utils.build_name_hash(
                       pdb_hierarchy=self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
     pair_proxies = self.geometry.pair_proxies(flags=flags,
                                  sites_cart=self.processed_pdb_file.all_chain_proxies.sites_cart)
@@ -524,9 +431,3 @@ ATOM    195  C4    A A  23      17.924   9.737   1.988  1.00 13.37           C
       except Exception:
         self.angle_dict[key] = []
         self.angle_dict[key].append((angle.angle_ideal, sigma))
-
-  def build_name_hash(self, pdb_hierarchy):
-    i_seq_name_hash = dict()
-    for atom in pdb_hierarchy.atoms():
-      i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
-    return i_seq_name_hash

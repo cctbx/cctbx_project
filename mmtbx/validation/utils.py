@@ -151,6 +151,157 @@ def get_segid_as_chainid(chain):
   for atom in chain.atoms():
     return atom.segid
 
+def get_rna_backbone_dihedrals(processed_pdb_file):
+  # at present, this will only return measurements for angles arising from
+  # atoms with altloc ' ' or altloc 'A'
+  # TO-DO: extend to more alternates JJH 140108
+  from cctbx import geometry_restraints
+  bb_dihedrals = {}
+  formatted_out = []
+  alt_tracker = {}
+  sites_cart = processed_pdb_file.all_chain_proxies.sites_cart
+  i_seq_name_hash = build_name_hash(
+                    pdb_hierarchy=processed_pdb_file.\
+                      all_chain_proxies.pdb_hierarchy)
+  geometry = processed_pdb_file.geometry_restraints_manager()
+  dihedral_proxies = geometry.dihedral_proxies
+
+  def is_blank_or_alt_a(proxy):
+    for i in proxy.i_seqs:
+       alt = i_seq_name_hash[i][4:5]
+       if alt not in [' ', 'A']:
+         return False
+    return True
+
+  for dp in dihedral_proxies:
+    atoms = []
+    debug_key = ""
+    dp.sort_i_seqs()
+    for i in dp.i_seqs:
+      atoms.append(i_seq_name_hash[i][0:4].strip())
+      debug_key = debug_key+i_seq_name_hash[i]
+    atoms.sort()
+    name = match_dihedral_to_name(atoms=atoms)
+    if (name is not None) and (is_blank_or_alt_a(dp)):
+      restraint = geometry_restraints.dihedral(
+                                               sites_cart=sites_cart,
+                                               proxy=dp)
+      key = i_seq_name_hash[dp.i_seqs[1]][4:]
+      if alt_tracker.get(key[1:]) is None:
+        alt_tracker[key[1:]] = []
+      if key[0:1] not in alt_tracker[key[1:]]:
+        alt_tracker[key[1:]].append(key[0:1])
+      try:
+        bb_dihedrals[key][name]=restraint.angle_model
+      except Exception:
+        bb_dihedrals[key] = {}
+        bb_dihedrals[key][name]=restraint.angle_model
+  for key in bb_dihedrals.keys():
+    altloc = key[0:1]
+    resname = key[1:4]
+    chainID = key[4:6]
+    resnum = key[6:10]
+    i_code = key[10:]
+    if 'A' in alt_tracker[key[1:]]:
+      if altloc != 'A':
+        continue
+    if bb_dihedrals[key].get('alpha') is not None:
+      alpha = "%.3f" % bb_dihedrals[key]['alpha']
+    elif altloc == 'A' and \
+         bb_dihedrals[' '+key[1:]].get('alpha') is not None:
+      alpha = "%.3f" % bb_dihedrals[key[1:]]['alpha']
+    else:
+      alpha = '__?__'
+    if bb_dihedrals[key].get('beta') is not None:
+      beta = "%.3f" % bb_dihedrals[key]['beta']
+    elif altloc == 'A' and \
+         bb_dihedrals[' '+key[1:]].get('beta') is not None:
+      alpha = "%.3f" % bb_dihedrals[key[1:]]['beta']
+    else:
+      beta = '__?__'
+    if bb_dihedrals[key].get('gamma') is not None:
+      gamma = "%.3f" % bb_dihedrals[key]['gamma']
+    elif altloc == 'A' and \
+         bb_dihedrals[' '+key[1:]].get('gamma') is not None:
+      alpha = "%.3f" % bb_dihedrals[' '+key[1:]]['gamma']
+    else:
+      gamma = '__?__'
+    if bb_dihedrals[key].get('delta'):
+      delta = "%.3f" % bb_dihedrals[key]['delta']
+    elif altloc == 'A' and \
+         bb_dihedrals[' '+key[1:]].get('delta') is not None:
+      alpha = "%.3f" % bb_dihedrals[' '+key[1:]]['delta']
+    else:
+      delta = '__?__'
+    if bb_dihedrals[key].get('epsilon'):
+      epsilon = "%.3f" % bb_dihedrals[key]['epsilon']
+    elif altloc == 'A' and \
+         bb_dihedrals[' '+key[1:]].get('epsilon') is not None:
+      alpha = "%.3f" % bb_dihedrals[' '+key[1:]]['epsilon']
+    else:
+      epsilon = '__?__'
+    if bb_dihedrals[key].get('zeta'):
+      zeta = "%.3f" % bb_dihedrals[key]['zeta']
+    elif altloc == 'A' and \
+         bb_dihedrals[' '+key[1:]].get('zeta') is not None:
+      alpha = "%.3f" % bb_dihedrals[' '+key[1:]]['zeta']
+    else:
+      zeta = '__?__'
+    eval = "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s" \
+           % (" ",
+              "1",
+              chainID,
+              resnum,
+              i_code,
+              altloc,
+              resname,
+              alpha,
+              beta,
+              gamma,
+              delta,
+              epsilon,
+              zeta)
+    formatted_out.append(eval)
+  formatted_out.sort()
+  backbone_dihedrals = ""
+  for line in formatted_out:
+    backbone_dihedrals += line+'\n'
+  return backbone_dihedrals
+
+def match_dihedral_to_name(atoms):
+  name = None
+  #alpha = ["O3'","P","O5'","C5'"]
+  #beta = ["P","O5'","C5'","C4'"]
+  #gamma = ["O5'","C5'","C4'","C3'"]
+  #delta = ["C5'","C4'","C3'","O3'"]
+  #epsilon = ["C4'","C3'","O3'","P"]
+  #zeta = ["C3'","O3'","P","O5'"]
+  alpha   = ["C5'","O3'","O5'","P"]
+  beta    = ["C4'","C5'","O5'","P"]
+  gamma   = ["C3'","C4'","C5'","O5'"]
+  delta   = ["C3'","C4'","C5'","O3'"]
+  epsilon = ["C3'","C4'","O3'","P"]
+  zeta    = ["C3'","O3'","O5'","P"]
+  if atoms == alpha:
+    name = "alpha"
+  elif atoms == beta:
+    name = "beta"
+  elif atoms == gamma:
+    name = "gamma"
+  elif atoms == delta:
+    name = "delta"
+  elif atoms == epsilon:
+    name = "epsilon"
+  elif atoms == zeta:
+    name = "zeta"
+  return name
+
+def build_name_hash(pdb_hierarchy):
+  i_seq_name_hash = dict()
+  for atom in pdb_hierarchy.atoms():
+    i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
+  return i_seq_name_hash
+
 def exercise () :
   from libtbx.test_utils import approx_equal
   try :
