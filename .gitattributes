@@ -507,6 +507,7 @@ dxtbx/serialize/__init__.py -text
 dxtbx/serialize/beam.py -text
 dxtbx/serialize/detector.py -text
 dxtbx/serialize/dump.py -text
+dxtbx/serialize/filename.py -text
 dxtbx/serialize/goniometer.py -text
 dxtbx/serialize/helpers.py -text
 dxtbx/serialize/imageset.py -text
@@ -549,6 +550,7 @@ dxtbx/tests/model/tst_scan_helpers.py -text
 dxtbx/tests/model/tst_to_from_dict.py -text
 dxtbx/tests/omega_scan.cbf -text svneol=unset#unset
 dxtbx/tests/phi_scan_001.cbf -text svneol=unset#unset
+dxtbx/tests/serialize/tst_filename.py -text
 dxtbx/tests/serialize/tst_serialize.py -text
 dxtbx/tests/serialize/tst_xds.py -text
 dxtbx/tests/test_beam.py -text
