@@ -60,7 +60,7 @@ class mod_dump(common_mode.common_mode_correction):
     if device == 'Cspad':
       pixel_size = cspad_tbx.pixel_size
       saturated_value = cspad_tbx.dynamic_range
-      output_filename = self._basename 
+      output_filename = self._basename
     elif device == 'marccd':
       pixel_size = 0.079346
       saturated_value = 2**16 - 1
@@ -80,5 +80,3 @@ class mod_dump(common_mode.common_mode_correction):
 
     cspad_tbx.dwritef(d, self._dirname, output_filename)
     output_filename = None
-
-

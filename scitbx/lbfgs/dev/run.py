@@ -2,9 +2,6 @@ from __future__ import division
 from scitbx import lbfgs as scitbx_lbfgs
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
-import random
-import math
-import sys
 
 # Rosenbrock's function, gradients and curvatures
 

@@ -590,7 +590,7 @@ class test_nb_clashscore(unittest.TestCase):
     result = nb_clashscore.nb_clashscore_all_clashes
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
-    
+
   def test_unknown_pair_type(self):
     '''Make sure unknown pair types are not processed'''
     self.assertRaises(Sorry,self.process_raw_records,raw_record_number=6)

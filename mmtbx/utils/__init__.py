@@ -24,10 +24,9 @@ from iotbx import cif
 from libtbx import str_utils
 from libtbx.str_utils import show_string
 from libtbx import adopt_init_args
-import random, sys, os, time
+import random, sys, os
 from libtbx.test_utils import approx_equal
 from mmtbx.refinement import print_statistics
-import libtbx.load_env
 from mmtbx.twinning import twin_f_model
 from cctbx import sgtbx
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
