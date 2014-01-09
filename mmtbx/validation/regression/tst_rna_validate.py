@@ -20,7 +20,7 @@ def exercise_rna_validate():
   assert len(rv.pucker_outliers) == 2
   assert len(rv.bond_outliers) == 2
   assert len(rv.angle_outliers) == 0
-  assert len(rv.suite_validation) == 3
+  assert len(rv.suite_validation) == 4
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
