@@ -216,35 +216,35 @@ def get_rna_backbone_dihedrals(processed_pdb_file):
       beta = "%.3f" % bb_dihedrals[key]['beta']
     elif altloc == 'A' and \
          bb_dihedrals[' '+key[1:]].get('beta') is not None:
-      alpha = "%.3f" % bb_dihedrals[key[1:]]['beta']
+      beta = "%.3f" % bb_dihedrals[key[1:]]['beta']
     else:
       beta = '__?__'
     if bb_dihedrals[key].get('gamma') is not None:
       gamma = "%.3f" % bb_dihedrals[key]['gamma']
     elif altloc == 'A' and \
          bb_dihedrals[' '+key[1:]].get('gamma') is not None:
-      alpha = "%.3f" % bb_dihedrals[' '+key[1:]]['gamma']
+      gamma = "%.3f" % bb_dihedrals[' '+key[1:]]['gamma']
     else:
       gamma = '__?__'
     if bb_dihedrals[key].get('delta'):
       delta = "%.3f" % bb_dihedrals[key]['delta']
     elif altloc == 'A' and \
          bb_dihedrals[' '+key[1:]].get('delta') is not None:
-      alpha = "%.3f" % bb_dihedrals[' '+key[1:]]['delta']
+      delta = "%.3f" % bb_dihedrals[' '+key[1:]]['delta']
     else:
       delta = '__?__'
     if bb_dihedrals[key].get('epsilon'):
       epsilon = "%.3f" % bb_dihedrals[key]['epsilon']
     elif altloc == 'A' and \
          bb_dihedrals[' '+key[1:]].get('epsilon') is not None:
-      alpha = "%.3f" % bb_dihedrals[' '+key[1:]]['epsilon']
+      epsilon = "%.3f" % bb_dihedrals[' '+key[1:]]['epsilon']
     else:
       epsilon = '__?__'
     if bb_dihedrals[key].get('zeta'):
       zeta = "%.3f" % bb_dihedrals[key]['zeta']
     elif altloc == 'A' and \
          bb_dihedrals[' '+key[1:]].get('zeta') is not None:
-      alpha = "%.3f" % bb_dihedrals[' '+key[1:]]['zeta']
+      zeta = "%.3f" % bb_dihedrals[' '+key[1:]]['zeta']
     else:
       zeta = '__?__'
     eval = "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s" \
