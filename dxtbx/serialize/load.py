@@ -53,21 +53,20 @@ def imageset_from_string(string):
   from dxtbx.serialize.imageset import imageset_from_dict
   return imageset_from_dict(json.loads(string, object_hook=_decode_dict))
 
-def imageset(infile):
+def imageset(filename):
   ''' Load the given JSON file.
 
   Params:
-      infile The input filename or file object
+      infile The input filename
 
   Returns:
       The models
 
   '''
+  from dxtbx.serialize.filename import temp_chdir
+  from os.path import abspath, dirname
   # If the input is a string then open and read from that file
-  if isinstance(infile, str):
-    with open(infile, 'r') as infile:
-      return imageset_from_string(infile.read())
+  with temp_chdir(abspath(dirname(filename))):
+    with open(filename, 'r') as filename:
+      return imageset_from_string(filename.read())
 
-  # Otherwise assume the input is a file and read from it
-  else:
-    return imageset_from_string(infile.read())
