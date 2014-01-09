@@ -85,7 +85,7 @@ def writer (
 
   if scale_intensities_for_scalepack_merge: # 2014-01-07 TT
     from iotbx.scalepack.merge import scale_intensities_if_necessary
-    i_obs=scale_intensities_if_necessary(i_obs,out=out) 
+    i_obs=scale_intensities_if_necessary(i_obs,out=out)
 
   from iotbx.scalepack.merge import format_f8_1_or_i8 # Sorry if out of range
   for i_refl, (h,k,l) in enumerate(i_obs.indices()) :

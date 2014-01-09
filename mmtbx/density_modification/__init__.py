@@ -539,7 +539,7 @@ class density_modification(object):
     if fom.data().size()<1000: # 2013-12-14 was hard-wired at 1000 tt
       reflections_per_bin=fom.data().size()
     else:
-      reflections_per_bin=1000 
+      reflections_per_bin=1000
     fom.setup_binner(reflections_per_bin=reflections_per_bin)
     self.mean_fom_binned = fom.mean(use_binning=True)
 

@@ -12,7 +12,7 @@ def exercise () :
   # plus Asn2/Gln4 split.  the unit cell 'b' edge has been increased to 6A to
   # compensate.
   pdb_raw = """\
-CRYST1   21.937    6.000   23.477  90.00 107.08  90.00 P 1 21 1      2          
+CRYST1   21.937    6.000   23.477  90.00 107.08  90.00 P 1 21 1      2
 ATOM      1  N   GLY A   1      -9.047   4.634   6.066  1.00 16.37           N
 ATOM      2  CA  GLY A   1      -9.040   4.191   4.677  1.00 16.17           C
 ATOM      3  C   GLY A   1      -7.991   3.118   4.432  1.00 15.46           C

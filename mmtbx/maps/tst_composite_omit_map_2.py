@@ -1,4 +1,5 @@
-import sys
+
+from __future__ import division
 from cctbx.array_family import flex
 import iotbx.pdb
 import mmtbx.f_model
@@ -6,6 +7,7 @@ from cctbx import miller
 import mmtbx.maps
 from cctbx import maptbx
 import mmtbx.maps.composite_omit_map
+import sys
 
 pdb_str="""\n
 REMARK iotbx.pdb.box_around_molecule --buffer-layer=2 "m.pdb"

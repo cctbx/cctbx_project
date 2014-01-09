@@ -161,7 +161,7 @@ def scale_intensities_if_necessary(miller_array,out=sys.stdout):
     value=miller_array.data().min_max_mean().max
     max_value=0.9999e+08
     if value > max_value: # scale it
-      miller_array=miller_array.deep_copy().apply_scaling(target_max=max_value) 
+      miller_array=miller_array.deep_copy().apply_scaling(target_max=max_value)
       print >>out,"NOTE: Scaled array (max=%s) to fit in Scalepack format" %(
          str(max_value))
     return miller_array
@@ -172,7 +172,7 @@ def write(file_name=None, file_object=None, miller_array=None,
           line_2=" -987",
           scale_intensities_for_scalepack_merge=False,
           out=sys.stdout):
-  
+
   assert [file_name, file_object].count(None) == 1
   assert miller_array.is_xray_intensity_array() or \
     miller_array.is_xray_amplitude_array(), \
