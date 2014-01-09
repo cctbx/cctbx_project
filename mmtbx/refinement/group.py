@@ -8,6 +8,8 @@ import copy
 from cctbx import adptbx
 from cctbx import xray
 from libtbx.utils import user_plus_sys_time
+from cctbx import crystal
+import random
 
 time_group_py  = 0.0
 
@@ -19,12 +21,67 @@ def show_times(out = None):
      print >> out, "  time_group_py                          = %-7.2f" % time_group_py
   return total
 
+class sphere_similarity_restraints(object):
+  def __init__(
+        self,
+        xray_structure,
+        selection,
+        refine_adp,
+        refine_occ,
+        sphere_radius = 5.0):
+    self.selection = selection
+    assert str(type(selection).__name__) == "bool"
+    self.sphere_radius = sphere_radius
+    self.refine_adp = refine_adp
+    self.refine_occ = refine_occ
+    pair_asu_table = xray_structure.pair_asu_table(
+      distance_cutoff = self.sphere_radius)
+    self.pair_sym_table = pair_asu_table.extract_pair_sym_table()
+    assert [self.refine_adp, self.refine_occ].count(True) == 1
+    self.sites_frac = xray_structure.sites_frac()
+    self.orthogonalization_matrix = \
+      xray_structure.unit_cell().orthogonalization_matrix()
+
+  def target_and_gradients(self, xray_structure, to_compute_weight=False):
+    if(to_compute_weight):
+      xrs = xray_structure.deep_copy_scatterers()
+      # This may be useful to explore:
+      #xrs.shake_adp_if_all_equal(b_iso_tolerance = 1.e-3)
+      #xrs.shake_adp(spread=10, keep_anisotropic= False)
+    else:
+      xrs = xray_structure
+    if(self.refine_adp): params = xrs.extract_u_iso_or_u_equiv()
+    if(self.refine_occ): params = xrs.scatterers().extract_occupancies()
+    if(to_compute_weight):
+      pmin = flex.min(params)
+      pmax = flex.max(params)
+      if(abs(pmin-pmax)/abs(pmin+pmax)*2*100<1.e-3):
+        pmean = flex.mean(params)
+        n_par = params.size()
+        params = flex.double()
+        for i in xrange(n_par):
+          params.append(pmean + 0.1 * pmean * random.choice([-1,0,1]))
+    return crystal.adp_iso_local_sphere_restraints_energies(
+      pair_sym_table           = self.pair_sym_table,
+      orthogonalization_matrix = self.orthogonalization_matrix,
+      sites_frac               = self.sites_frac,
+      u_isos                   = params,
+      selection                = self.selection,
+      use_u_iso                = self.selection,
+      grad_u_iso               = self.selection,
+      sphere_radius            = self.sphere_radius,
+      distance_power           = 2,
+      average_power            = 1,
+      min_u_sum                = 1.e-6,
+      compute_gradients        = True,
+      collect                  = False)
 
 class manager(object):
   def __init__(self, fmodel,
                      selections                  = None,
                      max_number_of_iterations    = 50,
                      number_of_macro_cycles      = 5,
+                     use_restraints              = False,
                      convergence_test            = True,
                      convergence_delta           = 0.00001,
                      run_finite_differences_test = False,
@@ -34,6 +91,12 @@ class manager(object):
                      occupancy_max               = None,
                      occupancy_min               = None):
     global time_group_py
+    #
+    tmp = flex.size_t()
+    for s in selections: tmp.extend(s)
+    selections_as_bool = flex.bool(fmodel.xray_structure.scatterers().size(),
+      tmp)
+    #
     timer = user_plus_sys_time()
     self.show(rw         = fmodel.r_work(),
               rf         = fmodel.r_free(),
@@ -54,12 +117,12 @@ class manager(object):
     par_initial = []
     selections_ = []
     for sel in selections:
-        if(refine_adp): par_initial.append(adptbx.b_as_u(0.0))
-        if(refine_occ): par_initial.append(0.0)
-        if(str(type(sel).__name__) == "bool"):
-           selections_.append(sel.iselection())
-        else:
-           selections_.append(sel)
+      if(refine_adp): par_initial.append(adptbx.b_as_u(0.0))
+      if(refine_occ): par_initial.append(0.0)
+      if(str(type(sel).__name__) == "bool"):
+         selections_.append(sel.iselection())
+      else:
+         selections_.append(sel)
     selections = selections_
     scatterers = fmodel.xray_structure.scatterers()
     scatterers.flags_set_grads(state=False)
@@ -76,6 +139,13 @@ class manager(object):
          scatterers.flags_set_grad_u_iso(iselection = sel)
       if(refine_occ):
          scatterers.flags_set_grad_occupancy(iselection = sel)
+    restraints_manager = None
+    if(use_restraints):
+      restraints_manager = sphere_similarity_restraints(
+        xray_structure = fmodel.xray_structure,
+        selection      = selections_as_bool,
+        refine_adp     = refine_adp,
+        refine_occ     = refine_occ)
     fmodel_copy = fmodel.deep_copy()
     rworks = flex.double()
     sc_start = fmodel.xray_structure.scatterers().deep_copy()
@@ -90,7 +160,8 @@ class manager(object):
                      refine_adp                  = refine_adp,
                      refine_occ                  = refine_occ,
                      max_number_of_iterations    = max_number_of_iterations,
-                     run_finite_differences_test = run_finite_differences_test)
+                     run_finite_differences_test = run_finite_differences_test,
+                     restraints_manager          = restraints_manager)
         if(minimized is not None): par_initial = minimized.par_min
         apply_transformation(
           xray_structure = fmodel.xray_structure,
@@ -172,7 +243,8 @@ class group_minimizer(object):
                refine_adp,
                refine_occ,
                max_number_of_iterations,
-               run_finite_differences_test = False):
+               run_finite_differences_test = False,
+               restraints_manager = None):
     adopt_init_args(self, locals())
     self.target_functor = fmodel.target_functor()
     self.target_functor.prepare_for_minimization()
@@ -181,6 +253,18 @@ class group_minimizer(object):
     self.par_min = copy.deepcopy(self.par_initial)
     self.x = self.pack(self.par_min)
     self.n = self.x.size()
+    self.weight = None
+    if(self.restraints_manager is not None):
+      gx = self.target_functor(compute_gradients=True).gradients_wrt_atomic_parameters(
+        u_iso     = refine_adp,
+        occupancy = refine_occ)
+      rtg = self.restraints_manager.target_and_gradients(
+        xray_structure    = self.fmodel.xray_structure,
+        to_compute_weight = True)
+      gx_norm = gx.norm()
+      if(gx_norm != 0):
+        self.weight = rtg.gradients.norm()/gx_norm
+      else: self.weight = 1.0
     if (run_finite_differences_test):
       self.buffer_ana = []
       self.buffer_fin = []
@@ -221,13 +305,20 @@ class group_minimizer(object):
       refine_adp     = self.refine_adp,
       refine_occ     = self.refine_occ)
     self.fmodel.update_xray_structure(update_f_calc=True)
+    rtg = None
+    if(self.restraints_manager is not None):
+      rtg = self.restraints_manager.target_and_gradients(
+        xray_structure = self.fmodel.xray_structure)
     tg_obj = target_and_grads(
-      target_functor=self.target_functor,
-      selections=self.selections,
-      refine_adp=self.refine_adp,
-      refine_occ=self.refine_occ)
+      target_functor = self.target_functor,
+      selections     = self.selections,
+      refine_adp     = self.refine_adp,
+      refine_occ     = self.refine_occ,
+      rtg            = rtg,
+      weight         = self.weight)
     self.f = tg_obj.target()
     self.g = flex.double(tg_obj.gradients_wrt_par())
+    # This is to avoid fd test if parameters were reset hard way internally
     compare = False
     if (self.run_finite_differences_test):
       for pari in self.par_min:
@@ -239,7 +330,8 @@ class group_minimizer(object):
           break
       else:
         compare = True
-    if (compare):
+    #
+    if(compare):
        i_g_max = flex.max_index(flex.abs(self.g))
        eps = 1.e-5
        par_eps = list(self.par_min)
@@ -252,12 +344,18 @@ class group_minimizer(object):
          refine_adp     = self.refine_adp,
          refine_occ     = self.refine_occ)
        self.fmodel.update_xray_structure(update_f_calc=True)
+       rtg = None
+       if(self.restraints_manager is not None):
+         rtg = self.restraints_manager.target_and_gradients(
+           xray_structure = self.fmodel.xray_structure)
        t1 = target_and_grads(
          target_functor=self.target_functor,
          selections=self.selections,
          refine_adp=self.refine_adp,
          refine_occ=self.refine_occ,
-         compute_gradients=False).target()
+         compute_gradients=False,
+         rtg=rtg,
+         weight=self.weight).target()
        par_eps[i_g_max] = self.par_min[i_g_max] - eps
        apply_transformation(
          xray_structure = self.fmodel.xray_structure,
@@ -268,12 +366,18 @@ class group_minimizer(object):
          refine_occ     = self.refine_occ)
        del par_eps
        self.fmodel.update_xray_structure(update_f_calc=True)
+       rtg = None
+       if(self.restraints_manager is not None):
+         rtg = self.restraints_manager.target_and_gradients(
+           xray_structure = self.fmodel.xray_structure)
        t2 = target_and_grads(
          target_functor=self.target_functor,
          selections=self.selections,
          refine_adp=self.refine_adp,
          refine_occ=self.refine_occ,
-         compute_gradients=False).target()
+         compute_gradients=False,
+         rtg=rtg,
+         weight=self.weight).target()
        apply_transformation(
          xray_structure = self.fmodel.xray_structure,
          par            = self.par_min,
@@ -312,14 +416,19 @@ class target_and_grads(object):
                      selections,
                      refine_adp,
                      refine_occ,
-                     compute_gradients=True):
+                     compute_gradients=True,
+                     rtg=None,
+                     weight=None):
     assert [refine_adp, refine_occ].count(True) == 1
     t_r = target_functor(compute_gradients=compute_gradients)
     self.f = t_r.target_work()
+    if(rtg is not None): self.f = self.f*weight+rtg.residual_sum
     if (compute_gradients):
       target_grads_wrt_par = t_r.gradients_wrt_atomic_parameters(
         u_iso=refine_adp,
         occupancy=refine_occ)
+      if(rtg is not None):
+        target_grads_wrt_par = target_grads_wrt_par*weight+rtg.gradients
       self.grads_wrt_par = []
       for sel in selections:
         target_grads_wrt_par_sel = target_grads_wrt_par.select(sel)
