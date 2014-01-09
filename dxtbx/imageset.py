@@ -737,7 +737,7 @@ class ImageSweep(ImageSet):
 
   def get_array_range(self):
     ''' Get the array range. '''
-    return (self._indices[0], self._indices[-1] + 1)
+    return self.get_scan().get_array_range()
 
   def get_image_size(self, panel=0, index=None):
     ''' Get the image size. '''
