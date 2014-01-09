@@ -22,6 +22,21 @@ class server (object) :
     self._cif_model = iotbx.cif.reader(file_path=params_path).model()
 
   def get_condition (self, screen_name, condition_id) :
+    """
+    Gets the crystallization conditions used within a particular well.
+
+    Parameters
+    ----------
+    screen_name : str
+        The name of the crystal screen used. (i.e. Crystal Screen HT)
+    condition_id : int
+        The condition number within that screen. (i.e. D2 or 38)
+
+    Returns
+    -------
+    mmtbx.ligands.xtal_screens.solution
+        The information associated with that screen.
+    """
     screen_name = screen_name.lower().replace(" ", "_")
     keys = self._cif_model.keys()
     data = None
@@ -45,10 +60,10 @@ class server (object) :
       elif(condition_id == data["_lib_screen.condition_number"][i_well]) :
         _id = i_well
       if (_id is not None) :
-        # XXX sloppy
-        kwds = dict([ ("screen_name_", official_name) ] + [
-          (name, data["_lib_screen."+name[:-1]][_id])
-            for name in solution.__slots__[1:] ])
+        kwds = {}
+        for name in solution.__slots__[1:]:
+          kwds[name] = data["_lib_screen." + name[:-1]][_id]
+        kwds["screen_name_"] = official_name
         return solution(**kwds)
     raise RuntimeError("Condition '%s' not found in '%s'." % (condition_id,
       screen_name))
