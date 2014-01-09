@@ -161,7 +161,7 @@ class extract_tls_parameters(object):
           self.format_err(msg="Cannot extract TLS group number:", rec=record)
           return []
         record_start = True
-      if(record.startswith("REMARK   3      S31:")):
+      if(record.startswith("REMARK   3") and record.count("S31:")==1):
         record_end = True
         record_start = False
         one_tls_group_records.append(record)
@@ -171,6 +171,19 @@ class extract_tls_parameters(object):
         record_end = False
       if(record_start and not record_end):
         one_tls_group_records.append(record)
+    def is_buster_selection(ss):
+      result = []
+      ss = ss.split()
+      if(len(ss)==4):
+        c0, r0, c1, r1 = ss[0].strip(),ss[1].strip(),ss[2].strip(),ss[3].strip()
+        if(len(c0)<=2 and len(c1)<=2):
+          try: r0 = int(r0)
+          except: ValueError
+          try: r1 = int(r1)
+          except: ValueError
+          if(type(r0)==type(1) and type(r1)==type(1)):
+            result.append([c0,str(r0), c1,str(r1)])
+      return result
     for one in all_tls_group_records:
       n_components = 0
       r_range = []
@@ -194,41 +207,46 @@ class extract_tls_parameters(object):
           else:
             ch1,res1,ch2,res2 = rec[31:33], rec[34:40], rec[47:48], rec[49:55]
           r_range.append([ch1,res1,ch2,res2])
-        # PHENIX selection
+        # PHENIX or Buster selection
         if(rec.startswith("REMARK   3    SELECTION:")):
           sel_str = rec[rec.index(":")+1:]
-          if(sel_str.strip().upper() in ["NONE","NULL"]):
-            self.format_err(msg="Bad TLS selection string1.", rec = rec)
-            return []
-          i = i_seq+1
-          while ( one[i].startswith("REMARK   3             :") or
-                  one[i].startswith("REMARK   3              ") ):
-            if(one[i].count("ORIGIN")): break
-            sel_str += " "+one[i][24:]
-            i += 1
+          r_range = is_buster_selection(sel_str)
+          if(len(r_range)>0):
+            sel_str=None
+          else:
+            r_range = []
             if(sel_str.strip().upper() in ["NONE","NULL"]):
-              self.format_err(msg="Bad TLS selection string2.", rec = rec)
+              self.format_err(msg="Bad TLS selection string1.", rec = rec)
               return []
-          sel_str = " ".join(sel_str.split())
-          ##
-          sel_str_spl = sel_str.split()
-          new_str = ""
-          for ie, e in enumerate(sel_str_spl):
-            if(ie==0): new_str = e
-            else:
-              if(new_str[len(new_str)-1]==":"):
-                if(e[0].isdigit()):
-                  new_str += e
-                else:
-                  new_str = new_str + " " + e
-              elif(new_str[len(new_str)-1].isdigit()):
-                if(e[0]==":"):
-                  new_str += e
-                else:
-                  new_str = new_str + " " + e
+            i = i_seq+1
+            while ( one[i].startswith("REMARK   3             :") or
+                    one[i].startswith("REMARK   3              ") ):
+              if(one[i].count("ORIGIN")): break
+              sel_str += " "+one[i][24:]
+              i += 1
+              if(sel_str.strip().upper() in ["NONE","NULL"]):
+                self.format_err(msg="Bad TLS selection string2.", rec = rec)
+                return []
+            sel_str = " ".join(sel_str.split())
+            ##
+            sel_str_spl = sel_str.split()
+            new_str = ""
+            for ie, e in enumerate(sel_str_spl):
+              if(ie==0): new_str = e
               else:
-                new_str = new_str + " " + e
-          sel_str = new_str
+                if(new_str[len(new_str)-1]==":"):
+                  if(e[0].isdigit()):
+                    new_str += e
+                  else:
+                    new_str = new_str + " " + e
+                elif(new_str[len(new_str)-1].isdigit()):
+                  if(e[0]==":"):
+                    new_str += e
+                  else:
+                    new_str = new_str + " " + e
+                else:
+                  new_str = new_str + " " + e
+            sel_str = new_str
           ##
         #
         if(rec.startswith("REMARK   3    ORIGIN FOR THE GROUP (A):")):
@@ -246,7 +264,7 @@ class extract_tls_parameters(object):
             self.format_err(msg="Cannot extract origin.", rec=rec)
             return []
           origin = [x,y,z]
-        if(rec.startswith("REMARK   3      T11:")):
+        if(rec.startswith("REMARK   3") and rec.count("T11:")==1):
           assert [T11, T22, T33, T12, T13, T23].count(None) == 6
           try: T11 = float(rec.split()[3])
           except ValueError:
@@ -256,7 +274,7 @@ class extract_tls_parameters(object):
           except ValueError:
             self.format_err(msg="Cannot extract T.", rec=rec)
             return []
-        if(rec.startswith("REMARK   3      T33:")):
+        if(rec.startswith("REMARK   3") and rec.count("T33:")==1):
           assert [T11, T22, T33, T12, T13, T23].count(None) == 4
           try: T33 = float(rec.split()[3])
           except ValueError:
@@ -266,7 +284,7 @@ class extract_tls_parameters(object):
           except ValueError:
             self.format_err(msg="Cannot extract T.", rec=rec)
             return []
-        if(rec.startswith("REMARK   3      T13:")):
+        if(rec.startswith("REMARK   3") and rec.count("T13:")==1):
           assert [T11, T22, T33, T12, T13, T23].count(None) == 2
           try: T13 = float(rec.split()[3])
           except ValueError:
@@ -277,7 +295,7 @@ class extract_tls_parameters(object):
             self.format_err(msg="Cannot extract T.", rec=rec)
             return []
           T=[T11, T22, T33, T12, T13, T23]
-        if(rec.startswith("REMARK   3      L11:")):
+        if(rec.startswith("REMARK   3") and rec.count("L11:")==1):
           assert [L11, L22, L33, L12, L13, L23].count(None) == 6
           try: L11 = float(rec.split()[3])
           except Exception:
@@ -291,7 +309,7 @@ class extract_tls_parameters(object):
             except ValueError:
               self.format_err(msg="Cannot extract L.", rec=rec)
               return []
-        if(rec.startswith("REMARK   3      L33:")):
+        if(rec.startswith("REMARK   3") and rec.count("L33:")==1):
           assert [L11, L22, L33, L12, L13, L23].count(None) == 4
           try: L33 = float(rec.split()[3])
           except Exception:
@@ -305,7 +323,7 @@ class extract_tls_parameters(object):
             except ValueError:
               self.format_err(msg="Cannot extract L.", rec=rec)
               return []
-        if(rec.startswith("REMARK   3      L13:")):
+        if(rec.startswith("REMARK   3") and rec.count("L13:")==1):
           assert [L11, L22, L33, L12, L13, L23].count(None) == 2
           try: L13 = float(rec.split()[3])
           except Exception:
@@ -320,7 +338,7 @@ class extract_tls_parameters(object):
               self.format_err(msg="Cannot extract L.", rec=rec)
               return []
           L=[L11, L22, L33, L12, L13, L23]
-        if(rec.startswith("REMARK   3      S11:")):
+        if(rec.startswith("REMARK   3") and rec.count("S11:")==1):
           assert [S11, S12, S13, S21, S22, S23, S31, S32, S33].count(None) == 9
           try: S11 = float(rec.split()[3])
           except ValueError:
@@ -334,7 +352,7 @@ class extract_tls_parameters(object):
           except ValueError:
             self.format_err(msg="Cannot extract S.", rec=rec)
             return []
-        if(rec.startswith("REMARK   3      S21:")):
+        if(rec.startswith("REMARK   3") and rec.count("S21:")==1):
           assert [S11, S12, S13, S21, S22, S23, S31, S32, S33].count(None) == 6
           try: S21 = float(rec.split()[3])
           except ValueError:
@@ -348,7 +366,7 @@ class extract_tls_parameters(object):
           except ValueError:
             self.format_err(msg="Cannot extract S.", rec=rec)
             return []
-        if(rec.startswith("REMARK   3      S31:")):
+        if(rec.startswith("REMARK   3") and rec.count("S31:")==1):
           assert [S11, S12, S13, S21, S22, S23, S31, S32, S33].count(None) == 3
           try: S31 = float(rec.split()[3])
           except ValueError:
