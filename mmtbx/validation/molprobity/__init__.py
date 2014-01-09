@@ -534,34 +534,42 @@ class residue_multi_criterion (residue) :
   def __cmp__ (self, other) :
     return cmp(self.i_seq, other.i_seq)
 
-  def get_real_space_plot_values (self) :
-    import numpy
+  def get_real_space_plot_values (self, use_numpy_NaN=True) :
     for outlier in self.outliers :
       if (type(outlier).__name__ == 'residue_real_space') :
         values = [ outlier.b_iso, outlier.cc, outlier.two_fofc, outlier.fmodel ]
         return values
-    return [ numpy.NaN ] * 4
+    if (use_numpy_NaN) :
+      import numpy
+      return [ numpy.NaN ] * 4
+    else :
+      return [ None ] * 4
 
   def is_map_outlier (self, cc_min=0.8) :
-    import numpy
-    b_iso, cc, two_fofc, fmodel = self.get_real_space_plot_values()
-    if (cc == numpy.NaN) :
+    b_iso, cc, two_fofc, fmodel = self.get_real_space_plot_values(False)
+    if (cc is None) :
       return None
     elif (cc < cc_min) :
       return True
     return False
 
-  def get_outlier_plot_values (self) :
-    import numpy
+  def get_outlier_plot_values (self, use_numpy_NaN=True) :
     y = []
     if self.is_ramachandran_outlier() : y.append(1)
-    else : y.append(numpy.NaN)
+    else : y.append(None)
     if self.is_rotamer_outlier() : y.append(1)
-    else : y.append(numpy.NaN)
+    else : y.append(None)
     if self.is_cbeta_outlier() : y.append(1)
-    else : y.append(numpy.NaN)
+    else : y.append(None)
     if self.is_clash_outlier() : y.append(1)
-    else : y.append(numpy.NaN)
+    else : y.append(None)
+    if (use_numpy_NaN) :
+      import numpy
+      y_ = []
+      for yval in y :
+        if (yval is None) : y_.append(numpy.NaN)
+        else :              y_.append(yval)
+      return y_
     return y
 
 class multi_criterion_view (slots_getstate_setstate) :
