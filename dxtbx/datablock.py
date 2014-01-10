@@ -503,6 +503,7 @@ class DataBlockFactory(object):
     ''' Decode a datablock from a JSON file. '''
     from os.path import dirname
     from dxtbx.serialize.filename import temp_chdir
+    filename = abspath(filename)
     with temp_chdir(dirname(filename)):
       with open(filename, 'r') as infile:
         return DataBlockFactory.from_json(infile.read())
