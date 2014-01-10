@@ -72,6 +72,7 @@ def run(args):
   work_phil = master_phil.fetch(sources=input_objects["phil"])
   work_params = work_phil.extract()
   file_name = work_params.mp_geo.pdb
+  out_file = None
   if work_params.mp_geo.out_file != None:
     out_file = work_params.mp_geo.out_file
   do_bonds_and_angles = work_params.mp_geo.bonds_and_angles
@@ -85,8 +86,11 @@ def run(args):
   elif do_kinemage:
     out = file(out_file, 'a')
   elif do_rna_backbone:
-    import sys
-    out = sys.stdout
+    if out_file == None:
+      import sys
+      out = sys.stdout
+    else:
+      out = file(out_file, 'w')
   use_neutron_distances = False
   from mmtbx.validation import utils
   processed_pdb_file = pdb_interpretation.process(
@@ -175,3 +179,5 @@ def run(args):
     from mmtbx.validation import utils
     rna_bb = utils.get_rna_backbone_dihedrals(processed_pdb_file)
     print >> out, rna_bb
+    if out_file is not None:
+      out.close()
