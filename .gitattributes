@@ -1779,6 +1779,7 @@ mmtbx/refinement/select_best_starting_model.py -text
 mmtbx/refinement/tardy.py svneol=native#text/x-python
 mmtbx/refinement/targets.py -text
 mmtbx/refinement/tst_fit_rotamers.py svneol=native#text/x-python
+mmtbx/refinement/tst_group.py -text
 mmtbx/refinement/tst_misc.py -text
 mmtbx/refinement/tst_real_space_simple.py -text
 mmtbx/refinement/tst_refinement_flags.py -text
