@@ -176,12 +176,23 @@ def get_rna_backbone_dihedrals(processed_pdb_file):
   for dp in dihedral_proxies:
     atoms = []
     debug_key = ""
+    invert_sign = False
     dp.sort_i_seqs()
     for i in dp.i_seqs:
       atoms.append(i_seq_name_hash[i][0:4].strip())
       debug_key = debug_key+i_seq_name_hash[i]
-    atoms.sort()
+    if len(atoms) != 4:
+      continue
     name = match_dihedral_to_name(atoms=atoms)
+    #handle dihedral equivalences
+    if name == None:
+      inverted_atoms = get_inverted_atoms(atoms=atoms, improper=False)
+      name = match_dihedral_to_name(atoms=inverted_atoms)
+      if name == None:
+        inverted_atoms = get_inverted_atoms(atoms=atoms, improper=True)
+        name = match_dihedral_to_name(atoms=inverted_atoms)
+        if name is not None:
+          invert_sign = True
     if (name is not None) and (is_blank_or_alt_a(dp)):
       restraint = geometry_restraints.dihedral(
                                                sites_cart=sites_cart,
@@ -196,6 +207,8 @@ def get_rna_backbone_dihedrals(processed_pdb_file):
       except Exception:
         bb_dihedrals[key] = {}
         bb_dihedrals[key][name]=restraint.angle_model
+      if invert_sign:
+        bb_dihedrals[key][name] = bb_dihedrals[key][name] * -1.0
   for key in bb_dihedrals.keys():
     altloc = key[0:1]
     resname = key[1:4]
@@ -268,20 +281,28 @@ def get_rna_backbone_dihedrals(processed_pdb_file):
     backbone_dihedrals += line+'\n'
   return backbone_dihedrals
 
+def get_inverted_atoms(atoms, improper=False):
+  temp = []
+  if not improper:
+    temp.append(atoms[3])
+    temp.append(atoms[2])
+    temp.append(atoms[1])
+    temp.append(atoms[0])
+  else:
+    temp.append(atoms[3])
+    temp.append(atoms[1])
+    temp.append(atoms[2])
+    temp.append(atoms[0])
+  return temp
+
 def match_dihedral_to_name(atoms):
   name = None
-  #alpha = ["O3'","P","O5'","C5'"]
-  #beta = ["P","O5'","C5'","C4'"]
-  #gamma = ["O5'","C5'","C4'","C3'"]
-  #delta = ["C5'","C4'","C3'","O3'"]
-  #epsilon = ["C4'","C3'","O3'","P"]
-  #zeta = ["C3'","O3'","P","O5'"]
-  alpha   = ["C5'","O3'","O5'","P"]
-  beta    = ["C4'","C5'","O5'","P"]
-  gamma   = ["C3'","C4'","C5'","O5'"]
-  delta   = ["C3'","C4'","C5'","O3'"]
-  epsilon = ["C3'","C4'","O3'","P"]
-  zeta    = ["C3'","O3'","O5'","P"]
+  alpha = ["O3'","P","O5'","C5'"]
+  beta = ["P","O5'","C5'","C4'"]
+  gamma = ["O5'","C5'","C4'","C3'"]
+  delta = ["C5'","C4'","C3'","O3'"]
+  epsilon = ["C4'","C3'","O3'","P"]
+  zeta = ["C3'","O3'","P","O5'"]
   if atoms == alpha:
     name = "alpha"
   elif atoms == beta:
