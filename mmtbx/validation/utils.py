@@ -222,14 +222,14 @@ def get_rna_backbone_dihedrals(processed_pdb_file):
       alpha = "%.3f" % bb_dihedrals[key]['alpha']
     elif altloc == 'A' and \
          bb_dihedrals[' '+key[1:]].get('alpha') is not None:
-      alpha = "%.3f" % bb_dihedrals[key[1:]]['alpha']
+      alpha = "%.3f" % bb_dihedrals[' '+key[1:]]['alpha']
     else:
       alpha = '__?__'
     if bb_dihedrals[key].get('beta') is not None:
       beta = "%.3f" % bb_dihedrals[key]['beta']
     elif altloc == 'A' and \
          bb_dihedrals[' '+key[1:]].get('beta') is not None:
-      beta = "%.3f" % bb_dihedrals[key[1:]]['beta']
+      beta = "%.3f" % bb_dihedrals[' '+key[1:]]['beta']
     else:
       beta = '__?__'
     if bb_dihedrals[key].get('gamma') is not None:
