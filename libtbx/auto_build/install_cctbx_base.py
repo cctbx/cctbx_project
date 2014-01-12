@@ -539,7 +539,7 @@ class installer (object) :
     config_opts = [
       "--disable-mediactrl",
       "--with-opengl",
-      "--enable-unicode",
+      "--disable-unicode",
       "--prefix=\"%s\"" % self.base_dir,
     ]
     if (self.options.debug) :
@@ -577,7 +577,7 @@ class installer (object) :
       "BUILD_STC=0",
       "BUILD_GIZMOS=0",
       "BUILD_DLLWIDGET=0",
-      "UNICODE=1",
+      "UNICODE=0",
     ]
     if (cocoa) :
       os.environ['CFLAGS'] = "-arch x86_64"
