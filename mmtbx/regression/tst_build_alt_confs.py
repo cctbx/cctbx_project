@@ -142,6 +142,8 @@ END
     "tst_build_alt_confs.mtz",
     "selection='chain A and resseq 3'",
     "output.file_name=tst_build_alt_confs_out.pdb",
+    "expected_occupancy=0.4",
+    "window_size=2",
     "nproc=1",
     "--verbose",
   ]
@@ -151,6 +153,7 @@ END
   validate = rotalyze.rotalyze(pdb_hierarchy=hierarchy,
     outliers_only=False)
   rota_out = [ (r.id_str(), r.rotamer_name) for r in validate.results ]
+
   assert (rota_out == rota_in)
 
 if (__name__ == "__main__") :

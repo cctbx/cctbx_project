@@ -359,6 +359,9 @@ def filter_before_build (
   if (verbose) :
     print >> log, ""
     print >> log, "Alternate conformations will be tried for these residues:"
-    for residue in residues :
+    for i_res, residue in enumerate(residues) :
       print >> log, "  %s" % residue.id_str()
+  else :
+    print >> log, ""
+    print >> log, "%d residues selected" % len(residues)
   return residues
