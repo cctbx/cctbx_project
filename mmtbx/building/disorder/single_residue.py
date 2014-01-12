@@ -48,7 +48,14 @@ class rebuild_residue (object) :
     self.mon_lib_srv = mmtbx.monomer_library.server.server()
     self.rotamer_manager = rotamer_eval.RotamerEval()
 
-  def __call__ (self, atom_group, log, window_size=2, anneal=False) :
+  def __call__ (self,
+      atom_group,
+      log,
+      window_size=2,
+      backbone_sample_angle=10,
+      anneal=False,
+      annealing_temperature=1000) :
+    import iotbx.pdb.hierarchy
     from scitbx.array_family import flex
     assert (atom_group is not None)
     pdb_hierarchy = self.pdb_hierarchy.deep_copy()
@@ -57,21 +64,35 @@ class rebuild_residue (object) :
     pdb_atoms.reset_i_seq()
     isel = building.extract_iselection([atom_group])
     atom_group = pdb_atoms[isel[0]].parent()
+    atom_group_start = atom_group.detached_copy()
     residue_group = atom_group.parent()
     assert (len(residue_group.atom_groups()) == 1)
     sel_residues = building.get_window_around_residue(
       residue=atom_group,
       window_size=window_size)
-    # get rid of sidechains and refine mainchain
-    building.remove_sidechain_atoms(sel_residues)
+    # get rid of sidechains for surrounding residues only
+    adjacent_residues = []
+    for other_rg in sel_residues :
+      if (other_rg != residue_group) :
+        adjacent_residues.append(other_rg)
+    building.remove_sidechain_atoms(adjacent_residues)
+    pdb_atoms = pdb_hierarchy.atoms()
+    adjacent_trimmed_atom_names = pdb_atoms.extract_name()
+    adjacent_trimmed_sel = pdb_atoms.extract_i_seq()
+    xrs_adjacent_trimmed = xray_structure.select(adjacent_trimmed_sel)
+    grm_adjacent_trimmed = self.geometry_restraints_manager.select(
+      adjacent_trimmed_sel)
+    pdb_atoms.reset_i_seq()
+    # get rid of central sidechain and refine mainchain for entire window
+    building.remove_sidechain_atoms([ atom_group ])
     pdb_atoms = pdb_hierarchy.atoms()
     all_mc_sel = pdb_atoms.extract_i_seq()
-    xrs_mc = xray_structure.select(all_mc_sel)
+    xrs_mc = xrs_adjacent_trimmed.select(all_mc_sel)
     pdb_atoms.reset_i_seq()
     window_mc_sel = building.extract_iselection(sel_residues)
     selection = flex.bool(pdb_atoms.size(), False).set_selected(window_mc_sel,
       True)
-    restraints_manager = self.geometry_restraints_manager.select(all_mc_sel)
+    restraints_manager = grm_adjacent_trimmed.select(all_mc_sel)
     box = building.box_build_refine_base(
       xray_structure=xrs_mc,
       pdb_hierarchy=pdb_hierarchy,
@@ -86,47 +107,64 @@ class rebuild_residue (object) :
       selection=box.others_in_box,
       reference_sigma=0.1)
     box.real_space_refine(selection=box.selection_in_box)
-    if (anneal) : # TODO
-      raise NotImplementedError()
     sites_new = box.update_original_coordinates()
     pdb_atoms.set_xyz(sites_new)
-    # extend and replace existing residue
-    new_atom_group = extend_sidechains.extend_residue(
+    # extend and replace existing residue.  this is done in such a way that
+    # the original atom ordering for the central residue is preserved, which
+    # allows us to use the pre-existing geometry restraints instead of
+    # re-calculating them every time this function is called.
+    new_atom_group_base = extend_sidechains.extend_residue(
       residue=atom_group,
       ideal_dict=self.ideal_dict,
       hydrogens=False,
       mon_lib_srv=self.mon_lib_srv,
       match_conformation=True)
+    new_atom_group = iotbx.pdb.hierarchy.atom_group(resname=atom_group.resname)
+    for atom in atom_group_start.atoms() :
+      for new_atom in new_atom_group_base.atoms() :
+        if (new_atom.name == atom.name) :
+          new_atom_group.append_atom(new_atom.detached_copy())
+    assert len(new_atom_group.atoms()) == len(atom_group_start.atoms())
     rg = atom_group.parent()
     rg.remove_atom_group(atom_group)
     rg.append_atom_group(new_atom_group)
     pdb_atoms = pdb_hierarchy.atoms()
     pdb_atoms.reset_i_seq()
+    new_names = pdb_atoms.extract_name()
+    assert new_names.all_eq(adjacent_trimmed_atom_names)
     # get new box around this residue
     residue_sel = building.extract_iselection([ new_atom_group ])
     selection = flex.bool(pdb_atoms.size(), False).set_selected(residue_sel,
       True)
-    xray_structure = pdb_hierarchy.extract_xray_structure(
-      crystal_symmetry=self.xray_structure)
-    # FIXME this is horrendously inefficient
+    xrs_adjacent_trimmed.set_sites_cart(pdb_atoms.extract_xyz())
     box = building.box_build_refine_base(
-      xray_structure=xray_structure,
+      xray_structure=xrs_adjacent_trimmed,
       pdb_hierarchy=pdb_hierarchy,
       selection=selection,
       processed_pdb_file=None,
       target_map=self.target_map,
+      geometry_restraints_manager=grm_adjacent_trimmed.geometry,
       d_min=self.d_min,
       out=null_out(),
       debug=True)
-    box.fit_residue_in_box(backbone_sample_angle=5)
+    # place sidechain using mmtbx.refinement.real_space.fit_residue
+    box.fit_residue_in_box(backbone_sample_angle=backbone_sample_angle)
+    if (anneal) :
+      box.anneal(start_temperature=annealing_temperature)
     sites_new = box.update_original_coordinates()
     pdb_hierarchy.atoms().set_xyz(sites_new)
     return building.atom_group_as_hierarchy(new_atom_group)
 
 build_params_str = """
-  expected_occupancy = None
+  expected_occupancy = 0.4
     .type = float(value_min=0.1,value_max=0.9)
   window_size = 2
+    .type = int
+  backbone_sample_angle = 10
+    .type = int
+  anneal = False
+    .type = bool
+  annealing_temperature = 1000
     .type = int
   rmsd_min = 0.5
     .type = float
@@ -187,6 +225,9 @@ def find_alternate_residue (residue,
       d_min=fmodel.f_obs().d_min())
     new_hierarchy = rebuild(atom_group=residue,
       window_size=params.window_size,
+      backbone_sample_angle=params.backbone_sample_angle,
+      anneal=params.anneal,
+      annealing_temperature=params.annealing_temperature,
       log=log)
     reject = False
     if (params.rescore) :
