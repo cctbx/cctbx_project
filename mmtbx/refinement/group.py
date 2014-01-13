@@ -84,6 +84,7 @@ class manager(object):
         max_number_of_iterations    = 50,
         number_of_macro_cycles      = 5,
         use_restraints              = False,
+        restraints_weight           = None,
         convergence_test            = True,
         convergence_delta           = 0.00001,
         run_finite_differences_test = False,
@@ -106,9 +107,9 @@ class manager(object):
       tw         = fmodel.target_w(),
       mc         = 0,
       it         = 0,
-      ct         = convergence_test,
       refine_adp = refine_adp,
       refine_occ = refine_occ,
+      weight     = restraints_weight,
       out        = log)
     if(log is None): log = sys.stdout
     assert [refine_adp, refine_occ].count(True) == 1
@@ -165,7 +166,8 @@ class manager(object):
         refine_occ                  = refine_occ,
         max_number_of_iterations    = max_number_of_iterations,
         run_finite_differences_test = run_finite_differences_test,
-        restraints_manager          = restraints_manager)
+        restraints_manager          = restraints_manager,
+        restraints_weight           = restraints_weight)
       if(minimized is not None):
         par_initial = minimized.par_min
         self.tested += minimized.tested
@@ -188,9 +190,9 @@ class manager(object):
         tw         = minimized.fmodel.target_w(),
         mc         = macro_cycle,
         it         = minimized.counter,
-        ct         = convergence_test,
         refine_adp = refine_adp,
         refine_occ = refine_occ,
+        weight     = minimized.weight,
         out        = log)
       if(convergence_test):
         rworks.append(rwork)
@@ -219,9 +221,9 @@ class manager(object):
         tw,
         mc,
         it,
-        ct,
         refine_adp,
         refine_occ,
+        weight,
         out = None):
     if(out is None): out = sys.stdout
     mc = str(mc)
@@ -233,9 +235,10 @@ class manager(object):
     part3 = ")"+"-"*n+"|"
     print >> out, part1 + mc + part2 + it + part3
     part1 = "| "
-    if(ct): ct = "on"
-    else:   ct = "off"
-    part4 = " convergence test = "+str("%s"%ct)
+    if(weight is None):
+      part4 = " restraints weight = "+str(weight)
+    else:
+      part4 = " restraints weight = "+str("%10.3f"%weight).strip()
     rw = "| r_work = "+str("%.4f"%rw)
     rf = " r_free = "+str("%.4f"%rf)
     tw = " target = "+str("%.6f"%tw)
@@ -255,6 +258,7 @@ class group_minimizer(object):
         refine_occ,
         max_number_of_iterations,
         run_finite_differences_test = False,
+        restraints_weight = None,
         restraints_manager = None):
     adopt_init_args(self, locals())
     self.target_functor = fmodel.target_functor()
@@ -264,8 +268,8 @@ class group_minimizer(object):
     self.par_min = copy.deepcopy(self.par_initial)
     self.x = self.pack(self.par_min)
     self.n = self.x.size()
-    self.weight = None
-    if(self.restraints_manager is not None):
+    self.weight = restraints_weight
+    if(self.restraints_manager is not None and self.weight is None):
       gx = self.target_functor(
         compute_gradients=True).gradients_wrt_atomic_parameters(
           u_iso     = refine_adp,
@@ -277,6 +281,8 @@ class group_minimizer(object):
       if(gx_norm != 0):
         self.weight = rtg.gradients.norm()/gx_norm
       else: self.weight = 1.0
+    if(self.weight is not None):
+      assert self.restraints_manager is not None
     if(run_finite_differences_test):
       self.buffer_ana = flex.double()
       self.buffer_fin = flex.double()

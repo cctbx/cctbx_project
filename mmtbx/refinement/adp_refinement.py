@@ -25,12 +25,22 @@ def show_times(out = None):
 group_adp_master_params = iotbx.phil.parse("""\
   number_of_macro_cycles   = 3
     .type = int
+    .expert_level = 1
   max_number_of_iterations = 25
     .type = int
+    .expert_level = 1
   convergence_test         = False
     .type = bool
+    .expert_level = 3
   run_finite_differences_test = False
     .type = bool
+    .expert_level = 3
+  use_restraints = True
+    .type = bool
+    .expert_level = 0
+  restraints_weight = None
+    .type = float
+    .expert_level = 0
 """)
 
 tls_master_params = iotbx.phil.parse("""\
@@ -107,7 +117,7 @@ class manager(object):
             all_params,
             group_adp_selections   = None,
             group_adp_selections_h = None,
-            group_adp_params       = group_adp_master_params.extract(),
+            group_adp_params       = None,
             tls_selections         = None,
             tls_params             = tls_master_params.extract(),
             individual_adp_params  = individual_adp_master_params.extract(),
@@ -123,6 +133,8 @@ class manager(object):
             h_params               = None,
             nproc                  = None):
     global time_adp_refinement_py
+    if(group_adp_params is None):
+      group_adp_params = group_adp_master_params.extract()
     scatterers = fmodels.fmodel_xray().xray_structure.scatterers()
     timer = user_plus_sys_time()
     if(log is None): log = sys.stdout
@@ -175,6 +187,7 @@ class manager(object):
           max_number_of_iterations = 50,
           number_of_macro_cycles   = 1,
           refine_adp               = True,
+          use_restraints           = False, #XXX do not use in TLS refinement for now
           log                      = log)
        scatterers = fmodels.fmodel_xray().xray_structure.scatterers()
        for tls_selection_ in tls_selections:
@@ -219,17 +232,19 @@ class manager(object):
          nproc                 = nproc)
 
     if(refine_adp_group):
-       print_statistics.make_sub_header(text= "group isotropic ADP refinement",
-                                        out = log)
-       group_b_manager = mmtbx.refinement.group.manager(
-          fmodel                   = fmodels.fmodel_xray(),
-          selections               = group_adp_selections,
-          convergence_test         = group_adp_params.convergence_test,
-          max_number_of_iterations = group_adp_params.max_number_of_iterations,
-          number_of_macro_cycles   = group_adp_params.number_of_macro_cycles,
-          run_finite_differences_test = group_adp_params.run_finite_differences_test,
-          refine_adp               = True,
-          log                      = log)
+      print_statistics.make_sub_header(
+        text= "group isotropic ADP refinement", out = log)
+      group_b_manager = mmtbx.refinement.group.manager(
+        fmodel                   = fmodels.fmodel_xray(),
+        selections               = group_adp_selections,
+        convergence_test         = group_adp_params.convergence_test,
+        max_number_of_iterations = group_adp_params.max_number_of_iterations,
+        number_of_macro_cycles   = group_adp_params.number_of_macro_cycles,
+        run_finite_differences_test = group_adp_params.run_finite_differences_test,
+        use_restraints           = group_adp_params.use_restraints,
+        restraints_weight        = group_adp_params.restraints_weight,
+        refine_adp               = True,
+        log                      = log)
     time_adp_refinement_py += timer.elapsed()
 
 class refine_adp(object):
