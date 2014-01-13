@@ -714,13 +714,14 @@ class scaling_manager (intensity_data) :
       return None
 
   def scale_frame (self, file_name, db_mgr) :
+    """Scales the data from a single frame against the reference dataset,
+    and returns an intensity_data object.  Can be called either
+    serially or via a multiprocessing map() function.
+
+    XXX VERY IMPORTANT: this method must not modify any internal data
+    or the parallelization will not yield usable results!
     """
-    Scales the data from a single frame against the reference dataset, and
-    returns an intensity_data object.  Can be called either serially or
-    via a multiprocessing map() function.
-    """
-    # XXX VERY IMPORTANT: this method must not modify any internal data or
-    # the parallelization will not yield usable results!
+
     out = StringIO()
     wrong_cell = wrong_bravais = False
     reindex_op = "h,k,l"
@@ -893,10 +894,10 @@ class scaling_manager (intensity_data) :
       # Because no correlation is computed, the correlation
       # coefficient is fixed at zero.  Setting slope = 1 means
       # intensities are added without applying a scale factor.
-      data.n_obs += 1
       sum_x = 0
       sum_y = 0
       for pair in matches.pairs():
+        data.n_obs += 1
         if observations.data()[pair[1]] <= 0:
           data.n_rejected += 1
         else:
@@ -945,6 +946,11 @@ class scaling_manager (intensity_data) :
       offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
       corr = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
                                              math.sqrt(N * sum_yy - sum_y**2))
+
+    # Early return if there are no positive reflections on the frame.
+    if data.n_obs <= data.n_rejected:
+      return null_data(
+        file_name=file_name, log_out=out.getvalue(), low_signal=True)
 
     # Update the count for each matched reflection.  This counts
     # reflections with non-positive intensities, too.
@@ -1237,7 +1243,8 @@ class scaling_manager (intensity_data) :
 
     print >> out, "For %d reflections, got slope %f, correlation %f" % \
         (data.n_obs - data.n_rejected, slope, corr)
-    print >> out, "average obs",sum_y/N, "average calc",sum_x/N
+    print >> out, "average obs", sum_y / (data.n_obs - data.n_rejected), \
+      "average calc", sum_x / (data.n_obs - data.n_rejected)
     print >> out, "Rejected %d reflections with negative intensities" % \
         data.n_rejected
 
