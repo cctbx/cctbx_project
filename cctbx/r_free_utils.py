@@ -202,6 +202,11 @@ def extend_flags (
   r_free_as_bool = get_r_free_as_bool(r_free_flags,
     test_flag_value).data()
   assert isinstance(r_free_as_bool, flex.bool)
+  if(r_free_as_bool.size() == 0):
+    msg = """\
+WARNING: array of R-free flags (%s) is empty.""" % array_label
+    print >> log, msg
+    return r_free_flags
   fraction_free = r_free_as_bool.count(True) / r_free_as_bool.size()
   print >>log, "%s: fraction_free=%.3f" %(array_label, fraction_free)
   if (fraction_free == 0) :
