@@ -124,7 +124,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
     # last axis in the hierarchy, which isn't really sensible
     assert group_id != "."
 
-    name = self._cbf_handle.get_axis_equipment_component(group_id) + "_" + group_id
+    name = group_id
 
     for subobj in d.hierarchy().iter_preorder():
       if subobj.get_name() == name:
