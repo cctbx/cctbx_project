@@ -85,7 +85,7 @@ def exercise_basic(pdb_dir, verbose):
     check_sites_shake(
       cmd, xrsp_init, output, selection, selection_str, shake, verbose)
     #
-    cmd = base+'sites.rotate="1 2 3" sites.translate="4 5 6" selection="%s"'%(
+    cmd = base+'sites.rotate="1,2,3" sites.translate="4,5,6" selection="%s"'%(
                                                             str(selection_str))
     check_sites_rt(
       cmd, xrsp_init, output, selection, selection_str, verbose)
