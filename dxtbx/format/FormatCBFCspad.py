@@ -33,33 +33,62 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
     return cbf_handle.get_value() == "CS PAD"
 
   def sync_detector_to_cbf(self):
-    detector = self.get_detector()
-    root = detector.hierarchy()
-    assert len(root) == 4
+    ''' If the dectector object has been changed, due to refinment or manual repositioning
+    in a gui, call this function to synchronize these changes to the underlying CBF handle'''
 
-    cbf = self._cbf_handle
+    def recursive_sync(cbf, group, root = False):
+      ''' Walks the hierarchy and synchronizes the dxtbx matrices to the CBF axes.'''
+      try:
+        iterator = iter(group) # root object is panel which is not iteratable
+      except TypeError, e:
+        is_panel = True
+      else:
+        is_panel = False
 
-    for quad in root:
-      cbf.find_category("axis")
-      cbf.find_column("id")
-      while True:
-        if cbf.get_value() in quad.get_name():
-          axis_name = cbf.get_value()
-          break
-        cbf.next_row()
-      cbf.find_column("equipment_component")
-      assert cbf.get_value() in quad.get_name()
-
-      d_mat = quad.get_local_d_matrix()
+      d_mat = group.get_local_d_matrix()
       fast = col((d_mat[0],d_mat[3],d_mat[6])).normalize()
       slow = col((d_mat[1],d_mat[4],d_mat[7])).normalize()
       orig = col((d_mat[2],d_mat[5],d_mat[8]))
 
+      if is_panel:
+        cbf.find_category("diffrn_data_frame")
+        cbf.find_column("array_id")
+        cbf.find_row(group.get_name())
+        cbf.find_column("binary_id")
+        array_num = int(cbf.get_value()) - 1
+        cbf_detector = cbf.construct_detector(array_num)
+        axis0 = cbf_detector.get_detector_surface_axes(0)
+        axis1 = cbf_detector.get_detector_surface_axes(1)
+        assert cbf.get_axis_depends_on(axis0) == axis1
+        name = cbf.get_axis_depends_on(axis1)
+
+        # account for the sign change when moving from dxtbx to ImageCIF
+        slow = col((slow[0],-slow[1],slow[2]))
+
+        # account for the offset from the center of the sensor to the center
+        # of the ASIC.
+        orig -= col(cbf.get_axis_offset(axis1))
+      else:
+        name = group.get_name()
+
+      v3 = fast.cross(slow).normalize()
+
+      if root:
+        # the distance is encoded in a different axis.
+        distance = orig[2]
+        orig = col((orig[0],orig[1],0))
+
+      cbf.find_category("axis")
+      cbf.find_column("id")
+      while True:
+        if cbf.get_value() == name:
+          axis_name = cbf.get_value()
+          break
+        cbf.next_row()
+
       cbf.find_column("offset[1]"); cbf.set_value(str(orig[0]))
       cbf.find_column("offset[2]"); cbf.set_value(str(orig[1]))
       cbf.find_column("offset[3]"); cbf.set_value(str(orig[2]))
-
-      v3 = fast.cross(slow).normalize()
 
       r3 = sqr((fast[0],slow[0],v3[0],
                 fast[1],slow[1],v3[1],
@@ -67,10 +96,29 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
 
       angle, axis = r3.r3_rotation_matrix_as_unit_quaternion().unit_quaternion_as_axis_and_angle(deg=True)
       if angle == 0:
-        axis = (0,0,1)
+        axis = col((0,0,1))
+
+      assert axis.length() > 0
 
       cbf.find_column("vector[1]"); cbf.set_value(str(axis[0]))
       cbf.find_column("vector[2]"); cbf.set_value(str(axis[1]))
       cbf.find_column("vector[3]"); cbf.set_value(str(axis[2]))
 
       cbf.set_axis_setting(axis_name, angle, 0)
+
+      if root:
+        # synchronize the new distance
+        while not "_Z" in axis_name:
+          axis_name = cbf.get_axis_depends_on(axis_name)
+        assert cbf.get_axis_type(axis_name) == 'translation'
+        cbf.set_axis_setting(axis_name, distance, 0)
+
+      if not is_panel:
+        for subgroup in iterator:
+          recursive_sync(cbf, subgroup)
+
+    detector = self.get_detector()
+    root = detector.hierarchy()
+    assert len(root) == 4
+
+    recursive_sync(self._cbf_handle, root, True)
