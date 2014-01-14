@@ -494,13 +494,16 @@ dxtbx/model/goniometer_helpers.py -text
 dxtbx/model/kappa_goniometer.h -text
 dxtbx/model/model_helpers.h -text
 dxtbx/model/panel.h -text
+dxtbx/model/panel_data.h -text
 dxtbx/model/parallax_correction.h -text
 dxtbx/model/pixel_to_millimeter.cc -text
 dxtbx/model/pixel_to_millimeter.h -text
+dxtbx/model/ray_intersection.h -text
 dxtbx/model/scan.h -text
 dxtbx/model/scan.py -text
 dxtbx/model/scan_helpers.h -text
 dxtbx/model/scan_helpers.py -text
+dxtbx/model/virtual_panel.h -text
 dxtbx/readme.txt -text
 dxtbx/run_tests.py -text
 dxtbx/serialize/__init__.py -text
