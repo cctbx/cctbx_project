@@ -495,8 +495,8 @@ dxtbx/model/kappa_goniometer.h -text
 dxtbx/model/model_helpers.h -text
 dxtbx/model/panel.h -text
 dxtbx/model/parallax_correction.h -text
+dxtbx/model/pixel_to_millimeter.cc -text
 dxtbx/model/pixel_to_millimeter.h -text
-dxtbx/model/pixel_to_millimeter_interface.h -text
 dxtbx/model/scan.h -text
 dxtbx/model/scan.py -text
 dxtbx/model/scan_helpers.h -text
