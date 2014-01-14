@@ -1710,7 +1710,7 @@ def substitute_atom_group (
   new_atoms.set_xyz(sites_new)
   keep_atoms = []
   if (backbone_only) and (res_class == "common_amino_acid") :
-    keep_atoms = backbone_atoms
+    keep_atoms = backbone_atoms + [" O  "] # XXX definitely keep peptide O!
   atom_b_iso = {}
   max_b = flex.max(current_group.atoms().extract_b())
   for atom in current_group.atoms() :
