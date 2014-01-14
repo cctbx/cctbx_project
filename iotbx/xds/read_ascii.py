@@ -16,10 +16,11 @@ class reader(object):
     flds = f.next().split()
     assert flds[0] == "!FORMAT=XDS_ASCII"
     assert (allow_unmerged) or (flds[1] == "MERGE=TRUE")
+    self.unmerged_data = (flds[1] == "MERGE=FALSE")
     if   (flds[2] == "FRIEDEL'S_LAW=FALSE"):
       self.anomalous_flag = True
     elif (flds[2] == "FRIEDEL'S_LAW=TRUE"):
-      self.anomalous_flag = False
+      self.anomalous_flag = self.unmerged_data
     else:
       raise RuntimeError, "Expected FRIEDEL'S_LAW=FALSE|TRUE"
     self.unit_cell = None
