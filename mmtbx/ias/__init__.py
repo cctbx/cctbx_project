@@ -10,6 +10,7 @@ from cctbx import eltbx
 import iotbx.phil
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
+from libtbx.utils import Sorry
 
 ias_master_params = iotbx.phil.parse("""\
   b_iso_max = 100.0
@@ -30,6 +31,7 @@ ias_master_params = iotbx.phil.parse("""\
     .type = float
   build_ias_types = L R B BH
     .type = strings
+    .optional = False
   ring_atoms = None
     .type = strings
     .multiple = True
@@ -605,6 +607,8 @@ class find_peak_at_bond(object):
       self.status = False
 
 def set_status(iass, params):
+  if (params.build_ias_types is None) :
+    raise Sorry("build_ias_types must be specified.")
   for ias in iass:
     if(ias.status is not False and ias.type in ["B", "BH"] and
        ias.type in params.build_ias_types):

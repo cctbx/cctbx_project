@@ -479,8 +479,8 @@ class manager(object):
     water_rgs.reverse()
     for rg in water_rgs:
       if (rg.atom_groups_size() != 1):
-        raise RuntimeError(
-          "Not implemented: cannot handle water with alt. conf.")
+        raise Sorry("Not implemented: cannot add hydrogens to water "+
+                    "molecules with alternate conformations")
       ag = rg.only_atom_group()
       atoms = ag.atoms()
       # do not add H or D to O at or close to special position
