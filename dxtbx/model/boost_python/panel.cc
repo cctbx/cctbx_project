@@ -310,7 +310,37 @@ namespace dxtbx { namespace model { namespace boost_python {
       .staticmethod("from_dict")
       .def_pickle(VirtualPanelPickleSuite());
 
-    class_<Panel, bases<VirtualPanel> >("Panel")
+    class_<PanelData, bases<VirtualPanel> >("Panel")
+      .def(init<std::string,
+                std::string,
+                vec3 <double>,
+                vec3 <double>,
+                vec3 <double>,
+                vec2 <double>,
+                vec2 <std::size_t>,
+                vec2 <double> >((
+        arg("type"),
+        arg("name"),
+        arg("fast_axis"),
+        arg("slow_axis"),
+        arg("origin"),
+        arg("pixel_size"),
+        arg("image_size"),
+        arg("trusted_range"))))
+      .def("get_pixel_size", &PanelData::get_pixel_size)
+      .def("set_pixel_size", &PanelData::set_pixel_size)
+      .def("get_image_size", &PanelData::get_image_size)
+      .def("set_image_size", &PanelData::set_image_size)
+      .def("get_trusted_range", &PanelData::get_trusted_range)
+      .def("set_trusted_range", &PanelData::set_trusted_range)
+      .def("set_mask", &PanelData::set_mask)
+      .def("get_mask", &PanelData::get_mask)
+      .def("add_mask", &PanelData::add_mask)
+      .def("__eq__", &PanelData::operator==)
+      .def("__ne__", &PanelData::operator!=)
+      .def("is_similar_to", &PanelData::is_similar_to);
+
+    class_<Panel, bases<PanelData> >("Panel")
       .def(init<std::string,
                 std::string,
                 vec3 <double>,
@@ -345,18 +375,9 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("image_size"),
         arg("trusted_range"),
         arg("px_mm"))))
-      .def("get_pixel_size", &Panel::get_pixel_size)
-      .def("set_pixel_size", &Panel::set_pixel_size)
-      .def("get_image_size", &Panel::get_image_size)
-      .def("set_image_size", &Panel::set_image_size)
-      .def("get_trusted_range", &Panel::get_trusted_range)
-      .def("set_trusted_range", &Panel::set_trusted_range)
       .def("get_image_size_mm", &Panel::get_image_size_mm)
       .def("get_px_mm_strategy", &Panel::get_px_mm_strategy)
       .def("set_px_mm_strategy", &Panel::set_px_mm_strategy)
-      .def("set_mask", &Panel::set_mask)
-      .def("get_mask", &Panel::get_mask)
-      .def("add_mask", &Panel::add_mask)
       .def("is_value_in_trusted_range", &Panel::is_value_in_trusted_range)
       .def("is_coord_valid", &Panel::is_coord_valid)
       .def("is_coord_valid_mm", &Panel::is_coord_valid_mm)
@@ -372,8 +393,6 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_max_resolution_at_corners",
         &Panel::get_max_resolution_at_corners)
       .def("get_max_resolution_ellipse", &Panel::get_max_resolution_ellipse)
-      .def("__eq__", &Panel::operator==)
-      .def("__ne__", &Panel::operator!=)
       .def("__deepcopy__", &panel_deepcopy)
       .def("__copy__", &panel_deepcopy)
       .def("__str__", &panel_to_string)
@@ -382,7 +401,6 @@ namespace dxtbx { namespace model { namespace boost_python {
         return_value_policy<manage_new_object>())
       .staticmethod("from_dict")
       .def("is_", &panel_is)
-      .def("is_similar_to", &Panel::is_similar_to)
       .def_pickle(PanelPickleSuite());
   }
 
