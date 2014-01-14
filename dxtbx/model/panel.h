@@ -21,6 +21,7 @@
 #include <dxtbx/model/model_helpers.h>
 #include <dxtbx/model/virtual_panel.h>
 #include <dxtbx/model/panel_data.h>
+#include <dxtbx/model/pixel_to_millimeter.h>
 #include <dxtbx/error.h>
 
 namespace dxtbx { namespace model {

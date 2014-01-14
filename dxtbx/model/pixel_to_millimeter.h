@@ -13,13 +13,11 @@
 
 #include <scitbx/vec2.h>
 #include <dxtbx/model/parallax_correction.h>
+#include <dxtbx/model/panel_data.h>
 
 namespace dxtbx { namespace model {
 
   using scitbx::vec2;
-
-  /** Pre-declare the panel class */
-  class Panel;
 
   /**
    * Base class for the pixel to millimeter strategy
@@ -36,7 +34,7 @@ namespace dxtbx { namespace model {
      * @param xy The (x, y) pixel coordinate
      * @return The (x, y) millimeter coordinate
      */
-    virtual vec2<double> to_millimeter(const Panel &panel,
+    virtual vec2<double> to_millimeter(const PanelData &panel,
       vec2<double> xy) const = 0;
 
     /**
@@ -45,7 +43,7 @@ namespace dxtbx { namespace model {
      * @param xy The (x, y) millimeter coordinate
      * @return The (x, y) pixel coordinate
      */
-    virtual vec2<double> to_pixel(const Panel &panel,
+    virtual vec2<double> to_pixel(const PanelData &panel,
       vec2<double> xy) const = 0;
   };
 
@@ -59,10 +57,29 @@ namespace dxtbx { namespace model {
     /** Virtual desctructor */
     virtual ~SimplePxMmStrategy() {}
 
-    virtual vec2<double> to_millimeter(const Panel &panel,
-        vec2<double> xy) const;
+    /**
+     * Convert a pixel coordinate to a millimeter coordinate
+     * @param panel The panel structure
+     * @param xy The (x, y) pixel coordinate
+     * @return The (x, y) millimeter coordinate
+     */
+    vec2<double> to_millimeter(const PanelData &panel,
+        vec2<double> xy) const {
+      vec2<double> pixel_size = panel.get_pixel_size();
+      return vec2<double> (xy[0] * pixel_size[0], xy[1] * pixel_size[1]);
+    }
 
-    virtual vec2<double> to_pixel(const Panel &panel, vec2<double> xy) const;
+    /**
+     * Convert a millimeter coordinate to a pixel coordinate
+     * @param panel The panel structure
+     * @param xy The (x, y) millimeter coordinate
+     * @return The (x, y) pixel coordinate
+     */
+    vec2<double> to_pixel(const PanelData &panel,
+        vec2<double> xy) const {
+      vec2<double> pixel_size = panel.get_pixel_size();
+      return vec2<double> (xy[0] / pixel_size[0], xy[1] / pixel_size[1]);
+    }
   };
 
   /**
@@ -80,10 +97,31 @@ namespace dxtbx { namespace model {
       return la_;
     }
 
-    virtual vec2<double> to_millimeter(const Panel &panel,
-        vec2<double> xy) const;
+    /**
+     * Convert a pixel coordinate to a millimeter coordinate
+     * @param panel The panel structure
+     * @param xy The (x, y) pixel coordinate
+     * @return The (x, y) millimeter coordinate
+     */
+    vec2<double> to_millimeter(const PanelData &panel,
+        vec2<double> xy) const {
+      return parallax_correction_inv(
+        panel.get_distance(), la_, panel.get_normal_origin(),
+        SimplePxMmStrategy::to_millimeter(panel, xy));
+    }
 
-    virtual vec2<double> to_pixel(const Panel &panel, vec2<double> xy) const;
+    /**
+     * Convert a millimeter coordinate to a pixel coordinate
+     * @param panel The panel structure
+     * @param xy The (x, y) millimeter coordinate
+     * @return The (x, y) pixel coordinate
+     */
+    vec2<double> to_pixel(const PanelData &panel,
+        vec2<double> xy) const {
+      return SimplePxMmStrategy::to_pixel(panel,
+        parallax_correction(panel.get_distance(), la_,
+          panel.get_normal_origin(), xy));
+    }
 
   protected:
     double la_;

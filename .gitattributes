@@ -496,7 +496,6 @@ dxtbx/model/model_helpers.h -text
 dxtbx/model/panel.h -text
 dxtbx/model/panel_data.h -text
 dxtbx/model/parallax_correction.h -text
-dxtbx/model/pixel_to_millimeter.cc -text
 dxtbx/model/pixel_to_millimeter.h -text
 dxtbx/model/ray_intersection.h -text
 dxtbx/model/scan.h -text
