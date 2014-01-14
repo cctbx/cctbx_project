@@ -25,6 +25,7 @@
 #include <boost/make_shared.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <dxtbx/model/panel.h>
+#include <dxtbx/model/pixel_to_millimeter.h>
 #include <dxtbx/error.h>
 
 namespace dxtbx { namespace model {
@@ -37,10 +38,10 @@ namespace dxtbx { namespace model {
 
 
   /**
-  * A class representing a detector made up of multiple flat panel detectors.
-  * The detector elements can be accessed in the same way as an array:
-  *  detector[0] -> 1st detector panel.
-  */
+   * A class representing a detector made up of multiple flat panel detectors.
+   * The detector elements can be accessed in the same way as an array:
+   *  detector[0] -> 1st detector panel.
+   */
   class Detector {
   public:
 
@@ -85,7 +86,7 @@ namespace dxtbx { namespace model {
 
     /** Add a panel to the list of panels */
     panel_type& add_panel() {
-      return add_panel(Panel());
+      return add_panel(Panel(boost::make_shared<SimplePxMmStrategy>()));
     }
 
     /** Get the number of panels */

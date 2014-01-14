@@ -33,7 +33,6 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
   model = env.SharedLibrary(
     target='#/lib/dxtbx_model_ext', 
     source=[
-      'model/pixel_to_millimeter.cc',
       'model/boost_python/beam.cc',
       'model/boost_python/goniometer.cc',
       'model/boost_python/kappa_goniometer.cc',

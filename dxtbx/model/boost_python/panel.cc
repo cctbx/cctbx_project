@@ -14,8 +14,10 @@
 #include <iostream>
 #include <sstream>
 #include <boost_adaptbx/std_pair_conversion.h>
+#include <boost/make_shared.hpp>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <dxtbx/model/panel.h>
+#include <dxtbx/model/pixel_to_millimeter.h>
 #include <dxtbx/model/boost_python/to_from_dict.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
@@ -193,7 +195,7 @@ namespace dxtbx { namespace model { namespace boost_python {
 
   template <>
   Panel* from_dict<Panel>(boost::python::dict obj) {
-    Panel *result = new Panel();
+    Panel *result = new Panel(boost::make_shared<SimplePxMmStrategy>());
     if (obj.has_key("name")) {
       result->set_name(boost::python::extract<std::string>(obj["name"]));
     }
@@ -222,6 +224,35 @@ namespace dxtbx { namespace model { namespace boost_python {
       boost::python::extract< vec2<double> >(obj["trusted_range"]));
 
     return result;
+  }
+
+  Panel* make_panel_default() {
+    return new Panel(
+      "",                         /* type */
+      "",                         /* name */
+      vec3<double>(1, 0, 0),      /* fast axis */
+      vec3<double>(0, 1, 0),      /* slow axis */
+      vec3<double>(0, 0, 0),      /* origin */
+      vec2<double>(0, 0),         /* pixel size */
+      vec2<std::size_t>(0, 0),    /* image size */
+      vec2<double>(0, 0),         /* trusted range */
+      boost::make_shared<SimplePxMmStrategy>());
+  }
+
+  Panel* make_panel_simple_pxmm(std::string type, std::string name,
+      vec3<double> fast_axis, vec3<double> slow_axis, vec3<double> origin,
+      vec2<double> pixel_size, vec2<std::size_t> image_size,
+      vec2<double> trusted_range) {
+    return new Panel(
+      type,
+      name,
+      fast_axis,
+      slow_axis,
+      origin,
+      pixel_size,
+      image_size,
+      trusted_range,
+      boost::make_shared<SimplePxMmStrategy>());
   }
 
   void export_panel()
@@ -310,23 +341,9 @@ namespace dxtbx { namespace model { namespace boost_python {
       .staticmethod("from_dict")
       .def_pickle(PanelBasePickleSuite());
 
-    class_<Panel, bases<PanelBase> >("Panel")
-      .def(init<std::string,
-                std::string,
-                vec3 <double>,
-                vec3 <double>,
-                vec3 <double>,
-                vec2 <double>,
-                vec2 <std::size_t>,
-                vec2 <double> >((
-        arg("type"),
-        arg("name"),
-        arg("fast_axis"),
-        arg("slow_axis"),
-        arg("origin"),
-        arg("pixel_size"),
-        arg("image_size"),
-        arg("trusted_range"))))
+    class_<Panel, bases<PanelBase> >("Panel", no_init)
+      .def("__init__", make_constructor(&make_panel_default))
+      .def("__init__", make_constructor(&make_panel_simple_pxmm))
       .def(init<std::string,
                 std::string,
                 vec3 <double>,

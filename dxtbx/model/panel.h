@@ -22,7 +22,7 @@
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/ref_reductions.h>
-#include <dxtbx/model/pixel_to_millimeter.h>
+#include <dxtbx/model/pixel_to_millimeter_interface.h>
 #include <dxtbx/model/model_helpers.h>
 #include <dxtbx/error.h>
 
@@ -444,29 +444,12 @@ namespace dxtbx { namespace model {
   public:
 
     /** Construct the panel with the simple px->mm strategy */
-    Panel()
+    Panel(boost::shared_ptr<PxMmStrategy> convert)
+
       : pixel_size_(0.0, 0.0),
         image_size_(0, 0),
         trusted_range_(0.0, 0.0),
-        convert_coord_(new SimplePxMmStrategy()) {}
-
-    /** Construct with data but no px/mm strategy */
-    Panel(std::string type,
-          std::string name,
-          vec3 <double> fast_axis,
-          vec3 <double> slow_axis,
-          vec3 <double> origin,
-          vec2 <double> pixel_size,
-          vec2 <std::size_t> image_size,
-          vec2 <double> trusted_range)
-      : pixel_size_(pixel_size),
-        image_size_(image_size),
-        trusted_range_(trusted_range),
-        convert_coord_(new SimplePxMmStrategy()) {
-      set_type(type);
-      set_name(name);
-      set_local_frame(fast_axis, slow_axis, origin);
-    }
+        convert_coord_(convert) {}
 
     /** Construct with data with px/mm strategy */
     Panel(std::string type,
