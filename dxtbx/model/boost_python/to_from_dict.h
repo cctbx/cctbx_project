@@ -34,7 +34,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   boost::python::dict to_dict<Goniometer>(const Goniometer &obj);
 
   template <>
-  boost::python::dict to_dict<PanelBase>(const PanelBase &obj);
+  boost::python::dict to_dict<VirtualPanel>(const VirtualPanel &obj);
 
   template <>
   boost::python::dict to_dict<Panel>(const Panel &obj);
@@ -52,7 +52,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   Goniometer* from_dict<Goniometer>(boost::python::dict obj);
 
   template <>
-  PanelBase* from_dict<PanelBase>(boost::python::dict obj);
+  VirtualPanel* from_dict<VirtualPanel>(boost::python::dict obj);
 
   template <>
   Panel* from_dict<Panel>(boost::python::dict obj);

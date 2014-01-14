@@ -15,16 +15,16 @@ from __future__ import division
 import math
 import pycbf
 from scitbx import matrix
-from dxtbx_model_ext import Panel, PanelBase, Detector
+from dxtbx_model_ext import Panel, VirtualPanel, Detector
 from dxtbx_model_ext import SimplePxMmStrategy, ParallaxCorrectedPxMmStrategy
 from detector_helpers import detector_helper_sensors
 from detector_helpers import find_undefined_value
 
-class PanelGroup(PanelBase):
+class PanelGroup(VirtualPanel):
   ''' A class providing an iterface to a group of panels.
 
   This class is the basis for the construction of a detector hierarchy. The
-  class inherits from PanelBase which has a C++ implementation providing
+  class inherits from VirtualPanel which has a C++ implementation providing
   the methods to manipulate the virtual detector plane. This class holds
   a reference to a list of children and allows for propagating the panel
   coordinate frames through the hierarchy.
@@ -32,7 +32,7 @@ class PanelGroup(PanelBase):
   '''
   def __init__(self, parent=None):
     ''' Initialise the list of children to an empty list. '''
-    PanelBase.__init__(self)
+    VirtualPanel.__init__(self)
     self._parent = parent
     self._children = []
 
@@ -48,7 +48,7 @@ class PanelGroup(PanelBase):
         origin The origin vector to the virtual detector plane
 
     '''
-    PanelBase.set_parent_frame(self, fast_axis, slow_axis, origin)
+    VirtualPanel.set_parent_frame(self, fast_axis, slow_axis, origin)
     for child in self:
       child.set_parent_frame(
           self.get_fast_axis(),
@@ -67,7 +67,7 @@ class PanelGroup(PanelBase):
         origin The origin vector to the virtual detector plane
 
     '''
-    PanelBase.set_local_frame(self, fast_axis, slow_axis, origin)
+    VirtualPanel.set_local_frame(self, fast_axis, slow_axis, origin)
     for child in self:
       child.set_parent_frame(
           self.get_fast_axis(),
@@ -86,7 +86,7 @@ class PanelGroup(PanelBase):
         origin The origin vector to the virtual detector plane
 
     '''
-    PanelBase.set_frame(self, fast_axis, slow_axis, origin)
+    VirtualPanel.set_frame(self, fast_axis, slow_axis, origin)
     for child in self:
       child.set_parent_frame(
           self.get_fast_axis(),
@@ -171,7 +171,7 @@ class PanelGroup(PanelBase):
 
   def __eq__(self, other):
     ''' Check that this is equal to another group. '''
-    if PanelBase.__eq__(self, other):
+    if VirtualPanel.__eq__(self, other):
       if len(self) != len(other):
         return False
       return all(a == b for a, b in zip(self, other))
@@ -190,7 +190,7 @@ class PanelGroup(PanelBase):
 
   def to_dict(self):
     ''' Convert the panel group to a dictionary. '''
-    d = PanelBase.to_dict(self)
+    d = VirtualPanel.to_dict(self)
     children = []
     for c in self._children:
       if isinstance(c, Panel):
@@ -319,7 +319,7 @@ class HierarchicalDetector(Detector):
   @staticmethod
   def _group_or_panel_from_dict(d, obj):
     ''' Convert a dictionary to a group or panel and add to model. '''
-    base = PanelBase.from_dict(d)
+    base = VirtualPanel.from_dict(d)
     obj.set_type(base.get_type())
     obj.set_name(base.get_name())
     obj.set_local_frame(

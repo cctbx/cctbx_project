@@ -47,14 +47,14 @@ namespace dxtbx { namespace model { namespace boost_python {
     return lhs == rhs;
   }
 
-  struct PanelBasePickleSuite : boost::python::pickle_suite {
+  struct VirtualPanelPickleSuite : boost::python::pickle_suite {
 
     static
     boost::python::tuple getstate(boost::python::object obj) {
       using namespace boost::python;
 
       unsigned int version = 1;
-      const PanelBase &p = extract<const PanelBase&>(obj)();
+      const VirtualPanel &p = extract<const VirtualPanel&>(obj)();
       return boost::python::make_tuple(
         version,
         obj.attr("__dict__"),
@@ -76,7 +76,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       unsigned int version = extract<unsigned int>(state[0]);
       DXTBX_ASSERT(version == 1);
       extract<dict>(obj.attr("__dict__"))().update(state[1]);
-      PanelBase &p = extract<PanelBase&>(obj)();
+      VirtualPanel &p = extract<VirtualPanel&>(obj)();
       p.set_name(extract<std::string>(state[2]));
       p.set_type(extract<std::string>(state[3]));
       p.set_local_frame(
@@ -146,7 +146,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   };
 
   template <>
-  boost::python::dict to_dict<PanelBase>(const PanelBase &obj) {
+  boost::python::dict to_dict<VirtualPanel>(const VirtualPanel &obj) {
     boost::python::dict result;
     result["name"] = obj.get_name();
     result["type"] = obj.get_type();
@@ -157,8 +157,8 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   template <>
-  PanelBase* from_dict<PanelBase>(boost::python::dict obj) {
-    PanelBase *result = new PanelBase();
+  VirtualPanel* from_dict<VirtualPanel>(boost::python::dict obj) {
+    VirtualPanel *result = new VirtualPanel();
     if (obj.has_key("name")) {
       result->set_name(boost::python::extract<std::string>(obj["name"]));
     }
@@ -228,89 +228,89 @@ namespace dxtbx { namespace model { namespace boost_python {
   {
     using namespace boost::python;
 
-    class_<PanelFrame>("PanelFrame")
+    class_<VirtualPanelFrame>("VirtualPanelFrame")
       .def("set_frame",
-        &PanelFrame::set_frame, (
+        &VirtualPanelFrame::set_frame, (
           arg("fast_axis"),
           arg("slow_axis"),
           arg("origin")))
       .def("set_local_frame",
-        &PanelFrame::set_local_frame, (
+        &VirtualPanelFrame::set_local_frame, (
           arg("fast_axis"),
           arg("slow_axis"),
           arg("origin")))
       .def("set_parent_frame",
-        &PanelFrame::set_parent_frame, (
+        &VirtualPanelFrame::set_parent_frame, (
           arg("fast_axis"),
           arg("slow_axis"),
           arg("origin")))
       .def("get_local_fast_axis",
-        &PanelFrame::get_local_fast_axis)
+        &VirtualPanelFrame::get_local_fast_axis)
       .def("get_local_slow_axis",
-        &PanelFrame::get_local_slow_axis)
+        &VirtualPanelFrame::get_local_slow_axis)
       .def("get_local_origin",
-        &PanelFrame::get_local_origin)
+        &VirtualPanelFrame::get_local_origin)
       .def("get_parent_fast_axis",
-        &PanelFrame::get_parent_fast_axis)
+        &VirtualPanelFrame::get_parent_fast_axis)
       .def("get_parent_slow_axis",
-        &PanelFrame::get_parent_slow_axis)
+        &VirtualPanelFrame::get_parent_slow_axis)
       .def("get_parent_origin",
-        &PanelFrame::get_parent_origin)
+        &VirtualPanelFrame::get_parent_origin)
       .def("get_local_d_matrix",
-        &PanelFrame::get_local_d_matrix)
+        &VirtualPanelFrame::get_local_d_matrix)
       .def("get_parent_d_matrix",
-        &PanelFrame::get_parent_d_matrix)
+        &VirtualPanelFrame::get_parent_d_matrix)
       .def("get_d_matrix",
-        &PanelFrame::get_d_matrix)
+        &VirtualPanelFrame::get_d_matrix)
       .def("get_D_matrix",
-        &PanelFrame::get_D_matrix)
+        &VirtualPanelFrame::get_D_matrix)
       .def("get_origin",
-        &PanelFrame::get_origin)
+        &VirtualPanelFrame::get_origin)
       .def("get_fast_axis",
-        &PanelFrame::get_fast_axis)
+        &VirtualPanelFrame::get_fast_axis)
       .def("get_slow_axis",
-        &PanelFrame::get_slow_axis)
+        &VirtualPanelFrame::get_slow_axis)
       .def("get_normal",
-        &PanelFrame::get_normal)
+        &VirtualPanelFrame::get_normal)
       .def("get_normal_origin",
-        &PanelFrame::get_normal_origin)
+        &VirtualPanelFrame::get_normal_origin)
       .def("get_distance",
-        &PanelFrame::get_distance)
+        &VirtualPanelFrame::get_distance)
       .def("get_beam_centre",
-        &PanelFrame::get_beam_centre, (
+        &VirtualPanelFrame::get_beam_centre, (
           arg("s0")))
       .def("get_beam_centre_lab",
-        &PanelFrame::get_beam_centre_lab, (
+        &VirtualPanelFrame::get_beam_centre_lab, (
           arg("s0")))
       .def("get_lab_coord",
-        &PanelFrame::get_lab_coord, (
+        &VirtualPanelFrame::get_lab_coord, (
           arg("xy")))
       .def("get_lab_coord",
         &get_lab_coord_multiple, (
           arg("xy")))
       .def("get_ray_intersection",
-        &PanelFrame::get_ray_intersection, (
+        &VirtualPanelFrame::get_ray_intersection, (
           arg("s1")))
       .def("get_bidirectional_ray_intersection",
-        &PanelFrame::get_bidirectional_ray_intersection, (
+        &VirtualPanelFrame::get_bidirectional_ray_intersection, (
           arg("s1")))
-      .def("__eq__", &PanelFrame::operator==)
-      .def("__ne__", &PanelFrame::operator!=);
+      .def("__eq__", &VirtualPanelFrame::operator==)
+      .def("__ne__", &VirtualPanelFrame::operator!=);
 
-    class_<PanelBase, bases<PanelFrame> >("PanelBase")
-      .def("get_name", &PanelBase::get_name)
-      .def("set_name", &PanelBase::set_name)
-      .def("get_type", &PanelBase::get_type)
-      .def("set_type", &PanelBase::set_type)
-      .def("__eq__", &PanelBase::operator==)
-      .def("__ne__", &PanelBase::operator!=)
-      .def("to_dict", &to_dict<PanelBase>)
-      .def("from_dict", &from_dict<PanelBase>,
+    class_<VirtualPanel, bases<VirtualPanelFrame> >("VirtualPanel")
+      .def("get_name", &VirtualPanel::get_name)
+      .def("set_name", &VirtualPanel::set_name)
+      .def("get_type", &VirtualPanel::get_type)
+      .def("set_type", &VirtualPanel::set_type)
+      .def("__eq__", &VirtualPanel::operator==)
+      .def("__ne__", &VirtualPanel::operator!=)
+      .def("to_dict", &to_dict<VirtualPanel>)
+      .def("from_dict", &from_dict<VirtualPanel>,
         return_value_policy<manage_new_object>())
       .staticmethod("from_dict")
-      .def_pickle(PanelBasePickleSuite());
+      .def_pickle(VirtualPanelPickleSuite());
 
-    class_<Panel, bases<PanelBase> >("Panel")
+    class_<Panel, bases<VirtualPanel> >("Panel")
       .def(init<std::string,
                 std::string,
                 vec3 <double>,
