@@ -424,6 +424,12 @@ class determine_data_and_flags(object):
         indices=f_obs.indices(),
         data=f_obs.data(),
         sigmas=None).set_observation_type(f_obs)
+    # Delete F(0,0,0) if present
+    sel = f_obs.indices()==(0,0,0)
+    if(sel.count(True)>0):
+      print >> self.log, "F(0,0,0) will be removed."
+      f_obs = f_obs.select(~sel)
+    #
     d_min = f_obs.d_min()
     if(d_min < 0.25): # XXX what is the equivalent for neutrons ???
       raise Sorry("Resolution of data is too high: %-6.4f A"%d_min)
