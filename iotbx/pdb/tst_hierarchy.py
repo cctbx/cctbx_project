@@ -6257,12 +6257,12 @@ ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
     new_group=new_group,
     backbone_only=True,
     log=None)
-  assert (hierarchy1.as_pdb_string() == """\
+  assert not show_diff(hierarchy1.as_pdb_string(), """\
 ATOM     39  N   TYR A   6       5.514   2.664   4.856  1.00 11.99           N
 ATOM     40  CA  TYR A   6       6.831   2.310   4.318  1.00 12.30           C
 ATOM     41  C   TYR A   6       7.854   2.761   5.324  1.00 13.40           C
+ATOM     42  O   TYR A   6       8.219   3.943   5.374  1.00 13.92           O
 ATOM     43  CB  TYR A   6       7.065   3.016   2.993  1.00 12.13           C
-ATOM     50  O   TYR A   6       7.691   3.636   6.157  1.00 13.92           O
 ATOM     52  CG  TYR A   6       6.101   2.535   1.948  1.00 12.77           C
 ATOM     53  CD1 TYR A   6       4.898   3.215   1.734  1.00 14.27           C
 ATOM     54  CD2 TYR A   6       6.343   1.371   1.232  1.00 14.27           C
