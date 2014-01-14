@@ -98,13 +98,13 @@ sites
     .type = bool
     .help = Switch to a rotomer minimally distant from the current one
   translate = 0 0 0
-    .type = strings
-    # XXX FUTURE float(3)
-    .help = Translational shift
+    .type = floats(size=3)
+    .optional = False
+    .help = Translational shift (x,y,z)
   rotate = 0 0 0
-    .type = strings
-    # XXX FUTURE float(3)
-    .help = Rotational shift
+    .type = floats(size=3)
+    .optional = False
+    .help = Rotational shift (x,y,z)
   euler_angle_convention = *xyz zyz
     .type = choice
     .help = Euler angles convention to be used for rotation
