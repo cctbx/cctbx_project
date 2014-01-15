@@ -401,13 +401,10 @@ class Test2:
       fast = matrix.col(obj.get_fast_axis())
       slow = matrix.col(obj.get_slow_axis())
       orig = matrix.col(obj.get_origin())
-      print orig
       assert(abs(fast - matrix.col((1, 0, 0))) < 1e-7)
       assert(abs(slow - matrix.col((0, 1, 0))) < 1e-7)
       assert(abs(orig - matrix.col((0, 0, 100))) < 1e-7)
       D = obj.get_D_matrix()
-
-    print "Setting"
 
     # Get the quadrants and set their frames
     q1, q2 = self.detector.hierarchy().children()
@@ -457,7 +454,6 @@ class Test2:
     p2_d2 = matrix.col((-1, 0, 0))
     p3_d2 = matrix.col((1, 0, 0))
     p4_d2 = matrix.col((0, 1, 0))
-    print p1.get_origin(), p1_d0
     assert(abs(matrix.col(p1.get_origin()) - p1_d0) < eps)
     assert(abs(matrix.col(p2.get_origin()) - p2_d0) < eps)
     assert(abs(matrix.col(p3.get_origin()) - p3_d0) < eps)
@@ -520,7 +516,7 @@ if __name__ == '__main__':
   #test.run()
   test = TestPanelTreeNode()
   test.run()
-  #test = TestPanelGroup()
-  #test.run()
+  test = TestPanelGroup()
+  test.run()
   test = Test2()
   test.run()

@@ -31,49 +31,9 @@ class PanelTreeNode(object):
     self._node = node
     self._parent = parent
 
-    if self.parent() is not None:
-      from scitbx import matrix
-      t1 = matrix.sqr(self.parent().get_transformation_matrix())
-
-      # Get the local transformation matrix
-      t2 = matrix.sqr(
-        (1, 0, 0, 0,
-         0, 1, 0, 0,
-         0, 0, 1, 0,
-         0, 0, 0, 1))
-
-      t = t1 * t2.inverse()
-      self._apply_transformation(t)
-
-  #def get_fast_axis(self):
-    #return self._node.get_fast_axis()
-  #def get_slow_axis(self):
-    #return self._node.get_slow_axis()
-  #def get_normal(self):
-    #return self._node.get_normal()
-  #def get_origin(self):
-    #return self._node.get_origin()
-  #def get_name(self):
-    #return self._node.get_name()
-  #def get_type(self):
-    #return self._node.get_type()
-  #def set_name(self, name):
-    #self._node.set_name(name)
-  #def set_type(self, dtype):
-    #self._node.set_type(dtype)
-  #def get_d_matrix(self):
-    #return self._node.get_d_matrix()
-  #def get_D_matrix(self):
-    #return self._node.get_D_matrix()
-  #def is_(self, rhs):
-    #return self._node.is_(rhs)
-  #def __eq__(self, rhs):
-    #return self._node.__eq__(rhs)
-  #def __ne__(self, rhs):
-    #return self._node.__ne__(rhs)
-  def __getattr__(self, name):
+  def __getattr__(self, attr):
     ''' Inherit the interface from the node. '''
-    return getattr(self._node, name)
+    return getattr(self._node, attr)
 
   def parent(self):
     ''' Return the parent. '''
@@ -87,77 +47,37 @@ class PanelTreeNode(object):
 
   def apply_transformation(self, t):
     ''' Apply a transformation to the current matrix. '''
-    print 'PanelTreeNode.apply_transformation'
-    self._apply_transformation(t)
-    
-  def _apply_transformation(self, t):
-    ''' Apply a transformation to the current matrix. '''
-    print 'PanelTreeNode._apply_transformation'
     from scitbx import matrix
-
-    t = matrix.sqr(t)
     tg = matrix.sqr(self.get_transformation_matrix())
     tgt = (t * tg).transpose()
-    self._node.set_frame(tgt[0:3], tgt[4:7], tgt[12:15])
+    self.set_frame(tgt[0:3], tgt[4:7], tgt[12:15])
 
   def set_local_frame(self, fast_axis, slow_axis, origin):
     ''' Set the local frame. '''
-
-    print 'PanelTreeNode.set_local_frame'
     from scitbx import matrix
 
-    print "parent is ", self.parent()
     # Check if the parent is None
     if self.parent() is None:
-      return self._set_frame(fast_axis, slow_axis, origin)
+      self.set_frame(fast_axis, slow_axis, origin)
 
     # Normalize the axes
     fast_axis = matrix.col(fast_axis).normalize()
     slow_axis = matrix.col(slow_axis).normalize()
     normal = fast_axis.cross(slow_axis)
 
-    P = matrix.sqr(self.parent().get_transformation_matrix())
-
-    #t1 = matrix.sqr(self.get_local_transformation_matrix())
-
-    ## Get the local transformation matrix
-    L = matrix.sqr(
-     fast_axis.elems + (0,) +
-     slow_axis.elems + (0,) +
-     normal.elems    + (0,) +
-     tuple(origin)   + (1,)).transpose()
-
-    G = matrix.sqr(self.get_transformation_matrix())
-
-    d = P * L * G.inverse()
-    self._apply_transformation(d)
-    return d
-
-  def set_frame(self, fast_axis, slow_axis, origin):
-    return self._set_frame(fast_axis, slow_axis, origin)
-
-  def _set_frame(self, fast_axis, slow_axis, origin):
-    ''' Set the frame. '''
-
-    print 'PanelTreeNode.set_frame'
-    from scitbx import matrix
-    t1 = matrix.sqr(self.get_transformation_matrix())
-
-    # Normalize the axes
-    fast_axis = matrix.col(fast_axis).normalize()
-    slow_axis = matrix.col(slow_axis).normalize()
-    normal = fast_axis.cross(slow_axis)
+    # Get the parent transformation matrix
+    tp = matrix.sqr(self.parent().get_transformation_matrix())
 
     # Get the local transformation matrix
-    t2 = matrix.sqr(
+    tl = matrix.sqr(
      fast_axis.elems + (0,) +
      slow_axis.elems + (0,) +
      normal.elems    + (0,) +
      tuple(origin)   + (1,)).transpose()
 
-    t = t2 * t1.inverse()
-    self._apply_transformation(t)
-    return t
+    # Set the current frame
+    tgt = (tp * tl).transpose()
+    self.set_frame(tgt[0:3], tgt[4:7], tgt[12:15])
 
   def get_local_d_matrix(self):
     ''' Get the local d matrix. '''
@@ -210,11 +130,11 @@ class PanelTreeNode(object):
     return dl[8:11]
 
 
-class PanelGroup(PanelTreeNode):
+class PanelGroup(VirtualPanel):
   ''' A class providing an iterface to a group of panels.
 
   This class is the basis for the construction of a detector hierarchy. The
-  class inherits from PanelTreeNode which has a C++ implementation providing
+  class inherits from VirtualPanel which has a C++ implementation providing
   the methods to manipulate the virtual detector plane. This class holds
   a reference to a list of children and allows for propagating the panel
   coordinate frames through the hierarchy.
@@ -222,22 +142,28 @@ class PanelGroup(PanelTreeNode):
   '''
   def __init__(self, parent=None):
     ''' Initialise the list of children to an empty list. '''
+    VirtualPanel.__init__(self)
+    self._parent = parent
     self._children = []
-    PanelTreeNode.__init__(self, parent=parent)
 
-  def apply_transformation(self, t):
-    ''' Apply a transformatio
+  def set_parent_frame(self, fast_axis, slow_axis, origin):
+    ''' Set the parent frame.
 
-    Applys the transform toiself and then propagates the frame
-    down to it's children.
+    Set's it's own parent plane and then, after updating it's global
+    frame, propagates the frame down to it's children.
 
     Params:
-      t a transformation matrix
+        fast_axis The fast axis of the virtual detector plane
+        slow_axis The slow axis of the virtual detector plane
+        origin The origin vector to the virtual detector plane
 
     '''
-    PanelTreeNode.apply_transformation(self, t)
+    VirtualPanel.set_parent_frame(self, fast_axis, slow_axis, origin)
     for child in self:
-      child.apply_transformation(t)
+      child.set_parent_frame(
+          self.get_fast_axis(),
+          self.get_slow_axis(),
+          self.get_origin())
 
   def set_local_frame(self, fast_axis, slow_axis, origin):
     ''' Set the local frame.
@@ -251,9 +177,12 @@ class PanelGroup(PanelTreeNode):
         origin The origin vector to the virtual detector plane
 
     '''
-    t = PanelTreeNode.set_local_frame(self, fast_axis, slow_axis, origin)
+    VirtualPanel.set_local_frame(self, fast_axis, slow_axis, origin)
     for child in self:
-      child.apply_transformation(t)
+      child.set_parent_frame(
+          self.get_fast_axis(),
+          self.get_slow_axis(),
+          self.get_origin())
 
   def set_frame(self, fast_axis, slow_axis, origin):
     ''' Set the local frame.
@@ -267,9 +196,12 @@ class PanelGroup(PanelTreeNode):
         origin The origin vector to the virtual detector plane
 
     '''
-    t = PanelTreeNode.set_frame(self, fast_axis, slow_axis, origin)
+    VirtualPanel.set_frame(self, fast_axis, slow_axis, origin)
     for child in self:
-      child.apply_transformation(t)
+      child.set_parent_frame(
+          self.get_fast_axis(),
+          self.get_slow_axis(),
+          self.get_origin())
 
   def add_group(self):
     ''' Add a new group to this group.
@@ -279,6 +211,10 @@ class PanelGroup(PanelTreeNode):
 
     '''
     group = PanelGroup(self)
+    group.set_parent_frame(
+        self.get_fast_axis(),
+        self.get_slow_axis(),
+        self.get_origin())
     self._children.append(group)
     return group
 
@@ -290,8 +226,13 @@ class PanelGroup(PanelTreeNode):
 
     '''
     assert(isinstance(panel, Panel))
+    assert(not hasattr(panel, "parent") or panel.parent is None)
     assert(panel in self.root()._container)
-    panel = PanelTreeNode(panel, self)
+    panel.parent = self
+    panel.set_parent_frame(
+        self.get_fast_axis(),
+        self.get_slow_axis(),
+        self.get_origin())
     self._children.append(panel)
     return panel
 
@@ -312,6 +253,16 @@ class PanelGroup(PanelTreeNode):
     ''' Get the index of a child. '''
     return self._children.index(item)
 
+  def parent(self):
+    ''' Return the parent. '''
+    return self._parent
+
+  def root(self):
+    ''' Return the root. '''
+    if self._parent:
+      return self._parent.root()
+    return self
+
   def children(self):
     ''' Return an iterator to the list children. '''
     return iter(self._children)
@@ -330,7 +281,7 @@ class PanelGroup(PanelTreeNode):
 
   def __eq__(self, other):
     ''' Check that this is equal to another group. '''
-    if PanelTreeNode.__eq__(self, other):
+    if VirtualPanel.__eq__(self, other):
       if len(self) != len(other):
         return False
       return all(a == b for a, b in zip(self, other))
@@ -349,7 +300,7 @@ class PanelGroup(PanelTreeNode):
 
   def to_dict(self):
     ''' Convert the panel group to a dictionary. '''
-    d = PanelTreeNode.to_dict(self)
+    d = VirtualPanel.to_dict(self)
     children = []
     for c in self._children:
       if isinstance(c, Panel):
