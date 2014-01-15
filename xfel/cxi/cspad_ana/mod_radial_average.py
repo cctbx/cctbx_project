@@ -10,6 +10,7 @@ __version__ = "$Revision$"
 
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
+import os
 
 class mod_radial_average(common_mode.common_mode_correction):
   """Class for calulating radial average of images
@@ -17,7 +18,9 @@ class mod_radial_average(common_mode.common_mode_correction):
 
   def __init__(self,
                address,
-               xtal_target            = None,
+               out_dirname  = None,
+               out_basename = None,
+               xtal_target  = None,
                **kwds):
     """The mod_radial_average class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -25,12 +28,19 @@ class mod_radial_average(common_mode.common_mode_correction):
     defined in pyana.cfg.
 
     @param address      Address string XXX Que?!
+    @param out_dirname  Optional directory portion of output average pathname
+    @param out_basename Optional filename prefix of output average pathname
     @param xtal_target  Phil file with target paramters, including metrology corrections
     """
 
     super(mod_radial_average, self).__init__(address=address, **kwds)
     self.m_xtal_target          = cspad_tbx.getOptString(xtal_target)
 
+    self._basename = cspad_tbx.getOptString(out_basename)
+    self._dirname = cspad_tbx.getOptString(out_dirname)
+
+    if self._dirname is not None or self._basename is not None:
+      assert self._dirname is not None and self._basename is not None
 
   def beginjob(self, evt, env):
     """The beginjob() function does one-time initialisation from
@@ -91,6 +101,14 @@ class mod_radial_average(common_mode.common_mode_correction):
       "verbose=False"
     ]
 
+    t = self.timestamp
+    s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
+
+    if self._dirname is not None:
+      dest_path = os.path.join(self._dirname, self._basename + s + ".txt")
+      args.append("output_file=%s"%dest_path)
+
+    self.logger.info("Calculating radial average for image %s"%s)
     run(args, d)
 
   def endjob(self, env):

@@ -27,6 +27,8 @@ master_phil = libtbx.phil.parse("""
     .type = bool
   output_bins = True
     .type = bool
+  output_file = None
+    .type = str
 """)
 # Array of handedness possibilities.  Input 0 for no subpixel
 # metrology correction
@@ -90,6 +92,11 @@ def run (args, source_data = None) :
     from libtbx import easy_pickle
     source_data = easy_pickle.load(params.file_path)
 
+  if params.output_file is None:
+    logger = sys.stdout
+  else:
+    logger = open(params.output_file, 'w')
+
   if not "DETECTOR_ADDRESS" in source_data:
     # legacy format; try to guess the address
     LCLS_detector_address = 'CxiDs1-0|Cspad-0'
@@ -123,7 +130,7 @@ def run (args, source_data = None) :
   if params.beam_y is None:
     params.beam_y = img.beamy / img.pixel_size
   if params.verbose:
-    print "I think the beam center is (%s,%s)"%(params.beam_x, params.beam_y)
+    logger.write("I think the beam center is (%s,%s)\n"%(params.beam_x, params.beam_y))
 
   bc = (int(params.beam_x),int(params.beam_y))
 
@@ -154,12 +161,12 @@ def run (args, source_data = None) :
     data = data.as_double()
 
   if params.verbose:
-    sys.stdout.write("Generating average...tile:")
-    sys.stdout.flush()
+    logger.write("Generating average...tile:")
+    logger.flush()
   for tile in xrange(64):
     if params.verbose:
-      sys.stdout.write(" %d"%tile)
-      sys.stdout.flush()
+      logger.write(" %d"%tile)
+      logger.flush()
 
     x1,y1,x2,y2 = get_tile_coords(the_tiles,tile)
 
@@ -167,9 +174,13 @@ def run (args, source_data = None) :
                    (x1,y1),(x2,y2))
 
   if params.verbose:
-    print " Finishing..."
+    logger.write(" Finishing...\n")
 
-  results = sums/counts.as_double()
+  # average, avoiding division by zero
+  results = sums.set_selected(counts <= 0, 0)
+  results /= counts.set_selected(counts <= 0, 1).as_double()
+
+  # calculte standard devations
   std_devs = [math.sqrt((sums_sq[i]-sums[i]*results[i])/counts[i])
               if counts[i] > 0 else 0 for i in xrange(len(sums))]
 
@@ -182,14 +193,14 @@ def run (args, source_data = None) :
     xvals[i] = twotheta
 
     if params.output_bins and "%.3f"%results[i] != "nan":
-     #print "%9.3f %9.3f"%     (twotheta,results[i])        #.xy  format for Rex.cell.
-      print "%9.3f %9.3f %9.3f"%(twotheta,results[i],std_devs[i]) #.xye format for GSASII
-     #print "%.3f %.3f %.3f"%(twotheta,results[i],ds[i])  # include calculated d spacings
+     #logger.write("%9.3f %9.3f\n"%     (twotheta,results[i]))        #.xy  format for Rex.cell.
+      logger.write("%9.3f %9.3f %9.3f\n"%(twotheta,results[i],std_devs[i])) #.xye format for GSASII
+     #logger.write("%.3f %.3f %.3f\n"%(twotheta,results[i],ds[i]))  # include calculated d spacings
     if results[i] > max_result:
       max_twotheta = twotheta
       max_result = results[i]
 
-  print "Maximum 2theta for %s, TS %s: %f, value: %f"%(params.file_path, source_data['TIMESTAMP'], max_twotheta, max_result)
+  logger.write("Maximum 2theta for %s, TS %s: %f, value: %f\n"%(params.file_path, source_data['TIMESTAMP'], max_twotheta, max_result))
 
 
   if params.verbose:
