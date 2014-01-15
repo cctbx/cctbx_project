@@ -1,6 +1,161 @@
 
 from __future__ import division
-from dxtbx.model import HierarchicalDetector
+from dxtbx.model import HierarchicalDetector, PanelTreeNode, VirtualPanel
+
+class TestPanelTreeNode(object):
+
+  def __init__(self):
+    from scitbx import matrix
+    self.root = PanelTreeNode()
+    self.node = PanelTreeNode(parent=self.root)
+
+    root_fast = matrix.col((1, 1, 0)).normalize()
+    root_slow = matrix.col((-1, 1, 0)).normalize()
+    root_origin = (10, 10, 10)
+
+    node_fast = matrix.col((1, 0, 0))
+    node_slow = matrix.col((0, 1, 0))
+    node_origin = (0, 0, 0)
+
+    self.root.set_frame(
+      root_fast,
+      root_slow,
+      root_origin)
+
+    self.node.set_frame(
+      node_fast,
+      node_slow,
+      node_origin)
+
+  def run(self):
+    self.tst_attributes()
+    self.tst_parent_and_root()
+    self.tst_get_local_frame()
+    self.tst_set_local_frame()
+    self.tst_set_parent_frame()
+
+  def tst_attributes(self):
+    assert(self.node.get_name() == '')
+    assert(self.node.get_type() == '')
+    assert(self.node.get_fast_axis() == (1, 0, 0))
+    assert(self.node.get_slow_axis() == (0, 1, 0))
+    assert(self.node.get_normal() == (0, 0, 1))
+    assert(self.node.get_origin() == (0, 0, 0))
+    print 'OK'
+
+  def tst_parent_and_root(self):
+    assert(self.node.parent() == self.root)
+    assert(self.node.root() == self.root)
+    assert(self.root.parent() == None)
+    assert(self.root.root() == self.root)
+    print 'OK'
+
+  def tst_get_local_frame(self):
+    from scitbx import matrix
+    from math import sqrt
+    tm = self.node.get_transformation_matrix()
+    assert(tm == (
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1))
+
+
+    tm = self.node.get_local_transformation_matrix()
+    ex_fast = matrix.col((1, -1, 0)).normalize().elems
+    ex_slow = matrix.col((1, 1, 0)).normalize().elems
+    ex_norm = matrix.col((0, 0, 1)).normalize().elems
+    ex_orig = matrix.col((-sqrt(200), 0, -10)).elems
+    expected = matrix.sqr(
+      ex_fast + (0,) +
+      ex_slow + (0,) +
+      ex_norm + (0,) +
+      ex_orig + (1,)).transpose().elems
+
+    eps = 1e-7
+    assert(len(tm) == len(expected))
+    assert(all(abs(a - b) < eps for a, b in zip(tm, expected)))
+    print 'OK'
+
+    fast = self.node.get_local_fast_axis()
+    slow = self.node.get_local_slow_axis()
+    norm = self.node.get_local_normal()
+    orig = self.node.get_local_origin()
+    assert(all(abs(a-b) < eps for a, b in zip(fast, ex_fast)))
+    assert(all(abs(a-b) < eps for a, b in zip(slow, ex_slow)))
+    assert(all(abs(a-b) < eps for a, b in zip(norm, ex_norm)))
+    assert(all(abs(a-b) < eps for a, b in zip(orig, ex_orig)))
+    print 'OK'
+
+    ld = self.node.get_local_d_matrix()
+    expected = fast + slow + orig
+    assert(all(abs(a-b) < eps for a, b in zip(ld, expected)))
+    print 'OK'
+
+
+  def tst_set_local_frame(self):
+    from scitbx import matrix
+    fast = matrix.col((-1, -1, 0)).normalize()
+    slow = matrix.col((-1, 1, 0)).normalize()
+    origin = (0, 0, 0)
+
+    self.node.set_local_frame(fast, slow, origin)
+
+    fast_get = self.node.get_local_fast_axis()
+    slow_get = self.node.get_local_slow_axis()
+    origin_get = self.node.get_local_origin()
+
+    eps = 1e-7
+    assert(all(abs(a-b) < eps for a, b in zip(fast, fast_get)))
+    assert(all(abs(a-b) < eps for a, b in zip(slow, slow_get)))
+    assert(all(abs(a-b) < eps for a, b in zip(origin, origin_get)))
+    print 'OK'
+
+    ex_fast = matrix.col((0, -1, 0))
+    ex_slow = matrix.col((-1, 0, 0))
+    ex_orig = matrix.col((10, 10, 10))
+    fast = self.node.get_fast_axis()
+    slow = self.node.get_slow_axis()
+    orig = self.node.get_origin()
+    assert(all(abs(a-b) < eps for a, b in zip(fast, ex_fast)))
+    assert(all(abs(a-b) < eps for a, b in zip(slow, ex_slow)))
+    assert(all(abs(a-b) < eps for a, b in zip(orig, ex_orig)))
+    print 'OK'
+
+  def tst_set_parent_frame(self):
+    from scitbx import matrix
+    ex_local_fast = matrix.col((-1, -1, 0)).normalize()
+    ex_local_slow = matrix.col((-1, 1, 0)).normalize()
+    ex_local_origin = (0, 0, 0)
+
+    fast = matrix.col((1, 0, 0))
+    slow = matrix.col((0, 1, 0))
+    origin = matrix.col((0, 0, 0))
+
+    self.node.set_parent_frame(fast, slow, origin)
+
+    local_fast = self.node.get_local_fast_axis()
+    local_slow = self.node.get_local_slow_axis()
+    local_origin = self.node.get_local_origin()
+
+    eps = 1e-7
+    assert(all(abs(a-b) < eps for a, b in zip(local_fast, local_fast)))
+    assert(all(abs(a-b) < eps for a, b in zip(local_slow, local_slow)))
+    assert(all(abs(a-b) < eps for a, b in zip(local_origin, local_origin)))
+    print 'OK'
+
+    ex_fast = matrix.col((-1, -1, 0)).normalize()
+    ex_slow = matrix.col((-1, 1, 0)).normalize()
+    ex_orig = matrix.col((0, 0, 0))
+    fast = self.node.get_fast_axis()
+    slow = self.node.get_slow_axis()
+    orig = self.node.get_origin()
+
+    assert(all(abs(a-b) < eps for a, b in zip(fast, ex_fast)))
+    assert(all(abs(a-b) < eps for a, b in zip(slow, ex_slow)))
+    assert(all(abs(a-b) < eps for a, b in zip(orig, ex_orig)))
+    print 'OK'
+
 
 class Test2:
 
@@ -271,5 +426,7 @@ class Test2:
 if __name__ == '__main__':
   #test = Test()
   #test.run()
+  test = TestPanelTreeNode()
+  test.run()
   test = Test2()
   test.run()
