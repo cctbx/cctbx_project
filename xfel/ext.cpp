@@ -545,6 +545,39 @@ get_isigi_dict(scaling_results const& L){
   return ISIGI;
 }
 
+double distance_between_points(scitbx::vec2<int> const& a, scitbx::vec2<int> const& b) {
+  return std::sqrt((std::pow(b[0]-a[0],2)+std::pow(b[1]-a[1],2)));
+}
+
+void radial_average(scitbx::af::versa<double, scitbx::af::flex_grid<> > & data,
+scitbx::vec2<int> const& beam_center,
+scitbx::af::shared<double> sums,
+scitbx::af::shared<int> counts,
+double pixel_size, double distance,
+scitbx::vec2<int> const& upper_left,
+scitbx::vec2<int> const& lower_right) {
+  std::size_t extent = sums.size();
+  double extent_in_mm = extent * pixel_size;
+  double extent_two_theta = std::atan(extent_in_mm/distance)*180/scitbx::constants::pi;
+
+  std::size_t size_x = data.accessor().focus()[0];
+  std::size_t size_y = data.accessor().focus()[1];
+
+  for(std::size_t y = upper_left[1]; y < lower_right[1]; y++) {
+    for(std::size_t x = upper_left[0]; x < lower_right[0]; x++) {
+      double val = data(x,y);
+      if(val > 0) {
+        scitbx::vec2<int> point((int)x,(int)y);
+        double d_in_mm = distance_between_points(point,beam_center) * pixel_size;
+        double twotheta = std::atan(d_in_mm/distance)*180/scitbx::constants::pi;
+        std::size_t bin = (std::size_t)std::floor(twotheta*extent/extent_two_theta);
+        sums[bin] += val;
+        counts[bin]++;
+      }
+    }
+  }
+}
+
 namespace boost_python { namespace {
 
   boost::python::tuple
@@ -630,6 +663,11 @@ namespace boost_python { namespace {
       .def("parse_from_line",&column_parser::parse_from_line)
     ;
 
+    def("radial_average", &radial_average,
+      (arg("data"), arg("beam_center"), arg("sums"), arg("counts"),
+       arg("pixel_size"), arg("distance"),
+       arg("upper_left"), arg("lower_right")))
+    ;
 }
 }}} // namespace xfel::boost_python::<anonymous>
 

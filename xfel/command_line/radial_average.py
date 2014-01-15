@@ -52,11 +52,13 @@ h_x = 2
 h_y = 3
 
 def run (args, source_data = None) :
+  from xfel import radial_average
+  from scitbx.array_family import flex
   from xfel.detector_formats import reverse_timestamp
   from xfel.detector_formats import detector_format_version as detector_format_function
   from spotfinder.applications.xfel import cxi_phil
   from iotbx.detectors.npy import NpyImage
-  import os
+  import os, sys
   from iotbx.detectors.npy import NpyImage
 
   user_phil = []
@@ -113,8 +115,8 @@ def run (args, source_data = None) :
         reapply_peripheral_margin=False,encode_inactive_as_zeroes=True)
   assert len(the_tiles) == 256
 
-  if params.beam_x is None or params.beam_y is None or img.image_size_fast is None or img.image_size_slow is None:
-    img.initialize_viewer_properties(horizons_phil,params.verbose)
+  #if params.beam_x is None or params.beam_y is None or img.image_size_fast is None or img.image_size_slow is None:
+    #img.initialize_viewer_properties(horizons_phil,params.verbose)
 
   if params.beam_x is None:
     params.beam_x = img.get_beam_center_pixels_fast_slow()[0]
@@ -123,7 +125,7 @@ def run (args, source_data = None) :
   if params.verbose:
     print "I think the beam center is (%s,%s)"%(params.beam_x, params.beam_y)
 
-  bc = (params.beam_x,params.beam_y)
+  bc = (int(params.beam_x),int(params.beam_y))
 
   #hs = (0,9,11,12,16)
   #for i in xrange(17):
@@ -133,18 +135,22 @@ def run (args, source_data = None) :
   #return
 
   extent = int(math.ceil(max(distance((0,0),bc),
-                             distance((img.image_size_fast,0),bc),
-                             distance((0,img.image_size_slow),bc),
-                             distance((img.image_size_fast,img.image_size_slow),bc))))
+                             distance((img.size1,0),bc),
+                             distance((0,img.size2),bc),
+                             distance((img.size1,img.size2),bc))))
 
   if params.n_bins < extent:
     params.n_bins = extent
 
-  extent_in_mm = extent * img.pixel_resolution
+  extent_in_mm = extent * img.pixel_size
   extent_two_theta = math.atan(extent_in_mm/img.distance)*180/math.pi
 
-  results = []
-  for i in range(params.n_bins): results.append([])
+  sums   = flex.double(params.n_bins) * 0
+  counts = flex.int(params.n_bins) * 0
+  data = img.get_raw_data()
+
+  if hasattr(data,"as_double"):
+    data = data.as_double()
 
   if params.verbose:
     sys.stdout.write("Generating average...tile:")
@@ -155,39 +161,33 @@ def run (args, source_data = None) :
       sys.stdout.flush()
 
     x1,y1,x2,y2 = get_tile_coords(the_tiles,tile)
-    tcx, tcy = get_tile_center(the_tiles, tile)
 
-    for y in xrange(y1,y2):
-      for x in xrange(x1,x2):
-        corrected = apply_sub_pixel_metrology(tile,x,y,tcx,tcy,horizons_phil,params.handedness)
-        if corrected is None: continue
-        val = img.get_pixel_intensity((x,y))
-        if val > 0:
-          d_in_mm = distance(corrected,bc) * img.pixel_resolution
-          twotheta = math.atan(d_in_mm/img.distance)*180/math.pi
-          results[int(math.floor(twotheta*params.n_bins/extent_two_theta))].append(val)
+    radial_average(data,bc,sums,counts,img.pixel_size,img.distance,
+                   (x1,y1),(x2,y2))
 
   if params.verbose:
     print " Finishing..."
+
+  results = sums/counts.as_double()
 
   xvals = np.ndarray((len(results),),float)
   max_twotheta = float('-inf')
   max_result   = float('-inf')
 
   for i in range(len(results)):
-    if len(results[i]) > 0:
-      stddev = np.std(results[i])
-      results[i] = np.mean(results[i])
-    else:
-      stddev = 0
-      results[i] = 0
+    #if len(results[i]) > 0:
+      #stddev = np.std(results[i])
+      #results[i] = np.mean(results[i])
+    #else:
+      #stddev = 0
+      #results[i] = 0
 
     twotheta = i * extent_two_theta/params.n_bins
     xvals[i] = twotheta
 
     if params.verbose and "%.3f"%results[i] != "nan":
-     #print "%.3f %.3f"%     (twotheta,results[i])        #.xy  format for Rex.cell.
-      print "%.3f %.3f %.3f"%(twotheta,results[i],stddev) #.xye format for GSASII
+      print "%9.3f %9.3f"%     (twotheta,results[i])        #.xy  format for Rex.cell.
+     #print "%9.3f %9.3f %9.3f"%(twotheta,results[i],stddev) #.xye format for GSASII
      #print "%.3f %.3f %.3f"%(twotheta,results[i],ds[i])  # include calculated d spacings
     if results[i] > max_result:
       max_twotheta = twotheta
