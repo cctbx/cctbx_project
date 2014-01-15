@@ -53,6 +53,7 @@ class run(object):
                try_expanal = True,
                try_expmin = False,
                verbose=False):
+    assert f_obs.indices().all_eq(r_free_flags.indices())
     self.log = log
     self.scale_method = scale_method
     self.verbose = verbose
@@ -73,9 +74,19 @@ class run(object):
     self.auto = auto
     self.bin_selections = bin_selections
     self.k_exp_overall, self.b_exp_overall = None,None
-    self.selection_work = miller.array(
-      miller_set=self.f_obs,
-      data      =~self.r_free_flags.data())
+    if(self.bin_selections is None):
+      self.bin_selections = self.f_obs.log_binning()
+    # If R-free flags are bad - discard them and use all reflections instead.
+    ifg = self.is_flags_good()
+    if(ifg):
+      self.selection_work = miller.array(
+        miller_set = self.f_obs,
+        data       = ~self.r_free_flags.data())
+    else:
+      self.selection_work = miller.array(
+        miller_set = self.f_obs,
+        data       = flex.bool(self.f_obs.data().size(), True))
+    #
     self.ss = ss
     def init_result():
       return group_args(
@@ -99,8 +110,6 @@ class run(object):
     self.core = mmtbx.arrays.init(f_calc = f_calc, f_masks = f_mask)
     if(abs(self.core.f_mask()).data().all_eq(0)): self.bulk_solvent=False
     self.cores_and_selections = []
-    if(self.bin_selections is None):
-      self.bin_selections = self.f_obs.log_binning()
     self.low_resolution_selection = self._low_resolution_selection()
     self.high_resolution_selection = self._high_resolution_selection()
     if(verbose):
@@ -162,6 +171,19 @@ class run(object):
         d2,d1,n,self.r_low)
       print >> log, "-"*80
     self.r_final = self.r_factor()
+
+  def is_flags_good(self):
+    """
+    This function detects inadequate R-free flags.
+    """
+    result = True
+    fd = self.r_free_flags.data()
+    for i_sel, sel in enumerate(self.bin_selections):
+      fd_ = fd.select(sel)
+      if(fd_.count(True)==0):
+        result = False
+        break
+    return result
 
   def set_k_isotropic_exp(self, r_start,use_scale_r, verbose,
                           b_lower_limit = -100):

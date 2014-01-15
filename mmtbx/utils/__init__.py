@@ -459,6 +459,18 @@ class determine_data_and_flags(object):
       print >> self.log, \
         "Intensities converted to amplitudes for use in refinement."
       print >> self.log
+    #
+    sigmas = f_obs.sigmas()
+    if(sigmas is not None):
+      selection  = sigmas > 0
+      selection &= f_obs.data()>=0
+      n_both_zero = selection.count(False)
+      if(n_both_zero>0):
+        print >> self.log, \
+          "Number of pairs (Fobs,sigma)=(0,0) is %s. They will be removed"%\
+          n_both_zero
+        f_obs = f_obs.select(selection)
+    #
     f_obs.set_observation_type_xray_amplitude()
     f_obs = f_obs.map_to_asu()
     selection = f_obs.all_selection()
