@@ -128,11 +128,21 @@ class TestPanelTreeNode(object):
     ex_local_slow = matrix.col((-1, 1, 0)).normalize()
     ex_local_origin = (0, 0, 0)
 
-    fast = matrix.col((1, 0, 0))
-    slow = matrix.col((0, 1, 0))
+    fast = matrix.col((1, 0, 0)).normalize()
+    slow = matrix.col((0, 1, 0)).normalize()
     origin = matrix.col((0, 0, 0))
+    normal = fast.cross(slow)
 
-    self.node.set_parent_frame(fast, slow, origin)
+    # Get the new parent transformation matrix
+    tp2 = matrix.sqr(
+     fast.elems + (0,) +
+     slow.elems + (0,) +
+     normal.elems + (0,) +
+     origin.elems + (1,)).transpose()
+
+    tp1 = matrix.sqr(self.node.parent().get_transformation_matrix())
+    td = tp2 * tp1.inverse()
+    self.node.apply_transformation(td)
 
     local_fast = self.node.get_local_fast_axis()
     local_slow = self.node.get_local_slow_axis()
