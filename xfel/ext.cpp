@@ -546,7 +546,7 @@ get_isigi_dict(scaling_results const& L){
 }
 
 double distance_between_points(scitbx::vec2<int> const& a, scitbx::vec2<int> const& b) {
-  return std::sqrt((std::pow(b[0]-a[0],2)+std::pow(b[1]-a[1],2)));
+  return std::sqrt((std::pow(double(b[0]-a[0]),2)+std::pow(double(b[1]-a[1]),2)));
 }
 
 void radial_average(scitbx::af::versa<double, scitbx::af::flex_grid<> > & data,
