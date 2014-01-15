@@ -12,6 +12,7 @@
 #define DXTBX_MODEL_SCAN_HELPERS_H
 
 #include <cmath>
+#include <limits>
 #include <scitbx/constants.h>
 #include <scitbx/vec2.h>
 #include <scitbx/array_family/shared.h>
@@ -45,7 +46,7 @@ namespace dxtbx { namespace model {
     double diff_angle_range1 = mod_2pi(angle - range[1]);
     return range[1] - range[0] >= two_pi
         || diff_angle_range1 >= diff_angle_range0
-        || diff_angle_range1 == 0;
+        || std::abs(diff_angle_range1) < std::numeric_limits<double>::epsilon();
   }
 
   /**
