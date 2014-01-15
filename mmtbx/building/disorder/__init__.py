@@ -252,6 +252,8 @@ filter_params_str = """
     .type = bool
   sampling_radius = 2.5
     .type = float
+  ignore_stub_residues = False
+    .type = bool
 """
 
 def is_validation_outlier (validation, params) :
@@ -333,8 +335,15 @@ def filter_before_build (
         mon_lib_srv=mon_lib_srv,
         ignore_hydrogens=True)
       if (len(missing_atoms) > 0) :
-        print >> log, "  %s: missing %d atoms" % (id_str, len(missing_atoms))
-        continue
+        # residues modeled as pseudo-ALA are allowed by default; partially
+        # missing sidechains are more problematic
+        if ((building.is_stub_residue(atom_group)) and
+            (not params.ignore_stub_residues)) :
+          pass
+        else :
+          print >> log, "  %s: missing or incomplete sidechain" % \
+            (id_str, len(missing_atoms))
+          continue
       validation = multi_criterion.get_residue_group_data(residue_group)
       is_outlier = is_validation_outlier(validation, params)
       if (is_outlier) :
