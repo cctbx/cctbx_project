@@ -529,7 +529,7 @@ class installer (object) :
     cocoa = False
     if (self.flag_is_mac) :
       if (detect_osx_version() >= 10) :
-        print >> self.log, "  running OS 10.6 or later, switching to wx 2.9"
+        print >> self.log, "  running OS 10.6 or later, switching to wx 3.0"
         pkg_name = WXPYTHON_DEV_PKG
         cocoa = True
     pkg = self.fetch_package(pkg_name)
@@ -539,7 +539,6 @@ class installer (object) :
     config_opts = [
       "--disable-mediactrl",
       "--with-opengl",
-      "--disable-unicode",
       "--prefix=\"%s\"" % self.base_dir,
     ]
     if (self.options.debug) :
@@ -550,7 +549,7 @@ class installer (object) :
       config_opts.extend(["--enable-optimize", "--disable-debugreport"])
     if (cocoa) :
       config_opts.extend(["--with-osx_cocoa", "--enable-monolithic",
-        "--with-macosx-version-min=10.6"])
+        "--with-macosx-version-min=10.6", "--enable-unicode",])
       os.environ["CXXFLAGS"] = \
         "-DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_6"
     elif (self.flag_is_mac) :
@@ -577,13 +576,12 @@ class installer (object) :
       "BUILD_STC=0",
       "BUILD_GIZMOS=0",
       "BUILD_DLLWIDGET=0",
-      "UNICODE=0",
     ]
     if (cocoa) :
       os.environ['CFLAGS'] = "-arch x86_64"
-      wxpy_build_opts.extend(["WXPORT=osx_cocoa"])
+      wxpy_build_opts.extend(["WXPORT=osx_cocoa", "UNICODE=1",])
     else :
-      wxpy_build_opts.append("BUILD_OGL=0")
+      wxpy_build_opts.extend(["BUILD_OGL=0", "UNICODE=0"])
     self.chdir("wxPython", log=pkg_log)
     debug_flag = ""
     if (self.options.debug) :
