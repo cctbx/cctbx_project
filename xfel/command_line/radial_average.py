@@ -25,6 +25,8 @@ master_phil = libtbx.phil.parse("""
     .type = int
   verbose = True
     .type = bool
+  output_bins = True
+    .type = bool
 """)
 # Array of handedness possibilities.  Input 0 for no subpixel
 # metrology correction
@@ -82,6 +84,7 @@ def run (args, source_data = None) :
   assert params.handedness is not None
   assert params.n_bins is not None
   assert params.verbose is not None
+  assert params.output_bins is not None
 
   if source_data is None:
     from libtbx import easy_pickle
@@ -115,13 +118,10 @@ def run (args, source_data = None) :
         reapply_peripheral_margin=False,encode_inactive_as_zeroes=True)
   assert len(the_tiles) == 256
 
-  #if params.beam_x is None or params.beam_y is None or img.image_size_fast is None or img.image_size_slow is None:
-    #img.initialize_viewer_properties(horizons_phil,params.verbose)
-
   if params.beam_x is None:
-    params.beam_x = img.get_beam_center_pixels_fast_slow()[0]
+    params.beam_x = img.beamx / img.pixel_size
   if params.beam_y is None:
-    params.beam_y = img.get_beam_center_pixels_fast_slow()[1]
+    params.beam_y = img.beamy / img.pixel_size
   if params.verbose:
     print "I think the beam center is (%s,%s)"%(params.beam_x, params.beam_y)
 
@@ -145,9 +145,10 @@ def run (args, source_data = None) :
   extent_in_mm = extent * img.pixel_size
   extent_two_theta = math.atan(extent_in_mm/img.distance)*180/math.pi
 
-  sums   = flex.double(params.n_bins) * 0
-  counts = flex.int(params.n_bins) * 0
-  data = img.get_raw_data()
+  sums    = flex.double(params.n_bins) * 0
+  sums_sq = flex.double(params.n_bins) * 0
+  counts  = flex.int(params.n_bins) * 0
+  data    = img.get_raw_data()
 
   if hasattr(data,"as_double"):
     data = data.as_double()
@@ -162,32 +163,27 @@ def run (args, source_data = None) :
 
     x1,y1,x2,y2 = get_tile_coords(the_tiles,tile)
 
-    radial_average(data,bc,sums,counts,img.pixel_size,img.distance,
+    radial_average(data,bc,sums,sums_sq,counts,img.pixel_size,img.distance,
                    (x1,y1),(x2,y2))
 
   if params.verbose:
     print " Finishing..."
 
   results = sums/counts.as_double()
+  std_devs = [math.sqrt((sums_sq[i]-sums[i]*results[i])/counts[i])
+              if counts[i] > 0 else 0 for i in xrange(len(sums))]
 
   xvals = np.ndarray((len(results),),float)
   max_twotheta = float('-inf')
   max_result   = float('-inf')
 
-  for i in range(len(results)):
-    #if len(results[i]) > 0:
-      #stddev = np.std(results[i])
-      #results[i] = np.mean(results[i])
-    #else:
-      #stddev = 0
-      #results[i] = 0
-
+  for i in xrange(len(results)):
     twotheta = i * extent_two_theta/params.n_bins
     xvals[i] = twotheta
 
-    if params.verbose and "%.3f"%results[i] != "nan":
-      print "%9.3f %9.3f"%     (twotheta,results[i])        #.xy  format for Rex.cell.
-     #print "%9.3f %9.3f %9.3f"%(twotheta,results[i],stddev) #.xye format for GSASII
+    if params.output_bins and "%.3f"%results[i] != "nan":
+     #print "%9.3f %9.3f"%     (twotheta,results[i])        #.xy  format for Rex.cell.
+      print "%9.3f %9.3f %9.3f"%(twotheta,results[i],std_devs[i]) #.xye format for GSASII
      #print "%.3f %.3f %.3f"%(twotheta,results[i],ds[i])  # include calculated d spacings
     if results[i] > max_result:
       max_twotheta = twotheta

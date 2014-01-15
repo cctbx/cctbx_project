@@ -552,6 +552,7 @@ double distance_between_points(scitbx::vec2<int> const& a, scitbx::vec2<int> con
 void radial_average(scitbx::af::versa<double, scitbx::af::flex_grid<> > & data,
 scitbx::vec2<int> const& beam_center,
 scitbx::af::shared<double> sums,
+scitbx::af::shared<double> sums_sq,
 scitbx::af::shared<int> counts,
 double pixel_size, double distance,
 scitbx::vec2<int> const& upper_left,
@@ -572,6 +573,7 @@ scitbx::vec2<int> const& lower_right) {
         double twotheta = std::atan(d_in_mm/distance)*180/scitbx::constants::pi;
         std::size_t bin = (std::size_t)std::floor(twotheta*extent/extent_two_theta);
         sums[bin] += val;
+        sums_sq[bin] += val*val;
         counts[bin]++;
       }
     }
@@ -664,7 +666,7 @@ namespace boost_python { namespace {
     ;
 
     def("radial_average", &radial_average,
-      (arg("data"), arg("beam_center"), arg("sums"), arg("counts"),
+      (arg("data"), arg("beam_center"), arg("sums"), arg("sums_sq"), arg("counts"),
        arg("pixel_size"), arg("distance"),
        arg("upper_left"), arg("lower_right")))
     ;
