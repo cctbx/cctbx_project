@@ -254,8 +254,9 @@ def calculate_mean_intensities(miller_array, log=None):
                                  pt_2=m_2,
                                  delta=delta)
             assert (d_1 > d > d_2)
-            if (not ((m_1 > mean_i > m_2) or (m_2 > mean_i > m_1)) and
-                (not (m_1 == mean_i == m_2 == 0.0))) :
+            if ( not ( (m_1 > mean_i > m_2) or (m_2 > mean_i > m_1) ) and
+                 not (m_1 == mean_i == m_2 == 0.0) and
+                     (math.fabs(m_1-m_2) > 1.0e-10) ) :
               raise RuntimeError(
                 "Internal error: i_bin=%d d=%f m_1=%f mean_i=%f m_2=%f" %
                   (i_bin, d, m_1, mean_i, m_2))
@@ -291,12 +292,12 @@ def calculate_mean_intensities(miller_array, log=None):
                                  pt_2=m_2,
                                  delta=delta)
             assert (d_1 > d > d_2)
-            if ((not ((m_1 > mean_i > m_2) or (m_2 > mean_i > m_1))) and
-                (not (m_1 == mean_i == m_2 == 0.0))) :
+            if ( not ( (m_1 > mean_i > m_2) or (m_2 > mean_i > m_1) ) and
+                 not (m_1 == mean_i == m_2 == 0.0) and
+                     (math.fabs(m_1-m_2) > 1.0e-10) ) :
               raise RuntimeError(
                 "Internal error: i_bin=%d d=%f m_1=%f mean_i=%f m_2=%f" %
                   (i_bin, d, m_1, mean_i, m_2))
-            #print d_1, d, d_2, m_1, mean_i, m_2
           d_mean_intensities[index] = mean_i
         # d = the current bin center
         else:
@@ -407,6 +408,7 @@ def french_wilson_scale(
       for I, sigma_I, index in zip(acen.data(),
                                    acen.sigmas(),
                                    acen.indices()):
+        mean_intensity = d_mean_intensities[index]
         if (sigma_I <= 0) :
           if I <= 0 or sigma_I < 0 :
             rejected.append( (index, I, sigma_I, mean_intensity) )
@@ -417,7 +419,6 @@ def french_wilson_scale(
             F = math.sqrt(I)
             sigma_F = sigma_I
         else :
-          mean_intensity = d_mean_intensities[index]
           J, sigma_J, F, sigma_F = fw_acentric(
                                      I=I,
                                      sigma_I=sigma_I,
