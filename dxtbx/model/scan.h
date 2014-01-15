@@ -182,7 +182,7 @@ namespace dxtbx { namespace model {
 
     /** Check the scans are the same */
     bool operator==(const Scan &rhs) const {
-      double eps = 1.0e-6;
+      double eps = 1e-7;
       return image_range_ == rhs.image_range_
           && std::abs(oscillation_[0] - rhs.oscillation_[0]) < eps
           && std::abs(oscillation_[1] - rhs.oscillation_[1]) < eps
@@ -219,7 +219,8 @@ namespace dxtbx { namespace model {
      * Append the rhs scan onto the current scan
      */
     Scan& operator+=(const Scan &rhs) {
-      double eps = 1e-6;
+      // Set the epsilon to 1% of oscillation range
+      double eps = 0.01 * oscillation_[1];
       DXTBX_ASSERT(std::abs(oscillation_[1]) > 0.0);
       DXTBX_ASSERT(image_range_[1] + 1 == rhs.image_range_[0]);
       DXTBX_ASSERT(std::abs(oscillation_[1] - rhs.oscillation_[1]) < eps);
