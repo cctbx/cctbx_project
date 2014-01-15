@@ -58,17 +58,32 @@ def run(args):
     else:
       is_first = False
     if (len(flip) == 10): #not an altloc
-      selection += " (chain '%s' and resseq %s and resname %s)" % \
-        (flip[0:2], flip[2:6].strip(), flip[7:])
-      restrain += " (chain '%s' and resseq %s and resname %s)" % \
-        (flip[0:2], flip[2:6].strip(), flip[7:])
+      chain_id = flip[0:2]
+      if chain_id == '  ':
+        selection += " (resseq %s and resname %s)" % \
+          (flip[2:6].strip(), flip[7:])
+        restrain += " (resseq %s and resname %s)" % \
+          (flip[2:6].strip(), flip[7:])
+      else:
+        selection += " (chain '%s' and resseq %s and resname %s)" % \
+          (flip[0:2], flip[2:6].strip(), flip[7:])
+        restrain += " (chain '%s' and resseq %s and resname %s)" % \
+          (flip[0:2], flip[2:6].strip(), flip[7:])
     else: #is an alternate
-      selection += \
-        " (chain '%s' and resseq %s and resname %s and altid '%s')" % \
-        (flip[0:2], flip[2:6].strip(), flip[7:10], flip[-1:])
-      restrain += \
-        " (chain '%s' and resseq %s and resname %s and altid '%s')" % \
-        (flip[0:2], flip[2:6].strip(), flip[7:10], flip[-1:])
+      if chain_id == '  ':
+        selection += \
+          " (resseq %s and resname %s and altid '%s')" % \
+          (flip[2:6].strip(), flip[7:10], flip[-1:])
+        restrain += \
+          " (resseq %s and resname %s and altid '%s')" % \
+          (flip[2:6].strip(), flip[7:10], flip[-1:])
+      else:
+        selection += \
+          " (chain '%s' and resseq %s and resname %s and altid '%s')" % \
+          (flip[0:2], flip[2:6].strip(), flip[7:10], flip[-1:])
+        restrain += \
+          " (chain '%s' and resseq %s and resname %s and altid '%s')" % \
+          (flip[0:2], flip[2:6].strip(), flip[7:10], flip[-1:])
   selection += " )"
   restrain += " )"
   sigma = "reference_restraints.coordinate_sigma=0.05"
