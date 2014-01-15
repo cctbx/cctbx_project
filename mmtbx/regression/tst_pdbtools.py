@@ -818,7 +818,7 @@ ATOM     20  O  BHOH B   4       4.132   9.963   7.800  0.40 15.00           O
 ATOM     21 ZN   ZN  C   5       8.000  12.124  11.900  0.75 20.00          ZN
 """
   open("tst_pdbtools_norm_occ.pdb", "w").write(pdb_in)
-  cmd = "phenix.pdbtools tst_pdbtools_norm_occ.pdb occupancies.normalize=True selection='not element ZN'"
+  cmd = 'phenix.pdbtools tst_pdbtools_norm_occ.pdb occupancies.normalize=True selection="not element ZN"'
   run_command(command=cmd, verbose=False)
   pdb_new = open("tst_pdbtools_norm_occ.pdb_modified.pdb").read()
   assert (pdb_new == """\
