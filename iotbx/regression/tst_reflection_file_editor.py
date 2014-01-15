@@ -720,7 +720,7 @@ def exercise_command_line () :
     args=[file1, file2, "resolve_label_conflicts=True", "extend=False",
           "export_for_ccp4=True", "preserve_input_values=False",
           "output_file=%s" % test_file2],
-    )#out=log)
+    out=log)
   mtz_in = file_reader.any_file(test_file2)
   miller_arrays = mtz_in.file_object.as_miller_arrays()
   assert (len(set(miller_arrays[-2].data())) == 5)
