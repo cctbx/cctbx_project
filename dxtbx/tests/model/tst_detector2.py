@@ -1,6 +1,7 @@
 
 from __future__ import division
 from dxtbx.model import HierarchicalDetector, PanelTreeNode, VirtualPanel
+from dxtbx.model import PanelGroup
 
 class TestPanelTreeNode(object):
 
@@ -165,6 +166,83 @@ class TestPanelTreeNode(object):
     assert(all(abs(a-b) < eps for a, b in zip(slow, ex_slow)))
     assert(all(abs(a-b) < eps for a, b in zip(orig, ex_orig)))
     print 'OK'
+
+
+class TestPanelGroup(object):
+
+  def __init__(self):
+
+    # Create the panel group
+    self.root = PanelGroup()
+    self.g1 = self.root.add_group()
+    self.g2 = self.g1.add_group()
+
+  def run(self):
+    self.tst_set_frame()
+    self.tst_set_local_frame()
+
+  def tst_set_frame(self):
+    from scitbx import matrix
+
+    # Set the root frame
+    root_fast = matrix.col((1, 1, 0)).normalize()
+    root_slow = matrix.col((-1, 1, 0)).normalize()
+    root_origin = (10, 10, 10)
+    self.root.set_frame(
+      root_fast,
+      root_slow,
+      root_origin)
+
+    # Assert that all frames equal this
+    ex = matrix.sqr(
+      root_fast.elems +
+      root_slow.elems +
+      root_origin).transpose().elems
+
+    assert(all(a-b) < eps for a, b in zip(ex, self.root.get_d_matrix()))
+    assert(all(a-b) < eps for a, b in zip(ex, self.g1.get_d_matrix()))
+    assert(all(a-b) < eps for a, b in zip(ex, self.g2.get_d_matrix()))
+
+    print 'OK'
+
+  def tst_set_local_frame(self):
+    from scitbx import matrix
+
+    # Set the root frame
+    root_fast = matrix.col((1, 1, 0)).normalize()
+    root_slow = matrix.col((-1, 1, 0)).normalize()
+    root_origin = (10, 10, 10)
+    self.root.set_local_frame(
+      root_fast,
+      root_slow,
+      root_origin)
+
+    # Assert that all frames equal this
+    ex = matrix.sqr(
+      root_fast.elems +
+      root_slow.elems +
+      root_origin).transpose().elems
+
+    assert(all(a-b) < eps for a, b in zip(ex, self.root.get_d_matrix()))
+    assert(all(a-b) < eps for a, b in zip(ex, self.g1.get_d_matrix()))
+    assert(all(a-b) < eps for a, b in zip(ex, self.g2.get_d_matrix()))
+
+    print 'OK'
+
+    # Set the G1 local frame
+    g1_fast = matrix.col((1, -1, 0))
+    g1_slow = matrix.col((1, 1, 0))
+    g1_orig = matrix.col((0, 0, 0))
+    self.g1.set_local_frame(g1_fast, g1_slow, g1_orig)
+
+    ex_g1_fast = (1, 0, 0)
+    ex_g1_slow = (0, 1, 0)
+    ex_g1_orig = (10, 10, 10)
+    ex_g1 = matrix.col(ex_g1_fast + ex_g1_slow + ex_g1_orig).transpose().elems
+
+    assert(all(a-b) < eps for a, b in zip(ex, self.root.get_d_matrix()))
+    assert(all(a-b) < eps for a, b in zip(ex_g1, self.g1.get_d_matrix()))
+    assert(all(a-b) < eps for a, b in zip(ex_g1, self.g2.get_d_matrix()))
 
 
 class Test2:
@@ -437,6 +515,8 @@ if __name__ == '__main__':
   #test = Test()
   #test.run()
   test = TestPanelTreeNode()
+  test.run()
+  test = TestPanelGroup()
   test.run()
   test = Test2()
   test.run()
