@@ -168,7 +168,8 @@ Full parameters:
         is_shelx_file = True
     if (file_arg is not None) :
       from iotbx import file_reader
-      f = file_reader.any_file(os.path.abspath(file_arg))
+      f = file_reader.any_file(os.path.abspath(file_arg),
+        raise_sorry_if_not_expected_format=True)
       if (f.file_type is not None) :
         if (not f.file_type in self._type_counts) :
           self._type_counts[f.file_type] = 0
