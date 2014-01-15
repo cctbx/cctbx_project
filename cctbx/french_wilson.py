@@ -313,12 +313,16 @@ def french_wilson_scale(
       log=None):
   from cctbx.array_family import flex
   if not miller_array.is_xray_intensity_array():
-    raise Sorry("Input array appears to be amplitudes. This method is only appropriate for input intensities.")
+    raise Sorry("Input array appears to be amplitudes. "+
+      "This method is only appropriate for input intensities.")
   if miller_array.unit_cell() is None:
     raise Sorry("No unit cell information found. Please supply unit cell data.")
   if miller_array.crystal_symmetry() is None:
     raise Sorry("No crystal symmetry information found. Please supply "+
                 "crystal symmetry data.")
+  if miller_array.sigmas() is None:
+    raise Sorry("Input array does not contain sigma values. "+
+      "This method requires input intensities with associated sigmas.")
   if (not miller_array.is_unique_set_under_symmetry()) :
     if (merge) :
       miller_array = miller_array.merge_equivalents().array()
