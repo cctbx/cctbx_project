@@ -20,6 +20,138 @@ from dxtbx_model_ext import SimplePxMmStrategy, ParallaxCorrectedPxMmStrategy
 from detector_helpers import detector_helper_sensors
 from detector_helpers import find_undefined_value
 
+class PanelTreeNode(object):
+  ''' A class to wrap a virtual panel object and project methods for setting
+  parent and local coordinate frames for the hierarchical detector model. '''
+
+  def __init__(self, node=None, parent=None):
+    ''' If no node is set, then create a virtual panel node. '''
+    if node is None:
+      node = VirtualPanel()
+    self._node = node
+    self._parent = parent
+
+  def __getattr__(self, attr):
+    ''' Inherit the interface from the node. '''
+    return getattr(self._node, attr)
+
+  def parent(self):
+    ''' Return the parent. '''
+    return self._parent
+
+  def root(self):
+    ''' Return the root. '''
+    if self._parent:
+      return self._parent.root()
+    return self
+
+  def set_parent_frame(self, fast_axis, slow_axis, origin):
+    ''' Set the parent frame. '''
+    from scitbx import matrix
+
+    # Check if the parent is None
+    if self.parent() is None:
+      raise RuntimeError('expected parent, got None')
+
+    # Normalize the axes
+    fast_axis = matrix.col(fast_axis).normalize()
+    slow_axis = matrix.col(slow_axis).normalize()
+    normal = fast_axis.cross(slow_axis)
+    origin = tuple(origin)
+
+    # Get the local matrix
+    tl = matrix.sqr(self.get_local_transformation_matrix())
+
+    # Get the new parent transformation matrix
+    tp = matrix.sqr(
+     fast_axis.elems + (0,) +
+     slow_axis.elems + (0,) +
+     normal.elems    + (0,) +
+     origin          + (1,)).transpose()
+
+    # Set the current matrix
+    tgt = (tp * tl).transpose()
+    self.set_frame(tgt[0:3], tgt[4:7], tgt[12:15])
+
+  def set_local_frame(self, fast_axis, slow_axis, origin):
+    ''' Set the local frame. '''
+    from scitbx import matrix
+
+    # Check if the parent is None
+    if self.parent() is None:
+      self.set_frame(fast_axis, slow_axis, origin)
+
+    # Normalize the axes
+    fast_axis = matrix.col(fast_axis).normalize()
+    slow_axis = matrix.col(slow_axis).normalize()
+    normal = fast_axis.cross(slow_axis)
+
+    # Get the parent transformation matrix
+    tp = matrix.sqr(self.parent().get_transformation_matrix())
+
+    # Get the local transformation matrix
+    tl = matrix.sqr(
+     fast_axis.elems + (0,) +
+     slow_axis.elems + (0,) +
+     normal.elems    + (0,) +
+     origin          + (1,)).transpose()
+
+    # Set the current frame
+    tgt = (tp * tl).transpose()
+    self.set_frame(tgt[0:3], tgt[4:7], tgt[12:15])
+
+
+  def get_local_d_matrix(self):
+    ''' Get the local d matrix. '''
+    from scitbx import matrix
+    if self.parent() is None:
+      return self.get_d_matrix()
+    tl = matrix.sqr(self.get_local_transformation_matrix()).transpose()
+    return matrix.sqr(tl[0:3] + tl[4:7] + tl[12:15]).elems
+
+  def get_transformation_matrix(self):
+    ''' Get the transformation matrix. '''
+    from scitbx import matrix
+    return matrix.sqr(
+     self.get_fast_axis() + (0,) +
+     self.get_slow_axis() + (0,) +
+     self.get_normal()    + (0,) +
+     self.get_origin()    + (1,)).transpose().elems
+
+  def get_local_transformation_matrix(self):
+    ''' Get the local transformation matrix. '''
+    from scitbx import matrix
+    if self.parent() is None:
+      return self.get_transformation_matrix()
+    tp = matrix.sqr(self.parent().get_transformation_matrix())
+    tg = matrix.sqr(self.get_transformation_matrix())
+    return (tp.inverse() * tg).elems
+
+  def get_local_fast_axis(self):
+    ''' Get the local fast axis vector. '''
+    from scitbx import matrix
+    dl = matrix.sqr(self.get_local_transformation_matrix()).transpose()
+    return dl[0:3]
+
+  def get_local_slow_axis(self):
+    ''' Get the local slow axis vector. '''
+    from scitbx import matrix
+    dl = matrix.sqr(self.get_local_transformation_matrix()).transpose()
+    return dl[4:7]
+
+  def get_local_origin(self):
+    ''' Get the local origin vector. '''
+    from scitbx import matrix
+    dl = matrix.sqr(self.get_local_transformation_matrix()).transpose()
+    return dl[12:15]
+
+  def get_local_normal(self):
+    ''' Get the local normal vector. '''
+    from scitbx import matrix
+    dl = matrix.sqr(self.get_local_transformation_matrix()).transpose()
+    return dl[8:11]
+
+
 class PanelGroup(VirtualPanel):
   ''' A class providing an iterface to a group of panels.
 
