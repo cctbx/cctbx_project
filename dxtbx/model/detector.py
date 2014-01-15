@@ -45,32 +45,11 @@ class PanelTreeNode(object):
       return self._parent.root()
     return self
 
-  def set_parent_frame(self, fast_axis, slow_axis, origin):
-    ''' Set the parent frame. '''
+  def apply_transformation(self, t):
+    ''' Apply a transformation to the current matrix. '''
     from scitbx import matrix
-
-    # Check if the parent is None
-    if self.parent() is None:
-      raise RuntimeError('expected parent, got None')
-
-    # Normalize the axes
-    fast_axis = matrix.col(fast_axis).normalize()
-    slow_axis = matrix.col(slow_axis).normalize()
-    normal = fast_axis.cross(slow_axis)
-    origin = tuple(origin)
-
-    # Get the local matrix
-    tl = matrix.sqr(self.get_local_transformation_matrix())
-
-    # Get the new parent transformation matrix
-    tp = matrix.sqr(
-     fast_axis.elems + (0,) +
-     slow_axis.elems + (0,) +
-     normal.elems    + (0,) +
-     origin          + (1,)).transpose()
-
-    # Set the current matrix
-    tgt = (tp * tl).transpose()
+    tg = matrix.sqr(self.get_transformation_matrix())
+    tgt = (t * tg).transpose()
     self.set_frame(tgt[0:3], tgt[4:7], tgt[12:15])
 
   def set_local_frame(self, fast_axis, slow_axis, origin):
@@ -94,12 +73,11 @@ class PanelTreeNode(object):
      fast_axis.elems + (0,) +
      slow_axis.elems + (0,) +
      normal.elems    + (0,) +
-     origin          + (1,)).transpose()
+     tuple(origin)   + (1,)).transpose()
 
     # Set the current frame
     tgt = (tp * tl).transpose()
     self.set_frame(tgt[0:3], tgt[4:7], tgt[12:15])
-
 
   def get_local_d_matrix(self):
     ''' Get the local d matrix. '''
