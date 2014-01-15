@@ -73,6 +73,15 @@ def remove_sidechain_atoms (pdb_objects) :
       if (not atom.name.strip() in ["CA","C","N","O","CB"]) :
         atom.parent().remove_atom(atom)
 
+def is_stub_residue (atom_group) :
+  if (atom_group.resname in ["GLY","ALA"]) :
+    return True
+  has_sidechain_atoms = False
+  for atom in atom_group.atoms() :
+    if (not atom.name.strip() in ["H","HA","C","CA","CB","N","O",]) :
+      has_sidechain_atoms = True
+  return not has_sidechain_atoms
+
 def get_non_hydrogen_atom_indices (pdb_object) :
   from scitbx.array_family import flex
   i_seqs_no_hd = flex.size_t()

@@ -60,11 +60,22 @@ class rebuild_residue (object) :
     assert (atom_group is not None)
     pdb_hierarchy = self.pdb_hierarchy.deep_copy()
     xray_structure = self.xray_structure.deep_copy_scatterers()
+    geometry_restraints_manager = self.geometry_restraints_manager
+    # FIXME this doesn't work - can't recover the atom_group afterwards!
+    #hd_sel = xray_structure.hd_selection()
+    #n_hydrogen = hd_sel.count(True)
+    #if (n_hydrogen > 0) :
+    #  non_hd_sel = ~hd_sel
+    #  pdb_hierarchy = pdb_hierarchy.select(non_hd_sel)
+    #  xray_structure = xray_structure.select(non_hd_sel)
+    #  geometry_restraints_manager = geometry_restraints_manager.select(
+    #    non_hd_sel)
     pdb_atoms = pdb_hierarchy.atoms()
     pdb_atoms.reset_i_seq()
     isel = building.extract_iselection([atom_group])
     atom_group = pdb_atoms[isel[0]].parent()
     atom_group_start = atom_group.detached_copy()
+    needs_rebuild = not building.is_stub_residue(atom_group)
     residue_group = atom_group.parent()
     assert (len(residue_group.atom_groups()) == 1)
     sel_residues = building.get_window_around_residue(
@@ -80,11 +91,13 @@ class rebuild_residue (object) :
     adjacent_trimmed_atom_names = pdb_atoms.extract_name()
     adjacent_trimmed_sel = pdb_atoms.extract_i_seq()
     xrs_adjacent_trimmed = xray_structure.select(adjacent_trimmed_sel)
-    grm_adjacent_trimmed = self.geometry_restraints_manager.select(
+    grm_adjacent_trimmed = geometry_restraints_manager.select(
       adjacent_trimmed_sel)
     pdb_atoms.reset_i_seq()
     # get rid of central sidechain and refine mainchain for entire window
-    building.remove_sidechain_atoms([ atom_group ])
+    truncate = (not atom_group.resname in ["GLY","ALA"]) # XXX PRO?
+    if (truncate) :
+      building.remove_sidechain_atoms([ atom_group ])
     pdb_atoms = pdb_hierarchy.atoms()
     all_mc_sel = pdb_atoms.extract_i_seq()
     xrs_mc = xrs_adjacent_trimmed.select(all_mc_sel)
@@ -151,12 +164,13 @@ class rebuild_residue (object) :
     box.fit_residue_in_box(backbone_sample_angle=backbone_sample_angle)
     if (anneal) :
       box.anneal(start_temperature=annealing_temperature)
+    #box.real_space_refine()
     sites_new = box.update_original_coordinates()
     pdb_hierarchy.atoms().set_xyz(sites_new)
     return building.atom_group_as_hierarchy(new_atom_group)
 
 build_params_str = """
-  expected_occupancy = 0.4
+  expected_occupancy = None
     .type = float(value_min=0.1,value_max=0.9)
   window_size = 2
     .type = int
@@ -208,15 +222,13 @@ def find_alternate_residue (residue,
     occupancies = [ 0.2, 0.3, 0.4, 0.5 ]
   trials = []
   sites_start_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
-  xrs_start = fmodel.xray_structure.deep_copy_scatterers()
   for occupancy in occupancies :
     two_fofc_map, fofc_map = disorder.get_partial_omit_map(
-      fmodel=fmodel,
+      fmodel=fmodel.deep_copy(),
       selection=selection,
       selection_delete=None,#nearby_water_selection,
       negate_surrounding=True,
       partial_occupancy=1.0 - occupancy)
-    fmodel.update_xray_structure(xrs_start, update_f_calc=True)
     rebuild = rebuild_residue(
       target_map=fofc_map,
       pdb_hierarchy=pdb_hierarchy,
@@ -296,12 +308,14 @@ class find_all_alternates (object) :
       log=sys.stdout) :
     adopt_init_args(self, locals())
     nproc = easy_mp.get_processes(nproc)
-    print >> log, "Will use %d processes" % nproc
+    print >> log, ""
     if (nproc == 1) :
+      print >> log, "  running all residues serially"
       self.results = []
       for i_res in range(len(residues)) :
         self.results.append(self.__call__(i_res, log=log))
     else :
+      print >> log, "  will use %d processes" % nproc
       self.results = easy_mp.pool_map(
         fixed_func=self,
         iterable=range(len(residues)),
@@ -326,6 +340,7 @@ def process_results (
     verbose=False,
     log=sys.stdout) :
   assert (len(residues_in) == len(new_residues))
+  from mmtbx.rotamer import rotamer_eval
   n_alternates = 0
   residues_out = []
   for h in new_residues :
@@ -340,14 +355,24 @@ def process_results (
     two_fofc_map, fofc_map = building.get_difference_maps(fmodel)
   print >> log, ""
   print >> log, "Assembling disordered residues..."
+  rot_eval = rotamer_eval.RotamerEval()
   for main_conf, new_conf in zip(residues_in, residues_out) :
     if (new_conf is None) : continue
+    changed_rotamer = False
+    if (not main_conf.resname in ["GLY","PRO","ALA"]) :
+      main_rotamer = rot_eval.evaluate_residue(main_conf)
+      assert (main_rotamer != "OUTLIER")
+      alt_rotamer = rot_eval.evaluate_residue(new_conf)
+      if (alt_rotamer == "OUTLIER") :
+        print >> log, "  %s: rotamer outlier" % new_conf.id_str()
+        continue
+      changed_rotamer = (alt_rotamer == main_rotamer)
     stats = disorder.coord_stats_for_atom_groups(main_conf, new_conf)
     skip = False
     flag = ""
-    if (stats.rmsd < params.rmsd_min) :
+    if (stats.rmsd < params.rmsd_min) and (not changed_rotamer) :
       skip = True
-    if (params.rescore) :
+    if (params.rescore) : # FIXME this is very crude...
       fofc_max = 0
       for atom in new_conf.atoms() :
         name = atom.name.strip()
@@ -484,6 +509,8 @@ def real_space_refine (
 master_phil_str = """
 building {
   %s
+  #delete_hydrogens = False
+  #  .type = bool
 }
 prefilter {
   include scope mmtbx.building.disorder.filter_params_str
@@ -504,13 +531,21 @@ def build_cycle (pdb_hierarchy,
   t_start = time.time()
   hd_sel = fmodel.xray_structure.hd_selection()
   n_hydrogen = hd_sel.count(True)
-  if (n_hydrogen > 0) :
+  if (n_hydrogen > 0) and (True) : #params.building.delete_hydrogens) :
     print >> out, "WARNING: %d hydrogen atoms will be removed!" % n_hydrogen
     non_hd_sel = ~hd_sel
     pdb_hierarchy = pdb_hierarchy.select(non_hd_sel)
     xray_structure = fmodel.xray_structure.select(non_hd_sel)
     fmodel.update_xray_structure(xray_structure)
     geometry_restraints_manager = geometry_restraints_manager.select(non_hd_sel)
+  pdb_atoms = pdb_hierarchy.atoms()
+  segids = pdb_atoms.extract_segid().strip()
+  if (not segids.all_eq("")) :
+    print >> out, "WARNING: resetting segids to blank"
+    for i_seq, atom in enumerate(pdb_atoms) :
+      atom.segid = ""
+      sc = fmodel.xray_structure.scatterers()[i_seq]
+      sc.label = atom.id_str()
   if isinstance(selection, str) :
     sele_cache = pdb_hierarchy.atom_selection_cache()
     selection = sele_cache.selection(selection)
