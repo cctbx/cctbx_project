@@ -4,7 +4,7 @@
 from __future__ import division
 import iotbx.phil
 from libtbx.utils import Sorry, null_out, check_if_output_directory_exists
-from libtbx import adopt_init_args
+from libtbx import adopt_init_args, slots_getstate_setstate
 import warnings
 import random
 import string
@@ -258,25 +258,15 @@ mtz_file
   }
 }""", process_includes=True)
 
-class process_arrays (object) :
-  def __init__ (self, params, input_files=None, log=sys.stderr,
-      accumulation_callback=None, symmetry_callback=None) :
+class array_input (slots_getstate_setstate) :
+  __slots__ = ["miller_arrays", "file_names", "array_types"]
+  def __init__ (self, params, input_files=None) :
+    from iotbx import file_reader
     if (input_files is None) :
       input_files = {}
-    adopt_init_args(self, locals())
-    validate_params(params)
-    r_free_params = params.mtz_file.r_free_flags
-    from iotbx import file_reader
-    import cctbx.miller
-    from cctbx import r_free_utils
-    from cctbx import crystal
-    from scitbx.array_family import flex
-
-    #-------------------------------------------------------------------
-    # COLLECT ARRAYS
-    miller_arrays = []
-    file_names = []
-    array_types = []
+    self.miller_arrays = []
+    self.file_names = []
+    self.array_types = []
     for i_array, array_params in enumerate(params.mtz_file.miller_array) :
       if (array_params.file_name is None) :
         raise Sorry("Missing file name for array %d (labels=%s)" %
@@ -298,18 +288,54 @@ class process_arrays (object) :
         array_info = miller_array.info()
         label_string = array_info.label_string()
         if label_string == array_params.labels :
-          miller_arrays.append(miller_array)
-          file_names.append(input_file.file_name)
+          self.miller_arrays.append(miller_array)
+          self.file_names.append(input_file.file_name)
           found = True
           if is_mtz :
             array_type = get_original_array_types(input_file,
               original_labels=array_info.labels)
-            array_types.append(array_type)
+            self.array_types.append(array_type)
           else :
-            array_types.append(None)
+            self.array_types.append(None)
       if not found :
         raise Sorry("Couldn't fine the Miller array %s in file %s!" %
                     (array_params.labels, array_params.file_name))
+
+  def resolve_unit_cell (self) :
+    unit_cells = []
+    for any_array_type in [False, True] :
+      for array in self.miller_arrays :
+        if array.is_experimental_data() :
+          cs = array.crystal_symmetry()
+          if (cs is not None) :
+            uc = cs.unit_cell()
+            unit_cells.append(uc)
+      if (len(unit_cells) > 0) :
+        break
+    if (len(unit_cells) == 0) :
+      raise Sorry("No unit cell found in inputs - please specify explicitly.")
+    return unit_cells
+
+class process_arrays (object) :
+  def __init__ (self, params, input_files=None, inputs_object=None,
+      log=sys.stderr, accumulation_callback=None, symmetry_callback=None) :
+    if (input_files is None) :
+      input_files = {}
+    adopt_init_args(self, locals())
+    validate_params(params)
+    r_free_params = params.mtz_file.r_free_flags
+    import cctbx.miller
+    from cctbx import r_free_utils
+    from cctbx import crystal
+    from scitbx.array_family import flex
+
+    #-------------------------------------------------------------------
+    # COLLECT ARRAYS
+    if (inputs_object is None) :
+      inputs_object = array_input(params=params, input_files=input_files)
+    miller_arrays = inputs_object.miller_arrays
+    file_names = inputs_object.file_names
+    array_types = inputs_object.array_types
     if params.show_arrays :
       shown_files = []
       for file_name, miller_array in zip(file_names, miller_arrays) :
@@ -1259,7 +1285,7 @@ def resolve_symmetry (file_symmetries, current_space_group, current_unit_cell):
                 "please specify symmetry parameters.")
         if (current_unit_cell is None) :
           for other_uc in unit_cells :
-            if (not other_uc.is_similar_to(other_uc, 0.001, 0.1)) :
+            if (not other_uc.is_similar_to(unit_cell, 0.001, 0.1)) :
               raise Sorry("Ambiguous unit cell information in input files - "+
                 "please specify symmetry parameters.")
         space_groups.append(space_group)
