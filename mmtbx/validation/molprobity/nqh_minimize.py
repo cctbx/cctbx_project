@@ -95,6 +95,7 @@ def run(args):
   print >> p, sigma
   print >> p, directory
   print >> p, "stop_for_unknowns=False"
+  print >> p, "pdb_interpretation.clash_guard.nonbonded_distance_threshold=None"
   p.close()
   temp_pdb = os.path.join(temp_dir, "nqh_flips.pdb")
   out = file(temp_pdb, 'w')
