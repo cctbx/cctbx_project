@@ -96,6 +96,7 @@ def run (args, source_data = None) :
     logger = sys.stdout
   else:
     logger = open(params.output_file, 'w')
+    logger.write("%s "%params.output_file)
 
   if not "DETECTOR_ADDRESS" in source_data:
     # legacy format; try to guess the address
@@ -159,6 +160,8 @@ def run (args, source_data = None) :
 
   if hasattr(data,"as_double"):
     data = data.as_double()
+
+  logger.write("Average intensity: %9.3f\n"%flex.mean(data))
 
   if params.verbose:
     logger.write("Generating average...tile:")
