@@ -374,3 +374,120 @@ def filter_before_build (
     print >> log, ""
     print >> log, "%d residues selected" % len(residues)
   return residues
+
+rejoin_phil = libtbx.phil.parse("""
+min_occupancy = 0.1
+  .type = float
+distance_over_u_iso_limit = 1.2
+  .type = float
+""")
+
+def rejoin_split_single_conformers (
+    pdb_hierarchy,
+    model_error_ml,
+    params,
+    log=sys.stdout) :
+  """
+  Identifies residues which have been erroneously given alternate confomations
+  which are actually identical - this is an expected side effect of the
+  assembly process, but we want to keep the number of new atoms as limited as
+  possible.  The filtering criteria are 1) the overall RMSD of all conformers
+  of each residue to each other, and 2) the maximum ratio (over all non-H
+  atoms) of the distance between conformations over u_iso (which in theory
+  represents displacement in Angstroms).
+  """
+  from cctbx import adptbx
+  from scitbx.array_family import flex
+  from scitbx.matrix import col
+  pdb_hierarchy.atoms().reset_i_seq()
+  if (model_error_ml is None) :
+    model_error_ml = sys.maxint # XXX ???
+  n_modified = 0
+  for chain in pdb_hierarchy.only_model().chains() :
+    residue_groups = chain.residue_groups()
+    n_res = len(residue_groups)
+    last_nconfs = 1
+    pending_deletions = []
+    for i_rg, residue_group in enumerate(residue_groups) :
+      atom_groups = residue_group.atom_groups()
+      n_confs = len(atom_groups)
+      if (n_confs > 1) :
+        residue_id = atom_groups[0].id_str()
+        conf_sites = []
+        conf_uisos = []
+        delete_groups = []
+        for i_group, atom_group in enumerate(atom_groups) :
+          sites = flex.vec3_double()
+          u_iso = flex.double()
+          occ = []
+          for atom in atom_group.atoms() :
+            if (atom.element.strip() != "H") :
+              sites.append(atom.xyz)
+              u_iso.append(adptbx.b_as_u(atom.b))
+              occ.append(atom.occ)
+          conf_sites.append(sites)
+          conf_uisos.append(u_iso)
+          if (max(occ) < params.min_occupancy) :
+            print >> log, "  %s: altloc '%s' occupancy = %4.2f" % (residue_id,
+              atom_group.altloc, max(occ))
+            delete_groups.append(i_group)
+        max_rmsd = 0
+        max_distance_over_u_iso = 0
+        for i_sites, (sites, u_iso) in enumerate(zip(conf_sites, conf_uisos)) :
+          if (i_sites < len(conf_sites) - 1) :
+            for j_sites in range(i_sites+1, len(conf_sites)) :
+              sites_next = conf_sites[j_sites]
+              rmsd = sites.rms_difference(sites_next)
+              if (rmsd > max_rmsd) :
+                max_rmsd = rmsd
+              for k_site, (site1, site2) in enumerate(zip(sites, sites_next)) :
+                distance = abs(col(site1) - col(site2))
+                u = u_iso[k_site]
+                if (u == 0) :
+                  u = -1
+                ratio = distance / u
+                if (ratio > max_distance_over_u_iso) :
+                  max_distance_over_u_iso = ratio
+        # TODO need to also check the C and N atoms specifically, because of
+        # possible splitting of adjacent residues
+        if ((max_rmsd < model_error_ml) and
+            (max_distance_over_u_iso < params.distance_over_u_iso_limit)) :
+          print >> log, "  %s: all conformations near-identical" % residue_id
+          delete_groups.extend(range(1, n_confs))
+        reset_residue = False
+        if (len(delete_groups) > 0) :
+          pending_deletions.append((i_rg, delete_groups))
+    # now go back over the list of deletions and filter for continuous
+    # fragments
+    for k, (i_rg, delete_atom_groups) in enumerate(pending_deletions) :
+      residue_group = residue_groups[i_rg]
+      atom_groups = residue_group.atom_groups()
+      n_confs = len(atom_groups)
+      common_groups = set(delete_atom_groups)
+      if (len(common_groups) < n_confs - 1) :
+        kk = k + 1
+        i_rg_last = i_rg
+        while (kk < len(pending_deletions)) :
+          j_rg, delete_others = pending_deletions[kk]
+          if (j_rg == i_rg_last + 1) :
+            common_groups = set(delete_others).intersection(common_groups)
+          else :
+            break
+          kk += 1
+      if (len(common_groups) > 0) :
+        n_modified += 1
+        print >> log, "  merging residue %s" % atom_groups[0].id_str()
+        for i_group, atom_group in enumerate(atom_groups) :
+          if (i_group in common_groups) :
+            print >> log, "    conformer %s deleted" % atom_group.altloc
+            residue_group.remove_atom_group(atom_group)
+            reset_residue = True
+      # clumsy, but we're going to refine again anyway
+      if (reset_residue) :
+        atom_groups = residue_group.atom_groups()
+        for atom_group in atom_groups :
+          for atom in atom_group.atoms() :
+            atom.occ = 1.0 / len(atom_groups)
+          if (len(atom_groups) == 1) :
+            atom_group.altloc = ''
+  return n_modified

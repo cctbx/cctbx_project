@@ -1,12 +1,13 @@
 
 from __future__ import division
+from mmtbx.building import disorder
+import mmtbx.utils
+import iotbx.pdb.hierarchy
+from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from libtbx.utils import null_out
 
 def exercise_utils () :
-  from mmtbx.building import disorder
-  import mmtbx.utils
-  import iotbx.pdb.hierarchy
-  from scitbx.array_family import flex
   #--- coord_stats_with_flips
   pdb_1 = iotbx.pdb.hierarchy.input(pdb_string="""\
 ATOM   1639  N   PHE A 113      18.514  41.994  54.886  1.00 12.36           N
@@ -91,6 +92,46 @@ ATOM   1658  HZ  PHE A 113      18.093  43.330  49.263  1.00 26.17           H
   site = xrs.sites_frac()[sel.iselection()[0]] # CZ coordinate
   assert (fofc_map.tricubic_interpolation(site) > 20)
 
+def exercise_rejoin () :
+  from mmtbx.regression.tst_build_alt_confs import pdb_raw
+  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
+  hierarchy = pdb_in.hierarchy
+  params = disorder.rejoin_phil.extract()
+  n_modified = disorder.rejoin_split_single_conformers(
+    pdb_hierarchy=hierarchy,
+    params=params,
+    model_error_ml=0.5,
+    log=null_out())
+  assert (n_modified == 0)
+  # split residue 5 without changing coordinates, set occupancy very low
+  chain = hierarchy.only_model().chains()[0]
+  rg5 = chain.residue_groups()[4]
+  ag = rg5.only_atom_group().detached_copy()
+  for atom in ag.atoms() :
+    atom.occ = 0.05
+  for atom in rg5.atoms() :
+    atom.occ = 0.95
+  rg5.only_atom_group().altloc = 'A'
+  ag.altloc = 'B'
+  rg5.append_atom_group(ag)
+  n_modified = disorder.rejoin_split_single_conformers(
+    pdb_hierarchy=hierarchy,
+    params=params,
+    model_error_ml=0.5,
+    log=null_out())
+  assert (n_modified == 1)
+  # now with higher B-factors for all atoms
+  for atom in hierarchy.atoms() :
+    atom.b = atom.b * 10
+  n_modified = disorder.rejoin_split_single_conformers(
+    pdb_hierarchy=hierarchy,
+    params=params,
+    model_error_ml=0.5,
+    log=null_out())
+  assert (n_modified == 2)
+  # TODO more needed...
+
 if (__name__ == "__main__") :
   exercise_utils()
+  exercise_rejoin()
   print "OK"

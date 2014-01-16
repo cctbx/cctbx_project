@@ -1,6 +1,5 @@
 
-# TODO avoid re-processing structure each time
-# TODO tests
+# TODO more tests?
 
 """
 Prototype for building alternate conformations into difference density.
@@ -16,8 +15,8 @@ from __future__ import division
 from mmtbx.building import extend_sidechains
 from mmtbx.building import disorder
 from mmtbx import building
-from libtbx.str_utils import make_header, make_sub_header
-from libtbx import adopt_init_args, Auto
+from libtbx import adopt_init_args, Auto, slots_getstate_setstate
+from libtbx.str_utils import make_header, make_sub_header, format_value
 from libtbx.utils import null_out
 from libtbx import easy_mp
 import time
@@ -39,14 +38,13 @@ class rebuild_residue (object) :
       pdb_hierarchy,
       xray_structure,
       geometry_restraints_manager,
+      rotamer_eval,
       d_min) :
     adopt_init_args(self, locals())
     from mmtbx.monomer_library import idealized_aa
-    from mmtbx.rotamer import rotamer_eval
     import mmtbx.monomer_library.server
     self.ideal_dict = idealized_aa.residue_dict()
     self.mon_lib_srv = mmtbx.monomer_library.server.server()
-    self.rotamer_manager = rotamer_eval.RotamerEval()
 
   def __call__ (self,
       atom_group,
@@ -196,6 +194,75 @@ build_params_str = """
   }
 """
 
+class residue_trial (slots_getstate_setstate) :
+  __slots__ = [ "new_hierarchy", "sc_n_atoms", "sc_two_fofc_mean",
+                "sc_fofc_mean", "two_fofc_values", "fofc_values",
+                "stats", "occupancy", "rotamer", ]
+  def __init__ (self, residue, new_hierarchy, occupancy, rotamer_eval,
+                      fmodel, two_fofc_map, fofc_map) :
+    self.new_hierarchy = new_hierarchy
+    self.occupancy = occupancy
+    self.two_fofc_values = []
+    self.fofc_values = []
+    self.sc_n_atoms = 0
+    self.sc_fofc_mean = self.sc_two_fofc_mean = None
+    unit_cell = fmodel.xray_structure.unit_cell()
+    sc_fofc_sum = sc_two_fofc_sum = 0
+    for atom in new_hierarchy.atoms() :
+      assert (not atom.element.strip() in ["H","D"])
+      name = atom.name.strip()
+      site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
+      two_fofc_value = two_fofc_map.eight_point_interpolation(site_frac)
+      fofc_value = fofc_map.eight_point_interpolation(site_frac)
+      self.two_fofc_values.append(two_fofc_value)
+      self.fofc_values.append(fofc_value)
+      if (not name in ["N","C","O","CA", "CB"]) :
+        self.sc_n_atoms += 1
+        sc_fofc_sum += fofc_value
+        sc_two_fofc_sum += two_fofc_value
+    if (self.sc_n_atoms > 0) :
+      self.sc_fofc_mean = sc_fofc_sum / self.sc_n_atoms
+      self.sc_two_fofc_mean = sc_two_fofc_sum / self.sc_n_atoms
+    alt_conf = self.as_atom_group()
+    self.stats = disorder.coord_stats_for_atom_groups(residue, alt_conf)
+    self.rotamer = None
+    if (not residue.resname in ["GLY","ALA","PRO"]) :
+      self.rotamer = rotamer_eval.evaluate_residue(alt_conf)
+
+  def as_atom_group (self) :
+    return self.new_hierarchy.only_model().only_chain().only_residue_group().\
+      only_atom_group()
+
+  def rescore (self, params, log=None, prefix="") :
+    if (log is None) : log = null_out()
+    reject = (self.rotamer == "OUTLIER")
+    bad_mc_two_fofc_msg = None
+    for i_seq, atom in enumerate(self.new_hierarchy.atoms()) :
+      name = atom.name.strip()
+      if (name in ["N","C","O","CA", "CB"]) :
+        if (self.two_fofc_values[i_seq] < params.two_fofc_min_mc) :
+          bad_mc_two_fofc_msg = "poor backbone: 2Fo-Fc(%s)=%.2f" % (name,
+                self.two_fofc_values[i_seq])
+          reject = True
+          break
+    if (self.sc_fofc_mean is not None) :
+      if (self.sc_fofc_mean < params.fofc_min_sc_mean) :
+        reject = True
+      elif (self.sc_two_fofc_mean < params.two_fofc_min_sc_mean) :
+        reject = True
+    flag = ""
+    if (reject) :
+      flag = " !!!"
+    print >> log, prefix+\
+      "occupancy=%.2f rotamer=%s 2Fo-Fc(mc)=%s  Fo-Fc(sc)=%s%s" % \
+      (self.occupancy, self.rotamer,
+       format_value("%5f", self.sc_two_fofc_mean),
+       format_value("%5f", self.sc_fofc_mean),
+       flag)
+    if (bad_mc_two_fofc_msg is not None) :
+      print >> log, prefix+"  %s" % bad_mc_two_fofc_msg
+    return (not reject)
+
 def find_alternate_residue (residue,
     pdb_hierarchy,
     fmodel,
@@ -222,6 +289,8 @@ def find_alternate_residue (residue,
     occupancies = [ 0.2, 0.3, 0.4, 0.5 ]
   trials = []
   sites_start_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
+  from mmtbx.rotamer import rotamer_eval
+  rotamer_manager = rotamer_eval.RotamerEval()
   for occupancy in occupancies :
     two_fofc_map, fofc_map = disorder.get_partial_omit_map(
       fmodel=fmodel.deep_copy(),
@@ -234,6 +303,7 @@ def find_alternate_residue (residue,
       pdb_hierarchy=pdb_hierarchy,
       xray_structure=fmodel.xray_structure,
       geometry_restraints_manager=restraints_manager,
+      rotamer_eval=rotamer_manager,
       d_min=fmodel.f_obs().d_min())
     new_hierarchy = rebuild(atom_group=residue,
       window_size=params.window_size,
@@ -241,57 +311,18 @@ def find_alternate_residue (residue,
       anneal=params.anneal,
       annealing_temperature=params.annealing_temperature,
       log=log)
-    reject = False
-    if (params.rescore) :
-      unit_cell = fmodel.xray_structure.unit_cell()
-      sc_total = sc_fofc_sum = sc_two_fofc_sum = 0
-      for atom in new_hierarchy.atoms() :
-        name = atom.name.strip()
-        site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
-        two_fofc_value = two_fofc_map.eight_point_interpolation(site_frac)
-        fofc_value = fofc_map.eight_point_interpolation(site_frac)
-        if (name in ["N","C","O","CA", "CB"]) :
-          if (two_fofc_value < params.map_thresholds.two_fofc_min_mc) :
-            if (verbose) :
-              print >> log, "      %s: bad 2Fo-fc (%.2f)" % (name,
-                two_fofc_value)
-            reject = True
-            break
-        else :
-          sc_total += 1
-          sc_fofc_sum += fofc_value
-          sc_two_fofc_sum += two_fofc_value
-      if (sc_total > 0) :
-        sc_fofc_mean = sc_fofc_sum / sc_total
-        sc_two_fofc_mean = sc_two_fofc_sum / sc_total
-        if (sc_fofc_mean < params.map_thresholds.fofc_min_sc_mean) :
-          if (verbose) :
-            print >> log, "      bad sidechain Fo-Fc (mean=%.2f)" % sc_fofc_mean
-          reject = True
-        elif (sc_two_fofc_mean < params.map_thresholds.two_fofc_min_sc_mean) :
-          if (verbose) :
-            print >> log, "      bad sidechain 2Fo-Fc (mean=%.2f)" % \
-              sc_two_fofc_mean
-          reject = True
-    if (not reject) :
-      trials.append(new_hierarchy)
+    trial = residue_trial(
+      residue=residue,
+      new_hierarchy=new_hierarchy,
+      occupancy=occupancy,
+      rotamer_eval=rotamer_manager,
+      fmodel=fmodel,
+      two_fofc_map=two_fofc_map,
+      fofc_map=fofc_map)
+    trials.append(trial)
   sites_end_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
   assert sites_start_1d.all_eq(sites_end_1d)
-  if (len(trials) == 0) :
-    return None
-  elif (len(trials) == 1) :
-    return trials[0]
-  else :
-    rmsd_max = 0
-    best_trial = None
-    for new_hierarchy in trials :
-      alt_conf = new_hierarchy.only_model().only_chain().only_residue_group().\
-        only_atom_group()
-      stats = disorder.coord_stats_for_atom_groups(residue, alt_conf)
-      if (stats.rmsd > rmsd_max) :
-        rmsd_max = stats.rmsd
-        best_trial = new_hierarchy
-    return best_trial
+  return trials
 
 class find_all_alternates (object) :
   """
@@ -331,47 +362,75 @@ class find_all_alternates (object) :
       verbose=self.verbose,
       log=log)
 
+def pick_best_alternate (
+    trials,
+    params,
+    rotamer,
+    log=None) :
+  if (log is None) :
+    log = null_out()
+  if (params.rescore) :
+    filtered = []
+    for trial in trials :
+      accept = trial.rescore(params=params.map_thresholds,
+        log=log,
+        prefix="    ")
+      if (accept) : filtered.append(trial)
+    trials = filtered
+  if (len(trials) == 0) :
+    return None
+  elif (len(trials) == 1) :
+    return trials[0]
+  else :
+    rmsd_max = 0
+    best_trial = None
+    for trial in trials :
+      if (trial.stats.rmsd > rmsd_max) :
+        rmsd_max = trial.stats.rmsd
+        best_trial = trial
+    return best_trial
+
 def process_results (
     pdb_hierarchy,
     fmodel,
     residues_in,
-    new_residues,
+    building_trials,
     params,
     verbose=False,
     log=sys.stdout) :
-  assert (len(residues_in) == len(new_residues))
+  assert (len(residues_in) == len(building_trials))
   from mmtbx.rotamer import rotamer_eval
   n_alternates = 0
-  residues_out = []
-  for h in new_residues :
-    if (h is not None) :
-      residues_out.append(
-        h.only_model().only_chain().only_residue_group().only_atom_group())
-    else :
-      residues_out.append(None)
   unit_cell = fmodel.xray_structure.unit_cell()
   two_fofc_map = fofc_map = None
   if (params.rescore) :
     two_fofc_map, fofc_map = building.get_difference_maps(fmodel)
   print >> log, ""
-  print >> log, "Assembling disordered residues..."
+  print >> log, "Scoring and assembling disordered residues..."
   rot_eval = rotamer_eval.RotamerEval()
-  for main_conf, new_conf in zip(residues_in, residues_out) :
-    if (new_conf is None) : continue
-    changed_rotamer = False
+  for main_conf, trials in zip(residues_in, building_trials) :
+    if (len(trials) == 0) :
+      continue
+    print >> log, "  %s:" % main_conf.id_str()
+    main_rotamer = alt_rotamer = None
     if (not main_conf.resname in ["GLY","PRO","ALA"]) :
       main_rotamer = rot_eval.evaluate_residue(main_conf)
       assert (main_rotamer != "OUTLIER")
-      alt_rotamer = rot_eval.evaluate_residue(new_conf)
-      if (alt_rotamer == "OUTLIER") :
-        print >> log, "  %s: rotamer outlier" % new_conf.id_str()
-        continue
-      changed_rotamer = (alt_rotamer == main_rotamer)
-    stats = disorder.coord_stats_for_atom_groups(main_conf, new_conf)
+    best_trial = pick_best_alternate(
+      trials=trials,
+      params=params,
+      rotamer=main_rotamer,
+      log=log)
+    if (best_trial is None) :
+      continue
+    new_conf = best_trial.as_atom_group()
+    changed_rotamer = (best_trial.rotamer == main_rotamer)
     skip = False
     flag = ""
+    stats = best_trial.stats
     if (stats.rmsd < params.rmsd_min) and (not changed_rotamer) :
       skip = True
+    print >> log, "    selected conformer (occ=%.2f):" % best_trial.occupancy
     if (params.rescore) : # FIXME this is very crude...
       fofc_max = 0
       for atom in new_conf.atoms() :
@@ -385,12 +444,15 @@ def process_results (
       if (fofc_max < params.map_thresholds.starting_fofc_min_sc_single) :
         skip = True
       if (not skip) : flag = " ***"
-      print >> log, "  %s: RMSD=%5.3f  max. change=%.2f  max(Fo-Fc)=%.1f%s" \
-        % (main_conf.id_str(), stats.rmsd, stats.max_dev, fofc_max, flag)
+      print >> log, "      RMSD=%5.3f  max. change=%.2f  max(Fo-Fc)=%.1f%s" \
+        % (stats.rmsd, stats.max_dev, fofc_max, flag)
     else :
       if (not skip) : flag = " ***"
-      print >> log, "  %s: RMSD=%5.3f  max. change=%.2f%s" % \
-        (main_conf.id_str(), stats.rmsd, stats.max_dev, flag)
+      print >> log, "      RMSD=%5.3f  max. change=%.2f%s" % \
+        (stats.rmsd, stats.max_dev, flag)
+    if (changed_rotamer) :
+      print >> log, "      starting rotamer=%s  new rotamer=%s" % \
+        (main_rotamer, best_trial.rotamer)
     if (skip) : continue
     residue_group = main_conf.parent()
     main_conf.altloc = 'A'
@@ -563,7 +625,7 @@ def build_cycle (pdb_hierarchy,
     normalization=True)
   make_sub_header("Finding alternate conformations", out=out)
   fmodel.info().show_rfactors_targets_scales_overall(out=out)
-  new_residues = find_all_alternates(
+  building_trials = find_all_alternates(
     residues=candidate_residues,
     pdb_hierarchy=pdb_hierarchy,
     restraints_manager=restraints_manager,
@@ -576,7 +638,7 @@ def build_cycle (pdb_hierarchy,
     pdb_hierarchy=pdb_hierarchy,
     fmodel=fmodel,
     residues_in=candidate_residues,
-    new_residues=new_residues,
+    building_trials=building_trials,
     params=params.building,
     verbose=verbose,
     log=out)
@@ -590,4 +652,14 @@ def build_cycle (pdb_hierarchy,
       out=out)
   t_end = time.time()
   print >> out, "Build time: %.1fs" % (t_end - t_start)
+  pdb_atoms = pdb_hierarchy.atoms()
+  pdb_atoms.reset_serial()
+  pdb_atoms.reset_i_seq()
+  pdb_atoms.reset_tmp()
+  for atom in pdb_atoms :
+    segid = atom.segid.strip()
+    if (segid.startswith("OLD")) :
+      segid = ""
+    elif (segid.startswith("NEW")) :
+      segid = "NEW"
   return pdb_hierarchy
