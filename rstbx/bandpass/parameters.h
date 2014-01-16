@@ -104,6 +104,10 @@ namespace rstbx { namespace bandpass {
     }
     inline
     bool operator()(vec3 prediction){
+      // if no tiles are set, assume all pixels are active
+      if (tiles.size() == 0)
+        return true;
+
       af::flex_int nearest_neighbours;
       if (tiles.size() == 4){
         // We have only one tile, AnnAdaptor chokes in this case but then there is
