@@ -146,10 +146,12 @@ scaling {
     .type = bool
     .help = enable the mark0 algorithm, otherwise individual-image scale factors are set to 1.0
     .expert_level = 3
-  algorithm = mark0
-    .type = str
-    .help = mark0: original per-image scaling by reference to isomorphous PDB model
-    .help = mark1: no scaling, just averaging
+  algorithm = *mark0 mark1 mark2
+    .type = choice
+    .help = "mark0: original per-image scaling by reference to
+             isomorphous PDB model"
+    .help = "mark1: no scaling, just averaging (i.e. Monte Carlo
+             algorithm).  Individual image scale factors are set to 1."
     .help = mark2: Fox & Holmes (1966) least squares scaling
   simulation = None
     .type = str
@@ -714,9 +716,14 @@ class scaling_manager (intensity_data) :
       return None
 
   def scale_frame (self, file_name, db_mgr) :
-    """Scales the data from a single frame against the reference dataset,
-    and returns an intensity_data object.  Can be called either
-    serially or via a multiprocessing map() function.
+    """The scale_frame() function scales the data from a single frame
+    against the reference dataset, and returns an intensity_data
+    object.  Can be called either serially or via a multiprocessing
+    map() function.
+
+    For mark0, scale using correlation coefficient, for mark1 and
+    mark2 just read the frame, apply corrections, and insert into
+    database.
 
     XXX VERY IMPORTANT: this method must not modify any internal data
     or the parallelization will not yield usable results!
@@ -851,13 +858,6 @@ class scaling_manager (intensity_data) :
       print "Step 5. Frame by frame resolution filter"
       # Finished applying the binwise I/sigma filter---------------------------------------
 
-    print "Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities."
-    assert len(observations_original_index.indices()) == len(observations.indices())
-
-    data = frame_data(self.n_refl, file_name)
-    data.set_indexed_cell(indexed_cell)
-    data.d_min = observations.d_min()
-
     if self.params.raw_data.sdfac_auto is True:
       I_over_sig = observations.data()/observations.sigmas()
       #assert that at least a few I/sigmas are less than zero
@@ -875,6 +875,14 @@ class scaling_manager (intensity_data) :
       corrected_sigmas = observations.sigmas() * SDFAC
       observations = observations.customized_copy(sigmas = corrected_sigmas)
 
+    print "Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities."
+    assert len(observations_original_index.indices()) \
+      ==   len(observations.indices())
+
+    data = frame_data(self.n_refl, file_name)
+    data.set_indexed_cell(indexed_cell)
+    data.d_min = observations.d_min()
+
     # Ensure that match_multi_indices() will return identical results
     # when a frame's observations are matched against the
     # pre-generated Miller set, self.miller_set, and the reference
@@ -890,7 +898,7 @@ class scaling_manager (intensity_data) :
       miller_indices_unique=self.miller_set.indices(),
       miller_indices=observations.indices())
 
-    if self.params.model is None:
+    if self.params.scaling.algorithm in ['mark1', 'mark2']:
       # Because no correlation is computed, the correlation
       # coefficient is fixed at zero.  Setting slope = 1 means
       # intensities are added without applying a scale factor.
@@ -1248,7 +1256,11 @@ class scaling_manager (intensity_data) :
     print >> out, "Rejected %d reflections with negative intensities" % \
         data.n_rejected
 
-    if (self.params.model is None) or (corr > self.params.min_corr):
+    # Apply the correlation coefficient threshold, if appropriate.
+    if self.params.scaling.algorithm == 'mark0' and \
+       corr <= self.params.min_corr:
+      print >> out, "Skipping these data - correlation too low."
+    else:
       data.accept = True
       for pair in matches.pairs():
         if (observations.data()[pair[1]] <= 0) :
@@ -1270,8 +1282,6 @@ class scaling_manager (intensity_data) :
         data.summed_N[pair[0]] += 1
         data.summed_wt_I[pair[0]] += Intensity / variance
         data.summed_weight[pair[0]] += 1 / variance
-    else :
-      print >> out, "Skipping these data - correlation too low."
     data.set_log_out(out.getvalue())
     if corr > 0.5:
       print "Selected file %s"%file_name.replace("integration","out").replace("int","idx")
