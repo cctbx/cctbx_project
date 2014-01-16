@@ -17,9 +17,11 @@ def temp_chdir(path):
   task and then change back to the previous working directory. '''
   from os import getcwd, chdir
   cwd = getcwd()
-  chdir(path)
-  yield
-  chdir(cwd)
+  try:
+    chdir(path)
+    yield
+  finally:
+    chdir(cwd)
 
 def load_path(path):
   ''' Load a filename from a JSON file.
