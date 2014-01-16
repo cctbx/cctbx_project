@@ -190,11 +190,13 @@ multiple residues."
     self.build_boxes()
     self.clear_highlights()
     self.clear_selection()
+    self.InvalidateBestSize()
 
   def set_sequence_labels (self, labels) :
     assert (len(labels) == len(self.sequences))
     self.sequence_labels = labels
     self.build_boxes()
+    self.InvalidateBestSize()
 
   def n_seqs (self) :
     return len(self.sequences)
@@ -605,6 +607,7 @@ residue(s).  Holding down shift enables multiple selections."""
             (len(self.structure) == self.sequence_length()))
     self.clear_highlights()
     self.clear_structure_selections()
+    self.InvalidateBestSize()
 
   def apply_missing_residue_highlights (self) :
     ranges = self.get_missing()
