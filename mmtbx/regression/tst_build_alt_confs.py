@@ -7,11 +7,10 @@ from iotbx import file_reader
 from libtbx.utils import null_out
 import libtbx.load_env
 
-def exercise () :
-  # derivative of 1yjp, with alternate conformation Asn3 in different rotamer,
-  # plus Asn2/Gln4 split.  the unit cell 'b' edge has been increased to 6A to
-  # compensate.
-  pdb_raw = """\
+# derivative of 1yjp, with alternate conformation Asn3 in different rotamer,
+# plus Asn2/Gln4 split.  the unit cell 'b' edge has been increased to 6A to
+# compensate.
+pdb_raw = """\
 CRYST1   21.937    6.000   23.477  90.00 107.08  90.00 P 1 21 1      2
 ATOM      1  N   GLY A   1      -9.047   4.634   6.066  1.00 16.37           N
 ATOM      2  CA  GLY A   1      -9.040   4.191   4.677  1.00 16.17           C
@@ -108,6 +107,8 @@ HETATM   91  O   HOH S  14      -1.495   0.667  10.978  1.00 44.24           O
 TER
 END
 """
+
+def exercise () :
   open("tst_build_alt_confs_in.pdb", "w").write(pdb_raw)
   args = [
     "tst_build_alt_confs_in.pdb",
