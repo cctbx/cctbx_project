@@ -359,6 +359,128 @@ def run(args):
 
     scaler.ISIGI = get_isigi_dict(results)
 
+    if work_params.merging.refine_G_Imodel:
+      from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
+
+      class find_scale(lbfgs_with_curvatures_mix_in):
+        def __init__(self, millers, observations, frames, scaler):
+
+          """This function is largely redundant, because it duplicates what is
+          done during mark1 scaling.
+
+          @param millers xxxx Ordered union of all Miller indices
+                              observed on all frames
+          @param observations Database structure of observations
+          @param frames       Database structure of frames
+          """
+
+          self._millers = millers
+          self._observations = observations
+
+          self._data = observations.get_double('i')
+          self._hkl = observations.get_int('hkl_id')
+          self._sigmas = observations.get_double('sigi')
+          self._frames = observations.get_int('frame_id')
+
+          # XXX Could be more clever about this here, because this
+          # will determine scale factors for rejected frames as well!
+          # Better named selected_frames?
+          self._subset = frames['data_subset']
+
+          # XXX Useless assert?
+          assert len(self._hkl) == len(self._data) \
+            and  len(self._hkl) == len(self._sigmas)
+
+          # Initialise all per-frame scale factors to one.
+          n_frames = len(self._subset)
+          self.x = flex.double(n_frames + len(self._millers))
+          for i in range(n_frames):
+            self.x[i] = 1
+
+          # For each Miller index, the weighted (XXX) average
+          # intensity of all the observations serves as an initial
+          # estimate of the merged intensity.  This is all Monte Carlo
+          # scaling would do.
+          #
+          # Filter non-positive reflections.  XXX Should apply
+          # resolution filter as well, and use a weight vector (see
+          # also the nan comment below).
+          #
+          # Could still have unobserved reflections.  Do not use
+          # float('nan') for those, because it's tricky to get that to
+          # play nice with the cctbx C++ environment.
+          assert len(self._millers) == len(scaler.summed_wt_I) \
+            and  len(self._millers) == len(scaler.summed_weight)
+
+          for i in range(len(self._millers)):
+            if scaler.summed_weight[i] > 0:
+              self.x[n_frames + i] = scaler.summed_wt_I[i] / scaler.summed_weight[i]
+              #self.weight[n_frames + i] = math.sqrt(1 / scaler.summed_weight[i])
+
+          # Should be the last call in the application-specific minimizer
+          # class.
+          #super(find_scale, self).__init__()
+
+
+        def compute_functional_and_gradients(self):
+          """The compute_functional_and_gradients() function
+
+          @return Two-tuple of the value of the functional, and an
+                  <code>n</code>-long vector with the values of the
+                  gradients at the current position
+          """
+
+          #from libtbx.development.timers import Profiler
+          from xfel import compute_functional_and_gradients
+
+          #p = Profiler("compute_functional_and_gradients [C++]")
+          (f, g) = compute_functional_and_gradients(
+            self.x, self._observations, self._subset)
+          #del p
+
+          # XXX Only output this every 100 iterations or so.
+          print "* f =% 10.4e" % (math.sqrt(f))
+
+          # Warn if there are non_positive per-frame scaling factors.
+          scales = self.x[0:len(self._subset)]
+          sel = (scales <= 1e-6) # XXX Or just zero!
+          n_non_positive = sel.count(True)
+          if n_non_positive > 0:
+            print "Have %d non-positive per-frame scaling factors:" % \
+              n_non_positive #, list(scales.select(sel))
+
+          return (f, g)
+
+
+        def curvatures(self):
+          from xfel import curvatures
+          return curvatures(self.x, self._observations, self._subset)
+
+
+        def run(self):
+          from scitbx import lbfgs
+          termination_params = lbfgs.termination_parameters(
+            traditional_convergence_test=False,
+            max_iterations=2000) # XXX
+          self._minimizer = lbfgs.run(target_evaluator=self)
+                                      #termination_params=termination_params)
+
+
+      my_find_scale = find_scale(
+        scaler.millers['merged_asu_hkl'],
+        scaler._observations,
+        scaler.frames,
+        scaler)
+      my_find_scale.run()
+
+      from xfel import get_scaling_results_mark2
+      sum_I, sum_I_SIGI, \
+        scaler.completeness, scaler.summed_N, \
+        scaler.summed_wt_I, scaler.summed_weight, scaler.n_rejected, \
+        scaler.n_obs, scaler.d_min_values, i_sigi_list = get_scaling_results_mark2(my_find_scale.x, results, scaler.params.target_unit_cell)
+      scaler.ISIGI = get_isigi_dict(results)
+
+
     scaler.wavelength = scaler.frames["wavelength"]
     scaler.corr_values = scaler.frames["cc"]
 
@@ -382,7 +504,7 @@ def run(args):
       out=out,
       work_params=work_params)
     print >> out, ""
-    if work_params.model is not None:
+    if work_params.scaling.algorithm == 'mark0':
       n_refl, corr = scaler.get_overall_correlation(sum_I)
     else:
       n_refl, corr = ((scaler.completeness > 0).count(True), 0)

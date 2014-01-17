@@ -515,6 +515,235 @@ public:
   }
 };
 
+  typedef scitbx::af::shared<int> shared_int;
+  typedef scitbx::af::shared<double> shared_double;
+  typedef scitbx::af::versa<bool, scitbx::af::flex_grid<> > shared_bool;
+
+/* column_parser cannot be const
+ */
+static boost::python::tuple
+compute_functional_and_gradients(const shared_double& x,
+                                 column_parser& observations,
+                                 const shared_bool& selected_frames)
+{
+  const std::size_t n_frames = selected_frames.size();
+
+  const shared_double data = observations.get_double("i");
+  const shared_int hkl = observations.get_int("hkl_id");
+  const shared_int frames = observations.get_int("frame_id");
+  const shared_double sigmas = observations.get_double("sigi");
+
+  double f = 0;
+  double w_tot = 0;
+  shared_double g(x.size());
+
+  //printf("Iterating over %zd reflections\n", hkl.size());
+
+  for (std::size_t i = 0; i < hkl.size(); i++) {
+    const double I_o = data[i];
+    if (I_o <= 0) // isnan(I_o))
+      continue;
+
+    const int h = hkl[i]; // std::size_t
+    const double I_m = x[n_frames + h];
+    if (I_m <= 0) // isnan(I_m))
+      continue;
+
+    const int m = frames[i]; // std::size_t
+    if (!selected_frames[m])
+      continue;
+
+    const double w = sigmas[i] * sigmas[i]; // XXX Check Bolotovsky: s**2 or s?
+    if (w <= 0)
+      continue;
+
+    //printf("Got G %f\n", G);
+
+    const double G = x[m];
+    const double t = I_o - G * I_m;
+
+    f += (1.0 / w) * t * t;
+    w_tot += (1.0 / w);
+
+    //printf("Got f %f\n", f);
+
+    g[m] += -2.0 * (1.0 / w) * I_m * t;
+    g[n_frames + h] += -2.0 * (1.0 / w) * G * t;
+  }
+
+  SCITBX_ASSERT(w_tot > 0);
+  f /= w_tot;
+  for (std::size_t m = 0; m < selected_frames.size(); m++)
+    g[m] /= w_tot;
+
+
+  return (boost::python::make_tuple(f, g));
+}
+
+
+/*
+ * The curvatures() function returns the diagonal elements of the
+ * Hessian matrix.
+ *
+ * If we knew that compute_functional_and_gradients() was always
+ * called before curvatures(), we could calculate the curvatures there
+ * and just return them here.
+ */
+shared_double
+curvatures(const shared_double& x,
+           column_parser& observations,
+           const shared_bool& selected_frames)
+{
+  const std::size_t n_frames = selected_frames.size();
+
+  const shared_double data = observations.get_double("i");
+  const shared_int hkl = observations.get_int("hkl_id");
+  const shared_int frames = observations.get_int("frame_id");
+  const shared_double sigmas = observations.get_double("sigi");
+
+  shared_double c(x.size());
+
+  printf("CURVATURES CALLED\n");
+
+  for (std::size_t i = 0; i < hkl.size(); i++) {
+    if (data[i] <= 0)
+      continue;
+
+    const int h = hkl[i];
+    const double I_m = x[n_frames + h];
+    if (I_m <= 0)
+      continue;
+
+    const int m = frames[i];
+    if (!selected_frames[m])
+      continue;
+
+    const double w = sigmas[i] * sigmas[i]; // XXX Check Bolotovsky!
+    if (w <= 0)
+      continue;
+
+    const double G = x[m];
+
+    c[n_frames + h] += 2.0 * (1.0 / w) * G * G;
+    c[m] += 2.0 * (1.0 / w) * I_m * I_m;
+  }
+
+
+  /*
+  for (std::size_t i = 0; i < c.size(); i++)
+    if (c[i] <= 0)
+      printf("CURVATURES index %d is %f\n", i, c[i]);
+  */
+
+  return (c);
+}
+
+
+/* XXX Duplicates code w.r.t. other stuff defined in this file.  It
+ * should ideally be possible to reuse get_scaling_results() below!
+ *
+ * XXX Should be cleaned up if not!
+ */
+static boost::python::tuple
+get_scaling_results_mark2(const shared_double& x, scaling_results& L, const cctbx::uctbx::unit_cell& params_unit_cell)
+{
+  const shared_int hkl = L.observations.get_int("hkl_id");
+  const shared_int frames = L.observations.get_int("frame_id");
+
+  const shared_double data = L.observations.get_double("i");
+  const shared_double sigmas = L.observations.get_double("sigi");
+
+  const shared_double slope = L.frames.get_double("slope");
+
+  for (std::size_t m = 0; m < L.selected_frames.size(); m++) {
+    L.n_rejected[m] = 0;
+    L.n_obs[m] = 0;
+    L.d_min_values[m] = 0;
+  }
+
+  for (std::size_t i = 0; i < L.merged_asu_hkl.size(); i++) {
+    L.sum_I[i] = 0;
+    L.sum_I_SIGI[i] = 0;
+    L.completeness[i] = 0;
+    L.summed_N[i] = 0;
+    L.summed_wt_I[i] = 0;
+    L.summed_weight[i] = 0;
+  }
+
+  L.i_isig_list.clear();
+
+  for (std::size_t i = 0; i < hkl.size(); i++) {
+    std::size_t m = frames[i];
+
+    if (!L.selected_frames[m]) {
+      L.n_rejected[m] += 1;
+      continue;
+    }
+
+    std::size_t h = hkl[i];
+    L.completeness[h] += 1;
+    L.n_obs[m] += 1;
+
+    // Mind negative scaling factors!
+    double G = x[m];
+    //double G = slope[m]; // To reproduce mark0 scaling
+    //double G = 1; // To reproduce mark1 scaling
+
+    double I = data[i] / G;
+    if (I <= 0) {
+      L.n_rejected[m] += 1;
+      continue;
+    }
+
+    double s = sigmas[i] / G;
+    double w = s * s;
+    if (w <= 0) {
+      L.n_rejected[m] += 1;
+      continue;
+    }
+    double IsigI = I / s;
+
+    L.summed_N[h] += 1;
+    L.sum_I[h] += I;
+    L.sum_I_SIGI[h] += IsigI;
+
+    L.i_isig_list.push_back(scitbx::vec3<double>(h, I, IsigI));
+
+    const double d =
+      params_unit_cell.d(cctbx::miller::index<>(L.merged_asu_hkl[h]));
+    if (L.d_min_values[m] <= 0 || L.d_min_values[m] > d)
+      L.d_min_values[m] = d;
+
+    /* This is the critical bit
+     */
+    L.summed_wt_I[h] += I / w;
+    L.summed_weight[h] += 1 / w;
+  }
+
+
+  /* Here's the twist: in order not to discard refined intensities XXX
+   */
+  const std::size_t n_frames = L.selected_frames.size();
+  for (std::size_t i = 0; i < L.merged_asu_hkl.size(); i++) {
+    if (L.summed_weight[i] > 0)
+      L.summed_wt_I[i] = x[n_frames + i] * L.summed_weight[i];
+    else
+      L.summed_wt_I[i] = 0;
+  }
+
+  return (make_tuple(L.sum_I,
+                     L.sum_I_SIGI,
+                     L.completeness,
+                     L.summed_N,
+                     L.summed_wt_I,
+                     L.summed_weight,
+                     L.n_rejected,
+                     L.n_obs,
+                     L.d_min_values,
+                     L.i_isig_list));
+}
+
+
 static boost::python::tuple
 get_scaling_results(scaling_results const& L){
   return make_tuple(    L.sum_I, L.sum_I_SIGI,
@@ -615,6 +844,9 @@ namespace boost_python { namespace {
       .def("mark0",&scaling_results::mark0)
       .def("mark1",&scaling_results::mark1)
     ;
+    def("compute_functional_and_gradients", &compute_functional_and_gradients);
+    def("curvatures", &curvatures);
+    def("get_scaling_results_mark2", &get_scaling_results_mark2);
     def("get_scaling_results", &get_scaling_results);
     def("get_isigi_dict", &get_isigi_dict);
 
