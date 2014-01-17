@@ -1,7 +1,9 @@
-from __future__ import division
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # $Id$
+
+from __future__ import division
+
 import math
 from libtbx.str_utils import format_value
 from iotbx import mtz
@@ -81,6 +83,40 @@ def r1_factor(self, other, scale_factor=None, assume_index_matching=False,
       results.append(r1_factor(self.select(sel),
         other.select(sel), scale_factor.data[i_bin], assume_index_matching))
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
+
+def r_split(self, other, assume_index_matching=False, use_binning=False):
+    # Used in Boutet et al. (2012), which credit it to Owen et al
+    # (2006).  See also R_mrgd_I in Diederichs & Karplus (1997)?
+    # Barends cites Collaborative Computational Project Number 4. The
+    # CCP4 suite: programs for protein crystallography. Acta
+    # Crystallogr. Sect. D-Biol. Crystallogr. 50, 760-763 (1994) and
+    # White, T. A. et al. CrystFEL: a software suite for snapshot
+    # serial crystallography. J. Appl. Cryst. 45, 335–341 (2012).
+
+    if not use_binning:
+      assert other.indices().size() == self.indices().size()
+      if self.data().size() == 0:
+        return None
+
+      if assume_index_matching:
+        (o, c) = (self, other)
+      else:
+        (o, c) = self.common_sets(other=other, assert_no_singles=True)
+
+      # The case where the denominator is less or equal to zero is
+      # pathological and should never arise in practice.
+      den = flex.sum(flex.abs(o.data() + c.data()))
+      assert den > 0
+      return math.sqrt(2) * flex.sum(flex.abs(o.data() - c.data())) / den
+
+    assert self.binner is not None
+    results = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      results.append(r_split(self.select(sel), other.select(sel),
+        assume_index_matching=assume_index_matching,
+        use_binning=False))
+    return binned_data(binner=self.binner(), data=results, data_fmt='%7.4f')
 
 def binned_correlation(self,other):
     results = []
@@ -254,6 +290,8 @@ def run_cc(params,reindexing_op,output):
   #ref_riso.show(f=output)
   oe_rint = r1_factor(selected_uniform[2],selected_uniform[3],
                        scale_factor = oe_scale, use_binning=True)
+  oe_rsplit = r_split(
+    selected_uniform[2], selected_uniform[3], use_binning=True)
   #oe_rint.show(f=output)
 
 
@@ -267,6 +305,8 @@ def run_cc(params,reindexing_op,output):
                        scale_factor = ref_scale_all)
   oe_rint_all = r1_factor(selected_uniform[2],selected_uniform[3],
                        scale_factor = oe_scale_all)
+  oe_rsplit_all = r_split(selected_uniform[2], selected_uniform[3])
+  print >>output, "R factors Riso = %.1f%%, Rint = %.1f%%"%(100.*ref_riso_all, 100.*oe_rint_all)
 
   print >>output
   if reindexing_op == "h,k,l":
@@ -275,13 +315,15 @@ def run_cc(params,reindexing_op,output):
     print >> output, "Table of Scaling Results Reindexing as %s:"%reindexing_op
 
   from libtbx import table_utils
-  table_header = ["","","","CC","","CC","","R","R","Scale","Scale"]
-  table_header2 = ["Bin","Resolution Range","Completeness","int","N","iso","N","int","iso","int","iso"]
+  table_header = ["","","","CC","","CC","","R","R","R","Scale","Scale"]
+  table_header2 = ["Bin","Resolution Range","Completeness","int","N","iso","N","int","split","iso","int","iso"]
   table_data = []
   table_data.append(table_header)
   table_data.append(table_header2)
 
   items = binned_cc_int.binner.range_used()
+
+  # XXX Make it clear what the completeness here actually is!
 
   for bin in items:
     table_row = []
@@ -296,6 +338,10 @@ def run_cc(params,reindexing_op,output):
     table_row.append("%7d"%(binned_cc_ref_N.data[bin]))
     if oe_rint.data[bin] is not None:
       table_row.append("%.1f%%"%(100.*oe_rint.data[bin]))
+    else:
+      table_row.append("--")
+    if oe_rsplit.data[bin] is not None:
+      table_row.append("%.1f%%"%(100.*oe_rsplit.data[bin]))
     else:
       table_row.append("--")
     if ref_riso.data[bin] is not None:
@@ -321,6 +367,7 @@ def run_cc(params,reindexing_op,output):
       format_value("%.1f%%", 100.*corr_iso),
       format_value("%7d", N_iso),
       format_value("%.1f%%", 100.*oe_rint_all),
+      format_value("%.1f%%", 100.*oe_rsplit_all),
       format_value("%.1f%%", 100.*ref_riso_all),
       format_value("%.3f", oe_scale_all),
       format_value("%.3f", ref_scale_all),
