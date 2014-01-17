@@ -201,38 +201,43 @@ def run(args):
   out.register("log", log, atexit_send_to=None)
   out.register("stdout", sys.stdout)
 
-  # Verify that the externally supplied isomorphous reference defines
-  # a suitable column of intensities, and exit with error if it does
-  # not.  Then warn if it is necessary to generate Bijvoet mates; see
-  # also cxi/cxi_cc.py.
-  data_SR = mtz.object(work_params.scaling.mtz_file)
-  array_SR = None
-  obs_labels = []
-  for array in data_SR.as_miller_arrays():
-    this_label = array.info().label_string().lower()
-    if array.observation_type() is not None:
-      obs_labels.append(this_label.split(',')[0])
-    if this_label.find("fobs")>=0:
-      array_SR = array.as_intensity_array()
-      break
-    if this_label.find("imean")>=0:
-      array_SR = array.as_intensity_array()
-      break
-    if this_label.find(work_params.scaling.mtz_column_F)==0:
-      array_SR = array.as_intensity_array()
-      break
+  # Verify that the externally supplied isomorphous reference, if
+  # present, defines a suitable column of intensities, and exit with
+  # error if it does not.  Then warn if it is necessary to generate
+  # Bijvoet mates.  Failure to catch these issues here would lead to
+  # possibly obscure problems in cxi/cxi_cc.py later on.
+  try:
+    data_SR = mtz.object(work_params.scaling.mtz_file)
+  except RuntimeError:
+    pass
+  else:
+    array_SR = None
+    obs_labels = []
+    for array in data_SR.as_miller_arrays():
+      this_label = array.info().label_string().lower()
+      if array.observation_type() is not None:
+        obs_labels.append(this_label.split(',')[0])
+      if this_label.find('fobs')>=0:
+        array_SR = array.as_intensity_array()
+        break
+      if this_label.find('imean')>=0:
+        array_SR = array.as_intensity_array()
+        break
+      if this_label.find(work_params.scaling.mtz_column_F)==0:
+        array_SR = array.as_intensity_array()
+        break
 
-  if array_SR is None:
-    known_labels = ['fobs', 'imean', work_params.scaling.mtz_column_F]
-    raise Usage(work_params.scaling.mtz_file +
-                " does not contain any observations labelled [" +
-                ", ".join(known_labels) +
-                "].  Please set scaling.mtz_column_F to one of [" +
-                ",".join(obs_labels) + "].")
-  elif not work_params.merge_anomalous and not array_SR.anomalous_flag():
-    print >> out, "Warning: Preserving anomalous contributors, but %s " \
-      "has anomalous contributors merged.  Generating identical Bijvoet " \
-      "mates." % work_params.scaling.mtz_file
+    if array_SR is None:
+      known_labels = ['fobs', 'imean', work_params.scaling.mtz_column_F]
+      raise Usage(work_params.scaling.mtz_file +
+                  " does not contain any observations labelled [" +
+                  ", ".join(known_labels) +
+                  "].  Please set scaling.mtz_column_F to one of [" +
+                  ",".join(obs_labels) + "].")
+    elif not work_params.merge_anomalous and not array_SR.anomalous_flag():
+      print >> out, "Warning: Preserving anomalous contributors, but %s " \
+        "has anomalous contributors merged.  Generating identical Bijvoet " \
+        "mates." % work_params.scaling.mtz_file
 
   # Read Nat's reference model from an MTZ file.  XXX The observation
   # type is given as F, not I--should they be squared?  Check with Nat!
@@ -317,12 +322,6 @@ def run(args):
 
   reserve_prefix = work_params.output.prefix
   for data_subset in [1,2,0]:
-
-    # Don't separately merge even/odd datasets if refinement is
-    # active.
-    if work_params.merging.refine_G_Imodel and data_subset != 0:
-      continue
-
     work_params.data_subset = data_subset
     work_params.output.prefix = "%s_s%1d_%s"%(reserve_prefix,data_subset,work_params.scaling.algorithm)
 
@@ -423,62 +422,9 @@ def run(args):
               self.x[n_frames + i] = scaler.summed_wt_I[i] / scaler.summed_weight[i]
               #self.weight[n_frames + i] = math.sqrt(1 / scaler.summed_weight[i])
 
-          """
-          I_m = flex.double(len(self._millers))
-          w_m = flex.double(len(self._millers))
-          for i in range(len(self._hkl)):
-            if self._data[i] <= 0:
-              continue
-
-            if not self._subset[self._frames[i]]:
-              continue
-
-            w = self._sigmas[i]**2
-            if w <= 0:
-              print "Observation with non-positive sigma" # XXX
-              continue
-
-            h = self._hkl[i]
-            I_m[h] += (1 / w) * self._data[i]
-            w_m[h] += (1 / w)
-
-          n_missing = 0
-          for h in range(len(self._millers)):
-            if w_m[h] > 0:
-               # XXX Omit the division for comparison with mark1
-              self.x[n_frames + h] = I_m[h] / w_m[h]
-            else:
-              self.x[n_frames + h] = 0
-              n_missing += 1
-
-          completeness = (len(self._millers) - n_missing) / len(self._millers)
-          print "Estimated initial structure factor amplitudes, " \
-            "completeness %d%%" % (int(round(100 * completeness)))
-          """
-
-          """
-          # Derive initial per-frame scaling factors, optimal in
-          # least-squares sense.
-          for i in range(len(self._hkl)):
-            if self._data[i] <= 0:
-              continue
-            if not self._subset[self._frames[i]]:
-              continue
-          """
-
-          """
-          # Test code to run mark1 merging with results from mark0
-          # scaling.
-          from libtbx import easy_pickle
-          if False:
-            easy_pickle.dump('dump-s%1d.pkl' % data_subset, self.x)
-          else:
-            self.x = easy_pickle.load('dump-s%1d.pkl' % data_subset)
-          """
-
           # Should be the last call in the application-specific minimizer
           # class.
-          super(find_scale, self).__init__()
+          #super(find_scale, self).__init__()
 
 
         def compute_functional_and_gradients(self):
@@ -525,78 +471,6 @@ def run(args):
                                       #termination_params=termination_params)
 
 
-        """
-        def get_scaling_results(self, params_unit_cell):
-          n_frames = len(self._subset)
-          n_millers = len(self._millers)
-          sigmas = self._observations.get_double('sigi')
-
-          sum_I = flex.double(n_millers)
-          sum_I_SIGI = flex.double(n_millers)
-          completeness = flex.int(n_millers)
-          summed_N = flex.int(n_millers)
-          summed_wt_I = flex.double(n_millers)
-          summed_weight = flex.double(n_millers)
-
-          n_rejected = flex.double(n_frames)
-          n_obs = flex.double(n_frames)
-          d_min_values = flex.double(n_frames)
-          i_sigi_list = flex.vec3_double()
-
-          for i in range(len(self._hkl)):
-            m = self._frames[i]
-            if not self._subset[m]:
-              n_rejected[m] += 1
-              continue
-
-            h = self._hkl[i]
-            completeness[h] += 1
-            n_obs[m] += 1
-
-            # XXX Mind negative scaling factors!
-            G = self.x[m]
-            I = self._data[i] / G
-            if I <= 0:
-              n_rejected += 1
-              continue
-
-            s = sigmas[i] / G
-            w = s**2
-            if w <= 0:
-              n_rejected[m] += 1
-              continue
-            IsigI = I / s
-
-            summed_N[h] += 1
-            sum_I[h] += I
-            sum_I_SIGI[h] += IsigI
-
-            i_sigi_list.append((h, I, IsigI))
-
-            d = params_unit_cell.d(self._millers[h])
-            if d_min_values[m] <= 0 or d_min_values[m] > d:
-              d_min_values[m] = d
-
-            summed_wt_I[h] += I / w
-            summed_weight[h] += 1 / w
-
-          return (sum_I, sum_I_SIGI, completeness, summed_N, summed_wt_I,
-                  summed_weight, n_rejected, n_obs, d_min_values, i_sigi_list)
-
-        def get_isigi_dict(self, i_sigi_list, merged_asu_hkl):
-          # This function is really slow!
-          isigi = {}
-          for (h, I, IsigI) in i_sigi_list:
-            hkl = tuple(merged_asu_hkl[int(round(h))])
-
-            if hkl not in isigi.keys():
-              isigi[hkl] = [(I, IsigI)]
-            else:
-              isigi[hkl].append((I, IsigI))
-          return isigi
-        """
-
-
       my_find_scale = find_scale(
         scaler.millers['merged_asu_hkl'],
         scaler._observations,
@@ -610,6 +484,7 @@ def run(args):
         scaler.summed_wt_I, scaler.summed_weight, scaler.n_rejected, \
         scaler.n_obs, scaler.d_min_values, i_sigi_list = get_scaling_results_mark2(my_find_scale.x, results, scaler.params.target_unit_cell)
       scaler.ISIGI = get_isigi_dict(results)
+
 
     scaler.wavelength = scaler.frames["wavelength"]
     scaler.corr_values = scaler.frames["cc"]
@@ -669,14 +544,6 @@ def run(args):
       n_reflections=n_refl,
       overall_correlation=corr)
     easy_pickle.dump("%s.pkl" % work_params.output.prefix, result)
-
-
-    # Modified CC-tables
-    if work_params.merging.refine_G_Imodel and data_subset == 0:
-      from xfel.cxi.cxi_cc_single import run_cc
-      run_cc(work_params, miller_array, scaler, my_find_scale.x, output=out)
-
-
   work_params.output.prefix = reserve_prefix
 
   # Output table with number of images contribution reflections per

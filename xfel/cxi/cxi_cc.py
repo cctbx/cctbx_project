@@ -84,40 +84,6 @@ def r1_factor(self, other, scale_factor=None, assume_index_matching=False,
         other.select(sel), scale_factor.data[i_bin], assume_index_matching))
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
-def r_split(self, other, assume_index_matching=False, use_binning=False):
-    # Used in Boutet et al. (2012), which credit it to Owen et al
-    # (2006).  See also R_mrgd_I in Diederichs & Karplus (1997)?
-    # Barends cites Collaborative Computational Project Number 4. The
-    # CCP4 suite: programs for protein crystallography. Acta
-    # Crystallogr. Sect. D-Biol. Crystallogr. 50, 760-763 (1994) and
-    # White, T. A. et al. CrystFEL: a software suite for snapshot
-    # serial crystallography. J. Appl. Cryst. 45, 335–341 (2012).
-
-    if not use_binning:
-      assert other.indices().size() == self.indices().size()
-      if self.data().size() == 0:
-        return None
-
-      if assume_index_matching:
-        (o, c) = (self, other)
-      else:
-        (o, c) = self.common_sets(other=other, assert_no_singles=True)
-
-      # The case where the denominator is less or equal to zero is
-      # pathological and should never arise in practice.
-      den = flex.sum(flex.abs(o.data() + c.data()))
-      assert den > 0
-      return math.sqrt(2) * flex.sum(flex.abs(o.data() - c.data())) / den
-
-    assert self.binner is not None
-    results = []
-    for i_bin in self.binner().range_all():
-      sel = self.binner().selection(i_bin)
-      results.append(r_split(self.select(sel), other.select(sel),
-        assume_index_matching=assume_index_matching,
-        use_binning=False))
-    return binned_data(binner=self.binner(), data=results, data_fmt='%7.4f')
-
 def binned_correlation(self,other):
     results = []
     bin_count = []
@@ -176,13 +142,21 @@ def run_cc(params,reindexing_op,output):
   if reindexing_op is not "h,k,l":
     print """Recalculating after reindexing the new data with %s
      (it is necessary to pick which indexing choice gives the sensible CC iso):"""%reindexing_op
-  data_SR = mtz.object(params.scaling.mtz_file)
+  try:
+    data_SR = mtz.object(params.scaling.mtz_file)
+    have_iso_ref = True
+  except RuntimeError:
+    data_SR = None
+    have_iso_ref = False
   data_d0 = mtz.object(params.output.prefix+"_s0_"+params.scaling.algorithm+".mtz")
   data_d1 = mtz.object(params.output.prefix+"_s1_"+params.scaling.algorithm+".mtz")
   data_d2 = mtz.object(params.output.prefix+"_s2_"+params.scaling.algorithm+".mtz")
 
   uniform = []
   for idx,item in enumerate([data_SR,data_d0,data_d1,data_d2]):
+    if not have_iso_ref and idx == 0:
+      uniform.append(None)
+      continue
     #item.show_summary()
     print >>output, "-------------------------------"
     for array in item.as_miller_arrays():
@@ -212,7 +186,9 @@ def run_cc(params,reindexing_op,output):
 
   # If necesssary, generate Bijvoet mates for the isomorphous
   # reference.
-  if not params.merge_anomalous and not uniform[0].anomalous_flag():
+  if have_iso_ref \
+     and not params.merge_anomalous \
+     and not uniform[0].anomalous_flag():
       uniform[0] = uniform[0].generate_bijvoet_mates()
 
   for x in [1,2,3]:
@@ -220,93 +196,112 @@ def run_cc(params,reindexing_op,output):
     uniform[x] = uniform[x].change_basis(reindexing_op).map_to_asu()
 
   d_max_min = uniform[1].d_max_min()
+  if have_iso_ref:
+    sgi = uniform[0].space_group_info()
+  else:
+    sgi = params.target_space_group
+
   for x in [0,1,2,3]:
+    if not have_iso_ref and x == 0:
+      continue
     print >>output, uniform[x].size()
     uniform[x] = uniform[x].customized_copy(
       crystal_symmetry = crystal.symmetry(unit_cell=uniform[1].unit_cell(),
-                                          space_group_info=uniform[0].space_group_info()),
+                                          space_group_info=sgi),
       ).resolution_filter(d_min=uniform[1].d_min()
       ).complete_array(d_min=uniform[1].d_min()).map_to_asu()
     print >>output, uniform[x].size()
 
+  if have_iso_ref:
+    uniform[0] = uniform[0].common_set(uniform[1])
+    assert len(uniform[0].indices()) == len(uniform[1].indices())
   uniform[2] = uniform[2].common_set(uniform[1])
-  uniform[0] = uniform[0].common_set(uniform[1])
   uniform[3] = uniform[3].common_set(uniform[1])
   print >>output, "-------------------------------"
   NBIN = params.output.n_bins
-  uniform[0].setup_binner(n_bins=NBIN)
-  for x in [1,2,3]: uniform[x].setup_binner(n_bins=NBIN)
-  for x in xrange(len(uniform[0].indices())):
-    assert uniform[1].indices()[x] == uniform[0].indices()[x]
-    assert uniform[2].indices()[x] == uniform[0].indices()[x]
-    assert uniform[3].indices()[x] == uniform[2].indices()[x]
-    continue
-    print >>output, "%15s %15s %15s %15s %10.0f %10.0f %10.0f %10.0f"%(
-      uniform[0].indices()[x], uniform[1].indices()[x],
-      uniform[2].indices()[x], uniform[3].indices()[x],
-      uniform[0].data()[x], uniform[1].data()[x],
-      uniform[2].data()[x], uniform[3].data()[x],)
+  for x in [0, 1, 2, 3]:
+    if not have_iso_ref and x == 0:
+      continue
+    uniform[x].setup_binner(n_bins=NBIN)
 
-
-  ref_scale = scale_factor(uniform[1],uniform[0])
-  oe_scale = scale_factor(uniform[2],uniform[3])
+  for x in xrange(len(uniform[1].indices())):
+    if have_iso_ref:
+      assert uniform[0].indices()[x] == uniform[1].indices()[x]
+    assert uniform[1].indices()[x] == uniform[2].indices()[x]
+    assert uniform[2].indices()[x] == uniform[3].indices()[x]
 
   cutoff = math.exp(params.scaling.log_cutoff or -100.)
-  uniformA = (uniform[0].data()>=0.).__and__(uniform[1].data()>=0.).__and__(uniform[0].data() > cutoff).__and__(uniform[1].data() > cutoff)
 
-  slope,offset,corr_iso,N_iso = correlation(uniform[1].select(uniformA),uniform[0].select(uniformA))
-  print >>output,"C.C. iso is %.1f%% on %d indices"%(100.*corr_iso, N_iso)
+  selected_uniform = []
+  if have_iso_ref:
+    uniformA = (uniform[0].data() > cutoff).__and__(uniform[1].data() > cutoff)
+    slope, offset, corr_iso, N_iso = correlation(
+      uniform[1].select(uniformA), uniform[0].select(uniformA))
+    print >> output, "C.C. iso is %.1f%% on %d indices" % (
+      100 * corr_iso, N_iso)
 
-  uniformB = (uniform[2].data()>=0.).__and__(uniform[3].data()>=0.).__and__(uniform[2].data()>cutoff).__and__(uniform[3].data() > cutoff)
+    for x in [0, 1]:
+      selected_uniform.append(uniform[x].select(uniformA))
+      selected_uniform[x].setup_binner(
+        d_max=100000, d_min=params.d_min, n_bins=NBIN)
+
+  else:
+    selected_uniform = [None, None]
+
+  uniformB = (uniform[2].data()>cutoff).__and__(uniform[3].data() > cutoff)
 
   slope,offset,corr_int,N_int = correlation(uniform[2].select(uniformB),uniform[3].select(uniformB))
   print >>output, "C.C. int is %.1f%% on %d indices"%(100.*corr_int, N_int)
 
-  selected_uniform = []
-  for x in [0,1]: selected_uniform.append(uniform[x].select(uniformA))
-  for x in [2,3]: selected_uniform.append(uniform[x].select(uniformB))
-  for x in [0,1,2,3]: selected_uniform[x].setup_binner(d_max=100000, d_min=params.d_min, n_bins=NBIN)
+  for x in [2, 3]:
+    selected_uniform.append(uniform[x].select(uniformB))
+    selected_uniform[x].setup_binner(
+      d_max=100000, d_min=params.d_min, n_bins=NBIN)
 
-  binned_cc_ref,binned_cc_ref_N = binned_correlation(selected_uniform[1],selected_uniform[0])
-  #binned_cc_ref.show(f=output)
+  if have_iso_ref:
+    binned_cc_ref, binned_cc_ref_N = binned_correlation(
+      selected_uniform[1], selected_uniform[0])
+    #binned_cc_ref.show(f=output)
 
-  binned_cc_int,binned_cc_int_N = binned_correlation(selected_uniform[2],selected_uniform[3])
+    ref_scale = scale_factor(
+      selected_uniform[1], selected_uniform[0],
+      weights=flex.pow(selected_uniform[1].sigmas(), -2),
+      use_binning=True)
+    #ref_scale.show(f=output)
+
+    ref_riso = r1_factor(
+      selected_uniform[1], selected_uniform[0],
+      scale_factor=ref_scale, use_binning=True)
+    #ref_riso.show(f=output)
+
+    ref_scale_all = scale_factor(
+      selected_uniform[1], selected_uniform[0],
+      weights=flex.pow(selected_uniform[1].sigmas(), -2))
+
+    ref_riso_all = r1_factor(
+      selected_uniform[1], selected_uniform[0],
+      scale_factor=ref_scale_all)
+
+  binned_cc_int,binned_cc_int_N = binned_correlation(
+    selected_uniform[2], selected_uniform[3])
   #binned_cc_int.show(f=output)
 
-  ref_scale = scale_factor(selected_uniform[1],selected_uniform[0],
-    weights = flex.pow(selected_uniform[1].sigmas(),-2),
-    use_binning=True)
   oe_scale = scale_factor(selected_uniform[2],selected_uniform[3],
     weights = flex.pow(selected_uniform[2].sigmas(),-2)
             + flex.pow(selected_uniform[3].sigmas(),-2),
     use_binning=True)
-
-
-  #ref_scale.show(f=output)
   #oe_scale.show(f=output)
 
-  ref_riso = r1_factor(selected_uniform[1],selected_uniform[0],
-                       scale_factor = ref_scale, use_binning=True)
-  #ref_riso.show(f=output)
   oe_rint = r1_factor(selected_uniform[2],selected_uniform[3],
                        scale_factor = oe_scale, use_binning=True)
-  oe_rsplit = r_split(
-    selected_uniform[2], selected_uniform[3], use_binning=True)
   #oe_rint.show(f=output)
 
-
-  ref_scale_all = scale_factor(selected_uniform[1],selected_uniform[0],
-    weights = flex.pow(selected_uniform[1].sigmas(),-2),)
   oe_scale_all = scale_factor(selected_uniform[2],selected_uniform[3],
     weights = flex.pow(selected_uniform[2].sigmas(),-2)
             + flex.pow(selected_uniform[3].sigmas(),-2),)
 
-  ref_riso_all = r1_factor(selected_uniform[1],selected_uniform[0],
-                       scale_factor = ref_scale_all)
   oe_rint_all = r1_factor(selected_uniform[2],selected_uniform[3],
                        scale_factor = oe_scale_all)
-  oe_rsplit_all = r_split(selected_uniform[2], selected_uniform[3])
-  print >>output, "R factors Riso = %.1f%%, Rint = %.1f%%"%(100.*ref_riso_all, 100.*oe_rint_all)
 
   print >>output
   if reindexing_op == "h,k,l":
@@ -315,15 +310,13 @@ def run_cc(params,reindexing_op,output):
     print >> output, "Table of Scaling Results Reindexing as %s:"%reindexing_op
 
   from libtbx import table_utils
-  table_header = ["","","","CC","","CC","","R","R","R","Scale","Scale"]
-  table_header2 = ["Bin","Resolution Range","Completeness","int","N","iso","N","int","split","iso","int","iso"]
+  table_header = ["","","","CC","","CC","","R","R","Scale","Scale"]
+  table_header2 = ["Bin","Resolution Range","Completeness","int","N","iso","N","int","iso","int","iso"]
   table_data = []
   table_data.append(table_header)
   table_data.append(table_header2)
 
   items = binned_cc_int.binner.range_used()
-
-  # XXX Make it clear what the completeness here actually is!
 
   for bin in items:
     table_row = []
@@ -334,44 +327,65 @@ def run_cc(params,reindexing_op,output):
                                                  show_d_range=False, show_counts=True))
     table_row.append("%.1f%%"%(100.*binned_cc_int.data[bin]))
     table_row.append("%7d"%(binned_cc_int_N.data[bin]))
-    table_row.append("%.1f%%"%(100.*binned_cc_ref.data[bin]))
-    table_row.append("%7d"%(binned_cc_ref_N.data[bin]))
+
+    if have_iso_ref and binned_cc_ref.data[bin] is not None:
+      table_row.append("%.1f%%" % (100 * binned_cc_ref.data[bin]))
+    else:
+      table_row.append("--")
+
+    if have_iso_ref and binned_cc_ref_N.data[bin] is not None:
+      table_row.append("%7d" % (binned_cc_ref_N.data[bin]))
+    else:
+      table_row.append("--")
+
     if oe_rint.data[bin] is not None:
       table_row.append("%.1f%%"%(100.*oe_rint.data[bin]))
     else:
       table_row.append("--")
-    if oe_rsplit.data[bin] is not None:
-      table_row.append("%.1f%%"%(100.*oe_rsplit.data[bin]))
+
+    if have_iso_ref and ref_riso.data[bin] is not None:
+      table_row.append("%.1f%%" % (100 * ref_riso.data[bin]))
     else:
       table_row.append("--")
-    if ref_riso.data[bin] is not None:
-      table_row.append("%.1f%%"%(100.*ref_riso.data[bin]))
-    else:
-      table_row.append("--")
+
     if oe_scale.data[bin] is not None:
       table_row.append("%.3f"%oe_scale.data[bin])
     else:
       table_row.append("--")
-    if ref_scale.data[bin] is not None:
-      table_row.append("%.3f"%ref_scale.data[bin])
+
+    if have_iso_ref and ref_scale.data[bin] is not None:
+      table_row.append("%.3f" % ref_scale.data[bin])
     else:
       table_row.append("--")
+
     table_data.append(table_row)
   table_data.append([""]*len(table_header))
-  table_data.append(  [
-      format_value("%3s",   "All"),
-      format_value("%-13s", "                 "),
-      format_value("%13s",  ""),
-      format_value("%.1f%%", 100.*corr_int),
-      format_value("%7d", N_int),
-      format_value("%.1f%%", 100.*corr_iso),
-      format_value("%7d", N_iso),
-      format_value("%.1f%%", 100.*oe_rint_all),
-      format_value("%.1f%%", 100.*oe_rsplit_all),
-      format_value("%.1f%%", 100.*ref_riso_all),
-      format_value("%.3f", oe_scale_all),
-      format_value("%.3f", ref_scale_all),
-  ])
+
+  table_row = [format_value("%3s",   "All"),
+               format_value("%-13s", "                 "),
+               format_value("%13s",  ""),
+               format_value("%.1f%%", 100 * corr_int),
+               format_value("%7d", N_int)]
+
+  if have_iso_ref:
+    table_row.extend((format_value("%.1f%%", 100 * corr_iso),
+                      format_value("%7d", N_iso)))
+  else:
+    table_row.extend(("--", "--"))
+
+  table_row.append(format_value("%.1f%%", 100 * oe_rint_all))
+  if have_iso_ref:
+    table_row.append(format_value("%.1f%%", 100 * ref_riso_all))
+  else:
+    table_row.append("--")
+
+  table_row.append(format_value("%.3f", oe_scale_all))
+  if have_iso_ref:
+    table_row.append(format_value("%.3f", ref_scale_all))
+  else:
+    table_row.append("--")
+
+  table_data.append(table_row)
 
   print >>output
   print >>output,table_utils.format(table_data,has_header=2,justify='center',delim=" ")
@@ -379,11 +393,13 @@ def run_cc(params,reindexing_op,output):
   Similarly, Scale int and R int are the scaling factor and scaling R factor between odd/even images.
   "iso" columns compare the whole XFEL dataset to the isomorphous reference."""
 
-
   if params.scaling.show_plots:
     from matplotlib import pyplot as plt
-    plt.plot(flex.log(uniform[2].select(uniformB).data()),flex.log(uniform[3].select(uniformB).data()),"r.")
+    plt.plot(flex.log(uniform[2].select(uniformB).data()),
+             flex.log(uniform[3].select(uniformB).data()), 'r.')
     plt.show()
-    plt.plot(flex.log(uniform[0].select(uniformA).data()),flex.log(uniform[1].select(uniformA).data()),"r.")
-    plt.show()
+    if have_iso_ref:
+      plt.plot(flex.log(uniform[0].select(uniformA).data()),
+               flex.log(uniform[1].select(uniformA).data()), 'r.')
+      plt.show()
   print >>output
