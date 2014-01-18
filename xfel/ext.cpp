@@ -533,9 +533,9 @@ compute_functional_and_gradients(const shared_double& x,
   const shared_int frames = observations.get_int("frame_id");
   const shared_double sigmas = observations.get_double("sigi");
 
+  shared_double g(x.size());
   double f = 0;
   double w_tot = 0;
-  shared_double g(x.size());
 
   //printf("Iterating over %zd reflections\n", hkl.size());
 
@@ -573,8 +573,8 @@ compute_functional_and_gradients(const shared_double& x,
 
   SCITBX_ASSERT(w_tot > 0);
   f /= w_tot;
-  for (std::size_t m = 0; m < selected_frames.size(); m++)
-    g[m] /= w_tot;
+  for (std::size_t i = 0; i < g.size(); i++)
+    g[i] /= w_tot;
 
 
   return (boost::python::make_tuple(f, g));
@@ -602,6 +602,7 @@ curvatures(const shared_double& x,
   const shared_double sigmas = observations.get_double("sigi");
 
   shared_double c(x.size());
+  double w_tot = 0;
 
   printf("CURVATURES CALLED\n");
 
@@ -623,11 +624,14 @@ curvatures(const shared_double& x,
       continue;
 
     const double G = x[m];
+    w_tot += (1.0 / w);
 
-    c[n_frames + h] += 2.0 * (1.0 / w) * G * G;
     c[m] += 2.0 * (1.0 / w) * I_m * I_m;
+    c[n_frames + h] += 2.0 * (1.0 / w) * G * G;
   }
 
+  for (std::size_t i = 0; i < c.size(); i++)
+    c[i] /= w_tot;
 
   /*
   for (std::size_t i = 0; i < c.size(); i++)
