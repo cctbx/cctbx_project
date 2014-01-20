@@ -153,7 +153,7 @@ class refinement(refinement_base):
           return pfh.x.norm()
 
         def build_up(pfh, objective_only=False):
-          residuals = pfh.fvec_callable(pfh.x)
+          residuals = pfh.fvec_callable_pvr(pfh.x)
 
           pfh.reset()
           if objective_only:
@@ -166,7 +166,7 @@ class refinement(refinement_base):
               jacobian.matrix_paste_column_in_place(der_r,j)
             pfh.add_equations(residuals, jacobian, weights=None)
 
-        def fvec_callable(pfh,current_values):
+        def fvec_callable_NOT USED AFTER BUGFIX(pfh,current_values):
           rotx = current_values[0]
           roty = current_values[1]
           effective_orientation = OO.input_orientation.rotate_thru((1,0,0),rotx
@@ -210,8 +210,8 @@ class refinement(refinement_base):
 
           degrees = 360.*excursions
           rmsdexc = math.sqrt(flex.mean(degrees*degrees))
-          #print "rotx %7.3f roty %7.3f degrees, -PVR excursion %7.3f degrees"%(
-          #(rotx * 180./math.pi),(roty * 180./math.pi), rmsdexc)
+          print "rotx %7.3f roty %7.3f degrees, -PVR excursion %7.3f degrees"%(
+          (rotx * 180./math.pi),(roty * 180./math.pi), rmsdexc)
           # Note.  Luc Bourhis wants scale to be from 0 to 1. So instead of
           # returning on scale of degrees, use radians/(2*pi)
           # The parameters rotx roty are still expressed in radians
@@ -266,7 +266,7 @@ class refinement(refinement_base):
       if False: # Excursion histogram
         print "The input mosaicity is %7.3f deg full width"%OO.parent.inputai.getMosaicity()
         # final histogram
-        final = 360.* helper.fvec_callable(results)
+        final = 360.* helper.fvec_callable_pvr(results)
         rmsdexc = math.sqrt(flex.mean(final*final))
         from matplotlib import pyplot as plt
         nbins = len(final)//20
@@ -280,7 +280,7 @@ class refinement(refinement_base):
 
       # Determine optimal mosaicity and domain size model (monochromatic)
 
-      final = 360.*helper.fvec_callable(results)
+      final = 360.*helper.fvec_callable_pvr(results)
       #Guard against misindexing -- seen in simulated data, with zone nearly perfectly aligned
       guard_stats = flex.max(final), flex.min(final)
       if guard_stats[0] > 2.0 or guard_stats[1] < -2.0:
