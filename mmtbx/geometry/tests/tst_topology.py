@@ -4,103 +4,6 @@ from mmtbx.geometry import topology
 
 import unittest
 
-class collector(object):
-
-  def __init__(self):
-
-    self.collected = []
-
-
-  def __call__(self, data):
-
-    self.collected.append( data )
-    return True
-
-
-class TestGraph(unittest.TestCase):
-
-  def setUp(self):
-
-    self.graph = topology.graph()
-
-
-  def test_manipulation(self):
-
-    self.assertEqual( self.graph.add_vertex( label = "CA" ), 0 )
-    self.assertEqual( self.graph.add_vertex( label = "C" ), 1 )
-    self.assertEqual( self.graph.add_vertex( label = "C" ), 2 )
-
-    res = self.graph.add_edge( vertex1 = 0, vertex2 = 1, weight = 1.5 )
-    self.assertEqual( len( res ), 2 )
-    self.assertTrue( res[1] )
-
-    res = self.graph.add_edge( vertex1 = 0, vertex2 = 1, weight = 1.5 )
-    self.assertEqual( len( res ), 2 )
-    self.assertFalse( res[1] )
-
-    res = self.graph.add_edge( vertex1 = 0, vertex2 = 2, weight = 1.5 )
-    self.assertEqual( len( res ), 2 )
-    self.assertTrue( res[1] )
-
-
-  def test_matching(self):
-
-    leu = topology.graph()
-    v0 = leu.add_vertex( "CA" )
-    v1 = leu.add_vertex( "C" )  # CB
-    v2 = leu.add_vertex( "C" )  # CG
-    v3 = leu.add_vertex( "C" )  # CD2
-    v4 = leu.add_vertex( "C" )  # CD1
-
-    leu.add_edge(v0, v1, 1.53 )
-    leu.add_edge(v0, v2, 2.62 )
-    leu.add_edge(v0, v3, 3.23 )
-    leu.add_edge(v0, v4, 3.91 )
-
-    leu.add_edge(v1, v2, 1.53 )
-    leu.add_edge(v1, v3, 2.54 )
-    leu.add_edge(v1, v4, 2.51 )
-
-    leu.add_edge(v2, v3, 1.52 )
-    leu.add_edge(v2, v4, 1.52 )
-
-    leu.add_edge(v3, v4, 2.50 )
-
-    asn = topology.graph()
-    w0 = asn.add_vertex( "CA" )
-    w1 = asn.add_vertex( "C" )  # CB
-    w2 = asn.add_vertex( "C" )  # CG
-    w3 = asn.add_vertex( "C" )  # ND2
-    w4 = asn.add_vertex( "C" )  # OD1
-
-    asn.add_edge(w0, w1, 1.53 )
-    asn.add_edge(w0, w2, 2.54 )
-    asn.add_edge(w0, w3, 2.87 )
-    asn.add_edge(w0, w4, 3.59 )
-
-    asn.add_edge(w1, w2, 1.52 )
-    asn.add_edge(w1, w3, 2.43 )
-    asn.add_edge(w1, w4, 2.40 )
-
-    asn.add_edge(w2, w3, 1.33 )
-    asn.add_edge(w2, w4, 1.23 )
-
-    asn.add_edge(w3, w4, 2.25 )
-
-    callback = collector()
-
-    import operator
-
-    topology.mcgregor_common_subgraphs_unique(
-      graph1 = leu,
-      graph2 = asn,
-      vertex_equality = operator.eq,
-      edge_equality = lambda l, r: abs( l - r ) <= 0.1,
-      callback = callback,
-      )
-    self.assertEqual( len( callback.collected ), 13 )
-    self.assertEqual( max( len( m ) for m in callback.collected ), 3 )
-
 
 class TestSidechainMatch(unittest.TestCase):
 
@@ -138,9 +41,6 @@ class TestSidechainMatch(unittest.TestCase):
     self.assertTrue( ( l_cd1, a_od1 ) not in res )
 
 
-suite_graph = unittest.TestLoader().loadTestsFromTestCase(
-  TestGraph
-  )
 suite_sidechain_match= unittest.TestLoader().loadTestsFromTestCase(
   TestSidechainMatch
   )
@@ -148,7 +48,6 @@ suite_sidechain_match= unittest.TestLoader().loadTestsFromTestCase(
 
 alltests = unittest.TestSuite(
   [
-    suite_graph,
     suite_sidechain_match,
     ]
   )
