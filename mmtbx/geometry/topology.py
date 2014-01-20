@@ -1,8 +1,6 @@
 from __future__ import division
 
-import boost.python
-ext = boost.python.import_ext( "mmtbx_geometry_topology_ext" )
-from mmtbx_geometry_topology_ext import *
+from boost_adaptbx import graph
 
 import math
 import operator
@@ -25,7 +23,7 @@ class Molecule(object):
 
   def __init__(self):
 
-    self.graph = graph()
+    self.graph = graph.adjacency_list()
     self.atom_for = {}
 
 
@@ -74,8 +72,9 @@ class Match(object):
     self.best = []
     self.steps = 0
     self.maxsteps = maxsteps
-
-    mcgregor_common_subgraphs_unique(
+    
+    from graph import graph_structure_comparison as gsc
+    gsc.mcgregor_common_subgraphs_unique(
       graph1 = molecule1.graph,
       graph2 = molecule2.graph,
       vertex_equality = vertex_equality,
