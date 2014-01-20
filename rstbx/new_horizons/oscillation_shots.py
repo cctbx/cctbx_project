@@ -10,6 +10,7 @@ from rstbx.dials_core.integration_core import show_observations
 class integrate_one_frame(IntegrationMetaProcedure):
   def __init__(self):
     simple_integration.__init__(self)
+    IntegrationMetaProcedure.__init__(self)
 
 class IntegrateCharacters:
   def __init__(self,Characters,process_dictionary,horizons_phil,files,spotfinder_results):

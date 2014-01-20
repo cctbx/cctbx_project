@@ -12,6 +12,9 @@ from rstbx.dials_core.integration_core import integration_core
 
 class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
+  def __init__(self):
+    self.block_counter = 0
+
   def set_up_mask_focus(self,verbose=False):
     self.mask_focus = []
     for frame in self.frame_numbers:
@@ -102,7 +105,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       return
 
      else:
-
+      self.block_counter+=1
       rot_mat = matrix.sqr(cb_op_to_primitive.c().r().as_double()).transpose()
       centered_orientation = self.inputai.getOrientation()
       self.current_orientation = centered_orientation
@@ -110,6 +113,9 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       primitive_orientation = centered_orientation.change_basis(rot_mat)
       self.inputai.setOrientation(primitive_orientation)
       from cxi_user import pre_get_predictions
+      if self.block_counter < 2:
+        KLUDGE = 3.0 # bugfix 1 of 2 for protocol 6, equation 2
+        self.inputai.setMosaicity(KLUDGE*self.inputai.getMosaicity())
       self.bp3_wrapper = pre_get_predictions(self.inputai, self.horizons_phil,
         raw_image = self.imagefiles.images[self.image_number],
         imageindex = self.frame_numbers[self.image_number],
@@ -128,6 +134,10 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       if self.inputai.active_areas != None:
         self.predicted,self.hkllist = self.inputai.active_areas(
                                       self.predicted,self.hkllist,self.pixel_size)
+      if self.block_counter < 2:
+         down = self.inputai.getMosaicity()/KLUDGE
+         print "Readjusting mosaicity back down to ",down
+         self.inputai.setMosaicity(down)
       return
 
     if cb_op_to_primitive==None:
