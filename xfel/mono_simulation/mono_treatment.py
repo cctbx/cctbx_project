@@ -166,7 +166,7 @@ class refinement(refinement_base):
               jacobian.matrix_paste_column_in_place(der_r,j)
             pfh.add_equations(residuals, jacobian, weights=None)
 
-        def fvec_callable_NOT USED AFTER BUGFIX(pfh,current_values):
+        def fvec_callable_NOT_USED_AFTER_BUGFIX(pfh,current_values):
           rotx = current_values[0]
           roty = current_values[1]
           effective_orientation = OO.input_orientation.rotate_thru((1,0,0),rotx
