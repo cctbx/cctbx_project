@@ -57,8 +57,8 @@ def run(args):
       restrain += " or"
     else:
       is_first = False
+    chain_id = flip[0:2]
     if (len(flip) == 10): #not an altloc
-      chain_id = flip[0:2]
       if chain_id == '  ':
         selection += " (resseq %s and resname %s)" % \
           (flip[2:6].strip(), flip[7:])
