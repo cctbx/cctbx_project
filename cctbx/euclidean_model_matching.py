@@ -129,7 +129,6 @@ class model(crystal.special_position_settings):
            f=f,specifically_test_inverse=True)
 
     new_model_list=[]
-    self.test_new_model_list=[]
     for x in other_model.component_model_numbers:
       if x in self.component_model_numbers:
         return new_model_list # cannot combine with something already used
@@ -156,7 +155,6 @@ class model(crystal.special_position_settings):
            label="ATOM_%03d"%i,
            site=(match.rt*site).elems))
       new_model_list.append(new_model)
-      self.test_new_model_list.append(test_new_model)# ZZZ
     return new_model_list
 
 
