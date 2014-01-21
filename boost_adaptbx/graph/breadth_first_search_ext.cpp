@@ -17,8 +17,6 @@
 
 namespace boost_adaptbx
 {
-namespace
-{
 
 template< typename Graph >
 class bfs_visitor_adaptor
@@ -34,7 +32,7 @@ private:
   boost::python::object m_visitor;
 
 public:
-  explicit bfs_visitor_adaptor(boost::python::object visitor) : m_visitor( visitor ) {};
+  bfs_visitor_adaptor(boost::python::object visitor) : m_visitor( visitor ) {};
   ~bfs_visitor_adaptor() {};
 
   void call_python_method(const char* name, edge_descriptor e, Graph const& g)
@@ -181,7 +179,6 @@ struct bfs_exporter
   }
 };
 
-} // namespace <anonymous>
 } // namespace boost_adaptbx
 
 BOOST_PYTHON_MODULE(boost_adaptbx_graph_breadth_first_search_ext)
