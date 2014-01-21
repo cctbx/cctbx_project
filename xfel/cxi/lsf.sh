@@ -13,17 +13,6 @@
 #
 # $Id$
 
-# This script must be run from the SIT directory, which contains the
-# .sit_release file, so that the relative PYTHONPATH set by sit_setup
-# is valid.  XXX Wouldn't it make sense to have
-# /reg/g/psdm/etc/ana_env.sh set an absolute path?  Could find the
-# user's release directory from .sit_release file and cd to it in the
-# submit.sh script.  No, that's much too slow!
-if ! relinfo > /dev/null 2>&1; then
-    echo "Must run this script from the SIT release directory" > /dev/stderr
-    exit 1
-fi
-
 # Path to the chosen pyana script.  This should not need to be
 # changed.  According to Marc Messerschmidt following ana-current
 # should always be fine, unless one really wants to make sure
@@ -49,6 +38,18 @@ NODE=`host "${NODE}" | grep "has address" | head -n 1 | cut -d ' ' -f 1`
 tmpdir=`mktemp -d` || exit 1
 ssh -fMN -o "ControlPath ${tmpdir}/control.socket" ${NODE}
 NODE=`ssh -S "${tmpdir}/control.socket" ${NODE} "hostname -f"`
+
+# This script must be run from the SIT directory, which contains the
+# .sit_release file, so that the relative PYTHONPATH set by sit_setup
+# is valid.  XXX Wouldn't it make sense to have
+# /reg/g/psdm/etc/ana_env.sh set an absolute path?  Could find the
+# user's release directory from .sit_release file and cd to it in the
+# submit.sh script.  No, that's much too slow!
+if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
+    "cd \"${PWD}\" ; relinfo > /dev/null 2>&1"; then
+    echo "Must run this script from the SIT release directory" > /dev/stderr
+    exit 1
+fi
 
 cleanup_and_exit() {
     ssh -O exit -S "${tmpdir}/control.socket" ${NODE} > /dev/null 2>&1
@@ -219,7 +220,8 @@ fi
 # Take ${exp} from the environment unless overridden on the command
 # line, and find its absolute path.
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
-exp=`find "/reg/d/psdm" -maxdepth 2 -noleaf -name "${exp}"`
+exp=`ssh -S "${tmpdir}/control.socket" ${NODE} \
+    "find \"/reg/d/psdm\" -maxdepth 2 -noleaf -name \"${exp}\""`
 if test -n "${exp}"; then
     if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
         "test -d \"${exp}\" 2> /dev/null"; then
