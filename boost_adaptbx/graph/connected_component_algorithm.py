@@ -2,5 +2,14 @@ from __future__ import division
 
 import boost.python
 ext = boost.python.import_ext( "boost_adaptbx_graph_connected_component_algorithm_ext" )
-from boost_adaptbx_graph_connected_component_algorithm_ext import *
+
+
+def connected_components(graph):
+
+  result = {}
+
+  for ( desc, component ) in ext.connected_components( graph = graph ):
+    result.setdefault( component, [] ).append( desc )
+
+  return result.values()
 
