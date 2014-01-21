@@ -175,11 +175,11 @@ struct graph_export
 
     class_< Graph >( ( "graph_" + name ).c_str(), no_init )
       .def( init<>() )
-      .def( "vertices", range( &vertex_iterator_begin, &vertex_iterator_end ) )
+      .def( "vertices", boost::python::range( &vertex_iterator_begin, &vertex_iterator_end ) )
       .def( "source", source_vertex, arg( "edge" ) )
       .def( "target", target_vertex, arg( "edge" ) )
       .def( "adjacent_vertices", adjacent_vertices, arg( "vertex" ) )
-      .def( "edges", range( &edge_iterator_begin, &edge_iterator_end ) )
+      .def( "edges", boost::python::range( &edge_iterator_begin, &edge_iterator_end ) )
       .def( "vertex_label", vertex_label, arg( "vertex" ) )
       .def( "edge_weight", edge_weight, arg( "edge" ) )
       .def( "add_vertex", &add_vertex, arg( "label" ) = object() )
