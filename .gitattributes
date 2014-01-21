@@ -27,6 +27,7 @@ boost_adaptbx/graph/graph_structure_comparison.py -text
 boost_adaptbx/graph/graph_structure_comparison_ext.cpp -text
 boost_adaptbx/graph/graph_type.hpp -text
 boost_adaptbx/graph/tests/tst_graph.py -text
+boost_adaptbx/graph/tests/tst_graph_connected_component_algorithm.py -text
 boost_adaptbx/graph/tests/tst_graph_graph_structure_comparison.py -text
 boost_adaptbx/hash.h -text
 boost_adaptbx/libtbx_config -text
