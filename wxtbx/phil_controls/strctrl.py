@@ -25,7 +25,7 @@ class StrCtrl (ValidatedTextCtrl) :
       ValidatedTextCtrl.SetValue(self, "")
     else :
       assert isinstance(value, str)
-      ValidatedTextCtrl.SetValue(self, value)
+      ValidatedTextCtrl.SetValue(self, value.decode("utf-8"))
 
   def GetPhilValue (self) :
     self.Validate()
@@ -42,7 +42,7 @@ class StrCtrl (ValidatedTextCtrl) :
       return parse_str(value)
 
   def FormatValue (self, value) :
-    return str(value)
+    return value.encode("utf-8")
 
   def SetMinLength (self, n) :
     assert (n >= 0)
@@ -72,11 +72,12 @@ class StrValidator (TextCtrlValidator) :
     return value # XXX does anything else need to be done here?
 
 def parse_str (value) :
+  #value = value.decode("utf-8")
   try :
     word = tokenizer.word(value, quote_token='"""')
     phil_string = str(word)
   except ValueError, e :
-    raise Sorry(str(e))
+    raise
   else :
     return phil_string
 

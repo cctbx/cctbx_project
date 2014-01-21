@@ -125,3 +125,40 @@ def add_ok_cancel_buttons (self, sizer) :
   btn_szr.Realize()
   sizer.Add(btn_szr, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
   return ok_btn, cancel_btn
+
+class LogViewer (wx.TextCtrl) :
+  font_size = 12
+  if (wx.Platform == '__WXGTK__') :
+    font_size = 11
+  if (wx.Platform == '__WXMSW__') :
+    font_size = 9
+  def __init__ (self, *args, **kwds) :
+    kwds['style'] = wx.TE_MULTILINE|wx.TE_WORDWRAP|wx.TE_READONLY
+    wx.TextCtrl.__init__(self, *args, **kwds)
+    self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
+
+  def Clear (self) :
+    wx.TextCtrl.Clear(self)
+    self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
+
+  def WriteText (self, text) :
+    if isinstance(text, str) :
+      text = text.decode("utf8")
+    self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
+    wx.TextCtrl.WriteText(self, text)
+
+  def AppendText (self, text) :
+    if isinstance(text, str) :
+      text = text.decode("utf8")
+    wx.TextCtrl.AppendText(self, text)
+
+if (__name__ == "__main__") :
+  app = wx.App(0)
+  frame = wx.Frame(None, title="Test frame")
+  panel = wx.Panel(frame, -1, size=(600,400))
+  log = LogViewer(panel, size=(580,380), pos=(10,10))
+  frame.Show()
+  log.WriteText("This is a log line\n")
+  angstrom = u"\u00C5".encode("utf-8", "strict").strip()
+  log.WriteText("This is line containing special characters: %s" % angstrom)
+  app.MainLoop()
