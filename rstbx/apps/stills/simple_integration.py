@@ -114,7 +114,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       self.inputai.setOrientation(primitive_orientation)
       from cxi_user import pre_get_predictions
       if self.block_counter < 2:
-        KLUDGE = 3.0 # bugfix 1 of 2 for protocol 6, equation 2
+        KLUDGE = 1.0 # bugfix 1 of 2 for protocol 6, equation 2
         self.inputai.setMosaicity(KLUDGE*self.inputai.getMosaicity())
       self.bp3_wrapper = pre_get_predictions(self.inputai, self.horizons_phil,
         raw_image = self.imagefiles.images[self.image_number],
