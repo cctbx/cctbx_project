@@ -284,6 +284,17 @@ namespace {
       arg("mean_scale"),
       arg("n_iterations")));
 
+    def("sphericity_tensor",
+      (scitbx::sym_mat3<double>(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+          uctbx::unit_cell const&,
+         double const&,
+         cctbx::fractional<> const&)) sphericity_tensor, (
+      arg("map_data"),
+      arg("unit_cell"),
+      arg("radius"),
+      arg("site_frac")));
+
     def("sphericity",
       (af::shared<double>(*)
         (af::const_ref<double, af::c_grid<3> > const&,
