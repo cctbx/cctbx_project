@@ -15,10 +15,10 @@ if not env_etc.no_boost_python:
     target="#lib/boost_adaptbx_graph_connected_component_algorithm_ext",
     source="connected_component_algorithm_ext.cpp",
     )
-  #env.SharedLibrary(
-  #  target="#lib/boost_adaptbx_graph_breadth_first_search_ext",
-  #  source="breadth_first_search_ext.cpp",
-  #  )
+  env.SharedLibrary(
+    target="#lib/boost_adaptbx_graph_breadth_first_search_ext",
+    source="breadth_first_search_ext.cpp",
+    )
   env.SharedLibrary(
     target="#lib/boost_adaptbx_graph_graph_structure_comparison_ext",
     source="graph_structure_comparison_ext.cpp",
