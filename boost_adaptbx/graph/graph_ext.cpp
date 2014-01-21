@@ -14,13 +14,14 @@
 #include <boost/mpl/fold.hpp>
 #include <boost/mpl/insert.hpp>
 #include <boost/mpl/copy_if.hpp>
-#include <boost/mpl/has_key.hpp>
-#include <boost/mpl/not.hpp>
+#include <boost/mpl/or.hpp>
 #include <boost/mpl/placeholders.hpp>
 
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/bind.hpp>
 #include <boost/ref.hpp>
+
+#include <boost/type_traits.hpp>
 
 #include <string>
 
@@ -218,9 +219,8 @@ struct undefined_type_export
 };
 
 template< typename TypeList, typename Transformation, typename Prefix >
-struct python_undefined_type_exporter
+struct python_not_builtin_type_exporter
 {
-  typedef boost::mpl::set< unsigned int, void* > python_known_types;
   static void process()
   {
     using namespace boost::mpl;
@@ -232,7 +232,7 @@ struct python_undefined_type_exporter
       >::type unique_types;
     typedef typename copy_if<
       unique_types,
-      not_< has_key< python_known_types, placeholders::_1 > >,
+      or_< boost::is_class< placeholders::_1 >, boost::is_union< placeholders::_1 > >,
       back_inserter< vector<> >
       >::type filtered_unique_types;
     boost_adaptbx::exporting::class_list<
@@ -274,12 +274,12 @@ BOOST_PYTHON_MODULE(boost_adaptbx_graph_ext)
     >::process();
   #pragma clang diagnostic push
   #pragma clang diagnostic ignored "-Wmultichar"
-  boost_adaptbx::python_undefined_type_exporter<
+  boost_adaptbx::python_not_builtin_type_exporter<
     boost_adaptbx::graph_type::exports,
     boost_adaptbx::get_graph_vertex_descriptor_type,
     boost::mpl::string< 'vert', 'ex_' >
     >::process();
-  boost_adaptbx::python_undefined_type_exporter<
+  boost_adaptbx::python_not_builtin_type_exporter<
     boost_adaptbx::graph_type::exports,
     boost_adaptbx::get_graph_edge_descriptor_type,
     boost::mpl::string< 'edge', '_' >
