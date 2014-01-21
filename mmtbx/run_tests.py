@@ -140,6 +140,7 @@ tst_list = (
   "$D/building/tst_extend_sidechains.py",
   "$D/regression/tst_build_alt_confs.py",
   "$D/refinement/tst_group.py",
+  "$D/regression/tst_phenix_angle.py",
   )
 
 def run():
