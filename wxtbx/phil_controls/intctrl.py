@@ -139,7 +139,7 @@ if (__name__ == "__main__") :
   txt2 = wx.StaticText(panel, -1, "Number of processors", pos=(100,240))
   int_ctrl2 = IntCtrl(panel, -1, pos=(300,240), size=(80,-1),
     name="Number of processors")
-  spinbtn = wx.SpinButton(panel, -1, pos=(400,240))
+  spinbtn = wx.SpinButton(panel, -1, pos=(400,240), style=wx.SP_VERTICAL)
   int_ctrl2.AttachSpinner(spinbtn)
   int_ctrl2.SetMin(1)
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))

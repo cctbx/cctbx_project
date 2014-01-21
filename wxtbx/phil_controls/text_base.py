@@ -88,7 +88,9 @@ class TextCtrlValidator (wx.PyValidator) :
   def Validate (self, win) :
     ctrl = self.GetWindow()
     try :
-      value_str = str(ctrl.GetValue())
+      value_str = ctrl.GetValue()
+      if isinstance(value_str, unicode) :
+        value_str = value_str.decode("utf-8")
       if (value_str == "") :
         ctrl.SetBackgroundColour(
           wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
