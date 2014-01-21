@@ -97,7 +97,7 @@ def axis_from_two_points(xrs, selection):
   assert selection.count(True) == 2
   sites_cart = xrs.sites_cart()
   isel = selection.iselection()
-  s1,s2 = isel[0], isel[1]
+  s1,s2 = sites_cart[isel[0]], sites_cart[isel[1]]
   a = [s2[0]-s1[0], s2[1]-s1[1], s2[2]-s1[2]]
   norm = math.sqrt(a[0]**2 + a[1]**2 + a[2]**2)
   if(abs(norm)<1.e-9):
