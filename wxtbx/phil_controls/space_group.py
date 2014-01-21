@@ -72,7 +72,7 @@ class SpaceGroupValidator (TextCtrlValidator) :
     if len(value) == 0 :
       return ""
     from cctbx import sgtbx
-    sg = str(sgtbx.space_group_info(symbol=value))
+    sg = str(sgtbx.space_group_info(symbol=str(value)))
     return sg
 
 if (__name__ == "__main__") :
