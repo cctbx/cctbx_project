@@ -13,6 +13,7 @@ def run(args=(), params=None, out=sys.stdout):
       for model in hierarchy.models():
         for chain in model.chains():
           for conformer in chain.conformers():
+            # FIXME it would be better to use the chain object
             f = conformer.format_fasta()
             if (f is not None):
               print >> out, "\n".join(f)
@@ -28,16 +29,15 @@ def run(args=(), params=None, out=sys.stdout):
       hierarchy = pdb_obj.construct_hierarchy()
       for model in hierarchy.models() :
         for chain in model.chains() :
-          conformer = chain.conformers()[0]
-          if (conformer.is_protein() or conformer.is_na(min_content=0.5)) :
+          if (chain.is_protein() or chain.is_na(min_content=0.5)) :
             if (params.pad_missing_residues) :
-              seq = conformer.as_padded_sequence(
+              seq = chain.as_padded_sequence(
                 skip_insertions=(not params.include_insertion_residues))
             elif (not params.include_insertion_residues) :
-              seq = conformer.as_padded_sequence(skip_insertions=True,
+              seq = chain.as_padded_sequence(skip_insertions=True,
                 pad=False)
             else :
-              seq = "".join(conformer.as_sequence())
+              seq = "".join(chain.as_sequence())
             if (params.ignore_missing_residues_at_start) :
               seq = re.sub("^X*", "", seq)
             seq_lines = []

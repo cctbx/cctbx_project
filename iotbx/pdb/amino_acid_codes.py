@@ -24,7 +24,7 @@ one_letter_given_three_letter = {
 }
 
 one_letter_given_three_letter_modified_aa  = {
-# modified AA
+# modified or unusual AA
 "CSO" : "C", # oxidized Cys
 "LLP" : "K", # Lys + PLP
 "MLY" : "K", # dimethyllysine
@@ -32,6 +32,9 @@ one_letter_given_three_letter_modified_aa  = {
 "SEP" : "S", # phosphoserine
 "TPO" : "T", # phosphothreonine
 "TYS" : "Y", # sulfonated tyrosine
+# XXX https://lists.sdsc.edu/pipermail/pdb-l/2014-January/005899.html
+"PYL" : "O", # pyrrolysine
+"SEC" : "U", # selenocysteine
 }
 
 three_letter_given_one_letter = {
