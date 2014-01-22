@@ -1,4 +1,5 @@
 from __future__ import division
+from libtbx.test_utils import show_diff
 
 def exercise () :
   from iotbx.command_line import pdb_as_fasta
@@ -35,45 +36,45 @@ END
   params.pdb_as_fasta.file_name.extend(["tmp1.pdb", "tmp2.pdb"])
   of = pdb_as_fasta.run(params=params)
   seq_in = open(of).read()
-  assert (seq_in == """\
-tmp1 chain ' A'
-XXGNNQAGQNX
-tmp2 chain ' A'
+  assert not show_diff(seq_in, """\
+>tmp1 chain ' A'
+XXGNNQAGQNY
+>tmp2 chain ' A'
 GNMQ
-tmp2 chain 'BB'
+>tmp2 chain 'BB'
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXGAXXCU""")
   params.pdb_as_fasta.pad_missing_residues=False
   of = pdb_as_fasta.run(params=params)
   seq_in = open(of).read()
-  assert (seq_in == """\
-tmp1 chain ' A'
-GNNQAGQNX
-tmp2 chain ' A'
+  assert not show_diff(seq_in, """\
+>tmp1 chain ' A'
+GNNQAGQNY
+>tmp2 chain ' A'
 GNMQ
-tmp2 chain 'BB'
+>tmp2 chain 'BB'
 GACU""")
   params.pdb_as_fasta.include_insertion_residues = False
   of = pdb_as_fasta.run(params=params)
   seq_in = open(of).read()
-  assert (seq_in == """\
-tmp1 chain ' A'
-GNNQQNX
-tmp2 chain ' A'
+  assert not show_diff(seq_in, """\
+>tmp1 chain ' A'
+GNNQQNY
+>tmp2 chain ' A'
 GNMQ
-tmp2 chain 'BB'
+>tmp2 chain 'BB'
 GACU""")
   params.pdb_as_fasta.pad_missing_residues = True
   params.pdb_as_fasta.include_insertion_residues = True
   params.pdb_as_fasta.ignore_missing_residues_at_start = True
   of = pdb_as_fasta.run(params=params)
   seq_in = open(of).read()
-  assert (seq_in == """\
-tmp1 chain ' A'
-GNNQAGQNX
-tmp2 chain ' A'
+  assert not show_diff(seq_in, """\
+>tmp1 chain ' A'
+GNNQAGQNY
+>tmp2 chain ' A'
 GNMQ
-tmp2 chain 'BB'
+>tmp2 chain 'BB'
 GAXXCU""")
 
 if (__name__ == "__main__") :
