@@ -252,7 +252,7 @@ class manager:
     for row in stream:
       items = row.split()
       CO = crystal_orientation([float(t) for t in items[8:17]], False)
-      frames['frame_id'].append(int(items[0]) - 1)
+      frames['frame_id'].append(int(items[0]))
       frames['wavelength'].append(float(items[1]))
       frames['cc'].append(float(items[5]))
       frames['slope'].append(float(items[6]))
