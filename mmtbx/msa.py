@@ -273,10 +273,10 @@ def align_pdb_hierarchies (hierarchies,
     return string_or_none.strip()
   for hierarchy, name in zip(hierarchies, hierarchy_names) :
     assert (hierarchy.overall_counts().n_chains == 1)
-    main_conf = hierarchy.models()[0].chains()[0].conformers()[0]
-    chain_seq = main_conf.as_padded_sequence(skip_insertions=False)
+    chain = hierarchy.only_model().only_chain()
+    chain_seq = chain.as_padded_sequence(skip_insertions=False)
     pdb_sequences.append(chain_seq)
-    resids = main_conf.get_residue_ids(skip_insertions=False)
+    resids = chain.get_residue_ids(skip_insertions=False)
     pdb_resids.append([ strip(resid) for resid in resids ])
     if (hierarchy is reference_hierarchy) :
       reference_index = i
@@ -295,10 +295,10 @@ def align_pdb_hierarchies (hierarchies,
       out=log)
   else :
     assert (reference_hierarchy.overall_counts().n_chains == 1)
-    main_conf = reference_hierarchy.models()[0].chains()[0].conformers()[0]
-    reference_sequence = main_conf.as_padded_sequence(skip_insertions=False)
+    chain = reference_hierarchy.only_model().only_chain()
+    reference_sequence = chain.as_padded_sequence(skip_insertions=False)
     reference_sequence_offset = reference_sequence_resids = None
-    resids = main_conf.get_residue_ids(skip_insertions=False)
+    resids = chain.get_residue_ids(skip_insertions=False)
     reference_sequence_resids = [ strip(resid) for resid in resids ]
     msa_manager = align_pdb_residues(
       pdb_sequences=pdb_sequences,
@@ -406,9 +406,8 @@ def run (args=(), params=None, out=sys.stdout) :
       first_model = hierarchy.models()[0]
       found_protein = False
       for chain in first_model.chains() :
-        first_conf = chain.conformers()[0]
-        if first_conf.is_protein() :
-          chain_seq = first_conf.as_padded_sequence()
+        if chain.is_protein() :
+          chain_seq = chain.as_padded_sequence()
           base_name = os.path.basename(file_name)
           seq_name = "%s_%s" % (os.path.splitext(base_name)[0], chain.id)
           seqs.append(sequence(chain_seq, seq_name))
