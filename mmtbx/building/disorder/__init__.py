@@ -1,7 +1,7 @@
 
 from __future__ import division
 from libtbx.str_utils import make_sub_header
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from libtbx import group_args
 import libtbx.phil
 from math import sqrt
@@ -176,6 +176,90 @@ def coord_stats_for_atom_groups (residue1, residue2) :
         sites1.append(atom1.xyz)
         sites2.append(atom2.xyz)
   return coord_stats_with_flips(sites1, sites2, atoms)
+
+def max_distance_between_atom_conformers (atom_groups, atom_name) :
+  atoms = []
+  for atom_group in atom_groups :
+    for atom in atom_group.atoms() :
+      if (atom.name.strip() == atom_name.strip()) :
+        atoms.append(atom)
+  dxyz_max = 0
+  if (len(atoms) > 1) :
+    for i_atm, atom1 in enumerate(atoms) :
+      for j_atom, atom2 in enumerate(atoms[(i_atm+1):]) :
+        dxyz = atom1.distance(atom2)
+        if (dxyz > dxyz_max) :
+          dxyz_max = dxyz
+  return dxyz_max
+
+def requires_nterm_split (atom_groups, max_acceptable_distance=0.1) :
+  distance = max_distance_between_atom_conformers(atom_groups, "N")
+  return distance > max_acceptable_distance
+
+def requires_cterm_split (atom_groups, max_acceptable_distance=0.1) :
+  distance = max_distance_between_atom_conformers(atom_groups, "C")
+  return distance > max_acceptable_distance
+
+def spread_alternates (
+    pdb_hierarchy,
+    new_occupancy=None,
+    split_all_adjacent=False,
+    selection=None,
+    log=None) :
+  """
+  Given a model with some residues in alternate conformations, split the
+  adjacent residues to allow for backbone movement.
+  """
+  if (log is None) : log = null_out()
+  print >> log, ""
+  print >> log, "Splitting adjacent residues..."
+  pdb_hierarchy.atoms().reset_i_seq()
+  if (selection is None) :
+    selection = pdb_hierarchy.atom_selection_cache().selection("segid NEW1")
+  elif isinstance(selection, str) :
+    selection = pdb_hierarchy.atom_selection_cache().selection(selection)
+  def split_residue (residue_group) :
+    print >> log, "  %s" % residue_group.id_str()
+    new_occ = 0.5
+    if (new_occupancy is not None) :
+      new_occ = new_occupancy
+    main_conf = residue_group.only_atom_group()
+    main_conf.altloc = 'A'
+    for atom in main_conf.atoms() :
+      atom.occ = 1.0 - new_occ
+      atom.segid = "OLD2"
+    alt_conf = main_conf.detached_copy()
+    alt_conf.altloc = 'B'
+    for atom in alt_conf.atoms() :
+      atom.occ = new_occ
+      atom.segid = 'NEW2'
+    residue_group.append_atom_group(alt_conf)
+  n_split = 0
+  for chain in pdb_hierarchy.only_model().chains() :
+    residue_groups = chain.residue_groups()
+    for i_res, residue_group in enumerate(residue_groups) :
+      atom_groups = residue_group.atom_groups()
+      resseq = residue_group.resseq_as_int()
+      if (len(atom_groups) > 1) :
+        last_group_i_seqs = atom_groups[-1].atoms().extract_i_seq()
+        if (not selection.select(last_group_i_seqs).all_eq(True)) :
+          #print "skipping %s" % residue_group.id_str()
+          continue
+        if (i_res > 0) :
+          prev_group = residue_groups[i_res - 1]
+          prev_resseq = prev_group.resseq_as_int()
+          if (prev_resseq >= resseq-1) and (len(prev_group.atom_groups())==1) :
+            if (split_all_adjacent) or (requires_nterm_split(atom_groups)) :
+              split_residue(prev_group)
+              n_split += 1
+        if (i_res < len(residue_groups) - 1) :
+          next_group = residue_groups[i_res + 1]
+          next_resseq = next_group.resseq_as_int()
+          if (next_resseq <= resseq+1) and (len(next_group.atom_groups())==1) :
+            if (split_all_adjacent) or (requires_cterm_split(atom_groups)) :
+              split_residue(next_group)
+              n_split += 1
+  return n_split
 
 #-----------------------------------------------------------------------
 # MAP STUFF
