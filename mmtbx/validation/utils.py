@@ -93,8 +93,7 @@ def find_sequence_mismatches (pdb_hierarchy,
     print >> log, "Running sequence alignements. . ."
     from mmtbx.alignment import pairwise_global_wrapper
     for chain in chains :
-      main_conf = chain.conformers()[0]
-      chain_seq = main_conf.as_padded_sequence()
+      chain_seq = chain.as_padded_sequence()
       actual_seqs.append(chain_seq)
       chain_ids.append(chain.id)
       best_identity = 0
