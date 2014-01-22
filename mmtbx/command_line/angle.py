@@ -18,7 +18,8 @@ legend = """phenix.angle:
   axis of the cloud of points.
 
 How to run:
-  phenix.angle model.pdb "chain A and resseq 1 and name CA" "chain A and resseq 10 and name CA"
+  phenix.angle model.pdb "chain A and (resseq 1 and name CA or resseq 2 and name CA)" \
+    "chain B and (resseq 1 and name CA or resseq 2 and name CA)"
   phenix.angle model.pdb "chain A" "chain B"
 
 Feedback:
