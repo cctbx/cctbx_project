@@ -66,15 +66,24 @@ ATOM     51  CG BGLN A   4       1.808   1.376   1.129  0.40 10.05           C
 ATOM     52  CD BGLN A   4       2.359   2.037  -0.120  0.40 12.79           C
 ATOM     53  OE1BGLN A   4       2.503   3.262  -0.175  0.40 15.08           O
 ATOM     54  NE2BGLN A   4       2.674   1.228  -1.135  0.40  8.91           N
-ATOM     55  N   GLN A   5       2.125   1.651   4.991  1.00 10.59           N
-ATOM     56  CA  GLN A   5       3.274   2.224   5.659  1.00 11.43           C
-ATOM     57  C   GLN A   5       4.582   1.732   5.073  1.00 11.24           C
-ATOM     58  O   GLN A   5       4.749   0.545   4.827  1.00 11.99           O
-ATOM     59  CB  GLN A   5       3.229   2.076   7.170  1.00 12.07           C
-ATOM     60  CG  GLN A   5       2.235   3.000   7.859  1.00 10.78           C
-ATOM     61  CD  GLN A   5       1.562   2.322   9.034  1.00 12.94           C
-ATOM     62  OE1 GLN A   5       1.005   1.233   8.899  1.00 10.72           O
-ATOM     63  NE2 GLN A   5       1.621   2.959  10.197  1.00 12.32           N
+ATOM     55  N  AGLN A   5       2.125   1.651   4.991  0.60 10.59           N
+ATOM     56  CA AGLN A   5       3.274   2.224   5.659  0.60 11.43           C
+ATOM     57  C  AGLN A   5       4.582   1.732   5.073  0.60 11.24           C
+ATOM     58  O  AGLN A   5       4.749   0.545   4.827  0.60 11.99           O
+ATOM     59  CB AGLN A   5       3.229   2.076   7.170  0.60 12.07           C
+ATOM     60  CG AGLN A   5       2.235   3.000   7.859  0.60 10.78           C
+ATOM     61  CD AGLN A   5       1.562   2.322   9.034  0.60 12.94           C
+ATOM     62  OE1AGLN A   5       1.005   1.233   8.899  0.60 10.72           O
+ATOM     63  NE2AGLN A   5       1.621   2.959  10.197  0.60 12.32           N
+ATOM     55  N  BGLN A   5       2.125   1.651   4.991  0.40 10.59           N
+ATOM     56  CA BGLN A   5       3.274   2.224   5.659  0.40 11.43           C
+ATOM     57  C  BGLN A   5       4.582   1.732   5.073  0.40 11.24           C
+ATOM     58  O  BGLN A   5       4.749   0.545   4.827  0.40 11.99           O
+ATOM     59  CB BGLN A   5       3.229   2.076   7.170  0.40 12.07           C
+ATOM     60  CG BGLN A   5       2.235   3.000   7.859  0.40 10.78           C
+ATOM     61  CD BGLN A   5       1.562   2.322   9.034  0.40 12.94           C
+ATOM     62  OE1BGLN A   5       1.005   1.233   8.899  0.40 10.72           O
+ATOM     63  NE2BGLN A   5       1.621   2.959  10.197  0.40 12.32           N
 ATOM     64  N   ASN A   6       5.508   2.663   4.851  1.00 11.72           N
 ATOM     65  CA  ASN A   6       6.825   2.322   4.325  1.00 12.12           C
 ATOM     66  C   ASN A   6       7.854   2.763   5.330  1.00 13.15           C
@@ -154,7 +163,8 @@ def exercise () :
   validate = rotalyze.rotalyze(pdb_hierarchy=hierarchy,
     outliers_only=False)
   rota_out = [ (r.id_str(), r.rotamer_name) for r in validate.results ]
-
+  #print rota_in
+  #print rota_out
   assert (rota_out == rota_in)
 
 if (__name__ == "__main__") :

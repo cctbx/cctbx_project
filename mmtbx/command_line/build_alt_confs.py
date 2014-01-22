@@ -1,5 +1,7 @@
 
 from __future__ import division
+from libtbx.utils import multi_out
+import os.path
 import sys
 
 def master_phil () :
@@ -11,7 +13,7 @@ selection = None
 nproc = Auto
   .type = int
 output {
-  file_name = refined.pdb
+  file_name = alternates.pdb
     .type = path
   verbose = False
     .type = bool
@@ -28,8 +30,15 @@ def run (args, out=None) :
     master_phil=master_phil(),
     process_pdb_file=True,
     create_fmodel=True,
+    update_f_part1_for="map",
     out=out)
   params = cmdline.params
+  validate_params(params)
+  log = multi_out()
+  log.register("stdout", out)
+  log_file_name = os.path.splitext(params.output.file_name)[0] + ".log"
+  logfile = open(log_file_name, "w")
+  log.register("logfile", logfile)
   pdb_hierarchy = single_residue.build_cycle(
     pdb_hierarchy = cmdline.pdb_hierarchy,
     fmodel = cmdline.fmodel,
@@ -39,13 +48,18 @@ def run (args, out=None) :
     selection=params.selection,
     nproc=params.nproc,
     verbose=params.output.verbose,
-    out=out)
+    out=log)
   # TODO real-space refinement of multi-conformer model
   f = open(params.output.file_name, "w")
   f.write(pdb_hierarchy.as_pdb_string(
     crystal_symmetry=cmdline.fmodel.xray_structure))
   f.close()
-  print >> out, "Wrote %s" % params.output.file_name
+  print >> log, "Wrote %s" % params.output.file_name
+
+def validate_params (params) :
+  if (params.output.file_name is None) :
+    raise Sorry("Please specify an output file name.")
+  return True
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

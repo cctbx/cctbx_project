@@ -385,6 +385,7 @@ class load_model_and_data (object) :
       elif (skip_twin_detection is not None) :
         twin_law = Auto
       if (twin_law is Auto) :
+        print >> out, "Twinning will be detected automatically."
         self.fmodel = mmtbx.utils.fmodel_simple(
           update_f_part1_for=update_f_part1_for,
           xray_structures=[self.xray_structure],

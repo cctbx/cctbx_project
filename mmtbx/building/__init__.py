@@ -121,6 +121,24 @@ def atom_group_as_hierarchy (atom_group) :
   root.append_model(model)
   return root
 
+def residues_are_adjacent (residue1, residue2, max_sep=2.5) :
+  if (type(residue1).__name__ == "residue_group") :
+    residue1 = residue1.atom_groups()[0]
+  if (type(residue2).__name__ == "residue_group") :
+    residue2 = residue2.atom_groups()[0]
+  c_pep = n_pep = None
+  for atom in residue1.atoms() :
+    if (atom.name.strip() == "C") :
+      c_pep = atom
+      break
+  for atom in residue2.atoms() :
+    if (atom.name.strip() == "N") :
+      n_pep = atom
+      break
+  if (None in [c_pep, n_pep]) :
+    return False
+  return c_pep.distance(n_pep) < max_sep
+
 #-----------------------------------------------------------------------
 # MAP-RELATED
 class local_density_quality (object) :

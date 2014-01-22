@@ -274,6 +274,7 @@ def find_alternate_residue (residue,
     log = null_out()
   if (verbose) :
     print >> log, "  building %s" % residue.id_str()
+  t1 = time.time()
   from scitbx.array_family import flex
   selection = flex.size_t()
   window = building.get_window_around_residue(residue,
@@ -292,6 +293,7 @@ def find_alternate_residue (residue,
   from mmtbx.rotamer import rotamer_eval
   rotamer_manager = rotamer_eval.RotamerEval()
   for occupancy in occupancies :
+    t_start = time.time()
     two_fofc_map, fofc_map = disorder.get_partial_omit_map(
       fmodel=fmodel.deep_copy(),
       selection=selection,
@@ -320,8 +322,12 @@ def find_alternate_residue (residue,
       two_fofc_map=two_fofc_map,
       fofc_map=fofc_map)
     trials.append(trial)
+    t_end = time.time()
   sites_end_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
   assert sites_start_1d.all_eq(sites_end_1d)
+  t2 = time.time()
+  print >> log, "%d build trials (%s): %.3fs" % (len(occupancies),
+    residue.id_str(), t2 - t1)
   return trials
 
 class find_all_alternates (object) :
@@ -470,102 +476,96 @@ def process_results (
     residue_group.append_atom_group(alt_conf)
     n_alternates += 1
   if (n_alternates > 0) :
-    spread_alternates(pdb_hierarchy, params, log=log)
+    n_split = disorder.spread_alternates(pdb_hierarchy,
+      new_occupancy=params.expected_occupancy,
+      split_all_adjacent=True,
+      log=log)
+    assert (n_split > 0)
+  t2 = time.time()
   return n_alternates
-
-def spread_alternates (pdb_hierarchy, params, log) :
-  print >> log, ""
-  print >> log, "Splitting adjacent residues..."
-  def split_residue (residue_group) :
-    print >> log, "  %s" % residue_group.id_str()
-    new_occ = 0.5
-    if (params.expected_occupancy is not None) :
-      new_occ = params.expected_occupancy
-    main_conf = residue_group.only_atom_group()
-    main_conf.altloc = 'A'
-    for atom in main_conf.atoms() :
-      atom.occ = 1.0 - new_occ
-      atom.segid = "OLD2"
-    alt_conf = main_conf.detached_copy()
-    alt_conf.altloc = 'B'
-    for atom in alt_conf.atoms() :
-      atom.occ = new_occ
-      atom.segid = 'NEW2'
-    residue_group.append_atom_group(alt_conf)
-  for chain in pdb_hierarchy.only_model().chains() :
-    residue_groups = chain.residue_groups()
-    for i_res, residue_group in enumerate(residue_groups) :
-      atom_groups = residue_group.atom_groups()
-      if (len(atom_groups) > 1) :
-        segid = atom_groups[-1].atoms()[0].segid
-        if (segid != 'NEW1') :
-          continue
-        if (i_res > 0) :
-          prev_group = residue_groups[i_res - 1]
-          if (len(prev_group.atom_groups()) == 1) :
-            split_residue(prev_group)
-        if (i_res < len(residue_groups) - 1) :
-          next_group = residue_groups[i_res + 1]
-          if (len(next_group.atom_groups()) == 1) :
-            split_residue(next_group)
 
 def real_space_refine (
     pdb_hierarchy,
     fmodel,
     cif_objects,
-    out) :
+    params,
+    out,
+    remediate=False) :
   from scitbx.array_family import flex
   make_sub_header("Real-space refinement", out=out)
   fmodel.info().show_targets(out=out, text="Rebuilt model")
-  processed_pdb_file = building.reprocess_pdb(
-    pdb_hierarchy=pdb_hierarchy,
-    cif_objects=cif_objects,
-    crystal_symmetry=fmodel.xray_structure,
-    out=null_out())
-  # get the 2mFo-DFc map without alternates!
-  two_fofc_map = fmodel.two_fofc_map(exclude_free_r_reflections=True)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  pdb_atoms = pdb_hierarchy.atoms()
-  xray_structure = processed_pdb_file.xray_structure()
-  geometry_restraints_manager = processed_pdb_file.geometry_restraints_manager(
-    show_energies=False)
-  fmodel.update_xray_structure(xray_structure)
-  sele_cache = pdb_hierarchy.atom_selection_cache()
-  # this will include both the newly built residues and the original atoms,
-  # including residues split to allow for backbone flexibility.
-  sele_split = sele_cache.selection(
-    "segid NEW1 or segid NEW2 or segid OLD1 or segid OLD2")
-  assert (len(sele_split) > 0)
-  k = 0
-  while (k < len(sele_split)) :
-    if (sele_split[k]) :
-      current_fragment = flex.size_t()
-      while (sele_split[k]) :
-        current_fragment.append(k)
+  print >> out, ""
+  while True :
+    processed_pdb_file = building.reprocess_pdb(
+      pdb_hierarchy=pdb_hierarchy,
+      cif_objects=cif_objects,
+      crystal_symmetry=fmodel.xray_structure,
+      out=null_out())
+    # get the 2mFo-DFc map without new alternates!
+    #two_fofc_map = fmodel.two_fofc_map(exclude_free_r_reflections=True)
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    pdb_atoms = pdb_hierarchy.atoms()
+    xray_structure = processed_pdb_file.xray_structure()
+    geometry_restraints_manager = \
+      processed_pdb_file.geometry_restraints_manager(show_energies=False)
+    fmodel.update_xray_structure(xray_structure)
+    sele_cache = pdb_hierarchy.atom_selection_cache()
+    # FIXME very inefficient when looping!
+    # this will include both the newly built residues and the original atoms,
+    # including residues split to allow for backbone flexibility.
+    sele_split = sele_cache.selection(
+      "segid NEW1 or segid NEW2 or segid OLD1 or segid OLD2")
+    sele_main_conf = sele_cache.selection("segid OLD1 or segid OLD2")
+    assert (len(sele_split) > 0)
+    k = 0
+    while (k < len(sele_split)) :
+      if (sele_split[k]) :
+        current_fragment = flex.size_t()
+        while (sele_split[k]) :
+          current_fragment.append(k)
+          k += 1
+        print >> out, "  refining %d atoms..." % len(current_fragment)
+        frag_selection = flex.bool(sele_split.size(), current_fragment)
+        two_fofc_map, fofc_map = disorder.get_partial_omit_map(
+          fmodel=fmodel.deep_copy(),
+          selection=(frag_selection & sele_main_conf))
+        box = building.box_build_refine_base(
+          pdb_hierarchy=pdb_hierarchy,
+          xray_structure=xray_structure,
+          processed_pdb_file=processed_pdb_file,
+          target_map=two_fofc_map,
+          selection=frag_selection,
+          d_min=fmodel.f_obs().d_min(),
+          out=null_out())
+        box.restrain_atoms("segid OLD1 or segid OLD2", 0.02)
+        box.restrain_atoms("segid NEW1", 0.05)
+        # first fix the geometry of adjacent residues
+        box.real_space_refine("segid NEW2")
+        # now the entire B conformer
+        box.real_space_refine("segid NEW1 or segid NEW2")
+        sites_new = box.update_original_coordinates()
+        xray_structure.set_sites_cart(sites_new)
+        pdb_atoms.set_xyz(sites_new)
+      else :
         k += 1
-      print >> out, "  refining %d atoms..." % len(current_fragment)
-      frag_selection = flex.bool(sele_split.size(), current_fragment)
-      box = building.box_build_refine_base(
-        pdb_hierarchy=pdb_hierarchy,
-        xray_structure=xray_structure,
-        processed_pdb_file=processed_pdb_file,
-        target_map=two_fofc_map,
-        selection=frag_selection,
-        d_min=fmodel.f_obs().d_min(),
-        out=out)
-      box.restrain_atoms("segid OLD1 or segid OLD2", 0.02)
-      box.restrain_atoms("segid NEW1", 0.05)
-      # first fix the geometry of adjacent residues
-      box.real_space_refine("segid NEW2")
-      # now the entire B conformer
-      box.real_space_refine("segid NEW1 or segid NEW2")
-      sites_new = box.update_original_coordinates()
-      xray_structure.set_sites_cart(sites_new)
-      pdb_atoms.set_xyz(sites_new)
+    fmodel.update_xray_structure(xray_structure)
+    if (not remediate) :
+      break
     else :
-      k += 1
-  fmodel.update_xray_structure(xray_structure)
+      print >> out, "  checking for conformational strain..."
+      n_split = disorder.spread_alternates(
+        pdb_hierarchy=pdb_hierarchy,
+        new_occupancy=params.building.expected_occupancy,
+        split_all_adjacent=False,
+        selection="segid NEW1 or segid NEW2")
+      if (n_split > 0) :
+        print >> out, "  split another %d residue(s) - will re-run RSR" % \
+          n_split
+      else :
+        break
+  print >> out, ""
   fmodel.info().show_targets(out=out, text="After real-space refinement")
+  t2 = time.time()
   return pdb_hierarchy
 
 master_phil_str = """
@@ -620,6 +620,8 @@ def build_cycle (pdb_hierarchy,
     params=params.prefilter,
     verbose=verbose,
     log=out)
+  t1 = time.time()
+  print >> out, "filtering: %.3fs" % (t1-t_start)
   restraints_manager = restraints.manager(
     geometry=geometry_restraints_manager,
     normalization=True)
@@ -634,6 +636,8 @@ def build_cycle (pdb_hierarchy,
     nproc=params.nproc,
     verbose=verbose,
     log=out).results
+  t2 = time.time()
+  print >> out, "building: %.3fs" % (t2-t1)
   n_alternates = process_results(
     pdb_hierarchy=pdb_hierarchy,
     fmodel=fmodel,
@@ -642,6 +646,8 @@ def build_cycle (pdb_hierarchy,
     params=params.building,
     verbose=verbose,
     log=out)
+  t3 = time.time()
+  print >> out, "post-processing: %.3fs" % (t3-t2)
   if (n_alternates == 0) :
     print >> out, "No alternates built this round."
   else :
@@ -649,9 +655,12 @@ def build_cycle (pdb_hierarchy,
       pdb_hierarchy=pdb_hierarchy,
       fmodel=fmodel,
       cif_objects=cif_objects,
+      params=params,
+      remediate=True,
       out=out)
+    t4 = time.time()
+    print >> out, "RSR: %.3fs" % (t4-t3)
   t_end = time.time()
-  print >> out, "Build time: %.1fs" % (t_end - t_start)
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_serial()
   pdb_atoms.reset_i_seq()
@@ -662,4 +671,6 @@ def build_cycle (pdb_hierarchy,
       segid = ""
     elif (segid.startswith("NEW")) :
       segid = "NEW"
+  t_end = time.time()
+  print >> out, "Total runtime: %.3fs" % (t_end-t_start)
   return pdb_hierarchy
