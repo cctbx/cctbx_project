@@ -643,21 +643,45 @@ curvatures(const shared_double& x,
 }
 
 
-/* XXX Duplicates code w.r.t. other stuff defined in this file.  It
+/* The intensity column in the MTZ file written by
+ * finalize_and_save_data() in cxi_merge.scaling_manager is calculated
+ * as
+ *
+ *   summed_wt_I / summed_weight.
+ *
+ * The corresponding standard deviations are
+ *
+ *   sqrt(1 / summed_weight).
+ *
+ * In order to ensure that the refined model intensities are
+ * reproduced in the final intensity column, this function populates
+ * summed_wt_I with the model intensities multiplied by their
+ * corresponding weight.
+ *
+ * XXX Duplicates code w.r.t. other stuff defined in this file.  It
  * should ideally be possible to reuse get_scaling_results() below!
  *
- * XXX Should be cleaned up if not!
+ * XXX Needs to be cleaned up!
  */
 static boost::python::tuple
 get_scaling_results_mark2(const shared_double& x, scaling_results& L, const cctbx::uctbx::unit_cell& params_unit_cell)
 {
-  const shared_int hkl = L.observations.get_int("hkl_id");
-  const shared_int frames = L.observations.get_int("frame_id");
-
   const shared_double data = L.observations.get_double("i");
   const shared_double sigmas = L.observations.get_double("sigi");
 
+  // slope is only needed for mark0 comparison.
   const shared_double slope = L.frames.get_double("slope");
+
+  const shared_int hkl = L.observations.get_int("hkl_id");
+  const shared_int frames = L.observations.get_int("frame_id");
+
+  const std::size_t n_frames = L.selected_frames.size();
+
+  /* Weighted sum of squared deviations between scaled, observed
+   * intensities and refined intensities.
+   */
+  shared_double wssq_dev(sigmas.size());
+  shared_double wssq_tot(sigmas.size());
 
   for (std::size_t m = 0; m < L.selected_frames.size(); m++) {
     L.n_rejected[m] = 0;
@@ -699,9 +723,12 @@ get_scaling_results_mark2(const shared_double& x, scaling_results& L, const cctb
       continue;
     }
 
+    /* Per-observations standard deviation, s, and variance, v, scaled
+     * by the per-frame scale factor, G.
+     */
     double s = sigmas[i] / G;
-    double w = s * s;
-    if (w <= 0) {
+    double v = s * s;
+    if (v <= 0) {
       L.n_rejected[m] += 1;
       continue;
     }
@@ -718,21 +745,29 @@ get_scaling_results_mark2(const shared_double& x, scaling_results& L, const cctb
     if (L.d_min_values[m] <= 0 || L.d_min_values[m] > d)
       L.d_min_values[m] = d;
 
-    /* This is the critical bit
+    /* Running, weighted, and squared sum of deviations between
+     * scaled, observed intensities and refined dittos.  Note that
+     * neiter L.summed_weight no L.summed_wt_I are written in this
+     * loop.
      */
-    L.summed_wt_I[h] += I / w;
-    L.summed_weight[h] += 1 / w;
+    const double t = data[i] - G * x[n_frames + h];
+    wssq_dev[h] += t * t / v;
+    wssq_tot[h] += 1.0 / v;
   }
 
-
-  /* Here's the twist: in order not to discard refined intensities XXX
+  /* Multiply model intensities by the summed weight, such that the
+   * intensities written to the final MTZ-file will be correct.
    */
-  const std::size_t n_frames = L.selected_frames.size();
-  for (std::size_t i = 0; i < L.merged_asu_hkl.size(); i++) {
-    if (L.summed_weight[i] > 0)
-      L.summed_wt_I[i] = x[n_frames + i] * L.summed_weight[i];
-    else
-      L.summed_wt_I[i] = 0;
+  for (std::size_t h = 0; h < L.merged_asu_hkl.size(); h++) {
+    if (wssq_tot[h] > 0) {
+      L.summed_weight[h] = wssq_dev[h] / wssq_tot[h];
+      L.summed_wt_I[h] =
+        L.summed_weight[h] > 0 ? x[n_frames + h] * L.summed_weight[h] : 0;
+
+    } else {
+      L.summed_weight[h] = 0;
+      L.summed_wt_I[h] = 0;
+    }
   }
 
   return (make_tuple(L.sum_I,
