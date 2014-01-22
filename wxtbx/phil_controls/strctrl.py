@@ -24,8 +24,11 @@ class StrCtrl (ValidatedTextCtrl) :
     if (value is None) :
       ValidatedTextCtrl.SetValue(self, "")
     else :
-      assert isinstance(value, str)
-      ValidatedTextCtrl.SetValue(self, value.decode("utf-8"))
+      if isinstance(value, str) :
+        ValidatedTextCtrl.SetValue(self, value.decode("utf-8"))
+      else :
+        assert isinstance(value, unicode)
+        ValidatedTextCtrl.SetValue(self, value)
 
   def GetPhilValue (self) :
     self.Validate()
