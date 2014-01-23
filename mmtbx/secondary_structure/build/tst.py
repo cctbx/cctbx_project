@@ -1,4 +1,4 @@
-import generate_ss
+from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from scitbx import matrix
@@ -368,7 +368,7 @@ TER
 """
 
 def exercise_r_t_matrices():
-  r,t = generate_ss.get_r_t_matrices_from_structure(alpha_pdb_str)
+  r,t = ssb.get_r_t_matrices_from_structure(alpha_pdb_str)
   assert approx_equal(r.elems, 
                       (-0.02358, -0.86374, 0.50337, 
                         0.96052, -0.15919,-0.22815, 
@@ -378,7 +378,7 @@ def exercise_r_t_matrices():
                       (0.02846, -2.27608, 1.85022),
                       eps = 0.0001)
   
-  try: generate_ss.get_r_t_matrices_from_structure(t_pdb_str)
+  try: ssb.get_r_t_matrices_from_structure(t_pdb_str)
   except Sorry: pass
   else: raise Exception_expected
     
@@ -389,7 +389,7 @@ def exercise_ss_structure_from_seq():
   pdb_inp2 = iotbx.pdb.input(source_info=None, lines=correct_answer1)
   correct_h2 = pdb_inp2.construct_hierarchy()
 
-  test_h = generate_ss.make_ss_structure_from_seq(alpha_pdb_str, "ACEDGFIHKMLNQPSRTWVY")
+  test_h = ssb.make_ss_structure_from_seq(alpha_pdb_str, "ACEDGFIHKMLNQPSRTWVY")
 
   assert correct_h1.is_similar_hierarchy(other=correct_h2)
   
@@ -401,7 +401,7 @@ def exercise_ss_structure_from_seq():
   assert approx_equal(test_h.atoms().extract_xyz(), 
                       test_h.atoms().extract_xyz(), eps=0.002)
   
-  try: generate_ss.make_ss_structure_from_seq(alpha_pdb_str, "")
+  try: ssb.make_ss_structure_from_seq(alpha_pdb_str, "")
   except Sorry: pass
   else: raise Exception_expected
   
