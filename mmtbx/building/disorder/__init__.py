@@ -200,11 +200,21 @@ def requires_cterm_split (atom_groups, max_acceptable_distance=0.1) :
   distance = max_distance_between_atom_conformers(atom_groups, "C")
   return distance > max_acceptable_distance
 
+SEGID_NEW_REBUILT = "NEW1" # residues that have been fit to map
+SEGID_NEW_SPLIT = "NEW2"   # residues that have been cloned without fitting
+SEGID_MAIN = "OLD"         # original conformation of disordered residues
+SELECTION_OLD = "segid OLD"
+SELECTION_NEW_REBUILT = "segid NEW1"
+SELECTION_NEW_SPLIT = "segid NEW2"
+SELECTION_NEW = "segid NEW1 or segid NEW2"
+SELECTION_MODIFIED = "segid NEW1 or segid NEW2 or segid OLD"
+
 def spread_alternates (
     pdb_hierarchy,
     new_occupancy=None,
     split_all_adjacent=False,
     selection=None,
+    verbose=False,
     log=None) :
   """
   Given a model with some residues in alternate conformations, split the
@@ -212,14 +222,18 @@ def spread_alternates (
   """
   if (log is None) : log = null_out()
   print >> log, ""
-  print >> log, "Splitting adjacent residues..."
-  pdb_hierarchy.atoms().reset_i_seq()
+  print >> log, "  Splitting adjacent residues..."
+  pdb_atoms = pdb_hierarchy.atoms()
+  pdb_atoms.reset_i_seq()
+  pdb_atoms.reset_tmp(0)
   if (selection is None) :
-    selection = pdb_hierarchy.atom_selection_cache().selection("segid NEW1")
+    selection = pdb_hierarchy.atom_selection_cache().selection(
+      SELECTION_NEW_REBUILT)
   elif isinstance(selection, str) :
     selection = pdb_hierarchy.atom_selection_cache().selection(selection)
   def split_residue (residue_group) :
-    print >> log, "  %s" % residue_group.id_str()
+    if (verbose) :
+      print >> log, "  %s" % residue_group.id_str()
     new_occ = 0.5
     if (new_occupancy is not None) :
       new_occ = new_occupancy
@@ -227,12 +241,13 @@ def spread_alternates (
     main_conf.altloc = 'A'
     for atom in main_conf.atoms() :
       atom.occ = 1.0 - new_occ
-      atom.segid = "OLD2"
+      atom.segid = SEGID_MAIN
     alt_conf = main_conf.detached_copy()
     alt_conf.altloc = 'B'
     for atom in alt_conf.atoms() :
       atom.occ = new_occ
-      atom.segid = 'NEW2'
+      atom.segid = SEGID_NEW_SPLIT
+      atom.tmp = 1 # this flags the disordered segment for RSR
     residue_group.append_atom_group(alt_conf)
   n_split = 0
   for chain in pdb_hierarchy.only_model().chains() :
@@ -480,9 +495,6 @@ def rejoin_split_single_conformers (
   atoms) of the distance between conformations over u_iso (which in theory
   represents displacement in Angstroms).
   """
-  from cctbx import adptbx
-  from scitbx.array_family import flex
-  from scitbx.matrix import col
   pdb_hierarchy.atoms().reset_i_seq()
   if (model_error_ml is None) :
     model_error_ml = sys.maxint # XXX ???
