@@ -457,9 +457,10 @@ def run(args):
 
             self.w[i] = 1 / v
 
-          # Should be the last call in the application-specific minimizer
-          # class.
-          super(find_scale, self).__init__()
+          # Should be the last call in the application-specific
+          # minimizer class.  This will call lbfgs's run() function
+          # and perform optimization.
+          super(find_scale, self).__init__() #max_iterations=2000
 
 
         def compute_functional_and_gradients(self):
@@ -514,21 +515,11 @@ def run(args):
             self.x, self.w, n_frames, self._observations)
 
 
-        def run(self):
-          from scitbx import lbfgs
-          termination_params = lbfgs.termination_parameters(
-            traditional_convergence_test=False,
-            max_iterations=2000) # XXX
-          self._minimizer = lbfgs.run(target_evaluator=self)
-                                      #termination_params=termination_params)
-
-
       my_find_scale = find_scale(
         scaler.millers['merged_asu_hkl'],
         scaler._observations,
         scaler.frames,
         scaler)
-      my_find_scale.run()
 
       from xfel import get_scaling_results_mark2
       sum_I, sum_I_SIGI, \
