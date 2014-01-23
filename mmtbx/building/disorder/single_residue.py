@@ -467,11 +467,11 @@ def process_results (
       new_occ = params.expected_occupancy
     for atom in main_conf.atoms() :
       atom.occ = 1.0 - new_occ
-      atom.segid = "OLD1"
+      atom.segid = disorder.SEGID_MAIN
     alt_conf = new_conf.detached_copy()
     alt_conf.altloc = 'B'
     for atom in alt_conf.atoms() :
-      atom.segid = "NEW1"
+      atom.segid = disorder.SEGID_NEW_REBUILT
       atom.occ = new_occ
     residue_group.append_atom_group(alt_conf)
     n_alternates += 1
@@ -481,6 +481,7 @@ def process_results (
       split_all_adjacent=True,
       log=log)
     assert (n_split > 0)
+    print >> log, "  %d additional alternates built" % n_split
   t2 = time.time()
   return n_alternates
 
@@ -495,7 +496,12 @@ def real_space_refine (
   make_sub_header("Real-space refinement", out=out)
   fmodel.info().show_targets(out=out, text="Rebuilt model")
   print >> out, ""
+  i_cycle = 0
   while True :
+    print >> out, "  Cycle %d:" % (i_cycle+1)
+    # this keeps track of which residues were split in the previous cycle -
+    # we only refine segments that have had residues added
+    rebuilt_flags = pdb_hierarchy.atoms().extract_tmp_as_size_t()
     processed_pdb_file = building.reprocess_pdb(
       pdb_hierarchy=pdb_hierarchy,
       cif_objects=cif_objects,
@@ -513,9 +519,8 @@ def real_space_refine (
     # FIXME very inefficient when looping!
     # this will include both the newly built residues and the original atoms,
     # including residues split to allow for backbone flexibility.
-    sele_split = sele_cache.selection(
-      "segid NEW1 or segid NEW2 or segid OLD1 or segid OLD2")
-    sele_main_conf = sele_cache.selection("segid OLD1 or segid OLD2")
+    sele_split = sele_cache.selection(disorder.SELECTION_MODIFIED)
+    sele_main_conf = sele_cache.selection(disorder.SELECTION_OLD)
     assert (len(sele_split) > 0)
     k = 0
     while (k < len(sele_split)) :
@@ -524,25 +529,38 @@ def real_space_refine (
         while (sele_split[k]) :
           current_fragment.append(k)
           k += 1
-        print >> out, "  refining %d atoms..." % len(current_fragment)
+        atom_start = pdb_atoms[current_fragment[0]].fetch_labels()
+        atom_end = pdb_atoms[current_fragment[-1]].fetch_labels()
         frag_selection = flex.bool(sele_split.size(), current_fragment)
+        if (i_cycle > 0) :
+          flags = rebuilt_flags.select(frag_selection)
+          if flags.all_eq(0) :
+            continue
+        print >> out, "    refining %s%s-%s (%d atoms)" % \
+          (atom_start.chain_id, atom_start.resid(), atom_end.resid(),
+           len(current_fragment))
         two_fofc_map, fofc_map = disorder.get_partial_omit_map(
           fmodel=fmodel.deep_copy(),
-          selection=(frag_selection & sele_main_conf))
+          selection=(frag_selection & sele_main_conf),
+          selection_delete=(frag_selection & ~sele_main_conf),
+          partial_occupancy=0.6)
+        target_map = two_fofc_map
+        if (i_cycle == 0) and (params.rsr_fofc_map_target) :
+          target_map = fofc_map
         box = building.box_build_refine_base(
           pdb_hierarchy=pdb_hierarchy,
           xray_structure=xray_structure,
           processed_pdb_file=processed_pdb_file,
-          target_map=two_fofc_map,
+          target_map=target_map,
           selection=frag_selection,
           d_min=fmodel.f_obs().d_min(),
           out=null_out())
-        box.restrain_atoms("segid OLD1 or segid OLD2", 0.02)
-        box.restrain_atoms("segid NEW1", 0.05)
+        box.restrain_atoms(disorder.SELECTION_OLD, 0.02)
+        box.restrain_atoms(disorder.SELECTION_NEW_REBUILT, 0.05)
         # first fix the geometry of adjacent residues
-        box.real_space_refine("segid NEW2")
+        box.real_space_refine(disorder.SELECTION_NEW_SPLIT)
         # now the entire B conformer
-        box.real_space_refine("segid NEW1 or segid NEW2")
+        box.real_space_refine(disorder.SELECTION_NEW)
         sites_new = box.update_original_coordinates()
         xray_structure.set_sites_cart(sites_new)
         pdb_atoms.set_xyz(sites_new)
@@ -552,18 +570,26 @@ def real_space_refine (
     if (not remediate) :
       break
     else :
-      print >> out, "  checking for conformational strain..."
+      for atom in pdb_hierarchy.atoms() :
+        if (atom.segid == disorder.SEGID_NEW_SPLIT) :
+          atom.segid = disorder.SEGID_NEW_REBUILT
+      print >> out, "    checking for conformational strain..."
       n_split = disorder.spread_alternates(
         pdb_hierarchy=pdb_hierarchy,
         new_occupancy=params.building.expected_occupancy,
         split_all_adjacent=False,
-        selection="segid NEW1 or segid NEW2")
+        selection=disorder.SELECTION_NEW_REBUILT)
       if (n_split > 0) :
-        print >> out, "  split another %d residue(s) - will re-run RSR" % \
+        print >> out, "    split another %d residue(s) - will re-run RSR" % \
           n_split
       else :
         break
+    i_cycle += 1
   print >> out, ""
+  xray_structure = pdb_hierarchy.extract_xray_structure(
+    crystal_symmetry=fmodel.xray_structure)
+  fmodel.update_xray_structure(xray_structure,
+    update_f_calc=True)
   fmodel.info().show_targets(out=out, text="After real-space refinement")
   t2 = time.time()
   return pdb_hierarchy
@@ -576,7 +602,12 @@ building {
 }
 prefilter {
   include scope mmtbx.building.disorder.filter_params_str
-}""" % build_params_str
+}
+rsr_after_build = True
+  .type = bool
+rsr_fofc_map_target = True
+  .type = bool
+""" % build_params_str
 
 def build_cycle (pdb_hierarchy,
     fmodel,

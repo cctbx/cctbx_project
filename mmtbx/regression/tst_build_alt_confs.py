@@ -155,6 +155,7 @@ def exercise () :
     "expected_occupancy=0.4",
     "window_size=2",
     "nproc=1",
+    "rsr_fofc_map_target=False",
     "--verbose",
   ]
   build_alt_confs.run(args=args, out=null_out())

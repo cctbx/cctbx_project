@@ -1,5 +1,6 @@
 
 from __future__ import division
+from libtbx.str_utils import make_header
 from libtbx.utils import multi_out
 import os.path
 import sys
@@ -54,7 +55,10 @@ def run (args, out=None) :
   f.write(pdb_hierarchy.as_pdb_string(
     crystal_symmetry=cmdline.fmodel.xray_structure))
   f.close()
+  make_header("Building complete", out=out)
+  print >> log, ""
   print >> log, "Wrote %s" % params.output.file_name
+  print >> log, "You MUST refine this model before using it!"
 
 def validate_params (params) :
   if (params.output.file_name is None) :
