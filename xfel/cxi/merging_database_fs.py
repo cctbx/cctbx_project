@@ -7,6 +7,9 @@ from __future__ import division
 from cctbx.array_family import flex
 
 
+# XXX Use proper field separators (e.g. ASCII 31), see
+# http://en.wikipedia.org/wiki/Delimiter.  Alternatively, use the csv
+# module?
 MISSING_STRING = '#'
 
 def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
@@ -43,18 +46,18 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
 
     if table == 'frame':
       for row in parameters:
-        items = [rows_frame.__repr__()] + [MISSING_STRING] * 24
+        items = [repr(rows_frame)] + [MISSING_STRING] * 24
         for j in range(len(order)):
-          items[order[j]] = row[j].__repr__()
+          items[order[j]] = repr(row[j])
         print >> stream_frame, ' '.join(items)
         rows_frame += 1
       lastrowid_value = rows_frame
 
     elif table == 'miller':
       for row in parameters:
-        items = [rows_miller.__repr__()] + [MISSING_STRING] * 3
+        items = [repr(rows_miller)] + [MISSING_STRING] * 3
         for j in range(len(order)):
-          items[order[j]] = row[j].__repr__()
+          items[order[j]] = repr(row[j])
         print >> stream_miller, ' '.join(items)
         rows_miller += 1
       lastrowid_value = rows_miller
@@ -63,7 +66,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
       for row in parameters:
         items = [MISSING_STRING] * 10
         for j in range(len(order)):
-          items[order[j]] = row[j].__repr__()
+          items[order[j]] = repr(row[j])
         print >> stream_observation, ' '.join(items)
         rows_observation += 1
       lastrowid_value = rows_observation
@@ -252,14 +255,15 @@ class manager:
     for row in stream:
       items = row.split()
       CO = crystal_orientation([float(t) for t in items[8:17]], False)
+      unique_file_name = eval(items[24])
       frames['frame_id'].append(int(items[0]))
       frames['wavelength'].append(float(items[1]))
       frames['cc'].append(float(items[5]))
       frames['slope'].append(float(items[6]))
       frames['offset'].append(float(items[7]))
-      frames['odd_numbered'].append(is_odd_numbered(items[24][1:-1]))
+      frames['odd_numbered'].append(is_odd_numbered(unique_file_name))
       frames['orientation'].append(CO)
       frames['unit_cell'].append(CO.unit_cell())
-      frames['unique_file_name'].append(items[24])
+      frames['unique_file_name'].append(unique_file_name)
     stream.close()
     return frames
