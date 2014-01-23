@@ -1,4 +1,4 @@
-/* -*- Mode: C++; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+/* -*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
  *
  * $Id$
  */
@@ -515,67 +515,66 @@ public:
   }
 };
 
-  typedef scitbx::af::shared<int> shared_int;
-  typedef scitbx::af::shared<double> shared_double;
-  typedef scitbx::af::versa<bool, scitbx::af::flex_grid<> > shared_bool;
+
+typedef scitbx::af::shared<int> shared_int;
+typedef scitbx::af::shared<double> shared_double;
+typedef scitbx::af::versa<bool, scitbx::af::flex_grid<> > shared_bool;
+
 
 /* column_parser cannot be const
+ *
+ * @param w Per-observation weigths.  All elements of @p w must be
+ *          <code>&ge; 0</code>.
  */
 static boost::python::tuple
 compute_functional_and_gradients(const shared_double& x,
-                                 column_parser& observations,
-                                 const shared_bool& selected_frames)
+                                 const shared_double& w,
+                                 std::size_t n_frames,
+                                 column_parser& observations)
 {
-  const std::size_t n_frames = selected_frames.size();
-
   const shared_double data = observations.get_double("i");
-  const shared_int hkl = observations.get_int("hkl_id");
-  const shared_int frames = observations.get_int("frame_id");
   const shared_double sigmas = observations.get_double("sigi");
+  const shared_int frames = observations.get_int("frame_id");
+  const shared_int hkl = observations.get_int("hkl_id");
+
+  const std::size_t n_obs = w.size();
+
+  SCITBX_ASSERT(data.size() == n_obs);
+  SCITBX_ASSERT(sigmas.size() == n_obs);
+  SCITBX_ASSERT(frames.size() == n_obs);
+  SCITBX_ASSERT(hkl.size() == n_obs);
 
   shared_double g(x.size());
   double f = 0;
   double w_tot = 0;
 
-  //printf("Iterating over %zd reflections\n", hkl.size());
-
-  for (std::size_t i = 0; i < hkl.size(); i++) {
-    const double I_o = data[i];
-    if (I_o <= 0) // isnan(I_o))
+  for (std::size_t i = 0; i < n_obs; i++) {
+    if (w[i] <= 0)
       continue;
 
-    const int h = hkl[i]; // std::size_t
+    const int h = hkl[i];
     const double I_m = x[n_frames + h];
-    if (I_m <= 0) // isnan(I_m))
+    if (I_m <= 0) // XXX This warrants a comment
       continue;
 
-    const int m = frames[i]; // std::size_t
-    if (!selected_frames[m])
-      continue;
-
-    const double w = sigmas[i] * sigmas[i]; // XXX Check Bolotovsky: s**2 or s?
-    if (w <= 0)
-      continue;
-
-    //printf("Got G %f\n", G);
-
+    const int m = frames[i];
     const double G = x[m];
-    const double t = I_o - G * I_m;
+    const double t = data[i] - G * I_m;
 
-    f += (1.0 / w) * t * t;
-    w_tot += (1.0 / w);
-
-    //printf("Got f %f\n", f);
-
-    g[m] += -2.0 * (1.0 / w) * I_m * t;
-    g[n_frames + h] += -2.0 * (1.0 / w) * G * t;
+    f += w[i] * t * t;
+    g[m] += -2.0 * w[i] * I_m * t;
+    g[n_frames + h] += -2.0 * w[i] * G * t;
+    w_tot += w[i];
   }
 
-  SCITBX_ASSERT(w_tot > 0);
-  f /= w_tot;
-  for (std::size_t i = 0; i < g.size(); i++)
-    g[i] /= w_tot;
-
+  /* If w_tot == 0, then f and g should be identically zero.  w_tot <
+   * 0 should not happen.
+   */
+  if (w_tot > 0) {
+    f /= w_tot;
+    for (std::size_t i = 0; i < g.size(); i++)
+      g[i] /= w_tot;
+  }
 
   return (boost::python::make_tuple(f, g));
 }
@@ -591,43 +590,45 @@ compute_functional_and_gradients(const shared_double& x,
  */
 shared_double
 curvatures(const shared_double& x,
-           column_parser& observations,
-           const shared_bool& selected_frames)
+           const shared_double& w,
+           std::size_t n_frames,
+           column_parser& observations)
 {
-  const std::size_t n_frames = selected_frames.size();
-
   const shared_double data = observations.get_double("i");
-  const shared_int hkl = observations.get_int("hkl_id");
-  const shared_int frames = observations.get_int("frame_id");
   const shared_double sigmas = observations.get_double("sigi");
+  const shared_int frames = observations.get_int("frame_id");
+  const shared_int hkl = observations.get_int("hkl_id");
+
+  const std::size_t n_obs = w.size();
+
+  SCITBX_ASSERT(data.size() == n_obs);
+  SCITBX_ASSERT(sigmas.size() == n_obs);
+  SCITBX_ASSERT(frames.size() == n_obs);
+  SCITBX_ASSERT(hkl.size() == n_obs);
 
   shared_double c(x.size());
   double w_tot = 0;
 
   printf("CURVATURES CALLED\n");
 
-  for (std::size_t i = 0; i < hkl.size(); i++) {
+  for (std::size_t i = 0; i < n_obs; i++) {
+    if (w[i] <= 0)
+      continue;
+
     if (data[i] <= 0)
       continue;
 
     const int h = hkl[i];
     const double I_m = x[n_frames + h];
-    if (I_m <= 0)
+    if (I_m <= 0) // XXX See compute_functional_and_gradients()
       continue;
 
     const int m = frames[i];
-    if (!selected_frames[m])
-      continue;
-
-    const double w = sigmas[i] * sigmas[i]; // XXX Check Bolotovsky!
-    if (w <= 0)
-      continue;
-
     const double G = x[m];
-    w_tot += (1.0 / w);
 
-    c[m] += 2.0 * (1.0 / w) * I_m * I_m;
-    c[n_frames + h] += 2.0 * (1.0 / w) * G * G;
+    c[m] += 2.0 * w[i] * I_m * I_m;
+    c[n_frames + h] += 2.0 * w[i] * G * G;
+    w_tot += w[i];
   }
 
   for (std::size_t i = 0; i < c.size(); i++)
@@ -664,7 +665,10 @@ curvatures(const shared_double& x,
  * XXX Needs to be cleaned up!
  */
 static boost::python::tuple
-get_scaling_results_mark2(const shared_double& x, scaling_results& L, const cctbx::uctbx::unit_cell& params_unit_cell)
+get_scaling_results_mark2(const shared_double& x,
+                          const shared_double& w,
+                          scaling_results& L,
+                          const cctbx::uctbx::unit_cell& params_unit_cell)
 {
   const shared_double data = L.observations.get_double("i");
   const shared_double sigmas = L.observations.get_double("sigi");
@@ -672,24 +676,31 @@ get_scaling_results_mark2(const shared_double& x, scaling_results& L, const cctb
   // slope is only needed for mark0 comparison.
   const shared_double slope = L.frames.get_double("slope");
 
-  const shared_int hkl = L.observations.get_int("hkl_id");
   const shared_int frames = L.observations.get_int("frame_id");
+  const shared_int hkl = L.observations.get_int("hkl_id");
 
   const std::size_t n_frames = L.selected_frames.size();
+  const std::size_t n_hkl = x.size() - n_frames;
+  const std::size_t n_obs = w.size();
+
+  SCITBX_ASSERT(data.size() == n_obs);
+  SCITBX_ASSERT(sigmas.size() == n_obs);
+  SCITBX_ASSERT(frames.size() == n_obs);
+  SCITBX_ASSERT(hkl.size() == n_obs);
 
   /* Weighted sum of squared deviations between scaled, observed
    * intensities and refined intensities.
    */
   shared_double wssq_dev(sigmas.size());
-  shared_double wssq_tot(sigmas.size());
+  shared_double w_tot(sigmas.size());
 
-  for (std::size_t m = 0; m < L.selected_frames.size(); m++) {
+  for (std::size_t m = 0; m < n_frames; m++) {
     L.n_rejected[m] = 0;
     L.n_obs[m] = 0;
     L.d_min_values[m] = 0;
   }
 
-  for (std::size_t i = 0; i < L.merged_asu_hkl.size(); i++) {
+  for (std::size_t i = 0; i < n_hkl; i++) {
     L.sum_I[i] = 0;
     L.sum_I_SIGI[i] = 0;
     L.completeness[i] = 0;
@@ -700,39 +711,38 @@ get_scaling_results_mark2(const shared_double& x, scaling_results& L, const cctb
 
   L.i_isig_list.clear();
 
-  for (std::size_t i = 0; i < hkl.size(); i++) {
-    std::size_t m = frames[i];
+  for (std::size_t i = 0; i < n_obs; i++) {
+    const int m = frames[i];
 
-    if (!L.selected_frames[m]) {
+    /* Filtering the observations based on weight early in the loop
+     * alters the statistics.  Previously, a reflection was counted as
+     * observed and would contribute to the completeness as long as
+     * the frame was not rejected, even if its integrated intensity or
+     * standard deviation was non-positive.  Now, any observations
+     * with non-positive weight are not counted as observed and do not
+     * contribute to the completeness.
+     */
+    if (w[i] <= 0) {
       L.n_rejected[m] += 1;
       continue;
     }
 
-    std::size_t h = hkl[i];
+    const int h = hkl[i];
     L.completeness[h] += 1;
     L.n_obs[m] += 1;
 
     // Mind negative scaling factors!
-    double G = x[m];
-    //double G = slope[m]; // To reproduce mark0 scaling
-    //double G = 1; // To reproduce mark1 scaling
+    const double G = x[m];
+    //const double G = slope[m]; // To reproduce mark0 scaling
+    //const double G = 1; // To reproduce mark1 scaling
 
-    double I = data[i] / G;
-    if (I <= 0) {
-      L.n_rejected[m] += 1;
-      continue;
-    }
-
-    /* Per-observations standard deviation, s, and variance, v, scaled
-     * by the per-frame scale factor, G.
+    /* The integrated, observed intensity, I, and its standard
+     * deviation, s, scaled by the per-frame scale factor, G.
      */
-    double s = sigmas[i] / G;
-    double v = s * s;
-    if (v <= 0) {
-      L.n_rejected[m] += 1;
-      continue;
-    }
-    double IsigI = I / s;
+    const double I = data[i] / G;
+    const double s = sigmas[i] / G;
+    const double w_this = G * G * w[i]; // XXX ugly!
+    const double IsigI = I / s;
 
     L.summed_N[h] += 1;
     L.sum_I[h] += I;
@@ -747,20 +757,20 @@ get_scaling_results_mark2(const shared_double& x, scaling_results& L, const cctb
 
     /* Running, weighted, and squared sum of deviations between
      * scaled, observed intensities and refined dittos.  Note that
-     * neiter L.summed_weight no L.summed_wt_I are written in this
+     * neither L.summed_weight nor L.summed_wt_I are written in this
      * loop.
      */
     const double t = data[i] - G * x[n_frames + h];
-    wssq_dev[h] += t * t / v;
-    wssq_tot[h] += 1.0 / v;
+    wssq_dev[h] += w_this * t * t;
+    w_tot[h] += w_this;
   }
 
   /* Multiply model intensities by the summed weight, such that the
    * intensities written to the final MTZ-file will be correct.
    */
-  for (std::size_t h = 0; h < L.merged_asu_hkl.size(); h++) {
-    if (wssq_tot[h] > 0) {
-      L.summed_weight[h] = wssq_dev[h] / wssq_tot[h];
+  for (std::size_t h = 0; h < n_hkl; h++) {
+    if (w_tot[h] > 0) {
+      L.summed_weight[h] = wssq_dev[h] / w_tot[h];
       L.summed_wt_I[h] =
         L.summed_weight[h] > 0 ? x[n_frames + h] * L.summed_weight[h] : 0;
 
