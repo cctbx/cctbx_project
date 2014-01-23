@@ -760,16 +760,21 @@ get_scaling_results_mark2(const shared_double& x,
      * neither L.summed_weight nor L.summed_wt_I are written in this
      * loop.
      */
-    const double t = data[i] - G * x[n_frames + h];
+    const double t = I - x[n_frames + h];
+#if 0
     wssq_dev[h] += w_this * t * t;
     w_tot[h] += w_this;
+#else
+    wssq_dev[h] += 1.0 / (s * s);
+    w_tot[h] += 1;
+#endif
   }
 
   /* Multiply model intensities by the summed weight, such that the
    * intensities written to the final MTZ-file will be correct.
    */
   for (std::size_t h = 0; h < n_hkl; h++) {
-    if (w_tot[h] > 0) {
+    if (w_tot[h] > 0 && x[n_frames + h] > 0) {
       L.summed_weight[h] = wssq_dev[h] / w_tot[h];
       L.summed_wt_I[h] =
         L.summed_weight[h] > 0 ? x[n_frames + h] * L.summed_weight[h] : 0;
