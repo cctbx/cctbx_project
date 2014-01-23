@@ -84,10 +84,16 @@ def detector_format_version(address, time):
     elif address == 'XppGon-0|marccd-0':
       return 'XPP 7.marccd'
 
+  elif time < timegm(strptime('2014-01-15, 02:00 UTC', f)):
+    # CXI detector rebuilt in Jan 2014, before that use CXI 8.1 metrology.
+    if address == 'CxiDs1-0|Cspad-0':
+      return 'CXI 8.1'
+
+
   elif time < timegm(strptime('2014-03-31, 02:00 UTC', f)):
     # LCLS run 8: until Mar 31, 2014
     if address == 'CxiDs1-0|Cspad-0':
-      return 'CXI 8.1'
+      return 'CXI 8.2'
     elif address == 'CxiDsd-0|Cspad-0':
       return 'CXI 8.d'
     elif address == 'XppGon-0|Cspad-0':
