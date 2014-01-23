@@ -406,21 +406,56 @@ def run(args):
           # intensity of all the observations serves as an initial
           # estimate of the merged intensity.  This is all Monte Carlo
           # scaling would do.
-          #
-          # Filter non-positive reflections.  XXX Should apply
-          # resolution filter as well, and use a weight vector (see
-          # also the nan comment below).
-          #
-          # Could still have unobserved reflections.  Do not use
-          # float('nan') for those, because it's tricky to get that to
-          # play nice with the cctbx C++ environment.
           assert len(self._millers) == len(scaler.summed_wt_I) \
             and  len(self._millers) == len(scaler.summed_weight)
 
           for i in range(len(self._millers)):
             if scaler.summed_weight[i] > 0:
               self.x[n_frames + i] = scaler.summed_wt_I[i] / scaler.summed_weight[i]
-              #self.weight[n_frames + i] = math.sqrt(1 / scaler.summed_weight[i])
+
+          # The weight of each observation is (1 / sigma)**2, where
+          # sigma is the standard deviation of the observation as
+          # determined during integration.  An observation is assigned
+          # a weight of zero if
+          #
+          #   The observation was made on a rejected frame
+          #
+          #   The integrated intensity of the observation is
+          #   non-positive
+          #
+          #   The variance of the observation, s**2, as determined
+          #   during integration, is non-positive
+          #
+          #   The d-spacing of the observation lies outside the
+          #   user-supplied resolution limits
+          #
+          # XXX Check Bolotovsky et al.: use sigma**2 or sigma for the
+          # weighting?
+          self.w = flex.double(len(self._hkl))
+          for i in range(len(self.w)):
+            if not self._subset[self._frames[i]]:
+              continue
+
+            if self._data[i] <= 0:
+              continue
+
+            # XXX Should compare against sqrt(eps) instead?  See also
+            # scales_non_positive below.
+            v = self._sigmas[i]**2
+            if v <= 0:
+              continue
+
+            # Test d_min first, because it is more likely to have a
+            # lower resolution limit than an upper resolution limit.
+            # XXX Is this ever enforced in practice, i.e. is this the
+            # first time the limits are applied?
+            d = scaler.params.target_unit_cell.d(
+              scaler.millers['merged_asu_hkl'][self._hkl[i]])
+            if (work_params.d_min is not None and d < work_params.d_min) or \
+               (work_params.d_max is not None and d > work_params.d_max):
+              continue
+
+            self.w[i] = 1 / v
 
           # Should be the last call in the application-specific minimizer
           # class.
@@ -438,9 +473,11 @@ def run(args):
           #from libtbx.development.timers import Profiler
           from xfel import compute_functional_and_gradients
 
+          n_frames = len(self._subset)
+
           #p = Profiler("compute_functional_and_gradients [C++]")
           (f, g) = compute_functional_and_gradients(
-            self.x, self._observations, self._subset)
+            self.x, self.w, n_frames, self._observations)
           #del p
 
           # XXX Only output this every 100 iterations or so.
@@ -472,7 +509,9 @@ def run(args):
 
         def curvatures(self):
           from xfel import curvatures
-          return curvatures(self.x, self._observations, self._subset)
+          n_frames = len(self._subset)
+          return curvatures(
+            self.x, self.w, n_frames, self._observations)
 
 
         def run(self):
@@ -495,7 +534,7 @@ def run(args):
       sum_I, sum_I_SIGI, \
         scaler.completeness, scaler.summed_N, \
         scaler.summed_wt_I, scaler.summed_weight, scaler.n_rejected, \
-        scaler.n_obs, scaler.d_min_values, i_sigi_list = get_scaling_results_mark2(my_find_scale.x, results, scaler.params.target_unit_cell)
+        scaler.n_obs, scaler.d_min_values, i_sigi_list = get_scaling_results_mark2(my_find_scale.x, my_find_scale.w, results, scaler.params.target_unit_cell)
       scaler.ISIGI = get_isigi_dict(results)
 
 
