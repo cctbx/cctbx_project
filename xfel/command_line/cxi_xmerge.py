@@ -424,7 +424,7 @@ def run(args):
 
           # Should be the last call in the application-specific minimizer
           # class.
-          #super(find_scale, self).__init__()
+          super(find_scale, self).__init__()
 
 
         def compute_functional_and_gradients(self):
@@ -444,15 +444,28 @@ def run(args):
           #del p
 
           # XXX Only output this every 100 iterations or so.
-          print "* f =% 10.4e" % (math.sqrt(f))
+          scales = self.x[0:len(self._subset)]
+          stats = flex.mean_and_variance(scales)
+          print "* f =% 10.4e, g =% f+/-%f" % (
+            math.sqrt(f),
+            stats.mean(),
+            stats.unweighted_sample_standard_deviation())
 
           # Warn if there are non_positive per-frame scaling factors.
-          scales = self.x[0:len(self._subset)]
-          sel = (scales <= 1e-6) # XXX Or just zero!
-          n_non_positive = sel.count(True)
-          if n_non_positive > 0:
-            print "Have %d non-positive per-frame scaling factors:" % \
-              n_non_positive #, list(scales.select(sel))
+          scales_non_positive = scales.select(scales <= 1e-6) # XXX Or just zero!
+          if len(scales_non_positive) > 0:
+            stats = flex.mean_and_variance(scales_non_positive)
+            if len(scales_non_positive) > 1:
+              sigma = stats.unweighted_sample_standard_deviation()
+            else:
+              sigma = 0
+            print "Have %d non-positive per-frame scaling factors: " \
+              "%f+/-%f [%f, %f]" % (
+                len(scales_non_positive),
+                stats.mean(),
+                sigma,
+                flex.min(scales_non_positive),
+                flex.max(scales_non_positive))
 
           return (f, g)
 
