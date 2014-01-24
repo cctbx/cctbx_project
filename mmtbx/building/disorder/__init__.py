@@ -479,6 +479,8 @@ min_occupancy = 0.1
   .type = float
 distance_over_u_iso_limit = 1.2
   .type = float
+remove_hd = True
+  .type = bool
 """)
 
 def rejoin_split_single_conformers (
@@ -498,10 +500,7 @@ def rejoin_split_single_conformers (
   from cctbx import adptbx
   from scitbx.array_family import flex
   from scitbx.matrix import col
-  elements = pdb_hierarchy.atoms().extract_element().strip()
-  non_hd_sel = (elements != "H") & (elements != "D")
-  pdb_hierarchy = pdb_hierarchy.select(non_hd_sel)
-  pdb_hierarchy.atoms().reset_i_seq()
+  pdb_hierarchy.remove_hd()
   if (model_error_ml is None) :
     model_error_ml = sys.maxint # XXX ???
   n_modified = 0
@@ -594,7 +593,7 @@ def rejoin_split_single_conformers (
             atom.occ = 1.0 / len(atom_groups)
           if (len(atom_groups) == 1) :
             atom_group.altloc = ''
-  return pdb_hierarchy, n_modified
+  return n_modified
 
 finalize_phil_str = """
 set_b_iso = 1.0
@@ -608,10 +607,8 @@ def finalize_model (pdb_hierarchy,
     set_b_iso=None,
     convert_to_isotropic=None) :
   pdb_atoms = pdb_hierarchy.atoms()
-  pdb_atoms.reset_serial()
-  pdb_atoms.reset_i_seq()
-  pdb_atoms.reset_tmp()
   for i_seq, atom in enumerate(pdb_atoms) :
+    assert (atom.parent() is not None)
     atom.segid = ""
     sc = xray_structure.scatterers()[i_seq]
     sc.label = atom.id_str()
@@ -620,3 +617,6 @@ def finalize_model (pdb_hierarchy,
   if (set_b_iso is not None) :
     xray_structure.set_b_iso(set_b_iso)
   pdb_hierarchy.adopt_xray_structure(xray_structure)
+  pdb_atoms.reset_serial()
+  pdb_atoms.reset_i_seq()
+  pdb_atoms.reset_tmp()
