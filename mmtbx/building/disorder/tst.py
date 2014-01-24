@@ -97,15 +97,13 @@ def exercise_rejoin () :
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
   hierarchy = pdb_in.hierarchy
   params = disorder.rejoin_phil.extract()
-  hierarchy_new, n_modified = disorder.rejoin_split_single_conformers(
+  n_modified = disorder.rejoin_split_single_conformers(
     pdb_hierarchy=hierarchy,
     params=params,
     model_error_ml=0.5,
     log=null_out())
   assert (n_modified == 1) # Gln5
   # split residue 6 without changing coordinates, set occupancy very low
-  non_hd_sel = ~(pdb_in.input.xray_structure_simple().hd_selection())
-  hierarchy = hierarchy.select(non_hd_sel)
   chain = hierarchy.only_model().chains()[0]
   rg6 = chain.residue_groups()[5]
   ag = rg6.only_atom_group().detached_copy()
@@ -116,21 +114,23 @@ def exercise_rejoin () :
   rg6.only_atom_group().altloc = 'A'
   ag.altloc = 'B'
   rg6.append_atom_group(ag)
-  hierarchy_new, n_modified = disorder.rejoin_split_single_conformers(
+  n_modified = disorder.rejoin_split_single_conformers(
     pdb_hierarchy=hierarchy,
     params=params,
     model_error_ml=0.5,
     log=null_out())
-  assert (n_modified == 2)
+  #print n_modified
+  assert (n_modified == 1)
   # now with higher B-factors for all atoms
   for atom in hierarchy.atoms() :
     atom.b = atom.b * 10
-  hierarchy_new, n_modified = disorder.rejoin_split_single_conformers(
+  n_modified = disorder.rejoin_split_single_conformers(
     pdb_hierarchy=hierarchy,
     params=params,
     model_error_ml=0.5,
     log=null_out())
-  assert (n_modified == 4)
+  #print n_modified
+  assert (n_modified == 2)
   # TODO more needed...
 
 if (__name__ == "__main__") :
