@@ -286,7 +286,8 @@ class rec(object):
     return (rtr - identity(n=3)).norm_sq()**0.5
 
   def is_r3_rotation_matrix(self, rms_tolerance=1e-8):
-    return self.is_r3_rotation_matrix_rms() < rms_tolerance
+    return self.is_r3_rotation_matrix_rms() < rms_tolerance and \
+      abs(1-self.determinant())<rms_tolerance
 
   def unit_quaternion_as_r3_rotation_matrix(self):
     assert self.n in [(1,4), (4,1)]
