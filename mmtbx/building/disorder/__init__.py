@@ -495,6 +495,9 @@ def rejoin_split_single_conformers (
   atoms) of the distance between conformations over u_iso (which in theory
   represents displacement in Angstroms).
   """
+  from cctbx import adptbx
+  from scitbx.array_family import flex
+  from scitbx.matrix import col
   pdb_hierarchy.atoms().reset_i_seq()
   if (model_error_ml is None) :
     model_error_ml = sys.maxint # XXX ???
@@ -521,6 +524,8 @@ def rejoin_split_single_conformers (
               sites.append(atom.xyz)
               u_iso.append(adptbx.b_as_u(atom.b))
               occ.append(atom.occ)
+          if (len(occ) == 0) : # hydrogen-only
+            continue
           conf_sites.append(sites)
           conf_uisos.append(u_iso)
           if (max(occ) < params.min_occupancy) :
@@ -587,3 +592,29 @@ def rejoin_split_single_conformers (
           if (len(atom_groups) == 1) :
             atom_group.altloc = ''
   return n_modified
+
+
+finalize_phil_str = """
+set_b_iso = 1.0
+  .type = float
+convert_to_isotropic = True
+  .type = bool
+"""
+
+def finalize_model (pdb_hierarchy,
+    xray_structure,
+    set_b_iso=None,
+    convert_to_isotropic=None) :
+  pdb_atoms = pdb_hierarchy.atoms()
+  pdb_atoms.reset_serial()
+  pdb_atoms.reset_i_seq()
+  pdb_atoms.reset_tmp()
+  for i_seq, atom in enumerate(pdb_atoms) :
+    atom.segid = ""
+    sc = xray_structure.scatterers()[i_seq]
+    sc.label = atom.id_str()
+  if (convert_to_isotropic) :
+    xray_structure.convert_to_isotropic()
+  if (set_b_iso is not None) :
+    xray_structure.set_b_iso(set_b_iso)
+  pdb_hierarchy.adopt_xray_structure(xray_structure)

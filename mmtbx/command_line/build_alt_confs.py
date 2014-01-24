@@ -40,7 +40,7 @@ def run (args, out=None) :
   log_file_name = os.path.splitext(params.output.file_name)[0] + ".log"
   logfile = open(log_file_name, "w")
   log.register("logfile", logfile)
-  pdb_hierarchy = single_residue.build_cycle(
+  pdb_hierarchy, n_alternates = single_residue.build_cycle(
     pdb_hierarchy = cmdline.pdb_hierarchy,
     fmodel = cmdline.fmodel,
     geometry_restraints_manager = cmdline.geometry,
