@@ -23,6 +23,7 @@ class easy(object):
         rms_bonds_limit=0.015,
         rms_angles_limit=2.0,
         w = None,
+        states_accumulator=None,
         log=None):
     adopt_init_args(self, locals())
     es = geometry_restraints_manager.geometry.energies_sites(
@@ -45,7 +46,8 @@ class easy(object):
     refine_object = simple(
       target_map                  = map_data,
       selection                   = selection,
-      geometry_restraints_manager = geometry_restraints_manager.geometry)
+      geometry_restraints_manager = geometry_restraints_manager.geometry,
+      states_accumulator          = states_accumulator)
     refine_object.refine(weight = self.w, xray_structure = self.xray_structure)
     self.rmsd_bonds_final, self.rmsd_angles_final = refine_object.rmsds()
     self.xray_structure=self.xray_structure.replace_sites_cart(
@@ -60,7 +62,8 @@ class simple(object):
         geometry_restraints_manager,
         real_space_gradients_delta=1./4,
         selection_real_space=None,
-        max_iterations=150):
+        max_iterations=150,
+        states_accumulator=None):
     adopt_init_args(self, locals())
     self.lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations)
@@ -85,7 +88,8 @@ class simple(object):
       real_space_target_weight        = weight,
       real_space_gradients_delta      = self.real_space_gradients_delta,
       lbfgs_termination_params        = self.lbfgs_termination_params,
-      lbfgs_exception_handling_params = self.lbfgs_exception_handling_params)
+      lbfgs_exception_handling_params = self.lbfgs_exception_handling_params,
+      states_collector                = self.states_accumulator)
 
   def sites_cart(self):
     assert self.refined is not None
