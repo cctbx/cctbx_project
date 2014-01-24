@@ -1246,11 +1246,13 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
   # row).  This takes care of quadrant rotations, and projects into
   # 2D-space.
   quadrants_trans = {}
-  if detector == 'CxiDs1': # XXX This applies to the CXI rear detector as well!
+  if detector == 'CxiDs1':
+    # XXX This applies to the CXI rear detector as well!
+    #
+    # There is no global origin for the CSPAD:s at CXI, because all
+    # four quadrants are measured independently.
     for (q, sensors) in quadrants_lsq.iteritems():
       quadrants_trans[q] = {}
-
-      q_apa = q
 
       if q == 0:
         # Q0:
@@ -1258,28 +1260,28 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
         #   y -> -fast
         for (s, vertices) in sensors.iteritems():
           quadrants_trans[q][s] = [matrix.col((-v[0], -v[1]))
-                                   for v in quadrants_lsq[q_apa][s]]
+                                   for v in quadrants_lsq[q][s]]
       elif q == 1:
         # Q1:
         #   x -> +fast
         #   y -> -slow
         for (s, vertices) in sensors.iteritems():
           quadrants_trans[q][s] = [matrix.col((-v[1], +v[0]))
-                                   for v in quadrants_lsq[q_apa][s]]
+                                   for v in quadrants_lsq[q][s]]
       elif q == 2:
         # Q2:
         #   x -> +slow
         #   y -> +fast
         for (s, vertices) in sensors.iteritems():
           quadrants_trans[q][s] = [matrix.col((+v[0], +v[1]))
-                                   for v in quadrants_lsq[q_apa][s]]
+                                   for v in quadrants_lsq[q][s]]
       elif q == 3:
         # Q3:
         #   x -> -fast
         #   y -> +slow
         for (s, vertices) in sensors.iteritems():
           quadrants_trans[q][s] = [matrix.col((+v[1], -v[0]))
-                                   for v in quadrants_lsq[q_apa][s]]
+                                   for v in quadrants_lsq[q][s]]
       else:
         # NOTREACHED
         raise RuntimeError(
@@ -1292,8 +1294,8 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
     #   x -> +fast
     #   y -> -slow
     #
-    # Fix the origin to the center of mass of sensor 1 in the four
-    # quadrants.
+    # Fix the global origin to the center of mass of sensor 1 in the
+    # four quadrants.
     o = matrix.col((0, 0, 0))
     N = 0
     for (q, sensors) in quadrants_lsq.iteritems():
@@ -1617,10 +1619,13 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 0 * 2 + 1] = correction[0][1]
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 1 * 2 + 0] = correction[1][0]
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 1 * 2 + 1] = correction[1][1]
-  #print "corrected_auxiliary_translations =", list(corrections_list)
+  print "corrected_auxiliary_translations =", list(corrections_list)
 
   for i in range(len(aa_new)):
-    aa_new[i] += 1765 // 2 # XXX magic number, again!
+    if detector == 'XppDs1':
+      # XXX Not actually tested for XPP.  XXX magic number, again!
+      aa_new[i] += 1765 // 2
+
     assert aa_new[i] >= 0 and aa_new[i] <= 1765
 
   print "new active areas", len(aa_new), aa_new
