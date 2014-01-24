@@ -38,11 +38,10 @@ def run (args=(), params=None, out=None) :
   pdb_file = file_reader.any_file(params.expand_ncs.file_name,
     force_type="pdb")
   pdb_in = pdb_file.file_object
-  matrices = pdb_in.process_mtrix_records()
   pdb_hierarchy = pdb_in.construct_hierarchy()
   hierarchy_new = iotbx.pdb.hierarchy.expand_ncs(
     pdb_hierarchy=pdb_hierarchy,
-    matrices=matrices,
+    processed_mtrix_records=pdb_in.process_mtrix_records(),
     log=out)
   if (params.expand_ncs.output_file is None) :
     params.expand_ncs.output_file = os.path.basename(

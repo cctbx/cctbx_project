@@ -1032,6 +1032,33 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
           "Improper set of PDB SCALE records%s" % source_info)
     return self._scale_matrix
 
+  class _mtrix_and_biomt_records_container(object):
+    def __init__(self):
+      self.r=[]
+      self.t=[]
+      self.coordinates_present=[]
+      self.serial_number=[]
+    def add(self, r, t, coordinates_present, serial_number):
+      self.r.append(r)
+      self.t.append(t)
+      self.coordinates_present.append(coordinates_present)
+      self.serial_number.append(serial_number)
+    def format_pdb_string(self):
+      lines = []
+      fmt1="MTRIX1  %2d%10.6f%10.6f%10.6f     %10.5f    %s"
+      fmt2="MTRIX2  %2d%10.6f%10.6f%10.6f     %10.5f    %s"
+      fmt3="MTRIX3  %2d%10.6f%10.6f%10.6f     %10.5f    %s"
+      cntr=0
+      for sn_, r_, t_, p_ in zip(self.serial_number, self.r, self.t,
+                                 self.coordinates_present):
+        flag = " "
+        if(self.coordinates_present and cntr==0): flag="1"
+        lines.append(fmt1%(int(sn_), r_[0],r_[1],r_[2], t_[0], flag))
+        lines.append(fmt2%(int(sn_), r_[3],r_[4],r_[5], t_[1], flag))
+        lines.append(fmt3%(int(sn_), r_[6],r_[7],r_[8], t_[2], flag))
+        cntr+=1
+      return "\n".join(lines)
+
   def process_BIOMT_records(self,error_handle=True,eps=1e-4):
     '''(pdb_data,boolean,float) -> group of lists
     extract REMARK 350 BIOMT information, information that provides rotation matrices
@@ -1070,42 +1097,42 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
 
     @author: Youval Dar (2013)
     '''
-    from libtbx import group_args
     source_info = self.extract_remark_iii_records(350)
-    result = []                         # the returned list of rotation and translation data
+    result = self._mtrix_and_biomt_records_container()
+    from libtbx import group_args
     if source_info:                     # check if any BIOMT info is available
       # collecting the data from the remarks. Checking that we are collecting only data
       # and not part of the remarks header by verifying that the 3rd component contains "BIOMT"
       # and that the length of that component is 6
-      biomt_data = [map(float,x.split()[3:]) for x in source_info if (x.split()[2].find('BIOMT') > -1)
-                    and (len(x.split()[2]) == 6)]
+      biomt_data = [map(float,x.split()[3:]) for x in source_info if (
+        x.split()[2].find('BIOMT') > -1) and (len(x.split()[2]) == 6)]
       # test that there is no missing data
       if len(biomt_data)%3 != 0:
-        raise RuntimeError("Improper or missing set of PDB BIOMAT records. Data length = %s" % str(len(biomt_data)))
+        raise RuntimeError(
+          "Improper or missing set of PDB BIOMAT records. Data length = %s" % \
+          str(len(biomt_data)))
       # test that the length of the data match the serial number, that there are no missing records
       temp = int(source_info[-1].split()[3])    # expected number of records
       if len(biomt_data)/3.0 != int(source_info[-1].split()[3]):
-        raise RuntimeError("Missing record sets in PDB BIOMAT records \n" + \
-                           "Actual number of BIOMT matrices: {} \n".format(len(biomt_data)/3.0) + \
-                           "expected according to serial number: {} \n".format(temp))
+        raise RuntimeError(
+          "Missing record sets in PDB BIOMAT records \n" + \
+          "Actual number of BIOMT matrices: {} \n".format(len(biomt_data)/3.0)+\
+          "expected according to serial number: {} \n".format(temp))
       for i in range(len(biomt_data)//3):
         # i is the group number in biomt_data
         # Each group composed from 3 data sets.
         j = 3*i;
-        rotation_data = biomt_data[j][1:4] + biomt_data[j+1][1:4] + biomt_data[j+2][1:4]
-        translation_data = [biomt_data[j][-1], biomt_data[j+1][-1], biomt_data[j+2][-1]]
-        # Test rotation matrix
-        if self._test_matrix(rotation_data,eps=eps):
+        rotation_data = \
+          biomt_data[j][1:4] + biomt_data[j+1][1:4] + biomt_data[j+2][1:4]
+        translation_data = \
+          [biomt_data[j][-1], biomt_data[j+1][-1], biomt_data[j+2][-1]]
+        rm = matrix.sqr(rotation_data)
+        tv = matrix.col(translation_data)
+        if not rm.is_r3_rotation_matrix(rms_tolerance=eps):
           if error_handle:
             raise Sorry('Rotation matrices are not proper! ')
-          #else:
-            #print Sorry('Rotation matrices are not proper! ')
-
-        # done following the format in the MTRIX records
-        result.append(group_args(
-          values = [rotation_data,translation_data],
-          coordinates_present=(i == 0),         # Only the first transformation included in pdb file
-          serial_number=i + 1))
+        result.add(r=rm, t=tv, coordinates_present=(i==0),
+          serial_number=i+1)
     return result
 
   def process_mtrix_records(self,error_handle=True,eps=1e-4):
@@ -1142,12 +1169,12 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         values[1][r.n-1] = r.t
         done.append(r.n)
         present.append(r.coordinates_present)
-    from libtbx import group_args
-    result = []
+    result = self._mtrix_and_biomt_records_container()
     for serial_number in sorted(storage.keys()):
       values, done, present = storage[serial_number]
-      # Test rotation matrices
-      if self._test_matrix(values[0],eps=eps):
+      rm = matrix.sqr(values[0])
+      tv = matrix.col(values[1])
+      if not rm.is_r3_rotation_matrix(rms_tolerance=eps):
         if error_handle:
           raise Sorry('Rotation matrices are not proper! ')
         else:
@@ -1155,37 +1182,9 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       if (sorted(done) != [1,2,3] or len(set(present)) != 1):
         raise RuntimeError(
           "Improper set of PDB MTRIX records%s" % source_info)
-      result.append(group_args(
-        values=values,
-        coordinates_present=present[0],
-        serial_number=serial_number))
+      result.add(r=rm, t=tv, coordinates_present=present[0],
+        serial_number=serial_number)
     return result
-
-  def _test_matrix(self,s,eps=1e-6):
-    ''' (list) -> boolean
-    Test if a matrix is a proper rotation
-    Should have the properties:
-    1)R_inverse = R_transpose
-    2)Det(R) = 1
-        R = matrix.sqr(rotation_data)
-        t1 = R*R.transpose()
-        t2 = R.transpose()*R
-
-    Arguments:
-    s -- a list of 9 float numbers
-    eps -- Rounding accuracy for avoiding numerical issue when when testing proper rotation
-
-    >>> test_matrix()
-    True
-    >>> test_matrix()
-    False
-
-    @author: Youval Dar (2013)
-    '''
-    R = matrix.sqr(s)
-    t1 = R*R.transpose()
-    t2 = matrix.identity(3)
-    return not approx_equal(R.determinant(),1,eps=eps) or not approx_equal(t1,t2,eps=eps)
 
   def get_r_rfree_sigma(self, file_name=None):
     from iotbx.pdb import extract_rfactors_resolutions_sigma

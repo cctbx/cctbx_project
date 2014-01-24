@@ -512,18 +512,46 @@ def exercise_merge_files_and_check_for_overlap(regression_pdb):
 def exercise_mtrix(regression_pdb):
   pdb_inp = pdb.input(file_name=op.join(regression_pdb, "pdb1a1q.ent"))
   mtrix_info = pdb_inp.process_mtrix_records()
-  assert len(mtrix_info) == 2
-  assert approx_equal(mtrix_info[0].values, [[
+  assert len(mtrix_info.r)==len(mtrix_info.t)==2
+  assert approx_equal(mtrix_info.r[0], [
     -0.952060, 0.305556,-0.014748,
     -0.305663,-0.952124, 0.005574,
-    -0.012339, 0.009815, 0.999876], [
-      -22.67001, 73.03197, 0.78307]])
-  assert mtrix_info[0].coordinates_present
-  assert mtrix_info[1].serial_number == "  2"
+    -0.012339, 0.009815, 0.999876])
+  assert approx_equal(mtrix_info.t[0], [-22.67001, 73.03197, 0.78307])
+  assert mtrix_info.coordinates_present.count(True)==2
+  assert mtrix_info.serial_number == ['  1', '  2']
+
+def exercise_mtrix_format_pdb_string():
+  mtrix_recs = """\
+MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
+MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
+MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
+MTRIX1   2  0.496590 -0.643597  0.582393        0.00000
+MTRIX2   2  0.867925  0.376088 -0.324443        0.00000
+MTRIX3   2 -0.010221  0.666588  0.745356        0.00000
+MTRIX1   3 -0.317946 -0.173437  0.932111        0.00000
+MTRIX2   3  0.760735 -0.633422  0.141629        0.00000
+MTRIX3   3  0.565855  0.754120  0.333333        0.00000"""
+
+  pdb_str="""\
+%s
+ATOM      1  N   THR 1   1       9.670  10.289  11.135  1.00 26.11           N
+ATOM      2  CA  THR 1   1       9.559   8.931  10.615  1.00 27.16           C
+ATOM      3  C   THR 1   1       9.634   7.903  11.739  1.00 20.29           C
+ATOM      4  O   THR 1   1      10.449   8.027  12.653  1.00 35.00           O
+ATOM      5  CB  THR 1   1      10.660   8.630   9.582  1.00 34.84           C
+ATOM      6  OG1 THR 1   1      10.560   9.552   8.490  1.00 67.35           O
+ATOM      7  CG2 THR 1   1      10.523   7.209   9.055  1.00 43.17           C
+TER
+"""%mtrix_recs
+  pi = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  r = pi.process_mtrix_records()
+  for l1,l2 in zip(r.format_pdb_string().splitlines(), mtrix_recs.splitlines()):
+    assert l1.strip()==l2.strip()
 
 def exercise_BIOMT():
   '''
-  Verifying correct information extraction from pdb file
+  Verifying BIOMT extraction from pdb file
   '''
   pdb_test_data = '''\
 REMARK 300 BIOMOLECULE: 1
@@ -560,18 +588,18 @@ REMARK 350   BIOMT3   4  0.309017  0.809017  0.500000        0.00000
     source_info=None,
     lines=flex.split_lines(pdb_test_data))
   mtrix_info = pdb_inp.process_BIOMT_records()
-  assert len(mtrix_info) == 4
-  assert approx_equal(mtrix_info[0].values, [[
+  assert len(mtrix_info.r) == 4
+  assert approx_equal(mtrix_info.r[0], [
     1.000000,0.000000,0.000000,
     0.000000,1.000000,0.000000,
-    0.000000,0.000000,1.000000], [0.00000,0.00000,0.00000]])
-  assert approx_equal(mtrix_info[1].values, [[
-      0.309017,-0.809017, 0.500000,
-      0.809017, 0.500000, 0.309017,
-      -0.500000, 0.309017, 0.809017], [
-        0.10000,0.02000,0.00300]])
-  assert mtrix_info[0].serial_number == 1
-  assert mtrix_info[1].serial_number == 2
+    0.000000,0.000000,1.000000])
+  assert approx_equal(mtrix_info.t[0], [0.00000,0.00000,0.00000])
+  assert approx_equal(mtrix_info.r[1], [
+    0.309017,-0.809017, 0.500000,
+    0.809017, 0.500000, 0.309017,
+   -0.500000, 0.309017, 0.809017])
+  assert approx_equal(mtrix_info.t[1], [0.10000,0.02000,0.00300])
+  assert mtrix_info.serial_number == [1, 2, 3, 4]
 
 def exercise_header_misc (regression_pdb) :
   pdb_inp = pdb.input(file_name=op.join(regression_pdb, "pdb1a1q.ent"))
@@ -680,6 +708,7 @@ def run():
     exercise_format_fasta(regression_pdb=regression_pdb)
     exercise_merge_files_and_check_for_overlap(regression_pdb=regression_pdb)
     exercise_mtrix(regression_pdb=regression_pdb)
+    exercise_mtrix_format_pdb_string()
     exercise_BIOMT()
     exercise_header_misc(regression_pdb=regression_pdb)
   for use_u_aniso in (False, True):
