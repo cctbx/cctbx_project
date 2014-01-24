@@ -97,38 +97,40 @@ def exercise_rejoin () :
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
   hierarchy = pdb_in.hierarchy
   params = disorder.rejoin_phil.extract()
-  n_modified = disorder.rejoin_split_single_conformers(
+  hierarchy_new, n_modified = disorder.rejoin_split_single_conformers(
     pdb_hierarchy=hierarchy,
     params=params,
     model_error_ml=0.5,
     log=null_out())
-  assert (n_modified == 0)
-  # split residue 5 without changing coordinates, set occupancy very low
+  assert (n_modified == 1) # Gln5
+  # split residue 6 without changing coordinates, set occupancy very low
+  non_hd_sel = ~(pdb_in.input.xray_structure_simple().hd_selection())
+  hierarchy = hierarchy.select(non_hd_sel)
   chain = hierarchy.only_model().chains()[0]
-  rg5 = chain.residue_groups()[4]
-  ag = rg5.only_atom_group().detached_copy()
+  rg6 = chain.residue_groups()[5]
+  ag = rg6.only_atom_group().detached_copy()
   for atom in ag.atoms() :
     atom.occ = 0.05
-  for atom in rg5.atoms() :
+  for atom in rg6.atoms() :
     atom.occ = 0.95
-  rg5.only_atom_group().altloc = 'A'
+  rg6.only_atom_group().altloc = 'A'
   ag.altloc = 'B'
-  rg5.append_atom_group(ag)
-  n_modified = disorder.rejoin_split_single_conformers(
-    pdb_hierarchy=hierarchy,
-    params=params,
-    model_error_ml=0.5,
-    log=null_out())
-  assert (n_modified == 1)
-  # now with higher B-factors for all atoms
-  for atom in hierarchy.atoms() :
-    atom.b = atom.b * 10
-  n_modified = disorder.rejoin_split_single_conformers(
+  rg6.append_atom_group(ag)
+  hierarchy_new, n_modified = disorder.rejoin_split_single_conformers(
     pdb_hierarchy=hierarchy,
     params=params,
     model_error_ml=0.5,
     log=null_out())
   assert (n_modified == 2)
+  # now with higher B-factors for all atoms
+  for atom in hierarchy.atoms() :
+    atom.b = atom.b * 10
+  hierarchy_new, n_modified = disorder.rejoin_split_single_conformers(
+    pdb_hierarchy=hierarchy,
+    params=params,
+    model_error_ml=0.5,
+    log=null_out())
+  assert (n_modified == 4)
   # TODO more needed...
 
 if (__name__ == "__main__") :
