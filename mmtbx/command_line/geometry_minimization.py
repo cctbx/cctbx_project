@@ -13,6 +13,7 @@ import os
 import mmtbx.secondary_structure
 import sys
 from cStringIO import StringIO
+from libtbx.test_utils import approx_equal
 
 base_params_str = """\
 silent = False
@@ -59,6 +60,12 @@ stop_for_unknowns = True
   .short_caption = Stop for unknown residues
   .style = noauto
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
+rotamer_restraints = True
+  .type = bool
+  .short_caption = Rotamer restraints
+rotamer_restraints_sigma = 10.0
+  .type = float
+  .short_caption = Rotamer restraints esd (restraints weight = 1/esd**2)
 secondary_structure_restraints = False
   .type = bool
   .short_caption = Secondary structure restraints
@@ -187,10 +194,7 @@ def process_input_files(inputs, params, log):
     stop_for_unknowns         = params.stop_for_unknowns,
     log                       = log,
     cif_objects               = cif_objects,
-    use_neutron_distances     = params.use_neutron_distances,
-    #mon_lib_srv               = monomer_library.server.server(),
-    #ener_lib                  = monomer_library.server.ener_lib(),
-    )
+    use_neutron_distances     = params.use_neutron_distances)
   processed_pdb_file, junk = processed_pdb_files_srv.\
     process_pdb_files(pdb_file_names = pdb_file_names) # XXX remove junk
   processed_pdb_file.is_non_crystallographic_unit_cell = \
@@ -304,27 +308,30 @@ class run(object):
     self.selection          = None
     self.restrain_selection = None
     self.grm                = None
-    self.sites_cart         = None
     self.time_strings       = []
     self.total_time         = 0
     self.output_file_name   = None
     self.pdb_file_names     = []
     self.use_directory_prefix = use_directory_prefix
+    self.sites_cart_start  = None
     self.__execute()
 
-  def __execute (self) :
+  def __execute(self):
     #
-    self.caller(func = self.initialize,     prefix="Initialization, inputs")
-    self.caller(func = self.process_inputs, prefix="Processing inputs")
-    self.caller(func = self.atom_selection, prefix="Atom selection")
-    self.caller(func = self.get_restraints, prefix="Geometry Restraints")
-    self.caller(func = self.minimization,   prefix="Minimization")
-    self.caller(func = self.write_pdb_file, prefix="Write PDB file")
-    self.caller(func = self.write_geo_file, prefix="Write GEO file")
+    self.caller(self.initialize,           "Initialization, inputs")
+    self.caller(self.process_inputs,       "Processing inputs")
+    self.caller(self.atom_selection,       "Atom selection")
+    self.caller(self.get_restraints,       "Geometry Restraints")
+    self.caller(self.addcbetar,            "Add C-beta deviation restraints")
+    self.caller(self.rotamer_restraints,   "Add rotamer restraints")
+    self.caller(self.reference_restraints, "Add reference restraints")
+    self.caller(self.minimization,         "Minimization")
+    self.caller(self.write_pdb_file,       "Write PDB file")
+    self.caller(self.write_geo_file,       "Write GEO file")
     #
     self.show_times()
 
-  def master_params (self) :
+  def master_params(self):
     return master_params()
 
   def caller(self, func, prefix):
@@ -332,8 +339,7 @@ class run(object):
     func(prefix = prefix)
     t = timer.elapsed()
     self.total_time += t
-    fmt = "  %s: %s"%(prefix, str("%8.3f"%t).strip())
-    self.time_strings.append(fmt)
+    self.time_strings.append("  %s: %s"%(prefix, str("%8.3f"%t).strip()))
 
   def show_times(self):
     broadcast(m="Detailed timing", log = self.log)
@@ -375,6 +381,7 @@ class run(object):
     self.output_crystal_symmetry = \
       not self.processed_pdb_file.is_non_crystallographic_unit_cell
     self.xray_structure = self.processed_pdb_file.xray_structure()
+    self.sites_cart_start = self.xray_structure.sites_cart().deep_copy()
     self.pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
 
   def atom_selection(self, prefix):
@@ -394,11 +401,39 @@ class run(object):
         string =
           self.params.reference_restraints.restrain_starting_coord_selection)
 
-  def addcbetar(self):
-    mmtbx.torsion_restraints.utils.add_c_beta_restraints(
-      geometry      = self.grm.geometry,
-      pdb_hierarchy = self.pdb_hierarchy,
-      log           = self.log)
+  def addcbetar(self, prefix):
+    if(self.params.use_c_beta_deviation_restraints):
+      broadcast(m=prefix, log = self.log)
+      mmtbx.torsion_restraints.utils.add_c_beta_restraints(
+        geometry      = self.grm.geometry,
+        pdb_hierarchy = self.pdb_hierarchy,
+        log           = self.log)
+
+  def rotamer_restraints(self, prefix):
+    if(self.params.rotamer_restraints):
+      broadcast(m=prefix, log = self.log)
+      def switch_to_exact_rotamers(ph, xrs):
+        xrs = xrs.deep_copy_scatterers()
+        ph = ph.deep_copy()
+        ph.atoms().reset_i_seq()
+        xrs = mmtbx.utils.max_distant_rotomer(
+          xray_structure = xrs,
+          pdb_hierarchy  = ph,
+          exact_match    = True)
+        return ph, xrs
+      tmp = self.xray_structure.deep_copy_scatterers()
+      ph, xrs = switch_to_exact_rotamers(ph=self.pdb_hierarchy,
+        xrs=self.xray_structure)
+      self.xray_structure.set_sites_cart(sites_cart = xrs.sites_cart())
+      self.grm.geometry.generic_restraints_manager.reference_manager.\
+        remove_chi_angle_restraints(pdb_hierarchy=self.pdb_hierarchy)
+      self.grm.geometry.generic_restraints_manager.reference_manager.\
+        add_torsion_restraints(
+          pdb_hierarchy   = ph,
+          sites_cart      = xrs.sites_cart(),
+          chi_angles_only = True,
+          sigma           = self.params.rotamer_restraints_sigma)
+      print >> self.log, self.min_max_mean_shift()
 
   def get_restraints(self, prefix):
     broadcast(m=prefix, log = self.log)
@@ -407,16 +442,17 @@ class run(object):
       xray_structure     = self.xray_structure,
       params             = self.params,
       log                = self.log)
-    if(self.params.use_c_beta_deviation_restraints): self.addcbetar()
-    # reference
+
+  def reference_restraints(self, prefix):
     if(self.restrain_selection is not None):
-      restrain_sites_cart = self.processed_pdb_file.all_chain_proxies.\
-        sites_cart.deep_copy().select(self.restrain_selection)
+      broadcast(m=prefix, log = self.log)
+      restrain_sites_cart = self.xray_structure.sites_cart().deep_copy().\
+        select(self.restrain_selection)
       self.grm.geometry.generic_restraints_manager.reference_manager.\
         add_coordinate_restraints(
-          sites_cart=restrain_sites_cart,
-          selection=self.restrain_selection,
-          sigma=self.params.reference_restraints.coordinate_sigma)
+          sites_cart = restrain_sites_cart,
+          selection  = self.restrain_selection,
+          sigma      = self.params.reference_restraints.coordinate_sigma)
       # sanity check
       assert self.grm.geometry.generic_restraints_manager.flags.reference is True
       assert self.grm.geometry.generic_restraints_manager.reference_manager.\
@@ -426,31 +462,32 @@ class run(object):
 
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
     broadcast(m=prefix, log = self.log)
-    self.sites_cart = self.xray_structure.sites_cart()
+    sites_cart = self.xray_structure.sites_cart()
     use_amber = False
     if hasattr(self.params, "amber"):
       use_amber = self.params.amber.use_amber
-    if (use_amber):
+    if(use_amber):
       run_minimization_amber(
-          sites_cart = self.sites_cart,
-          selection = self.selection,
-          restraints_manager = self.grm,
-          params = self.params.minimization,
-          pdb_hierarchy = self.pdb_hierarchy,
-          log = self.log,
-          prmtop = self.params.amber.topology_file_name,
-          ambcrd = self.params.amber.coordinate_file_name)
+        sites_cart = sites_cart,
+        selection = self.selection,
+        restraints_manager = self.grm,
+        params = self.params.minimization,
+        pdb_hierarchy = self.pdb_hierarchy,
+        log = self.log,
+        prmtop = self.params.amber.topology_file_name,
+        ambcrd = self.params.amber.coordinate_file_name)
     else:
-      run_minimization(sites_cart = self.sites_cart, selection = self.selection,
+      run_minimization(sites_cart = sites_cart, selection = self.selection,
         restraints_manager = self.grm, params = self.params.minimization,
         pdb_hierarchy = self.pdb_hierarchy,
         cdl=self.params.pdb_interpretation.cdl,
         correct_hydrogens=self.params.pdb_interpretation.correct_hydrogens,
         log = self.log)
+    self.xray_structure.set_sites_cart(sites_cart = sites_cart)
 
   def write_pdb_file(self, prefix):
     broadcast(m=prefix, log = self.log)
-    self.xray_structure.set_sites_cart(sites_cart = self.sites_cart)
+    #self.xray_structure.set_sites_cart(sites_cart = self.sites_cart)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     ofn = self.params.output_file_name_prefix
     directory = self.params.directory
@@ -463,12 +500,18 @@ class run(object):
     if (self.use_directory_prefix) and (directory is not None) :
       ofn = os.path.join(directory, ofn)
     print >> self.log, "  output file name:", ofn
+    print >> self.log, self.min_max_mean_shift()
     if (self.output_crystal_symmetry) :
       self.pdb_hierarchy.write_pdb_file(file_name = ofn, crystal_symmetry =
         self.xray_structure.crystal_symmetry())
     else :
       self.pdb_hierarchy.write_pdb_file(file_name = ofn)
     self.output_file_name = os.path.abspath(ofn)
+
+  def min_max_mean_shift(self):
+    return "min,max,mean shift from start: %6.3f %6.3f %6.3f"%flex.sqrt((
+      self.sites_cart_start - self.xray_structure.sites_cart()).dot()
+      ).min_max_mean().as_tuple()
 
   def write_geo_file(self, prefix):
     if(self.params.write_geo_file and self.grm is not None):
