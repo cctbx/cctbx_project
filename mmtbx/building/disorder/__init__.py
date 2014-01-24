@@ -498,6 +498,9 @@ def rejoin_split_single_conformers (
   from cctbx import adptbx
   from scitbx.array_family import flex
   from scitbx.matrix import col
+  elements = pdb_hierarchy.atoms().extract_element().strip()
+  non_hd_sel = (elements != "H") & (elements != "D")
+  pdb_hierarchy = pdb_hierarchy.select(non_hd_sel)
   pdb_hierarchy.atoms().reset_i_seq()
   if (model_error_ml is None) :
     model_error_ml = sys.maxint # XXX ???
@@ -591,8 +594,7 @@ def rejoin_split_single_conformers (
             atom.occ = 1.0 / len(atom_groups)
           if (len(atom_groups) == 1) :
             atom_group.altloc = ''
-  return n_modified
-
+  return pdb_hierarchy, n_modified
 
 finalize_phil_str = """
 set_b_iso = 1.0
