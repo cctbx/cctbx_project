@@ -434,9 +434,21 @@ class scaling_manager (intensity_data) :
       import multiprocessing
     except ImportError, e :
       print >> self.log, \
-        "multiprocessing module not available (requires Python >= 2.6)"
-      print >> self.log, "will scale frames serially"
-      self._scale_all_serial(file_names)
+        "multiprocessing module not available (requires Python >= 2.6)\n" \
+        "will scale frames serially"
+
+      if self.params.backend == 'MySQL':
+        from xfel.cxi.merging_database import manager
+      elif self.params.backend == 'SQLite':
+        from xfel.cxi.merging_database_sqlite3 import manager
+      else:
+        from xfel.cxi.merging_database_fs import manager
+
+      db_mgr = manager(self.params)
+      db_mgr.initialize_db(self.miller_set.indices())
+      self._scale_all_serial(file_names, db_mgr)
+      db_mgr.join()
+
     else :
       self._scale_all_parallel(file_names)
     t2 = time.time()
@@ -1504,17 +1516,17 @@ def show_overall_observations(
           N += 1
           m += t[0]
         if work_params is not None and \
-           (work_params.plot_single_index_histograms is False or \
-            N<30 or \
-            work_params.data_subset in [1,2]): continue
-        print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
-        plot_n_bins = N//10
-        hist,bins = np.histogram([t[0] for t in ISIGI[index]],bins=25)
-        width = 0.7*(bins[1]-bins[0])
-        center = (bins[:-1]+bins[1:])/2
-        import matplotlib.pyplot as plt
-        plt.bar(center, hist, align="center", width=width)
-        plt.show()
+           (work_params.plot_single_index_histograms  and \
+            N >= 30 and \
+            work_params.data_subset == 0):
+          print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
+          plot_n_bins = N//10
+          hist,bins = np.histogram([t[0] for t in ISIGI[index]],bins=25)
+          width = 0.7*(bins[1]-bins[0])
+          center = (bins[:-1]+bins[1:])/2
+          import matplotlib.pyplot as plt
+          plt.bar(center, hist, align="center", width=width)
+          plt.show()
 
     if sel_measurements > 0:
       mean_I = mean_I_sigI = 0
