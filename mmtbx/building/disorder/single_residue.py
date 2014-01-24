@@ -545,7 +545,7 @@ def real_space_refine (
           selection_delete=(frag_selection & ~sele_main_conf),
           partial_occupancy=0.6)
         target_map = two_fofc_map
-        if (i_cycle == 0) and (params.rsr_fofc_map_target) :
+        if (i_cycle == 0) and (params.cleanup.rsr_fofc_map_target) :
           target_map = fofc_map
         box = building.box_build_refine_base(
           pdb_hierarchy=pdb_hierarchy,
@@ -576,7 +576,7 @@ def real_space_refine (
       print >> out, "    checking for conformational strain..."
       n_split = disorder.spread_alternates(
         pdb_hierarchy=pdb_hierarchy,
-        new_occupancy=params.building.expected_occupancy,
+        new_occupancy=params.residue_fitting.expected_occupancy,
         split_all_adjacent=False,
         selection=disorder.SELECTION_NEW_REBUILT)
       if (n_split > 0) :
@@ -595,7 +595,7 @@ def real_space_refine (
   return pdb_hierarchy
 
 master_phil_str = """
-building {
+residue_fitting {
   %s
   #delete_hydrogens = False
   #  .type = bool
@@ -603,10 +603,13 @@ building {
 prefilter {
   include scope mmtbx.building.disorder.filter_params_str
 }
-rsr_after_build = True
-  .type = bool
-rsr_fofc_map_target = True
-  .type = bool
+cleanup {
+  rsr_after_build = True
+    .type = bool
+  rsr_fofc_map_target = True
+    .type = bool
+  include scope mmtbx.building.disorder.finalize_phil_str
+}
 """ % build_params_str
 
 def build_cycle (pdb_hierarchy,
@@ -642,7 +645,7 @@ def build_cycle (pdb_hierarchy,
   if isinstance(selection, str) :
     sele_cache = pdb_hierarchy.atom_selection_cache()
     selection = sele_cache.selection(selection)
-  make_header("Build cycle %d" % i_cycle, out=out)
+  make_header("Build cycle %d" % (i_cycle+1), out=out)
   candidate_residues = disorder.filter_before_build(
     pdb_hierarchy=pdb_hierarchy,
     fmodel=fmodel,
@@ -663,7 +666,7 @@ def build_cycle (pdb_hierarchy,
     pdb_hierarchy=pdb_hierarchy,
     restraints_manager=restraints_manager,
     fmodel=fmodel,
-    params=params.building,
+    params=params.residue_fitting,
     nproc=params.nproc,
     verbose=verbose,
     log=out).results
@@ -674,13 +677,15 @@ def build_cycle (pdb_hierarchy,
     fmodel=fmodel,
     residues_in=candidate_residues,
     building_trials=building_trials,
-    params=params.building,
+    params=params.residue_fitting,
     verbose=verbose,
     log=out)
   t3 = time.time()
   print >> out, "post-processing: %.3fs" % (t3-t2)
   if (n_alternates == 0) :
     print >> out, "No alternates built this round."
+  elif (not params.cleanup.rsr_after_build) :
+    print >> out, "Skipping final RSR step."
   else :
     pdb_hierarchy = real_space_refine(
       pdb_hierarchy=pdb_hierarchy,
@@ -692,16 +697,12 @@ def build_cycle (pdb_hierarchy,
     t4 = time.time()
     print >> out, "RSR: %.3fs" % (t4-t3)
   t_end = time.time()
-  pdb_atoms = pdb_hierarchy.atoms()
-  pdb_atoms.reset_serial()
-  pdb_atoms.reset_i_seq()
-  pdb_atoms.reset_tmp()
-  for atom in pdb_atoms :
-    segid = atom.segid.strip()
-    if (segid.startswith("OLD")) :
-      segid = ""
-    elif (segid.startswith("NEW")) :
-      segid = "NEW"
+  disorder.finalize_model(
+    pdb_hierarchy=pdb_hierarchy,
+    xray_structure=pdb_hierarchy.extract_xray_structure(
+      crystal_symmetry=fmodel.xray_structure),
+    set_b_iso=params.cleanup.set_b_iso,
+    convert_to_isotropic=params.cleanup.convert_to_isotropic)
   t_end = time.time()
   print >> out, "Total runtime: %.3fs" % (t_end-t_start)
-  return pdb_hierarchy
+  return pdb_hierarchy, n_alternates
