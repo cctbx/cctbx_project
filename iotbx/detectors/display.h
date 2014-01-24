@@ -154,13 +154,17 @@ public:
 
       af::versa<int, af::c_grid<2> > z(raw.accessor());
 
+      bool has_pilatus_inactive_flag = false;
       ptr_area detector_location = ptr_area(new ActiveAreaDefault());
       if (vendortype=="Pilatus-6M") {
         detector_location = ptr_area(new ActiveAreaPilatus6M());
+        has_pilatus_inactive_flag = true;
       } else if (vendortype=="Pilatus-2M") {
         detector_location = ptr_area(new ActiveAreaPilatus2M());
+        has_pilatus_inactive_flag = true;
       } else if (vendortype=="Pilatus-300K") {
         detector_location = ptr_area(new ActiveAreaPilatus300K());
+        has_pilatus_inactive_flag = true;
       }
       for (std::size_t i = 0; i < raw.size(); i++) {
         int fast = binning*(i%raw.accessor()[1]);
@@ -170,7 +174,7 @@ public:
           //fractional input value:
           double corrected = raw[i]*correction;
           double outvalue  = outscale * ( 1.0 - corrected );
-          if (raw[i]==-2){
+          if (has_pilatus_inactive_flag && raw[i]==-2){
             //an ad hoc flag to aimed at coloring red the inactive pixels (-2) on Pilatus
             z[i]=1000;  //flag value used is out of range of the 256-pt grey scale but in range int datatype.
             continue;
@@ -188,7 +192,6 @@ public:
 
   inline
   double global_bright_contrast() const {
-      /* yes, this could probably be made more efficient using the std::algorithm library */
 
       ptr_area detector_location = ptr_area(new ActiveAreaDefault());
       if (vendortype=="Pilatus-6M") {
@@ -198,16 +201,30 @@ public:
       } else if (vendortype=="Pilatus-300K") {
         detector_location = ptr_area(new ActiveAreaPilatus300K());
       }
-      std::size_t active_count = 0;
+
+      af::shared<data_t> raw_active;
 
       //first pass through data calculate average
-      double qave = 0;
       for (std::size_t i = 0; i < rawdata.size(); i++) {
         if (detector_location->is_active_area_by_linear_index(i)) {
-          qave+=rawdata[i];
-          active_count++;
+          raw_active.push_back(rawdata[i]);
         }
       }
+
+      /*
+      data_t active_mean = af::mean(raw_active.const_ref());
+      SCITBX_EXAMINE(active_mean);
+      data_t active_min= af::min(raw_active.const_ref());
+      SCITBX_EXAMINE(active_min);
+      data_t active_max = af::max(raw_active.const_ref());
+      SCITBX_EXAMINE(active_max);
+      */
+      std::size_t active_count = raw_active.size();
+      double PERCENTILE_TARGET = 0.90; // targets the 90th percentile pixel value.
+      std::size_t nth_offset = PERCENTILE_TARGET*active_count;
+      std::nth_element(raw_active.begin(), raw_active.begin()+nth_offset,
+                       raw_active.end());
+
       if (vendortype=="Pilatus-6M") {
         SCITBX_ASSERT( (active_count == 60*195*487 || active_count == 5*195*487) );
       } else if (vendortype=="Pilatus-2M") {
@@ -216,30 +233,7 @@ public:
         SCITBX_ASSERT( (active_count == 3*195*487) );
       }
 
-      qave/=active_count;
-      //std::cout<<"ave shown pixel value is "<<qave<<std::endl;
-
-      //second pass calculate histogram
-      int hsize=100;
-      array_t histogram(hsize);
-      for (std::size_t i = 0; i < rawdata.size(); i++) {
-        if (detector_location->is_active_area_by_linear_index(i)) {
-          int temp = int((hsize/2)*rawdata[i]/qave);
-          if (temp<0){histogram[0]+=1;}
-          else if (temp>=hsize){histogram[hsize-1]+=1;}
-          else {histogram[temp]+=1;}
-        }
-      }
-
-      //third pass calculate 90%
-      double percentile=0;
-      double accum=0;
-      for (std::size_t i = 0; i<hsize; i++) {
-        accum+=histogram[i];
-        if (accum > 0.9*active_count) { percentile=i*qave/(hsize/2); break; }
-      }
-      //std::cout<<"the 90-percentile pixel value is "<<percentile<<std::endl;
-
+      double percentile = *(raw_active.begin()+nth_offset);
       double adjlevel = 0.4;
       return (percentile>0.) ? brightness * adjlevel/percentile : 1.0;
   }
