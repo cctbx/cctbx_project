@@ -356,10 +356,10 @@ def cxi_versioned_extract(*args):
     working_extract.distl.tile_translations = TT
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y. Optimized for 267 mM.
-    working_extract.distl.quad_translations = [-4,  0,
-                                               -9,  3,
-                                               -5,  8,
-                                               -9, 10]
+    working_extract.distl.quad_translations = [-3,  2,
+                                               -8,  3,
+                                               -7,  8,
+                                              -10,  8]
     return working_extract
 
   else:
