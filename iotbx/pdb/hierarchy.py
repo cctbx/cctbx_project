@@ -791,6 +791,32 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         if chain.is_na() : return True
     return False
 
+  def remove_hd (self, reset_i_seq=False) :
+    """
+    Remove all hydrogen/deuterium atoms in-place.  Returns the number of atoms
+    deleted.
+    """
+    n_removed = 0
+    for pdb_model in self.models() :
+      for pdb_chain in pdb_model.chains() :
+        for pdb_residue_group in pdb_chain.residue_groups() :
+          for pdb_atom_group in pdb_residue_group.atom_groups() :
+            for pdb_atom in pdb_atom_group.atoms() :
+              if (pdb_atom.element.strip().upper() in ["H","D"]) :
+                pdb_atom_group.remove_atom(pdb_atom)
+                n_removed += 1
+            if (pdb_atom_group.atoms_size() == 0) :
+              pdb_residue_group.remove_atom_group(pdb_atom_group)
+          if (pdb_residue_group.atom_groups_size() == 0) :
+            pdb_chain.remove_residue_group(pdb_residue_group)
+        if (pdb_chain.residue_groups_size() == 0) :
+          pdb_model.remove_chain(pdb_chain)
+      if (pdb_model.chains_size() == 0) :
+        self.remove_model(pdb_model)
+    if (reset_i_seq) :
+      self.atoms().reset_i_seq()
+    return n_removed
+
 class _(boost.python.injector, ext.model, __hash_eq_mixin):
 
   def residue_groups(self):

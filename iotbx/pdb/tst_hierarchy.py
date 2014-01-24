@@ -6043,6 +6043,28 @@ ATOM      5  O   HOH S   1      -9.523   5.521  11.381  0.10  6.78           O
   assert (selections == [
    "chain 'A' and ((resid   -1  through    2B) or (resid    4  through    6 ))",
    "chain 'S' and ((resid    1 ))"])
+  # root.remove_hd()
+  hierarchy = pdb.input(source_info=None, lines="""\
+ATOM     39  N   ASN A   6       5.514   2.664   4.856  1.00 11.99           N
+ATOM     40  CA  ASN A   6       6.831   2.310   4.318  1.00 12.30           C
+ATOM     41  C   ASN A   6       7.854   2.761   5.324  1.00 13.40           C
+ATOM     42  O   ASN A   6       8.219   3.943   5.374  1.00 13.92           O
+ATOM     43  CB  ASN A   6       7.065   3.016   2.993  1.00 12.13           C
+ATOM     44  CG  ASN A   6       5.961   2.735   2.003  1.00 12.77           C
+ATOM     45  OD1 ASN A   6       5.798   1.604   1.551  1.00 14.27           O
+ATOM     46  ND2 ASN A   6       5.195   3.747   1.679  1.00 10.07           N
+ATOM      0  H   ASN A   6       5.376   3.649   4.962  1.00 11.99           H
+ATOM      0  HA  ASN A   6       6.900   1.226   4.142  1.00 12.30           H
+ATOM      0 1HB  ASN A   6       7.137   4.100   3.163  1.00 12.13           H
+ATOM      0 2HB  ASN A   6       8.027   2.692   2.570  1.00 12.13           H
+ATOM      0 1HD2 ASN A   6       4.439   3.617   1.038  1.00 10.07           H
+ATOM      0 2HD2 ASN A   6       5.366   4.650   2.073  1.00 10.07           H
+TER
+ATOM     60  H   ASN B   1       5.376   3.649   4.962  1.00 11.99           H
+END
+""").construct_hierarchy()
+  assert (hierarchy.remove_hd() == 7)
+  assert hierarchy.only_model().only_chain()
 
 def exercise_equality_and_hashing():
 
