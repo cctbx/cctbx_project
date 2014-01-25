@@ -485,19 +485,56 @@ def process_results (
   t2 = time.time()
   return n_alternates
 
+class rsr_fragments_parallel (disorder.rsr_fragments_base) :
+  def __call__ (self, fragment) :
+    from scitbx.array_family import flex
+    frag_selection = flex.bool(self.pdb_atoms.size(), fragment)
+    sites_cart_orig = self.fmodel.xray_structure.sites_cart()
+    sites_start = sites_cart_orig.select(fragment)
+    atom_start = self.pdb_atoms[fragment[0]].fetch_labels()
+    atom_end = self.pdb_atoms[fragment[-1]].fetch_labels()
+    label = "%s%s-%s" % (atom_start.chain_id, atom_start.resid(),
+      atom_end.resid())
+    two_fofc_map, fofc_map = disorder.get_partial_omit_map(
+      fmodel=self.fmodel.deep_copy(),
+      selection=(frag_selection & self.sele_main_conf),
+      selection_delete=(frag_selection & ~(self.sele_main_conf)),
+      partial_occupancy=0.6)
+    target_map = two_fofc_map
+    if (self.rsr_fofc_map_target) :
+      target_map = fofc_map
+    box = self.make_box(selection=frag_selection, target_map=target_map)
+    box.restrain_atoms(disorder.SELECTION_OLD, 0.02)
+    box.restrain_atoms(disorder.SELECTION_NEW_REBUILT, 0.05)
+    # first fix the geometry of adjacent residues
+    box.real_space_refine(disorder.SELECTION_NEW_SPLIT)
+    # now the entire B conformer
+    box.real_space_refine(disorder.SELECTION_NEW)
+    sites_cart_refined = box.update_original_coordinates()
+    sites_new = sites_cart_refined.select(fragment)
+    self.fmodel.xray_structure.set_sites_cart(sites_cart_orig)
+    self.pdb_atoms.set_xyz(sites_cart_orig)
+    return disorder.refined_fragment(
+      label=label,
+      selection=frag_selection,
+      sites_cart=sites_cart_refined,
+      rmsd=sites_new.rms_difference(sites_start))
+
 def real_space_refine (
     pdb_hierarchy,
     fmodel,
     cif_objects,
     params,
     out,
+    nproc=None,
+    max_cycles=100, # arbitrarily large
     remediate=False) :
   from scitbx.array_family import flex
   make_sub_header("Real-space refinement", out=out)
   fmodel.info().show_targets(out=out, text="Rebuilt model")
   print >> out, ""
   i_cycle = 0
-  while True :
+  while (i_cycle < max_cycles) :
     print >> out, "  Cycle %d:" % (i_cycle+1)
     # this keeps track of which residues were split in the previous cycle -
     # we only refine segments that have had residues added
@@ -523,6 +560,7 @@ def real_space_refine (
     sele_main_conf = sele_cache.selection(disorder.SELECTION_OLD)
     assert (len(sele_split) > 0)
     k = 0
+    fragments = []
     while (k < len(sele_split)) :
       if (sele_split[k]) :
         current_fragment = flex.size_t()
@@ -536,38 +574,30 @@ def real_space_refine (
           flags = rebuilt_flags.select(frag_selection)
           if flags.all_eq(0) :
             continue
-        print >> out, "    refining %s%s-%s (%d atoms)" % \
-          (atom_start.chain_id, atom_start.resid(), atom_end.resid(),
-           len(current_fragment))
-        two_fofc_map, fofc_map = disorder.get_partial_omit_map(
-          fmodel=fmodel.deep_copy(),
-          selection=(frag_selection & sele_main_conf),
-          selection_delete=(frag_selection & ~sele_main_conf),
-          partial_occupancy=0.6)
-        target_map = two_fofc_map
-        if (i_cycle == 0) and (params.cleanup.rsr_fofc_map_target) :
-          target_map = fofc_map
-        box = building.box_build_refine_base(
-          pdb_hierarchy=pdb_hierarchy,
-          xray_structure=xray_structure,
-          processed_pdb_file=processed_pdb_file,
-          target_map=target_map,
-          selection=frag_selection,
-          d_min=fmodel.f_obs().d_min(),
-          out=null_out())
-        box.restrain_atoms(disorder.SELECTION_OLD, 0.02)
-        box.restrain_atoms(disorder.SELECTION_NEW_REBUILT, 0.05)
-        # first fix the geometry of adjacent residues
-        box.real_space_refine(disorder.SELECTION_NEW_SPLIT)
-        # now the entire B conformer
-        box.real_space_refine(disorder.SELECTION_NEW)
-        sites_new = box.update_original_coordinates()
-        xray_structure.set_sites_cart(sites_new)
-        pdb_atoms.set_xyz(sites_new)
+        fragments.append(current_fragment)
       else :
         k += 1
+    if (len(fragments) == 0) :
+      pass
+    refine_fragments = rsr_fragments_parallel(
+      pdb_hierarchy=pdb_hierarchy,
+      fmodel=fmodel,
+      processed_pdb_file=processed_pdb_file,
+      sele_main_conf=sele_main_conf,
+      rsr_fofc_map_target=(i_cycle==0 and params.cleanup.rsr_fofc_map_target))
+    refined = easy_mp.pool_map(
+      fixed_func=refine_fragments,
+      iterable=fragments,
+      processes=nproc)
+    sites_refined = pdb_atoms.extract_xyz()
+    for result in refined :
+      assert (result is not None)
+      result.show(out=out, prefix="    ")
+      sites_refined.set_selected(result.selection, result.sites_cart)
+    pdb_atoms.set_xyz(sites_refined)
+    xray_structure.set_sites_cart(sites_refined)
     fmodel.update_xray_structure(xray_structure)
-    if (not remediate) :
+    if (not remediate) or (max_cycles == 1) :
       break
     else :
       for atom in pdb_hierarchy.atoms() :
@@ -589,8 +619,9 @@ def real_space_refine (
   xray_structure = pdb_hierarchy.extract_xray_structure(
     crystal_symmetry=fmodel.xray_structure)
   fmodel.update_xray_structure(xray_structure,
+    update_f_mask=True,
     update_f_calc=True)
-  fmodel.info().show_targets(out=out, text="After real-space refinement")
+  #fmodel.info().show_targets(out=out, text="After real-space refinement")
   t2 = time.time()
   return pdb_hierarchy
 
@@ -608,6 +639,8 @@ cleanup {
     .type = bool
   rsr_fofc_map_target = True
     .type = bool
+  rsr_max_cycles = 3
+    .type = int
   include scope mmtbx.building.disorder.finalize_phil_str
 }
 """ % build_params_str
@@ -692,6 +725,7 @@ def build_cycle (pdb_hierarchy,
       fmodel=fmodel,
       cif_objects=cif_objects,
       params=params,
+      nproc=params.nproc,
       remediate=True,
       out=out)
     t4 = time.time()

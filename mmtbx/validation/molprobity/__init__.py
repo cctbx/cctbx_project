@@ -98,8 +98,12 @@ class molprobity (slots_getstate_setstate) :
       outliers_only=True) :
     for name in self.__slots__ :
       setattr(self, name, None)
-    if (xray_structure is None) and (fmodel is not None) :
-      xray_structure = fmodel.xray_structure
+    if (xray_structure is None) :
+      if (fmodel is not None) :
+        xray_structure = fmodel.xray_structure
+      elif (crystal_symmetry is not None) :
+        xray_structure = pdb_hierarchy.extract_xray_structure(
+          crystal_symmetry=crystal_symmetry)
     self.crystal_symmetry = crystal_symmetry
     if (crystal_symmetry is None) and (fmodel is not None) :
       self.crystal_symmetry = fmodel.f_obs().crystal_symmetry()
@@ -133,7 +137,7 @@ class molprobity (slots_getstate_setstate) :
         keep_hydrogens=keep_hydrogens,
         out=null_out(),
         verbose=False)
-    if (flags.model_stats) :
+    if (flags.model_stats) and (xray_structure is not None) :
       self.model_stats = model_properties.model_statistics(
         pdb_hierarchy=pdb_hierarchy,
         xray_structure=xray_structure,
