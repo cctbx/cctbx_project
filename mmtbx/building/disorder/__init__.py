@@ -2,7 +2,8 @@
 from __future__ import division
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry, null_out
-from libtbx import group_args
+from libtbx import group_args, Auto, \
+      slots_getstate_setstate_default_initializer
 import libtbx.phil
 from math import sqrt
 import sys
@@ -411,6 +412,7 @@ def filter_before_build (
   residues = []
   filters = params.discard_outliers
   make_sub_header("Identifying candidates for building", out=log)
+  # TODO parallelize
   for chain in pdb_hierarchy.only_model().chains() :
     if (not chain.is_protein()) :
       continue
@@ -596,7 +598,7 @@ def rejoin_split_single_conformers (
   return n_modified
 
 finalize_phil_str = """
-set_b_iso = 1.0
+set_b_iso = Auto
   .type = float
 convert_to_isotropic = True
   .type = bool
@@ -606,6 +608,11 @@ def finalize_model (pdb_hierarchy,
     xray_structure,
     set_b_iso=None,
     convert_to_isotropic=None) :
+  """
+  Prepare a rebuilt model for refinement, optionally including B-factor reset.
+  """
+  from cctbx import adptbx
+  from scitbx.array_family import flex
   pdb_atoms = pdb_hierarchy.atoms()
   for i_seq, atom in enumerate(pdb_atoms) :
     assert (atom.parent() is not None)
@@ -615,8 +622,41 @@ def finalize_model (pdb_hierarchy,
   if (convert_to_isotropic) :
     xray_structure.convert_to_isotropic()
   if (set_b_iso is not None) :
+    if (set_b_iso is Auto) :
+      u_iso = xray_structure.extract_u_iso_or_u_equiv()
+      set_b_iso = adptbx.u_as_b(flex.mean(u_iso)) / 2
     xray_structure.set_b_iso(set_b_iso)
   pdb_hierarchy.adopt_xray_structure(xray_structure)
   pdb_atoms.reset_serial()
   pdb_atoms.reset_i_seq()
   pdb_atoms.reset_tmp()
+
+class refined_fragment (slots_getstate_setstate_default_initializer) :
+  __slots__ = ["label", "selection", "sites_cart", "rmsd"]
+  def show (self, out=sys.stdout, prefix="") :
+    print >> out, prefix+"refined %s (%d atoms): rmsd=%.3f" % (self.label,
+      len(self.selection), self.rmsd)
+
+class rsr_fragments_base (object) :
+  """
+  Template for refinement of a collection of non-overlapping model fragments,
+  intended to be used in parallel loops.
+  """
+  def __init__ (self, pdb_hierarchy, fmodel, processed_pdb_file, **kwds) :
+    self.pdb_hierarchy = pdb_hierarchy
+    self.fmodel = fmodel
+    self.processed_pdb_file = processed_pdb_file
+    self.__dict__.update(kwds)
+    self.pdb_atoms = pdb_hierarchy.atoms()
+
+  def make_box (self, selection, target_map) :
+    from mmtbx import building
+    box = building.box_build_refine_base(
+      pdb_hierarchy=self.pdb_hierarchy,
+      xray_structure=self.fmodel.xray_structure,
+      processed_pdb_file=self.processed_pdb_file,
+      target_map=target_map,
+      selection=selection,
+      d_min=self.fmodel.f_obs().d_min(),
+      out=null_out())
+    return box
