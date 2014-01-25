@@ -66,8 +66,8 @@ def get_r_t_matrices_from_structure(pdb_str):
           arr.append(a.xyz)
   else:
     raise Sorry('pdb_str should contain at least 2 residues')
-  lsq_fit_obj = superpose.least_squares_fit(reference_sites = fixed_sites, 
-                                            other_sites = moving_sites)
+  lsq_fit_obj = superpose.least_squares_fit(reference_sites = moving_sites, 
+                                            other_sites = fixed_sites)
   return lsq_fit_obj.r, lsq_fit_obj.t
 
 def make_ss_structure_from_seq(pdb_str, seq):    
