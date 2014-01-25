@@ -2590,6 +2590,7 @@ class build_all_chain_proxies(object):
       min_distance_sym_equiv=params.min_distance_sym_equiv,
       weak_symmetry=not force_symmetry)
     if(self.special_position_settings is not None and
+       self.special_position_settings.unit_cell() is not None and
        self.special_position_settings.unit_cell().volume() <
        len(self.pdb_inp.atoms())*5):
       msg = """Unit cell volume is incompatible with number of atoms.
