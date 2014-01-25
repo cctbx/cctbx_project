@@ -1828,11 +1828,45 @@ _chem_comp_chir.volume_sign
       r.append(i_seq in rg1_i_seqs_2)
       assert r.count(True)==1
 
+def exercise_bogus_crystal_symmetry(mon_lib_srv, ener_lib):
+  raw_records = """\
+REMARK taken from 4arg
+CRYST1    1.000    1.000    1.000   1.00   1.00   1.00 P 1           1
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      1.000000  0.000000  0.000000        0.00000
+SCALE2      0.000000  1.000000  0.000000        0.00000
+SCALE3      0.000000  0.000000  1.000000        0.00000
+ATOM      1  CA  PRO A   1      58.034  68.065  61.446  1.00  0.00           C
+ATOM      2  CA  ARG A   2      59.821  66.269  58.634  1.00  0.00           C
+ATOM      3  CA  THR A   3      56.972  63.793  58.378  1.00  0.00           C
+ATOM      4  CA  LEU A   4      54.332  66.493  58.625  1.00  0.00           C
+ATOM      5  CA  ASN A   5      55.845  68.102  55.551  1.00  0.00           C
+ATOM      6  CA  ALA A   6      55.922  64.739  53.816  1.00  0.00           C
+ATOM      7  CA  TRP A   7      52.227  64.264  54.482  1.00  0.00           C
+ATOM      8  CA  VAL A   8      51.590  67.865  53.504  1.00  0.00           C
+ATOM      9  CA  LYS A   9      52.954  66.907  50.106  1.00  0.00           C
+ATOM     10  CA  VAL A  10      50.711  63.858  50.117  1.00  0.00           C
+""".splitlines()
+  try:
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=None,
+      raw_records=raw_records,
+      force_symmetry=True)
+  except Sorry, e:
+    assert str(e).startswith(
+      "Unit cell volume is incompatible with number of atoms")
+  else: raise Exception_expected
+
 def run(args):
   assert len(args) == 0
   exercise_flattened_cif_loop()
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
+  exercise_bogus_crystal_symmetry(mon_lib_srv, ener_lib)
   exercise_do_not_link(mon_lib_srv, ener_lib)
   exercise_geostd_cif_links(mon_lib_srv, ener_lib)
   exercise_handle_case_insensitive(mon_lib_srv, ener_lib)

@@ -2589,6 +2589,14 @@ class build_all_chain_proxies(object):
       special_position_settings=special_position_settings,
       min_distance_sym_equiv=params.min_distance_sym_equiv,
       weak_symmetry=not force_symmetry)
+    if(self.special_position_settings is not None and
+       self.special_position_settings.unit_cell().volume() <
+       len(self.pdb_inp.atoms())*5):
+      msg = """Unit cell volume is incompatible with number of atoms.
+  Unit cell parameters: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f
+  Check CRYST1 record or other sources of crystal symmetry.
+"""
+      raise Sorry(msg%self.special_position_settings.unit_cell().parameters())
     if (self.special_position_settings is not None
         and (   self.special_position_settings.unit_cell() is None
              or self.special_position_settings.space_group_info() is None)):
@@ -4582,8 +4590,7 @@ class process(object):
         log=None,
         for_dihedral_reference=False,
         carbohydrate_callback=None,
-        use_neutron_distances=False,
-               ):
+        use_neutron_distances=False):
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
     self.log = log
