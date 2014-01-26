@@ -260,8 +260,16 @@ def run(args):
       space_group_info=work_params.target_space_group
     ).build_miller_set(
       anomalous_flag=not work_params.merge_anomalous,
+      d_max=work_params.d_max,
       d_min=work_params.d_min / math.pow(
         1 + work_params.unit_cell_length_tolerance, 1 / 3))
+  miller_set = miller_set.change_basis(
+    work_params.model_reindex_op).map_to_asu()
+
+  if i_model is not None:
+    matches = miller.match_indices(i_model.indices(), miller_set.indices())
+    assert not matches.have_singles()
+    miller_set = miller_set.select(matches.permutation())
 
 # ---- Augment this code with any special procedures for x scaling
   scaler = xscaling_manager(
