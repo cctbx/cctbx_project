@@ -1,10 +1,8 @@
-from scitbx import matrix
 from scitbx.math import superpose
 import iotbx.pdb
 from cctbx.array_family import flex
-from mmtbx.monomer_library import idealized_aa      
+from mmtbx.monomer_library import idealized_aa
 from libtbx.utils import Sorry
-
 
 alpha_pdb_str = """\
 ATOM      1  N   ALA     2       1.643  -2.366  -1.408  1.00
@@ -45,12 +43,11 @@ ATOM      1  C   ALA    2       4.694  -0.478   0.018  1.0
 ATOM      1  O   ALA    2       4.758   0.018  -1.107  1.0
 """
 
-
 def get_r_t_matrices_from_structure(pdb_str):
-  """ Return rotation and translation matrices for the ideal structure.        
+  """ Return rotation and translation matrices for the ideal structure.
 
-  The function determines r and t matrices from alingment of 1st and 2nd 
-  residues of the structure passed in pdb_str. 
+  The function determines r and t matrices from alingment of 1st and 2nd
+  residues of the structure passed in pdb_str.
   """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
@@ -66,33 +63,31 @@ def get_r_t_matrices_from_structure(pdb_str):
           arr.append(a.xyz)
   else:
     raise Sorry('pdb_str should contain at least 2 residues')
-  lsq_fit_obj = superpose.least_squares_fit(reference_sites = moving_sites, 
+  lsq_fit_obj = superpose.least_squares_fit(reference_sites = moving_sites,
                                             other_sites = fixed_sites)
   return lsq_fit_obj.r, lsq_fit_obj.t
 
-def make_ss_structure_from_seq(pdb_str, seq):    
-  """ Return pdb.hierarchy with secondary structure according to sequence.        
-  
+def make_ss_structure_from_seq(pdb_str, seq):
+  """ Return pdb.hierarchy with secondary structure according to sequence.
+
   pdb_str - "ideal" structure at least 2 residues long.
   seq - string with sequence (one-letter codes)
-  
-  worth putting asserts on pdb_str not to be empty and len(seq)>1 
-  """
 
+  worth putting asserts on pdb_str not to be empty and len(seq)>1
+  """
   if len(seq)<1:
     raise Sorry('seq should contain at least one residue.')
   r, t = get_r_t_matrices_from_structure(pdb_str)
 
-  aac = iotbx.pdb.amino_acid_codes.three_letter_given_one_letter    
-  ideal_res_dict = idealized_aa.residue_dict()                      
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)        
-  pdb_hierarchy = pdb_inp.construct_hierarchy()                     
+  aac = iotbx.pdb.amino_acid_codes.three_letter_given_one_letter
+  ideal_res_dict = idealized_aa.residue_dict()
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
   chain = pdb_hierarchy.models()[0].chains()[0]
   current_ala_ag = chain.residue_groups()[0].atom_groups()[0]
   new_chain = iotbx.pdb.hierarchy.chain(id=" ")
   new_chain.pre_allocate_residue_groups(number_of_additional_residue_groups=\
                                                                       len(seq))
-
   i=1
   for c in seq:
     # put ALA
@@ -116,12 +111,12 @@ def make_ss_structure_from_seq(pdb_str, seq):
     fixed_sites = flex.vec3_double()
     moving_sites = flex.vec3_double()
     reper_atoms = ["CB","CA", "N"]
-    for (ag, arr) in [(ag_to_place, fixed_sites), 
+    for (ag, arr) in [(ag_to_place, fixed_sites),
                       (ideal_res_dict[aac[c].lower()], moving_sites)]:
       for a in ag.atoms():
         if a.name.strip() in reper_atoms:
           arr.append(a.xyz)
-    lsq_fit_obj = superpose.least_squares_fit(reference_sites = fixed_sites, 
+    lsq_fit_obj = superpose.least_squares_fit(reference_sites = fixed_sites,
                                               other_sites = moving_sites)
     ideal_correct_ag = ideal_res_dict[aac[c].lower()].\
                       models()[0].\
@@ -136,33 +131,22 @@ def make_ss_structure_from_seq(pdb_str, seq):
     for a in ideal_correct_ag.atoms():
       if a.name.strip() not in ["N","CA","C","O", "CB"]:
         ag_to_place.append_atom(atom=a.detached_copy())
-		
   new_pdb_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(new_chain)
   new_pdb_h.atoms().reset_i_seq()
   new_pdb_h.atoms().reset_serial()
   return new_pdb_h
 
-
 def beta():
-  pdb_hierarchy = make_ss_structure_from_seq(beta_pdb_str, "ACEDGFIHKMLNQPSRTWVY")
+  pdb_hierarchy = make_ss_structure_from_seq(beta_pdb_str,
+    "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_beta_seq.pdb")
 
-
 def alpha_310():
-  pdb_hierarchy = make_ss_structure_from_seq(alpha310_pdb_str, "ACEDGFIHKMLNQPSRTWVY")
+  pdb_hierarchy = make_ss_structure_from_seq(alpha310_pdb_str,
+    "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_helix310_seq.pdb")
-	
 
 def alpha():
-  pdb_hierarchy = make_ss_structure_from_seq(alpha_pdb_str, "ACEDGFIHKMLNQPSRTWVY")
+  pdb_hierarchy = make_ss_structure_from_seq(alpha_pdb_str,
+    "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_helix_seq.pdb")
-
-
-def run():
-  beta()
-  alpha_310()
-  alpha()
-  
-  
-if (__name__ == "__main__"):
-  run()
