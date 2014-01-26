@@ -736,7 +736,8 @@ def build_cycle (pdb_hierarchy,
     xray_structure=pdb_hierarchy.extract_xray_structure(
       crystal_symmetry=fmodel.xray_structure),
     set_b_iso=params.cleanup.set_b_iso,
-    convert_to_isotropic=params.cleanup.convert_to_isotropic)
+    convert_to_isotropic=params.cleanup.convert_to_isotropic,
+    selection="altloc A or altloc B")
   t_end = time.time()
   print >> out, "Total runtime: %.3fs" % (t_end-t_start)
   return pdb_hierarchy, n_alternates
