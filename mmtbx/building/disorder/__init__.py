@@ -607,25 +607,31 @@ convert_to_isotropic = True
 def finalize_model (pdb_hierarchy,
     xray_structure,
     set_b_iso=None,
-    convert_to_isotropic=None) :
+    convert_to_isotropic=None,
+    selection=None) :
   """
   Prepare a rebuilt model for refinement, optionally including B-factor reset.
   """
   from cctbx import adptbx
   from scitbx.array_family import flex
   pdb_atoms = pdb_hierarchy.atoms()
+  if (selection is None) :
+    selection = flex.bool(pdb_atoms.size(), True)
+  elif isinstance(selection, str) :
+    sel_cache = pdb_hierarchy.atom_selection_cache()
+    selection = sel_cache.selection(selection)
   for i_seq, atom in enumerate(pdb_atoms) :
     assert (atom.parent() is not None)
     atom.segid = ""
     sc = xray_structure.scatterers()[i_seq]
     sc.label = atom.id_str()
   if (convert_to_isotropic) :
-    xray_structure.convert_to_isotropic()
+    xray_structure.convert_to_isotropic(selection=selection.iselection())
   if (set_b_iso is not None) :
     if (set_b_iso is Auto) :
       u_iso = xray_structure.extract_u_iso_or_u_equiv()
       set_b_iso = adptbx.u_as_b(flex.mean(u_iso)) / 2
-    xray_structure.set_b_iso(set_b_iso)
+    xray_structure.set_b_iso(value=set_b_iso, selection=selection)
   pdb_hierarchy.adopt_xray_structure(xray_structure)
   pdb_atoms.reset_serial()
   pdb_atoms.reset_i_seq()

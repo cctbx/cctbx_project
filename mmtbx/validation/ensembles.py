@@ -60,7 +60,7 @@ class ensemble_validation (object) :
     assert len(rama_by_residue)==len(rota_by_residue)==len(self.residue_ids)
     self.residue_data = []
     for i_res, id_str in enumerate(self.residue_ids) :
-      residue = self.residue_ensembles[i_res]
+      residues = self.residue_ensembles[i_res]
       self.residue_data.append(
         residue_analysis(
           id_str=id_str,
