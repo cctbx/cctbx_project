@@ -348,18 +348,40 @@ def cxi_versioned_extract(*args):
       -3,  2, -3,  2, -8,  3, -8,  3,
       -4,  6, -4,  6, -4,  2, -4,  2]
 
+    LC06_mark10_001_corrections = [
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0   0,  0,  0, -1,  1, -1,  1,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       
+      -1,  1, -1,  1, -1,  0, -1,  0,
+       0,  0,  0,  0,  0,  1,  0,  1,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+
+       1,  2,  1,  2,  0,  1,  0,  1,
+       0,  0,  0,  0,  0,  3,  0,  3,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  1,  0,  1,
+       
+       1, -1,  1, -1,  1, -1,  1, -1,
+       0,  0,  0,  0,  1, -3,  1, -3,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0, -1,  0, -1,  0]    
+       
 
     from scitbx.array_family import flex
-    total_tile_translations = flex.int(corrected_auxiliary_translations)
+    total_tile_translations = flex.int(corrected_auxiliary_translations) - \
+                              flex.int(LC06_mark10_001_corrections)
 
     TT = list(total_tile_translations)
     working_extract.distl.tile_translations = TT
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y. Optimized for 267 mM.
-    working_extract.distl.quad_translations = [-3,  2,
-                                               -8,  3,
-                                               -7,  8,
-                                              -10,  8]
+    working_extract.distl.quad_translations = [-2,  3,
+                                               -9,  5,
+                                               -5,  10,
+                                               -9,  12]
     return working_extract
 
   else:
