@@ -732,7 +732,7 @@ class scaling_manager (intensity_data) :
 
   def scale_frame (self, file_name, db_mgr) :
     """The scale_frame() function populates a back end database with
-    appropriatly scaled intensities derived from a single frame.  The
+    appropriately scaled intensities derived from a single frame.  The
     mark0 scaling algorithm determines the scale factor by correlating
     the frame's corrected intensities to those of a reference
     structure, while the mark1 algorithm applies no scaling at all.
@@ -909,7 +909,8 @@ class scaling_manager (intensity_data) :
     # accumulation, and for determination of the correlation
     # coefficient in the presence of a scaling reference.
     if self.i_model is not None:
-      assert (self.i_model.indices() ==
+      assert len(self.i_model.indices()) == len(self.miller_set.indices()) \
+        and  (self.i_model.indices() ==
               self.miller_set.indices()).count(False) == 0
 
     matches = miller.match_multi_indices(
@@ -1348,14 +1349,24 @@ def run(args):
 
   # Adjust the minimum d-spacing of the generated Miller set to assure
   # that the desired high-resolution limit is included even if the
-  # observed unit cell differs slightly from the target.
+  # observed unit cell differs slightly from the target.  If a
+  # reference model is present, ensure that Miller indices are ordered
+  # identically.
   miller_set = symmetry(
       unit_cell=work_params.target_unit_cell,
       space_group_info=work_params.target_space_group
     ).build_miller_set(
       anomalous_flag=not work_params.merge_anomalous,
+      d_max=work_params.d_max,
       d_min=work_params.d_min / math.pow(
         1 + work_params.unit_cell_length_tolerance, 1 / 3))
+  miller_set = miller_set.change_basis(
+    work_params.model_reindex_op).map_to_asu()
+
+  if i_model is not None:
+    matches = miller.match_indices(i_model.indices(), miller_set.indices())
+    assert not matches.have_singles()
+    miller_set = miller_set.select(matches.permutation())
 
   frame_files = get_observations(work_params.data, work_params.data_subset)
   scaler = scaling_manager(
