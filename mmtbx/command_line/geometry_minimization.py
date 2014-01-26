@@ -62,10 +62,11 @@ stop_for_unknowns = True
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 rotamer_restraints = True
   .type = bool
-  .short_caption = Rotamer restraints
+  .short_caption = Apply sidechain rotamer restraints
 rotamer_restraints_sigma = 10.0
   .type = float
-  .short_caption = Rotamer restraints esd (restraints weight = 1/esd**2)
+  .help = Rotamer restraints esd (restraints weight = 1/esd**2)
+  .short_caption = Rotamer restraints sigma
 secondary_structure_restraints = False
   .type = bool
   .short_caption = Secondary structure restraints
