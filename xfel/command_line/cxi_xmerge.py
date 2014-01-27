@@ -24,6 +24,7 @@ from xfel.command_line.cxi_merge import scaling_result
 from cctbx.crystal_orientation import crystal_orientation
 from xfel import column_parser
 from xfel.cxi.util import is_odd_numbered
+from cctbx import miller
 
 #-----------------------------------------------------------------------
 class xscaling_manager (scaling_manager) :
