@@ -418,7 +418,7 @@ def exercise_00(prefix="exercise_00"):
                                             other_sites     = sites_2)
   moving_sites = lsq_fit_obj.other_sites_best_fit()
   d2 = flex.sqrt((sites_1 - moving_sites).dot())
-  assert d2.min_max_mean().as_tuple()[2]<0.05
+  assert d2.min_max_mean().as_tuple()[2]<0.005
 
 def exercise_01(prefix="exercise_01"):
   "Build poly-ALA beta strand"
