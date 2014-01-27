@@ -1,9 +1,9 @@
 from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
-from libtbx.test_utils import Exception_expected, approx_equal, show_diff
-from scitbx import matrix
+from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import Sorry
-
+from scitbx.math import superpose
+from scitbx.array_family import flex
 
 t_pdb_str = """\
 ATOM      1  N   ALA     2       1.643  -2.366  -1.408  1.00
@@ -197,48 +197,279 @@ ATOM    167  OH  TYR    20     -13.045  -8.368 -20.963  1.00  0.00           O
 TER
 """
 
+alpha_helix_template="""\
+ATOM      1  N   ALA     1      -1.204  -0.514   0.643  1.00  0.00           N
+ATOM      2  CA  ALA     1       0.000   0.000   0.000  1.00  0.00           C
+ATOM      3  CB  ALA     1       0.808   0.860   0.974  1.00  0.00           C
+ATOM      4  C   ALA     1       0.866  -1.134  -0.537  1.00  0.00           C
+ATOM      5  O   ALA     1       1.432  -1.035  -1.625  1.00  0.00           O
+ATOM      6  N   ALA     2       0.965  -2.213   0.234  1.00  0.00           N
+ATOM      7  CA  ALA     2       1.761  -3.368  -0.162  1.00  0.00           C
+ATOM      8  CB  ALA     2       1.751  -4.434   0.936  1.00  0.00           C
+ATOM      9  C   ALA     2       1.258  -3.963  -1.472  1.00  0.00           C
+ATOM     10  O   ALA     2       2.047  -4.366  -2.327  1.00  0.00           O
+"""
+
+alpha_helix_answer="""\
+ATOM      1  N   ALA     1      -1.204  -0.514   0.643  1.00  0.00           N
+ATOM      2  CA  ALA     1       0.000   0.000   0.000  1.00  0.00           C
+ATOM      3  CB  ALA     1       0.808   0.860   0.974  1.00  0.00           C
+ATOM      4  C   ALA     1       0.866  -1.134  -0.537  1.00  0.00           C
+ATOM      5  O   ALA     1       1.432  -1.035  -1.625  1.00  0.00           O
+ATOM      6  N   ALA     2       0.965  -2.213   0.234  1.00  0.00           N
+ATOM      7  CA  ALA     2       1.761  -3.368  -0.162  1.00  0.00           C
+ATOM      8  CB  ALA     2       1.751  -4.434   0.936  1.00  0.00           C
+ATOM      9  C   ALA     2       1.258  -3.963  -1.472  1.00  0.00           C
+ATOM     10  O   ALA     2       2.047  -4.366  -2.327  1.00  0.00           O
+ATOM     11  N   ALA     3      -0.062  -4.016  -1.625  1.00  0.00           N
+ATOM     12  CA  ALA     3      -0.673  -4.562  -2.830  1.00  0.00           C
+ATOM     13  CB  ALA     3      -2.199  -4.560  -2.711  1.00  0.00           C
+ATOM     14  C   ALA     3      -0.245  -3.782  -4.068  1.00  0.00           C
+ATOM     15  O   ALA     3       0.011  -4.364  -5.123  1.00  0.00           O
+ATOM     16  N   ALA     4      -0.168  -2.462  -3.934  1.00  0.00           N
+ATOM     17  CA  ALA     4       0.229  -1.600  -5.040  1.00  0.00           C
+ATOM     18  CB  ALA     4       0.169  -0.128  -4.627  1.00  0.00           C
+ATOM     19  C   ALA     4       1.628  -1.946  -5.537  1.00  0.00           C
+ATOM     20  O   ALA     4       1.888  -1.949  -6.740  1.00  0.00           O
+ATOM     21  N   ALA     5       2.529  -2.239  -4.602  1.00  0.00           N
+ATOM     22  CA  ALA     5       3.902  -2.587  -4.943  1.00  0.00           C
+ATOM     23  CB  ALA     5       4.732  -2.811  -3.677  1.00  0.00           C
+ATOM     24  C   ALA     5       3.954  -3.827  -5.827  1.00  0.00           C
+ATOM     25  O   ALA     5       4.744  -3.899  -6.767  1.00  0.00           O
+ATOM     26  N   ALA     6       3.104  -4.804  -5.520  1.00  0.00           N
+ATOM     27  CA  ALA     6       3.052  -6.043  -6.286  1.00  0.00           C
+ATOM     28  CB  ALA     6       2.036  -7.012  -5.678  1.00  0.00           C
+ATOM     29  C   ALA     6       2.707  -5.774  -7.747  1.00  0.00           C
+ATOM     30  O   ALA     6       3.266  -6.394  -8.653  1.00  0.00           O
+ATOM     31  N   ALA     7       1.783  -4.845  -7.972  1.00  0.00           N
+ATOM     32  CA  ALA     7       1.361  -4.493  -9.322  1.00  0.00           C
+ATOM     33  CB  ALA     7       0.245  -3.447  -9.284  1.00  0.00           C
+ATOM     34  C   ALA     7       2.533  -3.976 -10.149  1.00  0.00           C
+ATOM     35  O   ALA     7       2.658  -4.294 -11.332  1.00  0.00           O
+ATOM     36  N   ALA     8       3.390  -3.178  -9.521  1.00  0.00           N
+ATOM     37  CA  ALA     8       4.552  -2.615 -10.197  1.00  0.00           C
+ATOM     38  CB  ALA     8       5.326  -1.686  -9.260  1.00  0.00           C
+ATOM     39  C   ALA     8       5.472  -3.714 -10.720  1.00  0.00           C
+ATOM     40  O   ALA     8       6.014  -3.613 -11.821  1.00  0.00           O
+ATOM     41  N   ALA     9       5.645  -4.766  -9.923  1.00  0.00           N
+ATOM     42  CA  ALA     9       6.497  -5.884 -10.304  1.00  0.00           C
+ATOM     43  CB  ALA     9       6.565  -6.919  -9.179  1.00  0.00           C
+ATOM     44  C   ALA     9       6.006  -6.541 -11.590  1.00  0.00           C
+ATOM     45  O   ALA     9       6.801  -6.921 -12.448  1.00  0.00           O
+ATOM     46  N   ALA    10       4.688  -6.669 -11.716  1.00  0.00           N
+ATOM     47  CA  ALA    10       4.088  -7.281 -12.896  1.00  0.00           C
+ATOM     48  CB  ALA    10       2.567  -7.360 -12.750  1.00  0.00           C
+ATOM     49  C   ALA    10       4.452  -6.512 -14.162  1.00  0.00           C
+ATOM     50  O   ALA    10       4.723  -7.107 -15.206  1.00  0.00           O
+ATOM     51  N   ALA    11       4.458  -5.187 -14.064  1.00  0.00           N
+ATOM     52  CA  ALA    11       4.789  -4.335 -15.199  1.00  0.00           C
+ATOM     53  CB  ALA    11       4.655  -2.857 -14.824  1.00  0.00           C
+ATOM     54  C   ALA    11       6.198  -4.617 -15.709  1.00  0.00           C
+ATOM     55  O   ALA    11       6.441  -4.639 -16.916  1.00  0.00           O
+ATOM     56  N   ALA    12       7.126  -4.834 -14.781  1.00  0.00           N
+ATOM     57  CA  ALA    12       8.512  -5.115 -15.134  1.00  0.00           C
+ATOM     58  CB  ALA    12       9.371  -5.259 -13.875  1.00  0.00           C
+ATOM     59  C   ALA    12       8.622  -6.375 -15.987  1.00  0.00           C
+ATOM     60  O   ALA    12       9.403  -6.427 -16.937  1.00  0.00           O
+TER
+END
+"""
+
+beta_strand_template="""\
+ATOM      1  N   ALA A   1     -34.967   0.361   0.480  1.00 30.00           N
+ATOM      2  CA  ALA A   1     -33.700   0.830  -0.121  1.00 30.00           C
+ATOM      3  C   ALA A   1     -32.491   0.227   0.567  1.00 30.00           C
+ATOM      4  O   ALA A   1     -32.528   0.205   1.784  1.00 30.00           O
+ATOM      5  CB  ALA A   1     -33.586   2.364  -0.139  1.00 30.00           C
+ATOM      6  N   ALA A   2     -31.529  -0.207  -0.287  1.00 30.00           N
+ATOM      7  CA  ALA A   2     -30.265  -0.830   0.121  1.00 30.00           C
+ATOM      8  C   ALA A   2     -29.092   0.104  -0.268  1.00 30.00           C
+ATOM      9  O   ALA A   2     -29.024   0.723  -1.359  1.00 30.00           O
+ATOM     10  CB  ALA A   2     -29.837  -2.178  -0.470  1.00 30.00           C
+"""
+
+beta_strand_answer="""\
+ATOM      1  N   ALA A   1     -34.967   0.361   0.480  1.00 30.00           N
+ATOM      2  CA  ALA A   1     -33.700   0.830  -0.121  1.00 30.00           C
+ATOM      3  C   ALA A   1     -32.491   0.227   0.567  1.00 30.00           C
+ATOM      4  O   ALA A   1     -32.528   0.205   1.784  1.00 30.00           O
+ATOM      5  CB  ALA A   1     -33.586   2.364  -0.139  1.00 30.00           C
+ATOM      6  N   ALA A   2     -31.529  -0.207  -0.287  1.00 30.00           N
+ATOM      7  CA  ALA A   2     -30.265  -0.830   0.121  1.00 30.00           C
+ATOM      8  C   ALA A   2     -29.092   0.104  -0.268  1.00 30.00           C
+ATOM      9  O   ALA A   2     -29.024   0.723  -1.359  1.00 30.00           O
+ATOM     10  CB  ALA A   2     -29.837  -2.178  -0.470  1.00 30.00           C
+ATOM     11  N   ALA A   3     -28.227   0.361   0.480  1.00 30.00           N
+ATOM     12  CA  ALA A   3     -26.960   0.830  -0.121  1.00 30.00           C
+ATOM     13  C   ALA A   3     -25.751   0.227   0.567  1.00 30.00           C
+ATOM     14  O   ALA A   3     -25.788   0.205   1.784  1.00 30.00           O
+ATOM     15  CB  ALA A   3     -26.846   2.364  -0.139  1.00 30.00           C
+ATOM     16  N   ALA A   4     -24.789  -0.207  -0.287  1.00 30.00           N
+ATOM     17  CA  ALA A   4     -23.525  -0.830   0.121  1.00 30.00           C
+ATOM     18  C   ALA A   4     -22.352   0.104  -0.268  1.00 30.00           C
+ATOM     19  O   ALA A   4     -22.284   0.723  -1.359  1.00 30.00           O
+ATOM     20  CB  ALA A   4     -23.097  -2.178  -0.470  1.00 30.00           C
+ATOM     21  N   ALA A   5     -21.487   0.361   0.480  1.00 30.00           N
+ATOM     22  CA  ALA A   5     -20.220   0.830  -0.121  1.00 30.00           C
+ATOM     23  C   ALA A   5     -19.011   0.227   0.567  1.00 30.00           C
+ATOM     24  O   ALA A   5     -19.048   0.205   1.784  1.00 30.00           O
+ATOM     25  CB  ALA A   5     -20.106   2.364  -0.139  1.00 30.00           C
+ATOM     26  N   ALA A   6     -18.049  -0.207  -0.287  1.00 30.00           N
+ATOM     27  CA  ALA A   6     -16.785  -0.830   0.121  1.00 30.00           C
+ATOM     28  C   ALA A   6     -15.612   0.104  -0.268  1.00 30.00           C
+ATOM     29  O   ALA A   6     -15.544   0.723  -1.359  1.00 30.00           O
+ATOM     30  CB  ALA A   6     -16.357  -2.178  -0.470  1.00 30.00           C
+ATOM     31  N   ALA A   7     -14.747   0.361   0.480  1.00 30.00           N
+ATOM     32  CA  ALA A   7     -13.480   0.830  -0.121  1.00 30.00           C
+ATOM     33  C   ALA A   7     -12.271   0.227   0.567  1.00 30.00           C
+ATOM     34  O   ALA A   7     -12.308   0.205   1.784  1.00 30.00           O
+ATOM     35  CB  ALA A   7     -13.366   2.364  -0.139  1.00 30.00           C
+ATOM     36  N   ALA A   8     -11.309  -0.207  -0.287  1.00 30.00           N
+ATOM     37  CA  ALA A   8     -10.045  -0.830   0.121  1.00 30.00           C
+ATOM     38  C   ALA A   8      -8.872   0.104  -0.268  1.00 30.00           C
+ATOM     39  O   ALA A   8      -8.804   0.723  -1.359  1.00 30.00           O
+ATOM     40  CB  ALA A   8      -9.617  -2.178  -0.470  1.00 30.00           C
+ATOM     41  N   ALA A   9      -8.007   0.361   0.480  1.00 30.00           N
+ATOM     42  CA  ALA A   9      -6.740   0.830  -0.121  1.00 30.00           C
+ATOM     43  C   ALA A   9      -5.531   0.227   0.567  1.00 30.00           C
+ATOM     44  O   ALA A   9      -5.568   0.205   1.784  1.00 30.00           O
+ATOM     45  CB  ALA A   9      -6.626   2.364  -0.139  1.00 30.00           C
+ATOM     46  N   ALA A  10      -4.569  -0.207  -0.287  1.00 30.00           N
+ATOM     47  CA  ALA A  10      -3.305  -0.830   0.121  1.00 30.00           C
+ATOM     48  C   ALA A  10      -2.132   0.104  -0.268  1.00 30.00           C
+ATOM     49  O   ALA A  10      -2.064   0.723  -1.359  1.00 30.00           O
+ATOM     50  CB  ALA A  10      -2.877  -2.178  -0.470  1.00 30.00           C
+ATOM     51  N   ALA A  11      -1.267   0.361   0.480  1.00 30.00           N
+ATOM     52  CA  ALA A  11       0.000   0.830  -0.121  1.00 30.00           C
+ATOM     53  C   ALA A  11       1.209   0.227   0.567  1.00 30.00           C
+ATOM     54  O   ALA A  11       1.172   0.205   1.784  1.00 30.00           O
+ATOM     55  CB  ALA A  11       0.114   2.364  -0.139  1.00 30.00           C
+ATOM     56  N   ALA A  12       2.171  -0.207  -0.287  1.00 30.00           N
+ATOM     57  CA  ALA A  12       3.435  -0.830   0.121  1.00 30.00           C
+ATOM     58  C   ALA A  12       4.608   0.104  -0.268  1.00 30.00           C
+ATOM     59  O   ALA A  12       4.676   0.723  -1.359  1.00 30.00           O
+ATOM     60  CB  ALA A  12       3.863  -2.178  -0.470  1.00 30.00           C
+ATOM     61  N   ALA A  13       5.473   0.361   0.480  1.00 30.00           N
+ATOM     62  CA  ALA A  13       6.740   0.830  -0.121  1.00 30.00           C
+ATOM     63  C   ALA A  13       7.949   0.227   0.567  1.00 30.00           C
+ATOM     64  O   ALA A  13       7.912   0.205   1.784  1.00 30.00           O
+ATOM     65  CB  ALA A  13       6.854   2.364  -0.139  1.00 30.00           C
+ATOM     66  N   ALA A  14       8.911  -0.207  -0.287  1.00 30.00           N
+ATOM     67  CA  ALA A  14      10.175  -0.830   0.121  1.00 30.00           C
+ATOM     68  C   ALA A  14      11.348   0.104  -0.268  1.00 30.00           C
+ATOM     69  O   ALA A  14      11.416   0.723  -1.359  1.00 30.00           O
+ATOM     70  CB  ALA A  14      10.603  -2.178  -0.470  1.00 30.00           C
+ATOM     71  N   ALA A  15      12.213   0.361   0.480  1.00 30.00           N
+ATOM     72  CA  ALA A  15      13.480   0.830  -0.121  1.00 30.00           C
+ATOM     73  C   ALA A  15      14.689   0.227   0.567  1.00 30.00           C
+ATOM     74  O   ALA A  15      14.652   0.205   1.784  1.00 30.00           O
+ATOM     75  CB  ALA A  15      13.594   2.364  -0.139  1.00 30.00           C
+ATOM     76  N   ALA A  16      15.651  -0.207  -0.287  1.00 30.00           N
+ATOM     77  CA  ALA A  16      16.915  -0.830   0.121  1.00 30.00           C
+ATOM     78  C   ALA A  16      18.088   0.104  -0.268  1.00 30.00           C
+ATOM     79  O   ALA A  16      18.156   0.723  -1.359  1.00 30.00           O
+ATOM     80  CB  ALA A  16      17.343  -2.178  -0.470  1.00 30.00           C
+ATOM     81  N   ALA A  17      18.953   0.361   0.480  1.00 30.00           N
+ATOM     82  CA  ALA A  17      20.220   0.830  -0.121  1.00 30.00           C
+ATOM     83  C   ALA A  17      21.429   0.227   0.567  1.00 30.00           C
+ATOM     84  O   ALA A  17      21.392   0.205   1.784  1.00 30.00           O
+ATOM     85  CB  ALA A  17      20.334   2.364  -0.139  1.00 30.00           C
+ATOM     86  N   ALA A  18      22.391  -0.207  -0.287  1.00 30.00           N
+ATOM     87  CA  ALA A  18      23.655  -0.830   0.121  1.00 30.00           C
+ATOM     88  C   ALA A  18      24.828   0.104  -0.268  1.00 30.00           C
+ATOM     89  O   ALA A  18      24.896   0.723  -1.359  1.00 30.00           O
+ATOM     90  CB  ALA A  18      24.083  -2.178  -0.470  1.00 30.00           C
+ATOM     91  N   ALA A  19      25.693   0.361   0.480  1.00 30.00           N
+ATOM     92  CA  ALA A  19      26.960   0.830  -0.121  1.00 30.00           C
+ATOM     93  C   ALA A  19      28.169   0.227   0.567  1.00 30.00           C
+ATOM     94  O   ALA A  19      28.132   0.205   1.784  1.00 30.00           O
+ATOM     95  CB  ALA A  19      27.074   2.364  -0.139  1.00 30.00           C
+ATOM     96  N   ALA A  20      29.131  -0.207  -0.287  1.00 30.00           N
+ATOM     97  CA  ALA A  20      30.395  -0.830   0.121  1.00 30.00           C
+ATOM     98  C   ALA A  20      31.568   0.104  -0.268  1.00 30.00           C
+ATOM     99  O   ALA A  20      31.636   0.723  -1.359  1.00 30.00           O
+ATOM    100  CB  ALA A  20      30.823  -2.178  -0.470  1.00 30.00           C
+ATOM    101  N   ALA A  21      32.433   0.361   0.480  1.00 30.00           N
+ATOM    102  CA  ALA A  21      33.700   0.830  -0.121  1.00 30.00           C
+ATOM    103  C   ALA A  21      34.909   0.227   0.567  1.00 30.00           C
+ATOM    104  O   ALA A  21      34.872   0.205   1.784  1.00 30.00           O
+ATOM    105  CB  ALA A  21      33.814   2.364  -0.139  1.00 30.00           C
+ATOM    106  N   ALA A  22      35.871  -0.207  -0.287  1.00 30.00           N
+ATOM    107  CA  ALA A  22      37.135  -0.830   0.121  1.00 30.00           C
+ATOM    108  C   ALA A  22      38.308   0.104  -0.268  1.00 30.00           C
+ATOM    109  O   ALA A  22      38.376   0.723  -1.359  1.00 30.00           O
+ATOM    110  CB  ALA A  22      37.563  -2.178  -0.470  1.00 30.00           C
+TER
+END
+"""
+
+def exercise_00(prefix="exercise_00"):
+  "Build poly-ALA alpha helix"
+  ph = ssb.make_ss_structure_from_seq(
+    alpha_helix_template, "".join(["A"]*12))
+  ph.write_pdb_file(file_name="%s_result.pdb"%prefix)
+  sites_1 = ph.atoms().extract_xyz()
+  sites_2 = iotbx.pdb.input(source_info=None,
+    lines=alpha_helix_answer).construct_hierarchy().atoms().extract_xyz()
+  assert sites_1.size()==sites_2.size()
+  d1 = flex.sqrt((sites_1 - sites_2).dot())
+  assert d1.min_max_mean().as_tuple()[2]<0.02
+  lsq_fit_obj = superpose.least_squares_fit(reference_sites = sites_1,
+                                            other_sites     = sites_2)
+  moving_sites = lsq_fit_obj.other_sites_best_fit()
+  d2 = flex.sqrt((sites_1 - moving_sites).dot())
+  assert d2.min_max_mean().as_tuple()[2]<0.05
+
+def exercise_01(prefix="exercise_01"):
+  "Build poly-ALA beta strand"
+  ph = ssb.make_ss_structure_from_seq(
+    beta_strand_template, "".join(["A"]*22))
+  ph.write_pdb_file(file_name="%s_result.pdb"%prefix)
+  of=open("%s_answer.pdb"%prefix, "w")
+  print >> of, beta_strand_answer
+  of.close()
+  sites_1 = ph.atoms().extract_xyz()
+  sites_2 = iotbx.pdb.input(source_info=None,
+    lines=beta_strand_answer).construct_hierarchy().atoms().extract_xyz()
+  assert sites_1.size()==sites_2.size()
+
 def exercise_r_t_matrices():
   r,t = ssb.get_r_t_matrices_from_structure(alpha_pdb_str)
-  assert approx_equal(r.elems, 
-                      (-0.02358, 0.96052,  0.27720, 
-                       -0.86374, -0.15919, 0.47811, 
-                        0.50337, -0.22815, 0.83340),                      
+  assert approx_equal(r.elems,
+                      (-0.02358, 0.96052,  0.27720,
+                       -0.86374, -0.15919, 0.47811,
+                        0.50337, -0.22815, 0.83340),
                       eps = 0.0001)
-  assert approx_equal(t.elems, 
+  assert approx_equal(t.elems,
                       (1.6740, -1.2223, -2.0756),
                       eps = 0.0001)
-  
+
   try: ssb.get_r_t_matrices_from_structure(t_pdb_str)
   except Sorry: pass
   else: raise Exception_expected
-    
 
 def exercise_ss_structure_from_seq():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=correct_answer)
   correct_h = pdb_inp.construct_hierarchy()
-
   test_h = ssb.make_ss_structure_from_seq(alpha_pdb_str, "ACEDGFIHKMLNQPSRTWVY")
 
   # why this assert fails:
   #assert correct_h.is_similar_hierarchy(other=test_h)
-  
+
   # but this is not:
   #assert test_h.as_str() == correct_h.as_str()
-  
-  assert approx_equal(test_h.atoms().extract_xyz(), 
+
+  assert approx_equal(test_h.atoms().extract_xyz(),
                       correct_h.atoms().extract_xyz(), eps=0.002)
-  
   try: ssb.make_ss_structure_from_seq(alpha_pdb_str, "")
   except Sorry: pass
   else: raise Exception_expected
-  
-  
 
 def exercise():
+  exercise_00()
+  exercise_01()
   exercise_r_t_matrices()
   exercise_ss_structure_from_seq()
-  #sys.stdout.flush()
-  #unittest.TextTestRunner(stream=sys.stdout, verbosity = 2 ).run( alltests )
 
 if (__name__ == "__main__"):
   exercise()
