@@ -21,6 +21,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     os.chdir(self.tempdir)
     # Write the test data into a file
     open('multimer_test_data.pdb', 'w').write(pdb_test_data)
+    open('multimer_test_data2.pdb', 'w').write(pdb_test_data2)
 
   def test_MTRIX(self):
     '''Test MTRIX record processing'''
@@ -76,6 +77,15 @@ class TestMultimerReconstruction(unittest.TestCase):
 
     assert approx_equal(ba_expected_results,ba_multimer_xyz,eps=0.001)
     self.assertEqual(ba_multimer_data.number_of_transforms,9)
+
+  def test_transform_count(self):
+    '''
+    Test correct MTRIX transform counting and
+    new chains naming'''
+    # use MTRIX data
+    m = multimer('multimer_test_data2.pdb','cau')
+    self.assertEqual(m.number_of_transforms, 1)
+
 
   def tearDown(self):
     '''remove temp files and folder'''
@@ -146,6 +156,26 @@ ATOM      2  CA  LEU A  40      94.618  -5.253  91.582  1.00 87.10           C
 ATOM      3   C  ARG B  40      62.395  51.344  80.786  1.00107.25           C
 HETATM    4  C1  EDO A  40      39.954  51.526  72.372  0.33 60.93           C
 '''
+
+pdb_test_data2="""\
+MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
+MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
+MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
+MTRIX1   2  0.496590 -0.643597  0.582393        0.00000    1
+MTRIX2   2  0.867925  0.376088 -0.324443        0.00000    1
+MTRIX3   2 -0.010221  0.666588  0.745356        0.00000    1
+MTRIX1   3 -0.317946 -0.173437  0.932111        0.00000
+MTRIX2   3  0.760735 -0.633422  0.141629        0.00000
+MTRIX3   3  0.565855  0.754120  0.333333        0.00000
+ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
+ATOM      2  CA  THR A   1       9.559   8.931  10.615  1.00 20.00           C
+ATOM      3  C   THR A   1       9.634   7.903  11.739  1.00 20.00           C
+ATOM      4  O   THR A   1      10.449   8.027  12.653  1.00 20.00           O
+ATOM      5  CB  THR A   1      10.660   8.630   9.582  1.00 20.00           C
+ATOM      6  OG1 THR A   1      10.560   9.552   8.490  1.00 20.00           O
+ATOM      7  CG2 THR A   1      10.523   7.209   9.055  1.00 20.00           C
+TER
+"""
 
 if __name__ == "__main__":
   unittest.main()
