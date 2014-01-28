@@ -91,12 +91,8 @@ sites
   shake = None
     .type = float
     .help = Randomize coordinates with mean error value equal to shake
-  max_rotomer_distortion = None
-    .type = bool
-    .help = Switch to a rotomer maximally distant from the current one
-  min_rotomer_distortion = None
-    .type = bool
-    .help = Switch to a rotomer minimally distant from the current one
+  switch_rotamers = max_distant min_distant exact_match fix_outliers
+    .type=choice(multi=False)
   translate = 0 0 0
     .type = floats(size=3)
     .optional = False
@@ -450,32 +446,26 @@ class modify(object):
             selection_strings=[sites.atom_selection],
             xray_structure=self.xray_structure)[0])
       self._shake_sites(selection=selection, rms_difference=sites.shake)
-      if(sites.max_rotomer_distortion):
-        self._max_distant_rotomer(selection=selection)
-      if(sites.min_rotomer_distortion):
-        self._max_distant_rotomer(selection=selection, min_dist_flag=True)
+      self._switch_rotamers(selection=selection, mode=sites.switch_rotamers)
       self._rb_shift(
         selection=selection,
         translate=sites.translate,
         rotate=sites.rotate,
         euler_angle_convention=sites.euler_angle_convention)
 
-  def _max_distant_rotomer(self, selection, min_dist_flag=False):
-    if(min_dist_flag):
-      self._print_action(
-        text = "Switching to the min distant rotomers",
-        selection = selection)
-    else:
-      self._print_action(
-        text = "Switching to the max distant rotomers",
-        selection = selection)
+  def _switch_rotamers(self, selection, mode):
+    if(mode is None): return
+    self._print_action(
+      text = "Switching rotamers; mode = %s"%mode,
+      selection = selection)
     mon_lib_srv = mmtbx.monomer_library.server.server()
-    selection = selection.flags
-    self.xray_structure = utils.max_distant_rotomer(
-      xray_structure = self.xray_structure,
-      pdb_hierarchy  = self.pdb_hierarchy,
-      selection      = selection,
-      min_dist_flag  = min_dist_flag)
+    self.pdb_hierarchy.atoms().set_xyz(self.xray_structure.sites_cart())
+    self.pdb_hierarchy = utils.switch_rotamers(
+      pdb_hierarchy=self.pdb_hierarchy,
+      mode=mode,
+      selection=selection.flags)
+    self.xray_structure.set_sites_cart(
+      sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
 
   def _shake_sites(self, selection, rms_difference):
     if (rms_difference is not None):

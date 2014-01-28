@@ -56,7 +56,6 @@ def exercise(args):
     "phenix.geometry_minimization",
     "tmp_altloc_chain_break.pdb",
     "pdb_interpretation.nonbonded_weight=16",
-    "macro_cycles=2",
     ">tmp_altloc_chain_break.zlog"])
   easy_run.call(command=command)
   target_values = []
@@ -64,9 +63,11 @@ def exercise(args):
     line = line.strip()
     if (line.startswith("target: ")):
       target_values.append(float(line.split()[-1]))
-  assert len(target_values) == 3
+  print target_values
+
+  assert len(target_values) == 6
   assert target_values[0] > 100
-  assert target_values[2] < 1
+  assert target_values[5] < 6
   print "OK"
 
 if (__name__ == "__main__"):

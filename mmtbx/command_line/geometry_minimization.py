@@ -13,7 +13,6 @@ import os
 import mmtbx.secondary_structure
 import sys
 from cStringIO import StringIO
-from libtbx.test_utils import approx_equal
 
 base_params_str = """\
 silent = False
@@ -45,6 +44,9 @@ directory = None
   .short_caption = Output directory
   .style = output_dir
 include scope libtbx.phil.interface.tracking_params
+fix_rotamer_outliers = True
+  .type = bool
+  .help = Remove outliers
 reference_restraints {
   restrain_starting_coord_selection = None
     .type = str
@@ -60,13 +62,6 @@ stop_for_unknowns = True
   .short_caption = Stop for unknown residues
   .style = noauto
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
-rotamer_restraints = True
-  .type = bool
-  .short_caption = Apply sidechain rotamer restraints
-rotamer_restraints_sigma = 10.0
-  .type = float
-  .help = Rotamer restraints esd (restraints weight = 1/esd**2)
-  .short_caption = Rotamer restraints sigma
 secondary_structure_restraints = False
   .type = bool
   .short_caption = Secondary structure restraints
@@ -236,18 +231,17 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
   return restraints_manager
 
 def run_minimization(
-      sites_cart,
       selection,
       restraints_manager,
       pdb_hierarchy,
       params,
       cdl,
       correct_hydrogens,
+      fix_rotamer_outliers,
       log):
   o = mmtbx.refinement.geometry_minimization.run2(
-    sites_cart                     = sites_cart,
     restraints_manager             = restraints_manager,
-    pdb_hierarchy = pdb_hierarchy,
+    pdb_hierarchy                  = pdb_hierarchy,
     max_number_of_iterations       = params.max_iterations,
     number_of_macro_cycles         = params.macro_cycles,
     selection                      = selection,
@@ -261,8 +255,9 @@ def run_minimization(
     rmsd_bonds_termination_cutoff  = params.rmsd_bonds_termination_cutoff,
     rmsd_angles_termination_cutoff = params.rmsd_angles_termination_cutoff,
     alternate_nonbonded_off_on     = params.alternate_nonbonded_off_on,
-    cdl=cdl,
-    correct_hydrogens=correct_hydrogens,
+    cdl                            = cdl,
+    correct_hydrogens              = correct_hydrogens,
+    fix_rotamer_outliers           = fix_rotamer_outliers,
     log                            = log)
 
 def run_minimization_amber (
@@ -295,7 +290,6 @@ def run_minimization_amber (
     prmtop                         = prmtop,
     ambcrd                         = ambcrd)
 
-
 class run(object):
   _pdb_suffix = "minimized"
   def __init__(self, args, log, use_directory_prefix=True):
@@ -324,7 +318,6 @@ class run(object):
     self.caller(self.atom_selection,       "Atom selection")
     self.caller(self.get_restraints,       "Geometry Restraints")
     self.caller(self.addcbetar,            "Add C-beta deviation restraints")
-    self.caller(self.rotamer_restraints,   "Add rotamer restraints")
     self.caller(self.reference_restraints, "Add reference restraints")
     self.caller(self.minimization,         "Minimization")
     self.caller(self.write_pdb_file,       "Write PDB file")
@@ -410,32 +403,6 @@ class run(object):
         pdb_hierarchy = self.pdb_hierarchy,
         log           = self.log)
 
-  def rotamer_restraints(self, prefix):
-    if(self.params.rotamer_restraints):
-      broadcast(m=prefix, log = self.log)
-      def switch_to_exact_rotamers(ph, xrs):
-        xrs = xrs.deep_copy_scatterers()
-        ph = ph.deep_copy()
-        ph.atoms().reset_i_seq()
-        xrs = mmtbx.utils.max_distant_rotomer(
-          xray_structure = xrs,
-          pdb_hierarchy  = ph,
-          exact_match    = True)
-        return ph, xrs
-      tmp = self.xray_structure.deep_copy_scatterers()
-      ph, xrs = switch_to_exact_rotamers(ph=self.pdb_hierarchy,
-        xrs=self.xray_structure)
-      self.xray_structure.set_sites_cart(sites_cart = xrs.sites_cart())
-      self.grm.geometry.generic_restraints_manager.reference_manager.\
-        remove_chi_angle_restraints(pdb_hierarchy=self.pdb_hierarchy)
-      self.grm.geometry.generic_restraints_manager.reference_manager.\
-        add_torsion_restraints(
-          pdb_hierarchy   = ph,
-          sites_cart      = xrs.sites_cart(),
-          chi_angles_only = True,
-          sigma           = self.params.rotamer_restraints_sigma)
-      print >> self.log, self.min_max_mean_shift()
-
   def get_restraints(self, prefix):
     broadcast(m=prefix, log = self.log)
     self.grm = get_geometry_restraints_manager(
@@ -463,7 +430,6 @@ class run(object):
 
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
     broadcast(m=prefix, log = self.log)
-    sites_cart = self.xray_structure.sites_cart()
     use_amber = False
     if hasattr(self.params, "amber"):
       use_amber = self.params.amber.use_amber
@@ -478,17 +444,19 @@ class run(object):
         prmtop = self.params.amber.topology_file_name,
         ambcrd = self.params.amber.coordinate_file_name)
     else:
-      run_minimization(sites_cart = sites_cart, selection = self.selection,
+      run_minimization(
+        selection = self.selection,
         restraints_manager = self.grm, params = self.params.minimization,
         pdb_hierarchy = self.pdb_hierarchy,
         cdl=self.params.pdb_interpretation.cdl,
         correct_hydrogens=self.params.pdb_interpretation.correct_hydrogens,
+        fix_rotamer_outliers = self.params.fix_rotamer_outliers,
         log = self.log)
-    self.xray_structure.set_sites_cart(sites_cart = sites_cart)
+    self.xray_structure.set_sites_cart(
+      sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
 
   def write_pdb_file(self, prefix):
     broadcast(m=prefix, log = self.log)
-    #self.xray_structure.set_sites_cart(sites_cart = self.sites_cart)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     ofn = self.params.output_file_name_prefix
     directory = self.params.directory

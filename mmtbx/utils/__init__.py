@@ -2546,13 +2546,17 @@ def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
     result = math.sqrt(flex.sum(values) / values.size())
   return result
 
-def max_distant_rotomer(xray_structure, pdb_hierarchy, selection=None,
-      min_dist_flag=False, exact_match=False):
+def switch_rotamers(pdb_hierarchy, mode, selection=None):
+  if(mode is None): return pdb_hierarchy
+  pdb_hierarchy.reset_i_seq_if_necessary()
+  assert mode in ["max_distant","min_distant","exact_match","fix_outliers"],mode
   from mmtbx.command_line import lockit
   mon_lib_srv = mmtbx.monomer_library.server.server()
-  sites_cart_start = xray_structure.sites_cart()
+  sites_cart_start = pdb_hierarchy.atoms().extract_xyz()
   sites_cart_result = sites_cart_start.deep_copy()
-  xrs = xray_structure.deep_copy_scatterers()
+  if(mode == "fix_outliers"):
+    from mmtbx.rotamer.rotamer_eval import RotamerEval
+    rotamer_manager = RotamerEval()
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       for residue_group in chain.residue_groups():
@@ -2569,6 +2573,9 @@ def max_distant_rotomer(xray_structure, pdb_hierarchy, selection=None,
               if(not selection[r_i_seq]):
                 exclude = True
                 break
+          if(mode == "fix_outliers" and
+             rotamer_manager.evaluate_residue(residue) != "OUTLIER"):
+            exclude = True
           if(not exclude):
             rotamer_iterator = lockit.get_rotamer_iterator(
               mon_lib_srv         = mon_lib_srv,
@@ -2583,16 +2590,16 @@ def max_distant_rotomer(xray_structure, pdb_hierarchy, selection=None,
                   sites_cart_start_ - rotamer_sites_cart).dot()))
                 distances.append(dist)
                 sites.append(rotamer_sites_cart.deep_copy())
-              ###
               dist_start = -1.
-              if(min_dist_flag or exact_match): dist_start = 1.e+6
+              if(mode in ["min_distant", "exact_match", "fix_outliers"]):
+                dist_start = 1.e+6
               res = None
               for d, s in zip(distances, sites):
-                if(min_dist_flag):
+                if(mode=="min_distant"):
                   if(d<dist_start and d>0.5):
                     dist_start = d
                     res = s.deep_copy()
-                elif(exact_match):
+                elif(mode=="exact_match" or mode=="fix_outliers"):
                   if(d<dist_start):
                     dist_start = d
                     res = s.deep_copy()
@@ -2600,20 +2607,17 @@ def max_distant_rotomer(xray_structure, pdb_hierarchy, selection=None,
                   if(d>dist_start):
                     res = s.deep_copy()
                     dist_start = d
-
-              if(res is None and min_dist_flag):
+              if(res is None and mode=="min_distant"):
                 dist_start = 1.e+6
                 for d, s in zip(distances, sites):
                   if(d<dist_start):
                     dist_start = d
                     res = s.deep_copy()
-              ###
               assert res is not None
               sites_cart_result = sites_cart_result.set_selected(
                 residue_iselection, res)
-  xray_structure.set_sites_cart(sites_cart_result)
-  pdb_hierarchy.adopt_xray_structure(xray_structure)
-  return xray_structure
+  pdb_hierarchy.atoms().set_xyz(sites_cart_result)
+  return pdb_hierarchy
 
 def seg_id_to_chain_id(pdb_hierarchy):
   import string
