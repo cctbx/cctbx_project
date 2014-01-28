@@ -49,13 +49,13 @@ class FormatPYmultitile(FormatPY):
     # The lines above could eventually be replaced by the lines
     # below.
     """
-      from cPickle import load
-      stream = FormatPYmultitile.open_file(self._image_file)
-      d = load(stream)
-      self._metrology_params = d['METROLOGY'].extract()
-      self._tiles = d['TILES']
-      stream.close()
-      """
+    from cPickle import load
+    stream = FormatPYmultitile.open_file(self._image_file)
+    d = load(stream)
+    self._metrology_params = d['METROLOGY'].extract()
+    self._tiles = d['TILES']
+    stream.close()
+    """
 
 
   def _goniometer(self):
@@ -74,7 +74,8 @@ class FormatPYmultitile(FormatPY):
     xfel.cftbx.detector.metrology.metrology_as_dxtbx_vectors().
     '''
 
-    from dxtbx.model import Detector, SimplePxMmStrategy
+    from dxtbx.model import SimplePxMmStrategy
+    from dxtbx.model.detector import HierarchicalDetector
     from scitbx.matrix import col
 
     # XXX Introduces dependency on cctbx.xfel!  Should probably be
@@ -91,7 +92,7 @@ class FormatPYmultitile(FormatPY):
       col((0, 0, -self._metrology_params.distance * 1e-3)))[1]
 
     self._raw_data = []
-    detector = Detector()
+    detector = HierarchicalDetector()
 
     for p in d.panel:
       Tb_p = Tb_d * _transform(
