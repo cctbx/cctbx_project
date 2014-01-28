@@ -298,7 +298,7 @@ class array_input (slots_getstate_setstate) :
           else :
             self.array_types.append(None)
       if not found :
-        raise Sorry("Couldn't fine the Miller array %s in file %s!" %
+        raise Sorry("Couldn't find the Miller array %s in file %s!" %
                     (array_params.labels, array_params.file_name))
 
   def resolve_unit_cell (self) :
