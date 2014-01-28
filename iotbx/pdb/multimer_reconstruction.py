@@ -24,6 +24,12 @@ class multimer(object):
   since chain names string length is limited to two, this process does not maintain any
   referance to the original chain names.
 
+  Several useful attributes:
+  --------------------------
+  self.write() : To write the new object to a pdb file
+  self.assembled_multimer : The assembled or reconstructed object is in
+  self.number_of_transforms : Number of transformations that where applied
+
   @author: Youval Dar (LBL )
   '''
   def __init__(self,pdb_input_file_name,reconstruction_type,error_handle=True,eps=1e-4):
@@ -63,9 +69,11 @@ class multimer(object):
                   'Reconstruction type can be: \n' + \
                   "'ba': biological assembly \n" + \
                   "'cau': crystallographic asymmetric unit \n")
-    rms = TRASFORM_info.r
-    tvs = TRASFORM_info.t
-    self.number_of_transforms = len(TRASFORM_info.r)
+    # Collect only transformations which coordinates are not present
+    i_transforms = []
+    for i,coordinates_present in enumerate(TRASFORM_info.coordinates_present):
+      if not coordinates_present: i_transforms.append(i)
+    self.number_of_transforms = len(i_transforms)
     if (self.number_of_transforms>0):
       # number of chains in hierachy (more than the actual chains in the model)
       chains_number = pdb_obj.hierarchy.overall_counts().n_chains
@@ -82,11 +90,10 @@ class multimer(object):
         new_chains_names = self._chains_names(self.number_of_transforms,\
           nChains,unique_chain_names)
         for chain in model.chains():
-          # iterating over the TRASFORM transform strating from 1 (not 0)
-          # since TRASFORM_info[0] is a unit transformation
-          for i_transform in range(1,self.number_of_transforms):
+          # iterating over the TRASFORM transforms that are not present
+          for i_transform in i_transforms:
             new_chain = chain.detached_copy()
-            new_chain.id = new_chains_names[new_chain.id + str(i_transform+1)]
+            new_chain.id = new_chains_names[new_chain.id + str(i_transform)]
             new_sites = TRASFORM_info.r[i_transform].elems*\
               new_chain.atoms().extract_xyz()+TRASFORM_info.t[i_transform]
             new_chain.atoms().set_xyz(new_sites)
