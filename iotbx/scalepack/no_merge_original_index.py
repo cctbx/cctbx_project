@@ -34,7 +34,7 @@ def writer (
     scale_intensities_for_scalepack_merge=False,
     out=sys.stdout) :
   n_refl = len(i_obs.indices())
-  assert (not i_obs.is_unique_set_under_symmetry())
+  #assert (not i_obs.is_unique_set_under_symmetry()) # TT 2014-01-12 not necessary?
   assert i_obs.is_xray_intensity_array() and i_obs.sigmas() is not None
   # create substitute for batch number and spindle flag - these are impossible
   # to determine from the input array
