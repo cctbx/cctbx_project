@@ -4,7 +4,7 @@ from cctbx import geometry_restraints
 import cctbx.geometry_restraints.lbfgs
 import scitbx.lbfgs
 import sys
-
+import mmtbx.utils
 
 master_params_str = """\
   alternate_nonbonded_off_on=False
@@ -149,7 +149,6 @@ def run(processed_pdb_file, params=master_params().extract(), log=sys.stdout):
 
 class run2(object):
   def __init__(self,
-               sites_cart,
                restraints_manager,
                pdb_hierarchy,
                max_number_of_iterations       = 500,
@@ -166,14 +165,14 @@ class run2(object):
                rmsd_angles_termination_cutoff = 0,
                alternate_nonbonded_off_on     = False,
                cdl                            = False,
-               correct_hydrogens=False,
+               correct_hydrogens              = False,
+               fix_rotamer_outliers           = True,
                log                            = None):
     self.log = log
     if self.log is None:
       self.log = sys.stdout
     self.pdb_hierarchy = pdb_hierarchy
     self.minimized = None
-    self.sites_cart = sites_cart
     self.restraints_manager = restraints_manager
     assert max_number_of_iterations+number_of_macro_cycles > 0
     assert [bond,nonbonded,angle,dihedral,chirality,planarity].count(False) < 6
@@ -207,8 +206,23 @@ class run2(object):
         geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
       self.correct_hydrogen_geometries(log)
       self.update_cdl_restraints(macro_cycle=i_macro_cycle)
+      if(fix_rotamer_outliers):
+        self.pdb_hierarchy = mmtbx.utils.switch_rotamers(
+          pdb_hierarchy = self.pdb_hierarchy,
+          mode          = "fix_outliers",
+          selection     = selection)
+        self.restraints_manager.geometry.generic_restraints_manager.\
+          reference_manager.remove_chi_angle_restraints(
+            pdb_hierarchy=self.pdb_hierarchy)
+        self.restraints_manager.geometry.generic_restraints_manager.\
+          reference_manager.add_torsion_restraints(
+            pdb_hierarchy   = self.pdb_hierarchy,
+            sites_cart      = self.pdb_hierarchy.atoms().extract_xyz(),
+            chi_angles_only = True,
+            sigma           = 10.0)
+      sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
       self.minimized = lbfgs(
-        sites_cart                      = self.sites_cart,
+        sites_cart                      = sites_cart,
         geometry_restraints_manager     = restraints_manager.geometry,
         geometry_restraints_flags       = geometry_restraints_flags,
         lbfgs_termination_params        = lbfgs_termination_params,
@@ -217,6 +231,7 @@ class run2(object):
         rmsd_bonds_termination_cutoff   = rmsd_bonds_termination_cutoff,
         rmsd_angles_termination_cutoff  = rmsd_angles_termination_cutoff,
         site_labels                     = None)
+      self.pdb_hierarchy.atoms().set_xyz(sites_cart)
       self.show()
       geometry_restraints_flags.nonbonded = nonbonded
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
@@ -236,7 +251,7 @@ class run2(object):
         rc = update_restraints(
           self.pdb_hierarchy,
           self.restraints_manager,
-          sites_cart=self.sites_cart,
+          sites_cart=self.pdb_hierarchy.atoms().extract_xyz(),
           cdl_proxies=self.cdl_proxies,
           log=self.log,
           verbose=False)
@@ -246,18 +261,19 @@ class run2(object):
       from mmtbx.monomer_library.correct_hydrogen_geometries import \
         correct_hydrogen_geometries
       bad_hydrogen_count, corrected_hydrogen_count = \
-          correct_hydrogen_geometries(
-            self.pdb_hierarchy,
-            restraints_manager = self.restraints_manager,
-            sites_cart         = self.sites_cart,
-            )
+        correct_hydrogen_geometries(
+          self.pdb_hierarchy,
+          restraints_manager = self.restraints_manager,
+          sites_cart         = self.pdb_hierarchy.atoms().extract_xyz())
       if len(corrected_hydrogen_count):
-        print >> log, "  Number of hydrogens corrected : %d" % len(corrected_hydrogen_count)
+        print >> log, "  Number of hydrogens corrected : %d" % \
+          len(corrected_hydrogen_count)
       if bad_hydrogen_count:
         print >> log, "  Number of uncorrected         : %d" % (
           bad_hydrogen_count-len(corrected_hydrogen_count))
 
   def show(self):
     es = self.restraints_manager.geometry.energies_sites(
-      sites_cart = self.sites_cart, compute_gradients = False)
+      sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
+      compute_gradients = False)
     es.show(prefix="    ", f=self.log)

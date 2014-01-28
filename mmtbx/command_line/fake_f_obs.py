@@ -117,13 +117,11 @@ def switch_rotamers(xray_structure, pdb_hierarchy):
   x = xray_structure.deep_copy_scatterers()
   p = pdb_hierarchy.deep_copy()
   p.atoms().reset_i_seq()
-  xray_structure = mmtbx.utils.max_distant_rotomer(
-      xray_structure = x,
-      pdb_hierarchy  = p,
-      selection      = flex.bool(x.scatterers().size(), True),
-      min_dist_flag  = True)
-  p.atoms().set_xyz(xray_structure.sites_cart())
-  return xray_structure, p
+  p = mmtbx.utils.switch_rotamers(
+    pdb_hierarchy = p,
+    mode = "min_distant")
+  x.set_sites_cart(sites_cart = p.atoms().extract_xyz())
+  return x, p
 
 def set_ladp(xray_structure, pdb_hierarchy, angle):
   axes_and_atoms_i_seqs = ladp.get_axes_and_atoms_i_seqs(
