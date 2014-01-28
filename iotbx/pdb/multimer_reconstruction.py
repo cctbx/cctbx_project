@@ -87,7 +87,7 @@ class multimer(object):
         unique_chain_names = {x.id for x in model.chains()}
         nChains = len(model.chains())
         # get a dictionary for new chains naming
-        new_chains_names = self._chains_names(self.number_of_transforms,\
+        new_chains_names = self._chains_names(i_transforms,\
           nChains,unique_chain_names)
         for chain in model.chains():
           # iterating over the TRASFORM transforms that are not present
@@ -100,7 +100,7 @@ class multimer(object):
             # add a new chain to current model
             model.append_chain(new_chain)
 
-  def _chains_names(self, TRASFORM_transform_numbers,nChains, unique_chain_names):
+  def _chains_names(self, i_transforms,nChains, unique_chain_names):
     ''' (int, int, set) -> dictionary
 
     Create a dictionary
@@ -125,13 +125,12 @@ class multimer(object):
     {'A1': 'aa', 'A3': 'ac', 'A2': 'ab', 'B1': 'ba', 'B2': 'bb', 'B3': 'bc'}
     '''
     # create list of character from which to assemble the list of names
-    total_chains_number = TRASFORM_transform_numbers*len(unique_chain_names)
+    total_chains_number = len(i_transforms)*len(unique_chain_names)
     chr_number = int(math.sqrt(total_chains_number)) + 1        # the number of charater needed to produce new names
     chr_list = list(string.ascii_letters) + list(string.digits) # build character list
     chr_list = chr_list[:chr_number]                            # take only as many characters as needed
     dictionary_values = set([ x+y for x in chr_list for y in chr_list])
-    dictinary_key = set([x+str(y) for x in unique_chain_names for y in range(1,
-      TRASFORM_transform_numbers+1)])
+    dictinary_key = set([x+str(y) for x in unique_chain_names for y in i_transforms])
     # create the dictionary
     new_names_dictionary ={x:y for (x,y) in zip(dictinary_key,dictionary_values)}
     return new_names_dictionary
