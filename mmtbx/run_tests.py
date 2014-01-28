@@ -142,6 +142,7 @@ tst_list = (
   "$D/refinement/tst_group.py",
   "$D/regression/tst_phenix_angle.py",
   "$D/secondary_structure/build/tst.py",
+  "$D/utils/tst_switch_rotamers.py",
   )
 
 def run():
