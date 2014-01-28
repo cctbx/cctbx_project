@@ -546,7 +546,7 @@ TER
 """%mtrix_recs
   pi = iotbx.pdb.input(source_info=None, lines=pdb_str)
   r = pi.process_mtrix_records()
-  for l1,l2 in zip(r.format_pdb_string().splitlines(), mtrix_recs.splitlines()):
+  for l1,l2 in zip(r.format_MTRIX_pdb_string().splitlines(), mtrix_recs.splitlines()):
     assert l1.strip()==l2.strip()
 
 def exercise_BIOMT():
