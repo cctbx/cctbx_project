@@ -208,7 +208,7 @@ def prepare_inputs (prefix="tst_build_alt_confs") :
     "add_sigmas=True",
     "r_free_flags_fraction=0.1",
     "random_seed=12345",
-    "output.file_name=tst_build_alt_confs.mtz",
+    "output.file_name=%s.mtz" % prefix,
   ]
   fmodel.run(args=args, log=null_out())
   pdb_file = file_reader.any_file(pdb_in)

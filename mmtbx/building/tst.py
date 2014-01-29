@@ -79,7 +79,7 @@ def exercise_map_utils () :
     xray_structure=fmodel.xray_structure)
   fc_map = fmodel.map_coefficients(map_type="Fc").fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
-  assert (map_stats.number_of_atoms_in_difference_holes() == 3)
+  assert (map_stats.number_of_atoms_below_fofc_map_level() == 3)
   assert (map_stats.fraction_of_nearby_grid_points_above_cutoff() > 0.0)
   stats = building.get_model_map_stats(
     selection=sele_all,

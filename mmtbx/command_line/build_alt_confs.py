@@ -18,6 +18,8 @@ output {
     .type = path
   verbose = False
     .type = bool
+  debug = False
+    .type = bool
 }
 include scope mmtbx.building.disorder.single_residue.master_phil_str
 """)
@@ -49,6 +51,7 @@ def run (args, out=None) :
     selection=params.selection,
     nproc=params.nproc,
     verbose=params.output.verbose,
+    debug=params.output.debug,
     out=log)
   # TODO real-space refinement of multi-conformer model
   f = open(params.output.file_name, "w")
