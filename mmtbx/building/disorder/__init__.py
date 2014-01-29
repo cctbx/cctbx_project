@@ -458,7 +458,7 @@ def filter_before_build (
           atom_selection=i_seqs_no_hd,
           xray_structure=fmodel.xray_structure,
           radius=params.sampling_radius)
-        if ((map_stats.number_of_atoms_in_difference_holes() == 0) and
+        if ((map_stats.number_of_atoms_below_fofc_map_level() == 0) and
             (map_stats.fraction_of_nearby_grid_points_above_cutoff()==0)) :
           if (verbose) :
             print >> log, "  no difference density for %s" % id_str

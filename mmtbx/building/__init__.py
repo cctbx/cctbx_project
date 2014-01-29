@@ -145,18 +145,24 @@ class local_density_quality (object) :
   def __init__ (self,
       fofc_map,
       two_fofc_map,
-      atom_selection,
-      xray_structure,
+      sites_cart=None,
+      unit_cell=None,
+      atom_selection=None,
+      xray_structure=None,
       radius=2.5) :
     from cctbx import maptbx
     from scitbx.array_family import flex
     assert ((len(fofc_map) == len(two_fofc_map)) and
             (fofc_map.focus() == two_fofc_map.focus()))
     self.atom_selection = atom_selection # assumes no HD already
-    assert (len(self.atom_selection) > 0)
-    self.sites_cart = xray_structure.sites_cart().select(self.atom_selection)
+    self.sites_cart = sites_cart
+    self.unit_cell = unit_cell
+    if (atom_selection is not None) :
+      assert (xray_structure is not None) and (len(self.atom_selection) > 0)
+      self.sites_cart = xray_structure.sites_cart().select(self.atom_selection)
+      self.unit_cell = xray_structure.unit_cell()
     self.map_sel = maptbx.grid_indices_around_sites(
-      unit_cell=xray_structure.unit_cell(),
+      unit_cell=self.unit_cell,
       fft_n_real=fofc_map.focus(),
       fft_m_real=fofc_map.all(),
       sites_cart=self.sites_cart,
@@ -164,17 +170,58 @@ class local_density_quality (object) :
     assert (len(self.map_sel) > 0)
     self.fofc_map_sel = fofc_map.select(self.map_sel)
     self.two_fofc_map_sel = two_fofc_map.select(self.map_sel)
-    self.difference_map_levels = flex.double()
+    self.fofc_map_levels = flex.double()
+    self.two_fofc_map_levels = flex.double()
     for site_cart in self.sites_cart :
-      site_frac = xray_structure.unit_cell().fractionalize(site_cart=site_cart)
+      site_frac = self.unit_cell.fractionalize(site_cart=site_cart)
       fofc_map_value = fofc_map.tricubic_interpolation(site_frac)
-      self.difference_map_levels.append(fofc_map_value)
+      two_fofc_map_value = two_fofc_map.tricubic_interpolation(site_frac)
+      self.fofc_map_levels.append(fofc_map_value)
+      self.two_fofc_map_levels.append(two_fofc_map_value)
 
-  def number_of_atoms_in_difference_holes (self, sigma_cutoff=-2.5) :
-    return (self.difference_map_levels <= sigma_cutoff).count(True)
+  def number_of_atoms_below_fofc_map_level (self, sigma_cutoff=-2.5) :
+    return (self.fofc_map_levels <= sigma_cutoff).count(True)
+
+  def number_of_atoms_below_two_fofc_map_level (self, sigma_cutoff=-2.5) :
+    return (self.two_fofc_map_levels <= sigma_cutoff).count(True)
+
+  def number_of_atoms_outside_density (self, fofc_cutoff=3.0,
+      two_fofc_cutoff=1.0) :
+    sel_outside_fofc = (self.fofc_map_levels <= fofc_cutoff)
+    sel_outside_two_fofc = (self.two_fofc_map_levels < two_fofc_cutoff)
+    return (sel_outside_fofc & sel_outside_two_fofc).count(True)
 
   def fraction_of_nearby_grid_points_above_cutoff (self, sigma_cutoff=2.5) :
     return (self.fofc_map_sel >= sigma_cutoff).count(True) / len(self.fofc_map_sel)
+
+def count_atoms_outside_density (
+    atom_group,
+    unit_cell,
+    two_fofc_map,
+    fofc_map,
+    two_fofc_min=1.0,
+    fofc_min=3.0,
+    require_difference_map_peaks=False) :
+  from scitbx.array_family import flex
+  sites_cart = flex.vec3_double()
+  for atom in atom_group.atoms() :
+    if (not atom.element.strip() in ["H","D"]) :
+      sites_cart.append(atom.xyz)
+  if (len(sites_cart) == 0) :
+    raise RuntimeError("No non-hydrogen atoms in %s" % atom_group.id_str())
+  density = local_density_quality(
+    fofc_map=fofc_map,
+    two_fofc_map=two_fofc_map,
+    sites_cart=sites_cart,
+    unit_cell=unit_cell)
+  if (require_difference_map_peaks) :
+    n_atoms_outside_density = density.number_of_atoms_below_fofc_map_level(
+      sigma_cutoff=fofc_min)
+  else :
+    n_atoms_outside_density = density.number_of_atoms_outside_density(
+      fofc_cutoff=fofc_min,
+      two_fofc_cutoff=two_fofc_min)
+  return n_atoms_outside_density
 
 def get_difference_maps (fmodel, resolution_factor=0.25) :
   fofc_coeffs = fmodel.map_coefficients(map_type="mFo-DFc",
@@ -303,9 +350,9 @@ class box_build_refine_base (object) :
     self.target_map_rsr_box = self.box.map_box_2
     if (self.target_map_rsr_box is None) :
       self.target_map_rsr_box = self.target_map_box
-    new_unit_cell = self.box.xray_structure_box.unit_cell()
+    self.unit_cell_box = self.box.xray_structure_box.unit_cell()
     self.geo_box = grm.geometry.select(self.box.selection_within
-      ).discard_symmetry(new_unit_cell=new_unit_cell)
+      ).discard_symmetry(new_unit_cell=self.unit_cell_box)
     self.reference_manager_box = \
       self.geo_box.generic_restraints_manager.reference_manager
     self.box_restraints_manager = mmtbx.restraints.manager(
@@ -349,6 +396,13 @@ class box_build_refine_base (object) :
       else :
         assert (parent == residue)
     return residue
+
+  def update_sites_from_pdb_atoms (self) :
+    """
+    Update the xray_structure coordinates after manipulating the PDB hierarchy.
+    """
+    box_atoms = self.box.pdb_hierarchy_box.atoms()
+    self.box.xray_structure_box.set_sites_cart(box_atoms.extract_xyz())
 
   def mean_density_at_sites (self, selection=None) :
     """

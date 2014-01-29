@@ -52,7 +52,8 @@ class rebuild_residue (object) :
       window_size=2,
       backbone_sample_angle=10,
       anneal=False,
-      annealing_temperature=1000) :
+      annealing_temperature=1000,
+      use_chi1_sampling=False) :
     import iotbx.pdb.hierarchy
     from scitbx.array_family import flex
     assert (atom_group is not None)
@@ -159,13 +160,79 @@ class rebuild_residue (object) :
       out=null_out(),
       debug=True)
     # place sidechain using mmtbx.refinement.real_space.fit_residue
-    box.fit_residue_in_box(backbone_sample_angle=backbone_sample_angle)
+    if ((atom_group.resname in rotatable_sidechain_atoms) and
+        (use_chi1_sampling)) :
+      fit_chi1_simple(
+        residue=box.only_residue(),
+        unit_cell=box.unit_cell_box,
+        target_map=box.target_map_box,
+        rotamer_eval=self.rotamer_eval)
+      box.update_sites_from_pdb_atoms()
+    else :
+      box.fit_residue_in_box(backbone_sample_angle=backbone_sample_angle)
     if (anneal) :
       box.anneal(start_temperature=annealing_temperature)
     #box.real_space_refine()
     sites_new = box.update_original_coordinates()
     pdb_hierarchy.atoms().set_xyz(sites_new)
     return building.atom_group_as_hierarchy(new_atom_group)
+
+rotatable_sidechain_atoms = {
+  "SER" : ["OG"],
+  "CYS" : ["SG"],
+}
+
+def fit_chi1_simple (
+    residue,
+    unit_cell,
+    target_map,
+    rotamer_eval,
+    sampling_angle=5) :
+  """
+  For residues with only a single sidechain chi angle, we can instead sample
+  the density at sidechain atoms directly instead of using the more opaque
+  RSR infrastructure.  (Basically this is just the Ringer method applied to
+  the Fo-Fc map.)  This is somewhat of a hack but should be more sensitive.
+  """
+  from scitbx.matrix import rotate_point_around_axis
+  residue_atoms = residue.atoms()
+  sites_start = residue_atoms.extract_xyz().deep_copy()
+  sc_atoms = []
+  c_alpha = c_beta = None
+  assert (residue.resname in rotatable_sidechain_atoms)
+  for atom in residue.atoms() :
+    name = atom.name.strip()
+    if (name in rotatable_sidechain_atoms[residue.resname]) :
+      sc_atoms.append(atom)
+    elif (name == "CA") :
+      c_alpha = atom
+    elif (name == "CB") :
+      c_beta = atom
+  if (len(sc_atoms) == 0) or (None in [c_alpha, c_beta]) :
+    return False
+  angle = 0
+  map_level_best = 3.0 * len(sc_atoms)
+  sites_best = sites_start
+  while (angle < 360) :
+    map_level_sum = 0
+    for atom in sc_atoms :
+      atom.xyz = rotate_point_around_axis(
+        axis_point_1=c_alpha.xyz,
+        axis_point_2=c_beta.xyz,
+        point=atom.xyz,
+        angle=sampling_angle,
+        deg=True)
+      site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
+      map_level_sum += target_map.eight_point_interpolation(site_frac)
+    rotamer = rotamer_eval.evaluate_residue(residue)
+    #print angle, map_level_sum, rotamer
+    if (map_level_sum > map_level_best) and (rotamer != "OUTLIER") :
+      #print "setting sites_best"
+      sites_best = residue_atoms.extract_xyz().deep_copy()
+      map_level_best = map_level_sum
+    angle += sampling_angle
+  #print "RMSD:", sites_best.rms_difference(sites_start)
+  residue_atoms.set_xyz(sites_best)
 
 build_params_str = """
   expected_occupancy = None
@@ -178,6 +245,8 @@ build_params_str = """
     .type = bool
   annealing_temperature = 1000
     .type = int
+  simple_chi1_sampling = False
+    .type = bool
   rmsd_min = 0.5
     .type = float
   rescore = True
@@ -248,13 +317,14 @@ class residue_trial (slots_getstate_setstate) :
     if (self.sc_fofc_mean is not None) :
       if (self.sc_fofc_mean < params.fofc_min_sc_mean) :
         reject = True
-      elif (self.sc_two_fofc_mean < params.two_fofc_min_sc_mean) :
+      elif ((self.sc_two_fofc_mean < params.two_fofc_min_sc_mean) and
+            (self.sc_fofc_mean < 4.0)) :
         reject = True
     flag = ""
     if (reject) :
       flag = " !!!"
     print >> log, prefix+\
-      "occupancy=%.2f rotamer=%s 2Fo-Fc(mc)=%s  Fo-Fc(sc)=%s%s" % \
+      "occupancy=%.2f rotamer=%s 2Fo-Fc(sc)=%s  Fo-Fc(sc)=%s%s" % \
       (self.occupancy, self.rotamer,
        format_value("%5f", self.sc_two_fofc_mean),
        format_value("%5f", self.sc_fofc_mean),
@@ -269,6 +339,7 @@ def find_alternate_residue (residue,
     restraints_manager,
     params,
     verbose=False,
+    debug=False,
     log=None) :
   if (log is None) :
     log = null_out()
@@ -292,13 +363,19 @@ def find_alternate_residue (residue,
   sites_start_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
   from mmtbx.rotamer import rotamer_eval
   rotamer_manager = rotamer_eval.RotamerEval()
+  id_str = residue.id_str()
   for occupancy in occupancies :
     t_start = time.time()
+    prefix = "%s_%.2f" % (id_str.replace(" ", "_"), occupancy)
+    map_file_name = None
+    if (debug) :
+      map_file_name = prefix + ".mtz"
     two_fofc_map, fofc_map = disorder.get_partial_omit_map(
       fmodel=fmodel.deep_copy(),
       selection=selection,
       selection_delete=None,#nearby_water_selection,
       negate_surrounding=True,
+      map_file_name=map_file_name,
       partial_occupancy=1.0 - occupancy)
     rebuild = rebuild_residue(
       target_map=fofc_map,
@@ -312,6 +389,7 @@ def find_alternate_residue (residue,
       backbone_sample_angle=params.backbone_sample_angle,
       anneal=params.anneal,
       annealing_temperature=params.annealing_temperature,
+      use_chi1_sampling=params.simple_chi1_sampling,
       log=log)
     trial = residue_trial(
       residue=residue,
@@ -322,6 +400,8 @@ def find_alternate_residue (residue,
       two_fofc_map=two_fofc_map,
       fofc_map=fofc_map)
     trials.append(trial)
+    if (debug) :
+      open("%s.pdb" % prefix, "w").write(trial.new_hierarchy)
     t_end = time.time()
   sites_end_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
   assert sites_start_1d.all_eq(sites_end_1d)
@@ -342,6 +422,7 @@ class find_all_alternates (object) :
       params,
       nproc=Auto,
       verbose=False,
+      debug=False,
       log=sys.stdout) :
     adopt_init_args(self, locals())
     nproc = easy_mp.get_processes(nproc)
@@ -366,6 +447,7 @@ class find_all_alternates (object) :
       restraints_manager=self.restraints_manager,
       params=self.params,
       verbose=self.verbose,
+      debug=self.debug,
       log=log)
 
 def pick_best_alternate (
@@ -438,6 +520,13 @@ def process_results (
       skip = True
     print >> log, "    selected conformer (occ=%.2f):" % best_trial.occupancy
     if (params.rescore) : # FIXME this is very crude...
+      n_atoms_outside_density = building.count_atoms_outside_density(
+        atom_group=new_conf,
+        unit_cell=unit_cell,
+        two_fofc_map=two_fofc_map,
+        fofc_map=fofc_map)
+      if (n_atoms_outside_density > 0) :
+        skip = True
       fofc_max = 0
       for atom in new_conf.atoms() :
         name = atom.name.strip()
@@ -504,8 +593,14 @@ class rsr_fragments_parallel (disorder.rsr_fragments_base) :
     if (self.rsr_fofc_map_target) :
       target_map = fofc_map
     box = self.make_box(selection=frag_selection, target_map=target_map)
-    box.restrain_atoms(disorder.SELECTION_OLD, 0.02)
-    box.restrain_atoms(disorder.SELECTION_NEW_REBUILT, 0.05)
+    box.restrain_atoms(
+      selection=disorder.SELECTION_OLD,
+      reference_sigma=0.02,
+      reset_first=True)
+    box.restrain_atoms(
+      selection=disorder.SELECTION_NEW_REBUILT,
+      reference_sigma=0.05,
+      reset_first=False)
     # first fix the geometry of adjacent residues
     box.real_space_refine(disorder.SELECTION_NEW_SPLIT)
     # now the entire B conformer
@@ -654,6 +749,7 @@ def build_cycle (pdb_hierarchy,
     nproc=Auto,
     out=sys.stdout,
     verbose=False,
+    debug=False,
     i_cycle=0) :
   from mmtbx import restraints
   from scitbx.array_family import flex
@@ -702,6 +798,7 @@ def build_cycle (pdb_hierarchy,
     params=params.residue_fitting,
     nproc=params.nproc,
     verbose=verbose,
+    debug=debug,
     log=out).results
   t2 = time.time()
   print >> out, "building: %.3fs" % (t2-t1)
