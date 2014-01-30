@@ -18,20 +18,21 @@ struct no_export
 template< typename VertexDescriptor >
 struct vertex_descriptor_converter
 {
+  typedef VertexDescriptor argument_type;
   typedef VertexDescriptor type;
   typedef type result_type;
 
-  static type forward(VertexDescriptor vd)
+  static result_type forward(argument_type vd)
   {
     return vd;
   }
 
-  static VertexDescriptor backward(type vd)
+  static argument_type backward(result_type vd)
   {
     return vd;
   }
 
-  inline type operator ()(VertexDescriptor const& vd) const
+  inline result_type operator ()(argument_type const& vd) const
   {
     return vd;
   }
@@ -40,22 +41,36 @@ struct vertex_descriptor_converter
 template<>
 struct vertex_descriptor_converter< void* >
 {
+  typedef void* argument_type;
   typedef size_t type;
   typedef type result_type;
 
-  static type forward(void* vd)
+  static result_type forward(argument_type vd)
   {
-    return reinterpret_cast< type >( vd );
+    return reinterpret_cast< result_type >( vd );
   }
 
-  static void* backward(type vd)
+  static argument_type backward(result_type vd)
   {
     return reinterpret_cast< void* >( vd );
   }
 
-  inline type operator ()(void* vd) const
+  inline result_type operator ()(argument_type vd) const
   {
     return forward( vd );
+  }
+};
+
+template< typename VertexDescriptor >
+struct vertex_descriptor_backconverter
+{
+  typedef vertex_descriptor_converter< VertexDescriptor > converter;
+  typedef typename converter::result_type argument_type;
+  typedef typename converter::argument_type result_type;
+
+  inline result_type operator ()(argument_type vd) const
+  {
+    return converter::backward( vd );
   }
 };
 
