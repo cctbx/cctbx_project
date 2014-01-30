@@ -22,6 +22,57 @@ from libtbx import easy_mp
 import time
 import sys
 
+build_params_str = """
+  expected_occupancy = None
+    .type = float(value_min=0.1,value_max=0.9)
+  omit_waters = False
+    .type = bool
+  window_size = 2
+    .type = int
+  backbone_sample_angle = 10
+    .type = int
+  anneal = False
+    .type = bool
+  annealing_temperature = 1000
+    .type = int
+  simple_chi1_sampling = False
+    .type = bool
+  rmsd_min = 0.5
+    .type = float
+  rescore = True
+    .type = bool
+  map_thresholds {
+    two_fofc_min_sc_mean = 0.8
+      .type = float
+    two_fofc_min_mc = 1.0
+      .type = float
+    fofc_min_sc_mean = 2.5
+      .type = float
+    starting_fofc_min_sc_single = 3.0
+      .type = float
+  }
+"""
+
+master_phil_str = """
+residue_fitting {
+  %s
+  #delete_hydrogens = False
+  #  .type = bool
+}
+prefilter {
+  include scope mmtbx.building.disorder.filter_params_str
+}
+cleanup {
+  rsr_after_build = True
+    .type = bool
+  rsr_fofc_map_target = True
+    .type = bool
+  rsr_max_cycles = 3
+    .type = int
+  include scope mmtbx.building.disorder.finalize_phil_str
+}
+""" % build_params_str
+
 class rebuild_residue (object) :
   """
   Callable wrapper class for rebuilding a single residue at a time.  This is
@@ -234,35 +285,6 @@ def fit_chi1_simple (
   #print "RMSD:", sites_best.rms_difference(sites_start)
   residue_atoms.set_xyz(sites_best)
 
-build_params_str = """
-  expected_occupancy = None
-    .type = float(value_min=0.1,value_max=0.9)
-  window_size = 2
-    .type = int
-  backbone_sample_angle = 10
-    .type = int
-  anneal = False
-    .type = bool
-  annealing_temperature = 1000
-    .type = int
-  simple_chi1_sampling = False
-    .type = bool
-  rmsd_min = 0.5
-    .type = float
-  rescore = True
-    .type = bool
-  map_thresholds {
-    two_fofc_min_sc_mean = 0.8
-      .type = float
-    two_fofc_min_mc = 1.0
-      .type = float
-    fofc_min_sc_mean = 2.5
-      .type = float
-    starting_fofc_min_sc_single = 3.0
-      .type = float
-  }
-"""
-
 class residue_trial (slots_getstate_setstate) :
   __slots__ = [ "new_hierarchy", "sc_n_atoms", "sc_two_fofc_mean",
                 "sc_fofc_mean", "two_fofc_values", "fofc_values",
@@ -370,10 +392,16 @@ def find_alternate_residue (residue,
     map_file_name = None
     if (debug) :
       map_file_name = prefix + ".mtz"
+    delete_selection = None
+    if (params.omit_waters) :
+      delete_selection = building.get_nearby_water_selection(
+        pdb_hierarchy=pdb_hierarchy,
+        xray_structure=fmodel.xray_structure,
+        selection=selection)
     two_fofc_map, fofc_map = disorder.get_partial_omit_map(
       fmodel=fmodel.deep_copy(),
       selection=selection,
-      selection_delete=None,#nearby_water_selection,
+      selection_delete=delete_selection,
       negate_surrounding=True,
       map_file_name=map_file_name,
       partial_occupancy=1.0 - occupancy)
@@ -512,7 +540,7 @@ def process_results (
     if (best_trial is None) :
       continue
     new_conf = best_trial.as_atom_group()
-    changed_rotamer = (best_trial.rotamer == main_rotamer)
+    changed_rotamer = (best_trial.rotamer != main_rotamer)
     skip = False
     flag = ""
     stats = best_trial.stats
@@ -719,26 +747,6 @@ def real_space_refine (
   #fmodel.info().show_targets(out=out, text="After real-space refinement")
   t2 = time.time()
   return pdb_hierarchy
-
-master_phil_str = """
-residue_fitting {
-  %s
-  #delete_hydrogens = False
-  #  .type = bool
-}
-prefilter {
-  include scope mmtbx.building.disorder.filter_params_str
-}
-cleanup {
-  rsr_after_build = True
-    .type = bool
-  rsr_fofc_map_target = True
-    .type = bool
-  rsr_max_cycles = 3
-    .type = int
-  include scope mmtbx.building.disorder.finalize_phil_str
-}
-""" % build_params_str
 
 def build_cycle (pdb_hierarchy,
     fmodel,

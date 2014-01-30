@@ -102,7 +102,7 @@ def exercise_rejoin () :
     params=params,
     model_error_ml=0.5,
     log=null_out())
-  assert (n_modified == 1) # Gln5
+  assert (n_modified == 3), n_modified # Gln5
   # split residue 6 without changing coordinates, set occupancy very low
   chain = hierarchy.only_model().chains()[0]
   rg6 = chain.residue_groups()[5]
@@ -115,22 +115,19 @@ def exercise_rejoin () :
   ag.altloc = 'B'
   rg6.append_atom_group(ag)
   n_modified = disorder.rejoin_split_single_conformers(
-    pdb_hierarchy=hierarchy,
+    pdb_hierarchy=hierarchy.deep_copy(),
     params=params,
     model_error_ml=0.5,
     log=null_out())
-  #print n_modified
-  assert (n_modified == 1)
+  assert (n_modified == 1), n_modified
   # now with higher B-factors for all atoms
   for atom in hierarchy.atoms() :
     atom.b = atom.b * 10
   n_modified = disorder.rejoin_split_single_conformers(
     pdb_hierarchy=hierarchy,
     params=params,
-    model_error_ml=0.5,
     log=null_out())
-  #print n_modified
-  assert (n_modified == 2)
+  assert (n_modified == 1), n_modified
   # TODO more needed...
 
 if (__name__ == "__main__") :
