@@ -57,8 +57,11 @@ class FAB_elbow_angle(object):
     133
     >>>fab = FAB_elbow_angle(pdb_file_name='1bbd')
     >>> print fab.FAB_elbow_angle
-    126
-    (127 in Stanfield, et al., JMB 2006)
+    126 (127 in Stanfield, et al., JMB 2006)
+    >>> print fab.var_L
+    'VL from  N   ASP L   1  to  O   GLY L 107 '
+    >>> print fab.var_L_nAtoms
+    826
 
     @author Youval Dar (LBL 2014)
     '''
