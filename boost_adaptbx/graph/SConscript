@@ -23,3 +23,7 @@ if not env_etc.no_boost_python:
     target="#lib/boost_adaptbx_graph_graph_structure_comparison_ext",
     source="graph_structure_comparison_ext.cpp",
     )
+  env.SharedLibrary(
+    target="#lib/boost_adaptbx_graph_maximum_clique_ext",
+    source="maximum_clique_ext.cpp",
+    )
