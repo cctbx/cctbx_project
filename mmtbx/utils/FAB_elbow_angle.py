@@ -1,5 +1,4 @@
 from __future__ import division
-from phenix.command_line import superpose_pdbs
 from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
 from libtbx.utils import null_out
@@ -204,6 +203,7 @@ class FAB_elbow_angle(object):
     return eigenvector
 
   def get_transformation(self,pdb_hierarchy_fixed,pdb_hierarchy_moving):
+    from phenix.command_line import superpose_pdbs
     '''
     Create a superpose_pdbs manager object, by alinning the fix and moving chains,
     being compared, and calculating transoformation needed to align the moving hierarchy

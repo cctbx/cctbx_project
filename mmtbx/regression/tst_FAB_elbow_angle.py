@@ -1,5 +1,6 @@
 from __future__ import division
 from mmtbx.utils.FAB_elbow_angle import FAB_elbow_angle
+import libtbx.load_env
 from libtbx.utils import null_out
 from iotbx.pdb import fetch
 from math import cos
@@ -109,6 +110,9 @@ class TestFabElbowAngle(unittest.TestCase):
 
 
 if __name__ == "__main__":
-  #unittest.main(verbosity=2)  # provides a command-line interface to the test script
-  unittest.main()
+  if (not libtbx.env.has_module("phenix")) :
+    print "phenix tree missing, skipping test"
+  else :
+    #unittest.main(verbosity=2)  # provides a command-line interface to the test script
+    unittest.main()
 
