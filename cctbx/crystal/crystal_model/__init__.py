@@ -57,6 +57,15 @@ class crystal_model(object):
     # initial orientation matrix
     self._U = A * self._B.inverse()
 
+    # set up attributes for scan-varying model
+    self.reset_scan_points()
+
+    return
+
+  @property
+  def num_scan_points(self):
+    return self._num_scan_points
+
   def __str__(self):
     uc = self.get_unit_cell().parameters()
     sg = str(self.get_space_group().info())
@@ -100,6 +109,9 @@ class crystal_model(object):
     assert(U.is_r3_rotation_matrix())
     self._U = U
 
+    # reset scan-varying data, if the static U has changed
+    self.reset_scan_points()
+
   def get_U(self):
     return self._U
 
@@ -112,6 +124,38 @@ class crystal_model(object):
     co = crystal_orientation(B,True)
     self._uc = co.unit_cell()
     self._B = matrix.sqr(self._uc.fractionalization_matrix()).transpose()
+
+    # reset scan-varying data, if the static B has changed
+    self.reset_scan_points()
+
+  def set_A_at_scan_points(self, A_list):
+    '''Set the setting matrix A at a series of checkpoints within a rotation
+    scan. There would typically be n+1 points, where n is the number of images
+    in the scan. The first point is the state at the beginning of the rotation
+    scan. The final point is the state at the end of the rotation scan.
+    Intervening points give the state at the start of the rotation at the 2nd
+    to the nth image.
+
+    This data is held separately from the 'static' U and B because per-image
+    setting matrices may be refined whilst restraining to a previously
+    determined best-fit static UB. The values will be reset if any changes are
+    made to the static U and B matrices.
+    '''
+
+    self._num_scan_points = len(A_list)
+    self._A_at_scan_points = A_list
+
+  def get_A_at_scan_point(self, t):
+    '''Return the setting matrix with index t. This would typically have been
+    set with reference to a particular scan, such that it equals the UB matrix
+    appropriate at the start of the rotation for the image with array index t
+    '''
+
+    return self._A_at_scan_points[t]
+
+  def reset_scan_points(self):
+    self._num_scan_points = 0
+    self._A_at_scan_points = None
 
   def get_unit_cell(self):
     return self._uc
