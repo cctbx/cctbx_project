@@ -63,7 +63,7 @@ class FAB_elbow_angle(object):
 
     @author Youval Dar (LBL 2014)
     '''
-    # abolute path and test that file exist
+    # get abolute path and test that file exist
     pdb_file_name = self.get_pdb_file_name_and_path(pdb_file_name)
     # Devide to variable and constant part, and get the hirarchy for
     # H : heavy,  L : light
@@ -79,17 +79,17 @@ class FAB_elbow_angle(object):
     os.chdir(tempdir)
     fetch.get_pdb ('1bbd',data_type='pdb',mirror='rcsb',log=null_out())
     # align constant heavy of tested protein with a reference protein 1ddb
-    self.select_ref_var_str_H,self.select_ref_const_str_H  = self.select_str(chain_ID='H',limit=113)
+    self.select_ref_var_str_H,self.select_ref_const_str_H  = self.select_str(chain_ID='H',limit=117)
     self.pdb_ref_hierarchy = pdb.hierarchy.input(file_name='1bbd.pdb').hierarchy
     # clean temp folder
     os.chdir(currnet_dir)
     shutil.rmtree(tempdir)
     # devide both tested and referece protein to Heavy, Light, Variable and Constant parts
     # build self.pdb_var_H , self.pdb_const_H , self.pdb_var_L , self.pdb_const_L
-    # and self.pdb_ref_var_H , self.pdb_ref_const_H
+    # and self.pdb_ref_var_H , self.pdb_ref_const_H , self.test_var_H, test_const_H
     self.get_pdb_chains()
 
-    # Get transformations
+    # Get transformations and translation
     tranformation_const= self.get_transformation(
       fixed_selection=self.pdb_const_H,
       moving_selection=self.pdb_const_L)
@@ -98,24 +98,23 @@ class FAB_elbow_angle(object):
       fixed_selection=self.pdb_var_H,
       moving_selection=self.pdb_var_L)
 
-    ref_tranformation_const = self.get_transformation(
+    tranformation_ref_const = self.get_transformation(
       fixed_selection=self.pdb_ref_const_H,
-      moving_selection=self.pdb_const_H)
+      moving_selection=self.test_const_H)
 
     # Apply reference transform to self.pdb_var_H
-    test_var_H = self.pdb_var_H.deep_copy()
-    new_sites = ref_tranformation_const.r.elems*test_var_H.atoms().extract_xyz() + ref_tranformation_const.t
-    test_var_H.atoms().set_xyz(new_sites)
+    new_sites = tranformation_ref_const.r.elems*self.test_var_H.atoms().extract_xyz() + tranformation_ref_const.t
+    self.test_var_H.atoms().set_xyz(new_sites)
 
     # get the rotation of the new chain
-    ref_tranformation_var = self.get_transformation(
+    tranformation_ref_var = self.get_transformation(
       fixed_selection=self.pdb_ref_var_H,
-      moving_selection=test_var_H)
+      moving_selection=self.test_var_H)
 
     # Get the angle and eigenvalues
     eigen_const = eigensystem.real_symmetric(tranformation_const.r.as_sym_mat3())
     eigen_var = eigensystem.real_symmetric(tranformation_var.r.as_sym_mat3())
-    eigen_ref = eigensystem.real_symmetric(ref_tranformation_var.r.as_sym_mat3())
+    eigen_ref = eigensystem.real_symmetric(tranformation_ref_var.r.as_sym_mat3())
     #
     eigen_vectors_const = self.get_eigenvector(eigen_const)
     eigen_vectors_var = self.get_eigenvector(eigen_var)
@@ -174,6 +173,8 @@ class FAB_elbow_angle(object):
     self.pdb_const_L = ph.select(ph.atom_selection_cache().selection(self.select_const_str_L))
     self.pdb_ref_var_H = phr.select(phr.atom_selection_cache().selection(self.select_ref_var_str_H))
     self.pdb_ref_const_H = phr.select(phr.atom_selection_cache().selection(self.select_ref_const_str_H))
+    self.test_var_H = ph.select(ph.atom_selection_cache().selection(self.select_var_str_H))
+    self.test_const_H = ph.select(ph.atom_selection_cache().selection(self.select_const_str_H))
 
 
   def get_transformation(self,fixed_selection,moving_selection):
@@ -209,7 +210,6 @@ class FAB_elbow_angle(object):
     select_var_str = 'chain {0} and resseq {1}:{2} and {3}'.format(chain_ID,1,limit,ss)
     select_const_str = 'chain {0} and resseq {1}:end and {2}'.format(chain_ID,limit+1,ss)
     return select_var_str,select_const_str
-
 
   def get_pdb_file_name_and_path(self,file_name):
     tmp = os.path.basename(file_name)
