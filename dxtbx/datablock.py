@@ -346,38 +346,17 @@ class DataBlockFactory(object):
     if unhandled is None:
       unhandled = []
     unhandled1 = []
-    unhandled2 = []
-    unhandled3 = []
 
     # First try as image files
     datablocks = DataBlockFactory.from_filenames(args, verbose, unhandled1)
 
-    # Now try as JSON files
-    if len(unhandled1) > 0:
-      for filename in unhandled1:
-        try:
-          datablocks.extend(DataBlockFactory.from_json_file(filename))
-          if verbose: print 'Loaded datablock(s) from %s' % filename
-        except Exception:
-          unhandled2.append(filename)
-
-    # Now try as pickle files
-    if len(unhandled2) > 0:
-      for filename in unhandled2:
-        try:
-          datablocks.extend(DataBlockFactory.from_pickle_file(filename))
-          if verbose: print 'Loaded datablock(s) from %s' % filename
-        except Exception:
-          unhandled3.append(filename)
-
-    # Now try as imageset json files
-    if len(unhandled3) > 0:
-      for filename in unhandled3:
-        try:
-          datablocks.append(DataBlockFactory.from_imageset_json_file(filename))
-          if verbose: print 'Loaded datablock from %s' % filename
-        except Exception:
-          unhandled.append(filename)
+    # Try each file as a serialized format
+    for filename in unhandled1:
+      try:
+        datablocks.extend(DataBlockFactory.from_serialized_format(filename))
+        if verbose: print 'Loaded datablocks(s) from %s' % filename
+      except Exception:
+        unhandled.append(filename)
 
     # Return the data blocks
     return datablocks
@@ -501,7 +480,7 @@ class DataBlockFactory(object):
   @staticmethod
   def from_json_file(filename):
     ''' Decode a datablock from a JSON file. '''
-    from os.path import dirname
+    from os.path import dirname, abspath
     from dxtbx.serialize.filename import temp_chdir
     filename = abspath(filename)
     with temp_chdir(dirname(filename)):
@@ -605,6 +584,25 @@ class DataBlockFactory(object):
       return DataBlockFactory.from_sweep(imageset)
     else:
       return DataBlockFactory.from_imageset(imageset)
+
+  @staticmethod
+  def from_serialized_format(filename):
+    ''' Load a datablock from serialized formats. '''
+
+    # First try as JSON format
+    try:
+      return DataBlockFactory.from_json_file(filename)
+    except Exception, e:
+      pass
+
+    # Now try as pickle format
+    try:
+      return DataBlockFactory.from_pickle_file(filename)
+    except Exception:
+      pass
+
+    # Now try as imageset json files
+    return DataBlockFactory.from_imageset_json_file(filename)
 
 
 class DataBlockDumper(object):
