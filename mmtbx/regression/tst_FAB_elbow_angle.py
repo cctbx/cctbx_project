@@ -113,7 +113,6 @@ if __name__ == "__main__":
   if (not libtbx.env.has_module("phenix")) :
     print "phenix tree missing, skipping test"
   else :
-    pass
     #unittest.main(verbosity=2)  # provides a command-line interface to the test script
-    #unittest.main()
+    unittest.main()
 
