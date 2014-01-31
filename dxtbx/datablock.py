@@ -138,6 +138,14 @@ class DataBlock(object):
     # Return the list of sweeps
     return sweeps
 
+  def extract_imagesets(self):
+    ''' Extract all imagesets. '''
+    imagesets = self.extract_sweeps()
+    stills = self.extract_stills()
+    if stills:
+      imagesets.append(stills)
+    return imagesets
+
   def append(self, filename):
     ''' Add another image to the block. The image must use the same
     format class, otherwise an exception will be raised. '''
