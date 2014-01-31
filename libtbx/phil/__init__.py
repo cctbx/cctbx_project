@@ -2018,6 +2018,8 @@ def process_include_scope(
     source_scope = parse(
       input_string=source_scope,
       converter_registry=converter_registry)
+  elif hasattr(source_scope, "__call__") :
+    source_scope = source_scope()
   elif (source_scope is None or not isinstance(source_scope, scope)):
     raise RuntimeError(
       'include scope: python object "%s" in module "%s" is not a'
