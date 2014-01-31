@@ -3,7 +3,7 @@ from dxtbx.format.Format import Format
 from dxtbx.format.FormatHDF5 import FormatHDF5
 
 class FormatHDF5Nexus(FormatHDF5):
-  
+
   @staticmethod
   def understand(image_file):
     try:
@@ -18,7 +18,7 @@ class FormatHDF5Nexus(FormatHDF5):
     FormatHDF5.__init__(self, image_file)
 
   def _start(self):
-    import h5py 
+    import h5py
     self._h5_handle = h5py.File(self.get_image_file())
 
   def _goniometer(self):
@@ -27,7 +27,7 @@ class FormatHDF5Nexus(FormatHDF5):
     sample = entry['sample']
     pose = sample['pose']
     axis = pose['CBF_axis_omega'].attrs['vector']
-    return self._goniometer_factory.known_axis(axis) 
+    return self._goniometer_factory.known_axis(axis)
 
   def _detector(self):
     from scitbx import matrix
@@ -39,7 +39,7 @@ class FormatHDF5Nexus(FormatHDF5):
     pose = detector['pose']
     translation = pose['translation']
     rotation = pose['rotation']
-   
+
     # Get the translation
     offset = translation.attrs['offset']
     trans = translation[0]
@@ -58,7 +58,7 @@ class FormatHDF5Nexus(FormatHDF5):
     m_rot = vector.axis_and_angle_as_r3_rotation_matrix(angle, deg=True)
 
     # Transform detector frame
-    fast = (m_rot * fast).normalize() 
+    fast = (m_rot * fast).normalize()
     slow = (m_rot * slow).normalize()
     orig = m_rot * orig
 
@@ -66,7 +66,7 @@ class FormatHDF5Nexus(FormatHDF5):
     pixel_size = detector['x_pixel_size'].value, detector['y_pixel_size'].value
     image_size = len(detector['x_pixel_offset']), len(detector['y_pixel_offset'])
     trusted_range = (0, detector['saturation_value'][0])
-   
+
     # Make the detector
     return self._detector_factory.make_detector(
       "", fast, slow, orig,
@@ -74,7 +74,7 @@ class FormatHDF5Nexus(FormatHDF5):
 
 
   def _beam(self):
-    ''' Nexus defines beam along z axis. '''    
+    ''' Nexus defines beam along z axis. '''
     entry = self._h5_handle['entry']
     sample = entry['sample']
     beam = sample['beam']
@@ -93,7 +93,7 @@ class FormatHDF5Nexus(FormatHDF5):
     instrument = entry['instrument']
     detector = instrument['detector']
     exposure_times = detector['count_time']
-    
+
     # Create the epochs
     frame_time = detector['frame_time']
     start_time = entry['start_time']
@@ -103,13 +103,13 @@ class FormatHDF5Nexus(FormatHDF5):
     epochs = {0 : start_time}
     for i, t in enumerate(frame_time[:-1]):
       epochs[i] = epochs[i-1] + f
-    
-    # Create the scan  
+
+    # Create the scan
     return self._scan_factory.make_scan(
-      image_range, 
-      list(exposure_times), 
-      oscillation, 
-      list(epochs), 
+      image_range,
+      list(exposure_times),
+      oscillation,
+      list(epochs),
       deg=True)
 
   def get_num_images(self):
@@ -137,4 +137,3 @@ class FormatHDF5Nexus(FormatHDF5):
 
   def get_image_file(self, index=None):
     return Format.get_image_file(self)
-

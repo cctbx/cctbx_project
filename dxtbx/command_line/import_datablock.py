@@ -1,5 +1,15 @@
+#!/usr/bin/env python
+#
+# import.py
+#
+#  Copyright (C) 2013 Diamond Light Source
+#
+#  Author: James Parkhurst
+#
+#  This code is distributed under the BSD license, a copy of which is
+#  included in the root directory of this package.
 from __future__ import division
-from dxtbx.datablock import DataBlockFactory
+from dxtbx.datablock import DataBlockFactory, DataBlockDumper
 
 if __name__ == '__main__':
 
@@ -28,10 +38,21 @@ if __name__ == '__main__':
     action = "store_true", default = False,
     help = "For JSON output, use compact representation")
 
+  # Don't sort input filenames
+  parser.add_option(
+    "-n", "--no-sort",
+    dest = "sort",
+    action = "store_false", default = True,
+    help = "Don't sort input files (default is True)")
+
   # Parse the command line arguments
   (options, args) = parser.parse_args()
   if len(args) == 0:
     parser.print_help()
+
+  # Sort arguments
+  if options.sort:
+    args = sorted(args)
 
   # Get the data blocks from the input files
   # We've set verbose to print out files as they're tested.
@@ -82,20 +103,5 @@ if __name__ == '__main__':
   if options.output:
     print "-" * 80
     print 'Writing datablocks to %s' % options.output
-    import os
-    import json
-    import cPickle as pickle
-    ext = os.path.splitext(options.output)[1]
-    if ext == '.json':
-      dictionary = [db.to_dict() for db in datablocks]
-      if options.compact:
-        json.dump(dictionary, open(options.output, "w"),
-          separators=(',',':'), ensure_ascii=True)
-      else:
-        json.dump(dictionary, open(options.output, "w"),
-          indent=2, ensure_ascii=True)
-    elif ext == '.pickle':
-      pickle.dump(datablocks, open(options.output, "wb"),
-        protocol=pickle.HIGHEST_PROTOCOL)
-    else:
-      raise RuntimeError('expected extension .json or .pickle, got %s' % ext)
+    dump = DataBlockDumper(datablocks)
+    dump.as_file(options.output, compact=options.compact)

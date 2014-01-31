@@ -296,13 +296,13 @@ class DataBlock(object):
     # Create the data block dictionary
     result = OrderedDict()
     result['__id__'] = 'DataBlock'
-    result['imagesets'] = []
+    result['imageset'] = []
 
     # Convert the sweeps and imagesets to dictionaries
     for group, sflag in self.iter_groups():
       if sflag:
         filename, record = group[0]
-        result['imagesets'].append(OrderedDict([
+        result['imageset'].append(OrderedDict([
           ('__id__', 'ImageSweep'),
           ('template',   record.template),
           ('beam',       b.keys().index(record.beam)),
@@ -324,7 +324,7 @@ class DataBlock(object):
           if record.scan:
             image_dict['scan'] = s.keys().index(record.scan)
           image_list.append(image_dict)
-        result['imagesets'].append(OrderedDict([
+        result['imageset'].append(OrderedDict([
           ('__id__', 'ImageSet'), ('images', image_list)]))
 
     # Add the models to the dictionary
@@ -439,7 +439,7 @@ class DataBlockFactory(object):
 
     # Create the dictionary of records
     records = OrderedDict()
-    for imageset in d['imagesets']:
+    for imageset in d['imageset']:
 
       # Add a sweep
       if imageset['__id__'] == 'ImageSweep':
@@ -605,3 +605,57 @@ class DataBlockFactory(object):
       return DataBlockFactory.from_sweep(imageset)
     else:
       return DataBlockFactory.from_imageset(imageset)
+
+
+class DataBlockDumper(object):
+  ''' Class to help in dumping datablock objects. '''
+
+  def __init__(self, datablocks):
+    ''' Initialise the list of data blocks. '''
+    if isinstance(datablocks, DataBlock):
+      self._datablocks = [datablocks]
+    else:
+      self._datablocks = datablocks
+
+  def as_json(self, filename=None, compact=False):
+    ''' Dump datablock as json. '''
+    from os.path import splitext
+    import json
+    import cPickle as pickle
+    ext = splitext(filename)[1]
+    dictionary = [db.to_dict() for db in self._datablocks]
+    if compact:
+      json.dump(dictionary, open(filename, "w"),
+        separators=(',',':'), ensure_ascii=True)
+    else:
+      json.dump(dictionary, open(filename, "w"),
+        indent=2, ensure_ascii=True)
+
+  def as_pickle(self, filename=None, **kwargs):
+    ''' Dump datablock as pickle. '''
+    import cPickle as pickle
+
+    # Get the pickle string
+    text = pickle.dumps(self._datablocks,
+      protocol=pickle.HIGHEST_PROTOCOL)
+
+    # Write the file
+    if filename is not None:
+      with open(filename, 'wb') as outfile:
+        outfile.write(text)
+    else:
+      return text
+
+  def as_file(self, filename, **kwargs):
+    ''' Dump datablocks as file. '''
+    from os.path import splitext
+    ext = splitext(filename)[1]
+    j_ext = ['.json']
+    p_ext = ['.p', '.pkl', '.pickle']
+    if ext.lower() in j_ext:
+      return self.as_json(filename, **kwargs)
+    elif ext.lower() in p_ext:
+      return self.as_pickle(filename, **kwargs)
+    else:
+      ext_str = '|'.join(j_ext + p_ext)
+      raise RuntimeError('expected extension {%s}, got %s' % (ext_str, ext))
