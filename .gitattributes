@@ -444,6 +444,7 @@ dxtbx/format/FormatCBFMiniPilatusHelpers.py -text
 dxtbx/format/FormatDIP2030b.py -text
 dxtbx/format/FormatHDF5.py -text
 dxtbx/format/FormatHDF5Dectris.py -text
+dxtbx/format/FormatHDF5Nexus.py -text
 dxtbx/format/FormatMAR.py -text
 dxtbx/format/FormatMarIP.py -text
 dxtbx/format/FormatMultiImage.py -text
