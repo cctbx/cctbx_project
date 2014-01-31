@@ -16,7 +16,6 @@
 #include <stack>
 #include <algorithm>
 #include <iterator>
-//#include <iostream>
 
 namespace boost_adaptbx
 {
@@ -371,7 +370,6 @@ maximum_clique_rascal(
 
   while ( true )
   {
-    // std::cout << "Checkpoint 1" << std::endl;
     state_type& state = states.top();
 
     if (
@@ -379,7 +377,6 @@ maximum_clique_rascal(
       && ( max_clique_size <= branch_points.size() + state.upper_bound() )
       )
     {
-      // std::cout << "Checkpoint 2" << std::endl;
       typename vertex_group_type::iterator selit = state.partition().back().begin();
       vertex_descriptor selected = *selit;
       state.partition().back().erase( selit );
@@ -392,7 +389,6 @@ maximum_clique_rascal(
       states.push( state_type() );
       state_type& next = states.top();
 
-      // std::cout << "Checkpoint 3" << std::endl;
       for (
         typename state_type::const_partition_iterator pit = state.partition().begin();
         pit != state.partition().end() - 1;
@@ -414,14 +410,11 @@ maximum_clique_rascal(
         }
       }
 
-      // std::cout << "Checkpoint 4" << std::endl;
-
       if ( state.partition().back().empty() )
       {
         state.partition().pop_back();
       }
 
-      // std::cout << "Checkpoint 5" << std::endl;
       std::stable_sort(
         next.partition().begin(),
         next.partition().end(),
@@ -433,35 +426,27 @@ maximum_clique_rascal(
         max_clique_size - branch_points.size()
         );
       next.upper_bound_kwp() = upper_bound( graph, next.partition() );
-      // std::cout << "Checkpoint 6" << std::endl;
     }
 
     else
     {
-      // std::cout << "Checkpoint 7" << std::endl;
-
       if ( max_clique_size <= branch_points.size() )
       {
         callback( branch_points.begin() + 1, branch_points.end() );
       }
 
-      //std::cout << "State rollback from size " << states.size();
       do
       {
         states.pop();
         branch_points.pop_back();
-        // std::cout << " State rollback, size " << states.size() << std::endl;
       }
       while (
         !states.empty()
         && !( max_clique_size <= branch_points.size() + states.top().upper_bound() )
         );
 
-      //std::cout << " to size " << states.size() << std::endl;
-
       if ( !states.empty() )
       {
-        //std::cout << "Recalculating upper bound" << std::endl;
         state_type& top = states.top();
         top.upper_bound_kwp() =  upper_bound( graph, top.partition() );
       }
@@ -470,8 +455,6 @@ maximum_clique_rascal(
       {
         break;
       }
-
-      // std::cout << "Checkpoint 8" << std::endl;
     }
   }
 }
