@@ -2,6 +2,7 @@
 from __future__ import division
 from mmtbx import building
 from libtbx.utils import null_out
+from cStringIO import StringIO
 
 def exercise_model_utils () :
   pdb_in = get_1yjp_pdb()
@@ -21,6 +22,17 @@ def exercise_model_utils () :
     result = building.generate_sidechain_clusters(residue, mon_lib_srv)
     if (len(result) == 0) :
       assert (residue.resname in ["ALA", "GLY"])
+  # show_chain_resseq_ranges
+  resids = [ (1,''),(2,''),(2,'A'),(4,''),(5,''),(6,''),(10,'B') ]
+  import iotbx.pdb.hierarchy
+  chain = iotbx.pdb.hierarchy.chain(id='A')
+  for (resseq, icode) in resids :
+    rg = iotbx.pdb.hierarchy.residue_group(resseq="%4d" % resseq, icode=icode)
+    chain.append_residue_group(rg)
+  out = StringIO()
+  building.show_chain_resseq_ranges(chain.residue_groups(), out=out,
+    prefix="  ")
+  assert out.getvalue() == """  chain 'A': 1-2A,4-6,10B\n""", out.getvalue()
 
 def exercise_box_rebuild () :
   pdb_in = get_1yjp_pdb()

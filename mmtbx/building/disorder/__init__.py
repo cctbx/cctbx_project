@@ -237,7 +237,7 @@ def spread_alternates (
       print >> log, "  %s" % residue_group.id_str()
     new_occ = 0.5
     if (new_occupancy is not None) :
-      new_occ = new_occupancy
+      new_occ = max(0.2, min(0.8, new_occupancy))
     main_conf = residue_group.only_atom_group()
     main_conf.altloc = 'A'
     for atom in main_conf.atoms() :
@@ -292,6 +292,7 @@ def get_partial_omit_map (
   Will write the map coefficients (along with 2mFo-DFc map) to an MTZ file
   if desired.
   """
+  assert (0 <= partial_occupancy <= 1.0)
   xrs = fmodel.xray_structure
   occ = xrs.scatterers().extract_occupancies()
   occ.set_selected(selection, partial_occupancy)
@@ -466,20 +467,17 @@ def filter_before_build (
       residues.append(residue_group.only_atom_group())
   if (len(residues) == 0) :
     raise Sorry("No residues passed the filtering criteria.")
-  if (verbose) :
-    print >> log, ""
-    print >> log, "Alternate conformations will be tried for these residues:"
-    for i_res, residue in enumerate(residues) :
-      print >> log, "  %s" % residue.id_str()
-  else :
-    print >> log, ""
-    print >> log, "%d residues selected" % len(residues)
+  print >> log, ""
+  print >> log, "Alternate conformations will be tried for %d residue(s):" % \
+      len(residues)
+  building.show_chain_resseq_ranges(residues, out=log, prefix="  ")
+  print >> log, ""
   return residues
 
 rejoin_phil = libtbx.phil.parse("""
 min_occupancy = 0.1
   .type = float
-distance_over_u_iso_limit = 1.0
+min_distance_over_u_iso = 1.0
   .type = float
 """)
 
@@ -607,7 +605,7 @@ def rejoin_split_single_conformers (
         # TODO need to also check the C and N atoms specifically, because of
         # possible splitting of adjacent residues
         if ((info.max_rmsd < model_error_ml) or
-            (info.max_distance_over_u_iso < params.distance_over_u_iso_limit)) :
+            (info.max_distance_over_u_iso < params.min_distance_over_u_iso)) :
           info.show_distance_info(out=log, prefix="  ", suffix='!!!')
           delete_groups.update(set(range(1, n_confs)))
         elif (verbose) :
