@@ -19,12 +19,13 @@ from libtbx import adopt_init_args, Auto, slots_getstate_setstate
 from libtbx.str_utils import make_header, make_sub_header, format_value
 from libtbx.utils import null_out
 from libtbx import easy_mp
+from cStringIO import StringIO
 import time
 import sys
 
 build_params_str = """
   expected_occupancy = None
-    .type = float(value_min=0.1,value_max=0.9)
+    .type = float(value_min=0.0,value_max=1.0)
   omit_waters = False
     .type = bool
   window_size = 2
@@ -35,7 +36,7 @@ build_params_str = """
     .type = bool
   annealing_temperature = 1000
     .type = int
-  simple_chi1_sampling = False
+  simple_chi1_sampling = True
     .type = bool
   rmsd_min = 0.5
     .type = float
@@ -365,8 +366,6 @@ def find_alternate_residue (residue,
     log=None) :
   if (log is None) :
     log = null_out()
-  if (verbose) :
-    print >> log, "  building %s" % residue.id_str()
   t1 = time.time()
   from scitbx.array_family import flex
   selection = flex.size_t()
@@ -377,7 +376,7 @@ def find_alternate_residue (residue,
   assert (len(selection) > 0) and (not selection.all_eq(0))
   occupancies = []
   if (params.expected_occupancy is not None) :
-    assert (0.1 <= params.expected_occupancy <= 0.9)
+    assert (0.0 <= params.expected_occupancy <= 1.0)
     occupancies = [ params.expected_occupancy ]
   else :
     occupancies = [ 0.2, 0.3, 0.4, 0.5 ]
@@ -386,18 +385,17 @@ def find_alternate_residue (residue,
   from mmtbx.rotamer import rotamer_eval
   rotamer_manager = rotamer_eval.RotamerEval()
   id_str = residue.id_str()
+  delete_selection = None
+  if (params.omit_waters) :
+    delete_selection = building.get_nearby_water_selection(
+      pdb_hierarchy=pdb_hierarchy,
+      xray_structure=fmodel.xray_structure,
+      selection=selection)
   for occupancy in occupancies :
-    t_start = time.time()
     prefix = "%s_%.2f" % (id_str.replace(" ", "_"), occupancy)
     map_file_name = None
     if (debug) :
       map_file_name = prefix + ".mtz"
-    delete_selection = None
-    if (params.omit_waters) :
-      delete_selection = building.get_nearby_water_selection(
-        pdb_hierarchy=pdb_hierarchy,
-        xray_structure=fmodel.xray_structure,
-        selection=selection)
     two_fofc_map, fofc_map = disorder.get_partial_omit_map(
       fmodel=fmodel.deep_copy(),
       selection=selection,
@@ -430,12 +428,12 @@ def find_alternate_residue (residue,
     trials.append(trial)
     if (debug) :
       open("%s.pdb" % prefix, "w").write(trial.new_hierarchy)
-    t_end = time.time()
   sites_end_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
   assert sites_start_1d.all_eq(sites_end_1d)
   t2 = time.time()
-  print >> log, "%d build trials (%s): %.3fs" % (len(occupancies),
-    residue.id_str(), t2 - t1)
+  if (debug) :
+    print >> log, "  %d build trials (%s): %.3fs" % (len(occupancies),
+      residue.id_str(), t2 - t1)
   return trials
 
 class find_all_alternates (object) :
@@ -521,13 +519,12 @@ def process_results (
   two_fofc_map = fofc_map = None
   if (params.rescore) :
     two_fofc_map, fofc_map = building.get_difference_maps(fmodel)
-  print >> log, ""
-  print >> log, "Scoring and assembling disordered residues..."
   rot_eval = rotamer_eval.RotamerEval()
   for main_conf, trials in zip(residues_in, building_trials) :
     if (len(trials) == 0) :
       continue
-    print >> log, "  %s:" % main_conf.id_str()
+    res_log = StringIO()
+    print >> res_log, "  %s:" % main_conf.id_str()
     main_rotamer = alt_rotamer = None
     if (not main_conf.resname in ["GLY","PRO","ALA"]) :
       main_rotamer = rot_eval.evaluate_residue(main_conf)
@@ -536,7 +533,7 @@ def process_results (
       trials=trials,
       params=params,
       rotamer=main_rotamer,
-      log=log)
+      log=res_log)
     if (best_trial is None) :
       continue
     new_conf = best_trial.as_atom_group()
@@ -544,9 +541,14 @@ def process_results (
     skip = False
     flag = ""
     stats = best_trial.stats
-    if (stats.rmsd < params.rmsd_min) and (not changed_rotamer) :
+    # FIXME this needs to be made more consistent with the filtering criteria
+    # in disorder/__init__.py
+    if ((stats.rmsd < params.rmsd_min) and
+        (stats.max_dev < params.rmsd_min) and
+        (not changed_rotamer)) :
       skip = True
-    print >> log, "    selected conformer (occ=%.2f):" % best_trial.occupancy
+    print >> res_log, "    selected conformer (occ=%.2f):" % \
+      best_trial.occupancy
     if (params.rescore) : # FIXME this is very crude...
       n_atoms_outside_density = building.count_atoms_outside_density(
         atom_group=new_conf,
@@ -566,22 +568,26 @@ def process_results (
             fofc_max = fofc_value
       if (fofc_max < params.map_thresholds.starting_fofc_min_sc_single) :
         skip = True
-      if (not skip) : flag = " ***"
-      print >> log, "      RMSD=%5.3f  max. change=%.2f  max(Fo-Fc)=%.1f%s" \
+      if (not skip) and (verbose) :
+        flag = " ***"
+      print >> res_log, \
+        "      RMSD=%5.3f  max. change=%.2f  max(Fo-Fc)=%.1f%s" \
         % (stats.rmsd, stats.max_dev, fofc_max, flag)
     else :
       if (not skip) : flag = " ***"
-      print >> log, "      RMSD=%5.3f  max. change=%.2f%s" % \
+      print >> res_log, "      RMSD=%5.3f  max. change=%.2f%s" % \
         (stats.rmsd, stats.max_dev, flag)
     if (changed_rotamer) :
-      print >> log, "      starting rotamer=%s  new rotamer=%s" % \
+      print >> res_log, "      starting rotamer=%s  new rotamer=%s" % \
         (main_rotamer, best_trial.rotamer)
+    if (not skip) or (verbose) :
+      log.write(res_log.getvalue())
     if (skip) : continue
     residue_group = main_conf.parent()
     main_conf.altloc = 'A'
     new_occ = 0.5
     if (params.expected_occupancy is not None) :
-      new_occ = params.expected_occupancy
+      new_occ = max(0.2, min(0.8, params.expected_occupancy))
     for atom in main_conf.atoms() :
       atom.occ = 1.0 - new_occ
       atom.segid = disorder.SEGID_MAIN
@@ -592,14 +598,6 @@ def process_results (
       atom.occ = new_occ
     residue_group.append_atom_group(alt_conf)
     n_alternates += 1
-  if (n_alternates > 0) :
-    n_split = disorder.spread_alternates(pdb_hierarchy,
-      new_occupancy=params.expected_occupancy,
-      split_all_adjacent=True,
-      log=log)
-    assert (n_split > 0)
-    print >> log, "  %d additional alternates built" % n_split
-  t2 = time.time()
   return n_alternates
 
 class rsr_fragments_parallel (disorder.rsr_fragments_base) :
@@ -612,6 +610,7 @@ class rsr_fragments_parallel (disorder.rsr_fragments_base) :
     atom_end = self.pdb_atoms[fragment[-1]].fetch_labels()
     label = "%s%s-%s" % (atom_start.chain_id, atom_start.resid(),
       atom_end.resid())
+    # XXX should the partial occupancy be determined automatically?
     two_fofc_map, fofc_map = disorder.get_partial_omit_map(
       fmodel=self.fmodel.deep_copy(),
       selection=(frag_selection & self.sele_main_conf),
@@ -653,9 +652,6 @@ def real_space_refine (
     max_cycles=100, # arbitrarily large
     remediate=False) :
   from scitbx.array_family import flex
-  make_sub_header("Real-space refinement", out=out)
-  fmodel.info().show_targets(out=out, text="Rebuilt model")
-  print >> out, ""
   i_cycle = 0
   while (i_cycle < max_cycles) :
     print >> out, "  Cycle %d:" % (i_cycle+1)
@@ -738,7 +734,6 @@ def real_space_refine (
       else :
         break
     i_cycle += 1
-  print >> out, ""
   xray_structure = pdb_hierarchy.extract_xray_structure(
     crystal_symmetry=fmodel.xray_structure)
   fmodel.update_xray_structure(xray_structure,
@@ -783,6 +778,7 @@ def build_cycle (pdb_hierarchy,
     sele_cache = pdb_hierarchy.atom_selection_cache()
     selection = sele_cache.selection(selection)
   make_header("Build cycle %d" % (i_cycle+1), out=out)
+  fmodel.info().show_rfactors_targets_scales_overall(out=out)
   candidate_residues = disorder.filter_before_build(
     pdb_hierarchy=pdb_hierarchy,
     fmodel=fmodel,
@@ -797,7 +793,6 @@ def build_cycle (pdb_hierarchy,
     geometry=geometry_restraints_manager,
     normalization=True)
   make_sub_header("Finding alternate conformations", out=out)
-  fmodel.info().show_rfactors_targets_scales_overall(out=out)
   building_trials = find_all_alternates(
     residues=candidate_residues,
     pdb_hierarchy=pdb_hierarchy,
@@ -809,7 +804,8 @@ def build_cycle (pdb_hierarchy,
     debug=debug,
     log=out).results
   t2 = time.time()
-  print >> out, "building: %.3fs" % (t2-t1)
+  print >> out, "  building: %.3fs" % (t2-t1)
+  make_sub_header("Scoring and assembling alternates", out=out)
   n_alternates = process_results(
     pdb_hierarchy=pdb_hierarchy,
     fmodel=fmodel,
@@ -818,13 +814,27 @@ def build_cycle (pdb_hierarchy,
     params=params.residue_fitting,
     verbose=verbose,
     log=out)
-  t3 = time.time()
-  print >> out, "post-processing: %.3fs" % (t3-t2)
-  if (n_alternates == 0) :
-    print >> out, "No alternates built this round."
-  elif (not params.cleanup.rsr_after_build) :
-    print >> out, "Skipping final RSR step."
+  if (n_alternates > 0) :
+    print >> out, ""
+    print >> out, "  %d disordered residues built" % n_alternates
+    n_split = disorder.spread_alternates(pdb_hierarchy,
+      new_occupancy=params.residue_fitting.expected_occupancy,
+      split_all_adjacent=True,
+      log=out)
+    assert (n_split > 0)
+    print >> out, "  %d adjacent residues split" % n_split
   else :
+    print >> out, "No alternates built this round."
+  t3 = time.time()
+  print >> out, "  assembly: %.3fs" % (t3-t2)
+  if (not params.cleanup.rsr_after_build) :
+    if (n_alternates > 0) :
+      print >> out, "Skipping final RSR step (rsr_after_build=False)."
+    else :
+      print >> out, "No refinement needs to be performed."
+  else :
+    make_sub_header("Real-space refinement", out=out)
+    print >> out, ""
     pdb_hierarchy = real_space_refine(
       pdb_hierarchy=pdb_hierarchy,
       fmodel=fmodel,
@@ -834,7 +844,9 @@ def build_cycle (pdb_hierarchy,
       remediate=True,
       out=out)
     t4 = time.time()
+    print >> out, ""
     print >> out, "RSR: %.3fs" % (t4-t3)
+  fmodel.info().show_targets(out=out, text="Rebuilt model")
   t_end = time.time()
   disorder.finalize_model(
     pdb_hierarchy=pdb_hierarchy,
@@ -844,5 +856,5 @@ def build_cycle (pdb_hierarchy,
     convert_to_isotropic=params.cleanup.convert_to_isotropic,
     selection="altloc A or altloc B")
   t_end = time.time()
-  print >> out, "Total runtime: %.3fs" % (t_end-t_start)
+  print >> out, "Total runtime for cycle: %.3fs" % (t_end-t_start)
   return pdb_hierarchy, n_alternates

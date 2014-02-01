@@ -5,6 +5,39 @@ import sys
 
 #-----------------------------------------------------------------------
 # MODEL UTILITIES
+def show_chain_resseq_ranges (residues, out=sys.stdout, prefix="") :
+  """
+  Given a list of residues (either residue_group or atom_group objects),
+  print a summary of the chains and residue ranges present.
+  """
+  ranges = {}
+  prev_chain = prev_resseq = None
+  for i_res, residue in enumerate(residues) :
+    rg = residue
+    if (type(residue).__name__ == 'atom_group') :
+      rg = residue.parent()
+    chain = rg.parent()
+    if (not chain.id in ranges) :
+      ranges[chain.id] = []
+      prev_resseq = None
+    resseq = rg.resseq_as_int()
+    if (prev_resseq is None) or (resseq > prev_resseq + 1) :
+      ranges[chain.id].append([ (resseq, rg.icode), ])
+    else :
+      ranges[chain.id][-1].append( (resseq, rg.icode) )
+    prev_resseq = resseq
+  def format_resid (resseq, icode) :
+    return ("%s%s" % (resseq, icode)).strip()
+  for chain_id in sorted(ranges.keys()) :
+    clauses = []
+    for range in ranges[chain_id] :
+      if (len(range) >= 2) :
+        clauses.append("%s-%s" % (format_resid(*(range[0])),
+          format_resid(*(range[-1]))))
+      else :
+        clauses.append(format_resid(*(range[0])))
+    print >> out, prefix+"chain '%s': %s" % (chain_id, ",".join(clauses))
+
 def reprocess_pdb (pdb_hierarchy, crystal_symmetry, cif_objects, out) :
   from mmtbx.monomer_library import pdb_interpretation
   from mmtbx.monomer_library import server
@@ -105,6 +138,11 @@ def get_window_around_residue (residue, window_size=2) :
   return sel_residues
 
 def atom_group_as_hierarchy (atom_group) :
+  """
+  Convert an iotbx.pdb.hierarchy.atom_group object to a separate hierarchy
+  (leaving the original hierarchy untouched), which allows us to use the
+  pickling capabilities of iotbx.pdb.hierarchy.root.
+  """
   import iotbx.pdb.hierarchy
   old_rg = atom_group.parent()
   assert (old_rg is not None)
