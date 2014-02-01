@@ -759,9 +759,18 @@ get_scaling_results_mark2(const shared_double& x,
      * scaled, observed intensities and refined dittos.  Note that
      * neither L.summed_weight nor L.summed_wt_I are written in this
      * loop.
+     *
+     * Leave ESTIMATE_REFINED_UNCERTAINTY undefined to propagate the
+     * shot noise in quadrature to the merged sig(I).  The
+     * alternative, i.e. estimating the refined uncertainity, is
+     * currently broken.
+     *
+     * XXX Must ensure w_tot > 0 in order to preserve logic in the
+     * looped branch below.
      */
+//#define ESTIMATE_REFINED_UNCERTAINTY 1
     const double t = I - x[n_frames + h];
-#if 0
+#ifdef ESTIMATE_REFINED_UNCERTAINTY
     wssq_dev[h] += w_this * t * t;
     w_tot[h] += w_this;
 #else
@@ -775,7 +784,11 @@ get_scaling_results_mark2(const shared_double& x,
    */
   for (std::size_t h = 0; h < n_hkl; h++) {
     if (w_tot[h] > 0 && x[n_frames + h] > 0) {
+#ifdef ESTIMATE_REFINED_UNCERTAINTY
       L.summed_weight[h] = wssq_dev[h] / w_tot[h];
+#else
+      L.summed_weight[h] = wssq_dev[h];
+#endif
       L.summed_wt_I[h] =
         L.summed_weight[h] > 0 ? x[n_frames + h] * L.summed_weight[h] : 0;
 
