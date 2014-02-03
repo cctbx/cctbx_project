@@ -1814,7 +1814,6 @@ mmtbx/refinement/weights_params.py -text
 mmtbx/refinement/wx_tardy_pdb.py svneol=native#text/x-python
 mmtbx/regression/__init__.py -text
 mmtbx/regression/make_fake_anomalous_data.py -text
-mmtbx/regression/tst_FAB_elbow_angle.py -text
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_alignment.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
@@ -1829,6 +1828,7 @@ mmtbx/regression/tst_compare_ligands.py -text
 mmtbx/regression/tst_dssp.py -text
 mmtbx/regression/tst_dynamics_cli.py -text
 mmtbx/regression/tst_examples.py -text
+mmtbx/regression/tst_fab_elbow_angle.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
 mmtbx/regression/tst_fmodel_misc.py -text
 mmtbx/regression/tst_fmodel_no_cryst1.py -text
@@ -1899,10 +1899,10 @@ mmtbx/torsion_restraints/torsion_ncs.py svneol=native#text/x-python
 mmtbx/torsion_restraints/tst_reference_model.py svneol=native#text/x-python
 mmtbx/torsion_restraints/tst_torsion_ncs.py -text
 mmtbx/torsion_restraints/utils.py svneol=native#text/x-python
-mmtbx/utils/FAB_elbow_angle.py -text
 mmtbx/utils/LICENSE.txt -text
 mmtbx/utils/SConscript -text
 mmtbx/utils/__init__.py -text
+mmtbx/utils/fab_elbow_angle.py -text
 mmtbx/utils/rotatable_bonds.py -text
 mmtbx/utils/tst_switch_rotamers.py -text
 mmtbx/utils/utils.h -text
