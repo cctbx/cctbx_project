@@ -200,9 +200,12 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
     # quadrants.
     o = matrix.col((0, 0, 0))
     N = 0
+    slen = len(quadrants[quadrants.keys()[0]])
     for (q, sensors) in quadrants.iteritems():
-      o += center(sensors[1])
-      N += 1
+      assert len(sensors) == slen
+      for s, sensor in sensors.iteritems():
+        o += center(sensor)
+        N += 1
     o /= N
 
     rot_mat = matrix.col((0,0,1)).axis_and_angle_as_r3_rotation_matrix(180,deg=True)
