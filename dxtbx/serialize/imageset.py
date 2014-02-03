@@ -47,7 +47,7 @@ class NullSweep(object):
     assert count > 0
     pfx = template.split('#')[0]
     sfx = template.split('#')[-1]
-    template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)    
+    template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
     return list(SweepFileList(template_format, self.get_array_range()))
   def __getitem__(self, item):
     import dxtbx.model.scan
