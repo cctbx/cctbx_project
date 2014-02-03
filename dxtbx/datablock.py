@@ -418,7 +418,8 @@ class DataBlockFactory(object):
 
     # If we have a list, extract for each dictionary in the list
     if isinstance(d, list):
-      return [DataBlockFactory.from_dict(dd) for dd in d]
+      return [
+        DataBlockFactory.from_dict(dd, check_format=check_format) for dd in d]
     elif not isinstance(d, dict):
       raise RuntimeError('unknown datablock dictionary type')
     assert(d['__id__'] == 'DataBlock')
