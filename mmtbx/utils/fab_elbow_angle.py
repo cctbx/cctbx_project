@@ -78,9 +78,7 @@ class fab_elbow_angle(object):
     self.select_ref_var_str_H,self.select_ref_const_str_H  = \
       self.select_str(chain_ID='H',limit=117)
     # devide both tested and referece protein to Heavy, Light, Variable
-    # and Constant partsbuild self.pdb_var_H , self.pdb_const_H ,
-    # self.pdb_var_L , self.pdb_const_L and self.pdb_ref_var_H ,
-    # self.pdb_ref_const_H , self.test_var_H, test_const_H
+    # and Constant partsbuild
     self.get_pdb_chains()
     # Get transformations and translation
     tranformation_const= self.get_transformation(
