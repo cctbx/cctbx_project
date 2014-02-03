@@ -118,14 +118,22 @@ def crystal_to_dict(crystal):
   # Get the mosaicity
   mosaicity = crystal.get_mosaicity()
 
-  # Return the information as a python dictionary
-  return OrderedDict([
+  # Collect the information as a python dictionary
+  xl_dict = OrderedDict([
     ('__id__', 'crystal'),
     ('real_space_a', real_space_a),
     ('real_space_b', real_space_b),
     ('real_space_c', real_space_c),
     ('space_group_hall_symbol', hall),
     ('mosaicity', mosaicity)])
+
+  # Add in scan points if present
+  if crystal.num_scan_points > 0:
+    A_at_scan_points = tuple([crystal.get_A_at_scan_point(i).elems \
+                              for i in range(crystal.num_scan_points)])
+    xl_dict['A_at_scan_points'] = A_at_scan_points
+
+  return xl_dict
 
 
 def crystal_from_dict(d):
@@ -148,13 +156,22 @@ def crystal_from_dict(d):
   if str(d['__id__']) != "crystal":
     raise ValueError("\"__id__\" does not equal \"crystal\"")
 
-  # Try to get the crystal model from the dictionary
+  # Extract from the dictionary
   real_space_a = d['real_space_a']
   real_space_b = d['real_space_b']
   real_space_c = d['real_space_c']
   # str required to force unicode to ascii conversion
   space_group  = str("Hall:" + d['space_group_hall_symbol'])
   mosaicity    = d['mosaicity']
-  return crystal_model(real_space_a, real_space_b, real_space_c,
-                       space_group_symbol=space_group,
-                       mosaicity=mosaicity)
+  xl = crystal_model(real_space_a, real_space_b, real_space_c,
+                     space_group_symbol=space_group,
+                     mosaicity=mosaicity)
+
+  # Extract scan point setting matrices, if present
+  try:
+    A_at_scan_points = d['A_at_scan_points']
+    xl.set_A_at_scan_points(A_at_scan_points)
+  except KeyError:
+    pass
+
+  return xl
