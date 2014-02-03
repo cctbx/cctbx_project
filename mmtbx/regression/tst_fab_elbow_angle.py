@@ -1,14 +1,12 @@
 from __future__ import division
-from mmtbx.utils.FAB_elbow_angle import FAB_elbow_angle
+from mmtbx.utils.fab_elbow_angle import fab_elbow_angle
 import libtbx.load_env
 from libtbx.utils import null_out
 from iotbx.pdb import fetch
-from math import cos
 import unittest
-import cProfile
 import shutil
 import tempfile
-import sys,os
+import os
 
 '''
 Test Fragment antigen-binding (Fab) elbow angle calcuation
@@ -37,7 +35,6 @@ class TestFabElbowAngle(unittest.TestCase):
     os.chdir(self.tempdir)
     # Set delta for testing angles (degrees)
     self.delta = 10
-
     # Remove this os.chdir when test is working
     #os.chdir(r'C:\Phenix\Dev\Work\work\FAB')
 
@@ -46,12 +43,13 @@ class TestFabElbowAngle(unittest.TestCase):
     '''Compare to published value'''
     fn = '1bbd'
     pdb_fn = fetch.get_pdb (fn,data_type='pdb',mirror='rcsb',log=null_out())
-    #fab = FAB_elbow_angle(pdb_file_name=fn,limit_light=114,limit_heavy=118)
-    fab = FAB_elbow_angle(pdb_file_name=fn)
+    #fab = fab_elbow_angle(pdb_file_name=fn,limit_light=114,limit_heavy=118)
+    fab = fab_elbow_angle(pdb_file_name=fn)
 
-    calculated = fab.FAB_elbow_angle
+    calculated = fab.fab_elbow_angle
     expected = 127
-    msg = 'FAB angle for {0} is {1:3.0f} instead of {2}'.format(fn,calculated,expected)
+    msg = 'FAB angle for {0} is {1:3.0f} instead of {2}'.format(
+      fn,calculated,expected)
     self.assertAlmostEqual(calculated,expected,delta=self.delta,msg=msg)
 
   #@unittest.skip('Skip test')
@@ -59,12 +57,13 @@ class TestFabElbowAngle(unittest.TestCase):
     '''Compare to published value'''
     fn = '7fab'
     pdb_fn = fetch.get_pdb (fn,data_type='pdb',mirror='rcsb',log=null_out())
-    fab = FAB_elbow_angle(pdb_file_name=fn,limit_light=104,limit_heavy=117)
-    #fab = FAB_elbow_angle(pdb_file_name=fn)
+    fab = fab_elbow_angle(pdb_file_name=fn,limit_light=104,limit_heavy=117)
+    #fab = fab_elbow_angle(pdb_file_name=fn)
 
-    calculated = fab.FAB_elbow_angle
+    calculated = fab.fab_elbow_angle
     expected = 132
-    msg = 'FAB angle for {0} is {1:3.0f} instead of {2}'.format(fn,calculated,expected)
+    msg = 'FAB angle for {0} is {1:3.0f} instead of {2}'.format(
+      fn,calculated,expected)
     self.assertAlmostEqual(calculated,expected,delta=self.delta,msg=msg)
 
   #@unittest.skip('Skip test')
@@ -72,10 +71,11 @@ class TestFabElbowAngle(unittest.TestCase):
     '''Compare to published value'''
     fn = '1dba'
     pdb_fn = fetch.get_pdb (fn,data_type='pdb',mirror='rcsb',log=null_out())
-    fab = FAB_elbow_angle(pdb_file_name=fn)
-    calculated = fab.FAB_elbow_angle
+    fab = fab_elbow_angle(pdb_file_name=fn)
+    calculated = fab.fab_elbow_angle
     expected = 183
-    msg = 'FAB angle for {0} is {1:3.0f} instead of {2}'.format(fn,calculated,expected)
+    msg = 'FAB angle for {0} is {1:3.0f} instead of {2}'.format(
+      fn,calculated,expected)
     self.assertAlmostEqual(calculated,expected,delta=self.delta,msg=msg)
 
   #@unittest.skip('Skip test')
@@ -83,12 +83,13 @@ class TestFabElbowAngle(unittest.TestCase):
     '''Compare to published value'''
     fn = '1plg'
     pdb_fn = fetch.get_pdb (fn,data_type='pdb',mirror='rcsb',log=null_out())
-    #fab = FAB_elbow_angle(pdb_file_name=fn,limit_light=112,limit_heavy=117)
-    fab = FAB_elbow_angle(pdb_file_name=fn)
+    #fab = fab_elbow_angle(pdb_file_name=fn,limit_light=112,limit_heavy=117)
+    fab = fab_elbow_angle(pdb_file_name=fn)
 
-    calculated = fab.FAB_elbow_angle
+    calculated = fab.fab_elbow_angle
     expected = 190
-    msg = 'FAB angle for {0} is {1:3.0f} instead of {2}'.format(fn,calculated,expected)
+    msg = 'FAB angle for {0} is {1:3.0f} instead of {2}'.format(
+      fn,calculated,expected)
     self.assertAlmostEqual(calculated,expected,delta=self.delta,msg=msg)
 
   #@unittest.skip('Skip test')
@@ -96,10 +97,11 @@ class TestFabElbowAngle(unittest.TestCase):
     '''Compare to published value'''
     fn = '1nl0'
     pdb_fn = fetch.get_pdb (fn,data_type='pdb',mirror='rcsb',log=null_out())
-    fab = FAB_elbow_angle(pdb_file_name=fn)
-    calculated = fab.FAB_elbow_angle
+    fab = fab_elbow_angle(pdb_file_name=fn)
+    calculated = fab.fab_elbow_angle
     expected = 220
-    msg = 'FAB angle for {0} is {1:3.0f} instead of {2}'.format(fn,calculated,expected)
+    msg = 'FAB angle for {0} is {1:3.0f} instead of {2}'.format(
+      fn,calculated,expected)
     self.assertAlmostEqual(calculated,expected,delta=self.delta,msg=msg)
 
 
@@ -113,6 +115,6 @@ if __name__ == "__main__":
   if (not libtbx.env.has_module("phenix")) :
     print "phenix tree missing, skipping test"
   else :
-    #unittest.main(verbosity=2)  # provides a command-line interface to the test script
+    #unittest.main(verbosity=2)
     unittest.main()
 
