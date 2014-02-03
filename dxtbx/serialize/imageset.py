@@ -40,6 +40,15 @@ class NullSweep(object):
   def get_array_range(self):
     assert self.scan is not None
     return self.scan.get_array_range()
+  def paths(self):
+    from dxtbx.imageset import SweepFileList
+    template = self.get_template()
+    count = template.count('#')
+    assert count > 0
+    pfx = template.split('#')[0]
+    sfx = template.split('#')[-1]
+    template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)    
+    return list(SweepFileList(template_format, self.get_array_range()))
   def __getitem__(self, item):
     import dxtbx.model.scan
     assert isinstance(item, slice)
