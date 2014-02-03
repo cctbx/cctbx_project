@@ -88,6 +88,9 @@ class crystal_model(object):
     msg += "    A = UB:    " + amat[0] + "\n"
     msg += "               " + amat[1] + "\n"
     msg += "               " + amat[2] + "\n"
+    if self.num_scan_points > 0:
+      msg += "    A sampled at " + str(self.num_scan_points) \
+          + " scan points" + "\n"
     return msg
 
   def set_unit_cell(self, real_space_a, real_space_b, real_space_c):
@@ -142,8 +145,8 @@ class crystal_model(object):
     made to the static U and B matrices.
     '''
 
+    self._A_at_scan_points = [matrix.sqr(e) for e in A_list]
     self._num_scan_points = len(A_list)
-    self._A_at_scan_points = A_list
 
   def get_A_at_scan_point(self, t):
     '''Return the setting matrix with index t. This would typically have been
@@ -185,6 +188,12 @@ class crystal_model(object):
       d_mosaicity = abs(self._mosaicity - other._mosaicity)
       d_U = sum([abs(u1 - u2) for u1, u2 in zip(self._U, other._U)])
       d_B = sum([abs(b1 - b2) for b1, b2 in zip(self._B, other._B)])
+      if self.num_scan_points > 0:
+        if other.num_scan_points != self.num_scan_points: return False
+        for i in range(self.num_scan_points):
+          A1, A2 = self.get_A_at_scan_point(i), other.get_A_at_scan_point(i)
+          d_A = sum([abs(a1 - a2) for a1, a2 in zip(A1, A2)])
+          if d_A > eps: return False
       return (d_mosaicity <= eps and
               d_U <= eps and
               d_B <= eps and
