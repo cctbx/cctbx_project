@@ -1090,6 +1090,12 @@ class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
     assert self.atoms_size() == 1
     return self.atoms()[0]
 
+  def get_atom (self, name) :
+    for atom in self.atoms() :
+      if (atom.name.strip() == name) :
+        return atom
+    return None
+
   # FIXME suppress_segid has no effect here
   def id_str (self, suppress_segid=None) :
     chain_id = ""

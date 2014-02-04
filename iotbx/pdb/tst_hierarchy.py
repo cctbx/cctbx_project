@@ -511,6 +511,7 @@ def exercise_atom_group():
   ag.append_atom(atom=pdb.hierarchy.atom().set_name(new_name="n"))
   assert ag.atoms_size() == 2
   assert ag.atoms().size() == 2
+  assert (ag.get_atom("ca").name == "ca")
   assert [atom.name for atom in ag.atoms()] == ["ca", "n"]
   for i in xrange(3):
     ag.append_atom(pdb.hierarchy.atom())
