@@ -36,6 +36,7 @@ def to_imageset(input_filename, extra_filename=None):
 
   # Get the template
   template = handle.name_template_of_data_frames.replace('?', '#')
+  detector_name = handle.detector
 
   # Create the imageset
   imageset = ImageSetFactory.from_template(template)[0]
@@ -43,8 +44,14 @@ def to_imageset(input_filename, extra_filename=None):
   # If an extra filename has been specified, try to load models
   if extra_filename:
     models = dxtbx.load(extra_filename)
+    detector = models.get_detector()
+    if detector_name.strip() == 'PILATUS':
+      from dxtbx.model import ParallaxCorrectedPxMmStrategy
+      la = 0.252500934883
+      for panel in detector:
+        panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(la))
     imageset.set_beam(models.get_beam())
-    imageset.set_detector(models.get_detector())
+    imageset.set_detector(detector)
     imageset.set_goniometer(models.get_goniometer())
 
   # Return the imageset
