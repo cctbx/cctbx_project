@@ -1511,6 +1511,7 @@ mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
 mmtbx/command_line/altloc_remediate.py -text
 mmtbx/command_line/analyze_peptides.py -text
+mmtbx/command_line/analyze_static_disorder.py -text
 mmtbx/command_line/angle.py -text
 mmtbx/command_line/b_factor_statistics.py -text
 mmtbx/command_line/build_alt_confs.py -text
@@ -1606,6 +1607,10 @@ mmtbx/den/plot_weights.py -text
 mmtbx/den/refinement.py svneol=native#text/x-python
 mmtbx/density_modification/__init__.py -text
 mmtbx/density_modification/tst_density_modification.py -text
+mmtbx/disorder/__init__.py -text
+mmtbx/disorder/analyze_model.py -text
+mmtbx/disorder/backbone.py -text
+mmtbx/disorder/tst_backbone.py -text
 mmtbx/dynamics/constants.py svneol=native#text/x-python
 mmtbx/dynamics/ensemble_cd.py svneol=native#text/x-python
 mmtbx/dynamics/tst_sa.py -text
