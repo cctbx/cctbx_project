@@ -182,6 +182,8 @@ cctbx/miller/transform_and_change_of_basis.tex -text
 cctbx/miller/tst_map_to_asu_isym.py -text
 cctbx/miller/tst_reindexing.py svneol=native#text/x-python
 cctbx/miller/union_of_indices.h svneol=native#text/plain
+cctbx/multipolar/SConscript -text
+cctbx/multipolar/__init__.py -text
 cctbx/omz/__init__.py svneol=native#text/x-python
 cctbx/omz/bfgs.py svneol=native#text/x-python
 cctbx/omz/cif_refine.py svneol=native#text/x-python
@@ -1954,8 +1956,6 @@ mmtbx/wwpdb/tst_utils.py -text
 mmtbx/wwpdb/utils.py -text
 mmtbx/xmanip.py -text
 mmtbx/xmanip_tasks.py -text
-mptbx/SConscript -text
-mptbx/__init__.py -text
 omptbx/SConscript -text
 omptbx/__init__.py svneol=native#text/x-python
 omptbx/ext.cpp svneol=native#text/plain
