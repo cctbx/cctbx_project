@@ -177,6 +177,15 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   template <>
+  boost::python::dict to_dict< shared_ptr<PxMmStrategy> >(
+      const shared_ptr<PxMmStrategy> &obj) {
+    boost::python::dict result;
+    std::string name = obj->name();
+    result["type"] = name;
+    return result;
+  }
+
+  template <>
   boost::python::dict to_dict<Panel>(const Panel &obj) {
     boost::python::dict result;
     result["name"] = obj.get_name();
@@ -188,6 +197,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["pixel_size"] = obj.get_pixel_size();
     result["trusted_range"] = obj.get_trusted_range();
     result["mask"] = boost::python::list(obj.get_mask());
+    result["px_mm_strategy"] = to_dict(obj.get_px_mm_strategy());
     return result;
   }
 
@@ -213,6 +223,20 @@ namespace dxtbx { namespace model { namespace boost_python {
         boost::python::extract< scitbx::af::shared<int4> >(
           boost::python::extract<boost::python::list>(obj["mask"]));
       result->set_mask(mask.const_ref());
+    }
+    if (obj.has_key("px_mm_strategy")) {
+      std::string name = boost::python::extract<std::string>(
+          obj["px_mm_strategy"]["type"]);
+      if (name == "SimplePxMmStrategy") {
+        shared_ptr<PxMmStrategy> strategy(new SimplePxMmStrategy());
+        result->set_px_mm_strategy(strategy);
+      } else if (name == "ParallaxCorrectedPxMmStrategy") {
+        double la = 0.252500934883;
+        shared_ptr<PxMmStrategy> strategy(new ParallaxCorrectedPxMmStrategy(la));
+        result->set_px_mm_strategy(strategy);
+      } else {
+        DXTBX_ASSERT(false);
+      }
     }
     result->set_image_size(
       boost::python::extract< vec2<std::size_t> >(obj["image_size"]));
