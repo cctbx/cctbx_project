@@ -28,6 +28,9 @@ namespace dxtbx { namespace model {
     /** Virtual desctructor */
     virtual ~PxMmStrategy() {}
 
+    /** @returns the name */
+    virtual std::string name() const = 0;
+
     /**
      * Convert a pixel coordinate to a millimeter coordinate
      * @param panel The panel structure
@@ -56,6 +59,11 @@ namespace dxtbx { namespace model {
 
     /** Virtual desctructor */
     virtual ~SimplePxMmStrategy() {}
+
+    /** @returns the name */
+    virtual std::string name() const {
+      return "SimplePxMmStrategy";
+    }
 
     /**
      * Convert a pixel coordinate to a millimeter coordinate
@@ -93,6 +101,12 @@ namespace dxtbx { namespace model {
     /** Virtual desctructor */
     virtual ~ParallaxCorrectedPxMmStrategy() {}
 
+    /** @returns the name */
+    virtual std::string name() const {
+      return "ParallaxCorrectedPxMmStrategy";
+    }
+
+    /** @returns the attenuation length */
     double attenuation_length() const {
       return la_;
     }
