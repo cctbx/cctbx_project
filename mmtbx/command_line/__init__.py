@@ -376,6 +376,7 @@ class load_model_and_data (object) :
       self.xray_structure.show_summary(f=out)
     # FMODEL SETUP
     if (create_fmodel) and (data_and_flags is not None) :
+      make_sub_header("F(model) initialization", out=out)
       skip_twin_detection = getattr(params.input, "skip_twin_detection", None)
       twin_law = getattr(params.input, "twin_law", None)
       if (twin_law is Auto) :
@@ -410,7 +411,9 @@ class load_model_and_data (object) :
           params=None,
           log=out,
           optimize_mask=True,
+          show=True,
           update_f_part1_for=update_f_part1_for)
+      self.fmodel.info().show_rfactors_targets_scales_overall(out=out)
     # SEQUENCE
     if (params.input.sequence is not None) :
       seq_file = file_reader.any_file(params.input.sequence,

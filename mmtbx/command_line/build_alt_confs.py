@@ -21,12 +21,12 @@ output {
   debug = False
     .type = bool
 }
-include scope mmtbx.building.disorder.single_residue.master_phil_str
+include scope mmtbx.building.alternate_conformations.single_residue.master_phil_str
 """)
 
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
-  from mmtbx.building.disorder import single_residue
+  from mmtbx.building.alternate_conformations import single_residue
   import mmtbx.command_line
   cmdline = mmtbx.command_line.load_model_and_data(
     args=args,

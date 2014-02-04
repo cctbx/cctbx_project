@@ -100,7 +100,7 @@ tst_list = (
   #
   "$D/regression/tst_dssp.py",
   "$D/building/tst.py",
-  "$D/building/disorder/tst.py",
+  "$D/building/alternate_conformations/tst.py",
   "$D/regression/tst_validation_summary.py",
   "$D/regression/tst_maps_misc.py",
   "$D/regression/tst_cablam.py",
