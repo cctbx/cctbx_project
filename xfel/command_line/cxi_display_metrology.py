@@ -62,8 +62,8 @@ if (__name__ == "__main__") :
       ax.add_patch(Polygon((p0[0:2],p1[0:2],p2[0:2],p3[0:2]), closed=True, color='green', fill=False, hatch='/'))
       ax.annotate(i, vcen[0:2])
 
-      ax.set_xlim((-100, 100))
-      ax.set_ylim((-100, 100))
+    ax.set_xlim((-100, 100))
+    ax.set_ylim((-100, 100))
   else:
     active_areas = xpp_active_areas[params.metrology]['active_areas']
 

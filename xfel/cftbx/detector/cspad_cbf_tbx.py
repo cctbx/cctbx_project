@@ -290,6 +290,37 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
       metro[(0,q_id,s_id,0)] = basis(null_ori,matrix.col((-w,0,0)))
       metro[(0,q_id,s_id,1)] = basis(null_ori,matrix.col((+w,0,0)))
 
+  if plot:
+    print "Validating transofmation matrices set up correctly"
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Polygon
+    fig = plt.figure()
+    ax = fig.add_subplot(111, aspect='equal')
+
+    keys = [key for key in metro if len(key) == 4]
+
+    alen = pixel_size*asic_dimension[0]/2
+    awid = pixel_size*asic_dimension[1]/2
+
+    for key in sorted(keys):
+      asic = [matrix.col((-alen,+awid,0,1)),
+              matrix.col((+alen,+awid,0,1)),
+              matrix.col((+alen,-awid,0,1)),
+              matrix.col((-alen,-awid,0,1))]
+
+      transform = metro[key[0:1]].as_homogenous_transformation() * \
+                  metro[key[0:2]].as_homogenous_transformation() * \
+                  metro[key[0:3]].as_homogenous_transformation() * \
+                  metro[key[0:4]].as_homogenous_transformation()
+
+      asic = [(transform * point)[0:2] for point in asic]
+
+      ax.add_patch(Polygon(asic, closed=True, color='green', fill=False, hatch='/'))
+
+    ax.set_xlim((-100, 100))
+    ax.set_ylim((-100, 100))
+    plt.show()
+
   return metro
 
 def cbf_file_to_basis_dict(path):
@@ -331,8 +362,8 @@ def cbf_file_to_basis_dict(path):
         pix_size = asic.get_pixel_size()
         img_size = asic.get_image_size()
 
-        offset = matrix.col((-pix_size[1]*(img_size[1]-1)/2,
-                             +pix_size[0]*(img_size[0]-1)/2,0))
+        offset = matrix.col((-pix_size[0]*(img_size[0])/2,
+                             +pix_size[1]*(img_size[1])/2,0))
 
         metro[(d,q,s,a)] = basis(orientation=(r3*transform).r3_rotation_matrix_as_unit_quaternion(),
                                  translation=orig-offset)
@@ -664,8 +695,8 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
       dim_readout = basis.dimension
 
       # Add the two vectors for each asic that describe the fast and slow directions pixels should be laid out in real space
-      offset_fast = -dim_pixel[0]*((dim_readout[1] - 1) / 2)
-      offset_slow = +dim_pixel[1]*((dim_readout[0] - 1) / 2)
+      offset_fast = -dim_pixel[0]*((dim_readout[0]) / 2)
+      offset_slow = +dim_pixel[1]*((dim_readout[1]) / 2)
 
       aname = "D%dQ%dS%dA%d"%key
 
