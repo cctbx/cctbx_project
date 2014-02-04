@@ -1954,6 +1954,8 @@ mmtbx/wwpdb/tst_utils.py -text
 mmtbx/wwpdb/utils.py -text
 mmtbx/xmanip.py -text
 mmtbx/xmanip_tasks.py -text
+mptbx/SConscript -text
+mptbx/__init__.py -text
 omptbx/SConscript -text
 omptbx/__init__.py svneol=native#text/x-python
 omptbx/ext.cpp svneol=native#text/plain
