@@ -438,6 +438,7 @@ class DataBlockFactory(object):
       if imageset['__id__'] == 'ImageSweep':
         beam = Beam.from_dict(blist[imageset['beam']])
         if 'hierarchy' in dlist[imageset['detector']]:
+          from dxtbx.model import HierarchicalDetector
           detector = HierarchicalDetector.from_dict(dlist[imageset['detector']])
         else:
           detector = Detector.from_dict(dlist[imageset['detector']])
@@ -465,7 +466,11 @@ class DataBlockFactory(object):
           if image.get('beam', None) is not None:
             record.beam = Beam.from_dict(blist[image['beam']])
           if image.get('detector', None) is not None:
-            record.detector = Detector.from_dict(dlist[image['detector']])
+            if 'hierarchy' in dlist[image['detector']]:
+              from dxtbx.model import HierarchicalDetector
+              record.detector = HierarchicalDetector.from_dict(dlist[image['detector']])
+            else:
+              record.detector = Detector.from_dict(dlist[image['detector']])
           if image.get('goniometer', None) is not None:
             record.goniometer = Goniometer.from_dict(glist[image['goniometer']])
           if image.get('scan', None) is not None:
