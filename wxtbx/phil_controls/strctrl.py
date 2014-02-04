@@ -4,6 +4,7 @@ from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from wxtbx import phil_controls
 from libtbx.utils import Sorry
 from libtbx.phil import tokenizer
+from libtbx import Auto
 import libtbx.phil
 import wx
 import sys
@@ -21,13 +22,15 @@ class StrCtrl (ValidatedTextCtrl) :
     return StrValidator()
 
   def SetValue (self, value) :
-    if (value is None) :
+    if (value in [None, Auto]) :
       ValidatedTextCtrl.SetValue(self, "")
     else :
       if isinstance(value, str) :
         ValidatedTextCtrl.SetValue(self, value.decode("utf-8"))
       else :
-        assert isinstance(value, unicode)
+        if (not isinstance(value, unicode)) :
+          raise RuntimeError("Improper value (type: %s) for control %s" %
+            (type(value).__name__, self.GetName()))
         ValidatedTextCtrl.SetValue(self, value)
 
   def GetPhilValue (self) :
