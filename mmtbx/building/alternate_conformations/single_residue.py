@@ -13,7 +13,7 @@ search that also allows for backbone flexibility.
 
 from __future__ import division
 from mmtbx.building import extend_sidechains
-from mmtbx.building import disorder
+from mmtbx.building import alternate_conformations as alt_confs
 from mmtbx import building
 from libtbx import adopt_init_args, Auto, slots_getstate_setstate
 from libtbx.str_utils import make_header, make_sub_header, format_value
@@ -61,7 +61,7 @@ residue_fitting {
   #  .type = bool
 }
 prefilter {
-  include scope mmtbx.building.disorder.filter_params_str
+  include scope mmtbx.building.alternate_conformations.filter_params_str
 }
 cleanup {
   rsr_after_build = True
@@ -70,7 +70,7 @@ cleanup {
     .type = bool
   rsr_max_cycles = 3
     .type = int
-  include scope mmtbx.building.disorder.finalize_phil_str
+  include scope mmtbx.building.alternate_conformations.finalize_phil_str
 }
 """ % build_params_str
 
@@ -315,11 +315,11 @@ class residue_trial (slots_getstate_setstate) :
     if (self.sc_n_atoms > 0) :
       self.sc_fofc_mean = sc_fofc_sum / self.sc_n_atoms
       self.sc_two_fofc_mean = sc_two_fofc_sum / self.sc_n_atoms
-    alt_conf = self.as_atom_group()
-    self.stats = disorder.coord_stats_for_atom_groups(residue, alt_conf)
+    new_conf = self.as_atom_group()
+    self.stats = alt_confs.coord_stats_for_atom_groups(residue, new_conf)
     self.rotamer = None
     if (not residue.resname in ["GLY","ALA","PRO"]) :
-      self.rotamer = rotamer_eval.evaluate_residue(alt_conf)
+      self.rotamer = rotamer_eval.evaluate_residue(new_conf)
 
   def as_atom_group (self) :
     return self.new_hierarchy.only_model().only_chain().only_residue_group().\
@@ -341,7 +341,7 @@ class residue_trial (slots_getstate_setstate) :
       if (self.sc_fofc_mean < params.fofc_min_sc_mean) :
         reject = True
       elif ((self.sc_two_fofc_mean < params.two_fofc_min_sc_mean) and
-            (self.sc_fofc_mean < 4.0)) :
+            (self.sc_fofc_mean < params.fofc_min_sc_mean + 1)) :
         reject = True
     flag = ""
     if (reject) :
@@ -396,7 +396,7 @@ def find_alternate_residue (residue,
     map_file_name = None
     if (debug) :
       map_file_name = prefix + ".mtz"
-    two_fofc_map, fofc_map = disorder.get_partial_omit_map(
+    two_fofc_map, fofc_map = alt_confs.get_partial_omit_map(
       fmodel=fmodel.deep_copy(),
       selection=selection,
       selection_delete=delete_selection,
@@ -427,7 +427,7 @@ def find_alternate_residue (residue,
       fofc_map=fofc_map)
     trials.append(trial)
     if (debug) :
-      open("%s.pdb" % prefix, "w").write(trial.new_hierarchy)
+      open("%s.pdb" % prefix, "w").write(trial.new_hierarchy.as_pdb_string())
   sites_end_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
   assert sites_start_1d.all_eq(sites_end_1d)
   t2 = time.time()
@@ -590,17 +590,17 @@ def process_results (
       new_occ = max(0.2, min(0.8, params.expected_occupancy))
     for atom in main_conf.atoms() :
       atom.occ = 1.0 - new_occ
-      atom.segid = disorder.SEGID_MAIN
-    alt_conf = new_conf.detached_copy()
-    alt_conf.altloc = 'B'
-    for atom in alt_conf.atoms() :
-      atom.segid = disorder.SEGID_NEW_REBUILT
+      atom.segid = alt_confs.SEGID_MAIN
+    new_conf = new_conf.detached_copy()
+    new_conf.altloc = 'B'
+    for atom in new_conf.atoms() :
+      atom.segid = alt_confs.SEGID_NEW_REBUILT
       atom.occ = new_occ
-    residue_group.append_atom_group(alt_conf)
+    residue_group.append_atom_group(new_conf)
     n_alternates += 1
   return n_alternates
 
-class rsr_fragments_parallel (disorder.rsr_fragments_base) :
+class rsr_fragments_parallel (alt_confs.rsr_fragments_base) :
   def __call__ (self, fragment) :
     from scitbx.array_family import flex
     frag_selection = flex.bool(self.pdb_atoms.size(), fragment)
@@ -611,7 +611,7 @@ class rsr_fragments_parallel (disorder.rsr_fragments_base) :
     label = "%s%s-%s" % (atom_start.chain_id, atom_start.resid(),
       atom_end.resid())
     # XXX should the partial occupancy be determined automatically?
-    two_fofc_map, fofc_map = disorder.get_partial_omit_map(
+    two_fofc_map, fofc_map = alt_confs.get_partial_omit_map(
       fmodel=self.fmodel.deep_copy(),
       selection=(frag_selection & self.sele_main_conf),
       selection_delete=(frag_selection & ~(self.sele_main_conf)),
@@ -621,22 +621,22 @@ class rsr_fragments_parallel (disorder.rsr_fragments_base) :
       target_map = fofc_map
     box = self.make_box(selection=frag_selection, target_map=target_map)
     box.restrain_atoms(
-      selection=disorder.SELECTION_OLD,
+      selection=alt_confs.SELECTION_OLD,
       reference_sigma=0.02,
       reset_first=True)
     box.restrain_atoms(
-      selection=disorder.SELECTION_NEW_REBUILT,
+      selection=alt_confs.SELECTION_NEW_REBUILT,
       reference_sigma=0.05,
       reset_first=False)
     # first fix the geometry of adjacent residues
-    box.real_space_refine(disorder.SELECTION_NEW_SPLIT)
+    box.real_space_refine(alt_confs.SELECTION_NEW_SPLIT)
     # now the entire B conformer
-    box.real_space_refine(disorder.SELECTION_NEW)
+    box.real_space_refine(alt_confs.SELECTION_NEW)
     sites_cart_refined = box.update_original_coordinates()
     sites_new = sites_cart_refined.select(fragment)
     self.fmodel.xray_structure.set_sites_cart(sites_cart_orig)
     self.pdb_atoms.set_xyz(sites_cart_orig)
-    return disorder.refined_fragment(
+    return alt_confs.refined_fragment(
       label=label,
       selection=frag_selection,
       sites_cart=sites_cart_refined,
@@ -675,8 +675,8 @@ def real_space_refine (
     # FIXME very inefficient when looping!
     # this will include both the newly built residues and the original atoms,
     # including residues split to allow for backbone flexibility.
-    sele_split = sele_cache.selection(disorder.SELECTION_MODIFIED)
-    sele_main_conf = sele_cache.selection(disorder.SELECTION_OLD)
+    sele_split = sele_cache.selection(alt_confs.SELECTION_MODIFIED)
+    sele_main_conf = sele_cache.selection(alt_confs.SELECTION_OLD)
     assert (len(sele_split) > 0)
     k = 0
     fragments = []
@@ -720,14 +720,14 @@ def real_space_refine (
       break
     else :
       for atom in pdb_hierarchy.atoms() :
-        if (atom.segid == disorder.SEGID_NEW_SPLIT) :
-          atom.segid = disorder.SEGID_NEW_REBUILT
+        if (atom.segid == alt_confs.SEGID_NEW_SPLIT) :
+          atom.segid = alt_confs.SEGID_NEW_REBUILT
       print >> out, "    checking for conformational strain..."
-      n_split = disorder.spread_alternates(
+      n_split = alt_confs.spread_alternates(
         pdb_hierarchy=pdb_hierarchy,
         new_occupancy=params.residue_fitting.expected_occupancy,
         split_all_adjacent=False,
-        selection=disorder.SELECTION_NEW_REBUILT)
+        selection=alt_confs.SELECTION_NEW_REBUILT)
       if (n_split > 0) :
         print >> out, "    split another %d residue(s) - will re-run RSR" % \
           n_split
@@ -779,7 +779,7 @@ def build_cycle (pdb_hierarchy,
     selection = sele_cache.selection(selection)
   make_header("Build cycle %d" % (i_cycle+1), out=out)
   fmodel.info().show_rfactors_targets_scales_overall(out=out)
-  candidate_residues = disorder.filter_before_build(
+  candidate_residues = alt_confs.filter_before_build(
     pdb_hierarchy=pdb_hierarchy,
     fmodel=fmodel,
     geometry_restraints_manager=geometry_restraints_manager,
@@ -817,7 +817,7 @@ def build_cycle (pdb_hierarchy,
   if (n_alternates > 0) :
     print >> out, ""
     print >> out, "  %d disordered residues built" % n_alternates
-    n_split = disorder.spread_alternates(pdb_hierarchy,
+    n_split = alt_confs.spread_alternates(pdb_hierarchy,
       new_occupancy=params.residue_fitting.expected_occupancy,
       split_all_adjacent=True,
       log=out)
@@ -848,7 +848,7 @@ def build_cycle (pdb_hierarchy,
     print >> out, "RSR: %.3fs" % (t4-t3)
   fmodel.info().show_targets(out=out, text="Rebuilt model")
   t_end = time.time()
-  disorder.finalize_model(
+  alt_confs.finalize_model(
     pdb_hierarchy=pdb_hierarchy,
     xray_structure=pdb_hierarchy.extract_xray_structure(
       crystal_symmetry=fmodel.xray_structure),

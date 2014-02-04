@@ -1,6 +1,6 @@
 
 from __future__ import division
-from mmtbx.building import disorder
+from mmtbx.building import alternate_conformations
 import mmtbx.utils
 import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
@@ -58,17 +58,17 @@ ATOM   1658  HZ  PHE A 113      18.093  43.330  49.263  1.00 26.17           H
   pdb_atoms_1 = hierarchy_1.atoms()
   sites_1 = pdb_atoms_1.extract_xyz()
   sites_2 = hierarchy_2.atoms().extract_xyz()
-  result = disorder.coord_stats_with_flips(sites_1, sites_2, pdb_atoms_1)
+  result = alternate_conformations.coord_stats_with_flips(sites_1, sites_2, pdb_atoms_1)
   assert (approx_equal(result.rmsd, 0.2, eps=0.001))
   assert (approx_equal(result.max_dev, 0.452427, eps=0.00001))
   #--- get_selection_gap
-  assert (disorder.get_selection_gap([1,2,3,4,5],[6,7,8,9]) == 0)
-  assert (disorder.get_selection_gap([6,7], [1,2,3,4,5]) == 0)
-  assert (disorder.get_selection_gap([1,2,3,4,5],[7,8,9]) == 1)
-  assert (disorder.get_selection_gap([1,2,3,4,5],[4,5,7,8,9]) == -2)
-  assert (disorder.get_selection_gap([4,5,7,8,9],[1,2,3,4]) == -1)
+  assert (alternate_conformations.get_selection_gap([1,2,3,4,5],[6,7,8,9]) == 0)
+  assert (alternate_conformations.get_selection_gap([6,7], [1,2,3,4,5]) == 0)
+  assert (alternate_conformations.get_selection_gap([1,2,3,4,5],[7,8,9]) == 1)
+  assert (alternate_conformations.get_selection_gap([1,2,3,4,5],[4,5,7,8,9]) == -2)
+  assert (alternate_conformations.get_selection_gap([4,5,7,8,9],[1,2,3,4]) == -1)
   #--- score_rotamers
-  n_outliers = disorder.score_rotamers(hierarchy_2,
+  n_outliers = alternate_conformations.score_rotamers(hierarchy_2,
     flex.bool(sites_2.size(), True))
   assert (n_outliers == 0)
   #--- get_partial_omit_map
@@ -86,7 +86,7 @@ ATOM   1658  HZ  PHE A 113      18.093  43.330  49.263  1.00 26.17           H
     skip_twin_detection=True)
   sel = pdb_1.hierarchy.atom_selection_cache().selection("name CZ")
   assert (sel.count(True) == 1)
-  two_fofc_map, fofc_map = disorder.get_partial_omit_map(
+  two_fofc_map, fofc_map = alternate_conformations.get_partial_omit_map(
     fmodel=fmodel,
     selection=sel)
   site = xrs.sites_frac()[sel.iselection()[0]] # CZ coordinate
@@ -96,8 +96,8 @@ def exercise_rejoin () :
   from mmtbx.regression.tst_build_alt_confs import pdb_raw
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
   hierarchy = pdb_in.hierarchy
-  params = disorder.rejoin_phil.extract()
-  n_modified = disorder.rejoin_split_single_conformers(
+  params = alternate_conformations.rejoin_phil.extract()
+  n_modified = alternate_conformations.rejoin_split_single_conformers(
     pdb_hierarchy=hierarchy,
     params=params,
     model_error_ml=0.5,
@@ -114,7 +114,7 @@ def exercise_rejoin () :
   rg6.only_atom_group().altloc = 'A'
   ag.altloc = 'B'
   rg6.append_atom_group(ag)
-  n_modified = disorder.rejoin_split_single_conformers(
+  n_modified = alternate_conformations.rejoin_split_single_conformers(
     pdb_hierarchy=hierarchy.deep_copy(),
     params=params,
     model_error_ml=0.5,
@@ -123,7 +123,7 @@ def exercise_rejoin () :
   # now with higher B-factors for all atoms
   for atom in hierarchy.atoms() :
     atom.b = atom.b * 10
-  n_modified = disorder.rejoin_split_single_conformers(
+  n_modified = alternate_conformations.rejoin_split_single_conformers(
     pdb_hierarchy=hierarchy,
     params=params,
     log=null_out())
