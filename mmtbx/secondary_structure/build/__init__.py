@@ -214,7 +214,7 @@ def _construct_geometry_restraints_manager(
       add_torsion_restraints(
         pdb_hierarchy   = h,
         sites_cart      = h.atoms().extract_xyz(),
-        chi_angles_only = True,
+        chi_angles_only = False,
         sigma           = sigma_on_torsion_angles)
   return grm
 
