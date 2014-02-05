@@ -21,10 +21,14 @@ import numpy as np
 import os
 from cPickle import load
 
+# XXX: Relies on local installation of libsvm. Ideally, we require a libsvm
+# package (i.e. python-libsvm from apt, libsvm-python from yum)
 import sys
 sys.path.insert(0, os.path.join(os.environ["HOME"], "src", "libsvm", "python"))
+
 import svm
 import svmutil
+
 from ctypes import c_double
 
 from cctbx.eltbx import sasaki
@@ -354,11 +358,9 @@ def predict_ion(chem_env, scatter_env, elements = None):
 
   nr_class = classifier.get_nr_class()
   prob_estimates = (c_double * nr_class)()
-  label = svm.libsvm.svm_predict_probability(classifier, vector, prob_estimates)
+  svm.libsvm.svm_predict_probability(classifier, vector, prob_estimates)
   probs = prob_estimates[:nr_class]
   labels = [ALLOWED_IONS[i] for i in classifier.get_labels()]
-  print nr_class, probs, labels, classifier.get_labels()
-  print dict(zip(labels, probs))
 
   lst = zip(labels, probs)
   lst.sort(key = lambda x: -x[-1])
