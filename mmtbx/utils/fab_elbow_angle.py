@@ -4,13 +4,12 @@ from scitbx.array_family import flex
 from libtbx.utils import null_out
 from math import acos,pi
 from iotbx import pdb
-import os
-
+import iotbx.pdb
 
 class fab_elbow_angle(object):
 
   def __init__(self,
-               pdb_file_name,
+               pdb_hierarchy,
                chain_ID_light='L',
                chain_ID_heavy='H',
                limit_light=107,
@@ -21,47 +20,10 @@ class fab_elbow_angle(object):
     - Default heavy and light chains IDs are: H : heavy,  L : light
     - Default limit (cutoff) between variable and constant parts
       is residue number 107/113 for light/heavy chains
-    - Variable domain si from residue 1 to limit.
+    - Variable domain is from residue 1 to limit.
       Constant domain form limit+1 to end.
     - Method of calculating angle is based on Stanfield, et al., JMB 2006
-
-    Argument:
-    ---------
-    pdb_file_name : 4 characters string, a PDB name
-    chain_ID_heavy : The heavy protion of the protein, chain ID
-    chain_ID_light : The light protion of the protein, chain ID
-    limit_heavy : the number of the cutoff residue, between
-                  the variable and constant portions in the heavy chian
-    limit_light : the number of the cutoff residue, between
-                  the variable and constant portions in the light chian
-
-    Main attributes:
-    ----------------
-    self.fab_elbow_angle : the elbow angle calculated as the dot product of
-                           the VL-VH pseudodyade axie and the CL-CH
-                           pseudodyade axie
-
-    Test program at:
-    cctbx_project\mmtbx\regression\tst_fab_elbow_angle.py
-
-    Example:
-    --------
-    >>>fab = fab_elbow_angle(
-         pdb_file_name='1bbd',
-         chain_ID_light='L',
-         chain_ID_heavy='H',
-         limit_light=114,
-         limit_heavy=118)
-    >>> print fab.fab_elbow_angle
-    133
-    >>>fab = fab_elbow_angle(pdb_file_name='1bbd')
-    >>> print fab.fab_elbow_angle
-    126 (127 in Stanfield, et al., JMB 2006)
-
-    @author Youval Dar (LBL 2014)
     '''
-    # get abolute path and test that file exist
-    pdb_file_name = self.get_pdb_file_name_and_path(pdb_file_name)
     # Devide to variable and constant part, and get the hirarchy for
     # H : heavy,  L : light
     # start_to_limit : Constant
@@ -70,15 +32,15 @@ class fab_elbow_angle(object):
       self.select_str(chain_ID=chain_ID_heavy,limit=limit_heavy)
     self.select_var_str_L,self.select_const_str_L  = \
       self.select_str(chain_ID=chain_ID_light,limit=limit_light)
-    self.pdb_hierarchy = pdb.hierarchy.input(file_name=pdb_file_name).hierarchy
+    self.pdb_hierarchy = pdb_hierarchy
     # get reference protein, 1bbd
     pdb_ref = pdb.input(source_info=None, lines=fab_elbow_angle.ref_1bbd_pdb)
     self.pdb_ref_hierarchy = pdb_ref.construct_hierarchy()
     # align constant heavy of tested protein with a reference protein 1ddb
     self.select_ref_var_str_H,self.select_ref_const_str_H  = \
-      self.select_str(chain_ID='H',limit=117)
+      self.select_str(chain_ID=chain_ID_heavy,limit=limit_heavy)
     # devide both tested and referece protein to Heavy, Light, Variable
-    # and Constant partsbuild
+    # and Constant parts
     self.get_pdb_chains()
     # Get transformations and translation
     tranformation_const= self.get_transformation(
@@ -122,7 +84,9 @@ class fab_elbow_angle(object):
     '''retrun the larger angle between vec1 and vec2'''
     if vec1 and vec1:
       angle_cos = vec1.dot(vec2)
-      angle = 180/pi*acos(angle_cos)
+      acos_angle_cos = acos(angle_cos)
+      assert acos_angle_cos != 0
+      angle = 180/pi*acos_angle_cos
     else:
       angle = 0
     if (angle < 90) and larger: angle = 180 - angle
@@ -131,8 +95,7 @@ class fab_elbow_angle(object):
 
   def get_eigenvector(self,eigen):
     '''
-    Get the eigen vector for eigen value 1
-    and normalize it
+    Get the eigen vector for eigen value 1 and normalize it
     '''
     v = eigen.vectors()
     e = eigen.values()
@@ -175,15 +138,6 @@ class fab_elbow_angle(object):
     '''
     Align the moving pdb hierarchy on to the fixed one.
     Provides an object with rotation and translation info
-
-    Arguments:
-    ----------
-    fixed_selection, moving_selection : pdb_hierarchy
-
-    Retrun:
-    -------
-    lsq_fit_obj : least-squre-fit object that contians the
-                  transformation information
     '''
     params = superpose_pdbs.master_params.extract()
     x = superpose_pdbs.manager(
@@ -203,22 +157,7 @@ class fab_elbow_angle(object):
     scs = 'chain {0} and resseq {1}:end and {2}'.format(chain_ID,limit+1,ss)
     return svs,scs
 
-  def get_pdb_file_name_and_path(self,file_name):
-    tmp = os.path.basename(file_name)
-    tmp = tmp.split('.')
-    assert len(tmp[0])==4
-    if len(tmp)==2 and tmp[1]=='pdb':
-      fn = file_name
-    else:
-      fn = tmp[0] + '.pdb'
-    assert os.path.isfile(fn)
-    return os.path.abspath(fn)
-
   ref_1bbd_pdb = '''\
-CRYST1   59.700   86.800  128.000  90.00  90.00  90.00 P 21 21 21    4
-SCALE1      0.016750  0.000000  0.000000        0.00000
-SCALE2      0.000000  0.011521  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.007812        0.00000
 ATOM      1  N   ASP L   1      41.092  52.132 120.299  1.00 45.01           N
 ATOM      2  CA  ASP L   1      42.398  51.592 120.703  1.00 44.31           C
 ATOM      3  C   ASP L   1      42.356  50.056 120.647  1.00 43.27           C
@@ -3552,16 +3491,4 @@ ATOM   3330  CZ  ARG H 218      86.358  48.937 157.635  1.00 47.04           C
 ATOM   3331  NH1 ARG H 218      86.504  49.933 158.515  1.00 45.84           N
 ATOM   3332  NH2 ARG H 218      85.335  48.871 156.797  1.00 44.57           N
 ATOM   3333  OXT ARG H 218      92.780  46.975 158.644  1.00 55.23           O
-TER
-HETATM 3335  S   SO4 H 720      58.248  52.649 112.515  1.00 66.92           S
-HETATM 3336  O1  SO4 H 720      59.629  53.021 112.954  1.00 67.09           O
-HETATM 3337  O2  SO4 H 720      57.966  53.178 111.147  1.00 67.48           O
-HETATM 3338  O3  SO4 H 720      58.179  51.145 112.482  1.00 67.01           O
-HETATM 3339  O4  SO4 H 720      57.188  53.238 113.407  1.00 66.92           O
-HETATM 3340  O   HOH H 721      61.669  53.433 114.512  1.00 20.21           O
-HETATM 3341  O   HOH H 722      62.466  53.603 111.531  1.00 28.65           O
-HETATM 3342  O   HOH H 723      54.431  59.698 112.429  1.00 38.41           O
-HETATM 3343  O   HOH H 724      65.065  47.331 104.069  1.00 37.66           O
-HETATM 3344  O   HOH H 725      65.727  52.078 109.121  1.00 40.70           O
-TER
 '''
