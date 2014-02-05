@@ -101,10 +101,11 @@ class FormatSMVADSC(FormatSMV):
     exposure_time = float(self._header_dictionary['TIME'])
     epoch = None
 
-    # PST timezone not recognised by default...
+    # PST, PDT timezones not recognised by default...
 
     try:
-      date_str = self._header_dictionary['DATE'].replace('PST', '')
+      date_str = self._header_dictionary['DATE']
+      date_str = date_str.replace('PST', '').replace('PDT', '')
     except KeyError, e:
       date_str = ''
     for format_string in ['%a %b %d %H:%M:%S %Y', '%a %b %d %H:%M:%S %Z %Y']:
