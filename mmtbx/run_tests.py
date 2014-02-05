@@ -142,7 +142,8 @@ tst_list = (
   "$D/refinement/tst_group.py",
   "$D/regression/tst_phenix_angle.py",
   "$D/regression/tst_fab_elbow_angle.py",
-  "$D/secondary_structure/build/tst.py",
+  "$D/secondary_structure/build/tst_1.py",
+  "$D/secondary_structure/build/tst_2.py",
   "$D/utils/tst_switch_rotamers.py",
   )
 
