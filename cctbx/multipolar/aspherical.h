@@ -1,3 +1,4 @@
+
 #pragma once
 
 #include <vector>
@@ -22,3 +23,4 @@ namespace cctbx {
                      std::vector<std::complex<double> > &sf);
   }; //class Aspherical
 } //namespace cctbx
+
