@@ -43,6 +43,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.settings_frame = None
     self._calibration_frame = None
     self._ring_frame = None
+    self._score_frame = None
     self.zoom_frame = None
     self.plot_frame = None
 
@@ -73,6 +74,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
               id=wx.ID_BACKWARD)
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIRing,
               id=self._id_ring)
+    self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIScore,
+              id=self._id_score)
 
   def setup_toolbar(self) :
     XFBaseClass.setup_toolbar(self)
@@ -137,6 +140,11 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self._id_ring = wx.NewId()
     item = actions_menu.Append(self._id_ring, " ")
     self.Bind(wx.EVT_MENU, self.OnRing, source=item)
+
+    # XXX Placement
+    self._id_score = wx.NewId()
+    item = actions_menu.Append(self._id_score, " ")
+    self.Bind(wx.EVT_MENU, self.OnScore, source=item)
 
   def has_four_quadrants(self):
     d = self.pyslip.tiles.raw_image.get_detector()
@@ -352,6 +360,19 @@ class XrayFrame (AppFrame,XFBaseClass) :
       self._ring_frame.Destroy()
 
 
+  def OnScore(self, event):
+    from rstbx.slip_viewer.score_frame import ScoreSettingsFrame
+
+    if not self._score_frame:
+      self._score_frame = ScoreSettingsFrame(
+        self, wx.ID_ANY, "Score tool",
+        style=wx.CAPTION | wx.CLOSE_BOX)
+      self._score_frame.Show()
+      self._score_frame.Raise()
+    else:
+      self._score_frame.Destroy()
+
+
   def OnUpdateUICalibration(self, event):
     # If quadrant calibration is not supported for this image, disable
     # the corresponding menu item.  Toggle the menu item text
@@ -390,6 +411,15 @@ class XrayFrame (AppFrame,XFBaseClass) :
       event.SetText("Hide ring tool")
     else:
       event.SetText("Show ring tool")
+
+
+  def OnUpdateUIScore(self, event):
+    # Toggle the menu item text depending on the state of the tool.
+
+    if self._score_frame:
+      event.SetText("Hide score tool")
+    else:
+      event.SetText("Show score tool")
 
 
   def OnSaveAs (self, event) :
@@ -480,7 +510,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
         from reportlab.pdfgen import canvas
 
         # Dots per inch in PDF output, and fudge factor to not make
-        # fine features impossible small.  XXX The fudge factor should
+        # fine features impossibly small.  XXX The fudge factor should
         # go.
         DPI = 72
         LINE_WIDTH_FACTOR = 0.6
