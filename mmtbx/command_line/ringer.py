@@ -113,8 +113,8 @@ class ringer_residue (object) :
       chi = self.get_angle(i)
       if (chi is not None) :
         lines.append(prefix + "2mFo-DFc," + chi.format_csv())
-      if (chi.fofc_densities is not None) :
-        lines.append(prefix + "mFo-DFc," + chi.format_csv(fofc=True))
+        if (chi.fofc_densities is not None) :
+          lines.append(prefix + "mFo-DFc," + chi.format_csv(fofc=True))
     return "\n".join(lines)
 
   def add_angle (self, **kwds) :
@@ -303,6 +303,8 @@ class iterate_over_residues (object) :
           except AttributeError :
             pass
           else :
+            if (atoms is None) :
+              break
             i_seqs = [ atom.i_seq for atom in atoms ]
             sites_chi = [ self.sites_cart[i_seq] for i_seq in i_seqs ]
             from cctbx.geometry_restraints import dihedral
