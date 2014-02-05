@@ -91,6 +91,7 @@ def dump_sites (manager):
   # second list
   fo_map = manager.get_map("mFo")
   fofc_map = manager.get_map("mFo-DFc")
+  anom_map = manager.get_map("anom")
 
   properties = \
     [(
@@ -102,12 +103,14 @@ def dump_sites (manager):
         atom.i_seq,
         manager,
         fo_map,
-        fofc_map),
+        fofc_map,
+        anom_map),
       )
      for atom in atoms]
 
   del fo_map
   del fofc_map
+  del anom_map
 
   return properties
 

@@ -4,9 +4,6 @@ from __future__ import division
 
 import os
 
-# We must make sure to import sklearn before boost python
-import sklearn.svm # import dependency
-
 import libtbx
 from mmtbx.command_line.water_screen import master_phil
 from mmtbx import ions
@@ -60,6 +57,7 @@ def exercise():
 
   fo_map = manager.get_map("mFo")
   fofc_map = manager.get_map("mFo-DFc")
+  anom_map = manager.get_map("anom")
 
   for atom_props in manager.atoms_to_props.values():
     chem_env = ChemicalEnvironment(
@@ -68,7 +66,7 @@ def exercise():
       manager
       )
     scatter_env = ScatteringEnvironment(
-      atom_props.i_seq, manager, fo_map, fofc_map
+      atom_props.i_seq, manager, fo_map, fofc_map, anom_map
       )
     vector = ion_vector(chem_env, scatter_env)
     resname = ion_class(chem_env)
@@ -77,6 +75,7 @@ def exercise():
 
   del fo_map
   del fofc_map
+  del anom_map
 
   print "OK"
 
