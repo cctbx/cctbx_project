@@ -36,14 +36,19 @@ chem_carboxy, \
 METAL_SERVER = server()
 
 class ScatteringEnvironment (object):
-  def __init__(self, i_seq, manager, fo_map, fofc_map):
+  def __init__(self, i_seq, manager, fo_map, fofc_map, anom_map):
     atom = manager.pdb_atoms[i_seq]
     self.d_min = manager.fmodel.f_obs().d_min()
     self.wavelength = manager.wavelength
     self.fp, self.fpp = manager.get_fp(i_seq), manager.get_fpp(i_seq)
     self.fo_density = _fit_gaussian(manager, atom.xyz, fo_map)
     self.fofc_density = _fit_gaussian(manager, atom.xyz, fofc_map)
+    if anom_map is not None:
+      self.anom_density = _fit_gaussian(manager, atom.xyz, anom_map)
+    else:
+      self.anom_density = None, None
     self.b_iso = manager.get_b_iso(i_seq)
+    self.b_mean_hoh = manager.b_mean_hoh
     self.occ = atom.occ
 
 class ChemicalEnvironment (object):

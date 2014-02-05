@@ -21,6 +21,12 @@ import numpy as np
 import os
 from cPickle import load
 
+import sys
+sys.path.insert(0, os.path.join(os.environ["HOME"], "src", "libsvm", "python"))
+import svm
+import svmutil
+from ctypes import c_double
+
 from cctbx.eltbx import sasaki
 import libtbx
 from libtbx.utils import Sorry
@@ -40,12 +46,22 @@ _TRIED = None
 ALLOWED_IONS = [ions.WATER_RES_NAMES[0]] + ["MN", "ZN", "FE", "NI", "CA"]
 
 def get_classifier():
+  """
+  If need be, initializes, and then returns a classifier trained to
+  differentiate between different ions and water.
+
+  To use the classifier, pass the object returned by ion_vector() to either its
+  predict() or predict_proba() method.
+
+  Returns
+  -------
+  svm.svm_model
+  """
   global CLASSIFIER, _TRIED
   if CLASSIFIER is None and not _TRIED:
     _TRIED = True
     try:
-      with open(CLASSIFIER_PATH) as f:
-        CLASSIFIER = load(f)
+      CLASSIFIER = svmutil.svm_load_model(CLASSIFIER_PATH)
     except IOError as err:
       if err.errno != errno.ENOENT:
         raise err
@@ -70,7 +86,8 @@ def ion_class(chem_env):
     return chem_env.atom.segid.strip().upper()
   return chem_env.atom.resname.strip().upper()
 
-def ion_vector(chem_env, scatter_env):
+def ion_vector(chem_env, scatter_env, anom = True, geometry = True,
+               valence = True, b_iso = False, occ = False, diff_peak = False):
   """
   Creates a vector containing all of the useful properties contained
   within ion. Merges together the vectors from ion_*_vector().
@@ -99,11 +116,12 @@ def ion_vector(chem_env, scatter_env):
   """
   return np.concatenate((
     ion_model_vector(scatter_env),
-    ion_electron_density_vector(scatter_env),
-    ion_geometry_vector(chem_env),
+    ion_electron_density_vector(scatter_env, b_iso = b_iso, occ = occ,
+                                diff_peak = diff_peak),
+    ion_geometry_vector(chem_env) if geometry else [],
     ion_nearby_atoms_vector(chem_env),
-    ion_valence_vector(chem_env),
-    ion_anomalous_vector(scatter_env),
+    ion_valence_vector(chem_env) if valence else [],
+    ion_anomalous_vector(scatter_env) if anom else [],
     ))
 
 def ion_model_vector(scatter_env, nearest_res = 0.5):
@@ -135,7 +153,8 @@ def ion_model_vector(scatter_env, nearest_res = 0.5):
     d_min,
     ], dtype = float)
 
-def ion_electron_density_vector(scatter_env):
+def ion_electron_density_vector(scatter_env, b_iso = False, occ = False,
+                                diff_peak = False):
   """
   Creates a vector containing information about the electron density around
   the site. Currently this only includes the site's peak in the 2FoFc map. May
@@ -153,37 +172,19 @@ def ion_electron_density_vector(scatter_env):
   numpy.array of float
       A vector containing quantitative properties for classification.
   """
-  return np.array([
+  props = [
     scatter_env.fo_density[0],
     scatter_env.fo_density[1],
-    ], dtype = float)
-
-def ion_b_factor_occ_vector(scatter_env, elements = None):
-  """
-  Calculates the theoretical b-factors and occupancies for a set of ion
-  identities at a site.
-
-  Unimplemented, currently pending on other improvements to phenix's
-  refinement code.
-
-  Parameters
-  ----------
-  scatter_env : mmtbx.ions.environment.Environment
-      The object to extract features from.
-  elements : list of str, optional
-      A list of elements to compare the experimental b-factors against. If
-      unset, takes the list from mmtbx.ions.ALLOWED_IONS.
-
-  Returns
-  -------
-  numpy.array of float
-      A vector containing quantitative properties for classification.
-  """
-
-  if elements is None:
-    elements = ["ZN"]
-
-  raise NotImplementedError("b_factor_occ_vector not yet implemented")
+  ]
+  if diff_peak:
+    props.append(scatter_env.fofc_density[0])
+  if b_iso:
+    props.append(
+      scatter_env.b_iso /
+      (scatter_env.b_mean_hoh if scatter_env.b_mean_hoh != 0 else 15))
+  if occ:
+    props.append(scatter_env.occ)
+  return np.array(props, dtype = float)
 
 def ion_geometry_vector(chem_env, geometry_names = None):
   """
@@ -330,7 +331,7 @@ def predict_ion(chem_env, scatter_env, elements = None):
       site.
   elements : list of str
      A list of elements to include within the prediction. Must be a subset of
-     CLASSIFIER.classes_
+     mmtbx.ions.svm.ALLOWED_IONS
   anomalous : bool, optional
      Indicates whether to use the ion classifier trained with anomalous data.
 
@@ -339,24 +340,32 @@ def predict_ion(chem_env, scatter_env, elements = None):
   list of tuple of str, float or None
       Returns a list of classes and the probability associated with each or None
       if the trained classifier cannot be loaded.
-
-  See Also
-  --------
-  sklearn.svm
   """
   classifier = get_classifier()
 
   if classifier is None:
     return None
 
-  vector = ion_vector(chem_env, scatter_env)
-  probs = classifier.predict_proba(vector)[0]
-  lst = zip(classifier.classes_, probs)
+  # Convert our data into a format that libsvm will accept
+  vector = svm.gen_svm_nodearray(
+    list(ion_vector(chem_env, scatter_env)),
+    isKernel = classifier.param.kernel_type == svm.PRECOMPUTED,
+    )[0]
+
+  nr_class = classifier.get_nr_class()
+  prob_estimates = (c_double * nr_class)()
+  label = svm.libsvm.svm_predict_probability(classifier, vector, prob_estimates)
+  probs = prob_estimates[:nr_class]
+  labels = [ALLOWED_IONS[i] for i in classifier.get_labels()]
+  print nr_class, probs, labels, classifier.get_labels()
+  print dict(zip(labels, probs))
+
+  lst = zip(labels, probs)
   lst.sort(key = lambda x: -x[-1])
 
   if elements is not None:
     for element in elements:
-      if element not in classifier.classes_:
+      if element not in ALLOWED_IONS:
         raise Sorry("Unsupported element '{}'".format(element))
 
     # Filter out elements the caller does not care about
