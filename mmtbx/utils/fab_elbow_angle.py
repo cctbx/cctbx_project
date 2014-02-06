@@ -61,18 +61,31 @@ class fab_elbow_angle(object):
     if mid_H_to_L.dot(zaxis) <= 0:
         angle = 360 - angle
     self.fab_elbow_angle = angle
+    # The cosine of the angles the vector from limit_heavy to limit_light
+    # make with the axes x, y (eigenvectors_c), z
+    # where the eigenvectors_v lies in the plane x - y
+    self.cos_H_to_L_with_xaxis = mid_H_to_L.dot(xaxis)
+    self.cos_H_to_L_with_yaxis = mid_H_to_L.dot(eigenvectors_c)
+    self.cos_H_to_L_with_zaxis = mid_H_to_L.dot(zaxis)
 
   def norm_vec(self,start,end):
     '''retruns normalized vector that starts at "stat" and ends at "end"'''
     x = flex.double(end) - flex.double(start)
-    return x/x.norm()
+    l = x.norm()
+    if l != 0:
+      x = x/l
+    return x
 
   def cross(self,a,b):
     '''(array,array) -> array
-    returns cross product vector'''
+    returns normalized cross product vector'''
     a1,a2,a3 = a
     b1,b2,b3 = b
-    return flex.double([a2*b3-a3*b2,a3*b1-a1*b3,a1*b2-a2*b1])
+    x = flex.double([a2*b3-a3*b2,a3*b1-a1*b3,a1*b2-a2*b1])
+    l = x.norm()
+    if l != 0:
+      x = x/l
+    return x
 
   def get_angle(self,vec1,vec2,larger=True):
     '''retrun the larger angle between vec1 and vec2'''
