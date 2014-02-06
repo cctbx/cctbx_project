@@ -182,6 +182,7 @@ cctbx/miller/transform_and_change_of_basis.tex -text
 cctbx/miller/tst_map_to_asu_isym.py -text
 cctbx/miller/tst_reindexing.py svneol=native#text/x-python
 cctbx/miller/union_of_indices.h svneol=native#text/plain
+cctbx/multipolar.py -text
 cctbx/multipolar/SConscript -text
 cctbx/multipolar/aspherical.h -text
 cctbx/multipolar/aspherical_ext.cpp -text
