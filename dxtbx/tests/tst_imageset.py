@@ -838,6 +838,109 @@ class TestPickleImageset(object):
     assert(self.sweep.reader().get_path() == sweep2.reader().get_path())
     assert(self.sweep == sweep2)
 
+
+class TestNullReader(object):
+
+  def run(self):
+    self.tst_null_reader_imageset()
+    self.tst_null_reader_sweep()
+
+  def tst_null_reader_imageset(self):
+    from dxtbx.imageset import NullReader, ImageSet
+    from dxtbx.model import Beam, Detector
+
+    paths = ['hello_world.cbf']
+
+    # Create the null reader
+    reader = NullReader(paths)
+
+    # Create the imageset
+    imageset = ImageSet(reader)
+
+    # Try to get an item
+    try:
+      imageset[0]
+      assert(False)
+    except Exception:
+      print 'OK'
+
+    # Try to slice the imageset
+    imageset2 = imageset[0:1]
+    print 'OK'
+
+    # Try some functions which should work
+    assert(len(imageset) == 1)
+    assert(imageset == imageset)
+    assert(imageset.indices() == [0])
+    assert(imageset.is_valid())
+    print 'OK'
+
+    # Try to get models (expect failure)
+    try:
+      imageset.get_image_models(0)
+      assert(False)
+    except Exception:
+      print 'OK'
+
+    # Get the image paths
+    assert(imageset.paths() == paths)
+    assert(imageset.get_path(0) == paths[0])
+    print 'OK'
+
+    imageset.set_beam(Beam(), 0)
+    imageset.set_detector(Detector(), 0)
+    assert(isinstance(imageset.get_beam(0), Beam))
+    assert(isinstance(imageset.get_detector(0), Detector))
+    print 'OK'
+
+  def tst_null_reader_sweep(self):
+    from dxtbx.imageset import NullReader, ImageSweep, SweepFileList
+    from dxtbx.model import Beam, Detector, Goniometer, Scan
+
+    template = 'hello_world_%d.cbf'
+    paths = [template % 1]
+
+    # Create the null reader
+    reader = NullReader(SweepFileList(template, (0, 1)))
+
+    # Create the imageset
+    imageset = ImageSweep(reader)
+
+    # Try to get an item
+    try:
+      imageset[0]
+      assert(False)
+    except Exception:
+      print 'OK'
+
+    # Try to slice the imageset
+    imageset2 = imageset[0:1]
+    print 'OK'
+
+    # Try some functions which should work
+    assert(len(imageset) == 1)
+    assert(imageset == imageset)
+    assert(imageset.indices() == [0])
+    assert(imageset.is_valid())
+    assert(imageset.get_template() == template)
+    print 'OK'
+
+    # Get the image paths
+    assert(imageset.paths() == paths)
+    assert(imageset.get_path(0) == paths[0])
+    print 'OK'
+
+    imageset.set_beam(Beam())
+    imageset.set_detector(Detector())
+    imageset.set_goniometer(Goniometer())
+    imageset.set_scan(Scan())
+    assert(isinstance(imageset.get_beam(), Beam))
+    assert(isinstance(imageset.get_detector(), Detector))
+    assert(isinstance(imageset.get_goniometer(), Goniometer))
+    assert(isinstance(imageset.get_scan(), Scan))
+    print 'OK'
+
+
 class TestRunner(object):
 
   def __init__(self):
@@ -845,32 +948,36 @@ class TestRunner(object):
 
   def run(self):
 
-    # Test the multi file state object
-    test = TestMultiFileState()
+    ## Test the multi file state object
+    #test = TestMultiFileState()
+    #test.run()
+
+    ## Test the sweep file list
+    #test = TestSweepFileList()
+    #test.run()
+
+    ## Test the multi file reader class
+    #test = TestMultiFileReader()
+    #test.run()
+
+    # Test the null reader class
+    test = TestNullReader()
     test.run()
 
-    # Test the sweep file list
-    test = TestSweepFileList()
-    test.run()
+    ## Test the image set class
+    #test = TestImageSet()
+    #test.run()
 
-    # Test the multi file reader class
-    test = TestMultiFileReader()
-    test.run()
+    ## The the sweep class
+    #test = TestImageSweep()
+    #test.run()
 
-    # Test the image set class
-    test = TestImageSet()
-    test.run()
+    ## Test the ImageSetFactory class
+    #test = TestImageSetFactory()
+    #test.run()
 
-    # The the sweep class
-    test = TestImageSweep()
-    test.run()
-
-    # Test the ImageSetFactory class
-    test = TestImageSetFactory()
-    test.run()
-
-    test = TestPickleImageset()
-    test.run()
+    #test = TestPickleImageset()
+    #test.run()
 
 if __name__ == '__main__':
   runner = TestRunner()
