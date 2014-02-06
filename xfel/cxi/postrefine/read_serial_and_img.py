@@ -1,3 +1,4 @@
+from __future__ import division
 #read and extract serial no. (of the pickle file) and the image name.
 
 import sys
