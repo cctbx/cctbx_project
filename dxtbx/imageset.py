@@ -56,6 +56,62 @@ class ReaderBase(object):
   def get_scan(self, index=None):
     pass
 
+
+class NullReader(ReaderBase):
+  ''' A placeholder reader. '''
+
+  def __init__(self, filenames):
+    ReaderBase.__init__(self)
+    self._filenames = filenames
+
+  def __cmp__(self, other):
+    ''' Compare with another reader. '''
+    return isinstance(other, NullReader)
+
+  def get_image_paths(self, indices=None):
+    ''' Get the image paths. '''
+    if indices == None:
+      return list(self._filenames)
+    return self._filenames(indices)
+
+  def get_format(self, index=None):
+    ''' Get the format. '''
+    return None
+
+  def get_format_class(self, index=None):
+    ''' Get the format class. '''
+    return None
+
+  def get_path(self, index=None):
+    ''' Get an image path. '''
+    if index == None:
+      return self._path[0]
+    return self._filenames[index]
+
+  def is_valid(self, indices=None):
+    ''' Return whether the reader is valid. '''
+    return True
+
+  def read(self, index):
+    raise RuntimeError('NullReader doesn\'t have image data')
+
+  def get_detector(self, index=None):
+    '''Get the detector instance.'''
+    raise RuntimeError('NullReader doesn\'t have detector data')
+
+  def get_beam(self, index=None):
+    '''Get the beam instance.'''
+    raise RuntimeError('NullReader doesn\'t have beam data')
+
+  def get_goniometer(self, index=None):
+    '''Get the goniometer instance.'''
+    raise RuntimeError('NullReader doesn\'t have goniometer data')
+
+  def get_scan(self, index=None):
+    '''Get the scan instance.'''
+    raise RuntimeError('NullReader doesn\'t have scan data')
+
+
 class SingleFileReader(ReaderBase):
   '''The single file reader class.'''
 
