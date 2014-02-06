@@ -102,7 +102,7 @@ class FormatHDF5Nexus(FormatHDF5):
     start_time = time.mktime(time_struct) + float('0.%s' % time_ssec[1])
     epochs = {0 : start_time}
     for i, t in enumerate(frame_time[:-1]):
-      epochs[i] = epochs[i-1] + f
+      epochs[i+1] = epochs[i] + t
 
     # Create the scan
     return self._scan_factory.make_scan(
@@ -127,7 +127,11 @@ class FormatHDF5Nexus(FormatHDF5):
     return Format.get_beam(self)
 
   def get_scan(self, index=None):
-    return Format.get_scan(self)
+    if index == None:
+      return Format.get_scan(self)
+    else:
+      scan = Format.get_scan(self)
+      return scan[index]
 
   def get_raw_data(self, index):
     from scitbx.array_family import flex
