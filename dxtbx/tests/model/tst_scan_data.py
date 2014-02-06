@@ -34,6 +34,30 @@ def tst_get_frame_from_angle(scan):
 def tst_get_frames_with_angle(scan):
   pass
 
+def tst_scan_360_append():
+
+  scan1 = Scan((1, 360), (0.0, 1.0))
+  scan2 = Scan((361, 720), (0.0, 1.0))
+
+  scan = scan1 + scan2
+  eps = 1e-7
+  assert(scan.get_num_images() == 720)
+  assert(abs(scan.get_oscillation()[0] - 0.0) < eps)
+  assert(abs(scan.get_oscillation()[1] - 1.0) < eps)
+  assert(scan.get_image_range() == (1, 720))
+  print 'OK'
+
+  scan1 = Scan((1, 360), (0.0, 1.0))
+  scan2 = Scan((361, 720), (360.0, 1.0))
+
+  scan = scan1 + scan2
+  eps = 1e-7
+  assert(scan.get_num_images() == 720)
+  assert(abs(scan.get_oscillation()[0] - 0.0) < eps)
+  assert(abs(scan.get_oscillation()[1] - 1.0) < eps)
+  assert(scan.get_image_range() == (1, 720))
+  print 'OK'
+
 def run():
   image_range = (0, 1000)
   oscillation = (0, 0.1)
@@ -43,6 +67,7 @@ def run():
   tst_get_angle_from_frame(scan)
   tst_get_frame_from_angle(scan)
   tst_get_frames_with_angle(scan)
+  tst_scan_360_append()
 
 if __name__ == '__main__':
   run()

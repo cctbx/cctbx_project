@@ -224,8 +224,9 @@ namespace dxtbx { namespace model {
       DXTBX_ASSERT(std::abs(oscillation_[1]) > 0.0);
       DXTBX_ASSERT(image_range_[1] + 1 == rhs.image_range_[0]);
       DXTBX_ASSERT(std::abs(oscillation_[1] - rhs.oscillation_[1]) < eps);
-      DXTBX_ASSERT(std::abs(get_oscillation_range()[1] -
-        rhs.get_oscillation_range()[0]) < eps);
+      DXTBX_ASSERT(std::abs(
+        mod_2pi(get_oscillation_range()[1]) -
+        mod_2pi(rhs.get_oscillation_range()[0])) < eps);
       image_range_[1] = rhs.image_range_[1];
       num_images_ = 1 + image_range_[1] - image_range_[0];
       exposure_times_.reserve(exposure_times_.size() + exposure_times_.size());
