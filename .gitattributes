@@ -2746,6 +2746,7 @@ xfel/cxi/gfx/trials_plot.py -text
 xfel/cxi/gfx/wx_detectors.py -text
 xfel/cxi/integrate_image_api.py -text
 xfel/cxi/merging/__init__.py -text
+xfel/cxi/postrefine/__init__.py -text
 xfel/cxi/postrefine/justsum.py -text
 xfel/cxi/postrefine/mod_energy.py -text
 xfel/cxi/postrefine/mod_graddesc.py -text
