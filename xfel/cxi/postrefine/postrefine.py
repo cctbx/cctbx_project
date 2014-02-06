@@ -727,8 +727,8 @@ def scale_justsum_mproc(frame_no_new_order,
   
   return this_observations_scaled, this_observations_G, frame_no
    
-if __name__=="__main__":
-
+#if __name__=="__main__":
+def start(args):
   from iotbx import reflection_file_reader
   from cctbx.array_family import flex
   from cctbx import miller
@@ -771,8 +771,8 @@ if __name__=="__main__":
   d_min_merge = 1.5
   frame_excludes = (9999,9999)
   
-  for i in range(len(sys.argv)):
-    pair=sys.argv[i].split('=')
+  for i in range(len(args)):
+    pair=args[i].split('=')
     if pair[0]=='input':
       file_name_input = pair[1]
   
