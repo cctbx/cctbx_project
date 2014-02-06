@@ -106,11 +106,12 @@ class Test(object):
     filenames = self.single_sweep_filenames()
     blocks = DataBlockFactory.from_filenames(filenames)
     assert(len(blocks) == 1)
-    assert(len(blocks[0]) == 9)
-    assert(len(blocks[0].filenames()) == 9)
-    assert(len(blocks[0].metadata()) == 9)
-    imageset = blocks[0].extract_all()
-    assert(len(imageset) == 9)
+    assert(blocks[0].num_images() == 9)
+    #assert(len(blocks[0].filenames()) == 9)
+    #assert(len(blocks[0].metadata()) == 9)
+    imageset = blocks[0].extract_imagesets()
+    assert(len(imageset) == 1)
+    assert(len(imageset[0]) == 9)
     sweeps = blocks[0].extract_sweeps()
     assert(len(sweeps) == 1)
     assert(len(sweeps[0]) == 9)
@@ -123,15 +124,15 @@ class Test(object):
     filenames = self.multiple_sweep_filenames()
     blocks = DataBlockFactory.from_filenames(filenames)
     assert(len(blocks) == 1)
-    assert(len(blocks[0]) == 6)
-    assert(len(blocks[0].filenames()) == 6)
-    assert(len(blocks[0].metadata()) == 6)
-    imageset = blocks[0].extract_all()
-    assert(len(imageset) == 6)
+    assert(blocks[0].num_images() == 6)
+    #assert(len(blocks[0].filenames()) == 6)
+    #assert(len(blocks[0].metadata()) == 6)
+    imageset = blocks[0].extract_imagesets()
+    assert(len(imageset) == 2)
     sweeps = blocks[0].extract_sweeps()
     assert(len(sweeps) == 2)
     assert(len(sweeps[0]) == 3)
-    assert(len(sweeps[0]) == 3)
+    assert(len(sweeps[1]) == 3)
     print 'OK'
 
   def tst_create_multiple_blocks(self):
@@ -143,41 +144,45 @@ class Test(object):
     assert(len(blocks) == 19)
 
     # Block 1
-    assert(len(blocks[0]) == 9)
-    assert(len(blocks[0].filenames()) == 9)
-    assert(len(blocks[0].metadata()) == 9)
-    imageset = blocks[0].extract_all()
-    assert(len(imageset) == 9)
+    assert(blocks[0].num_images() == 9)
+    #assert(len(blocks[0].filenames()) == 9)
+    #assert(len(blocks[0].metadata()) == 9)
+    imageset = blocks[0].extract_imagesets()
+    assert(len(imageset) == 1)
+    assert(len(imageset[0]) == 9)
     sweeps = blocks[0].extract_sweeps()
     assert(len(sweeps) == 1)
     assert(len(sweeps[0]) == 9)
 
     # Block 2
-    assert(len(blocks[1]) == 3)
-    assert(len(blocks[1].filenames()) == 3)
-    assert(len(blocks[1].metadata()) == 3)
-    imageset = blocks[1].extract_all()
+    assert(blocks[1].num_images() == 3)
+    #assert(len(blocks[1].filenames()) == 3)
+    #assert(len(blocks[1].metadata()) == 3)
+    imageset = blocks[1].extract_imagesets()
     assert(len(imageset) == 3)
+    assert(all(len(i) == 1 for i in imageset))
     sweeps = blocks[1].extract_sweeps()
     assert(len(sweeps) == 3)
     assert(all(len(s) == 1 for s in sweeps))
 
     # Block 3
-    assert(len(blocks[2]) == 1)
-    assert(len(blocks[2].filenames()) == 1)
-    assert(len(blocks[2].metadata()) == 1)
-    imageset = blocks[2].extract_all()
+    assert(blocks[2].num_images() == 1)
+    #assert(len(blocks[2].filenames()) == 1)
+    #assert(len(blocks[2].metadata()) == 1)
+    imageset = blocks[2].extract_imagesets()
     assert(len(imageset) == 1)
+    assert(len(imageset[0]) == 1)
     sweeps = blocks[2].extract_sweeps()
     assert(len(sweeps) == 1)
     assert(all(len(s) == 1 for s in sweeps))
 
     # Block 4
-    assert(len(blocks[3]) == 3)
-    assert(len(blocks[3].filenames()) == 3)
-    assert(len(blocks[3].metadata()) == 3)
-    imageset = blocks[3].extract_all()
+    assert(blocks[3].num_images() == 3)
+    #assert(len(blocks[3].filenames()) == 3)
+    #assert(len(blocks[3].metadata()) == 3)
+    imageset = blocks[3].extract_imagesets()
     assert(len(imageset) == 3)
+    assert(all(len(i) == 1 for i in imageset))
     sweeps = blocks[3].extract_sweeps()
     assert(len(sweeps) == 3)
     assert(all(len(s) == 1 for s in sweeps))
@@ -193,8 +198,8 @@ class Test(object):
     blocks2 = self.pickle_then_unpickle(blocks1)
     assert(len(blocks2) == len(blocks1))
     for b1, b2 in zip(blocks1, blocks2):
-      assert(all(f1 == f2 for f1, f2 in zip(b1.filenames(), b2.filenames())))
-      assert(all(m1 == m2 for m1, m2 in zip(b1.metadata(), b2.metadata())))
+      #assert(all(f1 == f2 for f1, f2 in zip(b1.filenames(), b2.filenames())))
+      #assert(all(m1 == m2 for m1, m2 in zip(b1.metadata(), b2.metadata())))
       assert(b1.format_class() == b2.format_class())
       assert(b1 == b2)
     assert(blocks1 == blocks2)
@@ -209,8 +214,8 @@ class Test(object):
     blocks2 = self.encode_json_then_decode(blocks1)
     assert(len(blocks2) == len(blocks1))
     for b1, b2 in zip(blocks1, blocks2):
-      assert(all(f1 == f2 for f1, f2 in zip(b1.filenames(), b2.filenames())))
-      assert(all(m1 == m2 for m1, m2 in zip(b1.metadata(), b2.metadata())))
+      #assert(all(f1 == f2 for f1, f2 in zip(b1.filenames(), b2.filenames())))
+      #assert(all(m1 == m2 for m1, m2 in zip(b1.metadata(), b2.metadata())))
       assert(b1.format_class() == b2.format_class())
       assert(b1 == b2)
     assert(blocks1 == blocks2)
@@ -219,23 +224,26 @@ class Test(object):
 
   def tst_from_null_sweep(self):
     from dxtbx.datablock import DataBlockFactory
-    from dxtbx.serialize.imageset import NullSweep
+    from dxtbx.imageset import NullReader, ImageSweep, SweepFileList
     from dxtbx.model import Beam, Detector, Goniometer, Scan
-    sweep = NullSweep("template_###.cbf")
-    sweep.beam = Beam((0, 0, 1))
-    sweep.detector = Detector()
-    sweep.goniometer = Goniometer((1, 0, 0))
-    sweep.scan = Scan((1, 10), (0, 0.1))
+
+    sweep = ImageSweep(NullReader(SweepFileList("template_%2d.cbf", (0, 10))))
+    sweep.set_beam(Beam((0, 0, 1)))
+    sweep.set_detector(Detector())
+    sweep.set_goniometer(Goniometer((1, 0, 0)))
+    sweep.set_scan(Scan((1, 10), (0, 0.1)))
 
     # Create the datablock
-    datablock = DataBlockFactory.from_null_sweep(sweep)
+    datablock = DataBlockFactory.from_imageset(sweep)
+    assert(len(datablock) == 1)
+    datablock = datablock[0]
 
     sweeps = datablock.extract_sweeps()
     assert(len(sweeps) == 1)
-    assert(sweeps[0].get_beam() == sweep.beam)
-    assert(sweeps[0].get_detector() == sweep.detector)
-    assert(sweeps[0].get_goniometer() == sweep.goniometer)
-    assert(sweeps[0].get_scan() == sweep.scan)
+    assert(sweeps[0].get_beam() == sweep.get_beam())
+    assert(sweeps[0].get_detector() == sweep.get_detector())
+    assert(sweeps[0].get_goniometer() == sweep.get_goniometer())
+    assert(sweeps[0].get_scan() == sweep.get_scan())
 
     print 'OK'
 
