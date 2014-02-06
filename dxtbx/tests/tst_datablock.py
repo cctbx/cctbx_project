@@ -85,11 +85,11 @@ class Test(object):
     temp.seek(0)
     return pickle.load(temp)
 
-  def encode_json_then_decode(self, obj):
+  def encode_json_then_decode(self, obj, check_format=True):
     from dxtbx.datablock import DataBlockFactory
     import json
     string = json.dumps([db.to_dict() for db in obj], ensure_ascii=True)
-    return DataBlockFactory.from_json(string)
+    return DataBlockFactory.from_json(string, check_format=check_format)
 
   def run(self):
     self.tst_create_single_sweep()
@@ -107,8 +107,6 @@ class Test(object):
     blocks = DataBlockFactory.from_filenames(filenames)
     assert(len(blocks) == 1)
     assert(blocks[0].num_images() == 9)
-    #assert(len(blocks[0].filenames()) == 9)
-    #assert(len(blocks[0].metadata()) == 9)
     imageset = blocks[0].extract_imagesets()
     assert(len(imageset) == 1)
     assert(len(imageset[0]) == 9)
@@ -125,8 +123,6 @@ class Test(object):
     blocks = DataBlockFactory.from_filenames(filenames)
     assert(len(blocks) == 1)
     assert(blocks[0].num_images() == 6)
-    #assert(len(blocks[0].filenames()) == 6)
-    #assert(len(blocks[0].metadata()) == 6)
     imageset = blocks[0].extract_imagesets()
     assert(len(imageset) == 2)
     sweeps = blocks[0].extract_sweeps()
@@ -145,8 +141,6 @@ class Test(object):
 
     # Block 1
     assert(blocks[0].num_images() == 9)
-    #assert(len(blocks[0].filenames()) == 9)
-    #assert(len(blocks[0].metadata()) == 9)
     imageset = blocks[0].extract_imagesets()
     assert(len(imageset) == 1)
     assert(len(imageset[0]) == 9)
@@ -156,8 +150,6 @@ class Test(object):
 
     # Block 2
     assert(blocks[1].num_images() == 3)
-    #assert(len(blocks[1].filenames()) == 3)
-    #assert(len(blocks[1].metadata()) == 3)
     imageset = blocks[1].extract_imagesets()
     assert(len(imageset) == 3)
     assert(all(len(i) == 1 for i in imageset))
@@ -167,8 +159,6 @@ class Test(object):
 
     # Block 3
     assert(blocks[2].num_images() == 1)
-    #assert(len(blocks[2].filenames()) == 1)
-    #assert(len(blocks[2].metadata()) == 1)
     imageset = blocks[2].extract_imagesets()
     assert(len(imageset) == 1)
     assert(len(imageset[0]) == 1)
@@ -178,8 +168,6 @@ class Test(object):
 
     # Block 4
     assert(blocks[3].num_images() == 3)
-    #assert(len(blocks[3].filenames()) == 3)
-    #assert(len(blocks[3].metadata()) == 3)
     imageset = blocks[3].extract_imagesets()
     assert(len(imageset) == 3)
     assert(all(len(i) == 1 for i in imageset))
@@ -198,8 +186,6 @@ class Test(object):
     blocks2 = self.pickle_then_unpickle(blocks1)
     assert(len(blocks2) == len(blocks1))
     for b1, b2 in zip(blocks1, blocks2):
-      #assert(all(f1 == f2 for f1, f2 in zip(b1.filenames(), b2.filenames())))
-      #assert(all(m1 == m2 for m1, m2 in zip(b1.metadata(), b2.metadata())))
       assert(b1.format_class() == b2.format_class())
       assert(b1 == b2)
     assert(blocks1 == blocks2)
@@ -208,17 +194,35 @@ class Test(object):
 
   def tst_json(self):
     from dxtbx.datablock import DataBlockFactory
+    from dxtbx.imageset import ImageSweep
 
     filenames = self.multiple_block_filenames()
     blocks1 = DataBlockFactory.from_filenames(filenames)
     blocks2 = self.encode_json_then_decode(blocks1)
     assert(len(blocks2) == len(blocks1))
     for b1, b2 in zip(blocks1, blocks2):
-      #assert(all(f1 == f2 for f1, f2 in zip(b1.filenames(), b2.filenames())))
-      #assert(all(m1 == m2 for m1, m2 in zip(b1.metadata(), b2.metadata())))
       assert(b1.format_class() == b2.format_class())
       assert(b1 == b2)
     assert(blocks1 == blocks2)
+
+    filenames = self.multiple_block_filenames()
+    blocks1 = DataBlockFactory.from_filenames(filenames)
+    blocks2 = self.encode_json_then_decode(blocks1, check_format=False)
+    assert(len(blocks2) == len(blocks1))
+    for b1, b2 in zip(blocks1, blocks2):
+      for im1, im2 in zip(b1.extract_imagesets(), b2.extract_imagesets()):
+        assert(len(im1) == len(im2))
+        if isinstance(im1, ImageSweep):
+          assert(isinstance(im2, ImageSweep))
+          assert(im1.get_beam() == im2.get_beam())
+          assert(im1.get_detector() == im2.get_detector())
+          assert(im1.get_goniometer() == im2.get_goniometer())
+          assert(im1.get_scan() == im2.get_scan())
+        else:
+          assert(not isinstance(im2, ImageSweep))
+          for i in range(len(im1)):
+            assert(im1.get_beam(i) == im2.get_beam(i))
+            assert(im1.get_detector(i) == im2.get_detector(i))
 
     print 'OK'
 

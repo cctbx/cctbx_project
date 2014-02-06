@@ -494,12 +494,6 @@ class DataBlockDictImporter(object):
         scan = None
       return beam, detector, gonio, scan
 
-    # Set the format class
-    if check_format == True:
-      format_class = None
-    else:
-      format_class = NullFormat
-
     # Loop through all the imagesets
     imagesets = []
     for imageset in obj['imageset']:
@@ -507,20 +501,14 @@ class DataBlockDictImporter(object):
       if ident == 'ImageSweep':
         beam, detector, gonio, scan = load_models(imageset)
         template = load_path(imageset['template'])
-        pfx = template.split('#')[0]
-        sfx = template.split('#')[-1]
-        template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
         i0, i1 = scan.get_image_range()
-        if format_class == None:
-          format_class = Registry.find(template_format % i0)
         imagesets.append(ImageSetFactory.make_sweep(
-          template, range(i0, i1+1), format_class,
-          beam, detector, gonio, scan))
+          template, range(i0, i1+1), None,
+          beam, detector, gonio, scan, check_format))
       elif ident == 'ImageSet':
         filenames = [image['filename'] for image in imageset['images']]
-        if format_class == None:
-          format_class = Registry.find(filenames[0])
-        iset = ImageSetFactory.make_imageset(filenames, format_class)
+        iset = ImageSetFactory.make_imageset(
+          filenames, None, check_format)
         for i, image in enumerate(imageset['images']):
           beam, detector, gonio, scan = load_models(image)
           iset.set_beam(beam, i)

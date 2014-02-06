@@ -1237,51 +1237,48 @@ class ImageSetFactory(object):
 
 
   @staticmethod
-  def make_imageset(filenames, format_class=None):
+  def make_imageset(filenames, format_class=None, check_format=True):
     '''Create an image set'''
     from dxtbx.format.Registry import Registry
+    from format.FormatMultiImage import FormatMultiImage
 
     # Get the format object
-    if format_class == None:
+    if format_class == None and check_format:
       format_class = Registry.find(filenames[0])
-
-    # Create the image set object
-    from format.FormatMultiImage import FormatMultiImage
-    if issubclass(format_class, FormatMultiImage):
-      assert len(filenames) == 1
-      format_instance = format_class(filenames[0])
-      image_set = ImageSet(SingleFileReader(format_instance))
+    if format_class is None:
+      reader = NullReader(filenames)
     else:
-      image_set = ImageSet(MultiFileReader(format_class, filenames))
+      if issubclass(format_class, FormatMultiImage):
+        assert len(filenames) == 1
+        format_instance = format_class(filenames[0])
+        reader = SingleFileReader(format_instance)
+      else:
+        reader = MultiFileReader(format_class, filenames)
 
-    # Return the image set
-    return image_set
+    # Return the imageset
+    return ImageSet(reader)
 
   @staticmethod
   def make_sweep(template, indices, format_class=None, beam=None,
-                 detector=None, goniometer=None, scan=None):
+                 detector=None, goniometer=None, scan=None,
+                 check_format=True):
     '''Create a sweep'''
     import os
     from dxtbx.format.Registry import Registry
+    from format.FormatMultiImage import FormatMultiImage
 
     indices = sorted(indices)
 
     # Get the template format
     count = template.count('#')
-    if count > 0:
-      pfx = template.split('#')[0]
-      sfx = template.split('#')[-1]
-      template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
-      filenames = [template_format % index for index in indices]
-    else:
-      filenames = [template]
+    assert(count > 0)
+    pfx = template.split('#')[0]
+    sfx = template.split('#')[-1]
+    template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
+    filenames = [template_format % index for index in indices]
 
     # Sort the filenames
     filenames = sorted(filenames)
-
-    # Get the format object
-    if format_class is None:
-      format_class = Registry.find(filenames[0])
 
     # Get the first image and our understanding
     first_image = filenames[0]
@@ -1289,11 +1286,6 @@ class ImageSetFactory(object):
     # Get the directory and first filename and set the template format
     directory, first_image_name = os.path.split(first_image)
     first_image_number = indices[0]
-
-    # Get the template format
-    pfx = template.split('#')[0]
-    sfx = template.split('#')[-1]
-    template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
 
     # Set the image range
     array_range = (min(indices) - 1, max(indices))
@@ -1303,9 +1295,22 @@ class ImageSetFactory(object):
     # Create the sweep file list
     filenames = SweepFileList(template_format, array_range)
 
+    # Get the format object and reader
+    if format_class is None and check_format:
+      format_class = Registry.find(filenames[0])
+    if format_class is None:
+      reader = NullReader(filenames)
+    else:
+      if issubclass(format_class, FormatMultiImage):
+        assert len(filenames) == 1
+        format_instance = format_class(filenames[0])
+        reader = SingleFileReader(format_instance)
+      else:
+        reader = MultiFileReader(format_class, filenames)
+
     # Create the sweep object
     sweep = ImageSweep(
-      MultiFileReader(format_class, filenames),
+      reader,
       beam=beam,
       detector=detector,
       goniometer=goniometer,
