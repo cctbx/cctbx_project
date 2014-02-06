@@ -1271,11 +1271,14 @@ class ImageSetFactory(object):
 
     # Get the template format
     count = template.count('#')
-    assert(count > 0)
-    pfx = template.split('#')[0]
-    sfx = template.split('#')[-1]
-    template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
-    filenames = [template_format % index for index in indices]
+    if count > 0:
+      pfx = template.split('#')[0]
+      sfx = template.split('#')[-1]
+      template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
+      filenames = [template_format % index for index in indices]
+    else:
+      template_format = None
+      filenames = [template]
 
     # Sort the filenames
     filenames = sorted(filenames)
@@ -1292,13 +1295,14 @@ class ImageSetFactory(object):
     if scan is not None:
       assert(array_range == scan.get_array_range())
 
-    # Create the sweep file list
-    filenames = SweepFileList(template_format, array_range)
-
     # Get the format object and reader
     if format_class is None and check_format:
       format_class = Registry.find(filenames[0])
+
+    # Create the reader
     if format_class is None:
+      if template_format is not None:
+        filenames = SweepFileList(template_format, array_range)
       reader = NullReader(filenames)
     else:
       if issubclass(format_class, FormatMultiImage):
@@ -1306,6 +1310,8 @@ class ImageSetFactory(object):
         format_instance = format_class(filenames[0])
         reader = SingleFileReader(format_instance)
       else:
+        assert(template_format is not None)
+        filenames = SweepFileList(template_format, array_range)
         reader = MultiFileReader(format_class, filenames)
 
     # Create the sweep object
