@@ -644,6 +644,11 @@ class DataBlockFactory(object):
     # Now try as imageset json files
     return DataBlockFactory.from_imageset_json_file(filename)
 
+  @staticmethod
+  def from_in_memory(images, indices=None):
+    ''' Function to instantiate data block from in memory imageset. '''
+    from dxtbx.imageset import MemImageSet
+    return DataBlock([MemImageSet(images, indices)])
 
 class DataBlockDumper(object):
   ''' Class to help in dumping datablock objects. '''
