@@ -396,10 +396,9 @@ class DataBlockFilenameImporter(object):
     from dxtbx.imageset import MultiFileReader, ImageSetFactory
 
     # Make either an imageset or sweep
-    if len(records) == 1:
+    if len(records) == 1 and records[0].template is not None:
 
       # Get the image range
-      assert(records[0].template is not None)
       image_range = records[0].scan.get_image_range()
       image_range = (image_range[0], image_range[1]+1)
 
