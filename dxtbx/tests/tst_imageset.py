@@ -948,36 +948,36 @@ class TestRunner(object):
 
   def run(self):
 
-    ## Test the multi file state object
-    #test = TestMultiFileState()
-    #test.run()
+    # Test the multi file state object
+    test = TestMultiFileState()
+    test.run()
 
-    ## Test the sweep file list
-    #test = TestSweepFileList()
-    #test.run()
+    # Test the sweep file list
+    test = TestSweepFileList()
+    test.run()
 
-    ## Test the multi file reader class
-    #test = TestMultiFileReader()
-    #test.run()
+    # Test the multi file reader class
+    test = TestMultiFileReader()
+    test.run()
 
     # Test the null reader class
     test = TestNullReader()
     test.run()
 
-    ## Test the image set class
-    #test = TestImageSet()
-    #test.run()
+    # Test the image set class
+    test = TestImageSet()
+    test.run()
 
-    ## The the sweep class
-    #test = TestImageSweep()
-    #test.run()
+    # The the sweep class
+    test = TestImageSweep()
+    test.run()
 
-    ## Test the ImageSetFactory class
-    #test = TestImageSetFactory()
-    #test.run()
+    # Test the ImageSetFactory class
+    test = TestImageSetFactory()
+    test.run()
 
-    #test = TestPickleImageset()
-    #test.run()
+    test = TestPickleImageset()
+    test.run()
 
 if __name__ == '__main__':
   runner = TestRunner()
