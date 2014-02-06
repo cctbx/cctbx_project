@@ -183,8 +183,10 @@ cctbx/miller/tst_map_to_asu_isym.py -text
 cctbx/miller/tst_reindexing.py svneol=native#text/x-python
 cctbx/miller/union_of_indices.h svneol=native#text/plain
 cctbx/multipolar/SConscript -text
-cctbx/multipolar/__init__.py -text
 cctbx/multipolar/aspherical.h -text
+cctbx/multipolar/aspherical_ext.cpp -text
+cctbx/multipolar/regression/run.py -text
+cctbx/multipolar/regression/tri.pdb -text
 cctbx/omz/__init__.py svneol=native#text/x-python
 cctbx/omz/bfgs.py svneol=native#text/x-python
 cctbx/omz/cif_refine.py svneol=native#text/x-python
