@@ -184,6 +184,7 @@ class local_density_quality (object) :
       fofc_map,
       two_fofc_map,
       sites_cart=None,
+      atom_names=None,
       unit_cell=None,
       atom_selection=None,
       xray_structure=None,
@@ -194,11 +195,16 @@ class local_density_quality (object) :
             (fofc_map.focus() == two_fofc_map.focus()))
     self.atom_selection = atom_selection # assumes no HD already
     self.sites_cart = sites_cart
+    if (atom_names is not None) and (type(atom_names).__name__!='std_string'):
+      atom_names = flex.std_string(atom_names)
+    self.atom_names = atom_names
     self.unit_cell = unit_cell
     if (atom_selection is not None) :
       assert (xray_structure is not None) and (len(self.atom_selection) > 0)
       self.sites_cart = xray_structure.sites_cart().select(self.atom_selection)
       self.unit_cell = xray_structure.unit_cell()
+      labels = xray_structure.scatterers().extract_labels()
+      self.atom_names = labels.select(self.atom_selection)
     self.map_sel = maptbx.grid_indices_around_sites(
       unit_cell=self.unit_cell,
       fft_n_real=fofc_map.focus(),
@@ -217,49 +223,75 @@ class local_density_quality (object) :
       self.fofc_map_levels.append(fofc_map_value)
       self.two_fofc_map_levels.append(two_fofc_map_value)
 
-  def number_of_atoms_below_fofc_map_level (self, sigma_cutoff=-2.5) :
-    return (self.fofc_map_levels <= sigma_cutoff).count(True)
+  def atoms_below_fofc_map_level (self, sigma_cutoff=-2.5) :
+    selection = self.fofc_map_levels <= sigma_cutoff
+    return self.atom_names.select(selection)
 
-  def number_of_atoms_below_two_fofc_map_level (self, sigma_cutoff=-2.5) :
-    return (self.two_fofc_map_levels <= sigma_cutoff).count(True)
+  def atoms_below_two_fofc_map_level (self, sigma_cutoff=-2.5) :
+    selection = self.two_fofc_map_levels <= sigma_cutoff
+    return self.atom_names.select(selection)
 
-  def number_of_atoms_outside_density (self, fofc_cutoff=3.0,
-      two_fofc_cutoff=1.0) :
+  def _atoms_outside_density_selection (self, fofc_cutoff=3.0,
+      two_fofc_cutoff=1.0,
+      require_difference_map_peaks=False) :
     sel_outside_fofc = (self.fofc_map_levels <= fofc_cutoff)
-    sel_outside_two_fofc = (self.two_fofc_map_levels < two_fofc_cutoff)
-    return (sel_outside_fofc & sel_outside_two_fofc).count(True)
+    if (not require_difference_map_peaks) :
+      sel_outside_two_fofc = (self.two_fofc_map_levels < two_fofc_cutoff)
+    else :
+      sel_outside_two_fofc = self.two_fofc_map_levels < float(sys.maxint)
+    return (sel_outside_fofc & sel_outside_two_fofc)
+
+  def atoms_outside_density (self, **kwds) :
+    selection = self._atoms_outside_density_selection(**kwds)
+    return self.atom_names.select(selection)
 
   def fraction_of_nearby_grid_points_above_cutoff (self, sigma_cutoff=2.5) :
     return (self.fofc_map_sel >= sigma_cutoff).count(True) / len(self.fofc_map_sel)
 
-def count_atoms_outside_density (
+  def number_of_atoms_below_fofc_map_level (self, *args, **kwds) :
+    return len(self.atoms_below_fofc_map_level(*args, **kwds))
+
+  def number_of_atoms_below_two_fofc_map_level (self, *args, **kwds) :
+    return len(self.atoms_below_two_fofc_map_level(*args, **kwds))
+
+  def number_of_atoms_outside_density (self, *args, **kwds) :
+    return len(self.atoms_outside_density(*args, **kwds))
+
+  def show_atoms_outside_density (self, **kwds) :
+    out = kwds.pop("out", sys.stdout)
+    prefix = kwds.pop("prefix", "")
+    isel = self._atoms_outside_density_selection(**kwds).iselection()
+    for i_seq in isel :
+      print >> out, prefix+"%s: 2mFo-DFc=%6.2f  mFo-DFc=%6.2f" % \
+        (self.atom_names[i_seq], self.two_fofc_map_levels[i_seq],
+         self.fofc_map_levels[i_seq])
+    return len(isel)
+
+  def max_fofc_value (self) :
+    from scitbx.array_family import flex
+    return flex.max(self.fofc_map_sel)
+
+def residue_density_quality (
     atom_group,
     unit_cell,
     two_fofc_map,
-    fofc_map,
-    two_fofc_min=1.0,
-    fofc_min=3.0,
-    require_difference_map_peaks=False) :
+    fofc_map) :
   from scitbx.array_family import flex
   sites_cart = flex.vec3_double()
+  atom_names = flex.std_string()
   for atom in atom_group.atoms() :
     if (not atom.element.strip() in ["H","D"]) :
       sites_cart.append(atom.xyz)
+      atom_names.append(atom.name)
   if (len(sites_cart) == 0) :
     raise RuntimeError("No non-hydrogen atoms in %s" % atom_group.id_str())
   density = local_density_quality(
     fofc_map=fofc_map,
     two_fofc_map=two_fofc_map,
     sites_cart=sites_cart,
+    atom_names=atom_names,
     unit_cell=unit_cell)
-  if (require_difference_map_peaks) :
-    n_atoms_outside_density = density.number_of_atoms_below_fofc_map_level(
-      sigma_cutoff=fofc_min)
-  else :
-    n_atoms_outside_density = density.number_of_atoms_outside_density(
-      fofc_cutoff=fofc_min,
-      two_fofc_cutoff=two_fofc_min)
-  return n_atoms_outside_density
+  return density
 
 def get_difference_maps (fmodel, resolution_factor=0.25) :
   fofc_coeffs = fmodel.map_coefficients(map_type="mFo-DFc",

@@ -40,16 +40,16 @@ build_params_str = """
     .type = bool
   rmsd_min = 0.5
     .type = float
-  rescore = True
-    .type = bool
   map_thresholds {
-    two_fofc_min_sc_mean = 0.8
+    omit_two_fofc_min_sc_mean = 0.8
       .type = float
-    two_fofc_min_mc = 1.0
+    omit_two_fofc_min_mc = 1.0
       .type = float
-    fofc_min_sc_mean = 2.5
+    omit_fofc_min_sc_mean = 2.5
       .type = float
-    starting_fofc_min_sc_single = 3.0
+    two_fofc_min = 1.0
+      .type = float
+    fofc_min = 3.0
       .type = float
   }
 """
@@ -326,22 +326,24 @@ class residue_trial (slots_getstate_setstate) :
       only_atom_group()
 
   def rescore (self, params, log=None, prefix="") :
+    # FIXME this needs to be rationalized and made consistent with the
+    # rescoring against the original maps
     if (log is None) : log = null_out()
     reject = (self.rotamer == "OUTLIER")
     bad_mc_two_fofc_msg = None
     for i_seq, atom in enumerate(self.new_hierarchy.atoms()) :
       name = atom.name.strip()
       if (name in ["N","C","O","CA", "CB"]) :
-        if (self.two_fofc_values[i_seq] < params.two_fofc_min_mc) :
+        if (self.two_fofc_values[i_seq] < params.omit_two_fofc_min_mc) :
           bad_mc_two_fofc_msg = "poor backbone: 2Fo-Fc(%s)=%.2f" % (name,
                 self.two_fofc_values[i_seq])
           reject = True
           break
     if (self.sc_fofc_mean is not None) :
-      if (self.sc_fofc_mean < params.fofc_min_sc_mean) :
+      if (self.sc_fofc_mean < params.omit_fofc_min_sc_mean) :
         reject = True
-      elif ((self.sc_two_fofc_mean < params.two_fofc_min_sc_mean) and
-            (self.sc_fofc_mean < params.fofc_min_sc_mean + 1)) :
+      elif ((self.sc_two_fofc_mean < params.omit_two_fofc_min_sc_mean) and
+            (self.sc_fofc_mean < params.omit_fofc_min_sc_mean + 1)) :
         reject = True
     flag = ""
     if (reject) :
@@ -362,7 +364,7 @@ def find_alternate_residue (residue,
     restraints_manager,
     params,
     verbose=False,
-    debug=False,
+    debug=None,
     log=None) :
   if (log is None) :
     log = null_out()
@@ -394,7 +396,7 @@ def find_alternate_residue (residue,
   for occupancy in occupancies :
     prefix = "%s_%.2f" % (id_str.replace(" ", "_"), occupancy)
     map_file_name = None
-    if (debug) :
+    if (debug > 1) :
       map_file_name = prefix + ".mtz"
     two_fofc_map, fofc_map = alt_confs.get_partial_omit_map(
       fmodel=fmodel.deep_copy(),
@@ -426,12 +428,12 @@ def find_alternate_residue (residue,
       two_fofc_map=two_fofc_map,
       fofc_map=fofc_map)
     trials.append(trial)
-    if (debug) :
+    if (debug > 1) :
       open("%s.pdb" % prefix, "w").write(trial.new_hierarchy.as_pdb_string())
   sites_end_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
   assert sites_start_1d.all_eq(sites_end_1d)
   t2 = time.time()
-  if (debug) :
+  if (debug > 1) :
     print >> log, "  %d build trials (%s): %.3fs" % (len(occupancies),
       residue.id_str(), t2 - t1)
   return trials
@@ -448,7 +450,7 @@ class find_all_alternates (object) :
       params,
       nproc=Auto,
       verbose=False,
-      debug=False,
+      debug=None,
       log=sys.stdout) :
     adopt_init_args(self, locals())
     nproc = easy_mp.get_processes(nproc)
@@ -483,14 +485,13 @@ def pick_best_alternate (
     log=None) :
   if (log is None) :
     log = null_out()
-  if (params.rescore) :
-    filtered = []
-    for trial in trials :
-      accept = trial.rescore(params=params.map_thresholds,
-        log=log,
-        prefix="    ")
-      if (accept) : filtered.append(trial)
-    trials = filtered
+  filtered = []
+  for trial in trials :
+    accept = trial.rescore(params=params.map_thresholds,
+      log=log,
+      prefix="    ")
+    if (accept) : filtered.append(trial)
+  trials = filtered
   if (len(trials) == 0) :
     return None
   elif (len(trials) == 1) :
@@ -516,9 +517,7 @@ def process_results (
   from mmtbx.rotamer import rotamer_eval
   n_alternates = 0
   unit_cell = fmodel.xray_structure.unit_cell()
-  two_fofc_map = fofc_map = None
-  if (params.rescore) :
-    two_fofc_map, fofc_map = building.get_difference_maps(fmodel)
+  two_fofc_map, fofc_map = building.get_difference_maps(fmodel)
   rot_eval = rotamer_eval.RotamerEval()
   for main_conf, trials in zip(residues_in, building_trials) :
     if (len(trials) == 0) :
@@ -549,37 +548,31 @@ def process_results (
       skip = True
     print >> res_log, "    selected conformer (occ=%.2f):" % \
       best_trial.occupancy
-    if (params.rescore) : # FIXME this is very crude...
-      n_atoms_outside_density = building.count_atoms_outside_density(
-        atom_group=new_conf,
-        unit_cell=unit_cell,
-        two_fofc_map=two_fofc_map,
-        fofc_map=fofc_map)
-      if (n_atoms_outside_density > 0) :
-        skip = True
-      fofc_max = 0
-      for atom in new_conf.atoms() :
-        name = atom.name.strip()
-        site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
-        fofc_value = fofc_map.eight_point_interpolation(site_frac)
-        if ((not name in ["N","C","O","CA", "CB"]) or
-            ((name == "O") and (new_conf.resname in ["GLY", "ALA"]))) :
-          if (fofc_value > fofc_max) :
-            fofc_max = fofc_value
-      if (fofc_max < params.map_thresholds.starting_fofc_min_sc_single) :
-        skip = True
-      if (not skip) and (verbose) :
-        flag = " ***"
-      print >> res_log, \
-        "      RMSD=%5.3f  max. change=%.2f  max(Fo-Fc)=%.1f%s" \
-        % (stats.rmsd, stats.max_dev, fofc_max, flag)
-    else :
-      if (not skip) : flag = " ***"
-      print >> res_log, "      RMSD=%5.3f  max. change=%.2f%s" % \
-        (stats.rmsd, stats.max_dev, flag)
+    res_log2 = StringIO()
+    density_quality = building.residue_density_quality(
+      atom_group=new_conf,
+      unit_cell=unit_cell,
+      two_fofc_map=two_fofc_map,
+      fofc_map=fofc_map)
+    n_atoms_outside_density = density_quality.show_atoms_outside_density(
+      two_fofc_cutoff=params.map_thresholds.two_fofc_min,
+      fofc_cutoff=params.map_thresholds.fofc_min,
+      out=res_log2,
+      prefix="      ")
+    fofc_max = density_quality.max_fofc_value()
+    if (n_atoms_outside_density > 0) :
+      skip = True
+    if (not skip) and (verbose) :
+      flag = " ***"
+    print >> res_log, \
+      "      RMSD=%5.3f  max. change=%.2f  max(Fo-Fc)=%.1f%s" \
+      % (stats.rmsd, stats.max_dev, fofc_max, flag)
     if (changed_rotamer) :
       print >> res_log, "      starting rotamer=%s  new rotamer=%s" % \
         (main_rotamer, best_trial.rotamer)
+    if (n_atoms_outside_density != 0) :
+      print >> res_log, "      atoms outside density:"
+      print >> res_log, res_log2.getvalue()
     if (not skip) or (verbose) :
       log.write(res_log.getvalue())
     if (skip) : continue
@@ -752,7 +745,7 @@ def build_cycle (pdb_hierarchy,
     nproc=Auto,
     out=sys.stdout,
     verbose=False,
-    debug=False,
+    debug=None,
     i_cycle=0) :
   from mmtbx import restraints
   from scitbx.array_family import flex
@@ -779,6 +772,14 @@ def build_cycle (pdb_hierarchy,
     selection = sele_cache.selection(selection)
   make_header("Build cycle %d" % (i_cycle+1), out=out)
   fmodel.info().show_rfactors_targets_scales_overall(out=out)
+  if (debug > 0) :
+    from mmtbx.maps.utils import get_maps_from_fmodel
+    from iotbx.map_tools import write_map_coeffs
+    two_fofc, fofc = get_maps_from_fmodel(fmodel)
+    write_map_coeffs(
+      fwt_coeffs=two_fofc,
+      delfwt_coeffs=fofc,
+      file_name="cycle_%d_start.mtz" % (i_cycle+1))
   candidate_residues = alt_confs.filter_before_build(
     pdb_hierarchy=pdb_hierarchy,
     fmodel=fmodel,
