@@ -153,7 +153,9 @@ def run(argv=None):
   # these are the non-bonded pixels
   avg_d.set_selected(max_d < command_line.options.maxproj_min, command_line.options.mask_pix_val)
 
-  bcx, bcy = avg_i.get_beam_center_mm()
+  # calculate the beam center
+  panel = avg_f.get_detector()[0]
+  bcx, bcy = panel.get_beam_centre(avg_f.get_beam().get_s0())
 
   if poly_mask is not None or circle_mask is not None:
     minx = miny = 0
