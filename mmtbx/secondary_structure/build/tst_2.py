@@ -1556,6 +1556,8 @@ TER
 def exercise_00():
   """
   Simple one helix case
+  
+  Place sites_2 to string!!!
   """
   real_h = iotbx.pdb.input(source_info=None,
     lines=exercise_00_answer).construct_hierarchy()
@@ -1619,6 +1621,7 @@ HELIX    4   4 VAL B   27  PHE B   42  1                                  16
   # Even position/angle of the helices may be significantly biased.
 
 def exercise():
+  pass
   #exercise_00()
   #exercise_01()
 
