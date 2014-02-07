@@ -266,10 +266,12 @@ class run2(object):
           restraints_manager = self.restraints_manager,
           sites_cart         = self.pdb_hierarchy.atoms().extract_xyz())
       if len(corrected_hydrogen_count):
-        print >> log, "  Number of hydrogens corrected : %d" % \
-          len(corrected_hydrogen_count)
+        print >> log, "    Number of hydrogens corrected : %d" % len(corrected_hydrogen_count)
+        atoms = self.pdb_hierarchy.atoms()
+        for atom in corrected_hydrogen_count:
+          print >> log, "      %s" % atoms[atom].id_str()
       if bad_hydrogen_count:
-        print >> log, "  Number of uncorrected         : %d" % (
+        print >> log, "    Number of uncorrected         : %d" % (
           bad_hydrogen_count-len(corrected_hydrogen_count))
 
   def show(self):
