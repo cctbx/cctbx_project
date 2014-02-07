@@ -44,25 +44,33 @@ CLASSIFIER_PATH = libtbx.env.find_in_repositories(
   test = os.path.isfile
   )
 
-CLASSIFIER = None
+_CLASSIFIER = None
 _TRIED = None
 
 ALLOWED_IONS = [ions.WATER_RES_NAMES[0]] + ["MN", "ZN", "FE", "NI", "CA"]
 
-def get_classifier():
+def _get_classifier():
   """
   If need be, initializes, and then returns a classifier trained to
   differentiate between different ions and water.
 
+  To use the classifier, you will need to pass it to
+  svm.libsvm.svm_predict_probability. Ion prediction is already encapsulated by
+  predict_ion, so most users should just call that.
   To use the classifier, pass the object returned by ion_vector() to either its
   predict() or predict_proba() method.
 
   Returns
   -------
   svm.svm_model
+
+  See Also
+  --------
+  svm.libsvm.svm_predict_probability
+  mmtbx.ions.svm.predict_ion
   """
-  global CLASSIFIER, _TRIED
-  if CLASSIFIER is None and not _TRIED:
+  global _CLASSIFIER, _TRIED
+  if _CLASSIFIER is None and not _TRIED:
     _TRIED = True
     try:
       CLASSIFIER = svmutil.svm_load_model(CLASSIFIER_PATH)
@@ -345,7 +353,7 @@ def predict_ion(chem_env, scatter_env, elements = None):
       Returns a list of classes and the probability associated with each or None
       if the trained classifier cannot be loaded.
   """
-  classifier = get_classifier()
+  classifier = _get_classifier()
 
   if classifier is None:
     return None
