@@ -71,12 +71,12 @@ def _get_classifier():
   if _CLASSIFIER is None and not _TRIED:
     _TRIED = True
     try:
-      CLASSIFIER = svmutil.svm_load_model(CLASSIFIER_PATH)
+      _CLASSIFIER = svmutil.svm_load_model(CLASSIFIER_PATH)
     except IOError as err:
       if err.errno != errno.ENOENT:
         raise err
 
-  return CLASSIFIER
+  return _CLASSIFIER
 
 def ion_class(chem_env):
   """
