@@ -8,16 +8,12 @@ import libtbx
 from mmtbx.command_line.water_screen import master_phil
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
 from mmtbx import ions
-from mmtbx.ions.svm import ion_class, predict_ion, get_classifier
+from mmtbx.ions.svm import ion_class, predict_ion
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs, \
      generate_calcium_inputs
 import mmtbx.command_line
 
 def exercise () :
-  if get_classifier() is None:
-    print "Skipping {}".format(os.path.split(__file__)[1])
-    return
-
   # XXX: Should CA's wavelength be 1.025, too?
   fns = [generate_calcium_inputs, generate_zinc_inputs]
   wavelengths = [1.025, 1.025]
@@ -79,15 +75,21 @@ def exercise () :
         atom_props.i_seq, manager, fo_map, fofc_map, anom_map
         )
       resname = ion_class(chem_env)
-      prediction = predict_ion(chem_env, scatter_env,
-                               elements = ["ZN", "MN", "CA"])
       assert resname != ""
+
+      predictions = predict_ion(chem_env, scatter_env,
+                                elements = ["ZN", "MN", "CA"])
+      if predictions is None:
+        print "Could not load SVM classifier"
+        print "Skipping {}".format(os.path.split(__file__)[1])
+        return
+
       if resname != prediction[0][0]:
         print "Prediction did not match expected: {} != {}" \
           .format(resname, prediction[0][0])
         for element, prob in prediction:
-          print "  {}: {}".format(element, prob)
-        # sys.exit()
+          print "  {}: {:.2f}".format(element, prob)
+        sys.exit()
 
     del fo_map
     del fofc_map
