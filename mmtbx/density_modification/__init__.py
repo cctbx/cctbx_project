@@ -316,6 +316,12 @@ class density_modification(object):
     self.compute_map()
     self.show_cycle_summary()
 
+  def start_and_end_fom (self):
+    dm_stats=self._stats
+    start_stats = dm_stats._stats[0]
+    final_stats = dm_stats._stats[-1]
+    return start_stats.fom,final_stats.fom
+
   def matthews_analysis(self):
     from mmtbx.scaling import matthews
     self.matthews_result = matthews.matthews_rupp(
@@ -691,6 +697,7 @@ class dm_stats (object) :
         stats.rms_solvent_density])
     return table
 
+    
   def format_summary (self, i_cycle=-1) :
     stats = self._stats[i_cycle]
     summary = "#"*80 + "\n"
