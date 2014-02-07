@@ -57,8 +57,6 @@ def _get_classifier():
   To use the classifier, you will need to pass it to
   svm.libsvm.svm_predict_probability. Ion prediction is already encapsulated by
   predict_ion, so most users should just call that.
-  To use the classifier, pass the object returned by ion_vector() to either its
-  predict() or predict_proba() method.
 
   Returns
   -------
