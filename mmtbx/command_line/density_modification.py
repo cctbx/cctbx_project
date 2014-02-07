@@ -71,6 +71,10 @@ density_modification {
       output_hendrickson_lattman_coefficients = False
         .type = bool
         .help = Output density modified phase probability distributions
+      skip_output_if_worse = False
+        .type = bool
+        .help = Skip output if FOM gets worse
+        .style = hidden 
     }
   }
   job_title = None
@@ -214,7 +218,6 @@ map_coefficients {
     as_gui_program=as_gui_program)
   time_dm = time.time()-t0
   print >> log, "Time taken for density modification: %.2fs" %time_dm
-
   # run cns
   if 0:
     from cctbx.development import cns_density_modification
@@ -347,7 +350,20 @@ map_coefficients {
 
   # output map coefficients if requested
   mtz_params = params.output.mtz
+
+  # Decide if we are going to actually write the mtz
   if mtz_params.file_name is not None:
+    orig_fom,final_fom=dm.start_and_end_fom()
+    if mtz_params.skip_output_if_worse and final_fom < orig_fom:
+      ok_to_write_mtz=False
+      print "Not writing out mtz. Final FOM (%7.3f) worse than start (%7.3f)" %(
+        final_fom,orig_fom)
+    else:  # usual
+      ok_to_write_mtz=True
+  else:
+      ok_to_write_mtz=True
+
+  if mtz_params.file_name is not None and ok_to_write_mtz:
     label_decorator=iotbx.mtz.ccp4_label_decorator()
     fo = dm.miller_array_in_original_setting(dm.f_obs_complete).common_set(dm_map_coeffs)
     mtz_dataset = fo.as_mtz_dataset(
