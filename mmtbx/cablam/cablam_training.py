@@ -21,6 +21,9 @@ from __future__ import division
 #  /storage.  See cablam_fingerprints.py and the fingerprints dir.
 #  add_probe_data now stores full 4-character pdb-style atom names
 #  New output: probe_mode=sequence will print amino acid sequence for motif
+#2014_02_07: Updates to probe output methods to match changes in
+#  cablam_fingerprints. Motifs without continuous sequence now supported for all
+#  probe outputs
 #To do: Collect cis-peptides for analysis. Are they identifiable in cablamspace?
 #  Add clash filtering. 0.4 is sufficient clash to cull, mc-mc are the important
 #  contacts, at least for base cablam
@@ -94,7 +97,7 @@ cablam_training {
   probe_path = None
     .type = path
     .help = '''Stores path to dir of probed files, probe will be called for each file if this is not provided'''
-  probe_mode = *kin annote instance sequence
+  probe_mode = *kin annote instance sequence superpose
     .type = choice
     .help = '''=kin for dotlist kins (default) =annote for ball on model, =instance for vectorlist kins'''
   list_motifs = False
@@ -217,9 +220,9 @@ Choose 1 of 3:
   residue in each motif. The kins are high-dimensional dotlists containing the
   measures specified in the commandline (see below for options).  This is the
   default printing.
-=annote returns an automatically-named kinemage file for each pdb file. This kins
-  are balllists that highlight the selected motifs of intrest if appended to
-  existing kinemages of the structures.
+=annote returns an automatically-named kinemage file for each pdb file. These
+  kins are balllists that highlight the selected motifs of interest if appended
+  to existing kinemages of the structures.
 =instance returns an automatically-named vectorlist kinemage file for each motif
   of interest.  Each kin is a high-dimensional vectorlist that shows the path of
   a multi-residue motif through the measures specified in the commandline
@@ -483,22 +486,6 @@ def make_probe_data(hierarchy):
 
   #print '\n'.join(probe_out.stdout_lines)
   return probe_out.stdout_lines
-
-  #probe_return = ""
-  #for i,m in enumerate(hierarchy.models()):
-  #  r = pdb.hierarchy.root()
-  #  mdc = m.detached_copy()
-  #  r.append_model(mdc)
-  #  if keep_hydrogens is False:
-  #    clean_out = easy_run.fully_buffered(trim, stdin_lines=r.as_pdb_string())
-  #    build_out = easy_run.fully_buffered(build, stdin_lines=clean_out.stdout_lines)
-  #    input_str = string.join(build_out.stdout_lines, '\n')
-  #  else:
-  #    input_str = r.as_pdb_string()
-  #  probe_out = easy_run.fully_buffered(probe, stdin_lines=input_str).stdout_lines
-  #  for line in probe_out:
-  #    probe_return += line+'\n'
-  #return probe_return
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -527,9 +514,7 @@ def add_probe_data(resdata, open_probe_file):
     ###'stype' and 'ttype' are heavy-atom element name (C, N, O, etc)
 
     if not line.strip(): continue #averts an IndexError problem with empty lines
-    #print line
     bnana = line.split(':')
-    #print bnana
 
     name = bnana[0]
     pattern = bnana[1]
@@ -546,8 +531,6 @@ def add_probe_data(resdata, open_probe_file):
     srcAlt =      srcAtom[15:16].strip()
 
     trgAtom = bnana[4]
-    #if srcAtom == oldsrcAtom and trgAtom == oldtrgAtom: continue
-    # ^^ Probe produces a line for every dot, so have to check for relationship repeats
     #going to count dots per bond as a measure of strength instead
     trgChain =    trgAtom[0:2].strip()
     trgNum =      int(trgAtom[2:6].strip())
@@ -572,7 +555,6 @@ def add_probe_data(resdata, open_probe_file):
     targ_key = ' '.join(['', trgChain, '%04i' % trgNum, trgIns])
     if targ_key not in resdata.keys() :
       continue
-      #print targ_key
       #trgResidue = group_args(chain   = trgChain,
       #                        resnum  = trgNum,
       #                        resname = trgResname,
@@ -599,48 +581,7 @@ def add_probe_data(resdata, open_probe_file):
     #  residue's id and atom, id+atom is unique enough to handle bifurcations
     srcResidue.probe[srcAtomname][recordkey] = record
     #end new model for probe storage--------------------------------------------
-
-    #reference: resid_string = ' '.join([modelid, chainid, '%04i' % resnum, icode])
-    ####if (srcAtomname == 'O' and trgAtomname == 'H') or (srcAtomname == 'H' and trgAtomname == 'O'):
-    ####  srcResid_string = ' '.join(['', srcChain, '%04i' % srcNum, srcIns])
-    ####  trgResid_string = ' '.join(['', trgChain, '%04i' % trgNum, trgIns])
-    ####  #probe does not run itself on more than the first model, so the modelid
-    ####  #  bit is a problem.  It's probably either '' or '1'
-    ####  if (srcResid_string in reskeys) and (trgResid_string in reskeys):
-    ####    srcResidue = resdata[srcResid_string]
-    ####    trgResidue = resdata[trgResid_string]
-    ####    #bondjump = str(int(trgNum) - int(srcNum))
-    ####    #Probably don't need bondjump here anymore.
-    ####    #  Probably will make a function in cablam_res to find it.
-    ####
-    ####    if srcAtomname == 'H' and trgResidue not in srcResidue.probeH:
-    ####      srcResidue.probeH.append(trgResidue)
-    ####    elif srcAtomname == 'O' and trgResidue not in srcResidue.probeO:
-    ####      srcResidue.probeO.append(trgResidue)
-    ####    else:
-    ####      pass
-#-------------------------------------------------------------------------------
-#}}}
-
-#{{{ contour stuff
-#(Code in progress)
-#-------------------------------------------------------------------------------
-#def contour_fetch(path,targetlist):
-#  unpickled = {}
-#  for target in targetlist:
-#    if not target.endswith('.pickle'):
-#      target += '.pickle'
-#    picklefile = libtbx.env.find_in_repositories(
-#      relative_path=(os.path.join(path,target)))
-#    if (picklefile is None):
-#      sys.stderr.write("\nCould not find a needed pickle file for category "+target+" in chem_data.\nExiting.\n")
-#      sys.exit()
-#    ndt = easy_pickle.load(file_name=picklefile)
-#    unpickled[target] = ndt
-#  return unpickled
-#
-#def contour_read():
-#
+    #reference: resid_string = ' '.join([modelid,chainid,'%04i' % resnum,icode])
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -652,6 +593,8 @@ def add_probe_data(resdata, open_probe_file):
 #Print methods called by these functions are generally from cablam_res.py
 #-------------------------------------------------------------------------------
 
+#{{{ --- kin_frame ---
+#-------------------------------------------------------------------------------
 #kin_frame is a 3-dimensional frame for dihedral-space (-180 to 180) kinemages
 def kin_frame(writeto=sys.stdout):
   writeto.write("""
@@ -678,6 +621,8 @@ P 0 -180 -180
 0 -180 -180
 
 """)
+#-------------------------------------------------------------------------------
+#}}}
 
 #{{{ --- CSV printing ---
 #-------------------------------------------------------------------------------
@@ -732,7 +677,8 @@ def kin_header(kinorder,kinranges, writeto=sys.stdout):
 
 #prints residues in .kin format
 #Uses skipcheck() to select residues to print (default includes all)
-def kin_print(protein, kinorder, skiplist=[], inclist=[], cis_or_trans='both', writeto=sys.stdout):
+def kin_print(protein, kinorder, skiplist=[], inclist=[], cis_or_trans='both',
+  writeto=sys.stdout):
   if len(kinorder) == 0:
     sys.stderr.write('\nNo geometric measures (e.g. rama=True) specified')
     sys.stderr.write('\nExiting . . .\n')
@@ -741,12 +687,10 @@ def kin_print(protein, kinorder, skiplist=[], inclist=[], cis_or_trans='both', w
   reslist.sort()
   for resid in reslist:
     if skipcheck(protein[resid], skiplist, inclist):
-      #sys.stderr.write('\nfound a skip ' + protein[resid].alts['']['resname'])
       pass
     elif fails_cis_check(protein[resid],cis_or_trans):
       pass
     else:
-      #sys.stderr.write('\npass '+ protein[resid].alts['']['resname'])
       protein[resid].printtokin(kinorder, writeto)
 #-------------------------------------------------------------------------------
 #}}}
@@ -775,14 +719,17 @@ def kin_print_probe_header(full_label_list, kinorder, kinranges):
 #For producing distributions of points in cablam space
 #Generic output is one point (many dimensions) for each residue that matches a
 #  motif definition/fingerprint.
-def kin_print_probe(resdata, kinorder, outfiles, skiplist=[], inclist=[]):
-  reskeys = resdata.keys()
-  reskeys.sort()
-  for resid in reskeys:
-    residue = resdata[resid]
-    if skipcheck(residue, skiplist, inclist): continue
-    for label in residue.motifs:
-      residue.printtokin(kinorder, writeto=outfiles[label])
+def kin_print_probe(motif_instances, kinorder, outfiles):
+  for motif_name in motif_instances:
+    for instance in motif_instances[motif_name]:
+      if not instance.has_all_measures(kinorder):
+        sys.stderr.write(
+          '  '+motif_name+' has incomplete measures, probably due to b_max\n')
+        continue
+      for index in instance.names:
+        residue = instance.residues[index]
+        name = instance.names[index]
+        residue.printtokin(kinorder, writeto=outfiles[name])
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -792,7 +739,24 @@ def kin_print_probe(resdata, kinorder, outfiles, skiplist=[], inclist=[]):
 #  motifs of interest.
 #Produces one .kin per input file.
 #Does not require a header as such.
-def kin_print_probe_annote(resdata, motif_list, writeto=sys.stdout):
+def kin_print_probe_annote(motif_instances, writeto=sys.stdout):
+  for motif_name in motif_instances:
+    if motif_instances[motif_name]:
+      writeto.write('@group {'+motif_name+'}\n')
+      ref_instance = motif_instances[motif_name][0]
+      indices = ref_instance.residues.keys()
+      indices.sort()
+      for index in indices:
+        writeto.write('@balllist {'+ref_instance.names[index]+'}\n')
+        for instance in motif_instances[motif_name]:
+          residue = instance.residues[index]
+          firstalt = residue.firstalt('CA')
+          CAxyz = residue.atomxyz[firstalt]['CA']
+          pointid = residue.pdbid+' '+ residue.chain +' '+ str(residue.resnum)+' '+ instance.names[index]
+          writeto.write("{ "+pointid+" } "+str(CAxyz[0])+" "+str(CAxyz[1])+" "+str(CAxyz[2])+"\n")
+
+#{{{
+def old_kin_print_probe_annote(resdata, motif_list, writeto=sys.stdout):
   reskeys = resdata.keys()
   reskeys.sort()
   motifs = cablam_fingerprints.fetch_fingerprints(motif_list)
@@ -808,6 +772,7 @@ def kin_print_probe_annote(resdata, motif_list, writeto=sys.stdout):
           CAxyz = residue.atomxyz[firstalt]['CA']
           pointid = residue.pdbid +' '+ residue.chain +' '+ str(residue.resnum)+' '+ label
           writeto.write("{ "+pointid+" } "+str(CAxyz[0])+" "+str(CAxyz[1])+" "+str(CAxyz[2])+"\n")
+#}}}
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -836,71 +801,81 @@ def kin_print_by_instance_header(motif_list, kinorder, kinranges):
 
 #What this means is: each instance of a full motif, printed as a vector list so
 #  the path through cablam space can be followed
-def kin_print_by_instance(resdata, motif_list, kinorder, outfiles):
-  reskeys = resdata.keys()
-  reskeys.sort()
-  motifs = cablam_fingerprints.fetch_fingerprints(motif_list)
-  for motif in motifs:
-    motif_name = motif.motif_name
-    label_keys = motif.residue_names.keys()
-    label_keys.sort()
-    labels = []
-    for label_key in label_keys:
-      labels.append(motif.residue_names[label_key])
-    for resid in reskeys:
-      residue = resdata[resid]
-      if labels[0] in residue.motifs:
-        #Each instance is a group so that they are animatable in the kinemage
-        outfiles[motif_name].write(
-          '@group {'+residue.pdbid.rstrip('.pdb')+' '+str(residue.resnum)+
-          '} dominant animate\n@vectorlist {'+motif_name+
-          '} dimension='+str(len(kinorder))+'\n')
-        curres = residue
-        for label in labels:
-          outline = ['{'+curres.id_with_resname()+'_'+label+'}']
-          for order in kinorder:
-            try:
-              outline.append(str(curres.measures[order]))
-            except KeyError:
-              sys.stderr.write(curres.id_with_resname() + order + '\n')
-              sys.stderr.write('KeyError in kin print by instance\n')
-              break
-          else:
-            outfiles[motif_name].write(' '.join(outline)+'\n')
-          if curres.nextres is None:
-            sys.stderr.write("problem at "+curres.id_with_resname()+'\n')
-            break
-          curres = curres.nextres
+def kin_print_by_instance(motif_instances, motif_list, kinorder, outfiles):
+  for motif_name in motif_instances:
+    for instance in motif_instances[motif_name]:
+      if not instance.has_all_measures(kinorder):
+        sys.stderr.write(
+          '  '+motif_name+' has incomplete measures, probably due to b_max\n')
+        continue
+      indices = instance.names.keys()
+      indices.sort()
+      residue = instance.residues[indices[0]]
+      outfiles[motif_name].write(
+        '@group {'+residue.pdbid.rstrip('.pdb')+' '+str(residue.resnum)+
+        '} dominant animate\n@vectorlist {'+motif_name+
+        '} dimension='+str(len(kinorder))+'\n')
+      for index in instance.names:
+        residue = instance.residues[index]
+        name = instance.names[index]
+        outline = ['{'+residue.id_with_resname()+'_'+name+'}']
+        for order in kinorder:
+          outline.append(str(residue.measures[order]))
+        outfiles[motif_name].write(' '.join(outline)+'\n')
 
-def res_seq_by_instance(resdata, motif_list):
-  reshash = {'GLY':'G','ALA':'A','VAL':'V','ILE':'I','LEU':'L','PHE':'F','TRP':'W','MET':'M','GLU':'E','GLN':'Q','ASP':'D','ASN':'N','SER':'S','THR':'T','TYR':'Y','HIS':'H','LYS':'K','PRO':'P','CYS':'C','ARG':'R','MSE':'M','CSO':'C','OCS':'C','CSX':'C','CME':'C','YCM':'C','MLY':'K'}
-  reskeys = resdata.keys()
-  reskeys.sort()
-  motifs = cablam_fingerprints.fetch_fingerprints(motif_list)
-  for motif in motifs:
-    label_keys = motif.residue_names.keys()
-    label_keys.sort()
-    labels = []
-    for label_key in label_keys:
-      labels.append(motif.residue_names[label_key])
-    for resid in reskeys:
-      residue = resdata[resid]
+#print a string of 1-char resnames for each motif instance,
+#  for use with WebLogo and the like.
+def res_seq_by_instance(motif_instances):
+  #reshash contains the standard 3char to 1char mappings, followed by an ever-
+  #  growing list of non-standard animo acids
+  reshash = {'GLY':'G','ALA':'A','VAL':'V','ILE':'I','LEU':'L','PHE':'F',
+  'TRP':'W','MET':'M','GLU':'E','GLN':'Q','ASP':'D','ASN':'N','SER':'S',
+  'THR':'T','TYR':'Y','HIS':'H','LYS':'K','PRO':'P','CYS':'C','ARG':'R',
+  'MSE':'M','SME':'M','CSO':'C','OCS':'C','CSX':'C','CME':'C','YCM':'C',
+  'MLY':'K'}
+  for motif_name in motif_instances:
+    for instance in motif_instances[motif_name]:
+      indices = instance.residues.keys()
+      indices.sort()
       seq_string = []
-      if labels[0] in residue.motifs:
-        curres = residue
-        for label in labels:
-          if not curres:
-            break
-          resname = curres.id_with_resname()[0:3]
-          if resname in reshash:
-            resname = reshash[resname]
-          else:
-            resname = 'X'+resname
-          seq_string.append(resname)
-          curres = curres.nextres
+      for index in indices:
+        resname = instance.residues[index].id_with_resname()[0:3]
+        if resname in reshash:
+          code = reshash[resname]
         else:
-          seq_string.append('\n')
-          sys.stdout.write(''.join(seq_string))
+          #non-standard amino acids not already handled can be found in the
+          #  output by searching for 'X'
+          code = 'X'+resname
+        seq_string.append(code)
+      seq_string.append('\n')
+      sys.stdout.write(''.join(seq_string))
+#-------------------------------------------------------------------------------
+#}}}
+
+#{{{ --- PROBE superposition ---
+#-------------------------------------------------------------------------------
+#First step: excise the relevant bits of each pdb file
+def trim_motifs(motif_instances, filename):
+  pwd = os.getcwd()
+  for motif_name in motif_instances:
+    if os.path.isdir(motif_name): pass
+    else: os.mkdir(motif_name)
+    os.chdir(motif_name)
+
+    for instance in motif_instances[motif_name]:
+      resnums = []
+      for residue in instance.residues.values():
+        resnum = str(residue.resnum)
+        resnums.append(resnum)
+      selection = "resseq "+ " or resseq ".join(resnums)
+      command = 'phenix.pdbtools stop_for_unknowns=False modify.keep=\"'+selection+'\" '+filename
+      os.system(command)
+    os.chdir(pwd)
+
+#Second step: use superpose_pdbs to align each file (in progress)
+def superpose_motifs(motif_list):
+  pass
+  #for motif in motif_list:
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -1073,6 +1048,8 @@ def run(args):
   else:
     if params.give_kin:
       kin_header(kinorder,kinranges)
+    elif params.probe_motifs:
+      pass
     else:
       csv_header(kinorder,params.give_connections)
   #-----------------------------------------------------------------------------
@@ -1167,9 +1144,9 @@ def run(args):
       add_probe_data(resdata,make_probe_data(hierarchy))
 
     if params.probe_motifs:
-      cablam_fingerprints.check_protein(resdata, motif_list)
-      #for motif_name in motif_list:
-      #  fingerprints.annote_motif_protein(resdata,motif_name,params.debug)
+      found_motifs = cablam_fingerprints.check_protein(resdata, motif_list)
+      #found_motifs is a dictionary. The keys are motif names.
+      #  The values are lists of cablam_fingerprints.motif_instance objects.
     #---------------------------------------------------------------------------
     #}}}
 
@@ -1180,15 +1157,22 @@ def run(args):
     #--probemode=instance for kins where each veclist is one instance of motif
     if params.probe_motifs:# and args.probepath:
       if params.probe_mode == 'kin':# or params.probe_mode == None:
-        kin_print_probe(resdata, kinorder, outfiles, skiplist, inclist)
+        kin_print_probe(found_motifs, kinorder, outfiles)
       elif params.probe_mode == 'annote':
         outfile = open(pdbid+'cablam_motifs.kin','w')
-        kin_print_probe_annote(resdata, motif_list, writeto=outfile)
+        #kin_print_probe_annote(resdata, motif_list, writeto=outfile)
+        kin_print_probe_annote(found_motifs, writeto=outfile)
         outfile.close()
       elif params.probe_mode == 'instance':
-        kin_print_by_instance(resdata, motif_list, kinorder, outfiles)
+        #kin_print_by_instance(resdata, motif_list, kinorder, outfiles)
+        kin_print_by_instance(found_motifs, motif_list, kinorder, outfiles)
       elif params.probe_mode == 'sequence':
-        res_seq_by_instance(resdata, motif_list)
+        res_seq_by_instance(found_motifs)
+        #res_seq_by_instance(resdata, motif_list)
+      elif params.probe_mode == 'superpose':
+        #trim_motifs(resdata, filename, motif_list)
+        trim_motifs(found_motifs, filename)
+        superpose_motifs(motif_list)
       else:
         sys.stderr.write('\n\nUnrecognized probemode request\n\n')
         sys.exit()
