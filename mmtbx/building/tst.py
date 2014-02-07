@@ -1,6 +1,7 @@
 
 from __future__ import division
 from mmtbx import building
+from libtbx.test_utils import show_diff
 from libtbx.utils import null_out
 from cStringIO import StringIO
 
@@ -89,6 +90,14 @@ def exercise_map_utils () :
     two_fofc_map=two_fofc_map,
     atom_selection=sele_all,
     xray_structure=fmodel.xray_structure)
+  out = StringIO()
+  map_stats.show_atoms_outside_density(out=out, two_fofc_cutoff=3.0)
+  pdb_strs = [ l.split(":")[0] for l in out.getvalue().splitlines() ]
+  assert len(pdb_strs) > 0
+  # XXX there seems to be a stochastic effect here
+  #assert (pdb_strs == ['pdb=" CA  GLN A   5 "', 'pdb=" CB  GLN A   5 "',
+  #                     'pdb=" CD  GLN A   5 "', 'pdb=" NE2 GLN A   5 "']), \
+  #  pdb_strs
   fc_map = fmodel.map_coefficients(map_type="Fc").fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
   assert (map_stats.number_of_atoms_below_fofc_map_level() == 3)
