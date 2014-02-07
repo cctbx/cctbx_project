@@ -39,11 +39,14 @@ from __future__ import division
 #  handles all the calculations setup() needs.
 #2013-02-01:
 #  Added oneline output. Supports dir of files, as well as single files. Added
-  #checks for CA-only contours. Added find_partial_sec_struc and
-  #find_whole_sec_struc to piece individual residue assignments together into
-  #complete secondary structure elements. Added multicrit kinemage printing.
+#  checks for CA-only contours. Added find_partial_sec_struc and
+#  find_whole_sec_struc to piece individual residue assignments together into
+#  complete secondary structure elements. Added multicrit kinemage printing.
 #2013-09-17:
 #  Added support for threeten helices throughout.
+#2014-02-07:
+#  Added test validation for cis vs tran proline.
+#  Added stand-alone output for HELIX/SHEET records.
 
 import os, sys
 import libtbx.phil.command_line #argument parsing
@@ -74,6 +77,9 @@ cablam_validate {
   give_points = False
     .type = bool
     .help = '''print cablam-space points to sys.stdout, in kinemage dotlist format'''
+  give_records = False
+    .type = bool
+    .help = '''print HELIX and SHEET=style records based on CaBLAM analysis'''
   give_oneline = False
     .type = bool
     .help = '''print one-line validation to sys.stdout: Count and percent of cablam outliers'''
@@ -89,6 +95,9 @@ cablam_validate {
   give_full_kin = False
     .type = bool
     .help = '''open in King a multi-crit-type kinemage with markup for cablam analysis'''
+  check_prolines = False
+    .type = bool
+    .help = '''test of a function to differentiate cis vs trans prolines'''
 }
 """, process_includes=True)
 #-------------------------------------------------------------------------------
@@ -152,7 +161,10 @@ class motif_chunk():
     motif_len = self.motif_end.resnum - self.motif_start.resnum + 1
     if motif_len >= 3:
       #Note: the following code makes me hate HELIX record formatting
-      writeto.write('HELIX  '+ '%3i' %helix_num +' '+ '%3i' %helix_num +' '+motif_start_id[:5]+' '+motif_start_id[5:]+' '+  motif_end_id[:5] +' '+motif_end_id[5:] +' 1                               '+'%5i'%motif_len+'\n')
+      writeto.write('HELIX  '+ '%3i' %helix_num +' '+ '%3i' %helix_num +' '+
+        motif_start_id[:5]+' '+motif_start_id[5:]+' '+  motif_end_id[:5] +' '+
+        motif_end_id[5:] +' 1                               '+'%5i'%motif_len+
+        '\n')
 
   def print_threeten_record(self,helix_num=1,writeto=sys.stdout):
     motif_start_id = self.motif_start.id_with_resname()
@@ -160,12 +172,18 @@ class motif_chunk():
     motif_len = self.motif_end.resnum - self.motif_start.resnum + 1
     if motif_len >= 1:
       #Note: the following code makes me hate HELIX record formatting
-      writeto.write('HELIX  '+ '%3i' %helix_num +' '+ '%3i' %helix_num +' '+motif_start_id[:5]+' '+motif_start_id[5:]+' '+  motif_end_id[:5] +' '+motif_end_id[5:] +' 5                               '+'%5i'%motif_len+'\n')
+      writeto.write('HELIX  '+ '%3i' %helix_num +' '+ '%3i' %helix_num +' '+
+        motif_start_id[:5]+' '+motif_start_id[5:]+' '+  motif_end_id[:5] +' '+
+        motif_end_id[5:] +' 5                               '+'%5i'%motif_len+
+        '\n')
 
-  def print_sheet_record(self,sheet_id='U',strand_num=1,strand_count=1,strand_sense=0,writeto=sys.stdout):
+  def print_sheet_record(self,sheet_id='U',strand_num=1,strand_count=1,
+    strand_sense=0,writeto=sys.stdout):
     motif_start_id = self.motif_start.id_with_resname()
     motif_end_id = self.motif_end.id_with_resname()
-    writeto.write('SHEET  '+'%3i' %strand_num +' '+'%3s'%sheet_id + '%2i'%strand_count +' '+ motif_start_id+' '+motif_end_id +'%2i'%strand_sense+'\n')
+    writeto.write('SHEET  '+'%3i' %strand_num +' '+'%3s'%sheet_id +
+      '%2i'%strand_count +' '+ motif_start_id+' '+motif_end_id +
+      '%2i'%strand_sense+'\n')
 
   def __init__(self):
     self.motif_start = None #will hold residue object
@@ -193,6 +211,8 @@ Options:
                            (default output)
   give_points=False        prints cablam-space points to screen,
                              in kinemage dotlist format
+  give_records=False       prints HELIX and SHEET-style records to screen, based
+                             on CaBLAM secondary structure analysis
   give_ca_kin=False        prints a kinemage with ca-contour outliers marked
   give_full_kin=False      opens a phenix.king window with multicrit style
                              markup for the submitted structure. Also saves a
@@ -285,8 +305,8 @@ Points:
 #Wrapper for the construction of the resdata object needed for validation
 #  All you need is a hierarchy object
 def setup(hierarchy,pdbid='pdbid'):
-  resdata=cablam_res.construct_linked_residues(hierarchy,targetatoms=['CA','C','N','O'],pdbid=pdbid)
-  #cablam_res.prunerestype(resdata, 'HOH')
+  resdata=cablam_res.construct_linked_residues(hierarchy,
+    targetatoms=['CA','C','N','O'],pdbid=pdbid)
   cablam_math.cablam_measures(resdata)
   return resdata
 #-------------------------------------------------------------------------------
@@ -303,10 +323,12 @@ def fetch_peptide_expectations():
   unpickled = {}
   for category in categories:
     picklefile = libtbx.env.find_in_repositories(
-      relative_path=("chem_data/cablam_data/cablam.8000.expected."+category+".pickle"),
+      relative_path=(
+        "chem_data/cablam_data/cablam.8000.expected."+category+".pickle"),
       test=os.path.isfile)
     if (picklefile is None):
-      sys.stderr.write("\nCould not find a needed pickle file for category "+category+" in chem_data.\nExiting.\n")
+      sys.stderr.write("\nCould not find a needed pickle file for category "+
+        category+" in chem_data.\nExiting.\n")
       sys.exit()
     ndt = easy_pickle.load(file_name=picklefile)
     unpickled[category] = ndt
@@ -318,10 +340,12 @@ def fetch_ca_expectations():
   unpickled = {}
   for category in categories:
     picklefile = libtbx.env.find_in_repositories(
-      relative_path=("chem_data/cablam_data/cablam.8000.expected."+category+"_CA.pickle"),
+      relative_path=(
+        "chem_data/cablam_data/cablam.8000.expected."+category+"_CA.pickle"),
       test=os.path.isfile)
     if (picklefile is None):
-      sys.stderr.write("\nCould not find a needed pickle file for category "+category+" in chem_data.\nExiting.\n")
+      sys.stderr.write("\nCould not find a needed pickle file for category "+
+        category+" in chem_data.\nExiting.\n")
       sys.exit()
     ndt = easy_pickle.load(file_name=picklefile)
     unpickled[category] = ndt
@@ -336,17 +360,43 @@ def fetch_ca_expectations():
 #The return object is a dict keyed by secondary structure type:
 #  'loose_beta','regular_beta','loose_alpha','regular_alpha'
 def fetch_motifs():
-  motifs = ['loose_beta','regular_beta','loose_alpha','regular_alpha','loose_threeten','regular_threeten']
+  motifs = ['loose_beta','regular_beta','loose_alpha','regular_alpha',
+  'loose_threeten','regular_threeten']
   unpickled = {}
   for motif in motifs:
     picklefile = libtbx.env.find_in_repositories(
-      relative_path=("chem_data/cablam_data/cablam.8000.motif."+motif+".pickle"),
+      relative_path=(
+        "chem_data/cablam_data/cablam.8000.motif."+motif+".pickle"),
       test=os.path.isfile)
     if (picklefile is None):
-      sys.stderr.write("\nCould not find a needed pickle file for motif "+motif+" in chem_data.\nExiting.\n")
+      sys.stderr.write("\nCould not find a needed pickle file for motif "+
+        motif+" in chem_data.\nExiting.\n")
       sys.exit()
     ndt = easy_pickle.load(file_name=picklefile)
     unpickled[motif] = ndt
+  return unpickled
+#-------------------------------------------------------------------------------
+#}}}
+
+#{{{ fetch cis trans pro
+#-------------------------------------------------------------------------------
+#This function finds, unpickles, and returns N-Dim Tables of proline behavior
+#  for use in determining cis versus trans peptide confirmation
+#The return object is a dict keyed by: 'cis' and 'trans'
+def fetch_cis_trans_proline():
+  confs = ['cis','trans']
+  unpickled = {}
+  for conf in confs:
+    picklefile = libtbx.env.find_in_repositories(
+      relative_path=(
+        "chem_data/cablam_data/cablam.8000.proline."+conf+".pickle"),
+      test=os.path.isfile)
+    if (picklefile is None):
+      sys.stderr.write("\nCould not find a needed pickle file for "+
+        conf+" proline in chem_data.\nExiting.\n")
+      sys.exit()
+    ndt = easy_pickle.load(file_name=picklefile)
+    unpickled[conf] = ndt
   return unpickled
 #-------------------------------------------------------------------------------
 #}}}
@@ -566,9 +616,68 @@ def find_whole_sec_struc(resdata):
 #-------------------------------------------------------------------------------
 #}}}
 
+#{{{ check prolines function
+#-------------------------------------------------------------------------------
+#This is a function in development: cis-proline vs trans-proline seem to have
+#  mostly-distinct distributions in CaBLAM space.  This funtion attempts to
+#  determine if a proline's CA trace is modeled in agreement with its omega
+#  dihedral.  It is clear that errors can be detected.  It is not yet clear how
+#  to correct those errors (whether the fault is more likely to be in the CA
+#  trace or in the omega dihedral. Use with care.)
+def check_prolines(hierarchy,pdbid='pdbid'):
+  cis_cutoff   = 0.005
+  trans_cutoff = 0.005
+  resdata = setup(hierarchy,pdbid)
+  cablam_math.omegacalc(resdata)
+  pro_contour = fetch_cis_trans_proline()
+  reskeys = resdata.keys()
+  reskeys.sort()
+  for resid in reskeys:
+    residue = resdata[resid]
+    if residue.id_with_resname()[0:3].upper() == 'PRO':
+      if 'omega' in residue.measures and 'CA_d_in' in residue.measures and 'CA_d_out' in residue.measures:
+        omega = residue.measures['omega']
+        cablam_point = [residue.measures['CA_d_in'],residue.measures['CA_d_out']]
+        cislevel = pro_contour['cis'].valueAt(cablam_point)
+        translevel = pro_contour['trans'].valueAt(cablam_point)
+        if (omega >= -60) and (omega <= 60): #modeled as cis
+          if cislevel < cis_cutoff:
+            print "bad CIS at ", pdbid, residue.id_with_resname(), "value:", cislevel
+            if translevel >= 0.1:#trans_cutoff:
+              print "  try TRANS. value:", translevel
+            else:
+              print "  no suggestion. trans value:", translevel
+        elif (omega >=120) or (omega <= -120): #modeled as trans
+          if translevel < trans_cutoff:
+            print "bad TRANS at ", pdbid, residue.id_with_resname(), "value:", translevel
+            if cislevel >= 0.1:#cis_cutoff:
+              print "  try CIS. value:", cislevel
+            else:
+              print "  no suggestion. cis value:", cislevel
+#}}}
+
+#{{{ print_helix_sheet_records function
+#-------------------------------------------------------------------------------
+#This function accepts a hierarchy object and returns HELIX and SHEET-style
+#  records for major secondary structure elements found in that model by CaBLAM.
+#  cablam_multicrit_kin() also returns  these records, but as part of a pbd file
+def print_helix_sheet_records(hierarchy, ca_cutoff=0.05, pdbid='pdbid',writeto=sys.stdout):
+  resdata=setup(hierarchy,pdbid)
+  ca_expectations = fetch_ca_expectations()
+  motif_contours = fetch_motifs()
+
+  ca_outliers = find_ca_outliers(resdata,ca_expectations,cutoff=ca_cutoff)
+
+  find_partial_sec_struc(resdata,ca_outliers=ca_outliers)
+  motifs = find_whole_sec_struc(resdata)
+  for motif in motifs:
+    motif.print_record(writeto=writeto)
+#-------------------------------------------------------------------------------
+#}}}
+
 #{{{ cablam_multicrit_kin function
 #-------------------------------------------------------------------------------
-#This function accepts a hierarchy object and returns a comprehansive validation
+#This function accepts a hierarchy object and returns a comprehensive validation
 #  kinemage, in an open phenix.king window.  Likely to return .kin-format text
 #  once I get ahold of the ribbon code
 def cablam_multicrit_kin(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0.005, pdbid='pdbid', writeto=sys.stdout):
@@ -876,6 +985,10 @@ def run(args):
       give_ca_kin(ca_outliers,params.outlier_cutoff)
     elif params.give_full_kin:
       cablam_multicrit_kin(hierarchy,peptide_cutoff=params.outlier_cutoff,pdbid=pdbid)
+    elif params.check_prolines:
+      check_prolines(hierarchy,pdbid=pdbid)
+    elif params.give_records:
+      print_helix_sheet_records(hierarchy,ca_cutoff=0.05,pdbid='pdbid',writeto=sys.stdout)
     else:
       outliers = analyze_pdb(
         hierarchy, outlier_cutoff=params.outlier_cutoff, pdbid=pdbid)
@@ -900,28 +1013,30 @@ if __name__ == "__main__":
 #-------------------------------------------------------------------------------
 #}}}
 
-def stitch_beta(motifs): #pass in an iterable of motif_chunk class instances
-  strands = []
-  for motif in motifs:
-    if motif.motif_type == 'sheet':
-      strands.append(motif)
-    else: pass
-  for strand1 in strands:
-    for strand2 in strands:
-      strand1_dir = cablam_math.vectorize(strand1.motif_start.getatomxyz('CA'),strand1.motif_end.getatomxyz('CA'))
-      strand2_dir = cablam_math.vectorize(strand2.motif_start.getatomxyz('CA'),strand2.motif_end.getatomxyz('CA'))
-      strand_dot_product = cablam_math.dot(strand1_dir,strand2_dir)
-      if strand_dot_product < 0: #antiparallel
-        curres = strand1.motif_start
-        pass
-      elif strand_dot_product >0: #parallel
-        pass
-      pass
-      #check if parallel or antiparallel with dot product
-      #for residue in strand 1:
-      #for residue in strand 2:
-        #if close enough:
-        #walk in direction
-
-
-  return sheets
+##The following is a function in progress to connect beta strands into sheets.
+##Do not use without further development
+##def stitch_beta(motifs): #pass in an iterable of motif_chunk class instances
+##  strands = []
+##  for motif in motifs:
+##    if motif.motif_type == 'sheet':
+##      strands.append(motif)
+##    else: pass
+##  for strand1 in strands:
+##    for strand2 in strands:
+##      strand1_dir = cablam_math.vectorize(strand1.motif_start.getatomxyz('CA'),strand1.motif_end.getatomxyz('CA'))
+##      strand2_dir = cablam_math.vectorize(strand2.motif_start.getatomxyz('CA'),strand2.motif_end.getatomxyz('CA'))
+##      strand_dot_product = cablam_math.dot(strand1_dir,strand2_dir)
+##      if strand_dot_product < 0: #antiparallel
+##        curres = strand1.motif_start
+##        pass
+##      elif strand_dot_product >0: #parallel
+##        pass
+##      pass
+##      #check if parallel or antiparallel with dot product
+##      #for residue in strand 1:
+##      #for residue in strand 2:
+##        #if close enough:
+##        #walk in direction
+##
+##
+##  return sheets
