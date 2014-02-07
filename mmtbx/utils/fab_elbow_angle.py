@@ -2,6 +2,7 @@ from __future__ import division
 from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
 from libtbx.utils import null_out
+from scitbx import matrix
 from math import acos,pi
 from iotbx import pdb
 import iotbx.pdb
@@ -79,9 +80,9 @@ class fab_elbow_angle(object):
   def cross(self,a,b):
     '''(array,array) -> array
     returns normalized cross product vector'''
-    a1,a2,a3 = a
-    b1,b2,b3 = b
-    x = flex.double([a2*b3-a3*b2,a3*b1-a1*b3,a1*b2-a2*b1])
+    a = tuple(a)
+    b = tuple(b)
+    x = flex.double(matrix.cross_product_matrix(a)*b)
     l = x.norm()
     if l != 0:
       x = x/l
