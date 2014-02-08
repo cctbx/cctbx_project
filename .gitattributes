@@ -1475,6 +1475,7 @@ mmtbx/alignment_ext.cpp svneol=native#text/plain
 mmtbx/arrays.py -text
 mmtbx/building/__init__.py -text
 mmtbx/building/alternate_conformations/__init__.py -text
+mmtbx/building/alternate_conformations/altloc_labeling.py -text
 mmtbx/building/alternate_conformations/single_residue.py -text
 mmtbx/building/alternate_conformations/tst.py -text
 mmtbx/building/extend_sidechains.py -text
