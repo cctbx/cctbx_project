@@ -1,8 +1,8 @@
-from __future__ import division
 
 # TODO:
 #  - cached scenes
 
+from __future__ import division
 from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import object_oriented_patterns as oop
@@ -93,10 +93,8 @@ class scene (object) :
     self.missing_set = oop.null()
     if (array.is_xray_intensity_array()) :
       data.set_selected(data < 0, flex.double(data.size(), 0.))
-    if (array.is_unique_set_under_symmetry()) :
+    if (array.is_unique_set_under_symmetry()) and (settings.map_to_asu) :
       array = array.map_to_asu()
-    else :
-      print "data are not unique under symmetry"
     if (settings.d_min is not None) :
       array = array.resolution_filter(d_min=settings.d_min)
     self.filtered_array = array.deep_copy()
@@ -453,6 +451,8 @@ master_phil = libtbx.phil.parse("""
     .type = float
   scale = 1
     .type = int
+  map_to_asu = False
+    .type = bool
 """)
 
 def settings () :
