@@ -474,7 +474,7 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
     random_u_iso           = True,
     random_occupancy       = False)
   x.scattering_type_registry(table="wk1995")
-  x.set_occupancies(value=0.9, selection = x.hd_selection())
+  x.set_occupancies(value=0.6, selection = x.hd_selection())
   f_calc = x.structure_factors(d_min = 1.5, algorithm="direct").f_calc()
   mask_manager = mmtbx.masks.manager(miller_array = f_calc)
   f_mask = mask_manager.shell_f_masks(xray_structure = x)[0]
@@ -492,43 +492,45 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
   r_free_flags = f_obs.generate_r_free_flags()
   sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   sfg_params.algorithm = "direct"
-  x.set_occupancies(value=0.0, selection = x.hd_selection())
-  fmodel = mmtbx.f_model.manager(
-    xray_structure = x,
-    f_obs          = f_obs,
-    k_mask         = k_mask,
-    k_anisotropic  = k_anisotropic,
-    k_isotropic    = k_isotropic,
-    r_free_flags   = r_free_flags,
-    sf_and_grads_accuracy_params = sfg_params)
-  assert fmodel.r_work() > 0.06, fmodel.r_work()
-  fmodel.update_f_hydrogens()
-  assert approx_equal(fmodel.k_h, 0.9)
-  assert approx_equal(fmodel.b_h, 0)
-  assert approx_equal(fmodel.r_work(), 0)
-  # test 2
-  fmodel = mmtbx.f_model.manager(
-    xray_structure = x,
-    f_obs          = f_obs,
-    r_free_flags   = r_free_flags,
-    sf_and_grads_accuracy_params = sfg_params)
-  assert fmodel.r_work() > 0.25
-  fmodel.update_all_scales(cycles=6, fast=False, update_f_part1_for=None)
-  assert approx_equal(fmodel.k_h, 0.9)
-  assert approx_equal(fmodel.b_h, 0)
-  assert approx_equal(fmodel.r_work(), 0)
-  # test 3
-  fmodel = mmtbx.f_model.manager(
-    xray_structure = x,
-    f_obs          = f_obs,
-    r_free_flags   = r_free_flags,
-    sf_and_grads_accuracy_params = sfg_params)
-  assert fmodel.r_work() > 0.25
-  fmodel.update_all_scales(cycles=6, fast=True, show=False,
-    update_f_part1_for=None)
-  assert approx_equal(fmodel.k_h, 0.9)
-  assert approx_equal(fmodel.b_h, 0)
-  assert fmodel.r_work() < 0.025
+  for it in [(0,0.6), (1,-0.4), (0.2,0.4), (-0.2,0.8)]:
+    value, k_h_ = it
+    x.set_occupancies(value=value, selection = x.hd_selection())
+    fmodel = mmtbx.f_model.manager(
+      xray_structure = x,
+      f_obs          = f_obs,
+      k_mask         = k_mask,
+      k_anisotropic  = k_anisotropic,
+      k_isotropic    = k_isotropic,
+      r_free_flags   = r_free_flags,
+      sf_and_grads_accuracy_params = sfg_params)
+    assert fmodel.r_work() > 0.02, fmodel.r_work()
+    fmodel.update_f_hydrogens()
+    assert approx_equal(fmodel.k_h, k_h_), [it, fmodel.k_h, fmodel.r_work()]
+    assert approx_equal(fmodel.b_h, 0)
+    assert approx_equal(fmodel.r_work(), 0)
+    # test 2
+    fmodel = mmtbx.f_model.manager(
+      xray_structure = x,
+      f_obs          = f_obs,
+      r_free_flags   = r_free_flags,
+      sf_and_grads_accuracy_params = sfg_params)
+    assert fmodel.r_work() > 0.25
+    fmodel.update_all_scales(cycles=6, fast=False, update_f_part1_for=None)
+    assert approx_equal(fmodel.k_h, k_h_)
+    assert approx_equal(fmodel.b_h, 0)
+    assert approx_equal(fmodel.r_work(), 0)
+    # test 3
+    fmodel = mmtbx.f_model.manager(
+      xray_structure = x,
+      f_obs          = f_obs,
+      r_free_flags   = r_free_flags,
+      sf_and_grads_accuracy_params = sfg_params)
+    assert fmodel.r_work() > 0.25
+    fmodel.update_all_scales(cycles=6, fast=True, show=False,
+      update_f_part1_for=None)
+    assert approx_equal(fmodel.k_h, k_h_)
+    assert approx_equal(fmodel.b_h, 0)
+    assert fmodel.r_work() < 0.025
   map_coeffs = fmodel.map_coefficients(map_type="2mFo-DFc")
 
 def exercise_top_largest_f_obs_f_model_differences(threshold_percent=10,
