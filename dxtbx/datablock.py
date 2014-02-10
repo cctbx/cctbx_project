@@ -477,7 +477,7 @@ class DataBlockDictImporter(object):
         beam = None
       try:
         dobj = dlist[obj['detector']]
-        if 'hierarchy' in obj:
+        if 'hierarchy' in dobj:
           detector = HierarchicalDetector.from_dict(dobj)
         else:
           detector = Detector.from_dict(dobj)
