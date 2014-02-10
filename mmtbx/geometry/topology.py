@@ -98,6 +98,18 @@ class Compound(object):
     return self.descriptor_for.values()
 
 
+  @property
+  def bonds(self):
+
+    atom_for = self.atom_for
+
+    for edge in self.graph.edges():
+      yield (
+        atom_for[ self.graph.source( edge = edge) ],
+        atom_for[ self.graph.target( edge = edge) ],
+        )
+
+
   def add_atom(self, atom):
 
     self.descriptor_for[ atom ] = self.graph.add_vertex( label = atom )
@@ -173,6 +185,30 @@ class Compound(object):
         edge_type = edge_type,
         ),
       )
+
+
+  @classmethod
+  def from_structure(cls, atoms, tolerance = 0.1, vertex_type = "vector", edge_type = "set"):
+
+    compound = cls.create( vertex_type = vertex_type, edge_type = edge_type )
+
+    for a in atoms:
+      compound.add_atom( atom = a )
+
+    import itertools
+    from mmtbx.monomer_library import bondlength_defaults
+
+    for ( a1, a2 ) in itertools.combinations( atoms, 2 ):
+      ( x1, y1, z1 ) = a1.xyz
+      ( x2, y2, z2 ) = a2.xyz
+
+      dist2 = ( ( x1 - x2 ) ** 2 + ( y1 - y2 ) ** 2 + ( z1 - z2 ) ** 2 )
+      expected = bondlength_defaults.get_default_bondlength( a1.element, a2.element )
+
+      if dist2 < ( expected + tolerance ) ** 2:
+        compound.add_bond( a1, a2 )
+
+    return compound
 
 
 class RascalMatch(object):
