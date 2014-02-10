@@ -1,4 +1,4 @@
-# LIBTBX_SET_DISPATCHER_NAME phenix.development.fem
+# LIBTBX_SET_DISPATCHER_NAME phenix.fem
 
 from __future__ import division
 import mmtbx.command_line
@@ -73,13 +73,6 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     xray_structure = xray_structure)
   fmodel.update_all_scales(update_f_part1_for=None)
   fmodel.show(show_approx=False)
-  ### BEGIN: compute THE SIMPLEST possible 2mFo-DFc (the most original one)
-  mc_orig = fmodel.electron_density_map(
-    update_f_part1 = False).map_coefficients(
-      map_type     = "2mFo-DFc",
-      isotropize   = True,
-      fill_missing = False)
-  ### END: compute THE SIMPLEST possible 2mFo-DFc (the most original one)
   print >> log, "r_work: %6.4f r_free: %6.4f"%(fmodel.r_work(), fmodel.r_free())
   ### b-factor sharpen
   xrs = fmodel.xray_structure
@@ -93,14 +86,15 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     update_f_calc = True)
   #
   fmodel.update_all_scales(update_f_part1_for="refinement")
-  #
-  #### Compute FEM start
-  fem = mmtbx.maps.fem.run(fmodel=fmodel).mc_result
-  #### Compute FEM end
-  mtz_dataset = mc_orig.as_mtz_dataset(column_root_label="2mFoDFc")
+  fem = mmtbx.maps.fem.run(fmodel=fmodel)
+  # output
+  mtz_dataset = fem.mc.as_mtz_dataset(column_root_label="2mFoDFc")
   mtz_dataset.add_miller_array(
-    miller_array=fem,
+    miller_array=fem.mc_result,
     column_root_label=params.output.column_root_label)
+  mtz_dataset.add_miller_array(
+    miller_array=fem.mc_result,
+    column_root_label="Resolve_DM")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = params.output.file_name)
   return os.path.abspath(params.output.file_name)
