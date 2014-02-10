@@ -1792,12 +1792,6 @@ def fmodel_simple(f_obs,
     bss_params = bss.master_params.extract()
   bss_params.bulk_solvent = bulk_solvent_correction
   bss_params.anisotropic_scaling = anisotropic_scaling
-  #
-  if(scattering_table != "neutron" and f_obs.d_min()>1.01):
-    for xrs in xray_structures:
-      hd_sel = xrs.hd_selection()
-      xrs.set_occupancies(value = 0, selection = hd_sel)
-  #
   def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp, ro, om, ofp1):
     fmodel = fmodel_manager(
       xray_structure = xrs.deep_copy_scatterers(),

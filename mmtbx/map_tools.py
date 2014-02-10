@@ -7,6 +7,27 @@ from libtbx.utils import null_out
 from libtbx import adopt_init_args
 import mmtbx
 import libtbx
+import random
+
+def shelx_weight(
+      f_obs,
+      f_model,
+      weight_parameter=None):
+  if(weight_parameter is not None):
+    sc = weight_parameter
+  else:
+    sc = flex.double()
+    for sc_ in xrange(f_obs.data().size()):
+      sc.append(random.choice([1,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2]))
+  f_m = abs(f_model).data()
+  f_o = abs(f_obs).data()
+  i_c = f_m * f_m
+  i_f = f_o * f_o
+  sig_f = f_obs.sigmas()
+  assert sig_f.size() == f_o.size()
+  w = 1./( sig_f*sig_f*sig_f*sig_f + (sc * i_f)*(sc * i_f) )
+  sigma_i = 1/flex.sqrt(w)
+  return i_c*i_c/(i_c*i_c + sigma_i*sigma_i)
 
 class fo_fc_scales(object):
   def __init__(self,
@@ -51,6 +72,8 @@ class combine(object):
                map_type_str,
                fo_scale,
                fc_scale,
+               use_shelx_weight,
+               shelx_weight_parameter,
                map_calculation_helper=None):
     self.mch = map_calculation_helper
     self.mnm = mmtbx.map_names(map_name_string = map_type_str)
@@ -59,6 +82,8 @@ class combine(object):
     self.fo_scale = fo_scale
     self.f_obs = None
     self.f_model = None
+    self.use_shelx_weight = use_shelx_weight
+    self.shelx_weight_parameter = shelx_weight_parameter
     if(not self.mnm.ml_map):
       self.f_obs = self.fmodel.f_obs().data()*fo_scale
     else:
@@ -90,7 +115,15 @@ class combine(object):
         f_model_data = self.f_model.data()*self.fc_scale*self.mch.alpha.data()
     # f_model_data may be multiplied by scales like "-1", so it cannot be
     # phase source !
-    return compute(fo=self.f_obs, fc=f_model_data, miller_set=self.fmodel.f_obs())
+    result = compute(fo=self.f_obs, fc=f_model_data,
+      miller_set=self.fmodel.f_obs())
+    if(self.use_shelx_weight):
+      sw = shelx_weight(
+        f_obs   = self.fmodel.f_obs(),
+        f_model = self.fmodel.f_model_scaled_with_k1(),
+        weight_parameter = self.shelx_weight_parameter)
+      result = result.customized_copy(data = result.data()*sw)
+    return result
 
 class electron_density_map(object):
 
@@ -122,7 +155,9 @@ class electron_density_map(object):
                        sharp=False,
                        post_processing_callback=None,
                        pdb_hierarchy=None, # XXX required for map_type=llg
-                       merge_anomalous=None) :
+                       merge_anomalous=None,
+                       use_shelx_weight=False,
+                       shelx_weight_parameter=1.5) :
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     # Special case #1: anomalous map
     if(map_name_manager.anomalous):
@@ -173,7 +208,9 @@ class electron_density_map(object):
       map_type_str           = map_type,
       fo_scale               = fo_scale,
       fc_scale               = fc_scale,
-      map_calculation_helper = self.mch).map_coefficients()
+      map_calculation_helper = self.mch,
+      use_shelx_weight       = use_shelx_weight,
+      shelx_weight_parameter = shelx_weight_parameter).map_coefficients()
     r_free_flags = None
     # XXX the default scale array (used for the isotropize option) needs to be
     # calculated and processed now to avoid array size errors

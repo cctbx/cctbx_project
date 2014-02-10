@@ -389,6 +389,7 @@ class manager(manager_mixin):
     if(alpha_beta_params is None):
       alpha_beta_params = alpha_beta_master_params.extract()
     self.twin = False
+    if(twin_law is not None): self.twin=True
     assert f_obs is not None
     assert f_obs.is_real_array()
     assert f_obs.is_unique_set_under_symmetry()
@@ -970,66 +971,6 @@ class manager(manager_mixin):
     if(log is None): log = sys.stdout
     return phenix_masks.nu(fmodel = self, params = params)
 
-
-#Fully functional method that produces better R-factors than the one currently
-#used. Instability is the only problem. Revisit later. PVA.
-#
-#  def update_f_hydrogens(self, log=None):
-#    #print "XXX1:",self.r_work(), self.r_free()
-#    #self.update_core(
-#    #  f_part2 = self.f_calc().customized_copy(data = self.f_calc().data()*0))
-#    #print "XXX2:",self.r_work(), self.r_free()
-#    hd_sel = self.xray_structure.hd_selection()
-#    xrsh = self.xray_structure.select(hd_sel)
-#    occ = xrsh.scatterers().extract_occupancies()
-#    assert occ.all_eq(0)
-#    from cctbx import maptbx
-#    crystal_gridding = maptbx.crystal_gridding(
-#      unit_cell             = self.xray_structure.unit_cell(),
-#      space_group_info      = self.f_obs().space_group_info(),
-#      d_min                 = self.f_obs().d_min(),
-#      resolution_factor     = 1./7)
-#    # ASSUMES MASK IS INVERTED 0->1, 1->0 (NOT THE CASE BY DEFAULT!)
-#    mask_data = maptbx.mask(
-#      xray_structure = xrsh, # Expanded to P1 internally
-#      n_real         = crystal_gridding.n_real(),
-#      solvent_radius = 0.0)
-#    #s = mask_data == 1
-#    #mask_data = mask_data.set_selected(s, 0)
-#    #mask_data = mask_data.set_selected(~s, 1)
-#    #
-#    mc = self.electron_density_map().map_coefficients(
-#      map_type = "Fo-Fc", isotropize = True, fill_missing=False)
-#    fft_map = mc.fft_map(crystal_gridding=crystal_gridding)
-#    fft_map.apply_volume_scaling()
-#    map_data = fft_map.real_map_unpadded()
-#    map_data = map_data*mask_data
-#    #s = map_data < 0
-#    #map_data = map_data.set_selected(s, 0)
-#    f_diff = mc.structure_factors_from_map(
-#      map            = map_data,
-#      use_scale      = True,
-#      anomalous_flag = False,
-#      use_sg         = False)
-#    fm = manager(
-#      f_obs        = self.f_obs(),
-#      r_free_flags = self.r_free_flags(),
-#      f_calc       = self.f_model(),#_scaled_with_k1(), # What goes here ?
-#      f_mask       = f_diff)
-#    fm.update_all_scales(update_f_part1=False, remove_outliers=False)
-##    fm.show()
-#    print "LOOK2:",fm.r_work(), fm.r_free()
-#    # put into self
-#    kt  = self.k_isotropic()*self.k_anisotropic()
-#    ktp = fm.k_isotropic()*fm.k_anisotropic()
-#    self.update_core(
-#      k_isotropic   = flex.double(kt.size(),1),
-#      k_anisotropic = kt*ktp,
-#      f_part2       = f_diff.customized_copy(data = f_diff.data()*(1/kt)*fm.k_masks()[0])
-#    )
-#    #self.show()
-#    print "LOOK3:",self.r_work(), self.r_free()
-
   def update_f_hydrogens(self, log=None):
     if(self.xray_structure is None): return None
     def f_k_exp_scaled(k,b,ss,f):
@@ -1038,8 +979,7 @@ class manager(manager_mixin):
     if(hds.count(True)==0): return None
     xrsh = self.xray_structure.select(selection = hds)
     occ = xrsh.scatterers().extract_occupancies()
-    if(not occ.all_eq(0)): return
-    xrsh.set_occupancies(value=1) # XXX use parent values
+    xrsh.set_occupancies(value=1)
     fh = self.f_obs().structure_factors_from_scatterers(
       xray_structure = xrsh,
       algorithm      = self.sfg_params.algorithm).f_calc()
@@ -1061,7 +1001,7 @@ class manager(manager_mixin):
       f_part2_twin = f_part2_twin)
     rws = self.r_work()
     b_range = [0]+range(-b_min,b_min+50,1)
-    k_range = [i/10. for i in xrange(11)]
+    k_range = [i/10. for i in range(-11,11)]
     for b in b_range:
       for k in k_range:
         fh_kb = f_k_exp_scaled(k = k, b = b, ss = ss, f = fh)

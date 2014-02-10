@@ -35,15 +35,24 @@ class run(object):
         full_resolution_map=False,
         fill_missing=False,
         exclude_free_r_reflections=False,
+        use_shelx_weight=False,
+        reset_to_zero_below_sigma=None,
         log=sys.stdout):
     sgt = fmodel.f_obs().space_group().type()
+    if(use_shelx_weight):
+      weight = mmtbx.map_tools.shelx_weight(
+        f_obs   = fmodel.f_obs(),
+        f_model = fmodel.f_model_scaled_with_k1())
     def get_map(fmodel, map_type, fft_map_ref):
       f_map = fmodel.electron_density_map(
         update_f_part1=False).map_coefficients(
           map_type     = map_type,
           isotropize   = True,
           exclude_free_r_reflections=exclude_free_r_reflections,
-          fill_missing = fill_missing)
+          fill_missing = fill_missing,
+          use_shelx_weight = False)
+      if(use_shelx_weight):
+        f_map = f_map.customized_copy(data=f_map.data()*weight)
       fft_map = cctbx.miller.fft_map(
         crystal_gridding     = fft_map_ref,
         fourier_coefficients = f_map)
@@ -96,11 +105,26 @@ class run(object):
       f_map_data_asu = get_map(fmodel=fmodel_, map_type=map_type,
         fft_map_ref=fft_map_ref)
       assert f_map_data_asu.focus() == self.map_result_asu.focus()
-      maptbx.copy_box(
-        map_data_from = f_map_data_asu,
-        map_data_to   = self.map_result_asu,
-        start         = s,
-        end           = e)
+      if(reset_to_zero_below_sigma is not None):
+        assert type(reset_to_zero_below_sigma) == type(1.)
+        box = maptbx.copy(f_map_data_asu, s, e)
+        box.reshape(flex.grid(box.all()))
+        sd = box.sample_standard_deviation()
+        if(sd != 0):
+          box_ = box/sd
+          sel = box_ < reset_to_zero_below_sigma
+          box = box.set_selected(sel, 0)
+        maptbx.set_box(
+          map_data_from = box,
+          map_data_to   = self.map_result_asu,
+          start         = s,
+          end           = e)
+      else:
+        maptbx.copy_box(
+          map_data_from = f_map_data_asu,
+          map_data_to   = self.map_result_asu,
+          start         = s,
+          end           = e)
     # result
     sd = self.map_result_asu.sample_standard_deviation()
     self.map_result_asu = self.map_result_asu/sd

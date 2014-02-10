@@ -23,12 +23,11 @@ def compute_map_and_combine(
   m = get_map(map_coeffs=map_coeffs, crystal_gridding=crystal_gridding)
   if(map_data is None): map_data = m
   else:
-    for i in [0,0.1,0.2,0.3,0.4,0.5]:
-      maptbx.intersection(
-        map_data_1 = m,
-        map_data_2 = map_data,
-        threshold  = i)
-    map_data = (m+map_data)/2
+    maptbx.intersection(
+      map_data_1 = m,
+      map_data_2 = map_data,
+      thresholds = flex.double([0,0.1,0.2,0.3,0.4,0.5]),
+      average    = True)
   return map_data
 
 def randomize_struture_factors(map_coeffs, number_of_kicks, phases_only=False):
@@ -60,9 +59,9 @@ def randomize_struture_factors(map_coeffs, number_of_kicks, phases_only=False):
 def kick_map_coeffs(
       map_coeffs,
       crystal_gridding,
-      number_of_kicks = 10,
-      macro_cycles    = 10,
-      missing         = None,
+      number_of_kicks,
+      macro_cycles,
+      missing           = None,
       kick_completeness = 0.95,
       phases_only       = False):
   map_data = None
@@ -92,9 +91,9 @@ def kick_fmodel(
       fmodel,
       map_type,
       crystal_gridding,
-      number_of_kicks = 10,
-      macro_cycles    = 10,
-      missing         = None,
+      number_of_kicks,
+      macro_cycles,
+      missing           = None,
       kick_completeness = 0.95):
   f_model = fmodel.f_model_no_scales()
   zero = fmodel.f_calc().customized_copy(data =
@@ -152,22 +151,33 @@ class run(object):
       map_type           = "2mFo-DFc",
       mask_data          = None,
       crystal_gridding   = None,
-      number_of_kicks    = 10,
+      number_of_kicks    = 100,
       macro_cycles       = 10,
-      kick_completeness  = 0.95):
+      kick_completeness  = 0.95,
+      omit               = True):
     fmodel = self.convert_to_non_anomalous(fmodel=fmodel)
     self.mc_orig = map_tools.electron_density_map(
       fmodel=fmodel).map_coefficients(
         map_type     = "2mFo-DFc",
         isotropize   = True,
         fill_missing = False)
+    md_orig = get_map(map_coeffs=self.mc_orig, crystal_gridding=crystal_gridding)
+    # model missing
+    self.complete_set = map_tools.resolve_dm_map(
+      fmodel       = fmodel,
+      map_coeffs   = self.mc_orig,
+      pdb_inp      = None,
+      use_model_hl = True,
+      fill         = True)
+    md_complete_set = get_map(map_coeffs=self.complete_set, crystal_gridding=crystal_gridding)
+    self.missing = self.complete_set.lone_set(self.mc_orig)
     # Kick map coefficients
     md_kick = kick_map_coeffs(
       map_coeffs        = self.mc_orig,
       crystal_gridding  = crystal_gridding,
       number_of_kicks   = number_of_kicks,
       macro_cycles      = macro_cycles,
-      missing           = None,
+      missing           = self.missing,
       kick_completeness = kick_completeness)
     self.mc_kick = self.map_coeffs_from_map(map_data=md_kick)
     # Kick fmodel
@@ -177,57 +187,61 @@ class run(object):
       crystal_gridding  = crystal_gridding,
       number_of_kicks   = number_of_kicks,
       macro_cycles      = macro_cycles,
-      missing           = None,
+      missing           = self.missing,
       kick_completeness = kick_completeness)
     self.mc_fm = self.map_coeffs_from_map(map_data=md_fm)
+    if(omit):
     # Kick OMIT map
-    com1 = mmtbx.maps.composite_omit_map.run(
-      map_type             = "mFo-DFc",
-      crystal_gridding     = crystal_gridding,
-      n_debias_cycles      = 2,
-      fmodel               = fmodel.deep_copy(), # XXX
-      full_resolution_map  = True,
-      box_size_as_fraction = 0.03)
-    md_com1 = kick_map_coeffs(
-      map_coeffs        = com1.map_coefficients,
-      crystal_gridding  = crystal_gridding,
-      number_of_kicks   = number_of_kicks,
-      macro_cycles      = macro_cycles,
-      phases_only       = True,
-      missing           = None,
-      kick_completeness = kick_completeness)
-    self.mc_com1 = self.map_coeffs_from_map(map_data=md_com1)
-    # Kick OMIT map 2
-    com2 = mmtbx.maps.composite_omit_map.run(
-      map_type             = "2mFo-DFc",
-      crystal_gridding     = crystal_gridding,
-      n_debias_cycles      = 2,
-      fmodel               = fmodel.deep_copy(), # XXX
-      full_resolution_map  = True,
-      box_size_as_fraction = 0.03)
-    md_com2 = kick_map_coeffs(
-      map_coeffs        = com2.map_coefficients,
-      crystal_gridding  = crystal_gridding,
-      number_of_kicks   = number_of_kicks,
-      macro_cycles      = macro_cycles,
-      phases_only       = True,
-      missing           = None,
-      kick_completeness = kick_completeness)
-    self.mc_com2 = self.map_coeffs_from_map(map_data=md_com2)
+      com1 = mmtbx.maps.composite_omit_map.run(
+        map_type             = "mFo-DFc",
+        crystal_gridding     = crystal_gridding,
+        n_debias_cycles      = 2,
+        fmodel               = fmodel.deep_copy(), # XXX
+        full_resolution_map  = True,
+        box_size_as_fraction = 0.03)
+      md_com1 = kick_map_coeffs(
+        map_coeffs        = com1.map_coefficients,
+        crystal_gridding  = crystal_gridding,
+        number_of_kicks   = number_of_kicks,
+        macro_cycles      = macro_cycles,
+        phases_only       = True,
+        missing           = self.missing,
+        kick_completeness = kick_completeness)
+      self.mc_com1 = self.map_coeffs_from_map(map_data=md_com1)
+      # Kick OMIT map 2
+      com2 = mmtbx.maps.composite_omit_map.run(
+        map_type             = "2mFo-DFc",
+        crystal_gridding     = crystal_gridding,
+        n_debias_cycles      = 2,
+        fmodel               = fmodel.deep_copy(), # XXX
+        full_resolution_map  = True,
+        box_size_as_fraction = 0.03)
+      md_com2 = kick_map_coeffs(
+        map_coeffs        = com2.map_coefficients,
+        crystal_gridding  = crystal_gridding,
+        number_of_kicks   = number_of_kicks,
+        macro_cycles      = macro_cycles,
+        phases_only       = True,
+        missing           = self.missing,
+        kick_completeness = kick_completeness)
+      self.mc_com2 = self.map_coeffs_from_map(map_data=md_com2)
     # combine maps
     def intersect(m1,m2, use_average):
-      for i in [0,0.1,0.2,0.3,0.4,0.5]:
-        maptbx.intersection(
-          map_data_1 = m1,
-          map_data_2 = m2,
-          threshold  = i)
+      maptbx.intersection(
+        map_data_1 = m1,
+        map_data_2 = m2,
+        thresholds = flex.double([0,0.1,0.2,0.3,0.4,0.5]),
+        average    = False)
       if(use_average): return (m1+m2)/2
       else:            return m1
     m = (md_kick + md_fm)/2
-    m = intersect(m, md_kick, use_average=True)
-    m = intersect(m, md_fm,   use_average=True)
-    m = intersect(m, md_com1, use_average=False)
-    m = intersect(m, md_com2, use_average=False)
+    m = intersect(m, md_kick,         use_average=True)
+    m = intersect(m, md_fm,           use_average=True)
+    if(omit):
+      m = intersect(m, md_com1,         use_average=False)
+      m = intersect(m, md_com2,         use_average=False)
+    m = intersect(m, md_orig,         use_average=False)
+    m = intersect(m, md_complete_set, use_average=False)
     self.map_data_result = m
     self.mc_result  = self.map_coeffs_from_map(map_data=self.map_data_result)
 
@@ -239,15 +253,19 @@ class run(object):
     mtz_dataset.add_miller_array(
       miller_array=self.mc_fm,
       column_root_label="mc_fm")
-    mtz_dataset.add_miller_array(
-      miller_array=self.mc_com1,
-      column_root_label="mc_com1")
-    mtz_dataset.add_miller_array(
-      miller_array=self.mc_com2,
-      column_root_label="mc_com2")
+    if(omit):
+      mtz_dataset.add_miller_array(
+        miller_array=self.mc_com1,
+        column_root_label="mc_com1")
+      mtz_dataset.add_miller_array(
+        miller_array=self.mc_com2,
+        column_root_label="mc_com2")
     mtz_dataset.add_miller_array(
       miller_array=self.mc_result,
       column_root_label="mc_result")
+    mtz_dataset.add_miller_array(
+      miller_array=self.complete_set,
+      column_root_label="complete_set")
     mtz_object = mtz_dataset.mtz_object()
     mtz_object.write(file_name = file_name)
 
