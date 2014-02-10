@@ -1200,7 +1200,7 @@ def validate_output_labels (
       else :
         n_expected = 2
     elif miller_array.is_complex_array() :
-      assert miller_array.sigmas() is not None
+      assert miller_array.sigmas() is None
       n_expected = 4
     elif miller_array.is_hendrickson_lattman_array() :
       n_expected = 8
@@ -1213,7 +1213,7 @@ def validate_output_labels (
       else :
         n_expected = 1
     elif miller_array.is_complex_array() :
-      assert miller_array.sigmas() is not None
+      assert miller_array.sigmas() is None
       n_expected = 2
     elif miller_array.is_hendrickson_lattman_array() :
       n_expected = 4

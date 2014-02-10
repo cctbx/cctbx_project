@@ -645,6 +645,28 @@ mtz_file {
   params = master_phil.fetch(source=new_phil).extract()
   miller_arrays = run_and_reload(params, "tst9.mtz")
   assert approx_equal(miller_arrays[0].info().wavelength, 1.54)
+  # map coefficients
+  n_refl = len(array2.indices())
+  d1 = flex.random_double(n_refl)
+  d2 = flex.random_double(n_refl)
+  coeffs_data = flex.complex_double(d1, d2)
+  map_coeffs = array2.customized_copy(data=coeffs_data,
+    sigmas=None).average_bijvoet_mates()
+  map_coeffs.as_mtz_dataset(column_root_label="2FOFCWT").mtz_object().write(
+    "tst_data10.mtz")
+  new_phil = libtbx.phil.parse("""
+mtz_file {
+  output_file = tst10.mtz
+  crystal_symmetry.space_group = P212121
+  crystal_symmetry.unit_cell = 6,7,8,90,90,90
+  miller_array {
+    file_name = tst_data10.mtz
+    labels = 2FOFCWT,PHI2FOFCWT
+    output_labels = 2FOFCWT PHI2FOFCWT
+  }
+}""")
+  params = master_phil.fetch(source=new_phil).extract()
+  miller_arrays = run_and_reload(params, "tst10.mtz")
 
 ########################################################################
 # this requires data in phenix_regression
