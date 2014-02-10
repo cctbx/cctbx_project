@@ -142,6 +142,32 @@ class TestCompound(unittest.TestCase):
     self.assertEqual( len( list( ss2.graph.edges() ) ), 0 )
 
 
+  def test_3(self):
+
+    atoms = [
+      topology.Atom( name = "N", element =  "N", xyz = ( 11.498, 10.510, 10.231 ) ),
+      topology.Atom( name = "CA", element =  "C", xyz = ( 12.730, 11.073, 10.769 ) ),
+      topology.Atom( name = "C", element =  "C", xyz = ( 13.674, 9.966, 11.221 ) ),
+      topology.Atom( name = "O", element =  "O", xyz = ( 13.739, 8.902, 10.605 ) ),
+      topology.Atom( name = "CB", element =  "C", xyz = ( 12.421, 12.004, 11.944 ) ),
+      topology.Atom( name = "CG", element =  "C", xyz = ( 11.478, 13.179, 11.661 ) ),
+      topology.Atom( name = "CD1", element =  "C", xyz = ( 11.043, 13.834, 12.963 ) ),
+      topology.Atom( name = "CD2", element =  "C", xyz = ( 12.126, 14.201, 10.736 ) ),
+      ]
+    compound = topology.Compound.from_structure( atoms = atoms, tolerance = 0.1 )
+
+    self.assertEqual(
+      set( frozenset( [ l.name, r.name ] ) for ( l, r ) in compound.bonds ),
+      set(
+        [ frozenset( [ "N", "CA" ] ), frozenset( [ "CA", "C" ] ),
+          frozenset( [ "C", "O" ] ), frozenset( [ "CA", "CB" ] ),
+          frozenset( [ "CB", "CG" ] ), frozenset( [ "CG", "CD1" ] ),
+          frozenset( [ "CG", "CD2" ] ),
+          ]
+        )
+      )
+
+
 class TestMcGregorMatch(unittest.TestCase):
 
   def test_asn_leu(self):
