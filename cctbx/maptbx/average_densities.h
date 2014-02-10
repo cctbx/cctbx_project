@@ -274,7 +274,7 @@ public:
     histogram hist2 = histogram(map_2_new.ref(), n_bins, start, end);
     h1 = hist1.c_values();
     h2 = hist2.c_values();
-    sigs = hist1.arguments();
+    sigs = hist1.arguments(); // are sigs from hist2 the same?
     double bin_width = hist1.bin_width();
     // can use mean of two or one of the two:
     //for (int i = 0; i < h1.size(); i++) {

@@ -1061,9 +1061,26 @@ def exercise_kuwahara_filter():
   a.resize(flex.grid((10,20,30)))
   maptbx.kuwahara_filter(map_data=a, index_span=2)
 
+def exercise_intersection():
+  thresholds = flex.double([0,0.1,0.2,0.3,0.4,0.5, 0.6,0.7,0.8,0.8, 1.0])
+  def get_map():
+    av = [random.random() for i in xrange(10*20*30)]
+    m = flex.double(av)
+    m.resize(flex.grid((10,20,30)))
+    return m
+  m1 = get_map()
+  m2 = get_map()
+  for average in [True, False]:
+    maptbx.intersection(
+      map_data_1 = m1,
+      map_data_2 = m2,
+      thresholds = thresholds,
+      average    = average)
+
 def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
+  exercise_intersection()
   exercise_boxing()
   exercise_kuwahara_filter()
   exercise_median_filter()

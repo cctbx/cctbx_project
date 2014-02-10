@@ -337,7 +337,8 @@ template <typename DataType>
 void intersection(
        af::ref<DataType, af::c_grid<3> > map_data_1,
        af::ref<DataType, af::c_grid<3> > map_data_2,
-       DataType threshold)
+       af::ref<DataType> const& thresholds,
+       bool average)
 {
   af::tiny<int, 3> a1 = map_data_1.accessor();
   af::tiny<int, 3> a2 = map_data_2.accessor();
@@ -345,13 +346,21 @@ void intersection(
   for(int i = 0; i < a1[0]; i++) {
     for(int j = 0; j < a1[1]; j++) {
       for(int k = 0; k < a1[2]; k++) {
-         double rho1 = map_data_1(i,j,k);
-         double rho2 = map_data_2(i,j,k);
-         bool c1 = rho1>threshold && rho2<threshold;
-         bool c2 = rho2>threshold && rho1<threshold;
-         if(c1 || c2) {
-           map_data_1(i,j,k)=0;
-           map_data_2(i,j,k)=0;
+        double rho1 = map_data_1(i,j,k);
+        double rho2 = map_data_2(i,j,k);
+        for(int m = 0; m < thresholds.size(); m++) {
+          DataType threshold = thresholds[m];
+          bool c1 = rho1>threshold && rho2<threshold;
+          bool c2 = rho2>threshold && rho1<threshold;
+          if(c1 || c2) {
+            map_data_1(i,j,k)=0;
+            map_data_2(i,j,k)=0;
+        }
+        if(average) {
+          DataType rho_ave = (map_data_1(i,j,k)+map_data_2(i,j,k))/2.;
+          map_data_1(i,j,k) = rho_ave;
+          map_data_2(i,j,k) = rho_ave;
+        }
   }}}}
 }
 
@@ -639,6 +648,7 @@ sharpen(
     for(int j = 0; j < a[1]; j++) {
       for(int k = 0; k < a[2]; k++) {
         map_data(i,j,k) = std::max(0., map_data(i,j,k)-result_map_ref(i,j,k));
+        //map_data(i,j,k) = map_data(i,j,k)-result_map_ref(i,j,k);
   }}}
 }
 

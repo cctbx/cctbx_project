@@ -359,10 +359,12 @@ namespace {
       (void(*)
         (af::ref<double, af::c_grid<3> >,
          af::ref<double, af::c_grid<3> >,
-         double)) intersection, (
+         af::ref<double> const&,
+         bool)) intersection, (
       arg("map_data_1"),
       arg("map_data_2"),
-      arg("threshold")));
+      arg("thresholds"),
+      arg("average")));
 
     def("cut_by",
       (void(*)
