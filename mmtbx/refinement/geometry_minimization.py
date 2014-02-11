@@ -147,6 +147,27 @@ def run(processed_pdb_file, params=master_params().extract(), log=sys.stdout):
   assert geometry_restraints_flags.nonbonded
   return sites_cart
 
+def add_rotamer_restraints(
+      pdb_hierarchy,
+      restraints_manager,
+      selection,
+      sigma,
+      mode):
+  pdb_hierarchy = mmtbx.utils.switch_rotamers(
+    pdb_hierarchy = pdb_hierarchy,
+    mode          = mode,
+    selection     = selection)
+  restraints_manager.geometry.generic_restraints_manager.\
+    reference_manager.remove_chi_angle_restraints(
+      pdb_hierarchy = pdb_hierarchy)
+  restraints_manager.geometry.generic_restraints_manager.\
+    reference_manager.add_torsion_restraints(
+      pdb_hierarchy   = pdb_hierarchy,
+      sites_cart      = pdb_hierarchy.atoms().extract_xyz(),
+      chi_angles_only = True,
+      sigma           = sigma)
+  return pdb_hierarchy, restraints_manager
+
 class run2(object):
   def __init__(self,
                restraints_manager,
@@ -207,19 +228,12 @@ class run2(object):
       self.correct_hydrogen_geometries(log)
       self.update_cdl_restraints(macro_cycle=i_macro_cycle)
       if(fix_rotamer_outliers):
-        self.pdb_hierarchy = mmtbx.utils.switch_rotamers(
-          pdb_hierarchy = self.pdb_hierarchy,
-          mode          = "fix_outliers",
-          selection     = selection)
-        self.restraints_manager.geometry.generic_restraints_manager.\
-          reference_manager.remove_chi_angle_restraints(
-            pdb_hierarchy=self.pdb_hierarchy)
-        self.restraints_manager.geometry.generic_restraints_manager.\
-          reference_manager.add_torsion_restraints(
-            pdb_hierarchy   = self.pdb_hierarchy,
-            sites_cart      = self.pdb_hierarchy.atoms().extract_xyz(),
-            chi_angles_only = True,
-            sigma           = 10.0)
+        self.pdb_hierarchy, self.restraints_manager = add_rotamer_restraints(
+          pdb_hierarchy      = self.pdb_hierarchy,
+          restraints_manager = self.restraints_manager,
+          selection          = selection,
+          sigma              = 10,
+          mode               = "fix_outliers")
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
       self.minimized = lbfgs(
         sites_cart                      = sites_cart,
