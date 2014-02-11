@@ -93,8 +93,8 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     miller_array=fem.mc_result,
     column_root_label=params.output.column_root_label)
   mtz_dataset.add_miller_array(
-    miller_array=fem.mc_result,
-    column_root_label="Resolve_DM")
+    miller_array=fem.mc_resolve,
+    column_root_label="ResolveDM")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = params.output.file_name)
   return os.path.abspath(params.output.file_name)
