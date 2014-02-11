@@ -92,13 +92,13 @@ while test ${#} -ge 0; do
             ;;
 
         -o)
-            out=`readlink -fn "${2}"`
+            out="${2}"
             if test -e "${out}" -a ! -d "${out}" 2> /dev/null; then
                 echo "${out} exists but is not a directory" > /dev/stderr
                 cleanup_and_exit 1
             fi
             test -d "${out}" 2> /dev/null || \
-                echo "output directory will be created" > /dev/stderr
+                echo "Directory ${out} will be created" > /dev/stderr
             shift
             shift
             ;;
@@ -259,7 +259,7 @@ if test -z "${trial}"; then
         trial=`expr "${trial}" \+ 1 | awk '{ printf("%03d", $1); }'`
     fi
 fi
-out="${out}/${trial}"
+out=`readlink -fn "${out}/${trial}"`
 
 # Copy the pyana configuration file, while substituting paths to any
 # phil files, and recursively copying them, too.  Then write a
