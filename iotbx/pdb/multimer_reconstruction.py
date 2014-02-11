@@ -74,6 +74,9 @@ class multimer(object):
     for i,coordinates_present in enumerate(TRASFORM_info.coordinates_present):
       if not coordinates_present: i_transforms.append(i)
     self.number_of_transforms = len(i_transforms)
+    chain_ids = {x.id for x in pdb_obj.hierarchy.models()[0].chains()}
+    # Keep the original chains IDs
+    self.ncs_chains_ids = tuple(sorted(chain_ids))
     if (self.number_of_transforms>0):
       # number of chains in hierachy (more than the actual chains in the model)
       chains_number = pdb_obj.hierarchy.overall_counts().n_chains
@@ -147,7 +150,7 @@ class multimer(object):
         xyz.extend(list(chain.atoms().extract_xyz()))
     return xyz
 
-  def write(self,pdb_output_file_name=''):
+  def write(self,pdb_output_file_name='',crystal_symmetry=None):
     ''' (string) -> text file
     Writes the modified protein, with the added chains, obtained by the BIOMT/MTRIX
     reconstruction, to a text file in a pdb format.
@@ -174,8 +177,9 @@ class multimer(object):
       self.pdb_output_file_name = pdb_output_file_name
     # we need to add crystal symmetry to the new file since it is
     # sometimes needed when calulating the R-work factor (r_factor_calc.py)
-    crystal_symmetry = crystal_symmetry_from_any.extract_from(
-      self.pdb_input_file_name)
+    if not crystal_symmetry:
+      crystal_symmetry = crystal_symmetry_from_any.extract_from(
+        self.pdb_input_file_name)
     # using the pdb hierarchy pdb file writing method
     self.assembled_multimer.write_pdb_file(file_name=self.pdb_output_file_name,
       crystal_symmetry=crystal_symmetry)
