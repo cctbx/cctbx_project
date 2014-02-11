@@ -1,5 +1,6 @@
 
 from __future__ import division
+from libtbx.test_utils import show_diff
 from libtbx import easy_run
 import libtbx.load_env
 import os
@@ -175,7 +176,7 @@ def exercise_advanced () :
     return
   result = easy_run.fully_buffered("mmtbx.dssp \"%s\"" % pdb_file
     ).raise_if_errors()
-  assert ("\n".join(result.stdout_lines) == """\
+  assert not show_diff("\n".join(result.stdout_lines), """\
 HELIX    2   2 ASP A   14  THR A   18  5                                   5
 HELIX    6   6 ASP A   37  GLY A   48  1                                  12
 HELIX    8   8 SER A   57  GLY A   65  1                                   9
@@ -190,10 +191,10 @@ HELIX   35  35 ARG A  235  TYR A  250  1                                  16
 HELIX   38  38 SER A  252  ALA A  260  1                                   9
 HELIX   41  41 SER A  263  LEU A  275  1                                  13
 SHEET    1   1 5 ARG A  13  ASP A  14  0
-SHEET    2   1 5 LEU A  27  SER A  30 -1  N  ARG A  29   O  ARG A  13
-SHEET    3   1 5 VAL A 156  HIS A 159  1  N  VAL A 156   O  PHE A  28
-SHEET    4   1 5 ASP A  51  ASP A  54  1  N  ASP A  51   O  LEU A 157
-SHEET    5   1 5 ASP A  74  LEU A  77  1  N  ASP A  74   O  VAL A  52""")
+SHEET    2   1 5 LEU A  27  SER A  30 -1  O  ARG A  29   N  ARG A  13
+SHEET    3   1 5 VAL A 156  HIS A 159  1  O  VAL A 156   N  PHE A  28
+SHEET    4   1 5 ASP A  51  ASP A  54  1  O  ASP A  51   N  LEU A 157
+SHEET    5   1 5 ASP A  74  LEU A  77  1  O  ASP A  74   N  VAL A  52""")
   examples_dir = libtbx.env.find_in_repositories(
     relative_path="phenix_examples",
     test=os.path.isdir)
@@ -207,52 +208,52 @@ SHEET    5   1 5 ASP A  74  LEU A  77  1  N  ASP A  74   O  VAL A  52""")
     # ksdssp have 131-137 as a continuous strand, but residue 135 actually
     # breaks the hydrogen bonding pattern, and the hydrogen bonds cannot be
     # accurately recovered from those annotations.
-    assert ("\n".join(result.stdout_lines) == """\
+    assert not show_diff("\n".join(result.stdout_lines), """\
 HELIX   10  10 PRO    105  VAL    109  5                                   5
 HELIX   13  13 ALA    113  LEU    117  5                                   5
 SHEET    1   1 2 TYR    11  GLU    13  0
-SHEET    2   1 2 GLN    70  GLU    72 -1  N  VAL    71   O  VAL    12
+SHEET    2   1 2 GLN    70  GLU    72 -1  O  VAL    71   N  VAL    12
 SHEET    1   2 4 TYR    22  ILE    25  0
-SHEET    2   2 4 GLU    28  VAL    32 -1  N  CYS    30   O  VAL    23
-SHEET    3   2 4 LYS    47  GLY    54 -1  N  VAL    53   O  ARG    31
-SHEET    4   2 4 LYS    60  PRO    66 -1  N  LEU    65   O  ALA    48
+SHEET    2   2 4 GLU    28  VAL    32 -1  O  CYS    30   N  VAL    23
+SHEET    3   2 4 LYS    47  GLY    54 -1  O  VAL    53   N  ARG    31
+SHEET    4   2 4 LYS    60  PRO    66 -1  O  LEU    65   N  ALA    48
 SHEET    1   3 2 GLU    34  SER    38  0
-SHEET    2   3 2 LYS    47  VAL    51 -1  N  VAL    51   O  GLU    34
+SHEET    2   3 2 LYS    47  VAL    51 -1  O  VAL    51   N  GLU    34
 SHEET    1   4 5 SER    85  VAL    86  0
-SHEET    2   4 5 ILE    91  ASP    95 -1  N  GLN    92   O  SER    85
-SHEET    3   4 5 GLU    77  ILE    83 -1  N  GLN    82   O  MET    94
-SHEET    4   4 5 GLU   122  ILE   128 -1  N  GLN   127   O  GLU    77
-SHEET    5   4 5 ARG   131  ILE   134 -1  N  LYS   133   O  TRP   126
+SHEET    2   4 5 ILE    91  ASP    95 -1  O  GLN    92   N  SER    85
+SHEET    3   4 5 GLU    77  ILE    83 -1  O  GLN    82   N  MET    94
+SHEET    4   4 5 GLU   122  ILE   128 -1  O  GLN   127   N  GLU    77
+SHEET    5   4 5 ARG   131  ILE   134 -1  O  LYS   133   N  TRP   126
 SHEET    1   5 2 VAL    90  MET    94  0
-SHEET    2   5 2 THR   101  PRO   105 -1  N  VAL   104   O  ILE    91
+SHEET    2   5 2 THR   101  PRO   105 -1  O  VAL   104   N  ILE    91
 SHEET    1   6 2 VAL   123  GLU   124  0
-SHEET    2   6 2 ARG   136  VAL   137 -1  N  ARG   136   O  GLU   124""")
+SHEET    2   6 2 ARG   136  VAL   137 -1  O  ARG   136   N  GLU   124""")
     # beta barrel
     pdb_file_2 = os.path.join(examples_dir, "porin-twin", "porin.pdb")
     result = easy_run.fully_buffered("mmtbx.dssp \"%s\"" % pdb_file_2
       ).raise_if_errors()
-    assert ("\n".join(result.stdout_lines) == """\
+    assert not show_diff("\n".join(result.stdout_lines), """\
 HELIX    5   5 ASP     59  GLY     63  5                                   5
 HELIX    7   7 THR     87  VAL     92  1                                   6
 HELIX   18  18 ASP    156  VAL    160  5                                   5
 HELIX   19  19 ASP    184  ILE    188  5                                   5
 SHEET    1   117 ILE     2  TYR    14  0
-SHEET    2   117 THR    25  GLU    40 -1  N  VAL    36   O  SER     3
-SHEET    3   117 THR    46  ASP    56 -1  N  TRP    55   O  LEU    31
-SHEET    4   117 GLN    70  TYR    75 -1  N  SER    74   O  THR    46
-SHEET    5   117 VAL    78  GLY    83 -1  N  VAL    82   O  PHE    71
-SHEET    6   117 ASN   131  ILE   139 -1  N  THR   136   O  THR    79
-SHEET    7   117 VAL   142  ASP   150 -1  N  ASP   150   O  ASN   131
-SHEET    8   117 GLU   163  SER   171 -1  N  ASP   169   O  ASN   143
-SHEET    9   117 ILE   175  THR   183 -1  N  THR   183   O  PHE   164
-SHEET   10   117 ILE   193  LYS   201 -1  N  ALA   199   O  SER   176
-SHEET   11   117 GLY   206  ASP   214 -1  N  ASP   214   O  ALA   194
-SHEET   12   117 GLN   223  PHE   232 -1  N  ASN   229   O  THR   207
-SHEET   13   117 THR   235  ILE   244 -1  N  ASP   243   O  VAL   224
-SHEET   14   117 ALA   252  GLN   260 -1  N  ASP   258   O  THR   236
-SHEET   15   117 VAL   265  SER   273 -1  N  SER   273   O  TYR   253
-SHEET   16   117 THR   279  ASP   288 -1  N  ARG   286   O  LYS   266
-SHEET   17   117 TYR     7  VAL    15 -1  N  TYR    14   O  ALA   281""")
+SHEET    2   117 THR    25  GLU    40 -1  O  VAL    36   N  SER     3
+SHEET    3   117 THR    46  ASP    56 -1  O  TRP    55   N  LEU    31
+SHEET    4   117 GLN    70  TYR    75 -1  O  SER    74   N  THR    46
+SHEET    5   117 VAL    78  GLY    83 -1  O  VAL    82   N  PHE    71
+SHEET    6   117 ASN   131  ILE   139 -1  O  THR   136   N  THR    79
+SHEET    7   117 VAL   142  ASP   150 -1  O  ASP   150   N  ASN   131
+SHEET    8   117 GLU   163  SER   171 -1  O  ASP   169   N  ASN   143
+SHEET    9   117 ILE   175  THR   183 -1  O  THR   183   N  PHE   164
+SHEET   10   117 ILE   193  LYS   201 -1  O  ALA   199   N  SER   176
+SHEET   11   117 GLY   206  ASP   214 -1  O  ASP   214   N  ALA   194
+SHEET   12   117 GLN   223  PHE   232 -1  O  ASN   229   N  THR   207
+SHEET   13   117 THR   235  ILE   244 -1  O  ASP   243   N  VAL   224
+SHEET   14   117 ALA   252  GLN   260 -1  O  ASP   258   N  THR   236
+SHEET   15   117 VAL   265  SER   273 -1  O  SER   273   N  TYR   253
+SHEET   16   117 THR   279  ASP   288 -1  O  ARG   286   N  LYS   266
+SHEET   17   117 TYR     7  VAL    15 -1  O  TYR    14   N  ALA   281""")
   else :
     print "WARNING: phenix_examples not available, some tests skipped"
   # TODO add 1lfh test

@@ -244,23 +244,38 @@ class ladder (object) :
       is_last_strand=False) :
     from iotbx.pdb import secondary_structure
     (i_res_start, i_res_end, j_res_start, j_res_end) = self.get_residue_range()
+    #print i_res_start, i_res_end, j_res_start, j_res_end
     start_hbond = None
+    start_atom_name = None
+    curr_i_res = prev_i_res = None
     start_on_n = False
     min_i_res = sys.maxint
+    o_label = " O  "
+    n_label = " N  "
     for hbond in hbonds :
+      #hbond.show(prefix="HB:  ")
       if (self.bridges[0].contains_hbond(hbond) or
           self.bridges[-1].contains_hbond(hbond) or
           hbond.is_in_ladder(self)) :
+        #print hbond.i_res, hbond.j_res
+        #print min_i_res, i_res_start, i_res_end
         if ((hbond.i_res < min_i_res) and (hbond.i_res >= i_res_start) and
             (hbond.i_res <= i_res_end)) : # O atom
           start_hbond = hbond
           min_i_res = hbond.i_res
-          start_on_n = False
+          curr_atom = n_label
+          prev_atom = o_label
+          curr_i_res = start_hbond.i_res
+          prev_i_res = start_hbond.j_res
+          #hbond.show()
         if ((hbond.j_res <= min_i_res) and (hbond.j_res >= i_res_start) and
             (hbond.j_res <= i_res_end)) : # N atom (takes precedence)
           start_hbond = hbond
           min_i_res = hbond.j_res
-          start_on_n = True
+          curr_atom = o_label
+          prev_atom = n_label
+          curr_i_res = start_hbond.i_res
+          prev_i_res = start_hbond.j_res
     if (start_hbond is None) and (prev_ladder is not None) :
       for hbond in hbonds :
         if (hbond.is_in_ladder(prev_ladder)) :
@@ -268,26 +283,25 @@ class ladder (object) :
               (hbond.i_res <= i_res_end)) : # O atom
             start_hbond = hbond
             min_i_res = hbond.i_res
-            start_on_n = False
+            curr_atom = n_label
+            prev_atom = o_label
+            curr_i_res = start_hbond.i_res
+            prev_i_res = start_hbond.j_res
           if ((hbond.j_res <= min_i_res) and (hbond.j_res >= i_res_start) and
               (hbond.j_res <= i_res_end)) : # N atom (takes precedence)
             start_hbond = hbond
             min_i_res = hbond.j_res
-            start_on_n = True
+            curr_atom = o_label
+            prev_atom = n_label
+            curr_i_res = start_hbond.j_res
+            prev_i_res = start_hbond.i_res
     if (start_hbond is None) :
       out = cStringIO.StringIO()
       self.show(out=out)
       raise RuntimeError("Can't find start of H-bonding:\n%s" % out.getvalue())
-    if (start_on_n) :
-      curr_atom = " N  "
-      prev_atom = " O  "
-      curr_res = pdb_labels[start_hbond.i_res]
-      prev_res = pdb_labels[start_hbond.j_res]
-    else :
-      curr_atom = " O  "
-      prev_atom = " N  "
-      curr_res = pdb_labels[start_hbond.j_res]
-      prev_res = pdb_labels[start_hbond.i_res]
+    #start_hbond.show(prefix="START: ")
+    curr_res = pdb_labels[curr_i_res]
+    prev_res = pdb_labels[prev_i_res]
     return secondary_structure.pdb_strand_register(
       cur_atom=curr_atom,
       cur_resname=curr_res.resname,
