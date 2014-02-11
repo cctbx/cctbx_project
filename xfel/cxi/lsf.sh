@@ -66,6 +66,9 @@ trap "cleanup_and_exit 1" HUP INT QUIT TERM
 # Beware!  The copy_phil() function has side effects: it changes the
 # IFS as well as the working directory.
 copy_phil() {
+    # Return with error if source file is not readable.
+    test -r "${1}" || return 1
+
     # Clear the internal field separator to avoid consuming leading
     # white space while reading the phil file.  Set the working
     # directory to the directory of the input file.  This emulates
@@ -417,14 +420,22 @@ ssh -S "${tmpdir}/control.socket" ${NODE} \
     "echo -e \"\"${out}/stdout\"\n${directories}\" | xargs -d '\n' mkdir -p"
 
 # Copy the configuration files and the submission script to ${out}.
+# Using ls(1) causes patterns which do not match any files to expand
+# to the empty string rather than the pattern itself, thus emulating
+# bash(1)'s nullglob option.
+scp -o "ControlPath ${tmpdir}/control.socket" -pq `ls \
+    "${tmpdir}"/params_*.phil                         \
+    "${tmpdir}"/pyana.cfg                             \
+    "${tmpdir}"/pyana_s[0-9N][0-9N].cfg               \
+    "${tmpdir}"/pyana_s[0-9N][0-9N].sh                \
+    "${tmpdir}/submit.sh" 2> /dev/null` "${NODE}:${out}"
+if test "${?}" -ne "0"; then
+    echo "Failed to copy configuration files" > /dev/stderr
+    cleanup_and_exit 1
+fi
+
 # Submit the analysis of all streams to the queueing system from
 # ${NODE}.
-scp -o "ControlPath ${tmpdir}/control.socket" -pq \
-    "${tmpdir}"/params_*.phil                     \
-    "${tmpdir}"/pyana.cfg                         \
-    "${tmpdir}"/pyana_s[0-9N][0-9N].cfg           \
-    "${tmpdir}"/pyana_s[0-9N][0-9N].sh            \
-    "${tmpdir}/submit.sh"             "${NODE}:${out}"
 ssh -S "${tmpdir}/control.socket" ${NODE} \
     "cd \"${PWD}\" && \"${out}/submit.sh\""
 
