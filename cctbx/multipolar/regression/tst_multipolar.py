@@ -1,17 +1,9 @@
 from __future__ import division
 from cctbx.array_family import flex
 import os, sys
-import mmtbx.model
-import libtbx.load_env
-from libtbx import easy_pickle
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-from cStringIO import StringIO
-from mmtbx import utils
-from libtbx.utils import format_cpu_times, null_out
-from libtbx.test_utils import approx_equal
-import math
+import libtbx
+#import libtbx.load_env
+#from libtbx.test_utils import approx_equal
 from cctbx import multipolar
 
 pdbs = [
@@ -78,6 +70,14 @@ def should_return_atom_types():
     print atom_type
 
 def exercise(file_name=None):
+  if (not libtbx.env.has_module(name="mmtbx")):
+    print "Skipping exercise_with_pdb():", \
+      "mmtbx.monomer_library.pdb_interpretation not available"
+    return
+  from mmtbx import monomer_library
+  import mmtbx.monomer_library.server
+  import mmtbx.monomer_library.pdb_interpretation
+  import mmtbx.model
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   #pdb_file = libtbx.env.find_in_repositories(
