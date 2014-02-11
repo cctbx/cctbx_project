@@ -703,38 +703,53 @@ def env_wavelength_sxr(evt, env):
   @return    Wavelength, in Ångström
   """
 
-  if evt is not None and env is not None:
-    from calendar import timegm
-    from time import strptime
+  from calendar import timegm
+  from time import strptime
 
-    t = evt.getTime()
-    if t is None:
-      return None
+  if evt is None or env is None:
+    return None
 
-    # Note that the coefficients for the monochromator could change
-    # from day to day.  The compiler could recognize that strptime()
-    # and timegm() are pure and reduce the test expression to an
-    # integer comparison.
-    f = '%Y-%m-%d, %H:%M %Z'
-    s = t.seconds()
-    if s is None:
-      return None
-    elif s < timegm(strptime('2012-11-12, 01:00 UTC', f)):
-      # No spectrometer positions for this time.
-      return None
-    elif s < timegm(strptime('2012-11-17, 01:00 UTC', f)):
-      (a, b, c) = (+3.65920, -0.76851, +0.02105)
-    else:
-      # Assume the last known values are valid for all future.
-      (a, b, c) = (+4.18190, -0.77650, +0.01020)
+  t = evt.getTime()
+  if t is None:
+    return None
 
-    # Get the grating motor position from EPICS.
-    pv = env.epicsStore().value('SXR:MON:MMS:06.RBV')
-    if pv is not None and len(pv.values) == 1:
-      x = pv.values[0]
-      e = 10 * (a + b * x + c * x**2)
-      if e > 0:
-        return e
+  es = env.epicsStore()
+  if es is None:
+    return None
+
+  # Note that the monochromator coefficients could change from day to
+  # day.  Unless specific values for the requested time are available,
+  # attempt to retrieve them from EPICS.
+  #
+  # The compiler could recognize that strptime() and timegm() are pure
+  # and reduce the test expression to an integer comparison.
+  f = '%Y-%m-%d, %H:%M %Z'
+  s = t.seconds()
+  if s is None or s < timegm(strptime('2012-11-12, 01:00 UTC', f)):
+    return None
+  elif s < timegm(strptime('2012-11-17, 01:00 UTC', f)):
+    abc = [+3.65920, -0.76851, +0.02105]
+  elif s < timegm(strptime('2012-11-21, 01:00 UTC', f)):
+    abc = [+4.18190, -0.77650, +0.01020]
+  else:
+    abc = [None] * 3
+    for (i, name) in enumerate(['SXR:IOC:POLY:POLY:Lambda:O1:G3:A',
+                                'SXR:IOC:POLY:POLY:Lambda:O1:G3:B',
+                                'SXR:IOC:POLY:POLY:Lambda:O1:G3:C']):
+      pv = es.value(name)
+      if pv is None or len(pv.values) != 1:
+        return None
+      abc[i] = pv.values[0]
+      if abc[i] is None:
+        return None
+
+  # Get the grating motor position from EPICS.
+  pv = es.value('SXR:MON:MMS:06.RBV')
+  if pv is not None and len(pv.values) == 1:
+    x = pv.values[0]
+    e = 10 * (abc[0] + abc[1] * x + abc[2] * x**2)
+    if e > 0:
+      return e
   return None
 
 
