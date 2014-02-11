@@ -57,8 +57,8 @@ class fab_elbow_angle(object):
     # Calc Feb elbow angle
     angle = self.get_angle(vec1=eigenvectors_c, vec2=eigenvectors_v)
     # Test if elbow angle larger or smaller than 180
-    zaxis = self.cross(eigenvectors_v, eigenvectors_c)
-    xaxis = self.cross(eigenvectors_c, zaxis)
+    zaxis = self.cross_product_as_unit_axis(eigenvectors_v, eigenvectors_c)
+    xaxis = self.cross_product_as_unit_axis(eigenvectors_c, zaxis)
     if mid_H_to_L.dot(zaxis) <= 0:
         angle = 360 - angle
     self.fab_elbow_angle = angle
@@ -77,9 +77,7 @@ class fab_elbow_angle(object):
       x = x/l
     return x
 
-  def cross(self,a,b):
-    '''(array,array) -> array
-    returns normalized cross product vector'''
+  def cross_product_as_unit_axis(self,a,b):
     a = tuple(a)
     b = tuple(b)
     x = flex.double(matrix.cross_product_matrix(a)*b)
