@@ -133,16 +133,16 @@ while test ${#} -ge 0; do
             ;;
 
         -o)
-            out=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-                "cd \"${PWD}\" ; readlink -fn \"${2}\""`
+            out="${2}"
             if ssh -S "${tmpdir}/control.socket" ${NODE} \
-                "test -e \"${out}\" -a ! -d \"${out}\" 2> /dev/null"; then
+                "cd \"${PWD}\" ;                         \
+                 test -e \"${out}\" -a ! -d \"${out}\" 2> /dev/null"; then
                 echo "${out} exists but is not a directory" > /dev/stderr
                 cleanup_and_exit 1
             fi
-            ssh -S "${tmpdir}/control.socket" ${NODE} \
-                "test -d \"${out}\" 2> /dev/null" ||      \
-                echo "output directory will be created" > /dev/stderr
+            ssh -S "${tmpdir}/control.socket" ${NODE}                \
+                "cd \"${PWD}\" ; test -d \"${out}\" 2> /dev/null" || \
+                echo "Directory ${out} will be created" > /dev/stderr
             shift
             shift
             ;;
@@ -282,14 +282,15 @@ out="${out}/r${run}"
 # trial number is available.  If ${trial} is not given on the command
 # line, generate the next available one.
 if ssh -S "${tmpdir}/control.socket" ${NODE} \
-    "test -n \"${trial}\" -a -d \"${out}/${trial}\""; then
+    "cd \"${PWD}\" ; test -n \"${trial}\" -a -d \"${out}/${trial}\""; then
     echo "Error: Requested trial number ${trial} already in use" > /dev/stderr
     cleanup_and_exit 1
 fi
 
 if test -z "${trial}"; then
     trial=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-        "mkdir -p \"${out}\" ;                       \
+        "cd \"${PWD}\" ;                             \
+         mkdir -p \"${out}\" ;                       \
          find \"${out}\" -maxdepth 1                 \
                          -noleaf                     \
                          -name \"[0-9][0-9][0-9]\"   \
@@ -305,7 +306,8 @@ if test -z "${trial}"; then
         trial=`expr "${trial}" \+ 1 | awk '{ printf("%03d", $1); }'`
     fi
 fi
-out="${out}/${trial}"
+out=`ssh -S "${tmpdir}/control.socket" ${NODE} \
+    "cd \"${PWD}\" ; readlink -fn \"${out}/${trial}\""`
 
 # Copy the pyana configuration file, while substituting paths to any
 # phil files, and recursively copying them, too.  Then write a
