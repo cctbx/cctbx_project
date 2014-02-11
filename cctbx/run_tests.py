@@ -119,7 +119,7 @@ tst_list = (
    "$D/regression/tst_web_change_basis.py",
    "$D/sgtbx/direct_space_asu/proto/tst_asu.py",
    "$D/masks/tests/tst_flood_fill.py",
-   "$D/r_free_utils.py",
+   "$D/regression/tst_r_free_utils.py",
    "$D/xray/observations/tst_observations.py",
    "$D/maptbx/tst_ccp.py",
    "$D/maptbx/tst_mask.py",
