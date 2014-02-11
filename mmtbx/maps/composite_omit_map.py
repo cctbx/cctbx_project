@@ -106,7 +106,7 @@ class run(object):
         fft_map_ref=fft_map_ref)
       assert f_map_data_asu.focus() == self.map_result_asu.focus()
       if(reset_to_zero_below_sigma is not None):
-        assert type(reset_to_zero_below_sigma) == type(1.)
+        assert type(reset_to_zero_below_sigma) in [type(1.), type(1)]
         box = maptbx.copy(f_map_data_asu, s, e)
         box.reshape(flex.grid(box.all()))
         sd = box.sample_standard_deviation()
