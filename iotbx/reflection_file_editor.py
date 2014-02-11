@@ -255,6 +255,12 @@ mtz_file
     relative_to_complete_set = False
       .type = bool
       .short_caption = Generate R-free flags relative to complete set
+    remediate_mismatches = False
+      .type = bool
+      .short_caption = Remediate mismatching Friedel/Bijvoet pairs
+      .help = If True, flags that differ between F+ and F- will be moved into \
+        the test set for both reflections.  This option is incompatible with \
+        preserving the input values as integers.
   }
 }""", process_includes=True)
 
@@ -617,6 +623,7 @@ class process_arrays (object) :
               "step, but you will not be able to extend the flags to higher "+
               "resolution.") % (file_name, info.label_string()))
         if (r_free_params.preserve_input_values) :
+          assert (not r_free_params.remediate_mismatches)
           r_free_flags = new_array
         else :
           new_data = (new_array.data()==test_flag_value)
@@ -627,6 +634,12 @@ class process_arrays (object) :
         if not r_free_flags.is_unique_set_under_symmetry() :
           r_free_flags = r_free_flags.merge_equivalents().array()
         if (r_free_flags.anomalous_flag()) :
+          if (r_free_params.remediate_mismatches) :
+            print >> log, \
+              "Remediating any mismatched flags for Friedel mates..."
+            r_free_flags = r_free_utils.remediate_mismatches(
+              array=r_free_flags,
+              log=log)
           r_free_flags = r_free_flags.average_bijvoet_mates()
           if (output_labels is not None) and (len(output_labels) != 1) :
             assert (not combined_set.anomalous_flag())
@@ -1346,14 +1359,16 @@ def validate_params (params) :
   if None in [params.mtz_file.crystal_symmetry.space_group,
               params.mtz_file.crystal_symmetry.unit_cell] :
     raise Sorry("Missing or incomplete symmetry information.")
-  if (params.mtz_file.r_free_flags.export_for_ccp4 and
-      params.mtz_file.r_free_flags.preserve_input_values) :
-    raise Sorry("r_free_flags.preserve_input_values and "+
-      "r_free_flags.export_for_ccp4 may not be used together.")
-  if (params.mtz_file.r_free_flags.adjust_fraction and
-      params.mtz_file.r_free_flags.preserve_input_values) :
-    raise Sorry("Preserving input values of R-free flags is not supported "+
-      "when resizing a test set to the specified fraction.")
+  if (params.mtz_file.r_free_flags.preserve_input_values) :
+    if (params.mtz_file.r_free_flags.export_for_ccp4) :
+      raise Sorry("r_free_flags.preserve_input_values and "+
+        "r_free_flags.export_for_ccp4 may not be used together.")
+    if (params.mtz_file.r_free_flags.adjust_fraction) :
+      raise Sorry("Preserving input values of R-free flags is not supported "+
+        "when resizing a test set to the specified fraction.")
+    if (params.mtz_file.r_free_flags.remediate_mismatches) :
+      raise Sorry("Preserving input values of R-free flags is not supported "+
+        "when correcting mismatched Friedel/Bijvoet pairs.")
   check_if_output_directory_exists(file_name=params.mtz_file.output_file)
 
 #-----------------------------------------------------------------------

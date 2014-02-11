@@ -1,5 +1,5 @@
-from __future__ import division
 
+from __future__ import division
 from iotbx import reflection_file_editor, file_reader
 from iotbx.reflection_file_editor import master_phil
 from cctbx import miller
@@ -667,6 +667,46 @@ mtz_file {
 }""")
   params = master_phil.fetch(source=new_phil).extract()
   miller_arrays = run_and_reload(params, "tst10.mtz")
+  # R-free mismatches
+  symm = crystal.symmetry(
+    space_group_info=sgtbx.space_group_info("P212121"),
+    unit_cell=uctbx.unit_cell((60,70,80,90,90,90)))
+  set1 = miller.build_set(
+    crystal_symmetry=symm,
+    anomalous_flag=True,
+    d_min=1.0)
+  flags = set1.generate_r_free_flags(fraction=0.1, max_free=None)
+  n_flipped = 0
+  for i_hkl, (h,k,l) in enumerate(flags.indices()) :
+    if (i_hkl % 100 == 0) and (h > 0) and (k > 0) and (l > 0) :
+      flag = flags.data()[i_hkl]
+      if (not flag) :
+        n_flipped += 1
+        flags.data()[i_hkl] = True
+  assert (n_flipped > 0)
+  flags.as_mtz_dataset(column_root_label="FreeR_flag").mtz_object().write(
+    "tst_data11.mtz")
+  new_phil = libtbx.phil.parse("""
+mtz_file {
+  output_file = tst11.mtz
+  crystal_symmetry.space_group = P212121
+  crystal_symmetry.unit_cell = 60,70,80,90,90,90
+  miller_array {
+    file_name = tst_data11.mtz
+    labels = FreeR_flag(+),FreeR_flag(-)
+    output_labels = FreeR_flag
+  }
+}""")
+  params = master_phil.fetch(source=new_phil).extract()
+  try :
+    miller_arrays = run_and_reload(params, "tst11.mtz")
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
+  params.mtz_file.r_free_flags.remediate_mismatches = True
+  params.mtz_file.r_free_flags.preserve_input_values = False
+  miller_arrays = run_and_reload(params, "tst11.mtz")
 
 ########################################################################
 # this requires data in phenix_regression
