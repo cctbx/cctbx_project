@@ -128,6 +128,8 @@ tst_list = (
    "$D/regression/tst_sphericity.py",
    "$D/regression/tst_miller_statistics.py",
    "$D/merging/brehm_diederichs.py",
+   #
+   "$D/multipolar/regression/tst_multipolar.py",
   )
 
 def run():
