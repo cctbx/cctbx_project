@@ -405,7 +405,7 @@ EOF
     test "X${single_host}" = "Xyes" && break
 done
 
-cp -p "${cfg}" "${tmpdir}/pyana.cfg"
+cp --preserve=timestamps "${cfg}" "${tmpdir}/pyana.cfg"
 chmod 755 "${tmpdir}/submit.sh"
 
 # Create all directories for the output from the analysis.  This

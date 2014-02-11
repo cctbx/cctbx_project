@@ -339,7 +339,7 @@ EOF
     test "X${single_host}" = "Xyes" && break
 done
 
-cp -p "${cfg}" "${out}/pyana.cfg"
+cp --preserve=timestamps "${cfg}" "${out}/pyana.cfg"
 
 # Create all directories for the output from the analysis.  This
 # eliminates a race condition when run in parallel.
