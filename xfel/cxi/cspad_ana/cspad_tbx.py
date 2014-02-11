@@ -759,6 +759,10 @@ def evt_pulse_energy(evt):
   should be proportional to the number of photons in the pulse, and
   may be negative due to noise.
 
+  @note An absolute, but less accurate, estimate of the number of
+        photons in the pulse may be obtained from the gas monitor
+        detector's fMilliJoulesPerPulse value.
+
   @param evt Event data object, a configure object
   @return    Pulse intensity, in arbitrary units
   """
@@ -767,12 +771,19 @@ def evt_pulse_energy(evt):
     from pypdsdata.xtc import TypeId
 
     gmd = evt.get(key=TypeId.Type.Id_GMD)
-    if hasattr(gmd, 'fRelativeEnergyPerPulse'):
-      # Note that fRelativeEnergyPerPulse actually gives the negated
-      # value sought.  Details are given in Moeller, S. (2012) "GMD
-      # Look up Sheet for variable names in the DAQ (BLD) versus the
-      # C++ code".
+    if hasattr(gmd, 'fRelativeEnergyPerPulse') and evt.expNum() == 208:
+      # Note that for L632 (experiment number 208)
+      # fRelativeEnergyPerPulse actually gives the negated value
+      # sought.  Details are given in Moeller, S. (2012) "GMD Look
+      # up Sheet for variable names in the DAQ (BLD) versus the C++
+      # code".
       return -gmd.fRelativeEnergyPerPulse
+
+    elif hasattr(gmd, 'fCorrectedSumPerPulse'):
+      # This relatively pressure-independent quantity in arbitrary
+      # units is preferable.  It is also known as
+      # SXR:GMD:BLD:CumSumAllPeaks.
+      return gmd.fCorrectedSumPerPulse
   return None
 
 
