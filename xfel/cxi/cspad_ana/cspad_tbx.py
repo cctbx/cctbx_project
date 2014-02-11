@@ -767,23 +767,25 @@ def evt_pulse_energy(evt):
   @return    Pulse intensity, in arbitrary units
   """
 
-  if evt is not None:
-    from pypdsdata.xtc import TypeId
+  from pypdsdata.xtc import TypeId
 
-    gmd = evt.get(key=TypeId.Type.Id_GMD)
-    if hasattr(gmd, 'fRelativeEnergyPerPulse') and evt.expNum() == 208:
-      # Note that for L632 (experiment number 208)
-      # fRelativeEnergyPerPulse actually gives the negated value
-      # sought.  Details are given in Moeller, S. (2012) "GMD Look
-      # up Sheet for variable names in the DAQ (BLD) versus the C++
-      # code".
-      return -gmd.fRelativeEnergyPerPulse
+  if evt is None:
+    return None
 
-    elif hasattr(gmd, 'fCorrectedSumPerPulse'):
-      # This relatively pressure-independent quantity in arbitrary
-      # units is preferable.  It is also known as
-      # SXR:GMD:BLD:CumSumAllPeaks.
-      return gmd.fCorrectedSumPerPulse
+  gmd = evt.get(key=TypeId.Type.Id_GMD)
+  if hasattr(gmd, 'fRelativeEnergyPerPulse') and evt.expNum() == 208:
+    # Note that for L632 (experiment number 208)
+    # fRelativeEnergyPerPulse actually gives the negated value
+    # sought.  Details are given in Moeller, S. (2012) "GMD Look
+    # up Sheet for variable names in the DAQ (BLD) versus the C++
+    # code".
+    return -gmd.fRelativeEnergyPerPulse
+
+  elif hasattr(gmd, 'fCorrectedSumPerPulse'):
+    # This relatively pressure-independent quantity in arbitrary
+    # units is preferable.  It is also known as
+    # SXR:GMD:BLD:CumSumAllPeaks.
+    return gmd.fCorrectedSumPerPulse
   return None
 
 
