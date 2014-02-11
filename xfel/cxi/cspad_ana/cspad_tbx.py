@@ -533,6 +533,7 @@ def dwritef(d, dirname=None, basename=None):
   @param d        Dictionary, as created by e.g. dpack()
   @param dirname  Directory portion of output file
   @param basename Filename prefix of output file
+  @return         Path of output file
   """
 
   if basename is None:
@@ -543,7 +544,7 @@ def dwritef(d, dirname=None, basename=None):
     os.makedirs(dirname)
 
   # The output path should not contain any funny characters which may
-  # not work in all environments.  This constructs a sequence number a
+  # not work in all environments.  This constructs a sequence number à
   # la evt_seqno() from the dictionary's timestamp.
   t = d['TIMESTAMP']
   s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
@@ -863,12 +864,13 @@ def evt_seqno(evt=None):
 
 
 def evt_time(evt=None):
-  """The evt_time() function returns a tuple of the time in seconds
-  and milliseconds.  If @p evt is not @c None the return value
-  reflects the time at which @p evt occurred, otherwise the current
-  time is used.  If @p evt does not contain a time, evt_time() returns
-  @c None.  Millisecond accuracy is sufficient, because at 120 Hz,
-  shots are taken at 8.3 ms intervals.
+  """The evt_time() function returns the time of the event @p evt since
+  midnight, 1 January 1970 UTC (Unix time) to millisecond precision.
+  If @p evt does not contain a time, evt_time() returns @c None.  If
+  @p evt is @c None the return value reflects current time is used.
+
+  @note Millisecond precision is sufficient, because at 120 Hz, shots
+        are taken at 8.3 ms intervals.
 
   @param evt Event data object, a configure object
   @return    Unix time as a tuple of seconds and milliseconds
