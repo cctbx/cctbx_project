@@ -300,8 +300,6 @@ namespace mtz {
       /*! \brief Allocates memory for new_nref and fill all new data
           slots with "not-a-number" bit patterns.
        */
-      /*! Not available in Python.
-       */
       void
       adjust_column_array_sizes(int new_nref);
 
@@ -328,6 +326,11 @@ namespace mtz {
       //! Read-only access.
       int
       n_reflections() const { return ptr()->nref; }
+
+      //! Write access
+      void set_n_reflections(int n_reflections) {
+        ptr()->nref = n_reflections;
+      }
 
       //! Maximum and minimum resolution, typically in Angstroms.
       af::tiny<double, 2>

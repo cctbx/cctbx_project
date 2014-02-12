@@ -24,6 +24,13 @@ def exercise_read_corrupt():
       assert str(e) == "cctbx Error: MTZ file read error: tmp_iotbx_mtz_ext.mtz"
     else: raise Exception_expected
 
+def exercise_setting_nref_etc():
+  m = mtz.object()
+  assert m.n_reflections() == 0
+  m.adjust_column_array_sizes(10)
+  m.set_n_reflections(10)
+  assert m.n_reflections() == 10
+
 def exercise_basic():
   assert mtz.ccp4_liberr_verbosity(-1) == 0
   assert mtz.ccp4_liberr_verbosity(1) == 1
@@ -1342,6 +1349,7 @@ def exercise():
   ).process(args=sys.argv[1:])
   exercise_read_corrupt()
   exercise_basic()
+  exercise_setting_nref_etc()
   exercise_modifiers(verbose=command_line.options.verbose)
   for file_name in command_line.args:
     exercise_extract_any()(file_name=file_name, out=sys.stdout)

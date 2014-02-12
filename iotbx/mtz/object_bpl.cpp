@@ -109,6 +109,8 @@ namespace {
         .def("set_space_group", &w_t::set_space_group, (
           arg("space_group")), return_self<>())
         .def("reserve", &w_t::reserve)
+        .def("adjust_column_array_sizes", &w_t::adjust_column_array_sizes)
+        .def("set_n_reflections", &w_t::set_n_reflections)
         .def("n_batches", &w_t::n_batches)
         .def("batches", &w_t::batches)
         .def("add_batch", &w_t::add_batch)
