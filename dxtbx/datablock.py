@@ -618,8 +618,6 @@ class DataBlockFactory(object):
   def from_imageset_json_file(filename):
     ''' Load a datablock from a sweep file. '''
     from dxtbx.serialize import load
-    from dxtbx.serialize.imageset import NullSweep
-    from dxtbx.imageset import ImageSet, ImageSweep
 
     # Load the imageset and create a datablock from the filenames
     imageset = load.imageset(filename)
