@@ -2718,6 +2718,7 @@ xfel/command_line/cxi_plotcv.py -text
 xfel/command_line/cxi_pyana.py -text
 xfel/command_line/cxi_spots.py -text
 xfel/command_line/cxi_view.py -text
+xfel/command_line/find_target_uc.py -text
 xfel/command_line/get_next_trial_id.py -text
 xfel/command_line/histogram_finalise.py -text
 xfel/command_line/list_db_metadata.py -text
