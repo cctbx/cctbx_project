@@ -119,7 +119,7 @@ def imagesweep_from_dict(d):
 
   # Construct the sweep
   try:
-    sweep = ImageSetFactory.from_template(template, image_range)
+    sweep = ImageSetFactory.from_template(template, image_range)[0]
 
     # Get the existing models as dictionaries
     beam_dict = beam.to_dict(sweep.get_beam())
