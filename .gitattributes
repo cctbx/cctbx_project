@@ -96,6 +96,8 @@ cctbx/crystal/distance_based_connectivity.py -text
 cctbx/crystal/tst_distance_based_connectivity.py svneol=native#text/x-python
 cctbx/crystal_orientation.h -text
 cctbx/crystal_orientation.py -text
+cctbx/determine_unit_cell/__init__.py -text
+cctbx/determine_unit_cell/target_uc.py -text
 cctbx/development/cns_density_modification.py -text
 cctbx/development/run_shelx76.py svneol=native#text/x-python
 cctbx/eltbx/attenuation_coefficient.cpp -text
