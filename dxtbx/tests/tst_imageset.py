@@ -933,7 +933,7 @@ class TestNullReader(object):
     imageset.set_beam(Beam())
     imageset.set_detector(Detector())
     imageset.set_goniometer(Goniometer())
-    imageset.set_scan(Scan())
+    imageset.set_scan(Scan((1,1), (0, 1)))
     assert(isinstance(imageset.get_beam(), Beam))
     assert(isinstance(imageset.get_detector(), Detector))
     assert(isinstance(imageset.get_goniometer(), Goniometer))
