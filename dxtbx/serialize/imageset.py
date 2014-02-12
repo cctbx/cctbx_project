@@ -119,7 +119,7 @@ def imagesweep_from_dict(d):
 
   # Construct the sweep
   try:
-    sweep = ImageSetFactory.make_sweep(template, range(*image_range))
+    sweep = ImageSetFactory.from_template(template, image_range)
 
     # Get the existing models as dictionaries
     beam_dict = beam.to_dict(sweep.get_beam())
@@ -127,8 +127,9 @@ def imagesweep_from_dict(d):
     detector_dict = detector.to_dict(sweep.get_detector())
     scan_dict = scan.to_dict(sweep.get_scan())
   except Exception:
-    sweep = ImageSetFactory.make_sweep(template, range(*image_range),
-                                          check_format=False)
+    indices = range(image_range[0], image_range[1] + 1)
+    sweep = ImageSetFactory.make_sweep(
+      template, indices, check_format=False)
     beam_dict = None
     gonio_dict = None
     detector_dict = None

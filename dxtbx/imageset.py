@@ -843,6 +843,7 @@ class ImageSweep(ImageSet):
 
   def set_scan(self, scan):
     ''' Set the scan model. '''
+    assert(scan.get_num_images() == (self._indices[-1] - self._indices[0] + 1))
     self._scan = scan
 
   def complete_set(self):
