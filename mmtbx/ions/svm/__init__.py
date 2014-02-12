@@ -40,11 +40,16 @@ from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES
 from mmtbx.ions.parameters import get_server
 
 CLASSIFIER_PATH = libtbx.env.find_in_repositories(
-  relative_path = "chem_data/classifiers/ions_svm.pkl",
+  relative_path = "chem_data/classifiers/ions_svm.model",
+  test = os.path.isfile
+  )
+CLASSIFIER_ACCESSORIES_PATH = libtbx.env.find_in_repositories(
+  relative_path = "chem_data/classifiers/ions_svm_options.pkl",
   test = os.path.isfile
   )
 
 _CLASSIFIER = None
+_VECTOR_OPTIONS = None
 _TRIED = None
 
 ALLOWED_IONS = [ions.WATER_RES_NAMES[0]] + ["MN", "ZN", "FE", "NI", "CA"]
@@ -52,7 +57,8 @@ ALLOWED_IONS = [ions.WATER_RES_NAMES[0]] + ["MN", "ZN", "FE", "NI", "CA"]
 def _get_classifier():
   """
   If need be, initializes, and then returns a classifier trained to
-  differentiate between different ions and water.
+  differentiate between different ions and water. Also returns of options for
+  gathering features.
 
   To use the classifier, you will need to pass it to
   svm.libsvm.svm_predict_probability. Ion prediction is already encapsulated by
@@ -61,13 +67,19 @@ def _get_classifier():
   Returns
   -------
   svm.svm_model
+      The libsvm classifier used to predict the identities of ion sites.
+  dict of str, bool
+      Options to pass to ion_vector when collecting features about these sites.
+  int
+      The size of the vectors the classifier was trained on. Useful for
+      asserting that features are not missing due to changes in vector code.
 
   See Also
   --------
   svm.libsvm.svm_predict_probability
   mmtbx.ions.svm.predict_ion
   """
-  global _CLASSIFIER, _TRIED
+  global _CLASSIFIER, _VECTOR_OPTIONS, _VECTOR_SIZE, _TRIED
   if _CLASSIFIER is None and not _TRIED:
     _TRIED = True
     try:
@@ -75,8 +87,10 @@ def _get_classifier():
     except IOError as err:
       if err.errno != errno.ENOENT:
         raise err
+    with open(CLASSIFIER_ACCESSORIES_PATH) as f:
+      _VECTOR_OPTIONS, _VECTOR_SIZE = load(f)
 
-  return _CLASSIFIER
+  return _CLASSIFIER, _VECTOR_OPTIONS, _VECTOR_SIZE
 
 def ion_class(chem_env):
   """
@@ -341,9 +355,8 @@ def predict_ion(chem_env, scatter_env, elements = None):
       site.
   elements : list of str
      A list of elements to include within the prediction. Must be a subset of
-     mmtbx.ions.svm.ALLOWED_IONS
-  anomalous : bool, optional
-     Indicates whether to use the ion classifier trained with anomalous data.
+     mmtbx.ions.svm.ALLOWED_IONS. Note: Water is not added to elements by
+     default.
 
   Returns
   -------
@@ -351,20 +364,25 @@ def predict_ion(chem_env, scatter_env, elements = None):
       Returns a list of classes and the probability associated with each or None
       if the trained classifier cannot be loaded.
   """
-  classifier = _get_classifier()
+  classifier, vector_options, vector_size = _get_classifier()
 
   if classifier is None:
     return None
 
   # Convert our data into a format that libsvm will accept
-  vector = svm.gen_svm_nodearray(
-    list(ion_vector(chem_env, scatter_env)),
-    isKernel = classifier.param.kernel_type == svm.PRECOMPUTED,
+  vector = list(ion_vector(chem_env, scatter_env, **vector_options))
+
+  assert len(vector) == vector_size
+
+  xi = svm.gen_svm_nodearray(
+    vector, isKernel = classifier.param.kernel_type == svm.PRECOMPUTED,
     )[0]
 
   nr_class = classifier.get_nr_class()
+  # prob_estimates isn't actually read by svm_predict_probability, it is only
+  # written to with the final estimates. We just need to allocate space for it.
   prob_estimates = (c_double * nr_class)()
-  svm.libsvm.svm_predict_probability(classifier, vector, prob_estimates)
+  svm.libsvm.svm_predict_probability(classifier, xi, prob_estimates)
   probs = prob_estimates[:nr_class]
   labels = [ALLOWED_IONS[i] for i in classifier.get_labels()]
 
@@ -379,7 +397,7 @@ def predict_ion(chem_env, scatter_env, elements = None):
     # Filter out elements the caller does not care about
     classes, probs = [], []
     for element, prob in lst:
-      if element in elements or element in ions.WATER_RES_NAMES:
+      if element in elements:
         classes.append(element)
         probs.append(prob)
 
