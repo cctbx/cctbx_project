@@ -12,6 +12,7 @@ class Test(object):
     self.tst_scan()
     self.tst_sweep()
     self.tst_cspad_hierarchy()
+    self.tst_no_image_data()
 
   def tst_beam(self):
     from dxtbx.serialize import beam
@@ -162,6 +163,34 @@ class Test(object):
     assert(imageset2 == imageset)
 
     # Test passed
+    print 'OK'
+
+  def tst_no_image_data(self):
+
+    from dxtbx.serialize import load
+    import libtbx.load_env
+    import os
+    from glob import glob
+    from dxtbx.imageset import ImageSweep, NullReader
+    try:
+      path = libtbx.env.dist_path('dials_regression')
+    except Exception:
+      print "No dials_regression directory found"
+      return
+    filename = os.path.join(
+      path,
+      'centroid_test_data',
+      'sweep_no_image_data.json')
+
+    imageset = load.imageset(filename)
+    assert(isinstance(imageset, ImageSweep))
+    assert(isinstance(imageset.reader(), NullReader))
+    try:
+      imageset[0]
+      assert(False)
+    except Exception:
+      pass
+
     print 'OK'
 
 if __name__ == '__main__':
