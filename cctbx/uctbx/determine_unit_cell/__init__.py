@@ -1,2 +1,4 @@
 from __future__ import division
-from target_uc  import *
+import boost.python
+boost.python.import_ext("determine_unit_cell_ext")
+from determine_unit_cell_ext import *

@@ -1,0 +1,12 @@
+Import("env_cctbx_boost_python_ext")
+env = env_cctbx_boost_python_ext.Clone()
+env.Prepend(LIBS=["cctbx"])
+
+import libtbx.load_env
+dist_dir = libtbx.env.dist_path("cctbx")
+import os
+sourcedir = os.path.join(dist_dir,"uctbx","determine_unit_cell")
+if os.path.isfile(os.path.join(sourcedir,"NCDist.h")):
+  env.SharedLibrary(target="#lib/determine_unit_cell_ext", source=[
+  "ext.cpp",
+  ])
