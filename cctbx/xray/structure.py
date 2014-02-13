@@ -2280,6 +2280,28 @@ class structure(crystal.special_position_settings):
           "Unable to find unused SHELX-compatible scatterer label.")
     return result
 
+  def intersection_of_scatterers (self, i_seq, j_seq) :
+    """
+    For a pair of scatterers, calculates their overlap given the coordinates
+    and displacement parameters (using adptbx.intersection).
+    """
+    sc1 = self.scatterers()[i_seq]
+    sc2 = self.scatterers()[j_seq]
+    if (sc1.flags.use_u_aniso()) :
+      u1 = sc1.u_star
+    else :
+      u1 = sc1.u_iso
+    if (sc2.flags.use_u_aniso()) :
+      u2 = sc2.u_star
+    else :
+      u2 = sc2.u_iso
+    return adptbx.intersection(
+      u_1=u1,
+      u_2=u2,
+      site_1=sc1.site,
+      site_2=sc2.site,
+      unit_cell=self.unit_cell())
+
 class conservative_pair_proxies(object):
 
   def __init__(self, structure, bond_sym_table, conserve_angles):

@@ -50,3 +50,27 @@ def random_traceless_symmetry_constrained_b_cart(crystal_symmetry, u_scale=1,
   b_cart = [b_cart[0]-tr, b_cart[1]-tr, b_cart[2]-tr,
            b_cart[3],b_cart[4],b_cart[5]]
   return b_cart
+
+def intersection (u_1, u_2, site_1, site_2, unit_cell) :
+  """
+  Calculate the intersection of two scatterers, given coordinates and atomic
+  displacements.  If the scatterers do not actually intersect the result will
+  be negative.
+  """
+  from scitbx.matrix import col
+  if (site_1 == site_2) :
+    return sys.maxint
+  if isinstance(u_1, float) :
+    u_1 = u_iso_as_u_star(unit_cell, u_1)
+  if isinstance(u_2, float) :
+    u_2 = u_iso_as_u_star(unit_cell, u_2)
+  site_cart_1 = col(unit_cell.orthogonalize(site_frac=site_1))
+  site_cart_2 = col(unit_cell.orthogonalize(site_frac=site_2))
+  dxyz = abs(site_cart_1 - site_cart_2)
+  proj_sum = projection_sum(
+    ustar1=u_1,
+    ustar2=u_2,
+    site1=site_1,
+    site2=site_2,
+    unit_cell=unit_cell).delta_z()
+  return proj_sum - dxyz

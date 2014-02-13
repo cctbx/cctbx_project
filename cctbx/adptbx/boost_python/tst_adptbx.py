@@ -269,7 +269,49 @@ def exercise_random_traceless_symmetry_constrained_b_cart():
   assert approx_equal(bc[4],0)
   assert approx_equal(bc[5],0)
 
+def exercise_misc () :
+  import libtbx.load_env
+  if (not libtbx.env.has_module("iotbx")) : return
+  from iotbx.pdb import hierarchy
+  # Pair 1: 0.5 A apart, mean displacement = 0.4 A
+  # Pair 2: 1.5 A apart, mean displacement = 0.6 A
+  pdb_in = hierarchy.input(pdb_string="""
+CRYST1   10.000   11.000   12.000  70.00  80.00  90.00 P 1
+HETATM    1  O  AHOH A   1       4.000   5.000   3.000  1.00 12.63           O
+HETATM    2  O  BHOH A   1       4.500   5.000   3.000  1.00 12.63           O
+HETATM    3  O  AHOH A   2       7.000   1.000   6.000  1.00 28.42           O
+HETATM    4  O  BHOH A   2       8.500   1.000   6.000  1.00 28.42           O
+END""")
+  xrs = pdb_in.input.xray_structure_simple()
+  unit_cell = xrs.unit_cell()
+  sc = xrs.scatterers()
+  delta12 = adptbx.intersection(
+    u_1=sc[0].u_iso,
+    u_2=sc[1].u_iso,
+    site_1=sc[0].site,
+    site_2=sc[1].site,
+    unit_cell=xrs.unit_cell())
+  xrs.convert_to_anisotropic()
+  delta12_aniso = adptbx.intersection(
+    u_1=sc[0].u_star,
+    u_2=sc[1].u_star,
+    site_1=sc[0].site,
+    site_2=sc[1].site,
+    unit_cell=xrs.unit_cell())
+  assert (delta12_aniso == delta12)
+  assert approx_equal(delta12, 0.2999, eps=0.0001)
+  delta34 = adptbx.intersection(
+    u_1=sc[2].u_star,
+    u_2=sc[3].u_star,
+    site_1=sc[2].site,
+    site_2=sc[3].site,
+    unit_cell=xrs.unit_cell())
+  assert approx_equal(delta34, -0.300094, eps=0.000001)
+  delta34b = xrs.intersection_of_scatterers(2,3)
+  assert (delta34b == delta34)
+
 def run():
+  exercise_misc()
   exercise_interface()
   exercise_factor_u_star_u_iso()
   exercise_debye_waller()
