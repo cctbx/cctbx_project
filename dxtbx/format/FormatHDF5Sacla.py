@@ -48,9 +48,9 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
 
     # Initialise detector frame
     fast = matrix.col((1.0, 0.0, 0.0))
-    slow = matrix.col((0.0, 1.0, 0.0))
+    slow = matrix.col((0.0, -1.0, 0.0))
     orig = matrix.col((-image_size[0]*pixel_size[0]/2,
-                       -image_size[1]*pixel_size[1]/2, -100.0))
+                        image_size[1]*pixel_size[1]/2, -100.0))
 
 
     # Make the detector
@@ -64,7 +64,7 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
     sacla_config = run_info['sacla_config']
     eV = sacla_config['photon_energy_in_eV'].value
 
-    return self._beam_factory.simple(12604/eV)
+    return self._beam_factory.simple(12398.4/eV)
 
   def get_num_images(self):
     return len(self._images)
