@@ -4,7 +4,6 @@ from mmtbx.disorder import backbone
 from scitbx.array_family import flex
 from scitbx.matrix import col
 from libtbx.str_utils import format_value as fv
-from libtbx.utils import Sorry
 from libtbx import slots_getstate_setstate
 import math
 import sys
@@ -524,7 +523,7 @@ class process_pdb_hierarchy (object) :
       if (rmsd_max is None) or (rmsd > rmsd_max) :
         rmsd_max = rmsd
         segment_max = segment
-    return rmsd_max, segment_max 
+    return rmsd_max, segment_max
 
   def max_distance_between_conformers (self, backbone=None) :
     dist_max = segment_max = None
