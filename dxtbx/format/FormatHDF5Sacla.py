@@ -33,7 +33,7 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
     tag_number_list = event_info['tag_number_list']
     self._images = ["tag_%d"%tag for tag in tag_number_list]
 
-  def _detector(self):
+  def _detector(self, index=None):
     from scitbx import matrix
 
     # Get the pixel and image size
@@ -59,7 +59,7 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
       pixel_size, image_size, trusted_range)
 
 
-  def _beam(self):
+  def _beam(self, index=None):
     run_info = self._run['run_info']
     sacla_config = run_info['sacla_config']
     eV = sacla_config['photon_energy_in_eV'].value
@@ -82,3 +82,10 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
 
   def get_image_file(self, index=None):
     return Format.get_image_file(self)
+
+  def get_detector(self, index=None):
+    return self._detector_instance
+
+  def get_beam(self, index=None):
+    return self._beam_instance
+
