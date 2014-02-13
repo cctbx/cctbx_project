@@ -11,6 +11,7 @@ import math
 import  scipy.cluster.hierarchy as hcluster
 #import libtbx.load_env
 from cctbx import sgtbx
+from cctbx.uctbx.determine_unit_cell import NCDist
 
 class target:
   
@@ -38,10 +39,14 @@ class target:
             self.all_uc.append((pg, uc))
             self.niggli_ucs.append(uc.niggli_cell().parameters())
     
-  def find_distance(self, G6a, G6b):
-    """ Retursn the distance between two cells, already in the G6 convention. Curently trivial Euclidian """
-    val = abs((np.sum(G6a - G6b)))**0.5
-    return val
+  def find_distance(self, G6a, G6b, key):
+    """ Retursn the distance between two cells, already in the G6 convention. 
+        Optionally (key =1)  trivial Euclidian or NCDist (key =2 )"""
+    if key is 1: # trivial euclidian
+      return abs((np.sum(G6a - G6b)))**0.5
+    if key is 2: # Andrews-Bernstein distance
+      return  NCDist(G6a , G6b) 
+      
        
   def make_G6(self, uc):
     """ Take a reduced Niggli Cell, and turn it into the G6 representation """
@@ -55,6 +60,9 @@ class target:
     
   def cluster(self, threshold):
     """ Do basic hierarchical clustering on the Niggli cells created at the start """
+    dist_method = 2
+    if dist_method is 2:
+      print "Using Andrews-Bernstein Distance from Andrews & Bernstein J Appl Cryst 47:346 (2014)."
     # 1. Create a numpy array of G6 cells
     G6_cells = []
     for n_cell in self.niggli_ucs: 
@@ -62,9 +70,9 @@ class target:
     self.G6_cells = np.array(G6_cells)
     # 2. Do hierarchichal clustering on this, using the find_distance method above. 
     self.clusters = hcluster.fclusterdata(self.G6_cells, 
-                                          threshold, 
+                                          threshold**2, 
                                           criterion='distance', 
-                                          metric=lambda a, b: self.find_distance(a,b))
+                                          metric=lambda a, b: self.find_distance(a,b,dist_method))
     # 3. print out some information that is useful.
     print "{} clusters have been identified.".format(max(self.clusters))
     print "{:^14} {:<11} {:<11} {:<11} {:<11} {:<11} {:<11}".format(
