@@ -242,6 +242,16 @@ namespace {
       c_u_c_transpose);
 
     wrap_hirshfeld();
+
+    class_<projection_sum<> >("projection_sum", no_init)
+      .def(init<
+        vec3<double> const&, vec3<double> const&,
+        sym_mat3<double> const&, sym_mat3<double> const&,
+        uctbx::unit_cell const& >((
+          arg("site1"), arg("site2"), arg("ustar1"), arg("ustar2"),
+          arg("unit_cell"))))
+      .def("delta_z", &projection_sum<>::delta_z)
+    ;
 }
 
 } // namespace <anonymous>
