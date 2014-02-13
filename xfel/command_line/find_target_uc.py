@@ -17,8 +17,8 @@ if (__name__ == "__main__"):
   parser = argparse.ArgumentParser(description='Process some integers.')
   parser.add_argument('folders',  type=str, nargs='+',
                        help='One or more folers containing integration pickles.')
-  parser.add_argument('-t', type=float, default=10,
-                       help='threshold value for the clustering')
+  parser.add_argument('-t', type=float, default=50,
+                       help='threshold value for the clustering. Note that this is given in A, but will be squared for clustering, since the clustering occurs in G6 space. Default = 50')
 
   args = parser.parse_args()
   result = run(args)
