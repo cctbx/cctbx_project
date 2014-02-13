@@ -23,7 +23,16 @@ class fab_elbow_angle(object):
       is residue number 107/113 for light/heavy chains
     - Variable domain is from residue 1 to limit.
       Constant domain form limit+1 to end.
-    - Method of calculating angle is based on Stanfield, et al., JMB 2006
+
+    Reference:
+    ----------
+    Stanfield, et al., JMB 2006
+
+    Usage example:
+    --------------
+    >>>from mmtbx.utils.fab_elbow_angle import fab_elbow_angle
+    >>>fab = fab_elbow_angle(pdb_hierarchy=ph,limit_light=114,limit_heavy=118)
+    >>>fab_angle = fab.fab_elbow_angle
     '''
      # create selection strings for the heavy/light var/const part of chains
     self.select_str(
