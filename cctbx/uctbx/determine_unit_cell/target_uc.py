@@ -48,9 +48,9 @@ class target:
     a = uc[0]**2 
     b = uc[1]**2 
     c = uc[2]**2 
-    d = 2*uc[1]*uc[2]*math.sin(3)
-    e = 2*uc[0]*uc[2]*math.sin(4)
-    f = 2*uc[0]*uc[1]*math.sin(5)
+    d = 2*uc[1]*uc[2]*math.cos(uc[3])
+    e = 2*uc[0]*uc[2]*math.cos(uc[4])
+    f = 2*uc[0]*uc[1]*math.cos(uc[5])
     return [a,b,c,d,e,f]
     
   def cluster(self, threshold):
