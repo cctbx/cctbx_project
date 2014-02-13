@@ -1313,6 +1313,7 @@ iotbx/xds/spot_xds.py -text
 iotbx/xds/tests/INTEGRATE.HKL -text
 iotbx/xds/tests/NEW_XPARM.XDS -text
 iotbx/xds/tests/XDS.INP -text
+iotbx/xds/tests/XDS_2.INP -text
 iotbx/xds/tests/XPARM.XDS -text
 iotbx/xds/tests/tst_integrate_hkl.py -text
 iotbx/xds/tests/tst_spots_xds.py -text
