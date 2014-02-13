@@ -3,23 +3,23 @@ from __future__ import division
 from libtbx.utils import multi_out
 import sys
 
-#def run(args):
-#  log = open("find_target_uc.log", "w")
-#  out = multi_out()
-#  out.register("log", log, atexit_send_to=None)
-#  out.register("stdout", sys.stdout)
-#
-#  print >> out, "Target unit cell and space group:"
-#  print >> out, "  ", work_params.target_unit_cell
-#  print >> out, "  ", work_params.target_space_group
-#
 def run(args):
-  #-------- Get the pickles from a command line specified path arg -------#
   if args < 2: raise IOError("Must give at least one path to folder of pickles") 
-  from cctbx.determine_unit_cell.target_uc import target
-  ucs = target(args) 
-  import pdb; pdb.set_trace()
+  from cctbx.uctbx.determine_unit_cell.target_uc import target
+  ucs = target(args.folders) 
+  ucs.cluster(args.t)
+  ucs.plot_clusters(ucs.clusters)
+  
 
 if (__name__ == "__main__"):
   import sys
-  result = run(args = sys.argv[1:])
+  import argparse
+  parser = argparse.ArgumentParser(description='Process some integers.')
+  parser.add_argument('folders',  type=str, nargs='+',
+                       help='One or more folers containing integration pickles.')
+  parser.add_argument('-t', type=float, default=10,
+                       help='threshold value for the clustering')
+
+  args = parser.parse_args()
+  result = run(args)
+
