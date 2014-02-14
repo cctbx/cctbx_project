@@ -18,7 +18,7 @@ if (__name__ == "__main__"):
   parser.add_argument('folders',  type=str, nargs='+',
                        help='One or more folers containing integration pickles.')
   parser.add_argument('-t', type=float, default=5000, 
-                       help='threshold value for the clustering. Default = 50')
+                       help='threshold value for the clustering. Default = 5000')
   parser.add_argument('-m', type=str, default='distance',
       help='Clustering method for numpy clustering. Options are: inconsistent' + 
            ', distance, maxclust, monocri, maxclust_monocrit')
