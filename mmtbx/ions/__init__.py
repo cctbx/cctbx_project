@@ -1091,6 +1091,54 @@ class Manager (object) :
       #PRINT_DEBUG("SKIPPING %s" % atom.id_str())
       return None
 
+    if self.params.use_svm:
+      from mmtbx.ions.svm import predict_ion
+      from mmtbx.ions.environment import ScatteringEnvironment, \
+           ChemicalEnvironment
+
+      chem_env = ChemicalEnvironment(
+        i_seq,
+        atom_props.nearby_atoms,
+        self,
+        )
+      # XXX: This is slow! Calculate the maps or environments beforehand!
+      scatter_env = ScatteringEnvironment(
+        i_seq,
+        self,
+        self.get_map("mFo"),
+        self.get_map("mFo-DFc"),
+        self.get_map("anom"),
+        )
+
+      if auto_candidates:
+        candidates = None
+      else:
+        candidates.append("HOH")
+
+      predictions = predict_ion(chem_env, scatter_env, elements = candidates)
+
+      if predictions is not None:
+        # XXX: filtered candidates == probability > threshold?
+        # Should this be matching_candidates?
+        elem = self.server.get_metal_parameters(predictions[0][0])
+        rej = [self.server.get_metal_parameters(i[0]) for i in predictions[1:]]
+        return water_result(
+          atom_props = atom_props,
+          filtered_candidates = [elem],
+          matching_candidates = [(elem, predictions[0][1])],
+          rejected_candidates = rej,
+          nuc_phosphate_site = atom_props.looks_like_nucleotide_phosphate_site(),
+          atom_type = atom_type,
+          looks_like_halide = False, # SVM doesn't support halides
+          ambiguous_valence_cutoff = self.params.ambiguous_valence_cutoff,
+          valence_used = True,
+          final_choice = elem,
+          wavelength = self.wavelength,
+          no_final = False)
+      else:
+        self.params.use_svm = False
+        print >> out, "Unable to load SVM, defaulting to decision tree."
+
     # Filter out metals based on whether they are more or less eletron-dense
     # in comparison with water
     filtered_candidates = []

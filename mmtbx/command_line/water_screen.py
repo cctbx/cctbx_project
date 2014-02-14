@@ -17,6 +17,8 @@ debug = True
   .type = bool
 elements = Auto
   .type = str
+use_svm = False
+  .type = bool
 wavelength = None
   .type = float
 nproc = Auto
@@ -61,13 +63,13 @@ environment, electron density maps, and atomic properties.
   make_header("Inspecting water molecules", out=out)
   manager = ions.create_manager(
     pdb_hierarchy = pdb_hierarchy,
-    fmodel=fmodel,
-    geometry_restraints_manager=geometry,
-    wavelength=params.wavelength,
-    params=params,
+    fmodel = fmodel,
+    geometry_restraints_manager = geometry,
+    wavelength = params.wavelength,
+    params = params,
     verbose = params.debug,
     nproc = params.nproc,
-    log=out)
+    log = out)
   manager.show_current_scattering_statistics(out=out)
   candidates = Auto
   if (params.elements is not Auto) and (params.elements is not None) :
