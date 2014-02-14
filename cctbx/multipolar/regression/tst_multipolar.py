@@ -71,8 +71,11 @@ def should_return_atom_types():
 
 def exercise(file_name=None):
   if (not libtbx.env.has_module(name="mmtbx")):
-    print "Skipping exercise_with_pdb():", \
+    print "Skipping exercise():", \
       "mmtbx.monomer_library.pdb_interpretation not available"
+    return
+  if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
+    print "Skipping exercise(): chem_data directory not available"
     return
   from mmtbx import monomer_library
   import mmtbx.monomer_library.server
