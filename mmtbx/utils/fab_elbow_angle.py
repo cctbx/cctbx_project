@@ -20,7 +20,7 @@ class fab_elbow_angle(object):
 
     - Default heavy and light chains IDs are: H : heavy,  L : light
     - Default limit (cutoff) between variable and constant parts
-      is residue number 107/113 for light/heavy chains
+      are residue number 107/113 for light/heavy chains
     - Variable domain is from residue 1 to limit.
       Constant domain form limit+1 to end.
 
@@ -30,11 +30,10 @@ class fab_elbow_angle(object):
 
     Usage example:
     --------------
-    >>>from mmtbx.utils.fab_elbow_angle import fab_elbow_angle
     >>>fab = fab_elbow_angle(pdb_hierarchy=ph,limit_light=114,limit_heavy=118)
     >>>fab_angle = fab.fab_elbow_angle
     '''
-     # create selection strings for the heavy/light var/const part of chains
+    # create selection strings for the heavy/light var/const part of chains
     self.select_str(
       chain_ID_H=chain_ID_heavy,
       limit_H=limit_heavy,
