@@ -144,6 +144,7 @@ tst_list = (
   "$D/secondary_structure/build/tst_1.py",
   "$D/secondary_structure/build/tst_2.py",
   "$D/utils/tst_switch_rotamers.py",
+  "$D/refinement/tst_regroup_occupancy_constraints.py",
   )
 
 def run():
