@@ -4,6 +4,7 @@ import re
 import sys
 from libtbx import easy_pickle
 import matplotlib.pyplot as plt
+import matplotlib.cm as mpl_cmaps
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import math
@@ -58,7 +59,7 @@ class target:
     f = 2*uc[0]*uc[1]*math.cos(uc[5])
     return [a,b,c,d,e,f]
     
-  def cluster(self, threshold):
+  def cluster(self, threshold, method):
     """ Do basic hierarchical clustering on the Niggli cells created at the start """
     dist_method = 2
     if dist_method is 2:
@@ -70,8 +71,8 @@ class target:
     self.G6_cells = np.array(G6_cells)
     # 2. Do hierarchichal clustering on this, using the find_distance method above. 
     self.clusters = hcluster.fclusterdata(self.G6_cells, 
-                                          threshold**2, 
-                                          criterion='distance', 
+                                          threshold, 
+                                          criterion=method, 
                                           metric=lambda a, b: self.find_distance(a,b,dist_method))
     # 3. print out some information that is useful.
     print "{} clusters have been identified.".format(max(self.clusters))
@@ -97,7 +98,7 @@ class target:
   def plot_clusters(self, clusters):
     """ Plot Niggli cells -- one plot for (a,b,c) and one plot for (alpha, beta, gamma) -- colour 
     coded by cluster index.  """
-    colors = ['b', 'y', 'g', 'c', 'm', 'r', 'k']
+    cmap = mpl_cmaps.Paired
     fig = plt.figure('unit_cells_dimensions')
     ax = fig.add_subplot(111, projection='3d')
     ax.set_xlabel('a [A]')
@@ -107,14 +108,14 @@ class target:
       ax.scatter(np.array(self.niggli_ucs)[i,0],
                  np.array(self.niggli_ucs)[i,1],
                  np.array(self.niggli_ucs)[i,2],
-                 c=colors[clusters[i]], marker='o')
+                 c=cmap(clusters[i]/max(clusters)), marker='o')
     fig = plt.figure('unit_cells_angles')
     ax = fig.add_subplot(111, projection='3d')
     for i in range(len(self.niggli_ucs)):
       ax.scatter(np.array(self.niggli_ucs)[i,3],
                  np.array(self.niggli_ucs)[i,4],
                  np.array(self.niggli_ucs)[i,5],
-                 c=colors[clusters[i]], marker='o')
+                 c=cmap(clusters[i]/max(clusters)), marker='o')
     ax.set_xlabel('alpha')
     ax.set_ylabel('beta')
     ax.set_zlabel('gamma')
