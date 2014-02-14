@@ -256,7 +256,8 @@ def cxi_versioned_extract(*args):
     return working_extract
 
 
-  elif cxi_version in ["XPP 7.marccd"]:
+  elif cxi_version in ["XPP 7.marccd"] or \
+       cxi_version in ["Sacla.MPCDD"]:
     working_extract = working_phil.command_extractor
     working_extract.distl.quad_translations = None
     working_extract.distl.tile_translations = [0, 0]
@@ -353,7 +354,7 @@ def cxi_versioned_extract(*args):
       -1,  1, -1,  1, -1,  1, -1,  1,
        0,  0,  0,  0,  0,  0,  0,  0,
        1,  2,  1,  2,  1,  0,  1,  0,
-       
+
       -1,  0, -1,  0, -1,  0, -1,  0,
        0,  0,  0,  0,  0,  1,  0,  1,
        0,  0,  0,  0,  0,  0,  0,  0,
@@ -363,11 +364,11 @@ def cxi_versioned_extract(*args):
        0,  1,  0,  1,  0,  2,  0,  2,
        0,  0,  0,  0,  0,  0,  0,  0,
        0,  0,  0,  0,  0,  1,  0,  1,
-       
+
        1, -1,  1, -1,  1, -1,  1, -1,
        0, -2,  0, -2,  1, -2,  1, -2,
        0,  0,  0,  0,  0,  0,  0,  0,
-      -1,  2, -1,  2, -1,  0, -1,  0]           
+      -1,  2, -1,  2, -1,  0, -1,  0]
 
     from scitbx.array_family import flex
     total_tile_translations = flex.int(corrected_auxiliary_translations) - \
