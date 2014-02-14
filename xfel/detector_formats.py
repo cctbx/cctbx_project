@@ -33,6 +33,9 @@ def detector_format_version(address, time):
   if address is None or time is None:
     return None
 
+  if address == 'Sacla.MPCDD':
+    return 'Sacla.MPCDD'
+
   # Note: one must take daylight savings into account when defining
   # the cutoff-times for the LCLS runs.  The last shift of a run
   # generally ends at 09:00 local time the day after the last day of
