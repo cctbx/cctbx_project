@@ -251,6 +251,8 @@ namespace {
           arg("site1"), arg("site2"), arg("ustar1"), arg("ustar2"),
           arg("unit_cell"))))
       .def("delta_z", &projection_sum<>::delta_z)
+      .def("z_12", &projection_sum<>::z_12)
+      .def("z_21", &projection_sum<>::z_21)
     ;
 }
 
