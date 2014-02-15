@@ -1137,7 +1137,7 @@ class Manager (object) :
           wavelength = self.wavelength,
           no_final = False)
       else:
-        self.params.use_svm = False
+        self.use_svm = False
         print >> out, "Unable to load SVM, defaulting to decision tree."
 
     # Filter out metals based on whether they are more or less eletron-dense
