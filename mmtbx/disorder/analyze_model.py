@@ -535,6 +535,7 @@ class process_pdb_hierarchy (object) :
     return dist_max, segment_max
 
   def show (self, out=sys.stdout, verbose=True) :
+    print >> out, ""
     print >> out, "Overall: %d protein chain(s)" % len(self.chains)
     print >> out, "         %d residues" % self.n_residue_groups
     print >> out, "         %d disorered in %d segments" % (self.n_disordered,
@@ -587,3 +588,4 @@ class process_pdb_hierarchy (object) :
         chain.show(out=out)
     else :
       print >> out, "Run with --verbose to show per-residue results."
+    print >> out, ""

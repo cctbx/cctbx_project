@@ -187,12 +187,14 @@ class fast_maps_from_hkl_file (object) :
       self.map_out = os.path.splitext(self.file_name)[0] + "_map_coeffs.mtz"
     iotbx.map_tools.write_map_coeffs(f_map, df_map, self.map_out, anom_map)
 
-def get_maps_from_fmodel (fmodel) :
+def get_maps_from_fmodel (fmodel, exclude_free_r_reflections=False) :
   map_manager = fmodel.electron_density_map(update_f_part1=True)
-  fwt_coeffs = map_manager.map_coefficients(map_type = "2mFo-DFc")
+  fwt_coeffs = map_manager.map_coefficients(map_type = "2mFo-DFc",
+    exclude_free_r_reflections=exclude_free_r_reflections)
   if fwt_coeffs.anomalous_flag() :
     fwt_coeffs = fwt_coeffs.average_bijvoet_mates()
-  delfwt_coeffs = map_manager.map_coefficients(map_type = "mFo-DFc")
+  delfwt_coeffs = map_manager.map_coefficients(map_type = "mFo-DFc",
+    exclude_free_r_reflections=exclude_free_r_reflections)
   if delfwt_coeffs.anomalous_flag() :
     delfwt_coeffs = delfwt_coeffs.average_bijvoet_mates()
   return (fwt_coeffs, delfwt_coeffs)

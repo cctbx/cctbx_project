@@ -45,11 +45,11 @@ build_params_str = """
       .type = float
     omit_two_fofc_min_mc = 1.0
       .type = float
-    omit_fofc_min_sc_mean = 2.5
+    omit_fofc_min_sc_mean = 3.0
       .type = float
     two_fofc_min = 1.0
       .type = float
-    fofc_min = 3.0
+    fofc_min = 2.5
       .type = float
   }
 """
@@ -573,6 +573,8 @@ def process_results (
     if (n_atoms_outside_density != 0) :
       print >> res_log, "      atoms outside density:"
       print >> res_log, res_log2.getvalue()
+    else :
+      print >> res_log, ""
     if (not skip) or (verbose) :
       log.write(res_log.getvalue())
     if (skip) : continue
@@ -775,7 +777,8 @@ def build_cycle (pdb_hierarchy,
   if (debug > 0) :
     from mmtbx.maps.utils import get_maps_from_fmodel
     from iotbx.map_tools import write_map_coeffs
-    two_fofc, fofc = get_maps_from_fmodel(fmodel)
+    two_fofc, fofc = get_maps_from_fmodel(fmodel,
+      exclude_free_r_reflections=True)
     write_map_coeffs(
       fwt_coeffs=two_fofc,
       delfwt_coeffs=fofc,
