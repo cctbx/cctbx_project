@@ -8,7 +8,6 @@ from iotbx_pdb_ext import *
 import iotbx.pdb.records
 import iotbx.pdb.hierarchy
 from scitbx import matrix
-from libtbx.test_utils import approx_equal
 
 from iotbx.pdb.atom_name_interpretation import \
   interpreters as protein_atom_name_interpreters
@@ -1122,7 +1121,6 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     '''
     source_info = self.extract_remark_iii_records(350)
     result = self._mtrix_and_biomt_records_container()
-    from libtbx import group_args
     if source_info:                     # check if any BIOMT info is available
       # collecting the data from the remarks. Checking that we are collecting only data
       # and not part of the remarks header by verifying that the 3rd component contains "BIOMT"

@@ -1,7 +1,7 @@
 from __future__ import division
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatMultiImage import FormatMultiImage
-from dxtbx.model import Beam, Detector, Goniometer, Scan
+from dxtbx.model import Beam, Detector, Goniometer, Scan # import dependency
 
 class FormatHDF5(Format, FormatMultiImage):
 

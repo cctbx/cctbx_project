@@ -393,7 +393,7 @@ class DataBlockFilenameImporter(object):
 
   def _create_multi_file_imageset(self, format_class, records):
     ''' Create a mulit file sweep or imageset. '''
-    from dxtbx.imageset import MultiFileReader, ImageSetFactory
+    from dxtbx.imageset import ImageSetFactory
 
     # Make either an imageset or sweep
     if len(records) == 1 and records[0].template is not None:

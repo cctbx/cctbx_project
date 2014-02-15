@@ -3,7 +3,6 @@
 from __future__ import division
 from libtbx.str_utils import make_header, make_sub_header
 from libtbx import easy_pickle
-import libtbx.phil
 import os.path
 import sys
 

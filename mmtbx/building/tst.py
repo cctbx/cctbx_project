@@ -1,7 +1,6 @@
 
 from __future__ import division
 from mmtbx import building
-from libtbx.test_utils import show_diff
 from libtbx.utils import null_out
 from cStringIO import StringIO
 

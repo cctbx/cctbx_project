@@ -74,7 +74,7 @@ density_modification {
       skip_output_if_worse = False
         .type = bool
         .help = Skip output if FOM gets worse
-        .style = hidden 
+        .style = hidden
     }
   }
   job_title = None

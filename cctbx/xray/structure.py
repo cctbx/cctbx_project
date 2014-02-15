@@ -1180,6 +1180,7 @@ class structure(crystal.special_position_settings):
                                       selection      = selection)
 
   def convert_to_isotropic(self, selection=None):
+    # FIXME selection must be size_t!
     if(selection is None):
       self._scatterers.convert_to_isotropic(unit_cell=self.unit_cell())
     else:

@@ -178,9 +178,9 @@ class extract_tls_parameters(object):
         c0, r0, c1, r1 = ss[0].strip(),ss[1].strip(),ss[2].strip(),ss[3].strip()
         if(len(c0)<=2 and len(c1)<=2):
           try: r0 = int(r0)
-          except: ValueError
+          except Exception: ValueError
           try: r1 = int(r1)
-          except: ValueError
+          except Exception: ValueError
           if(type(r0)==type(1) and type(r1)==type(1)):
             result.append([c0,str(r0), c1,str(r1)])
       return result

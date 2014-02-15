@@ -1,25 +1,18 @@
 from __future__ import division
 import os
-import re
 import sys
 from libtbx import easy_pickle
-import matplotlib.pyplot as plt
-import matplotlib.cm as mpl_cmaps
-from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import math
 #from scipy.cluster.vq import kmeans, kmeans2, vq
-import  scipy.cluster.hierarchy as hcluster
 #import libtbx.load_env
-from cctbx import sgtbx
 from cctbx.uctbx.determine_unit_cell import NCDist
 
 class target:
-  
+
   def __init__(self, path_to_integration_dir):
-    """ Creates a list of (point group, unit cell) tuples, and a list of niggli
-     cells from the recursively walked paths. Can take more than one argument 
-    for multiple folders."""
+    """ Creates a list of (point group, unit cell) tuples, and a list of niggli cells from the recursively walked
+        paths. Can take more than one argument for multiple folders."""
     self.all_uc     = []
     self.niggli_ucs = []
     for arg in path_to_integration_dir:
@@ -40,27 +33,26 @@ class target:
           else:
             self.all_uc.append((pg, uc))
             self.niggli_ucs.append(uc.niggli_cell().parameters())
-    print "unit cells loaded."
-    
+
   def find_distance(self, G6a, G6b, key):
-    """ Retursn the distance between two cells, already in the G6 convention. 
+    """ Retursn the distance between two cells, already in the G6 convention.
         Optionally (key =1)  trivial Euclidian or NCDist (key =2 )"""
     if key is 1: # trivial euclidian
       return abs((np.sum(G6a - G6b)))**0.5
     if key is 2: # Andrews-Bernstein distance
-      return  NCDist(G6a , G6b) 
-      
-       
+      return  NCDist(G6a , G6b)
+
+
   def make_G6(self, uc):
     """ Take a reduced Niggli Cell, and turn it into the G6 representation """
-    a = uc[0]**2 
-    b = uc[1]**2 
-    c = uc[2]**2 
+    a = uc[0]**2
+    b = uc[1]**2
+    c = uc[2]**2
     d = 2*uc[1]*uc[2]*math.cos(uc[3])
     e = 2*uc[0]*uc[2]*math.cos(uc[4])
     f = 2*uc[0]*uc[1]*math.cos(uc[5])
     return [a,b,c,d,e,f]
-    
+
   def cluster(self, threshold, method, linkage):
     """ Do basic hierarchical clustering on the Niggli 
     cells created at the start """
@@ -70,22 +62,20 @@ class target:
       "Andrews & Bernstein J Appl Cryst 47:346 (2014).")
     # 1. Create a numpy array of G6 cells
     G6_cells = []
-    for n_cell in self.niggli_ucs: 
+    for n_cell in self.niggli_ucs:
       G6_cells.append(self.make_G6(n_cell))
     self.G6_cells = np.array(G6_cells)
-    # 2. Hierarchichal clustering on this, using the find_distance method above
-    self.clusters = hcluster.fclusterdata(self.G6_cells, 
-                                          threshold, 
-                                          depth=10,
-                                          criterion=method, 
-                                          method=linkage,
-                                          metric=lambda a, b: 
-                                           self.find_distance(a,b,dist_method))
+    # 2. Do hierarchichal clustering on this, using the find_distance method above.
+    import  scipy.cluster.hierarchy as hcluster
+    self.clusters = hcluster.fclusterdata(self.G6_cells,
+                                          threshold**2,
+                                          criterion='distance',
+                                          metric=lambda a, b: self.find_distance(a,b,dist_method))
     # 3. print out some information that is useful.
     print "{} clusters have been identified.".format(max(self.clusters))
     print "{:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
-                             "Num in cluster", 
-                             "Med_a", "Med_b", "Med_c", 
+                             "Num in cluster",
+                             "Med_a", "Med_b", "Med_c",
                              "Med_alpha", "Med_beta", "Med_gamma")
     cluster_idx = 1
     #import pdb; pdb.set_trace()
@@ -120,15 +110,16 @@ class target:
                              "Num in cluster", 
                              "Med_a", "Med_b", "Med_c", 
                              "Med_alpha", "Med_beta", "Med_gamma")
-    print "Standard deviations are in brackets."           
+    print "Standard deviations are in brackets."
     print  str(len(singletons)) + " singletons:  \n"
     print "".join(singletons)
 
-    
+
   def plot_clusters(self, clusters):
-    """ Plot Niggli cells -- one plot for (a,b,c) and one plot for (alpha, 
-     beta, gamma) -- colour coded by cluster index.  """
-    cmap = mpl_cmaps.gist_ncar
+    """ Plot Niggli cells -- one plot for (a,b,c) and one plot for (alpha, beta, gamma) -- colour
+    coded by cluster index.  """
+    import matplotlib.pyplot as plt
+    colors = ['b', 'y', 'g', 'c', 'm', 'r', 'k']
     fig = plt.figure('unit_cells_dimensions')
     ax = fig.add_subplot(111, projection='3d')
     ax.set_xlabel('a [A]')

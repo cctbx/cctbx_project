@@ -82,11 +82,11 @@ def process_args(args):
     raise Sorry("Two atom selections to define two axes must be provided.")
   try:
     sel1 = asc.selection(string=line_selections[0])
-  except:
+  except Exception:
     raise Sorry("Invalid atom selection: %s"%line_selections[0])
   try:
     sel2 = asc.selection(string=line_selections[1])
-  except:
+  except Exception:
     raise Sorry("Invalid atom selection: %s"%line_selections[1])
   for sel, ls in zip([sel1, sel2], line_selections):
     if(sel.count(True)<2):
