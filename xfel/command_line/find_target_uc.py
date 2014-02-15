@@ -7,7 +7,7 @@ def run(args):
   if args < 2: raise IOError("Must give at least one path to folder of pickles") 
   from cctbx.uctbx.determine_unit_cell.target_uc import target
   ucs = target(args.folders) 
-  ucs.cluster(args.t, args.m) # ^2 to convert to A^2 for G6 distance
+  ucs.cluster(args.t, args.m, args.l) 
   ucs.plot_clusters(ucs.clusters) 
 
 if (__name__ == "__main__"):
@@ -22,7 +22,9 @@ if (__name__ == "__main__"):
   parser.add_argument('-m', type=str, default='distance',
       help='Clustering method for numpy clustering. Options are: inconsistent' + 
            ', distance, maxclust, monocri, maxclust_monocrit')
-
+  parser.add_argument('-l', type=str, default='single',
+      help='Linkage method for clustering. Default is single. Other options are' +
+            'complete, average, weighted, centroid, median, ward.')
   args = parser.parse_args()
   result = run(args)
  
