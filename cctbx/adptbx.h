@@ -914,15 +914,20 @@ namespace cctbx {
                    sym_mat3<FloatType> const& ustar1,
                    sym_mat3<FloatType> const& ustar2,
                    uctbx::unit_cell const& unit_cell)
+    :
+      z_12_(0),
+      z_21_(0),
+      delta_z_(0)
     {
       sym_mat3<FloatType> g = unit_cell.metrical_matrix();
       vec3<FloatType> l_12 = site1 - site2;
       vec3<FloatType> l_21 = site2 - site1;
       FloatType bond_length_sq = l_12 * g * l_12;
-      CCTBX_ASSERT(bond_length_sq != 0);
-      z_12_ = std::sqrt((g * l_12) * ustar1 * (g * l_12) / bond_length_sq);
-      z_21_ = std::sqrt((g * l_21) * ustar2 * (g * l_21) / bond_length_sq);
-      delta_z_ = z_12_ + z_21_;
+      if (bond_length_sq != 0) {
+        z_12_ = std::sqrt((g * l_12) * ustar1 * (g * l_12) / bond_length_sq);
+        z_21_ = std::sqrt((g * l_21) * ustar2 * (g * l_21) / bond_length_sq);
+        delta_z_ = z_12_ + z_21_;
+      }
     }
     FloatType z_12() { return z_12_; }
     FloatType z_21() { return z_21_; }
