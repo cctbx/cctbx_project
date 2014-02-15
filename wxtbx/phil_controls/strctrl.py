@@ -2,7 +2,6 @@
 from __future__ import division
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from wxtbx import phil_controls
-from libtbx.utils import Sorry
 from libtbx.phil import tokenizer
 from libtbx import Auto
 import libtbx.phil

@@ -1,6 +1,6 @@
 
 from __future__ import division
-from dxtbx.model import HierarchicalDetector, PanelTreeNode, VirtualPanel
+from dxtbx.model import HierarchicalDetector, PanelTreeNode
 from dxtbx.model import PanelGroup
 
 class TestPanelTreeNode(object):

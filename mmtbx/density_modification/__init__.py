@@ -697,7 +697,6 @@ class dm_stats (object) :
         stats.rms_solvent_density])
     return table
 
-    
   def format_summary (self, i_cycle=-1) :
     stats = self._stats[i_cycle]
     summary = "#"*80 + "\n"

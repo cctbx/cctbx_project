@@ -3,14 +3,9 @@ from cctbx.array_family import flex
 import os
 import mmtbx.model
 import libtbx.load_env
-from libtbx import easy_pickle
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-from cStringIO import StringIO
-from mmtbx import utils
-from libtbx.utils import format_cpu_times, null_out
-from libtbx.test_utils import approx_equal
 import math
 from cctbx import multipolar
 

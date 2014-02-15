@@ -2,7 +2,7 @@ from __future__ import division
 from iotbx import pdb
 from libtbx.test_utils import approx_equal
 from  iotbx.pdb.multimer_reconstruction import multimer
-import sys,os
+import os
 import unittest
 import shutil
 import tempfile
