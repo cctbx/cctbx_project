@@ -2,7 +2,7 @@
 from __future__ import division
 from cctbx.array_family import flex
 from scitbx import lbfgs
-from libtbx.str_utils import format_value
+from libtbx.str_utils import format_value, make_sub_header
 from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
 
@@ -256,6 +256,16 @@ def assemble_constraint_groups_3d (
   """
   if (log is None) :
     log = null_out()
+  make_sub_header("Correlated occupancy grouping", out=log)
+  print >> log, """
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!                  WARNING - EXPERIMENTAL FEATURE                        !!
+  !!                                                                        !!
+  !! Grouping of occupancy constraints in 3D is experimental and not fully  !!
+  !! tested.  Use at your own risk!  For bug reports, etc. contact us by    !!
+  !! email at bugs@phenix-online.org.                                       !!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+"""
   occupancies = pdb_atoms.extract_occ()
   pair_asu_table = xray_structure.pair_asu_table(
     distance_cutoff=interaction_distance_cutoff)
@@ -351,4 +361,5 @@ def assemble_constraint_groups_3d (
           print >> log, "      atom_group %s" % ag_id
   else :
     print >> log, "Occupancy constraint groups unmodified."
+  print >> log, ""
   return constraint_groups
