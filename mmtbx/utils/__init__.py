@@ -1226,7 +1226,9 @@ def occupancy_selections(
       other_individual_selection_strings = None,
       other_constrained_groups           = None,
       remove_selection                   = None,
-      as_flex_arrays                     = True):
+      as_flex_arrays                     = True,
+      constrain_correlated_3d_groups     = False,
+      log                                = None):
   # set up defaults
   if(other_individual_selection_strings is not None and
      len(other_individual_selection_strings) == 0):
@@ -1393,6 +1395,13 @@ def occupancy_selections(
         result__.append(flex.size_t(sel))
       result_.append(result__)
     result = result_
+    if (constrain_correlated_3d_groups) and (len(result) > 0) :
+      from mmtbx.refinement import occupancies
+      result = occupancies.assemble_constraint_groups_3d(
+        xray_structure=xray_structure,
+        pdb_atoms=all_chain_proxies.pdb_hierarchy.atoms(),
+        constraint_groups=result,
+        log=log)
   return result
 
 def occupancy_regroupping(pdb_hierarchy, cgs):
