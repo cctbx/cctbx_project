@@ -290,7 +290,8 @@ def get_partial_omit_map (
   """
   Generate an mFo-DFc map with a selection of atoms at reduced occupancy.
   Will write the map coefficients (along with 2mFo-DFc map) to an MTZ file
-  if desired.
+  if desired.  Reflections flagged for calculating R-free will always be
+  omitted.
   """
   assert (0 <= partial_occupancy <= 1.0)
   xrs = fmodel.xray_structure
@@ -477,23 +478,26 @@ def filter_before_build (
 rejoin_phil = libtbx.phil.parse("""
 min_occupancy = 0.1
   .type = float
-min_distance_over_u_iso = 1.0
+min_distance_over_u = 1.0
   .type = float
 """)
 
 class disorder_info (slots_getstate_setstate) :
   __slots__ = [
-    "n_confs", "sites", "atom_names", "id_str", "u_isos", "max_rmsd",
-    "max_distance_over_u_iso", "dxyz_save", "u_iso_save", "atom_name_save",
+    "n_confs", "sites", "atom_names", "id_str", "u_isos", "u_stars",
+    "max_rmsd", "max_distance_over_u", "dxyz_save", "u_iso_save",
+    "atom_name_save",
   ]
-  def __init__ (self, residue_group, ignore_hydrogens=True) :
-    self.sites = []
-    self.u_isos = []
-    self.atom_names = []
-    self.id_str = residue_group.id_str()
+  def __init__ (self, residue_group, xray_structure, ignore_hydrogens=True) :
     from cctbx import adptbx
     from scitbx.array_family import flex
     from scitbx.matrix import col
+    self.sites = []
+    self.u_isos = []
+    self.u_stars = []
+    self.atom_names = []
+    self.id_str = residue_group.id_str()
+    unit_cell = xray_structure.unit_cell()
     atom_name_dict = {}
     for atom_group in residue_group.atom_groups() :
       b_isos = atom_group.atoms().extract_b()
@@ -520,13 +524,22 @@ class disorder_info (slots_getstate_setstate) :
           for n in range(n_atom_confs) :
             self.sites.append(flex.vec3_double())
             self.u_isos.append(flex.double())
+            self.u_stars.append([])
         self.atom_names.append(atom_name)
         for i_conf in range(n_atom_confs) :
           atom = atom_name_dict[atom_name][i_conf]
+          scatterer = xray_structure.scatterers()[atom.i_seq]
+          assert scatterer.label == atom.id_str()
           self.sites[i_conf].append(atom.xyz)
-          self.u_isos[i_conf].append(adptbx.b_as_u(atom.b))
+          if (scatterer.flags.use_u_aniso()) :
+            self.u_isos[i_conf].append(adptbx.b_as_u(atom.b))
+            self.u_stars[i_conf].append(scatterer.u_star)
+          else :
+            self.u_isos[i_conf].append(scatterer.u_iso)
+            self.u_stars[i_conf].append(
+              adptbx.u_iso_as_u_star(unit_cell, scatterer.u_iso))
     self.max_rmsd = 0
-    self.max_distance_over_u_iso = 0
+    self.max_distance_over_u = 0
     self.dxyz_save = self.u_iso_save = self.atom_name_save = None
     for i_conf, sites in enumerate(self.sites) :
       if (i_conf < self.n_confs - 1) :
@@ -537,14 +550,21 @@ class disorder_info (slots_getstate_setstate) :
             self.max_rmsd = rmsd
           for k_site, (site1, site2) in enumerate(zip(sites, sites_next)) :
             distance = abs(col(site1) - col(site2))
-            u = max(self.u_isos[i_conf][k_site], self.u_isos[j_conf][k_site])
-            if (u <= 0) :
+            #u = max(self.u_isos[i_conf][k_site], self.u_isos[j_conf][k_site])
+            proj_sum = adptbx.projection_sum(
+              ustar1=self.u_stars[i_conf][k_site],
+              ustar2=self.u_stars[j_conf][k_site],
+              site1=site1,
+              site2=site2,
+              unit_cell=unit_cell)
+            u_proj = max(proj_sum.z_12(), proj_sum.z_21())
+            if (u_proj <= 0) :
               continue
-            ratio = distance / sqrt(u)
-            if (ratio > self.max_distance_over_u_iso) :
-              self.max_distance_over_u_iso = ratio
+            ratio = distance / u_proj
+            if (ratio > self.max_distance_over_u) :
+              self.max_distance_over_u = ratio
               self.dxyz_save = distance
-              self.u_iso_save = u
+              self.u_iso_save = u_proj
               self.atom_name_save = self.atom_names[k_site]
 
   def show_distance_info (self, out=sys.stdout, prefix="", suffix='') :
@@ -560,6 +580,7 @@ class disorder_info (slots_getstate_setstate) :
 def rejoin_split_single_conformers (
     pdb_hierarchy,
     params,
+    crystal_symmetry=None,
     model_error_ml=None,
     verbose=False,
     log=sys.stdout) :
@@ -576,6 +597,9 @@ def rejoin_split_single_conformers (
   from scitbx.array_family import flex
   from scitbx.matrix import col
   pdb_hierarchy.remove_hd()
+  pdb_hierarchy.atoms().reset_i_seq()
+  xray_structure = pdb_hierarchy.extract_xray_structure(
+    crystal_symmetry=crystal_symmetry)
   if (model_error_ml is None) :
     model_error_ml = 0 # XXX ???
   n_modified = 0
@@ -589,7 +613,8 @@ def rejoin_split_single_conformers (
       atom_groups = residue_group.atom_groups()
       n_confs = len(atom_groups)
       if (n_confs > 1) :
-        info = disorder_info(residue_group)
+        info = disorder_info(residue_group=residue_group,
+          xray_structure=xray_structure)
         delete_groups = set([])
         for i_group, atom_group in enumerate(atom_groups) :
           occ = []
@@ -605,7 +630,7 @@ def rejoin_split_single_conformers (
         # TODO need to also check the C and N atoms specifically, because of
         # possible splitting of adjacent residues
         if ((info.max_rmsd < model_error_ml) or
-            (info.max_distance_over_u_iso < params.min_distance_over_u_iso)) :
+            (info.max_distance_over_u < params.min_distance_over_u)) :
           info.show_distance_info(out=log, prefix="  ", suffix='!!!')
           delete_groups.update(set(range(1, n_confs)))
         elif (verbose) :
@@ -645,6 +670,12 @@ def rejoin_split_single_conformers (
             atom.occ = 1.0 / len(atom_groups)
           if (len(atom_groups) == 1) :
             atom_group.altloc = ''
+  if (n_modified > 0) :
+    atoms = pdb_hierarchy.atoms()
+    occ = atoms.extract_occ()
+    partial_occupancy_selection = occ < 1.0
+    occ.set_selected(partial_occupancy_selection, 0.5)
+    atoms.set_occ(occ)
   return n_modified
 
 finalize_phil_str = """

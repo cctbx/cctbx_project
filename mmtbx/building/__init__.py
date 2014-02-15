@@ -157,6 +157,9 @@ def atom_group_as_hierarchy (atom_group) :
   chain.append_residue_group(residue_group)
   model.append_chain(chain)
   root.append_model(model)
+  atoms = root.atoms()
+  atoms.reset_i_seq()
+  atoms.reset_serial()
   return root
 
 def residues_are_adjacent (residue1, residue2, max_sep=2.5) :
