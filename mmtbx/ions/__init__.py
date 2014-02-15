@@ -291,6 +291,7 @@ class Manager (object) :
     self.fpp_from_phaser_ax_sites = None
     self.site_fp = None
     self.site_fdp = None
+    self.use_svm = getattr(params, "use_svm", None)
     self._map_values = {}
     self.update_structure(
       pdb_hierarchy = pdb_hierarchy,
@@ -1091,7 +1092,7 @@ class Manager (object) :
       #PRINT_DEBUG("SKIPPING %s" % atom.id_str())
       return None
 
-    if self.params.use_svm:
+    if self.use_svm :
       from mmtbx.ions.svm import predict_ion
       from mmtbx.ions.environment import ScatteringEnvironment, \
            ChemicalEnvironment
