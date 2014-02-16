@@ -1,5 +1,7 @@
 
 from __future__ import division
+from mmtbx.utils import get_atom_selections
+import mmtbx.utils
 from cctbx.array_family import flex
 from scitbx import lbfgs
 from libtbx.str_utils import format_value, make_sub_header
@@ -238,6 +240,312 @@ def pack_gradients (x, table) :
         result[i] = x[i] - x[indices[-1]]
       result[indices[-1]] = 0
   return result
+
+#-----------------------------------------------------------------------
+# SELECTION HANDLING
+
+def list_3d_as_bool_selection(list_3d, size):
+  result = flex.bool(size, False)
+  for i in list_3d:
+    for j in i:
+      for k in j:
+        if (result[k]):
+          raise Sorry("Duplicate selection for occupancies.")
+        result[k] = True
+  return result
+
+def add_occupancy_selection(result, size, selection, hd_special=None):
+  result_as_1d_array_b = list_3d_as_bool_selection(list_3d=result, size=size)
+  sel_b = selection
+  if(isinstance(selection, flex.size_t)):
+    sel_b = flex.bool(size, selection)
+  if(hd_special is not None):
+    not_common = ((sel_b != result_as_1d_array_b) & (sel_b == True))
+    not_common_ = ((not_common != hd_special) & (not_common == True)).iselection()
+    not_common = not_common_
+  else:
+    not_common = ((sel_b != result_as_1d_array_b) & (sel_b == True)).iselection()
+  sel_checked = []
+  for i in not_common:
+    sel_checked.append([[i]])
+  if(len(sel_checked) > 0):
+    result.extend(sel_checked)
+  return result
+
+def extract_partial_occupancy_selections(hierarchy):
+  result = []
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        if(not residue_group.have_conformers()):
+          assert len(residue_group.atom_groups()) == 1
+          occs = flex.double()
+          i_seqs = []
+          for atom in residue_group.atoms():
+            occs.append(atom.occ)
+            i_seqs.append(atom.i_seq)
+          if(occs[0]<1 and occs[0]!=0 and occs.all_eq(occs[0]) and occs.size()>1):
+            result.append([i_seqs])
+  return result
+
+def occupancy_selections(
+      all_chain_proxies,
+      xray_structure,
+      add_water                          = False,
+      other_individual_selection_strings = None,
+      other_constrained_groups           = None,
+      remove_selection                   = None,
+      as_flex_arrays                     = True,
+      constrain_correlated_3d_groups     = False,
+      log                                = None):
+  # set up defaults
+  if(other_individual_selection_strings is not None and
+     len(other_individual_selection_strings) == 0):
+    other_individual_selection_strings = None
+  if(other_constrained_groups is not None and
+     len(other_constrained_groups) == 0):
+    other_constrained_groups = None
+  if(remove_selection is not None and len(remove_selection) == 0):
+    remove_selection = None
+  result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
+    common_residue_name_class_only = None,
+    always_group_adjacent          = False,
+    ignore_hydrogens               = False)
+  exchangable_hd_pairs = mmtbx.utils.combine_hd_exchangable(hierarchy =
+    all_chain_proxies.pdb_hierarchy)
+  if(len(exchangable_hd_pairs)==0 and result is not None):
+    occupancy_regroupping(
+      pdb_hierarchy = all_chain_proxies.pdb_hierarchy,
+      cgs           = result)
+  result = mmtbx.utils.remove_selections(selection = result,
+    other = exchangable_hd_pairs,
+    size = xray_structure.scatterers().size())
+  result.extend(exchangable_hd_pairs)
+  # extract group-[0,1]-constrained atoms withing a residue
+  pogl = extract_partial_occupancy_selections(hierarchy = all_chain_proxies.pdb_hierarchy)
+  rm_duplicate_with_pogl = []
+  for t_ in pogl:
+    for t__ in t_:
+      for t___ in t__:
+        rm_duplicate_with_pogl.append(t___)
+  result = mmtbx.utils.remove_selections(selection = result, other = pogl,
+    size = xray_structure.scatterers().size())
+  result.extend(pogl)
+  # add partial occupancies
+  occupancies = xray_structure.scatterers().extract_occupancies()
+  sel = (occupancies != 1.) & (occupancies != 0.)
+  result = add_occupancy_selection(
+    result     = result,
+    size       = xray_structure.scatterers().size(),
+    selection  = sel,
+    hd_special = None)
+  # check user's input
+  all_sel_strgs = []
+  if(other_individual_selection_strings is not None):
+    all_sel_strgs = all_sel_strgs + other_individual_selection_strings
+  if(other_constrained_groups is not None):
+    for other_constrained_group in other_constrained_groups:
+      for other_constrained_group in other_constrained_groups:
+        if(len(other_constrained_group.selection)>0):
+          all_sel_strgs = all_sel_strgs + other_constrained_group.selection
+  if(len(all_sel_strgs) > 0):
+    for sel_str in all_sel_strgs:
+      sel_str_sel = get_atom_selections(
+        all_chain_proxies   = all_chain_proxies,
+        selection_strings   = [sel_str],
+        iselection          = True,
+        xray_structure      = xray_structure,
+        one_selection_array = True)
+      if(sel_str_sel.size() == 0):
+        raise Sorry("Empty selection: %s"%sel_str)
+  #
+  if([other_individual_selection_strings,
+      other_constrained_groups].count(None) == 0):
+    sel1 = get_atom_selections(
+      all_chain_proxies   = all_chain_proxies,
+      selection_strings   = other_individual_selection_strings,
+      iselection          = True,
+      xray_structure      = xray_structure,
+      one_selection_array = True)
+    for other_constrained_group in other_constrained_groups:
+      for other_constrained_group in other_constrained_groups:
+        for cg_sel_strs in other_constrained_group.selection:
+          sel2 = get_atom_selections(
+            all_chain_proxies   = all_chain_proxies,
+            selection_strings   = cg_sel_strs,
+            iselection          = True,
+            xray_structure      = xray_structure,
+            one_selection_array = True)
+          if(sel1.intersection(sel2).size() > 0):
+            raise Sorry("Duplicate selection: same atoms selected for individual and group occupancy refinement.")
+  # check user's input and apply remove_selection to default selection
+  if(remove_selection is not None):
+    sel1 = get_atom_selections(
+      all_chain_proxies   = all_chain_proxies,
+      selection_strings   = remove_selection,
+      iselection          = True,
+      xray_structure      = xray_structure,
+      one_selection_array = True)
+    if(sel1.size() == 0): # XXX check all and not total.
+      raise Sorry("Empty selection: remove_selection.")
+    if(other_individual_selection_strings is not None):
+      sel2 = get_atom_selections(
+        all_chain_proxies   = all_chain_proxies,
+        selection_strings   = other_individual_selection_strings,
+        iselection          = True,
+        xray_structure      = xray_structure,
+        one_selection_array = True)
+      if(sel1.intersection(sel2).size() > 0):
+        raise Sorry("Duplicate selection: occupancies of same atoms selected to be fixed and to be refined.")
+    if(other_constrained_groups is not None):
+      for other_constrained_group in other_constrained_groups:
+        for cg_sel_strs in other_constrained_group.selection:
+          sel2 = get_atom_selections(
+            all_chain_proxies   = all_chain_proxies,
+            selection_strings   = cg_sel_strs,
+            iselection          = True,
+            xray_structure      = xray_structure,
+            one_selection_array = True)
+          if(sel1.intersection(sel2).size() > 0):
+            raise Sorry("Duplicate selection: occupancies of same atoms selected to be fixed and to be refined.")
+    result = mmtbx.utils.remove_selections(selection = result, other = sel1,
+      size = xray_structure.scatterers().size())
+  #
+  if(other_individual_selection_strings is not None):
+    sel = get_atom_selections(
+      all_chain_proxies   = all_chain_proxies,
+      selection_strings   = other_individual_selection_strings,
+      iselection          = True,
+      xray_structure      = xray_structure,
+      one_selection_array = True)
+    result = mmtbx.utils.remove_selections(selection = result, other = sel,
+      size = xray_structure.scatterers().size())
+    result = add_occupancy_selection(
+      result     = result,
+      size       = xray_structure.scatterers().size(),
+      selection  = sel,
+      hd_special = None)
+  if(other_constrained_groups is not None):
+    for other_constrained_group in other_constrained_groups:
+      cg_sel = []
+      for cg_sel_strs in other_constrained_group.selection:
+        sel = get_atom_selections(
+          all_chain_proxies   = all_chain_proxies,
+          selection_strings   = cg_sel_strs,
+          iselection          = True,
+          xray_structure      = xray_structure,
+          one_selection_array = True)
+        result = mmtbx.utils.remove_selections(selection = result, other = sel,
+          size = xray_structure.scatterers().size())
+        if(sel.size() > 0):
+          cg_sel.append(list(sel))
+      if(len(cg_sel) > 0):
+        result.append(cg_sel)
+  if(add_water):
+    water_selection = get_atom_selections(
+      all_chain_proxies     = all_chain_proxies,
+      selection_strings     = ['water'],
+      iselection            = True,
+      xray_structure        = xray_structure,
+      allow_empty_selection = True,
+      one_selection_array   = True)
+    result = add_occupancy_selection(
+      result     = result,
+      size       = xray_structure.scatterers().size(),
+      selection  = water_selection,
+      hd_special = None)
+  list_3d_as_bool_selection(
+    list_3d=result, size=xray_structure.scatterers().size())
+  if(len(result) == 0): result = None
+  if(as_flex_arrays and result is not None):
+    result_ = []
+    for gsel in result:
+      result__ = []
+      for sel in gsel:
+        result__.append(flex.size_t(sel))
+      result_.append(result__)
+    result = result_
+    if (constrain_correlated_3d_groups) and (len(result) > 0) :
+      result = assemble_constraint_groups_3d(
+        xray_structure=xray_structure,
+        pdb_atoms=all_chain_proxies.pdb_hierarchy.atoms(),
+        constraint_groups=result,
+        log=log)
+  return result
+
+def occupancy_regroupping(pdb_hierarchy, cgs):
+  h = pdb_hierarchy
+  awl = list(h.atoms_with_labels())
+  elements = h.atoms().extract_element()
+  rgs = list(h.residue_groups())
+  for cg in cgs: # loop over constraint groups
+    for c in cg: # loop over conformers of constrained group
+      altloc_h = awl[c[0]].altloc
+      ind=None
+      for ind_ in c:
+        if(elements[ind_].strip().upper() in ["H","D"] and
+           awl[ind_].name.strip().upper() in ["H","D"] and
+           altloc_h.strip() != ""):
+          ind = ind_
+          break
+      if(ind is not None):
+        # find "-1" (previous to given constraint group) residue group
+        rg_prev = None
+        for i_rg, rg in enumerate(rgs):
+          if(i_rg > 0 and ind in rg.atoms().extract_i_seq()):
+            rg_prev = rgs[i_rg-1]
+            break
+        if(rg_prev is None): continue
+        rg_prev_i_seqs = rg_prev.atoms().extract_i_seq()
+        rg_i_seqs = rg.atoms().extract_i_seq()
+        # find i_seq of C of previous residue
+        i_seqs_c_prev=[]
+        for a_prev in rg_prev.atoms():
+          if(a_prev.name.strip().upper()=="C"):
+            i_seqs_c_prev.append(a_prev.i_seq)
+        if(i_seqs_c_prev == []): continue
+        # find constarint group corresponding to rg_prev
+        cg_prev=None
+        for cg2 in cgs:
+          for c2 in cg2:
+            i_seqs_inter = set(c2).intersection(set(rg_prev_i_seqs))
+            if(len(i_seqs_inter)>1 or
+               (len(i_seqs_inter)==1 and not
+                awl[list(i_seqs_inter)[0]].name.strip().upper() in ["H","D"])):
+              for cg2_ in cg2:
+                for i_seq_c_prev in i_seqs_c_prev:
+                  if(i_seq_c_prev in cg2_):
+                    cg_prev = cg2
+                    break
+          if(cg_prev is not None): break
+        if(cg_prev is None): continue
+        # identify to which constraint group H belongs and move it there
+        for cg2 in cgs:
+          for c2 in cg2:
+            if(ind in c2):
+              c2.remove(ind)
+              break
+        found = False
+        for conformer_prev in rg_prev.conformers():
+          if(conformer_prev.altloc == altloc_h):
+            conformer_prev_i_seqs = conformer_prev.atoms().extract_i_seq()
+            for cg2 in cgs:
+              for c2 in cg2:
+                i_seqs_inter = set(c2).intersection(set(conformer_prev_i_seqs))
+                if(len(i_seqs_inter)>1 or
+                   (len(i_seqs_inter)==1 and not
+                    awl[list(i_seqs_inter)[0]].name.strip().upper() in ["H","D"])):
+                  for i_seq_c_prev in i_seqs_c_prev:
+                    if(i_seq_c_prev in c2):
+                      c2.append(ind)
+                      found = True
+  for cg in cgs:
+    while cg.count([None])>0:
+      cg.remove([None])
+    while cg.count([])>0:
+      cg.remove([])
+  while cgs.count([])>0:
+    cgs.remove([])
 
 def assemble_constraint_groups_3d (
     xray_structure,
