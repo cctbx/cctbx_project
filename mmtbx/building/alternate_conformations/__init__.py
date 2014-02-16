@@ -582,6 +582,7 @@ def rejoin_split_single_conformers (
     params,
     crystal_symmetry=None,
     model_error_ml=None,
+    reset_occupancies=Auto,
     verbose=False,
     log=sys.stdout) :
   """
@@ -670,7 +671,7 @@ def rejoin_split_single_conformers (
             atom.occ = 1.0 / len(atom_groups)
           if (len(atom_groups) == 1) :
             atom_group.altloc = ''
-  if (n_modified > 0) :
+  if ((n_modified > 0) and reset_occupancies) or (reset_occupancies == True) :
     atoms = pdb_hierarchy.atoms()
     occ = atoms.extract_occ()
     partial_occupancy_selection = occ < 1.0
