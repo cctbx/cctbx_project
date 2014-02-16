@@ -145,14 +145,11 @@ def exercise () :
     processed_pdb_file = pdb_interpretation.run([pdb_file], log=null_out())
     xrs = processed_pdb_file.xray_structure()
     hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-    constraint_groups = occupancy_selections(
-      all_chain_proxies=processed_pdb_file.all_chain_proxies,
-      xray_structure=xrs)
     try :
-      new_groups = occupancies.assemble_constraint_groups_3d(
+      constraint_groups = occupancy_selections(
+        all_chain_proxies=processed_pdb_file.all_chain_proxies,
         xray_structure=xrs,
-        pdb_atoms=hierarchy.atoms(),
-        constraint_groups=constraint_groups,
+        constrain_correlated_3d_groups=True,
         log=null_out())
     except Sorry, s :
       if (i_file == 0) :
@@ -163,7 +160,7 @@ def exercise () :
       if (i_file == 1) :
         raise Exception_expected
       else :
-        assert (len(new_groups) == 1)
+        assert (len(constraint_groups) == 1)
 
 if (__name__ == "__main__") :
   exercise()
