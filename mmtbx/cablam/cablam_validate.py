@@ -661,7 +661,7 @@ def check_prolines(hierarchy,pdbid='pdbid'):
 #This function accepts a hierarchy object and returns HELIX and SHEET-style
 #  records for major secondary structure elements found in that model by CaBLAM.
 #  cablam_multicrit_kin() also returns  these records, but as part of a pbd file
-def print_helix_sheet_records(hierarchy, ca_cutoff=0.05, pdbid='pdbid',writeto=sys.stdout):
+def print_helix_sheet_records(hierarchy, ca_cutoff=0.005, pdbid='pdbid',writeto=sys.stdout):
   resdata=setup(hierarchy,pdbid)
   ca_expectations = fetch_ca_expectations()
   motif_contours = fetch_motifs()
@@ -868,6 +868,7 @@ def oneline(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0
     ca_outlier_percent = ca_outlier_count/residue_count*100
   except ZeroDivisionError:
     ca_outlier_percent = 0
+  sys.stderr.write(pdbid+'\n')
   writeto.write(pdbid.lower()+':'+str(residue_count)+':'+'%.1f'%peptide_outlier_percent+':'+'%.1f'%peptide_bad_outlier_percent+':'+'%.2f'%ca_outlier_percent+'\n')
 #-------------------------------------------------------------------------------
 #}}}
@@ -988,7 +989,7 @@ def run(args):
     elif params.check_prolines:
       check_prolines(hierarchy,pdbid=pdbid)
     elif params.give_records:
-      print_helix_sheet_records(hierarchy,ca_cutoff=0.05,pdbid='pdbid',writeto=sys.stdout)
+      print_helix_sheet_records(hierarchy,ca_cutoff=0.005,pdbid='pdbid',writeto=sys.stdout)
     else:
       outliers = analyze_pdb(
         hierarchy, outlier_cutoff=params.outlier_cutoff, pdbid=pdbid)
