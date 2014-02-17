@@ -1,6 +1,5 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
-#include <boost/python/copy_const_reference.hpp>
 #include <boost/python/with_custodian_and_ward.hpp>
 #include <boost/python/stl_iterator.hpp>
 #include <boost/python/to_python_converter.hpp>
@@ -59,6 +58,24 @@ struct python_exports
       );
   }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type"
+
+  static glyph_type getitem(word_type const& word, std::size_t index)
+  {
+    if ( index < word.size() )
+    {
+      return word[ index ];
+    }
+    else
+    {
+      PyErr_SetString(PyExc_IndexError, "word index out of range");
+      boost::python::throw_error_already_set();
+    }
+  }
+
+#pragma clang diagnostic pop
+
   static void wrap()
   {
     using namespace boost::python;
@@ -72,19 +89,15 @@ struct python_exports
     class_< word_type >( "word", no_init )
       .def( init<>() )
       .def( "append", &word_type::push_back, arg( "glyph" ) )
-      .def( "length", &word_type::length_ptr )
+      .def( "length_descriptor", &word_type::length_ptr )
       .def(
         "substring",
         &word_type::substring,
         with_custodian_and_ward_postcall< 0, 1 >(),
         ( arg( "begin" ), arg( "end" ) )
         )
-      .def(
-        "__getitem__",
-        pindexing,
-        arg( "index" ),
-        return_value_policy< copy_const_reference >()
-        )
+      .def( "__getitem__", getitem, arg( "index" ) )
+      .def( "__len__", &word_type::size )
       ;
     python::edge_exports<
       glyph_type,

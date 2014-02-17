@@ -176,6 +176,28 @@ struct edge_exports
     return node_keys_const( to_const_ptr( edge_ptr ) );
   }
 
+  static boost::python::list node_values_const(const_ptr_type const& edge_ptr)
+  {
+    boost::python::list result;
+
+    for(
+      typename edge_type::const_iterator it = edge_ptr->begin();
+      it != edge_ptr->end();
+      ++it
+      )
+    {
+      const const_ptr_type& v = it->second;
+      result.append( v );
+    }
+
+    return result;
+  }
+
+  static boost::python::list node_values(ptr_type const& edge_ptr)
+  {
+    return node_values_const( to_const_ptr( edge_ptr ) );
+  }
+
   static boost::python::object const get_parent_const(const_ptr_type const& edge_ptr)
   {
     try
@@ -299,6 +321,19 @@ struct edge_exports
   static void wrap()
   {
     using namespace boost::python;
+    scitbx::boost_python::export_range_as_iterator< preorder_iterator >(
+      "preorder_iteration_range"
+      );
+    scitbx::boost_python::export_range_as_iterator< preorder_const_iterator >(
+      "preorder_const_iteration_range"
+      );
+
+    scitbx::boost_python::export_range_as_iterator< postorder_iterator >(
+      "postorder_iteration_range"
+      );
+    scitbx::boost_python::export_range_as_iterator< postorder_const_iterator >(
+      "postorder_const_iteration_range"
+      );
 
     class_< ptr_type >( "edge", no_init )
       .def( "root", edge_type::root )
@@ -319,6 +354,9 @@ struct edge_exports
       .def( "__getitem__", node_get_item, arg( "key" ) )
       .def( "__setitem__", node_set_item, ( arg( "key" ), arg( "value" ) ) )
       .def( "keys", node_keys )
+      .def( "values", node_values )
+      .def( "preorder_iteration", get_preorder_range )
+      .def( "postorder_iteration", get_postorder_range )
       .def( self == self )
       .def( self != self )
       .def( self == other< const_ptr_type >() )
@@ -340,33 +378,15 @@ struct edge_exports
       .def( "__contains__", node_contains_const, arg( "key" ) )
       .def( "__getitem__", node_get_item_const, arg( "key" ) )
       .def( "keys", node_keys_const )
+      .def( "values", node_values_const )
+      .def( "preorder_iteration", get_preorder_const_range )
+      .def( "postorder_iteration", get_postorder_const_range )
       .def( self == self )
       .def( self != self )
       .def( self == other< ptr_type >() )
       .def( self != other< ptr_type >() )
       .def( "__hash__", calculate_hash_const )
       ;
-
-
-    scitbx::boost_python::export_range_as_iterator< preorder_iterator >(
-      "preorder_iteration_range"
-      );
-    def( "preorder_iteration", get_preorder_range, arg( "root" ) );
-
-    scitbx::boost_python::export_range_as_iterator< preorder_const_iterator >(
-      "preorder_const_iteration_range"
-      );
-    def( "preorder_iteration", get_preorder_const_range, arg( "root" ) );
-
-    scitbx::boost_python::export_range_as_iterator< postorder_iterator >(
-      "postorder_iteration_range"
-      );
-    def( "postorder_iteration", get_postorder_range, arg( "root" ) );
-
-    scitbx::boost_python::export_range_as_iterator< postorder_const_iterator >(
-      "postorder_const_iteration_range"
-      );
-    def( "postorder_iteration", get_postorder_const_range, arg( "root" ) );
   }
 };
 

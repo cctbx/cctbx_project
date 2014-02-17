@@ -45,19 +45,55 @@ protected:
 };
 
 template< typename EdgePtr >
+struct SuffixLinkerState
+{
+  typedef EdgePtr edge_ptr_type;
+  virtual ~SuffixLinkerState();
+
+  virtual bool process_existing(edge_ptr_type& stored, edge_ptr_type const& next) const= 0;
+  virtual bool process_new(edge_ptr_type& stored, edge_ptr_type const& next) const = 0;
+};
+
+template< typename EdgePtr >
+struct SuffixLinkerEmpty : public SuffixLinkerState< EdgePtr >
+{
+  typedef EdgePtr edge_ptr_type;
+
+  virtual bool process_existing(edge_ptr_type& stored, edge_ptr_type const& next) const;
+  virtual bool process_new(edge_ptr_type& stored, edge_ptr_type const& next) const;
+};
+
+template< typename EdgePtr >
+struct SuffixLinkerPrimed : public SuffixLinkerState< EdgePtr >
+{
+  typedef EdgePtr edge_ptr_type;
+
+  virtual bool process_existing(edge_ptr_type& stored, edge_ptr_type const& next) const;
+  virtual bool process_new(edge_ptr_type& stored, edge_ptr_type const& next) const;
+};
+
+template< typename EdgePtr >
 class SuffixLinker
 {
 public:
   typedef EdgePtr edge_ptr_type;
+  typedef SuffixLinkerState< EdgePtr > state_type;
+  typedef SuffixLinkerEmpty< EdgePtr > empty_state_type;
+  typedef SuffixLinkerPrimed< EdgePtr > primed_state_type;
 
 private:
-  edge_ptr_type previous_;
+  state_type const* state_;
+  edge_ptr_type storage_;
+
+  static empty_state_type const empty_state;
+  static primed_state_type const primed_state;
 
 public:
   SuffixLinker();
   ~SuffixLinker();
 
-  void operator ()(const edge_ptr_type& next);
+  void process_existing(const edge_ptr_type& next);
+  void process_new(const edge_ptr_type& next);
 };
 
 template< typename Tree >

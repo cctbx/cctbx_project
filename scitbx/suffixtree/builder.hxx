@@ -27,9 +27,65 @@ Builder< Tree >::tree_construction_ptr(tree_type const& tree)
   return tree.construction_ptr_;
 }
 
+template< typename EdgePtr >
+SuffixLinkerState< EdgePtr >::~SuffixLinkerState()
+{}
+
+template< typename EdgePtr >
+bool
+SuffixLinkerEmpty< EdgePtr >::process_existing(
+  edge_ptr_type& stored,
+  edge_ptr_type const& next
+  ) const
+{
+  return false;
+}
+
+template< typename EdgePtr >
+bool
+SuffixLinkerEmpty< EdgePtr >::process_new(
+  edge_ptr_type& stored,
+  edge_ptr_type const& next
+  ) const
+{
+  stored = next;
+  return true;
+}
+
+template< typename EdgePtr >
+bool
+SuffixLinkerPrimed< EdgePtr >::process_existing(
+  edge_ptr_type& stored,
+  edge_ptr_type const& next
+  ) const
+{
+  stored->suffix() = next;
+  return true;
+}
+
+template< typename EdgePtr >
+bool
+SuffixLinkerPrimed< EdgePtr >::process_new(
+  edge_ptr_type& stored,
+  edge_ptr_type const& next
+  ) const
+{
+  stored->suffix() = next;
+  stored = next;
+  return false;
+}
+
+template< typename EdgePtr >
+typename SuffixLinker< EdgePtr >::empty_state_type const
+SuffixLinker< EdgePtr >::empty_state = empty_state_type();
+
+template< typename EdgePtr >
+typename SuffixLinker< EdgePtr >::primed_state_type const
+SuffixLinker< EdgePtr >::primed_state = primed_state_type();
 
 template< typename EdgePtr >
 SuffixLinker< EdgePtr >::SuffixLinker()
+  : state_ ( &empty_state )
 {}
 
 template< typename EdgePtr >
@@ -38,16 +94,23 @@ SuffixLinker< EdgePtr >::~SuffixLinker()
 
 template< typename EdgePtr >
 void
-SuffixLinker< EdgePtr >::operator ()(edge_ptr_type const& next)
+SuffixLinker< EdgePtr >::process_existing(edge_ptr_type const& next)
 {
-  if ( previous_ )
+  if ( state_->process_existing( storage_, next ) )
   {
-    previous_->suffix() = next;
+    state_ = &empty_state;
   }
-
-  previous_ = next;
 }
 
+template< typename EdgePtr >
+void
+SuffixLinker< EdgePtr >::process_new(edge_ptr_type const& next)
+{
+  if ( state_->process_new( storage_, next ) )
+  {
+    state_ = &primed_state;
+  }
+}
 
 template< typename Tree >
 Ukkonen< Tree >::Ukkonen(tree_type const& tree)
@@ -122,27 +185,30 @@ Ukkonen< Tree >::push_back(glyph_type const& glyph)
     try
     {
       position_.forth_with( glyph );
+      suffix_linker.process_existing( position_.get_edge_ptr()->get_parent() );
       break;
     }
     catch ( nonexistent& e )
-    {}
+    {
+      suffix_linker.process_existing( position_.get_edge_ptr() );
+    }
 
     catch ( mismatch& e )
     {
       position_.break_edge_here();
-      suffix_linker( position_.get_edge_ptr() );
+      suffix_linker.process_new( position_.get_edge_ptr() );
     }
+
     edge_ptr_type const& current = position_.get_edge_ptr();
     edge_ptr_type new_leaf = edge_type::leaf( phase_, word.length_ptr(), extension_ );
     bool res = current->attach_child_if_not_present( new_leaf, word[ phase_ ] );
     assert ( res );
     new_leaf->parent() = current;
-
     position_.to_suffix_position();
+
     ++extension_;
   }
 
   ++phase_;
-  suffix_linker( position_.get_edge_ptr() );
 }
 
