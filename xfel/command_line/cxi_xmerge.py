@@ -340,13 +340,14 @@ def run(args):
       scaler.frames["data_subset"] = scaler.frames["odd_numbered"]
     elif work_params.data_subset == 2:
       scaler.frames["data_subset"] = scaler.frames["odd_numbered"]==False
-
-  # --------- New code ------------------
+  
+    
+    # --------- New code ------------------
     #sanity check
     for mod,obs in zip(miller_set.indices(), scaler.millers["merged_asu_hkl"]):
       if mod!=obs: raise Exception("miller index lists inconsistent--check d_min are equal for merge and xmerge scripts")
       assert mod==obs
-
+    
     """Sum the observations of I and I/sig(I) for each reflection.
     sum_I = flex.double(i_model.size(), 0.)
     sum_I_SIGI = flex.double(i_model.size(), 0.)
@@ -358,7 +359,7 @@ def run(args):
     scaler.n_obs = flex.double(scaler.frames["frame_id"].size(), 0.)
     scaler.d_min_values = flex.double(scaler.frames["frame_id"].size(), 0.)
     scaler.ISIGI = {}"""
-
+    
     from xfel import scaling_results, get_scaling_results, get_isigi_dict
     results = scaling_results(scaler._observations, scaler._frames,
               scaler.millers["merged_asu_hkl"],scaler.frames["data_subset"])
@@ -545,8 +546,8 @@ def run(args):
     for irej in xrange(len(scaler.rejected_fractions)):
       if scaler.n_obs[irej] > 0:
         scaler.rejected_fractions = scaler.n_rejected[irej]/scaler.n_obs[irej]
-  # ---------- End of new code ----------------
-
+    # ---------- End of new code ----------------
+    
     miller_set_avg = miller_set.customized_copy(
       unit_cell=work_params.target_unit_cell)
 
