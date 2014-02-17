@@ -178,4 +178,4 @@ if __name__=="__main__":
       break
 
 
-  print list(frame_no_all_sort[0:110])
+  print list(frame_no_all_sort[0:100])
