@@ -28,33 +28,6 @@ op = os.path
 
 from xfel.cxi.merging_database import mysql_master_phil
 master_phil="""
-ref_orientation_flag = False
-  .type = bool
-polar {
-  flag = False
-    .type = bool
-    .help = Set this flag to True for polar spacegroup
-  d_min = 0
-    .type = float
-    .help = limiting resolution for polarity determination
-  d_max = 99
-    .type = float
-    .help = limiting resolution for polarity determination
-}
-postrefine {
-  flag = False
-    .type = bool
-    .help = Set this flag to True to include post-refinement (mona) calculation
-  d_min = 0
-    .type = float
-    .help = limiting resolution for polarity determination
-  d_max = 99
-    .type = float
-    .help = limiting resolution for polarity determination
-}
-ref_mtz_file = None
-  .type = str
-  .help = Mtz file used for partiality determination and post-refienement
 data = None
   .type = path
   .multiple = True
@@ -201,34 +174,6 @@ plot_single_index_histograms = False
   .type = bool
 """ + mysql_master_phil
 
-class ScoringContainer:
-  pass
-  
-  def angular_rotation(self):
-    #print "model"
-    model_unit = self.direct_matrix_as_unit_vectors(self.model)
-    #print "reference"
-    reference_unit = self.direct_matrix_as_unit_vectors(self.reference,reorthogonalize=True) 
-    rotation = model_unit*reference_unit.inverse()
-    UQ = rotation.r3_rotation_matrix_as_unit_quaternion()
-    UQ = UQ.normalize() # bugfix; without this many evaluations come to 0.00000 degrees
-    angle, axis = UQ.unit_quaternion_as_axis_and_angle()
-    #print "axis length",axis.length()
-    #print "axis %7.4f %7.4f %7.4f"%(axis[0],axis[1],axis[2])
-    return angle
-  
-  def direct_matrix_as_unit_vectors(self,ori,reorthogonalize=False):
-    from scitbx.matrix import sqr, col
-    direct = sqr(ori.direct_matrix())
-    A = col((direct[0],direct[1],direct[2])).normalize()
-    B = col((direct[3],direct[4],direct[5])).normalize()
-    C = col((direct[6],direct[7],direct[8])).normalize()
-    #print "gamma deg",math.acos(A.dot(B))*180./math.pi
-    #print "alpha deg",math.acos(B.dot(C))*180./math.pi
-    #print " beta deg",math.acos(C.dot(A))*180./math.pi
-    direct_as_unit = sqr((A[0],A[1],A[2],B[0],B[1],B[2],C[0],C[1],C[2]))
-    return direct_as_unit
-
 def get_observations (data_dirs,data_subset):
   print "Step 1.  Get a list of all files"
   file_names = []
@@ -256,106 +201,6 @@ class WrongBravaisError (Exception) :
 class OutlierCellError (Exception) :
   pass
 
-def organize_input(observations, miller_array_ref, d_min, anomalous_flag):
-  
-  miller_set = symmetry(
-      unit_cell=miller_array_ref.unit_cell(),
-      space_group_info=miller_array_ref.space_group_info()
-    ).build_miller_set(
-      anomalous_flag= anomalous_flag,
-      d_min=d_min)
-  
-  observations_asu = observations.customized_copy(
-      anomalous_flag= anomalous_flag,
-      crystal_symmetry=miller_set.crystal_symmetry()
-      ).map_to_asu()
-
-  observations_original = observations.customized_copy(
-      anomalous_flag= anomalous_flag,
-      crystal_symmetry=miller_set.crystal_symmetry()
-      )
-  
-  from cctbx import sgtbx
-  cb_op = sgtbx.change_of_basis_op('k,h,-l')
-  observations_rev = observations_asu.change_basis(cb_op).map_to_asu()
-                     
-  return observations_original, observations_asu, observations_rev
-
-def get_pickle_info(pickle_filename):
-  """
-  #in case there is a reference matrix, calculate the angular error.
-  """
-  from scitbx.matrix import sqr, col
-  import sys
-  from cctbx.crystal_orientation import crystal_orientation
-  
-  trial_results = easy_pickle.load(file_name=pickle_filename)
-  observations = trial_results["observations"][0]
-  current_hexagonal_ori = trial_results["current_orientation"][0]
-  wavelength = trial_results["wavelength"]
-  
-  current_cb_op_to_primitive = trial_results["current_cb_op_to_primitive"][0]
-  current_triclinic_ori = current_hexagonal_ori.change_basis(current_cb_op_to_primitive)
-   
-  CONTAINER_SZ=1000
-  mosflm = sqr((1,0,0,0,1,0,0,0,1)) # mosflm lab vectors in their own frame
-  labelit = sqr((0,0,-1,-1,0,0,0,1,0)) # mosflm basis vectors in labelit frame
-  LM = mosflm * labelit.inverse() # converts labelit frame coords to mosflm frame
-  SWAPXY = sqr((0,1,0,1,0,0,0,0,1)) # in labelit frame
-  SWAPZ  = sqr((1,0,0,0,1,0,0,0,-1)) # in labelit frame
-  R90    = sqr((0,-1,0,1,0,0,0,0,1)) # in labelit frame, rotation 90 on beam axis
-  
-  i_found_item = pickle_filename.find('/int-data_')
-  item_no = int(pickle_filename[i_found_item+10:i_found_item+15].strip())
-  container_no = item_no//CONTAINER_SZ
-    
-    
-  filename = "/net/viper/raid1/sauter/fake/holton/mosflm_matrix"
-  filename = os.path.join( filename, "%02d"%container_no, "%05d.mat"%item_no)
-    
-    
-  lines = open(filename).readlines()
-
-  A0 = lines[0].strip().split()
-  A1 = lines[1].strip().split()
-  A2 = lines[2].strip().split()
-  A = sqr((float(A0[0]), float(A0[1]), float(A0[2]),
-             float(A1[0]), float(A1[1]), float(A1[2]),
-             float(A2[0]), float(A2[1]), float(A2[2])))
-    
-            
-  A = A/wavelength
-  Holton_hexagonal_ori = crystal_orientation(SWAPZ*SWAPXY*R90*LM*A,True)
-  Holton_triclinic_ori = Holton_hexagonal_ori.change_basis(current_cb_op_to_primitive)
-
-  c_inv_r_best = Holton_triclinic_ori.best_similarity_transformation(
-                 other=current_triclinic_ori,
-                 fractional_length_tolerance=50.,
-                 unimodular_generator_range=1)
-  c_inv_r_int = tuple([int(round(ij,0)) for ij in c_inv_r_best])
-  from cctbx import sgtbx
-  c_inv = sgtbx.rt_mx(sgtbx.rot_mx(c_inv_r_int))
-  cb_op = sgtbx.change_of_basis_op(c_inv)
-  comparison_triclinic = Holton_triclinic_ori.change_basis(cb_op)
-  comparison_hexagonal = comparison_triclinic.change_basis(current_cb_op_to_primitive.inverse())
-  
-  return current_hexagonal_ori, comparison_hexagonal, wavelength, observations
-
-def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
-  #calculate spot_radius based on rms delta_S for all spots
-  from scitbx.matrix import sqr, col
-  delta_S_all = flex.double()
-  for miller_index in miller_indices:
-    S0 = -1*col((0,0,1./wavelength))
-    h = col(miller_index)
-    x = a_star_matrix * h
-    S = x + S0
-    delta_S = S.length() - (1./wavelength)
-    delta_S_all.append(delta_S)
-      
-    spot_radius = math.sqrt(flex.mean(delta_S_all*delta_S_all))  
-  return spot_radius
-      
 def load_result (file_name,
                  ref_bravais_type,
                  reference_cell,
@@ -392,188 +237,14 @@ def load_result (file_name,
   result_array = obj["observations"][0]
   unit_cell = result_array.unit_cell()
   sg_info = result_array.space_group_info()
-  
-  # Determine polarity (and reassign if reversed polar is found)
-  polar_hkl = 'h,k,l'
-  if params.polar.flag:
-    
-    corr_raw_asu = 0
-    corr_raw_rev = 0
-      
-    try:
-      print "Polarity determination turned on (d_max=%3.2f d_min=%3.2f)" %(params.polar.d_max, params.polar.d_min)
-      from iotbx import reflection_file_reader
-      reflection_file = reflection_file_reader.any_reflection_file(params.ref_mtz_file)
-      miller_arrays_ref=reflection_file.as_miller_arrays()
-      miller_array_ref = miller_arrays_ref[0].as_intensity_array()    
-      
-      if params.ref_orientation_flag:
-        crystal_init_orientation, crystal_compare_orientation, wavelength, observations = get_pickle_info(file_name)
-      else:
-        crystal_init_orientation = obj["current_orientation"][0]
-        crystal_compare_orientation = obj["current_orientation"][0]
-        wavelength = obj["wavelength"]
-        observations = obj["observations"][0]
-        
-      observations_original, observations_asu, observations_rev = organize_input(observations, miller_array_ref, params.d_min, not params.merge_anomalous)
-  
-      from mod_polar import polar_manager
-      polar_man = polar_manager()
-      polar_hkl, corr_raw_asu, corr_raw_rev = polar_man.determine_polar(observations_original, 
-          observations_asu, 
-          observations_rev, 
-          miller_array_ref,
-          params.polar.d_min, 
-          params.polar.d_max)
-      
-    except Exception, e :
-      print "Error in polar  %s" % str(e)
-                 
-    print " the polar is (CC, CC rev.) ", polar_hkl, corr_raw_asu, corr_raw_rev, file_name
-  
-  
-  if params.postrefine.flag:
-    try:
-      print "Start postrefinement"
-      from iotbx import reflection_file_reader
-      from scitbx.matrix import sqr, col
-      
-      reflection_file = reflection_file_reader.any_reflection_file(params.ref_mtz_file)
-      miller_arrays_ref=reflection_file.as_miller_arrays()
-      miller_array_ref = miller_arrays_ref[0].as_intensity_array()    
-      
-      if params.ref_orientation_flag:
-        crystal_init_orientation, crystal_compare_orientation, wavelength, observations = get_pickle_info(file_name)
-      else:
-        crystal_init_orientation = obj["current_orientation"][0]
-        crystal_compare_orientation = obj["current_orientation"][0]
-        wavelength = obj["wavelength"]
-        observations = obj["observations"][0]
-        
-      observations_original, observations_asu, observations_rev = organize_input(observations, miller_array_ref, params.d_min, not params.merge_anomalous)
-      
-      observations_original_filter = observations_original.resolution_filter(d_min=params.postrefine.d_min, 
-            d_max=params.postrefine.d_max)
-      observations_asu_filter = observations_asu.resolution_filter(d_min=params.postrefine.d_min, 
-            d_max=params.postrefine.d_max)
-      observations_rev_filter = observations_rev.resolution_filter(d_min=params.postrefine.d_min, 
-            d_max=params.postrefine.d_max)
-            
-      if polar_hkl == 'h,k,l':
-        matches_asu = miller.match_multi_indices(
-              miller_indices_unique=miller_array_ref.indices(),
-              miller_indices=observations_asu_filter.indices())
-  
-        I_ref = flex.double([miller_array_ref.data()[pair[0]] for pair in matches_asu.pairs()])
-        I_obs = flex.double([observations_asu_filter.data()[pair[1]] for pair in matches_asu.pairs()])
-        miller_indices_ori = flex.miller_index((observations_original_filter.indices()[pair[1]] for pair in matches_asu.pairs()))
-      elif polar_hkl == 'k,h,-l':
-        matches_rev = miller.match_multi_indices(
-              miller_indices_unique=miller_array_ref.indices(),
-              miller_indices=observations_rev_filter.indices())
-  
-        I_ref = flex.double([miller_array_ref.data()[pair[0]] for pair in matches_rev.pairs()])
-        I_obs = flex.double([observations_rev_filter.data()[pair[1]] for pair in matches_rev.pairs()])
-        miller_indices_ori = flex.miller_index((observations_original_filter.indices()[pair[1]] for pair in matches_rev.pairs()))
-      
-      from mod_postrefine import postrefine_manager
-      pref_man = postrefine_manager()
-      
-      import numpy as np
-      I_ref_scaled = ((I_ref) - np.mean(I_ref))/np.std(I_ref)
-      I_obs_scaled = ((I_obs) - np.mean(I_obs))/np.std(I_obs) 
-      corr_raw, slope_raw = pref_man.get_overall_correlation(I_ref_scaled, I_obs_scaled)
-      
-      
-      a_star_init = sqr(crystal_init_orientation.reciprocal_matrix())
-      spot_radius = calc_spot_radius(a_star_init, miller_indices_ori, wavelength)
-      from mod_partiality import partiality_handler
-      ph = partiality_handler(wavelength, spot_radius)
-      partiality = flex.double([ph.calc_partiality(a_star_init, miller_index)[0] for miller_index in miller_indices_ori])
-      corr_init, G_init = pref_man.get_overall_correlation(I_ref_scaled*partiality, I_obs_scaled)
-      rotx_init = 0
-      roty_init = 0
-      parameters = (G_init, rotx_init, roty_init)
-      print " initial parameters (G, rotx, roty)", parameters
-  
-      scale_factor = 1.0
-      
-      helper = pref_man.per_frame_helper_factory(I_ref_scaled, 
-        I_obs_scaled, 
-        miller_indices_ori, 
-        wavelength, 
-        spot_radius, 
-        crystal_init_orientation, 
-        crystal_compare_orientation, 
-        parameters, 
-        scale_factor)
-      helper.restart()
-      from scitbx.lstbx import normal_eqns_solving
-      
-      
-      #grad_thres = 1.E-10
-      grad_thres = 0.0001
-      iterations = normal_eqns_solving.naive_iterations(
-             non_linear_ls = helper,
-             gradient_threshold = grad_thres)
-
-      lstsqr_results =  helper.x
-      
-      effective_orientation = crystal_init_orientation.rotate_thru((1,0,0), lstsqr_results[1]
-               ).rotate_thru((0,1,0),lstsqr_results[2])
-      
-      lstsqr_angle_error_before = 0
-      lstsqr_angle_error_after = 0 
-      if params.ref_orientation_flag:
-        SC = ScoringContainer()  
-        SC.model = crystal_init_orientation
-        SC.reference = crystal_compare_orientation
-        lstsqr_angle_error_before = SC.angular_rotation()
-        
-        SC.model = effective_orientation
-        SC.reference = crystal_compare_orientation
-        lstsqr_angle_error_after = SC.angular_rotation()
-      
-      effective_a_star = sqr(effective_orientation.reciprocal_matrix())
-      ph = partiality_handler(wavelength, spot_radius)
-      partiality = flex.double([ph.calc_partiality(effective_a_star, miller_index)[0] for miller_index in miller_indices_ori])
-      lstsqr_corr_final, lstsqr_slope_final = pref_man.get_overall_correlation(I_ref*partiality, I_obs)
-      
-      print " Result"
-      print " Final parameters (G, rotx, roty)", lstsqr_results[0], lstsqr_results[1], lstsqr_results[2]
-      print " Correlation before %6.5f after %6.5f" %(corr_init, lstsqr_corr_final)
-      print " Angular error before %6.5f after %6.5f degrees" %(lstsqr_angle_error_before*180/math.pi, lstsqr_angle_error_after*180/math.pi)
-      
-      #recalculate the observations based on new rotations and G
-      partiality = flex.double([ph.calc_partiality(effective_a_star, miller_index)[0] for miller_index in observations_original.indices()])
-      I_refined = observations_original.data()/partiality
-      sigmas_I_refined = observations_original.sigmas()/partiality
-      observations_refined = observations_original.customized_copy(data=I_refined, sigmas=sigmas_I_refined)
-      if polar_hkl == 'k,h,-l':
-        from cctbx import sgtbx
-        cb_op = sgtbx.change_of_basis_op(polar_hkl)
-        observations_refined = observations_refined.change_basis(cb_op)
-      
-      result_array = observations_refined
-      obj["observations"][0] = result_array
-      obj["current_orientation"][0] = effective_orientation
-        
-    except Exception, e :
-      print "Error in postrefine  %s" % str(e)
-    
-  
   print >> out, ""
   print >> out, "-" * 80
   print >> out, file_name
   print >> out, sg_info
   print >> out, unit_cell
-      
-      
-  
-          
+
   # XXX OBVIOUSLY THIS NEEDS TO BE GENERALIZED.  Currently supports the CSPAD/LCLS only.
   HARD_CODED_PIXEL_SZ_MM = 0.11
-  #HARD_CODED_PIXEL_SZ_MM = 0.07935 #l650-myoglobin
   assert obj['mapped_predictions'][0].size() == obj["observations"][0].size()
   mm_predictions = HARD_CODED_PIXEL_SZ_MM*(obj['mapped_predictions'][0])
   mm_displacements = flex.vec3_double()
@@ -600,7 +271,6 @@ def load_result (file_name,
   # original unit cell is recorded
   return obj
 
-    
 class intensity_data (object) :
   """
   Container for scaled intensity data.
@@ -1110,10 +780,8 @@ class scaling_manager (intensity_data) :
     # once all pickled integration files contain it.
     if (result.has_key("wavelength")):
       wavelength = result["wavelength"]
-      print "Wavelength from pickle file: ", wavelength
     elif (self.params.wavelength is not None):
       wavelength = self.params.wavelength
-      print "Wavelength from input parameter: ", wavelength
     else:
       # XXX Give error, or raise exception?
       return None
@@ -1121,8 +789,7 @@ class scaling_manager (intensity_data) :
 
     observations = result["observations"][0]
     cos_two_polar_angle = result["cos_two_polar_angle"]
-    
-    
+
     assert observations.size() == cos_two_polar_angle.size()
     tt_vec = observations.two_theta(wavelength)
     cos_tt_vec = flex.cos( tt_vec.data() )
@@ -1306,11 +973,7 @@ class scaling_manager (intensity_data) :
       offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
       corr = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
                                              math.sqrt(N * sum_yy - sum_y**2))
-    
-    
-    
-        
-        
+
     # Early return if there are no positive reflections on the frame.
     if data.n_obs <= data.n_rejected:
       return null_data(
