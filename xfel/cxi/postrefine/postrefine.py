@@ -1,4 +1,6 @@
 """
+**See revision 19318 for the real changes**
+
 Read pickle files output from integration process to determine the polarity and
 refine the rotation matrix
 Usage:
