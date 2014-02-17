@@ -4,13 +4,17 @@ import boost.python
 ext = boost.python.import_ext( "scitbx_suffixtree_shared_ext" )
 from scitbx_suffixtree_shared_ext import *
 
-def dump(module, root, word):
+def dump(root, word):
 
-  for ( index, edge ) in enumerate( module.preorder_iteration( root = root ) ):
-    print "%s: %s" % (
-      index,
-      "".join( str( word[ i ] ) for i in range( edge.start, edge.stop ) ),
-      )
+  for ( index, edge ) in enumerate( root.preorder_iteration() ):
+    print "%s: %s" % ( index, label( edge = edge, word = tree.word ) )
+
+
+def label(edge, word, separator = ""):
+
+  return separator.join(
+    str( word[ index ] ) for index in range( edge.start, edge.stop )
+    )
 
 
 def edge_print(edge):
@@ -26,27 +30,31 @@ def edge_print(edge):
       )
 
 
-def tree_string(module, tree):
+def tree_print(tree, stream = None):
 
-  depth_for = calculate_edge_depth( module = module, root = tree.root )
-  it = iter( module.preorder_iteration( root = tree.root ) )
+  if stream is None:
+    import sys
+    stream = sys.stdout
+
+  depth_for = calculate_edge_depth( root = tree.root )
+  it = iter( tree.root.preorder_iteration() )
   it.next()
-  result = [ edge_print( tree.root ) ]
+  stream.write( edge_print( tree.root ) )
+  stream.write( "\n" )
 
   for edge in it:
-    result.append(
+    stream.write(
       "-" * depth_for[ edge.parent ]
-      + "".join( str( tree.word[ i ] ) for i in range( edge.start, edge.stop ) )
+      + label( edge = edge, word = tree.word )
       + " %s" % edge_print( edge )
       )
+    stream.write( "\n" )
 
-  return "\n".join( result )
 
-
-def calculate_edge_depth(module, root):
+def calculate_edge_depth(root):
 
   depth_for = { root: 0 }
-  it = iter( module.preorder_iteration( root = root ) )
+  it = iter( root.preorder_iteration() )
   it.next() # discard root
 
   for edge in it:
@@ -55,7 +63,20 @@ def calculate_edge_depth(module, root):
   return depth_for
 
 
-def label(edge, word, separator = "-"):
+def calculate_leaf_indices(root):
 
-  return separator.join( str( word[ i ] ) for i in range( edge.start, edge.stop ) )
+  import operator
+  leaf_indices_below = {}
 
+  for edge in root.postorder_iteration():
+    if edge.is_leaf():
+      leaf_indices_below[ edge ] = [ edge.label ]
+
+    else:
+      leaf_indices_below[ edge ] = reduce(
+        operator.add,
+        [ leaf_indices_below[ c ] for c in edge.values() ],
+        []
+        )
+
+  return leaf_indices_below

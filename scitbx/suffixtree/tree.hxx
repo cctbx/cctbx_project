@@ -157,10 +157,9 @@ Cursor< Edge, Word >::to_suffix_position()
 
   if ( ! edge_ptr_->is_root() )
   {
-    word_iterator path_begin = word.get_iterator_to( edge_ptr_->start() );
-
     edge_ptr_type suffix_ptr;
     edge_ptr_type parent_ptr = edge_ptr_->get_parent();
+    word_iterator path_begin = word.get_iterator_to( edge_ptr_->start() );
 
     if ( parent_ptr->is_root() )
     {

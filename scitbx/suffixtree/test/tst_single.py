@@ -1,5 +1,6 @@
 from __future__ import division
 
+from scitbx import suffixtree
 from scitbx.suffixtree import single
 
 import unittest
@@ -10,20 +11,25 @@ class TestWord(unittest.TestCase):
 
     word = single.word()
 
-    ld = word.length()
+    ld = word.length_descriptor()
 
+    self.assertEqual( len( word ), 0 )
     self.assertEqual( ld(), 0 )
     self.assertEqual( list( word.substring( 0, ld() ) ), [] )
 
     c1 = object()
     c2 = object()
     word.append( c1 )
+    self.assertEqual( len( word ), 1 )
     self.assertEqual( ld(), 1 )
     self.assertEqual( word[0], c1 )
+    self.assertEqual( list( word ), [ c1 ] )
     word.append( c2 )
+    self.assertEqual( len( word ), 2 )
     self.assertEqual( ld(), 2 )
     self.assertEqual( word[0], c1 )
     self.assertEqual( word[1], c2 )
+    self.assertEqual( list( word ), [ c1, c2 ] )
 
     self.assertEqual( list( word.substring( 0, 0 ) ), [] )
     self.assertEqual( list( word.substring( 0, 1 ) ), [ c1 ] )
@@ -40,7 +46,7 @@ class TestEdge(unittest.TestCase):
     self.root = single.edge.root()
     self.branch = single.edge.branch( start = 1, stop = 2 )
     self.word = single.word()
-    self.leaf = single.edge.leaf( start = 4, length = self.word.length(), label = 6 )
+    self.leaf = single.edge.leaf( start = 4, length = self.word.length_descriptor(), label = 6 )
 
 
   def test_root(self):
@@ -68,6 +74,7 @@ class TestEdge(unittest.TestCase):
     self.root[2] = self.branch
     self.assertFalse( self.root.is_empty() )
     self.assertEqual( set( self.root.keys() ), set( [ 1, 2  ] ) )
+    self.assertEqual( set( self.root.values() ), set( [ self.branch, self.leaf ] ) )
     self.assertTrue( 1 in self.root )
     self.assertTrue( 2 in self.root )
     self.assertEqual( self.root[1], self.leaf )
@@ -93,6 +100,7 @@ class TestEdge(unittest.TestCase):
 
     self.assertTrue( cr.is_empty() )
     self.assertEqual( cr.keys(), [] )
+    self.assertEqual( cr.values(), [] )
     self.assertFalse( 1 in cr )
     self.assertTrue( 1 not in cr )
     self.assertRaises( KeyError, cr.__getitem__, 1 )
@@ -130,6 +138,7 @@ class TestEdge(unittest.TestCase):
     self.branch[2] = self.root
     self.assertFalse( self.branch.is_empty() )
     self.assertEqual( set( self.branch.keys() ), set( [ 1, 2  ] ) )
+    self.assertEqual( set( self.branch.values() ), set( [ self.root, self.leaf ] ) )
     self.assertTrue( 1 in self.branch )
     self.assertTrue( 2 in self.branch )
     self.assertEqual( self.branch[1], self.leaf )
@@ -163,6 +172,7 @@ class TestEdge(unittest.TestCase):
 
     self.assertTrue( cb.is_empty() )
     self.assertEqual( cb.keys(), [] )
+    self.assertEqual( cb.values(), [] )
     self.assertFalse( 1 in cb )
     self.assertTrue( 1 not in cb )
     self.assertRaises( KeyError, cb.__getitem__, 1 )
@@ -173,7 +183,7 @@ class TestEdge(unittest.TestCase):
     self.assertEqual( self.leaf.start, 4 )
     self.leaf.start = 5
     self.assertEqual( self.leaf.start, 5 )
-    ld = self.word.length()
+    ld = self.word.length_descriptor()
     self.assertEqual( self.leaf.stop, ld() )
     self.word.append( 1 )
     self.word.append( 2 )
@@ -194,6 +204,7 @@ class TestEdge(unittest.TestCase):
 
     self.assertTrue( self.leaf.is_empty() )
     self.assertEqual( self.leaf.keys(), [] )
+    self.assertEqual( self.leaf.values(), [] )
     self.assertFalse( 1 in self.leaf )
     self.assertTrue( 1 not in self.leaf )
     self.assertRaises( RuntimeError, self.leaf.__getitem__, 1 )
@@ -207,12 +218,12 @@ class TestEdge(unittest.TestCase):
     self.assertEqual( self.leaf, cl )
     self.assertEqual( hash( self.leaf ), hash( cl ) )
     self.assertNotEqual(
-      single.edge.leaf( start = 4, length = self.word.length(), label = 6 ),
+      single.edge.leaf( start = 4, length = self.word.length_descriptor(), label = 6 ),
       cl,
       )
 
     self.assertEqual( cl.start, 4 )
-    ld = self.word.length()
+    ld = self.word.length_descriptor()
     self.assertEqual( cl.stop, ld() )
     self.word.append( 1 )
     self.word.append( 2 )
@@ -232,6 +243,7 @@ class TestEdge(unittest.TestCase):
 
     self.assertTrue( cl.is_empty() )
     self.assertEqual( cl.keys(), [] )
+    self.assertEqual( cl.values(), [] )
     self.assertFalse( 1 in cl )
     self.assertTrue( 1 not in cl )
     self.assertRaises( KeyError, cl.__getitem__, 1 )
@@ -243,7 +255,7 @@ class TestPreOrder(unittest.TestCase):
 
     self.root = single.edge.root()
     self.word = single.word()
-    length = self.word.length()
+    length = self.word.length_descriptor()
     self.edge_named = {
       "r_b1": single.edge.branch( start = 0, stop = 3 ),
       "r_b2": single.edge.branch( start = 1, stop = 3 ),
@@ -274,12 +286,12 @@ class TestPreOrder(unittest.TestCase):
   def test_single_root(self):
 
     root = single.edge.root()
-    res = list( single.preorder_iteration( root = root ) )
+    res = list( root.preorder_iteration() )
     self.assertEqual( res, [ root ] )
     self.assertTrue( isinstance( res[0], single.edge ) )
 
     cr = single.const_edge.from_edge( root )
-    res = list( single.preorder_iteration( root = cr ) )
+    res = list( cr.preorder_iteration() )
     self.assertEqual( res, [ cr ] )
     self.assertTrue( isinstance( res[0], single.const_edge ) )
 
@@ -287,12 +299,12 @@ class TestPreOrder(unittest.TestCase):
   def test_single_branch(self):
 
     branch = single.edge.branch( start = 0, stop = 3 )
-    res = list( single.preorder_iteration( root = branch ) )
+    res = list( branch.preorder_iteration() )
     self.assertEqual( res, [ branch ] )
     self.assertTrue( isinstance( res[0], single.edge ) )
 
     cb = single.const_edge.from_edge( branch )
-    res = list( single.preorder_iteration( root = cb ) )
+    res = list( cb.preorder_iteration() )
     self.assertEqual( res, [ cb ] )
     self.assertTrue( isinstance( res[0], single.const_edge ) )
 
@@ -300,13 +312,13 @@ class TestPreOrder(unittest.TestCase):
   def test_single_leaf(self):
 
     word = single.word()
-    leaf = single.edge.leaf( start = 4, length = word.length(), label = 6 )
-    res = list( single.preorder_iteration( root = leaf ) )
+    leaf = single.edge.leaf( start = 4, length = word.length_descriptor(), label = 6 )
+    res = list( leaf.preorder_iteration() )
     self.assertEqual( res, [ leaf ] )
     self.assertTrue( isinstance( res[0], single.edge ) )
 
     cl = single.const_edge.from_edge( leaf )
-    res = list( single.preorder_iteration( root = cl ) )
+    res = list( cl.preorder_iteration() )
     self.assertEqual( res, [ cl ] )
     self.assertTrue( isinstance( res[0], single.const_edge ) )
 
@@ -376,7 +388,7 @@ class TestPreOrder(unittest.TestCase):
 
   def test_r_b2(self):
 
-    result = list( single.preorder_iteration( root = self.edge_named[ "r_b2" ] ) )
+    result = list( self.edge_named[ "r_b2" ].preorder_iteration() )
     self.assertEqual( len( result ), 3 )
     self.check_r_b2( result )
     self.assertEqual( result, [] )
@@ -384,7 +396,7 @@ class TestPreOrder(unittest.TestCase):
 
   def test_r_b1_b1(self):
 
-    result = list( single.preorder_iteration( root = self.edge_named[ "r_b1_b1" ] ) )
+    result = list( self.edge_named[ "r_b1_b1" ].preorder_iteration() )
     self.assertEqual( len( result ), 3 )
     self.check_r_b1_b1( result )
     self.assertEqual( result, [] )
@@ -392,7 +404,7 @@ class TestPreOrder(unittest.TestCase):
 
   def test_r_b1(self):
 
-    result = list( single.preorder_iteration( root = self.edge_named[ "r_b1" ] ) )
+    result = list( self.edge_named[ "r_b1" ].preorder_iteration() )
     self.assertEqual( len( result ), 5 )
     self.check_r_b1( result )
     self.assertEqual( result, [] )
@@ -400,7 +412,7 @@ class TestPreOrder(unittest.TestCase):
 
   def test_root(self):
 
-    result = list( single.preorder_iteration( root = self.root ) )
+    result = list( self.root.preorder_iteration() )
     self.assertEqual( len( result ), 10 )
     self.assertTrue( all( isinstance( e, single.edge ) for e in result ) )
     self.check_root( result )
@@ -410,7 +422,7 @@ class TestPreOrder(unittest.TestCase):
   def test_const_root(self):
 
     cr = single.const_edge.from_edge( self.root )
-    result = list( single.preorder_iteration( root = cr ) )
+    result = list( cr.preorder_iteration() )
     self.assertEqual( len( result ), 10 )
     self.assertTrue( all( isinstance( e, single.const_edge ) for e in result ) )
     self.check_root( result )
@@ -423,7 +435,7 @@ class TestPostOrder(unittest.TestCase):
 
     self.root = single.edge.root()
     self.word = single.word()
-    length = self.word.length()
+    length = self.word.length_descriptor()
     self.edge_named = {
       "r_b1": single.edge.branch( start = 0, stop = 3 ),
       "r_b2": single.edge.branch( start = 1, stop = 3 ),
@@ -454,12 +466,12 @@ class TestPostOrder(unittest.TestCase):
   def test_single_root(self):
 
     root = single.edge.root()
-    res = list( single.postorder_iteration( root = root ) )
+    res = list( root.postorder_iteration() )
     self.assertEqual( res, [ root ] )
     self.assertTrue( isinstance( res[0], single.edge ) )
 
     cr = single.const_edge.from_edge( root )
-    res = list( single.postorder_iteration( root = cr ) )
+    res = list( cr.postorder_iteration() )
     self.assertEqual( res, [ cr ] )
     self.assertTrue( isinstance( res[0], single.const_edge ) )
 
@@ -467,12 +479,12 @@ class TestPostOrder(unittest.TestCase):
   def test_single_branch(self):
 
     branch = single.edge.branch( start = 0, stop = 3 )
-    res = list( single.postorder_iteration( root = branch ) )
+    res = list( branch.postorder_iteration() )
     self.assertEqual( res, [ branch ] )
     self.assertTrue( isinstance( res[0], single.edge ) )
 
     cb = single.const_edge.from_edge( branch )
-    res = list( single.postorder_iteration( root = cb ) )
+    res = list( cb.postorder_iteration() )
     self.assertEqual( res, [ cb ] )
     self.assertTrue( isinstance( res[0], single.const_edge ) )
 
@@ -480,13 +492,13 @@ class TestPostOrder(unittest.TestCase):
   def test_single_leaf(self):
 
     word = single.word()
-    leaf = single.edge.leaf( start = 4, length = word.length(), label = 6 )
-    res = list( single.postorder_iteration( root = leaf ) )
+    leaf = single.edge.leaf( start = 4, length = word.length_descriptor(), label = 6 )
+    res = list( leaf.postorder_iteration() )
     self.assertEqual( res, [ leaf ] )
     self.assertTrue( isinstance( res[0], single.edge ) )
 
     cl = single.const_edge.from_edge( leaf )
-    res = list( single.postorder_iteration( root = cl ) )
+    res = list( cl.postorder_iteration() )
     self.assertEqual( res, [ cl ] )
     self.assertTrue( isinstance( res[0], single.const_edge ) )
 
@@ -556,7 +568,7 @@ class TestPostOrder(unittest.TestCase):
 
   def test_r_b2(self):
 
-    result = list( single.postorder_iteration( root = self.edge_named[ "r_b2" ] ) )
+    result = list( self.edge_named[ "r_b2" ].postorder_iteration() )
     self.assertEqual( len( result ), 3 )
     self.check_r_b2( result )
     self.assertEqual( result, [] )
@@ -564,7 +576,7 @@ class TestPostOrder(unittest.TestCase):
 
   def test_r_b1_b1(self):
 
-    result = list( single.postorder_iteration( root = self.edge_named[ "r_b1_b1" ] ) )
+    result = list( self.edge_named[ "r_b1_b1" ].postorder_iteration() )
     self.assertEqual( len( result ), 3 )
     self.check_r_b1_b1( result )
     self.assertEqual( result, [] )
@@ -572,7 +584,7 @@ class TestPostOrder(unittest.TestCase):
 
   def test_r_b1(self):
 
-    result = list( single.postorder_iteration( root = self.edge_named[ "r_b1" ] ) )
+    result = list( self.edge_named[ "r_b1" ].postorder_iteration() )
     self.assertEqual( len( result ), 5 )
     self.check_r_b1( result )
     self.assertEqual( result, [] )
@@ -580,7 +592,7 @@ class TestPostOrder(unittest.TestCase):
 
   def test_root(self):
 
-    result = list( single.postorder_iteration( root = self.root ) )
+    result = list( self.root.postorder_iteration() )
     self.assertEqual( len( result ), 10 )
     self.assertTrue( all( isinstance( e, single.edge ) for e in result ) )
     self.check_root( result )
@@ -590,7 +602,7 @@ class TestPostOrder(unittest.TestCase):
   def test_const_root(self):
 
     cr = single.const_edge.from_edge( self.root )
-    result = list( single.postorder_iteration( root = cr ) )
+    result = list( cr.postorder_iteration() )
     self.assertEqual( len( result ), 10 )
     self.assertTrue( all( isinstance( e, single.const_edge ) for e in result ) )
     self.check_root( result )
@@ -605,7 +617,7 @@ class TestTree(unittest.TestCase):
     self.assertEqual( tree.in_construction, False )
     w = tree.word
     self.assertTrue( isinstance( w, single.word ) )
-    self.assertEqual( w.length()(), 0 )
+    self.assertEqual( w.length_descriptor()(), 0 )
     r = tree.root
     self.assertTrue( isinstance( r, single.const_edge ) )
     self.assertEqual( r.keys(), [] )
@@ -818,6 +830,42 @@ class TestMatchingStatistics(unittest.TestCase):
       )
 
 
+class TestLeafIndices(unittest.TestCase):
+
+  def test(self):
+
+    tree = single.tree()
+    result = list( single.matching_statistics( tree, list( "ABC" ) ) )
+    self.assertEqual( result, [ ( 0, ( tree.root, 0 ) ) ] * 3 )
+
+    builder = single.ukkonen( tree = tree )
+
+    for c in "TTAGC$":
+      builder.append( c )
+
+    builder.detach()
+    leaf_indices_below = suffixtree.calculate_leaf_indices( root = tree.root )
+
+    root = tree.root
+    branch_t = root[ "T" ]
+    leaf_0 = branch_t[ "T" ]
+    leaf_1 = branch_t[ "A" ]
+    leaf_2 = root[ "A" ]
+    leaf_3 = root[ "G" ]
+    leaf_4 = root[ "C" ]
+    leaf_5 = root[ "$" ]
+
+    self.assertEqual( leaf_indices_below[ leaf_0 ], [ 0 ] )
+    self.assertEqual( leaf_indices_below[ leaf_1 ], [ 1 ] )
+    self.assertEqual( leaf_indices_below[ leaf_2 ], [ 2 ] )
+    self.assertEqual( leaf_indices_below[ leaf_3 ], [ 3 ] )
+    self.assertEqual( leaf_indices_below[ leaf_4 ], [ 4 ] )
+    self.assertEqual( leaf_indices_below[ leaf_5 ], [ 5 ] )
+
+    self.assertEqual( sorted( leaf_indices_below[ branch_t ] ), [ 0, 1 ] )
+    self.assertEqual( sorted( leaf_indices_below[ root ] ), range( 6 ) )
+
+
 suite_word = unittest.TestLoader().loadTestsFromTestCase(
   TestWord
   )
@@ -836,6 +884,9 @@ suite_tree = unittest.TestLoader().loadTestsFromTestCase(
 suite_msi = unittest.TestLoader().loadTestsFromTestCase(
   TestMatchingStatistics
   )
+suite_leaf_indices = unittest.TestLoader().loadTestsFromTestCase(
+  TestLeafIndices
+  )
 
 
 alltests = unittest.TestSuite(
@@ -846,6 +897,7 @@ alltests = unittest.TestSuite(
     suite_postorder,
     suite_tree,
     suite_msi,
+    suite_leaf_indices,
     ]
   )
 
