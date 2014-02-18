@@ -60,7 +60,7 @@ def address_split(address):
   detector-detectorID|device-deviceID, where the detectors must be in
   dir(xtc.DetInfo.Detector) and device must be in
   (xtc.DetInfo.Device).  XXX Does not handle wildcards!  XXX
-  Documentation XXX I have the sneaky suspicison that code like this
+  Documentation XXX I have the sneaky suspicion that code like this
   already exists somewhere in pyana.  XXX Return dictionary or some
   such instead?
 
@@ -556,6 +556,154 @@ def dwritef(d, dirname=None, basename=None):
   return path
 
 
+def dwritef2(obj, path):
+  """The dwritef2() function writes the object @p obj to the Python
+  pickle file whose path is pointed to by @p path.  Non-existent
+  directories of @p path are created as necessary.
+
+  @param obj  Object to write, as created by e.g. dpack()
+  @param path Path of output file
+  @return     Path of output file
+  """
+
+  dirname = os.path.dirname(path)
+  if not os.path.isdir(dirname):
+    os.makedirs(dirname)
+
+  easy_pickle.dump(path, obj)
+  return path
+
+
+def pathsubst(format_string, evt, env, **kwargs):
+  """The pathsubst() function provides variable substitution and value
+  formatting as described in PEP 3101.  The function returns a copy of
+  the input string, @p format_string, with field names replaced by
+  their appropriate values as determined by either @p evt, @p env, or
+  the user-supplied keyworded arguments, @p kwargs.
+
+  chunk:      Chunk number or -1 if unknown.
+
+  epoch:      Time of the event, in number of seconds since midnight,
+              1 January 1970 UTC (Unix time), to millisecond
+              precision.
+
+  experiment: Experiment name, or empty string if unknown.
+
+  expNum:     Experiment number or -1 if unknown.
+
+  instrument: Instrument name, or empty string if unknown.
+
+  iso8601:    The time of the event as an extended human-readable ISO
+              8601 timestamp, to millisecond precision, or the empty
+              string if unknown.  Not suitable for file names, because
+              it contains characters that do not play well with
+              certain file systems (e.g. NTFS).
+
+  jobName:    Job name.
+
+  jobNameSub: Combination of job name and subprocess index as a string
+              which is unique for all subprocesses in a job.
+
+  run:        Run number or -1 if unknown.
+
+  seqno:      Sequence number or -1 if unknown.
+
+  stream:     Stream number or -1 if unknown.
+
+  subprocess: Subprocess number.  This is a non-negative integer in
+              the range [0, nproc) when multiprocessing, or -1 for a
+              single-process job.
+
+  user:       The "login name" of the user.
+
+  In addition to the standard conversion flags, the pathsubst()
+  function implements the <code>!u</code> and <code>!l</code> flags
+  for conversion to upper- and lower-case strings, respectively.
+
+  Literal braces can be escaped by doubling, i.e. <code>{</code> is
+  written <code>{{</code>, and <code>}</code> as <code>}}</code>.
+
+  @note Chunk number, expNum, run number, and stream number are
+        determined from the input XTC file name.  If a file does not
+        adhere to the standard format, it may not be possible to
+        determine these quantities.
+
+  @note String substitution requires PSDM pyana version 0.10.3 or
+        greater.
+
+  @param format_string String containing replacement fields
+  @param evt           Event data object, a configure object
+  @param env           Environment object
+  @param kwargs        User-supplied replacements, on the form
+                       <code>field_name=value</code>
+  @return               Copy of @p format_string, with replacement
+                       fields substituted by their appropriate values
+  """
+
+  from getpass import getuser
+  from string import Formatter
+
+  class CaseFormatter(Formatter):
+    def convert_field(self, value, conversion):
+      # Extends the stock Formatter class with lower() and upper()
+      # conversion types.
+
+      if conversion == 'l':
+        return str(value).lower()
+      elif conversion == 'u':
+        return str(value).upper()
+      return super(CaseFormatter, self).convert_field(value, conversion)
+
+    def get_value(self, key, args, kwargs_local):
+      # The get_value() function sequentially applies user-supplied
+      # and standard substitutions, and implements suitable defaults
+      # in case a field name evaluates to None.  XXX Emit a warning
+      # when this happens?
+      if key in kwargs:
+        return kwargs[key]
+
+      value = super(CaseFormatter, self).get_value(key, args, kwargs_local)
+      if value is None:
+        if key == 'chunk':
+          return -1
+        elif key == 'expNum':
+          return -1
+        elif key == 'iso8601':
+          return ''
+        elif key == 'run':
+          return -1
+        elif key == 'seqno':
+          return -1
+        elif key == 'stream':
+          return -1
+      return value
+
+  t = evt_time(evt)
+  if t is not None:
+    epoch = t[0] + t[1] / 1000
+  else:
+    epoch = None
+  fmt = CaseFormatter()
+
+  # If chunk or stream numbers cannot be determined, which may happen
+  # if the XTC file has a non-standard name, evt.chunk() and
+  # evt.stream() will return None.
+  return fmt.format(format_string,
+                    chunk=evt.chunk(),
+                    epoch=epoch,
+                    experiment=env.experiment(),
+                    expNum=evt.expNum(),
+                    instrument=env.instrument(),
+                    iso8601=evt_timestamp(t),
+                    jobName=env.jobName(),
+                    jobNameSub=env.jobNameSub(),
+                    run=evt.run(),
+                    seqno=int(evt_seqno(evt)),
+                    stream=evt.stream(),
+                    subprocess=env.subprocess(),
+                    user=getuser())
+
+
 def env_laser_status(env, laser_id):
   """The return value is a bool that indicates whether the laser in
   question was on for that particular shot.  Bear in mind that sample
@@ -807,7 +955,7 @@ def evt_pulse_length(evt):
 
 
 def evt_repetition_rate(evt, address='*'):
-  """The evt_repetition_rate() function returns the repititon rate of
+  """The evt_repetition_rate() function returns the repetition rate of
   the instrument in Hz.  See
   https://confluence.slac.stanford.edu/display/PCDS/EVR+Event+Codes
 
@@ -851,7 +999,7 @@ def evt_seqno(evt=None):
   sequence number.  If @p evt is not @c None the return value reflects
   the time at which @p evt occurred, otherwise the current time is
   used.  If @p evt does not contain a time, evt_seqno() returns @c
-  None.
+  None.  XXX Should probably return an integer type instead?
 
   @param evt Event data object, a configure object
   @return    String representation of sequence number
@@ -928,7 +1076,7 @@ def evt_wavelength(evt):
 
 
 def getConfig(address, env):
-  """XXX Documentation XXX I have the sneaky suspicison that code like
+  """XXX Documentation XXX I have the sneaky suspicion that code like
   this already exists somewhere in pyana.
   """
 
@@ -1170,7 +1318,7 @@ def image_xpp(address, evt, env, aa):
   @param address Full data source address of the DAQ device
   @param evt     Event data object, a configure object
   @param env     Environment object
-  @param aa      Active areas, in lieue of full metrology object
+  @param aa      Active areas, in lieu of full metrology object
   @return        XXX
   """
 
