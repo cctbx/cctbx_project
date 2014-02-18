@@ -1,6 +1,6 @@
 
 from __future__ import division
-from mmtbx.rotamer import backbone_eval
+from mmtbx.disorder import backbone
 import iotbx.pdb.hierarchy
 from cStringIO import StringIO
 
@@ -105,7 +105,7 @@ END
 def exercise () :
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
   open("tmp.pdb", "w").write(pdb_in.hierarchy.as_pdb_string())
-  backrubs = backbone_eval.find_backrubs(
+  backrubs = backbone.find_backrubs(
     pdb_hierarchy=pdb_in.hierarchy)
   assert (len(backrubs) == 1)
   out = StringIO()
