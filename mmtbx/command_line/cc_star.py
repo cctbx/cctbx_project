@@ -141,13 +141,13 @@ def run (args=None, params=None, out=sys.stdout) :
   if args is not None:
     if (len(args) == 0) or ("--help" in args) :
       raise Usage("""
-    phenix.cc_star model.pdb data.mtz unmerged_data=data.hkl [n_bins=X] [options]
-    phenix.cc_star model_refine_001.mtz unmerged_data=data.hkl [...]
+  phenix.cc_star model.pdb data.mtz unmerged_data=data.hkl [n_bins=X] [options]
+  phenix.cc_star model_refine_001.mtz unmerged_data=data.hkl [...]
 
-  Implementation of the method for assessing data and model quality described in:
+Implementation of the method for assessing data and model quality described in:
   Karplus PA & Diederichs K (2012) Science 336:1030-3.
 
-  Full parameters:
+Full parameters:
   %s
   """ % master_phil.as_str(prefix=" ", attributes_level=1))
     import iotbx.phil
@@ -297,6 +297,7 @@ def run (args=None, params=None, out=sys.stdout) :
       f_obs=f_obs,
       r_free_flags=r_free_flags,
       xray_structures=[xray_structure],
+      skip_twin_detection=True,
       scattering_table="n_gaussian")
     fmodel.show(log=out)
     f_model = fmodel.f_model()
