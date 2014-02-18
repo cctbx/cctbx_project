@@ -169,7 +169,7 @@ def find_backrubs (
         rmsd_limit=rmsd_limit,
         backrub_angle_limit=backrub_angle_limit)
       if (br is not None) :
-        backrubs.append(br)
+        backrubs.extend(br)
   return backrubs
 
 def find_ensemble_backrubs (

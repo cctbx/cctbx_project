@@ -13,16 +13,19 @@ def set_ensemble_b_factors_to_xyz_displacement (pdb_hierarchy,
     include_hydrogens=False,
     include_waters=False,
     use_c_alpha_values=False,
+    method="rmsf",
     selection=None,
     substitute_b_value=-1.0,
     logarithmic=False,
     log=None) :
   """
   Given an ensemble (multi-MODEL PDB hierarchy), calculate the deviation
-  between copies of each atom (defined here as the radius of the minimum
-  covering sphere) and set the isotropic B-factors to this value.
+  between copies of each atom (defined here as either the root-mean-square
+  fluctuation, or the radius of the minimum covering sphere) and set the
+  isotropic B-factors to this value.
   """
   if (log is None) : log = null_out()
+  assert (method in ["rmsf", "mcs"])
   from scitbx.math import minimum_covering_sphere
   from scitbx.array_family import flex
   pdb_atoms = pdb_hierarchy.atoms()
@@ -53,16 +56,24 @@ def set_ensemble_b_factors_to_xyz_displacement (pdb_hierarchy,
         xyz_by_atom[atom_key].append(atom.xyz)
       else :
         xyz_by_atom[atom_key] = flex.vec3_double([atom.xyz])
-  mcs_by_atom = {}
+  dev_by_atom = {}
   for atom_key, xyz in xyz_by_atom.iteritems() :
-    mcs = minimum_covering_sphere(points=xyz, epsilon=0.1)
-    radius = mcs.radius()
-    if (logarithmic) :
-      radius = math.log(radius + 1.0)
-    mcs_by_atom[atom_key] = radius
-  radii = flex.double(mcs_by_atom.values())
-  print >> log, "Distribution of sphere radii:"
-  flex.histogram(radii, n_slots=20).show(f=log, prefix="  ",
+    if (method == "mcs") :
+      mcs = minimum_covering_sphere(points=xyz, epsilon=0.1)
+      radius = mcs.radius()
+      if (logarithmic) :
+        radius = math.log(radius + 1.0)
+      dev_by_atom[atom_key] = radius
+    else :
+      mean_array = flex.vec3_double(xyz.size(), xyz.mean())
+      rmsf = xyz.rms_difference(mean_array)
+      dev_by_atom[atom_key] = rmsf
+  all_dev = flex.double(dev_by_atom.values())
+  if (method == "mcs") :
+    print >> log, "Distribution of sphere radii:"
+  else :
+    print >> log, "Distribution of root-mean-square fluctuation values:"
+  flex.histogram(all_dev, n_slots=20).show(f=log, prefix="  ",
     format_cutoffs="%.2f")
   for model in pdb_hierarchy.models() :
     for atom in model.atoms() :
@@ -72,7 +83,7 @@ def set_ensemble_b_factors_to_xyz_displacement (pdb_hierarchy,
           atom.b = substitute_b_value
         else :
           atom_key = get_key(c_alpha)
-          atom.b = mcs_by_atom.get(atom_key, substitute_b_value)
+          atom.b = dev_by_atom.get(atom_key, substitute_b_value)
       else :
         atom_key = get_key(atom)
-        atom.b = mcs_by_atom.get(atom_key, substitute_b_value)
+        atom.b = dev_by_atom.get(atom_key, substitute_b_value)
