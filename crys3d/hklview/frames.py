@@ -7,6 +7,7 @@ from __future__ import division
 from crys3d.hklview import view_2d, view_3d
 from cctbx.miller.display import settings
 from wxtbx.phil_controls import simple_dialogs
+from wxtbx import misc_dialogs
 from wxtbx import icons
 from wxtbx import bitmaps
 import wxtbx.symmetry_dialog
@@ -461,6 +462,7 @@ class HKLViewFrame (wx.Frame) :
     return array, array_info
 
   def set_miller_array (self, array) :
+    if (array is None) : return
     array, array_info = self.process_miller_array(array)
     self.statusbar.SetStatusText("Data: %s %s (Space group: %s  Unit Cell: %s)"
       % (array_info.labels, array_info.details_str, array_info.sg,
@@ -523,7 +525,8 @@ class HKLViewFrame (wx.Frame) :
         hkl_file = any_reflection_file(file_name)
       except Exception, e :
         raise Sorry(str(e))
-      arrays = hkl_file.as_miller_arrays(merge_equivalents=False)
+      arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
+        )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
       #arrays = f.file_server.miller_arrays
       valid_arrays = []
       array_info = []
