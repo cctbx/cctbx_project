@@ -414,7 +414,7 @@ def parallel_map (
     processes=1,
     method="multiprocessing",
     qsub_command=None,
-    asynchronous=False,
+    asynchronous=True,
     callback=None,
     preserve_order=True,
     preserve_exception_message=False) :
