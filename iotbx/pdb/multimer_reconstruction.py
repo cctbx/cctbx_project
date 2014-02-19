@@ -32,7 +32,11 @@ class multimer(object):
 
   @author: Youval Dar (LBL )
   '''
-  def __init__(self,pdb_input_file_name,reconstruction_type,error_handle=True,eps=1e-4):
+  def __init__(self,
+               pdb_input_file_name,
+               reconstruction_type,
+               error_handle=True,
+               eps=1e-4):
     ''' (str) -> NoType
     Arguments:
     pdb_input_file_name -- the name of the pdb file we want to process. a string such as 'pdb_file_name.pdb'
@@ -74,6 +78,8 @@ class multimer(object):
     for i,coordinates_present in enumerate(TRASFORM_info.coordinates_present):
       if not coordinates_present: i_transforms.append(i)
     self.number_of_transforms = len(i_transforms)
+    self.rotation_matrices = [TRASFORM_info.r[i] for i in i_transforms]
+    self.translation_vectors = [TRASFORM_info.t[i] for i in i_transforms]
     chain_ids = {x.id for x in pdb_obj.hierarchy.models()[0].chains()}
     # Keep the original chains IDs
     self.ncs_chains_ids = tuple(sorted(chain_ids))
