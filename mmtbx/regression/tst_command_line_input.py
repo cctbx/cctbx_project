@@ -47,11 +47,13 @@ END
     update_f_part1_for=None,
     args=[ file_base + ext for ext in [".pdb",".mtz",".fa"] ],
     master_phil=mmtbx.command_line.generate_master_phil_with_inputs(""),
-    out=null_out())
+    out=StringIO(),
+    create_log_buffer=True)
   assert (cmdline.params.input.xray_data.file_name is not None)
   assert (cmdline.sequence is not None)
   r_factor = cmdline.fmodel.r_work()
   assert (r_factor < 0.001)
+  log = cmdline.start_log_file("tst_mmtbx_cmdline.log")
 
 def exercise_combine_symmetry () :
   """

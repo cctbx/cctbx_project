@@ -14,8 +14,9 @@ automatically.  This is superficially similar to the setup for phenix.refine
 
 from __future__ import division
 from libtbx.str_utils import make_header, make_sub_header
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import Sorry, Usage, multi_out, null_out
 from libtbx import Auto
+from cStringIO import StringIO
 import sys
 
 cmdline_input_phil_base_str = """
@@ -150,7 +151,8 @@ class load_model_and_data (object) :
       force_non_anomalous=False,
       set_wavelength_from_model_header=False,
       set_inelastic_form_factors=None,
-      usage_string=None) :
+      usage_string=None,
+      create_log_buffer=False) :
     import mmtbx.monomer_library.pdb_interpretation
     import mmtbx.monomer_library.server
     import mmtbx.utils
@@ -181,9 +183,14 @@ class load_model_and_data (object) :
     self.miller_arrays = None
     self.hl_coeffs = None
     self.cif_objects = []
+    self.log = out
     if ("--quiet" in args) or ("quiet=True" in args) :
-      out = null_out()
-    make_header("Collecting inputs", out=out)
+      self.log = null_out()
+    elif create_log_buffer :
+      self.log = multi_out()
+      self.log.register(label="stdout", file_object=out)
+      self.log.register(label="log_buffer", file_object=StringIO())
+    make_header("Collecting inputs", out=self.log)
     cmdline = iotbx.phil.process_command_line_with_files(
       args=args,
       master_phil=master_phil,
@@ -211,7 +218,7 @@ class load_model_and_data (object) :
     else :
       # FIXME this may still require that the data file has full crystal
       # symmetry defined (although for MTZ input this will not be a problem)
-      make_sub_header("Processing X-ray data", out=out)
+      make_sub_header("Processing X-ray data", out=self.log)
       hkl_in = file_reader.any_file(params.input.xray_data.file_name)
       hkl_in.check_file_type("hkl")
       hkl_server = hkl_in.file_server
@@ -221,7 +228,8 @@ class load_model_and_data (object) :
           (symm.unit_cell() is None)) :
         if (pdb_symm is not None) :
           from iotbx.reflection_file_utils import reflection_file_server
-          print >> out, "No symmetry in X-ray data file - using PDB symmetry:"
+          print >> self.log, \
+            "No symmetry in X-ray data file - using PDB symmetry:"
           pdb_symm.show_summary(f=out, prefix="  ")
           hkl_server = reflection_file_server(
             crystal_symmetry=pdb_symm,
@@ -237,7 +245,7 @@ class load_model_and_data (object) :
         flags_parameter_scope="input.xray_data.r_free_flags",
         prefer_anomalous=prefer_anomalous,
         force_non_anomalous=force_non_anomalous,
-        log=out)
+        log=self.log)
       self.intensity_flag = data_and_flags.intensity_flag
       self.raw_data = data_and_flags.raw_data
       self.raw_flags = data_and_flags.raw_flags
@@ -276,13 +284,13 @@ class load_model_and_data (object) :
         else :
           phases_in = file_reader.any_file(phases_file)
           phases_in.check_file_type("hkl")
-        phases_in.file_server.err = out # redirect error output
+        phases_in.file_server.err = self.log # redirect error output
         space_group = self.crystal_symmetry.space_group()
         point_group = space_group.build_derived_point_group()
         hl_coeffs = mmtbx.utils.determine_experimental_phases(
           reflection_file_server = phases_in.file_server,
           parameters             = params.input.experimental_phases,
-          log                    = out,
+          log                    = self.log,
           parameter_scope        = "input.experimental_phases",
           working_point_group    = point_group,
           symmetry_safety_check  = True)
@@ -302,10 +310,10 @@ class load_model_and_data (object) :
       if (pdb_interp_params is None) :
         pdb_interp_params = \
           mmtbx.monomer_library.pdb_interpretation.master_params.extract()
-      make_sub_header("Processing PDB file(s)", out=out)
+      make_sub_header("Processing PDB file(s)", out=self.log)
       pdb_combined = mmtbx.utils.combine_unique_pdb_files(
         file_names=params.input.pdb.file_name)
-      pdb_combined.report_non_unique(out=out)
+      pdb_combined.report_non_unique(out=self.log)
       pdb_raw_records = pdb_combined.raw_records
       processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
         cif_objects=self.cif_objects,
@@ -313,7 +321,7 @@ class load_model_and_data (object) :
         crystal_symmetry=self.crystal_symmetry,
         use_neutron_distances=params.input.scattering_table=="neutron",
         stop_for_unknowns=getattr(pdb_interp_params, "stop_for_unknowns",False),
-        log=out)
+        log=self.log)
       self.processed_pdb_file, self.pdb_inp = \
         processed_pdb_files_srv.process_pdb_files(
           raw_records = pdb_raw_records,
@@ -341,14 +349,14 @@ class load_model_and_data (object) :
             restraints_manager=restraints_manager,
             current_geometry=self.xray_structure,
             cdl_proxies=cdl_proxies,
-            log=out,
+            log=self.log,
             verbose=True)
     else :
       pdb_file_object = mmtbx.utils.pdb_file(
         pdb_file_names=params.input.pdb.file_name,
         cif_objects=self.cif_objects,
         crystal_symmetry=self.crystal_symmetry,
-        log=out)
+        log=self.log)
       self.pdb_inp = pdb_file_object.pdb_inp
       self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
       self.pdb_hierarchy.atoms().reset_i_seq()
@@ -358,8 +366,8 @@ class load_model_and_data (object) :
     if (set_wavelength_from_model_header and params.input.wavelength is None) :
       wavelength = self.pdb_inp.extract_wavelength()
       if (wavelength is not None) :
-        print >> out, ""
-        print >> out, "Using wavelength = %g from PDB header" % wavelength
+        print >> self.log, ""
+        print >> self.log, "Using wavelength = %g from PDB header" % wavelength
         params.input.wavelength = wavelength
     # set scattering table
     if (data_and_flags is not None) :
@@ -371,12 +379,12 @@ class load_model_and_data (object) :
         self.xray_structure.set_inelastic_form_factors(
           photon=params.input.wavelength,
           table=set_inelastic_form_factors)
-      make_sub_header("xray_structure summary", out=out)
-      self.xray_structure.scattering_type_registry().show(out = out)
-      self.xray_structure.show_summary(f=out)
+      make_sub_header("xray_structure summary", out=self.log)
+      self.xray_structure.scattering_type_registry().show(out = self.log)
+      self.xray_structure.show_summary(f=self.log)
     # FMODEL SETUP
     if (create_fmodel) and (data_and_flags is not None) :
-      make_sub_header("F(model) initialization", out=out)
+      make_sub_header("F(model) initialization", out=self.log)
       skip_twin_detection = getattr(params.input, "skip_twin_detection", None)
       twin_law = getattr(params.input, "twin_law", None)
       if (twin_law is Auto) :
@@ -386,7 +394,7 @@ class load_model_and_data (object) :
       elif (skip_twin_detection is not None) :
         twin_law = Auto
       if (twin_law is Auto) :
-        print >> out, "Twinning will be detected automatically."
+        print >> self.log, "Twinning will be detected automatically."
         self.fmodel = mmtbx.utils.fmodel_simple(
           update_f_part1_for=update_f_part1_for,
           xray_structures=[self.xray_structure],
@@ -395,7 +403,7 @@ class load_model_and_data (object) :
           r_free_flags=self.r_free_flags,
           skip_twin_detection=skip_twin_detection,
           target_name=target_name,
-          log=out)
+          log=self.log)
       else :
         if ((twin_law is not None) and (self.hl_coeffs is not None)) :
           raise Sorry("Automatic twin law determination not supported when "+
@@ -409,11 +417,11 @@ class load_model_and_data (object) :
           target_name=target_name)
         self.fmodel.update_all_scales(
           params=None,
-          log=out,
+          log=self.log,
           optimize_mask=True,
           show=True,
           update_f_part1_for=update_f_part1_for)
-      self.fmodel.info().show_rfactors_targets_scales_overall(out=out)
+      self.fmodel.info().show_rfactors_targets_scales_overall(out=self.log)
     # SEQUENCE
     if (params.input.sequence is not None) :
       seq_file = file_reader.any_file(params.input.sequence,
@@ -421,8 +429,17 @@ class load_model_and_data (object) :
         raise_sorry_if_errors=True)
       self.sequence = seq_file.file_object
     self.params = params
-    print >> out
-    print >> out, "End of input processing"
+    print >> self.log, ""
+    print >> self.log, "End of input processing"
+
+  def start_log_file (self, file_name) :
+    assert type(self.log).__name__ == 'multi_out'
+    log_file = open(file_name, "w")
+    self.log.replace_stringio(
+      old_label="log_buffer",
+      new_label="log",
+      new_file_object=log_file)
+    return self.log
 
 def validate_input_params (params) :
   if params.input.pdb.file_name is None :
