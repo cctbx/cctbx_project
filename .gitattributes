@@ -1628,6 +1628,7 @@ mmtbx/disorder/__init__.py -text
 mmtbx/disorder/analyze_model.py -text
 mmtbx/disorder/backbone.py -text
 mmtbx/disorder/tst.py -text
+mmtbx/disorder/tst_analyze_model.py -text
 mmtbx/disorder/tst_backbone.py -text
 mmtbx/dynamics/constants.py svneol=native#text/x-python
 mmtbx/dynamics/ensemble_cd.py svneol=native#text/x-python

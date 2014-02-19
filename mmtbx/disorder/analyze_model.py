@@ -4,7 +4,7 @@ from mmtbx.disorder import backbone
 from scitbx.array_family import flex
 from scitbx.matrix import col
 from libtbx.str_utils import format_value as fv
-from libtbx import slots_getstate_setstate
+from libtbx import Auto, slots_getstate_setstate
 import math
 import sys
 
@@ -262,7 +262,7 @@ class disordered_segment (object) :
     return pairwise_distances
 
   def get_conformer_distances (self,
-      conformer_indices=(0,1),
+      conformer_indices=Auto,
       backbone=None) :
     """
     Calculate the distances between atoms in the specified pair of conformers
@@ -275,8 +275,24 @@ class disordered_segment (object) :
     distances = []
     for rg in self.residue_groups :
       i_ag = 0
+      atom_groups = rg.atom_groups()
+      if (conformer_indices is Auto) :
+        if (atom_groups[0].altloc.strip() == '') :
+          if (len(atom_groups) <= 2) :
+            continue
+          else :
+            conformer_indices = (1,2)
+        else :
+          conformer_indices = (0,1)
+      else :
+        assert (len(conformer_indices) == 2)
       ag1 = rg.atom_groups()[conformer_indices[0]]
       ag2 = rg.atom_groups()[conformer_indices[1]]
+      if ((ag1.altloc.strip() == '') and
+          (conformer_indices[0] == 0) and
+          (len(atom_groups) >= 3)) :
+        ag1 = rg.atom_groups()[conformer_indices[0]+1]
+        ag2 = rg.atom_groups()[conformer_indices[1]+1]
       for atom1 in ag1.atoms() :
         name = atom1.name.strip()
         element = atom1.element.upper().strip()
@@ -481,7 +497,7 @@ class process_residue_groups (object) :
 
 class process_pdb_hierarchy (object) :
   def __init__ (self, pdb_hierarchy,
-      validation=None,
+      validation,
       ignore_inconsistent_occupancy=False,
       log=sys.stdout) :
     self.chains = []

@@ -147,6 +147,7 @@ tst_list = (
   "$D/refinement/tst_occupancy_selections.py",
   "$D/disorder/tst.py",
   "$D/disorder/tst_backbone.py",
+  "$D/disorder/tst_analyze_model.py",
   )
 
 def run():

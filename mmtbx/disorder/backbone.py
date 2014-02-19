@@ -103,7 +103,7 @@ def evaluate_backrub_pair_impl (
     labels=(),
     max_calpha_sep=5.0,
     rmsd_limit=0.1,
-    backrub_angle_limit=10.0) :
+    backrub_angle_limit=10.0) : # FIXME is this an appropriate cutoff?
   assert (len(calphas_A) == len(calphas_B) == 5)
   if (None in calphas_A) or (None in calphas_B) :
     return None
