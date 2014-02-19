@@ -643,7 +643,7 @@ def assemble_constraint_groups_3d (
       for merge_groups in merge_constraints :
         if (len(merge_groups) > 0) :
           for other_selection in merge_groups :
-            altloc = pdb_atoms[other_selectipn[0]].fetch_labels().altloc
+            altloc = pdb_atoms[other_selection[0]].fetch_labels().altloc
             print >> log, ("  warning: %d atoms with altloc %s do not "+
               "correspond to an existing group") % (len(other_selection),
               altloc)
