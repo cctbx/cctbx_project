@@ -13,6 +13,8 @@ cctbx links
 
 - `Mailing list (cctbxbb) <http://www.phenix-online.org/mailman/listinfo/cctbxbb>`_
 
+- `Tutorial on free-electron laser data processing <http://cci.lbl.gov/xfel>`_ (cctbx.xfel)
+
 - `Tutorial IUCr 2008 (Software Fayre) <iucr2008/>`_ (rigid_body_refinement_core.py)
 
 - `Tutorial SBGrid 2008 (Quo Vadis) <sbgrid2008/>`_ (iotbx.pdb)
@@ -20,6 +22,26 @@ cctbx links
 - `Tutorials Siena 2005 IUCr Crystallographic Computing School <siena2005/>`_
 
 - `scitbx/rigid_body/essence subset (self-contained) <scitbx_rigid_body_essence/>`_
+
+- Peer-reviewed publications
+
+  - `Grosse-Kunstleve et al. (2002) "The Computational Crystallography
+    Toolbox: crystallographic algorithms in a reusable software framework"
+    <http://scripts.iucr.org/cgi-bin/paper?ks0118>`_
+
+  - `Gildea et al. (2011) "iotbx.cif: a comprehensive CIF toolbox."
+    <http://www.ncbi.nlm.nih.gov/pubmed/22199401>`_
+
+  - `Grosse-Kunstleve et al. (2012) "Automatic Fortran to C++ conversion with
+    FABLE." <http://www.ncbi.nlm.nih.gov/pubmed/22640868>`_
+
+  - `Sauter et al. (2013).  "New Python-based methods for data processing."
+    <http://www.ncbi.nlm.nih.gov/pubmed/23793153>`_
+
+  - Additional publications specific to software making use of CCTBX:
+    `PHENIX <http://www.phenix-online.org/papers>`_, `LABELIT
+    <http://adder.lbl.gov/labelit/html/publications.html>`_,
+    `PHASER <http://www.phaser.cimr.cam.ac.uk/index.php/Publications>`_
 
 - Newsletter articles
 
@@ -121,6 +143,8 @@ cctbx links
   - `scitbx <current/python/scitbx.html>`_
 
   - `smtbx <current/python/smtbx.html>`_
+
+  - `xfel <current/python/xfel.html>`_
 
 - `SVN repository <http://sourceforge.net/p/cctbx/code/HEAD/tree/trunk/>`_
 
