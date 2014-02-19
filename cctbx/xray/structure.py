@@ -904,24 +904,6 @@ class structure(crystal.special_position_settings):
       else: result.append(False)
     return result
 
-  def chain_selection(self,chains_id):
-    """Get a selector array for all scatterers in the specified chains.
-
-    This selection method assumes the
-    label format is of the following form : 'pdb=" N   THR A   1 "'
-
-    :param chains_id: IDs of the chains to be selected
-    :type chains_id: list of strings. Example ['A','B']
-
-    :returns: an array to select all scatterers in chain ID in chain_id
-    :rtype: boolean[]
-    """
-    scattering_labels = self._scatterers.extract_labels()
-    result = flex.bool()
-    for sct in scattering_labels:
-      if (sct[13:15].strip() in chains_id): result.append(True)
-      else: result.append(False)
-    return result
 
   def heavy_selection(self,
     ignore_atoms_with_alternative_conformations=False,
