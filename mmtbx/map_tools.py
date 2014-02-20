@@ -348,17 +348,85 @@ keep_missing
   assert f_obs.indices().size()==result.indices().size()
   return result
 
+class model_missing_reflections(object):
+  def __init__(
+        self,
+        fmodel,
+        coeffs):
+    self.fmodel = fmodel
+    self.coeffs = coeffs
+    crystal_gridding = fmodel.f_obs().crystal_gridding(
+      d_min              = self.fmodel.f_obs().d_min(),
+      resolution_factor  = 1./3)
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = self.coeffs)
+    fft_map.apply_sigma_scaling()
+    map_data = fft_map.real_map_unpadded()
+    rho_atoms = flex.double()
+    for site_frac in self.fmodel.xray_structure.sites_frac():
+      rho_atoms.append(map_data.eight_point_interpolation(site_frac))
+    rho_mean = flex.mean(rho_atoms)
+    sel_exclude = rho_atoms > min(rho_mean/2., 1)
+    sites_cart = fmodel.xray_structure.sites_cart()
+    #
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = self.fmodel.f_model())
+    fft_map.apply_sigma_scaling()
+    map_data2 = fft_map.real_map_unpadded()
+    #
+    for i_seq, site_cart in enumerate(sites_cart):
+      selection = maptbx.grid_indices_around_sites(
+        unit_cell  = self.coeffs.unit_cell(),
+        fft_n_real = map_data.focus(),
+        fft_m_real = map_data.all(),
+        sites_cart = flex.vec3_double([site_cart]),
+        site_radii = flex.double([1.5]))
+      cc = flex.linear_correlation(x=map_data.select(selection),
+        y=map_data2.select(selection)).coefficient()
+      if(cc<0.7): sel_exclude[i_seq] = False
+    #
+    del map_data, fft_map, rho_atoms
+    self.d_min = fmodel.f_obs().d_min()
+    cs = self.fmodel.f_obs().average_bijvoet_mates().complete_set(d_min=self.d_min)
+    self.complete_set = cs.array(data = flex.double(cs.indices().size(), 0))
+    self.xray_structure_cut = self.fmodel.xray_structure.select(sel_exclude)
+    self.missing_set = self.complete_set.common_set(self.coeffs)
+
+  def get_missing(self, deterministic=False):
+    if(deterministic):
+      xrs = self.xray_structure_cut
+    else:
+      sel = flex.random_bool(self.xray_structure_cut.scatterers().size(), 0.9)
+      xrs = self.xray_structure_cut.select(sel)
+#    return xrs.structure_factors(d_min = self.d_min).f_calc().average_bijvoet_mates()
+    # XXX PVA: using code below affects runtime at no benefit (map improvement)
+    if(deterministic):
+      fm = mmtbx.f_model.manager(
+        f_obs          = self.complete_set,
+        xray_structure = xrs,
+        k_sol          = 0.35,
+        b_sol          = 46.0)
+      result = fm.f_model_no_scales()
+    else:
+      if(random.choice([True, False])):
+        k_sol = random.choice([i/100. for i in range(20,41)])
+        b_sol = random.choice([i for i in range(20,85, 5)])
+        fm = mmtbx.f_model.manager(
+          f_obs          = self.complete_set,
+          xray_structure = xrs,
+          k_sol          = k_sol,
+          b_sol          = b_sol)
+        result = fm.f_model_no_scales()
+      else:
+        result = xrs.structure_factors(d_min = self.d_min).f_calc()
+    return result
+
 def fill_missing_f_obs_1(coeffs, fmodel):
-  cs = fmodel.f_obs().average_bijvoet_mates().complete_set(
-    d_min = fmodel.f_obs().d_min())
-  ca = cs.array(data = flex.double(cs.indices().size(), 0))
-  fm = mmtbx.f_model.manager(
-    f_obs = ca,
-    xray_structure = fmodel.xray_structure,
-    k_sol = 0.35,
-    b_sol = 46.0)
-  f_map = fm.f_model_no_scales()
-  return coeffs.complete_with(other = f_map, scale=True)
+  mro = model_missing_reflections(coeffs=coeffs, fmodel=fmodel)
+  missing = mro.get_missing(deterministic=True)
+  return coeffs.complete_with(other = missing, scale=True)
 
 def fill_missing_f_obs_2(coeffs, fmodel):
   scale_to = fmodel.f_obs().average_bijvoet_mates()
