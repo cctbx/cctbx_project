@@ -1,4 +1,5 @@
 from __future__ import division
+import mmtbx.model # import dependency
 from cctbx.array_family import flex
 import os, sys
 import libtbx
