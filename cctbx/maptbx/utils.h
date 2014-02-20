@@ -166,8 +166,6 @@ af::versa<DataType, af::c_grid<3> > set_box_copy(
 {
   af::c_grid<3> a = map_data_to.accessor();
   for(int i = 0; i < 3; i++) {
-    //std::cout<<end[i]<<" "<<a[i]<<std::endl;
-    //std::cout<<" "<<std::endl;
     CCTBX_ASSERT(start[i]>=0 && start[i]<=a[i]);
     CCTBX_ASSERT(end[i]>=0   && end[i]<=a[i]);
   }
@@ -195,20 +193,17 @@ af::versa<DataType, af::c_grid<3> > conditional_solvent_region_filter(
   af::const_ref<DataType, af::c_grid<3> > const& map_data,
   DataType const& threshold)
 {
-  //af::c_grid_padded<3> a2 = bulk_solvent_mask.accessor();
+  af::tiny<int, 3> a2 = bulk_solvent_mask.accessor().all();
   af::c_grid<3> a1 = map_data.accessor();
-  //for(int i = 0; i < 3; i++) {
-  //  CCTBX_ASSERT(a1[i]==a2[i]);
-  //}
+  for(int i = 0; i < 3; i++) CCTBX_ASSERT(a1[i]==a2[i]);
   af::versa<DataType, af::c_grid<3> > result_map(a1,
     af::init_functor_null<DataType>());
   af::ref<DataType, af::c_grid<3> > result_map_ref = result_map.ref();
   for(int i = 0; i < a1[0]; i++) {
     for(int j = 0; j < a1[1]; j++) {
       for(int k = 0; k < a1[2]; k++) {
-        DataType mask_ = bulk_solvent_mask(i,j,k);
         DataType map_  = map_data(i,j,k);
-        if(mask_==0) {
+        if(bulk_solvent_mask(i,j,k)==0) {
           result_map_ref(i,j,k) = 1;
         }
         else {
