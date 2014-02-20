@@ -21,6 +21,12 @@ def get_master_phil () :
     phil_string="""
 random_seed=2679941
   .type = int
+omit = False
+  .type = bool
+  .help = Use composite OMIT protocol
+use_resolve = False
+  .type = bool
+  .help = Use Resolve to account for missing reflections
 output {
   file_name = fem.mtz
     .type = path
@@ -86,15 +92,16 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     update_f_calc = True)
   #
   fmodel.update_all_scales(update_f_part1_for="refinement")
-  fem = mmtbx.maps.fem.run(fmodel=fmodel)
+  fem = mmtbx.maps.fem.run(fmodel=fmodel, use_omit=params.omit,
+    use_resolve=params.use_resolve)
   # output
   mtz_dataset = fem.mc.as_mtz_dataset(column_root_label="2mFoDFc")
   mtz_dataset.add_miller_array(
     miller_array=fem.mc_result,
     column_root_label=params.output.column_root_label)
   mtz_dataset.add_miller_array(
-    miller_array=fem.mc_resolve,
-    column_root_label="ResolveDM")
+    miller_array=fem.mc_filled,
+    column_root_label="2mFoDFc_filled")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = params.output.file_name)
   return os.path.abspath(params.output.file_name)
