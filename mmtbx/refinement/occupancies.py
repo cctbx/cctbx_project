@@ -618,12 +618,15 @@ def assemble_constraint_groups_3d (
       print >> log, "Merging %d constraint groups with group %d" % (
         len(merge_constraints), (k+1))
       for selection in groups :
-        altloc = pdb_atoms[selection[0]].fetch_labels().altloc
-        assert (altloc.strip() != '')
+        first_atom = pdb_atoms[selection[0]]
+        altloc = first_atom.fetch_labels().altloc
+        if (altloc.strip() == '') :
+          raise RuntimeError(("Atom '%s' in occupancy constraint group has "+
+            "blank altloc ID") % first_atom.id_str())
         for merge_groups in merge_constraints :
-          k = 0
-          while (k < len(merge_groups)) :
-            other_selection = merge_groups[k]
+          kk = 0
+          while (kk < len(merge_groups)) :
+            other_selection = merge_groups[kk]
             altloc2 = pdb_atoms[other_selection[0]].fetch_labels().altloc
             if (altloc2 == altloc) :
               print >> log, "  combining %d atoms with altloc %s" % \
@@ -637,9 +640,9 @@ def assemble_constraint_groups_3d (
                   "restraints, the correlated conformers must start with "+
                   "the same initial occupancy.") % (occ1[0], occ2[0]))
               selection.extend(other_selection)
-              del merge_groups[k]
+              del merge_groups[kk]
             else :
-              k += 1
+              kk += 1
       for merge_groups in merge_constraints :
         if (len(merge_groups) > 0) :
           for other_selection in merge_groups :
