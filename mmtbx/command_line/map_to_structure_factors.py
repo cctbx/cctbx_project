@@ -60,6 +60,9 @@ def run(args, log=None):
     raise Sorry("Map must have origin at (0,0,0): recenter the map and try again.")
   # generate complete set of Miller indices up to given high resolution d_min
   cs = crystal.symmetry(m.unit_cell_parameters, 1)
+  if(params.d_min is None):
+    raise Sorry(
+      "High resolution limit (d_min) for structure factors calculation must be given.")
   complete_set = miller.build_set(
     crystal_symmetry = cs,
     anomalous_flag   = False,
@@ -77,10 +80,10 @@ def run(args, log=None):
       msg = "Too high resolution requested. Try running with larger d_min."
       raise Sorry(msg)
   #
-  mtz_dataset = f_obs_cmpl.as_mtz_dataset(column_root_label="Fobs_cmpl")
+  mtz_dataset = f_obs_cmpl.as_mtz_dataset(column_root_label="F")
   mtz_dataset.add_miller_array(
     miller_array      = abs(f_obs_cmpl),
-    column_root_label = "Fobs")
+    column_root_label = "F_ampl")
   # convert phases into HL coefficeints
   f_model_phases = f_obs_cmpl.phases().data()
   sin_f_model_phases = flex.sin(f_model_phases)
@@ -94,9 +97,6 @@ def run(args, log=None):
   mtz_dataset.add_miller_array(
     miller_array      = hl,
     column_root_label = "HL")
-  mtz_dataset.add_miller_array(
-    miller_array      = hl.generate_r_free_flags(),
-    column_root_label = "R-free-flags")
   # write output MTZ file with all the data
   broadcast(m="Writing output MTZ file:", log=log)
   print >> log, "  file name:", params.output_file_name
