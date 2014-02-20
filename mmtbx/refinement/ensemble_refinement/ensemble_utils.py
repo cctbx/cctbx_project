@@ -461,16 +461,17 @@ class manager(object):
               sites_cart   = sites_cart,
               asu_mappings = asu_mappings,
               proxy        = proxy)
-        if proxy.i_seqs in ensemble_bond_deltas:
-          ensemble_bond_deltas[proxy.i_seqs][0]+=bond_asu_proxy.delta
-          ensemble_bond_deltas[proxy.i_seqs][1]+=1
-        else:
-          ensemble_bond_deltas[proxy.i_seqs] = [bond_asu_proxy.delta, 1]
-        if verbose:
-          print >> out, "bond asu :", (proxy.i_seq, proxy.j_seq), rt_mx
-          print >> out, "  distance_ideal : %.6g" % proxy.distance_ideal
-          print >> out, "  distance_model : %.6g" % bond_asu_proxy.distance_model
-          print >> out, "  delta          : %.6g" % bond_asu_proxy.delta
+          proxy_i_seqs = (proxy.i_seq, proxy.j_seq)
+          if proxy_i_seqs in ensemble_bond_deltas:
+            ensemble_bond_deltas[proxy_i_seqs][0]+=bond_asu_proxy.delta
+            ensemble_bond_deltas[proxy_i_seqs][1]+=1
+          else:
+            ensemble_bond_deltas[proxy_i_seqs] = [bond_asu_proxy.delta, 1]
+          if verbose:
+            print >> out, "bond asu :", (proxy.i_seq, proxy.j_seq), rt_mx
+            print >> out, "  distance_ideal : %.6g" % proxy.distance_ideal
+            print >> out, "  distance_model : %.6g" % bond_asu_proxy.distance_model
+            print >> out, "  delta          : %.6g" % bond_asu_proxy.delta
 
       # Angle
       if verbose:
