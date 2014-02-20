@@ -442,6 +442,15 @@ namespace {
       arg("scale_by"),
       arg("set_value")));
 
+    def("conditional_solvent_region_filter",
+      (af::versa<double, af::c_grid<3> >(*)
+        (af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<double, af::c_grid<3> > const&,
+         double const&)) conditional_solvent_region_filter, (
+      arg("bulk_solvent_mask"),
+      arg("map_data"),
+      arg("threshold")));
+
     def("set_box_copy",
       (af::versa<double, af::c_grid<3> >(*)
         (double const&,
