@@ -256,8 +256,7 @@ def cxi_versioned_extract(*args):
     return working_extract
 
 
-  elif cxi_version in ["XPP 7.marccd"] or \
-       cxi_version in ["Sacla.MPCDD"]:
+  elif cxi_version in ["XPP 7.marccd"]:
     working_extract = working_phil.command_extractor
     working_extract.distl.quad_translations = None
     working_extract.distl.tile_translations = [0, 0]
@@ -382,6 +381,12 @@ def cxi_versioned_extract(*args):
                                                -9,  5,
                                                -5,  10,
                                                -9,  12]
+    return working_extract
+
+  elif cxi_version in ["Sacla.MPCCD"]:
+    working_extract = working_phil.command_extractor
+    working_extract.distl.quad_translations = None
+    working_extract.distl.tile_translations = None
     return working_extract
 
   else:
