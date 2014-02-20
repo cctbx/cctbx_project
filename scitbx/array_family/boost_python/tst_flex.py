@@ -1732,6 +1732,22 @@ def exercise_flex_vec3_double():
   except RuntimeError: pass
   else: raise Exception_expected
 
+  a = flex.vec3_double([(1,2,5), (-2,3,4), (3,4,3)])
+  t = a.angle(a)
+  eps = 1e-7
+  for tt in t:
+    assert(abs(tt - 0) < eps)
+  b = matrix.col((4,5,6))
+  c = flex.vec3_double([b] * 3)
+  t1 = a.angle(b)
+  t2 = a.angle(c)
+  for tt1, tt2 in zip(t1,t2):
+    assert(abs(tt1-tt2) < eps)
+  for aa, tt1 in zip(a, t1):
+    tt2 = matrix.col(aa).angle(b)
+    assert(abs(tt1-tt2) < eps)
+
+
 
 def exercise_flex_vec2_double():
   #flex.exercise_triple(flex.vec2_double, as_double=True)

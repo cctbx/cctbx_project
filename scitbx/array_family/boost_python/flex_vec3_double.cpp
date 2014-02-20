@@ -126,6 +126,47 @@ namespace {
     return result;
   }
 
+  af::shared<double> angle(
+      af::const_ref< vec3<double> > const& self,
+      vec3<double> other, bool deg) {
+    af::shared<double> result(self.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      boost::optional<double> oa = self[i].angle_rad(other);
+      if (oa) {
+        double a = *oa;
+        if (deg) {
+          a = rad_as_deg(a);
+        }
+        result[i] = a;
+      } else {
+        result[i] = 0.0;
+      }
+    }
+    return result;
+  }
+
+  af::shared<double> angle(
+      af::const_ref< vec3<double> > const& self,
+      af::const_ref< vec3<double> > const& other,
+      bool deg) {
+    SCITBX_ASSERT(self.size() == other.size());
+    af::shared<double> result(self.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      boost::optional<double> oa = self[i].angle_rad(other[i]);
+      if (oa) {
+        double a = *oa;
+        if (deg) {
+          a = rad_as_deg(a);
+        }
+        result[i] = a;
+      } else {
+        result[i] = 0.0;
+      }
+    }
+    return result;
+  }
+
+
   flex_double
   as_double(flex<vec3<double> >::type const& a)
   {
@@ -458,6 +499,19 @@ namespace boost_python {
           flex<vec3<double> >::type const&,
           vec3<double> const&,
           flex<double>::type const&)) rotate_around_origin)
+      .def("angle",
+        (af::shared<double>(*)(
+          af::const_ref< vec3<double> > const&,
+          vec3<double>, bool)) &angle, (
+            arg("other"),
+            arg("deg") = false))
+      .def("angle",
+        (af::shared<double>(*)(
+          af::const_ref< vec3<double> > const&,
+          af::const_ref< vec3<double> > const&,
+          bool)) &angle, (
+            arg("other"),
+            arg("deg") = false))
       .def("as_double", as_double)
       .def("add_selected",
         (object(*)(
