@@ -1,5 +1,4 @@
 from __future__ import division
-import mmtbx.model # import dependency
 from cctbx.array_family import flex
 import os, sys
 import libtbx
@@ -81,6 +80,7 @@ def exercise(file_name=None):
   from mmtbx import monomer_library
   import mmtbx.monomer_library.server
   import mmtbx.monomer_library.pdb_interpretation
+  import mmtbx.restraints
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   #pdb_file = libtbx.env.find_in_repositories(
