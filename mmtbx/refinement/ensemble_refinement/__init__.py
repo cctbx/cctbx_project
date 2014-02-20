@@ -1675,34 +1675,34 @@ def write_mtz_file (fmodel_total, raw_data, raw_flags, prefix, params) :
   return prefix + ".mtz"
 
 #-----------------------------------------------------------------------
-def run(args, command_name = "phenix.ensemble_refinement", log=None,
-    validate=False):
+def run(args, command_name = "phenix.ensemble_refinement", out=None,
+    validate=False, replace_stderr=True):
   if(len(args) == 0): args = ["--help"]
   command_line = (iotbx_option_parser(
     usage="%s reflection_file pdb_file [options]" % command_name,
     description='Example: %s data.mtz model.pdb' % command_name
   ).enable_dry_run().enable_show_defaults()).process(args=args)
-  if (log is None) :
-    log = sys.stdout
+  if (out is None) :
+    out = sys.stdout
   if(command_line.expert_level is not None) :
     master_params.show(
       expert_level=command_line.expert_level,
       attributes_level=command_line.attributes_level,
-      out=log)
+      out=out)
     return
   inputs = mmtbx.command_line.load_model_and_data(
     update_f_part1_for="refinement",
     args=command_line.args,
     master_phil=master_params,
-    out=log,
+    out=out,
     create_fmodel=False,
     process_pdb_file=False)
   working_phil = inputs.working_phil
   params = working_phil.extract()
   if (params.extra_restraints_file is not None) :
     # XXX this is a revolting hack...
-    print >> log, "Processing custom geometry restraints in file:"
-    print >> log, "  %s" % params.extra_restraints_file
+    print >> out, "Processing custom geometry restraints in file:"
+    print >> out, "  %s" % params.extra_restraints_file
     restraints_phil = iotbx.phil.parse(file_name=params.extra_restraints_file)
     cleanup_phil = iotbx.phil.parse("extra_restraints_file=None")
     working_phil = master_params.fetch(
@@ -1725,12 +1725,13 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
     er_params.output_file_prefix = os.path.splitext(
       os.path.basename(inputs.pdb_file_names[0]))[0] + "_ensemble"
   log = multi_out()
-  log.register(label="stdout", file_object=sys.stdout)
+  log.register(label="stdout", file_object=out)
   log.register(
     label="log_buffer",
     file_object=StringIO(),
     atexit_send_to=None)
-  sys.stderr = log
+  if (replace_stderr) :
+    sys.stderr = log
   log_file = open(er_params.output_file_prefix+'.log', "w")
   log.replace_stringio(
       old_label="log_buffer",
@@ -2095,7 +2096,7 @@ class launcher (runtime_utils.target_with_save_result) :
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=list(self.args),
-      log=sys.stdout,
+      out=sys.stdout,
       validate=True)
 
 def validate_params (params) :
