@@ -71,7 +71,7 @@ def imageset(filename):
     with open(filename, 'r') as infile:
       return imageset_from_string(infile.read())
 
-def datablock(filename):
+def datablock(filename, check_format=True):
   ''' Load a given JSONi or pickle file.
 
   Params:
@@ -82,4 +82,5 @@ def datablock(filename):
 
   '''
   from dxtbx.datablock import DataBlockFactory
-  return DataBlockFactory.from_serialized_format(filename)
+  return DataBlockFactory.from_serialized_format(
+    filename, check_format=check_format)
