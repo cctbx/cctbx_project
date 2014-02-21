@@ -78,14 +78,17 @@ class intensities_scaler(object):
     sigI_all = flex.double()
     I_weight_all = flex.double()
     for observations, observations_weight in zip (observations_set, observations_weight_set):
-      for miller_index, i_obs, sigi_obs, i_weight in zip(
-          observations.indices(), observations.data(), 
-          observations.sigmas(), observations_weight):
-          
-        miller_indices_all.append(miller_index)
-        I_all.append(i_obs)
-        sigI_all.append(sigi_obs)
-        I_weight_all.append(i_weight)
+      if observations is not None:
+        for miller_index, i_obs, sigi_obs, i_weight in zip(
+            observations.indices(), observations.data(), 
+            observations.sigmas(), observations_weight):
+            
+          miller_indices_all.append(miller_index)
+          I_all.append(i_obs)
+          sigI_all.append(sigi_obs)
+          I_weight_all.append(i_weight)
+      else:
+        print 'Something wrong'
     
     #from all observations merge them, using mean
     crystal_symmetry = crystal.symmetry(
@@ -141,7 +144,9 @@ class intensities_scaler(object):
         sigI_obs_merge = sigI_obs_group[0]
         
         
-        if math.isnan(I_obs_merge) == False:
+        if math.isnan(I_obs_merge) or math.isnan(sigI_obs_merge) or I_obs_merge==0 or sigI_obs_merge==0:
+          print miller_index_group, I_obs_merge, sigI_obs_merge, ' - not merged'
+        else:
           multiplicities.append(1)
           miller_indices_merge.append(miller_index_group)
           r_dif = (sigI_obs_merge**2)/sigI_obs_merge
@@ -176,10 +181,12 @@ class intensities_scaler(object):
           else:
             I_obs_merge = sum(I_obs_group_sel)/sum(I_weight_group_sel)
             sigI_obs_merge = np.std(I_obs_weight_group_sel)
-            r_dif = flex.sum(((I_obs_weight_group_sel - I_obs_merge)**2)/sigI_obs_group_sel)
+            r_dif = flex.sum(((I_obs_weight_group_sel - I_obs_merge)**2)/sigI_obs_group_sel)*math.sqrt(len(I_obs_weight_group_sel)/(len(I_obs_weight_group_sel)-1))
             r_w = flex.sum((I_obs_weight_group_sel**2)/sigI_obs_group_sel)
 
-          if math.isnan(I_obs_merge) == False:
+          if math.isnan(I_obs_merge) or math.isnan(sigI_obs_merge) or I_obs_merge==0 or sigI_obs_merge==0:
+            print miller_index_group, I_obs_merge, sigI_obs_merge, ' - not merged'
+          else:
             multiplicities.append(len(I_obs_group_sel))
             miller_indices_merge.append(miller_index_group)
             I_obs_merge_mean.append(I_obs_merge)
@@ -258,20 +265,14 @@ class intensities_scaler(object):
                     miller_indices_unique=iph.miller_array_iso.indices(),
                     miller_indices=miller_array_merge_mean.indices().select(i_binner))
 
-          if len(matches_bin.pairs()) > 0:
+          if len(matches_bin.pairs()) > 10:
             I_ref_bin = flex.double([iph.miller_array_iso.data()[pair[0]] for pair in matches_bin.pairs()])
             I_obs_bin_mean = flex.double([miller_array_merge_mean.data().select(i_binner)[pair[1]] for pair in matches_bin.pairs()])
             sigI_obs_bin_mean = flex.double([miller_array_merge_mean.sigmas().select(i_binner)[pair[1]] for pair in matches_bin.pairs()])
             corr_bin_mean, slope_bin_mean = get_overall_correlation(I_obs_bin_mean, I_ref_bin)
-            r_bin = sum(flex.abs(I_ref_bin - (slope_bin_mean*I_obs_bin_mean)))/sum(slope_bin_mean*I_obs_bin_mean)
+            
             r_bin = sum(((I_ref_bin - (slope_bin_mean*I_obs_bin_mean))**2)/sigI_obs_bin_mean)/sum(((slope_bin_mean*I_obs_bin_mean)**2)/sigI_obs_bin_mean)
-            """
-            plt.scatter(I_ref_bin, I_obs_bin_mean,s=10, marker='x', c='r')
-            plt.title('Bin=%02d CC=%6.5f Slope=%6.5f R=%6.5f'%(i, corr_bin_mean, slope_bin_mean, r_bin))
-            plt.xlabel('Reference intensity')
-            plt.ylabel('Observed intensity')
-            plt.show()
-            """
+            
         cc_bin.append(corr_bin_mean)
 
         if len(miller_array_merge_mean.data().select(i_binner)) == 0:
@@ -465,24 +466,25 @@ class input_handler(object):
       
     self.txt_out = ''
     self.txt_out += 'Input parameters\n'
-    self.txt_out += 'run_no'+str(self.run_no)+'\n'
-    self.txt_out += 'title'+str(self.title)+'\n'
-    self.txt_out += 'frame'+str(self.frame_start)+'-'+str(self.frame_end)+'\n'
-    self.txt_out += 'flag_plot'+str(self.flag_plot)+'\n'
-    self.txt_out += 'flag_polar'+str(self.flag_polar)+'\n'
-    self.txt_out += 'flag_reference_a_matrix'+str(self.flag_reference_a_matrix)+'\n'
-    self.txt_out += 'hklisoin'+str(self.file_name_iso_mtz)+'\n'
-    self.txt_out += 'hklrefin'+str(self.file_name_ref_mtz)+'\n'
-    self.txt_out += 'energyin'+str(self.file_name_in_energy)+'\n'
-    self.txt_out += 'imagein'+str(self.file_name_in_img)+'\n'
-    self.txt_out += 'pdbin'+str(self.file_name_pdb)+'\n'
-    self.txt_out += 'picke_dir'+str(self.pickle_dir)+'\n'
-    self.txt_out += 'd_min'+str(self.d_min)+'\n'
-    self.txt_out += 'd_max'+str(self.d_max)+'\n'
-    self.txt_out += 'sigma_max'+str(self.sigma_max)+'\n'
-    self.txt_out += 'target_unit_cell'+str(self.target_unit_cell)+'\n'
-    self.txt_out += 'target_space_group'+str(self.target_space_group)+'\n'
-    self.txt_out += 'target_anomalous_flag'+str(self.target_anomalous_flag)+'\n'
+    self.txt_out += 'run_no '+str(self.run_no)+'\n'
+    self.txt_out += 'title '+str(self.title)+'\n'
+    self.txt_out += 'frame '+str(self.frame_start)+'-'+str(self.frame_end)+'\n'
+    self.txt_out += 'flag_plot '+str(self.flag_plot)+'\n'
+    self.txt_out += 'flag_polar '+str(self.flag_polar)+'\n'
+    self.txt_out += 'flag_reference_a_matrix '+str(self.flag_reference_a_matrix)+'\n'
+    self.txt_out += 'hklisoin '+str(self.file_name_iso_mtz)+'\n'
+    self.txt_out += 'hklrefin '+str(self.file_name_ref_mtz)+'\n'
+    self.txt_out += 'energyin '+str(self.file_name_in_energy)+'\n'
+    self.txt_out += 'imagein '+str(self.file_name_in_img)+'\n'
+    self.txt_out += 'pdbin '+str(self.file_name_pdb)+'\n'
+    self.txt_out += 'picke_dir '+str(self.pickle_dir)+'\n'
+    self.txt_out += 'd_min '+str(self.d_min)+'\n'
+    self.txt_out += 'd_min_merge '+str(self.d_min_merge)+'\n'
+    self.txt_out += 'd_max '+str(self.d_max)+'\n'
+    self.txt_out += 'sigma_max '+str(self.sigma_max)+'\n'
+    self.txt_out += 'target_unit_cell '+str(self.target_unit_cell)+'\n'
+    self.txt_out += 'target_space_group '+str(self.target_space_group)+'\n'
+    self.txt_out += 'target_anomalous_flag '+str(self.target_anomalous_flag)+'\n'
 
     print self.txt_out
 
