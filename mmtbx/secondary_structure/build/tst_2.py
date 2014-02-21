@@ -1553,46 +1553,163 @@ ATOM    122  OE2 GLU E  16      13.420  18.711  19.730  1.00 20.00           O
 TER
 """
 
+ideal_on_target = """\
+ATOM      1  N   ALA E   1       7.108  31.146   4.352  1.00 20.00           N
+ATOM      2  CA  ALA E   1       7.541  31.207   5.743  1.00 20.00           C
+ATOM      3  C   ALA E   1       7.167  29.933   6.493  1.00 20.00           C
+ATOM      4  O   ALA E   1       7.988  29.361   7.211  1.00 20.00           O
+ATOM      5  CB  ALA E   1       6.944  32.425   6.432  1.00 20.00           C
+ATOM      6  N   HIS E   2       5.921  29.499   6.325  1.00 20.00           N
+ATOM      7  CA  HIS E   2       5.427  28.290   6.977  1.00 20.00           C
+ATOM      8  C   HIS E   2       6.248  27.064   6.587  1.00 20.00           C
+ATOM      9  O   HIS E   2       6.636  26.268   7.443  1.00 20.00           O
+ATOM     10  CB  HIS E   2       3.952  28.063   6.637  1.00 20.00           C
+ATOM     11  CG  HIS E   2       3.054  29.179   7.070  1.00 20.00           C
+ATOM     12  ND1 HIS E   2       2.676  29.363   8.383  1.00 20.00           N
+ATOM     13  CD2 HIS E   2       2.459  30.170   6.365  1.00 20.00           C
+ATOM     14  CE1 HIS E   2       1.886  30.419   8.467  1.00 20.00           C
+ATOM     15  NE2 HIS E   2       1.739  30.927   7.257  1.00 20.00           N
+ATOM     16  N   CYS E   3       6.504  26.920   5.290  1.00 20.00           N
+ATOM     17  CA  CYS E   3       7.281  25.798   4.774  1.00 20.00           C
+ATOM     18  C   CYS E   3       8.670  25.746   5.401  1.00 20.00           C
+ATOM     19  O   CYS E   3       9.128  24.685   5.828  1.00 20.00           O
+ATOM     20  CB  CYS E   3       7.395  25.881   3.250  1.00 20.00           C
+ATOM     21  SG  CYS E   3       5.812  25.816   2.378  1.00 20.00           S
+ATOM     22  N   ALA E   4       9.335  26.896   5.448  1.00 20.00           N
+ATOM     23  CA  ALA E   4      10.665  26.996   6.040  1.00 20.00           C
+ATOM     24  C   ALA E   4      10.648  26.555   7.499  1.00 20.00           C
+ATOM     25  O   ALA E   4      11.503  25.783   7.935  1.00 20.00           O
+ATOM     26  CB  ALA E   4      11.194  28.416   5.918  1.00 20.00           C
+ATOM     27  N   ILE E   5       9.669  27.054   8.249  1.00 20.00           N
+ATOM     28  CA  ILE E   5       9.515  26.699   9.654  1.00 20.00           C
+ATOM     29  C   ILE E   5       9.330  25.194   9.819  1.00 20.00           C
+ATOM     30  O   ILE E   5       9.978  24.569  10.660  1.00 20.00           O
+ATOM     31  CB  ILE E   5       8.321  27.430  10.295  1.00 20.00           C
+ATOM     32  CG1 ILE E   5       8.518  28.945  10.213  1.00 20.00           C
+ATOM     33  CG2 ILE E   5       8.143  26.995  11.740  1.00 20.00           C
+ATOM     34  CD1 ILE E   5       7.363  29.743  10.776  1.00 20.00           C
+ATOM     35  N   TYR E   6       8.445  24.621   9.009  1.00 20.00           N
+ATOM     36  CA  TYR E   6       8.185  23.185   9.041  1.00 20.00           C
+ATOM     37  C   TYR E   6       9.463  22.394   8.780  1.00 20.00           C
+ATOM     38  O   TYR E   6       9.758  21.426   9.481  1.00 20.00           O
+ATOM     39  CB  TYR E   6       7.112  22.807   8.018  1.00 20.00           C
+ATOM     40  CG  TYR E   6       5.754  23.409   8.304  1.00 20.00           C
+ATOM     41  CD1 TYR E   6       5.379  23.740   9.599  1.00 20.00           C
+ATOM     42  CD2 TYR E   6       4.848  23.644   7.279  1.00 20.00           C
+ATOM     43  CE1 TYR E   6       4.139  24.290   9.865  1.00 20.00           C
+ATOM     44  CE2 TYR E   6       3.606  24.193   7.535  1.00 20.00           C
+ATOM     45  CZ  TYR E   6       3.257  24.514   8.830  1.00 20.00           C
+ATOM     46  OH  TYR E   6       2.021  25.061   9.090  1.00 20.00           O
+ATOM     47  N   THR E   7      10.211  22.811   7.762  1.00 20.00           N
+ATOM     48  CA  THR E   7      11.478  22.172   7.426  1.00 20.00           C
+ATOM     49  C   THR E   7      12.442  22.227   8.606  1.00 20.00           C
+ATOM     50  O   THR E   7      13.086  21.232   8.938  1.00 20.00           O
+ATOM     51  CB  THR E   7      12.139  22.825   6.198  1.00 20.00           C
+ATOM     52  OG1 THR E   7      12.366  24.216   6.457  1.00 20.00           O
+ATOM     53  CG2 THR E   7      11.250  22.680   4.972  1.00 20.00           C
+ATOM     54  N   ILE E   8      12.539  23.398   9.230  1.00 20.00           N
+ATOM     55  CA  ILE E   8      13.404  23.581  10.391  1.00 20.00           C
+ATOM     56  C   ILE E   8      13.023  22.630  11.523  1.00 20.00           C
+ATOM     57  O   ILE E   8      13.884  21.971  12.106  1.00 20.00           O
+ATOM     58  CB  ILE E   8      13.356  25.030  10.911  1.00 20.00           C
+ATOM     59  CG1 ILE E   8      13.872  25.996   9.843  1.00 20.00           C
+ATOM     60  CG2 ILE E   8      14.172  25.164  12.187  1.00 20.00           C
+ATOM     61  CD1 ILE E   8      13.807  27.451  10.253  1.00 20.00           C
+ATOM     62  N   HIS E   9      11.729  22.567  11.828  1.00 20.00           N
+ATOM     63  CA  HIS E   9      11.230  21.672  12.867  1.00 20.00           C
+ATOM     64  C   HIS E   9      11.566  20.217  12.557  1.00 20.00           C
+ATOM     65  O   HIS E   9      12.014  19.476  13.431  1.00 20.00           O
+ATOM     66  CB  HIS E   9       9.719  21.838  13.055  1.00 20.00           C
+ATOM     67  CG  HIS E   9       9.333  23.103  13.756  1.00 20.00           C
+ATOM     68  ND1 HIS E   9       9.694  23.373  15.058  1.00 20.00           N
+ATOM     69  CD2 HIS E   9       8.608  24.168  13.339  1.00 20.00           C
+ATOM     70  CE1 HIS E   9       9.214  24.552  15.411  1.00 20.00           C
+ATOM     71  NE2 HIS E   9       8.552  25.056  14.386  1.00 20.00           N
+ATOM     72  N   SER E  10      11.338  19.815  11.310  1.00 20.00           N
+ATOM     73  CA  SER E  10      11.640  18.456  10.872  1.00 20.00           C
+ATOM     74  C   SER E  10      13.119  18.135  11.064  1.00 20.00           C
+ATOM     75  O   SER E  10      13.471  17.079  11.593  1.00 20.00           O
+ATOM     76  CB  SER E  10      11.245  18.264   9.407  1.00 20.00           C
+ATOM     77  OG  SER E  10      11.970  19.141   8.563  1.00 20.00           O
+ATOM     78  N   VAL E  11      13.978  19.051  10.628  1.00 20.00           N
+ATOM     79  CA  VAL E  11      15.421  18.889  10.769  1.00 20.00           C
+ATOM     80  C   VAL E  11      15.819  18.741  12.234  1.00 20.00           C
+ATOM     81  O   VAL E  11      16.606  17.861  12.586  1.00 20.00           O
+ATOM     82  CB  VAL E  11      16.189  20.075  10.154  1.00 20.00           C
+ATOM     83  CG1 VAL E  11      17.677  19.949  10.440  1.00 20.00           C
+ATOM     84  CG2 VAL E  11      15.932  20.155   8.657  1.00 20.00           C
+ATOM     85  N   ASP E  12      15.274  19.611  13.079  1.00 20.00           N
+ATOM     86  CA  ASP E  12      15.545  19.566  14.512  1.00 20.00           C
+ATOM     87  C   ASP E  12      15.140  18.220  15.104  1.00 20.00           C
+ATOM     88  O   ASP E  12      15.893  17.616  15.867  1.00 20.00           O
+ATOM     89  CB  ASP E  12      14.815  20.700  15.233  1.00 20.00           C
+ATOM     90  CG  ASP E  12      15.311  22.071  14.817  1.00 20.00           C
+ATOM     91  OD1 ASP E  12      16.464  22.170  14.346  1.00 20.00           O
+ATOM     92  OD2 ASP E  12      14.549  23.050  14.961  1.00 20.00           O
+ATOM     93  N   ALA E  13      13.943  17.762  14.748  1.00 20.00           N
+ATOM     94  CA  ALA E  13      13.435  16.478  15.217  1.00 20.00           C
+ATOM     95  C   ALA E  13      14.356  15.336  14.800  1.00 20.00           C
+ATOM     96  O   ALA E  13      14.691  14.470  15.609  1.00 20.00           O
+ATOM     97  CB  ALA E  13      12.026  16.243  14.696  1.00 20.00           C
+ATOM     98  N   PHE E  14      14.755  15.339  13.531  1.00 20.00           N
+ATOM     99  CA  PHE E  14      15.657  14.320  13.003  1.00 20.00           C
+ATOM    100  C   PHE E  14      16.981  14.306  13.759  1.00 20.00           C
+ATOM    101  O   PHE E  14      17.481  13.245  14.133  1.00 20.00           O
+ATOM    102  CB  PHE E  14      15.906  14.543  11.510  1.00 20.00           C
+ATOM    103  CG  PHE E  14      14.680  14.373  10.658  1.00 20.00           C
+ATOM    104  CD1 PHE E  14      13.592  13.653  11.122  1.00 20.00           C
+ATOM    105  CD2 PHE E  14      14.616  14.934   9.393  1.00 20.00           C
+ATOM    106  CE1 PHE E  14      12.463  13.495  10.340  1.00 20.00           C
+ATOM    107  CE2 PHE E  14      13.490  14.779   8.607  1.00 20.00           C
+ATOM    108  CZ  PHE E  14      12.412  14.059   9.081  1.00 20.00           C
+ATOM    109  N   ALA E  15      17.546  15.491  13.972  1.00 20.00           N
+ATOM    110  CA  ALA E  15      18.807  15.629  14.692  1.00 20.00           C
+ATOM    111  C   ALA E  15      18.715  15.059  16.104  1.00 20.00           C
+ATOM    112  O   ALA E  15      19.597  14.320  16.543  1.00 20.00           O
+ATOM    113  CB  ALA E  15      19.236  17.089  14.735  1.00 20.00           C
+ATOM    114  N   GLU E  16      17.645  15.412  16.811  1.00 20.00           N
+ATOM    115  CA  GLU E  16      17.423  14.933  18.171  1.00 20.00           C
+ATOM    116  C   GLU E  16      17.352  13.410  18.226  1.00 20.00           C
+ATOM    117  O   GLU E  16      17.435  12.814  19.300  1.00 20.00           O
+ATOM    118  CB  GLU E  16      16.143  15.539  18.750  1.00 20.00           C
+ATOM    119  CG  GLU E  16      16.176  17.053  18.883  1.00 20.00           C
+ATOM    120  CD  GLU E  16      14.889  17.616  19.452  1.00 20.00           C
+ATOM    121  OE1 GLU E  16      13.803  17.189  19.006  1.00 20.00           O
+ATOM    122  OE2 GLU E  16      14.962  18.486  20.345  1.00 20.00           O
+TER
+"""
+
 def exercise_00():
   """
-  Simple one helix case
-
-  Place sites_2 to string!!!
+  Simple one helix case.
+  Crashes on chevy, works on marbles. 
   """
   real_h = iotbx.pdb.input(source_info=None,
+    lines=exercise_00_answer).construct_hierarchy()
+  result_h = iotbx.pdb.input(source_info=None,
     lines=exercise_00_answer).construct_hierarchy()
   real_h.write_pdb_file(file_name="target.pdb")
   h_records = """\
 HELIX    1   1 ALA E    1  ALA E   16  1                                  16
 """
   helices = ioss.parse_helix_records(h_records.split('\n'))
-  # XXX How do I request to match rotamers in target structure exactly vs
-  # XXX choosing the nearest exact rotamer ?
-  # AAA That's impossible considering overall geometry refinement
-  # AAA after the ss substitution
-  result_h = ssb.substitute_ss(real_h, helices)
-  result_h.write_pdb_file(file_name="ideal_on_target.pdb")
-  res_result_h = ssb.substitute_ss(result_h, helices)
-  res_result_h.write_pdb_file(file_name="ideal_on_ideal_on_target.pdb")
-  sites_1 = real_h.atoms().extract_xyz()
+  ssb.substitute_ss(result_h, helices)
+  assert approx_equal(result_h.atoms().extract_xyz(),
+      iotbx.pdb.input(source_info=None,lines=ideal_on_target).
+      construct_hierarchy().atoms().extract_xyz(),eps=0.002)
+  ssb.substitute_ss(result_h, helices)
   sites_2 = result_h.atoms().extract_xyz()
-  sites_3 = res_result_h.atoms().extract_xyz()
-  d = flex.sqrt((sites_1 - sites_2).dot())
-  dmmm = d.min_max_mean().as_tuple()
-  #print "dmmm:", dmmm
-  # assert dmmm[2]<0.5 # XXX is this expected/good?
-  # AAA: Sure there will be discrepancies when we substite bad geometry
-  # AAA: with ideal one. The magnitude of these discrepancies may be
-  # AAA: affected by weights used in refinements along with the "ideality"
-  # AAA: of resulting geometry.
+  sites_3 = iotbx.pdb.input(source_info=None,
+    lines=ideal_on_target).construct_hierarchy().atoms().extract_xyz()
   d2 = flex.sqrt((sites_2 - sites_3).dot())
   dmmm2 = d2.min_max_mean().as_tuple()
-  #print "dmmm2:", dmmm2
-  assert dmmm2[2]<0.1 # AAA This makes sence (comparing ideal with
-  #                     AAA ideal, twice longer though)
+  assert dmmm2[2]<0.1 # comparing ideal with ideal
 
 def exercise_01():
+  # This test is not necessary, nearly same is done is exercise_00
   real_h = iotbx.pdb.input(source_info=None,
+    lines=structure_to_substitue_initial).construct_hierarchy()
+  result_h = iotbx.pdb.input(source_info=None,
     lines=structure_to_substitue_initial).construct_hierarchy()
   real_h.write_pdb_file(file_name="poor.pdb")
   h_records = """\
@@ -1602,7 +1719,7 @@ HELIX    3   3 SER B    2  LYS B   19  1                                  18
 HELIX    4   4 VAL B   27  PHE B   42  1                                  16
 """
   helices = ioss.parse_helix_records(h_records.split('\n'))
-  result_h = ssb.substitute_ss(real_h, helices)
+  ssb.substitute_ss(result_h, helices)
   result_h.write_pdb_file(file_name="result.pdb")
   sites_1 = result_h.atoms().extract_xyz()
   ph_answer = iotbx.pdb.input(source_info=None,
@@ -1621,8 +1738,7 @@ HELIX    4   4 VAL B   27  PHE B   42  1                                  16
   # Even position/angle of the helices may be significantly biased.
 
 def exercise():
-  pass
-  #exercise_00()
+  exercise_00()
   #exercise_01()
 
 if (__name__ == "__main__"):
