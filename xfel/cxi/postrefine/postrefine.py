@@ -1,6 +1,4 @@
 """
-**See revision 19318 for the real changes**
-
 Read pickle files output from integration process to determine the polarity and
 refine the rotation matrix
 Usage:
@@ -70,14 +68,13 @@ class postref_handler(object):
     observations reindexed using (k, h, -l).  Merge Bijvoet mates unless
     anomalous_flag is True.
     """
-
+    observations = observations.resolution_filter(d_min=d_min, d_max=d_max)
+    
     #Lorentz-polarization correction
     two_theta = observations.two_theta(wavelength=wavelength).data()
     one_over_LP = (2 * flex.sin(two_theta))/(1 + (flex.cos(two_theta)**2))
     one_over_P = 2/(1 + (flex.cos(two_theta)**2))
     observations = observations.customized_copy(data=observations.data()*one_over_P)
-
-    observations = observations.resolution_filter(d_min=d_min, d_max=d_max)
     
     miller_set = symmetry(
         unit_cell=target_unit_cell,
@@ -85,7 +82,7 @@ class postref_handler(object):
       ).build_miller_set(
         anomalous_flag=target_anomalous_flag,
         d_min=d_min)
-
+    
     #Filter negative intensities
     i_I_positive = (observations.data() > 0)
     miller_indices_positive = observations.indices().select(i_I_positive)
@@ -127,7 +124,11 @@ class postref_handler(object):
       observations_rev = observations_asu.change_basis(cb_op).map_to_asu()
     else:
       observations_rev = observations_asu
-
+    
+    observations_original = observations_original.resolution_filter(d_min=d_min, d_max=d_max)
+    observations_asu = observations_asu.resolution_filter(d_min=d_min, d_max=d_max)
+    observations_rev = observations_rev.resolution_filter(d_min=d_min, d_max=d_max)
+    
     return observations_original, observations_asu, observations_rev
 
 
@@ -138,42 +139,40 @@ class postref_handler(object):
     The function still needs isomorphous reference so, if flag_polar is True,
     miller_array_iso must be supplied in input file.
     """
-    if flag_polar:
-      matches_asu = miller.match_multi_indices(
+    matches_asu = miller.match_multi_indices(
                   miller_indices_unique=miller_array_iso.indices(),
                   miller_indices=observations_asu.indices())
+      
+    I_ref_asu = flex.double([miller_array_iso.data()[pair[0]] for pair in matches_asu.pairs()])
+    miller_indices_ref_asu = flex.miller_index((miller_array_iso.indices()[pair[0]] for pair in matches_asu.pairs()))
+    I_obs_asu = flex.double([observations_asu.data()[pair[1]] for pair in matches_asu.pairs()])
+    sigI_obs_asu = flex.double([observations_asu.sigmas()[pair[1]] for pair in matches_asu.pairs()])
+    miller_indices_ori_asu = flex.miller_index((observations_original.indices()[pair[1]] for pair in matches_asu.pairs()))
 
-      I_ref_asu = flex.double([miller_array_iso.data()[pair[0]] for pair in matches_asu.pairs()])
-      miller_indices_ref_asu = flex.miller_index((miller_array_iso.indices()[pair[0]] for pair in matches_asu.pairs()))
-      I_obs_asu = flex.double([observations_asu.data()[pair[1]] for pair in matches_asu.pairs()])
-      sigI_obs_asu = flex.double([observations_asu.sigmas()[pair[1]] for pair in matches_asu.pairs()])
-      miller_indices_ori_asu = flex.miller_index((observations_original.indices()[pair[1]] for pair in matches_asu.pairs()))
-
-      corr_raw_asu, slope_raw_asu = get_overall_correlation(I_obs_asu, I_ref_asu)
-
-      matches_rev = miller.match_multi_indices(
+    corr_raw_asu, slope_raw_asu = get_overall_correlation(I_obs_asu, I_ref_asu)
+      
+    matches_rev = miller.match_multi_indices(
                   miller_indices_unique=miller_array_iso.indices(),
                   miller_indices=observations_rev.indices())
 
-      I_ref_rev = flex.double([miller_array_iso.data()[pair[0]] for pair in matches_rev.pairs()])
-      miller_indices_ref_rev = flex.miller_index((miller_array_iso.indices()[pair[0]] for pair in matches_rev.pairs()))
-      I_obs_rev = flex.double([observations_rev.data()[pair[1]] for pair in matches_rev.pairs()])
-      sigI_obs_rev = flex.double([observations_rev.sigmas()[pair[1]] for pair in matches_rev.pairs()])
-      miller_indices_ori_rev = flex.miller_index((observations_original.indices()[pair[1]] for pair in matches_rev.pairs()))
+    I_ref_rev = flex.double([miller_array_iso.data()[pair[0]] for pair in matches_rev.pairs()])
+    miller_indices_ref_rev = flex.miller_index((miller_array_iso.indices()[pair[0]] for pair in matches_rev.pairs()))
+    I_obs_rev = flex.double([observations_rev.data()[pair[1]] for pair in matches_rev.pairs()])
+    sigI_obs_rev = flex.double([observations_rev.sigmas()[pair[1]] for pair in matches_rev.pairs()])
+    miller_indices_ori_rev = flex.miller_index((observations_original.indices()[pair[1]] for pair in matches_rev.pairs()))
 
-      corr_raw_rev, slope_raw_rev = get_overall_correlation(I_obs_rev, I_ref_rev)
+    corr_raw_rev, slope_raw_rev = get_overall_correlation(I_obs_rev, I_ref_rev)
 
 
-      if corr_raw_asu >= corr_raw_rev:
-        polar_hkl = 'h,k,l'
-      else:
-        polar_hkl = 'k,h,-l'
-
-    else:
+    if corr_raw_asu >= corr_raw_rev:
       polar_hkl = 'h,k,l'
-      corr_raw_asu = 0
-      corr_raw_rev = 0
+    else:
+      polar_hkl = 'k,h,-l'
 
+    if flag_polar == False:
+      polar_hkl = 'h,k,l'
+   
+    
 
     return polar_hkl, corr_raw_asu, corr_raw_rev
 
@@ -262,7 +261,7 @@ class postref_handler(object):
         miller_array_ref,
         crystal_init_orientation=None):
 
-
+   
     observations_original, observations_asu, observations_rev = self.organize_input(observations,
         iph.d_min_merge,
         iph.d_max,
@@ -387,7 +386,7 @@ class postref_handler(object):
       target_unit_cell = unit_cell.parameters()
       observations = trial_results["observations"][0]
       
-
+        
     #grab img. name
     imgname = pickle_filename
     if iph.file_name_in_img != '':
@@ -409,7 +408,8 @@ class postref_handler(object):
     #the function will take care of it.
     polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original,
           observations_asu, observations_rev, iph.miller_array_iso, iph.flag_polar)
-
+    
+    
     if polar_hkl == 'h,k,l':
       observations_non_polar = observations_asu
     elif polar_hkl == 'k,h,-l':
@@ -563,7 +563,7 @@ class postref_handler(object):
         wavelength)
     polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original,
           observations_asu, observations_rev, iph.miller_array_iso, iph.flag_polar)
-
+    
     if polar_hkl == 'h,k,l':
       observations_sel = observations_asu
     elif polar_hkl == 'k,h,-l':
