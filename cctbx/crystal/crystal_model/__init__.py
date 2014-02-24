@@ -149,12 +149,28 @@ class crystal_model(object):
     self._num_scan_points = len(A_list)
 
   def get_A_at_scan_point(self, t):
-    '''Return the setting matrix with index t. This would typically have been
+    '''Return the setting matrix with index t. This will typically have been
     set with reference to a particular scan, such that it equals the UB matrix
     appropriate at the start of the rotation for the image with array index t
     '''
 
     return self._A_at_scan_points[t]
+
+  def get_U_at_scan_point(self, t):
+    '''Return orientation matrix with index t.'''
+
+    Bt = self.get_B_at_scan_point(t)
+    At = self._A_at_scan_points[t]
+
+    return At * Bt.inverse()
+
+  def get_B_at_scan_point(self, t):
+    '''Return orthogonalisation matrix with index t.'''
+
+    At = self._A_at_scan_points[t]
+    uc = unit_cell(orthogonalization_matrix=At.transpose().inverse())
+
+    return matrix.sqr(uc.fractionalization_matrix()).transpose()
 
   def reset_scan_points(self):
     self._num_scan_points = 0
