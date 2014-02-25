@@ -54,11 +54,11 @@ class target:
     return [a,b,c,d,e,f]
 
   def cluster(self, threshold, method, linkage):
-    """ Do basic hierarchical clustering on the Niggli 
+    """ Do basic hierarchical clustering on the Niggli
     cells created at the start """
     dist_method = 2
     if dist_method is 2:
-      print ("Using Andrews-Bernstein Distance from " +  
+      print ("Using Andrews-Bernstein Distance from " +
       "Andrews & Bernstein J Appl Cryst 47:346 (2014).")
     # 1. Create a numpy array of G6 cells
     G6_cells = []
@@ -81,34 +81,34 @@ class target:
     #import pdb; pdb.set_trace()
     singletons = []
     for cluster in range(max(self.clusters)):
-      this_cluster = np.array([self.niggli_ucs[i] 
-                               for i in range(len(self.niggli_ucs)) 
+      this_cluster = np.array([self.niggli_ucs[i]
+                               for i in range(len(self.niggli_ucs))
                                if self.clusters[i]==cluster+1])
       if len(this_cluster) is not 1:
-        print "".join([("{:<14} {:<5.1f}({:<4.1f}) {:<5.1f}({:<4.1f})" + 
+        print "".join([("{:<14} {:<5.1f}({:<4.1f}) {:<5.1f}({:<4.1f})" +
                         " {:<5.1f}({:<4.1f})").format(
           len(this_cluster),
           np.median(this_cluster[:,0]), np.std(this_cluster[:,0]),
           np.median(this_cluster[:,1]), np.std(this_cluster[:,1]),
-          np.median(this_cluster[:,2]), np.std(this_cluster[:,2])), 
+          np.median(this_cluster[:,2]), np.std(this_cluster[:,2])),
           " {:<6.2f}({:<4.2f}) {:<6.2f}({:<4.2f}) {:<6.2f}({:<4.2f})".format(
           np.median(this_cluster[:,3]), np.std(this_cluster[:,3]),
           np.median(this_cluster[:,4]), np.std(this_cluster[:,4]),
           np.median(this_cluster[:,5]), np.std(this_cluster[:,5]))])
       else:
-        singletons.append("".join([("{:<14} {:<11.1f} {:<11.1f}" + 
+        singletons.append("".join([("{:<14} {:<11.1f} {:<11.1f}" +
                           " {:<11.1f}").format(
           '',
-          np.median(this_cluster[:,0]), 
-          np.median(this_cluster[:,1]), 
-          np.median(this_cluster[:,2])),  
+          np.median(this_cluster[:,0]),
+          np.median(this_cluster[:,1]),
+          np.median(this_cluster[:,2])),
           " {:<12.1f} {:<12.1f} {:<12.1f}".format(
           np.median(this_cluster[:,3]),
           np.median(this_cluster[:,4]),
           np.median(this_cluster[:,5])), '\n']))
     print "{:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
-                             "Num in cluster", 
-                             "Med_a", "Med_b", "Med_c", 
+                             "Num in cluster",
+                             "Med_a", "Med_b", "Med_c",
                              "Med_alpha", "Med_beta", "Med_gamma")
     print "Standard deviations are in brackets."
     print  str(len(singletons)) + " singletons:  \n"
