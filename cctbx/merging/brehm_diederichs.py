@@ -79,7 +79,7 @@ class algorithm2:
       assert lattice_id == len(self.lattices)-1
       return indices[lower_index:]
 
-  def run_core_algorithm(self, group, alternates, use_weights, asymmetric=1, plot=False):
+  def run_core_algorithm(self, group, alternates, use_weights, asymmetric=1, plot=True):
     # asymmetric 0=do nothing; 1=up/up; 2=down/up; 3=up/up + down/up
     #T = Profiler("coset")
 
@@ -151,6 +151,11 @@ class algorithm2:
             #  rij_[(i,j)] -= corr.coefficient()
             #  rij_[(j,i)] -= corr.coefficient()
 
+      focus = wij_.focus()
+      flat_wij = flex.double(list(wij_))
+      selection = (flat_wij>1)
+      print "w_ij is a %dx%d matrix with %d/%d >1 elements with average value %4.1f"%(
+        focus[0],focus[1],selection.count(True),len(wij_), flex.mean(flat_wij.select(selection)))
       rij.append(rij_)
       wij.append(wij_)
     if self.verbose: print "CONSTRUCTED RIJ"
@@ -375,7 +380,7 @@ def run(L,nproc=1,verbose=True):
   result = reassemble(result_sets)
   return algo2.report(result)
 
-def run_multiprocess(L,nproc=20,verbose=True):
+def run_multiprocess(L,nproc=20,verbose=False):
   try :
       import multiprocessing
   except ImportError, e :
