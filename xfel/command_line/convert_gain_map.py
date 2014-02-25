@@ -32,6 +32,12 @@ class fake_config(object):
   def sections(self, i):
     return list(range(8))
 
+  def quadMask(self):
+    return 15
+
+  def roiMask(self, i):
+    return 255
+
 class fake_env(object):
   # XXX Not tested!
 
@@ -69,27 +75,39 @@ def run(args):
                           type="string",
                           help="Filename for the output pickle file",
                           default="gain_map.pickle")
-                  ).process(args=args)
+                  .option("-f", "--detector_format_version",
+                          action="store",
+                          type="string",
+                          help="Detector format version to use for generating active areas and laying out tiles",
+                          default="CXI 8.2")
+                   ).process(args=args)
   output_filename = command_line.options.output_filename
+  detector_format_version = command_line.options.detector_format_version
+  if "CXI" in detector_format_version:
+    address = 'CxiDs1-0|Cspad-0'
+  elif "XPP" in detector_format_version:
+    address ='XppGon-0|Cspad-0'
+  else:
+    address = None
   args = command_line.args
   assert len(args) == 1
   if args[0].endswith('.npy'):
     data = numpy.load(args[0])
-    det = convert_2x2(data)
+    det, active_areas = convert_2x2(data, detector_format_version, address)
   elif args[0].endswith('.txt') or args[0].endswith('.gain'):
     raw_data = numpy.loadtxt(args[0])
     assert raw_data.shape in [(5920, 388), (11840, 194)]
-    det = convert_detector(raw_data)
+    det, active_areas = convert_detector(raw_data, detector_format_version, address)
   img_diff = det
   img_sel = (img_diff > 0).as_1d()
   gain_map = flex.double(img_diff.accessor(), 0)
   gain_map.as_1d().set_selected(img_sel.iselection(), 1/img_diff.as_1d().select(img_sel))
   gain_map /= flex.mean(gain_map.as_1d().select(img_sel))
-  d = cspad_tbx.dpack(data=gain_map)
+  d = cspad_tbx.dpack(data=gain_map, address=address, active_areas=active_areas)
   easy_pickle.dump(output_filename, d)
 
 
-def convert_detector(raw_data):
+def convert_detector(raw_data, detector_format_version, address):
   # https://confluence.slac.stanford.edu/display/PCDS/CSPad+metrology+and+calibration+files%2C+links
   data3d = []
   if raw_data.shape == (5920,388):
@@ -111,14 +129,13 @@ def convert_detector(raw_data):
       data3d.append(fake_cspad_ElementV2(quad_data, i_quad))
     env = fake_env(fake_config())
     evt = fake_evt(data3d)
-    return flex.double(cspad_tbx.CsPadDetector('CxiDs1-0|Cspad-0', evt, env, sections).astype(numpy.float64))
+    return flex.double(cspad_tbx.CsPadDetector(address, evt, env, sections).astype(numpy.float64)), None
   else:
     asic_start = 0
-    use_v1_2_metrology = True
-    if use_v1_2_metrology:
+    if 'XPP' in detector_format_version:
       from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
-      rotations = xpp_active_areas['XPP 8.1']['rotations']
-      active_areas = xpp_active_areas['XPP 8.1']['active_areas']
+      rotations = xpp_active_areas[detector_format_version]['rotations']
+      active_areas = xpp_active_areas[detector_format_version]['active_areas']
       det = flex.double([0]*(1765*1765))
       det.reshape(flex.grid((1765,1765)))
       for i in xrange(64):
@@ -126,9 +143,11 @@ def convert_detector(raw_data):
         col = active_areas[i*4 + 1]
         block = flex.double(raw_data[i * 185:(i+1)*185, :])
         det.matrix_paste_block_in_place(block.matrix_rot90(rotations[i]), row, col)
-      return det
+      return det, None
 
     else:
+      calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
+      sections = parse_calib.calib2sections(calib_dir)
       quad_order = [2,3,0,1]
       for i_quad in range(4):
         asic_size = 185 * 194
@@ -152,7 +171,8 @@ def convert_detector(raw_data):
 
       env = fake_env(fake_config())
       evt = fake_evt(data3d)
-      return flex.double(cspad_tbx.CsPadDetector('XppGon-0|Cspad-0', evt, env, sections).astype(numpy.float64))
+      beam_center, active_areas = cspad_tbx.cbcaa(fake_config(),sections)
+      return flex.double(cspad_tbx.CsPadDetector(address, evt, env, sections).astype(numpy.float64)), active_areas
 
 
 def convert_2x2(data):
