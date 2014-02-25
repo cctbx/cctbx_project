@@ -1,8 +1,7 @@
 from __future__ import division
 from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
-from libtbx.test_utils import Exception_expected, approx_equal
-from libtbx.utils import Sorry
+from libtbx.test_utils import approx_equal
 from scitbx.math import superpose
 from scitbx.array_family import flex
 
@@ -425,16 +424,11 @@ def exercise_01(prefix="exercise_01"):
   "Build poly-ALA beta strand"
   ph = ssb.make_ss_structure_from_sequence(
     beta_strand_template, "".join(["A"]*22))
-  #ph.write_pdb_file(file_name="%s_result.pdb"%prefix)
-  #of=open("%s_answer.pdb"%prefix, "w")
-  #print >> of, beta_strand_answer
-  #of.close()
   sites_1 = ph.atoms().extract_xyz()
   sites_2 = iotbx.pdb.input(source_info=None,
     lines=beta_strand_answer).construct_hierarchy().atoms().extract_xyz()
   assert sites_1.size()==sites_2.size()
   assert approx_equal(sites_1, sites_2, eps=0.002)
-
 
 def exercise_r_t_matrices():
   r,t = ssb.get_r_t_matrices_from_structure(alpha_pdb_str)
@@ -446,28 +440,40 @@ def exercise_r_t_matrices():
   assert approx_equal(t.elems,
                       (1.6740, -1.2223, -2.0756),
                       eps = 0.0001)
-
   try: ssb.get_r_t_matrices_from_structure(t_pdb_str)
-  except Sorry: pass
-  else: raise Exception_expected
+  except Exception, e:
+    assert str(e) == "pdb_str should contain at least 2 residues"
 
 def exercise_ss_structure_from_sequence():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=correct_answer)
+  cs = pdb_inp.xray_structure_simple().crystal_symmetry()
   correct_h = pdb_inp.construct_hierarchy()
   test_h = ssb.make_ss_structure_from_sequence(alpha_pdb_str,
     sequence="ACEDGFIHKMLNQPSRTWVY")
-
-  # why this assert fails:
+  # why this passes...
+  for m1, m2 in zip(correct_h.models(), test_h.models()):
+    m1.is_similar_hierarchy(  other=m2)
+    m1.is_identical_hierarchy(other=m2)
+    for c1, c2 in zip(m1.chains(), m2.chains()):
+      c1.is_similar_hierarchy(  other=c2)
+      c1.is_identical_hierarchy(other=c2)
+      for rg1, rg2 in zip(c1.residue_groups(), c2.residue_groups()):
+        rg1.is_similar_hierarchy(  other=rg2)
+        rg1.is_identical_hierarchy(other=rg2)
+  f1 = correct_h.extract_xray_structure(crystal_symmetry=cs).structure_factors(
+    algorithm="direct", d_min=2).f_calc().data()
+  f2 = test_h.extract_xray_structure(crystal_symmetry=cs).structure_factors(
+    algorithm="direct", d_min=2).f_calc().data()
+  assert approx_equal(f1, f2)
+  assert test_h.as_str() == correct_h.as_str()
+  # ...and this fails ?
   #assert correct_h.is_similar_hierarchy(other=test_h)
-
-  # but this is not:
-  #assert test_h.as_str() == correct_h.as_str()
 
   assert approx_equal(test_h.atoms().extract_xyz(),
                       correct_h.atoms().extract_xyz(), eps=0.002)
   try: ssb.make_ss_structure_from_sequence(alpha_pdb_str, sequence="")
-  except Sorry: pass
-  else: raise Exception_expected
+  except Exception, e:
+    assert str(e) == "sequence should contain at least one residue."
 
 
 def exercise():
