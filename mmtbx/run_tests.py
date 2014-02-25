@@ -148,6 +148,7 @@ tst_list = (
   "$D/disorder/tst.py",
   "$D/disorder/tst_backbone.py",
   "$D/disorder/tst_analyze_model.py",
+  "$D/refinement/tst_minimization_ncs_constraints.py",
   )
 
 def run():

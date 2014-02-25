@@ -1798,6 +1798,7 @@ mmtbx/refinement/fit_rotamers.py -text
 mmtbx/refinement/flip_peptides.py -text
 mmtbx/refinement/geometry_minimization.py -text
 mmtbx/refinement/inspect_tardy_trajectory.py svneol=native#text/x-python
+mmtbx/refinement/minimization_ncs_constraints.py -text
 mmtbx/refinement/occupancies.py -text
 mmtbx/refinement/orca.py svneol=native#text/x-python
 mmtbx/refinement/real_space/__init__.py -text
@@ -1826,6 +1827,7 @@ mmtbx/refinement/tardy.py svneol=native#text/x-python
 mmtbx/refinement/targets.py -text
 mmtbx/refinement/tst_fit_rotamers.py svneol=native#text/x-python
 mmtbx/refinement/tst_group.py -text
+mmtbx/refinement/tst_minimization_ncs_constraints.py -text
 mmtbx/refinement/tst_misc.py -text
 mmtbx/refinement/tst_occupancy_selections.py svneol=native#text/x-python
 mmtbx/refinement/tst_real_space_simple.py -text
