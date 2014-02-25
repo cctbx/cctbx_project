@@ -1679,16 +1679,16 @@ ATOM    122  OE2 GLU E  16      14.962  18.486  20.345  1.00 20.00           O
 TER
 """
 
-def exercise_00():
+def exercise_00(prefix="tst_2_exercise_00"):
   """
   Simple one helix case.
-  Crashes on chevy, works on marbles. 
+  Crashes on chevy, works on marbles.
   """
   real_h = iotbx.pdb.input(source_info=None,
     lines=exercise_00_answer).construct_hierarchy()
   result_h = iotbx.pdb.input(source_info=None,
     lines=exercise_00_answer).construct_hierarchy()
-  real_h.write_pdb_file(file_name="target.pdb")
+  real_h.write_pdb_file(file_name="%s_target.pdb"%prefix)
   h_records = """\
 HELIX    1   1 ALA E    1  ALA E   16  1                                  16
 """
@@ -1698,6 +1698,7 @@ HELIX    1   1 ALA E    1  ALA E   16  1                                  16
       iotbx.pdb.input(source_info=None,lines=ideal_on_target).
       construct_hierarchy().atoms().extract_xyz(),eps=0.002)
   ssb.substitute_ss(result_h, helices)
+  result_h.write_pdb_file(file_name="%s_result.pdb"%prefix)
   sites_2 = result_h.atoms().extract_xyz()
   sites_3 = iotbx.pdb.input(source_info=None,
     lines=ideal_on_target).construct_hierarchy().atoms().extract_xyz()
@@ -1706,7 +1707,11 @@ HELIX    1   1 ALA E    1  ALA E   16  1                                  16
   assert dmmm2[2]<0.1 # comparing ideal with ideal
 
 def exercise_01():
-  # This test is not necessary, nearly same is done is exercise_00
+  """
+  Similar to exercise_00. Asserts correct behaviour of loops (other than
+  assigned secondary structure elements). Also exercises having several helices
+  (unlike just one helix in exercise_00).
+  """
   real_h = iotbx.pdb.input(source_info=None,
     lines=structure_to_substitue_initial).construct_hierarchy()
   result_h = iotbx.pdb.input(source_info=None,
