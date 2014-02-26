@@ -380,7 +380,7 @@ def run(L,nproc=1,verbose=True):
   result = reassemble(result_sets)
   return algo2.report(result)
 
-def run_multiprocess(L,nproc=20,verbose=False):
+def run_multiprocess(L,nproc=20, verbose=False, plot=True):
   try :
       import multiprocessing
   except ImportError, e :
@@ -407,6 +407,7 @@ def run_multiprocess(L,nproc=20,verbose=False):
     pool.apply_async(
       func=algo2,
       args=[input_queue, alternates, True, 3],
+      kwds={'plot': plot},
       callback=_mpcallback)
   pool.close()
   pool.join()
