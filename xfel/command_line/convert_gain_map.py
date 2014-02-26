@@ -148,7 +148,6 @@ def convert_detector(raw_data, detector_format_version, address):
     else:
       calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
       sections = parse_calib.calib2sections(calib_dir)
-      quad_order = [2,3,0,1]
       for i_quad in range(4):
         asic_size = 185 * 194
         section_size = asic_size * 4
@@ -167,7 +166,7 @@ def convert_detector(raw_data, detector_format_version, address):
             quad_asics.append(numpy.concatenate((a,b),axis=1))
         quad_data = numpy.dstack(quad_asics)
         quad_data = numpy.rollaxis(quad_data, 2,0)
-        data3d.append(fake_cspad_ElementV2(quad_data, quad_order[i_quad]))
+        data3d.append(fake_cspad_ElementV2(quad_data, i_quad))
 
       env = fake_env(fake_config())
       evt = fake_evt(data3d)
