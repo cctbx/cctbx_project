@@ -321,7 +321,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
         from cxi_user import post_outlier_rejection
         self.indexed_pairs = indexed_pairs
         self.spots = spots
-        post_outlier_rejection(self,image_number,cb_op_to_primitive,kwargs)
+        post_outlier_rejection(self,image_number,cb_op_to_primitive,self.horizons_phil,kwargs)
         return
 
     ########### finished with user-supplied code

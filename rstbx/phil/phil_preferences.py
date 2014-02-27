@@ -66,6 +66,12 @@ integration {
   mask_pixel_value = None
     .type = int
     .help = pixels set to this value will be ignored during integration
+  mosaic {
+    refinement_target = *LSQ ML
+      .type = choice
+      .help = Modeling of still shots, refinement of crystal physical parameters by one of two targets
+      .help = least squares (LSQ) or maximum likelihood (ML).
+  }
 }
 """
 indexing_defs = """

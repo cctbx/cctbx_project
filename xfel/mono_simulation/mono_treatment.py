@@ -52,8 +52,8 @@ class refinement_base(object):
 class refinement(refinement_base):
   grid = xrange(-20,20)
 
-  def __init__(OO,self,use_inverse_beam=False):
-
+  def __init__(OO,self,use_inverse_beam=False,mosaic_refinement_target="LSQ"):
+    OO.mosaic_refinement_target = mosaic_refinement_target # least squares or max-likelihood
     refinement_base.__init__(OO,self,use_inverse_beam)
 
   def contour_plot(OO):
@@ -283,7 +283,7 @@ class refinement(refinement_base):
       final = 360.*helper.fvec_callable_pvr(results)
       #Guard against misindexing -- seen in simulated data, with zone nearly perfectly aligned
       guard_stats = flex.max(final), flex.min(final)
-      if guard_stats[0] > 2.0 or guard_stats[1] < -2.0:
+      if False and REMOVETEST_KILLING_LEGITIMATE_EXCURSIONS (guard_stats[0] > 2.0 or guard_stats[1] < -2.0):
         raise Exception("Misindexing diagnosed by meaningless excursion angle (bandpass_gaussian model)");
       print "The mean excursion is %7.3f degrees"%(flex.mean(final))
 
@@ -318,13 +318,29 @@ class refinement(refinement_base):
       Vector       = col((sum_te_u, sum_te))
       solution     = Normal_Mat.inverse() * Vector
       s_ang = 1./(2*solution[0])
-      print "Best fit Scheerer domain size is %9.2f ang"%(
+      print "Best LSQ fit Scheerer domain size is %9.2f ang"%(
         s_ang)
       tan_phi_rad = helper.last_set_orientation.unit_cell().d(OO.reserve_indices) / (2. * s_ang)
       tan_phi_deg = tan_phi_rad * 180./math.pi
       k_degrees = solution[1]* 180./math.pi
-      print "The full mosaicity is %8.3f deg; half-mosaicity %9.3f"%(2*k_degrees, k_degrees)
+      print "The LSQ full mosaicity is %8.3f deg; half-mosaicity %9.3f"%(2*k_degrees, k_degrees)
       tan_outer_deg = tan_phi_deg + k_degrees
+
+      if OO.mosaic_refinement_target=="ML":
+        from xfel.mono_simulation.max_like import minimizer
+        print "input", s_ang,2. * solution[1]*180/math.pi
+        # coerce the estimates to be positive for max-likelihood
+        lower_limit_domain_size = math.pow(
+         helper.last_set_orientation.unit_cell().volume(),
+         1./3.)*20 # 10-unit cell block size minimum reasonable domain
+
+        d_estimate = max(s_ang, lower_limit_domain_size)
+        M = minimizer(d_i = dspacings, psi_i = excursion_rad, eta_rad = abs(2. * solution[1]),
+                      Deff = d_estimate)
+        print "output",1./M.x[0], M.x[1]*180./math.pi
+        tan_phi_rad_ML = helper.last_set_orientation.unit_cell().d(OO.reserve_indices) / (2. / M.x[0])
+        tan_phi_deg_ML = tan_phi_rad_ML * 180./math.pi
+        tan_outer_deg_ML = tan_phi_deg_ML + M.x[1]*180./math.pi
 
       if False: # Excursion vs resolution fit
         from matplotlib import pyplot as plt
@@ -335,10 +351,16 @@ class refinement(refinement_base):
         plt.plot(two_thetas, -tan_phi_deg, "r.")
         plt.plot(two_thetas, tan_outer_deg, "r.")
         plt.plot(two_thetas, -tan_outer_deg, "r.")
+        if OO.mosaic_refinement_target=="ML":  plt.plot(two_thetas, tan_outer_deg_ML, "g.")
         plt.show()
 
-      OO.parent.inputai.setMosaicity(2*k_degrees) # full width
-      return results, helper.last_set_orientation,s_ang # full width domain size, angstroms
+      if OO.mosaic_refinement_target=="ML":
+        OO.parent.inputai.setMosaicity(M.x[1]*180./math.pi) # full width, degrees
+        return results, helper.last_set_orientation,1./M.x[0] # full width domain size, angstroms
+      else:
+        assert OO.mosaic_refinement_target=="LSQ"
+        OO.parent.inputai.setMosaicity(2*k_degrees) # full width
+        return results, helper.last_set_orientation,s_ang # full width domain size, angstroms
 
   def show_plot(OO,excursi,rmsdpos,minimum):
       excursi.reshape(flex.grid(len(OO.grid), len(OO.grid)))
@@ -442,11 +464,11 @@ def pre_get_predictions(inputai,horizons_phil,raw_image,imageindex,spotfinder,li
     wrapbp3.ucbp3.picture_fast_slow() # abbreviated
     return wrapbp3
 
-def post_outlier_rejection(parent,image_number,cb_op_to_primitive,kwargs):
+def post_outlier_rejection(parent,image_number,cb_op_to_primitive,horizons_phil,kwargs):
   verbose = False
   """parent supplies all the "self" variables referred to above"""
   # first refine rotx and roty
-  R = refinement(parent)
+  R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target)
   if verbose: excursions,positions = R.contour_plot()
   minimum = R.refine_rotx_roty2()
   if verbose: R.show_plot(excursions,positions,minimum)
@@ -471,7 +493,7 @@ def post_outlier_rejection(parent,image_number,cb_op_to_primitive,kwargs):
       minimum[1].unit_cell().parameters()[2])
 
   # last refine rotx and roty
-  R = refinement(parent)
+  R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target)
   if verbose: excursions,positions = R.contour_plot()
   minimum = R.refine_rotx_roty2()
   if verbose: R.show_plot(excursions,positions,minimum)
