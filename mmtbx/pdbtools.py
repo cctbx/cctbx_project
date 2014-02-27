@@ -142,6 +142,10 @@ change_of_basis = None
 renumber_residues = False
   .type = bool
   .help = Re-number residues
+increment_resseq = None
+  .type = int
+  .help = Increment residue number
+  .short_caption = Increment residue numbers by
 truncate_to_polyala = False
   .type = bool
   .help = Truncate a model to poly-Ala.
@@ -756,7 +760,8 @@ def convert_semet_to_met (pdb_hierarchy, xray_structure) :
           ag_atom.hetero = False
   return n_mse
 
-def renumber_residues(pdb_hierarchy, atom_selection=None, log=None):
+def renumber_residues(pdb_hierarchy, renumber_from=None,
+    atom_selection=None, log=None):
   if (log is None) : log = null_out()
   selected_i_seqs = None
   if (atom_selection is not None) :
@@ -772,10 +777,16 @@ def renumber_residues(pdb_hierarchy, atom_selection=None, log=None):
         elif (len(intersection) != len(chain_i_seqs)) :
           print >> log, "Warning: chain '%s' is only partially selected (%d out of %d) - will not renumber." % (chain.id, len(intersection), len(chain_i_seqs))
           continue
-      counter = 1
-      for rg in chain.residue_groups():
-        rg.resseq=counter
-        counter += 1
+      if (renumber_from is None) :
+        counter = 1
+        for rg in chain.residue_groups():
+          rg.resseq=counter
+          counter += 1
+      else :
+        for rg in chain.residue_groups() :
+          resseq = rg.resseq_as_int()
+          resseq += renumber_from
+          rg.resseq = "%4d" % resseq
 
 def write_model_file(pdb_hierarchy, crystal_symmetry, file_name, output_format):
   assert output_format in ("pdb", "mmcif")
@@ -920,9 +931,10 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
       params=params.modify.rename_chain_id,
       log = log)
 ### Renumber residues
-  if (params.modify.renumber_residues):
+  if (params.modify.increment_resseq) or (params.modify.renumber_residues) :
     utils.print_header("Re-numbering residues", out = log)
     renumber_residues(pdb_hierarchy = pdb_hierarchy,
+      renumber_from=params.modify.increment_resseq,
       atom_selection=params.modify.selection,
       log=log)
 ### segID manipulations
