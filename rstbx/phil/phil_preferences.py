@@ -71,6 +71,19 @@ integration {
       .type = choice
       .help = Modeling of still shots, refinement of crystal physical parameters by one of two targets
       .help = least squares (LSQ) or maximum likelihood (ML).
+    kludge1 = 1
+      .type = float
+      .help = bugfix 1 of 2 for protocol 6, equation 2.  When matching obs and model reflections,
+      .help = must increase the provisional model mosaicity so as to model enough spots.
+      .help = default 1 might be too small for a bad model, aborting indexing with too few matches.
+      .help = > 2 might be too large and could lead to misindexing.
+    domain_size_lower_limit = 0
+      .type = float
+      .help = Mosaic blocks must be at least this many unit cells on edge.
+      .help = Default 0, same as assuming infinite crystal, domain size not modeled upon entering algorithm.
+      .help = too-small value predicts too many spots, leading to misindexing.
+      .help = too-large value doesn't predict enough spots
+      .help = choose lowest value physically reasonable, 10 unit cells.
   }
 }
 """

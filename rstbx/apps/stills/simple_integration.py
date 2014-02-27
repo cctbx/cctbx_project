@@ -83,6 +83,10 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
     if self.horizons_phil.integration.model == "user_supplied":
 
+     lower_limit_domain_size = math.pow(
+       self.inputai.getOrientation().unit_cell().volume(),
+       1./3.)*10 # 10-unit cell block size minimum reasonable domain
+     actual_used_domain_size = kwargs.get("domain_size_ang",lower_limit_domain_size)
      if cb_op_to_primitive==None:
 
       from cxi_user import pre_get_predictions
@@ -91,7 +95,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
         imageindex = self.frame_numbers[self.image_number],
         spotfinder = self.spotfinder,
         limiting_resolution = self.limiting_resolution,
-        domain_size_ang = kwargs.get("domain_size_ang",0))
+        domain_size_ang = actual_used_domain_size)
       self.current_orientation = self.inputai.getOrientation()
       self.current_cb_op_to_primitive = cb_op_to_primitive
 
@@ -114,18 +118,19 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       self.inputai.setOrientation(primitive_orientation)
       from cxi_user import pre_get_predictions
       if self.block_counter < 2:
-        KLUDGE = 1.0 # bugfix 1 of 2 for protocol 6, equation 2
+        KLUDGE = self.horizons_phil.integration.mosaic.kludge1 # bugfix 1 of 2 for protocol 6, equation 2
         self.inputai.setMosaicity(KLUDGE*self.inputai.getMosaicity())
       self.bp3_wrapper = pre_get_predictions(self.inputai, self.horizons_phil,
         raw_image = self.imagefiles.images[self.image_number],
         imageindex = self.frame_numbers[self.image_number],
         spotfinder = self.spotfinder,
         limiting_resolution = self.limiting_resolution,
-        domain_size_ang = kwargs.get("domain_size_ang",0))
+        domain_size_ang = actual_used_domain_size)
 
       BPpredicted = self.bp3_wrapper.ucbp3.selected_predictions_labelit_format()
       BPhkllist = self.bp3_wrapper.ucbp3.selected_hkls()
 
+      self.actual = actual_used_domain_size
       self.predicted = BPpredicted
       primitive_hkllist = BPhkllist
       #not sure if matrix needs to be transposed first for outputting HKL's???:
@@ -188,8 +193,9 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     pxlsz = self.pixel_size
     self.get_predictions_accounting_for_centering(cb_op_to_primitive,**kwargs)
     FWMOSAICITY = self.inputai.getMosaicity()
-    DOMAIN_SZ_ANG = kwargs.get("domain_size_ang",0)
-    self.inputpd["symmetry"].show_summary(prefix="EXCURSION REPORT FWMOS= %6.4f DOMAIN= %6.1f "%(FWMOSAICITY,DOMAIN_SZ_ANG))
+    DOMAIN_SZ_ANG = kwargs.get("domain_size_ang",self.actual)
+    refineflag = {True:0,False:1}[kwargs.get("domain_size_ang",0)==0]
+    self.inputpd["symmetry"].show_summary(prefix="EXCURSION%1d REPORT FWMOS= %6.4f DOMAIN= %6.1f "%(refineflag,FWMOSAICITY,DOMAIN_SZ_ANG))
     from annlib_ext import AnnAdaptor
     self.cell = self.inputai.getOrientation().unit_cell()
     query = flex.double()
