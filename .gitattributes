@@ -1529,6 +1529,7 @@ mmtbx/command_line/altloc_remediate.py -text
 mmtbx/command_line/analyze_peptides.py -text
 mmtbx/command_line/analyze_static_disorder.py -text
 mmtbx/command_line/angle.py -text
+mmtbx/command_line/anneal_real_space.py -text
 mmtbx/command_line/b_factor_statistics.py -text
 mmtbx/command_line/build_alt_confs.py -text
 mmtbx/command_line/cablam_training.py -text
@@ -1557,6 +1558,7 @@ mmtbx/command_line/flip_peptides.py -text
 mmtbx/command_line/fmodel.py -text
 mmtbx/command_line/fmodel_simple.py -text
 mmtbx/command_line/fobs_minus_fobs_map.py -text
+mmtbx/command_line/generate_disorder.py -text
 mmtbx/command_line/get_related_ensemble.py -text
 mmtbx/command_line/grow_density.py -text
 mmtbx/command_line/interpolate.py -text
@@ -1845,6 +1847,7 @@ mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_alignment.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/regression/tst_altloc_remediate.py -text
+mmtbx/regression/tst_anneal_real_space.py -text
 mmtbx/regression/tst_anomalous_substructure.py -text
 mmtbx/regression/tst_b_factor_statistics.py -text
 mmtbx/regression/tst_build_alt_confs.py -text
@@ -1858,6 +1861,7 @@ mmtbx/regression/tst_examples.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
 mmtbx/regression/tst_fmodel_misc.py -text
 mmtbx/regression/tst_fmodel_no_cryst1.py -text
+mmtbx/regression/tst_generate_disorder.py -text
 mmtbx/regression/tst_geo_min_restraints_phil.py -text
 mmtbx/regression/tst_interpolation.py -text
 mmtbx/regression/tst_isomorphous_difference_misc.py -text
