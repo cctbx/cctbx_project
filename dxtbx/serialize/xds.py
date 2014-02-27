@@ -147,9 +147,12 @@ class to_xds(object):
 
   def XDS_INP(self, out=None,
               space_group_number=None,
+              real_space_a=None, real_space_b=None, real_space_c=None,
               job_card="XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT"):
     if out is None:
       out = sys.stdout
+      
+    assert [real_space_a, real_space_b, real_space_c].count(None) in (0,3)
 
     sensor = self.get_detector()[0].get_type()
     fast, slow = self.detector_size
@@ -212,6 +215,14 @@ class to_xds(object):
     print >> out, 'JOB=%s' %job_card
     if space_group_number is not None:
       print >> out, 'SPACE_GROUP_NUMBER= %i' %space_group_number
+    if [real_space_a, real_space_b, real_space_c].count(None) == 0:      
+      R = self.imagecif_to_xds_transformation_matrix
+      unit_cell_a_axis = R * matrix.col(real_space_a)
+      unit_cell_b_axis = R * matrix.col(real_space_b)
+      unit_cell_c_axis = R * matrix.col(real_space_c)
+      print >> out, "UNIT_CELL_A-AXIS= %.6f %.6f %.6f" %unit_cell_a_axis.elems
+      print >> out, "UNIT_CELL_B-AXIS= %.6f %.6f %.6f" %unit_cell_b_axis.elems
+      print >> out, "UNIT_CELL_C-AXIS= %.6f %.6f %.6f" %unit_cell_c_axis.elems
 
   def xparm_xds(self, real_space_a, real_space_b, real_space_c,
                 space_group, out=None):
