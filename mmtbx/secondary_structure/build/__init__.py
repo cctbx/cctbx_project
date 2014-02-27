@@ -198,7 +198,7 @@ def substitute_ss(real_h,
                     #hydrogen_weight = 400,
                     log=null_out()):
   """
-  Substitute helices in real_h hierarchy with ideal ones _in_place_. 
+  Substitute helices in real_h hierarchy with ideal ones _in_place_.
   Returns nothing.
   helices - list with HELIX records. Types supported:
   1:alpha_pdb_str, 3:alpha_pi_pdb_str, 5: alpha310_pdb_str
@@ -284,7 +284,7 @@ def substitute_ss(real_h,
     chirality                = True,
     planarity                = True,
     log                      = log)
-  
+
 
 def beta():
   pdb_hierarchy = make_ss_structure_from_sequence(beta_pdb_str,
