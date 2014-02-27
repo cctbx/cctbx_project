@@ -146,6 +146,7 @@ class to_xds(object):
     return self._sweep.get_template()
 
   def XDS_INP(self, out=None,
+              space_group_number=None,
               job_card="XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT"):
     if out is None:
       out = sys.stdout
@@ -209,6 +210,8 @@ class to_xds(object):
 
     print >> out, 'DATA_RANGE= %d %d' % start_end
     print >> out, 'JOB=%s' %job_card
+    if space_group_number is not None:
+      print >> out, 'SPACE_GROUP_NUMBER= %i' %space_group_number
 
   def xparm_xds(self, real_space_a, real_space_b, real_space_c,
                 space_group, out=None):
