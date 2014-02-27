@@ -278,15 +278,8 @@ def get_queue_machine_details():
   return rc
 
 def get_python_bin(source):
-  if os.path.islink(source):
-    source = os.path.realpath(source)
-  source=source[:-11]
-  print source
-  for d in os.listdir(source):
-    if d!="build": continue
-    for e in os.listdir(os.path.join(source, d)):
-      for f in os.listdir(os.path.join(source, d, e)):
-        if f=="bin": return os.path.join(source, d, e, f, "phenix.python")
+  import libtbx.load_env
+  return libtbx.env.python_exe.sh_value()
 
 def run(phenix_source=None,
         where=None,
@@ -372,10 +365,10 @@ def run(phenix_source=None,
       print 'similar to\n\n> %s\n' % (commands[0])
 
   elif commands is not None and os.path.exists(commands):
-    if code is None: code = commands[:8]
+    if code is None: code = commands[:10]
 
   elif python_script is not None and os.path.exists(python_script):
-    if code is None: code = python_script.replace("../","")[:8]
+    if code is None: code = python_script.replace("../","")[:10]
 
   code = code.replace("/", "")
 
