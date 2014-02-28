@@ -1,6 +1,7 @@
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.merge
+# LIBTBX_SET_DISPATCHER_NAME xfel.merge
 #
 # $Id$
 
@@ -1319,7 +1320,8 @@ def run(args):
   if ((work_params.d_min is None) or
       (work_params.data is None) or
       ( (work_params.model is None) and work_params.scaling.algorithm != "mark1") ) :
-    raise Usage("cxi.merge "
+    command_name = os.environ["LIBTBX_DISPATCHER_NAME"]
+    raise Usage(command_name + " "
                 "d_min=4.0 "
                 "data=~/scratch/r0220/006/strong/ "
                 "model=3bz1_3bz2_core.pdb")
