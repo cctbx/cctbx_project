@@ -336,11 +336,14 @@ class common_mode_correction(mod_event_info):
     else:
       self.cspad_img = cspad_tbx.image(
         self.address, self.config, evt, env, self.sections)
+
     if self.cspad_img is None:
-      self.nfail += 1
-      self.logger.warning("event(): no image, shot skipped")
-      evt.put(True, "skip_event")
+      if cspad_tbx.address_split(self.address)[2] != 'Andor':
+        self.nfail += 1
+        self.logger.warning("event(): no image, shot skipped")
+        evt.put(True, "skip_event")
       return
+
     self.cspad_img = flex.double(self.cspad_img.astype(numpy.float64))
 
     # If a dark image was provided, subtract it from the image.  There
