@@ -262,14 +262,16 @@ fi
 out=`readlink -fn "${out}/${trial}"`
 
 # Copy the pyana configuration file, while substituting paths to any
-# phil files, and recursively copying them, too.  Then write a
-# configuration file for the analysis of each stream by substituting
-# the directory names with appropriate directories in ${out}, and
-# appending the stream number to the base name.  Create a run-script
-# for each job, as well as a convenience script to submit all the jobs
-# to the queue.  XXX If the same phil file is referenced more than
-# once, there will be identical copies.  XXX Dump the environment in
-# here, too?
+# phil files, and recursively copying them, too.  Once paths have been
+# subjected to substitution, keep track of what output directories
+# need to be created.  Then write a configuration file for the
+# analysis of each stream by substituting the directory names with
+# appropriate directories in ${out}, and appending the stream number
+# to the base name.  Create a run-script for each job, as well as a
+# convenience script to submit all the jobs to the queue.  XXX If the
+# same phil file is referenced more than once, there will be identical
+# copies.  XXX Dump the environment in here, too?
+directories="${out}/stdout\n"
 nphil="0"
 oifs=${IFS}
 IFS=""
@@ -296,11 +298,64 @@ IFS=${oifs}
 mkdir -p "${out}"
 for s in ${streams}; do
     test "X${single_host}" = "Xyes" && s="NN"
-    sed -e "s:\([[:alnum:]]\+\)\(_dirname[[:space:]]*=\).*:\1\2 ${out}/\1:"    \
-        -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1s${s}-:" \
-        -e "s/RUN_NO/${run_int}/g"                                             \
-        -e "s:\(trial_id[[:space:]]*=\).*:\1${trial}:"                         \
-        "${out}/pyana.cfg" > "${out}/pyana_s${s}.cfg"
+
+    # XXX No point in storing several files for each stream anymore:
+    # they're all identical!
+    oifs=${IFS}
+    IFS=""
+    rm -f "${tmpdir}/pyana_s${s}.cfg"
+    while read -r line; do
+        # XXX Legacy substitution for backwards compatibility.  Should
+        # not be necessary with interpolation.
+        line=`echo "${line}" | sed -e "s/RUN_NO/${run_int}/g"`
+
+        key=`echo "${line}" | cut -d '=' -f 1`
+        val=`basename "\`echo "${line}" \
+            | sed -e "s/.*=[[:space:]]*\(.*\)[[:space:]]*/\1/"\`"`
+        key_trim=`echo "${key}" \
+            | sed -e "s/^[[:space:]]*//" -e "s/[[:space:]]*\$//"`
+
+        if test "${key_trim}" = "mat_path"; then
+            line="${key}= ${out}/out/${val}"
+            directories="${directories}${out}/out\n"
+
+        elif test "${key_trim}" = "max_out"; then
+            line="${key}= ${out}/out/${val}"
+            directories="${directories}${out}/out\n"
+
+        elif test "${key_trim}" = "mean_out"; then
+            line="${key}= ${out}/out/${val}"
+            directories="${directories}${out}/out\n"
+
+        elif test "${key_trim}" = "integration_out"; then
+            line="${key}= ${out}/integration/${val}"
+            directories="${directories}${out}/integration\n"
+
+        elif test "${key_trim}" = "std_out"; then
+            line="${key}= ${out}/out/${val}"
+            directories="${directories}${out}/out\n"
+
+        elif test "${key_trim}" = "table_path"; then
+            line="${key}= ${out}/out/${val}"
+            directories="${directories}${out}/out\n"
+
+        elif test "${key_trim}" = "trial_id"; then
+            line="${key}= ${trial}"
+
+        elif `echo "${key_trim}" | grep -q "^[[:alnum:]]\+_basename$"`; then
+            # XXX Legacy substitution for mod_hitfind.
+            line="${key}= ${val}s${s}"
+
+        elif `echo "${key_trim}" | grep -q "^[[:alnum:]]\+_dirname$"`; then
+            # XXX Legacy substitution for mod_hitfind.
+            d=`echo "${key_trim}" | sed -e "s/_dirname$//"`
+            line="${key}= ${out}/${d}"
+            directories="${directories}${out}/${d}\n"
+
+        fi
+        echo "${line}" >> "${tmpdir}/pyana_s${s}.cfg"
+    done < "${tmpdir}/pyana.cfg"
+    IFS=${oifs}
 
     # Create the run-script for stream ${s}.  Fall back on using a
     # single processor if the number of available processors cannot be
@@ -343,14 +398,7 @@ cp --preserve=timestamps "${cfg}" "${out}/pyana.cfg"
 
 # Create all directories for the output from the analysis.  This
 # eliminates a race condition when run in parallel.
-mkdir -p "${out}/stdout"
-directories=`awk -F=                                    \
-    '/^[[:space:]]*[[:alnum:]]+_dirname[[:space:]]*=/ { \
-         gsub(/^[ \t]/, "", $2);                        \
-         gsub(/[ \t]$/, "", $2);                        \
-         printf("\"%s\"\n", $2);                        \
-     }' "${out}"/pyana_s[0-9N][0-9N].cfg | sort -u`
-test -n "${directories}" && echo -e "${directories}" | xargs -d '\n' mkdir -p
+echo -e "${directories}" | grep -v "^$" | sort -u | xargs -d '\n' mkdir -p
 
 # The PBS script is not to be executed directly, but has to be passed
 # to qsub.  XXX The maximum wallclock limit is hardcoded to suit the
