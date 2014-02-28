@@ -167,5 +167,8 @@ def correct_hydrogen_geometries(hierarchy,
     sites_cart[i_seq] = xyz
   if xray_structure:
     xray_structure.set_sites_cart(sites_cart)
+  else:
+    for i, atom in enumerate(hierarchy.atoms()):
+      atom.xyz = sites_cart[i]
   corrected_hydrogen_count = i_seqs
   return bad_hydrogen_count, corrected_hydrogen_count
