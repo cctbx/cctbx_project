@@ -187,7 +187,6 @@ cctbx/multipolar.py -text
 cctbx/multipolar/SConscript -text
 cctbx/multipolar/aspherical.h -text
 cctbx/multipolar/aspherical_ext.cpp -text
-cctbx/multipolar/regression/run.py -text
 cctbx/multipolar/regression/tri.pdb -text
 cctbx/multipolar/regression/tst_multipolar.py -text
 cctbx/omz/__init__.py svneol=native#text/x-python

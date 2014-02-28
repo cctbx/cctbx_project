@@ -91,6 +91,11 @@ def exercise(file_name=None):
     f=file(pdb_file, "wb")
     f.write(pdbs[0])
     f.close()
+
+  from iotbx import pdb
+  pdb_inp = pdb.input(pdb_file)
+  hierarchy = pdb_inp.construct_hierarchy()
+    
   processed_pdb_file = monomer_library.pdb_interpretation.process(
                                        mon_lib_srv               = mon_lib_srv,
                                        ener_lib                  = ener_lib,
@@ -120,8 +125,11 @@ def exercise(file_name=None):
     atom_symbols.append(e)
     atom_charges.append(c)
 
-  for n, e, c, a in zip(atom_numbers, atom_symbols, atom_charges, atom_altlocs):
-    print ' "%2d" "%2s" "%-2s" "%1s" ' % (n , e, c, a)
+  for i, (n, e, c, a) in enumerate(zip(atom_numbers,
+                                       atom_symbols,
+                                       atom_charges,
+                                       atom_altlocs)):
+    print ' "%2d" "%2s" "%-2s" "%1s" %s' % (n, e, c, a, atoms[i].charge)
   print
 
   bond_proxies_simple = geometry.pair_proxies(sites_cart =
