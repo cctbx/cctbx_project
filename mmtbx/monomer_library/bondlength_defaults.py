@@ -1,8 +1,152 @@
-
+#
+# Data from Acta Cryst. D62 (2006), 678-682.
+#
 from __future__ import division
-import sys
+import os, sys
+from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter # modified?????
 
-defaults = {
+metal_defaults = {
+  "Na" : {
+    "O" : {
+      "HOH" : [2.41, 0.10],
+      "ASP" : [2.41, 0.10],
+      },
+    },
+  "Mg" : {
+    "O" : {
+      "HOH" : [2.07, 0.05],
+      "ASP" : [2.07, 0.10],
+      },
+    },
+  "K" : {
+    "O" : {
+      "HOH" : [2.81, 0.15],
+      "ASP" : [2.82, 0.10],
+      },
+    },
+  "Ca" : {
+    "O" : {
+      "HOH" : [2.39, 0.10],
+      "ASP" : [2.36, 0.10],
+      },
+    },
+  "Mn" : {
+    "O" : {
+      "HOH" : [2.19, 0.05],
+      "ASP" : [2.15, 0.05],
+      },
+    "N" : {
+      "HIS" : [2.21, 0.10],
+      },
+    "S" : {
+      "CYS" : [2.35, 0.25],
+      },
+    },
+  "Fe" : {
+    "O" : {
+      "HOH" : [2.09, 0.10],
+      "ASP" : [2.04, 0.10],
+      },
+    "N" : {
+      "HIS" : [2.16, 0.15],
+      },
+    "S" : {
+      "CYS" : [2.30, 0.05],
+      },
+    },
+  "Co" : {
+    "O" : {
+      "HOH" : [2.09, 0.10],
+      "ASP" : [2.05, 0.05],
+      },
+    "N" : {
+      "HIS" : [2.14, 0.10],
+      },
+    "S" : {
+      "CYS" : [2.25, 0.15],
+      },
+    },
+  "Cu" : {
+    "O" : {
+      "HOH" : [2.13, 0.25],
+      "ASP" : [1.99, 0.15],
+      },
+    "N" : {
+      "HIS" : [2.02, 0.10],
+      },
+    "S" : {
+      "CYS" : [2.15, 0.25],
+      },
+    },
+  "Zn" : {
+    "O" : {
+      "HOH" : [2.09, 0.05],
+      "ASP" : [1.99, 0.05],
+      },
+    "N" : {
+      "HIS" : [2.03, 0.05],
+      },
+    "S" : {
+      "CYS" : [2.31, 0.10],
+      },
+    },
+  }
+
+carbonyl = {
+  "Na" : [2.38, 0.10],
+  "Mg" : [2.26, 0.25],
+  "K"  : [2.74, 0.15],
+  "Ca" : [2.36, 0.10],
+  "Mn" : [2.19, 0.25],
+  "Fe" : [2.04, 0.25],
+  "Co" : [2.08, 0.25],
+  "Cu" : [2.04, 0.25],
+  "Zn" : [2.07, 0.25],
+  }
+
+for m in metal_defaults:
+  for c in metal_defaults[m]:
+    if c!="O": continue
+    # more waters ?
+    for w in ["WAT", "TIP"]:
+      metal_defaults[m][c].setdefault(w, [None, None])
+      metal_defaults[m][c][w][0] = metal_defaults[m][c]["HOH"][0]
+      metal_defaults[m][c][w][1] = metal_defaults[m][c]["HOH"][1]
+    # ASP = GLU
+    metal_defaults[m][c].setdefault("GLU", [None, None])
+    metal_defaults[m][c]["GLU"][0] = metal_defaults[m][c]["ASP"][0]
+    metal_defaults[m][c]["GLU"][1] = metal_defaults[m][c]["ASP"][1]
+    # ASN, GLN
+    metal_defaults[m][c].setdefault("ASN", [None, None])
+    metal_defaults[m][c]["ASN"][0] = metal_defaults[m][c]["ASP"][0] + 0.02
+    metal_defaults[m][c]["ASN"][1] = metal_defaults[m][c]["ASP"][1]
+    metal_defaults[m][c].setdefault("GLN", [None, None])
+    metal_defaults[m][c]["GLN"][0] = metal_defaults[m][c]["GLU"][0] + 0.02
+    metal_defaults[m][c]["GLN"][1] = metal_defaults[m][c]["GLU"][1]
+    # SER, THR
+    metal_defaults[m][c].setdefault("SER", [None, None])
+    metal_defaults[m][c].setdefault("THR", [None, None])
+    metal_defaults[m][c]["SER"][0] = (metal_defaults[m][c]["ASP"][0] + \
+                                metal_defaults[m][c]["HOH"][0])/2
+    metal_defaults[m][c]["THR"][0] = (metal_defaults[m][c]["ASP"][0] + \
+                                metal_defaults[m][c]["HOH"][0])/2
+    metal_defaults[m][c]["SER"][1] = metal_defaults[m][c]["ASP"][1]
+    metal_defaults[m][c]["THR"][1] = metal_defaults[m][c]["ASP"][1]
+    # TYR
+    metal_defaults[m][c].setdefault("TYR", [None, None])
+    metal_defaults[m][c]["TYR"][0] = metal_defaults[m][c]["ASP"][0] - 0.1
+    metal_defaults[m][c]["TYR"][1] = metal_defaults[m][c]["ASP"][1]
+
+non_protein_sigma = 0.25
+non_protein = {}
+for m in carbonyl:
+  non_protein[(m, "O")] = [metal_defaults[m]["O"]["ASN"][0], non_protein_sigma]
+  if "N" in metal_defaults[m]:
+    non_protein[(m, "N")] = [metal_defaults[m]["N"]["HIS"][0], non_protein_sigma]
+  if "S" in metal_defaults[m]:
+    non_protein[(m, "S")] = [metal_defaults[m]["S"]["CYS"][0], non_protein_sigma]
+
+qm_defaults = {
     ("H",  "H" )    : 0.579,
     ("H",  "Li")    : 1.629,
     ("H",  "Be")    : 1.334,
@@ -3114,14 +3258,135 @@ def get_default_bondlength(s1, s2, order=1):
     (s1, s2),
     (s2, s1),
     ]:
-    if key in defaults:
-      return defaults[key]
+    if key in qm_defaults:
+      return qm_defaults[key]
   if None:
     if s1 in ["H", "D", "T"] or s2 in ["H", "D", "T"]:
       return 1.5
     else:
       return 2.75
   return None
+
+def generic_metal_run(metal_element,
+                      coordination_atom_element,
+                      resName,
+                      name,
+                      return_non_protein=True,
+                      ):
+  coordination_atom_element = coordination_atom_element.strip()
+  local_metal_defaults = metal_defaults.get(metal_element.capitalize(), None)
+  if local_metal_defaults is None: return None
+  if coordination_atom_element=="O":
+    # is this too harsh? excludes non-standard aminoacids
+    if resName.upper() in three_letter_given_one_letter.values():
+      if name and name=="O":
+        result = carbonyl.get(metal_element.capitalize(), None)
+        return result
+  element_defaults = local_metal_defaults.get(coordination_atom_element,
+                                        None,
+                                        )
+  if element_defaults is None: return None
+  residue_defaults = element_defaults.get(resName.upper(),
+                                        None,
+                                        )
+  if residue_defaults is None:
+    if return_non_protein:
+      result = non_protein.get((metal_element.capitalize(),
+                                coordination_atom_element,
+                                ),
+                               None,
+                               )
+      return result
+    else:
+      return None
+  return residue_defaults
+
+def run(atom1, atom2, return_non_protein=True):
+  from linking_utils import ad_hoc_single_metal_residue_element_types
+  metal = None
+  coordination_atom = None
+  if atom1.element.upper().strip() in ad_hoc_single_metal_residue_element_types:
+    metal = atom1
+    coordination_atom = atom2
+  elif atom2.element.upper().strip() in ad_hoc_single_metal_residue_element_types:
+    metal = atom2
+    coordination_atom = atom1
+  rc = None
+  if metal is not None:
+    if not hasattr(metal, "symbol"): # iotbx atom
+      rc = generic_metal_run(metal.element.strip(),
+                             coordination_atom.element.strip(),
+                             coordination_atom.parent().resname,
+                             getattr(coordination_atom, "name", None),
+                             return_non_protein=return_non_protein,
+        )
+    else:
+      rc = generic_metal_run(metal.symbol,
+                             coordination_atom.symbol,
+                             coordination_atom.resName,
+                             getattr(coordination_atom, "name", None),
+                             return_non_protein=return_non_protein,
+        )
+  if rc is None:
+    if not hasattr(atom1, "symbol"): # iotbx atom
+      return get_default_bondlength(atom1.element.strip(),
+                                    atom2.element.strip(),
+                                    ), 0.01
+    else:
+      return get_default_bondlength(atom1.symbol,
+                                    atom2.symbol,
+                                    ), 0.01
+  else: return rc
+
+if __name__=="__main__":
+  #from elbow.chemistry.AtomClass import AtomClass
+  results = [
+    [2.41, 0.1], # Na
+    [2.41, 0.1],
+    [2.41, 0.1],
+    [2.38, 0.1],
+    [2.43, non_protein_sigma],
+    [2.43, non_protein_sigma],
+    [2.31, 0.1],
+    [2.38, 0.1],
+    [2.09, 0.05], # Zn
+    [2.09, 0.05],
+    [1.99, 0.05],
+    [2.07, 0.25],
+    [2.01, non_protein_sigma],
+    [2.01, non_protein_sigma],
+    [1.89, 0.05],
+    [2.07, 0.25],
+    None, # V
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    ]
+  i=0
+  for m in ["Na", "Zn", "V"]:
+    for c in ["O", "N", "B"]:
+      for residue in ["HOH", "ASP", "LIG", "TYR"]:
+        for name in [None, "O"]:
+          if c!="O": continue
+          metal = AtomClass(m)
+          coordination_atom = AtomClass(c)
+          coordination_atom.resName = residue
+          if name:
+            coordination_atom.name = name
+          print "-"*80
+          print metal.Display()
+          print coordination_atom.Display()
+          rc = run(metal, coordination_atom)
+          print rc
+          if rc!=results[i]:
+            print i, rc, results[i]
+            assert 0
+          i+=1
+  print "OK"
 
 if __name__=="__main__":
   if len(sys.argv)>1:

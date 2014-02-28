@@ -2830,7 +2830,7 @@ class detect_hydrogen_nomenclature_problem (object) :
     mon_lib_srv = mmtbx.monomer_library.server.server()
     ener_lib = mmtbx.monomer_library.server.ener_lib()
     params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
-    params.automatic_linking.intra_chain=True
+    params.automatic_linking.link_all=True
     processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.run(
       args=args,
       params=params,
@@ -2847,6 +2847,7 @@ class detect_hydrogen_nomenclature_problem (object) :
     if (nb_reg.n_unknown_type_symbols() > 0) :
       unknown_atoms = nb_reg.get_unknown_atoms(pdb_atoms)
       for atom in unknown_atoms :
+        print atom.quote()
         labels = atom.fetch_labels()
         if (atom.name == "HD22") and (labels.resname == "ASN") :
           self.n_asn_hd22 += 1

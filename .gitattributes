@@ -1767,7 +1767,11 @@ mmtbx/monomer_library/cif_triage.py svneol=native#text/x-python
 mmtbx/monomer_library/conformation_dependent_restraints.py svneol=native#text/x-python
 mmtbx/monomer_library/conv_v2_v3.py svneol=native#text/x-python
 mmtbx/monomer_library/correct_hydrogen_geometries.py -text
+mmtbx/monomer_library/glyco_chiral_values.py -text
+mmtbx/monomer_library/glyco_utils.py -text
 mmtbx/monomer_library/idealized_aa.py -text
+mmtbx/monomer_library/linking_mixins.py -text
+mmtbx/monomer_library/linking_setup.py -text
 mmtbx/monomer_library/linking_utils.py -text
 mmtbx/monomer_library/rna_sugar_pucker_analysis.py svneol=native#text/x-python
 mmtbx/monomer_library/rotamer_utils.py svneol=native#text/x-python

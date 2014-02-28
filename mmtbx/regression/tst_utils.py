@@ -316,7 +316,7 @@ HETATM 6015  HO6 NAG A 467      40.829 -15.206  30.746  1.00 55.81           H
 """)
   result = utils.detect_hydrogen_nomenclature_problem(
     pdb_file="tmp_mmtbx_utils_asn_nag.pdb")
-  assert (result.n_asn_hd22 == 1)
+  assert (result.n_asn_hd22 == 0)
 
 def run():
   verbose = "--verbose" in sys.argv[1:]

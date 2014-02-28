@@ -126,6 +126,15 @@ class bond_simple_proxy_registry(proxy_registry_base):
     else:
       return True
 
+  def is_any_proxy_set(self, i_seqs, j_seqs):
+    for i in i_seqs:
+      for j in j_seqs:
+        tmp = [i,j]
+        tmp.sort()
+        ps = self.is_proxy_set(tmp)
+        if ps: return ps
+    return False
+
   def process(self, source_info, proxy, tolerance=1.e-6):
     result = proxy_registry_process_result()
     proxy = proxy.sort_i_seqs()
@@ -624,11 +633,53 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
         prefix)
     return histogram
 
+  def get_sorted_i_proxies(self,
+                           by_value,
+                           sites_cart,
+                           site_labels=None,
+                           max_items=None,
+                           ):
+    assert by_value in ["delta"]
+    deltas = nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
+    if (deltas.size() == 0): return
+    if (max_items is not None and max_items <= 0): return
+    i_proxies_sorted = flex.sort_permutation(data=deltas)
+    if (max_items is not None):
+      i_proxies_sorted = i_proxies_sorted[:max_items]
+    return i_proxies_sorted
+
+  def get_sorted_proxies(self,
+                         by_value,
+                         sites_cart,
+                         site_labels=None,
+                         max_items=None,
+                         ):
+    assert by_value in ["delta"]
+    i_proxies_sorted = self.get_sorted_i_proxies(by_value=by_value,
+                                                 sites_cart=sites_cart,
+                                                 site_labels=site_labels,
+                                                 max_items=max_items,
+      )
+    if (self.asu.size() == 0):
+      asu_mappings = None
+    else:
+      asu_mappings = self.asu_mappings()
+    n_simple = self.simple.size()
+    sorted_proxies=[]
+    for i_proxy in i_proxies_sorted:
+      if (i_proxy < n_simple):
+        proxy = self.simple[i_proxy]
+      else:
+        proxy = self.asu[i_proxy-n_simple]
+      sorted_proxies.append(proxy)
+    return sorted_proxies
+
   def get_sorted(self,
                  by_value,
                  sites_cart,
                  site_labels=None,
                  max_items=None,
+                 include_proxy=False,
                  ):
     assert by_value in ["delta"]
     deltas = nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
@@ -660,15 +711,27 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
         else:                     l = site_labels[i]
         labels.append(l)
       m, v = deltas[i_proxy], proxy.vdw_distance
-      sorted_table.append(
-        (labels,
-         i_seq,
-         j_seq,
-         deltas[i_proxy],
-         proxy.vdw_distance,
-         sym_op_j,
-         rt_mx)
-        )
+      if include_proxy:
+        sorted_table.append(
+          (labels,
+           i_seq,
+           j_seq,
+           deltas[i_proxy],
+           proxy.vdw_distance,
+           sym_op_j,
+           rt_mx,
+           proxy)
+          )
+      else:
+        sorted_table.append(
+          (labels,
+           i_seq,
+           j_seq,
+           deltas[i_proxy],
+           proxy.vdw_distance,
+           sym_op_j,
+           rt_mx)
+          )
     n_not_shown = deltas.size() - i_proxies_sorted.size()
     return sorted_table, n_not_shown
 

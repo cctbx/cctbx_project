@@ -1002,6 +1002,761 @@ ATOM    755  CG BASN A 116      29.487  39.201 -23.920  0.50 79.45      A    C
 ATOM    756  OD1BASN A 116      30.611  38.710 -24.084  0.50 83.18      A    O
 ATOM    757  ND2BASN A 116      29.299  40.471 -23.478  0.50 87.72      A    N
 """,
+  "linking_test_ASN_A-NAG_B.pdb" : """
+ATOM   2279  N   ASN A 303       7.500  12.479   6.505  1.00 50.55           N
+ATOM   2280  CA  ASN A 303       8.366  11.834   7.487  1.00 48.33           C
+ATOM   2281  C   ASN A 303       7.525  11.114   8.549  1.00 49.96           C
+ATOM   2282  O   ASN A 303       6.418  11.545   8.868  1.00 49.99           O
+ATOM   2283  CB  ASN A 303       9.328  12.845   8.125  1.00 49.14           C
+ATOM   2284  CG  ASN A 303      10.450  13.261   7.184  1.00 51.22           C
+ATOM   2285  OD1 ASN A 303      11.016  12.431   6.474  1.00 50.95           O
+ATOM   2286  ND2 ASN A 303      10.787  14.549   7.186  1.00 55.18           N
+TER
+HETATM11738  C1  NAG B1349      11.771  15.301   6.383  1.00 64.93           C
+HETATM11739  C2  NAG B1349      11.260  16.717   6.129  1.00 71.42           C
+HETATM11740  C3  NAG B1349      12.340  17.588   5.490  1.00 76.60           C
+HETATM11741  C4  NAG B1349      13.598  17.552   6.354  1.00 85.65           C
+HETATM11742  C5  NAG B1349      14.040  16.100   6.541  1.00 77.74           C
+HETATM11743  C6  NAG B1349      15.243  16.002   7.471  1.00 78.29           C
+HETATM11744  C7  NAG B1349       8.880  17.098   5.780  1.00 66.42           C
+HETATM11745  C8  NAG B1349       8.026  16.100   6.508  1.00 39.77           C
+HETATM11746  N2  NAG B1349      10.056  16.673   5.317  1.00 65.92           N
+HETATM11747  O3  NAG B1349      11.875  18.912   5.361  1.00 77.58           O
+HETATM11748  O4  NAG B1349      14.644  18.346   5.809  1.00 96.99           O
+HETATM11749  O5  NAG B1349      12.999  15.308   7.087  1.00 74.70           O
+HETATM11750  O6  NAG B1349      16.436  16.098   6.729  1.00 77.54           O
+HETATM11751  O7  NAG B1349       8.483  18.252   5.630  1.00 80.43           O
+""",
+  "linking_test_nstd_rna_dna_h_bond.pdb" : """
+HETATM  100  P   A44 A   5      15.790  -6.178  18.620  1.00 33.68           P
+HETATM  101  OP2 A44 A   5      16.475  -4.926  18.273  1.00 37.12           O
+HETATM  102  OP1 A44 A   5      16.553  -7.268  19.263  1.00 37.20           O
+HETATM  103  O5' A44 A   5      15.148  -6.673  17.251  1.00 35.19           O
+HETATM  104  C5' A44 A   5      14.132  -7.683  17.238  1.00 36.66           C
+HETATM  105  C4' A44 A   5      13.552  -7.828  15.849  1.00 38.49           C
+HETATM  106  O4' A44 A   5      12.637  -6.734  15.559  1.00 39.35           O
+HETATM  107  C3' A44 A   5      14.540  -7.792  14.691  1.00 39.06           C
+HETATM  108  O3' A44 A   5      15.263  -8.992  14.487  1.00 39.12           O
+HETATM  109  C2' A44 A   5      13.644  -7.425  13.514  1.00 40.78           C
+HETATM  110  O2' A44 A   5      12.914  -8.512  12.973  1.00 41.20           O
+HETATM  111  C1' A44 A   5      12.679  -6.437  14.168  1.00 38.59           C
+HETATM  112  N9  A44 A   5      13.167  -5.067  13.981  1.00 37.63           N
+HETATM  113  C8  A44 A   5      13.886  -4.289  14.859  1.00 38.01           C
+HETATM  114  N7  A44 A   5      14.200  -3.106  14.380  1.00 38.45           N
+HETATM  115  C5  A44 A   5      13.643  -3.103  13.107  1.00 36.06           C
+HETATM  116  C6  A44 A   5      13.607  -2.138  12.099  1.00 34.61           C
+HETATM  117  N6  A44 A   5      14.159  -0.933  12.209  1.00 36.45           N
+HETATM  118  N1  A44 A   5      12.967  -2.450  10.958  1.00 33.41           N
+HETATM  119  C2  A44 A   5      12.399  -3.647  10.845  1.00 32.30           C
+HETATM  120  N3  A44 A   5      12.361  -4.638  11.717  1.00 34.10           N
+HETATM  121  C4  A44 A   5      13.006  -4.301  12.846  1.00 36.44           C
+HETATM  122  CA' A44 A   5      12.063  -8.031  11.930  1.00 46.36           C
+HETATM  123  CD' A44 A   5      11.616 -11.212  12.261  1.00 58.12           C
+HETATM  124  OC' A44 A   5      10.850 -10.006  12.555  1.00 53.39           O
+HETATM  125  CB' A44 A   5      11.090  -9.064  11.485  1.00 49.86           C
+HETATM  478  P   U36 B  20      11.477   3.696   3.004  1.00 42.30           P
+HETATM  479  OP1 U36 B  20      10.335   4.004   2.145  1.00 44.51           O
+HETATM  480  OP2 U36 B  20      11.842   4.626   4.093  1.00 45.81           O
+HETATM  481  O5' U36 B  20      11.173   2.296   3.679  1.00 42.73           O
+HETATM  482  C5' U36 B  20      10.757   1.210   2.877  1.00 42.45           C
+HETATM  483  C4' U36 B  20      10.319   0.065   3.737  1.00 42.68           C
+HETATM  484  O4' U36 B  20      11.457  -0.572   4.347  1.00 42.31           O
+HETATM  485  C3' U36 B  20       9.406   0.368   4.909  1.00 41.73           C
+HETATM  486  O3' U36 B  20       8.059   0.493   4.530  1.00 44.16           O
+HETATM  487  C2' U36 B  20       9.567  -0.885   5.739  1.00 42.76           C
+HETATM  488  O2' U36 B  20       8.836  -1.946   5.173  1.00 46.09           O
+HETATM  489  C1' U36 B  20      11.046  -1.178   5.554  1.00 41.52           C
+HETATM  490  N1  U36 B  20      11.789  -0.588   6.668  1.00 40.08           N
+HETATM  491  C2  U36 B  20      11.863  -1.336   7.813  1.00 41.61           C
+HETATM  492  O2  U36 B  20      11.363  -2.445   7.904  1.00 42.96           O
+HETATM  493  N3  U36 B  20      12.545  -0.747   8.850  1.00 43.77           N
+HETATM  494  C4  U36 B  20      13.154   0.495   8.855  1.00 42.08           C
+HETATM  495  O4  U36 B  20      13.738   0.884   9.875  1.00 37.89           O
+HETATM  496  C5  U36 B  20      13.040   1.208   7.617  1.00 41.51           C
+HETATM  497  C6  U36 B  20      12.374   0.651   6.587  1.00 39.50           C
+HETATM  498  CA' U36 B  20       9.181  -3.182   5.789  1.00 49.64           C
+HETATM  499  CB' U36 B  20       9.334  -4.295   4.806  1.00 50.46           C
+HETATM  500  CD' U36 B  20      10.943  -5.943   4.104  1.00 51.43           C
+HETATM  501  OC' U36 B  20      10.740  -4.603   4.641  1.00 52.78           O
+""",
+  "a44.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+A44        A44 '2'-O-(2-methoxyethyl)adenosine 5'-(dihydrogen phosphate)' ligand 45 27 .
+#
+data_comp_A44
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+A44         P      P   P     .          2.5224   -5.5637    0.6446
+A44         OP2    O   OP    .          4.0244   -5.2909    0.6504
+A44         OP1    O   O     .          2.0353   -5.7363    2.0663
+A44        O5'     O   O2    .          1.7520   -4.3205   -0.0401
+A44        C5'     C   CH2   .          1.7304   -3.1036    0.6336
+A44        C4'     C   CR15  .          1.2062   -2.0228   -0.2918
+A44        O4'     O   O     .         -0.0783   -1.9855   -0.2471
+A44        C3'     C   CR15  .          1.6764   -0.6041    0.2038
+A44        O3'     O   OH1   .          2.5794   -0.0871   -0.6532
+A44        C2'     C   CR15  .          0.4371    0.2496    0.2212
+A44        O2'     O   O2    .          0.6982    1.5749   -0.5050
+A44        C1'     C   CR15  .         -0.4813   -0.4608   -0.4288
+A44         N9     N   NR5   .         -1.7808   -0.2191    0.1349
+A44         C8     C   CR15  .         -2.0670   -0.3505    1.4454
+A44         N7     N   N     .         -3.4269   -0.2922    1.5891
+A44         C5     C   CR56  .         -3.9797   -0.1222    0.3440
+A44         C6     C   CR6   .         -5.3029   -0.0049   -0.0829
+A44         N6     N   NH2   .         -6.5639    0.0390    0.5147
+A44         N1     N   N     .         -5.5783    0.1542   -1.3948
+A44         C2     C   CR16  .         -4.5689    0.2002   -2.3007
+A44         N3     N   N     .         -3.2570    0.0844   -1.8806
+A44         C4     C   CR56  .         -2.9767   -0.0766   -0.5532
+A44        CA'     C   CH2   .          1.2611    2.6105    0.3430
+A44        CD'     C   CH3   .          3.8911    5.0297   -0.3369
+A44        OC'     O   O2    .          2.8946    4.3578    0.3441
+A44        CB'     C   CH2   .          2.0410    3.5848   -0.4972
+A44         OP3    O   OP    .          2.2422   -6.8280   -0.1418
+""",
+  "u36.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+U36        U36 '2'-O-(2-methoxyethyl)uridine 5'-(dihydrogen phosphate)' ligand 42 25 .
+#
+data_comp_U36
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+U36         P      P   P     .         -0.0923    3.8242    3.7169
+U36         OP1    O   O     .         -0.7464    3.7757    5.0772
+U36         OP2    O   OP    .         -1.0067    4.5301    2.7434
+U36         OP3    O   OP    .          1.2153    4.5737    3.8136
+U36        O5'     O   O2    .          0.1807    2.3510    3.2104
+U36        C5'     C   CH2   .         -0.1828    2.0165    1.8914
+U36        C4'     C   CH1   .          0.1665    0.7096    1.6366
+U36        O4'     O   O2    .         -1.0654   -0.1293    1.4258
+U36        C3'     C   CH1   .          1.0034    0.6117    0.2648
+U36        O3'     O   OH1   .          2.4358    0.2844    0.5536
+U36        C2'     C   CH1   .          0.4751   -0.3054   -0.3636
+U36        O2'     O   O2    .          1.1615   -1.5865   -0.0670
+U36        C1'     C   CH1   .         -1.0908   -0.3701    0.1523
+U36         N1     N   NR6   .         -1.8533    0.5989   -0.5044
+U36         C2     C   CR6   .         -2.9446    1.2709    0.2003
+U36         O2     O   O     .         -3.2291    0.9400    1.3340
+U36         N3     N   NR16  .         -3.6934    2.3410   -0.4578
+U36         C4     C   CR6   .         -3.4325    2.6580   -1.8160
+U36         O4     O   O     .         -4.1270    3.4693   -2.3943
+U36         C5     C   CR16  .         -2.3699    1.9506   -2.5425
+U36         C6     C   CR16  .         -1.5867    0.9104   -1.8626
+U36        CA'     C   CH2   .          1.3872   -2.3894   -1.2028
+U36        CB'     C   CH2   .          2.2425   -3.5784   -0.8184
+U36        CD'     C   CH3   .          2.9132   -5.6983   -1.6208
+U36        OC'     O   O2    .          1.9630   -4.6568   -1.6813
+""",
+  "linking_test_nstd_rna_dna.pdb" : """
+HETATM  478  P   U36 B  20      11.477   3.696   3.004  1.00 42.30           P
+HETATM  479  OP1 U36 B  20      10.335   4.004   2.145  1.00 44.51           O
+HETATM  480  OP2 U36 B  20      11.842   4.626   4.093  1.00 45.81           O
+HETATM  481  O5' U36 B  20      11.173   2.296   3.679  1.00 42.73           O
+HETATM  482  C5' U36 B  20      10.757   1.210   2.877  1.00 42.45           C
+HETATM  483  C4' U36 B  20      10.319   0.065   3.737  1.00 42.68           C
+HETATM  484  O4' U36 B  20      11.457  -0.572   4.347  1.00 42.31           O
+HETATM  485  C3' U36 B  20       9.406   0.368   4.909  1.00 41.73           C
+HETATM  486  O3' U36 B  20       8.059   0.493   4.530  1.00 44.16           O
+HETATM  487  C2' U36 B  20       9.567  -0.885   5.739  1.00 42.76           C
+HETATM  488  O2' U36 B  20       8.836  -1.946   5.173  1.00 46.09           O
+HETATM  489  C1' U36 B  20      11.046  -1.178   5.554  1.00 41.52           C
+HETATM  490  N1  U36 B  20      11.789  -0.588   6.668  1.00 40.08           N
+HETATM  491  C2  U36 B  20      11.863  -1.336   7.813  1.00 41.61           C
+HETATM  492  O2  U36 B  20      11.363  -2.445   7.904  1.00 42.96           O
+HETATM  493  N3  U36 B  20      12.545  -0.747   8.850  1.00 43.77           N
+HETATM  494  C4  U36 B  20      13.154   0.495   8.855  1.00 42.08           C
+HETATM  495  O4  U36 B  20      13.738   0.884   9.875  1.00 37.89           O
+HETATM  496  C5  U36 B  20      13.040   1.208   7.617  1.00 41.51           C
+HETATM  497  C6  U36 B  20      12.374   0.651   6.587  1.00 39.50           C
+HETATM  498  CA' U36 B  20       9.181  -3.182   5.789  1.00 49.64           C
+HETATM  499  CB' U36 B  20       9.334  -4.295   4.806  1.00 50.46           C
+HETATM  500  CD' U36 B  20      10.943  -5.943   4.104  1.00 51.43           C
+HETATM  501  OC' U36 B  20      10.740  -4.603   4.641  1.00 52.78           O
+HET    C43  B  21      24
+LINK         O3' U36 B  20                 P   C43 B  21     1555   1555  1.60
+LINK         O3' C43 B  21                 P   G48 B  22     1555   1555  1.61
+HETATM  502  P   C43 B  21       7.042   1.245   5.508  1.00 45.71           P
+HETATM  503  OP2 C43 B  21       7.731   2.473   5.993  1.00 47.37           O
+HETATM  504  OP1 C43 B  21       5.771   1.363   4.736  1.00 43.78           O
+HETATM  505  O5' C43 B  21       6.853   0.247   6.738  1.00 39.90           O
+HETATM  506  C5' C43 B  21       6.411  -1.086   6.501  1.00 38.58           C
+HETATM  507  C4' C43 B  21       6.481  -1.910   7.754  1.00 37.96           C
+HETATM  508  O4' C43 B  21       7.858  -2.119   8.141  1.00 37.13           O
+HETATM  509  C3' C43 B  21       5.834  -1.356   9.001  1.00 39.94           C
+HETATM  510  O3' C43 B  21       4.419  -1.513   9.009  1.00 38.74           O
+HETATM  511  C2' C43 B  21       6.517  -2.174  10.095  1.00 42.40           C
+HETATM  512  O2' C43 B  21       5.975  -3.463  10.290  1.00 51.49           O
+HETATM  513  C1' C43 B  21       7.925  -2.350   9.532  1.00 38.54           C
+HETATM  514  N1  C43 B  21       8.857  -1.402  10.159  1.00 36.39           N
+HETATM  515  C2  C43 B  21       9.294  -1.667  11.451  1.00 33.63           C
+HETATM  516  O2  C43 B  21       8.947  -2.703  11.998  1.00 28.79           O
+HETATM  517  N3  C43 B  21      10.082  -0.780  12.075  1.00 34.10           N
+HETATM  518  C4  C43 B  21      10.449   0.335  11.459  1.00 36.14           C
+HETATM  519  N4  C43 B  21      11.208   1.196  12.143  1.00 39.09           N
+HETATM  520  C5  C43 B  21      10.051   0.621  10.126  1.00 34.73           C
+HETATM  521  C6  C43 B  21       9.265  -0.271   9.515  1.00 36.40           C
+HETATM  522  CA' C43 B  21       6.672  -4.189  11.334  1.00 58.64           C
+HETATM  523  CB' C43 B  21       7.917  -4.946  10.870  1.00 64.99           C
+HETATM  524  CD' C43 B  21       8.788  -5.769  13.046  1.00 68.99           C
+HETATM  525  OC' C43 B  21       9.059  -5.026  11.816  1.00 67.88           O
+""",
+  "c43.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+C43        C43 '2'-O-(2-methoxyethyl)cytidine 5'-(dihydrogen phosphate)' ligand 43 25 .
+#
+data_comp_C43
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+C43         P      P   P     .          3.7565    3.2915    1.5876
+C43         OP3    O   OP    .          4.2694    2.5857    2.8218
+C43         OP2    O   OP    .          2.7755    4.3524    1.9881
+C43         OP1    O   O     .          4.9068    3.9231    0.8595
+C43        O5'     O   O2    .          3.0486    2.2550    0.6486
+C43        C5'     C   CH2   .          1.8203    1.6916    1.0686
+C43        C4'     C   CR15  .          1.6741    0.4618    0.5078
+C43        O4'     O   O     .          0.9711   -0.4760    1.4642
+C43        C3'     C   CR15  .          0.7330    0.5479   -0.7879
+C43        O3'     O   OH1   .          1.5421    0.3327   -2.0324
+C43        C2'     C   CR15  .         -0.0850   -0.3670   -0.6482
+C43        O2'     O   O2    .          0.4137   -1.6016   -1.3197
+C43        C1'     C   CR15  .         -0.2173   -0.6200    0.9744
+C43         N1     N   NR6   .         -1.0961    0.3267    1.5414
+C43         C2     C   CR6   .         -2.2763    0.7649    0.7937
+C43         O2     O   O     .         -2.5555    0.2318   -0.2825
+C43         N3     N   N     .         -3.1751    1.7982    1.3634
+C43         C4     C   CR6   .         -2.9944    2.2380    2.7088
+C43         N4     N   NH2   .         -3.9728    3.1027    3.3229
+C43         C5     C   CR16  .         -1.8514    1.7296    3.5031
+C43         C6     C   CR16  .         -0.9017    0.7650    2.8947
+C43        CA'     C   CH2   .         -0.4824   -2.1632   -2.1831
+C43        CB'     C   CH2   .          0.1430   -3.3861   -2.8405
+C43        CD'     C   CH3   .         -0.1994   -4.9988   -4.6237
+C43        OC'     O   O2    .         -0.7247   -3.8624   -3.9069
+""",
+  "linking_test_Mg_HOH.pdb" : """
+HETATM    1 MG   MG  A   1      14.481  28.862  20.807  1.00 20.00      A   MG+2
+HETATM    2  O   HOH A   2      16.505  29.075  21.158  1.00 20.00      A    O
+HETATM    3  O   HOH A   3      12.607  28.705  20.389  1.00 20.00      A    O
+HETATM    4  O   HOH A   4      15.029  27.124  19.772  1.00 20.00      A    O
+HETATM    5  O   HOH A   5      14.172  30.496  21.689  1.00 20.00      A    O
+HETATM    6  O   HOH A   6      14.474  27.674  22.398  1.00 20.00      A    O
+HETATM    7  O   HOH A   7      14.683  29.906  19.056  1.00 20.00      A    O
+""",
+  "linking_test_Mg_EDT.pdb" : """
+HETATM    1 MG    MG A1501      -7.869  -0.167  32.075  0.76 19.71          Mg
+HETATM    2  O01 EDT A   1      -8.014   0.505  29.989  0.49 19.08           O
+HETATM    3  C02 EDT A   1      -8.838  -0.073  29.218  0.49 21.60           C
+HETATM    4  O03 EDT A   1      -9.035   0.272  28.025  0.49 21.74           O
+HETATM    5  C04 EDT A   1      -9.648  -1.250  29.726  0.49 20.37           C
+HETATM    6  N05 EDT A   1      -9.634  -1.304  31.200  0.49 22.50           N
+HETATM    7  C06 EDT A   1      -9.423  -2.672  31.724  0.49 20.66           C
+HETATM    8  C07 EDT A   1      -7.955  -3.048  31.586  0.49 23.87           C
+HETATM    9  O08 EDT A   1      -7.636  -4.245  31.436  0.49 23.73           O
+HETATM   10  O09 EDT A   1      -7.092  -2.152  31.618  0.49 25.09           O
+HETATM   11  C10 EDT A   1     -10.892  -0.735  31.713  0.49 21.64           C
+HETATM   12  C11 EDT A   1     -10.806   0.778  31.984  0.49 21.39           C
+HETATM   13  N12 EDT A   1      -9.522   1.212  32.554  0.49 22.50           N
+HETATM   14  C13 EDT A   1      -9.643   1.195  34.028  0.49 20.27           C
+HETATM   15  C14 EDT A   1      -8.884   0.036  34.628  0.49 21.97           C
+HETATM   16  O15 EDT A   1      -9.056  -0.252  35.836  0.49 20.76           O
+HETATM   17  O16 EDT A   1      -8.088  -0.608  33.907  0.49 19.08           O
+HETATM   18  C17 EDT A   1      -9.242   2.584  32.090  0.49 20.69           C
+HETATM   19  C18 EDT A   1      -7.769   2.967  32.220  0.49 23.96           C
+HETATM   20  O19 EDT A   1      -6.885   2.088  32.322  0.49 25.12           O
+HETATM   21  O20 EDT A   1      -7.479   4.176  32.238  0.49 23.80           O
+""",
+  "edt.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+EDT        EDT 'Unknown                  ' ligand 32 20 .
+#
+data_comp_EDT
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+EDT         O01    O   O     .         -0.9770   -5.1640  -35.4940
+EDT         C02    C   C     .         -0.8990   -6.3850  -35.1670
+EDT         O03    O   OC    .         -0.1220   -7.2090  -35.7080
+EDT         C04    C   CH2   .         -1.7640   -6.9100  -34.0410
+EDT         N05    N   NT    .         -1.9780   -5.8560  -33.0320
+EDT         C06    C   CH2   .         -0.7560   -5.5740  -32.2430
+EDT         C07    C   C     .         -0.5840   -4.0730  -32.0610
+EDT         O08    O   O     .          0.3270   -3.6420  -31.3290
+EDT         O09    O   OC    .         -1.3550   -3.2970  -32.6510
+EDT         C10    C   CH2   .         -3.0920   -6.2330  -32.1430
+EDT         C11    C   CH2   .         -4.0630   -5.0930  -31.8120
+EDT         N12    N   NT    .         -4.3530   -4.1550  -32.9060
+EDT         C13    C   CH2   .         -4.7520   -2.8590  -32.3240
+EDT         C14    C   C     .         -4.2850   -1.7280  -33.2010
+EDT         O15    O   O     .         -4.6870   -0.5650  -32.9710
+EDT         O16    O   OC    .         -3.5120   -1.9950  -34.1490
+EDT         C17    C   CH2   .         -5.4790   -4.6970  -33.6920
+EDT         C18    C   C     .         -5.0620   -5.2790  -35.0410
+EDT         O19    O   O     .         -3.9340   -5.0370  -35.5190
+EDT         O20    O   OC    .         -5.8920   -5.9720  -35.6540
+EDT        H041    H   HCH2  .         -1.3187   -7.6788  -33.6195
+EDT        H042    H   HCH2  .         -2.6312   -7.1948  -34.4028
+EDT        H061    H   HCH2  .          0.0263   -5.9362  -32.7143
+EDT        H062    H   HCH2  .         -0.8318   -6.0020  -31.3616
+EDT        H101    H   HCH2  .         -2.7149   -6.5735  -31.3006
+EDT        H102    H   HCH2  .         -3.5994   -6.9574  -32.5721
+EDT        H111    H   HCH2  .         -3.6877   -4.5805  -31.0618
+EDT        H112    H   HCH2  .         -4.9130   -5.4915  -31.5177
+EDT        H131    H   HCH2  .         -4.3504   -2.7658  -31.4322
+EDT        H132    H   HCH2  .         -5.7312   -2.8259  -32.2447
+EDT        H171    H   HCH2  .         -6.1277   -3.9755  -33.8490
+EDT        H172    H   HCH2  .         -5.9159   -5.4037  -33.1675
+#
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+EDT   C02     O01   deloc         1.266 0.020
+EDT   O03     C02   deloc         1.255 0.020
+EDT   C04     C02   single        1.514 0.020
+EDT   N05     C04   single        1.475 0.020
+EDT   C07     C06   single        1.522 0.020
+EDT   O08     C07   deloc         1.246 0.020
+EDT   O09     C07   deloc         1.243 0.020
+EDT   C06     N05   single        1.482 0.020
+EDT   C10     N05   single        1.474 0.020
+EDT   C11     C10   single        1.534 0.020
+EDT   N12     C11   single        1.470 0.020
+EDT   C14     C13   single        1.505 0.020
+EDT   O15     C14   deloc         1.252 0.020
+EDT   O16     C14   deloc         1.252 0.020
+EDT   C13     N12   single        1.476 0.020
+EDT   C17     N12   single        1.476 0.020
+EDT   C18     C17   single        1.527 0.020
+EDT   O19     C18   deloc         1.249 0.020
+EDT   O20     C18   deloc         1.243 0.020
+EDT  H041     C04   single        0.983 0.020
+EDT  H042     C04   single        0.982 0.020
+EDT  H061     C06   single        0.982 0.020
+EDT  H062     C06   single        0.983 0.020
+EDT  H101     C10   single        0.984 0.020
+EDT  H102     C10   single        0.983 0.020
+EDT  H111     C11   single        0.983 0.020
+EDT  H112     C11   single        0.984 0.020
+EDT  H131     C13   single        0.983 0.020
+EDT  H132     C13   single        0.983 0.020
+EDT  H171     C17   single        0.983 0.020
+EDT  H172     C17   single        0.983 0.020
+#
+""",
+  "linking_test_1jbe_ALA-SNN-ACY-ALA.pdb" : """
+ATOM    600  N   ALA A  74      28.223  10.182  26.006  1.00  9.40           N
+ATOM    601  CA  ALA A  74      28.012  10.148  27.455  1.00 11.26           C
+ATOM    602  C   ALA A  74      29.306  10.199  28.232  1.00 13.02           C
+ATOM    603  O   ALA A  74      29.290  10.257  29.458  1.00 16.02           O
+ATOM    604  CB  ALA A  74      27.262   8.877  27.829  1.00 15.69           C
+HETATM  605  N1  SNN A  75      33.758  11.091  28.225  1.00 13.76           N
+HETATM  606  C2  SNN A  75      32.448  11.310  28.512  1.00 12.79           C
+HETATM  607  C3  SNN A  75      31.700  10.019  28.212  1.00 11.71           C
+HETATM  608  N3  SNN A  75      30.432  10.162  27.536  1.00 11.34           N
+HETATM  609  C4  SNN A  75      32.736   9.250  27.383  1.00 12.39           C
+HETATM  610  C5  SNN A  75      34.123   9.826  27.531  1.00 12.20           C
+HETATM  611  O2  SNN A  75      31.994  12.355  28.940  1.00 17.38           O
+HETATM  612  O5  SNN A  75      35.186   9.317  27.190  1.00 17.87           O
+HETATM  613  C   ACY A  76      35.504  12.683  27.565  1.00 16.21           C
+HETATM  614  O   ACY A  76      34.812  13.387  26.829  1.00 17.55           O
+HETATM  615  CH3 ACY A  76      34.852  11.912  28.684  1.00 16.85           C
+ATOM    616  N   ALA A  77      36.810  12.555  27.393  1.00 17.53           N
+ATOM    617  CA  ALA A  77      37.522  13.396  26.441  1.00 17.22           C
+ATOM    618  C   ALA A  77      36.978  13.243  25.024  1.00 15.73           C
+ATOM    619  O   ALA A  77      36.998  14.214  24.277  1.00 16.94           O
+ATOM    620  CB  ALA A  77      39.018  13.091  26.481  1.00 27.39           C
+""",
+  "snn.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+SNN        SNN '(3S)-3-aminopyrrolidine-2,5-dione' ligand 14 8 .
+#
+data_comp_SNN
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+SNN         N1     N   NH1   .         -1.1318   -0.2275   -1.2446
+SNN         C2     C   C     .          0.2247   -0.2275   -1.2446
+SNN         C3     C   CH1   .          0.6936   -0.2275    0.2180
+SNN         N3     N   NH2   .          1.6615    0.7434    0.3846
+SNN         C4     C   CH2   .         -0.6212   -0.2275    1.0200
+SNN         C5     C   C     .         -1.5673    0.3826   -0.0137
+SNN         O2     O   O     .          0.9386   -0.3193   -2.2232
+SNN         O5     O   O     .         -2.4854    1.1684    0.1080
+SNN         HN     H   HNH1  .         -1.6677   -0.4697   -1.9417
+SNN         H3     H   HCH1  .          1.2207   -0.9991    0.5003
+SNN        HN31    H   HNH2  .          1.7785    0.9065    1.2742
+SNN        HN32    H   HNH2  .          2.4472    0.4548    0.0225
+SNN         H41    H   HCH2  .         -0.5948    0.1814    1.9060
+SNN         H42    H   HCH2  .         -0.8965   -1.1391    1.2345
+#
+""",
+  "linking_test_3gmq_NAG-FUC.pdb" : """
+HETATM 3108  C1  NAG A 294       5.929 -23.329  20.979  1.00 36.07           C
+HETATM 3109  C2  NAG A 294       6.923 -23.190  22.146  1.00 36.71           C
+HETATM 3110  C3  NAG A 294       8.360 -23.145  21.617  1.00 36.96           C
+HETATM 3111  C4  NAG A 294       8.692 -24.336  20.749  1.00 36.82           C
+HETATM 3112  C5  NAG A 294       7.591 -24.460  19.696  1.00 38.98           C
+HETATM 3113  C6  NAG A 294       7.798 -25.785  18.952  1.00 38.89           C
+HETATM 3114  C7  NAG A 294       5.795 -21.923  23.855  1.00 34.86           C
+HETATM 3115  C8  NAG A 294       5.669 -20.618  24.563  1.00 36.07           C
+HETATM 3116  N2  NAG A 294       6.712 -21.966  22.871  1.00 35.60           N
+HETATM 3117  O3  NAG A 294       9.221 -23.104  22.736  1.00 39.69           O
+HETATM 3118  O4  NAG A 294       9.926 -24.109  20.077  1.00 36.71           O
+HETATM 3119  O5  NAG A 294       6.288 -24.471  20.285  1.00 34.73           O
+HETATM 3120  O6  NAG A 294       6.889 -25.880  17.874  1.00 42.57           O
+HETATM 3121  O7  NAG A 294       5.008 -22.854  24.057  1.00 40.29           O
+HETATM 3169  C1  FUC A 299       7.292 -25.423  16.517  1.00 46.98           C
+HETATM 3170  C2  FUC A 299       6.227 -26.090  15.616  1.00 49.47           C
+HETATM 3171  C3  FUC A 299       4.835 -25.506  15.941  1.00 49.89           C
+HETATM 3172  C4  FUC A 299       4.818 -23.991  15.655  1.00 53.30           C
+HETATM 3173  C5  FUC A 299       5.984 -23.378  16.459  1.00 50.98           C
+HETATM 3174  C6  FUC A 299       6.038 -21.848  16.375  1.00 45.12           C
+HETATM 3175  O2  FUC A 299       6.203 -27.506  15.815  1.00 49.49           O
+HETATM 3176  O3  FUC A 299       3.810 -26.238  15.266  1.00 47.77           O
+HETATM 3177  O4  FUC A 299       4.964 -23.690  14.277  1.00 51.21           O
+HETATM 3178  O5  FUC A 299       7.240 -24.036  16.163  1.00 46.78           O
+""",
+  "linking_test_CD_GHE_A_B.pdb" : """
+CRYST1  154.379  108.579  120.263  90.00 138.53  90.00 C 1 2 1      20
+HETATM 8577 CD    CD C1205     -85.285  28.175  80.928  1.00 13.07          CD
+HETATM 8578 CD    CD C1206     -86.132  30.445  78.070  1.00 13.45          CD
+HETATM 8579  N1 AGHE C1207     -87.632  33.273  82.068  0.25 15.93           N
+HETATM 8580  C2 AGHE C1207     -87.139  31.954  82.363  0.25 13.77           C
+HETATM 8581  C3 AGHE C1207     -85.848  32.181  82.970  0.25 13.59           C
+HETATM 8582  C4 AGHE C1207     -85.379  33.497  82.427  0.25 15.16           C
+HETATM 8583  C5 AGHE C1207     -86.627  34.267  82.225  0.25 18.36           C
+HETATM 8584  C1 AGHE C1207     -86.965  31.040  81.200  0.25 12.73           C
+HETATM 8585  O2 AGHE C1207     -86.877  31.463  79.997  0.25 13.10           O
+HETATM 8586  O1 AGHE C1207     -86.879  29.793  81.461  0.25 11.38           O
+HETATM 8587  C6 AGHE C1207     -88.988  33.572  81.719  0.25 20.72           C
+HETATM 8588  O6 AGHE C1207     -89.317  34.719  81.513  0.25 24.50           O
+HETATM 8589  C7 AGHE C1207     -89.928  32.396  81.589  0.25 13.71           C
+HETATM 8590  C8 AGHE C1207     -90.599  32.349  80.226  0.25 23.85           C
+HETATM 8591  C9 AGHE C1207     -89.628  32.441  79.013  0.25 23.81           C
+HETATM 8592  C10AGHE C1207     -90.298  32.455  77.696  0.25 13.75           C
+HETATM 8593  C11AGHE C1207     -91.284  33.597  77.576  0.25 20.78           C
+HETATM 8594  O11AGHE C1207     -90.998  34.811  77.764  0.25 24.27           O
+HETATM 8595  N2 AGHE C1207     -92.616  33.250  77.274  0.25 15.91           N
+HETATM 8596  C15AGHE C1207     -93.060  31.918  77.024  0.25 13.70           C
+HETATM 8597  C14AGHE C1207     -94.339  32.116  76.287  0.25 13.63           C
+HETATM 8598  C13AGHE C1207     -94.859  33.436  76.736  0.25 15.20           C
+HETATM 8599  C12AGHE C1207     -93.641  34.215  77.139  0.25 18.35           C
+HETATM 8600  C16AGHE C1207     -93.276  31.124  78.251  0.25 12.59           C
+HETATM 8601  O16AGHE C1207     -93.343  29.864  78.193  0.25 10.81           O
+HETATM 8602  O17AGHE C1207     -93.406  31.667  79.357  0.25 13.15           O
+HETATM 8579  N1 BGHE C1207     -87.762  33.127  82.051  0.25 15.93           N
+HETATM 8580  C2 BGHE C1207     -87.157  31.870  82.281  0.25 13.77           C
+HETATM 8581  C3 BGHE C1207     -85.824  32.206  82.976  0.25 13.59           C
+HETATM 8582  C4 BGHE C1207     -85.481  33.523  82.395  0.25 15.16           C
+HETATM 8583  C5 BGHE C1207     -86.817  34.170  82.230  0.25 18.36           C
+HETATM 8584  C1 BGHE C1207     -86.997  31.025  81.014  0.25 12.73           C
+HETATM 8585  O2 BGHE C1207     -86.879  31.590  79.969  0.25 13.10           O
+HETATM 8586  O1 BGHE C1207     -86.924  29.833  81.336  0.25 11.38           O
+HETATM 8587  C6 BGHE C1207     -89.137  33.243  81.727  0.25 20.72           C
+HETATM 8588  O6 BGHE C1207     -89.853  32.297  81.625  0.25 24.50           O
+HETATM 8589  C7 BGHE C1207     -89.559  34.637  81.532  0.25 13.71           C
+HETATM 8590  C8 BGHE C1207     -90.563  34.607  80.287  0.25 23.85           C
+HETATM 8591  C9 BGHE C1207     -89.667  34.602  79.002  0.25 23.81           C
+HETATM 8592  C10BGHE C1207     -90.628  34.667  77.787  0.25 13.75           C
+HETATM 8593  C11BGHE C1207     -91.092  33.238  77.563  0.25 20.78           C
+HETATM 8594  O11BGHE C1207     -90.376  32.288  77.659  0.25 24.27           O
+HETATM 8595  N2 BGHE C1207     -92.458  33.129  77.232  0.25 15.91           N
+HETATM 8596  C15BGHE C1207     -93.058  31.883  76.995  0.25 13.70           C
+HETATM 8597  C14BGHE C1207     -94.408  32.218  76.304  0.25 13.63           C
+HETATM 8598  C13BGHE C1207     -94.743  33.524  76.887  0.25 15.20           C
+HETATM 8599  C12BGHE C1207     -93.408  34.169  77.056  0.25 18.35           C
+HETATM 8600  C16BGHE C1207     -93.228  31.034  78.271  0.25 12.59           C
+HETATM 8601  O16BGHE C1207     -93.298  29.819  77.942  0.25 10.81           O
+HETATM 8602  O17BGHE C1207     -93.349  31.594  79.315  0.25 13.15           O
+""",
+  "ghe.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+GHE        GHE 'Unknown                  ' ligand 46 24 .
+#
+data_comp_GHE
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+GHE         N1     N   NT    .        -79.2922   87.5583   63.7529
+GHE         C2     C   CH1   .        -78.2204   88.2930   63.9823
+GHE         C3     C   CH2   .        -77.1377   87.8430   62.8003
+GHE         C4     C   CH2   .        -77.3209   86.5460   62.6252
+GHE         C5     C   CH2   .        -78.8231   86.2738   63.0451
+GHE         C1     C   C     .        -77.6682   88.1432   65.4087
+GHE         O2     O   O     .        -77.7245   87.0287   65.9917
+GHE         O1     O   OC    .        -77.1497   89.1322   65.9901
+GHE         C6     C   C     .        -80.6286   87.8903   64.0949
+GHE         O6     O   O     .        -80.8690   88.9411   64.6552
+GHE         C7     C   CH2   .        -81.7587   86.9547   63.7250
+GHE         C8     C   CH2   .        -83.1158   87.5330   64.0610
+GHE         C9     C   CH2   .        -84.1621   87.1799   63.0266
+GHE         C10    C   CH2   .        -85.4675   87.9082   63.2593
+GHE         C11    C   C     .        -86.3747   87.8603   62.0495
+GHE         O11    O   O     .        -86.0710   87.1812   61.0892
+GHE         N2     N   NT    .        -87.5618   88.6367   62.0221
+GHE         C15    C   CH1   .        -88.4134   88.7124   61.0336
+GHE         C14    C   CH2   .        -89.0906   90.1723   61.1953
+GHE         C13    C   CH2   .        -88.6543   90.6746   62.5810
+GHE         C12    C   CH2   .        -88.1072   89.5871   63.2049
+GHE         C16    C   C     .        -89.4518   87.5401   61.0112
+GHE         O16    O   O     .        -89.6653   86.9087   59.9431
+GHE         O17    O   OC    .        -90.0884   87.2431   62.0560
+GHE         H21    H   HCH1  .        -78.4208   89.2507   63.9474
+GHE         H31    H   HCH2  .        -77.3239   88.3266   61.9687
+GHE         H32    H   HCH2  .        -76.2204   88.0184   63.0967
+GHE         H41    H   HCH2  .        -77.1829   86.3077   61.6850
+GHE         H42    H   HCH2  .        -76.7108   86.0367   63.1983
+GHE         H51    H   HCH2  .        -78.8705   85.5130   63.6581
+GHE         H52    H   HCH2  .        -79.3707   86.1051   62.2524
+GHE         H71    H   HCH2  .        -81.7199   86.7754   62.7642
+GHE         H72    H   HCH2  .        -81.6444   86.1127   64.2096
+GHE         H81    H   HCH2  .        -83.0404   88.5067   64.1157
+GHE         H82    H   HCH2  .        -83.4008   87.1876   64.9306
+GHE         H91    H   HCH2  .        -84.3269   86.2163   63.0589
+GHE         H92    H   HCH2  .        -83.8224   87.4141   62.1397
+GHE        H101    H   HCH2  .        -85.2749   88.8429   63.4740
+GHE        H102    H   HCH2  .        -85.9288   87.4971   64.0175
+GHE        H151    H   HCH1  .        -87.9759   88.6068   60.1655
+GHE        H141    H   HCH2  .        -88.7644   90.7760   60.4982
+GHE        H142    H   HCH2  .        -90.0651   90.1000   61.1528
+GHE        H131    H   HCH2  .        -87.9860   91.3852   62.4895
+GHE        H132    H   HCH2  .        -89.4297   90.9997   63.0837
+GHE        H121    H   HCH2  .        -88.7897   89.1182   63.7284
+GHE        H122    H   HCH2  .        -87.3675   89.8655   63.7838
+""",
+  "linking_test_ALY_MCM.pdb" : """
+HETATM 2888  OH  ALY C   5     -15.286  24.739   8.076  1.00 45.73      C    O
+HETATM 2889  CH  ALY C   5     -16.455  25.116   7.877  1.00 41.87      C    C
+HETATM 2890  CH3 ALY C   5     -16.828  25.980   6.695  1.00 36.75      C    C
+HETATM 2891  NZ  ALY C   5     -17.470  24.749   8.740  1.00 48.84      C    N
+HETATM 2892  CE  ALY C   5     -17.263  23.930   9.901  1.00 39.21      C    C
+HETATM 2893  CD  ALY C   5     -18.562  23.629  10.640  1.00 41.37      C    C
+HETATM 2894  CG  ALY C   5     -18.329  22.814  11.892  1.00 41.99      C    C
+HETATM 2895  CB  ALY C   5     -19.662  22.656  12.590  1.00 45.24      C    C
+HETATM 2896  CA  ALY C   5     -19.524  22.011  13.974  1.00 51.20      C    C
+HETATM 2897  N   ALY C   5     -20.755  21.670  14.665  1.00 49.87      C    N
+HETATM 2898  C   ALY C   5     -18.619  22.936  14.781  1.00 47.11      C    C
+HETATM 2899  O   ALY C   5     -17.427  22.728  15.024  1.00 49.30      C    O
+HETATM 2900  N   MCM C   6     -19.324  23.360  15.960  1.00 49.19      C    N
+HETATM 2901  CA  MCM C   6     -18.698  24.321  16.695  1.00 44.46      C    C
+HETATM 2902  C2  MCM C   6     -19.284  25.579  16.752  1.00 49.13      C    C
+HETATM 2903  C3  MCM C   6     -18.708  26.580  17.525  1.00 48.36      C    C
+HETATM 2904  C4  MCM C   6     -18.700  28.830  18.338  1.00 45.36      C    C
+HETATM 2905  C5  MCM C   6     -17.544  28.627  19.099  1.00 42.82      C    C
+HETATM 2906  C6  MCM C   6     -16.902  27.390  19.114  1.00 45.52      C    C
+HETATM 2907  C7  MCM C   6     -17.484  26.294  18.302  1.00 46.42      C    C
+HETATM 2908  C8  MCM C   6     -16.929  25.030  18.246  1.00 40.92      C    C
+HETATM 2909  C9  MCM C   6     -17.552  24.060  17.457  1.00 43.70      C    C
+HETATM 2910  C10 MCM C   6     -15.654  27.180  19.937  1.00 42.32      C    C
+HETATM 2911  O1  MCM C   6     -19.260  27.832  17.578  1.00 46.61      C    O
+HETATM 2912  O2  MCM C   6     -19.248  29.950  18.344  1.00 44.55      C    O
+""",
+  "mcm.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+MCM        MCM '7-amino-4-methyl-2H-chromen-2-one' ligand 22 13 .
+#
+data_comp_MCM
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+MCM         N      N   NH2   .         -3.8313    0.0126   -0.1203
+MCM         CA     C   CR6   .         -2.4124    0.0126   -0.1203
+MCM         C2     C   CR16  .         -1.7183    0.0126    1.0827
+MCM         C3     C   CR66  .         -0.3102    0.0126    1.0833
+MCM         C4     C   CR6   .          1.7583    0.0126    2.2891
+MCM         C5     C   CR16  .          2.4557    0.0126    1.0847
+MCM         C6     C   CR6   .          1.7703    0.0126   -0.1062
+MCM         C7     C   CR66  .          0.3770    0.0126   -0.1073
+MCM         C8     C   CR16  .         -0.3279    0.0126   -1.3263
+MCM         C9     C   CR16  .         -1.7167    0.0126   -1.3257
+MCM         C10    C   CH3   .          2.5277   -0.0477   -1.4146
+MCM         O1     O   O     .          0.3860    0.0126    2.2882
+MCM         O2     O   OC    .          2.3647    0.0146    3.3417
+MCM         HN1    H   HNH2  .         -4.2873    0.8024   -0.1159
+MCM         HN2    H   HNH2  .         -4.2873   -0.7772   -0.1160
+MCM         H2     H   HCR6  .         -2.2066    0.0126    1.9279
+MCM         H5     H   HCR6  .          3.4319    0.0126    1.0860
+MCM         H8     H   HCR6  .          0.1597    0.0126   -2.1720
+MCM         H9     H   HCR6  .         -2.2050    0.0131   -2.1709
+MCM        H101    H   HCH3  .          2.3139    0.7394   -1.9509
+MCM        H102    H   HCH3  .          3.4869   -0.0680   -1.2348
+MCM        H103    H   HCH3  .          2.2709   -0.8533   -1.9024
+""",
+  "linking_test_XYP_XYP.pdb" : """
+HETATM 2826  O3B XYP E   1     -19.496  30.622 -25.625  1.00 40.53           O
+HETATM 2827  C3B XYP E   1     -20.078  29.454 -25.182  1.00 38.50           C
+HETATM 2828  C4B XYP E   1     -19.553  28.253 -25.964  1.00 42.57           C
+HETATM 2829  O4B XYP E   1     -20.091  28.171 -27.284  1.00 43.82           O
+HETATM 2830  C5B XYP E   1     -19.957  27.023 -25.162  1.00 43.75           C
+HETATM 2831  O5B XYP E   1     -19.354  27.144 -23.900  1.00 41.03           O
+HETATM 2832  C1B XYP E   1     -19.814  28.095 -22.997  1.00 48.42           C
+HETATM 2833  C2B XYP E   1     -19.795  29.449 -23.683  1.00 38.61           C
+HETATM 2834  O2B XYP E   1     -20.419  30.487 -22.970  1.00 36.77           O
+HETATM 2835  O3B XYP E   2     -17.702  26.306 -20.601  1.00 21.95           O
+HETATM 2836  C3B XYP E   2     -18.690  27.191 -20.166  1.00 22.83           C
+HETATM 2837  C4B XYP E   2     -19.848  27.282 -21.144  1.00 29.33           C
+HETATM 2838  O4B XYP E   2     -19.535  27.935 -22.359  1.00 39.74           O
+HETATM 2839  C5B XYP E   2     -21.016  27.978 -20.518  1.00 32.56           C
+HETATM 2840  O5B XYP E   2     -21.364  27.415 -19.297  1.00 36.29           O
+HETATM 2841  C1B XYP E   2     -20.357  27.458 -18.342  1.00 36.98           C
+HETATM 2842  C2B XYP E   2     -19.138  26.714 -18.808  1.00 27.91           C
+HETATM 2843  O2B XYP E   2     -18.170  26.657 -17.835  1.00 29.93           O
+""",
+  "xyp.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+XYP        XYP 'beta-D-xylopyranose      ' ligand 20 10 .
+#
+data_comp_XYP
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+XYP         O4A    O   OH1   .         -2.6653    0.5410   -0.7788
+XYP         C1B    C   CH1   .         -1.2854    0.5410   -0.7788
+XYP         C2B    C   CH1   .         -0.7949    0.5410    0.6557
+XYP         C3B    C   CH1   .          0.6771    0.3610    0.7492
+XYP         C4B    C   CH1   .          1.1508   -0.8250   -0.0209
+XYP         C5B    C   CH2   .          0.6485   -0.8204   -1.4579
+XYP         O2B    O   OH1   .         -1.1499    1.7930    1.2682
+XYP         O3B    O   OH1   .          1.0411    0.1907    2.1434
+XYP         O4B    O   OH1   .          2.5828   -0.8283   -0.0313
+XYP         O5B    O   O2    .         -0.8048   -0.6378   -1.5443
+XYP        HO4A    H   HOH1  .         -2.9613    0.7962   -1.5757
+XYP         H1B    H   HCH1  .         -0.9700    1.3528   -1.2196
+XYP         H2B    H   HCH1  .         -1.2337   -0.1841    1.1400
+XYP         H3B    H   HCH1  .          1.1168    1.1604    0.4021
+XYP         H4B    H   HCH1  .          0.8356   -1.6360    0.4216
+XYP        H5B1    H   HCH2  .          0.8851   -1.6694   -1.8775
+XYP        H5B2    H   HCH2  .          1.0868   -0.0955   -1.9429
+XYP        HO2B    H   HOH1  .         -1.7421    1.6494    1.9136
+XYP        HO3B    H   HOH1  .          0.7049   -0.5731    2.4459
+XYP        HO4B    H   HOH1  .          2.8778   -1.6570    0.0880
+""",
         }
 links = {
   "linking_test_ASN-NAG.pdb" : [21, 22],
@@ -1019,6 +1774,16 @@ links = {
   "linking_test_ALA-ALA-ALA.pdb" : [32,32],
   "linking_test_MAN-SER.pdb" : [17, 17],
   "linking_test_3g2j-LLP.pdb" : [43, 43],
+  "linking_test_ASN_A-NAG_B.pdb" : [21, 22],
+  "linking_test_nstd_rna_dna_h_bond.pdb" : [0,0],
+  "linking_test_nstd_rna_dna.pdb" : [0,1],
+  "linking_test_Mg_HOH.pdb" : [0,6],
+  "linking_test_Mg_EDT.pdb" : [19,25],
+  "linking_test_1jbe_ALA-SNN-ACY-ALA.pdb" : [10,13],
+  "linking_test_3gmq_NAG-FUC.pdb" : [24,25],
+  "linking_test_CD_GHE_A_B.pdb" : [0,4],
+  "linking_test_XYP_XYP.pdb" : [0,1],
+  "linking_test_ALY_MCM.pdb" : [11,12], # links AA with quasi-AA
   }
 
 def run():
@@ -1030,11 +1795,13 @@ def run():
     if pdb.endswith(".cif"): cifs += " %s" % pdb
   for pdb in sorted(pdbs):
     if pdb.endswith(".cif"): continue
-    #if pdb.find("LLP")>-1: continue
+    if pdb in ["linking_test_CD_GHE_A_B.pdb"]: continue
+    #if pdb.find("XYP")==-1: continue
     for i in range(2):
       log_filename = "%s_%d.log" % (pdb, i)
       cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
-      cmd += " intra_chain=%d %s > %s" % (i, cifs, log_filename)
+      cmd += " link_all=%d %s" % (i, cifs)
+      cmd += " | tee %s" % (log_filename)
       print cmd
       easy_run.call(cmd)
       f=file(log_filename, "rb")

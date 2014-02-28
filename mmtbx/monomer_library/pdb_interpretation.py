@@ -111,7 +111,14 @@ altloc_weighting_params = """\
       .type = float
   }
 """
-
+junk = '''    intra_chain = False
+      .type = bool
+      .short_caption = Automatically add intra-chain covalent bonds for ligands
+      .help = If True, bond restraints will be generated for any appropriate \
+        ligand-protein or ligand-nucleic acid covalent bonds if the chain IDs \
+        are the same.  This includes sugars, amino acid modifications, and \
+        other prosthetic groups.
+'''
 master_params_str = """\
   cdl = False
     .type = bool
@@ -126,22 +133,36 @@ master_params_str = """\
     .style = box auto_align
     .caption = Automatic covalent linking
   {
-    intra_chain = False
+    link_all = False
       .type = bool
-      .short_caption = Automatically add intra-chain covalent bonds for ligands
+      .short_caption = Automatically add covalent bonds
       .help = If True, bond restraints will be generated for any appropriate \
-        ligand-protein or ligand-nucleic acid covalent bonds if the chain IDs \
-        are the same.  This includes sugars, amino acid modifications, and \
-        other prosthetic groups.
+        ligand-protein or ligand-nucleic acid covalent bonds. This includes \
+        sugars, amino acid modifications, and other prosthetic groups.
+    link_metals = True
+      .type = bool
+    metal_coordination_cutoff = 3.5
+      .type = float
+      .short_caption = Maximum distance for automatic linking of metals
     amino_acid_bond_cutoff = 1.9
       .type = float
       .short_caption = Distance cutoff for automatic linking of aminoacids
     rna_dna_bond_cutoff = 3.5
       .type = float
       .short_caption = Distance cutoff for automatic linking of RNA/DNA
-    intra_residue_bond_cutoff = 1.99
+    link_residues = True
+      .type = bool
+    inter_residue_bond_cutoff = 2.5
       .type = float
       .short_caption = Distance cutoff for automatic linking of other residues
+    buffer_for_second_row_elements = 0.5
+      .type = float
+      .short_caption = Distance to add to intra_residue_bond_cutoff if one \
+        or more element is in the second (or more) row
+    link_carbohydrates = True
+      .type = bool
+    carbohydrate_bond_cutoff = 1.99
+      .type = float
   }
   apply_cif_modification
     .optional = True
@@ -2468,7 +2489,9 @@ class geometry_restraints_proxy_registries(object):
         "Number of resolved planarity restraint conflicts: %d"
           % self.planarity.n_resolved_conflicts)
 
-class build_all_chain_proxies(object):
+from mmtbx.monomer_library.linking_mixins import linking_mixins
+
+class build_all_chain_proxies(linking_mixins):
 
   def __init__(self,
         mon_lib_srv,
@@ -2490,6 +2513,7 @@ class build_all_chain_proxies(object):
         carbohydrate_callback=None,
         use_neutron_distances=False,
                ):
+    self.mon_lib_srv = mon_lib_srv
     assert special_position_settings is None or crystal_symmetry is None
     if (params is None): params = master_params.extract()
     self.params = params
@@ -2642,19 +2666,6 @@ class build_all_chain_proxies(object):
           models[model_type_indices[i_model]].id
       if (is_unique_model and log is not None):
         print >> log, "    Number of chains:", model.chains_size()
-      al_params = self.params.automatic_linking
-      if al_params.intra_chain:
-        self.process_intra_chain_links(
-          model=model,
-          mon_lib_srv=mon_lib_srv,
-          log=log,
-          amino_acid_bond_cutoff    = al_params.amino_acid_bond_cutoff,
-          rna_dna_bond_cutoff       = al_params.rna_dna_bond_cutoff,
-          intra_residue_bond_cutoff = al_params.intra_residue_bond_cutoff,
-          )
-        #apply_cif_links_mm_pdbres_dict.update(dict(
-        #    self.empty_apply_cif_links_mm_pdbres_dict))
-      flush_log(log)
       self.geometry_proxy_registries.initialize_tables()
       apply_cif_links_mm_pdbres_dict = dict(
         self.empty_apply_cif_links_mm_pdbres_dict)
@@ -3445,139 +3456,6 @@ class build_all_chain_proxies(object):
         self.apply_cif_modifications.setdefault(pdbres, []).append(mod_id)
     return outl
 
-  def process_intra_chain_links(self,
-                                model,
-                                mon_lib_srv,
-                                log,
-                                residue_group_cutoff2=400.,
-                                #bond_cutoff=2.75,
-                                amino_acid_bond_cutoff=1.9,
-                                rna_dna_bond_cutoff=3.5,
-                                intra_residue_bond_cutoff=1.99,
-                                verbose=False,
-                                ):
-    t0 = time.time()
-    ########################################
-    # must be after process_apply_cif_link #
-    ########################################
-    import linking_utils
-    #
-    def generate_first_atom_of_residue_groups(model, chain_id, verbose=False):
-      for i_chain, chain in enumerate(model.chains()):
-        if chain.id!=chain_id: continue
-        for i_residue_group, residue_group in enumerate(chain.residue_groups()):
-          if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
-            residue_group.resseq, residue_group.icode)
-          atoms = residue_group.atoms()
-          if atoms:
-              yield atoms[0]
-    #
-    chain_ids = []
-    outls = {}
-    for chain in model.chains():
-      if chain.id not in chain_ids: chain_ids.append(chain.id)
-    for chain_id in chain_ids:
-      for i_atom, atom1 in enumerate(
-        generate_first_atom_of_residue_groups(model, chain_id, verbose=verbose)
-        ):
-        classes1 = linking_utils.get_classes(atom1)
-        for j_atom, atom2 in enumerate(
-          generate_first_atom_of_residue_groups(model, chain_id, verbose=False)
-          ):
-          if i_atom>=j_atom: continue
-          classes2 = linking_utils.get_classes(atom2)
-          # what about gamma linking?
-          if classes1.common_water: continue
-          if classes2.common_water: continue
-          if classes1.common_amino_acid and classes2.common_amino_acid: continue
-          if classes1.common_rna_dna and classes2.common_rna_dna: continue
-          d2 = linking_utils.get_distance2(atom1, atom2)
-          if d2>residue_group_cutoff2: continue
-          if verbose:
-            print atom1.quote(), atom2.quote(), d2,residue_group_cutoff2
-          #
-          rc = linking_utils.process_atom_groups_for_linking(
-            self.pdb_hierarchy,
-            atom1,
-            atom2,
-            classes1,
-            classes2,
-            #bond_cutoff=bond_cutoff,
-            amino_acid_bond_cutoff=amino_acid_bond_cutoff,
-            rna_dna_bond_cutoff=rna_dna_bond_cutoff,
-            intra_residue_bond_cutoff=intra_residue_bond_cutoff,
-            verbose=verbose,
-            )
-          if rc is None: continue
-          pdbres_pairs, data_links, atomss = rc
-          for pdbres_pair, data_link, atoms in zip(pdbres_pairs,
-                                                   data_links,
-                                                   atomss,
-                                                   ):
-            if verbose:
-              print '-'*80
-              print pdbres_pairs
-              print "data_link",data_link
-              for atom in atoms:
-                print atom.quote()
-            outls.setdefault(data_link, "")
-            tmp = self.process_custom_links(mon_lib_srv,
-                                            pdbres_pair,
-                                            data_link,
-                                            atoms,
-                                            verbose=verbose,
-                                            )
-            if verbose:
-              print "rc :%s:" % tmp
-            outls[data_link] = tmp
-    # log output about detection
-    remove=[]
-    if self.apply_cif_links:
-      outl = ""
-      for i, apply in enumerate(self.apply_cif_links):
-        if(not getattr(apply, "automatic", False)): continue
-        if apply.data_link in mon_lib_srv.link_link_id_dict:
-          outl += "%sLinking %s to %s using %s\n" % (
-            " "*8,
-            apply.pdbres_pair[0][7:],
-            apply.pdbres_pair[1][7:],
-            apply.data_link,
-            )
-        else:
-          if getattr(apply, "possible_peptide_link", False):
-            if 1:
-              pass
-            else:
-              print >> log, "%sPossible peptide link %s to %s" % (
-                " "*8,
-                apply.pdbres_pair[0][7:],
-                apply.pdbres_pair[1][7:],
-                )
-          elif getattr(apply, "possible_rna_dna_link", False):
-            pass
-          else:
-            outl += "%sLinking %s to %s\n" % (
-              " "*8,
-              apply.pdbres_pair[0][7:],
-              apply.pdbres_pair[1][7:],
-              )
-            outl += '%sCreating link for "%s"\n' % (" "*10, apply.data_link)
-            mon_lib_srv.link_link_id_dict[apply.data_link] = None
-        if outls.get(apply.data_link, ""):
-          outl += outls[apply.data_link]
-      if outl:
-        print >> log, "%sAdding automatically detected intra-chain links" % (
-          " "*6,
-          )
-        print >> log, outl[:-1]
-    if remove:
-      remove.sort()
-      remove.reverse()
-      for r in remove: del self.apply_cif_links[r]
-    print >> log, "%sTime to detect intra-chain links : %0.1fs" % (
-      " "*6,
-      time.time()-t0)
-
   def create_disulfides(self, disulfide_distance_cutoff, log=None):
     if (self.model_indices is not None):
       model_indices = self.model_indices.select(self.cystein_sulphur_i_seqs)
@@ -3595,6 +3473,7 @@ class build_all_chain_proxies(object):
       site_symmetry_table=self.site_symmetry_table().select(
         self.cystein_sulphur_i_seqs))
     pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    # keep this around ??????????
     nonbonded_proxies = geometry_restraints.nonbonded_sorted_asu_proxies(
       model_indices=model_indices,
       conformer_indices=conformer_indices,
@@ -4199,101 +4078,6 @@ class build_all_chain_proxies(object):
     if (have_header):
       print >> log
 
-  def other_bonds(self,
-                  bond_params_table,
-                  bond_asu_table,
-                  log=None,
-                  verbose=False,
-                  ):
-    # designed for metal coordination
-    bonded_i_seqs = []
-    atoms = self.pdb_hierarchy.atoms()
-    xray_structure_simple=self.pdb_inp.xray_structure_simple()
-    pair_asu_table = xray_structure_simple.pair_asu_table(
-      distance_cutoff=2.9,
-      ) #self.clash_threshold)
-    for bp in self.geometry_proxy_registries.bond_simple.proxies:
-      bonded_i_seqs.append(bp.i_seqs)
-    pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    for ps in pair_sym_table.iterator():
-      print ps.i_seq, ps.j_seq, atoms[ps.i_seq].id_str(), atoms[ps.j_seq].id_str(),ps.rt_mx_ji
-    atom_pairs_i_seqs, sym_atom_pairs_i_seqs = pair_sym_table.both_edge_list()
-    nonbonded_pairs = list(set(atom_pairs_i_seqs).difference(set(bonded_i_seqs))
-)
-    import linking_utils
-    import bondlength_defaults
-    bond_data = []
-    simple_bonds = 0
-    sym_bonds = 0
-    for i_seq, j_seq in nonbonded_pairs:
-      atom1 = atoms[i_seq]
-      atom2 = atoms[j_seq]
-      if atom1.parent().parent()==atom2.parent().parent(): continue
-      if not linking_utils.is_atom_pair_linked(atom1, atom2): continue
-      equil = bondlength_defaults.get_default_bondlength(atom1.element,
-                                                         atom2.element,
-                                                         )
-      if equil is None: equil=2.3
-      for sym_i_seq, sym_j_seq, rt_mx in sym_atom_pairs_i_seqs:
-        if((sym_i_seq==i_seq and sym_j_seq==j_seq) or
-           (sym_i_seq==j_seq and sym_j_seq==i_seq)):
-          bond_params_table.update(
-            i_seq=i_seq,
-            j_seq=j_seq,
-            params=geometry_restraints.bond_params(
-              distance_ideal=equil,
-              weight=1/0.02**2))
-          print atoms[i_seq].id_str()
-          print atoms[j_seq].id_str()
-          print rt_mx
-          bond_asu_table.add_pair(
-            i_seq=i_seq,
-            j_seq=j_seq,
-            rt_mx_ji=rt_mx,
-            )
-          sym_bonds += 1
-          bond_data.append( (atoms[i_seq].id_str(),
-                             atoms[j_seq].id_str(),
-                             rt_mx,
-                             )
-                            )
-          if verbose: print bond_data[-1]
-          break
-      else:
-        bond_params_table.update(
-          i_seq=i_seq,
-          j_seq=j_seq,
-          params=geometry_restraints.bond_params(
-            distance_ideal=equil,
-            weight=1/0.02**2))
-        space_group = self.special_position_settings.space_group()
-        rt_mx_ji = sgtbx.rt_mx(symbol="x,y,z", t_den=space_group.t_den())
-        bond_asu_table.add_pair(
-          i_seq=i_seq,
-          j_seq=j_seq,
-          rt_mx_ji=rt_mx_ji)
-        simple_bonds += 1
-        bond_data.append( (atoms[i_seq].id_str(),
-                           atoms[j_seq].id_str(),
-                           None,
-                           )
-                          )
-        if verbose: print bond_data[-1]
-    if bond_data:
-      print >> log, "  Number of additional bonds: simple=%d, symmetry=%d" % (
-        simple_bonds,
-        sym_bonds,
-        )
-      for label1, label2, sym_op in sorted(bond_data):
-        if sym_op is None:
-          print >> log, "    Simple bond:   %s - %s" % (label1, label2)
-      for label1, label2, sym_op in sorted(bond_data):
-        if sym_op:
-          print >> log, "    Symmetry bond: %s - %s sym. op: %s" % (label1,
-                                                                   label2,
-                                                                   sym_op,
-                                                                   )
-
   def construct_geometry_restraints_manager(self,
         ener_lib,
         disulfide_link,
@@ -4359,8 +4143,9 @@ class build_all_chain_proxies(object):
         processed_edits.bond_distance_model_max)
     #
     asu_mappings = self.special_position_settings.asu_mappings(
-      buffer_thickness=max_bond_distance*3)
-        # factor 3 is to reach 1-4 interactions
+      buffer_thickness=max_bond_distance*3,
+      )
+    # factor 3 is to reach 1-4 interactions
     asu_mappings.process_sites_cart(
       original_sites=self.sites_cart,
       site_symmetry_table=self.site_symmetry_table())
@@ -4371,11 +4156,8 @@ class build_all_chain_proxies(object):
     #  sepi_obj = _.symmetry_equivalent_pair_interactions(
     #    i_seq=bond.i_seqs[0], j_seq=bond.i_seqs[1], rt_mx_ji=bond.rt_mx_ji)
     #  sepi = sepi_obj.get()
-
     geometry_restraints.add_pairs(
       bond_asu_table, self.geometry_proxy_registries.bond_simple.proxies)
-    #
-    self.geometry_proxy_registries.bond_simple.proxies = None # free memory
     #
     disulfide_bond = disulfide_link.bond_list[0]
     assert disulfide_bond.value_dist is not None
@@ -4410,6 +4192,23 @@ class build_all_chain_proxies(object):
       for proxy in processed_edits.planarity_proxies:
         self.geometry_proxy_registries.planarity.append_custom_proxy(proxy=proxy)
     #
+    al_params = self.params.automatic_linking
+    if al_params.link_all:
+      self.process_nonbonded_for_links(
+        bond_params_table,
+        bond_asu_table,
+        self.geometry_proxy_registries,
+        link_metals               = al_params.link_metals,
+        link_residues             = al_params.link_residues,
+        link_carbohydrates        = al_params.link_carbohydrates,
+        amino_acid_bond_cutoff    = al_params.amino_acid_bond_cutoff,
+        metal_coordination_cutoff = al_params.metal_coordination_cutoff,
+        carbohydrate_bond_cutoff  = al_params.carbohydrate_bond_cutoff,
+        inter_residue_bond_cutoff = al_params.inter_residue_bond_cutoff,
+        second_row_buffer         = al_params.buffer_for_second_row_elements,
+        log=log,
+        )
+    #
     #if (hydrogen_bonds is not None) :
     #  for proxy in hydrogen_bonds.bond_sym_proxies :
     #    if (proxy.weight <= 0): continue
@@ -4419,6 +4218,8 @@ class build_all_chain_proxies(object):
     #      i_seq=i_seq,
     #      j_seq=j_seq,
     #      rt_mx_ji=proxy.rt_mx_ji)
+    #
+    self.geometry_proxy_registries.bond_simple.proxies = None # free memory
     #
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=bond_asu_table,
@@ -4462,6 +4263,7 @@ class build_all_chain_proxies(object):
         nonbonded_weight = 100
     else:
       nonbonded_weight = self.params.nonbonded_weight
+    #
     result = geometry_restraints.manager.manager(
       crystal_symmetry=self.special_position_settings,
       model_indices=self.model_indices,
