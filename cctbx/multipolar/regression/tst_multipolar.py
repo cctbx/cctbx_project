@@ -95,7 +95,7 @@ def exercise(file_name=None):
   from iotbx import pdb
   pdb_inp = pdb.input(pdb_file)
   hierarchy = pdb_inp.construct_hierarchy()
-    
+
   processed_pdb_file = monomer_library.pdb_interpretation.process(
                                        mon_lib_srv               = mon_lib_srv,
                                        ener_lib                  = ener_lib,
