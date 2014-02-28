@@ -38,7 +38,7 @@ class TestMultimerReconstruction(unittest.TestCase):
 
     # use MTRIX data
     cau_multimer_data = multimer('multimer_test_data.pdb','cau')
-    cau_multimer_xyz = cau_multimer_data.get_xyz()
+    cau_multimer_xyz = list(cau_multimer_data.sites_cart())
 
     cau_multimer_xyz.sort()
     cau_expected_results.sort()
@@ -69,7 +69,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     ba_multimer_data = multimer(
       pdb_input_file_name='multimer_test_data.pdb',
       reconstruction_type='ba')
-    ba_multimer_xyz = ba_multimer_data.get_xyz()
+    ba_multimer_xyz = list(ba_multimer_data.sites_cart())
 
     # The multimer processing is my chain, so we need to sort lists before we compare them
     ba_multimer_xyz.sort()
