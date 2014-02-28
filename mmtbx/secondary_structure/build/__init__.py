@@ -10,6 +10,8 @@ from mmtbx.refinement.geometry_minimization import run2
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 import mmtbx.utils
 
+global_counter = 1
+
 alpha_pdb_str = """\
 ATOM      1  N   ALA     2       1.643  -2.366  -1.408  1.00  0.00           N
 ATOM      3  CA  ALA     2       1.280  -3.608  -2.069  1.00  0.00           C
@@ -64,6 +66,27 @@ ATOM      1  CB  ALA    2        3.770  -2.802  -0.076  1.00  0.00           C
 
 helix_class_to_pdb_str = {1:alpha_pdb_str, 3:alpha_pi_pdb_str, 5: alpha310_pdb_str}
 
+
+
+def get_expected_n_hbonds_from_helix(helix):
+  # assess helix length
+  if helix.helix_class==1:
+    return helix.length-4
+  elif helix.helix_class==5:
+    return helix.length-3
+  elif htype==3:
+    return helix.length-5
+  else:
+    raise Sorry("Unsupported helix type.")
+
+def print_hbond_proxies(geometry, hierarchy):
+  """ Print hydrogen bonds in geometry restraints manager for debugging
+  purposes"""
+  atoms = hierarchy.atoms()
+  for hb in geometry.generic_restraints_manager.hbonds_as_simple_bonds():
+    print (atoms[hb[0]].id_str(), "<====>",atoms[hb[1]].id_str(),
+        atoms[hb[0]].distance(atoms[hb[1]]), hb[0], hb[1])
+
 def get_r_t_matrices_from_structure(pdb_str):
   """ Return rotation and translation matrices for the ideal structure.
 
@@ -88,6 +111,8 @@ def get_r_t_matrices_from_structure(pdb_str):
                                             other_sites = fixed_sites)
   return lsq_fit_obj.r, lsq_fit_obj.t
 
+
+
 def make_ss_structure_from_sequence(pdb_str, sequence=None,
       pdb_hierarchy_template=None):
   """ Return pdb.hierarchy with secondary structure according to sequence or
@@ -102,7 +127,7 @@ def make_ss_structure_from_sequence(pdb_str, sequence=None,
   assert [sequence, pht].count(None) == 1
   if pht:
     assert len(pht.altloc_indices().keys()) == 1, \
-      "Alternative conformations are not supported"
+        "Alternative conformations are not supported"
   number_of_residues = len(sequence) if sequence!=None else \
     len(pht.models()[0].chains()[0].conformers()[0].residues())
   if number_of_residues<1:
@@ -113,7 +138,7 @@ def make_ss_structure_from_sequence(pdb_str, sequence=None,
   if pht:
     real_res_list = pht.models()[0].chains()[0].residue_groups()
   pdb_hierarchy = iotbx.pdb.input(source_info=None, lines=pdb_str).\
-    construct_hierarchy()
+      construct_hierarchy()
   chain = pdb_hierarchy.models()[0].chains()[0]
   current_ala_ag = chain.residue_groups()[0].atom_groups()[0]
   new_chain = iotbx.pdb.hierarchy.chain(id=" ")
@@ -123,7 +148,7 @@ def make_ss_structure_from_sequence(pdb_str, sequence=None,
   for j in range(number_of_residues):
     # put ALA
     c = sequence[j] if sequence!=None else \
-      one_three[real_res_list[j].atom_groups()[0].resname.upper()]
+        one_three[real_res_list[j].atom_groups()[0].resname.upper()]
     rg = iotbx.pdb.hierarchy.residue_group(icode="")
     rg.resseq = j+1
     new_chain.append_residue_group(residue_group=rg)
@@ -146,7 +171,7 @@ def make_ss_structure_from_sequence(pdb_str, sequence=None,
     moving_sites = flex.vec3_double()
     reper_atoms = ["CB","CA", "N"]
     current_reference_ag = real_res_list[j].atom_groups()[0] if pht else \
-      ideal_res_dict[three_one[c].lower()].models()[0].chains()[0].\
+        ideal_res_dict[three_one[c].lower()].models()[0].chains()[0].\
         residue_groups()[0].atom_groups()[0]
     for (ag, arr) in [(ag_to_place, fixed_sites),
         (current_reference_ag, moving_sites)]:
@@ -157,10 +182,10 @@ def make_ss_structure_from_sequence(pdb_str, sequence=None,
                                               other_sites = moving_sites)
     ideal_correct_ag = current_reference_ag.detached_copy()
     ideal_correct_ag.atoms().set_xyz(
-      lsq_fit_obj.r.elems*ideal_correct_ag.atoms().extract_xyz()+\
-      lsq_fit_obj.t.elems)
+        lsq_fit_obj.r.elems*ideal_correct_ag.atoms().extract_xyz()+\
+        lsq_fit_obj.t.elems)
     ideal_correct_ag.atoms().set_xyz(
-      rotamer_manager.nearest_rotamer_sites_cart(ideal_correct_ag))
+        rotamer_manager.nearest_rotamer_sites_cart(ideal_correct_ag))
     ag_to_place.pre_allocate_atoms(number_of_additional_atoms=\
                                                 len(ideal_correct_ag.atoms())-5)
     for a in ideal_correct_ag.atoms():
@@ -169,8 +194,6 @@ def make_ss_structure_from_sequence(pdb_str, sequence=None,
         at.uij_erase()
         ag_to_place.append_atom(atom=at)
   new_pdb_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(new_chain)
-  new_pdb_h.atoms().reset_i_seq()
-  new_pdb_h.atoms().reset_serial()
   # align to real
   if pht != None:
     fixed_sites = pht.atoms().extract_xyz()
@@ -191,18 +214,35 @@ def get_helix(helix_class, sequence=None, pdb_hierarchy_template=None):
     pdb_hierarchy_template=pdb_hierarchy_template)
 
 def substitute_ss(real_h,
+                    crystal_symmetry,
                     helices,
                     sigma_on_reference_non_ss = 1,
                     sigma_on_reference_ss = 5,
                     sigma_on_torsion_ss = 5,
-                    #hydrogen_weight = 400,
                     log=null_out()):
   """
-  Substitute helices in real_h hierarchy with ideal ones _in_place_.
-  Returns nothing.
+  Substitute secondary structure elements in real_h hierarchy with ideal
+  ones _in_place_. Currently only helices are supported.
+  Returns geometry restraints manager for furhter refinements with all
+  correct hydrogen bonds. It is not guaranteed that
+  mmtbx.secondary_structure.manager.find_automatically()
+  will be able to generate them again.
+  real_h - hierarcy to substitute secondary structure elements.
+  crystal_symmetry - symmetry object for the hierarchy provided.
   helices - list with HELIX records. Types supported:
-  1:alpha_pdb_str, 3:alpha_pi_pdb_str, 5: alpha310_pdb_str
+      1:alpha_pdb_str, 3:alpha_pi_pdb_str, 5: alpha310_pdb_str
+
+  Weights (bigger number gives lighter restraints):
+  sigma_on_reference_non_ss - weight on original model coordinates restraints
+      where no ss present. Keeps loops close to initial model.
+  sigma_on_reference_ss - weight on original model coordinates restraints
+      where ss present. Bends helices a bit according to initial model.
+  sigma_on_torsion_ss - weight on torsion angles restraints where ss present.
+      Keeps helices torsion angles close to ideal.
   """
+  expected_n_hbonds = 0
+  for h in helices:
+    expected_n_hbonds += get_expected_n_hbonds_from_helix(h)
   edited_h = iotbx.pdb.input(source_info=None,
       lines=flex.split_lines(real_h.as_pdb_string())).construct_hierarchy()
   n_atoms_in_real_h = real_h.atoms().size()
@@ -217,91 +257,112 @@ def substitute_ss(real_h,
     sel_h = real_h.select(all_bsel, copy_atoms=True)
     ideal_h = get_helix(helix_class=h.helix_class, pdb_hierarchy_template=sel_h)
     edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
-  edited_h.write_pdb_file(file_name="ideal_ss.pdb")
   pre_result_h = edited_h
-
+  # generate different atom selections.
   bsel = flex.bool(real_h.atoms().size(), False)
   ss_selection = flex.bool(real_h.atoms().size(), False)
-  other_selection = flex.bool(real_h.atoms().size(), True)
+  other_selection = flex.bool(real_h.atoms().size(), False)
+  ss_for_tors_selection = flex.bool(real_h.atoms().size(), False)
   selection_cache = real_h.atom_selection_cache()
+  # set all CA atoms to True for other_selection
+  isel = selection_cache.iselection("name ca")
+  other_selection.set_selected(isel, True)
   for h in helices:
-    selstring = h.as_atom_selections(params=None)
-    isel = selection_cache.iselection(selstring[0])
+    selstring = "name ca chain %s resseq %s:%s"\
+                % (h.start_chain_id, h.start_resseq, h.end_resseq)
+    isel = selection_cache.iselection(selstring)
     ss_selection.set_selected(isel, True)
     other_selection.set_selected(isel, False)
-
-  initial_cs = iotbx.pdb.input(source_info = None,
-      lines=flex.split_lines(real_h.as_pdb_string())).xray_structure_simple().\
-      cubic_unit_cell_around_centered_scatterers(buffer_size = 10).\
-      crystal_symmetry()
+    selstring = "(name ca or name n or name o or name c) chain %s resseq %s:%s"\
+                % (h.start_chain_id, h.start_resseq, h.end_resseq)
+    isel = selection_cache.iselection(selstring)
+    ss_for_tors_selection.set_selected(isel, True)
   processed_pdb_files_srv = mmtbx.utils.\
-      process_pdb_file_srv(crystal_symmetry= initial_cs, log=log)
+      process_pdb_file_srv(crystal_symmetry= crystal_symmetry, log=log)
   processed_pdb_file, junk = processed_pdb_files_srv.\
-    process_pdb_files(raw_records=flex.split_lines(real_h.as_pdb_string()))
-
-  hbond_params = None
-  if hbond_params == None:
-    ss_manager = mmtbx.secondary_structure.manager(pdb_hierarchy=pre_result_h)
-    ss_manager.find_automatically()
-    ss_manager.initialize(log=log)
-    proxies_for_grm = ss_manager.create_hbond_proxies(
+      process_pdb_files(raw_records=flex.split_lines(real_h.as_pdb_string()))
+  defpars = mmtbx.secondary_structure.sec_str_master_phil.fetch()
+  custom_pars = defpars.fetch(source = iotbx.phil.parse(
+      "input.use_ksdssp=False\nh_bond_restraints.remove_outliers=False"))
+  ss_manager = mmtbx.secondary_structure.manager(
+      pdb_hierarchy=pre_result_h, params=custom_pars.extract())
+  ss_manager.find_automatically(log=log)
+  ss_manager.initialize(log=log)
+  proxies_for_grm = ss_manager.create_hbond_proxies(
       log          = log,
-      as_python_objects = False,
-      hbond_params = None)
+      as_python_objects = False)
+  custom_nb_excl = proxies_for_grm.exclude_nb_list
   grm = processed_pdb_file.geometry_restraints_manager(
-        hydrogen_bond_proxies=proxies_for_grm.proxies,
-        assume_hydrogens_all_missing = False)
+      show_energies                = False,
+      show_nonbonded_clashscore    = False,
+      hydrogen_bond_proxies=proxies_for_grm.proxies,
+      custom_nonbonded_exclusions = custom_nb_excl,
+      assume_hydrogens_all_missing = True)
   grm.generic_restraints_manager.reference_manager.\
-    add_coordinate_restraints(
-      sites_cart = real_h.atoms().extract_xyz().select(ss_selection),
-      selection  = ss_selection,
-      sigma      = sigma_on_reference_ss)
+      add_coordinate_restraints(
+          sites_cart = real_h.atoms().extract_xyz().select(ss_selection),
+          selection  = ss_selection,
+          sigma      = sigma_on_reference_ss)
   grm.generic_restraints_manager.reference_manager.\
-    add_coordinate_restraints(
-      sites_cart = real_h.atoms().extract_xyz().select(other_selection),
-      selection  = other_selection,
-      sigma      = sigma_on_reference_non_ss)
+      add_coordinate_restraints(
+          sites_cart = real_h.atoms().extract_xyz().select(other_selection),
+          selection  = other_selection,
+          sigma      = sigma_on_reference_non_ss)
   grm.generic_restraints_manager.reference_manager.\
-    add_torsion_restraints(
-      pdb_hierarchy   = pre_result_h,
-      sites_cart      = pre_result_h.atoms().extract_xyz().select(ss_selection),
-      selection = ss_selection,
-      chi_angles_only = False,
-      sigma           = sigma_on_torsion_ss)
+      add_coordinate_restraints(
+          sites_cart = real_h.atoms().extract_xyz().select(other_selection),
+          selection  = other_selection,
+          sigma      = sigma_on_reference_non_ss)
+  grm.generic_restraints_manager.reference_manager.\
+      add_torsion_restraints(
+          pdb_hierarchy   = pre_result_h,
+          sites_cart      = pre_result_h.atoms().extract_xyz().\
+                                select(ss_for_tors_selection),
+          selection = ss_for_tors_selection,
+          chi_angles_only = False,
+          sigma           = sigma_on_torsion_ss)
   real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
   restraints_manager = mmtbx.restraints.manager(
-    geometry=grm,
-    normalization=True)
+      geometry=grm,
+      normalization=True)
+  assert restraints_manager.geometry.generic_restraints_manager.\
+      get_n_hbonds() == expected_n_hbonds
   obj = run2(
-    restraints_manager       = restraints_manager,
-    pdb_hierarchy            = real_h,
-    max_number_of_iterations = 500,
-    number_of_macro_cycles   = 3,
-    bond                     = True,
-    nonbonded                = True,
-    angle                    = True,
-    dihedral                 = True,
-    chirality                = True,
-    planarity                = True,
-    log                      = log)
+      restraints_manager       = restraints_manager,
+      pdb_hierarchy            = real_h,
+      max_number_of_iterations = 500,
+      number_of_macro_cycles   = 5,
+      bond                     = True,
+      nonbonded                = True,
+      angle                    = True,
+      dihedral                 = True,
+      chirality                = True,
+      planarity                = True,
+      log                      = log)
+  # removing unnecessary restraints!!!
+  restraints_manager.geometry.generic_restraints_manager.reference_manager.\
+      remove_coordinate_restraints(selection=ss_selection)
+  restraints_manager.geometry.generic_restraints_manager.reference_manager.\
+      remove_coordinate_restraints(selection=other_selection)
+  return restraints_manager
 
 
 def beta():
   pdb_hierarchy = make_ss_structure_from_sequence(beta_pdb_str,
-    "ACEDGFIHKMLNQPSRTWVY")
+      "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_beta_seq.pdb")
 
 def alpha_310():
   pdb_hierarchy = make_ss_structure_from_sequence(alpha310_pdb_str,
-    "ACEDGFIHKMLNQPSRTWVY")
+      "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_helix310_seq.pdb")
 
 def alpha_pi():
   pdb_hierarchy = make_ss_structure_from_sequence(alpha_pi_pdb_str,
-    "ACEDGFIHKMLNQPSRTWVY")
+      "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_helix_pi_seq.pdb")
 
 def alpha():
   pdb_hierarchy = make_ss_structure_from_sequence(alpha_pdb_str,
-    "ACEDGFIHKMLNQPSRTWVY")
+      "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_helix_seq.pdb")
