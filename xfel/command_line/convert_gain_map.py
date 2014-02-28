@@ -12,7 +12,8 @@ from libtbx.option_parser import option_parser
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import parse_calib
-
+from xfel.detector_formats import address_and_timestamp_from_detector_format_version
+from xfel.cxi.cspad_ana.cspad_tbx import evt_timestamp
 
 # Fake objects to emulate the minimal functionality so that we can reuse the
 # functions CsPad2x2Image and CsPadDetector in cspad_tbx.py
@@ -83,12 +84,8 @@ def run(args):
                    ).process(args=args)
   output_filename = command_line.options.output_filename
   detector_format_version = command_line.options.detector_format_version
-  if "CXI" in detector_format_version:
-    address = 'CxiDs1-0|Cspad-0'
-  elif "XPP" in detector_format_version:
-    address ='XppGon-0|Cspad-0'
-  else:
-    address = None
+  address, timestamp = address_and_timestamp_from_detector_format_version(detector_format_version)
+  timestamp = evt_timestamp((timestamp,0))
   args = command_line.args
   assert len(args) == 1
   if args[0].endswith('.npy'):
@@ -103,7 +100,7 @@ def run(args):
   gain_map = flex.double(img_diff.accessor(), 0)
   gain_map.as_1d().set_selected(img_sel.iselection(), 1/img_diff.as_1d().select(img_sel))
   gain_map /= flex.mean(gain_map.as_1d().select(img_sel))
-  d = cspad_tbx.dpack(data=gain_map, address=address, active_areas=active_areas)
+  d = cspad_tbx.dpack(data=gain_map, address=address, active_areas=active_areas, timestamp=timestamp)
   easy_pickle.dump(output_filename, d)
 
 
