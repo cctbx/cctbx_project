@@ -11,10 +11,11 @@ def reverse_timestamp(timestamp):
                    representation
   @return          Tuple of the Unix time in seconds and milliseconds
   """
+  from calendar import timegm
 
   tokens = timestamp.split('.')
-  gmtime_tuple = time.strptime(tokens[0], '%Y-%m-%dT%H:%MZ%S')
-  return (time.mktime(gmtime_tuple), float(tokens[1]))
+  gmtime_tuple = time.strptime(tokens[0]+" UTC", '%Y-%m-%dT%H:%MZ%S %Z')
+  return (timegm(gmtime_tuple), float(tokens[1]))
 
 def _get_detector_format_version_dict():
   from calendar import timegm
@@ -118,7 +119,7 @@ def _get_detector_format_version_dict():
   }
 _detector_format_version_dict = _get_detector_format_version_dict()
 
-def detector_format_version(address, time):
+def detector_format_version(address, timestamp):
   """The detector_format_version() function returns a format version
   string appropriate for the detector whose address is given by @p
   address at the time @p time.
@@ -129,17 +130,14 @@ def detector_format_version(address, time):
   @return        Format version string
   """
 
-  from calendar import timegm
-  from time import strptime
-
   if address is None:
     return None # time can be None if any time is valid for the format version
 
   ret = None
   for format_name, format in _detector_format_version_dict.iteritems():
     if address == format['address'] and \
-       (format['start_time'] is None or time >  format['start_time']) and \
-       (format['end_time']   is None or time <= format['end_time']):
+       (format['start_time'] is None or timestamp >  format['start_time']) and \
+       (format['end_time']   is None or timestamp <= format['end_time']):
       assert ret is None
       ret = format_name
 
