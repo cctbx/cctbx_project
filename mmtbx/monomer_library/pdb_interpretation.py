@@ -111,14 +111,6 @@ altloc_weighting_params = """\
       .type = float
   }
 """
-junk = '''    intra_chain = False
-      .type = bool
-      .short_caption = Automatically add intra-chain covalent bonds for ligands
-      .help = If True, bond restraints will be generated for any appropriate \
-        ligand-protein or ligand-nucleic acid covalent bonds if the chain IDs \
-        are the same.  This includes sugars, amino acid modifications, and \
-        other prosthetic groups.
-'''
 master_params_str = """\
   cdl = False
     .type = bool
@@ -126,7 +118,7 @@ master_params_str = """\
     .help = Use Conformation Dependent Library (CDL) \
       for geometry minimization restraints
     .style = bold
-  correct_hydrogens = False
+  correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
   automatic_linking

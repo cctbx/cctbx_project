@@ -3,6 +3,7 @@ from libtbx import test_utils
 import libtbx.load_env
 
 tst_list = (
+  "$D/monomer_library/tst_linking.py",
   "$D/rotamer/tst_rotamer_eval.py",
   "$D/monomer_library/tst_idealized_aa.py",
   "$D/regression/tst_ml_estimate.py",
@@ -53,7 +54,6 @@ tst_list = (
   "$D/monomer_library/tst_rna_dna_interpretation.py",
   "$D/monomer_library/tst_protein_interpretation.py",
   "$D/monomer_library/tst_geo_reduce_for_tardy.py",
-  "$D/monomer_library/tst_linking.py",
   "$D/monomer_library/tst_chg.py",
   "$D/monomer_library/tst_neutron_distance.py",
   "$D/regression/tst_altloc_remediate.py",
@@ -149,6 +149,7 @@ tst_list = (
   "$D/disorder/tst_backbone.py",
   "$D/disorder/tst_analyze_model.py",
   "$D/refinement/tst_minimization_ncs_constraints.py",
+  "$D/monomer_library/tst_correct_hydrogens.py",
   )
 
 def run():

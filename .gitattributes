@@ -1778,6 +1778,7 @@ mmtbx/monomer_library/rotamer_utils.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_chg.py -text
 mmtbx/monomer_library/tst_cif_triage.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_conformation_dependent_restraints.py svneol=native#text/x-python
+mmtbx/monomer_library/tst_correct_hydrogens.py -text
 mmtbx/monomer_library/tst_geo_reduce_for_tardy.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_idealized_aa.py -text
 mmtbx/monomer_library/tst_linking.py -text
