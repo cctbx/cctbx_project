@@ -52,16 +52,16 @@ class common_mode_correction(mod_event_info):
     parameters passed from the pyana configuration file in instance
     variables.
 
-    @param address         Address string XXX Que?!
+    @param address         Full data source address of the DAQ device
     @param calib_dir       Directory with calibration information
     @param common_mode_correction The type of common mode correction to apply
     @param dark_path       Path to input average dark image
     @param dark_stddev     Path to input standard deviation dark
                            image, required if @p dark_path is given
     @param mask_path       Path to input mask.  Pixels to mask out should be set to -2
-    @param gain_map_path   Path to input gain map.  Multplied times the image.
+    @param gain_map_path   Path to input gain map.  Multiplied times the image.
     @param gain_map_level  If set, all the '1' pixels in the gain_map are set to this multiplier
-                           and all the '0' pixels in the gain_map are set to '1'. If not set,
+                           and all the '0' pixels in the gain_map are set to '1'.  If not set,
                            use the values in the gain_map directly
     @param laser_1_status  0 or 1 to indicate that the laser should be off or on respectively
     @param laser_4_status  0 or 1 to indicate that the laser should be off or on respectively
@@ -76,10 +76,13 @@ class common_mode_correction(mod_event_info):
     # class.
     mod_event_info.__init__(self, address=address, **kwds)
 
-    self.dark_path = cspad_tbx.getOptEvalOrString(dark_path)
-    self.dark_stddev_path = cspad_tbx.getOptEvalOrString(dark_stddev)
-    self.mask_path = cspad_tbx.getOptEvalOrString(mask_path)
-    gain_map_path = cspad_tbx.getOptString(gain_map_path)
+    # The paths will be substituted in beginjob(), where evt and env
+    # are available.
+    self._dark_path = cspad_tbx.getOptString(dark_path)
+    self._dark_stddev_path = cspad_tbx.getOptString(dark_stddev)
+    self._gain_map_path = cspad_tbx.getOptString(gain_map_path)
+    self._mask_path = cspad_tbx.getOptString(mask_path)
+
     self.gain_map_level = cspad_tbx.getOptFloat(gain_map_level)
     self.common_mode_correction = cspad_tbx.getOptString(common_mode_correction)
     self.photon_threshold = cspad_tbx.getOptFloat(photon_threshold)
@@ -125,43 +128,6 @@ class common_mode_correction(mod_event_info):
     if self.sections is None:
       raise RuntimeError("Failed to load metrology")
 
-    # Load the dark image and ensure it is signed and at least 32 bits
-    # wide, since it will be used for differencing.  If a dark image
-    # is provided, a standard deviation image is required, and all the
-    # ADU scales must match up.
-    self.dark_img = None
-    if (self.dark_path is not None):
-      assert self.dark_stddev_path is not None
-      dark_dict = easy_pickle.load(self.dark_path)
-      #assert "ADU_SCALE" not in dark_dict # force use of recalculated dark
-      self.dark_img = dark_dict['DATA']
-      assert isinstance(self.dark_img, flex.double)
-
-      dark_stddev_dict = easy_pickle.load(self.dark_stddev_path)
-      self.dark_stddev = dark_stddev_dict['DATA']
-      assert isinstance(self.dark_stddev, flex.double)
-      self.dark_mask = (self.dark_stddev > 0)
-
-    # Load the mask image and ensure it is signed and at least 32 bits
-    # wide, since it will be used for differencing.
-    self.mask_img = None
-    if (self.mask_path is not None):
-      mask_dict = easy_pickle.load(self.mask_path)
-      self.mask_img = mask_dict['DATA']
-      assert isinstance(self.mask_img, flex.double) or isinstance(self.mask_img, flex.int)
-
-    self.gain_map = None
-    if gain_map_path is not None:
-      gain_dict = easy_pickle.load(gain_map_path)
-      self.gain_map = gain_dict['DATA']
-      if self.gain_map_level is not None:
-        cspad_tbx.dynamic_range *= self.gain_map_level
-        sel = flex.bool([bool(f) for f in self.gain_map])
-        sel.reshape(flex.grid(self.gain_map.focus()))
-        self.gain_map = self.gain_map.set_selected(~sel, self.gain_map_level)
-        self.gain_map = self.gain_map.set_selected(sel, 1)
-      assert isinstance(self.gain_map, flex.double)
-
 
   def beginjob(self, evt, env):
     """The beginjob() function does one-time initialisation from
@@ -173,6 +139,62 @@ class common_mode_correction(mod_event_info):
     """
 
     super(common_mode_correction, self).beginjob(evt, env)
+
+    # Load the dark image and ensure it is signed and at least 32 bits
+    # wide, since it will be used for differencing.  If a dark image
+    # is provided, a standard deviation image is required, and all the
+    # ADU scales must match up.
+    #
+    # XXX Can we zap all the ADU_SCALE stuff?
+    #
+    # XXX Do we really need to store the substituted values in the
+    # instance here?  At least self._dark_path is referenced later on.
+    #
+    # Note that this will load the dark, standard deviation and gain
+    # once (SEVERAL TIMES) for each process, but the gain is that we
+    # can do substitutions.  But it is only done at the beginning of
+    # the job.
+    self.dark_img = None
+    if self._dark_path is not None:
+      self._dark_path = cspad_tbx.getOptEvalOrString(
+        cspad_tbx.pathsubst(self._dark_path, evt, env))
+
+      assert self._dark_stddev_path is not None
+      dark_dict = easy_pickle.load(self._dark_path)
+      #assert "ADU_SCALE" not in dark_dict # force use of recalculated dark
+      self.dark_img = dark_dict['DATA']
+      assert isinstance(self.dark_img, flex.double)
+
+      self._dark_stddev_path = cspad_tbx.getOptEvalOrString(
+        cspad_tbx.pathsubst(self._dark_stddev_path, evt, env))
+
+      self.dark_stddev = easy_pickle.load(self._dark_stddev_path)['DATA']
+      assert isinstance(self.dark_stddev, flex.double)
+      self.dark_mask = (self.dark_stddev > 0)
+
+    # Load the mask image and ensure it is signed and at least 32 bits
+    # wide, since it will be used for differencing.
+    self.gain_map = None
+    if self._gain_map_path is not None:
+      self._gain_map_path = cspad_tbx.getOptEvalOrString(
+        cspad_tbx.pathsubst(self._gain_map_path, evt, env))
+      self.gain_map = easy_pickle.load(self._gain_map_path)['DATA']
+      if self.gain_map_level is not None:
+        cspad_tbx.dynamic_range *= self.gain_map_level
+        sel = flex.bool([bool(f) for f in self.gain_map])
+        sel.reshape(flex.grid(self.gain_map.focus()))
+        self.gain_map = self.gain_map.set_selected(~sel, self.gain_map_level)
+        self.gain_map = self.gain_map.set_selected(sel, 1)
+      assert isinstance(self.gain_map, flex.double)
+
+    self.mask_img = None
+    if self._mask_path is not None:
+      self._mask_path = cspad_tbx.getOptEvalOrString(
+        cspad_tbx.pathsubst(self._mask_path, evt, env))
+
+      self.mask_img = easy_pickle.load(self._mask_path)['DATA']
+      assert isinstance(self.mask_img, flex.double) \
+        or   isinstance(self.mask_img, flex.int)
 
     self.config = cspad_tbx.getConfig(self.address, env)
     if self.config is None:
@@ -465,7 +487,7 @@ class common_mode_correction(mod_event_info):
     @param env Environment object
     """
 
-    if 0 and self.dark_path is not None and self.nmemb > 1:
+    if 0 and self._dark_path is not None and self.nmemb > 1:
       print self.sum_common_mode, self.sumsq_common_mode
       self.mean_common_mode = self.sum_common_mode / self.nmemb
       print self.mean_common_mode
@@ -477,7 +499,7 @@ class common_mode_correction(mod_event_info):
 
 
   def do_sigma_scaling(self):
-    # Divide each pixel value by it's dark standard deviation. Since we are led
+    # Divide each pixel value by it's dark standard deviation.  Since we are led
     # to believe that the standard deviation of a pixel is proportional to the
     # gain of said pixel, this approximates a gain correction.
     assert self.dark_img is not None
