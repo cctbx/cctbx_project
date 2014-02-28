@@ -1,7 +1,7 @@
 from __future__ import division
 from iotbx import crystal_symmetry_from_any
 from libtbx.utils import Sorry
-from scitbx import matrix
+from scitbx.array_family import flex
 from iotbx import pdb
 import string
 import math
@@ -60,12 +60,12 @@ class multimer(object):
     # Read the relevant transformation matrices
     if reconstruction_type == 'ba':
       # Read BIOMT info
-      TRASFORM_info = pdb_inp.process_BIOMT_records(
+      transform_info = pdb_inp.process_BIOMT_records(
         error_handle=error_handle,eps=eps)
       self.transform_type = 'biological_assembly'
     elif reconstruction_type == 'cau':
       # Read MTRIX info
-      TRASFORM_info = pdb_inp.process_mtrix_records(
+      transform_info = pdb_inp.process_mtrix_records(
         error_handle=error_handle,eps=eps)
       self.transform_type = 'crystall_asymmetric_unit'
     else:
@@ -73,25 +73,25 @@ class multimer(object):
                   'Reconstruction type can be: \n' + \
                   "'ba': biological assembly \n" + \
                   "'cau': crystallographic asymmetric unit \n")
-    # Collect only transformations which coordinates are not present
+    # Collect only transformations for which coordinates are not present
     i_transforms = []
-    for i,coordinates_present in enumerate(TRASFORM_info.coordinates_present):
+    for i,coordinates_present in enumerate(transform_info.coordinates_present):
       if not coordinates_present: i_transforms.append(i)
     self.number_of_transforms = len(i_transforms)
-    self.rotation_matrices = [TRASFORM_info.r[i] for i in i_transforms]
-    self.translation_vectors = [TRASFORM_info.t[i] for i in i_transforms]
+    self.rotation_matrices = [transform_info.r[i] for i in i_transforms]
+    self.translation_vectors = [transform_info.t[i] for i in i_transforms]
     chain_ids = {x.id for x in pdb_obj.hierarchy.models()[0].chains()}
     # Keep the original chains IDs
     self.ncs_chains_ids = tuple(sorted(chain_ids))
     if (self.number_of_transforms>0):
-      # number of chains in hierachy (more than the actual chains in the model)
+      # number of chains in hierarchy (more than the actual chains in the model)
       chains_number = pdb_obj.hierarchy.overall_counts().n_chains
       # apply the transformation
       for model in pdb_obj_new.models():
         # The information on a chain in a PDB file does not have to be continuous.
         # Every time the chain name changes in the pdb file, a new chain is added to the model,
         # even if the chain ID already exist.
-        # so there model.chains() might containe several chains that have the same chain ID
+        # so there model.chains() might contain several chains that have the same chain ID
         # collect the unique chain names
         unique_chain_names = {x.id for x in model.chains()}
         nChains = len(model.chains())
@@ -99,12 +99,12 @@ class multimer(object):
         new_chains_names = self._chains_names(i_transforms,\
           nChains,unique_chain_names)
         for chain in model.chains():
-          # iterating over the TRASFORM transforms that are not present
+          # iterating over the transforms that are not present
           for i_transform in i_transforms:
             new_chain = chain.detached_copy()
             new_chain.id = new_chains_names[new_chain.id + str(i_transform)]
-            new_sites = TRASFORM_info.r[i_transform].elems*\
-              new_chain.atoms().extract_xyz()+TRASFORM_info.t[i_transform]
+            new_sites = transform_info.r[i_transform].elems*\
+              new_chain.atoms().extract_xyz()+transform_info.t[i_transform]
             new_chain.atoms().set_xyz(new_sites)
             # add a new chain to current model
             model.append_chain(new_chain)
@@ -113,22 +113,23 @@ class multimer(object):
     ''' (int, int, set) -> dictionary
 
     Create a dictionary
-    keys: a string made of chain_name + str(TRASFORM_transform_number)
+    keys: a string made of chain_name + str(i_transform number)
     values: two letters and digits string combination
 
-    The total number of new chains can be large (order of hundereds)
+    The total number of new chains can be large (order of hundreds)
     Chain names might repeat themselves several times in a pdb file
-    We want copies of chains with the same name to stil have the same name after
+    We want copies of chains with the same name to still have the same name after
     similar BIOMT/MTRIX transformation
 
     Arguments:
-    TRASFORM_transform_numbers -- an integer. the number of BIOMT/MTRIX transformation operations in the pdb object
-    nChains -- an integer. the number of chains as interpreted by pdb.hierarchy.input
-    unique_chain_names -- a set. a set of unique chain names
+    i_transform : an integer. the number of BIOMT/MTRIX transformation operations
+                  in the pdb object
+    nChains : an integer. the number of chains as interpreted by pdb.hierarchy.
+              input unique_chain_names : a set. a set of unique chain names
 
     Returns:
-    new_names -- a dictionary. {'A1': 'aa', 'A2': 'gq',....} map a chain name and
-    a TRASFORM transform number to a new chain name
+    new_names : a dictionary. {'A1': 'aa', 'A2': 'gq',....} map a chain name and
+    a transform number to a new chain name
 
     >>> self._chains_names(3,4,{'A','B'})
     {'A1': 'aa', 'A3': 'ac', 'A2': 'ab', 'B1': 'ba', 'B2': 'bb', 'B3': 'bc'}
@@ -144,17 +145,18 @@ class multimer(object):
     new_names_dictionary ={x:y for (x,y) in zip(dictinary_key,dictionary_values)}
     return new_names_dictionary
 
-  def get_xyz(self):
-    '''(multimer) -> list of arrays
+  def sites_cart(self):
+    '''(multimer) -> flex.vec3_double
 
     Returns:
-    xyz -- a list of x,y,z coordinates for each atoms in the resconstructed multimer
+    xyz -- an object containing x,y,z coordinates for each atoms
+           in the reconstructed multimer
     '''
     xyz = []
     for model in self.assembled_multimer.models():
       for chain in model.chains():
         xyz.extend(list(chain.atoms().extract_xyz()))
-    return xyz
+    return flex.vec3_double(xyz)
 
   def write(self,pdb_output_file_name='',crystal_symmetry=None):
     ''' (string) -> text file
