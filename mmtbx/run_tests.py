@@ -80,7 +80,7 @@ tst_list = (
   "$D/geometry_restraints/tst_hbond.py",
   "$D/geometry_restraints/tst_reference_coordinate.py",
   "$D/conformation_dependent_library/test_cdl.py",
-  "$D/validation/sequence.py",
+  "$D/regression/tst_sequence_validation.py",
   "$D/regression/tst_prune_model.py",
   "$D/regression/tst_real_space_correlation.py",
   "$D/regression/tst_examples.py",
@@ -150,6 +150,8 @@ tst_list = (
   "$D/disorder/tst_analyze_model.py",
   "$D/refinement/tst_minimization_ncs_constraints.py",
   "$D/monomer_library/tst_correct_hydrogens.py",
+  "$D/regression/tst_anneal_real_space.py",
+  "$D/regression/tst_generate_disorder.py",
   )
 
 def run():

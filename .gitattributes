@@ -1882,6 +1882,7 @@ mmtbx/regression/tst_real_space_correlation.py -text
 mmtbx/regression/tst_refine_anomalous_substructure.py svneol=native#text/x-python
 mmtbx/regression/tst_rigid_bond_test.py -text
 mmtbx/regression/tst_ringer.py -text
+mmtbx/regression/tst_sequence_validation.py -text
 mmtbx/regression/tst_sort_hetatms.py -text
 mmtbx/regression/tst_utils.py -text
 mmtbx/regression/tst_validation_summary.py -text
