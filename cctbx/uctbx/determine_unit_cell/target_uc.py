@@ -119,7 +119,9 @@ class target:
     """ Plot Niggli cells -- one plot for (a,b,c) and one plot for (alpha, beta, gamma) -- colour
     coded by cluster index.  """
     import matplotlib.pyplot as plt
-    colors = ['b', 'y', 'g', 'c', 'm', 'r', 'k']
+    from mpl_toolkits.mplot3d import Axes3D
+    import matplotlib.cm as mpl_cmaps
+    cmap = mpl_cmaps.Paired
     fig = plt.figure('unit_cells_dimensions')
     ax = fig.add_subplot(111, projection='3d')
     ax.set_xlabel('a [A]')
