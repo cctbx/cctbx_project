@@ -1786,17 +1786,22 @@ links = {
   "linking_test_ALY_MCM.pdb" : [11,12], # links AA with quasi-AA
   }
 
-def run():
+def run(only_i=None):
+  try: only_i=int(only_i)
+  except: only_i=None
   cifs = ""
   for pdb in pdbs:
     f=file(pdb, "wb")
     f.write(pdbs[pdb])
     f.close()
     if pdb.endswith(".cif"): cifs += " %s" % pdb
+  j=0
   for pdb in sorted(pdbs):
     if pdb.endswith(".cif"): continue
     if pdb in ["linking_test_CD_GHE_A_B.pdb"]: continue
     #if pdb.find("XYP")==-1: continue
+    j+=1
+    if only_i is not None and only_i!=j: continue
     for i in range(2):
       log_filename = "%s_%d.log" % (pdb, i)
       cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
@@ -1824,4 +1829,5 @@ def run():
       print "OK"
 
 if __name__=="__main__":
-  run()
+  import sys
+  run(*tuple(sys.argv[1:]))
