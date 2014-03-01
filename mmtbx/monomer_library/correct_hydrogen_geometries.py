@@ -160,6 +160,8 @@ def correct_hydrogen_geometries(hierarchy,
                                          xray_structure=xray_structure,
                                          sites_cart=sites_cart,
                                          )
+  if xyzs is None:
+    return 0, i_seqs
   assert len(i_seqs)==len(xyzs)
   if xray_structure:
     sites_cart = xray_structure.sites_cart()
