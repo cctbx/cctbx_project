@@ -27,7 +27,7 @@ sort_waters_by = none *b_iso
 set_hetatm_record = True
   .type = bool
   .help = Convert ATOM to HETATM where appropriate.
-  .help = Set HETATM label
+  .short_caption = Set HETATM label
 ignore_selection = None
   .type = atom_selection
   .help = Selection of atoms to skip.  Any residue group which overlaps with \
@@ -46,6 +46,11 @@ distance_cutoff = 6.0
     kept relatively small for speed reasons, but it may miss waters that are \
     far out in solvent channels.
   .input_size = 80
+remove_waters_outside_radius = False
+  .type = bool
+  .help = Remove waters more than the specified distnace cutoff to the \
+    nearest polymer chain (to avoid PDB complaints).
+  .short_caption = Max. water-to-polymer distance
 loose_chain_id = X
   .type = str
   .help = Chain ID assigned to heteroatoms that can't be mapped to a nearby \
@@ -211,9 +216,14 @@ def sort_hetatms (
   for chain in preserve_chains :
     new_model.append_chain(chain)
   unit_cell = xray_structure.unit_cell()
+  n_deleted = 0
   if (not params.preserve_chain_id) :
     for k, rg in enumerate(hetatm_residue_groups) :
       chain_id = hetatm_residue_chain_ids[k]
+      atom_groups = rg.atom_groups()
+      if (len(atom_groups) == 0) :
+        continue
+      is_water = (atom_groups[0].resname in ["HOH", "WAT", "DOD"])
       rg_atoms = rg.atoms()
       i_seqs = rg_atoms.extract_tmp_as_size_t()
       closest_distance = sys.maxint
@@ -241,10 +251,16 @@ def sort_hetatms (
               closest_rt_mx = rt_mx.inverse() # XXX I hope this is right...
               closest_i_seq = j_seq
       if (closest_i_seq is None) :
-        print >> log, \
-          "Residue group %s %s is not near any macromolecule chain" % \
-          (chain_id, rg.resid())
-        loose_residues.append_residue_group(rg)
+        if (is_water and params.remove_waters_outside_radius) :
+          print >> log, "Water %s is not near any polymer chain, will delete" \
+            % rg.id_str()
+          n_deleted += len(rg.atoms())
+          continue
+        else :
+          print >> log, \
+            "Residue group %s %s is not near any macromolecule chain" % \
+            (chain_id, rg.resid())
+          loose_residues.append_residue_group(rg)
       else :
         for j_seqs, hetatm_chain in zip(new_chain_i_seqs, new_hetatm_chains) :
           if (closest_i_seq in j_seqs) :
@@ -297,9 +313,12 @@ def sort_hetatms (
   if (len(loose_residues.residue_groups()) > 0) :
     new_model.append_chain(loose_residues)
   n_atoms_new = len(new_hierarchy.atoms())
-  if (n_atoms_new != n_atoms) :
+  if (n_atoms_new != n_atoms - n_deleted) :
     raise RuntimeError("Atom counts do not match: %d --> %d" % (n_atoms,
       n_atoms_new))
+  if (n_deleted > 0) :
+    print >> log, "WARNING: %d atoms removed from model" % n_deleted
+    print >> log, "  You must refine this model again before deposition!"
   if (return_pdb_hierarchy) :
     return new_hierarchy
   else :
