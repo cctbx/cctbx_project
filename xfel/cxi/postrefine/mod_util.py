@@ -145,40 +145,18 @@ class intensities_scaler(object):
           r_merge_w_all.append(r_w)
           cn_singlet += 1
       else:
-        #calculate I as sigma
-        mean_I_obs_group = flex.mean(I_obs_weight_group)
-        std_I_obs_group = np.std(I_obs_weight_group)
-        I_obs_group_as_sigma = (I_obs_weight_group - mean_I_obs_group)/std_I_obs_group
 
-        #select only I within selected standard deviation
-        index_I_obs_group_as_sigma_sel = flex.abs(I_obs_group_as_sigma) <= iph.sigma_max_merge
-        I_obs_group_sel = I_obs_group.select(index_I_obs_group_as_sigma_sel)
-        sigI_obs_group_sel = sigI_obs_group.select(index_I_obs_group_as_sigma_sel)
-        I_weight_group_sel = I_weight_group.select(index_I_obs_group_as_sigma_sel)
-        I_obs_weight_group_sel = I_obs_weight_group.select(index_I_obs_group_as_sigma_sel)
+        I_obs_merge = np.mean(I_obs_group)
+        sigI_obs_merge = np.mean(sigI_obs_group)
+        multiplicities.append(len(I_obs_group))
+        miller_indices_merge.append(miller_index_group)
+        r_dif = flex.sum(((I_obs_group - I_obs_merge)**2)/sigI_obs_group)*math.sqrt(len(I_obs_group)/(len(I_obs_group)-1))
+        r_w = flex.sum((I_obs_group**2)/sigI_obs_group)
+        I_obs_merge_mean.append(I_obs_merge)
+        sigI_obs_merge_mean.append(sigI_obs_merge)
+        r_merge_dif_all.append(r_dif)
+        r_merge_w_all.append(r_w)
 
-        if len(I_obs_group_sel) > 0:
-
-          if len(I_obs_group_sel) == 1:
-            I_obs_merge = I_obs_weight_group_sel[0]
-            sigI_obs_merge = sigI_obs_group_sel[0]
-            r_dif = (sigI_obs_merge**2)/sigI_obs_merge
-            r_w = (I_obs_merge**2)/sigI_obs_merge
-          else:
-            I_obs_merge = sum(I_obs_group_sel)/sum(I_weight_group_sel)
-            sigI_obs_merge = np.std(I_obs_weight_group_sel)
-            r_dif = flex.sum(((I_obs_weight_group_sel - I_obs_merge)**2)/sigI_obs_group_sel)*math.sqrt(len(I_obs_weight_group_sel)/(len(I_obs_weight_group_sel)-1))
-            r_w = flex.sum((I_obs_weight_group_sel**2)/sigI_obs_group_sel)
-
-          if math.isnan(I_obs_merge) or math.isnan(sigI_obs_merge) or I_obs_merge==0 or sigI_obs_merge==0:
-            print miller_index_group, I_obs_merge, sigI_obs_merge, ' - not merged'
-          else:
-            multiplicities.append(len(I_obs_group_sel))
-            miller_indices_merge.append(miller_index_group)
-            I_obs_merge_mean.append(I_obs_merge)
-            sigI_obs_merge_mean.append(sigI_obs_merge)
-            r_merge_dif_all.append(r_dif)
-            r_merge_w_all.append(r_w)
 
       if i==len(I_obs_all_sort)-1:
         break
@@ -354,6 +332,7 @@ class input_handler(object):
     self.miller_array_iso = None
     self.n_bins=25
     self.flag_on_screen_output=True
+    self.q_w_merge = 1.0
 
 
     file_input = open(file_name_input, 'r')
@@ -423,7 +402,8 @@ class input_handler(object):
         elif param_name=='flag_on_screen_output':
           if param_val=='False':
             self.flag_on_screen_output=False
-
+        elif param_name=='q_w_merge':
+          self.q_w_merge=float(param_val)
 
     if self.frame_end == 0:
       print 'Parameter: frame_end - please specifiy at least one frame (usage: frame_end=1)'
