@@ -76,17 +76,15 @@ class intensities_scaler(object):
     miller_indices_all = flex.miller_index()
     I_all = flex.double()
     sigI_all = flex.double()
-    I_weight_all = flex.double()
-    for observations, observations_weight in zip (observations_set, observations_weight_set):
+    for observations in observations_set:
       if observations is not None:
-        for miller_index, i_obs, sigi_obs, i_weight in zip(
+        for miller_index, i_obs, sigi_obs in zip(
             observations.indices(), observations.data(), 
-            observations.sigmas(), observations_weight):
+            observations.sigmas()):
             
           miller_indices_all.append(miller_index)
           I_all.append(i_obs)
           sigI_all.append(sigi_obs)
-          I_weight_all.append(i_weight)
       else:
         print 'Something wrong'
     
@@ -107,8 +105,7 @@ class intensities_scaler(object):
     miller_indices_all_sort = miller_array_all.indices().select(perm)
     I_obs_all_sort = miller_array_all.data().select(perm)
     sigI_obs_all_sort = miller_array_all.sigmas().select(perm)
-    I_weight_all_sort = I_weight_all.select(perm)
-
+    
     refl_now = 0
     miller_indices_merge = flex.miller_index()
     I_obs_merge_mean = flex.double()
@@ -122,28 +119,21 @@ class intensities_scaler(object):
       miller_index_group = miller_indices_all_sort[refl_now]
       I_obs_group = flex.double()
       sigI_obs_group = flex.double()
-      I_weight_group = flex.double()
-      I_obs_weight_group = flex.double()
       for i in range(refl_now, len(I_obs_all_sort)):
         if miller_indices_all_sort[i][0] == miller_index_group[0] and \
             miller_indices_all_sort[i][1] == miller_index_group[1] and \
             miller_indices_all_sort[i][2] == miller_index_group[2]:
           I_obs_group.append(I_obs_all_sort[i])
           sigI_obs_group.append(sigI_obs_all_sort[i])
-          I_weight_group.append(I_weight_all_sort[i])
-          I_obs_weight_group.append(I_obs_all_sort[i]/I_weight_all_sort[i])
           
         else:
           refl_now = i
           cn_miller_indices +=1
           break
-
+      
       if len(I_obs_group) == 1:
-
-        I_obs_merge = I_obs_weight_group[0]
+        I_obs_merge = I_obs_group[0]
         sigI_obs_merge = sigI_obs_group[0]
-        
-        
         if math.isnan(I_obs_merge) or math.isnan(sigI_obs_merge) or I_obs_merge==0 or sigI_obs_merge==0:
           print miller_index_group, I_obs_merge, sigI_obs_merge, ' - not merged'
         else:
@@ -157,43 +147,20 @@ class intensities_scaler(object):
           r_merge_dif_all.append(r_dif)
           r_merge_w_all.append(r_w)
           cn_singlet += 1
-
       else:
-        #calculate I as sigma
-        mean_I_obs_group = flex.mean(I_obs_weight_group)
-        std_I_obs_group = np.std(I_obs_weight_group)
-        I_obs_group_as_sigma = (I_obs_weight_group - mean_I_obs_group)/std_I_obs_group
-        
-        #select only I within selected standard deviation
-        index_I_obs_group_as_sigma_sel = flex.abs(I_obs_group_as_sigma) <= iph.sigma_max_merge
-        I_obs_group_sel = I_obs_group.select(index_I_obs_group_as_sigma_sel)
-        sigI_obs_group_sel = sigI_obs_group.select(index_I_obs_group_as_sigma_sel)
-        I_weight_group_sel = I_weight_group.select(index_I_obs_group_as_sigma_sel)
-        I_obs_weight_group_sel = I_obs_weight_group.select(index_I_obs_group_as_sigma_sel)
-
-        if len(I_obs_group_sel) > 0:
-
-          if len(I_obs_group_sel) == 1:
-            I_obs_merge = I_obs_weight_group_sel[0]
-            sigI_obs_merge = sigI_obs_group_sel[0]
-            r_dif = (sigI_obs_merge**2)/sigI_obs_merge
-            r_w = (I_obs_merge**2)/sigI_obs_merge
-          else:
-            I_obs_merge = sum(I_obs_group_sel)/sum(I_weight_group_sel)
-            sigI_obs_merge = np.std(I_obs_weight_group_sel)
-            r_dif = flex.sum(((I_obs_weight_group_sel - I_obs_merge)**2)/sigI_obs_group_sel)*math.sqrt(len(I_obs_weight_group_sel)/(len(I_obs_weight_group_sel)-1))
-            r_w = flex.sum((I_obs_weight_group_sel**2)/sigI_obs_group_sel)
-
-          if math.isnan(I_obs_merge) or math.isnan(sigI_obs_merge) or I_obs_merge==0 or sigI_obs_merge==0:
-            print miller_index_group, I_obs_merge, sigI_obs_merge, ' - not merged'
-          else:
-            multiplicities.append(len(I_obs_group_sel))
-            miller_indices_merge.append(miller_index_group)
-            I_obs_merge_mean.append(I_obs_merge)
-            sigI_obs_merge_mean.append(sigI_obs_merge)
-            r_merge_dif_all.append(r_dif)
-            r_merge_w_all.append(r_w)
-
+          
+        I_obs_merge = np.mean(I_obs_group)
+        sigI_obs_merge = np.mean(sigI_obs_group)
+        multiplicities.append(len(I_obs_group))
+        miller_indices_merge.append(miller_index_group)
+        r_dif = flex.sum(((I_obs_group - I_obs_merge)**2)/sigI_obs_group)*math.sqrt(len(I_obs_group)/(len(I_obs_group)-1))
+        r_w = flex.sum((I_obs_group**2)/sigI_obs_group)
+        I_obs_merge_mean.append(I_obs_merge)
+        sigI_obs_merge_mean.append(sigI_obs_merge)
+        r_merge_dif_all.append(r_dif)
+        r_merge_w_all.append(r_w)
+      
+      
       if i==len(I_obs_all_sort)-1:
         break
 
@@ -368,6 +335,7 @@ class input_handler(object):
     self.miller_array_iso = None
     self.n_bins=25
     self.flag_on_screen_output=True
+    self.q_w_merge = 1.0
     
 
     file_input = open(file_name_input, 'r')
@@ -437,7 +405,8 @@ class input_handler(object):
         elif param_name=='flag_on_screen_output':
           if param_val=='False':
             self.flag_on_screen_output=False
-        
+        elif param_name=='q_w_merge':
+          self.q_w_merge=float(param_val)
             
     if self.frame_end == 0:
       print 'Parameter: frame_end - please specifiy at least one frame (usage: frame_end=1)'
@@ -459,10 +428,15 @@ class input_handler(object):
     if self.file_name_iso_mtz != '':
       reflection_file_iso = reflection_file_reader.any_reflection_file(self.file_name_iso_mtz)
       miller_arrays_iso=reflection_file_iso.as_miller_arrays()
-      self.miller_array_iso = miller_arrays_iso[1].generate_bijvoet_mates()
-
-      #special for t4_base (M. Rossmann - A5.mtz 3 miller arrays and intesity is the last one)
-      #self.miller_array_iso = miller_arrays_iso[2].generate_bijvoet_mates()
+      is_found_iso_as_intensity_array = False
+      for miller_array_iso in miller_arrays_iso:
+        if miller_array_iso.is_xray_intensity_array():
+          self.miller_array_iso = miller_array_iso.generate_bijvoet_mates()
+          is_found_iso_as_intensity_array = True
+      if is_found_iso_as_intensity_array == False:
+        print 'Cannot find intensity array in the isomorphous-reference mtz'
+        exit()
+     
       
     self.txt_out = ''
     self.txt_out += 'Input parameters\n'
@@ -482,6 +456,8 @@ class input_handler(object):
     self.txt_out += 'd_min_merge '+str(self.d_min_merge)+'\n'
     self.txt_out += 'd_max '+str(self.d_max)+'\n'
     self.txt_out += 'sigma_max '+str(self.sigma_max)+'\n'
+    self.txt_out += 'sigma_max_merge '+str(self.sigma_max_merge)+'\n'
+    self.txt_out += 'q_w_merge '+str(self.q_w_merge)+'\n'
     self.txt_out += 'target_unit_cell '+str(self.target_unit_cell)+'\n'
     self.txt_out += 'target_space_group '+str(self.target_space_group)+'\n'
     self.txt_out += 'target_anomalous_flag '+str(self.target_anomalous_flag)+'\n'
