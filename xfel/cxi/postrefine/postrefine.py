@@ -633,7 +633,7 @@ def get_overall_correlation (data_a, data_b) :
     slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
                math.sqrt(N * sum_yy - sum_y**2))
-  except:
+  except Exception:
     pass
 
   return corr, slope
