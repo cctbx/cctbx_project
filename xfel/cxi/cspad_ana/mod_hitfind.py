@@ -233,7 +233,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
         if self.m_db_logging:
           self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks, distance,
-                            self.sifoil, self.wavelength))
+                            self.sifoil, self.wavelength, False))
 
         if number_of_accepted_peaks < self.m_distl_min_peaks:
           self.logger.info("Subprocess %02d: Spotfinder NO  HIT image #%05d @ %s; %d spots > %d" %(
@@ -282,7 +282,20 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                                  integration_basename = self.m_integration_basename)
       sys.stdout = sys.__stdout__
       sys.stderr = sys.__stderr__
-      if (info is None):
+
+      indexed = info is not None
+
+      if self.m_db_logging:
+        sec,ms = cspad_tbx.evt_time(evt)
+        evt_time = sec + ms/1000
+        if indexed:
+          n_spots = len(info.spotfinder_results.images[info.frames[0]]['spots_total'])
+        else:
+          n_spots = None
+        self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, n_spots, distance,
+                          self.sifoil, self.wavelength, indexed))
+
+      if (not indexed):
         evt.put(True, "skip_event")
         return
 
@@ -363,15 +376,33 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
   def queue_entry(self, entry):
     if self.m_sql_buffer_size > 1:
+      raise NotImplementedError
       self.buffered_sql_entries.append(entry)
       if len(self.buffered_sql_entries) >= self.m_sql_buffer_size:
         self.commit_entries()
     else:
+      trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed = entry
       from cxi_xdr_xes.cftbx.cspad_ana import db
       dbobj = db.dbconnect()
       cursor = dbobj.cursor()
-      cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength) "%s(db.table_name) + "VALUES (%s,%s,%s,%s,%s,%s,%s);"
-      cursor.execute(cmd, entry)
+      cmd = "SELECT COUNT(*) from %s WHERE trial=%s and run=%s"%(db.table_name,trial,run)
+      cursor.execute(cmd)
+      if cursor.fetchone()[0] > 0:
+        cmd = "UPDATE %s SET "%(db.table_name)
+        keys = ['eventstamp','distance','sifoil','wavelength','indexed']
+        if hitcount is not None:
+          keys.append('hitcount')
+        comma = ""
+        for key in keys:
+          cmd += comma + "%s=%s "%(key,locals()[key])
+          comma = ", "
+        cmd += "WHERE trial=%s and run=%s"%(trial,run)
+        cursor.execute(cmd)
+      else:
+        if hitcount is None:
+          hitcount = 0
+        cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed) "%(db.table_name) + "VALUES (%s,%s,%s,%s,%s,%s,%s,%s);"
+        cursor.execute(cmd, entry)
       dbobj.commit()
       dbobj.close()
 
@@ -380,10 +411,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       from cxi_xdr_xes.cftbx.cspad_ana import db
       dbobj = db.dbconnect()
       cursor = dbobj.cursor()
-      cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength) VALUES "%(db.table_name)
+      cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed) VALUES "%(db.table_name)
       comma = ""
       for entry in self.buffered_sql_entries:
-        cmd += comma + "(%s,%s,%s,%s,%s,%s,%s)"%entry
+        cmd += comma + "(%s,%s,%s,%s,%s,%s,%s,%s)"%entry
         comma = ", "
       cursor.execute(cmd)
       dbobj.commit()
