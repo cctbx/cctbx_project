@@ -308,8 +308,55 @@ def h():
   return g[fooo.baz.x:1000]
 """
 
+def exercise_old_style_classes():
+  from libtbx.python_code_parsing import find_old_style_classes, old_style_class
+  old_style = find_old_style_classes(old_style_class_test_case_1)
+  assert old_style.names == set(('foo',))
+  old_style = find_old_style_classes(old_style_class_test_case_2)
+  assert old_style.names == set()
+  old_style = find_old_style_classes(old_style_class_test_case_3)
+  assert old_style.names == set(('bar',))
+  old_style = find_old_style_classes(old_style_class_test_case_4)
+  assert set(old_style) == set((old_style_class(name='foo', lineno=4),
+                                old_style_class(name='bar', lineno=1)))
+  old_style = find_old_style_classes(old_style_class_test_case_5)
+  assert old_style.names == set(('foo',))
+
+old_style_class_test_case_1 = """\
+class foo:
+  pass
+"""
+
+old_style_class_test_case_2 = """\
+class foo(object):
+  pass
+"""
+
+old_style_class_test_case_3 = """\
+class bar:
+  pass
+
+class foo(bar):
+  pass
+"""
+
+old_style_class_test_case_4 = """\
+class bar:
+  pass
+
+class foo():
+  pass
+"""
+
+old_style_class_test_case_5 = """\
+def bar():
+  class foo:
+    pass
+"""
+
 def run():
   exercise_unused_imports()
+  exercise_old_style_classes()
   print 'OK'
 
 if __name__ == '__main__':

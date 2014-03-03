@@ -151,3 +151,67 @@ class unused_imports(ast.NodeVisitor):
       self.visit(default)
     for stmt in func.body: self.visit(stmt)
     self.current_context = self.current_context[:-1]
+
+
+
+class old_style_class(object):
+
+  __slots__ = ('name', 'lineno')
+
+  def __init__(self, name, lineno):
+    self.name = tuple(name.split('.'))
+    self.lineno = lineno
+
+  def __eq__(self, other):
+    return (self.name == other.name
+            and self.lineno == other.lineno)
+
+  def __hash__(self):
+    return hash((self.name, self.lineno))
+
+  def __repr__(self):
+    return 'class %s defined at line %i' % (self.name_as_str(), self.lineno)
+
+  def name_as_str(self):
+    return '.'.join(self.name)
+
+
+class find_old_style_classes(ast.NodeVisitor):
+  """ Finds old-style classes (i.e. ones that don't inherit from object)
+  """
+
+  @classmethod
+  def is_subpath_of(cls, a, b):
+    """ Whether a is a subpath of b """
+    if len(a) > len(b): return False
+    return a == b[:len(a)]
+
+  def __init__(self, python_source_code=None, python_source_filename=None):
+    assert (python_source_code, python_source_filename).count(None) == 1
+    if python_source_code is None:
+      python_source_code = file(python_source_filename).read()
+    super(find_old_style_classes, self).__init__()
+    self.python_source_line = python_source_code.splitlines()
+    self.current_context = () # start at module level
+    tree = ast.parse(python_source_code)
+    self._old_style_classes = set()
+    self.visit(tree)
+
+  @property
+  def names(self):
+    return set( imp.name_as_str() for imp in self )
+
+  def __repr__(self):
+    return '\n'.join( str(imp) for imp in self )
+
+  def __iter__(self):
+    return iter(self._old_style_classes)
+
+  def __nonzero__(self):
+    return bool(self._old_style_classes)
+
+  def visit_ClassDef(self, node):
+    #print node.name, [n.id for n in node.bases]
+    if len(node.bases) == 0:
+      self._old_style_classes.add(old_style_class(node.name, node.lineno))
+      #print node.name
