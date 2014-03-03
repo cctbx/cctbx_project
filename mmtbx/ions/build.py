@@ -12,12 +12,6 @@ ion_building_params_str = """
 debug = False
   .type = bool
   .short_caption = Debugging mode (verbose)
-elements = Auto
-  .type = strings
-  .help = If Auto, the program will search for MG, CL, CA, and ZN ions, but \
-    with stricter rules for accepting a candidate element.  You may \
-    alternately specify a list of element symbols to search for.  (Not all \
-    elements are supported.)
 ion_chain_id = X
   .type = str
   .input_size = 80
@@ -58,6 +52,7 @@ def find_and_build_ions (
       wavelength,
       params,
       nproc=1,
+      elements=Auto,
       out=None,
       run_ordered_solvent=False,
       occupancy_strategy_enabled=False,
@@ -111,7 +106,6 @@ def find_and_build_ions (
   model.update_anomalous_groups(out=out)
   make_sub_header("Analyzing water molecules", out=out)
   manager.show_current_scattering_statistics(out=out)
-  elements = params.elements
   anomalous_groups = []
   # XXX somehow comma-separation of phil strings fields doesn't work
   if (isinstance(elements, list)) and (len(elements) == 1) :
