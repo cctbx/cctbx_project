@@ -198,10 +198,9 @@ if __name__=="__main__":
   from iotbx import reflection_file_reader
   from cctbx.array_family import flex
   from cctbx import miller
-  from cctbx import crystal
   from cctbx.crystal import symmetry
   from scitbx.matrix import col, sqr
-  from libtbx.easy_mp import pool_map, get_processes
+  from libtbx.easy_mp import pool_map
   import os,cPickle as pickle,math
   from mod_partiality import partiality_handler
   from mod_energy import energy_handler

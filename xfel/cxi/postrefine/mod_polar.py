@@ -1,5 +1,4 @@
 from __future__ import division
-import sys
 from cctbx import sgtbx
 
 class polar_manager(object):

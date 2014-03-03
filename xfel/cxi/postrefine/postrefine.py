@@ -6,32 +6,20 @@ cxi.postrefine input=input.inp
 """
 from __future__ import division
 
-from iotbx import reflection_file_reader
 from cctbx.array_family import flex
 from cctbx import miller
-from cctbx import crystal
 from cctbx.crystal import symmetry
 from scitbx.matrix import sqr, col
 
-from libtbx.easy_mp import pool_map, get_processes
 from cctbx.crystal_orientation import crystal_orientation
-from scitbx.lstbx import normal_eqns
 from scitbx.lstbx import normal_eqns_solving
 
-import matplotlib
-import matplotlib.cm as cm
-import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 
-import sys
 import numpy as np
-import random
 import os,cPickle as pickle,math
-from datetime import date, datetime, time, timedelta
 
-from mod_polar import polar_manager
 from mod_partiality import partiality_handler
-from mod_energy import energy_handler
 from mod_util import intensities_scaler, file_handler, input_handler
 from mod_normal_eqns import normal_eqns_handler
 
@@ -40,18 +28,18 @@ class postref_handler(object):
   handle post-refinement
   - read-in and store input in input_handler object
   - generate a mean-intensity-scaled mtz file as a reference set
-  - perform post-refinement 
+  - perform post-refinement
   '''
   def __init__(self):
     '''
     Constructor
     '''
-  
+
   def read_input_parameters(self, file_name_input):
     iph = input_handler()
     iph.read_input(file_name_input)
     return iph
-   
+
   def organize_input(self, observations,
       d_min,
       d_max,
@@ -62,27 +50,27 @@ class postref_handler(object):
       flag_polar,
       wavelength,
       miller_array_iso=None):
-      
+
     """Given the supplied observations and Miller array, return a tuple of
     the original observations, the ASU-mapped observations, and the
     observations reindexed using (k, h, -l).  Merge Bijvoet mates unless
     anomalous_flag is True.
     """
     observations = observations.resolution_filter(d_min=d_min, d_max=d_max)
-    
+
     #Lorentz-polarization correction
     two_theta = observations.two_theta(wavelength=wavelength).data()
     one_over_LP = (2 * flex.sin(two_theta))/(1 + (flex.cos(two_theta)**2))
     one_over_P = 2/(1 + (flex.cos(two_theta)**2))
     observations = observations.customized_copy(data=observations.data()*one_over_P)
-    
+
     miller_set = symmetry(
         unit_cell=target_unit_cell,
         space_group_symbol=target_space_group
       ).build_miller_set(
         anomalous_flag=target_anomalous_flag,
         d_min=d_min)
-    
+
     #Filter negative intensities
     i_I_positive = (observations.data() > 0)
     miller_indices_positive = observations.indices().select(i_I_positive)
@@ -95,7 +83,7 @@ class postref_handler(object):
         anomalous_flag=target_anomalous_flag,
         crystal_symmetry=miller_set.crystal_symmetry()
         )
-    
+
     #Filter possible outliers (use keyword sigma_max=value to control the outliers)
     I_over_sigi = observations.data()/ observations.sigmas()
     i_I_obs_sel = (I_over_sigi > sigma_max)
@@ -106,7 +94,7 @@ class postref_handler(object):
         anomalous_flag=target_anomalous_flag,
         crystal_symmetry=miller_set.crystal_symmetry()
         )
-    
+
     #Prepare original, asu, and rev (for polar case)
     observations_asu = observations.customized_copy(
         anomalous_flag=target_anomalous_flag,
@@ -124,11 +112,11 @@ class postref_handler(object):
       observations_rev = observations_asu.change_basis(cb_op).map_to_asu()
     else:
       observations_rev = observations_asu
-    
+
     observations_original = observations_original.resolution_filter(d_min=d_min, d_max=d_max)
     observations_asu = observations_asu.resolution_filter(d_min=d_min, d_max=d_max)
     observations_rev = observations_rev.resolution_filter(d_min=d_min, d_max=d_max)
-    
+
     return observations_original, observations_asu, observations_rev
 
 
@@ -142,7 +130,7 @@ class postref_handler(object):
     matches_asu = miller.match_multi_indices(
                   miller_indices_unique=miller_array_iso.indices(),
                   miller_indices=observations_asu.indices())
-      
+
     I_ref_asu = flex.double([miller_array_iso.data()[pair[0]] for pair in matches_asu.pairs()])
     miller_indices_ref_asu = flex.miller_index((miller_array_iso.indices()[pair[0]] for pair in matches_asu.pairs()))
     I_obs_asu = flex.double([observations_asu.data()[pair[1]] for pair in matches_asu.pairs()])
@@ -150,7 +138,7 @@ class postref_handler(object):
     miller_indices_ori_asu = flex.miller_index((observations_original.indices()[pair[1]] for pair in matches_asu.pairs()))
 
     corr_raw_asu, slope_raw_asu = get_overall_correlation(I_obs_asu, I_ref_asu)
-      
+
     matches_rev = miller.match_multi_indices(
                   miller_indices_unique=miller_array_iso.indices(),
                   miller_indices=observations_rev.indices())
@@ -171,8 +159,8 @@ class postref_handler(object):
 
     if flag_polar == False:
       polar_hkl = 'h,k,l'
-   
-    
+
+
 
     return polar_hkl, corr_raw_asu, corr_raw_rev
 
@@ -261,7 +249,7 @@ class postref_handler(object):
         miller_array_ref,
         crystal_init_orientation=None):
 
-   
+
     observations_original, observations_asu, observations_rev = self.organize_input(observations,
         iph.d_min_merge,
         iph.d_max,
@@ -279,7 +267,7 @@ class postref_handler(object):
     observations_sel_two_theta = observations_sel.two_theta(wavelength=wavelength)
     two_theta = observations_sel_two_theta.data()
     sin_theta_over_lambda_sq = observations_sel_two_theta.sin_theta_over_lambda_sq().data()
-      
+
     if refine_mode == 'scale_factor':
       G_best = refined_parameters[0]
       B_factor_best = refined_parameters[1]
@@ -289,7 +277,7 @@ class postref_handler(object):
       observations_weight = 1/observations_sel.sigmas()
       observations_refined = observations_sel.customized_copy(data=I_obs_refined,
                   sigmas=sigI_obs_refined)
-                  
+
     elif (refine_mode == 'crystal_rotation' or refine_mode == 'reflecting_range'):
       G_best = refined_parameters[0]
       B_factor_best = refined_parameters[1]
@@ -309,7 +297,7 @@ class postref_handler(object):
       observations_weight = 1/observations_sel.sigmas()
       observations_refined = observations_sel.customized_copy(data=I_obs_refined,
                 sigmas=sigI_obs_refined)
-    
+
     #calculate cc_ref, r_ref
     matches = miller.match_multi_indices(
                   miller_indices_unique=miller_array_ref.indices(),
@@ -325,7 +313,7 @@ class postref_handler(object):
     cc_ref_final, slope_ref_final = get_overall_correlation(I_obs_weight_match, I_ref)
     r_ref_init = sum(flex.abs(I_ref - (I_obs*slope_ref_init)))/sum(I_obs*slope_ref_init)
     r_ref_final = sum(flex.abs(I_ref - (I_obs_weight_match*slope_ref_final)))/sum(I_obs_weight_match*slope_ref_final)
-    
+
     """
     plt.subplot(211)
     plt.scatter(I_ref, I_obs,s=10, marker='x', c='r')
@@ -339,7 +327,7 @@ class postref_handler(object):
     plt.ylabel('Observed intensity')
     plt.show()
     """
-    
+
     #calculate cc_iso, r_iso
     cc_iso_init = 0
     cc_iso_final = 0
@@ -362,12 +350,12 @@ class postref_handler(object):
 
     cc_r_results = (cc_ref_init, cc_ref_final, cc_iso_init, cc_iso_final,
         r_ref_init, r_ref_final, r_iso_init, r_iso_final)
-    
-    
+
+
     return observations_refined, observations_weight, cc_r_results
 
 
-  def postrefine_by_frame(self, refine_mode, pickle_filename, iph, miller_array_ref, 
+  def postrefine_by_frame(self, refine_mode, pickle_filename, iph, miller_array_ref,
         scale_factors=None, rotations=None, reflecting_ranges=None):
     """
     Main module to support multi-processor
@@ -385,8 +373,8 @@ class postref_handler(object):
       unit_cell = trial_results["current_orientation"][0].unit_cell()
       target_unit_cell = unit_cell.parameters()
       observations = trial_results["observations"][0]
-      
-        
+
+
     #grab img. name
     imgname = pickle_filename
     if iph.file_name_in_img != '':
@@ -408,13 +396,13 @@ class postref_handler(object):
     #the function will take care of it.
     polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original,
           observations_asu, observations_rev, iph.miller_array_iso, iph.flag_polar)
-    
-    
+
+
     if polar_hkl == 'h,k,l':
       observations_non_polar = observations_asu
     elif polar_hkl == 'k,h,-l':
       observations_non_polar = observations_rev
-      
+
     #3. Select data for post-refinement (only select indices that are common with the reference set
     matches = miller.match_multi_indices(
                   miller_indices_unique=miller_array_ref.indices(),
@@ -431,20 +419,20 @@ class postref_handler(object):
           sigmas=sigI_obs_match,
           indices=miller_indices_original_obs_match,
           anomalous_flag=iph.target_anomalous_flag)
-    
+
     I_ref = references_sel.data()
     I_obs = observations_original_sel.data()
     sigI_obs = observations_original_sel.sigmas()
-    
+
     #for B-factor weighting, precalculate (sin(2theta)/lambda)^2
     observations_original_sel_two_theta = observations_original_sel.two_theta(wavelength=wavelength)
     two_theta = observations_original_sel_two_theta.data()
     sin_theta_over_lambda_sq = observations_original_sel_two_theta.sin_theta_over_lambda_sq().data()
-    
+
     #4. Do least-squares refinement using different refine_mode:
     #scale_factor    -> G0 and B-factor
     #crystal_setting -> rotx, roty, ry, rz, uc (a,b,c,alpha,beta,gamma)
-    
+
     cc_ref_init, G_init = get_overall_correlation(I_obs, I_ref)
     corr_threshold_postref = 0.25
     if (cc_ref_init < corr_threshold_postref):
@@ -454,7 +442,7 @@ class postref_handler(object):
         B_factor_init = 0
         grad_thres = 1e-5
         parameters = (G_init, B_factor_init)
-        
+
         neh = normal_eqns_handler()
         helper = neh.get_helper_refine_scale(I_ref, observations_original_sel,
                     wavelength, parameters)
@@ -463,7 +451,7 @@ class postref_handler(object):
                      non_linear_ls = helper,
                      gradient_threshold = grad_thres)
         lstsqr_results =  helper.x
-        
+
         observations_refined, observations_weight, cc_r_results = self.get_refined_observations(refine_mode,
             lstsqr_results,
             observations,
@@ -471,8 +459,8 @@ class postref_handler(object):
             wavelength,
             polar_hkl,
             miller_array_ref)
-        
-      elif refine_mode == 'crystal_rotation':  
+
+      elif refine_mode == 'crystal_rotation':
         rotx_init = 0
         roty_init = 0
         grad_thres = 1e-5
@@ -486,7 +474,7 @@ class postref_handler(object):
                      non_linear_ls = helper,
                      gradient_threshold = grad_thres)
         lstsqr_results =  helper.x
-        
+
         observations_refined, observations_weight, cc_r_results = self.get_refined_observations(refine_mode,
             (scale_factors[0], scale_factors[1], lstsqr_results[0], lstsqr_results[1], spot_radius, spot_radius),
             observations,
@@ -495,8 +483,8 @@ class postref_handler(object):
             polar_hkl,
             miller_array_ref,
             crystal_init_orientation=crystal_init_orientation)
-            
-      elif refine_mode == 'reflecting_range':  
+
+      elif refine_mode == 'reflecting_range':
         grad_thres = 1e-5
         a_star_init = sqr(crystal_init_orientation.reciprocal_matrix())
         spot_radius = self.calc_spot_radius(a_star_init, observations_original_sel.indices(), wavelength)
@@ -508,7 +496,7 @@ class postref_handler(object):
                      non_linear_ls = helper,
                      gradient_threshold = grad_thres)
         lstsqr_results =  helper.x
-        
+
         observations_refined, observations_weight, cc_r_results = self.get_refined_observations(refine_mode,
             (scale_factors[0], scale_factors[1], rotations[0], rotations[1], lstsqr_results[0], lstsqr_results[1]),
             observations,
@@ -517,10 +505,10 @@ class postref_handler(object):
             polar_hkl,
             miller_array_ref,
             crystal_init_orientation=crystal_init_orientation)
-     
-    
+
+
     cc_ref_init, cc_ref_final, cc_iso_init, cc_iso_final, r_ref_init, r_ref_final, r_iso_init, r_iso_final = cc_r_results
-    
+
     _tmp_imgname = imgname.split('/')
     print _tmp_imgname[len(_tmp_imgname)-1], '%4.0f %4.0f %2.4f %2.4f %2.4f %2.4f'%(len(observations.indices()), len(observations_refined.indices()), cc_ref_init, cc_ref_final, r_ref_init, r_ref_final)
 
@@ -531,7 +519,7 @@ class postref_handler(object):
     trial_results = pickle.load(open(pickle_filename,"rb"))
     observations = trial_results["observations"][0]
     wavelength = trial_results["wavelength"]
-    
+
     observations_original, observations_asu, observations_rev = self.organize_input(observations,
         iph.d_min_merge,
         iph.d_max,
@@ -541,14 +529,14 @@ class postref_handler(object):
         iph.target_anomalous_flag,
         iph.flag_polar,
         wavelength)
-        
+
     mean_I = flex.mean(observations_original.data())
-    
+
     return mean_I
 
-    
+
   def scale_frame_by_mean_I(self, pickle_filename, iph, mean_of_mean_I):
-    
+
     trial_results = pickle.load(open(pickle_filename,"rb"))
     observations = trial_results["observations"][0]
     wavelength = trial_results["wavelength"]
@@ -563,7 +551,7 @@ class postref_handler(object):
         wavelength)
     polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original,
           observations_asu, observations_rev, iph.miller_array_iso, iph.flag_polar)
-    
+
     if polar_hkl == 'h,k,l':
       observations_sel = observations_asu
     elif polar_hkl == 'k,h,-l':
@@ -574,13 +562,13 @@ class postref_handler(object):
     observations_scaled = observations_sel.customized_copy(
         data = this_G * (observations_sel.data()/ observations_sel.sigmas()),
         sigmas = this_G * observations_sel.sigmas())
-        
+
     observations_weight = this_G**2/ observations_sel.sigmas()
     return pickle_filename, observations_sel, observations_weight
 
-  
- 
-  
+
+
+
 class ScoringContainer:
   """
   Compare two rotation matrix and report angular error (Nick's legacy code)
@@ -670,11 +658,9 @@ def merge_observations(observations_set,
         observations_weight_set,
         iph,
         output_mtz_file_prefix):
-        
+
   inten_scaler = intensities_scaler()
   miller_array_merge, cc_merge, slope_merge, txt_output_mtz = inten_scaler.output_mtz_files(observations_set,
     observations_weight_set, iph, output_mtz_file_prefix)
-  
+
   return miller_array_merge, cc_merge, slope_merge, txt_output_mtz
-
-

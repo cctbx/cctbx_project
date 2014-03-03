@@ -197,26 +197,17 @@ if __name__=="__main__":
   from iotbx import reflection_file_reader
   from cctbx.array_family import flex
   from cctbx import miller
-  from cctbx import crystal
   from cctbx.crystal import symmetry
-  from scitbx.matrix import sqr, col
 
-  from libtbx.easy_mp import pool_map, get_processes
-  from cctbx.crystal_orientation import crystal_orientation
-  from scitbx.lstbx import normal_eqns
+  from libtbx.easy_mp import pool_map
 
-  import matplotlib
-  import matplotlib.cm as cm
-  import matplotlib.mlab as mlab
   import matplotlib.pyplot as plt
 
   import sys
   import numpy as np
   import os,cPickle as pickle,math
-  from datetime import date, datetime, time, timedelta
+  from datetime import datetime, time
 
-  from mod_polar import polar_manager
-  from mod_partiality import partiality_handler
   from mod_util import intensities_scaler
 
 

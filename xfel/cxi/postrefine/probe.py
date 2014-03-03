@@ -223,7 +223,7 @@ if __name__=="__main__":
   import os,cPickle as pickle,math
   from scitbx.matrix import sqr, col
   import numpy as np
-  from libtbx.easy_mp import pool_map, get_processes
+  from libtbx.easy_mp import pool_map
   from cctbx.array_family import flex
   from cctbx import miller
   import matplotlib.pyplot as plt
