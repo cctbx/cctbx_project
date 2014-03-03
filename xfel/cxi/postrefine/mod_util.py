@@ -100,7 +100,7 @@ class intensities_scaler(object):
     miller_indices_all_sort = miller_array_all.indices().select(perm)
     I_obs_all_sort = miller_array_all.data().select(perm)
     sigI_obs_all_sort = miller_array_all.sigmas().select(perm)
-    
+
     refl_now = 0
     miller_indices_merge = flex.miller_index()
     I_obs_merge_mean = flex.double()
@@ -125,7 +125,7 @@ class intensities_scaler(object):
           refl_now = i
           cn_miller_indices +=1
           break
-      
+
       if len(I_obs_group) == 1:
         I_obs_merge = I_obs_group[0]
         sigI_obs_merge = sigI_obs_group[0]
@@ -453,7 +453,7 @@ class input_handler(object):
       if is_found_iso_as_intensity_array == False:
         print 'Cannot find intensity array in the isomorphous-reference mtz'
         exit()
-     
+
 
     self.txt_out = ''
     self.txt_out += 'Input parameters\n'
