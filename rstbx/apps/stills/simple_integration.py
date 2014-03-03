@@ -193,7 +193,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     pxlsz = self.pixel_size
     self.get_predictions_accounting_for_centering(cb_op_to_primitive,**kwargs)
     FWMOSAICITY = self.inputai.getMosaicity()
-    DOMAIN_SZ_ANG = kwargs.get("domain_size_ang",self.actual)
+    DOMAIN_SZ_ANG = kwargs.get("domain_size_ang",  self.__dict__.get("actual",0)  )
     refineflag = {True:0,False:1}[kwargs.get("domain_size_ang",0)==0]
     self.inputpd["symmetry"].show_summary(prefix="EXCURSION%1d REPORT FWMOS= %6.4f DOMAIN= %6.1f "%(refineflag,FWMOSAICITY,DOMAIN_SZ_ANG))
     from annlib_ext import AnnAdaptor
