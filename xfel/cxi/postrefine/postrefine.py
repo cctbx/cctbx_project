@@ -249,7 +249,6 @@ class postref_handler(object):
         miller_array_ref,
         crystal_init_orientation=None):
 
-
     observations_original, observations_asu, observations_rev = self.organize_input(observations,
         iph.d_min_merge,
         iph.d_max,
@@ -267,14 +266,14 @@ class postref_handler(object):
     observations_sel_two_theta = observations_sel.two_theta(wavelength=wavelength)
     two_theta = observations_sel_two_theta.data()
     sin_theta_over_lambda_sq = observations_sel_two_theta.sin_theta_over_lambda_sq().data()
-
+    d_spacings = observations_sel.d_spacings().data()
     if refine_mode == 'scale_factor':
       G_best = refined_parameters[0]
       B_factor_best = refined_parameters[1]
-      I_obs_refined = (G_best * (flex.exp(-2*B_factor_best*sin_theta_over_lambda_sq)) * observations_sel.data())/ observations_sel.sigmas()
-      sigI_obs_refined = (G_best * (flex.exp(-2*B_factor_best*sin_theta_over_lambda_sq)) * observations_sel.sigmas())
+      I_obs_refined = G_best * (flex.exp(-2*B_factor_best*sin_theta_over_lambda_sq)) * observations_sel.data()
+      sigI_obs_refined = G_best * (flex.exp(-2*B_factor_best*sin_theta_over_lambda_sq)) * observations_sel.sigmas()
 
-      observations_weight = 1/observations_sel.sigmas()
+      observations_weight = flex.double([1]*len(observations_sel.data()))
       observations_refined = observations_sel.customized_copy(data=I_obs_refined,
                   sigmas=sigI_obs_refined)
 
@@ -292,9 +291,14 @@ class postref_handler(object):
       ph = partiality_handler(wavelength, 0)
       partiality_final = ph.calc_partiality_anisotropy_set(effective_a_star, observations_original.indices(), ry_best, rz_best, two_theta)
 
-      I_obs_refined = (G_best * (flex.exp(-2*B_factor_best*sin_theta_over_lambda_sq)) * observations_sel.data())/ (partiality_final * observations_sel.sigmas())
+
+      for i in range(len(partiality_final)):
+        if d_spacings[i] < iph.d_min_merge + 0.3:
+          partiality_final[i] = 1.0
+
+      I_obs_refined = (G_best * (flex.exp(-2*B_factor_best*sin_theta_over_lambda_sq)) * observations_sel.data())/ partiality_final
       sigI_obs_refined = (G_best * (flex.exp(-2*B_factor_best*sin_theta_over_lambda_sq)) * observations_sel.sigmas())/partiality_final
-      observations_weight = 1/observations_sel.sigmas()
+      observations_weight = flex.double([1]*len(observations_sel.data()))
       observations_refined = observations_sel.customized_copy(data=I_obs_refined,
                 sigmas=sigI_obs_refined)
 
@@ -434,8 +438,10 @@ class postref_handler(object):
     #crystal_setting -> rotx, roty, ry, rz, uc (a,b,c,alpha,beta,gamma)
 
     cc_ref_init, G_init = get_overall_correlation(I_obs, I_ref)
-    corr_threshold_postref = 0.25
+    corr_threshold_postref = 0.4
     if (cc_ref_init < corr_threshold_postref):
+      _tmp_pickle_filename = pickle_filename.split('/')
+      print _tmp_pickle_filename[len(_tmp_pickle_filename)-1], " can start refinement - too low C.C.(%6.5f)"%(cc_ref_init)
       return None
     else:
       if refine_mode == 'scale_factor':
@@ -559,12 +565,13 @@ class postref_handler(object):
 
 
     this_G = mean_of_mean_I/ np.mean(observations_sel.data())
-    observations_scaled = observations_sel.customized_copy(
-        data = this_G * (observations_sel.data()/ observations_sel.sigmas()),
-        sigmas = this_G * observations_sel.sigmas())
 
-    observations_weight = this_G**2/ observations_sel.sigmas()
-    return pickle_filename, observations_sel, observations_weight
+    observations_scaled = observations_sel.customized_copy(
+        data = this_G * observations_sel.data(),
+        sigmas = this_G * observations_sel.sigmas())
+    observations_weight = flex.double([1]*len(observations_sel.data()))
+
+    return pickle_filename, observations_scaled, observations_weight
 
 
 
