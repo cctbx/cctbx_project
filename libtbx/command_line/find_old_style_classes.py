@@ -15,8 +15,14 @@ def run(args):
       arg_filenames.append(arg)
   work.update(fnmatch.filter(arg_filenames, '*.py'))
   for filename in work:
-    old_style = python_code_parsing.find_old_style_classes(
-      python_source_filename=filename)
+    try:
+      old_style = python_code_parsing.find_old_style_classes(
+        python_source_filename=filename)
+    except Exception, e:
+      import traceback
+      print filename
+      print traceback.format_exc()
+      continue
     if old_style:
       print 'In file %s:' % filename
       print old_style
