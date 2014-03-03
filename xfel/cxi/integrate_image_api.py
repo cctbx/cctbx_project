@@ -18,8 +18,11 @@ def integrate_one_image(data, **kwargs):
   if (dirname is None):
     dirname = "integration"
   if (not os.path.isdir(dirname)):
-    os.makedirs(dirname)
-
+    import errno
+    try:
+      os.makedirs(dirname)
+    except OSError as exc:
+      if exc.errno==errno.EEXIST: pass
   path = os.path.join(dirname, basename          \
                         +      data['TIMESTAMP'] \
                         +      ("_%05d.pickle" % data['SEQUENCE_NUMBER']))
