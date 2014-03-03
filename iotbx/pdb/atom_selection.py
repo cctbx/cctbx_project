@@ -602,9 +602,7 @@ class cache(slots_getstate_setstate):
     except (AtomSelectionError, KeyboardInterrupt): raise
     except Exception:
       msg = format_exception().splitlines()
-      msg.extend([
-        "Atom selection string leading to error:",
-        "  " + string])
+      msg.extend(["Atom selection string leading to error: %s" % string])
       raise AtomSelectionError("\n".join(msg))
 
   def iselection(self, string, optional=True, contiguous_word_characters=None):
