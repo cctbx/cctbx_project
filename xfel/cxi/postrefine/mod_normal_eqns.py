@@ -52,7 +52,7 @@ class normal_eqns_handler(object):
   def compute_cost_refine_scale(self, I_ref, observations_original_sel, wavelength, parameters):
     G = parameters[0]
     B_factor = parameters[1]
-    
+
     I_obs = observations_original_sel.data()
     sigI_obs = observations_original_sel.sigmas()
     observations_original_sel_two_theta = observations_original_sel.two_theta(wavelength=wavelength)
@@ -62,7 +62,7 @@ class normal_eqns_handler(object):
     excursions = ((G * (flex.exp(-2*B_factor*sin_theta_over_lambda_sq)) * I_obs) - I_ref) / sigI_obs
 
     return excursions
-  
+
   def compute_cost_refine_crystal(self, I_ref, observations_original_sel, crystal_init_orientation,
             wavelength, parameters):
     G = parameters[0]
@@ -88,7 +88,7 @@ class normal_eqns_handler(object):
     excursions = (((G * (flex.exp(-2*B_factor*sin_theta_over_lambda_sq)) * I_obs)/partiality) - I_ref) / sigI_obs
 
     return excursions
-    
+
   def get_helper_refine_scale(self, I_ref, observations_original_sel,
               wavelength, parameters):
 
@@ -131,7 +131,7 @@ class normal_eqns_handler(object):
 
           G = current_values[0]
           B_factor = current_values[1]
-          
+
           I_obs = observations_original_sel.data()
           sigI_obs = observations_original_sel.sigmas()
           observations_original_sel_two_theta = observations_original_sel.two_theta(wavelength=wavelength)
@@ -145,8 +145,8 @@ class normal_eqns_handler(object):
           """
           print "SCALE G=%5.3f B_factor=%5.3f J=%6.3f cc=%6.3f slope=%6.3f"% \
           (G, B_factor, sum(excursions**2), corr_now, slope_now)
-          
-          
+
+
           plt.scatter(I_ref,(G * (flex.exp(-2*B_factor*sin_theta_over_lambda_sq)) * I_obs),s=10, marker='x', c='r')
           plt.title('J=%6.5f CC=%6.5f Slope=%6.5f'%(sum(excursions**2), corr_now, slope_now))
           plt.xlabel('Reference intensity')
@@ -161,7 +161,7 @@ class normal_eqns_handler(object):
 
           G = current_values[0]
           B_factor = current_values[1]
-          
+
           I_obs = observations_original_sel.data()
           sigI_obs = observations_original_sel.sigmas()
           observations_original_sel_two_theta = observations_original_sel.two_theta(wavelength=wavelength)
@@ -188,10 +188,10 @@ class normal_eqns_handler(object):
           g_now = self.compute_cost_refine_scale(I_ref, observations_original_sel, wavelength, (G,B_factor))
           g_delta_G = self.compute_cost_refine_scale(I_ref, observations_original_sel, wavelength, (G+delta_G,B_factor))
           g_delta_B = self.compute_cost_refine_scale(I_ref, observations_original_sel, wavelength, (G,B_factor+delta_B))
-          
+
           pDg_pDG_fd = (g_delta_G - g_now)/delta_G
           pDg_pDB_factor_fd = (g_delta_B - g_now)/delta_B
-          
+
           print sum(flex.abs(pDg_pDG_fd)), sum(flex.abs(pDg_pDG_fd-pDg_pDG))
           print sum(flex.abs(pDg_pDB_factor_fd)), sum(flex.abs(pDg_pDB_factor_fd-pDg_pDB_factor))
           print
@@ -247,8 +247,8 @@ class normal_eqns_handler(object):
           rz = spot_radius
           G = scale_factors[0]
           B_factor = scale_factors[1]
-          
-          
+
+
           I_obs = observations_original_sel.data()
           sigI_obs = observations_original_sel.sigmas()
           observations_original_sel_two_theta = observations_original_sel.two_theta(wavelength=wavelength)
@@ -269,8 +269,8 @@ class normal_eqns_handler(object):
           """
           print "ROTATION G=%5.3f B_factor=%5.3f rotx=%6.5f roty=%6.5f ry=%6.5f rz=%6.5f J=%6.3f cc=%6.3f slope=%6.3f p_mean=%6.3f"% \
           (G, B_factor, rotx*180/math.pi, roty*180/math.pi, ry, rz, sum(excursions**2), corr_now, slope_now, flex.mean(partiality))
-          
-          
+
+
           plt.scatter(I_ref,(G * (flex.exp(-2*B_factor*sin_theta_over_lambda_sq)) * I_obs)/partiality,s=10, marker='x', c='r')
           plt.title('J=%6.5f CC=%6.5f Slope=%6.5f'%(sum(excursions**2), corr_now, slope_now))
           plt.xlabel('Reference intensity')
@@ -289,7 +289,7 @@ class normal_eqns_handler(object):
           rz = spot_radius
           G = scale_factors[0]
           B_factor = scale_factors[1]
-          
+
           I_obs = observations_original_sel.data()
           sigI_obs = observations_original_sel.sigmas()
           observations_original_sel_two_theta = observations_original_sel.two_theta(wavelength=wavelength)
@@ -298,7 +298,7 @@ class normal_eqns_handler(object):
 
           delta_rot = 0.0001*math.pi/180
           delta_r = 0.00000001
-          
+
           #0. Calculate current partiality based on current rotx
           crystal_current_orientation = crystal_init_orientation.rotate_thru((1,0,0),rotx
             ).rotate_thru((0,1,0),roty)
@@ -342,16 +342,16 @@ class normal_eqns_handler(object):
 
             pDg_pDrotx.append(pDg_pDP * pDP_pDrh * pDrh_pDrotx)
             pDg_pDroty.append(pDg_pDP * pDP_pDrh * pDrh_pDroty)
-            
+
           """
           #checking partial derivatives
           g_now = self.compute_cost_refine_crystal(I_ref, observations_original_sel, crystal_init_orientation, wavelength, (G,B_factor,rotx,roty,ry,rz))
           g_delta_rotx = self.compute_cost_refine_crystal(I_ref, observations_original_sel, crystal_init_orientation, wavelength, (G,B_factor,rotx+delta_rot,roty,ry,rz))
           g_delta_roty = self.compute_cost_refine_crystal(I_ref, observations_original_sel, crystal_init_orientation, wavelength, (G,B_factor,rotx,roty+delta_rot,ry,rz))
-          
+
           pDg_pDrotx_fd = (g_delta_rotx - g_now)/delta_rot
           pDg_pDroty_fd = (g_delta_roty - g_now)/delta_rot
-          
+
           print sum(flex.abs(pDg_pDrotx_fd)), sum(flex.abs(pDg_pDrotx_fd-pDg_pDrotx))
           print sum(flex.abs(pDg_pDroty_fd)), sum(flex.abs(pDg_pDroty_fd-pDg_pDroty))
           print
@@ -408,7 +408,7 @@ class normal_eqns_handler(object):
           B_factor = scale_factors[1]
           rotx = rotations[0]
           roty = rotations[1]
-          
+
           I_obs = observations_original_sel.data()
           sigI_obs = observations_original_sel.sigmas()
           observations_original_sel_two_theta = observations_original_sel.two_theta(wavelength=wavelength)
@@ -429,8 +429,8 @@ class normal_eqns_handler(object):
           """
           print "RS G=%5.3f B_factor=%5.3f rotx=%6.5f roty=%6.5f ry=%6.5f rz=%6.5f J=%6.3f cc=%6.3f slope=%6.3f p_mean=%6.3f"% \
           (G, B_factor, rotx*180/math.pi, roty*180/math.pi, ry, rz, sum(excursions**2), corr_now, slope_now, flex.mean(partiality))
-          
-          
+
+
           plt.scatter(I_ref,(G * (flex.exp(-2*B_factor*sin_theta_over_lambda_sq)) * I_obs)/partiality,s=10, marker='x', c='r')
           plt.title('J=%6.5f CC=%6.5f Slope=%6.5f'%(sum(excursions**2), corr_now, slope_now))
           plt.xlabel('Reference intensity')
@@ -449,7 +449,7 @@ class normal_eqns_handler(object):
           B_factor = scale_factors[1]
           rotx = rotations[0]
           roty = rotations[1]
-          
+
           I_obs = observations_original_sel.data()
           sigI_obs = observations_original_sel.sigmas()
           observations_original_sel_two_theta = observations_original_sel.two_theta(wavelength=wavelength)
@@ -457,7 +457,7 @@ class normal_eqns_handler(object):
           sin_theta_over_lambda_sq = observations_original_sel_two_theta.sin_theta_over_lambda_sq().data()
 
           delta_r = 0.00000001
-          
+
           #0. Calculate current partiality based on current rotx
           crystal_current_orientation = crystal_init_orientation.rotate_thru((1,0,0),rotx
             ).rotate_thru((0,1,0),roty)
@@ -478,16 +478,16 @@ class normal_eqns_handler(object):
 
             pDg_pDry.append(pDg_pDP * pDP_pDrs * pDrs_pDry)
             pDg_pDrz.append(pDg_pDP * pDP_pDrs * pDrs_pDrz)
-            
+
           """
           #checking partial derivatives
           g_now = self.compute_cost_refine_crystal(I_ref, observations_original_sel, crystal_init_orientation, wavelength, (G,B_factor,rotx,roty,ry,rz))
           g_delta_ry = self.compute_cost_refine_crystal(I_ref, observations_original_sel, crystal_init_orientation, wavelength, (G,B_factor,rotx,roty,ry+delta_r,rz))
           g_delta_rz = self.compute_cost_refine_crystal(I_ref, observations_original_sel, crystal_init_orientation, wavelength, (G,B_factor,rotx,roty,ry,rz+delta_r))
-          
+
           pDg_pDry_fd = (g_delta_ry - g_now)/ delta_r
           pDg_pDrz_fd = (g_delta_rz - g_now)/ delta_r
-          
+
           print sum(flex.abs(pDg_pDry_fd)), sum(flex.abs(pDg_pDry_fd-pDg_pDry))
           print sum(flex.abs(pDg_pDrz_fd)), sum(flex.abs(pDg_pDrz_fd-pDg_pDrz))
           print
@@ -496,5 +496,3 @@ class normal_eqns_handler(object):
           return pDg_pDry, pDg_pDrz
 
       return per_frame_helper()
-      
-  

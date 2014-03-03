@@ -1,20 +1,15 @@
 from __future__ import division
-from scitbx.matrix import sqr, col
+from scitbx.matrix import sqr
 from cctbx.uctbx import unit_cell
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
 from iotbx import mtz
-from cctbx import sgtbx
-from cctbx import uctbx
 from iotbx import reflection_file_reader
 
 import math
 import numpy as np
 
-import matplotlib
-import matplotlib.cm as cm
-import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 
 def get_overall_correlation (data_a, data_b) :
@@ -71,7 +66,7 @@ class intensities_scaler(object):
         iph,
         output_mtz_file_prefix):
 
-    
+
     #from observations_set, generate combine all
     miller_indices_all = flex.miller_index()
     I_all = flex.double()
@@ -79,15 +74,15 @@ class intensities_scaler(object):
     for observations in observations_set:
       if observations is not None:
         for miller_index, i_obs, sigi_obs in zip(
-            observations.indices(), observations.data(), 
+            observations.indices(), observations.data(),
             observations.sigmas()):
-            
+
           miller_indices_all.append(miller_index)
           I_all.append(i_obs)
           sigI_all.append(sigi_obs)
       else:
         print 'Something wrong'
-    
+
     #from all observations merge them, using mean
     crystal_symmetry = crystal.symmetry(
         unit_cell=iph.target_unit_cell,
@@ -125,7 +120,7 @@ class intensities_scaler(object):
             miller_indices_all_sort[i][2] == miller_index_group[2]:
           I_obs_group.append(I_obs_all_sort[i])
           sigI_obs_group.append(sigI_obs_all_sort[i])
-          
+
         else:
           refl_now = i
           cn_miller_indices +=1
@@ -134,6 +129,8 @@ class intensities_scaler(object):
       if len(I_obs_group) == 1:
         I_obs_merge = I_obs_group[0]
         sigI_obs_merge = sigI_obs_group[0]
+
+
         if math.isnan(I_obs_merge) or math.isnan(sigI_obs_merge) or I_obs_merge==0 or sigI_obs_merge==0:
           print miller_index_group, I_obs_merge, sigI_obs_merge, ' - not merged'
         else:
@@ -148,19 +145,41 @@ class intensities_scaler(object):
           r_merge_w_all.append(r_w)
           cn_singlet += 1
       else:
-          
-        I_obs_merge = np.mean(I_obs_group)
-        sigI_obs_merge = np.mean(sigI_obs_group)
-        multiplicities.append(len(I_obs_group))
-        miller_indices_merge.append(miller_index_group)
-        r_dif = flex.sum(((I_obs_group - I_obs_merge)**2)/sigI_obs_group)*math.sqrt(len(I_obs_group)/(len(I_obs_group)-1))
-        r_w = flex.sum((I_obs_group**2)/sigI_obs_group)
-        I_obs_merge_mean.append(I_obs_merge)
-        sigI_obs_merge_mean.append(sigI_obs_merge)
-        r_merge_dif_all.append(r_dif)
-        r_merge_w_all.append(r_w)
-      
-      
+        #calculate I as sigma
+        mean_I_obs_group = flex.mean(I_obs_weight_group)
+        std_I_obs_group = np.std(I_obs_weight_group)
+        I_obs_group_as_sigma = (I_obs_weight_group - mean_I_obs_group)/std_I_obs_group
+
+        #select only I within selected standard deviation
+        index_I_obs_group_as_sigma_sel = flex.abs(I_obs_group_as_sigma) <= iph.sigma_max_merge
+        I_obs_group_sel = I_obs_group.select(index_I_obs_group_as_sigma_sel)
+        sigI_obs_group_sel = sigI_obs_group.select(index_I_obs_group_as_sigma_sel)
+        I_weight_group_sel = I_weight_group.select(index_I_obs_group_as_sigma_sel)
+        I_obs_weight_group_sel = I_obs_weight_group.select(index_I_obs_group_as_sigma_sel)
+
+        if len(I_obs_group_sel) > 0:
+
+          if len(I_obs_group_sel) == 1:
+            I_obs_merge = I_obs_weight_group_sel[0]
+            sigI_obs_merge = sigI_obs_group_sel[0]
+            r_dif = (sigI_obs_merge**2)/sigI_obs_merge
+            r_w = (I_obs_merge**2)/sigI_obs_merge
+          else:
+            I_obs_merge = sum(I_obs_group_sel)/sum(I_weight_group_sel)
+            sigI_obs_merge = np.std(I_obs_weight_group_sel)
+            r_dif = flex.sum(((I_obs_weight_group_sel - I_obs_merge)**2)/sigI_obs_group_sel)*math.sqrt(len(I_obs_weight_group_sel)/(len(I_obs_weight_group_sel)-1))
+            r_w = flex.sum((I_obs_weight_group_sel**2)/sigI_obs_group_sel)
+
+          if math.isnan(I_obs_merge) or math.isnan(sigI_obs_merge) or I_obs_merge==0 or sigI_obs_merge==0:
+            print miller_index_group, I_obs_merge, sigI_obs_merge, ' - not merged'
+          else:
+            multiplicities.append(len(I_obs_group_sel))
+            miller_indices_merge.append(miller_index_group)
+            I_obs_merge_mean.append(I_obs_merge)
+            sigI_obs_merge_mean.append(sigI_obs_merge)
+            r_merge_dif_all.append(r_dif)
+            r_merge_w_all.append(r_w)
+
       if i==len(I_obs_all_sort)-1:
         break
 
@@ -185,7 +204,7 @@ class intensities_scaler(object):
       matches_merge = miller.match_multi_indices(
                     miller_indices_unique=iph.miller_array_iso.indices(),
                     miller_indices=miller_indices_merge)
-      
+
       I_ref_merge = flex.double([iph.miller_array_iso.data()[pair[0]] for pair in matches_merge.pairs()])
       I_obs_merge_mean = flex.double([miller_array_merge_mean.data()[pair[1]] for pair in matches_merge.pairs()])
       sigI_obs_merge_mean = flex.double([miller_array_merge_mean.sigmas()[pair[1]] for pair in matches_merge.pairs()])
@@ -193,7 +212,7 @@ class intensities_scaler(object):
       cc_merge_mean, slope_merge_mean = get_overall_correlation(I_obs_merge_mean, I_ref_merge)
 
       r_all = sum(((I_ref_merge - (slope_merge_mean*I_obs_merge_mean))**2)/sigI_obs_merge_mean)/sum(((slope_merge_mean*I_obs_merge_mean)**2)/sigI_obs_merge_mean)
-      
+
       """
       plt.scatter(I_ref_merge, I_obs_merge_mean,s=10, marker='x', c='r')
       plt.title('CC=%6.5f Slope=%6.5f R=%6.5f <I_ref>=%6.5f <I_obs>=%6.5f'%(cc_merge_mean, slope_merge_mean, r_all, np.mean(I_ref_merge), np.mean(I_obs_merge_mean)))
@@ -237,9 +256,9 @@ class intensities_scaler(object):
             I_obs_bin_mean = flex.double([miller_array_merge_mean.data().select(i_binner)[pair[1]] for pair in matches_bin.pairs()])
             sigI_obs_bin_mean = flex.double([miller_array_merge_mean.sigmas().select(i_binner)[pair[1]] for pair in matches_bin.pairs()])
             corr_bin_mean, slope_bin_mean = get_overall_correlation(I_obs_bin_mean, I_ref_bin)
-            
+
             r_bin = sum(((I_ref_bin - (slope_bin_mean*I_obs_bin_mean))**2)/sigI_obs_bin_mean)/sum(((slope_bin_mean*I_obs_bin_mean)**2)/sigI_obs_bin_mean)
-            
+
         cc_bin.append(corr_bin_mean)
 
         if len(miller_array_merge_mean.data().select(i_binner)) == 0:
@@ -335,8 +354,7 @@ class input_handler(object):
     self.miller_array_iso = None
     self.n_bins=25
     self.flag_on_screen_output=True
-    self.q_w_merge = 1.0
-    
+
 
     file_input = open(file_name_input, 'r')
     data_input = file_input.read().split('\n')
@@ -405,9 +423,8 @@ class input_handler(object):
         elif param_name=='flag_on_screen_output':
           if param_val=='False':
             self.flag_on_screen_output=False
-        elif param_name=='q_w_merge':
-          self.q_w_merge=float(param_val)
-            
+
+
     if self.frame_end == 0:
       print 'Parameter: frame_end - please specifiy at least one frame (usage: frame_end=1)'
       exit()
@@ -423,7 +440,7 @@ class input_handler(object):
     if self.flag_polar and self.file_name_iso_mtz =='':
       print 'Conflict of parameters: you turned flag_polar on, please also input isomorphous-reference mtz file (usage: hklisoin = 1jw8-sf-asu.mtz)'
       exit()
-    
+
     #fetch isomorphous structure
     if self.file_name_iso_mtz != '':
       reflection_file_iso = reflection_file_reader.any_reflection_file(self.file_name_iso_mtz)
@@ -437,7 +454,7 @@ class input_handler(object):
         print 'Cannot find intensity array in the isomorphous-reference mtz'
         exit()
      
-      
+
     self.txt_out = ''
     self.txt_out += 'Input parameters\n'
     self.txt_out += 'run_no '+str(self.run_no)+'\n'

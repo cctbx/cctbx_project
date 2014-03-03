@@ -2,7 +2,6 @@ from __future__ import division
 #read and extract serial no. (of the pickle file) and the image name.
 
 import sys
-from cctbx.array_family import flex
 
 file_a = open(sys.argv[1],'r')
 data_a=file_a.read().split("\n")

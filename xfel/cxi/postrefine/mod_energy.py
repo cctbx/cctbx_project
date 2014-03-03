@@ -1,6 +1,4 @@
 from __future__ import division
-import sys
-import numpy
 
 from cctbx.array_family import flex
 
