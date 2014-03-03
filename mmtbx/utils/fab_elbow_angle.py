@@ -1,6 +1,7 @@
 from __future__ import division
 from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
+from libtbx.utils import Sorry
 from libtbx.utils import null_out
 from scitbx import matrix
 from math import acos,pi
@@ -11,8 +12,8 @@ class fab_elbow_angle(object):
 
   def __init__(self,
                pdb_hierarchy,
-               chain_ID_light='L',
-               chain_ID_heavy='H',
+               chain_id_light='L',
+               chain_id_heavy='H',
                limit_light=107,
                limit_heavy=113):
     '''
@@ -35,11 +36,11 @@ class fab_elbow_angle(object):
     '''
     # create selection strings for the heavy/light var/const part of chains
     self.select_str(
-      chain_ID_H=chain_ID_heavy,
+      chain_ID_H=chain_id_heavy,
       limit_H=limit_heavy,
-      chain_ID_L=chain_ID_light,
+      chain_ID_L=chain_id_light,
       limit_L=limit_light)
-    # get the hirarchy for and divide using selection strings
+    # get the hierarchy for and divide using selection strings
     self.pdb_hierarchy = pdb_hierarchy
     self.get_pdb_chains()
     # Get heavy to light reference vector before alignment !!!
@@ -139,6 +140,10 @@ class fab_elbow_angle(object):
     self.pdb_const_H = ph.select(test(self.select_const_str_H))
     self.pdb_var_L = ph.select(test(self.select_var_str_L))
     self.pdb_const_L = ph.select(test(self.select_const_str_L))
+    if test(self.select_var_str_L).count(True) == 0:
+      raise Sorry('No atoms in light chain. Check chain name')
+    if test(self.select_var_str_H).count(True) == 0:
+      raise Sorry('No atoms in heavy chain. Check chain name')
 
   def get_transformation(self,fixed_selection,moving_selection):
     from phenix.command_line import superpose_pdbs
