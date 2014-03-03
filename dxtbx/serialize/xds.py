@@ -151,7 +151,7 @@ class to_xds(object):
               job_card="XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT"):
     if out is None:
       out = sys.stdout
-      
+
     assert [real_space_a, real_space_b, real_space_c].count(None) in (0,3)
 
     sensor = self.get_detector()[0].get_type()
@@ -215,7 +215,7 @@ class to_xds(object):
     print >> out, 'JOB=%s' %job_card
     if space_group_number is not None:
       print >> out, 'SPACE_GROUP_NUMBER= %i' %space_group_number
-    if [real_space_a, real_space_b, real_space_c].count(None) == 0:      
+    if [real_space_a, real_space_b, real_space_c].count(None) == 0:
       R = self.imagecif_to_xds_transformation_matrix
       unit_cell_a_axis = R * matrix.col(real_space_a)
       unit_cell_b_axis = R * matrix.col(real_space_b)

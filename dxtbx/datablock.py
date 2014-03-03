@@ -230,9 +230,10 @@ class FormatChecker(object):
   ''' A helper class to find the image format by first checking
   the last format that was used. '''
 
-  def __init__(self):
+  def __init__(self, verbose=False):
     ''' Set the format class to none. '''
     self._format_class = None
+    self._verbose = verbose
 
   def check_child_formats(self, filename):
     ''' If a child format understands the file better than return that,
@@ -269,6 +270,8 @@ class FormatChecker(object):
       if self._format_class == None or not self.understand(filename):
         self._format_class = Registry.find(filename)
       self._format_class = self.check_child_formats(filename)
+      if self._verbose:
+        print 'Using %s for %s' % (self._format_class.__name__, filename)
     except Exception:
       return None
     return self._format_class
@@ -290,12 +293,15 @@ class DataBlockFilenameImporter(object):
     def append_to_datablocks(iset):
       try:
         self.datablocks[-1].append(iset)
+        if verbose:
+          print 'Added imageset to datablock %s' % (len(self.datablocks) - 1)
       except Exception:
         self.datablocks.append(DataBlock([iset]))
-        if verbose: print 'Starting datablock %d' % len(self.datablocks)
+        if verbose:
+          print 'Added imageset to datablock %d' % len(self.datablocks)
 
     # Iterate through groups of files by format class
-    find_format = FormatChecker()
+    find_format = FormatChecker(verbose=verbose)
     for fmt, group in groupby(filenames, lambda f: find_format(f)):
       if fmt is None:
         self.unhandled.extend(group)
