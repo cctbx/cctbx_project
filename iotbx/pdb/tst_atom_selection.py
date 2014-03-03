@@ -231,7 +231,7 @@ END
     except pdb.atom_selection.AtomSelectionError, e:
       assert str(e).endswith("""\
 Atom selection string leading to error:
-  %s""" % s)
+  %s""" % s), str(e)
     else: raise Exception_expected
   #
   sel = sel_cache.get_labels(name=" CA ")
