@@ -3339,7 +3339,6 @@ def run(atom1, atom2, return_non_protein=True):
   else: return rc
 
 if __name__=="__main__":
-  #from elbow.chemistry.AtomClass import AtomClass
   results = [
     [2.41, 0.1], # Na
     [2.41, 0.1],

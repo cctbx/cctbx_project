@@ -853,7 +853,7 @@ Residue classes
     #  print sym_pair.i_seq, sym_pair.j_seq,
     #  print atoms[sym_pair.i_seq].quote(), atoms[sym_pair.j_seq].quote()
     n_simple, n_symmetry = 0, 0
-    from elbow.utilities.refine_inputs import geometry_restraints_edits_bond
+
     for sym_pair in pair_sym_table.iterator():
       i_seq, j_seq = sym_pair.i_seqs()
       assert i_seq == nonbonded_i_seqs[i_seq]
