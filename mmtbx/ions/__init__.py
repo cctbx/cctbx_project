@@ -184,14 +184,17 @@ def check_supported (elements) :
       "'Auto' or a comma-separated list of element symbols.")
   elif (elements is not Auto) :
     # XXX somehow comma-separation of phil strings fields doesn't work
-    if (isinstance(elements, list)) and (len(elements) == 1) :
+    if isinstance(elements, str) or isinstance(elements, unicode) :
+      elements = elements.replace(",", " ").split()
+    elif (isinstance(elements, list)) and (len(elements) == 1) :
       elements = elements[0].split(",")
     if (elements == ['X']) : # XXX hack for testing - X is "dummy" element
       return True
     for elem in elements :
       if (not elem.strip().upper() in SUPPORTED) :
-        raise Sorry("Element '%s' not supported!  Choices are: %s" %
-                    (elem, " ".join(SUPPORTED)))
+        raise Sorry(
+          "Identification of ions with element symbol '%s' is not supported! "+
+          "Choices are: %s" % (elem, " ".join(SUPPORTED)))
   return True
 
 class atom_contact (slots_getstate_setstate) :
@@ -1075,6 +1078,8 @@ class Manager (object) :
     auto_candidates = candidates is Auto
     if auto_candidates:
       candidates = DEFAULT_IONS
+    elif isinstance(candidates, str) or isinstance(candidates, unicode) :
+      candidates = candidates.replace(",", " ").split()
     candidates = [i.strip().upper() for i in candidates]
     if (candidates == ['X']) : # XXX hack for testing - X is "dummy" element
       candidates = []
