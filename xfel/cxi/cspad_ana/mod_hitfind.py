@@ -385,24 +385,26 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       from cxi_xdr_xes.cftbx.cspad_ana import db
       dbobj = db.dbconnect()
       cursor = dbobj.cursor()
-      cmd = "SELECT COUNT(*) from %s WHERE trial=%s and run=%s"%(db.table_name,trial,run)
+      cmd = "SELECT COUNT(*) from %s WHERE trial=%s and run=%s and eventstamp=%s"%(db.table_name,trial,run,eventstamp)
       cursor.execute(cmd)
-      if cursor.fetchone()[0] > 0:
+      result = cursor.fetchone()[0]
+      if result > 0:
+        assert result == 1
         cmd = "UPDATE %s SET "%(db.table_name)
-        keys = ['eventstamp','distance','sifoil','wavelength','indexed']
+        keys = ['distance','sifoil','wavelength','indexed']
         if hitcount is not None:
           keys.append('hitcount')
         comma = ""
         for key in keys:
           cmd += comma + "%s=%s "%(key,locals()[key])
           comma = ", "
-        cmd += "WHERE trial=%s and run=%s"%(trial,run)
+        cmd += "WHERE trial=%s and run=%s and eventstamp=%s"%(trial,run,eventstamp)
         cursor.execute(cmd)
       else:
         if hitcount is None:
           hitcount = 0
         cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed) "%(db.table_name) + "VALUES (%s,%s,%s,%s,%s,%s,%s,%s);"
-        cursor.execute(cmd, entry)
+        cursor.execute(cmd, (trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed))
       dbobj.commit()
       dbobj.close()
 
