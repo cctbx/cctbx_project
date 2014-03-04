@@ -84,6 +84,9 @@ integration {
       .help = too-small value predicts too many spots, leading to misindexing.
       .help = too-large value doesn't predict enough spots
       .help = choose lowest value physically reasonable, 10 unit cells.
+    enable_rotational_target_highsym = True
+      .type = bool
+      .help = Protocol 6, use equation 2 (true) or protocol 5, use equation 1 (false) for higher Bravais-setting refinement
   }
 }
 """
