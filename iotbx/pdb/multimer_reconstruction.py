@@ -33,27 +33,39 @@ class multimer(object):
   @author: Youval Dar (LBL )
   '''
   def __init__(self,
-               pdb_input_file_name,
                reconstruction_type,
+               file_name=None,
+               pdb_str=None,
                error_handle=True,
-               eps=1e-4):
+               eps=1e-3,
+               round_coordinates=True):
     ''' (str) -> NoType
     Arguments:
-    pdb_input_file_name -- the name of the pdb file we want to process. a string such as 'pdb_file_name.pdb'
     reconstruction_type -- 'ba' or 'cau'
                            'ba': biological assembly
                            'cau': crystallographic asymmetric unit
+    file_name -- the name of the pdb file we want to process.
+                 a string such as 'pdb_file_name.pdb'
+    pdb_str -- a string containing pdb information, when not using a pdb file
     error_handle -- True: will stop execution on improper retation matrices
-                    False: will continue execution but will replace the values in the
-                           rotation matrix with [0,0,0,0,0,0,0,0,0]
-    eps -- Rounding accuracy for avoiding numerical issue when when testing proper rotation
-
+                    False: will continue execution but will replace the values
+                          in the rotation matrix with [0,0,0,0,0,0,0,0,0]
+    eps -- Rounding accuracy for avoiding numerical issue when when testing
+           proper rotation
+    round_coordinates -- round coordinates of new NCS copies, for sites_cart
+                         constancy
     @author: Youval Dar (2013)
     '''
+    assert file_name or pdb_str
     # Read and process the pdb file
-    self.pdb_input_file_name = pdb_input_file_name
-    pdb_inp = pdb.input(file_name=pdb_input_file_name)
-    pdb_obj = pdb.hierarchy.input(file_name=pdb_input_file_name)
+    if file_name:
+      self.pdb_input_file_name = file_name
+      pdb_inp = pdb.input(file_name=file_name)
+      pdb_obj = pdb.hierarchy.input(file_name=file_name)
+    else:
+      self.pdb_input_file_name = pdb_str
+      pdb_inp = pdb.input(source_info=None, lines=pdb_str)
+      pdb_obj = pdb.hierarchy.input(pdb_string=pdb_str)
     pdb_obj_new = pdb_obj.hierarchy.deep_copy()
     self.assembled_multimer = pdb_obj_new
 
@@ -105,6 +117,8 @@ class multimer(object):
             new_chain.id = new_chains_names[new_chain.id + str(i_transform)]
             new_sites = transform_info.r[i_transform].elems*\
               new_chain.atoms().extract_xyz()+transform_info.t[i_transform]
+            if round_coordinates:
+              new_sites = new_sites.round(3)
             new_chain.atoms().set_xyz(new_sites)
             # add a new chain to current model
             model.append_chain(new_chain)
@@ -136,9 +150,12 @@ class multimer(object):
     '''
     # create list of character from which to assemble the list of names
     total_chains_number = len(i_transforms)*len(unique_chain_names)
-    chr_number = int(math.sqrt(total_chains_number)) + 1        # the number of charater needed to produce new names
-    chr_list = list(string.ascii_letters) + list(string.digits) # build character list
-    chr_list = chr_list[:chr_number]                            # take only as many characters as needed
+    # the number of character needed to produce new names
+    chr_number = int(math.sqrt(total_chains_number)) + 1
+    # build character list
+    chr_list = list(string.ascii_letters) + list(string.digits)
+    # take only as many characters as needed
+    chr_list = chr_list[:chr_number]
     dictionary_values = set([ x+y for x in chr_list for y in chr_list])
     dictinary_key = set([x+str(y) for x in unique_chain_names for y in i_transforms])
     # create the dictionary
@@ -166,7 +183,7 @@ class multimer(object):
 
     Argumets:
     pdb_output_file_name -- string. 'name.pdb'
-    if no pdn_output_file_name is given pdb_output_file_name=pdb_input_file_name
+    if no pdn_output_file_name is given pdb_output_file_name=file_name
 
     >>> v = multimer('name.pdb','ba')
     >>> v.write('new_name.pdb')
