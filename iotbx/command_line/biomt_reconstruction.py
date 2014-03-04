@@ -39,14 +39,13 @@ def biomt_reconstruction(args, command_name="phenix.pdb.biomt_reconstruction"):
     print 'There is no file {} in the current directory \n {}'.format(args[0],os.getcwd())
     raise Sorry('File name error')
   else:
-    m = multimer(args[0],'ba')
+    m = multimer(file_name=args[0],reconstruction_type='ba')
     if m.number_of_transforms > 0:
       # write the bio-assembly reconstructed file in current directory
       if len(args) == 2:
         # output file name given
         m.write(args[1])
-        print 'mtrix-assembly reconstructed pdb file was added to your current directory'
-        print os.getcwd() + '/' + m.pdb_output_file_name
+        print '$s file was added to your current directory'%args[1]
       else:
         # output file name not given
         m.write()

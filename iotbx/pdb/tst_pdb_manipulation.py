@@ -37,7 +37,8 @@ class TestMultimerReconstruction(unittest.TestCase):
     [39.954, 52.026, 72.372]]
 
     # use MTRIX data
-    cau_multimer_data = multimer('multimer_test_data.pdb','cau')
+    cau_multimer_data = multimer(
+      file_name='multimer_test_data.pdb',reconstruction_type='cau')
     cau_multimer_xyz = list(cau_multimer_data.sites_cart())
 
     cau_multimer_xyz.sort()
@@ -67,7 +68,7 @@ class TestMultimerReconstruction(unittest.TestCase):
 
     # use BIOMT data
     ba_multimer_data = multimer(
-      pdb_input_file_name='multimer_test_data.pdb',
+      file_name='multimer_test_data.pdb',
       reconstruction_type='ba')
     ba_multimer_xyz = list(ba_multimer_data.sites_cart())
 
@@ -83,7 +84,8 @@ class TestMultimerReconstruction(unittest.TestCase):
     Test correct MTRIX transform counting and
     new chains naming'''
     # use MTRIX data
-    m = multimer('multimer_test_data2.pdb','cau')
+    m = multimer(
+      file_name='multimer_test_data2.pdb',reconstruction_type='cau')
     self.assertEqual(m.number_of_transforms, 1)
 
 
