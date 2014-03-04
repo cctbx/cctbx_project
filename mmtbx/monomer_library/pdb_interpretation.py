@@ -127,10 +127,11 @@ master_params_str = """\
   {
     link_all = False
       .type = bool
-      .short_caption = Automatically add covalent bonds
+      .short_caption = Automatic ligand linking
       .help = If True, bond restraints will be generated for any appropriate \
         ligand-protein or ligand-nucleic acid covalent bonds. This includes \
         sugars, amino acid modifications, and other prosthetic groups.
+      .style = bold renderer:draw_automatic_linking_control
     link_metals = True
       .type = bool
     metal_coordination_cutoff = 3.5
