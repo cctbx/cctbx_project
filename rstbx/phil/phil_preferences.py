@@ -87,6 +87,9 @@ integration {
     enable_rotational_target_highsym = True
       .type = bool
       .help = Protocol 6, use equation 2 (true) or protocol 5, use equation 1 (false) for higher Bravais-setting refinement
+    enable_rotational_target_triclinic = True
+      .type = bool
+      .help = Protocol 5, use equation 2 (true) or protocol 4, use equation 1 (false) for triclinic Bravais-setting refinement
   }
 }
 """
