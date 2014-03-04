@@ -111,14 +111,17 @@ class ncs_minimization_test(object):
       sf_and_grads_accuracy_params = params,
       target_name                  = "ls_wunit_k1")
     print "start r_factor: %6.4f" % fmodel.r_work()
+    rotation_matrices = m_shaken.rotation_matrices
+    translation_vectors = m_shaken.translation_vectors
     for macro_cycle in xrange(self.n_macro_cycle):
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         fmodel                       = fmodel,
-        ncs_to_asu_obj               = m_shaken,
+        rotation_matrices            = m_shaken.rotation_matrices,
+        translation_vectors          = m_shaken.translation_vectors,
         ncs_atom_selection           = ncs_selection,
         finite_grad_differences_test = self.finite_grad_differences_test,
-        sites                        = self.sites,
-        u_iso                        = self.u_iso)
+        refine_sites                        = self.sites,
+        refine_u_iso                        = self.u_iso)
       refine_type = 'adp'*self.u_iso + 'sites'*self.sites
       print "  macro_cycle %3d (%s)   r_factor: %6.4f"%(macro_cycle,
         refine_type, fmodel.r_work())
