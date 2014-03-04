@@ -51,7 +51,9 @@ class ncs_minimization_test(object):
     print >> of, ph.as_pdb_string(crystal_symmetry=xrs_one_ncs.crystal_symmetry())
     of.close()
     # 1 NCS copy -> full asu (expand NCS). This is the answer-structure
-    m = multimer("one_ncs_in_asu.pdb",'cau',error_handle=True,eps=1e-2)
+    m = multimer(file_name="one_ncs_in_asu.pdb",
+                 round_coordinates=False,
+                 reconstruction_type='cau',error_handle=True,eps=1e-2)
     assert m.number_of_transforms == 2, m.number_of_transforms
     xrs_asu = m.assembled_multimer.extract_xray_structure(
       crystal_symmetry = xrs_one_ncs.crystal_symmetry())
@@ -90,7 +92,8 @@ class ncs_minimization_test(object):
     params.algorithm = "direct"
     # Get the xray_structure of the shaken ASU
     m_shaken = multimer(
-      pdb_input_file_name="one_ncs_in_asu_shaken.pdb",
+      file_name="one_ncs_in_asu_shaken.pdb",
+      round_coordinates=False,
       reconstruction_type='cau',error_handle=True,eps=1e-2)
     xrs_shaken_asu = m_shaken.assembled_multimer.extract_xray_structure(
       crystal_symmetry=self.xrs_one_ncs.crystal_symmetry())
@@ -114,8 +117,6 @@ class ncs_minimization_test(object):
     r_start = fmodel.r_work()
     assert r_start > 0.15
     print "start r_factor: %6.4f" % r_start
-    rotation_matrices = m_shaken.rotation_matrices
-    translation_vectors = m_shaken.translation_vectors
     for macro_cycle in xrange(self.n_macro_cycle):
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         fmodel                       = fmodel,
