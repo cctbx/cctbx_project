@@ -53,7 +53,7 @@ class target:
     f = 2*uc[0]*uc[1]*math.cos(uc[5])
     return [a,b,c,d,e,f]
 
-  def cluster(self, threshold, method, linkage):
+  def cluster(self, threshold, method, linkage_method, log=False):
     """ Do basic hierarchical clustering on the Niggli
     cells created at the start """
     dist_method = 2
@@ -67,10 +67,31 @@ class target:
     self.G6_cells = np.array(G6_cells)
     # 2. Do hierarchichal clustering on this, using the find_distance method above.
     import  scipy.cluster.hierarchy as hcluster
-    self.clusters = hcluster.fclusterdata(self.G6_cells,
-                                          threshold**2,
-                                          criterion='distance',
-                                          metric=lambda a, b: self.find_distance(a,b,dist_method))
+    import  scipy.spatial.distance as dist
+    import pylab
+    pair_distances = dist.pdist(self.G6_cells,
+                                metric=lambda a, b: self.find_distance(a,b,dist_method))
+    print "Distances have been calculated"
+    this_linkage  = hcluster.linkage(pair_distances,
+                                     method=linkage_method,
+                                     metric=lambda a, b: self.find_distance(a,b,dist_method))
+    fig = pylab.figure()
+    hcluster.dendrogram(this_linkage,
+                      labels=["{:<4.1f}, {:<4.1f}, {:<4.1f}, {:<4.1f}, {:<4.1f}, {:<4.1f}".format(
+                              x[0], x[1], x[2], x[3], x[4], x[5])  for x in self.niggli_ucs],
+                      leaf_font_size=8,
+                      color_threshold=threshold)
+    ax=fig.gca()
+    if log:
+      ax.set_yscale("log")
+    else:
+      ax.set_ylim(-ax.get_ylim()[1]/100,ax.get_ylim()[1])
+    fig.show()
+    fig.savefig("dendogram.pdf")
+    self.clusters = hcluster.fcluster(this_linkage,
+                                          threshold,
+                                          criterion='distance')
+
     # 3. print out some information that is useful.
     print "{} clusters have been identified.".format(max(self.clusters))
     print "{:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
@@ -106,12 +127,12 @@ class target:
           np.median(this_cluster[:,3]),
           np.median(this_cluster[:,4]),
           np.median(this_cluster[:,5])), '\n']))
+    print "Standard deviations are in brackets."
+    print  str(len(singletons)) + " singletons:  \n"
     print "{:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
                              "Num in cluster",
                              "Med_a", "Med_b", "Med_c",
                              "Med_alpha", "Med_beta", "Med_gamma")
-    print "Standard deviations are in brackets."
-    print  str(len(singletons)) + " singletons:  \n"
     print "".join(singletons)
 
 
@@ -119,7 +140,7 @@ class target:
     """ Plot Niggli cells -- one plot for (a,b,c) and one plot for (alpha, beta, gamma) -- colour
     coded by cluster index.  """
     import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
+    from mpl_toolkits.mplot3d import Axes3D # Special Import
     import matplotlib.cm as mpl_cmaps
     cmap = mpl_cmaps.Paired
     fig = plt.figure('unit_cells_dimensions')
