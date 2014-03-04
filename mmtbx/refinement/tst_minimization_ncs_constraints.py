@@ -5,6 +5,9 @@ import mmtbx.f_model
 import mmtbx.refinement.minimization_ncs_constraints
 from libtbx.test_utils import approx_equal
 import os
+from libtbx import adopt_init_args
+from scitbx.array_family import flex
+import mmtbx.utils
 
 ncs_1_copy="""\
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
@@ -34,10 +37,7 @@ class ncs_minimization_test(object):
                u_iso,
                finite_grad_differences_test):
     """ create temp test files and data for tests """
-    self.n_macro_cycle = n_macro_cycle
-    self.sites = sites
-    self.u_iso = u_iso
-    self.finite_grad_differences_test = finite_grad_differences_test
+    adopt_init_args(self, locals())
     # 1 NCS copy: starting template to generate whole asu; place into P1 box
     pdb_inp = iotbx.pdb.input(source_info=None, lines=ncs_1_copy)
     mtrix_object = pdb_inp.process_mtrix_records()
@@ -72,7 +72,9 @@ class ncs_minimization_test(object):
     # Shake structure - subject to refinement input
     xrs_shaken = xrs_one_ncs.deep_copy_scatterers()
     if sites: xrs_shaken.shake_sites_in_place(mean_distance=0.5)
-    if self.u_iso: xrs_shaken.shake_adp()
+    if(self.u_iso):
+      u_random = flex.random_double(xrs_shaken.scatterers().size())
+      xrs_shaken = xrs_shaken.set_u_iso(values=u_random)
     ph.adopt_xray_structure(xrs_shaken)
     of = open("one_ncs_in_asu_shaken.pdb", "w")
     print >> of, mtrix_object.format_MTRIX_pdb_string()
@@ -81,7 +83,6 @@ class ncs_minimization_test(object):
     self.f_obs = f_obs
     self.r_free_flags = r_free_flags
     self.xrs_one_ncs = xrs_one_ncs
-
 
   def run_test(self):
     ### Refinement
@@ -110,7 +111,9 @@ class ncs_minimization_test(object):
       xray_structure               = xrs_shaken_asu,
       sf_and_grads_accuracy_params = params,
       target_name                  = "ls_wunit_k1")
-    print "start r_factor: %6.4f" % fmodel.r_work()
+    r_start = fmodel.r_work()
+    assert r_start > 0.15
+    print "start r_factor: %6.4f" % r_start
     rotation_matrices = m_shaken.rotation_matrices
     translation_vectors = m_shaken.translation_vectors
     for macro_cycle in xrange(self.n_macro_cycle):
@@ -120,8 +123,8 @@ class ncs_minimization_test(object):
         translation_vectors          = m_shaken.translation_vectors,
         ncs_atom_selection           = ncs_selection,
         finite_grad_differences_test = self.finite_grad_differences_test,
-        refine_sites                        = self.sites,
-        refine_u_iso                        = self.u_iso)
+        refine_sites                 = self.sites,
+        refine_u_iso                 = self.u_iso)
       refine_type = 'adp'*self.u_iso + 'sites'*self.sites
       print "  macro_cycle %3d (%s)   r_factor: %6.4f"%(macro_cycle,
         refine_type, fmodel.r_work())
@@ -130,13 +133,29 @@ class ncs_minimization_test(object):
     if(self.u_iso):
       assert approx_equal(fmodel.r_work(), 0, 1.e-5)
     elif(self.sites):
-      assert approx_equal(fmodel.r_work(), 0, 0.003)
+      assert approx_equal(fmodel.r_work(), 0, 1.e-5)
     else: assert 0
     # output refined model
     xrs_refined = fmodel.xray_structure
     m_shaken.assembled_multimer.adopt_xray_structure(fmodel.xray_structure)
-    m_shaken.write("refined_u_iso%s_sites%s.pdb"%(str(self.u_iso),
-                                                  str(self.sites)))
+    output_file_name = "refined_u_iso%s_sites%s.pdb"%(str(self.u_iso),
+      str(self.sites))
+    m_shaken.write(output_file_name)
+    # check final model
+    pdb_inp_answer = iotbx.pdb.input(source_info=None, lines=ncs_1_copy)
+    pdb_inp_refined = iotbx.pdb.input(file_name=output_file_name)
+    xrs1 = pdb_inp_answer.xray_structure_simple()
+    xrs2 = pdb_inp_refined.xray_structure_simple().select(ncs_selection)
+    mmtbx.utils.assert_xray_structures_equal(
+      x1 = xrs1,
+      x2 = xrs2,
+      sites = False)
+    delta = flex.vec3_double([xrs1.center_of_mass()]*xrs2.scatterers().size())-\
+            flex.vec3_double([xrs2.center_of_mass()]*xrs2.scatterers().size())
+    xrs2.set_sites_cart(sites_cart = xrs2.sites_cart()+delta)
+    mmtbx.utils.assert_xray_structures_equal(
+      x1 = xrs1,
+      x2 = xrs2)
 
   def clean_up_temp_test_files(self):
     """delete temporary test files """
@@ -147,11 +166,11 @@ class ncs_minimization_test(object):
       if os.path.isfile(fn): os.remove(fn)
 
 if __name__ == "__main__":
-  for sites, u_iso, n_macro_cycle in [(True, False, 100), (False, True, 20)]:
-    t = ncs_minimization_test(n_macro_cycle=n_macro_cycle,
-                              sites=sites,
-                              u_iso=u_iso,
-                              finite_grad_differences_test = False)
+  for sites, u_iso, n_macro_cycle in [(True, False, 100), (False, True, 50)]:
+    t = ncs_minimization_test(
+      n_macro_cycle=n_macro_cycle,
+      sites=sites,
+      u_iso=u_iso,
+      finite_grad_differences_test = False)
     t.run_test()
     t.clean_up_temp_test_files()
-
