@@ -52,8 +52,9 @@ class refinement_base(object):
 class refinement(refinement_base):
   grid = xrange(-20,20)
 
-  def __init__(OO,self,use_inverse_beam=False,mosaic_refinement_target="LSQ"):
+  def __init__(OO,self,use_inverse_beam=False,mosaic_refinement_target="LSQ",pvr_fix=True):
     OO.mosaic_refinement_target = mosaic_refinement_target # least squares or max-likelihood
+    OO.pvr_fix = pvr_fix
     refinement_base.__init__(OO,self,use_inverse_beam)
 
   def contour_plot(OO):
@@ -134,6 +135,11 @@ class refinement(refinement_base):
       class per_frame_helper(normal_eqns.non_linear_ls, normal_eqns.non_linear_ls_mixin):
         def __init__(pfh):
           super(per_frame_helper, pfh).__init__(n_parameters=2)
+          if OO.pvr_fix:
+            pfh.preferred_fvec_callable = pfh.fvec_callable_pvr
+          else:
+            pfh.preferred_fvec_callable = pfh.fvec_callable_NOT_USED_AFTER_BUGFIX
+
           pfh.x_0 = flex.double((0.,0.))
           pfh.restart()
 
@@ -153,7 +159,7 @@ class refinement(refinement_base):
           return pfh.x.norm()
 
         def build_up(pfh, objective_only=False):
-          residuals = pfh.fvec_callable_pvr(pfh.x)
+          residuals = pfh.preferred_fvec_callable(pfh.x)
 
           pfh.reset()
           if objective_only:
@@ -267,7 +273,7 @@ class refinement(refinement_base):
       if False: # Excursion histogram
         print "The input mosaicity is %7.3f deg full width"%OO.parent.inputai.getMosaicity()
         # final histogram
-        final = 360.* helper.fvec_callable_pvr(results)
+        final = 360.* helper.preferred_fvec_callable(results)
         rmsdexc = math.sqrt(flex.mean(final*final))
         from matplotlib import pyplot as plt
         nbins = len(final)//20
@@ -281,7 +287,7 @@ class refinement(refinement_base):
 
       # Determine optimal mosaicity and domain size model (monochromatic)
 
-      final = 360.*helper.fvec_callable_pvr(results)
+      final = 360.*helper.preferred_fvec_callable(results)
       #Guard against misindexing -- seen in simulated data, with zone nearly perfectly aligned
       guard_stats = flex.max(final), flex.min(final)
       if False and REMOVETEST_KILLING_LEGITIMATE_EXCURSIONS (guard_stats[0] > 2.0 or guard_stats[1] < -2.0):
@@ -469,7 +475,8 @@ def post_outlier_rejection(parent,image_number,cb_op_to_primitive,horizons_phil,
   verbose = False
   """parent supplies all the "self" variables referred to above"""
   # first refine rotx and roty
-  R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target)
+  R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target,
+                 pvr_fix = horizons_phil.integration.mosaic.bugfix2_enable)
   if verbose: excursions,positions = R.contour_plot()
   minimum = R.refine_rotx_roty2(enable_rotational_target =
     horizons_phil.integration.mosaic.enable_rotational_target_highsym)
@@ -495,7 +502,8 @@ def post_outlier_rejection(parent,image_number,cb_op_to_primitive,horizons_phil,
       minimum[1].unit_cell().parameters()[2])
 
   # last refine rotx and roty
-  R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target)
+  R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target,
+                 pvr_fix = horizons_phil.integration.mosaic.bugfix2_enable)
   if verbose: excursions,positions = R.contour_plot()
   minimum = R.refine_rotx_roty2(enable_rotational_target =
     horizons_phil.integration.mosaic.enable_rotational_target_highsym)

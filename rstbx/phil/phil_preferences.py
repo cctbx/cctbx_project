@@ -77,6 +77,12 @@ integration {
       .help = must increase the provisional model mosaicity so as to model enough spots.
       .help = default 1 might be too small for a bad model, aborting indexing with too few matches.
       .help = > 2 might be too large and could lead to misindexing.
+    bugfix2_enable = True
+      .type = bool
+      .help = bugfix 2 of 2 for protocol 6, equation 2.  Assure that the result of the arctan()
+      .help = function call is placed in the correct principle value region.
+      .help = choice of "False" preserves the ability to roll back program behavior
+      .help = as promised to the Nature Methods editor.
     domain_size_lower_limit = 0
       .type = float
       .help = Mosaic blocks must be at least this many unit cells on edge.
