@@ -246,16 +246,17 @@ class refinement(refinement_base):
           return flex.double(dexc_drotx)/(2.*math.pi), flex.double(dexc_droty)/(2.*math.pi)
       return per_frame_helper()
 
-  def refine_rotx_roty2(OO):
+  def refine_rotx_roty2(OO,enable_rotational_target=True):
 
       helper = OO.per_frame_helper_factory()
       helper.restart()
-      print "Trying least squares minimization of excursions",
-      from scitbx.lstbx import normal_eqns_solving
 
-      iterations = normal_eqns_solving.naive_iterations(
-         non_linear_ls = helper,
-         gradient_threshold = 1.E-10)
+      if enable_rotational_target:
+        print "Trying least squares minimization of excursions",
+        from scitbx.lstbx import normal_eqns_solving
+        iterations = normal_eqns_solving.naive_iterations(
+          non_linear_ls = helper,
+          gradient_threshold = 1.E-10)
 
       results =  helper.x
 
@@ -470,7 +471,8 @@ def post_outlier_rejection(parent,image_number,cb_op_to_primitive,horizons_phil,
   # first refine rotx and roty
   R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target)
   if verbose: excursions,positions = R.contour_plot()
-  minimum = R.refine_rotx_roty2()
+  minimum = R.refine_rotx_roty2(enable_rotational_target =
+    horizons_phil.integration.mosaic.enable_rotational_target_highsym)
   if verbose: R.show_plot(excursions,positions,minimum)
   parent.inputai.setOrientation(minimum[1])
   print "RDISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
@@ -495,7 +497,8 @@ def post_outlier_rejection(parent,image_number,cb_op_to_primitive,horizons_phil,
   # last refine rotx and roty
   R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target)
   if verbose: excursions,positions = R.contour_plot()
-  minimum = R.refine_rotx_roty2()
+  minimum = R.refine_rotx_roty2(enable_rotational_target =
+    horizons_phil.integration.mosaic.enable_rotational_target_highsym)
   if verbose: R.show_plot(excursions,positions,minimum)
   parent.inputai.setOrientation(minimum[1])
   print "R3DISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
