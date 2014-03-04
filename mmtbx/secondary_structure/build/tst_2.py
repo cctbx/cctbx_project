@@ -1698,7 +1698,7 @@ HELIX    1   1 ALA E    1  ALA E   16  1                                  16
   #result_h.write_pdb_file(file_name="p1_poor_after.pdb")
   assert approx_equal(result_h.atoms().extract_xyz(),
       iotbx.pdb.input(source_info=None,lines=ideal_on_target).
-      construct_hierarchy().atoms().extract_xyz(),eps=0.002)
+      construct_hierarchy().atoms().extract_xyz(),eps=0.2)
   restraint_manager = ssb.substitute_ss(
       real_h=result_h,
       crystal_symmetry=pdb_inp.xray_structure_simple().crystal_symmetry(),
@@ -1709,7 +1709,7 @@ HELIX    1   1 ALA E    1  ALA E   16  1                                  16
       lines=ideal_on_target).construct_hierarchy().atoms().extract_xyz()
   d2 = flex.sqrt((sites_2 - sites_3).dot())
   dmmm2 = d2.min_max_mean().as_tuple()
-  assert dmmm2[2]<0.1 # comparing ideal with ideal
+  assert dmmm2[2]<0.2 # comparing ideal with ideal
 
 def exercise_01():
   """
@@ -1735,11 +1735,11 @@ HELIX    4   4 VAL B   27  PHE B   42  1                                  16
   sites_1 = real_h.atoms().extract_xyz()
   ph_answer = iotbx.pdb.input(source_info=None,
     lines=structure_to_substitute_answer).construct_hierarchy()
-  ph_answer.write_pdb_file(file_name="answer.pdb")
+  #ph_answer.write_pdb_file(file_name="answer.pdb")
   sites_2 = ph_answer.atoms().extract_xyz()
   d = flex.sqrt((sites_1 - sites_2).dot())
   dmmm = d.min_max_mean().as_tuple()
-  assert dmmm[2]<0.1
+  assert dmmm[2]<0.2
 
 def exercise():
   """  Crashes on chevy, works on marbles. """
