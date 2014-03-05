@@ -21,10 +21,12 @@ class mod_event_info(object):
     parameters passed from the pyana configuration file in instance
     variables.
 
-    @param address     Address string XXX Que?!
-    @param detz_offset Detector-sample offset in mm, corresponding to
-                       longest detector-sample distance
-    @param check_beam_status Flag used to skip checking the beam parameters
+    @param address           Full data source address of the DAQ
+                             device
+    @param detz_offset       The distance from the interaction region
+                             to the back of the detector stage, in mm
+    @param check_beam_status Flag used to skip checking the beam
+                             parameters
     """
 
     self.logger = logging.getLogger(self.__class__.__name__)
@@ -74,6 +76,8 @@ class mod_event_info(object):
     env.update(evt)
 
     if self.address == 'XppGon-0|marccd-0':
+      # The MAR does not have configure object, so do not warn if it
+      # cannot be retrieved.
       self.config = None
     else:
       self.config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, self.address)
@@ -119,27 +123,36 @@ class mod_event_info(object):
     if self.verbose: self.logger.info(self.timestamp)
 
     self.wavelength = cspad_tbx.evt_wavelength(evt)
-    if self.check_beam_status and self.wavelength is None:
-      self.nfail += 1
-      self.logger.warning("event(): no wavelength, shot skipped")
-      evt.put(True, "skip_event")
-      return
+    if self.wavelength is None:
+      if self.check_beam_status:
+        self.nfail += 1
+        self.logger.warning("event(): no wavelength, shot skipped")
+        evt.put(True, "skip_event")
+        return
+      else:
+        self.wavelength = 0
     if self.verbose: self.logger.info("Wavelength: %.4f" %self.wavelength)
 
     self.pulse_length = cspad_tbx.evt_pulse_length(evt)
-    if self.check_beam_status and self.pulse_length is None:
-      self.nfail += 1
-      self.logger.warning("event(): no pulse length, shot skipped")
-      evt.put(True, "skip_event")
-      return
+    if self.pulse_length is None:
+      if self.check_beam_status:
+        self.nfail += 1
+        self.logger.warning("event(): no pulse length, shot skipped")
+        evt.put(True, "skip_event")
+        return
+      else:
+        self.pulse_length = 0
     if self.verbose: self.logger.info("Pulse length: %s" %self.pulse_length)
 
     self.beam_charge = cspad_tbx.evt_beam_charge(evt)
-    if self.check_beam_status and self.beam_charge is None:
-      self.nfail += 1
-      self.logger.warning("event(): no beam charge, shot skipped")
-      evt.put(True, "skip_event")
-      return
+    if self.beam_charge is None:
+      if self.check_beam_status:
+        self.nfail += 1
+        self.logger.warning("event(): no beam charge, shot skipped")
+        evt.put(True, "skip_event")
+        return
+      else:
+        self.beam_charge = 0
     if self.verbose: self.logger.info("Beam charge: %s" %self.beam_charge)
 
     self.injector_xyz = cspad_tbx.env_injector_xyz(env)
