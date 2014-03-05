@@ -24,6 +24,7 @@ class mod_event_info(object):
     @param address     Address string XXX Que?!
     @param detz_offset Detector-sample offset in mm, corresponding to
                        longest detector-sample distance
+    @param check_beam_status Flag used to skip checking the beam parameters
     """
 
     self.logger = logging.getLogger(self.__class__.__name__)
@@ -48,13 +49,12 @@ class mod_event_info(object):
 
     self.address = cspad_tbx.getOptString(address)
     self.verbose = cspad_tbx.getOptBool(verbose)
+    self.check_beam_status = cspad_tbx.getOptBool(check_beam_status)
     self.distance = None
     self.sifoil = None
     self.wavelength = None # The current wavelength - set by self.event()
     self.laser_1_status = laser_status(laser_id=1)
     self.laser_4_status = laser_status(laser_id=4)
-
-    self.check_beam_status = check_beam_status
 
 
   def __del__(self):
