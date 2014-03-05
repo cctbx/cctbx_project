@@ -177,6 +177,12 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
     device = cspad_tbx.address_split(self.address)[2]
 
+    # Flag used for determining whether to log number of bragg peaks from the spotfinder
+    # or from indexing. Only use the number of peaks from indexing if the spotfinder isn't
+    # being used.
+    if self.m_db_logging and evt.get('use_indexing_spotcount') is None:
+      evt.put(True, 'use_indexing_spotcount')
+
     # ***** HITFINDING ***** XXX For hitfinding it may be interesting
     # to look at the fraction of subzero pixels in the dark-corrected
     # image.
@@ -232,6 +238,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         self.stats_logger.info("BRAGG %.3f %d" %(evt_time, number_of_accepted_peaks))
 
         if self.m_db_logging:
+          evt.put(False, "use_indexing_spotcount")
           self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks, distance,
                             self.sifoil, self.wavelength, False))
 
@@ -288,7 +295,9 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       if self.m_db_logging:
         sec,ms = cspad_tbx.evt_time(evt)
         evt_time = sec + ms/1000
-        if indexed:
+        use_indexing_spotcount = evt.get('use_indexing_spotcount')
+        assert use_indexing_spotcount is not None
+        if indexed and use_indexing_spotcount:
           n_spots = len(info.spotfinder_results.images[info.frames[0]]['spots_total'])
         else:
           n_spots = None
@@ -385,7 +394,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       from cxi_xdr_xes.cftbx.cspad_ana import db
       dbobj = db.dbconnect()
       cursor = dbobj.cursor()
-      cmd = "SELECT COUNT(*) from %s WHERE trial=%s and run=%s and eventstamp=%s"%(db.table_name,trial,run,eventstamp)
+      cmd = """SELECT COUNT(*) from %s WHERE trial=%s and run=%s and eventstamp='%s'"""%(db.table_name,trial,run,eventstamp)
       cursor.execute(cmd)
       result = cursor.fetchone()[0]
       if result > 0:
@@ -398,7 +407,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         for key in keys:
           cmd += comma + "%s=%s "%(key,locals()[key])
           comma = ", "
-        cmd += "WHERE trial=%s and run=%s and eventstamp=%s"%(trial,run,eventstamp)
+        cmd += """WHERE trial=%s and run=%s and eventstamp='%s'"""%(trial,run,eventstamp)
         cursor.execute(cmd)
       else:
         if hitcount is None:
