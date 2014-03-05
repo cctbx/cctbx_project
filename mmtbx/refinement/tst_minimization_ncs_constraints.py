@@ -8,6 +8,9 @@ import os
 from libtbx import adopt_init_args
 from scitbx.array_family import flex
 import mmtbx.utils
+import mmtbx.monomer_library.pdb_interpretation
+import mmtbx.monomer_library.server
+import mmtbx.geometry_restraints
 
 ncs_1_copy="""\
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
@@ -35,7 +38,8 @@ class ncs_minimization_test(object):
                n_macro_cycle,
                sites,
                u_iso,
-               finite_grad_differences_test):
+               finite_grad_differences_test,
+               use_restraints=False):
     """ create temp test files and data for tests """
     adopt_init_args(self, locals())
     # 1 NCS copy: starting template to generate whole asu; place into P1 box
@@ -86,6 +90,22 @@ class ncs_minimization_test(object):
     self.r_free_flags = r_free_flags
     self.xrs_one_ncs = xrs_one_ncs
 
+  def get_restraints_manager(self,pdb_string=None):
+    if not self.use_restraints:
+      restraints_manager = None
+    else:
+      assert pdb_string
+      processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
+        crystal_symmetry=self.xrs_one_ncs.crystal_symmetry())
+      processed_pdb_file, pdb_inp = processed_pdb_files_srv.\
+        process_pdb_files(raw_records=pdb_string.splitlines())
+      geometry = processed_pdb_file.geometry_restraints_manager()
+      restraints_manager = mmtbx.restraints.manager(
+        geometry      = geometry,
+        normalization = True)
+      # restraints_manager.crystal_symmetry = self.xrs_one_ncs.crystal_symmetry()
+    return restraints_manager
+
   def run_test(self):
     ### Refinement
     params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
@@ -117,9 +137,13 @@ class ncs_minimization_test(object):
     r_start = fmodel.r_work()
     assert r_start > 0.15
     print "start r_factor: %6.4f" % r_start
+    pdb_str = m_shaken.assembled_multimer.as_pdb_string(
+      crystal_symmetry=self.xrs_one_ncs.crystal_symmetry())
+    restraints_manager = self.get_restraints_manager(pdb_string=pdb_str)
     for macro_cycle in xrange(self.n_macro_cycle):
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         fmodel                       = fmodel,
+        restraints_manager           = restraints_manager,
         rotation_matrices            = m_shaken.rotation_matrices,
         translation_vectors          = m_shaken.translation_vectors,
         ncs_atom_selection           = ncs_selection,
@@ -172,6 +196,7 @@ if __name__ == "__main__":
       n_macro_cycle=n_macro_cycle,
       sites=sites,
       u_iso=u_iso,
-      finite_grad_differences_test = False)
+      finite_grad_differences_test = False,
+      use_restraints = False)
     t.run_test()
     t.clean_up_temp_test_files()

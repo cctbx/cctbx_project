@@ -9,9 +9,10 @@ class lbfgs(object):
         fmodel,
         rotation_matrices,
         translation_vectors,
+        restraints_manager = None,
         ncs_atom_selection = None,
         finite_grad_differences_test = False,
-        max_iterations=100,
+        max_iterations = 100,
         refine_sites = False,
         refine_u_iso = False):
     """
@@ -67,9 +68,16 @@ class lbfgs(object):
       if(compute_gradients):
         gx = tgx.gradients_wrt_atomic_parameters(u_iso=True)
         g = self.grads_asu_to_one_ncs(grad=gx).as_double()
+    target_work = tgx.target_work()
+    if self.restraints_manager:
+      rtg = self.restraints_manager.target_and_gradients(
+      xray_structure    = self.fmodel.xray_structure,
+      to_compute_weight = True)
+      weight = rtg.gradients.norm()/gx.norm()
+      target_work = target_work*weight+rtg.residual_sum
     if(self.finite_grad_differences_test and compute_gradients):
       self.finite_difference_test(g)
-    return tgx.target_work(), g
+    return target_work, g
 
   def update_fmodel(self, x=None):
     """
