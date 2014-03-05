@@ -64,7 +64,11 @@ class mod_average(average_tbx.average_mixin):
       return
 
     device = cspad_tbx.address_split(self.address)[2]
-    if device == 'Cspad':
+    if device == 'Andor':
+      beam_center = (0, 0) # XXX Fiction!
+      pixel_size = 13.5e-3 # XXX Should not be hardcoded here!
+      saturated_value = 10000
+    elif device == 'Cspad' or device == 'Cspad2x2':
       beam_center = self.beam_center
       pixel_size = cspad_tbx.pixel_size
       saturated_value = cspad_tbx.dynamic_range
