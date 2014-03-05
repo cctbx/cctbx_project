@@ -4,6 +4,7 @@ from mmtbx.disorder import analyze_model
 from mmtbx.validation import molprobity
 import iotbx.pdb.hierarchy
 from libtbx.utils import null_out
+import libtbx.load_env
 from cStringIO import StringIO
 
 def analyze_fragment (pdb_str) :
@@ -55,5 +56,8 @@ END
     out.getvalue())
 
 if (__name__ == "__main__") :
-  exercise()
-  print "OK"
+  if (not libtbx.env.has_module("probe")) :
+    print "Probe not configured, skipping test"
+  else :
+    exercise()
+    print "OK"
