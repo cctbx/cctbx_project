@@ -50,16 +50,18 @@ def run (args) :
 
   for runId in cursor.fetchall():
     run = int(runId[0])
-    cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM %s \
+    cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength, indexed FROM %s \
         WHERE trial = %s AND run = %s"%(db.table_name,params.trial_id,run))
 
-    numframes = numhits = 0
-    for id, eventstamp, hitcount, distance, sifoil, wavelength in cursor.fetchall():
+    numframes = numhits = numindexed = 0
+    for id, eventstamp, hitcount, distance, sifoil, wavelength, indexed in cursor.fetchall():
       numframes +=1
       if hitcount >= params.hit_cutoff:
         numhits += 1
+      if indexed:
+        numindexed += 1
 
-    print "Run: %3d, number of hits: %6d, number of frames: %6d, hitrate: %3.1f%%"%(run,numhits,numframes,100*numhits/numframes)
+    print "Run: %3d, number of hits: %6d, number of frames: %6d, hitrate: %3.1f%%. Number indexed: %6d (%3.1f%%)"%(run,numhits,numframes,100*numhits/numframes,numindexed,100*numindexed/numframes)
 
   dbobj.close()
 
