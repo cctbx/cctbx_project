@@ -73,12 +73,6 @@ class average_mixin(common_mode.common_mode_correction):
     self.elastic_threshold = cspad_tbx.getOptFloat(elastic_threshold)
     self.symnoise_threshold = cspad_tbx.getOptFloat(symnoise_threshold)
 
-    if self.dark_img is not None and self.hot_threshold is not None:
-      self.hot_threshold *= flex.median(self.dark_img.as_1d())
-      self.logger.info("HOT THRESHOLD: %.2f" %self.hot_threshold)
-      self.logger.info("Number of pixels above hot threshold: %i" %(
-        self.dark_img > self.hot_threshold).count(True))
-
     if background_path is not None:
       background_dict = easy_pickle.load(background_path)
       self.background_img = background_dict['DATA']
@@ -120,6 +114,12 @@ class average_mixin(common_mode.common_mode_correction):
     """
 
     super(average_mixin, self).beginjob(evt, env)
+
+    if self.dark_img is not None and self.hot_threshold is not None:
+      self.hot_threshold *= flex.median(self.dark_img.as_1d())
+      self.logger.info("HOT THRESHOLD: %.2f" % self.hot_threshold)
+      self.logger.info("Number of pixels above hot threshold: %i" % \
+                       (self.dark_img > self.hot_threshold).count(True))
 
     self._nfail = 0
     self._nmemb = 0
