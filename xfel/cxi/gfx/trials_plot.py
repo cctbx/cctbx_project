@@ -58,6 +58,9 @@ class Run (object):
     self.wavelengths = flex.double()
     self.culled_wavelengths = flex.double()
 
+    self.indexed = flex.bool()
+    self.culled_indexed = flex.bool()
+
   def width(self):
     return max(self.bragg_times)-min(self.bragg_times)
 
@@ -79,6 +82,7 @@ class Run (object):
       self.culled_distances = self.distances
       self.culled_sifoils = self.sifoils
       self.culled_wavelengths = self.wavelengths
+      self.culled_indexed = self.indexed
       return
 
     self.culled_braggs = flex.double()
@@ -86,6 +90,7 @@ class Run (object):
     self.culled_distances = flex.double()
     self.culled_sifoils = flex.double()
     self.culled_wavelengths = flex.double()
+    self.culled_indexed = flex.bool()
 
     for i in range(count):
       value = self.braggs[int(i*window)]
@@ -93,6 +98,7 @@ class Run (object):
       dist = self.distances[int(i*window)]
       sifo = self.sifoils[int(i*window)]
       wave = self.wavelengths[int(i*window)]
+      idxd = self.indexed[int(i*window)]
       for j in range(int(window)):
         idx = (int(i*window))+j
         if self.braggs[idx] > value:
@@ -101,11 +107,13 @@ class Run (object):
           dist = self.distances[idx]
           sifo = self.sifoils[idx]
           wave = self.wavelengths[idx]
+          idxd = self.indexed[idx]
       self.culled_braggs.append(value)
       self.culled_bragg_times.append(time)
       self.culled_distances.append(dist)
       self.culled_sifoils.append(sifo)
       self.culled_wavelengths.append(wave)
+      self.culled_indexed.append(idxd)
 
   def recalc_hits(self, windowLen, hit_cutoff):
 
@@ -266,11 +274,11 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
       #print "Loading data from run %s" % (run.runId)
       if self.full_data_load or not hasattr(run, "latest_entry_id"):
         print "Full load"
-        cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM %s \
+        cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength, indexed FROM %s \
           WHERE trial = %s AND run = %s ORDER BY eventstamp"%(cxidb.table_name,self.trial_id,run.runId))
       else:
         print "Partial load"
-        cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM %s \
+        cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength, indexed FROM %s \
           WHERE trial = %s AND run = %s AND id > %s ORDER BY eventstamp"%(cxidb.table_name,self.trial_id,run.runId,run.latest_entry_id ))
 
       #t2 = time.time()
@@ -278,7 +286,7 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
 
       ids = flex.int()
 
-      for id, eventstamp, hitcount, distance, sifoil, wavelength in cursor.fetchall():
+      for id, eventstamp, hitcount, distance, sifoil, wavelength, indexed in cursor.fetchall():
         run.bragg_times.append(float(eventstamp))
         run.braggs.append(int(hitcount))
         ids.append(id)
@@ -286,6 +294,7 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
         run.distances.append(float(distance))
         run.sifoils.append(float(sifoil))
         run.wavelengths.append(float(wavelength))
+        run.indexed.append(bool(indexed))
 
       if len(ids) > 0:
         run.latest_entry_id = max(ids)
@@ -303,7 +312,7 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
 
     self.cull_braggs()
 
-    self.full_data_load = False
+    #self.full_data_load = False #always do a full load
     self.runs.sort(key=operator.attrgetter('runId'))
     tbot = time.time()
     print "Data loaded in %.2fs" % (tbot - ttop)
@@ -413,7 +422,10 @@ class TrialsPlot (wxtbx.plots.plot_container) :
       ax3.grid(True, color="0.75")
       ax4.grid(True, color="0.75")
       ax5.grid(True, color="0.75")
-      ax1.plot(run.culled_bragg_times, run.culled_braggs, 'd', color=[0.0,0.5,1.0])
+      ax1.plot(run.culled_bragg_times.select(run.culled_indexed),
+               run.culled_braggs.select(run.culled_indexed), 'd', color=[0.0,1.0,0.0])
+      ax1.plot(run.culled_bragg_times.select(~run.culled_indexed),
+               run.culled_braggs.select(~run.culled_indexed), 'd', color=[0.0,0.5,1.0])
       ax2.plot(run.hit_rates_times, run.hit_rates, 'o-', color=[0.0,1.0,0.0])
       ax3.plot(run.culled_bragg_times, run.culled_wavelengths, '^', color=[0.8,0.0,0.2])
       ax4.plot(run.culled_bragg_times, run.culled_sifoils, '<', color=[0.8,0.0,0.2])
@@ -441,7 +453,7 @@ class TrialsPlot (wxtbx.plots.plot_container) :
       ax1.xaxis.set_major_formatter(ticker.FuncFormatter(status_plot.format_time))
       ax3.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.3f"))
       ax5.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.0f"))
-      ax5.set_title("%d:%d/%d:%.1f%%"%(run.runId, run.hits_count, len(run.braggs), 100*run.hits_count/len(run.braggs)))
+      ax5.set_title("%d:%d/%d:%.1f%% I:%d"%(run.runId, run.hits_count, len(run.braggs), 100*run.hits_count/len(run.braggs),run.indexed.count(True)))
 
       labels = ax1.get_xticklabels()
       for label in labels:
