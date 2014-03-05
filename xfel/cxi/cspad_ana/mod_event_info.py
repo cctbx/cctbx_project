@@ -16,7 +16,7 @@ class mod_event_info(object):
   """
 
 
-  def __init__(self, address, detz_offset=575, verbose=False, **kwds):
+  def __init__(self, address, detz_offset=575, check_beam_status=True, verbose=False, **kwds):
     """The mod_event_info class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
@@ -53,6 +53,8 @@ class mod_event_info(object):
     self.wavelength = None # The current wavelength - set by self.event()
     self.laser_1_status = laser_status(laser_id=1)
     self.laser_4_status = laser_status(laser_id=4)
+
+    self.check_beam_status = check_beam_status
 
 
   def __del__(self):
@@ -96,7 +98,7 @@ class mod_event_info(object):
       return
 
     sifoil = cspad_tbx.env_sifoil(env)
-    if (sifoil is None):
+    if self.check_beam_status and sifoil is None:
       self.nfail += 1
       self.logger.warning("event(): no Si-foil thickness, shot skipped")
       evt.put(True, "skip_event")
@@ -117,7 +119,7 @@ class mod_event_info(object):
     if self.verbose: self.logger.info(self.timestamp)
 
     self.wavelength = cspad_tbx.evt_wavelength(evt)
-    if (self.wavelength is None):
+    if self.check_beam_status and self.wavelength is None:
       self.nfail += 1
       self.logger.warning("event(): no wavelength, shot skipped")
       evt.put(True, "skip_event")
@@ -125,7 +127,7 @@ class mod_event_info(object):
     if self.verbose: self.logger.info("Wavelength: %.4f" %self.wavelength)
 
     self.pulse_length = cspad_tbx.evt_pulse_length(evt)
-    if (self.pulse_length is None):
+    if self.check_beam_status and self.pulse_length is None:
       self.nfail += 1
       self.logger.warning("event(): no pulse length, shot skipped")
       evt.put(True, "skip_event")
@@ -133,7 +135,7 @@ class mod_event_info(object):
     if self.verbose: self.logger.info("Pulse length: %s" %self.pulse_length)
 
     self.beam_charge = cspad_tbx.evt_beam_charge(evt)
-    if (self.beam_charge is None):
+    if self.check_beam_status and self.beam_charge is None:
       self.nfail += 1
       self.logger.warning("event(): no beam charge, shot skipped")
       evt.put(True, "skip_event")
