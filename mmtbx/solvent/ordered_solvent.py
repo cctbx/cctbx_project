@@ -106,18 +106,27 @@ master_params_str = """\
   %s
   primary_map_type = mFobs-DFmodel
     .type=str
+    .help = Map used to identify candidate water sites - by default this is \
+      the standard difference map.
   primary_map_cutoff = 3.0
     .type=float
+    .short_caption = Primary map cutoff (sigma)
   secondary_map_and_map_cc_filter
+    .short_caption = Secondary map filter
+    .style = auto_align box
   {
     cc_map_1_type = "Fc"
       .type = str
+      .short_caption = Model map type for CC calculation
     cc_map_2_type = 2mFo-DFmodel
       .type = str
+      .short_caption = Experimental map type for CC calculation
     poor_cc_threshold = 0.7
       .type = float
+      .short_caption = Minimum map correlation
     poor_map_value_threshold = 1.0
       .type = float
+      .short_caption = Minimum map value (sigma)
   }
   %s
   refine_adp = True
