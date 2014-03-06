@@ -135,10 +135,6 @@ class refinement(refinement_base):
       class per_frame_helper(normal_eqns.non_linear_ls, normal_eqns.non_linear_ls_mixin):
         def __init__(pfh):
           super(per_frame_helper, pfh).__init__(n_parameters=2)
-          if OO.pvr_fix:
-            pfh.preferred_fvec_callable = pfh.fvec_callable_pvr
-          else:
-            pfh.preferred_fvec_callable = pfh.fvec_callable_NOT_USED_AFTER_BUGFIX
 
           pfh.x_0 = flex.double((0.,0.))
           pfh.restart()
@@ -159,7 +155,10 @@ class refinement(refinement_base):
           return pfh.x.norm()
 
         def build_up(pfh, objective_only=False):
-          residuals = pfh.preferred_fvec_callable(pfh.x)
+          if OO.pvr_fix:
+            residuals = pfh.fvec_callable_pvr(pfh.x)
+          else:
+            residuals = pfh.fvec_callable_NOT_USED_AFTER_BUGFIX(pfh.x)
 
           pfh.reset()
           if objective_only:
@@ -250,7 +249,9 @@ class refinement(refinement_base):
             dA_drotxy = dA_droty)
             for obsno in xrange(len(OO.parent.indexed_pairs))]
           return flex.double(dexc_drotx)/(2.*math.pi), flex.double(dexc_droty)/(2.*math.pi)
-      return per_frame_helper()
+
+      value = per_frame_helper()
+      return value
 
   def refine_rotx_roty2(OO,enable_rotational_target=True):
 
@@ -273,7 +274,11 @@ class refinement(refinement_base):
       if False: # Excursion histogram
         print "The input mosaicity is %7.3f deg full width"%OO.parent.inputai.getMosaicity()
         # final histogram
-        final = 360.* helper.preferred_fvec_callable(results)
+        if OO.pvr_fix:
+          final = 360.* helper.fvec_callable_pvr(results)
+        else:
+          final = 360.* helper.fvec_callable_NOT_USED_AFTER_BUGFIX(results)
+
         rmsdexc = math.sqrt(flex.mean(final*final))
         from matplotlib import pyplot as plt
         nbins = len(final)//20
@@ -286,8 +291,10 @@ class refinement(refinement_base):
         plt.show()
 
       # Determine optimal mosaicity and domain size model (monochromatic)
-
-      final = 360.*helper.preferred_fvec_callable(results)
+      if OO.pvr_fix:
+        final = 360.* helper.fvec_callable_pvr(results)
+      else:
+        final = 360.* helper.fvec_callable_NOT_USED_AFTER_BUGFIX(results)
       #Guard against misindexing -- seen in simulated data, with zone nearly perfectly aligned
       guard_stats = flex.max(final), flex.min(final)
       if False and REMOVETEST_KILLING_LEGITIMATE_EXCURSIONS (guard_stats[0] > 2.0 or guard_stats[1] < -2.0):
