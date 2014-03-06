@@ -344,7 +344,7 @@ for s in ${streams}; do
 
         elif `echo "${key_trim}" | grep -q "^[[:alnum:]]\+_basename$"`; then
             # XXX Legacy substitution for mod_hitfind.
-            line="${key}= ${val}s${s}"
+            line="${key}= ${val}s${s}-"
 
         elif `echo "${key_trim}" | grep -q "^[[:alnum:]]\+_dirname$"`; then
             # XXX Legacy substitution for mod_hitfind.
