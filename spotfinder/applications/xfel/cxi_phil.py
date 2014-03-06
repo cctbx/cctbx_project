@@ -367,16 +367,49 @@ def cxi_versioned_extract(*args):
        1, -1,  1, -1,  1, -1,  1, -1,
        0, -2,  0, -2,  1, -2,  1, -2,
        0,  0,  0,  0,  0,  0,  0,  0,
-      -1,  2, -1,  2, -1,  0, -1,  0]
+      -1,  2, -1,  2, -1,  0, -1,  0] # for 79 mm
 
+    LC06_mark10_101_corrections = [
+       0,  0,  0,  0,  0, -1,  0, -1,
+      -1,  0, -1,  0, -0,  0, -0,  0,
+       0,  1,  0,  1,  2,  2,  2,  2,
+       0,  1,  0,  1,  0,  0,  0,  0,
+
+      -1,  0, -1,  0, -1,  0, -1,  0,
+      -1,  0, -1,  0, -1,  1, -1,  1,
+      -1,  0, -1,  0,  0,  1,  0,  1,
+      -1,  0, -1,  0,  0,  0,  0,  0,
+
+       0,  2,  0,  2,  0,  1,  0,  1,
+       0,  1,  0,  1,  0,  3,  0,  3,
+       1,  2,  1,  2,  1,  3,  1,  3,
+       0,  1,  0,  1,  0,  1,  0,  1,
+
+       1, -1,  1, -1,  1, -1,  1, -1,
+       0, -2,  0, -2,  2, -2,  2, -2,
+       0, -1,  0, -1,  0, -2,  0, -2,
+      -0,  0, -0,  0, -0,  0, -0,  0] # for 159 mm
     from scitbx.array_family import flex
     total_tile_translations = flex.int(corrected_auxiliary_translations) - \
                               flex.int(LC06_mark10_001_corrections)
+#                              flex.int(LC06_mark10_101_corrections)
 
     TT = list(total_tile_translations)
     working_extract.distl.tile_translations = TT
 
-    # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y. Optimized for 267 mM.
+    # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y. Optimized for 267 mm.
+    #working_extract.distl.quad_translations = [-3,  2,
+    #                                           -8,  3,
+    #                                           -7,  8,
+    #                                           -10,  8]
+
+    # determined for LC06_runs15-17. Optimized for 159 mm
+    #working_extract.distl.quad_translations = [-2,  1,
+    #                                           -9,  3,
+    #                                           -5,  8,
+    #                                           -9,  10]
+
+    # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y. Optimized for 79 mm.
     working_extract.distl.quad_translations = [-2,  3,
                                                -9,  5,
                                                -5,  10,
