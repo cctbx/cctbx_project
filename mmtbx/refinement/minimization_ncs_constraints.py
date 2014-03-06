@@ -9,16 +9,19 @@ class lbfgs(object):
         fmodel,
         rotation_matrices,
         translation_vectors,
-        restraints_manager = None,
+        geometry_restraints_manager = None,
+        data_weight = None,
         ncs_atom_selection = None,
         finite_grad_differences_test = False,
-        max_iterations = 100,
+        max_iterations=100,
         refine_sites = False,
         refine_u_iso = False):
     """
     NCS constrained ADP and coordinates refinement.
     """
     adopt_init_args(self, locals())
+    assert [self.geometry_restraints_manager,
+            self.data_weight].count(None) in [0,2]
     assert [len(rotation_matrices) == len(translation_vectors)]
     assert [self.refine_sites, self.refine_u_iso].count(True) == 1
     self.number_of_transformations = len(rotation_matrices)+1
@@ -60,24 +63,26 @@ class lbfgs(object):
     g = None
     tgx = self.x_target_functor(compute_gradients=compute_gradients)
     if(self.refine_sites):
+      t = tgx.target_work()
+      if(self.geometry_restraints_manager is not None):
+        es = self.geometry_restraints_manager.energies_sites(
+          sites_cart        = self.fmodel.xray_structure.sites_cart(),
+          compute_gradients = True)
+        t = t*self.data_weight + es.target
       if(compute_gradients):
         gx = flex.vec3_double(
           tgx.gradients_wrt_atomic_parameters(site=True).packed())
+        if(self.geometry_restraints_manager is not None):
+          gx = gx*self.data_weight + es.gradients
         g = self.grads_asu_to_one_ncs(grad=gx).as_double()
     if(self.refine_u_iso):
+      t = tgx.target_work()
       if(compute_gradients):
         gx = tgx.gradients_wrt_atomic_parameters(u_iso=True)
         g = self.grads_asu_to_one_ncs(grad=gx).as_double()
-    target_work = tgx.target_work()
-    if self.restraints_manager:
-      rtg = self.restraints_manager.target_and_gradients(
-      xray_structure    = self.fmodel.xray_structure,
-      to_compute_weight = True)
-      weight = rtg.gradients.norm()/gx.norm()
-      target_work = target_work*weight+rtg.residual_sum
     if(self.finite_grad_differences_test and compute_gradients):
       self.finite_difference_test(g)
-    return target_work, g
+    return t, g
 
   def update_fmodel(self, x=None):
     """
