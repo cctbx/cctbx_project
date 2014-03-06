@@ -409,11 +409,37 @@ def cxi_versioned_extract(*args):
     #                                           -5,  8,
     #                                           -9,  10]
 
+    # determined for LC67_run26. Optimized for 101 mm; detz_offset must be changed to move 100 mm distance to 101
+    #working_extract.distl.quad_translations = [ 0,  3,
+    #                                           -7,  3,
+    #                                           -5,  9,
+    #                                           -9,  9]
+
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y. Optimized for 79 mm.
     working_extract.distl.quad_translations = [-2,  3,
                                                -9,  5,
                                                -5,  10,
                                                -9,  12]
+    return working_extract
+
+  elif cxi_version in ["CXI 8.d"]:
+    working_extract = working_phil.command_extractor
+
+    from scitbx.array_family import flex
+    total_tile_translations = flex.int(128)
+
+    TT = list(total_tile_translations)
+    working_extract.distl.tile_translations = TT
+
+
+
+    # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.
+    working_extract.distl.quad_translations = [0,  0,
+                                               0,  0,
+                                               0,  0,
+                                               0,  0]
+    print len(working_extract.distl.tile_translations)
+
     return working_extract
 
   elif cxi_version in ["Sacla.MPCCD"]:
