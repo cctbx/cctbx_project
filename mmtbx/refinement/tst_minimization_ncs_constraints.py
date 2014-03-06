@@ -52,21 +52,6 @@ def get_restraints_manager(pdb_file_name=None,pdb_string=None):
     geometry = geometry, normalization = False)
 
 
-# def get_restraints_manager(pdb_file_name=None,pdb_string=None):
-#   assert pdb_string
-#   processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
-#     crystal_symmetry=self.xrs_one_ncs.crystal_symmetry())
-#   processed_pdb_file, pdb_inp = processed_pdb_files_srv.\
-#     process_pdb_files(raw_records=pdb_string.splitlines())
-#   geometry = processed_pdb_file.geometry_restraints_manager()
-#   restraints_manager = cctbx.restraints.manager(
-#     geometry      = geometry,
-#     normalization = True)
-#   # restraints_manager.crystal_symmetry = self.xrs_one_ncs.crystal_symmetry()
-#   return restraints_manager
-
-
-
 class ncs_minimization_test(object):
 
   def __init__(self,
@@ -129,10 +114,11 @@ class ncs_minimization_test(object):
     self.xrs_one_ncs = xrs_one_ncs
     # Get geometry restraints manager
     self.grm = None
-    pdb_str = m.assembled_multimer.as_pdb_string()
+    pdb_str = m.assembled_multimer.as_pdb_string(
+      crystal_symmetry=xrs_one_ncs.crystal_symmetry())
     if(self.use_geometry_restraints):
-      self.grm = get_restraints_manager(pdb_file_name = "full_asu.pdb")
-      # self.grm = get_restraints_manager(pdb_string=pdb_str)
+      # self.grm = get_restraints_manager(pdb_file_name = "full_asu.pdb")
+      self.grm = get_restraints_manager(pdb_string=pdb_str)
 
   def get_weight(self):
     fmdc = self.fmodel.deep_copy()
