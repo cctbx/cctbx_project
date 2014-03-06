@@ -549,6 +549,37 @@ def write_map_coeffs (fwt_coeffs, delfwt_coeffs, file_name, anom_coeffs=None,
   mtz_object.write(file_name=file_name)
   del mtz_object
 
+# FIXME this is probably too much code duplication...
+# used by phenix.composite_omit_map, etc.
+def write_map_coefficients_generic (map_coeffs, map_types, file_name) :
+  import iotbx.mtz
+  mtz_dataset = None
+  for map_type, map_coeffs in zip(map_types, map_coeffs) :
+    if map_coeffs.anomalous_flag() :
+      map_coeffs = map_coeffs.average_bijvoet_mates()
+    dec = iotbx.mtz.label_decorator(phases_prefix="PH")
+    if (map_type == "2mFo-DFc") :
+      label = "2FOFCWT"
+    elif (map_type == "mFo-DFc") :
+      label = "FOFCWT"
+    elif (map_type == "mFo") :
+      label = "FWT"
+      dec = iotbx.mtz.ccp4_label_decorator()
+    elif (map_type in ["anom", "anomalous"]) :
+      label = "ANOM"
+    else :
+      label = map_type
+    if (mtz_dataset is None) :
+      mtz_dataset = map_coeffs.as_mtz_dataset(
+        column_root_label=label,
+        label_decorator=dec)
+    else :
+      mtz_dataset.add_miller_array(
+        miller_array=map_coeffs,
+        column_root_label=label,
+        label_decorator=dec)
+  mtz_dataset.mtz_object().write(file_name)
+
 def get_map_summary (map, resolution_factor=0.25) :
   info = []
   real_map = map.real_map_unpadded()

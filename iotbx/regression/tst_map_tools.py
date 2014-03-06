@@ -1,5 +1,6 @@
 
 from __future__ import division
+from iotbx import file_reader
 from iotbx import map_tools
 import iotbx.pdb.hierarchy
 from iotbx import mtz
@@ -98,6 +99,15 @@ ATOM      9  HA3 GLY P  -1     -23.352  -3.933  16.803  1.00  0.00           H
     force=False)
   assert (map_file == 'tmp_iotbx_map_tools.ccp4')
   assert os.path.exists(map_file)
+  # write_map_coefficients_generic
+  map_tools.write_map_coefficients_generic(
+    map_coeffs=[fc, fc.generate_bijvoet_mates(), fc, fc],
+    map_types=["2mFo-DFc", "mFo-DFc", "anom", "other"],
+    file_name="tmp_iotbx_map_tools2.mtz")
+  mtz_in = file_reader.any_file("tmp_iotbx_map_tools2.mtz")
+  labels = [a.info().label_string() for a in mtz_in.file_server.miller_arrays]
+  assert (labels == ['2FOFCWT,PH2FOFCWT', 'FOFCWT,PHFOFCWT', 'ANOM,PHANOM',
+                     'other,PHother'])
 
 if (__name__ == "__main__") :
   exercise_map_tools()
