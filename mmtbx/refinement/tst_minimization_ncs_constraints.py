@@ -1,17 +1,18 @@
 from __future__ import division
 from iotbx.pdb.multimer_reconstruction import multimer
-import iotbx.pdb
-import mmtbx.f_model
 import mmtbx.refinement.minimization_ncs_constraints
-from libtbx.test_utils import approx_equal
-import os
-from libtbx import adopt_init_args
-from scitbx.array_family import flex
-import mmtbx.utils
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
+from libtbx.test_utils import approx_equal
+from scitbx.array_family import flex
+import mmtbx.monomer_library.server
+from libtbx import adopt_init_args
+from mmtbx import monomer_library
 from cctbx import xray
+import mmtbx.f_model
+import mmtbx.utils
+import iotbx.pdb
+import os
+import sys
 
 ncs_1_copy="""\
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
@@ -33,19 +34,38 @@ ATOM      7  CG2 THR A   1       8.964   8.000   8.565  1.00 20.00           C
 TER
 """
 
-def get_grm_from_pdb_file(pdb_file_name):
+def get_restraints_manager(pdb_file_name=None,pdb_string=None):
+  assert [pdb_file_name,pdb_string].count(None)==1
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
+  if pdb_string: pdb_lines = pdb_string.splitlines()
+  else: pdb_lines = None
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv    = mon_lib_srv,
     ener_lib       = ener_lib,
     file_name      = pdb_file_name,
-    raw_records    = None,
+    raw_records    = pdb_lines,
     force_symmetry = True)
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies = False, plain_pairs_radius = 5.0)
   return mmtbx.restraints.manager(
     geometry = geometry, normalization = False)
+
+
+# def get_restraints_manager(pdb_file_name=None,pdb_string=None):
+#   assert pdb_string
+#   processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
+#     crystal_symmetry=self.xrs_one_ncs.crystal_symmetry())
+#   processed_pdb_file, pdb_inp = processed_pdb_files_srv.\
+#     process_pdb_files(raw_records=pdb_string.splitlines())
+#   geometry = processed_pdb_file.geometry_restraints_manager()
+#   restraints_manager = cctbx.restraints.manager(
+#     geometry      = geometry,
+#     normalization = True)
+#   # restraints_manager.crystal_symmetry = self.xrs_one_ncs.crystal_symmetry()
+#   return restraints_manager
+
+
 
 class ncs_minimization_test(object):
 
@@ -72,7 +92,9 @@ class ncs_minimization_test(object):
     print >> of, ph.as_pdb_string(crystal_symmetry=xrs_one_ncs.crystal_symmetry())
     of.close()
     # 1 NCS copy -> full asu (expand NCS). This is the answer-structure
-    m = multimer("one_ncs_in_asu.pdb",'cau',error_handle=True,eps=1e-2)
+    m = multimer(file_name="one_ncs_in_asu.pdb",
+                 round_coordinates=False,
+                 reconstruction_type='cau',error_handle=True,eps=1e-2)
     assert m.number_of_transforms == 2, m.number_of_transforms
     xrs_asu = m.assembled_multimer.extract_xray_structure(
       crystal_symmetry = xrs_one_ncs.crystal_symmetry())
@@ -107,8 +129,10 @@ class ncs_minimization_test(object):
     self.xrs_one_ncs = xrs_one_ncs
     # Get geometry restraints manager
     self.grm = None
+    pdb_str = m.assembled_multimer.as_pdb_string()
     if(self.use_geometry_restraints):
-      self.grm = get_grm_from_pdb_file(pdb_file_name = "full_asu.pdb")
+      self.grm = get_restraints_manager(pdb_file_name = "full_asu.pdb")
+      # self.grm = get_restraints_manager(pdb_string=pdb_str)
 
   def get_weight(self):
     fmdc = self.fmodel.deep_copy()
@@ -137,7 +161,8 @@ class ncs_minimization_test(object):
     params.algorithm = "direct"
     # Get the xray_structure of the shaken ASU
     m_shaken = multimer(
-      pdb_input_file_name="one_ncs_in_asu_shaken.pdb",
+      file_name="one_ncs_in_asu_shaken.pdb",
+      round_coordinates=False,
       reconstruction_type='cau',error_handle=True,eps=1e-2)
     xrs_shaken_asu = m_shaken.assembled_multimer.extract_xray_structure(
       crystal_symmetry=self.xrs_one_ncs.crystal_symmetry())
@@ -161,8 +186,6 @@ class ncs_minimization_test(object):
     r_start = self.fmodel.r_work()
     assert r_start > 0.15
     print "start r_factor: %6.4f" % r_start
-    rotation_matrices = m_shaken.rotation_matrices
-    translation_vectors = m_shaken.translation_vectors
     for macro_cycle in xrange(self.n_macro_cycle):
       data_weight = None
       if(self.use_geometry_restraints):
@@ -223,6 +246,7 @@ class ncs_minimization_test(object):
       if os.path.isfile(fn): os.remove(fn)
 
 def exercise_00():
+  print 'Running ',sys._getframe().f_code.co_name
   for sites, u_iso, n_macro_cycle in [(True, False, 100), (False, True, 50)]:
     t = ncs_minimization_test(
       n_macro_cycle=n_macro_cycle,
@@ -236,6 +260,7 @@ def exercise_00():
     t.clean_up_temp_test_files()
 
 def exercise_01():
+  print 'Running ',sys._getframe().f_code.co_name
   t = ncs_minimization_test(
     n_macro_cycle = 100,
     sites         = True,
