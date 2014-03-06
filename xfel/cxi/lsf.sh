@@ -306,8 +306,15 @@ if test -z "${trial}"; then
         trial=`expr "${trial}" \+ 1 | awk '{ printf("%03d", $1); }'`
     fi
 fi
+
 out=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-    "cd \"${PWD}\" ; readlink -fn \"${out}/${trial}\""`
+    "cd \"${PWD}\"                &&           \
+     mkdir -p \"${out}/${trial}\" &&           \
+     readlink -fn \"${out}/${trial}\""`
+if test -z "${out}"; then
+    echo "Error: Could not create output directory" > /dev/stderr
+    cleanup_and_exit 1
+fi
 
 # Copy the pyana configuration file, while substituting paths to any
 # phil files, and recursively copying them, too.  Once paths have been
