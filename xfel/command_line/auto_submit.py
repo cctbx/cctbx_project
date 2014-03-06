@@ -10,7 +10,7 @@ import os
 import sys
 import time
 import libtbx
-from libtbx.utils import Usage
+from libtbx.utils import Usage, Sorry
 
 master_phil = libtbx.phil.parse("""
   xtc_dir = None
@@ -160,9 +160,8 @@ def run (args) :
                 continue
 
               print "Preparing to queue run %s into trial %s"%(r.id,params.trial_id)
-              cmd = "./lsf.sh -c %s -p %s -x %s -o %s -t %s -r %s -q %s"%(params.config_file,params.num_procs,params.experiment,
+              cmd = "cxi.lsf -c %s -p %s -x %s -o %s -t %s -r %s -q %s"%(params.config_file,params.num_procs,params.experiment,
                 params.output_dir,params.trial_id,r.id,params.queue)
-
               print "Command to execute: %s"%cmd
               os.system(cmd)
               print "Run %s queued."%r.id
