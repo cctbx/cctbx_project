@@ -193,8 +193,8 @@ def check_supported (elements) :
     for elem in elements :
       if (not elem.strip().upper() in SUPPORTED) :
         raise Sorry(
-          "Identification of ions with element symbol '%s' is not supported! "+
-          "Choices are: %s" % (elem, " ".join(SUPPORTED)))
+          ("Identification of ions with element symbol '%s' is not supported! "+
+          "Choices are: %s") % (elem, " ".join(SUPPORTED)))
   return True
 
 class atom_contact (slots_getstate_setstate) :
