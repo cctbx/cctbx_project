@@ -948,7 +948,15 @@ def evt_pulse_length(evt):
   """
 
   if (evt is not None):
-    ebeam = evt.getEBeam()
+    try:
+      ebeam = evt.getEBeam()
+    except NotImplementedError:
+      # XXX This needs to be sorted out!  All other invocations of
+      # getEBeam() in this file are similarly kludged.
+      #
+      # NotImplementedError: Error: DataObjectFactory unsupported type
+      # EBeamBld_V5
+      ebeam = None
     if (ebeam is not None and ebeam.fEbeamPkCurrBC2 > 0):
       return 1e6 * ebeam.fEbeamCharge / ebeam.fEbeamPkCurrBC2
   return None
@@ -988,7 +996,10 @@ def evt_beam_charge(evt):
   """
 
   if evt is not None:
-    ebeam = evt.getEBeam()
+    try:
+      ebeam = evt.getEBeam()
+    except NotImplementedError:
+      ebeam = None
     if ebeam is not None:
       return ebeam.fEbeamCharge
   return None
@@ -1066,7 +1077,10 @@ def evt_wavelength(evt):
   """
 
   if evt is not None:
-    ebeam = evt.getEBeam()
+    try:
+      ebeam = evt.getEBeam()
+    except NotImplementedError:
+      ebeam = None
     if hasattr(ebeam, 'fEbeamL3Energy') and ebeam.fEbeamL3Energy > 0:
       gamma = ebeam.fEbeamL3Energy / 0.510998910
       K = 3.5
