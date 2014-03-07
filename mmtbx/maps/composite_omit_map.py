@@ -288,7 +288,7 @@ def create_omit_regions (xray_structure,
   n_omit_per_box = n_omit_heavy_atoms * fraction_omit
   assert (n_omit_heavy_atoms > 0)
   if (even_boxing) : # XXX remove?
-    x_step = asx_buffer_thickness + (x_max - x_min) / 4
+    x_step = asu_buffer_thickness + (x_max - x_min) / 4
     y_step = asu_buffer_thickness + (y_max - y_min) / 4
     z_step = asu_buffer_thickness + (z_max - z_min) / 2
   else :
@@ -375,7 +375,9 @@ def combine_maps (
     map_arrays,
     omit_groups,
     background_map_coeffs,
-    resolution_factor) :
+    resolution_factor,
+    flatten_background=False,
+    sigma_scaling=False) :
   """
   For each box, FFT the corresponding omit map coefficients, extract the
   omit regions, and copy them to the combined map, using Marat's asymmetric
@@ -386,22 +388,32 @@ def combine_maps (
   fft_map = background_map_coeffs.fft_map(
     symmetry_flags=maptbx.use_space_group_symmetry,
     resolution_factor=resolution_factor).apply_volume_scaling()
+  if (sigma_scaling) :
+    fft_map.apply_sigma_scaling()
   background_map = fft_map.real_map_unpadded()
+  #print "full map:", background_map.focus()
+  if (flatten_background) :
+    sel_all = flex.bool(background_map.as_1d().size(), True)
+    background_map.as_1d().set_selected(sel_all, 0)
   asym_map = asu_map_ext.asymmetric_map(space_group.type(), background_map)
-  n_real = asym_map.data().focus()
-  f2g = maptbx.frac2grid(n_real)
+  n_real_all = background_map.focus()
+  n_real_asu = asym_map.data().focus()
+  #print "asu map:", n_real_asu
+  f2g = maptbx.frac2grid(n_real_all)
   n = 0
   for group, map_coeffs in zip(omit_groups, map_arrays) :
     space_group = map_coeffs.space_group()
     omit_fft_map = map_coeffs.fft_map(
       resolution_factor=resolution_factor,
       symmetry_flags=maptbx.use_space_group_symmetry).apply_volume_scaling()
-    real_map = omit_fft_map.real_map_unpadded()
-    omit_asym_map = asu_map_ext.asymmetric_map(space_group.type(), real_map)
-    assert omit_asym_map.data().focus() == n_real
+    if (sigma_scaling) :
+      omit_fft_map.apply_sigma_scaling()
+    omit_map = omit_fft_map.real_map_unpadded()
+    omit_asym_map = asu_map_ext.asymmetric_map(space_group.type(), omit_map)
+    assert omit_asym_map.data().focus() == n_real_asu
     for box in group.boxes :
       grid_start = list(f2g(box.frac_min))
-      grid_end = list(f2g(box.frac_max))
+      grid_end = grid_max(list(f2g(box.frac_max)), n_real_asu)
       box_map = maptbx.copy(omit_asym_map.data(), grid_start, grid_end)
       box_map.reshape(flex.grid(box_map.all()))
       maptbx.set_box(
@@ -409,4 +421,9 @@ def combine_maps (
         map_data_to=asym_map.data(),
         start=grid_start,
         end=grid_end)
+  #asym_map = asu_map_ext.asymmetric_map(space_group.type(), omit_map)
   return asym_map.map_for_fft()
+
+def grid_max (grid_coords, n_real) :
+  return (min(grid_coords[0], n_real[0]), min(grid_coords[1], n_real[1]),
+          min(grid_coords[2], n_real[2]))
