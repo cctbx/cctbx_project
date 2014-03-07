@@ -47,6 +47,7 @@ from __future__ import division
 #2014-02-07:
 #  Added test validation for cis vs tran proline.
 #  Added stand-alone output for HELIX/SHEET records.
+#2014-03-07: cleaned up commandline control for outputs, now all "output="
 
 import os, sys
 import libtbx.phil.command_line #argument parsing
@@ -68,36 +69,26 @@ cablam_validate {
   pdb_infile = None
     .type = path
     .help = '''input PDB file or dirpath'''
-  give_kin = False
-    .type = bool
-    .help = '''print markup kinemage as output to automatically-named file'''
-  give_text = False
-    .type = bool
-    .help = '''print text output to sys.stdout'''
-  give_points = False
-    .type = bool
-    .help = '''print cablam-space points to sys.stdout, in kinemage dotlist format'''
-  give_records = False
-    .type = bool
-    .help = '''print HELIX and SHEET=style records based on CaBLAM analysis'''
-  give_oneline = False
-    .type = bool
-    .help = '''print one-line validation to sys.stdout: Count and percent of cablam outliers'''
+  output = *text kin ca_kin full_kin points records oneline
+    .type = choice
+    .help = '''choose output type,
+    =text for comma-separated outlier summary
+    =kin print markup kinemage to screen
+    =ca_kin print CA geo markup kinemage to screen
+    =full_kin open in King a multi-crit-type kinemage with markup
+    =points print cablam-space points to sys.stdout, in kinemage dotlist format
+    =records print HELIX and SHEET=style records based on CaBLAM analysis
+    =oneline print one-line validation to sys.stdout: percent of cablam outliers
+    '''
   outlier_cutoff = 0.05
     .type = float
     .help = '''sets the contour level for detecting outliers, e.g. outlier_cutoff=0.01 for accepting the top 99%, defaults to 0.05'''
-  help = False
-    .type = bool
-    .help = '''help and data interpretation messages'''
-  give_ca_kin = False
-    .type = bool
-    .help = '''placeholder argument for testing ca trace contours, outputs kinemage outlier markup'''
-  give_full_kin = False
-    .type = bool
-    .help = '''open in King a multi-crit-type kinemage with markup for cablam analysis'''
   check_prolines = False
     .type = bool
     .help = '''test of a function to differentiate cis vs trans prolines'''
+  help = False
+    .type = bool
+    .help = '''help and data interpretation messages'''
 }
 """, process_includes=True)
 #-------------------------------------------------------------------------------
@@ -107,7 +98,7 @@ cablam_validate {
 #-------------------------------------------------------------------------------
 #This object holds information on one residue for purposes of cablam_validate
 #It's mostly just a package for data passing and access
-class cablam_validation():
+class cablam_validation(object):
   def __init__(self, residue=None,outlier_level=None):
     self.residue = residue #cablam_res.linked_residue object
     self.outlier_level = outlier_level #percentile level in "peptide_expectations" contours
@@ -124,7 +115,7 @@ class cablam_validation():
       self.rg = None
 
 #Class for holding percentile contour level values in residue object
-class motif_value():
+class motif_value(object):
   def __init__(self):
     self.loose_alpha = None
     self.regular_alpha = None
@@ -133,7 +124,7 @@ class motif_value():
     self.loose_threeten = None
     self.regular_threeten = None
 
-class motif_guess():
+class motif_guess(object):
   def __init__(self):
     self.loose_alpha = False
     self.regular_alpha = False
@@ -142,7 +133,7 @@ class motif_guess():
     self.loose_threeten = False
     self.regular_threeten = False
 
-class motif_chunk():
+class motif_chunk(object):
   def print_record(self,writeto=sys.stdout):
     if self.motif_type == 'helix':
       self.print_helix_record(writeto=writeto)
@@ -206,20 +197,25 @@ Options:
   outlier_cutoff=0.05      sets the contour level for detecting outliers,
                              e.g. outlier_cutoff=0.01 for accepting the top 99%,
                              defaults to 0.05
-  give_kin=False           prints markup kinemage to screen
-  give_text=False          prints machine-readable columnated data to screen
-                           (default output)
-  give_points=False        prints cablam-space points to screen,
+  output=
+                           kin : prints markup kinemage to screen
+                           text : prints machine-readable columnated and comma-
+                             separated data to screen
+                             (default output)
+                           points : prints cablam-space points to screen,
                              in kinemage dotlist format
-  give_records=False       prints HELIX and SHEET-style records to screen, based
-                             on CaBLAM secondary structure analysis
-  give_ca_kin=False        prints a kinemage with ca-contour outliers marked
-  give_full_kin=False      opens a phenix.king window with multicrit style
-                             markup for the submitted structure. Also saves a
-                             .pdb with HELIX and SHEET records and a .kin with
-                             other markup to working dir
-  give_oneline=False       prints oneline-style output to screen. Supports
-                             printing for multiple files
+                           records : prints HELIX and SHEET-style records to
+                             screen, based on CaBLAM secondary structure
+                             analysis
+                           ca_kin : prints a kinemage with ca-contour outliers
+                             marked
+                           full_kin : opens a phenix.king window with multicrit
+                             style markup for the submitted structure. Also
+                             saves a .pdb with HELIX and SHEET records and a
+                             .kin with other markup to working dir
+                           oneline : prints oneline-style output to screen.
+                             Supports printing for multiple files
+
   help=False               prints this usage text, plus notes on data
                              interpretation to screen
 
@@ -978,17 +974,17 @@ def run(args):
     pdb_io = pdb.input(pdb_infile)
     hierarchy = pdb_io.construct_hierarchy()
 
-    if params.give_oneline:
+    if params.output=='oneline':
       oneline(hierarchy, pdbid=pdbid)
-    elif params.give_ca_kin:
+    elif params.output=='ca_kin':
       ca_outliers = analyze_pdb_ca(
         hierarchy, outlier_cutoff=params.outlier_cutoff, pdbid=pdbid)
       give_ca_kin(ca_outliers,params.outlier_cutoff)
-    elif params.give_full_kin:
+    elif params.output=='full_kin':
       cablam_multicrit_kin(hierarchy,peptide_cutoff=params.outlier_cutoff,pdbid=pdbid)
     elif params.check_prolines:
       check_prolines(hierarchy,pdbid=pdbid)
-    elif params.give_records:
+    elif params.output=='records':
       print_helix_sheet_records(hierarchy,ca_cutoff=0.005,pdbid='pdbid',writeto=sys.stdout)
     else:
       outliers = analyze_pdb(
@@ -998,11 +994,11 @@ def run(args):
         #Set default output as text
         params.give_text = True
 
-      if params.give_kin:
+      if params.output=='kin':
         give_kin(outliers,params.outlier_cutoff)
-      if params.give_points:
+      if params.output=='points':
         give_points(outliers)
-      if params.give_text:
+      if params.output=='text':
         give_text(outliers)
 #-------------------------------------------------------------------------------
 #}}}
@@ -1014,8 +1010,51 @@ if __name__ == "__main__":
 #-------------------------------------------------------------------------------
 #}}}
 
-##The following is a function in progress to connect beta strands into sheets.
-##Do not use without further development
+##class beta_strand(object):
+##  def __init__(self):
+##    self.members = []
+##    self.mates = []
+##
+##def get_strands(motifs):
+##  strands = []
+##  for motif in motifs:
+##    if motif.motif_type == 'sheet':
+##      strand = beta_strand()
+##      start = motif.motif_start
+##      end = motif.motif_end
+##      curres = start
+##      strand.members.append(start)
+##      while curres is not end:
+##        curres = curres.nextres
+##        strand.members.append(curres)
+##      strands.append(strand)
+##  return strands
+##
+##def pair_beta(strands):
+##  #CA-CA interstrand distance for antiparallel alternates between ~4 and ~6
+##  #for parallel, distances are consistantly just under 5
+##  dist_cutoff = 6.5
+##  index1 = 0
+##  while index1 < len(strands):
+##    strand1 = strands[index1]
+##    index2 = index1 + 1
+##    while index2 < len(strands):
+##      strand2 = strands[index2]
+##      for residue1 in strand1.members:
+##        res1ca = residue1.getatomxyz('CA')
+##        for residue2 in strand2.members:
+##          res2ca = residue2.getatomxyz('CA')
+##          resdist = cablam_math.veclen(cablam_math.vectorize(res1ca,res2ca))
+##          if resdist <= dist_cutoff:
+##            strand1.mates.append(strand2)
+##            strand2.mates.append(strand1)
+##      index2 += 1
+##    index1 += 1
+##
+##
+##
+###The following is a function in progress to connect beta strands into sheets.
+###Do not use without further development
 ##def stitch_beta(motifs): #pass in an iterable of motif_chunk class instances
 ##  strands = []
 ##  for motif in motifs:
@@ -1041,3 +1080,8 @@ if __name__ == "__main__":
 ##
 ##
 ##  return sheets
+##
+###Find potential mates based on distance
+###For each mate, see if there's a good parrallel/ antiparallel local direction (3 residues?)
+###Based on par/anti-par, find best alignment of residues minimizing res-res distance
+###Check pleat for this alignment
