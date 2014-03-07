@@ -95,7 +95,6 @@ class intensities_scaler(object):
               data=I_all,
               sigmas=sigI_all).set_observation_type_xray_intensity()
 
-
     perm = miller_array_all.sort_permutation(by_value="packed_indices")
     miller_indices_all_sort = miller_array_all.indices().select(perm)
     I_obs_all_sort = miller_array_all.data().select(perm)
@@ -108,8 +107,9 @@ class intensities_scaler(object):
     multiplicities = flex.double()
     r_merge_dif_all = flex.double()
     r_merge_w_all = flex.double()
-    cn_singlet = 0
     cn_miller_indices = 0
+    I_even_merge_mean = flex.double()
+    I_odd_merge_mean = flex.double()
     while refl_now < len(I_obs_all_sort)-1:
       miller_index_group = miller_indices_all_sort[refl_now]
       I_obs_group = flex.double()
@@ -125,39 +125,60 @@ class intensities_scaler(object):
           refl_now = i
           cn_miller_indices +=1
           break
-
+      
       if len(I_obs_group) == 1:
         I_obs_merge = I_obs_group[0]
         sigI_obs_merge = sigI_obs_group[0]
-
-
-        if math.isnan(I_obs_merge) or math.isnan(sigI_obs_merge) or I_obs_merge==0 or sigI_obs_merge==0:
-          print miller_index_group, I_obs_merge, sigI_obs_merge, ' - not merged'
-        else:
-          multiplicities.append(1)
-          miller_indices_merge.append(miller_index_group)
-          r_dif = (sigI_obs_merge**2)/sigI_obs_merge
-          r_w = (I_obs_merge**2)/sigI_obs_merge
-
-          I_obs_merge_mean.append(I_obs_merge)
-          sigI_obs_merge_mean.append(sigI_obs_merge)
-          r_merge_dif_all.append(r_dif)
-          r_merge_w_all.append(r_w)
-          cn_singlet += 1
+        no_observations = 1
+        r_dif = ((sigI_obs_merge**2)/sigI_obs_merge)*1.7321
+        r_w = (I_obs_merge**2)/sigI_obs_merge
+        I_even_merge = I_obs_merge
+        I_odd_merge = I_obs_merge  
       else:
-
-        I_obs_merge = np.mean(I_obs_group)
-        sigI_obs_merge = np.mean(sigI_obs_group)
-        multiplicities.append(len(I_obs_group))
+        
+        I_as_sigma = (I_obs_group - np.mean(I_obs_group))/np.std(I_obs_group)
+        i_sel = (flex.abs(I_as_sigma) <= iph.sigma_max_merge)
+        I_obs_group_sel = I_obs_group.select(i_sel)
+        sigI_obs_group_sel = sigI_obs_group.select(i_sel)
+        
+        if len(I_obs_group_sel) == 1:
+          I_obs_merge = I_obs_group_sel[0]
+          sigI_obs_merge = sigI_obs_group_sel[0]
+          no_observations = 1
+          r_dif = ((sigI_obs_merge**2)/sigI_obs_merge)*1.7321
+          r_w = (I_obs_merge**2)/sigI_obs_merge
+          I_even_merge = I_obs_merge
+          I_odd_merge = I_obs_merge 
+        else:
+          I_obs_merge = np.mean(I_obs_group_sel)
+          sigI_obs_merge = np.mean(sigI_obs_group_sel)
+          no_observations = len(I_obs_group_sel)
+          r_dif = flex.sum(((I_obs_group_sel - I_obs_merge)**2)/sigI_obs_group_sel)*math.sqrt(len(I_obs_group_sel)/(len(I_obs_group_sel)-1))
+          r_w = flex.sum((I_obs_group_sel**2)/sigI_obs_group_sel)
+        
+          #sepearte the observations into two groups
+          i_even = range(0,len(I_obs_group_sel),2)
+          i_odd = range(1,len(I_obs_group_sel),2)
+          I_even_sel = I_obs_group_sel.select(i_even)
+          I_odd_sel = I_obs_group_sel.select(i_odd)
+          if len(i_even) > len(i_odd):
+            I_odd_sel.append(I_even_sel[len(I_even_sel)-1])
+          I_even_merge = np.mean(I_even_sel)
+          I_odd_merge = np.mean(I_odd_sel)
+        
+          
+      if math.isnan(I_obs_merge) or math.isnan(sigI_obs_merge) or I_obs_merge==0 or sigI_obs_merge==0:
+        print miller_index_group, I_obs_merge, sigI_obs_merge, ' - not merged'
+      else:
+        multiplicities.append(no_observations)
         miller_indices_merge.append(miller_index_group)
-        r_dif = flex.sum(((I_obs_group - I_obs_merge)**2)/sigI_obs_group)*math.sqrt(len(I_obs_group)/(len(I_obs_group)-1))
-        r_w = flex.sum((I_obs_group**2)/sigI_obs_group)
         I_obs_merge_mean.append(I_obs_merge)
         sigI_obs_merge_mean.append(sigI_obs_merge)
         r_merge_dif_all.append(r_dif)
         r_merge_w_all.append(r_w)
-
-
+        I_even_merge_mean.append(I_even_merge)
+        I_odd_merge_mean.append(I_odd_merge)
+      
       if i==len(I_obs_all_sort)-1:
         break
 
@@ -209,7 +230,7 @@ class intensities_scaler(object):
 
       txt_out = '------------------------------------------------------\n'
       txt_out += 'Summary for'+output_mtz_file_prefix+'_merge.mtz\n'
-      txt_out += 'Bin Resolutions %Complete (obs/total) Obs#  CCiso Slope Qiso Qint  <I>  <sigma> <I/sigI> (median)\n'
+      txt_out += 'Bin Resolutions %Complete (obs/total) Obs# CCiso CC1/2 Qiso Qint  <I>  <sigma> <I/sigI> (median)\n'
       bin_multiplicities = []
       sum_bin_completeness = 0
       sum_bin_multiplicities = 0
@@ -247,6 +268,7 @@ class intensities_scaler(object):
           multiplicities_sel = 0
           r_merge_dif_sel = flex.double()
           r_merge_w_sel = flex.double()
+          cc_onehalf_bin = 0
         else:
           mean_i_bin = np.mean(miller_array_merge_mean.data().select(i_binner))
           mean_sigi_bin = np.mean(miller_array_merge_mean.sigmas().select(i_binner))
@@ -255,7 +277,7 @@ class intensities_scaler(object):
           multiplicities_sel = multiplicities.select(i_binner)
           r_merge_dif_sel = r_merge_dif_all.select(i_binner)
           r_merge_w_sel = r_merge_w_all.select(i_binner)
-
+          cc_onehalf_bin, slope_onehalf_bin = get_overall_correlation(I_even_merge_mean.select(i_binner), I_odd_merge_mean.select(i_binner))
 
 
         completeness = completeness_merge.data[i]
@@ -271,17 +293,21 @@ class intensities_scaler(object):
         txt_out += '%02d %5.2f - %5.2f %6.2f (%05d/%05d) %5.2f %4.2f %4.2f %6.2f %6.2f %7.2f %7.2f %7.2f %7.2f' \
           %(i, binner_merge.bin_d_range(i)[0], binner_merge.bin_d_range(i)[1], completeness*100, \
           completeness_merge.binner.counts_given()[i], completeness_merge.binner.counts_complete()[i],\
-          np.mean(multiplicities_sel), corr_bin_mean, slope_bin_mean, r_bin, r_merge_bin, \
+          np.mean(multiplicities_sel), corr_bin_mean, cc_onehalf_bin, r_bin, r_merge_bin, \
           mean_i_bin, mean_sigi_bin, mean_i_over_sigi_bin, median_i_over_sigi_bin)
         txt_out += '\n'
 
         one_over_dsqr.append(1/(binner_merge.bin_d_range(i)[1]**2))
         n_ref_complete.append(completeness_merge.binner.counts_complete()[i])
         n_ref_observed.append(completeness_merge.binner.counts_given()[i])
-
+      
+      
+      cc_onehalf_all, slope_onehalf_all = get_overall_correlation(I_even_merge_mean, I_odd_merge_mean)
       txt_out += 'Overall completeness: %3.4f no. of observations: %3.4f' %((sum_bin_completeness/iph.n_bins)*100, sum_bin_multiplicities/iph.n_bins)
       txt_out += '\n'
-      txt_out += 'CCiso=%6.5f Slope=%6.5f' %(cc_merge_mean, slope_merge_mean)
+      txt_out += 'C.C.iso=%6.5f Slope=%6.5f' %(cc_merge_mean, slope_merge_mean)
+      txt_out += '\n'
+      txt_out += 'C.C.1/2=%6.5f Slope=%6.5f' %(cc_onehalf_all, slope_onehalf_all)
       txt_out += '\n'
       txt_out += 'Qiso=%6.5f Qint=%6.5f' %(r_all, (sum(r_merge_dif_all)/sum(r_merge_w_all)))
       txt_out += '\n'
