@@ -9,6 +9,7 @@ class FormatHDF5Dectris(FormatHDF5):
       reads the whole dataset."""
   @staticmethod
   def understand(image_file):
+    return False
     try:
       tag = FormatHDF5Dectris.open_file(image_file, 'rb').read(8)
     except IOError,e:
