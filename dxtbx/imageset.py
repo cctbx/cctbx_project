@@ -115,7 +115,7 @@ class NullReader(ReaderBase):
 class SingleFileReader(ReaderBase):
   '''The single file reader class.'''
 
-  def __init__(self, format_instance):
+  def __init__(self, format_instance = None):
     '''Initialise the reader class.'''
     ReaderBase.__init__(self)
 
@@ -125,6 +125,12 @@ class SingleFileReader(ReaderBase):
   def __cmp__(self, other):
     '''Compare the reader to another reader.'''
     return self._format == other._format
+
+  def __getstate__(self):
+    return self._format.__class__, self._format.get_image_file()
+
+  def __setstate__(self, state):
+    self._format = state[0](state[1])
 
   def get_image_paths(self, indices=None):
     '''Get the image paths within the file.'''
@@ -753,7 +759,8 @@ class ImageSweep(ImageSet):
 
     '''
     ImageSet.__init__(self, reader, indices)
-    if scan is not None:
+    # FIXME_HACK
+    if scan is not None and self._indices != [0]:
       assert(scan.get_num_images() == (self._indices[-1] - self._indices[0] + 1))
     self._beam = beam
     self._goniometer = goniometer
@@ -843,7 +850,9 @@ class ImageSweep(ImageSet):
 
   def set_scan(self, scan):
     ''' Set the scan model. '''
-    assert(scan.get_num_images() == (self._indices[-1] - self._indices[0] + 1))
+    # FIXME_HACK
+    if self._indices != [0]:
+      assert(scan.get_num_images() == (self._indices[-1] - self._indices[0] + 1))
     self._scan = scan
 
   def complete_set(self):
