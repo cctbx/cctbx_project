@@ -27,7 +27,11 @@ class FormatHDF5Nexus(FormatHDF5):
     sample = entry['sample']
     pose = sample['pose']
     axis = pose['CBF_axis_omega'].attrs['vector']
-    return self._goniometer_factory.known_axis(axis)
+
+    # FXIME pretty sure I should not have a factor of -1 in here... however
+    # with this in I can properly index and refine from the data...
+
+    return self._goniometer_factory.known_axis(-1 * axis)
 
   def _detector(self):
     from scitbx import matrix
@@ -48,9 +52,9 @@ class FormatHDF5Nexus(FormatHDF5):
     # Initialise detector frame
     fast = matrix.col((1.0, 0.0, 0.0))
     slow = matrix.col((0.0, 1.0, 0.0))
-    orig = matrix.col((offset[0] + trans * vector[0],
-                       offset[1] + trans * vector[1],
-                       offset[2] + trans * vector[2]))
+    orig = 1000 * matrix.col((offset[0] + trans * vector[0],
+                              offset[1] + trans * vector[1],
+                              offset[2] + trans * vector[2]))
 
     # Next comes a rotation about an axis
     vector = matrix.col(rotation.attrs['vector']).normalize()
@@ -63,23 +67,27 @@ class FormatHDF5Nexus(FormatHDF5):
     orig = m_rot * orig
 
     # Get the pixel and image size
-    pixel_size = detector['x_pixel_size'].value, detector['y_pixel_size'].value
+    pixel_size = 1000 * detector['x_pixel_size'].value, \
+      1000 * detector['y_pixel_size'].value
     image_size = len(detector['x_pixel_offset']), len(detector['y_pixel_offset'])
-    trusted_range = (0, detector['saturation_value'][0])
+    trusted_range = (-1, detector['saturation_value'][0])
 
     # Make the detector
     return self._detector_factory.make_detector(
       "", fast, slow, orig,
       pixel_size, image_size, trusted_range)
 
-
   def _beam(self):
-    ''' Nexus defines beam along z axis. '''
+    ''' Nexus defines beam along z axis, i.e. from source to sample (i.e. reversed
+    w.r.t. imgCIF convention).'''
+
+    from scitbx import matrix
     entry = self._h5_handle['entry']
     sample = entry['sample']
     beam = sample['beam']
     wavelength = beam['wavelength']
-    return self._beam_factory.simple(wavelength[0])
+    return self._beam_factory.simple_directional(matrix.col((0,0,-1)),
+                                                 wavelength[0])
 
   def _scan(self):
     ''' Get the scan. '''
