@@ -221,7 +221,7 @@ Options:
 
 Example:
 
-phenix.cablam_validate file.pdb give_full_kin=True
+phenix.cablam_validate file.pdb output=full_kin
 --------------------------------------------------------------------------------
 """)
 #-------------------------------------------------------------------------------
@@ -967,7 +967,7 @@ def run(args):
       fileset.append(os.path.join(dirpath,filename))
   elif os.path.isfile(params.pdb_infile):
     fileset = [params.pdb_infile]
-  #if params.give_oneline:
+  #if params.output=='oneline':
   #  oneline_header()
   for pdb_infile in fileset:
     pdbid = os.path.splitext(os.path.basename(pdb_infile))[0]
@@ -990,10 +990,6 @@ def run(args):
       outliers = analyze_pdb(
         hierarchy, outlier_cutoff=params.outlier_cutoff, pdbid=pdbid)
 
-      if not (params.give_kin or params.give_points):
-        #Set default output as text
-        params.give_text = True
-
       if params.output=='kin':
         give_kin(outliers,params.outlier_cutoff)
       if params.output=='points':
@@ -1010,78 +1006,78 @@ if __name__ == "__main__":
 #-------------------------------------------------------------------------------
 #}}}
 
-##class beta_strand(object):
-##  def __init__(self):
-##    self.members = []
-##    self.mates = []
-##
-##def get_strands(motifs):
-##  strands = []
-##  for motif in motifs:
-##    if motif.motif_type == 'sheet':
-##      strand = beta_strand()
-##      start = motif.motif_start
-##      end = motif.motif_end
-##      curres = start
-##      strand.members.append(start)
-##      while curres is not end:
-##        curres = curres.nextres
-##        strand.members.append(curres)
-##      strands.append(strand)
-##  return strands
-##
-##def pair_beta(strands):
-##  #CA-CA interstrand distance for antiparallel alternates between ~4 and ~6
-##  #for parallel, distances are consistantly just under 5
-##  dist_cutoff = 6.5
-##  index1 = 0
-##  while index1 < len(strands):
-##    strand1 = strands[index1]
-##    index2 = index1 + 1
-##    while index2 < len(strands):
-##      strand2 = strands[index2]
-##      for residue1 in strand1.members:
-##        res1ca = residue1.getatomxyz('CA')
-##        for residue2 in strand2.members:
-##          res2ca = residue2.getatomxyz('CA')
-##          resdist = cablam_math.veclen(cablam_math.vectorize(res1ca,res2ca))
-##          if resdist <= dist_cutoff:
-##            strand1.mates.append(strand2)
-##            strand2.mates.append(strand1)
-##      index2 += 1
-##    index1 += 1
-##
-##
-##
-###The following is a function in progress to connect beta strands into sheets.
-###Do not use without further development
-##def stitch_beta(motifs): #pass in an iterable of motif_chunk class instances
-##  strands = []
-##  for motif in motifs:
-##    if motif.motif_type == 'sheet':
-##      strands.append(motif)
-##    else: pass
-##  for strand1 in strands:
-##    for strand2 in strands:
-##      strand1_dir = cablam_math.vectorize(strand1.motif_start.getatomxyz('CA'),strand1.motif_end.getatomxyz('CA'))
-##      strand2_dir = cablam_math.vectorize(strand2.motif_start.getatomxyz('CA'),strand2.motif_end.getatomxyz('CA'))
-##      strand_dot_product = cablam_math.dot(strand1_dir,strand2_dir)
-##      if strand_dot_product < 0: #antiparallel
-##        curres = strand1.motif_start
-##        pass
-##      elif strand_dot_product >0: #parallel
-##        pass
-##      pass
-##      #check if parallel or antiparallel with dot product
-##      #for residue in strand 1:
-##      #for residue in strand 2:
-##        #if close enough:
-##        #walk in direction
-##
-##
-##  return sheets
-##
-###Find potential mates based on distance
-###For each mate, see if there's a good parrallel/ antiparallel local direction (3 residues?)
-###Based on par/anti-par, find best alignment of residues minimizing res-res distance
-###Check pleat for this alignment
+class beta_strand(object):
+  def __init__(self):
+    self.members = []
+    self.mates = []
+
+def get_strands(motifs):
+  strands = []
+  for motif in motifs:
+    if motif.motif_type == 'sheet':
+      strand = beta_strand()
+      start = motif.motif_start
+      end = motif.motif_end
+      curres = start
+      strand.members.append(start)
+      while curres is not end:
+        curres = curres.nextres
+        strand.members.append(curres)
+      strands.append(strand)
+  return strands
+
+def pair_beta(strands):
+  #CA-CA interstrand distance for antiparallel alternates between ~4 and ~6
+  #for parallel, distances are consistantly just under 5
+  dist_cutoff = 6.5
+  index1 = 0
+  while index1 < len(strands):
+    strand1 = strands[index1]
+    index2 = index1 + 1
+    while index2 < len(strands):
+      strand2 = strands[index2]
+      for residue1 in strand1.members:
+        res1ca = residue1.getatomxyz('CA')
+        for residue2 in strand2.members:
+          res2ca = residue2.getatomxyz('CA')
+          resdist = cablam_math.veclen(cablam_math.vectorize(res1ca,res2ca))
+          if resdist <= dist_cutoff:
+            strand1.mates.append(strand2)
+            strand2.mates.append(strand1)
+      index2 += 1
+    index1 += 1
+
+
+
+#The following is a function in progress to connect beta strands into sheets.
+#Do not use without further development
+def stitch_beta(motifs): #pass in an iterable of motif_chunk class instances
+  strands = []
+  for motif in motifs:
+    if motif.motif_type == 'sheet':
+      strands.append(motif)
+    else: pass
+  for strand1 in strands:
+    for strand2 in strands:
+      strand1_dir = cablam_math.vectorize(strand1.motif_start.getatomxyz('CA'),strand1.motif_end.getatomxyz('CA'))
+      strand2_dir = cablam_math.vectorize(strand2.motif_start.getatomxyz('CA'),strand2.motif_end.getatomxyz('CA'))
+      strand_dot_product = cablam_math.dot(strand1_dir,strand2_dir)
+      if strand_dot_product < 0: #antiparallel
+        curres = strand1.motif_start
+        pass
+      elif strand_dot_product >0: #parallel
+        pass
+      pass
+      #check if parallel or antiparallel with dot product
+      #for residue in strand 1:
+      #for residue in strand 2:
+        #if close enough:
+        #walk in direction
+
+
+  return sheets
+
+#Find potential mates based on distance
+#For each mate, see if there's a good parrallel/ antiparallel local direction (3 residues?)
+#Based on par/anti-par, find best alignment of residues minimizing res-res distance
+#Check pleat for this alignment
