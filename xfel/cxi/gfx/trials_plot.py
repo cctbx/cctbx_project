@@ -93,27 +93,14 @@ class Run (object):
     self.culled_indexed = flex.bool()
 
     for i in range(count):
-      value = self.braggs[int(i*window)]
-      time = self.bragg_times[int(i*window)]
-      dist = self.distances[int(i*window)]
-      sifo = self.sifoils[int(i*window)]
-      wave = self.wavelengths[int(i*window)]
-      idxd = self.indexed[int(i*window)]
-      for j in range(int(window)):
-        idx = (int(i*window))+j
-        if self.braggs[idx] > value:
-          value = self.braggs[idx]
-          time = self.bragg_times[idx]
-          dist = self.distances[idx]
-          sifo = self.sifoils[idx]
-          wave = self.wavelengths[idx]
-          idxd = self.indexed[idx]
-      self.culled_braggs.append(value)
-      self.culled_bragg_times.append(time)
-      self.culled_distances.append(dist)
-      self.culled_sifoils.append(sifo)
-      self.culled_wavelengths.append(wave)
-      self.culled_indexed.append(idxd)
+      braggs =  self.braggs[i*int(window):(i+1)*int(window)]
+      idx = int(i*window) + flex.max_index(braggs)
+      self.culled_braggs     .append(self.braggs[idx])
+      self.culled_bragg_times.append(self.bragg_times[idx])
+      self.culled_distances  .append(self.distances[idx])
+      self.culled_sifoils    .append(self.sifoils[idx])
+      self.culled_wavelengths.append(self.wavelengths[idx])
+      self.culled_indexed    .append(self.indexed[idx])
 
   def recalc_hits(self, windowLen, hit_cutoff):
 
@@ -123,8 +110,8 @@ class Run (object):
     if len(self.braggs) <= 0 or windowLen <= 0: return
 
     for i in range(int(math.floor(len(self.braggs)/windowLen))):
-      window = self.braggs[i*windowLen:(i+1)*windowLen-1]
-      isel = (window > hit_cutoff).iselection()
+      window = self.braggs[i*windowLen:(i+1)*windowLen]
+      isel = (window >= hit_cutoff).iselection()
       ratio = float(len(isel)) / float(windowLen)
       self.hit_rates.append(ratio*100)
       self.hit_rates_times.append(self.bragg_times[(i*windowLen)+int(math.floor((windowLen/2)))])
