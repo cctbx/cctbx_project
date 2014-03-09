@@ -92,7 +92,9 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         raise RuntimeError("""Sorry, either specify region of interest
           (roi) or distl_min_peaks, but not both.""")
 
-    self.buffered_sql_entries = []
+    if self.m_db_logging:
+      self.buffered_sql_entries = []
+      assert self.m_sql_buffer_size >= 1
 
 
 
@@ -177,12 +179,6 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
     device = cspad_tbx.address_split(self.address)[2]
 
-    # Flag used for determining whether to log number of bragg peaks from the spotfinder
-    # or from indexing. Only use the number of peaks from indexing if the spotfinder isn't
-    # being used.
-    if self.m_db_logging and evt.get('use_indexing_spotcount') is None:
-      evt.put(True, 'use_indexing_spotcount')
-
     # ***** HITFINDING ***** XXX For hitfinding it may be interesting
     # to look at the fraction of subzero pixels in the dark-corrected
     # image.
@@ -237,25 +233,30 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         evt_time = sec + ms/1000
         self.stats_logger.info("BRAGG %.3f %d" %(evt_time, number_of_accepted_peaks))
 
-        if self.m_db_logging:
-          evt.put(False, "use_indexing_spotcount")
-          self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks, distance,
-                            self.sifoil, self.wavelength, False))
-
+        skip_event = False
         if number_of_accepted_peaks < self.m_distl_min_peaks:
           self.logger.info("Subprocess %02d: Spotfinder NO  HIT image #%05d @ %s; %d spots > %d" %(
             env.subprocess(), self.nshots, self.timestamp, number_of_accepted_peaks, self.m_threshold))
 
           if not self.m_negate_hits:
-            evt.put(True, "skip_event")
-            return
+            skip_event = True
         else:
           self.logger.info("Subprocess %02d: Spotfinder YES HIT image #%05d @ %s; %d spots > %d" %(
             env.subprocess(), self.nshots, self.timestamp, number_of_accepted_peaks, self.m_threshold))
 
           if self.m_negate_hits:
-            evt.put(True, "skip_event")
-            return
+            skip_event = True
+
+        if skip_event:
+          if self.m_db_logging:
+            # log misses to the database
+            self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks, distance,
+                              self.sifoil, self.wavelength, False))
+          evt.put(True, "skip_event")
+          return
+        # the indexer will log this hit when it is ran. Bug: if the spotfinder is ran by itself, this
+        # hit will not be logged in the db.
+        evt.put(number_of_accepted_peaks, 'sfspots')
 
     self.logger.info("Subprocess %02d: process image #%05d @ %s" %
                      (env.subprocess(), self.nshots, self.timestamp))
@@ -295,12 +296,12 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       if self.m_db_logging:
         sec,ms = cspad_tbx.evt_time(evt)
         evt_time = sec + ms/1000
-        use_indexing_spotcount = evt.get('use_indexing_spotcount')
-        assert use_indexing_spotcount is not None
-        if indexed and use_indexing_spotcount:
+        sfspots = evt.get('sfspots')
+        if sfspots is None:
           n_spots = len(info.spotfinder_results.images[info.frames[0]]['spots_total'])
         else:
-          n_spots = None
+          n_spots = sfspots
+
         self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, n_spots, distance,
                           self.sifoil, self.wavelength, indexed))
 
@@ -384,38 +385,9 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.commit_entries()
 
   def queue_entry(self, entry):
-    if self.m_sql_buffer_size > 1:
-      raise NotImplementedError
-      self.buffered_sql_entries.append(entry)
-      if len(self.buffered_sql_entries) >= self.m_sql_buffer_size:
-        self.commit_entries()
-    else:
-      trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed = entry
-      from cxi_xdr_xes.cftbx.cspad_ana import db
-      dbobj = db.dbconnect()
-      cursor = dbobj.cursor()
-      cmd = """SELECT COUNT(*) from %s WHERE trial=%s and run=%s and eventstamp='%s'"""%(db.table_name,trial,run,eventstamp)
-      cursor.execute(cmd)
-      result = cursor.fetchone()[0]
-      if result > 0:
-        assert result == 1
-        cmd = "UPDATE %s SET "%(db.table_name)
-        keys = ['distance','sifoil','wavelength','indexed']
-        if hitcount is not None:
-          keys.append('hitcount')
-        comma = ""
-        for key in keys:
-          cmd += comma + "%s=%s "%(key,locals()[key])
-          comma = ", "
-        cmd += """WHERE trial=%s and run=%s and eventstamp='%s'"""%(trial,run,eventstamp)
-        cursor.execute(cmd)
-      else:
-        if hitcount is None:
-          hitcount = 0
-        cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed) "%(db.table_name) + "VALUES (%s,%s,%s,%s,%s,%s,%s,%s);"
-        cursor.execute(cmd, (trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed))
-      dbobj.commit()
-      dbobj.close()
+    self.buffered_sql_entries.append(entry)
+    if len(self.buffered_sql_entries) >= self.m_sql_buffer_size:
+      self.commit_entries()
 
   def commit_entries(self):
     if self.m_sql_buffer_size > 1 and len(self.buffered_sql_entries) > 0:
