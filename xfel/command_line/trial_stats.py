@@ -61,7 +61,7 @@ def run (args) :
       if indexed:
         numindexed += 1
 
-    print "Run: %3d, number of hits: %6d, number of frames: %6d, hitrate: %3.1f%%. Number indexed: %6d (%3.1f%%)"%(run,numhits,numframes,100*numhits/numframes,numindexed,100*numindexed/numframes)
+    print "Run: %3d, number of hits: %6d, number of frames: %6d, hitrate: %4.1f%%. Number indexed: %6d (%4.1f%%)"%(run,numhits,numframes,100*numhits/numframes,numindexed,100*numindexed/numframes)
 
   dbobj.close()
 

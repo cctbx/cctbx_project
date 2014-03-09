@@ -81,7 +81,17 @@ def run(args):
                           type="string",
                           help="Detector format version to use for generating active areas and laying out tiles",
                           default="CXI 8.2")
-                   ).process(args=args)
+                  .option("-d", "--distance",
+                          action="store",
+                          type="int",
+                          help="Detector distance put into the gain pickle file. Not needed for processing.",
+                          default="0")
+                  .option("-w", "--wavelength",
+                          action="store",
+                          type="float",
+                          help="Incident beam wavelength put into the gain pickle file. Not needed for processing.",
+                          default="0")
+                     ).process(args=args)
   output_filename = command_line.options.output_filename
   detector_format_version = command_line.options.detector_format_version
   address, timestamp = address_and_timestamp_from_detector_format_version(detector_format_version)
@@ -100,7 +110,8 @@ def run(args):
   gain_map = flex.double(img_diff.accessor(), 0)
   gain_map.as_1d().set_selected(img_sel.iselection(), 1/img_diff.as_1d().select(img_sel))
   gain_map /= flex.mean(gain_map.as_1d().select(img_sel))
-  d = cspad_tbx.dpack(data=gain_map, address=address, active_areas=active_areas, timestamp=timestamp)
+  d = cspad_tbx.dpack(data=gain_map, address=address, active_areas=active_areas, timestamp=timestamp,
+    distance=command_line.options.distance,wavelength=command_line.options.wavelength)
   easy_pickle.dump(output_filename, d)
 
 
