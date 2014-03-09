@@ -389,9 +389,33 @@ def cxi_versioned_extract(*args):
        0, -2,  0, -2,  2, -2,  2, -2,
        0, -1,  0, -1,  0, -2,  0, -2,
       -0,  0, -0,  0, -0,  0, -0,  0] # for 159 mm
+
+    LB67_corrections_post009 = [
+       1,  0,  1,  0,  0,  0,  0,  0,
+       1,  1,  1,  1,  1,  1,  1,  1,
+       2,  3,  2,  3,  2,  4,  2,  4,
+       2,  2,  2,  2,  1,  0,  1,  0,
+
+      -1,  0, -1,  0,  0,  0,  0,  0,
+       0, -1,  0, -1,  0,  0,  0,  0,
+       0, -1,  0, -1,  1,  0,  1,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+
+       0,  1,  0,  1, -1,  0, -1,  0,
+      -1,  1, -1,  1, -1,  2, -1,  2,
+       0,  1,  0,  1,  0,  2,  0,  2,
+       0,  0,  0,  0,  0,  0,  0,  0,
+
+       1, -1,  1, -1,  0, -1,  0, -1,
+       0, -1,  0, -1,  1, -1,  1, -1,
+      -2,  0, -2,  0, -2, -1, -2, -1,
+      -1,  1, -1,  1, -1, -1, -1, -1,] # for 105 mm
+
     from scitbx.array_family import flex
-    total_tile_translations = flex.int(corrected_auxiliary_translations) - \
-                              flex.int(LC06_mark10_001_corrections)
+    total_tile_translations = flex.int(corrected_auxiliary_translations)  - \
+                              flex.int(LB67_corrections_post009)
+
+#                              flex.int(LC06_mark10_001_corrections)
 #                              flex.int(LC06_mark10_101_corrections)
 
     TT = list(total_tile_translations)
@@ -410,16 +434,16 @@ def cxi_versioned_extract(*args):
     #                                           -9,  10]
 
     # determined for LC67_run26. Optimized for 101 mm; detz_offset must be changed to move 100 mm distance to 101
-    #working_extract.distl.quad_translations = [ 0,  3,
-    #                                           -7,  3,
-    #                                           -5,  9,
-    #                                           -9,  9]
+    working_extract.distl.quad_translations = [ 0,  3,
+                                               -7,  3,
+                                               -5,  9,
+                                               -9,  9]
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y. Optimized for 79 mm.
-    working_extract.distl.quad_translations = [-2,  3,
-                                               -9,  5,
-                                               -5,  10,
-                                               -9,  12]
+    #working_extract.distl.quad_translations = [-2,  3,
+    #                                           -9,  5,
+     #                                          -5,  10,
+     #                                          -9,  12]
     return working_extract
 
   elif cxi_version in ["CXI 8.d"]:
@@ -434,10 +458,10 @@ def cxi_versioned_extract(*args):
 
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.
-    working_extract.distl.quad_translations = [0,  0,
-                                               0,  0,
-                                               0,  0,
-                                               0,  0]
+    working_extract.distl.quad_translations = [11,  3,
+                                               -3, -2,
+                                                0,  8,
+                                                0,  4]
     print len(working_extract.distl.tile_translations)
 
     return working_extract
