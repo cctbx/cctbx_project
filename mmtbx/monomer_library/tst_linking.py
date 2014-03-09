@@ -1806,12 +1806,14 @@ def run(only_i=None):
       log_filename = "%s_%d.log" % (pdb, i)
       cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
       cmd += " link_all=%d %s" % (i, cifs)
-      cmd += " | tee %s" % (log_filename)
       print cmd
-      easy_run.call(cmd)
-      f=file(log_filename, "rb")
-      lines = f.read()
-      assert lines.find("Write PDB file")>-1
+      result = easy_run.fully_buffered(cmd).raise_if_errors()
+      assert (result.return_code == 0)
+      for line in result.stdout_lines :
+        if ("Write PDB file" in line) :
+          break
+      else :
+        raise RuntimeError("Missing expected log output")
       print "OK"
       f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
       lines = f.readlines()
