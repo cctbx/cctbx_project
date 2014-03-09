@@ -16,7 +16,7 @@ class mod_event_info(object):
   """
 
 
-  def __init__(self, address, detz_offset=575, check_beam_status=True, verbose=False, **kwds):
+  def __init__(self, address, detz_offset=575, check_beam_status=True, verbose=False, delta_k=0.0, **kwds):
     """The mod_event_info class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
@@ -27,6 +27,8 @@ class mod_event_info(object):
                              to the back of the detector stage, in mm
     @param check_beam_status Flag used to skip checking the beam
                              parameters
+    @param delta_k           Correction to the K value used when calculating
+                             wavelength
     """
 
     self.logger = logging.getLogger(self.__class__.__name__)
@@ -48,6 +50,7 @@ class mod_event_info(object):
     self.stats_logger.setLevel(logging.INFO)
 
     self._detz_offset = cspad_tbx.getOptFloat(detz_offset)
+    self.delta_k = cspad_tbx.getOptFloat(delta_k)
 
     self.address = cspad_tbx.getOptString(address)
     self.verbose = cspad_tbx.getOptBool(verbose)
@@ -122,7 +125,7 @@ class mod_event_info(object):
       return
     if self.verbose: self.logger.info(self.timestamp)
 
-    self.wavelength = cspad_tbx.evt_wavelength(evt)
+    self.wavelength = cspad_tbx.evt_wavelength(evt, self.delta_k)
     if self.wavelength is None:
       if self.check_beam_status:
         self.nfail += 1
