@@ -1063,7 +1063,7 @@ def evt_timestamp(t=None):
       (".%03d" % t[1])
 
 
-def evt_wavelength(evt):
+def evt_wavelength(evt, delta_k=0):
   """The evt_wavelength() function returns the wavelength in Ångström
   of the event pointed to by @p evt.  From Margaritondo & Rebernik
   Ribic (2011): the dimensionless relativistic γ-factor is derived
@@ -1072,8 +1072,9 @@ def evt_wavelength(evt):
   undulator period in Ångström.  See also
   http://ast.coe.berkeley.edu/srms/2007/Lec10.pdf.
 
-  @param evt Event data object, a configure object
-  @return    Wavelength, in Ångström
+  @param evt     Event data object, a configure object
+  @param delta_k Optional K-value correction
+  @return        Wavelength, in Ångström
   """
 
   if evt is not None:
@@ -1083,7 +1084,7 @@ def evt_wavelength(evt):
       ebeam = None
     if hasattr(ebeam, 'fEbeamL3Energy') and ebeam.fEbeamL3Energy > 0:
       gamma = ebeam.fEbeamL3Energy / 0.510998910
-      K = 3.5
+      K = 3.5 + delta_k
       L = 3.0e8
       return L / (2 * gamma**2) * (1 + K**2 / 2)
   return None
