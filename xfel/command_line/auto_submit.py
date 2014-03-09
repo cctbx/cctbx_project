@@ -31,8 +31,9 @@ master_phil = libtbx.phil.parse("""
     .type = int
   config_file = 'onlyhitfind.cfg'
     .type = str
-  experiment = 'cxi78513'
+  experiment = None
     .type = str
+    .help = Optional. If blank, auto_submit will use data in the xtc_dir path
   submit_as_group = True
     .type = bool
   use_in_progress = False
@@ -54,6 +55,8 @@ def match_runs(dir,use_in_progress):
   files = os.listdir(dir)
   for file in files:
     r = s = c = None
+    if "s80" in file:
+      continue
     if not use_in_progress and ".inprogress" in file:
       continue
     for str in file.split("-"):
@@ -126,9 +129,12 @@ def run (args) :
   assert (params.stream_count is not None) and (params.stream_count > 0)
   assert (params.num_procs is not None) and (params.num_procs > 0)
   assert (params.queue is not None)
-  assert (params.experiment is not None)
   assert (params.submit_as_group is not None)
   assert (params.use_in_progress is not None)
+  if params.experiment is None:
+    input_str = "-i %s"%params.xtc_dir
+  else:
+    input_str = "-x %s"%params.experiment
 
   submitted_runs = []
   submitted_files = [] # used in single stream submit mode
@@ -160,7 +166,7 @@ def run (args) :
                 continue
 
               print "Preparing to queue run %s into trial %s"%(r.id,params.trial_id)
-              cmd = "cxi.lsf -c %s -p %s -x %s -o %s -t %s -r %s -q %s"%(params.config_file,params.num_procs,params.experiment,
+              cmd = "cxi.lsf -c %s -p %s %s -o %s -t %s -r %s -q %s"%(params.config_file,params.num_procs,input_str,
                 params.output_dir,params.trial_id,r.id,params.queue)
               print "Command to execute: %s"%cmd
               os.system(cmd)
@@ -200,7 +206,7 @@ def run (args) :
               if not f in submitted_files:
 
                 print "Preparing to queue stream %s into trial %s"%(os.path.basename(f),params.trial_id)
-                cmd = "./single_lsf.sh -c %s -p %s -x %s -o %s -t %s -r %s -q %s -s %s"%(params.config_file,params.num_procs,params.experiment,
+                cmd = "./single_lsf.sh -c %s -p %s %s -o %s -t %s -r %s -q %s -s %s"%(params.config_file,params.num_procs,input_str,
                   params.output_dir,params.trial_id,r,params.queue,s)
 
                 print "Command to execute: %s"%cmd
