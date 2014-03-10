@@ -60,8 +60,8 @@ of atoms.  For development purposes and experimentation only.
   fmodel = cmdline.fmodel
   validate_params(params)
   pdb_hierarchy = cmdline.pdb_hierarchy
-  sel_cache = pdb_hierarchy.atom_selection_cache()
-  selection = sel_cache.selection(params.selection)
+  a_c_p = cmdline.processed_pdb_file.all_chain_proxies
+  selection = a_c_p.selection(params.selection)
   assert selection.count(True) > 0
   map_coeffs = fmodel.map_coefficients(
     map_type=params.target_map,

@@ -20,6 +20,10 @@ def get_master_phil () :
     phil_string="""
 selection = None
   .type = atom_selection
+whole_residues = False
+  .type = bool
+  .help = If the initial selection includes partial residues, expand it to \
+    include each residue in its entirety.
 selection_delete = None
   .type = atom_selection
   .help = Designates atoms to be removed from the structure before \
@@ -91,14 +95,18 @@ and experimentation only.
   validate_params(params)
   pdb_hierarchy = cmdline.pdb_hierarchy
   make_header("Generating disorder", out=out)
-  sel_cache = pdb_hierarchy.atom_selection_cache()
-  selection = sel_cache.selection(params.selection)
+  a_c_p = cmdline.processed_pdb_file.all_chain_proxies
+  selection = a_c_p.selection(params.selection)
+  if (params.whole_residues) :
+    selection = iotbx.pdb.atom_selection.expand_selection_to_entire_atom_groups(
+      selection=selection,
+      pdb_atoms=pdb_hierarchy.atoms())
   n_sel = selection.count(True)
   assert (n_sel > 0)
   print >> out, "%d atoms selected" % n_sel
   selection_delete = None
   if (params.selection_delete is not None) :
-    selection_delete = sel_cache.selection(params.selection_delete)
+    selection_delete = a_c_p.selection(params.selection_delete)
   two_fofc_map, fofc_map = alternate_conformations.get_partial_omit_map(
     fmodel=fmodel.deep_copy(),
     selection=selection,
