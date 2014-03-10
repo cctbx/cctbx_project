@@ -19,7 +19,7 @@ class FormatHDF5Nexus(FormatHDF5):
 
   def _start(self):
     import h5py
-    self._h5_handle = h5py.File(self.get_image_file())
+    self._h5_handle = h5py.File(self.get_image_file(), 'r')
 
   def _goniometer(self):
     ''' Get the rotation axis. '''
