@@ -183,8 +183,8 @@ refinement.ncs.restraint_group {
   names = i.search_phil_text("Restraint group", match_all=True,
     labels_only=False)
   assert len(names) == 3
-  names = i.search_phil_text("restraint_group", phil_name_only=True)
-  assert len(names) == 2
+  names = i.search_phil_text("macro_cycles", phil_name_only=True)
+  assert len(names) == 1
   names = i.search_phil_text("selection group", match_all=True,
     labels_only=False)
   assert len(names) == 3

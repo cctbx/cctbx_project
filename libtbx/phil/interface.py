@@ -313,8 +313,9 @@ class index (object) :
         continue
       n_found = 0
       if phil_name_only :
+        phil_name_tmp = phil_name.split(".")[-1]
         for regex in regex_list :
-          if (regex.search(phil_name) is None) :
+          if (regex.search(phil_name_tmp) is None) :
             if match_all : break
             else :         continue
           n_found += 1
