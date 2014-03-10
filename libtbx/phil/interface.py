@@ -295,7 +295,10 @@ class index (object) :
       scope = scope[0]
     return get_standard_phil_label(scope)
 
-  def search_phil_text (self, search_text, match_all=False, labels_only=True) :
+  def search_phil_text (self, search_text,
+      match_all=False,
+      labels_only=True,
+      phil_name_only=False) :
     fields = search_text.split()
     for word in fields :
       # this allows matching of phil param paths
@@ -309,7 +312,13 @@ class index (object) :
       if (phil_name in self._hidden) or (not is_def) :
         continue
       n_found = 0
-      if labels_only :
+      if phil_name_only :
+        for regex in regex_list :
+          if (regex.search(phil_name) is None) :
+            if match_all : break
+            else :         continue
+          n_found += 1
+      elif labels_only :
         for regex in regex_list :
           if (regex.search(label) is None) :
             if match_all : break
