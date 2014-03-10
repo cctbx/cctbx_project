@@ -152,26 +152,30 @@ def align_reference_frame(primary_axis, primary_target,
     assert(primary_target.dot(secondary_target) < 0.001)
 
     if primary_target.angle(primary_axis) % math.pi:
-        axis_p = primary_target.cross(primary_axis)
-        angle_p = - primary_target.angle(primary_axis)
-        Rprimary = axis_p.axis_and_angle_as_r3_rotation_matrix(angle_p)
-    elif primary_target.angle(primary_axis) < 0:
-        axis_p = primary_axis.ortho().normalize()
-        angle_p = math.pi
-        Rprimary = axis_p.axis_and_angle_as_r3_rotation_matrix(angle_p)
+      axis_p = primary_target.cross(primary_axis)
+      angle_p = - primary_target.angle(primary_axis)
+      Rprimary = axis_p.axis_and_angle_as_r3_rotation_matrix(angle_p)
+    elif primary_target.dot(primary_axis) < 0:
+      axis_p = primary_axis.ortho().normalize()
+      angle_p = math.pi
+      Rprimary = axis_p.axis_and_angle_as_r3_rotation_matrix(angle_p)
     else:
-        Rprimary = matrix.identity(3)
+      Rprimary = matrix.identity(3)
 
-    axis_r = secondary_target.cross(Rprimary * secondary_axis)
-    axis_s = primary_target
-    if (axis_r.angle(primary_target) > 0.5 * math.pi):
+    if math.fabs(secondary_target.angle(Rprimary * secondary_axis)) < 1.0e-6:
+      Rsecondary = matrix.identity(3)
+    else:
+      axis_r = secondary_target.cross(Rprimary * secondary_axis)
+      axis_s = primary_target
+
+      if (axis_r.angle(primary_target) > 0.5 * math.pi):
         angle_s = orthogonal_component(axis_s, secondary_target).angle(
-            orthogonal_component(axis_s, Rprimary * secondary_axis))
-    else:
+          orthogonal_component(axis_s, Rprimary * secondary_axis))
+      else:
         angle_s = - orthogonal_component(axis_s, secondary_target).angle(
-            orthogonal_component(axis_s, Rprimary * secondary_axis))
+          orthogonal_component(axis_s, Rprimary * secondary_axis))
 
-    Rsecondary = axis_s.axis_and_angle_as_r3_rotation_matrix(angle_s)
+      Rsecondary = axis_s.axis_and_angle_as_r3_rotation_matrix(angle_s)
 
     return Rsecondary * Rprimary
 
