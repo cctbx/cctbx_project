@@ -286,7 +286,6 @@ if ssh -S "${tmpdir}/control.socket" ${NODE} \
     echo "Error: Requested trial number ${trial} already in use" > /dev/stderr
     cleanup_and_exit 1
 fi
-
 if test -z "${trial}"; then
     trial=`ssh -S "${tmpdir}/control.socket" ${NODE} \
         "cd \"${PWD}\" ;                             \
@@ -306,7 +305,6 @@ if test -z "${trial}"; then
         trial=`expr "${trial}" \+ 1 | awk '{ printf("%03d", $1); }'`
     fi
 fi
-
 out=`ssh -S "${tmpdir}/control.socket" ${NODE} \
     "cd \"${PWD}\"                &&           \
      mkdir -p \"${out}/${trial}\" &&           \
@@ -370,7 +368,7 @@ for s in ${streams}; do
         line=`echo "${line}" | sed -e "s/RUN_NO/${run_int}/g"`
 
         key=`echo "${line}" | cut -d '=' -f 1`
-        val=`basename "\`echo "${line}" \
+        val=`basename -- "\`echo "${line}" \
             | sed -e "s/.*=[[:space:]]*\(.*\)[[:space:]]*/\1/"\`"`
         key_trim=`echo "${key}" \
             | sed -e "s/^[[:space:]]*//" -e "s/[[:space:]]*\$//"`
