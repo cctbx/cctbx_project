@@ -314,7 +314,7 @@ for s in ${streams}; do
         line=`echo "${line}" | sed -e "s/RUN_NO/${run_int}/g"`
 
         key=`echo "${line}" | cut -d '=' -f 1`
-        val=`basename "\`echo "${line}" \
+        val=`basename -- "\`echo "${line}" \
             | sed -e "s/.*=[[:space:]]*\(.*\)[[:space:]]*/\1/"\`"`
         key_trim=`echo "${key}" \
             | sed -e "s/^[[:space:]]*//" -e "s/[[:space:]]*\$//"`
