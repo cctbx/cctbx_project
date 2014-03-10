@@ -175,6 +175,7 @@ tst_list = (
   ["$D/monomer_library/tst_linking.py", "24"],
   "$D/regression/tst_anneal_real_space.py",
   "$D/regression/tst_generate_disorder.py",
+  "$D/secondary_structure/tst_base_pairing.py",
   )
 
 def run():
