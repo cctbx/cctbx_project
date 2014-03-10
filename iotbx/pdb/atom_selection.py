@@ -653,3 +653,14 @@ class cache(slots_getstate_setstate):
       .intersection(fs(self.chain_id.get(link_record.chain_id2, sel_null)))
       .intersection(fs(self.resseq.get(link_record.resseq2, sel_null)))
       .intersection(fs(self.icode.get(link_record.icode2, sel_null)))]
+
+def expand_selection_to_entire_atom_groups (selection, pdb_atoms) :
+  assert not pdb_atoms.extract_i_seq().all_eq(0)
+  selection_complete = flex.bool(pdb_atoms.size(), False)
+  if (type(selection).__name__ == 'bool') :
+    selection = selection.iselection()
+  for i_seq in selection :
+    atom_group = pdb_atoms[i_seq].parent()
+    group_atoms = atom_group.atoms().extract_i_seq()
+    selection_complete.set_selected(group_atoms, True)
+  return selection_complete

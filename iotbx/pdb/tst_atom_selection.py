@@ -244,6 +244,14 @@ Atom selection string leading to error:
   assert len(sel) == 1
   assert list(sel[0]) == [76, 83]
   #
+  atoms.reset_i_seq()
+  sel = sel_cache.selection("resname 5GP and name C6")
+  assert sel.count(True) == 1
+  sel_complete = pdb.atom_selection.expand_selection_to_entire_atom_groups(
+    selection=sel,
+    pdb_atoms=atoms)
+  assert sel_complete.count(True) == 24
+  #
   link_records = [
     pdb.records.link(pdb_str=pdb_str)
       for pdb_str in """\
