@@ -137,7 +137,7 @@ class SingleFileReader(ReaderBase):
 
     # Get paths for each file
     filenames = [self._format.get_image_file(i)
-        for i in range(self._format.get_num_images())]
+                 for i in range(self._format.get_num_images())]
 
     # Return within the given range
     if indices == None:
