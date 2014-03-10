@@ -1,10 +1,10 @@
 
 from __future__ import division
+from mmtbx import utils
 import libtbx.load_env
 from libtbx import easy_run
 from libtbx.utils import Sorry
 from libtbx import Auto
-from mmtbx import utils
 import os, sys, re
 
 dna_rna_params_str = """
@@ -572,83 +572,49 @@ def _get_distance_score_for_class (atom_pairs,
       distance_ideal=pair_dist)
   return sum_dist_sq / len(atom_pairs)
 
-########################################################################
-def exercise () :
-  import libtbx.load_env
-  gu_classes = db.get_pair_saenger_classes("G-U")
-  assert (gu_classes[0][0] == "XXVII")
-  if libtbx.env.has_module("probe") and libtbx.env.has_module("reduce"):
-    assert (db.get_atoms("A-U", "WWT", True) == [('H61', 'O4'), ('N1', 'H3')])
-    assert (db.get_atoms("DA-DT", "WWT", False) == [('N6', 'O4'), ('N1', 'N3')])
-    assert (db.get_atoms("DT-DA", "WWT", False) == [('O4', 'N6'), ('N3', 'N1')])
-    assert (db.get_atoms("G-C", "WWT", False) == [('O6', 'N4'), ('N1', 'N3'),
-      ('N2', 'O2')])
-    assert (db.get_atoms("C-G", "WWT", False) == [('N4', 'O6'), ('N3', 'N1'),
-      ('O2', 'N2')])
-    assert db.get_pair_type("A-U", [('H61', 'O4'), ('N1', 'H3')], True) == "XX"
-    assert db.get_pair_type("A-U", [('N1', 'H3'), ('H61', 'O4')], True) == "XX"
-    assert db.get_pair_type("C-G", [('N4', 'O6'), ('N3', 'N1'), ('O2', 'N2')], False) == "XIX"
-  else:
-    print "Skipping: probe and/or reduce not available"
-  if libtbx.env.has_module("phenix_regression") :
-    pdb_file = libtbx.env.find_in_repositories(
-      relative_path="phenix_regression/pdb/1u8d.pdb",
-      test=os.path.isfile)
-    from iotbx.file_reader import any_file
-    import libtbx.phil
-    pdb_in = any_file(pdb_file).file_object
-    hierarchy = pdb_in.construct_hierarchy()
-    hierarchy.atoms().reset_i_seq()
-    bp_phil = libtbx.phil.parse(dna_rna_params_str)
-    params = bp_phil.fetch(source=libtbx.phil.parse("""
-      base_pair {
-        base1 = chain A and resseq 18
-        base2 = chain A and resseq 78
-        leontis_westhof_class = *Auto
-      }
-      base_pair {
-        base1 = chain A and resseq 21
-        base2 = chain A and resseq 75
-        leontis_westhof_class = *Auto
-      }
-      base_pair {
-        base1 = chain A and resseq 33
-        base2 = chain A and resseq 66
-        leontis_westhof_class = *Auto
-      }""")).extract()
-    identify_base_pairs(
-      pdb_hierarchy=hierarchy,
-      base_pairs=params.base_pair,
-      use_hydrogens=False,
-      distance_ideal=3.0)
-    classes = [ bp.saenger_class for bp in params.base_pair ]
-    assert (classes == ["XIX", "XX", "V"])
-    # and now in reverse order...
-    params = bp_phil.fetch(source=libtbx.phil.parse("""
-      base_pair {
-        base1 = chain A and resseq 78
-        base2 = chain A and resseq 18
-        leontis_westhof_class = *Auto
-      }
-      base_pair {
-        base1 = chain A and resseq 75
-        base2 = chain A and resseq 21
-        leontis_westhof_class = *Auto
-      }
-      base_pair {
-        base1 = chain A and resseq 66
-        base2 = chain A and resseq 33
-        leontis_westhof_class = *Auto
-      }""")).extract()
-    identify_base_pairs(
-      pdb_hierarchy=hierarchy,
-      base_pairs=params.base_pair,
-      use_hydrogens=False,
-      distance_ideal=3.0)
-    classes = [ bp.saenger_class for bp in params.base_pair ]
-    assert (classes == ["XIX", "XX", "V"])
-    # TODO: test h-bond extraction in either order???
-  print "OK"
-
-if __name__ == "__main__" :
-  exercise()
+base_rotation_axes = {
+  "A" : ["C1'", "N9"],
+  "G" : ["C1'", "N9"],
+  "C" : ["C1'", "N1"],
+  "T" : ["C1'", "N1"],
+  "U" : ["C1'", "N1"],
+}
+base_rotatable_atoms = {
+  "A" : ["N1", "C2", "H2", "N3", "C4", "C5", "C6", "N6", "H61", "H62", "N7",
+         "C8", "H8"],
+  "G" : ["N1", "H1", "C2", "N2", "H21", "H22", "N3", "C4", "C5", "C6", "O6",
+         "N7", "C8", "H8"],
+  "C" : ["C2", "O2", "N3", "C4", "N4", "H41", "H42", "C5", "H5", "C6", "H6"],
+  "T" : ["C2", "O2", "N3", "H3", "C4", "O4", "C5", "C7", "H71", "H72", "H73",
+         "C6", "H6"],
+  "U" : ["C2", "O2", "N3", "H3", "C4", "O4", "C5", "H5", "C6", "H6"],
+}
+def flip_base (atom_group, angle=180) :
+  import scitbx.matrix
+  axis_point_1 = axis_point_2 = None
+  rotateable_atoms = []
+  base_name = atom_group.resname.strip()
+  if ("r" in base_name) :
+    base_name = base_name.replace("r")
+  elif (base_name.startswith("D") and len(base_name) == 2) :
+    base_name = base_name[1]
+  assert base_name in base_rotation_axes.keys(), base_name
+  for atom in atom_group.atoms() :
+    atom_name = atom.name.strip()
+    if (atom_name == base_rotation_axes[base_name][0]) :
+      axis_point_1 = atom.xyz
+    elif (atom_name == base_rotation_axes[base_name][1]) :
+      axis_point_2 = atom.xyz
+    elif (atom_name in base_rotatable_atoms[base_name]) :
+      rotateable_atoms.append(atom)
+  if (None in [axis_point_1, axis_point_2]) :
+    raise RuntimeError("Missing atom(s) for rotateable axis.")
+  elif (len(rotateable_atoms) == 0) :
+    raise RuntimeError("Missing nucleotide base.")
+  for atom in rotateable_atoms :
+    atom.xyz = scitbx.matrix.rotate_point_around_axis(
+      axis_point_1=axis_point_1,
+      axis_point_2=axis_point_2,
+      point=atom.xyz,
+      angle=angle,
+      deg=True)

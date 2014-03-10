@@ -1918,6 +1918,7 @@ mmtbx/secondary_structure/ext.cpp -text
 mmtbx/secondary_structure/identify.hpp -text
 mmtbx/secondary_structure/proteins.py -text
 mmtbx/secondary_structure/tst.py -text
+mmtbx/secondary_structure/tst_base_pairing.py -text
 mmtbx/secondary_structure/utils.py -text
 mmtbx/solvent/ensemble_ordered_solvent.py svneol=native#text/x-python
 mmtbx/tls/command_line.py -text
