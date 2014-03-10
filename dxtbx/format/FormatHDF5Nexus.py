@@ -21,17 +21,25 @@ class FormatHDF5Nexus(FormatHDF5):
     import h5py
     self._h5_handle = h5py.File(self.get_image_file(), 'r')
 
+    # compute coordinate frame transformation to imgCIF frame, just for kicks
+    entry = self._h5_handle['entry']
+    sample = entry['sample']
+    axis = tuple(sample['pose']['CBF_axis_omega'].attrs['vector'])
+
+    # NeXus coordinate frame: Z is canonical     
+    from rstbx.cftbx.coordinate_frame_helpers import align_reference_frame
+    self._R = align_reference_frame(axis, (1, 0, 0), (0, 0, -1), (0, 0, 1))
+
+    return
+
   def _goniometer(self):
     ''' Get the rotation axis. '''
     entry = self._h5_handle['entry']
     sample = entry['sample']
     pose = sample['pose']
-    axis = pose['CBF_axis_omega'].attrs['vector']
+    axis = tuple(pose['CBF_axis_omega'].attrs['vector'])
 
-    # FXIME pretty sure I should not have a factor of -1 in here... however
-    # with this in I can properly index and refine from the data...
-
-    return self._goniometer_factory.known_axis(-1 * axis)
+    return self._goniometer_factory.known_axis(self._R * axis)
 
   def _detector(self):
     from scitbx import matrix
@@ -61,10 +69,10 @@ class FormatHDF5Nexus(FormatHDF5):
     angle = rotation[0]
     m_rot = vector.axis_and_angle_as_r3_rotation_matrix(angle, deg=True)
 
-    # Transform detector frame
-    fast = (m_rot * fast).normalize()
-    slow = (m_rot * slow).normalize()
-    orig = m_rot * orig
+    # Transform detector frame - also to imgCIF
+    fast = self._R * (m_rot * fast).normalize()
+    slow = self._R * (m_rot * slow).normalize()
+    orig = self._R * m_rot * orig
 
     # Get the pixel and image size
     pixel_size = 1000 * detector['x_pixel_size'].value, \
@@ -86,7 +94,7 @@ class FormatHDF5Nexus(FormatHDF5):
     sample = entry['sample']
     beam = sample['beam']
     wavelength = beam['wavelength']
-    return self._beam_factory.simple_directional(matrix.col((0,0,-1)),
+    return self._beam_factory.simple_directional(self._R * matrix.col((0,0,-1)),
                                                  wavelength[0])
 
   def _scan(self):
