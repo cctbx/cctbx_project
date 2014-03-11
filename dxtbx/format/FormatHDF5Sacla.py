@@ -12,6 +12,9 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
     except IOError, e:
       return False
 
+    if True:
+      return False
+
     return tag == "\211HDF\r\n\032\n"
 
   def __init__(self, image_file):

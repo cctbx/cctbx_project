@@ -2,6 +2,21 @@ from __future__ import division
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatHDF5 import FormatHDF5
 
+########################################################################
+# Allow regularization of input parameters to correct for tiny O(10^-16)
+# differences from rotation of coordinate frames - set debugging = True
+########################################################################
+
+debugging = False
+
+if debugging:
+  def rvec(a):
+    from scitbx import matrix
+    return matrix.col([round(_a) for _a in a.elems])
+else:
+  def rvec(a):
+    return a
+
 class FormatHDF5Nexus(FormatHDF5):
 
   @staticmethod
@@ -39,7 +54,7 @@ class FormatHDF5Nexus(FormatHDF5):
     pose = sample['pose']
     axis = tuple(pose['CBF_axis_omega'].attrs['vector'])
 
-    return self._goniometer_factory.known_axis(self._R * axis)
+    return self._goniometer_factory.known_axis(rvec(self._R * axis))
 
   def _detector(self):
     from scitbx import matrix
@@ -76,13 +91,14 @@ class FormatHDF5Nexus(FormatHDF5):
 
     # Get the pixel and image size
     pixel_size = 1000 * detector['x_pixel_size'].value, \
-      1000 * detector['y_pixel_size'].value
-    image_size = len(detector['x_pixel_offset']), len(detector['y_pixel_offset'])
+                 1000 * detector['y_pixel_size'].value
+    image_size = len(detector['x_pixel_offset']), \
+                 len(detector['y_pixel_offset'])
     trusted_range = (-1, detector['saturation_value'][0])
 
     # Make the detector
     return self._detector_factory.make_detector(
-      "", fast, slow, orig,
+      "", rvec(fast), rvec(slow), orig,
       pixel_size, image_size, trusted_range)
 
   def _beam(self):
@@ -94,8 +110,9 @@ class FormatHDF5Nexus(FormatHDF5):
     sample = entry['sample']
     beam = sample['beam']
     wavelength = beam['wavelength']
-    return self._beam_factory.simple_directional(self._R * matrix.col((0,0,-1)),
-                                                 wavelength[0])
+    return self._beam_factory.simple_directional(
+      rvec(self._R * matrix.col((0,0,-1))),
+      wavelength[0])
 
   def _scan(self):
     ''' Get the scan. '''
