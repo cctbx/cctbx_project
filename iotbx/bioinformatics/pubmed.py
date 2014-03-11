@@ -60,6 +60,7 @@ class article (slots_getstate_setstate) :
     self.volume = get_node_data(xmlrec, "Volume").encode("utf-8")
     self.pages = get_node_data(xmlrec, "MedlinePgn").encode("utf-8")
     self.pmid = get_node_data(xmlrec, "PMID").encode("utf-8")
+    self.doi = None
     article_ids = xmlrec.getElementsByTagName("ArticleId")
     for xml_node in article_ids :
       id_type = xml_node.getAttribute("IdType")
@@ -67,6 +68,9 @@ class article (slots_getstate_setstate) :
         self.doi = xml_node.childNodes[0].data.encode("utf-8")
 
   def as_phenix_citation (self) :
+    doi = "None"
+    if (self.doi is not None) :
+      doi = "\"%s\"" % self.doi
     return "\n".join([
       "citation {",
       "  article_id = %s" % self.pmid,
@@ -75,7 +79,7 @@ class article (slots_getstate_setstate) :
       "  journal = %s" % self.journal,
       "  volume = %s" % self.volume,
       "  pages = %s" % self.pages,
-      "  doi_id = \"%s\"" % self.doi,
+      "  doi_id = %s" % doi,
       "  pmid = %s" % self.pmid,
       "}"])
 
