@@ -19,6 +19,17 @@ cleanup_and_exit() {
 }
 trap "cleanup_and_exit 1" HUP INT QUIT TERM
 
+# This script must be run from the SIT directory, which contains the
+# .sit_release file, so that the relative PYTHONPATH set by sit_setup
+# is valid.  XXX Wouldn't it make sense to have
+# /reg/g/psdm/etc/ana_env.sh set an absolute path?  Could find the
+# user's release directory from .sit_release file and cd to it in the
+# submit.sh script.  No, that's much too slow!
+if ! relinfo > /dev/null 2>&1; then
+    echo "Must run this script from the SIT release directory" > /dev/stderr
+    exit 1
+fi
+
 # The copy_phil() functions copies a phil file from ${1} to ${2}.phil.
 # Included phil files are processed recursively, and written to
 # ${2}.1.phil, ${2}.2.phil, ${2}.1.1.phil, etc.  Files are modified to
@@ -73,8 +84,8 @@ while test ${#} -ge 0; do
     case "${1}" in
         -c)
             cfg="${2}"
-            if ! test -r "${cfg}" 2> /dev/null; then
-                echo "config must be a readable file" > /dev/stderr
+            if test ! -r "${cfg}"; then
+                echo "${2} must be a readable file" > /dev/stderr
                 cleanup_and_exit 1
             fi
             shift
@@ -83,8 +94,8 @@ while test ${#} -ge 0; do
 
         -i)
             xtc=`readlink -fn "${2}"`
-            if test ! -d "${xtc}" 2> /dev/null; then
-                echo "${xtc} does not exist or is not a directory" > /dev/stderr
+            if test ! -d "${xtc}"; then
+                echo "${2} does not exist or is not a directory" > /dev/stderr
                 cleanup_and_exit 1
             fi
             shift
@@ -93,11 +104,11 @@ while test ${#} -ge 0; do
 
         -o)
             out="${2}"
-            if test -e "${out}" -a ! -d "${out}" 2> /dev/null; then
-                echo "${out} exists but is not a directory" > /dev/stderr
+            if test -e "${out}" -a ! -d "${out}"; then
+                echo "${2} exists but is not a directory" > /dev/stderr
                 cleanup_and_exit 1
             fi
-            test -d "${out}" 2> /dev/null || \
+            test -d "${out}" || \
                 echo "Directory ${out} will be created" > /dev/stderr
             shift
             shift
@@ -177,24 +188,23 @@ if test "${#}" -gt 0; then
 fi
 
 # Take ${exp} from the environment unless overridden on the command
-# line, and find its absolute path.
+# line, and find its absolute path.  Set up the directory with the XTC
+# files (i.e. the input directory) as a absolute path to a
+# subdirectory of the experiment's directory.
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
-exp=`find "/global/project/projectdirs/lcls/CXI" -maxdepth 1 -noleaf \
-    -name "${exp}"`
-if test -n "${exp}"; then
-    if ! test -d "${exp}" 2> /dev/null; then
+if test -n "${exp}" -a -z "${exp}"; then
+    xtc=`find "/global/project/projectdirs/lcls/CXI" -maxdepth 1 -noleaf \
+        -name "${exp} -type d"`
+    if ! test -d "${exp}"; then
         echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
         cleanup_and_exit 1
     fi
+    xtc="${xtc}/xtc"
 fi
 
-# Unless specified on the command line, set up the directory with the
-# XTC files (i.e. the input directory) as a absolute path to a
-# subdirectory of the experiment's directory.  Construct a sorted list
-# of unique stream numbers for ${run}.  Explicitly consider streams
-# being transferred from the DAQ (*.xtc.inprogress), but not failed
-# transfers (*.xtc.inprogress.*).
-test -z "${xtc}" && xtc="${exp}/xtc"
+# Construct a sorted list of unique stream numbers for ${run}.
+# Explicitly consider streams being transferred from the DAQ
+# (*.xtc.inprogress), but not failed transfers (*.xtc.inprogress.*).
 streams=`ls "${xtc}"/e*-r${run}-s*-c*.xtc                         \
             "${xtc}"/e*-r${run}-s*-c*.xtc.inprogress 2> /dev/null \
     | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"                    \
@@ -220,7 +230,7 @@ if test -z "${nproc}"; then
                     }' "${cfg}"`
     test "${nproc}" -gt 0 2> /dev/null || nproc="7"
 fi
-if ! test ${nproc} != 2 2> /dev/null; then
+if test ${nproc} = 2; then
     echo "Warning: running with two processors makes no sense" > /dev/stderr
 fi
 
@@ -248,7 +258,7 @@ if test -z "${trial}"; then
                        -noleaf                 \
                        -name "[0-9][0-9][0-9]" \
                        -printf "%f\n" |        \
-         sort -n | tail -n 1`
+         sort -n | tail -n 1` 2> /dev/null
     if test -z "${trial}"; then
         trial="000"
     else
@@ -259,7 +269,7 @@ if test -z "${trial}"; then
         trial=`expr "${trial}" \+ 1 | awk '{ printf("%03d", $1); }'`
     fi
 fi
-out=`mkdir -p "${out}/${trial}" && readlink -fn "${out}/${trial}"`
+out=`mkdir -p "${out}/${trial}" && readlink -fn "${out}/${trial}" 2> /dev/null`
 if test -z "${out}"; then
     echo "Error: Could not create output directory" > /dev/stderr
     cleanup_and_exit 1
@@ -440,7 +450,7 @@ done
 wait
 EOF
 
-# Submit the analysis of all streams to the queueing system.  XXX
+# Submit the analysis of all streams to the queuing system.  XXX
 # Delete the created output directories?
 qsub "${out}/submit.pbs" || cleanup_and_exit 1
 
