@@ -25,9 +25,7 @@ if ! test -x "${PYANA}"; then
     exit 1
 fi
 
-# IP-address of a random host that has the scratch directory mounted.
-# psexport is preferred over psanafeh, since the latter is not
-# accessible from everywhere.
+# IP-address of a random host that mounts all needed file systems.
 NODE="psexport.slac.stanford.edu"
 NODE=`host "${NODE}" | grep "has address" | head -n 1 | cut -d ' ' -f 1`
 
@@ -46,7 +44,7 @@ NODE=`ssh -S "${tmpdir}/control.socket" ${NODE} "hostname -f"`
 # user's release directory from .sit_release file and cd to it in the
 # submit.sh script.  No, that's much too slow!
 if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
-    "cd \"${PWD}\" ; relinfo > /dev/null 2>&1"; then
+    "cd \"${PWD}\" ; relinfo" > /dev/null 2>&1; then
     echo "Must run this script from the SIT release directory" > /dev/stderr
     exit 1
 fi
@@ -112,8 +110,9 @@ while test ${#} -ge 0; do
     case "${1}" in
         -c)
             cfg="${2}"
-            if ! test -r "${cfg}" 2> /dev/null; then
-                echo "config must be a readable file" > /dev/stderr
+            if ssh -S "${tmpdir}/control.socket" ${NODE} \
+                "test ! -r \"${cfg}\""; then
+                echo "${2} must be a readable file" > /dev/stderr
                 cleanup_and_exit 1
             fi
             shift
@@ -124,8 +123,8 @@ while test ${#} -ge 0; do
             xtc=`ssh -S "${tmpdir}/control.socket" ${NODE} \
                 "cd \"${PWD}\" ; readlink -fn \"${2}\""`
             if ssh -S "${tmpdir}/control.socket" ${NODE} \
-                "test ! -d \"${xtc}\" 2> /dev/null"; then
-                echo "${xtc} does not exist or is not a directory" > /dev/stderr
+                "test ! -d \"${xtc}\""; then
+                echo "${2} does not exist or is not a directory" > /dev/stderr
                 cleanup_and_exit 1
             fi
             shift
@@ -135,13 +134,12 @@ while test ${#} -ge 0; do
         -o)
             out="${2}"
             if ssh -S "${tmpdir}/control.socket" ${NODE} \
-                "cd \"${PWD}\" ;                         \
-                 test -e \"${out}\" -a ! -d \"${out}\" 2> /dev/null"; then
-                echo "${out} exists but is not a directory" > /dev/stderr
+                "cd \"${PWD}\" ; test -e \"${out}\" -a ! -d \"${out}\""; then
+                echo "${2} exists but is not a directory" > /dev/stderr
                 cleanup_and_exit 1
             fi
-            ssh -S "${tmpdir}/control.socket" ${NODE}                \
-                "cd \"${PWD}\" ; test -d \"${out}\" 2> /dev/null" || \
+            ssh -S "${tmpdir}/control.socket" ${NODE}   \
+                "cd \"${PWD}\" ; test -d \"${out}\"" || \
                 echo "Directory ${out} will be created" > /dev/stderr
             shift
             shift
@@ -221,28 +219,26 @@ if test "${#}" -gt 0; then
 fi
 
 # Take ${exp} from the environment unless overridden on the command
-# line, and find its absolute path.
+# line, and find its absolute path.  Set up the directory with the XTC
+# files (i.e. the input directory) as a absolute path to a
+# subdirectory of the experiment's directory.
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
-exp=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-    "find \"/reg/d/psdm\" -maxdepth 2 -noleaf -name \"${exp}\""`
-if test -n "${exp}"; then
-    if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
-        "test -d \"${exp}\" 2> /dev/null"; then
+if test -n "${exp}" -a -z "${xtc}"; then
+    xtc=`ssh -S "${tmpdir}/control.socket" ${NODE} \
+        "find \"/reg/d/psdm\" -maxdepth 2 -noleaf -name \"${exp}\" -type d"`
+    if ! ssh -S "${tmpdir}/control.socket" ${NODE} "test -d \"${xtc}\""; then
         echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
         cleanup_and_exit 1
     fi
+    xtc="${xtc}/xtc"
 fi
 
-# Unless specified on the command line, set up the directory with the
-# XTC files (i.e. the input directory) as a absolute path to a
-# subdirectory of the experiment's directory.  Construct a sorted list
-# of unique stream numbers for ${run}.  Explicitly consider streams
-# being transferred from the DAQ (*.xtc.inprogress), but not failed
-# transfers (*.xtc.inprogress.*).
-test -z "${xtc}" && xtc="${exp}/xtc"
+# Construct a sorted list of unique stream numbers for ${run}.
+# Explicitly consider streams being transferred from the DAQ
+# (*.xtc.inprogress), but not failed transfers (*.xtc.inprogress.*).
 streams=`ssh -S "${tmpdir}/control.socket" ${NODE}                 \
       "ls \"${xtc}\"/e*-r${run}-s*-c*.xtc                          \
-          \"${xtc}\"/e*-r${run}-s*-c*.xtc.inprogress 2> /dev/null" \
+          \"${xtc}\"/e*-r${run}-s*-c*.xtc.inprogress" 2> /dev/null \
     | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"                     \
     | sort -u                                                      \
     | tr -s '[:space:]' ' '`
@@ -263,7 +259,7 @@ if test -z "${nproc}"; then
                     }' "${cfg}"`
     test "${nproc}" -gt 0 2> /dev/null || nproc="7"
 fi
-if ! test ${nproc} != 2 2> /dev/null; then
+if test ${nproc} = 2; then
     echo "Warning: running with two processors makes no sense" > /dev/stderr
 fi
 
@@ -294,7 +290,7 @@ if test -z "${trial}"; then
                          -noleaf                     \
                          -name \"[0-9][0-9][0-9]\"   \
                          -printf \"%f\n\" |          \
-         sort -n | tail -n 1"`
+         sort -n | tail -n 1"` 2> /dev/null
     if test -z "${trial}"; then
         trial="000"
     else
@@ -308,7 +304,7 @@ fi
 out=`ssh -S "${tmpdir}/control.socket" ${NODE} \
     "cd \"${PWD}\"                &&           \
      mkdir -p \"${out}/${trial}\" &&           \
-     readlink -fn \"${out}/${trial}\""`
+     readlink -fn \"${out}/${trial}\"" 2> /dev/null`
 if test -z "${out}"; then
     echo "Error: Could not create output directory" > /dev/stderr
     cleanup_and_exit 1
@@ -490,7 +486,7 @@ if test "${?}" -ne "0"; then
     cleanup_and_exit 1
 fi
 
-# Submit the analysis of all streams to the queueing system from
+# Submit the analysis of all streams to the queuing system from
 # ${NODE}.
 ssh -S "${tmpdir}/control.socket" ${NODE} \
     "cd \"${PWD}\" && \"${out}/submit.sh\""
