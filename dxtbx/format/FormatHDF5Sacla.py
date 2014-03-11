@@ -12,6 +12,9 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
     except IOError, e:
       return False
 
+    # sorry all for the moment this is causing me problems trying to work out
+    # the NeXus HDF5 format...
+
     if True:
       return False
 
