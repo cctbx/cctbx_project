@@ -125,7 +125,7 @@ class intensities_scaler(object):
           refl_now = i
           cn_miller_indices +=1
           break
-      
+
       if len(I_obs_group) == 1:
         I_obs_merge = I_obs_group[0]
         sigI_obs_merge = sigI_obs_group[0]
@@ -133,14 +133,14 @@ class intensities_scaler(object):
         r_dif = ((sigI_obs_merge**2)/sigI_obs_merge)*1.7321
         r_w = (I_obs_merge**2)/sigI_obs_merge
         I_even_merge = I_obs_merge
-        I_odd_merge = I_obs_merge  
+        I_odd_merge = I_obs_merge
       else:
-        
+
         I_as_sigma = (I_obs_group - np.mean(I_obs_group))/np.std(I_obs_group)
         i_sel = (flex.abs(I_as_sigma) <= iph.sigma_max_merge)
         I_obs_group_sel = I_obs_group.select(i_sel)
         sigI_obs_group_sel = sigI_obs_group.select(i_sel)
-        
+
         if len(I_obs_group_sel) == 1:
           I_obs_merge = I_obs_group_sel[0]
           sigI_obs_merge = sigI_obs_group_sel[0]
@@ -148,14 +148,14 @@ class intensities_scaler(object):
           r_dif = ((sigI_obs_merge**2)/sigI_obs_merge)*1.7321
           r_w = (I_obs_merge**2)/sigI_obs_merge
           I_even_merge = I_obs_merge
-          I_odd_merge = I_obs_merge 
+          I_odd_merge = I_obs_merge
         else:
           I_obs_merge = np.mean(I_obs_group_sel)
           sigI_obs_merge = np.mean(sigI_obs_group_sel)
           no_observations = len(I_obs_group_sel)
           r_dif = flex.sum(((I_obs_group_sel - I_obs_merge)**2)/sigI_obs_group_sel)*math.sqrt(len(I_obs_group_sel)/(len(I_obs_group_sel)-1))
           r_w = flex.sum((I_obs_group_sel**2)/sigI_obs_group_sel)
-        
+
           #sepearte the observations into two groups
           i_even = range(0,len(I_obs_group_sel),2)
           i_odd = range(1,len(I_obs_group_sel),2)
@@ -165,8 +165,8 @@ class intensities_scaler(object):
             I_odd_sel.append(I_even_sel[len(I_even_sel)-1])
           I_even_merge = np.mean(I_even_sel)
           I_odd_merge = np.mean(I_odd_sel)
-        
-          
+
+
       if math.isnan(I_obs_merge) or math.isnan(sigI_obs_merge) or I_obs_merge==0 or sigI_obs_merge==0:
         print miller_index_group, I_obs_merge, sigI_obs_merge, ' - not merged'
       else:
@@ -178,7 +178,7 @@ class intensities_scaler(object):
         r_merge_w_all.append(r_w)
         I_even_merge_mean.append(I_even_merge)
         I_odd_merge_mean.append(I_odd_merge)
-      
+
       if i==len(I_obs_all_sort)-1:
         break
 
@@ -300,8 +300,8 @@ class intensities_scaler(object):
         one_over_dsqr.append(1/(binner_merge.bin_d_range(i)[1]**2))
         n_ref_complete.append(completeness_merge.binner.counts_complete()[i])
         n_ref_observed.append(completeness_merge.binner.counts_given()[i])
-      
-      
+
+
       cc_onehalf_all, slope_onehalf_all = get_overall_correlation(I_even_merge_mean, I_odd_merge_mean)
       txt_out += 'Overall completeness: %3.4f no. of observations: %3.4f' %((sum_bin_completeness/iph.n_bins)*100, sum_bin_multiplicities/iph.n_bins)
       txt_out += '\n'

@@ -26,7 +26,7 @@ class FormatHDF5Nexus(FormatHDF5):
     sample = entry['sample']
     axis = tuple(sample['pose']['CBF_axis_omega'].attrs['vector'])
 
-    # NeXus coordinate frame: Z is canonical     
+    # NeXus coordinate frame: Z is canonical
     from rstbx.cftbx.coordinate_frame_helpers import align_reference_frame
     self._R = align_reference_frame(axis, (1, 0, 0), (0, 0, -1), (0, 0, 1))
 
