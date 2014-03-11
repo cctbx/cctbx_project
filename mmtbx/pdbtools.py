@@ -60,6 +60,7 @@ adp
     .type = float
     .help = Set ADP of atoms to set_b_iso
     .short_caption=Set isotropic B to
+    .input_size = 64
   convert_to_isotropic = False
     .type = bool
     .help = Convert atoms to isotropic
@@ -91,6 +92,7 @@ sites
   shake = None
     .type = float
     .help = Randomize coordinates with mean error value equal to shake
+    .short_caption = Randomize coordinates (mean value)
   switch_rotamers = max_distant min_distant exact_match fix_outliers
     .type=choice(multi=False)
   translate = 0 0 0
@@ -118,6 +120,7 @@ occupancies
     .type = float
     .help = Set all or selected occupancies to given value
     .short_caption=Set occupancies to
+    .input_size = 64
   normalize = False
     .type = bool
     .help = Reset the sum of occupancies for each residue to 1.0.  Note that \
@@ -125,7 +128,7 @@ occupancies
     .short_caption = Reset total occupancy to 1
 }
 rotate_about_axis
-  .style = box
+  .style = box auto_align
 {
   axis = None
     .type = str
@@ -180,6 +183,7 @@ clear_seg_id = False
 convert_semet_to_met = False
   .type = bool
   .short_caption = Convert SeMet residues to Met
+  .style = noauto
 rename_chain_id
   .help = Rename chains
   .short_caption = Rename chain ID
