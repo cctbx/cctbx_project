@@ -1,6 +1,6 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.reciprocal_space_arrays
 
+from __future__ import division
 import mmtbx.utils
 import mmtbx.f_model
 from iotbx import reflection_file_utils
@@ -11,7 +11,7 @@ from libtbx.utils import Sorry
 from cStringIO import StringIO
 import sys, os
 
-msg="""\
+legend = """\
 
 phenix.reciprocal_space_arrays:
 compute various arrays such as Fcalc, Fmask, Fmodel, Fbulk, and more.
@@ -126,7 +126,7 @@ def extract_experimental_phases(experimental_phases, f_obs):
 
 def run(args, log = sys.stdout):
   if(len(args)==0):
-    print >> log, msg
+    print >> log, legend
     defaults(log=log)
     return
   #
