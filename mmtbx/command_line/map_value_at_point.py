@@ -1,6 +1,6 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_value_at_point
 
+from __future__ import division
 import sys
 import mmtbx.utils
 from libtbx.utils import Sorry
@@ -10,7 +10,7 @@ from iotbx import reflection_file_reader
 from iotbx.pdb import combine_unique_pdb_files
 from scitbx.array_family import flex
 
-msg="""\
+legend = """\
 
 phenix.map_value_at_point: tool to compute map value at a given point using
 eight-point interpolation.
@@ -60,7 +60,7 @@ def defaults(log):
 
 def run(args, log = sys.stdout):
   if(len(args)==0):
-    print >> log, msg
+    print >> log, legend 
     defaults(log=log)
     return
   #

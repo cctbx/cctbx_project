@@ -238,6 +238,7 @@ anomalous_scatterers
 
 fmodel_from_xray_structure_master_params = iotbx.phil.parse(
   fmodel_from_xray_structure_master_params_str, process_includes=True)
+master_phil = fmodel_from_xray_structure_master_params # XXX for phenix docs
 
 def set_fp_fdp_for_anomalous_scatterers(pdb_hierarchy, xray_structure,
   anomalous_scatterer_groups):
