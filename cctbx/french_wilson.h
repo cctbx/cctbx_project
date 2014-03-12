@@ -144,7 +144,7 @@ floatType expectEFW(floatType eosq, floatType sigesq, bool centric)
 {
   if (sigesq <= 0.) // Apparently no measurement error
   {
-    PHASER_ASSERT(eosq>=0.); // Can only allow zero sigma for non-negative I
+    CCTBX_ASSERT(eosq>=0.); // Can only allow zero sigma for non-negative I
     return std::sqrt(eosq);
   }
   floatType eEFW;
@@ -158,7 +158,7 @@ floatType expectEsqFW(floatType eosq, floatType sigesq, bool centric)
 {
   if (sigesq <= 0.)
   {
-    PHASER_ASSERT(eosq>=0.);
+    CCTBX_ASSERT(eosq>=0.);
     return eosq;
   }
   floatType eEsqFW;
