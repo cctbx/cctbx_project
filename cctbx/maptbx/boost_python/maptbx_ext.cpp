@@ -380,6 +380,21 @@ namespace {
         (uctbx::unit_cell const&,
          af::const_ref<double, af::c_grid<3> > const&,
          scitbx::mat3<double> const&,
+         scitbx::vec3<double> const&,
+         af::tiny<int, 3> const&,
+         af::tiny<int, 3> const&)) rotate_translate_map, (
+      arg("unit_cell"),
+      arg("map_data"),
+      arg("rotation_matrix"),
+      arg("translation_vector"),
+      arg("start"),
+      arg("end")));
+
+    def("rotate_translate_map",
+      (af::versa<double, af::c_grid<3> >(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid<3> > const&,
+         scitbx::mat3<double> const&,
          scitbx::vec3<double> const& )) rotate_translate_map, (
       arg("unit_cell"),
       arg("map_data"),
@@ -442,6 +457,21 @@ namespace {
       arg("scale_by"),
       arg("set_value")));
 
+    def("fem_averaging_loop",
+      (af::shared<std::complex<double> >(*)
+        (af::const_ref<std::complex<double> > const&,
+         af::const_ref<double> const&,
+         af::const_ref<double> const&,
+         double const&,
+         int const&,
+         int const&)) fem_averaging_loop, (
+      arg("map_coefficients"),
+      arg("r_factors"),
+      arg("sigma_over_f_obs"),
+      arg("random_scale"),
+      arg("random_seed"),
+      arg("n_cycles")));
+
     def("conditional_solvent_region_filter",
       (af::versa<double, af::c_grid<3> >(*)
         (af::const_ref<double, af::c_grid_padded<3> > const&,
@@ -450,6 +480,13 @@ namespace {
       arg("bulk_solvent_mask"),
       arg("map_data"),
       arg("threshold")));
+
+    def("map_sum_at_sites_frac",
+      (double(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&)) map_sum_at_sites_frac, (
+      arg("map_data"),
+      arg("sites_frac")));
 
     def("set_box_copy",
       (af::versa<double, af::c_grid<3> >(*)

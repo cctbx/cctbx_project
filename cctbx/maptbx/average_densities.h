@@ -99,6 +99,46 @@ af::versa<double, af::c_grid<3> > rotate_translate_map(
                    cctbx::uctbx::unit_cell const& unit_cell,
                    af::const_ref<double, af::c_grid<3> > const& map_data,
                    scitbx::mat3<double> const& rotation_matrix,
+                   scitbx::vec3<double> const& translation_vector,
+                   af::tiny<int, 3> const& start,
+                   af::tiny<int, 3> const& end)
+{
+    int nx = static_cast<int>(map_data.accessor()[0]);
+    int ny = static_cast<int>(map_data.accessor()[1]);
+    int nz = static_cast<int>(map_data.accessor()[2]);
+    af::versa<double, af::c_grid<3> > new_data(af::c_grid<3>(nx,ny,nz),
+      af::init_functor_null<double>());
+    af::ref<double, af::c_grid<3> > new_data_ref = new_data.ref();
+    for (int i = 0; i < nx; i++) {
+      for (int j = 0; j < ny; j++) {
+        for (int k = 0; k < nz; k++) {
+          if(i>=start[0] && j>=start[1] && k>=start[2] &&
+             i<=end[0] && j<=end[1] && k<=end[2]) {
+            cctbx::fractional<> grid_node_frac = cctbx::fractional<>(
+              i/static_cast<double>(nx),
+              j/static_cast<double>(ny),
+              k/static_cast<double>(nz));
+            cctbx::cartesian<> grid_node_cart = unit_cell.orthogonalize(
+              grid_node_frac);
+            cctbx::fractional<> grid_node_frac_shifted = unit_cell.fractionalize(
+              rotation_matrix * grid_node_cart + translation_vector);
+            for (int p = 0; p < 5; p++) {
+              for (int q = 0; q < 3; q++) {
+                if(grid_node_frac_shifted[q] <  0) grid_node_frac_shifted[q] += 1;
+                if(grid_node_frac_shifted[q] >= 1) grid_node_frac_shifted[q] -= 1;
+              }
+            }
+            new_data_ref(i,j,k) = tricubic_interpolation(map_data,
+              grid_node_frac_shifted);
+          }
+    }}}
+    return new_data;
+}
+
+af::versa<double, af::c_grid<3> > rotate_translate_map(
+                   cctbx::uctbx::unit_cell const& unit_cell,
+                   af::const_ref<double, af::c_grid<3> > const& map_data,
+                   scitbx::mat3<double> const& rotation_matrix,
                    scitbx::vec3<double> const& translation_vector)
 {
     int nx = static_cast<int>(map_data.accessor()[0]);
