@@ -79,6 +79,7 @@ class article (slots_getstate_setstate) :
       "  journal = %s" % self.journal,
       "  volume = %s" % self.volume,
       "  pages = %s" % self.pages,
+      "  year = %s" % self.year,
       "  doi_id = %s" % doi,
       "  pmid = %s" % self.pmid,
       "}"])
