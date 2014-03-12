@@ -10,3 +10,6 @@ env.SharedLibrary(target="#lib/cctbx_emma_ext", source=[
 env.SharedLibrary(target="#lib/cctbx_orientation_ext", source=[
   "orientation_ext.cpp",
 ])
+env.SharedLibrary(target="#lib/cctbx_french_wilson_ext", source=[
+  "french_wilson_ext.cpp",
+])
