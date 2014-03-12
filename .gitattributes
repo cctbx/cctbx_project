@@ -141,6 +141,7 @@ cctbx/maptbx/asymmetric_map_ext.cpp svneol=native#text/plain
 cctbx/maptbx/blobs_cmd.cpp svneol=native#text/plain
 cctbx/maptbx/boost_python/grid_indices_around_sites.cpp svneol=native#text/plain
 cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x-python
+cctbx/maptbx/connectivity.h -text
 cctbx/maptbx/dijkstra.cpp svneol=native#text/plain
 cctbx/maptbx/fft.h -text
 cctbx/maptbx/grid_indices_around_sites.h svneol=native#text/plain
@@ -206,6 +207,7 @@ cctbx/regression/random_generator_state.pickle -text
 cctbx/regression/structure_ideal.pickle -text
 cctbx/regression/structure_start.pickle -text
 cctbx/regression/tst_adp_constraints_cartesian.py -text
+cctbx/regression/tst_connectivity.py -text
 cctbx/regression/tst_crystal_model.py -text
 cctbx/regression/tst_crystal_model_serialize.py -text
 cctbx/regression/tst_direct_scaling.py -text

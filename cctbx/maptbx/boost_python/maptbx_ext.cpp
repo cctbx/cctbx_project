@@ -14,6 +14,7 @@
 #include <cctbx/maptbx/sphericity.h>
 #include <cctbx/maptbx/mask.h>
 #include <cctbx/maptbx/utils.h>
+#include <cctbx/maptbx/connectivity.h>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -129,6 +130,18 @@ namespace {
                      arg("n_bins"))))
         .def("map_data", &w_t::map_data)
         .def("v_values", &w_t::v_values)
+      ;
+    }
+
+    {
+      typedef connectivity w_t;
+
+      class_<w_t>("connectivity", no_init)
+        .def(init<af::const_ref<double, af::c_grid<3> > const&,
+                  double const& >(
+                    (arg("map_data"),
+                     arg("threshold"))))
+        .def("result",    &w_t::result)
       ;
     }
 
