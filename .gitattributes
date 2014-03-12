@@ -82,6 +82,7 @@ cbflib_adaptbx/run_tests.py svneol=native#text/x-python
 cctbx/adp_restraints/aniso_restraints.h svneol=native#text/plain
 cctbx/adp_restraints/aniso_restraints_bpl.cpp svneol=native#text/plain
 cctbx/adp_restraints/gradients.tex -text
+cctbx/boost_python/french_wilson_ext.cpp -text
 cctbx/boost_python/orientation_ext.cpp -text
 cctbx/command_line/cod_select_and_pickle.py svneol=native#text/x-python
 cctbx/command_line/find_reticular_twin_laws.py -text
@@ -128,6 +129,7 @@ cctbx/examples/sys_abs_equiv_space_groups.cpp svneol=native#text/plain
 cctbx/examples/trigonal_r_vs_tetragonal_i.py svneol=native#text/x-python
 cctbx/examples/tst_space_subgroups.py svneol=native#text/x-python
 cctbx/examples/unit_cell_minimizers.py svneol=native#text/x-python
+cctbx/french_wilson.h -text
 cctbx/french_wilson.py svneol=native#text/x-python
 cctbx/geometry_restraints/bond_misc.h svneol=native#text/plain
 cctbx/geometry_restraints/gradients.tex -text
