@@ -6,7 +6,7 @@ from scitbx.math import dihedral_angle
 from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0, bessel_i0, bessel_i1,\
-     bessel_ln_of_i0, ei1, ei0
+     bessel_ln_of_i0, ei1, ei0, parabolic_cylinder_d
 from scitbx.math import bessel_inverse_i1_over_i0
 from scitbx.math import gamma_incomplete, gamma_incomplete_complement
 from scitbx.math import gamma_complete, exponential_integral_e1z
@@ -1957,7 +1957,18 @@ def exercise_equally_spaced_points_on_vector():
   assert approx_equal(r, [(1.0, 2.0, 3.0), (1.0, 2.0, 4.25), (1.0, 2.0, 5.5),
     (1.0, 2.0, 6.75), (1.0, 2.0, 8.0)])
 
+def exercise_parabolic_cylinder_d():
+  va = flex.random_double(100)
+  x  = flex.random_double(100)
+  for va_, x_ in zip(va,x):
+    scale1 = 1#random.choice([0, 1.e-6, 1.e-3, 0.1, 1, 1.e+3, 1.e+6])
+    scale2 = random.choice([0, 1.e-6, 1.e-3, 0.1, 1, 1.e+3, 1.e+6])
+    va_ = va_*scale1
+    x_  = x_*scale2
+    print "Dv(%.6g,%.6g)=%.6g"%(va_, x_, parabolic_cylinder_d(va_, x_))
+
 def run():
+  exercise_parabolic_cylinder_d()
   exercise_equally_spaced_points_on_vector()
   exercise_weighted_covariance()
   exercise_distributions()

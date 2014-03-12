@@ -2335,6 +2335,7 @@ scitbx/math/least_squares_plane.h -text
 scitbx/math/minimum_covering_ellipsoid.py svneol=native#text/x-python
 scitbx/math/modulo.h -text
 scitbx/math/numeric_limits.h -text
+scitbx/math/parabolic_cylinder_d.h -text
 scitbx/math/polygon_intersection.h -text
 scitbx/math/rotation.h -text
 scitbx/math/scale_curves.py -text

@@ -1,5 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
+#include <scitbx/math/parabolic_cylinder_d.h>
 #include <scitbx/math/bessel.h>
 #include <scitbx/math/chebyshev.h>
 #include <scitbx/math/dihedral.h>
@@ -311,6 +312,9 @@ namespace {
         scitbx::af::const_ref<double> const&)) erf);
     def("erfc", (double(*)(double const&)) erfc);
     def("erfcx", (double(*)(double const&)) erfcx);
+
+    def("parabolic_cylinder_d", (double(*)(double, double))
+      parabolic_cylinder_d::dv);
 
     def("bessel_i1_over_i0", (double(*)(double const&)) bessel::i1_over_i0);
     def("bessel_i1_over_i0",
