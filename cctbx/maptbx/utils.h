@@ -8,6 +8,7 @@
 #include <scitbx/math/utils.h>
 #include <scitbx/math/modulo.h>
 #include <scitbx/array_family/sort.h>
+#include <scitbx/random.h>
 
 #include <cctbx/maptbx/eight_point_interpolation.h> //indirect import?
 
@@ -158,6 +159,18 @@ void hoppe_gassman_modification(af::ref<DataType, af::c_grid<3> > map_data,
 }
 
 template <typename DataType>
+DataType map_sum_at_sites_frac(
+  af::const_ref<DataType, af::c_grid<3> > const& map_data,
+  af::const_ref<scitbx::vec3<DataType> > const& sites_frac)
+{
+  DataType result = 0;
+  for(int i = 0; i < sites_frac.size(); i++) {
+    result += eight_point_interpolation(map_data, sites_frac[i]);
+  }
+  return result;
+}
+
+template <typename DataType>
 af::versa<DataType, af::c_grid<3> > set_box_copy(
   DataType const& value,
   af::ref<DataType, af::c_grid<3> > map_data_to,
@@ -185,6 +198,37 @@ af::versa<DataType, af::c_grid<3> > set_box_copy(
         }
   }}}
   return result_map;
+}
+
+template <typename ComplexType, typename FloatType>
+af::shared<ComplexType> fem_averaging_loop(
+  af::const_ref<ComplexType> const& map_coefficients,
+  af::const_ref<FloatType> const& r_factors,
+  af::const_ref<FloatType> const& sigma_over_f_obs,
+  FloatType const& random_scale,
+  int const& random_seed,
+  int const& n_cycles)
+{
+  CCTBX_ASSERT(n_cycles>0);
+  CCTBX_ASSERT(r_factors.size()==sigma_over_f_obs.size());
+  CCTBX_ASSERT(r_factors.size()==map_coefficients.size());
+  //af::shared<ComplexType> result(r_factors.size(),
+  //  af::init_functor_null<ComplexType>());
+  af::shared<ComplexType> result(r_factors.size());
+  for(int i = 0; i < result.size(); i++) result[i] = ComplexType(0,0);
+
+
+  scitbx::random::mersenne_twister mt(random_seed);
+  for(int j = 0; j < n_cycles; j++) {
+    for(int i = 0; i < map_coefficients.size(); i++) {
+      FloatType s1 = mt.random_double()*random_scale;
+      FloatType s2 = mt.random_double()*random_scale;
+      FloatType one_over_w = 1. + r_factors[i]*s1 + sigma_over_f_obs[i]*s2;
+      CCTBX_ASSERT(one_over_w != 0);
+      result[i] = result[i] + map_coefficients[i] / one_over_w;
+  }}
+  for(int i = 0; i < result.size(); i++) result[i] = result[i] * (1./n_cycles);
+  return result;
 }
 
 template <typename DataType>
