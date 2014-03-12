@@ -18,8 +18,11 @@ def print_header():
     print i.get_scan()
     from dxtbx.format.FormatMultiImage import FormatMultiImage
     if not issubclass(format_class, FormatMultiImage):
-      print 'Total Counts:'
-      print flex.sum(i.get_raw_data())
+      try:
+        counts = flex.sum(i.get_raw_data())
+        print 'Total Counts: %d' % counts
+      except AttributeError, e:
+        print e
 
 if __name__ == '__main__':
   print_header()
