@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# FormatSMVRigakuA200.py
+# FormatSMVRigaku.py
 #   Copyright (C) 2013 Diamond Light Source, Graeme Winter
 #
 #   This code is distributed under the BSD license, a copy of which is
