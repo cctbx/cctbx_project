@@ -119,7 +119,7 @@ class FormatSMVRigakuPilatus200L(FormatSMVRigaku):
     underload = 0
 
     return self._detector_factory.complex(
-        'CCD', detector_origin.elems, detector_fast.elems,
+        'PAD', detector_origin.elems, detector_fast.elems,
         detector_slow.elems, pixel_size, image_size, (underload, overload))
 
   def _beam(self):
@@ -158,6 +158,23 @@ class FormatSMVRigakuPilatus200L(FormatSMVRigaku):
     return self._scan_factory.single(
         self._image_file, format, exposure_time,
         osc_start, osc_range, epoch)
+
+  def get_raw_data(self):
+    '''Read the data - assuming it is streaming 4-byte unsigned ints following the
+    header...'''
+
+    from boost.python import streambuf
+    from dxtbx import read_int32
+    from scitbx.array_family import flex
+    assert(len(self.get_detector()) == 1)
+    size = self.get_detector()[0].get_image_size()
+    f = self.open_file(self._image_file)
+    f.read(int(self._header_dictionary['HEADER_BYTES']))
+    raw_data = read_int32(streambuf(f), int(size[0] * size[1]))
+    raw_data.reshape(flex.grid(size[1], size[0]))
+
+    return raw_data
+
 
 if __name__ == '__main__':
 
