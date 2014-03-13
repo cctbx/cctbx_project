@@ -346,9 +346,6 @@ class common_mode_correction(mod_event_info):
     # namespace.  XXX Misnomer--could be CAMP, too
     self.cspad_img = evt.get(self.address)
     if self.cspad_img is not None:
-      if (self.mask_img is not None):
-        sel = self.mask_img == -2
-        self.cspad_img.set_selected(sel, -2)
       return
     if self.address == 'XppGon-0|Cspad-0':
       # Kludge until cspad_tbx.image() can be rewritten to handle the
