@@ -2,6 +2,7 @@
 #include <boost/math/special_functions/bessel.hpp>
 #include <scitbx/math/parabolic_cylinder_d.h>
 #include <scitbx/math/erf.h>
+#include <cctbx/error.h>
 
 namespace cctbx {
 namespace pc=scitbx::math::parabolic_cylinder_d;
@@ -168,7 +169,8 @@ floatType expectEsqFW(floatType eosq, floatType sigesq, bool centric)
 }
 
 template <typename floatType, typename af_float, typename bool1D>
-bool is_FrenchWilson(af_float F, af_float SIGF, bool1D is_centric)
+bool is_FrenchWilson(af_float F, af_float SIGF, bool1D is_centric,
+                     floatType eps=0.001)
 {
   int nviolations(0);
   int NREFL(F.size());
@@ -183,7 +185,7 @@ bool is_FrenchWilson(af_float F, af_float SIGF, bool1D is_centric)
   }
   floatType fracviol(floatType(nviolations)/NREFL);
   // std::cout << "Fraction of FW violations: " << fracviol << std::endl;
-  if (fracviol > 0.001) return false;
+  if (fracviol > eps) return false;
   else return true;
 }
 
