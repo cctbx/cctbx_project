@@ -1,33 +1,17 @@
 from __future__ import division
 rdl_database = {
-  "TRP" : {
+  'ARG': {
     "default" : { # values from restraints library
-        ("CA", "CB", "CG" ) : (113.6, 1.9),
-        ("CB", "CG", "CD1") : (126.9, 1.5),
+      ('CA', 'CB', 'CG'): ('114.100', '2.000'),
+      ('CB', 'CG', 'CD'): ('111.300', '2.300'),
+      ('CG', 'CD', 'NE'): ('112.000', '2.200'),
+      ('CD', 'NE', 'NZ'): ('124.200', '1.500'),
         },
-    "m95" : {
-        ("CA", "CB", "CG" ) : (115.6, 1.9),
-        ("CB", "CG", "CD1") : (124.9, 1.5),
-        },
-    "t90" : {
-        ("CA", "CB", "CG" ) : (115.6, 1.9),
-        ("CB", "CG", "CD1") : (124.9, 1.5),
-        },
+    'ppt_?': {
+      ('CA', 'CB', 'CG'): ('116.120', '1.301'),
+      ('CB', 'CG', 'CD'): ('112.145', '1.910'),
+      ('CG', 'CD', 'NE'): ('111.786', '1.870'),
+      ('CD', 'NE', 'CZ'): ('124.379', '1.373'),
       },
-  "MET" : {
-    "default" : { # values from restaints library
-      ("CG", "SD", "CE") : (100.9, 2.2),
-        },
-    "default" : {
-      ("CG", "SD", "CE") : (102.9, 2.2),
-        },
-      },
-  "GLN" : {
-    "default" : { # values from restaints library
-      ("CA", "CB", "CG") : (114.1, 2.0),
-        },
-    "pp0?" : {
-      ("CA", "CB", "CG") : (116.040, 2.0),
-        },
-      },
+    },
   }
