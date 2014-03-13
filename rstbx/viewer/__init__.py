@@ -465,7 +465,7 @@ class image (screen_params) :
     return (int(x), int(y))
 
   def get_detector_distance (self) :
-    dist = self._raw.get_detector().get_distance()
+    dist = self._raw.get_detector()[0].get_distance()
     twotheta = self.get_detector_2theta()
     if (twotheta == 0.0) :
       return dist
@@ -475,7 +475,7 @@ class image (screen_params) :
   def get_detector_2theta (self) :
     from scitbx.matrix import col
 
-    n = col(self._raw.get_detector().get_normal())
+    n = col(self._raw.get_detector()[0].get_normal())
     s0 = col(self._raw.get_beam().get_unit_s0())
 
     return s0.angle(n, deg=False)
