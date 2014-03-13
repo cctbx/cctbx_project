@@ -22,4 +22,12 @@ rdl_database = {
       ("CG", "SD", "CE") : (102.9, 2.2),
         },
       },
+  "GLN" : {
+    "default" : { # values from restaints library
+      ("CA", "CB", "CG") : (114.1, 2.0),
+        },
+    "pp0?" : {
+      ("CA", "CB", "CG") : (116.040, 2.0),
+        },
+      },
   }
