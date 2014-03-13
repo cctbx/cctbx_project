@@ -874,23 +874,27 @@ def env_wavelength_sxr(evt, env):
   # and reduce the test expression to an integer comparison.
   f = '%Y-%m-%d, %H:%M %Z'
   s = t.seconds()
-  if s is None or s < timegm(strptime('2012-11-12, 01:00 UTC', f)):
+  if s is None:
     return None
-  elif s < timegm(strptime('2012-11-17, 01:00 UTC', f)):
+  elif s < timegm(strptime('2012-11-12, 17:00 UTC', f)):
+    return None
+  elif s < timegm(strptime('2012-11-17, 17:00 UTC', f)):
     abc = [+3.65920, -0.76851, +0.02105]
-  elif s < timegm(strptime('2012-11-21, 01:00 UTC', f)):
+  elif s < timegm(strptime('2012-11-20, 17:00 UTC', f)):
     abc = [+4.18190, -0.77650, +0.01020]
-  else:
-    abc = [None] * 3
-    for (i, name) in enumerate(['SXR:IOC:POLY:POLY:Lambda:O1:G3:A',
-                                'SXR:IOC:POLY:POLY:Lambda:O1:G3:B',
-                                'SXR:IOC:POLY:POLY:Lambda:O1:G3:C']):
-      pv = es.value(name)
-      if pv is None or len(pv.values) != 1:
+
+  if 'abc' not in locals():
+    pv = []
+    for name in ['SXR:IOC:POLY:POLY:Lambda:O1:G3:A',
+                 'SXR:IOC:POLY:POLY:Lambda:O1:G3:B',
+                 'SXR:IOC:POLY:POLY:Lambda:O1:G3:C']:
+      pv.append(es.value(name))
+      if pv[-1] is None or len(pv[-1].values) != 1:
         return None
-      abc[i] = pv.values[0]
-      if abc[i] is None:
+      pv[-1] = pv[-1].values[0]
+      if pv[-1] is None:
         return None
+    abc = [pv[i] for i in range(3)]
 
   # Get the grating motor position from EPICS.
   pv = es.value('SXR:MON:MMS:06.RBV')

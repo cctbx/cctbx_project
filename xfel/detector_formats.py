@@ -1,5 +1,8 @@
 from __future__ import division
-import time
+
+from calendar import timegm
+from time import strptime
+
 
 def reverse_timestamp(timestamp):
   """Reverse of the xfel.cxi.cspad_ana.cspad_tbx.evt_timestamp()
@@ -11,15 +14,13 @@ def reverse_timestamp(timestamp):
                    representation
   @return          Tuple of the Unix time in seconds and milliseconds
   """
-  from calendar import timegm
 
   tokens = timestamp.split('.')
-  gmtime_tuple = time.strptime(tokens[0]+" UTC", '%Y-%m-%dT%H:%MZ%S %Z')
+  gmtime_tuple = strptime(tokens[0] + " UTC", '%Y-%m-%dT%H:%MZ%S %Z')
   return (timegm(gmtime_tuple), float(tokens[1]))
 
+
 def _get_detector_format_version_dict():
-  from calendar import timegm
-  from time import strptime
 
   # Note: one must take daylight savings into account when defining
   # the cutoff-times for the LCLS runs.  The last shift of a run
@@ -29,11 +30,11 @@ def _get_detector_format_version_dict():
 
   # We have no metrology for the first two LCLS runs
   # LCLS started operation Oct 1, 2009
-  #timegm(strptime('2009-10-01, 02:00 UTC', f))
+  #timegm(strptime('2009-10-01, 16:00 UTC', f))
   # LCLS run 1: until Dec 17, 2009
-  #timegm(strptime('2009-12-18, 01:00 UTC', f)):
+  #timegm(strptime('2009-12-18, 17:00 UTC', f)):
   # LCLS run 2: until Sep 15, 2010
-  #timegm(strptime('2010-09-16, 02:00 UTC', f)):
+  #timegm(strptime('2010-09-16, 16:00 UTC', f)):
 
   return {
     'Sacla.MPCCD': {
@@ -47,77 +48,78 @@ def _get_detector_format_version_dict():
     # of the cctbx.xfel pickle format.
     'CXI 3.2': {
       'address':'CxiDs1-0|Cspad-0',
-      'start_time':timegm(strptime('2010-09-16, 02:00 UTC', f)),
-      'end_time'  :timegm(strptime('2011-03-09, 02:00 UTC', f))
+      'start_time':timegm(strptime('2010-09-16, 16:00 UTC', f)),
+      'end_time'  :timegm(strptime('2011-03-09, 17:00 UTC', f))
     },
     # LCLS run 4: until Oct 28, 2011
     'CXI 4.1': {
       'address':'CxiDs1-0|Cspad-0',
-      'start_time':timegm(strptime('2011-03-09, 02:00 UTC', f)),
-      'end_time'  :timegm(strptime('2011-10-29, 02:00 UTC', f))
+      'start_time':timegm(strptime('2011-03-09, 17:00 UTC', f)),
+      'end_time'  :timegm(strptime('2011-10-29, 16:00 UTC', f))
     },
-    # LCLS run 5: until May 31, 2012
+    # LCLS run 5: until May 30, 2012
     'CXI 5.1': {
       'address':'CxiDs1-0|Cspad-0',
-      'start_time':timegm(strptime('2011-10-29, 02:00 UTC', f)),
-      'end_time'  :timegm(strptime('2012-05-31, 02:00 UTC', f))
+      'start_time':timegm(strptime('2011-10-29, 16:00 UTC', f)),
+      'end_time'  :timegm(strptime('2012-05-31, 16:00 UTC', f))
     },
     # LCLS run 6: until Dec 31, 2012
     'CXI 6.1': {
       'address':'CxiDs1-0|Cspad-0',
-      'start_time':timegm(strptime('2012-05-31, 02:00 UTC', f)),
-      'end_time'  :timegm(strptime('2013-01-01, 01:00 UTC', f))
+      'start_time':timegm(strptime('2012-05-31, 16:00 UTC', f)),
+      'end_time'  :timegm(strptime('2013-01-01, 17:00 UTC', f))
     },
     # LCLS run 7: until Jul 31, 2013
     'CXI 7.1': {
       'address':'CxiDs1-0|Cspad-0',
-      'start_time':timegm(strptime('2013-01-01, 01:00 UTC', f)),
-      'end_time'  :timegm(strptime('2013-08-01, 02:00 UTC', f))
+      'start_time':timegm(strptime('2013-01-01, 17:00 UTC', f)),
+      'end_time'  :timegm(strptime('2013-08-01, 16:00 UTC', f))
     },
     'CXI 7.d': {
       'address':'CxiDsd-0|Cspad-0',
-      'start_time':timegm(strptime('2013-01-01, 01:00 UTC', f)),
-      'end_time'  :timegm(strptime('2013-08-01, 02:00 UTC', f))
+      'start_time':timegm(strptime('2013-01-01, 17:00 UTC', f)),
+      'end_time'  :timegm(strptime('2013-08-01, 16:00 UTC', f))
     },
     'XPP 7.1': {
       'address':'XppGon-0|Cspad-0',
-      'start_time':timegm(strptime('2013-01-01, 01:00 UTC', f)),
-      'end_time'  :timegm(strptime('2013-08-01, 02:00 UTC', f))
+      'start_time':timegm(strptime('2013-01-01, 17:00 UTC', f)),
+      'end_time'  :timegm(strptime('2013-08-01, 16:00 UTC', f))
     },
     'XPP 7.marccd': {
       'address':'XppGon-0|marccd-0',
-      'start_time':timegm(strptime('2013-01-01, 01:00 UTC', f)),
-      'end_time'  :timegm(strptime('2013-08-01, 02:00 UTC', f))
+      'start_time':timegm(strptime('2013-01-01, 17:00 UTC', f)),
+      'end_time'  :timegm(strptime('2013-08-01, 16:00 UTC', f))
     },
-    # LCLS run 8: until Mar 31, 2014
+    # LCLS run 8: until Mar 27, 2014
     # CXI detector rebuilt in Jan 2014, before that use CXI 8.1 metrology.
     'CXI 8.1': {
       'address':'CxiDs1-0|Cspad-0',
-      'start_time':timegm(strptime('2013-08-01, 02:00 UTC', f)),
-      'end_time'  :timegm(strptime('2014-01-15, 02:00 UTC', f))
+      'start_time':timegm(strptime('2013-08-01, 16:00 UTC', f)),
+      'end_time'  :timegm(strptime('2014-01-15, 17:00 UTC', f))
     },
     'CXI 8.2': {
       'address':'CxiDs1-0|Cspad-0',
-      'start_time':timegm(strptime('2014-01-15, 02:00 UTC', f)),
-      'end_time'  :timegm(strptime('2014-03-31, 02:00 UTC', f))
+      'start_time':timegm(strptime('2014-01-15, 17:00 UTC', f)),
+      'end_time'  :timegm(strptime('2014-03-27, 16:00 UTC', f))
     },
     'CXI 8.d': {
       'address':'CxiDsd-0|Cspad-0',
-      'start_time':timegm(strptime('2013-08-01, 02:00 UTC', f)),
-      'end_time'  :timegm(strptime('2014-03-31, 02:00 UTC', f))
+      'start_time':timegm(strptime('2013-08-01, 16:00 UTC', f)),
+      'end_time'  :timegm(strptime('2014-03-27, 16:00 UTC', f))
     },
     'XPP 8.1': {
       'address':'XppGon-0|Cspad-0',
-      'start_time':timegm(strptime('2013-08-01, 02:00 UTC', f)),
-      'end_time'  :timegm(strptime('2014-03-31, 02:00 UTC', f))
+      'start_time':timegm(strptime('2013-08-01, 16:00 UTC', f)),
+      'end_time'  :timegm(strptime('2014-03-27, 16:00 UTC', f))
     },
     'XPP 8.marccd': {
       'address':'XppGon-0|marccd-0',
-      'start_time':timegm(strptime('2013-08-01, 02:00 UTC', f)),
-      'end_time'  :timegm(strptime('2014-03-31, 02:00 UTC', f))
+      'start_time':timegm(strptime('2013-08-01, 16:00 UTC', f)),
+      'end_time'  :timegm(strptime('2014-03-27, 16:00 UTC', f))
     }
   }
 _detector_format_version_dict = _get_detector_format_version_dict()
+
 
 def detector_format_version(address, timestamp):
   """The detector_format_version() function returns a format version
@@ -143,6 +145,7 @@ def detector_format_version(address, timestamp):
 
   return ret
 
+
 def address_and_timestamp_from_detector_format_version(format_name):
   """Reverse of detector_format_version()
 
@@ -151,8 +154,6 @@ def address_and_timestamp_from_detector_format_version(format_name):
   """
 
   if _detector_format_version_dict.has_key(format_name):
-    return _detector_format_version_dict[format_name]['address'], \
-           _detector_format_version_dict[format_name]['end_time']
-  else:
-    return None
-
+    return (_detector_format_version_dict[format_name]['address'],
+            _detector_format_version_dict[format_name]['end_time'])
+  return None
