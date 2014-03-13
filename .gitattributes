@@ -1377,7 +1377,6 @@ libtbx/command_line/csh.sh -text
 libtbx/command_line/dtrace.py -text
 libtbx/command_line/easy_qsub.py -text
 libtbx/command_line/extract_code_from_txt.py svneol=native#text/x-python
-libtbx/command_line/fetch_pubmed_citation.py -text
 libtbx/command_line/file_clutter.py -text
 libtbx/command_line/find_files.py -text
 libtbx/command_line/find_old_style_classes.py -text
