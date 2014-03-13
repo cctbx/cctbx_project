@@ -298,7 +298,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         evt_time = sec + ms/1000
         sfspots = evt.get('sfspots')
         if sfspots is None:
-          n_spots = len(info.spotfinder_results.images[info.frames[0]]['spots_total'])
+          if indexed:
+            n_spots = len(info.spotfinder_results.images[info.frames[0]]['spots_total'])
+          else:
+            n_spots = 0
         else:
           n_spots = sfspots
 
