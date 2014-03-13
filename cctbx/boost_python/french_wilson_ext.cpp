@@ -43,7 +43,7 @@ namespace cctbx { namespace boost_python {
 
 }}
 
-BOOST_PYTHON_MODULE(cctbx_ext)
+BOOST_PYTHON_MODULE(cctbx_french_wilson_ext)
 {
   cctbx::boost_python::init_module();
 }
