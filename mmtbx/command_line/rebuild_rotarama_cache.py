@@ -17,6 +17,10 @@ def run():
     file_prefix="rota500-",
     target_db=target_db,
     amino_acids=rotamer_eval.aminoAcids)
+  rebuild_pickle_files(data_dir=rotamer_data_dir,
+    file_prefix="rota8000-",
+    target_db=target_db,
+    amino_acids=rotamer_eval.aminoAcids)
   #
   ramachandran_data_dir = rotamer_eval.find_rotarama_data_dir()
   target_db = rotamer_eval.open_rotarama_dlite(
