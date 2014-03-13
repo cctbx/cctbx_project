@@ -159,8 +159,8 @@ class RotamerEval:
     target_db = open_rotarama_dlite(rotarama_data_dir=rotamer_data_dir)
     for aa, aafile in aminoAcids.items():
       if (self.aaTables.get(aa) is not None): continue
-      data_file = "rota8000-"+aafile+".data"
-      pickle_file = "rota8000-"+aafile+".pickle"
+      data_file = "rota500-"+aafile+".data"
+      pickle_file = "rota500-"+aafile+".pickle"
 #      data_file = "rota500-"+aafile+".data"
 #      pickle_file = "rota500-"+aafile+".pickle"
       pair_info = target_db.pair_info(
