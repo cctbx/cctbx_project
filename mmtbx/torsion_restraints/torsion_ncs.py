@@ -1397,7 +1397,6 @@ class torsion_ncs(object):
           = True,
         log = log)
       ncs_groups.members.append(group)
-      print >> log
     if (len(ncs_groups.members) == 0):
       print >> log, "No NCS restraint groups specified."
       print >> log
