@@ -196,27 +196,22 @@ class common_mode_correction(mod_event_info):
       assert isinstance(self.mask_img, flex.double) \
         or   isinstance(self.mask_img, flex.int)
 
-    self.config = cspad_tbx.getConfig(self.address, env)
-    if self.config is None:
-      if self.address == 'XppGon-0|marccd-0':
-        #mod_mar.py will set these during its event function
-        self.active_areas = None
-        self.beam_center = None
-      else:
-        self.logger.error("beginjob(): no config")
+    if self.address == 'XppGon-0|marccd-0':
+      #mod_mar.py will set these during its event function
+      self.active_areas = None
+      self.beam_center = None
+    elif self.address == 'XppGon-0|Cspad-0':
+      evt_time = cspad_tbx.evt_time(evt) # tuple of seconds, milliseconds
+      timestamp = cspad_tbx.evt_timestamp(evt_time) # human readable format
+      from xfel.detector_formats import detector_format_version, reverse_timestamp
+      from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
+      version_lookup = detector_format_version(self.address, reverse_timestamp(timestamp)[0])
+      assert version_lookup is not None
+      self.active_areas = xpp_active_areas[version_lookup]['active_areas']
+      self.beam_center = [1765 // 2, 1765 // 2]
     else:
-      if self.address == 'XppGon-0|Cspad-0':
-        evt_time = cspad_tbx.evt_time(evt) # tuple of seconds, milliseconds
-        timestamp = cspad_tbx.evt_timestamp(evt_time) # human readable format
-        from xfel.detector_formats import detector_format_version, reverse_timestamp
-        from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
-        version_lookup = detector_format_version(self.address, reverse_timestamp(timestamp)[0])
-        assert version_lookup is not None
-        self.active_areas = xpp_active_areas[version_lookup]['active_areas']
-        self.beam_center = [1765 // 2, 1765 // 2]
-      else:
-        (self.beam_center, self.active_areas) = cspad_tbx.cbcaa(
-          self.config, self.sections)
+      (self.beam_center, self.active_areas) = cspad_tbx.cbcaa(
+        cspad_tbx.getConfig(self.address, env), self.sections)
 
   def common_mode(self, img, stddev, mask):
     """The common_mode() function returns the mode of image stored in
@@ -301,17 +296,11 @@ class common_mode_correction(mod_event_info):
     if (evt.get("skip_event")):
       return
 
-
-#    if self.config is None:
-#      self.config = cspad_tbx.getConfig(self.address, env)
-#      if self.config is None:
-#        self.logger.error("event(): no config for %s" % self.address)
-#        evt.put(True, 'skip_event')
-#        return
     if not hasattr(self, 'active_areas') or self.active_areas is None or \
        not hasattr(self, 'beam_center')  or self.beam_center  is None:
       if self.address == 'XppGon-0|marccd-0':
-        # the module mod_mar needs to have been called before this one to set this up
+        # The mod_mar module needs to have been called before this one
+        # to set this up.  The MAR does not have a configure object.
         self.beam_center = evt.get("marccd_beam_center")
         self.active_areas = evt.get("marccd_active_areas")
       elif self.address == 'XppGon-0|Cspad-0':
@@ -324,7 +313,7 @@ class common_mode_correction(mod_event_info):
         self.beam_center = [1765 // 2, 1765 // 2]
       else:
         (self.beam_center, self.active_areas) = \
-          cspad_tbx.cbcaa(self.config, self.sections)
+          cspad_tbx.cbcaa(cspad_tbx.getConfig(self.address, env), self.sections)
 
     if self.filter_laser_1_status is not None:
       if (self.laser_1_status.status != self.filter_laser_1_status or
@@ -354,7 +343,8 @@ class common_mode_correction(mod_event_info):
         self.address, evt, env, self.active_areas)
     else:
       self.cspad_img = cspad_tbx.image(
-        self.address, self.config, evt, env, self.sections)
+        self.address, cspad_tbx.getConfig(self.address, env),
+        evt, env, self.sections)
 
     if self.cspad_img is None:
       if cspad_tbx.address_split(self.address)[2] != 'Andor':
@@ -390,10 +380,11 @@ class common_mode_correction(mod_event_info):
         # image and apply the common mode correction.  XXX Make up a
         # quadrant mask for the emission detector.  Needs to be
         # checked!
+        config = cspad_tbx.getConfig(self.address, env)
         if len(self.sections) == 1:
           q_mask = 1
         else:
-          q_mask = self.config.quadMask()
+          q_mask = config.quadMask()
         for q in xrange(len(self.sections)):
           if (not((1 << q) & q_mask)):
             continue
@@ -401,11 +392,11 @@ class common_mode_correction(mod_event_info):
           # XXX Make up section mask for the emission detector.  Needs
           # to be checked!
           import _pdsdata
-          if len(self.sections) == 1 and type(self.config) in (
+          if len(self.sections) == 1 and type(config) in (
             _pdsdata.cspad2x2.ConfigV1, _pdsdata.cspad2x2.ConfigV2):
-            s_mask = self.config.roiMask()
+            s_mask = config.roiMask()
           else:
-            s_mask = self.config.roiMask(q)
+            s_mask = config.roiMask(q)
           for s in xrange(len(self.sections[q])):
             # XXX DAQ misconfiguration?  This mask appears not to work
             # reliably for the Sc1 detector.
