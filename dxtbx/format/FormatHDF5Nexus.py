@@ -25,10 +25,13 @@ class FormatHDF5Nexus(FormatHDF5):
     h5_handle = h5py.File(image_file, 'r')
 
     if not 'definition' in h5_handle['entry']:
+      h5_handle.close()
       return False
 
     definition = h5_handle['entry']['definition'].value
     version = h5_handle['entry']['definition'].attrs.get('version')
+
+    h5_handle.close()
 
     if not version:
       return False
