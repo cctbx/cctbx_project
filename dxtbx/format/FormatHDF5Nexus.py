@@ -2,21 +2,6 @@ from __future__ import division
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatHDF5 import FormatHDF5
 
-########################################################################
-# Allow regularization of input parameters to correct for tiny O(10^-16)
-# differences from rotation of coordinate frames - set debugging = True
-########################################################################
-
-debugging = False
-
-if debugging:
-  def rvec(a):
-    from scitbx import matrix
-    return matrix.col([round(_a) for _a in a.elems])
-else:
-  def rvec(a):
-    return a
-
 class FormatHDF5Nexus(FormatHDF5):
 
   @staticmethod
@@ -26,7 +11,32 @@ class FormatHDF5Nexus(FormatHDF5):
     except IOError, e:
       return False
 
-    return tag == "\211HDF\r\n\032\n"
+    # check that this is a HDF5 file (should not have got here if not
+    # anyway...)
+
+    if tag != "\211HDF\r\n\032\n":
+      return False
+
+    # now look to see if this is a pukka NeXus file accoring to
+    # http://download.nexusformat.org/doc/html/classes/
+    # contributed_definitions/NXmx.html
+
+    import h5py
+    h5_handle = h5py.File(image_file, 'r')
+
+    if not 'definition' in h5_handle['entry']:
+      return False
+
+    definition = h5_handle['entry']['definition'].value
+    version = h5_handle['entry']['definition'].attrs.get('version')
+
+    if not version:
+      return False
+
+    if definition == 'NXmx' and float(version) >= 1.0:
+      return True
+
+    return False
 
   def __init__(self, image_file):
     assert(self.understand(image_file))
@@ -54,7 +64,7 @@ class FormatHDF5Nexus(FormatHDF5):
     pose = sample['pose']
     axis = tuple(pose['CBF_axis_omega'].attrs['vector'])
 
-    return self._goniometer_factory.known_axis(rvec(self._R * axis))
+    return self._goniometer_factory.known_axis(self._R * axis)
 
   def _detector(self):
     from scitbx import matrix
@@ -98,7 +108,7 @@ class FormatHDF5Nexus(FormatHDF5):
 
     # Make the detector
     return self._detector_factory.make_detector(
-      "", rvec(fast), rvec(slow), orig,
+      "", fast, slow, orig,
       pixel_size, image_size, trusted_range)
 
   def _beam(self):
@@ -111,7 +121,7 @@ class FormatHDF5Nexus(FormatHDF5):
     beam = sample['beam']
     wavelength = beam['wavelength']
     return self._beam_factory.simple_directional(
-      rvec(self._R * matrix.col((0,0,-1))),
+      self._R * matrix.col((0,0,-1)),
       wavelength[0])
 
   def _scan(self):
