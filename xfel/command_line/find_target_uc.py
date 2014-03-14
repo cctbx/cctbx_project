@@ -6,8 +6,10 @@ def run(args):
   if args < 2: raise IOError("Must give at least one path to folder of pickles")
   from cctbx.uctbx.determine_unit_cell.target_uc import target
   ucs = target(args.folders)
-  ucs.cluster(args.t, args.m, args.l, args.log)
-  ucs.plot_clusters(ucs.clusters)
+  ucs.cluster(args.t, args.m, args.l)
+  if not args.noplot:
+    ucs.plot_clusters(ucs.clusters, args.log)
+
 
 if (__name__ == "__main__"):
   import argparse
@@ -25,5 +27,7 @@ if (__name__ == "__main__"):
             'complete, average, weighted, centroid, median, ward.')
   parser.add_argument('--log',  action='store_true',
                       help="Display the dendrogram with a log scale")
+  parser.add_argument('--noplot',  action='store_true',
+                      help="Do not display plots")
   args = parser.parse_args()
   result = run(args)
