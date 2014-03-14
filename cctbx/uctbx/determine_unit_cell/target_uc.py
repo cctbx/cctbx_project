@@ -7,13 +7,14 @@ import math
 #from scipy.cluster.vq import kmeans, kmeans2, vq
 #import libtbx.load_env
 from cctbx.uctbx.determine_unit_cell import NCDist
+import  scipy.cluster.hierarchy as hcluster
 
 class target:
 
   def __init__(self, path_to_integration_dir):
     """ Creates a list of (point group, unit cell) tuples, and a list of niggli cells from the recursively walked
         paths. Can take more than one argument for multiple folders."""
-    self.all_uc     = []
+    self.pgs    = []
     self.niggli_ucs = []
     for arg in path_to_integration_dir:
       for (dirpath, dirnames, filenames) in os.walk(arg):
@@ -31,7 +32,7 @@ class target:
               sys.stderr.write(
                     "Could not read %s\n" % path)
           else:
-            self.all_uc.append((pg, uc))
+            self.pgs.append(pg)
             self.niggli_ucs.append(uc.niggli_cell().parameters())
 
   def find_distance(self, G6a, G6b, key):
@@ -53,9 +54,11 @@ class target:
     f = 2*uc[0]*uc[1]*math.cos(uc[5])
     return [a,b,c,d,e,f]
 
-  def cluster(self, threshold, method, linkage_method, log=False):
+  def cluster(self, threshold, method, linkage_method):
+
     """ Do basic hierarchical clustering on the Niggli
     cells created at the start """
+    self.threshold=threshold
     dist_method = 2
     if dist_method is 2:
       print ("Using Andrews-Bernstein Distance from " +
@@ -66,29 +69,14 @@ class target:
       G6_cells.append(self.make_G6(n_cell))
     self.G6_cells = np.array(G6_cells)
     # 2. Do hierarchichal clustering on this, using the find_distance method above.
-    import  scipy.cluster.hierarchy as hcluster
     import  scipy.spatial.distance as dist
-    import pylab
     pair_distances = dist.pdist(self.G6_cells,
                                 metric=lambda a, b: self.find_distance(a,b,dist_method))
     print "Distances have been calculated"
-    this_linkage  = hcluster.linkage(pair_distances,
+    self.this_linkage  = hcluster.linkage(pair_distances,
                                      method=linkage_method,
                                      metric=lambda a, b: self.find_distance(a,b,dist_method))
-    fig = pylab.figure()
-    hcluster.dendrogram(this_linkage,
-                      labels=["{:<4.1f}, {:<4.1f}, {:<4.1f}, {:<4.1f}, {:<4.1f}, {:<4.1f}".format(
-                              x[0], x[1], x[2], x[3], x[4], x[5])  for x in self.niggli_ucs],
-                      leaf_font_size=8,
-                      color_threshold=threshold)
-    ax=fig.gca()
-    if log:
-      ax.set_yscale("log")
-    else:
-      ax.set_ylim(-ax.get_ylim()[1]/100,ax.get_ylim()[1])
-    fig.show()
-    fig.savefig("dendogram.pdf")
-    self.clusters = hcluster.fcluster(this_linkage,
+    self.clusters = hcluster.fcluster(self.this_linkage,
                                           threshold,
                                           criterion='distance')
 
@@ -105,6 +93,26 @@ class target:
       this_cluster = np.array([self.niggli_ucs[i]
                                for i in range(len(self.niggli_ucs))
                                if self.clusters[i]==cluster+1])
+      this_cluster_pg = ([self.pgs[i] for i in range(len(self.pgs))
+                               if self.clusters[i]==cluster+1])
+      assert len(this_cluster_pg) == len(this_cluster)
+      sorted_pgs = sorted(this_cluster_pg)
+      current_pg = ''
+      all_pgs={}
+      for pg in sorted_pgs:
+        if pg != current_pg:
+          current_pg = pg
+          all_pgs[pg]=1
+        else:
+          all_pgs[pg] += 1
+      if len(all_pgs) == 1:
+        for pg in all_pgs:
+          point_group_string = "All {} images in point group {}.".format(all_pgs[pg],pg)
+      else:
+        pg_strings = []
+        for pg in all_pgs:
+          pg_strings.append("{} images in {}".format(all_pgs[pg], pg))
+        point_group_string = ", ".join(pg_strings)+"."
       if len(this_cluster) is not 1:
         print "".join([("{:<14} {:<5.1f}({:<4.1f}) {:<5.1f}({:<4.1f})" +
                         " {:<5.1f}({:<4.1f})").format(
@@ -116,29 +124,48 @@ class target:
           np.median(this_cluster[:,3]), np.std(this_cluster[:,3]),
           np.median(this_cluster[:,4]), np.std(this_cluster[:,4]),
           np.median(this_cluster[:,5]), np.std(this_cluster[:,5]))])
+        print "  --> " +  point_group_string
       else:
         singletons.append("".join([("{:<14} {:<11.1f} {:<11.1f}" +
                           " {:<11.1f}").format(
-          '',
-          np.median(this_cluster[:,0]),
-          np.median(this_cluster[:,1]),
-          np.median(this_cluster[:,2])),
+          this_cluster_pg[0],
+          this_cluster[0,0],
+          this_cluster[0,1],
+          this_cluster[0,2]),
           " {:<12.1f} {:<12.1f} {:<12.1f}".format(
-          np.median(this_cluster[:,3]),
-          np.median(this_cluster[:,4]),
-          np.median(this_cluster[:,5])), '\n']))
+          this_cluster[0,3],
+          this_cluster[0,4],
+          this_cluster[0,5]), '\n']))
     print "Standard deviations are in brackets."
     print  str(len(singletons)) + " singletons:  \n"
     print "{:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
-                             "Num in cluster",
+                             "Point group",
                              "Med_a", "Med_b", "Med_c",
                              "Med_alpha", "Med_beta", "Med_gamma")
     print "".join(singletons)
 
 
-  def plot_clusters(self, clusters):
-    """ Plot Niggli cells -- one plot for (a,b,c) and one plot for (alpha, beta, gamma) -- colour
-    coded by cluster index.  """
+  def plot_clusters(self, clusters, log=False):
+    """ Plot Niggli cells -- one plot for (a,b,c) and one plot for
+    (alpha, beta, gamma) -- colour coded by cluster index.  """
+
+    import pylab
+    fig = pylab.figure()
+    hcluster.dendrogram(self.this_linkage,
+                      labels=["{:<4.1f}, {:<4.1f}, {:<4.1f}, {:<4.1f}," +
+                              "{:<4.1f}, {:<4.1f}".format(
+                              x[0], x[1], x[2], x[3], x[4], x[5])
+                              for x in self.niggli_ucs],
+                      leaf_font_size=8,
+                      color_threshold=self.threshold)
+    ax=fig.gca()
+    if log:
+      ax.set_yscale("log")
+    else:
+      ax.set_ylim(-ax.get_ylim()[1]/100,ax.get_ylim()[1])
+    fig.show()
+    fig.savefig("dendogram.pdf")
+
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D # Special Import
     import matplotlib.cm as mpl_cmaps
