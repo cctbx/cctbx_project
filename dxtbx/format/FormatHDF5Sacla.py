@@ -12,13 +12,13 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
     except IOError, e:
       return False
 
-    # sorry all for the moment this is causing me problems trying to work out
-    # the NeXus HDF5 format...
-
-    if True:
+    if tag != "\211HDF\r\n\032\n":
       return False
 
-    return tag == "\211HDF\r\n\032\n"
+    # make sure that this is not a NeXus file...
+
+    from FormatHDF5Nexus import FormatHDF5Nexus
+    return not FormatHDF5Nexus.understand(image_file)
 
   def __init__(self, image_file):
     assert(self.understand(image_file))
