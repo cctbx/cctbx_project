@@ -5,8 +5,6 @@
 from __future__ import division
 import logging
 
-from pypdsdata import xtc
-
 import libtbx
 from xfel.cxi.cspad_ana import cspad_tbx
 
@@ -77,15 +75,6 @@ class mod_event_info(object):
 
     # XXX Not needed now that the distance is read in the event?
     env.update(evt)
-
-    if self.address == 'XppGon-0|marccd-0':
-      # The MAR does not have configure object, so do not warn if it
-      # cannot be retrieved.
-      self.config = None
-    else:
-      self.config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, self.address)
-      if self.config is None:
-        self.logger.error("beginjob(): no config")
 
     self.nfail  = 0
     self.nshots = 0
