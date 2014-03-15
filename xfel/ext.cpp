@@ -691,8 +691,8 @@ get_scaling_results_mark2(const shared_double& x,
   /* Weighted sum of squared deviations between scaled, observed
    * intensities and refined intensities.
    */
-  shared_double wssq_dev(sigmas.size());
-  shared_double w_tot(sigmas.size());
+  shared_double wssq_dev(n_hkl);
+  shared_double w_tot(n_hkl);
 
   for (std::size_t m = 0; m < n_frames; m++) {
     L.n_rejected[m] = 0;
