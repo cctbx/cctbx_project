@@ -72,6 +72,9 @@ ensemble_refinement {
   output_file_prefix = None
     .type = str
     .help = 'Prefix for all output files'
+# TODO
+#  write_mmcif_file = False
+#    .type = bool
   gzip_final_model = True
     .type = bool
     .style = hidden
@@ -804,11 +807,18 @@ class run_ensemble_refinement(object):
     if (run_number is not None) :
       prefix += "_%g" % run_number
     pdb_out = prefix + ".pdb"
+    cif_out = prefix + ".cif"
     if (self.params.gzip_final_model) :
       pdb_out += ".gz"
       self.write_ensemble_pdb(out = gzip.open(pdb_out, 'wb'))
+      # TODO
+      if False :#(self.params.write_cif_file) :
+        self.write_ensemble_mmcif(out=gzip.open(cif_out, 'wb'))
     else :
       self.write_ensemble_pdb(out = open(pdb_out, 'wb'))
+      # TODO
+      if False :#(self.params.write_cif_file) :
+        self.write_ensemble_mmcif(out=open(cif_out, 'wb'))
     self.pdb_file = pdb_out
     # Map output
     assert (self.fmodel_total is not None)
@@ -1438,6 +1448,44 @@ class run_ensemble_refinement(object):
       print >> out, "ENDMDL"
     print >> out, "END"
 
+  def update_single_hierarchy (self, i_model) :
+    xrs = self.er_data.xray_structures[i_model]
+    scatterers = xrs.scatterers()
+    sites_cart = xrs.sites_cart()
+    u_isos = xrs.extract_u_iso_or_u_equiv()
+    occupancies = scatterers.extract_occupancies()
+    u_carts = scatterers.extract_u_cart_plus_u_iso(xrs.unit_cell())
+    scat_types = scatterers.extract_scattering_types()
+    i_model_pdb_hierarchy = self.er_data.pdb_hierarchys[i_model]
+    pdb_atoms = i_model_pdb_hierarchy.atoms()
+    i_model_ke = self.er_data.ke_pdb[i_model]
+    for j_seq, atom in enumerate(pdb_atoms):
+      if j_seq < len(sites_cart):
+        atom.xyz = sites_cart[j_seq]
+        if self.params.output_running_kinetic_energy_in_occupancy_column:
+          #XXX * 0.1 to fit in occ col
+          atom.occ = 0.1 * i_model_ke[j_seq]
+        else:
+          atom.occ = 1.0 / len(self.er_data.xray_structures)
+        atom.b = adptbx.u_as_b(u_isos[j_seq])
+        e = scat_types[j_seq]
+        if (len(e) > 1 and "+-0123456789".find(e[1]) >= 0):
+          atom.element = "%2s" % e[:1]
+          atom.charge = "%-2s" % e[1:]
+        elif (len(e) > 2):
+          atom.element = "%2s" % e[:2]
+          atom.charge = "%-2s" % e[2:]
+        else:
+          atom.element = "%2s" % e
+          atom.charge = "  "
+        if (scatterers[j_seq].flags.use_u_aniso()):
+          atom.uij = u_carts[j_seq]
+        elif(False):
+          atom.uij = self.u_cart
+        else:
+          atom.uij = (-1,-1,-1,-1,-1,-1)
+    return i_model_pdb_hierarchy
+
   def write_ensemble_pdb(self, out):
     crystal_symmetry = self.er_data.xray_structures[0].crystal_symmetry()
     pr = "REMARK   3"
@@ -1495,40 +1543,7 @@ class run_ensemble_refinement(object):
     for i_model, xrs in enumerate(self.er_data.xray_structures):
       cntr += 1
       print >> out, "MODEL %8d"%cntr
-      scatterers = xrs.scatterers()
-      sites_cart = xrs.sites_cart()
-      u_isos = xrs.extract_u_iso_or_u_equiv()
-      occupancies = scatterers.extract_occupancies()
-      u_carts = scatterers.extract_u_cart_plus_u_iso(xrs.unit_cell())
-      scat_types = scatterers.extract_scattering_types()
-      i_model_pdb_hierarchy = self.er_data.pdb_hierarchys[i_model]
-      pdb_atoms = i_model_pdb_hierarchy.atoms()
-      i_model_ke = self.er_data.ke_pdb[i_model]
-      for j_seq, atom in enumerate(pdb_atoms):
-        if j_seq < len(sites_cart):
-          atom.xyz = sites_cart[j_seq]
-          if self.params.output_running_kinetic_energy_in_occupancy_column:
-            #XXX * 0.1 to fit in occ col
-            atom.occ = 0.1 * i_model_ke[j_seq]
-          else:
-            atom.occ = 1.0 / len(self.er_data.xray_structures)
-          atom.b = adptbx.u_as_b(u_isos[j_seq])
-          e = scat_types[j_seq]
-          if (len(e) > 1 and "+-0123456789".find(e[1]) >= 0):
-            atom.element = "%2s" % e[:1]
-            atom.charge = "%-2s" % e[1:]
-          elif (len(e) > 2):
-            atom.element = "%2s" % e[:2]
-            atom.charge = "%-2s" % e[2:]
-          else:
-            atom.element = "%2s" % e
-            atom.charge = "  "
-          if (scatterers[j_seq].flags.use_u_aniso()):
-            atom.uij = u_carts[j_seq]
-          elif(False):
-            atom.uij = self.u_cart
-          else:
-            atom.uij = (-1,-1,-1,-1,-1,-1)
+      i_model_pdb_hierarchy = self.update_single_hierarchy(i_model)
       if (atoms_reset_serial):
         atoms_reset_serial_first_value = 1
       else:
