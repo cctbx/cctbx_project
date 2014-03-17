@@ -42,11 +42,16 @@ namespace dxtbx { namespace model {
    */
   inline
   bool is_angle_in_range(vec2<double> range, double angle) {
-    double diff_angle_range0 = mod_2pi(angle - range[0]);
-    double diff_angle_range1 = mod_2pi(angle - range[1]);
+    double diff_range0 = angle - range[0];
+    double diff_range1 = angle - range[1];
+    if (std::abs(diff_range0) < 2.0 * std::numeric_limits<double>::epsilon()) {
+      diff_range0 = 0.0;
+    }
+    double diff_angle_range0 = mod_2pi(diff_range0);
+    double diff_angle_range1 = mod_2pi(diff_range1);
     return range[1] - range[0] >= two_pi
         || diff_angle_range1 >= diff_angle_range0
-        || std::abs(diff_angle_range1) < std::numeric_limits<double>::epsilon();
+        || std::abs(diff_angle_range1) < 1.0 * std::numeric_limits<double>::epsilon();
   }
 
   /**
