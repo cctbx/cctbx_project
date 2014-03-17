@@ -129,8 +129,10 @@ class ncs_minimization_test(object):
     xray.set_scatterer_grad_flags(
       scatterers = fmdc.xray_structure.scatterers(),
       site       = True)
+    # fmodel gradients
     gxc = flex.vec3_double(fmdc.one_time_gradients_wrt_atomic_parameters(
       site = True).packed())
+    # manager restraints, energy sites gradients
     gc = self.grm.energies_sites(
       sites_cart        = fmdc.xray_structure.sites_cart(),
       compute_gradients = True).gradients

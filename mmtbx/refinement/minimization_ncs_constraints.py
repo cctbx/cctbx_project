@@ -13,7 +13,7 @@ class lbfgs(object):
         data_weight = None,
         ncs_atom_selection = None,
         finite_grad_differences_test = False,
-        max_iterations=100,
+        max_iterations = 100,
         refine_sites = False,
         refine_u_iso = False):
     """
@@ -32,15 +32,13 @@ class lbfgs(object):
       ncs_atom_selection)
     if(self.refine_sites):
       self.x = xray_structure_one_ncs_copy.sites_cart().as_double()
-    if(self.refine_u_iso):
-      assert xray_structure_one_ncs_copy.scatterers().size() == \
-        xray_structure_one_ncs_copy.use_u_iso().count(True)
-      self.x = xray_structure_one_ncs_copy.extract_u_iso_or_u_equiv()
-    if(self.refine_sites):
       xray.set_scatterer_grad_flags(
         scatterers = self.fmodel.xray_structure.scatterers(),
         site       = True)
     if(self.refine_u_iso):
+      assert xray_structure_one_ncs_copy.scatterers().size() == \
+        xray_structure_one_ncs_copy.use_u_iso().count(True)
+      self.x = xray_structure_one_ncs_copy.extract_u_iso_or_u_equiv()
       xray.set_scatterer_grad_flags(
         scatterers = self.fmodel.xray_structure.scatterers(),
         u_iso      = True)
@@ -141,24 +139,30 @@ class lbfgs(object):
     """
     Compare analytical and finite differences gradients.
     """
-    if(self.fmodel.r_work()>1.e-3):
-      g = g.as_double()
-      d = 1.e-3
-      # find the index of the max gradient value
-      i_g_max = flex.max_index(flex.abs(g))
-      x_d = self.x
-      # calc t(x+d)
-      x_d[i_g_max] = self.x[i_g_max] + d
-      self.update_fmodel(x = x_d)
-      self.fmodel.update_xray_structure(update_f_calc=True)
-      t1,_ = self.compute_functional_and_gradients(compute_gradients=False)
-      # calc t(x-d)
-      x_d[i_g_max] = self.x[i_g_max] - d
-      self.update_fmodel(x = x_d)
-      del x_d
-      self.fmodel.update_xray_structure(update_f_calc=True)
-      t2,_ = self.compute_functional_and_gradients(compute_gradients=False)
-      # Return fmodel to the correct coordinates values
-      self.update_fmodel(x = self.x)
-      self.fmodel.update_xray_structure(update_f_calc=True)
-      print g[i_g_max], (t1-t2)/(d*2), self.fmodel.r_work()
+    g = g.as_double()
+    # find the index of the max gradient value
+    i_g_max = flex.max_index(flex.abs(g))
+    x_d = self.x
+    # Set displacement for finite gradient calculation to 0.01% of largest value
+    d = self.x[i_g_max]*0.0001
+    # calc t(x+d)
+    x_d[i_g_max] = self.x[i_g_max] + d
+    self.update_fmodel(x = x_d)
+    self.fmodel.update_xray_structure(update_f_calc=True)
+    t1,_ = self.compute_functional_and_gradients(compute_gradients=False)
+    # calc t(x-d)
+    x_d[i_g_max] = self.x[i_g_max] - d
+    self.update_fmodel(x = x_d)
+    self.fmodel.update_xray_structure(update_f_calc=True)
+    t2,_ = self.compute_functional_and_gradients(compute_gradients=False)
+    del x_d
+    # Return fmodel to the correct coordinates values
+    self.update_fmodel(x = self.x)
+    self.fmodel.update_xray_structure(update_f_calc=True)
+    outstr = 'Max grad: {0:<10.4f}   finite diff grad: {1:<10.4f}  delta grads: ' \
+             '{2:<10.4f}  r_work: {3:<10.4f}'
+    finite_gard = (t1-t2)/(d*2)
+    outstr = outstr.format(g[i_g_max], finite_gard,
+                           abs(g[i_g_max] - finite_gard),
+                           self.fmodel.r_work())
+    print outstr
