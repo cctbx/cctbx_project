@@ -44,7 +44,7 @@ NODE=`ssh -S "${tmpdir}/control.socket" ${NODE} "hostname -f"`
 # user's release directory from .sit_release file and cd to it in the
 # submit.sh script.  No, that's much too slow!
 if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
-    "cd \"${PWD}\" ; relinfo" > /dev/null 2>&1; then
+    "cd \"${PWD}\" && relinfo" > /dev/null 2>&1; then
     echo "Must run this script from the SIT release directory" > /dev/stderr
     exit 1
 fi
@@ -110,8 +110,8 @@ while test ${#} -ge 0; do
     case "${1}" in
         -c)
             cfg="${2}"
-            if ssh -S "${tmpdir}/control.socket" ${NODE} \
-                "test ! -r \"${cfg}\""; then
+            if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
+                "cd \"${PWD}\" && test -r \"${cfg}\""; then
                 echo "${2} must be a readable file" > /dev/stderr
                 cleanup_and_exit 1
             fi
@@ -121,9 +121,9 @@ while test ${#} -ge 0; do
 
         -i)
             xtc=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-                "cd \"${PWD}\" ; readlink -fn \"${2}\""`
-            if ssh -S "${tmpdir}/control.socket" ${NODE} \
-                "test ! -d \"${xtc}\""; then
+                "cd \"${PWD}\" && readlink -fn \"${2}\""`
+            if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
+                "cd \"${PWD}\" && test -d \"${xtc}\""; then
                 echo "${2} does not exist or is not a directory" > /dev/stderr
                 cleanup_and_exit 1
             fi
@@ -134,12 +134,12 @@ while test ${#} -ge 0; do
         -o)
             out="${2}"
             if ssh -S "${tmpdir}/control.socket" ${NODE} \
-                "cd \"${PWD}\" ; test -e \"${out}\" -a ! -d \"${out}\""; then
+                "cd \"${PWD}\" && test -e \"${out}\" -a ! -d \"${out}\""; then
                 echo "${2} exists but is not a directory" > /dev/stderr
                 cleanup_and_exit 1
             fi
-            ssh -S "${tmpdir}/control.socket" ${NODE}   \
-                "cd \"${PWD}\" ; test -d \"${out}\"" || \
+            ssh -S "${tmpdir}/control.socket" ${NODE}    \
+                "cd \"${PWD}\" && test -d \"${out}\"" || \
                 echo "Directory ${out} will be created" > /dev/stderr
             shift
             shift
@@ -278,14 +278,13 @@ out="${out}/r${run}"
 # trial number is available.  If ${trial} is not given on the command
 # line, generate the next available one.
 if ssh -S "${tmpdir}/control.socket" ${NODE} \
-    "cd \"${PWD}\" ; test -n \"${trial}\" -a -d \"${out}/${trial}\""; then
+    "cd \"${PWD}\" && test -n \"${trial}\" -a -d \"${out}/${trial}\""; then
     echo "Error: Requested trial number ${trial} already in use" > /dev/stderr
     cleanup_and_exit 1
 fi
 if test -z "${trial}"; then
     trial=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-        "cd \"${PWD}\" ;                             \
-         mkdir -p \"${out}\" ;                       \
+        "cd \"${PWD}\" && mkdir -p \"${out}\" ;      \
          find \"${out}\" -maxdepth 1                 \
                          -noleaf                     \
                          -name \"[0-9][0-9][0-9]\"   \
