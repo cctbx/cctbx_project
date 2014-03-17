@@ -12,17 +12,14 @@ import sys
 def run(argv=None):
   import libtbx.load_env
 
-  from os import X_OK, access, path
+  from os import path
   from libtbx import easy_run
 
   if argv is None:
     argv = sys.argv
 
   # Absolute path to the executable Bourne-shell script.
-  lsf_sh = path.join(
-    libtbx.env.find_in_repositories('cctbx_project/xfel/cxi'),
-    'lsf.sh')
-  assert access(lsf_sh, X_OK)
+  lsf_sh = libtbx.env.under_dist('xfel', path.join('cxi', 'lsf.sh'))
 
   return easy_run.call(' '.join([lsf_sh] + argv[1:]))
 
