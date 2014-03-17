@@ -84,7 +84,7 @@ while test ${#} -ge 0; do
     case "${1}" in
         -c)
             cfg="${2}"
-            if test ! -r "${cfg}"; then
+            if ! test -r "${cfg}"; then
                 echo "${2} must be a readable file" > /dev/stderr
                 cleanup_and_exit 1
             fi
@@ -94,7 +94,7 @@ while test ${#} -ge 0; do
 
         -i)
             xtc=`readlink -fn "${2}"`
-            if test ! -d "${xtc}"; then
+            if ! test -d "${xtc}"; then
                 echo "${2} does not exist or is not a directory" > /dev/stderr
                 cleanup_and_exit 1
             fi
