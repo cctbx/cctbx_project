@@ -13,6 +13,7 @@ class lbfgs(object):
         data_weight = None,
         ncs_atom_selection = None,
         finite_grad_differences_test = False,
+        finite_grad_difference_val = 0,
         max_iterations = 100,
         refine_sites = False,
         refine_u_iso = False):
@@ -135,14 +136,14 @@ class lbfgs(object):
     assert type(grad)==type(g_ave)
     return g_ave
 
-  def finite_difference_test(self, g):
+  def finite_difference_test(self,g, print_finite_diff=False):
     """
     Compare analytical and finite differences gradients.
     """
     g = g.as_double()
     # find the index of the max gradient value
     i_g_max = flex.max_index(flex.abs(g))
-    x_d = self.x
+    x_d = self.x.deep_copy()
     # Set displacement for finite gradient calculation to 0.01% of largest value
     d = self.x[i_g_max]*0.0001
     # calc t(x+d)
@@ -159,10 +160,13 @@ class lbfgs(object):
     # Return fmodel to the correct coordinates values
     self.update_fmodel(x = self.x)
     self.fmodel.update_xray_structure(update_f_calc=True)
-    outstr = 'Max grad: {0:<10.4f}   finite diff grad: {1:<10.4f}  delta grads: ' \
-             '{2:<10.4f}  r_work: {3:<10.4f}'
     finite_gard = (t1-t2)/(d*2)
-    outstr = outstr.format(g[i_g_max], finite_gard,
-                           abs(g[i_g_max] - finite_gard),
-                           self.fmodel.r_work())
-    print outstr
+    if print_finite_diff:
+      outstr = 'Max grad: {0:<10.4f}   finite diff grad: {1:<10.4f}  delta grads: ' \
+               '{2:<10.4f}  r_work: {3:<10.4f}'
+      outstr = outstr.format(
+        g[i_g_max], finite_gard,
+        abs(g[i_g_max] - finite_gard),
+        self.fmodel.r_work())
+      print outstr
+    self.finite_grad_difference_val = abs(g[i_g_max] - finite_gard)

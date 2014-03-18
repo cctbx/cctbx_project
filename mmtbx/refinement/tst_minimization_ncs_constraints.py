@@ -191,6 +191,7 @@ class ncs_minimization_test(object):
       refine_type = 'adp'*self.u_iso + 'sites'*self.sites
       print "  macro_cycle %3d (%s)   r_factor: %6.4f"%(macro_cycle,
         refine_type, self.fmodel.r_work())
+      assert (minimized.finite_grad_difference_val < 1.0e-3)
       assert approx_equal(self.fmodel.r_work(), minimized.fmodel.r_work())
     # check results
     if(self.u_iso):
@@ -240,7 +241,7 @@ def exercise_00():
       n_macro_cycle=n_macro_cycle,
       sites=sites,
       u_iso=u_iso,
-      finite_grad_differences_test = False,
+      finite_grad_differences_test = True,
       use_geometry_restraints = False,
       shake_site_mean_distance = 0.5,
       d_min = 2.0)
@@ -250,10 +251,10 @@ def exercise_00():
 def exercise_01():
   print 'Running ',sys._getframe().f_code.co_name
   t = ncs_minimization_test(
-    n_macro_cycle = 100,
+    n_macro_cycle = 50,
     sites         = True,
     u_iso         = False,
-    finite_grad_differences_test = False,
+    finite_grad_differences_test = True,
     use_geometry_restraints = True,
     shake_site_mean_distance = 1.5,
     d_min = 3)
