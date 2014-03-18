@@ -25,7 +25,8 @@ class run(object):
                selection_radius = 5,
                rms_bonds_limit = 0.03, # XXX probably needs to be much lower
                rms_angles_limit = 3.0, # XXX
-               backbone_sample_angle=None):
+               backbone_sample_angle=None,
+               allow_modified_residues=False):
     adopt_init_args(self, locals())
     self.backbone_atom_names = ["N", "CA", "O", "CB", "C"]
     self.residue_iselection = self.residue.atoms().extract_i_seq()
@@ -71,7 +72,8 @@ class run(object):
       residue                   = self.residue,
       use_clash_filter          = True,
       sites_cart_all            = self.xray_structure.sites_cart(),
-      rotamer_manager           = self.rotamer_manager)
+      rotamer_manager           = self.rotamer_manager,
+      allow_modified_residues   = self.allow_modified_residues)
     sites_cart_poor = self.xray_structure.sites_cart()
     sites_cart_poor.set_selected(self.residue_iselection,
       self.residue.atoms().extract_xyz())
@@ -185,11 +187,13 @@ class manager(object):
                torsion_search_local_start = -50,
                torsion_search_local_stop  = 50,
                torsion_search_local_step  = 5,
+               allow_modified_residues =  False,
                log                        = None):
     adopt_init_args(self, locals())
     if(self.log is None): self.log = sys.stdout
-    get_class = iotbx.pdb.common_residue_names_get_class
-    assert get_class(residue.resname) == "common_amino_acid", residue.resname
+    if (not allow_modified_residues) :
+      get_class = iotbx.pdb.common_residue_names_get_class
+      assert get_class(residue.resname) == "common_amino_acid", residue.resname
     self.vector_selections = None
     self.clusters = None
     self.axes_and_atoms_aa_specific = None
