@@ -13,31 +13,34 @@ mmtbx.ions.environment
 mmtbx.ions.geometry
 phenix_dev.ion_identification.nader_ml
 """
+
 from __future__ import division
-
-from collections import Iterable
-import errno
-import numpy as np
-import os
-from cPickle import load
-
-# XXX: Relies on local installation of libsvm. Ideally, we require a libsvm
-# package (i.e. python-libsvm from apt, libsvm-python from yum)
-import sys
-sys.path.insert(0, os.path.join(os.environ["HOME"], "src", "libsvm", "python"))
-
-import svm
-import svmutil
-
-from ctypes import c_double
-
-from cctbx.eltbx import sasaki
-import libtbx
-from libtbx.utils import Sorry
-from mmtbx import ions
 from mmtbx.ions.environment import N_SUPPORTED_ENVIRONMENTS
 from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES
 from mmtbx.ions.parameters import get_server
+from mmtbx import ions
+from cctbx.eltbx import sasaki
+from libtbx import Auto, slots_getstate_setstate_default_initializer
+from libtbx.str_utils import make_sub_header
+from libtbx.utils import Sorry
+import libtbx.load_env
+
+from collections import Iterable
+from cStringIO import StringIO
+from ctypes import c_double
+from cPickle import load
+import errno
+import os
+import sys
+
+try : # XXX required third-party dependencies
+  import numpy as np
+  import svm
+  import svmutil
+except ImportError :
+  svm = None
+  svmutil = None
+  np = None
 
 CLASSIFIER_PATH = libtbx.env.find_in_repositories(
   relative_path = "chem_data/classifiers/ions_svm.model",
@@ -79,6 +82,7 @@ def _get_classifier():
   svm.libsvm.svm_predict_probability
   mmtbx.ions.svm.predict_ion
   """
+  assert (svmutil is not None)
   global _CLASSIFIER, _VECTOR_OPTIONS, _VECTOR_SIZE, _TRIED
   if _CLASSIFIER is None and not _TRIED:
     _TRIED = True
@@ -138,6 +142,7 @@ def ion_vector(chem_env, scatter_env, anom = True, geometry = True,
   ion_valence_vector()
   ion_anomalous_vector()
   """
+  assert (np is not None)
   return np.concatenate((
     ion_model_vector(scatter_env),
     ion_electron_density_vector(scatter_env, b_iso = b_iso, occ = occ,
@@ -440,3 +445,127 @@ def _flatten_list(lst):
     (float(i) if i is not None else 0. for i in _flatten(lst)),
     dtype = float
     )
+
+# Adapters for main identification/building routines
+svm_phil_str = """
+svm {
+  min_score = 0.2
+    .type = float
+  min_score_above = 0.1
+    .type = float
+  min_fraction_of_next = 2.0
+    .type = float
+}
+"""
+
+class svm_prediction (slots_getstate_setstate_default_initializer) :
+  __slots__ = ["i_seq", "pdb_id_str", "atom_info_str", "map_stats",
+               "atom_types", "scores", "final_choice"]
+
+  def show (self, out=sys.stdout, prefix="") :
+    for line in self.atom_info_str.splitlines() :
+      print >> out, prefix+line.rstrip()
+    print >> out, prefix+"SVM scores:"
+    for elem, score in zip(self.atom_types, self.scores) :
+      print >> out, prefix+"  %4s : %.3f" % (elem, score)
+    if (self.final_choice is not None) :
+      print >> out, prefix+"Final choice: %s" % self.final_choice
+
+  def show_brief (self, out=sys.stdout, prefix="") :
+    final_choice = self.final_choice
+    if (final_choice is None) :
+      final_choice = "----"
+      best_score = "----"
+    else :
+      for atom_type, score in zip(self.atom_types, self.scores) :
+        if (atom_type == final_choice) :
+          best_score = "%5.3f" % score
+          break
+    print >> out, prefix+"%s   %4s  %5s  %5.2f  %5.2f" % \
+      (self.pdb_id_str, final_choice, best_score, self.map_stats.two_fofc,
+       self.map_stats.fofc)
+
+class manager (ions.Manager) :
+  def analyze_water (self, i_seq, debug=True, candidates=Auto) :
+    atom_props = ions.AtomProperties(i_seq, self)
+    expected_atom_type = atom_props.get_atom_type(
+      params=self.params.water)
+    if (expected_atom_type == ions.WATER_POOR) :
+      return None
+    auto_candidates = candidates is Auto
+    if auto_candidates:
+      candidates = ions.DEFAULT_IONS
+    elif isinstance(candidates, str) or isinstance(candidates, unicode) :
+      candidates = candidates.replace(",", " ").split()
+    candidates = [i.strip().upper() for i in candidates]
+    if (candidates == ['X']) : # XXX hack for testing - X is "dummy" element
+      candidates = []
+    from mmtbx.ions.environment import ScatteringEnvironment, \
+      ChemicalEnvironment
+    chem_env = ChemicalEnvironment(
+      i_seq,
+      atom_props.nearby_atoms,
+      self)
+    scatter_env = ScatteringEnvironment(
+      i_seq=i_seq,
+      manager=self,
+      fo_density=self.get_map_gaussian_fit("mFo", i_seq),
+      fofc_density=self.get_map_gaussian_fit("mFo-DFc", i_seq),
+      anom_density=self.get_map_gaussian_fit("anom", i_seq))
+    if auto_candidates:
+      candidates = None
+    else:
+      candidates.append("HOH")
+    predictions = predict_ion(chem_env, scatter_env, elements = candidates)
+    if predictions is not None:
+      # XXX: filtered candidates == probability > threshold?
+      final_choice = None
+      predictions.sort(lambda a,b: cmp(b[1], a[1]))
+      best_guess, best_score = predictions[0]
+      if (best_guess != "HOH") :
+        next_guess, next_score = predictions[1]
+        if ((best_score >= self.params.svm.min_score) and
+            (best_score>=(next_score*self.params.svm.min_fraction_of_next))) :
+          final_choice = best_guess
+      atom_info_out = StringIO()
+      atom_props.show_properties(identity="HOH", out=atom_info_out)
+      result = svm_prediction(
+        i_seq=i_seq,
+        pdb_id_str=self.pdb_atoms[i_seq].id_str(),
+        atom_info_str=atom_info_out.getvalue(),
+        map_stats=self.map_stats(i_seq),
+        atom_types=[ pred[0] for pred in predictions ],
+        scores=[ pred[1] for pred in predictions ],
+        final_choice=final_choice)
+      return result
+    return None
+
+  def analyze_waters (self, out=sys.stdout, debug=True, candidates=Auto) :
+    waters = self.extract_waters()
+    print >> out, "  %d waters to analyze" % len(waters)
+    print >> out, ""
+    if (len(waters) == 0) : return
+    #nproc = easy_mp.get_processes(self.nproc)
+    predictions = []
+    for i_seq in waters :
+      prediction = self.analyze_water(
+        i_seq=i_seq,
+        debug=debug,
+        candidates=candidates)
+      if (prediction is not None) :
+        predictions.append(prediction)
+    filtered = []
+    for result in predictions :
+      if (debug) :
+        result.show(out=out, prefix="  ")
+        print >> out, ""
+      if (result.final_choice is not None) :
+        filtered.append(result)
+    if (len(filtered) == 0) :
+      print >> out, ""
+      print >> out, "  No waters could be classified as possible ions."
+    else :
+      make_sub_header("Predicted ions", out=out)
+      for result in filtered :
+        result.show_brief(out=out, prefix="  ")
+    return filtered
