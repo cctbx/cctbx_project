@@ -113,7 +113,8 @@ def extend_protein_model (pdb_hierarchy,
     max_atoms_missing=None,
     log=None,
     modify_segids=True,
-    prefilter_callback=None) :
+    prefilter_callback=None,
+    idealized_residue_dict=None) :
   """
   Replace all sidechains with missing non-hydrogen atoms in a PDB hierarchy.
   """
@@ -126,7 +127,9 @@ def extend_protein_model (pdb_hierarchy,
     assert hasattr(prefilter_callback, "__call__")
   else :
     prefilter_callback = lambda r: True
-  ideal_dict = idealized_aa.residue_dict()
+  ideal_dict = idealized_residue_dict
+  if (ideal_dict is None) :
+    ideal_dict = idealized_aa.residue_dict()
   if (log is None) : log = null_out()
   mon_lib_srv = mmtbx.monomer_library.server.server()
   pdb_atoms = pdb_hierarchy.atoms()
@@ -148,10 +151,17 @@ def extend_protein_model (pdb_hierarchy,
       residue_sel = selection.select(i_seqs)
       if (not residue_sel.all_eq(True)) :
         continue
-      res_class = common_residue_names_get_class(residue.resname)
-      if (res_class != "common_amino_acid") :
-        print >> log, "    skipping non-standard residue %s" % residue.resname
-        continue
+      if (idealized_residue_dict is None) :
+        res_class = common_residue_names_get_class(residue.resname)
+        if (res_class != "common_amino_acid") :
+          print >> log, "    skipping non-standard residue %s" % residue.resname
+          continue
+      else :
+        key = residue.resname.lower()
+        if (hydrogens == True) :
+          key = key + "_h"
+        if (not key in idealized_residue_dict.keys()) :
+          pass
       missing_atoms = rotamer_eval.eval_residue_completeness(
         residue=residue,
         mon_lib_srv=mon_lib_srv,
@@ -186,7 +196,11 @@ def refit_residues (
     use_rotamers=True,
     anneal=False,
     verbose=True,
+    allow_modified_residues=False,
     out=sys.stdout) :
+  """
+  Use real-space refinement tools to fit newly extended residues.
+  """
   from mmtbx.refinement.real_space import fit_residue
   from mmtbx.rotamer import rotamer_eval
   import mmtbx.monomer_library.server
@@ -198,6 +212,7 @@ def refit_residues (
   if (not verbose) :
     ppdb_out = null_out()
     box_out = null_out()
+  make_sub_header("Processing new model", out=ppdb_out)
   processed_pdb = building.reprocess_pdb(
     pdb_hierarchy=pdb_hierarchy,
     crystal_symmetry=fmodel.f_obs().crystal_symmetry(),
@@ -209,6 +224,7 @@ def refit_residues (
   grm = building.get_restraints_manager(
     processed_pdb_file = processed_pdb,
     xray_structure     = xrs)
+  make_sub_header("Fitting residues", out=out)
   target_map = fmodel.map_coefficients(
     map_type="2mFo-DFc",
     exclude_free_r_reflections=True).fft_map(
@@ -223,6 +239,7 @@ def refit_residues (
       if (len(atom_groups) > 1) : continue
       residue = atom_groups[0]
       atoms = residue.atoms()
+      atoms.reset_tmp()
       segids = atoms.extract_segid()
       if (segids.all_eq("XXXX")) :
         sites_start = atoms.extract_xyz()
@@ -248,7 +265,8 @@ def refit_residues (
           real_space_gradients_delta=fmodel.f_obs().d_min()*0.25,
           rms_bonds_limit=0.01,
           rms_angles_limit=1.0,
-          backbone_sample_angle=20)
+          backbone_sample_angle=20,
+          allow_modified_residues=allow_modified_residues)
         two_fofc_mean_end = get_two_fofc_mean(residue)
         sites_end = atoms.extract_xyz()
         flag = ""
@@ -257,6 +275,8 @@ def refit_residues (
           xrs = refit.xray_structure
         else :
           atoms.set_xyz(sites_start)
+          for atom in atoms :
+            atom.tmp = 1
         print >> out, \
           "    residue '%s' : rmsd=%5.3f 2fofc_start=%5.3f 2fofc_end=%5.3f%s" \
           % (residue.id_str(), sites_end.rms_difference(sites_start),
@@ -329,7 +349,6 @@ class extend_and_refine (object) :
       log=out)
     print >> out, "  %d sidechains extended." % self.n_extended
     if (self.n_extended > 0) and (not params.skip_rsr) :
-      make_sub_header("Real-space refinement", out=out)
       pdb_hierarchy, xray_structure = refit_residues(
         pdb_hierarchy=pdb_hierarchy,
         cif_objects=cif_objects,
