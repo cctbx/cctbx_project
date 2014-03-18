@@ -63,7 +63,7 @@ class NullProcessor(object):
   @staticmethod
   def finalize(identifier):
 
-    return Result( identifier = identifier, value = result.Sucess( value = None ) )
+    return Result( identifier = identifier, value = result.Success( value = None ) )
 
 
   @staticmethod

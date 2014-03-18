@@ -407,6 +407,30 @@ parallel_phil_str = parallel_phil_str_base % (
 parallel_phil_str_no_threading = parallel_phil_str_base % (
   " ".join(parallel_methods), " ".join(parallel_captions))
 
+
+class python_exception_safe_run(object):
+  """
+  Thin wrapper for catching Python exceptions
+  """
+
+  def __init__(self, func):
+
+    self.func = func
+
+
+  def __call__(self, *args, **kwargs):
+
+    from libtbx.queuing_system_utils import result
+
+    try:
+      r = result.Success( value = self.func( *args, **kwargs ) )
+
+    except Exception, e:
+      r = result.AnyException( exception = e )
+
+    return r
+
+
 def parallel_map (
     func,
     iterable,
@@ -517,13 +541,14 @@ def parallel_map (
     orderer = scheduling.SubmissionOrder
   else:
     orderer = scheduling.FinishingOrder
+  safe_run_func = python_exception_safe_run( func = func )
   parallel_for = scheduling.ParallelForIterator(
-    calculations = ( ( func, ( args, ), {} ) for args in iterable ),
+    calculations = ( ( safe_run_func, ( args, ), {} ) for args in iterable ),
     manager = manager,
     )
   for ( params, result_wrapper ) in orderer( parallel_for = parallel_for ) :
-    result = result_wrapper()
-    results.append(result) # raises exception in case of error
+    result = result_wrapper() # raise exception if worker crashed
+    results.append( result() ) # raise exception if error occurred in function
     if (callback is not None) :
       callback(result)
   return results
