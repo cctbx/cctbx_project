@@ -7,7 +7,7 @@ via the web (yet).
 
 from __future__ import division
 
-BASE_CCI_PKG_URL = "http://cci.lbl.gov/third_party"
+BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
 
 # from CCI
