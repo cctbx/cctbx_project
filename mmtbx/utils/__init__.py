@@ -1657,10 +1657,12 @@ class process_command_line_args(object):
           from iotbx import ccp4_map
           self.ccp4_map = iotbx.ccp4_map.map_reader(file_name=arg_file)
           self.ccp4_map_file_name = arg_file
+          space_group_number = self.ccp4_map.space_group_number
+          if(space_group_number==0): space_group_number=1 # ad hoc fix
           try:
             if(not suppress_symmetry_related_errors):
               cs = crystal.symmetry(self.ccp4_map.unit_cell().parameters(),
-                self.ccp4_map.space_group_number)
+                space_group_number)
               crystal_symmetries.append([arg_file, cs])
           except KeyboardInterrupt: raise
           except RuntimeError: pass

@@ -76,6 +76,8 @@ master_params = iotbx.phil.parse("""\
     .type = int
   verbose = -1
     .type = int
+  random_seed = None
+    .type = int
 """)
 
 class gradients_calculator_geometry_restraints(object):
@@ -211,6 +213,7 @@ class run(object):
                stop_cm_motion                   = False,
                log                              = None,
                stop_at_diff                     = None,
+               random_seed                      = None,
                verbose                          = -1):
     adopt_init_args(self, locals())
     assert self.n_print > 0
@@ -292,7 +295,7 @@ class run(object):
       masses=self.atomic_weights,
       target_temperature=self.temperature,
       zero_fraction=self.initial_velocities_zero_fraction,
-      seed = None))
+      seed = self.random_seed))
 
   def accelerations(self):
     return self.gradients_calculator.gradients(xray_structure=self.xray_structure)
