@@ -906,7 +906,7 @@ class set(crystal.symmetry):
     else:
       den = flex.sum(o*o)
       if(den != 0):
-        scale_factor = flex.sum(s*o)/flex.sum(o*o)
+        scale_factor = flex.sum(s*o)/den
     return other.customized_copy(data = other.data()*scale_factor)
 
   def complete_with(self, other, scale=False, replace_phases=False):
