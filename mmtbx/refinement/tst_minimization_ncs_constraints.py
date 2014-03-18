@@ -189,8 +189,11 @@ class ncs_minimization_test(object):
         refine_sites                 = self.sites,
         refine_u_iso                 = self.u_iso)
       refine_type = 'adp'*self.u_iso + 'sites'*self.sites
-      print "  macro_cycle %3d (%s)   r_factor: %6.4f"%(macro_cycle,
-        refine_type, self.fmodel.r_work())
+      print "  macro_cycle %3d (%s)   r_factor: %6.4f   " \
+            "finite_grad_difference_val: %.4f"%(
+        macro_cycle, refine_type,
+        self.fmodel.r_work(),
+        minimized.finite_grad_difference_val)
       assert (minimized.finite_grad_difference_val < 1.0e-3)
       assert approx_equal(self.fmodel.r_work(), minimized.fmodel.r_work())
     # check results
