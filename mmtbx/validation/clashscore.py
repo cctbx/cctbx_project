@@ -368,7 +368,7 @@ class probe_clashscore_manager(object):
 def decode_atom_string (atom_str, use_segids=False) :
   # Example:
   # ' A  49 LEU HD11B'
-  if not use_segids:
+  if (not use_segids) or (len(atom_str) == 16) :
     return atom_info(
       chain_id=atom_str[0:2],
       resseq=atom_str[2:6],
