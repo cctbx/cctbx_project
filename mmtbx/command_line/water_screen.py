@@ -13,6 +13,7 @@ def master_phil () :
     enable_stop_for_unknowns=False,
     phil_string="""
 include scope mmtbx.ions.ion_master_phil
+include scope mmtbx.ions.svm.svm_phil_str
 debug = True
   .type = bool
 elements = Auto
@@ -44,6 +45,10 @@ environment, electron density maps, and atomic properties.
   fmodel = cmdline.fmodel
   xray_structure = cmdline.xray_structure
   params = cmdline.params
+  if (params.use_svm) :
+    if (params.elements is Auto) :
+      raise Sorry("You must specify elements to consider when using the SVM "+
+        "prediction method.")
   if (params.wavelength is None) :
     from iotbx.file_reader import any_file
     pdb_in = any_file(params.input.pdb.file_name[0],
@@ -61,6 +66,9 @@ environment, electron density maps, and atomic properties.
   pdb_hierarchy = cmdline.pdb_hierarchy
   geometry = cmdline.geometry
   make_header("Inspecting water molecules", out=out)
+  manager_class = None
+  if (params.use_svm) :
+    manager_class = mmtbx.ions.svm.manager
   manager = ions.create_manager(
     pdb_hierarchy = pdb_hierarchy,
     fmodel = fmodel,
@@ -69,7 +77,8 @@ environment, electron density maps, and atomic properties.
     params = params,
     verbose = params.debug,
     nproc = params.nproc,
-    log = out)
+    log = out,
+    manager_class = manager_class)
   manager.show_current_scattering_statistics(out=out)
   candidates = Auto
   if (params.elements is not Auto) and (params.elements is not None) :
@@ -80,8 +89,9 @@ environment, electron density maps, and atomic properties.
     for elem in candidates :
       if (elem.upper() not in lu) :
         raise Sorry("Unrecognized element '%s'" % elem)
-  return manager.analyze_waters(
-    out = out, debug = params.debug,
+  results = manager.analyze_waters(
+    out = out,
+    debug = params.debug,
     candidates = candidates)
 
 if (__name__ == "__main__") :

@@ -3,18 +3,18 @@
 Deals with examing the atoms around a site and recognizing distinct and useful
 chemical environments.
 """
+
 from __future__ import division
-
-from collections import Counter
-from math import pi, cos, sin
-
-from iotbx.pdb import common_residue_names_get_class as get_class
-from libtbx.utils import Sorry, xfrange
 from mmtbx import ions
 from mmtbx.ions.parameters import MetalParameters, server
+from iotbx.pdb import common_residue_names_get_class as get_class
 from scitbx.array_family import flex
 from scitbx.math import gaussian_fit_1d_analytical
 from scitbx.matrix import col
+from libtbx.utils import Sorry, xfrange
+from libtbx import slots_getstate_setstate
+from collections import Counter
+from math import pi, cos, sin
 
 # Enums for the chemical environments supported by this module
 N_SUPPORTED_ENVIRONMENTS = 14
@@ -35,16 +35,34 @@ chem_carboxy, \
 
 METAL_SERVER = server()
 
-class ScatteringEnvironment (object):
-  def __init__(self, i_seq, manager, fo_map, fofc_map, anom_map):
+class ScatteringEnvironment (slots_getstate_setstate):
+  __slots__ = ["i_seq", "d_min", "wavelength", "fp", "fpp", "b_iso",
+    "b_mean_hoh", "occ", "fo_density", "fofc_density", "anom_density"]
+  def __init__(self, i_seq,
+      manager,
+      fo_map=None,
+      fofc_map=None,
+      anom_map=None,
+      fo_density=None,
+      fofc_density=None,
+      anom_density=None):
+    assert ([fo_map, fo_density].count(None) == 1)
+    assert ([fofc_map, fofc_density].count(None) == 1)
+    assert ([anom_map, anom_density].count(None) >= 1)
     atom = manager.pdb_atoms[i_seq]
     self.d_min = manager.fmodel.f_obs().d_min()
     self.wavelength = manager.wavelength
     self.fp, self.fpp = manager.get_fp(i_seq), manager.get_fpp(i_seq)
-    self.fo_density = _fit_gaussian(manager, atom.xyz, fo_map)
-    self.fofc_density = _fit_gaussian(manager, atom.xyz, fofc_map)
+    if (fo_density is not None) :
+      self.fo_density = fo_density
+    else :
+      self.fo_density = _fit_gaussian(manager.unit_cell, atom.xyz, fo_map)
+    if (fofc_density is not None) :
+      self.fofc_density = fofc_density
+    else :
+      self.fofc_density = _fit_gaussian(manager.unit_cell, atom.xyz, fofc_map)
     if anom_map is not None:
-      self.anom_density = _fit_gaussian(manager, atom.xyz, anom_map)
+      self.anom_density = _fit_gaussian(manager.unit_cell, atom.xyz, anom_map)
     else:
       self.anom_density = None, None
     self.b_iso = manager.get_b_iso(i_seq)
@@ -271,7 +289,7 @@ def _get_points_within_radius(point, radius, radius_step = 0.2,
 
   return points, radiuses
 
-def _fit_gaussian(manager, site_cart, real_map, radius = 1.6):
+def _fit_gaussian(unit_cell, site_cart, real_map, radius = 1.6):
   """
   Fit a gaussian function to the map around a site. Samples points in concentric
   spheres up to radius away from the site.
@@ -280,7 +298,7 @@ def _fit_gaussian(manager, site_cart, real_map, radius = 1.6):
 
   Parameters
   ----------
-  manager : mmtbx.ions.Manager
+  unit_cell : uctbx.unit_cell object
   site_cart : tuple of float, float, float
       The site's cartesian coordinates to sample the density around.
   real_map : scitbx.array_family.flex
@@ -298,7 +316,7 @@ def _fit_gaussian(manager, site_cart, real_map, radius = 1.6):
   points, radiuses = _get_points_within_radius(site_cart, radius)
 
   map_heights = \
-    [real_map.tricubic_interpolation(manager.unit_cell.fractionalize(i))
+    [real_map.tricubic_interpolation(unit_cell.fractionalize(i))
      for i in points]
 
   # Gaussian functions can't have negative values, filter sampled points below

@@ -296,6 +296,7 @@ class Manager (object) :
     self.site_fdp = None
     self.use_svm = getattr(params, "use_svm", None)
     self._map_values = {}
+    self._map_gaussian_fits = {}
     self.update_structure(
       pdb_hierarchy = pdb_hierarchy,
       xray_structure = xray_structure,
@@ -469,18 +470,23 @@ class Manager (object) :
       else :
         map_types.append("anom")
       map_keys.append("anom")
+    if (self.use_svm) :
+      map_types.append("mFo")
+      map_keys.append("mFo")
     # To save memory, we sample atomic positions immediately and throw out
     # the actual maps (instead of keeping up to 3 in memory)
     sites_frac = self.xray_structure.sites_frac()
     sites_cart = self.xray_structure.sites_cart()
     self._principal_axes_of_inertia = [ None ] * len(sites_frac)
     self._map_variances = [ None ] * len(sites_frac)
+    self._map_gaussian_fits = {}
     self.calpha_mean_two_fofc = 0
     for map_type, map_key in zip(map_types, map_keys) :
       real_map = self.get_map(map_type)
       if (real_map is not None) :
         # Gather values for map peaks at each site
         self._map_values[map_key] = flex.double(sites_frac.size(), 0)
+        self._map_gaussian_fits[map_key] = [ None ] * len(sites_frac)
         for i_seq, site_frac in enumerate(sites_frac) :
           atom = self.pdb_atoms[i_seq]
           resname = atom.fetch_labels().resname.strip().upper()
@@ -488,6 +494,13 @@ class Manager (object) :
               atom.segid.strip().upper() in ["ION"]):
             value = real_map.eight_point_interpolation(site_frac)
             self._map_values[map_key][i_seq] = value
+            if (self.use_svm) :
+              from mmtbx.ions.environment import _fit_gaussian
+              gaussian_fit = _fit_gaussian(
+                unit_cell=self.unit_cell,
+                site_cart=atom.xyz,
+                real_map=real_map)
+              self._map_gaussian_fits[map_key][i_seq] = gaussian_fit
 
         if map_type in ["2mFo-DFc"]:
           # Gather values on map variance and principal axes of interia
@@ -716,6 +729,12 @@ class Manager (object) :
       two_fofc = value_2fofc,
       fofc = value_fofc,
       anom = value_anom)
+
+  def get_map_gaussian_fit (self, map_type, i_seq) :
+    map_gaussians = self._map_gaussian_fits.get(map_type, None)
+    if (map_gaussians is not None) :
+      return map_gaussians[i_seq]
+    return None
 
   def guess_molecular_weight (self, i_seq) :
     """
@@ -1097,53 +1116,9 @@ class Manager (object) :
       #PRINT_DEBUG("SKIPPING %s" % atom.id_str())
       return None
 
-    if self.use_svm :
-      from mmtbx.ions.svm import predict_ion
-      from mmtbx.ions.environment import ScatteringEnvironment, \
-           ChemicalEnvironment
-
-      chem_env = ChemicalEnvironment(
-        i_seq,
-        atom_props.nearby_atoms,
-        self,
-        )
-      # XXX: This is slow! Calculate the maps or environments beforehand!
-      scatter_env = ScatteringEnvironment(
-        i_seq,
-        self,
-        self.get_map("mFo"),
-        self.get_map("mFo-DFc"),
-        self.get_map("anom"),
-        )
-
-      if auto_candidates:
-        candidates = None
-      else:
-        candidates.append("HOH")
-
-      predictions = predict_ion(chem_env, scatter_env, elements = candidates)
-
-      if predictions is not None:
-        # XXX: filtered candidates == probability > threshold?
-        # Should this be matching_candidates?
-        elem = self.server.get_metal_parameters(predictions[0][0])
-        rej = [self.server.get_metal_parameters(i[0]) for i in predictions[1:]]
-        return water_result(
-          atom_props = atom_props,
-          filtered_candidates = [elem],
-          matching_candidates = [(elem, predictions[0][1])],
-          rejected_candidates = rej,
-          nuc_phosphate_site = atom_props.looks_like_nucleotide_phosphate_site(),
-          atom_type = atom_type,
-          looks_like_halide = False, # SVM doesn't support halides
-          ambiguous_valence_cutoff = self.params.ambiguous_valence_cutoff,
-          valence_used = True,
-          final_choice = elem,
-          wavelength = self.wavelength,
-          no_final = False)
-      else:
-        self.use_svm = False
-        print >> out, "Unable to load SVM, defaulting to decision tree."
+    # XXX everything SVM-related happens in mmtbx.ions.svm, using a subclass of
+    # this one
+    assert (not self.use_svm)
 
     # Filter out metals based on whether they are more or less eletron-dense
     # in comparison with water
@@ -1335,6 +1310,22 @@ class Manager (object) :
       wavelength = self.wavelength,
       no_final = no_final)
 
+  def extract_waters (self) :
+    model = self.pdb_hierarchy.only_model()
+    water_i_seqs = []
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        atom_groups  = residue_group.atom_groups()
+        if (len(atom_groups) > 1) :
+          continue
+        for atom_group in atom_groups :
+          resname = atom_group.resname.strip().upper()
+          if (resname in WATER_RES_NAMES) :
+            atoms = atom_group.atoms()
+            if (len(atoms) == 1) : # otherwise it probably has hydrogens, skip
+              water_i_seqs.append(atoms[0].i_seq)
+    return water_i_seqs
+
   def analyze_waters (self, out = sys.stdout, debug = True, candidates = Auto):
     """
     Iterates through all of the waters in a model, examining the maps and local
@@ -1344,26 +1335,7 @@ class Manager (object) :
     Returns a list of (i_seq, MetalParameter), which indicate that waters of
     i_seq would be better changed to the new metal identity.
     """
-    model = self.pdb_hierarchy.only_model()
-
-    waters = []
-    for chain in model.chains():
-      for residue_group in chain.residue_groups():
-        atom_groups  = residue_group.atom_groups()
-        if (len(atom_groups) > 1) : # alt conf, skip
-          continue
-        for atom_group in atom_groups :
-          # Check for non standard atoms in the residue
-          # Or a label indicating the residue is a water
-          elements = set(i.strip().upper()
-                         for i in atom_group.atoms().extract_element())
-          elements.difference_update(["H", "N", "C", "O", "S", "P", "SE"])
-          resname = atom_group.resname.strip().upper()
-
-          if (resname in WATER_RES_NAMES) :
-            atoms = atom_group.atoms()
-            if (len(atoms) == 1) : # otherwise it probably has hydrogens, skip
-              waters.append(atoms[0].i_seq)
+    waters = self.extract_waters()
     print >> out, ""
     print >> out, "  %d waters to analyze" % len(waters)
     if (len(waters) == 0) : return
@@ -1571,6 +1543,7 @@ class ion_result (validation.atom):
 
   def show (self, out = sys.stdout, prefix = ""):
     pass
+
   def show_brief (self, out = sys.stdout, prefix = ""):
     # Print brief statistics for lines in a table
     pass
@@ -2325,10 +2298,13 @@ def create_manager (
     resolution_factor = 0.25,
     nproc = Auto,
     verbose = False,
-    log = None) :
+    log = None,
+    manager_class=None) :
   connectivity = \
     geometry_restraints_manager.shell_sym_tables[0].full_simple_connectivity()
-  manager = Manager(
+  if (manager_class is None) :
+    manager_class = Manager
+  manager = manager_class(
     fmodel = fmodel,
     pdb_hierarchy = pdb_hierarchy,
     xray_structure = fmodel.xray_structure,
