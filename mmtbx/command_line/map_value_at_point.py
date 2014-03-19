@@ -60,7 +60,7 @@ def defaults(log):
 
 def run(args, log = sys.stdout):
   if(len(args)==0):
-    print >> log, legend 
+    print >> log, legend
     defaults(log=log)
     return
   #

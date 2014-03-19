@@ -179,7 +179,7 @@ class crystal_model(object):
     uc = unit_cell(orthogonalization_matrix=At.transpose().inverse())
 
     return uc
-  
+
   def reset_scan_points(self):
     self._num_scan_points = 0
     self._A_at_scan_points = None
