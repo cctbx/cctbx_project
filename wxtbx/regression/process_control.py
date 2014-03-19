@@ -173,15 +173,19 @@ class detached_process (runtime_utils.detached_process_client) :
     self.proxy.callback_stdout(data)
 
   def callback_other (self, data) :
+    print "OTHER"
     self.proxy.callback_other(data)
 
   def callback_abort (self) :
+    print "ABORT"
     self.proxy.callback_abort()
 
   def callback_final (self, result) :
+    print "FINAL"
     self.proxy.callback_final(result)
 
   def callback_error (self, error, traceback_info) :
+    print "ERROR"
     self.proxy.callback_error(error, traceback_info)
 
   def callback_pause (self) :
@@ -386,18 +390,11 @@ class ProcessDialog (wx.Dialog) :
     szr.Fit(self)
     self.Centre(wx.BOTH)
 
-  def run (self, process, update_on_timer=False) :
+  def run (self, process) :
     self.process = process
-    if (update_on_timer) :
-      self._timer = wx.Timer(owner=self)
-      self.Bind(wx.EVT_TIMER, self.OnTimer)
-      self._timer.Start(250)
     self.process.start()
     self.gauge.Pulse()
     return self.ShowModal()
-
-  def OnTimer (self, event) :
-    self.process.update()
 
   def OnAbort (self, event) :
     self.process.abort()
@@ -479,7 +476,6 @@ def run_function_as_process_in_dialog (
     raise Abort()
   return result
 
-# TODO this is awful, needs to be re-thought
 def run_function_as_detached_process_in_dialog (
     parent,
     thread_function,
@@ -493,7 +489,7 @@ def run_function_as_detached_process_in_dialog (
     tmp_dir = os.getcwd()
   params = runtime_utils.process_master_phil.extract()
   params.tmp_dir = tmp_dir
-  if (job_id is None) :
+  if (job_id is not None) :
     job_id = str(os.getpid()) + "_" + str(int(random.random() * 1000))
   params.prefix = str(job_id)
   target = runtime_utils.detached_process_driver(target=thread_function)
@@ -510,7 +506,6 @@ def run_function_as_detached_process_in_dialog (
   setup_process_gui_events(
     window=dlg,
     OnExcept=dlg.OnError,
-    OnAbort=dlg.OnAbort,
     OnComplete=dlg.OnComplete)
   agent = event_agent(
     window=dlg,
@@ -521,7 +516,7 @@ def run_function_as_detached_process_in_dialog (
   easy_run.call("libtbx.start_process \"%s\" &" % eff_file)
   result = None
   abort = False
-  if (dlg.run(process, update_on_timer=True) == wx.ID_OK) :
+  if (dlg.run(process) == wx.ID_OK) :
     result = dlg.get_result()
   elif dlg.exception_raised() :
     dlg.handle_error()
@@ -532,8 +527,6 @@ def run_function_as_detached_process_in_dialog (
     raise Abort()
   return result
 
-########################################################################
-# XXX regression testing utilities
 def test_function_1 (*args, **kwds) :
   n = 0
   for i in range(25000) :
