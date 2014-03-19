@@ -226,14 +226,14 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
-  scitbx::af::shared<double> get_image_indices_with_angle(const Scan &scan, double angle,
-      bool deg) {
+  scitbx::af::shared< vec2<double> > get_image_indices_with_angle(
+      const Scan &scan, double angle, bool deg) {
     return scan.get_image_indices_with_angle(deg ? deg_as_rad(angle) : angle);
   }
 
   static
-  scitbx::af::shared<double> get_array_indices_with_angle(const Scan &scan,
-      double angle, bool deg) {
+  scitbx::af::shared< vec2<double> > get_array_indices_with_angle(
+      const Scan &scan, double angle, bool deg) {
     return scan.get_array_indices_with_angle(
       deg ? deg_as_rad(angle) : angle);
   }

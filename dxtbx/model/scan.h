@@ -312,11 +312,14 @@ namespace dxtbx { namespace model {
      * @param angle The rotation angle of the reflection
      * @returns The array of frame numbers
      */
-    scitbx::af::shared<double> get_image_indices_with_angle(double angle) const {
-      scitbx::af::shared<double> result = get_mod2pi_angles_in_range(
+    scitbx::af::shared< vec2<double> > get_image_indices_with_angle(
+        double angle) const {
+      scitbx::af::shared<double> angles = get_mod2pi_angles_in_range(
         get_oscillation_range(), angle);
+      scitbx::af::shared< vec2<double> > result(angles.size());
       for (std::size_t i = 0; i < result.size(); ++i) {
-        result[i] = get_image_index_from_angle(result[i]);
+        result[i][0] = angles[i];
+        result[i][1] = get_image_index_from_angle(angles[i]);
       }
       return result;
     }
@@ -327,11 +330,14 @@ namespace dxtbx { namespace model {
      * @param angle The rotation angle of the reflection
      * @returns The array of frame numbers
      */
-    scitbx::af::shared<double> get_array_indices_with_angle(double angle) const {
-      scitbx::af::shared<double> result = get_mod2pi_angles_in_range(
+    scitbx::af::shared< vec2<double> > get_array_indices_with_angle(
+        double angle) const {
+      scitbx::af::shared<double> angles = get_mod2pi_angles_in_range(
         get_oscillation_range(), angle);
+      scitbx::af::shared< vec2<double> > result(angles.size());
       for (std::size_t i = 0; i < result.size(); ++i) {
-        result[i] = get_array_index_from_angle(result[i]);
+        result[i][0] = angles[i];
+        result[i][1] = get_array_index_from_angle(angles[i]);
       }
       return result;
     }
