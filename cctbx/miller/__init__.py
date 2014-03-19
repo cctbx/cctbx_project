@@ -4433,10 +4433,9 @@ class fft_map(maptbx.crystal_gridding):
       gridding_first = (0,0,0)
     if gridding_last is None :
       gridding_last = tuple(self.n_real())
-    # XXX note that the gridding will include all unit cell edges, thus
-    # duplicating some grid points.  this doesn't cause problems for pymol,
-    # but it does have side effects when writing out a map and reading it back
-    # in - most notably, the mean map value is not consistent.
+      # only write out the exact unit cell, without padding
+      if (gridding_first == (0,0,0)) :
+        gridding_last = tuple([ (n-1) for n in gridding_last ])
     assert (len(labels) <= 10)
     ccp4_map.write_ccp4_map(file_name=file_name,
       unit_cell=self.unit_cell(),
