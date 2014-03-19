@@ -2726,6 +2726,8 @@ wxtbx/polygon.py -text
 wxtbx/polygon_db_viewer.py -text
 wxtbx/process_control.py -text
 wxtbx/qstat_view.py svneol=native#text/x-python
+wxtbx/regression/process_control.py -text
+wxtbx/regression/tst_process_control.py -text
 wxtbx/reports/__init__.py -text
 wxtbx/reports/blast.py -text
 wxtbx/reports/pdb_symmetry.py -text

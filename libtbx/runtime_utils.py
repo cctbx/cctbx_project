@@ -110,7 +110,7 @@ class detached_base (object) :
 
   def set_file_names (self, tmp_dir) :
     prefix = os.path.join(tmp_dir, self.params.prefix)
-    self.start_file = os.path.join(tmp_dir, prefix + ".libtbx_start")
+    self.start_file = prefix + ".libtbx_start"
     self.stdout_file = prefix + ".libtbx_stdout"
     self.error_file =  prefix + ".libtbx_error"
     self.stop_file = prefix + ".libtbx_STOP"
