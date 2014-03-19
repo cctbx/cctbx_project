@@ -130,6 +130,7 @@ tst_list = (
    "$D/merging/brehm_diederichs.py",
    #
    "$D/multipolar/regression/tst_multipolar.py",
+   "$D/regression/tst_connectivity.py",
   )
 
 def run():
