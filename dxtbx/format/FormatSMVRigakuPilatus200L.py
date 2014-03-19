@@ -67,8 +67,16 @@ class FormatSMVRigakuPilatus200L(FormatSMVRigaku):
     detector_axes = map(float, self._header_dictionary[
         '%sDETECTOR_VECTORS' % detector_name].split())
 
-    detector_fast = matrix.col(tuple(detector_axes[:3]))
-    detector_slow = matrix.col(tuple(detector_axes[3:]))
+    fast = matrix.col(tuple(detector_axes[:3]))
+    slow = matrix.col(tuple(detector_axes[3:]))
+
+    distortion = map(int, self._header_dictionary[
+      '%sSPATIAL_DISTORTION_VECTORS' % detector_name].split())
+
+    # multiply through by the distortion to get the true detector fast, slow
+
+    detector_fast, detector_slow = distortion[0] * fast + distortion[1] * slow, \
+      distortion[2] * fast + distortion[3] * slow
 
     beam_pixels = map(float, self._header_dictionary[
         '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[:2])
