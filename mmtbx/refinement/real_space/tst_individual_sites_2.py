@@ -1755,7 +1755,6 @@ def exercise():
     geometry_restraints_manager = pi.grm,
     selection                   = sel,
     log                         = sys.stdout)
-  print ero.rmsd_bonds, ero.rmsd_angles
   xrs_refined = ero.xray_structure
   # comapre fixed
   x1 = xrs_refined.select(selection = ~sel)
