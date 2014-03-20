@@ -29,6 +29,23 @@ namespace cctbx { namespace maptbx {
   template <
     typename MapFloatType,
     typename SiteFloatType>
+  MapFloatType
+  real_space_target_simple(
+    af::const_ref<MapFloatType, af::c_grid<3> > const& density_map,
+    af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_frac)
+  {
+    MapFloatType result = 0;
+    for(std::size_t i_site=0;i_site<sites_frac.size();i_site++) {
+      result += eight_point_interpolation(
+        density_map,
+        sites_frac[i_site]);
+    }
+    return result;
+  }
+
+  template <
+    typename MapFloatType,
+    typename SiteFloatType>
   af::shared<MapFloatType>
   real_space_target_simple_per_site(
     uctbx::unit_cell const& unit_cell,

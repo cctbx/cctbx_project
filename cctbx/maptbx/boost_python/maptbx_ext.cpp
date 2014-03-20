@@ -586,6 +586,13 @@ namespace {
              arg("density_map"),
              arg("sites_cart"),
              arg("selection")));
+    def("real_space_target_simple",
+      (double(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&))
+           real_space_target_simple, (
+             arg("density_map"),
+             arg("sites_frac")));
     def("real_space_target_simple_per_site",
       (af::shared<double>(*)
         (uctbx::unit_cell const&,
