@@ -19,15 +19,88 @@ def get_map(map_coeffs, crystal_gridding):
 def compute_map_and_combine(
       map_coeffs,
       crystal_gridding,
-      map_data):
+      map_data,
+      thresholds = [0,0.1,0.2,0.3,0.4,0.5]):
   m = get_map(map_coeffs=map_coeffs, crystal_gridding=crystal_gridding)
   if(map_data is None): map_data = m
   else:
     maptbx.intersection(
       map_data_1 = m,
       map_data_2 = map_data,
-      thresholds = flex.double([0,0.1,0.2,0.3,0.4,0.5]),
+      thresholds = flex.double(thresholds),
       average    = True)
+  return map_data
+
+class weighted_average(object):
+  def __init__(self, fmodel, map_coefficients, missing=None):
+    self.map_coefficients_data = map_coefficients.data()
+    self.map_coefficients = map_coefficients
+    self.missing = missing
+    f_o = fmodel.f_obs().data()
+    i_o = f_o * f_o
+    i_c = abs(fmodel.f_model_scaled_with_k1()).data() * \
+          abs(fmodel.f_model_scaled_with_k1()).data()
+    sig = fmodel.f_obs().sigmas()
+    self.r = abs(i_o-i_c)/abs(i_o+i_c)
+    if(sig is None):
+      sig = flex.double(f_o.size(), 1)
+    self.so = sig/f_o
+
+  def random_weight_averaged_map_coefficients(self,
+        random_scale, random_seed, n_cycles, fraction_keep):
+    assert self.map_coefficients_data.size() == \
+           self.r.size() == \
+           self.so.size()
+    mc_data = maptbx.fem_averaging_loop(
+      map_coefficients = self.map_coefficients_data,
+      r_factors        = self.r,
+      sigma_over_f_obs = self.so,
+      random_scale     = random_scale,
+      random_seed      = random_seed,
+      n_cycles         = n_cycles)
+    mc_wa = self.map_coefficients.customized_copy(data = mc_data)
+    if(self.missing is not None):
+      mc_wa = mc_wa.complete_with(other=self.missing, scale=True)
+    return mc_wa.select(flex.random_bool(mc_wa.size(), fraction_keep))
+
+def randomize_completeness2(map_coeffs, crystal_gridding, n_cycles=10):
+  map_filter = None
+  from mmtbx.maps import fem
+  for cycle in xrange(n_cycles):
+    if(cycle>0):
+      mc = map_coeffs.select(flex.random_bool(map_coeffs.size(), 0.99))
+    else:
+      mc = map_coeffs.deep_copy()
+    m = get_map(map_coeffs=mc, crystal_gridding=crystal_gridding)
+    maptbx.reset(
+      data=m,
+      substitute_value=0.0,
+      less_than_threshold=0.5,
+      greater_than_threshold=-9999,
+      use_and=True)
+    m  = maptbx.volume_scale(map = m,  n_bins = 10000).map_data()
+    if(map_filter is not None):
+      map_filter  = maptbx.volume_scale(map = map_filter,  n_bins = 10000).map_data()
+    map_filter = fem.intersection(m1=map_filter, m2=m,
+      thresholds=flex.double([i/100. for i in range(0,55,5)]),
+      average=True)
+  #map_filter = map_filter.set_selected(map_filter< 0.5, 0)
+  #map_filter = map_filter.set_selected(map_filter>=0.5, 1)
+  return map_filter
+
+def randomize_completeness(map_coeffs, crystal_gridding, n_cycles=10,
+      thresholds=[0,0.1,0.2,0.3,0.4,0.5]):
+  map_data = None
+  for cycle in xrange(n_cycles):
+    if(cycle>0):
+      mc = map_coeffs.select(flex.random_bool(map_coeffs.size(), 0.95))
+    else:
+      mc = map_coeffs.deep_copy()
+    map_data = compute_map_and_combine(
+      map_coeffs        = mc,
+      crystal_gridding  = crystal_gridding,
+      map_data          = map_data,
+      thresholds        = thresholds)
   return map_data
 
 def randomize_struture_factors(map_coeffs, number_of_kicks, phases_only=False):
