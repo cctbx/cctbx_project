@@ -1042,29 +1042,12 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       self.t.append(t)
       self.coordinates_present.append(coordinates_present)
       self.serial_number.append(serial_number)
-    def format_MTRIX_pdb_string(self):
-      '''
-      MTRIX data sample
-      REMARK 350   BIOMT1   1  1.000000  0.000000  0.000000        0.00000
-      MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
-      MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
-      MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
-      MTRIX1   2  0.496590 -0.643597  0.582393        0.00000
-      MTRIX2   2  0.867925  0.376088 -0.324443        0.00000
-      MTRIX3   2 -0.010221  0.666588  0.745356        0.00000
-      '''
-      lines = []
-      fmt1="MTRIX1  %2d%10.6f%10.6f%10.6f     %10.5f    %s"
-      fmt2="MTRIX2  %2d%10.6f%10.6f%10.6f     %10.5f    %s"
-      fmt3="MTRIX3  %2d%10.6f%10.6f%10.6f     %10.5f    %s"
-      for sn_, r_, t_, p_ in zip(self.serial_number, self.r, self.t,
-                                 self.coordinates_present):
-        flag = " "
-        if p_: flag="1"
-        lines.append(fmt1%(int(sn_), r_[0],r_[1],r_[2], t_[0], flag))
-        lines.append(fmt2%(int(sn_), r_[3],r_[4],r_[5], t_[1], flag))
-        lines.append(fmt3%(int(sn_), r_[6],r_[7],r_[8], t_[2], flag))
-      return "\n".join(lines)
+    def as_pdb_string(self):
+      return format_MTRIX_pdb_string(
+        rotation_matrices=self.r,
+        translation_vectors=self.t,
+        serial_numbers=self.serial_number,
+        coordinates_present_flags=self.coordinates_present)
 
     def format_BOIMT_pdb_string(self):
       '''
@@ -1857,3 +1840,32 @@ def show_file_summary (pdb_in, hierarchy=None, out=None) :
   for label, value in info :
     print >> out, format % (label + ":", str(value))
   return info
+
+def format_MTRIX_pdb_string(rotation_matrices, translation_vectors,
+      serial_numbers=None, coordinates_present_flags=None):
+  '''
+  MTRIX data sample
+  REMARK 350   BIOMT1   1  1.000000  0.000000  0.000000        0.00000
+  MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
+  MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
+  MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
+  MTRIX1   2  0.496590 -0.643597  0.582393        0.00000
+  MTRIX2   2  0.867925  0.376088 -0.324443        0.00000
+  MTRIX3   2 -0.010221  0.666588  0.745356        0.00000
+  '''
+  assert len(rotation_matrices) == len(translation_vectors)
+  if(serial_numbers is None): serial_numbers = range(0, len(rotation_matrices))
+  if(coordinates_present_flags is None):
+    coordinates_present_flags = [False]*len(rotation_matrices)
+  lines = []
+  fmt1="MTRIX1  %2d%10.6f%10.6f%10.6f     %10.5f    %s"
+  fmt2="MTRIX2  %2d%10.6f%10.6f%10.6f     %10.5f    %s"
+  fmt3="MTRIX3  %2d%10.6f%10.6f%10.6f     %10.5f    %s"
+  for sn_, r_, t_, p_ in zip(serial_numbers, rotation_matrices,
+                             translation_vectors, coordinates_present_flags):
+    flag = " "
+    if p_: flag="1"
+    lines.append(fmt1%(int(sn_), r_[0],r_[1],r_[2], t_[0], flag))
+    lines.append(fmt2%(int(sn_), r_[3],r_[4],r_[5], t_[1], flag))
+    lines.append(fmt3%(int(sn_), r_[6],r_[7],r_[8], t_[2], flag))
+  return "\n".join(lines)

@@ -546,8 +546,12 @@ TER
 """%mtrix_recs
   pi = iotbx.pdb.input(source_info=None, lines=pdb_str)
   r = pi.process_mtrix_records()
-  for l1,l2 in zip(r.format_MTRIX_pdb_string().splitlines(), mtrix_recs.splitlines()):
-    assert l1.strip()==l2.strip()
+  rr = iotbx.pdb.format_MTRIX_pdb_string(rotation_matrices=r.r,
+    translation_vectors=r.t, serial_numbers=r.serial_number,
+    coordinates_present_flags=r.coordinates_present)
+  for l1,l2,l3 in zip(rr.splitlines(),mtrix_recs.splitlines(),
+                      r.as_pdb_string().splitlines()):
+    assert l1.strip()==l2.strip()==l3.strip()
 
 def exercise_BIOMT():
   '''
