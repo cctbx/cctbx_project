@@ -5,6 +5,7 @@ import scitbx.rigid_body
 import scitbx.graph.tardy_tree
 import scitbx.lbfgs
 from scitbx import matrix
+from libtbx.test_utils import approx_equal
 
 def real_space_rigid_body_gradients_simple(
       unit_cell,
@@ -131,3 +132,109 @@ class refine(object):
     result = self.__d_e_pot_d_sites
     del self.__d_e_pot_d_sites
     return result
+    
+# Search and refine section
+def target(sites_frac, map_data):
+  return maptbx.real_space_target_simple(
+    density_map = map_data,
+    sites_frac  = sites_frac)
+  
+def search(rr,ra, map_data, fm, om, cm, t_best, sites_cart):
+  sites_frac_best = None
+  for x in rr:
+    for y in rr:
+      for z in rr:
+        sites_frac_sh = apply_rigid_body_shift(
+          sites_cart=sites_cart, cm=cm, fm=fm, x=x,y=y,z=z)
+        t_ = target(sites_frac=sites_frac_sh, map_data=map_data)
+        if(t_>t_best):
+          t_best = t_
+          sites_frac_best = sites_frac_sh.deep_copy()
+  for the in ra:
+    for psi in ra:
+      for phi in ra:
+        sites_frac_sh = apply_rigid_body_shift(
+          sites_cart=sites_cart, cm=cm, fm=fm, the=the, psi=psi, phi=phi)
+        t_ = target(sites_frac=sites_frac_sh, map_data=map_data)
+        if(t_>t_best):
+          t_best = t_
+          sites_frac_best = sites_frac_sh.deep_copy()
+  if(sites_frac_best is not None):
+    return om*sites_frac_best
+  else:
+    return sites_cart
+  
+def apply_rigid_body_shift(sites_cart, cm, fm, x=None,y=None,z=None, 
+      the=None, psi=None, phi=None):
+  result = None
+  rot_mat = None
+  if([the, psi, phi].count(None)==0):
+    rot_mat = scitbx.rigid_body.euler(
+                    phi        = phi,
+                    psi        = psi,
+                    the        = the,
+                    convention = "zyz").rot_mat().as_mat3()
+  transl = None
+  if([x,y,z].count(None)==0): transl = (x,y,z)
+  if([rot_mat, transl].count(None)==0):
+    result = rot_mat * (sites_cart-cm) + transl + cm
+  elif(rot_mat is not None):
+    assert transl is None
+    result = rot_mat * (sites_cart-cm) + cm
+  elif(transl is not None):
+    assert rot_mat is None
+    result = sites_cart + transl
+  else: assert 0
+  return fm*result
+
+    
+class search_and_refine(object):
+  
+  def __init__(self, map_data, pdb_hierarchy, xray_structure, max_iterations=50):
+    self.pdb_hierarchy = pdb_hierarchy
+    self.xray_structure = xray_structure
+    # sanity check
+    assert approx_equal(self.xray_structure.sites_cart(), 
+      self.pdb_hierarchy.atoms().extract_xyz(), 1.e-4)
+    #
+    lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+      max_iterations = max_iterations)
+    sites_cart = self.xray_structure.sites_cart()
+    fm = self.xray_structure.unit_cell().fractionalization_matrix()
+    om = self.xray_structure.unit_cell().orthogonalization_matrix()
+    for i_chain, chain in enumerate(self.pdb_hierarchy.chains()):
+      selection = chain.atoms().extract_i_seq()
+      s1 = chain.atoms().extract_xyz()
+      # use grid search
+      cm = s1.mean()
+      t_best = -9999
+      sites_cart_best = None
+      #   search 1
+      rr = [i/10. for i in range(-20,21,5)]
+      ra = [i for i in range(-10,11,2)]
+      sites_cart_best = search(rr=rr,ra=ra, map_data=map_data, fm=fm, om=om, 
+        cm=cm, t_best=t_best, sites_cart=s1)
+      #   search 2
+      rr = [i/10. for i in range(-5,6)]
+      ra = [i for i in range(-5,6,2)]
+      sites_cart_best = search(rr=rr,ra=ra, map_data=map_data, fm=fm, om=om, 
+        cm=cm, t_best=t_best, sites_cart=sites_cart_best)
+      chain.atoms().set_xyz(sites_cart_best)
+      # use tardy
+      for i in [1,]:
+        minimized = refine(
+          residue                     = chain,
+          density_map                 = map_data,
+          geometry_restraints_manager = None,
+          real_space_target_weight    = 1,
+          real_space_gradients_delta  = 1,
+          lbfgs_termination_params    = lbfgs_termination_params,
+          unit_cell                   = self.xray_structure.unit_cell())
+        s2 = minimized.sites_cart_residue
+        sites_cart = sites_cart.set_selected(selection, s2)
+      print i_chain, flex.sqrt((s1-s2).dot()).min_max_mean().as_tuple()
+    self.xray_structure.set_sites_cart(sites_cart)
+    self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+    
+    
+    

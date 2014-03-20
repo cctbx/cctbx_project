@@ -73,7 +73,7 @@ class ncs_minimization_test(object):
       buffer_size=8)
     ph.adopt_xray_structure(xrs_one_ncs)
     of = open("one_ncs_in_asu.pdb", "w")
-    print >> of, mtrix_object.format_MTRIX_pdb_string()
+    print >> of, mtrix_object.as_pdb_string()
     print >> of, ph.as_pdb_string(crystal_symmetry=xrs_one_ncs.crystal_symmetry())
     of.close()
     # 1 NCS copy -> full asu (expand NCS). This is the answer-structure
@@ -106,7 +106,7 @@ class ncs_minimization_test(object):
       xrs_shaken = xrs_shaken.set_u_iso(values=u_random)
     ph.adopt_xray_structure(xrs_shaken)
     of = open("one_ncs_in_asu_shaken.pdb", "w")
-    print >> of, mtrix_object.format_MTRIX_pdb_string()
+    print >> of, mtrix_object.as_pdb_string()
     print >> of, ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
     of.close()
     self.f_obs = f_obs
