@@ -2192,6 +2192,7 @@ scitbx/array_family/accessors/row_and_column.h -text
 scitbx/array_family/accessors/striding.h -text
 scitbx/array_family/accessors/traits.h -text
 scitbx/array_family/boost_python/byte_str.h svneol=native#text/plain
+scitbx/array_family/boost_python/flex_mat3_double.cpp -text
 scitbx/array_family/boost_python/flex_median.cpp -text
 scitbx/array_family/boost_python/flex_vec3_int.cpp -text
 scitbx/array_family/boost_python/numpy_bridge.cpp svneol=native#text/plain
