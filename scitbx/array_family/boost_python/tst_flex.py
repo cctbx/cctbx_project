@@ -1857,6 +1857,20 @@ def exercise_flex_sym_mat3_double():
   assert c.size() == a00.size()
   assert approx_equal(c, ((0,1,2,3,4,5), (1,2,3,4,5,6), (2,3,4,5,6,7)))
 
+def exercise_flex_mat3_double():
+  a = flex.mat3_double()
+  assert a.size() == 0
+  a = flex.mat3_double(132)
+  assert a.size() == 132
+  for x in a:
+    assert x == (0, 0, 0, 0, 0, 0, 0, 0, 0)
+  a = flex.mat3_double([(1, 2, 3, 4, 5, 6, 7, 8, 9)])
+  assert a.size() == 1
+  assert tuple(a) == ((1, 2, 3, 4, 5, 6, 7, 8, 9),)
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert(tuple(a) == tuple(b))
+
 def exercise_flex_tiny_size_t_2():
   a = flex.tiny_size_t_2()
   assert a.size() == 0
@@ -3400,6 +3414,7 @@ def run(iterations):
     exercise_flex_vec2_double()
     exercise_flex_vec3_int()
     exercise_flex_sym_mat3_double()
+    exercise_flex_mat3_double()
     exercise_flex_tiny_size_t_2()
     exercise_histogram()
     exercise_show_count_stats()
