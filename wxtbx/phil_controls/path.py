@@ -8,6 +8,8 @@ import wx
 import os
 import sys
 
+UNICODE_BUILD = (wx.PlatformInfo[2] == 'unicode')
+
 WXTBX_PHIL_PATH_SAVE = 1
 WXTBX_PHIL_PATH_DIRECTORY = 2
 WXTBX_PHIL_PATH_VIEW_BUTTON = 4
@@ -87,7 +89,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
 
   def GetValue (self) :
     val = self._path_text.GetValue().strip()
-    if (isinstance(val, unicode)) :
+    if (isinstance(val, unicode)) and UNICODE_BUILD :
       return val.encode('utf8')
     else :
       assert isinstance(val, str)
