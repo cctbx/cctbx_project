@@ -27,7 +27,9 @@ def shelx_weight(
   assert sig_f.size() == f_o.size()
   w = 1./( sig_f*sig_f*sig_f*sig_f + (sc * i_f)*(sc * i_f) )
   sigma_i = 1/flex.sqrt(w)
-  return i_c*i_c/(i_c*i_c + sigma_i*sigma_i)
+  r1 = i_c*i_c/(i_c*i_c + sigma_i*sigma_i)
+  r2 = 1 / (1 + sig_f*sig_f*sig_f*sig_f/i_c/i_c + sc*sc*i_f*i_f/i_c/i_c)
+  return r1
 
 class fo_fc_scales(object):
   def __init__(self,
@@ -366,7 +368,7 @@ class model_missing_reflections(object):
     rho_atoms = flex.double()
     for site_frac in self.fmodel.xray_structure.sites_frac():
       rho_atoms.append(map_data.eight_point_interpolation(site_frac))
-    rho_mean = flex.mean(rho_atoms)
+    rho_mean = flex.mean_default(rho_atoms.select(rho_atoms>0.5), 0.5)
     sel_exclude = rho_atoms > min(rho_mean/2., 1)
     sites_cart = fmodel.xray_structure.sites_cart()
     #
