@@ -289,6 +289,13 @@ class rec(object):
     return self.is_r3_rotation_matrix_rms() < rms_tolerance and \
       abs(1-self.determinant())<rms_tolerance
 
+  def is_r3_identity_matrix(self):
+    return (self.elems == (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0))
+
+  def is_col_zero(self):
+    """ Is the translation vector zero """
+    return (self.elems == (0.0, 0.0, 0.0))
+
   def unit_quaternion_as_r3_rotation_matrix(self):
     assert self.n in [(1,4), (4,1)]
     q0,q1,q2,q3 = self.elems
