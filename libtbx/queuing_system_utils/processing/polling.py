@@ -4,6 +4,7 @@ import subprocess
 import time
 
 from libtbx.queuing_system_utils.processing import util
+from libtbx.queuing_system_utils.processing import errors
 
 # These are not very efficient
 SGE_REGEX = util.get_lazy_initialized_regex( pattern = r"Following jobs do not exist" )
@@ -17,7 +18,7 @@ def sge_single_evaluate(out, err):
       return True
 
     else:
-      raise RuntimeError, "SGE error:\n%s" % err
+      raise errors.AbnormalExitError, "SGE error:\n%s" % err
 
   else:
     return False
@@ -45,12 +46,12 @@ def pbs_single_evaluate(out, err):
       return True
 
     else:
-      raise RuntimeError, "PBS error:\n%s" % err
+      raise errors.AbnormalExitError, "PBS error:\n%s" % err
 
   state = PBS_EVAL_REGEX().search( out )
 
   if not state:
-    raise RuntimeError, "Unexpected response from queue:\n%s" % out
+    raise errors.ExtractionError, "Unexpected response from PBS:\n%s" % out
 
   return state.group(1) == "C"
 
@@ -68,12 +69,12 @@ def slurm_single_evaluate(out, err):
       return True
 
     else:
-      raise RuntimeError, "Slurm error:\n%s" % err
+      raise errors.AbnormalExitError, "Slurm error:\n%s" % err
 
   state = out.strip()
 
   if state not in SLURM_CODES:
-    raise RuntimeError, "Unexpected response from queue:\n%s" % out
+    raise errors.ExtractionError, "Unexpected response from Slurm:\n%s" % out
 
   return state == "CD"
 
@@ -91,11 +92,17 @@ class SinglePoller(object):
 
   def is_finished(self, jobid):
 
-    process = subprocess.Popen(
-      self.command + [ jobid ],
-      stdout = subprocess.PIPE,
-      stderr = subprocess.PIPE
-      )
+    try:
+      process = subprocess.Popen(
+        self.command + [ jobid ],
+        stdout = subprocess.PIPE,
+        stderr = subprocess.PIPE
+        )
+
+    except OSError, e:
+      cmdline = " ".join( self.command + [ jobid ] )
+      raise errors.ExecutableError, "'%s': %s" % ( cmdline, e )
+
     ( out, err ) = process.communicate()
 
     return self.evaluate( out = out, err = err )
@@ -150,15 +157,25 @@ class CentralPoller(object):
 
   def update(self):
 
-    process = subprocess.Popen(
-      self.command,
-      stdout = subprocess.PIPE,
-      stderr = subprocess.PIPE
-      )
+    try:
+      process = subprocess.Popen(
+        self.command,
+        stdout = subprocess.PIPE,
+        stderr = subprocess.PIPE
+        )
+
+    except OSError, e:
+      raise errors.ExecutableError, "'%s': %s" % ( " ".join( self.command ), e )
+
     ( out, err ) = process.communicate()
 
-    if err:
-      raise RuntimeError, "Polling error:\n%s" % err
+    if process.poll():
+      message = "Poll error: '%s' exited abnormally (code %s, message %s)" % (
+        " ".join( self.command ),
+        process.poll(),
+        err,
+        )
+      raise errors.AbnormalExitError, message
 
     self.running.clear()
     self.completed.clear()
@@ -308,7 +325,7 @@ def lsf_text_evaluate(out, running, completed):
     return
 
   if not LSF_CENTRAL_HEADER_REGEX().match( out ):
-    raise RuntimeError, "Unexpected response from queue"
+    raise errors.ExtractionError, "Unexpected response from queuing system"
 
   regex = LSF_CENTRAL_JOBID_REGEX()
 
@@ -316,7 +333,7 @@ def lsf_text_evaluate(out, running, completed):
     match = regex.match( line )
 
     if not match:
-      raise RuntimeError, "Unexpected response from queue"
+      raise errors.ExtractionError, "Unexpected response from queuing system"
 
     jobid = match.group( 1 )
     running.add( jobid )
@@ -329,7 +346,7 @@ def slurm_text_evaluate(out, running, completed):
     pieces = line.split()
 
     if len( pieces ) != 2:
-      raise RuntimeError, "Unexpected response from queue: '%s'" % line
+      raise errors.ExtractionError, "Unexpected response from queuing system: '%s'" % line
 
     ( jobid, status ) = pieces
 

@@ -3,6 +3,9 @@ from __future__ import with_statement
 
 import subprocess
 
+from libtbx.queuing_system_utils.processing import errors
+
+
 class Submission(object):
   """
   Handles job submissions
@@ -127,8 +130,13 @@ class AsynchronousCmdLine(Submission):
       input = self.handler.script( include = include, executable = executable, script = script )
       )
 
-    if err:
-      raise RuntimeError, err
+    if process.poll():
+      message = "Submission error: '%s' exited abnormally (code %s, message %s)" % (
+        " ".join( self.cmds ),
+        process.poll(),
+        err,
+        )
+      raise errors.AbnormalExitError, message
 
     return self.handler(
       jobid = self.extract( output = out ),
@@ -262,8 +270,13 @@ Queue
       input = self.script % ( scriptfile, outfile, errfile, logfile )
       )
 
-    if err:
-      raise RuntimeError, err
+    if process.poll():
+      message = "Submission error: '%s' exited abnormally (code %s, message %s)" % (
+        " ".join( self.cmds ),
+        process.poll(),
+        err,
+        )
+      raise errors.AbnormalExitError, message
 
     return self.handler(
       jobid = self.extract( output = out ),
@@ -302,7 +315,7 @@ def execute(args):
       )
 
   except OSError, e:
-    raise RuntimeError, "Error: '%s': %s" % ( " ".join( args ), e )
+    raise errors.ExecutableError, "'%s': %s" % ( " ".join( args ), e )
 
   return process
 
@@ -312,7 +325,7 @@ def lsf_jobid_extract(output):
   match = LSF_JOBID_EXTRACT_REGEX().search( output )
 
   if not match:
-    raise RuntimeError, "Unexpected response from queuing system"
+    raise errors.ExtractionError, "Unexpected response from queuing system"
 
   return match.group(1)
 
@@ -327,7 +340,7 @@ def condor_jobid_extract(output):
   match = CONDOR_JOBID_EXTRACT_REGEX().search( output )
 
   if not match:
-    raise RuntimeError, "Unexpected response from queuing system"
+    raise errors.ExtractionError, "Unexpected response from queuing system"
 
   return match.group(1)
 
@@ -337,7 +350,7 @@ def slurm_jobid_extract(output):
   match = SLURM_JOBID_EXTRACT_REGEX().search( output )
 
   if not match:
-    raise RuntimeError, "Unexpected response from queuing system"
+    raise errors.ExtractionError, "Unexpected response from queuing system"
 
   return match.group(1)
 

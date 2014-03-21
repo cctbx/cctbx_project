@@ -493,6 +493,9 @@ def parallel_map (
       results.append(result)
     return results
 
+  from libtbx.queuing_system_utils.processing import errors
+  from libtbx.utils import Sorry
+
   factory, queue_factory = None, None
   if (method == "multiprocessing") :
     import multiprocessing
@@ -519,12 +522,18 @@ def parallel_map (
 
   else: # no other choice as per assertion above
     qhandler_function, evaluator = processing.INTERFACE_FOR[method]
-    qhandler = qhandler_function(
-      command=qsub_command,
-      asynchronous=asynchronous,
-      save_error = preserve_exception_message,
-      display_stderr = not preserve_exception_message,
-      )
+
+    try:
+      qhandler = qhandler_function(
+        command=qsub_command,
+        asynchronous=asynchronous,
+        save_error = preserve_exception_message,
+        display_stderr = not preserve_exception_message,
+        )
+
+    except errors.BatchQueueError, e:
+      raise Sorry, "Queue error: %s" % e
+
     factory = qhandler.Job
     queue_factory = lambda: processing.Queue(identifier="parallel_map")
 
@@ -547,7 +556,12 @@ def parallel_map (
     manager = manager,
     )
   for ( params, result_wrapper ) in orderer( parallel_for = parallel_for ) :
-    result = result_wrapper() # raise exception if worker crashed
+    try:
+      result = result_wrapper() # raise exception if worker crashed
+
+    except errors.BatchQueueError, e:
+      raise Sorry, "Queue error: %s" % e
+
     results.append( result() ) # raise exception if error occurred in function
     if (callback is not None) :
       callback(result)
