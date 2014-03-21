@@ -93,6 +93,31 @@ namespace {
     return result;
   }
 
+  scitbx::af::shared<vec3<double> >
+  mul_a_vec3(
+    scitbx::af::const_ref<mat3<double> > const& a,
+    vec3<double> const& m)
+  {
+    af::shared<vec3<double> > result((af::reserve(a.size())));
+    for(std::size_t i=0;i<a.size();i++) {
+      result.push_back(a[i] * m);
+    }
+    return result;
+  }
+
+  scitbx::af::shared<vec3<double> >
+  mul_a_a_vec3(
+    scitbx::af::const_ref<mat3<double> > const& lhs,
+    scitbx::af::const_ref<vec3<double> > const& rhs)
+  {
+    SCITBX_ASSERT(lhs.size() == rhs.size());
+    af::shared<vec3<double> > result((af::reserve(lhs.size())));
+    for(std::size_t i=0;i<lhs.size();i++) {
+      result.push_back(lhs[i] * rhs[i]);
+    }
+    return result;
+  }
+
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -107,6 +132,8 @@ namespace boost_python {
         scitbx::mat3<double>,
         9*scitbx::af::boost_python::pickle_size_per_element<double>::value>())
       .def("__init__", make_constructor(from_double))
+      .def("__mul__", mul_a_vec3)
+      .def("__mul__", mul_a_a_vec3)
       .def("as_double", as_double);
     ;
   }
