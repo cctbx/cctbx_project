@@ -1136,7 +1136,10 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
           if error_handle:
             raise Sorry('Rotation matrices are not proper! ')
         # For BIOMT the first transform is the identity matrix
-        result.add(r=rm, t=tv, coordinates_present=(i==0),
+        ingnor_transform = rm.is_r3_identity_matrix() and tv.is_col_zero()
+        result.add(
+          r=rm, t=tv,
+          coordinates_present=ingnor_transform,
           serial_number=i+1)
     return result
 
@@ -1145,7 +1148,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     Read MTRIX records from a pdb file
 
     Arguments:
-    error_handle -- True: will stop execution on improper retation matrices
+    error_handle -- True: will stop execution on improper rotation matrices
                     False: will continue execution but will replace the values in the
                            rotation matrix with [0,0,0,0,0,0,0,0,0]
     eps -- Rounding accuracy for avoiding numerical issue when when testing proper rotation
@@ -1188,7 +1191,10 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       if (sorted(done) != [1,2,3] or len(set(present)) != 1):
         raise RuntimeError(
           "Improper set of PDB MTRIX records%s" % source_info)
-      result.add(r=rm, t=tv, coordinates_present=present[0],
+      ingnor_transform = rm.is_r3_identity_matrix() and tv.is_col_zero()
+      result.add(
+        r=rm, t=tv,
+        coordinates_present=(present[0]==1 or ingnor_transform),
         serial_number=serial_number)
     return result
 

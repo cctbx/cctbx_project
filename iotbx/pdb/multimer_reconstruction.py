@@ -86,6 +86,7 @@ class multimer(object):
                   "'ba': biological assembly \n" + \
                   "'cau': crystallographic asymmetric unit \n")
     # Collect only transformations for which coordinates are not present
+    # that are not the identity matrix
     i_transforms = []
     for i,coordinates_present in enumerate(transform_info.coordinates_present):
       if not coordinates_present: i_transforms.append(i)
