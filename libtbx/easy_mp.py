@@ -551,18 +551,19 @@ def parallel_map (
   else:
     orderer = scheduling.FinishingOrder
   safe_run_func = python_exception_safe_run( func = func )
-  parallel_for = scheduling.ParallelForIterator(
-    calculations = ( ( safe_run_func, ( args, ), {} ) for args in iterable ),
-    manager = manager,
-    )
-  for ( params, result_wrapper ) in orderer( parallel_for = parallel_for ) :
-    try:
+
+  try:
+    parallel_for = scheduling.ParallelForIterator(
+      calculations = ( ( safe_run_func, ( args, ), {} ) for args in iterable ),
+      manager = manager,
+      )
+    for ( params, result_wrapper ) in orderer( parallel_for = parallel_for ) :
       result = result_wrapper() # raise exception if worker crashed
+      results.append( result() ) # raise exception if error occurred in function
+      if (callback is not None) :
+        callback(result)
 
-    except errors.BatchQueueError, e:
-      raise Sorry, "Queue error: %s" % e
+  except errors.BatchQueueError, e:
+    raise Sorry, "Queue error: %s" % e
 
-    results.append( result() ) # raise exception if error occurred in function
-    if (callback is not None) :
-      callback(result)
   return results
