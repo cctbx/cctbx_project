@@ -1870,6 +1870,10 @@ def exercise_flex_mat3_double():
   p = pickle.dumps(a)
   b = pickle.loads(p)
   assert(tuple(a) == tuple(b))
+  v = (1,2,3)
+  assert approx_equal(tuple(a*v), ((14., 32., 50.),))
+  v = flex.vec3_double([(1,2,3)])
+  assert approx_equal(tuple(a*v), ((14., 32., 50.),))
 
 def exercise_flex_tiny_size_t_2():
   a = flex.tiny_size_t_2()
