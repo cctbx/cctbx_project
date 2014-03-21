@@ -9,8 +9,9 @@ namespace cctbx { namespace maptbx {
 
 class connectivity {
 
-public:
+private:
   af::versa<int, af::c_grid<3> > map_new;
+  af::shared<int> region_vols;
 
   void
   get_six_neighbours(
@@ -37,7 +38,7 @@ public:
     neighbours(4,1) = neighbours(5,1) = y;
   }
 
-
+public:
   connectivity(
     af::const_ref<double, af::c_grid<3> > const& map_data,
     double const& threshold)
@@ -56,6 +57,9 @@ public:
 
     map_new.resize(af::c_grid<3>(a), -1);
     af::versa<int, af::c_grid<2> > neighbours(af::c_grid<2>(6,3));
+    region_vols.push_back(0);
+    int v0 = 0, cur_reg_vol;
+
 
     for (int i = 0; i < a[0]; i++) {
       for (int j = 0; j < a[1]; j++) {
@@ -68,6 +72,7 @@ public:
               tempcoors(0,1) = j;
               tempcoors(0,2) = k;
               map_new(i,j,k) = cur_reg;
+              cur_reg_vol = 1;
               pointer_empty = 1;
               pointer_current = 0;
               while (pointer_empty != pointer_current) {
@@ -84,27 +89,37 @@ public:
                   if (map_new(x,y,z)<0) {
                     if (map_data(x,y,z) > threshold) {
                       map_new(x,y,z) = cur_reg;
+                      cur_reg_vol += 1;
                       tempcoors(pointer_empty,0) = x;
                       tempcoors(pointer_empty,1) = y;
                       tempcoors(pointer_empty,2) = z;
                       pointer_empty += 1;
                       if (pointer_empty >= needed_size) pointer_empty = 0;
                     }
-                    else map_new(x,y,z) = 0;
+                    else {
+                      map_new(x,y,z) = 0;
+                      v0 += 1;
+                    }
                   }
                 }
                 pointer_current += 1;
                 if (pointer_current >= needed_size) pointer_current = 0;
               }
+              region_vols.push_back(cur_reg_vol);
             }
-            else map_new(i,j,k) = 0;
+            else {
+              map_new(i,j,k) = 0;
+              v0 += 1;
+            }
           }
         }
       }
     }
+    region_vols[0] = v0;
   }
 
   af::versa<int, af::c_grid<3> > result() {return map_new;}
+  af::shared<int> regions() {return region_vols;}
 
 };
 

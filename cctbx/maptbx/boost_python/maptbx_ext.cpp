@@ -142,6 +142,7 @@ namespace {
                     (arg("map_data"),
                      arg("threshold"))))
         .def("result",    &w_t::result)
+        .def("regions",   &w_t::regions)
       ;
     }
 
