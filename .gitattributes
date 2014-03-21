@@ -1446,6 +1446,7 @@ libtbx/queuing_system_utils/looping.py -text
 libtbx/queuing_system_utils/lsf.py -text
 libtbx/queuing_system_utils/pbs_utils.py svneol=native#text/x-python
 libtbx/queuing_system_utils/processing/__init__.py -text
+libtbx/queuing_system_utils/processing/errors.py -text
 libtbx/queuing_system_utils/processing/polling.py -text
 libtbx/queuing_system_utils/processing/status.py -text
 libtbx/queuing_system_utils/processing/submission.py -text

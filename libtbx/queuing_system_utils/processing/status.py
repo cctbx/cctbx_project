@@ -3,6 +3,8 @@ from __future__ import division
 import os
 import subprocess
 
+from libtbx.queuing_system_utils.processing import errors
+
 
 class JobStatus(object):
   """
@@ -79,15 +81,12 @@ class Synchronous(JobStatus):
 
     try:
       stdout = self.get_stdout()
-
-    except IOError:
-      stdout = self.process.stdout.read()
-
-    try:
       stderr = self.get_stderr()
 
     except IOError:
+      stdout = self.process.stdout.read()
       stderr = self.process.stderr.read()
+      raise errors.AbnormalExitError, "Queue error:%s\n%s" % ( stdout, stderr )
 
     return ( stdout, stderr, self.process.poll() )
 
@@ -164,12 +163,13 @@ class Asynchronous(JobStatus):
 
   def terminate(self):
 
-    process = subprocess.Popen(
-      self.qdel + [ self.jobid ],
-      stdout = subprocess.PIPE,
-      stderr = subprocess.PIPE
-      )
-    ( out, err ) = process.communicate()
+    try:
+      process = subprocess.Popen( self.qdel + [ self.jobid ] )
+
+    except OSError, e:
+      raise errors.ExecutableError, "'%s %s': %s" % ( self.qdel, self.jobid, e )
+
+    process.communicate()
 
 
   @classmethod
@@ -248,15 +248,20 @@ EOF
   def results(self):
 
     # Use accounting file to return exit code
-    process = subprocess.Popen(
-      [ "qacct", "-j", self.jobid ],
-      stdout = subprocess.PIPE,
-      stderr = subprocess.PIPE
-      )
+    try:
+      process = subprocess.Popen(
+        [ "qacct", "-j", self.jobid ],
+        stdout = subprocess.PIPE,
+        stderr = subprocess.PIPE
+        )
+
+    except OSError, e:
+      raise errors.ExecutableError, "'qacct -j %s': %s" % ( self.jobid, e )
+
     ( out, err ) = process.communicate()
 
-    if err:
-      raise RuntimeError, "SGE error:\n%s" % err
+    if process.poll():
+      raise errors.AbnormalExitError, "SGE accounting error:\n%s" % err
 
     exit_code = extract_exit_code_text( output = out )
 
@@ -274,7 +279,7 @@ def extract_exit_code_text(output):
       return exit_code
 
   else:
-    raise RuntimeError, "Unexpected output:\n%s" % output
+    raise errors.ExtractionError, "Unexpected output:\n%s" % output
 
 
 class LogfileStrategy(Asynchronous):
