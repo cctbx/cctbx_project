@@ -431,27 +431,35 @@ class scaling_manager (intensity_data) :
 
   def scale_all (self, file_names) :
     t1 = time.time()
-    try :
-      import multiprocessing
-    except ImportError, e :
-      print >> self.log, \
-        "multiprocessing module not available (requires Python >= 2.6)\n" \
-        "will scale frames serially"
+    if self.params.backend == 'MySQL':
+      from xfel.cxi.merging_database import manager
+    elif self.params.backend == 'SQLite':
+      from xfel.cxi.merging_database_sqlite3 import manager
+    else:
+      from xfel.cxi.merging_database_fs import manager
 
-      if self.params.backend == 'MySQL':
-        from xfel.cxi.merging_database import manager
-      elif self.params.backend == 'SQLite':
-        from xfel.cxi.merging_database_sqlite3 import manager
-      else:
-        from xfel.cxi.merging_database_fs import manager
+    db_mgr = manager(self.params)
+    db_mgr.initialize_db(self.miller_set.indices())
 
-      db_mgr = manager(self.params)
-      db_mgr.initialize_db(self.miller_set.indices())
+    # Unless the number of requested processes is greater than one,
+    # try parallel multiprocessing on a parallel host.  Block until
+    # all database commands have been processed.
+    nproc = self.params.nproc
+    if (nproc is None) or (nproc is Auto):
+      nproc = libtbx.introspection.number_of_processors()
+    if nproc > 1:
+      try :
+        import multiprocessing
+        self._scale_all_parallel(file_names, db_mgr)
+      except ImportError, e :
+        print >> self.log, \
+          "multiprocessing module not available (requires Python >= 2.6)\n" \
+          "will scale frames serially"
+        self._scale_all_serial(file_names, db_mgr)
+    else:
       self._scale_all_serial(file_names, db_mgr)
-      db_mgr.join()
+    db_mgr.join()
 
-    else :
-      self._scale_all_parallel(file_names)
     t2 = time.time()
     print >> self.log, ""
     print >> self.log, "#" * 80
@@ -474,23 +482,13 @@ class scaling_manager (intensity_data) :
                + self.n_wrong_bravais + self.n_wrong_cell
     assert checksum == len(file_names)
 
-  def _scale_all_parallel (self, file_names) :
+  def _scale_all_parallel (self, file_names, db_mgr) :
     import multiprocessing
     import libtbx.introspection
-
-    if self.params.backend == 'MySQL':
-      from xfel.cxi.merging_database import manager
-    elif self.params.backend == 'SQLite':
-      from xfel.cxi.merging_database_sqlite3 import manager
-    else:
-      from xfel.cxi.merging_database_fs import manager
 
     nproc = self.params.nproc
     if (nproc is None) or (nproc is Auto) :
       nproc = libtbx.introspection.number_of_processors()
-
-    db_mgr = manager(self.params)
-    db_mgr.initialize_db(self.miller_set.indices())
 
     # Input files are supplied to the scaling processes on demand by
     # means of a queue.
@@ -516,9 +514,7 @@ class scaling_manager (intensity_data) :
     pool.close()
     pool.join()
 
-    # Block until all database commands have been processed, and the
-    # input queue has been emptied.
-    db_mgr.join()
+    # Block until the input queue has been emptied.
     input_queue.join()
 
 
@@ -1529,7 +1525,7 @@ def show_overall_observations(
           N += 1
           m += t[0]
         if work_params is not None and \
-           (work_params.plot_single_index_histograms  and \
+           (work_params.plot_single_index_histograms and \
             N >= 30 and \
             work_params.data_subset == 0):
           print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
