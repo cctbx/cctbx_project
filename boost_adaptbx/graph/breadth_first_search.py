@@ -96,6 +96,18 @@ class visitor(object):
     pass
 
 
+class vertex_recording_visitor(visitor):
+
+  def __init__(self, start_vertex):
+
+    self.visited_vertices = [ start_vertex ]
+
+
+  def tree_edge(self, edge, graph):
+
+    self.visited_vertices.append( graph.target( edge ) )
+
+
 class distance_recording_visitor(visitor):
 
   def __init__(self, start_vertex):
