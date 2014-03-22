@@ -9,6 +9,7 @@ from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as three_on
 from mmtbx.refinement.geometry_minimization import run2
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 import mmtbx.utils
+from iotbx.pdb import secondary_structure as ioss
 
 global_counter = 1
 
@@ -126,8 +127,13 @@ def make_ss_structure_from_sequence(pdb_str, sequence=None,
   pht = pdb_hierarchy_template
   assert [sequence, pht].count(None) == 1
   if pht:
-    assert len(pht.altloc_indices().keys()) == 1, \
-        "Alternative conformations are not supported"
+    lk = len(pht.altloc_indices().keys())
+    if lk ==0:
+      raise Sorry(
+          "Hierarchy template in make_ss_structure_from_sequence is empty")
+    else:
+      assert len(pht.altloc_indices().keys()) == 1, \
+          "Alternative conformations are not supported"
   number_of_residues = len(sequence) if sequence!=None else \
     len(pht.models()[0].chains()[0].conformers()[0].residues())
   if number_of_residues<1:
@@ -241,6 +247,9 @@ def substitute_ss(real_h,
       Keeps helices torsion angles close to ideal.
   """
   expected_n_hbonds = 0
+  ann = ioss.annotation(helices=helices, sheets=[])
+  phil_str = ann.as_restraint_groups()
+
   for h in helices:
     expected_n_hbonds += get_expected_n_hbonds_from_helix(h)
   edited_h = iotbx.pdb.input(source_info=None,
@@ -283,11 +292,11 @@ def substitute_ss(real_h,
       process_pdb_files(raw_records=flex.split_lines(real_h.as_pdb_string()))
   defpars = mmtbx.secondary_structure.sec_str_master_phil.fetch()
   custom_pars = defpars.fetch(source = iotbx.phil.parse(
-      "input.use_ksdssp=False\nh_bond_restraints.remove_outliers=False"))
+      "h_bond_restraints.remove_outliers=False\n%s" % phil_str))
   ss_manager = mmtbx.secondary_structure.manager(
       pdb_hierarchy=pre_result_h, params=custom_pars.extract())
-  ss_manager.find_automatically(log=log)
-  ss_manager.initialize(log=log)
+  #ss_manager.find_automatically(log=log)
+  #ss_manager.initialize(log=log)
   proxies_for_grm = ss_manager.create_hbond_proxies(
       log          = log,
       as_python_objects = False)
@@ -327,6 +336,7 @@ def substitute_ss(real_h,
       normalization=True)
   assert restraints_manager.geometry.generic_restraints_manager.\
       get_n_hbonds() == expected_n_hbonds
+  #real_h.write_pdb_file(file_name="before_geom_reg.pdb")
   obj = run2(
       restraints_manager       = restraints_manager,
       pdb_hierarchy            = real_h,
