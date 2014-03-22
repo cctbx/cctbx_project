@@ -1,21 +1,20 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
+
 from __future__ import division
-
-import os
-import sys
-
-from collections import OrderedDict, Counter
-
-import libtbx
 from mmtbx.ions.environment import ChemicalEnvironment
+import mmtbx.ions.identify
 from mmtbx import ions
 import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
-
 from mmtbx.ions.environment import chem_carboxy, chem_amide, chem_backbone, \
      chem_water, chem_phosphate, \
      chem_nitrogen_primary, chem_nitrogen_secondary, \
      chem_chlorine, chem_oxygen, chem_nitrogen, chem_sulfur
+import libtbx.load_env
+from collections import OrderedDict, Counter
+import os
+import sys
+
 
 def exercise () :
   if not libtbx.env.has_module("phenix_regression"):
@@ -183,7 +182,7 @@ def exercise () :
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
     connectivity = geometry.shell_sym_tables[0].full_simple_connectivity()
 
-    manager = ions.Manager(
+    manager = mmtbx.ions.identify.manager(
       fmodel = None,
       pdb_hierarchy = pdb_hierarchy,
       xray_structure = xray_structure,

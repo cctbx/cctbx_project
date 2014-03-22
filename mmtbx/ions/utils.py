@@ -1,5 +1,6 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
+from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
 from libtbx.utils import null_out
 from math import sqrt
 import sys
@@ -14,7 +15,6 @@ def anonymize_ions (hierarchy, log=sys.stdout) :
   """
   from cctbx.eltbx import sasaki, chemical_elements
   from mmtbx.ions.parameters import get_server
-  from mmtbx.ions import WATER_RES_NAMES
   ion_resnames = set(chemical_elements.proper_upper_list())
   for resname in get_server().params["_lib_charge.resname"]:
     if resname not in WATER_RES_NAMES:

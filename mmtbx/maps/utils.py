@@ -187,17 +187,20 @@ class fast_maps_from_hkl_file (object) :
       self.map_out = os.path.splitext(self.file_name)[0] + "_map_coeffs.mtz"
     iotbx.map_tools.write_map_coeffs(f_map, df_map, self.map_out, anom_map)
 
-def get_maps_from_fmodel (fmodel, exclude_free_r_reflections=False) :
+def get_maps_from_fmodel (fmodel, fill_missing_f_obs=True,
+    exclude_free_r_reflections=False) :
   map_manager = fmodel.electron_density_map(update_f_part1=True)
-  fwt_coeffs = map_manager.map_coefficients(map_type = "2mFo-DFc",
-    exclude_free_r_reflections=exclude_free_r_reflections)
-  if fwt_coeffs.anomalous_flag() :
-    fwt_coeffs = fwt_coeffs.average_bijvoet_mates()
-  delfwt_coeffs = map_manager.map_coefficients(map_type = "mFo-DFc",
-    exclude_free_r_reflections=exclude_free_r_reflections)
-  if delfwt_coeffs.anomalous_flag() :
-    delfwt_coeffs = delfwt_coeffs.average_bijvoet_mates()
-  return (fwt_coeffs, delfwt_coeffs)
+  two_fofc_coeffs = map_manager.map_coefficients(map_type = "2mFo-DFc",
+    exclude_free_r_reflections=exclude_free_r_reflections,
+    fill_missing=fill_missing_f_obs)
+  if two_fofc_coeffs.anomalous_flag() :
+    two_fofc_coeffs = two_fofc_coeffs.average_bijvoet_mates()
+  fofc_coeffs = map_manager.map_coefficients(map_type = "mFo-DFc",
+    exclude_free_r_reflections=exclude_free_r_reflections,
+    fill_missing=fill_missing_f_obs)
+  if fofc_coeffs.anomalous_flag() :
+    fofc_coeffs = fofc_coeffs.average_bijvoet_mates()
+  return (two_fofc_coeffs, fofc_coeffs)
 
 def get_anomalous_map (fmodel) :
   map_manager = fmodel.electron_density_map(update_f_part1=True)

@@ -7,18 +7,18 @@ Run this module with:
 
 phenix.python -m mmtbx.ions.svm.dump_sites [args]
 """
+
 from __future__ import division
-
-import os
-from cPickle import dump
-import sys
-
-from cctbx.eltbx import sasaki
-from libtbx.str_utils import make_header
 from mmtbx import ions
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
 from mmtbx.ions.svm.utils import iterate_sites
 import mmtbx.command_line
+from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
+from cctbx.eltbx import sasaki
+from libtbx.str_utils import make_header
+from libtbx import easy_pickle
+import os
+import sys
 
 def master_phil () :
   return mmtbx.command_line.generate_master_phil_with_inputs(
@@ -71,9 +71,7 @@ atomic properties.
 
   out_name = os.path.splitext(params.input.pdb.file_name[0])[0] + "_sites.pkl"
   print >> out, "Dumping to", out_name
-
-  with open(out_name, "w") as f:
-    dump(sites, f)
+  easy_pickle.dump(out_name, sites)
 
 def dump_sites (manager):
   """

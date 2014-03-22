@@ -2,11 +2,10 @@
 from __future__ import division
 
 def exercise () :
-  from mmtbx.ions.parameters import server
+  from mmtbx.ions import server as s
   import iotbx.pdb.hierarchy
   import iotbx.pdb
   from cctbx.eltbx import chemical_elements
-  s = server()
 
   # Assert that valence parameters exist for all common ions with their
   # coordinating atoms
