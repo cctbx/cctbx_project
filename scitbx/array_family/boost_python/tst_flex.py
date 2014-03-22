@@ -1711,6 +1711,9 @@ def exercise_flex_vec3_double():
   assert approx_equal(a, a.rotate_around_origin((1,1,1), 2*math.pi))
   assert approx_equal(
     a, a.rotate_around_origin((1,1,1), flex.double(3, 2*math.pi)))
+  axes = flex.vec3_double([(1,0,0), (0,1,0), (0,0,1)])
+  assert approx_equal(
+    a, a.rotate_around_origin(axes, flex.double(3, 2*math.pi)))
   import random
   for i in range(100):
     axis = matrix.col([random.randint(-5, 5) for j in range(3)])
