@@ -11,7 +11,7 @@ def master_phil () :
     enable_pdb_interpretation_params=True,
     enable_stop_for_unknowns=False,
     phil_string="""
-include scope mmtbx.ions.ion_master_phil
+include scope mmtbx.ions.identify.ion_master_phil
 debug = True
   .type = bool
 nproc = Auto
@@ -25,7 +25,7 @@ mmtbx.validate_ions model.pdb data.mtz [options ...]
 Utility to validate ions that have been built into a model, based on local
 environment, electron density maps, and atomic properties.
 """
-  from mmtbx import ions
+  import mmtbx.ions.identify
   import mmtbx.command_line
   cmdline = mmtbx.command_line.load_model_and_data(
     update_f_part1_for="map",
@@ -43,7 +43,7 @@ environment, electron density maps, and atomic properties.
   pdb_hierarchy = cmdline.pdb_hierarchy
   geometry = cmdline.geometry
   make_header("Inspecting ions", out=out)
-  manager = ions.create_manager(
+  manager = mmtbx.ions.identify.create_manager(
     pdb_hierarchy = pdb_hierarchy,
     fmodel=fmodel,
     geometry_restraints_manager=geometry,

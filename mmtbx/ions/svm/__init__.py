@@ -14,11 +14,11 @@ mmtbx.ions.geometry
 phenix_dev.ion_identification.nader_ml
 """
 
-from __future__ import division
+from __future__ import division, absolute_import
 from mmtbx.ions.environment import N_SUPPORTED_ENVIRONMENTS
 from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES
-from mmtbx.ions.parameters import get_server
-from mmtbx import ions
+import mmtbx.ions.identify
+from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
 from cctbx.eltbx import sasaki
 from libtbx import Auto, slots_getstate_setstate_default_initializer
 from libtbx.str_utils import make_sub_header
@@ -44,18 +44,16 @@ except ImportError :
 
 CLASSIFIER_PATH = libtbx.env.find_in_repositories(
   relative_path = "chem_data/classifiers/ions_svm.model",
-  test = os.path.isfile
-  )
+  test = os.path.isfile)
 CLASSIFIER_ACCESSORIES_PATH = libtbx.env.find_in_repositories(
   relative_path = "chem_data/classifiers/ions_svm_options.pkl",
-  test = os.path.isfile
-  )
+  test = os.path.isfile)
 
 _CLASSIFIER = None
 _VECTOR_OPTIONS = None
 _TRIED = None
 
-ALLOWED_IONS = [ions.WATER_RES_NAMES[0]] + ["MN", "ZN", "FE", "NI", "CA"]
+ALLOWED_IONS = ["HOH", "MN", "ZN", "FE", "NI", "CA"]
 
 def _get_classifier():
   """
@@ -178,9 +176,7 @@ def ion_model_vector(scatter_env, nearest_res = 0.5):
     # Rounds d_min to the nearest value divisible by nearest_res
     factor = 1 / nearest_res
     d_min = round(d_min * factor) / factor
-  return np.array([
-    d_min,
-    ], dtype = float)
+  return np.array([ d_min, ], dtype = float)
 
 def ion_electron_density_vector(scatter_env, b_iso = False, occ = False,
                                 diff_peak = False):
@@ -290,15 +286,13 @@ def ion_valence_vector(chem_env, elements = None):
   """
 
   if elements is None:
-    elements = [i for i in ALLOWED_IONS if i not in ions.WATER_RES_NAMES]
+    elements = [i for i in ALLOWED_IONS if i not in WATER_RES_NAMES]
   ret = []
-  server = get_server()
 
   for element in elements:
     ret.append(chem_env.get_valence(
       element = element,
-      charge = server.get_charge(element)
-      ))
+      charge = mmtbx.ions.server.get_charge(element)))
 
   # Flatten the list
   return _flatten_list(ret)
@@ -326,7 +320,7 @@ def ion_anomalous_vector(scatter_env, elements = None, ratios = True):
   """
 
   if elements is None:
-    elements = [i for i in ALLOWED_IONS if i not in ions.WATER_RES_NAMES]
+    elements = [i for i in ALLOWED_IONS if i not in WATER_RES_NAMES]
 
   if scatter_env.fpp is None or scatter_env.wavelength is None:
     if ratios:
@@ -485,16 +479,16 @@ class svm_prediction (slots_getstate_setstate_default_initializer) :
       (self.pdb_id_str, final_choice, best_score, self.map_stats.two_fofc,
        self.map_stats.fofc)
 
-class manager (ions.Manager) :
+class manager (mmtbx.ions.identify.manager) :
   def analyze_water (self, i_seq, debug=True, candidates=Auto) :
-    atom_props = ions.AtomProperties(i_seq, self)
+    atom_props = mmtbx.ions.identify.AtomProperties(i_seq, self)
     expected_atom_type = atom_props.get_atom_type(
       params=self.params.water)
-    if (expected_atom_type == ions.WATER_POOR) :
+    if (expected_atom_type == mmtbx.ions.identify.WATER_POOR) :
       return None
     auto_candidates = candidates is Auto
     if auto_candidates:
-      candidates = ions.DEFAULT_IONS
+      candidates = mmtbx.ions.DEFAULT_IONS
     elif isinstance(candidates, str) or isinstance(candidates, unicode) :
       candidates = candidates.replace(",", " ").split()
     candidates = [i.strip().upper() for i in candidates]

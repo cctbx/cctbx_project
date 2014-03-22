@@ -56,12 +56,14 @@ def find_and_build_ions (
       out=None,
       run_ordered_solvent=False,
       occupancy_strategy_enabled=False,
-      group_anomalous_strategy_enabled=False) :
+      group_anomalous_strategy_enabled=False,
+      use_svm=False) :
   import mmtbx.refinement.minimization
   from mmtbx.refinement.anomalous_scatterer_groups import \
     get_single_atom_selection_string
   from mmtbx.refinement import anomalous_scatterer_groups
-  import mmtbx.ions
+  import mmtbx.ions.identify
+  import mmtbx.ions.svm
   from cctbx.eltbx import sasaki
   from cctbx import crystal
   from cctbx import adptbx
@@ -85,7 +87,10 @@ def find_and_build_ions (
       assert (u_iso[i_seq] >= 0)
       atom.b = adptbx.u_as_b(u_iso[i_seq])
   if (manager is None) :
-    manager = mmtbx.ions.create_manager(
+    manager_class = None
+    if (use_svm) :
+      manager_class = mmtbx.ions.svm.manager
+    manager = mmtbx.ions.identify.create_manager(
       pdb_hierarchy=pdb_hierarchy,
       geometry_restraints_manager=model.restraints_manager.geometry,
       fmodel=fmodel,
@@ -93,7 +98,8 @@ def find_and_build_ions (
       params=params,
       nproc=nproc,
       verbose=params.debug,
-      log=out)
+      log=out,
+      manager_class=manager_class)
   else :
     grm = model.restraints_manager.geometry
     connectivity = grm.shell_sym_tables[0].full_simple_connectivity()
@@ -117,9 +123,14 @@ def find_and_build_ions (
   default_b_iso = manager.get_initial_b_iso()
   # Build in the identified ions
   for_building = []
-  for i_seq, final_choices, two_fofc in water_ion_candidates :
-    if (len(final_choices) == 1) :
-      for_building.append((i_seq, final_choices[0]))
+  if (use_svm) :
+    for result in water_ion_candidates :
+      assert isinstance(result.final_choice, str)
+      for_building.append((result.i_seq, result.final_choice))
+  else :
+    for i_seq, final_choices, two_fofc in water_ion_candidates :
+      if (len(final_choices) == 1) :
+        for_building.append((i_seq, final_choices[0]))
   skipped = []
   if (len(for_building) > 0) :
     make_sub_header("Adding %d ions to model" % len(for_building), out)

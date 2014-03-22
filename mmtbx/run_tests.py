@@ -178,6 +178,7 @@ tst_list = (
   "$D/regression/tst_anneal_real_space.py",
   "$D/regression/tst_generate_disorder.py",
   "$D/secondary_structure/tst_base_pairing.py",
+  "$D/ions/tst_pick_ca_svm.py",
   )
 
 def run():

@@ -12,7 +12,7 @@ def master_phil () :
     enable_pdb_interpretation_params=True,
     enable_stop_for_unknowns=False,
     phil_string="""
-include scope mmtbx.ions.ion_master_phil
+include scope mmtbx.ions.identify.ion_master_phil
 include scope mmtbx.ions.svm.svm_phil_str
 debug = True
   .type = bool
@@ -33,7 +33,7 @@ mmtbx.water_screen model.pdb data.mtz [options ...]
 Utility to flag waters that may actually be elemental ions, based on local
 environment, electron density maps, and atomic properties.
 """
-  from mmtbx import ions
+  import mmtbx.ions.identify
   import mmtbx.command_line
   cmdline = mmtbx.command_line.load_model_and_data(
     args=args,
@@ -69,7 +69,7 @@ environment, electron density maps, and atomic properties.
   manager_class = None
   if (params.use_svm) :
     manager_class = mmtbx.ions.svm.manager
-  manager = ions.create_manager(
+  manager = mmtbx.ions.identify.create_manager(
     pdb_hierarchy = pdb_hierarchy,
     fmodel = fmodel,
     geometry_restraints_manager = geometry,

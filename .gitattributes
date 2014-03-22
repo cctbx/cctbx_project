@@ -1722,6 +1722,8 @@ mmtbx/ions/__init__.py -text
 mmtbx/ions/build.py -text
 mmtbx/ions/environment.py -text
 mmtbx/ions/geometry.py -text
+mmtbx/ions/halides.py svneol=native#text/x-python
+mmtbx/ions/identify.py svneol=native#text/x-python
 mmtbx/ions/ion_parameters.cif -text
 mmtbx/ions/parameters.py -text
 mmtbx/ions/svm/__init__.py -text
@@ -1735,6 +1737,7 @@ mmtbx/ions/tst_geometries.py -text
 mmtbx/ions/tst_parameters.py svneol=native#text/x-python
 mmtbx/ions/tst_pick_approx_zn.py -text
 mmtbx/ions/tst_pick_ca.py -text
+mmtbx/ions/tst_pick_ca_svm.py svneol=native#text/x-python
 mmtbx/ions/tst_pick_k.py -text
 mmtbx/ions/tst_pick_mg.py -text
 mmtbx/ions/tst_pickle.py -text
