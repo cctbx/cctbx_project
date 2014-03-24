@@ -271,11 +271,13 @@ def create_omit_regions (xray_structure,
   unit_cell = xrs.unit_cell()
   asu_mappings = xrs.asu_mappings(buffer_thickness=asu_buffer_thickness)
   asu = asu_mappings.asu()
+  #print asu.box_min(), asu.box_max()
   sites_asu = flex.vec3_double()
   for i_seq, mappings in enumerate(asu_mappings.mappings()) :
     if (not selection[i_seq]) : continue
     for mapping in mappings :
       site_cart = mapping.mapped_site()
+      print site_cart
       site_frac = unit_cell.fractionalize(site_cart=site_cart)
       sites_asu.append(site_frac)
       break
@@ -283,6 +285,8 @@ def create_omit_regions (xray_structure,
     site_cart=[ box_cushion_radius ] * 3)
   x_min, y_min, z_min = sites_asu.min()
   x_max, y_max, z_max = sites_asu.max()
+  #print "min", x_min, y_min, z_min
+  #print "max", x_max, y_max, z_max
   non_hd_sel = ~(xray_structure.hd_selection())
   n_omit_heavy_atoms = non_hd_sel.select(iselection).count(True)
   n_omit_per_box = n_omit_heavy_atoms * fraction_omit
@@ -377,7 +381,8 @@ def combine_maps (
     background_map_coeffs,
     resolution_factor,
     flatten_background=False,
-    sigma_scaling=False) :
+    sigma_scaling=False,
+    control_map=False) :
   """
   For each box, FFT the corresponding omit map coefficients, extract the
   omit regions, and copy them to the combined map, using Marat's asymmetric
@@ -396,34 +401,41 @@ def combine_maps (
     sel_all = flex.bool(background_map.as_1d().size(), True)
     background_map.as_1d().set_selected(sel_all, 0)
   asym_map = asu_map_ext.asymmetric_map(space_group.type(), background_map)
+  origin = asym_map.data().origin()
   n_real_all = background_map.focus()
   n_real_asu = asym_map.data().focus()
-  #print "asu map:", n_real_asu
-  f2g = maptbx.frac2grid(n_real_all)
-  n = 0
-  for group, map_coeffs in zip(omit_groups, map_arrays) :
-    space_group = map_coeffs.space_group()
-    omit_fft_map = map_coeffs.fft_map(
-      resolution_factor=resolution_factor,
-      symmetry_flags=maptbx.use_space_group_symmetry).apply_volume_scaling()
-    if (sigma_scaling) :
-      omit_fft_map.apply_sigma_scaling()
-    omit_map = omit_fft_map.real_map_unpadded()
-    omit_asym_map = asu_map_ext.asymmetric_map(space_group.type(), omit_map)
-    assert omit_asym_map.data().focus() == n_real_asu
-    for box in group.boxes :
-      grid_start = list(f2g(box.frac_min))
-      grid_end = grid_max(list(f2g(box.frac_max)), n_real_asu)
-      box_map = maptbx.copy(omit_asym_map.data(), grid_start, grid_end)
-      box_map.reshape(flex.grid(box_map.all()))
-      maptbx.set_box(
-        map_data_from=box_map,
-        map_data_to=asym_map.data(),
-        start=grid_start,
-        end=grid_end)
-  #asym_map = asu_map_ext.asymmetric_map(space_group.type(), omit_map)
+  m_real_asu = asym_map.data().all()
+  #print "ORIGIN:", origin
+  #print "N_REAL:", n_real_asu
+  #print "M_REAL:", m_real_asu
+  if (not control_map) :
+    f2g = maptbx.frac2grid(n_real_all)
+    n = 0
+    for group, map_coeffs in zip(omit_groups, map_arrays) :
+      space_group = map_coeffs.space_group()
+      omit_fft_map = map_coeffs.fft_map(
+        resolution_factor=resolution_factor,
+        symmetry_flags=maptbx.use_space_group_symmetry).apply_volume_scaling()
+      if (sigma_scaling) :
+        omit_fft_map.apply_sigma_scaling()
+      omit_map = omit_fft_map.real_map_unpadded()
+      omit_asym_map = asu_map_ext.asymmetric_map(space_group.type(), omit_map)
+      assert omit_asym_map.data().focus() == n_real_asu
+      for box in group.boxes :
+        if (control_map) : continue
+        grid_start = tuple(f2g(box.frac_min))
+        grid_end = grid_max(f2g(box.frac_max), n_real_asu)
+        #print grid_start, grid_end
+        for u in range(grid_start[0], grid_end[0]+1) :
+          for v in range(grid_start[1], grid_end[1]+1) :
+            for w in range(grid_start[2], grid_end[2]+1) :
+              try :
+                asym_map.data()[(u,v,w)] = omit_asym_map.data()[(u,v,w)]
+              except IndexError :
+                raise IndexError("n_real: %s  origin: %s  index: %s" %
+                  (str(n_real_asu), str(origin), str((u,v,w))))
   return asym_map.map_for_fft()
 
 def grid_max (grid_coords, n_real) :
-  return (min(grid_coords[0], n_real[0]), min(grid_coords[1], n_real[1]),
-          min(grid_coords[2], n_real[2]))
+  return (min(grid_coords[0], n_real[0]-1), min(grid_coords[1], n_real[1]-1),
+          min(grid_coords[2], n_real[2]-1))
