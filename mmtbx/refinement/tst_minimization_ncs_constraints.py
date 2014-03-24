@@ -266,6 +266,5 @@ def exercise_01():
   t.clean_up_temp_test_files()
 
 if __name__ == "__main__":
-  os.chdir(r'C:\Phenix\Dev\Work\work\NCS\junk\pdb_test')
   exercise_00()
   exercise_01()
