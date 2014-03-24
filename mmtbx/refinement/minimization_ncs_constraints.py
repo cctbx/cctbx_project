@@ -26,6 +26,7 @@ class lbfgs(object):
             self.data_weight].count(None) in [0,2]
     assert [len(rotation_matrices) == len(translation_vectors)]
     assert [self.refine_sites, self.refine_u_iso].count(True) == 1
+    assert ncs_atom_selection.count(True) > 0
     self.number_of_transformations = len(rotation_matrices)+1
     self.fmodel.xray_structure.scatterers().flags_set_grads(state=False)
     self.x_target_functor = self.fmodel.target_functor()
