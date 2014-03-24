@@ -24,40 +24,43 @@ class asu_ncs_converter(object):
     self.back_rotation_matrices = []
     self.back_translation_vectors = []
     self.ph_first_chain = None
+    #
     for i_chain, chain in enumerate(pdb_hierarchy.chains()):
-      if(chain.is_na() or chain.is_protein()):
-        n_atoms_per_chain.append(chain.atoms_size())
-        if(sites_cart_chain_0 is None and i_chain==0):
-          sites_cart_chain_0 = chain.atoms().extract_xyz()
-          sel = flex.size_t(xrange(sites_cart_chain_0.size()))
-          self.ph_first_chain = pdb_hierarchy.select(sel)
-          um = scitbx.matrix.sqr((
-            1,0,0,
-            0,1,0,
-            0,0,1))
-          zv = scitbx.matrix.col((0, 0, 0))
-          self.rotation_matrices.append(um)
-          self.translation_vectors.append(zv)
-          self.back_rotation_matrices.append(um)
-          self.back_translation_vectors.append(zv)
-        if(i_chain > 0):
-          # first copy onto others
-          lsq_fit_obj = superpose.least_squares_fit(
-            reference_sites = sites_cart_chain_0,
-            other_sites     = chain.atoms().extract_xyz())
-          self.rotation_matrices.append(lsq_fit_obj.r.transpose())
-          self.translation_vectors.append(lsq_fit_obj.t)
-          d =  flex.sqrt((sites_cart_chain_0-
-            lsq_fit_obj.other_sites_best_fit()).dot()).min_max_mean().as_tuple()
-          assert d[1]<eps # make sure copies are similar
-          # others onto first copy
-          lsq_fit_obj = superpose.least_squares_fit(
-            reference_sites = chain.atoms().extract_xyz(),
-            other_sites     = sites_cart_chain_0)
-          self.back_rotation_matrices.append(lsq_fit_obj.r)
-          self.back_translation_vectors.append(lsq_fit_obj.t)
-          #
-    assert n_atoms_per_chain.all_eq(n_atoms_per_chain[0])
+      n_atoms_per_chain.append(chain.atoms_size())
+    #
+    if(n_atoms_per_chain.all_eq(n_atoms_per_chain[0])):
+      for i_chain, chain in enumerate(pdb_hierarchy.chains()):
+        if(chain.is_na() or chain.is_protein()):
+          n_atoms_per_chain.append(chain.atoms_size())
+          if(sites_cart_chain_0 is None and i_chain==0):
+            sites_cart_chain_0 = chain.atoms().extract_xyz()
+            sel = flex.size_t(xrange(sites_cart_chain_0.size()))
+            self.ph_first_chain = pdb_hierarchy.select(sel)
+            um = scitbx.matrix.sqr((
+              1,0,0,
+              0,1,0,
+              0,0,1))
+            zv = scitbx.matrix.col((0, 0, 0))
+            self.rotation_matrices.append(um)
+            self.translation_vectors.append(zv)
+            self.back_rotation_matrices.append(um)
+            self.back_translation_vectors.append(zv)
+          if(i_chain > 0):
+            # first copy onto others
+            lsq_fit_obj = superpose.least_squares_fit(
+              reference_sites = sites_cart_chain_0,
+              other_sites     = chain.atoms().extract_xyz())
+            self.rotation_matrices.append(lsq_fit_obj.r.transpose())
+            self.translation_vectors.append(lsq_fit_obj.t)
+            d =  flex.sqrt((sites_cart_chain_0-
+              lsq_fit_obj.other_sites_best_fit()).dot()).min_max_mean().as_tuple()
+            assert d[1]<2 # make sure copies are similar
+            # others onto first copy
+            lsq_fit_obj = superpose.least_squares_fit(
+              reference_sites = chain.atoms().extract_xyz(),
+              other_sites     = sites_cart_chain_0)
+            self.back_rotation_matrices.append(lsq_fit_obj.r)
+            self.back_translation_vectors.append(lsq_fit_obj.t)
 
   def is_ncs_present(self):
     return len(self.rotation_matrices)>1
@@ -78,8 +81,8 @@ class asu_ncs_converter(object):
     of = open(file_name, "w")
     if(mode=="ncs"):
       print >> of, iotbx.pdb.format_MTRIX_pdb_string(
-        rotation_matrices   = self.rotation_matrices,
-        translation_vectors = self.translation_vectors)
+        rotation_matrices   = self.back_rotation_matrices,
+        translation_vectors = self.back_translation_vectors)
       print >> of, self.ph_first_chain.as_pdb_string(
         crystal_symmetry = crystal_symmetry)
     else:
