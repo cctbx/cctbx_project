@@ -140,6 +140,74 @@ asymmetric_map::fft_map_t asymmetric_map::map_for_fft() const
   return result;
 }
 
+asymmetric_map::fft_map_t asymmetric_map::symmetry_expanded_map() const
+{
+  int3 map_size = this->unit_cell_grid_size();
+  //! @todo if map is not padded for FFT, do not initialize with 0.
+  fft_map_t result(this->fft_grid(), 0.);
+  vector<sgtbx::grid_symop> symops = this->grid_symops();
+  int3 ebox_min, ebox_max;
+  bool has_enclosed_box=asu_.enclosed_box_corners(ebox_min, ebox_max, map_size);
+  const double *d = data_.begin();
+  if( has_enclosed_box )
+  {
+    for(grid_iterator_t i3=this->grid_begin(); !i3.over(); i3.incr(), ++d )
+    {
+      int3 asym_pos = i3();
+      af::int3 t = asym_pos.as_tiny();
+      bool in_asu = t.all_ge(ebox_min) && t.all_le(ebox_max);
+      if( !in_asu )
+        in_asu = optimized_asu_.where_is(asym_pos) !=0;
+      if( in_asu )
+      {
+        double map_value = *d;
+        for(size_t i=0; i<symops.size(); ++i)
+        {
+          int3 sym_pos = symops[i].apply_to(asym_pos);
+          int3 pos_in_cell(sym_pos);
+          translate_into_cell(pos_in_cell, map_size);
+          result(pos_in_cell) = map_value;
+        }
+      }
+    }
+  }
+  else
+  {
+    for(grid_iterator_t i3=this->grid_begin(); !i3.over(); i3.incr(), ++d )
+    {
+      int3 asym_pos = i3();
+      if( optimized_asu_.where_is(asym_pos) !=0 )
+      {
+        double map_value = *d;
+        for(size_t i=0; i<symops.size(); ++i)
+        {
+          int3 sym_pos = symops[i].apply_to(asym_pos);
+          int3 pos_in_cell(sym_pos);
+          translate_into_cell(pos_in_cell, map_size);
+          result(pos_in_cell) = map_value;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+asymmetric_map::asu_grid_t asymmetric_map::asu_grid(const int3 &map_size) const
+{
+  //! @todo: test grid for compatiblity with the group, see
+  //     crystal_form::determine_grid
+  int3 grid = map_size;
+  CCTBX_ASSERT( this->unit_cell_grid_size().as_tiny().all_eq(grid) );
+  asu::rvector3_t box_min, box_max;
+  asu_.box_corners(box_min, box_max);
+  int3 ebox_min, ebox_max;
+  scitbx::mul(box_min, grid);
+  scitbx::mul(box_max, grid);
+  int3 ibox_min = scitbx::floor(box_min), ibox_max = scitbx::ceil(box_max);
+  ibox_max += int3(1,1,1); // open range: [box_min,box_max)
+  return asu_grid_t(ibox_min, ibox_max);
+}
+
 void asymmetric_map::copy_to_asu_box(const int3 &map_size,
   const int3 &padded_map_size, const double *cell_data)
 {
@@ -147,7 +215,6 @@ void asymmetric_map::copy_to_asu_box(const int3 &map_size,
   //! @todo: test grid for compatiblity with the group, see
   //     crystal_form::determine_grid
   int3 grid = map_size;
-  CCTBX_ASSERT( this->unit_cell_grid_size().as_tiny().all_eq(grid) );
   asu::rvector3_t box_min, box_max;
   asu_.box_corners(box_min, box_max);
   int3 ebox_min, ebox_max;
@@ -163,8 +230,7 @@ void asymmetric_map::copy_to_asu_box(const int3 &map_size,
   }
   bool is_asu_inside_cell = ibox_min.as_tiny().all_ge(0)
     && ibox_max.as_tiny().all_le(grid);
-  ibox_max += int3(1,1,1); // open range: [box_min,box_max)
-  data_.resize(asu_grid_t(ibox_min, ibox_max), 0.); //! @todo optimize
+  data_.resize(this->asu_grid(grid), 0.); //! @todo optimize
   cpu_timer timer;
   int3 padded_grid_size = padded_map_size;
   CCTBX_ASSERT( padded_grid_size.as_tiny().all_ge(grid) );

@@ -26,6 +26,7 @@ void init_module()
         ( (arg("space_group_type"), arg("density_map"), arg("grid_size")) ))
     .def("structure_factors", &w_t::structure_factors, (arg("indices")))
     .def("map_for_fft", &w_t::map_for_fft)
+    .def("symmetry_expanded_map", &w_t::symmetry_expanded_map)
     .def("data", &w_t::data, rbv())
   ;
 

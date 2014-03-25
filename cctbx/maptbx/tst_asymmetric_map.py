@@ -51,6 +51,23 @@ def run_group(symbol):
   print "R1 again: ", r12
   assert r12 < 1.e-5
 
+  p1_map = amap.symmetry_expanded_map()
+  assert p1_map.accessor().focus() == grid_size
+
+  rel_tol = 1.e-6
+  n = 0
+  mean_rel_dif = 0.
+  for (m1,m2) in zip(fftmap.real_map(),p1_map):
+    dif = abs(m1-m2)
+    av = 0.5*(abs(m1)+abs(m2))
+    assert dif <= rel_tol * av
+    if av != 0:
+      mean_rel_dif = mean_rel_dif + dif/av
+      n = n + 1
+  mean_rel_dif = mean_rel_dif / n
+  print "mean rel err: ", mean_rel_dif
+  assert mean_rel_dif < 1.e-6
+
 def run():
   for i in xrange(1,231):
     run_group(i);
