@@ -122,7 +122,13 @@ class FormatHDF5Nexus(FormatHDF5):
     entry = self._h5_handle['entry']
     sample = entry['sample']
     beam = sample['beam']
-    wavelength = beam['wavelength']
+
+    # seems to be two different syntax options for this
+
+    if 'wavelength' in beam:
+      wavelength = beam['wavelength']
+    elif 'incident_wavelength' in beam:
+      wavelength = beam['incident_wavelength']
     return self._beam_factory.simple_directional(
       self._R * matrix.col((0,0,-1)),
       wavelength[0])
