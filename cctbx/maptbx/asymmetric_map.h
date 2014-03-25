@@ -281,8 +281,8 @@ public:
   scitbx::af::shared< std::complex<double> > structure_factors(
     scitbx::af::const_ref< cctbx::miller::index<> > indices) const;
 
-  // not implemented, do I really need this one ?
-  // unit_cell_map_t symmetry_expanded_unit_cell_map() const;
+  //! Symmetry expanded P1 map suitable for FFT, slower than map_for_fft
+  fft_map_t symmetry_expanded_map() const;
 
   enum format { xplor };
 
@@ -301,6 +301,8 @@ private:
   }
 
   std::vector<cctbx::sgtbx::grid_symop> grid_symops() const;
+
+  asu_grid_t asu_grid(const scitbx::int3 &map_size) const;
 
   void copy_to_asu_box(const scitbx::int3 &map_size,
     const scitbx::int3 &padded_map_size, const double *cell_data);
