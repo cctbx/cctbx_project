@@ -756,7 +756,8 @@ def test_res_type(hierarchy,
                   ):
   for i, threes in enumerate(cdl.generate_protein_threes(
     hierarchy,
-    restraints_manager=restraints_manager
+    #restraints_manager=restraints_manager
+    geometry=restraints_manager.geometry,
     )
                              ):
     #print threes.show_detailed()
@@ -775,7 +776,8 @@ def test_phi_psi_key(hierarchy,
                      ):
   for i, threes in enumerate(cdl.generate_protein_threes(
     hierarchy,
-    restraints_manager=restraints_manager
+    #restraints_manager=restraints_manager
+    geometry=restraints_manager.geometry,
     )
                              ):
     key = threes.get_cdl_key()
@@ -789,7 +791,8 @@ def test_cdl_lookup(hierarchy,
                     ):
   for i, threes in enumerate(cdl.generate_protein_threes(
     hierarchy,
-    restraints_manager=restraints_manager
+    #restraints_manager=restraints_manager
+    geometry=restraints_manager.geometry,
     )
                              ):
     res_type_group = cdl.get_res_type_group(
@@ -807,7 +810,8 @@ def test_cis_trans_peptide(hierarchy,
                            ):
   for i, threes in enumerate(cdl.generate_protein_threes(
     hierarchy,
-    restraints_manager=restraints_manager
+    #restraints_manager=restraints_manager
+    geometry=restraints_manager.geometry,
     )
                              ):
     cis_peptide_bond = threes.cis_group()
@@ -867,11 +871,11 @@ def run_apply(filename, testing=False, verbose=False):
     f.close()
 
   t0=time.time()
-  cdl_proxies = cdl.setup_restraints(restraints_manager,
+  cdl_proxies = cdl.setup_restraints(restraints_manager.geometry,
                                      verbose=verbose,
                                      )
   cdl.update_restraints(processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-                        restraints_manager=restraints_manager,
+                        geometry=restraints_manager.geometry,
                         cdl_proxies=cdl_proxies,
                         verbose=verbose,
                         )
