@@ -1,11 +1,14 @@
 from __future__ import division
 
-from mmtbx.secondary_structure import manager
+from mmtbx.secondary_structure import (manager,
+                                      hydrogen_bond_proxies_from_selections,
+                                      sec_str_master_phil)
 from mmtbx.secondary_structure.base_pairing import pair_database
 from mmtbx.geometry_restraints import hbond
 from iotbx import file_reader
 import iotbx.pdb.hierarchy
 import libtbx.load_env
+import iotbx.pdb.secondary_structure as ioss
 from libtbx.utils import null_out
 import os
 
@@ -255,7 +258,234 @@ ATOM    123  CB  ALA A  98      -1.627   2.343  20.021  1.00 20.00           C
   proxies = build_proxies.proxies
   assert len(proxies) == 12
 
+def exercise_sheets_bonding_pattern():
+  pdb_apar_input = iotbx.pdb.hierarchy.input(pdb_string = """\
+SCRYST1   46.460   46.460  193.210  90.00  90.00 120.00 P 31 2 1
+SCALE1      0.021524  0.012427  0.000000        0.00000
+SCALE2      0.000000  0.024854  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.005176        0.00000
+ATOM      1  N   GLY A   1      28.066 -23.487   2.817  1.00 16.21           N
+ATOM      2  CA  GLY A   1      27.219 -22.652   1.936  1.00 13.03           C
+ATOM      3  C   GLY A   1      27.859 -21.336   1.546  1.00  9.56           C
+ATOM      4  O   GLY A   1      28.868 -20.882   2.096  1.00 12.48           O
+ATOM      5  N   TYR A   2      27.208 -20.701   0.590  1.00  7.29           N
+ATOM      6  CA  TYR A   2      27.617 -19.424   0.052  1.00  7.96           C
+ATOM      7  C   TYR A   2      26.483 -18.436   0.263  1.00  6.87           C
+ATOM      8  O   TYR A   2      25.303 -18.771   0.249  1.00  6.97           O
+ATOM      9  CB  TYR A   2      27.861 -19.541  -1.451  1.00  7.90           C
+ATOM     10  CG  TYR A   2      28.902 -20.556  -1.857  1.00  9.09           C
+ATOM     11  CD1 TYR A   2      30.255 -20.336  -1.592  1.00 11.43           C
+ATOM     12  CD2 TYR A   2      28.566 -21.697  -2.545  1.00 10.59           C
+ATOM     13  CE1 TYR A   2      31.227 -21.244  -1.987  1.00 13.93           C
+ATOM     14  CE2 TYR A   2      29.518 -22.630  -2.915  1.00 11.76           C
+ATOM     15  CZ  TYR A   2      30.847 -22.395  -2.659  1.00 13.67           C
+ATOM     16  OH  TYR A   2      31.792 -23.309  -3.059  1.00 18.26           O
+ATOM     17  N   SER A   3      26.854 -17.177   0.412  1.00  6.66           N
+ATOM     18  CA  SER A   3      25.899 -16.083   0.383  0.53  6.83           C
+ATOM     20  C   SER A   3      26.500 -14.946  -0.440  1.00  5.61           C
+ATOM     21  O   SER A   3      27.729 -14.822  -0.565  1.00  8.14           O
+ATOM     22  CB  SER A   3      25.569 -15.634   1.795  0.53  7.38           C
+ATOM     24  OG  SER A   3      26.740 -15.136   2.390  0.53  9.79           O
+ATOM     26  N   CYS A   4      25.627 -14.135  -0.995  1.00  5.11           N
+ATOM     27  CA  CYS A   4      26.070 -13.062  -1.865  1.00  5.65           C
+ATOM     28  C   CYS A   4      25.043 -11.934  -1.798  1.00  4.54           C
+ATOM     29  O   CYS A   4      23.856 -12.180  -1.528  1.00  5.60           O
+ATOM     30  CB  CYS A   4      26.253 -13.557  -3.295  1.00  7.00           C
+ATOM     31  SG  CYS A   4      24.806 -14.269  -4.119  1.00  8.88           S
+ATOM     32  N   ARG A   5      25.486 -10.691  -2.002  1.00  4.69           N
+ATOM     33  CA  ARG A   5      24.558  -9.545  -2.064  1.00  4.87           C
+ATOM     34  C   ARG A   5      25.196  -8.395  -2.796  1.00  4.57           C
+ATOM     35  O   ARG A   5      26.416  -8.238  -2.793  1.00  5.50           O
+ATOM     36  CB  ARG A   5      24.061  -9.108  -0.700  1.00  6.43           C
+ATOM     37  CG  ARG A   5      25.121  -8.566   0.219  1.00  6.96           C
+ATOM     38  CD  ARG A   5      24.461  -8.032   1.494  1.00  7.25           C
+ATOM     39  NE  ARG A   5      25.452  -7.547   2.440  1.00  7.63           N
+ATOM     40  CZ  ARG A   5      26.107  -8.341   3.280  1.00  9.10           C
+ATOM     41  NH1 ARG A   5      25.867  -9.642   3.297  1.00  9.68           N
+ATOM     42  NH2 ARG A   5      26.974  -7.836   4.146  1.00 10.30           N
+ATOM     43  N   ALA A   6      24.325  -7.563  -3.358  1.00  4.39           N
+ATOM     44  CA  ALA A   6      24.723  -6.362  -4.067  1.00  4.73           C
+ATOM     45  C   ALA A   6      23.693  -5.275  -3.769  1.00  4.15           C
+ATOM     46  O   ALA A   6      22.482  -5.458  -3.987  1.00  4.96           O
+ATOM     47  CB  ALA A   6      24.831  -6.626  -5.558  1.00  5.96           C
+ATOM     48  N   VAL A   7      24.165  -4.139  -3.284  1.00  4.97           N
+ATOM     49  CA  VAL A   7      23.374  -2.917  -3.085  1.00  4.42           C
+ATOM     50  C   VAL A   7      23.482  -2.046  -4.325  1.00  4.45           C
+ATOM     51  O   VAL A   7      24.589  -1.663  -4.717  1.00  5.55           O
+ATOM     52  CB  VAL A   7      23.830  -2.159  -1.806  1.00  5.09           C
+ATOM     53  CG1 VAL A   7      23.111  -0.842  -1.686  1.00  5.65           C
+ATOM     54  CG2 VAL A   7      23.612  -2.998  -0.570  1.00  6.88           C
+ATOM    204  N   MET A  31      18.177  -3.966  -4.656  1.00  4.72           N
+ATOM    205  CA  MET A  31      18.833  -4.887  -3.744  1.00  5.29           C
+ATOM    206  C   MET A  31      18.765  -6.294  -4.322  1.00  4.60           C
+ATOM    207  O   MET A  31      17.661  -6.738  -4.657  1.00  4.98           O
+ATOM    208  CB  MET A  31      18.097  -4.868  -2.387  1.00  6.39           C
+ATOM    209  CG  MET A  31      18.723  -5.755  -1.334  1.00  8.61           C
+ATOM    210  SD  MET A  31      20.248  -5.074  -0.655  1.00 11.04           S
+ATOM    211  CE  MET A  31      21.358  -6.427  -0.777  1.00  8.94           C
+ATOM    212  N   ALA A  32      19.899  -6.986  -4.412  1.00  3.90           N
+ATOM    213  CA  ALA A  32      19.934  -8.380  -4.864  1.00  3.55           C
+ATOM    214  C   ALA A  32      20.720  -9.194  -3.858  1.00  3.90           C
+ATOM    215  O   ALA A  32      21.762  -8.763  -3.393  1.00  5.01           O
+ATOM    216  CB  ALA A  32      20.552  -8.500  -6.255  1.00  4.55           C
+ATOM    217  N   SER A  33      20.230 -10.407  -3.567  1.00  4.02           N
+ATOM    218  CA  SER A  33      20.980 -11.288  -2.645  1.00  3.79           C
+ATOM    219  C   SER A  33      20.591 -12.727  -2.850  1.00  4.33           C
+ATOM    220  O   SER A  33      19.532 -13.045  -3.412  1.00  4.84           O
+ATOM    221  CB  SER A  33      20.830 -10.880  -1.167  1.00  4.55           C
+ATOM    222  OG  SER A  33      19.498 -11.105  -0.710  1.00  5.25           O
+ATOM    223  N   GLY A  34      21.415 -13.600  -2.283  1.00  4.96           N
+ATOM    224  CA  GLY A  34      21.104 -14.997  -2.335  1.00  4.50           C
+ATOM    225  C   GLY A  34      21.914 -15.837  -1.397  1.00  4.64           C
+ATOM    226  O   GLY A  34      22.836 -15.343  -0.732  1.00  4.96           O
+ATOM    227  N   THR A  35      21.521 -17.105  -1.329  1.00  4.35           N
+ATOM    228  CA  THR A  35      22.277 -18.138  -0.654  1.00  4.02           C
+ATOM    229  C   THR A  35      22.226 -19.392  -1.495  1.00  4.55           C
+ATOM    230  O   THR A  35      21.221 -19.652  -2.170  1.00  4.35           O
+ATOM    231  CB  THR A  35      21.715 -18.436   0.762  1.00  5.12           C
+ATOM    232  OG1 THR A  35      20.356 -18.929   0.668  1.00  5.51           O
+ATOM    233  CG2 THR A  35      21.733 -17.222   1.670  1.00  5.97           C
+ATOM    234  N   SER A  36      23.294 -20.178  -1.426  1.00  4.63           N
+ATOM    235  CA  SER A  36      23.402 -21.406  -2.221  1.00  4.58           C
+ATOM    236  C   SER A  36      24.387 -22.368  -1.553  1.00  5.05           C
+ATOM    237  O   SER A  36      24.929 -22.095  -0.497  1.00  6.22           O
+ATOM    238  CB  SER A  36      23.881 -21.071  -3.639  1.00  5.69           C
+ATOM    239  OG  SER A  36      25.213 -20.561  -3.633  1.00  7.12           O
+""")
+
+  pdb_par_input = iotbx.pdb.hierarchy.input(pdb_string = """\
+CRYST1   46.460   46.460  193.210  90.00  90.00 120.00 P 31 2 1
+SCALE1      0.021524  0.012427  0.000000        0.00000
+SCALE2      0.000000  0.024854  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.005176        0.00000
+ATOM     67  N   ALA A  15       5.011  -5.031  -8.967  1.00  5.73           N
+ATOM     68  CA  ALA A  15       4.943  -6.455  -9.287  1.00  6.16           C
+ATOM     69  C   ALA A  15       5.610  -7.252  -8.166  1.00  6.39           C
+ATOM     70  O   ALA A  15       6.751  -7.007  -7.857  1.00  9.87           O
+ATOM     71  CB  ALA A  15       5.684  -6.739 -10.604  1.00  7.46           C
+ATOM     72  N   THR A  16       4.929  -8.263  -7.636  1.00  5.49           N
+ATOM     73  C   THR A  16       5.316 -10.600  -7.084  1.00  5.07           C
+ATOM     74  O   THR A  16       4.214 -11.002  -7.422  1.00  6.51           O
+ATOM     75  CA  THR A  16       5.513  -9.172  -6.657  1.00  5.70           C
+ATOM     76  CB  THR A  16       4.864  -9.001  -5.276  1.00  8.31           C
+ATOM     77  N   GLY A  17       6.393 -11.375  -7.067  1.00  4.56           N
+ATOM     78  CA  GLY A  17       6.325 -12.770  -7.439  1.00  4.26           C
+ATOM     79  C   GLY A  17       7.219 -13.654  -6.621  1.00  4.41           C
+ATOM     80  O   GLY A  17       8.263 -13.233  -6.114  1.00  5.01           O
+ATOM     81  N   SER A  18       6.827 -14.921  -6.561  1.00  4.24           N
+ATOM     82  CA  SER A  18       7.657 -15.945  -5.959  1.00  4.02           C
+ATOM     83  C   SER A  18       7.539 -17.244  -6.724  1.00  3.64           C
+ATOM     84  O   SER A  18       6.482 -17.526  -7.331  1.00  4.07           O
+ATOM     85  CB  SER A  18       7.335 -16.157  -4.481  1.00  5.86           C
+ATOM     86  N   ALA A  19       8.573 -18.049  -6.627  1.00  3.19           N
+ATOM     87  CA  ALA A  19       8.578 -19.414  -7.195  1.00  3.31           C
+ATOM     88  C   ALA A  19       9.370 -20.307  -6.238  1.00  3.20           C
+ATOM     89  O   ALA A  19      10.484 -19.956  -5.817  1.00  4.21           O
+ATOM     90  CB  ALA A  19       9.235 -19.415  -8.574  1.00  3.85           C
+ATOM     91  N   THR A  20       8.825 -21.476  -5.940  1.00  3.77           N
+ATOM     92  CA  THR A  20       9.478 -22.432  -5.047  1.00  3.70           C
+ATOM     93  C   THR A  20       9.444 -23.827  -5.640  1.00  3.56           C
+ATOM     94  O   THR A  20       8.383 -24.281  -6.108  1.00  4.14           O
+ATOM     95  CB  THR A  20       8.787 -22.430  -3.673  1.00  4.76           C
+ATOM     96  N   THR A  21      10.560 -24.542  -5.569  1.00  4.00           N
+ATOM     97  CA  THR A  21      10.597 -25.962  -5.876  1.00  4.05           C
+ATOM     98  C   THR A  21      10.984 -26.770  -4.636  1.00  4.53           C
+ATOM     99  O   THR A  21      11.770 -26.361  -3.802  1.00  5.04           O
+ATOM    100  CB  THR A  21      11.488 -26.293  -7.083  1.00  4.38           C
+ATOM    189  N   GLN A  40       0.280  -6.099  -9.049  1.00  6.35           N
+ATOM    190  CA  GLN A  40       0.087  -7.454  -9.580  1.00  6.35           C
+ATOM    191  C   GLN A  40       0.964  -8.417  -8.788  1.00  6.09           C
+ATOM    192  O   GLN A  40       2.080  -8.093  -8.393  1.00  6.87           O
+ATOM    193  CB  GLN A  40       0.461  -7.523 -11.060  1.00  7.52           C
+ATOM    194  N   THR A  41       0.419  -9.596  -8.544  1.00  6.66           N
+ATOM    195  CA  THR A  41       1.108 -10.640  -7.800  1.00  6.93           C
+ATOM    196  C   THR A  41       0.932 -12.005  -8.414  1.00  6.82           C
+ATOM    197  O   THR A  41      -0.069 -12.258  -9.104  1.00  8.79           O
+ATOM    198  CB  THR A  41       0.633 -10.636  -6.352  1.00 10.84           C
+ATOM    199  N   ALA A  42       1.951 -12.847  -8.263  1.00  6.44           N
+ATOM    200  CA  ALA A  42       1.923 -14.209  -8.797  1.00  6.59           C
+ATOM    201  C   ALA A  42       2.829 -15.117  -7.992  1.00  5.51           C
+ATOM    202  O   ALA A  42       3.835 -14.684  -7.420  1.00  5.94           O
+ATOM    203  CB  ALA A  42       2.327 -14.218 -10.264  1.00  9.02           C
+ATOM    204  N   LYS A  43       2.479 -16.398  -7.978  1.00  6.26           N
+ATOM    205  CA  LYS A  43       3.247 -17.395  -7.256  1.00  6.48           C
+ATOM    206  C   LYS A  43       3.186 -18.741  -7.955  1.00  5.78           C
+ATOM    207  O   LYS A  43       2.206 -19.041  -8.623  1.00  9.40           O
+ATOM    208  CB  LYS A  43       2.727 -17.535  -5.836  1.00  8.81           C
+ATOM    209  N   SER A  44       4.243 -19.534  -7.818  1.00  4.43           N
+ATOM    210  CA  SER A  44       4.241 -20.890  -8.325  1.00  4.28           C
+ATOM    211  C   SER A  44       4.998 -21.811  -7.358  1.00  4.09           C
+ATOM    212  O   SER A  44       5.865 -21.377  -6.584  1.00  4.53           O
+ATOM    213  CB  SER A  44       4.831 -20.949  -9.731  1.00  5.33           C
+ATOM    214  N   PHE A  45       4.660 -23.091  -7.444  1.00  4.39           N
+ATOM    215  CA  PHE A  45       5.198 -24.135  -6.576  1.00  4.44           C
+ATOM    216  C   PHE A  45       5.222 -25.415  -7.389  1.00  4.16           C
+ATOM    217  O   PHE A  45       4.183 -25.754  -7.979  1.00  5.11           O
+ATOM    218  CB  PHE A  45       4.254 -24.281  -5.370  1.00  5.22           C
+ATOM    219  N   ALA A  46       6.347 -26.119  -7.403  1.00  3.62           N
+ATOM    220  CA  ALA A  46       6.443 -27.338  -8.202  1.00  3.99           C
+ATOM    221  C   ALA A  46       7.579 -28.205  -7.717  1.00  4.57           C
+ATOM    222  O   ALA A  46       8.479 -27.750  -7.000  1.00  4.79           O
+ATOM    223  CB  ALA A  46       6.607 -27.026  -9.678  1.00  4.52           C
+TER
+END
+""")
+
+
+  s_apar_records1 = """\
+SHEET    1   A 2 TYR A   2  VAL A   7  0
+SHEET    2   A 2 MET A  31  SER A  36 -1  O  ALA A  36   N  ALA A   2
+"""
+  s_apar_records2 = """\
+SHEET    1   A 2 TYR A   2  VAL A   7  0
+SHEET    2   A 2 MET A  31  SER A  36 -1  O  ALA A  32   N  ALA A   6
+"""
+
+  s_par_records1 = """\
+SHEET    1   B 2 ALA A  15  THR A  21  0
+SHEET    2   B 2 GLN A  40  ALA A  46  1  O  GLN A  40   N  THR A  16
+"""
+  s_par_records2 = """\
+SHEET    1   B 2 ALA A  15  THR A  21  0
+SHEET    2   B 2 GLN A  40  ALA A  46  1  O  GLN A  44   N  THR A  20
+"""
+  s_par_records3 = """\
+SHEET    1   B 2 ALA A  15  THR A  21  0
+SHEET    2   B 2 GLN A  40  ALA A  46  1  N  GLN A  42   O  THR A  16
+"""
+  s_par_records4 = """\
+SHEET    1   B 2 GLN A  40  ALA A  46  0
+SHEET    2   B 2 ALA A  15  THR A  21  1  N  THR A  16   O  GLN A  40
+"""
+
+
+  log = null_out()
+  defpars = sec_str_master_phil.fetch()
+  n_hbonds = []
+  for pdb_inp, recs in [(pdb_apar_input, s_apar_records1),
+                        (pdb_apar_input, s_apar_records2),
+                        (pdb_par_input,  s_par_records1),
+                        (pdb_par_input,  s_par_records2),
+                        #(pdb_par_input,  s_par_records3),
+                        ]:
+    ann = ioss.annotation(records = recs.split('\n')).as_restraint_groups()
+    custom_pars = defpars.fetch(source = iotbx.phil.parse(ann))
+    ss_manager = manager(
+                pdb_inp.hierarchy,
+                sec_str_from_pdb_file=None,
+                params=custom_pars.extract(),
+                assume_hydrogens_all_missing=None,
+                tmp_dir=None,
+                verbose=-1)
+    proxies_for_grm = ss_manager.create_hbond_proxies(
+      log          = log,
+      as_python_objects = False)
+    n_hbonds.append(len(proxies_for_grm.proxies))
+  assert n_hbonds == [6, 6, 6, 6]
+
+
 if __name__ == "__main__" :
   exercise_protein()
   exercise_sheet_ends()
   exercise_nucleic_acids()
+  exercise_sheets_bonding_pattern()

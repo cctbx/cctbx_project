@@ -387,7 +387,9 @@ def create_sheet_hydrogen_bond_proxies (
       pdb_hierarchy=pdb_hierarchy,
       strand_selection=curr_selection)
     i = j = 0
-    if (len(curr_residues) > 0) and (len(prev_residues) > 0) :
+    len_prev_residues = len(prev_residues)
+    len_curr_residues = len(curr_residues)
+    if (len_curr_residues > 0) and (len_prev_residues > 0) :
       i = _find_start_residue(
         residues=prev_residues,
         start_selection=prev_start)
@@ -395,8 +397,19 @@ def create_sheet_hydrogen_bond_proxies (
         residues=curr_residues,
         start_selection=curr_start)
       if (i >= 0) and (j >= 0) :
+        # move i,j pointers from registration residues to the beginning of
+        # beta-strands
+        while (1 < i and
+            ((1 < j and curr_strand.sense == "parallel") or
+            (j < len_curr_residues-1 and curr_strand.sense == "antiparallel"))):
+          if curr_strand.sense == "parallel":
+            i -= 2
+            j -= 2
+          elif curr_strand.sense == "antiparallel":
+            i -= 2
+            j += 2
         if (curr_strand.sense == "parallel") :
-          while (i < len(prev_residues)) and (j < len(curr_residues)) :
+          while (i < len_prev_residues) and (j < len_curr_residues) :
             if (prev_residues[i].resname.strip() != "PRO") :
               n_proxies += _create_hbond_proxy(
                 acceptor_atoms=curr_residues[j].atoms(),
@@ -412,7 +425,7 @@ def create_sheet_hydrogen_bond_proxies (
                 sigma=sheet_params.restraint_sigma,
                 slack=sheet_params.restraint_slack,
                 log=log)
-            if ((j + 2) >= len(curr_residues)) :
+            if ((j + 2) >= len_curr_residues) :
               break
             if (curr_residues[j+2].resname.strip() != "PRO") :
               n_proxies += _create_hbond_proxy(
@@ -432,7 +445,6 @@ def create_sheet_hydrogen_bond_proxies (
             i += 2
             j += 2
         elif (curr_strand.sense == "antiparallel") :
-          len_prev_residues = len(prev_residues)
           while(i < len_prev_residues and j >= 0):
             if (prev_residues[i].resname.strip() != "PRO") :
               n_proxies += _create_hbond_proxy(
