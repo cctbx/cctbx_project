@@ -118,6 +118,8 @@ master_params_str = """\
     .help = Use Conformation Dependent Library (CDL) \
       for geometry minimization restraints
     .style = bold
+  rdl = False
+    .type = bool
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
@@ -4285,6 +4287,43 @@ class build_all_chain_proxies(linking_mixins):
       self.process_geometry_restraints_remove(
         params=params_remove, geometry_restraints_manager=result)
     self.time_building_geometry_restraints_manager = timer.elapsed()
+    if self.params.cdl:
+      from mmtbx.conformation_dependent_library import setup_restraints
+      from mmtbx.conformation_dependent_library import update_restraints
+      import time
+      from libtbx import utils
+      t0=time.time()
+      cdl_proxies=setup_restraints(result)
+      update_restraints(
+        self.pdb_hierarchy,
+        result,
+        #current_geometry=model.xray_structure,
+        cdl_proxies=cdl_proxies,
+        log=log,
+        verbose=True,
+        )
+      cdl_time = time.time()-t0
+      print >> log, """\
+  Conformation dependent library (CDL) restraints added in %0.1f %sseconds
+  """ % utils.greek_time(cdl_time)
+    if self.params.rdl:
+      from mmtbx.conformation_dependent_library import rotamers
+      import time
+      from libtbx import utils
+      t0=time.time()
+      rdl_proxies=None #rotamers.setup_restraints(result)
+      rotamers.update_restraints(
+        self.pdb_hierarchy,
+        result,
+        #current_geometry=model.xray_structure,
+        rdl_proxies=rdl_proxies,
+        log=log,
+        verbose=True,
+        )
+      cdl_time = time.time()-t0
+      print >> log, """\
+  Rotamer dependent library (RDL) restraints added in %0.1f %sseconds
+  """ % utils.greek_time(cdl_time)
     return result
 
   def extract_xray_structure(self, unknown_scattering_type_substitute = "?"):

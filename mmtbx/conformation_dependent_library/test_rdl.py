@@ -49,9 +49,9 @@ def run(filename):
     verbose=True,
     )
   rdl.adjust_rotomer_restraints(pdb_hierarchy,
-                            geometry_restraints_manager,
-                            i_seqs_restraints=reverse,
-                            )
+                                geometry_restraints_manager,
+                                i_seqs_restraints=reverse,
+    )
 
 if __name__=="__main__":
   run(sys.argv[1])

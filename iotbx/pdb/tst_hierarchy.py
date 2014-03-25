@@ -2772,7 +2772,7 @@ ATOM         O   TIP    12
 """))
   oc = pdb_inp.construct_hierarchy().overall_counts()
   assert oc.resname_classes == {
-    'common_water': 8, 'common_rna_dna': 1, 'common_amino_acid': 3}
+    'common_water': 7, 'other': 1, 'common_rna_dna': 1, 'common_amino_acid': 3}
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM         N  AASN     1

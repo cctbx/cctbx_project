@@ -88,9 +88,10 @@ class RestraintsRegistry(dict):
 registry = RestraintsRegistry()
 
 class ThreeProteinResidues(list):
-  def __init__(self, restraints_manager):
-    self.restraints_manager = restraints_manager
-    self.bond_params_table = restraints_manager.geometry.bond_params_table
+  def __init__(self, geometry): #restraints_manager):
+    self.geometry = geometry
+    #self.restraints_manager = restraints_manager
+    self.bond_params_table = geometry.bond_params_table
     #except: self.bond_params_table = restraints_manager.bond_params_table
     self.errors = []
 
@@ -226,8 +227,14 @@ class ThreeProteinResidues(list):
                     cdl_proxies,
                     ideal=True,
                     esd=True,
+                    average=True,
                     verbose=False,
                     ):
+    if not average:
+      if restraint_values[0]=="I":
+        print restraint_values
+        assert 0
+        return
     atoms = self.get_i_seqs()
     for i, value in enumerate(restraint_values):
       if i<2: continue
@@ -310,7 +317,8 @@ class ThreeProteinResidues(list):
         rkey = list(copy.deepcopy(key))
         rkey.reverse()
         rkey=tuple(rkey)
-        for angle in self.restraints_manager.geometry.angle_proxies:
+#        for angle in self.restraints_manager.geometry.angle_proxies:
+        for angle in self.geometry.angle_proxies:
           # could be better!
           akey = list(copy.deepcopy(angle.i_seqs))
           akey.sort()
@@ -355,11 +363,11 @@ def round_to_ten(d):
   return t
 
 def generate_protein_threes(hierarchy,
-                            restraints_manager,
+                            geometry, #restraints_manager,
                             verbose=False,
                             ):
   get_class = iotbx.pdb.common_residue_names_get_class
-  threes = ThreeProteinResidues(restraints_manager)
+  threes = ThreeProteinResidues(geometry) #restraints_manager)
   for model in hierarchy.models():
     if verbose: print 'model: "%s"' % model.id
     for chain in model.chains():
@@ -383,16 +391,16 @@ def generate_protein_threes(hierarchy,
           assert len(threes)<=3
           yield threes
 
-def setup_restraints(restraints_manager,
+def setup_restraints(geometry, # restraints_manager
                      verbose=False,
                      ):
   ba_registry = bond_angle_registry()
-  for angle in restraints_manager.geometry.angle_proxies:
+  for angle in geometry.angle_proxies:
     ba_registry[angle.i_seqs]=angle
   return ba_registry
 
 def update_restraints(hierarchy,
-                      restraints_manager,
+                      geometry, # restraints_manager,
                       current_geometry=None, # xray_structure!!
                       sites_cart=None,
                       cdl_proxies=None,
@@ -419,7 +427,7 @@ def update_restraints(hierarchy,
 
   threes = None
   for threes in generate_protein_threes(hierarchy,
-                                        restraints_manager,
+                                        geometry, #restraints_manager,
                                         #verbose=verbose,
                                         ):
     if threes.cis_group():
@@ -446,7 +454,8 @@ def update_restraints(hierarchy,
                          esd=esd,
                          )
   if registry.n: threes.apply_average_updates(registry)
-  restraints_manager.geometry.reset_internals()
+#  restraints_manager.geometry.reset_internals()
+  geometry.reset_internals()
   if verbose and threes and threes.errors:
     if log:
       log.write("  Residues not completely updated with CDL restraints\n\n")
@@ -455,7 +464,7 @@ def update_restraints(hierarchy,
         log.write("%s\n" % line)
       else:
         print line
-  return restraints_manager
+  return geometry #restraints_manager
 
 def run(filename):
   if False:

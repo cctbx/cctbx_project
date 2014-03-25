@@ -82,7 +82,6 @@ HOH     O       -2
 H2O     O       -2
 OH2     O       -2
 DOD     O       -2
-D2O     O       -2
 OD2     O       -2
 WAT     O       -2
 TIP     O       -2

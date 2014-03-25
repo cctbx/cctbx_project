@@ -200,7 +200,7 @@ class run2(object):
     self.cdl_proxies = None
     if(cdl):
       from mmtbx.conformation_dependent_library import setup_restraints
-      self.cdl_proxies = setup_restraints(restraints_manager)
+      self.cdl_proxies = setup_restraints(restraints_manager.geometry)
     self.correct_hydrogens = correct_hydrogens
     if(alternate_nonbonded_off_on and number_of_macro_cycles % 2 != 0):
       number_of_macro_cycles += 1
@@ -257,14 +257,14 @@ class run2(object):
       if(macro_cycle is None):
         rc = update_restraints(
           self.pdb_hierarchy,
-          self.restraints_manager,
+          self.restraints_manager.geometry,
           cdl_proxies=self.cdl_proxies,
           log=self.log,
           verbose=False)
       elif(macro_cycle>0):
         rc = update_restraints(
           self.pdb_hierarchy,
-          self.restraints_manager,
+          self.restraints_manager.geometry,
           sites_cart=self.pdb_hierarchy.atoms().extract_xyz(),
           cdl_proxies=self.cdl_proxies,
           log=self.log,
