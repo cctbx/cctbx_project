@@ -8,6 +8,22 @@ from libtbx.utils import null_out
 from libtbx import Auto
 import sys
 
+svm_params = ""
+try :
+  import svm
+  import svmutil
+except ImportError :
+  pass
+else :
+  svm_params = """
+use_svm = False
+  .type = bool
+  .short_caption = Experimental feature: use SVM-based classification of \
+    candidate ions.
+  .expert_level  =3
+include scope mmtbx.ions.svm.svm_phil_str
+"""
+
 ion_building_params_str = """
 debug = False
   .type = bool
@@ -43,7 +59,8 @@ refine_anomalous = True
     unlikely to affect R-factors but should flatten the anomalous LLG map.
 max_distance_between_like_charges = 3.5
   .type = float
-"""
+%s
+""" % svm_params
 
 def find_and_build_ions (
       manager,
@@ -57,7 +74,7 @@ def find_and_build_ions (
       run_ordered_solvent=False,
       occupancy_strategy_enabled=False,
       group_anomalous_strategy_enabled=False,
-      use_svm=False) :
+      use_svm=None) :
   import mmtbx.refinement.minimization
   from mmtbx.refinement.anomalous_scatterer_groups import \
     get_single_atom_selection_string
@@ -70,6 +87,8 @@ def find_and_build_ions (
   from cctbx import xray
   from scitbx.array_family import flex
   import scitbx.lbfgs
+  if (use_svm is None) :
+    use_svm = getattr(params, "use_svm", False)
   assert (1.0 >= params.initial_occupancy >= 0)
   fmodel = fmodels.fmodel_xray()
   anomalous_flag = fmodel.f_obs().anomalous_flag()
@@ -125,7 +144,6 @@ def find_and_build_ions (
   for_building = []
   if (use_svm) :
     for result in water_ion_candidates :
-      assert isinstance(result.final_choice, str)
       for_building.append((result.i_seq, result.final_choice))
   else :
     for i_seq, final_choices, two_fofc in water_ion_candidates :
