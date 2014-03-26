@@ -52,8 +52,8 @@ class scan_factory:
   def single(filename, format, exposure_times, osc_start, osc_width, epoch):
     '''Construct an scan instance for a single image.'''
 
-    index = scan_helper_image_files.image_to_index(filename)
-
+    import os
+    index = scan_helper_image_files.image_to_index(os.path.split(filename)[-1])
     return scan_factory.make_scan(
                 (index, index), exposure_times, (osc_start, osc_width),
                 {index:epoch})
