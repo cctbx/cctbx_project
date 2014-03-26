@@ -441,7 +441,8 @@ def parallel_map (
     asynchronous=True,
     callback=None,
     preserve_order=True,
-    preserve_exception_message=False) :
+    preserve_exception_message=False,
+    use_manager=True) :
   """
   Generic parallel map() implementation for a variety of platforms, including
   the multiprocessing module and supported queuing systems, via the module
@@ -511,8 +512,11 @@ def parallel_map (
     #   http://bugs.python.org/issue8426
     # for reasons which are opaque to me, using the Manager object to create
     # the Queue will circumvent the problem.
-    mp_manager = multiprocessing.Manager()
-    queue_factory = mp_manager.Queue
+    if use_manager:
+      mp_manager = multiprocessing.Manager()
+      queue_factory = mp_manager.Queue
+    else:
+      queue_factory = multiprocessing.Queue
 
   elif (method == "threading") :
     from libtbx.queuing_system_utils import scheduling_helpers
