@@ -442,7 +442,9 @@ def _flatten_list(lst):
 
 # Adapters for main identification/building routines
 svm_phil_str = """
-svm {
+svm
+  .expert_level = 3
+{
   min_score = 0.2
     .type = float
   min_score_above = 0.1
@@ -472,12 +474,12 @@ class svm_prediction (slots_getstate_setstate_default_initializer) :
       best_score = "----"
     else :
       for atom_type, score in zip(self.atom_types, self.scores) :
-        if (atom_type == final_choice) :
+        if (atom_type == final_choice.element) :
           best_score = "%5.3f" % score
           break
     print >> out, prefix+"%s   %4s  %5s  %5.2f  %5.2f" % \
-      (self.pdb_id_str, final_choice, best_score, self.map_stats.two_fofc,
-       self.map_stats.fofc)
+      (self.pdb_id_str, final_choice.element, best_score,
+       self.map_stats.two_fofc, self.map_stats.fofc)
 
 class manager (mmtbx.ions.identify.manager) :
   def analyze_water (self, i_seq, debug=True, candidates=Auto) :
@@ -520,7 +522,7 @@ class manager (mmtbx.ions.identify.manager) :
         next_guess, next_score = predictions[1]
         if ((best_score >= self.params.svm.min_score) and
             (best_score>=(next_score*self.params.svm.min_fraction_of_next))) :
-          final_choice = best_guess
+          final_choice = mmtbx.ions.server.get_metal_parameters(best_guess)
       atom_info_out = StringIO()
       atom_props.show_properties(identity="HOH", out=atom_info_out)
       result = svm_prediction(
