@@ -478,7 +478,8 @@ class process_arrays (object) :
       if params.mtz_file.crystal_symmetry.expand_to_p1 :
         miller_array = miller_array.expand_to_p1()
       elif change_symmetry :
-        miller_array = miller_array.expand_to_p1()
+        if (miller_array.space_group_info().type().number() != 1) :
+          miller_array = miller_array.expand_to_p1()
         miller_array = miller_array.customized_copy(crystal_symmetry=output_symm)
       if not miller_array.is_unique_set_under_symmetry() :
         if miller_array.is_integer_array() and not is_rfree_array(miller_array,info):
