@@ -11,8 +11,6 @@ from mmtbx.rotamer.rotamer_eval import RotamerEval
 import mmtbx.utils
 from iotbx.pdb import secondary_structure as ioss
 
-global_counter = 1
-
 alpha_pdb_str = """\
 ATOM      1  N   ALA     2       1.643  -2.366  -1.408  1.00  0.00           N
 ATOM      3  CA  ALA     2       1.280  -3.608  -2.069  1.00  0.00           C
@@ -80,13 +78,25 @@ def get_expected_n_hbonds_from_helix(helix):
   else:
     raise Sorry("Unsupported helix type.")
 
-def print_hbond_proxies(geometry, hierarchy):
+def print_hbond_proxies(geometry, hierarchy, pymol=False):
   """ Print hydrogen bonds in geometry restraints manager for debugging
   purposes"""
   atoms = hierarchy.atoms()
+  if pymol:
+    dashes = open('dashes.pml', 'w')
   for hb in geometry.generic_restraints_manager.hbonds_as_simple_bonds():
     print (atoms[hb[0]].id_str(), "<====>",atoms[hb[1]].id_str(),
         atoms[hb[0]].distance(atoms[hb[1]]), hb[0], hb[1])
+    if pymol:
+      s1 = atoms[hb[0]].id_str()
+      s2 = atoms[hb[1]].id_str()
+      #print "pdbstr1:", s1
+      #print "pdbstr1:",s2
+      ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (s1[14:15],
+         s1[16:19], s1[5:7], s2[14:15], s2[16:19], s2[5:7])
+      dashes.write(ps)
+  if pymol:
+    dashes.close()
 
 def get_r_t_matrices_from_structure(pdb_str):
   """ Return rotation and translation matrices for the ideal structure.
@@ -221,7 +231,7 @@ def get_helix(helix_class, sequence=None, pdb_hierarchy_template=None):
 
 def substitute_ss(real_h,
                     crystal_symmetry,
-                    helices,
+                    ss_annotation,
                     sigma_on_reference_non_ss = 1,
                     sigma_on_reference_ss = 5,
                     sigma_on_torsion_ss = 5,
@@ -247,18 +257,18 @@ def substitute_ss(real_h,
       Keeps helices torsion angles close to ideal.
   """
   expected_n_hbonds = 0
-  ann = ioss.annotation(helices=helices, sheets=[])
+  ann = ss_annotation
   phil_str = ann.as_restraint_groups()
-
-  for h in helices:
+  ioss_annotation_n_hbonds = len(ss_annotation.extract_h_bonds())
+  for h in ann.helices:
     expected_n_hbonds += get_expected_n_hbonds_from_helix(h)
   edited_h = iotbx.pdb.input(source_info=None,
       lines=flex.split_lines(real_h.as_pdb_string())).construct_hierarchy()
   n_atoms_in_real_h = real_h.atoms().size()
   cumm_bsel = flex.bool(n_atoms_in_real_h, False)
   selection_cache = real_h.atom_selection_cache()
-  for h in helices:
-    selstring = h.as_atom_selections(params=None)
+  for h in ann.helices:
+    selstring = h.as_atom_selections()
     isel = selection_cache.iselection(selstring[0])
     all_bsel = flex.bool(n_atoms_in_real_h, False)
     all_bsel.set_selected(isel, True)
@@ -266,6 +276,23 @@ def substitute_ss(real_h,
     sel_h = real_h.select(all_bsel, copy_atoms=True)
     ideal_h = get_helix(helix_class=h.helix_class, pdb_hierarchy_template=sel_h)
     edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
+  for sh in ann.sheets:
+    for st in sh.strands:
+      selstring = st.as_atom_selections()
+      isel = selection_cache.iselection(selstring)
+      all_bsel = flex.bool(n_atoms_in_real_h, False)
+      all_bsel.set_selected(isel, True)
+      cumm_bsel.set_selected(isel, True)
+      sel_h = real_h.select(all_bsel, copy_atoms=True)
+      #ideal_h = get_helix(helix_class=h.helix_class, pdb_hierarchy_template=sel_h)
+      ideal_h = make_ss_structure_from_sequence(
+          pdb_str=beta_pdb_str,
+          sequence=None,
+          pdb_hierarchy_template=sel_h)
+      edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
+  
+  #edited_h.write_pdb_file(file_name="idealized.pdb")
+  
   pre_result_h = edited_h
   # generate different atom selections.
   bsel = flex.bool(real_h.atoms().size(), False)
@@ -276,16 +303,14 @@ def substitute_ss(real_h,
   # set all CA atoms to True for other_selection
   isel = selection_cache.iselection("name ca")
   other_selection.set_selected(isel, True)
-  for h in helices:
-    selstring = "name ca chain %s resseq %s:%s"\
-                % (h.start_chain_id, h.start_resseq, h.end_resseq)
-    isel = selection_cache.iselection(selstring)
+  for ss_sels in ann.as_atom_selections():
+    isel = selection_cache.iselection(ss_sels)
     ss_selection.set_selected(isel, True)
     other_selection.set_selected(isel, False)
-    selstring = "(name ca or name n or name o or name c) chain %s resseq %s:%s"\
-                % (h.start_chain_id, h.start_resseq, h.end_resseq)
+    selstring = "(name ca or name n or name o or name c) %s" % ss_sels
     isel = selection_cache.iselection(selstring)
     ss_for_tors_selection.set_selected(isel, True)
+      
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(crystal_symmetry= crystal_symmetry, log=log)
   processed_pdb_file, junk = processed_pdb_files_srv.\
@@ -334,8 +359,10 @@ def substitute_ss(real_h,
   restraints_manager = mmtbx.restraints.manager(
       geometry=grm,
       normalization=True)
-  assert restraints_manager.geometry.generic_restraints_manager.\
-      get_n_hbonds() == expected_n_hbonds
+  actual_n_hbonds = restraints_manager.geometry.generic_restraints_manager.get_n_hbonds()
+  #print "expected/actual/annot n_hbonds:", expected_n_hbonds, actual_n_hbonds, ioss_annotation_n_hbonds
+  #assert restraints_manager.geometry.generic_restraints_manager.\
+  #    get_n_hbonds() == expected_n_hbonds
   #real_h.write_pdb_file(file_name="before_geom_reg.pdb")
   obj = run2(
       restraints_manager       = restraints_manager,
