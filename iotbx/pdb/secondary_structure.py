@@ -77,7 +77,7 @@ class annotation (structure_base) :
       records.append(sheet.as_pdb_str())
     return "\n".join(records)
 
-  def extract_h_bonds (self, params) :
+  def extract_h_bonds (self, params=ss_input_params.extract()) :
     bonded_atoms = []
     if params.include_helices :
       for helix in self.helices :
@@ -89,38 +89,38 @@ class annotation (structure_base) :
         bonded_atoms.extend(sheet_bonds)
     return bonded_atoms
 
-  def as_atom_selections (self, params) :
+  def as_atom_selections (self, params=ss_input_params.extract()) :
     selections = []
     if params.include_helices :
       for helix in self.helices :
         try :
-          selections.extend(helix.as_atom_selections(params))
+          selections.extend(helix.as_atom_selections())
         except RuntimeError, e :
           pass
     if params.include_sheets :
       for sheet in self.sheets :
-        selections.extend(sheet.as_atom_selections(params))
+        selections.extend(sheet.as_atom_selections())
     return selections
 
-  def overall_helix_selection (self, params=ss_input_params) :
+  def overall_helix_selection (self) :
     selections = []
     for helix in self.helices :
       try :
-        selections.extend(helix.as_atom_selections(params))
+        selections.extend(helix.as_atom_selections())
       except RuntimeError, e :
         pass
     return "(" + ") or (".join(selections) + ")"
 
-  def overall_sheet_selection (self, params=ss_input_params) :
+  def overall_sheet_selection (self) :
     selections = []
     for sheet in self.sheets :
       try:
-        selections.extend(sheet.as_atom_selections(params))
+        selections.extend(sheet.as_atom_selections())
       except RuntimeError, e :
         pass
     return "(" + ") or (".join(selections) + ")"
 
-  def as_bond_selections (self, params) :
+  def as_bond_selections (self, params=ss_input_params.extract()) :
     bonded_atoms = self.extract_h_bonds(params)
     selections = []
     for (atom1, atom2) in bonded_atoms :
@@ -148,7 +148,8 @@ class pdb_helix (structure_base) :
         comment,
         length) :
     adopt_init_args(self, locals())
-    assert (length > 0) and (helix_class in range(1,11))
+    assert (length > 0), "Bad helix length"
+    assert (helix_class in range(1,11)), "Bad helix class"
 
   def as_pdb_str (self) :
     format = "HELIX  %3d %3s %3s%2s %4d%1s %3s%2s %4d%1s%2d%30s %5d"
@@ -166,13 +167,13 @@ class pdb_helix (structure_base) :
       raise RuntimeError("Don't know how to deal with helices with multiple "+
         "chain IDs ('%s' vs. '%s')." % (self.start_chain_id, self.end_chain_id))
 
-  def as_atom_selections (self, params) :
+  def as_atom_selections (self) :
     self.continuity_check()
     sele = "chain '%s' and resseq %d:%d and icode '%s'" % (self.start_chain_id,
       self.start_resseq, self.end_resseq, self.end_icode)
     return [sele]
 
-  def extract_h_bonds (self, params) :
+  def extract_h_bonds (self, params=ss_input_params.extract()) :
     self.continuity_check()
     bonded_atoms = []
     i = 0
@@ -267,7 +268,13 @@ class pdb_strand (object) :
       sense) :
     adopt_init_args(self, locals())
     assert (sheet_id > 0) and (strand_id > 0)
-    assert (sense in [-1, 0, 1])
+    assert (sense in [-1, 0, 1]), "Bad sense."
+    assert start_icode == end_icode, "Only equal insertion codes are supported"
+
+  def as_atom_selections(self):
+    return "chain '%s' and resseq %d:%d and icode '%s'" % (
+        self.start_chain_id, self.start_resseq, self.end_resseq,
+        self.start_icode)
 
 class pdb_strand_register (object) :
   def __init__ (self,
@@ -297,18 +304,13 @@ class pdb_sheet (structure_base) :
   def add_registration (self, registration) :
     self.registrations.append(registration)
 
-  def as_atom_selections (self, params) :
+  def as_atom_selections (self) :
     strand_selections = []
     for strand in self.strands :
-      if strand.start_icode != strand.end_icode :
-        continue
-      sele = "chain '%s' and resseq %d:%d and icode '%s'" % (
-        strand.start_chain_id, strand.start_resseq, strand.end_resseq,
-        strand.start_icode)
-      strand_selections.append(sele)
+      strand_selections.append(strand.as_atom_selections())
     return strand_selections
 
-  def extract_h_bonds (self, params) :
+  def extract_h_bonds (self, params=ss_input_params.extract()) :
     assert len(self.strands) == len(self.registrations)
     bonded_atoms = []
     errors = 0
@@ -437,7 +439,10 @@ def parse_sheet_records (records) :
         strands=[],
         registrations=[])
       current_sheet_id = sheet_id
-    sense = string.atoi(line[38:40])
+    try:
+      sense = string.atoi(line[38:40])
+    except ValueError, e:
+      raise RuntimeError("Bad HELIX record:\n%s\nCannot convert sense." % line)
     current_strand = pdb_strand(
       sheet_id=sheet_id,
       strand_id=string.atoi(line[7:10]),
