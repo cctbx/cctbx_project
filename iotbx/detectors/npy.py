@@ -100,9 +100,11 @@ class NpyImage(DetectorImageBase):
       if  ( math.isnan(self.parameters["DISTANCE"]) ):
          self.parameters["DISTANCE"]=0.0
       self.bin_safe_set_data(cspad_data['DATA'])
+      if (self.parameters['ACTIVE_AREAS'] is not None):
+        horizons_phil.distl.detector_tiling = self.parameters['ACTIVE_AREAS']
 
-    if version_control in ["CXI 4.1","CXI 5.1","CXI 6.1","CXI 7.1","CXI 7.d","XPP 7.1","XPP 7.marccd",
-                           "CXI 8.1","CXI 8.d","XPP 8.1","XPP 8.marccd","CXI 8.2","Sacla.MPCCD"]:
+
+    if version_control not in ["CXI 3.2"]:
       if horizons_phil.distl.tile_translations==None and \
          horizons_phil.distl.detector_tiling is not None:
           horizons_phil.distl.tile_translations = [0]*(int(len(horizons_phil.distl.detector_tiling)/2))
