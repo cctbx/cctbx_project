@@ -385,13 +385,14 @@ def create_sheet_hydrogen_bond_proxies (
     curr_selection = cache.selection(curr_strand.selection)
     curr_start = cache.selection(curr_strand.bond_start_current)
     prev_start = cache.selection(curr_strand.bond_start_previous)
+    if curr_start.count(True) != 1 or prev_start.count(True) != 1:
+      raise Sorry("Wrong registration in SHEET record.")
     curr_residues = _get_strand_residues(
       pdb_hierarchy=pdb_hierarchy,
       strand_selection=curr_selection)
     i = j = 0
     len_prev_residues = len(prev_residues)
     len_curr_residues = len(curr_residues)
-    # if true-all good.
     current_start_res_is_donor = pdb_hierarchy.atoms().select(curr_start)[0].name.strip() == 'N'
     if (len_curr_residues > 0) and (len_prev_residues > 0) :
       i = _find_start_residue(
@@ -405,7 +406,7 @@ def create_sheet_hydrogen_bond_proxies (
         # beta-strands
         while (1 < i and
             ((1 < j and curr_strand.sense == "parallel") or
-            (j < len_curr_residues-1 and curr_strand.sense == "antiparallel"))):
+            (j < len_curr_residues-2 and curr_strand.sense == "antiparallel"))):
           if curr_strand.sense == "parallel":
             i -= 2
             j -= 2
