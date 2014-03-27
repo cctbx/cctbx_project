@@ -730,22 +730,22 @@ the percentage of R-free reflections).
   def target_attributes(self):
     return self._target_attributes
 
-  def r_work(self):
+  def r_work(self, d_min=None, d_max=None):
     if(self.fmodel_ts1 is not None): # XXX BAD
       self.fmodel_ts1.update_xray_structure(xray_structure = self.xray_structure,
         update_f_calc = True, update_f_mask=True)
-      return self.fmodel_ts1.r_work()
+      return self.fmodel_ts1.r_work(d_min=d_min, d_max=d_max)
     else:
-      w,f = self.r_values(False)
+      w,f = self.r_values(table=False, d_min=d_min, d_max=d_max)
       return w
 
-  def r_free(self):
+  def r_free(self, d_min=None, d_max=None):
     if(self.fmodel_ts1 is not None): # XXX BAD
       self.fmodel_ts1.update_xray_structure(xray_structure = self.xray_structure,
         update_f_calc = True, update_f_mask = True)
-      return self.fmodel_ts1.r_free()
+      return self.fmodel_ts1.r_free(d_min=d_min, d_max=d_max)
     else:
-      w,f = self.r_values(False)
+      w,f = self.r_values(table=False, d_min=d_min, d_max=d_max)
       return f
 
   def f_part1(self): # XXX for compatiblity with other fmodel
