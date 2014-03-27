@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# brehm_diedrichs.py
+# brehm_diederichs.py
 #
 #  Copyright (C) 2014 Diamond Light Source
 #
