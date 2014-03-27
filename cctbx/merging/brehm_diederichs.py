@@ -368,19 +368,20 @@ def mp_reassemble(mp_patchwork):
     clean_list[ituple[0]]=ituple[1]
   return reassemble(clean_list)
 
-def run(L,nproc=1,verbose=True):
+def run(L, asymmetric=3, nproc=1,verbose=True, plot=True):
   algo2 = algorithm2(data = L[0],lattice_id = L[1], resort=True, verbose = verbose)
   alternates = algo2.generate_reindex_sets()
   c_selections = algo2.generate_comparison_selections(nproc=nproc)
   result_sets = []
   for group in c_selections:
     result_sets.append(
-      algo2.run_core_algorithm(group, alternates, use_weights=True, asymmetric=3, plot=True)
+      algo2.run_core_algorithm(
+        group, alternates, use_weights=True, asymmetric=asymmetric, plot=plot).reindexing_sets
     )
   result = reassemble(result_sets)
   return algo2.report(result)
 
-def run_multiprocess(L,nproc=20, verbose=False, plot=True):
+def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, plot=True):
   try :
       import multiprocessing
   except ImportError, e :
@@ -392,9 +393,11 @@ def run_multiprocess(L,nproc=20, verbose=False, plot=True):
   c_selections = algo2.generate_comparison_selections(nproc=nproc)
   result_sets = []
   def _mpcallback(result_set):
-      if verbose: print "IN MPCALLBACK with",result_set
-      if type(result_set)==type(()) and type(result_set[1])==type({}):
-        result_sets.append(result_set)
+    import libtbx
+    if verbose: print "IN MPCALLBACK with",result_set
+    if type(result_set)==type(()) and type(result_set[1])==libtbx.group_args:
+      #result_sets.append(result_set.reindexing_sets)
+      result_sets.append((result_set[0], result_set[1].reindexing_sets))
   input_queue = multiprocessing.Manager().JoinableQueue()
   for ic,item in enumerate(c_selections):
     input_queue.put((ic,item))
@@ -406,8 +409,9 @@ def run_multiprocess(L,nproc=20, verbose=False, plot=True):
   for i in xrange(nproc-1) :
     pool.apply_async(
       func=algo2,
-      args=[input_queue, alternates, True, 3],
-      kwds={'plot': plot},
+      args=[input_queue, alternates, True],
+      kwds={'plot': plot,
+            'asymmetric': asymmetric},
       callback=_mpcallback)
   pool.close()
   pool.join()
