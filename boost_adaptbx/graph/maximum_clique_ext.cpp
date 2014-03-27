@@ -1,6 +1,7 @@
 #include <boost_adaptbx/graph/graph_type.hpp>
 #include <boost_adaptbx/graph/graph_export_adaptor.hpp>
 #include <boost_adaptbx/graph/maximum_clique_rascal.hpp>
+#include <boost_adaptbx/graph/maximum_clique_greedy.hpp>
 
 #include <boost_adaptbx/exporting.hpp>
 
@@ -149,6 +150,47 @@ struct maximum_clique_rascal_export
       );
   }
 
+  static boost::python::list maximum_clique_greedy(
+    Graph const& graph,
+    size_t maxsol
+    )
+  {
+    typedef boost_adaptbx::graph::greedy::partition< Graph > partition_type;
+    typedef boost_adaptbx::graph::greedy::exdegree_scorer< Graph, partition_type >
+      scorer_type;
+    typedef std::vector< partition_type > partition_list_type;
+    partition_list_type solutions = boost_adaptbx::graph::greedy::maximum_clique(
+      graph,
+      scorer_type( graph ),
+      maxsol
+      );
+
+    boost::python::list result;
+
+    for (
+      typename partition_list_type::const_iterator it = solutions.begin();
+      it != solutions.end();
+      ++it
+      )
+    {
+      boost::python::list sol;
+
+      typedef typename partition_type::vertex_set_type clique_type;
+      typedef typename partition_type::vertex_set_const_iterator clique_iterator;
+
+      clique_type const& clique = it->clique();
+
+      for ( clique_iterator cit = clique.begin(); cit != clique.end(); ++cit )
+      {
+        sol.append( converter::forward( *cit ) );
+      }
+
+      result.append( sol );
+    }
+
+    return result;
+  }
+
   static void selected_subgraph(
     Graph const& graph,
     Graph& subgraph,
@@ -178,6 +220,11 @@ struct maximum_clique_rascal_export
       "rascal",
       maximum_clique_rascal_2,
       ( arg( "graph" ), arg( "upper_bound" ), arg( "callable" ) )
+      );
+    def(
+      "greedy",
+      maximum_clique_greedy,
+      ( arg( "graph" ), arg( "maxsol" ) = 0 )
       );
     def(
       "selected_subgraph",

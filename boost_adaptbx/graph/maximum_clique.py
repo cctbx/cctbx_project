@@ -5,6 +5,7 @@ ext = boost.python.import_ext( "boost_adaptbx_graph_maximum_clique_ext" )
 import operator
 
 rascal = ext.rascal
+greedy = ext.greedy
 
 def compatibility_graph(
   first,

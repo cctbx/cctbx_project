@@ -28,6 +28,7 @@ boost_adaptbx/graph/graph_structure_comparison_ext.cpp -text
 boost_adaptbx/graph/graph_type.hpp -text
 boost_adaptbx/graph/maximum_clique.py -text
 boost_adaptbx/graph/maximum_clique_ext.cpp -text
+boost_adaptbx/graph/maximum_clique_greedy.hpp -text
 boost_adaptbx/graph/maximum_clique_rascal.hpp -text
 boost_adaptbx/graph/tests/tst_graph.py -text
 boost_adaptbx/graph/tests/tst_graph_breadth_first_search.py -text

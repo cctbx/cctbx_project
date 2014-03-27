@@ -139,6 +139,120 @@ class TestRascal(unittest.TestCase):
       self.manipulation( g )
 
 
+class TestGreedy(unittest.TestCase):
+
+  def manipulation(self, g):
+
+    n = {}
+    n[ "1,1'" ] = g.add_vertex() # 0
+    n[ "1,5'" ] = g.add_vertex() # 1
+    n[ "2,2'" ] = g.add_vertex() # 2
+    n[ "2,3'" ] = g.add_vertex() # 3
+    n[ "3,2'" ] = g.add_vertex() # 4
+    n[ "3,3'" ] = g.add_vertex() # 5
+    n[ "4,4'" ] = g.add_vertex() # 6
+    n[ "5,1'" ] = g.add_vertex() # 7
+    n[ "5,5'" ] = g.add_vertex() # 8
+
+    g.add_edge( vertex1 = n[ "1,1'" ], vertex2 = n[ "3,3'" ] )
+    g.add_edge( vertex1 = n[ "1,1'" ], vertex2 = n[ "4,4'" ] )
+    g.add_edge( vertex1 = n[ "1,1'" ], vertex2 = n[ "5,5'" ] )
+
+    g.add_edge( vertex1 = n[ "1,5'" ], vertex2 = n[ "3,2'" ] )
+    g.add_edge( vertex1 = n[ "1,5'" ], vertex2 = n[ "4,4'" ] )
+    g.add_edge( vertex1 = n[ "1,5'" ], vertex2 = n[ "5,1'" ] )
+
+    g.add_edge( vertex1 = n[ "2,2'" ], vertex2 = n[ "3,3'" ] )
+    g.add_edge( vertex1 = n[ "2,2'" ], vertex2 = n[ "4,4'" ] )
+    g.add_edge( vertex1 = n[ "2,2'" ], vertex2 = n[ "5,5'" ] )
+
+    g.add_edge( vertex1 = n[ "2,3'" ], vertex2 = n[ "3,2'" ] )
+    g.add_edge( vertex1 = n[ "2,3'" ], vertex2 = n[ "5,1'" ] )
+
+    g.add_edge( vertex1 = n[ "3,2'" ], vertex2 = n[ "5,1'" ] )
+
+    g.add_edge( vertex1 = n[ "3,3'" ], vertex2 = n[ "4,4'" ] )
+    g.add_edge( vertex1 = n[ "3,3'" ], vertex2 = n[ "5,5'" ] )
+
+    g.add_edge( vertex1 = n[ "4,4'" ], vertex2 = n[ "5,1'" ] )
+    g.add_edge( vertex1 = n[ "4,4'" ], vertex2 = n[ "5,5'" ] )
+
+    result = maximum_clique.greedy( graph = g )
+    self.assertEqual(
+      set(
+        [
+          frozenset( [ n[ "1,1'" ], n[ "3,3'" ] , n[ "4,4'" ], n[ "5,5'" ] ] ),
+          frozenset( [ n[ "2,2'" ], n[ "3,3'" ] , n[ "4,4'" ], n[ "5,5'" ] ] ),
+          ]
+        ),
+      set( frozenset( m ) for m in result ),
+      )
+
+
+  def test_adjacency_list_undirected_vector_set(self):
+
+    try:
+      g = graph.adjacency_list(
+        graph_type = "undirected",
+        vertex_type = "vector",
+        edge_type = "set",
+        )
+
+    except NotImplementedError:
+      pass
+
+    else:
+      self.manipulation( g )
+
+
+  def test_adjacency_list_undirected_list_set(self):
+
+    try:
+      g = graph.adjacency_list(
+        graph_type = "undirected",
+        vertex_type = "list",
+        edge_type = "set",
+        )
+
+    except NotImplementedError:
+      pass
+
+    else:
+      self.manipulation( g )
+
+
+  def test_adjacency_list_undirected_vector_vector(self):
+
+    try:
+      g = graph.adjacency_list(
+        graph_type = "undirected",
+        vertex_type = "vector",
+        edge_type = "vector",
+        )
+
+    except NotImplementedError:
+      pass
+
+    else:
+      self.manipulation( g )
+
+
+  def test_adjacency_list_undirected_list_vector(self):
+
+    try:
+      g = graph.adjacency_list(
+        graph_type = "undirected",
+        vertex_type = "list",
+        edge_type = "vector",
+        )
+
+    except NotImplementedError:
+      pass
+
+    else:
+      self.manipulation( g )
+
+
 class TestCompatibilityGraph(unittest.TestCase):
 
   def manipulation(self, left, right):
@@ -450,6 +564,9 @@ class TestSelectedSubgraph(unittest.TestCase):
 suite_rascal = unittest.TestLoader().loadTestsFromTestCase(
   TestRascal
   )
+suite_greedy = unittest.TestLoader().loadTestsFromTestCase(
+  TestGreedy
+  )
 suite_compatibility_graph = unittest.TestLoader().loadTestsFromTestCase(
   TestCompatibilityGraph
   )
@@ -461,6 +578,7 @@ suite_selected_subgraph = unittest.TestLoader().loadTestsFromTestCase(
 alltests = unittest.TestSuite(
   [
     suite_rascal,
+    suite_greedy,
     suite_compatibility_graph,
     suite_selected_subgraph,
     ]
