@@ -454,10 +454,25 @@ SHEET    1   B 2 ALA A  15  THR A  21  0
 SHEET    2   B 2 GLN A  40  ALA A  46  1  N  GLN A  42   O  THR A  16
 """
   s_par_records4 = """\
+SHEET    1   B 2 ALA A  15  THR A  21  0
+SHEET    2   B 2 GLN A  40  ALA A  46  1  N  GLN A  46   O  THR A  20
+"""
+  s_par_records5 = """\
+SHEET    1   B 2 GLN A  40  ALA A  46  0
+SHEET    2   B 2 ALA A  15  THR A  21  1  O  THR A  20   N  ALA A  46
+"""
+  s_par_records6 = """\
+SHEET    1   B 2 GLN A  40  ALA A  46  0
+SHEET    2   B 2 ALA A  15  THR A  21  1  N  THR A  20   O  ALA A  44
+"""
+  s_par_records7 = """\
 SHEET    1   B 2 GLN A  40  ALA A  46  0
 SHEET    2   B 2 ALA A  15  THR A  21  1  N  THR A  16   O  GLN A  40
 """
-
+  s_par_records8 = """\
+SHEET    1   B 2 GLN A  40  ALA A  46  0
+SHEET    2   B 2 ALA A  15  THR A  21  1  O  THR A  16   N  ALA A  42
+"""
 
   log = null_out()
   defpars = sec_str_master_phil.fetch()
@@ -466,9 +481,15 @@ SHEET    2   B 2 ALA A  15  THR A  21  1  N  THR A  16   O  GLN A  40
                         (pdb_apar_input, s_apar_records2),
                         (pdb_par_input,  s_par_records1),
                         (pdb_par_input,  s_par_records2),
-                        #(pdb_par_input,  s_par_records3),
+                        (pdb_par_input,  s_par_records3),
+                        (pdb_par_input,  s_par_records4),
+                        (pdb_par_input,  s_par_records5),
+                        (pdb_par_input,  s_par_records6),
+                        (pdb_par_input,  s_par_records7),
+                        (pdb_par_input,  s_par_records8),
                         ]:
-    ann = ioss.annotation(records = recs.split('\n')).as_restraint_groups()
+    ioss_annotation = ioss.annotation(records = recs.split('\n'))
+    ann = ioss_annotation.as_restraint_groups()
     custom_pars = defpars.fetch(source = iotbx.phil.parse(ann))
     ss_manager = manager(
                 pdb_inp.hierarchy,
@@ -479,10 +500,13 @@ SHEET    2   B 2 ALA A  15  THR A  21  1  N  THR A  16   O  GLN A  40
                 verbose=-1)
     proxies_for_grm = ss_manager.create_hbond_proxies(
       log          = log,
-      as_python_objects = False)
+      as_python_objects = True)
     n_hbonds.append(len(proxies_for_grm.proxies))
-  assert n_hbonds == [6, 6, 6, 6]
+  assert n_hbonds == [6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
 
+def exercise_phil_generation():
+  log = null_out()
+  defpars = sec_str_master_phil.fetch()
 
 if __name__ == "__main__" :
   exercise_protein()
