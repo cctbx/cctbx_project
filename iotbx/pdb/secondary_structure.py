@@ -1,13 +1,28 @@
 from __future__ import division
 #
-# XXX: see also mmtbx.monomer_library.secondary_structure
-#
 # Implemented based on PDB v3.2 specification at:
 #   http://www.wwpdb.org/documentation/format32/sect5.html
 #
 # NOTE: the routines for extracting hydrogen bonds are not used in phenix.
 # I have left them here because they're simpler (and probably still accurate
 # in most cases), and useful for pymol-related I/O.
+#
+# Oleg on 3-26-2014:
+# I'm commenting them out because they contain some bugs and duplicate the
+# existing functionality (tested and used) from proteins.py
+# pymol-related I/O used in phenix.secondary_structure_restraints is
+# implemented and used from
+#   mmtbx.geometry_restraints.hbond.as_pymol_dashes(...)
+#
+# The great part of relevant code which is actually in use
+# (generation of hydrogen bonds, phil records) written as additional methods
+# for annotation class (phil generation) and as stand-alone functions for
+# h-bonds generation are in:
+#   mmtbx/secondary_structure/proteins.py
+#
+# It might be useful to move all the relevant secondary-structure code
+# somewhere in one place.
+#
 
 from libtbx.utils import Sorry, Usage
 from libtbx import smart_open
@@ -34,8 +49,8 @@ ss_input_params_str = """
 ss_input_params = libtbx.phil.parse(ss_input_params_str)
 
 class structure_base (object) :
-  def extract_h_bonds (self, params) :
-    return []
+  #def extract_h_bonds (self, params) :
+  #  return []
 
   def as_pdb_str (self) :
     return None
@@ -43,6 +58,7 @@ class structure_base (object) :
   def __str__ (self) :
     return self.as_pdb_str()
 
+  """
   def as_pymol_dashes (self, params, object_name=None) :
     cmds = []
     prefix = ""
@@ -57,6 +73,7 @@ class structure_base (object) :
       cmd = "dist %s, %s" % (sele1, sele2)
       cmds.append(cmd)
     return "\n".join(cmds)
+  """
 
 class annotation (structure_base) :
   def __init__ (self, records=None, helices=None, sheets=None) :
@@ -77,6 +94,7 @@ class annotation (structure_base) :
       records.append(sheet.as_pdb_str())
     return "\n".join(records)
 
+  """
   def extract_h_bonds (self, params=ss_input_params.extract()) :
     bonded_atoms = []
     if params.include_helices :
@@ -88,6 +106,7 @@ class annotation (structure_base) :
         sheet_bonds = sheet.extract_h_bonds(params)
         bonded_atoms.extend(sheet_bonds)
     return bonded_atoms
+  """
 
   def as_atom_selections (self, params=ss_input_params.extract()) :
     selections = []
@@ -119,6 +138,7 @@ class annotation (structure_base) :
       except RuntimeError, e :
         pass
     return "(" + ") or (".join(selections) + ")"
+
 
   def as_bond_selections (self, params=ss_input_params.extract()) :
     bonded_atoms = self.extract_h_bonds(params)
@@ -173,6 +193,7 @@ class pdb_helix (structure_base) :
       self.start_resseq, self.end_resseq, self.end_icode)
     return [sele]
 
+  """
   def extract_h_bonds (self, params=ss_input_params.extract()) :
     self.continuity_check()
     bonded_atoms = []
@@ -211,6 +232,7 @@ class pdb_helix (structure_base) :
         icode=self.start_icode)
       bonded_atoms.append((donor, acceptor))
     return bonded_atoms
+  """
 
 def parse_chain_id (chars) :
   assert len(chars) == 2
@@ -310,6 +332,7 @@ class pdb_sheet (structure_base) :
       strand_selections.append(strand.as_atom_selections())
     return strand_selections
 
+  """
   def extract_h_bonds (self, params=ss_input_params.extract()) :
     assert len(self.strands) == len(self.registrations)
     bonded_atoms = []
@@ -396,6 +419,7 @@ class pdb_sheet (structure_base) :
 
   def extract_h_bonds_as_i_seqs (self) :
     pass
+  """
 
   def as_pdb_str (self) :
     assert len(self.strands) == len(self.registrations)
@@ -539,7 +563,8 @@ def run (args, out=sys.stdout, log=sys.stderr, cmd_params_str="") :
   return secondary_structure
 
 #-----------------------------------------------------------------------
-def exercise_single () :
+def exercise_hbonds():
+  """ Disabled"""
   from iotbx import file_reader
   from scitbx.array_family import flex
   from libtbx import test_utils
@@ -593,6 +618,10 @@ SHEET    5   A 5 ASP A  74  LEU A  77  1  O  HIS A  74   N  VAL A  52"""
   assert len(ss.as_atom_selections(params=params)) == 20
   assert (ss.as_atom_selections(params=params)[0] ==
     """chain 'A' and resseq 16:18 and icode ' '""")
+
+def exercise_single () :
+  from scitbx.array_family import flex
+  from libtbx import test_utils
   two_char_chain_records = """\
 HELIX    1   1 THRA1   11  ASPA1   39  1                                  29
 HELIX    2   2 GLUA1   46  ARGA1   73  1                                  28
@@ -620,4 +649,5 @@ def tst_pdb_file () :
   assert not test_utils.show_diff(new_ss, old_ss)
 
 if __name__ == "__main__" :
+  #exercise_hbonds()
   exercise_single()
