@@ -2754,6 +2754,7 @@ xfel/command_line/auto_submit.py -text
 xfel/command_line/brehm_diederichs.py -text
 xfel/command_line/convert_gain_map.py -text
 xfel/command_line/cxi_diff.py -text
+xfel/command_line/cxi_image2pickle.py -text
 xfel/command_line/cxi_index.py -text
 xfel/command_line/cxi_plotcv.py -text
 xfel/command_line/cxi_pyana.py -text
