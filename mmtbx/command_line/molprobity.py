@@ -56,11 +56,7 @@ output {
     .help = Display plots in wxPython
     .style = hidden
 }
-pdb_interpretation {
-  include scope mmtbx.monomer_library.pdb_interpretation.master_params
-  stop_for_unknowns = True
-    .type = bool
-}""")
+""")
 
 usage_string = """\
 phenix.molprobity model.pdb [data.mtz] [options ...]

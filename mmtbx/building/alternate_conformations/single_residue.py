@@ -49,7 +49,7 @@ build_params_str = """
       .type = float
     two_fofc_min = 1.0
       .type = float
-    fofc_min = 2.5
+    fofc_min = 3.0
       .type = float
   }
 """
@@ -188,7 +188,12 @@ class rebuild_residue (object) :
       for new_atom in new_atom_group_base.atoms() :
         if (new_atom.name == atom.name) :
           new_atom_group.append_atom(new_atom.detached_copy())
-    assert len(new_atom_group.atoms()) == len(atom_group_start.atoms())
+    n_atoms_new = len(new_atom_group.atoms())
+    n_atoms_start = len(atom_group_start.atoms())
+    if (n_atoms_new != n_atoms_start) :
+      raise RuntimeError(("Inconsistent atom counts for residue %s after "+
+        "building (%d versus %d).") % (atom_group.id_str(), n_atoms_start,
+        n_atoms_new))
     rg = atom_group.parent()
     rg.remove_atom_group(atom_group)
     rg.append_atom_group(new_atom_group)
@@ -520,6 +525,9 @@ def process_results (
   two_fofc_map, fofc_map = building.get_difference_maps(fmodel)
   rot_eval = rotamer_eval.RotamerEval()
   for main_conf, trials in zip(residues_in, building_trials) :
+    if (trials is None) :
+      print >> log, "WARNING: error building %s" % main_conf.id_str()
+      continue
     if (len(trials) == 0) :
       continue
     res_log = StringIO()
