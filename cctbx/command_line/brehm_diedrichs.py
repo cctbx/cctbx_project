@@ -104,7 +104,7 @@ def run(args):
     for wedge in wedges:
       file_name = file_name_dict[wedge]
       basename = os.path.basename(file_name)
-      out_name = os.path.splitext(basename)[0] + "_reindexed.mtz"
+      out_name = os.path.splitext(basename)[0] + params.suffix + ".mtz"
       reader = any_reflection_file(file_name)
       assert reader.file_type() == 'ccp4_mtz'
       mtz_object = reader.file_content()

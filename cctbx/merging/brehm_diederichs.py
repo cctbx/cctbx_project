@@ -175,6 +175,16 @@ class algorithm2:
     grouped_lattice_ids = self.lattices.select(group)
     assert len(grouped_lattice_ids) == len(selection)
 
+    from libtbx import group_args
+
+    return group_args(reindexing_sets={
+      "h,k,l":set(grouped_lattice_ids.select(selection)),
+      alternates.keys()[0]:set(grouped_lattice_ids.select(~selection))},
+                      rij=rij,
+                      wij=wij,
+                      coord_x=coord_x,
+                      coord_y=coord_y)
+
     return {"h,k,l":set(grouped_lattice_ids.select(selection)),
             alternates.keys()[0]:set(grouped_lattice_ids.select(~selection))}
     # Values in the return sets are indexes into the self.data data array (or the self.lattice_id array)
