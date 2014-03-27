@@ -32,8 +32,8 @@ class TestMolecule(unittest.TestCase):
   def test_1(self):
 
     m = topology.Molecule()
-    a = topology.Atom( xyz = ( 0, 0, 0 ) )
-    m.add( atom = a )
+    a = topology.Atom()
+    m.add( atom = a,  xyz = ( 0, 0, 0 ) )
     self.assertEqual( m.size(), 1 )
     self.assertEqual( m.atoms, [ a ] )
     self.assertEqual( len( m.atom_for ), 1 )
@@ -47,10 +47,10 @@ class TestMolecule(unittest.TestCase):
   def test_2(self):
 
     m = topology.Molecule()
-    a1 = topology.Atom( xyz = ( 0, 0, 0 ) )
-    a2 = topology.Atom( xyz = ( 1, 1, 1 ) )
-    m.add( atom = a1 )
-    m.add( atom = a2 )
+    a1 = topology.Atom()
+    a2 = topology.Atom()
+    m.add( atom = a1, xyz = ( 0, 0, 0 ) )
+    m.add( atom = a2, xyz = ( 1, 1, 1 ) )
     self.assertEqual( m.size(), 2 )
     self.assertEqual( set( m.atoms ), set( [ a1, a2 ] ) )
     self.assertEqual( len( m.atom_for ), 2 )
@@ -172,29 +172,29 @@ class TestMcGregorMatch(unittest.TestCase):
 
   def test_asn_leu(self):
 
-    l_ca = topology.Atom( label = "CA", xyz = ( -1.0085, -0.590773,  0.814318 ) )
-    l_cb = topology.Atom( label = "C",  xyz = (  0.0275, -0.557773, -0.314682 ) )
-    l_cg = topology.Atom( label = "C",  xyz = (  1.2335,  0.374227, -0.138682 ) )
-    l_cd1 = topology.Atom( label = "C", xyz = (  2.3065,  0.046227, -1.16768  ) )
-    l_cd2 = topology.Atom( label = "C", xyz = (  0.8395,  1.84323,  -0.230682 ) )
+    l_ca = topology.Atom( label = "CA" )
+    l_cb = topology.Atom( label = "C" )
+    l_cg = topology.Atom( label = "C" )
+    l_cd1 = topology.Atom( label = "C" )
+    l_cd2 = topology.Atom( label = "C" )
     leu = topology.Molecule()
-    leu.add( atom = l_ca )
-    leu.add( atom = l_cb )
-    leu.add( atom = l_cg )
-    leu.add( atom = l_cd1 )
-    leu.add( atom = l_cd2 )
+    leu.add( atom = l_ca, xyz = ( -1.0085, -0.590773,  0.814318 ) )
+    leu.add( atom = l_cb,  xyz = (  0.0275, -0.557773, -0.314682 ) )
+    leu.add( atom = l_cg,  xyz = (  1.2335,  0.374227, -0.138682 ) )
+    leu.add( atom = l_cd1, xyz = (  2.3065,  0.046227, -1.16768  ) )
+    leu.add( atom = l_cd2, xyz = (  0.8395,  1.84323,  -0.230682 ) )
 
-    a_ca = topology.Atom( label = "CA", xyz = ( -1.03327, -0.544348,  0.860946 ) )
-    a_cb = topology.Atom( label = "C",  xyz = (  0.10486, -0.548357, -0.164901 ) )
-    a_cg = topology.Atom( label = "C",  xyz = (  0.990984, 0.682823, -0.070521 ) )
-    a_od1 = topology.Atom( label = "C", xyz = (  1.39496,  1.24684,  -1.08724  ) )
-    a_nd2 = topology.Atom( label = "C", xyz = (  1.29745,  1.10599,   1.15228  ) )
+    a_ca = topology.Atom( label = "CA" )
+    a_cb = topology.Atom( label = "C" )
+    a_cg = topology.Atom( label = "C" )
+    a_od1 = topology.Atom( label = "C" )
+    a_nd2 = topology.Atom( label = "C" )
     asn = topology.Molecule()
-    asn.add( atom = a_ca )
-    asn.add( atom = a_cb )
-    asn.add( atom = a_cg )
-    asn.add( atom = a_od1 )
-    asn.add( atom = a_nd2 )
+    asn.add( atom = a_ca, xyz = ( -1.03327, -0.544348,  0.860946 ) )
+    asn.add( atom = a_cb,  xyz = (  0.10486, -0.548357, -0.164901 ) )
+    asn.add( atom = a_cg,  xyz = (  0.990984, 0.682823, -0.070521 ) )
+    asn.add( atom = a_od1, xyz = (  1.39496,  1.24684,  -1.08724  ) )
+    asn.add( atom = a_nd2, xyz = (  1.29745,  1.10599,   1.15228  ) )
 
     res = topology.McGregorMatch(
       molecule1 = leu,
@@ -215,31 +215,75 @@ class TestRascalMatch(unittest.TestCase):
 
   def test_asn_leu(self):
 
-    l_ca = topology.Atom( label = "CA", xyz = ( -1.0085, -0.590773,  0.814318 ) )
-    l_cb = topology.Atom( label = "C",  xyz = (  0.0275, -0.557773, -0.314682 ) )
-    l_cg = topology.Atom( label = "C",  xyz = (  1.2335,  0.374227, -0.138682 ) )
-    l_cd1 = topology.Atom( label = "C", xyz = (  2.3065,  0.046227, -1.16768  ) )
-    l_cd2 = topology.Atom( label = "C", xyz = (  0.8395,  1.84323,  -0.230682 ) )
+    l_ca = topology.Atom( label = "CA" )
+    l_cb = topology.Atom( label = "C" )
+    l_cg = topology.Atom( label = "C" )
+    l_cd1 = topology.Atom( label = "C" )
+    l_cd2 = topology.Atom( label = "C" )
     leu = topology.Molecule()
-    leu.add( atom = l_ca )
-    leu.add( atom = l_cb )
-    leu.add( atom = l_cg )
-    leu.add( atom = l_cd1 )
-    leu.add( atom = l_cd2 )
+    leu.add( atom = l_ca, xyz = ( -1.0085, -0.590773,  0.814318 ) )
+    leu.add( atom = l_cb, xyz = (  0.0275, -0.557773, -0.314682 ) )
+    leu.add( atom = l_cg, xyz = (  1.2335,  0.374227, -0.138682 ) )
+    leu.add( atom = l_cd1, xyz = (  2.3065,  0.046227, -1.16768  ) )
+    leu.add( atom = l_cd2, xyz = (  0.8395,  1.84323,  -0.230682 ) )
 
-    a_ca = topology.Atom( label = "CA", xyz = ( -1.03327, -0.544348,  0.860946 ) )
-    a_cb = topology.Atom( label = "C",  xyz = (  0.10486, -0.548357, -0.164901 ) )
-    a_cg = topology.Atom( label = "C",  xyz = (  0.990984, 0.682823, -0.070521 ) )
-    a_od1 = topology.Atom( label = "C", xyz = (  1.39496,  1.24684,  -1.08724  ) )
-    a_nd2 = topology.Atom( label = "C", xyz = (  1.29745,  1.10599,   1.15228  ) )
+    a_ca = topology.Atom( label = "CA" )
+    a_cb = topology.Atom( label = "C" )
+    a_cg = topology.Atom( label = "C" )
+    a_od1 = topology.Atom( label = "C" )
+    a_nd2 = topology.Atom( label = "C" )
     asn = topology.Molecule()
-    asn.add( atom = a_ca )
-    asn.add( atom = a_cb )
-    asn.add( atom = a_cg )
-    asn.add( atom = a_od1 )
-    asn.add( atom = a_nd2 )
+    asn.add( atom = a_ca, xyz = ( -1.03327, -0.544348,  0.860946 ) )
+    asn.add( atom = a_cb,  xyz = (  0.10486, -0.548357, -0.164901 ) )
+    asn.add( atom = a_cg,  xyz = (  0.990984, 0.682823, -0.070521 ) )
+    asn.add( atom = a_od1, xyz = (  1.39496,  1.24684,  -1.08724  ) )
+    asn.add( atom = a_nd2, xyz = (  1.29745,  1.10599,   1.15228  ) )
 
     m = topology.RascalMatch(
+      molecule1 = leu,
+      molecule2 = asn,
+      vertex_equality = lambda l, r: l.label == r.label,
+      edge_equality = lambda l, r: abs( l - r ) <= 0.1,
+      )
+    self.assertEqual( m.count(), 1 )
+    self.assertEqual( m.length(), 3 )
+    mapping = m.remapped()[0]
+    self.assertEqual( len( mapping ), 3 )
+    self.assertTrue( ( l_ca, a_ca ) in mapping )
+    self.assertTrue( ( l_cb, a_cb ) in mapping )
+    self.assertTrue( ( l_cg, a_cg ) in mapping )
+    self.assertTrue( ( l_cd1, a_od1 ) not in mapping )
+
+
+class TestGreedyMatch(unittest.TestCase):
+
+  def test_asn_leu(self):
+
+    l_ca = topology.Atom( label = "CA" )
+    l_cb = topology.Atom( label = "C" )
+    l_cg = topology.Atom( label = "C" )
+    l_cd1 = topology.Atom( label = "C" )
+    l_cd2 = topology.Atom( label = "C" )
+    leu = topology.Molecule()
+    leu.add( atom = l_ca, xyz = ( -1.0085, -0.590773,  0.814318 ) )
+    leu.add( atom = l_cb, xyz = (  0.0275, -0.557773, -0.314682 ) )
+    leu.add( atom = l_cg, xyz = (  1.2335,  0.374227, -0.138682 ) )
+    leu.add( atom = l_cd1, xyz = (  2.3065,  0.046227, -1.16768  ) )
+    leu.add( atom = l_cd2, xyz = (  0.8395,  1.84323,  -0.230682 ) )
+
+    a_ca = topology.Atom( label = "CA" )
+    a_cb = topology.Atom( label = "C" )
+    a_cg = topology.Atom( label = "C" )
+    a_od1 = topology.Atom( label = "C" )
+    a_nd2 = topology.Atom( label = "C" )
+    asn = topology.Molecule()
+    asn.add( atom = a_ca, xyz = ( -1.03327, -0.544348,  0.860946 ) )
+    asn.add( atom = a_cb,  xyz = (  0.10486, -0.548357, -0.164901 ) )
+    asn.add( atom = a_cg,  xyz = (  0.990984, 0.682823, -0.070521 ) )
+    asn.add( atom = a_od1, xyz = (  1.39496,  1.24684,  -1.08724  ) )
+    asn.add( atom = a_nd2, xyz = (  1.29745,  1.10599,   1.15228  ) )
+
+    m = topology.GreedyMatch(
       molecule1 = leu,
       molecule2 = asn,
       vertex_equality = lambda l, r: l.label == r.label,
@@ -270,6 +314,9 @@ suite_mcgregor_match = unittest.TestLoader().loadTestsFromTestCase(
 suite_rascal_match= unittest.TestLoader().loadTestsFromTestCase(
   TestRascalMatch
   )
+suite_greedy_match= unittest.TestLoader().loadTestsFromTestCase(
+  TestGreedyMatch
+  )
 
 
 alltests = unittest.TestSuite(
@@ -279,6 +326,7 @@ alltests = unittest.TestSuite(
     suite_compound,
     suite_mcgregor_match,
     suite_rascal_match,
+    suite_greedy_match,
     ]
   )
 
