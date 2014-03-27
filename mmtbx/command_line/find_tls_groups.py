@@ -706,6 +706,7 @@ def find_tls (params,
               pdb_hierarchy,
               xray_structure,
               return_as_list=False,
+              ignore_pdb_header_groups=False,
               out=None) :
   if (out is None) :
     out = sys.stdout
@@ -845,7 +846,7 @@ def find_tls (params,
       chains_and_atom_selection_strings.append([crs[0],
         permutations_as_atom_selection_string(groups, perm_choice)])
       #
-  if (pdb_inp is not None) :
+  if (pdb_inp is not None) and (not ignore_pdb_header_groups) :
     external_tls_selections = external_tls(
       pdb_inp       = pdb_inp,
       pdb_hierarchy = pdb_hierarchy,
