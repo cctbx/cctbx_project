@@ -261,6 +261,10 @@ class molprobity (slots_getstate_setstate) :
       return getattr(self.data_stats, "r_free",
         getattr(self.header_info, "r_free", None))
 
+  def d_min (self) :
+    if (self.data_stats is not None) :
+      return self.data_stats.d_min
+
   def d_max_min (self, outer_shell=False) :
     if (self.data_stats is not None) :
       if (outer_shell) :
