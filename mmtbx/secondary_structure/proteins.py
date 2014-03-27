@@ -148,19 +148,21 @@ class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
         raise Sorry("Sense must be 0, 1, or -1.")
       if registration is not None :
         if use_resids :
-          sele_base = "chain '%s' %sand resid %s"
+          sele_base = "chain '%s' %sand resid %s and name %s"
           resid_curr = "%d%s" % (registration.cur_resseq,registration.cur_icode)
           resid_prev = "%d%s" % (registration.prev_resseq,
-            registration.prev_icode)
+              registration.prev_icode)
           reg_curr.append(sele_base % (registration.cur_chain_id,segid_extra,
-            resid_curr))
+              resid_curr, registration.cur_atom.strip()))
           reg_prev.append(sele_base % (registration.prev_chain_id,segid_extra,
-            resid_prev))
+              resid_prev, registration.prev_atom.strip()))
         else :
-          reg_curr.append("chain '%s' %sand resseq %d" % (
-            registration.cur_chain_id, segid_extra, registration.cur_resseq))
-          reg_prev.append("chain '%s' %sand resseq %d" % (
-            registration.prev_chain_id, segid_extra, registration.prev_resseq))
+          reg_curr.append("chain '%s' %sand resseq %d and name %s" % (
+              registration.cur_chain_id, segid_extra, registration.cur_resseq,
+              registration.cur_atom.strip()))
+          reg_prev.append("chain '%s' %sand resseq %d and name %s" % (
+              registration.prev_chain_id, segid_extra, registration.prev_resseq,
+              registration.prev_atom.strip()))
       else :
         reg_curr.append(None)
         reg_prev.append(None)
@@ -389,6 +391,8 @@ def create_sheet_hydrogen_bond_proxies (
     i = j = 0
     len_prev_residues = len(prev_residues)
     len_curr_residues = len(curr_residues)
+    # if true-all good.
+    current_start_res_is_donor = pdb_hierarchy.atoms().select(curr_start)[0].name.strip() == 'N'
     if (len_curr_residues > 0) and (len_prev_residues > 0) :
       i = _find_start_residue(
         residues=prev_residues,
@@ -409,41 +413,38 @@ def create_sheet_hydrogen_bond_proxies (
             i -= 2
             j += 2
         if (curr_strand.sense == "parallel") :
-          while (i < len_prev_residues) and (j < len_curr_residues) :
-            if (prev_residues[i].resname.strip() != "PRO") :
+          # some tweaking for ensure correct donor assignment
+          if i == 2:
+            i -= 2
+            current_start_res_is_donor = not current_start_res_is_donor
+          if j == 2:
+            j -= 2
+            current_start_res_is_donor = not current_start_res_is_donor
+          while (i < len_prev_residues) and (j < len_curr_residues):
+            if current_start_res_is_donor:
+              donor_residue = curr_residues[j]
+              acceptor_residue = prev_residues[i]
+              i += 2
+            else:
+              donor_residue = prev_residues[i]
+              acceptor_residue = curr_residues[j]
+              j += 2
+            current_start_res_is_donor = not current_start_res_is_donor
+            if donor_residue.resname.strip() != "PRO":
               n_proxies += _create_hbond_proxy(
-                acceptor_atoms=curr_residues[j].atoms(),
-                donor_atoms=prev_residues[i].atoms(),
-                build_proxies=build_proxies,
-                hbond_counts=hbond_counts,
-                distance_ideal=distance_ideal,
-                distance_cut=distance_cut,
-                hbond_params=hbond_params,
-                remove_outliers=remove_outliers,
-                use_hydrogens=use_hydrogens,
-                weight=weight,
-                sigma=sheet_params.restraint_sigma,
-                slack=sheet_params.restraint_slack,
-                log=log)
-            if ((j + 2) >= len_curr_residues) :
-              break
-            if (curr_residues[j+2].resname.strip() != "PRO") :
-              n_proxies += _create_hbond_proxy(
-                acceptor_atoms=prev_residues[i].atoms(),
-                donor_atoms=curr_residues[j+2].atoms(),
-                build_proxies=build_proxies,
-                hbond_counts=hbond_counts,
-                distance_ideal=distance_ideal,
-                distance_cut=distance_cut,
-                hbond_params=hbond_params,
-                remove_outliers=remove_outliers,
-                use_hydrogens=use_hydrogens,
-                weight=weight,
-                sigma=sheet_params.restraint_sigma,
-                slack=sheet_params.restraint_slack,
-                log=log)
-            i += 2
-            j += 2
+                  acceptor_atoms=acceptor_residue.atoms(),
+                  donor_atoms=donor_residue.atoms(),
+                  build_proxies=build_proxies,
+                  hbond_counts=hbond_counts,
+                  distance_ideal=distance_ideal,
+                  distance_cut=distance_cut,
+                  hbond_params=hbond_params,
+                  remove_outliers=remove_outliers,
+                  use_hydrogens=use_hydrogens,
+                  weight=weight,
+                  sigma=sheet_params.restraint_sigma,
+                  slack=sheet_params.restraint_slack,
+                  log=log)
         elif (curr_strand.sense == "antiparallel") :
           while(i < len_prev_residues and j >= 0):
             if (prev_residues[i].resname.strip() != "PRO") :
