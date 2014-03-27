@@ -84,6 +84,16 @@ def remove_objects_recursive (pdb_object) :
       raise Sorry("You must have at least one MODEL in the PDB file.")
     parent.remove_model(pdb_object)
 
+def has_aniso_atoms (pdb_object) :
+  pdb_type = type(pdb_object).__name__
+  if (pdb_type == 'atom') :
+    return (pdb_object.uij != (-1,-1,-1,-1,-1,-1))
+  else :
+    for atom in pdb_object.atoms() :
+      if (atom.uij != (-1,-1,-1,-1,-1,-1)) :
+        return True
+  return False
+
 class PDBTree (customtreectrl.CustomTreeCtrl) :
   max_states = 5 # maximum number of reverts possible
   def __init__ (self, *args, **kwds) :
@@ -992,6 +1002,14 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     if (fractional) :
       unit_cell = self._crystal_symmetry.unit_cell()
       assert (unit_cell is not None)
+    # FIXME
+    for item in items :
+      pdb_object = self.GetItemPyData(item)
+      if has_aniso_atoms(pdb_object) :
+        confirm_action("This action will invalidate any ANISOU records "+
+          "present in the selected atoms, which will automatically be "+
+          "converted to isotropic.  Are you sure you want to continue?")
+        break
     for item in items :
       pdb_object = self.GetItemPyData(item)
       pdb_type = type(pdb_object).__name__
@@ -1004,6 +1022,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         if (fractional) :
           sites = unit_cell.orthogonalize(sites_frac=sites)
         pdb_object.xyz = sites[0]
+        if (pdb_object.uij != (-1,-1,-1,-1,-1,-1)) :
+          pdb_object.uij = (-1,-1,-1,-1,-1,-1)
         self.SetItemText(item, format_atom(pdb_object))
       else :
         atoms = pdb_object.atoms()
@@ -1014,6 +1034,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         if (fractional) :
           sites = unit_cell.orthogonalize(sites_frac=sites)
         atoms.set_xyz(sites)
+        for atom in atoms :
+          if (atom.uij != (-1,-1,-1,-1,-1,-1)) :
+            atom.uij = (-1,-1,-1,-1,-1,-1)
         self.PropagateAtomChanges(item)
 
   # all
