@@ -104,7 +104,7 @@ class NpyImage(DetectorImageBase):
         horizons_phil.distl.detector_tiling = self.parameters['ACTIVE_AREAS']
 
 
-    if version_control not in ["CXI 3.2"]:
+    if version_control not in ["CXI 3.1", "CXI 3.2"]:
       if horizons_phil.distl.tile_translations==None and \
          horizons_phil.distl.detector_tiling is not None:
           horizons_phil.distl.tile_translations = [0]*(int(len(horizons_phil.distl.detector_tiling)/2))
