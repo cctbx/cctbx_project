@@ -65,6 +65,7 @@ namespace cctbx { namespace maptbx {
     af::int3 const& last)
   {
     CCTBX_ASSERT(first.all_le(last));
+    // c_grid_padded_p1<> is periodic, first<origin or last>focus are possible
     af::flex_grid_default_index_type first_(af::adapt(first));
     af::flex_grid_default_index_type last_(af::adapt(last));
     af::versa<FloatType, af::flex_grid<> > result(
@@ -79,6 +80,7 @@ namespace cctbx { namespace maptbx {
     return result;
   }
 
+  // less generic copy_box is in utils.h
   template <typename FloatType>
   af::versa<FloatType, af::flex_grid<> >
   copy_box(
@@ -89,6 +91,9 @@ namespace cctbx { namespace maptbx {
     CCTBX_ASSERT(first.all_le(last));
     af::flex_grid_default_index_type first_(af::adapt(first));
     af::flex_grid_default_index_type last_(af::adapt(last));
+    // flex_grid<> is always aperiodic, so guards are needed
+    CCTBX_ASSERT(first_.all_ge(map.accessor().origin()));
+    CCTBX_ASSERT(last_.all_lt(map.accessor().focus()));
     af::versa<FloatType, af::flex_grid<> > result(
       af::flex_grid<>(first_, last_, false));
     CCTBX_ASSERT(map.accessor().all().all_ge(result.accessor().all()));

@@ -59,6 +59,21 @@ def exercise_copy():
     assert list(c) == [112, 113, 110, 122, 123, 120,  12,  13,  10,
                         22,  23,  20, 112, 113, 110, 122, 123, 120]
     #
+    m2 = m.deep_copy()
+    grid = flex.grid( (-1,-1,-1), (1,2,4) ).set_focus( (1,2,3) )
+    m2.resize(grid)
+    for i in xrange(-1,1):
+      for j in xrange(-1,2):
+        for k in xrange(-1,3):
+          # aperiodic copy
+          c = maptbx.copy_box(map=m2, first=(i,j,k), last=(i,j,k))
+          assert c.size() == 1
+          ind = ((i+1)%2-1,(j+1)%3-1,(k+1)%4-1)
+          assert c[(i,j,k)] == m2[ind]
+    c = maptbx.copy_box(map=m2, first=(-1,0,-1), last=(0,1,2))
+    assert list(c) == [10, 11, 12, 13, 20, 21,  22,  23,  110,
+                       111, 112, 113, 120, 121, 122, 123]
+    #
     for n0 in xrange(4):
       for n1 in xrange(4):
         for n2 in xrange(4):
