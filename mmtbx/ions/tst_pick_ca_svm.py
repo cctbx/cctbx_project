@@ -1,12 +1,11 @@
 
 from __future__ import division
 from libtbx import easy_run
-import time
 
 def exercise () :
   try :
-    import svm
-    import svmutil
+    import svm      # import dependency
+    import svmutil  # import dependency
   except ImportError :
     print "libsvm not available, skipping this test"
     return

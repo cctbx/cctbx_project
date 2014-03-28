@@ -541,7 +541,7 @@ class DataBlockImageSetImporter(object):
     for imageset in imagesets:
       try:
         self.datablocks[-1].append(imageset)
-      except:
+      except Exception:
         self.datablocks.append(DataBlock([imageset]))
 
 

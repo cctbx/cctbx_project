@@ -1,6 +1,5 @@
 from __future__ import division
 import time
-from math import sqrt
 from cctbx import sgtbx
 from cctbx import geometry_restraints
 
@@ -846,7 +845,7 @@ Residue classes
         for pair in custom_links[key]:
           for atom in pair:
             try: print atom.quote()
-            except: print atom
+            except Exception: print atom
 
     pair_sym_table = pair_asu_table.extract_pair_sym_table()
     #for sym_pair in pair_sym_table.iterator():

@@ -1788,7 +1788,7 @@ links = {
 
 def run(only_i=None):
   try: only_i=int(only_i)
-  except: only_i=None
+  except ValueError: only_i=None
   cifs = ""
   for pdb in pdbs:
     f=file(pdb, "wb")

@@ -2,8 +2,8 @@
 # Data from Acta Cryst. D62 (2006), 678-682.
 #
 from __future__ import division
-import os, sys
-from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter # modified?????
+from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
+import sys
 
 metal_defaults = {
   "Na" : {

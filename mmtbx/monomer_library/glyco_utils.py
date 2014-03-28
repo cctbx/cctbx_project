@@ -1,3 +1,5 @@
+
+from __future__ import division
 from string import digits
 from cctbx import geometry_restraints
 from libtbx.utils import Sorry
@@ -93,7 +95,7 @@ class glyco_link_class:
                  "anomeric_hydrogen",
                  ]:
       try: outl += "  %-20s : %s" % (attr, getattr(self, attr).quote())
-      except: outl += "  %-20s : ???" % (attr)
+      except Exception: outl += "  %-20s : ???" % (attr)
       if attr=="anomeric_carbon":
         outl += " linking : %s" % self.anomeric_carbon_linking
       outl += "\n"
@@ -300,7 +302,7 @@ def get_glyco_link_atoms(atom_group1,
   link_carbon = get_link_carbon(anomeric_carbon, link_oxygen, bonds)
   if verbose:
     try: print 'link_carbon',link_carbon.quote()
-    except: print
+    except Exception: print
   gla = glyco_link_class(anomeric_carbon,
                          ring_oxygen,
                          ring_carbon,

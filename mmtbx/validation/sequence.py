@@ -1,12 +1,10 @@
 from __future__ import division
 from libtbx import easy_mp
-from libtbx import easy_pickle
 from libtbx import str_utils
 import libtbx.phil
 from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args, Auto
 import sys
-import os
 
 master_phil = libtbx.phil.parse("""
   similarity_matrix =  blosum50  dayhoff *identity

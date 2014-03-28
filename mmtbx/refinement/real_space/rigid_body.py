@@ -132,13 +132,13 @@ class refine(object):
     result = self.__d_e_pot_d_sites
     del self.__d_e_pot_d_sites
     return result
-    
+
 # Search and refine section
 def target(sites_frac, map_data):
   return maptbx.real_space_target_simple(
     density_map = map_data,
     sites_frac  = sites_frac)
-  
+
 def search(rr,ra, map_data, fm, om, cm, t_best, sites_cart):
   sites_frac_best = None
   for x in rr:
@@ -163,8 +163,8 @@ def search(rr,ra, map_data, fm, om, cm, t_best, sites_cart):
     return om*sites_frac_best
   else:
     return sites_cart
-  
-def apply_rigid_body_shift(sites_cart, cm, fm, x=None,y=None,z=None, 
+
+def apply_rigid_body_shift(sites_cart, cm, fm, x=None,y=None,z=None,
       the=None, psi=None, phi=None):
   result = None
   rot_mat = None
@@ -187,14 +187,14 @@ def apply_rigid_body_shift(sites_cart, cm, fm, x=None,y=None,z=None,
   else: assert 0
   return fm*result
 
-    
+
 class search_and_refine(object):
-  
+
   def __init__(self, map_data, pdb_hierarchy, xray_structure, max_iterations=50):
     self.pdb_hierarchy = pdb_hierarchy
     self.xray_structure = xray_structure
     # sanity check
-    assert approx_equal(self.xray_structure.sites_cart(), 
+    assert approx_equal(self.xray_structure.sites_cart(),
       self.pdb_hierarchy.atoms().extract_xyz(), 1.e-4)
     #
     lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
@@ -212,12 +212,12 @@ class search_and_refine(object):
       #   search 1
       rr = [i/10. for i in range(-20,21,5)]
       ra = [i for i in range(-10,11,2)]
-      sites_cart_best = search(rr=rr,ra=ra, map_data=map_data, fm=fm, om=om, 
+      sites_cart_best = search(rr=rr,ra=ra, map_data=map_data, fm=fm, om=om,
         cm=cm, t_best=t_best, sites_cart=s1)
       #   search 2
       rr = [i/10. for i in range(-5,6)]
       ra = [i for i in range(-5,6,2)]
-      sites_cart_best = search(rr=rr,ra=ra, map_data=map_data, fm=fm, om=om, 
+      sites_cart_best = search(rr=rr,ra=ra, map_data=map_data, fm=fm, om=om,
         cm=cm, t_best=t_best, sites_cart=sites_cart_best)
       chain.atoms().set_xyz(sites_cart_best)
       # use tardy
@@ -235,6 +235,3 @@ class search_and_refine(object):
       print i_chain, flex.sqrt((s1-s2).dot()).min_max_mean().as_tuple()
     self.xray_structure.set_sites_cart(sites_cart)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
-    
-    
-    
