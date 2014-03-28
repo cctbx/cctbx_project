@@ -111,9 +111,10 @@ class multimer(object):
         # get a dictionary for new chains naming
         new_chains_names = self._chains_names(i_transforms,\
           nChains,unique_chain_names)
-        for chain in model.chains():
-          # iterating over the transforms that are not present
-          for i_transform in i_transforms:
+        n_chains = len(model.chains())
+        for i_transform in i_transforms:
+          for i_ch in range(n_chains):
+            chain = model.chains()[i_ch]
             new_chain = chain.detached_copy()
             new_chain.id = new_chains_names[new_chain.id + str(i_transform)]
             new_sites = transform_info.r[i_transform].elems*\
