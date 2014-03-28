@@ -10,8 +10,8 @@ import sys
 
 svm_params = ""
 try :
-  import svm
-  import svmutil
+  import svm     # import dependency
+  import svmutil # import dependency
 except ImportError :
   pass
 else :

@@ -9,7 +9,6 @@ from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as three_on
 from mmtbx.refinement.geometry_minimization import run2
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 import mmtbx.utils
-from iotbx.pdb import secondary_structure as ioss
 
 alpha_pdb_str = """\
 ATOM      1  N   ALA     2       1.643  -2.366  -1.408  1.00  0.00           N
@@ -290,9 +289,9 @@ def substitute_ss(real_h,
           sequence=None,
           pdb_hierarchy_template=sel_h)
       edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
-  
+
   #edited_h.write_pdb_file(file_name="idealized.pdb")
-  
+
   pre_result_h = edited_h
   # generate different atom selections.
   bsel = flex.bool(real_h.atoms().size(), False)
@@ -310,7 +309,7 @@ def substitute_ss(real_h,
     selstring = "(name ca or name n or name o or name c) %s" % ss_sels
     isel = selection_cache.iselection(selstring)
     ss_for_tors_selection.set_selected(isel, True)
-      
+
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(crystal_symmetry= crystal_symmetry, log=log)
   processed_pdb_file, junk = processed_pdb_files_srv.\
