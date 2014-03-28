@@ -1113,6 +1113,61 @@ def exercise_operators():
   assert approx_equal(a*3, [3,6,9])
   assert approx_equal(4*a, [4,8,12])
 
+def exercise_bitwise_operators():
+  a = flex.int((
+    1 << 0, # 0001
+    1 << 1, # 0010
+    1 << 2, # 0100
+    1 << 3))# 1000
+  b = ~a
+  assert(list(b) == [-2, -3, -5, -9])
+  b = a | (1 << 0)
+  assert(list(b) == [1, 3, 5, 9])
+  b = a | (1 << 1)
+  assert(list(b) == [3, 2, 6, 10])
+  b = a | (1 << 2)
+  assert(list(b) == [5, 6, 4, 12])
+  b = a | (1 << 3)
+  assert(list(b) == [9, 10, 12, 8])
+  c = flex.int((
+    1 << 3,
+    1 << 2,
+    1 << 1,
+    1 << 0))
+  b = a | c
+  assert(list(b) == [9, 6, 6, 9])
+  b = a & (1 << 0)
+  assert(list(b) == [1, 0, 0, 0])
+  b = a & (1 << 1)
+  assert(list(b) == [0, 2, 0, 0])
+  b = a & (1 << 2)
+  assert(list(b) == [0, 0, 4, 0])
+  b = a & (1 << 3)
+  assert(list(b) == [0, 0, 0, 8])
+  c = flex.int((
+    1 << 3,
+    1 << 2,
+    1 << 1,
+    1 << 0))
+  b = a & c
+  assert(list(b) == [0, 0, 0, 0])
+  b = a ^ (1 << 0)
+  assert(list(b) == [0, 3, 5, 9])
+  b = a ^ (1 << 1)
+  assert(list(b) == [3, 0, 6, 10])
+  b = a ^ (1 << 2)
+  assert(list(b) == [5, 6, 0, 12])
+  b = a ^ (1 << 3)
+  assert(list(b) == [9, 10, 12, 0])
+  c = flex.int((
+    1 << 3,
+    1 << 2,
+    1 << 1,
+    1 << 0))
+  b = a ^ c
+  assert(list(b) == [9, 6, 6, 9])
+
+
 def exercise_bool():
   a = flex.bool((False, True, False, True))
   b = flex.bool((False, True, True, False))
@@ -3419,6 +3474,7 @@ def run(iterations):
     exercise_select()
     exercise_from_stl_vector()
     exercise_operators()
+    exercise_bitwise_operators()
     exercise_bool()
     exercise_arith_inplace_operators()
     exercise_functions()
