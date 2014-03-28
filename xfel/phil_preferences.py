@@ -45,7 +45,6 @@ def load_cxi_phil(path, args=[]):
     raise Sorry("Not all arguments processed")
 
   params = horizons_phil.extract()
-  assert params.distl.detector_format_version is not None
   message = "deprecated: %s and detector_format_version should not be specified in your phil file. Remove them from phil files of the form cxi-7.1.phil or xpp-7.1.phil, included from your xtal_target phil file"
   if params.distl.tile_translations is not None:
     raise Sorry(message%"tile_translations")
