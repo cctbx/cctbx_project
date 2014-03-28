@@ -41,7 +41,7 @@ def exercise():
     update_f_calc = True
     )
 
-  manager = ions.create_manager(
+  manager = ions.identify.create_manager(
     pdb_hierarchy = cmdline.pdb_hierarchy,
     fmodel = cmdline.fmodel,
     geometry_restraints_manager = cmdline.geometry,

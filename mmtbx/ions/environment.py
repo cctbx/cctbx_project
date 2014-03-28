@@ -34,8 +34,8 @@ chem_carboxy, \
 
 
 class ScatteringEnvironment (slots_getstate_setstate):
-  __slots__ = ["i_seq", "d_min", "wavelength", "fp", "fpp", "b_iso",
-    "b_mean_hoh", "occ", "fo_density", "fofc_density", "anom_density"]
+  __slots__ = ["d_min", "wavelength", "fp", "fpp", "b_iso", "b_mean_hoh", "occ",
+               "fo_density", "fofc_density", "anom_density"]
   def __init__(self,
       i_seq,
       manager,

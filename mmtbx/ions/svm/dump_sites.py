@@ -9,29 +9,19 @@ phenix.python -m mmtbx.ions.svm.dump_sites [args]
 """
 
 from __future__ import division
-from mmtbx import ions
-from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
-from mmtbx.ions.svm.utils import iterate_sites
-import mmtbx.command_line
-from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
-from cctbx.eltbx import sasaki
-from libtbx.str_utils import make_header
-from libtbx import easy_pickle
+
 import os
 import sys
 
-def master_phil () :
-  return mmtbx.command_line.generate_master_phil_with_inputs(
-    enable_automatic_twin_detection=True,
-    phil_string="""
-include scope mmtbx.ions.ion_master_phil
-debug = True
-  .type = bool
-elements = Auto
-  .type = str
-nproc = Auto
-  .type = int
-""")
+from mmtbx import ions
+from mmtbx.ions.identify import WATER_RES_NAMES
+from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
+from mmtbx.ions.svm.utils import iterate_sites
+import mmtbx.command_line
+from mmtbx.command_line.water_screen import master_phil
+from cctbx.eltbx import sasaki
+from libtbx.str_utils import make_header
+from libtbx import easy_pickle
 
 def main(args, out = sys.stdout):
   usage_string = """\
@@ -55,7 +45,7 @@ atomic properties.
 
   make_header("Inspecting sites", out = out)
 
-  manager = ions.create_manager(
+  manager = ions.identify.create_manager(
     pdb_hierarchy = cmdline.pdb_hierarchy,
     fmodel = cmdline.fmodel,
     geometry_restraints_manager = cmdline.geometry,
@@ -81,7 +71,7 @@ def dump_sites (manager):
 
   atoms = iterate_sites(
     manager.pdb_hierarchy,
-    res_filter = ions.SUPPORTED + ions.WATER_RES_NAMES,
+    res_filter = ions.SUPPORTED + WATER_RES_NAMES,
     split_sites = True)
 
   # Can't pickle entire AtomProperties because they include references to the

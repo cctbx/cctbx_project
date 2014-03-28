@@ -18,7 +18,7 @@ def exercise () :
       n_zn += 1
     if "!!!" in line:
       n_bad += 1
-  assert n_zn == 1 and n_bad == 3
+  assert n_zn == 1 and n_bad == 2
   print "OK"
 
 if (__name__ == "__main__") :
