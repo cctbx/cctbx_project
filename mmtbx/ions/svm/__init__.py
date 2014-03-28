@@ -102,7 +102,7 @@ def _get_classifier():
       if err.errno != errno.ENOENT:
         raise err
     with open(CLASSIFIER_ACCESSORIES_PATH) as f:
-      _VECTOR_OPTIONS, _VECTOR_SIZE, _SCALING, _FEATURES = load(f)
+      _VECTOR_OPTIONS, _SCALING, _FEATURES = load(f)
 
   return _CLASSIFIER, _VECTOR_OPTIONS, _SCALING, _FEATURES
 
