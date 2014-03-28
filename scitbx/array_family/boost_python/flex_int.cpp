@@ -121,6 +121,78 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
+  af::shared<int> bitwise_not(
+      af::const_ref<int> const &self) {
+    af::shared<int> result(self.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      result[i] = ~self[i];
+    }
+    return result;
+  }
+
+  af::shared<int> bitwise_or_single(
+      af::const_ref<int> const &self,
+      int other) {
+    af::shared<int> result(self.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      result[i] = self[i] | other;
+    }
+    return result;
+  }
+
+  af::shared<int> bitwise_or_array(
+      af::const_ref<int> const &self,
+      af::const_ref<int> const &other) {
+    SCITBX_ASSERT(self.size() == other.size());
+    af::shared<int> result(self.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      result[i] = self[i] | other[i];
+    }
+    return result;
+  }
+
+  af::shared<int> bitwise_and_single(
+      af::const_ref<int> const &self,
+      int other) {
+    af::shared<int> result(self.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      result[i] = self[i] & other;
+    }
+    return result;
+  }
+
+  af::shared<int> bitwise_and_array(
+      af::const_ref<int> const &self,
+      af::const_ref<int> const &other) {
+    SCITBX_ASSERT(self.size() == other.size());
+    af::shared<int> result(self.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      result[i] = self[i] & other[i];
+    }
+    return result;
+  }
+
+  af::shared<int> bitwise_xor_single(
+      af::const_ref<int> const &self,
+      int other) {
+    af::shared<int> result(self.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      result[i] = self[i] ^ other;
+    }
+    return result;
+  }
+
+  af::shared<int> bitwise_xor_array(
+      af::const_ref<int> const &self,
+      af::const_ref<int> const &other) {
+    SCITBX_ASSERT(self.size() == other.size());
+    af::shared<int> result(self.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      result[i] = self[i] ^ other[i];
+    }
+    return result;
+  }
+
   void wrap_flex_int()
   {
     using namespace boost::python;
@@ -185,6 +257,13 @@ namespace scitbx { namespace af { namespace boost_python {
               arg("i_column")))
       .def("as_numpy_array", flex_int_as_numpy_array, (
         arg("optional")=false))
+      .def("__invert__", &bitwise_not)
+      .def("__or__", &bitwise_or_single)
+      .def("__or__", &bitwise_or_array)
+      .def("__and__", &bitwise_and_single)
+      .def("__and__", &bitwise_and_array)
+      .def("__xor__", &bitwise_xor_single)
+      .def("__xor__", &bitwise_xor_array)
     ;
     def(
       "int_from_byte_str",
