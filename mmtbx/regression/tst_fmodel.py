@@ -10,6 +10,7 @@ import mmtbx
 from cctbx import adptbx
 import mmtbx.masks
 import mmtbx.f_model
+import os.path
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -532,6 +533,8 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
     assert approx_equal(fmodel.b_h, 0)
     assert fmodel.r_work() < 0.025
   map_coeffs = fmodel.map_coefficients(map_type="2mFo-DFc")
+  fmodel.export_f_obs_flags_as_mtz(file_name="tmp_tst_fmodel.mtz")
+  assert os.path.isfile("tmp_tst_fmodel.mtz")
 
 def exercise_top_largest_f_obs_f_model_differences(threshold_percent=10,
       symbol = "C 2"):
