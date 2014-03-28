@@ -8,6 +8,7 @@ import libtbx
 from mmtbx.command_line.water_screen import master_phil
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
 from mmtbx import ions
+from mmtbx.ions.identify import WATER_RES_NAMES, AtomProperties
 from mmtbx.ions.svm import ion_class, predict_ion
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs, \
      generate_calcium_inputs
@@ -37,7 +38,7 @@ def exercise () :
     os.remove(os.path.splitext(mtz_file)[0] + "_fmodel.eff")
     os.remove(os.path.splitext(mtz_file)[0] + ".pdb")
 
-    manager = ions.create_manager(
+    manager = ions.identify.create_manager(
       pdb_hierarchy = cmdline.pdb_hierarchy,
       fmodel = cmdline.fmodel,
       geometry_restraints_manager = cmdline.geometry,
@@ -59,14 +60,14 @@ def exercise () :
           # Or a label indicating the residue is a water
           resname = atom_group.resname.strip().upper()
 
-          if (resname in ions.WATER_RES_NAMES) :
+          if (resname in WATER_RES_NAMES) :
             atoms = atom_group.atoms()
             if (len(atoms) == 1) : # otherwise it probably has hydrogens, skip
               waters.append(atoms[0].i_seq)
 
     assert len(waters) > 0
 
-    atom_props = [ions.AtomProperties(i_seq, manager) for i_seq in waters]
+    atom_props = [AtomProperties(i_seq, manager) for i_seq in waters]
 
     fo_map = manager.get_map("mFo")
     fofc_map = manager.get_map("mFo-DFc")
