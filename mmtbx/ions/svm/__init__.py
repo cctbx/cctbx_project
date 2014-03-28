@@ -44,13 +44,18 @@ except ImportError :
 
 CLASSIFIER_PATH = libtbx.env.find_in_repositories(
   relative_path = "chem_data/classifiers/ions_svm.model",
-  test = os.path.isfile)
+  test = os.path.isfile
+  )
+
 CLASSIFIER_ACCESSORIES_PATH = libtbx.env.find_in_repositories(
   relative_path = "chem_data/classifiers/ions_svm_options.pkl",
-  test = os.path.isfile)
+  test = os.path.isfile
+  )
 
 _CLASSIFIER = None
 _VECTOR_OPTIONS = None
+_SCALING = None
+_FEATURES = None
 _TRIED = None
 
 ALLOWED_IONS = ["HOH", "MN", "ZN", "FE", "NI", "CA"]
@@ -71,17 +76,24 @@ def _get_classifier():
       The libsvm classifier used to predict the identities of ion sites.
   dict of str, bool
       Options to pass to ion_vector when collecting features about these sites.
-  int
-      The size of the vectors the classifier was trained on. Useful for
-      asserting that features are not missing due to changes in vector code.
+  tuple of (tuple of numpy.array of float, numpy.array of float), tuple of
+  float)
+      The scaling parameters passed to _scale_to.
+  numpy.array of bool
+      The features of the vector that were selected as important for
+      classification. Useful for both asserting that ion_vector is returning
+      something of the correct size as well as only selection features that
+      actually affect classification.
 
   See Also
   --------
   svm.libsvm.svm_predict_probability
   mmtbx.ions.svm.predict_ion
+  phenix_dev.ion_identification.nader_ml.ions_test_ml_combos.train_svm
   """
   assert (svmutil is not None)
-  global _CLASSIFIER, _VECTOR_OPTIONS, _VECTOR_SIZE, _TRIED
+  global _CLASSIFIER, _VECTOR_OPTIONS, _FEATURES, _SCALING, _TRIED
+
   if _CLASSIFIER is None and not _TRIED:
     _TRIED = True
     try:
@@ -90,9 +102,9 @@ def _get_classifier():
       if err.errno != errno.ENOENT:
         raise err
     with open(CLASSIFIER_ACCESSORIES_PATH) as f:
-      _VECTOR_OPTIONS, _VECTOR_SIZE = load(f)
+      _VECTOR_OPTIONS, _VECTOR_SIZE, _SCALING, _FEATURES = load(f)
 
-  return _CLASSIFIER, _VECTOR_OPTIONS, _VECTOR_SIZE
+  return _CLASSIFIER, _VECTOR_OPTIONS, _SCALING, _FEATURES
 
 def ion_class(chem_env):
   """
@@ -340,6 +352,13 @@ def ion_anomalous_vector(scatter_env, elements = None, ratios = True):
       ])
   return ret
 
+def _scale_to(matrix, source, target):
+  keep_rows = source[0] != source[1]
+  matrix = matrix[:, keep_rows]
+  source = (source[0][keep_rows], source[1][keep_rows])
+  return (matrix - source[0]) * (target[1] - target[0]) / \
+    (source[1] - source[0]) + target[0]
+
 def predict_ion(chem_env, scatter_env, elements = None):
   """
   Uses the trained classifier to predict the ions that most likely fit a given
@@ -363,18 +382,20 @@ def predict_ion(chem_env, scatter_env, elements = None):
       Returns a list of classes and the probability associated with each or None
       if the trained classifier cannot be loaded.
   """
-  classifier, vector_options, vector_size = _get_classifier()
+  classifier, vector_options, scaling, features = _get_classifier()
 
   if classifier is None:
     return None
 
   # Convert our data into a format that libsvm will accept
-  vector = list(ion_vector(chem_env, scatter_env, **vector_options))
+  vector = ion_vector(chem_env, scatter_env, **vector_options)
+  assert len(vector) == len(features)
 
-  assert len(vector) == vector_size
+  vector = _scale_to(vector, scaling[0], scaling[1])
+  vector = vector[features]
 
   xi = svm.gen_svm_nodearray(
-    vector, isKernel = classifier.param.kernel_type == svm.PRECOMPUTED,
+    list(vector), isKernel = classifier.param.kernel_type == svm.PRECOMPUTED,
     )[0]
 
   nr_class = classifier.get_nr_class()
