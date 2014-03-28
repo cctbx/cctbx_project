@@ -137,6 +137,7 @@ class Test(object):
 
     filenames = self.multiple_block_filenames()
     blocks = DataBlockFactory.from_filenames(filenames)
+    # FIXME JMP this comes out at 20 when printed
     assert(len(blocks) == 19)
 
     # Block 1
