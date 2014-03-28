@@ -14,7 +14,7 @@ class lbfgs(object):
         ncs_atom_selection = None,
         finite_grad_differences_test = False,
         finite_grad_difference_val = 0,
-        max_iterations = 100,
+        max_iterations = 25,
         refine_sites = False,
         refine_u_iso = False,
         use_strict_ncs = True):
