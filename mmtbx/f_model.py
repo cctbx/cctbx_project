@@ -2396,6 +2396,29 @@ class manager(manager_mixin):
        "k_mask        = bulk-solvent scale factor"]:
       print >> out, prefix + line + suffix
 
+  def export_f_obs_flags_as_mtz (self,
+      file_name,
+      merge_anomalous=False,
+      include_hendrickson_lattman=True) :
+    """
+    Dump all input data to an MTZ file using standard column labels.  This may
+    be useful when running modules or programs that require an MTZ file as
+    input (rather than taking f_model.manager or the Miller arrays directly).
+    """
+    f_obs = self.f_obs()
+    flags = self.r_free_flags()
+    hl_coeffs = self.hl_coeffs()
+    if (merge_anomalous) :
+      f_obs = f_obs.average_bijvoet_mates()
+      flags = flags.average_bijvoet_mates()
+      if (hl_coeffs is not None) :
+        hl_coeffs = hl_coeffs.average_bijvoet_mates()
+    mtz_dataset = f_obs.as_mtz_dataset(column_root_label="F")
+    if (hl_coeffs is not None) and (include_hendrickson_lattman) :
+      mtz_dataset.add_miller_array(hl_coeffs, column_root_label="HL")
+    mtz_dataset.add_miller_array(flags, column_root_label="FreeR_flag")
+    mtz_dataset.mtz_object().write(file_name)
+
   def export(self, out=None, format="mtz"):
     assert format in ["mtz"]
     file_name = None
