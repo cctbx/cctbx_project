@@ -14,9 +14,9 @@ def anonymize_ions (hierarchy, log=sys.stdout) :
   hierarchy.extract_xray_structure(crystal_symmetry).
   """
   from cctbx.eltbx import sasaki, chemical_elements
-  from mmtbx.ions.parameters import get_server
+  import mmtbx.ions
   ion_resnames = set(chemical_elements.proper_upper_list())
-  for resname in get_server().params["_lib_charge.resname"]:
+  for resname in mmtbx.ions.server.params["_lib_charge.resname"]:
     if resname not in WATER_RES_NAMES:
       ion_resnames.add(resname)
   n_converted = 0
