@@ -88,6 +88,17 @@ class TestMultimerReconstruction(unittest.TestCase):
       file_name='multimer_test_data2.pdb',reconstruction_type='cau')
     self.assertEqual(m.number_of_transforms, 1)
 
+  def test_trasformation_application_order(self):
+    """
+    Test that we build the new assembly by applying each transformation
+    to all chains by iterating over the chains first. To be constant with
+    NCS/ASU transformations that are done during refinement.
+    """
+    m = multimer(pdb_str=pdb_test_data3,reconstruction_type='cau')
+    self.assertEquals(m.ncs_chains_ids, ('A', 'B'))
+    self.assertEquals(pdb_test_data3_expected_results,
+                      m.assembled_multimer.as_pdb_string())
+
 
   def tearDown(self):
     '''remove temp files and folder'''
@@ -176,6 +187,41 @@ ATOM      4  O   THR A   1      10.449   8.027  12.653  1.00 20.00           O
 ATOM      5  CB  THR A   1      10.660   8.630   9.582  1.00 20.00           C
 ATOM      6  OG1 THR A   1      10.560   9.552   8.490  1.00 20.00           O
 ATOM      7  CG2 THR A   1      10.523   7.209   9.055  1.00 20.00           C
+TER
+"""
+
+pdb_test_data3="""\
+MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
+MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
+MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
+MTRIX1   2  0.309017 -0.809017  0.500000        0.00000
+MTRIX2   2  0.809017  0.500000  0.309017        0.00000
+MTRIX3   2 -0.500000  0.309017  0.809017        0.00000
+MTRIX1   3 -0.809017 -0.500000  0.309017        0.00000
+MTRIX2   3  0.500000 -0.309017  0.809017        0.00000
+MTRIX3   3 -0.309017  0.809017  0.500000        0.00000
+ATOM    749  O   UNK A  90      28.392  67.262  97.682  1.00  0.00           O
+ATOM    750  N   UNK A  91      30.420  66.924  98.358  1.00  0.00           N
+TER
+ATOM   1495  N   UNK B  67      33.124   2.704 114.920  1.00  0.00           N
+END
+"""
+
+pdb_test_data3_expected_results = """\
+ATOM    749  O   UNK A  90      28.392  67.262  97.682  1.00  0.00           O
+ATOM    750  N   UNK A  91      30.420  66.924  98.358  1.00  0.00           N
+TER
+ATOM   1495  N   UNK B  67      33.124   2.704 114.920  1.00  0.00           N
+TER
+ATOM    749  O   UNK C  90       3.199  86.786  85.616  1.00  0.00           O
+ATOM    750  N   UNK C  91       4.437  88.467  85.044  1.00  0.00           N
+TER
+ATOM   1495  N   UNK E  67      65.508  63.662  77.246  1.00  0.00           N
+TER
+ATOM    749  O   UNK D  90     -26.415  72.437  94.483  1.00  0.00           O
+ATOM    750  N   UNK D  91     -27.678  74.103  93.921  1.00  0.00           N
+TER
+ATOM   1495  N   UNK F  67       7.362 108.699  49.412  1.00  0.00           N
 TER
 """
 
