@@ -197,6 +197,22 @@ namespace {
       arg("map_unit_cell"),
       arg("first"),
       arg("last")));
+    def("copy_box",
+      (af::versa<float, af::flex_grid<> >(*)
+        (af::const_ref<float, af::flex_grid<> > const&,
+         af::int3 const&,
+         af::int3 const&)) maptbx::copy_box, (
+      arg("map"),
+      arg("first"),
+      arg("last")));
+    def("copy_box",
+      (af::versa<double, af::flex_grid<> >(*)
+        (af::const_ref<double, af::flex_grid<> > const&,
+         af::int3 const&,
+         af::int3 const&)) maptbx::copy_box, (
+      arg("map"),
+      arg("first"),
+      arg("last")));
     def("unpad_in_place",
       (void(*)(af::versa<float, af::flex_grid<> >&))
         maptbx::unpad_in_place, (arg("map")));
