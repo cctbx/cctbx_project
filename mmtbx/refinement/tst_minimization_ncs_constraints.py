@@ -245,7 +245,7 @@ def exercise_00():
       n_macro_cycle=n_macro_cycle,
       sites=sites,
       u_iso=u_iso,
-      finite_grad_differences_test = True,
+      finite_grad_differences_test = False,
       use_geometry_restraints = False,
       shake_site_mean_distance = 0.5,
       d_min = 2.0)
@@ -258,7 +258,7 @@ def exercise_01():
     n_macro_cycle = 50,
     sites         = True,
     u_iso         = False,
-    finite_grad_differences_test = True,
+    finite_grad_differences_test = False,
     use_geometry_restraints = True,
     shake_site_mean_distance = 1.5,
     d_min = 3)
