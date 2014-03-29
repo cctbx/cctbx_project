@@ -17,7 +17,9 @@ class lbfgs(object):
         max_iterations = 25,
         refine_sites = False,
         refine_u_iso = False,
-        use_strict_ncs = True):
+        use_strict_ncs = True,
+        iso_restraints = None,
+        use_hd = False):
     """
     NCS constrained ADP and coordinates refinement.
     """
@@ -81,8 +83,18 @@ class lbfgs(object):
         g = self.grads_asu_to_one_ncs(grad=gx).as_double()
     if(self.refine_u_iso):
       t = tgx.target_work()
+      if(self.geometry_restraints_manager is not None):
+        eadp = self.geometry_restraints_manager.energies_adp_iso(
+          xray_structure = self.fmodel.xray_structure,
+          parameters = self.iso_restraints,
+          use_u_local_only = self.iso_restraints.use_u_local_only,
+          use_hd = self.use_hd,
+          compute_gradients = True)
+        t = t*self.data_weight + eadp.target
       if(compute_gradients):
         gx = tgx.gradients_wrt_atomic_parameters(u_iso=True)
+        if(self.geometry_restraints_manager is not None):
+          gx = gx*self.data_weight + eadp.gradients
         g = self.grads_asu_to_one_ncs(grad=gx).as_double()
     if(self.finite_grad_differences_test and compute_gradients):
       self.finite_difference_test(g)
