@@ -5,8 +5,6 @@ import wx.lib.colourselect
 import wx
 import sys
 
-UNICODE_BUILD = (wx.PlatformInfo[2] == 'unicode')
-
 class SettingsToolBase (object) :
   def __init__ (self, *args, **kwds) :
     self.parent = self.GetParent()
@@ -137,20 +135,23 @@ class LogViewer (wx.TextCtrl) :
   def __init__ (self, *args, **kwds) :
     kwds['style'] = wx.TE_MULTILINE|wx.TE_WORDWRAP|wx.TE_READONLY
     wx.TextCtrl.__init__(self, *args, **kwds)
-    self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
+    #self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
 
   def Clear (self) :
     wx.TextCtrl.Clear(self)
     self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
 
   def WriteText (self, text) :
-    if isinstance(text, str) and UNICODE_BUILD :
+    if isinstance(text, str) :
       text = text.decode("utf8")
+# bug in version 2.9 necessitates setting font to something else before overriding it
+    if (wx.Platform == '__WXMSW__') and (wx.VERSION >= (2,9)):
+      self.SetFont(wx.Font(21, wx.MODERN, wx.NORMAL, wx.NORMAL))
     self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
     wx.TextCtrl.WriteText(self, text)
 
   def AppendText (self, text) :
-    if isinstance(text, str) and UNICODE_BUILD :
+    if isinstance(text, str) :
       text = text.decode("utf8")
     wx.TextCtrl.AppendText(self, text)
 
