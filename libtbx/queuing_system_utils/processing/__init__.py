@@ -421,6 +421,52 @@ def PBS(
     )
 
 
+def PBSPro(
+  name = "libtbx_python",
+  command = None,
+  asynchronous = True,
+  input = None,
+  include = None,
+  poller = None,
+  handler = None,
+  save_error = False,
+  display_stderr = True,
+  ):
+
+  command = process_command_line( command = command, default = [ "qsub" ] )
+
+  from libtbx.queuing_system_utils.processing import submission
+
+  if asynchronous:
+    if poller is None:
+      from libtbx.queuing_system_utils.processing import polling
+      poller = polling.CentralPoller.PBSPro()
+
+    submitter = submission.AsynchronousCmdLine.PBSPro(
+      poller = poller,
+      command = command,
+      )
+
+  else:
+    raise RuntimeError, "Synchronous submission for PBSPro is not supported"
+
+  if input is None:
+    from libtbx.queuing_system_utils.processing import transfer
+    input = transfer.TemporaryFile
+
+  if include is None:
+    include = get_libtbx_env_setpaths()
+
+  return QueueHandler(
+    submitter = submitter,
+    input = input,
+    include = include,
+    root = name,
+    save_error = save_error,
+    display_stderr = display_stderr,
+    )
+
+
 def Condor(
   name = "libtbx_python",
   command = None,
@@ -554,6 +600,16 @@ def pbs_evaluate(command):
     )
 
 
+def pbspro_evaluate(command):
+
+  from libtbx.queuing_system_utils.processing import polling
+
+  return polling.CentralPoller(
+    command = process_command_line( command = command, default = [ "qstat" ] ),
+    evaluate = polling.pbspro_text_evaluate,
+    )
+
+
 def condor_evaluate(command):
 
   from libtbx.queuing_system_utils.processing import polling
@@ -584,6 +640,7 @@ INTERFACE_FOR = {
   "sge": ( SGE, sge_evaluate ),
   "lsf": ( LSF, lsf_evaluate ),
   "pbs": ( PBS, pbs_evaluate ),
+  "pbspro": (PBSPro, pbspro_evaluate ),
   "condor": ( Condor, condor_evaluate ),
   "slurm": ( Slurm, slurm_evaluate )
   }

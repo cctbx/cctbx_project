@@ -198,6 +198,23 @@ class AsynchronousCmdLine(Submission):
 
 
   @classmethod
+  def PBSPro(cls, poller, command = [ "qsub" ]):
+
+    from libtbx.queuing_system_utils.processing import status
+
+    return cls(
+      cmds = command,
+      qdel = [ "qdel" ],
+      name = "-N",
+      out = "-o",
+      err = "-e",
+      extract = generic_jobid_extract,
+      poller = poller,
+      handler = status.StdStreamStrategy,
+      )
+
+
+  @classmethod
   def Slurm(cls, poller, command = [ "sbatch" ]):
 
     from libtbx.queuing_system_utils.processing import status
