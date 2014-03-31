@@ -8,6 +8,8 @@ import libtbx.phil
 import wx
 import sys
 
+UNICODE_BUILD = (wx.PlatformInfo[2] == 'unicode')
+
 class StrCtrl (ValidatedTextCtrl) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
@@ -25,7 +27,10 @@ class StrCtrl (ValidatedTextCtrl) :
       ValidatedTextCtrl.SetValue(self, "")
     else :
       if isinstance(value, str) :
-        ValidatedTextCtrl.SetValue(self, value.decode("utf-8"))
+        if UNICODE_BUILD :
+          ValidatedTextCtrl.SetValue(self, value.decode("utf-8"))
+        else :
+          ValidatedTextCtrl.SetValue(self, value)
       else :
         if (not isinstance(value, unicode)) :
           raise RuntimeError("Improper value (type: %s) for control %s" %
@@ -47,7 +52,10 @@ class StrCtrl (ValidatedTextCtrl) :
       return parse_str(value)
 
   def FormatValue (self, value) :
-    return value.encode("utf-8")
+    if UNICODE_BUILD :
+      return value.encode("utf-8")
+    else :
+      return value
 
   def SetMinLength (self, n) :
     assert (n >= 0)
