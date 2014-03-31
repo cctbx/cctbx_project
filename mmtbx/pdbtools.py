@@ -884,16 +884,18 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
       geometry = geometry,
       normalization = True)
     pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
+    ph = pdb_hierarchy
+    rm = restraints_manager
+    not_hd_sel = ~xray_structure.hd_selection()
+    if(command_line_interpreter.command_line.options.ignore_hydrogens):
+      ph = ph.select(not_hd_sel)
+      rm = rm.select(not_hd_sel)
     mso = model_statistics.geometry(
-      sites_cart         = xray_structure.sites_cart(),
-      pdb_hierarchy      = pdb_hierarchy,
-      hd_selection       = xray_structure.hd_selection(),
-      ignore_hd          = command_line_interpreter.command_line.options.ignore_hydrogens,
+      pdb_hierarchy      = ph,
       molprobity_scores  = use_molprobity,
-      restraints_manager = restraints_manager)
-    mso.show(out = log)
+      restraints_manager = rm)
     print >> log
-    mso.show_molprobity_scores(out = log, prefix="")
+    mso.show(out = log, prefix="")
     utils.print_header("ADP statistics", out = log)
     model = mmtbx.model.manager(
       xray_structure     = xray_structure,
