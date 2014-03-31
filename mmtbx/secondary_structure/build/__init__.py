@@ -62,6 +62,33 @@ ATOM      1  O   ALA    2        4.758   0.018  -1.107  1.00  0.00           O
 ATOM      1  CB  ALA    2        3.770  -2.802  -0.076  1.00  0.00           C
 """
 
+beta2_pdb_str = """\
+ATOM      1  N   ALA     1      -1.204  -0.514   0.643  1.00  0.00           N  
+ATOM      1  CA  ALA     1       0.000   0.000   0.000  1.00  0.00           C  
+ATOM      1  C   ALA     1       1.166  -0.778   0.601  1.00  0.00           C  
+ATOM      1  O   ALA     1       0.996  -1.521   1.568  1.00  0.00           O  
+ATOM      1  CB  ALA     1      -0.000   1.530   0.000  1.00  0.00           C  
+ATOM      1  N   ALA     2       2.350  -0.602   0.023  1.00  0.00           N  
+ATOM      1  CA  ALA     2       3.524  -1.373   0.412  1.00  0.00           C  
+ATOM      1  C   ALA     2       4.694  -0.478   0.018  1.00  0.00           C  
+ATOM      1  O   ALA     2       4.758   0.018  -1.107  1.00  0.00           O  
+ATOM      1  CB  ALA     2       3.770  -2.802  -0.076  1.00  0.00           C  
+END
+"""
+
+beta3_pdb_str = """\
+ATOM      1  N   ALA     1      -1.204  -0.514   0.643  1.00  0.00           N
+ATOM      2  CA  ALA     1       0.000   0.000   0.000  1.00  0.00           C
+ATOM      3  C   ALA     1       1.187  -0.397   0.871  1.00  0.00           C
+ATOM      4  O   ALA     1       1.250  -0.045   2.049  1.00  0.00           O
+ATOM      5  CB  ALA     1      -0.160   1.484  -0.335  1.00  0.00           C
+ATOM      6  N   ALA     2       2.128  -1.194   0.243  1.00  0.00           N
+ATOM      7  CA  ALA     2       3.299  -1.541   1.041  1.00  0.00           C
+ATOM      8  C   ALA     2       4.523  -1.000   0.310  1.00  0.00           C
+ATOM      9  O   ALA     2       4.777  -1.355  -0.842  1.00  0.00           O
+ATOM     10  CB  ALA     2       3.290  -3.029   1.393  1.00  0.00           C
+"""
+
 helix_class_to_pdb_str = {1:alpha_pdb_str, 3:alpha_pi_pdb_str, 5: alpha310_pdb_str}
 
 
@@ -232,8 +259,10 @@ def substitute_ss(real_h,
                     crystal_symmetry,
                     ss_annotation,
                     sigma_on_reference_non_ss = 1,
+                    sigma_on_self_ss = 1,
                     sigma_on_reference_ss = 5,
                     sigma_on_torsion_ss = 5,
+                    fname_before_regularization=None,
                     log=null_out()):
   """
   Substitute secondary structure elements in real_h hierarchy with ideal
@@ -258,7 +287,7 @@ def substitute_ss(real_h,
   expected_n_hbonds = 0
   ann = ss_annotation
   phil_str = ann.as_restraint_groups()
-  ioss_annotation_n_hbonds = len(ss_annotation.extract_h_bonds())
+  #ioss_annotation_n_hbonds = len(ss_annotation.extract_h_bonds())
   for h in ann.helices:
     expected_n_hbonds += get_expected_n_hbonds_from_helix(h)
   edited_h = iotbx.pdb.input(source_info=None,
@@ -285,7 +314,7 @@ def substitute_ss(real_h,
       sel_h = real_h.select(all_bsel, copy_atoms=True)
       #ideal_h = get_helix(helix_class=h.helix_class, pdb_hierarchy_template=sel_h)
       ideal_h = make_ss_structure_from_sequence(
-          pdb_str=beta_pdb_str,
+          pdb_str=beta3_pdb_str,
           sequence=None,
           pdb_hierarchy_template=sel_h)
       edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
@@ -354,15 +383,22 @@ def substitute_ss(real_h,
           selection = ss_for_tors_selection,
           chi_angles_only = False,
           sigma           = sigma_on_torsion_ss)
+  grm.generic_restraints_manager.reference_manager.\
+      add_coordinate_restraints(
+          sites_cart = pre_result_h.atoms().extract_xyz().select(ss_selection),
+          selection  = ss_selection,
+          sigma      = sigma_on_self_ss)
+     
   real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
   restraints_manager = mmtbx.restraints.manager(
       geometry=grm,
       normalization=True)
   actual_n_hbonds = restraints_manager.geometry.generic_restraints_manager.get_n_hbonds()
-  #print "expected/actual/annot n_hbonds:", expected_n_hbonds, actual_n_hbonds, ioss_annotation_n_hbonds
+  #print "expected/actual/annot n_hbonds:", expected_n_hbonds, actual_n_hbonds#, ioss_annotation_n_hbonds
   #assert restraints_manager.geometry.generic_restraints_manager.\
   #    get_n_hbonds() == expected_n_hbonds
-  #real_h.write_pdb_file(file_name="before_geom_reg.pdb")
+  if fname_before_regularization is not None:
+    real_h.write_pdb_file(file_name=fname_before_regularization)
   obj = run2(
       restraints_manager       = restraints_manager,
       pdb_hierarchy            = real_h,
@@ -380,6 +416,7 @@ def substitute_ss(real_h,
       remove_coordinate_restraints(selection=ss_selection)
   restraints_manager.geometry.generic_restraints_manager.reference_manager.\
       remove_coordinate_restraints(selection=other_selection)
+  #!!!!!!!! MAKE sure everything deleted
   return restraints_manager
 
 
