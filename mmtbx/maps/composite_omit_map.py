@@ -163,10 +163,7 @@ class run(object):
   def omit_box(self, s, e, sgt, ma, cg, md_asu, n_real):
     md_asu_omit = maptbx.set_box_copy(value = 0, map_data_to = md_asu,
       start = s, end = e)
-    #print md_asu_omit.origin()
     md_asu_omit.reshape(self.acc)
-    #print md_asu_omit.origin()
-    #STOP()
     asu_map_omit = asu_map_ext.asymmetric_map(sgt, md_asu_omit, n_real)
     ma_omit = ma.customized_copy(
       indices = ma.indices(),
