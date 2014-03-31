@@ -81,6 +81,8 @@ class run(object):
     # extract asu map from full P1
     asu_map = asu_map_ext.asymmetric_map(sgt, f_model_map_data)
     f_model_map_data_asu = asu_map.data()
+    self.acc = f_model_map_data_asu.accessor()
+    f_model_map_data_asu = f_model_map_data_asu.shift_origin()
     b = maptbx.boxes(
       n_real   = f_model_map_data_asu.focus(),
       fraction = box_size_as_fraction,
@@ -116,6 +118,7 @@ class run(object):
       self.r.append(fmodel_.r_work()) # for regression test only
       f_map_data_asu = get_map(fmodel=fmodel_, map_type=map_type,
         fft_map_ref=fft_map_ref)
+      f_map_data_asu = f_map_data_asu.shift_origin()
       assert f_map_data_asu.focus() == self.map_result_asu.focus()
       if(reset_to_zero_below_sigma is not None):
         assert type(reset_to_zero_below_sigma) in [type(1.), type(1)]
@@ -140,6 +143,7 @@ class run(object):
     # result
     sd = self.map_result_asu.sample_standard_deviation()
     self.map_result_asu = self.map_result_asu/sd
+    self.map_result_asu.reshape(self.acc)
     asu_map_omit = asu_map_ext.asymmetric_map(sgt, self.map_result_asu, n_real)
     self.map_coefficients = f_model.customized_copy(
       indices = f_model.indices(),
@@ -159,6 +163,10 @@ class run(object):
   def omit_box(self, s, e, sgt, ma, cg, md_asu, n_real):
     md_asu_omit = maptbx.set_box_copy(value = 0, map_data_to = md_asu,
       start = s, end = e)
+    #print md_asu_omit.origin()
+    md_asu_omit.reshape(self.acc)
+    #print md_asu_omit.origin()
+    #STOP()
     asu_map_omit = asu_map_ext.asymmetric_map(sgt, md_asu_omit, n_real)
     ma_omit = ma.customized_copy(
       indices = ma.indices(),
@@ -168,6 +176,7 @@ class run(object):
     md = fft_map.real_map_unpadded()
     asu_map = asu_map_ext.asymmetric_map(sgt, md)
     md_asu_omit = asu_map.data()
+    md_asu_omit = md_asu_omit.shift_origin()
     return ma_omit, md_asu_omit
 
 ########################################################################
