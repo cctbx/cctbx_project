@@ -122,20 +122,39 @@ class ncs_minimization_test(object):
 
   def get_weight(self):
     fmdc = self.fmodel.deep_copy()
-    fmdc.xray_structure.shake_sites_in_place(mean_distance=0.3)
+    if self.sites:
+      fmdc.xray_structure.shake_sites_in_place(mean_distance=0.3)
+    else: # u_iso
+      u_random = flex.random_double(fmdc.xray_structure.scatterers().size())
+      fmdc.xray_structure.set_u_iso(values=u_random)
     fmdc.update_xray_structure(xray_structure = fmdc.xray_structure,
       update_f_calc=True)
     fmdc.xray_structure.scatterers().flags_set_grads(state=False)
-    xray.set_scatterer_grad_flags(
-      scatterers = fmdc.xray_structure.scatterers(),
-      site       = True)
-    # fmodel gradients
-    gxc = flex.vec3_double(fmdc.one_time_gradients_wrt_atomic_parameters(
-      site = True).packed())
-    # manager restraints, energy sites gradients
-    gc = self.grm.energies_sites(
-      sites_cart        = fmdc.xray_structure.sites_cart(),
-      compute_gradients = True).gradients
+    if self.sites:
+      xray.set_scatterer_grad_flags(
+        scatterers = fmdc.xray_structure.scatterers(),
+        site       = True)
+      # fmodel gradients
+      gxc = flex.vec3_double(fmdc.one_time_gradients_wrt_atomic_parameters(
+        site = True).packed())
+      # manager restraints, energy sites gradients
+      gc = self.grm.energies_sites(
+        sites_cart        = fmdc.xray_structure.sites_cart(),
+        compute_gradients = True).gradients
+    else: # u_iso
+      xray.set_scatterer_grad_flags(
+        scatterers = self.fmodel.xray_structure.scatterers(),
+        u_iso      = True)
+       # fmodel gradients
+      gxc = fmdc.one_time_gradients_wrt_atomic_parameters(
+        u_iso = True).as_double()
+      # manager restraints, energy sites gradients
+      gc = self.grm.energies_adp_iso(
+        xray_structure = self.fmodel.xray_structure,
+        parameters = self.iso_restraints,
+        use_u_local_only = self.iso_restraints.use_u_local_only,
+        use_hd = False,
+        compute_gradients = True).gradients
     gc_norm  = gc.norm()
     gxc_norm = gxc.norm()
     weight = 1.
@@ -184,6 +203,7 @@ class ncs_minimization_test(object):
         translation_vectors          = m_shaken.translation_vectors,
         ncs_atom_selection           = ncs_selection,
         finite_grad_differences_test = self.finite_grad_differences_test,
+        max_iterations               = 100,
         geometry_restraints_manager  = self.grm,
         data_weight                  = data_weight,
         refine_sites                 = self.sites,
@@ -245,7 +265,7 @@ def exercise_00():
       n_macro_cycle=n_macro_cycle,
       sites=sites,
       u_iso=u_iso,
-      finite_grad_differences_test = False,
+      finite_grad_differences_test = True,
       use_geometry_restraints = False,
       shake_site_mean_distance = 0.5,
       d_min = 2.0)
@@ -258,7 +278,7 @@ def exercise_01():
     n_macro_cycle = 50,
     sites         = True,
     u_iso         = False,
-    finite_grad_differences_test = False,
+    finite_grad_differences_test = True,
     use_geometry_restraints = True,
     shake_site_mean_distance = 1.5,
     d_min = 3)
