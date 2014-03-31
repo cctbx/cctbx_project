@@ -33,14 +33,14 @@ class easy(object):
     self.w = w
     if(self.w is None):
       from mmtbx.refinement.real_space import weight
-      self.w = weight.run(
+      self.weight = weight.run(
         map_data                    = map_data,
         xray_structure              = self.xray_structure,
         pdb_hierarchy               = self.pdb_hierarchy,
         geometry_restraints_manager = geometry_restraints_manager,
         rms_bonds_limit             = rms_bonds_limit,
-        rms_angles_limit            = rms_angles_limit,
-        log                         = log)
+        rms_angles_limit            = rms_angles_limit)
+      self.w = self.weight.weight
     if(selection is None):
       selection = flex.bool(self.xray_structure.scatterers().size(), True)
     refine_object = simple(
