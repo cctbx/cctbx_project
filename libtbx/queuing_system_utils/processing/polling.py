@@ -237,6 +237,16 @@ class CentralPoller(object):
 
 
   @classmethod
+  def PBSPro(cls, waittime = 5):
+
+    return cls(
+      command = [ "qstat" ],
+      evaluate = pbspro_text_evaluate,
+      waittime = waittime,
+      )
+
+
+  @classmethod
   def Condor(cls, waittime = 5):
 
     return cls(
@@ -308,6 +318,7 @@ def pbs_xml_evaluate(out, running, completed):
     else:
       running.add( n.text )
 
+
 LSF_CENTRAL_NO_RESULTS_REGEX = util.get_lazy_initialized_regex(
   pattern = r"No unfinished job found"
   )
@@ -330,6 +341,32 @@ def lsf_text_evaluate(out, running, completed):
   regex = LSF_CENTRAL_JOBID_REGEX()
 
   for line in out.splitlines()[1:]:
+    match = regex.match( line )
+
+    if not match:
+      raise errors.ExtractionError, "Unexpected response from queuing system"
+
+    jobid = match.group( 1 )
+    running.add( jobid )
+
+
+PBSPRO_CENTRAL_HEADER_REGEX = util.get_lazy_initialized_regex(
+  pattern = r"Job idD\s+Name\s+User\s+Time Use\s+S\s+Queue\s*\n[ -]*"
+  )
+PBSPRO_CENTRAL_JOBID_REGEX = LSF_CENTRAL_JOBID_REGEX
+
+def pbspro_text_evaluate(out, running, completed):
+  "Parses PBSPro qstat text output"
+
+  if not out.strip():
+    return
+
+  if not PBSPRO_CENTRAL_HEADER_REGEX().match( out ):
+    raise errors.ExtractionError, "Unexpected response from queuing system"
+
+  regex = PBSPRO_CENTRAL_JOBID_REGEX()
+
+  for line in out.splitlines()[2:]:
     match = regex.match( line )
 
     if not match:
