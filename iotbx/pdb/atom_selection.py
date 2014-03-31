@@ -128,7 +128,8 @@ class cache(slots_getstate_setstate):
     "anisou",
     "pepnames",
     "single_atom_residue",
-    "water"]
+    "water",
+    "hetero",]
 
   def __init__(self, root, wildcard_escape_char='\\'):
     self.root = root
@@ -137,6 +138,7 @@ class cache(slots_getstate_setstate):
     self.pepnames = None
     self.single_atom_residue = None
     self.water = None
+    self.hetero = None
 
   def get_name(self, pattern):
     return _get_map_string(
@@ -262,6 +264,12 @@ class cache(slots_getstate_setstate):
                   atom.tmp = 1
       self.water = (atoms.extract_tmp_as_size_t() == 1).iselection()
     return [self.water]
+
+  def get_hetero (self) :
+    if (self.hetero is None) :
+      atoms = self.root.atoms()
+      self.hetero = atoms.extract_hetero()
+    return [self.hetero]
 
   def get_pepnames(self):
     if (self.pepnames is None):
@@ -400,6 +408,9 @@ class cache(slots_getstate_setstate):
 
   def sel_water(self):
     return self.union(iselections=self.get_water())
+
+  def sel_hetero(self):
+    return self.union(iselections=self.get_hetero())
 
   def sel_bfactor (self, op, value) :
     return self.union(iselections=self.get_bfactor(op, value))
@@ -552,6 +563,8 @@ class cache(slots_getstate_setstate):
           result_stack.append(self.sel_single_atom_residue())
         elif (lword == "water"):
           result_stack.append(self.sel_water())
+        elif (lword == "hetero") or (lword == "hetatm") :
+          result_stack.append(self.sel_hetero())
         elif (lword == "bfactor") or (lword == "occupancy") :
           op = word_iterator.pop_argument(word.value).value
           if (not op in [">", "<", "="]) :

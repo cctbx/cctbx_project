@@ -201,6 +201,9 @@ END
   assert list(isel(r"pepnames")) == range(40)
   assert list(isel(r"single_atom_residue")) == [
     69, 76, 77, 78, 81, 82, 83, 84, 85, 86, 87]
+  assert list(isel(r"hetero")) == list(isel(r"hetatm")) == [
+    40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,
+    59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69]
   #
   try: isel(r"resseq")
   except pdb.atom_selection.AtomSelectionError, e:
