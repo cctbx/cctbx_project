@@ -41,8 +41,11 @@ def run_group(symbol):
   df = flex.abs(afc - fc.data())
   r1 = flex.sum(df) / flex.sum(flex.abs(fc.data()))
   print "R1: ", r1
-  assert r1 < 1.e-5
-
+  assert r1 < 1.e-5  
+  # just to prove to myself that I can shift origin to 000 and then reshape back
+  adata = adata.shift_origin()
+  adata.reshape(acc)
+  #
   adata2 = adata.deep_copy()*2.
   amap2 = asymmetric_map(struc.space_group().type(), adata2, grid_size)
   afc2 = amap2.structure_factors(fc.indices())
