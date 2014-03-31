@@ -11,7 +11,6 @@ from libtbx import introspection
 from stdlib import math
 from cctbx import xray
 import cctbx.xray.structure_factors.global_counters
-from mmtbx import max_lik
 from libtbx import easy_pickle
 from itertools import count
 
