@@ -827,7 +827,7 @@ class manager(object):
       print >> out, "%s  max  = %.3f" % (prefix, flex.max(rbt_array))
       print >> out, "%s  min  = %.3f" % (prefix, flex.min(rbt_array))
 
-  def reference_model_restraints_manager(self, sites_cart, gradient_array,
+  def reference_model_restraints_manager2(self, sites_cart, gradient_array,
         sigma = 0.5):
     if(self.reference_sites_cart is None): return None
     assert [self.reference_sites_cart,self.selection_moving].count(None)==0
@@ -850,6 +850,26 @@ class manager(object):
         cntr += 1
     return target
 
+  def reference_model_restraints_manager(self, sites_cart, gradient_array,
+        sigma = 0.25):
+    if(not self.reference_sites_cart): return
+    p1,p2 = self.reference_sites_cart
+    target = 0
+    deltas = sites_cart.select(flex.size_t(p1))-sites_cart.select(flex.size_t(p2))
+    w = -1./(sigma)**2
+    for p1_, p2_, d in zip(p1,p2,deltas):
+      target += (d[0]**2*w+d[1]**2*w+d[2]**2*w)
+      if(gradient_array is not None):
+        a = (d[0]*2*w, d[1]*2*w, d[2]*2*w)
+        #
+        b = gradient_array[p1_]
+        r1 = ((a[0]+b[0]), (a[1]+b[1]), (a[2]+b[2]))
+        gradient_array[p1_] = r1
+        ##
+        b = gradient_array[p2_]
+        r2 = ((-1.*a[0]+b[0]), (-1.*a[1]+b[1]), (-1.*a[2]+b[2]))
+        gradient_array[p2_] = r2
+    return target
 
   def restraints_manager_energies_sites(self,
         geometry_flags=None,
@@ -1144,10 +1164,7 @@ class manager(object):
       self.restraints_manager = mmtbx.restraints.manager(
         geometry      = geometry,
         ncs_groups    = self.restraints_manager.ncs_groups,
-        normalization = self.restraints_manager.normalization,
-        #use_amber     = self.restraints_manager.use_amber,
-        #amber_mdgx_structs = self.restraints_manager.amber_mdgx_structs,
-        )
+        normalization = self.restraints_manager.normalization)
       if (self.restraints_manager.ncs_groups is not None):
         self.restraints_manager.ncs_groups.register_additional_isolated_sites(
           number=number_of_new_atoms)
@@ -1306,49 +1323,29 @@ class manager(object):
     b_isos.set_selected(sel_outliers_min, min_b_iso)
     self.xray_structure.set_b_iso(values = b_isos)
 
-  def geometry_statistics(self,
-                          ignore_hd,
-                          ignore_side_chain=False,
-                          force_restraints_model=False,
-                          molprobity_scores = False):
+  def geometry_statistics(self, ignore_hd, molprobity_scores = False):
     if(self.restraints_manager is None): return None
-    sites_cart = self.xray_structure.sites_cart()
     hd_selection = self.xray_structure.hd_selection()
-    main_chain_selection = None
-    if ignore_side_chain:
-      main_chain_selection = self.xray_structure.main_chain_selection()
-      ignore_hd=True
+    ph = self.pdb_hierarchy(sync_with_xray_structure=True)
     if(self.use_ias):
-      sites_cart = sites_cart.select(~self.ias_selection)
       hd_selection = hd_selection.select(~self.ias_selection)
-    sync_with_xray_structure=False
-    if(molprobity_scores): sync_with_xray_structure=True
+      ph = ph.select(~self.ias_selection)
+    rm = self.restraints_manager
+    if(ignore_hd):
+      not_hd_sel = ~hd_selection
+      ph = ph.select(not_hd_sel)
+      rm = rm.select(not_hd_sel)
     return model_statistics.geometry(
-      sites_cart           = sites_cart,
-      pdb_hierarchy        = self.pdb_hierarchy(
-        sync_with_xray_structure=sync_with_xray_structure),
-      hd_selection         = hd_selection,
-      ignore_hd            = ignore_hd,
-      main_chain_selection = main_chain_selection,
-      ignore_side_chain    = ignore_side_chain,
-      restraints_manager   = self.restraints_manager,
-      force_restraints_model = force_restraints_model,
-      molprobity_scores    = molprobity_scores)
+      pdb_hierarchy      = ph,
+      restraints_manager = rm,
+      molprobity_scores  = molprobity_scores)
 
-  def show_geometry_statistics(self,
-                               ignore_hd,
-                               ignore_side_chain=False,
-                               message = "",
-                               out = None,
-                               ):
+  def show_geometry_statistics(self, ignore_hd, message = "", out = None):
     if(self.restraints_manager is None): return None
     global time_model_show
     if(out is None): out = self.log
     timer = user_plus_sys_time()
-    result = self.geometry_statistics(ignore_hd = ignore_hd,
-                                      ignore_side_chain = ignore_side_chain,
-                                      force_restraints_model = True,
-                                      )
+    result = self.geometry_statistics(ignore_hd = ignore_hd)
     result.show(message = message, out = out)
     time_model_show += timer.elapsed()
     return result
