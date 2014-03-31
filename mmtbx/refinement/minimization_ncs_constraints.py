@@ -14,7 +14,7 @@ class lbfgs(object):
         ncs_atom_selection = None,
         finite_grad_differences_test = False,
         finite_grad_difference_val = 0,
-        max_iterations = 25,
+        max_iterations = 35,
         refine_sites = False,
         refine_u_iso = False,
         use_strict_ncs = True,
@@ -29,7 +29,7 @@ class lbfgs(object):
     assert [len(rotation_matrices) == len(translation_vectors)]
     assert [self.refine_sites, self.refine_u_iso].count(True) == 1
     assert ncs_atom_selection.count(True) > 0
-    self.number_of_transformations = len(rotation_matrices)+1
+    self.number_of_ncs_copies = len(rotation_matrices)+1
     self.fmodel.xray_structure.scatterers().flags_set_grads(state=False)
     self.x_target_functor = self.fmodel.target_functor()
     # xray structure of NCS chains for self.x
@@ -68,8 +68,8 @@ class lbfgs(object):
     self.update_fmodel()
     g = None
     tgx = self.x_target_functor(compute_gradients=compute_gradients)
+    t = tgx.target_work()
     if(self.refine_sites):
-      t = tgx.target_work()
       if(self.geometry_restraints_manager is not None):
         es = self.geometry_restraints_manager.energies_sites(
           sites_cart        = self.fmodel.xray_structure.sites_cart(),
@@ -82,7 +82,6 @@ class lbfgs(object):
           gx = gx*self.data_weight + es.gradients
         g = self.grads_asu_to_one_ncs(grad=gx).as_double()
     if(self.refine_u_iso):
-      t = tgx.target_work()
       if(self.geometry_restraints_manager is not None):
         eadp = self.geometry_restraints_manager.energies_adp_iso(
           xray_structure = self.fmodel.xray_structure,
@@ -133,7 +132,7 @@ class lbfgs(object):
       return flex.double(new_x)
     if(self.refine_u_iso):
       if self.use_strict_ncs:
-        return flex.double(list(self.x)*self.number_of_transformations)
+        return flex.double(list(self.x)*self.number_of_ncs_copies)
       else:
         return flex.double(list(self.x))
 
@@ -144,16 +143,16 @@ class lbfgs(object):
     """
     if self.use_strict_ncs:
       # gradients of the first NCS copy
-      ncs_end = len(grad)//self.number_of_transformations
-      assert ncs_end*self.number_of_transformations==len(grad)
+      ncs_end = len(grad)//self.number_of_ncs_copies
+      assert ncs_end*self.number_of_ncs_copies==len(grad)
       g_ave = grad[:ncs_end]
-      for i in range(self.number_of_transformations-1):
+      for i in range(self.number_of_ncs_copies-1):
         g = grad[ncs_end*(i+1):ncs_end*(i+2)]
         if(self.refine_sites):
           rt = self.rotation_matrices[i].transpose().elems
           g = rt*g
         g_ave += g
-      g_ave = g_ave * (1./self.number_of_transformations)
+      g_ave = g_ave * (1./self.number_of_ncs_copies)
       if(self.refine_sites): g_ave = flex.vec3_double(g_ave)
       assert type(grad)==type(g_ave)
       return g_ave
