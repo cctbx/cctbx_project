@@ -78,7 +78,7 @@ def _get_classifier():
       Options to pass to ion_vector when collecting features about these sites.
   tuple of (tuple of numpy.array of float, numpy.array of float), tuple of
   float)
-      The scaling parameters passed to _scale_to.
+      The scaling parameters passed to scale_to.
   numpy.array of bool
       The features of the vector that were selected as important for
       classification. Useful for both asserting that ion_vector is returning
@@ -352,7 +352,41 @@ def ion_anomalous_vector(scatter_env, elements = None, ratios = True):
       ])
   return ret
 
-def _scale_to(matrix, source, target):
+def scale_to(matrix, source, target):
+  """
+  Given an upper and lower bound for each row of matrix, scales the values to be
+  within the range specified by target.
+
+  Parameters
+  ----------
+  matrix : numpy.array of float
+      The matrix to be scaled.
+  source : tuple of numpy.array of float
+      The upper and lower bound on the values of each row in the original
+      matrix.
+  target : tuple of float
+      The target range to scale to.
+
+  Returns
+  -------
+  matrix : numpy.array of float
+      The matrix with scaled values.
+
+  Examples
+  --------
+  >>> import numpy as np
+  >>> matrix = np.array([[0, 1, 2],
+                         [2, 3, 4],
+                         [1, 2, 3]])
+  >>> source = (np.array([2, 3, 4]),
+                np.array([0, 1, 2]))
+  >>> target = (0, 1)
+  >>> _scale_to(matrix, source, target)
+  array([[ 1. ,  1. ,  1. ],
+         [ 0. ,  0. ,  0. ],
+         [ 0.5,  0.5,  0.5]])
+  """
+  matrix = np.array(matrix)
   keep_rows = source[0] != source[1]
   matrix = matrix[:, keep_rows]
   source = (source[0][keep_rows], source[1][keep_rows])
@@ -389,7 +423,7 @@ def predict_ion(chem_env, scatter_env, elements = None):
 
   # Convert our data into a format that libsvm will accept
   vector = ion_vector(chem_env, scatter_env, **vector_options)
-  vector = _scale_to(vector, scaling[0], scaling[1])
+  vector = scale_to(vector, scaling[0], scaling[1])
 
   assert len(vector) == len(features)
 
