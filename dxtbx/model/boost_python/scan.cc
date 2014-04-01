@@ -213,6 +213,17 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
+  scitbx::af::shared<double> get_angle_from_array_index_multiple(
+      const Scan &scan, scitbx::af::const_ref<double> const &index,
+      bool deg) {
+    scitbx::af::shared<double> result((scitbx::af::reserve(index.size())));
+    for(std::size_t i = 0; i < index.size(); i++) {
+      result.push_back(scan.get_angle_from_array_index(index[i]));
+    }
+    return result;
+  }
+
+  static
   double get_image_index_from_angle(const Scan &scan, double angle,
       bool deg) {
     return scan.get_image_index_from_angle(deg ? deg_as_rad(angle) : angle);
@@ -376,6 +387,10 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("deg") = true))
       .def("get_angle_from_array_index",
         &get_angle_from_array_index, (
+          arg("index"),
+          arg("deg") = true))
+      .def("get_angle_from_array_index",
+        &get_angle_from_array_index_multiple, (
           arg("index"),
           arg("deg") = true))
       .def("get_image_index_from_angle",
