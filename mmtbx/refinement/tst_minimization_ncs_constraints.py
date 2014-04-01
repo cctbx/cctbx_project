@@ -13,6 +13,7 @@ import mmtbx.utils
 import iotbx.pdb
 import os
 import sys
+import mmtbx.refinement.adp_refinement
 
 ncs_1_copy="""\
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
@@ -112,25 +113,27 @@ class ncs_minimization_test(object):
     self.f_obs = f_obs
     self.r_free_flags = r_free_flags
     self.xrs_one_ncs = xrs_one_ncs
-    # Get geometry restraints manager
+    # Get restraints manager
     self.grm = None
     pdb_str = m.assembled_multimer.as_pdb_string(
       crystal_symmetry=xrs_one_ncs.crystal_symmetry())
+    self.iso_restraints = None
     if(self.use_geometry_restraints):
-      # self.grm = get_restraints_manager(pdb_file_name = "full_asu.pdb")
       self.grm = get_restraints_manager(pdb_string=pdb_str)
+      if(self.u_iso):
+        self.iso_restraints = \
+          mmtbx.refinement.adp_refinement.adp_restraints_master_params.extract().iso
 
   def get_weight(self):
     fmdc = self.fmodel.deep_copy()
     if self.sites:
       fmdc.xray_structure.shake_sites_in_place(mean_distance=0.3)
     else: # u_iso
-      u_random = flex.random_double(fmdc.xray_structure.scatterers().size())
-      fmdc.xray_structure.set_u_iso(values=u_random)
+      fmdc.xray_structure.shake_adp()
     fmdc.update_xray_structure(xray_structure = fmdc.xray_structure,
       update_f_calc=True)
     fmdc.xray_structure.scatterers().flags_set_grads(state=False)
-    if self.sites:
+    if(self.sites):
       xray.set_scatterer_grad_flags(
         scatterers = fmdc.xray_structure.scatterers(),
         site       = True)
@@ -141,19 +144,23 @@ class ncs_minimization_test(object):
       gc = self.grm.energies_sites(
         sites_cart        = fmdc.xray_structure.sites_cart(),
         compute_gradients = True).gradients
-    else: # u_iso
+    else:
+      # to define geometry_restraints_manager.plain_pair_sym_table
+      gc = self.grm.energies_sites(
+        sites_cart        = fmdc.xray_structure.sites_cart(),
+        compute_gradients = True).gradients
       xray.set_scatterer_grad_flags(
-        scatterers = self.fmodel.xray_structure.scatterers(),
+        scatterers = fmdc.xray_structure.scatterers(),
         u_iso      = True)
        # fmodel gradients
       gxc = fmdc.one_time_gradients_wrt_atomic_parameters(
         u_iso = True).as_double()
       # manager restraints, energy sites gradients
       gc = self.grm.energies_adp_iso(
-        xray_structure = self.fmodel.xray_structure,
-        parameters = self.iso_restraints,
-        use_u_local_only = self.iso_restraints.use_u_local_only,
-        use_hd = False,
+        xray_structure    = fmdc.xray_structure,
+        parameters        = self.iso_restraints,
+        use_u_local_only  = self.iso_restraints.use_u_local_only,
+        use_hd            = False,
         compute_gradients = True).gradients
     gc_norm  = gc.norm()
     gxc_norm = gxc.norm()
@@ -191,7 +198,7 @@ class ncs_minimization_test(object):
       sf_and_grads_accuracy_params = params,
       target_name                  = "ls_wunit_k1")
     r_start = self.fmodel.r_work()
-    assert r_start > 0.15
+    assert r_start > 0.1, r_start
     print "start r_factor: %6.4f" % r_start
     for macro_cycle in xrange(self.n_macro_cycle):
       data_weight = None
@@ -206,6 +213,7 @@ class ncs_minimization_test(object):
         max_iterations               = 100,
         geometry_restraints_manager  = self.grm,
         data_weight                  = data_weight,
+        iso_restraints               = self.iso_restraints,
         refine_sites                 = self.sites,
         refine_u_iso                 = self.u_iso)
       refine_type = 'adp'*self.u_iso + 'sites'*self.sites
@@ -285,6 +293,20 @@ def exercise_01():
   t.run_test()
   t.clean_up_temp_test_files()
 
+def exercise_02():
+  print 'Running ',sys._getframe().f_code.co_name
+  t = ncs_minimization_test(
+    n_macro_cycle = 50,
+    sites         = False,
+    u_iso         = True,
+    finite_grad_differences_test = True,
+    use_geometry_restraints = True,
+    shake_site_mean_distance = 1.5,
+    d_min = 2)
+  t.run_test()
+  t.clean_up_temp_test_files()
+
 if __name__ == "__main__":
   exercise_00()
   exercise_01()
+  exercise_02()
