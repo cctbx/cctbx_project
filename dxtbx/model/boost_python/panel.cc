@@ -38,6 +38,28 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
+  scitbx::af::shared<vec2<double> >
+  pixel_to_millimeter_multiple(const Panel &panel,
+                scitbx::af::flex<vec2<double> >::type const& xy) {
+    scitbx::af::shared<vec2<double> > result((scitbx::af::reserve(xy.size())));
+    for(std::size_t i = 0; i < xy.size(); i++) {
+      result.push_back(panel.pixel_to_millimeter(xy[i]));
+    }
+    return result;
+  }
+
+  static
+  scitbx::af::shared<vec2<double> >
+  millimeter_to_pixel_multiple(const Panel &panel,
+                scitbx::af::flex<vec2<double> >::type const& xy) {
+    scitbx::af::shared<vec2<double> > result((scitbx::af::reserve(xy.size())));
+    for(std::size_t i = 0; i < xy.size(); i++) {
+      result.push_back(panel.millimeter_to_pixel(xy[i]));
+    }
+    return result;
+  }
+
+  static
   Panel panel_deepcopy(const Panel &panel, boost::python::object dict) {
     return Panel(panel);
   }
@@ -412,7 +434,9 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_bidirectional_ray_intersection_px",
         &Panel::get_bidirectional_ray_intersection_px)
       .def("millimeter_to_pixel", &Panel::millimeter_to_pixel)
+      .def("millimeter_to_pixel", millimeter_to_pixel_multiple)
       .def("pixel_to_millimeter", &Panel::pixel_to_millimeter)
+      .def("pixel_to_millimeter", pixel_to_millimeter_multiple)
       .def("get_resolution_at_pixel", &Panel::get_resolution_at_pixel)
       .def("get_max_resolution_at_corners",
         &Panel::get_max_resolution_at_corners)
