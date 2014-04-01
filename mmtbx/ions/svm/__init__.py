@@ -389,9 +389,10 @@ def predict_ion(chem_env, scatter_env, elements = None):
 
   # Convert our data into a format that libsvm will accept
   vector = ion_vector(chem_env, scatter_env, **vector_options)
+  vector = _scale_to(vector, scaling[0], scaling[1])
+
   assert len(vector) == len(features)
 
-  vector = _scale_to(vector, scaling[0], scaling[1])
   vector = vector[features]
 
   xi = svm.gen_svm_nodearray(
