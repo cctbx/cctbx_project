@@ -486,7 +486,8 @@ def parallel_map (
     else :
       processes = get_processes(processes)
 
-  if (processes == 1) and (method in ["threading", "multiprocessing"]) :
+  if ((processes == 1) and (method in ["threading", "multiprocessing"]) and
+      (not os.environ.get("LIBTBX_FORCE_PARALLEL", False))) :
     for args in iterable :
       result = func(args)
       if (callback is not None) :
