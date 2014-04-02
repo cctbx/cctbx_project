@@ -274,12 +274,14 @@ input {
   crystal_symmetry
     .help = Unit cell and space group parameters
     .short_caption = Crystal symmetry
-    .style = auto_align menu_item
+    .style = hidden
   {
     unit_cell=None
       .type=unit_cell
+      .style = noauto
     space_group=None
       .type=space_group
+      .style = noauto
   }
 }
 model_statistics = None
