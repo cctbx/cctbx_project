@@ -415,10 +415,10 @@ def create_sheet_hydrogen_bond_proxies (
             j += 2
         if (curr_strand.sense == "parallel") :
           # some tweaking for ensure correct donor assignment
-          if i == 2:
+          if i >= 2 and not current_start_res_is_donor:
             i -= 2
             current_start_res_is_donor = not current_start_res_is_donor
-          if j == 2:
+          if j >= 2 and current_start_res_is_donor:
             j -= 2
             current_start_res_is_donor = not current_start_res_is_donor
           while (i < len_prev_residues) and (j < len_curr_residues):

@@ -596,6 +596,27 @@ SHEET    1   D 2 LYS N 272  LYS N 279  0
 SHEET    2   D 2 VAL N 340  ILE N 342 -1  N  ASN N 341   O  SER N 274
 """
 
+  s_par_records9 = """\
+SHEET    1   B 2 SER A  44  ALA A  46  0
+SHEET    2   B 2 ALA A  15  THR A  21  1  N  THR A  20   O  SER A  44
+"""
+
+  s_par_records10 = """\
+SHEET    1   B 2 GLN A  40  ALA A  46  0
+SHEET    2   B 2 SER A  18  THR A  21  1  N  THR A  20   O  SER A  44
+"""
+
+  s_par_records11 = """\
+SHEET    1   B 2 GLN A  40  ALA A  46  0
+SHEET    2   B 2 ALA A  19  THR A  21  1  N  THR A  20   O  SER A  44
+"""
+  s_par_records12 = """\
+SHEET    1   B 2 GLN A  40  ALA A  46  0
+SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
+"""
+
+
+
   log = null_out()
   defpars = sec_str_master_phil.fetch()
   n_hbonds = []
@@ -609,7 +630,11 @@ SHEET    2   D 2 VAL N 340  ILE N 342 -1  N  ASN N 341   O  SER N 274
                         (pdb_par_input,  s_par_records6),
                         (pdb_par_input,  s_par_records7),
                         (pdb_par_input,  s_par_records8),
-                        (pdb_apar2_input, s_apar_records3)
+                        (pdb_apar2_input, s_apar_records3),
+                        (pdb_par_input, s_par_records9),
+                        (pdb_par_input, s_par_records10),
+                        (pdb_par_input, s_par_records11),
+                        (pdb_par_input, s_par_records12),
                         ]:
     ioss_annotation = ioss.annotation(records = recs.split('\n'))
     ann = ioss_annotation.as_restraint_groups()
@@ -625,7 +650,8 @@ SHEET    2   D 2 VAL N 340  ILE N 342 -1  N  ASN N 341   O  SER N 274
       log          = log,
       as_python_objects = True)
     n_hbonds.append(len(proxies_for_grm.proxies))
-  assert n_hbonds == [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2]
+  #print n_hbonds
+  assert n_hbonds == [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 3, 4, 2, 2]
 
 def exercise_phil_generation():
   log = null_out()
