@@ -562,8 +562,9 @@ def parallel_map (
       manager = manager,
       )
     for ( params, result_wrapper ) in orderer( parallel_for = parallel_for ) :
-      result = result_wrapper() # raise exception if worker crashed
-      results.append( result() ) # raise exception if error occurred in function
+      result_proxy = result_wrapper() # raise exception if worker crashed
+      result = result_proxy() # raise exception if error occurred in function
+      results.append(result)
       if (callback is not None) :
         callback(result)
 
