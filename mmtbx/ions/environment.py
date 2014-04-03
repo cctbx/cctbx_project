@@ -60,7 +60,9 @@ class ScatteringEnvironment (slots_getstate_setstate):
       self.fofc_density = fofc_density
     else :
       self.fofc_density = fit_gaussian(manager.unit_cell, atom.xyz, fofc_map)
-    if anom_map is not None:
+    if anom_density is not None:
+      self.anom_density = anom_density
+    elif anom_map is not None:
       self.anom_density = fit_gaussian(manager.unit_cell, atom.xyz, anom_map)
     else:
       self.anom_density = None, None
