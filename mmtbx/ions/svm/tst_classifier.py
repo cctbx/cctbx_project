@@ -24,7 +24,7 @@ def exercise () :
 
     cmdline = mmtbx.command_line.load_model_and_data(
       args = [pdb_file, mtz_file, "wavelength={}".format(wavelength),
-              "use_phaser=True"],
+              "use_phaser=True", "use_svm=True"],
       master_phil = master_phil(),
       out = null_out,
       process_pdb_file = True,
@@ -45,7 +45,8 @@ def exercise () :
       wavelength = cmdline.params.wavelength,
       params = cmdline.params,
       nproc = cmdline.params.nproc,
-      log = null_out
+      log = null_out,
+      manager_class = ions.svm.manager,
       )
 
     # Build a list of properties of each water / ion site
@@ -69,18 +70,18 @@ def exercise () :
 
     atom_props = [AtomProperties(i_seq, manager) for i_seq in waters]
 
-    fo_map = manager.get_map("mFo")
-    fofc_map = manager.get_map("mFo-DFc")
-    anom_map = manager.get_map("anom")
-
     for atom_prop in atom_props:
+      i_seq = atom_prop.i_seq
       chem_env = ChemicalEnvironment(
-        atom_prop.i_seq,
-        manager.find_nearby_atoms(atom_prop.i_seq, far_distance_cutoff = 3.5),
+        i_seq,
+        manager.find_nearby_atoms(i_seq, far_distance_cutoff = 3.5),
         manager,
         )
       scatter_env = ScatteringEnvironment(
-        atom_prop.i_seq, manager, fo_map, fofc_map, anom_map
+        i_seq, manager,
+        fo_density = manager.get_map_gaussian_fit("mFo", i_seq),
+        fofc_density = manager.get_map_gaussian_fit("mFo-DFc", i_seq),
+        anom_density = manager.get_map_gaussian_fit("anom", i_seq),
         )
       resname = ion_class(chem_env)
       assert resname != ""
@@ -98,10 +99,6 @@ def exercise () :
         for element, prob in predictions:
           print "  {}: {:.2f}".format(element, prob)
         sys.exit()
-
-    del fo_map
-    del fofc_map
-    del anom_map
 
   print "OK"
 
