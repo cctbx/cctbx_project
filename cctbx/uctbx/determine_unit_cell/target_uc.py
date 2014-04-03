@@ -39,7 +39,7 @@ class target:
     """ Retursn the distance between two cells, already in the G6 convention.
         Optionally (key =1)  trivial Euclidian or NCDist (key =2 )"""
     if key is 1: # trivial euclidian
-      return abs((np.sum(G6a - G6b)))**0.5
+      return math.sqrt(np.sum((G6a - G6b)**2))
     if key is 2: # Andrews-Bernstein distance
       return  NCDist(G6a , G6b)
 
@@ -64,10 +64,7 @@ class target:
       print ("Using Andrews-Bernstein Distance from " +
       "Andrews & Bernstein J Appl Cryst 47:346 (2014).")
     # 1. Create a numpy array of G6 cells
-    G6_cells = []
-    for n_cell in self.niggli_ucs:
-      G6_cells.append(self.make_G6(n_cell))
-    self.G6_cells = np.array(G6_cells)
+    self.G6_cells = np.array([self.make_G6(n_cell) for n_cell in self.niggli_ucs])
     # 2. Do hierarchichal clustering on this, using the find_distance method above.
     import  scipy.spatial.distance as dist
     pair_distances = dist.pdist(self.G6_cells,
@@ -86,8 +83,6 @@ class target:
                              "Num in cluster",
                              "Med_a", "Med_b", "Med_c",
                              "Med_alpha", "Med_beta", "Med_gamma")
-    cluster_idx = 1
-    #import pdb; pdb.set_trace()
     singletons = []
     for cluster in range(max(self.clusters)):
       this_cluster = np.array([self.niggli_ucs[i]
@@ -96,25 +91,17 @@ class target:
       this_cluster_pg = ([self.pgs[i] for i in range(len(self.pgs))
                                if self.clusters[i]==cluster+1])
       assert len(this_cluster_pg) == len(this_cluster)
-      sorted_pgs = sorted(this_cluster_pg)
-      current_pg = ''
       all_pgs={}
-      for pg in sorted_pgs:
-        if pg != current_pg:
-          current_pg = pg
-          all_pgs[pg]=1
-        else:
-          all_pgs[pg] += 1
-      if len(all_pgs) == 1:
-        for pg in all_pgs:
-          point_group_string = "All {} images in point group {}.".format(all_pgs[pg],pg)
-      else:
-        pg_strings = []
-        for pg in all_pgs:
-          pg_strings.append("{} images in {}".format(all_pgs[pg], pg))
+      for pg in this_cluster_pg:
+          if pg in all_pgs.keys():
+              all_pgs[pg] += 1
+          else:
+              all_pgs[pg] = 1
+
+      if len(this_cluster) != 1:
+        pg_strings = ["{} images in {}".format(all_pgs[pg], pg)) for pg in  all_pgs]
         point_group_string = ", ".join(pg_strings)+"."
-      if len(this_cluster) is not 1:
-        print "".join([("{:<14} {:<5.1f}({:<4.1f}) {:<5.1f}({:<4.1f})" +
+        print "".join([("{:<14} {:<5.1f}({:<4.1f}) {:<5.1f}({:<4.1f})" \
                         " {:<5.1f}({:<4.1f})").format(
           len(this_cluster),
           np.median(this_cluster[:,0]), np.std(this_cluster[:,0]),
@@ -126,7 +113,7 @@ class target:
           np.median(this_cluster[:,5]), np.std(this_cluster[:,5]))])
         print "  --> " +  point_group_string
       else:
-        singletons.append("".join([("{:<14} {:<11.1f} {:<11.1f}" +
+        singletons.append("".join([("{:<14} {:<11.1f} {:<11.1f}" \
                           " {:<11.1f}").format(
           this_cluster_pg[0],
           this_cluster[0,0],
@@ -144,20 +131,19 @@ class target:
                              "Med_alpha", "Med_beta", "Med_gamma")
     print "".join(singletons)
 
-
-  def plot_clusters(self, clusters, log=False):
+def plot_clusters(ucs, log=False):
     """ Plot Niggli cells -- one plot for (a,b,c) and one plot for
     (alpha, beta, gamma) -- colour coded by cluster index.  """
-
+    
     import pylab
     fig = pylab.figure()
-    hcluster.dendrogram(self.this_linkage,
+    hcluster.dendrogram(ucs.this_linkage,
                       labels=["{:<4.1f}, {:<4.1f}, {:<4.1f}, {:<4.1f}," +
                               "{:<4.1f}, {:<4.1f}".format(
                               x[0], x[1], x[2], x[3], x[4], x[5])
-                              for x in self.niggli_ucs],
+                              for x in ucs.niggli_ucs],
                       leaf_font_size=8,
-                      color_threshold=self.threshold)
+                      color_threshold=ucs.threshold)
     ax=fig.gca()
     if log:
       ax.set_yscale("log")
@@ -175,22 +161,22 @@ class target:
     ax.set_xlabel('a [A]')
     ax.set_ylabel('b [A]')
     ax.set_zlabel('c [A]')
-    for i in range(len(self.niggli_ucs)):
-      ax.scatter(np.array(self.niggli_ucs)[i,0],
-                 np.array(self.niggli_ucs)[i,1],
-                 np.array(self.niggli_ucs)[i,2],
-                 c=cmap(clusters[i-1]/max(clusters)), marker='o', s=20)
+    for i in range(len(ucs.niggli_ucs)):
+      ax.scatter(np.array(ucs.niggli_ucs)[i,0],
+                 np.array(ucs.niggli_ucs)[i,1],
+                 np.array(ucs.niggli_ucs)[i,2],
+                 c=cmap(ucs.clusters[i-1]/max(ucs.clusters)), marker='o', s=20)
     fig = plt.figure('unit_cells_angles')
     ax = fig.add_subplot(111, projection='3d')
-    for i in range(len(self.niggli_ucs)):
-      ax.scatter(np.array(self.niggli_ucs)[i,3],
-                 np.array(self.niggli_ucs)[i,4],
-                 np.array(self.niggli_ucs)[i,5],
-                 c=cmap(clusters[i-1]/max(clusters)), marker='o', s=20)
+    for i in range(len(ucs.niggli_ucs)):
+      ax.scatter(np.array(ucs.niggli_ucs)[i,3],
+                 np.array(ucs.niggli_ucs)[i,4],
+                 np.array(ucs.niggli_ucs)[i,5],
+                 c=cmap(ucs.clusters[i-1]/max(ucs.clusters)), marker='o', s=20)
     ax.set_xlabel('alpha')
     ax.set_ylabel('beta')
     ax.set_zlabel('gamma')
     plt.show()
 
-#    centroids,_ = kmeans(reduced_data[:,:3], num_clusters)
+#    centroids,_ = kmeans(reduced_data[:,:3], num_ucs.clusters)
 #    idx,_ = vq(reduced_data[:,:3],centroids)

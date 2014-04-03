@@ -4,11 +4,11 @@ from __future__ import division
 
 def run(args):
   if args < 2: raise IOError("Must give at least one path to folder of pickles")
-  from cctbx.uctbx.determine_unit_cell.target_uc import target
+  from cctbx.uctbx.determine_unit_cell.target_uc import target, plot_clusters
   ucs = target(args.folders)
   ucs.cluster(args.t, args.m, args.l)
   if not args.noplot:
-    ucs.plot_clusters(ucs.clusters, args.log)
+    plot_clusters(ucs, args.log)
 
 
 if (__name__ == "__main__"):
