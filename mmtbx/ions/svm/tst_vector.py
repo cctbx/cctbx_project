@@ -55,27 +55,23 @@ def exercise():
     out = null_out
     )
 
-  fo_map = manager.get_map("mFo")
-  fofc_map = manager.get_map("mFo-DFc")
-  anom_map = manager.get_map("anom")
-
   for atom_props in manager.atoms_to_props.values():
+    i_seq = atom_props.i_seq
     chem_env = ChemicalEnvironment(
-      atom_props.i_seq,
-      manager.find_nearby_atoms(atom_props.i_seq, far_distance_cutoff = 3.5),
+      i_seq,
+      manager.find_nearby_atoms(i_seq, far_distance_cutoff = 3.5),
       manager
       )
     scatter_env = ScatteringEnvironment(
-      atom_props.i_seq, manager, fo_map, fofc_map, anom_map
+      i_seq, manager,
+      fo_density = manager.get_map_gaussian_fit("mFo", i_seq),
+      fofc_density = manager.get_map_gaussian_fit("mFo-DFc", i_seq),
+      anom_density = manager.get_map_gaussian_fit("anom", i_seq),
       )
     vector = ion_vector(chem_env, scatter_env)
     resname = ion_class(chem_env)
     assert vector is not None
     assert resname != ""
-
-  del fo_map
-  del fofc_map
-  del anom_map
 
   print "OK"
 

@@ -38,10 +38,12 @@ atomic properties.
     process_pdb_file = True,
     create_fmodel = True,
     prefer_anomalous = True,
-    set_wavelength_from_model_header=True,
-    set_inelastic_form_factors="sasaki",
-    usage_string=usage_string)
+    set_wavelength_from_model_header = True,
+    set_inelastic_form_factors = "sasaki",
+    usage_string = usage_string)
+
   params = cmdline.params
+  params.use_svm = True
 
   make_header("Inspecting sites", out = out)
 
@@ -77,10 +79,6 @@ def dump_sites (manager):
   # Can't pickle entire AtomProperties because they include references to the
   # Atom object. Instead, gather what properties we want and store them in a
   # second list
-  fo_map = manager.get_map("mFo")
-  fofc_map = manager.get_map("mFo-DFc")
-  anom_map = manager.get_map("anom")
-
   properties = \
     [(
       ChemicalEnvironment(
@@ -90,15 +88,11 @@ def dump_sites (manager):
       ScatteringEnvironment(
         atom.i_seq,
         manager,
-        fo_map,
-        fofc_map,
-        anom_map),
+        fo_density = manager.get_map_gaussian_fit("mFo", atom.i_seq),
+        fofc_density = manager.get_map_gaussian_fit("mFo-DFc", atom.i_seq),
+        anom_density = manager.get_map_gaussian_fit("anom", atom.i_seq)),
       )
      for atom in atoms]
-
-  del fo_map
-  del fofc_map
-  del anom_map
 
   return properties
 
