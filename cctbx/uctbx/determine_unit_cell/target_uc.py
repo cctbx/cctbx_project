@@ -99,7 +99,7 @@ class target:
               all_pgs[pg] = 1
 
       if len(this_cluster) != 1:
-        pg_strings = ["{} images in {}".format(all_pgs[pg], pg)) for pg in  all_pgs]
+        pg_strings = ["{} images in {}".format(all_pgs[pg], pg) for pg in  all_pgs]
         point_group_string = ", ".join(pg_strings)+"."
         print "".join([("{:<14} {:<5.1f}({:<4.1f}) {:<5.1f}({:<4.1f})" \
                         " {:<5.1f}({:<4.1f})").format(
