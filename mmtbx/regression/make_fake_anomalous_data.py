@@ -12,9 +12,11 @@ from mmtbx.ions.utils import anonymize_ions
 def generate_calcium_inputs (file_base="ca_frag", anonymize = True) :
   """
   Generate both a PDB file and an MTZ file for the calcium-bound structure,
-  with the calcium replaced by solvent after F(model) was calculated. (This
-  method is also a suitable template for generating any other model/data files
-  for specific structures.)
+  with the calcium optionally  replaced by solvent after F(model) was
+  calculated. Calcium is simulated as an anomalous scatterer at 1.025 A.
+
+  (This method is also a suitable template for generating any other model/data
+  files for specific structures.)
   """
   pdb_file = write_pdb_input_calcium_binding(file_base=file_base)
   mtz_file = generate_mtz_file(
@@ -48,6 +50,11 @@ def generate_cd_cl_inputs (file_base="cd_cl_frag") :
   return mtz_file, pdb_file
 
 def generate_zinc_inputs (file_base = "zn_frag", anonymize = True) :
+  """
+  Generate both a PDB file and an MTZ file for the zinc-bound structure,
+  with the zinc optionally replaced by solvent after F(model) was
+  calculated. Zinc is simulated as an anomalous scatterer at 1.54 A.
+  """
   pdb_file = write_pdb_input_zinc_binding(file_base = file_base)
   mtz_file = generate_mtz_file(
     file_base = file_base,
