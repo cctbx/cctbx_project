@@ -276,6 +276,34 @@ class FormatChecker(object):
       return None
     return self._format_class
 
+  def find_format(self, filename):
+    ''' Check the current and child formats, otherwise search the registry. '''
+    from dxtbx.format.Registry import Registry
+    try:
+      if self._format_class == None or not self.understand(filename):
+        self._format_class = Registry.find(filename)
+      self._format_class = self.check_child_formats(filename)
+    except Exception:
+      return None
+    return self._format_class
+
+  def iter_groups(self, filenames):
+    group_format = None
+    group_fnames = []
+    for filename in filenames:
+      fmt = self.find_format(filename)
+      if fmt == group_format:
+        group_fnames.append(filename)
+      else:
+        if len(group_fnames) > 0:
+          yield group_format, group_fnames
+        group_fnames = [filename]
+        group_format = fmt
+      if self._verbose:
+        print 'Using %s for %s' % (fmt.__name__, filename)
+    if len(group_fnames) > 0:
+      yield group_format, group_fnames
+
 
 class DataBlockFilenameImporter(object):
   ''' A class to import a datablock from image files. '''
@@ -293,16 +321,14 @@ class DataBlockFilenameImporter(object):
     def append_to_datablocks(iset):
       try:
         self.datablocks[-1].append(iset)
-        if verbose:
-          print 'Added imageset to datablock %s' % (len(self.datablocks) - 1)
       except Exception:
         self.datablocks.append(DataBlock([iset]))
-        if verbose:
-          print 'Added imageset to datablock %d' % len(self.datablocks)
+      if verbose:
+        print 'Added imageset to datablock %d' % (len(self.datablocks) - 1)
 
     # Iterate through groups of files by format class
     find_format = FormatChecker(verbose=verbose)
-    for fmt, group in groupby(filenames, lambda f: find_format(f)):
+    for fmt, group in find_format.iter_groups(filenames):
       if fmt is None:
         self.unhandled.extend(group)
       elif issubclass(fmt, FormatMultiImage):
@@ -313,6 +339,7 @@ class DataBlockFilenameImporter(object):
       else:
         records = self._extract_file_metadata(fmt, group)
         for group, items in groupby(records, lambda r: r.group):
+          items = list(items)
           imageset = self._create_multi_file_imageset(fmt, list(items))
           append_to_datablocks(imageset)
 

@@ -136,9 +136,8 @@ class Test(object):
     from dxtbx.datablock import DataBlockFactory
 
     filenames = self.multiple_block_filenames()
-    blocks = DataBlockFactory.from_filenames(filenames)
-    # FIXME JMP this comes out at 20 when printed
-    assert(len(blocks) == 19)
+    blocks = DataBlockFactory.from_filenames(filenames, verbose=False)
+    assert(len(blocks) == 20)
 
     # Block 1
     assert(blocks[0].num_images() == 9)
@@ -150,12 +149,12 @@ class Test(object):
     assert(len(sweeps[0]) == 9)
 
     # Block 2
-    assert(blocks[1].num_images() == 3)
+    assert(blocks[1].num_images() == 2)
     imageset = blocks[1].extract_imagesets()
-    assert(len(imageset) == 3)
+    assert(len(imageset) == 2)
     assert(all(len(i) == 1 for i in imageset))
     sweeps = blocks[1].extract_sweeps()
-    assert(len(sweeps) == 3)
+    assert(len(sweeps) == 2)
     assert(all(len(s) == 1 for s in sweeps))
 
     # Block 3
@@ -168,12 +167,12 @@ class Test(object):
     assert(all(len(s) == 1 for s in sweeps))
 
     # Block 4
-    assert(blocks[3].num_images() == 3)
+    assert(blocks[3].num_images() == 1)
     imageset = blocks[3].extract_imagesets()
-    assert(len(imageset) == 3)
+    assert(len(imageset) == 1)
     assert(all(len(i) == 1 for i in imageset))
     sweeps = blocks[3].extract_sweeps()
-    assert(len(sweeps) == 3)
+    assert(len(sweeps) == 1)
     assert(all(len(s) == 1 for s in sweeps))
 
     print 'OK'
