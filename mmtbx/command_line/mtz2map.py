@@ -168,7 +168,7 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
   if mtz_file is None :
     mtz_file = file_reader.any_file(params.mtz_file,
       force_type="hkl",
-      raise_sorry_if_error=True)
+      raise_sorry_if_errors=True)
   all_labels=[]
   if params.show_maps or len(params.labels) == 0 :
     map_labels = utils.get_map_coeff_labels(mtz_file.file_server,
