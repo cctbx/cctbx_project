@@ -163,6 +163,104 @@ def exercise6():
   assert v == [999998, 2, 0]
   assert v[:2] == volumes
 
+def exercise_volume_cutoff():
+  cmap = flex.double(flex.grid(100,100,100))
+  cmap.fill(0)
+  for i in range(100):
+    for j in range(100):
+      for k in range(100):
+        if (5<i<10) and (5<j<10) and (5<k<10):
+          cmap[i,j,k] = 10
+        if (15<i<25) and (15<j<25) and (15<k<25):
+          cmap[i,j,k] = 20
+
+  co = maptbx.connectivity(map_data=cmap, threshold=5)
+  map_result = co.result()
+  volumes = list(co.regions())
+  #print volumes
+  #[999207, 64, 729]
+  vol_mask = co.volume_cutoff_mask(volume_cutoff=10)
+  assert (vol_mask==1).count(True) == 793
+  assert (vol_mask==0).count(True) == 999207
+  vol_mask = co.volume_cutoff_mask(volume_cutoff=100)
+  assert (vol_mask==1).count(True) == 729
+  assert (vol_mask==0).count(True) == 999271
+  vol_mask = co.volume_cutoff_mask(volume_cutoff=1000)
+  assert (vol_mask==1).count(True) == 0
+  assert (vol_mask==0).count(True) == 1000000
+
+def exercise_max_values():
+  cmap = flex.double(flex.grid(100,100,100))
+  cmap.fill(0)
+  for i in range(100):
+    for j in range(100):
+      for k in range(100):
+        if (5<i<10) and (5<j<10) and (5<k<10):
+          cmap[i,j,k] = 10
+        if (15<i<25) and (15<j<25) and (15<k<25):
+          cmap[i,j,k] = 20
+
+  cmap[7,7,7] = 15
+  cmap[20,20,20] = 25
+  co = maptbx.connectivity(map_data=cmap, threshold=5)
+  m_coors = list(co.maximum_coors())
+  m_vals = list(co.maximum_values())
+  assert m_coors == [(0, 0, 0), (7, 7, 7), (20, 20, 20)]
+  assert m_vals == [0.0, 15.0, 25.0]
+
+def debug_printing(co):
+  print "volumes    :",  list(co.regions())
+  print "values     :",  list(co.maximum_values())
+  print "coordinates:",  list(co.maximum_coors())
+  print "============"
+
+
+def exercise_noise_elimination_two_cutoffs():
+  #map preparation
+  cmap = flex.double(flex.grid(100,2,2))
+  cmap.fill(10)
+  for i in range(10,40):
+    cmap[i,1,1] = i
+  for i,v in zip(range(40,60), range(40,20,-1)):
+    cmap[i,1,1] = v
+  for i,v in zip(range(60,70), range(20,30)):
+    cmap[i,1,1] = v
+  for i,v in zip(range(70,90), range(30,10,-1)):
+    cmap[i,1,1] = v
+  #for i in range(100):
+  #  print "%d   : %d" % (i,  cmap[i,1,1])
+
+  co1 = maptbx.connectivity(map_data=cmap, threshold=25)
+  co2 = maptbx.connectivity(map_data=cmap, threshold=22)
+  co3 = maptbx.connectivity(map_data=cmap, threshold=18)
+
+  # 1 good, 1 bad ===> 2 separate
+  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=12)
+  assert (res_mask!=0).count(True) == 35
+  # 2 good ===> 2 separate
+  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=8)
+  assert (res_mask!=0).count(True) == 50
+  # 1 good, 1 bad ===> 1 big
+  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=12)
+  assert (res_mask!=0).count(True) == 63
+  # 2 good ===> 1 big
+  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=8)
+  assert (res_mask!=0).count(True) == 63
+  # 2 bad ===> 1 big
+  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=30)
+  assert (res_mask!=0).count(True) == 0
+
+  # extreme case: nothing above t1 ==> result: everything is 0 on the mask
+  co1 = maptbx.connectivity(map_data=cmap, threshold=40)
+  co2 = maptbx.connectivity(map_data=cmap, threshold=22)
+  assert (res_mask!=0).count(True) == 0
+
+  # extreme case: everything above t1 ==> result is undefined.
 
 if __name__ == "__main__" :
   exercise1()  # examples of usage are here!
@@ -170,3 +268,6 @@ if __name__ == "__main__" :
   exercise4()
   exercise5()
   exercise6()
+  exercise_volume_cutoff()
+  exercise_max_values()
+  exercise_noise_elimination_two_cutoffs()

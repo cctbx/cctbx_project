@@ -143,6 +143,14 @@ namespace {
                      arg("threshold"))))
         .def("result",    &w_t::result)
         .def("regions",   &w_t::regions)
+        .def("volume_cutoff_mask", &w_t::volume_cutoff_mask,
+                    (arg("volume_cutoff")))
+        .def("noise_elimination_two_cutoffs",
+             &w_t::noise_elimination_two_cutoffs,
+                    (arg("connectivity_t1"),
+                     arg("volume_threshold_t1")))
+        .def("maximum_coors", &w_t::maximum_coors)
+        .def("maximum_values", &w_t::maximum_values)
       ;
     }
 
