@@ -33,16 +33,23 @@ keywords = [
   ("multiplicity", "Multiplicity", "%.1f", "_reflns.pdbx_redundancy"),
   ("completeness", "Completeness (%)", "%.2f", "_reflns.percent_possible_obs"),
   ("i_over_sigma", "Mean I/sigma(I)", "%.2f", "_reflns.pdbx_netI_over_sigmaI"),
-  ("wilson_b", "Wilson B-factor", "%.2f", None),
+  ("wilson_b", "Wilson B-factor", "%.2f", "_reflns.B_iso_Wilson_estimate"),
   ("r_sym", "R-merge", "%.4g", "_reflns.pdbx_Rmerge_I_obs"),
   ("r_meas", "R-meas", "%.4g", "_reflns.pdbx_Rrim_I_obs"),
   ("cc_one_half", "CC1/2", "%.3g", "_reflns.phenix_cc_1/2"),
   ("cc_star", "CC*", "%.3g", "_reflns.phenix_cc_star"),
-  # model-based statistics
+  # refinement statistics
+  # TODO figure out how to extract this...
+  #("n_refl_refine", "Reflections used in refinement", "%d",
+    # XXX this is problematic - I am not sure if our usage is consistent with
+    # the intended purpose of this tag
+  #  "_refine.ls_number_reflns_obs"),
+  ("n_free", "Reflections used for R-free", "%d",
+    "_refine.ls_number_reflns_R_free"),
   ("r_work", "R-work", "%.4f", "_refine.ls_R_factor_R_work"),
   ("r_free", "R-free", "%.4f", "_refine.ls_R_factor_R_free"),
-  #("cc_work", "CC(work)", "%.3f", None),
-  #("cc_free", "CC(free)", "%.3f", None),
+  ("cc_work", "CC(work)", "%.3f", None),
+  ("cc_free", "CC(free)", "%.3f", None),
   ("n_atoms", "Number of non-hydrogen atoms", "%d", None),
   ("n_macro_atoms", "  macromolecules", "%d", None),
   ("n_ligand_atoms", "  ligands", "%d", None),
@@ -51,6 +58,7 @@ keywords = [
   ("bond_rmsd", "RMS(bonds)", "%.3f", None),
   ("angle_rmsd", "RMS(angles)", "%.2f", None),
   ("rama_favored", "Ramachandran favored (%)", "%.2g", None),
+  ("rama_allowed", "Ramachandran allowed (%)", "%.2g", None),
   ("rama_outliers", "Ramachandran outliers (%)", "%.2g", None),
   ("clashscore", "Clashscore", "%.2f", None),
   ("adp_mean", "Average B-factor", "%.2f", None),
@@ -83,6 +91,7 @@ class column (slots_getstate_setstate) :
 
   def add_outer_shell (self, **kwds) :
     self.outer_shell = column(**kwds)
+    return self
 
   def format_stat (self, name) :
     value = getattr(self, name, None)
