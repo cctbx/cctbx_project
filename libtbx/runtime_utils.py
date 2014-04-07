@@ -54,12 +54,10 @@ class simple_target (object) :
 class target_with_save_result (object) :
   def __init__ (self, args, file_name, output_dir=None, log_file=None,
       job_title=None) :
-    assert (isinstance(file_name, str)) or isinstance(file_name, unicode)
+    assert isinstance(file_name, basestring)
     assert (isinstance(args, list) or isinstance(args, tuple))
-    assert ((output_dir is None) or isinstance(output_dir, str) or
-            isinstance(output_dir, unicode))
-    assert ((log_file is None) or isinstance(log_file, str) or
-            isinstance(log_file, unicode))
+    assert (output_dir is None) or isinstance(output_dir, basestring)
+    assert (log_file is None) or isinstance(log_file, basestring)
     adopt_init_args(self, locals())
     if (output_dir is None) :
       self.output_dir = os.getcwd()
