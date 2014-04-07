@@ -36,6 +36,7 @@ class data_statistics (slots_getstate_setstate) :
     "d_min",
     "info",
     "n_refl",
+    "n_refl_merged",
     "r_work",
     "r_free",
     "twin_law",
@@ -55,6 +56,10 @@ class data_statistics (slots_getstate_setstate) :
     self.d_min = f_obs.d_min()
     self.info = fmodel.info(n_bins=n_bins)
     self.n_refl = f_obs.indices().size()
+    if (f_obs.anomalous_flag()) :
+      self.n_refl_merged = f_obs.average_bijvoet_mates().indices().size()
+    else :
+      self.n_refl_merged = self.n_refl
     self.r_free = self.info.r_free
     self.r_work = self.info.r_work
     self.twin_law = fmodel.twin_law

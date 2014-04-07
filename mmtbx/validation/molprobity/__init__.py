@@ -164,9 +164,23 @@ class molprobity (slots_getstate_setstate) :
           fmodel=fmodel,
           pdb_hierarchy=pdb_hierarchy,
           cc_min=min_cc_two_fofc)
+      if (unmerged_data is not None) :
+        from mmtbx.command_line import cc_star
+        self.merging = cc_star.merging_and_model_statistics(
+          f_obs=fmodel.f_obs(),
+          f_model=fmodel.f_model(),
+          r_free_flags=fmodel.r_free_flags(),
+          unmerged_i_obs=unmerged_data,
+          n_bins=n_bins_data)
     self._multi_criterion = multi_criterion_view(pdb_hierarchy)
 
   def molprobity_score (self) :
+    """
+    Compute overall measure of (protein!) structure quality based on an
+    empirical formula combining clashscore, rotamer outliers, and Ramachandran
+    favored statistics.  The result is on approximately the same scale as
+    resolution.
+    """
     if (None in [self.ramalyze, self.rotalyze, self.clashes]) :
       return None
     from mmtbx.validation import utils
@@ -288,6 +302,11 @@ class molprobity (slots_getstate_setstate) :
   def rama_outliers (self) :
     return getattr(self.ramalyze, "out_percent", None)
 
+  def rama_allowed (self) :
+    if (self.ramalyze is not None) :
+      return self.ramalyze.percent_allowed
+    return None
+
   def rota_outliers (self) :
     return getattr(self.rotalyze, "out_percent", None)
 
@@ -307,14 +326,21 @@ class molprobity (slots_getstate_setstate) :
     raise NotImplementedError()
 
   def as_table1 (self, label=None) :
+    """
+    Extract information for display in the traditional 'Table 1' of
+    crystallographic statistics in structure articles.
+    """
     import iotbx.table_one
     outer_shell = None
     data_stats = self.data_stats
     if (data_stats is None) :
       data_stats = dummy_validation()
-    if (self.data_stats is not None) :
-      r_work_outer
-    unmerged_data = dummy_validation() # TODO
+    merging_stats = dummy_validation()
+    n_refl_uniq = data_stats.n_refl_merged
+    completeness = data_stats.completeness
+    if (self.merging is not None) :
+      merging_stats = unmerged_data.overall
+      n_refl_uniq = merging_stats.n_uniq
     return iotbx.table_one.column(
       label=label,
       wavelength=None, # TODO
@@ -322,23 +348,30 @@ class molprobity (slots_getstate_setstate) :
       unit_cell=self.unit_cell(),
       # data properties
       d_max_min=self.d_max_min(),
+      n_refl_all=merging_stats.n_obs,
+      n_refl=n_refl_uniq,
+      multiplicity=merging_stats.multiplicity,
+      completeness=completeness,
+      i_over_sigma=merging_stats.i_over_sigma,
+      wilson_b=merging_stats.wilson_b,
+      r_sym=merging_stats.r_sym,
+      r_meas=merging_stats.r_meas,
+      cc_one_half=merging_stats.cc_one_half,
+      cc_star=merging_stats.cc_star,
+      # refinement
+      n_refl_refine=None, # TODO
       r_work=self.r_work(),
       r_free=self.r_free(),
-      n_refl_all=unmerged_data.n_refl_all,
-      multiplicity=unmerged_data.multiplicity,
-      completeness=data_stats.completeness,
-      i_over_sigma=unmerged_data.i_over_sigma,
-      wilson_b=unmerged_data.wilson_b,
-      r_sym=unmerged_data.r_sym,
-      r_meas=unmerged_data.r_meas,
-      cc_one_half=unmerged_data.cc_one_half,
-      cc_start=unmerged_data.cc_star,
+      cc_work=merging_stats.cc_work,
+      cc_free=merging_stats.cc_free,
       # model properties
       bond_rmsd=self.rms_bonds(),
       angle_rmsd=self.rms_angles(),
       rama_favored=self.rama_favored(),
+      rama_allowed=self.rama_allowed(),
       rama_outliers=self.rama_outliers(),
       clashscore=self.clashscore(),
+      # TODO B-factors, etc.
       )
 
   def as_multi_criterion_view (self) :
