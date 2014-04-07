@@ -99,10 +99,14 @@ def run(args):
     result_sets = brehm_diederichs.run_multiprocess(
       L, asymmetric=params.asymmetric, nproc=params.nproc, plot=params.plot)
 
+  out_file = open('reindex.txt', 'wb')
+
   for reindexing_op, wedges in result_sets.iteritems():
     cb_op = sgtbx.change_of_basis_op(reindexing_op)
     for wedge in wedges:
       file_name = file_name_dict[wedge]
+      if out_file is not None:
+        print >> out_file, file_name, cb_op.as_hkl()
       basename = os.path.basename(file_name)
       out_name = os.path.splitext(basename)[0] + params.suffix + ".mtz"
       reader = any_reflection_file(file_name)
