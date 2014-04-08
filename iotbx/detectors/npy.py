@@ -96,8 +96,9 @@ class NpyImage(DetectorImageBase):
       self.parameters['SIZE1']                = cspad_data['SIZE1']
       self.parameters['SIZE2']                = cspad_data['SIZE2']
       self.parameters['WAVELENGTH']           = cspad_data['WAVELENGTH']
-      self.parameters['OSC_START']            = cspad_data.get('OSC_START',None)
-      self.parameters['OSC_RANGE']            = cspad_data.get('OSC_RANGE',None)
+      if 'OSC_RANGE' in cspad_data and cspad_data['OSC_RANGE'] > 0:
+        self.parameters['OSC_START']            = cspad_data.get('OSC_START',None)
+        self.parameters['OSC_RANGE']            = cspad_data.get('OSC_RANGE',None)
       import math
       if  ( math.isnan(self.parameters["DISTANCE"]) ):
          self.parameters["DISTANCE"]=0.0
