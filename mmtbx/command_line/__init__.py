@@ -23,6 +23,7 @@ cmdline_input_phil_base_str = """
 input {
   include scope mmtbx.utils.xray_data_str
   %(phases)s
+  %(unmerged)s
   pdb {
     include scope mmtbx.utils.pdb_params
   }
@@ -49,10 +50,12 @@ def generate_master_phil_with_inputs (
     enable_pdb_interpretation_params=False,
     enable_stop_for_unknowns=None,
     enable_full_geometry_params=False,
+    enable_unmerged_data=False,
     as_phil_string=False) :
   import iotbx.phil
   phil_extra_dict = {
     "phases" : "",
+    "unmerged" : "",
     "phases_flag" : "",
     "twin_law" : "",
     "pdb_interpretation" : "",
@@ -76,6 +79,14 @@ def generate_master_phil_with_inputs (
         .type = bool
         .short_caption = Use experimental phases (Hendrickson-Lattman coefficients)
       """
+  if (enable_unmerged_data) :
+    phil_extra_dict["unmerged"] = """
+      unmerged_data {
+        file_name = None
+          .type = path
+        labels = None
+          .type = str
+      }"""
   if (enable_pdb_interpretation_params) or (enable_full_geometry_params) :
     stop_for_unknowns_params = ""
     if (enable_stop_for_unknowns is not None) :
@@ -428,6 +439,15 @@ class load_model_and_data (object) :
         force_type="seq",
         raise_sorry_if_errors=True)
       self.sequence = seq_file.file_object
+    # UNMERGED DATA
+    self.unmerged_i_obs = None
+    if hasattr(params.input, "unmerged_data") :
+      if (params.input.unmerged_data.file_name is not None) :
+        self.unmerged_i_obs = load_and_validate_unmerged_data(
+          f_obs=self.f_obs,
+          file_name=params.input.unmerged_data.file_name,
+          data_labels=params.input.unmerged_data.labels,
+          log=self.log)
     self.params = params
     print >> self.log, ""
     print >> self.log, "End of input processing"
@@ -440,6 +460,28 @@ class load_model_and_data (object) :
       new_label="log",
       new_file_object=log_file)
     return self.log
+
+def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
+    log=sys.stdout) :
+  from iotbx import merging_statistics
+  unmerged_i_obs = merging_statistics.select_data(
+    file_name=file_name,
+    data_labels=data_labels,
+    log=log)
+  if ((unmerged_i_obs.space_group() is not None) and
+      (unmerged_i_obs.unit_cell() is not None)) :
+    if (not unmerged_i_obs.is_similar_symmetry(f_obs)) :
+      show_symmetry_error("Data file", "Unmerged data", unmerged_i_obs, f_obs)
+  return unmerged_i_obs
+
+def show_symmetry_error (file1, file2, symm1, symm2) :
+  import cStringIO
+  symm_out1 = cStringIO.StringIO()
+  symm_out2 = cStringIO.StringIO()
+  symm1.show_summary(f=symm_out1, prefix="  ")
+  symm2.show_summary(f=symm_out2, prefix="  ")
+  raise Sorry("Incompatible symmetry definitions:\n%s:\n%s\n%s\n%s" %
+    (file1, symm_out1.getvalue(), file2, symm_out2.getvalue()))
 
 def validate_input_params (params) :
   if params.input.pdb.file_name is None :
