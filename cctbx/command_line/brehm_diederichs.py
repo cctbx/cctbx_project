@@ -25,7 +25,9 @@ asymmetric = 3
   .type = int(value_min=0, value_max=3)
 nproc = 1
   .type = int(value_min=1)
-plot = True
+show_plot = True
+  .type = bool
+save_plot = False
   .type = bool
 suffix = "_reindexed"
   .type = str
@@ -94,10 +96,12 @@ def run(args):
   from cctbx.merging import brehm_diederichs
   if params.nproc == 1:
     result_sets = brehm_diederichs.run(
-      L, asymmetric=params.asymmetric, nproc=1, plot=params.plot)
+      L, asymmetric=params.asymmetric, nproc=1, show_plot=params.show_plot,
+      save_plot=params.save_plot)
   else:
     result_sets = brehm_diederichs.run_multiprocess(
-      L, asymmetric=params.asymmetric, nproc=params.nproc, plot=params.plot)
+      L, asymmetric=params.asymmetric, nproc=params.nproc,
+      show_plot=params.show_plot, save_plot=params.save_plot)
 
   out_file = open('reindex.txt', 'wb')
 
