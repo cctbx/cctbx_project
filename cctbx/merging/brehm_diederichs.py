@@ -79,7 +79,8 @@ class algorithm2:
       assert lattice_id == len(self.lattices)-1
       return indices[lower_index:]
 
-  def run_core_algorithm(self, group, alternates, use_weights, asymmetric=1, plot=True):
+  def run_core_algorithm(self, group, alternates, use_weights, asymmetric=1,
+                         show_plot=True, save_plot=False, plot_name='xy.png'):
     # asymmetric 0=do nothing; 1=up/up; 2=down/up; 3=up/up + down/up
     #T = Profiler("coset")
 
@@ -166,12 +167,23 @@ class algorithm2:
     coord_y = M.x[NN:2*NN]
     P = minimize_divide(coord_x, coord_y)
     selection = P.plus_minus()
-    if plot:
+    if show_plot or save_plot:
+      import matplotlib
+      if not show_plot:
+        # http://matplotlib.org/faq/howto_faq.html#generate-images-without-having-a-window-appear
+        matplotlib.use('Agg') # use a non-interactive backend
+
       from matplotlib import pyplot as plt
       plt.plot(coord_x.select(selection),coord_y.select(selection),"r.", markersize=2.)
       plt.plot(coord_x.select(~selection),coord_y.select(~selection),"k.", markersize=3.)
       plt.axes().set_aspect("equal")
-      plt.show()
+      if save_plot:
+        plt.savefig(plot_name,
+                    size_inches=(10,10),
+                    dpi=300,
+                    bbox_inches='tight')
+      if show_plot:
+        plt.show()
     grouped_lattice_ids = self.lattices.select(group)
     assert len(grouped_lattice_ids) == len(selection)
 
@@ -378,20 +390,23 @@ def mp_reassemble(mp_patchwork):
     clean_list[ituple[0]]=ituple[1]
   return reassemble(clean_list)
 
-def run(L, asymmetric=3, nproc=1,verbose=True, plot=True):
+def run(L, asymmetric=3, nproc=1,verbose=True, show_plot=True, save_plot=False):
   algo2 = algorithm2(data = L[0],lattice_id = L[1], resort=True, verbose = verbose)
   alternates = algo2.generate_reindex_sets()
   c_selections = algo2.generate_comparison_selections(nproc=nproc)
   result_sets = []
-  for group in c_selections:
+  for i, group in enumerate(c_selections):
     result_sets.append(
       algo2.run_core_algorithm(
-        group, alternates, use_weights=True, asymmetric=asymmetric, plot=plot).reindexing_sets
+        group, alternates, use_weights=True, asymmetric=asymmetric,
+        show_plot=show_plot, save_plot=save_plot,
+        plot_name='xy_%i.png' %i).reindexing_sets
     )
   result = reassemble(result_sets)
   return algo2.report(result)
 
-def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, plot=True):
+def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, show_plot=True,
+                     save_plot=False):
   try :
       import multiprocessing
   except ImportError, e :
@@ -420,7 +435,9 @@ def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, plot=True):
     pool.apply_async(
       func=algo2,
       args=[input_queue, alternates, True],
-      kwds={'plot': plot,
+      kwds={'show_plot': show_plot,
+            'save_plot': save_plot,
+            'plot_name': 'xy_%i.png' %i,
             'asymmetric': asymmetric},
       callback=_mpcallback)
   pool.close()
