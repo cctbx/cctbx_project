@@ -1,7 +1,9 @@
 from __future__ import division
 
 from dxtbx.format.FormatPY import FormatPY
+#from dxtbx.format.FormatStill import FormatStill
 
+#class FormatPYunspecified(FormatStill, FormatPY):
 class FormatPYunspecified(FormatPY):
 
   @staticmethod
@@ -47,9 +49,9 @@ class FormatPYunspecified(FormatPY):
     else:
       self.LCLS_detector_address = data["DETECTOR_ADDRESS"]
     from xfel.detector_formats import reverse_timestamp
-    timesec = reverse_timestamp( data["TIMESTAMP"] )[0]
+    self._timesec = reverse_timestamp( data["TIMESTAMP"] )[0]
     from xfel.detector_formats import detector_format_version as detector_format_function
-    version_lookup = detector_format_function(self.LCLS_detector_address,timesec)
+    version_lookup = detector_format_function(self.LCLS_detector_address,self._timesec)
     self.start_helper(version_token="distl.detector_format_version=%s"%version_lookup)
 
   def start_helper(self, version_token):
@@ -105,13 +107,27 @@ class FormatPYunspecified(FormatPY):
   def _scan(self):
     '''Return the scan information for this image.'''
 
-    return self._scan_factory.make_scan(
-      image_range = (1,1),
-      # femtosecond X-ray pulse, set this to a dummy argument
-      exposure_times = [1.],
-      oscillation = (0.0,0.0),
-      epochs = {1:0.}  # Later see if we can actually get the millisecond time stamp in here
-      )
+    if self.detectorbase.osc_start is not None and self.detectorbase.deltaphi is not None \
+        and self.detectorbase.deltaphi > 0:
+      format = ''
+
+      exposure_time = self.detectorbase.parameters.get('TIME', 1)
+      osc_start = self.detectorbase.osc_start
+      osc_range = self.detectorbase.deltaphi
+      timestamp = self._timesec
+
+      return self._scan_factory.single(
+          self._image_file, format, exposure_time,
+          osc_start, osc_range, timestamp)
+
+    else:
+      return self._scan_factory.make_scan(
+        image_range = (1,1),
+        # femtosecond X-ray pulse, set this to a dummy argument
+        exposure_times = [1.],
+        oscillation = (0.0,0.0),
+        epochs = {1:self._timesec}
+        )
 
 
 if __name__ == '__main__':
