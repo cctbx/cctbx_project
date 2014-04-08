@@ -4,8 +4,8 @@ from __future__ import division
 # Convert images of any extant format to pickle files suitable for processing with
 # cxi.index.  Note, oscillation values are not preserved.
 
-import dxtbx, sys, os
-from xfel.cxi.cspad_ana.cspad_tbx import dpack
+import dxtbx, sys, os, math
+from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp
 from libtbx import easy_pickle
 from libtbx.utils import Usage
 
@@ -23,6 +23,9 @@ def run(argv=None):
     detector = img.get_detector()[0]
     beam = img.get_beam()
     beam_center = detector.get_beam_centre(beam.get_s0())
+    scan = img.get_scan()
+
+    msec, sec = math.modf(scan.get_epochs()[0])
 
     data = dpack(data=img.get_raw_data(),
                  distance=detector.get_distance(),
@@ -31,11 +34,18 @@ def run(argv=None):
                  beam_center_x=beam_center[0],
                  beam_center_y=beam_center[1],
                  ccd_image_saturation=detector.get_trusted_range()[1],
-                 saturated_value=detector.get_trusted_range()[1]
+                 saturated_value=detector.get_trusted_range()[1],
+                 timestamp=evt_timestamp((sec,msec))
                  )
 
-    easy_pickle.dump(destpath, data)
+    osc_start, osc_range = scan.get_oscillation()
+    if osc_start != osc_range:
+      data['OSC_START'] = osc_start
+      data['OSC_RANGE'] = osc_range
 
+      data['TIME'] = scan.get_exposure_times()[0]
+
+    easy_pickle.dump(destpath, data)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
