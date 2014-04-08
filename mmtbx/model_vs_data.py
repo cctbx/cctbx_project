@@ -830,8 +830,9 @@ def run(args,
   cc_star_stats = None
   if (params.unmerged_data is not None) :
     from mmtbx.command_line import cc_star
+    import mmtbx.command_line
     f_obs = fmodel.f_obs().average_bijvoet_mates()
-    unmerged_i_obs = cc_star.load_and_validate_unmerged_data(
+    unmerged_i_obs = mmtbx.command_line.load_and_validate_unmerged_data(
       f_obs=f_obs,
       file_name=params.unmerged_data,
       data_labels=params.unmerged_labels,

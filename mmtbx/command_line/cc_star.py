@@ -114,28 +114,6 @@ loggraph = False
 """, process_includes=True)
 master_params = master_phil # for phenix GUI
 
-def show_symmetry_error (file1, file2, symm1, symm2) :
-  import cStringIO
-  symm_out1 = cStringIO.StringIO()
-  symm_out2 = cStringIO.StringIO()
-  symm1.show_summary(f=symm_out1, prefix="  ")
-  symm2.show_summary(f=symm_out2, prefix="  ")
-  raise Sorry("Incompatible symmetry definitions:\n%s:\n%s\n%s\n%s" %
-    (file1, symm_out1.getvalue(), file2, symm_out2.getvalue()))
-
-def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
-    log=sys.stdout) :
-  from iotbx import merging_statistics
-  unmerged_i_obs = merging_statistics.select_data(
-    file_name=file_name,
-    data_labels=data_labels,
-    log=log)
-  if ((unmerged_i_obs.space_group() is not None) and
-      (unmerged_i_obs.unit_cell() is not None)) :
-    if (not unmerged_i_obs.is_similar_symmetry(f_obs)) :
-      show_symmetry_error("Data file", "Unmerged data", unmerged_i_obs, f_obs)
-  return unmerged_i_obs
-
 def run (args=None, params=None, out=sys.stdout) :
   assert [args, params].count(None) == 1
   if args is not None:
@@ -157,6 +135,7 @@ Full parameters:
       pdb_file_def="model",
       reflection_file_def="data")
     params = cmdline.work.extract()
+  import mmtbx.command_line
   from iotbx import merging_statistics
   from iotbx import file_reader
   if (params.data is None) :
@@ -255,7 +234,7 @@ Full parameters:
   print >> out, "R-free flags:"
   r_free_flags.show_summary(f=out, prefix="  ")
   print >> out, ""
-  unmerged_i_obs = load_and_validate_unmerged_data(
+  unmerged_i_obs = mmtbx.command_line.load_and_validate_unmerged_data(
     f_obs=f_obs,
     file_name=params.unmerged_data,
     data_labels=params.unmerged_labels,
@@ -277,7 +256,7 @@ Full parameters:
       if (f_obs.crystal_symmetry() is None) :
         f_obs = f_obs.customized_copy(crystal_symmetry=pdb_symm)
       elif (not pdb_symm.is_similar_symmetry(f_obs)) :
-        show_symmetry_error(
+        mmtbx.command_line.show_symmetry_error(
           file1="PDB file",
           file2="data file",
           symm1=pdb_symm,

@@ -3,6 +3,9 @@
 
 from __future__ import division
 import mmtbx.command_line
+from iotbx.scalepack import no_merge_original_index
+import iotbx.pdb
+from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_run
@@ -11,7 +14,6 @@ from cStringIO import StringIO
 import os.path
 
 def exercise_simple () :
-  import iotbx.pdb
   pdb_str="""
 ATOM     47  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
 ATOM     48  CA  TYR A   7       9.159   2.144   7.299  1.00 15.18           C
@@ -53,7 +55,29 @@ END
   assert (cmdline.sequence is not None)
   r_factor = cmdline.fmodel.r_work()
   assert (r_factor < 0.001)
+  # UNMERGED DATA INPUT
   log = cmdline.start_log_file("tst_mmtbx_cmdline.log")
+  fc2 = xrs.structure_factors(d_min=1.3).f_calc().generate_bijvoet_mates()
+  fc2 = fc2.randomize_amplitude_and_phase(amplitude_error=0.01,
+    phase_error_deg=5, random_seed=12345).customized_copy(
+      sigmas=flex.random_double(fc2.size(), 10))
+  i_obs = abs(fc2).f_as_f_sq()
+  i_obs = i_obs.expand_to_p1().customized_copy(
+    crystal_symmetry=fc2).set_observation_type_xray_intensity()
+  f = open(file_base + ".sca", "w")
+  no_merge_original_index.writer(i_obs,
+    file_object=f)
+  master_phil = mmtbx.command_line.generate_master_phil_with_inputs(
+    phil_string="",
+    enable_unmerged_data=True)
+  cmdline = mmtbx.command_line.load_model_and_data(
+    update_f_part1_for=None,
+    args=[ file_base + ext for ext in [".pdb",".mtz",".fa",] ] +
+      ["unmerged_data.file_name=%s.sca" % file_base ],
+    master_phil=master_phil,
+    out=StringIO(),
+    create_log_buffer=True)
+  assert (cmdline.unmerged_i_obs is not None)
 
 def exercise_combine_symmetry () :
   """
