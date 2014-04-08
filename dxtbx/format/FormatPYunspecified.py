@@ -1,9 +1,7 @@
 from __future__ import division
 
 from dxtbx.format.FormatPY import FormatPY
-#from dxtbx.format.FormatStill import FormatStill
 
-#class FormatPYunspecified(FormatStill, FormatPY):
 class FormatPYunspecified(FormatPY):
 
   @staticmethod
