@@ -14,7 +14,7 @@ from mmtbx.validation import rotalyze
 from mmtbx.validation import cbetadev
 from mmtbx.validation import waters
 from libtbx.str_utils import make_header, make_sub_header, format_value
-from libtbx import slots_getstate_setstate
+from libtbx import Auto, slots_getstate_setstate
 from libtbx.utils import null_out
 import libtbx.load_env
 import libtbx.phil
@@ -87,7 +87,9 @@ class molprobity (slots_getstate_setstate) :
       geometry_restraints_manager=None,
       flags=None,
       header_info=None,
+      raw_data=None,
       unmerged_data=None,
+      all_chain_proxies=None,
       keep_hydrogens=True,
       nuclear=False,
       save_probe_unformatted_file=None,
@@ -141,6 +143,7 @@ class molprobity (slots_getstate_setstate) :
       self.model_stats = model_properties.model_statistics(
         pdb_hierarchy=pdb_hierarchy,
         xray_structure=xray_structure,
+        all_chain_proxies=all_chain_proxies,
         ignore_hd=(not nuclear))
     if (geometry_restraints_manager is not None) and (flags.restraints) :
       assert (xray_structure is not None)
@@ -152,6 +155,7 @@ class molprobity (slots_getstate_setstate) :
     if (fmodel is not None) :
       if (flags.rfactors) :
         self.data_stats = experimental.data_statistics(fmodel,
+          raw_data=raw_data,
           n_bins=n_bins_data)
       if (flags.waters) :
         self.waters = waters.waters(
@@ -193,6 +197,9 @@ class molprobity (slots_getstate_setstate) :
     """
     Comprehensive output with individual outlier lists, plus summary.
     """
+    if (self.model_stats is not None) :
+      make_header("Model properties", out=out)
+      self.model_stats.show(prefix="  ", out=out)
     if (self.data_stats is not None) :
       make_header("Experimental data", out=out)
       self.data_stats.show(out=out, prefix="  ")
@@ -322,10 +329,20 @@ class molprobity (slots_getstate_setstate) :
   def unit_cell (self) :
     return getattr(self.crystal_symmetry, "unit_cell", lambda: None)()
 
+  def atoms_to_observations_ratio (self, assume_riding_hydrogens=True) :
+    n_atoms = self.model_stats.n_atoms
+    if (assume_riding_hydrogens) :
+      n_atoms -= self.model_stats.n_hydrogens
+    n_refl = self.data_stats.n_refl
+    assert (n_refl > 0)
+    return n_atoms / n_refl
+
   def as_mmcif_records (self) : # TODO
     raise NotImplementedError()
 
-  def as_table1 (self, label=None) :
+  def as_table1 (self,
+      label=None,
+      recalculate_r_factors=Auto) :
     """
     Extract information for display in the traditional 'Table 1' of
     crystallographic statistics in structure articles.
@@ -336,17 +353,27 @@ class molprobity (slots_getstate_setstate) :
     if (data_stats is None) :
       data_stats = dummy_validation()
     merging_stats = dummy_validation()
-    n_refl_uniq = data_stats.n_refl_merged
+    n_refl_uniq = data_stats.n_refl
+    n_refl_refine = data_stats.n_refl_refine
     completeness = data_stats.completeness
     if (self.merging is not None) :
       merging_stats = unmerged_data.overall
       n_refl_uniq = merging_stats.n_uniq
+    r_work = self.r_work()
+    r_free = self.r_free()
+    if (header_info is not None) :
+      if (not recalculate_r_factors or
+          (not header_info.is_phenix_refinement() and
+           (recalculate_r_factors is Auto))) :
+        r_work = header_info.r_work
+        r_free = header_info.r_free
+        n_refl_refine = data_stats.n_refl
     return iotbx.table_one.column(
       label=label,
-      wavelength=None, # TODO
       space_group=self.space_group(),
       unit_cell=self.unit_cell(),
       # data properties
+      wavelength=data_stats.wavelength,
       d_max_min=self.d_max_min(),
       n_refl_all=merging_stats.n_obs,
       n_refl=n_refl_uniq,
@@ -359,19 +386,27 @@ class molprobity (slots_getstate_setstate) :
       cc_one_half=merging_stats.cc_one_half,
       cc_star=merging_stats.cc_star,
       # refinement
-      n_refl_refine=None, # TODO
-      r_work=self.r_work(),
-      r_free=self.r_free(),
+      n_refl_refine=n_refl_refine,
+      r_work=r_work,
+      r_free=r_free,
       cc_work=merging_stats.cc_work,
       cc_free=merging_stats.cc_free,
       # model properties
+      n_atoms=self.model_stats.all.n_non_hd,
+      n_macro_atoms=getattr(self.model_stats.macromolecules, "n_non_hd"),
+      n_ligand_atoms=getattr(self.model_stats.ligands, "n_non_hd"),
+      n_waterss=getattr(self.model_stats.water, "n_non_hd"),
+      n_residues=self.model_stats.n_protein,
       bond_rmsd=self.rms_bonds(),
       angle_rmsd=self.rms_angles(),
       rama_favored=self.rama_favored(),
       rama_allowed=self.rama_allowed(),
       rama_outliers=self.rama_outliers(),
       clashscore=self.clashscore(),
-      # TODO B-factors, etc.
+      adp_mean=self.model_stats.all.b_mean,
+      adp_mean_mm=getattr(self.model_stats.macromolecules, "b_mean"),
+      adp_mean_lig=getattr(self.model_stats.ligands, "b_mean"),
+      adp_mean_wat=getattr(self.model_stats.water, "b_mean"),
       )
 
   def as_multi_criterion_view (self) :
@@ -495,6 +530,10 @@ class pdb_header_info (slots_getstate_setstate) :
           self.rms_bonds = float(fields[-4])
           self.rms_angles = float(fields[-1])
           break
+
+  def is_phenix_refinement (self) :
+    return (self.refinement_program is not None and
+            "phenix" in self.refinement_program.lower())
 
   def show (self, out=sys.stdout, prefix="", include_r_factors=True,
       include_rms_geom=True) :

@@ -1,4 +1,6 @@
 
+# TODO unit testing
+
 """
 Analysis of model properties, independent of data.
 """
@@ -19,18 +21,28 @@ class model_statistics (slots_getstate_setstate) :
     "water",
     "n_models",
     "n_atoms",
+    "n_hydrogens",
     "n_waters",
     "n_polymer",
+    "n_protein",
+    "n_nuc",
     "occupancy_outliers",
+    "ignore_hd",
   ]
-  def __init__ (self, pdb_hierarchy, xray_structure, ignore_hd=True) :
+  def __init__ (self, pdb_hierarchy,
+      xray_structure,
+      all_chain_proxies=None,
+      ignore_hd=True) :
+    self.ignore_hd = ignore_hd
     self.n_atoms = xray_structure.scatterers().size()
+    self.n_hydrogens = xray_structure.hd_selection().count(True)
     self.n_models = len(pdb_hierarchy.models())
     first_model = pdb_hierarchy.models()[0]
     counts = pdb_hierarchy.overall_counts()
     resnames = counts.resnames
     self.n_waters = resnames.get("HOH", 0) + resnames.get("WAT", 0)
     self.n_polymer = 0
+    self.n_nuc = self.n_protein = 0
     self.occupancy_outliers = []
     # FIXME not totally confident that this will always work...
     for chain in first_model.chains() :
@@ -42,8 +54,14 @@ class model_statistics (slots_getstate_setstate) :
         chain_type = "nucleic acid"
       else :
         chain_type = "protein"
+      residue_groups = chain.residue_groups()
       if (is_protein) or (is_na) :
-        self.n_polymer += len(chain.residue_groups())
+        n_res = len(residue_groups)
+        self.n_polymer += n_res
+        if (is_protein) :
+          self.n_protein += n_res
+        else :
+          self.n_nuc += n_res
       for residue_group in chain.residue_groups() :
         atom_groups = residue_group.atom_groups()
         if ((len(atom_groups) > 1) and (len(atom_groups[0].atoms()) != 1) and
@@ -69,6 +87,39 @@ class model_statistics (slots_getstate_setstate) :
     self.macromolecules = None
     self.ligands = None
     self.water = None
+    if (all_chain_proxies is not None) :
+      macro_sel = all_chain_proxies.selection("protein or rna or dna")
+      water_sel = all_chain_proxies.selection("water")
+      ligand_sel = all_chain_proxies.selection(
+        "not (protein or dna or rna or water)")
+      if (macro_sel.count(True) > 0) :
+        self.macromolecules = xray_structure_statistics(
+          pdb_hierarchy=pdb_hierarchy.select(macro_sel),
+          xray_structure=xray_structure.select(macro_sel),
+          ignore_hd=ignore_hd)
+      if (water_sel.count(True) > 0) :
+        self.water = xray_structure_statistics(
+          pdb_hierarchy=pdb_hierarchy.select(water_sel),
+          xray_structure=xray_structure.select(water_sel),
+          ignore_hd=ignore_hd)
+      if (ligand_sel.count(True) > 0) :
+        self.ligands = xray_structure_statistics(
+          pdb_hierarchy=pdb_hierarchy.select(ligand_sel),
+          xray_structure=xray_structure.select(ligand_sel),
+          ignore_hd=ignore_hd)
+
+  def show (self, out=sys.stdout, prefix="") :
+    print >> out, prefix+"Overall:"
+    self.all.show_summary(out=out, prefix=prefix+"  ")
+    self.all.show_bad_occupancy(out=out, prefix=prefix+"  ")
+    if ([self.ligands, self.water].count(None) != 0) :
+      for label, props in zip(["Macromolecules", "Ligands", "Waters"],
+          [self.macromolecules, self.ligands, self.water]) :
+        if (props is not None) :
+          print >> out, prefix+"%s:" % label
+          props.show_summary(out=out, prefix=prefix+"  ")
+    if (self.ignore_hd) and (self.n_hydrogens > 0) :
+      print >> out, prefix+"(Hydrogen atoms not included in overall counts.)"
 
 class residue_occupancy (residue) :
   __slots__ = residue.__slots__ + ["total_occ", "chain_type"]
@@ -95,7 +146,10 @@ class xray_structure_statistics (validation) :
   Occupancy and B-factor statistics.
   """
   __slots__ = validation.__slots__ + [
+    "n_all",
     "n_atoms",
+    "n_non_hd",
+    "n_hd",
     "n_aniso",
     "n_aniso_h",
     "n_zero_occ",
@@ -121,12 +175,17 @@ class xray_structure_statistics (validation) :
     self.results = None
     pdb_atoms = pdb_hierarchy.atoms()
     hd_selection = xrs.hd_selection()
+    subtract_hd = True
     if (ignore_hd) and (hd_selection.count(True) > 0) :
       xrs = xrs.select(~hd_selection)
       pdb_atoms = pdb_atoms.select(~hd_selection)
+      subtract_hd = False
     u_isos = xrs.extract_u_iso_or_u_equiv()
     occ = xrs.scatterers().extract_occupancies()
+    self.n_all = hd_selection.size()
     self.n_atoms = xrs.scatterers().size()
+    self.n_hd = hd_selection.count(True)
+    self.n_non_hd = self.n_atoms - self.n_hd
     self.n_aniso = xrs.use_u_aniso().count(True)
     self.n_aniso_h = (xray_structure.use_u_aniso() & hd_selection).count(True)
     self.n_npd = xrs.is_positive_definite_u().count(False)
@@ -175,7 +234,7 @@ class xray_structure_statistics (validation) :
             self.zero_occ.append(outlier)
 
   def show_summary (self, out=sys.stdout, prefix="") :
-    print >> out, prefix + "Number of atoms = %d  anisotropic = %d" % \
+    print >> out, prefix + "Number of atoms = %d  (anisotropic = %d)" % \
       (self.n_atoms, self.n_aniso)
     print >> out, prefix + "B_iso: mean = %5.1f  max = %5.1f  min = %5.1f" % \
       (self.b_mean, self.b_max, self.b_min)
@@ -194,8 +253,12 @@ class xray_structure_statistics (validation) :
         "%d total B-factor or occupancy problems detected" % \
         self.n_outliers
 
-  def show (self, out=sys.stdout, prefix="") :
+  def show_bad_occupancy (self, out=sys.stdout, prefix="") :
     if (len(self.zero_occ) > 0) :
       print >> out, prefix + "Atoms or residues with zero occupancy:"
       for outlier in self.zero_occ :
         print >> out, prefix + str(outlier)
+
+  def show_bfactors (self, out=sys.stdout, prefix="") :
+    print >> out, prefix + "B_iso: mean = %5.1f  max = %5.1f  min = %5.1f" % \
+      (self.b_mean, self.b_max, self.b_min)

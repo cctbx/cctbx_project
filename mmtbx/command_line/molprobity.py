@@ -15,6 +15,7 @@ def get_master_phil () :
     enable_automatic_twin_detection=True,
     enable_pdb_interpretation_params=True,
     enable_stop_for_unknowns=False,
+    enable_unmerged_data=True,
     phil_string="""
 molprobity {
   outliers_only = True
@@ -105,12 +106,16 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
   probe_file = None
   if (params.output.probe_dots) or (params.output.kinemage) :
     probe_file = params.output.prefix + "_probe.txt"
+  raw_data = cmdline.raw_data
   result = mmtbx.validation.molprobity.molprobity(
     pdb_hierarchy=cmdline.pdb_hierarchy,
     xray_structure=cmdline.xray_structure,
     fmodel=fmodel,
     crystal_symmetry=cmdline.crystal_symmetry,
     geometry_restraints_manager=cmdline.geometry,
+    raw_data=cmdline.raw_data,
+    unmerged_data=cmdline.unmerged_i_obs,
+    all_chain_proxies=cmdline.processed_pdb_file.all_chain_proxies,
     header_info=header_info,
     keep_hydrogens=params.molprobity.keep_hydrogens,
     nuclear=params.molprobity.nuclear,

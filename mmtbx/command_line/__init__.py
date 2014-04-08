@@ -316,6 +316,8 @@ class load_model_and_data (object) :
             data_substitute=(0,0,0,0))
           target_name = "mlhl"
     # PDB INPUT
+    self.unknown_residues_flag = False
+    self.unknown_residues_error_message = False
     if process_pdb_file :
       pdb_interp_params = getattr(params, "pdb_interpretation", None)
       if (pdb_interp_params is None) :
@@ -339,6 +341,13 @@ class load_model_and_data (object) :
           stop_if_duplicate_labels = False,
           allow_missing_symmetry=\
             (self.crystal_symmetry is None) and (not require_data))
+      error_msg = self.processed_pdb_file.all_chain_proxies.\
+        fatal_problems_message(
+          ignore_unknown_scattering_types=False,
+          ignore_unknown_nonbonded_energy_types=False)
+      if (error_msg is not None) :
+        self.unknown_residues_flag = True
+        self.unknown_residues_error_message = error_msg
       self.geometry = self.processed_pdb_file.geometry_restraints_manager(
         show_energies=False)
       assert (self.geometry is not None)

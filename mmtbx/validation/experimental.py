@@ -35,8 +35,9 @@ class data_statistics (slots_getstate_setstate) :
     "d_max",
     "d_min",
     "info",
+    "wavelength",
     "n_refl",
-    "n_refl_merged",
+    "n_refl_refine",
     "r_work",
     "r_free",
     "twin_law",
@@ -47,19 +48,32 @@ class data_statistics (slots_getstate_setstate) :
     "d_min_outer",
     "completeness_outer",
     "n_refl_outer",
+    "n_refl_refine_outer",
+    "anomalous_flag",
   ]
-  def __init__ (self, fmodel, n_bins=10) :
+  def __init__ (self, fmodel, raw_data=None, n_bins=10,
+      count_anomalous_pairs_separately=False) :
     # FIXME n_bins should be automatic by default
     f_obs = fmodel.f_obs().deep_copy()
+    self.anomalous_flag = f_obs.anomalous_flag()
     f_obs.setup_binner(n_bins=n_bins)
     self.d_max = f_obs.d_max_min()[0]
     self.d_min = f_obs.d_min()
     self.info = fmodel.info(n_bins=n_bins)
-    self.n_refl = f_obs.indices().size()
-    if (f_obs.anomalous_flag()) :
-      self.n_refl_merged = f_obs.average_bijvoet_mates().indices().size()
+    self.wavelength = None
+    if (raw_data is not None) :
+      self.wavelength = getattr(raw_data.info(), "wavelength", None)
+      raw_data = raw_data.map_to_asu().eliminate_sys_absent()
+      raw_data = raw_data.resolution_filter(d_max=self.d_max, d_min=self.d_min)
+      if (raw_data.anomalous_flag() and not self.anomalous_flag) :
+        raw_data = raw_data.average_bijvoet_mates()
     else :
-      self.n_refl_merged = self.n_refl
+      raw_data = f_obs
+    if (not count_anomalous_pairs_separately) and (self.anomalous_flag) :
+      f_obs = f_obs.average_bijvoet_mates()
+      raw_data = raw_data.average_bijvoet_mates()
+    self.n_refl = raw_data.indices().size()
+    self.n_refl_refine = f_obs.indices().size()
     self.r_free = self.info.r_free
     self.r_work = self.info.r_work
     self.twin_law = fmodel.twin_law
@@ -72,8 +86,10 @@ class data_statistics (slots_getstate_setstate) :
       d_min=self.d_min_outer)
     self.r_work_outer = fmodel.r_work(d_max=self.d_max_outer,
       d_min=self.d_min_outer)
-    self.completeness_outer = f_obs.completeness(d_max=self.d_max_outer)
-    self.n_refl_outer = f_obs.resolution_filter(d_max=self.d_max_outer,
+    self.completeness_outer = raw_data.completeness(d_max=self.d_max_outer)
+    self.n_refl_outer = raw_data.resolution_filter(d_max=self.d_max_outer,
+      d_min=self.d_min_outer).indices().size()
+    self.n_refl_refine_outer = f_obs.resolution_filter(d_max=self.d_max_outer,
       d_min=self.d_min_outer).indices().size()
 
   def show_summary (self, out=sys.stdout, prefix="") :
@@ -82,15 +98,20 @@ class data_statistics (slots_getstate_setstate) :
     print >> out, "%sR-free                = %8.4f" % (prefix, self.r_free)
 
   def show (self, out=sys.stdout, prefix="") :
-    print >> out, "%sResolution range      = %7.3f - %.3f (%.3f - %.3f)" % \
-      (prefix, self.d_max, self.d_min, self.d_max_outer, self.d_min_outer)
-    print >> out, "%sNumber of reflections = %8d (%d)" % (prefix, self.n_refl,
-      self.n_refl_outer)
-    print >> out, "%sCompleteness          = %6.2f%% (%.2f%%)" % (prefix,
+    if (not self.wavelength in [None, 0]) :
+      print >> out, "%sWavelength                 = %.4g" % (prefix,
+        self.wavelength)
+    print >> out, "%sResolution range           = %7.3f - %.3f (%.3f - %.3f)" \
+      % (prefix, self.d_max, self.d_min, self.d_max_outer, self.d_min_outer)
+    print >> out, "%sNumber of reflections      = %8d (%d)" % (prefix,
+      self.n_refl, self.n_refl_outer)
+    print >> out, "%s   after outlier rejection = %8d (%d)" % (prefix,
+      self.n_refl_refine, self.n_refl_refine_outer)
+    print >> out, "%sCompleteness               = %6.2f%% (%.2f%%)" % (prefix,
       self.info.completeness_in_range*100, self.completeness_outer*100)
-    print >> out, "%sR-work                = %8.4f (%.4f)" % (prefix,
+    print >> out, "%sR-work                     = %8.4f (%.4f)" % (prefix,
       self.r_work, self.r_work_outer)
-    print >> out, "%sR-free                = %8.4f (%s)" % (prefix,
+    print >> out, "%sR-free                     = %8.4f (%s)" % (prefix,
       self.r_free, format_value("%.4f", self.r_free_outer))
     self.info.show_rwork_rfree_number_completeness(prefix=prefix, out=out,
       title="By resolution bin:")
