@@ -145,7 +145,11 @@ class LogViewer (wx.TextCtrl) :
 
   def WriteText (self, text) :
     if isinstance(text, str) and UNICODE_BUILD :
-      text = text.decode("utf8")
+      try :
+        text = text.decode("utf8")
+      except UnicodeDecodeError, e :
+        print "warning: %s (string = '%s')" % (str(e), text)
+        return
     # bug in version 2.9 necessitates setting font to something else before
     # overriding it
     if (wx.Platform == '__WXMSW__') and (wx.VERSION >= (2,9)):
@@ -155,7 +159,11 @@ class LogViewer (wx.TextCtrl) :
 
   def AppendText (self, text) :
     if isinstance(text, str) and UNICODE_BUILD :
-      text = text.decode("utf8")
+      try :
+        text = text.decode("utf8")
+      except UnicodeDecodeError, e :
+        print "warning: %s (string = '%s')" % (str(e), text)
+        return
     wx.TextCtrl.AppendText(self, text)
 
 if (__name__ == "__main__") :
