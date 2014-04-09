@@ -25,7 +25,11 @@ def run(argv=None):
     beam_center = detector.get_beam_centre(beam.get_s0())
     scan = img.get_scan()
 
-    msec, sec = math.modf(scan.get_epochs()[0])
+    if scan is None:
+      timestamp = None
+    else:
+      msec, sec = math.modf(scan.get_epochs()[0])
+      timestamp = evt_timestamp((sec,msec))
 
     data = dpack(data=img.get_raw_data(),
                  distance=detector.get_distance(),
@@ -35,15 +39,16 @@ def run(argv=None):
                  beam_center_y=beam_center[1],
                  ccd_image_saturation=detector.get_trusted_range()[1],
                  saturated_value=detector.get_trusted_range()[1],
-                 timestamp=evt_timestamp((sec,msec))
+                 timestamp=timestamp
                  )
 
-    osc_start, osc_range = scan.get_oscillation()
-    if osc_start != osc_range:
-      data['OSC_START'] = osc_start
-      data['OSC_RANGE'] = osc_range
+    if scan is not None:
+      osc_start, osc_range = scan.get_oscillation()
+      if osc_start != osc_range:
+        data['OSC_START'] = osc_start
+        data['OSC_RANGE'] = osc_range
 
-      data['TIME'] = scan.get_exposure_times()[0]
+        data['TIME'] = scan.get_exposure_times()[0]
 
     easy_pickle.dump(destpath, data)
 
