@@ -1,5 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.sort_hetatms
 
+# TODO sort waters by distance from macromolecule
 # FIXME special treatment required for carbohydrates?
 
 from __future__ import division
@@ -74,8 +75,11 @@ space_group = None
   .type = space_group
 ignore_symmetry = False
   .type = bool
+  .help = Don't take symmetry-related chains into account when determining \
+    the nearest macromolecule.
 preserve_remarks = False
   .type = bool
+  .help = Propagate all REMARK records to the output file.
 verbose = False
   .type = bool
 remove_hetatm_ter_records = True
