@@ -169,13 +169,13 @@ class torsion_ncs(object):
             pdb_hierarchy=pdb_hierarchy,
             selection=sel_atoms_i)
           if len(sel_seq) == 0:
-            print >> log
-            print >> log, "*** WARNING ***"
-            print >> log, 'selection = %s' % selection_i
-            print >> log, 'specifies no protein or nucleic acid torsions'
-            print >> log, 'REMOVED RESTRAINT GROUP!!!'
-            print >> log, "***************"
-            print >> log
+            print >> self.log
+            print >> self.log, "*** WARNING ***"
+            print >> self.log, 'selection = %s' % selection_i
+            print >> self.log, 'specifies no protein or nucleic acid torsions'
+            print >> self.log, 'REMOVED RESTRAINT GROUP!!!'
+            print >> self.log, "***************"
+            print >> self.log
             restraint_group_check[i] = False
             break
           sequences[selection_i] = sel_seq
