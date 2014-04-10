@@ -103,6 +103,7 @@ class FormatSMVADSC(FormatSMV):
 
     # PST, PDT timezones not recognised by default...
 
+    epoch = 0
     try:
       date_str = self._header_dictionary['DATE']
       date_str = date_str.replace('PST', '').replace('PDT', '')
