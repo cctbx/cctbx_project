@@ -6,6 +6,12 @@ import scitbx.graph.tardy_tree
 import scitbx.lbfgs
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
+from libtbx import adopt_init_args
+import sys
+import boost.python
+cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+from cctbx import miller
+import mmtbx.utils
 
 def real_space_rigid_body_gradients_simple(
       unit_cell,
@@ -133,105 +139,182 @@ class refine(object):
     del self.__d_e_pot_d_sites
     return result
 
-# Search and refine section
-def target(sites_frac, map_data):
-  return maptbx.real_space_target_simple(
-    density_map = map_data,
-    sites_frac  = sites_frac)
+class refine_mz(object):
+  """
+  Efficient real-space rigid-body refinement. Analog of MZ rigid-body refinement
+  in reciprocal space. Whole content of pdb_hierarchy is treated as one rigid
+  group.
+  """
 
-def search(rr,ra, map_data, fm, om, cm, t_best, sites_cart):
-  sites_frac_best = None
-  for x in rr:
-    for y in rr:
-      for z in rr:
-        sites_frac_sh = apply_rigid_body_shift(
-          sites_cart=sites_cart, cm=cm, fm=fm, x=x,y=y,z=z)
-        t_ = target(sites_frac=sites_frac_sh, map_data=map_data)
-        if(t_>t_best):
-          t_best = t_
-          sites_frac_best = sites_frac_sh.deep_copy()
-  for the in ra:
-    for psi in ra:
-      for phi in ra:
-        sites_frac_sh = apply_rigid_body_shift(
-          sites_cart=sites_cart, cm=cm, fm=fm, the=the, psi=psi, phi=phi)
-        t_ = target(sites_frac=sites_frac_sh, map_data=map_data)
-        if(t_>t_best):
-          t_best = t_
-          sites_frac_best = sites_frac_sh.deep_copy()
-  if(sites_frac_best is not None):
-    return om*sites_frac_best
-  else:
-    return sites_cart
+  def __init__(
+        self,
+        map_data,
+        pdb_hierarchy,  # XXX redundant inputs
+        xray_structure, # XXX redundant inputs
+        d_min,
+        use_mask=False,
+        masking_atom_radius=5,
+        max_iterations=50,
+        macro_cycles=1,
+        prefix="",
+        log=None):
+    adopt_init_args(self, locals())
+    self.cc_best = None
+    self.sites_cart_best = None
+    if(self.log is None): self.log = sys.stdout
+    self.sites_cart_start = self.xray_structure.sites_cart()
+    assert approx_equal(self.pdb_hierarchy.atoms().extract_xyz(),
+      self.sites_cart_start, 1.e-3)
+    self.crystal_gridding = maptbx.crystal_gridding(
+      unit_cell             = self.xray_structure.unit_cell(),
+      space_group_info      = self.xray_structure.space_group_info(),
+      pre_determined_n_real = self.map_data.all())
+    self.complete_set = miller.build_set(
+      crystal_symmetry = self.xray_structure.crystal_symmetry(),
+      anomalous_flag   = False,
+      d_min            = self.d_min)
+    self._show_and_track()
+    self.d_mins = self._get_mz_resolution_limits()
+    for macro_cycle in xrange(self.macro_cycles):
+      self._refine()
+    self.xray_structure.set_sites_cart(self.sites_cart_best)
+    self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
 
-def apply_rigid_body_shift(sites_cart, cm, fm, x=None,y=None,z=None,
-      the=None, psi=None, phi=None):
-  result = None
-  rot_mat = None
-  if([the, psi, phi].count(None)==0):
-    rot_mat = scitbx.rigid_body.euler(
-                    phi        = phi,
-                    psi        = psi,
-                    the        = the,
-                    convention = "zyz").rot_mat().as_mat3()
-  transl = None
-  if([x,y,z].count(None)==0): transl = (x,y,z)
-  if([rot_mat, transl].count(None)==0):
-    result = rot_mat * (sites_cart-cm) + transl + cm
-  elif(rot_mat is not None):
-    assert transl is None
-    result = rot_mat * (sites_cart-cm) + cm
-  elif(transl is not None):
-    assert rot_mat is None
-    result = sites_cart + transl
-  else: assert 0
-  return fm*result
+  def _show_and_track(self):
+    cc = self._get_cc()
+    s2 = self.xray_structure.sites_cart()
+    if(self.cc_best is None or cc>self.cc_best):
+      self.cc_best = cc
+      self.sites_cart_best = s2.deep_copy()
+    if(self.log):
+      fmt="%sCC=%6.4f (best to keep CC=%6.4f), moved from start (max/mean)=%s"
+      s1 = self.sites_cart_start
+      d = "%6.3f %6.3f"%flex.sqrt((s1-s2).dot()).min_max_mean().as_tuple()[1:]
+      print >> self.log, fmt%(self.prefix, cc, self.cc_best, d)
 
+  def _refine(self):
+    self.lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+      max_iterations = self.max_iterations)
+    mask_data = self._get_mask()
+    for d_min in self.d_mins:
+      md = self._get_map_at_d_min(d_min=d_min)
+      if(mask_data is not None):
+        md = md*mask_data.as_double()
+      minimized = refine(
+        residue                     = self.pdb_hierarchy,
+        density_map                 = md,
+        geometry_restraints_manager = None,
+        real_space_target_weight    = 1,
+        real_space_gradients_delta  = d_min*0.25,
+        lbfgs_termination_params    = self.lbfgs_termination_params,
+        unit_cell                   = self.xray_structure.unit_cell())
+      self.xray_structure.set_sites_cart(minimized.sites_cart_residue)
+      self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+      self._show_and_track()
 
-class search_and_refine(object):
+  def _get_mz_resolution_limits(self):
+    # lowest resolution: first zone
+    n_ref_lowest = 0
+    d_spacing = self.complete_set.d_spacings().sort().data()
+    if(d_spacing.size()<500): return ( self.complete_set.d_min(), )
+    d_0 = min(d_spacing[500], 15)
+    if(d_0>8.0): d_1 = 8.0
+    else:
+      return d_0, self.d_min
+    # second zone
+    if(d_1>4.0 and self.d_min<4.0):
+      d_2 = 4.0
+    else:
+      d_2 = max(self.d_min, 4.0)
+    return d_0, d_1, d_2
 
-  def __init__(self, map_data, pdb_hierarchy, xray_structure, max_iterations=50):
+  def _get_mask(self):
+    mask_data = None
+    if(self.use_mask):
+      xrs_p1 = self.xray_structure.expand_to_p1(sites_mod_positive=True)
+      radii = flex.double(xrs_p1.scatterers().size(), self.masking_atom_radius)
+      mask_data = cctbx_maptbx_ext.mask(
+        sites_frac = xrs_p1.sites_frac(),
+        unit_cell  = xrs_p1.unit_cell(),
+        n_real     = self.map_data.all(),
+        radii      = radii)
+      s = mask_data>0.9                         # XXX make it option of mask
+      mask_data = mask_data.set_selected( s, 0) # XXX make it option of mask
+      mask_data = mask_data.set_selected(~s, 1) # XXX make it option of mask
+    return mask_data
+
+  def _get_map(self):
+    f_calc = self.xray_structure.structure_factors(d_min=self.d_min).f_calc()
+    fft_map = miller.fft_map(
+      crystal_gridding     = self.crystal_gridding,
+      fourier_coefficients = f_calc)
+    fft_map.apply_sigma_scaling() # XXX not really needed
+    return fft_map.real_map_unpadded()
+
+  def _get_cc(self):
+    return flex.linear_correlation(
+      x=self.map_data.as_1d(),
+      y=self._get_map().as_1d()).coefficient()
+
+  def _get_map_at_d_min(self, d_min):
+    f_obs_cmpl = self.complete_set.resolution_filter(
+      d_min=d_min).structure_factors_from_map(
+        map            = self.map_data,
+        use_scale      = True,
+        anomalous_flag = False,
+        use_sg         = True)
+    fft_map = miller.fft_map(
+      crystal_gridding     = self.crystal_gridding,
+      fourier_coefficients = f_obs_cmpl)
+    fft_map.apply_sigma_scaling()
+    return fft_map.real_map_unpadded()
+
+class refine_groups(object):
+
+  def __init__(
+        self,
+        map_data,
+        pdb_hierarchy,
+        xray_structure,
+        macro_cycles,
+        d_min):
     self.pdb_hierarchy = pdb_hierarchy
     self.xray_structure = xray_structure
     # sanity check
-    assert approx_equal(self.xray_structure.sites_cart(),
+    sites_cart_result = self.xray_structure.sites_cart().deep_copy()
+    assert approx_equal(sites_cart_result,
       self.pdb_hierarchy.atoms().extract_xyz(), 1.e-4)
     #
-    lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-      max_iterations = max_iterations)
-    sites_cart = self.xray_structure.sites_cart()
-    fm = self.xray_structure.unit_cell().fractionalization_matrix()
-    om = self.xray_structure.unit_cell().orthogonalization_matrix()
+    cs = self.xray_structure.crystal_symmetry()
     for i_chain, chain in enumerate(self.pdb_hierarchy.chains()):
+      print "chain:", chain.id
       selection = chain.atoms().extract_i_seq()
-      s1 = chain.atoms().extract_xyz()
-      # use grid search
-      cm = s1.mean()
-      t_best = -9999
-      sites_cart_best = None
-      #   search 1
-      rr = [i/10. for i in range(-20,21,5)]
-      ra = [i for i in range(-10,11,2)]
-      sites_cart_best = search(rr=rr,ra=ra, map_data=map_data, fm=fm, om=om,
-        cm=cm, t_best=t_best, sites_cart=s1)
-      #   search 2
-      rr = [i/10. for i in range(-5,6)]
-      ra = [i for i in range(-5,6,2)]
-      sites_cart_best = search(rr=rr,ra=ra, map_data=map_data, fm=fm, om=om,
-        cm=cm, t_best=t_best, sites_cart=sites_cart_best)
-      chain.atoms().set_xyz(sites_cart_best)
-      # use tardy
-      for i in [1,]:
-        minimized = refine(
-          residue                     = chain,
-          density_map                 = map_data,
-          geometry_restraints_manager = None,
-          real_space_target_weight    = 1,
-          real_space_gradients_delta  = 1,
-          lbfgs_termination_params    = lbfgs_termination_params,
-          unit_cell                   = self.xray_structure.unit_cell())
-        s2 = minimized.sites_cart_residue
-        sites_cart = sites_cart.set_selected(selection, s2)
-      print i_chain, flex.sqrt((s1-s2).dot()).min_max_mean().as_tuple()
-    self.xray_structure.set_sites_cart(sites_cart)
+      ph = pdb_hierarchy.select(selection)
+      #
+      xrs_tmp = xray_structure.select(selection)
+      box = mmtbx.utils.extract_box_around_model_and_map(
+        xray_structure   = xrs_tmp,
+        map_data         = map_data,
+        box_cushion      = 5,
+        selection_radius = 5,
+        selection_string = "all",
+        selection        = flex.bool(xrs_tmp.scatterers().size(), True),
+        pdb_hierarchy    = ph)
+      #
+      shift_back = box.shift_to_map_boxed_sites_back
+      ph_b       = box.pdb_hierarchy_box
+      md_b       = box.map_box
+      xrs_b      = box.xray_structure_box
+      #
+      minimized = refine_mz(
+        map_data       = md_b,
+        pdb_hierarchy  = ph_b,
+        xray_structure = xrs_b,
+        d_min          = d_min,
+        macro_cycles   = macro_cycles,
+        log            = None,
+        prefix="  ")
+      sites_cart_result = sites_cart_result.set_selected(
+        selection, minimized.sites_cart_best+shift_back)
+    self.xray_structure.set_sites_cart(sites_cart_result)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
