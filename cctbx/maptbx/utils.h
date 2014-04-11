@@ -231,6 +231,33 @@ af::shared<ComplexType> fem_averaging_loop(
   return result;
 }
 
+template <typename FloatType>
+cctbx::cartesian<>
+center_of_mass(
+  af::const_ref<FloatType, af::c_grid<3> > const& map_data,
+  cctbx::uctbx::unit_cell const& unit_cell,
+  FloatType const& cutoff)
+{
+  FloatType result = 0.;
+  FloatType mass_sum = 0.;
+  cctbx::cartesian<> num = cctbx::cartesian<> (0,0,0);
+  af::c_grid<3> a = map_data.accessor();
+  for (int i = 0; i < a[0]; i++) {
+    for (int j = 0; j < a[1]; j++) {
+      for (int k = 0; k < a[2]; k++) {
+        FloatType m = map_data(i,j,k);
+        if(m > cutoff) {
+          cctbx::fractional<> grid_frac = cctbx::fractional<>(
+            i/static_cast<FloatType>(a[0]),
+            j/static_cast<FloatType>(a[1]),
+            k/static_cast<FloatType>(a[2]));
+          num += (unit_cell.orthogonalize(grid_frac)*m);
+          mass_sum += m;
+  }}}}
+  CCTBX_ASSERT(mass_sum != 0);
+  return num/mass_sum;
+}
+
 template <typename DataType>
 af::versa<DataType, af::c_grid<3> > conditional_solvent_region_filter(
   af::const_ref<DataType, af::c_grid_padded<3> > const& bulk_solvent_mask,

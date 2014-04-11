@@ -1092,9 +1092,36 @@ def exercise_intersection():
       thresholds = thresholds,
       average    = average)
 
+def exercise_intersection():
+  sites_frac = flex.vec3_double([
+    (0.02,0.10,0.02),
+    (0.10,0.02,0.40),
+    (0.98,0.10,0.60),
+    (0.10,0.98,0.80),
+    (0.20,0.50,0.98)])
+  from cctbx import xray
+  xray_structure = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(30,30,50,90,90,120),
+      space_group_symbol="P1"),
+    scatterers=flex.xray_scatterer([
+      xray.scatterer(label=str(i), scattering_type="Si", site=site_frac)
+        for i,site_frac in enumerate(sites_frac)]))
+  d_min = 0.7
+  f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
+  fft_map = f_calc.fft_map(resolution_factor=1/6.)
+  fft_map.apply_sigma_scaling()
+  density_map = fft_map.real_map_unpadded()
+  #
+  cm1 = xray_structure.center_of_mass()
+  cm2 = maptbx.center_of_mass(map_data=density_map, unit_cell=xray_structure.unit_cell(),
+    cutoff=20) #large cutoff to make map look like point scattereres
+  assert approx_equal(cm1, cm2, 0.1)
+
 def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
+  exercise_intersection()
   exercise_intersection()
   exercise_boxing()
   exercise_kuwahara_filter()
