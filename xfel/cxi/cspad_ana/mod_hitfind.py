@@ -385,7 +385,8 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     else:
       self.logger.info("Processed %d shots" % self.nshots)
 
-    self.commit_entries()
+    if self.m_db_logging:
+      self.commit_entries()
 
   def queue_entry(self, entry):
     self.buffered_sql_entries.append(entry)
