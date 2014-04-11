@@ -27,6 +27,16 @@ flex.double.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.eight_point_interpolation = eight_point_interpolation
 flex.double.tricubic_interpolation = tricubic_interpolation
 
+def peak_volume_estimate(map_data, sites_cart, crystal_symmetry, cutoff,
+      atom_radius=2.0):
+  sel = grid_indices_around_sites(
+    unit_cell  = crystal_symmetry.unit_cell(),
+    fft_n_real = map_data.focus(),
+    fft_m_real = map_data.all(),
+    sites_cart = sites_cart,
+    site_radii = flex.double([atom_radius]*sites_cart.size()))
+  return (map_data.select(sel)>=cutoff).count(True)/sites_cart.size()
+
 def truncate(map_data, by_sigma_less_than, scale_by, set_value=0):
   """
   Trunate map inplace by standard deviation (sigma) while scale it with

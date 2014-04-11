@@ -165,6 +165,7 @@ cctbx/maptbx/tst_ccp.py -text
 cctbx/maptbx/tst_get_percentile_cutoffs.py -text
 cctbx/maptbx/tst_map_peak_3d_as_2d.py -text
 cctbx/maptbx/tst_mask.py -text
+cctbx/maptbx/tst_peak_volume_estimate.py -text
 cctbx/maptbx/tst_real_space_refinement_simple.py svneol=native#text/x-python
 cctbx/maptbx/tst_real_space_target_and_gradients.py -text
 cctbx/math/SConscript -text
