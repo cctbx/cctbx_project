@@ -301,7 +301,7 @@ class group_minimizer(object):
         print a, f
       diff = flex.abs(self.buffer_ana - self.buffer_fin)
       s = diff < 1.e-3
-      if(s.count(True)*100./s.size()>50):
+      if(s.size()>0 and s.count(True)*100./s.size()>50):
         self.tested += 1
 
   def get_restraints_tg(self):
