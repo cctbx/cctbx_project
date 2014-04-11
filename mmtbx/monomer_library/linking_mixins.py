@@ -511,7 +511,7 @@ class linking_mixins(object):
     def _nonbonded_pair_generator_geometry_restraints_sort(
         nonbonded_proxies,
         max_bonded_cutoff=3.):
-      assert max_bonded_cutoff>3.4
+#      assert max_bonded_cutoff>3.4
       rc = nonbonded_proxies.get_sorted(by_value="delta",
                                               sites_cart=sites_cart,
                                               include_proxy=True,
