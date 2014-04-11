@@ -286,6 +286,15 @@ namespace {
       arg("cutoff"),
       arg("index_span")));
 
+    def("center_of_mass",
+      (cctbx::cartesian<>(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+         uctbx::unit_cell const&,
+         double const&)) center_of_mass, (
+      arg("map_data"),
+      arg("unit_cell"),
+      arg("cutoff")));
+
     def("sharpen",
       (void(*)
         (af::ref<double, af::c_grid<3> >,
