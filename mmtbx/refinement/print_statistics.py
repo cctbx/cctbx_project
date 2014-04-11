@@ -181,13 +181,12 @@ class refinement_monitor(object):
       if(len(self.geom)>0):
         self.bond_start  = self.geom[0].b[2]
         self.angle_start = self.geom[0].a[2]
-    try:
-      self.bond_final  = self.geom[len(geom)-1].b[2]
-      self.angle_final = self.geom[len(geom)-1].a[2]
-    except Exception:
-      if(len(self.geom)>0):
-        self.bond_final  = self.geom[0].b[2]
-        self.angle_final = self.geom[0].a[2]
+    if(len(self.geom)>0):
+      self.bond_final  = self.geom[len(self.geom)-1].b[2]
+      self.angle_final = self.geom[len(self.geom)-1].a[2]
+    elif(len(self.geom)==1):
+      self.bond_final  = self.geom[0].b[2]
+      self.angle_final = self.geom[0].a[2]
     if(rigid_body_shift_accumulator is not None):
       self.rigid_body_shift_accumulator = rigid_body_shift_accumulator
     t2 = time.time()
