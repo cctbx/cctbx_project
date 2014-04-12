@@ -407,7 +407,7 @@ def exercise_00(prefix="exercise_00"):
   "Build poly-ALA alpha helix"
   ph = ssb.make_ss_structure_from_sequence(
     alpha_helix_template, "".join(["A"]*12))
-  ph.write_pdb_file(file_name="%s_result.pdb"%prefix)
+  #ph.write_pdb_file(file_name="%s_result.pdb"%prefix)
   sites_1 = ph.atoms().extract_xyz()
   sites_2 = iotbx.pdb.input(source_info=None,
     lines=alpha_helix_answer).construct_hierarchy().atoms().extract_xyz()
