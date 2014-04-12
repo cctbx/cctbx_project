@@ -28,32 +28,49 @@ class manager (object) :
       from mmtbx.geometry_restraints import reference
       self.reference_manager = reference.manager()
 
-  def get_n_proxies (self) :
-    n_proxies = 0
-    if (self.ramachandran_proxies is not None) :
-      n_proxies += len(self.ramachandran_proxies)
-    if (self.hydrogen_bond_proxies is not None) :
-      if isinstance(self.hydrogen_bond_proxies, list) :
-        n_proxies += len(self.hydrogen_bond_proxies)
-      else :
-        n_proxies += self.hydrogen_bond_proxies.size()
-    if (self.reference_manager is not None):
-      if (self.reference_manager.reference_coordinate_proxies is not None):
-        n_proxies += \
-          len(self.reference_manager.reference_coordinate_proxies)
-      if (self.reference_manager.reference_torsion_proxies is not None):
-        n_proxies += \
-          len(self.reference_manager.reference_torsion_proxies)
-    if (self.den_manager is not None) :
-      n_proxies += len(self.den_manager.den_proxies)
-    if (self.c_beta_dihedral_proxies is not None) :
-      n_proxies += len(self.c_beta_dihedral_proxies)
-    return n_proxies
+  def get_n_proxies(self):
+    return self.get_n_ramachandran_proxies() + \
+           self.get_n_hbonds() + \
+           self.get_n_reference_coordinate_proxies() + \
+           self.get_n_reference_torsion_proxies() +\
+           self.get_n_den_proxies() +\
+           self.get_n_c_beta_dihedral_proxies()
 
-  def get_n_hbonds (self) :
-    if (self.hydrogen_bond_proxies is not None) :
-      return len(self.hydrogen_bond_proxies)
+  def get_n_ramachandran_proxies(self):
+    if self.ramachandran_proxies is not None:
+      return len(self.ramachandran_proxies)
     return 0
+
+  def get_n_hbonds(self):
+    if self.hydrogen_bond_proxies is not None:
+      if isinstance(self.hydrogen_bond_proxies, list):
+        return len(self.hydrogen_bond_proxies)
+      else:
+        return self.hydrogen_bond_proxies.size()
+    return 0
+
+  def get_n_reference_coordinate_proxies(self):
+    if self.reference_manager is not None:
+      if self.reference_manager.reference_coordinate_proxies is not None:
+        return len(self.reference_manager.reference_coordinate_proxies)
+    return 0
+
+  def get_n_reference_torsion_proxies(self):
+    if self.reference_manager is not None:
+      if self.reference_manager.reference_torsion_proxies is not None:
+        return len(self.reference_manager.reference_torsion_proxies)
+    return 0
+
+  def get_n_den_proxies(self):
+    if self.den_manager is not None:
+      return len(self.den_manager.den_proxies)
+    return 0
+
+  def get_n_c_beta_dihedral_proxies(self):
+    if self.c_beta_dihedral_proxies is not None:
+      return len(self.c_beta_dihedral_proxies)
+    return 0
+
 
   def restraints_residual_sum (self,
                                sites_cart,
@@ -168,3 +185,7 @@ class manager (object) :
   def remove_c_beta_torsion_restraints(self, selection):
     self.c_beta_dihedral_proxies = \
       self.c_beta_dihedral_proxies.proxy_remove(selection=selection)
+
+  def remove_ramachandran_restraints(self):
+    self.ramachandran_proxies = None
+    self.ramachandran_lookup = None

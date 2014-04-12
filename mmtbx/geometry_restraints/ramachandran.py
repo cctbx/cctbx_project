@@ -252,6 +252,7 @@ class lookup_manager (object) :
                                gradient_array=None,
                                unit_cell=None) :
     from scitbx.array_family import flex
+    assert proxies is not None
     import boost.python
     ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
     from mmtbx_ramachandran_restraints_ext import rama_target_and_gradients, \
