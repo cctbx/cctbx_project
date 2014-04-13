@@ -1045,7 +1045,8 @@ class interpreter:
         raise Sorry("No coordinate file given.")
       pdb_inp = iotbx.pdb.input(
         source_info = None,
-        lines       = flex.std_string(pdb_combined.raw_records))
+        lines       = flex.std_string(pdb_combined.raw_records),
+        raise_sorry_if_format_error = True)
       self.crystal_symmetry = pdb_inp.xray_structure_simple().\
         cubic_unit_cell_around_centered_scatterers(
         buffer_size = 10).crystal_symmetry()
@@ -1064,7 +1065,8 @@ class interpreter:
     if(len(pdb_combined.unique_file_names) == 0):
       raise Sorry("No coordinate file given.")
     self.pdb_inp = iotbx.pdb.input(source_info = None,
-      lines = flex.std_string(pdb_combined.raw_records))
+      lines = flex.std_string(pdb_combined.raw_records),
+      raise_sorry_if_format_error=True)
     #
     for file_name in self.params.input.monomer_library.file_name :
       if os.path.isfile(file_name) and not file_name in self.cif_file_names :
