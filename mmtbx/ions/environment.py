@@ -9,7 +9,7 @@ from mmtbx import ions
 from iotbx.pdb import common_residue_names_get_class as get_class
 from scitbx.array_family import flex
 from scitbx.math import gaussian_fit_1d_analytical
-from scitbx.matrix import col
+from scitbx.matrix import col, distance_from_plane
 from libtbx.utils import Sorry, xfrange
 from libtbx import slots_getstate_setstate
 from collections import Counter
