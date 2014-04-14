@@ -37,7 +37,7 @@ class StringsValidator (TextCtrlValidator) :
 
 def parse_strings (value) :
   try :
-    if (not "\"" in value) and (not "'" in value) :
+    if (value != "") and (not "\"" in value) and (not "'" in value) :
       value = "\"" + "\" \"".join(value.split()) + "\""
     words = list(tokenizer.word_iterator(value))
     string_list = strings_from_words(words)
