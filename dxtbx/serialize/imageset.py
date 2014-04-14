@@ -28,7 +28,7 @@ def basic_imageset_to_dict(imageset):
       A dictionary of the parameters
 
   '''
-  from collections import OrderedDict
+  from libtbx.containers import OrderedDict
   from dxtbx.serialize import beam, detector
 
   # Return the dictionary representation
@@ -48,7 +48,7 @@ def imagesweep_to_dict(sweep):
       A dictionary of the parameters
 
   '''
-  from collections import OrderedDict
+  from libtbx.containers import OrderedDict
   from dxtbx.serialize import beam, detector, goniometer, scan
 
   # Return the dictionary representation
