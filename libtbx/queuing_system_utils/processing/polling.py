@@ -351,7 +351,7 @@ def lsf_text_evaluate(out, running, completed):
 
 
 PBSPRO_CENTRAL_HEADER_REGEX = util.get_lazy_initialized_regex(
-  pattern = r"Job idD\s+Name\s+User\s+Time Use\s+S\s+Queue\s*\n[ -]*"
+  pattern = r"Job id\s+Name\s+User\s+Time Use\s+S\s+Queue\s*\n[ -]*"
   )
 PBSPRO_CENTRAL_JOBID_REGEX = LSF_CENTRAL_JOBID_REGEX
 
