@@ -150,6 +150,7 @@ cctbx/maptbx/dijkstra.cpp svneol=native#text/plain
 cctbx/maptbx/fft.h -text
 cctbx/maptbx/grid_indices_around_sites.h svneol=native#text/plain
 cctbx/maptbx/histogram.h -text
+cctbx/maptbx/map_accumulator.h -text
 cctbx/maptbx/mask.h -text
 cctbx/maptbx/mem.py -text
 cctbx/maptbx/real_space_gradients_simple.h svneol=native#text/plain

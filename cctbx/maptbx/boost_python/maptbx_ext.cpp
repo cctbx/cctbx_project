@@ -15,6 +15,7 @@
 #include <cctbx/maptbx/mask.h>
 #include <cctbx/maptbx/utils.h>
 #include <cctbx/maptbx/connectivity.h>
+#include <cctbx/maptbx/map_accumulator.h>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -31,12 +32,29 @@ namespace cctbx { namespace maptbx { namespace boost_python {
   void wrap_basic_map();
   void wrap_real_space_refinement();
 
+  template <typename FloatType, typename GridType>
+  struct map_accumulator_wrapper
+  {
+    typedef map_accumulator<FloatType, GridType> w_t;
+    static void wrap() {
+      using namespace boost::python;
+      class_<w_t>("map_accumulator", no_init)
+        .def(init<af::int3 const&>(arg("n_real")))
+        .def("as_median_map", &w_t::as_median_map)
+        .def("add", &w_t::add, (arg("map_data")))
+        .def("at_index", &w_t::at_index, (arg("n")))
+        .def("int_to_float_at_index", &w_t::int_to_float_at_index, (arg("n")))
+      ;
+    }
+  };
+
 namespace {
 
   void init_module()
   {
     using namespace boost::python;
 
+    map_accumulator_wrapper<double, af::c_grid<3> >::wrap();
     wrap_grid_indices_around_sites();
     wrap_grid_tags();
     wrap_gridding();
@@ -86,7 +104,7 @@ namespace {
         .def("distances", &w_t::distances)
       ;
     }
-    //
+
     {
       typedef non_linear_map_modification_to_match_average_cumulative_histogram w_t;
 
@@ -103,7 +121,7 @@ namespace {
         .def("histogram_values", &w_t::histogram_values)
       ;
     }
-    //
+
     {
       typedef histogram w_t;
 
