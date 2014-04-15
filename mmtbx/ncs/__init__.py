@@ -28,6 +28,7 @@ class asu_ncs_converter(object):
     for i_chain, chain in enumerate(pdb_hierarchy.chains()):
       n_atoms_per_chain.append(chain.atoms_size())
     #
+    outlier_found = False
     if(n_atoms_per_chain.all_eq(n_atoms_per_chain[0])):
       for i_chain, chain in enumerate(pdb_hierarchy.chains()):
         if(chain.is_na() or chain.is_protein()):
@@ -54,13 +55,22 @@ class asu_ncs_converter(object):
             self.translation_vectors.append(lsq_fit_obj.t)
             d =  flex.sqrt((sites_cart_chain_0-
               lsq_fit_obj.other_sites_best_fit()).dot()).min_max_mean().as_tuple()
-            assert d[1]<2 # make sure copies are similar
+            if(d[1]>2):
+              outlier_found=True
             # others onto first copy
             lsq_fit_obj = superpose.least_squares_fit(
               reference_sites = chain.atoms().extract_xyz(),
               other_sites     = sites_cart_chain_0)
             self.back_rotation_matrices.append(lsq_fit_obj.r)
             self.back_translation_vectors.append(lsq_fit_obj.t)
+    if(outlier_found): self._init()
+
+  def _init(self):
+    self.rotation_matrices = []
+    self.translation_vectors = []
+    self.back_rotation_matrices = []
+    self.back_translation_vectors = []
+    self.ph_first_chain = None
 
   def is_ncs_present(self):
     return len(self.rotation_matrices)>1
