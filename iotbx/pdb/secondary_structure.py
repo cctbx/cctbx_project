@@ -291,7 +291,10 @@ class pdb_strand (object) :
     adopt_init_args(self, locals())
     assert (sheet_id > 0) and (strand_id > 0)
     assert (sense in [-1, 0, 1]), "Bad sense."
-    assert start_icode == end_icode, "Only equal insertion codes are supported"
+    #assert start_icode == end_icode, "Only equal insertion codes are supported"
+    if start_icode != end_icode:
+      raise Sorry("Different insertion codes for the beginning and the end of \
+beta strand are not supported.")
 
   def as_atom_selections(self):
     return "chain '%s' and resseq %d:%d and icode '%s'" % (
@@ -466,7 +469,7 @@ def parse_sheet_records (records) :
     try:
       sense = string.atoi(line[38:40])
     except ValueError, e:
-      raise RuntimeError("Bad HELIX record:\n%s\nCannot convert sense." % line)
+      raise RuntimeError("Bad SHEET record:\n%s\nCannot convert sense." % line)
     current_strand = pdb_strand(
       sheet_id=sheet_id,
       strand_id=string.atoi(line[7:10]),
