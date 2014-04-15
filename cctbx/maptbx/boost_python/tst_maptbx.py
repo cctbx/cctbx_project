@@ -12,6 +12,7 @@ import itertools
 import time
 import sys
 import random
+import math
 
 def flex_types():
   return (flex.float, flex.double)
@@ -1118,10 +1119,67 @@ def exercise_intersection():
     cutoff=20) #large cutoff to make map look like point scattereres
   assert approx_equal(cm1, cm2, 0.1)
 
+def exercise_map_accumulator(n1=2, n2=2, n3=2):
+  ### Python prototype
+  def py_exercise():
+    def smear(x, a, b):
+      return math.exp(-(x-a)**2 / (2*b**2))
+    def to_int(f):
+      p0 = 0
+      if(f<=p0): return 0
+      return min(int(256*(f-p0)/(1.-p0))+1, 255)
+    t = flex.double([0, 0.1,0.11, 0.44, 0.51,0.5101,0.515,0.534,0.54,0.55,0.577,
+      0.78,0.789, 0.77,0.79,0.8, 1])
+    As = flex.int()
+    for i, t_ in enumerate(t):
+      a = to_int(t_)
+      As.append(a)
+      #print "%2d: %8.4f %3d"%(i, t_, a)
+    #print list(As)
+    #
+    R  = flex.double([0,]*256)
+    Rx = flex.int(xrange(256))
+    assert R.size()==Rx.size()
+    #
+    hit_l = False
+    hit_r = False
+    b=1
+    for a in As:
+      for i in range(-5,6):
+        x = a+i
+        if(x>=0 and x<=255):
+          R[x] += smear(x=x, a=a, b=b)
+    #
+    #for i, rx in enumerate(R):
+    #  print "%4d %10.7f"%(i, rx)
+    #
+    return R
+  ###
+  values = flex.double([
+    0, 0.1,0.11, 0.44, 0.51,0.5101,0.515,0.534,0.54,0.55,0.577, 0.78,0.789,
+    0.77,0.79,0.8, 1])
+  ma = maptbx.map_accumulator(n_real = (n1,n2,n3))
+  for value in values:
+    print value
+    m = [value for i in xrange(n1*n2*n3)]
+    m = flex.double(m)
+    m.resize(flex.grid((n1,n2,n3)))
+    ma.add(map_data=m)
+  #ma.show()
+  print
+  expected_result = [0, 26, 29, 113, 131, 131, 132, 137, 139, 141, 148, 200,
+    202, 198, 203, 205, 255]
+  assert approx_equal(list(ma.at_index(n=(0,0,0))), expected_result)
+  assert approx_equal(list(ma.at_index(n=(1,1,1))), expected_result)
+  #
+  assert  approx_equal(list(ma.int_to_float_at_index(n=(0,0,0))), py_exercise())
+  #
+  ma.as_median_map()
+
 def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
-  exercise_intersection()
+  exercise_map_accumulator()
   exercise_intersection()
   exercise_boxing()
   exercise_kuwahara_filter()
