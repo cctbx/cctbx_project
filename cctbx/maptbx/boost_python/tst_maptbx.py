@@ -1093,6 +1093,18 @@ def exercise_intersection():
       thresholds = thresholds,
       average    = average)
 
+def exercise_binarize():
+  thresholds = flex.double([0,0.1,0.2,0.3,0.4,0.5, 0.6,0.7,0.8,0.8, 1.0])
+  def get_map():
+    av = [random.random() for i in xrange(10*20*30)]
+    m = flex.double(av)
+    m.resize(flex.grid((10,20,30)))
+    return m
+  m = get_map()
+  maptbx.binarize(map_data=m, threshold=0.5, substitute_value_below=0,
+    substitute_value_above=1)
+  assert m.as_1d().min_max_mean().as_tuple()[:2] == (0,1)
+
 def exercise_intersection():
   sites_frac = flex.vec3_double([
     (0.02,0.10,0.02),
@@ -1180,6 +1192,7 @@ def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
   exercise_map_accumulator()
+  exercise_binarize()
   exercise_intersection()
   exercise_boxing()
   exercise_kuwahara_filter()

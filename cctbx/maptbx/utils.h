@@ -415,6 +415,23 @@ void truncate_between_min_max(
 }
 
 template <typename DataType>
+void binarize(
+       af::ref<DataType, af::c_grid<3> > map_data,
+       DataType const& threshold,
+       DataType const& substitute_value_below,
+       DataType const& substitute_value_above)
+{
+  af::tiny<int, 3> a = map_data.accessor();
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+         DataType* md = &map_data(i,j,k);
+         if(*md<threshold) *md = substitute_value_below;
+         else              *md = substitute_value_above;
+  }}}
+}
+
+template <typename DataType>
 void truncate(
        af::ref<DataType, af::c_grid<3> > map_data,
        DataType const& standard_deviation,

@@ -500,6 +500,17 @@ namespace {
       arg("cutoffp"),
       arg("cutoffm")));
 
+    def("binarize",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         double const&,
+         double const&,
+         double const&)) binarize, (
+      arg("map_data"),
+      arg("threshold"),
+      arg("substitute_value_below"),
+      arg("substitute_value_above")));
+
     def("truncate_between_min_max",
       (void(*)
         (af::ref<double, af::c_grid<3> >,
