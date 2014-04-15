@@ -282,6 +282,14 @@ mtz_file {
   params.mtz_file.crystal_symmetry.expand_to_p1 = True
   miller_arrays = run_and_reload(params, "tst1.mtz")
   assert (miller_arrays[0].space_group_info().type().number() == 1)
+  # change space group without changing anything else
+  params = master_phil.fetch(source=new_phil).extract()
+  params.mtz_file.crystal_symmetry.output_space_group = \
+    sgtbx.space_group_info("P21212")
+  miller_arrays = run_and_reload(params, "tst1.mtz")
+  ma_new = miller_arrays[0].customized_copy(crystal_symmetry=array0)
+  ma_new, array_orig = ma_new.common_sets(other=array0)
+  assert ma_new.sigmas().all_eq(array_orig.sigmas())
   # expand symmetry (different output space group)
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.crystal_symmetry.output_space_group = \
@@ -830,7 +838,7 @@ def exercise_xds_input () :
 if __name__ == "__main__" :
   with warnings.catch_warnings(record=True) as w:
     exercise_basic(verbose=("--verbose" in sys.argv))
-    assert (len(w) == 6)
+    assert (len(w) == 7), len(w)
     exercise_command_line()
     exercise_xds_input()
   print "OK"

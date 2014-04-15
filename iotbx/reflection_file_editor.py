@@ -391,10 +391,20 @@ class process_arrays (object) :
 
     #-------------------------------------------------------------------
     # SYMMETRY SETUP
-    change_symmetry = False
-    if params.mtz_file.crystal_symmetry.output_space_group is not None :
+    change_symmetry = change_point_group = False
+    input_space_group = params.mtz_file.crystal_symmetry.space_group
+    output_space_group = params.mtz_file.crystal_symmetry.output_space_group
+    if (output_space_group is not None) :
       output_sg = params.mtz_file.crystal_symmetry.output_space_group.group()
+      input_point_group = input_space_group.group().build_derived_point_group()
+      output_point_group = \
+        output_space_group.group().build_derived_point_group()
+      pg_number_in = input_point_group.type().number()
+      pg_number_out = output_point_group.type().number()
       change_symmetry = True
+      if (pg_number_out != pg_number_in) :
+        change_point_group = True
+        print >> log, "Will expand to P1 symmetry before merging."
     else :
       output_sg = params.mtz_file.crystal_symmetry.space_group.group()
     if params.mtz_file.crystal_symmetry.output_unit_cell is not None :
@@ -478,9 +488,11 @@ class process_arrays (object) :
       if params.mtz_file.crystal_symmetry.expand_to_p1 :
         miller_array = miller_array.expand_to_p1()
       elif change_symmetry :
-        if (miller_array.space_group_info().type().number() != 1) :
+        sg_number = miller_array.space_group_info().type().number()
+        if (change_point_group) and (sg_number != 1) :
           miller_array = miller_array.expand_to_p1()
-        miller_array = miller_array.customized_copy(crystal_symmetry=output_symm)
+        miller_array = miller_array.customized_copy(
+          crystal_symmetry=output_symm)
       if not miller_array.is_unique_set_under_symmetry() :
         if miller_array.is_integer_array() and not is_rfree_array(miller_array,info):
           raise Sorry(("The data in %s cannot be merged because they are in "+
