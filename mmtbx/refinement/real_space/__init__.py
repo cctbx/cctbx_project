@@ -12,6 +12,7 @@ from cctbx import miller
 from libtbx.str_utils import format_value
 from cctbx import crystal
 from mmtbx import model_statistics
+import libtbx.load_env
 
 class residue_monitor(object):
   def __init__(self,
@@ -205,17 +206,17 @@ class structure_monitor(object):
 %s rmsd (angles):             %-5.2f
 %s Dist. moved from start:    %-6.3f
 %s Dist. moved from previous: %-6.3f
-%s All-atom clashscore        %-6.2f
+%s All-atom clashscore        %-s
 %s Ramachandran plot:
-%s   outliers:                %-5.2f %s
-%s   allowed:                 %-5.2f %s
-%s   favored:                 %-5.2f %s
-%s Rotamer outliers:          %-s  %s
+%s   outliers:                %-s %%
+%s   allowed:                 %-s %%
+%s   favored:                 %-s %%
+%s Rotamer outliers:          %-s %%
 %s C-beta deviations:         %-3d
 """
     mso = model_statistics.geometry(
       pdb_hierarchy      = self.pdb_hierarchy,
-      molprobity_scores  = True,
+      molprobity_scores  = libtbx.env.has_module("probe"),
       restraints_manager = self.geometry_restraints_manager)
     print >> log, fmt%(
       prefix, self.map_cc_whole_unit_cell,
@@ -224,12 +225,12 @@ class structure_monitor(object):
       prefix, self.rmsd_a,
       prefix, self.dist_from_start,
       prefix, self.dist_from_previous,
-      prefix, mso.clashscore,
+      prefix, format_value("%-6.2f", mso.clashscore),
       prefix,
-      prefix, mso.ramachandran_outliers,"%",
-      prefix, mso.ramachandran_allowed,"%",
-      prefix, mso.ramachandran_favored,"%",
-      prefix, str("%6.2f"%(mso.rotamer_outliers)).strip(),"%",
+      prefix, format_value("%-5.2f", mso.ramachandran_outliers),
+      prefix, format_value("%-5.2f", mso.ramachandran_allowed),
+      prefix, format_value("%-5.2f", mso.ramachandran_favored),
+      prefix, format_value("%6.2f", mso.rotamer_outliers).strip(),
       prefix, mso.c_beta_dev)
 
   def show_residues(self, map_cc_all=0.8, map_cc_sidechain=0.8, log=None):
