@@ -24,11 +24,10 @@ random_seed=2679941
 omit = False
   .type = bool
   .help = Use composite OMIT protocol
-use_resolve = False
-  .type = bool
-  .help = Use Resolve to account for missing reflections
 sharp=True
   .type=bool
+signal_threshold = 0.5
+  .type = float
 output {
   file_name = fem.mtz
     .type = path
@@ -82,14 +81,13 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   fmodel.update_all_scales(update_f_part1_for=None)
   fmodel.show(show_approx=False)
   print >> log, "r_work: %6.4f r_free: %6.4f"%(fmodel.r_work(), fmodel.r_free())
-  ### b-factor sharpen
+  # b-factor sharpening
   if(params.sharp):
     xrs = fmodel.xray_structure
     b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
     print >> log, "Max B subtracted from atoms and used to sharpen map:", b_iso_min
     xrs.shift_us(b_shift=-b_iso_min)
     b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
-    print "Sharpening with:", b_iso_min
     assert approx_equal(b_iso_min, 0, 1.e-3)
     fmodel.update_xray_structure(
       xray_structure = xrs,
@@ -97,15 +95,12 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   #
   fmodel.update_all_scales(update_f_part1_for="refinement")
   fem = mmtbx.maps.fem.run(fmodel=fmodel, use_omit=params.omit,
-    use_resolve=params.use_resolve, sharp=params.sharp)
+    sharp=params.sharp, signal_threshold=params.signal_threshold)
   # output
   mtz_dataset = fem.mc.as_mtz_dataset(column_root_label="2mFoDFc")
   mtz_dataset.add_miller_array(
     miller_array=fem.mc_result,
     column_root_label=params.output.column_root_label)
-  mtz_dataset.add_miller_array(
-    miller_array=fem.mc_filled,
-    column_root_label="2mFoDFc_filled")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = params.output.file_name)
   return os.path.abspath(params.output.file_name)
