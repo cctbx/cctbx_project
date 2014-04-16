@@ -3,6 +3,10 @@
 
 #include <scitbx/array_family/accessors/c_grid.h>
 
+#if defined(_MSC_VER) && _MSC_VER < 1600
+typedef unsigned char     uint8_t;
+#endif
+
 namespace cctbx { namespace maptbx {
 
 template <typename FloatType, typename GridType>
