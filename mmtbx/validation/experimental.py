@@ -56,7 +56,6 @@ class data_statistics (slots_getstate_setstate) :
     # FIXME n_bins should be automatic by default
     f_obs = fmodel.f_obs().deep_copy()
     self.anomalous_flag = f_obs.anomalous_flag()
-    f_obs.setup_binner(n_bins=n_bins)
     self.d_max = f_obs.d_max_min()[0]
     self.d_min = f_obs.d_min()
     self.info = fmodel.info(n_bins=n_bins)
@@ -72,6 +71,7 @@ class data_statistics (slots_getstate_setstate) :
     if (not count_anomalous_pairs_separately) and (self.anomalous_flag) :
       f_obs = f_obs.average_bijvoet_mates()
       raw_data = raw_data.average_bijvoet_mates()
+    f_obs.setup_binner(n_bins=n_bins)
     self.n_refl = raw_data.indices().size()
     self.n_refl_refine = f_obs.indices().size()
     self.r_free = self.info.r_free
