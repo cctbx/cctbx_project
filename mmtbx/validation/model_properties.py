@@ -202,11 +202,11 @@ class xray_structure_statistics (validation) :
     self.b_histogram = None # TODO
     # these statistics cover all atoms!
     occupancies = xray_structure.scatterers().extract_occupancies()
-    u_isos = xrs.extract_u_iso_or_u_equiv()
+    u_isos = xray_structure.extract_u_iso_or_u_equiv()
     collected = flex.bool(occupancies.size(), False)
     if (collect_outliers) :
       for i_seq, occ in enumerate(occupancies) :
-        if hd_selection[i_seq] or collected[i_seq] :
+        if (hd_selection[i_seq] and ignore_hd) or collected[i_seq] :
           continue
         if (occ <= 0) :
           atom = pdb_atoms[i_seq]
