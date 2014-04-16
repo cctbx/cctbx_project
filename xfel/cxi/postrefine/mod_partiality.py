@@ -44,7 +44,7 @@ class partiality_handler(object):
     spot_partiality = pow(rs,2)/((2*pow(rh,2))+pow(rs,2))
 
     return spot_partiality, rh, rs
-    
+
 
   def calc_partiality_anisotropy_set(self, a_star_matrix, miller_indices, ry, rz, re, bragg_angle_set, alpha_angle_set):
     #use III.4 in Winkler et al 1979 (A35; P901) for set of miller indices
