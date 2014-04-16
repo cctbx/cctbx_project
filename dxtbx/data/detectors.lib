@@ -15,6 +15,7 @@ CCD          3072 3072   73   73 rayonix-ccd-225
 CCD          2880 2880   78   78 rayonix-ccd-225-hs
 CCD          4096 4096   73   73 rayonix-ccd-300
 CCD          4096 4096   79   79 rayonix-ccd-325
+CCD          3840 3840   78   78 rayonix-ccd-300-hs
 IMAGE_PLATE  1200 1200  150  150 mar-180
 IMAGE_PLATE  1600 1600  150  150 mar-240
 IMAGE_PLATE  2000 2000  150  150 mar-300
