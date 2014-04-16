@@ -2802,10 +2802,12 @@ xfel/cxi/postrefine/__init__.py -text
 xfel/cxi/postrefine/justsum.py -text
 xfel/cxi/postrefine/mod_energy.py -text
 xfel/cxi/postrefine/mod_graddesc.py -text
+xfel/cxi/postrefine/mod_leastsqr.py -text
 xfel/cxi/postrefine/mod_normal_eqns.py -text
 xfel/cxi/postrefine/mod_partiality.py -text
 xfel/cxi/postrefine/mod_pdb.py -text
 xfel/cxi/postrefine/mod_polar.py -text
+xfel/cxi/postrefine/mod_results.py -text
 xfel/cxi/postrefine/mod_util.py -text
 xfel/cxi/postrefine/postrefine.py -text
 xfel/cxi/postrefine/probe.py -text
