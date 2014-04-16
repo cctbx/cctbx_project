@@ -36,8 +36,8 @@ class intensities_scaler(object):
       SE_norm = (m*SE) + b
 
     if avg_mode == 'weighted':
-      I_avg = flex.mean(SE_norm * I_full)
-      sigI_avg = flex.mean(SE_norm * sigI_full)
+      I_avg = flex.sum(SE_norm * I_full)/flex.sum(SE_norm)
+      sigI_avg = flex.sum(SE_norm * sigI_full)/flex.sum(SE_norm)
     elif avg_mode== 'average':
       I_avg = flex.mean(I_full)
       sigI_avg = flex.mean(sigI_full)
@@ -71,14 +71,36 @@ class intensities_scaler(object):
       SE_norm_odd.append(SE_norm_even[len(I_even)-1])
 
     if avg_mode == 'weighted':
-      I_avg_even = flex.mean(SE_norm_even * I_even)
-      I_avg_odd = flex.mean(SE_norm_odd * I_odd)
+      I_avg_even = flex.sum(SE_norm_even * I_even)/flex.sum(SE_norm_even)
+      I_avg_odd = flex.sum(SE_norm_odd * I_odd)/flex.sum(SE_norm_odd)
     elif avg_mode== 'average':
       I_avg_even = flex.mean(I_even)
       I_avg_odd = flex.mean(I_odd)
 
     return I_avg, sigI_avg, (r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, multiplicity), I_avg_even, I_avg_odd
 
+  def calc_mean_unit_cell(self, results):
+    a_all = flex.double()
+    b_all = flex.double()
+    c_all = flex.double()
+    alpha_all = flex.double()
+    beta_all = flex.double()
+    gamma_all = flex.double()
+    for pres in results:
+      if pres is not None:
+        a_all.append(pres.uc_params[0])
+        b_all.append(pres.uc_params[1])
+        c_all.append(pres.uc_params[2])
+        alpha_all.append(pres.uc_params[3])
+        beta_all.append(pres.uc_params[4])
+        gamma_all.append(pres.uc_params[5])
+
+    if len(a_all) >= 3:
+      uc_mean = flex.double([np.median(a_all), np.median(b_all), np.median(c_all), np.median(alpha_all), np.median(beta_all), np.median(gamma_all)])
+    else:
+      uc_mean = flex.double([np.mean(a_all), np.mean(b_all), np.mean(c_all), np.mean(alpha_all), np.mean(beta_all), np.mean(gamma_all)])
+
+    return uc_mean
 
   def output_mtz_files(self, results, iph, output_mtz_file_prefix, avg_mode):
     partiality_filter = 0.1
@@ -95,11 +117,9 @@ class intensities_scaler(object):
     SE_I_all = flex.double()
     SE_all = flex.double()
     sin_sq_all = flex.double()
-    uc_mean = flex.double([0,0,0,0,0,0])
     cn_good_frame = 0
     for pres in results:
       if pres is not None:
-        uc_mean += pres.uc_params
         cn_good_frame += 1
         sin_theta_over_lambda_sq = pres.observations.two_theta(wavelength=pres.wavelength).sin_theta_over_lambda_sq().data()
         for miller_index, i_obs, sigi_obs, p, se_i, sin_sq in zip(
@@ -120,7 +140,7 @@ class intensities_scaler(object):
     self.plot_stats(results, iph)
 
     #calculate average unit cell
-    uc_mean = uc_mean/cn_good_frame
+    uc_mean = self.calc_mean_unit_cell(results)
 
     #from all observations merge them, using mean
     crystal_symmetry = crystal.symmetry(
