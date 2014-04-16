@@ -212,7 +212,7 @@ class structure_monitor(object):
 %s   allowed:                 %-s %%
 %s   favored:                 %-s %%
 %s Rotamer outliers:          %-s %%
-%s C-beta deviations:         %-3d
+%s C-beta deviations:         %-s
 """
     mso = model_statistics.geometry(
       pdb_hierarchy      = self.pdb_hierarchy,
@@ -231,7 +231,7 @@ class structure_monitor(object):
       prefix, format_value("%-5.2f", mso.ramachandran_allowed),
       prefix, format_value("%-5.2f", mso.ramachandran_favored),
       prefix, format_value("%6.2f", mso.rotamer_outliers).strip(),
-      prefix, mso.c_beta_dev)
+      prefix, format_value("%-3d", mso.c_beta_dev))
 
   def show_residues(self, map_cc_all=0.8, map_cc_sidechain=0.8, log=None):
     if(log is None): log = sys.stdout
