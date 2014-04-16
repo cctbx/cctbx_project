@@ -10,29 +10,19 @@ def determine_mean_I_mproc(frame_no, frame_files, iph):
   from xfel.cxi.postrefine import postref_handler
   prh = postref_handler()
   mean_I = prh.calc_mean_intensity(frame_files[frame_no], iph)
-  return frame_no, mean_I
+  return mean_I
 
 def scale_frame_by_mean_I_mproc(frame_no, frame_files, iph, mean_of_mean_I):
   from xfel.cxi.postrefine import postref_handler
   prh = postref_handler()
-  pickle_filename, observations_sel, observations_weight = prh.scale_frame_by_mean_I(
-        frame_files[frame_no], iph, mean_of_mean_I)
-  return frame_no, observations_sel, observations_weight
+  pres = prh.scale_frame_by_mean_I(frame_no,frame_files[frame_no], iph, mean_of_mean_I)
+  return pres
 
-def postrefine_by_frame_mproc(frame_no, frame_files, iph, refine_mode, miller_array_ref, G_set, B_factor_set, rotx_set, roty_set, ry_set, rz_set, refine_mode_codes=None):
+def postrefine_by_frame_mproc(frame_no, frame_files, iph, miller_array_ref):
   from xfel.cxi.postrefine import postref_handler
   prh = postref_handler()
-
-  postref_results = prh.postrefine_by_frame(
-        refine_mode, frame_files[frame_no], iph, miller_array_ref, scale_factors=(G_set[frame_no], B_factor_set[frame_no]),
-        rotations=(rotx_set[frame_no], roty_set[frame_no]), reflecting_ranges=(ry_set[frame_no], rz_set[frame_no]))
-
-  if postref_results is not None:
-    pickle_filename, observations_refined, observations_weight, cc_r_results, lstsqr_results = postref_results
-    return frame_no, observations_refined, observations_weight, cc_r_results, lstsqr_results
-  else:
-    return None
-
+  pres = prh.postrefine_by_frame(frame_no, frame_files[frame_no], iph, miller_array_ref)
+  return pres
 
 def read_input(args):
   file_name_input = ''
@@ -84,7 +74,7 @@ if (__name__ == "__main__"):
     frames_mean_I = flex.double()
     for result in determine_mean_I_result:
       if result is not None:
-        frames_mean_I.append(result[1])
+        frames_mean_I.append(result)
 
     mean_of_mean_I = np.median(frames_mean_I)
 
@@ -98,186 +88,56 @@ if (__name__ == "__main__"):
             processes=None)
 
     observations_merge_mean_set = []
-    observations_merge_mean_weight_set = []
-    for result in scale_frame_by_mean_I_result:
-      if result is not None:
-        observations_merge_mean_set.append(result[1])
-        observations_merge_mean_weight_set.append(result[2])
+    for pres in scale_frame_by_mean_I_result:
+      if pres is not None:
+        observations_merge_mean_set.append(pres)
 
-    from xfel.cxi.postrefine import merge_observations
-    miller_array_mean_scaled, cc_merge_mean, slope_merge_mean, txt_merge_mean = merge_observations(observations_merge_mean_set,
-        observations_merge_mean_weight_set, iph, iph.run_no+'/mean_scaled')
-    miller_array_ref = miller_array_mean_scaled.generate_bijvoet_mates()
+    if len(observations_merge_mean_set) > 0:
+      from xfel.cxi.postrefine import merge_observations
+      miller_array_merge_mean, txt_merge_mean = merge_observations(observations_merge_mean_set, iph, iph.run_no+'/mean_scaled','average')
+      miller_array_ref = miller_array_merge_mean.generate_bijvoet_mates()
+    else:
+      print "No frames merged as a reference set - exit without post-refinement"
+      exit()
   else:
     miller_array_ref = iph.miller_array_iso
     txt_merge_mean = ''
 
   #2. Post-refinement
-  G_set = flex.double([1]*len(frame_files))
-  B_factor_set = flex.double([0]*len(frame_files))
-  rotx_set = flex.double([1]*len(frame_files))
-  roty_set = flex.double([1]*len(frame_files))
-  ry_set = flex.double([1]*len(frame_files))
-  rz_set = flex.double([1]*len(frame_files))
-  #2.1 Refine scale factors
-  n_iters_scale = 1
-  refine_mode = 'scale_factor'
-  print 'Refine scale factors...'
-  txt_merge_postref_scale = ''
-  for i in range(n_iters_scale):
+  n_iters = iph.n_postref_cycle
+  txt_merge_postref = ''
+  for i in range(n_iters):
+    txt_merge_postref += 'Start post-refinement cycle '+str(i+1)+'\n'
+    print txt_merge_postref
     def postrefine_by_frame_mproc_wrapper(arg):
-      return postrefine_by_frame_mproc(arg, frame_files, iph, refine_mode, miller_array_ref,
-          G_set, B_factor_set, rotx_set, roty_set, ry_set, rz_set)
+      return postrefine_by_frame_mproc(arg, frame_files, iph, miller_array_ref)
 
     postrefine_by_frame_result = pool_map(
             args=frames,
             func=postrefine_by_frame_mproc_wrapper,
             processes=None)
 
-    obs_pref_scale_set = []
-    obs_pref_scale_weight_set = []
-    r_int_pref_scale_set = flex.double()
-    cn_result = 0
-    for result in postrefine_by_frame_result:
-      if result is not None:
-        frame_no, obs_pref, obs_pref_weight, cc_r_results, scale_factors = result
-        obs_pref_scale_set.append(obs_pref)
-        obs_pref_scale_weight_set.append(obs_pref_weight)
-        r_int_pref_scale_set.append(cc_r_results[5])
-        G_set[frame_no] = scale_factors[0]
-        B_factor_set[frame_no] = scale_factors[1]
-        cn_result += 1
-      else:
-        obs_pref_scale_set.append(None)
-        obs_pref_scale_weight_set.append(None)
-        r_int_pref_scale_set.append(99)
+    postrefine_by_frame_good = []
+    for pres in postrefine_by_frame_result:
+      if pres is not None:
+        postrefine_by_frame_good.append(pres)
 
-    if cn_result > 0:
+    if len(postrefine_by_frame_good) > 0:
       from xfel.cxi.postrefine import merge_observations
-      miller_array_postref_scale, cc_merge_postref, slope_merge_postref, txt_merge_postref_scale = merge_observations(
-          obs_pref_scale_set, obs_pref_scale_weight_set, iph, iph.run_no+'/postref_scale_cycle_'+str(i+1))
+      miller_array_merge_postref, txt_merge_out = merge_observations(postrefine_by_frame_good, iph, iph.run_no+'/postref_cycle_'+str(i+1),'weighted')
+      miller_array_ref = miller_array_merge_postref.generate_bijvoet_mates()
+      txt_merge_postref += txt_merge_out
+    else:
+      print "No frames merged as a reference set - exit without post-refinement"
+      exit()
 
-    if iph.file_name_ref_mtz == '':
-      miller_array_ref = miller_array_postref_scale.generate_bijvoet_mates()
+  #collect caculating time
+  time_global_end=datetime.now()
+  time_global_spent=time_global_end-time_global_start
+  txt_out_time_spent = 'Total calculation time: '+'{0:.2f}'.format(time_global_spent.seconds)+' seconds\n'
+  print txt_out_time_spent
 
-  #2.2 Refine crystal rotation (rotx, roty)
-  n_iters_crystal_rotation = 1
-  refine_mode = 'crystal_rotation'
-  print 'Refine crystal orientations...'
-  txt_merge_postref_rot = ''
-  for i in range(n_iters_crystal_rotation):
-    def postrefine_by_frame_mproc_wrapper(arg):
-      return postrefine_by_frame_mproc(arg, frame_files, iph, refine_mode, miller_array_ref,
-              G_set, B_factor_set, rotx_set, roty_set, ry_set, rz_set)
-
-    postrefine_by_frame_result = pool_map(
-            args=frames,
-            func=postrefine_by_frame_mproc_wrapper,
-            processes=None)
-
-    obs_pref_rot_set = []
-    obs_pref_rot_weight_set = []
-    r_int_pref_rot_set = flex.double()
-    cn_result = 0
-    for result in postrefine_by_frame_result:
-      if result is not None:
-        frame_no, obs_pref, obs_pref_weight, cc_r_results, rotations = result
-        obs_pref_rot_set.append(obs_pref)
-        obs_pref_rot_weight_set.append(obs_pref_weight)
-        r_int_pref_rot_set.append(cc_r_results[5])
-        rotx_set[frame_no] = rotations[0]
-        roty_set[frame_no] = rotations[1]
-        cn_result += 1
-      else:
-        obs_pref_rot_set.append(None)
-        obs_pref_rot_weight_set.append(None)
-        r_int_pref_rot_set.append(99)
-
-    if cn_result > 0:
-      from xfel.cxi.postrefine import merge_observations
-      miller_array_postref_rot, cc_merge_postref, slope_merge_postref, txt_merge_postref_rot = merge_observations(obs_pref_rot_set,
-          obs_pref_rot_weight_set, iph, iph.run_no+'/postref_rotation_cycle_'+str(i+1))
-
-    if iph.file_name_ref_mtz == '':
-      miller_array_ref = miller_array_postref_rot.generate_bijvoet_mates()
-
-  #2.3 Refine reflecting range (rs)
-  n_iters_reflecting_range = 1
-  refine_mode = 'reflecting_range'
-  print 'Refine reflecting ranges...'
-  txt_merge_postref_rs = ''
-  for i in range(n_iters_reflecting_range):
-    def postrefine_by_frame_mproc_wrapper(arg):
-      return postrefine_by_frame_mproc(arg, frame_files, iph, refine_mode, miller_array_ref,
-              G_set, B_factor_set, rotx_set, roty_set, ry_set, rz_set)
-
-    postrefine_by_frame_result = pool_map(
-            args=frames,
-            func=postrefine_by_frame_mproc_wrapper,
-            processes=None)
-
-    obs_pref_rs_set = []
-    obs_pref_rs_weight_set = []
-    r_int_pref_rs_set = flex.double()
-    cn_result = 0
-    for result in postrefine_by_frame_result:
-      if result is not None:
-        frame_no, obs_pref, obs_pref_weight, cc_r_results, reflecting_ranges = result
-        obs_pref_rs_set.append(obs_pref)
-        obs_pref_rs_weight_set.append(obs_pref_weight)
-        r_int_pref_rs_set.append(cc_r_results[5])
-        ry_set[frame_no] = reflecting_ranges[0]
-        rz_set[frame_no] = reflecting_ranges[1]
-        cn_result += 1
-      else:
-        obs_pref_rs_set.append(None)
-        obs_pref_rs_weight_set.append(None)
-        r_int_pref_rs_set.append(99)
-
-    if cn_result > 0:
-      from xfel.cxi.postrefine import merge_observations
-      miller_array_postref_rs, cc_merge_postref, slope_merge_postref, txt_merge_postref_rs = merge_observations(obs_pref_rs_set,
-          obs_pref_rs_weight_set, iph, iph.run_no+'/postref_reflecting_range_cycle_'+str(i+1))
-
-  #2.4 Determine from Rint which refinement result to use in merging
-  txt_best = ''
-  txt_merge_postref_best = ''
-  if cn_result > 0:
-    obs_sel_set = []
-    obs_sel_weight_set = []
-    pref_scale_final_code_set = flex.int([0]*len(frame_files))
-    for i in range(len(frames)):
-      if (r_int_pref_scale_set[i] == 99.0 and r_int_pref_rot_set[i] == 99.0 and r_int_pref_rs_set[i] == 99.0):
-        txt_best += 'frame# %04d - not merged'%(frames[i])
-      else:
-        r_int_all = flex.double([r_int_pref_scale_set[i], r_int_pref_rot_set[i], r_int_pref_rs_set[i]])
-        perm = flex.sort_permutation(r_int_all)
-        r_int_all_sort = r_int_all.select(perm)
-        if r_int_all_sort[0] <= iph.q_w_merge:
-          if perm[0] == 0:
-            obs_sel_set.append(obs_pref_scale_set[i])
-            obs_sel_weight_set.append(obs_pref_scale_weight_set[i])
-
-          elif perm[0] == 1:
-            obs_sel_set.append(obs_pref_rot_set[i])
-            obs_sel_weight_set.append(obs_pref_rot_weight_set[i])
-            pref_scale_final_code_set[frames[i]] = 1
-
-          elif perm[0] == 2:
-            obs_sel_set.append(obs_pref_rs_set[i])
-            obs_sel_weight_set.append(obs_pref_rs_weight_set[i])
-            pref_scale_final_code_set[frames[i]] = 2
-        else:
-          txt_best += 'frame# %04d- not merged Rint=%6.4f'%(frames[i], r_int_all_sort[0])
-
-
-    from xfel.cxi.postrefine import merge_observations
-    miller_array_best, cc_merge_postref, slope_merge_postref, txt_merge_postref_best = merge_observations(obs_sel_set,
-          obs_sel_weight_set, iph, iph.run_no+'/postref_best')
-  else:
-    print 'No frames refined'
-
-  txt_out = iph.txt_out + txt_merge_mean + txt_merge_postref_scale + txt_merge_postref_rot + txt_merge_postref_rs + txt_merge_postref_best
+  txt_out = iph.txt_out + txt_merge_mean + txt_merge_postref + txt_out_time_spent
   f = open(iph.run_no+'/log.txt', 'w')
   f.write(txt_out)
   f.close()
