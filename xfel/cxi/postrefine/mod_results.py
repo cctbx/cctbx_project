@@ -23,7 +23,7 @@ class postref_results(object):
       var_I_p=None,
       var_k=None,
       var_p=None):
-    
+
     self.observations = observations
     self.refined_params = refined_params
     self.se_params = se_params
@@ -32,11 +32,11 @@ class postref_results(object):
     self.frame_no = frame_no
     self.pickle_filename = pickle_filename
     self.wavelength = wavelength
-    self.SE_I = SE_I 
+    self.SE_I = SE_I
     self.var_I_p = var_I_p
     self.var_k = var_k
     self.var_p = var_p
-    
+
     #refined_params
     #note params = G,B,rotx,roty,ry,a,b,c,alpha,beta,gamma
     self.G = refined_params[0]
@@ -46,9 +46,9 @@ class postref_results(object):
     self.ry = refined_params[4]
     self.rz = refined_params[5]
     self.re = refined_params[6]
-    self.uc_params = flex.double([refined_params[7], refined_params[8], refined_params[9], 
+    self.uc_params = flex.double([refined_params[7], refined_params[8], refined_params[9],
           refined_params[10], refined_params[11], refined_params[12]])
-          
+
     self.se_G = se_params[0]
     self.se_B = se_params[1]
     self.se_rotx = se_params[2]
@@ -56,5 +56,5 @@ class postref_results(object):
     self.se_ry = se_params[4]
     self.se_rz = se_params[5]
     self.se_re = se_params[6]
-    self.se_uc_params = flex.double([se_params[7], se_params[8], se_params[9], 
+    self.se_uc_params = flex.double([se_params[7], se_params[8], se_params[9],
           se_params[10], se_params[11], se_params[12]])
