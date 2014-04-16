@@ -6,44 +6,10 @@ from cctbx import crystal
 from cctbx.array_family import flex
 from iotbx import mtz
 from iotbx import reflection_file_reader
-
 import math
 import numpy as np
-
 import matplotlib.pyplot as plt
-
-def get_overall_correlation (data_a, data_b) :
-  """
-  Correlate the averaged intensities to the intensities from the
-  reference data set.
-  """
-
-  assert len(data_a) == len(data_b)
-  corr = 0
-  slope = 0
-  try:
-    sum_xx = 0
-    sum_xy = 0
-    sum_yy = 0
-    sum_x  = 0
-    sum_y  = 0
-    N      = 0
-    for i in xrange(len(data_a)):
-      I_r       = data_a[i]
-      I_o       = data_b[i]
-      N      += 1
-      sum_xx += I_r**2
-      sum_yy += I_o**2
-      sum_xy += I_r * I_o
-      sum_x  += I_r
-      sum_y  += I_o
-    slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
-    corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
-               math.sqrt(N * sum_yy - sum_y**2))
-  except ZeroDivisionError:
-    pass
-
-  return corr, slope
+import matplotlib.mlab as mlab
 
 class intensities_scaler(object):
   '''
@@ -55,34 +21,107 @@ class intensities_scaler(object):
     Constructor
     '''
 
-  def count_unique_frame_multiplicities(self, frame_no_list):
-    from collections import Counter
-    c = Counter(frame_no_list)
-
-    return len(c.items())
-
-  def output_mtz_files(self, observations_set,
-        observations_weight_set,
-        iph,
-        output_mtz_file_prefix):
-
-
-    #from observations_set, generate combine all
+  def calc_average_I_sigI(self, I, sigI, G, B, p, SE_I, sin_theta_over_lambda_sq, avg_mode, SE):
+    I_full = I/(G * flex.exp(-2*B*sin_theta_over_lambda_sq) * p)
+    sigI_full = sigI/(G * flex.exp(-2*B*sin_theta_over_lambda_sq) * p)
+    
+    #normalize the SE
+    max_w = 1.0
+    min_w = 0.6
+    if len(SE) == 1 or ((flex.min(SE)-flex.max(SE)) == 0):
+      SE_norm = flex.double([min_w+((max_w - min_w)/2)]*len(SE))
+    else:
+      m = (max_w - min_w)/(flex.min(SE)-flex.max(SE))
+      b = max_w - (m*flex.min(SE))
+      SE_norm = (m*SE) + b
+    
+    if avg_mode == 'weighted':
+      I_avg = flex.mean(SE_norm * I_full)
+      sigI_avg = flex.mean(SE_norm * sigI_full)
+    elif avg_mode== 'average':
+      I_avg = flex.mean(I_full)
+      sigI_avg = flex.mean(sigI_full)
+    
+    #Rmeas, Rmeas_w, multiplicity
+    multiplicity = len(I)
+    if multiplicity == 1:
+      n_obs = 1.5
+    else:
+      n_obs = multiplicity
+      
+    r_meas_w_top = flex.sum(((I_full - I_avg)*SE_norm)**2)*math.sqrt(n_obs/(n_obs-1))
+    r_meas_w_btm = flex.sum((I_full*SE_norm)**2)
+    r_meas_top = flex.sum((I_full - I_avg)**2)*math.sqrt(n_obs/(n_obs-1))
+    r_meas_btm = flex.sum((I_full)**2)
+    
+    
+    #for calculattion of cc1/2
+    #sepearte the observations into two groups
+    i_even = range(0,len(I_full),2)
+    i_odd = range(1,len(I_full),2)
+    I_even = I_full.select(i_even)
+    sigI_even = sigI_full.select(i_even)
+    SE_norm_even = SE_norm.select(i_even)
+    I_odd = I_full.select(i_odd)
+    sigI_odd = sigI_full.select(i_odd)
+    SE_norm_odd = SE_norm.select(i_odd)
+    if len(i_even) > len(i_odd):
+      I_odd.append(I_even[len(I_even)-1])
+      sigI_odd.append(sigI_even[len(I_even)-1])
+      SE_norm_odd.append(SE_norm_even[len(I_even)-1])
+    
+    if avg_mode == 'weighted':
+      I_avg_even = flex.mean(SE_norm_even * I_even)
+      I_avg_odd = flex.mean(SE_norm_odd * I_odd)
+    elif avg_mode== 'average':
+      I_avg_even = flex.mean(I_even)
+      I_avg_odd = flex.mean(I_odd)
+      
+    return I_avg, sigI_avg, (r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, multiplicity), I_avg_even, I_avg_odd
+      
+                  
+  def output_mtz_files(self, results, iph, output_mtz_file_prefix, avg_mode):
+    partiality_filter = 0.1
+    sigma_filter = 8
+    
+    #prepare data for merging
     miller_indices_all = flex.miller_index()
     I_all = flex.double()
     sigI_all = flex.double()
-    for observations in observations_set:
-      if observations is not None:
-        for miller_index, i_obs, sigi_obs in zip(
-            observations.indices(), observations.data(),
-            observations.sigmas()):
-
+    G_all = flex.double()
+    B_all = flex.double()
+    k_all = flex.double()
+    p_all = flex.double()
+    SE_I_all = flex.double()
+    SE_all = flex.double()
+    sin_sq_all = flex.double()
+    uc_mean = flex.double([0,0,0,0,0,0])
+    cn_good_frame = 0 
+    for pres in results:
+      if pres is not None:
+        uc_mean += pres.uc_params
+        cn_good_frame += 1
+        sin_theta_over_lambda_sq = pres.observations.two_theta(wavelength=pres.wavelength).sin_theta_over_lambda_sq().data()
+        for miller_index, i_obs, sigi_obs, p, se_i, sin_sq in zip(
+            pres.observations.indices(), pres.observations.data(),
+            pres.observations.sigmas(), pres.partiality, pres.SE_I, sin_theta_over_lambda_sq):
+          
           miller_indices_all.append(miller_index)
           I_all.append(i_obs)
           sigI_all.append(sigi_obs)
-      else:
-        print 'Something wrong'
-
+          G_all.append(pres.G)
+          B_all.append(pres.B)
+          p_all.append(p)
+          SE_I_all.append(se_i)
+          sin_sq_all.append(sin_sq)
+          SE_all.append(pres.stats[0])
+    
+    #plot stats
+    self.plot_stats(results, iph)
+    
+    #calculate average unit cell
+    uc_mean = uc_mean/cn_good_frame
+    
     #from all observations merge them, using mean
     crystal_symmetry = crystal.symmetry(
         unit_cell=iph.target_unit_cell,
@@ -94,232 +133,532 @@ class intensities_scaler(object):
     miller_array_all = miller_set_all.array(
               data=I_all,
               sigmas=sigI_all).set_observation_type_xray_intensity()
-
+    
+    #sort reflections according to asymmetric-unit symmetry hkl
     perm = miller_array_all.sort_permutation(by_value="packed_indices")
     miller_indices_all_sort = miller_array_all.indices().select(perm)
     I_obs_all_sort = miller_array_all.data().select(perm)
     sigI_obs_all_sort = miller_array_all.sigmas().select(perm)
-
+    G_all_sort = G_all.select(perm)
+    B_all_sort = B_all.select(perm)
+    p_all_sort = p_all.select(perm)
+    SE_I_all_sort = SE_I_all.select(perm)
+    sin_sq_all_sort = sin_sq_all.select(perm)
+    SE_all_sort = SE_all.select(perm)
+    
     refl_now = 0
     miller_indices_merge = flex.miller_index()
-    I_obs_merge_mean = flex.double()
-    sigI_obs_merge_mean = flex.double()
-    multiplicities = flex.double()
-    r_merge_dif_all = flex.double()
-    r_merge_w_all = flex.double()
-    cn_miller_indices = 0
-    I_even_merge_mean = flex.double()
-    I_odd_merge_mean = flex.double()
+    I_merge = flex.double()
+    sigI_merge = flex.double()
+    stat_all = []
+    I_even = flex.double()
+    I_odd = flex.double()
     while refl_now < len(I_obs_all_sort)-1:
       miller_index_group = miller_indices_all_sort[refl_now]
       I_obs_group = flex.double()
       sigI_obs_group = flex.double()
+      G_group = flex.double()
+      B_group = flex.double()
+      p_group = flex.double()
+      SE_I_group = flex.double()
+      sin_sq_group = flex.double()
+      SE_group = flex.double()
       for i in range(refl_now, len(I_obs_all_sort)):
         if miller_indices_all_sort[i][0] == miller_index_group[0] and \
             miller_indices_all_sort[i][1] == miller_index_group[1] and \
             miller_indices_all_sort[i][2] == miller_index_group[2]:
-          I_obs_group.append(I_obs_all_sort[i])
-          sigI_obs_group.append(sigI_obs_all_sort[i])
-
+          
+          #select only reflections with higher partiality
+          if p_all_sort[i] >= partiality_filter:
+            I_obs_group.append(I_obs_all_sort[i])
+            sigI_obs_group.append(sigI_obs_all_sort[i])
+            G_group.append(G_all_sort[i])
+            B_group.append(B_all_sort[i])
+            p_group.append(p_all_sort[i])
+            SE_I_group.append(SE_I_all_sort[i])
+            sin_sq_group.append(sin_sq_all_sort[i])
+            SE_group.append(SE_all_sort[i])
+          if i == (len(I_obs_all_sort) - 1):
+            refl_now = i
+            break
         else:
           refl_now = i
-          cn_miller_indices +=1
           break
-
-      if len(I_obs_group) == 1:
-        I_obs_merge = I_obs_group[0]
-        sigI_obs_merge = sigI_obs_group[0]
-        no_observations = 1
-        r_dif = ((sigI_obs_merge**2)/sigI_obs_merge)*1.7321
-        r_w = (I_obs_merge**2)/sigI_obs_merge
-        I_even_merge = I_obs_merge
-        I_odd_merge = I_obs_merge
-      else:
-
-        I_as_sigma = (I_obs_group - np.mean(I_obs_group))/np.std(I_obs_group)
-        i_sel = (flex.abs(I_as_sigma) <= iph.sigma_max_merge)
-        I_obs_group_sel = I_obs_group.select(i_sel)
-        sigI_obs_group_sel = sigI_obs_group.select(i_sel)
-
-        if len(I_obs_group_sel) == 1:
-          I_obs_merge = I_obs_group_sel[0]
-          sigI_obs_merge = sigI_obs_group_sel[0]
-          no_observations = 1
-          r_dif = ((sigI_obs_merge**2)/sigI_obs_merge)*1.7321
-          r_w = (I_obs_merge**2)/sigI_obs_merge
-          I_even_merge = I_obs_merge
-          I_odd_merge = I_obs_merge
+      
+      if len(I_obs_group) > 0:
+        I_avg, sigI_avg, stat, I_avg_even, I_avg_odd = self.calc_average_I_sigI(I_obs_group, sigI_obs_group, 
+            G_group, B_group, p_group, SE_I_group, sin_sq_group, avg_mode, SE_group)
+        
+        if math.isnan(stat[0]) or math.isinf(stat[0]) or math.isnan(stat[1]) or math.isinf(stat[1]):
+          print miller_index_group, ' not merged (Qw=%.4g/%.4g)'%(stat[0],stat[1])
         else:
-          I_obs_merge = np.mean(I_obs_group_sel)
-          sigI_obs_merge = np.mean(sigI_obs_group_sel)
-          no_observations = len(I_obs_group_sel)
-          r_dif = flex.sum(((I_obs_group_sel - I_obs_merge)**2)/sigI_obs_group_sel)*math.sqrt(len(I_obs_group_sel)/(len(I_obs_group_sel)-1))
-          r_w = flex.sum((I_obs_group_sel**2)/sigI_obs_group_sel)
-
-          #sepearte the observations into two groups
-          i_even = range(0,len(I_obs_group_sel),2)
-          i_odd = range(1,len(I_obs_group_sel),2)
-          I_even_sel = I_obs_group_sel.select(i_even)
-          I_odd_sel = I_obs_group_sel.select(i_odd)
-          if len(i_even) > len(i_odd):
-            I_odd_sel.append(I_even_sel[len(I_even_sel)-1])
-          I_even_merge = np.mean(I_even_sel)
-          I_odd_merge = np.mean(I_odd_sel)
-
-
-      if math.isnan(I_obs_merge) or math.isnan(sigI_obs_merge) or I_obs_merge==0 or sigI_obs_merge==0:
-        print miller_index_group, I_obs_merge, sigI_obs_merge, ' - not merged'
-      else:
-        multiplicities.append(no_observations)
-        miller_indices_merge.append(miller_index_group)
-        I_obs_merge_mean.append(I_obs_merge)
-        sigI_obs_merge_mean.append(sigI_obs_merge)
-        r_merge_dif_all.append(r_dif)
-        r_merge_w_all.append(r_w)
-        I_even_merge_mean.append(I_even_merge)
-        I_odd_merge_mean.append(I_odd_merge)
-
-      if i==len(I_obs_all_sort)-1:
-        break
-
-
+          miller_indices_merge.append(miller_index_group)      
+          I_merge.append(I_avg)
+          sigI_merge.append(sigI_avg)
+          stat_all.append(stat)
+          I_even.append(I_avg_even)
+          I_odd.append(I_avg_odd)
+    
+    
+    #output mtz file and report binning stat
     miller_set_merge=miller.set(
               crystal_symmetry=crystal_symmetry,
               indices=miller_indices_merge,
               anomalous_flag=iph.target_anomalous_flag)
-    miller_array_merge_mean = miller_set_merge.array(data=I_obs_merge_mean,
-              sigmas=sigI_obs_merge_mean).set_observation_type_xray_intensity()
-
+    miller_array_merge = miller_set_merge.array(data=I_merge,
+              sigmas=sigI_merge).set_observation_type_xray_intensity()
+    
+    #remove outliers
+    binner_merge = miller_array_merge.setup_binner(n_bins=iph.n_bins)
+    binner_merge_indices = binner_merge.bin_indices()
+    miller_indices_merge_filter = flex.miller_index()
+    I_merge_filter = flex.double()
+    sigI_merge_filter = flex.double()
+    I_even_filter = flex.double()
+    I_odd_filter = flex.double()
+    stat_filter = []
+    i_seq = flex.int([j for j in range(len(binner_merge_indices))])
+    for i in range(1,iph.n_bins+1):
+      i_binner = (binner_merge_indices == i) 
+      if len(miller_array_merge.data().select(i_binner)) > 0:
+        I_obs_bin = miller_array_merge.data().select(i_binner)
+        sigI_obs_bin = miller_array_merge.sigmas().select(i_binner)
+        miller_indices_bin = miller_array_merge.indices().select(i_binner)
+        stat_bin = [stat_all[j] for j in i_seq.select(i_binner)]
+        I_even_bin = I_even.select(i_binner)
+        I_odd_bin = I_odd.select(i_binner)
+        
+        mean_I_obs_bin = np.mean(I_obs_bin)
+        std_I_obs_bin = np.std(I_obs_bin)
+        i_filter = flex.abs((I_obs_bin - mean_I_obs_bin)/std_I_obs_bin) < sigma_filter
+        I_obs_bin_filter = I_obs_bin.select(i_filter)
+        sigI_obs_bin_filter = sigI_obs_bin.select(i_filter)
+        miller_indices_bin_filter = miller_indices_bin.select(i_filter)
+        i_seq_bin = flex.int([j for j in range(len(i_filter))])
+        stat_bin_filter = [stat_bin[j] for j in i_seq_bin.select(i_filter)]
+        I_even_bin_filter = I_even_bin.select(i_filter)
+        I_odd_bin_filter = I_odd_bin.select(i_filter)
+        
+        for i_obs, sigi_obs, miller_index, stat, i_even, i_odd in zip(I_obs_bin_filter, sigI_obs_bin_filter, 
+            miller_indices_bin_filter, stat_bin_filter, I_even_bin_filter, I_odd_bin_filter):
+          I_merge_filter.append(i_obs)
+          sigI_merge_filter.append(sigi_obs)
+          miller_indices_merge_filter.append(miller_index)
+          stat_filter.append(stat)
+          I_even_filter.append(i_even)
+          I_odd_filter.append(i_odd)
+    
+    miller_set_merge=miller.set(
+              crystal_symmetry=crystal_symmetry,
+              indices=miller_indices_merge_filter,
+              anomalous_flag=iph.target_anomalous_flag)
+    miller_array_merge = miller_set_merge.array(data=I_merge_filter,
+              sigmas=sigI_merge_filter).set_observation_type_xray_intensity()
+              
     if output_mtz_file_prefix != '':
-      #write out mtz file
-      mtz_dataset_merge_mean = miller_array_merge_mean.as_mtz_dataset(column_root_label="IOBS")
-      mtz_dataset_merge_mean.mtz_object().write(file_name=output_mtz_file_prefix+'_merge.mtz')
+      mtz_dataset_merge = miller_array_merge.as_mtz_dataset(column_root_label="IOBS")
+      mtz_dataset_merge.mtz_object().write(file_name=output_mtz_file_prefix+'_merge.mtz')
+      
+    #report binning stats
+    binner_merge = miller_array_merge.setup_binner(n_bins=iph.n_bins)
+    binner_merge_indices = binner_merge.bin_indices()
+    completeness_merge = miller_array_merge.completeness(use_binning=True)
 
-    cc_merge_mean = 0
-    slope_merge_mean = 0
-    r_all = 0
-    if iph.miller_array_iso is not None:
-      #calculate final cc
-      matches_merge = miller.match_multi_indices(
-                    miller_indices_unique=iph.miller_array_iso.indices(),
-                    miller_indices=miller_indices_merge)
+    txt_out = '\n'
+    txt_out += 'Summary for '+output_mtz_file_prefix+'_merge.mtz\n'
+    txt_out += 'Bin Resolution Range     Completeness    <N_obs>  Qmeas    Qw    CC1/2   CCiso  <I/sigI>\n'
+    txt_out += '----------------------------------------------------------------------------------------\n'
+    sum_bin_completeness = 0
+    sum_r_meas_w_top = 0
+    sum_r_meas_w_btm = 0
+    sum_r_meas_top = 0
+    sum_r_meas_btm = 0
+    i_seq = flex.int([j for j in range(len(binner_merge_indices))])
+    for i in range(1,iph.n_bins+1):
+      i_binner = (binner_merge_indices == i)    
+      if len(miller_array_merge.data().select(i_binner)) == 0:
+        mean_i_over_sigi_bin = 0
+        multiplicity_bin = 0
+        r_meas_w_bin = 0
+        r_meas_bin = 0
+        cc12 = 0
+      else:
+        mean_i_over_sigi_bin = flex.mean(miller_array_merge.data().select(i_binner)/miller_array_merge.sigmas().select(i_binner))
+        stat_bin = [stat_filter[j] for j in i_seq.select(i_binner)]
+        sum_r_meas_w_top_bin = 0
+        sum_r_meas_w_btm_bin = 0
+        sum_r_meas_top_bin = 0
+        sum_r_meas_btm_bin = 0
+        sum_mul_bin = 0
+        for stat in stat_bin:
+          r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, mul = stat
+          
+          sum_r_meas_w_top_bin += r_meas_w_top
+          sum_r_meas_w_btm_bin += r_meas_w_btm
+          sum_r_meas_top_bin += r_meas_top
+          sum_r_meas_btm_bin += r_meas_btm
+          sum_mul_bin += mul
+          sum_r_meas_w_top += r_meas_w_top
+          sum_r_meas_w_btm += r_meas_w_btm
+          sum_r_meas_top += r_meas_top
+          sum_r_meas_btm += r_meas_btm
+          
+        multiplicity_bin = sum_mul_bin/completeness_merge.binner.counts_given()[i]
+        r_meas_w_bin = sum_r_meas_w_top_bin/ sum_r_meas_w_btm_bin
+        r_meas_bin = sum_r_meas_top_bin/ sum_r_meas_btm_bin
+        
+        cc12 = np.corrcoef(I_even_filter.select(i_binner), I_odd_filter.select(i_binner))[0,1]
+        
+      completeness = completeness_merge.data[i]
+      sum_bin_completeness += completeness
+      
+      #calculate CCiso
+      cc_iso_bin = 0
+      if iph.file_name_iso_mtz != '':
+        matches_iso = miller.match_multi_indices(
+                  miller_indices_unique=iph.miller_array_iso.indices(),
+                  miller_indices=miller_array_merge.indices().select(i_binner))
 
-      I_ref_merge = flex.double([iph.miller_array_iso.data()[pair[0]] for pair in matches_merge.pairs()])
-      I_obs_merge_mean = flex.double([miller_array_merge_mean.data()[pair[1]] for pair in matches_merge.pairs()])
-      sigI_obs_merge_mean = flex.double([miller_array_merge_mean.sigmas()[pair[1]] for pair in matches_merge.pairs()])
+        I_iso = flex.double([iph.miller_array_iso.data()[pair[0]] for pair in matches_iso.pairs()])
+        I_merge_match_iso = flex.double([miller_array_merge.data().select(i_binner)[pair[1]] for pair in matches_iso.pairs()])
+        if len(matches_iso.pairs()) > 0 :
+          cc_iso_bin = np.corrcoef(I_merge_match_iso, I_iso)[0,1]
+        
+        if iph.flag_plot:
+          plt.scatter(I_iso, I_merge_match_iso,s=10, marker='x', c='r')
+          plt.title('bin %3.0f CC=%.4g meanI=%.4g std=%.4g sqrt_meanI=%.4g mul=%.4g'%(i, cc_iso_bin, np.mean(I_merge_match_iso), np.std(I_merge_match_iso), math.sqrt(np.mean(I_merge_match_iso)), math.sqrt(np.mean(I_merge_match_iso))*2.5))
+          plt.xlabel('I_ref')
+          plt.ylabel('I_obs')
+          plt.show()
 
-      cc_merge_mean, slope_merge_mean = get_overall_correlation(I_obs_merge_mean, I_ref_merge)
-
-      r_all = sum(((I_ref_merge - (slope_merge_mean*I_obs_merge_mean))**2)/sigI_obs_merge_mean)/sum(((slope_merge_mean*I_obs_merge_mean)**2)/sigI_obs_merge_mean)
-
-      """
-      plt.scatter(I_ref_merge, I_obs_merge_mean,s=10, marker='x', c='r')
-      plt.title('CC=%6.5f Slope=%6.5f R=%6.5f <I_ref>=%6.5f <I_obs>=%6.5f'%(cc_merge_mean, slope_merge_mean, r_all, np.mean(I_ref_merge), np.mean(I_obs_merge_mean)))
-      plt.xlabel('Reference intensity')
-      plt.ylabel('Observed intensity')
-      plt.show()
-      """
-
-    #report stat
-    txt_out = ''
-    if iph.flag_on_screen_output:
-      binner_merge = miller_array_merge_mean.setup_binner(n_bins=iph.n_bins)
-      binner_merge_indices = binner_merge.bin_indices()
-      completeness_merge = miller_array_merge_mean.completeness(use_binning=True)
-
-
-      txt_out = '------------------------------------------------------\n'
-      txt_out += 'Summary for'+output_mtz_file_prefix+'_merge.mtz\n'
-      txt_out += 'Bin Resolutions %Complete (obs/total) Obs# CCiso CC1/2 Qiso Qint  <I>  <sigma> <I/sigI> (median)\n'
-      bin_multiplicities = []
-      sum_bin_completeness = 0
-      sum_bin_multiplicities = 0
-      one_over_dsqr = flex.double()
-      cc_bin = flex.double()
-      n_ref_complete = flex.double()
-      n_ref_observed = flex.double()
-      for i in range(1,iph.n_bins+1):
-        i_binner = (binner_merge_indices == i)
-
-        corr_bin_mean = 0
-        slope_bin_mean = 0
-        r_bin = 0
-        if iph.miller_array_iso is not None:
-          #calculate C.C.iso per bin
-          matches_bin = miller.match_multi_indices(
-                    miller_indices_unique=iph.miller_array_iso.indices(),
-                    miller_indices=miller_array_merge_mean.indices().select(i_binner))
-
-          if len(matches_bin.pairs()) > 10:
-            I_ref_bin = flex.double([iph.miller_array_iso.data()[pair[0]] for pair in matches_bin.pairs()])
-            I_obs_bin_mean = flex.double([miller_array_merge_mean.data().select(i_binner)[pair[1]] for pair in matches_bin.pairs()])
-            sigI_obs_bin_mean = flex.double([miller_array_merge_mean.sigmas().select(i_binner)[pair[1]] for pair in matches_bin.pairs()])
-            corr_bin_mean, slope_bin_mean = get_overall_correlation(I_obs_bin_mean, I_ref_bin)
-
-            r_bin = sum(((I_ref_bin - (slope_bin_mean*I_obs_bin_mean))**2)/sigI_obs_bin_mean)/sum(((slope_bin_mean*I_obs_bin_mean)**2)/sigI_obs_bin_mean)
-
-        cc_bin.append(corr_bin_mean)
-
-        if len(miller_array_merge_mean.data().select(i_binner)) == 0:
-          mean_i_bin = 0
-          mean_sigi_bin = 0
-          mean_i_over_sigi_bin = 0
-          median_i_over_sigi_bin = 0
-          multiplicities_sel = 0
-          r_merge_dif_sel = flex.double()
-          r_merge_w_sel = flex.double()
-          cc_onehalf_bin = 0
-        else:
-          mean_i_bin = np.mean(miller_array_merge_mean.data().select(i_binner))
-          mean_sigi_bin = np.mean(miller_array_merge_mean.sigmas().select(i_binner))
-          mean_i_over_sigi_bin = np.mean(miller_array_merge_mean.data().select(i_binner)/miller_array_merge_mean.sigmas().select(i_binner))
-          median_i_over_sigi_bin = np.median(miller_array_merge_mean.data().select(i_binner)/miller_array_merge_mean.sigmas().select(i_binner))
-          multiplicities_sel = multiplicities.select(i_binner)
-          r_merge_dif_sel = r_merge_dif_all.select(i_binner)
-          r_merge_w_sel = r_merge_w_all.select(i_binner)
-          cc_onehalf_bin, slope_onehalf_bin = get_overall_correlation(I_even_merge_mean.select(i_binner), I_odd_merge_mean.select(i_binner))
-
-
-        completeness = completeness_merge.data[i]
-
-        sum_bin_completeness += completeness
-        sum_bin_multiplicities += np.mean(multiplicities_sel)
-
-        r_merge_bin = 0
-        if len(r_merge_w_sel) > 0:
-          if sum(r_merge_w_sel) > 0:
-            r_merge_bin = (sum(r_merge_dif_sel)/sum(r_merge_w_sel))
-
-        txt_out += '%02d %5.2f - %5.2f %6.2f (%05d/%05d) %5.2f %4.2f %4.2f %6.2f %6.2f %7.2f %7.2f %7.2f %7.2f' \
+      txt_out += '%02d %7.2f - %7.2f %5.1f %5.0f / %5.0f %5.2f %7.2f %7.2f %7.2f %7.2f %7.2f' \
           %(i, binner_merge.bin_d_range(i)[0], binner_merge.bin_d_range(i)[1], completeness*100, \
           completeness_merge.binner.counts_given()[i], completeness_merge.binner.counts_complete()[i],\
-          np.mean(multiplicities_sel), corr_bin_mean, cc_onehalf_bin, r_bin, r_merge_bin, \
-          mean_i_bin, mean_sigi_bin, mean_i_over_sigi_bin, median_i_over_sigi_bin)
-        txt_out += '\n'
-
-        one_over_dsqr.append(1/(binner_merge.bin_d_range(i)[1]**2))
-        n_ref_complete.append(completeness_merge.binner.counts_complete()[i])
-        n_ref_observed.append(completeness_merge.binner.counts_given()[i])
-
-
-      cc_onehalf_all, slope_onehalf_all = get_overall_correlation(I_even_merge_mean, I_odd_merge_mean)
-      txt_out += 'Overall completeness: %3.4f no. of observations: %3.4f' %((sum_bin_completeness/iph.n_bins)*100, sum_bin_multiplicities/iph.n_bins)
+          multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12, cc_iso_bin, mean_i_over_sigi_bin)
       txt_out += '\n'
-      txt_out += 'C.C.iso=%6.5f Slope=%6.5f' %(cc_merge_mean, slope_merge_mean)
-      txt_out += '\n'
-      txt_out += 'C.C.1/2=%6.5f Slope=%6.5f' %(cc_onehalf_all, slope_onehalf_all)
-      txt_out += '\n'
-      txt_out += 'Qiso=%6.5f Qint=%6.5f' %(r_all, (sum(r_merge_dif_all)/sum(r_merge_w_all)))
-      txt_out += '\n'
-      txt_out += 'No. of reflections after merge: %9.2f' %(len(miller_array_merge_mean.data()))
-      txt_out += '\n'
-      txt_out += '------------------------------------------------------'
-      txt_out += '\n'
-      print txt_out
+    
+    #calculate CCiso
+    cc_iso = 0
+    if iph.file_name_iso_mtz != '':
+      matches_iso = miller.match_multi_indices(
+                miller_indices_unique=iph.miller_array_iso.indices(),
+                miller_indices=miller_array_merge.indices())
 
-
-    return miller_array_merge_mean, cc_merge_mean, slope_merge_mean, txt_out
-
+      I_iso = flex.double([iph.miller_array_iso.data()[pair[0]] for pair in matches_iso.pairs()])
+      I_merge_match_iso = flex.double([miller_array_merge.data()[pair[1]] for pair in matches_iso.pairs()])
+      if len(matches_iso.pairs()) > 0 :
+        cc_iso = np.corrcoef(I_merge_match_iso, I_iso)[0,1]
+      if iph.flag_plot:
+        plt.scatter(I_iso, I_merge_match_iso,s=10, marker='x', c='r')
+        plt.title('CC=%.4g'%(cc_iso))
+        plt.xlabel('I_ref')
+        plt.ylabel('I_obs')
+        plt.show()
+        
+    txt_out += 'Overall completeness: %3.4f Average no. of observations: %3.4f' %((sum_bin_completeness/iph.n_bins)*100, len(miller_indices_all)/len(miller_array_merge.data()))
+    txt_out += '\n'
+    txt_out += 'Qmeas  : %5.2f%%' %((sum_r_meas_top/sum_r_meas_btm)*100)
+    txt_out += '\n'
+    txt_out += 'Qw     : %5.2f%% ' %((sum_r_meas_w_top/sum_r_meas_w_btm)*100)
+    txt_out += '\n'
+    txt_out += 'CCiso  : %5.2f' %(cc_iso)
+    txt_out += '\n'
+    txt_out += 'No. of total observed reflections: %9.0f from %5.0f frames' %(len(miller_indices_all), cn_good_frame)
+    txt_out += '\n'
+    txt_out += 'No. of reflections after merge: %9.0f' %(len(miller_array_merge.data()))
+    txt_out += '\n'
+    txt_out += 'Average unit-cell parameters: (%6.2f, %6.2f, %6.2f %6.2f, %6.2f, %6.2f)'%(uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5])
+    txt_out += '\n'
+    txt_out += '------------------------------------------------------'
+    txt_out += '\n'
+    print txt_out
+    
+    
+    return miller_array_merge, txt_out
+    
+  def plot_stats(self, results, iph):
+    #retrieve stats from results and plot them
+    G_frame = flex.double()
+    B_frame = flex.double()
+    rotx_frame = flex.double()
+    roty_frame = flex.double()
+    ry_frame = flex.double()
+    rz_frame = flex.double()
+    re_frame = flex.double()
+    uc_a_frame = flex.double()
+    uc_b_frame = flex.double()
+    uc_c_frame = flex.double()
+    uc_alpha_frame = flex.double()
+    uc_beta_frame = flex.double()
+    uc_gamma_frame = flex.double()
+    SE_all = flex.double()
+    R_sq_all = flex.double()
+    cc_all = flex.double()
+    sum_var_I_p_all = flex.double()
+    sum_var_k_all = flex.double()
+    sum_var_p_all = flex.double()
+    SE_I_all = flex.double()
+    
+    for pres in results:
+      if pres is not None:
+        G_frame.append(pres.G)
+        B_frame.append(pres.B)
+        rotx_frame.append(pres.rotx*180/math.pi)
+        roty_frame.append(pres.roty*180/math.pi)
+        ry_frame.append(pres.ry)
+        rz_frame.append(pres.rz)
+        re_frame.append(pres.re)
+        uc_a_frame.append(pres.uc_params[0])
+        uc_b_frame.append(pres.uc_params[1])
+        uc_c_frame.append(pres.uc_params[2])
+        uc_alpha_frame.append(pres.uc_params[3])
+        uc_beta_frame.append(pres.uc_params[4])
+        uc_gamma_frame.append(pres.uc_params[5])  
+        SE_all.append(pres.stats[0])
+        R_sq_all.append(pres.stats[1])
+        cc_all.append(pres.stats[2])
+        sum_var_I_p_all.append(np.median(pres.var_I_p))
+        sum_var_k_all.append(np.median(pres.var_k))
+        sum_var_p_all.append(np.median(pres.var_p))
+        
+        for se_i in pres.SE_I:
+          SE_I_all.append(se_i)
+          
+      
+    if iph.flag_plot:
+      plt.subplot(231)
+      x = SE_all.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('SE distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(232)
+      x = cc_all.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('CC distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(233)
+      x = SE_I_all.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('SE I all observations distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(234)
+      x = sum_var_I_p_all.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('SE I distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(235)
+      x = sum_var_k_all.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('SE G distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(236)
+      x = sum_var_p_all.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('SE p distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.show()
+           
+      
+      plt.subplot(241)
+      x = G_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('G distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(242)
+      x = B_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('B distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(243)
+      x = rotx_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('Delta rot_x distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(244)
+      x = roty_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('Delta rot_y distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(245)
+      x = ry_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('ry distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(246)
+      x = rz_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('rz distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(247)
+      x = re_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('re distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.show()
+      
+      plt.subplot(231)
+      x = uc_a_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('a distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(232)
+      x = uc_b_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('b distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(233)
+      x = uc_c_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('c distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(234)
+      x = uc_alpha_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('alpha distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(235)
+      x = uc_beta_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('beta distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      
+      plt.subplot(236)
+      x = uc_gamma_frame.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('gamma distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.show()    
 
 class input_handler(object):
   '''
@@ -359,6 +698,7 @@ class input_handler(object):
     self.n_bins=25
     self.flag_on_screen_output=True
     self.q_w_merge = 1.0
+    self.pixel_size_mm = 0
 
 
     file_input = open(file_name_input, 'r')
@@ -430,6 +770,8 @@ class input_handler(object):
             self.flag_on_screen_output=False
         elif param_name=='q_w_merge':
           self.q_w_merge=float(param_val)
+        elif param_name=='pixel_size_mm':
+          self.pixel_size_mm=float(param_val)
 
     if self.frame_end == 0:
       print 'Parameter: frame_end - please specifiy at least one frame (usage: frame_end=1)'
@@ -446,20 +788,34 @@ class input_handler(object):
     if self.flag_polar and self.file_name_iso_mtz =='':
       print 'Conflict of parameters: you turned flag_polar on, please also input isomorphous-reference mtz file (usage: hklisoin = 1jw8-sf-asu.mtz)'
       exit()
-
+    
+    if self.pixel_size_mm == 0:
+      print 'pixel size (in mm) is required (usage: pixel_size_mm = 0.08)'
+      exit()
+      
     #fetch isomorphous structure
     if self.file_name_iso_mtz != '':
       reflection_file_iso = reflection_file_reader.any_reflection_file(self.file_name_iso_mtz)
       miller_arrays_iso=reflection_file_iso.as_miller_arrays()
       is_found_iso_as_intensity_array = False
+      is_found_iso_as_amplitude_array = False
       for miller_array_iso in miller_arrays_iso:
         if miller_array_iso.is_xray_intensity_array():
-          self.miller_array_iso = miller_array_iso.generate_bijvoet_mates()
+          self.miller_array_iso = miller_array_iso
           is_found_iso_as_intensity_array = True
+          break
+        elif miller_array_iso.is_xray_amplitude_array():
+          is_found_iso_as_amplitude_array = True
+          miller_array_iso_converted_to_intensity = miller_array_iso.as_intensity_array()
       if is_found_iso_as_intensity_array == False:
-        print 'Cannot find intensity array in the isomorphous-reference mtz'
-        exit()
-
+        if is_found_iso_as_amplitude_array:
+          print 'Found amplitude array, convert it to intensity array'
+          self.miller_array_iso = miller_array_iso_converted_to_intensity
+        else:
+          print 'Cannot find intensity array in the isomorphous-reference mtz'
+          exit()
+      
+      self.miller_array_iso = self.miller_array_iso.generate_bijvoet_mates()
 
     self.txt_out = ''
     self.txt_out += 'Input parameters\n'
