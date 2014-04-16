@@ -6,7 +6,7 @@ Analysis of model properties, independent of data.
 """
 
 from __future__ import division
-from mmtbx.validation import atom, residue, validation
+from mmtbx.validation import atom, residue, validation, dummy_validation
 from libtbx import slots_getstate_setstate
 import sys
 
@@ -84,9 +84,9 @@ class model_statistics (slots_getstate_setstate) :
       pdb_hierarchy=pdb_hierarchy,
       xray_structure=xray_structure,
       ignore_hd=ignore_hd)
-    self.macromolecules = None
-    self.ligands = None
-    self.water = None
+    self.macromolecules = dummy_validation()
+    self.ligands = dummy_validation()
+    self.water = dummy_validation()
     if (all_chain_proxies is not None) :
       macro_sel = all_chain_proxies.selection("protein or rna or dna")
       water_sel = all_chain_proxies.selection("water")
@@ -112,20 +112,21 @@ class model_statistics (slots_getstate_setstate) :
     print >> out, prefix+"Overall:"
     self.all.show_summary(out=out, prefix=prefix+"  ")
     self.all.show_bad_occupancy(out=out, prefix=prefix+"  ")
-    if ([self.ligands, self.water].count(None) != 0) :
+    if (self.ligands) or (self.water) :
       for label, props in zip(["Macromolecules", "Ligands", "Waters"],
           [self.macromolecules, self.ligands, self.water]) :
-        if (props is not None) :
+        if (props) :
           print >> out, prefix+"%s:" % label
           props.show_summary(out=out, prefix=prefix+"  ")
     if (self.ignore_hd) and (self.n_hydrogens > 0) :
       print >> out, prefix+"(Hydrogen atoms not included in overall counts.)"
 
 class residue_occupancy (residue) :
-  __slots__ = residue.__slots__ + ["total_occ", "chain_type"]
+  __slots__ = residue.__slots__ + ["chain_type"]
 
   def as_string (self, prefix="") :
-    return "%s (all)  occ=%.2f" % (self.id_str(), self.total_occ)
+    return " %3s%2s%5s (all)  occ=%.2f" % (self.resname, self.chain_id,
+      self.resid, self.occupancy)
 
 class occupancy (atom) :
   """
@@ -178,14 +179,13 @@ class xray_structure_statistics (validation) :
     subtract_hd = True
     if (ignore_hd) and (hd_selection.count(True) > 0) :
       xrs = xrs.select(~hd_selection)
-      pdb_atoms = pdb_atoms.select(~hd_selection)
       subtract_hd = False
     u_isos = xrs.extract_u_iso_or_u_equiv()
     occ = xrs.scatterers().extract_occupancies()
     self.n_all = hd_selection.size()
     self.n_atoms = xrs.scatterers().size()
     self.n_hd = hd_selection.count(True)
-    self.n_non_hd = self.n_atoms - self.n_hd
+    self.n_non_hd = self.n_all - self.n_hd
     self.n_aniso = xrs.use_u_aniso().count(True)
     self.n_aniso_h = (xray_structure.use_u_aniso() & hd_selection).count(True)
     self.n_npd = xrs.is_positive_definite_u().count(False)
@@ -201,9 +201,11 @@ class xray_structure_statistics (validation) :
     self.bad_adps = [] # TODO
     self.b_histogram = None # TODO
     # these statistics cover all atoms!
-    collected = flex.bool(occ.size(), False)
+    occupancies = xray_structure.scatterers().extract_occupancies()
+    u_isos = xrs.extract_u_iso_or_u_equiv()
+    collected = flex.bool(occupancies.size(), False)
     if (collect_outliers) :
-      for i_seq, occ in enumerate(occ) :
+      for i_seq, occ in enumerate(occupancies) :
         if hd_selection[i_seq] or collected[i_seq] :
           continue
         if (occ <= 0) :
