@@ -8,6 +8,7 @@ tst_list = (
   "$D/regression/tst_ml_estimate.py",
   "$D/density_modification/tst_density_modification.py",
   "$D/geometry_restraints/tst_ramachandran.py",
+  "$D/geometry_restraints/tst_manager.py",
   "$D/regression/tst_map_type_parser.py",
   "$D/rsr/tst.py",
   "$D/polygon/tst.py",

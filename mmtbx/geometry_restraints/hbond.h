@@ -176,6 +176,29 @@ namespace mmtbx { namespace geometry_restraints {
   }
 
 
+  af::shared<double>
+  h_bond_simple_residuals(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<h_bond_simple_proxy> const& proxies)
+  {
+    af::shared<double> result(proxies.size());
+    for (std::size_t i = 0; i < proxies.size(); i++) {
+      h_bond_simple_proxy proxy = proxies[i];
+      af::tiny<scitbx::vec3<double>, 2> sites;
+      af::tiny<unsigned, 2> const& i_seqs = proxy.i_seqs;
+      sites[0] = sites_cart[ i_seqs[0] ];
+      sites[1] = sites_cart[ i_seqs[1] ];
+      bond restraint(sites, proxy.distance_ideal, proxy.weight, proxy.slack);
+      //double residual = restraint.residual();
+      result[i] = restraint.residual();
+    }
+    return result;
+  }
+
+
+
+
+
   // Switching function for Lennard-Jones-like potentials
   // I couldn't figure out how the version in the X-PLOR manual is supposed to
   // work, but NAMD has something similar:
