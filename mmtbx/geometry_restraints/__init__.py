@@ -257,6 +257,7 @@ class manager (object) :
       print >> f, "  ideal  model  delta     sigma   weight residual"
       print >> f, "  %5.3f  %5.3f %5.3f  %5.2e %5.2e %5.2e" % (
           p.ideal, p.model, p.delta, p.sigma, p.weight, p.residual)
+    print >> f, ""
 
   def get_hbonds_residual_sum(self,
       sites_cart,
