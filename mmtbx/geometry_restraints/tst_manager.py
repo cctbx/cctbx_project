@@ -1,11 +1,11 @@
 from __future__ import division
 
-import libtbx.load_env
 import mmtbx
 from libtbx.utils import null_out
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx
 import mmtbx.secondary_structure
+import iotbx
 
 pdb_str = """\
 ATOM      1  N   ALA     1       1.558  -2.549  -1.143  1.00  0.00           N
@@ -119,6 +119,7 @@ hbond pdb=" O   ALA     5 "
       pdb=" N   ALA     9 "
   ideal  model  delta     sigma   weight residual
   2.900  2.902 -0.002  5.00e-02 4.00e+02 1.84e-03
+
 """
 
 if (__name__ == "__main__") :
