@@ -216,6 +216,9 @@ class leastsqr_handler(object):
   def optimize(self, I_r_flex, observations_original,
               wavelength, crystal_init_orientation, alpha_angle_set):
 
+    uc_len_tol = 3.5
+    uc_angle_tol = 2.0
+
     assert len(alpha_angle_set)==len(observations_original.indices()), 'Size of alpha angles and observations are not equal %6.0f, %6.0f'%(len(alpha_angle_set),len(observations_original.indices()))
 
     uc_init = crystal_init_orientation.unit_cell()
@@ -234,15 +237,27 @@ class leastsqr_handler(object):
 
     #1. first optain best G and k from linregress
     x0 = np.array([1, 0])
-    xopt, success = optimize.leastsq(func_scale, x0, args=(I_r_true, observations_original, wavelength))
+    xopt_scale, success = optimize.leastsq(func_scale, x0, args=(I_r_true, observations_original, wavelength))
 
     #2. optimize rot, rs, uc
-    x0_all = np.array([xopt[0], xopt[1], 0*math.pi/180, 0*math.pi/180, spot_radius, spot_radius, 0.0026,
+    x0_all = np.array([xopt_scale[0], xopt_scale[1], 0*math.pi/180, 0*math.pi/180, spot_radius, spot_radius, 0.0026,
         uc_init_params[0], uc_init_params[1],uc_init_params[2], uc_init_params[3],uc_init_params[4], uc_init_params[5]])
     x0 = prep_input(x0_all, cs)
     xopt_limit, cov_x, infodict, errmsg, success = optimize.leastsq(func, x0, args=(I_r_true, observations_original, ph, crystal_init_orientation, alpha_angle_set), full_output=True)
     xopt = prep_output(xopt_limit, cs)
     G, B, rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma = xopt
+
+    #3. decide wheter to take the refined parameters
+    if (abs(a-uc_init_params[0]) > uc_len_tol or abs(b-uc_init_params[1]) > uc_len_tol or abs(c-uc_init_params[2]) > uc_len_tol \
+        or abs(alpha-uc_init_params[3]) > uc_angle_tol or abs(beta-uc_init_params[4]) > uc_angle_tol or abs(gamma-uc_init_params[5]) > uc_angle_tol):
+      print 'Refinement failed - unit-cell parameters exceed the limits', a,b,c,alpha,beta,gamma
+      a, b, c, alpha, beta, gamma = uc_init_params
+      rotx = 0
+      roty = 0
+      ry = spot_radius
+      rz = spot_radius
+      re = 0.0026
+      G, B = xopt_scale
 
     #caclculate stats
     uc_opt = unit_cell((a,b,c,alpha,beta,gamma))
