@@ -1394,6 +1394,51 @@ class PySlip(_BufferedCanvas):
     # Layer drawing routines
     ######
 
+    def LightweightDrawPointLayer2(self, dc, data, map_rel):
+        """Draw a points layer.
+
+        dc       the device context to draw on
+        data     an iterable of point tuples:
+                     (x, y, place, radius, colour, x_off, y_off, pdata)
+        map_rel  points relative to map if True, MUST BE TRUE for lightweight
+        Assumes all points are the same colour, saving 100's of ms.
+
+        In contrast to LightweightDrawPointLayer, this function draws
+        rectangles or points (rather than circles) for performance reasons.
+        """
+        assert map_rel is True
+        if len(data)==0: return
+        (lon, lat, place,
+                 radius, colour, x_off, y_off, pdata) = data[0]
+
+        # draw points on map/view
+        if map_rel:
+            # GCDC device context permits antialiasing and transparent colors.
+            # But, signficant time savings by not allowing these features
+            # It's not clear that we actually want or use them anyway
+            #dc = wx.GCDC(dc)            # allow transparent colours
+            dc.SetPen(wx.Pen(colour))
+            dc.SetBrush(wx.Brush(colour))
+            points = []
+            rectangles = []
+            if radius:
+                diameter = 2 * radius
+            for (lon, lat, place,
+                 radius, colour, x_off, y_off, pdata) in data:
+                pt = self.ConvertGeo2ViewMasked((lon, lat))
+                if pt:
+                    (x, y) = pt
+                    if radius:
+                        rectangles.append(
+                            (x + x_off - radius, y + y_off - radius,
+                             diameter, diameter))
+                    else:
+                        points.append((x + x_off, y + y_off))
+            if len(points):
+                dc.DrawPointList(points)
+            if len(rectangles):
+                dc.DrawRectangleList(rectangles)
+
     def LightweightDrawPointLayer(self, dc, data, map_rel):
         """Draw a points layer.
 
