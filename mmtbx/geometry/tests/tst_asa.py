@@ -163,12 +163,12 @@ class TestLinearSpheresIndexer(unittest.TestCase):
   def test_structure(self):
 
     for sphere in SPHERES:
-      self.indexer.add( object = sphere )
+      self.indexer.add( object = sphere, position = sphere.centre )
 
     self.assertEqual( len( self.indexer ), len( SPHERES ) )
 
     for sphere in SPHERES:
-      closeby = self.indexer.close_to( object = sphere )
+      closeby = self.indexer.close_to( centre = sphere.centre )
       self.assertEqual( len( closeby ), len( SPHERES ) )
 
 
@@ -177,14 +177,15 @@ class TestHashSpheresIndexer(unittest.TestCase):
   def setUp(self):
 
     self.indexer = asa.indexing.hash_spheres(
-      voxelizer = asa.get_voxelizer_for( descriptions = DESCRIPTIONS )
+      voxelizer = asa.get_voxelizer_for( descriptions = DESCRIPTIONS ),
+      margin = 1,
       )
 
 
   def test_structure(self):
 
     for sphere in SPHERES:
-      self.indexer.add( object = sphere )
+      self.indexer.add( object = sphere, position = sphere.centre )
 
     self.assertEqual( len( self.indexer ), len( SPHERES ) )
 
@@ -211,10 +212,10 @@ class TestPredicate(unittest.TestCase):
   def make_indexer_linear(self):
 
     indexer = asa.indexing.linear_spheres()
-    indexer.add( object = self.sphere )
-    indexer.add( object = self.overlap1 )
-    indexer.add( object = self.overlap2 )
-    indexer.add( object = self.no_overlap )
+    indexer.add( object = self.sphere, position = self.sphere.centre )
+    indexer.add( object = self.overlap1, position = self.overlap1.centre )
+    indexer.add( object = self.overlap2, position = self.overlap2.centre )
+    indexer.add( object = self.no_overlap, position = self.no_overlap.centre )
 
     return indexer
 
@@ -224,7 +225,7 @@ class TestPredicate(unittest.TestCase):
     indexer = self.make_indexer_linear()
 
     range = asa.accessibility.filter(
-      range = indexer.close_to( object = self.sphere ),
+      range = indexer.close_to( centre = self.sphere.centre ),
       predicate = self.predicate,
       )
     self.assertFalse( range.empty() )
@@ -233,7 +234,7 @@ class TestPredicate(unittest.TestCase):
     self.assertTrue( self.overlap2.index in set( s.index for s in range ) )
 
     range = asa.accessibility.filter(
-      range = indexer.close_to( object = self.no_overlap ),
+      range = indexer.close_to( centre = self.no_overlap.centre ),
       predicate = asa.accessibility.overlap_equality_predicate( object = self.no_overlap ),
       )
     self.assertTrue( range.empty() )
@@ -243,7 +244,7 @@ class TestPredicate(unittest.TestCase):
   def get_overlapping_spheres(self, sphere):
 
     return asa.accessibility.filter(
-      range = self.make_indexer_linear().close_to( object = sphere ),
+      range = self.make_indexer_linear().close_to( centre = sphere.centre ),
       predicate = asa.accessibility.overlap_equality_predicate( object = sphere ),
       )
 
@@ -278,10 +279,10 @@ class TestPythagoreanChecker(unittest.TestCase):
 
     s = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1, index = 0 )
     indexer = asa.indexing.linear_spheres()
-    indexer.add( object = s )
+    indexer.add( object = s, position = s.centre )
 
     neighbours = asa.accessibility.filter(
-      range = indexer.close_to( object = s ),
+      range = indexer.close_to( centre = s.centre ),
       predicate = asa.accessibility.overlap_equality_predicate( object = s ),
       )
 
@@ -290,7 +291,7 @@ class TestPythagoreanChecker(unittest.TestCase):
     self.assertTrue( self.checker( point = ( 1, 1, 1 ) ) )
 
     neighbours = asa.accessibility.filter(
-      range = indexer.close_to( object = s ),
+      range = indexer.close_to( centre = s.centre ),
       predicate = asa.accessibility.overlap_equality_predicate(
         object = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1, index = 1 )
         ),
@@ -306,10 +307,10 @@ class TestPythagoreanChecker(unittest.TestCase):
 
     s = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1, index = 0 )
     indexer = asa.indexing.linear_spheres()
-    indexer.add( object = s )
+    indexer.add( object = s, position = s.centre )
 
     neighbours = asa.accessibility.filter(
-      range = indexer.close_to( object = s ),
+      range = indexer.close_to( centre = s.centre ),
       predicate = asa.accessibility.overlap_equality_predicate(
         object = asa.sphere( centre = ( 2, 2, 2 ), radius = 0.1, index = 1 )
         ),
@@ -319,7 +320,7 @@ class TestPythagoreanChecker(unittest.TestCase):
     self.assertTrue( self.checker( point = ( 1, 1, 1 ) ) )
 
     neighbours = asa.accessibility.filter(
-      range = indexer.close_to( object = s ),
+      range = indexer.close_to( centre = s.centre ),
       predicate = asa.accessibility.overlap_equality_predicate(
         object = asa.sphere( centre = ( 2, 2, 2 ), radius = 1.64, index = 2 )
         ),

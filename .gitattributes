@@ -1664,6 +1664,7 @@ mmtbx/geometry/boost_python/clash_ext.cpp -text
 mmtbx/geometry/boost_python/containment.hpp -text
 mmtbx/geometry/boost_python/exporting.hpp -text
 mmtbx/geometry/boost_python/indexing.hpp -text
+mmtbx/geometry/boost_python/indexing_ext.cpp -text
 mmtbx/geometry/boost_python/primitive_ext.cpp -text
 mmtbx/geometry/boost_python/shared_types_ext.cpp -text
 mmtbx/geometry/boost_python/sphere_surface_sampling_ext.cpp -text
@@ -1676,6 +1677,7 @@ mmtbx/geometry/containment.hxx -text
 mmtbx/geometry/flattening.hpp -text
 mmtbx/geometry/indexing.hpp -text
 mmtbx/geometry/indexing.hxx -text
+mmtbx/geometry/indexing.py -text
 mmtbx/geometry/overlap.hpp -text
 mmtbx/geometry/overlap.hxx -text
 mmtbx/geometry/primitive.hpp -text
@@ -1688,6 +1690,7 @@ mmtbx/geometry/sphere_surface_sampling.py -text
 mmtbx/geometry/tests/1ahq_trunc.pdb -text
 mmtbx/geometry/tests/tst_asa.py -text
 mmtbx/geometry/tests/tst_clash.py -text
+mmtbx/geometry/tests/tst_indexing.py -text
 mmtbx/geometry/tests/tst_primitive.py -text
 mmtbx/geometry/tests/tst_shared_types.py -text
 mmtbx/geometry/tests/tst_sphere_surface_sampling.py -text

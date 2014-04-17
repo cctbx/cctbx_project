@@ -352,11 +352,11 @@ class TestLinearSpheresIndexer(unittest.TestCase):
       symop = self.symop,
       )
 
-    self.indexer.add( object = sphere )
+    self.indexer.add( object = sphere, position = sphere.centre )
 
     self.assertEqual( len( self.indexer ), 1 )
 
-    closeby = self.indexer.close_to( object = sphere )
+    closeby = self.indexer.close_to( centre = sphere.centre )
     self.assertEqual( len( closeby ), 1 )
 
     spheres = list( closeby )
@@ -375,7 +375,8 @@ class TestHashSpheresIndexer(unittest.TestCase):
       voxelizer = mmtbx.geometry.shared_types.voxelizer(
         base = ( 0, 0, 0 ),
         step = ( 1, 1, 1 ),
-        )
+        ),
+      margin = 1,
       )
 
     self.centre = ( 1, 2, 3 )
@@ -399,11 +400,11 @@ class TestHashSpheresIndexer(unittest.TestCase):
       symop = self.symop,
       )
 
-    self.indexer.add( object = sphere )
+    self.indexer.add( object = sphere, position = sphere.centre )
 
     self.assertEqual( len( self.indexer ), 1 )
 
-    closeby = self.indexer.close_to( object = sphere )
+    closeby = self.indexer.close_to( centre = sphere.centre )
     self.assertEqual( len( closeby ), 1 )
 
     spheres = list( closeby )
@@ -412,15 +413,7 @@ class TestHashSpheresIndexer(unittest.TestCase):
     self.assertEqual( sphere.molecule, spheres[0].molecule )
     self.assertEqual( sphere.symop, spheres[0].symop )
 
-    far = clash.sphere(
-      centre = [ c + 3 for c in self.centre ],
-      radius = self.radius,
-      molecule = self.molecule,
-      atom = self.atom,
-      altloc = self.altloc,
-      symop = self.symop,
-      )
-    closeby = self.indexer.close_to( object = far )
+    closeby = self.indexer.close_to( centre = [ c + 3 for c in self.centre ] )
     self.assertEqual( len( closeby ), 0 )
 
 

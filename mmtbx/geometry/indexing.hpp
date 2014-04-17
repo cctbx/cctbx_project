@@ -19,6 +19,8 @@
 #include <boost/fusion/include/at_c.hpp>
 #include <boost/fusion/algorithm/iteration/fold.hpp>
 
+#include <boost/mpl/vector.hpp>
+
 #include <vector>
 
 namespace mmtbx
@@ -30,14 +32,14 @@ namespace geometry
 namespace indexing
 {
 
-template< typename Object >
+template< typename Object, typename Vector >
 class Linear
 {
 public:
   typedef Object object_type;
+  typedef Vector vector_type;
   typedef std::vector< object_type > storage_type;
-  typedef boost::iterator_range< typename storage_type::const_iterator >
-      range_type;
+  typedef boost::iterator_range< typename storage_type::const_iterator > range_type;
 
 private:
   storage_type objects_;
@@ -46,8 +48,8 @@ public:
   Linear();
   ~Linear();
 
-  inline void add(const object_type& object);
-  inline range_type close_to(const object_type& object) const;
+  inline void add(const object_type& object, const vector_type& position);
+  inline range_type close_to(const vector_type& centre) const;
   inline size_t size() const;
 };
 
@@ -114,13 +116,12 @@ struct FusionVectorHasher
   result_type operator ()(const FusionVector& myvector) const;
 };
 
-template< typename Object, typename Discrete >
+template< typename Object, typename Vector, typename Discrete >
 class Hash
 {
 public:
   typedef Object object_type;
-  typedef typename object_type::vector_type vector_type;
-
+  typedef Vector vector_type;
   typedef Discrete discrete_type;
 
 private:
@@ -142,13 +143,14 @@ public:
 private:
   voxelizer_type voxelizer_;
   storage_type objects_;
+  discrete_type margin_;
 
 public:
-  Hash(const voxelizer_type& voxelizer);
+  Hash(const voxelizer_type& voxelizer, const discrete_type& margin);
   ~Hash();
 
-  inline void add(const object_type& object);
-  inline range_type close_to(const object_type& object) const;
+  inline void add(const object_type& object, const vector_type& position);
+  inline range_type close_to(const vector_type& centre) const;
   inline size_t size() const;
   inline size_t cubes() const;
 
