@@ -431,3 +431,7 @@ molprobity_cmdline_phil_str = """
     .type = bool
     .help = '''Verbose'''
 """
+
+class dummy_validation (object) :
+  def __getattr__ (self, name) :
+    return None
