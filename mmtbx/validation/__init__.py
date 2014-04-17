@@ -435,3 +435,6 @@ molprobity_cmdline_phil_str = """
 class dummy_validation (object) :
   def __getattr__ (self, name) :
     return None
+
+  def __nonzero__ (self) :
+    return False
