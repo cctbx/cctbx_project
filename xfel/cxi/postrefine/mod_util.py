@@ -45,7 +45,7 @@ class intensities_scaler(object):
     #Rmeas, Rmeas_w, multiplicity
     multiplicity = len(I)
     if multiplicity == 1:
-      n_obs = 1.5
+      n_obs = 1.25
     else:
       n_obs = multiplicity
 
@@ -95,16 +95,15 @@ class intensities_scaler(object):
         beta_all.append(pres.uc_params[4])
         gamma_all.append(pres.uc_params[5])
 
-    if len(a_all) >= 3:
-      uc_mean = flex.double([np.median(a_all), np.median(b_all), np.median(c_all), np.median(alpha_all), np.median(beta_all), np.median(gamma_all)])
-    else:
-      uc_mean = flex.double([np.mean(a_all), np.mean(b_all), np.mean(c_all), np.mean(alpha_all), np.mean(beta_all), np.mean(gamma_all)])
+    uc_mean = flex.double([np.mean(a_all), np.mean(b_all), np.mean(c_all), np.mean(alpha_all), np.mean(beta_all), np.mean(gamma_all)])
 
     return uc_mean
 
   def output_mtz_files(self, results, iph, output_mtz_file_prefix, avg_mode):
     partiality_filter = 0.1
     sigma_filter = 8
+    uc_len_tol = 3.5
+    uc_angle_tol = 2
 
     #prepare data for merging
     miller_indices_all = flex.miller_index()
@@ -118,23 +117,30 @@ class intensities_scaler(object):
     SE_all = flex.double()
     sin_sq_all = flex.double()
     cn_good_frame = 0
+
     for pres in results:
       if pres is not None:
-        cn_good_frame += 1
-        sin_theta_over_lambda_sq = pres.observations.two_theta(wavelength=pres.wavelength).sin_theta_over_lambda_sq().data()
-        for miller_index, i_obs, sigi_obs, p, se_i, sin_sq in zip(
-            pres.observations.indices(), pres.observations.data(),
-            pres.observations.sigmas(), pres.partiality, pres.SE_I, sin_theta_over_lambda_sq):
+        #check unit-cell
+        if (abs(pres.uc_params[0]-iph.target_unit_cell[0]) <= uc_len_tol and abs(pres.uc_params[1]-iph.target_unit_cell[1]) <= uc_len_tol \
+        and abs(pres.uc_params[2]-iph.target_unit_cell[2]) <= uc_len_tol and abs(pres.uc_params[3]-iph.target_unit_cell[3]) <= uc_angle_tol \
+        and abs(pres.uc_params[4]-iph.target_unit_cell[4]) <= uc_angle_tol and abs(pres.uc_params[5]-iph.target_unit_cell[5]) <= uc_angle_tol):
+          cn_good_frame += 1
+          sin_theta_over_lambda_sq = pres.observations.two_theta(wavelength=pres.wavelength).sin_theta_over_lambda_sq().data()
+          for miller_index, i_obs, sigi_obs, p, se_i, sin_sq in zip(
+              pres.observations.indices(), pres.observations.data(),
+              pres.observations.sigmas(), pres.partiality, pres.SE_I, sin_theta_over_lambda_sq):
 
-          miller_indices_all.append(miller_index)
-          I_all.append(i_obs)
-          sigI_all.append(sigi_obs)
-          G_all.append(pres.G)
-          B_all.append(pres.B)
-          p_all.append(p)
-          SE_I_all.append(se_i)
-          sin_sq_all.append(sin_sq)
-          SE_all.append(pres.stats[0])
+            miller_indices_all.append(miller_index)
+            I_all.append(i_obs)
+            sigI_all.append(sigi_obs)
+            G_all.append(pres.G)
+            B_all.append(pres.B)
+            p_all.append(p)
+            SE_I_all.append(se_i)
+            sin_sq_all.append(sin_sq)
+            SE_all.append(pres.stats[0])
+        else:
+          print pres.frame_no, ' unit-cell parameters exceed the limits', list(pres.uc_params)
 
     #plot stats
     self.plot_stats(results, iph)
@@ -327,7 +333,7 @@ class intensities_scaler(object):
         r_meas_w_bin = sum_r_meas_w_top_bin/ sum_r_meas_w_btm_bin
         r_meas_bin = sum_r_meas_top_bin/ sum_r_meas_btm_bin
 
-        cc12 = np.corrcoef(I_even_filter.select(i_binner), I_odd_filter.select(i_binner))[0,1]
+        cc12_bin = np.corrcoef(I_even_filter.select(i_binner), I_odd_filter.select(i_binner))[0,1]
 
       completeness = completeness_merge.data[i]
       sum_bin_completeness += completeness
@@ -351,10 +357,10 @@ class intensities_scaler(object):
           plt.ylabel('I_obs')
           plt.show()
 
-      txt_out += '%02d %7.2f - %7.2f %5.1f %5.0f / %5.0f %5.2f %7.2f %7.2f %7.2f %7.2f %7.2f' \
+      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %5.2f %7.2f %7.2f %7.2f %7.2f %7.2f' \
           %(i, binner_merge.bin_d_range(i)[0], binner_merge.bin_d_range(i)[1], completeness*100, \
           completeness_merge.binner.counts_given()[i], completeness_merge.binner.counts_complete()[i],\
-          multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12, cc_iso_bin, mean_i_over_sigi_bin)
+          multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12_bin, cc_iso_bin, mean_i_over_sigi_bin)
       txt_out += '\n'
 
     #calculate CCiso
@@ -375,21 +381,19 @@ class intensities_scaler(object):
         plt.ylabel('I_obs')
         plt.show()
 
-    txt_out += 'Overall completeness: %3.4f Average no. of observations: %3.4f' %((sum_bin_completeness/iph.n_bins)*100, len(miller_indices_all)/len(miller_array_merge.data()))
-    txt_out += '\n'
-    txt_out += 'Qmeas  : %5.2f%%' %((sum_r_meas_top/sum_r_meas_btm)*100)
-    txt_out += '\n'
-    txt_out += 'Qw     : %5.2f%% ' %((sum_r_meas_w_top/sum_r_meas_w_btm)*100)
-    txt_out += '\n'
-    txt_out += 'CCiso  : %5.2f' %(cc_iso)
-    txt_out += '\n'
+    #calculate cc12
+    cc12 = np.corrcoef(I_even_filter, I_odd_filter)[0,1]
+
+    txt_out += '----------------------------------------------------------------------------------------\n'
+    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %5.2f %7.2f %7.2f %7.2f %7.2f %7.2f\n' \
+    %((sum_bin_completeness/iph.n_bins)*100, np.sum(completeness_merge.binner.counts_given()), \
+     np.sum(completeness_merge.binner.counts_complete()), len(miller_indices_all)/len(miller_array_merge.data()), \
+     (sum_r_meas_top/sum_r_meas_btm)*100, (sum_r_meas_w_top/sum_r_meas_w_btm)*100, cc12, cc_iso, \
+     np.mean(miller_array_merge.data()/miller_array_merge.sigmas()))
+    txt_out += '----------------------------------------------------------------------------------------\n'
     txt_out += 'No. of total observed reflections: %9.0f from %5.0f frames' %(len(miller_indices_all), cn_good_frame)
     txt_out += '\n'
-    txt_out += 'No. of reflections after merge: %9.0f' %(len(miller_array_merge.data()))
-    txt_out += '\n'
     txt_out += 'Average unit-cell parameters: (%6.2f, %6.2f, %6.2f %6.2f, %6.2f, %6.2f)'%(uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5])
-    txt_out += '\n'
-    txt_out += '------------------------------------------------------'
     txt_out += '\n'
     print txt_out
 
@@ -835,7 +839,7 @@ class input_handler(object):
           print 'Cannot find intensity array in the isomorphous-reference mtz'
           exit()
 
-      self.miller_array_iso = self.miller_array_iso.generate_bijvoet_mates()
+      self.miller_array_iso = self.miller_array_iso.expand_to_p1().generate_bijvoet_mates()
 
     self.txt_out = ''
     self.txt_out += 'Input parameters\n'
