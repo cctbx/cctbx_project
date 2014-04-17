@@ -133,7 +133,7 @@ tst_list = (
   "$D/validation/regression/tst_clashscore.py",
   "$D/validation/regression/tst_restraints.py",
   "$D/validation/regression/tst_rna_validate.py",
-  "$D/validation/regression/tst_model_statistics.py",
+  "$D/validation/regression/tst_model_properties.py",
   "$D/validation/regression/tst_molprobity.py",
   "$D/refinement/tst_select_best_starting_model.py",
   "$D/regression/tst_refine_anomalous_substructure.py",
