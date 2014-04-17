@@ -64,6 +64,16 @@ namespace {
       arg("gradient_array"),
       arg("hbond_weight")=1.0,
       arg("falloff_distance")=0.05));
+
+    def("h_bond_simple_residuals",
+      (af::shared<double> (*) (
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<h_bond_simple_proxy> const&))
+      h_bond_simple_residuals, (
+      arg("sites_cart"),
+      arg("proxies")));
+
+
   }
 
   void wrap_lennard_jones() {

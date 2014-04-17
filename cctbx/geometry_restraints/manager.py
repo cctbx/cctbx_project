@@ -11,6 +11,8 @@ from libtbx import dict_with_default_0
 from libtbx.utils import Sorry
 import sys, math
 
+#from mmtbx.geometry_restraints.hbond import get_simple_bonds
+
 class manager(object):
 
   def __init__(self,
@@ -1042,6 +1044,13 @@ class manager(object):
             site_labels=site_labels,
             f=f, is_c_beta=True)
         print >> f
+      if (self.generic_restraints_manager.hydrogen_bond_proxies is not None):
+        self.generic_restraints_manager.\
+            show_sorted_hbonds(
+                by_value="residual",
+                sites_cart=sites_cart,
+                site_labels=site_labels,
+                f=f)
     if (self.chirality_proxies is not None):
       self.chirality_proxies.show_sorted(
         by_value="residual",
