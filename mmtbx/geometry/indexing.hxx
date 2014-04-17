@@ -1,28 +1,28 @@
-template< typename Object >
-Linear< Object >::Linear()
+template< typename Object, typename Vector >
+Linear< Object, Vector >::Linear()
 {}
 
-template< typename Object >
-Linear< Object >::~Linear()
+template< typename Object, typename Vector >
+Linear< Object, Vector >::~Linear()
 {}
 
-template< typename Object >
+template< typename Object, typename Vector >
 void
-Linear< Object >::add(const object_type& object)
+Linear< Object, Vector >::add(const object_type& object, const vector_type& position)
 {
   objects_.push_back( object );
 }
 
-template< typename Object >
-typename Linear< Object >::range_type
-Linear< Object >::close_to(const object_type& object) const
+template< typename Object, typename Vector >
+typename Linear< Object, Vector >::range_type
+Linear< Object, Vector >::close_to(const vector_type& centre) const
 {
   return range_type( objects_.begin(), objects_.end() );
 }
 
-template< typename Object >
+template< typename Object, typename Vector >
 size_t
-Linear< Object >::size() const
+Linear< Object, Vector >::size() const
 {
   return objects_.size();
 }
@@ -91,20 +91,23 @@ FusionVectorHasher< FusionVector >::operator ()(const FusionVector& myvec) const
   return boost::fusion::fold( myvec, 0, HashCombine() );
 }
 
-template< typename Object, typename Voxelizer >
-Hash< Object, Voxelizer >::Hash(const voxelizer_type& voxelizer)
-  : voxelizer_( voxelizer )
+template< typename Object, typename Vector, typename Discrete >
+Hash< Object, Vector, Discrete >::Hash(
+  const voxelizer_type& voxelizer,
+  const discrete_type& margin
+  )
+  : voxelizer_( voxelizer ), margin_( margin )
 {}
 
-template< typename Object, typename Discrete >
-Hash< Object, Discrete >::~Hash()
+template< typename Object, typename Vector, typename Discrete >
+Hash< Object, Vector, Discrete >::~Hash()
 {}
 
-template< typename Object, typename Discrete >
+template< typename Object, typename Vector, typename Discrete >
 void
-Hash< Object, Discrete >::add(const object_type& object)
+Hash< Object, Vector, Discrete >::add(const object_type& object, const vector_type& position)
 {
-  voxel_type key = voxelizer_( object.centre() );
+  voxel_type key = voxelizer_( position );
 
   typename storage_type::iterator it = objects_.find( key );
 
@@ -121,15 +124,14 @@ Hash< Object, Discrete >::add(const object_type& object)
   it->second.push_back( object );
 }
 
-template< typename Object, typename Discrete >
-typename Hash< Object, Discrete >::range_type
-Hash< Object, Discrete >::close_to(const object_type& object) const
+template< typename Object, typename Vector, typename Discrete >
+typename Hash< Object, Vector, Discrete >::range_type
+Hash< Object, Vector, Discrete >::close_to(const vector_type& centre) const
 {
   range_type result;
-  voxel_type key = voxelizer_( object.centre() );
 
   for(
-    cartesian_type cit = make_cartesian_iterator_around( voxelizer_( object.centre() ) );
+    cartesian_type cit = make_cartesian_iterator_around( voxelizer_( centre ) );
     cit != cartesian_type::end();
     ++cit
     )
@@ -145,9 +147,9 @@ Hash< Object, Discrete >::close_to(const object_type& object) const
   return result;
 }
 
-template< typename Object, typename Discrete >
+template< typename Object, typename Vector, typename Discrete >
 size_t
-Hash< Object, Discrete >::size() const
+Hash< Object, Vector, Discrete >::size() const
 {
   size_t count = 0;
 
@@ -163,16 +165,16 @@ Hash< Object, Discrete >::size() const
   return count;
 }
 
-template< typename Object, typename Discrete >
+template< typename Object, typename Vector, typename Discrete >
 size_t
-Hash< Object, Discrete >::cubes() const
+Hash< Object, Vector, Discrete >::cubes() const
 {
   return objects_.size();
 }
 
-template< typename Object, typename Discrete >
-typename Hash< Object, Discrete >::cartesian_type
-Hash< Object, Discrete >::make_cartesian_iterator_around(
+template< typename Object, typename Vector, typename Discrete >
+typename Hash< Object, Vector, Discrete >::cartesian_type
+Hash< Object, Vector, Discrete >::make_cartesian_iterator_around(
   const voxel_type& voxel
   ) const
 {
@@ -185,9 +187,9 @@ Hash< Object, Discrete >::make_cartesian_iterator_around(
   typedef typename cartesian_type::range_vector_type initializer_type;
   return cartesian_type(
     initializer_type(
-      cart_range_type( itercount( voxel_x - 1 ), itercount( voxel_x + 2 ) ),
-      cart_range_type( itercount( voxel_y - 1 ), itercount( voxel_y + 2 ) ),
-      cart_range_type( itercount( voxel_z - 1 ), itercount( voxel_z + 2 ) )
+      cart_range_type( itercount( voxel_x - margin_ ), itercount( voxel_x + margin_ + 1 ) ),
+      cart_range_type( itercount( voxel_y - margin_ ), itercount( voxel_y + margin_ + 1 ) ),
+      cart_range_type( itercount( voxel_z - margin_ ), itercount( voxel_z + margin_ + 1 ) )
       )
     );
 }

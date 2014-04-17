@@ -57,6 +57,7 @@ struct python_exports
     typedef typename Traits::sphere_bases_type sphere_bases_type;
     typedef typename Traits::vector_type vector_type;
     typedef typename Traits::value_type value_type;
+    typedef typename Traits::discrete_type discrete_type;
 
     // base module
     class_< sphere_type, sphere_bases_type >( "sphere", no_init )
@@ -177,11 +178,11 @@ struct python_export_traits
   #pragma clang diagnostic ignored "-Wmultichar"
   typedef boost::mpl::vector<
     boost::mpl::pair<
-      indexing::Linear< sphere_type >,
+      indexing::Linear< sphere_type, vector_type >,
       boost::mpl::string< 'line', 'ar', '_sph', 'eres' >
       >,
     boost::mpl::pair<
-      indexing::Hash< sphere_type, discrete_type >,
+      indexing::Hash< sphere_type, vector_type, discrete_type >,
       boost::mpl::string< 'hash', '_sph', 'eres' >
       >
     > indexers;

@@ -214,11 +214,11 @@ struct python_export_traits
   #pragma clang diagnostic ignored "-Wmultichar"
   typedef boost::mpl::vector<
     boost::mpl::pair<
-      indexing::Linear< sphere_type >,
+      indexing::Linear< sphere_type, vector_type >,
       boost::mpl::string< 'line', 'ar', '_sph', 'eres' >
       >,
     boost::mpl::pair<
-      indexing::Hash< sphere_type, discrete_type >,
+      indexing::Hash< sphere_type, vector_type, discrete_type >,
       boost::mpl::string< 'hash', '_sph', 'eres' >
       >
     > indexers;

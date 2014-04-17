@@ -7,29 +7,6 @@ import boost.python
 ext = boost.python.import_ext( "mmtbx_geometry_asa_ext" )
 from mmtbx_geometry_asa_ext import *
 
-# Atom representation
-def Regular(sphere, processor):
-  """
-  An object without an altloc identifier
-  """
-
-  processor.process_regular( sphere = sphere )
-
-
-class Altloc(object):
-  """
-  An object assigned with an altloc identifier
-  """
-
-  def __init__(self, identifier):
-
-    self.identifier = identifier
-
-
-  def __call__(self, sphere, processor):
-
-    processor.process_altloc( sphere = sphere, identifier = self.identifier )
-
 
 class Description(object):
   """
@@ -99,7 +76,7 @@ def get_hash_indexer_for(descriptions):
 
   voxelizer = get_voxelizer_for( descriptions = descriptions )
   return Indexer.create(
-    factory = lambda: indexing.hash_spheres( voxelizer = voxelizer ),
+    factory = lambda: indexing.hash_spheres( voxelizer = voxelizer, margin = 1 ),
     descriptions = descriptions,
     )
 
@@ -134,7 +111,7 @@ class Inserter(object):
 
   def process_regular(self, sphere):
 
-    self.indexer.regular.add( object = sphere )
+    self.indexer.regular.add( object = sphere, position = sphere.centre )
 
 
   def process_altloc(self, sphere, identifier):
@@ -142,7 +119,7 @@ class Inserter(object):
     if identifier not in self.indexer.altlocs:
       self.indexer.add( altloc = identifier )
 
-    self.indexer.altlocs[ identifier ].add( object = sphere )
+    self.indexer.altlocs[ identifier ].add( object = sphere, position = sphere.centre )
 
 
 class CompositeCheckerBuilder(object):
@@ -178,7 +155,7 @@ class CompositeCheckerBuilder(object):
 
     self.checker.add(
       neighbours = accessibility.filter(
-        range = indexer.close_to( object = sphere ),
+        range = indexer.close_to( centre = sphere.centre ),
         predicate = accessibility.overlap_equality_predicate( object = sphere )
         )
       )
@@ -237,7 +214,7 @@ class SeparateCheckerBuilder(object):
 
     checker.add(
       neighbours = accessibility.filter(
-        range = indexer.close_to( object = sphere ),
+        range = indexer.close_to( centre = sphere.centre ),
         predicate = accessibility.overlap_equality_predicate( object = sphere )
         )
       )
@@ -281,7 +258,8 @@ class AccessibleSurfaceAreas(object):
   @property
   def areas(self):
 
-    return [ self.unit * v.surface for v in self.values ]
+    from scitbx.array_family import flex
+    return self.unit * flex.double( v.surface for v in self.values )
 
 
 # Ways for calculating ASA
@@ -363,7 +341,7 @@ def calculate(
   descriptions = [
     Description.from_parameters(
       centre = a.xyz,
-      radius = radius_for[ a.determine_chemical_element_simple().strip().capitalize() ] + probe,
+      radius = radius_for[ a.element.strip().capitalize() ] + probe,
       index = i,
       strategy = altloc.from_atom( entity = a ),
       )

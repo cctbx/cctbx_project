@@ -54,7 +54,7 @@ def linear_indexer_for(params):
 
 def hash_indexer_for(params):
 
-  return indexing.hash_spheres( voxelizer = params.voxelizer() )
+  return indexing.hash_spheres( voxelizer = params.voxelizer(), margin = 1 )
 
 
 class SymmetryEquivalent(object):
@@ -428,7 +428,7 @@ class ASUContent(object):
   def _insert(self, sphere_model):
 
     for d in sphere_model.descriptors():
-      self.indexer.add( object = d.sphere )
+      self.indexer.add( object = d.sphere, position = d.sphere.centre )
 
 
 class DistanceCalculation(object):
