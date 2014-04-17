@@ -4,7 +4,7 @@
 # TODO merge this with Table 1 output, PDB deposition, etc.
 
 from __future__ import division
-from mmtbx.validation import validation, residue
+from mmtbx.validation import validation, residue, dummy_validation
 from mmtbx.validation import model_properties
 from mmtbx.validation import experimental
 from mmtbx.validation import clashscore
@@ -44,10 +44,6 @@ waters = True
 
 def molprobity_flags () :
   return libtbx.phil.parse(master_phil_str).extract()
-
-class dummy_validation (object) :
-  def __getattr__ (self, name) :
-    return None
 
 class molprobity (slots_getstate_setstate) :
   """
