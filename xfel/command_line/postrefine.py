@@ -95,7 +95,7 @@ if (__name__ == "__main__"):
     if len(observations_merge_mean_set) > 0:
       from xfel.cxi.postrefine import merge_observations
       miller_array_merge_mean, txt_merge_mean = merge_observations(observations_merge_mean_set, iph, iph.run_no+'/mean_scaled','average')
-      miller_array_ref = miller_array_merge_mean.generate_bijvoet_mates()
+      miller_array_ref = miller_array_merge_mean.expand_to_p1().generate_bijvoet_mates()
     else:
       print "No frames merged as a reference set - exit without post-refinement"
       exit()
