@@ -1471,6 +1471,10 @@ class PySlip(_BufferedCanvas):
         """
 
         # draw polygons on map/view
+        polygons = []
+        lines = []
+        pens = []
+        brushes = []
         if map_rel:
             # Draw points on map/view, using transparency if implemented.
             try:
@@ -1483,19 +1487,19 @@ class PySlip(_BufferedCanvas):
                 p_lonlat = []
                 for lonlat in p:
                     (x, y) = self.ConvertGeo2View(lonlat)
-                    p_lonlat.append((x + x_off, y + y_off))
+                    p_lonlat.extend((x + x_off, y + y_off))
 
-                dc.SetPen(wx.Pen(colour, width=width))
+                pens.append(wx.Pen(colour, width=width))
 
                 if filled:
-                    dc.SetBrush(wx.Brush(fillcolour))
+                    brushes.append(wx.Brush(fillcolour))
                 else:
-                    dc.SetBrush(wx.TRANSPARENT_BRUSH)
+                    brushes.append(wx.TRANSPARENT_BRUSH)
 
                 if closed:
-                    dc.DrawPolygon(p_lonlat)
+                    polygons.append(p_lonlat)
                 else:
-                    dc.DrawLines(p_lonlat)
+                    lines.append(p_lonlat)
         else:
             (dc_w, dc_h) = dc.GetSize()
             dc_w2 = dc_w / 2
@@ -1510,19 +1514,22 @@ class PySlip(_BufferedCanvas):
                 pp = []
                 for (x, y) in p:
                     exec place_exec
-                    pp.append((x, y))
+                    pp.extend((x, y))
 
-                dc.SetPen(wx.Pen(colour, width=width))
-
+                pens.append(wx.Pen(colour, width=width))
                 if filled:
-                    dc.SetBrush(wx.Brush(fillcolour))
+                    brushes.append(wx.Brush(fillcolour))
                 else:
-                    dc.SetBrush(wx.TRANSPARENT_BRUSH)
+                    brushes.append(wx.TRANSPARENT_BRUSH)
 
                 if closed:
-                    dc.DrawPolygon(pp)
+                    polygons.append(pp)
                 else:
-                    dc.DrawLines(pp)
+                    lines.append(pp)
+        if len(lines):
+            dc.DrawLineList(lines, pens=pens)
+        if len(polygons):
+            dc.DrawPolygonList(polygons, pens=pens, brushes=brushes)
 
     def DrawImageLayer(self, dc, images, map_rel):
         """Draw an image Layer on the view.
