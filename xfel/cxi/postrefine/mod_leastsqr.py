@@ -316,11 +316,6 @@ class leastsqr_handler(object):
       var_p = (var_p_sq/(partiality_model_flex**2)).as_numpy_array()
       SE_I = np.sqrt(var_I_p + var_k + var_p)*(I_o_model)
 
-      #print np.mean(var_I_p), np.mean(var_k), np.mean(var_p), np.mean(SE_I), np.mean(observations_original.sigmas())
-      """
-      for miller_index, i_obs, sigi_obs, se_i, vi, vk, vp in zip(observations_original.indices(), observations_original.data(), observations_original.sigmas(), SE_I, var_I_p, var_k, var_p):
-        print miller_index, i_obs, sigi_obs, se_i, vi, vk, vp
-      """
     """
     print 'Predictor'
     print 'G %.4g'%(G)
@@ -337,7 +332,7 @@ class leastsqr_handler(object):
 
     plt.scatter(I_r_true, I_o_true,s=10, marker='x', c='r')
     plt.scatter(I_r_true, I_o_model,s=10, marker='o', c='b')
-    plt.title('G=%.4g B=%.4g rotx=%.4g roty=%.4g CC=%.4g%%'%(xopt[0], xopt[1], xopt[2]*180/math.pi, xopt[3]*180/math.pi, CC))
+    plt.title('G=%.4g B=%.4g rotx=%.4g roty=%.4g R-sq=%.4g%%'%(xopt[0], xopt[1], xopt[2]*180/math.pi, xopt[3]*180/math.pi, R_sq))
     plt.xlabel('I_ref')
     plt.ylabel('I_obs')
     plt.show()

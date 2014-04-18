@@ -21,9 +21,17 @@ class intensities_scaler(object):
     Constructor
     '''
 
-  def calc_average_I_sigI(self, I, sigI, G, B, p, SE_I, sin_theta_over_lambda_sq, avg_mode, SE):
+  def calc_average_I_sigI(self, I, sigI, G, B, p, SE_I, sin_theta_over_lambda_sq, avg_mode, SE, iph):
     I_full = I/(G * flex.exp(-2*B*sin_theta_over_lambda_sq) * p)
     sigI_full = sigI/(G * flex.exp(-2*B*sin_theta_over_lambda_sq) * p)
+
+    #filter out outliers
+    if np.std(I_full) > 0:
+      I_full_as_sigma = (I_full - np.mean(I_full))/ np.std(I_full)
+      i_sel = (flex.abs(I_full_as_sigma) <= iph.sigma_max_merge)
+      I_full = I_full.select(i_sel)
+      sigI_full = sigI_full.select(i_sel)
+      SE = SE.select(i_sel)
 
     #normalize the SE
     max_w = 1.0
@@ -43,39 +51,45 @@ class intensities_scaler(object):
       sigI_avg = flex.mean(sigI_full)
 
     #Rmeas, Rmeas_w, multiplicity
-    multiplicity = len(I)
+    multiplicity = len(I_full)
     if multiplicity == 1:
-      n_obs = 1.25
+      r_meas_w_top = 0
+      r_meas_w_btm = 0
+      r_meas_top = 0
+      r_meas_btm = 0
     else:
       n_obs = multiplicity
-
-    r_meas_w_top = flex.sum(((I_full - I_avg)*SE_norm)**2)*math.sqrt(n_obs/(n_obs-1))
-    r_meas_w_btm = flex.sum((I_full*SE_norm)**2)
-    r_meas_top = flex.sum((I_full - I_avg)**2)*math.sqrt(n_obs/(n_obs-1))
-    r_meas_btm = flex.sum((I_full)**2)
+      r_meas_w_top = flex.sum(((I_full - I_avg)*SE_norm)**2)*math.sqrt(n_obs/(n_obs-1))
+      r_meas_w_btm = flex.sum((I_full*SE_norm)**2)
+      r_meas_top = flex.sum((I_full - I_avg)**2)*math.sqrt(n_obs/(n_obs-1))
+      r_meas_btm = flex.sum((I_full)**2)
 
 
     #for calculattion of cc1/2
     #sepearte the observations into two groups
-    i_even = range(0,len(I_full),2)
-    i_odd = range(1,len(I_full),2)
-    I_even = I_full.select(i_even)
-    sigI_even = sigI_full.select(i_even)
-    SE_norm_even = SE_norm.select(i_even)
-    I_odd = I_full.select(i_odd)
-    sigI_odd = sigI_full.select(i_odd)
-    SE_norm_odd = SE_norm.select(i_odd)
-    if len(i_even) > len(i_odd):
-      I_odd.append(I_even[len(I_even)-1])
-      sigI_odd.append(sigI_even[len(I_even)-1])
-      SE_norm_odd.append(SE_norm_even[len(I_even)-1])
+    if multiplicity == 1:
+      I_avg_even = 0
+      I_avg_odd = 0
+    else:
+      i_even = range(0,len(I_full),2)
+      i_odd = range(1,len(I_full),2)
+      I_even = I_full.select(i_even)
+      sigI_even = sigI_full.select(i_even)
+      SE_norm_even = SE_norm.select(i_even)
+      I_odd = I_full.select(i_odd)
+      sigI_odd = sigI_full.select(i_odd)
+      SE_norm_odd = SE_norm.select(i_odd)
+      if len(i_even) > len(i_odd):
+        I_odd.append(I_even[len(I_even)-1])
+        sigI_odd.append(sigI_even[len(I_even)-1])
+        SE_norm_odd.append(SE_norm_even[len(I_even)-1])
 
-    if avg_mode == 'weighted':
-      I_avg_even = flex.sum(SE_norm_even * I_even)/flex.sum(SE_norm_even)
-      I_avg_odd = flex.sum(SE_norm_odd * I_odd)/flex.sum(SE_norm_odd)
-    elif avg_mode== 'average':
-      I_avg_even = flex.mean(I_even)
-      I_avg_odd = flex.mean(I_odd)
+      if avg_mode == 'weighted':
+        I_avg_even = flex.sum(SE_norm_even * I_even)/flex.sum(SE_norm_even)
+        I_avg_odd = flex.sum(SE_norm_odd * I_odd)/flex.sum(SE_norm_odd)
+      elif avg_mode== 'average':
+        I_avg_even = flex.mean(I_even)
+        I_avg_odd = flex.mean(I_odd)
 
     return I_avg, sigI_avg, (r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, multiplicity), I_avg_even, I_avg_odd
 
@@ -140,7 +154,7 @@ class intensities_scaler(object):
             sin_sq_all.append(sin_sq)
             SE_all.append(pres.stats[0])
         else:
-          print pres.frame_no, ' unit-cell parameters exceed the limits', list(pres.uc_params)
+          print pres.frame_no, pres.pickle_filename, ' unit-cell exceeds the limits', list(pres.uc_params)
 
     #plot stats
     self.plot_stats(results, iph)
@@ -213,7 +227,7 @@ class intensities_scaler(object):
 
       if len(I_obs_group) > 0:
         I_avg, sigI_avg, stat, I_avg_even, I_avg_odd = self.calc_average_I_sigI(I_obs_group, sigI_obs_group,
-            G_group, B_group, p_group, SE_I_group, sin_sq_group, avg_mode, SE_group)
+            G_group, B_group, p_group, SE_I_group, sin_sq_group, avg_mode, SE_group, iph)
 
         if math.isnan(stat[0]) or math.isinf(stat[0]) or math.isnan(stat[1]) or math.isinf(stat[1]):
           print miller_index_group, ' not merged (Qw=%.4g/%.4g)'%(stat[0],stat[1])
@@ -292,8 +306,8 @@ class intensities_scaler(object):
 
     txt_out = '\n'
     txt_out += 'Summary for '+output_mtz_file_prefix+'_merge.mtz\n'
-    txt_out += 'Bin Resolution Range     Completeness    <N_obs>  Qmeas    Qw    CC1/2   CCiso  <I/sigI>\n'
-    txt_out += '----------------------------------------------------------------------------------------\n'
+    txt_out += 'Bin Resolution Range     Completeness    <N_obs>  |Qmeas    Qw     CC1/2   N_ind |CCiso  N_ind| <I/sigI>\n'
+    txt_out += '--------------------------------------------------------------------------------------------------------\n'
     sum_bin_completeness = 0
     sum_r_meas_w_top = 0
     sum_r_meas_w_btm = 0
@@ -330,16 +344,31 @@ class intensities_scaler(object):
           sum_r_meas_btm += r_meas_btm
 
         multiplicity_bin = sum_mul_bin/completeness_merge.binner.counts_given()[i]
-        r_meas_w_bin = sum_r_meas_w_top_bin/ sum_r_meas_w_btm_bin
-        r_meas_bin = sum_r_meas_top_bin/ sum_r_meas_btm_bin
+        if sum_r_meas_w_btm_bin > 0:
+          r_meas_w_bin = sum_r_meas_w_top_bin/ sum_r_meas_w_btm_bin
+        else:
+          r_meas_w_bin = float('Inf')
 
-        cc12_bin = np.corrcoef(I_even_filter.select(i_binner), I_odd_filter.select(i_binner))[0,1]
+        if sum_r_meas_btm_bin > 0:
+          r_meas_bin = sum_r_meas_top_bin/ sum_r_meas_btm_bin
+        else:
+          r_meas_bin = float('Inf')
+
+        I_even_filter_bin = I_even_filter.select(i_binner)
+        I_odd_filter_bin = I_odd_filter.select(i_binner)
+        #for cc1/2, use only non-zero I (zero when there is only one observation)
+        i_even_filter_sel = (I_even_filter_bin > 0)
+        n_refl_cc12_bin = len(I_even_filter_bin.select(i_even_filter_sel))
+        cc12_bin = 0
+        if n_refl_cc12_bin > 0:
+          cc12_bin = np.corrcoef(I_even_filter_bin.select(i_even_filter_sel), I_odd_filter_bin.select(i_even_filter_sel))[0,1]
 
       completeness = completeness_merge.data[i]
       sum_bin_completeness += completeness
 
       #calculate CCiso
       cc_iso_bin = 0
+      n_refl_cciso_bin = 0
       if iph.file_name_iso_mtz != '':
         matches_iso = miller.match_multi_indices(
                   miller_indices_unique=iph.miller_array_iso.indices(),
@@ -347,6 +376,7 @@ class intensities_scaler(object):
 
         I_iso = flex.double([iph.miller_array_iso.data()[pair[0]] for pair in matches_iso.pairs()])
         I_merge_match_iso = flex.double([miller_array_merge.data().select(i_binner)[pair[1]] for pair in matches_iso.pairs()])
+        n_refl_cciso_bin = len(matches_iso.pairs())
         if len(matches_iso.pairs()) > 0 :
           cc_iso_bin = np.corrcoef(I_merge_match_iso, I_iso)[0,1]
 
@@ -357,14 +387,15 @@ class intensities_scaler(object):
           plt.ylabel('I_obs')
           plt.show()
 
-      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %5.2f %7.2f %7.2f %7.2f %7.2f %7.2f' \
+      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %5.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f' \
           %(i, binner_merge.bin_d_range(i)[0], binner_merge.bin_d_range(i)[1], completeness*100, \
           completeness_merge.binner.counts_given()[i], completeness_merge.binner.counts_complete()[i],\
-          multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12_bin, cc_iso_bin, mean_i_over_sigi_bin)
+          multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12_bin, n_refl_cc12_bin, cc_iso_bin, n_refl_cciso_bin, mean_i_over_sigi_bin)
       txt_out += '\n'
 
     #calculate CCiso
     cc_iso = 0
+    n_refl_iso = 0
     if iph.file_name_iso_mtz != '':
       matches_iso = miller.match_multi_indices(
                 miller_indices_unique=iph.miller_array_iso.indices(),
@@ -374,6 +405,7 @@ class intensities_scaler(object):
       I_merge_match_iso = flex.double([miller_array_merge.data()[pair[1]] for pair in matches_iso.pairs()])
       if len(matches_iso.pairs()) > 0 :
         cc_iso = np.corrcoef(I_merge_match_iso, I_iso)[0,1]
+        n_refl_iso = len(matches_iso.pairs())
       if iph.flag_plot:
         plt.scatter(I_iso, I_merge_match_iso,s=10, marker='x', c='r')
         plt.title('CC=%.4g'%(cc_iso))
@@ -382,21 +414,32 @@ class intensities_scaler(object):
         plt.show()
 
     #calculate cc12
-    cc12 = np.corrcoef(I_even_filter, I_odd_filter)[0,1]
+    i_even_filter_sel = (I_even_filter > 0)
+    cc12 = np.corrcoef(I_even_filter.select(i_even_filter_sel), I_odd_filter.select(i_even_filter_sel))[0,1]
 
-    txt_out += '----------------------------------------------------------------------------------------\n'
-    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %5.2f %7.2f %7.2f %7.2f %7.2f %7.2f\n' \
+    #calculate Qmeas and Qw
+    if sum_r_meas_w_btm > 0:
+      r_meas_w = sum_r_meas_w_top/sum_r_meas_w_btm
+    else:
+      r_meas_w = float('Inf')
+
+    if sum_r_meas_btm > 0:
+      r_meas = sum_r_meas_top/sum_r_meas_btm
+    else:
+      r_meas = float('Inf')
+
+    txt_out += '--------------------------------------------------------------------------------------------------------\n'
+    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %5.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f\n' \
     %((sum_bin_completeness/iph.n_bins)*100, np.sum(completeness_merge.binner.counts_given()), \
      np.sum(completeness_merge.binner.counts_complete()), len(miller_indices_all)/len(miller_array_merge.data()), \
-     (sum_r_meas_top/sum_r_meas_btm)*100, (sum_r_meas_w_top/sum_r_meas_w_btm)*100, cc12, cc_iso, \
-     np.mean(miller_array_merge.data()/miller_array_merge.sigmas()))
-    txt_out += '----------------------------------------------------------------------------------------\n'
+     r_meas*100, r_meas_w*100, cc12, len(I_even_filter.select(i_even_filter_sel)), cc_iso, \
+     n_refl_iso, np.mean(miller_array_merge.data()/miller_array_merge.sigmas()))
+    txt_out += '--------------------------------------------------------------------------------------------------------\n'
     txt_out += 'No. of total observed reflections: %9.0f from %5.0f frames' %(len(miller_indices_all), cn_good_frame)
     txt_out += '\n'
     txt_out += 'Average unit-cell parameters: (%6.2f, %6.2f, %6.2f %6.2f, %6.2f, %6.2f)'%(uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5])
     txt_out += '\n'
     print txt_out
-
 
     return miller_array_merge, txt_out
 
@@ -710,8 +753,8 @@ class input_handler(object):
     self.d_min = 0
     self.d_min_merge = 0
     self.d_max = 45
-    self.sigma_max = 15
-    self.sigma_max_merge=99
+    self.sigma_max = 1.5
+    self.sigma_max_merge=1.25
     self.flag_reference_a_matrix = False
     self.target_unit_cell = ''
     self.target_space_group = ''
@@ -814,7 +857,7 @@ class input_handler(object):
       exit()
 
     if self.pixel_size_mm == 0:
-      print 'pixel size (in mm) is required (usage: pixel_size_mm = 0.08)'
+      print 'pixel size (in mm) is required (usage: pixel_size_mm = 0.079346 for MAR or = 0.11 for CSPAD)'
       exit()
 
     #fetch isomorphous structure
@@ -860,7 +903,6 @@ class input_handler(object):
     self.txt_out += 'd_max '+str(self.d_max)+'\n'
     self.txt_out += 'sigma_max '+str(self.sigma_max)+'\n'
     self.txt_out += 'sigma_max_merge '+str(self.sigma_max_merge)+'\n'
-    self.txt_out += 'q_w_merge '+str(self.q_w_merge)+'\n'
     self.txt_out += 'target_unit_cell '+str(self.target_unit_cell)+'\n'
     self.txt_out += 'target_space_group '+str(self.target_space_group)+'\n'
     self.txt_out += 'target_anomalous_flag '+str(self.target_anomalous_flag)+'\n'
