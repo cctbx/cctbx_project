@@ -6,6 +6,7 @@ import mmtbx.monomer_library.pdb_interpretation
 import mmtbx
 import mmtbx.secondary_structure
 import iotbx
+import libtbx.load_env
 
 pdb_str = """\
 ATOM      1  N   ALA     1       1.558  -2.549  -1.143  1.00  0.00           N
@@ -123,5 +124,8 @@ hbond pdb=" O   ALA     5 "
 """
 
 if (__name__ == "__main__") :
-  exercise_geo_hbond_out()
-  print "OK"
+  if libtbx.env.has_module("ksdssp") :
+    exercise_geo_hbond_out()
+    print "OK"
+  else :
+    print "skipping test, ksdssp not available"
