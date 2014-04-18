@@ -7,18 +7,10 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
 
   @staticmethod
   def understand(image_file):
-    try:
-      tag = FormatHDF5.open_file(image_file, 'rb').read(8)
-    except IOError, e:
-      return False
+    import h5py
+    h5_handle = h5py.File(image_file, 'r')
 
-    if tag != "\211HDF\r\n\032\n":
-      return False
-
-    # make sure that this is not a NeXus file...
-
-    from FormatHDF5Nexus import FormatHDF5Nexus
-    return not FormatHDF5Nexus.understand(image_file)
+    return 'file_info' in h5_handle and 'run_number_list' in h5_handle['file_info']
 
   def __init__(self, image_file):
     assert(self.understand(image_file))
@@ -26,7 +18,7 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
 
   def _start(self):
     import h5py
-    self._h5_handle = h5py.File(self.get_image_file())
+    self._h5_handle = h5py.File(self.get_image_file(), 'r')
 
     file_info = self._h5_handle['file_info']
     run_number_list = file_info['run_number_list']

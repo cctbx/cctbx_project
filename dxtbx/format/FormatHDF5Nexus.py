@@ -24,6 +24,9 @@ class FormatHDF5Nexus(FormatHDF5):
     import h5py
     h5_handle = h5py.File(image_file, 'r')
 
+    if not 'entry' in h5_handle:
+      return False
+
     if not 'definition' in h5_handle['entry']:
       h5_handle.close()
       return False
