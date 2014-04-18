@@ -139,11 +139,13 @@ class rb_mat_zyz(object):
      return rm
 
 class rb_mat_xyz(object):
+   """ R = Rx(the)Ry(psi)Rz(phi) """
 
-   def __init__(self, phi, psi, the):
-     phi = phi * math.pi/180
-     psi = psi * math.pi/180
-     the = the * math.pi/180
+   def __init__(self, phi, psi, the, deg=True):
+     if deg:
+       phi = phi * math.pi/180
+       psi = psi * math.pi/180
+       the = the * math.pi/180
      self.c_psi = math.cos(psi)
      self.c_phi = math.cos(phi)
      self.c_the = math.cos(the)
@@ -170,22 +172,22 @@ class rb_mat_xyz(object):
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
-   def r_phi(self):
+   def r_the(self):
      c_psi = self.c_psi
      c_the = self.c_the
      c_phi = self.c_phi
      s_psi = self.s_psi
      s_the = self.s_the
      s_phi = self.s_phi
-     r11 = -c_psi*s_phi
-     r12 = -c_psi*c_phi
+     r11 =  0.0
+     r12 =  0.0
      r13 =  0.0
-     r21 =  c_the*c_phi - s_the*s_psi*s_phi
-     r22 = -c_the*s_phi - s_the*s_psi*c_phi
-     r23 =  0.0
-     r31 =  s_the*c_phi + c_the*s_psi*s_phi
-     r32 = -s_the*s_phi + c_the*s_psi*c_phi
-     r33 =  0.0
+     r21 = -s_the*s_phi+c_the*s_psi*c_phi
+     r22 = -s_the*c_phi-c_the*s_psi*s_phi
+     r23 = -c_the*c_psi
+     r31 =  c_the*s_phi+s_the*s_psi*c_phi
+     r32 =  c_the*c_phi-s_the*s_psi*s_phi
+     r33 = -s_the*c_psi
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
@@ -208,21 +210,21 @@ class rb_mat_xyz(object):
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
-   def r_the(self):
+   def r_phi(self):
      c_psi = self.c_psi
      c_the = self.c_the
      c_phi = self.c_phi
      s_psi = self.s_psi
      s_the = self.s_the
      s_phi = self.s_phi
-     r11 =  0.0
-     r12 =  0.0
+     r11 = -c_psi*s_phi
+     r12 = -c_psi*c_phi
      r13 =  0.0
-     r21 = -s_the*s_phi+c_the*s_psi*c_phi
-     r22 = -s_the*c_phi-c_the*s_psi*s_phi
-     r23 = -c_the*c_psi
-     r31 =  c_the*s_phi+s_the*s_psi*c_phi
-     r32 =  c_the*c_phi-s_the*s_psi*s_phi
-     r33 = -s_the*c_psi
+     r21 =  c_the*c_phi - s_the*s_psi*s_phi
+     r22 = -c_the*s_phi - s_the*s_psi*c_phi
+     r23 =  0.0
+     r31 =  s_the*c_phi + c_the*s_psi*s_phi
+     r32 = -s_the*s_phi + c_the*s_psi*c_phi
+     r33 =  0.0
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
