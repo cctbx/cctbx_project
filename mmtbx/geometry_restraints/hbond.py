@@ -169,8 +169,7 @@ def target_and_gradients (proxies,
     sum = ext.h_bond_simple_residual_sum(
       sites_cart=sites_cart,
       proxies=proxies,
-      gradient_array=gradient_array,
-      falloff_distance=falloff_distance)
+      gradient_array=gradient_array)
   elif (type(proxies).__name__ == "shared_h_bond_lennard_jones_proxy") :
     if (lennard_jones_potential == "4_6") :
       weight_scale = 400
