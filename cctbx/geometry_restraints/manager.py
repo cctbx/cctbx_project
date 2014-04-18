@@ -1051,6 +1051,12 @@ class manager(object):
                 sites_cart=sites_cart,
                 site_labels=site_labels,
                 f=f)
+      self.generic_restraints_manager.\
+          show_sorted_ramachandran(
+              by_value="residual",
+              sites_cart=sites_cart,
+              site_labels=site_labels,
+              f=f)
     if (self.chirality_proxies is not None):
       self.chirality_proxies.show_sorted(
         by_value="residual",

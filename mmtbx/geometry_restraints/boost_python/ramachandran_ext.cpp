@@ -29,6 +29,7 @@ namespace boost_python {
           arg("residue_index")=1)))
       .def_readonly("residue_name", &w_t::residue_name)
       .def_readonly("residue_type", &w_t::residue_type)
+      .def("get_i_seqs", &w_t::get_i_seqs)
     //  .def_readonly("phi_psi", &w_t::phi_psi_i_seqs)
     ;
     {
