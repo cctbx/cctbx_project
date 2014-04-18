@@ -62,7 +62,7 @@ ATOM     50  CB  ALA    10      -5.991  -0.112 -13.243  1.00  0.00           C
 TER
 """
 
-def exercise_geo_hbond_out():
+def exercise_geo_out():
   log = null_out()
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
@@ -92,6 +92,19 @@ def exercise_geo_hbond_out():
       hydrogen_bond_proxies=proxies_for_grm.proxies,
       custom_nonbonded_exclusions = custom_nb_excl,
       assume_hydrogens_all_missing = True)
+  from mmtbx.geometry_restraints import ramachandran
+  params = ramachandran.master_phil.fetch().extract()
+  params.rama_potential = "emsley"
+  #params.rama_weight = sigma_on_ramachandran
+  proxies = ramachandran.extract_proxies(acp.pdb_hierarchy, log=log)
+  rama_lookup = ramachandran.lookup_manager(params)
+  restraints_helper = mmtbx.geometry_restraints.manager(
+      ramachandran_proxies=proxies,
+      ramachandran_lookup=rama_lookup,
+      hydrogen_bond_proxies=proxies_for_grm.proxies,
+      hydrogen_bond_params=None)
+  grm.set_generic_restraints(restraints_helper)
+
   atoms = acp.pdb_hierarchy.atoms()
   assert grm.generic_restraints_manager.get_n_hbonds() == 4
   import StringIO
@@ -122,10 +135,69 @@ hbond pdb=" O   ALA     5 "
   2.900  2.902 -0.002  5.00e-02 4.00e+02 1.84e-03
 
 """
+  str_result = StringIO.StringIO()
+  grm.generic_restraints_manager.show_sorted_ramachandran(
+      by_value="residual",
+      sites_cart = atoms.extract_xyz(),
+      site_labels= [a.id_str() for a in atoms],
+      f=str_result)
+  assert str_result.getvalue() == """\
+Ramachandran plot restraints: 8
+Sorted by residual:
+phi-psi angles formed by             residual
+    pdb=" C   ALA     7 "            1.53e+01
+    pdb=" N   ALA     8 "
+    pdb=" CA  ALA     8 "
+    pdb=" C   ALA     8 "
+    pdb=" N   ALA     9 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     1 "            1.52e+01
+    pdb=" N   ALA     2 "
+    pdb=" CA  ALA     2 "
+    pdb=" C   ALA     2 "
+    pdb=" N   ALA     3 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     6 "            1.20e+01
+    pdb=" N   ALA     7 "
+    pdb=" CA  ALA     7 "
+    pdb=" C   ALA     7 "
+    pdb=" N   ALA     8 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     2 "            1.14e+01
+    pdb=" N   ALA     3 "
+    pdb=" CA  ALA     3 "
+    pdb=" C   ALA     3 "
+    pdb=" N   ALA     4 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     8 "            1.06e+01
+    pdb=" N   ALA     9 "
+    pdb=" CA  ALA     9 "
+    pdb=" C   ALA     9 "
+    pdb=" N   ALA    10 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     4 "            1.06e+01
+    pdb=" N   ALA     5 "
+    pdb=" CA  ALA     5 "
+    pdb=" C   ALA     5 "
+    pdb=" N   ALA     6 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     3 "            1.03e+01
+    pdb=" N   ALA     4 "
+    pdb=" CA  ALA     4 "
+    pdb=" C   ALA     4 "
+    pdb=" N   ALA     5 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     5 "            7.58e+00
+    pdb=" N   ALA     6 "
+    pdb=" CA  ALA     6 "
+    pdb=" C   ALA     6 "
+    pdb=" N   ALA     7 "
+
+"""
 
 if (__name__ == "__main__") :
   if libtbx.env.has_module("ksdssp") :
-    exercise_geo_hbond_out()
+    exercise_geo_out()
     print "OK"
   else :
     print "skipping test, ksdssp not available"

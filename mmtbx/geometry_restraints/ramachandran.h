@@ -59,6 +59,12 @@ namespace mmtbx { namespace geometry_restraints {
       MMTBX_ASSERT(residue_index > 0);
     }
 
+    af::shared<unsigned> get_i_seqs() {
+      af::shared<unsigned> result;
+      for (int i=0; i<5; i++) result.push_back(i_seqs[i]);
+      return result;
+    }
+
   };
 
   namespace gr = cctbx::geometry_restraints;

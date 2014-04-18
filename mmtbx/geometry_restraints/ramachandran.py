@@ -250,7 +250,8 @@ class lookup_manager (object) :
                                sites_cart,
                                proxies,
                                gradient_array=None,
-                               unit_cell=None) :
+                               unit_cell=None,
+                               residuals_array=[]) :
     from scitbx.array_family import flex
     assert proxies is not None
     import boost.python
@@ -259,6 +260,8 @@ class lookup_manager (object) :
       target_phi_psi
     if(gradient_array is None) :
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+    if residuals_array != []:
+      residuals_array = []
     target = 0
     if(self.params.rama_potential == "oldfield"):
       op = self.params.oldfield
@@ -282,26 +285,26 @@ class lookup_manager (object) :
            rama_table     = rama_table,
            sites_cart     = sites_cart,
            proxy          = proxy)
-        target += tg.target()
-      return target
+        residuals_array.append(tg.target())
     elif (self.params.rama_potential == "rosetta") :
       for proxy in proxies :
-        target += self.tables.residue_target_and_gradients(
+        residuals_array.append(self.tables.residue_target_and_gradients(
           gradient_array=gradient_array,
           sites_cart=sites_cart,
           proxy=proxy,
-          weight=self.params.rama_weight)
+          weight=self.params.rama_weight))
     else:
       assert (self.params.rama_weight >= 0.0)
       for proxy in proxies :
         rama_table = self.tables[proxy.residue_type]
-        target += rama_table.compute_gradients(
+        residuals_array.append(rama_table.compute_gradients(
           gradient_array=gradient_array,
           sites_cart=sites_cart,
           proxy=proxy,
           weight=self.params.rama_weight,
-          epsilon=0.001)
-    return target
+          epsilon=0.001))
+    return sum(residuals_array)
+
 
 def extract_proxies (pdb_hierarchy,
                      atom_selection=None,

@@ -1,8 +1,9 @@
 from __future__ import division
 
 from libtbx import adopt_init_args
-from mmtbx.geometry_restraints import hbond
+from mmtbx.geometry_restraints import hbond, ramachandran
 from scitbx.array_family import flex
+
 
 # catch-all class for handling any higher-level restraints (such as
 # Ramachandran, rotamer, H-bonds, etc.)
@@ -214,7 +215,8 @@ class manager (object) :
     ext = boost.python.import_ext("mmtbx_hbond_restraints_ext")
     residuals = ext.h_bond_simple_residuals(sites_cart, self.hydrogen_bond_proxies)
     simple_bonds = hbond.get_simple_bonds(self.hydrogen_bond_proxies)
-    labels = site_labels if site_labels is not None else [str(i) for i in range(sites_cart.size())]
+    labels = site_labels if site_labels is not None \
+        else [str(i) for i in range(sites_cart.size())]
     result = []
     for i, pr in enumerate(simple_bonds):
       model = math.sqrt((sites_cart[pr[0]][0]-sites_cart[pr[1]][0])**2 +\
@@ -259,6 +261,66 @@ class manager (object) :
           p.ideal, p.model, p.delta, p.sigma, p.weight, p.residual)
     print >> f, ""
 
+  def _get_sorted_ramachandran_proxies_for_show(self,
+      by_value,
+      sites_cart,
+      site_labels=None):
+    class rama_for_show:
+      def __init__(self,
+          labels,
+          residual):
+        adopt_init_args(self, locals())
+    assert by_value in ["residual", "delta"]
+    assert site_labels is None or len(site_labels) == sites_cart.size()
+    if self.get_n_ramachandran_proxies() == 0 or \
+        self.ramachandran_lookup is None:
+      return
+    residuals_array = []
+    self.ramachandran_lookup.restraints_residual_sum(
+        sites_cart,
+        self.ramachandran_proxies,
+        residuals_array=residuals_array)
+    result = []
+    labels = site_labels if site_labels is not None \
+        else [str(i) for i in range(sites_cart.size())]
+    for i, pr in enumerate(self.ramachandran_proxies):
+      i_seqs = pr.get_i_seqs()
+      result.append(rama_for_show(
+          [labels[i_seqs[0]],
+           labels[i_seqs[1]],
+           labels[i_seqs[2]],
+           labels[i_seqs[3]],
+           labels[i_seqs[4]]],
+          residuals_array[i]))
+    if by_value == "residual":
+      result.sort(key=lambda x: x.residual, reverse=True)
+    return result
+
+  def show_sorted_ramachandran(self,
+      by_value,
+      sites_cart,
+      site_labels=None,
+      f=None,
+      prefix="",
+      max_items=None):
+    if self.get_n_ramachandran_proxies() == 0:
+      return
+    if (f is None): f = sys.stdout
+    if by_value != "residual":
+      by_value = "residual"
+    sorted_proxies_for_show = self._get_sorted_ramachandran_proxies_for_show(
+      by_value=by_value,
+      sites_cart=sites_cart,
+      site_labels=site_labels)
+    print >> f, "Ramachandran plot restraints: %d" % len(sorted_proxies_for_show)
+    print >> f, "Sorted by %s:" % by_value
+    for p in sorted_proxies_for_show:
+      print >> f, "phi-psi angles formed by             residual"
+      print >> f, "    %s            %5.2e" % (p.labels[0], p.residual)
+      for i in range(1,5):
+        print >> f, "    %s" % p.labels[i]
+    print >> f, ""
+    
   def get_hbonds_residual_sum(self,
       sites_cart,
       gradient_array=None):
