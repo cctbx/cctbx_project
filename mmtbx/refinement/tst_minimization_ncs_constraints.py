@@ -3,17 +3,21 @@ from iotbx.pdb.multimer_reconstruction import multimer
 import mmtbx.refinement.minimization_ncs_constraints
 import mmtbx.monomer_library.pdb_interpretation
 from libtbx.test_utils import approx_equal
+import mmtbx.refinement.adp_refinement
 from scitbx.array_family import flex
 import mmtbx.monomer_library.server
 from libtbx import adopt_init_args
 from mmtbx import monomer_library
+import mmtbx.utils.rotations as rt
 from cctbx import xray
 import mmtbx.f_model
 import mmtbx.utils
 import iotbx.pdb
+import random
+import math
 import os
 import sys
-import mmtbx.refinement.adp_refinement
+
 
 ncs_1_copy="""\
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
@@ -59,6 +63,7 @@ class ncs_minimization_test(object):
                n_macro_cycle,
                sites,
                u_iso,
+               transformations,
                finite_grad_differences_test,
                use_geometry_restraints,
                shake_site_mean_distance,
@@ -102,9 +107,15 @@ class ncs_minimization_test(object):
     xrs_shaken = xrs_one_ncs.deep_copy_scatterers()
     if sites: xrs_shaken.shake_sites_in_place(
       mean_distance=shake_site_mean_distance)
-    if(self.u_iso):
+    if self.u_iso:
       u_random = flex.random_double(xrs_shaken.scatterers().size())
       xrs_shaken = xrs_shaken.set_u_iso(values=u_random)
+    if self.transformations:
+      mtrix_object = shake_transformations(
+        mtrix_object = mtrix_object,
+        shake_angles_sigma=0.052,
+        shake_translation_sigma=0)
+      print 'Shake rotation matrices and translation vectors'
     ph.adopt_xray_structure(xrs_shaken)
     of = open("one_ncs_in_asu_shaken.pdb", "w")
     print >> of, mtrix_object.as_pdb_string()
@@ -133,7 +144,7 @@ class ncs_minimization_test(object):
     fmdc.update_xray_structure(xray_structure = fmdc.xray_structure,
       update_f_calc=True)
     fmdc.xray_structure.scatterers().flags_set_grads(state=False)
-    if(self.sites):
+    if self.sites:
       xray.set_scatterer_grad_flags(
         scatterers = fmdc.xray_structure.scatterers(),
         site       = True)
@@ -144,7 +155,7 @@ class ncs_minimization_test(object):
       gc = self.grm.energies_sites(
         sites_cart        = fmdc.xray_structure.sites_cart(),
         compute_gradients = True).gradients
-    else:
+    elif self.u_iso:
       # to define geometry_restraints_manager.plain_pair_sym_table
       gc = self.grm.energies_sites(
         sites_cart        = fmdc.xray_structure.sites_cart(),
@@ -162,6 +173,9 @@ class ncs_minimization_test(object):
         use_u_local_only  = self.iso_restraints.use_u_local_only,
         use_hd            = False,
         compute_gradients = True).gradients
+    elif self.transformations:
+      # get weights for transformations refinement
+      pass
     gc_norm  = gc.norm()
     gxc_norm = gxc.norm()
     weight = 1.
@@ -215,8 +229,10 @@ class ncs_minimization_test(object):
         data_weight                  = data_weight,
         iso_restraints               = self.iso_restraints,
         refine_sites                 = self.sites,
-        refine_u_iso                 = self.u_iso)
-      refine_type = 'adp'*self.u_iso + 'sites'*self.sites
+        refine_u_iso                 = self.u_iso,
+        refine_transformations       = self.transformations)
+      refine_type = 'adp'*self.u_iso + 'sites'*self.sites \
+                    + 'transformation'*self.transformations
       outstr = "  macro_cycle {0:3} ({1})   r_factor: {2:6.4f}   " + \
             self.finite_grad_differences_test * \
             "finite_grad_difference_val: {3:.4f}"
@@ -233,6 +249,10 @@ class ncs_minimization_test(object):
         assert approx_equal(self.fmodel.r_work(), 0, 0.0001)
       else:
         assert approx_equal(self.fmodel.r_work(), 0, 1.e-5)
+    elif self.transformations:
+      print 'Add assertion for transformation refinement'
+      if not self.transformations:
+        assert approx_equal(self.fmodel.r_work(), 0, 0.0001)
     else: assert 0
     # output refined model
     xrs_refined = self.fmodel.xray_structure
@@ -266,13 +286,14 @@ class ncs_minimization_test(object):
     for fn in files_to_delete:
       if os.path.isfile(fn): os.remove(fn)
 
-def exercise_00():
+def exercise_without_geometry_restaints():
   print 'Running ',sys._getframe().f_code.co_name
   for sites, u_iso, n_macro_cycle in [(True, False, 100), (False, True, 50)]:
     t = ncs_minimization_test(
-      n_macro_cycle=n_macro_cycle,
-      sites=sites,
-      u_iso=u_iso,
+      n_macro_cycle   = n_macro_cycle,
+      sites           = sites,
+      u_iso           = u_iso,
+      transformations = False,
       finite_grad_differences_test = True,
       use_geometry_restraints = False,
       shake_site_mean_distance = 0.5,
@@ -280,12 +301,13 @@ def exercise_00():
     t.run_test()
     t.clean_up_temp_test_files()
 
-def exercise_01():
+def exercise_site_refinement():
   print 'Running ',sys._getframe().f_code.co_name
   t = ncs_minimization_test(
-    n_macro_cycle = 50,
-    sites         = True,
-    u_iso         = False,
+    n_macro_cycle   = 100,
+    sites           = True,
+    u_iso           = False,
+    transformations = False,
     finite_grad_differences_test = True,
     use_geometry_restraints = True,
     shake_site_mean_distance = 1.5,
@@ -293,12 +315,13 @@ def exercise_01():
   t.run_test()
   t.clean_up_temp_test_files()
 
-def exercise_02():
+def exercise_u_iso_refinement():
   print 'Running ',sys._getframe().f_code.co_name
   t = ncs_minimization_test(
-    n_macro_cycle = 50,
-    sites         = False,
-    u_iso         = True,
+    n_macro_cycle   = 50,
+    sites           = False,
+    u_iso           = True,
+    transformations = False,
     finite_grad_differences_test = True,
     use_geometry_restraints = True,
     shake_site_mean_distance = 1.5,
@@ -306,7 +329,60 @@ def exercise_02():
   t.run_test()
   t.clean_up_temp_test_files()
 
+def exercise_transformation_refinement():
+  """  Test transformation refinement  """
+  print 'Running ',sys._getframe().f_code.co_name
+  t = ncs_minimization_test(
+    n_macro_cycle   = 5,
+    sites           = False,
+    u_iso           = False,
+    transformations = True,
+    finite_grad_differences_test = True,
+    use_geometry_restraints = False,  # change back to True
+    shake_site_mean_distance = 1.5,
+    d_min = 2)
+  t.run_test()
+  t.clean_up_temp_test_files()
+
+
+def shake_transformations(mtrix_object,
+                          shake_angles_sigma=0.052, # about 3 degrees
+                          shake_translation_sigma=1.5):
+  """
+  Shake rotation matrices and translation vectors
+
+  Argument:
+  mtrix_object: a iotbx.pdb._mtrix_and_biomt_records_container containing the
+  rotation matrices and translation vectors from the MTRIX records in a PDB
+  file. Where mtrix_object.r and mtrix_object.t are lists of objects matrix.rec
+  shake_angles_sigma: (float) the sigma (in radians) of the random gaussian
+                      shaking of the rotation angles
+  shake_translation_sigma: (float) the sigma (in angstrom) of the random
+                           gaussian shaking of the translation
+  """
+  # shake rotations
+  # shake angles (alpha,beta,gamma)
+  for i in range(len(mtrix_object.r)):
+    if not mtrix_object.r[i].is_r3_identity_matrix():
+      r = mtrix_object.r[i].elems
+      angles = rt.rotation_to_angles(r,deg=False)
+      new_angles = [random.gauss(x,shake_angles_sigma) for x in angles]
+      new_r_elems = rt.angles_to_rotation(
+        angles_xyz=new_angles,rotation_is_tuple=True)
+      mtrix_object.r[i].elems = new_r_elems
+
+  # Shake translation
+  for i in range(len(mtrix_object.t)):
+    if not mtrix_object.r[i].is_r3_identity_matrix():
+      t = mtrix_object.t[i].elems
+      new_t_elems = [random.gauss(x,shake_translation_sigma) for x in t]
+      mtrix_object.t[i].elems = tuple(new_t_elems)
+
+  return mtrix_object
+
 if __name__ == "__main__":
-  exercise_00()
-  exercise_01()
-  exercise_02()
+  exercise_without_geometry_restaints()
+  exercise_site_refinement()
+  exercise_u_iso_refinement()
+  exercise_transformation_refinement()
+
