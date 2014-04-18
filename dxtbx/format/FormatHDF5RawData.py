@@ -21,7 +21,7 @@ class FormatRawData(FormatHDF5):
   def get_raw_data(self):
     from scitbx.array_family import flex
     data = self._h5_handle['data']
-    return flex.int(data[:,:]).as_double()
+    return flex.int(data[:,:])
 
   def get_num_images(self):
     return 1
