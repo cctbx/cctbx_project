@@ -389,7 +389,7 @@ def substitute_ss(real_h,
       custom_nonbonded_exclusions = custom_nb_excl,
       assume_hydrogens_all_missing = True)
 
-
+  real_h.reset_i_seq_if_necessary()
   # Adding ramachandran restraints
   from mmtbx.geometry_restraints import ramachandran
   params = ramachandran.master_phil.fetch().extract()

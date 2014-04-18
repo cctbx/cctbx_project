@@ -308,6 +308,8 @@ def extract_proxies (pdb_hierarchy,
                      log=sys.stdout) :
   import mmtbx.rotamer
   import boost.python
+  assert [a.i_seq for a in pdb_hierarchy.atoms()].count(0) == 1 ,\
+      "Probably all atoms have i_seq = 0 which is wrong"
   ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
   angles = mmtbx.rotamer.extract_phi_psi(
     pdb_hierarchy=pdb_hierarchy,
