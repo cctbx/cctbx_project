@@ -55,15 +55,11 @@ namespace {
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<h_bond_simple_proxy> const&,
-        af::ref<scitbx::vec3<double> > const&,
-        double,
-        double))
+        af::ref<scitbx::vec3<double> > const&))
       h_bond_simple_residual_sum, (
       arg("sites_cart"),
       arg("proxies"),
-      arg("gradient_array"),
-      arg("hbond_weight")=1.0,
-      arg("falloff_distance")=0.05));
+      arg("gradient_array")));
 
     def("h_bond_simple_residuals",
       (af::shared<double> (*) (

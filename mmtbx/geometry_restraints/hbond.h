@@ -151,11 +151,13 @@ namespace mmtbx { namespace geometry_restraints {
   h_bond_simple_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<h_bond_simple_proxy> const& proxies,
-    af::ref<scitbx::vec3<double> > const& gradient_array,
-    double hbond_weight=1.0,
-    double falloff_distance=0.05)
+    af::ref<scitbx::vec3<double> > const& gradient_array)
   {
     double residual_sum = 0;
+    //
+    // If you are changing this function, change 
+    // h_bond_simple_residuals below accordingly.
+    //
     for (std::size_t i = 0; i < proxies.size(); i++) {
       h_bond_simple_proxy proxy = proxies[i];
       af::tiny<scitbx::vec3<double>, 2> sites;
@@ -164,12 +166,11 @@ namespace mmtbx { namespace geometry_restraints {
       sites[1] = sites_cart[ i_seqs[1] ];
       bond restraint(sites, proxy.distance_ideal, proxy.weight, proxy.slack);
       double residual = restraint.residual();
-      double grad_factor = hbond_weight;
       residual_sum += residual;
       if (gradient_array.size() != 0) {
         af::tiny<scitbx::vec3<double>, 2> gradients = restraint.gradients();
-        gradient_array[ i_seqs[0] ] += gradients[0] * grad_factor;
-        gradient_array[ i_seqs[1] ] += gradients[1] * grad_factor;
+        gradient_array[ i_seqs[0] ] += gradients[0];
+        gradient_array[ i_seqs[1] ] += gradients[1];
       }
     }
     return residual_sum;
@@ -189,7 +190,6 @@ namespace mmtbx { namespace geometry_restraints {
       sites[0] = sites_cart[ i_seqs[0] ];
       sites[1] = sites_cart[ i_seqs[1] ];
       bond restraint(sites, proxy.distance_ideal, proxy.weight, proxy.slack);
-      //double residual = restraint.residual();
       result[i] = restraint.residual();
     }
     return result;
