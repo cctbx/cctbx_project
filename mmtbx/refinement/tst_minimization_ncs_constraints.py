@@ -70,6 +70,7 @@ class ncs_minimization_test(object):
                d_min):
     """ create temp test files and data for tests """
     adopt_init_args(self, locals())
+    self.test_files_names = [] # collect names of files for cleanup
     # 1 NCS copy: starting template to generate whole asu; place into P1 box
     pdb_inp = iotbx.pdb.input(source_info=None, lines=ncs_1_copy)
     mtrix_object = pdb_inp.process_mtrix_records()
@@ -113,8 +114,8 @@ class ncs_minimization_test(object):
     if self.transformations:
       mtrix_object = shake_transformations(
         mtrix_object = mtrix_object,
-        shake_angles_sigma=0.052,
-        shake_translation_sigma=0)
+        shake_angles_sigma=0.175,
+        shake_translation_sigma=1.5)
       print 'Shake rotation matrices and translation vectors'
     ph.adopt_xray_structure(xrs_shaken)
     of = open("one_ncs_in_asu_shaken.pdb", "w")
@@ -212,7 +213,7 @@ class ncs_minimization_test(object):
       sf_and_grads_accuracy_params = params,
       target_name                  = "ls_wunit_k1")
     r_start = self.fmodel.r_work()
-    assert r_start > 0.1, r_start
+    assert r_start > 0.05, r_start
     print "start r_factor: %6.4f" % r_start
     for macro_cycle in xrange(self.n_macro_cycle):
       data_weight = None
@@ -224,7 +225,7 @@ class ncs_minimization_test(object):
         translation_vectors          = m_shaken.translation_vectors,
         ncs_atom_selection           = ncs_selection,
         finite_grad_differences_test = self.finite_grad_differences_test,
-        max_iterations               = 100,
+        max_iterations               = 60,
         geometry_restraints_manager  = self.grm,
         data_weight                  = data_weight,
         iso_restraints               = self.iso_restraints,
@@ -260,6 +261,7 @@ class ncs_minimization_test(object):
     output_file_name = "refined_u_iso%s_sites%s.pdb"%(str(self.u_iso),
       str(self.sites))
     m_shaken.write(output_file_name)
+    self.test_files_names.append(output_file_name)
     # check final model
     if(not self.use_geometry_restraints):
       # XXX fix later for case self.use_geometry_restraints=True
@@ -283,6 +285,7 @@ class ncs_minimization_test(object):
     files_to_delete = ['one_ncs_in_asu.pdb','full_asu.pdb',
                        'one_ncs_in_asu_shaken.pdb',
                        'asu_shaken.pdb','data.mtz']
+    files_to_delete.extend(self.test_files_names)
     for fn in files_to_delete:
       if os.path.isfile(fn): os.remove(fn)
 
@@ -333,7 +336,7 @@ def exercise_transformation_refinement():
   """  Test transformation refinement  """
   print 'Running ',sys._getframe().f_code.co_name
   t = ncs_minimization_test(
-    n_macro_cycle   = 5,
+    n_macro_cycle   = 20,
     sites           = False,
     u_iso           = False,
     transformations = True,
@@ -384,5 +387,5 @@ if __name__ == "__main__":
   exercise_without_geometry_restaints()
   exercise_site_refinement()
   exercise_u_iso_refinement()
-  exercise_transformation_refinement()
+  # exercise_transformation_refinement()
 
