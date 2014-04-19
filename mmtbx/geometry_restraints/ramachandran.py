@@ -251,7 +251,7 @@ class lookup_manager (object) :
                                proxies,
                                gradient_array=None,
                                unit_cell=None,
-                               residuals_array=[]) :
+                               residuals_array=None) :
     from scitbx.array_family import flex
     assert proxies is not None
     import boost.python
@@ -260,8 +260,9 @@ class lookup_manager (object) :
       target_phi_psi
     if(gradient_array is None) :
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-    if residuals_array != []:
-      residuals_array = []
+    if residuals_array is None:
+      residuals_array = flex.double()
+    residuals_array.clear()
     target = 0
     if(self.params.rama_potential == "oldfield"):
       op = self.params.oldfield
@@ -303,7 +304,7 @@ class lookup_manager (object) :
           proxy=proxy,
           weight=self.params.rama_weight,
           epsilon=0.001))
-    return sum(residuals_array)
+    return flex.sum(residuals_array)
 
 
 def extract_proxies (pdb_hierarchy,

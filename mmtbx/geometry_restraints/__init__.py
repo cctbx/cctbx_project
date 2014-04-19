@@ -275,7 +275,7 @@ class manager (object) :
     if self.get_n_ramachandran_proxies() == 0 or \
         self.ramachandran_lookup is None:
       return
-    residuals_array = []
+    residuals_array = flex.double()
     self.ramachandran_lookup.restraints_residual_sum(
         sites_cart,
         self.ramachandran_proxies,
