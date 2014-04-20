@@ -74,7 +74,7 @@ class model_statistics (slots_getstate_setstate) :
               resseq=residue_group.resseq,
               icode=residue_group.icode,
               resname=atom_groups[0].resname,
-              total_occ=total_occ,
+              occupancy=occupancy,
               chain_type=chain_type,
               outlier=True,
               xyz=xyz)
