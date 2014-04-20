@@ -10,17 +10,66 @@ from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp
 from libtbx import easy_pickle
 from libtbx.utils import Usage
 
+def crop_image_pickle(data):
+  """
+  Given an image pickle dictionary, crop the pixels such that the beam center is as close
+  as possile to the image center.  Then adjust SIZE1/SIZE2, ACTIVE_AREAS and the beam
+  center accordingly.
+  @param data The image dictionary of interest
+  """
+  # only one active area is allowed, and it should be the size of the image.
+  from scitbx.array_family import flex
+  test = flex.int([0,0,data['SIZE1'],data['SIZE2']]) == data['ACTIVE_AREAS']
+  assert test.all_eq(True)
+
+  # retrieve parameters from the dictionary
+  pixel_size = data['PIXEL_SIZE']
+  beam_x = int(round(data['BEAM_CENTER_X']/pixel_size))
+  beam_y = int(round(data['BEAM_CENTER_Y']/pixel_size))
+  width = data['SIZE1']
+  height = data['SIZE2']
+  pixels = data['DATA']
+
+  # the new image will be twice the size as the smallest distance between the
+  # beam center and one of the edges of the images
+  new_half_size = min([beam_x, width-beam_x, beam_y, height-beam_y])
+  new_size = new_half_size * 2
+  min_x = beam_x-new_half_size
+  min_y = beam_y-new_half_size
+  pixels = pixels[min_y:min_y+new_size,min_x:min_x+new_size]
+  assert pixels.focus()[0] == pixels.focus()[1]
+
+  # save the results
+  data['DATA'] = pixels
+  data['SIZE1'] = new_size
+  data['SIZE2'] = new_size
+  data['BEAM_CENTER_X'] -= min_x * pixel_size
+  data['BEAM_CENTER_Y'] -= min_y * pixel_size
+  data['ACTIVE_AREAS'] = flex.int([0,0,new_size,new_size])
+
+  return data
+
 def run(argv=None):
   if argv is None:
     argv = sys.argv[1:]
 
   command_line = (libtbx.option_parser.option_parser(
-    usage="%s [-v] " % libtbx.env.dispatcher_name)
+    usage="%s [-v] [-c] [-s] [-w wavelength] [-d distance] [-p pixel_size] [-x beam_x] [-y beam_y] [-o overload] files" % libtbx.env.dispatcher_name)
                   .option(None, "--verbose", "-v",
                           action="store_true",
                           default=False,
                           dest="verbose",
                           help="Print more information about progress")
+                  .option(None, "--crop", "-c",
+                          action="store_true",
+                          default=False,
+                          dest="crop",
+                          help="Crop the image such that the beam center is in the middle")
+                  .option(None, "--skip_converted", "-s",
+                          action="store_true",
+                          default=False,
+                          dest="skip_converted",
+                          help="Skip converting if an image already exist that matches the destination file name")
                   .option(None, "--wavelength", "-w",
                           type="float",
                           default=None,
@@ -59,6 +108,13 @@ def run(argv=None):
 
   for imgpath in paths:
     destpath = os.path.join(os.path.dirname(imgpath), os.path.splitext(os.path.basename(imgpath))[0] + ".pickle")
+    if command_line.options.skip_converted and os.path.isfile(destpath):
+      if command_line.options.verbose:
+        print "Skipping %s, file exists"%imgpath
+        continue
+
+    if command_line.options.verbose:
+      print "Converting %s to %s..."%(imgpath, destpath)
 
     img = dxtbx.load(imgpath)
 
@@ -113,12 +169,12 @@ def run(argv=None):
       if command_line.options.beam_center_x is None:
         beam_x = detector.get_beam_centre(beam.get_s0())[0]
       else:
-        beam_x = command_line.options.beam_center_x
+        beam_x = command_line.options.beam_center_x * pixel_size
 
       if command_line.options.beam_center_y is None:
         beam_y = detector.get_beam_centre(beam.get_s0())[1]
       else:
-        beam_x = command_line.options.beam_center_x
+        beam_y = command_line.options.beam_center_y * pixel_size
 
     scan = img.get_scan()
     if scan is None:
@@ -146,6 +202,8 @@ def run(argv=None):
 
         data['TIME'] = scan.get_exposure_times()[0]
 
+    if command_line.options.crop:
+      data = crop_image_pickle(data)
     easy_pickle.dump(destpath, data)
 
 if (__name__ == "__main__") :

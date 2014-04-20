@@ -194,6 +194,12 @@ def run_one_index(path, *arguments, **kwargs):
   target = arguments[0].split("=")[1]
 
   from xfel.phil_preferences import load_cxi_phil
+  if "--nodisplay" in arguments[1:]:
+    display = False
+    arguments = list(arguments)
+    arguments.remove("--nodisplay")
+  else:
+    display = True
 
   args = ["indexing.data=%s"%path,
           "beam_search_scope=0.5",
@@ -205,7 +211,7 @@ def run_one_index(path, *arguments, **kwargs):
           "mosflm_rmsd_tolerance = 5.0",
           "difflimit_sigma_cutoff=2.0",
           #"indexing.verbose_cv=True",
-          "indexing.open_wx_viewer=True"
+          "indexing.open_wx_viewer=%s"%display
           ] + list(arguments[1:])
 
   horizons_phil = load_cxi_phil(target, args)
