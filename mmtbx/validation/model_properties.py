@@ -79,7 +79,7 @@ class model_statistics (slots_getstate_setstate) :
               outlier=True,
               xyz=xyz)
             self.occupancy_outliers.append(outlier)
-    self.occupancy_outliers.sort(lambda a,b: cmp(b.total_occ, a.total_occ))
+    self.occupancy_outliers.sort(lambda a,b: cmp(b.occupancy, a.occupancy))
     self.all = xray_structure_statistics(
       pdb_hierarchy=pdb_hierarchy,
       xray_structure=xray_structure,
