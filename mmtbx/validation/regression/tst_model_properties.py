@@ -67,6 +67,14 @@ ATOM   3640  HB2 ASN A 242      -3.032  -3.587   0.370  0.00 75.76           H
 ATOM   3641  HB3 ASN A 242      -4.007  -4.368  -0.611  0.00 75.76           H
 ATOM   3642 HD21 ASN A 242      -1.929  -3.779  -3.104  0.00 74.60           H
 ATOM   3643 HD22 ASN A 242      -2.609  -4.810  -2.272  0.00 74.60           H
+ATOM      2  CA ALYS A  32      10.574   8.177  11.768  0.40 11.49           C
+ATOM      3  CB ALYS A  32       9.197   8.686  12.246  0.40 14.71           C
+ATOM      2  CA BLYS A  32      10.574   8.177  11.768  0.40 11.49           C
+ATOM      3  CB BLYS A  32       9.197   8.686  12.246  0.40 14.71           C
+ATOM      5  CA AVAL A  33      11.708   5.617  14.332  0.50 11.42           C
+ATOM      6  CB AVAL A  33      11.101   4.227  14.591  0.50 11.47           C
+ATOM      5  CA BVAL A  33      11.708   5.617  14.332  0.40 11.42           C
+ATOM      6  CB BVAL A  33      11.101   4.227  14.591  0.40 11.47           C
 """
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
   xrs = pdb_in.input.xray_structure_simple()
@@ -78,9 +86,9 @@ ATOM   3643 HD22 ASN A 242      -2.609  -4.810  -2.272  0.00 74.60           H
   mstats.show(out=out)
   assert not show_diff(out.getvalue(), """\
 Overall:
-  Number of atoms = 26  (anisotropic = 0)
-  B_iso: mean =  70.7  max =  86.5  min =  60.7
-  Occupancy: mean = 0.38  max = 1.00  min = 0.00
+  Number of atoms = 34  (anisotropic = 0)
+  B_iso: mean =  57.0  max =  86.5  min =  11.4
+  Occupancy: mean = 0.39  max = 1.00  min = 0.00
     warning: 16 atoms with zero occupancy
   16 total B-factor or occupancy problems detected
   Atoms or residues with zero occupancy:
