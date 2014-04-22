@@ -6,7 +6,7 @@ from libtbx import adopt_init_args
 from scitbx.array_family import flex
 from scitbx import matrix
 import scitbx.rigid_body
-import math
+import copy
 
 class lbfgs(object):
   def __init__(self,
@@ -24,9 +24,14 @@ class lbfgs(object):
         refine_transformations       = False,
         use_strict_ncs               = True,
         iso_restraints               = None,
-        use_hd                       = False):
+        use_hd                       = False,
+        translation_scale_factor     = 1):
     """
     NCS constrained ADP and coordinates refinement.
+
+    Arguments:
+    translation_factor: (float) scales the translation to the order
+                        of the angles
     """
     adopt_init_args(self, locals())
     assert [self.geometry_restraints_manager,
@@ -38,6 +43,7 @@ class lbfgs(object):
     self.number_of_ncs_copies = len(rotation_matrices)+1
     self.fmodel.xray_structure.scatterers().flags_set_grads(state=False)
     self.x_target_functor = self.fmodel.target_functor()
+    traditional_convergence_test_eps = 1.0e-5
     # consider adding
     # self.target_functor.prepare_for_minimization()
     # xray structure of NCS chains for self.x
@@ -59,6 +65,7 @@ class lbfgs(object):
         scatterers = self.fmodel.xray_structure.scatterers(),
         u_iso      = True)
     elif self.refine_transformations:
+      traditional_convergence_test_eps = 1.0e-6
       self.x = self.concatenate_rot_tran(
         self.rotation_matrices,self.translation_vectors)
       # !!!!! Make sure this is the correct setting for the grad_flags
@@ -68,7 +75,8 @@ class lbfgs(object):
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
       termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=max_iterations),
+        max_iterations=max_iterations,
+        traditional_convergence_test_eps=traditional_convergence_test_eps),
       exception_handling_params=scitbx.lbfgs.exception_handling_parameters(
         ignore_line_search_failed_rounding_errors=True,
         ignore_line_search_failed_step_at_lower_bound=True,
@@ -83,47 +91,59 @@ class lbfgs(object):
     self.update_fmodel()
     g = None
     tgx = self.x_target_functor(compute_gradients=compute_gradients)
-    t = tgx.target_work()
-    if self.refine_sites:
-      if self.geometry_restraints_manager:
-        es = self.geometry_restraints_manager.energies_sites(
-          sites_cart        = self.fmodel.xray_structure.sites_cart(),
-          compute_gradients = True)
-        t = t*self.data_weight + es.target
-      if compute_gradients:
+    t, ef = self.apply_weights_and_grm(tgx)
+    if compute_gradients:
+      if self.refine_sites:
         gx = flex.vec3_double(
           tgx.gradients_wrt_atomic_parameters(site=True).packed())
         if self.geometry_restraints_manager :
-          gx = gx*self.data_weight + es.gradients
+          gx = gx*self.data_weight + ef.gradients
         g = self.grads_asu_to_one_ncs(grad=gx).as_double()
-    elif self.refine_u_iso:
-      if self.geometry_restraints_manager :
-        eadp = self.geometry_restraints_manager.energies_adp_iso(
+      elif self.refine_u_iso:
+        gx = tgx.gradients_wrt_atomic_parameters(u_iso=True)
+        if self.geometry_restraints_manager:
+          gx = gx*self.data_weight + ef.gradients
+        g = self.grads_asu_to_one_ncs(grad=gx).as_double()
+      elif self.refine_transformations:
+        g = self.compute_transform_grad(tgx)
+        if self.geometry_restraints_manager:
+          print 'Energy function gradient for transformation is not yet done'
+          # g = g*self.data_weight + ef.gradients
+
+    if(self.finite_grad_differences_test and compute_gradients):
+      self.finite_difference_test(g)
+    return t, g
+
+  def apply_weights_and_grm(self,tgx):
+    """
+    Apply weights and get energy function, when using geometry restraints
+
+    Argument:
+    tgx: target function functor
+
+    Return:
+    t: (float) target function value
+    ef: energy function, according to the refinement type
+    """
+    t = tgx.target_work()
+    ef = None
+    if self.geometry_restraints_manager:
+      if self.refine_sites:
+        ef = self.geometry_restraints_manager.energies_sites(
+          sites_cart        = self.fmodel.xray_structure.sites_cart(),
+          compute_gradients = True)
+      elif self.refine_u_iso:
+        ef = self.geometry_restraints_manager.energies_adp_iso(
           xray_structure = self.fmodel.xray_structure,
           parameters = self.iso_restraints,
           use_u_local_only = self.iso_restraints.use_u_local_only,
           use_hd = self.use_hd,
           compute_gradients = True)
-        t = t*self.data_weight + eadp.target
-      if compute_gradients:
-        gx = tgx.gradients_wrt_atomic_parameters(u_iso=True)
-        if self.geometry_restraints_manager:
-          gx = gx*self.data_weight + eadp.gradients
-        g = self.grads_asu_to_one_ncs(grad=gx).as_double()
-    elif self.refine_transformations:
-      # if self.geometry_restraints_manager :
-      #   etrans = self.geometry_restraints_manager.energies_transformation(
-      #     xray_structure = self.fmodel.xray_structure,
-      #     compute_gradients = True)
-      #   t = t*self.data_weight + eadp.target
-      if compute_gradients:
-        g = self.compute_transform_grad(tgx)
-        if self.geometry_restraints_manager:
-          g = g*self.data_weight + eadp.gradients
-        # print 'g: ',g[0], '  t: ',t
-    if(self.finite_grad_differences_test and compute_gradients):
-      self.finite_difference_test(g)
-    return t, g
+      elif self.refine_transformations:
+        print('Need to work out energy function for transformation')
+      if ef:
+        t = t*self.data_weight + ef.target
+    return t,ef
 
   def update_fmodel(self, x=None):
     """
@@ -204,7 +224,7 @@ class lbfgs(object):
     # find the index of the max gradient value
     i_g_max = flex.max_index(flex.abs(g))
     # Set displacement for finite gradient calculation to 1e-5 of largest value
-    d = self.x[i_g_max]*0.00001
+    d = max(self.x[i_g_max]*0.00001,1e-6)
     # calc t(x+d)
     self.x[i_g_max] = self.x[i_g_max] + d
     t1,_ = self.compute_functional_and_gradients(compute_gradients=False)
@@ -219,23 +239,26 @@ class lbfgs(object):
 
   def concatenate_rot_tran(self,rot,tran):
     """
-    Concatenate rotation angles, corresponding to the rotation matrices and
-    translation vectors to a single long flex.double object
+    Concatenate rotation angles, corresponding to the rotation
+    matrices and scaled translation vectors to a single long flex.double object
     """
     x = []
-    [x.extend(list(rt.rotation_to_angles(r.elems)) + list(t.elems))
+    # Scale translation to be of the same order ot the translation
+    s = self.translation_scale_factor
+
+    [x.extend(list(rt.rotation_to_angles(r.elems)) + list((t/s).elems))
      for (r,t) in zip(rot,tran)]
     assert len(x) == 6*(len(rot))
     return flex.double(x)
 
   def separate_rot_tran(self,x):
     """
-    Convert the refinemable parameters, rotations angles and translations, back
-    to rotation matrices and translation vectors
+    Convert the refinemable parameters, rotations angles and
+    scaled translations, back to rotation matrices and translation vectors
 
     Arguments:
     x : a flex.double of the form (theta_1,psi_1,phi_1,tx_1,ty_1,tz_1,..
-        theta_n,psi_n,phi_n,tx_n,ty_n,tz_n). where n is the number of
+        theta_n,psi_n,phi_n,tx_n/s,ty_n/s,tz_n/s). where n is the number of
         transformations.
 
     Returns:
@@ -244,12 +267,14 @@ class lbfgs(object):
     """
     rot = []
     tran = []
+    s = self.translation_scale_factor
+
     for i in range(self.number_of_ncs_copies - 1):
       the,psi,phi =x[i*6:i*6+3]
       rot_obj = scitbx.rigid_body.rb_mat_xyz(
         the=the, psi=psi, phi=phi, deg=False)
       rot.append(rot_obj.rot_mat())
-      tran.append(matrix.rec(x[i*6+3:i*6+6],(3,1)))
+      tran.append(matrix.rec(x[i*6+3:i*6+6],(3,1))*s)
 
     assert len(rot) == len(self.rotation_matrices)
     assert len(tran) == len(self.translation_vectors)
@@ -263,7 +288,7 @@ class lbfgs(object):
     Arguments:
     tgx : x_target_functor object
 
-    Retruns:
+    Returns:
     g : (flex.double) a gradient
     """
     g = []
@@ -271,6 +296,7 @@ class lbfgs(object):
     grad_wrt_xyz = tgx.gradients_wrt_atomic_parameters(site=True).packed()
     n_grad_in_ncs = len(grad_wrt_xyz)//self.number_of_ncs_copies
     x_ncs = self.get_ncs_sites_cart()
+    assert len(x_ncs.as_double()) == n_grad_in_ncs
     # collect the derivative of all transformations
     for i in range(self.number_of_ncs_copies - 1):
       # get the portion of the gradient corresponding to the n'th NCS copy
