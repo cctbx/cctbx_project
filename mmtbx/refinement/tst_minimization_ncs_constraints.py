@@ -66,8 +66,10 @@ class ncs_minimization_test(object):
                transformations,
                finite_grad_differences_test,
                use_geometry_restraints,
-               shake_site_mean_distance,
-               d_min):
+               shake_site_mean_distance = 1.5,
+               d_min = 2,
+               shake_angles_sigma = 0.035,
+               shake_translation_sigma = 0.5):
     """ create temp test files and data for tests """
     adopt_init_args(self, locals())
     self.test_files_names = [] # collect names of files for cleanup
@@ -114,8 +116,8 @@ class ncs_minimization_test(object):
     if self.transformations:
       mtrix_object = shake_transformations(
         mtrix_object = mtrix_object,
-        shake_angles_sigma=0.175,
-        shake_translation_sigma=1.5)
+        shake_angles_sigma = self.shake_angles_sigma,
+        shake_translation_sigma = self.shake_translation_sigma)
       print 'Shake rotation matrices and translation vectors'
     ph.adopt_xray_structure(xrs_shaken)
     of = open("one_ncs_in_asu_shaken.pdb", "w")
@@ -206,6 +208,8 @@ class ncs_minimization_test(object):
     ncs_selection = m_shaken.assembled_multimer.\
       atom_selection_cache().selection(selection_str)
     assert ncs_selection.count(True) > 0
+    self.rotation_matrices = m_shaken.rotation_matrices
+    self.translation_vectors = m_shaken.translation_vectors
     self.fmodel = mmtbx.f_model.manager(
       f_obs                        = self.f_obs,
       r_free_flags                 = self.r_free_flags,
@@ -213,7 +217,7 @@ class ncs_minimization_test(object):
       sf_and_grads_accuracy_params = params,
       target_name                  = "ls_wunit_k1")
     r_start = self.fmodel.r_work()
-    assert r_start > 0.05, r_start
+    assert r_start > 0.2, r_start
     print "start r_factor: %6.4f" % r_start
     for macro_cycle in xrange(self.n_macro_cycle):
       data_weight = None
@@ -221,8 +225,8 @@ class ncs_minimization_test(object):
         data_weight = self.get_weight()
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         fmodel                       = self.fmodel,
-        rotation_matrices            = m_shaken.rotation_matrices,
-        translation_vectors          = m_shaken.translation_vectors,
+        rotation_matrices            = self.rotation_matrices,
+        translation_vectors          = self.translation_vectors,
         ncs_atom_selection           = ncs_selection,
         finite_grad_differences_test = self.finite_grad_differences_test,
         max_iterations               = 60,
@@ -240,6 +244,10 @@ class ncs_minimization_test(object):
       print outstr.format(
         macro_cycle, refine_type,self.fmodel.r_work(),
         minimized.finite_grad_difference_val)
+      # Update rotation and translation
+      if self.transformations:
+        self.rotation_matrices = minimized.rotation_matrices
+        self.translation_vectors = minimized.translation_vectors
       assert (minimized.finite_grad_difference_val < 1.0e-3)
       assert approx_equal(self.fmodel.r_work(), minimized.fmodel.r_work())
     # check results
@@ -251,8 +259,6 @@ class ncs_minimization_test(object):
       else:
         assert approx_equal(self.fmodel.r_work(), 0, 1.e-5)
     elif self.transformations:
-      print 'Add assertion for transformation refinement'
-      if not self.transformations:
         assert approx_equal(self.fmodel.r_work(), 0, 0.0001)
     else: assert 0
     # output refined model
@@ -336,21 +342,22 @@ def exercise_transformation_refinement():
   """  Test transformation refinement  """
   print 'Running ',sys._getframe().f_code.co_name
   t = ncs_minimization_test(
-    n_macro_cycle   = 20,
+    n_macro_cycle   = 50,
     sites           = False,
     u_iso           = False,
     transformations = True,
     finite_grad_differences_test = True,
     use_geometry_restraints = False,  # change back to True
-    shake_site_mean_distance = 1.5,
+    shake_angles_sigma = 0.032,
+    shake_translation_sigma = 0.5,
     d_min = 2)
   t.run_test()
   t.clean_up_temp_test_files()
 
 
 def shake_transformations(mtrix_object,
-                          shake_angles_sigma=0.052, # about 3 degrees
-                          shake_translation_sigma=1.5):
+                          shake_angles_sigma=0.035,
+                          shake_translation_sigma=0.5):
   """
   Shake rotation matrices and translation vectors
 
@@ -387,5 +394,5 @@ if __name__ == "__main__":
   exercise_without_geometry_restaints()
   exercise_site_refinement()
   exercise_u_iso_refinement()
-  # exercise_transformation_refinement()
+  exercise_transformation_refinement()
 
