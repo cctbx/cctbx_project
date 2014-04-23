@@ -2,6 +2,7 @@ from __future__ import division
 from scitbx.array_family import flex
 from scitbx import matrix
 import scitbx.rigid_body
+from cctbx import xray
 import random
 import math
 
@@ -227,3 +228,100 @@ def get_ncs_sites_cart(ncs_obj):
   """
   xrs_one_ncs = ncs_obj.fmodel.xray_structure.select(ncs_obj.ncs_atom_selection)
   return xrs_one_ncs.sites_cart()
+
+def get_weight(minimization_obj):
+  """
+  Calculates weights for refinements
+
+  Minimization object must contain the following methods and attributes:
+  fmodel
+  sites, u_iso, transformations: (bool)
+  rotations, translations: (matrix objects)
+  grm: Restraints manager
+  iso_restraints: (libtbx.phil.scope_extract)
+                  object used for u_iso refinement parameters
+  ncs_atom_selection: (flex bool) for a single ncs atom selection
+
+  Return:
+  weight: (int)
+  """
+  mo = minimization_obj
+  assert [mo.sites,mo.u_iso,mo.transformations].count(True)==1
+  fmdc = mo.fmodel.deep_copy()
+  if mo.sites:
+    fmdc.xray_structure.shake_sites_in_place(mean_distance=0.3)
+  elif mo.u_iso:
+    fmdc.xray_structure.shake_adp()
+  elif mo.transformations:
+    rotation_matrices,translation_vectors = shake_transformations(
+      rotation_matrices = mo.rotations,
+      translation_vectors = mo.translations,
+      shake_angles_sigma=0.01,
+      shake_translation_sigma=0.1)
+    x = concatenate_rot_tran(
+      rotation_matrices,translation_vectors)
+  fmdc.update_xray_structure(xray_structure = fmdc.xray_structure,
+    update_f_calc=True)
+  fmdc.xray_structure.scatterers().flags_set_grads(state=False)
+  if mo.sites:
+    xray.set_scatterer_grad_flags(
+      scatterers = fmdc.xray_structure.scatterers(),
+      site       = True)
+    # fmodel gradients
+    gxc = flex.vec3_double(fmdc.one_time_gradients_wrt_atomic_parameters(
+      site = True).packed())
+    # manager restraints, energy sites gradients
+    gc = mo.grm.energies_sites(
+      sites_cart        = fmdc.xray_structure.sites_cart(),
+      compute_gradients = True).gradients
+  elif mo.u_iso:
+    # Create energies_site gradient, to create
+    # geometry_restraints_manager.plain_pair_sym_table
+    # needed for the energies_adp_iso
+    gc = mo.grm.energies_sites(
+      sites_cart        = fmdc.xray_structure.sites_cart(),
+      compute_gradients = True).gradients
+    xray.set_scatterer_grad_flags(
+      scatterers = fmdc.xray_structure.scatterers(),
+      u_iso      = True)
+     # fmodel gradients
+    gxc = fmdc.one_time_gradients_wrt_atomic_parameters(
+      u_iso = True).as_double()
+    # manager restraints, energy sites gradients
+    gc = mo.grm.energies_adp_iso(
+      xray_structure    = fmdc.xray_structure,
+      parameters        = mo.iso_restraints,
+      use_u_local_only  = mo.iso_restraints.use_u_local_only,
+      use_hd            = False,
+      compute_gradients = True).gradients
+  elif mo.transformations:
+    xyz_ncs = get_ncs_sites_cart(mo)
+    xray.set_scatterer_grad_flags(
+      scatterers = fmdc.xray_structure.scatterers(),
+      site       = True)
+    # fmodel gradients
+    gxc_xyz = flex.vec3_double(fmdc.one_time_gradients_wrt_atomic_parameters(
+      site = True).packed())
+    # manager restraints, energy sites gradients
+    gc_xyz = mo.grm.energies_sites(
+      sites_cart        = fmdc.xray_structure.sites_cart(),
+      compute_gradients = True).gradients
+    gxc = compute_transform_grad(
+      grad_wrt_xyz      = gxc_xyz.as_double(),
+      rotation_matrices = rotation_matrices,
+      xyz_ncs           = xyz_ncs,
+      x                 = x)
+    gc = compute_transform_grad(
+      grad_wrt_xyz      = gc_xyz.as_double(),
+      rotation_matrices = rotation_matrices,
+      xyz_ncs           = xyz_ncs,
+      x                 = x)
+
+  weight = 1.
+  gc_norm  = gc.norm()
+  gxc_norm = gxc.norm()
+  if(gxc_norm != 0.0):
+    weight = gc_norm / gxc_norm
+
+  weight =min(weight,1e6)
+  return weight

@@ -9,7 +9,6 @@ import mmtbx.monomer_library.server
 from libtbx import adopt_init_args
 from mmtbx import monomer_library
 import mmtbx.utils.ncs_utils as nu
-from cctbx import xray
 import mmtbx.f_model
 import mmtbx.utils
 import iotbx.pdb
@@ -136,88 +135,8 @@ class ncs_minimization_test(object):
     if(self.use_geometry_restraints):
       self.grm = get_restraints_manager(pdb_string=pdb_str)
       if(self.u_iso):
-        self.iso_restraints = \
-          mmtbx.refinement.adp_refinement.adp_restraints_master_params.extract().iso
-
-  def get_weight(self,m_shaken):
-    fmdc = self.fmodel.deep_copy()
-    if self.sites:
-      fmdc.xray_structure.shake_sites_in_place(mean_distance=0.3)
-    elif self.u_iso:
-      fmdc.xray_structure.shake_adp()
-    elif self.transformations:
-      rotation_matrices,translation_vectors = nu.shake_transformations(
-        rotation_matrices = self.rotations,
-        translation_vectors = self.translations,
-        shake_angles_sigma=0.01,
-        shake_translation_sigma=0.1)
-      x = nu.concatenate_rot_tran(
-        rotation_matrices,translation_vectors)
-    fmdc.update_xray_structure(xray_structure = fmdc.xray_structure,
-      update_f_calc=True)
-    fmdc.xray_structure.scatterers().flags_set_grads(state=False)
-    if self.sites:
-      xray.set_scatterer_grad_flags(
-        scatterers = fmdc.xray_structure.scatterers(),
-        site       = True)
-      # fmodel gradients
-      gxc = flex.vec3_double(fmdc.one_time_gradients_wrt_atomic_parameters(
-        site = True).packed())
-      # manager restraints, energy sites gradients
-      gc = self.grm.energies_sites(
-        sites_cart        = fmdc.xray_structure.sites_cart(),
-        compute_gradients = True).gradients
-    elif self.u_iso:
-      # Create energies_site gradient, to create
-      # geometry_restraints_manager.plain_pair_sym_table
-      # needed for the energies_adp_iso
-      gc = self.grm.energies_sites(
-        sites_cart        = fmdc.xray_structure.sites_cart(),
-        compute_gradients = True).gradients
-      xray.set_scatterer_grad_flags(
-        scatterers = fmdc.xray_structure.scatterers(),
-        u_iso      = True)
-       # fmodel gradients
-      gxc = fmdc.one_time_gradients_wrt_atomic_parameters(
-        u_iso = True).as_double()
-      # manager restraints, energy sites gradients
-      gc = self.grm.energies_adp_iso(
-        xray_structure    = fmdc.xray_structure,
-        parameters        = self.iso_restraints,
-        use_u_local_only  = self.iso_restraints.use_u_local_only,
-        use_hd            = False,
-        compute_gradients = True).gradients
-    elif self.transformations:
-      xyz_ncs = nu.get_ncs_sites_cart(self)
-      xray.set_scatterer_grad_flags(
-        scatterers = fmdc.xray_structure.scatterers(),
-        site       = True)
-      # fmodel gradients
-      gxc_xyz = flex.vec3_double(fmdc.one_time_gradients_wrt_atomic_parameters(
-        site = True).packed())
-      # manager restraints, energy sites gradients
-      gc_xyz = self.grm.energies_sites(
-        sites_cart        = fmdc.xray_structure.sites_cart(),
-        compute_gradients = True).gradients
-      gxc = nu.compute_transform_grad(
-        grad_wrt_xyz      = gxc_xyz.as_double(),
-        rotation_matrices = rotation_matrices,
-        xyz_ncs           = xyz_ncs,
-        x                 = x)
-      gc = nu.compute_transform_grad(
-        grad_wrt_xyz      = gc_xyz.as_double(),
-        rotation_matrices = rotation_matrices,
-        xyz_ncs           = xyz_ncs,
-        x                 = x)
-
-    weight = 1.
-    gc_norm  = gc.norm()
-    gxc_norm = gxc.norm()
-    if(gxc_norm != 0.0):
-      weight = gc_norm / gxc_norm
-
-    weight =min(weight,1e6)
-    return weight
+        temp = mmtbx.refinement.adp_refinement.adp_restraints_master_params
+        self.iso_restraints = temp.extract().iso
 
   def run_test(self):
     ### Refinement
@@ -256,7 +175,7 @@ class ncs_minimization_test(object):
     for macro_cycle in xrange(self.n_macro_cycle):
       data_weight = None
       if(self.use_geometry_restraints):
-        data_weight = self.get_weight(m_shaken)
+        data_weight = nu.get_weight(self)
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         fmodel                       = self.fmodel,
         rotation_matrices            = self.rotation_matrices,
@@ -284,6 +203,8 @@ class ncs_minimization_test(object):
         self.translation_vectors = minimized.translation_vectors
       assert (minimized.finite_grad_difference_val < 1.0e-3)
       assert approx_equal(self.fmodel.r_work(), minimized.fmodel.r_work())
+      # break test if r_work is very small
+      if minimized.fmodel.r_work() < 1.0e-6: break
     # check results
     if(self.u_iso):
       assert approx_equal(self.fmodel.r_work(), 0, 1.e-5)
@@ -347,7 +268,7 @@ def exercise_without_geometry_restaints():
 def exercise_site_refinement():
   print 'Running ',sys._getframe().f_code.co_name
   t = ncs_minimization_test(
-    n_macro_cycle   = 100,
+    n_macro_cycle   = 80,
     sites           = True,
     u_iso           = False,
     transformations = False,
@@ -376,7 +297,7 @@ def exercise_transformation_refinement():
   """  Test transformation refinement  """
   print 'Running ',sys._getframe().f_code.co_name
   t = ncs_minimization_test(
-    n_macro_cycle   = 50,
+    n_macro_cycle   = 40,
     sites           = False,
     u_iso           = False,
     transformations = True,

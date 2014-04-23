@@ -40,7 +40,8 @@ class lbfgs(object):
     self.number_of_ncs_copies = len(rotation_matrices)+1
     self.fmodel.xray_structure.scatterers().flags_set_grads(state=False)
     self.x_target_functor = self.fmodel.target_functor()
-    traditional_convergence_test_eps = 1.0e-5
+    # To make sure f_work convergence
+    traditional_convergence_test_eps = 1.0e-6
     # consider adding
     # self.target_functor.prepare_for_minimization()
     # xray structure of NCS chains for self.x
@@ -62,7 +63,6 @@ class lbfgs(object):
         scatterers = self.fmodel.xray_structure.scatterers(),
         u_iso      = True)
     elif self.refine_transformations:
-      traditional_convergence_test_eps = 1.0e-6
       self.x = nu.concatenate_rot_tran(
         self.rotation_matrices,self.translation_vectors)
       # !!!!! Make sure this is the correct setting for the grad_flags
