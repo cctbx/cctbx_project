@@ -28,7 +28,7 @@ def concatenate_rot_tran(rot,tran,s=1):
     assert len(x) != 0
     return flex.double(x)
 
-def separate_rot_tran(x,rotations,translations,s=1.0):
+def separate_rot_tran(x,ncs_copies,s=1.0):
   """
   Convert the refinemable parameters, rotations angles and
   scaled translations, back to rotation matrices and translation vectors
@@ -37,8 +37,7 @@ def separate_rot_tran(x,rotations,translations,s=1.0):
   x : a flex.double of the form (theta_1,psi_1,phi_1,tx_1,ty_1,tz_1,..
       theta_n,psi_n,phi_n,tx_n/s,ty_n/s,tz_n/s). where n is the number of
       transformations.
-  rotations : (lists of objects matrix.rec) Rotation matrices
-  translations : (lists of objects matrix.rec) Tanslation vectors
+  ncs_copies : (int) expected number of ncs copies
   s : (float) scaling factor, scale translation to be of the
       same order ot the translation
 
@@ -49,15 +48,15 @@ def separate_rot_tran(x,rotations,translations,s=1.0):
   rot = []
   tran = []
 
-  for i in range(len(translations)):
+  for i in range(ncs_copies):
     the,psi,phi =x[i*6:i*6+3]
     rot_obj = scitbx.rigid_body.rb_mat_xyz(
       the=the, psi=psi, phi=phi, deg=False)
     rot.append(rot_obj.rot_mat())
     tran.append(matrix.rec(x[i*6+3:i*6+6],(3,1))*s)
 
-  assert len(rot) == len(rotations)
-  assert len(tran) == len(translations)
+  assert len(rot) == ncs_copies
+  assert len(tran) == ncs_copies
   return rot,tran
 
 def rotation_to_angles(rotation, deg=False):
