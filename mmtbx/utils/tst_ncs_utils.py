@@ -160,7 +160,3 @@ if __name__=='__main__':
   t.test_working_with_tuples()
   t.test_concatenate_rot_tran()
   t.test_separate_rot_tran()
-
-
-
-

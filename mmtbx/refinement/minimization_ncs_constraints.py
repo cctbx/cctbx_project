@@ -4,7 +4,6 @@ from cctbx import xray
 import scitbx.lbfgs
 from libtbx import adopt_init_args
 from scitbx.array_family import flex
-import scitbx.rigid_body
 
 class lbfgs(object):
   def __init__(self,

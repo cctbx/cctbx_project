@@ -393,4 +393,3 @@ if __name__ == "__main__":
   exercise_site_refinement()
   exercise_u_iso_refinement()
   exercise_transformation_refinement()
-
