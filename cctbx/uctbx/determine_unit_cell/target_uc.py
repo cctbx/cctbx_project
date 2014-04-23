@@ -14,8 +14,9 @@ class target:
   def __init__(self, path_to_integration_dir):
     """ Creates a list of (point group, unit cell) tuples, and a list of niggli cells from the recursively walked
         paths. Can take more than one argument for multiple folders."""
-    self.pgs    = []
+    self.pgs        = []
     self.niggli_ucs = []
+    self.names      = []
     for arg in path_to_integration_dir:
       for (dirpath, dirnames, filenames) in os.walk(arg):
         for filename in filenames:
@@ -23,8 +24,9 @@ class target:
           try:
             # Warn on error, but continue directory traversal.
             d = easy_pickle.load(path)
-            pg = d['pointgroup']
-            uc = d['current_orientation'][0].unit_cell()
+            pg   = d['pointgroup']
+            uc   = d['current_orientation'][0].unit_cell()
+            name = filename
           except KeyError:
               sys.stderr.write(
                "Could not extract point group and unit cell from %s\n" % path)
@@ -34,6 +36,18 @@ class target:
           else:
             self.pgs.append(pg)
             self.niggli_ucs.append(uc.niggli_cell().parameters())
+            self.names.append(name)
+
+  def print_ucs(self, outfile="niggli_ucs.csv"):
+    out_str = ["File name, Point group, a, b, c, alpha, beta, gamma"]
+    for i in range(len(self.names)):
+       out_str.append("{}, {}, {}, {}, {}, {}, {}, {}".format(
+                  self.names[i], self.pgs[i], 
+                  self.niggli_ucs[i][0], self.niggli_ucs[i][1],
+                  self.niggli_ucs[i][2], self.niggli_ucs[i][3],
+                  self.niggli_ucs[i][4], self.niggli_ucs[i][5]))
+    with open("{}.csv".format(outfile), 'w') as outfile:             
+        outfile.write("\n".join(out_str))
 
   def find_distance(self, G6a, G6b, key):
     """ Retursn the distance between two cells, already in the G6 convention.
@@ -131,7 +145,7 @@ class target:
                              "Med_alpha", "Med_beta", "Med_gamma")
     print "".join(singletons)
 
-def plot_clusters(ucs, log=False):
+def plot_clusters(ucs, log=False, outname='clustering'):
     """ Plot Niggli cells -- one plot for (a,b,c) and one plot for
     (alpha, beta, gamma) -- colour coded by cluster index.  """
     
@@ -150,7 +164,7 @@ def plot_clusters(ucs, log=False):
     else:
       ax.set_ylim(-ax.get_ylim()[1]/100,ax.get_ylim()[1])
     fig.show()
-    fig.savefig("dendogram.pdf")
+    fig.savefig("{}_dendogram.pdf".format(outname))
 
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D # Special Import

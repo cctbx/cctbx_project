@@ -6,9 +6,10 @@ def run(args):
   if args < 2: raise IOError("Must give at least one path to folder of pickles")
   from cctbx.uctbx.determine_unit_cell.target_uc import target, plot_clusters
   ucs = target(args.folders)
+  ucs.print_ucs(args.o)
   ucs.cluster(args.t, args.m, args.l)
   if not args.noplot:
-    plot_clusters(ucs, args.log)
+    plot_clusters(ucs, args.log, args.o)
 
 
 if (__name__ == "__main__"):
@@ -19,6 +20,8 @@ if (__name__ == "__main__"):
                        help='One or more folers containing integration pickles.')
   parser.add_argument('-t', type=float, default=5000,
                        help='threshold value for the clustering. Default = 5000')
+  parser.add_argument('-o', type=str,
+                       help='output file name for unit cells.')
   parser.add_argument('-m', type=str, default='distance',
       help='Clustering method for numpy clustering. Options are: inconsistent' +
            ', distance, maxclust, monocri, maxclust_monocrit')
