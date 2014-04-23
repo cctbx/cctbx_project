@@ -1,7 +1,7 @@
 from __future__ import division
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
-import mmtbx.utils.rotations as rt
+import mmtbx.utils.ncs_utils as nu
 from scitbx import matrix
 import math
 import sys
@@ -45,20 +45,20 @@ class test_rotation_angles_conversion(object):
     print 'Running ',sys._getframe().f_code.co_name
     angles = self.rot_angles1
     expected = self.rot1.as_double()
-    result = rt.angles_to_rotation(angles_xyz=angles,deg=False)
+    result = nu.angles_to_rotation(angles_xyz=angles,deg=False)
     assert approx_equal(expected,result,1e-4)
     # convert to Degrees
     angles = angles/math.pi*180
-    result = rt.angles_to_rotation(angles_xyz=angles,deg=True)
+    result = nu.angles_to_rotation(angles_xyz=angles,deg=True)
     assert approx_equal(expected,result,1e-4)
     # test the rotations with sin(beta)==0
     angles = self.rot_angles2
     expected = self.rot2.as_double()
-    result = rt.angles_to_rotation(angles_xyz=angles,deg=False)
+    result = nu.angles_to_rotation(angles_xyz=angles,deg=False)
     assert approx_equal(expected,result,1e-4)
     angles = self.rot_angles3
     expected = self.rot3.as_double()
-    result = rt.angles_to_rotation(angles_xyz=angles,deg=False)
+    result = nu.angles_to_rotation(angles_xyz=angles,deg=False)
     assert approx_equal(expected,result,1e-4)
 
 
@@ -72,14 +72,14 @@ class test_rotation_angles_conversion(object):
     print 'Running ',sys._getframe().f_code.co_name
     r = self.rot1.as_double()
     expected_angles = self.rot_angles1
-    angles = rt.rotation_to_angles(rotation=r, deg=False)
+    angles = nu.rotation_to_angles(rotation=r, deg=False)
     assert approx_equal(expected_angles,angles,1e-3)
     # Test cos(beta)=0
     # sin(beta) = 1
     r = self.rot2.as_double()
     # when sin(beta) = 1 the (alpha + gamma) is the solution
     expected_angles_sum = self.rot_angles2[0] + self.rot_angles2[2]
-    angles = rt.rotation_to_angles(rotation=r, deg=False)
+    angles = nu.rotation_to_angles(rotation=r, deg=False)
     angles_sum = angles[0] + angles[2]
     assert approx_equal(expected_angles_sum,angles_sum,1e-3)
     # sin(beta) =  -1
@@ -87,7 +87,7 @@ class test_rotation_angles_conversion(object):
     expected_angles_sum = self.rot_angles2[0] - self.rot_angles2[2]
     r = self.rot3.as_double()
     expected_angles = self.rot_angles3
-    angles = rt.rotation_to_angles(rotation=r, deg=False)
+    angles = nu.rotation_to_angles(rotation=r, deg=False)
     angles_sum = angles[0] - angles[2]
     assert approx_equal(expected_angles_sum,angles_sum,1e-3)
 
@@ -111,7 +111,7 @@ class test_rotation_angles_conversion(object):
     print 'Running ',sys._getframe().f_code.co_name
     r = tuple(self.rot1.as_double())
     expected_angles = self.rot_angles1
-    angles = rt.rotation_to_angles(rotation=r, deg=False)
+    angles = nu.rotation_to_angles(rotation=r, deg=False)
     assert approx_equal(expected_angles,angles,1e-3)
 
 if __name__=='__main__':

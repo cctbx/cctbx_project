@@ -8,13 +8,11 @@ from scitbx.array_family import flex
 import mmtbx.monomer_library.server
 from libtbx import adopt_init_args
 from mmtbx import monomer_library
-import mmtbx.utils.rotations as rt
+import mmtbx.utils.ncs_utils as nu
 from cctbx import xray
 import mmtbx.f_model
 import mmtbx.utils
 import iotbx.pdb
-import random
-import math
 import os
 import sys
 
@@ -114,11 +112,14 @@ class ncs_minimization_test(object):
       u_random = flex.random_double(xrs_shaken.scatterers().size())
       xrs_shaken = xrs_shaken.set_u_iso(values=u_random)
     if self.transformations:
-      mtrix_object = shake_transformations(
-        mtrix_object = mtrix_object,
-        shake_angles_sigma = self.shake_angles_sigma,
-        shake_translation_sigma = self.shake_translation_sigma)
-      print 'Shake rotation matrices and translation vectors'
+      mtrix_object.r,mtrix_object.t = nu.shake_transformations(
+        rotation_matrices = mtrix_object.r,
+        translation_vectors = mtrix_object.t,
+        shake_angles_sigma=self.shake_angles_sigma,
+        shake_translation_sigma=self.shake_translation_sigma,
+        return_all_transforms = True)
+      self.rotations = mtrix_object.r
+      self.translations = mtrix_object.t
     ph.adopt_xray_structure(xrs_shaken)
     of = open("one_ncs_in_asu_shaken.pdb", "w")
     print >> of, mtrix_object.as_pdb_string()
@@ -138,12 +139,20 @@ class ncs_minimization_test(object):
         self.iso_restraints = \
           mmtbx.refinement.adp_refinement.adp_restraints_master_params.extract().iso
 
-  def get_weight(self):
+  def get_weight(self,m_shaken):
     fmdc = self.fmodel.deep_copy()
     if self.sites:
       fmdc.xray_structure.shake_sites_in_place(mean_distance=0.3)
-    else: # u_iso
+    elif self.u_iso:
       fmdc.xray_structure.shake_adp()
+    elif self.transformations:
+      rotation_matrices,translation_vectors = nu.shake_transformations(
+        rotation_matrices = self.rotations,
+        translation_vectors = self.translations,
+        shake_angles_sigma=0.01,
+        shake_translation_sigma=0.1)
+      x = nu.concatenate_rot_tran(
+        rotation_matrices,translation_vectors)
     fmdc.update_xray_structure(xray_structure = fmdc.xray_structure,
       update_f_calc=True)
     fmdc.xray_structure.scatterers().flags_set_grads(state=False)
@@ -159,7 +168,9 @@ class ncs_minimization_test(object):
         sites_cart        = fmdc.xray_structure.sites_cart(),
         compute_gradients = True).gradients
     elif self.u_iso:
-      # to define geometry_restraints_manager.plain_pair_sym_table
+      # Create energies_site gradient, to create
+      # geometry_restraints_manager.plain_pair_sym_table
+      # needed for the energies_adp_iso
       gc = self.grm.energies_sites(
         sites_cart        = fmdc.xray_structure.sites_cart(),
         compute_gradients = True).gradients
@@ -177,13 +188,35 @@ class ncs_minimization_test(object):
         use_hd            = False,
         compute_gradients = True).gradients
     elif self.transformations:
-      # get weights for transformations refinement
-      pass
+      xyz_ncs = nu.get_ncs_sites_cart(self)
+      xray.set_scatterer_grad_flags(
+        scatterers = fmdc.xray_structure.scatterers(),
+        site       = True)
+      # fmodel gradients
+      gxc_xyz = flex.vec3_double(fmdc.one_time_gradients_wrt_atomic_parameters(
+        site = True).packed())
+      # manager restraints, energy sites gradients
+      gc_xyz = self.grm.energies_sites(
+        sites_cart        = fmdc.xray_structure.sites_cart(),
+        compute_gradients = True).gradients
+      gxc = nu.compute_transform_grad(
+        grad_wrt_xyz      = gxc_xyz.as_double(),
+        rotation_matrices = rotation_matrices,
+        xyz_ncs           = xyz_ncs,
+        x                 = x)
+      gc = nu.compute_transform_grad(
+        grad_wrt_xyz      = gc_xyz.as_double(),
+        rotation_matrices = rotation_matrices,
+        xyz_ncs           = xyz_ncs,
+        x                 = x)
+
+    weight = 1.
     gc_norm  = gc.norm()
     gxc_norm = gxc.norm()
-    weight = 1.
     if(gxc_norm != 0.0):
       weight = gc_norm / gxc_norm
+
+    weight =min(weight,1e6)
     return weight
 
   def run_test(self):
@@ -210,6 +243,7 @@ class ncs_minimization_test(object):
     assert ncs_selection.count(True) > 0
     self.rotation_matrices = m_shaken.rotation_matrices
     self.translation_vectors = m_shaken.translation_vectors
+    self.ncs_atom_selection = ncs_selection
     self.fmodel = mmtbx.f_model.manager(
       f_obs                        = self.f_obs,
       r_free_flags                 = self.r_free_flags,
@@ -217,12 +251,12 @@ class ncs_minimization_test(object):
       sf_and_grads_accuracy_params = params,
       target_name                  = "ls_wunit_k1")
     r_start = self.fmodel.r_work()
-    assert r_start > 0.2, r_start
+    assert r_start > 0.1, r_start
     print "start r_factor: %6.4f" % r_start
     for macro_cycle in xrange(self.n_macro_cycle):
       data_weight = None
       if(self.use_geometry_restraints):
-        data_weight = self.get_weight()
+        data_weight = self.get_weight(m_shaken)
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         fmodel                       = self.fmodel,
         rotation_matrices            = self.rotation_matrices,
@@ -347,48 +381,12 @@ def exercise_transformation_refinement():
     u_iso           = False,
     transformations = True,
     finite_grad_differences_test = True,
-    use_geometry_restraints = False,  # change back to True
+    use_geometry_restraints = True,
     shake_angles_sigma = 0.032,
     shake_translation_sigma = 0.5,
     d_min = 2)
   t.run_test()
   t.clean_up_temp_test_files()
-
-
-def shake_transformations(mtrix_object,
-                          shake_angles_sigma=0.035,
-                          shake_translation_sigma=0.5):
-  """
-  Shake rotation matrices and translation vectors
-
-  Argument:
-  mtrix_object: a iotbx.pdb._mtrix_and_biomt_records_container containing the
-  rotation matrices and translation vectors from the MTRIX records in a PDB
-  file. Where mtrix_object.r and mtrix_object.t are lists of objects matrix.rec
-  shake_angles_sigma: (float) the sigma (in radians) of the random gaussian
-                      shaking of the rotation angles
-  shake_translation_sigma: (float) the sigma (in angstrom) of the random
-                           gaussian shaking of the translation
-  """
-  # shake rotations
-  # shake angles (alpha,beta,gamma)
-  for i in range(len(mtrix_object.r)):
-    if not mtrix_object.r[i].is_r3_identity_matrix():
-      r = mtrix_object.r[i].elems
-      angles = rt.rotation_to_angles(r,deg=False)
-      new_angles = [random.gauss(x,shake_angles_sigma) for x in angles]
-      new_r_elems = rt.angles_to_rotation(
-        angles_xyz=new_angles,rotation_is_tuple=True)
-      mtrix_object.r[i].elems = new_r_elems
-
-  # Shake translation
-  for i in range(len(mtrix_object.t)):
-    if not mtrix_object.r[i].is_r3_identity_matrix():
-      t = mtrix_object.t[i].elems
-      new_t_elems = [random.gauss(x,shake_translation_sigma) for x in t]
-      mtrix_object.t[i].elems = tuple(new_t_elems)
-
-  return mtrix_object
 
 if __name__ == "__main__":
   exercise_without_geometry_restaints()

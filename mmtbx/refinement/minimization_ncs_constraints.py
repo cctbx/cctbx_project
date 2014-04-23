@@ -1,12 +1,10 @@
 from __future__ import division
-import mmtbx.utils.rotations as rt
+import mmtbx.utils.ncs_utils as nu
 from cctbx import xray
 import scitbx.lbfgs
 from libtbx import adopt_init_args
 from scitbx.array_family import flex
-from scitbx import matrix
 import scitbx.rigid_body
-import copy
 
 class lbfgs(object):
   def __init__(self,
@@ -66,7 +64,7 @@ class lbfgs(object):
         u_iso      = True)
     elif self.refine_transformations:
       traditional_convergence_test_eps = 1.0e-6
-      self.x = self.concatenate_rot_tran(
+      self.x = nu.concatenate_rot_tran(
         self.rotation_matrices,self.translation_vectors)
       # !!!!! Make sure this is the correct setting for the grad_flags
       xray.set_scatterer_grad_flags(
@@ -91,24 +89,28 @@ class lbfgs(object):
     self.update_fmodel()
     g = None
     tgx = self.x_target_functor(compute_gradients=compute_gradients)
-    t, ef = self.apply_weights_and_grm(tgx)
+    t, ef_grad = self.apply_weights_and_grm(tgx)
     if compute_gradients:
       if self.refine_sites:
         gx = flex.vec3_double(
           tgx.gradients_wrt_atomic_parameters(site=True).packed())
         if self.geometry_restraints_manager :
-          gx = gx*self.data_weight + ef.gradients
+          gx = gx*self.data_weight + ef_grad
         g = self.grads_asu_to_one_ncs(grad=gx).as_double()
       elif self.refine_u_iso:
         gx = tgx.gradients_wrt_atomic_parameters(u_iso=True)
         if self.geometry_restraints_manager:
-          gx = gx*self.data_weight + ef.gradients
+          gx = gx*self.data_weight + ef_grad
         g = self.grads_asu_to_one_ncs(grad=gx).as_double()
       elif self.refine_transformations:
-        g = self.compute_transform_grad(tgx)
+        grad_wrt_xyz = tgx.gradients_wrt_atomic_parameters(site=True).packed()
+        g = nu.compute_transform_grad(
+          grad_wrt_xyz      = grad_wrt_xyz,
+          rotation_matrices = self.rotation_matrices,
+          xyz_ncs           = nu.get_ncs_sites_cart(self),
+          x                 = self.x)
         if self.geometry_restraints_manager:
-          print 'Energy function gradient for transformation is not yet done'
-          # g = g*self.data_weight + ef.gradients
+          g = g*self.data_weight + ef_grad
 
     if(self.finite_grad_differences_test and compute_gradients):
       self.finite_difference_test(g)
@@ -123,15 +125,17 @@ class lbfgs(object):
 
     Return:
     t: (float) target function value
-    ef: energy function, according to the refinement type
+    ef_grad: energy function gradient, according to the refinement type
     """
     t = tgx.target_work()
+    ef_grad = None
     ef = None
     if self.geometry_restraints_manager:
       if self.refine_sites:
         ef = self.geometry_restraints_manager.energies_sites(
           sites_cart        = self.fmodel.xray_structure.sites_cart(),
           compute_gradients = True)
+        ef_grad = ef.gradients
       elif self.refine_u_iso:
         ef = self.geometry_restraints_manager.energies_adp_iso(
           xray_structure = self.fmodel.xray_structure,
@@ -139,11 +143,19 @@ class lbfgs(object):
           use_u_local_only = self.iso_restraints.use_u_local_only,
           use_hd = self.use_hd,
           compute_gradients = True)
+        ef_grad = ef.gradients
       elif self.refine_transformations:
-        print('Need to work out energy function for transformation')
+        ef = self.geometry_restraints_manager.energies_sites(
+          sites_cart        = self.fmodel.xray_structure.sites_cart(),
+          compute_gradients = True)
+        ef_grad = nu.compute_transform_grad(
+          grad_wrt_xyz      = ef.gradients.as_double(),
+          rotation_matrices = self.rotation_matrices,
+          xyz_ncs           = nu.get_ncs_sites_cart(self),
+          x                 = self.x)
       if ef:
         t = t*self.data_weight + ef.target
-    return t,ef
+    return t,ef_grad
 
   def update_fmodel(self, x=None):
     """
@@ -153,9 +165,11 @@ class lbfgs(object):
     if not x: x = self.x
     if self.refine_transformations:
       self.rotation_matrices, self.translation_vectors\
-        = self.separate_rot_tran(x)
+        = nu.separate_rot_tran(
+        x=x, rotations = self.rotation_matrices,
+        translations = self.translation_vectors)
       # Use the new transformations to create the ASU
-      x_ncs = self.get_ncs_sites_cart().as_double()
+      x_ncs = nu.get_ncs_sites_cart(self).as_double()
       x_asu = self.refinable_params_one_ncs_to_asu(x_ncs)
       self.fmodel.xray_structure.set_sites_cart(
         sites_cart = flex.vec3_double(x_asu))
@@ -224,7 +238,7 @@ class lbfgs(object):
     # find the index of the max gradient value
     i_g_max = flex.max_index(flex.abs(g))
     # Set displacement for finite gradient calculation to 1e-5 of largest value
-    d = max(self.x[i_g_max]*0.00001,1e-6)
+    d = max(self.x[i_g_max]*1e-6,1e-8)
     # calc t(x+d)
     self.x[i_g_max] = self.x[i_g_max] + d
     t1,_ = self.compute_functional_and_gradients(compute_gradients=False)
@@ -236,93 +250,3 @@ class lbfgs(object):
     self.update_fmodel()
     finite_gard = (t1-t2)/(d*2)
     self.finite_grad_difference_val = abs(g[i_g_max] - finite_gard)
-
-  def concatenate_rot_tran(self,rot,tran):
-    """
-    Concatenate rotation angles, corresponding to the rotation
-    matrices and scaled translation vectors to a single long flex.double object
-    """
-    x = []
-    # Scale translation to be of the same order ot the translation
-    s = self.translation_scale_factor
-
-    [x.extend(list(rt.rotation_to_angles(r.elems)) + list((t/s).elems))
-     for (r,t) in zip(rot,tran)]
-    assert len(x) == 6*(len(rot))
-    return flex.double(x)
-
-  def separate_rot_tran(self,x):
-    """
-    Convert the refinemable parameters, rotations angles and
-    scaled translations, back to rotation matrices and translation vectors
-
-    Arguments:
-    x : a flex.double of the form (theta_1,psi_1,phi_1,tx_1,ty_1,tz_1,..
-        theta_n,psi_n,phi_n,tx_n/s,ty_n/s,tz_n/s). where n is the number of
-        transformations.
-
-    Returns:
-    rot : matrix.rec type, size (3,3)
-          tran is a matrix.rec type, size (3,1)
-    """
-    rot = []
-    tran = []
-    s = self.translation_scale_factor
-
-    for i in range(self.number_of_ncs_copies - 1):
-      the,psi,phi =x[i*6:i*6+3]
-      rot_obj = scitbx.rigid_body.rb_mat_xyz(
-        the=the, psi=psi, phi=phi, deg=False)
-      rot.append(rot_obj.rot_mat())
-      tran.append(matrix.rec(x[i*6+3:i*6+6],(3,1))*s)
-
-    assert len(rot) == len(self.rotation_matrices)
-    assert len(tran) == len(self.translation_vectors)
-    return rot,tran
-
-  def compute_transform_grad(self,tgx):
-    """
-    Compute gradient in respect to the rotation angles and the translation
-    vectors. R = Rx(the)Ry(psi)Rz(phi)
-
-    Arguments:
-    tgx : x_target_functor object
-
-    Returns:
-    g : (flex.double) a gradient
-    """
-    g = []
-    # Gradient by NCS coordinates. Of the form (x1,y1,z1,...,xn,yn,zn)
-    grad_wrt_xyz = tgx.gradients_wrt_atomic_parameters(site=True).packed()
-    n_grad_in_ncs = len(grad_wrt_xyz)//self.number_of_ncs_copies
-    x_ncs = self.get_ncs_sites_cart()
-    assert len(x_ncs.as_double()) == n_grad_in_ncs
-    # collect the derivative of all transformations
-    for i in range(self.number_of_ncs_copies - 1):
-      # get the portion of the gradient corresponding to the n'th NCS copy
-      # not looking at the gradient of the original NCS copy
-      grad_ncs_wrt_xyz = grad_wrt_xyz[(i+1)*n_grad_in_ncs:(i+2)*n_grad_in_ncs]
-      # Translation derivatives are the same for all transformations
-      grad_wrt_t = list(flex.vec3_double(grad_ncs_wrt_xyz).sum())
-      # Sum angles gradient over the coordinates
-      m = flex.vec3_double(grad_ncs_wrt_xyz).transpose_multiply(x_ncs)
-      m = matrix.sqr(m)
-      # Calculate gradient with respect to the rotation angles
-      the,psi,phi = self.x[i*6:i*6+3]
-      rot = scitbx.rigid_body.rb_mat_xyz(
-        the=the, psi=psi, phi=phi, deg=False)
-      g_the = (m*rot.r_the().transpose()).trace()
-      g_psi = (m*rot.r_psi().transpose()).trace()
-      g_phi = (m*rot.r_phi().transpose()).trace()
-      g.extend([g_the, g_psi, g_phi])
-      g.extend(grad_wrt_t)
-    assert len(g) == 6*(self.number_of_ncs_copies - 1)
-    return flex.double(g)
-
-  def get_ncs_sites_cart(self):
-    """
-    Return the sites cart (coordinates) of the NCS copy
-    """
-    xrs_one_ncs = self.fmodel.xray_structure.select(self.ncs_atom_selection)
-    return xrs_one_ncs.sites_cart()
-

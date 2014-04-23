@@ -147,7 +147,7 @@ tst_list = (
   "$D/secondary_structure/build/tst_1.py",
   "$D/secondary_structure/build/tst_2.py",
   "$D/utils/tst_switch_rotamers.py",
-  "$D/utils/tst_rotation_angle_conversion.py",
+  "$D/utils/tst_ncs_utils.py",
   "$D/refinement/tst_occupancy_selections.py",
   "$D/disorder/tst.py",
   "$D/disorder/tst_backbone.py",
