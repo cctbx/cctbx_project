@@ -165,9 +165,7 @@ class lbfgs(object):
     if not x: x = self.x
     if self.refine_transformations:
       self.rotation_matrices, self.translation_vectors\
-        = nu.separate_rot_tran(
-        x=x, rotations = self.rotation_matrices,
-        translations = self.translation_vectors)
+        = nu.separate_rot_tran(x=x, ncs_copies=len(self.rotation_matrices))
       # Use the new transformations to create the ASU
       x_ncs = nu.get_ncs_sites_cart(self).as_double()
       x_asu = self.refinable_params_one_ncs_to_asu(x_ncs)

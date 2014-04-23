@@ -35,6 +35,44 @@ class test_rotation_angles_conversion(object):
       (-0.4017753, math.pi/2, 2.6422171))
     self.rot_angles3 = flex.double(
       (-0.4017753, -math.pi/2, 2.6422171))
+    self.rotation1 = matrix.sqr(self.rot1.as_double())
+    self.rotation2 = matrix.sqr(self.rot2.as_double())
+    self.translation1 = matrix.rec((0.5,-0.5,0),(3,1))
+    self.translation2 = matrix.rec((0,0,0),(3,1))
+
+  def test_concatenate_rot_tran(self):
+    """ Verify correct concatenation of rotation and translations """
+    print 'Running ',sys._getframe().f_code.co_name
+    rot = [self.rotation1, self.rotation2]
+    tran = [self.translation1, self.translation2]
+    results = nu.concatenate_rot_tran(rot,tran)
+    expected = flex.double([
+      -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
+      2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
+    assert approx_equal(results,expected,1.0e-4)
+    s = 2.0
+    results = nu.concatenate_rot_tran(rot=rot,tran=tran,s=s)
+    expected = flex.double([
+      -0.40177529, 1.20019851, 2.64221706, 0.5/s, -0.5/s, 0.0,
+      2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
+    assert approx_equal(results,expected,1.0e-4)
+
+  def test_separate_rot_tran(self):
+    """
+    Verify correct conversion from angles and translation
+    to rotation matrices and translations """
+    print 'Running ',sys._getframe().f_code.co_name
+    s = 2.0
+    x = flex.double([
+      -0.40177529, 1.20019851, 2.64221706, 0.5/s, -0.5/s, 0.0,
+      2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
+    rot_results, tran_results = nu.separate_rot_tran(x=x,ncs_copies=2)
+    rot_expected = [self.rotation1, self.rotation2]
+    tran_expected = [self.translation1/s, self.translation2/s]
+
+    assert approx_equal(tran_results,tran_expected,1.0e-4)
+    assert approx_equal(rot_results,rot_expected,1.0e-4)
+
 
   def test_angles_to_matrix(self):
     """
@@ -60,7 +98,6 @@ class test_rotation_angles_conversion(object):
     expected = self.rot3.as_double()
     result = nu.angles_to_rotation(angles_xyz=angles,deg=False)
     assert approx_equal(expected,result,1e-4)
-
 
   def test_matrix_to_angles(self):
     """
@@ -116,10 +153,14 @@ class test_rotation_angles_conversion(object):
 
 if __name__=='__main__':
   t = test_rotation_angles_conversion()
+  # run tests
   t.test_rotations_are_good()
   t.test_angles_to_matrix()
   t.test_matrix_to_angles()
   t.test_working_with_tuples()
+  t.test_concatenate_rot_tran()
+  t.test_separate_rot_tran()
+
 
 
 
