@@ -20,7 +20,7 @@ pattern_general = re.compile(r'\A(?P<fileroot>.*)_(?P<otherstuff>.*)\.(?P<ext>.*
 class FileName:
   exts = ["img","tif","tiff","image","mccd",
           "mar1200","mar1800","mar1600","mar2400","mar2000","mar3000","mar2300","mar3450",
-          "cbf","osc","ipf","sfrm","edf"
+          "cbf","osc","ipf","sfrm","edf","pickle","pkl"
          ] #Permissible filename extensions for pattern 1
   """attributes of this class are:
      base = the file name without directory path
