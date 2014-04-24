@@ -9,7 +9,7 @@ def run(args):
   ucs.print_ucs(args.o)
   ucs.cluster(args.t, args.m, args.l)
   if not args.noplot:
-    plot_clusters(ucs, args.log, args.o)
+    plot_clusters(ucs, args.log, args.o, args.ucs)
 
 
 if (__name__ == "__main__"):
@@ -20,7 +20,7 @@ if (__name__ == "__main__"):
                        help='One or more folers containing integration pickles.')
   parser.add_argument('-t', type=float, default=5000,
                        help='threshold value for the clustering. Default = 5000')
-  parser.add_argument('-o', type=str,
+  parser.add_argument('-o', type=str, default='clustering',
                        help='output file name for unit cells.')
   parser.add_argument('-m', type=str, default='distance',
       help='Clustering method for numpy clustering. Options are: inconsistent' +
@@ -30,6 +30,9 @@ if (__name__ == "__main__"):
             'complete, average, weighted, centroid, median, ward.')
   parser.add_argument('--log',  action='store_true',
                       help="Display the dendrogram with a log scale")
+  parser.add_argument('--ucs',  action='store_true',
+                      help="Display the unit cells in a 3D plot")
+
   parser.add_argument('--noplot',  action='store_true',
                       help="Do not display plots")
   args = parser.parse_args()
