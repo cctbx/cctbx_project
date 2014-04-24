@@ -78,10 +78,11 @@ class AtomSelectionCtrl (strctrl.StrCtrl) :
 
 class AtomSelectionValidator (strctrl.StrValidator) :
   def CheckFormat (self, value) :
-    import iotbx.pdb.hierarchy
-    root = iotbx.pdb.hierarchy.root()
-    sel_cache = root.atom_selection_cache()
-    atom_sel = sel_cache.selection(value)
+    # FIXME this breaks on mmtbx-supported selections!
+    #import iotbx.pdb.hierarchy
+    #root = iotbx.pdb.hierarchy.root()
+    #sel_cache = root.atom_selection_cache()
+    #atom_sel = sel_cache.selection(value)
     return value
 
 if (__name__ == "__main__") :
