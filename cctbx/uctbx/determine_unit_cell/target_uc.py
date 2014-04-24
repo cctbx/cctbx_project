@@ -145,17 +145,18 @@ class target:
                              "Med_alpha", "Med_beta", "Med_gamma")
     print "".join(singletons)
 
-def plot_clusters(ucs, log=False, outname='clustering'):
+def plot_clusters(ucs, log=False, outname='clustering', plot_ucs=False):
     """ Plot Niggli cells -- one plot for (a,b,c) and one plot for
     (alpha, beta, gamma) -- colour coded by cluster index.  """
     
     import pylab
     fig = pylab.figure()
     hcluster.dendrogram(ucs.this_linkage,
-                      labels=["{:<4.1f}, {:<4.1f}, {:<4.1f}, {:<4.1f}," +
-                              "{:<4.1f}, {:<4.1f}".format(
-                              x[0], x[1], x[2], x[3], x[4], x[5])
-                              for x in ucs.niggli_ucs],
+                      labels=ucs.names,
+                      #labels=["{:<4.1f}, {:<4.1f}, {:<4.1f}, {:<4.1f}," +
+                      #        "{:<4.1f}, {:<4.1f}".format(
+                      #        x[0], x[1], x[2], x[3], x[4], x[5])
+                      #        for x in ucs.niggli_ucs],
                       leaf_font_size=8,
                       color_threshold=ucs.threshold)
     ax=fig.gca()
@@ -166,31 +167,32 @@ def plot_clusters(ucs, log=False, outname='clustering'):
     fig.show()
     fig.savefig("{}_dendogram.pdf".format(outname))
 
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D # Special Import
-    import matplotlib.cm as mpl_cmaps
-    cmap = mpl_cmaps.Paired
-    fig = plt.figure('unit_cells_dimensions')
-    ax = fig.add_subplot(111, projection='3d')
-    ax.set_xlabel('a [A]')
-    ax.set_ylabel('b [A]')
-    ax.set_zlabel('c [A]')
-    for i in range(len(ucs.niggli_ucs)):
-      ax.scatter(np.array(ucs.niggli_ucs)[i,0],
-                 np.array(ucs.niggli_ucs)[i,1],
-                 np.array(ucs.niggli_ucs)[i,2],
-                 c=cmap(ucs.clusters[i-1]/max(ucs.clusters)), marker='o', s=20)
-    fig = plt.figure('unit_cells_angles')
-    ax = fig.add_subplot(111, projection='3d')
-    for i in range(len(ucs.niggli_ucs)):
-      ax.scatter(np.array(ucs.niggli_ucs)[i,3],
-                 np.array(ucs.niggli_ucs)[i,4],
-                 np.array(ucs.niggli_ucs)[i,5],
-                 c=cmap(ucs.clusters[i-1]/max(ucs.clusters)), marker='o', s=20)
-    ax.set_xlabel('alpha')
-    ax.set_ylabel('beta')
-    ax.set_zlabel('gamma')
-    plt.show()
+    if plot_ucs:
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D # Special Import
+        import matplotlib.cm as mpl_cmaps
+        cmap = mpl_cmaps.Paired
+        fig = plt.figure('unit_cells_dimensions')
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_xlabel('a [A]')
+        ax.set_ylabel('b [A]')
+        ax.set_zlabel('c [A]')
+        for i in range(len(ucs.niggli_ucs)):
+          ax.scatter(np.array(ucs.niggli_ucs)[i,0],
+                     np.array(ucs.niggli_ucs)[i,1],
+                     np.array(ucs.niggli_ucs)[i,2],
+                     c=cmap(ucs.clusters[i-1]/max(ucs.clusters)), marker='o', s=20)
+        fig = plt.figure('unit_cells_angles')
+        ax = fig.add_subplot(111, projection='3d')
+        for i in range(len(ucs.niggli_ucs)):
+          ax.scatter(np.array(ucs.niggli_ucs)[i,3],
+                     np.array(ucs.niggli_ucs)[i,4],
+                     np.array(ucs.niggli_ucs)[i,5],
+                     c=cmap(ucs.clusters[i-1]/max(ucs.clusters)), marker='o', s=20)
+        ax.set_xlabel('alpha')
+        ax.set_ylabel('beta')
+        ax.set_zlabel('gamma')
+        plt.show()
 
 #    centroids,_ = kmeans(reduced_data[:,:3], num_ucs.clusters)
 #    idx,_ = vq(reduced_data[:,:3],centroids)
