@@ -121,29 +121,30 @@ class SBSettingsPanel (SettingsPanel) :
 
     # Quad translation controls
     QT = self.GetParent().GetParent().horizons_phil.distl.quad_translations
-    iqt = 0
-    from wxtbx.phil_controls.intctrl import IntCtrl
-    for s_quad in ["UL","UR","LL","LR"]:
+    if QT is not None:
+      iqt = 0
+      from wxtbx.phil_controls.intctrl import IntCtrl
+      for s_quad in ["UL","UR","LL","LR"]:
 
-      box = wx.BoxSizer(wx.HORIZONTAL)
-      setattr(self,s_quad+"x_ctrl",IntCtrl(self, -1, pos=(300,180), size=(80,-1),value=QT[iqt],name=s_quad+"x"))
-      iqt+=1
-      spinbtn = wx.SpinButton(self, -1)
-      getattr(self,s_quad+"x_ctrl").AttachSpinner(spinbtn)
-      box.Add(getattr(self,s_quad+"x_ctrl"), 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-      box.Add(spinbtn, 0, wx.RIGHT|wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL, 5)
-      txtd = wx.StaticText(self, -1,  s_quad+" x",)
-      box.Add(txtd, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+        box = wx.BoxSizer(wx.HORIZONTAL)
+        setattr(self,s_quad+"x_ctrl",IntCtrl(self, -1, pos=(300,180), size=(80,-1),value=QT[iqt],name=s_quad+"x"))
+        iqt+=1
+        spinbtn = wx.SpinButton(self, -1)
+        getattr(self,s_quad+"x_ctrl").AttachSpinner(spinbtn)
+        box.Add(getattr(self,s_quad+"x_ctrl"), 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+        box.Add(spinbtn, 0, wx.RIGHT|wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL, 5)
+        txtd = wx.StaticText(self, -1,  s_quad+" x",)
+        box.Add(txtd, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
-      setattr(self,s_quad+"y_ctrl",IntCtrl(self, -1, pos=(300,180), size=(80,-1),value=QT[iqt],name=s_quad+"y"))
-      iqt+=1
-      spinbtn = wx.SpinButton(self, -1)
-      getattr(self,s_quad+"y_ctrl").AttachSpinner(spinbtn)
-      box.Add(getattr(self,s_quad+"y_ctrl"), 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-      box.Add(spinbtn, 0, wx.RIGHT|wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL, 5)
-      txtd = wx.StaticText(self, -1,  s_quad+" y",)
-      box.Add(txtd, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-      s.Add(box)
+        setattr(self,s_quad+"y_ctrl",IntCtrl(self, -1, pos=(300,180), size=(80,-1),value=QT[iqt],name=s_quad+"y"))
+        iqt+=1
+        spinbtn = wx.SpinButton(self, -1)
+        getattr(self,s_quad+"y_ctrl").AttachSpinner(spinbtn)
+        box.Add(getattr(self,s_quad+"y_ctrl"), 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+        box.Add(spinbtn, 0, wx.RIGHT|wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL, 5)
+        txtd = wx.StaticText(self, -1,  s_quad+" y",)
+        box.Add(txtd, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+        s.Add(box)
 
     self.collect_values()
 
@@ -151,9 +152,11 @@ class SBSettingsPanel (SettingsPanel) :
     self.Bind(wx.EVT_SLIDER, self.OnUpdateBrightness, self.brightness_ctrl)
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.center_ctrl)
     self.Bind(EVT_PHIL_CONTROL, self.OnUpdateDist, self.distance_ctrl)
-    for s_quad in ["UL","UR","LL","LR"]:
-      self.Bind(EVT_PHIL_CONTROL, self.OnUpdateQuad, getattr(self,s_quad+"x_ctrl"))
-      self.Bind(EVT_PHIL_CONTROL, self.OnUpdateQuad, getattr(self,s_quad+"y_ctrl"))
+
+    if QT is not None:
+      for s_quad in ["UL","UR","LL","LR"]:
+        self.Bind(EVT_PHIL_CONTROL, self.OnUpdateQuad, getattr(self,s_quad+"x_ctrl"))
+        self.Bind(EVT_PHIL_CONTROL, self.OnUpdateQuad, getattr(self,s_quad+"y_ctrl"))
     txt3 = wx.StaticText(self, -1, "Thumbnail view:")
     s.Add(txt3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.thumb_panel = rstbx.viewer.display.ThumbnailView(
