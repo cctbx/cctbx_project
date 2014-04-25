@@ -160,7 +160,7 @@ class intensities_scaler(object):
             sin_sq_all.append(sin_sq)
             SE_all.append(pres.stats[0])
           print pres.frame_no, img_filename, ' merged'
-        else: 
+        else:
           print pres.frame_no, img_filename, ' discarded - unit-cell exceeds the limits (%6.2f %6.2f %6.2f %5.2f %5.2f %5.2f)'%(pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], pres.uc_params[4], pres.uc_params[5])
 
     #plot stats
@@ -932,10 +932,10 @@ class file_handler(object):
   def get_imgname_from_pickle_filename(self, file_name_in_img, pickle_filename):
 
     img_filename = pickle_filename
-    
+
     if file_name_in_img == '':
       return img_filename
-      
+
     file_img = open(file_name_in_img, 'r')
     data_img = file_img.read().split('\n')
     for line_img in data_img:

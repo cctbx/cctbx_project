@@ -43,7 +43,7 @@ class postref_handler(object):
     ybeam = observations_pickle["ybeam"]
     alpha_angle_obs = flex.double([math.atan(abs(pred[0]-xbeam)/abs(pred[1]-ybeam)) for pred in mm_predictions])
     assert len(alpha_angle_obs)==len(observations.indices()), 'Size of alpha angles and observations are not equal %6.0f, %6.0f'%(len(alpha_angle_obs),len(observations.indices()))
-    
+
     #Lorentz-polarization correction
     wavelength = observations_pickle["wavelength"]
     two_theta = observations.two_theta(wavelength=wavelength).data()
@@ -262,7 +262,7 @@ class postref_handler(object):
     polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, iph)
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
     uc_params = crystal_init_orientation.unit_cell().parameters()
-    
+
     G = np.mean(observations_non_polar.data())/mean_of_mean_I
     refined_params = np.array([G,0,0,0,0,0,0,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
     se_params = np.array([0,0,0,0,0,0,0,0,0,0,0,0,0])
