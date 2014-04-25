@@ -1,5 +1,7 @@
 from __future__ import division
 from scitbx.array_family import flex
+import mmtbx.monomer_library.server
+from mmtbx import monomer_library
 from scitbx import matrix
 import scitbx.rigid_body
 from cctbx import xray
@@ -325,3 +327,23 @@ def get_weight(minimization_obj):
 
   weight =min(weight,1e6)
   return weight
+
+def get_restraints_manager(pdb_file_name=None,pdb_string=None):
+  """
+  Generate restraint manager from a PDB file or a PDB string
+  """
+  assert [pdb_file_name,pdb_string].count(None)==1
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+  if pdb_string: pdb_lines = pdb_string.splitlines()
+  else: pdb_lines = None
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv    = mon_lib_srv,
+    ener_lib       = ener_lib,
+    file_name      = pdb_file_name,
+    raw_records    = pdb_lines,
+    force_symmetry = True)
+  geometry = processed_pdb_file.geometry_restraints_manager(
+    show_energies = False, plain_pairs_radius = 5.0)
+  return mmtbx.restraints.manager(
+    geometry = geometry, normalization = False)

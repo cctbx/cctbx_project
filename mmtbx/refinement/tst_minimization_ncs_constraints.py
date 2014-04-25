@@ -5,9 +5,7 @@ import mmtbx.monomer_library.pdb_interpretation
 from libtbx.test_utils import approx_equal
 import mmtbx.refinement.adp_refinement
 from scitbx.array_family import flex
-import mmtbx.monomer_library.server
 from libtbx import adopt_init_args
-from mmtbx import monomer_library
 import mmtbx.utils.ncs_utils as nu
 import mmtbx.f_model
 import mmtbx.utils
@@ -35,23 +33,6 @@ ATOM      6  OG1 THR A   1       9.001  10.342   8.000  1.00 20.00           O
 ATOM      7  CG2 THR A   1       8.964   8.000   8.565  1.00 20.00           C
 TER
 """
-
-def get_restraints_manager(pdb_file_name=None,pdb_string=None):
-  assert [pdb_file_name,pdb_string].count(None)==1
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  if pdb_string: pdb_lines = pdb_string.splitlines()
-  else: pdb_lines = None
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv    = mon_lib_srv,
-    ener_lib       = ener_lib,
-    file_name      = pdb_file_name,
-    raw_records    = pdb_lines,
-    force_symmetry = True)
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies = False, plain_pairs_radius = 5.0)
-  return mmtbx.restraints.manager(
-    geometry = geometry, normalization = False)
 
 
 class ncs_minimization_test(object):
@@ -133,7 +114,7 @@ class ncs_minimization_test(object):
       crystal_symmetry=xrs_one_ncs.crystal_symmetry())
     self.iso_restraints = None
     if(self.use_geometry_restraints):
-      self.grm = get_restraints_manager(pdb_string=pdb_str)
+      self.grm = nu.get_restraints_manager(pdb_string=pdb_str)
       if(self.u_iso):
         temp = mmtbx.refinement.adp_refinement.adp_restraints_master_params
         self.iso_restraints = temp.extract().iso
