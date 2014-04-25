@@ -93,7 +93,7 @@ class intensities_scaler(object):
 
     return I_avg, sigI_avg, (r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, multiplicity), I_avg_even, I_avg_odd
 
-  def calc_mean_unit_cell(self, results):
+  def calc_mean_unit_cell(self, results, iph, uc_len_tol, uc_angle_tol):
     a_all = flex.double()
     b_all = flex.double()
     c_all = flex.double()
@@ -102,12 +102,16 @@ class intensities_scaler(object):
     gamma_all = flex.double()
     for pres in results:
       if pres is not None:
-        a_all.append(pres.uc_params[0])
-        b_all.append(pres.uc_params[1])
-        c_all.append(pres.uc_params[2])
-        alpha_all.append(pres.uc_params[3])
-        beta_all.append(pres.uc_params[4])
-        gamma_all.append(pres.uc_params[5])
+        #check unit-cell
+        if (abs(pres.uc_params[0]-iph.target_unit_cell[0]) <= uc_len_tol and abs(pres.uc_params[1]-iph.target_unit_cell[1]) <= uc_len_tol \
+        and abs(pres.uc_params[2]-iph.target_unit_cell[2]) <= uc_len_tol and abs(pres.uc_params[3]-iph.target_unit_cell[3]) <= uc_angle_tol \
+        and abs(pres.uc_params[4]-iph.target_unit_cell[4]) <= uc_angle_tol and abs(pres.uc_params[5]-iph.target_unit_cell[5]) <= uc_angle_tol):
+          a_all.append(pres.uc_params[0])
+          b_all.append(pres.uc_params[1])
+          c_all.append(pres.uc_params[2])
+          alpha_all.append(pres.uc_params[3])
+          beta_all.append(pres.uc_params[4])
+          gamma_all.append(pres.uc_params[5])
 
     uc_mean = flex.double([np.mean(a_all), np.mean(b_all), np.mean(c_all), np.mean(alpha_all), np.mean(beta_all), np.mean(gamma_all)])
 
@@ -134,6 +138,8 @@ class intensities_scaler(object):
 
     for pres in results:
       if pres is not None:
+        fh = file_handler()
+        img_filename = fh.get_imgname_from_pickle_filename(iph.file_name_in_img, pres.pickle_filename)
         #check unit-cell
         if (abs(pres.uc_params[0]-iph.target_unit_cell[0]) <= uc_len_tol and abs(pres.uc_params[1]-iph.target_unit_cell[1]) <= uc_len_tol \
         and abs(pres.uc_params[2]-iph.target_unit_cell[2]) <= uc_len_tol and abs(pres.uc_params[3]-iph.target_unit_cell[3]) <= uc_angle_tol \
@@ -153,18 +159,19 @@ class intensities_scaler(object):
             SE_I_all.append(se_i)
             sin_sq_all.append(sin_sq)
             SE_all.append(pres.stats[0])
-        else:
-          print pres.frame_no, pres.pickle_filename, ' unit-cell exceeds the limits', list(pres.uc_params)
+          print pres.frame_no, img_filename, ' merged'
+        else: 
+          print pres.frame_no, img_filename, ' discarded - unit-cell exceeds the limits (%6.2f %6.2f %6.2f %5.2f %5.2f %5.2f)'%(pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], pres.uc_params[4], pres.uc_params[5])
 
     #plot stats
-    self.plot_stats(results, iph)
+    self.plot_stats(results, iph, uc_len_tol, uc_angle_tol)
 
     #calculate average unit cell
-    uc_mean = self.calc_mean_unit_cell(results)
+    uc_mean = self.calc_mean_unit_cell(results, iph, uc_len_tol, uc_angle_tol)
 
     #from all observations merge them, using mean
     crystal_symmetry = crystal.symmetry(
-        unit_cell=iph.target_unit_cell,
+        unit_cell=(uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]),
         space_group_symbol=iph.target_space_group)
     miller_set_all=miller.set(
                 crystal_symmetry=crystal_symmetry,
@@ -443,7 +450,7 @@ class intensities_scaler(object):
 
     return miller_array_merge, txt_out
 
-  def plot_stats(self, results, iph):
+  def plot_stats(self, results, iph, uc_len_tol, uc_angle_tol):
     #retrieve stats from results and plot them
     G_frame = flex.double()
     B_frame = flex.double()
@@ -468,28 +475,31 @@ class intensities_scaler(object):
 
     for pres in results:
       if pres is not None:
-        G_frame.append(pres.G)
-        B_frame.append(pres.B)
-        rotx_frame.append(pres.rotx*180/math.pi)
-        roty_frame.append(pres.roty*180/math.pi)
-        ry_frame.append(pres.ry)
-        rz_frame.append(pres.rz)
-        re_frame.append(pres.re)
-        uc_a_frame.append(pres.uc_params[0])
-        uc_b_frame.append(pres.uc_params[1])
-        uc_c_frame.append(pres.uc_params[2])
-        uc_alpha_frame.append(pres.uc_params[3])
-        uc_beta_frame.append(pres.uc_params[4])
-        uc_gamma_frame.append(pres.uc_params[5])
-        SE_all.append(pres.stats[0])
-        R_sq_all.append(pres.stats[1])
-        cc_all.append(pres.stats[2])
-        sum_var_I_p_all.append(np.median(pres.var_I_p))
-        sum_var_k_all.append(np.median(pres.var_k))
-        sum_var_p_all.append(np.median(pres.var_p))
+        if (abs(pres.uc_params[0]-iph.target_unit_cell[0]) <= uc_len_tol and abs(pres.uc_params[1]-iph.target_unit_cell[1]) <= uc_len_tol \
+        and abs(pres.uc_params[2]-iph.target_unit_cell[2]) <= uc_len_tol and abs(pres.uc_params[3]-iph.target_unit_cell[3]) <= uc_angle_tol \
+        and abs(pres.uc_params[4]-iph.target_unit_cell[4]) <= uc_angle_tol and abs(pres.uc_params[5]-iph.target_unit_cell[5]) <= uc_angle_tol):
+          G_frame.append(pres.G)
+          B_frame.append(pres.B)
+          rotx_frame.append(pres.rotx*180/math.pi)
+          roty_frame.append(pres.roty*180/math.pi)
+          ry_frame.append(pres.ry)
+          rz_frame.append(pres.rz)
+          re_frame.append(pres.re)
+          uc_a_frame.append(pres.uc_params[0])
+          uc_b_frame.append(pres.uc_params[1])
+          uc_c_frame.append(pres.uc_params[2])
+          uc_alpha_frame.append(pres.uc_params[3])
+          uc_beta_frame.append(pres.uc_params[4])
+          uc_gamma_frame.append(pres.uc_params[5])
+          SE_all.append(pres.stats[0])
+          R_sq_all.append(pres.stats[1])
+          cc_all.append(pres.stats[2])
+          sum_var_I_p_all.append(np.median(pres.var_I_p))
+          sum_var_k_all.append(np.median(pres.var_k))
+          sum_var_p_all.append(np.median(pres.var_p))
 
-        for se_i in pres.SE_I:
-          SE_I_all.append(se_i)
+          for se_i in pres.SE_I:
+            SE_I_all.append(se_i)
 
 
     if iph.flag_plot:
@@ -921,8 +931,11 @@ class file_handler(object):
 
   def get_imgname_from_pickle_filename(self, file_name_in_img, pickle_filename):
 
-    img_filename = ''
-
+    img_filename = pickle_filename
+    
+    if file_name_in_img == '':
+      return img_filename
+      
     file_img = open(file_name_in_img, 'r')
     data_img = file_img.read().split('\n')
     for line_img in data_img:
