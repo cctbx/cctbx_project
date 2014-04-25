@@ -65,7 +65,6 @@ class lbfgs(object):
     elif self.refine_transformations:
       self.x = nu.concatenate_rot_tran(
         self.rotation_matrices,self.translation_vectors)
-      # !!!!! Make sure this is the correct setting for the grad_flags
       xray.set_scatterer_grad_flags(
         scatterers = self.fmodel.xray_structure.scatterers(),
         site       = True)

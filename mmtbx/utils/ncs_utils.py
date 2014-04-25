@@ -10,26 +10,25 @@ import math
 
 
 def concatenate_rot_tran(rot,tran,s=1):
-    """
-    Concatenate rotation angles, corresponding to the rotation
-    matrices and scaled translation vectors to a single long flex.double object
+  """
+  Concatenate rotation angles, corresponding to the rotation
+  matrices and scaled translation vectors to a single long flex.double object
 
-    Arguments:
-    rot : (lists of objects matrix.rec) Rotation matrices
-    tran : (lists of objects matrix.rec) Tanslation vectors
-    s : (float) scaling factor, scale translation to be of the
-        same order ot the translation
+  Arguments:
+  rot : (lists of objects matrix.rec) Rotation matrices
+  tran : (lists of objects matrix.rec) Tanslation vectors
+  s : (float) scaling factor, scale translation to be of the
+      same order ot the translation
 
-    Return:
-    flex.double object of the form
-    [(alpha_1,beta_1,gamma_1,Tx_1/s,Ty_1/s,Tz_1/s)...]
-    """
-    x = []
-    [x.extend(list(rotation_to_angles(r.elems)) + list((t/s).elems))
-     for (r,t) in zip(rot,tran)]
-    assert len(x) == 6*(len(rot))
-    assert len(x) != 0
-    return flex.double(x)
+  Return:
+  flex.double object of the form
+  [(alpha_1,beta_1,gamma_1,Tx_1/s,Ty_1/s,Tz_1/s)...]
+  """
+  x = []
+  [x.extend(list(rotation_to_angles(r.elems)) + list((t/s).elems))
+   for (r,t) in zip(rot,tran)]
+  assert len(x) == 6*(len(rot))
+  return flex.double(x)
 
 def separate_rot_tran(x,ncs_copies,s=1.0):
   """
@@ -254,7 +253,7 @@ def get_weight(minimization_obj):
     fmdc.xray_structure.shake_sites_in_place(mean_distance=0.3)
   elif mo.u_iso:
     fmdc.xray_structure.shake_adp()
-  elif mo.transformations:
+  elif mo.transformations and mo.rotations:
     rotation_matrices,translation_vectors = shake_transformations(
       rotation_matrices = mo.rotations,
       translation_vectors = mo.translations,
@@ -296,7 +295,7 @@ def get_weight(minimization_obj):
       use_u_local_only  = mo.iso_restraints.use_u_local_only,
       use_hd            = False,
       compute_gradients = True).gradients
-  elif mo.transformations:
+  elif mo.transformations and mo.rotations:
     xyz_ncs = get_ncs_sites_cart(mo)
     xray.set_scatterer_grad_flags(
       scatterers = fmdc.xray_structure.scatterers(),
