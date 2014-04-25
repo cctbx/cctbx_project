@@ -43,6 +43,13 @@ class postref_handler(object):
     ybeam = observations_pickle["ybeam"]
     alpha_angle_obs = flex.double([math.atan(abs(pred[0]-xbeam)/abs(pred[1]-ybeam)) for pred in mm_predictions])
     assert len(alpha_angle_obs)==len(observations.indices()), 'Size of alpha angles and observations are not equal %6.0f, %6.0f'%(len(alpha_angle_obs),len(observations.indices()))
+    
+    #Lorentz-polarization correction
+    wavelength = observations_pickle["wavelength"]
+    two_theta = observations.two_theta(wavelength=wavelength).data()
+    one_over_LP = (2 * flex.sin(two_theta))/(1 + (flex.cos(two_theta)**2))
+    one_over_P = 2/(1 + (flex.cos(two_theta)**2))
+    observations = observations.customized_copy(data=observations.data()*one_over_P)
 
     #set observations with target space group - !!! required for correct
     #merging due to map_to_asu command.
@@ -248,13 +255,14 @@ class postref_handler(object):
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
     observations_original, alpha_angle_obs = self.organize_input(observations_pickle, iph)
     wavelength = observations_pickle["wavelength"]
+    crystal_init_orientation = observations_pickle["current_orientation"][0]
     if observations_original is None:
       return None
 
     polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, iph)
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
-    uc_params = observations_non_polar.unit_cell().parameters()
-
+    uc_params = crystal_init_orientation.unit_cell().parameters()
+    
     G = np.mean(observations_non_polar.data())/mean_of_mean_I
     refined_params = np.array([G,0,0,0,0,0,0,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
     se_params = np.array([0,0,0,0,0,0,0,0,0,0,0,0,0])
@@ -279,7 +287,7 @@ class postref_handler(object):
             var_k=var_k,
             var_p=var_p)
 
-    print 'frame %6.0f'%frame_no, '<I>=%9.2f <G>=%9.2f G=%9.2f'%(np.mean(observations_non_polar.data()), mean_of_mean_I, G), observations_original.d_min(), observations_non_polar.d_min()
+    print 'frame %6.0f'%frame_no, '<I>=%9.2f <G>=%9.2f G=%9.2f'%(np.mean(observations_non_polar.data()), mean_of_mean_I, G)
     return pres
 
 
