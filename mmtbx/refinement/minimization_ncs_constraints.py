@@ -84,6 +84,7 @@ class lbfgs(object):
       xray_structure = self.fmodel.xray_structure,
       update_f_calc  = True)
 
+
   def compute_functional_and_gradients(self, compute_gradients=True):
     self.update_fmodel()
     g = None
