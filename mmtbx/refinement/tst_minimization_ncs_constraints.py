@@ -98,8 +98,6 @@ class ncs_minimization_test(object):
         shake_angles_sigma=self.shake_angles_sigma,
         shake_translation_sigma=self.shake_translation_sigma,
         return_all_transforms = True)
-      self.rotations = mtrix_object.r
-      self.translations = mtrix_object.t
     ph.adopt_xray_structure(xrs_shaken)
     of = open("one_ncs_in_asu_shaken.pdb", "w")
     print >> of, mtrix_object.as_pdb_string()
