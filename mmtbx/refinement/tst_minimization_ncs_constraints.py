@@ -154,6 +154,7 @@ class ncs_minimization_test(object):
     assert r_start > 0.1, r_start
     print "start r_factor: %6.4f" % r_start
     for macro_cycle in xrange(self.n_macro_cycle):
+      if self.transformations and not self.rotation_matrices: continue
       data_weight = None
       if(self.use_geometry_restraints):
         data_weight = nu.get_weight(self)
