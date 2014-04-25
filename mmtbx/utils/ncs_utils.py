@@ -227,6 +227,7 @@ def get_ncs_sites_cart(ncs_obj):
 
   Return: (flex.vec3) coordinate sites cart
   """
+  assert isinstance(ncs_obj.ncs_atom_selection,flex.bool)
   xrs_one_ncs = ncs_obj.fmodel.xray_structure.select(ncs_obj.ncs_atom_selection)
   return xrs_one_ncs.sites_cart()
 
@@ -253,12 +254,12 @@ def get_weight(minimization_obj):
     fmdc.xray_structure.shake_sites_in_place(mean_distance=0.3)
   elif mo.u_iso:
     fmdc.xray_structure.shake_adp()
-  elif mo.transformations and mo.rotations:
+  elif mo.transformations and mo.rotation_matrices:
     rotation_matrices,translation_vectors = shake_transformations(
-      rotation_matrices = mo.rotations,
-      translation_vectors = mo.translations,
-      shake_angles_sigma=0.01,
-      shake_translation_sigma=0.1)
+      rotation_matrices = list(mo.rotation_matrices),
+      translation_vectors = list(mo.translation_vectors),
+      shake_angles_sigma=0.035,
+      shake_translation_sigma=0.5)
     x = concatenate_rot_tran(
       rotation_matrices,translation_vectors)
   fmdc.update_xray_structure(xray_structure = fmdc.xray_structure,
@@ -295,7 +296,7 @@ def get_weight(minimization_obj):
       use_u_local_only  = mo.iso_restraints.use_u_local_only,
       use_hd            = False,
       compute_gradients = True).gradients
-  elif mo.transformations and mo.rotations:
+  elif mo.transformations and mo.rotation_matrices:
     xyz_ncs = get_ncs_sites_cart(mo)
     xray.set_scatterer_grad_flags(
       scatterers = fmdc.xray_structure.scatterers(),
