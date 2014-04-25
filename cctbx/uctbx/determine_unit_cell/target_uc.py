@@ -12,8 +12,9 @@ import  scipy.cluster.hierarchy as hcluster
 class target:
 
   def __init__(self, path_to_integration_dir):
-    """ Creates a list of (point group, unit cell) tuples, and a list of niggli cells from the recursively walked
-        paths. Can take more than one argument for multiple folders."""
+    """ Creates a list of (point group, unit cell) tuples, and a list of
+        niggli cells from the recursively walked paths. Can take more than
+        one argument for multiple folders."""
     self.pgs        = []
     self.niggli_ucs = []
     self.names      = []
@@ -32,7 +33,7 @@ class target:
                "Could not extract point group and unit cell from %s\n" % path)
           except Exception:
               sys.stderr.write(
-                    "Could not read %s\n" % path)
+                    "Could not read %s\n. It may not be a pickle file." % path)
           else:
             self.pgs.append(pg)
             self.niggli_ucs.append(uc.niggli_cell().parameters())
@@ -82,11 +83,13 @@ class target:
     # 2. Do hierarchichal clustering on this, using the find_distance method above.
     import  scipy.spatial.distance as dist
     pair_distances = dist.pdist(self.G6_cells,
-                                metric=lambda a, b: self.find_distance(a,b,dist_method))
+                                metric=lambda a, b: self.find_distance(
+                                    a,b,dist_method))
     print "Distances have been calculated"
     self.this_linkage  = hcluster.linkage(pair_distances,
                                      method=linkage_method,
-                                     metric=lambda a, b: self.find_distance(a,b,dist_method))
+                                     metric=lambda a, b: self.find_distance(
+                                         a,b,dist_method))
     self.clusters = hcluster.fcluster(self.this_linkage,
                                           threshold,
                                           criterion='distance')
@@ -149,8 +152,9 @@ def plot_clusters(ucs, log=False, outname='clustering', plot_ucs=False):
     """ Plot Niggli cells -- one plot for (a,b,c) and one plot for
     (alpha, beta, gamma) -- colour coded by cluster index.  """
     
-    import pylab
-    fig = pylab.figure()
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure("Distance Dendogram")
     hcluster.dendrogram(ucs.this_linkage,
                       labels=ucs.names,
                       #labels=["{:<4.1f}, {:<4.1f}, {:<4.1f}, {:<4.1f}," +
@@ -164,11 +168,9 @@ def plot_clusters(ucs, log=False, outname='clustering', plot_ucs=False):
       ax.set_yscale("log")
     else:
       ax.set_ylim(-ax.get_ylim()[1]/100,ax.get_ylim()[1])
-    fig.show()
     fig.savefig("{}_dendogram.pdf".format(outname))
 
     if plot_ucs:
-        import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D # Special Import
         import matplotlib.cm as mpl_cmaps
         cmap = mpl_cmaps.Paired
@@ -181,7 +183,8 @@ def plot_clusters(ucs, log=False, outname='clustering', plot_ucs=False):
           ax.scatter(np.array(ucs.niggli_ucs)[i,0],
                      np.array(ucs.niggli_ucs)[i,1],
                      np.array(ucs.niggli_ucs)[i,2],
-                     c=cmap(ucs.clusters[i-1]/max(ucs.clusters)), marker='o', s=20)
+                     c=cmap(ucs.clusters[i-1]/max(ucs.clusters)), marker='o',
+                             s=20)
         fig = plt.figure('unit_cells_angles')
         ax = fig.add_subplot(111, projection='3d')
         for i in range(len(ucs.niggli_ucs)):
@@ -192,7 +195,5 @@ def plot_clusters(ucs, log=False, outname='clustering', plot_ucs=False):
         ax.set_xlabel('alpha')
         ax.set_ylabel('beta')
         ax.set_zlabel('gamma')
-        plt.show()
 
-#    centroids,_ = kmeans(reduced_data[:,:3], num_ucs.clusters)
-#    idx,_ = vq(reduced_data[:,:3],centroids)
+      plt.show()
