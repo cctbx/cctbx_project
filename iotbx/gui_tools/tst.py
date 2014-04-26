@@ -125,6 +125,7 @@ def exercise_reflections () :
   hl_coeffs = phi_array.array(data=hl_data)
   assert (hl_coeffs.is_hendrickson_lattman_array())
   from iotbx.mtz import label_decorator
+  import iotbx.mtz
   class resolve_label_decorator (label_decorator) :
     def phases (self, *args, **kwds) :
       return label_decorator.phases(self, *args, **kwds) + "M"
@@ -142,6 +143,10 @@ def exercise_reflections () :
   mtz_dataset.add_miller_array(hl_coeffs,
     column_root_label="HL",
     label_decorator=resolve_label_decorator())
+  fwt_map = f_obs_merged.customized_copy(sigmas=None).phase_transfer(phi_array)
+  mtz_dataset.add_miller_array(fwt_map,
+    column_root_label="FWT",
+    label_decorator=iotbx.mtz.ccp4_label_decorator())
   mtz_dataset.add_miller_array(flags,
     column_root_label="FreeR_flag")
   resolve_file = "tst_iotbx_gui_tools_resolve.mtz"
@@ -153,15 +158,15 @@ def exercise_reflections () :
     file_param_name="map_coeffs")
   assert hkl_handler.has_data(file_name=resolve_file)
   l1 = hkl_handler.get_map_coeff_labels(file_name=resolve_file)
-  assert (l1 == ['FP,PHIM,FOMM'])
+  assert (l1 == ['FWT,PHWT', 'FP,PHIM,FOMM'])
   l2 = hkl_handler.get_phase_deg_labels(file_name=resolve_file)
-  assert (l2 == ['HLAM,HLBM,HLCM,HLDM', 'PHIM', 'FOMM'])
+  assert (l2 == ['HLAM,HLBM,HLCM,HLDM', 'FWT,PHWT', 'PHIM',]), l2
   l3 = hkl_handler.get_experimental_phase_labels(file_name=resolve_file)
   #print l3
   l4 = hkl_handler.get_data_labels_for_wizard(file_name=resolve_file)
   assert (l4 == ['FP SIGFP'])
   l5 = hkl_handler.get_map_coeff_labels_for_build(file_name=resolve_file)
-  assert (l5 == ['FP,PHIM,FOMM'])
+  assert (l5 == ['FWT,PHWT', 'FP,PHIM,FOMM']), l5
   hkl_in = hkl_handler.get_file(file_name=resolve_file)
   assert (reflections.get_mtz_label_prefix(hkl_in) == "/crystal/dataset")
   map_coeffs = reflections.map_coeffs_from_mtz_file(resolve_file,
@@ -174,7 +179,7 @@ def exercise_reflections () :
   else :
     raise Exception_expected
   assert (hkl_handler.get_map_coeff_labels_for_fft(file_name=resolve_file) ==
-    ['FP,SIGFP PHIM FOMM'])
+    ['FWT,PHWT', 'FP,SIGFP PHIM FOMM'])
 
   # miscellaneous utilities
   file_name = resolve_file
@@ -188,8 +193,9 @@ def exercise_reflections () :
     assert (uc == "30 30 40 90 90 120")
     assert (str(sg) == "P 61 2 2")
     descriptions.append(reflections.get_array_description(miller_array))
-  assert descriptions == [
-    'Amplitude', 'Phases', 'Weights', 'HL coeffs', 'R-free flag']
+  assert (descriptions == [
+    'Amplitude', 'Phases', 'Weights', 'HL coeffs', 'Map coeffs',
+    'R-free flag']), descriptions
   handler = reflections.reflections_handler()
   handler.save_file(input_file=hkl_in)
   assert (not handler.has_anomalous_data())

@@ -187,7 +187,12 @@ class reflections_handler (iotbx.gui_tools.manager) :
 
   def get_phase_deg_labels (self, *args, **kwds) :
     miller_arrays = self.get_phase_arrays(*args, **kwds)
-    return [ array.info().label_string() for array in miller_arrays ]
+    labels = []
+    for array in miller_arrays :
+      labels_str = array.info().label_string()
+      if labels_str.startswith("FOM") : continue
+      labels.append(labels_str)
+    return labels
 
   def get_phase_column_labels (self, *args, **kwds) :
     labels = []
@@ -319,6 +324,18 @@ class reflections_handler (iotbx.gui_tools.manager) :
 
   def has_anomalous_data (self, *args, **kwds) :
     return (len(self.get_anomalous_data_labels(*args, **kwds)) > 0)
+
+  def get_phaser_map_fc_labels (self, *args, **kwds) :
+    labels = self.get_fmodel_labels(*args, **kwds)
+    first_column_only = kwds.pop('first_column_only', False)
+    hkl_file = self.get_file(*args, **kwds)
+    if (hkl_file is not None) :
+      for miller_array in hkl_file.file_server.miller_arrays :
+        if (miller_array.is_complex_array()) :
+          labels_str = miller_array.info().label_string()
+          if labels_str.startswith("FWT") :
+            labels.append(miller_array.info().labels[0])
+    return labels
 
   def get_fmodel_labels (self, *args, **kwds) :
     first_column_only = kwds.pop('first_column_only', False)
