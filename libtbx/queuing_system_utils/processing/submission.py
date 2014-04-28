@@ -11,21 +11,24 @@ class Submission(object):
   Handles job submissions
   """
 
-  def __init__(self, cmds, name, out, err):
+  def __init__(self, cmds, name, out, err, namelength = None):
 
     self.cmds = cmds
     self.name = name
     self.out = out
     self.err = err
+    self.namelength = namelength
 
 
   def create(self, name):
 
     outfile = "%s.out" % name
     errfile = "%s.err" % name
-    commands = (
-      self.cmds + [ self.name, name, self.out, outfile, self.err, errfile ]
-      )
+    commands = self.cmds + [
+      self.name, name[ :self.namelength ],
+      self.out, outfile,
+      self.err, errfile,
+      ]
 
     return ( execute( args = commands ), outfile, errfile )
 
@@ -108,13 +111,14 @@ class AsynchronousCmdLine(Submission):
   Submits jobs asynchronously
   """
 
-  def __init__(self, cmds, qdel, name, out, err, extract, poller, handler):
+  def __init__(self, cmds, qdel, name, out, err, extract, poller, handler, namelength = None):
 
     super( AsynchronousCmdLine, self ).__init__(
       cmds = cmds,
       name = name,
       out = out,
       err = err,
+      namelength = namelength,
       )
     self.qdel = qdel
     self.extract = extract
@@ -211,6 +215,7 @@ class AsynchronousCmdLine(Submission):
       extract = generic_jobid_extract,
       poller = poller,
       handler = status.StdStreamStrategy,
+      namelength = 15,
       )
 
 
