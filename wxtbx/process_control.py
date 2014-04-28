@@ -258,7 +258,7 @@ class download_file_basic (object) :
     return result
 
   def OnComplete (self, event) :
-    if isinstance(event.data, str) :
+    if isinstance(event.data, basestring) :
       wx.MessageBox(message="File downloaded to %s" % event.data)
     else :
       wx.MessageBox(message="Error downloading file: %s" % event.data[1],
