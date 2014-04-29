@@ -175,7 +175,7 @@ public:
       if (connectivity_t1.region_vols[i] > volume_threshold_t1)
       {
         int good_reg_number_t2 = map_new(connectivity_t1.region_maximum_coors[i]);
-        fill_data[good_reg_number_t2] = good_reg_number_t2;
+        fill_data[good_reg_number_t2] = (good_reg_number_t2>0) ? 1 : 0;
       }
     }
     for (int i = 0; i < map_dimensions[0]; i++) {
