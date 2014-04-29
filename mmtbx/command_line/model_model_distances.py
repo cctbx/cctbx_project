@@ -24,8 +24,21 @@ def compute_overall(h1,h2,log):
   x2 = h2.extract_xray_structure()
   d = x1.distances(other=x2)
   d= d.min_max_mean().as_tuple()
-  print >> log, "Overall min/max/mean: %8.3f %8.3f %8.3f"%d
+  print >> log, "Overall  min/max/mean: %8.3f %8.3f %8.3f"%d
   print >> log
+  
+def compute_overall_backbone(h1,h2,log):
+  selection_cache1 = h1.atom_selection_cache()
+  isel1 = selection_cache1.iselection("name ca or name n or name o or name c")
+  selection_cache2 = h2.atom_selection_cache()
+  isel2 = selection_cache2.iselection("name ca or name n or name o or name c")
+  x1 = h1.select(isel1).extract_xray_structure()
+  x2 = h2.select(isel2).extract_xray_structure()
+  d = x1.distances(other=x2)
+  d= d.min_max_mean().as_tuple()
+  print >> log, "Backbone min/max/mean: %8.3f %8.3f %8.3f"%d
+  print >> log
+  
 
 def compute_per_model(h1,h2,log):
   if(len(h1.models())==1): return
@@ -86,9 +99,10 @@ def run(args, log=sys.stdout):
   if(len(file_names) != 2): raise Sorry("Two PDB files has to given.")
   pi1 = iotbx.pdb.input(file_name = file_names[0])
   pi2 = iotbx.pdb.input(file_name = file_names[1])
-  if(not pi1.crystal_symmetry_from_cryst1().is_similar_symmetry(
-         pi2.crystal_symmetry_from_cryst1())):
-    raise Sorry("CRYST1 records must be identical.")
+  if pi1.crystal_symmetry_from_cryst1() is not None:
+    if(not pi1.crystal_symmetry_from_cryst1().is_similar_symmetry(
+           pi2.crystal_symmetry_from_cryst1())):
+      raise Sorry("CRYST1 records must be identical.")
   h1 = pi1.construct_hierarchy()
   h2 = pi2.construct_hierarchy()
   if(not h1.is_similar_hierarchy(h2)):
@@ -96,6 +110,7 @@ def run(args, log=sys.stdout):
   #
   print >> log
   compute_overall(    h1=h1, h2=h2, log=log)
+  compute_overall_backbone(h1=h1, h2=h2, log=log)
   compute_per_model(  h1=h1, h2=h2, log=log)
   compute_per_chain(  h1=h1, h2=h2, log=log)
   compute_per_residue(h1=h1, h2=h2, log=log)
