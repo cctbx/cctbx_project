@@ -52,10 +52,21 @@ class FormatHDF5Nexus(FormatHDF5):
     import h5py
     self._h5_handle = h5py.File(self.get_image_file(), 'r')
 
+    # names change as to what the sample positioner is called - originally was
+    # 'pose' now is 'transformations'
+
     # compute coordinate frame transformation to imgCIF frame, just for kicks
     entry = self._h5_handle['entry']
     sample = entry['sample']
-    axis = tuple(sample['pose']['CBF_axis_omega'].attrs['vector'])
+
+    if 'pose' in sample:
+      self._pose_name = 'pose'
+    elif 'transformations' in sample:
+      self._pose_name = 'transformations'
+    else:
+      raise RuntimeError, 'cannot find pose or transformations'
+
+    axis = tuple(sample[self._pose_name]['CBF_axis_omega'].attrs['vector'])
 
     # NeXus coordinate frame: Z is canonical
     from rstbx.cftbx.coordinate_frame_helpers import align_reference_frame
@@ -67,7 +78,7 @@ class FormatHDF5Nexus(FormatHDF5):
     ''' Get the rotation axis. '''
     entry = self._h5_handle['entry']
     sample = entry['sample']
-    pose = sample['pose']
+    pose = sample[self._pose_name]
     axis = tuple(pose['CBF_axis_omega'].attrs['vector'])
 
     return self._goniometer_factory.known_axis(self._R * axis)
@@ -79,7 +90,7 @@ class FormatHDF5Nexus(FormatHDF5):
     entry = self._h5_handle['entry']
     instrument = entry['instrument']
     detector = instrument['detector']
-    pose = detector['pose']
+    pose = detector[self._pose_name]
     translation = pose['translation']
     rotation = pose['rotation']
 
@@ -141,7 +152,7 @@ class FormatHDF5Nexus(FormatHDF5):
     import time
     entry = self._h5_handle['entry']
     sample = entry['sample']
-    pose = sample['pose']
+    pose = sample[self._pose_name]
     angles = pose['CBF_axis_omega']
     oscillation = (angles[0], angles[1] - angles[0])
     image_range = (1, len(angles))
