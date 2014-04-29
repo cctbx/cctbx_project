@@ -19,7 +19,6 @@ from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
 from mmtbx.ions.svm.utils import iterate_sites
 import mmtbx.command_line
 from mmtbx.command_line.water_screen import master_phil
-from cctbx.eltbx import sasaki
 from libtbx.str_utils import make_header
 from libtbx import easy_pickle
 
@@ -51,7 +50,7 @@ atomic properties.
     pdb_hierarchy = cmdline.pdb_hierarchy,
     fmodel = cmdline.fmodel,
     geometry_restraints_manager = cmdline.geometry,
-    wavelength = params.input.wavelength,
+    wavelength = params.wavelength,
     params = params,
     verbose = params.debug,
     nproc = params.nproc,
