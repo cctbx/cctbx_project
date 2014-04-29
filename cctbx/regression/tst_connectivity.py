@@ -216,7 +216,25 @@ def debug_printing(co):
 
 
 def exercise_noise_elimination_two_cutoffs():
-  #map preparation
+  # Purpose: eliminate noise.
+  # We want to delete small blobs from the map. On the particular contouring 
+  # (cutoff) level we can set a threshold for volume and say: all blobs that
+  # have volume less than threshold value should be deleted.
+  # One more point is that we want to delete them with their 'root', meaning
+  # that we are lowering threshold level and put zeros on that bigger regions.
+  # But we are zeroing only those which are not merged with big good blobs.
+  # Everything under second contouring level also will be zero.
+  # ======================
+  # From another point of view.
+  # We know some threshold value for volume of good blobs on t1 contouring
+  # level. We want to keep only them and clear out everything else. But the 
+  # keeping and clearing should be done at lower t2 contouring level.
+  #
+  # The result (res_mask) is 3d integer array sized as original map. 
+  # res_mask contain 0 for noise, 1 for valuable information.
+  # Mask corresponding to t2 contouring level.
+  #
+  #map preparation for test
   cmap = flex.double(flex.grid(100,2,2))
   cmap.fill(10)
   for i in range(10,40):
@@ -234,7 +252,10 @@ def exercise_noise_elimination_two_cutoffs():
   co2 = maptbx.connectivity(map_data=cmap, threshold=22)
   co3 = maptbx.connectivity(map_data=cmap, threshold=18)
 
-  # 1 good, 1 bad ===> 2 separate
+  # Example 1. We have one good blob (volume>12) and one bad (volume < 12).
+  # After lowering contour level they are still separate, so we want to keep
+  # only big first blob, which has volume=35 on t2 contour level.
+  # Here is actual call to get a mask.
   res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
                                                volume_threshold_t1=12)
   assert (res_mask!=0).count(True) == 35
@@ -270,4 +291,4 @@ if __name__ == "__main__" :
   exercise6()
   exercise_volume_cutoff()
   exercise_max_values()
-  exercise_noise_elimination_two_cutoffs()
+  exercise_noise_elimination_two_cutoffs() # example and comment
