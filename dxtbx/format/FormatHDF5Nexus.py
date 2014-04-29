@@ -53,7 +53,8 @@ class FormatHDF5Nexus(FormatHDF5):
     self._h5_handle = h5py.File(self.get_image_file(), 'r')
 
     # names change as to what the sample positioner is called - originally was
-    # 'pose' now is 'transformations'
+    # 'pose' now is 'transformations' - FIXME I should be using the depends_on
+    # attribute then I would not care what this is called...
 
     # compute coordinate frame transformation to imgCIF frame, just for kicks
     entry = self._h5_handle['entry']
