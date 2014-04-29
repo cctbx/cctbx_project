@@ -604,7 +604,7 @@ class manager (mmtbx.ions.identify.manager) :
             (best_score>=(next_score*self.params.svm.min_fraction_of_next))) :
           final_choice = mmtbx.ions.server.get_metal_parameters(best_guess)
       atom_info_out = StringIO()
-     atom_props.show_properties(identity="HOH", out=atom_info_out)
+      atom_props.show_properties(identity="HOH", out=atom_info_out)
       result = svm_prediction(
         i_seq=i_seq,
         pdb_id_str=self.pdb_atoms[i_seq].id_str(),
