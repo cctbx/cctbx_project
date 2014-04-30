@@ -217,7 +217,7 @@ def debug_printing(co):
 
 def exercise_noise_elimination_two_cutoffs():
   # Purpose: eliminate noise.
-  # We want to delete small blobs from the map. On the particular contouring 
+  # We want to delete small blobs from the map. On the particular contouring
   # (cutoff) level we can set a threshold for volume and say: all blobs that
   # have volume less than threshold value should be deleted.
   # One more point is that we want to delete them with their 'root', meaning
@@ -227,12 +227,16 @@ def exercise_noise_elimination_two_cutoffs():
   # ======================
   # From another point of view.
   # We know some threshold value for volume of good blobs on t1 contouring
-  # level. We want to keep only them and clear out everything else. But the 
+  # level. We want to keep only them and clear out everything else. But the
   # keeping and clearing should be done at lower t2 contouring level.
   #
-  # The result (res_mask) is 3d integer array sized as original map. 
+  # The result (res_mask) is 3d integer array sized as original map.
   # res_mask contain 0 for noise, 1 for valuable information.
   # Mask corresponding to t2 contouring level.
+  #
+  # The option "keep_interblob" by default is False, and this means that
+  # everything below threshold on t2 level will be 0. If
+  # keep_interblob=True then everything below threshold on t2 level will be 1.
   #
   #map preparation for test
   cmap = flex.double(flex.grid(100,2,2))
@@ -257,7 +261,8 @@ def exercise_noise_elimination_two_cutoffs():
   # only big first blob, which has volume=35 on t2 contour level.
   # Here is actual call to get a mask.
   res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=12)
+                                               volume_threshold_t1=12,
+                                               keep_interblob=False)
   assert (res_mask!=0).count(True) == 35
   # 2 good ===> 2 separate
   res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
@@ -279,9 +284,57 @@ def exercise_noise_elimination_two_cutoffs():
   # extreme case: nothing above t1 ==> result: everything is 0 on the mask
   co1 = maptbx.connectivity(map_data=cmap, threshold=40)
   co2 = maptbx.connectivity(map_data=cmap, threshold=22)
+  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=10)
   assert (res_mask!=0).count(True) == 0
 
   # extreme case: everything above t1 ==> result is undefined.
+
+  # =================================================================
+  # same as above, but keep_interblob = True
+  # In the first test we have 1 good blob and one bad blob. Bad one
+  # will have volume=15 on t2 contouring level so we want to have 385 non-zeros
+  # on resulting mask
+  co1 = maptbx.connectivity(map_data=cmap, threshold=25)
+  co2 = maptbx.connectivity(map_data=cmap, threshold=22)
+  co3 = maptbx.connectivity(map_data=cmap, threshold=18)
+  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=12,
+                                               keep_interblob=True)
+  #for i in range(100):
+  #  print "%d   : %d | %d" % (i,  cmap[i,1,1], res_mask[i,1,1])
+  assert (res_mask!=0).count(True) == 385
+
+
+  # 2 good ===> 2 separate
+  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=8,
+                                               keep_interblob=True)
+  assert (res_mask==1).count(True) == 400
+  # 1 good, 1 bad ===> 1 big
+  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=12,
+                                               keep_interblob=True)
+  assert (res_mask!=0).count(True) == 400
+  # 2 good ===> 1 big
+  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=8,
+                                               keep_interblob=True)
+  assert (res_mask!=0).count(True) == 400
+  # 2 bad ===> 1 big
+  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=30,
+                                               keep_interblob=True)
+  assert (res_mask!=0).count(True) == 337
+
+  # extreme case: nothing above t1, something above t2 ==> result:
+  # everything between blobs on t2 will be 1.
+  co1 = maptbx.connectivity(map_data=cmap, threshold=40)
+  co2 = maptbx.connectivity(map_data=cmap, threshold=22)
+  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
+                                               volume_threshold_t1=10,
+                                               keep_interblob=True)
+  assert (res_mask!=0).count(True) == 350
 
 if __name__ == "__main__" :
   exercise1()  # examples of usage are here!

@@ -166,7 +166,8 @@ namespace {
         .def("noise_elimination_two_cutoffs",
              &w_t::noise_elimination_two_cutoffs,
                     (arg("connectivity_t1"),
-                     arg("volume_threshold_t1")))
+                     arg("volume_threshold_t1"),
+                     arg("keep_interblob")=false))
         .def("maximum_coors", &w_t::maximum_coors)
         .def("maximum_values", &w_t::maximum_values)
       ;
