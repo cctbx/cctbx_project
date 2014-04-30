@@ -1,11 +1,11 @@
 from __future__ import division
 
-def Empty(obj, processor):
+def Empty(data, coordinates, processor):
   """
   An object without an altloc identifier
   """
 
-  processor.process_regular( obj )
+  processor.process_regular( data = data, coordinates = coordinates )
 
 
 class Alternate(object):
@@ -18,27 +18,89 @@ class Alternate(object):
     self.identifier = identifier
 
 
-  def __call__(self, obj, processor):
+  def __call__(self, data, coordinates, processor):
 
-    processor.process_altloc( obj, identifier = self.identifier )
-
-
-def from_identifier(entity):
-
-  if entity:
-    return Alternate( identifier = entity )
-
-  else:
-    return Empty
+    processor.process_altloc(
+      data = data,
+      coordinates = coordinates,
+      identifier = self.identifier,
+      )
 
 
-def from_atom(entity):
+def altid_for(atom):
 
-  parent = entity.parent()
+  parent = atom.parent()
 
   if parent:
-    return from_identifier( parent.altloc )
+    return parent.altloc
 
   else:
     return Empty
 
+# Indexing with altloc support
+class Description(object):
+  """
+  An internal format to allow processing with the visitor pattern
+  """
+
+  def __init__(self, data, coordinates, altid):
+
+    self.data = data
+    self.coordinates = coordinates
+
+    if altid:
+      self.strategy = Alternate( identifier = altid )
+
+    else:
+      self.strategy = Empty
+
+
+  def accept(self, processor):
+
+    self.strategy(
+      data = self.data,
+      coordinates = self.coordinates,
+      processor = processor,
+      )
+
+
+class Indexer(object):
+  """
+  Indexer that takes into account altloc
+  """
+
+  def __init__(self, factory):
+
+    self.factory = factory
+    self.regular = self.factory()
+
+    self.altlocs = {}
+
+
+  def add(self, altloc):
+
+    self.altlocs[ altloc ] = self.factory()
+
+
+# Visitor
+class Inserter(object):
+  """
+  Fills up an indexer with data
+  """
+
+  def __init__(self, indexer):
+
+    self.indexer = indexer
+
+
+  def process_regular(self, data, coordinates):
+
+    self.indexer.regular.add( object = data, position = coordinates )
+
+
+  def process_altloc(self, data, coordinates, identifier):
+
+    if identifier not in self.indexer.altlocs:
+      self.indexer.add( altloc = identifier )
+
+    self.indexer.altlocs[ identifier ].add( object = data, position = coordinates )

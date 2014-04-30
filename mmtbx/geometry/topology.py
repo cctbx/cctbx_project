@@ -46,7 +46,7 @@ class Molecule(object):
   def add(self, atom, xyz):
 
     d2 = self.graph.add_vertex( label = atom )
-    ( x2, y2, z2 ) =xyz
+    ( x2, y2, z2 ) = xyz
     assert d2 not in self.xyz_for
 
     for ( d1, ( x1, y1, z1 ) ) in self.xyz_for.items():

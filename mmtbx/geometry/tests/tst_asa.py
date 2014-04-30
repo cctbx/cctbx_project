@@ -1,6 +1,7 @@
 from __future__ import division
 
 from mmtbx.geometry import asa
+from mmtbx.geometry import altloc
 
 import iotbx.pdb
 import libtbx.load_env
@@ -35,13 +36,11 @@ SPHERES = [
   for ( index, ( atom, radius ) ) in enumerate( zip( ATOMS, RADII ) )
   ]
 
-from mmtbx.geometry import altloc
 DESCRIPTIONS = [
-  asa.Description.from_parameters(
-    centre = s.centre,
-    radius = s.radius,
-    index = s.index,
-    strategy = altloc.from_atom( entity = atom ),
+  altloc.Description(
+    data = s,
+    coordinates = s.centre,
+    altid = altloc.altid_for( atom = atom ),
     )
     for ( s, atom ) in zip( SPHERES, ATOMS )
   ]
@@ -388,21 +387,21 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
   def test_get_linear_indexer(self):
 
     indexer = asa.get_linear_indexer_for( descriptions = DESCRIPTIONS )
-    self.assertTrue( isinstance( indexer, asa.Indexer ) )
+    self.assertTrue( isinstance( indexer, altloc.Indexer ) )
     self.check_indexer( indexer = indexer, type = asa.indexing.linear_spheres )
 
 
   def test_get_hash_indexer(self):
 
     indexer = asa.get_hash_indexer_for( descriptions = DESCRIPTIONS )
-    self.assertTrue( isinstance( indexer, asa.Indexer ) )
+    self.assertTrue( isinstance( indexer, altloc.Indexer ) )
     self.check_indexer( indexer = indexer, type = asa.indexing.hash_spheres )
 
 
   def test_get_optimal_indexer(self):
 
     indexer = asa.get_optimal_indexer_for( descriptions = DESCRIPTIONS )
-    self.assertTrue( isinstance( indexer, asa.Indexer ) )
+    self.assertTrue( isinstance( indexer, altloc.Indexer ) )
     self.check_indexer( indexer = indexer, type = asa.indexing.linear_spheres )
 
 
