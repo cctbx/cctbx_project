@@ -1909,6 +1909,7 @@ mmtbx/regression/tst_rigid_bond_test.py -text
 mmtbx/regression/tst_ringer.py -text
 mmtbx/regression/tst_sequence_validation.py -text
 mmtbx/regression/tst_sort_hetatms.py -text
+mmtbx/regression/tst_superpose.py -text
 mmtbx/regression/tst_utils.py -text
 mmtbx/regression/tst_validation_summary.py -text
 mmtbx/resolve_resources.py -text
@@ -1944,6 +1945,7 @@ mmtbx/secondary_structure/tst.py -text
 mmtbx/secondary_structure/tst_base_pairing.py -text
 mmtbx/secondary_structure/utils.py -text
 mmtbx/solvent/ensemble_ordered_solvent.py svneol=native#text/x-python
+mmtbx/superpose.py -text
 mmtbx/tls/command_line.py -text
 mmtbx/tls/ladp.py -text
 mmtbx/tls/perm10.py -text
