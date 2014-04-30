@@ -44,7 +44,7 @@ def altloc_strategy_from_atom(atom):
 
 def element_of(atom):
 
-  return atom.determine_chemical_element_simple().strip().capitalize()
+  return atom.element.strip().capitalize()
 
 
 def linear_indexer_for(params):

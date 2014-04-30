@@ -1689,6 +1689,7 @@ mmtbx/geometry/sphere_surface_sampling.hpp -text
 mmtbx/geometry/sphere_surface_sampling.hxx -text
 mmtbx/geometry/sphere_surface_sampling.py -text
 mmtbx/geometry/tests/1ahq_trunc.pdb -text
+mmtbx/geometry/tests/tst_altloc.py -text
 mmtbx/geometry/tests/tst_asa.py -text
 mmtbx/geometry/tests/tst_clash.py -text
 mmtbx/geometry/tests/tst_indexing.py -text

@@ -7,66 +7,36 @@ import boost.python
 ext = boost.python.import_ext( "mmtbx_geometry_asa_ext" )
 from mmtbx_geometry_asa_ext import *
 
-
-class Description(object):
-  """
-  An internal format for fast calculation
-  """
-
-  def __init__(self, sphere, strategy):
-
-    self.sphere = sphere
-    self.strategy = strategy
-
-
-  def accept(self, processor):
-
-    self.strategy( self.sphere, processor = processor )
-
-
-  @classmethod
-  def from_parameters(cls, centre, radius, index, strategy):
-
-    return cls(
-      sphere = sphere( centre = centre, radius = radius, index = index ),
-      strategy = strategy,
-      )
-
+from mmtbx.geometry import altloc
 
 # Indexing with altloc support
-class Indexer(object):
-  """
-  Indexer that takes into account altloc
-  """
+def create_description(index, atom, radius_for, probe):
 
-  def __init__(self, factory):
-
-    self.factory = factory
-    self.regular = self.factory()
-
-    self.altlocs = {}
-
-
-  def add(self, altloc):
-
-    self.altlocs[ altloc ] = self.factory()
+  return altloc.Description(
+    data = sphere(
+      centre = atom.xyz,
+      radius = radius_for[ atom.element.strip().capitalize() ] + probe,
+      index = index,
+      ),
+    coordinates = atom.xyz,
+    altid = altloc.altid_for( atom = atom ),
+    )
 
 
-  @classmethod
-  def create(cls, factory, descriptions):
+def create_and_populate_indexer(factory, descriptions):
 
-    indexer = cls( factory = factory )
-    inserter = Inserter( indexer = indexer )
+  indexer = altloc.Indexer( factory = factory )
+  inserter = altloc.Inserter( indexer = indexer )
 
-    for d in descriptions:
-      d.accept( processor = inserter )
+  for d in descriptions:
+    d.accept( processor = inserter )
 
-    return indexer
+  return indexer
 
 
 def get_linear_indexer_for(descriptions):
 
-  return Indexer.create(
+  return create_and_populate_indexer(
     factory = indexing.linear_spheres,
     descriptions = descriptions,
     )
@@ -75,7 +45,7 @@ def get_linear_indexer_for(descriptions):
 def get_hash_indexer_for(descriptions):
 
   voxelizer = get_voxelizer_for( descriptions = descriptions )
-  return Indexer.create(
+  return create_and_populate_indexer(
     factory = lambda: indexing.hash_spheres( voxelizer = voxelizer, margin = 1 ),
     descriptions = descriptions,
     )
@@ -88,7 +58,7 @@ def get_optimal_indexer_for(descriptions):
 
 def get_voxelizer_for(descriptions, step = 7):
 
-  lows = [ d.sphere.low for d in descriptions ]
+  lows = [ d.data.low for d in descriptions ]
   ( low_xs, low_ys, low_zs ) = zip( *lows )
   low = ( min( low_xs ), min( low_ys ), min( low_zs ) )
 
@@ -99,29 +69,6 @@ def get_voxelizer_for(descriptions, step = 7):
 
 
 # Visitors
-class Inserter(object):
-  """
-  Fills up an indexer with spheres
-  """
-
-  def __init__(self, indexer):
-
-    self.indexer = indexer
-
-
-  def process_regular(self, sphere):
-
-    self.indexer.regular.add( object = sphere, position = sphere.centre )
-
-
-  def process_altloc(self, sphere, identifier):
-
-    if identifier not in self.indexer.altlocs:
-      self.indexer.add( altloc = identifier )
-
-    self.indexer.altlocs[ identifier ].add( object = sphere, position = sphere.centre )
-
-
 class CompositeCheckerBuilder(object):
   """
   Finds neighbours for a sphere
@@ -134,28 +81,37 @@ class CompositeCheckerBuilder(object):
     description.accept( processor = self )
 
 
-  def process_regular(self, sphere):
+  def process_regular(self, data, coordinates):
 
-    self.append_neighbours( indexer = self.indexer.regular, sphere = sphere )
+    self.append_neighbours(
+      indexer = self.indexer.regular,
+      sphere = data,
+      centre = coordinates,
+      )
 
     for indexer in self.indexer.altlocs.values():
-      self.append_neighbours( indexer = indexer, sphere = sphere )
+      self.append_neighbours( indexer = indexer, sphere = data, centre = coordinates )
 
 
-  def process_altloc(self, sphere, identifier):
+  def process_altloc(self, data, coordinates, identifier):
 
-    self.append_neighbours( indexer = self.indexer.regular, sphere = sphere )
+    self.append_neighbours(
+      indexer = self.indexer.regular,
+      sphere = data,
+      centre = coordinates,
+      )
     self.append_neighbours(
       indexer = self.indexer.altlocs[ identifier ],
-      sphere = sphere,
+      sphere = data,
+      centre = coordinates,
       )
 
 
-  def append_neighbours(self, indexer, sphere):
+  def append_neighbours(self, indexer, sphere, centre):
 
     self.checker.add(
       neighbours = accessibility.filter(
-        range = indexer.close_to( centre = sphere.centre ),
+        range = indexer.close_to( centre = centre ),
         predicate = accessibility.overlap_equality_predicate( object = sphere )
         )
       )
@@ -174,11 +130,12 @@ class SeparateCheckerBuilder(object):
     description.accept( processor = self )
 
 
-  def process_regular(self, sphere):
+  def process_regular(self, data, coordinates):
 
     self.append_neighbours(
       indexer = self.indexer.regular,
-      sphere = sphere,
+      sphere = data,
+      centre = coordinates,
       checker = self.regular,
       )
 
@@ -186,7 +143,8 @@ class SeparateCheckerBuilder(object):
       checker = accessibility.pythagorean_checker()
       self.append_neighbours(
         indexer = indexer,
-        sphere = sphere,
+        sphere = data,
+        centre = coordinates,
         checker = checker,
         )
 
@@ -194,27 +152,29 @@ class SeparateCheckerBuilder(object):
         self.altlocs[ identifier ] = checker
 
 
-  def process_altloc(self, sphere, identifier):
+  def process_altloc(self, data, coordinates, identifier):
 
     self.append_neighbours(
       indexer = self.indexer.regular,
-      sphere = sphere,
+      sphere = data,
+      centre = coordinates,
       checker = self.regular,
       )
     self.altlocs[ identifier ] = accessibility.pythagorean_checker()
     self.append_neighbours(
       indexer = self.indexer.altlocs[ identifier ],
-      sphere = sphere,
+      sphere = data,
+      centre = coordinates,
       checker = self.altlocs[ identifier ],
       )
 
 
   @staticmethod
-  def append_neighbours(indexer, sphere, checker):
+  def append_neighbours(indexer, sphere, centre, checker):
 
     checker.add(
       neighbours = accessibility.filter(
-        range = indexer.close_to( centre = sphere.centre ),
+        range = indexer.close_to( centre = centre ),
         predicate = accessibility.overlap_equality_predicate( object = sphere )
         )
       )
@@ -273,8 +233,8 @@ def simple_surface_calculation(indexer, sampling, description):
     range = accessibility.transform(
       range = sampling.points,
       transformation = accessibility.transformation(
-        centre = description.sphere.centre,
-        radius = description.sphere.radius,
+        centre = description.data.centre,
+        radius = description.data.radius,
         ),
       ),
     predicate = builder.checker,
@@ -282,7 +242,7 @@ def simple_surface_calculation(indexer, sampling, description):
 
   return AccessibleSurfaceResult(
     count = len( overlapped ),
-    radius_sq = description.sphere.radius_sq,
+    radius_sq = description.data.radius_sq,
     )
 
 
@@ -299,8 +259,8 @@ def altloc_averaged_calculation(indexer, sampling, description):
     range = accessibility.transform(
       range = sampling.points,
       transformation = accessibility.transformation(
-        centre = description.sphere.centre,
-        radius = description.sphere.radius,
+        centre = description.data.centre,
+        radius = description.data.radius,
         ),
       ),
     predicate = builder.regular,
@@ -321,7 +281,7 @@ def altloc_averaged_calculation(indexer, sampling, description):
 
   return AccessibleSurfaceResult(
     count = count,
-    radius_sq = description.sphere.radius_sq,
+    radius_sq = description.data.radius_sq,
     )
 
 
@@ -337,14 +297,8 @@ def calculate(
   from cctbx.eltbx import van_der_waals_radii
   radius_for = van_der_waals_radii.vdw.table
 
-  from mmtbx.geometry import altloc
   descriptions = [
-    Description.from_parameters(
-      centre = a.xyz,
-      radius = radius_for[ a.element.strip().capitalize() ] + probe,
-      index = i,
-      strategy = altloc.from_atom( entity = a ),
-      )
+    create_description( index = i, atom = a, radius_for = radius_for, probe = probe )
     for ( i, a ) in enumerate( atoms )
     ]
 
