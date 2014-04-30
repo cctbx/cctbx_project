@@ -3,6 +3,7 @@
 from __future__ import division
 
 import os
+import sys
 from pickle import load
 
 import libtbx
@@ -26,8 +27,19 @@ def exercise():
   for chem_env, scatter_env in sites:
     assert chem_env is not None
     assert scatter_env is not None
-    if ion_class(chem_env) != "HOH":
-      assert scatter_env.fpp is not None
+    for name in chem_env.__slots__:
+      if getattr(chem_env, name) is None:
+        print "Error: chem_env.{} is not set".format(name)
+        sys.exit()
+    for name in scatter_env.__slots__:
+      # f' is not set by phaser
+      if name in ["fp"]:
+        continue
+      # Only check f'' for heavy metals
+      if name != "fpp" or ion_class(chem_env) != "HOH":
+        if getattr(scatter_env, name) is None:
+          print "Error: scatter_env.{} is not set".format(name)
+          sys.exit()
 
   os.remove(pdb_file)
   os.remove(mtz_file)
