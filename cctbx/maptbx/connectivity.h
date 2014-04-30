@@ -165,7 +165,9 @@ public:
 
   af::versa<int, af::c_grid<3> >
   noise_elimination_two_cutoffs(
-    connectivity const& connectivity_t1, double const& volume_threshold_t1)
+    connectivity const& connectivity_t1,
+    double const& volume_threshold_t1,
+    bool keep_interblob=false)
   {
     af::versa<int, af::c_grid<3> > result_mask;
     result_mask.resize(af::c_grid<3>(map_dimensions), 0);
@@ -178,6 +180,7 @@ public:
         fill_data[good_reg_number_t2] = (good_reg_number_t2>0) ? 1 : 0;
       }
     }
+    fill_data[0] = (keep_interblob) ? 1 : 0;
     for (int i = 0; i < map_dimensions[0]; i++) {
       for (int j = 0; j < map_dimensions[1]; j++) {
         for (int k = 0; k < map_dimensions[2]; k++) {
