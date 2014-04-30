@@ -20,8 +20,6 @@ elements = Auto
   .type = str
 use_svm = False
   .type = bool
-wavelength = None
-  .type = float
 nproc = Auto
   .type = int
 """)
@@ -40,6 +38,8 @@ environment, electron density maps, and atomic properties.
     master_phil=master_phil(),
     out=out,
     process_pdb_file=True,
+    set_wavelength_from_model_header=True,
+    set_inelastic_form_factors="sasaki",
     create_fmodel=True,
     prefer_anomalous=True)
   fmodel = cmdline.fmodel
@@ -49,20 +49,6 @@ environment, electron density maps, and atomic properties.
     if (params.elements is Auto) :
       raise Sorry("You must specify elements to consider when using the SVM "+
         "prediction method.")
-  if (params.wavelength is None) :
-    from iotbx.file_reader import any_file
-    pdb_in = any_file(params.input.pdb.file_name[0],
-      force_type="pdb")
-    wavelength = pdb_in.file_object.extract_wavelength()
-    if (wavelength is not None) :
-      print >> out, ""
-      print >> out, "Using wavelength = %g from PDB header" % wavelength
-      params.wavelength = wavelength
-  if (params.wavelength is not None) :
-    xray_structure.set_inelastic_form_factors(
-      photon=params.wavelength,
-      table="sasaki")
-    fmodel.update_xray_structure(xray_structure, update_f_calc=True)
   pdb_hierarchy = cmdline.pdb_hierarchy
   geometry = cmdline.geometry
   make_header("Inspecting water molecules", out=out)
@@ -73,7 +59,7 @@ environment, electron density maps, and atomic properties.
     pdb_hierarchy = pdb_hierarchy,
     fmodel = fmodel,
     geometry_restraints_manager = geometry,
-    wavelength = params.wavelength,
+    wavelength = params.input.wavelength,
     params = params,
     verbose = params.debug,
     nproc = params.nproc,
