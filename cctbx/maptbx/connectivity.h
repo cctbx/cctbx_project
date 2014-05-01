@@ -109,7 +109,7 @@ public:
                       if (map_data(neighbours[l]) > region_maximum_values[0])
                       {
                         region_maximum_values[0] = map_data(neighbours[l]);
-                        region_maximum_coors.push_back(neighbours[l]);
+                        region_maximum_coors[0] = neighbours[l];
                       }
                     }
                   }
