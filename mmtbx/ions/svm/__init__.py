@@ -95,7 +95,7 @@ def _get_classifier(svm_name=None):
   global _CLASSIFIER, _CLASSIFIER_OPTIONS
 
   if svm_name is None:
-    svm_name = "ions_svm"
+    svm_name = "heavy"
 
   if svm_name not in _CLASSIFIER:
     svm_path = os.path.join(CLASSIFIERS_PATH, "{}.model".format(svm_name))
@@ -134,7 +134,7 @@ def ion_class(chem_env):
 
 def ion_vector(chem_env, scatter_env, anom=True, use_scatter=True,
                geometry=True, valence=True, b_iso=True, occ=True,
-               diff_peak=True, elements=None, use_chem=True):
+               diff_peak=True, elements=None, use_chem=True, ratios=True):
   """
   Creates a vector containing all of the useful properties contained
   within ion. Merges together the vectors from ion_*_vector().
@@ -173,7 +173,7 @@ def ion_vector(chem_env, scatter_env, anom=True, use_scatter=True,
     if use_chem else [],
     ion_valence_vector(chem_env, elements=elements)
     if use_chem and valence else [],
-    ion_anomalous_vector(scatter_env, elements=elements)
+    ion_anomalous_vector(scatter_env, elements=elements, ratios=ratios)
     if use_scatter and anom else [],
     ))
 
@@ -353,7 +353,7 @@ def ion_anomalous_vector(scatter_env, elements=None, ratios=True):
     if ratios:
       return np.zeros(len(elements))
     else:
-      return np.zeros(3)
+      return np.zeros(2)
 
   if ratios:
     ret = np.fromiter(
@@ -363,7 +363,7 @@ def ion_anomalous_vector(scatter_env, elements=None, ratios=True):
        float)
   else:
     ret = _flatten_list([
-      scatter_env.wavelength, scatter_env.fpp, scatter_env.fp
+      scatter_env.fpp, scatter_env.fp
       ])
   return ret
 
