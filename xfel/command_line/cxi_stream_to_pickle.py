@@ -68,7 +68,7 @@ def image_template():
     return { 'Millers': [], 'Is': [], 'sigIs': [], 'location': []}
 
 def check_image(image):
-  if set(things_in_image) == set(image):
+  if things_in_image == set(image):
     if len(image['Millers']) > 2:
       return True
 
@@ -121,8 +121,8 @@ def make_int_pickle(img_dict, filename):
   print "dumped image {}".format(filename)
 
 if __name__ == "__main__":
-  things_in_image = ('Millers', 'Is', 'sigIs', 'unit cell', 'aStar', 'bStar', 'cStar',
-                     'wavelength', 'centering', 'lattice_type', 'location')
+  things_in_image = {'Millers', 'Is', 'sigIs', 'unit cell', 'aStar', 'bStar', 'cStar',
+                     'wavelength', 'centering', 'lattice_type', 'location'}
   with open(file, "r+") as stream:
     count = 1
     this_image = image_template()
