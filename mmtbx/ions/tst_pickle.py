@@ -33,7 +33,7 @@ def exercise():
   os.remove(mtz_file)
 
   cmdline.xray_structure.set_inelastic_form_factors(
-    photon = cmdline.params.wavelength,
+    photon = cmdline.params.input.wavelength,
     table = "sasaki"
     )
 
@@ -46,7 +46,7 @@ def exercise():
     pdb_hierarchy = cmdline.pdb_hierarchy,
     fmodel = cmdline.fmodel,
     geometry_restraints_manager = cmdline.geometry,
-    wavelength = cmdline.params.wavelength,
+    wavelength = cmdline.params.input.wavelength,
     params = cmdline.params,
     nproc = cmdline.params.nproc,
     log = null_out
