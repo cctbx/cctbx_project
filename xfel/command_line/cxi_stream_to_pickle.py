@@ -104,21 +104,26 @@ def unit_cell_to_symetry_object(img_dict):
 
 
 def make_int_pickle(img_dict, filename):
-  final_dict = {'observations': unit_cell_to_symetry_object(img_dict),
-                'mapped_predictions': [flex.vec2_double(img_dict['location'])],
-                'xbeam': 96.99,
-                'ybeam': 96.97,
-                'distance': 150.9,
-                "sa_parameters": ['None'],
-                "unit_cell": img_dict['unit cell'],
-                'current_orientation': crystFEL_to_CCTBX_coord_system(img_dict['aStar'],
-                                                                      img_dict['bStar'],
-                                                                      img_dict['cStar'],),
-                'wavelength': img_dict['wavelength'],
-                'centering': img_dict['centering'],
-                'lattice_type': img_dict['lattice_type']}
-  pickle.dump(final_dict, open(filename, 'wb'))
-  print "dumped image {}".format(filename)
+  try:
+    final_dict = {'observations': unit_cell_to_symetry_object(img_dict),
+                  'mapped_predictions': [flex.vec2_double(img_dict['location'])],
+                  'xbeam': 96.99,
+                  'ybeam': 96.97,
+                  'distance': 150.9,
+                  "sa_parameters": ['None'],
+                  "unit_cell": img_dict['unit cell'],
+                  'current_orientation': crystFEL_to_CCTBX_coord_system(img_dict['aStar'],
+                                                                        img_dict['bStar'],
+                                                                        img_dict['cStar'],),
+                  'wavelength': img_dict['wavelength'],
+                  'centering': img_dict['centering'],
+                  'lattice_type': img_dict['lattice_type']}
+    pickle.dump(final_dict, open(filename, 'wb'))
+    print "dumped image {}".format(filename)
+  except AssertionError as a:
+    print "Failed an assertion on image {}! {}".format(filename, a.message)
+  except:
+    print"Failed to make a dictionairy for image {}".format(filename)
 
 if __name__ == "__main__":
   things_in_image = {'Millers', 'Is', 'sigIs', 'unit cell', 'aStar', 'bStar', 'cStar',
