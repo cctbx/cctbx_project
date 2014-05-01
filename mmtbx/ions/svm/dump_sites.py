@@ -50,7 +50,7 @@ atomic properties.
     pdb_hierarchy = cmdline.pdb_hierarchy,
     fmodel = cmdline.fmodel,
     geometry_restraints_manager = cmdline.geometry,
-    wavelength = params.wavelength,
+    wavelength = params.input.wavelength,
     params = params,
     verbose = params.debug,
     nproc = params.nproc,
