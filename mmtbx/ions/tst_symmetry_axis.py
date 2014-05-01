@@ -1,5 +1,6 @@
 
 from __future__ import division
+import os
 from libtbx.utils import null_out
 from libtbx import group_args
 from cStringIO import StringIO
@@ -106,15 +107,16 @@ HETATM  373  O   HOH A 128       5.298  21.833  43.473  1.00 41.96           O
 HETATM  377  O   HOH A 132      13.181  22.613  29.210  1.00 35.43           O
 TER
 """
-  file_base = "tst_ions_symmetry_axis"
-  open("tst_ions_symmetry_axis.pdb", "w").write(pdb_in)
-  f = any_file("tst_ions_symmetry_axis.pdb")
+  file_base = "tst_symmetry_axis"
+  with open(file_base + ".pdb", "w") as f:
+    f.write(pdb_in)
+  f = any_file(file_base + ".pdb")
   hierarchy = f.file_object.construct_hierarchy()
   xrs = f.file_object.xray_structure_simple()
   hierarchy, n = mmtbx.ions.utils.anonymize_ions(hierarchy, log=null_out())
   assert (n == 3)
-  open("tst_ions_symmetry_axis_in.pdb", "w").write(
-    hierarchy.as_pdb_string(crystal_symmetry=xrs))
+  with open(file_base + "_in.pdb", "w") as f:
+    f.write(hierarchy.as_pdb_string(crystal_symmetry=xrs))
   mtz_file = make_fake_anomalous_data.generate_mtz_file(
     file_base=file_base,
     d_min=1.5,
@@ -123,8 +125,8 @@ TER
       fp=0.0,
       fdp=0.4)])
   args = [
-    "tst_ions_symmetry_axis_in.pdb",
-    "tst_ions_symmetry_axis.mtz",
+    file_base + "_in.pdb",
+    file_base + ".mtz",
     "wavelength=0.9792",
     "use_phaser=False",
     "nproc=1",
@@ -135,6 +137,10 @@ TER
   mmtbx.command_line.water_screen.run(args=args, out=out)
   assert "Valence sum:  1.916" in out.getvalue()
   assert out.getvalue().count("Probable cation: CA+2") >= 1
+  os.remove(file_base + ".pdb")
+  os.remove(file_base + "_in.pdb")
+  os.remove(file_base + ".mtz")
+  os.remove(file_base + "_fmodel.eff")
 
 if (__name__ == "__main__") :
   exercise()

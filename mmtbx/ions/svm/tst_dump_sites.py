@@ -44,7 +44,7 @@ def exercise():
   os.remove(pdb_file)
   os.remove(mtz_file)
   os.remove(sites_path)
-  # "zn_frag_hoh.pdf" => "zn_frag_fmodel.eff"
+  # "zn_frag_hoh.pdb" => "zn_frag_fmodel.eff"
   os.remove(os.path.splitext(pdb_file)[0][:-4] + "_fmodel.eff")
 
   print "OK"
