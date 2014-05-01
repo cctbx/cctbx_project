@@ -205,6 +205,8 @@ def exercise_max_values():
   co = maptbx.connectivity(map_data=cmap, threshold=5)
   m_coors = list(co.maximum_coors())
   m_vals = list(co.maximum_values())
+  vols = list(co.regions())
+  assert len(m_coors) == len(m_vals) == len(vols)
   assert m_coors == [(0, 0, 0), (7, 7, 7), (20, 20, 20)]
   assert m_vals == [0.0, 15.0, 25.0]
 
