@@ -1,5 +1,6 @@
 
 from __future__ import division
+import os
 from libtbx import easy_run
 import time
 
@@ -8,8 +9,8 @@ def exercise () :
   print "Temporarily disabled, skipping"
   return
   from mmtbx.regression.make_fake_anomalous_data import generate_potassium_inputs
-  mtz_file, pdb_file = generate_potassium_inputs(
-      file_base = "tst_ions_pick_k", anonymize = True)
+  base = "tst_pick_k"
+  mtz_file, pdb_file = generate_potassium_inputs(file_base=base, anonymize=True)
   time.sleep(2)
   args = [pdb_file, mtz_file, "nproc=1", "elements=K,MG", "use_phaser=False"]
   result = easy_run.fully_buffered("mmtbx.water_screen %s" % " ".join(args)
@@ -19,6 +20,10 @@ def exercise () :
     if ("Probable cation: K+1" in line) :
       n_k += 1
   assert n_k == 3
+  os.remove(pdb_file)
+  os.remove(mtz_file)
+  # "zn_frag_hoh.pdb" => "zn_frag_fmodel.eff"
+  os.remove(os.path.splitext(pdb_file)[0][:-4] + "_fmodel.eff")
   print "OK"
 
 if (__name__ == "__main__") :

@@ -1,12 +1,13 @@
 
 from __future__ import division
+import os
 from libtbx import easy_run
 import time
 
 def exercise () :
   from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
-  mtz_file, pdb_file = generate_zinc_inputs(
-      file_base = "tst_ions_validate_zn", anonymize = False)
+  base = "tst_validate_zn"
+  mtz_file, pdb_file = generate_zinc_inputs(file_base=base, anonymize=False)
   time.sleep(2)
   args = ["\"%s\"" % pdb_file, "\"%s\"" % mtz_file, "wavelength=1.54",
           "nproc=1"]
@@ -19,6 +20,8 @@ def exercise () :
     if "!!!" in line:
       n_bad += 1
   assert n_zn == 1 and n_bad == 2
+  for ext in [".pdb", ".mtz", "_fmodel.eff"]:
+    os.remove(base + ext)
   print "OK"
 
 if (__name__ == "__main__") :
