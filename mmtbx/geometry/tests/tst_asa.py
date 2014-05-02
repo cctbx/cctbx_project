@@ -432,6 +432,16 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
     self.asa_result_check( result = result )
 
 
+  def test_asa_calculation_aa_hash(self):
+
+    result = asa.calculate(
+      atoms = ATOMS,
+      indexer_selector = asa.get_hash_indexer_for,
+      calculation = asa.altloc_averaged_calculation,
+      )
+    self.asa_result_check( result = result )
+
+
   def test_asa_calculation_simple_hash(self):
 
     result = asa.calculate(
