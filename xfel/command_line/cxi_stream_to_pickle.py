@@ -112,10 +112,10 @@ def make_int_pickle(img_dict, filename):
                   'distance': 150.9,
                   "sa_parameters": ['None'],
                   "unit_cell": img_dict['unit cell'],
-                  'current_orientation': crystFEL_to_CCTBX_coord_system(
+                  'current_orientation': [crystFEL_to_CCTBX_coord_system(
                     img_dict['aStar'],
                     img_dict['bStar'],
-                    img_dict['cStar'],),
+                    img_dict['cStar'],)],
                   'wavelength': img_dict['wavelength'],
                   'centering': img_dict['centering'],
                   'lattice_type': img_dict['lattice_type']}
