@@ -108,11 +108,12 @@ def _get_classifier(svm_name=None):
         raise err
       else:
         _CLASSIFIER[svm_name] = None
-        _CLASSIFIER_OPTIONS[svm_name] = None
+        _CLASSIFIER_OPTIONS[svm_name] = (None, None, None)
     with open(options_path) as f:
       _CLASSIFIER_OPTIONS[svm_name] = load(f)
 
-  return _CLASSIFIER[svm_name], _CLASSIFIER_OPTIONS[svm_name]
+  vector_options, scaling, features = _CLASSIFIER_OPTIONS[svm_name]
+  return _CLASSIFIER[svm_name], vector_options, scaling, features
 
 def ion_class(chem_env):
   """
@@ -123,6 +124,7 @@ def ion_class(chem_env):
   ----------
   chem_env : mmtbx.ions.environment.ChemicalEnvironment
       The object to extract the class from.
+
   Returns
   -------
   str
@@ -132,9 +134,9 @@ def ion_class(chem_env):
     return chem_env.atom.segid.strip().upper()
   return chem_env.atom.resname.strip().upper()
 
-def ion_vector(chem_env, scatter_env, anom=True, use_scatter=True,
-               geometry=True, valence=True, b_iso=True, occ=True,
-               diff_peak=True, elements=None, use_chem=True, ratios=True):
+def ion_vector(chem_env, scatter_env, use_scatter=True, use_chem=True,
+               b_iso=True, occ=True, diff_peak=True, geometry=True,
+               elements=None, valence=True, anom=True, ratios=True):
   """
   Creates a vector containing all of the useful properties contained
   within ion. Merges together the vectors from ion_*_vector().
@@ -146,6 +148,30 @@ def ion_vector(chem_env, scatter_env, anom=True, use_scatter=True,
   scatter_env : mmtbx.ions.environment.ScatteringEnvironment, optional
       An object containing information about the scattering environment at a
       site.
+  use_scatter : bool, optional
+      Include information derived from the scattering environment (b-factor,
+      occupancy, FoFc peak, 2FoFc peak and width, f'' values)
+  use_chem : bool, optional
+      Include information derived from the chemical environment (Geometry,
+      coordinating atom identities, valences).
+  b_iso : bool, optional
+      Include the atom's refined isotropic b-factor, divided by the mean
+      b-factor of solvent molecules in the structure.
+  occ : bool, optional
+      Include the atom's refined occupancy.
+  diff_peak : bool, optional
+      Include the difference map peak height.
+  geometry : bool, optional
+      Include information about the presence of various geometries.
+  elements : list of str, optional
+      List of elements to include when calculating BVS, VECSUM, and f''_expected
+       values. If unset, takes the list from mmtbx.ions.ALLOWED_IONS.
+  valence : bool, optional
+      Include BVS and VECSUM values.
+  anom : bool, optional
+      Include anomalous scattering information.
+  ratios : bool, optional
+      Use f'' / f'' expected, instead of raw f'' and f' values.
 
   Returns
   -------
@@ -217,6 +243,13 @@ def ion_electron_density_vector(scatter_env, b_iso=False, occ=False,
   scatter_env : mmtbx.ions.environment.ScatteringEnvironment
       An object containing information about the scattering environment at a
       site.
+  b_iso : bool, optional
+      Include the atom's refined isotropic b-factor, divided by the mean
+      b-factor of solvent molecules in the structure.
+  occ : bool, optional
+      Include the atom's refined occupancy.
+  diff_peak : bool, optional
+      Include the difference map peak height.
 
   Returns
   -------
@@ -226,7 +259,6 @@ def ion_electron_density_vector(scatter_env, b_iso=False, occ=False,
   props = [
     scatter_env.fo_density[0],
     scatter_env.fo_density[1],
-    # scatter_env.pai,
   ]
   if diff_peak:
     props.append(scatter_env.fofc_density[0])
@@ -303,8 +335,8 @@ def ion_valence_vector(chem_env, elements=None):
   chem_env : mmtbx.ions.environment.ChemicalEnvironment
       A object containing information about the chemical environment at a site.
   elements : list of str, optional
-      A list of elements to compare the experimental BVS and VECSUM
-      against. If unset, takes the list from mmtbx.ions.ALLOWED_IONS.
+      List of elements to include when calculating BVS and VECSUM values. If
+      unset, takes the list from mmtbx.ions.ALLOWED_IONS.
 
   Returns
   -------
@@ -321,6 +353,7 @@ def ion_valence_vector(chem_env, elements=None):
       element=element,
       charge=mmtbx.ions.server.get_charge(element)))
 
+  # print "valence", ret
   # Flatten the list
   return _flatten_list(ret)
 
@@ -334,8 +367,8 @@ def ion_anomalous_vector(scatter_env, elements=None, ratios=True):
       An object containing information about the scattering environment at a
       site.
   elements : list of str, optional
-      A list of elements to compare the experimental f'' against. If unset,
-      takes the list from mmtbx.ions.ALLOWED_IONS.
+      List of elements to include when calculating f''_expected values. If
+      unset, takes the list from mmtbx.ions.ALLOWED_IONS.
   ratios : bool, optional
       If False, instead of calculating ratios, just return a vector of the
       wavelength, f', and f''.
@@ -436,12 +469,10 @@ def predict_ion(chem_env, scatter_env, elements=None, svm_name=None):
   """
 
   # Load the classifier and the parameters used to interact with it
-  classifier, classifier_options = _get_classifier(svm_name)
+  classifier, vector_options, scaling, features = _get_classifier(svm_name)
 
-  if classifier is None or classifier_options is None:
+  if classifier is None or vector_options is None:
     return None
-
-  vector_options, scaling, features = classifier_options
 
   # Convert our data into a format that libsvm will accept
   vector = ion_vector(chem_env, scatter_env, **vector_options)
