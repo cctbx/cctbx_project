@@ -45,7 +45,7 @@ def exercise():
     pdb_hierarchy = cmdline.pdb_hierarchy,
     fmodel = cmdline.fmodel,
     geometry_restraints_manager = cmdline.geometry,
-    wavelength = cmdline.params.wavelength,
+    wavelength = cmdline.params.input.wavelength,
     params = cmdline.params,
     nproc = cmdline.params.nproc,
     log = null_out
