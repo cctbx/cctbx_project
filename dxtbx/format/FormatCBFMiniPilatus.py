@@ -98,6 +98,12 @@ class FormatCBFMiniPilatus(FormatCBFMini):
         self._cif_header_dictionary['Count_cutoff'].split()[0])
     underload = -1
 
+    # FIXME take into consideration here the thickness of the sensor? also the
+    # wavelength of the radiation (which we have in the same file...)
+
+    # FIXME would also be very nice to be able to take into account the 
+    # misalignment of the individual modules given the calibration information...
+    
     detector = self._detector_factory.simple(
         'PAD', distance * 1000.0, (beam_x * pixel_x * 1000.0,
                                    beam_y * pixel_y * 1000.0), '+x', '-y',
