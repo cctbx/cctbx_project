@@ -104,3 +104,39 @@ class Inserter(object):
       self.indexer.add( altloc = identifier )
 
     self.indexer.altlocs[ identifier ].add( object = data, position = coordinates )
+
+
+class Aggregator(object):
+  """
+  Queries the indexer and returns altloc-correct neighbours
+  """
+
+  def __init__(self, indexer):
+
+    self.indexer = indexer
+    self.ranges = []
+
+
+  @property
+  def entities(self):
+
+    from itertools import chain
+    return chain.from_iterable( self.ranges )
+
+
+  def process_regular(self, data, coordinates):
+
+    self.ranges.append( self.indexer.regular.close_to( centre = coordinates ) )
+
+    for indexer in self.indexer.altlocs.values():
+      self.ranges.append( indexer.close_to( centre = coordinates ) )
+
+
+  def process_altloc(self, data, coordinates, identifier):
+
+    self.ranges.append( self.indexer.regular.close_to( centre = coordinates ) )
+
+    if identifier in self.indexer.altlocs:
+      self.ranges.append(
+        self.indexer.altlocs[ identifier ].close_to( centre = coordinates ),
+        )

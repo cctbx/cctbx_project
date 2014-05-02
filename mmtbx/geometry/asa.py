@@ -76,45 +76,16 @@ class CompositeCheckerBuilder(object):
 
   def __init__(self, indexer, description):
 
-    self.indexer = indexer
+    processor = altloc.Aggregator( indexer = indexer )
+    description.accept( processor = processor )
+
     self.checker = accessibility.pythagorean_checker()
-    description.accept( processor = self )
+    pred = accessibility.overlap_equality_predicate( object = description.data )
 
-
-  def process_regular(self, data, coordinates):
-
-    self.append_neighbours(
-      indexer = self.indexer.regular,
-      sphere = data,
-      centre = coordinates,
-      )
-
-    for indexer in self.indexer.altlocs.values():
-      self.append_neighbours( indexer = indexer, sphere = data, centre = coordinates )
-
-
-  def process_altloc(self, data, coordinates, identifier):
-
-    self.append_neighbours(
-      indexer = self.indexer.regular,
-      sphere = data,
-      centre = coordinates,
-      )
-    self.append_neighbours(
-      indexer = self.indexer.altlocs[ identifier ],
-      sphere = data,
-      centre = coordinates,
-      )
-
-
-  def append_neighbours(self, indexer, sphere, centre):
-
-    self.checker.add(
-      neighbours = accessibility.filter(
-        range = indexer.close_to( centre = centre ),
-        predicate = accessibility.overlap_equality_predicate( object = sphere )
+    for r in processor.ranges:
+      self.checker.add(
+        neighbours = accessibility.filter( range = r, predicate = pred )
         )
-      )
 
 
 class SeparateCheckerBuilder(object):
@@ -255,7 +226,7 @@ def altloc_averaged_calculation(indexer, sampling, description):
 
   builder = SeparateCheckerBuilder( indexer = indexer, description = description )
 
-  overlapped = accessibility.filter(
+  nonoverlapped = accessibility.filter(
     range = accessibility.transform(
       range = sampling.points,
       transformation = accessibility.transformation(
@@ -266,18 +237,16 @@ def altloc_averaged_calculation(indexer, sampling, description):
     predicate = builder.regular,
     )
 
-  accessible_for = {}
-
-  for ( identifier, checker ) in builder.altlocs.items():
-    accessible_for[ identifier ] = [
-      p for p in overlapped if checker( point = p )
-      ]
-
-  if not accessible_for:
-    count = len( overlapped )
+  if not builder.altlocs:
+    count = len( nonoverlapped )
 
   else:
-    count = sum( [ len( l ) for l in accessible_for.values() ] ) / len( accessible_for )
+    values = []
+
+    for checker in builder.altlocs.values():
+      values.append( len( [ p for p in nonoverlapped if checker( point = p ) ] ) )
+
+    count = sum( values ) / len( values )
 
   return AccessibleSurfaceResult(
     count = count,

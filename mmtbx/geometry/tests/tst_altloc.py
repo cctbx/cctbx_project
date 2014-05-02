@@ -191,6 +191,94 @@ class TestInserter(unittest.TestCase):
       )
 
 
+class FakeIndexer2(object):
+
+  def __init__(self):
+
+    self.objects = []
+
+
+  def add_to(self, objects):
+
+    self.objects.extend( objects )
+
+
+  def close_to(self, centre):
+
+    return self.objects
+
+
+class TestAggregator(unittest.TestCase):
+
+  def setUp(self):
+
+    self.regular = [ object(), object(), object() ]
+    self.altloc_a = [ object(), object(), object(), object() ]
+    self.altloc_b = [ object(), object() ]
+    indexer = altloc.Indexer( factory = FakeIndexer2 )
+    indexer.regular.add_to( objects = self.regular )
+    indexer.add( altloc = "A" )
+    indexer.altlocs[ "A" ].add_to( objects = self.altloc_a )
+    indexer.add( altloc = "B" )
+    indexer.altlocs[ "B" ].add_to( objects = self.altloc_b )
+    self.aggregator = altloc.Aggregator( indexer = indexer )
+
+  def test_basic(self):
+
+    self.assertEqual( self.aggregator.ranges, [] )
+    self.assertEqual( list( self.aggregator.entities ), [] )
+
+
+  def test_regular(self):
+
+    self.aggregator.process_regular( data = object(), coordinates = object() )
+
+    self.assertTrue(
+      ( self.aggregator.ranges == [ self.regular, self.altloc_a, self.altloc_b ] )
+      or ( self.aggregator.ranges == [ self.regular, self.altloc_b, self.altloc_a ] )
+      )
+    self.assertTrue(
+      ( list( self.aggregator.entities ) == ( self.regular + self.altloc_a + self.altloc_b ) )
+      or ( list( self.aggregator.entities ) == ( self.regular + self.altloc_b + self.altloc_a ) )
+      )
+
+
+  def test_altid_a(self):
+
+    self.aggregator.process_altloc(
+      data = object(),
+      coordinates = object(),
+      identifier = "A",
+      )
+
+    self.assertEqual( self.aggregator.ranges, [ self.regular, self.altloc_a ] )
+    self.assertEqual( list( self.aggregator.entities ), self.regular + self.altloc_a )
+
+
+  def test_altid_b(self):
+
+    self.aggregator.process_altloc(
+      data = object(),
+      coordinates = object(),
+      identifier = "B",
+      )
+
+    self.assertEqual( self.aggregator.ranges, [ self.regular, self.altloc_b ] )
+    self.assertEqual( list( self.aggregator.entities ), self.regular + self.altloc_b )
+
+
+  def test_altid_c(self):
+
+    self.aggregator.process_altloc(
+      data = object(),
+      coordinates = object(),
+      identifier = "C",
+      )
+
+    self.assertEqual( self.aggregator.ranges, [ self.regular ] )
+    self.assertEqual( list( self.aggregator.entities ), self.regular )
+
+
 suite_strategies = unittest.TestLoader().loadTestsFromTestCase(
   TestStrategies
   )
@@ -203,6 +291,9 @@ suite_indexer = unittest.TestLoader().loadTestsFromTestCase(
 suite_inserter = unittest.TestLoader().loadTestsFromTestCase(
   TestInserter
   )
+suite_aggregator = unittest.TestLoader().loadTestsFromTestCase(
+  TestAggregator
+  )
 
 alltests = unittest.TestSuite(
   [
@@ -210,6 +301,7 @@ alltests = unittest.TestSuite(
     suite_description,
     suite_indexer,
     suite_inserter,
+    suite_aggregator,
     ]
   )
 
