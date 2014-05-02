@@ -4,7 +4,6 @@ from cctbx.uctbx import unit_cell
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
-from cctbx import sgtbx
 from iotbx import mtz
 from iotbx import reflection_file_reader
 import math
@@ -169,9 +168,8 @@ class intensities_scaler(object):
 
     #calculate average unit cell
     uc_mean = self.calc_mean_unit_cell(results, iph, uc_len_tol, uc_angle_tol)
-    unit_cell_mean = unit_cell((uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]))
 
-    #from all observations merge them
+    #from all observations merge them, using mean
     crystal_symmetry = crystal.symmetry(
         unit_cell=(uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]),
         space_group_symbol=iph.target_space_group)
@@ -182,16 +180,6 @@ class intensities_scaler(object):
     miller_array_all = miller_set_all.array(
               data=I_all,
               sigmas=sigI_all).set_observation_type_xray_intensity()
-
-    #create unique miller_array with all indices according to the given symmetry
-    miller_set = unit_cell_mean.complete_miller_set_with_lattice_symmetry(
-        d_min=iph.d_min,
-        anomalous_flag=iph.target_anomalous_flag).expand_to_p1()
-    miller_set = miller_set.customized_copy(
-        space_group_info=sgtbx.space_group_info(symbol=iph.target_space_group),
-        anomalous_flag=iph.target_anomalous_flag).unique_under_symmetry()
-    miller_array_template_asu = miller_set.array(
-      data=flex.double([1]*miller_set.indices().size())).map_to_asu()
 
     #sort reflections according to asymmetric-unit symmetry hkl
     perm = miller_array_all.sort_permutation(by_value="packed_indices")
@@ -319,38 +307,31 @@ class intensities_scaler(object):
       mtz_dataset_merge.mtz_object().write(file_name=output_mtz_file_prefix+'_merge.mtz')
 
     #report binning stats
-    binner_template_asu = miller_array_template_asu.setup_binner(n_bins=iph.n_bins)
-    binner_template_asu_indices = binner_template_asu.bin_indices()
+    binner_merge = miller_array_merge.setup_binner(n_bins=iph.n_bins)
+    binner_merge_indices = binner_merge.bin_indices()
+    completeness_merge = miller_array_merge.completeness(use_binning=True)
 
     txt_out = '\n'
     txt_out += 'Summary for '+output_mtz_file_prefix+'_merge.mtz\n'
-    txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |Qmeas    Qw     CC1/2   N_ind |CCiso  N_ind| <I/sigI>\n'
+    txt_out += 'Bin Resolution Range     Completeness    <N_obs>  |Qmeas    Qw     CC1/2   N_ind |CCiso  N_ind| <I/sigI>\n'
     txt_out += '--------------------------------------------------------------------------------------------------------\n'
+    sum_bin_completeness = 0
     sum_r_meas_w_top = 0
     sum_r_meas_w_btm = 0
     sum_r_meas_top = 0
     sum_r_meas_btm = 0
+    i_seq = flex.int([j for j in range(len(binner_merge_indices))])
     for i in range(1,iph.n_bins+1):
-      i_binner = (binner_template_asu_indices == i)
-      miller_indices_bin = miller_array_template_asu.indices().select(i_binner)
-
-      matches_template = miller.match_multi_indices(
-                  miller_indices_unique=miller_indices_bin,
-                  miller_indices=miller_array_merge.indices())
-
-      I_bin = flex.double([miller_array_merge.data()[pair[1]] for pair in matches_template.pairs()])
-      sigI_bin = flex.double([miller_array_merge.sigmas()[pair[1]] for pair in matches_template.pairs()])
-      miller_indices_obs_bin = flex.miller_index([miller_array_merge.indices()[pair[1]] for pair in matches_template.pairs()])
-
-      if len(I_bin) == 0:
+      i_binner = (binner_merge_indices == i)
+      if len(miller_array_merge.data().select(i_binner)) == 0:
         mean_i_over_sigi_bin = 0
         multiplicity_bin = 0
         r_meas_w_bin = 0
         r_meas_bin = 0
         cc12 = 0
       else:
-        mean_i_over_sigi_bin = flex.mean(I_bin/sigI_bin)
-        stat_bin = [stat_filter[pair[1]] for pair in matches_template.pairs()]
+        mean_i_over_sigi_bin = flex.mean(miller_array_merge.data().select(i_binner)/miller_array_merge.sigmas().select(i_binner))
+        stat_bin = [stat_filter[j] for j in i_seq.select(i_binner)]
         sum_r_meas_w_top_bin = 0
         sum_r_meas_w_btm_bin = 0
         sum_r_meas_top_bin = 0
@@ -369,7 +350,7 @@ class intensities_scaler(object):
           sum_r_meas_top += r_meas_top
           sum_r_meas_btm += r_meas_btm
 
-        multiplicity_bin = sum_mul_bin/len(I_bin)
+        multiplicity_bin = sum_mul_bin/completeness_merge.binner.counts_given()[i]
         if sum_r_meas_w_btm_bin > 0:
           r_meas_w_bin = sum_r_meas_w_top_bin/ sum_r_meas_w_btm_bin
         else:
@@ -380,8 +361,8 @@ class intensities_scaler(object):
         else:
           r_meas_bin = float('Inf')
 
-        I_even_filter_bin = flex.double([I_even_filter[pair[1]] for pair in matches_template.pairs()])
-        I_odd_filter_bin = flex.double([I_odd_filter[pair[1]] for pair in matches_template.pairs()])
+        I_even_filter_bin = I_even_filter.select(i_binner)
+        I_odd_filter_bin = I_odd_filter.select(i_binner)
         #for cc1/2, use only non-zero I (zero when there is only one observation)
         i_even_filter_sel = (I_even_filter_bin > 0)
         n_refl_cc12_bin = len(I_even_filter_bin.select(i_even_filter_sel))
@@ -389,7 +370,8 @@ class intensities_scaler(object):
         if n_refl_cc12_bin > 0:
           cc12_bin = np.corrcoef(I_even_filter_bin.select(i_even_filter_sel), I_odd_filter_bin.select(i_even_filter_sel))[0,1]
 
-      completeness = len(miller_indices_obs_bin)/len(miller_indices_bin)
+      completeness = completeness_merge.data[i]
+      sum_bin_completeness += completeness
 
       #calculate CCiso
       cc_iso_bin = 0
@@ -397,10 +379,10 @@ class intensities_scaler(object):
       if iph.file_name_iso_mtz != '':
         matches_iso = miller.match_multi_indices(
                   miller_indices_unique=iph.miller_array_iso.indices(),
-                  miller_indices=miller_indices_obs_bin)
+                  miller_indices=miller_array_merge.indices().select(i_binner))
 
         I_iso = flex.double([iph.miller_array_iso.data()[pair[0]] for pair in matches_iso.pairs()])
-        I_merge_match_iso = flex.double([I_bin[pair[1]] for pair in matches_iso.pairs()])
+        I_merge_match_iso = flex.double([miller_array_merge.data().select(i_binner)[pair[1]] for pair in matches_iso.pairs()])
         n_refl_cciso_bin = len(matches_iso.pairs())
         if len(matches_iso.pairs()) > 0 :
           cc_iso_bin = np.corrcoef(I_merge_match_iso, I_iso)[0,1]
@@ -412,10 +394,10 @@ class intensities_scaler(object):
           plt.ylabel('I_obs')
           plt.show()
 
-      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f' \
-          %(i, binner_template_asu.bin_d_range(i)[0], binner_template_asu.bin_d_range(i)[1], completeness*100, \
-          len(miller_indices_obs_bin), len(miller_indices_bin),\
-          multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12_bin*100, n_refl_cc12_bin, cc_iso_bin*100, n_refl_cciso_bin, mean_i_over_sigi_bin)
+      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %5.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f' \
+          %(i, binner_merge.bin_d_range(i)[0], binner_merge.bin_d_range(i)[1], completeness*100, \
+          completeness_merge.binner.counts_given()[i], completeness_merge.binner.counts_complete()[i],\
+          multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12_bin, n_refl_cc12_bin, cc_iso_bin, n_refl_cciso_bin, mean_i_over_sigi_bin)
       txt_out += '\n'
 
     #calculate CCiso
@@ -454,10 +436,10 @@ class intensities_scaler(object):
       r_meas = float('Inf')
 
     txt_out += '--------------------------------------------------------------------------------------------------------\n'
-    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f\n' \
-    %((len(miller_array_merge.indices())/len(miller_array_template_asu.indices()))*100, len(miller_array_merge.indices()), \
-     len(miller_array_template_asu.indices()), len(miller_indices_all)/len(miller_array_merge.data()), \
-     r_meas*100, r_meas_w*100, cc12*100, len(I_even_filter.select(i_even_filter_sel)), cc_iso*100, \
+    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %5.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f\n' \
+    %((sum_bin_completeness/iph.n_bins)*100, np.sum(completeness_merge.binner.counts_given()), \
+     np.sum(completeness_merge.binner.counts_complete()), len(miller_indices_all)/len(miller_array_merge.data()), \
+     r_meas*100, r_meas_w*100, cc12, len(I_even_filter.select(i_even_filter_sel)), cc_iso, \
      n_refl_iso, np.mean(miller_array_merge.data()/miller_array_merge.sigmas()))
     txt_out += '--------------------------------------------------------------------------------------------------------\n'
     txt_out += 'No. of total observed reflections: %9.0f from %5.0f frames' %(len(miller_indices_all), cn_good_frame)
@@ -786,7 +768,6 @@ class input_handler(object):
     self.flag_reference_a_matrix = False
     self.target_unit_cell = ''
     self.target_space_group = ''
-    self.target_pointgroup = ''
     self.target_anomalous_flag = False
     self.file_name_pdb = ''
     self.n_postref_cycle = 1
@@ -795,6 +776,8 @@ class input_handler(object):
     self.flag_on_screen_output=True
     self.q_w_merge = 1.0
     self.pixel_size_mm = 0
+    self.subset=''
+
 
     file_input = open(file_name_input, 'r')
     data_input = file_input.read().split('\n')
@@ -851,12 +834,6 @@ class input_handler(object):
           else:
             self.target_unit_cell = (float(tmp_uc[0]), float(tmp_uc[1]), float(tmp_uc[2]), \
               float(tmp_uc[3]), float(tmp_uc[4]), float(tmp_uc[5]))
-        elif param_name=='target_pointgroup':
-          tmp_pg = param_val.split(' ')
-          if len(tmp_pg) > 1:
-            self.target_pointgroup = tmp_pg[0]+''+tmp_pg[1]
-          else:
-            self.target_pointgroup = param_val
         elif param_name=='target_space_group':
           self.target_space_group=param_val
         elif param_name=='target_anomalous_flag':
@@ -873,6 +850,8 @@ class input_handler(object):
           self.q_w_merge=float(param_val)
         elif param_name=='pixel_size_mm':
           self.pixel_size_mm=float(param_val)
+        elif param_name=='subset':
+          self.subset=param_val
 
     if self.frame_end == 0:
       print 'Parameter: frame_end - please specifiy at least one frame (usage: frame_end=1)'
@@ -915,8 +894,17 @@ class input_handler(object):
         else:
           print 'Cannot find intensity array in the isomorphous-reference mtz'
           exit()
-
       self.miller_array_iso = self.miller_array_iso.expand_to_p1().generate_bijvoet_mates()
+
+    # extract image numbers to use
+    if self.subset != '':
+      try:
+        self.subset = np.genfromtxt(self.subset, dtype=int)
+      except Exception:
+        print ("Cannot read the subset file. Please check that it is a "
+               "csv file with the numbers of the files to be used only")
+        exit()
+
 
 
     self.txt_out = ''
@@ -940,7 +928,6 @@ class input_handler(object):
     self.txt_out += 'sigma_max_merge '+str(self.sigma_max_merge)+'\n'
     self.txt_out += 'target_unit_cell '+str(self.target_unit_cell)+'\n'
     self.txt_out += 'target_space_group '+str(self.target_space_group)+'\n'
-    self.txt_out += 'target_pointgroup '+str(self.target_pointgroup)+'\n'
     self.txt_out += 'target_anomalous_flag '+str(self.target_anomalous_flag)+'\n'
 
     print self.txt_out
