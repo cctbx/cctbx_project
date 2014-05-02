@@ -105,16 +105,17 @@ def unit_cell_to_symetry_object(img_dict):
 
 def make_int_pickle(img_dict, filename):
   try:
-    final_dict = {'observations': unit_cell_to_symetry_object(img_dict),
+    final_dict = {'observations': [unit_cell_to_symetry_object(img_dict)],
                   'mapped_predictions': [flex.vec2_double(img_dict['location'])],
                   'xbeam': 96.99,
                   'ybeam': 96.97,
                   'distance': 150.9,
                   "sa_parameters": ['None'],
                   "unit_cell": img_dict['unit cell'],
-                  'current_orientation': crystFEL_to_CCTBX_coord_system(img_dict['aStar'],
-                                                                        img_dict['bStar'],
-                                                                        img_dict['cStar'],),
+                  'current_orientation': crystFEL_to_CCTBX_coord_system(
+                    img_dict['aStar'],
+                    img_dict['bStar'],
+                    img_dict['cStar'],),
                   'wavelength': img_dict['wavelength'],
                   'centering': img_dict['centering'],
                   'lattice_type': img_dict['lattice_type']}
@@ -126,8 +127,9 @@ def make_int_pickle(img_dict, filename):
     print"Failed to make a dictionairy for image {}".format(filename)
 
 if __name__ == "__main__":
-  things_in_image = {'Millers', 'Is', 'sigIs', 'unit cell', 'aStar', 'bStar', 'cStar',
-                     'wavelength', 'centering', 'lattice_type', 'location'}
+  things_in_image = {'Millers', 'Is', 'sigIs', 'unit cell', 'aStar', 'bStar',
+                     'cStar', 'wavelength', 'centering', 'lattice_type',
+                     'location'}
   with open(file, "r+") as stream:
     count = 1
     this_image = image_template()
@@ -139,7 +141,8 @@ if __name__ == "__main__":
                                       int(millers.group(3))))
         this_image["Is"].append(float(millers.group(4)))
         this_image["sigIs"].append(float(millers.group(5)))
-        this_image["location"].append((float(millers.group(7)), float(millers.group(8))))
+        this_image["location"].append((float(millers.group(7)),
+                                       float(millers.group(8))))
         continue
 
       uc = re_uc.match(line)
