@@ -32,7 +32,7 @@ def exercise():
   os.remove(os.path.splitext(pdb_file)[0] + "_fmodel.eff")
 
   cmdline.xray_structure.set_inelastic_form_factors(
-    photon = cmdline.params.wavelength,
+    photon = cmdline.params.input.wavelength,
     table = "sasaki"
     )
 
