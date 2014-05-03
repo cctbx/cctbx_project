@@ -16,13 +16,13 @@ parser = argparse.ArgumentParser(description=
                                   'crystfel stream file.'))
 parser.add_argument('filename',  type=str, nargs=1,
                     help='The filename of the stream file to be converted.')
-parser.add_argument('space_group',  type=str, nargs=1,
+parser.add_argument('point_group',  type=str, nargs=1,
                     help='The space group to be assigned.')
 parser.add_argument('--tag',  type=str, nargs=1,
                     help="Prefix to be used for the indexing pickles.")
 args = parser.parse_args()
 file = args.filename[0]
-space_group = args.space_group[0]
+point_group = args.point_group[0]
 if args.tag:
     tag = args.tag[0]
 else:
@@ -91,7 +91,7 @@ def crystFEL_to_CCTBX_coord_system(abasis, bbasis, cbasis):
 
 def unit_cell_to_symetry_object(img_dict):
   xsym = symmetry(unit_cell=img_dict['unit cell'],
-                  space_group_symbol=space_group)
+                  space_group_symbol=point_group)
   miller_set = miller.set(crystal_symmetry=xsym,
                           indices=flex.miller_index(img_dict['Millers']),
                           anomalous_flag=True)
@@ -111,6 +111,7 @@ def make_int_pickle(img_dict, filename):
                   'ybeam': 96.97,
                   'distance': 150.9,
                   "sa_parameters": ['None'],
+                  "pointgroup": point_group,
                   "unit_cell": img_dict['unit cell'],
                   'current_orientation': [crystFEL_to_CCTBX_coord_system(
                     img_dict['aStar'],
