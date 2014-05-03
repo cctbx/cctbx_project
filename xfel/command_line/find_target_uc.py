@@ -2,38 +2,40 @@
 from __future__ import division
 #from libtbx.utils import multi_out
 
-def run(args):
-  if args < 2: raise IOError("Must give at least one path to folder of pickles")
-  from cctbx.uctbx.determine_unit_cell.target_uc import target, plot_clusters
-  ucs = target(args.folders)
-  ucs.print_ucs(args.o)
-  ucs.cluster(args.t, args.m, args.l)
-  if not args.noplot:
-    plot_clusters(ucs, args.log, args.o, args.ucs)
+
+def run(_args):
+  if _args < 2:
+    raise IOError("Must give at least one path to folder of pickles")
+  from cctbx.uctbx.determine_unit_cell.target_uc import Target, plot_clusters
+
+  ucs = Target(_args.folders, _args.o)
+  ucs.print_ucs()
+  ucs.cluster(_args.t, _args.m, _args.l)
+  if not _args.noplot:
+    plot_clusters(ucs, _args.log, _args.o, _args.ucs)
 
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
   import argparse
-  parser = argparse.ArgumentParser(description=
-      'Find the best target cell from a collection of indexing pickles.')
-  parser.add_argument('folders',  type=str, nargs='+',
-                       help='One or more folers containing integration pickles.')
+
+  parser = argparse.ArgumentParser(description=('Find the best target cell from'
+                                                'a set of indexing pickles.'))
+  parser.add_argument('folders', type=str, nargs='+',
+                      help='One or more folers containing integration pickles.')
   parser.add_argument('-t', type=float, default=5000,
-                       help='threshold value for the clustering. Default = 5000')
+                      help='threshold value for the clustering. Default = 5000')
   parser.add_argument('-o', type=str, default='clustering',
-                       help='output file name for unit cells.')
+                      help='output file name for unit cells.')
   parser.add_argument('-m', type=str, default='distance',
-      help='Clustering method for numpy clustering. Options are: inconsistent' +
-           ', distance, maxclust, monocri, maxclust_monocrit')
+                      help='Clustering method for numpy clustering.')
   parser.add_argument('-l', type=str, default='single',
-      help='Linkage method for clustering. Default is single. Other options are' +
-            'complete, average, weighted, centroid, median, ward.')
-  parser.add_argument('--log',  action='store_true',
+                      help='Linkage method for clustering. Default single.')
+  parser.add_argument('--log', action='store_true',
                       help="Display the dendrogram with a log scale")
-  parser.add_argument('--ucs',  action='store_true',
+  parser.add_argument('--ucs', action='store_true',
                       help="Display the unit cells in a 3D plot")
 
-  parser.add_argument('--noplot',  action='store_true',
+  parser.add_argument('--noplot', action='store_true',
                       help="Do not display plots")
   args = parser.parse_args()
   result = run(args)
