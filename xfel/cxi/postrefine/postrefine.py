@@ -256,7 +256,12 @@ class postref_handler(object):
     observations_original, alpha_angle_obs = self.organize_input(observations_pickle, iph)
     wavelength = observations_pickle["wavelength"]
     crystal_init_orientation = observations_pickle["current_orientation"][0]
+    crystal_pointgroup = observations_pickle["pointgroup"]
     if observations_original is None:
+      return None
+    
+    if iph.target_pointgroup != '' and crystal_pointgroup != iph.target_pointgroup:
+      print 'frame %6.0f'%frame_no, ' - wrong pointgroup', crystal_pointgroup
       return None
 
     polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, iph)
@@ -287,7 +292,7 @@ class postref_handler(object):
             var_k=var_k,
             var_p=var_p)
 
-    print 'frame %6.0f'%frame_no, '<I>=%9.2f <G>=%9.2f G=%9.2f'%(np.mean(observations_non_polar.data()), mean_of_mean_I, G)
+    print 'frame %6.0f'%frame_no, '<I>=%9.2f <G>=%9.2f G=%9.2f'%(np.mean(observations_non_polar.data()), mean_of_mean_I, G), crystal_pointgroup
     return pres
 
 
