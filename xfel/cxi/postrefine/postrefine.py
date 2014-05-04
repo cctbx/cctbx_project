@@ -259,7 +259,7 @@ class postref_handler(object):
     crystal_pointgroup = observations_pickle["pointgroup"]
     if observations_original is None:
       return None
-    
+
     if iph.target_pointgroup != '' and crystal_pointgroup != iph.target_pointgroup:
       print 'frame %6.0f'%frame_no, ' - wrong pointgroup', crystal_pointgroup
       return None
