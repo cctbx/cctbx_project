@@ -55,11 +55,14 @@ if (__name__ == "__main__"):
 
   #0 .read input parameters and frames (pickle files)
   iph, frame_files = read_input(args = sys.argv[1:])
-  if iph.subset == '':
-    frames = range(iph.frame_start, iph.frame_end)
-  else:
-    frames = iph.subset
-
+  frames = range(iph.frame_start, iph.frame_end)
+  
+  file_frames = open('frame_best_sort.txt','r')
+  data_frames=file_frames.read().split(",")
+  frames_rand = [int(i.strip()) for i in data_frames]
+  n_frames = 500
+  frames = frames_rand[0:n_frames]
+  
   #1. prepare reference miller array
   if iph.file_name_ref_mtz == '':
     #if iso. ref. is not given, use the <I> to scale each frame.
@@ -99,6 +102,11 @@ if (__name__ == "__main__"):
       from xfel.cxi.postrefine import merge_observations
       miller_array_merge_mean, txt_merge_mean = merge_observations(observations_merge_mean_set, iph, iph.run_no+'/mean_scaled','average')
       miller_array_ref = miller_array_merge_mean.expand_to_p1().generate_bijvoet_mates()
+      txt_out = iph.txt_out + txt_merge_mean 
+      f = open(iph.run_no+'/log.txt', 'w')
+      f.write(txt_out)
+      f.close()
+      exit()
     else:
       print "No frames merged as a reference set - exit without post-refinement"
       exit()
