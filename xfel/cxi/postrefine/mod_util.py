@@ -4,7 +4,6 @@ from cctbx.uctbx import unit_cell
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
-from cctbx import sgtbx
 from iotbx import mtz
 from iotbx import reflection_file_reader
 import math
@@ -183,16 +182,6 @@ class intensities_scaler(object):
               data=I_all,
               sigmas=sigI_all).set_observation_type_xray_intensity()
 
-    #create unique miller_array with all indices according to the given symmetry
-    miller_set = unit_cell_mean.complete_miller_set_with_lattice_symmetry(
-        d_min=iph.d_min,
-        anomalous_flag=iph.target_anomalous_flag).expand_to_p1()
-    miller_set = miller_set.customized_copy(
-        space_group_info=sgtbx.space_group_info(symbol=iph.target_space_group),
-        anomalous_flag=iph.target_anomalous_flag).unique_under_symmetry()
-    miller_array_template_asu = miller_set.array(
-      data=flex.double([1]*miller_set.indices().size())).map_to_asu()
-
     #sort reflections according to asymmetric-unit symmetry hkl
     perm = miller_array_all.sort_permutation(by_value="packed_indices")
     miller_indices_all_sort = miller_array_all.indices().select(perm)
@@ -319,6 +308,8 @@ class intensities_scaler(object):
       mtz_dataset_merge.mtz_object().write(file_name=output_mtz_file_prefix+'_merge.mtz')
 
     #report binning stats
+    miller_array_template_asu = miller_array_merge.complete_set().resolution_filter(
+      d_min=iph.d_min, d_max=iph.d_max)
     binner_template_asu = miller_array_template_asu.setup_binner(n_bins=iph.n_bins)
     binner_template_asu_indices = binner_template_asu.bin_indices()
 
