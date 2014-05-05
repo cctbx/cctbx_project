@@ -67,7 +67,7 @@ if (__name__ == "__main__"):
     for file in files:
       if command_line.options.output_dir is not None:
         arguments.append("indexing.completeness_pickle=%s"%os.path.join(command_line.options.output_dir, \
-          command_line.options.output_basename + file))
+          command_line.options.output_basename + os.path.basename(file)))
       do_work((file, arguments, ({'display':display})))
   else:
     import multiprocessing, copy
