@@ -60,6 +60,9 @@ class new_horizons_state:
       IC.find_best()
       IC.save_best()
       IC.show()
+    # Lattice character information added for special UCSF/ LLNL project (5/2014):
+    self.pd["lattice_characters"]=M.best()
+    for item in self.pd["lattice_characters"]: del item["minimizer"]
     return self.pd
 
 def pre_indexing_validation(horizons_phil):
