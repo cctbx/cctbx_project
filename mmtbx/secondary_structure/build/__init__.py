@@ -10,62 +10,63 @@ from mmtbx.refinement.geometry_minimization import run2
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 import mmtbx.utils
 from iotbx.pdb import secondary_structure as ioss
+from mmtbx.command_line import geometry_minimization
 
 import sys
 
-alpha_pdb_str = """\
-ATOM      1  N   ALA     2       1.643  -2.366  -1.408  1.00  0.00           N
-ATOM      3  CA  ALA     2       1.280  -3.608  -2.069  1.00  0.00           C
-ATOM     10  C   ALA     2      -0.114  -3.466  -2.684  1.00  0.00           C
-ATOM     11  O   ALA     2      -0.327  -3.827  -3.840  1.00  0.00           O
-ATOM      6  CB  ALA     2       1.361  -4.762  -1.068  1.00  0.00           C
-ATOM     12  N   ALA     3      -1.028  -2.938  -1.882  1.00  0.00           N
-ATOM     14  CA  ALA     3      -2.395  -2.743  -2.333  1.00  0.00           C
-ATOM     21  C   ALA     3      -2.396  -1.855  -3.579  1.00  0.00           C
-ATOM     22  O   ALA     3      -3.059  -2.167  -4.567  1.00  0.00           O
-ATOM     17  CB  ALA     3      -3.228  -2.150  -1.194  1.00  0.00           C
+alpha_helix_str = """
+ATOM      1  N   ALA A   1      -5.606  -2.251 -12.878  1.00  0.00           N
+ATOM      2  CA  ALA A   1      -5.850  -1.194 -13.852  1.00  0.00           C
+ATOM      3  C   ALA A   1      -5.186  -1.524 -15.184  1.00  0.00           C
+ATOM      4  O   ALA A   1      -5.744  -1.260 -16.249  1.00  0.00           O
+ATOM      5  CB  ALA A   1      -5.350   0.142 -13.324  1.00  0.00           C
+ATOM      6  N   ALA A   2      -3.991  -2.102 -15.115  1.00  0.00           N
+ATOM      7  CA  ALA A   2      -3.262  -2.499 -16.313  1.00  0.00           C
+ATOM      8  C   ALA A   2      -3.961  -3.660 -17.011  1.00  0.00           C
+ATOM      9  O   ALA A   2      -4.016  -3.716 -18.240  1.00  0.00           O
+ATOM     10  CB  ALA A   2      -1.829  -2.872 -15.965  1.00  0.00           C
 """
 
-alpha310_pdb_str = """\
-ATOM      1  N   ALA    1       -1.204  -0.514   0.643  1.00  0.00           N
-ATOM      1  CA  ALA    1        0.000   0.000   0.000  1.00  0.00           C
-ATOM      1  C   ALA    1        0.804  -1.124  -0.644  1.00  0.00           C
-ATOM      1  O   ALA    1        1.628  -0.884  -1.526  1.00  0.00           O
-ATOM      1  CB  ALA    1        0.870   0.757   1.006  1.00  0.00           C
-ATOM      1  N   ALA    2        0.559  -2.352  -0.197  1.00  0.00           N
-ATOM      1  CA  ALA    2        1.260  -3.515  -0.728  1.00  0.00           C
-ATOM      1  C   ALA    2        1.116  -3.602  -2.244  1.00  0.00           C
-ATOM      1  O   ALA    2        1.905  -4.266  -2.915  1.00  0.00           O
-ATOM      1  CB  ALA    2        0.743  -4.801  -0.079  1.00  0.00           C
+a310_helix_str = """\
+ATOM      1  N   ALA A   1       8.836  -4.233 -14.408  1.00  0.00           N
+ATOM      2  CA  ALA A   1      10.232  -4.071 -14.799  1.00  0.00           C
+ATOM      3  C   ALA A   1      10.764  -5.331 -15.476  1.00  0.00           C
+ATOM      4  O   ALA A   1      11.679  -5.262 -16.297  1.00  0.00           O
+ATOM      5  CB  ALA A   1      11.088  -3.716 -13.593  1.00  0.00           C
+ATOM      6  N   ALA A   2      10.176  -6.478 -15.143  1.00  0.00           N
+ATOM      7  CA  ALA A   2      10.582  -7.741 -15.750  1.00  0.00           C
+ATOM      8  C   ALA A   2      10.381  -7.714 -17.262  1.00  0.00           C
+ATOM      9  O   ALA A   2      11.080  -8.410 -17.999  1.00  0.00           O
+ATOM     10  CB  ALA A   2       9.815  -8.901 -15.134  1.00  0.00           C
 """
 
-alpha_pi_pdb_str = """\
-ATOM      1  N   ALA     2       2.054  -2.383  -1.604  1.00  0.00           N
-ATOM      3  CA  ALA     2       1.733  -3.620  -2.296  1.00  0.00           C
-ATOM     10  C   ALA     2       0.216  -3.730  -2.460  1.00  0.00           C
-ATOM     11  O   ALA     2      -0.301  -3.624  -3.570  1.00  0.00           O
-ATOM      6  CB  ALA     2       2.324  -4.804  -1.527  1.00  0.00           C
-ATOM     12  N   ALA     3      -0.454  -3.940  -1.336  1.00  0.00           N
-ATOM     14  CA  ALA     3      -1.902  -4.065  -1.341  1.00  0.00           C
-ATOM     21  C   ALA     3      -2.516  -2.807  -1.959  1.00  0.00           C
-ATOM     22  O   ALA     3      -3.064  -2.855  -3.059  1.00  0.00           O
-ATOM     17  CB  ALA     3      -2.398  -4.316   0.085  1.00  0.00           C
+pi_helix_str = """\
+ATOM      1  N   ALA A   1      -3.365  -3.446  -8.396  1.00  0.00           N
+ATOM      2  CA  ALA A   1      -4.568  -4.249  -8.592  1.00  0.00           C
+ATOM      3  C   ALA A   1      -5.809  -3.386  -8.805  1.00  0.00           C
+ATOM      4  O   ALA A   1      -6.559  -3.591  -9.759  1.00  0.00           O
+ATOM      5  CB  ALA A   1      -4.775  -5.185  -7.411  1.00  0.00           C
+ATOM      6  N   ALA A   2      -6.025  -2.424  -7.914  1.00  0.00           N
+ATOM      7  CA  ALA A   2      -7.221  -1.588  -7.976  1.00  0.00           C
+ATOM      8  C   ALA A   2      -7.101  -0.486  -9.025  1.00  0.00           C
+ATOM      9  O   ALA A   2      -8.089  -0.114  -9.659  1.00  0.00           O
+ATOM     10  CB  ALA A   2      -7.511  -0.985  -6.610  1.00  0.00           C
 """
 
-beta3_pdb_str = """\
-ATOM      1  N   ALA     1      -1.204  -0.514   0.643  1.00  0.00           N
-ATOM      2  CA  ALA     1       0.000   0.000   0.000  1.00  0.00           C
-ATOM      3  C   ALA     1       1.187  -0.397   0.871  1.00  0.00           C
-ATOM      4  O   ALA     1       1.250  -0.045   2.049  1.00  0.00           O
-ATOM      5  CB  ALA     1      -0.160   1.484  -0.335  1.00  0.00           C
-ATOM      6  N   ALA     2       2.128  -1.194   0.243  1.00  0.00           N
-ATOM      7  CA  ALA     2       3.299  -1.541   1.041  1.00  0.00           C
-ATOM      8  C   ALA     2       4.523  -1.000   0.310  1.00  0.00           C
-ATOM      9  O   ALA     2       4.777  -1.355  -0.842  1.00  0.00           O
-ATOM     10  CB  ALA     2       3.290  -3.029   1.393  1.00  0.00           C
+beta4_pdb_str = """
+ATOM      1  N   ALA A   1      27.961   0.504   1.988  1.00  0.00           N
+ATOM      2  CA  ALA A   1      29.153   0.205   2.773  1.00  0.00           C
+ATOM      3  C   ALA A   1      30.420   0.562   2.003  1.00  0.00           C
+ATOM      4  O   ALA A   1      30.753  -0.077   1.005  1.00  0.00           O
+ATOM      5  CB  ALA A   1      29.170  -1.262   3.172  1.00  0.00           C
+ATOM      6  N   ALA A   2      31.123   1.587   2.474  1.00  0.00           N
+ATOM      7  CA  ALA A   2      32.355   2.031   1.832  1.00  0.00           C
+ATOM      8  C   ALA A   2      33.552   1.851   2.758  1.00  0.00           C
+ATOM      9  O   ALA A   2      33.675   2.539   3.772  1.00  0.00           O
+ATOM     10  CB  ALA A   2      32.232   3.483   1.399  1.00  0.00           C
 """
 
-helix_class_to_pdb_str = {1:alpha_pdb_str, 3:alpha_pi_pdb_str, 5: alpha310_pdb_str}
+helix_class_to_pdb_str = {1:alpha_helix_str, 3:pi_helix_str, 5: a310_helix_str}
 
 
 
@@ -86,7 +87,9 @@ def print_hbond_proxies(geometry, hierarchy, pymol=False):
   atoms = hierarchy.atoms()
   if pymol:
     dashes = open('dashes.pml', 'w')
+  hbondlen=flex.double()
   for hb in geometry.generic_restraints_manager.hbonds_as_simple_bonds():
+    hbondlen.append(atoms[hb[0]].distance(atoms[hb[1]]))
     print (atoms[hb[0]].id_str(), "<====>",atoms[hb[1]].id_str(),
         atoms[hb[0]].distance(atoms[hb[1]]), hb[0], hb[1])
     if pymol:
@@ -97,6 +100,8 @@ def print_hbond_proxies(geometry, hierarchy, pymol=False):
       ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (s1[14:15],
          s1[16:19], s1[5:7], s2[14:15], s2[16:19], s2[5:7])
       dashes.write(ps)
+  print "min, max, mean, sd hbond lenghts", hbondlen.min_max_mean().as_tuple(),\
+    hbondlen.standard_deviation_of_the_sample()
   if pymol:
     dashes.close()
 
@@ -183,7 +188,7 @@ def make_ss_structure_from_sequence(pdb_str,
     rotamer_manager = RotamerEval()
   pht = pdb_hierarchy_template
   assert [sequence, pht].count(None) == 1
-  if pht:
+  if pht is not None:
     lk = len(pht.altloc_indices().keys())
     if lk ==0:
       raise Sorry(
@@ -203,7 +208,7 @@ def make_ss_structure_from_sequence(pdb_str,
       construct_hierarchy()
   chain = pdb_hierarchy.models()[0].chains()[0]
   current_ala_ag = chain.residue_groups()[0].atom_groups()[0]
-  new_chain = iotbx.pdb.hierarchy.chain(id=" ")
+  new_chain = iotbx.pdb.hierarchy.chain(id="A")
   new_chain.pre_allocate_residue_groups(number_of_additional_residue_groups=\
                                                             number_of_residues)
   r, t = get_r_t_matrices_from_structure(pdb_str)
@@ -250,7 +255,7 @@ def get_empty_ramachandran_proxies():
 
 
 def substitute_ss(real_h,
-                    crystal_symmetry,
+                    xray_structure,
                     ss_annotation,
                     sigma_on_reference_non_ss = 1,
                     sigma_on_reference_helix = 1,
@@ -263,16 +268,17 @@ def substitute_ss(real_h,
                     n_iter=300,
                     fname_before_regularization=None,
                     log=null_out(),
-                    rotamer_manager=None):
+                    rotamer_manager=None,
+                    verbose=False):
   """
   Substitute secondary structure elements in real_h hierarchy with ideal
-  ones _in_place_. Currently only helices are supported.
-  Returns geometry restraints manager for furhter refinements with all
-  correct hydrogen bonds. It is not guaranteed that
-  mmtbx.secondary_structure.manager.find_automatically()
-  will be able to generate them again.
+  ones _in_place_.
+  Returns reference torsion proxies - the only thing that cannot be restored
+  with little effort outside the procedure.
   real_h - hierarcy to substitute secondary structure elements.
-  crystal_symmetry - symmetry object for the hierarchy provided.
+  xray_structure - xray_structure - needed to get crystal symmetry (to
+      construct processed_pdb_file and xray_structure is needed to call
+      get_geometry_restraints_manager for no obvious reason).
   helices - list with HELIX records. Types supported:
       1:alpha_pdb_str, 3:alpha_pi_pdb_str, 5: alpha310_pdb_str
 
@@ -316,7 +322,7 @@ def substitute_ss(real_h,
       cumm_bsel.set_selected(isel, True)
       sel_h = real_h.select(all_bsel, copy_atoms=True)
       ideal_h = make_ss_structure_from_sequence(
-          pdb_str=beta3_pdb_str,
+          pdb_str=beta4_pdb_str,
           sequence=None,
           pdb_hierarchy_template=sel_h,
           rotamer_manager=rotamer_manager,
@@ -325,6 +331,7 @@ def substitute_ss(real_h,
       edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
 
   pre_result_h = edited_h
+  pre_result_h.reset_i_seq_if_necessary()
   n_atoms = real_h.atoms().size()
   bsel = flex.bool(n_atoms, False)
   helix_selection = flex.bool(n_atoms, False)
@@ -341,7 +348,11 @@ def substitute_ss(real_h,
   isel = selection_cache.iselection("name ca or name n or name o or name c")
   nonss_for_tors_selection.set_selected(isel, True)
   main_chain_selection_prefix = "(name ca or name n or name o or name c) %s"
+  if verbose:
+    log.write("Replacing ss-elements with ideal ones:\n")
   for h in ann.helices:
+    if verbose:
+      log.write("%s\n" % h.as_pdb_str())
     ss_sels = h.as_atom_selections()[0]
     selstring = main_chain_selection_prefix % ss_sels
     isel = selection_cache.iselection(selstring)
@@ -352,6 +363,8 @@ def substitute_ss(real_h,
     nonss_for_tors_selection.set_selected(isel, False)
 
   for sheet in ann.sheets:
+    if verbose:
+      log.write("%s\n" % sheet.as_pdb_str())
     for ss_sels in sheet.as_atom_selections():
       selstring = main_chain_selection_prefix % ss_sels
       isel = selection_cache.iselection(selstring)
@@ -361,72 +374,59 @@ def substitute_ss(real_h,
       ss_for_tors_selection.set_selected(isel, True)
       nonss_for_tors_selection.set_selected(isel, False)
 
-  isel = selection_cache.iselection("not name ca and not name n and not name o and not name c")
+  isel = selection_cache.iselection(
+      "not name ca and not name n and not name o and not name c")
   other_selection.set_selected(isel, False)
   helix_sheet_intersection = helix_selection & sheet_selection
   if helix_sheet_intersection.count(True) > 0:
     sheet_selection = sheet_selection & ~helix_sheet_intersection
-  assert ((helix_selection | sheet_selection) & other_selection).count(True) == 0
+  assert ((helix_selection | sheet_selection) & other_selection).count(True)==0
 
+  params = geometry_minimization.master_params()
+  custom_pars = params.fetch(source = iotbx.phil.parse("\n".join([
+      "secondary_structure {h_bond_restraints.remove_outliers = False\n%s}" \
+          % phil_str,
+      "pdb_interpretation.peptide_link.ramachandran_restraints = True",
+      "use_c_beta_deviation_restraints = True",
+      "secondary_structure_restraints=True"])))
   processed_pdb_files_srv = mmtbx.utils.\
-      process_pdb_file_srv(crystal_symmetry= crystal_symmetry, log=log)
+      process_pdb_file_srv(
+          crystal_symmetry= xray_structure.crystal_symmetry(),
+          pdb_interpretation_params = custom_pars.extract().pdb_interpretation,
+          log=log)
   processed_pdb_file, junk = processed_pdb_files_srv.\
       process_pdb_files(raw_records=flex.split_lines(real_h.as_pdb_string()))
-  defpars = mmtbx.secondary_structure.sec_str_master_phil.fetch()
-  custom_pars = defpars.fetch(source = iotbx.phil.parse(
-      "h_bond_restraints.remove_outliers=False\n%s" % phil_str))
-  ss_manager = mmtbx.secondary_structure.manager(
-      pdb_hierarchy=pre_result_h, params=custom_pars.extract())
-  proxies_for_grm = ss_manager.create_hbond_proxies(
-      log          = log,
-      as_python_objects = False)
-  n_created_hbonds = len(proxies_for_grm.proxies)
-  custom_nb_excl = proxies_for_grm.exclude_nb_list
-  grm = processed_pdb_file.geometry_restraints_manager(
-      show_energies                = False,
-      show_nonbonded_clashscore    = False,
-      hydrogen_bond_proxies=proxies_for_grm.proxies,
-      custom_nonbonded_exclusions = custom_nb_excl,
-      assume_hydrogens_all_missing = True)
 
-  real_h.reset_i_seq_if_necessary()
-  # Adding ramachandran restraints
-  from mmtbx.geometry_restraints import ramachandran
-  params = ramachandran.master_phil.fetch().extract()
-  params.rama_potential = "emsley"
-  params.rama_weight = sigma_on_ramachandran
-  proxies = ramachandran.extract_proxies(real_h, log=log)
-  rama_lookup = ramachandran.lookup_manager(params)
-  restraints_helper = mmtbx.geometry_restraints.manager(
-      ramachandran_proxies=proxies,
-      ramachandran_lookup=rama_lookup,
-      hydrogen_bond_proxies=proxies_for_grm.proxies,
-      hydrogen_bond_params=None)
-  grm.set_generic_restraints(restraints_helper)
+  grm = geometry_minimization.get_geometry_restraints_manager(
+      processed_pdb_file=processed_pdb_file,
+      xray_structure=xray_structure,
+      params=custom_pars.extract(),
+      log=log)
 
   # Adding Cbeta restraints
-  grm.generic_restraints_manager.\
+  grm.geometry.generic_restraints_manager.\
       add_c_beta_torsion_restraints(
           pdb_hierarchy=real_h,
           selection=None,
           sigma=sigma_on_cbeta)
 
-  grm.generic_restraints_manager.reference_manager.\
+  real_h.reset_i_seq_if_necessary()
+  grm.geometry.generic_restraints_manager.reference_manager.\
       add_coordinate_restraints(
           sites_cart = real_h.atoms().extract_xyz().select(helix_selection),
           selection  = helix_selection,
           sigma      = sigma_on_reference_helix)
-  grm.generic_restraints_manager.reference_manager.\
+  grm.geometry.generic_restraints_manager.reference_manager.\
       add_coordinate_restraints(
           sites_cart = real_h.atoms().extract_xyz().select(sheet_selection),
           selection  = sheet_selection,
           sigma      = sigma_on_reference_sheet)
-  grm.generic_restraints_manager.reference_manager.\
+  grm.geometry.generic_restraints_manager.reference_manager.\
       add_coordinate_restraints(
           sites_cart = real_h.atoms().extract_xyz().select(other_selection),
           selection  = other_selection,
           sigma      = sigma_on_reference_non_ss)
-  grm.generic_restraints_manager.reference_manager.\
+  grm.geometry.generic_restraints_manager.reference_manager.\
       add_torsion_restraints(
           pdb_hierarchy   = pre_result_h,
           sites_cart      = pre_result_h.atoms().extract_xyz().\
@@ -434,7 +434,7 @@ def substitute_ss(real_h,
           selection = ss_for_tors_selection,
           chi_angles_only = False,
           sigma           = sigma_on_torsion_ss)
-  grm.generic_restraints_manager.reference_manager.\
+  grm.geometry.generic_restraints_manager.reference_manager.\
       add_torsion_restraints(
           pdb_hierarchy   = pre_result_h,
           sites_cart      = real_h.atoms().extract_xyz().\
@@ -444,21 +444,22 @@ def substitute_ss(real_h,
           sigma           = sigma_on_torsion_nonss)
 
   real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
-  restraints_manager = mmtbx.restraints.manager(
-      geometry=grm,
-      normalization=True)
-  actual_n_hbonds = restraints_manager.geometry.generic_restraints_manager.get_n_hbonds()
+  actual_n_hbonds = grm.geometry.generic_restraints_manager.get_n_hbonds()
   if fname_before_regularization is not None:
     real_h.write_pdb_file(file_name=fname_before_regularization)
+
   #testing number of restraints
-  assert restraints_manager.geometry.generic_restraints_manager.\
-             get_n_hbonds() == n_created_hbonds
-  assert restraints_manager.geometry.generic_restraints_manager.\
+  assert grm.geometry.generic_restraints_manager.\
              get_n_den_proxies() == 0
-  assert restraints_manager.geometry.generic_restraints_manager.\
+  assert grm.geometry.generic_restraints_manager.\
              get_n_reference_coordinate_proxies() == n_main_chain_atoms
+  refinement_log = null_out()
+  if verbose:
+    refinement_log = log
+    refinement_log.write(
+      "Refining geometry of substituted secondary structure elements.\n")
   obj = run2(
-      restraints_manager       = restraints_manager,
+      restraints_manager       = grm,
       pdb_hierarchy            = real_h,
       max_number_of_iterations = n_iter,
       number_of_macro_cycles   = n_macro,
@@ -468,33 +469,11 @@ def substitute_ss(real_h,
       dihedral                 = True,
       chirality                = True,
       planarity                = True,
-      log                      = log)
+      log                      = refinement_log)
 
-  # removing unnecessary restraints
-  restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-      remove_coordinate_restraints(selection=sheet_selection)
-  restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-      remove_coordinate_restraints(selection=helix_selection)
-  restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-      remove_coordinate_restraints(selection=other_selection)
-  restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-      remove_torsion_restraints(selection=nonss_for_tors_selection)
-  restraints_manager.geometry.generic_restraints_manager.\
-      remove_c_beta_torsion_restraints(selection=flex.bool(n_atoms, True))
-  restraints_manager.geometry.generic_restraints_manager.\
-      remove_ramachandran_restraints()
-
-  assert restraints_manager.geometry.generic_restraints_manager.\
-             get_n_ramachandran_proxies() == 0
-  assert n_created_hbonds == restraints_manager.geometry.\
-                                 generic_restraints_manager.get_n_hbonds()
-  assert restraints_manager.geometry.generic_restraints_manager.\
-             get_n_reference_coordinate_proxies() == 0
-  assert restraints_manager.geometry.generic_restraints_manager.\
-             get_n_c_beta_dihedral_proxies() == 0
-  assert restraints_manager.geometry.generic_restraints_manager.\
-             get_n_den_proxies() == 0
-  return restraints_manager
+  #print_hbond_proxies(grm.geometry,real_h)
+  return grm.geometry.generic_restraints_manager.\
+      reference_manager.reference_torsion_proxies
 
 
 def beta():

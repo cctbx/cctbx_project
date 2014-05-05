@@ -98,8 +98,11 @@ class manager(object):
     if self.reference_torsion_proxies is None:
       self.reference_torsion_proxies = local_reference_torsion_proxies
     else:
-      for dp in local_reference_torsion_proxies:
-        self.reference_torsion_proxies.append(dp)
+      self.add_existing_reference_torsion_proxies(local_reference_torsion_proxies)
+
+  def add_existing_reference_torsion_proxies(self, proxies):
+    for dp in proxies:
+      self.reference_torsion_proxies.append(dp)
 
   def remove_coordinate_restraints(self, selection=None):
     if (selection is not None) :
