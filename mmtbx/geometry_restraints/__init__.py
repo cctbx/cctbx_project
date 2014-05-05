@@ -186,8 +186,9 @@ class manager (object) :
         sigma=2.5)
 
   def remove_c_beta_torsion_restraints(self, selection):
-    self.c_beta_dihedral_proxies = \
-      self.c_beta_dihedral_proxies.proxy_remove(selection=selection)
+    if self.c_beta_dihedral_proxies is not None:
+      self.c_beta_dihedral_proxies = \
+          self.c_beta_dihedral_proxies.proxy_remove(selection=selection)
 
   def remove_ramachandran_restraints(self):
     self.ramachandran_proxies = None
@@ -320,7 +321,7 @@ class manager (object) :
       for i in range(1,5):
         print >> f, "    %s" % p.labels[i]
     print >> f, ""
-    
+
   def get_hbonds_residual_sum(self,
       sites_cart,
       gradient_array=None):
