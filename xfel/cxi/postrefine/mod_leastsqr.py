@@ -216,7 +216,7 @@ class leastsqr_handler(object):
   def optimize(self, I_r_flex, observations_original,
               wavelength, crystal_init_orientation, alpha_angle_set):
 
-    uc_len_tol = 3.5
+    uc_len_tol = 5.0
     uc_angle_tol = 2.0
 
     assert len(alpha_angle_set)==len(observations_original.indices()), 'Size of alpha angles and observations are not equal %6.0f, %6.0f'%(len(alpha_angle_set),len(observations_original.indices()))
@@ -252,12 +252,14 @@ class leastsqr_handler(object):
         or abs(alpha-uc_init_params[3]) > uc_angle_tol or abs(beta-uc_init_params[4]) > uc_angle_tol or abs(gamma-uc_init_params[5]) > uc_angle_tol):
       print 'Refinement failed - unit-cell parameters exceed the limits', a,b,c,alpha,beta,gamma
       a, b, c, alpha, beta, gamma = uc_init_params
+      print '--> use uc from integration', a, b, c, alpha, beta, gamma
       rotx = 0
       roty = 0
       ry = spot_radius
       rz = spot_radius
       re = 0.0026
       G, B = xopt_scale
+      xopt = np.array([G, B, rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma])
 
     #caclculate stats
     uc_opt = unit_cell((a,b,c,alpha,beta,gamma))

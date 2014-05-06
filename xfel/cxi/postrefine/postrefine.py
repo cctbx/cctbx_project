@@ -98,7 +98,7 @@ class postref_handler(object):
     return observations, alpha_angle_obs
 
 
-  def determine_polar(self, observations_original, iph):
+  def determine_polar(self, observations_original, iph, pickle_filename):
 
     """
     Determine polarity based on input data.
@@ -107,6 +107,15 @@ class postref_handler(object):
     """
     if iph.flag_polar == False:
       return 'h,k,l', 0 , 0
+
+    if iph.index_basis_in != '':
+      #use basis in the given input file
+      pickle_filename_arr = pickle_filename.split('/')
+      pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
+
+      basis_pickle = pickle.load(open(iph.index_basis_in,"rb"))
+      polar_hkl = basis_pickle[iph.index_basis_in_prefix+''+pickle_filename_only]
+      return polar_hkl, 0, 0
 
     observations_asu = observations_original.map_to_asu()
     if iph.flag_polar:
@@ -163,14 +172,13 @@ class postref_handler(object):
     observations_asu = observations_original.map_to_asu()
     assert len(observations_original.indices())==len(observations_asu.indices()), 'No. of original and asymmetric-unit indices are not equal %6.0f, %6.0f'%(len(observations_original.indices()), len(observations_asu.indices()))
 
-    from cctbx import sgtbx
-    cb_op = sgtbx.change_of_basis_op('k,h,-l')
-    observations_rev = observations_asu.change_basis(cb_op).map_to_asu()
-    assert len(observations_original.indices())==len(observations_rev.indices()), 'No. of original and inversed asymmetric-unit indices are not equal %6.0f, %6.0f'%(len(observations_original.indices()), len(observations_rev.indices()))
-
     if polar_hkl == 'h,k,l':
       return observations_asu
-    elif polar_hkl == 'k,h,-l':
+    else:
+      from cctbx import sgtbx
+      cb_op = sgtbx.change_of_basis_op(polar_hkl)
+      observations_rev = observations_asu.change_basis(cb_op).map_to_asu()
+      assert len(observations_original.indices())==len(observations_rev.indices()), 'No. of original and inversed asymmetric-unit indices are not equal %6.0f, %6.0f'%(len(observations_original.indices()), len(observations_rev.indices()))
       return observations_rev
 
   def postrefine_by_frame(self, frame_no, pickle_filename, iph, miller_array_ref):
@@ -193,7 +201,7 @@ class postref_handler(object):
 
     #2. Determine polarity - always do this even if flag_polar = False
     #the function will take care of it.
-    polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, iph)
+    polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, iph, pickle_filename)
 
     #3. Select data for post-refinement (only select indices that are common with the reference set
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
@@ -236,7 +244,7 @@ class postref_handler(object):
             var_I_p=var_I_p,
             var_k=var_k,
             var_p=var_p)
-      print 'frame %6.0f'%pres.frame_no, ' SE=%7.2f R-sq=%7.2f CC=%7.2f'%pres.stats
+      print 'frame %6.0f'%pres.frame_no, polar_hkl, ' SE=%7.2f R-sq=%7.2f CC=%7.2f'%pres.stats
 
     return pres
 
@@ -264,7 +272,7 @@ class postref_handler(object):
       print 'frame %6.0f'%frame_no, ' - wrong pointgroup', crystal_pointgroup
       return None
 
-    polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, iph)
+    polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, iph, pickle_filename)
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
     uc_params = crystal_init_orientation.unit_cell().parameters()
 
@@ -292,7 +300,7 @@ class postref_handler(object):
             var_k=var_k,
             var_p=var_p)
 
-    print 'frame %6.0f'%frame_no, '<I>=%9.2f <G>=%9.2f G=%9.2f'%(np.mean(observations_non_polar.data()), mean_of_mean_I, G), crystal_pointgroup
+    print 'frame %6.0f'%frame_no, polar_hkl, '<I>=%9.2f <G>=%9.2f G=%9.2f'%(np.mean(observations_non_polar.data()), mean_of_mean_I, G)
     return pres
 
 
