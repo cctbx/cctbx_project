@@ -120,7 +120,7 @@ class intensities_scaler(object):
   def output_mtz_files(self, results, iph, output_mtz_file_prefix, avg_mode):
     partiality_filter = 0.1
     sigma_filter = 8
-    uc_len_tol = 3.5
+    uc_len_tol = 5
     uc_angle_tol = 2
 
     #prepare data for merging
@@ -786,6 +786,8 @@ class input_handler(object):
     self.flag_on_screen_output=True
     self.q_w_merge = 1.0
     self.pixel_size_mm = 0
+    self.index_basis_in = ''
+    self.index_basis_in_prefix = ''
 
     file_input = open(file_name_input, 'r')
     data_input = file_input.read().split('\n')
@@ -864,6 +866,10 @@ class input_handler(object):
           self.q_w_merge=float(param_val)
         elif param_name=='pixel_size_mm':
           self.pixel_size_mm=float(param_val)
+        elif param_name=='index_basis_in':
+          self.index_basis_in=param_val
+        elif param_name=='index_basis_in_prefix':
+          self.index_basis_in_prefix=param_val
 
     if self.frame_end == 0:
       print 'Parameter: frame_end - please specifiy at least one frame (usage: frame_end=1)'
@@ -924,6 +930,7 @@ class input_handler(object):
     self.txt_out += 'imagein '+str(self.file_name_in_img)+'\n'
     self.txt_out += 'pdbin '+str(self.file_name_pdb)+'\n'
     self.txt_out += 'picke_dir '+str(self.pickle_dir)+'\n'
+    self.txt_out += 'index_basis_in'+str(self.index_basis_in)+'\n'
     self.txt_out += 'd_min '+str(self.d_min)+'\n'
     self.txt_out += 'd_min_merge '+str(self.d_min_merge)+'\n'
     self.txt_out += 'd_max '+str(self.d_max)+'\n'
