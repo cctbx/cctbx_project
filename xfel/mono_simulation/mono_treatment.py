@@ -370,10 +370,14 @@ class refinement(refinement_base):
 
       if OO.mosaic_refinement_target=="ML":
         OO.parent.inputai.setMosaicity(M.x[1]*180./math.pi) # full width, degrees
+        OO.parent.ML_half_mosaicity_deg = M.x[1]*180./(2.*math.pi)
+        OO.parent.ML_domain_size_ang = 1./M.x[0]
         return results, helper.last_set_orientation,1./M.x[0] # full width domain size, angstroms
       else:
         assert OO.mosaic_refinement_target=="LSQ"
         OO.parent.inputai.setMosaicity(2*k_degrees) # full width
+        OO.parent.ML_half_mosaicity_deg = k_degrees
+        OO.parent.ML_domain_size_ang = s_ang
         return results, helper.last_set_orientation,s_ang # full width domain size, angstroms
 
   def show_plot(OO,excursi,rmsdpos,minimum):

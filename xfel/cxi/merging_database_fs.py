@@ -248,6 +248,8 @@ class manager:
               'slope': flex.double(),
               'offset': flex.double(),
               'odd_numbered': flex.bool(),
+              'domain_size_ang': flex.double(),
+              'half_mosaicity_deg': flex.double(),
               'orientation': [],
               'unit_cell': [],
               'unique_file_name': []}
@@ -261,6 +263,8 @@ class manager:
       frames['cc'].append(float(items[5]))
       frames['slope'].append(float(items[6]))
       frames['offset'].append(float(items[7]))
+      frames['domain_size_ang'].append(float(items[23]))
+      frames['half_mosaicity_deg'].append(float(items[20]))
       frames['odd_numbered'].append(is_odd_numbered(unique_file_name))
       frames['orientation'].append(CO)
       frames['unit_cell'].append(CO.unit_cell())
