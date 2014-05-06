@@ -124,7 +124,7 @@ def make_int_pickle(img_dict, filename):
     print "dumped image {}".format(filename)
   except AssertionError as a:
     print "Failed an assertion on image {}! {}".format(filename, a.message)
-  except:
+  except Exception:
     print"Failed to make a dictionairy for image {}".format(filename)
 
 if __name__ == "__main__":
