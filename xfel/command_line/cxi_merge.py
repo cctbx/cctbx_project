@@ -167,6 +167,9 @@ scaling {
   simulation_data = None
     .type = floats
     .help = Extra parameters for the simulation, exact meaning depends on calculation method
+  report_ML = False
+    .type = bool
+    .help = Report statistics on per-frame attributes modeled by max-likelihood fit (expert only)
 }
 postrefinement {
   enable = False
@@ -1152,6 +1155,7 @@ class scaling_manager (intensity_data) :
         miller_indices=observations.indices())
 
     if not self.params.scaling.enable or self.params.postrefinement.enable: # Do not scale anything
+      print "Scale factor to an isomorphous reference PDB will NOT be applied."
       slope = 1.0
       offset = 0.0
 
@@ -1209,6 +1213,12 @@ class scaling_manager (intensity_data) :
       kwargs['res_ori_7'] = res_ori_direct[6]
       kwargs['res_ori_8'] = res_ori_direct[7]
       kwargs['res_ori_9'] = res_ori_direct[8]
+      if self.params.scaling.report_ML:
+        kwargs['half_mosaicity_deg'] = result["ML_half_mosaicity_deg"][0]
+        kwargs['domain_size_ang'] = result["ML_domain_size_ang"][0]
+      else:
+        kwargs['half_mosaicity_deg'] =float("NaN")
+        kwargs['domain_size_ang'] =float("NaN")
 
     frame_id_0_base = db_mgr.insert_frame(**kwargs)
 

@@ -43,14 +43,32 @@ class xscaling_manager (scaling_manager) :
     if self.params.model is None:
       self.n_accepted = len(self.frames["cc"])
       self.n_low_corr = 0
+      self.those_accepted = flex.bool(self.n_accepted)
     else:
       self.n_accepted = (self.frames["cc"]>self.params.min_corr).count(True)
       self.n_low_corr = (self.frames["cc"]>self.params.min_corr).count(False)
+      self.those_accepted = (self.frames["cc"]>self.params.min_corr)
       statsy = flex.mean_and_variance(self.frames["cc"])
       print >> self.log, "%5d images, individual image correlation coefficients are %6.3f +/- %5.3f"%(
                len(self.frames["cc"]),
                statsy.mean(),  statsy.unweighted_sample_standard_deviation(),
                )
+    if self.params.scaling.report_ML:
+      mosaic = self.frames["half_mosaicity_deg"].select(self.those_accepted)
+      Mstat = flex.mean_and_variance(mosaic)
+      print >> self.log, "%5d images, half mosaicity is %6.3f +/- %5.3f degrees"%(
+               len(mosaic), Mstat.mean(), Mstat.unweighted_sample_standard_deviation())
+      domain = self.frames["domain_size_ang"].select(self.those_accepted)
+      Dstat = flex.mean_and_variance(domain)
+      print >> self.log, "%5d images, domain size is %6.0f +/- %5.0f Angstroms"%(
+               len(domain), Dstat.mean(), Dstat.unweighted_sample_standard_deviation())
+
+      invdomain = 1./domain
+      Dstat = flex.mean_and_variance(invdomain)
+      print >> self.log, "%5d images, inverse domain size is %f +/- %f Angstroms"%(
+               len(domain), Dstat.mean(), Dstat.unweighted_sample_standard_deviation())
+      print >> self.log, "%5d images, domain size is %6.0f +/- %5.0f Angstroms"%(
+               len(domain), 1./Dstat.mean(), 1./Dstat.unweighted_sample_standard_deviation())
 
     t2 = time.time()
     print >> self.log, ""
@@ -102,6 +120,9 @@ class xscaling_manager (scaling_manager) :
     parser.set_double("cc",self.frames_mysql["cc"])
     parser.set_double("slope",self.frames_mysql["slope"])
     parser.set_double("offset",self.frames_mysql["offset"])
+    if self.params.scaling.report_ML:
+      parser.set_double("domain_size_ang",self.frames_mysql["domain_size_ang"])
+      parser.set_double("half_mosaicity_deg",self.frames_mysql["half_mosaicity_deg"])
     self._frames_mysql = parser
 
     CART.join()
