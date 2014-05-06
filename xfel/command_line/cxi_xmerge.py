@@ -181,6 +181,8 @@ class xscaling_manager (scaling_manager) :
 def run(args):
   phil = iotbx.phil.process_command_line(args=args, master_string=master_phil).show()
   work_params = phil.work.extract()
+  from xfel.cxi.merging.phil_validation import application
+  application(work_params)
   if ("--help" in args) :
     libtbx.phil.parse(master_phil.show())
     return

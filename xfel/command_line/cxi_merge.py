@@ -43,6 +43,9 @@ model = None
 model_reindex_op = h,k,l
   .type = str
   .help = Kludge for cases with an indexing ambiguity, need to be able to adjust scaling model
+data_reindex_op = h,k,l
+  .type = str
+  .help = Reindex, e.g. to change C-axis of an orthorhombic cell to align Bravais lattice from indexing with actual space group
 target_unit_cell = None
   .type = unit_cell
   .help = leave as None, program uses the model PDB file cryst1 record
@@ -746,7 +749,7 @@ class scaling_manager (intensity_data) :
 
     out = StringIO()
     wrong_cell = wrong_bravais = False
-    reindex_op = "h,k,l"
+    reindex_op = self.params.data_reindex_op
     if self.reverse_lookup is not None:
       reindex_op = self.reverse_lookup.get(file_name, None)
       if reindex_op is None:
@@ -1309,6 +1312,8 @@ class scaling_manager (intensity_data) :
 def run(args):
   phil = iotbx.phil.process_command_line(args=args, master_string=master_phil).show()
   work_params = phil.work.extract()
+  from xfel.cxi.merging.phil_validation import application
+  application(work_params)
   if ("--help" in args) :
     libtbx.phil.parse(master_phil.show())
     return
