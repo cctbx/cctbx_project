@@ -395,9 +395,7 @@ def ion_anomalous_vector(scatter_env, elements=None, ratios=True):
        for element in elements),
        float)
   else:
-    ret = _flatten_list([
-      scatter_env.fpp, scatter_env.fp
-      ])
+    ret = _flatten_list([scatter_env.fpp,])
   return ret
 
 def scale_to(matrix, source, target):
