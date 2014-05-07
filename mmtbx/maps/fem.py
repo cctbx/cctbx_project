@@ -291,11 +291,11 @@ def fem_loop_(
   #
     if(cut_by_connectivity):
       msk = truncate_with_roots2(
-        m=m,fmodel=fmodel,c1=0.5,c2=0.25,cutoff=0.5,scale=0.7, as_int=True)
+        m=m,fmodel=fmodel,c1=0.5,c2=0.35,cutoff=0.5,scale=0.7, as_int=True)
       maptbx.truncate_special(mask=msk, map_data=m)
       #
       F = None
-      for c1 in [0.7,0.6,]:
+      for c1 in [0.8, 0.7,0.6,]:
         f = truncate_with_roots2(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
           cutoff=c1,scale=0.7, keep_interblob=True)
         if(F is None): F = f
