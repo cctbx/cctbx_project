@@ -108,48 +108,10 @@ class postref_handler(object):
     if iph.flag_polar == False:
       return 'h,k,l', 0 , 0
 
-    if iph.index_basis_in != '':
-      #use basis in the given input file
-      pickle_filename_arr = pickle_filename.split('/')
-      pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
-
-      basis_pickle = pickle.load(open(iph.index_basis_in,"rb"))
-      polar_hkl = basis_pickle[iph.index_basis_in_prefix+''+pickle_filename_only]
-      return polar_hkl, 0, 0
-
-    observations_asu = observations_original.map_to_asu()
-    if iph.flag_polar:
-      from cctbx import sgtbx
-      cb_op = sgtbx.change_of_basis_op('k,h,-l')
-      observations_rev = observations_asu.change_basis(cb_op).map_to_asu()
-    else:
-      observations_rev = observations_asu
-
-    matches_asu = miller.match_multi_indices(
-                  miller_indices_unique=iph.miller_array_iso.indices(),
-                  miller_indices=observations_asu.indices())
-
-    I_ref_asu = flex.double([iph.miller_array_iso.data()[pair[0]] for pair in matches_asu.pairs()])
-    I_obs_asu = flex.double([observations_asu.data()[pair[1]] for pair in matches_asu.pairs()])
-
-    corr_raw_asu = np.corrcoef(I_obs_asu, I_ref_asu)[0,1]
-
-    matches_rev = miller.match_multi_indices(
-                  miller_indices_unique=iph.miller_array_iso.indices(),
-                  miller_indices=observations_rev.indices())
-
-    I_ref_rev = flex.double([iph.miller_array_iso.data()[pair[0]] for pair in matches_rev.pairs()])
-    I_obs_rev = flex.double([observations_rev.data()[pair[1]] for pair in matches_rev.pairs()])
-
-    corr_raw_rev = np.corrcoef(I_obs_rev, I_ref_rev)[0,1]
-
-    if corr_raw_asu >= corr_raw_rev:
-      polar_hkl = 'h,k,l'
-    else:
-      polar_hkl = 'k,h,-l'
-
-
-    return polar_hkl, corr_raw_asu, corr_raw_rev
+    #use basis in the given input file
+    basis_pickle = pickle.load(open(iph.index_basis_in,"rb"))
+    polar_hkl = basis_pickle[pickle_filename]
+    return polar_hkl, 0, 0
 
 
   def calc_spot_radius(self, a_star_matrix, miller_indices, wavelength):
@@ -224,7 +186,7 @@ class postref_handler(object):
     #4. Do least-squares refinement
     lsqrh = leastsqr_handler()
     refined_params, se_params, stats, partiality_sel, SE_I, var_I_p, var_k, var_p = lsqrh.optimize(I_ref_match, observations_original_sel,
-              wavelength, crystal_init_orientation, alpha_angle_set)
+              wavelength, crystal_init_orientation, alpha_angle_set, iph)
 
     if SE_I is None:
       print 'frame', frame_no, ' - failed'
