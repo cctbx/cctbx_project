@@ -214,9 +214,9 @@ class leastsqr_handler(object):
     '''
 
   def optimize(self, I_r_flex, observations_original,
-              wavelength, crystal_init_orientation, alpha_angle_set):
+              wavelength, crystal_init_orientation, alpha_angle_set, iph):
 
-    uc_len_tol = 5.0
+    uc_len_tol = 3.5
     uc_angle_tol = 2.0
 
     assert len(alpha_angle_set)==len(observations_original.indices()), 'Size of alpha angles and observations are not equal %6.0f, %6.0f'%(len(alpha_angle_set),len(observations_original.indices()))
@@ -250,16 +250,17 @@ class leastsqr_handler(object):
     #3. decide wheter to take the refined parameters
     if (abs(a-uc_init_params[0]) > uc_len_tol or abs(b-uc_init_params[1]) > uc_len_tol or abs(c-uc_init_params[2]) > uc_len_tol \
         or abs(alpha-uc_init_params[3]) > uc_angle_tol or abs(beta-uc_init_params[4]) > uc_angle_tol or abs(gamma-uc_init_params[5]) > uc_angle_tol):
-      print 'Refinement failed - unit-cell parameters exceed the limits', a,b,c,alpha,beta,gamma
-      a, b, c, alpha, beta, gamma = uc_init_params
-      print '--> use uc from integration', a, b, c, alpha, beta, gamma
-      rotx = 0
-      roty = 0
-      ry = spot_radius
-      rz = spot_radius
-      re = 0.0026
-      G, B = xopt_scale
-      xopt = np.array([G, B, rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma])
+      print 'Refinement failed - unit-cell parameters exceed the limits (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)
+      if iph.flag_force_accept_all_frames:
+        a, b, c, alpha, beta, gamma = uc_init_params
+        print ' flag_force_accept_all_frames is on, reset unit cell to (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)
+        rotx = 0
+        roty = 0
+        ry = spot_radius
+        rz = spot_radius
+        re = 0.0026
+        G, B = xopt_scale
+        xopt = np.array([G, B, rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma])
 
     #caclculate stats
     uc_opt = unit_cell((a,b,c,alpha,beta,gamma))

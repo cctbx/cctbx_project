@@ -120,8 +120,13 @@ class intensities_scaler(object):
   def output_mtz_files(self, results, iph, output_mtz_file_prefix, avg_mode):
     partiality_filter = 0.1
     sigma_filter = 8
-    uc_len_tol = 5
+    uc_len_tol = 3.5
     uc_angle_tol = 2
+
+    if avg_mode == 'average':
+      cc_thres = 0
+    else:
+      cc_thres = iph.frame_accept_min_cc
 
     #prepare data for merging
     miller_indices_all = flex.miller_index()
@@ -140,29 +145,32 @@ class intensities_scaler(object):
       if pres is not None:
         fh = file_handler()
         img_filename = fh.get_imgname_from_pickle_filename(iph.file_name_in_img, pres.pickle_filename)
-        #check unit-cell
-        if (abs(pres.uc_params[0]-iph.target_unit_cell[0]) <= uc_len_tol and abs(pres.uc_params[1]-iph.target_unit_cell[1]) <= uc_len_tol \
-        and abs(pres.uc_params[2]-iph.target_unit_cell[2]) <= uc_len_tol and abs(pres.uc_params[3]-iph.target_unit_cell[3]) <= uc_angle_tol \
-        and abs(pres.uc_params[4]-iph.target_unit_cell[4]) <= uc_angle_tol and abs(pres.uc_params[5]-iph.target_unit_cell[5]) <= uc_angle_tol):
-          cn_good_frame += 1
-          sin_theta_over_lambda_sq = pres.observations.two_theta(wavelength=pres.wavelength).sin_theta_over_lambda_sq().data()
-          for miller_index, i_obs, sigi_obs, p, se_i, sin_sq in zip(
-              pres.observations.indices(), pres.observations.data(),
-              pres.observations.sigmas(), pres.partiality, pres.SE_I, sin_theta_over_lambda_sq):
+        #check cc
+        if pres.stats[2] >= cc_thres:
+          #check unit-cell
+          if (abs(pres.uc_params[0]-iph.target_unit_cell[0]) <= uc_len_tol and abs(pres.uc_params[1]-iph.target_unit_cell[1]) <= uc_len_tol \
+          and abs(pres.uc_params[2]-iph.target_unit_cell[2]) <= uc_len_tol and abs(pres.uc_params[3]-iph.target_unit_cell[3]) <= uc_angle_tol \
+          and abs(pres.uc_params[4]-iph.target_unit_cell[4]) <= uc_angle_tol and abs(pres.uc_params[5]-iph.target_unit_cell[5]) <= uc_angle_tol):
+            cn_good_frame += 1
+            sin_theta_over_lambda_sq = pres.observations.two_theta(wavelength=pres.wavelength).sin_theta_over_lambda_sq().data()
+            for miller_index, i_obs, sigi_obs, p, se_i, sin_sq in zip(
+                pres.observations.indices(), pres.observations.data(),
+                pres.observations.sigmas(), pres.partiality, pres.SE_I, sin_theta_over_lambda_sq):
 
-            miller_indices_all.append(miller_index)
-            I_all.append(i_obs)
-            sigI_all.append(sigi_obs)
-            G_all.append(pres.G)
-            B_all.append(pres.B)
-            p_all.append(p)
-            SE_I_all.append(se_i)
-            sin_sq_all.append(sin_sq)
-            SE_all.append(pres.stats[0])
-          print pres.frame_no, img_filename, ' merged'
+              miller_indices_all.append(miller_index)
+              I_all.append(i_obs)
+              sigI_all.append(sigi_obs)
+              G_all.append(pres.G)
+              B_all.append(pres.B)
+              p_all.append(p)
+              SE_I_all.append(se_i)
+              sin_sq_all.append(sin_sq)
+              SE_all.append(pres.stats[0])
+            print pres.frame_no, img_filename, ' merged'
+          else:
+            print pres.frame_no, img_filename, ' discarded - unit-cell exceeds the limits (%6.2f %6.2f %6.2f %5.2f %5.2f %5.2f)'%(pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], pres.uc_params[4], pres.uc_params[5])
         else:
-          print pres.frame_no, img_filename, ' discarded - unit-cell exceeds the limits (%6.2f %6.2f %6.2f %5.2f %5.2f %5.2f)'%(pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], pres.uc_params[4], pres.uc_params[5])
-
+          print pres.frame_no, img_filename, ' discarded - C.C. too low (C.C.=%5.2f%%)'%(pres.stats[2]*100)
     #plot stats
     self.plot_stats(results, iph, uc_len_tol, uc_angle_tol)
 
@@ -276,9 +284,7 @@ class intensities_scaler(object):
         I_even_bin = I_even.select(i_binner)
         I_odd_bin = I_odd.select(i_binner)
 
-        mean_I_obs_bin = np.mean(I_obs_bin)
-        std_I_obs_bin = np.std(I_obs_bin)
-        i_filter = flex.abs((I_obs_bin - mean_I_obs_bin)/std_I_obs_bin) < sigma_filter
+        i_filter = flex.abs((I_obs_bin - np.median(I_obs_bin))/np.median(I_obs_bin)) < sigma_filter
         I_obs_bin_filter = I_obs_bin.select(i_filter)
         sigI_obs_bin_filter = sigI_obs_bin.select(i_filter)
         miller_indices_bin_filter = miller_indices_bin.select(i_filter)
@@ -760,34 +766,30 @@ class input_handler(object):
 
     self.run_no = ''
     self.title = ''
+    self.pickle_dir = ''
     self.frame_start = 0
     self.frame_end = 0
-    self.flag_plot = False
-    self.flag_polar = False
-    self.file_name_iso_mtz = ''
-    self.file_name_ref_mtz = ''
-    self.file_name_in_energy = ''
-    self.file_name_in_img = ''
-    self.pickle_dir = ''
     self.d_min = 0
-    self.d_min_merge = 0
-    self.d_max = 45
+    self.d_max = 99
     self.sigma_max = 1.5
-    self.sigma_max_merge=1.25
-    self.flag_reference_a_matrix = False
+    self.sigma_max_merge=1.5
     self.target_unit_cell = ''
     self.target_space_group = ''
     self.target_pointgroup = ''
     self.target_anomalous_flag = False
-    self.file_name_pdb = ''
+    self.flag_polar = False
+    self.index_basis_in = ''
+    self.file_name_iso_mtz = ''
+    self.file_name_ref_mtz = ''
+    self.file_name_in_energy = ''
+    self.file_name_in_img = ''
     self.n_postref_cycle = 1
     self.miller_array_iso = None
+    self.flag_plot = False
     self.n_bins=25
-    self.flag_on_screen_output=True
-    self.q_w_merge = 1.0
     self.pixel_size_mm = 0
-    self.index_basis_in = ''
-    self.index_basis_in_prefix = ''
+    self.frame_accept_min_cc = 0.25
+    self.flag_force_accept_all_frames = False
 
     file_input = open(file_name_input, 'r')
     data_input = file_input.read().split('\n')
@@ -801,35 +803,14 @@ class input_handler(object):
           self.run_no=param_val
         elif param_name=='title':
           self.title=param_val
+        elif param_name=='pickle_dir':
+          self.pickle_dir=param_val
         elif param_name=='frame_start':
           self.frame_start=int(param_val)
         elif param_name=='frame_end':
           self.frame_end=int(param_val)
-        elif param_name=='flag_plot':
-          if param_val=='True':
-            self.flag_plot=True
-        elif param_name=='flag_polar':
-          if param_val=='True':
-            self.flag_polar=True
-        elif param_name=='flag_reference_a_matrix':
-          if param_val=='True':
-            self.flag_reference_a_matrix=True
-        elif param_name=='hklisoin':
-          self.file_name_iso_mtz=param_val
-        elif param_name=='hklrefin':
-          self.file_name_ref_mtz=param_val
-        elif param_name=='energyin':
-          self.file_name_in_energy=param_val
-        elif param_name=='imagein':
-          self.file_name_in_img=param_val
-        elif param_name=='pdbin':
-          self.file_name_pdb=param_val
-        elif param_name=='pickle_dir':
-          self.pickle_dir=param_val
         elif param_name=='d_min':
           self.d_min=float(param_val)
-        elif param_name=='d_min_merge':
-          self.d_min_merge=float(param_val)
         elif param_name=='d_max':
           self.d_max=float(param_val)
         elif param_name=='sigma_max':
@@ -844,32 +825,44 @@ class input_handler(object):
           else:
             self.target_unit_cell = (float(tmp_uc[0]), float(tmp_uc[1]), float(tmp_uc[2]), \
               float(tmp_uc[3]), float(tmp_uc[4]), float(tmp_uc[5]))
+        elif param_name=='target_space_group':
+          self.target_space_group=param_val
+        elif param_name=='target_anomalous_flag':
+          if param_val=='True':
+            self.target_anomalous_flag=True
         elif param_name=='target_pointgroup':
           tmp_pg = param_val.split(' ')
           if len(tmp_pg) > 1:
             self.target_pointgroup = tmp_pg[0]+''+tmp_pg[1]
           else:
             self.target_pointgroup = param_val
-        elif param_name=='target_space_group':
-          self.target_space_group=param_val
-        elif param_name=='target_anomalous_flag':
+        elif param_name=='flag_polar':
           if param_val=='True':
-            self.target_anomalous_flag=True
-        elif param_name=='n_postref_cycle':
-          self.n_postref_cycle=int(param_val)
-        elif param_name=='n_bins':
-          self.n_bins=int(param_val)
-        elif param_name=='flag_on_screen_output':
-          if param_val=='False':
-            self.flag_on_screen_output=False
-        elif param_name=='q_w_merge':
-          self.q_w_merge=float(param_val)
-        elif param_name=='pixel_size_mm':
-          self.pixel_size_mm=float(param_val)
+            self.flag_polar=True
         elif param_name=='index_basis_in':
           self.index_basis_in=param_val
-        elif param_name=='index_basis_in_prefix':
-          self.index_basis_in_prefix=param_val
+        elif param_name=='hklisoin':
+          self.file_name_iso_mtz=param_val
+        elif param_name=='hklrefin':
+          self.file_name_ref_mtz=param_val
+        elif param_name=='energyin':
+          self.file_name_in_energy=param_val
+        elif param_name=='imagein':
+          self.file_name_in_img=param_val
+        elif param_name=='n_postref_cycle':
+          self.n_postref_cycle=int(param_val)
+        elif param_name=='flag_plot':
+          if param_val=='True':
+            self.flag_plot=True
+        elif param_name=='n_bins':
+          self.n_bins=int(param_val)
+        elif param_name=='pixel_size_mm':
+          self.pixel_size_mm=float(param_val)
+        elif param_name=='frame_accept_min_cc':
+          self.frame_accept_min_cc=float(param_val)
+        elif param_name=='flag_force_accept_all_frames':
+          if param_val=='True':
+            self.flag_force_accept_all_frames=True
 
     if self.frame_end == 0:
       print 'Parameter: frame_end - please specifiy at least one frame (usage: frame_end=1)'
@@ -883,8 +876,8 @@ class input_handler(object):
       print 'Parameter: target_space_group - please specify space_group (usage: target_space_group=SGSYMBOL)'
       exit()
 
-    if self.flag_polar and self.file_name_iso_mtz =='':
-      print 'Conflict of parameters: you turned flag_polar on, please also input isomorphous-reference mtz file (usage: hklisoin = 1jw8-sf-asu.mtz)'
+    if self.flag_polar and self.index_basis_in =='':
+      print 'Conflict of parameters: you turned flag_polar on, please also input indexing basis (usage: index_basis_in=reverse_lookup.pickle)'
       exit()
 
     if self.pixel_size_mm == 0:
@@ -920,26 +913,26 @@ class input_handler(object):
     self.txt_out += 'Input parameters\n'
     self.txt_out += 'run_no '+str(self.run_no)+'\n'
     self.txt_out += 'title '+str(self.title)+'\n'
-    self.txt_out += 'frame '+str(self.frame_start)+'-'+str(self.frame_end)+'\n'
-    self.txt_out += 'flag_plot '+str(self.flag_plot)+'\n'
-    self.txt_out += 'flag_polar '+str(self.flag_polar)+'\n'
-    self.txt_out += 'flag_reference_a_matrix '+str(self.flag_reference_a_matrix)+'\n'
-    self.txt_out += 'hklisoin '+str(self.file_name_iso_mtz)+'\n'
-    self.txt_out += 'hklrefin '+str(self.file_name_ref_mtz)+'\n'
-    self.txt_out += 'energyin '+str(self.file_name_in_energy)+'\n'
-    self.txt_out += 'imagein '+str(self.file_name_in_img)+'\n'
-    self.txt_out += 'pdbin '+str(self.file_name_pdb)+'\n'
     self.txt_out += 'picke_dir '+str(self.pickle_dir)+'\n'
-    self.txt_out += 'index_basis_in'+str(self.index_basis_in)+'\n'
+    self.txt_out += 'frame '+str(self.frame_start)+'-'+str(self.frame_end)+'\n'
     self.txt_out += 'd_min '+str(self.d_min)+'\n'
-    self.txt_out += 'd_min_merge '+str(self.d_min_merge)+'\n'
     self.txt_out += 'd_max '+str(self.d_max)+'\n'
     self.txt_out += 'sigma_max '+str(self.sigma_max)+'\n'
     self.txt_out += 'sigma_max_merge '+str(self.sigma_max_merge)+'\n'
     self.txt_out += 'target_unit_cell '+str(self.target_unit_cell)+'\n'
     self.txt_out += 'target_space_group '+str(self.target_space_group)+'\n'
-    self.txt_out += 'target_pointgroup '+str(self.target_pointgroup)+'\n'
     self.txt_out += 'target_anomalous_flag '+str(self.target_anomalous_flag)+'\n'
+    self.txt_out += 'flag_polar '+str(self.flag_polar)+'\n'
+    self.txt_out += 'index_basis_in '+str(self.index_basis_in)+'\n'
+    self.txt_out += 'hklisoin '+str(self.file_name_iso_mtz)+'\n'
+    self.txt_out += 'hklrefin '+str(self.file_name_ref_mtz)+'\n'
+    self.txt_out += 'energyin '+str(self.file_name_in_energy)+'\n'
+    self.txt_out += 'imagein '+str(self.file_name_in_img)+'\n'
+    self.txt_out += 'flag_plot '+str(self.flag_plot)+'\n'
+    self.txt_out += 'n_bins '+str(self.n_bins)+'\n'
+    self.txt_out += 'pixel_size_mm '+str(self.pixel_size_mm)+'\n'
+    self.txt_out += 'frame_accept_min_cc '+str(self.frame_accept_min_cc)+'\n'
+    self.txt_out += 'flag_force_accept_all_frames '+str(self.flag_force_accept_all_frames)+'\n'
 
     print self.txt_out
 
