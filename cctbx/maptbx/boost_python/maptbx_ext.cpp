@@ -512,6 +512,13 @@ namespace {
       arg("substitute_value_below"),
       arg("substitute_value_above")));
 
+    def("truncate_special",
+      (void(*)
+        (af::ref<int, af::c_grid<3> >,
+         af::ref<double, af::c_grid<3> >)) truncate_special, (
+      arg("mask"),
+      arg("map_data")));
+
     def("truncate_between_min_max",
       (void(*)
         (af::ref<double, af::c_grid<3> >,

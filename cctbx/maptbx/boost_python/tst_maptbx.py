@@ -1132,22 +1132,20 @@ def exercise_intersection():
   assert approx_equal(cm1, cm2, 0.1)
 
 def exercise_map_accumulator(n1=2, n2=2, n3=2):
-  ### Python prototype
-  def py_exercise():
+  ### Python prototype START
+  def py_exercise(points, show=False, b=1):
     def smear(x, a, b):
       return math.exp(-(x-a)**2 / (2*b**2))
     def to_int(f):
       p0 = 0
       if(f<=p0): return 0
       return min(int(256*(f-p0)/(1.-p0))+1, 255)
-    t = flex.double([0, 0.1,0.11, 0.44, 0.51,0.5101,0.515,0.534,0.54,0.55,0.577,
-      0.78,0.789, 0.77,0.79,0.8, 1])
     As = flex.int()
-    for i, t_ in enumerate(t):
+    for i, t_ in enumerate(points):
       a = to_int(t_)
       As.append(a)
-      #print "%2d: %8.4f %3d"%(i, t_, a)
-    #print list(As)
+      if(show): print "%2d: %8.4f %3d"%(i, t_, a)
+    if(show): print list(As)
     #
     R  = flex.double([0,]*256)
     Rx = flex.int(xrange(256))
@@ -1155,38 +1153,131 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
     #
     hit_l = False
     hit_r = False
-    b=1
     for a in As:
-      for i in range(-5,6):
+      for i in range(-10,11):
         x = a+i
         if(x>=0 and x<=255):
           R[x] += smear(x=x, a=a, b=b)
     #
-    #for i, rx in enumerate(R):
-    #  print "%4d %10.7f"%(i, rx)
+    if(show):
+      for i, rx in enumerate(R):
+        print "%4d %10.7f"%(i, rx)
     #
     return R
+  ### Python prototype END
+  def get_ma(n1,n2,n3, points):
+    ma = maptbx.map_accumulator(n_real = (n1,n2,n3))
+    for value in points:
+      m = [value for i in xrange(n1*n2*n3)]
+      m = flex.double(m)
+      m.resize(flex.grid((n1,n2,n3)))
+      ma.add(map_data=m)
+    return ma
+  def mmm(m): return m.as_1d().min_max_mean().as_tuple()
+  #
+  # case 1
+  points = flex.double([0,]*16)
+  ma = get_ma(n1,n2,n3, points)
+  assert approx_equal(mmm(ma.as_median_map()),(0,0,0))
+  # case 2
+  points = flex.double([1,]*16)
+  ma = get_ma(n1,n2,n3, points)
+  assert approx_equal(mmm(ma.as_median_map()),(255,255,255))
+  # case 3
+  points = flex.double([0.5,]*16)
+  ma = get_ma(n1,n2,n3, points)
+  assert approx_equal(mmm(ma.as_median_map()),(129,129,129))
+  # case 4
+  points = flex.double([i/16. for i in xrange(16)])
+  ma = get_ma(n1,n2,n3, points)
+  assert approx_equal(mmm(ma.as_median_map()),(0,0,0))
+  # case 5
+  points = flex.double([
+    0,
+    0.49375, 0.4875, 0.48125, 0.475, 0.46875, 0.4625, 0.45625,
+    0.5,
+    0.50625, 0.5125, 0.51875, 0.525, 0.53125, 0.5375, 0.54375,
+    1])
+  ma = get_ma(n1,n2,n3, points)
+  assert approx_equal(mmm(ma.as_median_map()),(128.7,128.7,128.7), 0.01)
+  # case 6
+  points = flex.double([0,]*8+[1,]*8)
+  ma = get_ma(n1,n2,n3, points)
+  assert approx_equal(mmm(ma.as_median_map()),(0,0,0))
+  # case 7
+  points = flex.double([0,]*5+[0.5,]*6+[1,]*5)
+  ma = get_ma(n1,n2,n3, points)
+  assert approx_equal(mmm(ma.as_median_map()),(0,0,0))
+  # case 8
+  points = flex.double([0,]*4+[0.5,]*8+[1,]*4)
+  ma = get_ma(n1,n2,n3, points)
+  assert approx_equal(mmm(ma.as_median_map()),(0,0,0))
+  # case 9
+  points = flex.double([0,]*3+[0.5,]*10+[1,]*3)
+  ma = get_ma(n1,n2,n3, points)
+  assert approx_equal(mmm(ma.as_median_map()),(129,129,129))
+  # case 10
+  points = flex.double([
+    0,0,
+    0.36,0.37,0.38,0.39,0.4,0.41,0.42,
+    0.67,0.68,0.69,0.7,0.71,
+    1,1])
+  ma = get_ma(n1,n2,n3, points)
+  assert approx_equal(mmm(ma.as_median_map()),(100.17,100.17,100.17), 0.01)
+  # case 11
+  points = flex.double([0, 0.1,0.11, 0.44, 0.51,0.5101,0.515,0.534,0.54,0.55,
+    0.577, 0.78,0.789, 0.77,0.79,0.8, 1])
+  ma = get_ma(n1,n2,n3, points)
+  # should be 27 or 28 if handles plateaus correctlu (see c++ code for a comment)
+  assert approx_equal(mmm(ma.as_median_map()),(134.67,134.67,134.67), 0.01)
+  # case 12
+  points = flex.double([0.6423, 0.0000, 0.6346, 0.0000, 0.7042, 0.7037, 0.7092,
+    0.0067, 0.0000, 0.6796, 0.7073, 0.7900, 0.8083, 0.7582, 0.6609, 0.6851])
+  ma = get_ma(n1,n2,n3, points)
+  assert approx_equal(mmm(ma.as_median_map()),(0,0,0))
   ###
-  values = flex.double([
-    0, 0.1,0.11, 0.44, 0.51,0.5101,0.515,0.534,0.54,0.55,0.577, 0.78,0.789,
-    0.77,0.79,0.8, 1])
-  ma = maptbx.map_accumulator(n_real = (n1,n2,n3))
-  for value in values:
-    print value
-    m = [value for i in xrange(n1*n2*n3)]
-    m = flex.double(m)
-    m.resize(flex.grid((n1,n2,n3)))
-    ma.add(map_data=m)
-  #ma.show()
-  print
-  expected_result = [0, 26, 29, 113, 131, 131, 132, 137, 139, 141, 148, 200,
-    202, 198, 203, 205, 255]
-  assert approx_equal(list(ma.at_index(n=(0,0,0))), expected_result)
-  assert approx_equal(list(ma.at_index(n=(1,1,1))), expected_result)
+  # useful for debugging
+  #py_exercise(points=points, show=True, b=2)
+  #print mmm(ma.as_median_map())
+  ###
+  # case xxx
+  table = """
+ 0 0.8425 0.5849 0.7631 0.7929 0.7979 0.8319 0.6423 0.8151 0.6436 0.8064
+ 1 0.7954 0.0000 0.8245 0.8124 0.8245 0.8356 0.0000 0.7857 0.7891 0.8261
+ 2 0.7798 0.5470 0.8324 0.8453 0.8334 0.8256 0.6346 0.8167 0.5750 0.8150
+ 3 0.6782 0.7564 0.8275 0.7687 0.8300 0.8496 0.0000 0.6892 0.7873 0.8129
+ 4 0.7508 0.7976 0.8347 0.8284 0.8325 0.8334 0.7042 0.8344 0.6594 0.8312
+ 5 0.7192 0.5254 0.8341 0.8376 0.8336 0.8283 0.7037 0.8147 0.0693 0.7969
+ 6 0.7715 0.5572 0.8238 0.7971 0.8219 0.8312 0.7092 0.8138 0.7656 0.8116
+ 7 0.7813 0.5117 0.8071 0.8205 0.7839 0.7857 0.0067 0.8208 0.8069 0.7658
+ 8 0.8228 0.7991 0.8310 0.8057 0.8289 0.8343 0.0000 0.8295 0.7911 0.8072
+ 9 0.7975 0.6647 0.8411 0.8421 0.8437 0.8383 0.6796 0.8463 0.4164 0.8147
+10 0.7570 0.4042 0.8310 0.8263 0.8357 0.8306 0.7073 0.8263 0.7749 0.8061
+11 0.7565 0.7787 0.8140 0.8176 0.8302 0.8381 0.7900 0.8109 0.5895 0.8068
+12 0.8105 0.3355 0.8273 0.8390 0.7878 0.8159 0.8083 0.8421 0.5090 0.8254
+13 0.7748 0.5478 0.8075 0.8365 0.8278 0.8230 0.7582 0.8336 0.4904 0.8077
+14 0.8250 0.7528 0.8053 0.8416 0.8251 0.8518 0.6609 0.8097 0.7752 0.7933
+15 0.7847 0.4245 0.8193 0.8146 0.8283 0.8435 0.6851 0.8297 0.8027 0.8125
+"""
+  d = {}
+  for l in table.splitlines():
+    for i, v in enumerate(l.split()):
+      if(i>0): d.setdefault(i, []).append(float(v))
   #
-  assert  approx_equal(list(ma.int_to_float_at_index(n=(0,0,0))), py_exercise())
-  #
-  ma.as_median_map()
+  Rs = []
+  results = []
+  for points in d.values():
+    ma = get_ma(n1,n2,n3, points)
+    r = mmm(ma.as_median_map())
+    #print r
+    results.append(r[0])
+    Rs.append(py_exercise(points=points, show=False, b=5))
+  assert approx_equal(results,
+    (200.70, 140.54, 211.58, 212.27, 212.71, 213.86, 0.0, 211.27, 201.98, 208.10),
+    0.1)
+  # good to plot frequency distribution
+  #for i in xrange(Rs[0].size()):
+  #  print " ".join(["%10.7f"%r[i] for r in Rs])
 
 def run(args):
   assert args in [[], ["--timing"]]
