@@ -8,6 +8,9 @@ from libtbx import adopt_init_args
 import mmtbx
 import libtbx
 import random
+import boost.python
+mmtbx_f_model_ext = boost.python.import_ext("mmtbx_f_model_ext")
+import mmtbx.masks
 
 def shelx_weight(
       f_obs,
@@ -395,6 +398,38 @@ class model_missing_reflections(object):
     self.complete_set = cs.array(data = flex.double(cs.indices().size(), 0))
     self.xray_structure_cut = self.fmodel.xray_structure.select(sel_exclude)
     self.missing_set = self.complete_set.common_set(self.coeffs)
+    #
+    self.f_calc_missing = self.complete_set.structure_factors_from_scatterers(
+      xray_structure = self.xray_structure_cut).f_calc()
+    self.ss_missing = 1./flex.pow2(self.f_calc_missing.d_spacings().data()) / 4.
+    mask_manager = mmtbx.masks.manager(
+      miller_array      = self.f_calc_missing,
+      miller_array_twin = None,
+      mask_params       = None)
+    self.f_mask_missing = mask_manager.shell_f_masks(
+      xray_structure = self.xray_structure_cut,
+      force_update   = True)
+    self.zero_data = flex.complex_double(self.f_calc_missing.data().size(), 0)
+    import mmtbx.maps.kick as kick_module
+    self.kick = kick_module
+
+  def get_missing_fast(self):
+    k_sol = random.choice([i/100. for i in range(20,41)])
+    b_sol = random.choice([i for i in range(20,85, 5)])
+    f_calc = self.kick.randomize_struture_factors(
+      map_coeffs=self.f_calc_missing, number_of_kicks=10)
+    data = mmtbx_f_model_ext.core(
+      f_calc        = f_calc.data(),
+      shell_f_masks = [self.f_mask_missing[0].data(),],
+      k_sols        = [k_sol,],
+      b_sol         = b_sol,
+      f_part1       = self.zero_data,
+      f_part2       = self.zero_data,
+      u_star        = [0,0,0,0,0,0],
+      hkl           = self.f_calc_missing.indices(),
+      uc            = self.f_calc_missing.unit_cell(),
+      ss            = self.ss_missing)
+    return miller.array(miller_set=self.f_calc_missing, data=data.f_model)
 
   def get_missing(self, deterministic=False):
     if(deterministic):
