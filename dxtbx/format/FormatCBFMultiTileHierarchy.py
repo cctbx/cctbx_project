@@ -242,6 +242,14 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       self._raw_data = []
 
       cbf = self._cbf_handle
+      cbf.find_category('array_structure')
+      cbf.find_column('encoding_type')
+      cbf.select_row(0)
+      types = []
+      for i in xrange(cbf.count_rows()):
+        types.append(cbf.get_value())
+        cbf.next_row()
+      assert len(types) == cbf.count_rows()
 
       # find the data
       cbf.select_category(0)
@@ -258,7 +266,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       import numpy
       from scitbx.array_family import flex
 
-      for panel in d:
+      for i, panel in enumerate(d):
         name = panel.get_name()
         cbf.find_column("array_id")
         assert name == cbf.get_value()
@@ -266,11 +274,18 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
         cbf.find_column("data")
         assert cbf.get_typeofvalue().find('bnry') > -1
 
-        image_string = cbf.get_realarray_as_string()
-        image = flex.double(numpy.fromstring(image_string, numpy.float))
-
-        parameters = cbf.get_realarrayparameters_wdims_fs()
-        image_size = (parameters[6], parameters[5])
+        if types[i] == 'signed 32-bit integer':
+          image_string = cbf.get_integerarray_as_string()
+          image = flex.int(numpy.fromstring(image_string, numpy.int32))
+          parameters = cbf.get_integerarrayparameters_wdims_fs()
+          image_size = (parameters[10], parameters[9])
+        elif types[i] == 'signed 64-bit real IEEE':
+          image_string = cbf.get_realarray_as_string()
+          image = flex.double(numpy.fromstring(image_string, numpy.float))
+          parameters = cbf.get_realarrayparameters_wdims_fs()
+          image_size = (parameters[6], parameters[5])
+        else:
+          return None # type not supported
 
         image.reshape(flex.grid(*image_size))
 

@@ -57,7 +57,6 @@ class mod_cspad_cbf(mod_event_info):
     assert device == 'Cspad'
     self.metrology = cspad_tbx.getOptString(metrology)
     assert os.path.isfile(self.metrology)
-    self.reader = Registry.find(self.metrology)
 
 
     # Load the dark image and ensure it is signed and at least 32 bits
@@ -166,19 +165,19 @@ class mod_cspad_cbf(mod_event_info):
         for s in xrange(len(quad.data())):
           sensor = quad.data()[s]
           for a in xrange(2):
-            tiles[(0,quad.quad(),s,a)] = flex.double(sensor[:,194*a:194*(a+1)].astype(np.float64))
+            tiles[(0,quad.quad(),s,a)] = flex.int(sensor[:,194*a:194*(a+1)].astype(np.int32))
 
       # If a dark image was provided, subtract it from the image.
       if (self.dark_img is not None):
         assert len(tiles) == len(self.dark_img.get_detector())
         for i, k in enumerate(sorted(tiles)):
-          tiles[k] -= self.dark_img.get_raw_data(i)
+          tiles[k] -= self.dark_img.get_raw_data(i).iround()
 
       # If a gain map was provided, multiply it times the image
       if self.gain_map is not None:
         assert len(tiles) == len(self.gain_map)
         for i, k in enumerate(sorted(tiles)):
-          tiles[k] *= self.gain_map[i]
+          tiles[k] *= self.gain_map[i].iround()
 
       # add the pixel data
       cspad_cbf_tbx.add_tiles_to_cbf(cbf,tiles)

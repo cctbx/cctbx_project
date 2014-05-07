@@ -6,6 +6,7 @@ from __future__ import division
 
 import pycbf, os
 from scitbx import matrix
+from scitbx.array_family import flex
 
 # need to define these here since it not defined in SLAC's metrology definitions
 asic_dimension = (194,185)
@@ -465,11 +466,23 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
       assert "CBF_NOTFOUND" in e.message
       break
 
+  tileisint = flex.bool()
+  for tilekey in sorted(tiles.keys()):
+    if isinstance(tiles[tilekey],flex.int):
+      tileisint.append(True)
+    elif isinstance(tiles[tilekey],flex.double):
+      tileisint.append(False)
+    else:
+      raise TypeError("Ints or doubles are required")
+
   """ Data items in the ARRAY_STRUCTURE category record the organization and
   encoding of array data in the ARRAY_DATA category."""
   cbf.add_category("array_structure",["id","encoding_type","compression_type","byte_order"])
-  for array_name in array_names:
-    cbf.add_row([array_name,"signed 64-bit real IEEE","canonical","little_endian"])
+  for i, array_name in enumerate(array_names):
+    if tileisint[i]:
+      cbf.add_row([array_name,"signed 32-bit integer","packed","little_endian"])
+    else:
+      cbf.add_row([array_name,"signed 64-bit real IEEE","packed","little_endian"])
 
   """ Data items in the ARRAY_DATA category are the containers for the array data
   items described in the category ARRAY_STRUCTURE. """
@@ -484,8 +497,7 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
     cbf.add_row([array_name,str(i+1)])
 
     binary_id = i+1
-    data = tiles[tilekey].as_double().copy_to_byte_str()
-    elsize = 8
+    data = tiles[tilekey].copy_to_byte_str()
     elements = len(tiles[tilekey])
     byteorder = "little_endian"
     dimfast = focus[1]
@@ -493,17 +505,36 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
     dimslow = 1
     padding = 0
 
-    cbf.set_realarray_wdims_fs(\
-      pycbf.CBF_CANONICAL,
-      binary_id,
-      data,
-      elsize,
-      elements,
-      byteorder,
-      dimfast,
-      dimmid,
-      dimslow,
-      padding)
+    if tileisint[i]:
+      elsize = 4
+      elsigned = 1
+
+      cbf.set_integerarray_wdims_fs(\
+        pycbf.CBF_PACKED,
+        binary_id,
+        data,
+        elsize,
+        elsigned,
+        elements,
+        byteorder,
+        dimfast,
+        dimmid,
+        dimslow,
+        padding)
+    else:
+      elsize = 8
+
+      cbf.set_realarray_wdims_fs(\
+        pycbf.CBF_CANONICAL,
+        binary_id,
+        data,
+        elsize,
+        elements,
+        byteorder,
+        dimfast,
+        dimmid,
+        dimslow,
+        padding)
 
 def copy_cbf_header(src_cbf):
   """ Given a cbf handle, copy the header tables only to a new cbf handle instance
