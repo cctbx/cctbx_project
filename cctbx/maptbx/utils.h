@@ -399,6 +399,21 @@ void cut_by(
   }}}}
 }
 
+template <typename DataType1, typename DataType2>
+void truncate_special(
+       af::ref<DataType2, af::c_grid<3> > mask,
+       af::ref<DataType1, af::c_grid<3> > map_data)
+{
+  af::tiny<int, 3> a = map_data.accessor();
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+         DataType1 m1 = map_data(i,j,k);
+         DataType2 m2 = mask(i,j,k);
+         if(m2<1 && m1<=0.5) map_data(i,j,k) = 0;
+  }}}
+}
+
 template <typename DataType>
 void truncate_between_min_max(
        af::ref<DataType, af::c_grid<3> > map_data,

@@ -59,10 +59,10 @@ public:
     result.resize(256, 0);
     for(int i = 0; i < as.size(); i++) {
       int a = (int)as[i];
-      for(int j = -5; j <=5; j++) {
+      for(int j = -10; j <=10; j++) {
         int x = a + j;
         if(x>=0 && x<=255) {
-          result[x] += smear((FloatType)x, (FloatType)a, 1.0);
+          result[x] += smear((FloatType)x, (FloatType)a, 5.0); // b=5
         }
     }}
     return result;
@@ -82,14 +82,13 @@ public:
   {
     CCTBX_ASSERT(f.size()==256);
     FloatType result = 0.;
-    af::shared<int> i_results;
     af::shared<FloatType> peaks;
     af::shared<int> peak_args;
     FloatType lv=0, rv=0, eps=1.e-3;
-    // find peaks
+    // find peaks; does not handle flat peaks like 0 1 222 1 0
     for(int i = 0; i < 256; i++) {
       FloatType v = f[i];
-      if(std::abs(v-1.)>eps && std::abs(v-2.)>eps && v>1.) {
+      if(std::abs(v-1.)>eps && v>1.) {
         if(i==0) {
           rv = f[i+1];
           if(v>rv) {
@@ -118,14 +117,24 @@ public:
     if(peaks.size()==0) return 0;
     FloatType p_min = af::min(peaks.ref());
     FloatType p_max = af::max(peaks.ref());
-    if(peaks.size()==1 || p_max>2*p_min) result = p_max;
-    else                                 result = p_min;
-    for(int i = 0; i < peaks.size(); i++) {
-      if(std::abs(peaks[i]-result)<eps) {
-        i_results.push_back(peak_args[i]);
-      }
+
+    int i_result;
+    // only one peak
+    if(peaks.size()==1) {
+      CCTBX_ASSERT(peak_args.size()==1);
+      i_result = peak_args[0];
     }
-    int i_result = af::min(i_results.ref());
+    // several similar peaks
+    else {
+      af::shared<int> i_results;
+      for(int i = 0; i < peaks.size(); i++) {
+        if(peaks[i]<=p_max && peaks[i]>=p_max/2) {
+          i_results.push_back(peak_args[i]);
+        }
+      }
+      if(i_results.size()>0) i_result = af::min(i_results.ref());
+      else i_result = af::min(peak_args.ref());
+    }
     FloatType i_result_f = (FloatType)i_result;
     if(i_result>0 && i_result<255) {
       i_result_f = quadratic_approximation(
