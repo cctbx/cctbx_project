@@ -563,25 +563,29 @@ class compute_map_coefficients(object):
       return True
     return False
 
-def b_factor_sharpening_by_map_kurtosis_maximization(map_coeffs, show=True):
+def b_factor_sharpening_by_map_kurtosis_maximization(map_coeffs, show=True,
+      b_sharp_best=None, b_only=False):
   ss = 1./flex.pow2(map_coeffs.d_spacings().data()) / 4.
-  b_sharp_best = None
-  kurt = -999
-  for b_sharp in range(-100,100,5):
-    k_sharp = 1./flex.exp(-ss * b_sharp)
-    map_coeffs_ = map_coeffs.deep_copy().customized_copy(
-      data = map_coeffs.data()*k_sharp)
-    fft_map = map_coeffs_.fft_map(resolution_factor = 0.25)
-    fft_map.apply_sigma_scaling()
-    map_data = fft_map.real_map_unpadded()
-    o = maptbx.more_statistics(map_data)
-    kurt_ = o.kurtosis()
-    if(kurt_ > kurt):
-      kurt = kurt_
-      b_sharp_best = b_sharp
-    if(show):
-      print "b_sharp: %6.1f skewness: %6.4f kurtosis: %6.4f"%(b_sharp,
-        o.skewness(), o.kurtosis())
+  if(b_sharp_best is None):
+    b_sharp_best = None
+    kurt = -999
+    for b_sharp in range(-100,100,5):
+      k_sharp = 1./flex.exp(-ss * b_sharp)
+      map_coeffs_ = map_coeffs.deep_copy().customized_copy(
+        data = map_coeffs.data()*k_sharp)
+      fft_map = map_coeffs_.fft_map(resolution_factor = 0.25)
+      fft_map.apply_sigma_scaling()
+      map_data = fft_map.real_map_unpadded()
+      o = maptbx.more_statistics(map_data)
+      kurt_ = o.kurtosis()
+      if(kurt_ > kurt):
+        kurt = kurt_
+        b_sharp_best = b_sharp
+      if(show):
+        print "b_sharp: %6.1f skewness: %6.4f kurtosis: %6.4f"%(b_sharp,
+          o.skewness(), o.kurtosis())
   if(show): print "Best sharpening B-factor:", b_sharp_best
   k_sharp = 1./flex.exp(-ss * b_sharp_best)
-  return map_coeffs.customized_copy(data = map_coeffs.data()*k_sharp)
+  if(b_only): return b_sharp_best
+  else:
+    return map_coeffs.customized_copy(data = map_coeffs.data()*k_sharp)

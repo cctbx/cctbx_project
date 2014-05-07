@@ -1,7 +1,6 @@
 from __future__ import division
 from scitbx.array_family import flex
 import random
-from mmtbx import map_tools
 from cctbx import miller
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
@@ -32,10 +31,9 @@ def compute_map_and_combine(
   return map_data
 
 class weighted_average(object):
-  def __init__(self, fmodel, map_coefficients, missing=None):
+  def __init__(self, fmodel, map_coefficients):
     self.map_coefficients_data = map_coefficients.data()
     self.map_coefficients = map_coefficients
-    self.missing = missing
     f_o = fmodel.f_obs().data()
     i_o = f_o * f_o
     i_c = abs(fmodel.f_model_scaled_with_k1()).data() * \
@@ -47,7 +45,7 @@ class weighted_average(object):
     self.so = sig/f_o
 
   def random_weight_averaged_map_coefficients(self,
-        random_scale, random_seed, n_cycles, fraction_keep):
+        random_scale, random_seed, n_cycles, fraction_keep, missing=None):
     assert self.map_coefficients_data.size() == \
            self.r.size() == \
            self.so.size()
@@ -59,8 +57,8 @@ class weighted_average(object):
       random_seed      = random_seed,
       n_cycles         = n_cycles)
     mc_wa = self.map_coefficients.customized_copy(data = mc_data)
-    if(self.missing is not None):
-      mc_wa = mc_wa.complete_with(other=self.missing, scale=True)
+    if(missing is not None):
+      mc_wa = mc_wa.complete_with(other=missing, scale=True)
     return mc_wa.select(flex.random_bool(mc_wa.size(), fraction_keep))
 
 def randomize_completeness2(map_coeffs, crystal_gridding, n_cycles=10):
@@ -123,7 +121,7 @@ def randomize_struture_factors(map_coeffs, number_of_kicks, phases_only=False):
       amplitude_error=ar, phase_error_deg=pr, selection=sel)
     if(map_coeff_data is None): map_coeff_data = mc.data()
     else:                       map_coeff_data = map_coeff_data + mc.data()
-  map_coeff_data/number_of_kicks
+  map_coeff_data = map_coeff_data/number_of_kicks
   return miller.set(
     crystal_symmetry = map_coeffs.crystal_symmetry(),
     indices          = map_coeffs.indices(),
@@ -229,6 +227,7 @@ class run(object):
       kick_completeness  = 0.95,
       omit               = True):
     fmodel = self.convert_to_non_anomalous(fmodel=fmodel)
+    from mmtbx import map_tools
     self.mc_orig = map_tools.electron_density_map(
       fmodel=fmodel).map_coefficients(
         map_type     = "2mFo-DFc",
