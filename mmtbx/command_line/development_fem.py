@@ -1,4 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.fem
+# LIBTBX_SET_DISPATCHER_NAME phenix.feature_enhanced_map
 
 from __future__ import division
 import mmtbx.command_line
