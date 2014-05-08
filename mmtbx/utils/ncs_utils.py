@@ -222,14 +222,22 @@ def compute_transform_grad(grad_wrt_xyz,
 def get_ncs_sites_cart(ncs_obj):
   """
   Argument:
-  ncs_obj: an object that contains fmodel and atom selection of a single NCS
-  copy
+  ncs_obj: an object that contains fmodel, sites_cart or xray_structure
+           and an atom selection flags for a single NCS copy.
 
-  Return: (flex.vec3) coordinate sites cart
+  Return: (flex.vec3) coordinate sites cart of the single NCS copy
   """
   assert isinstance(ncs_obj.ncs_atom_selection,flex.bool)
-  xrs_one_ncs = ncs_obj.fmodel.xray_structure.select(ncs_obj.ncs_atom_selection)
-  return xrs_one_ncs.sites_cart()
+  if hasattr(ncs_obj, 'sites_cart'):
+    return ncs_obj.sites_cart().select(ncs_obj.ncs_atom_selection)
+  elif hasattr(ncs_obj, 'fmodel'):
+    xrs_one_ncs = ncs_obj.fmodel.xray_structure.select(
+      ncs_obj.ncs_atom_selection)
+    return xrs_one_ncs.sites_cart()
+  elif  hasattr(ncs_obj, 'xray_structure'):
+    xrs_one_ncs = ncs_obj.xray_structure.sites_cart()
+    return xrs_one_ncs.select(ncs_obj.ncs_atom_selection)
+
 
 def get_weight(minimization_obj):
   """
