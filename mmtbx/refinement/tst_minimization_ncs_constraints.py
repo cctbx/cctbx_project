@@ -156,16 +156,25 @@ class ncs_minimization_test(object):
       data_weight = None
       if(self.use_geometry_restraints):
         data_weight = nu.get_weight(self)
+      target_and_grads_object = mmtbx.refinement.minimization_ncs_constraints.\
+        target_function_and_grads_reciprocal_space(
+          fmodel                 = self.fmodel,
+          rotation_matrices      = self.rotation_matrices,
+          translation_vectors    = self.translation_vectors,
+          restraints_manager     = self.grm,
+          data_weight            = data_weight,
+          refine_sites           = self.sites,
+          refine_u_iso           = self.u_iso,
+          refine_transformations = self.transformations,
+          iso_restraints         = self.iso_restraints)
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
-        fmodel                       = self.fmodel,
+        target_and_grads_object      = target_and_grads_object,
+        xray_structure               = self.fmodel.xray_structure,
         rotation_matrices            = self.rotation_matrices,
         translation_vectors          = self.translation_vectors,
         ncs_atom_selection           = ncs_selection,
         finite_grad_differences_test = self.finite_grad_differences_test,
         max_iterations               = 60,
-        geometry_restraints_manager  = self.grm,
-        data_weight                  = data_weight,
-        iso_restraints               = self.iso_restraints,
         refine_sites                 = self.sites,
         refine_u_iso                 = self.u_iso,
         refine_transformations       = self.transformations)
@@ -182,9 +191,9 @@ class ncs_minimization_test(object):
         self.rotation_matrices = minimized.rotation_matrices
         self.translation_vectors = minimized.translation_vectors
       assert (minimized.finite_grad_difference_val < 1.0e-3)
-      assert approx_equal(self.fmodel.r_work(), minimized.fmodel.r_work())
+      assert approx_equal(self.fmodel.r_work(), target_and_grads_object.fmodel.r_work())
       # break test if r_work is very small
-      if minimized.fmodel.r_work() < 1.0e-6: break
+      if target_and_grads_object.fmodel.r_work() < 1.0e-6: break
     # check results
     if(self.u_iso):
       assert approx_equal(self.fmodel.r_work(), 0, 1.e-5)
