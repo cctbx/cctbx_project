@@ -307,6 +307,10 @@ def create_helix_hydrogen_bond_proxies (
   helix_i_seqs = helix_selection.iselection()
   for model in pdb_hierarchy.models() :
     for chain in model.chains() :
+      # XXX Bug notification.
+      # This loop over conformers produces 2 hbonds (if there are 2 conformers)
+      # for the same atoms in helix if there are more than 1 conformer in chain
+      # (if _any_ atom in chain has alternative conformation)
       for conformer in chain.conformers() :
         chain_i_seqs = conformer.atoms().extract_i_seq()
         both_i_seqs = chain_i_seqs.intersection(helix_i_seqs)
@@ -338,6 +342,9 @@ def create_helix_hydrogen_bond_proxies (
               j_seq += 1
               continue
             bonded_atoms = bonded_resi.atoms()
+            # This condition rejects several residue pairs which probably
+            # should not be generated rather than rejected at the very last
+            # second. It is not a bug.
             if (helix_selection[bonded_atoms[0].i_seq] == True) :
               n_proxies += _create_hbond_proxy(
                 acceptor_atoms=resi_atoms,

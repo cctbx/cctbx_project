@@ -292,6 +292,11 @@ def substitute_ss(real_h,
   """
   if rotamer_manager is None:
     rotamer_manager = RotamerEval()
+  for model in real_h.models():
+    for chain in model.chains():
+      if len(chain.conformers()) > 1:
+        raise Sorry("Secondary structure substitution does not support\n"+\
+            "the presence of alternative conformations.")
   expected_n_hbonds = 0
   ann = ss_annotation
   phil_str = ann.as_restraint_groups()
