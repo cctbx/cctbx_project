@@ -158,8 +158,9 @@ class SuperposePDB(object):
   @classmethod
   def open_models(cls, filename=None, pdb=None, **kwargs):
     """Class method to return instances for each model in a file."""
-    pdb = pdb or iotbx.pdb.input(filename).construct_hierarchy()
-    models = pdb.models()
+    # pdb = pdb or iotbx.pdb.input(filename).construct_hierarchy()
+    pdb = iotbx.pdb.input(filename)
+    models = iotbx.pdb.input(filename).construct_hierarchy().models()
     desc = kwargs.pop('desc', 'moving')
     # print "Model check:"
     # for count, i in enumerate(models):
@@ -269,9 +270,12 @@ class SuperposePDB(object):
     """Print statistics on the RMSD between sites_moving and sites_fixed."""
     rmsd = sites_fixed.rms_difference(sites_moving)
     deltas = (sites_fixed - sites_moving).norms()
-    pbs = libtbx.math_utils.percentile_based_spread(deltas)
+    try:
+      pbs = libtbx.math_utils.percentile_based_spread(deltas)
+      self.log("Percentile-based spread (%s): %-.3f"%(desc, pbs))
+    except:
+      self.log("Could not calculate percentile-based spread... Please fix!")
     self.log("RMSD between fixed and moving atoms (%s): %-.3f"%(desc, rmsd))
-    self.log("Percentile-based spread (%s): %-.3f"%(desc, pbs))
   
   def _print_lsq(self, lsq=None):
     """Print the transformation described by a lsq."""
@@ -304,10 +308,13 @@ class SuperposePDB(object):
       raise Sorry("Cannot align different number of atoms: %s and %s"%(len(sites_moving), len(sites_fixed)))
     if len(sites_moving) == 0:
       raise Sorry("Cannot align an empty set of atoms.")
+    if len(sites_moving) < 2:
+      raise Sorry("Cannot align a single atom.")
+
     # Perform the least squares fit
     # print "len:", len(sites_moving), len(sites_fixed)
     # for i,j in zip(sites_moving, sites_fixed):
-    #     print "moving/fixed:", i, j
+    #    print "moving/fixed:", i, j
     lsq = scitbx.math.superpose.least_squares_fit(reference_sites=sites_fixed, other_sites=sites_moving)
     sites_moving2 = lsq.other_sites_best_fit()
     rmsd = sites_fixed.rms_difference(sites_moving2)
@@ -328,7 +335,15 @@ class SuperposePDB(object):
     self._print_seqalign(alignment)
 
     # Too many arguments; should it just extract seq/str in _align?
-    rmsds = self._superpose_align(alignment, seq_moving, str_moving, seq_fixed, str_fixed, self.selected_atoms, target.selected_atoms)
+    rmsds = self._superpose_align(
+      alignment, 
+      seq_moving,
+      str_moving, 
+      seq_fixed, 
+      str_fixed, 
+      self.selected_atoms, 
+      target.selected_atoms
+      )
     rmsds = sorted(rmsds, key=lambda x:x[0], reverse=True)
     if not rmsds:
       raise Sorry("Failed to get a good sequence alignment, or failed to fit models.")
@@ -341,7 +356,7 @@ class SuperposePDB(object):
     self._print_rmsd(lsq.other_sites_best_fit(), xyz_fixed, desc='final')
     self._print_lsq(lsq)
     return rmsd, lsq
-
+    
   def _superpose_align(self, alignment, seq_moving, str_moving, seq_fixed, str_fixed, sel_moving, sel_fixed, windows=None):
     """Perform a sequence alignment, try to find a sequence alignment window
     that produces the lowest lsq fit. Note that this is a generator."""
@@ -360,14 +375,16 @@ class SuperposePDB(object):
         for atom1 in str_moving[j].rg.atoms():
           for atom2 in str_fixed[k].rg.atoms():
             if (atom1.name == atom2.name) and sel_moving[atom1.i_seq] and sel_fixed[atom2.i_seq]:
+              # print "checked:", atom1.name, atom2.name, atom1.i_seq, atom2.i_seq
               xyz_moving.append(atom1.xyz)
               xyz_fixed.append(atom2.xyz)
-
+      
       # Yield the RMSD for this window.
       try:
         yield self.fit(xyz_moving, xyz_fixed)
       except Exception, e:
-        self.log("Fitting error: %s"%e)
+        pass
+        # self.log("Fitting error: %s"%e)
   
   def _seqalign(self, seq_moving, seq_fixed, quiet=False, cache=True):
     """Perform sequence alignment using mmtbx.alignment. Return alignment.
@@ -420,8 +437,8 @@ class SuperposePDB(object):
       w = matches[left:right]
       append = all((i == '*' or i == '|') for i in w)
       if append:
+        # print "window: %s -- left, right: %s %s -- i: %s -- append? %s"%(w, left, right, i, append)
         aligned.append((i, ia, ib))
-      # print "window: %s -- left, right: %s %s -- i: %s -- append? %s"%(w, left, right, i, append)
     return aligned
     
   def _seqalign_score(self, alignment):
