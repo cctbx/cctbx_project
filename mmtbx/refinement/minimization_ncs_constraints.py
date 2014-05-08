@@ -255,7 +255,6 @@ class lbfgs(object):
         return flex.double(list(self.x))
 
   def finite_difference_test(self,g):
-    return True # XXX FIXME
     """
     Compare analytical and finite differences gradients.
 
@@ -274,6 +273,6 @@ class lbfgs(object):
     t2,_ = self.compute_functional_and_gradients(compute_gradients=False)
     # Return fmodel to the correct coordinates values
     self.x[i_g_max] = self.x[i_g_max] + d
-    self.update_fmodel()
+    self.update_xray_structure()
     finite_gard = (t1-t2)/(d*2)
     self.finite_grad_difference_val = abs(g[i_g_max] - finite_gard)
