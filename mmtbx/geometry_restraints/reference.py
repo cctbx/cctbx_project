@@ -2,6 +2,7 @@
 from __future__ import division
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
+from cctbx.geometry_restraints import shared_dihedral_proxy
 import iotbx.pdb
 import boost.python
 ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
@@ -101,8 +102,11 @@ class manager(object):
       self.add_existing_reference_torsion_proxies(local_reference_torsion_proxies)
 
   def add_existing_reference_torsion_proxies(self, proxies):
-    for dp in proxies:
-      self.reference_torsion_proxies.append(dp)
+    if self.reference_torsion_proxies is None:
+      self.reference_torsion_proxies = shared_dihedral_proxy()
+    if proxies is not None:
+      for dp in proxies:
+        self.reference_torsion_proxies.append(dp)
 
   def remove_coordinate_restraints(self, selection=None):
     if (selection is not None) :
