@@ -43,6 +43,7 @@ class SBSettingsPanel(wx.Panel):
 
     img = self.GetParent().GetParent().pyslip.tiles.raw_image
     d = img.get_detector()
+    self._quad_spinners = []
     for serial in xrange(4):
       fast, slow = d.hierarchy()[serial].get_origin()[0:2]
       name_quadrant = ["Q0", "Q1", "Q2", "Q3"][serial]
@@ -61,8 +62,20 @@ class SBSettingsPanel(wx.Panel):
                 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
         setattr(self, "_" + name_ctrl, spinner)
+        self._quad_spinners.append(spinner)
 
       sizer.Add(box)
+
+    #Spinner amount control
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    self._spinner_amt_control = FloatSpin(
+      self, digits=self.digits, name="spin_amount", value=1, min_val= 0.1, increment=0.1)
+    self.Bind(EVT_FLOATSPIN, self.OnSpinAmount, self._spinner_amt_control)
+    box.Add(self._spinner_amt_control,
+            0, wx.RIGHT|wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(wx.StaticText(self, label="Spinner increment (mm)"),
+            0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    sizer.Add(box)
 
     box = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -217,3 +230,8 @@ class SBSettingsPanel(wx.Panel):
     tiles.tile_cache = tiles.cache[tiles.zoom_level]
     tiles.tile_list = tiles.lru[tiles.zoom_level]
     frame.pyslip.Update()
+
+  def OnSpinAmount(self, event):
+    obj = event.EventObject
+    for spinner in self._quad_spinners:
+      spinner.SetIncrement(obj.GetValue())
