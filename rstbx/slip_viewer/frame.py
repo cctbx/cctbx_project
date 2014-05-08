@@ -43,6 +43,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.settings_frame = None
     self._calibration_frame = None
     self._ring_frame = None
+    self._uc_frame = None
     self._score_frame = None
     self.zoom_frame = None
     self.plot_frame = None
@@ -74,6 +75,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
               id=wx.ID_BACKWARD)
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIRing,
               id=self._id_ring)
+    self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUC,
+              id=self._id_uc)
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIScore,
               id=self._id_score)
 
@@ -140,6 +143,11 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self._id_ring = wx.NewId()
     item = actions_menu.Append(self._id_ring, " ")
     self.Bind(wx.EVT_MENU, self.OnRing, source=item)
+
+    # XXX Placement
+    self._id_uc = wx.NewId()
+    item = actions_menu.Append(self._id_uc, " ")
+    self.Bind(wx.EVT_MENU, self.OnUC, source=item)
 
     # XXX Placement
     self._id_score = wx.NewId()
@@ -359,6 +367,17 @@ class XrayFrame (AppFrame,XFBaseClass) :
     else:
       self._ring_frame.Destroy()
 
+  def OnUC(self, event):
+    from rstbx.slip_viewer.uc_frame import UCSettingsFrame
+
+    if not self._uc_frame:
+      self._uc_frame = UCSettingsFrame(
+        self, wx.ID_ANY, "Unit cell tool",
+        style=wx.CAPTION | wx.CLOSE_BOX)
+      self._uc_frame.Show()
+      self._uc_frame.Raise()
+    else:
+      self._uc_frame.Destroy()
 
   def OnScore(self, event):
     from rstbx.slip_viewer.score_frame import ScoreSettingsFrame
@@ -411,6 +430,14 @@ class XrayFrame (AppFrame,XFBaseClass) :
       event.SetText("Hide ring tool")
     else:
       event.SetText("Show ring tool")
+
+  def OnUpdateUIUC(self, event):
+    # Toggle the menu item text depending on the state of the tool.
+
+    if self._uc_frame:
+      event.SetText("Hide unit cell tool")
+    else:
+      event.SetText("Show unit cell tool")
 
 
   def OnUpdateUIScore(self, event):
