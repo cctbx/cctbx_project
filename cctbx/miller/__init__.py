@@ -4062,6 +4062,62 @@ class array(set):
       sigmas = self.sigmas().select(all_isel)
     return self.customized_copy(data=data, sigmas=sigmas)
 
+  # this is tested as part of phenix.merging_statistics (note that the exact
+  # values are not reproducible)
+  def cc_one_half (self, use_binning=False, n_trials=1, anomalous_flag=False) :
+    """
+    Calculate the correlation between two randomly assigned pools of unmerged
+    data ("CC 1/2").  If desired the mean over multiple trials can be taken.
+    See Karplus PA & Diederichs K (2012) Science 336:1030-3 for motivation.
+    This method assumes that the reflections still have the original indices
+    and maps them to the ASU first; the underlying compute_cc_one_half
+    function skips this method.
+    """
+    assert self.is_xray_intensity_array()
+    tmp_array = self.customized_copy(
+      anomalous_flag=anomalous_flag).map_to_asu()
+    tmp_array = tmp_array.sort("packed_indices")
+    return compute_cc_one_half(tmp_array, n_trials=n_trials)
+
+  def half_dataset_anomalous_correlation (self, use_binning=False) :
+    assert self.is_xray_intensity_array()
+    tmp_array = self.customized_copy(anomalous_flag=True).map_to_asu()
+    tmp_array = tmp_array.sort("packed_indices")
+    if (not use_binning) :
+      split_datasets = split_unmerged(
+        unmerged_indices=tmp_array.indices(),
+        unmerged_data=tmp_array.data(),
+        unmerged_sigmas=tmp_array.sigmas(),
+        weighted=False)
+      base_set = set(
+        crystal_symmetry=self,
+        indices=split_datasets.indices,
+        anomalous_flag=True)
+      assert base_set.is_unique_set_under_symmetry()
+      array1 = array(
+        miller_set=base_set,
+        data=split_datasets.data_1)
+      dano1 = array1.anomalous_differences()
+      array2 = array(
+        miller_set=base_set,
+        data=split_datasets.data_2)
+      dano2 = array2.anomalous_differences()
+      assert dano1.indices().all_eq(dano2.indices())
+      return dano1.correlation(other=dano2, use_binning=False).coefficient()
+    tmp_array.use_binning_of(other=self)
+    data = []
+    for i_bin in tmp_array.binner().range_all():
+      sel = tmp_array.binner().selection(i_bin)
+      bin_array = tmp_array.select(sel)
+      if (bin_array.size() == 0) :
+        data.append(None)
+      else :
+        data.append(bin_array.half_dataset_anomalous_correlation())
+    return binned_data(binner=tmp_array.binner(), data=data, data_fmt="%6.3f")
+
+  def cc_anom (self, *args, **kwds) :
+    return self.half_dataset_anomalous_correlation(*args, **kwds)
+
 # END array class
 
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
@@ -4466,9 +4522,9 @@ def patterson_map(crystal_gridding, f_patt, f_000=None,
 # values are not reproducible)
 def compute_cc_one_half (unmerged, n_trials=1) :
   """
-  Calculate the correlation between two randomly assigned pools of unmerged
-  data ("CC 1/2").  If desired the mean over multiple trials can be taken.
-  See Karplus PA & Diederichs K (2012) Science 336:1030-3 for motivation.
+  Implementation of array.cc_one_half, assuming that the reflections are
+  already in the ASU.  Because the implementation uses random numbers, the
+  function has the option to calculate the mean over multiple trials.
   """
   cc_all = []
   unmerged = unmerged.select(unmerged.sigmas() > 0)
