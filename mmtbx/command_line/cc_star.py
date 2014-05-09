@@ -8,59 +8,6 @@ from libtbx import Auto
 import libtbx.phil
 import sys
 
-def merging_and_model_statistics (
-    f_obs,
-    f_model,
-    r_free_flags,
-    unmerged_i_obs,
-    n_bins=20,
-    sigma_filtering=Auto) :
-  from iotbx import merging_statistics
-  free_sel = r_free_flags
-  # very important: must use original intensities for i_obs, not squared f_obs,
-  # because French-Wilson treatment is one-way
-  assert (unmerged_i_obs.sigmas() is not None)
-  info = unmerged_i_obs.info()
-  assert (info is not None)
-  unmerged_i_obs = unmerged_i_obs.customized_copy(crystal_symmetry=f_obs)
-  unmerged_i_obs = unmerged_i_obs.select(
-    unmerged_i_obs.sigmas() >= 0).set_info(info)
-  filter = merging_statistics.filter_intensities_by_sigma(
-    array=unmerged_i_obs,
-    sigma_filtering=sigma_filtering)
-  i_obs = filter.array_merged
-  unmerged_i_obs = filter.array
-  if (i_obs.anomalous_flag()) :
-    i_obs = i_obs.average_bijvoet_mates()
-  if (f_model.anomalous_flag()) :
-    f_model = f_model.average_bijvoet_mates()
-  if (free_sel.anomalous_flag()) :
-    free_sel = free_sel.average_bijvoet_mates()
-  if (free_sel.data().count(True) == 0) :
-    raise Sorry("R-free array does not select any reflections.  To calculate "+
-      "CC* and related statistics, a valid set of R-free flags must be used.")
-  work_sel = free_sel.customized_copy(data=~free_sel.data())
-  i_obs, f_model = i_obs.common_sets(other=f_model)
-  i_obs, f_obs = i_obs.common_sets(other=f_obs)
-  i_obs, work_sel = i_obs.common_sets(other=work_sel)
-  i_obs, free_sel = i_obs.common_sets(other=free_sel)
-  i_calc = abs(f_model).f_as_f_sq()
-  d_max, d_min = i_calc.d_max_min()
-  model_arrays = merging_statistics.model_based_arrays(
-    f_obs=f_obs,
-    i_obs=i_obs,
-    i_calc=i_calc,
-    work_sel=work_sel,
-    free_sel=free_sel)
-  return merging_statistics.dataset_statistics(
-    i_obs=unmerged_i_obs,
-    crystal_symmetry=i_calc,
-    d_min=d_min,
-    d_max=d_max,
-    n_bins=n_bins,
-    model_arrays=model_arrays,
-    sigma_filtering=None) # no need, since it was done here
-
 master_phil = libtbx.phil.parse("""
 data = None
   .type = path
@@ -136,6 +83,7 @@ Full parameters:
       reflection_file_def="data")
     params = cmdline.work.extract()
   import mmtbx.command_line
+  import mmtbx.validation.experimental
   from iotbx import merging_statistics
   from iotbx import file_reader
   if (params.data is None) :
@@ -285,7 +233,7 @@ Full parameters:
     if (f_model.anomalous_flag()) :
       f_model = f_model.average_bijvoet_mates()
     f_model, r_free_flags = f_model.common_sets(other=r_free_flags)
-  stats = merging_and_model_statistics(
+  stats = mmtbx.validation.experimental.merging_and_model_statistics(
     f_model=f_model,
     f_obs=f_obs,
     r_free_flags=r_free_flags,

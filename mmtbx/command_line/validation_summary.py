@@ -1,150 +1,34 @@
 
-# TODO remove and replace with new molprobity module
-
 """
 Convenience tool for collecting validation statistics with minimal overhead.
 """
 
 from __future__ import division
+from mmtbx.validation import molprobity
+from iotbx import file_reader
 from libtbx import slots_getstate_setstate, Auto
 from libtbx.utils import Sorry, Usage
 from libtbx import str_utils
 from libtbx import easy_mp
-import cStringIO
 import os
 import sys
 
-molprobity_stats = [
-  "rama_out",
-  "rama_fav",
-  "rota_out",
-  "cbeta_out",
-  "clashscore",
-  "mpscore",
-]
-molprobity_stat_labels = [
-  "Ramachandran outliers",
-  "Ramachandran favored",
-  "Rotamer outliers",
-  "C-beta outliers",
-  "Clashscore",
-  "MolProbity score",
-]
-header_stats = [
-  "r_work",
-  "r_free",
-  "d_min",
-  "rms_bonds",
-  "rms_angles",
-]
-header_stat_labels = [
-  "R-work",
-  "R-free",
-  "High resolution",
-  "RMS(bonds)",
-  "RMS(angles)",
-]
-
-class summary (slots_getstate_setstate) :
-  """
-  Very basic MolProbity statistics for a refinement result, plus R-factors and
-  RMS(bonds)/RMS(angles) if they can be extracted from REMARK records in the
-  PDB header.  Suitable for benchmarking or collecting statistics, but not a
-  substitute for full validation.
-  """
-
-  __slots__ = molprobity_stats + header_stats
-
-  def __init__ (self, pdb_hierarchy=None, pdb_file=None, sites_cart=None,
-      keep_hydrogens=False) :
-    if (pdb_hierarchy is None) :
-      assert (pdb_file is not None)
-      from iotbx import file_reader
-      pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-      pdb_in.assert_file_type("pdb")
-      pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
-      pdb_hierarchy.atoms().reset_i_seq()
-    if (sites_cart is not None) :
-      pdb_hierarchy.atoms().set_xyz(sites_cart)
-    for attr in self.__slots__ :
-      setattr(self, attr, None)
-    from mmtbx.validation import ramalyze, rotalyze, cbetadev, clashscore
-    log = cStringIO.StringIO()
-    rama = ramalyze.ramalyze(pdb_hierarchy=pdb_hierarchy,
-      outliers_only=True)
-    if (rama.n_total > 0) :
-      self.rama_fav = rama.percent_favored
-      self.rama_out = rama.percent_outliers
-    else :
-      self.rama_fav = None
-      self.rama_out = None
-    rota = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy,
-      outliers_only=True)
-    if (rota.n_total > 0) :
-      self.rota_out = rota.percent_outliers
-    else :
-      self.rota_out = None
-    cs = clashscore.clashscore(pdb_hierarchy=pdb_hierarchy,
-      keep_hydrogens=keep_hydrogens)
-    self.clashscore = cs.get_clashscore()
-    cbeta_obj = cbetadev.cbetadev(
-      pdb_hierarchy=pdb_hierarchy,
-      outliers_only=True)
-    self.mpscore = None
-    if (not None in [self.rota_out, self.rama_fav, self.clashscore]) :
-      from mmtbx.validation.utils import molprobity_score
-      self.mpscore = molprobity_score(
-        clashscore=self.clashscore,
-        rota_out=self.rota_out,
-        rama_fav=self.rama_fav)
-    # TODO leave self.cbeta_out as None if not protein
-    self.cbeta_out = cbeta_obj.get_outlier_count()
-    self.r_work = None
-    self.r_free = None
-    self.rms_bonds = None
-    self.rms_angles = None
-    self.d_min = None
-    if (pdb_file is not None) :
-      from iotbx.pdb import extract_rfactors_resolutions_sigma
-      published_results = extract_rfactors_resolutions_sigma.extract(
-        file_name=pdb_file)
-      if (published_results is not None) :
-        self.r_work = published_results.r_work
-        self.r_free = published_results.r_free
-        self.d_min   = published_results.high
-      lines = open(pdb_file).readlines()
-      for line in lines :
-        if (line.startswith("REMARK Final:")) :
-          fields = line.strip().split()
-          self.rms_bonds = float(fields[-4])
-          self.rms_angles = float(fields[-1])
-          break
-
-  def show (self, out=sys.stdout, prefix="  ") :
-    def fs (format, value) :
-      return str_utils.format_value(format, value, replace_none_with=("(none)"))
-    print >> out, "%sRamachandran outliers = %s %%" % (prefix,
-      fs("%6.2f", self.rama_out))
-    print >> out, "%s             favored  = %s %%" % (prefix,
-      fs("%6.2f", self.rama_fav))
-    print >> out, "%sRotamer outliers      = %s %%" % (prefix,
-      fs("%6.2f", self.rota_out))
-    print >> out, "%sC-beta deviations     = %s" % (prefix,
-      fs("%6d", self.cbeta_out))
-    print >> out, "%sClashscore            = %6.2f" % (prefix, self.clashscore)
-    if (self.mpscore is not None) :
-      print >> out, "%sMolprobity score      = %6.2f" % (prefix, self.mpscore)
-    if (self.r_work is not None) :
-      print >> out, "%sR-work                = %8.4f" % (prefix, self.r_work)
-    if (self.r_free is not None) :
-      print >> out, "%sR-free                = %8.4f" % (prefix, self.r_free)
-    if (self.rms_bonds is not None) :
-      print >> out, "%sRMS(bonds)            = %8.4f" % (prefix, self.rms_bonds)
-    if (self.rms_angles is not None) :
-      print >> out, "%sRMS(angles)           = %6.2f" % (prefix,
-        self.rms_angles)
-    if (self.d_min is not None) :
-      print >> out, "%sHigh resolution       = %6.2f" % (prefix, self.d_min)
+def summary (pdb_file=None, pdb_hierarchy=None) :
+  header_info = None
+  if (pdb_hierarchy is None) :
+    assert (pdb_file is not None)
+    pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
+    pdb_in.assert_file_type("pdb")
+    pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+    pdb_hierarchy.atoms().reset_i_seq()
+    header_info = molprobity.pdb_header_info(
+      pdb_file=pdb_file)
+  else :
+    assert (pdb_file is None)
+  return molprobity.molprobity(
+    pdb_hierarchy=pdb_hierarchy,
+    keep_hydrogens=False,
+    header_info=header_info).summarize()
 
 class parallel_driver (object) :
   """
@@ -167,7 +51,14 @@ class ensemble (slots_getstate_setstate) :
   number of atoms in each model is not necessarily consistent.
   """
 
-  __slots__ = molprobity_stats
+  __slots__ = [
+    "rama_out",
+    "rama_fav",
+    "rota_out",
+    "cbeta_out",
+    "clashscore",
+    "mpscore",
+  ]
 
   def __init__ (self, pdb_hierarchy, n_models, nproc=Auto) :
     assert (len(pdb_hierarchy.models()) == n_models)
