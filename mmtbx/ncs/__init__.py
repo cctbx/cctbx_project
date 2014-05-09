@@ -15,7 +15,7 @@ class asu_ncs_converter(object):
   Further improvements: use atom selections to identify NCS copies.
   """
 
-  def __init__(self, pdb_hierarchy, eps = 0.01):
+  def __init__(self, pdb_hierarchy, eps = 0.01, add_identity=True):
     self.pdb_hierarchy = pdb_hierarchy
     n_atoms_per_chain = flex.int()
     sites_cart_chain_0 = None
@@ -37,15 +37,16 @@ class asu_ncs_converter(object):
             sites_cart_chain_0 = chain.atoms().extract_xyz()
             sel = flex.size_t(xrange(sites_cart_chain_0.size()))
             self.ph_first_chain = pdb_hierarchy.select(sel)
-            um = scitbx.matrix.sqr((
-              1,0,0,
-              0,1,0,
-              0,0,1))
-            zv = scitbx.matrix.col((0, 0, 0))
-            self.rotation_matrices.append(um)
-            self.translation_vectors.append(zv)
-            self.back_rotation_matrices.append(um)
-            self.back_translation_vectors.append(zv)
+            if(add_identity):
+              um = scitbx.matrix.sqr((
+                1,0,0,
+                0,1,0,
+                0,0,1))
+              zv = scitbx.matrix.col((0, 0, 0))
+              self.rotation_matrices.append(um)
+              self.translation_vectors.append(zv)
+              self.back_rotation_matrices.append(um)
+              self.back_translation_vectors.append(zv)
           if(i_chain > 0):
             # first copy onto others
             lsq_fit_obj = superpose.least_squares_fit(

@@ -2,12 +2,12 @@
 from __future__ import division
 import time
 import iotbx.pdb
-from scitbx.array_family import flex
 import mmtbx.ncs
 import mmtbx.refinement.real_space.weight
 import mmtbx.utils
 import mmtbx.refinement.minimization_ncs_constraints
-from iotbx.pdb.multimer_reconstruction import multimer
+import mmtbx.utils.ncs_utils as nu
+import math
 
 pdb_str_answer = """\
 CRYST1   26.628   30.419   28.493  90.00  90.00  90.00 P 1
@@ -102,30 +102,34 @@ def run(prefix="tst", d_min=1.0):
     geometry      = ppf.geometry_restraints_manager(show_energies = False),
     normalization = True)
   #
-  ncs_obj_poor = mmtbx.ncs.asu_ncs_converter(pdb_hierarchy = ph_answer)#ph_poor)
-  ncs_obj_poor.write_pdb_file(file_name="ncs.pdb",
-    crystal_symmetry=xrs_poor.crystal_symmetry(), mode="ncs")
-  tmp = multimer(
-      file_name="ncs.pdb",
-      round_coordinates=False,
-      reconstruction_type='cau',error_handle=True,eps=1e-2)
-
-  #
   fc = xrs_answer.structure_factors(d_min=d_min).f_calc()
   fft_map = fc.fft_map(resolution_factor = 0.25)
   fft_map.apply_sigma_scaling()
   map_data = fft_map.real_map_unpadded()
   #
-  import cctbx.maptbx.real_space_refinement_simple
-  sites_cart = xrs_poor.sites_cart()
-  tg = cctbx.maptbx.real_space_refinement_simple.target_and_gradients(
-    unit_cell                  = xrs_poor.unit_cell(),
-    density_map                = map_data,
-    sites_cart                 = sites_cart,
-    real_space_gradients_delta = d_min/4,
-    selection                  = flex.bool(sites_cart.size(), True))
-  print tg.target()
-  print tg.gradients()
+  ncs_obj_poor = mmtbx.ncs.asu_ncs_converter(pdb_hierarchy = ph_answer,
+    add_identity=True)
+  ncs_obj_poor.write_pdb_file(file_name="asu.pdb",
+    crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
+  rm = ncs_obj_poor.back_rotation_matrices
+  tv = ncs_obj_poor.back_translation_vectors
+  ir = [rm[0]]
+  it = [tv[0]]
+  # shake; this removes identity operators
+  rm, tv = nu.shake_transformations(
+    rotation_matrices       = rm,
+    translation_vectors     = tv,
+    shake_angles_sigma      = 1*math.pi/180,
+    shake_translation_sigma = 0.1)
+  # just to see how result of shaking looks like
+  rm_ = ir+rm
+  tv_ = it+tv
+  ncs_obj_poor.back_rotation_matrices=rm_
+  ncs_obj_poor.back_translation_vectors=tv_
+  ncs_obj_poor.update_sites_cart(
+    sites_cart_master_ncs_copy=ncs_obj_poor.ph_first_chain.atoms().extract_xyz())
+  ncs_obj_poor.write_pdb_file(file_name="asu2.pdb",
+    crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
   #
   for i in xrange(5):
     data_weight = 1
@@ -135,36 +139,39 @@ def run(prefix="tst", d_min=1.0):
     #  xray_structure              = xrs_poor,
     #  pdb_hierarchy               = ph_poor,
     #  geometry_restraints_manager = restraints_manager,
-    #  rms_bonds_limit             = 0.005,
-    #  rms_angles_limit            = 0.1).weight
-    print data_weight
-    tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
-      target_function_and_grads_real_space(
-        map_data                   = map_data,
-        xray_structure             = xrs_poor,
-        #rotation_matrices          = ncs_obj_poor.rotation_matrices,
-        #translation_vectors        = ncs_obj_poor.translation_vectors,
-        rotation_matrices          = tmp.rotation_matrices,
-        translation_vectors        = tmp.translation_vectors,
-        real_space_gradients_delta = d_min/4,
-        restraints_manager         = restraints_manager,
-        data_weight                = data_weight,
-        refine_sites               = True,
-        refine_transformations     = False)
-    minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
-      target_and_grads_object      = tfg_obj,
-      xray_structure               = xrs_poor,
-      #rotation_matrices            = ncs_obj_poor.rotation_matrices,
-      #translation_vectors          = ncs_obj_poor.translation_vectors,
-      rotation_matrices            = tmp.rotation_matrices,
-      translation_vectors          = tmp.translation_vectors,
-      ncs_atom_selection           = ncs_selection,
-      finite_grad_differences_test = False,
-      max_iterations               = 60,
-      refine_sites                 = True,
-      refine_transformations       = False)
-    xrs_poor = tfg_obj.xray_structure
-    ph_poor.adopt_xray_structure(tfg_obj.xray_structure)
+    #  rms_bonds_limit             = 0.01,
+    #  rms_angles_limit            = 0.5).weight
+    #print data_weight
+    for action in [[False, True], [True, False]]:
+      refine_sites, refine_transformations = action
+      tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
+        target_function_and_grads_real_space(
+          map_data                   = map_data,
+          xray_structure             = xrs_poor,
+          rotation_matrices          = rm,
+          translation_vectors        = tv,
+          real_space_gradients_delta = d_min/4,
+          restraints_manager         = restraints_manager,
+          data_weight                = data_weight,
+          refine_sites               = refine_sites,
+          refine_transformations     = refine_transformations)
+      minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
+        target_and_grads_object      = tfg_obj,
+        xray_structure               = xrs_poor,
+        rotation_matrices            = rm,
+        translation_vectors          = tv,
+        ncs_atom_selection           = ncs_selection,
+        finite_grad_differences_test = False,
+        max_iterations               = 60,
+        refine_sites                 = refine_sites,
+        refine_transformations       = refine_transformations)
+      xrs_poor = tfg_obj.xray_structure
+      ph_poor.adopt_xray_structure(tfg_obj.xray_structure)
+      #
+      ncs_obj_poor = mmtbx.ncs.asu_ncs_converter(pdb_hierarchy = ph_poor,
+        add_identity=False)
+      rm = ncs_obj_poor.back_rotation_matrices
+      tv = ncs_obj_poor.back_translation_vectors
   #
   ph_poor.write_pdb_file(file_name="refined.pdb")
 
