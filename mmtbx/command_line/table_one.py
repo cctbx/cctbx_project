@@ -86,7 +86,7 @@ master_phil_str = """
 table_one {
   %s
   processing {
-    re_compute_r_factors = False
+    re_compute_r_factors = True
       .type = bool
       .short_caption = Always re-compute R-factors
       .style = bold
@@ -221,7 +221,7 @@ class _ (oop.injector, molprobity.molprobity) :
       adp_mean_wat=self.model_stats.water.b_mean,
       ).add_outer_shell(
         # XXX we need a consistency check here as well
-        d_max_min=(merging_outer.d_max, merging_outer.d_min),
+        d_max_min=(data_stats.d_max_outer, data_stats.d_min_outer),
         n_refl=data_stats.n_refl_outer,
         n_refl_all=merging_outer.n_obs,
         n_refl_refine=data_stats.n_refl_refine_outer,
