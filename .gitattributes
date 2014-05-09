@@ -1360,6 +1360,7 @@ libtbx/assert_utils.py -text
 libtbx/auto_build/README -text
 libtbx/auto_build/__init__.py -text
 libtbx/auto_build/create_mac_app.py -text
+libtbx/auto_build/create_mac_pkg.py -text
 libtbx/auto_build/create_windows_exe.py -text
 libtbx/auto_build/install -text
 libtbx/auto_build/install_cctbx_base.py -text
