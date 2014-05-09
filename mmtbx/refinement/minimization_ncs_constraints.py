@@ -78,8 +78,6 @@ class target_function_and_grads_reciprocal_space(object):
           rotation_matrices = self.rotation_matrices,
           xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
           x                 = lbfgs_self.x)
-    #XXX FIXME if(self.finite_grad_differences_test and compute_gradients):
-    #XXX FIXME   self.finite_difference_test(g)
     return t, g
 
   def restraints_target_and_grads(self, lbfgs_self):
