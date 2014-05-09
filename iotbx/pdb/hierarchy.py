@@ -1706,6 +1706,7 @@ def substitute_atom_group (
     backbone_only=True,
     exclude_hydrogens=False,
     ignore_b_factors=False,
+    is_amino_acid=Auto,
     log=None) :
   """
   Substitute the sidechain atoms from one residue for another, using
@@ -1718,12 +1719,14 @@ def substitute_atom_group (
   selection_fixed = flex.size_t()
   selection_moving = flex.size_t()
   res_class = common_residue_names_get_class(current_group.resname)
+  if (is_amino_acid is Auto) :
+    is_amino_acid = (res_class == "common_amino_acid")
   # TODO nucleic acids?
   backbone_atoms = [" CA ", " C  ", " N  ", " CB "]
   for i_seq, atom in enumerate(current_group.atoms()) :
     if (atom.element == " H") and (exclude_hydrogens) :
       continue
-    if (res_class == "common_amino_acid") and (backbone_only) :
+    if (is_amino_acid and backbone_only) :
       if (not atom.name in backbone_atoms) :
         continue
     for j_seq, other_atom in enumerate(new_group.atoms()) :
@@ -1740,7 +1743,7 @@ def substitute_atom_group (
   sites_new = lsq_fit.r.elems * sites_new + lsq_fit.t.elems
   new_atoms.set_xyz(sites_new)
   keep_atoms = []
-  if (backbone_only) and (res_class == "common_amino_acid") :
+  if (is_amino_acid and backbone_only) :
     keep_atoms = backbone_atoms + [" O  "] # XXX definitely keep peptide O!
   atom_b_iso = {}
   max_b = flex.max(current_group.atoms().extract_b())
