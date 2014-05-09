@@ -6,24 +6,22 @@ import scipy.cluster.hierarchy as hcluster
 import numpy as np
 import json
 from SingleFrame import SingleFrame
+import logging
 
 
 class Cluster:
-  def __init__(self, data, cname, info):
+  def __init__(self, data, cname, info, log_level='INFO'):
     """ Contains a list of SingFrame objects, as well as information about these
     as a cluster (e.g. mean unit cell)."""
-
     self.cname = cname
     self.members = data
     self.info = info
 
     # Calculate medians and stdevs
     unit_cells = np.zeros([len(self.members), 6])
-    i = 0
     self.pg_composition = {}
-    for member in self.members:
+    for i, member in enumerate(self.members):
       unit_cells[i, :] = member.uc
-      i += 1
       # Calculate point group composition
       if member.pg in self.pg_composition.keys():
         self.pg_composition[member.pg] += 1
@@ -53,6 +51,7 @@ class Cluster:
 
   @classmethod
   def from_json(cls, json_file, _prefix='cluster_from_json'):
+    """ Does not work!! Do not use! """
     with open(json_file, 'rb') as inFile:
       data = json.load(inFile)
     return cls(data, _prefix,
@@ -92,52 +91,54 @@ class Cluster:
           completeness -- the desired completeness of the subset
           multiplicity -- the desired multiplicity of the subset
     """
+    logging.info(("Performing intensity filtering, aiming for {}% overall completenes"
+                  " at {} A resolution").format(completeness_threshold * 100, res))
+
     # 0. Check that the cluster has consistent point_group (completness doesn't mean much otherwise...
     assert all(i.pg == self.members[0].pg for i in self.members)
 
     # 1. Sort SingleFrames by total intensity
-    sorted_cluster = sorted(self.members, key=lambda y: -1*y.total_i)
+    sorted_cluster = sorted(self.members, key=lambda y: -1 * y.total_i)
 
     if plot:
       from matplotlib import pyplot as plt
       plt.plot([x.total_i for x in sorted_cluster])
       plt.show()
+
     if res == '':
       res = sorted_cluster[0].d_min()  # Use the high-res limit from the brightest image. ToDo: make this better.
+      logging.warning("no resolution limit specified, using the res limit of the top-rankeed image: {} A".format(res))
 
     # 2. Incrementally merge frames until criterion are matched
-    total_obs = 0
+
     temp_miller_indicies = sorted_cluster[0].miller_array
-    print temp_miller_indicies.size()
     for idx, image in enumerate([x.miller_array for x in sorted_cluster[1:]]):
       temp_miller_indicies = temp_miller_indicies.concatenate(image, assert_is_similar_symmetry=False)
       current_completeness = temp_miller_indicies.merge_equivalents().array().completeness()
-      print current_completeness
-     # print len(temp_miller_indicies.indices())
+      logging.debug("{} images: {:.2f}% complete".format(idx, current_completeness * 100))
       if current_completeness <= completeness_threshold:
         temp_miller_indicies.concatenate(image, assert_is_similar_symmetry=False)
+        if idx + 1 == len(sorted_cluster[1:]):
+          logging.warning("Desired completeness could not be acheived, sorry.")
+          file_threshold = idx
+          break
       else:
-        return self.make_sub_cluster(sorted_cluster[:idx],
-                                     'I_threshold_d{}_{}comp'.format(res, completeness_threshold),
-                                     ('Subset cluster made using total_intensity_filter() with'
-                                     '\nRes={}\ncompleteness_threshold={}').format(res,
-                                                                                   completeness_threshold))
+        file_threshold = idx
+        break
 
-        #length = all_millers_indicies.size()
-        #all_millers_indicies = sorted_cluster[0].miller_array.complete_set(d_min=res)
-        #for hkl in image.miller_array.indicies():
-        #  if hkl != temp_miller_indicies:
-        #    total_obs += 1
+    return self.make_sub_cluster(sorted_cluster[:file_threshold],
+                                 'I_threshold_d{}_{}comp'.format(res, completeness_threshold),
+                                 ('Subset cluster made using total_intensity_filter() with'
+                                  '\nRes={}\ncompleteness_threshold={}').format(res,
+                                                                                completeness_threshold))
 
   def ab_cluster(self, threshold=10000, method='distance', linkage_method='single', log=False, plot=False):
     """ Do basic hierarchical clustering using the Andrews-Berstein distance
     on the Niggli cells """
-
+    print "Hierarchical clustering of unit cells:"
     import scipy.spatial.distance as dist
-    import operator
 
-    print ("Using Andrews-Bernstein Distance from " +
-           "Andrews & Bernstein J Appl Cryst 47:346 (2014).")
+    print "Using Andrews-Bernstein Distance from Andrews & Bernstein J Appl Cryst 47:346 (2014)."
 
     def make_g6(uc):
       """ Take a reduced Niggli Cell, and turn it into the G6 representation """
@@ -156,14 +157,14 @@ class Cluster:
     # 2. Do hierarchichal clustering, using the find_distance method above.
     pair_distances = dist.pdist(g6_cells,
                                 metric=lambda a, b: NCDist(a, b))
-    print "Distances have been calculated"
+    logging.debug("Distances have been calculated")
     this_linkage = hcluster.linkage(pair_distances,
                                     method=linkage_method,
                                     metric=lambda a, b: NCDist(a, b))
     cluster_ids = hcluster.fcluster(this_linkage,
                                     threshold,
                                     criterion=method)
-
+    logging.debug("Clusters have been calculated")
     # Create an array of sub-cluster objects from the clustering
     sub_clusters = []
     for cluster in range(max(cluster_ids)):
@@ -181,8 +182,8 @@ class Cluster:
                                                 info_string))
 
     # 3. print out some information that is useful.
-    print "{} clusters have been identified.".format(max(cluster_ids))
-    print "{:^5} {:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
+    out_str = "{} clusters have been identified.".format(max(cluster_ids))
+    out_str += "\n{:^5} {:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
       "C_id",
       "Num in cluster",
       "Med_a", "Med_b", "Med_c",
@@ -191,40 +192,42 @@ class Cluster:
     for cluster in sub_clusters:
       if len(cluster.members) != 1:
 
-        sorted_pg_comp = sorted(cluster.pg_composition.items(), key=lambda x: -1*x[1])
+        sorted_pg_comp = sorted(cluster.pg_composition.items(), key=lambda x: -1 * x[1])
         pg_strings = ["{} in {}".format(pg[1], pg[0])
                       for pg in sorted_pg_comp]
         point_group_string = ", ".join(pg_strings) + "."
-        print ("{:^5} {:^14} {:<5.1f}({:<4.1f}) {:<5.1f}({:<4.1f})"
-               " {:<5.1f}({:<4.1f}) {:<6.2f}({:<4.2f}) {:<6.2f}"
-               "({:<4.2f}) {:<6.2f}({:<4.2f})").format(
-                                    cluster.cname,
-                                    len(cluster.members),
-                                    cluster.medians[0], cluster.stdevs[0],
-                                    cluster.medians[1], cluster.stdevs[1],
-                                    cluster.medians[2], cluster.stdevs[2],
-                                    cluster.medians[3], cluster.stdevs[3],
-                                    cluster.medians[4], cluster.stdevs[4],
-                                    cluster.medians[5], cluster.stdevs[5])
-        print point_group_string
+        out_str += ("\n{:^5} {:^14} {:<5.1f}({:<4.1f}) {:<5.1f}({:<4.1f})"
+                    " {:<5.1f}({:<4.1f}) {:<6.2f}({:<4.2f}) {:<6.2f}"
+                    "({:<4.2f}) {:<6.2f}({:<4.2f})").format(
+          cluster.cname,
+          len(cluster.members),
+          cluster.medians[0], cluster.stdevs[0],
+          cluster.medians[1], cluster.stdevs[1],
+          cluster.medians[2], cluster.stdevs[2],
+          cluster.medians[3], cluster.stdevs[3],
+          cluster.medians[4], cluster.stdevs[4],
+          cluster.medians[5], cluster.stdevs[5])
+        out_str += "\n" + point_group_string
       else:
         singletons.append("".join([("{:<14} {:<11.1f} {:<11.1f} {:<11.1f}"
-                          "{:<12.1f} {:<12.1f} {:<12.1f}").format(
-                            cluster.pg_composition.keys()[0],
-                            cluster.members[0].uc[0], cluster.members[0].uc[1],
-                            cluster.members[0].uc[2], cluster.members[0].uc[3],
-                            cluster.members[0].uc[4], cluster.members[0].uc[5]),
-                             '\n']))
-    print "Standard deviations are in brackets."
-    print str(len(singletons)) + " singletons:  \n"
-    print "{:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
+                                    "{:<12.1f} {:<12.1f} {:<12.1f}").format(
+          cluster.pg_composition.keys()[0],
+          cluster.members[0].uc[0], cluster.members[0].uc[1],
+          cluster.members[0].uc[2], cluster.members[0].uc[3],
+          cluster.members[0].uc[4], cluster.members[0].uc[5]),
+                                   '\n']))
+    out_str += "\nStandard deviations are in brackets."
+    out_str += "\n" + str(len(singletons)) + " singletons:"
+    out_str += "\n{:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
       "Point group",
       "a", "b", "c",
       "alpha", "beta", "gamma")
-    print "".join(singletons)
+    out_str += "".join(singletons)
+    print out_str
 
     if plot:
       import matplotlib.pyplot as plt
+
       fig = plt.figure("Distance Dendogram")
       hcluster.dendrogram(this_linkage,
                           labels=[image.name for image in self.members],
@@ -238,13 +241,15 @@ class Cluster:
       fig.savefig("{}_dendogram.pdf".format(self.cname))
       plt.show()
 
-    #for i in sub_clusters:
-    #  with open("{}_{}.json".format(self.cname, i.cname), 'w') as outfile:
-    #    #json.dump(i.__dict__, outfile)
-    #    json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
-
     return sub_clusters
 
+  def dump_file_list(self, out_file_name=None):
+    if out_file_name is None:
+      out_file_name = self.cname
+
+    with open("{}.members".format(out_file_name), 'wb') as outfile:
+      for i in self.members:
+        outfile.write(i.path + "\n")
 
 def cluster_pca(self):
   """ Should use BLEND clustering protocols in python (Foaldi et al. Acta D.
