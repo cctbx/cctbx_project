@@ -88,6 +88,7 @@ class data_statistics (slots_getstate_setstate) :
     self.completeness = f_obs.completeness()
     # outer shell
     d_max_min_outer = f_obs.binner().bin_d_range(n_bins)
+    assert (not None in d_max_min_outer)
     self.d_max_outer = d_max_min_outer[0]
     self.d_min_outer = d_max_min_outer[1]
     self.r_free_outer = fmodel.r_free(d_max=self.d_max_outer,

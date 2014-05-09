@@ -247,7 +247,7 @@ def format_value (fs, value) :
 
 def format_d_max_min (d_max_min) :
   """Format a resolution range (e.g. '30 - 2.56')"""
-  if (d_max_min is None) :
+  if (d_max_min is None) or (d_max_min == (None, None)) :
     return ""
   else :
     (d_max, d_min) = d_max_min
