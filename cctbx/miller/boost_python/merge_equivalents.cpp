@@ -173,12 +173,14 @@ namespace {
       class_<w_t>("split_unmerged", no_init)
         .def(init<af::const_ref<index<> > const&,
                   af::const_ref<double> const&,
-                  af::const_ref<double> const&>((
+                  af::const_ref<double> const&, bool>((
             arg("unmerged_indices"),
             arg("unmerged_data"),
-            arg("unmerged_sigmas"))))
+            arg("unmerged_sigmas"),
+            arg("weighted")=true)))
         .add_property("data_1", make_getter(&w_t::data_1, rbv()))
-        .add_property("data_2", make_getter(&w_t::data_2, rbv()));
+        .add_property("data_2", make_getter(&w_t::data_2, rbv()))
+        .add_property("indices", make_getter(&w_t::indices, rbv()));
 
 //        .add_property("coefficient", &w_t::coefficient);
     }

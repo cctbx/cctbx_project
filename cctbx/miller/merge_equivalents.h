@@ -536,11 +536,13 @@ namespace cctbx { namespace miller {
     public :
       af::shared<FloatType> data_1;
       af::shared<FloatType> data_2;
+      af::shared< index<> > indices;
 
       split_unmerged (
         af::const_ref<index<> > const& unmerged_indices,
         af::const_ref<FloatType> const& unmerged_data,
-        af::const_ref<FloatType> const& unmerged_sigmas)
+        af::const_ref<FloatType> const& unmerged_sigmas,
+        bool weighted=true)
       {
         if (unmerged_indices.size() == 0) return;
         CCTBX_ASSERT(unmerged_sigmas.all_gt(0.0));
@@ -550,13 +552,13 @@ namespace cctbx { namespace miller {
           if (unmerged_indices[group_end] != unmerged_indices[group_begin]) {
             process_group(group_begin, group_end,
                           unmerged_indices[group_begin],
-                          unmerged_data, unmerged_sigmas);
+                          unmerged_data, unmerged_sigmas, weighted);
             group_begin = group_end;
           }
         }
         process_group(group_begin, group_end,
                       unmerged_indices[group_begin],
-                      unmerged_data, unmerged_sigmas);
+                      unmerged_data, unmerged_sigmas, weighted);
       }
 
 // XXX why doesn't this work?
@@ -572,7 +574,8 @@ namespace cctbx { namespace miller {
         std::size_t group_end,
         index<> const& current_index,
         af::const_ref<FloatType> const& unmerged_data,
-        af::const_ref<FloatType> const& unmerged_sigmas)
+        af::const_ref<FloatType> const& unmerged_sigmas,
+        bool weighted)
       {
         const std::size_t n = group_end - group_begin;
         if (n < 2) {
@@ -582,8 +585,12 @@ namespace cctbx { namespace miller {
           std::vector<FloatType> temp(n), temp_w(n);
           for(std::size_t i=0;i<n;i++) {
             temp[i] = unmerged_data[group_begin+i];
-            temp_w[i] = 1.0/(unmerged_sigmas[group_begin+i] *
-                             unmerged_sigmas[group_begin+i]);
+            if (weighted) {
+              temp_w[i] = 1.0/(unmerged_sigmas[group_begin+i] *
+                               unmerged_sigmas[group_begin+i]);
+            } else {
+              temp_w[i] = 1.0;
+            }
           }
           std::size_t nsum = n/2;
           // actually I (Kay) don't think it matters, and we
@@ -607,6 +614,7 @@ namespace cctbx { namespace miller {
 
           data_1.push_back(i_obs[0] / sum_w[0]);
           data_2.push_back(i_obs[1] / sum_w[1]);
+          indices.push_back(current_index);
         }
       }
 
