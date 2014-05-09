@@ -1,7 +1,6 @@
 from __future__ import division
 from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
-from libtbx.test_utils import approx_equal
 from iotbx.pdb import secondary_structure as ioss
 from scitbx.array_family import flex
 

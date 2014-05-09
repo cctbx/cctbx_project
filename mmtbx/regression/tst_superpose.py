@@ -1,15 +1,16 @@
 """Tests for superpose.py"""
+from __future__ import division
 import random
 import os
 import unittest
 
 import iotbx.pdb
 import libtbx.load_env
-import libtbx.test_utils 
+import libtbx.test_utils
 
 import mmtbx.superpose as superpose
 
-if (1): 
+if (1):
   # Fix random seed to avoid rare failures
   random.seed(0)
 
@@ -54,7 +55,7 @@ class SuperposeExamples(object):
     # Fit nucleic acid -- note the default settings will realize it's NA.
     fixed = superpose.SuperposePDB(filename="na1.pdb", desc='fixed')
     moving = superpose.SuperposePDB(filename="na2.pdb", desc='moving')
-    rmsd, lsq = moving.superpose(fixed)  
+    rmsd, lsq = moving.superpose(fixed)
     # moving.output(lsq, filename="na-fit.pdb")
 
   def test_example_multiple(self):
@@ -73,13 +74,13 @@ class SuperposeExamples(object):
         fixed.select_update(preset='ca', chain=fixed_chain.id)
         moving.select_update(preset='ca', chain=moving_chain.id)
         result[(moving_chain.id, fixed_chain.id)] = moving.superpose(fixed)
-  
+
     keys = set([i[0] for i in sorted(result.keys())])
     print "\t"+"\t".join(keys)
     for key1 in keys:
       rmsds = [result[(key1,key2)][0] for key2 in keys]
       print "%s:\t"%key1, "\t".join(["%0.2f"%i for i in rmsds])
- 
+
   def test_example_sieve(self):
     pass
     # Use an alternate fitting method.
@@ -87,10 +88,10 @@ class SuperposeExamples(object):
     # moving = superpose.SuperposePDBSieve(filename="1HMT.pdb", desc='moving', preset='ca')
     # rmsd, lsq = moving.superpose(fixed)
     # moving.output(lsq, filename="1HMT-fit-1CBS-sieve.pdb")
-  
+
 
 class SuperposeTest(unittest.TestCase):
-    # OK!  
+    # OK!
     def test_alignment_used_1(self, filename='fab_a_cut_1.pdb', test='test_alignment_used_1', tolerance=0.003):
       filename = get_filename(filename)
       filename_shifted = "%s.shifted.pdb"%test
@@ -105,7 +106,7 @@ class SuperposeTest(unittest.TestCase):
       target = superpose.SuperposePDB(filename)
       rmsd, lsq = moving.superpose(target)
       self.assertLess(rmsd, tolerance)
-    
+
     # OK!
     def test_alignment_used_2(self, filename='fab_a_cut.pdb', test='test_alignment_used_2', tolerance=0.003):
       filename = get_filename(filename)
@@ -113,7 +114,7 @@ class SuperposeTest(unittest.TestCase):
         filename_shifted = '%s.%s.shifted.pdb'%(test, attempt)
         gap_selection = "chain A and (resid %s:%s or resid %s:%s or resid %s:%s)"%(tuple(
           random_pair(0, 15)+
-          random_pair(16, 35)+ 
+          random_pair(16, 35)+
           random_pair(36, 50)))
         cmd = """phenix.pdbtools %(filename)s output.file_name=%(filename_shifted)s remove="%(gap_selection)s" %(shift)s"""%{
             'filename': filename,
@@ -121,7 +122,7 @@ class SuperposeTest(unittest.TestCase):
             'gap_selection': gap_selection,
             'shift': 'sites.rotate="10 20 30" sites.translate="10 20 30"'
         }
-        libtbx.test_utils.run_command(command=cmd, result_file_names=[filename_shifted])        
+        libtbx.test_utils.run_command(command=cmd, result_file_names=[filename_shifted])
         moving = superpose.SuperposePDB(filename_shifted)
         target = superpose.SuperposePDB(filename)
         rmsd, lsq = moving.superpose(target)
@@ -152,12 +153,12 @@ class SuperposeTest(unittest.TestCase):
             'remove_selection': remove_selection
         }
         libtbx.test_utils.run_command(command=cmd)
-    
+
         moving = superpose.SuperposePDB(filename_shifted, selection=shift_selection)
         target = superpose.SuperposePDB(filename, selection=shift_selection)
         rmsd, lsq = moving.superpose(target)
         moving.output(lsq, filename=filename_fitted)
-    
+
         xs_shifted = iotbx.pdb.input(file_name=filename_shifted).xray_structure_simple()
         xs_fitted = iotbx.pdb.input(file_name=filename_fitted).xray_structure_simple()
         check = xs_fitted.mean_distance(other=xs_shifted)
@@ -175,7 +176,7 @@ class SuperposeTest(unittest.TestCase):
       moving = superpose.SuperposePDB(filename)
       target = superpose.SuperposePDB(filename)
       rmsd, lsq = moving.superpose(target)
-      moving.output(lsq, filename=filename_output)      
+      moving.output(lsq, filename=filename_output)
       pi = iotbx.pdb.input(file_name=filename_output)
       ph = pi.construct_hierarchy()
       pa = ph.atoms()
@@ -188,46 +189,46 @@ class SuperposeTest(unittest.TestCase):
       filename1 = get_filename('rebuild03_ckpt04.pdb')
       filename2 = get_filename('2C30.pdb')
       filename_output = '%s.fitted.pdb'%test
-      
+
       moving = superpose.SuperposePDB(filename2)
       target = superpose.SuperposePDB(filename1)
       rmsd, lsq = moving.superpose(target)
       moving.output(lsq, filename=filename_output)
-    
+
       # ["Number of atoms for LS fitting =  36",
       # "RMSD (all matching atoms) (start): 60.830 (number of atoms: 99)",
-      # "RMSD (all matching atoms) (final): 0.992 (number of atoms: 99)"]:      
+      # "RMSD (all matching atoms) (final): 0.992 (number of atoms: 99)"]:
       self.assertLess(rmsd, 1.0)
-      
+
     # Mostly OK!
     def test_altlocs_1(self, test='test_altlocs_1', tolerance=0.001):
       filename1 = get_filename("fab_1.pdb")
       filename2 = get_filename("fab_2.pdb")
       filename_output = '%s.fitted.pdb'%test
-    
+
       moving = superpose.SuperposePDB(filename2)
       target = superpose.SuperposePDB(filename1)
       rmsd, lsq = moving.superpose(target)
       moving.output(lsq, filename=filename_output)
-      
+
       # ["Number of atoms for LS fitting =  6",
       # "RMSD between fixed and moving atoms (start): 12.830",
       # "RMSD between fixed and moving atoms (final): 0.000",
       # "RMSD (all matching atoms) (start): 13.164 (number of atoms: 15)",
       # "RMSD (all matching atoms) (final): 0.001 (number of atoms: 15)"]:
       self.assertLess(rmsd, tolerance)
-    
+
     # OK!
     def test_same_models_many_differently_ordered_chains_1(self, test='test_same_models_many_differently_ordered_chains_1', tolerance=0.03):
       filename1 = get_filename("a1.pdb")
       filename2 = get_filename("b1.pdb")
       filename_output = '%s.fitted.pdb'%test
-      
+
       moving = superpose.SuperposePDB(filename2)
       target = superpose.SuperposePDB(filename1)
       rmsd, lsq = moving.superpose(target)
       rmsd_output = moving.output(lsq, filename=filename_output)
-      
+
       # ["Number of atoms for LS fitting =  33",
       # "RMSD between fixed and moving atoms (start): 153.279",
       # "RMSD between fixed and moving atoms (final): 0.025"]:
@@ -237,13 +238,13 @@ class SuperposeTest(unittest.TestCase):
     def test_same_models_many_differently_ordered_chains_2(self, test='test_same_models_many_differently_ordered_chains_2', tolerance=0.13):
       filename1 = get_filename("a2.pdb")
       filename2 = get_filename("b2.pdb")
-      filename_output = '%s.fitted.pdb'%test  
-    
+      filename_output = '%s.fitted.pdb'%test
+
       moving = superpose.SuperposePDB(filename2)
       target = superpose.SuperposePDB(filename1)
       rmsd, lsq = moving.superpose(target)
       rmsd_output = moving.output(lsq, filename=filename_output)
-      
+
       # ["Number of atoms for LS fitting =  1284",
       # "RMSD (all matching atoms) (start): 159.830 (number of atoms: 26184)",
       # "RMSD (all matching atoms) (final): 67.995 (number of atoms: 26184)"]
@@ -254,15 +255,15 @@ class SuperposeTest(unittest.TestCase):
       filename1 = get_filename('superpose_pdbs_a.pdb')
       filename2 = get_filename('superpose_pdbs_b.pdb')
       filename_output = '%s.fitted.pdb'%test
-      
+
       moving = superpose.SuperposePDB(filename2)
       target = superpose.SuperposePDB(filename1)
       rmsd, lsq = moving.superpose(target)
       rmsd_output = moving.output(lsq, filename=filename_output)
-    
+
       # ["Number of atoms for LS fitting =  8142",
       # "RMSD (all matching atoms) (start): 405.009 (number of atoms: 8142)",
-      # "RMSD (all matching atoms) (final): 0.607 (number of atoms: 8142)"]:      
+      # "RMSD (all matching atoms) (final): 0.607 (number of atoms: 8142)"]:
       self.assertLess(rmsd, tolerance)
 
 if __name__ == '__main__':

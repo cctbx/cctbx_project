@@ -1,7 +1,6 @@
-from __future__ import division
 
-from mmtbx.secondary_structure import hydrogen_bond_proxies_from_selections, \
-    sec_str_master_phil, manager
+from __future__ import division
+from mmtbx.secondary_structure import sec_str_master_phil, manager
 from mmtbx.secondary_structure.base_pairing import pair_database
 from mmtbx.geometry_restraints import hbond
 from iotbx import file_reader

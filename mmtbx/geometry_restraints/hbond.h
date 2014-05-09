@@ -155,7 +155,7 @@ namespace mmtbx { namespace geometry_restraints {
   {
     double residual_sum = 0;
     //
-    // If you are changing this function, change 
+    // If you are changing this function, change
     // h_bond_simple_residuals below accordingly.
     //
     for (std::size_t i = 0; i < proxies.size(); i++) {

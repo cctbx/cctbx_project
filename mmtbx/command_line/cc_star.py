@@ -4,7 +4,6 @@ from __future__ import division
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, Usage
 from libtbx import runtime_utils
-from libtbx import Auto
 import libtbx.phil
 import sys
 

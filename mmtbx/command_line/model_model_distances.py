@@ -26,7 +26,7 @@ def compute_overall(h1,h2,log):
   d= d.min_max_mean().as_tuple()
   print >> log, "Overall  min/max/mean: %8.3f %8.3f %8.3f"%d
   print >> log
-  
+
 def compute_overall_backbone(h1,h2,log):
   selection_cache1 = h1.atom_selection_cache()
   isel1 = selection_cache1.iselection("name ca or name n or name o or name c")
@@ -38,7 +38,7 @@ def compute_overall_backbone(h1,h2,log):
   d= d.min_max_mean().as_tuple()
   print >> log, "Backbone min/max/mean: %8.3f %8.3f %8.3f"%d
   print >> log
-  
+
 
 def compute_per_model(h1,h2,log):
   if(len(h1.models())==1): return

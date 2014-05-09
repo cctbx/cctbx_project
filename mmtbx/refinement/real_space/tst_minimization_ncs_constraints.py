@@ -1,3 +1,5 @@
+
+from __future__ import division
 import time
 import iotbx.pdb
 from scitbx.array_family import flex

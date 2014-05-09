@@ -9,10 +9,8 @@ from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as three_on
 from mmtbx.refinement.geometry_minimization import run2
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 import mmtbx.utils
-from iotbx.pdb import secondary_structure as ioss
 from mmtbx.command_line import geometry_minimization
 
-import sys
 
 alpha_helix_str = """
 ATOM      1  N   ALA A   1      -5.606  -2.251 -12.878  1.00  0.00           N

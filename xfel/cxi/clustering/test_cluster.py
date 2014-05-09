@@ -1,3 +1,5 @@
+
+from __future__ import division
 from Cluster import Cluster
 
 import logging
