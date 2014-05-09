@@ -1634,6 +1634,7 @@ mmtbx/conformation_dependent_library/cdl_database.py -text
 mmtbx/conformation_dependent_library/rdl_database.py -text
 mmtbx/conformation_dependent_library/rotamers.py -text
 mmtbx/conformation_dependent_library/test_cdl.py -text
+mmtbx/conformation_dependent_library/test_interpolation.py -text
 mmtbx/conformation_dependent_library/test_rdl.py -text
 mmtbx/den/SConscript -text
 mmtbx/den/__init__.py svneol=native#text/x-python
