@@ -766,9 +766,6 @@ class input_handler(object):
 
     self.run_no = ''
     self.title = ''
-    self.pickle_dir = ''
-    self.frame_start = 0
-    self.frame_end = 0
     self.d_min = 0
     self.d_max = 99
     self.sigma_max = 1.5
@@ -803,12 +800,6 @@ class input_handler(object):
           self.run_no=param_val
         elif param_name=='title':
           self.title=param_val
-        elif param_name=='pickle_dir':
-          self.pickle_dir=param_val
-        elif param_name=='frame_start':
-          self.frame_start=int(param_val)
-        elif param_name=='frame_end':
-          self.frame_end=int(param_val)
         elif param_name=='d_min':
           self.d_min=float(param_val)
         elif param_name=='d_max':
@@ -864,14 +855,6 @@ class input_handler(object):
           if param_val=='True':
             self.flag_force_accept_all_frames=True
 
-    if self.frame_end == 0:
-      print 'Parameter: frame_end - please specifiy at least one frame (usage: frame_end=1)'
-      exit()
-
-    if self.pickle_dir == '':
-      print 'Parameter: pickle_dir - please specify file path to pickle files (usage: pickle_dir=/path/to/pickles)'
-      exit()
-
     if self.target_space_group == '':
       print 'Parameter: target_space_group - please specify space_group (usage: target_space_group=SGSYMBOL)'
       exit()
@@ -913,8 +896,6 @@ class input_handler(object):
     self.txt_out += 'Input parameters\n'
     self.txt_out += 'run_no '+str(self.run_no)+'\n'
     self.txt_out += 'title '+str(self.title)+'\n'
-    self.txt_out += 'picke_dir '+str(self.pickle_dir)+'\n'
-    self.txt_out += 'frame '+str(self.frame_start)+'-'+str(self.frame_end)+'\n'
     self.txt_out += 'd_min '+str(self.d_min)+'\n'
     self.txt_out += 'd_max '+str(self.d_max)+'\n'
     self.txt_out += 'sigma_max '+str(self.sigma_max)+'\n'

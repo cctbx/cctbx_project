@@ -9,11 +9,12 @@ from cctbx.array_family import flex
 from cctbx import miller
 from scitbx.matrix import col
 import numpy as np
-import os,cPickle as pickle,math
+import cPickle as pickle
 from mod_util import intensities_scaler, file_handler, input_handler
 from mod_leastsqr import leastsqr_handler
 from mod_results import postref_results
 from cctbx.crystal import symmetry
+import math
 
 class postref_handler(object):
   '''
@@ -265,24 +266,6 @@ class postref_handler(object):
     print 'frame %6.0f'%frame_no, polar_hkl, '<I>=%9.2f <G>=%9.2f G=%9.2f'%(np.mean(observations_non_polar.data()), mean_of_mean_I, G)
     return pres
 
-
-
-
-def get_observations (dir_name,data_subset):
-  file_names = []
-  for file_name in os.listdir(dir_name):
-    if (file_name.endswith("_00000.pickle")):
-      if data_subset==0 or \
-        (data_subset==1 and (int(os.path.basename(file_name).split("_00000.pickle")[0][-1])%2==1)) or \
-        (data_subset==2 and (int(os.path.basename(file_name).split("_00000.pickle")[0][-1])%2==0)):
-        file_names.append(os.path.join(dir_name, file_name))
-    elif (file_name.endswith(".pickle")):
-      if data_subset==0 or \
-        (data_subset==1 and (int(os.path.basename(file_name).split(".pickle")[0][-1])%2==1)) or \
-        (data_subset==2 and (int(os.path.basename(file_name).split(".pickle")[0][-1])%2==0)):
-        file_names.append(os.path.join(dir_name, file_name))
-  print "Number of pickle files found:", len(file_names)
-  return file_names
 
 def merge_observations(results,
         iph,
