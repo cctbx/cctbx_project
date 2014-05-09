@@ -33,6 +33,8 @@ molprobity {
     .type = float
   n_bins = 10
     .type = int
+  use_pdb_header_resolution_cutoffs = False
+    .type = bool
 }
 output {
   quiet = False
@@ -121,7 +123,9 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
     nuclear=params.molprobity.nuclear,
     save_probe_unformatted_file=probe_file,
     min_cc_two_fofc=params.molprobity.min_cc_two_fofc,
-    n_bins_data=params.molprobity.n_bins)
+    n_bins_data=params.molprobity.n_bins,
+    use_pdb_header_resolution_cutoffs=\
+      params.molprobity.use_pdb_header_resolution_cutoffs)
   if (not params.output.quiet) :
     out2 = multi_out()
     out2.register("stdout", out)

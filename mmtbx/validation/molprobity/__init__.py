@@ -1,6 +1,5 @@
 
 # TODO combine with some parts of mmtbx.kinemage.validation
-# TODO incorporate unmerged data
 # TODO merge this with Table 1 output, PDB deposition, etc.
 
 from __future__ import division
@@ -14,7 +13,8 @@ from mmtbx.validation import rotalyze
 from mmtbx.validation import cbetadev
 from mmtbx.validation import waters
 from libtbx.str_utils import make_header, make_sub_header, format_value
-from libtbx import Auto, slots_getstate_setstate
+from libtbx import slots_getstate_setstate, \
+    slots_getstate_setstate_default_initializer
 from libtbx.utils import null_out
 import libtbx.load_env
 import libtbx.phil
@@ -93,7 +93,8 @@ class molprobity (slots_getstate_setstate) :
       min_cc_two_fofc=0.8,
       n_bins_data=10,
       crystal_symmetry=None,
-      outliers_only=True) :
+      outliers_only=True,
+      use_pdb_header_resolution_cutoffs=False) :
     for name in self.__slots__ :
       setattr(self, name, None)
     if (xray_structure is None) :
@@ -149,6 +150,10 @@ class molprobity (slots_getstate_setstate) :
         geometry_restraints_manager=geometry_restraints_manager,
         ignore_hd=(not nuclear))
     if (fmodel is not None) :
+      if (use_pdb_header_resolution_cutoffs) and (header_info is not None) :
+        fmodel = fmodel.resolution_filter(
+          d_min=header_info.d_min,
+          d_max=header_info.d_max)
       if (flags.rfactors) :
         self.data_stats = experimental.data_statistics(fmodel,
           raw_data=raw_data,
@@ -165,8 +170,7 @@ class molprobity (slots_getstate_setstate) :
           pdb_hierarchy=pdb_hierarchy,
           cc_min=min_cc_two_fofc)
       if (unmerged_data is not None) :
-        from mmtbx.command_line import cc_star
-        self.merging = cc_star.merging_and_model_statistics(
+        self.merging = experimental.merging_and_model_statistics(
           f_obs=fmodel.f_obs(),
           f_model=fmodel.f_model(),
           r_free_flags=fmodel.r_free_flags(),
@@ -225,41 +229,46 @@ class molprobity (slots_getstate_setstate) :
       make_header("Summary", out=out)
       self.show_summary(out=out, prefix="  ")
 
-  def show_summary (self, out=sys.stdout, prefix="") :
+  def summarize (self) :
     """
-    Summarize outliers or scores for each analysis.
+    Condense results into a compact object - for compatibility with
+    (now obsolete) mmtbx.validation_summary, and use in high-throughput
+    analyses
     """
-    def fs (format, value) :
-      return format_value(format, value, replace_none_with=("(none)"))
-    if (self.ramalyze is not None) :
-      print >> out, "%sRamachandran outliers = %s %%" % (prefix,
-        fs("%6.2f", self.ramalyze.out_percent))
-      print >> out, "%s             favored  = %s %%" % (prefix,
-        fs("%6.2f", self.ramalyze.fav_percent))
-    if (self.rotalyze is not None) :
-      print >> out, "%sRotamer outliers      = %s %%" % (prefix,
-        fs("%6.2f", self.rotalyze.out_percent))
-    if (self.cbetadev is not None) :
-      print >> out, "%sC-beta deviations     = %s" % (prefix,
-        fs("%6d", self.cbetadev.n_outliers))
+    clashscore = r_work = r_free = rms_bonds = rms_angles = d_min = None
     if (self.clashes is not None) :
-      print >> out, "%sClashscore            = %6.2f" % (prefix,
-        self.clashes.get_clashscore())
-    mpscore = self.molprobity_score()
-    if (mpscore is not None) :
-      print >> out, "%sMolprobity score      = %6.2f" % (prefix, mpscore)
+      clashscore = self.clashes.get_clashscore()
     if (self.restraints is not None) :
       rms_bonds, rms_angles = self.restraints.get_bonds_angles_rmsds()
-      print >> out, "%sRMS(bonds)            = %8.4f" % (prefix, rms_bonds)
-      print >> out, "%sRMS(angles)           = %6.2f" % (prefix, rms_angles)
     if (self.data_stats is not None) :
-      self.data_stats.show_summary(prefix=prefix, out=out)
-    if (self.restraints is None) or (self.data_stats is None) :
-      if (self.header_info is not None) :
-        self.header_info.show(out=out,
-          prefix=prefix,
-          include_r_factors=(self.data_stats is None),
-          include_rms_geom=(self.restraints is None))
+      r_work, r_free = self.data_stats.r_work, self.data_stats.r_free
+      d_min = self.data_stats.d_min
+    elif (self.header_info is not None) :
+      r_work, r_free = self.header_info.r_work, self.header_info.r_free
+      d_min = self.header_info.d_min
+      if (self.restraints is None) :
+        rms_bonds = self.header_info.rms_bonds
+        rms_angles = self.header_info.rms_angles
+    mpscore = self.molprobity_score()
+    return summary(
+      rama_out=getattr(self.ramalyze, "out_percent", None),
+      rama_fav=getattr(self.ramalyze, "fav_percent", None),
+      rota_out=getattr(self.rotalyze, "out_percent", None),
+      cbeta_out=getattr(self.cbetadev, "n_outliers", None),
+      clashscore=clashscore,
+      rms_bonds=rms_bonds,
+      rms_angles=rms_angles,
+      mpscore=mpscore,
+      d_min=d_min,
+      r_work=r_work,
+      r_free=r_free,
+      program=getattr(self.header_info, "refinement_program", None))
+
+  def show_summary (self, out=sys.stdout, prefix="") :
+    """
+    Print summary of outliers or scores for each analysis.
+    """
+    return self.summarize().show(out=out, prefix=prefix)
 
   def as_mmcif_records (self) : # TODO
     raise NotImplementedError()
@@ -322,6 +331,9 @@ class molprobity (slots_getstate_setstate) :
   def space_group (self) :
     return getattr(self.crystal_symmetry, "space_group", lambda: None)()
 
+  def space_group_info (self) :
+    return getattr(self.crystal_symmetry, "space_group_info", lambda: None)()
+
   def unit_cell (self) :
     return getattr(self.crystal_symmetry, "unit_cell", lambda: None)()
 
@@ -335,75 +347,6 @@ class molprobity (slots_getstate_setstate) :
 
   def as_mmcif_records (self) : # TODO
     raise NotImplementedError()
-
-  def as_table1 (self,
-      label=None,
-      recalculate_r_factors=Auto) :
-    """
-    Extract information for display in the traditional 'Table 1' of
-    crystallographic statistics in structure articles.
-    """
-    import iotbx.table_one
-    outer_shell = None
-    data_stats = self.data_stats
-    if (data_stats is None) :
-      data_stats = dummy_validation()
-    merging_stats = dummy_validation()
-    n_refl_uniq = data_stats.n_refl
-    n_refl_refine = data_stats.n_refl_refine
-    completeness = data_stats.completeness
-    if (self.merging is not None) :
-      merging_stats = unmerged_data.overall
-      n_refl_uniq = merging_stats.n_uniq
-    r_work = self.r_work()
-    r_free = self.r_free()
-    if (header_info is not None) :
-      if (not recalculate_r_factors or
-          (not header_info.is_phenix_refinement() and
-           (recalculate_r_factors is Auto))) :
-        r_work = header_info.r_work
-        r_free = header_info.r_free
-        n_refl_refine = data_stats.n_refl
-    return iotbx.table_one.column(
-      label=label,
-      space_group=self.space_group(),
-      unit_cell=self.unit_cell(),
-      # data properties
-      wavelength=data_stats.wavelength,
-      d_max_min=self.d_max_min(),
-      n_refl_all=merging_stats.n_obs,
-      n_refl=n_refl_uniq,
-      multiplicity=merging_stats.multiplicity,
-      completeness=completeness,
-      i_over_sigma=merging_stats.i_over_sigma,
-      wilson_b=merging_stats.wilson_b,
-      r_sym=merging_stats.r_sym,
-      r_meas=merging_stats.r_meas,
-      cc_one_half=merging_stats.cc_one_half,
-      cc_star=merging_stats.cc_star,
-      # refinement
-      n_refl_refine=n_refl_refine,
-      r_work=r_work,
-      r_free=r_free,
-      cc_work=merging_stats.cc_work,
-      cc_free=merging_stats.cc_free,
-      # model properties
-      n_atoms=self.model_stats.all.n_non_hd,
-      n_macro_atoms=getattr(self.model_stats.macromolecules, "n_non_hd"),
-      n_ligand_atoms=getattr(self.model_stats.ligands, "n_non_hd"),
-      n_waterss=getattr(self.model_stats.water, "n_non_hd"),
-      n_residues=self.model_stats.n_protein,
-      bond_rmsd=self.rms_bonds(),
-      angle_rmsd=self.rms_angles(),
-      rama_favored=self.rama_favored(),
-      rama_allowed=self.rama_allowed(),
-      rama_outliers=self.rama_outliers(),
-      clashscore=self.clashscore(),
-      adp_mean=self.model_stats.all.b_mean,
-      adp_mean_mm=getattr(self.model_stats.macromolecules, "b_mean"),
-      adp_mean_lig=getattr(self.model_stats.ligands, "b_mean"),
-      adp_mean_wat=getattr(self.model_stats.water, "b_mean"),
-      )
 
   def as_multi_criterion_view (self) :
     if (not self._multi_criterion.is_populated) :
@@ -494,6 +437,60 @@ class molprobity (slots_getstate_setstate) :
       elif (name == "adp_mean_all") : pass
       stats[name] = val
     return stats
+
+class summary (slots_getstate_setstate_default_initializer) :
+  """
+  Simplified container for overall statistics; replaces class of the same
+  name in mmtbx.command_line.validation_summary.  The more complete molprobity
+  class is prefered when analyzing a single structure, but it is considerably
+  larger.
+  """
+  __slots__ = [
+    "rama_out",
+    "rama_fav",
+    "rota_out",
+    "cbeta_out",
+    "clashscore",
+    "rms_bonds",
+    "rms_angles",
+    "mpscore",
+    "d_min",
+    "r_work",
+    "r_free",
+    "program",
+  ]
+  labels = [
+    "Ramachandran outliers",
+    "              favored",
+    "Rotamer outliers",
+    "C-beta deviations",
+    "Clashscore",
+    "RMS(bonds)",
+    "RMS(angles)",
+    "MolProbity score",
+    "Resolution",
+    "R-work",
+    "R-free",
+    "Refinement program",
+  ]
+  formats = [
+    "%6.2f", "%6.2f", "%6.2f", "%5d", "%6.2f", "%8.4f", "%6.2f", "%6.2f",
+    "%6.2f", "%8.4f", "%8.4f", "%s",
+  ]
+
+  def show (self, out=sys.stdout, prefix="  ") :
+    def fs (format, value) :
+      return format_value(format, value, replace_none_with=("(none)"))
+    maxlen = max([ len(label) for label in self.labels ])
+    for k, name in enumerate(self.__slots__) :
+      format = "%%s%%-%ds = %%s" % maxlen
+      if (k < 3) :
+        format += " %%"
+      value = getattr(self, name)
+      if (value is not None) :
+        print >> out, format % (prefix, self.labels[k], fs(self.formats[k],
+          value))
+    return self
 
 ########################################################################
 

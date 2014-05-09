@@ -418,6 +418,17 @@ class validation (slots_getstate_setstate) :
       return self.results[i_res]
     return None
 
+class dummy_validation (object) :
+  """
+  Placeholder for cases where values may be undefined because of molecule type
+  (e.g. all-RNA structures) but we want to substitute None automatically.
+  """
+  def __getattr__ (self, name) :
+    return None
+
+  def __nonzero__ (self) :
+    return False
+
 molprobity_cmdline_phil_str = """
   model = None
       .type = path

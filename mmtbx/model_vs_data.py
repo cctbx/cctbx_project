@@ -829,7 +829,7 @@ def run(args,
   # CC* and friends
   cc_star_stats = None
   if (params.unmerged_data is not None) :
-    from mmtbx.command_line import cc_star
+    import mmtbx.validation.experimental
     import mmtbx.command_line
     f_obs = fmodel.f_obs().average_bijvoet_mates()
     unmerged_i_obs = mmtbx.command_line.load_and_validate_unmerged_data(
@@ -837,7 +837,7 @@ def run(args,
       file_name=params.unmerged_data,
       data_labels=params.unmerged_labels,
       log=null_out())
-    cc_star_stats = cc_star.merging_and_model_statistics(
+    cc_star_stats = mmtbx.validation.experimental.merging_and_model_statistics(
       f_model=fmodel.f_model().average_bijvoet_mates(),
       f_obs=f_obs,
       r_free_flags=fmodel.r_free_flags().average_bijvoet_mates(),

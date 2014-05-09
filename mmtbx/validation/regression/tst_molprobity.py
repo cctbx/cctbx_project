@@ -2,6 +2,7 @@
 from __future__ import division
 from mmtbx.command_line import molprobity
 from libtbx.easy_pickle import loads, dumps, dump
+from libtbx.test_utils import show_diff
 from libtbx.utils import null_out
 import libtbx.load_env
 from cStringIO import StringIO
@@ -49,9 +50,9 @@ def exercise_molprobity () :
     flags=flags)
   out3 = StringIO()
   result.show_summary(out=out3)
-  assert (out3.getvalue() == """\
+  assert not show_diff(out3.getvalue(), """\
 Ramachandran outliers =   1.76 %
-             favored  =  96.47 %
+              favored =  96.47 %
 Rotamer outliers      =  18.67 %
 """)
 

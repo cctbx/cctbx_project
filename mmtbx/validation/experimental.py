@@ -1,9 +1,15 @@
 
+"""
+Model validation against experimental data, in both real and reciprocal space.
+This does not actually handle any of the scaling and fmodel calculations,
+which are performed approximately as in model_vs_data.
+"""
+
 from __future__ import division
 from mmtbx.validation import residue, atom, validation
+from libtbx import Auto, slots_getstate_setstate
 from libtbx.str_utils import format_value
-from libtbx import slots_getstate_setstate
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 import sys
 
 __real_space_attr__ = [
@@ -42,6 +48,7 @@ class data_statistics (slots_getstate_setstate) :
     "r_free",
     "twin_law",
     "wilson_b",
+    "completeness",
     "r_work_outer",
     "r_free_outer",
     "d_max_outer",
@@ -78,6 +85,7 @@ class data_statistics (slots_getstate_setstate) :
     self.r_work = self.info.r_work
     self.twin_law = fmodel.twin_law
     self.wilson_b = fmodel.wilson_b()
+    self.completeness = f_obs.completeness()
     # outer shell
     d_max_min_outer = f_obs.binner().bin_d_range(n_bins)
     self.d_max_outer = d_max_min_outer[0]
@@ -89,8 +97,9 @@ class data_statistics (slots_getstate_setstate) :
     self.completeness_outer = raw_data.completeness(d_max=self.d_max_outer)
     self.n_refl_outer = raw_data.resolution_filter(d_max=self.d_max_outer,
       d_min=self.d_min_outer).indices().size()
-    self.n_refl_refine_outer = f_obs.resolution_filter(d_max=self.d_max_outer,
-      d_min=self.d_min_outer).indices().size()
+    f_obs_outer = f_obs.resolution_filter(d_max=self.d_max_outer,
+      d_min=self.d_min_outer)
+    self.n_refl_refine_outer = f_obs_outer.indices().size()
 
   def show_summary (self, out=sys.stdout, prefix="") :
     print >> out, "%sHigh resolution       = %7.3f" % (prefix, self.d_min)
@@ -174,3 +183,63 @@ class real_space (validation) :
         if result.is_outlier() :
           print >> out, prefix + str(result)
     self.show_summary(out=out, prefix=prefix)
+
+def merging_and_model_statistics (
+    f_obs,
+    f_model,
+    r_free_flags,
+    unmerged_i_obs,
+    n_bins=20,
+    sigma_filtering=Auto) :
+  """
+  Compute merging statistics - CC* in particular - together with measures of
+  model quality using reciprocal-space data (R-factors and CCs).  See Karplus
+  & Diederichs 2012 for rationale.
+  """
+  from iotbx import merging_statistics
+  free_sel = r_free_flags
+  # very important: must use original intensities for i_obs, not squared f_obs,
+  # because French-Wilson treatment is one-way
+  assert (unmerged_i_obs.sigmas() is not None)
+  info = unmerged_i_obs.info()
+  assert (info is not None)
+  unmerged_i_obs = unmerged_i_obs.customized_copy(crystal_symmetry=f_obs)
+  unmerged_i_obs = unmerged_i_obs.select(
+    unmerged_i_obs.sigmas() >= 0).set_info(info)
+  filter = merging_statistics.filter_intensities_by_sigma(
+    array=unmerged_i_obs,
+    sigma_filtering=sigma_filtering)
+  i_obs = filter.array_merged
+  unmerged_i_obs = filter.array
+  if (i_obs.anomalous_flag()) :
+    i_obs = i_obs.average_bijvoet_mates()
+  if (f_obs.anomalous_flag()) :
+    f_obs = f_obs.average_bijvoet_mates()
+  if (f_model.anomalous_flag()) :
+    f_model = f_model.average_bijvoet_mates()
+  if (free_sel.anomalous_flag()) :
+    free_sel = free_sel.average_bijvoet_mates()
+  if (free_sel.data().count(True) == 0) :
+    raise Sorry("R-free array does not select any reflections.  To calculate "+
+      "CC* and related statistics, a valid set of R-free flags must be used.")
+  work_sel = free_sel.customized_copy(data=~free_sel.data())
+  i_obs, f_model = i_obs.common_sets(other=f_model)
+  i_obs, f_obs = i_obs.common_sets(other=f_obs)
+  i_obs, work_sel = i_obs.common_sets(other=work_sel)
+  i_obs, free_sel = i_obs.common_sets(other=free_sel)
+  i_calc = abs(f_model).f_as_f_sq()
+  d_max, d_min = i_calc.d_max_min()
+  model_arrays = merging_statistics.model_based_arrays(
+    f_obs=f_obs,
+    i_obs=i_obs,
+    i_calc=i_calc,
+    work_sel=work_sel,
+    free_sel=free_sel)
+  return merging_statistics.dataset_statistics(
+    i_obs=unmerged_i_obs,
+    crystal_symmetry=i_calc,
+    d_min=d_min,
+    d_max=d_max,
+    n_bins=n_bins,
+    model_arrays=model_arrays,
+    sigma_filtering=None) # no need, since it was done here
