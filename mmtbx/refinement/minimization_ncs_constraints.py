@@ -262,11 +262,7 @@ class lbfgs(object):
         refine_transformations       = False,
         use_strict_ncs               = True):
     """
-    NCS constrained ADP and coordinates refinement.
-
-    Arguments:
-    translation_factor: (float) scales the translation to the order
-                        of the angles
+    NCS constrained ADP and coordinates refinement. Also refines NCS operators.
     """
     adopt_init_args(self, locals())
     assert [len(rotation_matrices) == len(translation_vectors)]
