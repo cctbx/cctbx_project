@@ -134,6 +134,7 @@ class compute_fo_minus_fo_map (object) :
       peak_search=False,
       map_cutoff=None,
       peak_search_params=None,
+      r_free_arrays=None,
       write_map=True,
       multiscale=False,
       anomalous=False) :
@@ -147,7 +148,10 @@ class compute_fo_minus_fo_map (object) :
         d = d.average_bijvoet_mates()
       elif (anomalous) :
         assert d.anomalous_flag()
-      r_free_flags = d.array(data = flex.bool(d.data().size(), False))
+      if (r_free_arrays is not None) and (i_seq < len(r_free_arrays)) :
+        r_free_flags = r_free_arrays[i_seq]
+      else :
+        r_free_flags = d.array(data = flex.bool(d.data().size(), False))
       fmodel = mmtbx.f_model.manager(
         xray_structure = xray_structure,
         r_free_flags   = r_free_flags,
@@ -209,6 +213,15 @@ class compute_fo_minus_fo_map (object) :
         fmt = "%3d: %-17s   %4.2f %6d         %5.3f  %6s"
         print >> log, fmt % (i_bin, d_range, compl, n_ref, cc,
           format_value("%6.4f", r))
+    # overall statistics
+    self.cc = flex.linear_correlation(
+      x=fobs_1.data(),
+      y=fobs_2.data()).coefficient()
+    num = flex.sum(flex.abs(fobs_1.data()-fobs_2.data()))
+    den = flex.sum(flex.abs(fobs_2.data()+fobs_2.data())/2)
+    self.r_factor = None
+    if (den != 0) :
+      self.r_factor = num / den
     # map coefficients
     def phase_transfer(miller_array, phase_source):
       tmp = miller.array(miller_set = miller_array,
