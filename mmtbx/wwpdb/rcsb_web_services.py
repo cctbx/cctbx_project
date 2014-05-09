@@ -67,7 +67,7 @@ def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
   queries_string = ""
   k = 0
   for clause in queries :
-    queries_string += """\
+    queries_string += """
         <queryRefinement>
           <queryRefinementLevel>%d</queryRefinementLevel>
           <conjunctionType>and</conjunctionType>
@@ -117,7 +117,7 @@ def chemical_id_search (resname, **kwds) :
   assert (1 <= len(resname) <= 3)
   polymeric_type = kwds.pop("polymeric_type", "Any")
   assert (polymeric_type in ["Any", "Free", "Polymeric"])
-  polymer_limit = ""# "<polymericType>%s</polymericType>" % polymeric_type
+  polymer_limit = "<polymericType>%s</polymericType>" % polymeric_type
   query_str = """\
     <queryType>org.pdb.query.simple.ChemCompIdQuery</queryType>
     <description>Chemical ID: %s</description>

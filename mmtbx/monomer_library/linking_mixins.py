@@ -532,7 +532,7 @@ class linking_mixins(object):
       for item in rc:
         yield item
     #
-    print """
+    print >> log, """
   Automatic linking
     Parameters for automatic linking
       Bond cutoffs
