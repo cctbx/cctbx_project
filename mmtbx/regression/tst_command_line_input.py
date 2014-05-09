@@ -28,7 +28,7 @@ ATOM     56  CE2 TYR A   7       5.904   1.649  10.416  1.00 14.33           C
 ATOM     57  CZ  TYR A   7       5.047   0.729   9.831  1.00 15.09           C
 ATOM     58  OH  TYR A   7       3.766   0.589  10.291  1.00 14.39           O
 ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
-END
+TER
 """
   pdb_in = iotbx.pdb.input(source_info=None,lines=pdb_str)
   hierarchy = pdb_in.construct_hierarchy()
@@ -78,6 +78,34 @@ END
     out=StringIO(),
     create_log_buffer=True)
   assert (cmdline.unmerged_i_obs is not None)
+  # test with unknown scatterers
+  pdb_in = iotbx.pdb.input(source_info=None,lines=pdb_str+"""\
+ATOM     59  UNK UNL A   7       0.000   0.000   0.000  1.00 20.00           X
+""")
+  hierarchy = pdb_in.construct_hierarchy()
+  file_base = "tmp_mmtbx_cmdline"
+  open(file_base+".pdb", "w").write(
+    hierarchy.as_pdb_string(crystal_symmetry=xrs))
+  try :
+    cmdline = mmtbx.command_line.load_model_and_data(
+      update_f_part1_for=None,
+      args=[ file_base + ext for ext in [".pdb",".mtz",".fa",] ],
+      master_phil=master_phil,
+      out=StringIO(),
+      process_pdb_file=False,
+      create_log_buffer=True)
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
+  cmdline = mmtbx.command_line.load_model_and_data(
+    update_f_part1_for=None,
+    args=[ file_base + ext for ext in [".pdb",".mtz",".fa",] ],
+    master_phil=master_phil,
+    out=StringIO(),
+    process_pdb_file=False,
+    create_log_buffer=True,
+    remove_unknown_scatterers=True)
 
 def exercise_combine_symmetry () :
   """

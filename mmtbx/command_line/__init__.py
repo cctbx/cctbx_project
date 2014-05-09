@@ -163,7 +163,8 @@ class load_model_and_data (object) :
       set_wavelength_from_model_header=False,
       set_inelastic_form_factors=None,
       usage_string=None,
-      create_log_buffer=False) :
+      create_log_buffer=False,
+      remove_unknown_scatterers=False) :
     import mmtbx.monomer_library.pdb_interpretation
     import mmtbx.monomer_library.server
     import mmtbx.utils
@@ -182,6 +183,7 @@ class load_model_and_data (object) :
     self.args = args
     self.master_phil = master_phil
     self.processed_pdb_file = self.pdb_inp = None
+    self.pdb_hierarchy = self.xray_structure = None
     self.geometry = None
     self.sequence = None
     self.fmodel = None
@@ -379,9 +381,17 @@ class load_model_and_data (object) :
         log=self.log)
       self.pdb_inp = pdb_file_object.pdb_inp
       self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
+      if (remove_unknown_scatterers) :
+        known_sel = self.pdb_hierarchy.atom_selection_cache().selection(
+          "not element X")
+        if (known_sel.count(True) != len(known_sel)) :
+          self.pdb_hierarchy = self.pdb_hierarchy.select(known_sel)
+          self.xray_structure = self.pdb_hierarchy.extract_xray_structure(
+            crystal_symmetry=self.crystal_symmetry)
       self.pdb_hierarchy.atoms().reset_i_seq()
-      self.xray_structure = self.pdb_inp.xray_structure_simple(
-        crystal_symmetry=self.crystal_symmetry)
+      if (self.xray_structure is None) :
+        self.xray_structure = self.pdb_inp.xray_structure_simple(
+          crystal_symmetry=self.crystal_symmetry)
     # wavelength
     if (set_wavelength_from_model_header and params.input.wavelength is None) :
       wavelength = self.pdb_inp.extract_wavelength()
