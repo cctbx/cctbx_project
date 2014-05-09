@@ -2799,6 +2799,7 @@ xfel/cxi/clustering/Cluster.py -text
 xfel/cxi/clustering/Design_intent -text
 xfel/cxi/clustering/SingleFrame.py -text
 xfel/cxi/clustering/__init__.py -text
+xfel/cxi/clustering/test_cluster.py -text
 xfel/cxi/completeness_plot.py -text
 xfel/cxi/correction_vector_plot.py -text
 xfel/cxi/cspad_ana/__init__.py -text
