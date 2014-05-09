@@ -1,10 +1,10 @@
-from __future__ import division
 
+from __future__ import division
 from iotbx import data_plots
 import libtbx.load_env
 import os
 
-def exercise () :
+def exercise_inline () :
   loggraph1 = """\
 $TABLE: Resolution shell statistics
 $GRAPHS
@@ -101,6 +101,10 @@ Resolution shell statistics
 """
   assert t2.format_simple(indent=2) == simple_table
   assert str(t2) == simpler_table
+  json_str = t2.export_json()
+  assert (json_str == '{"graph_types": ["A", "A"], "graph_columns": [[0, 2], [0, 3]], "title": "Resolution shell statistics", "column_labels": ["1/resol^2", "Nrefl", "R-free", "FOM"], "data": [[0.02, 0.04, 0.06, 0.08, 0.1], [2004, 2084, 2037, 1949, 1783], [0.25, 0.23, 0.27, 0.28, 0.38], [0.89, 0.88, 0.83, 0.75, null]], "graph_names": ["R-free vs. resolution", "FOM vs. resolution"], "x_is_inverse_d_min": false}')
+
+def exercise_logfile () :
   log_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/tracking/scala.log",
     test=os.path.isfile)
@@ -130,8 +134,8 @@ $$
   t3.import_loggraph(loggraph3)
   g3 = t3.get_graph("Protein crystal computed at resolution of 2.450")
   p3 = g3.get_plots()
-  print "OK"
 
 if __name__ == "__main__" :
-  exercise()
-#---end
+  exercise_inline()
+  exercise_logfile()
+  print "OK"
