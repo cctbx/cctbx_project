@@ -26,10 +26,16 @@ def postrefine_by_frame_mproc(frame_no, frame_files, iph, miller_array_ref):
 
 def read_input(args):
   file_name_input = ''
+  frame_files = []
   for i in range(len(args)):
     pair=args[i].split('=')
     if pair[0]=='input':
       file_name_input = pair[1]
+
+    #other args are considered as the pickle directory
+    if len(pair) == 1:
+      if pair[0].endswith('.pickle'):
+        frame_files.append(pair[0])
 
   if file_name_input == '':
     print "Please provide input-parameters file (usage: input=yourinput.inp)"
@@ -43,8 +49,11 @@ def read_input(args):
   if not os.path.exists(iph.run_no):
     os.makedirs(iph.run_no)
 
-  from xfel.cxi.postrefine import get_observations
-  frame_files = get_observations(iph.pickle_dir, 0)
+  #check if pickle_dir is given in input file instead of from cmd arguments.
+  if len(frame_files)==0:
+    print 'Path to pickle files is missing, please specify it at command line.'
+    print 'Usage: cxi.postrefine input=myinp.inp /path/to/pickles/*'
+    exit()
 
   return iph, frame_files
 
@@ -55,7 +64,7 @@ if (__name__ == "__main__"):
 
   #0 .read input parameters and frames (pickle files)
   iph, frame_files = read_input(args = sys.argv[1:])
-  frames = range(iph.frame_start, iph.frame_end)
+  frames = range(len(frame_files))
 
   #1. prepare reference miller array
   if iph.file_name_ref_mtz == '':
