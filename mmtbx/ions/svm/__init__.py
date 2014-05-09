@@ -131,8 +131,12 @@ def ion_class(chem_env):
       The class associated with the ion.
   """
   if hasattr(chem_env.atom, "segid") and chem_env.atom.segid.strip():
-    return chem_env.atom.segid.strip().upper()
-  return chem_env.atom.resname.strip().upper()
+    name = chem_env.atom.segid.strip().upper()
+  else:
+    name = chem_env.atom.resname.strip().upper()
+  if name in WATER_RES_NAMES:
+    name = "HOH"
+  return name
 
 def ion_vector(chem_env, scatter_env, use_scatter=True, use_chem=True,
                b_iso=True, occ=True, diff_peak=True, geometry=True,
@@ -386,7 +390,7 @@ def ion_anomalous_vector(scatter_env, elements=None, ratios=True):
     if ratios:
       return np.zeros(len(elements))
     else:
-      return np.zeros(2)
+      return np.zeros(1)
 
   if ratios:
     ret = np.fromiter(
