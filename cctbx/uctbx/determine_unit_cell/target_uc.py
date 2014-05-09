@@ -8,7 +8,6 @@ import math
 from cctbx.uctbx.determine_unit_cell import NCDist
 import scipy.cluster.hierarchy as hcluster
 import numpy as np
-import json
 
 
 class Target:
@@ -245,5 +244,3 @@ def plot_clusters(ucs, log=False, outname='clustering', plot_ucs=False):
     ax.set_zlabel('gamma')
 
   plt.show()
-
-

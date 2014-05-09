@@ -3,7 +3,7 @@
 # TODO merge this with Table 1 output, PDB deposition, etc.
 
 from __future__ import division
-from mmtbx.validation import validation, residue, dummy_validation
+from mmtbx.validation import validation, residue
 from mmtbx.validation import model_properties
 from mmtbx.validation import experimental
 from mmtbx.validation import clashscore

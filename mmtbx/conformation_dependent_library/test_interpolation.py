@@ -1,5 +1,5 @@
 from __future__ import division
-import os, sys
+import sys
 
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
 

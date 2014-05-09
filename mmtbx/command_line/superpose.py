@@ -1,4 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.superpose
+
+from __future__ import division
 import sys
 import mmtbx.superpose
 

@@ -5,7 +5,7 @@
 #   This code is distributed under the BSD license, a copy of which is
 #   included in the root directory of this package.
 #
-# An implementation of the CBF image reader for Pilatus images, from the Pilatus 
+# An implementation of the CBF image reader for Pilatus images, from the Pilatus
 # 6M SN 100 currently on Diamond I04.
 
 from __future__ import division
@@ -43,16 +43,16 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
   # FIXME this beamline has a kappa goniometer so should really be supporting this
   # in here...
-  
+
   def _detector(self):
-    '''Detector model, allowing for small offsets in the positions of 60 
+    '''Detector model, allowing for small offsets in the positions of 60
     detector modules'''
 
-    # Module positional offsets in x, y, in pixels - for the moment ignoring the 
-    # rotational offsets as these are not well defined. To be honest these 
+    # Module positional offsets in x, y, in pixels - for the moment ignoring the
+    # rotational offsets as these are not well defined. To be honest these
     # positional offsets are also not well defined as I do not know how they
     # should be applied...
-    
+
     x = {
       (0, 0):  -0.477546,   (0, 1):   0.130578,   (0, 2):   0.045041,
       (0, 3):  -0.439872,   (0, 4):  -0.382077,   (1, 0):   0.087405,
@@ -73,7 +73,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
       (9, 3):   0.815028,   (9, 4):  -0.048818,  (10, 0):  -0.670524,
       (10, 1):  -0.304119,  (10, 2):   0.252284,  (10, 3):   -0.05485,
       (10, 4):  -0.355264,  (11, 0):  -0.404947,  (11, 1):  -0.020622,
-      (11, 2):   0.648473,  (11, 3):  -0.277175,  (11, 4):  -0.711951    
+      (11, 2):   0.648473,  (11, 3):  -0.277175,  (11, 4):  -0.711951
     }
 
     y = {
@@ -124,9 +124,9 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     # FIXME take into consideration here the thickness of the sensor? also the
     # wavelength of the radiation (which we have in the same file...)
 
-    # FIXME would also be very nice to be able to take into account the 
+    # FIXME would also be very nice to be able to take into account the
     # misalignment of the individual modules given the calibration information...
-    
+
     detector = self._detector_factory.simple(
         'PAD', distance * 1000.0, (beam_x * pixel_x * 1000.0,
                                    beam_y * pixel_y * 1000.0), '+x', '-y',
@@ -137,7 +137,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     for f0, s0, f1, s1 in determine_pilatus_mask(detector):
       detector[0].add_mask(f0, s0, f1, s1)
 
-      
+
     return detector
 
 if __name__ == '__main__':

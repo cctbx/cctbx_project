@@ -1,7 +1,6 @@
 from __future__ import division
 from iotbx.pdb.multimer_reconstruction import multimer
 import mmtbx.refinement.minimization_ncs_constraints
-import mmtbx.monomer_library.pdb_interpretation
 from libtbx.test_utils import approx_equal
 import mmtbx.refinement.adp_refinement
 from scitbx.array_family import flex

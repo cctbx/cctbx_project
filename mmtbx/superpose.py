@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# from __future__ import print_function
+
+from __future__ import division
 import sys
 import os
-import argparse
 import itertools
 
 import cctbx.array_family.flex
@@ -107,11 +107,11 @@ PRESET_ORDER = ['backbone', 'ca', 'all']
 
 class SuperposePDB(object):
   """Superimpose PDB files.
-  
+
   Instantiate with a filename or pdb instance. You may also provide a default
   selection string, selection preset, or chain to use for atom selection.
   Otherwise, the select method will attempt to find a reasonable default.
-  
+
   Use the superpose(target) method to perform superposition. This will return
   the RMSD, and the transformation used. To write output, use output(lsq,
   filename).
@@ -119,7 +119,7 @@ class SuperposePDB(object):
   The selectomatic(target) method performs a pairwise comparison of chain
   sequence alignments, and updates the selections to use the chains with the
   highest similarity.
-  
+
   You can also update the selection using the select_update() method, or return
   a given selection using select().
 
@@ -128,7 +128,7 @@ class SuperposePDB(object):
 
   To create a subclass with a modified fitting routine, override fit().
   """
-  
+
   # Alignment cache.
   _seqalign_cache = {}
 
@@ -140,7 +140,7 @@ class SuperposePDB(object):
     self._quiet = quiet
     self._log = log
     self.desc = desc or os.path.basename(filename)
-    
+
     # Validate input.
     if filename is None and pdb is None:
       raise Sorry("Filename or PDB instance required.")
@@ -154,7 +154,7 @@ class SuperposePDB(object):
 
     # Select atoms.
     self.select_update(selection=selection, chain=chain, preset=preset)
-    
+
   @classmethod
   def open_models(cls, filename=None, pdb=None, **kwargs):
     """Class method to return instances for each model in a file."""
@@ -174,16 +174,16 @@ class SuperposePDB(object):
         pdb_new.append_model(model.detached_copy())
         ret.append(cls(pdb=pdb_new, desc='%s-%s'%(desc, count), **kwargs))
     else:
-      raise Sorry("No models found!")        
+      raise Sorry("No models found!")
     return ret
-      
+
   def get_transformed(self):
     """Return a transformed model."""
     raise NotImplemented
 
   def selectomatic(self, target):
     """Perform pairwise sequence alignments and find the best aligned chain pair.
-    
+
     This method performs pairwise sequence alignments between all chains in
     itself and the target. The selections are updated to the pair with the
     highest sequence similarity, with chain IDs in the return value.
@@ -191,7 +191,7 @@ class SuperposePDB(object):
     alignments = []
     for moving_chain in self.pdb.chains():
       _, moving_selection, _ = self.select(selection="all chain %s"%moving_chain.id)
-      for target_chain in target.pdb.chains():        
+      for target_chain in target.pdb.chains():
         # For each pair,
         #   ... get the selection array
         _, target_selection, _ = target.select(selection="all chain %s"%target_chain.id)
@@ -203,7 +203,7 @@ class SuperposePDB(object):
         #   ... calculate score
         score = self._seqalign_score(alignment)
         alignments.append((score, moving_chain.id, target_chain.id, alignment))
-    
+
     if not alignments:
       raise Sorry("No alignments?")
 
@@ -213,10 +213,10 @@ class SuperposePDB(object):
     self.select_update(chain=best[1])
     target.select_update(chain=best[2])
     return best[1], best[2]
-        
-  def select(self, selection=None, chain=None, preset=None):      
-    """Update the selection. 
-    
+
+  def select(self, selection=None, chain=None, preset=None):
+    """Update the selection.
+
     Specify either an explicit selection, or one of the handy preset selections
     (ca, backbone, all). Presets will use the longest chain by default, but
     this can also be specified using chain. If no selection or preset is
@@ -226,7 +226,7 @@ class SuperposePDB(object):
     # Check for various Nones
     if selection in [None, "None", "none"]:
       selection = None
-    
+
     # Use the specified chain, or find the longest chain.
     chains = sorted(self.pdb.chains(), key=lambda x:x.atoms_size())
     chain = chain or chains[-1].id
@@ -238,17 +238,17 @@ class SuperposePDB(object):
       # Use a preset if it was specified.
       selection = PRESETS.get(preset)
       selection = selection%{'chain':chain}
-      selected_atoms = self.pdb.atom_selection_cache().selection(string=selection)      
+      selected_atoms = self.pdb.atom_selection_cache().selection(string=selection)
     else:
-      # Automagical selection; try the various presets, 
+      # Automagical selection; try the various presets,
       #   eventually falling back to 'all'
       for preset in PRESET_ORDER:
         selection = PRESETS[preset]
         selection = selection%{'chain':chain}
-        selected_atoms = self.pdb.atom_selection_cache().selection(string=selection)      
+        selected_atoms = self.pdb.atom_selection_cache().selection(string=selection)
         if selected_atoms.count(True):
           break
-      
+
     # Resequence the atoms and get the xyz coords.
     atoms = self.pdb.atoms()
     atoms.reset_i_seq()
@@ -273,17 +273,17 @@ class SuperposePDB(object):
     try:
       pbs = libtbx.math_utils.percentile_based_spread(deltas)
       self.log("Percentile-based spread (%s): %-.3f"%(desc, pbs))
-    except:
+    except Exception:
       self.log("Could not calculate percentile-based spread... Please fix!")
     self.log("RMSD between fixed and moving atoms (%s): %-.3f"%(desc, rmsd))
-  
+
   def _print_lsq(self, lsq=None):
     """Print the transformation described by a lsq."""
     self.log("Rotation:")
     self.log("\n"+lsq.r.mathematica_form(label="r", one_row_per_line=True, format="%8.5f"))
     self.log("Translation:")
     self.log(lsq.t.mathematica_form(label="t", format="%8.5f"))
-  
+
   def _print_seqalign(self, alignment, quiet=False):
     """Print a sequence alignment details."""
     matches = alignment.matches()
@@ -322,13 +322,13 @@ class SuperposePDB(object):
 
   def superpose(self, target):
     """Superpose to target. Return rmsd and lsq.
-    
+
     This method will perform a sequence alignment first if the target is not
     sequence identical.
     """
     seq_moving, str_moving = self._extract_sequence_rgs()
     seq_fixed, str_fixed = target._extract_sequence_rgs()
-    self.log("Let's go!")    
+    self.log("Let's go!")
 
     # Perform the sequence alignment
     alignment = self._seqalign(seq_moving, seq_fixed)
@@ -336,12 +336,12 @@ class SuperposePDB(object):
 
     # Too many arguments; should it just extract seq/str in _align?
     rmsds = self._superpose_align(
-      alignment, 
+      alignment,
       seq_moving,
-      str_moving, 
-      seq_fixed, 
-      str_fixed, 
-      self.selected_atoms, 
+      str_moving,
+      seq_fixed,
+      str_fixed,
+      self.selected_atoms,
       target.selected_atoms
       )
     rmsds = sorted(rmsds, key=lambda x:x[0], reverse=True)
@@ -352,11 +352,11 @@ class SuperposePDB(object):
     self.log("Initial stats:")
     self._print_rmsd(xyz_moving, xyz_fixed, desc='start')
     self.log("Best fit:")
-    self.log("Number of atoms for LS fitting: %s"%xyz_moving.size())    
+    self.log("Number of atoms for LS fitting: %s"%xyz_moving.size())
     self._print_rmsd(lsq.other_sites_best_fit(), xyz_fixed, desc='final')
     self._print_lsq(lsq)
     return rmsd, lsq
-    
+
   def _superpose_align(self, alignment, seq_moving, str_moving, seq_fixed, str_fixed, sel_moving, sel_fixed, windows=None):
     """Perform a sequence alignment, try to find a sequence alignment window
     that produces the lowest lsq fit. Note that this is a generator."""
@@ -368,9 +368,9 @@ class SuperposePDB(object):
       xyz_moving = cctbx.array_family.flex.vec3_double()
       xyz_fixed  = cctbx.array_family.flex.vec3_double()
       aligned = self._seqalign_pickmatches(alignment, window=window)
-      for i,j,k in aligned: 
+      for i,j,k in aligned:
         # alignment index, fixed index, moving index
-        # assert seq_moving[j] == seq_fixed[k] 
+        # assert seq_moving[j] == seq_fixed[k]
         # Add the atoms for this residue.
         for atom1 in str_moving[j].rg.atoms():
           for atom2 in str_fixed[k].rg.atoms():
@@ -378,26 +378,26 @@ class SuperposePDB(object):
               # print "checked:", atom1.name, atom2.name, atom1.i_seq, atom2.i_seq
               xyz_moving.append(atom1.xyz)
               xyz_fixed.append(atom2.xyz)
-      
+
       # Yield the RMSD for this window.
       try:
         yield self.fit(xyz_moving, xyz_fixed)
       except Exception, e:
         pass
         # self.log("Fitting error: %s"%e)
-  
+
   def _seqalign(self, seq_moving, seq_fixed, quiet=False, cache=True):
     """Perform sequence alignment using mmtbx.alignment. Return alignment.
-    
+
     Sequence alignments are cached; use cache=False to disable.
     """
     key = (seq_moving, seq_fixed)
     if self._seqalign_cache.get(key) and cache:
       return self._seqalign_cache[key]
-      
+
     opts = {
       'gap_opening_penalty': 12,
-      'gap_extension_penalty': 1, 
+      'gap_extension_penalty': 1,
       'similarity_function': 'blosum50', # identity
       'style': 'global'
     }
@@ -408,11 +408,11 @@ class SuperposePDB(object):
     if cache:
       self._seqalign_cache[key] = alignment
     return alignment
-  
+
   def _seqalign_pickmatches(self, alignment, window=0):
-    """Find the indexes of aligned residues. 
-    
-    Returns a list of lists with the indexes: 
+    """Find the indexes of aligned residues.
+
+    Returns a list of lists with the indexes:
       [match index, sequence a index, sequence b index]
     """
     # Find sequence alignment matches -- "|" or "*"
@@ -421,11 +421,11 @@ class SuperposePDB(object):
     matches = alignment.matches()
     aligned = []
     for i, ia, ib, im, a, b in zip(
-        itertools.count(0), 
+        itertools.count(0),
         alignment.i_seqs_a,
-        alignment.i_seqs_b, 
+        alignment.i_seqs_b,
         matches,
-        alignment.a, 
+        alignment.a,
         alignment.b):
       # print i, ia, ib, im, a, b
       left = i-window
@@ -440,7 +440,7 @@ class SuperposePDB(object):
         # print "window: %s -- left, right: %s %s -- i: %s -- append? %s"%(w, left, right, i, append)
         aligned.append((i, ia, ib))
     return aligned
-    
+
   def _seqalign_score(self, alignment):
     matches = alignment.matches()
     total = len(alignment.a) - alignment.a.count("-")
@@ -458,7 +458,7 @@ class SuperposePDB(object):
       sequence.append(a)
       rgs.extend(b)
     return "".join(sequence), rgs
-    
+
   def _extract_sequence_chain(self, chain, selection):
     """Extract the sequence and residue groups of a chain."""
     sequence = []
@@ -475,18 +475,18 @@ class SuperposePDB(object):
         if len(rg.unique_resnames()) == 1:
           resname = rg.unique_resnames()[0]
           olc = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter.get(resname, "X")
-          if olc != "X": 
+          if olc != "X":
             # proteins only
             sequence.append(olc)
             rgs.append(libtbx.group_args(i_seq=counter, rg=rg))
             counter += 1
-          elif iotbx.pdb.common_residue_names_get_class(name=resname.strip()) == "common_rna_dna": 
+          elif iotbx.pdb.common_residue_names_get_class(name=resname.strip()) == "common_rna_dna":
             # rna/dna
             sequence.append(resname.strip())
             rgs.append(libtbx.group_args(i_seq=counter, rg=rg))
             counter += 1
     return "".join(sequence), rgs
-    
+
   def output(self, lsq, filename):
     """Output PDB model to filename given transformation lsq."""
     output = self.pdb.atoms()
@@ -545,38 +545,38 @@ def run(args, command_name="phenix.superpose_pdbs", log=None):
 
   # Information.
   params.show(out=log)
-  
+
   print "\n===== Init ====="
   # The fixed model can only contain a single model.
   # It will raise an Exception if there is more than one!
   fixed = SuperposePDB(
-    fixed, 
+    fixed,
     selection=pe.selection_fixed,
     preset=pe.selection_fixed_preset,
-    log=log, 
-    quiet=quiet, 
+    log=log,
+    quiet=quiet,
     desc=fixed
   )
-  
-  # The moving pdb can contain many models. These will each be aligned to the 
+
+  # The moving pdb can contain many models. These will each be aligned to the
   # fixed model and output as a separate file...
   moving_args = dict(
       selection=pe.selection_moving,
       preset=pe.selection_moving_preset,
       desc=moving,
-      log=log, 
+      log=log,
       quiet=quiet
   )
   for count, moving in enumerate(SuperposePDB.open_models(moving, **moving_args)):
     print "\n===== Aligning %s to %s ====="%(moving.desc, fixed.desc)
-    if not pe.selection_moving:      
+    if not pe.selection_moving:
       moving.selectomatic(fixed)
     rmsd, lsq = moving.superpose(fixed)
     if output:
       filename = '%s-%s.pdb'%(output, count)
       print "\n===== Writing %s output to %s ====="%(moving.desc, filename)
       moving.output(lsq, filename=filename)
-  
+
 class launcher(libtbx.runtime_utils.target_with_save_result):
   def run(self) :
     return run(args=list(self.args), log=sys.stdout)
@@ -598,4 +598,3 @@ def validate_params(params) :
 
 if __name__ == "__main__":
   run(args=sys.argv[1:])
-  
