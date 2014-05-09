@@ -1,8 +1,7 @@
 from __future__ import division
 from libtbx import easy_pickle
 import sys
-
-
+import logging
 
 class SingleFrame:
   """ Class that creates single-image agregate metrics/scoring that can then be
@@ -12,23 +11,16 @@ class SingleFrame:
     try:
       # Warn on error, but continue directory traversal.
       d = easy_pickle.load(path)
-
-      # For the miller array in d['observations'][[crystal_num]], references are at
-      # http://cctbx.sourceforge.net/current/python/cctbx.miller.html and in cctbx/miller/__init_.py
-
       self.miller_array = d['observations'][crystal_num]
       self.path = path
       self.name = filename
       self.pg = d['pointgroup']
       self.uc = d['current_orientation'][crystal_num].unit_cell() \
-                                           .niggli_cell() \
-                                           .parameters()
+                                                     .niggli_cell() \
+                                                     .parameters()
       self.total_i = d['observations'][crystal_num].sum()
-
+      logging.debug("Extracted image {}".format(filename))
     except KeyError:
-      sys.stderr.write(
-        "Could not extract point group and unit cell from %s\n" % path)
+      logging.warning("Could not extract point group and unit cell from %s\n" % path)
     except IOError:
-      sys.stderr.write(
-        "Could not read %s. It may not be a pickle file.\n" % path)
-
+      logging.warning("Could not read %s. It may not be a pickle file.\n" % path)
