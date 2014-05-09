@@ -86,6 +86,7 @@ def extend_residue (residue,
     current_group=tmp_residue,
     new_group=ideal.only_model().only_chain().only_residue_group().only_atom_group(),
     backbone_only=True,
+    is_amino_acid=True, # XXX this could probably be smarter...
     exclude_hydrogens=False)
   assert (new_residue.resname == residue.resname)
   if (match_conformation) :
@@ -114,7 +115,8 @@ def extend_protein_model (pdb_hierarchy,
     log=None,
     modify_segids=True,
     prefilter_callback=None,
-    idealized_residue_dict=None) :
+    idealized_residue_dict=None,
+    skip_non_protein_chains=True) :
   """
   Replace all sidechains with missing non-hydrogen atoms in a PDB hierarchy.
   """
@@ -137,7 +139,7 @@ def extend_protein_model (pdb_hierarchy,
     selection = flex.bool(pdb_atoms.size(), True)
   partial_sidechains = []
   for chain in pdb_hierarchy.only_model().chains() :
-    if (not chain.is_protein()) :
+    if (not chain.is_protein()) and (skip_non_protein_chains) :
       print >> log, "    skipping non-protein chain '%s'" % chain.id
       continue
     for residue_group in chain.residue_groups() :
@@ -231,7 +233,7 @@ def refit_residues (
       resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
   unit_cell = xrs.unit_cell()
   for chain in hierarchy.only_model().chains() :
-    if (not chain.is_protein()) : continue
+    if (not chain.is_protein()) and (not allow_modified_residues) : continue
     residue_groups = chain.residue_groups()
     for i_rg, residue_group in enumerate(residue_groups) :
       prev_res = next_res = None
