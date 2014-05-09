@@ -1,3 +1,4 @@
+
 from __future__ import division
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, null_out
@@ -168,11 +169,14 @@ class merging_stats (object) :
     from scitbx.array_family import flex
     assert (array.sigmas() is not None)
     array = array.eliminate_sys_absent()
-    array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
-    array = array.sort("packed_indices")
     non_negative_sel = array.sigmas() >= 0
     self.n_neg_sigmas = non_negative_sel.count(False)
-    array = array.select(non_negative_sel)
+    positive_sel = array.sigmas() > 0
+    self.n_zero_sigmas = positive_sel.count(False) - self.n_neg_sigmas
+    array = array.select(positive_sel)
+    self.anom_half_corr = array.half_dataset_anomalous_correlation()
+    array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
+    array = array.sort("packed_indices")
     filter = filter_intensities_by_sigma(
       array=array,
       sigma_filtering=sigma_filtering)
@@ -251,13 +255,13 @@ class merging_stats (object) :
         model_arrays.cc_work_and_free(array_merged)
 
   def format (self) :
-    return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f" % (
+    return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f  %5.3f" % (
       self.d_max, self.d_min,
       self.n_obs, self.n_uniq,
       self.mean_redundancy, self.completeness*100,
       self.i_mean, self.i_over_sigma_mean,
       self.r_merge, self.r_meas, self.r_pim,
-      self.cc_one_half)
+      self.cc_one_half, self.anom_half_corr)
 
   def format_for_model_cc (self) :
     return "%6.2f  %6.2f  %6d  %6.2f  %6.2f  %5.3f  %5.3f   %s   %s  %s  %s"%(
@@ -294,7 +298,8 @@ class merging_stats (object) :
   def table_data (self) :
     table = [(1/self.d_min**2), self.n_obs, self.n_uniq, self.mean_redundancy,
             self.completeness*100, self.i_mean, self.i_over_sigma_mean,
-            self.r_merge, self.r_meas, self.r_pim, self.cc_one_half]
+            self.r_merge, self.r_meas, self.r_pim, self.cc_one_half,
+            self.anom_half_corr]
     if (self.cc_work is not None) :
       table.extend([self.cc_star, self.cc_work, self.cc_free, self.r_work,
         self.r_free])
@@ -381,10 +386,11 @@ class dataset_statistics (object) :
     self.bins = []
     title = "Intensity merging statistics"
     column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
-        "Mean(I)", "Mean(I/sigma)", "R-merge", "R-meas", "R-pim", "CC1/2"]
+        "Mean(I)", "Mean(I/sigma)", "R-merge", "R-meas", "R-pim", "CC1/2",
+        "CC(anom)"]
     graph_names = ["Reflection counts", "Redundancy", "Completeness",
-        "Mean(I)", "Mean(I/sigma)", "R-factors", "CC1/2"]
-    graph_columns = [[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,10]]
+        "Mean(I)", "Mean(I/sigma)", "R-factors", "CC1/2", "CC(anom)"]
+    graph_columns = [[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,10],[0,11]]
     #--- CC* mode
     if (model_arrays is not None) :
       title = "Model quality and intensity merging statistics"
@@ -447,7 +453,7 @@ class dataset_statistics (object) :
     print >> out, ""
     print >> out, """\
   Statistics by resolution bin:
- d_max  d_min   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2"""
+ d_max  d_min   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2  cc_ano"""
     for bin_stats in self.bins :
       print >> out, bin_stats.format()
     print >> out, self.overall.format()
