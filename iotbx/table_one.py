@@ -24,8 +24,8 @@ angstrom = u"\u00C5".encode("utf-8", "strict").strip()
 keywords = [
   # (attr, label, format,  cif_tag)
   # data-only statistics
-  ("wavelength", "Wavelength (%s)" % angstrom, "%.4g", None),
-  ("d_max_min", "Resolution range (%s)" % angstrom, "%.3g - %.3g", None),
+  ("wavelength", "Wavelength", "%.4g", None),
+  ("d_max_min", "Resolution range", "%.3g - %.3g", None),
   ("space_group", "Space group", "%s", None),
   ("unit_cell", "Unit cell", "%g %g %g %g %g %g", None),
   ("n_refl_all", "Total reflections", "%d", "_reflns.pdbx_number_measured_all"),
@@ -40,7 +40,7 @@ keywords = [
   ("cc_star", "CC*", "%.3g", "_reflns.phenix_cc_star"),
   # refinement statistics
   # TODO figure out how to extract this...
-  #("n_refl_refine", "Reflections used in refinement", "%d",
+  ("n_refl_refine", "Reflections used in refinement", "%d", None),
     # XXX this is problematic - I am not sure if our usage is consistent with
     # the intended purpose of this tag
   #  "_refine.ls_number_reflns_obs"),
@@ -55,17 +55,27 @@ keywords = [
   ("n_ligand_atoms", "  ligands", "%d", None),
   ("n_waters", "  water", "%d", None),
   ("n_residues", "Protein residues", "%d", None),
+  ("n_nuc", "Nucleic acid bases", "%d", None),
   ("bond_rmsd", "RMS(bonds)", "%.3f", None),
   ("angle_rmsd", "RMS(angles)", "%.2f", None),
   ("rama_favored", "Ramachandran favored (%)", "%.2g", None),
   ("rama_allowed", "Ramachandran allowed (%)", "%.2g", None),
   ("rama_outliers", "Ramachandran outliers (%)", "%.2g", None),
+  ("rota_outliers", "Rotamer outliers (%)", "%.2g", None),
   ("clashscore", "Clashscore", "%.2f", None),
   ("adp_mean", "Average B-factor", "%.2f", None),
   ("adp_mean_mm", "  macromolecules", "%.2f", None),
   ("adp_mean_lig", "  ligands", "%.2f", None),
   ("adp_mean_wat", "  solvent", "%.2f", None),
 #  ("solvent_content", "Solvent content", "%.1f%%", None),
+]
+
+# statistics that we don't want to show if not applicable (mainly for different
+# molecule types)
+optional_if_none = [
+  "n_residues", "n_ligand_atoms", "n_waters", "n_nuc",
+  "rama_favored", "rama_allowed", "rama_outliers", "rota_outliers",
+  "adp_mean_lig", "adp_mean_wat", "cc_work", "cc_free", "cc_star",
 ]
 
 keyword_formats = dict([ (kw, fs) for (kw, label, fs, cif_tag) in keywords ])
@@ -95,6 +105,8 @@ class column (slots_getstate_setstate) :
 
   def format_stat (self, name) :
     value = getattr(self, name, None)
+    if (value is None) and (name in optional_if_none) :
+      return None
     shell_value = getattr(self.outer_shell, name, None)
     fs = keyword_formats[name]
     if (name == "d_max_min") :
@@ -134,11 +146,14 @@ class table (slots_getstate_setstate) :
     rows = []
     rows.append([""] + [ column.label for column in self.columns ])
     for (stat_name, label, fstring, cif_tag) in keywords :
-      row = [label]
+      row = []
       for column in self.columns :
         row.append(column.format_stat(stat_name))
+      if (row == [ None for x in range(len(row)) ]) :
+        continue
+      row.insert(0, label)
       rows.append(row)
-    n_rows = len(keywords) + 1
+    n_rows = len(rows)
     n_cols = len(self.columns) + 1
     columns = [ [ row[i] for row in rows ] for i in range(n_cols) ]
     columns = [ resize_column(col, "right") for col in columns ]
@@ -179,12 +194,17 @@ class table (slots_getstate_setstate) :
     table.AddRow(*header)
     for (stat_name, label, fstring, cif_tag) in keywords :
       row = [ PyRTF.Cell(PyRTF.Paragraph(ss.ParagraphStyles.Heading2, label)) ]
+      n_none = 0
       for column in self.columns :
         txt = column.format_stat(stat_name)
+        if (txt is None) :
+          n_none += 1
         p = PyRTF.Paragraph(ss.ParagraphStyles.Normal,
           PyRTF.ParagraphPS(alignment=2))
         p.append(txt)
         row.append(PyRTF.Cell(p))
+      if (n_none == len(row) - 1) :
+        continue
       table.AddRow(*row)
     section.append(table)
     p = PyRTF.Paragraph(ss.ParagraphStyles.Normal)
