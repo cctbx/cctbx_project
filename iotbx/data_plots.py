@@ -306,9 +306,6 @@ class table_data (object) :
     out += sep_line
     return str(out)
 
-  def format_html (self) :
-    pass
-
   def format_loggraph (self, precision=6, column_width=None) :
     data = self.data
     graph_columns = self.graph_columns
@@ -343,6 +340,22 @@ class table_data (object) :
       out += "\n"
     out += "$$\n"
     return out
+
+  def export_json (self) :
+    import json
+    graph_types = self.graph_types
+    if graph_types is None :
+      graph_types = ["A" for graph in self.graph_names ]
+    export_dict = {
+      "title" : self.title,
+      "graph_columns" : self.graph_columns,
+      "graph_names" : self.graph_names,
+      "graph_types" : graph_types,
+      "column_labels" : self.column_labels,
+      "x_is_inverse_d_min" : self.x_is_inverse_d_min,
+      "data" : self.data,
+    }
+    return json.dumps(export_dict)
 
   def as_rows (self) :
     return flip_table(self.data)
