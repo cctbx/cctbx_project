@@ -10,21 +10,24 @@ class target_and_gradients(object):
                unit_cell,
                density_map,
                sites_cart,
-               real_space_gradients_delta):
+               real_space_gradients_delta,
+               selection):
     adopt_init_args(self, locals())
 
   def target(self):
     return -1.*maptbx.real_space_target_simple(
       unit_cell   = self.unit_cell,
       density_map = self.density_map,
-      sites_cart  = self.sites_cart)
+      sites_cart  = self.sites_cart,
+      selection   = self.selection)
 
   def gradients(self):
     return -1.*maptbx.real_space_gradients_simple(
-      unit_cell   =self.unit_cell,
-      density_map =self.density_map,
-      sites_cart  =self.sites_cart,
-      delta       =self.real_space_gradients_delta)
+      unit_cell   = self.unit_cell,
+      density_map = self.density_map,
+      sites_cart  = self.sites_cart,
+      delta       = self.real_space_gradients_delta,
+      selection   = self.selection)
 
 def local_standard_deviations_target_per_site(
       unit_cell, density_map, weight_map, weight_map_scale_factor,
