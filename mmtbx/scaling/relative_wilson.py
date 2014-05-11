@@ -94,6 +94,7 @@ class relative_wilson(object):
     i_scaled = flex.exp( self.calc_d_star_sq*b_value )*self.mean_calc*scale
     ratio  = i_scaled / self.mean_obs
     mean = self.curve( self.calc_d_star_sq )
+    assert ratio.all_gt(0) # FIXME need to filter first!
     ratio = flex.log(ratio)
     var = self.std(self.calc_d_star_sq)
     z = flex.abs(ratio-mean)/var
