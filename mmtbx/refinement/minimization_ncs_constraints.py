@@ -35,6 +35,7 @@ def restraints_target_and_grads(
       xray_structure,
       rotation_matrices,
       lbfgs_self,
+      grad,
       refine_sites=False,
       refine_u_iso=False,
       refine_transformations=False,
@@ -67,7 +68,12 @@ def restraints_target_and_grads(
         xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
         x                 = lbfgs_self.x)
   if(ef is not None): return ef.target, ef_grad
-  else:               return None, None
+  elif not grad: return 0, 0
+  elif isinstance(grad,flex.vec3_double):
+    return 0, flex.vec3_double([(0,0,0),]*len(grad))
+  elif isinstance(grad,flex.double):
+    return 0, flex.double((0,0,0)*(len(grad)//3))
+  else: return None,None
 
 class target_function_and_grads_real_space(object):
   """
@@ -121,28 +127,18 @@ class target_function_and_grads_real_space(object):
       rotation_matrices      = self.rotation_matrices,
       refine_sites           = self.refine_sites,
       refine_transformations = self.refine_transformations,
-      lbfgs_self             = lbfgs_self)
+      lbfgs_self             = lbfgs_self,
+      grad                   = g_data)
     if(self.data_weight is None): self.data_weight=1.
-    if([t_restraints, g_restraints].count(None)==0):
-      t = t_data*self.data_weight + t_restraints
-      if(compute_gradients):
-        g = g_data*self.data_weight + g_restraints
-        if(not self.refine_transformations):
-          g = grads_asu_to_one_ncs(
-            rotation_matrices    = self.rotation_matrices,
-            number_of_ncs_copies = self.number_of_ncs_copies,
-            grad                 = g,
-            refine_sites         = self.refine_sites).as_double()
-    else:
-      t = t_data*self.data_weight
-      if(compute_gradients):
-        g = g_data*self.data_weight
-        if(not self.refine_transformations):
-          g = grads_asu_to_one_ncs(
-            rotation_matrices    = self.rotation_matrices,
-            number_of_ncs_copies = self.number_of_ncs_copies,
-            grad                 = g,
-            refine_sites         = self.refine_sites).as_double()
+    t = t_data*self.data_weight + t_restraints
+    if(compute_gradients):
+      g = g_data*self.data_weight + g_restraints
+      if(not self.refine_transformations):
+        g = grads_asu_to_one_ncs(
+          rotation_matrices    = self.rotation_matrices,
+          number_of_ncs_copies = self.number_of_ncs_copies,
+          grad                 = g,
+          refine_sites         = self.refine_sites).as_double()
     return t, g
 
 class target_function_and_grads_reciprocal_space(object):
@@ -215,28 +211,18 @@ class target_function_and_grads_reciprocal_space(object):
       refine_transformations = self.refine_transformations,
       lbfgs_self             = lbfgs_self,
       iso_restraints         = self.iso_restraints,
-      use_hd                 = self.use_hd)
+      use_hd                 = self.use_hd,
+      grad                   = g_data)
     if(self.data_weight is None): self.data_weight=1.
-    if([t_restraints, g_restraints].count(None)==0):
-      t = t_data*self.data_weight + t_restraints
-      if(compute_gradients):
-        g = g_data*self.data_weight + g_restraints
-        if(not self.refine_transformations):
-          g = grads_asu_to_one_ncs(
-            rotation_matrices    = self.rotation_matrices,
-            number_of_ncs_copies = self.number_of_ncs_copies,
-            grad                 = g,
-            refine_sites         = self.refine_sites).as_double()
-    else:
-      t = t_data*self.data_weight
-      if(compute_gradients):
-        g = g_data*self.data_weight
-        if(not self.refine_transformations):
-          g = grads_asu_to_one_ncs(
-            rotation_matrices    = self.rotation_matrices,
-            number_of_ncs_copies = self.number_of_ncs_copies,
-            grad                 = g,
-            refine_sites         = self.refine_sites).as_double()
+    t = t_data*self.data_weight + t_restraints
+    if(compute_gradients):
+      g = g_data*self.data_weight + g_restraints
+      if(not self.refine_transformations):
+        g = grads_asu_to_one_ncs(
+          rotation_matrices    = self.rotation_matrices,
+          number_of_ncs_copies = self.number_of_ncs_copies,
+          grad                 = g,
+          refine_sites         = self.refine_sites).as_double()
     return t, g
 
   def finalize(self):
