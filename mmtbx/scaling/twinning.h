@@ -2,6 +2,7 @@
 #ifndef MMTBX_SCALING_TWINNING_H
 #define MMTBX_SCALING_TWINNING_H
 
+#include <mmtbx/error.h>
 #include <cctbx/miller/sym_equiv.h>
 #include <cctbx/miller/match_indices.h>
 #include <cctbx/miller/asu.h>
@@ -671,7 +672,7 @@ namespace twinning {
          hkl_.size(), diff_vectors_.size()  );
 
       long ht,kt,lt,index;
-      FloatType p,q, ll,count=0;
+      FloatType p,q, denom, ll,count=0;
       for (unsigned ii=0;ii<hkl_.size();ii++){
         ht = diff_vectors_[diff_pick[ii]][0] + hkl_[ii][0];
         kt = diff_vectors_[diff_pick[ii]][1] + hkl_[ii][1];
@@ -682,7 +683,9 @@ namespace twinning {
         if (index >=0){
           p = intensity_[ii];
           q = intensity_[index];
-          ll = (p-q)/(p+q);
+          denom = p + q;
+          MMTBX_ASSERT(denom != 0);
+          ll = (p-q)/ denom;
           l_values_.push_back(ll);
           mean_l_+= std::fabs(ll);
           mean_l2_+=ll*ll;
@@ -690,6 +693,7 @@ namespace twinning {
         }
       }
 
+      MMTBX_ASSERT(count > 0);
       mean_l_/=count;
       mean_l2_/=count;
     }
