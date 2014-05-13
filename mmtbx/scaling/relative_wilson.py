@@ -75,6 +75,7 @@ class relative_wilson(object):
     self.b_value = sol[1]
 
     self.modify_weights()
+    assert (not self.weight_array.all_eq(0.0))
     s = 1.0/(flex.sum(self.weight_array*self.mean_calc)/flex.sum(self.weight_array*self.mean_obs))
     b = 0.0
     self.sart_simplex = [ flex.double([s,b]), flex.double([s+0.1,b+1.1]), flex.double([s-0.1,b-1.1]) ]
