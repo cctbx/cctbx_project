@@ -84,7 +84,7 @@ class mod_cspad_cbf(mod_event_info):
     if gain_map_path is not None:
       reader = Registry.find(gain_map_path)
       gain_img = reader(gain_map_path)
-      self.gain_map = [gain_img.get_raw_data(i) for i in xrange(len(gain_img.get_detector()))]
+      self.gain_map = [gain_img.get_raw_data(i).as_double() for i in xrange(len(gain_img.get_detector()))]
       if self.gain_map_level is not None:
         cspad_tbx.dynamic_range *= self.gain_map_level
         for i, map in enumerate(self.gain_map):
@@ -92,7 +92,6 @@ class mod_cspad_cbf(mod_event_info):
           sel.reshape(flex.grid(map.focus()))
           map = map.set_selected(~sel, self.gain_map_level)
           self.gain_map[i] = map.set_selected(sel, 1)
-      assert False not in [isinstance(map, flex.double) for map in self.gain_map]
 
 
   def beginjob(self, evt, env):
