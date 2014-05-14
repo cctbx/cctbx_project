@@ -107,7 +107,13 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0):
     fast = col(panel.get_fast_axis())
     slow = col(panel.get_slow_axis())
     origin = col(panel.get_origin()) * 1e-3
-    center = origin \
+
+    # Viewer will show an orthographic projection of the data onto a plane perpendicular to 0 0 1
+    projection_normal = col((0.,0.,1.))
+    beam_to_origin_proj = origin.dot(projection_normal)*projection_normal
+    projected_origin = origin - beam_to_origin_proj
+
+    center = projected_origin \
              + (data.focus()[0] - 1) / 2 * pixel_size[1] * slow \
              + (data.focus()[1] - 1) / 2 * pixel_size[0] * fast
     normal = slow.cross(fast).normalize()
@@ -152,6 +158,7 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0):
     R = sqr((T(0, 0), T(0, 1),
              T(1, 0), T(1, 1)))
     t = col((T(0, 2), T(1, 2)))
+    #print i,R[0],R[1],R[2],R[3],t[0],t[1]
 
     my_flex_image.add_transformation_and_translation(R, t)
   my_flex_image.followup_brightness_scale()
@@ -204,6 +211,9 @@ class _Tiles(object):
         if len(detector) > 1:
           # XXX Special-case read of new-style images until multitile
           # images are fully supported in dxtbx.
+
+          # beam should be close to 0 0 1 but don't kill ourselves with an assertion
+          # assert self.raw_image.get_beam().get_direction()==(0.0,0.0,1.0)
           self.flex_image = _get_flex_image_multipanel(
             brightness=self.current_brightness / 100,
             panels=detector,
