@@ -34,6 +34,8 @@ else:
     tag = stream_file[0].split('.')[0]
 
 
+logging.critical("NOT READY FOR PRIME-TIME. CONTACT ZELDIN@STANFORD.EDU IF YOU WANT TO USE THIS.")
+
 EV_PER_A = 12398.4187
 # Regular expressions, set up so one can use groups to extract the data
 re_energy = re.compile("photon_energy_eV\s=\s([0-9]+\.[0-9]+)")
@@ -83,7 +85,7 @@ def check_image(image):
 
 def crystfel_to_cctbx_coord_system(abasis, bbasis, cbasis):
   """CrystFEL is RHS with z down the beam, and y to the ceiling.
-  CCTBX.Postrefine is RHS with x down the beam and z to the ceiling.
+  CCTBX.Postrefine is RHS with z to the source, and y to the ceiling.
   """
   from scitbx.matrix import sqr
   from cctbx import crystal_orientation
@@ -92,9 +94,9 @@ def crystfel_to_cctbx_coord_system(abasis, bbasis, cbasis):
                abasis[1], bbasis[1], cbasis[1],
                abasis[2], bbasis[2], cbasis[2]))
 
-  coord_transformation = sqr(( 0, 0, 1,
-                              1, 0,  0,
-                               0, 1,  0))
+  coord_transformation = sqr((  -1,  0,   0,
+                                 0,  1,   0,
+                                 0,  0,  -1))
   new_coords = a_mat.__mul__(coord_transformation)
 
   ori = crystal_orientation.crystal_orientation(new_coords, crystal_orientation.basis_type.reciprocal)
