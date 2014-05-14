@@ -1,6 +1,7 @@
 from __future__ import division
 import iotbx.phil
 from mmtbx import polygon
+from libtbx.test_utils import approx_equal
 import libtbx, os
 
 params1 = iotbx.phil.parse("""\
@@ -58,6 +59,10 @@ def test_all () :
     track_unused_definitions = True)
   polygon.polygon(params = pr.extract())
   working_phil = polygon.master_params.fetch(source=pr)
+  percentiles = polygon.get_statistics_percentiles(d_min=1.5,
+    stats={ "clashscore" : 21, "r_work" : 0.174, "r_free" : 0.19 })
+  # XXX This will change when the database is updated
+  assert approx_equal(percentiles['clashscore'], 5.01765)
 
 if (__name__ == "__main__"):
   file_name = libtbx.env.find_in_repositories(

@@ -52,10 +52,10 @@ class ensemble (slots_getstate_setstate) :
   """
 
   __slots__ = [
-    "rama_out",
-    "rama_fav",
-    "rota_out",
-    "cbeta_out",
+    "rama_outliers",
+    "rama_favored",
+    "rotamer_outliers",
+    "c_beta_deviations",
     "clashscore",
     "mpscore",
   ]
@@ -73,7 +73,7 @@ class ensemble (slots_getstate_setstate) :
         array.append(getattr(s, name))
       setattr(self, name, array)
 
-  def show (self, out=None, prefix="") :
+  def show (self, out=None, prefix="", show_percentiles=None) :
     if (out is None) :
       out = sys.stdout
     def min_max_mean (array) :
@@ -88,13 +88,13 @@ class ensemble (slots_getstate_setstate) :
       return "%s %s %s" % (fs(format, min), fs(format, max), fs(format, mean))
     print >> out, "%s                           min    max   mean" % prefix
     print >> out, "%sRamachandran outliers = %s %%" % (prefix,
-      format_all("%6.2f", self.rama_out))
+      format_all("%6.2f", self.rama_outliers))
     print >> out, "%s             favored  = %s %%" % (prefix,
-      format_all("%6.2f", self.rama_fav))
+      format_all("%6.2f", self.rama_favored))
     print >> out, "%sRotamer outliers      = %s %%" % (prefix,
-      format_all("%6.2f", self.rota_out))
+      format_all("%6.2f", self.rotamer_outliers))
     print >> out, "%sC-beta deviations     = %s" % (prefix,
-      format_all("%6d", self.cbeta_out))
+      format_all("%6d", self.c_beta_deviations))
     print >> out, "%sClashscore            = %s" % (prefix,
       format_all("%6.2f", self.clashscore))
     if (self.mpscore is not None) :
@@ -132,7 +132,7 @@ run phenix.model_vs_data or the validation GUI.)
     extra = " (%d models)" % len(xrs)
   print >> out, ""
   print >> out, "Validation summary for %s%s:" % (pdb_file, extra)
-  s.show(out=out, prefix="  ")
+  s.show(out=out, prefix="  ", show_percentiles=True)
   print >> out, ""
   return s
 

@@ -43,6 +43,9 @@ output {
     .type = bool
   kinemage = False
     .type = bool
+  percentiles = False
+    .type = bool
+    .help = Show percentile rankings for summary statistics
   coot = True
     .type = bool
     .help = Write Coot script
@@ -131,7 +134,8 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
     out2.register("stdout", out)
     f = open(params.output.prefix + ".out", "w")
     out2.register("txt_out", f)
-    result.show(out=out2, outliers_only=params.molprobity.outliers_only)
+    result.show(out=out2, outliers_only=params.molprobity.outliers_only,
+      show_percentiles=params.output.percentiles)
     f.close()
     print >> out, ""
     print >> out, "Results written to %s.out" % params.output.prefix
@@ -164,7 +168,7 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
       pass
   else :
     print >> out, ""
-    result.show_summary(out=out)
+    result.show_summary(out=out, show_percentiles=params.output.percentiles)
   if (params.output.wxplots) :
     try :
       import wxtbx.app

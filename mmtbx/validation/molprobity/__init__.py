@@ -193,7 +193,8 @@ class molprobity (slots_getstate_setstate) :
       rota_out=self.rotalyze.out_percent,
       rama_fav=self.ramalyze.fav_percent)
 
-  def show (self, out=sys.stdout, outliers_only=True, suppress_summary=False) :
+  def show (self, out=sys.stdout, outliers_only=True, suppress_summary=False,
+      show_percentiles=False) :
     """
     Comprehensive output with individual outlier lists, plus summary.
     """
@@ -227,7 +228,8 @@ class molprobity (slots_getstate_setstate) :
       self.clashes.show(out=out, prefix="  ")
     if (not suppress_summary) :
       make_header("Summary", out=out)
-      self.show_summary(out=out, prefix="  ")
+      self.show_summary(out=out, prefix="  ",
+        show_percentiles=show_percentiles)
 
   def summarize (self) :
     """
@@ -251,24 +253,24 @@ class molprobity (slots_getstate_setstate) :
         rms_angles = self.header_info.rms_angles
     mpscore = self.molprobity_score()
     return summary(
-      rama_out=getattr(self.ramalyze, "out_percent", None),
-      rama_fav=getattr(self.ramalyze, "fav_percent", None),
-      rota_out=getattr(self.rotalyze, "out_percent", None),
-      cbeta_out=getattr(self.cbetadev, "n_outliers", None),
+      rama_outliers=getattr(self.ramalyze, "out_percent", None),
+      rama_favored=getattr(self.ramalyze, "fav_percent", None),
+      rotamer_outliers=getattr(self.rotalyze, "out_percent", None),
+      c_beta_deviations=getattr(self.cbetadev, "n_outliers", None),
       clashscore=clashscore,
-      rms_bonds=rms_bonds,
-      rms_angles=rms_angles,
+      bond_rmsd=rms_bonds,
+      angle_rmsd=rms_angles,
       mpscore=mpscore,
       d_min=d_min,
       r_work=r_work,
       r_free=r_free,
       program=getattr(self.header_info, "refinement_program", None))
 
-  def show_summary (self, out=sys.stdout, prefix="") :
+  def show_summary (self, **kwds) :
     """
     Print summary of outliers or scores for each analysis.
     """
-    return self.summarize().show(out=out, prefix=prefix)
+    return self.summarize().show(**kwds)
 
   def as_mmcif_records (self) : # TODO
     raise NotImplementedError()
@@ -290,6 +292,8 @@ class molprobity (slots_getstate_setstate) :
   def d_min (self) :
     if (self.data_stats is not None) :
       return self.data_stats.d_min
+    elif (self.header_info is not None) :
+      return self.header_info.d_min
 
   def d_max_min (self, outer_shell=False) :
     if (self.data_stats is not None) :
@@ -446,13 +450,13 @@ class summary (slots_getstate_setstate_default_initializer) :
   larger.
   """
   __slots__ = [
-    "rama_out",
-    "rama_fav",
-    "rota_out",
-    "cbeta_out",
+    "rama_outliers",
+    "rama_favored",
+    "rotamer_outliers",
+    "c_beta_deviations",
     "clashscore",
-    "rms_bonds",
-    "rms_angles",
+    "bond_rmsd",
+    "angle_rmsd",
     "mpscore",
     "d_min",
     "r_work",
@@ -478,18 +482,34 @@ class summary (slots_getstate_setstate_default_initializer) :
     "%6.2f", "%8.4f", "%8.4f", "%s",
   ]
 
-  def show (self, out=sys.stdout, prefix="  ") :
+  def show (self, out=sys.stdout, prefix="  ", show_percentiles=False) :
     def fs (format, value) :
       return format_value(format, value, replace_none_with=("(none)"))
     maxlen = max([ len(label) for label in self.labels ])
+    percentiles = {}
+    if (show_percentiles) :
+      perc_attr = ["clashscore", "mpscore", "r_work", "r_free"]
+      stats = dict([ (name, getattr(self, name)) for name in perc_attr ])
+      from mmtbx.polygon import get_statistics_percentiles
+      percentiles = get_statistics_percentiles(self.d_min, stats)
     for k, name in enumerate(self.__slots__) :
       format = "%%s%%-%ds = %%s" % maxlen
       if (k < 3) :
         format += " %%"
+      percentile_info = ""
+      if (show_percentiles) :
+        percentile = percentiles.get(name, None)
+        if (percentile is not None) :
+          format += " (percentile: %s)"
+          percentile_info = "%.1f" % percentile
+        else :
+          format += "%s"
+      else :
+        format += "%s"
       value = getattr(self, name)
       if (value is not None) :
         print >> out, format % (prefix, self.labels[k], fs(self.formats[k],
-          value))
+          value), percentile_info)
     return self
 
 ########################################################################
