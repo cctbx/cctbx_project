@@ -1,4 +1,5 @@
 from __future__ import division
+import logging
 from scitbx.matrix import sqr
 from cctbx.uctbx import unit_cell
 from cctbx import miller
@@ -854,6 +855,15 @@ class input_handler(object):
         elif param_name=='flag_force_accept_all_frames':
           if param_val=='True':
             self.flag_force_accept_all_frames=True
+        elif param_name.lower()=='logging_level':
+          if param_val.lower()=='critical':
+            logging.getLogger().setLevel(logging.CRITICAL)
+          elif param_val.lower()=='info':
+            logging.getLogger().setLevel(logging.INFO)
+          elif param_val.lower()=='debug':
+            logging.getLogger().setLevel(logging.DEBUG)
+
+
 
     if self.target_space_group == '':
       print 'Parameter: target_space_group - please specify space_group (usage: target_space_group=SGSYMBOL)'
