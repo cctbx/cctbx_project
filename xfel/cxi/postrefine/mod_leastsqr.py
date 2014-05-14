@@ -24,6 +24,7 @@ from scitbx.matrix import sqr, col
 from cctbx.uctbx import unit_cell
 from cctbx.crystal_orientation import crystal_orientation, basis_type
 from mod_partiality import partiality_handler
+import logging
 
 def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
   #calculate spot_radius based on rms delta_S for all spots
@@ -35,6 +36,7 @@ def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
     S = x + S0
     delta_S = S.length() - (1./wavelength)
     delta_S_all.append(delta_S)
+    logging.debug("Delta S: {}".format(delta_S))
 
   spot_radius = math.sqrt(flex.mean(delta_S_all*delta_S_all))
 
