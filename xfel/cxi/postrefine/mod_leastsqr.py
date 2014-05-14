@@ -36,6 +36,8 @@ def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
     S = x + S0
     delta_S = S.length() - (1./wavelength)
     delta_S_all.append(delta_S)
+    if delta_S > 0.1:
+      logging.warning("Rh is woryingly large: {}".format(delta_S))
     logging.debug("Delta S: {}".format(delta_S))
 
   spot_radius = math.sqrt(flex.mean(delta_S_all*delta_S_all))
