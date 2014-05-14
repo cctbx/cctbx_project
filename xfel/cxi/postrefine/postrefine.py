@@ -2,7 +2,7 @@
 Read pickle files output from integration process to determine the polarity and
 refine the rotation matrix
 Usage:
-cxi.postrefine input=input.inp
+cxi.postrefine input=input.inp /path/to/pickle/files
 """
 from __future__ import division
 from cctbx.array_family import flex
@@ -114,21 +114,6 @@ class postref_handler(object):
     polar_hkl = basis_pickle[pickle_filename]
     return polar_hkl, 0, 0
 
-
-  def calc_spot_radius(self, a_star_matrix, miller_indices, wavelength):
-    #calculate spot_radius based on rms delta_S for all spots
-    delta_S_all = flex.double()
-    for miller_index in miller_indices:
-      S0 = -1*col((0,0,1./wavelength))
-      h = col(miller_index)
-      x = a_star_matrix * h
-      S = x + S0
-      delta_S = S.length() - (1./wavelength)
-      delta_S_all.append(delta_S)
-
-    spot_radius = math.sqrt(flex.mean(delta_S_all*delta_S_all))
-
-    return spot_radius
 
   def get_observations_non_polar(self, observations_original, polar_hkl):
     #return observations with correct polarity
