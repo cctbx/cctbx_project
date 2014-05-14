@@ -35,6 +35,11 @@ def exercise_molprobity () :
   assert (out2.getvalue() == out1.getvalue())
   dump("tst_molprobity.pkl", result)
   mc = result.as_multi_criterion_view()
+  # percentiles
+  out4 = StringIO()
+  result.show_summary(out=out4, show_percentiles=True)
+  assert ("""  Clashscore            =  49.96 (percentile: 1.0)""" in
+    out4.getvalue())
   #result.show()
   assert (str(mc.data()[2]) == ' A   5  THR  rota,cb,clash')
   import mmtbx.validation.molprobity
@@ -51,9 +56,9 @@ def exercise_molprobity () :
   out3 = StringIO()
   result.show_summary(out=out3)
   assert not show_diff(out3.getvalue(), """\
-Ramachandran outliers =   1.76 %
-              favored =  96.47 %
-Rotamer outliers      =  18.67 %
+  Ramachandran outliers =   1.76 %
+                favored =  96.47 %
+  Rotamer outliers      =  18.67 %
 """)
 
 if (__name__ == "__main__") :
