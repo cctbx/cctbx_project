@@ -284,6 +284,9 @@ if (sys.platform == "win32" or
   set_python_include_and_libs(env_etc)
   env_etc.extension_module_suffix = ".pyd"
   if (env_etc.compiler == "win32_cl"):
+    if hasattr(sys, 'gettotalrefcount'): # only the debug build of Python has this function
+      env_etc.extension_module_suffix = "_d.pyd" # then rename extension modules accordingly 
+                                                 # so that debug version of Python can load them
     cl_exe = full_command_path("cl.exe")
     if (cl_exe is None):
       raise RuntimeError("cl.exe not on PATH")
@@ -342,6 +345,7 @@ For newer versions, please adjust this SConscript.
       "/D_CRT_SECURE_NO_DEPRECATE",
       "/DNOMINMAX",
       #"/DWIN32",
+      "/bigobj", # for heavy use of template libraries
       "/wd4996", # warning C4996: ... was declared deprecated
       "/wd4068", # warning C4068: unknown pragma
       "/Z7", # produce program database file containing debugging symbols.
@@ -376,6 +380,9 @@ libtbx.scons: Warning: compiling with /MDd:
     opts.append("/DBOOST_ALL_NO_LIB")
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = ["/nologo", "/incremental:no", "/dll", "/MANIFEST"]
+    if hasattr(sys, 'gettotalrefcount'): # are we compiling with debug version of Python?
+      env_etc.ccflags_base.extend(["/DBOOST_DEBUG_PYTHON"]) # then BoostPython must be compiled in that mode
+
     if (libtbx.env.build_options.debug_symbols):
       env_etc.shlinkflags.append("/DEBUG")
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
