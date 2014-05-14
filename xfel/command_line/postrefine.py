@@ -5,6 +5,10 @@ from libtbx.easy_mp import pool_map
 import numpy as np
 from cctbx.array_family import flex
 from datetime import datetime, time
+import logging
+
+FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
+logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 
 def determine_mean_I_mproc(frame_no, frame_files, iph):
   from xfel.cxi.postrefine import postref_handler
@@ -59,6 +63,7 @@ def read_input(args):
 
 
 if (__name__ == "__main__"):
+  logging.info("Starting process.")
   #capture starting time
   time_global_start=datetime.now()
 
