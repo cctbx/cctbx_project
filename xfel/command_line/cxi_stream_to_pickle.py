@@ -1,4 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cxi.stream_to_pickle
+""" Utility for converting stream files from CrystFEL version 0.5.3 to
+cctbx.xfel pickle files.
+"""
 
 from __future__ import division
 import re
@@ -7,9 +10,11 @@ from cctbx.array_family import flex
 from cctbx.uctbx import unit_cell
 from cctbx.crystal import symmetry
 from cctbx import miller
-""" Utility for converting stream files from CrystFEL version 0.5.3 to
-cctbx.xfel pickle files.
-"""
+import logging
+
+FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
+logging.basicConfig(level=logging.DEBUG, format=FORMAT)
+
 import argparse
 parser = argparse.ArgumentParser(description=
                                  ('Create indexing pickles from a'
@@ -72,26 +77,34 @@ def check_image(image):
   if things_in_image == set(image):
     if len(image['Millers']) > 2:
       return True
-
   else:
     return False
 
-def crystFEL_to_CCTBX_coord_system(abasis, bbasis, cbasis):
+
+def crystfel_to_cctbx_coord_system(abasis, bbasis, cbasis):
   """CrystFEL is RHS with z down the beam, and y to the ceiling.
-  CCTBX.Postrefine is RHS with x down the beam and y to the ceiling.
+  CCTBX.Postrefine is RHS with x down the beam and z to the ceiling.
   """
   from scitbx.matrix import sqr
   from cctbx import crystal_orientation
 
   a_mat = sqr((abasis[0], bbasis[0], cbasis[0],
-              abasis[1], bbasis[1], cbasis[1],
-              abasis[2], bbasis[2], cbasis[2]))
-  ori = crystal_orientation.crystal_orientation(a_mat, crystal_orientation.basis_type.reciprocal)
+               abasis[1], bbasis[1], cbasis[1],
+               abasis[2], bbasis[2], cbasis[2]))
+
+  coord_transformation = sqr(( 0, 0, 1,
+                              1, 0,  0,
+                               0, 1,  0))
+  new_coords = a_mat.__mul__(coord_transformation)
+
+  ori = crystal_orientation.crystal_orientation(new_coords, crystal_orientation.basis_type.reciprocal)
+  logging.debug("\naStar: {}\nbStar: {}\ncStar: {}".format(abasis, bbasis, cbasis))
+  logging.debug(str(ori))
   return ori
 
 
 def unit_cell_to_symetry_object(img_dict):
-  xsym = symmetry(unit_cell=img_dict['unit cell'],
+  xsym = symmetry(unit_cell=img_dict['current_orientation'][0].unit_cell().niggli_cell(),
                   space_group_symbol=point_group)
   miller_set = miller.set(crystal_symmetry=xsym,
                           indices=flex.miller_index(img_dict['Millers']),
@@ -105,6 +118,10 @@ def unit_cell_to_symetry_object(img_dict):
 
 
 def make_int_pickle(img_dict, filename):
+  img_dict['current_orientation'] = [crystfel_to_cctbx_coord_system(
+                    img_dict['aStar'],
+                    img_dict['bStar'],
+                    img_dict['cStar'],)]
   try:
     final_dict = {'observations': [unit_cell_to_symetry_object(img_dict)],
                   'mapped_predictions': [flex.vec2_double(img_dict['location'])],
@@ -114,19 +131,16 @@ def make_int_pickle(img_dict, filename):
                   "sa_parameters": ['None'],
                   "pointgroup": point_group,
                   "unit_cell": img_dict['unit cell'],
-                  'current_orientation': [crystFEL_to_CCTBX_coord_system(
-                    img_dict['aStar'],
-                    img_dict['bStar'],
-                    img_dict['cStar'],)],
+                  'current_orientation': img_dict['current_orientation'],
                   'wavelength': img_dict['wavelength'],
                   'centering': img_dict['centering'],
                   'lattice_type': img_dict['lattice_type']}
     pickle.dump(final_dict, open(filename, 'wb'))
-    print "dumped image {}".format(filename)
+    logging.info("dumped image {}".format(filename))
   except AssertionError as a:
-    print "Failed an assertion on image {}! {}".format(filename, a.message)
+    logging.warning("Failed an assertion on image {}! {}".format(filename, a.message))
   except Exception:
-    print"Failed to make a dictionairy for image {}".format(filename)
+    logging.warning("Failed to make a dictionairy for image {}".format(filename))
 
 if __name__ == "__main__":
   things_in_image = {'Millers', 'Is', 'sigIs', 'unit cell', 'aStar', 'bStar',
