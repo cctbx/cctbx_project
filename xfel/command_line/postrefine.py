@@ -8,7 +8,7 @@ from datetime import datetime, time
 import logging
 
 FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
-logging.basicConfig(level=logging.DEBUG, format=FORMAT)
+logging.basicConfig(level=logging.WARNING, format=FORMAT)
 
 def determine_mean_I_mproc(frame_no, frame_files, iph):
   from xfel.cxi.postrefine import postref_handler
