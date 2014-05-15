@@ -97,8 +97,8 @@ class _pdb_helix (oop.injector, iotbx.pdb.secondary_structure.pdb_helix) :
         self.start_chain_id, self.end_chain_id)
       return None
     segid_extra = ""
-    if add_segid is not None :
-      segid_extra = "and segid '%s' " % add_segid
+    #if add_segid is not None :
+    #  segid_extra = "and segid '%s' " % add_segid
     if use_resids :
       resid_start = "%d%s" % (self.start_resseq, self.start_icode)
       resid_end = "%d%s" % (self.end_resseq, self.end_icode)
@@ -126,8 +126,8 @@ class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
     reg_curr = []
     reg_prev = []
     segid_extra = ""
-    if add_segid is not None :
-      segid_extra = "and segid '%s' " % add_segid
+    #if add_segid is not None :
+    #  segid_extra = "and segid '%s' " % add_segid
     for (strand,registration) in zip(self.strands, self.registrations) :
       if use_resids :
         resid_start = "%d%s" % (strand.start_resseq, strand.start_icode)
