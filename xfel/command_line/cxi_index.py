@@ -10,13 +10,18 @@ import sys,os
 
 if (__name__ == "__main__"):
   command_line = (libtbx.option_parser.option_parser(
-    usage="%s [-d] [-n num_procs] [-o output_dir] [-b output_basename] target=targetpath files" % libtbx.env.dispatcher_name,
+    usage="%s [-d] [-s] [-n num_procs] [-o output_dir] [-b output_basename] target=targetpath files" % libtbx.env.dispatcher_name,
     more_help=["Target: the phil file containing further indexing/integration parameters"])
                   .option(None, "--no_display", "-d",
                           action="store_true",
                           default=False,
                           dest="no_display",
                           help="Do not show indexing graphics")
+                  .option(None, "--skip_processed", "-s",
+                          action="store_true",
+                          default=False,
+                          dest="skip_processed",
+                          help="Skip files that have alread been processed")
                   .option(None, "--num_procs", "-n",
                           type="int",
                           default=1,
@@ -66,8 +71,12 @@ if (__name__ == "__main__"):
   if command_line.options.num_procs == 1:
     for file in files:
       if command_line.options.output_dir is not None:
-        arguments.append("indexing.completeness_pickle=%s"%os.path.join(command_line.options.output_dir, \
-          command_line.options.output_basename + os.path.basename(file)))
+        int_pickle_path = os.path.join(command_line.options.output_dir, \
+          command_line.options.output_basename + os.path.basename(file))
+        if command_line.options.skip_processed and os.path.isfile(int_pickle_path):
+          print file, "already processed, skipping"
+          continue
+        arguments.append("indexing.completeness_pickle=%s"%int_pickle_path)
       do_work((file, arguments, ({'display':display})))
   else:
     import multiprocessing, copy
@@ -87,9 +96,13 @@ if (__name__ == "__main__"):
 
     for file in files:
       if command_line.options.output_dir is not None:
+        int_pickle_path = os.path.join(command_line.options.output_dir, \
+          command_line.options.output_basename + os.path.basename(file))
+        if command_line.options.skip_processed and os.path.isfile(int_pickle_path):
+          print file, "already processed, skipping"
+          continue
         args = copy.copy(arguments)
-        args.append("indexing.completeness_pickle=%s"%os.path.join(command_line.options.output_dir, \
-          command_line.options.output_basename + os.path.basename(file)))
+        args.append("indexing.completeness_pickle=%s"%int_pickle_path)
       else:
         args = arguments
 
