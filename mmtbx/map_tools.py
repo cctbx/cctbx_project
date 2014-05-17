@@ -437,14 +437,24 @@ class model_missing_reflections(object):
     else:
       sel = flex.random_bool(self.xray_structure_cut.scatterers().size(), 0.9)
       xrs = self.xray_structure_cut.select(sel)
-#    return xrs.structure_factors(d_min = self.d_min).f_calc().average_bijvoet_mates()
-    # XXX PVA: using code below affects runtime at no benefit (map improvement)
     if(deterministic):
+      # XXX This may result in very bad maps at low resolution
+      #fm = mmtbx.f_model.manager(
+      #  f_obs          = self.complete_set,
+      #  xray_structure = xrs,
+      #  k_sol          = 0.35,
+      #  b_sol          = 46.0)
+      #result = fm.f_model_no_scales()
+      # This is slower but better
+      # Never change this unless checked with CK case
+      fm = self.fmodel.deep_copy()
+      r = fm.update_solvent_and_scale(fast=False)
       fm = mmtbx.f_model.manager(
         f_obs          = self.complete_set,
         xray_structure = xrs,
-        k_sol          = 0.35,
-        b_sol          = 46.0)
+        k_sol          = r.k_sols()[0],
+        b_sol          = r.b_sol(),
+        b_cart         = r.b_cart())
       result = fm.f_model_no_scales()
     else:
       if(random.choice([True, False])):
