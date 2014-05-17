@@ -42,29 +42,20 @@ class run(object):
         map_type,
         box_size_as_fraction=0.03,
         n_debias_cycles=2,
-        resolution_factor=0.25,
         neutral_colume_box_cushion_width=1,
         full_resolution_map=False,
         fill_missing=False,
         exclude_free_r_reflections=False,
-        use_shelx_weight=False,
         reset_to_zero_below_sigma=None,
         log=sys.stdout):
     sgt = fmodel.f_obs().space_group().type()
-    if(use_shelx_weight):
-      weight = mmtbx.map_tools.shelx_weight(
-        f_obs   = fmodel.f_obs(),
-        f_model = fmodel.f_model_scaled_with_k1())
     def get_map(fmodel, map_type, fft_map_ref):
       f_map = fmodel.electron_density_map(
         update_f_part1=False).map_coefficients(
           map_type     = map_type,
           isotropize   = True,
           exclude_free_r_reflections=exclude_free_r_reflections,
-          fill_missing = fill_missing,
-          use_shelx_weight = False)
-      if(use_shelx_weight):
-        f_map = f_map.customized_copy(data=f_map.data()*weight)
+          fill_missing = fill_missing)
       fft_map = cctbx.miller.fft_map(
         crystal_gridding     = fft_map_ref,
         fourier_coefficients = f_map)
@@ -73,7 +64,7 @@ class run(object):
     f_model = fmodel.f_model_scaled_with_k1()
     fft_map_ref = f_model.fft_map(
       symmetry_flags    = maptbx.use_space_group_symmetry,
-      resolution_factor = resolution_factor)
+      crystal_gridding  = crystal_gridding)
     f_model_map_data = fft_map_ref.real_map_unpadded()
     zero_complex_ma = f_model.customized_copy(
       data = flex.complex_double(f_model.data().size(), 0))
@@ -94,6 +85,7 @@ class run(object):
     self.r = flex.double() # for regression test only
     n_boxes = len(b.starts)
     i_box = 0
+    self.sd = None
     for s,e in zip(b.starts, b.ends):
       if(log): print "box %2d of %2d:"%(i_box, n_boxes), s, e
       i_box+=1
@@ -119,6 +111,8 @@ class run(object):
       f_map_data_asu = get_map(fmodel=fmodel_, map_type=map_type,
         fft_map_ref=fft_map_ref)
       f_map_data_asu = f_map_data_asu.shift_origin()
+      if(self.sd is None):
+        self.sd = f_map_data_asu.sample_standard_deviation()
       assert f_map_data_asu.focus() == self.map_result_asu.focus()
       if(reset_to_zero_below_sigma is not None):
         assert type(reset_to_zero_below_sigma) in [type(1.), type(1)]
@@ -141,13 +135,11 @@ class run(object):
           start         = s,
           end           = e)
     # result
-    sd = self.map_result_asu.sample_standard_deviation()
-    self.map_result_asu = self.map_result_asu/sd
     self.map_result_asu.reshape(self.acc)
-    asu_map_omit = asu_map_ext.asymmetric_map(sgt, self.map_result_asu, n_real)
+    self.asu_map_omit = asu_map_ext.asymmetric_map(sgt, self.map_result_asu, n_real)
     self.map_coefficients = f_model.customized_copy(
       indices = f_model.indices(),
-      data    = asu_map_omit.structure_factors(f_model.indices()))
+      data    = self.asu_map_omit.structure_factors(f_model.indices()))
     # filling
     if(full_resolution_map):
       cs = f_model.complete_set(d_min=f_model.d_min())
