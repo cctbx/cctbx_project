@@ -7,15 +7,14 @@ import mmtbx.f_model
 import mmtbx.maps
 import iotbx.phil
 import iotbx.pdb
-from cctbx import adptbx
 from scitbx.array_family import flex
-from libtbx.test_utils import approx_equal
 from libtbx import runtime_utils
 import os.path
 import time
 import sys
 import random
 import mmtbx.maps.fem
+import mmtbx.masks
 
 def get_master_phil () :
   return mmtbx.command_line.generate_master_phil_with_inputs(
@@ -29,6 +28,8 @@ sharp=True
   .type=bool
 signal_threshold = 0.5
   .type = float
+ignore_zero_occupancy_atoms = True
+  .type=bool
 output {
   file_name = fem.mtz
     .type = path
@@ -75,26 +76,21 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   r_free_flags = cmdline.r_free_flags
   manage_random_seed(random_seed=params.random_seed)
   cs=f_obs.crystal_symmetry()
+  mask_params = mmtbx.masks.mask_master_params.extract()
+  mask_params.ignore_zero_occupancy_atoms = params.ignore_zero_occupancy_atoms
+  #
+  sel = f_obs.data()>0
+  f_obs = f_obs.select(sel)
+  r_free_flags = r_free_flags.select(sel)
+  #
   fmodel = mmtbx.f_model.manager(
-    f_obs = f_obs,
-    r_free_flags = r_free_flags,
-    xray_structure = xray_structure)
+    f_obs          = f_obs,
+    r_free_flags   = r_free_flags,
+    xray_structure = xray_structure,
+    mask_params    = mask_params)
   fmodel.update_all_scales(update_f_part1_for=None)
   fmodel.show(show_approx=False)
   print >> log, "r_work: %6.4f r_free: %6.4f"%(fmodel.r_work(), fmodel.r_free())
-  # b-factor sharpening
-  if(params.sharp):
-    xrs = fmodel.xray_structure
-    b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
-    print >> log, "Max B subtracted from atoms and used to sharpen map:", b_iso_min
-    xrs.shift_us(b_shift=-b_iso_min)
-    b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
-    assert approx_equal(b_iso_min, 0, 1.e-3)
-    fmodel.update_xray_structure(
-      xray_structure = xrs,
-      update_f_calc = True)
-  #
-  fmodel.update_all_scales(update_f_part1_for="refinement")
   fem = mmtbx.maps.fem.run(fmodel=fmodel, use_omit=params.omit,
     sharp=params.sharp, signal_threshold=params.signal_threshold)
   # output
