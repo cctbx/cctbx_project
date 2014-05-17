@@ -1,5 +1,4 @@
 from __future__ import division
-from cctbx import miller
 from cctbx import maptbx
 import mmtbx.maps
 import mmtbx.map_tools
@@ -11,13 +10,10 @@ from mmtbx.maps import kick
 import sys
 from libtbx import adopt_init_args
 
-def get_map(mc, cg=None):
-  if(cg is None):
-    fft_map = mc.fft_map(resolution_factor=0.25)
-  else:
-    fft_map = miller.fft_map(
-      crystal_gridding     = cg,
-      fourier_coefficients = mc)
+def get_map(mc, cg):
+  fft_map = mc.fft_map(
+    symmetry_flags    = maptbx.use_space_group_symmetry,
+    crystal_gridding  = cg)
   fft_map.apply_sigma_scaling()
   return fft_map.real_map_unpadded()
 
@@ -34,29 +30,113 @@ class counter(object):
       int(self.n*self.progress_scale)))
     self.log.flush()
 
+class maps(object):
+
+  def __init__(self, fmodel):
+    self.fmodel = fmodel
+    # no fill, no iso
+    self.mc = mmtbx.map_tools.electron_density_map(
+      fmodel=fmodel).map_coefficients(
+        map_type     = "2mFo-DFc",
+        isotropize   = False,
+        fill_missing = False)
+    # no fill, iso
+    self.mc_iso = mmtbx.map_tools.electron_density_map(
+      fmodel=fmodel).map_coefficients(
+        map_type         = "2mFo-DFc",
+        isotropize       = True,
+        fill_missing     = False)
+    #
+    missing_reflections_manager = mmtbx.map_tools.model_missing_reflections(
+      coeffs=self.mc_iso, fmodel=self.fmodel)
+    missing = missing_reflections_manager.get_missing(deterministic=True)
+    # fill, no iso
+    self.mc_fill = self.mc.complete_with(other=missing, scale=True)
+    # fill, iso
+    self.mc_iso_fill = self.mc_iso.complete_with(other=missing, scale=True)
+
+  def all_mc(self):
+    return [self.mc_fill, self.mc_iso_fill]
+
 class run(object):
 
   def __init__(self, fmodel, signal_threshold, use_omit=False, sharp=True):
+    # define gridding
+    crystal_gridding = fmodel.f_obs().crystal_gridding(
+      d_min              = fmodel.f_obs().d_min(),
+      symmetry_flags     = maptbx.use_space_group_symmetry,
+      resolution_factor  = 1./3)
+    #
+    #maps_1 = maps(fmodel = fmodel)
+    # b-factor sharpening
+    if(sharp):
+      fmdc = fmodel.deep_copy()
+      xrs = fmdc.xray_structure
+      b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
+      print "Max B subtracted from atoms and used to sharpen map:", b_iso_min
+      xrs.shift_us(b_shift=-b_iso_min)
+      b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
+      assert approx_equal(b_iso_min, 0, 1.e-3)
+      fmdc.update_xray_structure(
+        xray_structure = xrs,
+        update_f_calc = True)
+      fmdc.update_all_scales(update_f_part1_for=None)
+      maps_2 = maps(fmodel = fmdc)
+    m_filter = None
+    """
+    #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    # XXX So far it is unclear if this is needed
+    mac = maptbx.map_accumulator(n_real = crystal_gridding.n_real())
+    for map_i in [maps_1, maps_2]:
+      for mc in map_i.all_mc():
+        m = get_map(mc = mc, cg=crystal_gridding)
+        maptbx.reset(
+          data=m,
+          substitute_value=0.0,
+          less_than_threshold=0.25,
+          greater_than_threshold=-9999,
+          use_and=True)
+        m = maptbx.volume_scale(map = m.deep_copy(),  n_bins = 10000).map_data()
+        F = None
+        keep_interblob=True
+        for c1 in [0.9, 0.85, 0.8, 0.7]:
+          if(c1<0.85): keep_interblob=False
+          f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
+            cutoff=c1,scale=0.5, keep_interblob=keep_interblob)
+          if(F is None): F = f
+          else: F = F * f
+        m = m * F
+        mac.add(map_data=m)
+    #
+    mm = mac.as_median_map()
+    #
+    m = maptbx.volume_scale(map = mm.deep_copy(),  n_bins = 10000).map_data()
+    F = None
+    keep_interblob=True
+    for c1 in [0.9, 0.85, 0.8, 0.7]:
+      if(c1<0.85): keep_interblob=False
+      f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
+        cutoff=c1,scale=0.5, keep_interblob=keep_interblob)
+      if(F is None): F = f
+      else: F = F * f
+    m_filter = m * F
+    maptbx.binarize(
+        map_data               = m_filter,
+        threshold              = 0.7,
+        substitute_value_below = 0,
+        substitute_value_above = 1)
+    #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    """
+    #
+    fmodel = fmdc
     # make sure common B moved to k_total
     if(sharp):
       b_iso_min = flex.min(
         fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
       assert approx_equal(b_iso_min, 0, 1.e-3)
     # usual 2mFo-DFc mc
-    self.mc = mmtbx.map_tools.electron_density_map(
-      fmodel=fmodel).map_coefficients(
-        map_type     = "2mFo-DFc",
-        isotropize   = False,
-        fill_missing = False)
-    self.mc_iso = mmtbx.map_tools.electron_density_map(
-      fmodel=fmodel).map_coefficients(
-        map_type         = "2mFo-DFc",
-        isotropize       = True,
-        fill_missing     = False)
-    # define gridding
-    crystal_gridding = fmodel.f_obs().crystal_gridding(
-      d_min              = fmodel.f_obs().d_min(),
-      resolution_factor  = 0.25)
+    self.mc = maps_2.mc
+    self.mc_iso = maps_2.mc_iso
     # Fill missing
     missing_reflections_manager = mmtbx.map_tools.model_missing_reflections(
       coeffs=self.mc_iso, fmodel=fmodel)
@@ -67,36 +147,39 @@ class run(object):
     m_omit = None
     if(use_omit):
       como = mmtbx.maps.composite_omit_map.run(
-        map_type                  = "mFo-DFc",
-        crystal_gridding          = crystal_gridding,
-        fmodel                    = fmodel.deep_copy(), # XXX
-        reset_to_zero_below_sigma = None,
-        use_shelx_weight          = False)
-      mc_omit = como.map_coefficients
-      mc_omit = mc_omit.complete_with(other=self.mc_filled, scale=True)
-      m_omit = get_map(mc_omit, crystal_gridding)
-      maptbx.reset(
-        data=m_omit,
-        substitute_value=0.0,
-        less_than_threshold=0.5,
-        greater_than_threshold=-9999,
-        use_and=True)
-      m_omit = m_omit.set_selected(m_omit< 0.5, 0)
-      m_omit = m_omit.set_selected(m_omit>=0.5, 1)
-    # Extra filter
-    m_filter = None
-    for mc in [self.mc, self.mc_iso, self.mc_filled, self.mc_filled_no_iso]:
-      m_filter_ = get_map(mc = mc, cg=crystal_gridding)
-      msk = truncate_with_roots2(m=m_filter_,fmodel=fmodel,c1=0.5,c2=0.25,
-        cutoff=0.5,scale=0.7, as_int=True)
-      maptbx.truncate_special(mask=msk, map_data=m_filter_)
-      maptbx.binarize(
-        map_data               = m_filter_,
-        threshold              = 0.0,
-        substitute_value_below = 0,
-        substitute_value_above = 1)
-      if(m_filter is None): m_filter = m_filter_
-      else:                 m_filter = m_filter * m_filter_
+        map_type         = "mFo-DFc",
+        crystal_gridding = crystal_gridding,
+        fmodel           = fmodel.deep_copy())
+      m_omit = como.asu_map_omit.symmetry_expanded_map()
+      maptbx.unpad_in_place(map=m_omit)
+      m_omit = m_omit/como.sd
+      m_omit = m_omit.set_selected(m_omit<1, 0)
+      m_omit = m_omit.set_selected(m_omit>0, 1)
+      # for debugging only
+      if(1):
+        ccp4_map(
+          map_data=m_omit,
+          unit_cell=self.mc_filled.unit_cell(),
+          space_group=self.mc_iso.space_group(),
+          n_real=m_omit.all(), file_name="omit.ccp4")
+#    # Extra filter
+    if(fmodel.r_work()>0.25):
+      print "Running Resolve DM because r-work>0.25 (possibly: noise ~ feature)"
+      mc_resolve = mmtbx.map_tools.resolve_dm_map(
+        fmodel       = fmodel,
+        map_coeffs   = self.mc_iso,
+        pdb_inp      = None,
+        mask_cycles  = 2,
+        minor_cycles = 2,
+        solvent_content_attenuator=0.1, # XXX
+        use_model_hl = True,
+        fill         = True)
+      m_resolve = get_map(mc_resolve, crystal_gridding)
+      m_resolve = m_resolve.set_selected(m_resolve< 0.5, 0)
+      m_resolve = m_resolve.set_selected(m_resolve>=0.5, 1)
+      if(m_filter is not None): m_filter = m_filter * m_resolve
+      else: m_filter = m_resolve
+      print "Obtained Resolve filter"
     # FEM loop
     progress_counter = counter(n1=10, n2=16, log=sys.stdout)
     self.map_result = fem_loop(
@@ -110,36 +193,34 @@ class run(object):
       crystal_gridding = crystal_gridding,
       m_filter         = m_filter,
       progress_counter = progress_counter)
-#
+    # unsharp masking
     maptbx.sharpen(map_data=self.map_result, index_span=2, n_averages=1)
-#
+    # clean noise from unsharp masking
     mc = self.mc_filled.structure_factors_from_map(
       map            = self.map_result,
       use_scale      = True,
       anomalous_flag = False,
       use_sg         = False)
     m = get_map(mc=mc, cg = crystal_gridding)
-
     average_peak_volume = int(maptbx.peak_volume_estimate(
       map_data         = m,
       sites_cart       = fmodel.xray_structure.sites_cart(),
       crystal_symmetry = fmodel.xray_structure.crystal_symmetry(),
       cutoff           = 1)*0.7)
     co = maptbx.connectivity(map_data=m, threshold=1.0)
-
     F = co.volume_cutoff_mask(volume_cutoff=average_peak_volume).as_double()
     self.map_result = self.map_result*F
     self.map_result = maptbx.volume_scale(map = self.map_result,  n_bins = 10000).map_data()
-####
+    #
     keep_interblob=True
     F = None
     for c1 in [0.95, 0.9, 0.85, 0.8,0.7,0.6,0.5,0.4,0.3,0.2]:
       if(c1<0.9): keep_interblob=False
-      f = truncate_with_roots2(m=self.map_result,fmodel=fmodel,c1=c1,c2=c1-0.1,
+      f = truncate_with_roots(m=self.map_result,fmodel=fmodel,c1=c1,c2=c1-0.1,
         cutoff=c1,scale=1, keep_interblob=keep_interblob)
       if(F is None): F = f
       else: F = F * f
-#
+    #
     mc = self.mc_filled.structure_factors_from_map(
       map            = self.map_result,
       use_scale      = True,
@@ -149,11 +230,11 @@ class run(object):
     keep_interblob=True
     for c1 in [1.0,0.9,0.8,0.7,0.6,0.5]:
       if(c1<0.9): keep_interblob=False
-      f = truncate_with_roots2(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,cutoff=c1,scale=1.0,
+      f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,cutoff=c1,scale=1.0,
         keep_interblob=keep_interblob)
       if(F is None): F = f
       else: F = F * f
-#
+    #
     self.map_result = self.map_result*F
     #
     if(m_omit is not None):
@@ -202,7 +283,7 @@ def fem_loop(fmodel, mc, n, crystal_gridding, signal_threshold, n_cycles,
       missing_reflections_manager = missing_reflections_manager,
       b_sharp                     = b_sharp,
       weighted_average_manager    = weighted_average_manager)
-    m = m*m_filter
+    if(m_filter is not None): m = m*m_filter
     mac.add(map_data=m)
 #    ccp4_map(map_data=m, unit_cell=mc.unit_cell(),
 #      space_group=mc.space_group(), n_real=m.all(), file_name="%s.ccp4"%str(i))
@@ -232,12 +313,6 @@ def one_iteration(
     mc_wa = mmtbx.maps.b_factor_sharpening_by_map_kurtosis_maximization(
       map_coeffs = mc_wa, show = False, b_sharp_best = b_sharp)
   m = get_map(mc=mc_wa, cg=crystal_gridding)
-  ####
-  #ccp4_map(map_data=m, unit_cell=mc.unit_cell(),
-  #    space_group=mc.space_group(),
-  #    n_real=m.all(),
-  #    file_name="%s.ccp4"%random.choice(xrange(10000)))
-  ####
   if(signal_threshold is not None):
     maptbx.reset(
       data                   = m,
@@ -290,13 +365,13 @@ def fem_loop_(
   else:
   #
     if(cut_by_connectivity):
-      msk = truncate_with_roots2(
+      msk = truncate_with_roots(
         m=m,fmodel=fmodel,c1=0.5,c2=0.35,cutoff=0.5,scale=0.7, as_int=True)
       maptbx.truncate_special(mask=msk, map_data=m)
       #
       F = None
       for c1 in [0.8, 0.7,0.6,]:
-        f = truncate_with_roots2(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
+        f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
           cutoff=c1,scale=0.7, keep_interblob=True)
         if(F is None): F = f
         else: F = F * f
@@ -309,27 +384,15 @@ def fem_loop_(
       keep_interblob=True
       for c1 in [0.9, 0.85, 0.8, 0.7]:
         if(c1<0.9): keep_interblob=False
-        f = truncate_with_roots2(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
+        f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
           cutoff=c1,scale=1, keep_interblob=keep_interblob)
         if(F is None): F = f
         else: F = F * f
       m = m * F
   return m
 
-def truncate_with_roots(m, fmodel, c1, c2, cutoff, scale, keep_interblob=False):
-  assert c1>=c2
-  average_peak_volume = int(maptbx.peak_volume_estimate(
-    map_data         = m,
-    sites_cart       = fmodel.xray_structure.sites_cart(),
-    crystal_symmetry = fmodel.xray_structure.crystal_symmetry(),
-    cutoff           = cutoff)*scale)
-  co1 = maptbx.connectivity(map_data=m, threshold=c1)
-  co2 = maptbx.connectivity(map_data=m, threshold=c2)
-  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
-    volume_threshold_t1=average_peak_volume, keep_interblob=keep_interblob).as_double()
-  return m*res_mask
-
-def truncate_with_roots2(m, fmodel, c1, c2, cutoff, scale, keep_interblob=False, as_int=False):
+def truncate_with_roots(m, fmodel, c1, c2, cutoff, scale, keep_interblob=False,
+                        as_int=False):
   assert c1>=c2
   average_peak_volume = int(maptbx.peak_volume_estimate(
     map_data         = m,
@@ -346,7 +409,6 @@ def truncate_with_roots2(m, fmodel, c1, c2, cutoff, scale, keep_interblob=False,
 def get_b_sharp(fmodel, mc, n_cycles, crystal_gridding, signal_threshold,
       weighted_average_manager, missing_reflections_manager):
   result = flex.double()
-  #return None
   for i in xrange(1):
     mc_wa = weighted_average_manager.random_weight_averaged_map_coefficients(
       random_scale  = 5.,
