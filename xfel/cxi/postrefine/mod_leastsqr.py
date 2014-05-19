@@ -84,6 +84,7 @@ def func(params, *args):
   ph = args[2]
   crystal_init_orientation = args[3]
   alpha_angle_set = args[4]
+  iph = args[5]
   crystal_rotation_matrix = crystal_init_orientation.crystal_rotation_matrix()
   I_o = miller_array_o.data().as_numpy_array()
   sigI_o = miller_array_o.sigmas().as_numpy_array()
@@ -96,6 +97,9 @@ def func(params, *args):
   params_all = prep_output(params, cs)
   G, B, rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma = params_all
 
+  if (a <=0)  or (b <=0) or (c<=0):
+    print 'Unit cell is zero or negative', a, b, c
+    return 0
   uc = unit_cell((a,b,c,alpha,beta,gamma))
   crystal_init_orientation = get_crystal_orientation(uc.orthogonalization_matrix(), crystal_rotation_matrix)
   crystal_orientation_model = crystal_init_orientation.rotate_thru((1,0,0), rotx
@@ -220,8 +224,6 @@ class leastsqr_handler(object):
   def optimize(self, I_r_flex, observations_original,
               wavelength, crystal_init_orientation, alpha_angle_set, iph):
 
-    uc_len_tol = 3.5
-    uc_angle_tol = 2.0
 
     assert len(alpha_angle_set)==len(observations_original.indices()), 'Size of alpha angles and observations are not equal %6.0f, %6.0f'%(len(alpha_angle_set),len(observations_original.indices()))
 
@@ -244,17 +246,24 @@ class leastsqr_handler(object):
     xopt_scale, success = optimize.leastsq(func_scale, x0, args=(I_r_true, observations_original, wavelength))
 
     #2. optimize rot, rs, uc
-    x0_all = np.array([xopt_scale[0], xopt_scale[1], 0*math.pi/180, 0*math.pi/180, spot_radius, spot_radius, 0.0026,
+    x0_all = np.array([xopt_scale[0], xopt_scale[1], 0, 0, spot_radius, spot_radius, 0.0026,
         uc_init_params[0], uc_init_params[1],uc_init_params[2], uc_init_params[3],uc_init_params[4], uc_init_params[5]])
     x0 = prep_input(x0_all, cs)
-    xopt_limit, cov_x, infodict, errmsg, success = optimize.leastsq(func, x0, args=(I_r_true, observations_original, ph, crystal_init_orientation, alpha_angle_set), full_output=True)
+
+    try:
+      xopt_limit, cov_x, infodict, errmsg, success = optimize.leastsq(func, x0, args=(I_r_true, observations_original, ph, crystal_init_orientation, alpha_angle_set, iph), full_output=True)
+    except Exception:
+      print 'least-squares optimization failed'
+      xopt_limit = x0
+      cov_x = None
+
     xopt = prep_output(xopt_limit, cs)
     G, B, rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma = xopt
 
     #3. decide wheter to take the refined parameters
-    if (abs(a-uc_init_params[0]) > uc_len_tol or abs(b-uc_init_params[1]) > uc_len_tol or abs(c-uc_init_params[2]) > uc_len_tol \
-        or abs(alpha-uc_init_params[3]) > uc_angle_tol or abs(beta-uc_init_params[4]) > uc_angle_tol or abs(gamma-uc_init_params[5]) > uc_angle_tol):
-      print 'Refinement failed - unit-cell parameters exceed the limits (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)
+    if (abs(a-iph.target_unit_cell[0]) > iph.uc_len_tol or abs(b-iph.target_unit_cell[1]) > iph.uc_len_tol or abs(c-iph.target_unit_cell[2]) > iph.uc_len_tol \
+        or abs(alpha-iph.target_unit_cell[3]) > iph.uc_angle_tol or abs(beta-iph.target_unit_cell[4]) > iph.uc_angle_tol or abs(gamma-iph.target_unit_cell[5]) > iph.uc_angle_tol):
+      print 'Unit-cell parameters exceed the limits (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)
       if iph.flag_force_accept_all_frames:
         a, b, c, alpha, beta, gamma = uc_init_params
         print ' flag_force_accept_all_frames is on, reset unit cell to (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)

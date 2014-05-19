@@ -121,8 +121,6 @@ class intensities_scaler(object):
   def output_mtz_files(self, results, iph, output_mtz_file_prefix, avg_mode):
     partiality_filter = 0.1
     sigma_filter = 8
-    uc_len_tol = 3.5
-    uc_angle_tol = 2
 
     if avg_mode == 'average':
       cc_thres = 0
@@ -149,9 +147,9 @@ class intensities_scaler(object):
         #check cc
         if pres.stats[2] >= cc_thres:
           #check unit-cell
-          if (abs(pres.uc_params[0]-iph.target_unit_cell[0]) <= uc_len_tol and abs(pres.uc_params[1]-iph.target_unit_cell[1]) <= uc_len_tol \
-          and abs(pres.uc_params[2]-iph.target_unit_cell[2]) <= uc_len_tol and abs(pres.uc_params[3]-iph.target_unit_cell[3]) <= uc_angle_tol \
-          and abs(pres.uc_params[4]-iph.target_unit_cell[4]) <= uc_angle_tol and abs(pres.uc_params[5]-iph.target_unit_cell[5]) <= uc_angle_tol):
+          if (abs(pres.uc_params[0]-iph.target_unit_cell[0]) <= iph.uc_len_tol and abs(pres.uc_params[1]-iph.target_unit_cell[1]) <= iph.uc_len_tol \
+          and abs(pres.uc_params[2]-iph.target_unit_cell[2]) <= iph.uc_len_tol and abs(pres.uc_params[3]-iph.target_unit_cell[3]) <= iph.uc_angle_tol \
+          and abs(pres.uc_params[4]-iph.target_unit_cell[4]) <= iph.uc_angle_tol and abs(pres.uc_params[5]-iph.target_unit_cell[5]) <= iph.uc_angle_tol):
             cn_good_frame += 1
             sin_theta_over_lambda_sq = pres.observations.two_theta(wavelength=pres.wavelength).sin_theta_over_lambda_sq().data()
             for miller_index, i_obs, sigi_obs, p, se_i, sin_sq in zip(
@@ -173,10 +171,10 @@ class intensities_scaler(object):
         else:
           print pres.frame_no, img_filename, ' discarded - C.C. too low (C.C.=%5.2f%%)'%(pres.stats[2]*100)
     #plot stats
-    self.plot_stats(results, iph, uc_len_tol, uc_angle_tol)
+    self.plot_stats(results, iph, iph.uc_len_tol, iph.uc_angle_tol)
 
     #calculate average unit cell
-    uc_mean = self.calc_mean_unit_cell(results, iph, uc_len_tol, uc_angle_tol)
+    uc_mean = self.calc_mean_unit_cell(results, iph, iph.uc_len_tol, iph.uc_angle_tol)
     unit_cell_mean = unit_cell((uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]))
 
     #from all observations merge them
@@ -788,6 +786,8 @@ class input_handler(object):
     self.pixel_size_mm = 0
     self.frame_accept_min_cc = 0.25
     self.flag_force_accept_all_frames = False
+    self.uc_len_tol = 3.5
+    self.uc_angle_tol = 3.5
 
     file_input = open(file_name_input, 'r')
     data_input = file_input.read().split('\n')
@@ -862,6 +862,10 @@ class input_handler(object):
             logging.getLogger().setLevel(logging.INFO)
           elif param_val.lower()=='debug':
             logging.getLogger().setLevel(logging.DEBUG)
+        elif param_name=='uc_len_tol':
+          self.uc_len_tol=float(param_val)
+        elif param_name=='uc_angle_tol':
+          self.uc_angle_tol=float(param_val)
 
 
 
