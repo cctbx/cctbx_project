@@ -238,6 +238,19 @@ mtz_file {
   miller_arrays = run_and_reload(params, "tst1.mtz")
   assert (miller_arrays[0].info().label_string() ==
           "F_tst(+),SIGF_tst(+),F_tst(-),SIGF_tst(-)")
+  # R-free label conflicts
+  params = master_phil.fetch(source=new_phil).extract()
+  params.mtz_file.r_free_flags.force_generate = True
+  params.mtz_file.r_free_flags.new_label = "R-free-flags"
+  try :
+    miller_arrays = run_and_reload(params, "tst1.mtz")
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
+  params.mtz_file.resolve_label_conflicts = True
+  miller_arrays = run_and_reload(params, "tst1.mtz")
+  assert (miller_arrays[-1].info().label_string() == "R-free-flags_2")
   # resolution filter
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.d_min = 2.0

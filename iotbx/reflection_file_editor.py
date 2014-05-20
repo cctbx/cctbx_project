@@ -759,10 +759,10 @@ class process_arrays (object) :
           output_array = output_array.delete_index(hkl)
       self.add_array_to_mtz_dataset(
         output_array=output_array,
-        default_label=r_free_params.new_label,
+        default_label="ZZZZ",
         column_types="I",
         out=log)
-      labels.append(None)
+      labels.append(r_free_params.new_label)
       label_files.append("(new array)")
       self.created_r_free = True
 
