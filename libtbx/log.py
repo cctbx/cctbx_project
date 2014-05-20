@@ -16,25 +16,25 @@ class logger(object):
   Examples:
   
   # Basic usage
-  import iotbx.log
-  iotbx.log.info("Helpful message")
+  import libtbx.log
+  libtbx.log.info("Helpful message")
   
   # Write as a file handle
-  print >> iotbx.log.logger, "As file handle"
+  print >> libtbx.log.logger, "As file handle"
   
   # Set debug, or quiet states
-  iotbx.log.logger.set_debug(True)
-  iotbx.log.debug("Debugging output.")
-  iotbx.log.logger.set_quiet(True)
-  iotbx.log.info("This should be muted.")
+  libtbx.log.logger.set_debug(True)
+  libtbx.log.debug("Debugging output.")
+  libtbx.log.logger.set_quiet(True)
+  libtbx.log.info("This should be muted.")
   
   # Output file
-  iotbx.log.logger.set_logfile("test.log")
-  iotbx.log.info("Redirected to test.log")
+  libtbx.log.logger.set_logfile("test.log")
+  libtbx.log.info("Redirected to test.log")
   
   # Experimental sys.stdout redirection
-  iotbx.log.logger.set_logfile("test.log")
-  sys.stdout = iotbx.log.logger
+  libtbx.log.logger.set_logfile("test.log")
+  sys.stdout = libtbx.log.logger
   print "stdout redirection to test.log"
   
   """
