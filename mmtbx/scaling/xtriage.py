@@ -412,13 +412,17 @@ class xtriage_analyses(object):
                plot_out     = None,
                original_intensities = None,
                unmerged_obs = None):
-    self.miller_obs  = miller_obs   # array of observed data, should be intensity or amplitude
-    self.miller_calc = miller_calc  # array if calculated data, need to be given
-    self.miller_ref  = miller_ref   # array with 'reference' data, need not be given.
+    # array of observed data, should be intensity or amplitude
+    self.miller_obs  = miller_obs
+    # array if calculated data, need to be given
+    self.miller_calc = miller_calc
+    # array with 'reference' data, need not be given.
+    self.miller_ref  = miller_ref
+
     self.unmerged_obs = unmerged_obs # unmerged intensities, if available
 
     if self.miller_obs is not None:
-      if (not self.miller_obs.is_unique_set_under_symmetry()) :
+      if self.miller_obs.is_unmerged_intensity_array() :
         self.unmerged_obs = self.miller_obs.deep_copy()
       self.miller_obs  = self.miller_obs.merge_equivalents().array().remove_systematic_absences()   # array of observed data, should be intensity or amplitude
     if self.miller_calc is not None:
@@ -753,12 +757,13 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         merge_equivalents=False)
       for array in raw_arrays :
         if (array.info().labels == info.labels) :
-          unmerged_array = array
-          print >> log, ""
-          print >> log, "Also reading unmerged data as %s" % \
-            array.info().label_string()
-          print >> log, ""
-          break
+          if (array.is_unmerged_intensity_array()) :
+            unmerged_array = array
+            print >> log, ""
+            print >> log, "Also reading unmerged data as %s" % \
+              array.info().label_string()
+            print >> log, ""
+            break
 
     if not miller_array.is_real_array():
       miller_array = abs( miller_array )
