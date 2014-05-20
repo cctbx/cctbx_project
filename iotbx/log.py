@@ -16,25 +16,25 @@ class logger(object):
   Examples:
   
   # Basic usage
-  import phenix.log
-  phenix.log.info("Helpful message")
+  import iotbx.log
+  iotbx.log.info("Helpful message")
   
   # Write as a file handle
-  print >> phenix.log.logger, "As file handle"
+  print >> iotbx.log.logger, "As file handle"
   
   # Set debug, or quiet states
-  phenix.log.logger.set_debug(True)
-  phenix.log.debug("Debugging output.")
-  phenix.log.logger.set_quiet(True)
-  phenix.log.info("This should be muted.")
+  iotbx.log.logger.set_debug(True)
+  iotbx.log.debug("Debugging output.")
+  iotbx.log.logger.set_quiet(True)
+  iotbx.log.info("This should be muted.")
   
   # Output file
-  phenix.log.logger.set_logfile("test.log")
-  phenix.log.info("Redirected to test.log")
+  iotbx.log.logger.set_logfile("test.log")
+  iotbx.log.info("Redirected to test.log")
   
   # Experimental sys.stdout redirection
-  phenix.log.logger.set_logfile("test.log")
-  sys.stdout = phenix.log.logger
+  iotbx.log.logger.set_logfile("test.log")
+  sys.stdout = iotbx.log.logger
   print "stdout redirection to test.log"
   
   """
