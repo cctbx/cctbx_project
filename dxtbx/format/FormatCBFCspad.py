@@ -32,7 +32,7 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
 
     return cbf_handle.get_value() == "CS PAD"
 
-  def sync_detector_to_cbf(self):
+  def sync_detector_to_cbf(self, detector = None):
     ''' If the dectector object has been changed, due to refinment or manual repositioning
     in a gui, call this function to synchronize these changes to the underlying CBF handle'''
 
@@ -117,7 +117,10 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
         for subgroup in iterator:
           recursive_sync(cbf, subgroup)
 
-    detector = self.get_detector()
+
+    if detector is None:
+      detector = self.get_detector()
+
     root = detector.hierarchy()
     assert len(root) == 4
 

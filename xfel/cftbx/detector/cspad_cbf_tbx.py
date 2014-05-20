@@ -325,13 +325,20 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
   return metro
 
 def cbf_file_to_basis_dict(path):
-  """ Maps a cbf file to a dictionary of tuples and basis objects, in the same form as the above
+  """ Maps a cbf file to a dictionary of tuples and basis objects, in the same form as the above from
   read_optical_metrology_from_flat_file
   @param path cbf file path """
   from dxtbx.format.Registry import Registry
   reader = Registry.find(path)
   instance = reader(path)
-  root = instance.get_detector().hierarchy()
+  return map_detector_to_basis_dict(instance.get_detector())
+
+def map_detector_to_basis_dict(detector):
+  """ Maps a dxtbx detector object representing a CSPAD CBF to a dictionary of tuples and basis objects,
+  in the same form as the above from read_optical_metrology_from_flat_file
+  @param detector cbf file path """
+
+  root = detector.hierarchy()
 
   d = 0 # only allow one detector for now
   metro = {(d,):basis(panelgroup=root)}
