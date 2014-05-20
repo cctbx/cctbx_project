@@ -4062,6 +4062,21 @@ class array(set):
       sigmas = self.sigmas().select(all_isel)
     return self.customized_copy(data=data, sigmas=sigmas)
 
+  def is_unmerged_intensity_array (self) :
+    """
+    Determine whether the array contains unmerged experimental observations
+    or not.  In some files only the centric reflections will appear to be
+    unmerged, so we specifically check the acentrics (if present).
+    """
+    if (not self.is_xray_intensity_array()) : return False
+    centric_flags = self.centric_flags().data()
+    acentric_flags = ~centric_flags
+    if (acentric_flags.count(True) == 0) :
+      return (not centrics.is_unique_set_under_symmetry())
+    centrics = self.select(centric_flags)
+    acentrics = self.select(acentric_flags)
+    return (not acentrics.is_unique_set_under_symmetry())
+
   # this is tested as part of phenix.merging_statistics (note that the exact
   # values are not reproducible)
   def cc_one_half (self, use_binning=False, n_trials=1, anomalous_flag=False) :

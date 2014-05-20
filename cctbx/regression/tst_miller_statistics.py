@@ -1,5 +1,9 @@
 
 from __future__ import division
+from iotbx import file_reader
+from cctbx.array_family import flex
+from cctbx import crystal
+from cctbx import xray
 import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from cStringIO import StringIO
@@ -14,8 +18,6 @@ def exercise () :
     return
   # XXX very hard to avoid cross-imports here if we want to test on actual
   # real data...
-  from iotbx import file_reader
-  from scitbx.array_family import flex
   hkl_in = file_reader.any_file(hkl_file)
   i_obs = hkl_in.file_server.miller_arrays[0]
   i_obs.setup_binner(n_bins=50)
@@ -50,7 +52,60 @@ unused:  1.7443 -         [   0/0   ]
 """)
   # TODO lots more stuff - eventually most of the functions used in Xtriage
   # should be tested here
-  print "OK"
+
+def exercise_unmerged () :
+  quartz_structure = xray.structure(
+    special_position_settings=crystal.special_position_settings(
+      crystal_symmetry=crystal.symmetry(
+        unit_cell=(5.01,5.01,5.47,90,90,120),
+        space_group_symbol="P6222")),
+    scatterers=flex.xray_scatterer([
+      xray.scatterer(
+        label="Si",
+        site=(1/2.,1/2.,1/3.),
+        u=0.2),
+      xray.scatterer(
+        label="O",
+        site=(0.197,-0.197,0.83333),
+        u=0.1)]))
+  quartz_structure.set_inelastic_form_factors(
+    photon=1.54,
+    table="sasaki")
+  fc = abs(quartz_structure.structure_factors(d_min=1.0).f_calc())
+  symm = fc.crystal_symmetry()
+  icalc = fc.expand_to_p1().f_as_f_sq().set_observation_type_xray_intensity()
+  # generate 'unmerged' data
+  i_obs = icalc.customized_copy(crystal_symmetry=symm)
+  # now make up sigmas and some (hopefully realistic) error
+  flex.set_random_seed(12345)
+  n_refl = i_obs.size()
+  sigmas = flex.random_double(n_refl) * flex.mean(fc.data())
+  sigmas = icalc.customized_copy(data=sigmas).apply_debye_waller_factors(
+    u_iso=0.15)
+  err = (flex.double(n_refl, 0.5) - flex.random_double(n_refl)) * 10
+  i_obs = i_obs.customized_copy(
+    sigmas=sigmas.data(),
+    data=i_obs.data() + err)
+  # check for unmerged acentrics
+  assert i_obs.is_unmerged_intensity_array()
+  i_obs_centric = i_obs.select(i_obs.centric_flags().data())
+  i_obs_acentric = i_obs.select(~(i_obs.centric_flags().data()))
+  i_mrg_acentric = i_obs_acentric.merge_equivalents().array()
+  i_mixed = i_mrg_acentric.concatenate(i_obs_centric)
+  assert not i_mixed.is_unmerged_intensity_array()
+  # XXX These tests may need to be adjusted for system-dependent behavior
+  # CC1/2, etc.
+  assert approx_equal(i_obs.cc_one_half(), 0.999712)
+  assert approx_equal(i_obs.resolution_filter(d_max=1.2).cc_one_half(),
+    0.789904)
+  assert approx_equal(i_obs.cc_anom(), 0.60552)
+  # merging stats
+  i_mrg = i_obs.merge_equivalents()
+  assert approx_equal(i_mrg.r_merge(), 0.074151)
+  assert approx_equal(i_mrg.r_meas(), 0.077784)
+  assert approx_equal(i_mrg.r_pim(), 0.023261)
 
 if (__name__ == "__main__") :
   exercise()
+  exercise_unmerged()
+  print "OK"
