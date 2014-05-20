@@ -6,8 +6,6 @@ from libtbx.utils import Abort
 from libtbx import Auto
 import wx
 
-UNICODE_BUILD = (wx.PlatformInfo[2] == 'unicode')
-
 class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
@@ -29,7 +27,7 @@ class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
 
   def GetValue (self) :
     val = wx.TextCtrl.GetValue(self)
-    if (isinstance(val, unicode)) and UNICODE_BUILD :
+    if (isinstance(val, unicode)) and wxtbx.is_unicode_build() :
       return val.encode('utf8')
     else :
       assert isinstance(val, str)

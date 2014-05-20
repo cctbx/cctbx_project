@@ -2,13 +2,12 @@
 from __future__ import division
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from wxtbx import phil_controls
+import wxtbx
 from libtbx.phil import tokenizer
 from libtbx import Auto
 import libtbx.phil
 import wx
 import sys
-
-UNICODE_BUILD = (wx.PlatformInfo[2] == 'unicode')
 
 class StrCtrl (ValidatedTextCtrl) :
   def __init__ (self, *args, **kwds) :
@@ -27,7 +26,7 @@ class StrCtrl (ValidatedTextCtrl) :
       ValidatedTextCtrl.SetValue(self, "")
     else :
       if isinstance(value, str) :
-        if UNICODE_BUILD :
+        if wxtbx.is_unicode_build() :
           ValidatedTextCtrl.SetValue(self, value.decode("utf-8"))
         else :
           ValidatedTextCtrl.SetValue(self, value)
@@ -52,7 +51,7 @@ class StrCtrl (ValidatedTextCtrl) :
       return parse_str(value)
 
   def FormatValue (self, value) :
-    if UNICODE_BUILD :
+    if wxtbx.is_unicode_build() :
       return value.encode("utf-8")
     else :
       return value
