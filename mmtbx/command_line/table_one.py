@@ -93,6 +93,12 @@ table_one {
     n_bins = 10
       .type = int
       .short_caption = Number of resolution bins
+    count_anomalous_pairs_separately = False
+      .type = bool
+      .short_caption = Count anomalous pairs separately
+      .help = If true, the program will treat F+ and F- (if present) as \
+        independent reflections when calculating data statistics.  (Not \
+        recommended.)
   }
   multiprocessing {
     include scope libtbx.easy_mp.parallel_phil_str_no_threading
@@ -219,6 +225,7 @@ class _ (oop.injector, molprobity.molprobity) :
       adp_mean_mm=self.model_stats.macromolecules.b_mean,
       adp_mean_lig=self.model_stats.ligands.b_mean,
       adp_mean_wat=self.model_stats.water.b_mean,
+      anomalous_flag=data_stats.anomalous_flag,
       ).add_outer_shell(
         # XXX we need a consistency check here as well
         d_max_min=(data_stats.d_max_outer, data_stats.d_min_outer),
@@ -318,7 +325,10 @@ def rfactor_sanity_check (
     (r_work, r_free) = (r_work_fmodel, r_free_fmodel)
   return (r_work, r_free, warned)
 
-def run_single_structure (params, n_bins, log=None) :
+def run_single_structure (params,
+    n_bins,
+    count_anomalous_pairs_separately,
+    log=None) :
   if (log is None) : log = null_out()
   molprobity_args = [
     "pdb.file_name=\"%s\"" % params.pdb_file,
@@ -327,6 +337,7 @@ def run_single_structure (params, n_bins, log=None) :
     "xray_data.r_free_flags.file_name=\"%s\"" % params.mtz_file,
     "xray_data.r_free_flags.label=\"%s\"" % params.r_free_flags.label,
     "n_bins=%d" % n_bins,
+    "count_anomalous_pairs_separately=%s" % count_anomalous_pairs_separately,
     "coot=False",
     "maps=False",
     "probe_dots=False",
@@ -355,7 +366,9 @@ class table_one (iotbx.table_one.table) :
 
   def __init__ (self, params, out=sys.stdout) :
     iotbx.table_one.table.__init__(self,
-      text_field_separation=params.output.text_field_separation)
+      text_field_separation=params.output.text_field_separation,
+      count_anomalous_pairs_separately=\
+        params.processing.count_anomalous_pairs_separately)
     self.output_dir = os.getcwd()
     self.params = params
     self.output_files = []
@@ -378,7 +391,8 @@ class table_one (iotbx.table_one.table) :
   def run_single_structure (self, i_struct) :
     return run_single_structure(
       params=self.params.structure[i_struct],
-      n_bins=self.params.processing.n_bins)
+      n_bins=self.params.processing.n_bins,
+      count_anomalous_pairs_separately=self.count_anomalous_pairs_separately)
 
   def save_multiple (self, file_base, formats) :
     for format in formats :
