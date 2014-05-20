@@ -1231,6 +1231,7 @@ iotbx/gui_tools/models.py -text
 iotbx/gui_tools/reflections.py -text
 iotbx/gui_tools/tst.py -text
 iotbx/libtbx_refresh.py svneol=native#text/x-python
+iotbx/log.py -text
 iotbx/logfiles.py -text
 iotbx/map_tools.py -text
 iotbx/merging_statistics.py -text
