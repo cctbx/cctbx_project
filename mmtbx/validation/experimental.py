@@ -191,7 +191,8 @@ def merging_and_model_statistics (
     r_free_flags,
     unmerged_i_obs,
     n_bins=20,
-    sigma_filtering=Auto) :
+    sigma_filtering=Auto,
+    anomalous=False) :
   """
   Compute merging statistics - CC* in particular - together with measures of
   model quality using reciprocal-space data (R-factors and CCs).  See Karplus
@@ -212,13 +213,13 @@ def merging_and_model_statistics (
     sigma_filtering=sigma_filtering)
   i_obs = filter.array_merged
   unmerged_i_obs = filter.array
-  if (i_obs.anomalous_flag()) :
+  if (i_obs.anomalous_flag()) and (not anomalous) :
     i_obs = i_obs.average_bijvoet_mates()
-  if (f_obs.anomalous_flag()) :
+  if (f_obs.anomalous_flag()) and (not anomalous) :
     f_obs = f_obs.average_bijvoet_mates()
-  if (f_model.anomalous_flag()) :
+  if (f_model.anomalous_flag()) and (not anomalous) :
     f_model = f_model.average_bijvoet_mates()
-  if (free_sel.anomalous_flag()) :
+  if (free_sel.anomalous_flag()) and (not anomalous) :
     free_sel = free_sel.average_bijvoet_mates()
   if (free_sel.data().count(True) == 0) :
     raise Sorry("R-free array does not select any reflections.  To calculate "+
@@ -243,4 +244,5 @@ def merging_and_model_statistics (
     d_max=d_max,
     n_bins=n_bins,
     model_arrays=model_arrays,
+    anomalous=anomalous,
     sigma_filtering=None) # no need, since it was done here

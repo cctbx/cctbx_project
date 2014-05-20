@@ -92,6 +92,7 @@ class molprobity (slots_getstate_setstate) :
       show_hydrogen_outliers=False,
       min_cc_two_fofc=0.8,
       n_bins_data=10,
+      count_anomalous_pairs_separately=False,
       crystal_symmetry=None,
       outliers_only=True,
       use_pdb_header_resolution_cutoffs=False) :
@@ -157,7 +158,8 @@ class molprobity (slots_getstate_setstate) :
       if (flags.rfactors) :
         self.data_stats = experimental.data_statistics(fmodel,
           raw_data=raw_data,
-          n_bins=n_bins_data)
+          n_bins=n_bins_data,
+          count_anomalous_pairs_separately=count_anomalous_pairs_separately)
       if (flags.waters) :
         self.waters = waters.waters(
           pdb_hierarchy=pdb_hierarchy,
@@ -175,6 +177,7 @@ class molprobity (slots_getstate_setstate) :
           f_model=fmodel.f_model(),
           r_free_flags=fmodel.r_free_flags(),
           unmerged_i_obs=unmerged_data,
+          anomalous=count_anomalous_pairs_separately,
           n_bins=n_bins_data)
     self._multi_criterion = multi_criterion_view(pdb_hierarchy)
 

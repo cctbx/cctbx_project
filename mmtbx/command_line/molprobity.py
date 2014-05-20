@@ -35,6 +35,9 @@ molprobity {
     .type = int
   use_pdb_header_resolution_cutoffs = False
     .type = bool
+  count_anomalous_pairs_separately = False
+    .type = bool
+    .expert_level = 2
 }
 output {
   quiet = False
@@ -128,7 +131,9 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
     min_cc_two_fofc=params.molprobity.min_cc_two_fofc,
     n_bins_data=params.molprobity.n_bins,
     use_pdb_header_resolution_cutoffs=\
-      params.molprobity.use_pdb_header_resolution_cutoffs)
+      params.molprobity.use_pdb_header_resolution_cutoffs,
+    count_anomalous_pairs_separately=\
+      params.molprobity.count_anomalous_pairs_separately)
   if (not params.output.quiet) :
     out2 = multi_out()
     out2.register("stdout", out)
