@@ -218,3 +218,10 @@ def clean_out_directory (parent=None, dir_name=None) :
   finally :
     dlg1.Destroy()
     if (dlg2 is not None) : dlg2.Destroy()
+
+if (__name__ == "__main__") :
+  app = wx.App(0)
+  mgr = manager()
+  fn = mgr.select_file(parent=None,
+    message="Select a file")
+  print fn

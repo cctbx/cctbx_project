@@ -8,8 +8,6 @@ import wx
 import os
 import sys
 
-UNICODE_BUILD = (wx.PlatformInfo[2] == 'unicode')
-
 WXTBX_PHIL_PATH_SAVE = 1
 WXTBX_PHIL_PATH_DIRECTORY = 2
 WXTBX_PHIL_PATH_VIEW_BUTTON = 4
@@ -89,7 +87,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
 
   def GetValue (self) :
     val = self._path_text.GetValue().strip()
-    if (isinstance(val, unicode)) and UNICODE_BUILD :
+    if (isinstance(val, unicode)) and wxtbx.is_unicode_build() :
       return val.encode('utf8')
     else :
       assert isinstance(val, str)
@@ -118,7 +116,11 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
 
   def FormatValue (self, value) :
     if (value != "") :
-      return os.path.abspath(value)
+      if (not os.path.isabs(value)) :
+        print "ABSPATH"
+        return os.path.abspath(value)
+      else :
+        return value
     return value
 
   def Validate (self) :
@@ -235,7 +237,11 @@ class PathValidator (text_base.TextCtrlValidator) :
       if (style & WXTBX_PHIL_PATH_DIRECTORY) :
         raise ValueError("file specified, but this parameter requires "+
           "a directory.")
-      return os.path.abspath(value)
+      if (not os.path.isabs(value)) :
+        print "ABSPATH"
+        return os.path.abspath(value)
+      else :
+        return value
     elif (os.path.isdir(value)) :
       if (not style & WXTBX_PHIL_PATH_DIRECTORY) :
         # XXX hack to allow app and package bundles on OS X
@@ -245,7 +251,11 @@ class PathValidator (text_base.TextCtrlValidator) :
         else :
           raise ValueError("directory specified, but this parameter requires "+
             "a file.")
-      return os.path.abspath(value)
+      if (not os.path.isabs(value)) :
+        print "ABSPATH"
+        return os.path.abspath(value)
+      else :
+        return value
     else :
       if (style & WXTBX_PHIL_PATH_SAVE) :
         return os.path.abspath(value)

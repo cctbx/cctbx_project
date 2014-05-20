@@ -21,3 +21,6 @@ class MouseWheelTransparencyMixin (object) :
     evt.SetId(parent.GetId())
     evt.SetEventObject(parent)
     parent.GetEventHandler().ProcessEvent(evt)
+
+def is_unicode_build () :
+  return (wx.PlatformInfo[2] == 'unicode')
