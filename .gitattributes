@@ -1231,7 +1231,6 @@ iotbx/gui_tools/models.py -text
 iotbx/gui_tools/reflections.py -text
 iotbx/gui_tools/tst.py -text
 iotbx/libtbx_refresh.py svneol=native#text/x-python
-iotbx/log.py -text
 iotbx/logfiles.py -text
 iotbx/map_tools.py -text
 iotbx/merging_statistics.py -text
@@ -1440,6 +1439,7 @@ libtbx/dtrace/profile.d -text
 libtbx/easy_mp.py svneol=native#text/x-python
 libtbx/easy_profile.py -text
 libtbx/find_reference_cycles.py -text
+libtbx/log.py -text
 libtbx/lzw.py -text
 libtbx/metric_prefixes.py svneol=native#text/x-python
 libtbx/object_oriented_patterns.py -text
