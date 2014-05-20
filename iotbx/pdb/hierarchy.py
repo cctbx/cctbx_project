@@ -791,6 +791,18 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         if chain.is_na() : return True
     return False
 
+  def contains_rna (self) :
+    import iotbx.pdb
+    get_class = iotbx.pdb.common_residue_names_get_class
+    for model in self.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          for ag in rg.atom_groups():
+            if ((get_class(ag.resname) == "common_rna_dna") and
+                (not "D" in ag.resname.upper())) :
+              return True
+    return False
+
   def remove_hd (self, reset_i_seq=False) :
     """
     Remove all hydrogen/deuterium atoms in-place.  Returns the number of atoms
