@@ -16,26 +16,26 @@ class logger(object):
   Examples:
   
   # Basic usage
-  import libtbx.log
-  libtbx.log.info("Helpful message")
+  >>> import libtbx.log
+  >>> libtbx.log.info("Helpful message")
   
   # Write as a file handle
-  print >> libtbx.log.logger, "As file handle"
+  >>> print >> libtbx.log.logger, "As file handle"
   
   # Set debug, or quiet states
-  libtbx.log.logger.set_debug(True)
-  libtbx.log.debug("Debugging output.")
-  libtbx.log.logger.set_quiet(True)
-  libtbx.log.info("This should be muted.")
+  >>> libtbx.log.logger.set_debug(True)
+  >>> libtbx.log.debug("Debugging output.")
+  >>> libtbx.log.logger.set_quiet(True)
+  >>> libtbx.log.info("This should be muted.")
   
   # Output file
-  libtbx.log.logger.set_logfile("test.log")
-  libtbx.log.info("Redirected to test.log")
+  >>> libtbx.log.logger.set_logfile("test.log")
+  >>> libtbx.log.info("Redirected to test.log")
   
   # Experimental sys.stdout redirection
-  libtbx.log.logger.set_logfile("test.log")
-  sys.stdout = libtbx.log.logger
-  print "stdout redirection to test.log"
+  >>> libtbx.log.logger.set_logfile("test.log")
+  >>> sys.stdout = libtbx.log.logger
+  >>> print "stdout redirection to test.log"
   
   """
 
@@ -107,10 +107,6 @@ info = logger.log.info
 warn = logger.log.warn
 error = logger.log.error
 critical = logger.log.critical
-
-
-
-
 
 ##### Testing #####
 
