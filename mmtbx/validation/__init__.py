@@ -285,6 +285,30 @@ class atom_info (atom_base) :
       base += " segid='%4s'" % self.segid
     return base
 
+def get_atoms_info (pdb_atoms, iselection,
+      use_segids_in_place_of_chainids=False) :
+  proxy_atoms = []
+  for n, i_seq in enumerate(iselection):
+    atom = pdb_atoms[i_seq]
+    labels = atom.fetch_labels()
+    if use_segids_in_place_of_chainids:
+      chain_id = atom.segid
+    else:
+      chain_id = labels.chain_id
+    info = atom_info(
+      name=atom.name,
+      element=atom.element,
+      chain_id=chain_id,
+      resseq=labels.resseq,
+      icode=labels.icode,
+      resname=labels.resname,
+      altloc=labels.altloc,
+      occupancy=atom.occ,
+      #segid=atom.segid,
+      xyz=atom.xyz)
+    proxy_atoms.append(info)
+  return proxy_atoms
+
 class atom (atom_base, entity) :
   """
   Base class for validation results for a single atom.  This is distinct from

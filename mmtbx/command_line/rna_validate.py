@@ -1,8 +1,73 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.rna_validate
 
+from __future__ import division
+from mmtbx.validation.rna_validate import rna_validation
+import iotbx.phil
 import sys
-from mmtbx.validation.rna_validate import rna_validate
 
-if __name__ == "__main__":
-  rna_validate().run(sys.argv[1:])
+def get_master_phil():
+  return iotbx.phil.parse(input_string="""
+  model = None
+      .type = path
+      .help = "Model file (PDB or mmCIF)"
+
+  outliers_only = True
+    .type = bool
+    .help = "Only display outliers"
+
+  verbose = True
+    .type = bool
+    .help = '''Verbose'''
+  rna_sugar_pucker_analysis
+    .short_caption = RNA sugar pucker analysis
+    .style = box noauto auto_align menu_item parent_submenu:advanced
+  {
+    include scope mmtbx.monomer_library.rna_sugar_pucker_analysis.master_phil
+  }
+""", process_includes=True)
+
+usage_string = """
+phenix.rna_validate file.pdb [params.eff] [options ...]
+
+Options:
+
+  pdb=input_file        input PDB file
+  outliers_only=False   print all suites, not just outliers
+
+Example:
+
+  phenix.rna_validate pdb=1u8d.pdb outliers_only=False
+
+"""
+
+def run (args, out=sys.stdout, quiet=False) :
+  from mmtbx.monomer_library import pdb_interpretation
+  from mmtbx.monomer_library import server
+  cmdline = iotbx.phil.process_command_line_with_files(
+    args=args,
+    master_phil=get_master_phil(),
+    pdb_file_def="model",
+    usage_string=usage_string)
+  params = cmdline.work.extract()
+  if (params.model is None) :
+    raise Usage(usage_string)
+  pdb_in = cmdline.get_file(params.model, force_type="pdb")
+  mon_lib_srv = server.server()
+  ener_lib = server.ener_lib()
+  processed_pdb_file = pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    pdb_inp=pdb_in.file_object,
+    substitute_non_crystallographic_unit_cell_if_necessary=True)
+  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  geometry = processed_pdb_file.geometry_restraints_manager()
+  result = rna_validation(
+    pdb_hierarchy=pdb_hierarchy,
+    geometry_restraints_manager=geometry,
+    params=params,
+    outliers_only=params.outliers_only)
+  result.show(out=out)
+  return result
+
+if (__name__ == "__main__") :
+  run(sys.argv[1:])
