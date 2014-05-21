@@ -454,10 +454,60 @@ def exercise_wavelength () :
   miller_array = mtz_object.as_miller_arrays()[0]
   assert (approx_equal(miller_array.info().wavelength, 0.9792))
 
+def exercise_unmerged():
+  miller_set = crystal.symmetry(
+    unit_cell=(100,100,100,90,90,90),
+    space_group_symbol="I23").build_miller_set(
+      d_min=4, anomalous_flag=True)
+  miller_set = miller_set.expand_to_p1().customized_copy(
+    space_group_info=miller_set.space_group_info())
+
+  m = mtz.object()
+  m.set_title('This is a title')
+  m.set_space_group_info(miller_set.space_group_info())
+  x = m.add_crystal('XTAL', 'CCTBX', miller_set.unit_cell().parameters())
+  d = x.add_dataset('TEST', 1)
+
+  indices = miller_set.indices()
+  original_indices = indices.deep_copy()
+
+  # map the miller indices to one hemisphere (i.e. just I+)
+  miller.map_to_asu(m.space_group().type(), False, indices)
+
+  h, k, l = [i.iround() for i in indices.as_vec3_double().parts()]
+  m.adjust_column_array_sizes(len(h))
+  m.set_n_reflections(len(h))
+
+  # assign H, K, L
+  d.add_column('H', 'H').set_values(h.as_double().as_float())
+  d.add_column('K', 'H').set_values(k.as_double().as_float())
+  d.add_column('L', 'H').set_values(l.as_double().as_float())
+
+  d.add_column('M_ISYM', 'Y').set_values(flex.float(len(indices)))
+
+  m.replace_original_index_miller_indices(original_indices)
+
+  assert (m.extract_original_index_miller_indices() == original_indices).count(False) == 0
+  # all asu miller indices should be positive for this spacegroup
+  assert min(m.extract_miller_indices().as_vec3_double().min()) >= 0
+
+  from cctbx import sgtbx
+  cb_op = sgtbx.change_of_basis_op("-l,-k,-h")
+
+  m.change_basis_in_place(cb_op)
+  assert (
+    m.extract_original_index_miller_indices() == cb_op.apply(original_indices)
+    ).count(False) == 0
+  # all asu miller indices should be positive for this spacegroup
+  assert min(m.extract_miller_indices().as_vec3_double().min()) >= 0
+
+
+
 def exercise():
   if (mtz is None):
     print "Skipping iotbx/mtz/tst.py: ccp4io not available"
     return
+  exercise_unmerged()
   exercise_wavelength()
   exercise_extract_delta_anomalous()
   exercise_repair_ccp4i_import_merged_data()

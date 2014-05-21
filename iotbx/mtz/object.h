@@ -401,6 +401,14 @@ namespace mtz {
       af::shared<cctbx::miller::index<> >
       extract_original_index_miller_indices(const char*) const;
 
+      //! Maps Miller indices to asymmetric unit and overwrites columns H, K, L.
+      /*! Also updates the M/ISYM code along to map to the original index.
+       */
+      void
+      replace_original_index_miller_indices(
+        af::const_ref<cctbx::miller::index<> > const &indices,
+        const char*);
+
       //! Read-only access.
       integer_group
       extract_integers(

@@ -447,9 +447,15 @@ class _(boost.python.injector, ext.object):
         raise RuntimeError(
           "In-place transformation of Hendrickson-Lattman coefficients"
           " not implemented.")
-    self.replace_miller_indices(cb_op.apply(self.extract_miller_indices()))
     if (new_space_group_info is None):
       new_space_group_info = self.space_group_info().change_basis(cb_op)
+    if "M_ISYM" in self.column_labels():
+      original_miller_indices = self.extract_original_index_miller_indices()
+      indices = cb_op.apply(original_miller_indices)
+      isym = flex.int(len(indices))
+      self.replace_original_index_miller_indices(indices)
+    else:
+      self.replace_miller_indices(cb_op.apply(self.extract_miller_indices()))
     self.set_space_group_info(space_group_info=new_space_group_info)
     for crystal in self.crystals():
       crystal_symmetry = cctbx.crystal.symmetry(
