@@ -4,6 +4,7 @@ import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
 from libtbx.phil import parse
+from scitbx import matrix
 from iotbx import pdb
 import string
 import math
@@ -19,23 +20,18 @@ master_phil = parse("""
     ncs_selection = None
       .type = str
       .help = '''
-      When applying transforms to coordinates that are present, you need to
+      When applying transforms to coordinates that are present or when
+      applying selected transformations to selected chains, you need to
       provide selection string for the NCS portion of the pdb hierarchy'''
-    apply_to_all_chains = True
-      .type = bool
-      .help = '''
-      If any custom ncs_groups are set, apply_to_all_chains will be
-      forced to be False
-      '''
     ncs_group
       .multiple = True
       {
         transform
         .multiple = True
         {
-          rotations = None
+          rotation = None
             .type = floats(size=9, value_min=-1, value_max=1)
-          translations = None
+          translation = None
             .type = floats(size=3)
           coordinates_present = None
             .type = bool
@@ -102,11 +98,10 @@ class multimer(object):
                 ncs_refinement {
                   dont_apply_when_coordinates_present = (bool)
                   ncs_selection = (str)
-                  apply_to_all_chains = (bool)
                   ncs_group {
                     transform {
-                      rotations = tuple(float), size 9
-                      translations = tuple(float), size 3
+                      rotation = tuple(float), size 9
+                      translation = tuple(float), size 3
                       coordinates_present = (Bool / None)
                     }
                     apply_to_selection = (bool)
@@ -162,12 +157,12 @@ class multimer(object):
         round_coordinates = round_coordinates)
       # apply the transformation
       model = pdb_obj_new.models()[0]
-      for transform in self.transforms_obj.transform_chain_assignment:
+      for tr in self.transforms_obj.transform_chain_assignment:
         ncs_selection = \
-          self.transforms_obj.asu_to_ncs_map[transform.split('_')[0]]
+          self.transforms_obj.asu_to_ncs_map[tr.split('_')[0]]
         new_part = pdb_obj.hierarchy.select(ncs_selection).deep_copy()
         new_chain = iotbx.pdb.hierarchy.ext.chain()
-        new_chain.id = self.transforms_obj.ncs_copies_chains_names[transform]
+        new_chain.id = self.transforms_obj.ncs_copies_chains_names[tr]
         for res in new_part.residue_groups():
           new_chain.append_residue_group(res.detached_copy())
         model.append_chain(new_chain)
@@ -283,8 +278,8 @@ class ncs_group_object(object):
     # flex.bool ncs_atom_selection
     self.ncs_atom_selection = None
     self.ncs_selection_str = None
-    self.model_unique_chains_ids = None
-    self.model_order_chain_ids = None
+    self.model_unique_chains_ids = tuple()
+    self.model_order_chain_ids = []
     self.transform_to_be_used = set()
 
     # Use to produce new unique names for atom selections
@@ -307,41 +302,26 @@ class ncs_group_object(object):
       working_phil = master_phil.fetch(source=ncs_refinement_params).extract()
       self.ncs_refinement_groups = working_phil.ncs_refinement.ncs_group
       self.ncs_selection_str = working_phil.ncs_refinement.ncs_selection
-
-      if self.ncs_refinement_groups:
-        # Force to False if any ncs_groups are defined by user
-        self.apply_to_all_chains = False
-        self.dont_apply_when_coordinates_present = True
-      else:
-        self.dont_apply_when_coordinates_present = \
-          working_phil.ncs_refinement.dont_apply_when_coordinates_present
-        self.apply_to_all_chains = \
-           working_phil.ncs_refinement.apply_to_all_chains
-
-    if not self.dont_apply_when_coordinates_present:
-      assert self.ncs_selection_str
+      self.dont_apply_when_coordinates_present = \
+        working_phil.ncs_refinement.dont_apply_when_coordinates_present
+      self.process_phil_param()
 
     if pdb_hierarchy_inp:
       self.process_pdb(
         transform_info=transform_info,pdb_hierarchy_inp=pdb_hierarchy_inp)
       if not self.ncs_selection_str and not self.ncs_atom_selection:
-        # No special application of transformations, use PDB default
         self.ncs_group = self.ncs_group_pdb
         s = ' or chain '.join(self.model_unique_chains_ids)
         self.ncs_selection_str = 'chain ' + s
         temp = pdb_hierarchy_inp.hierarchy.atom_selection_cache()
         self.ncs_atom_selection = temp.selection(self.ncs_selection_str)
-        self.map_keys_to_selection = {k:k.split('_')[0] for k in self
-          .ncs_group}
-
+        self.map_keys_to_selection = {k:k.split('_')[0] for k in self.ncs_group}
     # transformation application order
     self.transform_order =sorted(
       self.transform_to_ncs,key=lambda key: int(key[1:]))
 
-    # TODO: replace collective transform on chain ID with consideration to
-    # order
+    # TODO:replace collective transform on chain ID with consideration to order
     for tr_id in self.transform_order:
-    # for ch_id in self.model_order_chain_ids:
       for ch_id in self.model_unique_chains_ids:
         self.transform_chain_assignment.append(ch_id + '_' + tr_id[1:])
 
@@ -389,11 +369,51 @@ class ncs_group_object(object):
     temp = flex.bool([False]*(asu_length - ncs_length))
     self.ncs_atom_selection.extend(temp)
 
-  def process_phill_param(self):
-    self.ncs_transform
-    self.ncs_group
-    self.transform_to_ncs
-    self.transform_order
+  def process_phil_param(self):
+    """ """
+    # When using phil parameters, the selection string is used as a chain ID
+    self.apply_to_all_chains = not self.ncs_refinement_groups
+    if not self.ncs_selection_str: self.ncs_selection_str = ''
+    selection_ids = set()
+    serial_num = 2
+    for ncsg in self.ncs_refinement_groups:
+      assert ncsg.apply_to_selection
+      # create ncs selection
+      selection_key = ' '.join(ncsg.apply_to_selection)
+      if not selection_key in selection_ids:
+        self.model_order_chain_ids.append(selection_key)
+      selection_ids.add(selection_key)
+
+      # build transform objects
+      self.ncs_selection_str += ' or (' + selection_key + ')'
+      for tr in ncsg.transform:
+        r = tr.rotation
+        t = tr.translation
+        cp = tr.coordinates_present
+        cp = (cp is None) or cp
+        assert len(r) == 9
+        assert len(t) == 3
+        tranform_obj = transform(
+          rotation = matrix.sqr(r),
+          translation = matrix.col(t),
+          serial_num = serial_num,
+          coordinates_present = cp)
+        key = 's' + format_num_as_str(serial_num)
+        serial_num += 1
+        self.ncs_transform[key] = tranform_obj
+
+    # apply all transforms that are not present to all chains
+    for k,v in self.ncs_transform.iteritems():
+      if not v.coordinates_present:
+        self.transform_to_be_used.add(v.serial_num)
+        for chain_id in self.model_unique_chains_ids:
+          key = chain_id + '_' + format_num_as_str(v.serial_num)
+          transform_key = 's' + format_num_as_str(v.serial_num)
+          self.ncs_group[key] = transform_key
+          if self.transform_to_ncs.has_key(transform_key):
+            self.transform_to_ncs[transform_key].append(key)
+          else:
+            self.transform_to_ncs[transform_key] = [key]
 
 
 
@@ -450,9 +470,7 @@ class ncs_group_object(object):
         self.transform_to_be_used.add(v.serial_num)
         for chain_id in self.model_unique_chains_ids:
           key = chain_id + '_' + format_num_as_str(v.serial_num)
-          # TODO: check if ncs_group_pdb is being used
           transform_key = 's' + format_num_as_str(v.serial_num)
-          # self.ncs_group_pdb[key] = v.serial_num
           self.ncs_group_pdb[key] = transform_key
           if self.transform_to_ncs.has_key(transform_key):
             self.transform_to_ncs[transform_key].append(key)
@@ -562,11 +580,11 @@ class ncs_group_object(object):
     """
     asu_xyz = flex.vec3_double(ncs_coordinates)
 
-    for transform in self.transform_chain_assignment:
-      s_asu,e_asu = self.ncs_to_asu_map[transform]
-      ncs_selection = self.asu_to_ncs_map[transform.split('_')[0]]
+    for trans in self.transform_chain_assignment:
+      s_asu,e_asu = self.ncs_to_asu_map[trans]
+      ncs_selection = self.asu_to_ncs_map[trans.split('_')[0]]
       ncs_xyz = ncs_coordinates.select(ncs_selection)
-      tr_key = 's' + transform.split('_')[1]
+      tr_key = 's' + trans.split('_')[1]
       assert self.ncs_transform.has_key(tr_key)
       tr = self.ncs_transform[tr_key]
       new_sites = tr.rotation.elems* ncs_xyz+tr.translation
