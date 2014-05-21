@@ -33,26 +33,26 @@ class TestMultimerReconstruction(unittest.TestCase):
         apply_to_all_chains = False
         ncs_group {
           transform {
-            rotations = (1.0,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9)
-            translations = (1,2,3)
+            rotation = (1.0,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9)
+            translation = (1,2,3)
             }
           transform {
-            rotations = 0.1,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-            translations = (0,2,1)
+            rotation = 0.1,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
+            translation = (0,2,1)
             }
           transform {
-            rotations = 1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-            translations = (-1,3,-2)
+            rotation = 1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.9
+            translation = (-1,3,-2)
             coordinates_present = True
             }
           apply_to_selection = chain A
         }
         ncs_group {
           transform {
-            rotations = 0.2,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-            translations = (0,0,0)
+            rotation = 0.2,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
+            translation = (0,0,0)
           }
-          apply_to_selection = chain A and chain C
+          apply_to_selection = chain A or chain C
           apply_to_selection = and name ca
         }
       }
@@ -180,20 +180,20 @@ class TestMultimerReconstruction(unittest.TestCase):
         ncs_refinement_params = self.user_phil)
       gr1 = transforms_obj.ncs_refinement_groups[0]
       gr2 = transforms_obj.ncs_refinement_groups[1]
-      result = gr1.transform[1].rotations
+      result = gr1.transform[1].rotation
       expected = [0.1, 1.0, 1.0, 0.2, 0.5, 0.6, 0.7, 0.8, 0.9]
       self.assertEqual(result,expected)
-      result = gr1.transform[1].translations
+      result = gr1.transform[1].translation
       expected = [0.0, 2.0, 1.0]
       self.assertEqual(result,expected)
       result = gr1.transform[2].coordinates_present
       expected = True
       self.assertEqual(result,expected)
       result = gr2.apply_to_selection
-      expected = ['chain A and chain C', 'and name ca']
+      expected = ['chain A or chain C', 'and name ca']
       self.assertEqual(result,expected)
       result = transforms_obj.dont_apply_when_coordinates_present
-      self.assertEqual(result,True)
+      self.assertEqual(result,False)
       result = transforms_obj.apply_to_all_chains
       self.assertEqual(result,False)
 
