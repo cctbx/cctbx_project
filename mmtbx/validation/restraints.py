@@ -1,6 +1,6 @@
 
 from __future__ import division
-from mmtbx.validation import atoms, atom_info, validation
+from mmtbx.validation import atoms, validation, get_atoms_info
 from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
 from math import sqrt
@@ -409,30 +409,6 @@ def get_mean_xyz (atoms) :
   for atom in atoms[1:] :
     sum += col(atom.xyz)
   return sum / len(atoms)
-
-def get_atoms_info (pdb_atoms, iselection,
-      use_segids_in_place_of_chainids=False) :
-  proxy_atoms = []
-  for n, i_seq in enumerate(iselection):
-    atom = pdb_atoms[i_seq]
-    labels = atom.fetch_labels()
-    if use_segids_in_place_of_chainids:
-      chain_id = atom.segid
-    else:
-      chain_id = labels.chain_id
-    info = atom_info(
-      name=atom.name,
-      element=atom.element,
-      chain_id=chain_id,
-      resseq=labels.resseq,
-      icode=labels.icode,
-      resname=labels.resname,
-      altloc=labels.altloc,
-      occupancy=atom.occ,
-      #segid=atom.segid,
-      xyz=atom.xyz)
-    proxy_atoms.append(info)
-  return proxy_atoms
 
 def _get_sorted (O,
         unit_cell,

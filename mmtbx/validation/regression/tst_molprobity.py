@@ -8,10 +8,7 @@ import libtbx.load_env
 from cStringIO import StringIO
 import os
 
-def exercise_molprobity () :
-  if (not libtbx.env.has_module(name="probe")):
-    print "Skipping exercise_molprobity(): probe not configured"
-    return
+def exercise_protein () :
 
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3ifk.pdb",
@@ -32,6 +29,7 @@ def exercise_molprobity () :
   result = loads(dumps(result))
   out2 = StringIO()
   result.show(out=out2)
+  assert (not "RNA validation" in out2.getvalue())
   assert (out2.getvalue() == out1.getvalue())
   dump("tst_molprobity.pkl", result)
   mc = result.as_multi_criterion_view()
@@ -61,6 +59,30 @@ def exercise_molprobity () :
   Rotamer outliers      =  18.67 %
 """)
 
+def exercise_rna () :
+  regression_pdb = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb2goz_refmac_tls.ent",
+    test=os.path.isfile)
+  if (regression_pdb is None):
+    print "Skipping exercise_regression(): input pdb (pdb2goz_refmac_tls.ent) not available"
+    return
+  result = molprobity.run(args=[regression_pdb], out=null_out())
+  assert (result.rna is not None)
+  out = StringIO()
+  result.show(out=out)
+  assert ("2/58 pucker outliers present" in out.getvalue())
+  result = loads(dumps(result))
+  out2 = StringIO()
+  result.show(out=out2)
+  assert (out2.getvalue() == out.getvalue())
+
 if (__name__ == "__main__") :
-  exercise_molprobity()
-  print "OK"
+  if (not libtbx.env.has_module(name="probe")):
+    print "Skipping tests: probe not configured"
+  else :
+    exercise_protein()
+    if (not libtbx.env.has_module(name="suitename")) :
+      print "Skipping RNA test: suitename not available"
+    else :
+      exercise_rna()
+    print "OK"

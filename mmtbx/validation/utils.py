@@ -150,7 +150,8 @@ def get_segid_as_chainid(chain):
   for atom in chain.atoms():
     return atom.segid
 
-def get_rna_backbone_dihedrals(processed_pdb_file):
+def get_rna_backbone_dihedrals (processed_pdb_file,
+      geometry=None, pdb_hierarchy=None):
   # at present, this will only return measurements for angles arising from
   # atoms with altloc ' ' or altloc 'A'
   # TO-DO: extend to more alternates JJH 140108
@@ -158,12 +159,15 @@ def get_rna_backbone_dihedrals(processed_pdb_file):
   bb_dihedrals = {}
   formatted_out = []
   alt_tracker = {}
-  sites_cart = processed_pdb_file.all_chain_proxies.sites_cart
-  i_seq_name_hash = build_name_hash(
-                    pdb_hierarchy=processed_pdb_file.\
-                      all_chain_proxies.pdb_hierarchy)
-  geometry = processed_pdb_file.geometry_restraints_manager()
+  if (processed_pdb_file is not None) :
+    sites_cart = processed_pdb_file.all_chain_proxies.sites_cart
+    geometry = processed_pdb_file.geometry_restraints_manager()
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  else :
+    assert (not None in [geometry, pdb_hierarchy])
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
   dihedral_proxies = geometry.dihedral_proxies
+  i_seq_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
 
   def is_blank_or_alt_a(proxy):
     for i in proxy.i_seqs:

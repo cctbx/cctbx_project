@@ -1,269 +1,230 @@
+
 from __future__ import division
-import os, sys
-from iotbx import pdb
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
-from iotbx.pdb import common_residue_names_get_class
-import iotbx.phil
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.validation import utils
 from mmtbx import monomer_library
+from mmtbx import validation
+from iotbx.pdb import common_residue_names_get_class as get_res_class
+from iotbx import pdb
+import iotbx.phil
 from cctbx import geometry_restraints
-from libtbx import easy_run
+from libtbx.str_utils import make_sub_header, make_header
+from libtbx import slots_getstate_setstate
 from libtbx.utils import Usage
+from libtbx import easy_run
+from math import sqrt
+import os
+import sys
 
-def get_master_phil():
-  return iotbx.phil.parse(
-    input_string="""
-  rna_validate {
-    pdb = None
-      .type = path
-      .help = '''Enter a PDB file name'''
-    suite_outliers_only = True
-      .type = bool
-      .help = '''Only print suite outliers'''
-    rna_sugar_pucker_analysis
-      .short_caption = RNA sugar pucker analysis
-      .style = box noauto auto_align menu_item parent_submenu:advanced
-    {
-      include scope mmtbx.monomer_library.rna_sugar_pucker_analysis.master_phil
-    }
-  }
-  """,process_includes=True)
+rna_backbone_atoms = set([
+  "P", "OP1", "OP2", "O5'", "C5'", "C4'", "O4'", "C1'",
+  "C3'", "O3'", "C2'", "O2'", "N1", "N9" ]) #version 3.x naming
 
-class rna_validate(object):
+# individual validation results
+class rna_bond (validation.residue) :
+  __slots__ = validation.residue.__slots__ + ["atoms_info", "sigma", "delta"]
 
-  def __init__(self):
-    self.params = None
-    self.rna_backbone_atoms = ["P", "OP1", "OP2", "O5'", "C5'", "C4'", "O4'", "C1'",
-                               "C3'", "O3'", "C2'", "O2'", "N1", "N9" ] #version 3.x naming
+  @staticmethod
+  def header () :
+    return "%-20s  %6s  %6s  %6s" % ("residue", "atom 1", "atom 2", "sigmas")
 
-  def usage(self):
-    return """
-phenix.rna_validate file.pdb [params.eff] [options ...]
+  def format_values (self) :
+    return "%-20s  %6s  %6s  %6.2f" % (self.id_str(), self.atoms_info[0].name,
+      self.atoms_info[1].name, self.score)
 
-Options:
+  def as_string (self, prefix="") :
+    return prefix + self.format_values()
 
-  pdb=input_file        input PDB file
-  outliers_only=True    only print suite outliers
+class rna_angle (validation.residue) :
+  __slots__ = validation.residue.__slots__ + ["atoms_info", "sigma", "delta"]
 
-Example:
+  @staticmethod
+  def header () :
+    return "%-20s  %6s  %6s  %6s  %6s" % ("residue", "atom 1", "atom 2",
+      "atom 3", "sigmas")
 
-  phenix.rna_validate pdb=1u8d.pdb outliers_only=False
+  def format_values (self) :
+    return "%-20s  %6s  %6s  %6s  %6.2f" % (self.id_str(),
+      self.atoms_info[0].name, self.atoms_info[1].name,
+      self.atoms_info[2].name, self.score)
 
-"""
+  def as_string (self, prefix="") :
+    return prefix + self.format_values()
 
-  def run(self, args):
-    if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
-      raise Usage(self.usage())
-    master_phil = get_master_phil()
-    import iotbx.utils
-    input_objects = iotbx.utils.process_command_line_inputs(
-      args=args,
-      master_phil=master_phil,
-      input_types=("pdb",))
-    work_phil = master_phil.fetch(sources=input_objects["phil"])
-    work_params = work_phil.extract()
-    if len(input_objects["pdb"]) != 1:
-      raise Usage("phenix.rna_validate mypdb.pdb")
-    file_obj = input_objects["pdb"][0]
-    filename = file_obj.file_name
-    self.params=work_params
-    if filename and os.path.exists(filename):
-      try:
-        import iotbx.pdb
-      except ImportError:
-        print "iotbx not loaded"
-        return
-      pdb_io = iotbx.pdb.input(filename)
-    else:
-      print "Please enter a file name"
-      return
-    self.analyze_pdb(pdb_io=pdb_io,
-                     outliers_only=\
-                       self.params.rna_validate.suite_outliers_only)
-    self.print_results()
+class rna_pucker (validation.residue) :
+  """
+  Validation using pucker-specific restraints library.
+  """
+  __slots__ = validation.residue.__slots__ + [
+    "delta_angle",
+    "is_delta_outlier",
+    "epsilon_angle",
+    "is_epsilon_outlier",
+  ]
 
-  def analyze_pdb(self,
-                  params=None,
-                  pdb_io=None,
-                  processed_pdb_file=None,
-                  outliers_only=True,
-                  show_errors = False,
-                  out=sys.stdout):
-    if processed_pdb_file is None:
-      mon_lib_srv = monomer_library.server.server()
-      ener_lib = monomer_library.server.ener_lib()
-      self.processed_pdb_file = pdb_interpretation.process(
-        mon_lib_srv=mon_lib_srv,
-        ener_lib=ener_lib,
-        pdb_inp=pdb_io,
-        substitute_non_crystallographic_unit_cell_if_necessary=True)
-    else:
-      self.processed_pdb_file=processed_pdb_file
-    self.outliers_only = outliers_only
-    self.pdb_hierarchy = \
-      self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
-    self.pucker_outliers = \
-      self.pucker_evaluate(hierarchy=self.pdb_hierarchy)
-    self.bond_outliers, self.angle_outliers = \
-      self.bond_and_angle_evaluate()
-    self.suite_validation = self.run_suitename()
+  @staticmethod
+  def header () :
+    return "%-20s  %8s  %8s  %8s  %8s" % ("residue", "delta", "outlier",
+      "epsilon", "outlier")
 
-  def print_results(self):
-    print "RNA Validation"
-    print "-----------------------------------------------"
-    print "Pucker Outliers:"
-    print "#residue:delta_angle:is_delta_outlier:epsilon_angle:is_epsilon_outler"
-    for outlier in self.pucker_outliers:
-      if outlier[1][1]:
-        is_delta_outlier="yes"
-      else:
-        is_delta_outlier="no"
-      if outlier[1][3]:
-        is_epsilon_outlier="yes"
-      else:
-        is_epsilon_outlier="no"
-      if outlier[1][0] == None:
-        delta_angle = -1.0
-      else:
-        delta_angle = outlier[1][0]
-      if outlier[1][2] == None:
-        ep_angle = -1.0
-      else:
-        ep_angle = outlier[1][2]
-      print "%s:%.3f:%s:%.3f:%s" % (outlier[0],
-                                    delta_angle,
-                                    is_delta_outlier,
-                                    ep_angle,
-                                    is_epsilon_outlier)
-    print "\n-----------------------------------------------"
+  def format_values (self) :
+    def format_outlier_flag (flag) :
+      if (flag) : return "yes"
+      else : return "no"
+    return "%-20s  %8.1f  %8s  %8.1f  %8s" % (self.id_str(), self.delta_angle,
+      format_outlier_flag(self.is_delta_outlier), self.epsilon_angle,
+      format_outlier_flag(self.is_epsilon_outlier))
 
-    print "Bond Length Outliers:"
-    print "#residue:atom_1:atom_2:num_sigmas"
-    for outlier in self.bond_outliers:
-      for pair in outlier[1]:
-        print "%s:%s:%s:%.3f" % (outlier[0], pair[0], pair[1], pair[2])
-    print "\n-----------------------------------------------"
-    print "Angle Outliers:"
-    print "#residue:atom_1:atom_2:atom_3:num_sigmas"
-    for outlier in self.angle_outliers:
-      for pair in outlier[1]:
-        print "%s:%s:%s:%s:%.3f" % (outlier[0], pair[0], pair[1], pair[2], pair[3])
-    print "\n-----------------------------------------------"
-    if self.outliers_only:
-      print "Suite Outliers:"
-    else:
-      print "Suite Validation:"
-    print "#suiteID:suite:suiteness:triaged_angle"
-    for outlier in self.suite_validation:
-      if len(outlier) == 3:
-        print "%s:%s:%s:" % (outlier[0], outlier[1], outlier[2])
-      else:
-        print "%s:%s:%s:%s" % (outlier[0],
-                               outlier[1],
-                               outlier[2],
-                               outlier[3])
+  def as_string (self, prefix="") :
+    return prefix + self.format_values()
 
-  def run_suitename(self):
-    suite_validation = []
-    suitename = "phenix.suitename -report -pointIDfields 7 -altIDfield 6  -"
-    backbone_dihedrals = utils.get_rna_backbone_dihedrals(
-                         self.processed_pdb_file)
-    suitename_out = easy_run.fully_buffered(suitename,
-                         stdin_lines=backbone_dihedrals).stdout_lines
-    for line in suitename_out:
-      if line.startswith(' :'):
-        temp = line.split(":")
-        key = temp[5]+temp[6][0:3]+temp[2]+temp[3]+temp[4]
-        suite = temp[6][9:11]
-        suiteness = temp[6][12:17]
-        temp2 = temp[6].split(" ")
-        if '!!' in line:
-          if (temp2[3] == 'trig'):
-            suite_validation.append(
-              [key,suite,suiteness,temp2[6]])
-          else:
-            suite_validation.append(
-              [key,suite,suiteness, None])
-        elif not self.outliers_only:
-          suite_validation.append([key,suite,suiteness])
-    return suite_validation
+class rna_suite (validation.residue) :
+  """
+  RNA backbone "suite", analyzed using the external program 'suitename'.
+  """
+  __slots__ = validation.residue.__slots__ + [
+    "suite_id",
+    "suite",
+    "suiteness",
+    "triaged_angle",
+  ]
 
-  def bond_and_angle_evaluate(self):
-    bond_hash = {}
-    angle_hash = {}
-    bond_outliers = []
-    angle_outliers = []
+  @staticmethod
+  def header () :
+    return "%-20s  %8s  %9s  %12s" % ("Suite ID", "suite", "suiteness",
+      "triaged angle")
+
+  def format_values (self) :
+    return "%-20s  %8s  %9s  %8s" % (self.suite_id, self.suite, self.suiteness,
+      self.triaged_angle)
+
+  def as_string (self, prefix="") :
+    return prefix + self.format_values()
+
+class rna_geometry (validation.validation) :
+  def show (self, out=sys.stdout, prefix="  ", verbose=True) :
+    if (len(self.results) > 0) :
+      print >> out, prefix + self.get_result_class().header()
+      for result in self.results :
+        print >> out, result.as_string(prefix=prefix)
+    self.show_summary(out=out, prefix=prefix)
+
+# analysis objects
+class rna_bonds (rna_geometry) :
+  output_header = "#residue:atom_1:atom_2:num_sigmas"
+  label = "Backbone bond lenths"
+  def __init__ (self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager) :
+    rna_geometry.__init__(self)
     cutoff = 4
-    geometry = self.processed_pdb_file.geometry_restraints_manager()
-    assert (geometry is not None)
+    sites_cart = pdb_atoms.extract_xyz()
     flags = geometry_restraints.flags.flags(default=True)
-    i_seq_name_hash = utils.build_name_hash(
-      pdb_hierarchy=\
-        self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-    pair_proxies = geometry.pair_proxies(
-                     flags=flags,
-                     sites_cart=\
-                       self.processed_pdb_file.all_chain_proxies.sites_cart)
+    pair_proxies = geometry_restraints_manager.pair_proxies(
+      flags=flags,
+      sites_cart=sites_cart)
     bond_proxies = pair_proxies.bond_proxies
-    sites_cart=self.processed_pdb_file.all_chain_proxies.sites_cart
     for proxy in bond_proxies.simple:
       restraint = geometry_restraints.bond(
-                                           sites_cart=sites_cart,
-                                           proxy=proxy)
-      atom1 = i_seq_name_hash[proxy.i_seqs[0]][0:4]
-      atom2 = i_seq_name_hash[proxy.i_seqs[1]][0:4]
-      residue = i_seq_name_hash[proxy.i_seqs[0]][4:]
-      if (atom1.strip() not in self.rna_backbone_atoms or
-          atom2.strip() not in self.rna_backbone_atoms):
+        sites_cart=sites_cart,
+        proxy=proxy)
+      atom1 = pdb_atoms[proxy.i_seqs[0]].name
+      atom2 = pdb_atoms[proxy.i_seqs[1]].name
+      labels = pdb_atoms[proxy.i_seqs[0]].fetch_labels()
+      if (atom1.strip() not in rna_backbone_atoms or
+          atom2.strip() not in rna_backbone_atoms) :
         continue
-      sigma = (1/restraint.weight)**(.5)
+      self.n_total += 1
+      sigma = sqrt(1 / restraint.weight)
       num_sigmas = restraint.delta / sigma
       if abs(num_sigmas) >= cutoff:
-        try:
-          bond_hash[residue].append((atom1,atom2,num_sigmas))
-        except Exception:
-          bond_hash[residue] = []
-          bond_hash[residue].append((atom1,atom2,num_sigmas))
-    for proxy in geometry.angle_proxies:
-      restraint = geometry_restraints.angle(
-                                           sites_cart=sites_cart,
-                                           proxy=proxy)
-      atom1 = i_seq_name_hash[proxy.i_seqs[0]][0:4]
-      atom2 = i_seq_name_hash[proxy.i_seqs[1]][0:4]
-      atom3 = i_seq_name_hash[proxy.i_seqs[2]][0:4]
-      residue = i_seq_name_hash[proxy.i_seqs[0]][4:]
-      if (atom1.strip() not in self.rna_backbone_atoms or
-          atom2.strip() not in self.rna_backbone_atoms or
-          atom3.strip() not in self.rna_backbone_atoms):
-        continue
-      # double sigma to account for artificially small sigmas used for
-      # weighting
-      sigma = ((1/restraint.weight)**(.5))*2
-      num_sigmas = restraint.delta / sigma
-      if abs(num_sigmas) >= cutoff:
-        try:
-          angle_hash[residue].append((atom1,atom2,atom3,num_sigmas))
-        except Exception:
-          angle_hash[residue] = []
-          angle_hash[residue].append((atom1,atom2,atom3,num_sigmas))
-    for key in bond_hash.keys():
-      bond_outliers.append([key, bond_hash[key]])
-    for key in angle_hash.keys():
-      angle_outliers.append([key, angle_hash[key]])
-    return bond_outliers, angle_outliers
+        self.n_outliers += 1
+        self.results.append(rna_bond(
+          chain_id=labels.chain_id,
+          resseq=labels.resseq,
+          icode=labels.icode,
+          altloc=labels.altloc,
+          resname=labels.resname,
+          atoms_info=validation.get_atoms_info(pdb_atoms, proxy.i_seqs),
+          sigma=sigma,
+          score=num_sigmas,
+          delta=restraint.delta))
 
-  def pucker_evaluate(self, hierarchy):
-    if self.params is None:
-      master_phil = get_master_phil()
-      self.params = master_phil.extract()
-    params = self.params.rna_validate.rna_sugar_pucker_analysis
+  def get_result_class (self) : return rna_bond
+
+  def show_summary (self, out=sys.stdout, prefix="") :
+    if (self.n_total == 0) :
+      print >> out, prefix + "No RNA backbone atoms found."
+    elif (self.n_outliers == 0) :
+      print >> out, prefix + "All bonds within 4.0 sigma of ideal values."
+    else :
+      print >> out, prefix + "%d/%d bond outliers present" % (self.n_outliers,
+        self.n_total)
+
+class rna_angles (rna_geometry) :
+  output_header = "#residue:atom_1:atom_2:atom_3:num_sigmas"
+  label = "Backbone bond angles"
+  def __init__ (self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager) :
+    rna_geometry.__init__(self)
+    cutoff = 4
+    sites_cart = pdb_atoms.extract_xyz()
+    flags = geometry_restraints.flags.flags(default=True)
+    i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
+    for proxy in geometry_restraints_manager.angle_proxies:
+      restraint = geometry_restraints.angle(
+        sites_cart=sites_cart,
+        proxy=proxy)
+      atom1 = pdb_atoms[proxy.i_seqs[0]].name
+      atom2 = pdb_atoms[proxy.i_seqs[1]].name
+      atom3 = pdb_atoms[proxy.i_seqs[2]].name
+      labels = pdb_atoms[proxy.i_seqs[0]].fetch_labels()
+      if (atom1.strip() not in rna_backbone_atoms or
+          atom2.strip() not in rna_backbone_atoms or
+          atom3.strip() not in rna_backbone_atoms):
+        continue
+      self.n_total += 1
+      sigma = sqrt(1 / restraint.weight)
+      num_sigmas = restraint.delta / sigma
+      if abs(num_sigmas) >= cutoff:
+        self.n_outliers += 1
+        self.results.append(rna_angle(
+          chain_id=labels.chain_id,
+          resseq=labels.resseq,
+          icode=labels.icode,
+          altloc=labels.altloc,
+          resname=labels.resname,
+          atoms_info=validation.get_atoms_info(pdb_atoms, proxy.i_seqs),
+          sigma=sigma,
+          score=num_sigmas,
+          delta=restraint.delta))
+
+  def get_result_class (self) : return rna_angle
+
+  def show_summary (self, out=sys.stdout, prefix="") :
+    if (self.n_total == 0) :
+      print >> out, prefix + "No RNA backbone atoms found."
+    elif (self.n_outliers == 0) :
+      print >> out, prefix + "All angles within 4.0 sigma of ideal values."
+    else :
+      print >> out, prefix + "%d/%d angle outliers present" % (self.n_outliers,
+        self.n_total)
+
+class rna_puckers (rna_geometry) :
+  __slots__ = rna_geometry.__slots__ + [
+    "pucker_states",
+    "pucker_perp_xyz",
+    "pucker_dist",
+  ]
+  output_header = "#residue:delta_angle:is_delta_outlier:epsilon_angle:is_epsilon_outler"
+  label = "Sugar pucker"
+  def __init__ (self, pdb_hierarchy, params=None, outliers_only=True) :
+    if (params is None) :
+      params = rna_sugar_pucker_analysis.master_phil.extract()
     self.pucker_states = []
     self.pucker_perp_xyz = {}
     self.pucker_dist = {}
-    outliers = []
+    rna_geometry.__init__(self)
     from iotbx.pdb.rna_dna_detection import residue_analysis
-    for model in hierarchy.models():
+    for model in pdb_hierarchy.models():
       for chain in model.chains():
         for conformer in chain.conformers():
           altloc = conformer.altloc
@@ -284,7 +245,7 @@ Example:
             next_pdb_residue = _get_next_residue()
             if (next_pdb_residue is not None):
               residue_2_p_atom = next_pdb_residue.find_atom_by(name=" P  ")
-            if common_residue_names_get_class(residue.resname) != "common_rna_dna":
+            if (get_res_class(residue.resname) != "common_rna_dna") :
               continue
             ana = rna_sugar_pucker_analysis.evaluate(
               params=params,
@@ -292,21 +253,145 @@ Example:
               residue_1_c1p_outbound_atom=ra1.c1p_outbound_atom,
               residue_2_p_atom=residue_2_p_atom)
             self.pucker_states.append(ana)
-            if ana.is_delta_outlier or ana.is_epsilon_outlier:
+            self.n_total += 1
+            is_outlier = ana.is_delta_outlier or ana.is_epsilon_outlier
+            if (is_outlier) :
+              self.n_outliers += 1
+            if (is_outlier or not outliers_only) :
+              self.results.append(rna_pucker(
+                chain_id=chain.id,
+                resseq=residue.resseq,
+                icode=residue.icode,
+                altloc=conformer.altloc,
+                resname=residue.resname,
+                delta_angle=ana.delta,
+                is_delta_outlier=ana.is_delta_outlier,
+                epsilon_angle=ana.epsilon,
+                is_epsilon_outlier=ana.is_epsilon_outlier,
+                outlier=is_outlier))
               key = residue.id_str()[8:-1]
-              key = altloc+key
-              outliers.append([key,
-                               [ana.delta,
-                               ana.is_delta_outlier,
-                               ana.epsilon,
-                               ana.is_epsilon_outlier]])
               self.pucker_perp_xyz[key] = [ana.p_perp_xyz, ana.o3p_perp_xyz]
               self.pucker_dist[key] = [ana.p_distance_c1p_outbound_line,
                                        ana.o3p_distance_c1p_outbound_line]
-    return outliers
+
+  def get_result_class (self) : return rna_pucker
+
+  def show_summary (self, out=sys.stdout, prefix="") :
+    if (self.n_total == 0) :
+      print >> out, prefix + "No RNA sugar groups found."
+    elif (self.n_outliers == 0) :
+      print >> out, prefix + "All puckers have reasonable geometry."
+    else :
+      print >> out, prefix + "%d/%d pucker outliers present" % (self.n_outliers,
+        self.n_total)
+
+class rna_suites (rna_geometry) :
+  output_header = "#suiteID:suite:suiteness:triaged_angle"
+  label = "Backbone torsion suites"
+  def __init__ (self, pdb_hierarchy, geometry_restraints_manager,
+      outliers_only=True) :
+    rna_geometry.__init__(self)
+    suitename = "phenix.suitename -report -pointIDfields 7 -altIDfield 6  -"
+    backbone_dihedrals = utils.get_rna_backbone_dihedrals(
+      processed_pdb_file=None,
+      pdb_hierarchy=pdb_hierarchy,
+      geometry=geometry_restraints_manager)
+    suitename_out = easy_run.fully_buffered(suitename,
+                         stdin_lines=backbone_dihedrals).stdout_lines
+    for line in suitename_out:
+      if line.startswith(' :'):
+        temp = line.split(":")
+        altloc = temp[5]
+        chain_id = temp[2]
+        resname = temp[6][0:3]
+        resseq = temp[3]
+        icode = temp[4]
+        key = temp[5]+temp[6][0:3]+temp[2]+temp[3]+temp[4] # ewwwww....
+        suite = temp[6][9:11]
+        suiteness = temp[6][12:17]
+        temp2 = temp[6].split(" ")
+        triaged_angle = None
+        is_outlier = False
+        self.n_total += 1
+        if ('!!' in line) :
+          if (temp2[3] == 'trig'):
+            triaged_angle = temp2[6]
+          is_outlier = True
+          self.n_outliers += 1
+        if (is_outlier) or (not outliers_only) :
+          self.results.append(rna_suite(
+            altloc = temp[5],
+            chain_id = temp[2],
+            resname = temp[6][0:3],
+            resseq = temp[3],
+            icode = temp[4],
+            suite = temp[6][9:11],
+            suite_id = key,
+            suiteness = temp[6][12:17],
+            triaged_angle=triaged_angle,
+            outlier=is_outlier))
+
+  def get_result_class (self) : return rna_suite
+
+  def show_summary (self, out=sys.stdout, prefix="") :
+    if (self.n_total == 0) :
+      print >> out, prefix + "No RNA suites found."
+    elif (self.n_outliers == 0) :
+      print >> out, prefix + "All RNA torsion suites are reasonable."
+    else :
+      print >> out, prefix + "%d/%d suite outliers present" % (self.n_outliers,
+        self.n_total)
+
+class rna_validation (slots_getstate_setstate):
+  __slots__ = ["bonds", "angles", "puckers", "suites"]
+
+  def __init__(self,
+      pdb_hierarchy,
+      geometry_restraints_manager,
+      params,
+      outliers_only=True):
+    if (geometry_restraints_manager is None) :
+      mon_lib_srv = monomer_library.server.server()
+      ener_lib = monomer_library.server.ener_lib()
+      processed_pdb_file = pdb_interpretation.process(
+        mon_lib_srv=mon_lib_srv,
+        ener_lib=ener_lib,
+        pdb_inp=pdb_hierarchy.as_pdb_input(),
+        substitute_non_crystallographic_unit_cell_if_necessary=True)
+      geometry_restraints_manager = \
+        processed_pdb_file.geometry_restraints_manager()
+      pdb_hierarchy = \
+        processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    pdb_atoms = pdb_hierarchy.atoms()
+    self.bonds = rna_bonds(
+      pdb_hierarchy=pdb_hierarchy,
+      pdb_atoms=pdb_atoms,
+      geometry_restraints_manager=geometry_restraints_manager)
+    self.angles = rna_angles(
+      pdb_hierarchy=pdb_hierarchy,
+      pdb_atoms=pdb_atoms,
+      geometry_restraints_manager=geometry_restraints_manager)
+    self.puckers = rna_puckers(
+      pdb_hierarchy=pdb_hierarchy,
+      params=getattr(params, "rna_sugar_pucker_analysis", None),
+      outliers_only=outliers_only)
+    self.suites = rna_suites(
+      pdb_hierarchy=pdb_hierarchy,
+      geometry_restraints_manager=geometry_restraints_manager,
+      outliers_only=outliers_only)
+
+  def show_summary (self, out=sys.stdout, prefix="") :
+    pass
+
+  def show (self, out=sys.stdout, prefix="", outliers_only=None,
+      verbose=True) :
+    for geo_type in self.__slots__ :
+      rv = getattr(self, geo_type)
+      if (rv.n_outliers > 0) or (not outliers_only) :
+        make_sub_header(rv.label, out=out)
+        rv.show(out=out)
 
 class rna_pucker_ref(object):
-
   def __init__(self):
     #residue 21 is 3', residue 22 is 2', residue 3 included for P only
     self.sample_bases = """
@@ -376,8 +461,8 @@ ATOM    193  C2    A A  23      17.522  10.921   3.791  1.00 12.32           C
 ATOM    194  N3    A A  23      17.996   9.768   3.328  1.00 12.80           N
 ATOM    195  C4    A A  23      17.924   9.737   1.988  1.00 13.37           C
 """
-    self.rna_backbone_atoms = ["P", "OP1", "OP2", "O5'", "C5'", "C4'", "O4'", "C1'",
-                               "C3'", "O3'", "C2'", "O2'"] #version 3.x naming
+    self.rna_backbone_atoms = ["P", "OP1", "OP2", "O5'", "C5'", "C4'", "O4'",
+      "C1'", "C3'", "O3'", "C2'", "O2'"] #version 3.x naming
     self.get_rna_pucker_ref()
 
   def get_rna_pucker_ref(self, test_pucker=False):
@@ -395,13 +480,15 @@ ATOM    195  C4    A A  23      17.924   9.737   1.988  1.00 13.37           C
     #confirm puckers are correct
     if test_pucker:
       r = rna_validate()
-      r.pucker_evaluate(hierarchy=self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+      r.pucker_evaluate(
+        hierarchy=self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
       assert not r.pucker_states[0].is_2p
       assert r.pucker_states[1].is_2p
     i_seq_name_hash = utils.build_name_hash(
-                      pdb_hierarchy=self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-    pair_proxies = self.geometry.pair_proxies(flags=flags,
-                                 sites_cart=self.processed_pdb_file.all_chain_proxies.sites_cart)
+      pdb_hierarchy=self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+    pair_proxies = self.geometry.pair_proxies(
+      flags=flags,
+      sites_cart=self.processed_pdb_file.all_chain_proxies.sites_cart)
     bond_proxies = pair_proxies.bond_proxies
     for bond in bond_proxies.simple:
       atom1 = i_seq_name_hash[bond.i_seqs[0]][0:4]

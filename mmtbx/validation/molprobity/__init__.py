@@ -6,6 +6,7 @@ from __future__ import division
 from mmtbx.validation import validation, residue
 from mmtbx.validation import model_properties
 from mmtbx.validation import experimental
+from mmtbx.validation import rna_validate
 from mmtbx.validation import clashscore
 from mmtbx.validation import restraints
 from mmtbx.validation import ramalyze
@@ -29,6 +30,8 @@ ramalyze = True
 rotalyze = True
   .type = bool
 cbetadev = True
+  .type = bool
+rna = True
   .type = bool
 model_stats = True
   .type = bool
@@ -56,13 +59,14 @@ class molprobity (slots_getstate_setstate) :
 
   # XXX this is used to distinguish objects of this type from an older (and
   # now obsolete) class in the phenix tree.
-  molprobity_version_number = 5
+  molprobity_version_number = (4,1)
 
   __slots__ = [
     "ramalyze",
     "rotalyze",
     "cbetadev",
     "clashes",
+    "rna",
     "restraints",
     "missing_atoms",
     "data_stats",
@@ -129,6 +133,14 @@ class molprobity (slots_getstate_setstate) :
           outliers_only=True,
           out=null_out(),
           quiet=True)
+    if (pdb_hierarchy.contains_rna() and flags.rna and
+        libtbx.env.has_module(name="suitename")) :
+      if (geometry_restraints_manager is not None) :
+        self.rna = rna_validate.rna_validation(
+          pdb_hierarchy=pdb_hierarchy,
+          geometry_restraints_manager=geometry_restraints_manager,
+          outliers_only=outliers_only,
+          params=None)
     if (flags.clashscore) :
       self.clashes = clashscore.clashscore(
         pdb_hierarchy=pdb_hierarchy,
@@ -229,6 +241,9 @@ class molprobity (slots_getstate_setstate) :
     if (self.clashes is not None) :
       make_sub_header("Bad clashes", out=out)
       self.clashes.show(out=out, prefix="  ")
+    if (self.rna is not None) :
+      make_header("RNA validation", out=out)
+      self.rna.show(out=out, prefix="  ", outliers_only=outliers_only)
     if (not suppress_summary) :
       make_header("Summary", out=out)
       self.show_summary(out=out, prefix="  ",
