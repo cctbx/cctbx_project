@@ -162,6 +162,7 @@ class DataBlock(object):
     from itertools import groupby
     from dxtbx.imageset import ImageSweep
     from dxtbx.format.FormatMultiImage import FormatMultiImage
+    from os.path import abspath
 
     # Get a list of all the unique models
     b = list(self.unique_beams())
@@ -178,9 +179,9 @@ class DataBlock(object):
     for iset in self._imagesets:
       if isinstance(iset, ImageSweep):
         if issubclass(iset.reader().get_format_class(), FormatMultiImage):
-          template = iset.reader().get_path()
+          template = abspath(iset.reader().get_path())
         else:
-          template = iset.get_template()
+          template = abspath(iset.get_template())
         result['imageset'].append(OrderedDict([
             ('__id__', 'ImageSweep'),
             ('template',   template),
