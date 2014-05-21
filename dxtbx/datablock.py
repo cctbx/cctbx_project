@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+usr/bin/env python
 #
 # datablock.py
 #
@@ -194,7 +194,7 @@ class DataBlock(object):
         image_list = []
         for i in range(len(iset)):
           image_dict = OrderedDict()
-          image_dict['filename'] = iset.get_path(i)
+          image_dict['filename'] = abspath(iset.get_path(i))
           try:
             image_dict['beam'] = b.index(iset.get_beam(i))
           except Exception:
