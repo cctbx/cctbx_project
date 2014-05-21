@@ -82,7 +82,7 @@ def exercise_unmerged () :
   sigmas = flex.random_double(n_refl) * flex.mean(fc.data())
   sigmas = icalc.customized_copy(data=sigmas).apply_debye_waller_factors(
     u_iso=0.15)
-  err = (flex.double(n_refl, 0.5) - flex.random_double(n_refl)) * 10
+  err = (flex.double(n_refl, 0.5) - flex.random_double(n_refl)) * 2
   i_obs = i_obs.customized_copy(
     sigmas=sigmas.data(),
     data=i_obs.data() + err)
@@ -93,17 +93,19 @@ def exercise_unmerged () :
   i_mrg_acentric = i_obs_acentric.merge_equivalents().array()
   i_mixed = i_mrg_acentric.concatenate(i_obs_centric)
   assert not i_mixed.is_unmerged_intensity_array()
-  # XXX These tests may need to be adjusted for system-dependent behavior
+  # XXX These results of these functions are heavily dependent on the
+  # behavior of the random number generator, which is not consistent across
+  # platforms - therefore we can only check for very approximate values.
+  # Exact numerical results are tested with real data (stored elsewhere).
   # CC1/2, etc.
-  assert approx_equal(i_obs.cc_one_half(), 0.999712)
-  assert approx_equal(i_obs.resolution_filter(d_max=1.2).cc_one_half(),
-    0.789904)
-  assert approx_equal(i_obs.cc_anom(), 0.60552)
+  assert approx_equal(i_obs.cc_one_half(), 0.9998, eps=0.001)
+  assert i_obs.resolution_filter(d_max=1.2).cc_one_half() > 0
+  assert i_obs.cc_anom() > 0.1
   # merging stats
   i_mrg = i_obs.merge_equivalents()
-  assert approx_equal(i_mrg.r_merge(), 0.074151)
-  assert approx_equal(i_mrg.r_meas(), 0.077784)
-  assert approx_equal(i_mrg.r_pim(), 0.023261)
+  assert i_mrg.r_merge() < 0.1
+  assert i_mrg.r_meas() < 0.1
+  assert i_mrg.r_pim() < 0.05
 
 if (__name__ == "__main__") :
   exercise()
