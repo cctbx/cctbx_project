@@ -244,7 +244,7 @@ class table_data (object) :
 
   def _format_num_row (self, row, column_width, precision) :
     if row is None : return []
-    f1 = "%s-%dg" % (r'%', precision)
+    f1 = "%s-.%dg" % (r'%', precision)
     f2 = "%s-%ds" % (r'%', column_width)
     return [ f2 % ftoa(x, f1) for x in row ]
 
@@ -285,8 +285,8 @@ class table_data (object) :
     data = self.data
     assert data is not None and len(data) > 0
     column_width = self._max_column_width(precision)
-    if column_width > precision :
-      precision = column_width
+    #if column_width > precision :
+    #  precision = column_width
     f1 = "%s-%ds" % (r'%', column_width)
     column_headers = " | ".join(self._format_labels(self.column_labels,
       column_width))
