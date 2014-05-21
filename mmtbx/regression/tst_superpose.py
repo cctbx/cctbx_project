@@ -89,7 +89,6 @@ class SuperposeExamples(object):
     # rmsd, lsq = moving.superpose(fixed)
     # moving.output(lsq, filename="1HMT-fit-1CBS-sieve.pdb")
 
-
 class SuperposeTest(unittest.TestCase):
     # OK!
     def test_alignment_used_1(self, filename='fab_a_cut_1.pdb', test='test_alignment_used_1', tolerance=0.003):
