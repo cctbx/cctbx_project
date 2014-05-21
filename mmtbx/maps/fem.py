@@ -82,6 +82,7 @@ class run(object):
         update_f_calc = True)
       fmdc.update_all_scales(update_f_part1_for=None)
       maps_2 = maps(fmodel = fmdc)
+      fmodel = fmdc
     m_filter = None
     """
     #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -128,7 +129,6 @@ class run(object):
     #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     """
     #
-    fmodel = fmdc
     # make sure common B moved to k_total
     if(sharp):
       b_iso_min = flex.min(
