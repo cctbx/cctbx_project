@@ -144,6 +144,11 @@ namespace {
             )
         .def("replace_miller_indices", &w_t::replace_miller_indices, (
           (arg("miller_indices"))))
+        .def("replace_original_index_miller_indices",
+              &w_t::replace_original_index_miller_indices,
+              (arg("miller_indices"),
+               arg("column_label_m_isym")=std::string("M_ISYM").c_str())
+            )
         .def("extract_integers",
           (integer_group(w_t::*)(const char*) const) &w_t::extract_integers, (
           (arg("column_label"))))

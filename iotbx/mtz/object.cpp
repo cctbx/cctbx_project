@@ -1,5 +1,6 @@
 #include <cvecmat.h>
 #include <ccp4_spg.h>
+#include <csymlib.h>
 #include <scitbx/math/utils.h>
 #include <iotbx/mtz/batch.h>
 #include <iotbx/mtz/column.h>
@@ -463,7 +464,7 @@ namespace iotbx { namespace mtz {
   }
 
   //copied from csymlib.c to avoid windows compilation error, unresolved symbol ccp4printf
-  CSym::ccp4_symop ccp4_symop_invert( const CSym::ccp4_symop op1 )
+  CSym::ccp4_symop ccp4_symop_invert_( const CSym::ccp4_symop op1 )
   {
     float rot1[4][4],rot2[4][4];
 
@@ -500,7 +501,7 @@ namespace iotbx { namespace mtz {
 
     scitbx::af::shared<ccp4_symop> invsymop(p->mtzsymm.nsym);
     for(int i = 0 ; i < p->mtzsymm.nsym; ++i) {
-      invsymop[i] = ccp4_symop_invert(op1[i]);
+      invsymop[i] = ccp4_symop_invert_(op1[i]);
     }
 
     for (int i_refl=0; i_refl<n_refl; ++i_refl){
@@ -527,6 +528,47 @@ namespace iotbx { namespace mtz {
       ));
     }
     return result;
+  }
+
+  void
+  object::replace_original_index_miller_indices(
+    af::const_ref<cctbx::miller::index<> > const &indices,
+    const char* column_label_m_isym)
+  {
+    column m_isym(get_column(column_label_m_isym));
+    hkl_columns hkl = get_hkl_columns();
+    int n_refl = n_reflections();
+
+    using CSym::ccp4_symop;
+    using CSym::CCP4SPG;
+
+    CMtz::MTZ* p = ptr();
+    CCP4SPG *spacegroup;
+
+    scitbx::af::shared<ccp4_symop> op1(p->mtzsymm.nsym);
+    for(int i = 0 ; i < p->mtzsymm.nsym; ++i) {
+      for (int k = 0; k < 3; ++k) {
+        for (int l=0; l<3; ++l) {
+          op1[i].rot[k][l] = p->mtzsymm.sym[i][k][l];
+        }
+        op1[i].trn[k] = p->mtzsymm.sym[i][k][3];
+      }
+    }
+
+    /* now look up spacegroup based on MTZ symm operators */
+    spacegroup = ccp4_spgrp_reverse_lookup(p->mtzsymm.nsym, &op1[0]);
+
+    for (int i_refl=0; i_refl<n_refl; ++i_refl){
+      int m_value = m_isym.int_datum(i_refl) / 256;
+      int h_asu, k_asu, l_asu;
+      int isym = CSym::ccp4spg_put_in_asu(
+        spacegroup,
+        indices[i_refl][0], indices[i_refl][1], indices[i_refl][2],
+        &h_asu, &k_asu, &l_asu);
+      hkl.replace_miller_index(
+        i_refl, cctbx::miller::index<>(h_asu, k_asu, l_asu));
+      m_isym.float_datum(i_refl) = static_cast<float>(m_value + isym);
+    }
   }
 
   integer_group
