@@ -4088,6 +4088,9 @@ class build_all_chain_proxies(linking_mixins):
         den_manager=None,
         reference_manager=None,
         log=None):
+    import iotbx.cif.model
+    self.cif = iotbx.cif.model.cif()
+
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
     if (params_edits is not None) :
@@ -4125,6 +4128,30 @@ class build_all_chain_proxies(linking_mixins):
       self.create_disulfides(
         disulfide_distance_cutoff=self.params.disulfide_distance_cutoff,
         log=log)
+    cif_block = None
+    if disulfide_sym_table.size():
+      cif_block = iotbx.cif.model.block()
+      loop = iotbx.cif.model.loop(header=(
+        "_chem_link_bond.link_id",
+        "_chem_link_bond.atom_1_comp_id",
+        "_chem_link_bond.atom_id_1",
+        "_chem_link_bond.atom_2_comp_id",
+        "_chem_link_bond.atom_id_2",
+        "_chem_link_bond.type",
+        "_chem_link_bond.value_dist",
+        "_chem_link_bond.value_dist_esd",
+      ))
+      loop.add_row(("SS", "1", "SG", "2", "SG", "single", "2.031", "0.020"))
+      cif_block.add_loop(loop)
+      self.cif["link_SS"] = cif_block
+      cif_block = iotbx.cif.model.block()
+      loop = iotbx.cif.model.loop(header=(
+        "_phenix.link_id",
+        "_phenix.atom_id_1",
+        "_phenix.atom_id_2",
+        "_phenix.sym_op",
+      ))
+    #
     max_bond_distance = max_disulfide_bond_distance
     if (bond_distances_model.size() > 0):
       max_bond_distance = max(max_bond_distance,
@@ -4155,6 +4182,7 @@ class build_all_chain_proxies(linking_mixins):
       bond_asu_table, self.geometry_proxy_registries.bond_simple.proxies)
     #
     disulfide_bond = disulfide_link.bond_list[0]
+    #
     assert disulfide_bond.value_dist is not None
     assert disulfide_bond.value_dist > 0
     assert disulfide_bond.value_dist_esd is not None
@@ -4172,6 +4200,17 @@ class build_all_chain_proxies(linking_mixins):
         i_seq=i_seq,
         j_seq=j_seq,
         rt_mx_ji=sym_pair.rt_mx_ji)
+      sym_str = str(sym_pair.rt_mx_ji)
+      if not sym_str:
+        sym_str = "."
+      loop.add_row(("SS",
+                    self.pdb_atoms[i_seq].pdb_label_columns(),
+                    self.pdb_atoms[j_seq].pdb_label_columns(),
+                    sym_str,
+                    ))
+    if disulfide_sym_table.size():
+      cif_block.add_loop(loop)
+      self.cif["phenix_applied_SS"] = cif_block
     #
     if (processed_edits is not None):
       for proxy in processed_edits.bond_sym_proxies:
