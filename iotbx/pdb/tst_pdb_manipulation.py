@@ -1,11 +1,15 @@
 from __future__ import division
-from iotbx import pdb
-from libtbx.test_utils import approx_equal
+from  iotbx.pdb.multimer_reconstruction import format_num_as_str
+from  iotbx.pdb.multimer_reconstruction import ncs_group_object
 from  iotbx.pdb.multimer_reconstruction import multimer
-import os
+from libtbx.test_utils import approx_equal
+from libtbx.phil import parse
+from iotbx import pdb
+import string
 import unittest
-import shutil
 import tempfile
+import shutil
+import os
 
 
 class TestMultimerReconstruction(unittest.TestCase):
@@ -23,6 +27,37 @@ class TestMultimerReconstruction(unittest.TestCase):
     open('multimer_test_data.pdb', 'w').write(pdb_test_data)
     open('multimer_test_data2.pdb', 'w').write(pdb_test_data2)
 
+    self.user_phil = parse("""
+      ncs_refinement {
+        dont_apply_when_coordinates_present = False
+        apply_to_all_chains = False
+        ncs_group {
+          transform {
+            rotations = (1.0,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9)
+            translations = (1,2,3)
+            }
+          transform {
+            rotations = 0.1,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
+            translations = (0,2,1)
+            }
+          transform {
+            rotations = 1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.9
+            translations = (-1,3,-2)
+            coordinates_present = True
+            }
+          apply_to_selection = chain A
+        }
+        ncs_group {
+          transform {
+            rotations = 0.2,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
+            translations = (0,0,0)
+          }
+          apply_to_selection = chain A and chain C
+          apply_to_selection = and name ca
+        }
+      }
+      """)
+
   def test_MTRIX(self):
     '''Test MTRIX record processing'''
 
@@ -38,7 +73,8 @@ class TestMultimerReconstruction(unittest.TestCase):
 
     # use MTRIX data
     cau_multimer_data = multimer(
-      file_name='multimer_test_data.pdb',reconstruction_type='cau')
+      file_name='multimer_test_data.pdb',
+      reconstruction_type='cau')
     cau_multimer_xyz = list(cau_multimer_data.sites_cart())
 
     cau_multimer_xyz.sort()
@@ -47,6 +83,29 @@ class TestMultimerReconstruction(unittest.TestCase):
 
     # Test that the number of MTRIX record to process is correct
     self.assertEqual(cau_multimer_data.number_of_transforms,4)
+
+    # Test getting non-rounded ASU
+    transforms_obj = cau_multimer_data.transforms_obj
+    source_xyz = cau_multimer_data.get_source_hierarchy().atoms().extract_xyz()
+    xyz = transforms_obj.apply_transforms(
+      ncs_coordinates = source_xyz,
+      round_coordinates=False)
+    cau_multimer_xyz = list(xyz)
+    cau_multimer_xyz.sort()
+    assert approx_equal(cau_expected_results,cau_multimer_xyz,eps=0.00001)
+
+    # Test multimer without rounding
+    cau_multimer_data = multimer(
+      file_name='multimer_test_data.pdb',
+      round_coordinates=False,
+      reconstruction_type='cau')
+    cau_multimer_xyz = list(cau_multimer_data.sites_cart())
+    cau_multimer_xyz.sort()
+    cau_expected_results.sort()
+    assert approx_equal(cau_expected_results,cau_multimer_xyz,eps=0.00001)
+
+
+
 
   def test_BIOMT(self):
     '''Test MTRIX record processing'''
@@ -93,12 +152,85 @@ class TestMultimerReconstruction(unittest.TestCase):
     Test that we build the new assembly by applying each transformation
     to all chains by iterating over the chains first. To be constant with
     NCS/ASU transformations that are done during refinement.
+
+    Note that if chains are broken, their copy will be concatenated
     """
     m = multimer(pdb_str=pdb_test_data3,reconstruction_type='cau')
-    self.assertEquals(m.ncs_chains_ids, ('A', 'B'))
+    self.assertEquals(m.ncs_unique_chains_ids, ('A', 'B'))
     self.assertEquals(pdb_test_data3_expected_results,
                       m.assembled_multimer.as_pdb_string())
 
+
+  def test_selection_naming(self):
+    """
+    Verify naming of selection done as expected
+    """
+    transforms_obj = ncs_group_object()
+    result = []
+    for i in range(26*2):
+      result.append(transforms_obj.produce_selection_name())
+    chr_list = string.ascii_uppercase
+    expected = ['S'+a+b for a in chr_list[:2] for b in chr_list]
+    self.assertEqual(result,expected)
+
+  def test_ncs_group_object(self):
+      """ Verify that phil parameters are properly read   """
+      transforms_obj = ncs_group_object()
+      transforms_obj.populate_ncs_group_object(
+        ncs_refinement_params = self.user_phil)
+      gr1 = transforms_obj.ncs_refinement_groups[0]
+      gr2 = transforms_obj.ncs_refinement_groups[1]
+      result = gr1.transform[1].rotations
+      expected = [0.1, 1.0, 1.0, 0.2, 0.5, 0.6, 0.7, 0.8, 0.9]
+      self.assertEqual(result,expected)
+      result = gr1.transform[1].translations
+      expected = [0.0, 2.0, 1.0]
+      self.assertEqual(result,expected)
+      result = gr1.transform[2].coordinates_present
+      expected = True
+      self.assertEqual(result,expected)
+      result = gr2.apply_to_selection
+      expected = ['chain A and chain C', 'and name ca']
+      self.assertEqual(result,expected)
+      result = transforms_obj.dont_apply_when_coordinates_present
+      self.assertEqual(result,True)
+      result = transforms_obj.apply_to_all_chains
+      self.assertEqual(result,False)
+
+  def test_ncs_copies_naming(self):
+    transforms_obj = ncs_group_object()
+    result =  transforms_obj.make_chains_names((1,2),('A','B'))
+    expected = {'A_001': 'C', 'A_002': 'D', 'B_001': 'E', 'B_002': 'F'}
+    self.assertEqual(result,expected)
+
+  def test_coordinate_mapping(self):
+    """
+    Verify that atoms mapping to chain-transformation ID
+    """
+    transforms_obj = ncs_group_object()
+    pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
+    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
+    transform_info = pdb_inp.process_mtrix_records()
+    transforms_obj.populate_ncs_group_object(
+      transform_info = transform_info,
+      pdb_hierarchy_inp = pdb_obj)
+
+    result = {k:list(v) for (k,v) in transforms_obj.asu_to_ncs_map.iteritems()}
+    expected = {'A': [0, 1, 2, 5, 6], 'B': [3, 4]}
+    self.assertEqual(result,expected)
+    result =  transforms_obj.ncs_to_asu_map
+    expected = {'A_003': [7, 12], 'B_003': [12, 14]}
+    self.assertEqual(result,expected)
+
+    result = transforms_obj.ncs_copies_chains_names
+    expected = {'B_003': 'D', 'A_003': 'C'}
+    self.assertEqual(result,expected)
+
+  def test_num_to_str(self):
+    self.assertEqual(format_num_as_str(946),'946')
+    self.assertEqual(format_num_as_str(46),'046')
+    self.assertEqual(format_num_as_str(6),'006')
+    self.assertEqual(format_num_as_str(0),'000')
 
   def tearDown(self):
     '''remove temp files and folder'''
@@ -183,8 +315,8 @@ MTRIX3   3  0.565855  0.754120  0.333333        0.00000
 ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
 ATOM      2  CA  THR A   1       9.559   8.931  10.615  1.00 20.00           C
 ATOM      3  C   THR A   1       9.634   7.903  11.739  1.00 20.00           C
-ATOM      4  O   THR A   1      10.449   8.027  12.653  1.00 20.00           O
-ATOM      5  CB  THR A   1      10.660   8.630   9.582  1.00 20.00           C
+ATOM      4  O   THR B   1      10.449   8.027  12.653  1.00 20.00           O
+ATOM      5  CB  THR B   1      10.660   8.630   9.582  1.00 20.00           C
 ATOM      6  OG1 THR A   1      10.560   9.552   8.490  1.00 20.00           O
 ATOM      7  CG2 THR A   1      10.523   7.209   9.055  1.00 20.00           C
 TER

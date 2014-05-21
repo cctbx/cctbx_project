@@ -163,7 +163,7 @@ class fab_elbow_angle(object):
 
   def select_str(self,chain_ID_H,limit_H,chain_ID_L,limit_L):
     '''create selection strings for the heavy and light chains
-    seperating the vairable and constant parts of the chains'''
+    separating the variable and constant parts of the chains'''
     s1 = 'pepnames and (name ca or name n or name c) and altloc " "'
     s2 = 'chain {0} and resseq {1}:{2} and {3}'
     self.select_var_str_H = s2.format(chain_ID_H,1,limit_H,s1)
