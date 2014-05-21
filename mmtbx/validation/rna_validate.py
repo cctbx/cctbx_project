@@ -258,7 +258,7 @@ class rna_puckers (rna_geometry) :
             if (is_outlier) :
               self.n_outliers += 1
             if (is_outlier or not outliers_only) :
-              self.results.append(rna_pucker(
+              pucker = rna_pucker(
                 chain_id=chain.id,
                 resseq=residue.resseq,
                 icode=residue.icode,
@@ -268,8 +268,9 @@ class rna_puckers (rna_geometry) :
                 is_delta_outlier=ana.is_delta_outlier,
                 epsilon_angle=ana.epsilon,
                 is_epsilon_outlier=ana.is_epsilon_outlier,
-                outlier=is_outlier))
-              key = residue.id_str()[8:-1]
+                outlier=is_outlier)
+              self.results.append(pucker)
+              key = pucker.id_str() #[8:-1]
               self.pucker_perp_xyz[key] = [ana.p_perp_xyz, ana.o3p_perp_xyz]
               self.pucker_dist[key] = [ana.p_distance_c1p_outbound_line,
                                        ana.o3p_distance_c1p_outbound_line]

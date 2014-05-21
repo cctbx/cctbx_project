@@ -6,7 +6,7 @@ from mmtbx.chemical_components import get_bond_pairs
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.cbetadev import cbetadev
-from mmtbx.validation.rna_validate import rna_validate
+from mmtbx.validation import rna_validate
 from mmtbx.kinemage import kin_vec
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import easy_run
@@ -332,19 +332,19 @@ def midpoint(p1, p2):
 
 def pperp_outliers(hierarchy, chain):
   kin_out = "@vectorlist {ext} color= magenta master= {base-P perp}\n"
-  rv = rna_validate()
-  outliers = rv.pucker_evaluate(hierarchy=hierarchy)
-  params=rv.params.rna_validate.rna_sugar_pucker_analysis
+  rv = rna_validate.rna_puckers(pdb_hierarchy=hierarchy)
+  outliers = rv.results
+  params = rna_sugar_pucker_analysis.master_phil.extract()
   outlier_key_list = []
   for outlier in outliers:
-    outlier_key_list.append(outlier[0])
+    outlier_key_list.append(outlier.id_str())
   for conformer in chain.conformers():
     for residue in conformer.residues():
       if common_residue_names_get_class(residue.resname) != "common_rna_dna":
         continue
       ra1 = residue_analysis(
-                             residue_atoms=residue.atoms(),
-                             distance_tolerance=params.bond_detection_distance_tolerance)
+        residue_atoms=residue.atoms(),
+        distance_tolerance=params.bond_detection_distance_tolerance)
       if (ra1.problems is not None): continue
       if (not ra1.is_rna): continue
       try:
