@@ -1072,6 +1072,16 @@ class process_pdb_file_srv(object):
     if(stop_if_duplicate_labels):
       pdb_inp.construct_hierarchy().overall_counts() \
         .raise_duplicate_atom_labels_if_necessary()
+    #
+    # converge pdb_interpretation_params and use_neutron from scattering
+    # table selection
+    #
+    restraints_loading_flags = \
+      monomer_library.pdb_interpretation.get_restraints_loading_flags(
+        self.pdb_interpretation_params)
+    if self.use_neutron_distances:
+      restraints_loading_flags["use_neutron_distances"] = self.use_neutron_distances
+    #
     processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv              = self.mon_lib_srv,
       ener_lib                 = self.ener_lib,
@@ -1081,7 +1091,7 @@ class process_pdb_file_srv(object):
       crystal_symmetry         = self.crystal_symmetry,
       force_symmetry           = True,
       log                      = self.log,
-      use_neutron_distances    = self.use_neutron_distances,
+      restraints_loading_flags = restraints_loading_flags,
       for_dihedral_reference   = for_dihedral_reference,
       substitute_non_crystallographic_unit_cell_if_necessary=allow_missing_symmetry)
     processed_pdb_file.xray_structure(show_summary=True)
@@ -2577,14 +2587,14 @@ class extract_box_around_model_and_map(object):
                selection_string=None,
                selection=None,
                map_data_2=None):
-    adopt_init_args(self, locals()) 
+    adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
     if(pdb_hierarchy is not None):
       xrs = pdb_hierarchy.extract_xray_structure(crystal_symmetry=cs)
       assert_xray_structures_equal(
         x1 = xrs,
         x2 = xray_structure)
-    # Make sure map has origin at (0,0,0), that is zero_based. Otherwise shift 
+    # Make sure map has origin at (0,0,0), that is zero_based. Otherwise shift
     # origin.
     shift_needed = not \
       (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
