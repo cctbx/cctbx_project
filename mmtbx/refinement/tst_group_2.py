@@ -143,6 +143,7 @@ def run(refine, target, residues_per_window = 1, d_min=2):
   becase starting point is too far.
   """
   pdb_inp_poor = iotbx.pdb.input(source_info=None, lines=pdb_poor_adp_str)
+  pdb_inp_poor.write_pdb_file(file_name="poor.pdb")
   ph = pdb_inp_poor.construct_hierarchy()
   ph.atoms().reset_i_seq()
   xrs_poor = pdb_inp_poor.xray_structure_simple()
@@ -150,6 +151,7 @@ def run(refine, target, residues_per_window = 1, d_min=2):
     lines=pdb_answer_str).xray_structure_simple()
   ####
   f_obs = xrs_answer.structure_factors(d_min=d_min,algorithm="direct").f_calc()
+  mtz_dataset = f_obs.as_mtz_dataset(column_root_label="F-calc")
   fc = abs(f_obs)
   fft_map = f_obs.fft_map(resolution_factor=0.25)
   fft_map.apply_volume_scaling()
@@ -164,6 +166,15 @@ def run(refine, target, residues_per_window = 1, d_min=2):
     anomalous_flag = False,
     use_sg         = True)
   f_obs = abs(f_obs)
+  ###
+  mtz_dataset.add_miller_array(
+    miller_array=f_obs,
+    column_root_label="F-obs")
+  mtz_dataset.add_miller_array(
+    miller_array=f_obs.generate_r_free_flags(),
+    column_root_label="R-free-flags")
+  mtz_object = mtz_dataset.mtz_object()
+  mtz_object.write(file_name = "data.mtz")
   ###
   sfp=mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   sfp.algorithm="direct"
