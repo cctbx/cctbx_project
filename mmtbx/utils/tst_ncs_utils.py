@@ -1,7 +1,9 @@
 from __future__ import division
+from  iotbx.pdb.multimer_reconstruction import ncs_group_object
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 import mmtbx.utils.ncs_utils as nu
+from libtbx.phil import parse
 from scitbx import matrix
 import math
 import sys
@@ -40,41 +42,64 @@ class test_rotation_angles_conversion(object):
     self.translation1 = matrix.rec((0.5,-0.5,0),(3,1))
     self.translation2 = matrix.rec((0,0,0),(3,1))
 
+    self.user_phil = parse("""
+      ncs_refinement {
+        dont_apply_when_coordinates_present = False
+        apply_to_all_chains = True
+        ncs_selection = chain A
+        ncs_group {
+          transform {
+            rotation = -0.317946, -0.173437, 0.932111, 0.760735,\
+             -0.633422,0.141629,0.565855,  0.754120, 0.333333
+            translation = (0.5,-0.5,0)
+          }
+          transform {
+            rotation = 0, 0, 1, 0.784042, -0.620708, 0,\
+            0.620708, 0.784042, 0
+            translation = (0,0,0)
+          }
+        }
+      }
+      """)
+
   def test_concatenate_rot_tran(self):
     """ Verify correct concatenation of rotation and translations """
-    # TODO: Adjust test to new object
-    pass
     print 'Running ',sys._getframe().f_code.co_name
-    # rot = [self.rotation1, self.rotation2]
-    # tran = [self.translation1, self.translation2]
-    # results = nu.concatenate_rot_tran(rot,tran)
-    # expected = flex.double([
-    #   -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
-    #   2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
-    # assert approx_equal(results,expected,1.0e-4)
-    # s = 2.0
-    # results = nu.concatenate_rot_tran(rot=rot,tran=tran,s=s)
-    # expected = flex.double([
-    #   -0.40177529, 1.20019851, 2.64221706, 0.5/s, -0.5/s, 0.0,
-    #   2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
-    # assert approx_equal(results,expected,1.0e-4)
+    transforms_obj = ncs_group_object()
+    transforms_obj.populate_ncs_group_object(
+        ncs_refinement_params = self.user_phil)
+    results = nu.concatenate_rot_tran(transforms_obj)
+    expected = flex.double([
+      -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
+      2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
+    assert approx_equal(results,expected,1.0e-4)
+    s = 2.0
+    results = nu.concatenate_rot_tran(transforms_obj,s=s)
+    expected = flex.double([
+      -0.40177529, 1.20019851, 2.64221706, 0.5/s, -0.5/s, 0.0,
+      2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
+    assert approx_equal(results,expected,1.0e-4)
 
   def test_separate_rot_tran(self):
     """
     Verify correct conversion from angles and translation
     to rotation matrices and translations """
-    # TODO: Adjust test to new object
     print 'Running ',sys._getframe().f_code.co_name
-    # s = 2.0
-    # x = flex.double([
-    #   -0.40177529, 1.20019851, 2.64221706, 0.5/s, -0.5/s, 0.0,
-    #   2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
-    # rot_results, tran_results = nu.separate_rot_tran(x=x,ncs_copies=2)
-    # rot_expected = [self.rotation1, self.rotation2]
-    # tran_expected = [self.translation1/s, self.translation2/s]
-    #
-    # assert approx_equal(tran_results,tran_expected,1.0e-4)
-    # assert approx_equal(rot_results,rot_expected,1.0e-4)
+    transforms_obj = ncs_group_object()
+    transforms_obj.populate_ncs_group_object(
+        ncs_refinement_params = self.user_phil)
+    s = 2.0
+    x = flex.double([
+      -0.40177529, 1.20019851, 2.64221706, 0.5/s, -0.5/s, 0.0,
+      2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
+    transforms_obj = nu.separate_rot_tran(
+      x=x,transforms_obj=transforms_obj,s=s)
+    rot_results, tran_results = nu.get_rotation_translation_as_list(
+      transforms_obj)
+    rot_expected = [self.rotation1, self.rotation2]
+    tran_expected = [self.translation1,self.translation2]
+    assert approx_equal(tran_results,tran_expected,1.0e-4)
+    assert approx_equal(rot_results,rot_expected,1.0e-4)
 
 
   def test_angles_to_matrix(self):
@@ -156,6 +181,7 @@ class test_rotation_angles_conversion(object):
 
 if __name__=='__main__':
   t = test_rotation_angles_conversion()
+  # TODO: Consider adding more tests
   # run tests
   t.test_rotations_are_good()
   t.test_angles_to_matrix()
