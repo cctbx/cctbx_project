@@ -177,7 +177,8 @@ def run(prefix="tst", d_min=1.0):
 
 
 if (__name__ == "__main__"):
-  t0=time.time()
-  run()
+  # TODO: change function input parameters
+  # t0=time.time()
+  # run()
   print "Time: %6.4f"%(time.time()-t0)
   print "OK"
