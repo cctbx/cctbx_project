@@ -13,14 +13,19 @@ class MonomerLibraryServerError(RuntimeError): pass
 
 mon_lib_env_vars = ["MMTBX_CCP4_MONOMER_LIB", "CLIBD_MON"]
 
-def load_mon_lib_file(mon_lib_path, relative_path_components=[]):
+def load_mon_lib_file(mon_lib_path,
+                      relative_path_components=[],
+                     ):
   if (mon_lib_path is not None):
     cif_path = os.path.join(mon_lib_path, *relative_path_components)
     if (os.path.isfile(cif_path)):
       return cif_path
   return None
 
-def find_mon_lib_file(env_vars=mon_lib_env_vars, relative_path_components=[]):
+def find_mon_lib_file(env_vars=mon_lib_env_vars,
+                      relative_path_components=[],
+                      resolution_range="med",
+                      ):
   result = load_mon_lib_file(
     mon_lib_path=os.environ.get(env_vars[0], None),
     relative_path_components=relative_path_components)
@@ -44,7 +49,12 @@ def find_mon_lib_file(env_vars=mon_lib_env_vars, relative_path_components=[]):
 
 class mon_lib_cif_loader(object):
 
-  def __init__(self, path=None, relative_path_components=[], strict=False):
+  def __init__(self,
+               path=None,
+               relative_path_components=[],
+               strict=False,
+               resolution_range="med",
+               ):
     self.path = path
     if (self.path is None):
       self.path = find_mon_lib_file(
@@ -72,10 +82,22 @@ def geostd_list_cif(path=None, strict=False):
     return None
 
 def mon_lib_ener_lib_cif(path=None, strict=False):
-  return mon_lib_cif_loader(
+  # actually does both
+  mon_lib_ener = mon_lib_cif_loader(
     path=path,
     relative_path_components=["ener_lib.cif"],
     strict=strict)
+  return mon_lib_ener
+  try:
+    geostd_ener = mon_lib_cif_loader(
+      path=path,
+      relative_path_components=["geostd_ener_lib.cif"],
+      strict=strict)
+  except:
+    geostd_ener = None
+  if geostd_ener:
+    mon_lib_ener = merge_and_overwrite_cifs(geostd_ener, mon_lib_ener)
+  return mon_lib_ener
 
 class trivial_html_tag_filter(object):
 
@@ -200,6 +222,135 @@ def get_rows(cif_object, data_name, table_name):
   if table is not None: return table.iterrows()
   else: return []
 
+def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
+  mon_lib_cif = list_cif.cif
+  if geostd_list_cif_obj is not None:
+    geostd_cif = geostd_list_cif_obj.cif
+    for geostd_block_key in geostd_cif:
+      geostd_block = geostd_cif[geostd_block_key]
+      mon_lib_block = mon_lib_cif.get(geostd_block_key)
+      if verbose:
+        print '+'*80
+        print geostd_block_key
+        print '-'*80
+        print mon_lib_block
+        print '+'*80
+      replace_block=False
+      merge_block=False
+      if geostd_block_key.endswith("_list"):
+        pass
+      elif geostd_block_key.endswith("energy"):
+        merge_block=True
+      else:
+        replace_block=True
+      if not mon_lib_block:
+        replace_block=True
+      if merge_block:
+        def _row_match(row1, row2, key):
+          match_keys = {
+            "_lib_atom" : ["_lib_atom.type"],
+            }
+          assert key in match_keys
+          k = match_keys[key]
+          count=0
+          for k1 in row1:
+            if not k1 in k: continue
+            if k1 not in row2: continue
+            if row1[k1]==row2[k1]: count+=1
+          if count==len(k): return True
+          return False
+
+        geostd_loop_keys = geostd_block.keys()
+        if not geostd_loop_keys: continue
+        done = []
+        for geostd_loop_key in geostd_loop_keys:
+          if geostd_loop_key.find(".")==-1: continue
+          geostd_loop_key = geostd_loop_key.split(".")[0]
+          if geostd_loop_key in done: continue
+          done.append(geostd_loop_key)
+          geostd_loop = geostd_block.get(geostd_loop_key)
+          mon_lib_loop = mon_lib_block.get(geostd_loop_key)
+          if not mon_lib_loop: continue
+          if verbose: print '''
+%s
+  Merging rows to CIF
+    block "%s"
+      loop "%s
+%s
+''' % (
+          "-"*80,
+          geostd_block_key,
+          geostd_loop_key,
+          "-"*80,
+          )
+          for row1 in geostd_loop.iterrows():
+            if verbose:
+              for key in row1:
+                print "    %-20s : %s" % (
+                  key.replace("%s." % geostd_loop_key, ""),
+                  row1[key],
+                  )
+              print
+            for i, row2 in enumerate(mon_lib_loop.iterrows()):
+              if _row_match(row1, row2, geostd_loop_key):
+                mon_lib_loop.delete_row(i)
+                mon_lib_loop.add_row(row1.values())
+      elif not replace_block:
+        # add to loops row-wise
+        geostd_loop_keys = geostd_block.keys()
+        if not geostd_loop_keys: continue
+        done = []
+        for geostd_loop_key in geostd_loop_keys:
+          if geostd_loop_key.find(".")==-1: continue
+          geostd_loop_key = geostd_loop_key.split(".")[0]
+          if geostd_loop_key in done: continue
+          done.append(geostd_loop_key)
+          geostd_loop = geostd_block.get(geostd_loop_key)
+          mon_lib_loop = mon_lib_block.get(geostd_loop_key)
+          if not mon_lib_loop: continue
+          if verbose: print '''
+%s
+  Adding rows to CIF
+    block "%s"
+      loop "%s
+%s
+''' % (
+          "-"*80,
+          geostd_block_key,
+          geostd_loop_key,
+          "-"*80,
+          )
+          for row in geostd_loop.iterrows():
+            if verbose:
+              for key in row:
+                print "    %-20s : %s" % (
+                  key.replace("%s." % geostd_loop_key, ""),
+                  row[key],
+                  )
+              print
+            mon_lib_loop.add_row(row.values())
+      else:
+        # add block
+        if verbose:
+          print '\n%s\n  Adding/replacing CIF block\n%s' % ("-"*80, "-"*80)
+          print geostd_block
+        mon_lib_cif[geostd_block_key] = geostd_block
+      if verbose:
+        print '+'*80
+        print mon_lib_block
+        print '+'*80
+  return list_cif
+
+def print_filtered_cif(cif):
+  outl = ""
+  for line in str(cif).split("\n"):
+    if line.find("_")==-1:
+      #outl += "%s\n" % line
+      continue
+    outl += "%s\n" % line
+  print outl
+  #assert 0
+
 class process_cif_mixin(object):
 
   def process_cif_object(self, cif_object, file_name=None):
@@ -234,70 +385,9 @@ class server(process_cif_mixin):
     if (another_list_cif is None):
       # get the geostd CIF links object and merge
       geostd_list_cif_obj = geostd_list_cif()
-      mon_lib_cif = list_cif.cif
-      if geostd_list_cif_obj is not None:
-        geostd_cif = geostd_list_cif_obj.cif
-        for geostd_block_key in geostd_cif:
-          geostd_block = geostd_cif[geostd_block_key]
-          mon_lib_block = mon_lib_cif.get(geostd_block_key)
-          if verbose:
-            print '+'*80
-            print geostd_block_key
-            print '-'*80
-            print mon_lib_block
-            print '+'*80
-          replace_block=False
-          if geostd_block_key.endswith("_list"):
-            pass
-          else:
-            replace_block=True
-          if not mon_lib_block:
-            replace_block=True
-          if not replace_block:
-            # add to loops row-wise
-            geostd_loop_keys = geostd_block.keys()
-            if not geostd_loop_keys: continue
-            done = []
-            for geostd_loop_key in geostd_loop_keys:
-              if geostd_loop_key.find(".")==-1: continue
-              geostd_loop_key = geostd_loop_key.split(".")[0]
-              if geostd_loop_key in done: continue
-              done.append(geostd_loop_key)
-              geostd_loop = geostd_block.get(geostd_loop_key)
-              mon_lib_loop = mon_lib_block.get(geostd_loop_key)
-              if not mon_lib_loop: continue
-              if verbose: print '''
-  %s
-    Adding rows to CIF
-      block "%s"
-        loop "%s
-  %s
-  ''' % (
-              "-"*80,
-              geostd_block_key,
-              geostd_loop_key,
-              "-"*80,
-              )
-              for row in geostd_loop.iterrows():
-                if verbose:
-                  for key in row:
-                    print "    %-20s : %s" % (
-                      key.replace("%s." % geostd_loop_key, ""),
-                      row[key],
-                      )
-                  print
-                mon_lib_loop.add_row(row.values())
-          else:
-            # add block
-            if verbose:
-              print '\n%s\n  Adding/replacing CIF block\n%s' % ("-"*80, "-"*80)
-              print geostd_block
-            mon_lib_cif[geostd_block_key] = geostd_block
-          if verbose:
-            print '+'*80
-            print mon_lib_block
-            print '+'*80
-
+      list_cif = merge_and_overwrite_cifs(geostd_list_cif_obj,
+                                          list_cif,
+                                          )
     self.root_path = os.path.dirname(os.path.dirname(list_cif.path))
     self.geostd_path = os.path.join(os.path.dirname(self.root_path), "geostd")
     self.deriv_list_dict = {}
@@ -381,7 +471,11 @@ class server(process_cif_mixin):
       self.process_cif(
         file_name=os.path.join(self.geostd_path, "rna_dna", file_name))
 
-  def get_comp_comp_id_direct(self, comp_id):
+  def get_comp_comp_id_direct(self,
+                              comp_id,
+                              resolution_range=None, # "low *med high"
+                              pH_range=None, # low *neutral high
+                             ):
     comp_id = comp_id.strip().upper()
     if (len(comp_id) == 0): return None
     result = self.comp_comp_id_dict.get(comp_id)
@@ -395,11 +489,22 @@ class server(process_cif_mixin):
           dir_name = os.path.join(self.geostd_path, trial_comp_id[0].lower())
           # check the Geo Standard
           if (os.path.isdir(dir_name)):
-            cif_name = "data_" + trial_comp_id + ".cif"
+            cif_name = "data_%s.cif" % (trial_comp_id)
             if (i_pass == 0):
-              file_name = os.path.join(dir_name, cif_name)
-              if (os.path.isfile(file_name)):
-                return file_name
+              file_names = [os.path.join(dir_name, cif_name)]
+              if resolution_range is not None:
+                if resolution_range in ["med"]: rr = ""
+                elif resolution_range in ["low", "high"]:
+                  rr = "_resolution_%s" % resolution_range
+                else:
+                  assert 0, "unknown resolution range : %s" % resolution_range
+                rr_cif_name = "data_%s%s.cif" % (trial_comp_id, rr)
+                file_names = [os.path.join(dir_name, rr_cif_name),
+                              os.path.join(dir_name, cif_name),
+                            ]
+              for file_name in file_names:
+                if (os.path.isfile(file_name)):
+                  return file_name
             else:
               cif_name = cif_name.lower()
               for node in os.listdir(dir_name):
@@ -448,7 +553,9 @@ class server(process_cif_mixin):
   def get_comp_comp_id_and_atom_name_interpretation(self,
         residue_name,
         atom_names,
-        translate_cns_dna_rna_residue_names=None):
+        translate_cns_dna_rna_residue_names=None,
+        resolution_range=None,
+        ):
     rnpani = residue_name_plus_atom_names_interpreter(
       residue_name=residue_name,
       atom_names=atom_names,
@@ -461,8 +568,11 @@ class server(process_cif_mixin):
         and self.comp_comp_id_dict.get(d_aa_rn) is not None):
       return (self.get_comp_comp_id_direct(comp_id=d_aa_rn), None)
     return (
-      self.get_comp_comp_id_direct(comp_id=rnpani.work_residue_name),
-      rnpani.atom_name_interpretation)
+      self.get_comp_comp_id_direct(comp_id=rnpani.work_residue_name,
+                                   resolution_range=resolution_range,
+                                  ),
+      rnpani.atom_name_interpretation,
+      )
 
   def rotamer_iterator(self,
         comp_id,

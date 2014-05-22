@@ -51,7 +51,8 @@ def exercise(tolerance=0.001):
       mon_lib_srv           = mon_lib_srv,
       ener_lib              = ener_lib,
       raw_records           = flex.std_string(pdb_str.splitlines()),
-      use_neutron_distances = use_neutron_distances,
+#      use_neutron_distances = use_neutron_distances,
+      restraints_loading_flags = {"use_neutron_distances" : use_neutron_distances},
       force_symmetry        = True)
     geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies = False, plain_pairs_radius = 5.0)

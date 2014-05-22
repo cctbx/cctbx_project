@@ -159,6 +159,30 @@ master_params_str = """\
     carbohydrate_bond_cutoff = 1.99
       .type = float
   }
+  use_neutron_distances = False
+    .type = bool
+    .short_caption = Use the nuclear distances for X-H/D
+    .help = Use neutron X-H distances (which are longer than X-ray ones)
+  resolution_dependent_restraints
+    .short_caption = Load restraints based on resolution range
+  {
+    load = False
+      .type = bool
+      .short_caption = Load restraints based on resolution range
+    resolution = Auto
+      .type = float
+      .short_caption = Resoltion to use where determining resolution range
+    resolution_range = high *med low
+      .type = choice
+    high_resolution_range_limit = 1.5
+      .type = float
+      .short_caption = Resolutions better than limit load "high" resolution \
+                       restraints
+    low_resolution_range_limit = 3.0
+      .type = float
+      .short_caption = Resolutions worse than limit load "low" resolution \
+                       restraints
+  }
   apply_cif_modification
     .optional = True
     .multiple = True
@@ -815,6 +839,7 @@ class monomer_mapping(slots_getstate_setstate):
         pdb_residue,
         next_pdb_residue,
         chainid,
+        resolution_range=None,
                ):
     self.chainid = chainid
     self.pdb_atoms = pdb_atoms
@@ -831,7 +856,9 @@ class monomer_mapping(slots_getstate_setstate):
           residue_name=self.residue_name,
           atom_names=self.atom_names_given,
           translate_cns_dna_rna_residue_names
-            =translate_cns_dna_rna_residue_names)
+            =translate_cns_dna_rna_residue_names,
+          resolution_range=resolution_range,
+      )
     if (self.atom_name_interpretation is None):
       self.mon_lib_names = None
     else:
@@ -1497,6 +1524,22 @@ Corrupt CIF link definition:
     return None
   return match.link_link_id
 
+def get_restraints_loading_flags(params):
+  rc = {}
+  if params:
+    rc["use_neutron_distances"] = params.use_neutron_distances
+    rdr = params.resolution_dependent_restraints
+    if rdr.load:
+      rc["resolution_dependent_restraints"] = "med"
+      if params.resolution_dependent_restraints.resolution!=Auto:
+        if rdr.resolution<=rdr.high_resolution_range_limit:
+          rc["resolution_dependent_restraints"] = "high"
+        elif rdr.resolution>rdr.low_resolution_range_limit:
+          rc["resolution_dependent_restraints"] = "low"
+      else:
+        rc["resolution_dependent_restraints"] = rdr.resolution_range
+  return rc
+
 def evaluate_registry_process_result(
       proxy_label,
       m_i, m_j, i_seqs,
@@ -2028,9 +2071,11 @@ class build_chain_proxies(object):
         conformer,
         conformation_dependent_restraints_list,
         log,
-        use_neutron_distances=False,
+        #use_neutron_distances=False,
+        restraints_loading_flags=None,
         fatal_problem_max_lines=10,
                ):
+    if restraints_loading_flags is None: restraints_loading_flags={}
     self.conformation_dependent_restraints_list = \
       conformation_dependent_restraints_list
     unknown_residues = dicts.with_default_value(0)
@@ -2089,6 +2134,8 @@ class build_chain_proxies(object):
         pdb_residue=residue,
         next_pdb_residue=_get_next_residue(),
         chainid=residue.parent().parent().id,
+        resolution_range=restraints_loading_flags.get(
+          "resolution_dependent_restraints", None),
         )
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
@@ -2236,7 +2283,8 @@ class build_chain_proxies(object):
           conf_altloc=conformer.altloc, mm=mm)
         mm.add_bond_proxies(
           bond_simple_proxy_registry=geometry_proxy_registries.bond_simple,
-          use_neutron_distances=use_neutron_distances)
+          use_neutron_distances= \
+            restraints_loading_flags.get("use_neutron_distances", None))
         n_bond_proxies_already_assigned_to_first_conformer += \
           mm.bond_counters.already_assigned_to_first_conformer
         if (mm.bond_counters.corrupt_monomer_library_definitions > 0):
@@ -2506,8 +2554,11 @@ class build_all_chain_proxies(linking_mixins):
         log=None,
         for_dihedral_reference=False,
         carbohydrate_callback=None,
-        use_neutron_distances=False,
+        #use_neutron_distances=False,
+        restraints_loading_flags=None,
                ):
+    if restraints_loading_flags is None:
+      restraints_loading_flags = get_restraints_loading_flags(params)
     self.mon_lib_srv = mon_lib_srv
     assert special_position_settings is None or crystal_symmetry is None
     if (params is None): params = master_params.extract()
@@ -2708,7 +2759,8 @@ class build_all_chain_proxies(linking_mixins):
             conformer=conformer,
             conformation_dependent_restraints_list=
               self.conformation_dependent_restraints_list,
-            use_neutron_distances=use_neutron_distances,
+            #use_neutron_distances=use_neutron_distances,
+            restraints_loading_flags=restraints_loading_flags,
             fatal_problem_max_lines
               =self.params.show_max_items.fatal_problem_max_lines,
             log=log,
@@ -4464,7 +4516,9 @@ class process(object):
         log=None,
         for_dihedral_reference=False,
         carbohydrate_callback=None,
-        use_neutron_distances=False):
+        #use_neutron_distances=False,
+        restraints_loading_flags=None,
+        ):
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
     self.log = log
@@ -4488,7 +4542,8 @@ class process(object):
       log=log,
       for_dihedral_reference=for_dihedral_reference,
       carbohydrate_callback=carbohydrate_callback,
-      use_neutron_distances=use_neutron_distances,
+      #use_neutron_distances=use_neutron_distances,
+      restraints_loading_flags=restraints_loading_flags,
       )
     if (log is not None
         and self.all_chain_proxies.time_building_chain_proxies is not None):

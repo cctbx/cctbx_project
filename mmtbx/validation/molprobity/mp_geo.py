@@ -91,14 +91,15 @@ def run(args):
       out = sys.stdout
     else:
       out = file(out_file, 'w')
-  use_neutron_distances = False
+  restraints_loading_flags = {}
+  restraints_loading_flags["use_neutron_distances"]=False
   from mmtbx.validation import utils
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv              = server.server(),
     ener_lib                 = server.ener_lib(),
     file_name                = file_name,
     strict_conflict_handling = True,
-    use_neutron_distances    = use_neutron_distances,
+    restraints_loading_flags = restraints_loading_flags,
     force_symmetry           = True,
     substitute_non_crystallographic_unit_cell_if_necessary=True,
     log                      = log)
