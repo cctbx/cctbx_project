@@ -2539,6 +2539,34 @@ class set_map_to_value(object):
       average            = -1,
       standard_deviation = -1)
 
+class shift_origin(object):
+  def __init__(self, map_data, pdb_hierarchy, crystal_symmetry):
+    self.pdb_hierarchy = pdb_hierarchy
+    a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
+    N = map_data.all()
+    O=map_data.origin()
+    sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+    fm = crystal_symmetry.unit_cell().fractionalization_matrix()
+    self.map_data = map_data.shift_origin()
+    t_best=-9999.
+    sites_cart_best = None
+    for inc1 in [0]:#[-2,-1,0,1,2]:
+      for inc2 in [0]:#[-2,-1,0,1,2]:
+        N_ = (N[0]-inc1,N[1]-inc1,N[2]-inc1)
+        O_ = (O[0]-inc2,O[1]-inc2,O[2]-inc2)
+        sx,sy,sz = a/N_[0]*O_[0], b/N_[1]*O_[1], c/N_[2]*O_[2]
+        sites_cart_shifted = sites_cart+\
+          flex.vec3_double(sites_cart.size(), [-sx,-sy,-sz])
+        sites_frac_shifted = fm*sites_cart
+        t = maptbx.map_sum_at_sites_frac(map_data=self.map_data,
+          sites_frac=sites_frac_shifted)
+        print inc1, inc2, t
+        if(t>t_best):
+          t_best=t
+          sites_cart_best=sites_cart_shifted.deep_copy()
+    if(sites_cart_best is not None):
+      self.pdb_hierarchy.atoms().set_xyz(sites_cart_best)
+
 class extract_box_around_model_and_map(object):
   def __init__(self,
                xray_structure,
@@ -2549,7 +2577,31 @@ class extract_box_around_model_and_map(object):
                selection_string=None,
                selection=None,
                map_data_2=None):
-    adopt_init_args(self, locals())
+    adopt_init_args(self, locals()) 
+    cs = xray_structure.crystal_symmetry()
+    if(pdb_hierarchy is not None):
+      xrs = pdb_hierarchy.extract_xray_structure(crystal_symmetry=cs)
+      assert_xray_structures_equal(
+        x1 = xrs,
+        x2 = xray_structure)
+    # Make sure map has origin at (0,0,0), that is zero_based. Otherwise shift 
+    # origin.
+    shift_needed = not \
+      (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
+       map_data.is_0_based())
+    if(shift_needed and pdb_hierarchy is not None):
+      if(not cs.space_group().type().number() in [0,1]):
+        raise RuntimeError("Not implemented")
+      # Map origin is not at (0,0,0) and it is P1: shifting map and model.
+      osh = shift_origin(
+        map_data         = map_data,
+        pdb_hierarchy    = pdb_hierarchy,
+        crystal_symmetry = cs)
+      pdb_hierarchy = osh.pdb_hierarchy
+      map_data      = osh.map_data
+      xray_structure = pdb_hierarchy.extract_xray_structure(crystal_symmetry=cs)
+      self.map_data = map_data
+    #
     assert [selection_string, selection_radius].count(None) in [0,2]
     if(selection_string is not None):
       assert pdb_hierarchy is not None
@@ -2782,12 +2834,19 @@ class states(object):
   def write(self, file_name):
     self.root.write_pdb_file(file_name = file_name)
 
+def d_min_from_map(map_data, unit_cell, resolution_factor=0.25):
+  a,b,c = unit_cell.parameters()[:3]
+  nx,ny,nz = map_data.all()
+  d1,d2,d3 = \
+    a/nx/resolution_factor,\
+    b/ny/resolution_factor,\
+    c/nz/resolution_factor
+  return min(d1,d2,d3)
+
 def structure_factors_from_map(map_data, unit_cell_lengths, n_real,
                                crystal_symmetry, resolution_factor=1/4.):
-  a,b,c = unit_cell_lengths
-  nx,ny,nz = n_real[0],n_real[1],n_real[2]
-  d1,d2,d3=a/nx/resolution_factor,b/ny/resolution_factor,c/nz/resolution_factor
-  d_min_guess_from_map = min(d1,d2,d3)
+  d_min_guess_from_map = d_min_from_map(map_data=map_data,
+    unit_cell=crystal_symmetry.unit_cell(), resolution_factor=resolution_factor)
   complete_set = miller.build_set(
     crystal_symmetry = crystal_symmetry,
     anomalous_flag   = False,
