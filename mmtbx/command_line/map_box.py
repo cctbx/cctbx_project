@@ -180,12 +180,8 @@ Parameters:"""%h
     print >> log, "writing map coefficients to MTZ file: %s"%file_name
     if(map_coeff is not None): d_min = map_coeff.d_min()
     else:
-      d_min = mmtbx.utils.structure_factors_from_map(
-        map_data          = map_data.as_double(),
-        unit_cell_lengths = ccp4_map_object.unit_cell_parameters[:3],
-        n_real            = ccp4_map_object.unit_cell_grid,
-        crystal_symmetry  = xray_structure.crystal_symmetry(),
-        resolution_factor = params.resolution_factor).d_min()
+      d_min = mmtbx.utils.d_min_from_map(map_data=box.map_box,
+        unit_cell=box.xray_structure_box.unit_cell())
     box.map_coefficients(d_min=d_min,
       resolution_factor=params.resolution_factor, file_name=file_name)
   print >> log
