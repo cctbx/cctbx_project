@@ -104,12 +104,6 @@ class ncs_minimization_test(object):
         shake_translation_sigma=self.shake_translation_sigma)
       transforms_obj = nu.separate_rot_tran(x,transforms_obj)
       mtrix_object = transforms_obj.build_MTRIX_object()
-      # mtrix_object.r,mtrix_object.t = nu.shake_transformations(
-      #   rotation_matrices = mtrix_object.r,
-      #   translation_vectors = mtrix_object.t,
-      #   shake_angles_sigma=self.shake_angles_sigma,
-      #   shake_translation_sigma=self.shake_translation_sigma,
-      #   return_all_transforms = True)
     ph.adopt_xray_structure(xrs_shaken)
     of = open("one_ncs_in_asu_shaken.pdb", "w")
     print >> of, mtrix_object.as_pdb_string()
@@ -130,7 +124,7 @@ class ncs_minimization_test(object):
         self.iso_restraints = temp.extract().iso
 
   def run_test(self):
-    ### Refinement
+    # Refinement
     params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
     params.algorithm = "direct"
     # Get the xray_structure of the shaken ASU
@@ -193,11 +187,6 @@ class ncs_minimization_test(object):
       print outstr.format(
         macro_cycle, refine_type,self.fmodel.r_work(),
         minimized.finite_grad_difference_val)
-      # Update rotation and translation
-      # if self.transformations:
-      #   # TODO: check if need to update transforms_obj transforms
-      #   self.rotation_matrices = minimized.rotation_matrices
-      #   self.translation_vectors = minimized.translation_vectors
       assert (minimized.finite_grad_difference_val < 1.0e-3)
       assert approx_equal(self.fmodel.r_work(), target_and_grads_object.fmodel.r_work())
       # break test if r_work is very small
@@ -208,9 +197,8 @@ class ncs_minimization_test(object):
     elif(self.sites):
       if(self.use_geometry_restraints):
         assert approx_equal(self.fmodel.r_work(), 0, 0.0001)
-      # else:
-        # TODO: turn back on
-        # assert approx_equal(self.fmodel.r_work(), 0, 1.e-5)
+      else:
+        assert approx_equal(self.fmodel.r_work(), 0, 1.e-5)
     elif self.transformations:
         assert approx_equal(self.fmodel.r_work(), 0, 0.0001)
     else: assert 0
@@ -266,7 +254,7 @@ def exercise_without_geometry_restaints():
 def exercise_site_refinement():
   print 'Running ',sys._getframe().f_code.co_name
   t = ncs_minimization_test(
-    n_macro_cycle   = 80,
+    n_macro_cycle   = 60,
     sites           = True,
     u_iso           = False,
     transformations = False,
