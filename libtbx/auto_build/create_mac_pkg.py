@@ -9,11 +9,11 @@ Phenix (or any other derived software).
 from __future__ import division
 from installer_utils import *
 from optparse import OptionParser
-import os.path
+import os.path as op
 import time
 import sys
 # XXX HACK
-libtbx_path = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
 if (not libtbx_path in sys.path) :
   sys.path.append(libtbx_path)
 
@@ -51,17 +51,21 @@ def run (args, out=sys.stdout) :
     print "Usage: create_mac_pkg [options] PROGRAM_DIR"
     return False
   program_dir = args[0]
-  if (not os.path.isdir(program_dir)) :
+  if (not op.isdir(program_dir)) :
     print "ERROR: '%s' is not a directory"
     return False
-  dest_name = os.path.dirname(program_dir)
+  dest_name = op.dirname(program_dir)
   if (dest_name == "/Applications") :
     dest_name = "the Applications folder"
-  if (os.path.exists("pkg_root")) :
+  if (op.exists("pkg_root")) :
     if (not options.overwrite) :
       print "ERROR: pkg_root already exists - run with --overwrite to ignore"
       return False
     shutil.rmtree("pkg_root")
+  os.mkdir(pkg_root)
+  pkg_path = op.join("pkg_root", op.dirname(program_dir))
+  os.mkdir(pkg_path)
+  shutil.move(program_dir, pkg_path)
   base_name = "%s-%s" % (options.package_name.lower(), options.version)
   pkg_name = base_name + "-%s.pkg" % options.machine_type
   base_pkg = base_name + ".pkg"
@@ -81,8 +85,8 @@ our website).""" % { "package" : options.package_name,
   app_bundle_xml = []
   for file_name in os.listdir(program_dir) :
     if (file_name.endswith(".app")) :
-      full_path = os.path.join(program_dir, file_name)
-      if (not os.path.isdir(full_path)) : continue
+      full_path = op.join(program_dir, file_name)
+      if (not op.isdir(full_path)) : continue
       app_bundle_xml.append("""\
   <dict>
     <key>BundleHasStrictIdentifier</key>
@@ -169,12 +173,12 @@ our website).""" % { "package" : options.package_name,
     "--version", options.version,
   ]
   call(product_args, out)
-  assert os.path.exists(pkg_name)
+  assert op.exists(pkg_name)
   if (not options.no_compression) :
     print >> out, "  compressing installer. . ."
     zip_args = [ "ditto", "-c", "-k", "-rsrc", pkg_name, pkg_name + ".zip" ]
     call(zip_args, out)
-    assert os.path.isfile(pkg_name + ".zip")
+    assert op.isfile(pkg_name + ".zip")
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

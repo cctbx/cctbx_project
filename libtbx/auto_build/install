@@ -3,7 +3,7 @@
 import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
-import install_cctbx_base
+import install_base_packages
 
 if (__name__ == "__main__") :
-  install_cctbx_base.installer(args=sys.argv, log=sys.stdout)
+  install_base_packages.installer(args=sys.argv, log=sys.stdout)

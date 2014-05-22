@@ -625,3 +625,30 @@ class installer (object) :
   # TODO
   def write_dispatcher_include (self) :
     raise NotImplementedError()
+
+def check_wxpython_build_dependencies (log=sys.stderr) :
+  try :
+    call(["pkg-config", "--version"], log=log)
+  except RuntimeError :
+    return """
+ERROR The GUI components require pkg-config to build
+Please install pkg-config to compile these components or use the --no-gui
+option to disable compilation of GUI components.
+"""
+  # TODO pkg-config version check
+  try :
+    call(["bash", "--version"], log=log)
+  except RuntimeError :
+    return """
+ERROR: The GUI requires bash to be available to build
+Please install bash to compile these components, or use the --no-gui option
+to disable GUI compilation.
+"""
+  if (not op.exists("/usr/include/X11/X.h") and
+      not op.exists("/usr/X11R6/include/X11/X.h")) :
+    return """
+ERROR: The X-windows headers appear to be missing
+Please install the X11 development packages to compile the GUI components,
+or use the --no-gui option to disable GUI compilation.
+"""
+  return None
