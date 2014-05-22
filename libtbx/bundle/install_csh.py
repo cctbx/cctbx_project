@@ -372,13 +372,13 @@ endif
 
 echo ""
 echo "Precompiling all .py files. This may take a minute or two."
-"$python_exe" "$sources/libtbx/command_line/py_compile_all.py"
+"$python_exe" "$sources/cctbx_project/libtbx/command_line/py_compile_all.py"
 
 echo ""
 if (! -d "$build") mkdir -p "$build"
 cd "$build"
 echo "Configuring $bundle build directory"
-"$python_exe" "$sources/libtbx/configure.py" --current_working_directory="$build" --build="$build_mode" %(top_modules)s
+"$python_exe" "$sources/cctbx_project/libtbx/configure.py" --current_working_directory="$build" --build="$build_mode" %(top_modules)s
 source setpaths.csh
 
 if ($have_sources) then

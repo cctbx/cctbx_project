@@ -111,3 +111,36 @@ def copy_tree (src_path, dest_path, verbose=False, log=sys.stdout) :
     else :
       if (verbose) :
         print >> log, "  skipping %s" % node_src_path
+
+def get_os_version () :
+  uname = os.uname()
+  kernel_version = uname[2]
+  if (uname[0] == "Darwin") :
+    os_versions = {
+      "13" : "10.9",
+      "12" : "10.8",
+      "11" : "10.7",
+      "10" : "10.6",
+      "9"  : "10.5",
+      "8"  : "10.4",
+    }
+    return os_versions.get(kernel_version.split(".")[0], "unknown")
+  return kernel_version
+
+def machine_type () :
+  import os
+  uname = os.uname()
+  if (uname[0] == "Linux") :
+    platform = "intel-linux-2.6"
+  elif (uname[0] == "Darwin") :
+    platform = "mac-intel-osx"
+  else :
+    platform = uname[0]
+  if (uname[-1] == "x86_64") :
+    platform += "-x86_64"
+  elif (platform == "mac-intel-osx") :
+    version_fields = uname[2].split(".")
+    major_version = int(version_fields[0])
+    if (major_version >= 10) :
+      platform += "-x86_64"
+  return platform

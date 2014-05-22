@@ -53,7 +53,7 @@ goto end
 :have_python
 echo.
 echo Configuring %(bundle)s build directory
-call "%%python%%" ..\%(bundle)s_sources\libtbx\configure.py %(top_modules)s
+call "%%python%%" ..\%(bundle)s_sources\cctbx_project\libtbx\configure.py %(top_modules)s
 set el=%%errorlevel%%
 cd ..
 if not %%el%% == 0 goto end
