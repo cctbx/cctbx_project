@@ -5,15 +5,16 @@ import subprocess
 import glob
 import datetime
 import argparse
+import sys
 
 # Binary builds: /net/cci/auto_build/phenix_installers
 # export DYLD_PRINT_INITIALIZERS="files"
-##### Helper functions #####
-
 # For Linux, requires PatchELF.
 #   http://nixos.org/patchelf.html
 # For Mac, requires otool and install_name_tool,
 #   which are included with XCode.
+
+##### Helper functions #####
 
 def find_exec(root='.'):
   """Find executables (using +x permissions)."""
@@ -32,15 +33,27 @@ def find_ext(ext='', root='.'):
 def cmd(*popenargs, **kwargs):
   print "Running:", 
   print " ".join(*popenargs)
+  ignorefail = kwargs.pop('ignorefail', False)
   kwargs['stdout'] = subprocess.PIPE
   kwargs['stderr'] = subprocess.PIPE
   process = subprocess.Popen(*popenargs, **kwargs)
   a, b = process.communicate()
   exitcode = process.wait()
   if exitcode:
-    print("WARNING: Command returned non-zero exit code: %s"%" ".join(*popenargs))
-    print a
-    print b
+    if ignorefail:
+      print("WARNING: Command returned non-zero exit code: %s"%" ".join(*popenargs))
+      print a
+      print b
+    else:
+      print a
+      print b
+      raise Exception("Command returned non-zero exit code")
+  
+def echo(*popenargs, **kwargs):
+    print "Running:", 
+    print " ".join(*popenargs)
+    
+# cmd = echo
 
 def check_output(*popenargs, **kwargs):
   """Copy of subprocess.check_output()"""
@@ -98,15 +111,16 @@ class FixMacRpath(object):
 
   def run(self, root, replace=None):
     replace = replace or {}
+    replace[root] = '@rpath'
     # Find all files that end in .so/.dylib, or are executable
     # This will include many script files, but we will ignore
     # these failures when running otool/install_name_tool
     targets = set()
     targets |= set(find_ext('.so', root=root))
-    targets |= set(find_ext('.dylib', root=root))
-    print "Targets:", len(targets)
-    
+    targets |= set(find_ext('.dylib', root=root))    
     # targets |= set(find_exec(root=root))
+    
+    print "Targets:", len(targets)
     for f in sorted(targets):
       # Get the linked libraries and
       # check if the file is a Mach-O binary
@@ -116,41 +130,42 @@ class FixMacRpath(object):
       except Exception, e:
         continue
         
-      # Strip the absolute path down to a relative path
-      frel = f.replace(root, "")[1:]
-
-      # Set the install_name.
-      install_name_id = os.path.join('@rpath', frel)
-      cmd(['install_name_tool', '-id', install_name_id, f], cwd=root)
+      # Set the install_name id.
+      install_name_id = os.path.join('@rpath', os.path.relpath(f, root))
+      cmd(['install_name_tool', '-id', install_name_id, f], cwd=root, ignorefail=True)
 
       # Set @rpath, this is a reference to the root of the package.
       # Linked libraries will be referenced relative to this.
-      rpath = self.id_rpath(frel)
-      try:
-        cmd(['install_name_tool', '-add_rpath', rpath, f], cwd=root)
-      except:
-        pass
+      rpath = os.path.join('@loader_path', os.path.relpath(root, os.path.dirname(f)))
+      cmd(['install_name_tool', '-add_rpath', rpath, f], cwd=root, ignorefail=True)
 
-      # Process each linked library with the regexes in REPLACE.
       for lib in libs:
-        olib = lib
+        rlib = lib
         for k,v in replace.items():
-          lib = re.sub(k, v, lib)
-        if olib != lib:
-          try:
-            cmd(['install_name_tool', '-change', olib, lib, f], cwd=root)
-          except:
-            pass
+          rlib = re.sub(k, v, rlib)
+        if lib != rlib:
+          cmd(['install_name_tool', '-change', lib, rlib, f], cwd=root, ignorefail=True)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("root", help="Build path")
+  parser.add_argument("--otherroot", help="Other build path")
   args = parser.parse_args()
   
-  # For Mac.
+  # Setup args.
+  root = args.root
   replace = {}
-  replace['^/scratch/phenix/(.+?)/'] = '@rpath/'
-  replace['^lib/'] = '@rpath/build/mac-intel-osx-x86_64/lib/'
-  FixMacRpath().run(root=args.root, replace=replace)
+  replace['^lib'] = '@rpath/lib'
+  if args.otherroot:
+    replace[args.otherroot] = '@rpath'
+
+  # Run the rpath fixer.
+  cls = FixLinuxRpath
+  if sys.platform == 'darwin':
+    cls = FixMacRpath
+  cls().run(root=root, replace=replace)
+  
+  
+  
   
   
