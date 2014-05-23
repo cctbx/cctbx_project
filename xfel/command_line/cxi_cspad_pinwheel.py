@@ -32,13 +32,23 @@ def run(argv=None):
         for asic in range(2):
           metro.pop((0,quad,sensor,asic))
 
-    # Build the tiles dictionary for only sensor 1 of each quadrant
+    # Renumber the sensors to 0 instead of 1
+    for key in metro:
+      if len(key) == 3:
+        detector, quad, sensor = key
+        metro[(detector,quad,0)] = metro.pop(key)
+      elif len(key) == 4:
+        detector, quad, sensor, asic = key
+        metro[(detector,quad,0,asic)] = metro.pop(key)
+
+    # Build the tiles dictionary for only sensor 1 of each quadrant.  Rename that sensor to zero.
     img = dxtbx.load(path)
     tiles = {}
     for quad in range(4):
-      sensor = 1
+      src_sensor = 1
+      dest_sensor = 0
       for asic in range(2):
-        tiles[(0,quad,sensor,asic)] = img.get_raw_data((quad*16)+(sensor*2)+asic) # FIXME get the panel ID from dxtbx
+        tiles[(0,quad,dest_sensor,asic)] = img.get_raw_data((quad*16)+(src_sensor*2)+asic) # FIXME get the panel ID from dxtbx
 
     destpath = os.path.splitext(path)[0] + "_pinwheel.cbf"
 
