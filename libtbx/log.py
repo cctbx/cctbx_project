@@ -1,42 +1,43 @@
-# A simple logging interface. Ian.
+"""A simple logging interface."""
+from __future__ import division
 import logging
 import sys
 
 class logger(object):
   """A basic wrapper over Python standard library logging module.
-  
+
   This class is designed to be used as a logging singleton, with a few
   basic convenience methods:
     set_quiet       Suppress output except errors.
     set_logfile     Set an output log file.
     set_stdout      Set log output to stdout.
-    
+
   It may also be written to as a file-like object.
-  
+
   Examples:
-  
+
   # Basic usage
   >>> import libtbx.log
   >>> libtbx.log.info("Helpful message")
-  
+
   # Write as a file handle
   >>> print >> libtbx.log.logger, "As file handle"
-  
+
   # Set debug, or quiet states
   >>> libtbx.log.logger.set_debug(True)
   >>> libtbx.log.debug("Debugging output.")
   >>> libtbx.log.logger.set_quiet(True)
   >>> libtbx.log.info("This should be muted.")
-  
+
   # Output file
   >>> libtbx.log.logger.set_logfile("test.log")
   >>> libtbx.log.info("Redirected to test.log")
-  
+
   # Experimental sys.stdout redirection
   >>> libtbx.log.logger.set_logfile("test.log")
   >>> sys.stdout = libtbx.log.logger
   >>> print "stdout redirection to test.log"
-  
+
   """
 
   def __init__(self):
@@ -50,20 +51,20 @@ class logger(object):
     # Default is to print to stdout
     self.ch = None
     self.set_stdout()
-    
+
   def write(self, data):
     self.log.info(data)
-    
+
   def flush(self):
     try:
       self.ch.flush()
-    except:
+    except Exception, e:
       pass
-  
+
   def close(self):
     try:
       self.ch.close()
-    except:
+    except Exception, e:
       pass
 
   def set_quiet(self, state=True):
@@ -85,7 +86,7 @@ class logger(object):
       self.log.removeHandler(self.ch)
     self.log.addHandler(ch)
     self.ch = ch
-    
+
   def set_fileobj(self, fileobj):
     pass
 
@@ -96,7 +97,7 @@ class logger(object):
       self.log.removeHandler(self.ch)
     self.log.addHandler(ch)
     self.ch = ch
-    
+
 # Singleton
 logger = logger()
 
@@ -124,7 +125,7 @@ class TestLog(unittest.TestCase):
       with open("test.log") as f:
         data = f.read()
         assert value in data
-    
+
   def test_debug(self):
     print "Check set_debug"
     logger.set_logfile("test.log")
@@ -137,7 +138,7 @@ class TestLog(unittest.TestCase):
       data = f.read()
       assert "muted" not in data
       assert "ok" in data
-    
+
   def test_quiet(self):
     print "Check set_quiet"
     logger.set_logfile("test.log")
@@ -158,7 +159,7 @@ class TestLog(unittest.TestCase):
     with open("test.log") as f:
       data = f.read()
       assert "ok" in data
-  
+
   def test_stdout(self):
     oldsys = sys.stdout
     print "Checking sys.stdout redirect"
@@ -166,7 +167,6 @@ class TestLog(unittest.TestCase):
     print "redirect: ok"
     sys.stdout = oldsys
     print "... and back again"
-    
+
 if __name__ == "__main__":
   unittest.main()
-  
