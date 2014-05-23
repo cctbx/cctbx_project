@@ -184,6 +184,7 @@ tst_list = (
   "$D/regression/tst_generate_disorder.py",
   "$D/secondary_structure/tst_base_pairing.py",
   "$D/ions/tst_pick_ca_svm.py",
+  "$D/scaling/tst_xtriage_massage_data.py",
   )
 
 def run():
