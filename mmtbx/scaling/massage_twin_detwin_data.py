@@ -33,23 +33,17 @@ The following phil scope is expected for the massage_data class:
    }
 
 """
+
 from __future__ import division
-
-
-
-
-from cctbx import miller
-from cctbx import sgtbx
-from cctbx import adptbx
-from cctbx.array_family import flex
-from libtbx.utils import Sorry
-import iotbx.phil
-import mmtbx.scaling
-from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import outlier_rejection
-from libtbx.utils import null_out
+from mmtbx.scaling import absolute_scaling
+import mmtbx.scaling
+import iotbx.phil
+from cctbx.array_family import flex
+from cctbx import miller
+from cctbx import adptbx
+from libtbx.utils import Sorry, null_out
 import sys
-
 
 master_params = iotbx.phil.parse("""
     hklout = None
@@ -139,114 +133,6 @@ master_params = iotbx.phil.parse("""
       }
     }
 """)
-
-
-
-class twin_data(object):
-  def __init__(self,
-               miller_array,
-               twin_law,
-               out=None):
-    self.out=out
-    if self.out is None:
-      self.out=sys.stdout
-
-    print >> self.out
-    print >> self.out, "Twinning given data"
-    print >> self.out, "-------------------"
-    print >> self.out
-    self.miller_array = miller_array.deep_copy().set_observation_type(
-      miller_array ).map_to_asu()
-
-    self.twin_law = twin_law
-    assert (self.twin_law is not None)
-    self.twin_law=sgtbx.rt_mx(self.twin_law, r_den=24,t_den=288 )
-
-    if self.twin_law.r().determinant() != 1:
-      raise Sorry("The determinant of the provided twin law is not equal to unity")
-
-  def twin_it(self,alpha):
-    print >> self.out, "Artifically twinning the data with fraction %3.2f"%(alpha)
-
-    assert alpha is not None
-    assert alpha<=0.5
-    assert alpha>=0.0
-    # make sure we have intensities
-    if self.miller_array.is_real_array():
-      if not self.miller_array.is_xray_intensity_array():
-        self.miller_array = self.miller_array.f_as_f_sq()
-    assert self.miller_array.is_xray_intensity_array()
-
-    cb_op = sgtbx.change_of_basis_op( self.twin_law )
-    print >> self.out, "using twin law (%s)"%( cb_op.as_hkl() )
-
-    self.new_miller = self.miller_array.change_basis( cb_op ).map_to_asu()
-    xa,xb = self.miller_array.common_sets( self.new_miller )
-    new_data = (1.0-alpha)*xa.data() + alpha*xb.data()
-    xa = xa.customized_copy(data=new_data,
-                            sigmas=new_data/100.0).set_observation_type( self.miller_array )
-    return xa
-
-
-class detwin_data(object):
-  def __init__(self,
-               miller_array,
-               twin_law,
-               out=None
-               ):
-    self.out=out
-    if self.out is None:
-      self.out=sys.stdout
-    print >> self.out
-    print >> self.out
-    print >> self.out, "Attempting to detwin data"
-    print >> self.out, "-------------------------"
-    print >> self.out, "Detwinning data with:"
-    print >> self.out, "  - twin law:      %s"%(twin_law)
-    print >> self.out
-    print >> self.out, "BE WARNED! DETWINNING OF DATA DOES NOT SOLVE YOUR TWINNING PROBLEM!"
-    print >> self.out, "PREFERABLY, REFINEMENT SHOULD BE CARRIED OUT AGAINST ORIGINAL DATA "
-    print >> self.out, "ONLY USING A TWIN SPECIFIC TARGET FUNCTION!"
-    print >> self.out
-
-    self.miller_array = miller_array.deep_copy().set_observation_type(
-      miller_array )
-
-    self.twin_law = twin_law
-    assert (self.twin_law is not None)
-    self.twin_law=sgtbx.rt_mx(self.twin_law, r_den=24,t_den=288 )
-    if self.twin_law.r().determinant() != 1:
-      raise Sorry("The determinant of the provided twin law is not equal to unity")
-
-    # make sure we have intensities
-    if self.miller_array.is_real_array():
-      if not self.miller_array.is_xray_intensity_array():
-        self.miller_array = self.miller_array.f_as_f_sq()
-    assert self.miller_array.is_xray_intensity_array()
-
-  def detwin_it(self,alpha):
-    print >> self.out, "Detwinning the data with fraction %3.2f"%(alpha)
-
-    assert alpha is not None
-    assert alpha<0.5
-    assert alpha>=0.0
-
-    detwin_object = mmtbx.scaling.detwin(self.miller_array.indices(),
-                                         self.miller_array.data(),
-                                         self.miller_array.sigmas(),
-                                         self.miller_array.space_group(),
-                                         self.miller_array.anomalous_flag(),
-                                         self.twin_law.r().as_double() )
-    detwin_object.detwin_with_alpha( alpha )
-    new_intensities = detwin_object.detwinned_i()
-    new_sigmas = detwin_object.detwinned_sigi()
-    new_hkl = detwin_object.detwinned_hkl()
-    new_miller_array =  self.miller_array.customized_copy(
-      indices = new_hkl,
-      data =  new_intensities,
-      sigmas = new_sigmas ).set_observation_type( self.miller_array )
-    return new_miller_array
-
 
 class massage_data(object):
   def __init__(self,
@@ -346,25 +232,46 @@ class massage_data(object):
 
     # now we can twin or detwin the data if needed
     self.final_array = self.new_miller_array
-
     if self.params.symmetry.action == "twin":
-      if self.params.symmetry.twinning_parameters.fraction is None:
+      alpha = self.params.symmetry.twinning_parameters.fraction
+      if (alpha is None) :
         raise Sorry("Twin fraction not specified, not twinning data")
-      twinner = twin_data(miller_array = self.new_miller_array,
-                            twin_law = self.params.symmetry.twinning_parameters.twin_law,
-                            out = self.out)
-      self.final_array = twinner.twin_it(alpha=self.params.symmetry.twinning_parameters.fraction)
+      elif not (0 <= alpha <= 0.5):
+        raise Sorry("Twin fraction must be between 0 and 0.5.")
+      print >> self.out
+      print >> self.out, "Twinning given data"
+      print >> self.out, "-------------------"
+      print >> self.out
+      print >> self.out, "Artifically twinning the data with fraction %3.2f" %\
+        alpha
 
+      self.final_array = self.new_miller_array.twin_data(
+        twin_law = self.params.symmetry.twinning_parameters.twin_law,
+        alpha=alpha).as_intensity_array()
 
-    if self.params.symmetry.action == "detwin":
-      if self.params.symmetry.twinning_parameters.fraction is None:
+    elif (self.params.symmetry.action == "detwin") :
+      twin_law = self.params.symmetry.twinning_parameters.twin_law
+      alpha = self.params.symmetry.twinning_parameters.fraction
+      if (alpha is None) :
         raise Sorry("Twin fraction not specified, not detwinning data")
+      elif not (0 <= alpha <= 0.5):
+        raise Sorry("Twin fraction must be between 0 and 0.5.")
+      print >> self.out, """
 
-      detwinner = detwin_data(miller_array = self.new_miller_array,
-                            twin_law = self.params.symmetry.twinning_parameters.twin_law,
-                            out = self.out)
-      self.final_array = detwinner.detwin_it(alpha=self.params.symmetry.twinning_parameters.fraction)
+Attempting to detwin data
+-------------------------
+Detwinning data with:
+  - twin law:      %s
+  - twin fraciton: %.2f
 
+BE WARNED! DETWINNING OF DATA DOES NOT SOLVE YOUR TWINNING PROBLEM!
+PREFERABLY, REFINEMENT SHOULD BE CARRIED OUT AGAINST ORIGINAL DATA
+ONLY USING A TWIN SPECIFIC TARGET FUNCTION!
+
+""" % (twin_law, alpha)
+      self.final_array = self.new_miller_array.detwin_data(
+        twin_law=twin_law,
+        alpha=alpha).as_intensity_array()
 
     assert self.final_array is not None
 
