@@ -225,7 +225,6 @@ class detwin_data(object):
     assert self.miller_array.is_xray_intensity_array()
 
   def detwin_it(self,alpha):
-    print alpha
     print >> self.out, "Detwinning the data with fraction %3.2f"%(alpha)
 
     assert alpha is not None
