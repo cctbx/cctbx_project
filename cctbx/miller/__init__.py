@@ -4095,6 +4095,10 @@ class array(set):
     return compute_cc_one_half(tmp_array, n_trials=n_trials)
 
   def half_dataset_anomalous_correlation (self, use_binning=False) :
+    """
+    Calculate the correlation of the anomalous differences of two randomly
+    assigned half-datasets (starting from unmerged data).
+    """
     assert self.is_xray_intensity_array()
     tmp_array = self.customized_copy(anomalous_flag=True).map_to_asu()
     tmp_array = tmp_array.sort("packed_indices")
@@ -4132,6 +4136,70 @@ class array(set):
 
   def cc_anom (self, *args, **kwds) :
     return self.half_dataset_anomalous_correlation(*args, **kwds)
+
+  def twin_data (self, twin_law, alpha) :
+    """
+    Apply a twin law to the data, returning an array of the same original type.
+    """
+    assert (alpha is not None) and (0.0 <= alpha <= 0.5)
+    assert (twin_law is not None)
+    tmp_array = self.map_to_asu()
+    if (tmp_array.is_xray_amplitude_array()) :
+      tmp_array = tmp_array.f_as_f_sq()
+    assert tmp_array.is_xray_intensity_array()
+    twin_law = sgtbx.rt_mx(twin_law, r_den=24, t_den=288)
+    if twin_law.r().determinant() != 1:
+      raise Sorry(
+        "The determinant of the provided twin law is not equal to unity")
+    cb_op = sgtbx.change_of_basis_op(twin_law)
+    new_array = tmp_array.change_basis( cb_op ).map_to_asu()
+    xa, xb = tmp_array.common_sets(other=new_array)
+    new_data = (1.0-alpha)*xa.data() + alpha*xb.data()
+    new_sigmas = new_data / 100.0 # FIXME this seems wrong...
+    twinned = xa.customized_copy(data=new_data,
+      sigmas=new_sigmas).set_observation_type_xray_intensity()
+    if (self.is_xray_amplitude_array()) :
+      return twinned.f_sq_as_f()
+    return twinned
+
+  def detwin_data (self, twin_law, alpha) :
+    """
+    Detwin data using a known twin fraction, returning an array with the same
+    original data type.
+    """
+    assert (alpha is not None) and (0.0 <= alpha <= 0.5)
+    assert (twin_law is not None)
+    tmp_array = self.map_to_asu()
+    if (tmp_array.is_xray_amplitude_array()) :
+      tmp_array = tmp_array.f_as_f_sq()
+    assert tmp_array.is_xray_intensity_array()
+    twin_law = sgtbx.rt_mx(twin_law, r_den=24, t_den=288)
+    if twin_law.r().determinant() != 1:
+      raise Sorry(
+        "The determinant of the provided twin law is not equal to unity")
+    cb_op = sgtbx.change_of_basis_op(twin_law)
+    new_array = tmp_array.change_basis( cb_op ).map_to_asu()
+    # calling common_sets() automatically reorders the indices to be the same
+    # between the two arrays, avoiding any further selections
+    tmp_array, new_array = tmp_array.common_sets(other=new_array)
+    assert (tmp_array.size() == new_array.size())
+    # adapted from mmtbx/scaling/twinning.h, but the use of common_sets()
+    # and other boosted methods simplifies this greatly
+    i_old1 = tmp_array.data()
+    i_old2 = new_array.data()
+    s_old1 = tmp_array.sigmas()
+    s_old2 = new_array.sigmas()
+    new_data = ((1.0 - alpha)*i_old1 - alpha*i_old2) / (1 - 2.0*alpha)
+    new_sigmas = None
+    tmp_mult = math.sqrt( 1-2*alpha +2*alpha*alpha)/(1-2.0*alpha)
+    if (s_old1 is not None) :
+      new_sigmas = tmp_mult * flex.sqrt((flex.pow(s_old1,2) + s_old1*s_old2)/2)
+    detwinned = tmp_array.customized_copy(
+      data=new_data,
+      sigmas=new_sigmas).common_set(other=self)
+    if (self.is_xray_amplitude_array()) :
+      return detwinned.f_sq_as_f()
+    return detwinned
 
 # END array class
 
