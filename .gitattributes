@@ -223,8 +223,8 @@ cctbx/regression/tst_grouped_data.py -text
 cctbx/regression/tst_map_weights_for_symmetry_summation.py svneol=native#text/x-python
 cctbx/regression/tst_math_module.py -text
 cctbx/regression/tst_mem.py -text
+cctbx/regression/tst_miller_data_manipulation.py -text
 cctbx/regression/tst_miller_double_step_filtration.py -text
-cctbx/regression/tst_miller_ellipsoidal_truncation.py -text
 cctbx/regression/tst_miller_statistics.py -text
 cctbx/regression/tst_r_free_utils.py -text
 cctbx/regression/tst_refine_xray_curvs.py svneol=native#text/x-python
