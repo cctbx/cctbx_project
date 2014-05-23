@@ -1,9 +1,7 @@
+
 import os
 import re
-import shutil
 import subprocess
-import glob
-import datetime
 import argparse
 import sys
 
@@ -31,7 +29,7 @@ def find_ext(ext='', root='.'):
   return found
 
 def cmd(*popenargs, **kwargs):
-  print "Running:", 
+  print "Running:",
   print " ".join(*popenargs)
   ignorefail = kwargs.pop('ignorefail', False)
   kwargs['stdout'] = subprocess.PIPE
@@ -48,11 +46,11 @@ def cmd(*popenargs, **kwargs):
       print a
       print b
       raise Exception("Command returned non-zero exit code")
-  
+
 def echo(*popenargs, **kwargs):
-    print "Running:", 
+    print "Running:",
     print " ".join(*popenargs)
-    
+
 # cmd = echo
 
 def check_output(*popenargs, **kwargs):
@@ -66,7 +64,7 @@ def check_output(*popenargs, **kwargs):
     cmd = kwargs.get("args")
     if cmd is None:
       cmd = popenargs[0]
-    raise subprocess.CalledProcessError(retcode, cmd)      
+    raise subprocess.CalledProcessError(retcode, cmd)
   return output
 
 class FixLinuxRpath(object):
@@ -88,8 +86,8 @@ class FixLinuxRpath(object):
       try:
         cmd(['patchelf', '--set-rpath', ":".join(origins), target])
       except Exception, e:
-        print "Couldnt patchelf:", e    
-    
+        print "Couldnt patchelf:", e
+
 class FixMacRpath(object):
   """Process all binary files (executables, libraries) to rename linked libraries."""
 
@@ -117,9 +115,9 @@ class FixMacRpath(object):
     # these failures when running otool/install_name_tool
     targets = set()
     targets |= set(find_ext('.so', root=root))
-    targets |= set(find_ext('.dylib', root=root))    
+    targets |= set(find_ext('.dylib', root=root))
     # targets |= set(find_exec(root=root))
-    
+
     print "Targets:", len(targets)
     for f in sorted(targets):
       # Get the linked libraries and
@@ -129,7 +127,7 @@ class FixMacRpath(object):
         libs = self.find_deps(f)
       except Exception, e:
         continue
-        
+
       # Set the install_name id.
       install_name_id = os.path.join('@rpath', os.path.relpath(f, root))
       cmd(['install_name_tool', '-id', install_name_id, f], cwd=root, ignorefail=True)
@@ -146,12 +144,12 @@ class FixMacRpath(object):
         if lib != rlib:
           cmd(['install_name_tool', '-change', lib, rlib, f], cwd=root, ignorefail=True)
 
-if __name__ == "__main__":
+def run (args) :
   parser = argparse.ArgumentParser()
   parser.add_argument("root", help="Build path")
   parser.add_argument("--otherroot", help="Other build path")
-  args = parser.parse_args()
-  
+  args = parser.parse_args(args)
+
   # Setup args.
   root = args.root
   replace = {}
@@ -164,8 +162,6 @@ if __name__ == "__main__":
   if sys.platform == 'darwin':
     cls = FixMacRpath
   cls().run(root=root, replace=replace)
-  
-  
-  
-  
-  
+
+if __name__ == "__main__" :
+  run(sys.argv[1:])
