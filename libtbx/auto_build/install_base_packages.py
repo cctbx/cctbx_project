@@ -12,10 +12,10 @@ from installer_utils import *
 from package_defs import *
 from optparse import OptionParser
 import urllib2
-import os.path
+import os.path as op
 import sys
 # XXX HACK
-libtbx_path = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
 if (not libtbx_path in sys.path) :
   sys.path.append(libtbx_path)
 
@@ -35,13 +35,13 @@ class installer (object) :
                  report problems to cctbx-dev@cci.lbl.gov
   ****************************************************************************
 """
-    dist_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    dist_dir = op.dirname(op.dirname(op.dirname(__file__)))
     parser = OptionParser()
     parser.add_option("--build_dir", dest="build_dir", action="store",
       help="Build directory", default=os.getcwd())
     parser.add_option("--tmp_dir", dest="tmp_dir", action="store",
       help="Temporary directory",
-      default=os.path.join(os.getcwd(), "build_tmp"))
+      default=op.join(os.getcwd(), "build_tmp"))
     parser.add_option("-p", "--nproc", dest="nproc", action="store",
       type="int", help="Number of processors", default=1)
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true",
@@ -76,10 +76,10 @@ class installer (object) :
     #self.src_dir = options.src_dir
     self.build_dir = options.build_dir
     self.pkg_dirs = options.pkg_dirs
-    self.base_dir = os.path.join(self.build_dir, "base")
+    self.base_dir = op.join(self.build_dir, "base")
     print >> log, "Setting up directories..."
     for dir_name in [self.tmp_dir,self.build_dir,self.base_dir] : #self.src_dir
-      if (not os.path.isdir(dir_name)) :
+      if (not op.isdir(dir_name)) :
         print >> log, "  creating %s" % dir_name
         os.makedirs(dir_name)
     self.nproc = options.nproc
@@ -103,7 +103,7 @@ class installer (object) :
       self.build_python()
     else :
       pass # TODO ???
-    assert os.path.exists(self.python_exe), self.python_exe
+    assert op.exists(self.python_exe), self.python_exe
     if (not options.basic) :
       for env_var in ["BLAS","ATLAS","LAPACK"] :
         os.environ[env_var] = "None"
@@ -163,7 +163,7 @@ class installer (object) :
     f = open(file_name, "w")
     f.write("")
     f.close()
-    assert os.path.isfile(file_name)
+    assert op.isfile(file_name)
 
   def print_sep (self, char="-") :
     print >> self.log, ""
@@ -172,7 +172,7 @@ class installer (object) :
 
   def start_building_package (self, pkg_name) :
     os.chdir(self.tmp_dir)
-    install_log = os.path.join(self.tmp_dir, pkg_name + "_install_log")
+    install_log = op.join(self.tmp_dir, pkg_name + "_install_log")
     print >> self.log, "Installing %s..." % pkg_name
     print >> self.log, "  log file is %s" % install_log
     return open(install_log, "w")
@@ -205,13 +205,13 @@ class installer (object) :
     print >> self.log, "  getting package %s..." % pkg_name
     if (self.pkg_dirs is not None) and (len(self.pkg_dirs) > 0) :
       for pkg_dir in self.pkg_dirs :
-        static_file = os.path.join(pkg_dir, pkg_name)
-        if (os.path.exists(static_file)) :
+        static_file = op.join(pkg_dir, pkg_name)
+        if (op.exists(static_file)) :
           print >> self.log, "    using %s" % static_file
           return static_file
-    if (os.path.exists(pkg_name)) :
+    if (op.exists(pkg_name)) :
       print >> self.log, "    using ./%s" % pkg_name
-      return os.path.join(self.tmp_dir, pkg_name)
+      return op.join(self.tmp_dir, pkg_name)
     else :
       if (self.options.no_download) :
         raise RuntimeError(("Package '%s' not found on local filesystems.  ") %
@@ -225,7 +225,7 @@ class installer (object) :
       self.log.flush()
       f.write(data)
       f.close()
-      return os.path.join(self.tmp_dir, pkg_name)
+      return op.join(self.tmp_dir, pkg_name)
 
   def fetch_untar_and_chdir (self, pkg_name, pkg_url=None, log=None) :
     if (log is None) : log = self.log
@@ -261,8 +261,7 @@ class installer (object) :
         configure_args.append("--enable-shared")
       self.configure_and_build(config_args=configure_args, log=log)
     log.close()
-    self.python_exe = os.path.abspath(
-      os.path.join(self.base_dir, "bin", "python"))
+    self.python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
     self.update_paths()
     # just an arbitrary import (with .so)
     self.verify_python_module("Python", "socket")
@@ -270,7 +269,7 @@ class installer (object) :
 
   def update_paths (self) :
     os.environ["PATH"] = ("%s/bin:" % self.base_dir) + os.environ['PATH']
-    lib_paths = [ os.path.join(self.base_dir, "lib") ]
+    lib_paths = [ op.join(self.base_dir, "lib") ]
     if (sys.platform == "darwin") :
       lib_paths.append("%s/base/Python.framework/Versions/Current/lib" %
         self.base_dir)
@@ -281,8 +280,8 @@ class installer (object) :
       if ("LD_LIBRARY_PATH" in os.environ) :
         lib_paths.append(os.environ["LD_LIBRARY_PATH"])
       os.environ['LD_LIBRARY_PATH'] = ":".join(lib_paths)
-    inc_dir = os.path.join(self.base_dir, "include")
-    if (not os.path.isdir(inc_dir)) :
+    inc_dir = op.join(self.base_dir, "include")
+    if (not op.isdir(inc_dir)) :
       os.mkdir(inc_dir)
     self.include_dirs.append(inc_dir)
     self.lib_dirs.append(lib_paths[0])
@@ -384,7 +383,7 @@ class installer (object) :
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=FREETYPE_PKG,
       pkg_name_label="Freetype")
-    self.include_dirs.append(os.path.join(self.base_dir, "include",
+    self.include_dirs.append(op.join(self.base_dir, "include",
       "freetype2"))
     self.build_compiled_package_simple(
       pkg_url=BASE_CCI_PKG_URL,
@@ -392,17 +391,17 @@ class installer (object) :
       pkg_name_label="libpng")
     if (sys.platform == "darwin") :
       # XXX nuke libpng dylibs - I forget why we need to do this
-      lib_dir = os.path.join(self.base_dir, "lib")
+      lib_dir = op.join(self.base_dir, "lib")
       for file_name in os.listdir(lib_dir) :
         if ("png" in file_name.lower()) and (file_name.endswith(".dylib")) :
-          full_path = os.path.join(lib_dir, file_name)
+          full_path = op.join(lib_dir, file_name)
           os.remove(full_path)
     else :
       self.build_wxpython_dependencies_linux()
 
   def build_wxpython_dependencies_linux (self) :
-    pkg_config_dir = os.path.join(self.base_dir, "lib", "pkgconfig")
-    if (not os.path.isdir(pkg_config_dir)) :
+    pkg_config_dir = op.join(self.base_dir, "lib", "pkgconfig")
+    if (not op.isdir(pkg_config_dir)) :
       os.makedirs(pkg_config_dir)
     pkg_config_paths = [pkg_config_dir] + os.environ.get("PKG_CONFIG_PATH", [])
     os.environ['PKG_CONFIG_PATH'] = ":".join(pkg_config_paths)
@@ -419,8 +418,8 @@ class installer (object) :
     # glib
     glib_log = self.start_building_package("glib")
     self.fetch_untar_and_chdir(pkg_name=GLIB_PKG, log=glib_log)
-    msgfmt_bin = os.path.join(self.base_dir, "bin", "msgfmt")
-    gettext_bin = os.path.join(self.base_dir, "bin", "xgettext")
+    msgfmt_bin = op.join(self.base_dir, "bin", "msgfmt")
+    gettext_bin = op.join(self.base_dir, "bin", "xgettext")
     def touch_bin_files () :
       self.touch_file(msgfmt_bin)
       self.touch_file(gettext_bin)
@@ -443,22 +442,22 @@ class installer (object) :
     header_files = ["./lib/expat_external.h", "./lib/expat.h"]
     for header in header_files :
       self.call("./conftools/install-sh -c -m 644 %s \"%s\"" % (header,
-        os.path.join(self.base_dir, "include")), log=expat_log)
+        op.join(self.base_dir, "include")), log=expat_log)
     self.print_sep()
     # fontconfig
     fc_log = self.start_building_package("fontconfig")
     self.fetch_untar_and_chdir(pkg_name=FONTCONFIG_PKG, log=fc_log)
-    if (not os.path.isdir(os.path.join(self.base_dir, "share", "fonts"))) :
-      os.makedirs(os.path.join(self.base_dir, "share", "fonts"))
-    if (not os.path.isdir(os.path.join(self.base_dir,"etc","fonts"))) :
-      os.makedirs(os.path.join(self.base_dir,"etc","fonts"))
+    if (not op.isdir(op.join(self.base_dir, "share", "fonts"))) :
+      os.makedirs(op.join(self.base_dir, "share", "fonts"))
+    if (not op.isdir(op.join(self.base_dir,"etc","fonts"))) :
+      os.makedirs(op.join(self.base_dir,"etc","fonts"))
     fc_config_args = [ prefix_arg,
       "--disable-docs",
-      "--with-expat-includes=\"%s\"" % os.path.join(self.base_dir, "include"),
-      "--with-expat-lib=\"%s\"" % os.path.join(self.base_dir, "lib"),
-      "--with-add-fonts=\"%s\"" % os.path.join(self.base_dir,"share","fonts"),
-      "--with-confdir=\"%s\"" % os.path.join(self.base_dir,"etc","fonts"),
-      "--with-docdir=\"%s\"" % os.path.join(self.base_dir, "doc"),
+      "--with-expat-includes=\"%s\"" % op.join(self.base_dir, "include"),
+      "--with-expat-lib=\"%s\"" % op.join(self.base_dir, "lib"),
+      "--with-add-fonts=\"%s\"" % op.join(self.base_dir,"share","fonts"),
+      "--with-confdir=\"%s\"" % op.join(self.base_dir,"etc","fonts"),
+      "--with-docdir=\"%s\"" % op.join(self.base_dir, "doc"),
       "--with-freetype-config=freetype-config", ]
     self.configure_and_build(config_args=fc_config_args, log=fc_log)
     self.print_sep()
@@ -482,7 +481,7 @@ class installer (object) :
     tiff_log = self.start_building_package("tiff")
     self.fetch_untar_and_chdir(pkg_name=TIFF_PKG, log=tiff_log)
     os.environ['MANSCHEME'] = "bsd-source-cat"
-    os.environ['DIR_MAN'] = os.path.join(self.base_dir, "man")
+    os.environ['DIR_MAN'] = op.join(self.base_dir, "man")
     config_args = [ prefix_arg, "--noninteractive", "--with-LIBGL=no",
                     "--with-LIBIMAGE=no" ]
     self.configure_and_build(
@@ -512,8 +511,8 @@ class installer (object) :
       pkg_name_label="gtk-engine")
     # fonts
     fonts_log = self.start_building_package("fonts")
-    share_dir = os.path.join(self.base_dir, "share")
-    if (not os.path.isdir(share_dir)) :
+    share_dir = op.join(self.base_dir, "share")
+    if (not op.isdir(share_dir)) :
       os.makedirs(share_dir)
     pkg = self.fetch_package(pkg_name=FONT_PKG)
     os.chdir(share_dir)
@@ -558,7 +557,7 @@ class installer (object) :
       config_opts.extend([
         "--with-gtk",
         "--with-gtk-prefix=\"%s\"" % self.base_dir,
-        "--with-gtk-exec-prefix=\"%s\"" % os.path.join(self.base_dir, "lib"),
+        "--with-gtk-exec-prefix=\"%s\"" % op.join(self.base_dir, "lib"),
         "--enable-graphics_ctx",
       ])
     self.set_cppflags_ldflags_tmp()
