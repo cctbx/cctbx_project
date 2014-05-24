@@ -69,25 +69,43 @@ def check_output(*popenargs, **kwargs):
   return output
 
 class FixLinuxRpath(object):
+  def find_deps(self, filename):
+    ret = []
+    p = check_output(['ldd', filename])
+    for line in p.split("\n"):
+      lib, _, found = line.partition("=>")
+      if "not found" in found:
+        ret.append(lib.strip())
+    return ret
+
   def run(self, root, replace=None):
     replace = replace or {}
     targets = set()
     targets |= set(find_ext('.so', root=root))
-    targets |= set(find_ext('.dylib', root=root))
     # targets |= set(find_exec(root=root))
+
+    # First pass: identify relative $ORIGIN for each library.
+    origins = {}
     for target in sorted(targets):
-      if ".py" in target:
-        continue
-      xtarget = target.replace(root, '')
-      depth = len(xtarget.split('/'))-2
-      origins = ['$ORIGIN/']
-      base = "".join(["../"]*depth)
-      for i in ['extlib/lib']:
-        origins.append('$ORIGIN/'+base+i+'/')
-      try:
-        cmd(['patchelf', '--set-rpath', ":".join(origins), target])
-      except Exception, e:
-        print "Couldnt patchelf:", e
+      relpath = os.path.relpath(os.path.dirname(target), root)
+      relpath = os.path.join('$ORIGIN', relpath)
+      origins[os.path.basename(target)] = relpath
+
+    print "=== ORIGINS ==="
+    for k,v in sorted(origins.items()): print k, v
+
+    # Second pass: find linked libraries, add rpath's
+    for target in sorted(targets):
+      deps = self.find_deps(target)
+      found = set()
+      for dep in deps:
+        if origins.get(dep):
+          found.add(origins[dep])
+      if found:
+        rpaths = ':'.join(found)
+        cmd(['patchelf', '--set-rpath', rpaths, target])
+
+    return
 
 class FixMacRpath(object):
   """Process all binary files (executables, libraries) to rename linked libraries."""
