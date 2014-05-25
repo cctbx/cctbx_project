@@ -1,14 +1,19 @@
 
+# XXX This tests the refactored module (twin_analyses_new), which will
+# eventually become the only module
+
 from __future__ import division
-from mmtbx.scaling import twin_analyses
+from mmtbx.scaling import twin_analyses_new as twin_analyses
 import iotbx.pdb.hierarchy
 from libtbx.test_utils import approx_equal
+from libtbx.utils import null_out
 from cStringIO import StringIO
+import sys
 
-def exercise_twin_detection () :
+def exercise_twin_detection (verbose=False) :
   # simple model with translational pseudosymmetry
   pdb_str = """\
-CRYST1   12.000    8.000   12.000  90.00  90.00  90.00 P 1           1
+CRYST1   12.000    8.000   12.000  90.02  89.96  90.05 P 1           1
 ATOM     39  N   ASN A   6       5.514   2.664   4.856  1.00 11.99           N
 ATOM     40  CA  ASN A   6       6.831   2.310   4.318  1.00 12.30           C
 ATOM     41  C   ASN A   6       7.854   2.761   5.324  1.00 13.40           C
@@ -58,19 +63,63 @@ END
   xrs = pdb_in.input.xray_structure_simple()
   fc = abs(xrs.structure_factors(d_min=2.5).f_calc())
   fc = fc.set_observation_type_xray_amplitude()
-  # and now with some twinning
+  # and now add twinning
   fc_twin = fc.twin_data(twin_law='-l,-k,-h', alpha=0.4)
+  # twin_laws
+  laws = twin_analyses.twin_laws(miller_array=fc_twin)
+  assert (len(laws.operators) == 7)
+  delta_santoro = [ tl.delta_santoro for tl in laws.operators ]
+  assert approx_equal(delta_santoro,
+    [0.104655, 0.104655, 0.066599, 0.104655, 0.076113, 0.066599, 0.028542])
+  delta_le_page = [ tl.delta_le_page for tl in laws.operators ]
+  assert approx_equal(delta_le_page,
+    [0.053839, 0.053839, 0.053839, 0.064020, 0.044706, 0.049480, 0.021221])
+  delta_lebedev = [ tl.delta_lebedev for tl in laws.operators ]
+  assert approx_equal(delta_lebedev,
+    [0.000787, 0.000787, 0.000767, 0.000912, 0.000637, 0.000705, 0.000302])
+  # TNCS
+  tps = twin_analyses.detect_pseudo_translations(
+    miller_array=fc_twin, out=null_out())
+  assert ([tps.mod_h, tps.mod_k, tps.mod_l] == [3,2,3])
+  assert approx_equal(tps.high_peak, 47.152352)
+  assert approx_equal(tps.high_p_value, 0.000103)
+  # L test
+  fc_norm_acentric = twin_analyses.wilson_normalised_intensities(
+    miller_array=fc_twin, normalise=True, out=null_out()).acentric
+  ltest = twin_analyses.l_test(miller_array=fc_norm_acentric,
+    parity_h=3, parity_l=3, out=null_out())
+  assert approx_equal(ltest.mean_l, 0.498974)
+  assert approx_equal(ltest.mean_l2, 0.371674)
+  # Overall analyses
   out = StringIO()
   tw = twin_analyses.twin_analyses(miller_array=fc_twin, out=out)
   assert ("significantly different than is expected" in out.getvalue())
-  summary = tw.twin_summary.twin_results
-  assert approx_equal(summary.l_mean, 0.498772)
-  assert approx_equal(summary.patterson_height, 47.107846)
+  summary = tw.twin_summary
+  assert approx_equal(summary.l_mean, 0.4989738)
+  assert approx_equal(summary.patterson_height, 47.152352)
   for k, twin_r_factor in enumerate(summary.r_obs) :
     if (k == 6) : assert twin_r_factor < 0.11
     else : assert twin_r_factor > 0.3
-  #print dir(summary)
+  out2 = StringIO()
+  tw.l_test.show(out=out2)
+  assert ("""\
+  Mean |L|   :0.499  (untwinned: 0.500; perfect twin: 0.375)
+  Mean  L^2  :0.372  (untwinned: 0.333; perfect twin: 0.200)
+""" in out2.getvalue()), out2.getvalue()
+  if (verbose) :
+    print out.getvalue()
+  # twin_results_interpretation object via cctbx.miller.array API extension
+  # XXX I get slightly different numbers here versus running through the
+  # twin_analyses call above - this seems to be caused by the resolution
+  # limits passed here.  Need to confirm these with PHZ.
+  result = fc_twin.analyze_intensity_statistics()
+  assert approx_equal(result.maha_l, 27.580674)
+  assert approx_equal(result.r_obs,
+    [0.514901, 0.514901, 0.397741, 0.580353, 0.579294, 0.420914, 0.114999])
+  assert approx_equal(result.h_alpha,
+    [0.019980, 0.019980, 0.211788, 0.073926, 0.079920, 0.150849, 0.389610])
+  assert result.has_twinning()
 
 if (__name__ == "__main__") :
-  exercise_twin_detection()
+  exercise_twin_detection(verbose=("--verbose" in sys.argv))
   print "OK"
