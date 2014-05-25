@@ -18,7 +18,6 @@ class entity (slots_getstate_setstate) :
     "score",
   ]
   score_format = "%s"
-  phenix_table_labels = []
   molprobity_table_labels = []
 
   def __init__ (self, **kwds) :
@@ -94,6 +93,19 @@ class entity (slots_getstate_setstate) :
 
   def is_single_residue_object (self) :
     raise NotImplementedError()
+
+  def as_selection_string (self) :
+    """
+    Returns PDB atom selection string for the atom(s) involved.
+    """
+    return None
+
+  def zoom_info (self) :
+    """
+    Returns data needed to zoom/recenter the graphics programs from the Phenix
+    GUI.
+    """
+    return [ self.as_selection_string(), self.xyz ]
 
 __residue_attr__ = [
   "chain_id",
@@ -171,6 +183,18 @@ class residue (entity) :
 
   def is_single_residue_object (self) :
     return True
+
+  def atom_selection_string (self) :
+    return "(chain '%s' and resid '%s' and resname %s and altloc '%s')" % \
+      (self.chain_id, self.resid, self.resname, self.altloc)
+
+  def set_coordinates_from_hierarchy (self, pdb_hierarchy,
+      atom_selection_cache=None) :
+    if (atom_selection_cache is None) :
+      atom_selection_cache = pdb_hierarchy.atom_selection_cache()
+    sel = atom_selection_cache.selection(self.atom_selection_string())
+    assert (len(sel) > 0)
+    self.xyz = pdb_hierarchy.atoms().select(sel).extract_xyz().mean()
 
 class atoms (entity) :
   """
@@ -347,6 +371,8 @@ class validation (slots_getstate_setstate) :
   __slots__ = ["n_outliers", "n_total", "results", "_cache"]
   program_description = None
   output_header = None
+  gui_list_headers = [] # for Phenix GUI ListCtrl widgets
+  gui_formats = []      # for Phenix GUI ListCtrl widgets
   def __init__ (self) :
     self.n_outliers = 0
     self.n_total = 0
@@ -390,10 +416,14 @@ class validation (slots_getstate_setstate) :
       verbose=True) :
     if (len(self.results) > 0) :
       print >> out, prefix + self.get_result_class().header()
-      for result in self.results :
-        if (not outliers_only) or (result.is_outlier()) :
-          print >> out, prefix + str(result)
+      for result in self.iter_results(outliers_only) :
+        print >> out, prefix + str(result)
     self.show_summary(out=out, prefix=prefix)
+
+  def iter_results (self, outliers_only=True) :
+    for result in self.results :
+      if (not outliers_only) or (result.is_outlier()) :
+        yield result
 
   def as_kinemage (self) :
     return None
@@ -401,8 +431,16 @@ class validation (slots_getstate_setstate) :
   def as_coot_data (self) :
     raise NotImplementedError()
 
-  def as_gui_table_data (self) :
-    return []
+  def as_gui_table_data (self, outliers_only=True, include_zoom=False) :
+    table = []
+    for result in self.iter_results(outliers_only) :
+      extra = []
+      if (include_zoom) :
+        extra = result.zoom_info()
+      row = result.as_table_row_phenix()
+      assert (len(row) == len(self.gui_list_headers) == len(self.gui_formats))
+      table.append(row + extra)
+    return table
 
   def find_residue (self, other=None, residue_id_str=None) :
     assert ([other, residue_id_str].count(None) == 1)

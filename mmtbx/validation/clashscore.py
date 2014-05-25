@@ -1,9 +1,10 @@
 
 from __future__ import division
-from mmtbx.validation import validation, atoms, atom_info
+from mmtbx.validation import validation, atoms, atom_info, residue
 from libtbx import easy_run
 import libtbx.load_env
 import string
+import re
 import sys
 
 class clash (atoms) :
@@ -33,6 +34,10 @@ class clash (atoms) :
     return "%-20s %-20s  %7.3f" % (self.atoms_info[0].id_str(),
       self.atoms_info[1].id_str(), self.overlap)
 
+  def as_table_row_phenix (self) :
+    return [ self.atoms_info[0].id_str(), self.atoms_info[1].id_str(),
+             self.overlap ]
+
   def __cmp__ (self, other) : # sort in descending order
     return cmp(self.overlap, other.overlap)
 
@@ -47,6 +52,9 @@ class clashscore(validation):
     "probe_file",
   ]
   program_description = "Analyze clashscore for protein model"
+  gui_list_headers = ["Atom 1", "Atom 2", "Overlap"]
+  gui_formats = ["%s", "%s", ".3f"]
+  wx_column_widths = [200] * 3
 
   def get_result_class (self) : return clash
 
@@ -139,6 +147,7 @@ class clashscore(validation):
       self.list_dict[model.id] = pcm.bad_clashes
       if (n_models == 1) or (self.clashscore is None) :
         self.results = pcm.bad_clashes
+        self.n_outliers = len(self.results)
         self.clashscore = pcm.clashscore
         self.clashscore_b_cutoff = pcm.clashscore_b_cutoff
       if (save_probe_unformatted_file is not None) and (n_models == 1) :
@@ -384,3 +393,51 @@ def decode_atom_string (atom_str, use_segids=False) :
       resname=atom_str[9:12],
       altloc=atom_str[17],
       name=atom_str[13:17])
+
+#-----------------------------------------------------------------------
+# this isn't really enough code to justify a separate module...
+#
+class nqh_flip (residue) :
+  """
+  Backwards Asn/Gln/His sidechain, identified by Reduce's hydrogen-bond
+  network optimization.
+  """
+  def as_string (self) :
+    return self.id_str()
+
+  def as_table_row_phenix (self) :
+    return [ self.chain_id, "%s %s" % (self.resname, self.resid) ]
+
+class nqh_flips (validation) :
+  """
+  N/Q/H sidechain flips identified by Reduce.
+  """
+  gui_list_headers = ["Chain", "Residue"]
+  gui_formats = ["%s", "%s"]
+  wx_column_widths = [100,220]
+  def __init__ (self, pdb_hierarchy) :
+    re_flip = re.compile(":FLIP")
+    validation.__init__(self)
+    reduce_out = easy_run.fully_buffered("phenix.reduce -BUILD -",
+      stdin_lines=pdb_hierarchy.as_pdb_string())
+    for line in reduce_out.stderr_lines :
+    #orientation 4: A  68 HIS     :FLIP no HD1: bump=-0.607, HB=0.998, total=0.390
+      if re_flip.search(line) :
+        resname = line[22:25]
+        assert (resname in ["ASN", "GLN", "HIS"])
+        flip = nqh_flip(
+          chain_id=line[16],
+          resseq=line[17:21].strip(),
+          icode=line[21],
+          altloc=line[29],
+          resname=resname)
+        flip.set_coordinates_from_hierarchy(pdb_hierarchy)
+        self.results.append(flip)
+        self.n_outliers += 1
+
+  def show (self, out=sys.stdout, prefix="") :
+    if (self.n_outliers == 0) :
+      print >> out, prefix+"No backwards Asn/Gln/His sidechains found."
+    else :
+      for flip in self.results :
+        print >> out, prefix+flip.as_string()

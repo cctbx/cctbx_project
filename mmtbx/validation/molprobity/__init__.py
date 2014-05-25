@@ -1,6 +1,5 @@
 
 # TODO combine with some parts of mmtbx.kinemage.validation
-# TODO merge this with Table 1 output, PDB deposition, etc.
 
 from __future__ import division
 from mmtbx.validation import validation, residue
@@ -16,7 +15,7 @@ from mmtbx.validation import waters
 from libtbx.str_utils import make_header, make_sub_header, format_value
 from libtbx import slots_getstate_setstate, \
     slots_getstate_setstate_default_initializer
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 import libtbx.load_env
 import libtbx.phil
 import os.path
@@ -31,6 +30,8 @@ rotalyze = True
   .type = bool
 cbetadev = True
   .type = bool
+nqh = True
+  .type = bool
 rna = True
   .type = bool
 model_stats = True
@@ -42,6 +43,8 @@ rfactors = True
 real_space = True
   .type = bool
 waters = True
+  .type = bool
+seq = True
   .type = bool
 """
 
@@ -66,18 +69,20 @@ class molprobity (slots_getstate_setstate) :
     "rotalyze",
     "cbetadev",
     "clashes",
+    "nqh_flips",
     "rna",
     "restraints",
     "missing_atoms",
     "data_stats",
     "real_space",
     "crystal_symmetry",
-    #"real_space_atoms",
     "model_stats",
     "waters",
     "header_info",
     "merging",
+    "sequence",
     "_multi_criterion",
+    "file_name",
   ]
 
   def __init__ (self,
@@ -85,6 +90,7 @@ class molprobity (slots_getstate_setstate) :
       xray_structure=None,
       fmodel=None,
       geometry_restraints_manager=None,
+      sequences=None,
       flags=None,
       header_info=None,
       raw_data=None,
@@ -99,7 +105,8 @@ class molprobity (slots_getstate_setstate) :
       count_anomalous_pairs_separately=False,
       crystal_symmetry=None,
       outliers_only=True,
-      use_pdb_header_resolution_cutoffs=False) :
+      use_pdb_header_resolution_cutoffs=False,
+      file_name=None) :
     for name in self.__slots__ :
       setattr(self, name, None)
     if (xray_structure is None) :
@@ -133,6 +140,9 @@ class molprobity (slots_getstate_setstate) :
           outliers_only=True,
           out=null_out(),
           quiet=True)
+      if (flags.nqh) :
+        self.nqh_flips = clashscore.nqh_flips(
+          pdb_hierarchy=pdb_hierarchy)
     if (pdb_hierarchy.contains_rna() and flags.rna and
         libtbx.env.has_module(name="suitename")) :
       if (geometry_restraints_manager is not None) :
@@ -162,6 +172,13 @@ class molprobity (slots_getstate_setstate) :
         xray_structure=xray_structure,
         geometry_restraints_manager=geometry_restraints_manager,
         ignore_hd=(not nuclear))
+    if (sequences is not None) and (flags.seq) :
+      self.sequence = sequence.validation(
+        pdb_hierarchy=pdb_hierarchy,
+        sequences=sequences,
+        log=null_out(),
+        include_secondary_structure=True,
+        extract_coordinates=True)
     if (fmodel is not None) :
       if (use_pdb_header_resolution_cutoffs) and (header_info is not None) :
         fmodel = fmodel.resolution_filter(
@@ -241,6 +258,9 @@ class molprobity (slots_getstate_setstate) :
     if (self.clashes is not None) :
       make_sub_header("Bad clashes", out=out)
       self.clashes.show(out=out, prefix="  ")
+    if (self.nqh_flips is not None) :
+      make_sub_header("Asn/Gln/His flips", out=out)
+      self.nqh_flips.show(out=out, prefix="  ")
     if (self.rna is not None) :
       make_header("RNA validation", out=out)
       self.rna.show(out=out, prefix="  ", outliers_only=outliers_only)
@@ -350,6 +370,10 @@ class molprobity (slots_getstate_setstate) :
   def clashscore (self) :
     return getattr(self.clashes, "get_clashscore", lambda: None)()
 
+  def b_iso_mean (self) :
+    overall_stats = getattr(self.model_stats, "all", None)
+    return getattr(overall_stats, "b_mean", None)
+
   def space_group (self) :
     return getattr(self.crystal_symmetry, "space_group", lambda: None)()
 
@@ -358,6 +382,17 @@ class molprobity (slots_getstate_setstate) :
 
   def unit_cell (self) :
     return getattr(self.crystal_symmetry, "unit_cell", lambda: None)()
+
+  def twin_law (self) :
+    return getattr(self.data_stats, "twin_law", None)
+
+  def fmodel_statistics_by_resolution (self) :
+    """
+    Returns the resolution bins containing F(model) statistics; see
+    mmtbx.f_model_info for details.
+    """
+    fmodel_info = getattr(self.data_stats, "info", None)
+    return getattr(fmodel_info, "bins", None)
 
   def atoms_to_observations_ratio (self, assume_riding_hydrogens=True) :
     n_atoms = self.model_stats.n_atoms
@@ -420,26 +455,6 @@ class molprobity (slots_getstate_setstate) :
         f.write("show_probe_dots(True, True)\n")
     f.write("gui = coot_molprobity_todo_list_gui(data=data)\n")
     f.close()
-
-  #---------------------------------------------------------------------
-  # Phenix GUI hooks
-  def get_gui_table_data (self, analysis_name, include_zoom=False) :
-    analysis = getattr(self, analysis_name)
-    if (analysis is not None) :
-      return analysis.as_gui_table_data(include_zoom=include_zoom)
-    return []
-
-  def get_ramalyze_table_data (self, **kwds) :
-    return self.get_gui_table_data("ramalyze", **kwds)
-
-  def get_rotalyze_table_data (self, include_zoom=False) :
-    return self.get_gui_table_data("rotalyze", **kwds)
-
-  def get_cbetadev_table_data (self, include_zoom=False) :
-    return self.get_gui_table_data("cbetadev", **kwds)
-
-  def get_clashscore_table_data (self, include_zoom=False) :
-    return self.get_gui_table_data("clashscore", **kwds)
 
   #---------------------------------------------------------------------
   # POLYGON stuff

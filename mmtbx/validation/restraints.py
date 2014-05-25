@@ -36,6 +36,13 @@ class restraint (atoms) :
     return "%-20s  %7s  %7s  %7s  %6s  %6s  %10s" % ("atoms", "ideal", "model",
       "delta", "sigma", "residual", "deviation")
 
+  def as_table_row_phenix (self) :
+    """
+    Values for populating ListCtrl in Phenix GUI.
+    """
+    atoms_str = ", ".join([ a.id_str() for a in self.atoms_info ])
+    return [ atoms_str, self.target, self.model, self.score ]
+
   def id_str (self, ignore_altloc=None) :
     return ",".join([ a.id_str() for a in self.atoms_info ])
 
@@ -70,6 +77,9 @@ class bond (restraint) :
     "symop",
   ]
   __slots__ = restraint.__slots__ + __bond_attr__
+  def as_table_row_phenix (self) :
+    return [ self.atoms_info[0].id_str(), self.atoms_info[1].id_str(),
+             self.target, self.model, self.score ]
 
   @staticmethod
   def header () :
@@ -87,7 +97,6 @@ class bond (restraint) :
 
 class angle (restraint) :
   n_atoms = 3
-
   def as_kinemage (self) :
     from mmtbx.kinemage.validation import angle_outlier_as_kinemage
     return angle_outlier_as_kinemage(self)
@@ -107,6 +116,9 @@ class planarity (restraint) :
     "delta_max",
     "residual",
   ]
+  def as_table_row_phenix (self) :
+    atoms_str = ", ".join([ a.id_str() for a in self.atoms_info ])
+    return [ atoms_str, self.delta_max, self.rms_deltas, self.score ]
 
   @staticmethod
   def header () :
@@ -127,6 +139,9 @@ class restraint_validation (validation) :
   """
   restraint_type = None
   kinemage_header = None
+  gui_list_headers = ["Atoms","Ideal value","Model value","Deviation (sigmas)"]
+  gui_formats = ["%s", "%.3f", "%.3f", "%.1f"]
+  wx_column_widths = [500, 100, 100, 180]
   __restraints_attr__ = [
     "min",
     "max",
@@ -225,6 +240,11 @@ class bonds (restraint_validation) :
   restraint_type = "bond"
   restraint_label = "Bond length"
   kinemage_header = "@subgroup {length devs} dominant\n"
+  gui_list_headers = ["Atom 1","Atom 2","Ideal value","Model value",
+                      "Deviation (sigmas)"]
+  gui_formats = ["%s", "%s", "%.3f", "%.3f", "%.1f"]
+  wx_column_widths = [150, 150, 100, 100, 80]
+
   def get_result_class (self) : return bond
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
@@ -369,6 +389,10 @@ class chiralities (restraint_validation) :
 class planarities (restraint_validation) :
   restraint_type = "planarity"
   restraint_label = "Planar group"
+  gui_list_headers = ["Atoms", "Max. delta", "RMS(delta)", "Deviation (sigmas)"]
+  gui_formats = ["%s", "%.3f", "%.3f", "%.1f"]
+  wx_column_widths = [250, 100, 100, 130]
+
   def get_result_class (self) : return planarity
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,

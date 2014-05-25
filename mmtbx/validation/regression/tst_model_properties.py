@@ -1,11 +1,15 @@
 
-# TODO test with waters, ligands, full PDB interpretation
-
 from __future__ import division
+from mmtbx.monomer_library import pdb_interpretation
+from mmtbx.monomer_library import server
 from mmtbx.validation import model_properties
 import iotbx.pdb.hierarchy
 from libtbx.test_utils import show_diff
+import libtbx.load_env
+from libtbx.easy_pickle import loads, dumps
+from libtbx.utils import null_out
 from cStringIO import StringIO
+import os.path
 
 def exercise () :
   pdb_raw = """\
@@ -67,14 +71,26 @@ ATOM   3640  HB2 ASN A 242      -3.032  -3.587   0.370  0.00 75.76           H
 ATOM   3641  HB3 ASN A 242      -4.007  -4.368  -0.611  0.00 75.76           H
 ATOM   3642 HD21 ASN A 242      -1.929  -3.779  -3.104  0.00 74.60           H
 ATOM   3643 HD22 ASN A 242      -2.609  -4.810  -2.272  0.00 74.60           H
-ATOM      2  CA ALYS A  32      10.574   8.177  11.768  0.40 11.49           C
-ATOM      3  CB ALYS A  32       9.197   8.686  12.246  0.40 14.71           C
-ATOM      2  CA BLYS A  32      10.574   8.177  11.768  0.40 11.49           C
-ATOM      3  CB BLYS A  32       9.197   8.686  12.246  0.40 14.71           C
-ATOM      5  CA AVAL A  33      11.708   5.617  14.332  0.50 11.42           C
-ATOM      6  CB AVAL A  33      11.101   4.227  14.591  0.50 11.47           C
-ATOM      5  CA BVAL A  33      11.708   5.617  14.332  0.40 11.42           C
-ATOM      6  CB BVAL A  33      11.101   4.227  14.591  0.40 11.47           C
+ATOM      2  CA ALYS A  32      10.574   8.177  11.768  0.40 71.49           C
+ATOM      3  CB ALYS A  32       9.197   8.686  12.246  0.40 74.71           C
+ATOM      2  CA BLYS A  32      10.574   8.177  11.768  0.40 71.49           C
+ATOM      3  CB BLYS A  32       9.197   8.686  12.246  0.40 74.71           C
+ATOM      5  CA AVAL A  33      11.708   5.617  14.332  0.50 71.42           C
+ATOM      6  CB AVAL A  33      11.101   4.227  14.591  0.50 71.47           C
+ATOM      5  CA BVAL A  33      11.708   5.617  14.332  0.40 71.42           C
+ATOM      6  CB BVAL A  33      11.101   4.227  14.591  0.40 71.47           C
+TER
+ATOM      1  N   GLU X  18     -13.959  12.159  -6.598  1.00260.08           N
+ATOM      2  CA  GLU X  18     -13.297  13.465  -6.628  1.00269.83           C
+ATOM      3  C   GLU X  18     -11.946  13.282  -7.309  1.00269.18           C
+ATOM      4  CB  GLU X  18     -13.128  14.035  -5.210  1.00261.96           C
+ATOM      5  CG  GLU X  18     -14.455  14.401  -4.522  1.00263.56           C
+ATOM      6  CD  GLU X  18     -14.291  15.239  -3.242  1.00264.89           C
+ATOM      7  OE1 GLU X  18     -14.172  14.646  -2.143  1.00264.24           O
+ATOM      8  OE2 GLU X  18     -14.309  16.498  -3.306  1.00264.37           O1-
+TER
+HETATM  122  O   HOH S   1       5.334   8.357   8.032  1.00  0.00           O
+HETATM  123  O   HOH S   2       5.396  15.243  10.734  1.00202.95           O
 """
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
   xrs = pdb_in.input.xray_structure_simple()
@@ -86,11 +102,11 @@ ATOM      6  CB BVAL A  33      11.101   4.227  14.591  0.40 11.47           C
   mstats.show(out=out)
   assert not show_diff(out.getvalue(), """\
 Overall:
-  Number of atoms = 34  (anisotropic = 0)
-  B_iso: mean =  57.0  max =  86.5  min =  11.4
-  Occupancy: mean = 0.39  max = 1.00  min = 0.00
+  Number of atoms = 44  (anisotropic = 0)
+  B_iso: mean = 107.7  max = 269.8  min =   0.0
+  Occupancy: mean = 0.53  max = 1.00  min = 0.00
     warning: 16 atoms with zero occupancy
-  16 total B-factor or occupancy problems detected
+  20 total B-factor or occupancy problems detected
   Atoms or residues with zero occupancy:
    LYS A  82   CG    occ=0.00
    LYS A  82   CD    occ=0.00
@@ -110,6 +126,8 @@ Overall:
    ASN A 242  (all)  occ=0.00
 (Hydrogen atoms not included in overall counts.)
 """)
+  assert (len(mstats.all.bad_adps) == 1)
+  assert (mstats.all.n_zero_b == 1)
   mstats2 = model_properties.model_statistics(
     pdb_hierarchy=pdb_in.hierarchy,
     xray_structure=xrs,
@@ -119,6 +137,35 @@ Overall:
   assert (out2.getvalue() != out.getvalue())
   assert ("""   LYS A  83   HZ3   occ=0.00""" in out2.getvalue())
 
+def exercise_2 () :
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_examples/rnase-s/rnase-s.pdb",
+    test=os.path.isfile)
+  if (pdb_file is None) :
+    print "phenix_examples not found, skipping test"
+    return
+  mon_lib_srv = server.server()
+  ener_lib = server.ener_lib()
+  pdb_in = iotbx.pdb.hierarchy.input(file_name=pdb_file)
+  xrs = pdb_in.input.xray_structure_simple()
+  processed_pdb_file = pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    raw_records=pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs),
+    crystal_symmetry=xrs,
+    log=null_out())
+  props = model_properties.model_statistics(
+    pdb_hierarchy=pdb_in.hierarchy,
+    xray_structure=xrs,
+    all_chain_proxies=processed_pdb_file.all_chain_proxies)
+  props2 = loads(dumps(props))
+  out1 = StringIO()
+  out2 = StringIO()
+  props.show(out=out1)
+  props2.show(out=out2)
+  assert (out1.getvalue() == out2.getvalue())
+
 if (__name__ == "__main__") :
   exercise()
+  exercise_2()
   print "OK"

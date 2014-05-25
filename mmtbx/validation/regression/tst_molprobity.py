@@ -22,13 +22,16 @@ def exercise_protein () :
   args1 = [
     pdb_file,
     "outliers_only=True",
+    "output.prefix=tst_molprobity",
+    "--pickle",
   ]
-  result = molprobity.run(args=args1, out=null_out())
+  result = molprobity.run(args=args1, out=null_out()).validation
   out1 = StringIO()
   result.show(out=out1)
   result = loads(dumps(result))
   out2 = StringIO()
   result.show(out=out2)
+  assert (result.nqh_flips.n_outliers == 1)
   assert (not "RNA validation" in out2.getvalue())
   assert (out2.getvalue() == out1.getvalue())
   dump("tst_molprobity.pkl", result)
@@ -66,7 +69,7 @@ def exercise_rna () :
   if (regression_pdb is None):
     print "Skipping exercise_regression(): input pdb (pdb2goz_refmac_tls.ent) not available"
     return
-  result = molprobity.run(args=[regression_pdb], out=null_out())
+  result = molprobity.run(args=[regression_pdb], out=null_out()).validation
   assert (result.rna is not None)
   out = StringIO()
   result.show(out=out)
