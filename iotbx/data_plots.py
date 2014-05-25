@@ -107,12 +107,21 @@ class table_data (object) :
       data=None,
       comments=None,
       x_is_inverse_d_min=False,
+      first_two_columns_are_resolution=False,
       force_exact_x_labels=False) :
     adopt_init_args(self, locals())
     self._is_complete = False
     self._graphs = {}
     self._column_width = 10
     self.plot_type = "GRAPH"
+
+  @property
+  def n_rows (self) :
+    return len(self.data[0])
+
+  @property
+  def n_cols (self) :
+    return len(self.data)
 
   def add_graph (self, name, type, columns) :
     if self.graph_names is None :
@@ -242,11 +251,30 @@ class table_data (object) :
       cwidth = precision
     return cwidth
 
-  def _format_num_row (self, row, column_width, precision) :
+  def get_value_as_resolution (self, x) :
+    if (self.x_is_inverse_d_min) :
+      return x ** -0.5
+    return x
+
+  def _format_num_row (self, row, precision=None, column_width=None) :
     if row is None : return []
-    f1 = "%s-.%dg" % (r'%', precision)
-    f2 = "%s-%ds" % (r'%', column_width)
-    return [ f2 % ftoa(x, f1) for x in row ]
+    if (self.column_formats is not None) :
+      if (self.first_two_columns_are_resolution) :
+        d_max = self.column_formats[0] % self.get_value_as_resolution(row[0])
+        d_min = self.column_formats[1] % self.get_value_as_resolution(row[1])
+        frow = [ "%s - %s" % (d_max, d_min) ]
+        return frow + \
+               [ (f % x) for f, x in zip(self.column_formats[2:], row[2:]) ]
+      else :
+        return [ (f % x) for f, x in zip(self.column_formats, row) ]
+    else :
+      f1 = "%-g"
+      if (precision is not None) :
+        f1 = "%s-.%dg" % (r'%', precision)
+      f2 = "%s"
+      if (column_width is not None) :
+        f2 = "%s-%ds" % (r'%', column_width)
+      return [ f2 % ftoa(x, f1) for x in row ]
 
   def _format_labels (self, labels, column_width) :
     if labels is None : return []
@@ -265,13 +293,15 @@ class table_data (object) :
     labels = " ".join(self._format_labels(self.column_labels, column_width))
     out += trailing_spaces.sub("", labels)
     nrows = len(data[0])
+    f1 = "%s-%ds" % (r'%', column_width)
     for j in xrange(nrows) :
       row = [ col[j] for col in data ]
-      frows = " ".join(self._format_num_row(row, column_width, precision))
+      frow = self._format_num_row(row, column_width, precision)
+      frows = " ".join([ f1 % cv for cv in frow ])
       out += trailing_spaces.sub("", frows)
     return str(out)
 
-  def format (self, precision=6, indent=0) :
+  def format (self, precision=6, indent=0, equal_widths=True) :
     """Formats the table for printout in a log file, with equal-width
     columns and cell boundaries, e.g.:
       -------------------------------
@@ -284,12 +314,32 @@ class table_data (object) :
     """
     data = self.data
     assert data is not None and len(data) > 0
-    column_width = self._max_column_width(precision)
-    #if column_width > precision :
-    #  precision = column_width
-    f1 = "%s-%ds" % (r'%', column_width)
-    column_headers = " | ".join(self._format_labels(self.column_labels,
-      column_width))
+    column_labels = self.column_labels
+    # most of the code here deals with generic numerical values, but the
+    # use of resolution ranges comes up often enough to merit special handling
+    if (self.first_two_columns_are_resolution) :
+      column_labels = ["Res. range"] + column_labels[2:]
+    formatted_rows = [ column_labels ]
+    for j in xrange(self.n_rows) :
+      row = [ col[j] for col in data ]
+      formatted_rows.append(self._format_num_row(row, precision=precision))
+    column_widths = []
+    for j in xrange(len(column_labels)) :
+      column_widths.append(max([ len(r[j]) for r in formatted_rows ]))
+    if (equal_widths) :
+      # if the first column is the resolution range, we allow that to be
+      # different in width than the remaining columns
+      if (self.first_two_columns_are_resolution) :
+        max_w = max(column_widths[1:])
+        column_widths = [column_widths[0]] + [ max_w ] * (len(column_widths)-1)
+      else :
+        max_w = max(column_widths)
+        column_widths = [ max_w ] * len(column_widths)
+    column_headers = []
+    for cw, cl in zip(column_widths, column_labels) :
+      f1 = "%s-%ds" % (r'%', cw)
+      column_headers.append(f1 % cl)
+    column_headers = " | ".join(column_headers)
     f2 = "%s-%ds" % (r'%', len(column_headers))
     table_width = len(column_headers) + 4
     sep_line = "-" * table_width
@@ -299,9 +349,12 @@ class table_data (object) :
     out += "|" + sep_line[1:-1] + "|"
     out += "| " + column_headers + " |"
     out += "|" + sep_line[1:-1] + "|"
-    for j in xrange(len(data[0])) :
-      row = [ col[j] for col in data ]
-      frow = " | ".join(self._format_num_row(row, column_width, precision))
+    for j in xrange(self.n_rows) :
+      frow = []
+      for cw, cv in zip(column_widths, formatted_rows[j+1]) :
+        f1 = "%s-%ds" % (r'%', cw)
+        frow.append(f1 % cv)
+      frow = " | ".join(frow)
       out += "| " + frow + " |"
     out += sep_line
     return str(out)
@@ -324,19 +377,22 @@ class table_data (object) :
       out += ":%s:%s:\n" % (graph_types[i],
                            ",".join([ "%d"%(x+1) for x in graph_columns[i] ]))
     out += "$$\n"
+    re_spaces = re.compile("[\ ]{1,}")
+    labels = [ re_spaces.sub("_", lab) for lab in column_labels ]
     if column_width is None :
-      column_width = self._max_column_width(precision)
+      column_width = max(self._max_column_width(precision),
+                         max([ len(lab) for lab in labels ]))
     f1 = "%s.%dg" % (r'%', precision)
     f2 = "%s-%ds" % (r'%', column_width)
-    re_spaces = re.compile("[\ ]{1,}")
     labels = [ re_spaces.sub("_", lab) for lab in column_labels ]
     out += "%s $$\n" % "  ".join([ f2 % lab for lab in labels ])
     out += "$$\n"
     trailing_spaces = re.compile("\ *$")
     for j in xrange(len(data[0])) :
       row = [ col[j] for col in data ]
-      frow = "  ".join(self._format_num_row(row, column_width, precision))
-      out += trailing_spaces.sub("", frow)
+      frow = self._format_num_row(row, column_width, precision)
+      frow = [ f2 % cv for cv in frow ]
+      out += trailing_spaces.sub("", "  ".join(frow))
       out += "\n"
     out += "$$\n"
     return out
