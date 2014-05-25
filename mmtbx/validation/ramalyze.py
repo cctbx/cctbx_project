@@ -86,6 +86,11 @@ class ramachandran (residue) :
       self.c_alphas[2].xyz)
     return ram_out
 
+  # GUI output
+  def as_table_row_phenix (self) :
+    return [ self.chain_id, "%s %s" % (self.resname, self.resid),
+             sefl.residue_type(), self.score, self.phi, self.psi ]
+
 class ramachandran_ensemble (residue) :
   """Container for results for an ensemble of residues"""
   __slots__ = ramachandran.__slots__
@@ -115,6 +120,9 @@ class ramalyze (validation) :
     "n_allowed", "n_favored", "n_type", ]
   program_description = "Analyze protein backbone ramachandran"
   output_header = "residue:score%:phi:psi:evaluation:type"
+  gui_list_headers = ["Chain","Residue","Residue type","Score","Phi","Psi"]
+  gui_formats = ["%s", "%s", "%s", "%.2f", "%.1f", "%.1f"]
+  wx_column_widths = [125]*6
 
   def get_result_class (self) : return ramachandran
 

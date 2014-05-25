@@ -1,4 +1,6 @@
 
+# TODO reduce to one outlier per residue
+
 from __future__ import division
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from mmtbx.monomer_library import pdb_interpretation
@@ -6,15 +8,11 @@ from mmtbx.validation import utils
 from mmtbx import monomer_library
 from mmtbx import validation
 from iotbx.pdb import common_residue_names_get_class as get_res_class
-from iotbx import pdb
-import iotbx.phil
 from cctbx import geometry_restraints
-from libtbx.str_utils import make_sub_header, make_header
+from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
-from libtbx.utils import Usage
 from libtbx import easy_run
 from math import sqrt
-import os
 import sys
 
 rna_backbone_atoms = set([
@@ -114,6 +112,9 @@ class rna_geometry (validation.validation) :
 class rna_bonds (rna_geometry) :
   output_header = "#residue:atom_1:atom_2:num_sigmas"
   label = "Backbone bond lenths"
+  gui_list_headers = ["Chain", "Residue", "Altloc", "Bad bonds", "Max. sigma"]
+  gui_formats = ["%s", "%s", "%s", "%d", "%.1f"]
+  wx_column_widths = [160] * 5
   def __init__ (self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager) :
     rna_geometry.__init__(self)
     cutoff = 4
@@ -163,6 +164,9 @@ class rna_bonds (rna_geometry) :
 class rna_angles (rna_geometry) :
   output_header = "#residue:atom_1:atom_2:atom_3:num_sigmas"
   label = "Backbone bond angles"
+  gui_list_headers = ["Chain", "Residue", "Altloc", "Bad angles", "Max. sigma"]
+  gui_formats = ["%s", "%s", "%s", "%d", "%.1f"]
+  wx_column_widths = [160] * 5
   def __init__ (self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager) :
     rna_geometry.__init__(self)
     cutoff = 4
@@ -216,6 +220,9 @@ class rna_puckers (rna_geometry) :
   ]
   output_header = "#residue:delta_angle:is_delta_outlier:epsilon_angle:is_epsilon_outler"
   label = "Sugar pucker"
+  gui_list_headers = ["Chain", "Residue", "Altloc", "Bad angles"]
+  gui_formats = ["%s", "%s", "%s", "%s"]
+  wx_column_widths = [200]*4
   def __init__ (self, pdb_hierarchy, params=None, outliers_only=True) :
     if (params is None) :
       params = rna_sugar_pucker_analysis.master_phil.extract()
@@ -289,6 +296,9 @@ class rna_puckers (rna_geometry) :
 class rna_suites (rna_geometry) :
   output_header = "#suiteID:suite:suiteness:triaged_angle"
   label = "Backbone torsion suites"
+  gui_list_headers = ["Chain", "Residue", "Altloc", "Triaged angles"]
+  gui_formats = ["%s"] * 4
+  wx_column_widths = [200] * 4
   def __init__ (self, pdb_hierarchy, geometry_restraints_manager,
       outliers_only=True) :
     rna_geometry.__init__(self)

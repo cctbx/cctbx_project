@@ -4,6 +4,7 @@
 from __future__ import division
 from libtbx.utils import Sorry, multi_out
 from libtbx import easy_pickle
+from libtbx import runtime_utils
 from libtbx import Auto
 import libtbx.load_env
 import os.path
@@ -28,16 +29,23 @@ molprobity {
       have experimental data).
   nuclear = False
     .type = bool
-    .help = '''Use nuclear hydrogen positions'''
+    .short_caption = "Use nuclear hydrogen positions"
   min_cc_two_fofc = 0.8
     .type = float
   n_bins = 10
     .type = int
+    .short_caption = Number of resolution bins
   use_pdb_header_resolution_cutoffs = False
     .type = bool
+    .short_caption = Use resolution cutoffs in PDB header
   count_anomalous_pairs_separately = False
     .type = bool
     .expert_level = 2
+  flags
+    .expert_level = 3
+  {
+    include scope mmtbx.validation.molprobity.master_phil_str
+  }
 }
 output {
   quiet = False
@@ -57,6 +65,7 @@ output {
     .help = Write maps (if experimental data supplied)
   prefix = None
     .type = str
+    .style = hidden
   pickle = False
     .type = bool
     .style = hidden
@@ -64,6 +73,12 @@ output {
     .type = bool
     .help = Display plots in wxPython
     .style = hidden
+  gui_dir = None
+    .type = path
+    .short_caption = Output directory
+    .help = Output directory (Phenix GUI only).
+    .style = output_dir
+  include scope libtbx.phil.interface.tracking_params
 }
 """)
 
@@ -115,10 +130,11 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
   if (params.output.probe_dots) or (params.output.kinemage) :
     probe_file = params.output.prefix + "_probe.txt"
   raw_data = cmdline.raw_data
-  result = mmtbx.validation.molprobity.molprobity(
+  validation = mmtbx.validation.molprobity.molprobity(
     pdb_hierarchy=cmdline.pdb_hierarchy,
     xray_structure=cmdline.xray_structure,
     fmodel=fmodel,
+    flags=params.molprobity.flags,
     crystal_symmetry=cmdline.crystal_symmetry,
     geometry_restraints_manager=cmdline.geometry,
     raw_data=cmdline.raw_data,
@@ -133,13 +149,15 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
     use_pdb_header_resolution_cutoffs=\
       params.molprobity.use_pdb_header_resolution_cutoffs,
     count_anomalous_pairs_separately=\
-      params.molprobity.count_anomalous_pairs_separately)
+      params.molprobity.count_anomalous_pairs_separately,
+    file_name=params.input.pdb.file_name[0])
   if (not params.output.quiet) :
     out2 = multi_out()
     out2.register("stdout", out)
     f = open(params.output.prefix + ".out", "w")
     out2.register("txt_out", f)
-    result.show(out=out2, outliers_only=params.molprobity.outliers_only,
+    validation.show(out=out2,
+      outliers_only=params.molprobity.outliers_only,
       show_percentiles=params.output.percentiles)
     f.close()
     print >> out, ""
@@ -149,7 +167,7 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
       import mmtbx.kinemage.validation
       kin_file = "%s.kin" % params.output.prefix
       kin_out = mmtbx.kinemage.validation.export_molprobity_result_as_kinemage(
-        result=result,
+        result=validation,
         pdb_hierarchy=cmdline.pdb_hierarchy,
         geometry=cmdline.geometry,
         probe_file=probe_file,
@@ -161,19 +179,19 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
       if (not params.output.quiet) :
         print >> out, "Wrote kinemage to %s" % kin_file
     if (params.output.pickle) :
-      easy_pickle.dump("%s.pkl" % params.output.prefix, result)
+      easy_pickle.dump("%s.pkl" % params.output.prefix, validation)
       if (not params.output.quiet) :
         print >> out, "Saved result to %s.pkl" % params.output.prefix
     if (params.output.coot) :
       coot_file = "%s_coot.py" % params.output.prefix
-      result.write_coot_script(coot_file)
+      validation.write_coot_script(coot_file)
       if (not params.output.quiet) :
         print >> out, "Wrote script for Coot: %s" % coot_file
     if (params.output.maps) :
       pass
   else :
     print >> out, ""
-    result.show_summary(out=out, show_percentiles=params.output.percentiles)
+    validation.show_summary(out=out, show_percentiles=params.output.percentiles)
   if (params.output.wxplots) :
     try :
       import wxtbx.app
@@ -181,11 +199,53 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
       raise Sorry("wxPython not available.")
     else :
       app = wxtbx.app.CCTBXApp(0)
-      result.display_wx_plots()
+      validation.display_wx_plots()
       app.MainLoop()
   if (return_model_fmodel_objects) :
-    return result, cmdline.pdb_hierarchy, cmdline.fmodel
-  return result
+    return validation, cmdline.pdb_hierarchy, cmdline.fmodel
+  return result(
+    validation=validation,
+    pdb_file=params.input.pdb.file_name[0],
+    map_file=None,
+    output_dir=os.getcwd())
+
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    os.mkdir(self.output_dir)
+    os.chdir(self.output_dir)
+    return run(args=self.args, out=sys.stdout)
+
+class result (object) :
+  """
+  Wrapper object for Phenix GUI.
+  """
+  def __init__ (self,
+      validation,
+      pdb_file,
+      map_file,
+      output_dir) :
+    self.validation = validation
+    self.pdb_file = pdb_file
+    self.map_file = map_file
+    self.output_dir = output_dir
+
+  def finish_job (self, result) :
+    files = []
+    if self.map_file is not None and os.path.isfile(self.map_file) :
+     files.append(("Map coefficients", self.map_file))
+    stats = []
+    if getattr(self, "mvd_summary", None) is not None :
+      mp = self.validation
+      stats.extend([
+        ("R-work", str_utils.format_value("%.4f", mp.r_work())),
+        ("R-free", str_utils.format_value("%.4f", mp.r_free())),
+        ("RMS(bonds)", str_utils.format_value("%.3f", mp.rms_bonds())),
+        ("RMS(angles)", str_utils.format_value("%.4f", mp.rms_angles())),
+        ("Clashscore", str_utils.format_value("%.2f", mp.clashscore())),
+        ("MolProbity score", str_utils.format_value("%.3f",
+          mp.molprobity_score())),
+      ])
+    return (files, stats)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

@@ -55,6 +55,11 @@ class rotamer (residue) :
     return "%s:%s:%s:%s:%s" % (self.id_str(), s_occ, s_score,
       self.format_chi_angles(pad=True, sep=":"), self.rotamer_name)
 
+  # GUI output
+  def as_table_row_phenix (self) :
+    return [ self.chain_id, "%s %s" % (self.resname, self.resid),
+             self.score ] + list(self.chi_angles)
+
 class rotamer_ensemble (residue) :
   """Container for validation results for an ensemble of residues."""
   __slots__ = rotamer.__slots__
@@ -80,6 +85,9 @@ class rotalyze (validation) :
   __slots__ = validation.__slots__ + ["out_percent"]
   program_description = "Analyze protein sidechain rotamers"
   output_header = "residue:occupancy:score%:chi1:chi2:chi3:chi4:rotamer"
+  gui_list_headers = ["Chain","Residue","Score","Chi1","Chi2","Chi3","Chi4"]
+  gui_formats = ["%s", "%s", "%.2f", "%.1f", "%.1f", "%.1f", "%.1f"]
+  wx_column_widths = [120]*7
 
   def get_result_class (self) : return rotamer
 
