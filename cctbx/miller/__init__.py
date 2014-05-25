@@ -4201,6 +4201,32 @@ class array(set):
       return detwinned.f_sq_as_f()
     return detwinned
 
+  #---------------------------------------------------------------------
+  # Xtriage extensions - tested in mmtbx/scaling/tst_xtriage_twin_analyses.py
+  def analyze_intensity_statistics (self, d_min=2.5, log=None) :
+    """
+    Detect translational pseudosymmetry and twinning, using methods in
+    Xtriage.  Returns a mmtbx.scaling.twin_analyses.twin_law_interpretation
+    object.  (Requires mmtbx to be configured to be functional.)
+    """
+    import libtbx.load_env
+    if (not libtbx.env.has_module("mmtbx")) :
+      raise ImportError("mmtbx is required for this functionality.")
+    from mmtbx.scaling import twin_analyses_new as twin_analyses # FIXME
+    return twin_analyses.analyze_intensity_statistics(
+      self=self,
+      d_min=d_min,
+      log=log)
+
+  def has_twinning (self, d_min=2.5) :
+    """
+    Convenience method for identifying twinned data.  Note that this is
+    hugely inefficient if any other Xtriage analyses are planned, since it
+    discards the other results.  Requires mmtbx.
+    """
+    return self.analyze_intensity_statistics(d_min=d_min).has_twinning()
+
+########################################################################
 # END array class
 
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
