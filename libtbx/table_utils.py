@@ -76,6 +76,28 @@ def format(rows,
     return "\n".join(
       [line.rstrip() for line in output.getvalue().splitlines()])
 
+class simple_table (object) :
+  """
+  Container for generic table contents, used in Xtriage and elsewhere.  The
+  table cells are assumed to be pre-formatted as strings (but not fixed-width).
+  This is designed to be easily fed into the format() function, but it can also
+  be displayed in GUIs or HTML tables.
+  """
+  def __init__ (self,
+      table_rows,
+      column_headers=(),
+      comments=None) :
+    self.column_headers = list(column_headers)
+    self._rows = table_rows
+
+  def format (self, indent=0) :
+    prefix = " " * indent
+    return format(
+      rows=self.column_headers+self._rows,
+      has_header=(len(self.column_headers) != 0),
+      prefix=prefix+'| ',
+      postfix=' |')
+
 # written by Mike Brown
 # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/148061
 def wrap_onspace(text, width):
