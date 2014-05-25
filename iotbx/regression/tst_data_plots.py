@@ -30,7 +30,7 @@ $$
   assert (len(t.data) == 4)
   assert (t.data[0] == [0.02, 0.04, 0.06, 0.08, 0.10])
   assert (t.data[3][4] is None)
-  assert (t.format_loggraph() == loggraph1)
+  assert (t.format_loggraph() == loggraph1), t.format_loggraph()
   f = open("_tst_data_plots.log", "w")
   f.write("\nRandom non-loggraph text\n\n")
   f.write(loggraph1)
@@ -99,7 +99,8 @@ Resolution shell statistics
 0.08      1949      0.28      0.75
 0.1       1783      0.38      *
 """
-  assert t2.format_simple(indent=2) == simple_table
+  formatted = t2.format_simple(indent=2)
+  assert (formatted == simple_table), formatted
   assert str(t2) == simpler_table
   json_str = t2.export_json()
   assert (json_str == '{"graph_types": ["A", "A"], "graph_columns": [[0, 2], [0, 3]], "title": "Resolution shell statistics", "column_labels": ["1/resol^2", "Nrefl", "R-free", "FOM"], "data": [[0.02, 0.04, 0.06, 0.08, 0.1], [2004, 2084, 2037, 1949, 1783], [0.25, 0.23, 0.27, 0.28, 0.38], [0.89, 0.88, 0.83, 0.75, null]], "graph_names": ["R-free vs. resolution", "FOM vs. resolution"], "x_is_inverse_d_min": false}')
