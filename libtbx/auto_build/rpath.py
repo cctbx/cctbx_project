@@ -84,26 +84,27 @@ class FixLinuxRpath(object):
     targets |= set(find_ext('.so', root=root))
     # targets |= set(find_exec(root=root))
 
-    # First pass: identify relative $ORIGIN for each library.
+    # First pass: get all directories.
     origins = {}
     for target in sorted(targets):
-      relpath = os.path.relpath(os.path.dirname(target), root)
-      relpath = os.path.join('$ORIGIN', relpath)
-      origins[os.path.basename(target)] = relpath
-
-    print "=== ORIGINS ==="
-    for k,v in sorted(origins.items()): print k, v
+      origins[os.path.basename(target)] = os.path.dirname(target)
 
     # Second pass: find linked libraries, add rpath's
     for target in sorted(targets):
+      print "\n\n====", target
       deps = self.find_deps(target)
-      found = set()
+      rpath = set()
+      # Find a matching library...
       for dep in deps:
-        if origins.get(dep):
-          found.add(origins[dep])
-      if found:
-        rpaths = ':'.join(found)
-        cmd(['patchelf', '--set-rpath', rpaths, target])
+        found = [i for i in origins if i in dep]
+        # print dep, found, map(origins.get, found)
+        for i in found:
+          relpath = os.path.relpath(origins[i], os.path.dirname(target))
+          relpath = os.path.join('$ORIGIN', relpath)
+          rpath.add(relpath)
+      
+      if rpath:
+        cmd(['patchelf', '--set-rpath', ":".join(rpath), target])
 
     return
 
