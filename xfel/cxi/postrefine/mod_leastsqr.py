@@ -97,10 +97,11 @@ def func(params, *args):
   params_all = prep_output(params, cs)
   G, B, rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma = params_all
 
-  if (a <=0)  or (b <=0) or (c<=0):
-    print 'Unit cell is zero or negative', a, b, c
-    return 0
-  uc = unit_cell((a,b,c,alpha,beta,gamma))
+  try:
+    uc = unit_cell((a,b,c,alpha,beta,gamma))
+  except Exception:
+    return None
+
   crystal_init_orientation = get_crystal_orientation(uc.orthogonalization_matrix(), crystal_rotation_matrix)
   crystal_orientation_model = crystal_init_orientation.rotate_thru((1,0,0), rotx
                ).rotate_thru((0,1,0), roty)
@@ -253,7 +254,6 @@ class leastsqr_handler(object):
     try:
       xopt_limit, cov_x, infodict, errmsg, success = optimize.leastsq(func, x0, args=(I_r_true, observations_original, ph, crystal_init_orientation, alpha_angle_set, iph), full_output=True)
     except Exception:
-      print 'least-squares optimization failed'
       xopt_limit = x0
       cov_x = None
 
@@ -263,10 +263,8 @@ class leastsqr_handler(object):
     #3. decide wheter to take the refined parameters
     if (abs(a-iph.target_unit_cell[0]) > iph.uc_len_tol or abs(b-iph.target_unit_cell[1]) > iph.uc_len_tol or abs(c-iph.target_unit_cell[2]) > iph.uc_len_tol \
         or abs(alpha-iph.target_unit_cell[3]) > iph.uc_angle_tol or abs(beta-iph.target_unit_cell[4]) > iph.uc_angle_tol or abs(gamma-iph.target_unit_cell[5]) > iph.uc_angle_tol):
-      print 'Unit-cell parameters exceed the limits (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)
       if iph.flag_force_accept_all_frames:
         a, b, c, alpha, beta, gamma = uc_init_params
-        print ' flag_force_accept_all_frames is on, reset unit cell to (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)
         rotx = 0
         roty = 0
         ry = spot_radius
