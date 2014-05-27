@@ -22,7 +22,11 @@ class intensities_scaler(object):
     Constructor
     '''
 
-  def calc_average_I_sigI(self, I, sigI, G, B, p, SE_I, sin_theta_over_lambda_sq, avg_mode, SE, iph):
+  def calc_average_I_sigI(self, I, sigI, G, B, p, SE_I, sin_theta_over_lambda_sq, avg_mode, SE, iph, d_spacings):
+    for i in range(len(d_spacings)):
+      if (d_spacings[i] < iph.d_min_partiality):
+        p[i] = 1.0
+
     I_full = I/(G * flex.exp(-2*B*sin_theta_over_lambda_sq) * p)
     sigI_full = sigI/(G * flex.exp(-2*B*sin_theta_over_lambda_sq) * p)
 
@@ -114,7 +118,7 @@ class intensities_scaler(object):
           beta_all.append(pres.uc_params[4])
           gamma_all.append(pres.uc_params[5])
 
-    uc_mean = flex.double([np.mean(a_all), np.mean(b_all), np.mean(c_all), np.mean(alpha_all), np.mean(beta_all), np.mean(gamma_all)])
+    uc_mean = flex.double([np.median(a_all), np.median(b_all), np.median(c_all), np.median(alpha_all), np.median(beta_all), np.median(gamma_all)])
 
     return uc_mean
 
@@ -139,7 +143,8 @@ class intensities_scaler(object):
     SE_all = flex.double()
     sin_sq_all = flex.double()
     cn_good_frame = 0
-
+    cn_bad_frame_uc = 0
+    cn_bad_frame_cc = 0
     for pres in results:
       if pres is not None:
         fh = file_handler()
@@ -168,8 +173,10 @@ class intensities_scaler(object):
             print pres.frame_no, img_filename, ' merged'
           else:
             print pres.frame_no, img_filename, ' discarded - unit-cell exceeds the limits (%6.2f %6.2f %6.2f %5.2f %5.2f %5.2f)'%(pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], pres.uc_params[4], pres.uc_params[5])
+            cn_bad_frame_uc += 1
         else:
           print pres.frame_no, img_filename, ' discarded - C.C. too low (C.C.=%5.2f%%)'%(pres.stats[2]*100)
+          cn_bad_frame_cc += 1
     #plot stats
     self.plot_stats(results, iph, iph.uc_len_tol, iph.uc_angle_tol)
 
@@ -194,6 +201,7 @@ class intensities_scaler(object):
     miller_indices_all_sort = miller_array_all.indices().select(perm)
     I_obs_all_sort = miller_array_all.data().select(perm)
     sigI_obs_all_sort = miller_array_all.sigmas().select(perm)
+    d_spacings_sort = miller_array_all.d_spacings().data().select(perm)
     G_all_sort = G_all.select(perm)
     B_all_sort = B_all.select(perm)
     p_all_sort = p_all.select(perm)
@@ -212,6 +220,7 @@ class intensities_scaler(object):
       miller_index_group = miller_indices_all_sort[refl_now]
       I_obs_group = flex.double()
       sigI_obs_group = flex.double()
+      d_spacings_group = flex.double()
       G_group = flex.double()
       B_group = flex.double()
       p_group = flex.double()
@@ -227,6 +236,7 @@ class intensities_scaler(object):
           if p_all_sort[i] >= partiality_filter:
             I_obs_group.append(I_obs_all_sort[i])
             sigI_obs_group.append(sigI_obs_all_sort[i])
+            d_spacings_group.append(d_spacings_sort[i])
             G_group.append(G_all_sort[i])
             B_group.append(B_all_sort[i])
             p_group.append(p_all_sort[i])
@@ -242,7 +252,7 @@ class intensities_scaler(object):
 
       if len(I_obs_group) > 0:
         I_avg, sigI_avg, stat, I_avg_even, I_avg_odd = self.calc_average_I_sigI(I_obs_group, sigI_obs_group,
-            G_group, B_group, p_group, SE_I_group, sin_sq_group, avg_mode, SE_group, iph)
+            G_group, B_group, p_group, SE_I_group, sin_sq_group, avg_mode, SE_group, iph, d_spacings_group)
 
         if math.isnan(stat[0]) or math.isinf(stat[0]) or math.isnan(stat[1]) or math.isinf(stat[1]):
           print miller_index_group, ' not merged (Qw=%.4g/%.4g)'%(stat[0],stat[1])
@@ -457,6 +467,8 @@ class intensities_scaler(object):
      n_refl_iso, np.mean(miller_array_merge.data()/miller_array_merge.sigmas()))
     txt_out += '--------------------------------------------------------------------------------------------------------\n'
     txt_out += 'No. of total observed reflections: %9.0f from %5.0f frames' %(len(miller_indices_all), cn_good_frame)
+    txt_out += '\n'
+    txt_out += 'No. of discarded frames - initial unit cell exceeds the limit: %5.0f frames; C.C. too low: %5.0f'%(cn_bad_frame_uc, cn_bad_frame_cc)
     txt_out += '\n'
     txt_out += 'Average unit-cell parameters: (%6.2f, %6.2f, %6.2f %6.2f, %6.2f, %6.2f)'%(uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5])
     txt_out += '\n'
@@ -785,9 +797,11 @@ class input_handler(object):
     self.n_bins=25
     self.pixel_size_mm = 0
     self.frame_accept_min_cc = 0.25
-    self.flag_force_accept_all_frames = False
+    self.flag_force_accept_all_frames = True
     self.uc_len_tol = 3.5
     self.uc_angle_tol = 3.5
+    self.flag_force_no_postrefine = False
+    self.d_min_partiality = 1.5
 
     file_input = open(file_name_input, 'r')
     data_input = file_input.read().split('\n')
@@ -853,8 +867,8 @@ class input_handler(object):
         elif param_name=='frame_accept_min_cc':
           self.frame_accept_min_cc=float(param_val)
         elif param_name=='flag_force_accept_all_frames':
-          if param_val=='True':
-            self.flag_force_accept_all_frames=True
+          if param_val=='False':
+            self.flag_force_accept_all_frames=False
         elif param_name.lower()=='logging_level':
           if param_val.lower()=='critical':
             logging.getLogger().setLevel(logging.CRITICAL)
@@ -866,6 +880,9 @@ class input_handler(object):
           self.uc_len_tol=float(param_val)
         elif param_name=='uc_angle_tol':
           self.uc_angle_tol=float(param_val)
+        elif param_name=='flag_force_no_postrefine':
+          if param_val=='True':
+            self.flag_force_accept_all_frames=True
 
 
 
@@ -928,6 +945,9 @@ class input_handler(object):
     self.txt_out += 'pixel_size_mm '+str(self.pixel_size_mm)+'\n'
     self.txt_out += 'frame_accept_min_cc '+str(self.frame_accept_min_cc)+'\n'
     self.txt_out += 'flag_force_accept_all_frames '+str(self.flag_force_accept_all_frames)+'\n'
+    self.txt_out += 'uc_len_tol '+str(self.uc_len_tol)+'\n'
+    self.txt_out += 'uc_angle_tol '+str(self.uc_angle_tol)+'\n'
+    self.txt_out += 'flag_force_no_postrefine '+str(self.flag_force_no_postrefine)+'\n'
 
     print self.txt_out
 

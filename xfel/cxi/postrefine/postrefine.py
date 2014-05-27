@@ -7,7 +7,6 @@ cxi.postrefine input=input.inp /path/to/pickle/files
 from __future__ import division
 from cctbx.array_family import flex
 from cctbx import miller
-from scitbx.matrix import col
 import numpy as np
 import cPickle as pickle
 from mod_util import intensities_scaler, file_handler, input_handler
@@ -192,7 +191,7 @@ class postref_handler(object):
             var_I_p=var_I_p,
             var_k=var_k,
             var_p=var_p)
-      print 'frame %6.0f'%pres.frame_no, polar_hkl, ' SE=%7.2f R-sq=%7.2f CC=%7.2f'%pres.stats
+      print 'frame %6.0f'%pres.frame_no, ' SE=%7.2f R-sq=%7.2f CC=%7.2f'%pres.stats, polar_hkl
 
     return pres
 
@@ -248,7 +247,7 @@ class postref_handler(object):
             var_k=var_k,
             var_p=var_p)
 
-    print 'frame %6.0f'%frame_no, polar_hkl, '<I>=%9.2f <G>=%9.2f G=%9.2f'%(np.mean(observations_non_polar.data()), mean_of_mean_I, G)
+    print 'frame %6.0f'%frame_no, '<I>=%9.2f <G>=%9.2f G=%9.2f'%(np.mean(observations_non_polar.data()), mean_of_mean_I, G), polar_hkl
     return pres
 
 
