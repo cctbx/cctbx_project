@@ -93,8 +93,8 @@ class simple_table (object) :
   def format (self, indent=0) :
     prefix = " " * indent
     return format(
-      rows=self.column_headers+self._rows,
-      has_header=(len(self.column_headers) != 0),
+      rows=[ self.column_headers ]+self._rows,
+      has_header=False, #(len(self.column_headers) != 0),
       prefix=prefix+'| ',
       postfix=' |')
 
