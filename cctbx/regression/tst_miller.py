@@ -54,7 +54,7 @@ def exercise_set():
   assert approx_equal(ms.minimum_wavelength_based_on_d_min(tolerance=0.1),
     2.11968541434)
   p1 = ms.expand_to_p1()
-  assert p1.indices().size() == 6
+  assert p1.indices().size() == p1.size() == len(p1) == 6
   p1b, iselection = ms.expand_to_p1(return_iselection=True)
   assert p1b.indices().all_eq(p1.indices())
   assert list(iselection) == [0, 0, 0, 0, 1, 1]
@@ -529,7 +529,7 @@ def exercise_array():
   assert ma.sigmas() == sigmas
   assert ma.info() == "test"
   assert ma.observation_type() is None
-  assert ma.size() == 2
+  assert ma.size() == len(ma) == 2
   ma.set_info(miller.array_info(
     source="file", labels=["a", "b", "c"]))
   assert str(ma.info()) == "file:a,b,c"
