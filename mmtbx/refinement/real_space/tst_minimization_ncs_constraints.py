@@ -1,12 +1,12 @@
-
 from __future__ import division
-import time
+from  iotbx.pdb.multimer_reconstruction import ncs_group_object
+import mmtbx.refinement.minimization_ncs_constraints
+import mmtbx.refinement.real_space.weight
+import mmtbx.utils.ncs_utils as nu
+import mmtbx.utils
 import iotbx.pdb
 import mmtbx.ncs
-import mmtbx.refinement.real_space.weight
-import mmtbx.utils
-import mmtbx.refinement.minimization_ncs_constraints
-import mmtbx.utils.ncs_utils as nu
+import time
 import math
 
 pdb_str_answer = """\
@@ -67,6 +67,18 @@ TER      24      THR C   1
 END
 """
 
+pdb_str_poor2 = """\
+CRYST1   26.628   30.419   28.493  90.00  90.00  90.00 P 1
+ATOM      1  N   THR A   1      15.886  19.796  13.070  1.00 10.00           N
+ATOM      2  CA  THR A   1      15.489  18.833  12.050  1.00 10.00           C
+ATOM      3  C   THR A   1      15.086  17.502  12.676  1.00 10.00           C
+ATOM      4  O   THR A   1      15.739  17.017  13.600  1.00 10.00           O
+ATOM      5  CB  THR A   1      16.619  18.590  11.033  1.00 10.00           C
+ATOM      6  OG1 THR A   1      16.963  19.824  10.392  1.00 10.00           O
+ATOM      7  CG2 THR A   1      16.182  17.583   9.980  1.00 10.00           C
+TER       8      THR A   1
+"""
+
 def run(prefix="tst", d_min=1.0):
   """
   NCS constraints: xyz, adp, and operators.
@@ -88,10 +100,9 @@ def run(prefix="tst", d_min=1.0):
   #
   pdb_inp_poor = iotbx.pdb.input(file_name=pdb_file_name_poor)
   ph_poor = pdb_inp_poor.construct_hierarchy()
+  ph_poor_obj = iotbx.pdb.hierarchy.input(pdb_string=pdb_str_poor2)
   ph_poor.atoms().reset_i_seq()
   xrs_poor = pdb_inp_poor.xray_structure_simple()
-  #
-  ncs_selection = ph_poor.atom_selection_cache().selection(string = "chain A")
   #
   ppf = mmtbx.utils.process_pdb_file_srv(log=False).process_pdb_files(
     raw_records=pdb_str_poor.splitlines())[0]
@@ -115,12 +126,20 @@ def run(prefix="tst", d_min=1.0):
   tv = ncs_obj_poor.back_translation_vectors
   ir = [rm[0]]
   it = [tv[0]]
-  # shake; this removes identity operators
-  rm, tv = nu.shake_transformations(
-    rotation_matrices       = rm,
-    translation_vectors     = tv,
-    shake_angles_sigma      = 1*math.pi/180,
-    shake_translation_sigma = 0.1)
+  # create transformation object
+  transforms_obj = ncs_group_object()
+  transforms_obj.populate_ncs_group_object(
+    ncs_refinement_params = 'ncs_refinement {ncs_selection = chain A}',
+    pdb_hierarchy_inp = ph_poor_obj,
+    rotations=rm,
+    translations=tv)
+  x = nu.concatenate_rot_tran(transforms_obj)
+  x = nu.shake_transformations(
+    x = x,
+    shake_angles_sigma=1*math.pi/180,
+    shake_translation_sigma=0.1)
+  transforms_obj = nu.separate_rot_tran(x,transforms_obj)
+  rm,tv = nu.get_rotation_translation_as_list(transforms_obj)
   # just to see how result of shaking looks like
   rm_ = ir+rm
   tv_ = it+tv
@@ -130,6 +149,7 @@ def run(prefix="tst", d_min=1.0):
     sites_cart_master_ncs_copy=ncs_obj_poor.ph_first_chain.atoms().extract_xyz())
   ncs_obj_poor.write_pdb_file(file_name="asu2.pdb",
     crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
+  transforms_obj = nu.update_transforms(transforms_obj,rm,tv)
   #
   for i in xrange(5):
     data_weight = 1
@@ -148,8 +168,7 @@ def run(prefix="tst", d_min=1.0):
         target_function_and_grads_real_space(
           map_data                   = map_data,
           xray_structure             = xrs_poor,
-          rotation_matrices          = rm,
-          translation_vectors        = tv,
+          transforms_obj             = transforms_obj,
           real_space_gradients_delta = d_min/4,
           restraints_manager         = restraints_manager,
           data_weight                = data_weight,
@@ -158,9 +177,7 @@ def run(prefix="tst", d_min=1.0):
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         target_and_grads_object      = tfg_obj,
         xray_structure               = xrs_poor,
-        rotation_matrices            = rm,
-        translation_vectors          = tv,
-        ncs_atom_selection           = ncs_selection,
+         transforms_obj              = transforms_obj,
         finite_grad_differences_test = False,
         max_iterations               = 60,
         refine_sites                 = refine_sites,
@@ -170,15 +187,15 @@ def run(prefix="tst", d_min=1.0):
       #
       ncs_obj_poor = mmtbx.ncs.asu_ncs_converter(pdb_hierarchy = ph_poor,
         add_identity=False)
-      rm = ncs_obj_poor.back_rotation_matrices
-      tv = ncs_obj_poor.back_translation_vectors
+      rm,tv = nu.get_rotation_translation_as_list(transforms_obj)
+      # rm = ncs_obj_poor.back_rotation_matrices
+      # tv = ncs_obj_poor.back_translation_vectors
   #
   ph_poor.write_pdb_file(file_name="refined.pdb")
 
 
 if (__name__ == "__main__"):
-  # TODO: change function input parameters
-  # t0=time.time()
-  # run()
+  t0=time.time()
+  run()
   print "Time: %6.4f"%(time.time()-t0)
   print "OK"
