@@ -328,6 +328,8 @@ class intensities_scaler(object):
     binner_template_asu = miller_array_template_asu.setup_binner(n_bins=iph.n_bins)
     binner_template_asu_indices = binner_template_asu.bin_indices()
 
+    csv_out = ""
+    csv_out +='Bin, Low, High, Completeness, <N_obs>, Qmeas, Qw, CC1/2, N_ind, CCiso, N_ind, <I/sigI>\n'
     txt_out = '\n'
     txt_out += 'Summary for '+output_mtz_file_prefix+'_merge.mtz\n'
     txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |Qmeas    Qw     CC1/2   N_ind |CCiso  N_ind| <I/sigI>\n'
@@ -423,6 +425,10 @@ class intensities_scaler(object):
           len(miller_indices_obs_bin), len(miller_indices_bin),\
           multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12_bin*100, n_refl_cc12_bin, cc_iso_bin*100, n_refl_cciso_bin, mean_i_over_sigi_bin)
       txt_out += '\n'
+      csv_out += '%02d, %7.2f, %7.2f, %5.1f, %6.0f, %7.2f, %7.2f, %7.2f, %7.2f, %6.0f, %7.2f, %6.0f, %7.2f\n' \
+                 %(i, binner_template_asu.bin_d_range(i)[0], binner_template_asu.bin_d_range(i)[1], completeness*100/len(miller_indices_obs_bin),
+                   len(miller_indices_bin), multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12_bin*100, n_refl_cc12_bin, cc_iso_bin*100,
+                   n_refl_cciso_bin, mean_i_over_sigi_bin)
 
     #calculate CCiso
     cc_iso = 0
@@ -474,7 +480,7 @@ class intensities_scaler(object):
     txt_out += '\n'
     print txt_out
 
-    return miller_array_merge, txt_out
+    return miller_array_merge, txt_out, csv_out
 
   def plot_stats(self, results, iph, uc_len_tol, uc_angle_tol):
     #retrieve stats from results and plot them

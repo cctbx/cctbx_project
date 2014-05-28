@@ -260,5 +260,5 @@ def merge_observations(results,
   #lenght of this list equals to number of input frames
 
   inten_scaler = intensities_scaler()
-  miller_array_merge, txt_out = inten_scaler.output_mtz_files(results, iph, output_mtz_file_prefix, avg_mode)
-  return miller_array_merge, txt_out
+  miller_array_merge, txt_out, csv_out = inten_scaler.output_mtz_files(results, iph, output_mtz_file_prefix, avg_mode)
+  return miller_array_merge, txt_out, csv_out
