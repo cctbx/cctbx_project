@@ -12,6 +12,14 @@ def getvs(cmap, threshold):
     v[i] = (map_result==i).count(True)
   return v, list(co.regions())
 
+def getvs_integer(cmap, threshold):
+  co = maptbx.connectivity_int(map_data=cmap, threshold=threshold)
+  map_result = co.result()
+  v=[0,0,0]
+  for i in range(3):
+    v[i] = (map_result==i).count(True)
+  return v, list(co.regions())
+
 
 def exercise1():
   pdb_str="""
@@ -28,7 +36,7 @@ END
   fft_map = miller.fft_map(crystal_gridding=cg, fourier_coefficients=fc)
   map_data = fft_map.real_map_unpadded()
   # pass map and threshold value
-  co = maptbx.connectivity(map_data=map_data, threshold=100)
+  co = maptbx.connectivity(map_data=map_data, threshold=100.)
   # get 'map' of the same size with integers: 0 where below threshold,
   # 1,2,3... - for connected regions
   map_result = co.result()
@@ -102,6 +110,26 @@ def exercise4():
   v, volumes = getvs(cmap, 20)
   assert v == [1000000,0,0]
   assert v[:1] == volumes
+
+def exercise41():
+  cmap = flex.int(flex.grid(100,100,100))
+  cmap.fill(1)
+  for i in range(10,20):
+    for j in range(10,20):
+      for k in range(10,20):
+        cmap[i,j,k] = 10
+  v, volumes = getvs_integer(cmap, 5)
+  assert v == [999000, 1000, 0]
+  assert v[:2] == volumes
+  #print "all filled"
+  v, volumes = getvs_integer(cmap, -5)
+  assert v == [0,1000000,0]
+  assert v[:2] == volumes
+  #print "none filled"
+  v, volumes = getvs_integer(cmap, 20)
+  assert v == [1000000,0,0]
+  assert v[:1] == volumes
+
 
 def exercise5():
   #print "corner blob"
@@ -342,6 +370,7 @@ if __name__ == "__main__" :
   exercise1()  # examples of usage are here!
   exercise3()
   exercise4()
+  exercise41()  # example to use integer map. Careful, different class name.
   exercise5()
   exercise6()
   exercise_volume_cutoff()

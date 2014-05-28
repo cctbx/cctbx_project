@@ -8,13 +8,15 @@ namespace cctbx { namespace maptbx {
 
 //! Map connectivity analysis.
 
+
+template <class MapType>
 class connectivity {
 
 private:
   af::versa<int, af::c_grid<3> > map_new;
   af::shared<int> region_vols;
   af::tiny<int, 3> map_dimensions;
-  af::shared<double> region_maximum_values;
+  af::shared<MapType> region_maximum_values;
   int n_regions;
 
   void
@@ -46,7 +48,7 @@ protected:
 
 public:
   connectivity(
-    af::const_ref<double, af::c_grid<3> > const& map_data,
+    af::const_ref<MapType, af::c_grid<3> > const& map_data,
     double const& threshold)
   {
     map_dimensions = map_data.accessor();
@@ -78,7 +80,7 @@ public:
               cur_reg += 1;
               tempcoors[0] = scitbx::vec3<int> (i,j,k);
               map_new(i,j,k) = cur_reg;
-              double cur_max_value = map_data(i,j,k);
+              MapType cur_max_value = map_data(i,j,k);
               scitbx::vec3<int> cur_max (i,j,k);
               cur_reg_vol = 1;
               pointer_empty = 1;
@@ -140,9 +142,9 @@ public:
 
   af::versa<int, af::c_grid<3> > result() {return map_new;}
   af::shared<int> regions() {return region_vols;}
-  af::shared<double> maximum_values() {return region_maximum_values;}
+  af::shared<MapType> maximum_values() {return region_maximum_values;}
   af::shared<scitbx::vec3<int> > maximum_coors() { return region_maximum_coors;}
-  af::versa<int, af::c_grid<3> > volume_cutoff_mask(double const& volume_cutoff)
+  af::versa<int, af::c_grid<3> > volume_cutoff_mask(int const& volume_cutoff)
   {
     af::versa<int, af::c_grid<3> > vol_mask;
     vol_mask.resize(af::c_grid<3>(map_dimensions), -1);
@@ -166,7 +168,7 @@ public:
   af::versa<int, af::c_grid<3> >
   noise_elimination_two_cutoffs(
     connectivity const& connectivity_t1,
-    double const& volume_threshold_t1,
+    int const& volume_threshold_t1,
     bool keep_interblob=false)
   {
     af::versa<int, af::c_grid<3> > result_mask;
