@@ -44,7 +44,7 @@ class test_rotation_angles_conversion(object):
 
     self.user_phil = parse("""
       ncs_refinement {
-        dont_apply_when_coordinates_present = False
+        apply_when_coordinates_present = False
         apply_to_all_chains = True
         ncs_selection = chain A
         ncs_group {
