@@ -48,6 +48,32 @@ namespace cctbx { namespace maptbx { namespace boost_python {
     }
   };
 
+  template <typename MapType>
+  struct connectivity_wrapper
+  {
+    typedef connectivity<MapType> w_t;
+    static void wrap(const char* python_name) {
+      using namespace boost::python;
+      class_<w_t>(python_name, no_init)
+        .def(init<af::const_ref<MapType, af::c_grid<3> > const&,
+                  MapType const& >(
+                    (arg("map_data"),
+                     arg("threshold"))))
+        .def("result",    &w_t::result)
+        .def("regions",   &w_t::regions)
+        .def("volume_cutoff_mask", &w_t::volume_cutoff_mask,
+                    (arg("volume_cutoff")))
+        .def("noise_elimination_two_cutoffs",
+             &w_t::noise_elimination_two_cutoffs,
+                    (arg("connectivity_t1"),
+                     arg("volume_threshold_t1"),
+                     arg("keep_interblob")=false))
+        .def("maximum_coors", &w_t::maximum_coors)
+        .def("maximum_values", &w_t::maximum_values)
+      ;
+    }
+  };
+
 namespace {
 
   void init_module()
@@ -55,6 +81,8 @@ namespace {
     using namespace boost::python;
 
     map_accumulator_wrapper<double, af::c_grid<3> >::wrap();
+    connectivity_wrapper<double>::wrap("connectivity");
+    connectivity_wrapper<int>::wrap("connectivity_int");
     wrap_grid_indices_around_sites();
     wrap_grid_tags();
     wrap_gridding();
@@ -148,28 +176,6 @@ namespace {
                      arg("n_bins"))))
         .def("map_data", &w_t::map_data)
         .def("v_values", &w_t::v_values)
-      ;
-    }
-
-    {
-      typedef connectivity w_t;
-
-      class_<w_t>("connectivity", no_init)
-        .def(init<af::const_ref<double, af::c_grid<3> > const&,
-                  double const& >(
-                    (arg("map_data"),
-                     arg("threshold"))))
-        .def("result",    &w_t::result)
-        .def("regions",   &w_t::regions)
-        .def("volume_cutoff_mask", &w_t::volume_cutoff_mask,
-                    (arg("volume_cutoff")))
-        .def("noise_elimination_two_cutoffs",
-             &w_t::noise_elimination_two_cutoffs,
-                    (arg("connectivity_t1"),
-                     arg("volume_threshold_t1"),
-                     arg("keep_interblob")=false))
-        .def("maximum_coors", &w_t::maximum_coors)
-        .def("maximum_values", &w_t::maximum_values)
       ;
     }
 
