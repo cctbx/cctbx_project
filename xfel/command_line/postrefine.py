@@ -108,7 +108,7 @@ if (__name__ == "__main__"):
 
     if len(observations_merge_mean_set) > 0:
       from xfel.cxi.postrefine import merge_observations
-      miller_array_merge_mean, txt_merge_mean = merge_observations(observations_merge_mean_set, iph, iph.run_no+'/mean_scaled','average')
+      miller_array_merge_mean, txt_merge_mean, csv_merge_mean = merge_observations(observations_merge_mean_set, iph, iph.run_no+'/mean_scaled','average')
       miller_array_ref = miller_array_merge_mean.expand_to_p1().generate_bijvoet_mates()
       if iph.flag_force_no_postrefine:
         txt_out = iph.txt_out + txt_merge_mean
@@ -144,7 +144,7 @@ if (__name__ == "__main__"):
 
     if len(postrefine_by_frame_good) > 0:
       from xfel.cxi.postrefine import merge_observations
-      miller_array_merge_postref, txt_merge_out = merge_observations(postrefine_by_frame_good, iph, iph.run_no+'/postref_cycle_'+str(i+1),'weighted')
+      miller_array_merge_postref, txt_merge_out, csv_merge_PR = merge_observations(postrefine_by_frame_good, iph, iph.run_no+'/postref_cycle_'+str(i+1),'weighted')
       miller_array_ref = miller_array_merge_postref.generate_bijvoet_mates()
       txt_merge_postref += txt_merge_out
     else:
@@ -161,3 +161,10 @@ if (__name__ == "__main__"):
   f = open(iph.run_no+'/log.txt', 'w')
   f.write(txt_out)
   f.close()
+
+  with open("{}/mean_stats.csv".format(iph.run_no), 'wb') as mean_stats:
+    mean_stats.write(csv_merge_mean)
+
+  with open("{}/PostRef_stats.csv".format(iph.run_no), 'wb') as PR_stats:
+    PR_stats.write(csv_merge_PR)
+
