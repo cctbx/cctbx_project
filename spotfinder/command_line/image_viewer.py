@@ -4,6 +4,7 @@ from __future__ import division
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 import sys,os
 from spotfinder.command_line.signal_strength import master_params
+from libtbx.utils import Sorry
 
 def run(args, command_name="distl.image_viewer"):
   help_str="""Same as distl.signal_strength (type that command for help) except that
