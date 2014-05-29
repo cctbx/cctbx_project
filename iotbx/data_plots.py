@@ -397,7 +397,7 @@ class table_data (object) :
     out += "$$\n"
     return out
 
-  def export_json (self) :
+  def export_json (self, convert=True) :
     import json
     graph_types = self.graph_types
     if graph_types is None :
@@ -411,7 +411,9 @@ class table_data (object) :
       "x_is_inverse_d_min" : self.x_is_inverse_d_min,
       "data" : self.data,
     }
-    return json.dumps(export_dict)
+    if (convert) :
+      return json.dumps(export_dict)
+    return export_dict
 
   def as_rows (self) :
     return flip_table(self.data)
