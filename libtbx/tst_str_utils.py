@@ -233,6 +233,14 @@ Clashscore:            10.9"""
   *   which needs to be reset.   *
   ********************************
 """)
+  from libtbx.str_utils import make_big_header
+  out = StringIO()
+  make_big_header("Section title", out=out)
+  assert (out.getvalue() == """
+################################################################################
+#                                Section title                                 #
+################################################################################
+""")
 
 def exercise_matching_nested_pairs():
   from libtbx.str_utils import find_matching_closing_symbol

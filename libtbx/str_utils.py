@@ -459,6 +459,17 @@ def print_message_in_box (message, **kwds) :
     print >> box, line
   del box
 
+def make_big_header (line, out=None, header_len=80, border_char="#") :
+  """
+  Alternate API for print_message_in_box, for compatibility with make_header
+  """
+  if (out is None) : out = sys.stdout
+  print_message_in_box(
+    out=out,
+    message=line,
+    width=header_len,
+    frame=border_char,
+    center=True)
 
 class find_matching_closing_symbol(object):
   """ This functor deals with a pair of symbol, an opening symbol and a closing one,
