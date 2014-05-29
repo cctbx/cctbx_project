@@ -12,15 +12,6 @@ def getvs(cmap, threshold):
     v[i] = (map_result==i).count(True)
   return v, list(co.regions())
 
-def getvs_integer(cmap, threshold):
-  co = maptbx.connectivity_int(map_data=cmap, threshold=threshold)
-  map_result = co.result()
-  v=[0,0,0]
-  for i in range(3):
-    v[i] = (map_result==i).count(True)
-  return v, list(co.regions())
-
-
 def exercise1():
   pdb_str="""
 CRYST1   10.000  10.000   10.000  90.00  90.00  90.00 P 1
@@ -118,15 +109,15 @@ def exercise41():
     for j in range(10,20):
       for k in range(10,20):
         cmap[i,j,k] = 10
-  v, volumes = getvs_integer(cmap, 5)
+  v, volumes = getvs(cmap, 5)
   assert v == [999000, 1000, 0]
   assert v[:2] == volumes
   #print "all filled"
-  v, volumes = getvs_integer(cmap, -5)
+  v, volumes = getvs(cmap, -5)
   assert v == [0,1000000,0]
   assert v[:2] == volumes
   #print "none filled"
-  v, volumes = getvs_integer(cmap, 20)
+  v, volumes = getvs(cmap, 20)
   assert v == [1000000,0,0]
   assert v[:1] == volumes
 
