@@ -73,7 +73,7 @@ AliasFiles = %s/etc/pango/pangox.aliases
     call("mkfontscale %s" % fonts_share_dir, log=out)
     call("mkfontdir %s" % fonts_share_dir, log=out)
     print >> out, "rebuilding font cache"
-    call("fc-cache -v %s" % fonts_share_dir, log=out)
+    call("%s/bin/fc-cache -v %s" % (base_dir, fonts_share_dir), log=out)
   else :
     print >> out, "%s not present, could not rebuild fonts" % fonts_etc_dir
   #--- Themes

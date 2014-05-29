@@ -1,6 +1,4 @@
 
-# XXX UNTESTED
-
 """
 Create a graphical Mac installer for a complete installation of CCTBX or
 Phenix (or any other derived software).
@@ -10,6 +8,7 @@ from __future__ import division
 from installer_utils import *
 from optparse import OptionParser
 import os.path as op
+import shutil
 import time
 import sys
 # XXX HACK
@@ -57,15 +56,13 @@ def run (args, out=sys.stdout) :
   dest_name = op.dirname(program_dir)
   if (dest_name == "/Applications") :
     dest_name = "the Applications folder"
-  if (op.exists("pkg_root")) :
+  pkg_root = "pkg_root"
+  if (op.exists(pkg_root)) :
     if (not options.overwrite) :
       print "ERROR: pkg_root already exists - run with --overwrite to ignore"
       return False
-    shutil.rmtree("pkg_root")
+    shutil.rmtree(pkg_root)
   os.mkdir(pkg_root)
-  pkg_path = op.join("pkg_root", op.dirname(program_dir))
-  os.mkdir(pkg_path)
-  shutil.move(program_dir, pkg_path)
   base_name = "%s-%s" % (options.package_name.lower(), options.version)
   pkg_name = base_name + "-%s.pkg" % options.machine_type
   base_pkg = base_name + ".pkg"
@@ -73,7 +70,7 @@ def run (args, out=sys.stdout) :
   os.mkdir("resources")
   welcome = open("resources/welcome.txt", "w")
   welcome.write("""\
-This package contains %{package)s version %(version)s compiled for %(arch)s. \
+This package contains %(package)s version %(version)s compiled for %(arch)s. \
 It will install the full command-line suite and graphical launcher(s) \
 to %(dest_name)s.  If you need to install %(package)s to a different \
 location, you must use the command-line installer (also available from \
@@ -113,6 +110,10 @@ our website).""" % { "package" : options.package_name,
 </plist>
 """ % "\n".join(app_bundle_xml))
   plist.close()
+  # move directory
+  pkg_path = op.join("pkg_root", op.relpath(op.dirname(program_dir), "/"))
+  os.mkdir(pkg_path)
+  shutil.move(program_dir, pkg_path)
   # write out distribution.xml
   misc_files = []
   if (options.background is not None) :
@@ -171,6 +172,7 @@ our website).""" % { "package" : options.package_name,
     "--resources", "resources",
     "--package-path", ".",
     "--version", options.version,
+    pkg_name,
   ]
   call(product_args, out)
   assert op.exists(pkg_name)
