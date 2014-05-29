@@ -98,6 +98,12 @@ class simple_table (object) :
       prefix=prefix+'| ',
       postfix=' |')
 
+  def export (self) :
+    if (len(self.column_headers) != 0) :
+      return [ self.column_headers ] + self._rows
+    else :
+      return self._rows
+
 # written by Mike Brown
 # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/148061
 def wrap_onspace(text, width):
