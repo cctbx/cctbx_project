@@ -102,7 +102,7 @@ class FixLinuxRpath(object):
           relpath = os.path.relpath(origins[i], os.path.dirname(target))
           relpath = os.path.join('$ORIGIN', relpath)
           rpath.add(relpath)
-      
+
       if rpath:
         cmd(['patchelf', '--set-rpath', ":".join(rpath), target])
 
