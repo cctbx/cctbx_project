@@ -9,6 +9,7 @@ from __future__ import division
 import cctbx.array_family.flex # import dependency
 from libtbx.str_utils import make_sub_header, make_header
 from libtbx import slots_getstate_setstate
+from cStringIO import StringIO
 import sys
 
 import boost.python
@@ -24,6 +25,8 @@ class xtriage_output (slots_getstate_setstate) :
   """
   Base class for generic output wrappers.
   """
+  # this is used to toggle behavior in some output methods
+  gui_output = False
   def show_header (self, title) :
     """
     Start a new section with the specified title.
@@ -101,7 +104,10 @@ class printed_output (xtriage_output) :
     make_header(text, out=self.out)
 
   def show_sub_header (self, text) :
-    make_sub_header(text, out=self.out)
+    out_tmp = StringIO()
+    make_sub_header(text, out=out_tmp)
+    for line in out_tmp.getvalue().splitlines() :
+      self.out.write("%s\n" % line.rstrip())
 
   def show_text (self, text) :
     print >> self.out, text
