@@ -20,8 +20,8 @@ def run(_args):
 if __name__ == "__main__":
   import argparse
 
-  parser = argparse.ArgumentParser(description=('Find the best target cell from'
-                                                'a set of indexing pickles.'))
+  parser = argparse.ArgumentParser(description=('''Visualise the orientational
+  distribution of a set of integration pickles'''))
   parser.add_argument('folders', type=str, nargs='+',
                       help='One or more folers containing integration pickles.')
   args = parser.parse_args()
