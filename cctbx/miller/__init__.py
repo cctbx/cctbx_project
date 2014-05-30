@@ -294,9 +294,6 @@ class set(crystal.symmetry):
   def size(self):
     return self.indices().size()
 
-  def __len__ (self) :
-    return self.size()
-
   def copy(self):
     return set(
       crystal_symmetry=self,
