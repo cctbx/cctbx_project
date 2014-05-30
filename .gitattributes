@@ -2781,6 +2781,11 @@ xfel/cftbx/__init__.py -text
 xfel/cftbx/detector/__init__.py -text
 xfel/cftbx/detector/cspad_cbf_tbx.py -text
 xfel/cftbx/detector/generic_detector.py -text
+xfel/clustering/Cluster.py -text
+xfel/clustering/Design_intent -text
+xfel/clustering/SingleFrame.py -text
+xfel/clustering/__init__.py -text
+xfel/clustering/test_cluster.py -text
 xfel/command_line/__init__.py -text
 xfel/command_line/auto_submit.py -text
 xfel/command_line/brehm_diederichs.py -text
