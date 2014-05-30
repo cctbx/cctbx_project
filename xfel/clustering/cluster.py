@@ -5,7 +5,7 @@ import logging
 import scipy.cluster.hierarchy as hcluster
 import numpy as np
 from cctbx.uctbx.determine_unit_cell import NCDist
-from xfel.clustering.SingleFrame import SingleFrame
+from xfel.clustering.singleframe import SingleFrame
 
 __author__ = 'zeldin'
 
