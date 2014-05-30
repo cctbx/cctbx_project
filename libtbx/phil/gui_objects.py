@@ -46,18 +46,85 @@ class menu_item (object) :
     return self.menu_item_name
 
 class style (object) :
-  style_args = ["auto_align", "bold", "box", "color", "date", "use_list",
-                "menu_item", "narrow", "noauto", "noedit", "none_is_auto",
-                "scrolled", "selection", "spinner", "submenu", "tribool",
-                "hidden", "directory", "new_file", "default_cwd", "resolution",
-                "hide_label", "not_none", "noedit", "fixed", "checklist",
-                "set_resolution", "force_data", "anom", "non_anom", "no_view",
-                "process_hkl", "force_rfree", "combo_box", "optional",
-                "no_map", "file_type_default","expand","output_dir","seq_file"]
-  style_kwds = ["auto_launch_dialog", "columns", "dialog_link", "extensions",
-                "file_type", "min", "max", "parent_submenu", "OnUpdate",
-                "OnChange", "renderer", "caption_img", "rlabel", "llabel",
-                "cols", "height", "help_page", "help_anchor", "caption_width"]
+  """
+  Container for flags used to alter the appearance of controls in the Phenix
+  GUI.  These can either be booleans (style_args) or other values (style_kwds).
+  """
+  style_args = [
+    "auto_align", # left-align controls and labels separately (scope)
+    "bold", # bold text label (definition)
+    "box",  # display controls in wx.StaticBox (scope)
+    "color",
+    "date", # control specifies a date (definition)
+    "use_list", # use wx.ListCtrl-based widget (atom_selection, multiple=True)
+    "menu_item", # add to Settings menu (scope)
+    "narrow", # fit controls in 300px (path)
+    "noauto", # don't automatically display as part of parent scope (any)
+    "noedit", # not editable (definition)
+    "none_is_auto", # treat None as Auto
+    "scrolled",
+    "selection", # tags a str definition as atom_selection
+    "spinner", # attach wx.SpinCtrl widget
+    "submenu", # add to Settings menu as submenu (scope)
+    "tribool", # use wx.Choice with True/False/Auto (bool)
+    "hidden",  # never display in GUI (definition)
+    "directory", # specifies a directory (path)
+    "new_file", # specifies a new file (path)
+    "default_cwd", # default to current directory (path)
+    "resolution", # treat as resolution limit (float)
+    "hide_label", # don't display control label
+    "not_none", # don't allow None (definition)
+    "fixed",
+    "checklist", # display as wx.CheckListBox (definition)
+    "set_resolution",
+    "force_data",
+    "anom",
+    "non_anom",
+    "no_view",
+    "process_hkl", # specifies a reflections file with expected data items,
+                   # which will be automatically extracted
+    "force_rfree",
+    "combo_box", # use a wx.ComboBox control (definition)
+    "optional",
+    "no_map",
+    "file_type_default", # specifies that all files of the stated file_type
+                         # should be automatically associated with this path
+                         # parameter.  only used in ListCtrl-based file input
+                         # fields
+    "expand",
+    "output_dir", # specifies that the path defines the output directory, which
+                  # is determined automatically.  only one of these is allowed
+                  # per program, and the GUI will extract this automatically.
+    "seq_file",
+    "single_input", # disable multiple controls (definition, multiple=True)
+  ]
+  style_kwds = [
+    "auto_launch_dialog", # when clicked, launch a window to edit options in
+                          # the named scope.  mostly used in phenix.refine.
+                          # (definition, especially bool)
+    "columns", # number of columns for controls (scope)
+    "dialog_link", # add a button to edit the named scope (definition)
+    "extensions",
+    "file_type", # specifies the file type filter, as well as the behavior of
+                 # the ListCtrl-based file input fields (path)
+    "min",
+    "max",
+    "parent_submenu", # add to the specified submenu (scope)
+    "OnUpdate", # specifies event handler in
+                # phenix/wxGUI2/Programs/Extensions.py (definition)
+    "OnChange", # specifies event handler in
+                # phenix/wxGUI2/Programs/Extensions.py (definition)
+    "renderer", # specifies custom drawing method in
+                # phenix/wxGUI2/Programs/CustomControls.py (definition)
+    "caption_img", # image to display next to caption (scope)
+    "rlabel",
+    "llabel",
+    "cols",
+    "height",
+    "help_page", # file name in Phenix documentation (definition)
+    "help_anchor", # anchor on help_page (definition)
+    "caption_width",
+  ]
   multiple_kwds = ["child", "parent"]
   convert_to_int = ["columns", "min", "max"]
   special_words = []
