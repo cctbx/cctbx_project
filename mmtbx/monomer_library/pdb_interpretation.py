@@ -2782,6 +2782,7 @@ class build_all_chain_proxies(linking_mixins):
           cystein_sulphur_atoms_exclude = []
           for atom in self.pdb_atoms:
             e = atom.element.strip().upper()
+            if not e.strip(): continue
             if(not e in exclusion_list):
               for cs_i_seq in self.cystein_sulphur_i_seqs:
                 csa = self.pdb_atoms[cs_i_seq]
