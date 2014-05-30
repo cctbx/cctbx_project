@@ -2812,6 +2812,7 @@ xfel/command_line/smooth_spectrum.py -text
 xfel/command_line/subtract_background.py -text
 xfel/command_line/trial_stats.py -text
 xfel/command_line/view_pixel_histograms.py -text
+xfel/command_line/visualise_orientations.py -text
 xfel/command_line/xes_finalise.py -text
 xfel/command_line/xes_histograms.py -text
 xfel/cxi/__init__.py -text
