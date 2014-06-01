@@ -31,6 +31,8 @@ $$
   assert (t.data[0] == [0.02, 0.04, 0.06, 0.08, 0.10])
   assert (t.data[3][4] is None)
   assert (t.format_loggraph() == loggraph1), t.format_loggraph()
+  assert (t.export_rows()[-1] == ['0.1', '1783', '0.38', '*'])
+  assert (t.export_json_table() == """{"rows": [["1/resol^2", "Nrefl", "R-free", "FOM"], ["0.02", "2004", "0.25", "0.89"], ["0.04", "2084", "0.23", "0.88"], ["0.06", "2037", "0.27", "0.83"], ["0.08", "1949", "0.28", "0.75"], ["0.1", "1783", "0.38", "*"]], "title": "Resolution shell statistics"}""")
   f = open("_tst_data_plots.log", "w")
   f.write("\nRandom non-loggraph text\n\n")
   f.write(loggraph1)
