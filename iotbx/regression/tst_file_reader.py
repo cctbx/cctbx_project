@@ -126,6 +126,9 @@ HETATM 2650 MN MN    . MN  F 4 . 9.296   -44.783 -6.320  1.00 44.18 505 MN  A MN
   mmcif = any_file(f.name)
   mmcif.assert_file_type("pdb")
   mmcif.check_file_type("pdb")
+  symm = mmcif.crystal_symmetry()
+  assert (str(symm.space_group_info()) == "P 61")
+  assert (str(symm.unit_cell()) == "(150.582, 150.582, 38.633, 90, 90, 120)")
   assert mmcif.file_description == 'Model'
   hierarchy = mmcif.file_object.construct_hierarchy()
   assert len(hierarchy.atoms()) == 7
@@ -138,7 +141,6 @@ ATOM      2  CA  ILE     1       8.335  52.235  -0.041  1.00 52.95      1THL 159
 ATOM      3  C   ILE     1       7.959  53.741   0.036  1.00 26.88      1THL 160
 END
 """
-
   f = open("tmp1.pdb", "w")
   f.write(pdb_data)
   f.close()
@@ -165,12 +167,23 @@ END
   else :
     raise Exception_expected
   pdb.check_file_type(multiple_formats=["hkl","pdb"])
+  symm = pdb.crystal_symmetry()
+  assert (symm is None)
   os.remove("tmp1.pdb")
   f = open("tmp1.ent.txt", "w")
   f.write(pdb_data)
   f.close()
   pdb = any_file("tmp1.ent.txt")
   pdb.assert_file_type("pdb")
+  pdb_data_symm = """\
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
+""" + pdb_data
+  open("tmp_file_reader2.pdb", "w").write(pdb_data_symm)
+  pdb = any_file("tmp_file_reader2.pdb").assert_file_type("pdb")
+  symm = pdb.crystal_symmetry()
+  assert (str(symm.space_group_info()) == "P 1 21 1")
+  assert (str(symm.unit_cell()) == "(21.937, 4.866, 23.477, 90, 107.08, 90)")
+  # bad formatting
   pdb_data_bad = """
 HEADER    HYDROLASE(METALLOPROTEINASE)            17-NOV-93   1THL
 ATOM      1  N   ILE     1       9.581  51.813  -0.720  1.00 31.90      1THL 158
@@ -220,6 +233,12 @@ refinement {
   assert params.refinement.main.number_of_macro_cycles == 3
   assert params.refinement.input.xray_data.r_free_flags.test_flag_value == None
   os.remove("tmp1.phil")
+  try :
+    symm = phil.crystal_symmetry()
+  except NotImplementedError :
+    pass
+  else :
+    raise Exception_expected
 
 def exercise_pickle () :
   f = open("tmp1.pkl", "wb")
