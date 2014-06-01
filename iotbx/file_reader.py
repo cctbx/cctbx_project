@@ -1,9 +1,15 @@
 from __future__ import division
 
-# this will try to guess file type based on extensions.  since this will
-# frequently break, it will also try every other file type if necessary,
-# stopping when it finds an appropriate format.
-#
+"""
+Generic file input module, used in Phenix GUI and elsewhere.  This trades some
+loss of efficiency for a simplified API for loading any file type more or less
+automatically.  It will first try to guess the format based on the extension;
+if this fails, it will then try other formats.  This is used on the command
+line and the Phenix GUI to process bulk file input.  In most other cases a
+specific file type is desired, and the force_type argument will ensure that
+only this format is attempted.
+"""
+
 # MTZ file handling is kludgy, but unfortunately there are circumstances
 # where only an MTZ file will do, so it requires some extra code to work
 # around the automatic behavior
@@ -138,6 +144,9 @@ def any_file (file_name,
               input_class=None,
               raise_sorry_if_errors=False,
               raise_sorry_if_not_expected_format=False) :
+  """
+  Main input method, wrapper for any_file_input class.
+  """
   file_name_raw = file_name
   file_name = strip_shelx_format_extension(file_name)
   if (file_name != file_name_raw) and (force_type is None) :
@@ -250,6 +259,9 @@ class any_file_input (object) :
     return self._file_server
 
   def try_as_pdb (self) :
+    """
+    PDB parser, actually tries both 'classic' PDB and mmCIF formats.
+    """
     from iotbx.pdb import input as pdb_input
     try :
       pdb_inp = pdb_input(self.file_name)
@@ -384,6 +396,18 @@ class any_file_input (object) :
         if self.file_type is not None :
           break
 
+  def crystal_symmetry (self) :
+    """
+    Extract the crystal symmetry (if any).  Only valid for model (PDB/mmCIF)
+    and reflection files.
+    """
+    if (self.file_type == "pdb") :
+      return self.file_object.crystal_symmetry()
+    elif (self.file_type == "hkl") :
+      return self.file_object.file_content().crystal_symmetry()
+    else :
+      raise NotImplementedError()
+
   def file_info (self, show_file_size=True) :
     file_size_str = ""
     if show_file_size :
@@ -451,15 +475,17 @@ class any_file_input (object) :
     elif (self.file_type == "ccp4_map") :
       self.file_object.show_summary(out)
 
-# mimics any_file, but without parsing - will instead guess the file type from
-# the extension.  for most output files produced by cctbx/phenix this is
-# relatively safe.
 def any_file_fast (file_name,
               get_processed_file=False,
               valid_types=supported_file_types,
               allow_directories=False,
               force_type=None,
               input_class=None) :
+  """
+  mimics any_file, but without parsing - will instead guess the file type from
+  the extension.  for most output files produced by cctbx/phenix this is
+  relatively safe; for files of unknown provenance it is less effective.
+  """
   assert (not get_processed_file) and (force_type is None)
   if not os.path.exists(file_name) :
     raise Sorry("Couldn't find the file %s" % file_name)
