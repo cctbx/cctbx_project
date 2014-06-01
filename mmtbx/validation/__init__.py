@@ -283,6 +283,17 @@ class atom_base (slots_getstate_setstate) :
     assert isinstance(other, atom_base), type(other)
     return self.id_str() == other.id_str()
 
+  def id_str (self, ignore_altloc=False) :
+    base = "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
+    if (not ignore_altloc) :
+      base += "%1s" % self.altloc
+    else :
+      base += " "
+    base += "%3s %4s" % (self.resname, self.name)
+    if (self.segid is not None) :
+      base += " segid='%4s'" % self.segid
+    return base
+
   def residue_group_id_str (self) :
     return "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
 
@@ -297,17 +308,6 @@ class atom_info (atom_base) :
   atoms classes.
   """
   __slots__ = atom_base.__atom_slots__ + ["symop"]
-
-  def id_str (self, ignore_altloc=False) :
-    base = "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
-    if (not ignore_altloc) :
-      base += "%1s" % self.altloc
-    else :
-      base += " "
-    base += "%3s %4s" % (self.resname, self.name)
-    if (self.segid is not None) :
-      base += " segid='%4s'" % self.segid
-    return base
 
 def get_atoms_info (pdb_atoms, iselection,
       use_segids_in_place_of_chainids=False) :

@@ -2,9 +2,11 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 
 from __future__ import division
+from libtbx.program_utils.result import program_result
 from libtbx.utils import Sorry, multi_out
-from libtbx import easy_pickle
 from libtbx import runtime_utils
+from libtbx import easy_pickle
+from libtbx import str_utils
 from libtbx import Auto
 import libtbx.load_env
 import os.path
@@ -52,8 +54,10 @@ output {
     .type = bool
   probe_dots = True
     .type = bool
+    .short_caption = Save Probe dots for Coot
   kinemage = False
     .type = bool
+    .short_caption = Save Kinemage file for KiNG
   percentiles = False
     .type = bool
     .help = Show percentile rankings for summary statistics
@@ -62,7 +66,16 @@ output {
     .help = Write Coot script
   maps = Auto
     .type = bool
-    .help = Write maps (if experimental data supplied)
+    .short_caption = Save map coefficients
+    .help = Write map coefficients (if experimental data supplied)
+  map_options
+    .short_caption = Advanced options for map coefficients
+  {
+    fill_missing_f_obs = True
+      .type = bool
+    exclude_free_r_reflections = False
+      .type = bool
+  }
   prefix = None
     .type = str
     .style = hidden
@@ -151,6 +164,7 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
     count_anomalous_pairs_separately=\
       params.molprobity.count_anomalous_pairs_separately,
     file_name=params.input.pdb.file_name[0])
+  map_file = None
   if (not params.output.quiet) :
     out2 = multi_out()
     out2.register("stdout", out)
@@ -187,8 +201,24 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
       validation.write_coot_script(coot_file)
       if (not params.output.quiet) :
         print >> out, "Wrote script for Coot: %s" % coot_file
-    if (params.output.maps) :
-      pass
+    if (params.output.maps == True) :
+      import mmtbx.maps.utils
+      import iotbx.map_tools
+      map_file = "%s_maps.mtz" % params.output.prefix
+      two_fofc_map, fofc_map = mmtbx.maps.utils.get_maps_from_fmodel(
+        fmodel=fmodel,
+        fill_missing_f_obs=params.output.map_options.fill_missing_f_obs,
+        exclude_free_r_reflections=\
+          params.output.map_options.exclude_free_r_reflections)
+      anom_map = None
+      if (fmodel.f_obs().anomalous_flag()) :
+        anom_map = mmptbx.maps.utils.get_anomalous_map()
+      iotbx.map_tools.write_map_coeffs(
+        file_name=map_file,
+        fwt_coeffs=two_fofc_map,
+        delfwt_coeffs=fofc_map,
+        anom_coeffs=anom_map)
+      print >> out, "Wrote map coefficients to %s" % map_file
   else :
     print >> out, ""
     validation.show_summary(out=out, show_percentiles=params.output.percentiles)
@@ -204,10 +234,12 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
   if (return_model_fmodel_objects) :
     return validation, cmdline.pdb_hierarchy, cmdline.fmodel
   return result(
-    validation=validation,
-    pdb_file=params.input.pdb.file_name[0],
-    map_file=None,
-    output_dir=os.getcwd())
+    program_name="phenix.molprobity",
+    job_title=params.output.job_title,
+    directory=os.getcwd(),
+    map_file=map_file,
+    other_result=validation,
+    other_files=[ params.input.pdb.file_name[0] ])
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
@@ -215,37 +247,29 @@ class launcher (runtime_utils.target_with_save_result) :
     os.chdir(self.output_dir)
     return run(args=self.args, out=sys.stdout)
 
-class result (object) :
+class result (program_result) :
   """
   Wrapper object for Phenix GUI.
   """
-  def __init__ (self,
-      validation,
-      pdb_file,
-      map_file,
-      output_dir) :
-    self.validation = validation
-    self.pdb_file = pdb_file
-    self.map_file = map_file
-    self.output_dir = output_dir
+  @property
+  def validation (self) :
+    return self.other_result
 
-  def finish_job (self, result) :
-    files = []
-    if self.map_file is not None and os.path.isfile(self.map_file) :
-     files.append(("Map coefficients", self.map_file))
-    stats = []
-    if getattr(self, "mvd_summary", None) is not None :
-      mp = self.validation
-      stats.extend([
-        ("R-work", str_utils.format_value("%.4f", mp.r_work())),
-        ("R-free", str_utils.format_value("%.4f", mp.r_free())),
-        ("RMS(bonds)", str_utils.format_value("%.3f", mp.rms_bonds())),
-        ("RMS(angles)", str_utils.format_value("%.4f", mp.rms_angles())),
-        ("Clashscore", str_utils.format_value("%.2f", mp.clashscore())),
-        ("MolProbity score", str_utils.format_value("%.3f",
-          mp.molprobity_score())),
-      ])
-    return (files, stats)
+  @property
+  def pdb_file (self) :
+    return self.other_files[0]
+
+  def get_final_stats (self) :
+    mp = self.validation
+    return [
+      ("R-work", str_utils.format_value("%.4f", mp.r_work())),
+      ("R-free", str_utils.format_value("%.4f", mp.r_free())),
+      ("RMS(bonds)", str_utils.format_value("%.3f", mp.rms_bonds())),
+      ("RMS(angles)", str_utils.format_value("%.4f", mp.rms_angles())),
+      ("Clashscore", str_utils.format_value("%.2f", mp.clashscore())),
+      ("MolProbity score", str_utils.format_value("%.3f",
+        mp.molprobity_score())),
+    ]
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

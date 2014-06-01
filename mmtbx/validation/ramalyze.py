@@ -285,6 +285,7 @@ class ramalyze (validation) :
     frame = wxtbx.plots.molprobity.ramalyze_frame(
       parent=parent, title=title, validation=self)
     frame.Show()
+    return frame
 
   def show_summary (self, out=sys.stdout, prefix="") :
     print >> out, prefix + 'SUMMARY: %.2f%% outliers (Goal: %s)' % \

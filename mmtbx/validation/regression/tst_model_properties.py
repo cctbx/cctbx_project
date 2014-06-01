@@ -136,6 +136,8 @@ Overall:
   mstats2.show(out=out2)
   assert (out2.getvalue() != out.getvalue())
   assert ("""   LYS A  83   HZ3   occ=0.00""" in out2.getvalue())
+  outliers = mstats2.all.as_gui_table_data(include_zoom=True)
+  assert (len(outliers) == 43)
 
 def exercise_2 () :
   pdb_file = libtbx.env.find_in_repositories(
