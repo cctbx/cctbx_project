@@ -49,6 +49,9 @@ seq = True
 """
 
 def molprobity_flags () :
+  """
+  Default flags for analyses to perform (all True).
+  """
   return libtbx.phil.parse(master_phil_str).extract()
 
 class molprobity (slots_getstate_setstate) :
@@ -310,9 +313,6 @@ class molprobity (slots_getstate_setstate) :
     """
     return self.summarize().show(**kwds)
 
-  def as_mmcif_records (self) : # TODO
-    raise NotImplementedError()
-
   def r_work (self, outer_shell=False) :
     if (outer_shell) :
       return getattr(self.data_stats, "r_work_outer", None)
@@ -393,6 +393,17 @@ class molprobity (slots_getstate_setstate) :
     """
     fmodel_info = getattr(self.data_stats, "info", None)
     return getattr(fmodel_info, "bins", None)
+
+  def fmodel_statistics_graph_data (self) :
+    """
+    Wrapper for fmodel_statistics_by_resolution(), returns object suitable for
+    routines in wxtbx.plots.
+    """
+    bins = self.fmodel_statistics_by_resolution()
+    if (bins is not None) :
+      from mmtbx.f_model_info import export_bins_table_data
+      return export_bins_table_data(bins)
+    return None
 
   def atoms_to_observations_ratio (self, assume_riding_hydrogens=True) :
     n_atoms = self.model_stats.n_atoms
@@ -544,6 +555,18 @@ class summary (slots_getstate_setstate_default_initializer) :
         print >> out, format % (prefix, self.labels[k], fs(self.formats[k],
           value), percentile_info)
     return self
+
+  def iter_molprobity_gui_fields (self) :
+    stats = [
+      ("Ramachandran outliers","%6.2f%%",self.rama_outliers,0.5,0.2,"< 0.2%"),
+      ("Ramachandran favored", "%6.2f%%",self.rama_favored,None,None,"> 98%"),
+      ("Rotamer outliers", "%6.2f%%", self.rotamer_outliers, 2, 1, "1%"),
+      ("C-beta outliers", "%3d   ", self.c_beta_deviations, 2, 0, "0"),
+      ("Clashscore", "%6.2f", self.clashscore, 40, 20, None),
+      ("Overall score", "%6.2f", self.mpscore, None, None, None),
+    ]
+    for stat_info in stats :
+      yield stat_info
 
 ########################################################################
 

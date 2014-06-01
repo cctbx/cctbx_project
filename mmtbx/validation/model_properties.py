@@ -11,6 +11,8 @@ import sys
 class model_statistics (slots_getstate_setstate) :
   """
   Atom statistics for the overall model, and various selections within.
+  This does not actually contain individual outliers, which are instead held
+  in the xray_structure_statistics objects for subsets of the model.
   """
   __slots__ = [
     "all",
@@ -117,14 +119,14 @@ class model_statistics (slots_getstate_setstate) :
     return self._ligands
 
 class residue_occupancy (residue) :
-  __slots__ = residue.__slots__ + ["chain_type", "b"]
+  __slots__ = residue.__slots__ + ["chain_type", "b_iso"]
 
   def as_string (self, prefix="") :
     return " %3s%2s%5s (all)  occ=%.2f" % (self.resname, self.chain_id,
       self.resid, self.occupancy)
 
-  def as_gui_list_row (self) :
-    return [ self.id_str(), "residue", self.occupancy, self.b ]
+  def as_table_row_phenix (self) :
+    return [ self.id_str(), "residue", self.occupancy, self.b_iso ]
 
 class atom_occupancy (atom) :
   """
@@ -135,11 +137,14 @@ class atom_occupancy (atom) :
     return "%s %4s   occ=%.2f" % (self.atom_group_id_str(), self.name,
       self.occupancy)
 
-  def as_gui_list_row (self) :
-    return [ self.id_str(), "atom", self.occupancy, self.b ]
+  def as_table_row_phenix (self) :
+    return [ self.id_str(), "atom", self.occupancy, self.b_iso ]
 
 class residue_bfactor (residue_occupancy) :
-  pass
+
+  def as_string (self, prefix="") :
+    return "%s %4s   b_iso=%.2f" % (self.atom_group_id_str(), self.name,
+      self.b_iso)
 
 class atom_bfactor (atom_occupancy) :
   pass
@@ -171,9 +176,9 @@ class xray_structure_statistics (validation) :
     "bad_adps",
     "b_histogram",
   ]
-  gui_list_headers = ["Atom ID", "Occupancy", "Isotropic B-factor"]
-  gui_formats = ["%s","%.2f", "%.2f"]
-  wx_column_widths = [300,200,300]
+  gui_list_headers = ["Atom(s)", "Type", "Occupancy", "Isotropic B-factor"]
+  gui_formats = ["%s","%s","%.2f", "%.2f"]
+  wx_column_widths = [300,100,100,200]
   def __init__ (self, pdb_hierarchy, xray_structure, ignore_hd=True,
       collect_outliers=True) :
     for name in self.__slots__ :
@@ -244,7 +249,7 @@ class xray_structure_statistics (validation) :
               occupancy=occ,
               outlier=True,
               xyz=group_atoms.extract_xyz().mean(),
-              b=b_mean)
+              b_iso=b_mean)
             self.zero_occ.append(outlier)
             self.n_outliers += 1
             collected.set_selected(i_seqs, True)
@@ -287,7 +292,7 @@ class xray_structure_statistics (validation) :
                 occupancy=occ,
                 outlier=True,
                 xyz=group_atoms.extract_xyz().mean(),
-                b=adptbx.u_as_b(u_mean))
+                b_iso=adptbx.u_as_b(u_mean))
               self.bad_adps.append(outlier)
               self.n_outliers += 1
               collected.set_selected(i_seqs, True)
@@ -362,11 +367,28 @@ class xray_structure_statistics (validation) :
     print >> out, prefix + "B_iso: mean = %5.1f  max = %5.1f  min = %5.1f" % \
       (self.b_mean, self.b_max, self.b_min)
 
-  def as_gui_table_data (self, property_type=None) :
+  def iter_results (self, property_type=None, outliers_only=True) :
     if (property_type is None) :
-      return self.zero_occ + self.partial_occ + self.bad_adps
+      outliers = self.zero_occ + self.partial_occ + self.bad_adps
     elif (property_type == "occupancy") :
-      return self.zero_occ + self.partial_occ
+      outliers = self.zero_occ + self.partial_occ
     elif (property_type == "b_factor") :
-      return self.bad_adps
-    raise RuntimeError("Unknown property type '%s'" % property_type)
+      outliers = self.bad_adps
+    else :
+      raise RuntimeError("Unknown property type '%s'" % property_type)
+    for result in outliers :
+      if (result.is_outlier()) or (not outliers_only) :
+        yield result
+
+  def as_gui_table_data (self, property_type=None, outliers_only=True,
+      include_zoom=False) :
+    table = []
+    for result in self.iter_results(property_type=property_type,
+        outliers_only=outliers_only) :
+      extra = []
+      if (include_zoom) :
+        extra = result.zoom_info()
+      row = result.as_table_row_phenix()
+      assert (len(row) == len(self.gui_list_headers) == len(self.gui_formats))
+      table.append(row + extra)
+    return table

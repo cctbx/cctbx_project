@@ -2,20 +2,21 @@
 from __future__ import division
 from mmtbx.command_line import molprobity
 from libtbx.easy_pickle import loads, dumps, dump
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import show_diff, approx_equal
 from libtbx.utils import null_out
 import libtbx.load_env
 from cStringIO import StringIO
+import os.path as op
 import os
 
 def exercise_protein () :
 
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3ifk.pdb",
-    test=os.path.isfile)
+    test=op.isfile)
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/3ifk.mtz",
-    test=os.path.isfile)
+    test=op.isfile)
   if (pdb_file is None) :
     print "phenix_regression not available, skipping."
     return
@@ -41,6 +42,19 @@ def exercise_protein () :
   result.show_summary(out=out4, show_percentiles=True)
   assert ("""  Clashscore            =  49.96 (percentile: 1.0)""" in
     out4.getvalue())
+  # misc
+  assert approx_equal(result.r_work(), 0.237) # from PDB header
+  assert approx_equal(result.r_free(), 0.293) # from PDB header
+  assert approx_equal(result.d_min(), 2.03)   # from PDB header
+  assert (result.d_max_min() is None)
+  assert approx_equal(result.rms_bonds(), 0.02585)
+  assert approx_equal(result.rms_angles(), 2.372306)
+  assert approx_equal(result.rama_favored(), 96.47059)
+  assert (result.cbeta_outliers() == 10)
+  assert approx_equal(result.molprobity_score(), 3.3725, eps=0.0001)
+  summary = result.summarize()
+  gui_fields = list(summary.iter_molprobity_gui_fields())
+  assert (len(gui_fields) == 6)
   #result.show()
   assert (str(mc.data()[2]) == ' A   5  THR  rota,cb,clash')
   import mmtbx.validation.molprobity
@@ -61,11 +75,32 @@ def exercise_protein () :
                 favored =  96.47 %
   Rotamer outliers      =  18.67 %
 """)
+  # now with data
+  args2 = args1 + [ hkl_file, "--maps" ]
+  result = molprobity.run(args=args2, out=null_out()).validation
+  out = StringIO()
+  result.show(out=out)
+  assert approx_equal(result.r_work(), 0.2276, eps=0.001)
+  assert approx_equal(result.r_free(), 0.2805, eps=0.001)
+  assert approx_equal(result.d_min(), 2.0302, eps=0.0001)
+  assert approx_equal(result.d_max_min(), [34.546125, 2.0302], eps=0.0001)
+  assert approx_equal(result.rms_bonds(), 0.02585)
+  assert approx_equal(result.rms_angles(), 2.372306)
+  assert approx_equal(result.rama_favored(), 96.47059)
+  assert (result.cbeta_outliers() == 10)
+  assert approx_equal(result.unit_cell().parameters(),
+          (55.285, 58.851, 67.115,90,90,90))
+  assert (str(result.space_group_info()) == "P 21 21 21")
+  bins = result.fmodel_statistics_by_resolution()
+  assert (len(bins) == 10)
+  assert approx_equal(result.atoms_to_observations_ratio(), 0.09755,
+    eps=0.0001)
+  assert op.isfile("tst_molprobity_maps.mtz")
 
 def exercise_rna () :
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb2goz_refmac_tls.ent",
-    test=os.path.isfile)
+    test=op.isfile)
   if (regression_pdb is None):
     print "Skipping exercise_regression(): input pdb (pdb2goz_refmac_tls.ent) not available"
     return
