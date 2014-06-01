@@ -416,7 +416,8 @@ class box_build_refine_base (object) :
       map_data         = target_map,
       map_data_2       = target_map_rsr,
       selection        = self.selection_within,
-      box_cushion      = box_cushion)
+      box_cushion      = box_cushion,
+      assert_pdb_hierarchy_and_xray_structure_equal=False)
     self.hd_selection_box = self.box.xray_structure_box.hd_selection()
     self.n_sites_box = self.box.xray_structure_box.sites_cart().size()
     self.target_map_box = self.box.map_box

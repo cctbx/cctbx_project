@@ -2586,11 +2586,15 @@ class extract_box_around_model_and_map(object):
                selection_radius=None,
                selection_string=None,
                selection=None,
-               map_data_2=None):
+               map_data_2=None,
+               assert_pdb_hierarchy_and_xray_structure_equal=True):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
-    if(pdb_hierarchy is not None):
+    if((pdb_hierarchy is not None) and
+        assert_pdb_hierarchy_and_xray_structure_equal) :
       xrs = pdb_hierarchy.extract_xray_structure(crystal_symmetry=cs)
+      # FIXME this will fail if the scattering type registry has been set for
+      # the input xray_structure
       assert_xray_structures_equal(
         x1 = xrs,
         x2 = xray_structure)
