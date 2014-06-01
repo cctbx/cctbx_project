@@ -94,6 +94,13 @@ def flip_table (table) :
   return new_table
 
 class table_data (object) :
+  """
+  Container for tabular data.  Originally this was solely used as a container
+  for CCP4 'loggraph' plots, but it can also be used to display tables that
+  are not intended to be plotted.  A variety of output formats are supported,
+  including export to JSON for eventual HTML display.  If graphs are defined,
+  these objects can be passed to the loggraph frontend in wxtbx.plots.
+  """
   def __init__ (self,
       title,
       column_names=None,
@@ -138,6 +145,9 @@ class table_data (object) :
       self.graph_columns.append(columns)
 
   def import_loggraph (self, loggraph_lines) :
+    """
+    Parse CCP4 loggraph format and populate internal data structures.
+    """
     initial_spaces = re.compile("^\s*")
     trailing_spaces = re.compile("\s*$")
     trailing_dollars = re.compile("\$\$\.*")
@@ -360,6 +370,9 @@ class table_data (object) :
     return str(out)
 
   def format_loggraph (self, precision=6, column_width=None) :
+    """
+    Create CCP4 loggraph format text for embedding in logfiles.
+    """
     data = self.data
     graph_columns = self.graph_columns
     graph_names = self.graph_names
@@ -410,6 +423,28 @@ class table_data (object) :
       "column_labels" : self.column_labels,
       "x_is_inverse_d_min" : self.x_is_inverse_d_min,
       "data" : self.data,
+    }
+    if (convert) :
+      return json.dumps(export_dict)
+    return export_dict
+
+  def export_rows (self, convert=True, precision=6) :
+    column_labels = self.column_labels
+    # most of the code here deals with generic numerical values, but the
+    # use of resolution ranges comes up often enough to merit special handling
+    if (self.first_two_columns_are_resolution) :
+      column_labels = ["Res. range"] + column_labels[2:]
+    formatted_rows = [ column_labels ]
+    for j in xrange(self.n_rows) :
+      row = [ col[j] for col in self.data ]
+      formatted_rows.append(self._format_num_row(row, precision=precision))
+    return formatted_rows
+
+  def export_json_table (self, convert=True) :
+    import json
+    export_dict = {
+      "title" : self.title,
+      "rows" : self.export_rows(),
     }
     if (convert) :
       return json.dumps(export_dict)
