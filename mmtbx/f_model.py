@@ -1082,7 +1082,7 @@ class manager(manager_mixin):
 
   def update_f_part1(self, purpose, map_neg_cutoff=None,
                      refinement_neg_cutoff=-2.5, refine_threshold=True):
-    if(purpose=="refinement"):
+    if(purpose == "refinement"):
       if(refine_threshold):
         r_free_start = self.r_free()
         r_free_best = r_free_start
