@@ -88,25 +88,42 @@ ATOM      5  CG  GLU X  18     -14.455  14.401  -4.522  1.00263.56           C
 ATOM      6  CD  GLU X  18     -14.291  15.239  -3.242  1.00264.89           C
 ATOM      7  OE1 GLU X  18     -14.172  14.646  -2.143  1.00264.24           O
 ATOM      8  OE2 GLU X  18     -14.309  16.498  -3.306  1.00264.37           O1-
+HETATM  614  S   SO4 B 101      14.994  20.601  10.862  0.00  7.02           S
+HETATM  615  O1  SO4 B 101      14.234  20.194  12.077  0.00  7.69           O
+HETATM  616  O2  SO4 B 101      14.048  21.062   9.850  0.00  9.28           O
+HETATM  617  O3  SO4 B 101      15.905  21.686  11.261  0.00  8.01           O
+HETATM  618  O4  SO4 B 101      15.772  19.454  10.371  0.00  8.18           O
 TER
 HETATM  122  O   HOH S   1       5.334   8.357   8.032  1.00  0.00           O
 HETATM  123  O   HOH S   2       5.396  15.243  10.734  1.00202.95           O
+HETATM  124  O   HOH S   3     -25.334  18.357  18.032  0.00 20.00           O
 """
+  mon_lib_srv = server.server()
+  ener_lib = server.ener_lib()
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
   xrs = pdb_in.input.xray_structure_simple()
+  processed_pdb_file = pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    raw_records=pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs),
+    crystal_symmetry=xrs,
+    log=null_out())
+  pdb_in.hierarchy.atoms().reset_i_seq()
   mstats = model_properties.model_statistics(
     pdb_hierarchy=pdb_in.hierarchy,
     xray_structure=xrs,
+    all_chain_proxies=processed_pdb_file.all_chain_proxies,
     ignore_hd=True)
   out = StringIO()
   mstats.show(out=out)
+  #print out.getvalue()
   assert not show_diff(out.getvalue(), """\
 Overall:
-  Number of atoms = 44  (anisotropic = 0)
-  B_iso: mean = 107.7  max = 269.8  min =   0.0
-  Occupancy: mean = 0.53  max = 1.00  min = 0.00
-    warning: 16 atoms with zero occupancy
-  20 total B-factor or occupancy problems detected
+  Number of atoms = 50  (anisotropic = 0)
+  B_iso: mean =  96.0  max = 269.8  min =   0.0
+  Occupancy: mean = 0.47  max = 1.00  min = 0.00
+    warning: 22 atoms with zero occupancy
+  15 total B-factor or occupancy problem(s) detected
   Atoms or residues with zero occupancy:
    LYS A  82   CG    occ=0.00
    LYS A  82   CD    occ=0.00
@@ -117,57 +134,57 @@ Overall:
    LYS A  83   CE    occ=0.00
    LYS A  83   NZ    occ=0.00
    ASN A 242  (all)  occ=0.00
-   ASN A 242  (all)  occ=0.00
-   ASN A 242  (all)  occ=0.00
-   ASN A 242  (all)  occ=0.00
-   ASN A 242  (all)  occ=0.00
-   ASN A 242  (all)  occ=0.00
-   ASN A 242  (all)  occ=0.00
-   ASN A 242  (all)  occ=0.00
+   SO4 B 101  (all)  occ=0.00
+   HOH S   3   O     occ=0.00
+Macromolecules:
+  Number of atoms = 42  (anisotropic = 0)
+  B_iso: mean = 108.0  max = 269.8  min =  60.7
+  Occupancy: mean = 0.51  max = 1.00  min = 0.00
+    warning: 16 atoms with zero occupancy
+  11 total B-factor or occupancy problem(s) detected
+Ligands:
+  Number of atoms = 5  (anisotropic = 0)
+  B_iso: mean =   8.0  max =   9.3  min =   7.0
+  Occupancy: mean = 0.00  max = 0.00  min = 0.00
+    warning: 5 atoms with zero occupancy
+  1 total B-factor or occupancy problem(s) detected
+Waters:
+  Number of atoms = 3  (anisotropic = 0)
+  B_iso: mean =  74.3  max = 202.9  min =   0.0
+  Occupancy: mean = 0.67  max = 1.00  min = 0.00
+    warning: 1 atoms with zero occupancy
+  3 total B-factor or occupancy problem(s) detected
 (Hydrogen atoms not included in overall counts.)
 """)
   assert (len(mstats.all.bad_adps) == 1)
   assert (mstats.all.n_zero_b == 1)
-  mstats2 = model_properties.model_statistics(
-    pdb_hierarchy=pdb_in.hierarchy,
-    xray_structure=xrs,
-    ignore_hd=False)
-  out2 = StringIO()
-  mstats2.show(out=out2)
-  assert (out2.getvalue() != out.getvalue())
-  assert ("""   LYS A  83   HZ3   occ=0.00""" in out2.getvalue())
-  outliers = mstats2.all.as_gui_table_data(include_zoom=True)
-  assert (len(outliers) == 43)
-
-def exercise_2 () :
-  pdb_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_examples/rnase-s/rnase-s.pdb",
-    test=os.path.isfile)
-  if (pdb_file is None) :
-    print "phenix_examples not found, skipping test"
-    return
-  mon_lib_srv = server.server()
-  ener_lib = server.ener_lib()
-  pdb_in = iotbx.pdb.hierarchy.input(file_name=pdb_file)
-  xrs = pdb_in.input.xray_structure_simple()
-  processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    raw_records=pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs),
-    crystal_symmetry=xrs,
-    log=null_out())
-  props = model_properties.model_statistics(
-    pdb_hierarchy=pdb_in.hierarchy,
-    xray_structure=xrs,
-    all_chain_proxies=processed_pdb_file.all_chain_proxies)
-  props2 = loads(dumps(props))
+  mstats2 = loads(dumps(mstats))
   out1 = StringIO()
   out2 = StringIO()
-  props.show(out=out1)
-  props2.show(out=out2)
+  mstats.show(out=out1)
+  mstats2.show(out=out2)
   assert (out1.getvalue() == out2.getvalue())
+  # now with ignore_hd=False
+  mstats3 = model_properties.model_statistics(
+    pdb_hierarchy=pdb_in.hierarchy,
+    xray_structure=xrs,
+    all_chain_proxies=processed_pdb_file.all_chain_proxies,
+    ignore_hd=False)
+  out2 = StringIO()
+  mstats3.show(out=out2)
+  assert (out2.getvalue() != out.getvalue())
+  assert ("""   LYS A  83   HZ3   occ=0.00""" in out2.getvalue())
+  outliers = mstats3.all.as_gui_table_data(include_zoom=True)
+  assert (len(outliers) == 32)
+  # test with all_chain_proxies undefined
+  mstats4 = model_properties.model_statistics(
+    pdb_hierarchy=pdb_in.hierarchy,
+    xray_structure=xrs,
+    all_chain_proxies=None,
+    ignore_hd=False)
+  outliers = mstats4.all.as_gui_table_data(include_zoom=True)
+  assert (len(outliers) == 32)
 
 if (__name__ == "__main__") :
   exercise()
-  exercise_2()
   print "OK"
