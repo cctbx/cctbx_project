@@ -1,23 +1,33 @@
-# LIBTBX_SET_DISPATCHER_NAME cxi.find_target_uc
+# LIBTBX_SET_DISPATCHER_NAME cluster.unit_cell
 from __future__ import division
-#from libtbx.utils import multi_out
+import logging
+from xfel.clustering.cluster import Cluster
+from xfel.clustering.cluster_groups import unit_cell_info
+import matplotlib.pyplot as plt
 
+FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
+logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 def run(_args):
   if _args < 2:
     raise IOError("Must give at least one path to folder of pickles")
-  from cctbx.uctbx.determine_unit_cell.target_uc import Target, plot_clusters
 
-  ucs = Target(_args.folders, _args.o)
-  ucs.print_ucs()
-  ucs.cluster(_args.t, _args.m, _args.l)
-  if not _args.noplot:
-    plot_clusters(ucs, _args.log, _args.o, _args.ucs)
+  ucs = Cluster.from_directories(_args.folders, "cxi_targt_uc")
 
+  fig = plt.figure("Andrews-Bernstein distance dendogram", figsize=(12,8))
+  ax = plt.gca()
+  clusters, cluster_axes = ucs.ab_cluster(_args.t, log=_args.log, ax=ax)
+
+  print unit_cell_info(clusters)
+  plt.show()
+
+  """ Why all that funny stuff with axes? Well: this lets me pass axes objects
+  to the method, and then back out. A consequence of this is that I can create
+  super-figures with several Cluster methods that each return one panel of the
+  mega-figure."""
 
 if __name__ == "__main__":
   import argparse
-
   parser = argparse.ArgumentParser(description=('Find the best target cell from'
                                                 'a set of indexing pickles.'))
   parser.add_argument('folders', type=str, nargs='+',
@@ -26,16 +36,13 @@ if __name__ == "__main__":
                       help='threshold value for the clustering. Default = 5000')
   parser.add_argument('-o', type=str, default='clustering',
                       help='output file name for unit cells.')
-  parser.add_argument('-m', type=str, default='distance',
-                      help='Clustering method for numpy clustering.')
-  parser.add_argument('-l', type=str, default='single',
-                      help='Linkage method for clustering. Default single.')
-  parser.add_argument('--log', action='store_true',
-                      help="Display the dendrogram with a log scale")
-  parser.add_argument('--ucs', action='store_true',
-                      help="Display the unit cells in a 3D plot")
-
   parser.add_argument('--noplot', action='store_true',
                       help="Do not display plots")
+  parser.add_argument('--log', action='store_true',
+                    help="Display the dendrogram with a log scale")
   args = parser.parse_args()
-  result = run(args)
+  run(args)
+#  parser.add_argument('-m', type=str, default='distance',
+#                      help='Clustering method for numpy clustering.')
+#  parser.add_argument('-l', type=str, default='single',
+#                      help='Linkage method for clustering. Default single.')
