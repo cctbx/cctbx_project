@@ -2,7 +2,6 @@
 from __future__ import division
 
 import logging
-
 from xfel.clustering.cluster import Cluster
 
 FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
