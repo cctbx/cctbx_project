@@ -212,7 +212,7 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
           params.output.map_options.exclude_free_r_reflections)
       anom_map = None
       if (fmodel.f_obs().anomalous_flag()) :
-        anom_map = mmptbx.maps.utils.get_anomalous_map()
+        anom_map = mmtbx.maps.utils.get_anomalous_map()
       iotbx.map_tools.write_map_coeffs(
         file_name=map_file,
         fwt_coeffs=two_fofc_map,
