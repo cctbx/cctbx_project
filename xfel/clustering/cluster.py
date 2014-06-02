@@ -187,16 +187,17 @@ class Cluster:
 
 
   def ab_cluster(self, threshold=10000, method='distance',
-                 linkage_method='single', log=False, plot=False, max_only=True):
-    """ Do hierarchical clustering using the Andrews-Berstein distance
-    on the Niggli cells. Returns the largest cluster if max_only is true,
-    otherwise returns a list of clusters."""
+                 linkage_method='single', log=False, max_only=True,
+                 ax=None):
+    """ Do hierarchical clustering using the Andrews-Berstein distance from
+    Andrews & Bernstein J Appl Cryst 47:346 (2014) on the Niggli cells. Returns
+    the largest cluster if max_only is true, otherwise a list of clusters. Also
+    return a matplotlib axes object for display of a dendogram."""
 
-    print "Hierarchical clustering of unit cells:"
+    logging.info("Hierarchical clustering of unit cells using Andrews-Bernstein"
+                 "Distance from Andrews & Bernstein J Appl Cryst 47:346 (2014)")
     import scipy.spatial.distance as dist
-
-    print "Using Andrews-Bernstein Distance from Andrews & Bernstein" \
-          " J Appl Cryst 47:346 (2014)."
+    import matplotlib.pyplot as plt
 
     def make_g6(uc):
       """ Take a reduced Niggli Cell, and turn it into the G6 representation """
@@ -223,7 +224,8 @@ class Cluster:
                                     threshold,
                                     criterion=method)
     logging.debug("Clusters have been calculated")
-    # Create an array of sub-cluster objects from the clustering
+
+    # 3. Create an array of sub-cluster objects from the clustering
     sub_clusters = []
     for cluster in range(max(cluster_ids)):
       info_string = ('Made using ab_cluster with t={},'
@@ -239,70 +241,31 @@ class Cluster:
                                                   cluster + 1),
                                                 info_string))
 
-    # 3. print out some information that is useful.
-    out_str = "{} clusters have been identified.".format(max(cluster_ids))
-    out_str += "\n{:^5} {:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
-      "C_id",
-      "Num in cluster",
-      "Med_a", "Med_b", "Med_c",
-      "Med_alpha", "Med_beta", "Med_gamma")
-    singletons = []
-    for cluster in sub_clusters:
-      if len(cluster.members) != 1:
+      sub_clusters = sorted(sub_clusters, key=lambda x: len(x.members))
 
-        sorted_pg_comp = sorted(cluster.pg_composition.items(),
-                                key=lambda x: -1 * x[1])
-        pg_strings = ["{} in {}".format(pg[1], pg[0])
-                      for pg in sorted_pg_comp]
-        point_group_string = ", ".join(pg_strings) + "."
-        out_str += ("\n{:^5} {:^14} {:<5.1f}({:<4.1f}) {:<5.1f}({:<4.1f})"
-                    " {:<5.1f}({:<4.1f}) {:<6.2f}({:<4.2f}) {:<6.2f}"
-                    "({:<4.2f}) {:<6.2f}({:<4.2f})").format(
-          cluster.cname,
-          len(cluster.members),
-          cluster.medians[0], cluster.stdevs[0],
-          cluster.medians[1], cluster.stdevs[1],
-          cluster.medians[2], cluster.stdevs[2],
-          cluster.medians[3], cluster.stdevs[3],
-          cluster.medians[4], cluster.stdevs[4],
-          cluster.medians[5], cluster.stdevs[5])
-        out_str += "\n" + point_group_string
-      else:
-        singletons.append("".join([("{:<14} {:<11.1f} {:<11.1f} {:<11.1f}"
-                                    "{:<12.1f} {:<12.1f} {:<12.1f}").format(
-          cluster.pg_composition.keys()[0],
-          cluster.members[0].uc[0], cluster.members[0].uc[1],
-          cluster.members[0].uc[2], cluster.members[0].uc[3],
-          cluster.members[0].uc[4], cluster.members[0].uc[5]),
-                                   '\n']))
-    out_str += "\nStandard deviations are in brackets."
-    out_str += "\n" + str(len(singletons)) + " singletons:"
-    out_str += "\n{:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
-      "Point group",
-      "a", "b", "c",
-      "alpha", "beta", "gamma")
-    out_str += "".join(singletons)
-    print out_str
-
-    if plot:
-      import matplotlib.pyplot as plt
-
+    # 4. Plot a dendogram to the axes if no axis is passed, otherwise just
+    #    return the axes object
+    if ax is None:
       fig = plt.figure("Distance Dendogram")
-      hcluster.dendrogram(this_linkage,
-                          labels=[image.name for image in self.members],
-                          leaf_font_size=8,
-                          color_threshold=threshold)
       ax = fig.gca()
-      if log:
-        ax.set_yscale("log")
-      else:
-        ax.set_ylim(-ax.get_ylim()[1] / 100, ax.get_ylim()[1])
+      direct_visualisation = True
+    else:
+      direct_visualisation = False
+
+    hcluster.dendrogram(this_linkage,
+                        labels=[image.name for image in self.members],
+                        leaf_font_size=8,
+                        color_threshold=threshold, ax=ax)
+    if log:
+      ax.set_yscale("log")
+    else:
+      ax.set_ylim(-ax.get_ylim()[1] / 100, ax.get_ylim()[1])
+
+    if direct_visualisation:
       fig.savefig("{}_dendogram.pdf".format(self.cname))
       plt.show()
-    if max_only:
-      return max(sub_clusters, key=lambda x: len(x.members))
-    else:
-      return sub_clusters
+
+    return sub_clusters, ax
 
   def dump_file_list(self, out_file_name=None):
     """ Simply dumps a list of paths to inegration pickle files to a file. One
@@ -433,6 +396,10 @@ class Cluster:
       plt.title(label, y=1.08)
 
     plt.show()
+
+
+
+
 #def cluster_pca(self)::w
 #  """ Should use BLEND clustering protocols in python (Foaldi et al. Acta D.
 #  2013). i.e. filter for parameters that vary, do PCA, then ward linkage
