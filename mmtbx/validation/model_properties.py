@@ -86,6 +86,8 @@ class model_statistics (slots_getstate_setstate) :
           pdb_hierarchy=pdb_hierarchy.select(ligand_sel),
           xray_structure=xray_structure.select(ligand_sel),
           ignore_hd=ignore_hd)
+    # make sure original i_seq is used
+    #pdb_hierarchy.atoms().reset_i_seq()
 
   def show (self, out=sys.stdout, prefix="") :
     print >> out, prefix+"Overall:"
@@ -191,6 +193,7 @@ class xray_structure_statistics (validation) :
     self.n_total = xrs.scatterers().size() # always include H/D
     self.results = None
     pdb_atoms = pdb_hierarchy.atoms()
+    pdb_atoms.reset_i_seq()
     hd_selection = xrs.hd_selection()
     subtract_hd = True
     if (ignore_hd) and (hd_selection.count(True) > 0) :
@@ -207,10 +210,14 @@ class xray_structure_statistics (validation) :
     self.n_npd = xrs.is_positive_definite_u().count(False)
     self.n_zero_b = (u_isos == 0).count(True)
     self.n_zero_occ = (occ == 0).count(True)
-    mv = flex.mean_and_variance(u_isos.select(u_isos > 0))
-    sigma = mv.unweighted_sample_standard_deviation()
-    u_cutoff_high = mv.mean() + (4.0 * sigma)
-    u_cutoff_low = mv.mean() - (4.0 * sigma)
+    u_cutoff_high = sys.maxint
+    u_cutoff_low = 0
+    u_non_zero = u_isos.select(u_isos > 0)
+    if (len(u_non_zero) > 1) :
+      mv = flex.mean_and_variance(u_non_zero)
+      sigma = mv.unweighted_sample_standard_deviation()
+      u_cutoff_high = mv.mean() + (4.0 * sigma)
+      u_cutoff_low = mv.mean() - (4.0 * sigma)
     self.b_mean = adptbx.u_as_b(flex.mean(u_isos))
     self.b_min = adptbx.u_as_b(flex.min(u_isos))
     self.b_max = adptbx.u_as_b(flex.max(u_isos))
@@ -354,7 +361,7 @@ class xray_structure_statistics (validation) :
           self.n_zero_occ
     if (self.n_outliers > 0) :
       print >> out, prefix + \
-        "%d total B-factor or occupancy problems detected" % \
+        "%d total B-factor or occupancy problem(s) detected" % \
         self.n_outliers
 
   def show_bad_occupancy (self, out=sys.stdout, prefix="") :
