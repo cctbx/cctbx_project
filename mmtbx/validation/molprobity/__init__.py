@@ -307,11 +307,11 @@ class molprobity (slots_getstate_setstate) :
       r_free=r_free,
       program=getattr(self.header_info, "refinement_program", None))
 
-  def show_summary (self, **kwds) :
+  def show_summary (self, *args, **kwds) :
     """
     Print summary of outliers or scores for each analysis.
     """
-    return self.summarize().show(**kwds)
+    return self.summarize().show(*args, **kwds)
 
   def r_work (self, outer_shell=False) :
     if (outer_shell) :
