@@ -30,7 +30,12 @@ def anonymize_ions (hierarchy, log=sys.stdout) :
             id_strs = []
             for atom in atoms :
               elem = atom.element.strip()
-              atomic_number = sasaki.table(elem).atomic_number()
+              if elem in ["H", "D"]:
+                atomic_number = 1
+              elif elem in ["HE"]:
+                atomic_number = 2
+              else:
+                atomic_number = sasaki.table(elem).atomic_number()
               id_strs.append(atom.id_str())
               atom.segid = atom_group.resname
               atom.name = " O  "
