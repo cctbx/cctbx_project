@@ -2789,6 +2789,8 @@ xfel/clustering/test_cluster.py -text
 xfel/command_line/__init__.py -text
 xfel/command_line/auto_submit.py -text
 xfel/command_line/brehm_diederichs.py -text
+xfel/command_line/cluster_unit_cell.py -text
+xfel/command_line/cluster_visualise_orientations.py -text
 xfel/command_line/convert_gain_map.py -text
 xfel/command_line/cxi_diff.py -text
 xfel/command_line/cxi_image2pickle.py -text
@@ -2798,7 +2800,6 @@ xfel/command_line/cxi_pyana.py -text
 xfel/command_line/cxi_spots.py -text
 xfel/command_line/cxi_stream_to_pickle.py -text
 xfel/command_line/cxi_view.py -text
-xfel/command_line/find_target_uc.py -text
 xfel/command_line/get_next_trial_id.py -text
 xfel/command_line/histogram_finalise.py -text
 xfel/command_line/list_db_metadata.py -text
@@ -2813,7 +2814,6 @@ xfel/command_line/smooth_spectrum.py -text
 xfel/command_line/subtract_background.py -text
 xfel/command_line/trial_stats.py -text
 xfel/command_line/view_pixel_histograms.py -text
-xfel/command_line/visualise_orientations.py -text
 xfel/command_line/xes_finalise.py -text
 xfel/command_line/xes_histograms.py -text
 xfel/cxi/__init__.py -text
