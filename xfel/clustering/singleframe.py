@@ -27,9 +27,9 @@ class SingleFrame:
       self.unmerged_b = self.unmerged_b()
       logging.debug("Extracted image {}".format(filename))
     except KeyError:
-      logging.warning("Could not extract point group and unit cell from %s\n" % path)
+      logging.warning("Could not extract point group and unit cell from %s" % path)
     except:
-      logging.warning("Could not read %s. It may not be a pickle file.\n" % path)
+      logging.warning("Could not read %s. It may not be a pickle file." % path)
 
   def trim_res_limit(self, d_min=None, d_max=None):
     """ Remove all miller indicies outside the range of _d_min, _d_max.
