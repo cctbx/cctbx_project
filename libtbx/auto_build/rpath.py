@@ -6,12 +6,18 @@ import subprocess
 import argparse
 import sys
 
+# This code is partially derived from a similar module I wrote
+# for EMAN2, previously released under a BSD-like license.
+
 # Binary builds: /net/cci/auto_build/phenix_installers
 # export DYLD_PRINT_INITIALIZERS="files"
 # For Linux, requires PatchELF.
 #   http://nixos.org/patchelf.html
 # For Mac, requires otool and install_name_tool,
 #   which are included with XCode.
+
+# Ugh
+DRY_RUN = False
 
 ##### Helper functions #####
 
@@ -20,7 +26,14 @@ def find_exec(root='.'):
   # find . -type f -perm +111 -print
   p = check_output(['find', root, '-type', 'f', '-perm', '+111'])
   # unix find may print empty lines; strip those out.
-  return filter(None, [i.strip() for i in p.split("\n")])
+  found = filter(None, [i.strip() for i in p.split("\n")])
+  # Filter by real execuable...
+  found_exec = []
+  for f in found:
+    p = check_output(['file', f])
+    if "Mach-O" in p:
+      found_exec.append(f)
+  return found_exec
 
 def find_ext(ext='', root='.'):
   """Find files with a particular extension. Include the ".", e.g. ".txt". """
@@ -32,6 +45,8 @@ def find_ext(ext='', root='.'):
 def cmd(*popenargs, **kwargs):
   print "Running:",
   print " ".join(*popenargs)
+  if DRY_RUN:
+    return
   ignorefail = kwargs.pop('ignorefail', False)
   kwargs['stdout'] = subprocess.PIPE
   kwargs['stderr'] = subprocess.PIPE
@@ -52,6 +67,7 @@ def echo(*popenargs, **kwargs):
     print "Running:",
     print " ".join(*popenargs)
 
+# "Dry-run"
 # cmd = echo
 
 def check_output(*popenargs, **kwargs):
@@ -136,7 +152,7 @@ class FixMacRpath(object):
     targets = set()
     targets |= set(find_ext('.so', root=root))
     targets |= set(find_ext('.dylib', root=root))
-    # targets |= set(find_exec(root=root))
+    targets |= set(find_exec(root=root))
 
     print "Targets:", len(targets)
     for f in sorted(targets):
@@ -168,7 +184,11 @@ def run (args) :
   parser = argparse.ArgumentParser()
   parser.add_argument("root", help="Build path")
   parser.add_argument("--otherroot", help="Other build path")
+  parser.add_argument("--dry", help="Dry run", action="store_true")
   args = parser.parse_args(args)
+
+  if args.dry:
+    DRY_RUN = True
 
   # Setup args.
   root = args.root
