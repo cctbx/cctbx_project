@@ -2662,7 +2662,7 @@ class build_all_chain_proxies(linking_mixins):
     if(self.special_position_settings is not None and
        self.special_position_settings.unit_cell() is not None and
        self.special_position_settings.unit_cell().volume() <
-       len(self.pdb_inp.atoms())*5):
+       flex.sum(self.pdb_inp.atoms().extract_occ())*5):
       msg = """Unit cell volume is incompatible with number of atoms.
   Unit cell parameters: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f
   Check CRYST1 record or other sources of crystal symmetry.
