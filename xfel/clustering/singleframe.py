@@ -9,7 +9,6 @@ class SingleFrame:
   used in downstream clustering or filtering procedures.
   """
 
-
   def __init__(self, path, filename, crystal_num=0):
     try:
       # Warn on error, but continue directory traversal.

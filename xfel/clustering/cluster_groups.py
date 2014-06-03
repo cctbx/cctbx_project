@@ -40,7 +40,7 @@ def unit_cell_info(sub_clusters):
                                      '\n']))
       out_str += "\nStandard deviations are in brackets."
       out_str += "\n" + str(len(singletons)) + " singletons:"
-      out_str += "\n{:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
+      out_str += "\n\n{:^14} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}\n".format(
         "Point group",
         "a", "b", "c",
         "alpha", "beta", "gamma")
