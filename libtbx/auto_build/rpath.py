@@ -146,12 +146,11 @@ class FixMacRpath(object):
   def run(self, root, replace=None):
     replace = replace or {}
     replace[root] = '@rpath'
-    # Find all files that end in .so/.dylib, or are executable
-    # This will include many script files, but we will ignore
-    # these failures when running otool/install_name_tool
+    # Find all files that end in .so/.dylib
     targets = set()
     targets |= set(find_ext('.so', root=root))
     targets |= set(find_ext('.dylib', root=root))
+    # Find all executable, binary (Mach-O) files.
     targets |= set(find_exec(root=root))
 
     print "Targets:", len(targets)
