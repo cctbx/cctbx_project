@@ -1,12 +1,17 @@
-from __future__ import division
 import os
 import math
 import logging
-import scipy.cluster.hierarchy as hcluster
-import numpy as np
-from cctbx.uctbx.determine_unit_cell import NCDist
 from xfel.clustering.singleframe import SingleFrame
+from cctbx.uctbx.determine_unit_cell import NCDist
+import numpy as np
+import matplotlib.patheffects as patheffects
 
+""" This package is designed to provide tools to deal with clusters of
+singleframe objects. The class Cluster allows the creation, storage and
+manipulation of these sets of frames. Methods exist to create sub-clusters (new
+cluster objects) or to act on an existing cluster, e.g. to plot the unit cell
+distributions.
+"""
 __author__ = 'zeldin'
 
 
@@ -17,7 +22,10 @@ class Cluster:
   string-info, or by using a classmethod e.g. to create an object from a folder
   full of integration pickles. SingleImage objects have most of the stuff from
   an integration pickle, but can also have methods to calculate things relating
-  to one image at a time.
+  to one image at a time. Whenever a method can plot, there is the option of
+  passing it an appropriate number of matplotlib axes objects, which will then
+  get returned for use in composite plots. See cluster.42 for an example.
+  If no axes are passed, the methods will just plot the result to the screen.
   Clustering filters can act on these to break them up into cluster objects with
   different members. A 'filter' is just a clustering procedure that puts the
   passes and fails into different clusters. This is acheived through the
@@ -39,7 +47,7 @@ class Cluster:
   ouput of a cluster object method (ToDo)
   """
 
-  def __init__(self, data, cname, info, log_level='INFO'):
+  def __init__(self, data, cname, info, ):
     """ Contains a list of SingFrame objects, as well as information about these
     as a cluster (e.g. mean unit cell)."""
     self.cname = cname
@@ -63,7 +71,6 @@ class Cluster:
     #ToDo
     self.res = None
 
-
   @classmethod
   def from_directories(cls, path_to_integration_dir,
                        _prefix='cluster_from_file'):
@@ -83,7 +90,6 @@ class Cluster:
     return cls(data, _prefix,
                'Made from files in {}'.format(path_to_integration_dir[:]))
 
-
   def make_sub_cluster(self, new_members, new_prefix, new_info):
     """ Make a sub-cluster from a list of SingleFrame objects from the old
     SingleFrame array.
@@ -94,9 +100,8 @@ class Cluster:
                      self.info, '#' * 30, '#' * 30, new_info,
                      len(new_members), len(self.members)))
 
-
   def print_ucs(self):
-    """ Prints a list of all the unit cells in the cluster."""
+    """ Prints a list of all the unit cells in the cluster to CSV."""
     outfile = "{}_niggli_ucs".format(self.cname)
     out_str = ["File name, Point group, a, b, c, alpha, beta, gamma"]
     for image in self.members:
@@ -108,7 +113,6 @@ class Cluster:
     with open("{}.csv".format(outfile), 'w') as _outfile:
       _outfile.write("\n".join(out_str))
 
-
   def point_group_filter(self, point_group):
     """ Return all the SingleFrames that have a given pointgroup. """
     new_prefix = '{}_only'.format(point_group)
@@ -119,7 +123,6 @@ class Cluster:
                                   if image.pg == point_group],
                                  new_prefix,
                                  new_info)
-
 
   def total_intensity_filter(self, res='',
                              completeness_threshold=0.95,
@@ -157,12 +160,11 @@ class Cluster:
 
     temp_miller_indicies = sorted_cluster[0].miller_array
     for idx, image in enumerate((x.miller_array for x in sorted_cluster[1:])):
-      temp_miller_indicies = temp_miller_indicies.concatenate(image,
-                                                              assert_is_similar_symmetry=False)
-      current_completeness = temp_miller_indicies. \
-        merge_equivalents(). \
-        array(). \
-        completeness()
+      temp_miller_indicies = temp_miller_indicies. \
+        concatenate(image, assert_is_similar_symmetry=False)
+      current_completeness = temp_miller_indicies.merge_equivalents() \
+                                                .array() \
+                                                .completeness()
       logging.debug(
         "{} images: {:.2f}% complete".format(idx, current_completeness * 100))
       if current_completeness <= completeness_threshold:
@@ -178,17 +180,15 @@ class Cluster:
 
     return self.make_sub_cluster(sorted_cluster[:file_threshold],
                                  'I_threshold_d{}_{}comp'.format(res,
-                                                                 completeness_threshold),
+                                                        completeness_threshold),
                                  ("Subset cluster made using "
                                   "total_intensity_filter() with"
                                   "\nRes={}\ncompleteness_threshold={}").format(
                                    res,
                                    completeness_threshold))
 
-
   def ab_cluster(self, threshold=10000, method='distance',
-                 linkage_method='single', log=False, max_only=True,
-                 ax=None):
+                 linkage_method='single', log=False, ax=None):
     """ Do hierarchical clustering using the Andrews-Berstein distance from
     Andrews & Bernstein J Appl Cryst 47:346 (2014) on the Niggli cells. Returns
     the largest cluster if max_only is true, otherwise a list of clusters. Also
@@ -198,6 +198,7 @@ class Cluster:
                  "Distance from Andrews & Bernstein J Appl Cryst 47:346 (2014)")
     import scipy.spatial.distance as dist
     import matplotlib.pyplot as plt
+    import scipy.cluster.hierarchy as hcluster
 
     def make_g6(uc):
       """ Take a reduced Niggli Cell, and turn it into the G6 representation """
@@ -278,8 +279,12 @@ class Cluster:
       for i in self.members:
         outfile.write(i.path + "\n")
 
-  def visualise_orientational_distribution(self):
-    """ Creates a plot of the orientational distribution of the unit cells.
+  def visualise_orientational_distribution(self, axes_to_return=None,
+                                           cbar=True):
+
+    """ Creates a plot of the orientational distribution of the unit cells. Will
+    plot if given no axes, otherwise, requires 3 axes objects, and will return
+    them.
     """
     from mpl_toolkits.basemap import Basemap
     import matplotlib.pyplot as plt
@@ -309,19 +314,30 @@ class Cluster:
       return x, y, flon, flat
 
     orientations = [flex.vec3_double(flex.double(
-                        image.orientation.direct_matrix()))
-                      for image in self.members]
+      image.orientation.direct_matrix()))
+      for image in self.members]
+
     space_groups = [image.orientation.unit_cell().lattice_symmetry_group()
-                     for image in self.members]
+                    for image in self.members]
 
     # Now do all the plotting
-    axis_ids = [0, 1, 2]
-    labels = ["a axis in lab frame",
-              "b axis in lab frame",
-              "c axis in lab frame"]
-    plt.figure(figsize=(10, 14))
+    if axes_to_return is None:
+      plt.figure(figsize=(10, 14))
+      axes_to_return = [plt.subplot2grid((3, 1), (0, 0)),
+                        plt.subplot2grid((3, 1), (1, 0)),
+                        plt.subplot2grid((3, 1), (2, 0))]
+      show_image = True
+    else:
+      assert len(axes_to_return) == 3, "If using axes option, must hand" \
+                                       " 3 axes to function."
+      show_image = False
 
-    for plot_num, axis_id, label in zip(range(1, 4), axis_ids, labels):
+    axis_ids = [0, 1, 2]
+    labels = ["a",
+              "b",
+              "c"]
+
+    for ax, axis_id, label in zip(axes_to_return, axis_ids, labels):
 
       # Lists of x,y,lat,long for the master orientation, and for all
       # symmetry mates.
@@ -333,7 +349,6 @@ class Cluster:
       sym_y_coords = []
       sym_lon = []
       sym_lat = []
-      ax = plt.subplot(3, 1, plot_num)
       euler_map = Basemap(projection='eck4', lon_0=0, ax=ax)
 
       for orientation, point_group_type in zip(orientations, space_groups):
@@ -360,7 +375,9 @@ class Cluster:
 
       # Plot each image as a yellow sphere
       logging.debug(len(x_coords))
-      euler_map.plot(x_coords, y_coords, 'oy', markersize=4, markeredgewidth=0.5)
+      euler_map.plot(x_coords, y_coords, 'oy',
+                     markersize=4,
+                     markeredgewidth=0.5)
 
       # Plot the symetry mates as black crosses
       #euler_map.plot(sym_x_coords, sym_y_coords, 'kx')
@@ -380,38 +397,30 @@ class Cluster:
           x_for_plot.append(_x)
           y_for_plot.append(_y)
           local_intensity.append(smoothed[_lat, _lon])
-      CS = euler_map.contourf(np.array(x_for_plot),
-                         np.array(y_for_plot),
-                         np.array(local_intensity), tri=True)
+      cs = euler_map.contourf(np.array(x_for_plot),
+                              np.array(y_for_plot),
+                              np.array(local_intensity), tri=True)
 
-      #  Pretty up grap
-      cbar = plt.colorbar(CS)
-      cbar.ax.set_ylabel('spot density')
+      #  Pretty up graph
+      if cbar:
+        _cbar = plt.colorbar(cs, ax=ax)
+        _cbar.ax.set_ylabel('spot density [AU]')
+      middle = euler_map(0, 0)
+      path_effect = [patheffects.withStroke(linewidth=3, foreground="w")]
+      euler_map.plot(middle[0], middle[1], 'o', markersize=10, mfc='none')
+      euler_map.plot(middle[0], middle[1], 'x', markersize=8)
+      ax.annotate("beam", xy=(0.52, 0.52), xycoords='axes fraction',
+                  size='medium', path_effects=path_effect)
       euler_map.drawmeridians(np.arange(0, 360, 60),
                               labels=[0, 0, 1, 0],
                               fontsize=10)
       euler_map.drawparallels(np.arange(-90, 90, 30),
                               labels=[1, 0, 0, 0],
                               fontsize=10)
-      plt.title(label, y=1.08)
+      ax.annotate(label, xy=(-0.05, 0.9), xycoords='axes fraction',
+                  size='x-large', weight='demi')
 
-    plt.show()
+    if show_image:
+      plt.show()
 
-
-
-
-#def cluster_pca(self)::w
-#  """ Should use BLEND clustering protocols in python (Foaldi et al. Acta D.
-#  2013). i.e. filter for parameters that vary, do PCA, then ward linkage
-#  clustering on this. """
-#  # Will come back to this soon <-- Oli
-#  #columns_to_use = [True if np.std(self.niggli_ucs[:, i])
-#  #                  else False for i in range(6)]
-#@classmethod
-#def from_json(cls, json_file, _prefix='cluster_from_json'):
-#    """ Does not work!! Do not use! """
-#    with open(json_file, 'rb') as inFile:
-#      data = json.load(inFile)
-#    return cls(data, _prefix,
-#               'Made from {}'.format(json_file))
-#
+    return axes_to_return
