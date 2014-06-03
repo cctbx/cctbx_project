@@ -19,12 +19,8 @@ def run(_args):
   clusters, cluster_axes = ucs.ab_cluster(_args.t, log=_args.log, ax=ax)
 
   print unit_cell_info(clusters)
+  plt.tight_layout()
   plt.show()
-
-  """ Why all that funny stuff with axes? Well: this lets me pass axes objects
-  to the method, and then back out. A consequence of this is that I can create
-  super-figures with several Cluster methods that each return one panel of the
-  mega-figure."""
 
 if __name__ == "__main__":
   import argparse
