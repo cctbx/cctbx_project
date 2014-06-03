@@ -558,6 +558,10 @@ namespace iotbx { namespace mtz {
     /* now look up spacegroup based on MTZ symm operators */
     spacegroup = ccp4_spgrp_reverse_lookup(p->mtzsymm.nsym, &op1[0]);
 
+    if (!spacegroup) {
+      throw cctbx::error(std::string("failed to find spacegroup from sym ops"));
+    }
+
     for (int i_refl=0; i_refl<n_refl; ++i_refl){
       int m_value = m_isym.int_datum(i_refl) / 256;
       int h_asu, k_asu, l_asu;
