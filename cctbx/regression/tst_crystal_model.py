@@ -174,6 +174,23 @@ Crystal:
   uc_minimum = uc.change_basis(cb_op_to_minimum)
   model_minimum = model.change_basis(cb_op_to_minimum)
   assert uc_minimum.is_similar_to(model_minimum.get_unit_cell())
+  #
+  from scitbx.math import euler_angles
+  A_static = model.get_A()
+  A_as_scan_points = [A_static]
+  num_scan_points = 11
+  for i in range(num_scan_points-1):
+    A_as_scan_points.append(
+      A_as_scan_points[-1] * matrix.sqr(euler_angles.xyz_matrix(0.1,0.2,0.3)))
+  model.set_A_at_scan_points(A_as_scan_points)
+  model_minimum = model.change_basis(cb_op_to_minimum)
+  assert model.num_scan_points == model_minimum.num_scan_points == num_scan_points
+  M = matrix.sqr(cb_op_to_minimum.c_inv().r().transpose().as_double())
+  M_inv = M.inverse()
+  for i in range(num_scan_points):
+    A_orig = model.get_A_at_scan_point(i)
+    A_min = model_minimum.get_A_at_scan_point(i)
+    assert A_min == A_orig * M_inv
 
 def run():
   exercise_crystal_model()
