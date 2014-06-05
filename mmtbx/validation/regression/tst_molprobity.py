@@ -7,7 +7,6 @@ from libtbx.utils import null_out
 import libtbx.load_env
 from cStringIO import StringIO
 import os.path as op
-import os
 
 def exercise_protein () :
 

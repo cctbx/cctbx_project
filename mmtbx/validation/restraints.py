@@ -1,4 +1,10 @@
 
+"""
+Validation of models of any type against basic covalent geometry restraints.
+By default this will flag all restrained atoms deviating by more than 4 sigma
+from the target value.
+"""
+
 from __future__ import division
 from mmtbx.validation import atoms, validation, get_atoms_info
 from libtbx.str_utils import make_sub_header

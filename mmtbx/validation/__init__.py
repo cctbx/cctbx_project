@@ -28,6 +28,9 @@ class entity (slots_getstate_setstate) :
 
   @staticmethod
   def header () :
+    """
+    Format for header in result listings.
+    """
     raise NotImplementedError()
 
   def format_score (self, replace_none_with="None") :
@@ -345,29 +348,13 @@ class atom (atom_base, entity) :
     return True
 
 #-----------------------------------------------------------------------
-# SPECIFIC RESULTS
-# FIXME move these to specific modules
-
-# rna_validate is a real mess, I've been meaning to work on this for a while
-# maybe split up pucker and suite analysis into separate classes?
-class rna_pucker (residue) : # TODO
-  pass
-
-class rna_suite (residue) : # TODO
-  pass
-
-#class rna_bond (bond) : # TODO
-#  pass
-
-#class rna_angle (angle) : # TODO
-#  pass
-
-# XXX others?
-class residue_bfactor (residue) : # TODO
-  pass
-
-#-----------------------------------------------------------------------
 class validation (slots_getstate_setstate) :
+  """
+  Container for a set of results from a single analysis (rotamers, clashes,
+  etc.).  This is responsible for the console display of these results and
+  associated statistics.  Individual modules will subclass this and override
+  the unimplemented methods.
+  """
   __slots__ = ["n_outliers", "n_total", "results", "_cache"]
   program_description = None
   output_header = None
@@ -391,6 +378,17 @@ class validation (slots_getstate_setstate) :
     n_outliers, frac_outliers = self.get_outliers_count_and_fraction()
     return frac_outliers * 100.
 
+  def outlier_selection (self) :
+    """
+    Return a flex.size_t object containing the i_seqs of atoms flagged as
+    outliers (either individually or as part of an atom_group).  This needs
+    to be implemented in the underlying classes unless they include a
+    pre-built _outlier_i_seqs attribute.
+    """
+    if hasattr(self, "_outlier_i_seqs") :
+      return self._outlier_i_seqs
+    raise NotImplementedError()
+
   def get_outliers_goal (self) :
     raise NotImplementedError()
 
@@ -401,6 +399,10 @@ class validation (slots_getstate_setstate) :
     return ""
 
   def show_old_output (self, out=sys.stdout, verbose=False) :
+    """
+    For backwards compatibility with output formats of older utilities
+    (phenix.ramalyze et al.).
+    """
     if (verbose) :
       assert (self.output_header is not None)
       print >> out, self.output_header
@@ -429,9 +431,15 @@ class validation (slots_getstate_setstate) :
     return None
 
   def as_coot_data (self) :
+    """
+    Return results in a format suitable for unpickling in Coot.
+    """
     raise NotImplementedError()
 
   def as_gui_table_data (self, outliers_only=True, include_zoom=False) :
+    """
+    Format results for display in the Phenix GUI.
+    """
     table = []
     for result in self.iter_results(outliers_only) :
       extra = []
@@ -462,6 +470,9 @@ class validation (slots_getstate_setstate) :
     return None
 
   def find_atom_group (self, other=None, atom_group_id_str=None) :
+    """
+    Attempt to locate a result corresponding to a given atom_group object.
+    """
     assert ([other, atom_group_id_str].count(None) == 1)
     if (other is not None) :
       if hasattr(other, "atom_group_group_id_str") :
@@ -504,10 +515,3 @@ molprobity_cmdline_phil_str = """
     .type = bool
     .help = '''Verbose'''
 """
-
-class dummy_validation (object) :
-  def __getattr__ (self, name) :
-    return None
-
-  def __nonzero__ (self) :
-    return False

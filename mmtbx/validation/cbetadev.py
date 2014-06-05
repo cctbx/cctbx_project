@@ -1,4 +1,17 @@
 
+"""
+Validation of protein geometry by analysis of the positions of C-beta sidechain
+atoms.  Significant deviations from ideality often indicate misfit rotamers
+and/or necessity of mainchain movement, especially alternate conformations.
+
+Reference:
+
+Lovell SC, Davis IW, Arendall WB 3rd, de Bakker PI, Word JM, Prisant MG,
+Richardson JS, Richardson DC.  Structure validation by Calpha geometry: phi,psi
+and Cbeta deviation.  Proteins. 2003 Feb 15;50(3):437-50.
+http://www.ncbi.nlm.nih.gov/pubmed/12557186
+"""
+
 from __future__ import division
 from mmtbx.validation import residue, validation
 from scitbx.matrix import col, dihedral_angle, rotate_point_around_axis
