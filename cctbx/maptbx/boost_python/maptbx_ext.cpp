@@ -182,6 +182,10 @@ namespace {
                   double const& >(
                     (arg("map_data"),
                      arg("threshold"))))
+        .def(init<af::const_ref<float, af::c_grid<3> > const&,
+                  double const& >(
+                    (arg("map_data"),
+                     arg("threshold"))))
         .def(init<af::const_ref<int, af::c_grid<3> > const&,
                   double const& >(
                     (arg("map_data"),
@@ -192,9 +196,9 @@ namespace {
                     (arg("volume_cutoff")))
         .def("noise_elimination_two_cutoffs",
              &w_t::noise_elimination_two_cutoffs,
-                    (arg("connectivity_t1"),
-                     arg("volume_threshold_t1"),
-                     arg("keep_interblob")=false))
+                    (arg("connectivity_object_at_t1"),
+                     arg("elimination_volume_threshold_at_t1"),
+                     arg("zero_all_interblob_region")=true))
         .def("maximum_coors", &w_t::maximum_coors)
         .def("maximum_values", &w_t::maximum_values)
       ;
