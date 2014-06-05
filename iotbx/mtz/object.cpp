@@ -2,6 +2,7 @@
 #include <ccp4_spg.h>
 #include <csymlib.h>
 #include <scitbx/math/utils.h>
+#include <cctbx/miller/asu.h>
 #include <iotbx/mtz/batch.h>
 #include <iotbx/mtz/column.h>
 #include <iotbx/error.h>
@@ -539,38 +540,57 @@ namespace iotbx { namespace mtz {
     hkl_columns hkl = get_hkl_columns();
     int n_refl = n_reflections();
 
-    using CSym::ccp4_symop;
-    using CSym::CCP4SPG;
-
     CMtz::MTZ* p = ptr();
-    CCP4SPG *spacegroup;
 
-    scitbx::af::shared<ccp4_symop> op1(p->mtzsymm.nsym);
-    for(int i = 0 ; i < p->mtzsymm.nsym; ++i) {
-      for (int k = 0; k < 3; ++k) {
-        for (int l=0; l<3; ++l) {
-          op1[i].rot[k][l] = p->mtzsymm.sym[i][k][l];
+    // no_expand = true, since we need the symmetry operators in the same
+    // order as in the mtz file
+    cctbx::sgtbx::space_group sg(true /* no_expand */);
+    scitbx::mat3<double> rm;
+    scitbx::vec3<double> tv;
+    for(int im=0;im<p->mtzsymm.nsym;im++) {
+      for (int ir=0;ir<3;ir++) {
+        for (int ic=0;ic<3;ic++) {
+          rm(ir,ic) = p->mtzsymm.sym[im][ir][ic];
         }
-        op1[i].trn[k] = p->mtzsymm.sym[i][k][3];
+        tv[ir] = p->mtzsymm.sym[im][ir][3];
       }
+      sg.expand_smx(cctbx::sgtbx::rt_mx(rm, tv));
     }
 
-    /* now look up spacegroup based on MTZ symm operators */
-    spacegroup = ccp4_spgrp_reverse_lookup(p->mtzsymm.nsym, &op1[0]);
+    cctbx::sgtbx::reciprocal_space::asu asu(sg.type());
 
-    if (!spacegroup) {
-      throw cctbx::error(std::string("failed to find spacegroup from sym ops"));
-    }
+    // http://www.ccp4.ac.uk/html/mtzformat.html#storage
+    // Column contains a combination of the partiality flag M and the symmetry
+    // number ISYM: 256M+ISYM. M is 0 for fully recorded reflections or 1 for
+    // partials. ISYM = 2*isymop - 1 for reflections placed in the positive
+    // asu, i.e. I+ of a Friedel pair, and ISYM = 2*isymop for reflections
+    // placed in the negative asu, i.e. I- of a Friedel pair. Here "isymop"
+    // is the number of the symmetry operator used.
 
+    // also see cctbx/miller/asu.cpp:
+    //   asym_index::asym_index()
     for (int i_refl=0; i_refl<n_refl; ++i_refl){
       int m_value = m_isym.int_datum(i_refl) / 256;
-      int h_asu, k_asu, l_asu;
-      int isym = CSym::ccp4spg_put_in_asu(
-        spacegroup,
-        indices[i_refl][0], indices[i_refl][1], indices[i_refl][2],
-        &h_asu, &k_asu, &l_asu);
-      hkl.replace_miller_index(
-        i_refl, cctbx::miller::index<>(h_asu, k_asu, l_asu));
+      int isym = 0;
+      cctbx::miller::index<> h = indices[i_refl];
+      cctbx::miller::index<> hr_;
+      //int  ht_;
+      for(std::size_t i_smx=0;i_smx<sg.n_smx();i_smx++) {
+        cctbx::sgtbx::rt_mx s = sg(0, 0, i_smx);
+        hr_ = h * s.r();
+        if (asu.is_inside(hr_)) {
+          //ht_ = cctbx::sgtbx::ht_mod_1(h, s.t());
+          isym = (i_smx + 1) * 2 - 1;
+          break;
+        }
+        else if (asu.is_inside(-hr_)) {
+          hr_ = -hr_;
+          //ht_ = cctbx::sgtbx::ht_mod_1(h, s.t());
+          isym = (i_smx + 1) * 2;
+          break;
+        }
+      }
+      hkl.replace_miller_index(i_refl, hr_);
       m_isym.float_datum(i_refl) = static_cast<float>(m_value + isym);
     }
   }
