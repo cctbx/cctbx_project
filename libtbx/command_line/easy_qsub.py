@@ -535,18 +535,19 @@ def wait(task_name = "easy_qsub",
   completed. The caller may specify further information, such as the job name,
   id, and user if jobs of another user are to be monitored.
 
+  This function returns when there are no more jobs matching any of the
+  parameters. i.e. No jobs matching <user>, no jobs matching <job_id>, and no
+  jobs matching <task_name>.
+
   job_id and task_name may be ints, strings, or lists of ints or strings.
   """
-
-  if user is None:
-    user = getpass.getuser()
 
   # Turn job_id into an array of strings if it isn't already one
   if job_id:
     if hasattr(job_id, "__iter__"):
       job_id = [str(i).strip() for i in job_id]
     else:
-      job_id = [str(task_name).strip()]
+      job_id = [str(job_id).strip()]
 
   # Do the same for task_name
   if task_name:
