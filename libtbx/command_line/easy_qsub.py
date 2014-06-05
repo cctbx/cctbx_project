@@ -319,7 +319,7 @@ def run(phenix_source=None,
   Example of python script:
   run(
     where = path_to_where_you_want_to_run_your_jobs,
-    source = "/net/chevy/raid1/nigel/build/setpaths.csh",
+    phenix_source = "/net/chevy/raid1/nigel/build/setpaths.csh",
     commands = ["phenix.fetch_pdb 101m", "phenix.fetch_pdb 1s72"])
 
   For more help type:
