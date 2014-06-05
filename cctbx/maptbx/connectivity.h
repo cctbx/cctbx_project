@@ -16,6 +16,7 @@ private:
   af::shared<int> region_vols;
   af::tiny<int, 3> map_dimensions;
   af::shared<double> region_maximum_values;
+  af::shared<scitbx::vec3<int> > region_maximum_coors;
   int n_regions;
 
   void
@@ -41,9 +42,6 @@ private:
     neighbours[4][0] = neighbours[5][0] = x;
     neighbours[4][1] = neighbours[5][1] = y;
   }
-
-protected:
-  af::shared<scitbx::vec3<int> > region_maximum_coors;
 
 public:
   template <typename MapType>
@@ -167,22 +165,22 @@ public:
 
   af::versa<int, af::c_grid<3> >
   noise_elimination_two_cutoffs(
-    connectivity const& connectivity_t1,
-    int const& volume_threshold_t1,
-    bool keep_interblob=false)
+    connectivity const& connectivity_object_at_t1,
+    int const& elimination_volume_threshold_at_t1,
+    bool zero_all_interblob_region=false)
   {
     af::versa<int, af::c_grid<3> > result_mask;
     result_mask.resize(af::c_grid<3>(map_dimensions), 0);
     af::shared<int> fill_data(n_regions+1, 0);
-    for (int i=1; i < connectivity_t1.n_regions+1; i++ )
+    for (int i=1; i < connectivity_object_at_t1.n_regions+1; i++ )
     {
-      if (connectivity_t1.region_vols[i] > volume_threshold_t1)
+      if (connectivity_object_at_t1.region_vols[i] > elimination_volume_threshold_at_t1)
       {
-        int good_reg_number_t2 = map_new(connectivity_t1.region_maximum_coors[i]);
+        int good_reg_number_t2 = map_new(connectivity_object_at_t1.region_maximum_coors[i]);
         fill_data[good_reg_number_t2] = (good_reg_number_t2>0) ? 1 : 0;
       }
     }
-    fill_data[0] = (keep_interblob) ? 1 : 0;
+    fill_data[0] = (zero_all_interblob_region) ? 0 : 1;
     for (int i = 0; i < map_dimensions[0]; i++) {
       for (int j = 0; j < map_dimensions[1]; j++) {
         for (int k = 0; k < map_dimensions[2]; k++) {

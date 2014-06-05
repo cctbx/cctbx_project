@@ -99,11 +99,11 @@ class run(object):
           use_and=True)
         m = maptbx.volume_scale(map = m.deep_copy(),  n_bins = 10000).map_data()
         F = None
-        keep_interblob=True
+        zero_all_interblob_region=False
         for c1 in [0.9, 0.85, 0.8, 0.7]:
-          if(c1<0.85): keep_interblob=False
-          f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
-            cutoff=c1,scale=0.5, keep_interblob=keep_interblob)
+          if(c1<0.85): zero_all_interblob_region=True
+          f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,cutoff=c1,
+            scale=0.5, zero_all_interblob_region=zero_all_interblob_region)
           if(F is None): F = f
           else: F = F * f
         m = m * F
@@ -113,11 +113,11 @@ class run(object):
     #
     m = maptbx.volume_scale(map = mm.deep_copy(),  n_bins = 10000).map_data()
     F = None
-    keep_interblob=True
+    zero_all_interblob_region=False
     for c1 in [0.9, 0.85, 0.8, 0.7]:
-      if(c1<0.85): keep_interblob=False
-      f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
-        cutoff=c1,scale=0.5, keep_interblob=keep_interblob)
+      if(c1<0.85): zero_all_interblob_region=True
+      f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,cutoff=c1,
+      scale=0.5, zero_all_interblob_region=zero_all_interblob_region)
       if(F is None): F = f
       else: F = F * f
     m_filter = m * F
@@ -212,12 +212,12 @@ class run(object):
     self.map_result = self.map_result*F
     self.map_result = maptbx.volume_scale(map = self.map_result,  n_bins = 10000).map_data()
     #
-    keep_interblob=True
+    zero_all_interblob_region=False
     F = None
     for c1 in [0.95, 0.9, 0.85, 0.8,0.7,0.6,0.5,0.4,0.3,0.2]:
-      if(c1<0.9): keep_interblob=False
+      if(c1<0.9): zero_all_interblob_region=True
       f = truncate_with_roots(m=self.map_result,fmodel=fmodel,c1=c1,c2=c1-0.1,
-        cutoff=c1,scale=1, keep_interblob=keep_interblob)
+        cutoff=c1,scale=1, zero_all_interblob_region=zero_all_interblob_region)
       if(F is None): F = f
       else: F = F * f
     #
@@ -227,11 +227,11 @@ class run(object):
       anomalous_flag = False,
       use_sg         = False)
     m = get_map(mc=mc, cg = crystal_gridding)
-    keep_interblob=True
+    zero_all_interblob_region=False
     for c1 in [1.0,0.9,0.8,0.7,0.6,0.5]:
-      if(c1<0.9): keep_interblob=False
-      f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,cutoff=c1,scale=1.0,
-        keep_interblob=keep_interblob)
+      if(c1<0.9): zero_all_interblob_region=True
+      f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,cutoff=c1,
+        scale=1.0, zero_all_interblob_region=zero_all_interblob_region)
       if(F is None): F = f
       else: F = F * f
     #
@@ -372,7 +372,7 @@ def fem_loop_(
       F = None
       for c1 in [0.8, 0.7,0.6,]:
         f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
-          cutoff=c1,scale=0.7, keep_interblob=True)
+          cutoff=c1,scale=0.7, zero_all_interblob_region=False)
         if(F is None): F = f
         else: F = F * f
       m = m * F
@@ -381,18 +381,18 @@ def fem_loop_(
     #if(random.choice([True, False, False])):
     if(random.choice([True, False])):
       F = None
-      keep_interblob=True
+      zero_all_interblob_region=False
       for c1 in [0.9, 0.85, 0.8, 0.7]:
-        if(c1<0.9): keep_interblob=False
-        f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
-          cutoff=c1,scale=1, keep_interblob=keep_interblob)
+        if(c1<0.9): zero_all_interblob_region=True
+        f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,cutoff=c1,
+          scale=1, zero_all_interblob_region=zero_all_interblob_region)
         if(F is None): F = f
         else: F = F * f
       m = m * F
   return m
 
-def truncate_with_roots(m, fmodel, c1, c2, cutoff, scale, keep_interblob=False,
-                        as_int=False):
+def truncate_with_roots(m, fmodel, c1, c2, cutoff, scale,
+                        zero_all_interblob_region=True, as_int=False):
   assert c1>=c2
   average_peak_volume = int(maptbx.peak_volume_estimate(
     map_data         = m,
@@ -401,8 +401,9 @@ def truncate_with_roots(m, fmodel, c1, c2, cutoff, scale, keep_interblob=False,
     cutoff           = cutoff)*scale)
   co1 = maptbx.connectivity(map_data=m, threshold=c1)
   co2 = maptbx.connectivity(map_data=m, threshold=c2)
-  result = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
-    volume_threshold_t1=average_peak_volume, keep_interblob=keep_interblob)
+  result = co2.noise_elimination_two_cutoffs(connectivity_object_at_t1=co1,
+    elimination_volume_threshold_at_t1=average_peak_volume,
+    zero_all_interblob_region=zero_all_interblob_region)
   if(as_int): return result
   else:       return result.as_double()
 

@@ -7,6 +7,10 @@ from cctbx import miller
 def getvs(cmap, threshold):
   co = maptbx.connectivity(map_data=cmap, threshold=threshold)
   map_result = co.result()
+  regs = co.regions()
+  coors = co.maximum_coors()
+  vals = co.maximum_values()
+  assert len(list(regs)) == len(list(coors)) == len(list(vals))
   v=[0,0,0]
   for i in range(3):
     v[i] = (map_result==i).count(True)
@@ -255,9 +259,10 @@ def exercise_noise_elimination_two_cutoffs():
   # res_mask contain 0 for noise, 1 for valuable information.
   # Mask corresponding to t2 contouring level.
   #
-  # The option "keep_interblob" by default is False, and this means that
-  # everything below threshold on t2 level will be 0. If
-  # keep_interblob=True then everything below threshold on t2 level will be 1.
+  # The option "zero_all_interblob_region" by default is True, and this means
+  # that everything below threshold on t2 level will be 0. If
+  # zero_all_interblob_region=False then everything below threshold on t2
+  # level will be 1.
   #
   #map preparation for test
   cmap = flex.double(flex.grid(100,2,2))
@@ -281,87 +286,98 @@ def exercise_noise_elimination_two_cutoffs():
   # After lowering contour level they are still separate, so we want to keep
   # only big first blob, which has volume=35 on t2 contour level.
   # Here is actual call to get a mask.
-  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=12,
-                                               keep_interblob=False)
+  res_mask = co2.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=12,
+      zero_all_interblob_region=True)
   assert (res_mask!=0).count(True) == 35
   # 2 good ===> 2 separate
-  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=8)
+  res_mask = co2.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=8)
   assert (res_mask!=0).count(True) == 50
   # 1 good, 1 bad ===> 1 big
-  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=12)
+  res_mask = co3.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=12)
   assert (res_mask!=0).count(True) == 63
   # 2 good ===> 1 big
-  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=8)
+  res_mask = co3.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=8)
   assert (res_mask!=0).count(True) == 63
   # 2 bad ===> 1 big
-  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=30)
+  res_mask = co3.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=30)
   assert (res_mask!=0).count(True) == 0
 
   # extreme case: nothing above t1 ==> result: everything is 0 on the mask
   co1 = maptbx.connectivity(map_data=cmap, threshold=40)
   co2 = maptbx.connectivity(map_data=cmap, threshold=22)
-  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=10)
+  res_mask = co2.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=10)
   assert (res_mask!=0).count(True) == 0
 
   # extreme case: everything above t1 ==> result is undefined.
 
   # =================================================================
-  # same as above, but keep_interblob = True
+  # same as above, but zero_all_interblob_region = False
   # In the first test we have 1 good blob and one bad blob. Bad one
   # will have volume=15 on t2 contouring level so we want to have 385 non-zeros
   # on resulting mask
   co1 = maptbx.connectivity(map_data=cmap, threshold=25)
   co2 = maptbx.connectivity(map_data=cmap, threshold=22)
   co3 = maptbx.connectivity(map_data=cmap, threshold=18)
-  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=12,
-                                               keep_interblob=True)
+  res_mask = co2.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=12,
+      zero_all_interblob_region=False)
   #for i in range(100):
   #  print "%d   : %d | %d" % (i,  cmap[i,1,1], res_mask[i,1,1])
   assert (res_mask!=0).count(True) == 385
 
-
   # 2 good ===> 2 separate
-  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=8,
-                                               keep_interblob=True)
+  res_mask = co2.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=8,
+      zero_all_interblob_region=False)
   assert (res_mask==1).count(True) == 400
   # 1 good, 1 bad ===> 1 big
-  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=12,
-                                               keep_interblob=True)
+  res_mask = co3.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=12,
+      zero_all_interblob_region=False)
   assert (res_mask!=0).count(True) == 400
   # 2 good ===> 1 big
-  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=8,
-                                               keep_interblob=True)
+  res_mask = co3.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=8,
+      zero_all_interblob_region=False)
   assert (res_mask!=0).count(True) == 400
   # 2 bad ===> 1 big
-  res_mask = co3.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=30,
-                                               keep_interblob=True)
+  res_mask = co3.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=30,
+      zero_all_interblob_region=False)
   assert (res_mask!=0).count(True) == 337
 
   # extreme case: nothing above t1, something above t2 ==> result:
   # everything between blobs on t2 will be 1.
   co1 = maptbx.connectivity(map_data=cmap, threshold=40)
   co2 = maptbx.connectivity(map_data=cmap, threshold=22)
-  res_mask = co2.noise_elimination_two_cutoffs(connectivity_t1=co1,
-                                               volume_threshold_t1=10,
-                                               keep_interblob=True)
+  res_mask = co2.noise_elimination_two_cutoffs(
+      connectivity_object_at_t1=co1,
+      elimination_volume_threshold_at_t1=10,
+      zero_all_interblob_region=False)
   assert (res_mask!=0).count(True) == 350
 
 if __name__ == "__main__" :
   exercise1()  # examples of usage are here!
   exercise3()
   exercise4()
-  exercise41()  # example to use integer map. Careful, different class name.
+  exercise41()
   exercise5()
   exercise6()
   exercise_volume_cutoff()
