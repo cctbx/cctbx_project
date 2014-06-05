@@ -141,6 +141,10 @@ class ramalyze (validation) :
     from mmtbx.rotamer import ramachandran_eval
     from scitbx.array_family import flex
     self._outlier_i_seqs = flex.size_t()
+    pdb_atoms = pdb_hierarchy.atoms()
+    all_i_seqs = pdb_atoms.extract_i_seq()
+    if (all_i_seqs.all_eq(0)) :
+      pdb_atoms.reset_i_seq()
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
     analysis = ""
