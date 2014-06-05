@@ -117,7 +117,7 @@ class ramachandran_ensemble (residue) :
 
 class ramalyze (validation) :
   __slots__ = validation.__slots__ + ["out_percent", "fav_percent",
-    "n_allowed", "n_favored", "n_type", ]
+    "n_allowed", "n_favored", "n_type", "_outlier_i_seqs" ]
   program_description = "Analyze protein backbone ramachandran"
   output_header = "residue:score%:phi:psi:evaluation:type"
   gui_list_headers = ["Chain","Residue","Residue type","Score","Phi","Psi"]
@@ -139,6 +139,8 @@ class ramalyze (validation) :
     from mmtbx.validation import utils
     import mmtbx.rotamer
     from mmtbx.rotamer import ramachandran_eval
+    from scitbx.array_family import flex
+    self._outlier_i_seqs = flex.size_t()
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
     analysis = ""
@@ -255,6 +257,10 @@ class ramalyze (validation) :
                 c_alphas=c_alphas)
               if (not outliers_only or is_outlier) :
                 self.results.append(result)
+              if is_outlier :
+                i_seqs = atom_group.atoms().extract_i_seq()
+                assert (not i_seqs.all_eq(0))
+                self._outlier_i_seqs.extend(i_seqs)
     out_count, out_percent = self.get_outliers_count_and_fraction()
     fav_count, fav_percent = self.get_favored_count_and_fraction()
     self.out_percent = out_percent * 100.0

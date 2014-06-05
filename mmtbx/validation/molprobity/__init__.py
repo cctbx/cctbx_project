@@ -112,6 +112,8 @@ class molprobity (slots_getstate_setstate) :
       file_name=None) :
     for name in self.__slots__ :
       setattr(self, name, None)
+    # very important - the i_seq attributes may be extracted later
+    pdb_hierarchy.atoms().reset_i_seq()
     if (xray_structure is None) :
       if (fmodel is not None) :
         xray_structure = fmodel.xray_structure

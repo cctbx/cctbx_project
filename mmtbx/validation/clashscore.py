@@ -1,4 +1,8 @@
 
+"""
+All-atom contact analysis.  Requires Reduce and Probe (installed separately).
+"""
+
 from __future__ import division
 from mmtbx.validation import validation, atoms, atom_info, residue
 from libtbx import easy_run

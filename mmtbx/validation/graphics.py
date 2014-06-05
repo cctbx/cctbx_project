@@ -1,4 +1,8 @@
 
+"""
+Base classes for visualization of MolProbity analysis using matplotlib.
+"""
+
 from __future__ import division
 from libtbx import slots_getstate_setstate
 

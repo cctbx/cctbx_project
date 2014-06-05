@@ -8,6 +8,10 @@ import math
 import sys
 
 def export_ramachandran_distribution (n_dim_table, scale_factor=0.25) :
+  """
+  Convert a MolProbity Ramachandran distribution to a format suitable for
+  display using matplotlib (see wxtbx.plots).
+  """
   import numpy
   z = n_dim_table.lookupTable
   z_grid = [ [ z[i + (j * 180)] for j in range(180) ]
@@ -16,6 +20,11 @@ def export_ramachandran_distribution (n_dim_table, scale_factor=0.25) :
   return npz ** scale_factor
 
 def export_rotamer_distribution (n_dim_table, scale_factor=0.5) :
+  """
+  Convert a MolProbity rotamer distribution to a format suitable for
+  display using matplotlib (see wxtbx.plots).  Will reduce dimensionality to
+  2 if necessary.
+  """
   import numpy
   z = n_dim_table.lookupTable
   n_dim = n_dim_table.nDim

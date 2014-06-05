@@ -5,11 +5,9 @@ from mmtbx.monomer_library import server
 from mmtbx.validation import model_properties
 import iotbx.pdb.hierarchy
 from libtbx.test_utils import show_diff
-import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
 from libtbx.utils import null_out
 from cStringIO import StringIO
-import os.path
 
 def exercise () :
   pdb_raw = """\

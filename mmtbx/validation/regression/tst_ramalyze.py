@@ -24,6 +24,7 @@ def exercise_ramalyze():
   pdb_in = file_reader.any_file(file_name=regression_pdb)
   hierarchy = pdb_in.file_object.construct_hierarchy()
   pdb_io = pdb.input(file_name=regression_pdb)
+  hierarchy.atoms().reset_i_seq()
   r = ramalyze.ramalyze(
     pdb_hierarchy=hierarchy,
     outliers_only=True)
@@ -39,6 +40,16 @@ def exercise_ramalyze():
   assert output.count("Cis-proline") == 0
   assert output.count("Pre-proline") == 4
   assert output.count("Isoleucine or valine") == 25
+  assert (len(r.outlier_selection()) == 788)
+  outlier_ids = set([])
+  atoms = hierarchy.atoms()
+  for i_seq in r.outlier_selection() :
+    atom = atoms[i_seq]
+    atom_group = atoms[i_seq].parent()
+    outlier_ids.add(atom_group.id_str())
+  outliers1 = sorted([ o.atom_group_id_str() for o in r.results ])
+  outliers2 = sorted(list(outlier_ids))
+  assert (outliers1 == outliers2)
 
   r = ramalyze.ramalyze(
     pdb_hierarchy=hierarchy,
@@ -91,6 +102,7 @@ def exercise_ramalyze():
  B 375  LEU:11.84:-89.81:-41.45:Favored:General
  B 376  ASN:84.33:-58.30:-41.39:Favored:General
  B 377  GLU:30.88:-56.79:-21.74:Favored:General""")
+    assert (len(r.outlier_selection()) == 788)
 
   # Exercise 2
   regression_pdb = libtbx.env.find_in_repositories(
@@ -98,6 +110,7 @@ def exercise_ramalyze():
     test=os.path.isfile)
   pdb_in = file_reader.any_file(file_name=regression_pdb)
   hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy.atoms().reset_i_seq()
   r = ramalyze.ramalyze(
     pdb_hierarchy=hierarchy,
     outliers_only=True)
