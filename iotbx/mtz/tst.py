@@ -256,6 +256,7 @@ def run_call_back(flags, space_group_info):
       space_group_info=space_group_info,
       anomalous_flag=anomalous_flag,
       verbose=flags.Verbose)
+  exercise_unmerged(space_group_info=space_group_info)
 
 def exercise_miller_array_data_types():
   miller_set = crystal.symmetry(
@@ -454,52 +455,109 @@ def exercise_wavelength () :
   miller_array = mtz_object.as_miller_arrays()[0]
   assert (approx_equal(miller_array.info().wavelength, 0.9792))
 
-def exercise_unmerged():
-  miller_set = crystal.symmetry(
-    unit_cell=(100,100,100,90,90,90),
-    space_group_symbol="I23").build_miller_set(
-      d_min=4, anomalous_flag=True)
-  miller_set = miller_set.expand_to_p1().customized_copy(
-    space_group_info=miller_set.space_group_info())
-
-  m = mtz.object()
-  m.set_title('This is a title')
-  m.set_space_group_info(miller_set.space_group_info())
-  x = m.add_crystal('XTAL', 'CCTBX', miller_set.unit_cell().parameters())
-  d = x.add_dataset('TEST', 1)
-
-  indices = miller_set.indices()
-  original_indices = indices.deep_copy()
-
-  # map the miller indices to one hemisphere (i.e. just I+)
-  miller.map_to_asu(m.space_group().type(), False, indices)
-
-  h, k, l = [i.iround() for i in indices.as_vec3_double().parts()]
-  m.adjust_column_array_sizes(len(h))
-  m.set_n_reflections(len(h))
-
-  # assign H, K, L
-  d.add_column('H', 'H').set_values(h.as_double().as_float())
-  d.add_column('K', 'H').set_values(k.as_double().as_float())
-  d.add_column('L', 'H').set_values(l.as_double().as_float())
-
-  d.add_column('M_ISYM', 'Y').set_values(flex.float(len(indices)))
-
-  m.replace_original_index_miller_indices(original_indices)
-
-  assert (m.extract_original_index_miller_indices() == original_indices).count(False) == 0
-  # all asu miller indices should be positive for this spacegroup
-  assert min(m.extract_miller_indices().as_vec3_double().min()) >= 0
-
+def exercise_unmerged(space_group_info):
+  import random
+  import ccp4io_adaptbx
   from cctbx import sgtbx
-  cb_op = sgtbx.change_of_basis_op("-l,-k,-h")
+  # shuffle the
+  space_group = sgtbx.space_group('P 1', no_expand=True)
+  perm = list(range(len(space_group_info.group())))
+  random.shuffle(perm)
+  for i in perm:
+    space_group.expand_smx(space_group_info.group()[i])
+  unit_cell = space_group_info.any_compatible_unit_cell(volume=1000)
+  for cb_op in (
+    None, space_group.info().change_of_basis_op_to_primitive_setting(),
+    unit_cell.change_of_basis_op_to_niggli_cell()):
+    miller_set = crystal.symmetry(
+      unit_cell=unit_cell,
+      space_group=space_group).build_miller_set(
+        d_min=1, anomalous_flag=True)
+    miller_set = miller_set.expand_to_p1().customized_copy(
+      space_group_info=miller_set.space_group_info())
+    if cb_op is not None:
+      miller_set = miller_set.change_basis(cb_op)
 
-  m.change_basis_in_place(cb_op)
-  assert (
-    m.extract_original_index_miller_indices() == cb_op.apply(original_indices)
-    ).count(False) == 0
-  # all asu miller indices should be positive for this spacegroup
-  assert min(m.extract_miller_indices().as_vec3_double().min()) >= 0
+    m = mtz.object()
+    m.set_title('This is a title')
+    m.set_space_group_info(miller_set.space_group_info())
+    x = m.add_crystal('XTAL', 'CCTBX', miller_set.unit_cell().parameters())
+    d = x.add_dataset('TEST', 1)
+
+    indices = miller_set.indices()
+    original_indices = indices.deep_copy()
+
+    # map the miller indices to one hemisphere (i.e. just I+)
+    miller.map_to_asu(m.space_group().type(), False, indices)
+
+    h, k, l = [i.iround() for i in indices.as_vec3_double().parts()]
+    m.adjust_column_array_sizes(len(h))
+    m.set_n_reflections(len(h))
+
+    # assign H, K, L
+    d.add_column('H', 'H').set_values(h.as_double().as_float())
+    d.add_column('K', 'H').set_values(k.as_double().as_float())
+    d.add_column('L', 'H').set_values(l.as_double().as_float())
+
+    d.add_column('M_ISYM', 'Y').set_values(flex.float(len(indices)))
+
+    m.replace_original_index_miller_indices(original_indices)
+
+    assert (m.extract_original_index_miller_indices() == original_indices).count(False) == 0
+    # check the indices in the mtz file are actually in the asu
+    extracted_indices = m.extract_miller_indices()
+    miller.map_to_asu(m.space_group().type(), False, extracted_indices)
+    assert (extracted_indices == m.extract_miller_indices()).count(False) == 0
+
+    # test change_basis_in_place if appropriate for current space group
+    import cctbx.sgtbx.cosets
+
+    cb_op_to_niggli_cell \
+      = miller_set.change_of_basis_op_to_niggli_cell()
+
+    minimum_cell_symmetry = crystal.symmetry.change_basis(
+      miller_set.crystal_symmetry(),
+      cb_op=cb_op_to_niggli_cell)
+
+    lattice_group = sgtbx.lattice_symmetry.group(
+      minimum_cell_symmetry.unit_cell(),
+      max_delta=3.0)
+    lattice_group.expand_inv(sgtbx.tr_vec((0,0,0)))
+    lattice_group.make_tidy()
+
+    cosets = sgtbx.cosets.left_decomposition_point_groups_only(
+      g=lattice_group,
+      h=minimum_cell_symmetry.reflection_intensity_symmetry(
+        anomalous_flag=True).space_group()
+          .build_derived_acentric_group()
+          .make_tidy())
+
+    possible_twin_laws = cosets.best_partition_representatives(
+      cb_op=cb_op_to_niggli_cell.inverse(),
+      omit_first_partition=True,
+      omit_negative_determinants=True)
+
+    for twin_law in possible_twin_laws:
+      cb_op = sgtbx.change_of_basis_op(twin_law.as_xyz())
+      #print cb_op.as_hkl()
+      # forward direction
+      m.change_basis_in_place(cb_op)
+      assert (
+        m.extract_original_index_miller_indices() == cb_op.apply(original_indices)
+        ).count(False) == 0
+      ## check the indices in the mtz file are actually in the asu
+      #extracted_indices = m.extract_miller_indices()
+      #miller.map_to_asu(m.space_group().type(), False, extracted_indices)
+      #assert (extracted_indices == m.extract_miller_indices()).count(False) == 0
+      # and back again
+      m.change_basis_in_place(cb_op.inverse())
+      assert (
+        m.extract_original_index_miller_indices() == original_indices
+        ).count(False) == 0
+      ## check the indices in the mtz file are actually in the asu
+      #extracted_indices = m.extract_miller_indices()
+      #miller.map_to_asu(m.space_group().type(), False, extracted_indices)
+      #assert (extracted_indices == m.extract_miller_indices()).count(False) == 0
 
 
 
@@ -507,7 +565,8 @@ def exercise():
   if (mtz is None):
     print "Skipping iotbx/mtz/tst.py: ccp4io not available"
     return
-  exercise_unmerged()
+  from cctbx import sgtbx
+  exercise_unmerged(sgtbx.space_group_info("I23"))
   exercise_wavelength()
   exercise_extract_delta_anomalous()
   exercise_repair_ccp4i_import_merged_data()
