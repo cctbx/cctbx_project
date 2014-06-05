@@ -140,7 +140,8 @@ def ion_class(chem_env):
 
 def ion_vector(chem_env, scatter_env, use_scatter=True, use_chem=True,
                b_iso=True, occ=True, diff_peak=True, geometry=True,
-               elements=None, valence=True, anom=True, ratios=True):
+               elements=None, valence=True, anom=True, ratios=True,
+               anom_peak=False):
   """
   Creates a vector containing all of the useful properties contained
   within ion. Merges together the vectors from ion_*_vector().
@@ -176,6 +177,9 @@ def ion_vector(chem_env, scatter_env, use_scatter=True, use_chem=True,
       Include anomalous scattering information.
   ratios : bool, optional
       Use f'' / f'' expected, instead of raw f'' and f' values.
+  anom_peak : bool, optional
+      Whether to use the actual height of the anomalous map instead of the
+      calculated f'' values.
 
   Returns
   -------
@@ -203,7 +207,8 @@ def ion_vector(chem_env, scatter_env, use_scatter=True, use_chem=True,
     if use_chem else [],
     ion_valence_vector(chem_env, elements=elements)
     if use_chem and valence else [],
-    ion_anomalous_vector(scatter_env, elements=elements, ratios=ratios)
+    ion_anomalous_vector(scatter_env, elements=elements, ratios=ratios,
+                         anom_peak=anom_peak)
     if use_scatter and anom else [],
     ))
 
@@ -361,7 +366,8 @@ def ion_valence_vector(chem_env, elements=None):
   # Flatten the list
   return _flatten_list(ret)
 
-def ion_anomalous_vector(scatter_env, elements=None, ratios=True):
+def ion_anomalous_vector(scatter_env, elements=None, ratios=True,
+                         anom_peak=False):
   """
   Calculate the f'' / f''_expected for a variety of ion identities.
 
@@ -376,6 +382,9 @@ def ion_anomalous_vector(scatter_env, elements=None, ratios=True):
   ratios : bool, optional
       If False, instead of calculating ratios, just return a vector of the
       wavelength, f', and f''.
+  anom_peak : bool, optional
+      Whether to use the actual height of the anomalous map instead of the
+      calculated f'' values.
 
   Returns
   -------
@@ -392,14 +401,17 @@ def ion_anomalous_vector(scatter_env, elements=None, ratios=True):
     else:
       return np.zeros(1)
 
-  if ratios:
-    ret = np.fromiter(
-      (scatter_env.fpp /
-       sasaki.table(element).at_angstrom(scatter_env.wavelength).fdp()
-       for element in elements),
-       float)
+  if anom_peak:
+    height = scatter_env.anom_density[0]
   else:
-    ret = _flatten_list([scatter_env.fpp,])
+    height = scatter_env.fpp
+
+  if ratios:
+    ret = np.fromiter((
+      height / sasaki.table(element).at_angstrom(scatter_env.wavelength).fdp()
+      for element in elements), float)
+  else:
+    ret = _flatten_list([height,])
   return ret
 
 def scale_to(matrix, source, target):
