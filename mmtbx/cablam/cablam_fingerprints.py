@@ -27,9 +27,10 @@ from libtbx.utils import Sorry
 #-------------------------------------------------------------------------------
 class motif(object):
   def __init__(self,
-    motif_name="",residue_names={}):
+    motif_name="",residue_names={},superpose_order = {}):
     self.motif_name = motif_name
     self.residue_names = residue_names #labels for printing keyed by indices for residues in the motif
+    self.superpose_order = superpose_order # format as {'a':['CA','O'],'b':['CA']}
     self.residues = []
 
   def add_residue(self, allowed_resname=[], banned_resname=[],cis_or_trans=None,
@@ -110,10 +111,27 @@ class motif_instance(object):
   def add_to_instance(self, index, residue):
     self.residues[index] = residue
 
+  def build_superposition(self, motif):
+    superpose_list = []
+    for index in motif.superpose_order:
+      atoms = motif.superpose_order[index]
+      residue = self.residues[index]
+      chain = residue.chain
+      resseq = str(residue.resnum)
+      for atom in atoms:
+        #altloc " " breaks down on alternates, probably do care about this.
+        if len(residue.alts) > 1 and residue.firstalt(atom):
+          atom_order = "(chain "+chain+" and resseq "+resseq+" and name "+atom+ " and altloc "+residue.firstalt(atom)+")"
+        else:
+          atom_order = "(chain "+chain+" and resseq "+resseq+" and name "+atom+")"
+        superpose_list.append(atom_order)
+    self.superpose_thus = "\"" + " or ".join(superpose_list) + "\""
+
   def __init__(self, fingerprint):
     self.needed_length = len(fingerprint.residues)
     self.residues = {}
     self.names = fingerprint.residue_names
+    self.superpose_thus = ""
 #}}}
 
 #{{{ check protein
@@ -140,6 +158,7 @@ def check_protein(protein, motif_name_list):
 #1b16FH_A.pdb
 #finished motif wide_helix_turn
 #7 {'': <class 'mmtbx.cablam.cablam_fingerprints.residue'>} 1
+          candidate.build_superposition(motif)
           found_motifs[motif.motif_name].append(candidate)
   return found_motifs
 #-------------------------------------------------------------------------------
@@ -338,6 +357,7 @@ Problem locating cablam fingerprints dir""")
   print ". . . Done"
   os.chdir(pwd)
 #-------------------------------------------------------------------------------
+#}}}
 
 #{{{ fetch fingerprints function
 #Given a list of string which match .pickled motif names, returns a list of

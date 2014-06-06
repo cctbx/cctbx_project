@@ -24,6 +24,7 @@ from __future__ import division
 #2014_02_07: Updates to probe output methods to match changes in
 #  cablam_fingerprints. Motifs without continuous sequence now supported for all
 #  probe outputs
+#Next: iotbx.file_reader incorporated to control input
 #To do: Collect cis-peptides for analysis. Are they identifiable in cablamspace?
 #  Add clash filtering. 0.4 is sufficient clash to cull, mc-mc are the important
 #  contacts, at least for base cablam
@@ -212,7 +213,7 @@ probe_path=*path*
   phenix.probe -u -condense -self -mc -NOVDWOUT -NOCLASHOUT MC filename.pdb > filename.probe
   Should produce appropriately formatted and named files for this option
 
-probe_mode=kin/annote/instance
+probe_mode=kin/annote/instance/sequence
   These are printing options for hydrogen bond pattern analysis, which overrides
   the Basic Printing Options above.
 Choose 1 of 3:
@@ -227,6 +228,9 @@ Choose 1 of 3:
   of interest.  Each kin is a high-dimensional vectorlist that shows the path of
   a multi-residue motif through the measures specified in the commandline
   (see below for options)
+=sequence prints to screen the animo acid sequence of the motif of interest.
+  Does not behave with multiple motifs.  Uses single-letter amino acid codes, if
+  a residue type is unrecognized, will print 'X' followed by the 3-letter code.
 
 list_motifs=True/False
   Prints to screen a list of all the motifs/"fingerprints" currently available
@@ -855,27 +859,38 @@ def res_seq_by_instance(motif_instances):
 #{{{ --- PROBE superposition ---
 #-------------------------------------------------------------------------------
 #First step: excise the relevant bits of each pdb file
-def trim_motifs(motif_instances, filename):
+def trim_motifs(motif_instances, filename, superpose_refs):
   pwd = os.getcwd()
   for motif_name in motif_instances:
     if os.path.isdir(motif_name): pass
     else: os.mkdir(motif_name)
     os.chdir(motif_name)
 
+    instance_num = 0
     for instance in motif_instances[motif_name]:
+      instance_num += 1
+      outputfile = os.path.basename(filename) + "_" + str(instance_num) + ".pdb"
       resnums = []
       for residue in instance.residues.values():
         resnum = str(residue.resnum)
         resnums.append(resnum)
       selection = "resseq "+ " or resseq ".join(resnums)
-      command = 'phenix.pdbtools stop_for_unknowns=False modify.keep=\"'+selection+'\" '+filename
-      os.system(command)
+      command = 'phenix.pdbtools stop_for_unknowns=False modify.keep=\"'+selection+'\" '+filename + " output.file_name=" + outputfile
+      #output.file_name=*****
+      #sys.stderr.write(command)
+      runthis = easy_run.fully_buffered(command)
+      if motif_name not in superpose_refs:
+        superpose_refs[motif_name] = {"motif":instance,"filename":outputfile}
+      else:
+        sys.stderr.write("trying to superpose\n")
+        ref = superpose_refs[motif_name]
+        #phenix.superpose_pdbs fixed.pdb moving.pdb selection_fixed="name CA" selection_moving="name CA"
+        command = "phenix.superpose_pdbs "+ ref["filename"] + " " + outputfile + " selection_default_fixed="+ref["motif"].superpose_thus +" selection_default_moving="+instance.superpose_thus + " output.file_name=" + outputfile
+        sys.stderr.write(command)
+        sys.stderr.write("\n")
+        runthis = easy_run.fully_buffered(command)
     os.chdir(pwd)
-
-#Second step: use superpose_pdbs to align each file (in progress)
-def superpose_motifs(motif_list):
-  pass
-  #for motif in motif_list:
+  return superpose_refs
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -1020,6 +1035,7 @@ def run(args):
   #{{{ setup
   #-----------------------------------------------------------------------------
   targetatoms = ["CA","O","C","N"]
+  superpose_refs = {}
 
   outfiles = {}
   if params.probe_motifs:
@@ -1058,8 +1074,8 @@ def run(args):
   #{{{ get file, start loop
   #-----------------------------------------------------------------------------
   for filename in fileset:
-    if not filename.endswith('.pdb'):
-      continue
+    #if not filename.endswith('.pdb'):
+    #  continue
     if dirpath: #must add the path if using the listed contents of a dir
       filename = os.path.join(dirpath,filename)
     else:
@@ -1067,6 +1083,11 @@ def run(args):
 
     pdbid = os.path.basename(filename)
 
+    if not os.path.isfile(filename): continue
+    pdb_in = file_reader.any_file(filename)
+    if pdb_in.file_type != "pdb":
+      sys.stderr.write(filename +" not id'd as readable file\n")
+      continue
     sys.stderr.write(pdbid+'\n')
     pdb_io = pdb.input(filename)
     hierarchy = pdb_io.construct_hierarchy()
@@ -1171,7 +1192,7 @@ def run(args):
         #res_seq_by_instance(resdata, motif_list)
       elif params.probe_mode == 'superpose':
         #trim_motifs(resdata, filename, motif_list)
-        trim_motifs(found_motifs, filename)
+        superpose_refs = trim_motifs(found_motifs, filename,superpose_refs)
         superpose_motifs(motif_list)
       else:
         sys.stderr.write('\n\nUnrecognized probemode request\n\n')
