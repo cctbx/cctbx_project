@@ -48,6 +48,7 @@ from __future__ import division
 #  Added test validation for cis vs tran proline.
 #  Added stand-alone output for HELIX/SHEET records.
 #2014-03-07: cleaned up commandline control for outputs, now all "output="
+#Next: iotbx.file_reader incorporated to control input, cleaned up oneline output
 
 import os, sys
 import libtbx.phil.command_line #argument parsing
@@ -60,6 +61,7 @@ from mmtbx.cablam import cablam_math #contains geometric measure calculators
 from mmtbx.rotamer.n_dim_table import NDimTable #handles contours
 from libtbx import easy_pickle #NDimTables are stored as pickle files
 from libtbx import easy_run
+from iotbx import file_reader
 import libtbx.load_env
 
 #{{{ phil
@@ -864,7 +866,7 @@ def oneline(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0
     ca_outlier_percent = ca_outlier_count/residue_count*100
   except ZeroDivisionError:
     ca_outlier_percent = 0
-  sys.stderr.write(pdbid+'\n')
+  #sys.stderr.write(pdbid+'\n') #Doesn't need bc pdbid printed in output
   writeto.write(pdbid.lower()+':'+str(residue_count)+':'+'%.1f'%peptide_outlier_percent+':'+'%.1f'%peptide_bad_outlier_percent+':'+'%.2f'%ca_outlier_percent+'\n')
 #-------------------------------------------------------------------------------
 #}}}
@@ -967,9 +969,14 @@ def run(args):
       fileset.append(os.path.join(dirpath,filename))
   elif os.path.isfile(params.pdb_infile):
     fileset = [params.pdb_infile]
-  #if params.output=='oneline':
-  #  oneline_header()
+  if params.output=='oneline':
+    oneline_header()
   for pdb_infile in fileset:
+    if not os.path.isfile(pdb_infile): continue
+    pdb_in = file_reader.any_file(pdb_infile)
+    if pdb_in.file_type != "pdb":
+      sys.stderr.write(pdb_infile +" not id'd as readable file\n")
+      continue
     pdbid = os.path.splitext(os.path.basename(pdb_infile))[0]
     pdb_io = pdb.input(pdb_infile)
     hierarchy = pdb_io.construct_hierarchy()
