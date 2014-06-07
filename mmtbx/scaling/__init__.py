@@ -33,6 +33,12 @@ class xtriage_output (slots_getstate_setstate) :
     """
     raise NotImplementedError()
 
+  def show_sub_header (self, title) :
+    """
+    Start a sub-section with the specified title.
+    """
+    raise NotImplementedError()
+
   def show_text (self, text) :
     """
     Show unformatted text.
@@ -67,9 +73,15 @@ class xtriage_output (slots_getstate_setstate) :
     """
     raise NotImplementedError()
 
-  def show_plot (self, plot) :
+  def show_plot (self, table) :
     """
     Display a plot, if supported by the given output class.
+    """
+    raise NotImplementedError()
+
+  def show_plots_row (self, tables) :
+    """
+    Display a series of plots in a single row.  Only used for the Phenix GUI.
     """
     raise NotImplementedError()
 
@@ -103,9 +115,9 @@ class printed_output (xtriage_output) :
   def show_header (self, text) :
     make_header(text, out=self.out)
 
-  def show_sub_header (self, text) :
+  def show_sub_header (self, title) :
     out_tmp = StringIO()
-    make_sub_header(text, out=out_tmp)
+    make_sub_header(title, out=out_tmp)
     for line in out_tmp.getvalue().splitlines() :
       self.out.write("%s\n" % line.rstrip())
 
@@ -124,7 +136,10 @@ class printed_output (xtriage_output) :
   def show_table (self, table, precision=6, indent=0) :
     print >> self.out, table.format(indent=indent)
 
-  def show_plot (self, plot) :
+  def show_plot (self, table) :
+    pass
+
+  def show_plots_row (self, tables) :
     pass
 
   def newline (self) :
