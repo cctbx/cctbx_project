@@ -8,7 +8,7 @@ import wx
 WXTBX_ELEMENTS_CTRL_ALLOW_AX = 1
 WXTBX_ELEMENTS_CTRL_ALLOW_CLUSTERS = 2
 
-clusters = ['TX']
+clusters = set(['TX'])
 
 class ElementCtrl (strctrl.StrCtrl) :
   """"

@@ -259,9 +259,10 @@ class iotbx_data_plot_base (plot_container) :
     if table is not None :
       self.plot_type = getattr(table, "plot_type", "GRAPH")
       graph = table.get_graph(graph_name)
-      self.show_plot(graph)
+      self.show_plot(graph, reference_lines=table.get_reference_marks())
 
-  def show_plot (self, graph, line_width=1, show_points=True, show_grid=True) :
+  def show_plot (self, graph, line_width=1, show_points=True, show_grid=True,
+      reference_lines=None) :
     if self.disabled :
       return
     self.figure.clear()
@@ -289,6 +290,10 @@ class iotbx_data_plot_base (plot_container) :
       if show_lines :
         plot_type += "-"
       self.p.plot(x_values, y_values, plot_type, linewidth=line_width)
+    if (reference_lines is not None) :
+      for x in reference_lines :
+        if (x is not None) :
+          self.p.axvline(x=x, linewidth=1)
     self.format_labels()
     if show_grid :
       self.p.get_axes().grid(True, color="0.75")
