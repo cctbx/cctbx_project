@@ -374,6 +374,13 @@ def exercise_binner():
 . bin  3: 11.4473 - 10.0715 [2/2] 1.000
 . unused: 10.0715 -         [8/8] 1.000
 """
+    t = set2.completeness(use_binning=True).as_simple_table(
+      data_label="Completeness")
+    assert (t.export() == [
+      ['Resolution range', 'N(obs)/N(possible)', 'Completeness'],
+      ['28.7186 - 14.1305', '[3/3]', '1.000'],
+      ['14.1305 - 11.4473', '[3/3]', '1.000'],
+      ['11.4473 - 10.0715', '[2/2]', '1.000']])
     s = StringIO()
     set2.completeness(use_binning=True).show(show_bin_number=False, f=s)
     assert s.getvalue() == """\
