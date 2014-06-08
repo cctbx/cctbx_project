@@ -2774,7 +2774,10 @@ wxtbx/reports/pdb_symmetry.py -text
 wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text
 wxtbx/symmetry_dialog.py -text
+wxtbx/tables.py -text
 wxtbx/utils.py -text
+wxtbx/windows.py -text
+wxtbx/xtriage.py -text
 xfel/SConscript -text
 xfel/__init__.py -text
 xfel/cftbx/__init__.py -text
