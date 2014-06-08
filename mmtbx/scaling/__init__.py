@@ -67,7 +67,7 @@ class xtriage_output (slots_getstate_setstate) :
     """
     raise NotImplementedError()
 
-  def show_table (self, table, precision=6, indent=0) :
+  def show_table (self, table, indent=0, plot_button=None) :
     """
     Display a formatted table.
     """
@@ -82,6 +82,13 @@ class xtriage_output (slots_getstate_setstate) :
   def show_plots_row (self, tables) :
     """
     Display a series of plots in a single row.  Only used for the Phenix GUI.
+    """
+    raise NotImplementedError()
+
+  def show_text_columns (self, rows, indent=0) :
+    """
+    Display a set of left-justified text columns.  The number of columns is
+    arbitrary but this will usually be key:value pairs.
     """
     raise NotImplementedError()
 
@@ -102,6 +109,12 @@ class xtriage_output (slots_getstate_setstate) :
     Support for generic filehandle methods.
     """
     pass
+
+  def warn (self, text) :
+    """
+    Display a warning message.
+    """
+    raise NotImplementedError()
 
 class printed_output (xtriage_output) :
   """
@@ -133,7 +146,7 @@ class printed_output (xtriage_output) :
   def show_lines (self, text) :
     print >> self.out, text
 
-  def show_table (self, table, precision=6, indent=0) :
+  def show_table (self, table, indent=0, plot_button=None) :
     print >> self.out, table.format(indent=indent)
 
   def show_plot (self, table) :
@@ -142,10 +155,26 @@ class printed_output (xtriage_output) :
   def show_plots_row (self, tables) :
     pass
 
+  def show_text_columns (self, rows, indent=0) :
+    prefix = " "*indent
+    n_cols = len(rows[0])
+    col_sizes = [ max([ len(row[i]) for row in rows ]) for i in range(n_cols) ]
+    for row in rows :
+      assert len(row) == n_cols
+      formats = prefix+" ".join([ "%%%ds" % x for x in col_sizes ])
+      print >> self.out, formats % tuple(row)
+
   def newline (self) :
     print >> self.out, ""
 
   def write (self, text) :
+    self.out.write(text)
+
+  def warn (self, text) :
+    out_tmp = StringIO()
+    make_sub_header("WARNING", out=out_tmp, sep='*')
+    for line in out_tmp.getvalue().splitlines() :
+      self.out.write("%s\n" % line.rstrip())
     self.out.write(text)
 
 class xtriage_analysis (object) :
