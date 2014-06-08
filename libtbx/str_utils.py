@@ -128,9 +128,11 @@ def make_header (line, out=None, header_len=80):
   print >> out, out_string
   out.flush()
 
-def make_sub_header(text, out=None, header_len=80):
+def make_sub_header(text, out=None, header_len=80, sep='-'):
   if (out is None): out = sys.stdout
-  line = "----------"+text+"----------"
+  assert isinstance(sep, basestring)
+  border = sep*10
+  line = border+text+border
   line_len = len(line)
   #assert line_len <= header_len
   fill_len = header_len - line_len

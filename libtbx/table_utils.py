@@ -47,8 +47,10 @@ def format(rows,
     # get the maximum of each column by the string length of its items
     max_widths = [max([len(str(item))
       for item in column]) for column in columns]
-    row_separator = header_char * (
-                      len(prefix)
+    prefix_minus_leading_spaces = prefix.lstrip()
+    indent = len(prefix) - len(prefix_minus_leading_spaces)
+    row_separator = " "*indent + header_char * (
+                      len(prefix_minus_leading_spaces)
                     + len(postfix)
                     + sum(max_widths)
                     + len(delim)*(len(max_widths)-1))
@@ -103,6 +105,12 @@ class simple_table (object) :
       return [ self.column_headers ] + self._rows
     else :
       return self._rows
+
+  def export_rows (self) : return self.export()
+
+  @property
+  def n_rows (self) :
+    return len(self._rows) 
 
 # written by Mike Brown
 # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/148061
