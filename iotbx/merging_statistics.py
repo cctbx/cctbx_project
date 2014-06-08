@@ -1,5 +1,11 @@
 
+"""
+Routines for calculating common metrics of data quality based on merging of
+redundant observations.
+"""
+
 from __future__ import division
+from iotbx import data_plots
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, null_out
 from libtbx import group_args, Auto, slots_getstate_setstate
@@ -174,6 +180,8 @@ class merging_stats (object) :
     positive_sel = array.sigmas() > 0
     self.n_zero_sigmas = positive_sel.count(False) - self.n_neg_sigmas
     array = array.select(positive_sel)
+    # calculate CC(anom) first, because the default behavior is to switch to
+    # non-anomalous data for the rest of the analyses
     self.anom_half_corr = array.half_dataset_anomalous_correlation()
     array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
     array = array.sort("packed_indices")
@@ -216,29 +224,6 @@ class merging_stats (object) :
     self.r_merge = merge.r_merge()
     self.r_meas = merge.r_meas()
     self.r_pim = merge.r_pim()
-    # XXX Pure-Python reference implementation
-    if (debug) :
-      from libtbx.test_utils import approx_equal
-      r_merge_num = r_meas_num = r_pim_num = r_merge_den = 0
-      indices = array_merged.indices()
-      data = array_merged.data()
-      for hkl, i_mean in zip(indices, data) :
-        sele = (array.indices() == hkl)
-        hkl_array = array.select(sele)
-        n_hkl = hkl_array.indices().size()
-        if (n_hkl > 1) :
-          sum_num = sum_den = 0
-          for i_obs in hkl_array.data() :
-            sum_num += abs(i_obs - i_mean)
-            sum_den += i_obs
-          r_merge_num += sum_num
-          r_meas_num += sqrt(n_hkl/(n_hkl-1.)) * sum_num
-          r_pim_num += sqrt(1./(n_hkl-1)) * sum_num
-          r_merge_den += sum_den
-      assert (approx_equal(self.r_merge, r_merge_num / r_merge_den))
-      assert (approx_equal(self.r_meas, r_meas_num / r_merge_den))
-      assert (approx_equal(self.r_pim, r_pim_num / r_merge_den))
-    #---
     self.cc_one_half = cctbx.miller.compute_cc_one_half(
       unmerged=array)
     if (self.cc_one_half == 0) :
@@ -305,28 +290,29 @@ class merging_stats (object) :
         self.r_free])
     return table
 
-  def show_summary (self, out=sys.stdout) :
-    print >> out, "Resolution: %.2f - %.2f" % (self.d_max, self.d_min)
-    print >> out, "Observations: %d" % self.n_obs
-    print >> out, "Unique reflections: %d" % self.n_uniq
-    print >> out, "Redundancy: %.1f" % self.mean_redundancy
-    print >> out, "Completeness: %.2f%%" % (self.completeness*100)
-    print >> out, "Mean intensity: %.1f" % self.i_mean
-    print >> out, "Mean I/sigma(I): %.1f" % self.i_over_sigma_mean
+  def show_summary (self, out=sys.stdout, prefix="") :
+    print >> out, prefix+"Resolution: %.2f - %.2f" % (self.d_max, self.d_min)
+    print >> out, prefix+"Observations: %d" % self.n_obs
+    print >> out, prefix+"Unique reflections: %d" % self.n_uniq
+    print >> out, prefix+"Redundancy: %.1f" % self.mean_redundancy
+    print >> out, prefix+"Completeness: %.2f%%" % (self.completeness*100)
+    print >> out, prefix+"Mean intensity: %.1f" % self.i_mean
+    print >> out, prefix+"Mean I/sigma(I): %.1f" % self.i_over_sigma_mean
     # negative sigmas are rejected before merging
     if (self.n_neg_sigmas > 0) :
-      print >> out, "SigI < 0 (rejected): %d observations" % self.n_neg_sigmas
+      print >> out, prefix+"SigI < 0 (rejected): %d observations" % \
+        self.n_neg_sigmas
     # excessively negative intensities can be rejected either before or after
     # merging, depending on convention used
     if (self.n_rejected_before_merge > 0) :
-      print >> out, "I < -3*SigI (rejected): %d observations" % \
+      print >> out, prefix+"I < -3*SigI (rejected): %d observations" % \
         self.n_rejected_before_merge
     if (self.n_rejected_after_merge > 0) :
-      print >> out, "I < -3*SigI (rejected): %d reflections" % \
+      print >> out, prefix+"I < -3*SigI (rejected): %d reflections" % \
         self.n_rejected_after_merge
-    print >> out, "R-merge: %5.3f" % self.r_merge
-    print >> out, "R-meas:  %5.3f" % self.r_meas
-    print >> out, "R-pim:   %5.3f" % self.r_pim
+    print >> out, prefix+"R-merge: %5.3f" % self.r_merge
+    print >> out, prefix+"R-meas:  %5.3f" % self.r_meas
+    print >> out, prefix+"R-pim:   %5.3f" % self.r_pim
 
 class dataset_statistics (object) :
   """
@@ -349,13 +335,13 @@ class dataset_statistics (object) :
       log=None) :
     self.file_name = file_name
     if (log is None) : log = null_out()
-    from iotbx import data_plots
     assert (i_obs.sigmas() is not None)
     info = i_obs.info()
     sigma_filtering = get_filtering_convention(i_obs, sigma_filtering)
     if (crystal_symmetry is None) :
       assert (i_obs.space_group() is not None)
-      crystal_symmetry = i_obs
+      crystal_symmetry = i_obs.crystal_symmetry()
+    self.crystal_symmetry = crystal_symmetry
     i_obs = i_obs.customized_copy(
       crystal_symmetry=crystal_symmetry).set_info(info)
     if (i_obs.is_unique_set_under_symmetry()) :
@@ -418,6 +404,45 @@ class dataset_statistics (object) :
     self.cutoffs = None
     if (estimate_cutoffs) :
       self.cutoffs = estimate_crude_resolution_cutoffs(i_obs=i_obs)
+
+  @property
+  def signal_table (self) :
+    column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
+        "Mean(I)", "Mean(I/sigma)", ]
+    graph_names = ["Reflection counts", "Redundancy", "Completeness",
+        "Mean(I)", "Mean(I/sigma)",]
+    graph_columns = [[0,1,2],[0,3],[0,4],[0,5],[0,6],]
+    table = data_plots.table_data(
+      title="Statistics for redundancy, completeness, and signal",
+      column_labels=column_labels,
+      graph_names=graph_names,
+      graph_columns=graph_columns,
+      column_formats=["%6.2f","%6d","%6d","%5.2f","%6.2f","%8.1f","%6.1f"],
+      x_is_inverse_d_min=True,
+      force_exact_x_labels=True)
+    for bin in self.bins :
+      data = bin.table_data()
+      table.add_row(data[0:7])
+    return table
+
+  @property
+  def quality_table (self) :
+    column_labels = ["1/d**2", "R-merge", "R-meas", "R-pim", "CC1/2",
+                     "CC(anom)"]
+    graph_columns = [[0,1,2,3],[0,4],[0,5]]
+    graph_names = ["R-factors", "CC1/2", "CC(anom)"]
+    table = data_plots.table_data(
+      title="Statistics for dataset consistency",
+      column_labels=column_labels,
+      column_formats=["%6.2f","%5.3f", "%5.3f", "%5.3f", "%5.3f", "%5.3f"],
+      graph_names=graph_names,
+      graph_columns=graph_columns,
+      x_is_inverse_d_min=True,
+      force_exact_x_labels=True)
+    for bin in self.bins :
+      data = bin.table_data()
+      table.add_row([ data[0] ] + data[7:12])
+    return table
 
   def get_estimated_cutoffs (self) :
     return getattr(self, "cutoffs", None)

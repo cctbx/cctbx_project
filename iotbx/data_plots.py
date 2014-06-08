@@ -115,8 +115,11 @@ class table_data (object) :
       comments=None,
       x_is_inverse_d_min=False,
       first_two_columns_are_resolution=False,
-      force_exact_x_labels=False) :
+      force_exact_x_labels=False,
+      reference_marks=None) :
     adopt_init_args(self, locals())
+    if (reference_marks is not None) :
+      assert (len(reference_marks) == len(graph_columns) == 1)
     self._is_complete = False
     self._graphs = {}
     self._column_width = 10
@@ -129,6 +132,10 @@ class table_data (object) :
   @property
   def n_cols (self) :
     return len(self.data)
+
+  @property
+  def n_graphs (self) :
+    return len(self.graph_names)
 
   def add_graph (self, name, type, columns) :
     if self.graph_names is None :
@@ -276,6 +283,8 @@ class table_data (object) :
         return frow + \
                [ (f % x) for f, x in zip(self.column_formats[2:], row[2:]) ]
       else :
+        if (self.x_is_inverse_d_min) :
+          row = [ math.sqrt(1/row[0]) ] + row[1:]
         return [ (f % x) for f, x in zip(self.column_formats, row) ]
     else :
       f1 = "%-g"
@@ -452,6 +461,15 @@ class table_data (object) :
 
   def as_rows (self) :
     return flip_table(self.data)
+
+  def only_plot (self) :
+    assert (len(self.graph_names) == 1)
+    return self.graph_names[0]
+
+  def get_reference_marks (self) :
+    if (self.reference_marks is not None) :
+      return self.reference_marks[0]
+    return None
 
   def get_graph (self, graph_name=None, column_list=[]) :
     graph_names = self.graph_names
