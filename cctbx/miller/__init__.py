@@ -22,6 +22,7 @@ from libtbx import adopt_init_args
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, Keep, plural_s
 from libtbx import group_args, Auto
+import libtbx.table_utils
 from itertools import count, izip
 import math
 import types
@@ -123,7 +124,8 @@ class binner(ext.binner):
         show_d_range=None,
         show_counts=True,
         bin_range_as="d",
-        wavelength=None):
+        wavelength=None,
+        join_string=True):
     if show_d_range is not None:
       # XXX backward compatibility 2009-11-16
       show_bin_range = show_d_range
@@ -163,7 +165,10 @@ class binner(ext.binner):
     if (show_counts):
       result.append(self.fmt_both_counts % (
         self._counts_given[i_bin], self._counts_complete[i_bin]))
-    return " ".join(result)
+    if (join_string) :
+      return " ".join(result)
+    else :
+      return result
 
   def show_summary(self,
         show_bin_number=True,
@@ -226,6 +231,46 @@ class binner(ext.binner):
     if (legend is not None): return len(legend)
     return None
 
+  def as_simple_table (self,
+      data,
+      data_label,
+      data_fmt=None,
+      show_bin_number=False,
+      show_unused=False) :
+    """
+    Export table rows for display elsewhere.
+    """
+    assert len(data) == self.n_bins_all()
+    if (show_unused):
+      i_bins = self.range_all()
+    else:
+      i_bins = self.range_used()
+    table_rows = []
+    for i_bin in i_bins:
+      legend = self.bin_legend(
+        i_bin=i_bin,
+        show_bin_number=show_bin_number,
+        show_bin_range=True,
+        show_d_range=None,
+        show_counts=True,
+        bin_range_as="d",
+        wavelength=None,
+        join_string=False)#wavelength)
+      row = legend
+      if (data[i_bin] is not None):
+        if (isinstance(data[i_bin], str) or data_fmt is None):
+          row.append(data[i_bin])
+        elif (isinstance(data_fmt, str)):
+          row.append(data_fmt % data[i_bin])
+        else:
+          s = data_fmt(binner=self, i_bin=i_bin, data=data)
+          row.append(s)
+      table_rows.append(row)
+    labels = ["Resolution range", "N(obs)/N(possible)", data_label ]
+    return libtbx.table_utils.simple_table(
+      column_headers=labels,
+      table_rows=table_rows)
+
 class binned_data(object):
 
   def __init__(self, binner, data, data_fmt=None):
@@ -257,6 +302,18 @@ class binned_data(object):
       wavelength=wavelength,
       f=f,
       prefix=prefix)
+
+  def as_simple_table (self,
+        data_label,
+        data_fmt=None) :
+    """
+    Export table rows for display elsewhere.  (Used in Xtriage)
+    """
+    if (data_fmt is None): data_fmt = self.data_fmt
+    return self.binner.as_simple_table(
+      data=self.data,
+      data_label=data_label,
+      data_fmt=data_fmt)
 
 def make_lookup_dict(indices): # XXX push to C++
   result = {}
