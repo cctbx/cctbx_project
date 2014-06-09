@@ -4,6 +4,7 @@ import warnings
 import time
 import stat
 import re
+import os.path as op
 import os
 import sys
 
@@ -144,3 +145,29 @@ def machine_type () :
     if (major_version >= 10) :
       platform += "-x86_64"
   return platform
+
+def regenerate_relative_symlinks (dir_name, log=sys.stdout) :
+  """
+  Rewrite all symlinks in a directory with relative paths (allows later
+  relocation).  This is mostly just for Mac OS where there are a lot of links
+  into the Python.framework bundle.
+  """
+  old_cwd = os.getcwd()
+  os.chdir(dir_name)
+  for file_name in os.listdir(dir_name) :
+    # e.g. /usr/bin/cmd
+    full_path = op.join(dir_name, file_name)
+    if op.islink(full_path) :
+      real_path = op.realpath(full_path) # e.g. /usr/cctbx/bin/cmd
+      prefix = op.commonprefix([full_path, real_path]) # /usr
+      rel_path_link = op.relpath(full_path, prefix) # bin/cmd
+      rel_path_target = op.relpath(real_path, prefix) # cctbx/bin/cmd
+      parent_dirs = [ ".." for d in op.split(rel_path_link) ][1:]
+      if (len(parent_dirs) > 0) :
+        parent_dir = op.join(*parent_dirs)
+      else :
+        parent_dir = "."
+      new_path = op.join(parent_dir, rel_path_target) # ../../cctbx/bin/cmd
+      print >> log, "  creating symlink to %s" % new_path
+      os.remove(file_name)
+      os.symlink(new_path, file_name)
