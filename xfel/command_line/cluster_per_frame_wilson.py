@@ -7,7 +7,7 @@ from xfel.clustering.cluster import Cluster
 import matplotlib.pyplot as plt
 
 FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
-logging.basicConfig(level=10, format=FORMAT)
+logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 class Key_event:
   def __init__(self, ax, members, fig):
