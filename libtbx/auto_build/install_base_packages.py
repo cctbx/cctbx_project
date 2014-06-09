@@ -25,6 +25,7 @@ class installer (object) :
   build_xia2_dependencies = False
   build_gui_dependencies = False
   build_labelit_dependencies = False
+  build_dials_dependencies = False
 
   def __init__ (self, args, log=sys.stdout) :
     check_python_version()
@@ -55,6 +56,8 @@ class installer (object) :
       default=self.build_labelit_dependencies)
     parser.add_option("--xia2", dest="xia2", action="store_true",
       help="Build xia2 dependencies", default=self.build_xia2_dependencies)
+    parser.add_option("--dials", dest="dials", action="store_true",
+      help="Build DIALS dependencies", default=self.build_dials_dependencies)
     parser.add_option("--gui", dest="build_gui", action="store_true",
       help="Build GUI dependencies", default=self.build_gui_dependencies)
     #parser.add_option("--use_system_python", dest="use_system_python",
@@ -85,6 +88,7 @@ class installer (object) :
     self.nproc = options.nproc
     self.verbose = options.verbose
     self.options = options
+    self.have_freetype = False
     self.python_exe = None
     self.include_dirs = []
     self.lib_dirs = []
@@ -93,6 +97,12 @@ class installer (object) :
     self.cppflags_start = os.environ.get("CPPFLAGS", "")
     self.ldflags_start = os.environ.get("LDFLAGS", "")
     self.build_cctbx_dependencies()
+    # On Mac OS X all of the Python-related executables located in base/bin
+    # are actually symlinks to absolute paths inside the Python.framework, so
+    # we replace them with symlinks to relative paths.
+    if (sys.platform == "darwin") :
+      print >> log, "Regenerating symlinks with relative paths..."
+      regenerate_relative_symlinks(op.join(self.base_dir, "bin"), log=log)
 
   def build_cctbx_dependencies (self) :
     print >> self.log, "*** Building dependencies first ***"
@@ -137,7 +147,7 @@ class installer (object) :
         pkg_name=REPORTLAB_PKG,
         pkg_name_label="reportlab",
         confirm_import_module="reportlab")
-    if (options.xia2) or (options.build_all) :
+    if (options.xia2) or (options.build_all) or (options.dials) :
       self.build_hdf5()
     if (options.build_gui) or (options.build_all) :
       self.build_wxpython_dependencies()
@@ -331,11 +341,16 @@ class installer (object) :
     self.print_sep()
 
   def build_imaging (self, patch_src=True) :
+    self.build_freetype()
     def patch_imaging_src (out) :
       print >> out, "  patching libImaging/ZipEncode.c"
       self.patch_src(src_file="libImaging/ZipEncode.c",
                      target="Z_DEFAULT_COMPRESSION",
                      replace_with="Z_BEST_SPEED")
+      # point to freetype installation
+      site_file = open("setup_site.py", "w")
+      site_file.write('FREETYPE_ROOT = "%s", "%s"\n' %
+        (op.join(self.base_dir, "lib"), op.join(self.base_dir, "include")))
       return True
     callback = None
     if (patch_src) :
@@ -378,13 +393,19 @@ class installer (object) :
     self.verify_python_module("h5py", "h5py")
     self.print_sep()
 
-  def build_wxpython_dependencies (self) :
+  def build_freetype (self) :
+    assert (not self.have_freetype)
     self.build_compiled_package_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=FREETYPE_PKG,
       pkg_name_label="Freetype")
     self.include_dirs.append(op.join(self.base_dir, "include",
       "freetype2"))
+    self.have_freetype = True
+
+  def build_wxpython_dependencies (self) :
+    if (not self.have_freetype) :
+      self.build_freetype()
     self.build_compiled_package_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=LIBPNG_PKG,
