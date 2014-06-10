@@ -35,7 +35,7 @@ chem_carboxy, \
 
 class ScatteringEnvironment (slots_getstate_setstate):
   __slots__ = ["d_min", "wavelength", "fp", "fpp", "b_iso", "b_mean_hoh", "occ",
-               "fo_density", "fofc_density", "anom_density"]
+               "fo_density", "fofc_density", "anom_density", "pai"]
   def __init__(self,
       i_seq,
       manager,
@@ -59,16 +59,23 @@ class ScatteringEnvironment (slots_getstate_setstate):
     if (fofc_density is not None) :
       self.fofc_density = fofc_density
     else :
-      self.fofc_density = fit_gaussian(manager.unit_cell, atom.xyz, fofc_map)
+      self.fofc_density = (
+        fofc_map.eight_point_interpolation(manager.unit_cell.fractionalize(atom.xyz)),
+        0,
+        )
     if anom_density is not None:
       self.anom_density = anom_density
     elif anom_map is not None:
-      self.anom_density = fit_gaussian(manager.unit_cell, atom.xyz, anom_map)
+      self.anom_density = (
+        anom_map.eight_point_interpolation(manager.unit_cell.fractionalize(atom.xyz)),
+        0,
+        )
     else:
       self.anom_density = None, None
     self.b_iso = manager.get_b_iso(i_seq)
     self.b_mean_hoh = manager.b_mean_hoh
     self.occ = atom.occ
+    self.pai = manager.principal_axes_of_inertia(i_seq).center_of_mass()
 
 class atom_contact (slots_getstate_setstate) :
   """
@@ -450,7 +457,7 @@ def _get_points_within_radius(point, radius, radius_step = 0.2,
 
   return points, radiuses
 
-def fit_gaussian(unit_cell, site_cart, real_map, radius = 1.6):
+def fit_gaussian(unit_cell, site_cart, real_map, radius=1.6):
   """
   Fit a gaussian function to the map around a site. Samples points in concentric
   spheres up to radius away from the site.
