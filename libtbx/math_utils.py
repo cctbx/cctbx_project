@@ -123,7 +123,7 @@ def percentile_based_spread (values, pbs_fraction=0.608) :
   n = len(values)
   if (n == 0): return 0
   elif (n == 1) : return values[0]
-  i_high = iceil(n * pbs_fraction)
+  i_high = min(iceil(n * pbs_fraction),n-1)
   i_low = ifloor(n * pbs_fraction)
   if (i_high == i_low) :
     return values[i_high]
