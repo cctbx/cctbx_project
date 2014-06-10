@@ -167,9 +167,9 @@ class geometry(object):
     import iotbx.cif.model
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
+    cif_block["_refine.pdbx_stereochemistry_target_values"] = "GeoStd + Monomer Library"
     if self.cdl_restraints:
-      cif_block["_refine_restraints_library.single_value_library"] = "GeoStd + Monomer Library"
-      cif_block["_refine_restraints_library.mulitple_value_library"] = "CDL v1.2"
+      cif_block["_refine.pdbx_stereochemistry_target_values"] += " + CDL v1.2"
     loop = iotbx.cif.model.loop(header=(
       "_refine_ls_restr.type",
       "_refine_ls_restr.number",
