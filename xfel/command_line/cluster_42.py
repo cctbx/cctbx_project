@@ -19,15 +19,19 @@ def run(_args):
   logging.info("Data imported.")
 
   #  Set up mega-plot
-  plt.figure(figsize=(22,15))
-  gs = gridspec.GridSpec(2,3, height_ratios=[1, 4])
+  plt.figure(figsize=(22, 15))
+  gs = gridspec.GridSpec(3, 3, height_ratios=[1, 1, 3])
   orr_axes = [plt.subplot(gs[0, 0]),
               plt.subplot(gs[0, 1]),
               plt.subplot(gs[0, 2])]
-  clust_ax = plt.subplot(gs[1, :])
+  inten_axes = [plt.subplot(gs[1, 0]),
+                plt.subplot(gs[1, 1]),
+                plt.subplot(gs[1, 2])]
+  clust_ax = plt.subplot(gs[2, :])
 
 
   orr_axes = ucs.visualise_orientational_distribution(orr_axes, cbar=False)
+  inten_axes = ucs.intensity_statistics(inten_axes)
   clusters, cluster_ax = ucs.ab_cluster(_args.t, log=_args.log, ax=clust_ax)
 
   #plt.text("cluster.42 Plot Everything!")
