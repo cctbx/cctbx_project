@@ -2793,6 +2793,7 @@ xfel/command_line/__init__.py -text
 xfel/command_line/auto_submit.py -text
 xfel/command_line/brehm_diederichs.py -text
 xfel/command_line/cluster_42.py -text
+xfel/command_line/cluster_intensity_statistics.py -text
 xfel/command_line/cluster_per_frame_wilson.py -text
 xfel/command_line/cluster_unit_cell.py -text
 xfel/command_line/cluster_visualise_orientations.py -text
