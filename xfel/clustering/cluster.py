@@ -5,6 +5,7 @@ from xfel.clustering.singleframe import SingleFrame
 from cctbx.uctbx.determine_unit_cell import NCDist
 import numpy as np
 import matplotlib.patheffects as patheffects
+import matplotlib.pyplot as plt
 
 """ This package is designed to provide tools to deal with clusters of
 singleframe objects. The class Cluster allows the creation, storage and
@@ -58,7 +59,6 @@ class Cluster:
     unit_cells = np.zeros([len(self.members), 6])
     self.pg_composition = {}
     for i, member in enumerate(self.members):
-      logging.debug("averaging unit cell {}".format(member.name))
       unit_cells[i, :] = member.uc
       # Calculate point group composition
       if member.pg in self.pg_composition.keys():
@@ -145,8 +145,6 @@ class Cluster:
     sorted_cluster = sorted(self.members, key=lambda y: -1 * y.total_i)
 
     if plot:
-      from matplotlib import pyplot as plt
-
       plt.plot([x.total_i for x in sorted_cluster])
       plt.show()
 
@@ -197,7 +195,6 @@ class Cluster:
     logging.info("Hierarchical clustering of unit cells using Andrews-Bernstein"
                  "Distance from Andrews & Bernstein J Appl Cryst 47:346 (2014)")
     import scipy.spatial.distance as dist
-    import matplotlib.pyplot as plt
     import scipy.cluster.hierarchy as hcluster
 
     def make_g6(uc):
@@ -255,7 +252,7 @@ class Cluster:
 
     hcluster.dendrogram(this_linkage,
                         labels=[image.name for image in self.members],
-                        leaf_font_size=8,
+                        leaf_font_size=8, leaf_rotation=90.0,
                         color_threshold=threshold, ax=ax)
     if log:
       ax.set_yscale("log")
@@ -287,7 +284,6 @@ class Cluster:
     them.
     """
     from mpl_toolkits.basemap import Basemap
-    import matplotlib.pyplot as plt
     import scipy.ndimage as ndi
     from cctbx.array_family import flex
 
@@ -424,3 +420,41 @@ class Cluster:
       plt.show()
 
     return axes_to_return
+
+
+  def intensity_statistics(self, ax=None):
+    if ax is None:
+      plt.figure(figsize=(10, 14))
+      axes_to_return = [plt.subplot2grid((3, 1), (0, 0)),
+                        plt.subplot2grid((3, 1), (1, 0)),
+                        plt.subplot2grid((3, 1), (2, 0))]
+      show_image = True
+    else:
+      assert len(ax) == 3, "If using axes option, must hand" \
+                                       " 3 axes to function."
+      axes_to_return = ax
+      show_image = False
+
+    errors = [i.wilson_err['Standard Error'] for i in self.members]
+    axes_to_return[0].hist(errors, 50, range=[0, 200])
+    axes_to_return[0].set_title("Distribution of Standard Errors on the Wilson fit")
+
+    rs = [-1 * i.minus_2B / 2 for i in self.members]
+    axes_to_return[1].hist(rs, 50, range=[-50, 200])
+    axes_to_return[1].set_title("Distribution of B values for the Wilson plot")
+
+    axes_to_return[2].plot([i.G for i in self.members],
+             [-1 * i.minus_2B / 2 for i in self.members], 'x')
+    axes_to_return[2].set_xlabel("G")
+    axes_to_return[2].set_ylabel("B")
+    axes_to_return[2].set_title("G and B for all members")
+
+    plt.tight_layout()
+
+    if show_image:
+      plt.show()
+
+    return axes_to_return
+
+
+
