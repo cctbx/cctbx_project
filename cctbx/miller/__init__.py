@@ -832,7 +832,9 @@ class set(crystal.symmetry):
 
   def resolution_filter_selection(self, d_max=None, d_min=None):
     result = self.all_selection()
-    d_star = flex.sqrt(self.d_star_sq().data())
+    d_star_sq = self.d_star_sq().data()
+    assert d_star_sq.all_ge(0)
+    d_star = flex.sqrt(d_star_sq)
     if (d_max is not None and d_max > 0): result &= (d_star >= 1/d_max)
     if (d_min is not None and d_min > 0): result &= (d_star <= 1/d_min)
     return result
@@ -4127,10 +4129,10 @@ class array(set):
     """
     if (not self.is_xray_intensity_array()) : return False
     centric_flags = self.centric_flags().data()
+    centrics = self.select(centric_flags)
     acentric_flags = ~centric_flags
     if (acentric_flags.count(True) == 0) :
       return (not centrics.is_unique_set_under_symmetry())
-    centrics = self.select(centric_flags)
     acentrics = self.select(acentric_flags)
     return (not acentrics.is_unique_set_under_symmetry())
 
