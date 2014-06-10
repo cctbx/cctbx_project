@@ -20,7 +20,10 @@ class geometry(object):
         pdb_hierarchy,
         restraints_manager,
         molprobity_scores=False,
-        n_histogram_slots=10):
+        n_histogram_slots=10,
+        cdl_restraints=False,
+        ):
+    self.cdl_restraints=cdl_restraints
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
     energies_sites = \
       restraints_manager.energies_sites(
@@ -112,7 +115,16 @@ class geometry(object):
 
   def format_basic_geometry_statistics(self, prefix=""):
     fmt = "%6.3f %7.3f %6d"
-    result = """%sDEVIATIONS FROM IDEAL VALUES.
+    result = ""
+    rl = "GEOSTD + MON.LIB."
+    if self.cdl_restraints:
+      rl += " + CDL v1.2"
+      result = """%sRESTRAINTS LIBRARY
+%s  %s
+%s
+""" % (prefix, prefix, rl, prefix)
+
+    result += """%sDEVIATIONS FROM IDEAL VALUES.
 %s               RMSD     MAX  COUNT
 %s BOND      : %s
 %s ANGLE     : %s
@@ -155,6 +167,9 @@ class geometry(object):
     import iotbx.cif.model
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
+    if self.cdl_restraints:
+      cif_block["_refine_restraints_library.single_value_library"] = "GeoStd + Monomer Library"
+      cif_block["_refine_restraints_library.mulitple_value_library"] = "CDL v1.2"
     loop = iotbx.cif.model.loop(header=(
       "_refine_ls_restr.type",
       "_refine_ls_restr.number",
@@ -438,9 +453,13 @@ class model(object):
                model,
                ignore_hd,
                use_molprobity=True,
-               ncs_manager=None):
+               ncs_manager=None,
+               cdl_restraints=False,
+               ):
     self.geometry = model.geometry_statistics(ignore_hd = ignore_hd,
-      molprobity_scores=use_molprobity)
+      molprobity_scores=use_molprobity,
+      cdl_restraints=cdl_restraints,
+      )
     self.content = model_content(model)
     self.adp = adp(model)
     self.tls_groups = model.tls_groups
@@ -448,6 +467,7 @@ class model(object):
     self.ncs_groups = model.extract_ncs_groups()
     self.ncs_manager = ncs_manager
     self.pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
+    self.cdl_restraints = cdl_restraints
 
   def show(self, out=None, prefix="", padded=None, pdb_deposition=False):
     if(out is None): out = sys.stdout
@@ -691,7 +711,9 @@ class info(object):
       model = model,
       ignore_hd = ignore_hd,
       use_molprobity = use_molprobity,
-      ncs_manager = ncs_manager)
+      ncs_manager = ncs_manager,
+      cdl_restraints = ref_par.pdb_interpretation.cdl,
+      )
     self.data_x, self.data_n = None, None
     if(fmodel_x is not None):
       self.data_x = fmodel_x.info(

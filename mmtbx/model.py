@@ -1323,7 +1323,11 @@ class manager(object):
     b_isos.set_selected(sel_outliers_min, min_b_iso)
     self.xray_structure.set_b_iso(values = b_isos)
 
-  def geometry_statistics(self, ignore_hd, molprobity_scores = False):
+  def geometry_statistics(self,
+                          ignore_hd,
+                          molprobity_scores = False,
+                          cdl_restraints = False,
+                          ):
     if(self.restraints_manager is None): return None
     hd_selection = self.xray_structure.hd_selection()
     ph = self.pdb_hierarchy(sync_with_xray_structure=True)
@@ -1338,7 +1342,9 @@ class manager(object):
     return model_statistics.geometry(
       pdb_hierarchy      = ph,
       restraints_manager = rm,
-      molprobity_scores  = molprobity_scores)
+      molprobity_scores  = molprobity_scores,
+      cdl_restraints     = cdl_restraints,
+      )
 
   def show_geometry_statistics(self, ignore_hd, message = "", out = None):
     if(self.restraints_manager is None): return None
