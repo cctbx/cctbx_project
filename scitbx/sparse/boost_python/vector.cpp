@@ -105,6 +105,7 @@ struct vector_wrapper
       .def("__setitem__", setitem)
       .def("__getitem__", getitem)
       .def("__iter__", iter)
+      .def("set_selected", &wt::set_selected)
       .def("compact", &wt::compact, return_self<>())
       .def("permute",
                static_cast<wt& (wt::*)(af::const_ref<index_type> const&)>(

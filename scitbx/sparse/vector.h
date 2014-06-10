@@ -454,6 +454,18 @@ public:
     return element_reference(*this, i);
   }
 
+  /// Selections
+  void set_selected(af::const_ref<bool> const &selection,
+                    af::const_ref<value_type> const &value) {
+    SCITBX_ASSERT(selection.size() == value.size())
+                 (selection.size())(value.size());
+    index_type n0 = elements.size();
+    for(index_type i=0; i< selection.size(); ++i) {
+      if(selection[i]) elements.push_back(element(i, value[i]));
+    }
+    if(elements.size() > n0) sorted = false;
+  }
+
   /// The dense vector corresponding to this
   af::shared<T> as_dense_vector() const {
     af::shared<T> result(size(), 0.);
