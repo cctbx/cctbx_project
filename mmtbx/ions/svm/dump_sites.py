@@ -78,20 +78,23 @@ def dump_sites (manager):
   # Can't pickle entire AtomProperties because they include references to the
   # Atom object. Instead, gather what properties we want and store them in a
   # second list
-  properties = \
-    [(
-      ChemicalEnvironment(
-        atom.i_seq,
-        manager.find_nearby_atoms(atom.i_seq, far_distance_cutoff = 3.5),
-        manager),
-      ScatteringEnvironment(
-        atom.i_seq,
-        manager,
-        fo_density = manager.get_map_gaussian_fit("mFo", atom.i_seq),
-        fofc_density = manager.get_map_gaussian_fit("mFo-DFc", atom.i_seq),
-        anom_density = manager.get_map_gaussian_fit("anom", atom.i_seq)),
+  properties = []
+  for atom in atoms:
+    map_stats = manager.map_stats(atom.i_seq)
+    fo_density = manager.get_map_gaussian_fit("mFo", atom.i_seq)
+    chem_env = ChemicalEnvironment(
+      atom.i_seq,
+      manager.find_nearby_atoms(atom.i_seq, far_distance_cutoff=3.5),
+      manager,
       )
-     for atom in atoms]
+    scatter_env = ScatteringEnvironment(
+      atom.i_seq,
+      manager,
+      fo_density=fo_density,
+      fofc_density=(map_stats.fofc, 0),
+      anom_density=(map_stats.anom, 0),
+      )
+    properties.append((chem_env, scatter_env))
 
   return properties
 
