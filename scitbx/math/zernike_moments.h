@@ -1,4 +1,4 @@
-#ifndef SCITBX_MATH_ZERNIKE_MOM_H_
+#ifndef SCITBX_MATH_ZERNIKE_MOM_H
 #define SCITBX_MATH_ZERNIKE_MOM_H
 
 #include <scitbx/constants.h>
