@@ -124,7 +124,8 @@ class common_mode_correction(mod_event_info):
       self.sections = [] # XXX FICTION
     elif device == 'pnCCD':
       self.sections = [] # XXX FICTION
-
+    elif device == 'Opal1000':
+      self.sections = [] # XXX FICTION
     if self.sections is None:
       raise RuntimeError("Failed to load metrology")
 
@@ -333,6 +334,7 @@ class common_mode_correction(mod_event_info):
     # floating-point flex array.  XXX It is probably not safe to key
     # the image on self.address, so we should come up with our own
     # namespace.  XXX Misnomer--could be CAMP, too
+
     self.cspad_img = evt.get(self.address)
     if self.cspad_img is not None:
       return
@@ -341,6 +343,12 @@ class common_mode_correction(mod_event_info):
       # XPP metrology.
       self.cspad_img = cspad_tbx.image_xpp(
         self.address, evt, env, self.active_areas)
+    elif self.address=='CxiDg3-0|Opal1000-0':
+      if evt.getFrameValue(self.address) is not None:
+        self.cspad_img = evt.getFrameValue(self.address).data()
+    elif self.address=='CxiEndstation-0|Opal1000-2':
+      if evt.getFrameValue(self.address) is not None:
+        self.cspad_img = evt.getFrameValue(self.address).data()
     else:
       self.cspad_img = cspad_tbx.image(
         self.address, cspad_tbx.getConfig(self.address, env),
@@ -352,9 +360,7 @@ class common_mode_correction(mod_event_info):
         self.logger.warning("event(): no image, shot skipped")
         evt.put(True, "skip_event")
       return
-
     self.cspad_img = flex.double(self.cspad_img.astype(numpy.float64))
-
     # If a dark image was provided, subtract it from the image.  There
     # is no point in doing common-mode correction unless the dark
     # image was subtracted.
