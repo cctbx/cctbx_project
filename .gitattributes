@@ -1862,6 +1862,7 @@ mmtbx/refinement/real_space/tst_fit_residues_2.py -text
 mmtbx/refinement/real_space/tst_fit_water.py -text
 mmtbx/refinement/real_space/tst_individual_sites_1.py -text
 mmtbx/refinement/real_space/tst_individual_sites_2.py -text
+mmtbx/refinement/real_space/tst_individual_sites_3.py -text
 mmtbx/refinement/real_space/tst_minimization_ncs_constraints.py -text
 mmtbx/refinement/real_space/tst_monitor.py -text
 mmtbx/refinement/real_space/tst_rigid_body.py -text
