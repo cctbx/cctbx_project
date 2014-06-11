@@ -95,6 +95,10 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     sharp=params.sharp, signal_threshold=params.signal_threshold)
   # output
   mtz_dataset = fem.mc.as_mtz_dataset(column_root_label="2mFoDFc")
+  if(fem.mc_resolve is not None):
+    mtz_dataset.add_miller_array(
+      miller_array=fem.mc_resolve,
+      column_root_label="ResolveDM")
   mtz_dataset.add_miller_array(
     miller_array=fem.mc_result,
     column_root_label=params.output.column_root_label)

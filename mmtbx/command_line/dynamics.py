@@ -79,7 +79,7 @@ Usage examples:
   def atom_selection (self, prefix) :
     self.selection = flex.bool(self.xray_structure.sites_cart().size(), True)
     geometry_minimization.broadcast(m=prefix, log = self.log)
-    self.generate_restrain_selection()
+    self.generate_reference_restraints_selection()
 
   def dynamics (self, prefix) :
     geometry_minimization.broadcast(m=prefix, log = self.log)

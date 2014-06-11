@@ -104,14 +104,15 @@ Parameters:"""%h
   if(params.selection is None):
     raise Sorry("'selection' has to be defined. Example: selection='chain A and resseq 1:10' ")
   #
+  crystal_symmetries = []
+  #
   print_statistics.make_sub_header("pdb model", out=log)
   pdb_inp = iotbx.pdb.input(file_name=params.pdb_file)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
-  xray_structure = pdb_hierarchy.extract_xray_structure(
-    crystal_symmetry=pdb_inp.crystal_symmetry())
-  xray_structure.show_summary(f=log)
+  cs = pdb_inp.crystal_symmetry_from_cryst1()
+  if(cs is not None): crystal_symmetries.append(cs)
   #
   map_coeff = None
   if(params.map_coefficients_file is not None):
@@ -120,6 +121,8 @@ Parameters:"""%h
       label     = params.label,
       type      = "complex",
       log       = log)
+    cs = map_coeff.crystal_symmetry()
+    if(cs is not None): crystal_symmetries.append(cs)
   #
   if(got_map):
     print_statistics.make_sub_header("CCP4 map", out=log)
@@ -128,6 +131,21 @@ Parameters:"""%h
     ccp4_map_object = af.file_object
     ccp4_map_object.show_summary()
     map_data = ccp4_map_object.data
+    from cctbx import crystal
+    from cctbx import sgtbx
+    sgi = sgtbx.space_group_info(number = ccp4_map_object.space_group_number)
+    cs = crystal.symmetry(unit_cell=ccp4_map_object.unit_cell(),
+      space_group_info=sgi)
+    if(cs is not None): crystal_symmetries.append(cs)
+  #
+  assert len(crystal_symmetries)>0
+  for cs1 in crystal_symmetries:
+    for cs2 in crystal_symmetries:
+      assert cs1.is_similar_symmetry(cs2)
+  #
+  xray_structure = pdb_hierarchy.extract_xray_structure(
+    crystal_symmetry=crystal_symmetries[0])
+  xray_structure.show_summary(f=log)
   #
   if(got_hkl):
     fft_map = map_coeff.fft_map(resolution_factor=params.resolution_factor)
