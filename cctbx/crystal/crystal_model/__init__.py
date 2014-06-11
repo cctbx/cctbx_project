@@ -66,7 +66,10 @@ class crystal_model(object):
   def num_scan_points(self):
     return self._num_scan_points
 
-  def __str__(self):
+  def show(self, show_scan_varying=False, out=None):
+    if out is None:
+      import sys
+      out = sys.stdout
     uc = self.get_unit_cell().parameters()
     sg = str(self.get_space_group().info())
     umat = self.get_U().mathematica_form(format="% 5.4f",
@@ -76,22 +79,52 @@ class crystal_model(object):
     amat = (self.get_U() * self.get_B()).mathematica_form(format="% 5.4f",
                                          one_row_per_line=True).splitlines()
 
-    msg =  "Crystal:\n"
-    msg += "    Unit cell: " + "(%5.3f, %5.3f, %5.3f, %5.3f, %5.3f, %5.3f)" % uc + "\n"
-    msg += "    Space group: " + sg + "\n"
-    msg += "    U matrix:  " + umat[0] + "\n"
-    msg += "               " + umat[1] + "\n"
-    msg += "               " + umat[2] + "\n"
-    msg += "    B matrix:  " + bmat[0] + "\n"
-    msg += "               " + bmat[1] + "\n"
-    msg += "               " + bmat[2] + "\n"
-    msg += "    A = UB:    " + amat[0] + "\n"
-    msg += "               " + amat[1] + "\n"
-    msg += "               " + amat[2] + "\n"
+    msg =  ["Crystal:\n"]
+    msg.append("    Unit cell: " + "(%5.3f, %5.3f, %5.3f, %5.3f, %5.3f, %5.3f)" % uc)
+    msg.append("    Space group: " + sg)
+    msg.append("    U matrix:  " + umat[0])
+    msg.append("               " + umat[1])
+    msg.append("               " + umat[2])
+    msg.append("    B matrix:  " + bmat[0])
+    msg.append("               " + bmat[1])
+    msg.append("               " + bmat[2])
+    msg.append("    A = UB:    " + amat[0])
+    msg.append("               " + amat[1])
+    msg.append("               " + amat[2])
     if self.num_scan_points > 0:
-      msg += "    A sampled at " + str(self.num_scan_points) \
-          + " scan points" + "\n"
-    return msg
+      msg.append("    A sampled at " + str(self.num_scan_points) \
+                 + " scan points")
+      if show_scan_varying:
+        for i in range(self.num_scan_points):
+          A = self.get_A_at_scan_point(i)
+          B = self.get_B_at_scan_point(i)
+          U = self.get_U_at_scan_point(i)
+          uc = self.get_unit_cell_at_scan_point(i).parameters()
+          umat = U.mathematica_form(format="% 5.4f",
+                                    one_row_per_line=True).splitlines()
+          bmat = B.mathematica_form(format="% 5.4f",
+                                    one_row_per_line=True).splitlines()
+          amat = A.mathematica_form(format="% 5.4f",
+                                    one_row_per_line=True).splitlines()
+          msg.append("  Scan point #%i:" %(i+1))
+          msg.append("    Unit cell: " + "(%5.3f, %5.3f, %5.3f, %5.3f, %5.3f, %5.3f)" % uc)
+          msg.append("    U matrix:  " + umat[0])
+          msg.append("               " + umat[1])
+          msg.append("               " + umat[2])
+          msg.append("    B matrix:  " + bmat[0])
+          msg.append("               " + bmat[1])
+          msg.append("               " + bmat[2])
+          msg.append("    A = UB:    " + amat[0])
+          msg.append("               " + amat[1])
+          msg.append("               " + amat[2])
+    print >> out, "\n".join(msg)
+
+  def __str__(self):
+    from cStringIO import StringIO
+    s = StringIO()
+    msg = self.show(out=s)
+    s.seek(0)
+    return s.read()
 
   def set_unit_cell(self, real_space_a, real_space_b, real_space_c):
     cell = (real_space_a.length(),
@@ -102,6 +135,11 @@ class crystal_model(object):
             real_space_a.angle(real_space_b, deg = True))
     self._uc = unit_cell(cell)
     self._update_B()
+
+  def get_unit_cell_at_scan_point(self, t):
+    B = self.get_B_at_scan_point(t)
+    co = crystal_orientation(B)
+    return co.unit_cell()
 
   def _update_B(self):
     self._B = matrix.sqr(self._uc.fractionalization_matrix()).transpose()
