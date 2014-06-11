@@ -396,18 +396,14 @@ class prepare_data (object) :
       print >> out, "   (this is not strongly correlated with resolution, but"
       print >> out, "    it is preferrable to use a real value instead of leaving"
       print >> out, "    it set to 0)"
-      fmodel_params.fmodel.b_sol = get_mean_statistic_for_resolution(
-        d_min=params.d_min,
-        stat_type="b_sol")
+      fmodel_params.fmodel.b_sol = 46.0
       print >> out, ""
     if (fmodel_params.fmodel.k_sol == 0) :
       print >> out, "  k_sol is zero - will use mean value for d_min +/- 0.2A"
       print >> out, "   (this is not strongly correlated with resolution, but"
       print >> out, "    it is preferrable to use a real value instead of leaving"
       print >> out, "     it set to 0)"
-      fmodel_params.fmodel.k_sol = get_mean_statistic_for_resolution(
-        d_min=params.d_min,
-        stat_type="k_sol")
+      fmodel_params.fmodel.k_sol = 0.35
       print >> out, ""
     fmodel_params.structure_factors_accuracy = fake_data.structure_factors_accuracy
     fmodel_params.mask = fake_data.mask

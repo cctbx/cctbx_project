@@ -13,6 +13,8 @@ import os
 import mmtbx.secondary_structure
 import sys
 from cStringIO import StringIO
+from mmtbx.validation.ramalyze import ramalyze
+from mmtbx.rotamer.rotamer_eval import RotamerEval
 
 base_params_str = """\
 silent = False
@@ -381,15 +383,40 @@ class run(object):
       string = self.params.selection)
     print >> self.log, "  selected %s atoms out of total %s"%(
       str(self.selection.count(True)),str(self.selection.size()))
-    self.generate_restrain_selection()
+    self.generate_reference_restraints_selection()
 
-  def generate_restrain_selection(self):
+  def generate_reference_restraints_selection(self):
     if(self.params.reference_restraints.\
        restrain_starting_coord_selection is not None):
       self.restrain_selection = mmtbx.utils.atom_selection(
         all_chain_proxies = self.processed_pdb_file.all_chain_proxies,
         string =
           self.params.reference_restraints.restrain_starting_coord_selection)
+      self.exclude_outliers_from_reference_restraints_selection()
+
+  def exclude_outliers_from_reference_restraints_selection(self):
+    if(self.restrain_selection is not None):
+      # ramachandran plot outliers
+      rama_outlier_selection = ramalyze(pdb_hierarchy=self.pdb_hierarchy,
+        outliers_only=False).outlier_selection()
+      rama_outlier_selection = flex.bool(self.restrain_selection.size(),
+        rama_outlier_selection)
+      # rotamer outliers
+      rota_outlier_selection = flex.size_t()
+      rotamer_manager = RotamerEval() # slow!
+      for model in self.pdb_hierarchy.models():
+        for chain in model.chains():
+          for residue_group in chain.residue_groups():
+            conformers = residue_group.conformers()
+            if(len(conformers)>1): continue
+            for conformer in residue_group.conformers():
+              residue = conformer.only_residue()
+              if(rotamer_manager.evaluate_residue(residue)=="OUTLIER"):
+                rota_outlier_selection.extend(residue.atoms().extract_i_seq())
+      rota_outlier_selection = flex.bool(self.restrain_selection.size(),
+        rota_outlier_selection)
+      outlier_selection = rama_outlier_selection | rota_outlier_selection
+      self.restrain_selection = self.restrain_selection & (~outlier_selection)
 
   def addcbetar(self, prefix):
     if(self.params.use_c_beta_deviation_restraints):
@@ -416,6 +443,7 @@ class run(object):
         add_coordinate_restraints(
           sites_cart = restrain_sites_cart,
           selection  = self.restrain_selection,
+          #top_out_potential=True,
           sigma      = self.params.reference_restraints.coordinate_sigma)
       # sanity check
       assert self.grm.geometry.generic_restraints_manager.flags.reference is True
