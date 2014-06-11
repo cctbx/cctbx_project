@@ -62,7 +62,7 @@ def test_all () :
   percentiles = polygon.get_statistics_percentiles(d_min=1.5,
     stats={ "clashscore" : 21, "r_work" : 0.174, "r_free" : 0.19 })
   # XXX This will change when the database is updated
-  assert approx_equal(percentiles['clashscore'], 5.01765)
+  assert approx_equal(percentiles['clashscore'], 1.10791, 1.e-4)
 
 if (__name__ == "__main__"):
   file_name = libtbx.env.find_in_repositories(

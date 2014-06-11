@@ -11,7 +11,7 @@ keys_to_show = ["r_work", "r_free",
   "r_work_cutoffs", "r_free_cutoffs",
   "completeness_in_range", "completeness_d_min_inf", "completeness_6A_inf",
   "adp_mean_all", "adp_min_all", "adp_max_all",
-  "wilson_b", "b_sol", "k_sol", "solvent_content_via_mask",
+  "wilson_b", "solvent_content_via_mask",
   "bond_rmsd", "bond_max_deviation", "angle_rmsd", "angle_max_deviation",
   "dihedral_rmsd", "dihedral_max_deviation",
   "planarity_rmsd", "planarity_max_deviation",
@@ -32,7 +32,7 @@ key_captions = ["R-work", "R-free", "R-work (PDB)", "R-free (PDB)",
   "R-work (after cutoff)", "R-free (after cutoff)",
   "Completeness in range", "Completeness", "Completeness to 6A",
   "Average B", "Minimum B", "Maximum B",
-  "Wilson B", "B(solvent)", "K(solvent)", "Solvent content",
+  "Wilson B", "Solvent content",
   "RMSD(bonds)", "Bonds max.", "RMSD(angles)", "Angles max.",
   "RMSD(dihedrals)", "Dihedrals max.", "RMSD(planarity)", "Planarity max",
   "RMSD(chirality)", "Chirality max.",
@@ -90,7 +90,7 @@ polygon_params_str = """\
             adp_mean_sidechain pdb_header_sigma_cutoff completeness_d_min_inf \
             dihedral_max_deviation \
             r_work_cutoffs pdb_header_r_free \
-            bond_rmsd non_bonded_min_distance adp_min_all b_sol r_free \
+            bond_rmsd non_bonded_min_distance adp_min_all r_free \
             number_of_residues_with_altlocs pdb_code resname_classes \
             unit_cell_volume chirality_max_deviation space_group \
             anomalous_flag wilson_b pdb_header_tls unit_cell rama_favored \
@@ -99,7 +99,7 @@ polygon_params_str = """\
             overall_scale_b_cart adp_max_all number_of_anisotropic \
             pdb_header_matthews_coeff pdb_header_solvent_cont \
             pdb_header_r_work solvent_content_via_mask clashscore \
-            rama_outliers adp_min_solvent k_sol adp_max_backbone \
+            rama_outliers adp_min_solvent adp_max_backbone \
             adp_mean_backbone rotamer_outliers chirality_rmsd \
             c_beta_deviations adp_min_backbone angle_max_deviation \
             rmsd_adp_iso_or_adp_equiv_bonded completeness_6A_inf \
