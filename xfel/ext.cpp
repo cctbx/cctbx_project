@@ -586,7 +586,7 @@ scitbx::vec2<int> const& lower_right) {
  * this file.
  */
 #include "merging.cpp"
-
+#include "cxi/cspad_ana/project.cpp"
 
 namespace boost_python { namespace {
 
@@ -628,7 +628,7 @@ namespace boost_python { namespace {
     def("get_scaling_results_mark2", &get_scaling_results_mark2);
     def("get_scaling_results", &get_scaling_results);
     def("get_isigi_dict", &get_isigi_dict);
-
+    def("compute_projection", &compute_projection);
     class_<correction_vector_store>("correction_vector_store",init<>())
       .add_property("tiles",
         make_getter(&correction_vector_store::tiles, rbv()),
