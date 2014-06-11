@@ -81,7 +81,6 @@ def exercise_crystal_model():
   print >> s, model
   assert not show_diff(s.getvalue().replace("-0.0000", " 0.0000"), """\
 Crystal:
-
     Unit cell: (10.000, 11.000, 12.000, 90.000, 90.000, 90.000)
     Space group: P 1
     U matrix:  {{ 0.4330, -0.7500,  0.5000},

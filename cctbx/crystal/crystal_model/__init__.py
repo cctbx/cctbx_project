@@ -79,7 +79,7 @@ class crystal_model(object):
     amat = (self.get_U() * self.get_B()).mathematica_form(format="% 5.4f",
                                          one_row_per_line=True).splitlines()
 
-    msg =  ["Crystal:\n"]
+    msg =  ["Crystal:"]
     msg.append("    Unit cell: " + "(%5.3f, %5.3f, %5.3f, %5.3f, %5.3f, %5.3f)" % uc)
     msg.append("    Space group: " + sg)
     msg.append("    U matrix:  " + umat[0])
