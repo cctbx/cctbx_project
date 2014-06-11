@@ -137,7 +137,6 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     for f0, s0, f1, s1 in determine_pilatus_mask(detector):
       detector[0].add_mask(f0, s0, f1, s1)
 
-
     return detector
 
 if __name__ == '__main__':
