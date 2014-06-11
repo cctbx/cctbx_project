@@ -152,6 +152,9 @@ def exercise_percentile_based_spread() :
   pbs = percentile_based_spread(deltas)
   rmsd = math.sqrt(sum([ x**2 for x in deltas]) / n_points)
   assert (pbs > 100) and (pbs < rmsd)
+  # Test small list processing
+  assert percentile_based_spread([1,1]) > 0
+
 
 def exercise():
   exercise_integer()
