@@ -318,8 +318,36 @@ HETATM 6015  HO6 NAG A 467      40.829 -15.206  30.746  1.00 55.81           H
     pdb_file="tmp_mmtbx_utils_asn_nag.pdb")
   assert (result.n_asn_hd22 == 0)
 
+def exercise_corrupt_cryst1():
+  """
+  Inspired by PDB code 2y9k.
+  """
+  pdb_str = """
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1          15
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      1.000000  0.000000  0.000000        0.00000
+SCALE2      0.000000  1.000000  0.000000        0.00000
+SCALE3      0.000000  0.000000  1.000000        0.00000
+ATOM      1  N   GLY A  34     -74.292  12.386 -24.083  1.00  0.00           N
+ATOM      2  CA  GLY A  34     -74.465  11.623 -25.332  1.00  0.00           C
+ATOM      3  C   GLY A  34     -73.114  11.306 -25.993  1.00  0.00           C
+ATOM      4  O   GLY A  34     -72.196  12.128 -25.997  1.00  0.00           O
+"""
+  of = open("tmp_exercise_corrupt_cryst1.pdb", "w")
+  print >> of, pdb_str
+  of.close()
+  exception_message = None
+  try:
+    utils.process_command_line_args(args=["tmp_exercise_corrupt_cryst1.pdb"])
+  except Exception, e:
+    exception_message = str(e)
+  assert exception_message == "Corrupt crystal symmetry."
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_corrupt_cryst1()
   exercise_d_data_target_d_atomic_params()
   exercise_d_data_target_d_atomic_params2()
   exercise_get_atom_selections(verbose=verbose)
