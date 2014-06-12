@@ -1,9 +1,11 @@
 from __future__ import division
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import linregress
+import math
 from libtbx import easy_pickle
 import logging
-import math
 from cctbx.array_family import flex
-import numpy as np
 import cPickle
 
 class SingleFrame:
@@ -54,7 +56,6 @@ class SingleFrame:
     G, the transformed data log_i, and one_over_d_sqare. Also returns fit_stats,
     which is a dictionairy.
     """
-    from scipy.stats import linregress
     log_i = flex.log(self.miller_array.sort().data())\
         .as_numpy_array()
     one_over_d_square = self.miller_array.sort().sin_theta_over_lambda_sq().data()\
@@ -80,7 +81,6 @@ class SingleFrame:
     Params:
     - width: smoothing window size
     """
-    import matplotlib.pyplot as plt
 
     if ax is None:
       fig = plt.figure()
