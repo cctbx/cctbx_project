@@ -42,6 +42,7 @@ import mmtbx.bulk_solvent.scaler
 import scitbx.math
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
+import libtbx
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -1250,6 +1251,143 @@ class manager(manager_mixin):
     if(show_approx):
       print >> log, f3
       print >> log, f4
+
+  def remove_unreliable_atoms_and_update(self, min_map_value=0.5, min_cc=0.7):
+    """
+    Identify and remove 'unreliably' pleaced atoms, and create a new fmodel
+    with updated xray_structure.
+    """
+    # XXX see map_tools.py: duplication! Consolidate.
+    coeffs = map_tools.electron_density_map(
+      fmodel=self).map_coefficients(
+        map_type         = "2mFo-DFc",
+        isotropize       = True,
+        fill_missing     = False)
+    crystal_gridding = self.f_obs().crystal_gridding(
+      d_min              = self.f_obs().d_min(),
+      resolution_factor  = 1./3)
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = coeffs)
+    fft_map.apply_sigma_scaling()
+    map_data = fft_map.real_map_unpadded()
+    rho_atoms = flex.double()
+    for site_frac in self.xray_structure.sites_frac():
+      rho_atoms.append(map_data.eight_point_interpolation(site_frac))
+    #rho_mean = flex.mean_default(
+    #  rho_atoms.select(rho_atoms>min_map_value), min_map_value)
+    rho_mean = flex.mean_default(rho_atoms, min_map_value)
+    sel_exclude = rho_atoms > rho_mean/6.
+    ##
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = self.f_model())
+    fft_map.apply_sigma_scaling()
+    map_data2 = fft_map.real_map_unpadded()
+    #
+    sites_cart = self.xray_structure.sites_cart()
+    #sel_exclude = flex.bool(sites_cart.size(), True)
+    for i_seq, site_cart in enumerate(sites_cart):
+      selection = maptbx.grid_indices_around_sites(
+        unit_cell  = coeffs.unit_cell(),
+        fft_n_real = map_data.focus(),
+        fft_m_real = map_data.all(),
+        sites_cart = flex.vec3_double([site_cart]),
+        site_radii = flex.double([1.5]))
+      cc = flex.linear_correlation(x=map_data.select(selection),
+        y=map_data2.select(selection)).coefficient()
+      if(cc<min_cc): sel_exclude[i_seq] = False
+    #
+    print sel_exclude.count(True)*100./sel_exclude.size()
+    xray_structure_truncated = self.xray_structure.select(sel_exclude)
+    fmodel_result = self.deep_copy()
+    fmodel_result.update_xray_structure(
+      xray_structure = xray_structure_truncated,
+      update_f_calc  = True,
+      update_f_mask  = True)
+    fmodel_result.update_all_scales(update_f_part1_for=None)
+    return fmodel_result
+
+  def classical_dm_map_coefficients(self):
+    import mmtbx.density_modification
+    import iotbx.phil
+    from libtbx.utils import null_out
+    fmodel_truncated = self.remove_unreliable_atoms_and_update()
+    coeffs = map_tools.electron_density_map(
+      fmodel=fmodel_truncated).map_coefficients(
+        map_type         = "2mFo-DFc",
+        isotropize       = True,
+        fill_missing     = False)
+    import mmtbx.utils
+    solvent_content = mmtbx.utils.f_000(xray_structure =
+      self.xray_structure).solvent_fraction # here we use the original xrs
+    params = iotbx.phil.parse(mmtbx.density_modification.master_params_str).extract()
+    params.solvent_fraction = solvent_content + 0.15
+    params.grid_resolution_factor = 1./3
+    params.initial_steps = 3
+    params.shrink_steps = 5
+    params.final_steps = 3
+    hl_model = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
+        indices = self.f_obs().indices(),
+        anomalous_flag=False).array(
+          data=self.f_model_phases_as_hl_coefficients(
+            map_calculation_helper=None))
+    dm = mmtbx.density_modification.density_modification(
+      params           = params,
+      f_obs            = self.f_obs(),
+      hl_coeffs_start  = hl_model,
+      map_coeffs       = coeffs,
+      log              = null_out(),
+      as_gui_program   = False)
+    return dm.map_coeffs_in_original_setting
+
+  def resolve_dm_map_coefficients(self):
+    if(not libtbx.env.has_module("solve_resolve")):
+      raise Sorry("solve_resolve not available.")
+    fmodel_truncated = self.remove_unreliable_atoms_and_update()
+    coeffs = map_tools.electron_density_map(
+      fmodel=fmodel_truncated).map_coefficients(
+        map_type         = "2mFo-DFc",
+        isotropize       = True,
+        fill_missing     = False)
+    import mmtbx.utils
+    solvent_content = mmtbx.utils.f_000(xray_structure =
+      self.xray_structure).solvent_fraction # here we use the original xrs
+    return mmtbx.map_tools.resolve_dm_map(
+        fmodel       = fmodel_truncated,
+        map_coeffs   = coeffs,
+        pdb_inp      = None,
+        mask_cycles  = 2,
+        minor_cycles = 2,
+        use_model_hl = True,
+        fill         = True)
+
+  def k_sol_b_sol_from_k_mask(self):
+    sel = self.f_obs().d_spacings().data()>=3.5
+    k_mask = self.k_masks()[0].select(sel)
+    ss = self.ss.select(sel)
+    r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(ss), y=k_mask)
+    k_sol_0, b_sol_0 = flex.max(k_mask), r.b
+    if(k_sol_0<0):   k_sol_0=0
+    if(k_sol_0>0.6): k_sol_0=0.6
+    if(b_sol_0<0):   b_sol_0=0
+    if(b_sol_0>150): b_sol_0=150
+    k_range = [k/100. for k in range(-10,11)]
+    b_range = [b for b in range(-20,21)]
+    t = 1.e+9
+    k_best, b_best = None, None
+    for k_sh in k_range:
+      for b_sh in b_range:
+        k_sol = k_sol_0 + k_sh
+        b_sol = b_sol_0 + b_sh
+        if(k_sol<0 or k_sol>0.6 or b_sol<0 or b_sol>150): continue
+        k_mask_ = k_sol * flex.exp(-b_sol * ss)
+        delta = k_mask - k_mask_
+        t_ = flex.sum(delta*delta)
+        if(t_<t):
+          t = t_
+          k_best, b_best = k_sol, b_sol
+    return k_best, b_best
 
   def update_all_scales(
         self,
