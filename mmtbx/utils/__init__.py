@@ -1749,6 +1749,10 @@ class process_command_line_args(object):
       self.crystal_symmetry = crystal_symmetries[0][1]
     if(self.cmd_cs is not None and self.cmd_cs.unit_cell() is not None):
       self.crystal_symmetry = self.cmd_cs
+    if(self.crystal_symmetry is not None):
+      if([self.crystal_symmetry.unit_cell(),
+          self.crystal_symmetry.space_group()].count(None)>0):
+         raise Sorry("Corrupt crystal symmetry.")
 
   def get_reflection_file_server (self) :
     if (self.reflection_file_server is None) :
@@ -2552,6 +2556,7 @@ class set_map_to_value(object):
 class shift_origin(object):
   def __init__(self, map_data, pdb_hierarchy, crystal_symmetry):
     self.pdb_hierarchy = pdb_hierarchy
+    self.crystal_symmetry = crystal_symmetry
     a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
     N = map_data.all()
     O=map_data.origin()
@@ -2576,6 +2581,19 @@ class shift_origin(object):
           sites_cart_best=sites_cart_shifted.deep_copy()
     if(sites_cart_best is not None):
       self.pdb_hierarchy.atoms().set_xyz(sites_cart_best)
+
+  def show_shifted(self):
+    self.pdb_hierarchy.write_pdb_file(file_name="shifted.pdb",
+      crystal_symmetry=self.crystal_symmetry)
+    from iotbx import ccp4_map
+    ccp4_map.write_ccp4_map(
+      file_name="shifted.ccp4",
+      unit_cell=self.crystal_symmetry.unit_cell(),
+      space_group=self.crystal_symmetry.space_group(),
+      #gridding_first=(0,0,0),# This causes a bug (map gets shifted)
+      #gridding_last=n_real,  # This causes a bug (map gets shifted)
+      map_data=self.map_data,
+      labels=flex.std_string([""]))
 
 class extract_box_around_model_and_map(object):
   def __init__(self,
@@ -2611,6 +2629,7 @@ class extract_box_around_model_and_map(object):
         map_data         = map_data,
         pdb_hierarchy    = pdb_hierarchy,
         crystal_symmetry = cs)
+      osh.show_shifted()
       pdb_hierarchy = osh.pdb_hierarchy
       map_data      = osh.map_data
       xray_structure = pdb_hierarchy.extract_xray_structure(crystal_symmetry=cs)
