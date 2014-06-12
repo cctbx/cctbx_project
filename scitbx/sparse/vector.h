@@ -454,7 +454,7 @@ public:
     return element_reference(*this, i);
   }
 
-  /// Selections
+  /// Selection using an array of bool's as a mask
   void set_selected(af::const_ref<bool> const &selection,
                     af::const_ref<value_type> const &value) {
     SCITBX_ASSERT(selection.size() == value.size())
@@ -465,6 +465,19 @@ public:
     }
     if(elements.size() > n0) sorted = false;
   }
+
+  /// Selection using an array of indices
+  void set_selected(af::const_ref<index_type> const &index,
+                    af::const_ref<value_type> const &value) {
+    SCITBX_ASSERT(index.size() == value.size())
+                 (index.size())(value.size());
+    index_type n0 = elements.size();
+    for(index_type i=0; i< index.size(); ++i) {
+      elements.push_back(element(index[i], value[i]));
+    }
+    if(elements.size() > n0) sorted = false;
+  }
+
 
   /// The dense vector corresponding to this
   af::shared<T> as_dense_vector() const {

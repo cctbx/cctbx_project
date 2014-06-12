@@ -110,6 +110,12 @@ def exercise_vector():
   u.set_selected(s, v)
   assert u == sparse.vector(5, {0:1, 3:4, 4:5})
 
+  u = sparse.vector(7)
+  i = flex.size_t((2, 4, 5))
+  v = flex.double((-2.0, -4.0, -5.0))
+  u.set_selected(i, v)
+  assert u == sparse.vector(7, {2:-2.0, 4:-4.0, 5:-5.0})
+
   sparse_approx_equal = sparse.approx_equal(tolerance=1e-15)
 
   def linear_combination_trial_vectors():
