@@ -140,9 +140,11 @@ class run(object):
     # Fill missing
     missing_reflections_manager = mmtbx.map_tools.model_missing_reflections(
       coeffs=self.mc_iso, fmodel=fmodel)
+    print "Modeled missing reflections"
     missing = missing_reflections_manager.get_missing(deterministic=True)
     self.mc_filled        = self.mc_iso.complete_with(other=missing, scale=True)
     self.mc_filled_no_iso = self.mc.complete_with(other=missing, scale=True)
+    print "Got initial map coefficients"
     # composite OMIT map
     m_omit = None
     if(use_omit):
@@ -153,33 +155,34 @@ class run(object):
       m_omit = como.asu_map_omit.symmetry_expanded_map()
       maptbx.unpad_in_place(map=m_omit)
       m_omit = m_omit/como.sd
+      # for debugging only
+      #if(1):
+      #  ccp4_map(
+      #    map_data=m_omit,
+      #    unit_cell=self.mc_filled.unit_cell(),
+      #    space_group=self.mc_iso.space_group(),
+      #    n_real=m_omit.all(), file_name="omit.ccp4")
       m_omit = m_omit.set_selected(m_omit<1, 0)
       m_omit = m_omit.set_selected(m_omit>0, 1)
       # for debugging only
-      if(1):
-        ccp4_map(
-          map_data=m_omit,
-          unit_cell=self.mc_filled.unit_cell(),
-          space_group=self.mc_iso.space_group(),
-          n_real=m_omit.all(), file_name="omit.ccp4")
-#    # Extra filter
-    if(fmodel.r_work()>0.25):
-      print "Running Resolve DM because r-work>0.25 (possibly: noise ~ feature)"
-      mc_resolve = mmtbx.map_tools.resolve_dm_map(
-        fmodel       = fmodel,
-        map_coeffs   = self.mc_iso,
-        pdb_inp      = None,
-        mask_cycles  = 2,
-        minor_cycles = 2,
-        solvent_content_attenuator=0.1, # XXX
-        use_model_hl = True,
-        fill         = True)
-      m_resolve = get_map(mc_resolve, crystal_gridding)
-      m_resolve = m_resolve.set_selected(m_resolve< 0.5, 0)
-      m_resolve = m_resolve.set_selected(m_resolve>=0.5, 1)
-      if(m_filter is not None): m_filter = m_filter * m_resolve
-      else: m_filter = m_resolve
-      print "Obtained Resolve filter"
+      #if(1):
+      #  ccp4_map(
+      #    map_data=m_omit,
+      #    unit_cell=self.mc_filled.unit_cell(),
+      #    space_group=self.mc_iso.space_group(),
+      #    n_real=m_omit.all(), file_name="omit_binarized.ccp4")
+    # Extra filter: Resolve DM map as binarized mask
+    self.mc_resolve = None
+    print "Running Resolve density modificaiton"
+    self.mc_resolve = fmodel.resolve_dm_map_coefficients() #XXX ORIG !!!
+    m_resolve = get_map(self.mc_resolve, crystal_gridding)
+    m_resolve = m_resolve * truncate_with_roots(m=m_resolve, fmodel=fmodel,
+      c1=0.5,c2=0.35,cutoff=0.5,scale=0.7, zero_all_interblob_region=True)
+    m_resolve = m_resolve.set_selected(m_resolve < 0.35, 0)
+    m_resolve = m_resolve.set_selected(m_resolve >=0.35, 1)
+    if(m_filter is not None): m_filter = m_filter * m_resolve
+    else: m_filter = m_resolve
+    print "Obtained Resolve filter"
     # FEM loop
     progress_counter = counter(n1=10, n2=16, log=sys.stdout)
     self.map_result = fem_loop(
@@ -352,43 +355,11 @@ def fem_loop_(
     if(m is None): m = m_
     else:          m = m + m_
   m = m / n
-  #
-  if(0):
-    average_peak_volume = int(maptbx.peak_volume_estimate(
-      map_data         = m,
-      sites_cart       = fmodel.xray_structure.sites_cart(),
-      crystal_symmetry = fmodel.xray_structure.crystal_symmetry(),
-      cutoff           = signal_threshold)*0.7)
-    co = maptbx.connectivity(map_data=m, threshold=signal_threshold)
-    m = m*co.volume_cutoff_mask(volume_cutoff=average_peak_volume).as_double()
-    m = maptbx.volume_scale(map = m,  n_bins = 10000).map_data()
-  else:
-  #
-    if(cut_by_connectivity):
-      msk = truncate_with_roots(
-        m=m,fmodel=fmodel,c1=0.5,c2=0.35,cutoff=0.5,scale=0.7, as_int=True)
-      maptbx.truncate_special(mask=msk, map_data=m)
-      #
-      F = None
-      for c1 in [0.8, 0.7,0.6,]:
-        f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,
-          cutoff=c1,scale=0.7, zero_all_interblob_region=False)
-        if(F is None): F = f
-        else: F = F * f
-      m = m * F
-      #
-    m = maptbx.volume_scale(map = m,  n_bins = 10000).map_data()
-    #if(random.choice([True, False, False])):
-    if(random.choice([True, False])):
-      F = None
-      zero_all_interblob_region=False
-      for c1 in [0.9, 0.85, 0.8, 0.7]:
-        if(c1<0.9): zero_all_interblob_region=True
-        f = truncate_with_roots(m=m,fmodel=fmodel,c1=c1,c2=c1-0.1,cutoff=c1,
-          scale=1, zero_all_interblob_region=zero_all_interblob_region)
-        if(F is None): F = f
-        else: F = F * f
-      m = m * F
+  if(cut_by_connectivity):
+    msk = truncate_with_roots(
+      m=m,fmodel=fmodel,c1=0.5,c2=0.25,cutoff=0.5,scale=0.7, as_int=True)
+    maptbx.truncate_special(mask=msk, map_data=m)
+  m = maptbx.volume_scale(map = m, n_bins = 10000).map_data()
   return m
 
 def truncate_with_roots(m, fmodel, c1, c2, cutoff, scale,
@@ -401,7 +372,8 @@ def truncate_with_roots(m, fmodel, c1, c2, cutoff, scale,
     cutoff           = cutoff)*scale)
   co1 = maptbx.connectivity(map_data=m, threshold=c1)
   co2 = maptbx.connectivity(map_data=m, threshold=c2)
-  result = co2.noise_elimination_two_cutoffs(connectivity_object_at_t1=co1,
+  result = co2.noise_elimination_two_cutoffs(
+    connectivity_object_at_t1=co1,
     elimination_volume_threshold_at_t1=average_peak_volume,
     zero_all_interblob_region=zero_all_interblob_region)
   if(as_int): return result
