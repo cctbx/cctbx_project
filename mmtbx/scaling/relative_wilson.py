@@ -136,7 +136,12 @@ class relative_wilson(object):
 
     curve = self.curve( self.calc_d_star_sq )
     result = ratio - flex.exp(curve)
+    if (flex.max(result) > math.sqrt(sys.float_info.max)) :
+      raise OverflowError("Result array exceeds floating-point limit.")
     result = result*result
+    if (flex.max(result) > sys.float_info.max / flex.max(self.weight_array)) :
+      raise OverflowError("Weighted result array will exceed floating-point "+
+        "limit: %e" % flex.max(result))
     result = result*self.weight_array
     result = flex.sum( result )
     return result
