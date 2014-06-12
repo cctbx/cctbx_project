@@ -12,14 +12,13 @@ BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
 
 # from CCI
 PYTHON_PKG = "Python-2.7.6_cci.tar.gz"
-# XXX we maintain a patched copy to avoid an ICE with gcc 3.4
-NUMPY_PKG = "numpy-1.6.2.tar.gz"         # used many places
+NUMPY_PKG = "numpy-1.8.1.tar.gz"         # used many places
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
 REPORTLAB_PKG = "reportlab-2.6.tar.gz"   # for labelit
 ZLIB_PKG = "zlib-1.2.7.tar.gz"
-SCIPY_PKG = "scipy-0.11.0.tar.gz"        # not used by default
+SCIPY_PKG = "scipy-0.14.0.tar.gz"        # not used by default
 PYRTF_PKG = "PyRTF-0.45.tar.gz"          # for phenix.table_one, etc.
-BIOPYTHON_PKG = "biopython-1.58.tar.gz"  # used in iotbx
+BIOPYTHON_PKG = "biopython-1.64.tar.gz"  # used in iotbx
 
 # from xia2 page
 HDF5_PKG = "hdf5-1.8.8.tar.bz2"      # dxtbx
@@ -49,5 +48,5 @@ FONT_PKG = "fonts.tar.gz"
 WXPYTHON_DEV_PKG = "wxPython-src-3.0.0.0_cci.tar.gz"  # Mac 64-bit
 WXPYTHON_PKG = "wxPython-src-2.8.12.1.tar.gz"         # Linux, Mac 32-bit
 WEBKIT_PKG = "wxwebkit.tar.gz"                        # not currently used
-MATPLOTLIB_PKG = "matplotlib-1.3.0.tar.gz"
+MATPLOTLIB_PKG = "matplotlib-1.3.1.tar.gz"
 PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
