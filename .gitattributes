@@ -1905,6 +1905,7 @@ mmtbx/regression/tst_dssp.py -text
 mmtbx/regression/tst_dynamics_cli.py -text
 mmtbx/regression/tst_examples.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
+mmtbx/regression/tst_fmodel_2.py -text
 mmtbx/regression/tst_fmodel_misc.py -text
 mmtbx/regression/tst_fmodel_no_cryst1.py -text
 mmtbx/regression/tst_generate_disorder.py -text
