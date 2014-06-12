@@ -95,6 +95,14 @@ struct vector_wrapper
 
     element_iterator_wrapper::wrap();
 
+    void (wt::*set_selected_1)(af::const_ref<bool> const &,
+                               af::const_ref<value_type> const &)
+      = &wt::set_selected;
+    void (wt::*set_selected_2)(af::const_ref<index_type> const &,
+                               af::const_ref<value_type> const &)
+      = &wt::set_selected;
+
+
     class_<wt>(name, no_init)
       .def(init<index_type>(arg("dimension")))
         .def("__init__",
@@ -105,7 +113,8 @@ struct vector_wrapper
       .def("__setitem__", setitem)
       .def("__getitem__", getitem)
       .def("__iter__", iter)
-      .def("set_selected", &wt::set_selected)
+      .def("set_selected", set_selected_1)
+      .def("set_selected", set_selected_2)
       .def("compact", &wt::compact, return_self<>())
       .def("permute",
                static_cast<wt& (wt::*)(af::const_ref<index_type> const&)>(
