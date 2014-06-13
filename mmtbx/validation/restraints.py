@@ -262,6 +262,9 @@ class bonds (restraint_validation) :
       by_value="residual",
       sites_cart=sites_cart,
       site_labels=site_labels)
+    # this can happen for C-alpha-only models, etc.
+    if (sorted_table is None) :
+      return []
     outliers = []
     for restraint_info in sorted_table :
       (i_seqs, ideal, model, slack, delta, sigma, weight, residual, sym_op_j,
@@ -412,6 +415,7 @@ class planarities (restraint_validation) :
       sites_cart=sites_cart,
       site_labels=site_labels,
       unit_cell=unit_cell)
+    if (sorted_table is None) : return []
     outliers = []
     for restraint_info in sorted_table :
       (plane_atoms, rms_delta, residual) = restraint_info
