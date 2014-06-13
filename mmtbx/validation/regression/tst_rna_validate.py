@@ -3,14 +3,36 @@ from __future__ import division
 from mmtbx.command_line import rna_validate
 import mmtbx.validation.rna_validate
 from iotbx import file_reader
-import iotbx.pdb.hierarchy
 from libtbx.easy_pickle import loads, dumps
 from libtbx.utils import null_out
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
 
-def exercise_rna_validate():
+# This actually tests expected output - the remaining tests guard against
+# fixed bugs.
+def exercise_1 () :
+  # derived from 2goz
+  regression_pdb = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb2goz_refmac_tls.ent",
+    test=os.path.isfile)
+  if (regression_pdb is None):
+    print "Skipping exercise: input pdb (pdb2goz_refmac_tls.ent) not available"
+    return
+  rv = rna_validate.run(args=[regression_pdb], out=null_out())
+  assert len(rv.puckers.results) == 2
+  assert len(rv.bonds.results) == 2
+  assert len(rv.angles.results) == 14
+  assert len(rv.suites.results) == 4
+  pickle_unpickle(rv)
+  pdb_in = file_reader.any_file(regression_pdb)
+  result = mmtbx.validation.rna_validate.rna_validation(
+    pdb_hierarchy=pdb_in.file_object.construct_hierarchy(),
+    geometry_restraints_manager=None,
+    params=None)
+  pickle_unpickle(result)
+
+def exercise_2 ():
   # fragment from 3g8t
   pdb_raw = """\
 ATOM   7975  P     G Q 140      10.347 137.422  73.792  1.00118.69           P
@@ -64,25 +86,68 @@ TER    8020        A Q 141
   rv = rna_validate.run(args=["tst_rna_validate_1.pdb"], out=null_out())
   assert len(rv.puckers.results) == 1
   pickle_unpickle(rv)
-  # derived from 2goz
-  regression_pdb = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/pdb2goz_refmac_tls.ent",
-    test=os.path.isfile)
-  if (regression_pdb is None):
-    print "Skipping exercise_regression(): input pdb (pdb2goz_refmac_tls.ent) not available"
-    return
-  rv = rna_validate.run(args=[regression_pdb], out=null_out())
-  assert len(rv.puckers.results) == 2
-  assert len(rv.bonds.results) == 2
-  assert len(rv.angles.results) == 14
-  assert len(rv.suites.results) == 4
+
+def exercise_3 () :
+  # derived from 3bbi
+  pdb_raw = """\
+ATOM      1  O5'A  U A   1      39.826  29.792  61.182  0.50 82.88           O
+ATOM      2  O5'B  U A   1      39.852  29.856  60.945  0.50 82.91           O
+ATOM      3  C5'A  U A   1      40.022  30.855  62.130  0.50 80.10           C
+ATOM      4  C5'B  U A   1      40.079  31.072  61.650  0.50 79.19           C
+ATOM      5  C4'A  U A   1      38.772  31.691  62.255  0.50 78.82           C
+ATOM      6  C4'B  U A   1      38.796  31.774  62.020  0.50 77.88           C
+ATOM      7  O4'A  U A   1      38.856  32.884  61.429  0.50 80.02           O
+ATOM      8  O4'B  U A   1      38.669  32.983  61.220  0.50 79.40           O
+ATOM      9  C3'A  U A   1      37.538  30.959  61.777  0.50 78.46           C
+ATOM     10  C3'B  U A   1      37.499  31.010  61.758  0.50 77.50           C
+ATOM     11  O3'A  U A   1      37.037  30.176  62.849  0.50 75.37           O
+ATOM     12  O3'B  U A   1      37.158  30.120  62.826  0.50 74.93           O
+ATOM     13  C2'A  U A   1      36.641  32.101  61.304  0.50 79.86           C
+ATOM     14  C2'B  U A   1      36.483  32.143  61.671  0.50 78.29           C
+ATOM     15  O2'A  U A   1      35.961  32.782  62.341  0.50 81.49           O
+ATOM     16  O2'B  U A   1      36.053  32.616  62.932  0.50 80.66           O
+ATOM     17  C1'A  U A   1      37.673  33.025  60.649  0.50 79.69           C
+ATOM     18  C1'B  U A   1      37.299  33.233  60.979  0.50 77.90           C
+ATOM     19  N1 A  U A   1      38.048  32.567  59.307  0.50 77.53           N
+ATOM     20  N1 B  U A   1      37.046  33.343  59.533  0.50 75.93           N
+ATOM     21  C2 A  U A   1      37.329  32.949  58.191  0.50 76.19           C
+ATOM     22  C2 B  U A   1      37.795  32.584  58.638  0.50 75.96           C
+ATOM     23  O2 A  U A   1      36.364  33.685  58.191  0.50 76.18           O
+ATOM     24  O2 B  U A   1      38.754  31.891  58.945  0.50 77.97           O
+ATOM     25  N3 A  U A   1      37.803  32.400  57.033  0.50 74.94           N
+ATOM     26  N3 B  U A   1      37.376  32.694  57.351  0.50 75.08           N
+ATOM     27  C4 A  U A   1      38.865  31.551  56.889  0.50 74.13           C
+ATOM     28  C4 B  U A   1      36.340  33.467  56.890  0.50 74.34           C
+ATOM     29  O4 A  U A   1      39.163  31.127  55.805  0.50 72.11           O
+ATOM     30  O4 B  U A   1      36.162  33.540  55.698  0.50 72.95           O
+ATOM     31  C5 A  U A   1      39.560  31.215  58.099  0.50 74.56           C
+ATOM     32  C5 B  U A   1      35.632  34.263  57.853  0.50 72.59           C
+ATOM     33  C6 A  U A   1      39.134  31.742  59.244  0.50 76.24           C
+ATOM     34  C6 B  U A   1      36.006  34.156  59.108  0.50 73.72           C
+ATOM     35  P     C A   2      36.230  28.821  62.547  1.00 72.47           P
+ATOM     36  OP1   C A   2      35.510  28.509  63.805  1.00 72.07           O
+ATOM     37  OP2   C A   2      37.093  27.782  61.920  1.00 67.52           O
+ATOM     38  O5'   C A   2      35.141  29.294  61.493  1.00 61.16           O
+ATOM     39  C5'   C A   2      34.065  30.126  61.886  1.00 53.00           C
+ATOM     40  C4'   C A   2      33.217  30.452  60.692  1.00 54.42           C
+ATOM     41  O4'   C A   2      34.058  31.113  59.709  1.00 57.20           O
+ATOM     42  C3'   C A   2      32.696  29.239  59.934  1.00 54.16           C
+ATOM     43  O3'   C A   2      31.508  28.706  60.508  1.00 49.29           O
+ATOM     44  C2'   C A   2      32.447  29.817  58.551  1.00 50.69           C
+ATOM     45  O2'   C A   2      31.256  30.569  58.491  1.00 53.09           O
+ATOM     46  C1'   C A   2      33.635  30.762  58.406  1.00 51.94           C
+ATOM     47  N1    C A   2      34.752  30.152  57.665  1.00 50.45           N
+ATOM     48  C2    C A   2      34.662  30.120  56.283  1.00 49.86           C
+ATOM     49  O2    C A   2      33.659  30.593  55.738  1.00 50.93           O
+ATOM     50  N3    C A   2      35.654  29.571  55.565  1.00 47.16           N
+ATOM     51  C4    C A   2      36.709  29.052  56.179  1.00 47.93           C
+ATOM     52  N4    C A   2      37.659  28.519  55.412  1.00 47.02           N
+ATOM     53  C5    C A   2      36.834  29.060  57.597  1.00 46.21           C
+ATOM     54  C6    C A   2      35.840  29.624  58.297  1.00 47.22           C
+"""
+  open("tst_rna_validate_2.pdb", "w").write(pdb_raw)
+  rv = rna_validate.run(args=["tst_rna_validate_2.pdb"], out=null_out())
   pickle_unpickle(rv)
-  pdb_in = file_reader.any_file(regression_pdb)
-  result = mmtbx.validation.rna_validate.rna_validation(
-    pdb_hierarchy=pdb_in.file_object.construct_hierarchy(),
-    geometry_restraints_manager=None,
-    params=None)
-  pickle_unpickle(result)
 
 def pickle_unpickle (result) :
   result2 = loads(dumps(result))
@@ -99,7 +164,9 @@ def run():
       "Skipping exercise_rna_validate():" \
       " phenix not available"
   else:
-    exercise_rna_validate()
+    exercise_1()
+    exercise_2()
+    exercise_3()
     print "OK"
 
 if (__name__ == "__main__"):

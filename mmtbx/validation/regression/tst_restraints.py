@@ -93,6 +93,22 @@ atoms                   ideal    model    delta   sigma  residual   deviation
  A   2  VAL  N
  A   2  VAL  CA
 """ in "\n".join([ l.rstrip() for l in out2.getvalue().splitlines() ]))
+  #
+  # C-alpha-only model (from 3b5d)
+  pdb_raw = """\
+CRYST1  115.100   43.700   76.400  90.00 108.10  90.00 C 1 2 1       8
+ATOM      1  CA  TYR A   6      -7.551 -11.355 -17.946  1.00148.04           C
+ATOM      2  CA  LEU A   7      -8.052  -8.804 -20.730  1.00310.75           C
+ATOM      3  CA  GLY A   8     -10.874  -6.691 -19.353  1.00158.95           C
+ATOM      4  CA  GLY A   9      -9.359  -7.332 -15.966  1.00217.68           C
+ATOM      5  CA  ALA A  10      -5.806  -6.508 -16.946  1.00239.12           C
+ATOM      6  CA  ILE A  11      -7.024  -3.514 -18.905  1.00103.16           C
+ATOM      7  CA  LEU A  12     -10.023  -2.071 -17.056  1.00230.80           C
+ATOM      8  CA  ALA A  13      -7.313  -1.820 -14.420  1.00141.04           C
+"""
+  pdb_file = "tst_validate_restraints_calpha.pdb"
+  open(pdb_file, "w").write(pdb_raw)
+  v1 = run_validation(pdb_file, ignore_hd=True)
 
 if (__name__ == "__main__") :
   exercise_simple()

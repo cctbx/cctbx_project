@@ -139,7 +139,9 @@ class relative_wilson(object):
     if (flex.max(result) > math.sqrt(sys.float_info.max)) :
       raise OverflowError("Result array exceeds floating-point limit.")
     result = result*result
-    if (flex.max(result) > sys.float_info.max / flex.max(self.weight_array)) :
+    wmax = flex.max(self.weight_array)
+    assert (wmax != 0)
+    if (wmax > 1) and (flex.max(result) > sys.float_info.max / wmax) :
       raise OverflowError("Weighted result array will exceed floating-point "+
         "limit: %e" % flex.max(result))
     result = result*self.weight_array

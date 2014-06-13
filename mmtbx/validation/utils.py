@@ -1,8 +1,9 @@
-from __future__ import division
 
+from __future__ import division
 from libtbx import easy_pickle
 from libtbx import group_args
 from libtbx.utils import Sorry
+from collections import defaultdict
 import os.path
 import math
 import sys
@@ -165,7 +166,7 @@ def get_rna_backbone_dihedrals (processed_pdb_file,
   # atoms with altloc ' ' or altloc 'A'
   # TO-DO: extend to more alternates JJH 140108
   from cctbx import geometry_restraints
-  bb_dihedrals = {}
+  bb_dihedrals = defaultdict(dict)
   formatted_out = []
   alt_tracker = {}
   if (processed_pdb_file is not None) :
@@ -214,11 +215,7 @@ def get_rna_backbone_dihedrals (processed_pdb_file,
         alt_tracker[key[1:]] = []
       if key[0:1] not in alt_tracker[key[1:]]:
         alt_tracker[key[1:]].append(key[0:1])
-      try:
-        bb_dihedrals[key][name]=restraint.angle_model
-      except Exception:
-        bb_dihedrals[key] = {}
-        bb_dihedrals[key][name]=restraint.angle_model
+      bb_dihedrals[key][name] = restraint.angle_model
       if invert_sign:
         bb_dihedrals[key][name] = bb_dihedrals[key][name] * -1.0
   for key in bb_dihedrals.keys():
@@ -232,6 +229,7 @@ def get_rna_backbone_dihedrals (processed_pdb_file,
         continue
     if bb_dihedrals[key].get('alpha') is not None:
       alpha = "%.3f" % bb_dihedrals[key]['alpha']
+    # FIXME will the lookup below ever actually work?
     elif altloc == 'A' and \
          bb_dihedrals[' '+key[1:]].get('alpha') is not None:
       alpha = "%.3f" % bb_dihedrals[' '+key[1:]]['alpha']
