@@ -50,6 +50,9 @@ def run (args, out=sys.stdout) :
     print "Usage: create_mac_pkg [options] PROGRAM_DIR"
     return False
   program_dir = args[0]
+  if (not program_dir.startswith("/")) :
+    print "ERROR: absolute path required"
+    return False
   if (not op.isdir(program_dir)) :
     print "ERROR: '%s' is not a directory"
     return False
@@ -111,7 +114,11 @@ our website).""" % { "package" : options.package_name,
 """ % "\n".join(app_bundle_xml))
   plist.close()
   # move directory
-  pkg_path = op.join("pkg_root", op.relpath(op.dirname(program_dir), "/"))
+  # XXX os.path.relpath behavior is not consistent between Python versions -
+  # the behavior we need here was not introduced until 2.7.  Since the program
+  # directory is assumed to be absolute, we just chop off the leading '/'.
+  rel_path = op.dirname(program_dir)[1:]
+  pkg_path = op.join("pkg_root", rel_path)
   os.mkdir(pkg_path)
   shutil.move(program_dir, pkg_path)
   # write out distribution.xml
@@ -181,6 +188,8 @@ our website).""" % { "package" : options.package_name,
     zip_args = [ "ditto", "-c", "-k", "-rsrc", pkg_name, pkg_name + ".zip" ]
     call(zip_args, out)
     assert op.isfile(pkg_name + ".zip")
+  return True
 
 if (__name__ == "__main__") :
-  run(sys.argv[1:])
+  if (not run(sys.argv[1:])) :
+    sys.exit(1)
