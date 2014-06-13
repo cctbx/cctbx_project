@@ -755,7 +755,7 @@ def env_detz(address, env):
         # According to Sébastien Boutet, this particular motor has not
         # caused any problem in the past.
         pv = env.epicsStore().value('CXI:DS1:MMS:06')
-    elif detector == 'CxiDsd':
+    elif detector == 'CxiDsd' or detector == 'CxiDs2':
       # XXX Note inconsistency in naming: Dsd vs Ds2!
       pv = env.epicsStore().value('CXI:DS2:MMS:06.RBV')
     elif detector == 'XppGon':
