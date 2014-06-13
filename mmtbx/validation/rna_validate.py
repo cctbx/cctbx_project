@@ -9,7 +9,7 @@ from mmtbx import monomer_library
 from mmtbx import validation
 from iotbx.pdb import common_residue_names_get_class as get_res_class
 from cctbx import geometry_restraints
-from libtbx.str_utils import make_sub_header
+from libtbx.str_utils import make_sub_header, format_value
 from libtbx import slots_getstate_setstate
 from libtbx import easy_run
 from math import sqrt
@@ -70,8 +70,12 @@ class rna_pucker (validation.residue) :
     def format_outlier_flag (flag) :
       if (flag) : return "yes"
       else : return "no"
-    return "%-20s  %8.1f  %8s  %8.1f  %8s" % (self.id_str(), self.delta_angle,
-      format_outlier_flag(self.is_delta_outlier), self.epsilon_angle,
+    def format_angle (val) :
+      return format_value("%8.1f", val, replace_none_with="---")
+    return "%-20s  %8s  %8s  %8s  %8s" % (self.id_str(),
+      format_angle(self.delta_angle),
+      format_outlier_flag(self.is_delta_outlier),
+      format_angle(self.epsilon_angle),
       format_outlier_flag(self.is_epsilon_outlier))
 
   def as_string (self, prefix="") :

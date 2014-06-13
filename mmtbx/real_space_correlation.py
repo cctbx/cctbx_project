@@ -1,17 +1,18 @@
+
 from __future__ import division
-from cctbx.array_family import flex
 import mmtbx.utils
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
-from cStringIO import StringIO
-from cctbx import maptbx
 import iotbx.phil
-from libtbx.utils import Sorry, null_out
-import os
-from cctbx import miller
-from libtbx import group_args
-import sys
 import iotbx.pdb
+from cctbx.array_family import flex
+from cctbx import miller
+from cctbx import maptbx
+from libtbx.utils import Sorry, null_out
+from libtbx import group_args
+from cStringIO import StringIO
+import os
+import sys
 
 core_params_str = """\
 atom_radius = None
@@ -682,17 +683,21 @@ def extract_map_stats_for_single_atoms (xray_structure, pdb_atoms, fmodel,
       return values, selections
     else :
       return values
-  two_fofc_map = fmodel.two_fofc_map()
+  def get_map (map_type) :
+    map_coeffs = fmodel.map_coefficients(map_type=map_type)
+    if (map_coeffs is not None) :
+      return map_coeffs.fft_map(
+        resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+  two_fofc_map = get_map("2mFo-DFc")
   two_fofc, two_fofc_sel = collect_map_values(two_fofc_map, get_selections=True)
   del two_fofc_map
-  fofc_map = fmodel.fofc_map()
+  fofc_map = get_map("mFo-DFc")
   fofc = collect_map_values(fofc_map)
   del fofc_map
-  anom_map = fmodel.anomalous_map()
+  anom_map = get_map("anomalous")
   anom = collect_map_values(anom_map)
   del anom_map
-  fmodel_map = fmodel.f_model().fft_map(
-    resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+  fmodel_map = get_map("Fmodel")
   f_model_val, f_model_sel = collect_map_values(fmodel_map, get_selections=True)
   del fmodel_map
   two_fofc_ccs = []

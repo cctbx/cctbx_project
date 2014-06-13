@@ -638,7 +638,8 @@ the percentage of R-free reflections).
     new_object.twin_fraction = float(self.twin_fraction_object.twin_fraction)
     new_object.update()
     new_object.did_search = self.did_search
-    new_object.fmodel_ts1 = self.fmodel_ts1.deep_copy()
+    if (self.fmodel_ts1 is not None) :
+      new_object.fmodel_ts1 = self.fmodel_ts1.deep_copy()
     return new_object
 
   def resolution_filter(self,d_max=None,d_min=None):
