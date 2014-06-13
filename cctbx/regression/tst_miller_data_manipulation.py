@@ -71,6 +71,22 @@ def exercise_twinning () :
   fc_detwin = fc_twin.detwin_data("l,-k,h", 0.3)
   fc_detwin, fc = fc_detwin.common_sets(other=fc)
   assert fc_detwin.data().all_approx_equal(fc.data())
+  # derived from PDB 3hfg; this confirms that the change in unit cell
+  # parameters does not crash the routines
+  xrs = random_structure.xray_structure(
+    unit_cell=(56.438, 152.670, 74.203, 90.00, 92.41, 90.00),
+    space_group_symbol="P21",
+    n_scatterers=100,
+    elements="random")
+  fc = abs(xrs.structure_factors(d_min=1.5).f_calc())
+  fc = fc.set_observation_type_xray_amplitude()
+  fc_twin = fc.twin_data("h,-k,-l", 0.3)
+  ic = fc.f_as_f_sq()
+  fc_twin_2 = ic.twin_data("h,-k,-l", 0.3).f_sq_as_f()
+  assert (fc_twin.data().all_eq(fc_twin_2.data()))
+  fc_detwin = fc_twin.detwin_data("h,-k,-l", 0.3)
+  fc_detwin, fc = fc_detwin.common_sets(other=fc)
+  assert fc_detwin.data().all_approx_equal(fc.data())
 
 if (__name__ == "__main__"):
   exercise_twinning()

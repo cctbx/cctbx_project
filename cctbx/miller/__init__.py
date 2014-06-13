@@ -4212,7 +4212,8 @@ class array(set):
         "The determinant of the provided twin law is not equal to unity")
     cb_op = sgtbx.change_of_basis_op(twin_law)
     new_array = tmp_array.change_basis( cb_op ).map_to_asu()
-    xa, xb = tmp_array.common_sets(other=new_array)
+    xa, xb = tmp_array.common_sets(other=new_array,
+      assert_is_similar_symmetry=False)
     new_data = (1.0-alpha)*xa.data() + alpha*xb.data()
     new_sigmas = new_data / 100.0 # FIXME this seems wrong...
     twinned = xa.customized_copy(data=new_data,
@@ -4240,7 +4241,8 @@ class array(set):
     new_array = tmp_array.change_basis( cb_op ).map_to_asu()
     # calling common_sets() automatically reorders the indices to be the same
     # between the two arrays, avoiding any further selections
-    tmp_array, new_array = tmp_array.common_sets(other=new_array)
+    tmp_array, new_array = tmp_array.common_sets(other=new_array,
+      assert_is_similar_symmetry=False)
     assert (tmp_array.size() == new_array.size())
     # adapted from mmtbx/scaling/twinning.h, but the use of common_sets()
     # and other boosted methods simplifies this greatly
