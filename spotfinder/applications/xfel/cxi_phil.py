@@ -481,7 +481,10 @@ def cxi_versioned_extract(*args):
   elif cxi_version in ["CXI 9.1"]:
     working_extract = working_phil.command_extractor
 
-    corrected_auxiliary_translations = [
+    from scitbx.array_family import flex
+
+    # FIXME figure out why the sign flip was needed
+    corrected_auxiliary_translations = -flex.int([
        0, -5,  0, -5,  1,  1,  1,  1,
        0,  0,  0,  0, -3, -1, -3, -1,
        0,  0,  0,  0,  0,  0,  0,  0,
@@ -500,9 +503,9 @@ def cxi_versioned_extract(*args):
        5, -2,  5, -2,  0, -1,  0, -1,
        0,  0,  0,  0,  3, -1,  3, -1,
        0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  2, -2,  2, -2]
+       0,  0,  0,  0,  2, -2,  2, -2])
 
-    working_extract.distl.tile_translations = corrected_auxiliary_translations
+    working_extract.distl.tile_translations = list(corrected_auxiliary_translations)
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.
     # Determined for LD91 run 33. Optimized for 125 mm
