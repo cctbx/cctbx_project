@@ -32,6 +32,7 @@ maximum_inter_residue_links = {
   ("common_saccharide", "metal") : 3,
   #("common_element",    "common_saccharide") : 3,
   ("common_rna_dna",    "metal") : 2,
+  ("common_rna_dna","common_rna_dna") : 5  # for basepairing
   }
 #
 skip_if_both = [
