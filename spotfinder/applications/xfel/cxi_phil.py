@@ -359,7 +359,7 @@ def cxi_versioned_extract(*args):
 
     return working_extract
 
-  elif cxi_version in ["CXI 8.2","CXI 9.1"]:
+  elif cxi_version in ["CXI 8.2"]:
     working_extract = working_phil.command_extractor
 
     corrected_auxiliary_translations = [
@@ -476,6 +476,38 @@ def cxi_versioned_extract(*args):
     #                                           -9,  5,
      #                                          -5,  10,
      #                                          -9,  12]
+    return working_extract
+
+  elif cxi_version in ["CXI 9.1"]:
+    working_extract = working_phil.command_extractor
+
+    corrected_auxiliary_translations = [
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0]
+
+    working_extract.distl.tile_translations = corrected_auxiliary_translations
+
+    # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.
+    # Determined for LD91 run 33. Optimized for 125 mm
+    working_extract.distl.quad_translations = [ 8, -3,
+                                               -9,  5,
+                                                9,  7,
+                                               -5, 15]
+
     return working_extract
 
   elif cxi_version in ["CXI 8.d"]:
