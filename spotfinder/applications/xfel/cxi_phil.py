@@ -345,14 +345,21 @@ def cxi_versioned_extract(*args):
     # Note, these numbers are valid for the CSPAD detector at roughly 100 mm distance
     working_extract.distl.quad_translations = [-14,7,-4,7,-22,0,-12,-4]
 
+    # Calibrated at 201
+    #working_extract.distl.quad_translations = [-14,7,-4,6,-23,0,-13,-5]
+
     # Due to a slight angle in the rail, if the detector is at the back of its
     # stage, around 548 mm, use these numbers instead.  They represent a change
     # of beam center due to a small translation at that distance
     #working_extract.distl.quad_translations = [-10,5,0,5,-18,-2,-8,-6]
 
+    # Recalibration of 548 mm vs run 111 of lysozyme calibration dataset
+    #working_extract.distl.quad_translations = [-11,4,-2,6,-18,-3,-9,-4]
+
+
     return working_extract
 
-  elif cxi_version in ["CXI 8.2"]:
+  elif cxi_version in ["CXI 8.2","CXI 9.1"]:
     working_extract = working_phil.command_extractor
 
     corrected_auxiliary_translations = [
