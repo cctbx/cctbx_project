@@ -40,7 +40,8 @@ class manager(object):
         external_energy_function=None,
         plain_pairs_radius=None,
         max_reasonable_bond_distance=None,
-        min_cubicle_edge=5):
+        min_cubicle_edge=5,
+        hbonds_in_bond_list=None):
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -1010,10 +1011,10 @@ class manager(object):
     pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
     if (sites_cart is None):
       sites_cart = self._sites_cart_used_for_pair_proxies
-    if (pair_proxies.bond_proxies is not None):
+    if pair_proxies.bond_proxies is not None:
       pair_proxies.bond_proxies.show_sorted(
         by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=f)
+        sites_cart=sites_cart, site_labels=site_labels, f=f, exclude=self.hbonds_in_bond_list)
       print >> f
     if (self.angle_proxies is not None):
       self.angle_proxies.show_sorted(

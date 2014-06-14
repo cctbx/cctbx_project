@@ -142,7 +142,10 @@ master_params_str = """\
     amino_acid_bond_cutoff = 1.9
       .type = float
       .short_caption = Distance cutoff for automatic linking of aminoacids
-    rna_dna_bond_cutoff = 3.5
+    link_dna_rna = True
+      .type = bool
+      .short_caption = Find and link opposite basepairs in RNA/DNA
+    rna_dna_bond_cutoff = 4
       .type = float
       .short_caption = Distance cutoff for automatic linking of RNA/DNA
     link_residues = True
@@ -4282,21 +4285,26 @@ class build_all_chain_proxies(linking_mixins):
         self.geometry_proxy_registries.planarity.append_custom_proxy(proxy=proxy)
     #
     al_params = self.params.automatic_linking
+    hbonds_in_bond_list = []
     if al_params.link_all:
-      self.process_nonbonded_for_links(
+      hbonds_in_bond_list = self.process_nonbonded_for_links(
         bond_params_table,
         bond_asu_table,
         self.geometry_proxy_registries,
         link_metals               = al_params.link_metals,
         link_residues             = al_params.link_residues,
         link_carbohydrates        = al_params.link_carbohydrates,
+        link_dna_rna              = al_params.link_dna_rna,
         amino_acid_bond_cutoff    = al_params.amino_acid_bond_cutoff,
         metal_coordination_cutoff = al_params.metal_coordination_cutoff,
         carbohydrate_bond_cutoff  = al_params.carbohydrate_bond_cutoff,
         inter_residue_bond_cutoff = al_params.inter_residue_bond_cutoff,
         second_row_buffer         = al_params.buffer_for_second_row_elements,
+        rna_dna_bond_cutoff       = al_params.rna_dna_bond_cutoff,
         log=log,
         )
+    if len(hbonds_in_bond_list) == 0:
+      hbonds_in_bond_list = None
     #
     #if (hydrogen_bonds is not None) :
     #  for proxy in hydrogen_bonds.bond_sym_proxies :
@@ -4376,7 +4384,8 @@ class build_all_chain_proxies(linking_mixins):
       generic_restraints_manager=generic_restraints_manager,
       external_energy_function=external_energy_function,
       max_reasonable_bond_distance=self.params.max_reasonable_bond_distance,
-      plain_pairs_radius=plain_pairs_radius)
+      plain_pairs_radius=plain_pairs_radius,
+      hbonds_in_bond_list=hbonds_in_bond_list)
     if (params_remove is not None):
       self.process_geometry_restraints_remove(
         params=params_remove, geometry_restraints_manager=result)
@@ -4617,7 +4626,8 @@ class process(object):
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
           n_slots=params.show_histogram_slots.bond_lengths,
           f=self.log,
-          prefix="  ")
+          prefix="  ",
+          exclude=self._geometry_restraints_manager.hbonds_in_bond_list)
         smallest_distance_model = \
           pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
@@ -4625,7 +4635,8 @@ class process(object):
             site_labels=site_labels,
             f=self.log,
             prefix="  ",
-            max_items=params.show_max_items.bond_restraints_sorted_by_residual)
+            max_items=params.show_max_items.bond_restraints_sorted_by_residual,
+            exclude=self._geometry_restraints_manager.hbonds_in_bond_list)
         if (    smallest_distance_model is not None
             and hard_minimum_bond_distance_model is not None
             and smallest_distance_model < hard_minimum_bond_distance_model):

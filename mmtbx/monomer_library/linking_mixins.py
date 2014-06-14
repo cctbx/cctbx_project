@@ -419,6 +419,7 @@ class linking_mixins(object):
                                   link_metals                 = True,
                                   link_residues               = True,
                                   link_carbohydrates          = True,
+                                  link_dna_rna                = True,
                                   max_bonded_cutoff           = None,
                                   metal_coordination_cutoff   = 3.,
                                   amino_acid_bond_cutoff      = 2.,
@@ -436,6 +437,7 @@ class linking_mixins(object):
                               carbohydrate_bond_cutoff,
                               inter_residue_bond_cutoff+second_row_buffer,
                               )
+    hbonds_in_bond_list = []
     if verbose:
       print """
       metal_coordination_cutoff %s
@@ -602,7 +604,9 @@ Residue classes
 %s """ % (classes1, classes2)
       # is_proxy_set between any of the atoms ????????
       if classes1.common_amino_acid and classes2.common_amino_acid: continue
-      if classes1.common_rna_dna and classes2.common_rna_dna: continue
+      if classes1.common_rna_dna and classes2.common_rna_dna:
+        if not link_dna_rna:
+          continue
       if sym_op:
         if classes1.common_amino_acid and classes2.common_saccharide: continue
         if classes2.common_amino_acid and classes1.common_saccharide: continue
@@ -644,6 +648,10 @@ Residue classes
         if verbose:
           print "is not linked", atom1.quote(),atom2.quote(),key
         continue
+      # got a link....
+      if classes1.common_rna_dna and classes2.common_rna_dna:
+        hbonds_in_bond_list.append(tuple(sorted([atom1.i_seq, atom2.i_seq])))
+
       class1 = linking_utils.get_classes(atom1, #_group1.resname,
                                          important_only=True,
         )
@@ -665,6 +673,7 @@ Residue classes
          linking_setup.maximum_inter_residue_links.get(class_key, 1)
          ):
         if verbose: print "too many links"
+        print "too many links:",current_number_of_links,linking_setup.maximum_inter_residue_links.get(class_key, 1), class_key
         continue
       #
       done[key].append(names)
@@ -838,6 +847,10 @@ Residue classes
         bond_data_i_seqs[j_seq].append(i_seq)
         pair_asu_table.add_pair(proxy.i_seqs)
 
+
+    # END MAIN LOOP for ii, item in enumerate(nonbonded?)
+    #
+    #
     if verbose:
       for key in sorted(custom_links):
         print '-'*80
@@ -861,10 +874,16 @@ Residue classes
       atom2 = atoms[j_seq]
       if (sym_pair.rt_mx_ji.is_unit_mx()): n_simple += 1
       else:                                n_symmetry += 1
-      equil = bondlength_defaults.get_default_bondlength(atom1.element,
-                                                         atom2.element,
-        )
-      equil = bondlength_defaults.run(atom1, atom2)[0]
+      ans = bondlength_defaults.run(atom1, atom2)
+      equil = 2.3
+      weight = 0.02
+      slack = 0.
+      if len(ans) >0:
+        equil = ans[0]
+        if len(ans) > 1:
+          weight = ans[1]
+          if len(ans) > 2:
+            slack = ans[2]
       if equil is None:
         equil = 2.3
       bond_params_table.update(
@@ -872,7 +891,8 @@ Residue classes
         j_seq=j_seq,
         params=geometry_restraints.bond_params(
           distance_ideal=equil,
-          weight=1/0.02**2))
+          weight=1.0/weight**2,
+          slack=slack))
       bond_asu_table.add_pair(
         i_seq=i_seq,
         j_seq=j_seq,
@@ -943,3 +963,4 @@ Residue classes
                                                                     sym_op,
             )
     print >> log, '  Time building additional restraints: %0.2f' % (time.time()-t0)
+    return hbonds_in_bond_list

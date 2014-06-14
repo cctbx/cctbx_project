@@ -3301,6 +3301,60 @@ def generic_metal_run(metal_element,
       return None
   return residue_defaults
 
+basepairs_lengths = {
+
+# taken from base_pairing.data
+
+# columns:
+# pair_type   saenger   paired_bases    hydrogen_flag   atom_pair   [atom_pair ...]
+# atom_pair = atom1, atom2, bond_length, standard_deviation, slack
+# key:value =
+# key=saenger class
+# value = [(bp1, bp2), (atom1, atom2, target distance, sigma, slack), (another link),]
+#
+# Canonical Watson-Crick base pairings
+#homo purine
+1:[('A','A'), ("N6","N1",2.99,0.14,0.07) ],
+2:[('A','A'), ("N6","N7",2.95,0.20,0.06) ],
+3:[('G','G'), ("N1","O6",2.86,0.12,0.01) ],
+4:[('G','G'), ("N2","N3",3.10,0.22,0.13) ],
+5:[('A','A'), ("N6","N1",2.93,0.18,0.  ), ("N7","N6",3.07,0.17,0.  ) ],
+6:[('G','G'), ("O6","N1",2.88,0.16,0.  ), ("N7","N2",2.91,0.15,0.  ) ],
+7:[('G','G'), ("N7","N1",2.93,0.17,0.  ), ("O6","N2",2.76,0.24,0.  ) ],
+8:[('A','G'), ("N6","O6",2.95,0.21,0.  ), ("N1","N1",2.88,0.15,0.  ) ],
+9:[('A','G'), ("N6","O6",2.70,0.08,0.  ), ("N7","N1",3.08,0.08,0.  ) ],
+10:[('A','G'), ("N6","N3",3.15,0.11,0.  ), ("N1","N2",3.02,0.19,0.  ) ],
+11:[('A','G'), ("N6","N3",3.23,0.15,0.  ), ("N7","N2",3.00,0.16,0.  ) ],
+12:[('U','U'), ("N3","O4",2.86,0.05,0.12) ],
+13:[('U','U'), ("O2","N3",2.74,0.05,0.03) ],
+14:[('C','C'), ("N3","N4",2.72,0.05,0.6 ) ],
+15:[('C','C'), ("O2","N4",2.83,0.01,0.  ) ],
+17:[('C','U'), ("N3","N3",2.98,0.05,0.  ), ("N4","O2",2.91,0.07,0.  ) ],
+18:[('C','U'), ("N4","O4",3.19,0.07,0.  ), ("N3","N3",3.16,0.06,0.  ) ],
+19:[('C','G'), ("N4","O6",2.96,0.17,0.  ), ("N3","N1",2.89,0.11,0.  ), ("O2","N2",2.77,0.15, 0.)],
+20:[('A','U'), ("N6","O4",3.00,0.17,0.  ), ("N1","N3",2.84,0.12,0.  ) ],
+21:[('A','U'), ("N6","O2",2.94,0.17,0.  ), ("N1","N3",2.84,0.13,0.  ) ],
+22:[('C','G'), ("O2","N1",2.80,0.17,0.  ), ("N3","N2",2.86,0.18,0.  ) ],
+23:[('A','U'), ("N6","O4",3.05,0.15,0.  ), ("N7","N3",2.96,0.15,0.  ) ],
+24:[('A','U'), ("N6","O2",2.91,0.19,0.  ), ("N7","N3",2.87,0.13,0.  ) ],
+25:[('A','C'), ("N6","N3",3.13,0.15,0.  ), ("N7","N4",3.08,0.18,0.  ) ],
+26:[('A','C'), ("N6","N3",3.09,0.14,0.  ), ("N1","N4",3.01,0.08,0.  ) ],
+27:[('G','U'), ("O6","N3",2.99,0.15,0.  ), ("N1","O4",2.99,0.07,0.  ) ],
+28:[('G','U'), ("O6","N3",2.83,0.13,0.  ), ("N1","O2",2.79,0.13,0.  ) ],
+}
+
+rome_numbers = ["","I", "II", "III","IV","V","VI","VII","VIII","IX","X",
+  "XI","XII", "XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX",
+  "XXI","XXII","XXIII","XXIV", "XXV","XXVI","XXVII","XXVIII"]
+
+def get_basepair_target_distance(atom1, atom2, which_basepair):
+  an1 = atom1.name.strip()
+  an2 = atom2.name.strip()
+  for link in basepairs_lengths[which_basepair]:
+    if (an1, an2) == link[:2] or (an2, an1) == link[:2]:
+      return link[2:]
+  return None
+
 def run(atom1, atom2, return_non_protein=True):
   from linking_utils import ad_hoc_single_metal_residue_element_types
   metal = None
@@ -3327,6 +3381,11 @@ def run(atom1, atom2, return_non_protein=True):
                              getattr(coordination_atom, "name", None),
                              return_non_protein=return_non_protein,
         )
+  if rc is None:
+    from mmtbx.monomer_library import linking_utils
+    which_basepair = linking_utils.is_linked_basepairs(atom1, atom2)
+    if which_basepair is not None:
+      rc = get_basepair_target_distance(atom1, atom2, which_basepair)
   if rc is None:
     if not hasattr(atom1, "symbol"): # iotbx atom
       return get_default_bondlength(atom1.element.strip(),

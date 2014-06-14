@@ -356,6 +356,107 @@ def is_atom_group_pair_linked(atom_group1,
     return mon_lib_srv.link_link_id_dict[simple_key], True, simple_key
   return None, None, None
 
+
+def is_linked_basepairs(atom1, atom2):
+  def final_link_direction_check():
+    import math
+    a1p = atom1.parent().get_atom('C4')
+    a2p = atom1.parent().get_atom('C5')
+    a3p = atom1.parent().get_atom('C6')
+    v1p = flex.vec3_double([(a1p.xyz)]) - flex.vec3_double([(a2p.xyz)])
+    v2p = flex.vec3_double([(a2p.xyz)]) - flex.vec3_double([(a3p.xyz)])
+    vn = v1p.cross(v2p)
+    vl = flex.vec3_double([(atom2.xyz)]) - flex.vec3_double([(atom1.xyz)])
+    cos_phi = vn.dot(vl)/vn.norm()/vl.norm()
+    #print "cos_phi:", cos_phi[0], "phi:", math.acos(cos_phi[0])*360/math.pi, abs(cos_phi[0]) < 0.4
+    # we have cosine between normal to plane group and link, and want this angle
+    # to be around 90 degrees
+    return abs(cos_phi[0]) < 0.4
+  def get_distance_atoms(name1, name2):
+    return atom1.parent().get_atom(name1).distance(atom2.parent().get_atom(name2))
+
+  if atom1.distance(atom2) > 3.3:
+    return None
+  from bondlength_defaults import basepairs_lengths
+  if atom1.parent().resname.strip()[-1] > atom2.parent().resname.strip()[-1]:
+    t = atom1
+    atom1 = atom2
+    atom2 = t
+  rn1 = atom1.parent().resname.strip()[-1]
+  rn2 = atom2.parent().resname.strip()[-1]
+  if rn1 == 'T': rn1 = 'U'
+  if rn2 == 'T': rn2 = 'U'
+  an1 = atom1.name.strip()
+  an2 = atom2.name.strip()
+  # first round of filtration
+  possible_classes = []
+  for k,v in basepairs_lengths.iteritems():
+    if v[0] == (rn1, rn2):
+      arr_to_check = [(x[0],x[1]) for x in v[1:]]
+      if (an1, an2) in arr_to_check or (an2, an1) in arr_to_check:
+        possible_classes.append(k)
+  if len(possible_classes) == 0:
+    return None
+  elif len(possible_classes) == 1:
+    return possible_classes[0] if final_link_direction_check() else None
+  elif len(possible_classes) > 1:
+    if (rn1, rn2) == ('A','A'):
+      if an1 == "N7" or an2 == "N7":
+        # 2 vs 5
+        if get_distance_atoms("N6","N1") < 3.2:
+          return 5 if final_link_direction_check() else None
+        else:
+          return 2 if final_link_direction_check() else None
+      else:
+        # 1 vs 5
+        if get_distance_atoms("N7","N6") < 3.2:
+          return 5 if final_link_direction_check() else None
+        else:
+          return 1 if final_link_direction_check() else None
+    elif (rn1, rn2) == ('A','C'):
+      if get_distance_atoms("N7","N4") < 3.2:
+        return 25 if final_link_direction_check() else None
+      else:
+        return 26 if final_link_direction_check() else None
+    elif (rn1, rn2) == ('A','G'):
+      if an1 == "06" or an2 == "06":
+        # 8 vs 9
+        if get_distance_atoms("N1","N1") < 3.1:
+          return 8 if final_link_direction_check() else None
+        else:
+          return 9 if final_link_direction_check() else None
+      else:
+        # 10 vs 11
+        if get_distance_atoms("N1","N2") < 3.1:
+          return 10 if final_link_direction_check() else None
+        else:
+          return 11 if final_link_direction_check() else None
+    elif (rn1, rn2) == ('A','U'):
+      if an1 == "O4" or an2 == "O4":
+        # 20 vs 23
+        if get_distance_atoms("N1","N3") < 3.:
+          return 20 if final_link_direction_check() else None
+        else:
+          return 23 if final_link_direction_check() else None
+      else:
+        # 21 vs 24
+        if get_distance_atoms("N1","N3") < 3.:
+          return 21 if final_link_direction_check() else None
+        else:
+          return 24 if final_link_direction_check() else None
+    elif (rn1, rn2) == ('G','G'):
+      # 3 vs 6
+      if get_distance_atoms("N7","N2") < 3.1:
+        return 6 if final_link_direction_check() else None
+      else:
+        return 3 if final_link_direction_check() else None
+    elif (rn1, rn2) == ('G','U'):
+      if get_distance_atoms("N1","O2") < 3.:
+        return 28 if final_link_direction_check() else None
+      else:
+        return 27 if final_link_direction_check() else None
+  return None
+
 def is_atom_pair_linked(atom1,
                         atom2,
                         distance=None,
@@ -393,6 +494,7 @@ def is_atom_pair_linked(atom1,
     class2 = 'sulfur'
   lookup = [class1, class2]
   lookup.sort()
+  #print lookup, skip_if_both
   if verbose: print 'lookup',lookup,skip_if_both #.get(lookup, None)
   if lookup in skip_if_both: return False
   lookup = tuple(lookup)
@@ -418,6 +520,16 @@ def is_atom_pair_linked(atom1,
     return True
   if "other" in lookup and "common_small_molecule" in lookup:
     return True
+
+  #
+  # DNA base-pairs
+  #
+  if lookup.count("common_rna_dna") == 2:
+    link_class = is_linked_basepairs(atom1, atom2)
+    if link_class is not None:
+      #print "DO LINKING, class = ", link_class, atom1.id_str(), atom2.id_str()
+      return True
+
   #
   # sulfur bridge
   #

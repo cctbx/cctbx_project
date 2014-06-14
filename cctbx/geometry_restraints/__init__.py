@@ -339,22 +339,27 @@ def _bond_show_sorted_impl(self,
                            unit_cell=None,
                            f=None,
                            prefix="",
-                           max_items=None):
+                           max_items=None,
+                           exclude=None):
   if unit_cell is None:
     sorted_table, n_not_shown = self.get_sorted(
       by_value=by_value,
       sites_cart=sites_cart,
       site_labels=site_labels,
-      max_items=max_items)
+      max_items=max_items,
+      exclude=exclude)
   else:
     sorted_table, n_not_shown = self.get_sorted(
       by_value=by_value,
       sites_cart=sites_cart,
       unit_cell=unit_cell,
       site_labels=site_labels,
-      max_items=max_items)
+      max_items=max_items,
+      exclude=exclude)
   if sorted_table is None :
     return
+  if exclude is not None:
+    print >> f, "%sBond restraints: %d" % (prefix, len(sorted_table)+n_not_shown)
   if (f is None): f = sys.stdout
   print >> f, "%sSorted by %s:" % (prefix, by_value)
   for restraint_info in sorted_table :
@@ -388,7 +393,9 @@ class _(boost.python.injector, shared_bond_simple_proxy):
         sites_cart,
         site_labels=None,
         unit_cell=None,
-        max_items=None):
+        max_items=None,
+        exclude=None):
+    assert exclude==None # not implemented
     assert by_value in ["residual", "delta"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if (self.size() == 0): return None, None
@@ -478,14 +485,25 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         cutoff_warn_large=5,
         cutoff_warn_extreme=20,
         f=None,
-        prefix=""):
+        prefix="",
+        exclude=None):
     if (self.n_total() == 0): return None
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of bond lengths:" % prefix
-    histogram = flex.histogram(
-      data=bond_distances_model(
+    hdata = None
+    if exclude is None:
+      hdata = bond_distances_model(
         sites_cart=sites_cart,
-        sorted_asu_proxies=self),
+        sorted_asu_proxies=self)
+    else:
+      sorted_table, n_not_shown = self.get_sorted(
+                         by_value="delta",
+                         sites_cart=sites_cart,
+                         exclude=exclude)
+      hdata = [x[2] for x in sorted_table]
+
+    histogram = flex.histogram(
+      data=flex.double(hdata),
       n_slots=n_slots)
     low_cutoff = histogram.data_min()
     for i,n in enumerate(histogram.slots()):
@@ -514,12 +532,22 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         sites_cart,
         n_slots=5,
         f=None,
-        prefix=""):
+        prefix="",
+        exclude=None):
     if (self.n_total() == 0): return
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of bond deltas:" % prefix
+    hdata = None
+    if exclude is None:
+      hdata = self.deltas(sites_cart=sites_cart)
+    else:
+      sorted_table, n_not_shown = self.get_sorted(
+                         by_value="delta",
+                         sites_cart=sites_cart,
+                         exclude=exclude)
+      hdata = [x[4] for x in sorted_table]
     histogram = flex.histogram(
-      data=flex.abs(self.deltas(sites_cart=sites_cart)),
+      data=flex.abs(hdata),
       n_slots=n_slots)
     low_cutoff = histogram.data_min()
     for i,n in enumerate(histogram.slots()):
@@ -533,7 +561,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         by_value,
         sites_cart,
         site_labels=None,
-        max_items=None):
+        max_items=None,
+        exclude=None):
     assert by_value in ["residual", "delta"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if (self.n_total() == 0): return None, None
@@ -545,8 +574,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
     else:
       raise AssertionError
     i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
-    if (max_items is not None):
-      i_proxies_sorted = i_proxies_sorted[:max_items]
+    if max_items is None:
+      max_items = len(i_proxies_sorted)
     if (self.asu.size() == 0):
       asu_mappings = None
     else:
@@ -554,7 +583,14 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
     smallest_distance_model = None
     n_simple = self.simple.size()
     sorted_table = []
-    for i_proxy in i_proxies_sorted:
+    if exclude is None:
+      exclude = []
+    n = 0
+    n_outputted = 0
+    n_proxies = len(i_proxies_sorted)
+    n_excluded = 0
+    while n < n_proxies and n_outputted < max_items:
+      i_proxy = i_proxies_sorted[n]
       if (i_proxy < n_simple):
         proxy = self.simple[i_proxy]
         i_seq,j_seq = proxy.i_seqs
@@ -577,15 +613,20 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         if (site_labels is None): l = str(i)
         else:                     l = site_labels[i]
         labels.append(l)
-      sorted_table.append(
-        (labels, restraint.distance_ideal, restraint.distance_model,
-         restraint.slack, restraint.delta,
-         weight_as_sigma(weight=restraint.weight), restraint.weight,
-         restraint.residual(), sym_op_j, rt_mx))
+      if (i_seq,j_seq) not in exclude:
+        sorted_table.append(
+          (labels, restraint.distance_ideal, restraint.distance_model,
+           restraint.slack, restraint.delta,
+           weight_as_sigma(weight=restraint.weight), restraint.weight,
+           restraint.residual(), sym_op_j, rt_mx))
+        n_outputted += 1
+      else:
+        n_excluded += 1
       if (smallest_distance_model is None
           or smallest_distance_model > restraint.distance_model):
         smallest_distance_model = restraint.distance_model
-    n_not_shown = data_to_sort.size() - i_proxies_sorted.size()
+      n += 1
+    n_not_shown = n_proxies - n_outputted - n_excluded
     return sorted_table, n_not_shown
 
   def show_sorted(self,
@@ -594,15 +635,18 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         site_labels=None,
         f=None,
         prefix="",
-        max_items=None):
+        max_items=None,
+        exclude=None):
     if f is None: f = sys.stdout
-    print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
+    if exclude is None:
+      print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
     _bond_show_sorted_impl(self, by_value,
                            sites_cart=sites_cart,
                            site_labels=site_labels,
                            f=f,
                            prefix=prefix,
-                           max_items=max_items)
+                           max_items=max_items,
+                           exclude=exclude)
 
 class _(boost.python.injector, nonbonded_sorted_asu_proxies):
 
