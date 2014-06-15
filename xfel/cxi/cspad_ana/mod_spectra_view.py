@@ -245,6 +245,9 @@ class mod_spectra_view:
     @param evt Event data object, a configure object
     @param env Environment object
     """
+    if (evt.get("skip_event")):
+      return
+
     self.nv=self.nv+1
     sum1=evt.get("cctbx_spectra")
     while not self._queue.empty():
