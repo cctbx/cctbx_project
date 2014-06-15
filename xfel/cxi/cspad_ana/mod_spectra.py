@@ -101,12 +101,12 @@ class mod_spectra(common_mode.common_mode_correction):
           location=i
 
       if filter>1:
-       evt.put(oneD, "cctbx_spectra")
+        self.logger.info("event(): Two color shot, filter: %d"%filter)
+        evt.put(oneD, "cctbx_spectra")
 
       else:
         self.logger.warning("event(): One color shot")
         evt.put(True, "skip_event")
-        evt.setStatus(Event.Skip)
       if (self.ncollate > 0):
         self.nvalid = 0
  #      print evt.seq().stamp().fiducials()
