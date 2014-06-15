@@ -2804,6 +2804,7 @@ xfel/command_line/cxi_diff.py -text
 xfel/command_line/cxi_image2pickle.py -text
 xfel/command_line/cxi_index.py -text
 xfel/command_line/cxi_plotcv.py -text
+xfel/command_line/cxi_psana.py -text
 xfel/command_line/cxi_pyana.py -text
 xfel/command_line/cxi_spots.py -text
 xfel/command_line/cxi_stream_to_pickle.py -text
