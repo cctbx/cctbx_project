@@ -13,6 +13,10 @@ master_phil = libtbx.phil.parse("""
     .type = int
   hit_cutoff = 16
     .type = int
+  run_start = None
+    .type = int
+  run_end = None
+    .type = int
 """)
 
 def run (args) :
@@ -40,13 +44,22 @@ def run (args) :
       "ID alone).")
   assert (params.hit_cutoff is not None) and (params.hit_cutoff > 0)
 
+  extra_cmd = ""
+  if params.run_start is not None:
+    extra_cmd += "AND run >= %d" % params.run_start
+  if params.run_end is not None:
+    extra_cmd += "AND run <= %d" % params.run_end
+
   dbobj = db.dbconnect()
 
 
   cursor = dbobj.cursor()
-  cmd = "SELECT DISTINCT(run) FROM %s WHERE trial = %%s ORDER BY run"%db.table_name
+  cmd = "SELECT DISTINCT(run) FROM %s WHERE trial = %%s %s ORDER BY run"%(db.table_name, extra_cmd)
   cursor.execute(cmd, params.trial_id)
 
+  frames_total = 0
+  hits_total = 0
+  indexed_total = 0
 
   for runId in cursor.fetchall():
     run = int(runId[0])
@@ -62,7 +75,11 @@ def run (args) :
         numindexed += 1
 
     print "Run: %3d, number of hits: %6d, number of frames: %6d, hitrate: %4.1f%%. Number indexed: %6d (%4.1f%%)"%(run,numhits,numframes,100*numhits/numframes,numindexed,100*numindexed/numframes)
+    frames_total += numframes
+    hits_total += numhits
+    indexed_total += numindexed
 
+  print "Totals: frames: %d, hits: %d (%4.1f%%), indexed: %d (%4.1f%%)"%(frames_total,hits_total,100*hits_total/frames_total,indexed_total,100*indexed_total/frames_total)
   dbobj.close()
 
 if (__name__ == "__main__") :
