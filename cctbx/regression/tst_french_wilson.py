@@ -1,8 +1,11 @@
 from __future__ import division
-
+from cctbx import french_wilson
+from cctbx.development import random_structure
+from scitbx.array_family import flex
 import boost.python
 fw_ext = boost.python.import_ext("cctbx_french_wilson_ext")
-from scitbx.array_family import flex
+from libtbx.utils import null_out, Sorry
+from libtbx.test_utils import Exception_expected
 import random
 
 def exercise_00():
@@ -26,5 +29,34 @@ def exercise_00():
     ba.append(b)
   fw_ext.is_FrenchWilson(F=xa, SIGF=ya, is_centric=ba, eps=0.001)
 
+def exercise_01 () :
+  """
+  Sanity check - don't crash when mean intensity for a bin is zero.
+  """
+  xrs = random_structure.xray_structure(
+    unit_cell=(50,50,50,90,90,90),
+    space_group_symbol="P1",
+    n_scatterers=1200,
+    elements="random")
+  fc = abs(xrs.structure_factors(d_min=1.5).f_calc())
+  fc = fc.set_observation_type_xray_amplitude()
+  cs = fc.complete_set(d_min=1.4)
+  ls = cs.lone_set(other=fc)
+  f_zero = ls.array(data=flex.double(ls.size(), 0))
+  f_zero.set_observation_type_xray_amplitude()
+  fc = fc.concatenate(other=f_zero)
+  sigf = flex.double(fc.size(), 0.1) + (fc.data() * 0.03)
+  fc = fc.customized_copy(sigmas=sigf)
+  try :
+    fc_fc = french_wilson.french_wilson_scale(miller_array=fc, log=null_out())
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
+  ic = fc.f_as_f_sq().set_observation_type_xray_intensity()
+  fc_fc = french_wilson.french_wilson_scale(miller_array=ic, log=null_out())
+
 if (__name__ == "__main__"):
   exercise_00()
+  exercise_01()
+  print "OK"
