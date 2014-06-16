@@ -52,7 +52,6 @@ class relative_wilson(object):
     self.mean_ratio_engine = chebyshev_polynome( mean_coefs.size(), low_lim-1e-3, high_lim+1e-3,mean_coefs)
     self.std_ratio_engine = chebyshev_polynome( std_coefs.size(), low_lim-1e-3, high_lim+1e-3,std_coefs)
 
-
     self.x = flex.double([0,0])
 
     self.low_lim_for_scaling = 1.0/(4.0*4.0) #0.025
@@ -81,6 +80,8 @@ class relative_wilson(object):
     self.sart_simplex = [ flex.double([s,b]), flex.double([s+0.1,b+1.1]), flex.double([s-0.1,b-1.1]) ]
     self.opti = simplex.simplex_opt( 2, self.sart_simplex, self)
     #self.mean_calc = self.mean_calc*self.scale*flex.exp(self.calc_d_star_sq*self.b_value)
+    del self.mean_ratio_engine
+    del self.std_ratio_engine 
 
     self.show_summary()
 
