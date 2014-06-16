@@ -11,7 +11,7 @@ from __future__ import division
 __version__ = "$Revision$"
 
 import numpy
-
+from pypdsdata import xtc
 from parse_calib         import Section
 from parse_calib         import calib2sections
 
@@ -140,7 +140,6 @@ class common_mode_correction(mod_event_info):
     """
 
     super(common_mode_correction, self).beginjob(evt, env)
-
     # Load the dark image and ensure it is signed and at least 32 bits
     # wide, since it will be used for differencing.  If a dark image
     # is provided, a standard deviation image is required, and all the
@@ -349,6 +348,14 @@ class common_mode_correction(mod_event_info):
     elif self.address=='CxiEndstation-0|Opal1000-2':
       if evt.getFrameValue(self.address) is not None:
         self.cspad_img = evt.getFrameValue(self.address).data()
+    elif self.address=='FeeHxSpectrometer-0|Opal1000-1':
+      if evt.getFrameValue(self.address) is not None:
+        self.cspad_img = evt.getFrameValue(self.address).data()
+    elif self.address=='NoDetector-0|Cspad2x2-0':
+        import numpy as np
+        test=[]
+        self.cspad_img = evt.get(xtc.TypeId.Type.Id_Cspad2x2Element,self.address).data()
+        self.cspad_img=np.reshape(self.cspad_img,(370, 388))
     else:
       self.cspad_img = cspad_tbx.image(
         self.address, cspad_tbx.getConfig(self.address, env),
