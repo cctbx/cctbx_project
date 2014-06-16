@@ -662,6 +662,9 @@ class set(crystal.symmetry):
     return self.at_first_index(self._sigmas, miller_index)
 
   def d_min_along_a_b_c_star(self):
+    """
+    Returns the effective resolution limits along the reciprocal space axes.
+    """
     min_mi, max_mi = self.min_max_indices()
     max_h = max(abs(min_mi[0]), max_mi[0])
     max_k = max(abs(min_mi[1]), max_mi[1])
