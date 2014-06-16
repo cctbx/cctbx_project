@@ -177,21 +177,25 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
     print >> out, ""
     print >> out, "Results written to %s.out" % params.output.prefix
     if (params.output.kinemage) :
-      assert (probe_file is not None)
-      import mmtbx.kinemage.validation
-      kin_file = "%s.kin" % params.output.prefix
-      kin_out = mmtbx.kinemage.validation.export_molprobity_result_as_kinemage(
-        result=validation,
-        pdb_hierarchy=cmdline.pdb_hierarchy,
-        geometry=cmdline.geometry,
-        probe_file=probe_file,
-        keep_hydrogens=params.molprobity.keep_hydrogens,
-        pdbID=pdb_prefix)
-      f = open(kin_file, "w")
-      f.write(kin_out)
-      f.close()
-      if (not params.output.quiet) :
-        print >> out, "Wrote kinemage to %s" % kin_file
+      if (cmdline.pdb_hierarchy.models_size() == 1) :
+        assert (probe_file is not None)
+        import mmtbx.kinemage.validation
+        kin_file = "%s.kin" % params.output.prefix
+        kin_out = \
+          mmtbx.kinemage.validation.export_molprobity_result_as_kinemage(
+            result=validation,
+            pdb_hierarchy=cmdline.pdb_hierarchy,
+            geometry=cmdline.geometry,
+            probe_file=probe_file,
+            keep_hydrogens=params.molprobity.keep_hydrogens,
+            pdbID=pdb_prefix)
+        f = open(kin_file, "w")
+        f.write(kin_out)
+        f.close()
+        if (not params.output.quiet) :
+          print >> out, "Wrote kinemage to %s" % kin_file
+      else :
+        print >> out, "Kinemage output not available for multiple MODELs."
     if (params.output.pickle) :
       easy_pickle.dump("%s.pkl" % params.output.prefix, validation)
       if (not params.output.quiet) :

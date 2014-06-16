@@ -108,6 +108,8 @@ class data_statistics (slots_getstate_setstate) :
     print >> out, "%sR-free                = %8.4f" % (prefix, self.r_free)
 
   def show (self, out=sys.stdout, prefix="") :
+    def fv (fs, val) :
+      return format_value(fs, val, replace_none_with="----")
     if (not self.wavelength in [None, 0]) :
       print >> out, "%sWavelength                 = %.4g" % (prefix,
         self.wavelength)
@@ -119,10 +121,10 @@ class data_statistics (slots_getstate_setstate) :
       self.n_refl_refine, self.n_refl_refine_outer)
     print >> out, "%sCompleteness               = %6.2f%% (%.2f%%)" % (prefix,
       self.info.completeness_in_range*100, self.completeness_outer*100)
-    print >> out, "%sR-work                     = %8.4f (%.4f)" % (prefix,
-      self.r_work, self.r_work_outer)
+    print >> out, "%sR-work                     = %8.4f (%s)" % (prefix,
+      self.r_work, fv("%.4f", self.r_work_outer))
     print >> out, "%sR-free                     = %8.4f (%s)" % (prefix,
-      self.r_free, format_value("%.4f", self.r_free_outer))
+      self.r_free, fv("%.4f", self.r_free_outer))
     self.info.show_rwork_rfree_number_completeness(prefix=prefix, out=out,
       title="By resolution bin:")
 
