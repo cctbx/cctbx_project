@@ -213,7 +213,8 @@ class molprobity (slots_getstate_setstate) :
           unmerged_i_obs=unmerged_data,
           anomalous=count_anomalous_pairs_separately,
           n_bins=n_bins_data)
-    self._multi_criterion = multi_criterion_view(pdb_hierarchy)
+    if (pdb_hierarchy.models_size() == 1) :
+      self._multi_criterion = multi_criterion_view(pdb_hierarchy)
 
   def molprobity_score (self) :
     """
@@ -419,6 +420,8 @@ class molprobity (slots_getstate_setstate) :
     raise NotImplementedError()
 
   def as_multi_criterion_view (self) :
+    if (self._multi_criterion is None) :
+      return None
     if (not self._multi_criterion.is_populated) :
       if (self.real_space is not None) :
         self._multi_criterion.process_outliers(self.real_space.results)
