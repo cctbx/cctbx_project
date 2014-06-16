@@ -93,6 +93,7 @@ def fw_acentric(
       sigma_I,
       mean_intensity,
       sigma_iobs_rejection_criterion) :
+  assert (mean_intensity != 0) and (sigma_I != 0)
   h = (I/sigma_I) - (sigma_I/mean_intensity)
   h_min = sigma_iobs_rejection_criterion
   i_sig_min = h_min+0.3
@@ -128,6 +129,7 @@ def fw_centric(
       sigma_I,
       mean_intensity,
       sigma_iobs_rejection_criterion) :
+  assert (mean_intensity != 0) and (sigma_I != 0)
   h = (I/sigma_I) - ( sigma_I/(2.0*mean_intensity) )
   h_min = sigma_iobs_rejection_criterion
   i_sig_min = h_min+0.3
@@ -384,7 +386,10 @@ def french_wilson_scale(
                                    cen.sigmas(),
                                    cen.indices()):
         mean_intensity = d_mean_intensities[index]
-        if (sigma_I <= 0) :
+        if (mean_intensity == 0) :
+          # XXX is this the appropriate way to handle this?
+          rejected.append( (index, I, sigma_I, mean_intensity) )
+        elif (sigma_I <= 0) :
           if I <= 0 or sigma_I < 0 :
             rejected.append( (index, I, sigma_I, mean_intensity) )
             continue
@@ -413,7 +418,9 @@ def french_wilson_scale(
                                    acen.sigmas(),
                                    acen.indices()):
         mean_intensity = d_mean_intensities[index]
-        if (sigma_I <= 0) :
+        if (mean_intensity == 0) :
+          rejected.append( (index, I, sigma_I, mean_intensity) )
+        elif (sigma_I <= 0) :
           if I <= 0 or sigma_I < 0 :
             rejected.append( (index, I, sigma_I, mean_intensity) )
             continue
