@@ -50,12 +50,32 @@ class _run:
   def __eq__(self, other): return other == self.id
   def __ne__(self, other): return not __eq__(self,other)
 
+  def max_chunks(self):
+    streams = {}
+    for file in self.files:
+      for str in file.split("-"):
+        try:
+          if 'c' in str:
+            c = int(str.split(".")[0].strip('c'))
+          if 'r' in str:
+            r = int(str.strip('r'))
+          elif 's' in str:
+            s = int(str.strip('s'))
+        except ValueError:
+          pass
+      assert r is not None and s is not None and c is not None # and c == 0:
+      if s not in streams:
+        streams[s] = 0
+      streams[s] += 1
+    return max([streams[key] for key in streams])
+
+
 def match_runs(dir,use_in_progress):
   runs = []
   files = os.listdir(dir)
   for file in files:
     r = s = c = None
-    if "s80" in file:
+    if "s80" in file or "s81" in file:
       continue
     if not use_in_progress and ".inprogress" in file:
       continue
@@ -160,20 +180,20 @@ def run (args) :
         submitted_a_run = False
         if len(add_runs) > 0:
           for r in add_runs:
-              if len(r.files) < params.stream_count:
-                print "Waiting to queue run %s.  %s/%s streams ready."% \
-                  (r.id,len(r.files),params.stream_count)
-                continue
+            if len(r.files) < params.stream_count * r.max_chunks():
+              print "Waiting to queue run %s.  %s/%s streams ready."% \
+                (r.id,len(r.files),params.stream_count * r.max_chunks())
+              continue
 
-              print "Preparing to queue run %s into trial %s"%(r.id,params.trial_id)
-              cmd = "cxi.lsf -c %s -p %s %s -o %s -t %s -r %s -q %s"%(params.config_file,params.num_procs,input_str,
-                params.output_dir,params.trial_id,r.id,params.queue)
-              print "Command to execute: %s"%cmd
-              os.system(cmd)
-              print "Run %s queued."%r.id
+            print "Preparing to queue run %s into trial %s"%(r.id,params.trial_id)
+            cmd = "cxi.lsf -c %s -p %s %s -o %s -t %s -r %s -q %s"%(params.config_file,params.num_procs,input_str,
+              params.output_dir,params.trial_id,r.id,params.queue)
+            print "Command to execute: %s"%cmd
+            os.system(cmd)
+            print "Run %s queued."%r.id
 
-              submitted_a_run = True
-              submitted_runs.append(r)
+            submitted_a_run = True
+            submitted_runs.append(r)
         if not submitted_a_run:
           print "No new data... sleepy..."
 
