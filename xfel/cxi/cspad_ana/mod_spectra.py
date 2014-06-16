@@ -12,9 +12,10 @@ class mod_spectra(common_mode.common_mode_correction):
                address,
                angle=0,
                n_collate = None,
-               n_update    = 120,
+               n_update    = 1,
                store = "spectrum",
-               thershold= 0.7,
+               thershold= 0.4,
+               mode="E1",
                common_mode_correction = "none",
                **kwds):
 
@@ -31,7 +32,7 @@ class mod_spectra(common_mode.common_mode_correction):
       common_mode_correction=common_mode_correction,
       **kwds
     )
-    self.thershold=thershold
+    self.thershold=cspad_tbx.getOptFloat(thershold)
     self.angle=cspad_tbx.getOptFloat(angle)
     self.nv = 0
     self.collate=None
@@ -41,6 +42,7 @@ class mod_spectra(common_mode.common_mode_correction):
     self.nvalid   = 0
     self.n_shots  = 0
     self.nupdate  = cspad_tbx.getOptInteger(n_update)
+    self.mode=mode
     if (self.ncollate is None):
       self.ncollate = self.nupdate
     if (self.ncollate > self.nupdate):
@@ -94,25 +96,33 @@ class mod_spectra(common_mode.common_mode_correction):
        oneD=self.project(pixels)
       filter=0
       location=0
-      for i in range(150,len(oneD)-150):
-        if (oneD[i]>self.thershold and location==0) or (oneD[i]>self.thershold and math.fabs(location-i)>500):
+      track=0
+      for i in range(50,350):
+        if (oneD[i]>self.thershold):
           filter=filter+1
-        if (oneD[i]>self.thershold and location==0):
           location=i
-
-      if filter>1:
-        self.logger.info("event(): Two color shot, filter: %d"%filter)
+          break
+      for i in range(675,875):
+        if (oneD[i]>self.thershold):
+          filter=filter+1
+          location=i
+          break
+      if filter>1 and self.mode=="2C":
         evt.put(oneD, "cctbx_spectra")
-
-      else:
-        self.logger.warning("event(): One color shot")
-        evt.put(True, "skip_event")
-      if (self.ncollate > 0):
-        self.nvalid = 0
- #      print evt.seq().stamp().fiducials()
- #     for i in oneD:
- #       count=count+1
- #       print>>file, count, i
+        track=1
+        self.logger.warning("event(): Tow color shot")
+      if filter==1:
+        if location<500 and self.mode=="E1":
+          evt.put(oneD, "cctbx_spectra")
+          track=1
+          self.logger.warning("event(): E1 shot")
+        if location>500 and self.mode=="E2":
+          evt.put(oneD, "cctbx_spectra")
+          track=1
+          self.logger.warning("event(): E2 shot")
+      if track==0:
+          self.logger.warning("event(): Event Skipped")
+          evt.put(True, "skip_event")
 
 
   def endjob(self, env):
