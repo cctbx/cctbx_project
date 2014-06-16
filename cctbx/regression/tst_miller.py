@@ -2195,7 +2195,18 @@ def exercise_permute () :
   assert fc_other.data().all_eq(fc_perm_other.data())
   assert not fc_high.data().all_eq(fc_perm_high.data())
 
+def exercise_diagnostics () :
+  xs = crystal.symmetry((30,40,50), "P 2 2 2")
+  ms = miller.build_set(crystal_symmetry=xs, anomalous_flag=True, d_min=3.0)
+  da, db, dc = ms.d_min_along_a_b_c_star()
+  assert approx_equal([da, db, dc], [3.0, 3.076923, 3.125])
+  xs2 = crystal.symmetry((30,40,55), "P 2 2 2")
+  ms = ms.customized_copy(crystal_symmetry=xs2)
+  da, db, dc = ms.d_min_along_a_b_c_star()
+  assert approx_equal([da, db, dc], [3.0, 3.076923, 3.4375])
+
 def run(args):
+  exercise_diagnostics()
   exercise_randomize_amplitude_and_phase()
   exercise_hoppe_gassmann_modification()
   exercise_complete_with4()
