@@ -16,6 +16,7 @@ class mod_spectra(common_mode.common_mode_correction):
                store = "spectrum",
                thershold= 0.4,
                mode="E1",
+               filter="N",
                common_mode_correction = "none",
                **kwds):
 
@@ -43,6 +44,7 @@ class mod_spectra(common_mode.common_mode_correction):
     self.n_shots  = 0
     self.nupdate  = cspad_tbx.getOptInteger(n_update)
     self.mode=mode
+    self.filter=filter
     if (self.ncollate is None):
       self.ncollate = self.nupdate
     if (self.ncollate > self.nupdate):
@@ -59,6 +61,12 @@ class mod_spectra(common_mode.common_mode_correction):
   def project(self, pixels):
     sum=compute_projection(pixels, self.limit, self.sin0, self.cos0)
     return sum
+  def Gauss(self, oneD):
+        from scipy.signal import gaussian
+        from scipy.ndimage import filters
+        b = gaussian(10, 5, sym=False)
+        ga = filters.convolve1d(oneD, b/b.sum())
+        return ga
 
   def event(self, evt, env):
     """The event() function is called for every L1Accept transition.
@@ -94,35 +102,46 @@ class mod_spectra(common_mode.common_mode_correction):
           oneD.append(flex.sum(r))
       else:              #if the signal is rotated do projection and sum the signal based on the projection line
        oneD=self.project(pixels)
-      filter=0
-      location=0
-      track=0
-      for i in range(50,350):
-        if (oneD[i]>self.thershold):
-          filter=filter+1
-          location=i
-          break
-      for i in range(675,875):
-        if (oneD[i]>self.thershold):
-          filter=filter+1
-          location=i
-          break
-      if filter>1 and self.mode=="2C":
-        evt.put(oneD, "cctbx_spectra")
-        track=1
-        self.logger.warning("event(): Tow color shot")
-      if filter==1:
-        if location<500 and self.mode=="E1":
+       oneD=self.Gauss(oneD)
+      if self.filter=="N":
+#         import numpy
+#         print numpy.std(oneD[350:650])
+         evt.put(oneD, "cctbx_spectra")
+      if self.filter=="Y":
+        filter=0
+        location=0
+        track=0  # track if the event should be skipped
+        flag=0   # flag to tell the viewer if the shot is E1,E2 or 2 Color
+        for i in range(50,250):
+          if (oneD[i]>self.thershold):
+            filter=filter+1
+            location=i
+            break
+        for i in range(675,875):
+          if (oneD[i]>self.thershold):
+            filter=filter+1
+            location=i
+            break
+        if filter>1 and (self.mode=="2C" or self.mode=="all"):
           evt.put(oneD, "cctbx_spectra")
           track=1
-          self.logger.warning("event(): E1 shot")
-        if location>500 and self.mode=="E2":
-          evt.put(oneD, "cctbx_spectra")
-          track=1
-          self.logger.warning("event(): E2 shot")
-      if track==0:
-          self.logger.warning("event(): Event Skipped")
-          evt.put(True, "skip_event")
+          flag=1
+          self.logger.warning("event(): Tow color shot")
+        if filter==1:
+          if location<500 and (self.mode=="E1" or self.mode=="all"):
+            evt.put(oneD, "cctbx_spectra")
+            track=1
+            flag=2
+            self.logger.warning("event(): E1 shot")
+          if location>500 and (self.mode=="E2" or self.mode=="all"):
+            evt.put(oneD, "cctbx_spectra")
+            track=1
+            flag=3
+            self.logger.warning("event(): E2 shot")
+        if track!=0: evt.put(flag,"flag")
+        if track==0:
+            self.logger.warning("event(): Event Skipped")
+            evt.put(True, "skip_event")
 
 
   def endjob(self, env):
