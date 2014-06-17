@@ -26,11 +26,12 @@ compute_projection(const flex_double& pixels,
        count=0;
        for (int j=0; j<limit; j++)
          {
-          if(raw_data[i][j]!=0)
-           {
+//          if(raw_data[i][j]!=0)
+//           if((i>150 && i<350)||(i>700 && i<850))
+//           {
            oneD[i]=oneD[i]+raw_data[i][j];
            count++;
-           }
+//           }
          }
       if(count>0) oneD[i]=oneD[i]/count;
       }
