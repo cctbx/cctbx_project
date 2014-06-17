@@ -212,6 +212,26 @@ class reader(object):
       merge_equivalents=merge_equivalents,
       base_array_info=base_array_info)]
 
+  def batch_as_miller_array (self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        base_array_info=None) :
+    if (base_array_info is None):
+      base_array_info = miller.array_info(
+        source_type="scalepack_no_merge_original_index")
+    crystal_symmetry_from_file = self.crystal_symmetry()
+    crystal_symmetry = crystal_symmetry_from_file.join_symmetry(
+      other_symmetry=crystal_symmetry,
+      force=force_symmetry)
+    return miller.array(
+      miller_set=self.unmerged_miller_set(
+        crystal_symmetry=crystal_symmetry,
+        force_symmetry=True),
+      data=self.batch_numbers).set_info(
+        base_array_info.customized_copy(
+          labels=["BATCH"],
+          crystal_symmetry_from_file=crystal_symmetry_from_file))
+
 def combine_symops_and_symbol(space_group_from_ops, space_group_symbol):
   space_group_symbol = space_group_symbol.replace(" ","").upper()
   z = space_group_symbol[:1]
