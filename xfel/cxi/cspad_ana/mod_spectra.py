@@ -14,9 +14,9 @@ class mod_spectra(common_mode.common_mode_correction):
                n_collate = None,
                n_update    = 1,
                store = "spectrum",
-               thershold= 0.4,
+               threshold= 0.4,
                mode="E1",
-               filter="N",
+               filter="False",
                common_mode_correction = "none",
                **kwds):
 
@@ -33,7 +33,7 @@ class mod_spectra(common_mode.common_mode_correction):
       common_mode_correction=common_mode_correction,
       **kwds
     )
-    self.thershold=cspad_tbx.getOptFloat(thershold)
+    self.threshold=cspad_tbx.getOptFloat(threshold)
     self.angle=cspad_tbx.getOptFloat(angle)
     self.nv = 0
     self.collate=None
@@ -103,22 +103,22 @@ class mod_spectra(common_mode.common_mode_correction):
       else:              #if the signal is rotated do projection and sum the signal based on the projection line
        oneD=self.project(pixels)
        oneD=self.Gauss(oneD)
-      if self.filter=="N":
+      if self.filter=="False":
 #         import numpy
 #         print numpy.std(oneD[350:650])
          evt.put(oneD, "cctbx_spectra")
-      if self.filter=="Y":
+      if self.filter=="True":
         filter=0
         location=0
         track=0  # track if the event should be skipped
         flag=0   # flag to tell the viewer if the shot is E1,E2 or 2 Color
         for i in range(50,250):
-          if (oneD[i]>self.thershold):
+          if (oneD[i]>self.threshold):
             filter=filter+1
             location=i
             break
         for i in range(675,875):
-          if (oneD[i]>self.thershold):
+          if (oneD[i]>self.threshold):
             filter=filter+1
             location=i
             break
@@ -126,7 +126,7 @@ class mod_spectra(common_mode.common_mode_correction):
           evt.put(oneD, "cctbx_spectra")
           track=1
           flag=1
-          self.logger.warning("event(): Tow color shot")
+          self.logger.warning("event(): Two color shot")
         if filter==1:
           if location<500 and (self.mode=="E1" or self.mode=="all"):
             evt.put(oneD, "cctbx_spectra")
