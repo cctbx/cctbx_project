@@ -27,14 +27,23 @@ class relative_wilson(object):
 
     self.calc = self.calc.f_as_f_sq()
 
-    self.norma_obs  = absolute_scaling.kernel_normalisation( self.obs,auto_kernel=True,n_bins=45, n_term=17)
-    self.norma_calc = absolute_scaling.kernel_normalisation( self.calc,auto_kernel=True,n_bins=45,n_term=17)
+    self.norma_obs  = absolute_scaling.kernel_normalisation(
+      miller_array=self.obs,
+      auto_kernel=True,
+      n_bins=45,
+      n_term=17)
+    self.norma_calc = absolute_scaling.kernel_normalisation(
+      miller_array=self.calc,
+      auto_kernel=True,
+      n_bins=45,
+      n_term=17)
 
     self.obs_d_star_sq  = self.norma_obs.d_star_sq_array
     self.calc_d_star_sq = self.norma_calc.d_star_sq_array
-    sel  = flex.bool(self.obs_d_star_sq > low_lim)& flex.bool(self.obs_d_star_sq<high_lim)
+    sel  = (flex.bool(self.obs_d_star_sq > low_lim) &
+            flex.bool(self.obs_d_star_sq < high_lim))
 
-    self.obs_d_star_sq = self.obs_d_star_sq.select( sel )
+    self.obs_d_star_sq  = self.obs_d_star_sq.select( sel )
     self.calc_d_star_sq = self.calc_d_star_sq.select( sel )
     self.mean_obs       = self.norma_obs.mean_I_array.select(sel)
     self.mean_calc      = self.norma_calc.mean_I_array.select(sel)
@@ -42,15 +51,22 @@ class relative_wilson(object):
     self.var_calc       = self.norma_calc.var_I_array.select(sel)
 
     # make an interpolator object please
-    self.interpol = scale_curves.curve_interpolator( self.mind, self.maxd, self.m)
+    self.interpol = scale_curves.curve_interpolator( self.mind, self.maxd,
+      self.m)
     # do the interpolation
-    tmp_obs_d_star_sq  , self.mean_obs,self.obs_a  , self.obs_b  = self.interpol.interpolate(self.obs_d_star_sq,self.mean_obs)
-    self.obs_d_star_sq , self.var_obs,self.obs_a   , self.obs_b  = self.interpol.interpolate(self.obs_d_star_sq, self.var_obs)
-    tmp_calc_d_star_sq , self.mean_calc,self.calc_a, self.calc_b = self.interpol.interpolate(self.calc_d_star_sq,self.mean_calc)
-    self.calc_d_star_sq, self.var_calc,self.calc_a , self.calc_b = self.interpol.interpolate(self.calc_d_star_sq,self.var_calc)
+    tmp_obs_d_star_sq  , self.mean_obs,self.obs_a  , self.obs_b  = \
+      self.interpol.interpolate(self.obs_d_star_sq,self.mean_obs)
+    self.obs_d_star_sq , self.var_obs,self.obs_a   , self.obs_b  = \
+      self.interpol.interpolate(self.obs_d_star_sq, self.var_obs)
+    tmp_calc_d_star_sq , self.mean_calc,self.calc_a, self.calc_b = \
+      self.interpol.interpolate(self.calc_d_star_sq,self.mean_calc)
+    self.calc_d_star_sq, self.var_calc,self.calc_a , self.calc_b = \
+      self.interpol.interpolate(self.calc_d_star_sq,self.var_calc)
 
-    self.mean_ratio_engine = chebyshev_polynome( mean_coefs.size(), low_lim-1e-3, high_lim+1e-3,mean_coefs)
-    self.std_ratio_engine = chebyshev_polynome( std_coefs.size(), low_lim-1e-3, high_lim+1e-3,std_coefs)
+    self.mean_ratio_engine = chebyshev_polynome( mean_coefs.size(),
+      low_lim-1e-3, high_lim+1e-3,mean_coefs)
+    self.std_ratio_engine = chebyshev_polynome( std_coefs.size(),
+      low_lim-1e-3, high_lim+1e-3,std_coefs)
 
     self.x = flex.double([0,0])
 
@@ -61,12 +77,15 @@ class relative_wilson(object):
     self.weight_array = selection.as_double() / (2.0 * self.var_obs)
     assert (not self.weight_array.all_eq(0.0))
 
-    self.mean   = flex.double( [1.0/(flex.sum(self.mean_calc)/flex.sum(self.mean_obs)), 0.0 ] )
+    self.mean   = flex.double( [1.0/(flex.sum(self.mean_calc) /
+                                flex.sum(self.mean_obs)), 0.0 ] )
     self.sigmas = flex.double( [0.5, 0.5] )
 
-    s = 1.0/(flex.sum(self.weight_array*self.mean_calc)/flex.sum(self.weight_array*self.mean_obs))
+    s = 1.0/(flex.sum(self.weight_array*self.mean_calc)/
+             flex.sum(self.weight_array*self.mean_obs))
     b = 0.0
-    self.sart_simplex = [ flex.double([s,b]), flex.double([s+0.1,b+1.1]), flex.double([s-0.1,b-1.1]) ]
+    self.sart_simplex = [ flex.double([s,b]), flex.double([s+0.1,b+1.1]),
+                          flex.double([s-0.1,b-1.1]) ]
     self.opti = simplex.simplex_opt( 2, self.sart_simplex, self)
 
     sol = self.opti.get_solution()
@@ -75,16 +94,23 @@ class relative_wilson(object):
 
     self.modify_weights()
     assert (not self.weight_array.all_eq(0.0))
-    s = 1.0/(flex.sum(self.weight_array*self.mean_calc)/flex.sum(self.weight_array*self.mean_obs))
+    s = 1.0/(flex.sum(self.weight_array*self.mean_calc) /
+             flex.sum(self.weight_array*self.mean_obs))
     b = 0.0
-    self.sart_simplex = [ flex.double([s,b]), flex.double([s+0.1,b+1.1]), flex.double([s-0.1,b-1.1]) ]
+    self.sart_simplex = [ flex.double([s,b]), flex.double([s+0.1,b+1.1]),
+                          flex.double([s-0.1,b-1.1]) ]
     self.opti = simplex.simplex_opt( 2, self.sart_simplex, self)
     #self.mean_calc = self.mean_calc*self.scale*flex.exp(self.calc_d_star_sq*self.b_value)
-    del self.mean_ratio_engine
-    del self.std_ratio_engine 
-
+    self.table = self.get_data_plot()
     self.show_summary()
 
+  def __getstate__ (self) :
+    """
+    Hack to enable pickling.
+    """
+    self.mean_ratio_engine = None
+    self.std_ratio_engine = None
+    return self.__dict__
 
   def modify_weights(self,level=5):
     z_scores = self.get_z_scores(self.scale, self.b_value)
@@ -110,10 +136,8 @@ class relative_wilson(object):
       graph_names=["Relative Wilson plot"],
       graph_labels=[("High resolution", "")],
       graph_columns=[list(range(4))],
-      x_is_inverse_d_min=True)
-    ss,rr,zz,ii = self.get_all_curves()
-    for s,z,r,i in zip(ss,zz,rr,ii):
-      table.add_row([s,z,r,i])
+      x_is_inverse_d_min=True,
+      data=list(self.get_all_curves()))
     return table
 
   def get_all_curves(self):
@@ -161,7 +185,7 @@ class relative_wilson(object):
   def show(self,out=None):
     if out is None:
       out = sys.stdout
-    ss,rr,zz,ii = self.get_all_curves()
+    ss,rr,zz,ii = self.table.data
     for s,r,z,i in zip( ss,rr,zz,ii ):
       print >> out, s,r,z,i
 
@@ -169,7 +193,7 @@ class relative_wilson(object):
     if out is None:
       out = sys.stdout
 
-    ss,rr,zz,ii = self.get_all_curves()
+    ss,rr,zz,ii = self.table.data
     flagged = flex.bool(zz>level)
     sel_ss = ss.select(flagged)
     sel_z = zz.select(flagged)
