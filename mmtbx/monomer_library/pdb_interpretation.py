@@ -2785,9 +2785,10 @@ class build_all_chain_proxies(linking_mixins):
           cystein_sulphur_atoms_exclude = []
           for atom in self.pdb_atoms:
             e = atom.element.strip().upper()
-            # PVA: undo Nigel's 'bug fix' until further clarification
-            # this breaks phenix_regression/mmtbx/geometry_minimization/tst_06.py
-            #if not e.strip(): continue
+            if not e.strip():
+              self.pdb_atoms.set_chemical_element_simple_if_necessary()
+              e = atom.element.strip().upper()
+            if not e.strip(): continue
             if(not e in exclusion_list):
               for cs_i_seq in self.cystein_sulphur_i_seqs:
                 csa = self.pdb_atoms[cs_i_seq]

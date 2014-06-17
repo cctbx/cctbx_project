@@ -71,6 +71,51 @@ columns = [
   "mCO",  # CO    C(0)  - O(0)
   "sCO",
   ]
+headers = [
+  "statistical type",
+  "number",
+  "C(-1) - N(0)  - Ca(0)",
+  "",
+  "N(0)  - Ca(0) - Cb(0)",
+  "",
+  "N(0)  - Ca(0) - C(0)",
+  "",
+  "Cb(0) - Ca(0) - C(0)",
+  "",
+  "Ca(0) - C(0)  - O(0)",
+  "",
+  "Ca(0) - C(0)  - N(+1)",
+  "",
+  "O(0)  - C(0)  - N(+1)",
+  "",
+  "C(-1) - N(0)",
+  "",
+  "N(0)  - Ca(0)",
+  "",
+  "Ca(0) - Cb(0)",
+  "",
+  "Ca(0) - C(0)",
+  "",
+  "C(0)  - O(0)",
+  "",
+  ]
+
+def restraints_show(restraints_values):
+  outl = ""
+  for i, item in enumerate(restraints_values):
+    if i%2==0:
+      if i==0:
+        s = "  %s, %s : %s %s\n"
+      elif i<15:
+        s = "  %-25s%s: %9.2f %9.2f\n"
+      else:
+        s = "  %-25s%s:   %9.4f %9.4f\n"
+      outl += s % (headers[i],
+                   headers[i+1],
+                   restraints_values[i],
+                   restraints_values[i+1],
+        )
+  return outl
 
 class RestraintsRegistry(dict):
   def __init__(self):
