@@ -2197,13 +2197,13 @@ def exercise_permute () :
 
 def exercise_diagnostics () :
   xs = crystal.symmetry((30,40,50), "P 2 2 2")
-  ms = miller.build_set(crystal_symmetry=xs, anomalous_flag=True, d_min=3.0)
+  ms = miller.build_set(crystal_symmetry=xs, anomalous_flag=True, d_min=2.9)
   da, db, dc = ms.d_min_along_a_b_c_star()
-  assert approx_equal([da, db, dc], [3.0, 3.076923, 3.125])
-  xs2 = crystal.symmetry((30,40,55), "P 2 2 2")
+  assert approx_equal([da, db, dc], [3.0, 3.076923, 2.941176])
+  xs2 = crystal.symmetry((30,40,60), "P 2 2 2")
   ms = ms.customized_copy(crystal_symmetry=xs2)
   da, db, dc = ms.d_min_along_a_b_c_star()
-  assert approx_equal([da, db, dc], [3.0, 3.076923, 3.4375])
+  assert approx_equal([da, db, dc], [3.0, 3.076923, 3.529412])
 
 def run(args):
   exercise_diagnostics()
