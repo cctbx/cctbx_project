@@ -2469,7 +2469,9 @@ class resolution_bin(object):
                fom_work     = None,
                scale_k1_work= None,
                pher_work    = None,
-               pher_free    = None):
+               pher_free    = None,
+               cc_work      = None,
+               cc_free      = None):
     adopt_init_args(self, locals())
 
 

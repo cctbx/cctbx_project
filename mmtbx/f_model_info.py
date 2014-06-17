@@ -23,6 +23,10 @@ def n_as_s(format, value):
     return (format % value).strip()
   return [(format % v).strip() for v in value]
 
+def cc (data1, data2) :
+  from cctbx.array_family import flex
+  return flex.linear_correlation(data1, data2).coefficient()
+
 class resolution_bin(object):
   def __init__(self,
                i_bin         = None,
@@ -40,7 +44,9 @@ class resolution_bin(object):
                fom_work      = None,
                scale_k1_work = None,
                pher_work     = None,
-               pher_free     = None):
+               pher_free     = None,
+               cc_work       = None,
+               cc_free       = None):
     adopt_init_args(self, locals())
 
 def r_work_and_completeness_in_resolution_bins(fmodel, reflections_per_bin=500,
@@ -233,7 +239,9 @@ class info(object):
           mean_f_obs   = flex.mean_default(sel_fo_all.data(),None),
           fom_work     = flex.mean_default(fom.select(sel_w),None),
           pher_work    = flex.mean_default(pher_w.select(sel_w),None),
-          pher_free    = flex.mean_default(pher_t.select(sel_t),None))
+          pher_free    = flex.mean_default(pher_t.select(sel_t),None),
+          cc_work      = cc(s_fo_w_d, s_fc_w_d_a),
+          cc_free      = cc(sel_fo_t.data(), flex.abs(sel_fc_t.data())))
         result.append(bin)
     return result
 
@@ -242,8 +250,8 @@ class info(object):
     if(title is not None):
       print >> out, prefix+title
     print >> out,\
-      prefix+" BIN  RESOLUTION RANGE  COMPL.    NWORK NFREE   RWORK  RFREE"
-    fmt = " %s %s    %s %s %s  %s %s"
+      prefix+" BIN  RESOLUTION RANGE  COMPL.    NWORK NFREE   RWORK  RFREE  CCWORK CCFREE"
+    fmt = " %s %s    %s %s %s  %s %s   %s  %s"
     for bin in self.bins:
       print >> out,prefix+fmt%(
         format_value("%3d", bin.i_bin),
@@ -252,7 +260,9 @@ class info(object):
         format_value("%8d", bin.n_work),
         format_value("%5d", bin.n_free),
         format_value("%6.4f", bin.r_work),
-        format_value("%6.4f", bin.r_free))
+        format_value("%6.4f", bin.r_free),
+        format_value("%5.3f", bin.cc_work),
+        format_value("%5.3f", bin.cc_free))
 
   def show_remark_3(self, out = None):
     from cctbx import sgtbx
@@ -531,6 +541,12 @@ def export_bins_table_data (bins, title="Statistics by resolution bin") :
                  "Phase error vs. resolution",
                  "Scale factor vs. resolution"]
   graph_columns = [[0,1,2], [0,3], [0,4], [0,5], [0,6]]
+  if hasattr(bins[0], "cc_work") :
+    table_stats.insert(2, "cc_work")
+    table_stats.insert(3, "cc_free")
+    labels.insert(3, "CC(work)")
+    labels.insert(4, "CC(free)")
+    graph_names.insert(1, "CC-work/CC-free vs. resolution")
   data_rows = []
   for bin in bins :
     bin_stats = []
