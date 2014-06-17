@@ -196,14 +196,14 @@ class xray_structure_statistics (validation) :
     pdb_atoms.reset_i_seq()
     hd_selection = xrs.hd_selection()
     subtract_hd = True
-    if (ignore_hd) and (hd_selection.count(True) > 0) :
+    self.n_all = hd_selection.size()
+    self.n_hd = hd_selection.count(True)
+    if (ignore_hd) and (0 < self.n_hd < self.n_all) :
       xrs = xrs.select(~hd_selection)
       subtract_hd = False
     u_isos = xrs.extract_u_iso_or_u_equiv()
     occ = xrs.scatterers().extract_occupancies()
-    self.n_all = hd_selection.size()
     self.n_atoms = xrs.scatterers().size()
-    self.n_hd = hd_selection.count(True)
     self.n_non_hd = self.n_all - self.n_hd
     self.n_aniso = xrs.use_u_aniso().count(True)
     self.n_aniso_h = (xray_structure.use_u_aniso() & hd_selection).count(True)

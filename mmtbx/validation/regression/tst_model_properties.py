@@ -9,7 +9,7 @@ from libtbx.easy_pickle import loads, dumps
 from libtbx.utils import null_out
 from cStringIO import StringIO
 
-def exercise () :
+def exercise_1 () :
   pdb_raw = """\
 ATOM   1134  N   LYS A  82       5.933  36.285  21.572  1.00 70.94           N
 ATOM   1135  CA  LYS A  82       6.564  37.423  20.931  1.00 76.69           C
@@ -183,6 +183,45 @@ Waters:
   outliers = mstats4.all.as_gui_table_data(include_zoom=True)
   assert (len(outliers) == 32)
 
+# corner case: deuterium as ligand (from 3qza)
+def exercise_2 () :
+  pdb_raw = """\
+ATOM   6407  N   GLY A 388      -0.783   9.368 -16.436  1.00 51.96           N
+ATOM   6408  CA  GLY A 388      -0.227   9.888 -15.197  1.00 54.04           C
+ATOM   6409  C   GLY A 388      -0.637  11.320 -14.897  1.00 55.86           C
+ATOM   6410  O   GLY A 388      -1.728  11.738 -15.347  1.00 56.70           O
+ATOM   6411  OXT GLY A 388       0.129  12.024 -14.203  1.00 56.98           O
+ATOM   6412  D   GLY A 388      -0.460   9.727 -17.309  1.00 51.44           D
+ATOM   6413  HA2 GLY A 388      -0.561   9.258 -14.385  1.00 54.07           H
+ATOM   6414  HA3 GLY A 388       0.843   9.835 -15.243  1.00 54.13           H
+TER    6415      GLY A 388
+HETATM 6416  D   D8U A 401     -12.236 -13.695 -42.992  1.00 15.23           D
+HETATM 6417  O   DOD A1001      -4.151  -5.107 -38.592  1.00 13.40           O
+HETATM 6418  D1  DOD A1001      -4.760  -5.026 -39.326  1.00 15.45           D
+HETATM 6419  D2  DOD A1001      -4.625  -4.741 -37.845  1.00 14.81           D
+"""
+  mon_lib_srv = server.server()
+  ener_lib = server.ener_lib()
+  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
+  xrs = pdb_in.input.xray_structure_simple()
+  processed_pdb_file = pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    raw_records=pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs),
+    crystal_symmetry=xrs,
+    log=null_out())
+  pdb_in.hierarchy.atoms().reset_i_seq()
+  mstats = model_properties.model_statistics(
+    pdb_hierarchy=pdb_in.hierarchy,
+    xray_structure=xrs,
+    all_chain_proxies=processed_pdb_file.all_chain_proxies,
+    ignore_hd=True)
+  out = StringIO()
+  mstats.show(out=out)
+  assert ("Ligands:" in out.getvalue())
+  assert ("B_iso: mean =  15.2  max =  15.2  min =  15.2" in out.getvalue())
+
 if (__name__ == "__main__") :
-  exercise()
+  exercise_1()
+  exercise_2()
   print "OK"
