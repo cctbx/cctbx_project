@@ -1561,6 +1561,7 @@ mmtbx/command_line/cablam_training.py -text
 mmtbx/command_line/cablam_validate.py -text
 mmtbx/command_line/cbetadev.py -text
 mmtbx/command_line/cc_star.py -text
+mmtbx/command_line/cdl_lookup.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
 mmtbx/command_line/compare_ligands.py -text

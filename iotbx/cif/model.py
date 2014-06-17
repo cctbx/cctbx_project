@@ -553,7 +553,11 @@ class loop(DictMixin):
     return copy.deepcopy(self)
 
   def show(self, out=None, indent="  ", indent_row=None, fmt_str=None, align_columns=True):
-    assert self.n_rows() > 0 and self.n_columns() > 0
+    assert self.n_rows() > 0 and self.n_columns() > 0, "keys: %s %d %d" % (
+      self.keys(),
+      self.n_rows(),
+      self.n_columns(),
+      )
     if out is None:
       out = sys.stdout
     if indent_row is None:
