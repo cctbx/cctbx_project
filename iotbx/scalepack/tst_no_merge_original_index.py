@@ -56,6 +56,9 @@ def exercise () :
     spindle_flags=reader.spindle_flags)
   sca_recycled = open(hkl_out).read()
   assert not show_diff(sca_recycled, sca_raw)
+  batches = reader.batch_as_miller_array(crystal_symmetry=symm)
+  assert batches.indices().all_eq(i_obs.indices())
+  assert (batches.data()[0] == 316)
 
 if (__name__ == "__main__") :
   exercise()

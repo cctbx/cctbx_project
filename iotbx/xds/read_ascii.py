@@ -29,6 +29,7 @@ class reader(object):
     self.miller_index_columns = [None, None, None]
     self.iobs_column = None
     self.sigma_iobs_column = None
+    self.zd_column = None
     self.wavelength = None
     for line in f:
       if (line.startswith("!SPACE_GROUP_NUMBER=")):
@@ -48,6 +49,8 @@ class reader(object):
         self.iobs_column = self.column_index(line)
       elif (line.startswith("!ITEM_SIGMA(IOBS)=")):
         self.sigma_iobs_column = self.column_index(line)
+      elif (line.startswith("!ITEM_ZD=")) :
+        self.zd_column = self.column_index(line)
       elif (line.startswith("!X-RAY_WAVELENGTH=")) :
         self.wavelength = float(get_rhs(line))
       elif (line.startswith("!END_OF_HEADER")):
@@ -62,10 +65,14 @@ class reader(object):
       self.miller_indices = None
       self.iobs = None
       self.sigma_iobs = None
+      self.zd = None
     else:
       self.miller_indices = flex.miller_index()
       self.iobs = flex.double()
       self.sigma_iobs = flex.double()
+      self.zd = None
+      if (self.zd_column is not None) :
+        self.zd = flex.double()
       for line in f:
         if (line.startswith("!END_OF_DATA")):
           break
@@ -75,6 +82,8 @@ class reader(object):
         self.miller_indices.append(h)
         self.iobs.append(float(data[self.iobs_column]))
         self.sigma_iobs.append(float(data[self.sigma_iobs_column]))
+        if (self.zd_column is not None) :
+          self.zd.append(float(data[self.zd_column]))
 
   def column_index(self, line):
     i_column = int(get_rhs(line))-1
@@ -86,6 +95,17 @@ class reader(object):
       unit_cell=self.unit_cell,
       space_group_symbol=self.space_group_number)
 
+  def miller_set (self,
+        crystal_symmetry=None,
+        force_symmetry=False) :
+    crystal_symmetry_from_file = self.crystal_symmetry()
+    return miller.set(
+        crystal_symmetry=crystal_symmetry_from_file.join_symmetry(
+          other_symmetry=crystal_symmetry,
+          force=force_symmetry),
+        indices=self.miller_indices,
+        anomalous_flag=self.anomalous_flag)
+
   def as_miller_array(self,
         crystal_symmetry=None,
         force_symmetry=False,
@@ -95,12 +115,9 @@ class reader(object):
       base_array_info = miller.array_info(source_type="xds_ascii")
     crystal_symmetry_from_file = self.crystal_symmetry()
     return (miller.array(
-      miller_set=miller.set(
-        crystal_symmetry=crystal_symmetry_from_file.join_symmetry(
-          other_symmetry=crystal_symmetry,
-          force=force_symmetry),
-        indices=self.miller_indices,
-        anomalous_flag=self.anomalous_flag),
+      miller_set=self.miller_set(
+        crystal_symmetry=crystal_symmetry,
+        force_symmetry=force_symmetry),
       data=self.iobs,
       sigmas=self.sigma_iobs)
       .set_info(base_array_info.customized_copy(
@@ -119,6 +136,23 @@ class reader(object):
       force_symmetry=force_symmetry,
       merge_equivalents=merge_equivalents,
       base_array_info=base_array_info)]
+
+  def batch_as_miller_array (self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        base_array_info=None) :
+    if (base_array_info is None):
+      base_array_info = miller.array_info(source_type="xds_ascii")
+    crystal_symmetry_from_file = self.crystal_symmetry()
+    return miller.array(
+      miller_set=self.miller_set(
+          crystal_symmetry=crystal_symmetry,
+          force_symmetry=force_symmetry),
+      data=self.zd).set_info(
+        base_array_info.customized_copy(
+          labels=["ZD"],
+          crystal_symmetry_from_file=crystal_symmetry_from_file,
+          wavelength=self.wavelength))
 
 if (__name__ == "__main__"):
   reader(open(sys.argv[1])).as_miller_array().show_comprehensive_summary()
