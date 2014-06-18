@@ -48,8 +48,6 @@ tst_list = (
   "$D/geometry_restraints/tst_proxy_registry.py",
   "$D/geometry_restraints/tst_nb_clashscore.py",
   "$D/adp_restraints/tst_ext.py",
-  "$D/regression/tst_crystal_model.py",
-  "$D/regression/tst_crystal_model_serialize.py",
   "$D/regression/tst_math_module.py",
   ["$D/regression/tst_krivy_gruber.py", "--Quick"],
   "$D/regression/tst_sgtbx.py",

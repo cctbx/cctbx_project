@@ -4,7 +4,7 @@ from cStringIO import StringIO
 from libtbx.test_utils import approx_equal, show_diff
 from scitbx import matrix
 from cctbx import crystal, sgtbx, uctbx
-from cctbx.crystal.crystal_model import crystal_model, \
+from dxtbx.model.crystal import crystal_model, \
      crystal_model_from_mosflm_matrix
 
 def random_rotation():

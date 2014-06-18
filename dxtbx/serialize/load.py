@@ -84,3 +84,23 @@ def datablock(filename, check_format=True):
   from dxtbx.datablock import DataBlockFactory
   return DataBlockFactory.from_serialized_format(
     filename, check_format=check_format)
+
+def crystal(infile):
+  ''' Load the given JSON file.
+
+  Params:
+      infile The input filename or file object
+
+  Returns:
+      The models
+
+  '''
+  from dxtbx.serialize.crystal import from_string
+  # If the input is a string then open and read from that file
+  if isinstance(infile, str):
+    with open(infile, 'r') as infile:
+      return from_string(infile.read())
+
+  # Otherwise assume the input is a file and read from it
+  else:
+    return from_string(infile.read())

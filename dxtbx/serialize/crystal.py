@@ -12,46 +12,7 @@
 from __future__ import division
 
 
-def load_crystal(infile):
-  ''' Load the given JSON file.
-
-  Params:
-      infile The input filename or file object
-
-  Returns:
-      The models
-
-  '''
-  # If the input is a string then open and read from that file
-  if isinstance(infile, str):
-    with open(infile, 'r') as infile:
-      return crystal_from_string(infile.read())
-
-  # Otherwise assume the input is a file and read from it
-  else:
-    return crystal_from_string(infile.read())
-
-
-def dump_crystal(obj, outfile, compact=False):
-  ''' Dump the given object to file.
-
-  Params:
-      obj The crystal to dump
-      outfile The output file name or file object
-      compact Write in compact representation
-
-  '''
-  # If the input is a string then open and write to that file
-  if isinstance(outfile, str):
-    with open(outfile, 'w') as outfile:
-      outfile.write(crystal_to_string(obj, compact))
-
-  # Otherwise assume the input is a file and write to it
-  else:
-    outfile.write(crystal_to_string(obj, compact))
-
-
-def crystal_from_string(string):
+def from_string(string):
   ''' Load the string and return the models.
 
   Params:
@@ -62,10 +23,10 @@ def crystal_from_string(string):
 
   '''
   import json
-  return crystal_from_dict(json.loads(string))
+  return from_dict(json.loads(string))
 
 
-def crystal_to_string(obj, compact=False):
+def to_string(obj, compact=False):
   ''' Dump the given object to string.
 
   Params:
@@ -77,24 +38,23 @@ def crystal_to_string(obj, compact=False):
 
   '''
   import json
-  from dials.model.serialize.crystal import crystal_to_dict
   from dxtbx.serialize.dump import compact_simple_lists
 
   # Return as a JSON string
   if compact == False:
-    string = json.dumps(crystal_to_dict(obj), indent=2)
+    string = json.dumps(to_dict(obj), indent=2)
 
     # Hack to make more readable
     string = compact_simple_lists(string)
 
   else:
-    string = json.dumps(crystal_to_dict(obj), separators=(',',':'))
+    string = json.dumps(to_dict(obj), separators=(',',':'))
 
   # Return the string
   return string
 
 
-def crystal_to_dict(crystal):
+def to_dict(crystal):
   ''' Convert the crystal model to a dictionary
 
   Params:
@@ -136,7 +96,7 @@ def crystal_to_dict(crystal):
   return xl_dict
 
 
-def crystal_from_dict(d):
+def from_dict(d):
   ''' Convert the dictionary to a crystal model
 
   Params:
@@ -146,7 +106,7 @@ def crystal_from_dict(d):
       The crystal model
 
   '''
-  from cctbx.crystal.crystal_model import crystal_model
+  from dxtbx.model.crystal import crystal_model
 
   # If None, return None
   if d is None:
