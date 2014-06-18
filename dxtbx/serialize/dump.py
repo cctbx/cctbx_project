@@ -132,3 +132,9 @@ def crystal(obj, outfile, compact=False):
   # Otherwise assume the input is a file and write to it
   else:
     outfile.write(to_string(obj, compact))
+
+def experiment_list(obj, outfile):
+  ''' Dump an experiment list. '''
+  from dxtbx.model.experiment.experiment_list import ExperimentListDumper
+  dumper = ExperimentListDumper(obj)
+  dumper.as_file(outfile)
