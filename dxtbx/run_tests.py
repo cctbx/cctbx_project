@@ -16,9 +16,11 @@ tst_list = (
     "$D/tests/model/tst_ray_intersection.py",
     "$D/tests/model/tst_scan_data.py",
     "$D/tests/model/tst_scan_helpers.py",
+    "$D/tests/model/tst_crystal_model.py",
     "$D/tests/serialize/tst_serialize.py",
     "$D/tests/serialize/tst_xds.py",
-    "$D/tests/serialize/tst_filename.py"
+    "$D/tests/serialize/tst_filename.py",
+    "$D/tests/serialize/tst_crystal_model_serialize.py",
     )
 
 def run () :

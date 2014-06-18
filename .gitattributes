@@ -93,8 +93,6 @@ cctbx/command_line/space_group_info.py svneol=native#text/x-python
 cctbx/command_line/subgroups.py -text
 cctbx/command_line/version.py -text
 cctbx/command_line/wavelength_units.py svneol=native#text/x-python
-cctbx/crystal/crystal_model/__init__.py -text
-cctbx/crystal/crystal_model/serialize.py -text
 cctbx/crystal/distance_based_connectivity.py -text
 cctbx/crystal/tst_distance_based_connectivity.py svneol=native#text/x-python
 cctbx/crystal_orientation.h -text
@@ -214,8 +212,6 @@ cctbx/regression/structure_ideal.pickle -text
 cctbx/regression/structure_start.pickle -text
 cctbx/regression/tst_adp_constraints_cartesian.py -text
 cctbx/regression/tst_connectivity.py -text
-cctbx/regression/tst_crystal_model.py -text
-cctbx/regression/tst_crystal_model_serialize.py -text
 cctbx/regression/tst_direct_scaling.py -text
 cctbx/regression/tst_fourier_transform_real_part_at_x.py -text
 cctbx/regression/tst_french_wilson.py -text
@@ -530,6 +526,7 @@ dxtbx/model/boost_python/pixel_to_millimeter.cc -text
 dxtbx/model/boost_python/scan.cc -text
 dxtbx/model/boost_python/scan_helpers.cc -text
 dxtbx/model/boost_python/to_from_dict.h -text
+dxtbx/model/crystal.py -text
 dxtbx/model/detector.h -text
 dxtbx/model/detector.py -text
 dxtbx/model/detector_helpers.py -text
@@ -553,6 +550,7 @@ dxtbx/readme.txt -text
 dxtbx/run_tests.py -text
 dxtbx/serialize/__init__.py -text
 dxtbx/serialize/beam.py -text
+dxtbx/serialize/crystal.py -text
 dxtbx/serialize/detector.py -text
 dxtbx/serialize/dump.py -text
 dxtbx/serialize/filename.py -text
@@ -587,6 +585,7 @@ dxtbx/tests/image_018.dat -text
 dxtbx/tests/image_019.dat -text
 dxtbx/tests/image_020.dat -text
 dxtbx/tests/model/tst_beam.py -text
+dxtbx/tests/model/tst_crystal_model.py -text
 dxtbx/tests/model/tst_detector.py -text
 dxtbx/tests/model/tst_detector2.py -text
 dxtbx/tests/model/tst_parallax_correction.py -text
@@ -598,6 +597,7 @@ dxtbx/tests/model/tst_scan_helpers.py -text
 dxtbx/tests/model/tst_to_from_dict.py -text
 dxtbx/tests/omega_scan.cbf -text svneol=unset#unset
 dxtbx/tests/phi_scan_001.cbf -text svneol=unset#unset
+dxtbx/tests/serialize/tst_crystal_model_serialize.py -text
 dxtbx/tests/serialize/tst_filename.py -text
 dxtbx/tests/serialize/tst_serialize.py -text
 dxtbx/tests/serialize/tst_xds.py -text
