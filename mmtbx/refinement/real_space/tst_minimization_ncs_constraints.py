@@ -128,8 +128,7 @@ def run(prefix="tst", d_min=1.0):
   it = [tv[0]]
   # create transformation object
   transforms_obj = ncs_group_object()
-  transforms_obj.populate_ncs_group_object(
-    ncs_refinement_params = 'ncs_refinement {ncs_selection = chain A}',
+  transforms_obj.build_ncs_obj_from_pdb_ncs(
     pdb_hierarchy_inp = ph_poor_obj,
     rotations=rm,
     translations=tv)

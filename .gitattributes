@@ -1280,6 +1280,7 @@ iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py -text
 iotbx/pdb/tst_hierarchy.py svneol=native#text/x-python
 iotbx/pdb/tst_mmcif.py -text
 iotbx/pdb/tst_mmcif_hierarchy.py -text
+iotbx/pdb/tst_ncs_groups_preprocessing.py -text
 iotbx/pdb/tst_pdb_manipulation.py -text
 iotbx/pdb/tst_rna_dna_atom_names.py -text
 iotbx/pdb/tst_tls.py -text

@@ -3,7 +3,6 @@ from  iotbx.pdb.multimer_reconstruction import format_num_as_str
 from  iotbx.pdb.multimer_reconstruction import ncs_group_object
 from  iotbx.pdb.multimer_reconstruction import multimer
 from libtbx.test_utils import approx_equal
-from libtbx.phil import parse
 from scitbx import matrix
 from iotbx import pdb
 import string
@@ -57,7 +56,7 @@ class TestMultimerReconstruction(unittest.TestCase):
 
     # Test getting non-rounded ASU
     transforms_obj = cau_multimer_data.transforms_obj
-    source_xyz = cau_multimer_data.get_source_hierarchy().atoms().extract_xyz()
+    source_xyz = cau_multimer_data.get_ncs_hierarchy().atoms().extract_xyz()
     xyz = transforms_obj.apply_transforms(
       ncs_coordinates = source_xyz,
       round_coordinates=False)
@@ -74,9 +73,6 @@ class TestMultimerReconstruction(unittest.TestCase):
     cau_multimer_xyz.sort()
     cau_expected_results.sort()
     assert approx_equal(cau_expected_results,cau_multimer_xyz,eps=0.00001)
-
-
-
 
   def test_BIOMT(self):
     '''Test MTRIX record processing'''
@@ -109,31 +105,6 @@ class TestMultimerReconstruction(unittest.TestCase):
     assert approx_equal(ba_expected_results,ba_multimer_xyz,eps=0.001)
     self.assertEqual(ba_multimer_data.number_of_transforms,9)
 
-  def test_transform_count(self):
-    """
-    Test correct MTRIX transform counting and
-    new chains naming """
-    print 'Running ',sys._getframe().f_code.co_name
-    # use MTRIX data
-    m = multimer(
-      file_name='multimer_test_data2.pdb',reconstruction_type='cau')
-    self.assertEqual(m.number_of_transforms, 1)
-
-  def test_trasformation_application_order(self):
-    """
-    Test that we build the new assembly by applying each transformation
-    to all chains by iterating over the chains first. To be consistent with
-    NCS/ASU transformations that are done during refinement.
-
-    Note that if chains are broken, their copy will be concatenated
-    """
-    print 'Running ',sys._getframe().f_code.co_name
-    m = multimer(pdb_str=pdb_test_data3,reconstruction_type='cau')
-    self.assertEquals(m.ncs_unique_chains_ids, ('A', 'B'))
-    self.assertEquals(pdb_test_data3_expected_results,
-                      m.assembled_multimer.as_pdb_string())
-
-
   def test_selection_naming(self):
     """
     Verify naming of selection done as expected
@@ -147,42 +118,6 @@ class TestMultimerReconstruction(unittest.TestCase):
     expected = ['S'+a+b for a in chr_list[:2] for b in chr_list]
     self.assertEqual(result,expected)
 
-  def test_ncs_group_object(self):
-      """ Verify that phil parameters are properly read   """
-      print 'Running ',sys._getframe().f_code.co_name
-      transforms_obj = ncs_group_object()
-      transforms_obj.populate_ncs_group_object(
-        ncs_refinement_params = user_phil)
-      gr1 = transforms_obj.ncs_refinement_groups[0]
-      gr2 = transforms_obj.ncs_refinement_groups[1]
-      result = gr1.transform[1].rotation
-      expected = [0.1, 1.0, 1.0, 0.2, 0.5, 0.6, 0.7, 0.8, 0.9]
-      self.assertEqual(result,expected)
-      result = gr1.transform[1].translation
-      expected = [0.0, 2.0, 1.0]
-      self.assertEqual(result,expected)
-      result = gr1.transform[2].coordinates_present
-      expected = True
-      self.assertEqual(result,expected)
-      result = gr2.apply_to_selection
-      expected = ['chain A', 'or chain B']
-      self.assertEqual(result,expected)
-      result = transforms_obj.apply_when_coordinates_present
-      self.assertEqual(result,False)
-      result = transforms_obj.apply_to_all_chains
-      self.assertEqual(result,False)
-      result = transforms_obj.transform_to_ncs
-      expected = {
-        's005': ['chain A or chain B_005'],
-        's007': ['(chain A or chain B) or (chain A) or (chain C)_007'],
-        's006': ['chain C_006'], 's003': ['chain A_003'],
-        's002': ['chain A_002']}
-      self.assertEqual(result,expected)
-      result = transforms_obj.ncs_selection_str
-      expected = '(chain A or chain B) or (chain A) or (chain C)'
-      self.assertEqual(result,expected)
-
-
   def test_ncs_copies_naming(self):
     print 'Running ',sys._getframe().f_code.co_name
     transforms_obj = ncs_group_object()
@@ -192,28 +127,9 @@ class TestMultimerReconstruction(unittest.TestCase):
                 'chain B_002': 'F'}
     self.assertEqual(result,expected)
 
-  def test_coordinate_mapping(self):
-    """
-    Verify that atoms mapping to chain-transformation ID
-    """
-    print 'Running ',sys._getframe().f_code.co_name
-    transforms_obj = ncs_group_object()
-    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-    transforms_obj.populate_ncs_group_object(
-      pdb_hierarchy_inp = pdb_obj)
-
-    result = {k:list(v) for (k,v) in transforms_obj.asu_to_ncs_map.iteritems()}
-    expected = {'chain A': [0, 1, 2, 5, 6], 'chain B': [3, 4]}
-    self.assertEqual(result,expected)
-    result =  transforms_obj.ncs_to_asu_map
-    expected = {'chain A_003': [7, 12], 'chain B_003': [12, 14]}
-    self.assertEqual(result,expected)
-
-    result = transforms_obj.ncs_copies_chains_names
-    expected = {'chain B_003': 'D', 'chain A_003': 'C'}
-    self.assertEqual(result,expected)
-
   def test_adding_transforms_directly(self):
+    """
+    Verify that processing of transforms provided manually is done properly """
     print 'Running ',sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data4)
     transforms_obj = ncs_group_object()
@@ -221,112 +137,38 @@ class TestMultimerReconstruction(unittest.TestCase):
     r.append(matrix.sqr([1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.4]))
     t = [matrix.col([0,2,1])]
     t.append(matrix.col([-1,3,-2]))
-    transforms_obj.populate_ncs_group_object(
+    transforms_obj.build_ncs_obj_from_pdb_ncs(
       pdb_hierarchy_inp = pdb_obj,
       rotations=r,
       translations=t)
     result = transforms_obj.transform_to_ncs
-    expected = {
-      's003': ['chain A or chain B_003'],
-      's002': ['chain A or chain B_002']}
+    expected = {'s002': ['chain A_002', 'chain B_002'],
+                's003': ['chain A_003', 'chain B_003']}
     self.assertEqual(result,expected)
     result = transforms_obj.ncs_selection_str
     expected = 'chain A or chain B'
     self.assertEqual(result,expected)
-
+    # check that if transforms are provided MTRIX record ignored
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transforms_obj = ncs_group_object()
-    transforms_obj.populate_ncs_group_object(
+    transforms_obj.build_ncs_obj_from_pdb_ncs(
       pdb_hierarchy_inp = pdb_obj,
       rotations=r,
       translations=t)
     result = transforms_obj.transform_to_ncs
-    expected = {
-      's002': ['chain A or chain B_002'],
-      's003': ['chain A or chain B_003'],
-      's006': ['chain A_006', 'chain B_006']}
+    expected = {'s002': ['chain A_002', 'chain B_002'],
+                's003': ['chain A_003', 'chain B_003']}
     self.assertEqual(result,expected)
     result = transforms_obj.ncs_selection_str
     expected = 'chain A or chain B'
     self.assertEqual(result,expected)
     # transforms that are not present
     result = transforms_obj.transform_to_ncs.keys()
-    expected = ['s006', 's003', 's002']
+    expected = ['s003', 's002']
     self.assertEqual(result,expected)
     # all transforms
     result = transforms_obj.ncs_transform.keys()
-    expected = ['s005', 's004', 's006', 's001', 's003', 's002']
-    self.assertEqual(result,expected)
-
-
-  def test_process_pdb_and_phil(self):
-    """
-    Test processing of both PDB and PHIL parameters, when both containing
-    MTRIX information
-    """
-    print 'Running ',sys._getframe().f_code.co_name
-    transforms_obj = ncs_group_object()
-    pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
-    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-    transform_info = pdb_inp.process_mtrix_records()
-    transforms_obj.populate_ncs_group_object(
-      transform_info = transform_info,
-      ncs_refinement_params = user_phil,
-      pdb_hierarchy_inp = pdb_obj)
-    result = transforms_obj.transform_to_ncs
-    expected = {
-      's002': ['chain A_002'],
-      's003': ['chain A_003'],
-      's005': ['chain A or chain B_005'],
-      's006': ['chain C_006'],
-      's007': ['(chain A or chain B) or (chain A) or (chain C)_007'],
-      's010': ['chain A_010','chain B_010']}
-    self.assertEqual(result,expected)
-    result = transforms_obj.ncs_selection_str
-    expected = '(chain A or chain B) or (chain A) or (chain C)'
-    self.assertEqual(result,expected)
-    result = transforms_obj.all_pdb_selection
-    expected = 'chain A or chain B'
-    self.assertEqual(result,expected)
-    # s001, s007 are identity matrices, s004 coordinates are present
-    transforms_obj = ncs_group_object()
-    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-    transforms_obj.populate_ncs_group_object(
-      ncs_refinement_params = user_phil3,
-      pdb_hierarchy_inp = pdb_obj)
-    result = transforms_obj.transform_to_ncs
-    expected = {
-      's005': ['chain C_005'],
-      's006': ['(chain A or chain B) or (chain A) or (chain C)_006'],
-      's009': ['chain A_009','chain B_009'],
-      's003': ['(chain A or chain B) or (chain A) or (chain C)_003'],
-      's002': ['(chain A or chain B) or (chain A) or (chain C)_002']}
-    self.assertEqual(result,expected)
-    result = transforms_obj.ncs_selection_str
-    expected = '(chain A or chain B) or (chain A) or (chain C)'
-    self.assertEqual(result,expected)
-    result = transforms_obj.all_pdb_selection
-    expected = 'chain A or chain B'
-    self.assertEqual(result,expected)
-
-  def test_ignore_pdb_mtrix_info(self):
-    """ Verify that ignore_mtrix_records function properly """
-    print 'Running ',sys._getframe().f_code.co_name
-    transforms_obj = ncs_group_object()
-    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-    transforms_obj.populate_ncs_group_object(
-      ncs_refinement_params = user_phil4,
-      pdb_hierarchy_inp = pdb_obj)
-    result = transforms_obj.transform_to_ncs
-    expected = {
-      's004': ['chain C_004'],
-      's002': ['(chain A) or (chain C)_002']}
-    self.assertEqual(result,expected)
-    result = transforms_obj.ncs_selection_str
-    expected = '(chain A) or (chain C)'
-    self.assertEqual(result,expected)
-    result = transforms_obj.all_pdb_selection
-    expected = 'chain A or chain B'
+    expected = ['s001', 's003', 's002']
     self.assertEqual(result,expected)
 
   def test_transform_application_order(self):
@@ -338,40 +180,35 @@ class TestMultimerReconstruction(unittest.TestCase):
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transform_info = pdb_inp.process_mtrix_records()
-    transforms_obj.populate_ncs_group_object(
-      transform_info = transform_info,
-      ncs_refinement_params = user_phil,
-      pdb_hierarchy_inp = pdb_obj)
-    for transform in transforms_obj.transform_chain_assignment:
-      self.assertIsNotNone(transforms_obj.ncs_to_asu_map[transform])
+    transforms_obj.build_ncs_obj_from_pdb_ncs(
+      transform_info=transform_info,
+      pdb_hierarchy_inp=pdb_obj)
 
-  def test_forcing_ncs_selection(self):
-    print 'Running ',sys._getframe().f_code.co_name
-    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data3_expected_results)
-    r = [matrix.sqr([0.1,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9])]
-    r.append(matrix.sqr([1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.4]))
-    t = [matrix.col([0,2,1])]
-    t.append(matrix.col([-1,3,-2]))
-    transforms_obj = ncs_group_object()
-    transforms_obj.populate_ncs_group_object(
-      ncs_refinement_params = user_phil5,
-      pdb_hierarchy_inp = pdb_obj,
-      rotations=r,
-      translations=t)
-    result = transforms_obj.ncs_selection_str
-    expected = '(chain A)'
-    self.assertEqual(result,expected)
+    expected = ['chain A_002', 'chain B_002', 'chain A_003', 'chain B_003']
+    self.assertEqual(transforms_obj.transform_chain_assignment,expected)
 
-    transforms_obj = ncs_group_object()
-    transforms_obj.populate_ncs_group_object(
-      ncs_refinement_params = 'ncs_refinement {ncs_selection = chain A}',
-      pdb_hierarchy_inp = pdb_obj,
-      rotations=r,
-      translations=t)
-    result = transforms_obj.ncs_selection_str
-    expected = '(chain A)'
-    self.assertEqual(result,expected)
+    expected = {'chain A_002': 'C', 'chain A_003': 'E',
+                'chain B_002': 'D', 'chain B_003': 'F'}
+    self.assertEqual(transforms_obj.ncs_copies_chains_names,expected)
 
+    expected = [0, 1, 2, 5, 6]
+    results = list(transforms_obj.asu_to_ncs_map['chain A'])
+    self.assertEqual(results,expected)
+
+    expected = [3, 4]
+    results = list(transforms_obj.asu_to_ncs_map['chain B'])
+    self.assertEqual(results,expected)
+
+    expected = [7, 8, 9, 12, 13]
+    results = list(transforms_obj.ncs_to_asu_map['chain A_002'])
+    self.assertEqual(results,expected)
+
+    expected = [17, 18]
+    results = list(transforms_obj.ncs_to_asu_map['chain B_003'])
+    self.assertEqual(results,expected)
+
+    self.assertEqual(len(transforms_obj.ncs_atom_selection),21)
+    self.assertEqual(transforms_obj.ncs_atom_selection.count(True),7)
 
   def test_num_to_str(self):
     print 'Running ',sys._getframe().f_code.co_name
@@ -384,156 +221,6 @@ class TestMultimerReconstruction(unittest.TestCase):
     '''remove temp files and folder'''
     os.chdir(self.currnet_dir)
     shutil.rmtree(self.tempdir)
-
-user_phil = '''\
-ncs_refinement {
-  apply_when_coordinates_present = False
-  apply_to_all_chains = False
-  ncs_group {
-    transform {
-      rotation = (1.0,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9)
-      translation = (1,2,3)
-      }
-    transform {
-      rotation = 0.1,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (0,2,1)
-      }
-    transform {
-      rotation = 1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (-1,3,-2)
-      coordinates_present = True
-      }
-    apply_to_selection = chain A
-  }
-  ncs_group {
-    transform {
-      rotation = 0.2,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (0,0,0)
-    }
-    apply_to_selection = chain A
-    apply_to_selection = or chain B
-  }
-  ncs_group {
-    transform {
-      rotation = 0.66,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (0,4,0)
-    }
-    apply_to_selection = chain C
-  }
-  ncs_group {
-    transform {
-      rotation = 0.11,0.11,0.11,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (1,2,3)
-    }
-  }
-}
-'''
-
-user_phil2 = '''\
-ncs_refinement {
-  apply_when_coordinates_present = False
-  apply_to_all_chains = False
-  ncs_selection = chain A
-  ncs_group {
-    transform {
-      rotation = (1.0,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9)
-      translation = (1,2,3)
-      }
-    transform {
-      rotation = 0.1,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (0,2,1)
-      }
-    transform {
-      rotation = 1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (-1,3,-2)
-      coordinates_present = True
-      }
-    apply_to_selection = chain B
-  }
-  ncs_group {
-    transform {
-      rotation = 0.2,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (0,0,0)
-    }
-    apply_to_selection = chain C
-  }
-  ncs_group {
-    transform {
-      rotation = 0.11,0.11,0.11,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (1,2,3)
-    }
-  }
-}
-'''
-
-user_phil3 = '''\
-ncs_refinement {
-  apply_when_coordinates_present = False
-  apply_to_all_chains = False
-  ncs_selection = chain A
-  ncs_group {
-    transform {
-      rotation = (1.0,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9)
-      translation = (1,2,3)
-      }
-    transform {
-      rotation = 0.1,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (0,2,1)
-      }
-    transform {
-      rotation = 1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (-1,3,-2)
-      coordinates_present = True
-      }
-  }
-  ncs_group {
-    transform {
-      rotation = 0.2,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (0,0,0)
-    }
-    apply_to_selection = chain C
-  }
-  ncs_group {
-    transform {
-      rotation = 0.11,0.11,0.11,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (1,2,3)
-    }
-  }
-}
-'''
-
-user_phil4 = '''\
-ncs_refinement {
-  apply_when_coordinates_present = False
-  apply_to_all_chains = False
-  ncs_selection = chain A
-  ignore_mtrix_records  = True
-  ncs_group {
-    transform {
-      rotation = (1.0,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9)
-      translation = (1,2,3)
-      }
-    transform {
-      rotation = 1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (-1,3,-2)
-      coordinates_present = True
-      }
-  }
-  ncs_group {
-    transform {
-      rotation = 0.2,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9
-      translation = (0,0,0)
-    }
-    apply_to_selection = chain C
-  }
-}
-'''
-
-user_phil5 = '''\
-ncs_refinement {
-  ncs_selection = chain A
-}
-'''
 
 pdb_test_data = '''\
 REMARK   0 Test molecule with BIOMOLECULE: 1
@@ -590,9 +277,6 @@ MTRIX3   4  0.000000  0.000000  1.000000        0.00000
 MTRIX1   5  1.000000  0.000000  0.000000        0.00000
 MTRIX2   5  0.000000  1.000000  0.000000        0.50000
 MTRIX3   5  0.000000  0.000000  1.000000        0.00000
-MTRIX1   6 -0.500000 -0.866025  0.000000        0.00000    1
-MTRIX2   6  0.866025 -0.500000  0.000000        0.00000    1
-MTRIX3   6  0.000000  0.000000  1.000000       -1.00000    1
 ATOM      1   N  ILE A  40       1.000   1.000   1.000  1.00162.33           C
 ATOM      2  CA  LEU A  40      94.618  -5.253  91.582  1.00 87.10           C
 ATOM      3   C  ARG B  40      62.395  51.344  80.786  1.00107.25           C
@@ -603,9 +287,9 @@ pdb_test_data2="""\
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
 MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
 MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
-MTRIX1   2  0.496590 -0.643597  0.582393        0.00000    1
-MTRIX2   2  0.867925  0.376088 -0.324443        0.00000    1
-MTRIX3   2 -0.010221  0.666588  0.745356        0.00000    1
+MTRIX1   2  0.496590 -0.643597  0.582393        0.00000
+MTRIX2   2  0.867925  0.376088 -0.324443        0.00000
+MTRIX3   2 -0.010221  0.666588  0.745356        0.00000
 MTRIX1   3 -0.317946 -0.173437  0.932111        0.00000
 MTRIX2   3  0.760735 -0.633422  0.141629        0.00000
 MTRIX3   3  0.565855  0.754120  0.333333        0.00000
