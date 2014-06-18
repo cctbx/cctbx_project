@@ -57,6 +57,38 @@ def to_imageset(input_filename, extra_filename=None):
   # Return the imageset
   return imageset
 
+def to_crystal(filename):
+  ''' Get the crystal model from the xparm file
+
+  Params:
+      filename The xparm/or integrate filename
+
+  Return:
+      The crystal model
+
+  '''
+  from rstbx.cftbx.coordinate_frame_converter import \
+      coordinate_frame_converter
+  from dxtbx.model.crystal import crystal_model
+  from cctbx.sgtbx import space_group, space_group_symbols
+
+  # Get the real space coordinate frame
+  cfc = coordinate_frame_converter(filename)
+  real_space_a = cfc.get('real_space_a')
+  real_space_b = cfc.get('real_space_b')
+  real_space_c = cfc.get('real_space_c')
+  sg = cfc.get('space_group_number')
+  space_group = space_group(space_group_symbols(sg).hall())
+  mosaicity = cfc.get('mosaicity')
+
+  # Return the crystal model
+  return crystal_model(
+      real_space_a=real_space_a,
+      real_space_b=real_space_b,
+      real_space_c=real_space_c,
+      space_group=space_group,
+      mosaicity=mosaicity)
+
 
 def xds_detector_name(dxtbx_name):
   '''Translate from a xia2 name from the detector library to an XDS detector
