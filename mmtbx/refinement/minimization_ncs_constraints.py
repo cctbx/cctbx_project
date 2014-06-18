@@ -20,36 +20,38 @@ def grads_asu_to_one_ncs(
   grad: gradient of the complete asu
   refine_sites: (bool) Flag indicating sites refinement
   """
-  # TODO: write a test for this function
+  # TODO: write a test for this function, change g_ave to g_sum
   # Get total length of NCS
-  g_ave_length = transforms_obj.total_length_extended_ncs
   # Get the NCS gradient
-  g_ave = grad[:g_ave_length]
+  g_ncs = grad.select(transforms_obj.ncs_atom_selection)
   for transform in transforms_obj.transform_chain_assignment:
-    s,e = transforms_obj.ncs_to_asu_map[transform]
-    g = grad[s:e]
+    asu_selection = transforms_obj.ncs_to_asu_map[transform]
+    ncs_selection = transforms_obj.asu_to_ncs_map[transform.split('_')[0]]
+    g = grad.select(asu_selection)
     if(refine_sites):
       # apply inverse transformation
       tr = transforms_obj.ncs_group[transform]
-      rt = transforms_obj.ncs_transform[tr].rotation.transpose().elems
+      rt = transforms_obj.ncs_transform[tr].r.transpose().elems
       g = rt*g
-    ncs_selection = transforms_obj.asu_to_ncs_map[transform.split('_')[0]]
-    g_ave.set_selected(ncs_selection, g + g_ave.select(ncs_selection))
-  # taking the appropriate average for each part of the ncs
-  # for ncs_selection in transforms_obj.asu_to_ncs_map.itervalues():
-  for k,v in transforms_obj.asu_to_ncs_map.iteritems():
-    ncs_selection  = v
-    n = transforms_obj.number_of_ncs_copies[k]
-    g = g_ave.select(ncs_selection)*(1.0/n)
-    g_ave.set_selected(ncs_selection, g)
+    g_ncs.set_selected(ncs_selection, g + g_ncs.select(ncs_selection))
 
-  if(refine_sites): g_ave = flex.vec3_double(g_ave)
-  assert type(grad)==type(g_ave)
-  return g_ave
+  # del: No Need to average  !!!
+  # # taking the appropriate average for each part of the ncs
+  # for ncs_selection in transforms_obj.asu_to_ncs_map.itervalues():
+  # # for k,v in transforms_obj.asu_to_ncs_map.iteritems():
+  #   ncs_selection  = v
+  #   n = transforms_obj.number_of_ncs_copies[k]
+  #   g = g_ave.select(ncs_selection)*(1.0/n)
+  #   g_ave.set_selected(ncs_selection, g)
+
+  if(refine_sites): g_ncs = flex.vec3_double(g_ncs)
+  assert type(grad)==type(g_ncs)
+  return g_ncs
 
 def grads_one_ncs_to_asu(transforms_obj,ncs_grad):
   """
   Expand average gradient of a single NCS to all ASU
+  (only for u_iso refinement)
 
   Arguments:
   transforms_obj: an object containing information on the rotation matrices
@@ -57,22 +59,21 @@ def grads_one_ncs_to_asu(transforms_obj,ncs_grad):
   ncs_grad: gradient of ta single ncs
   """
   # TODO: Add test to make sure this works, check asu_to_ncs_map
-  sel = lambda x,y:flex.size_t_range(x,y)
   g_length = transforms_obj.total_asu_length
-  g_ncs_length = transforms_obj.total_ncs_length
   if isinstance(ncs_grad,flex.vec3_double):
     g = flex.vec3_double([(0.0,0.0,0.0)]*g_length)
   elif isinstance(ncs_grad,flex.double):
     g = flex.double([0.0]*g_length)
   else:
     raise TypeError('Non supported grad type')
-  g.set_selected(sel(0,g_ncs_length),ncs_grad)
+  # update newly created flex.vec3 with master NCS info
+  g.set_selected(transforms_obj.ncs_atom_selection ,ncs_grad)
+  # update newly created flex.vec3 with NCS copies
   for transform in transforms_obj.transform_chain_assignment:
-    s_asu,e_asu = transforms_obj.ncs_to_asu_map[transform]
+    asu_selection = transforms_obj.ncs_to_asu_map[transform]
     ncs_selection = transforms_obj.asu_to_ncs_map[transform.split('_')[0]]
     ncs_grad_portion = ncs_grad.select(ncs_selection)
-    g.set_selected(sel(s_asu,e_asu),ncs_grad_portion)
-    g.set_selected(sel(s_asu,e_asu),ncs_grad_portion)
+    g.set_selected(asu_selection,ncs_grad_portion)
   return g.as_double()
 
 def restraints_target_and_grads(
@@ -358,8 +359,6 @@ class lbfgs(object):
         new_x = self.transforms_obj.apply_transforms(
           ncs_coordinates = flex.vec3_double(x),
           round_coordinates=False)
-
-        # TODO: add multiplication like the old one
       return new_x.as_double()
     elif self.refine_u_iso:
       if self.use_strict_ncs:
@@ -397,3 +396,7 @@ class lbfgs(object):
     from  iotbx.pdb.multimer_reconstruction import ncs_group_object
     new_transforms_obj =  ncs_group_object()
     pass
+
+  def __call__(self):
+    # TODO: Check if using this instead of "self" as a parameter works
+    return self

@@ -3,8 +3,10 @@ from  iotbx.pdb.multimer_reconstruction import ncs_group_object
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 import mmtbx.utils.ncs_utils as nu
-from libtbx.phil import parse
+from libtbx.utils import null_out
 from scitbx import matrix
+import scitbx.rigid_body
+from iotbx import pdb
 import math
 import sys
 
@@ -42,32 +44,16 @@ class test_rotation_angles_conversion(object):
     self.translation1 = matrix.rec((0.5,-0.5,0),(3,1))
     self.translation2 = matrix.rec((0,0,0),(3,1))
 
-    self.user_phil = parse("""
-      ncs_refinement {
-        apply_when_coordinates_present = False
-        apply_to_all_chains = True
-        ncs_selection = chain A
-        ncs_group {
-          transform {
-            rotation = -0.317946, -0.173437, 0.932111, 0.760735,\
-             -0.633422,0.141629,0.565855,  0.754120, 0.333333
-            translation = (0.5,-0.5,0)
-          }
-          transform {
-            rotation = 0, 0, 1, 0.784042, -0.620708, 0,\
-            0.620708, 0.784042, 0
-            translation = (0,0,0)
-          }
-        }
-      }
-      """)
 
   def test_concatenate_rot_tran(self):
     """ Verify correct concatenation of rotation and translations """
     print 'Running ',sys._getframe().f_code.co_name
+    pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
     transforms_obj = ncs_group_object()
-    transforms_obj.populate_ncs_group_object(
-        ncs_refinement_params = self.user_phil)
+    transforms_obj.build_ncs_obj_from_pdb_ncs(
+      pdb_hierarchy_inp=pdb_obj,
+      rotations=[self.rotation1,self.rotation2],
+      translations=[self.translation1,self.translation2])
     results = nu.concatenate_rot_tran(transforms_obj)
     expected = flex.double([
       -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
@@ -86,8 +72,11 @@ class test_rotation_angles_conversion(object):
     to rotation matrices and translations """
     print 'Running ',sys._getframe().f_code.co_name
     transforms_obj = ncs_group_object()
-    transforms_obj.populate_ncs_group_object(
-        ncs_refinement_params = self.user_phil)
+    pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
+    transforms_obj.build_ncs_obj_from_pdb_ncs(
+      pdb_hierarchy_inp=pdb_obj,
+      rotations=[self.rotation1,self.rotation2],
+      translations=[self.translation1,self.translation2])
     s = 2.0
     x = flex.double([
       -0.40177529, 1.20019851, 2.64221706, 0.5/s, -0.5/s, 0.0,
@@ -179,6 +168,49 @@ class test_rotation_angles_conversion(object):
     angles = nu.rotation_to_angles(rotation=r, deg=False)
     assert approx_equal(expected_angles,angles,1e-3)
 
+
+  def test_update_x(self):
+    """    Verify that transforms are getting updated    """
+    print 'Running ',sys._getframe().f_code.co_name
+    pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
+    transforms_obj = ncs_group_object()
+    transforms_obj.build_ncs_obj_from_pdb_ncs(
+      pdb_hierarchy_inp=pdb_obj,
+      rotations=[self.rotation1,self.rotation2],
+      translations=[self.translation1,self.translation2])
+    x1 = nu.concatenate_rot_tran(transforms_obj)
+    x2 = nu.concatenate_rot_tran(transforms_obj)
+    assert sum(abs(x1-x2)) < 1.0e-6
+
+    x3 = nu.shake_transformations(
+      x = x1,
+      shake_angles_sigma=0.035,
+      shake_translation_sigma=0.5)
+    transforms_obj = nu.separate_rot_tran(x3,transforms_obj)
+    x4 = nu.concatenate_rot_tran(transforms_obj)
+
+
+    the,psi,phi =x3[6:9]
+    rot = scitbx.rigid_body.rb_mat_xyz(
+      the=the, psi=psi, phi=phi, deg=False)
+    a3 = rot.rot_mat()
+
+    the,psi,phi =x4[6:9]
+    rot = scitbx.rigid_body.rb_mat_xyz(
+      the=the, psi=psi, phi=phi, deg=False)
+    a4 = rot.rot_mat()
+    assert abs(sum(list(a3-a4))) < 1.0e-3
+
+test_pdb_str = '''\
+ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
+ATOM      2  CA  THR A   1       9.559   8.931  10.615  1.00 20.00           C
+ATOM      3  C   THR A   1       9.634   7.903  11.739  1.00 20.00           C
+ATOM      4  O   THR B   1      10.449   8.027  12.653  1.00 20.00           O
+ATOM      5  CB  THR B   1      10.660   8.630   9.582  1.00 20.00           C
+ATOM      6  OG1 THR A   1      10.560   9.552   8.490  1.00 20.00           O
+ATOM      7  CG2 THR A   1      10.523   7.209   9.055  1.00 20.00
+'''
+
 if __name__=='__main__':
   t = test_rotation_angles_conversion()
   # TODO: Consider adding more tests
@@ -189,3 +221,5 @@ if __name__=='__main__':
   t.test_working_with_tuples()
   t.test_concatenate_rot_tran()
   t.test_separate_rot_tran()
+  t.test_update_x()
+

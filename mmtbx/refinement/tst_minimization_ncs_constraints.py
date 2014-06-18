@@ -94,7 +94,7 @@ class ncs_minimization_test(object):
       xrs_shaken = xrs_shaken.set_u_iso(values=u_random)
     if self.transformations:
       transforms_obj = ncs_group_object()
-      transforms_obj.populate_ncs_group_object(
+      transforms_obj.build_ncs_obj_from_pdb_ncs(
       transform_info = mtrix_object,
       pdb_hierarchy_inp = pdb_obj)
       x = nu.concatenate_rot_tran(transforms_obj)
