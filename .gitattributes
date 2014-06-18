@@ -531,6 +531,8 @@ dxtbx/model/detector.h -text
 dxtbx/model/detector.py -text
 dxtbx/model/detector_helpers.py -text
 dxtbx/model/detector_helpers_types.py -text
+dxtbx/model/experiment/__init__.py -text
+dxtbx/model/experiment/experiment_list.py -text
 dxtbx/model/goniometer.h -text
 dxtbx/model/goniometer.py -text
 dxtbx/model/goniometer_helpers.py -text
@@ -584,6 +586,7 @@ dxtbx/tests/image_017.dat -text
 dxtbx/tests/image_018.dat -text
 dxtbx/tests/image_019.dat -text
 dxtbx/tests/image_020.dat -text
+dxtbx/tests/model/experiment/tst_experiment_list.py -text
 dxtbx/tests/model/tst_beam.py -text
 dxtbx/tests/model/tst_crystal_model.py -text
 dxtbx/tests/model/tst_detector.py -text
