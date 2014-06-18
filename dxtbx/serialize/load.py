@@ -104,3 +104,9 @@ def crystal(infile):
   # Otherwise assume the input is a file and read from it
   else:
     return from_string(infile.read())
+
+def experiment_list(infile, check_format=True):
+  ''' Load an experiment list from a serialzied format. '''
+  from dxtbx.model.experiment.experiment_list import ExperimentListFactory
+  return ExperimentListFactory.from_serialized_format(
+    infile, check_format=check_format)

@@ -825,7 +825,7 @@ class ExperimentListFactory(object):
   @staticmethod
   def from_xds(xds_inp, xds_other):
     ''' Generate an experiment list from XDS files. '''
-    from dxtbx.model.serialize import xds
+    from dxtbx.serialize import xds
     from dxtbx.datablock import DataBlockFactory
 
     # Get the sweep from the XDS files
