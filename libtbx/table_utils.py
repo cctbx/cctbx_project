@@ -110,7 +110,7 @@ class simple_table (object) :
 
   @property
   def n_rows (self) :
-    return len(self._rows) 
+    return len(self._rows)
 
 # written by Mike Brown
 # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/148061
