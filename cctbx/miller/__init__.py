@@ -669,6 +669,7 @@ class set(crystal.symmetry):
     max_h = max(abs(min_mi[0]), max_mi[0])
     max_k = max(abs(min_mi[1]), max_mi[1])
     max_l = max(abs(min_mi[2]), max_mi[2])
+    assert (not None in [max_h, max_k, max_l])
     ast,bst,cst = self.unit_cell().reciprocal_parameters()[:3]
     return (1./(max_h*ast), 1./(max_k*bst), 1./(max_l*cst))
 
