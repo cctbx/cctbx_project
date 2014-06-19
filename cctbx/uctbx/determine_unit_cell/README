@@ -1,0 +1,22 @@
+Note that the file NCDist.h is a third-party unit cell distance calculation program,
+writen under LGLPL, the license for which is attached. The references for this program are:
+
+@article{andrews2014geometry,
+title={The geometry of Niggli reduction: BGAOL-embedding Niggli reduction and analysis of boundaries},
+author={Andrews, Lawrence C and Bernstein, H. J.},
+journal={Journal of Applied Crystallography},
+volume={47},
+number={1},
+pages={346 -- 359},
+year={2014},
+publisher={International Union of Crystallography} }
+
+@article{mcgill2014geometry,
+title={The geometry of Niggli reduction: SAUC-search of alternative unit cells},
+author={McGill, Keith J and Asadi, Mojgan and Karakasheva, Maria T and Andrews, L. C. and Bernstein, H. J.},
+journal={Journal of Applied Crystallography},
+volume={47},
+number={1},
+pages={360 -- 364},
+year={2014},
+publisher={International Union of Crystallography} }

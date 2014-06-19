@@ -272,10 +272,12 @@ cctbx/translation_search/notes.tex -text
 cctbx/translation_search/timing.py -text
 cctbx/uctbx/boost_python/tst_crystal_orientation.py -text
 cctbx/uctbx/crystal_orientation.cpp -text
+cctbx/uctbx/determine_unit_cell/NCDist.h -text
+cctbx/uctbx/determine_unit_cell/README -text
 cctbx/uctbx/determine_unit_cell/SConscript -text
 cctbx/uctbx/determine_unit_cell/__init__.py -text
 cctbx/uctbx/determine_unit_cell/ext.cpp -text
-cctbx/uctbx/determine_unit_cell/target_uc.py -text
+cctbx/uctbx/determine_unit_cell/lgpl.txt -text
 cctbx/uctbx/rank-2[!!-~]tensor[!!-~]algebra.nb -text
 cctbx/web/change_basis.html svneol=native#text/html
 cctbx/web/change_basis.py svneol=native#text/x-python
