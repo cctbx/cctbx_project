@@ -494,6 +494,8 @@ def extract(file_name,
       column_types = None
       if ("PHI" in label) and (ma.is_real_array()) :
         column_types = "P"
+      elif ("DANO" in label) and (ma.is_real_array()) :
+        column_types = "DQ"
       label_base = label
       i = 1
       while label in column_labels:
