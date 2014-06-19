@@ -1,4 +1,6 @@
 from __future__ import division
+from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
+from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
 from  iotbx.pdb.multimer_reconstruction import ncs_group_object
 from libtbx.utils import null_out
 from scitbx import matrix
@@ -119,8 +121,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     """ verify creating and processing spec """
     print 'Running ',sys._getframe().f_code.co_name
     # creating a spec file
-    from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
-    from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
     params = ncs_master_params.extract()
     params.simple_ncs_from_pdb.min_length = 1
     pdb_inp = pdb.input(source_info=None, lines=test_pdb_ncs_spec)
@@ -186,10 +186,50 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # Todo: test_mmcif_reading
     pass
 
-  def test_processing_of_asu_with_mtrix(self):
+  # @unittest.SkipTest
+  def test_processing_of_asu(self):
+    """ processing complete ASU
+    If MTRIX records are present, they are ignored """
     print 'Running ',sys._getframe().f_code.co_name
-    # Todo: test_processing_of_asu_with_mtrix
-    pass
+
+    # reading and processing the spec file
+    pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
+    trans_obj = ncs_group_object()
+    trans_obj.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp = pdb_obj)
+
+    # test created object
+    self.assertEqual(len(trans_obj.ncs_group),3)
+    expected = '(chain A and (resseq 151:159)) or (chain D and (resseq 1:7))'
+    self.assertEqual(trans_obj.ncs_selection_str,expected)
+    # check that static parts are included in NCS and ASU
+    self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
+    self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
+    #
+    expected = {
+      'chain A and (resseq 151:159)':
+        ['chain B and (resseq 151:159)','chain C and (resseq 151:159)'],
+      'chain D and (resseq 1:7)':
+        ['chain E and (resseq 1:7)']}
+    self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
+
+    # check ncs_transform
+    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
+    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
+    group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
+    r1 = trans_obj.ncs_transform['s004'].r
+    r2 = trans_obj.ncs_transform['s002'].r
+    #
+    self.assertEqual(len(group_ids),5)
+    self.assertEqual(set(group_ids),{1,2})
+    self.assertEqual(tran_sn,{1,2,3,4,5})
+    self.assertEqual(group_keys,{'s001', 's002', 's003', 's004', 's005'})
+    #
+    self.assertTrue(r1.is_r3_identity_matrix())
+    expected_r = matrix.sqr(
+      [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
+    d = r2 - expected_r
+    d = map(abs,d)
+    self.assertTrue(max(d)<0.01)
 
   def test_rotaion_translation_input(self):
     """
@@ -407,6 +447,8 @@ ATOM      6  CA  THR E   6       9.001  -8.000  10.343  1.00 20.00           C
 ATOM      7  CA  THR E   7       8.964  -8.565   8.000  1.00 20.00           C
 TER
 '''
+
+
 test_ncs_spec = '''\
 
 Summary of NCS information
