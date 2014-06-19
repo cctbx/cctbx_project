@@ -180,7 +180,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   void set_oscillation(Scan &scan, vec2<double> oscillation,
       bool deg) {
     if (deg) {
-      oscillation = rad_as_deg(oscillation);
+      oscillation = deg_as_rad(oscillation);
     }
     scan.set_oscillation(oscillation);
   }
