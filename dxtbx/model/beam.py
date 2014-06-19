@@ -99,21 +99,21 @@ class beam_factory:
         wavelength=wavelength)
 
   @staticmethod
-  def simple_directional(direction, wavelength):
+  def simple_directional(sample_to_source, wavelength):
     '''Construct a beam with direction and wavelength.'''
 
     return beam_factory.make_beam(
-        sample_to_source=direction,
+        sample_to_source=sample_to_source,
         wavelength=wavelength)
 
   @staticmethod
-  def complex(beam_direction, polarization_fraction,
+  def complex(sample_to_source, polarization_fraction,
               polarization_plane_normal, wavelength):
     '''Full access to the constructor for cases where we do know everything
     that we need...'''
 
     return beam_factory.make_polarized_beam(
-        sample_to_source=beam_direction,
+        sample_to_source=sample_to_source,
         wavelength=wavelength,
         polarization=polarization_plane_normal,
         polarization_fraction=polarization_fraction)
