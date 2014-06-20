@@ -30,7 +30,7 @@ def grads_asu_to_one_ncs(
     g = grad.select(asu_selection)
     if(refine_sites):
       # apply inverse transformation
-      tr = transforms_obj.ncs_group[transform]
+      tr = transforms_obj.chain_transform_assignment[transform]
       rt = transforms_obj.ncs_transform[tr].r.transpose().elems
       g = rt*g
     g_ncs.set_selected(ncs_selection, g + g_ncs.select(ncs_selection))
