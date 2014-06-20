@@ -49,8 +49,16 @@ class Cluster:
   """
 
   def __init__(self, data, cname, info, ):
-    """ Contains a list of SingFrame objects, as well as information about these
-    as a cluster (e.g. mean unit cell)."""
+    """
+    Contains a list of SingFrame objects, as well as information about these
+    as a cluster (e.g. mean unit cell).
+
+    :param data: a list of SingleFrame objects
+    :param cname: the name of the cluster, as a string.
+    :param info: an info-string for the cluster.
+    :return: a Cluster object
+    """
+
     self.cname = cname
     self.members = data
     self.info = info
@@ -185,6 +193,7 @@ class Cluster:
                                    res,
                                    completeness_threshold))
 
+
   def ab_cluster(self, threshold=10000, method='distance',
                  linkage_method='single', log=False, ax=None):
     """ Do hierarchical clustering using the Andrews-Berstein distance from
@@ -197,18 +206,8 @@ class Cluster:
     import scipy.spatial.distance as dist
     import scipy.cluster.hierarchy as hcluster
 
-    def make_g6(uc):
-      """ Take a reduced Niggli Cell, and turn it into the G6 representation """
-      a = uc[0] ** 2
-      b = uc[1] ** 2
-      c = uc[2] ** 2
-      d = 2 * uc[1] * uc[2] * math.cos(uc[3])
-      e = 2 * uc[0] * uc[2] * math.cos(uc[4])
-      f = 2 * uc[0] * uc[1] * math.cos(uc[5])
-      return [a, b, c, d, e, f]
-
     # 1. Create a numpy array of G6 cells
-    g6_cells = np.array([make_g6(image.uc)
+    g6_cells = np.array([SingleFrame.make_g6(image.uc)
                          for image in self.members])
 
     # 2. Do hierarchichal clustering, using the find_distance method above.
