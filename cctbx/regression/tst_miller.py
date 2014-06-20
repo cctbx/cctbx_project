@@ -80,6 +80,8 @@ def exercise_set():
   c = mc.completeness()
   assert c >= 1-1.e5
   assert c <= 1
+  c = mc.completeness(multiplier=100)
+  assert (c > 1) and (c <= 100)
   c = mc.select(~mc.all_selection()).completeness()
   assert c == 0
   ma = ms.map_to_asu()
