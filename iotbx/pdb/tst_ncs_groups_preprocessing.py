@@ -147,7 +147,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       pdb_hierarchy_inp = pdb_obj)
 
     # test created object
-    self.assertEqual(len(trans_obj.ncs_group),3)
+    self.assertEqual(len(trans_obj.transform_chain_assignment),3)
     expected = '(chain A and (resseq 151:159)) or (chain D and (resseq 1:7))'
     self.assertEqual(trans_obj.ncs_selection_str,expected)
     # check that static parts are included in NCS and ASU
@@ -198,7 +198,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     trans_obj.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp = pdb_obj)
 
     # test created object
-    self.assertEqual(len(trans_obj.ncs_group),3)
+    self.assertEqual(len(trans_obj.transform_chain_assignment),3)
     expected = '(chain A and (resseq 151:159)) or (chain D and (resseq 1:7))'
     self.assertEqual(trans_obj.ncs_selection_str,expected)
     # check that static parts are included in NCS and ASU
