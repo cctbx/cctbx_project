@@ -124,6 +124,7 @@ class printed_output (xtriage_output) :
   def __init__ (self, out) :
     assert hasattr(out, "write") and hasattr(out, "flush")
     self.out = out
+    self._warnings = []
 
   def show_header (self, text) :
     make_header(text, out=self.out)
@@ -171,6 +172,7 @@ class printed_output (xtriage_output) :
     self.out.write(text)
 
   def warn (self, text) :
+    self._warnings.append(text)
     out_tmp = StringIO()
     make_sub_header("WARNING", out=out_tmp, sep='*')
     for line in out_tmp.getvalue().splitlines() :
