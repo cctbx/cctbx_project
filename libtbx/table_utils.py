@@ -96,7 +96,7 @@ class simple_table (object) :
     prefix = " " * indent
     return format(
       rows=[ self.column_headers ]+self._rows,
-      has_header=False, #(len(self.column_headers) != 0),
+      has_header=(len(self.column_headers) != 0),
       prefix=prefix+'| ',
       postfix=' |')
 

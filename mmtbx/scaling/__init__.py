@@ -146,7 +146,7 @@ class printed_output (xtriage_output) :
   def show_lines (self, text) :
     print >> self.out, text
 
-  def show_table (self, table, indent=0, plot_button=None) :
+  def show_table (self, table, indent=2, plot_button=None) :
     print >> self.out, table.format(indent=indent)
 
   def show_plot (self, table) :
@@ -176,6 +176,35 @@ class printed_output (xtriage_output) :
     for line in out_tmp.getvalue().splitlines() :
       self.out.write("%s\n" % line.rstrip())
     self.out.write(text)
+
+class loggraph_output (xtriage_output) :
+  """
+  Output class for displaying 'loggraph' format (from ccp4i) as plain text.
+  """
+  gui_output = True
+  def __init__ (self, out) :
+    assert hasattr(out, "write") and hasattr(out, "flush")
+    self.out = out
+
+  def show_header (self, text) : pass
+  def show_sub_header (self, title) : pass
+  def show_text (self, text) : pass
+  def show_paragraph_header (self, text) : pass
+  def show_preformatted_text (self, text) : pass
+  def show_lines (self, text) : pass
+  def show_table (self, table, indent=2, plot_button=None) : pass
+  def show_text_columns (self, rows, indent=0) : pass
+  def newline (self) : pass
+  def write (self, text) : pass
+  def warn (self, text) : pass
+
+  def show_plot (self, table) :
+    print >> self.out, ""
+    print >> self.out, table.format_loggraph()
+
+  def show_plots_row (self, tables) :
+    for table in tables :
+      self.show_plot(table)
 
 class xtriage_analysis (object) :
   """
