@@ -798,18 +798,28 @@ class set(crystal.symmetry):
       return result
 
   def completeness(self, use_binning=False, d_min_tolerance=1.e-6,
-                   return_fail=None, d_max = None):
+                   return_fail=None, d_max = None, multiplier=1):
+    """
+    Calculate the (fractional) completeness of the array relative to the
+    theoretical complete set, either overall or in resolution bins.  By default
+    the current low-resolution limit will be used.
+
+    :param d_min_tolerance: tolerance factor for d_min (avoid precision errors)
+    :param d_max: Low-resolution limit (default = d_max of current set)
+    :param multiplier: Factor to multiply the result by (usually 1 or 100)
+    """
+    assert (multiplier > 0)
     if (not use_binning):
       complete_set = self.complete_set(d_min_tolerance=d_min_tolerance,
                                        d_max = d_max)
       return min(self.indices().size() / max(1, complete_set.indices().size()),
-                 1.0)
+                 1.0) * multiplier
     assert self.binner() is not None
     data = []
     for n_given,n_complete in zip(self.binner().counts_given(),
                                   self.binner().counts_complete()):
       if (n_complete == 0): data.append(return_fail)
-      else: data.append(n_given/n_complete)
+      else: data.append(multiplier*n_given/n_complete)
     return binned_data(binner=self.binner(), data=data, data_fmt="%5.3f")
 
   def all_selection(self):
