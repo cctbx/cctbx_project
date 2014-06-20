@@ -120,6 +120,9 @@ class table_data (object) :
     adopt_init_args(self, locals())
     if (reference_marks is not None) :
       assert (len(reference_marks) == len(graph_columns) == 1)
+    if (data is not None) : # check column size consistency
+      lengths = set([ len(column) for column in data ])
+      assert len(lengths) == 1
     self._is_complete = False
     self._graphs = {}
     self._column_width = 10
