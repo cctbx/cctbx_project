@@ -1,6 +1,4 @@
 from __future__ import division
-from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
-from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
 from iotbx import crystal_symmetry_from_any
 import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
@@ -449,6 +447,9 @@ class ncs_group_object(object):
         pdb_hierarchy_inp=pdb_hierarchy_inp,
         ncs_phil_groups=ncs_phil_groups)
     else:
+      # FIXME Phenix dependencies should be avoided
+      from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
+      from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
       params = ncs_master_params.extract()
       params.simple_ncs_from_pdb.min_length = 1
       ncs_from_pdb=simple_ncs_from_pdb(
@@ -883,6 +884,9 @@ class ncs_group_object(object):
     """
     # Todo: add find NCS from PDB ASU
     # Todo: update self.ncs_chain_selection to include only the NCS chains selection
+    # FIXME Phenix dependencies should be avoided
+    from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
+    from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
     params = ncs_master_params.extract()
     params.simple_ncs_from_pdb.min_length = 1
     ncs_from_pdb=simple_ncs_from_pdb(
