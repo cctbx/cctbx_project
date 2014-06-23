@@ -1,10 +1,11 @@
 
-# XXX This tests the refactored module (twin_analyses_new), which will
-# eventually become the only module
+# XXX This overlaps heavily with tst_scaling.py, which is much more
+# comprehensive.  Maybe remove this one?
 
 from __future__ import division
-from mmtbx.scaling import twin_analyses_new as twin_analyses
+from mmtbx.scaling import twin_analyses
 import iotbx.pdb.hierarchy
+from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 from cStringIO import StringIO
@@ -12,6 +13,7 @@ import sys
 
 def exercise_twin_detection (verbose=False) :
   # simple model with translational pseudosymmetry
+  # XXX one big disadvantage: no centric reflections!
   pdb_str = """\
 CRYST1   12.000    8.000   12.000  90.02  89.96  90.05 P 1           1
 ATOM     39  N   ASN A   6       5.514   2.664   4.856  1.00 11.99           N
@@ -63,8 +65,12 @@ END
   xrs = pdb_in.input.xray_structure_simple()
   fc = abs(xrs.structure_factors(d_min=2.5).f_calc())
   fc = fc.set_observation_type_xray_amplitude()
+  sigf = flex.double(fc.size(), 0.1) + (fc.data() * 0.03)
+  fc = fc.customized_copy(sigmas=sigf)
   # and now add twinning
   fc_twin = fc.twin_data(twin_law='-l,-k,-h', alpha=0.4)
+  fc_twin.as_mtz_dataset(column_root_label="F").mtz_object().write(
+    "tmp_xtriage_twinned.mtz")
   # twin_laws
   laws = twin_analyses.twin_laws(miller_array=fc_twin)
   assert (len(laws.operators) == 7)
@@ -87,12 +93,23 @@ END
   fc_norm_acentric = twin_analyses.wilson_normalised_intensities(
     miller_array=fc_twin, normalise=True, out=null_out()).acentric
   ltest = twin_analyses.l_test(miller_array=fc_norm_acentric,
-    parity_h=3, parity_l=3, out=null_out())
+    parity_h=3, parity_l=3)
   assert approx_equal(ltest.mean_l, 0.498974)
   assert approx_equal(ltest.mean_l2, 0.371674)
-  # Overall analyses
+  # we need to go through the wrapper class for a lot of these...
   out = StringIO()
   tw = twin_analyses.twin_analyses(miller_array=fc_twin, out=out)
+  # Wilson moments
+  wm = tw.wilson_moments
+  assert ([wm.centric_i_ratio, wm.centric_f_ratio, wm.centric_e_sq_minus_one]
+          == [None, None, None])
+  assert approx_equal(wm.acentric_i_ratio, 2.878383)
+  assert approx_equal(wm.acentric_f_ratio, 0.717738)
+  assert approx_equal(wm.acentric_abs_e_sq_minus_one, 0.808899)
+  assert (not wm.centric_present)
+  # Overall analyses
+  out = StringIO()
+  tw.show(out=out)
   assert ("significantly different than is expected" in out.getvalue())
   summary = tw.twin_summary
   assert approx_equal(summary.l_mean, 0.4989738)

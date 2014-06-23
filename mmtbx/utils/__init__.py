@@ -1,12 +1,12 @@
 from __future__ import division
+from mmtbx.scaling import twin_analyses
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
 import cctbx.xray.structure_factors
 from cctbx.array_family import flex
 from libtbx.utils import \
-  Sorry, show_exception_info_if_full_testing, \
-  date_and_time, host_and_user, multi_out, null_out
+  Sorry, date_and_time, host_and_user, multi_out, null_out
 import iotbx.phil
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
@@ -1462,28 +1462,6 @@ def fmodel_manager(
     fmodel.twin = twin_law
   return fmodel
 
-def xtriage(f_obs):
-  from mmtbx.scaling import xtriage
-  from mmtbx.scaling import twin_analyses
-  twin_laws = []
-  try:
-    from mmtbx.scaling import xtriage
-    xtriage_results = xtriage.xtriage_analyses(
-      miller_obs = f_obs,
-      text_out   = StringIO(),
-      plot_out   = StringIO())
-    if(xtriage_results.twin_results is not None):
-      ta = twin_analyses.twin_analyses_brief(miller_array = f_obs)
-      if(ta):
-        twin_laws = \
-          xtriage_results.twin_results.twin_summary.twin_results.twin_laws
-  except Exception, e:
-    print "XTRIAGE error: "
-    print str(e)
-    show_exception_info_if_full_testing()
-    twin_laws.append(None)
-  return twin_laws
-
 def fmodel_simple(f_obs,
                   update_f_part1_for,
                   xray_structures,
@@ -1524,7 +1502,7 @@ def fmodel_simple(f_obs,
         update_f_part1_for=ofp1)
     return fmodel
   if((twin_laws is None or twin_laws==[None]) and not skip_twin_detection):
-    twin_laws = xtriage(f_obs = f_obs.deep_copy())
+    twin_laws = twin_analyses.get_twin_laws(miller_array=f_obs)
   optimize_mask=False
   # DEBUG twin_laws=None
   if(len(xray_structures) == 1):
@@ -2059,7 +2037,7 @@ class guess_observation_type(object):
       r_free_flags = r_free_flags.select(sel_out)
     twin_laws = None
     if(not skip_twin_detection):
-      twin_laws = xtriage(f_obs = f_obs)
+      twin_laws = twin_analyses.get_twin_laws(miller_array=f_obs)
       twin_laws.append(None)
     params = bss.master_params.extract()
     params.k_sol_grid_search_min = 0.0

@@ -1,81 +1,82 @@
+
 from __future__ import division
+import mmtbx.scaling
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from cctbx import sgtbx
 from cctbx import crystal
 from libtbx import table_utils
-import math,sys
+import math
 
-
-
-#                           name     hkl selector  condition
+# name     hkl selector  condition
 absence_and_conditions = {
-                           "2_0 (a)" : [(None,0,0),  (0 ,0 ,0 ) ],
-                           "2_0 (b)" : [(0,None,0),  (0,0,0)],
-                           "2_0 (c)" : [(0,0,None),  (0,0,0)],
+  "2_0 (a)" : [(None,0,0),  (0 ,0 ,0 ) ],
+  "2_0 (b)" : [(0,None,0),  (0,0,0)],
+  "2_0 (c)" : [(0,0,None),  (0,0,0)],
 
 
-                           "2_1 (a)" : [(None,0,0),  (1.0/2.0,0,0)],
-                           "2_1 (b)" : [(0,None,0),  (0,1.0/2.0,0)],
-                           "2_1 (c)" : [(0,0,None),  (0,0,1.0/2.0)],
+  "2_1 (a)" : [(None,0,0),  (1.0/2.0,0,0)],
+  "2_1 (b)" : [(0,None,0),  (0,1.0/2.0,0)],
+  "2_1 (c)" : [(0,0,None),  (0,0,1.0/2.0)],
 
 
-                           "3_0 (c)" : [(0,0,None),  (0,0,0)],
-                           "3_1 (c)" : [(0,0,None),  (0,0,1.0/3.0)],
-                           "3_2 (c)" : [(0,0,None),  (0,0,1.0/3.0)],
+  "3_0 (c)" : [(0,0,None),  (0,0,0)],
+  "3_1 (c)" : [(0,0,None),  (0,0,1.0/3.0)],
+  "3_2 (c)" : [(0,0,None),  (0,0,1.0/3.0)],
 
-                           "4_0 (c)" : [(0,0,None),  (0,0,0)],
-                           "4_1 (c)" : [(0,0,None),  (0,0,1.0/4.0)],
-                           "4_2 (c)" : [(0,0,None),  (0,0,2.0/4.0)],
-                           "4_3 (c)" : [(0,0,None),  (0,0,3.0/4.0)],
-
-
-                           "4_0 (a)" : [(None,0,0),  (0,0,0)],
-                           "4_1 (a)" : [(None,0,0),  (1.0/4.0,0,0)],
-                           "4_2 (a)" : [(None,0,0),  (2.0/4.0,0,0)],
-                           "4_3 (a)" : [(None,0,0),  (3.0/4.0,0,0)],
+  "4_0 (c)" : [(0,0,None),  (0,0,0)],
+  "4_1 (c)" : [(0,0,None),  (0,0,1.0/4.0)],
+  "4_2 (c)" : [(0,0,None),  (0,0,2.0/4.0)],
+  "4_3 (c)" : [(0,0,None),  (0,0,3.0/4.0)],
 
 
-                           "4_0 (b)" : [(0,None,0),  (0,0,0)],
-                           "4_1 (b)" : [(0,None,0),  (0,1.0/4.0,0)],
-                           "4_2 (b)" : [(0,None,0),  (0,2.0/4.0,0)],
-                           "4_3 (b)" : [(0,None,0),  (0,3.0/4.0,0)],
+  "4_0 (a)" : [(None,0,0),  (0,0,0)],
+  "4_1 (a)" : [(None,0,0),  (1.0/4.0,0,0)],
+  "4_2 (a)" : [(None,0,0),  (2.0/4.0,0,0)],
+  "4_3 (a)" : [(None,0,0),  (3.0/4.0,0,0)],
 
 
-                           "6_0 (c)" : [(0,0,None),  (0,0,0)],
-                           "6_1 (c)" : [(0,0,None),  (0,0,1.0/6.0)],
-                           "6_2 (c)" : [(0,0,None),  (0,0,2.0/6.0)],
-                           "6_3 (c)" : [(0,0,None),  (0,0,3.0/6.0)],
-                           "6_4 (c)" : [(0,0,None),  (0,0,4.0/6.0)],
-                           "6_5 (c)" : [(0,0,None),  (0,0,5.0/6.0)],
-
-                           "b (a)"   : [(0,None,None),  (0,1.0/2.0,0)],
-                           "c (a)"   : [(0,None,None),  (0,0,1.0/2.0)],
-                           "n (a)"   : [(0,None,None),  (0,1.0/2.0,1.0/2.0)],
-                           "d (a)"   : [(0,None,None),  (0,1.0/4.0,1.0/4.0)],
-
-                           "a (b)"   : [(None,0,None),  (1.0/2.0,0,0)],
-                           "c (b)"   : [(None,0,None),  (0,0,1.0/2.0)],
-                           "n (b)"   : [(None,0,None),  (1.0/2.0,0,1.0/2.0)],
-                           "d (b)"   : [(None,0,None),  (1.0/4.0,0,1.0/4.0)],
-
-                           "a (c)"   : [(None,None,0),  (1.0/2.0,0,0)],
-                           "b (c)"   : [(None,None,0),  (0,1.0/2.0,0)],
-                           "n (c)"   : [(None,None,0),  (1.0/2.0,1.0/2.0,0)],
-                           "d (c)"   : [(None,None,0),  (1.0/4.0,1.0/4.0,0)]
-                         }
+  "4_0 (b)" : [(0,None,0),  (0,0,0)],
+  "4_1 (b)" : [(0,None,0),  (0,1.0/4.0,0)],
+  "4_2 (b)" : [(0,None,0),  (0,2.0/4.0,0)],
+  "4_3 (b)" : [(0,None,0),  (0,3.0/4.0,0)],
 
 
-absence_classes = { "along a 2" : ["2_0 (a)", "2_1 (a)"],
-                    "along a"   : ["b (a)", "c (a)", "n (a)", "d (a)"],
-                    "along b 4" : ["4_0 (b)", "4_1 (b)", "4_2 (b)", "4_3 (b)"],
-                    "along b 2" : ["2_0 (b)", "2_1 (b)"],
-                    "along b"   : ["a (b)", "c (b)", "n (b)", "d (b)"],
-                    "along c"   : ["a (c)", "b (c)", "n (c)", "d (c)"],
-                    "along c 2" : ["2_0 (c)", "2_1 (c)"],
-                    "along c 3" : ["3_0 (c)", "3_1 (c)", "3_2 (c)"],
-                    "along c 4" : ["4_0 (c)", "4_1 (c)", "4_2 (c)", "4_3 (c)"],
-                    "along c 6" : ["6_0 (c)", "6_1 (c)", "6_2 (c)", "6_3 (c)", "6_4 (c)", "6_5 (c)"] }
+  "6_0 (c)" : [(0,0,None),  (0,0,0)],
+  "6_1 (c)" : [(0,0,None),  (0,0,1.0/6.0)],
+  "6_2 (c)" : [(0,0,None),  (0,0,2.0/6.0)],
+  "6_3 (c)" : [(0,0,None),  (0,0,3.0/6.0)],
+  "6_4 (c)" : [(0,0,None),  (0,0,4.0/6.0)],
+  "6_5 (c)" : [(0,0,None),  (0,0,5.0/6.0)],
+
+  "b (a)"   : [(0,None,None),  (0,1.0/2.0,0)],
+  "c (a)"   : [(0,None,None),  (0,0,1.0/2.0)],
+  "n (a)"   : [(0,None,None),  (0,1.0/2.0,1.0/2.0)],
+  "d (a)"   : [(0,None,None),  (0,1.0/4.0,1.0/4.0)],
+
+  "a (b)"   : [(None,0,None),  (1.0/2.0,0,0)],
+  "c (b)"   : [(None,0,None),  (0,0,1.0/2.0)],
+  "n (b)"   : [(None,0,None),  (1.0/2.0,0,1.0/2.0)],
+  "d (b)"   : [(None,0,None),  (1.0/4.0,0,1.0/4.0)],
+
+  "a (c)"   : [(None,None,0),  (1.0/2.0,0,0)],
+  "b (c)"   : [(None,None,0),  (0,1.0/2.0,0)],
+  "n (c)"   : [(None,None,0),  (1.0/2.0,1.0/2.0,0)],
+  "d (c)"   : [(None,None,0),  (1.0/4.0,1.0/4.0,0)]
+}
+
+
+absence_classes = {
+  "along a 2" : ["2_0 (a)", "2_1 (a)"],
+  "along a"   : ["b (a)", "c (a)", "n (a)", "d (a)"],
+  "along b 4" : ["4_0 (b)", "4_1 (b)", "4_2 (b)", "4_3 (b)"],
+  "along b 2" : ["2_0 (b)", "2_1 (b)"],
+  "along b"   : ["a (b)", "c (b)", "n (b)", "d (b)"],
+  "along c"   : ["a (c)", "b (c)", "n (c)", "d (c)"],
+  "along c 2" : ["2_0 (c)", "2_1 (c)"],
+  "along c 3" : ["3_0 (c)", "3_1 (c)", "3_2 (c)"],
+  "along c 4" : ["4_0 (c)", "4_1 (c)", "4_2 (c)", "4_3 (c)"],
+  "along c 6" : ["6_0 (c)", "6_1 (c)", "6_2 (c)", "6_3 (c)", "6_4 (c)", "6_5 (c)"] }
 
 
 along_a   = absence_classes["along a"]
@@ -380,17 +381,14 @@ class absences(object):
     return result
 
 def likelihood(z,sigz,absent_or_centric_or_acentric,sigma_inflation=1.0):
-  import absence_likelihood
+  from mmtbx.scaling import absence_likelihood
   flag = absent_or_centric_or_acentric
   result = absence_likelihood.log_p( z,sigz*sigma_inflation,flag )
   return result
 
 
-class analyze_absences(object):
-  def __init__(self, miller_array, isigi_cut=3, out=None, sigma_inflation=1.0):
-    if out is None:
-      out = sys.stdout
-    self.out = out
+class analyze_absences(mmtbx.scaling.xtriage_analysis):
+  def __init__(self, miller_array, isigi_cut=3, sigma_inflation=1.0):
     self.cut = isigi_cut
     self.sigma_inflation=sigma_inflation
     self.miller_array = miller_array.deep_copy()
@@ -414,28 +412,6 @@ class analyze_absences(object):
     self.score        = []
     self.present      = []
 
-    self.table_text = """
-For each operator, the reflections are split in three classes:
-
-  Absent    : Reflections that are absent for this operator.
-  Non Absent: Reflection of the same type (i.e. (0,0,l)) as above, but they should be present.
-  Complement: All other reflections.
-
-For each class, the <I/sigI> is reported, as well as the number of
-'violations'. A 'violation' is designated as a reflection for which a
-I/sigI criterion is not met. The criteria are
-
-  Absent violation     : I/sigI > %2.1f
-  Non Absent violation : I/sigI < %2.1f
-  Complement violation : I/sigI < %2.1f
-
-Operators with low associated violations for *both* absent and non absent
-reflections, are likely to be true screw axis or glide planes. Both the
-number of violations and their percentages are given.  The number of
-violations within the 'complement' class, can be used as a comparison for
-the number of violations in the non-absent class.
-"""%(self.cut, self.cut, self.cut)
-
     assert self.miller_array.sigmas() is not None
     #we need to have this in the standard setting please
     self.sg = sgtbx.space_group_info( group = self.miller_array.space_group() )
@@ -444,22 +420,36 @@ the number of violations in the non-absent class.
     self.abs_check = absences()
     self.check_conditions()
 
-  def show(self,out=None):
-    if out is None:
-      out = self.out
-    print >> out
-    print >> out
-    print >> out, "Systematic absences"
-    print >> out, "-------------------"
-    print >> out
-    print >> out, "The following table gives information about systematic absences."
-    print >> out, self.table_text
-    print >> out
-    print >> out, self.table
-    print >> out
-    print >> out
+  def _show_impl (self, out) :
+    out.show_sub_header("Table of systematic absence rules")
+    out.show("""\
+ The following table gives information about systematic absences allowed for
+ the specified intensity point group.
 
-
+ For each operator, the reflections are split in three classes:
+""")
+    out.show_lines("""
+  Absent    : Reflections that are absent for this operator.
+  Non Absent: Reflection of the same type (i.e. (0,0,l)) as above, but they should be present.
+  Complement: All other reflections.
+""")
+    out.show("""\
+For each class, the <I/sigI> is reported, as well as the number of
+'violations'. A 'violation' is designated as a reflection for which a I/sigI
+criterion is not met. The criteria are:""")
+    out.show_preformatted_text("""
+  Absent violation     : I/sigI > %(cut)2.1f
+  Non Absent violation : I/sigI < %(cut)2.1f
+  Complement violation : I/sigI < %(cut)2.1f
+""" % {"cut":self.cut})
+    out.show_text("""\
+Operators with low associated violations for *both* absent and non absent
+reflections, are likely to be true screw axis or glide planes. Both the
+number of violations and their percentages are given.  The number of
+violations within the 'complement' class, can be used as a comparison for
+the number of violations in the non-absent class.
+""")
+    out.show_table(self.table)
 
   def score_isigi(self,isig, absent=False, a=30.0):
     tmp = 0.5*(1+math.tanh( a*(isig-self.cut) ) )
@@ -467,7 +457,6 @@ the number of violations in the non-absent class.
       return abs(math.log(tmp+1e-8))
     else:
       return abs(math.log(1-tmp+1e-8) )
-
 
   def propose(self, ops, thres=1):
     in_sg_and_seemingly_correct       = []
@@ -481,7 +470,8 @@ the number of violations in the non-absent class.
 
     total_score = 0
 
-    for op, sc, n, n_n, n_v, n_n_v  in zip(self.op_name, self.score, self.n_abs, self.n_n_abs, self.n_abs_viol, self.n_n_abs_viol ):
+    for op, sc, n, n_n, n_v, n_n_v  in zip(self.op_name, self.score,
+        self.n_abs, self.n_n_abs, self.n_abs_viol, self.n_n_abs_viol):
       if op in ops:
         total_score += sc
         absent_class_violations += n_v
@@ -500,19 +490,22 @@ the number of violations in the non-absent class.
         if op in ops: #in proposed sg
           in_sg_but_no_observations.append( op )
 
-
-    pos = len(in_sg_and_seemingly_correct) + len(not_in_sg_and_seemingly_incorrect)
+    pos = len(in_sg_and_seemingly_correct) + \
+          len(not_in_sg_and_seemingly_incorrect)
     neg = len(in_sg_and_seemingly_incorrect) + len(observed_but_not_in_sg)
     abstain = len(in_sg_but_no_observations)
 
     return total_score,absent_class_violations, not_absent_class_violations
 
-
-
   def check_conditions(self,abs_lower_i_threshold=1e-6):
-    table_labels = ('Operator', 'absent under operator\n <I/sigI> (violations)','\nn absent',
-                                'not absent under operator \n <I/sigI> (violations)', '\nn not absent',
-                                'all other reflections \n <I/sigI> (violations)', '\nn compl', '\n Score' )
+    table_labels = ('Operator',
+      "# absent",
+      "<I/sigI> (violations)",
+      "# not absent",
+      "<I/sigI> (violations)",
+      "# complete",
+      "<I/sigI> (violations)",
+      "Score")
     for  item in [0]: # absence_class in self.abs_check.absence_classes[ self.sg.group().crystal_system() ]:
       table_rows = []
       for condition in self.abs_check.absence_classes[
@@ -574,7 +567,6 @@ the number of violations in the non-absent class.
           isi_tot   = isi_tot/n_tot
           i_tot   = i_tot/n_tot
 
-
         self.n_abs.append(n_abs)
         self.n_n_abs.append(n_n_abs)
         self.n_tot.append(n_tot)
@@ -594,24 +586,21 @@ the number of violations in the non-absent class.
         score = float(score)/max(1,n_abs+n_n_abs)
         self.score.append( score )
 
-
-        table_rows.append( [condition, str("%8.2f  (%i, %4.1f%s)"%(isi_abs,n_abs_viol, 100.0*float(n_abs_viol)/max(1,n_abs),'%' )),
-                                       str("%8.0f"%(n_abs)),
-                                       str("%8.2f  (%i, %4.1f%s)"%(isi_n_abs,n_n_abs_viol, 100.0*float(n_n_abs_viol)/max(1,n_n_abs),'%' )),
-                                       str("%8.0f"%(n_n_abs)),
-                                       str("%8.2f  (%i, %4.1f%s)"%(isi_tot,n_tot_viol, 100.0*float(n_tot_viol)/max(1,n_tot),'%' )),
-                                       str("%8.0f"%(n_tot)),
-                                       str("%8.2e"%(abs(score)))] )
-
-
-      self.table = table_utils.format([table_labels]+table_rows,
-                                       comments=None,
-                                       has_header=True,
-                                       separate_rows=False,
-                                       prefix='| ',
-                                       postfix=' |')
-      self.table_data = [table_labels] + table_rows
-
+        table_rows.append( [condition,
+          str("%8.0f"%(n_abs)),
+          str("%8.2f  (%i, %4.1f%%)" % (isi_abs, n_abs_viol,
+            100.0*float(n_abs_viol)/max(1,n_abs))),
+          str("%8.0f"%(n_n_abs)),
+          str("%8.2f  (%i, %4.1f%%)" % (isi_n_abs, n_n_abs_viol,
+            100.0*float(n_n_abs_viol)/max(1,n_n_abs))),
+          str("%8.0f"%(n_tot)),
+          str("%8.2f  (%i, %4.1f%%)" % (isi_tot, n_tot_viol,
+            100.0*float(n_tot_viol)/max(1,n_tot))),
+          str("%8.2e"%(abs(score)))
+        ])
+      self.table = table_utils.simple_table(
+        column_headers=table_labels,
+        table_rows=table_rows)
 
 class sgi_iterator(object):
   def __init__(self,chiral=True, crystal_system=None, intensity_symmetry=None):
@@ -622,34 +611,42 @@ class sgi_iterator(object):
 
   def comparator(self, sgi):
     if self.crystal_system is not None:
-      return (self.crystal_system is None) or (self.crystal_system == sgi.group().crystal_system())
+      return ((self.crystal_system is None) or
+              (self.crystal_system == sgi.group().crystal_system()))
     else:
-      return (self.intensity_symmetry is None) or (self.intensity_symmetry == sgi.group().build_derived_reflection_intensity_group(False))
+      return ((self.intensity_symmetry is None) or (self.intensity_symmetry ==
+        sgi.group().build_derived_reflection_intensity_group(False)))
 
   def list(self):
     for symbols in sgtbx.space_group_symbol_iterator():
-      sgi = sgtbx.space_group_info(group=sgtbx.space_group(space_group_symbols=symbols))
+      sgi = sgtbx.space_group_info(group=sgtbx.space_group(
+        space_group_symbols=symbols))
       if self.comparator(sgi):
         if (self.chiral is None) or (self.chiral == sgi.group().is_chiral()):
           yield sgi
 
 
-class protein_space_group_choices(object):
-  def __init__(self, miller_array,threshold = 3, out=None,protein=True,print_all=True, sigma_inflation=1.0):
-    self.out = out
-    if self.out is None:
-      self.out = sys.stdout
-
+class protein_space_group_choices(mmtbx.scaling.xtriage_analysis):
+  def __init__(self,
+      miller_array,
+      threshold = 3,
+      protein=True,
+      print_all=True,
+      sigma_inflation=1.0):
     self.threshold = 3.0
-    self.miller_array = miller_array.deep_copy().f_sq_as_f().average_bijvoet_mates().f_as_f_sq().map_to_asu()
+    assert miller_array.is_xray_intensity_array()
+    self.miller_array = miller_array.deep_copy().f_sq_as_f(
+      ).average_bijvoet_mates().f_as_f_sq().map_to_asu()
+    space_group = self.miller_array.space_group()
 
-    self.absences_table = analyze_absences(self.miller_array,threshold,self.out,sigma_inflation)
-    if print_all:
-      self.absences_table.show()
-
+    self.absences_table = analyze_absences(
+      miller_array=self.miller_array,
+      isigi_cut=threshold,
+      sigma_inflation=sigma_inflation)
 
     self.sg_iterator = sgi_iterator(chiral = True,
-                                    intensity_symmetry = self.miller_array.space_group().build_derived_reflection_intensity_group(False) )
+      intensity_symmetry = \
+        space_group.build_derived_reflection_intensity_group(False) )
 
     self.sg_choices  = []
     self.mean_i      = []
@@ -659,25 +656,26 @@ class protein_space_group_choices(object):
     self.abs_types   = []
     self.tuple_score = []
 
-    legend = [('space group', 'n absent', '<Z>_absent', '<Z/sigZ>_absent', '+++', '---', 'score')]
-    rows = []
     score = []
 
-
     for sg in self.sg_iterator.list():
-      xs = crystal.symmetry( unit_cell = self.miller_array.unit_cell(),
-                             space_group = sg.group() )
+      xs = crystal.symmetry(
+        unit_cell = self.miller_array.unit_cell(),
+        space_group = sg.group())
       tmp_miller = self.miller_array.customized_copy( crystal_symmetry = xs )
-      these_absent_millers = tmp_miller.select(tmp_miller.sys_absent_flags().data() )
+      these_absent_millers = tmp_miller.select(
+        tmp_miller.sys_absent_flags().data() )
 
       if these_absent_millers.data().size() > 0:
         tmp_mean_i = flex.mean( these_absent_millers.data() )
         zero_sel = these_absent_millers.sigmas()==0
         these_absent_millers = these_absent_millers.select(~zero_sel)
+        #print sg, list(these_absent_millers.indices()), list(these_absent_millers.data())
         tmp_mean_isigi = flex.mean(
           these_absent_millers.data() / these_absent_millers.sigmas() )
         tmp_n = these_absent_millers.data().size()
-        tmp_violations = flex.bool( these_absent_millers.data() / these_absent_millers.sigmas() > self.threshold ).count( True )
+        tmp_violations = flex.bool( these_absent_millers.data() /
+          these_absent_millers.sigmas() > self.threshold ).count( True )
       else:
         tmp_mean_i = 0
         tmp_mean_isigi = 0
@@ -709,29 +707,17 @@ class protein_space_group_choices(object):
       self.mean_isigi.append( tmp_mean_isigi )
       self.n.append( tmp_n )
       self.violations.append( tmp_violations )
-      rows.append( [str(sg),
-                    '%i'%(tmp_n),
-                    '%8.2f  '%(tmp_mean_i),
-                    '%8.2f  '%(tmp_mean_isigi),
-                    ' %i '%(tuple_score[1]),
-                    ' %i '%(tuple_score[2]),
-                    ' %8.3e '%(-tuple_score[0])  ] )
-
-    self.table = table_utils.format( legend + rows,
-                                     comments=None,
-                                     has_header=True,
-                                     separate_rows=False,
-                                     prefix='| ',
-                                     postfix=' |')
     tmp_rows = self.suggest_likely_candidates()
-    self.sorted_table = table_utils.format( legend + tmp_rows,
-                                     comments=None,
-                                     has_header=True,
-                                     separate_rows=False,
-                                     prefix='| ',
-                                     postfix=' |')
-    self.table_data = legend + tmp_rows
-    self.absence_info = """\
+    self.sorted_table = table_utils.simple_table(
+      column_headers=['space group', 'n absent', '<Z>_absent',
+                      '<Z/sigZ>_absent', '+++', '---', 'score'],
+      table_rows=tmp_rows)
+
+  def _show_impl (self, out) :
+    out.show_header("Systematic absences")
+    self.absences_table.show(out)
+    out.show_sub_header("Space group identification")
+    out.show_text("""\
 Analyses of the absences table indicates a number of likely space group
 candidates, which are listed below. For each space group, the number of
 absent violations are listed under the '+++' column. The number of present
@@ -740,12 +726,8 @@ likelihood based score for the particular space group.  Note that
 enantiomorphic spacegroups will have equal scores. Also, if absences were
 removed while processing the data, they will be regarded as missing
 information, rather then as enforcing that absence in the space group choices.
-"""
-    print >> self.out, self.absence_info
-    print >> self.out
-    print >> self.out, self.sorted_table
-    print >> self.out
-    print >> self.out
+""")
+    out.show_table(self.sorted_table)
 
   def suggest_likely_candidates( self, acceptable_violations = 1e+90 ):
     used = flex.bool( len(self.sg_choices), False )
@@ -789,8 +771,9 @@ def test():
   assert tmp.check( "4_1 (a)", (4,0,0),True ) == (True, True)
   assert tmp.check( "3_1 (c)", (0,0,3),True ) == (True, True)
 
-  tmp = sgi_iterator(chiral = True, crystal_system = None,
-                     intensity_symmetry = sgtbx.space_group_info( "P222").group().build_derived_reflection_intensity_group(False)  )
+  tmp = sgi_iterator(chiral = True,
+    crystal_system = None,
+    intensity_symmetry = sgtbx.space_group_info( "P222").group().build_derived_reflection_intensity_group(False)  )
   sg_list = []
   abs_list = []
   for sg in tmp.list():

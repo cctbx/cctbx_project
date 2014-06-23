@@ -1,38 +1,3 @@
-"""
-The following phil scope is expected for the massage_data class:
-     hklout = None
-     hklout_type=mtz sca *mtz_or_sca
-     label_extension="massaged"
-     aniso{
-       action=*remove_aniso None
-       final_b=*eigen_min eigen_mean user_b_iso
-       b_iso=None
-     }
-     outlier{
-       action=*extreme basic beamstop None
-       parameters{
-         basic_wilson{
-          level=1E-6
-         }
-         extreme_wilson{
-           level=0.01
-         }
-         beamstop{
-           level=0.001
-           d_min=10.0
-         }
-       }
-     }
-     symmetry{
-       action=detwin twin *None
-       twinning_parameters{
-         twin_law=None
-         fraction=None
-       }
-     }
-   }
-
-"""
 
 from __future__ import division
 from mmtbx.scaling import outlier_rejection
@@ -43,22 +8,20 @@ from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import adptbx
 from libtbx.utils import Sorry, null_out
+from libtbx import Auto
+import os.path
 import sys
 
+output_params_str = """
+  hklout = None
+    .type = path
+  hklout_type=mtz sca *Auto
+    .type = choice
+  label_extension="massaged"
+    .type = str
+"""
+
 master_params = iotbx.phil.parse("""
-    hklout = None
-      .type=path
-      .help="HKL out"
-      .short_caption = Output reflections file
-      .style = bold new_file
-    hklout_type=mtz sca *mtz_or_sca
-      .type=choice
-      .help="Output format"
-      .caption = MTZ Scalepack MTZ_or_Scalepack
-      .short_caption = Output format
-    label_extension="massaged"
-      .type=str
-      .help="Label extension"
     aniso
       .help="Parameters dealing with anisotropy correction"
       .short_caption = Anisotropy correction
@@ -143,7 +106,8 @@ class massage_data(object):
                n_bases=0):
 
     self.params=parameters
-    self.miller_array=miller_array.deep_copy().set_observation_type(miller_array).merge_equivalents().array()
+    self.miller_array=miller_array.deep_copy().set_observation_type(
+      miller_array).merge_equivalents().array()
     self.out = out
     if self.out is None:
       self.out = sys.stdout
@@ -159,7 +123,7 @@ class massage_data(object):
         n_residues = n_residues,
         n_bases = n_bases)
       aniso_scale_and_b.p_scale = 0 # set the p_scale back to 0!
-      aniso_scale_and_b.show(out=out,verbose=1)
+      aniso_scale_and_b.show(out=out)
       # now do aniso correction please
       self.aniso_p_scale = aniso_scale_and_b.p_scale
       self.aniso_u_star  = aniso_scale_and_b.u_star
@@ -278,29 +242,30 @@ ONLY USING A TWIN SPECIFIC TARGET FUNCTION!
   def return_data(self):
     return self.final_array
 
-  def write_data(self):
+  def write_data(self,
+      file_name,
+      output_type=Auto,
+      label_extension="massaged"):
     ## write out this miller array as sca if directed to do so:
-    output_file=self.params.hklout
-    n=len(output_file)
-    auto_output_type=output_file[n-3:n]
-    output_type = self.params.hklout_type
-    if output_type == "mtz_or_sca":
-      if auto_output_type in ["mtz","sca"]:
-        output_type = auto_output_type
+    if (str(output_type) == "Auto") :
+      base, ext = os.path.splitext(file_name)
+      if ext in [".mtz",".sca"]:
+        output_type = ext[1:]
       else:
         raise Sorry("Unknown or unsupported output type")
-
+    assert (output_type in ["mtz", "sca"]), output_type
     if output_type == "sca":
       import iotbx.scalepack.merge
       iotbx.scalepack.merge.write(
-        file_name=output_file,miller_array=self.final_array,
+        file_name=file_name,
+        miller_array=self.final_array,
         scale_intensities_for_scalepack_merge=True) # scales only if necessary
-    if output_type == "mtz":
+    elif output_type == "mtz":
       base_label=None
       if self.final_array.is_xray_intensity_array():
         base_label = "I"
       if self.final_array.is_xray_amplitude_array():
         base_label = "F"
       mtz_dataset = self.final_array.as_mtz_dataset(
-        column_root_label=base_label+self.params.label_extension)
-      mtz_dataset.mtz_object().write(output_file)
+        column_root_label=base_label+label_extension)
+      mtz_dataset.mtz_object().write(file_name)

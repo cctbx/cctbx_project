@@ -1,23 +1,29 @@
-from __future__ import division
+
 ## Peter Zwart, April 18, 2005
-from cctbx.array_family import flex
+
+from __future__ import division
 from mmtbx import scaling
-from cctbx import uctbx
-from cctbx import adptbx
 from cctbx.eltbx import xray_scattering
+from cctbx.array_family import flex
+from cctbx import adptbx
+from cctbx import uctbx
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 from scitbx.linalg import eigensystem
-from libtbx.utils import show_exception_info_if_full_testing, Sorry
 import scitbx.lbfgs
+from libtbx.utils import Sorry
+from libtbx.str_utils import format_value
+from libtbx import table_utils
 import math
 import sys
-from libtbx.str_utils import format_value
 
-
-class gamma_protein:
+class gamma_protein (object):
+  __slots__ = [
+    "gamma",
+    "sigma_gamma",
+  ]
   def __init__(self, d_star_sq):
-    ## Coefficient for gamma as a fuynction of resolution
+    ## Coefficient for gamma as a function of resolution
     ## described by a chebyshev polynome.
     coefs_mean = \
             [-0.24994838652402987,    0.15287426147680838,
@@ -74,38 +80,37 @@ class gamma_protein:
 
     coefs_sigma = flex.double( coefs_sigma )
 
-    self.low = 0.008
-    self.high = 0.69
-    self.gamma_cheb=chebyshev_polynome(
-      45, self.low, self.high, coefs_mean)
-    self.gamma_sigma_cheb = chebyshev_polynome(
-      45, self.low, self.high, coefs_sigma)
+    low = 0.008
+    high = 0.69
+    gamma_cheb=chebyshev_polynome(
+      45, low, high, coefs_mean)
+    gamma_sigma_cheb = chebyshev_polynome(
+      45, low, high, coefs_sigma)
 
     ## Make sure that the d_star_sq array
     ## does not have any elements that fall outside
     ## the allowed range (determined by the range
     ## on which the chebyshev polynome was computed;
     ## i.e: self.low<=d_star_sq<=self.high
-    self.d_star_sq = d_star_sq.deep_copy()
+    d_star_sq = d_star_sq.deep_copy()
 
-    lower_then_low_limit = self.d_star_sq <= self.low
-    self.d_star_sq = self.d_star_sq.set_selected(
-      lower_then_low_limit, self.low)
+    lower_then_low_limit = d_star_sq <= low
+    d_star_sq = d_star_sq.set_selected(
+      lower_then_low_limit, low)
 
-    higher_then_high_limit = self.d_star_sq >= self.high
-    self.d_star_sq = self.d_star_sq.set_selected(
-      higher_then_high_limit, self.high)
+    higher_then_high_limit = d_star_sq >= high
+    d_star_sq = d_star_sq.set_selected(higher_then_high_limit, high)
     ## If everything is okai, this assertion should be
     ## passed withgout any problem
-    assert ( flex.min(self.d_star_sq)>=self.low  )
-    assert ( flex.max(self.d_star_sq)<=self.high )
+    assert ( flex.min(d_star_sq)>=low  )
+    assert ( flex.max(d_star_sq)<=high )
 
-    self.gamma = self.gamma_cheb.f( self.d_star_sq )
-    self.sigma_gamma = self.gamma_sigma_cheb.f( self.d_star_sq )
+    self.gamma = gamma_cheb.f( d_star_sq )
+    self.sigma_gamma = gamma_sigma_cheb.f( d_star_sq )
 
-class gamma_nucleic:
+class gamma_nucleic (object):
   def __init__(self, d_star_sq):
-    ## Coefficient for gamma as a fuynction of resolution
+    ## Coefficient for gamma as a function of resolution
     ## described by a chebyshev polynome.
     coefs_mean = \
             [-0.30244055359995714,    0.14551540259035137,
@@ -162,38 +167,38 @@ class gamma_nucleic:
 
     coefs_sigma = flex.double( coefs_sigma )
 
-    self.low = 0.008
-    self.high = 0.69
-    self.gamma_cheb=chebyshev_polynome(
-      45, self.low, self.high, coefs_mean)
-    self.gamma_sigma_cheb = chebyshev_polynome(
-      45, self.low, self.high, coefs_sigma)
+    low = 0.008
+    high = 0.69
+    gamma_cheb=chebyshev_polynome(
+      45, low, high, coefs_mean)
+    gamma_sigma_cheb = chebyshev_polynome(
+      45, low, high, coefs_sigma)
 
     ## Make sure that the d_star_sq array
     ## does not have any elements that fall outside
     ## the allowed range (determined by the range
     ## on which the chebyshev polynome was computed;
     ## i.e: self.low<=d_star_sq<=self.high
-    self.d_star_sq = d_star_sq.deep_copy()
-    lower_then_low_limit = self.d_star_sq <= self.low
-    self.d_star_sq = self.d_star_sq.set_selected(
-      lower_then_low_limit, self.low)
+    d_star_sq = d_star_sq.deep_copy()
+    lower_then_low_limit = d_star_sq <= low
+    d_star_sq = d_star_sq.set_selected(lower_then_low_limit, low)
 
-    higher_then_high_limit = self.d_star_sq >= self.high
-    self.d_star_sq = self.d_star_sq.set_selected(
-      higher_then_high_limit, self.high)
+    higher_then_high_limit = d_star_sq >= high
+    d_star_sq = d_star_sq.set_selected(higher_then_high_limit, high)
     ## If everything is okai, this assertion should be
     ## passed withgout any problem
-    assert ( flex.min(self.d_star_sq)>=self.low  )
-    assert ( flex.max(self.d_star_sq)<=self.high )
+    assert ( flex.min(d_star_sq)>=low  )
+    assert ( flex.max(d_star_sq)<=high )
 
-    self.gamma = self.gamma_cheb.f( self.d_star_sq )
-    self.sigma_gamma = self.gamma_sigma_cheb.f( self.d_star_sq )
+    self.gamma = gamma_cheb.f( d_star_sq )
+    self.sigma_gamma = gamma_sigma_cheb.f( d_star_sq )
 
 
-## This class computes the expected intensity
-## for a given d_star_sq_array given some basic info
-class expected_intensity:
+class expected_intensity (object):
+  """
+  This class computes the expected intensity for a given d_star_sq_array given
+  some basic info about ASU contents.
+  """
   def __init__(self,
                scattering_info,
                d_star_sq_array,
@@ -391,29 +396,42 @@ def anisotropic_correction(cache_0,
     data = corrected_amplitudes,
     sigmas = corrected_sigmas ).set_observation_type(work_array)
   if change_back_to_intensity:
+    # XXX check for floating-point overflows (which trigger the Boost trap
+    # and crash the interpreter).  The only known case is 2q8o:IOBS2,SIGIOBS2
+    # which is missing nearly all acentric hkls but it clearly points to a bug
+    # in this routine when dealing with pathological data.
+    f_max = flex.max(work_array.data())
+    if (not f_max < math.sqrt(sys.float_info.max)) :
+      raise OverflowError("Amplitudes will exceed floating point limit if "+
+        "converted to intensities (max F = %e)." % f_max)
     work_array = work_array.f_as_f_sq()
   return work_array
 
+########################################################################
+# SCALING ROUTINES
+########################################################################
 
+class ml_iso_absolute_scaling (scaling.xtriage_analysis):
+  """
+  Maximum likelihood isotropic wilson scaling.
 
-class ml_iso_absolute_scaling(object):
+  :param miller_array: experimental data (will be converted to amplitudes
+                       if necessary
+  :param n_residues: number of protein residues in ASU
+  :param n_bases: number of nucleic acid bases in ASU
+  :param asu_contents: a dictionary specifying scattering types and numbers
+                       ( i.e. {'Au':1, 'C':2.5, 'O':1', 'H':3 } )
+  :param prot_frac: fraction of scattering from protein
+  :param nuc_frac: fraction of scattering from nucleic acids
+  """
   def __init__(self,
               miller_array,
               n_residues=None,
               n_bases=None,
               asu_contents=None,
               prot_frac = 1.0,
-              nuc_frac= 0.0):
-    """ Maximum likelihood isotropic wilson scaling.
-    input:  a miller array (miller_array)
-            number of protein residues (n_residues)
-            number of nucleotides (n_bases)
-               OR
-            a scattering dictionairy (asu_contents)
-              ( i.e. {'Au':1, 'C':2.5, 'O':1', 'H':3 } )
-            The keys prot_frac and nuc_frac will be
-            will be used at a later stage.
-     """
+              nuc_frac= 0.0,
+              include_array_info=True):
     self.p_scale, self.b_wilson = None, None
     ## Checking input combinations
     if (n_residues is None):
@@ -422,112 +440,127 @@ class ml_iso_absolute_scaling(object):
         assert (type(asu_contents) == type({}) )
     if asu_contents is None:
       assert ( (n_residues is not None) or (n_bases is not None) )
-
     assert (prot_frac+nuc_frac<=1.0)
     if ( miller_array.is_xray_intensity_array() ):
       miller_array = miller_array.f_sq_as_f()
-    if ( miller_array.is_real_array() ):
+    assert ( miller_array.is_real_array() )
+    self.info = None
+    if (include_array_info) :
       ## Save the information of the file name etc
       self.info = miller_array.info()
-      work_array = miller_array.resolution_filter(
-        1.0/math.sqrt(  scaling.get_d_star_sq_low_limit() ),
-        1.0/math.sqrt( scaling.get_d_star_sq_high_limit() )
-        )
-      if work_array.data().size() > 0:
-        work_array = work_array.select(work_array.data()>0)
-
-        self.d_star_sq = flex.double(work_array.d_spacings().data()*
-                                     work_array.d_spacings().data())
-        self.d_star_sq = 1.0/self.d_star_sq
-        self.scat_info =  None
-        if asu_contents is None:
-          self.scat_info= scattering_information(
-                                            n_residues=n_residues,
-                                            n_bases = n_bases,
-                                            fraction_protein = prot_frac,
-                                            fraction_nucleic = nuc_frac)
+    work_array = miller_array.resolution_filter(
+      d_max=1.0/math.sqrt(  scaling.get_d_star_sq_low_limit() ),
+      d_min=1.0/math.sqrt( scaling.get_d_star_sq_high_limit() ))
+    if work_array.data().size() > 0:
+      work_array = work_array.select(work_array.data() > 0)
+      self.d_star_sq = work_array.d_star_sq().data()
+      self.scat_info =  None
+      if asu_contents is None:
+        self.scat_info = scattering_information(
+          n_residues=n_residues,
+          n_bases = n_bases,
+          fraction_protein = prot_frac,
+          fraction_nucleic = nuc_frac)
+      else:
+        self.scat_info = scattering_information(
+          asu_contents = asu_contents,
+          fraction_protein = prot_frac,
+          fraction_nucleic = nuc_frac)
+      if (work_array.size() > 0 ):
+        ## Compute the terms
+        self.scat_info.scat_data(self.d_star_sq)
+        self.f_obs = work_array.data()
+        ## Make sure sigma's are used when available
+        if (work_array.sigmas() is not None):
+          self.sigma_f_obs = work_array.sigmas()
         else:
-          self.scat_info = scattering_information(
-                                             asu_contents = asu_contents,
-                                             fraction_protein = prot_frac,
-                                             fraction_nucleic = nuc_frac)
-        if (work_array.size() > 0 ):
-          ## Compute the terms
-          self.scat_info.scat_data(self.d_star_sq)
-          self.f_obs = work_array.data()
-          ## Make sure sigma's are used when available
-          if (work_array.sigmas() is not None):
-            self.sigma_f_obs = work_array.sigmas()
-          else:
-            self.sigma_f_obs = flex.double(self.f_obs.size(),0.0)
-          if (flex.min( self.sigma_f_obs ) < 0):
-            self.sigma_f_obs = self.sigma_f_obs*0.0
-          ## multiplicities and d_star_sq
-          self.epsilon = work_array.epsilons().data().as_double()
-          ## centric flags
-          self.centric = flex.bool(work_array.centric_flags().data())
-          ## Wilson parameters come from scattering_information class
-          self.gamma_prot = self.scat_info.gamma_tot
-          self.sigma_prot_sq = self.scat_info.sigma_tot_sq
-          ## Optimisation stuff
-          self.x = flex.double(2,0.0)
-          self.x[0]=0.0
-          self.x[1]=50.0
-          self.f=0
-          term_parameters = scitbx.lbfgs.termination_parameters( max_iterations = 1e6 ) # just for safety
-          self.minimizer = scitbx.lbfgs.run(target_evaluator=self, termination_params=term_parameters)
-          self.p_scale = self.x[0]
-          self.b_wilson = self.x[1]
-          ## this we do not need anymore
-          del self.x
-          del self.f_obs
-          del self.sigma_f_obs
-          del self.epsilon
-          del self.gamma_prot
-          del self.sigma_prot_sq
-          del self.d_star_sq
-          del self.centric
+          self.sigma_f_obs = flex.double(self.f_obs.size(),0.0)
+        if (flex.min( self.sigma_f_obs ) < 0):
+          self.sigma_f_obs = self.sigma_f_obs*0.0
+        ## multiplicities and d_star_sq
+        self.epsilon = work_array.epsilons().data().as_double()
+        ## centric flags
+        self.centric = flex.bool(work_array.centric_flags().data())
+        ## Wilson parameters come from scattering_information class
+        self.gamma_prot = self.scat_info.gamma_tot
+        self.sigma_prot_sq = self.scat_info.sigma_tot_sq
+        ## Optimisation stuff
+        self.x = flex.double(2,0.0)
+        self.x[0]=0.0
+        self.x[1]=50.0
+        self.f=0
+        term_parameters = scitbx.lbfgs.termination_parameters( max_iterations = 1e6 ) # just for safety
+        minimizer = scitbx.lbfgs.run(target_evaluator=self,
+          termination_params=term_parameters)
+        self.p_scale = self.x[0]
+        self.b_wilson = self.x[1]
+        ## this we do not need anymore
+        del self.x
+        del self.f_obs
+        del self.sigma_f_obs
+        del self.epsilon
+        del self.gamma_prot
+        del self.sigma_prot_sq
+        del self.d_star_sq
+        del self.centric
 
   def compute_functional_and_gradients(self):
-
-    f = scaling.wilson_total_nll(self.d_star_sq,
-                                 self.f_obs,
-                                 self.sigma_f_obs,
-                                 self.epsilon,
-                                 self.sigma_prot_sq,
-                                 self.gamma_prot,
-                                 self.centric,
-                                 self.x[0],
-                                 self.x[1])
-    g = flex.double( scaling.wilson_total_nll_gradient(self.d_star_sq,
-                                          self.f_obs,
-                                          self.sigma_f_obs,
-                                          self.epsilon,
-                                          self.sigma_prot_sq,
-                                          self.gamma_prot,
-                                          self.centric,
-                                          self.x[0],
-                                          self.x[1]) )
+    f = scaling.wilson_total_nll(
+      d_star_sq=self.d_star_sq,
+      f_obs=self.f_obs,
+      sigma_f_obs=self.sigma_f_obs,
+      epsilon=self.epsilon,
+      sigma_sq=self.sigma_prot_sq,
+      gamma_prot=self.gamma_prot,
+      centric=self.centric,
+      p_scale=self.x[0],
+      p_B_wilson=self.x[1])
+    g = flex.double( scaling.wilson_total_nll_gradient(
+      d_star_sq=self.d_star_sq,
+      f_obs=self.f_obs,
+      sigma_f_obs=self.sigma_f_obs,
+      epsilon=self.epsilon,
+      sigma_sq=self.sigma_prot_sq,
+      gamma_prot=self.gamma_prot,
+      centric=self.centric,
+      p_scale=self.x[0],
+      p_B_wilson=self.x[1]) )
     self.f = f
     return f, g
 
-  def show(self,
-           out=None,
-           verbose=0):
-    if out is None:
-      out = sys.stdout
-    if verbose>0:
-      print >> out, "ML estimate of overall B value of %s:" \
-            % str(self.info)
-      print >> out, "%s"%format_value("%5.2f", self.b_wilson), "A**(-2)"
-      print >> out, "Estimated -log of scale factor of %s:" \
-            % str(self.info)
-      print >> out, "%s"%format_value("%5.2f", self.p_scale)
+  def _show_impl (self, out) :
+    label_suffix = ""
+    if (self.info is not None) :
+      label_suffix = " of %s" % str(self.info)
+    out.show_sub_header("Maximum likelihood isotropic Wilson scaling")
+    out.show(""" ML estimate of overall B value%s:""" % label_suffix)
+    out.show_preformatted_text("   %s A**(-2)" %
+      format_value("%5.2f", self.b_wilson))
+    out.show(""" Estimated -log of scale factor%s:""" % label_suffix)
+    out.show_preformatted_text("""   %s""" %
+      format_value("%5.2f", self.p_scale))
+    out.show("""\
+ The overall B value ("Wilson B-factor", derived from the Wilson plot) gives
+ an isotropic approximation for the falloff of intensity as a function of
+ resolution.  Note that this approximation may be misleading for anisotropic
+ data (where the crystal is poorly ordered along an axis).  The Wilson B is
+ strongly correlated with refined atomic B-factors but these may differ by
+ a significant amount, especially if anisotropy is present.""")
+    # TODO compare to datasets in PDB at similar resolution
 
+class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
+  """
+  Maximum likelihood anisotropic wilson scaling.
 
-
-
-class ml_aniso_absolute_scaling(object):
+  :param miller_array: experimental data (will be converted to amplitudes
+                       if necessary
+  :param n_residues: number of protein residues in ASU
+  :param n_bases: number of nucleic acid bases in ASU
+  :param asu_contents: a dictionary specifying scattering types and numbers
+                       ( i.e. {'Au':1, 'C':2.5, 'O':1', 'H':3 } )
+  :param prot_frac: fraction of scattering from protein
+  :param nuc_frac: fraction of scattering from nucleic acids
+  """
   def __init__(self,
                miller_array,
                n_residues=None,
@@ -544,97 +577,101 @@ class ml_aniso_absolute_scaling(object):
     if asu_contents is None:
       assert ( (n_residues is not None) or (n_bases is not None) )
     assert (prot_frac+nuc_frac<=1.0)
+    assert ( miller_array.is_real_array() )
 
+    self.info = miller_array.info()
     if ( miller_array.is_xray_intensity_array() ):
       miller_array = miller_array.f_sq_as_f()
-    if ( miller_array.is_real_array() ):
-      self.info = miller_array.info()
 
-      work_array = miller_array.resolution_filter(
-        1.0/math.sqrt(  scaling.get_d_star_sq_low_limit() ),
-        1.0/math.sqrt( scaling.get_d_star_sq_high_limit() )
-        )
-      work_array = work_array.select(work_array.data()>0)
-
-      self.d_star_sq = flex.double(work_array.d_spacings().data()*
-                                   work_array.d_spacings().data())
-      self.d_star_sq = 1.0/self.d_star_sq
-      self.scat_info =  None
-      if asu_contents is None:
-        self.scat_info= scattering_information(
-                                          n_residues=n_residues,
-                                          n_bases = n_bases)
+    work_array = miller_array.resolution_filter(
+      d_max=1.0/math.sqrt(  scaling.get_d_star_sq_low_limit() ),
+      d_min=1.0/math.sqrt( scaling.get_d_star_sq_high_limit() ))
+    work_array = work_array.select(work_array.data()>0)
+    self.d_star_sq = work_array.d_star_sq().data()
+    self.scat_info =  None
+    if asu_contents is None:
+      self.scat_info= scattering_information(
+                                        n_residues=n_residues,
+                                        n_bases = n_bases)
+    else:
+      self.scat_info = scattering_information(
+                                         asu_contents = asu_contents,
+                                         fraction_protein = prot_frac,
+                                         fraction_nucleic = nuc_frac)
+    self.scat_info.scat_data(self.d_star_sq)
+    self.b_cart = None
+    if (work_array.size() > 0 ):
+      self.hkl = work_array.indices()
+      self.f_obs = work_array.data()
+      self.unit_cell =  uctbx.unit_cell(
+        miller_array.unit_cell().parameters() )
+      ## Make sure sigma's are used when available
+      if (work_array.sigmas() is not None):
+        self.sigma_f_obs = work_array.sigmas()
       else:
-        self.scat_info = scattering_information(
-                                           asu_contents = asu_contents,
-                                           fraction_protein = prot_frac,
-                                           fraction_nucleic = nuc_frac)
-      self.scat_info.scat_data(self.d_star_sq)
+        self.sigma_f_obs = flex.double(self.f_obs.size(),0.0)
+      if (flex.min( self.sigma_f_obs ) < 0):
+        self.sigma_f_obs = self.sigma_f_obs*0.0
 
-      if (work_array.size() > 0 ):
-        self.hkl = work_array.indices()
-        self.f_obs = work_array.data()
-        self.unit_cell =  uctbx.unit_cell(
-          miller_array.unit_cell().parameters() )
-        ## Make sure sigma's are used when available
-        if (work_array.sigmas() is not None):
-          self.sigma_f_obs = work_array.sigmas()
-        else:
-          self.sigma_f_obs = flex.double(self.f_obs.size(),0.0)
-        if (flex.min( self.sigma_f_obs ) < 0):
-          self.sigma_f_obs = self.sigma_f_obs*0.0
+      ## multiplicities
+      self.epsilon = work_array.epsilons().data().as_double()
+      ## Determine Wilson parameters
+      self.gamma_prot = self.scat_info.gamma_tot
+      self.sigma_prot_sq = self.scat_info.sigma_tot_sq
+      ## centric flags
+      self.centric = flex.bool(work_array.centric_flags().data())
+      ## Symmetry stuff
+      self.sg = work_array.space_group()
+      self.adp_constraints = self.sg.adp_constraints()
+      self.dim_u = self.adp_constraints.n_independent_params()
+      ## Setup number of parameters
+      assert self.dim_u <= 6
+      ## Optimisation stuff
+      self.x = flex.double(self.dim_u+1, 0.0) ## B-values and scale factor!
+      exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
+        ignore_line_search_failed_step_at_lower_bound = False,
+        ignore_line_search_failed_step_at_upper_bound = False,
+        ignore_line_search_failed_maxfev              = False)
+      term_parameters = scitbx.lbfgs.termination_parameters(
+        max_iterations = 50)
 
-        ## multiplicities
-        self.epsilon = work_array.epsilons().data().as_double()
-        ## Determine Wilson parameters
-        self.gamma_prot = self.scat_info.gamma_tot
-        self.sigma_prot_sq = self.scat_info.sigma_tot_sq
-        ## centric flags
-        self.centric = flex.bool(work_array.centric_flags().data())
-        ## Symmetry stuff
-        self.sg = work_array.space_group()
-        self.adp_constraints = self.sg.adp_constraints()
-        self.dim_u = self.adp_constraints.n_independent_params
-        ## Setup number of parameters
-        assert self.dim_u()<=6
-        ## Optimisation stuff
-        self.x = flex.double(self.dim_u()+1, 0.0) ## B-values and scale factor!
-        exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
-          ignore_line_search_failed_step_at_lower_bound = False,
-          ignore_line_search_failed_step_at_upper_bound = False,
-          ignore_line_search_failed_maxfev              = False)
-        term_parameters = scitbx.lbfgs.termination_parameters(
-          max_iterations = 50)
+      minimizer = scitbx.lbfgs.run(target_evaluator=self,
+        termination_params=term_parameters,
+        exception_handling_params=exception_handling_params)
 
-        self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
-          termination_params=term_parameters,
-          exception_handling_params=exception_handling_params)
+      ## Done refining
+      Vrwgk = math.pow(self.unit_cell.volume(),2.0/3.0)
+      self.p_scale = self.x[0]
+      self.u_star = self.unpack()
+      self.u_star = list( flex.double(self.u_star) / Vrwgk )
+      self.b_cart = adptbx.u_as_b(adptbx.u_star_as_u_cart(self.unit_cell,
+                                       self.u_star))
+      self.u_cif = adptbx.u_star_as_u_cif(self.unit_cell,
+                                          self.u_star)
+      #get eigenvalues of B-cart
+      eigen = eigensystem.real_symmetric( self.b_cart )
+      self.eigen_values = eigen.values()
+      self.eigen_vectors = eigen.vectors()
 
-        ## Done refining
-        Vrwgk = math.pow(self.unit_cell.volume(),2.0/3.0)
-        self.p_scale = self.x[0]
-        self.u_star = self.unpack()
-        self.u_star = list( flex.double(self.u_star) / Vrwgk )
-        self.b_cart = adptbx.u_as_b(adptbx.u_star_as_u_cart(self.unit_cell,
-                                         self.u_star))
-        self.u_cif = adptbx.u_star_as_u_cif(self.unit_cell,
-                                            self.u_star)
-        #get eigenvalues of B-cart
-        eigen = eigensystem.real_symmetric( self.b_cart )
-        self.eigen_values = eigen.values()
-        self.eigen_vectors = eigen.vectors()
+      self.work_array  = work_array # i need this for further analyses
+      self.analyze_aniso_correction()
+      # FIXME see 3ihm:IOBS4,SIGIOBS4
+      if (self.eigen_values[0] != 0) :
+        self.anirat = (abs(self.eigen_values[0] - self.eigen_values[2]) /
+                     self.eigen_values[0])
+      else :
+        self.anirat = None
 
-        self.work_array  = work_array # i need this for further analyses
-
-        del self.x
-        del self.f_obs
-        del self.sigma_f_obs
-        del self.epsilon
-        del self.gamma_prot
-        del self.sigma_prot_sq
-        del self.centric
-        del self.hkl
-        del self.d_star_sq
+      del self.x
+      del self.f_obs
+      del self.sigma_f_obs
+      del self.epsilon
+      del self.gamma_prot
+      del self.sigma_prot_sq
+      del self.centric
+      del self.hkl
+      del self.d_star_sq
+      del self.adp_constraints
 
   def pack(self,g):
     ## generate a set of reduced parameters for the minimizer
@@ -650,7 +687,6 @@ class ml_aniso_absolute_scaling(object):
     ## for target function computing and so forth
     u_star_full = self.adp_constraints.all_params(list(self.x[1:]))
     return u_star_full
-
 
   def compute_functional_and_gradients(self):
     u = self.unpack()
@@ -686,10 +722,12 @@ class ml_aniso_absolute_scaling(object):
       xx = " "+xx
     return(xx)
 
-
   def aniso_ratio_p_value(self,rat):
     return -3
-    coefs = flex.double( [-1.7647171873040273, -3.4427008004789115, -1.097150249786379, 0.17303317520973829, 0.35955513268118661, 0.066276397961476205, -0.064575726062529232, -0.0063025873711609016, 0.0749945566688624, 0.14803702885155121, 0.154284467861286])
+    coefs = flex.double( [-1.7647171873040273, -3.4427008004789115,
+      -1.097150249786379, 0.17303317520973829, 0.35955513268118661,
+      0.066276397961476205, -0.064575726062529232, -0.0063025873711609016,
+      0.0749945566688624, 0.14803702885155121, 0.154284467861286])
     fit_e = scitbx.math.chebyshev_polynome(11,0,1.0,coefs)
     x = flex.double( range(1000) )/999.0
     start = int(rat*1000)
@@ -698,22 +736,31 @@ class ml_aniso_absolute_scaling(object):
     norma2 = flex.sum(flex.exp(fit_e.f(x)))/(x[1]-x[0])
     return -math.log(norma2/norma )
 
-
-  def analyze_aniso_correction(self, n_check=2000, p_check=0.25, level=3, z_level=9):
+  def analyze_aniso_correction(self, n_check=2000, p_check=0.25, level=3,
+      z_level=9):
+    self.min_d = None
+    self.max_d = None
+    self.level = None
+    self.z_level = None
+    self.z_low = None
+    self.z_high = None
+    self.z_tot = None
+    self.mean_isigi = None
+    self.mean_count = None
+    self.mean_isigi_low_correction_factor = None
+    self.frac_below_low_correction = None
+    self.mean_isigi_high_correction_factor = None
+    self.frac_below_high_correction = None
     if self.work_array.sigmas() is None:
        return "No further analysis of anisotropy carried out because of absence of sigmas"
 
     correction_factors = self.work_array.customized_copy(
                  data=self.work_array.data()*0.0+1.0, sigmas=None )
-
     correction_factors = anisotropic_correction(
       correction_factors,0.0,self.u_star ).data()
-
     self.work_array = self.work_array.f_as_f_sq()
-
     isigi = self.work_array.data() / (
-              self.work_array.sigmas()+max(1e-8,flex.min(self.work_array.sigmas()))
-            )
+        self.work_array.sigmas()+max(1e-8,flex.min(self.work_array.sigmas())))
     d_spacings = self.work_array.d_spacings().data().as_double()
     if d_spacings.size() <= n_check:
       n_check = d_spacings.size()-2
@@ -721,165 +768,148 @@ class ml_aniso_absolute_scaling(object):
     d_select = d_sort[0:n_check]
     min_d = d_spacings[ d_select[0] ]
     max_d = d_spacings[ d_select[ n_check-1] ]
-
     isigi = isigi.select( d_select )
     mean_isigi = flex.mean( isigi )
     observed_count = flex.bool( isigi > level ).as_double()
     mean_count = flex.mean( observed_count )
     correction_factors = correction_factors.select( d_select )
-
     isigi_rank      = flex.sort_permutation(isigi)
     correction_rank = flex.sort_permutation(correction_factors, reverse=True)
-
     n_again = int(correction_rank.size()*p_check )
     sel_hc = correction_rank[0:n_again]
     sel_lc = correction_rank[n_again:]
-    mean_isigi_low_correction_factor  = flex.mean( isigi.select(sel_lc) )
-    mean_isigi_high_correction_factor = flex.mean( isigi.select(sel_hc) )
-    frac_below_low_correction         = flex.mean( observed_count.select(sel_lc) )
-    frac_below_high_correction        = flex.mean( observed_count.select(sel_hc) )
+    mean_isigi_low_correction_factor  = flex.mean(isigi.select(sel_lc) )
+    mean_isigi_high_correction_factor = flex.mean(isigi.select(sel_hc) )
+    frac_below_low_correction        = flex.mean(observed_count.select(sel_lc))
+    frac_below_high_correction       = flex.mean(observed_count.select(sel_hc))
     mu = flex.mean( observed_count )
     var = math.sqrt(mu*(1.0-mu)/n_again)
     z_low  = abs(frac_below_low_correction-mean_count)/max(1e-8,var)
     z_high = abs(frac_below_high_correction-mean_count)/max(1e-8,var)
     z_tot  = math.sqrt( (z_low*z_low + z_high*z_high) )
+    # save some of these for later
+    self.min_d = min_d
+    self.max_d = max_d
+    self.level = level
+    self.z_level = z_level
+    self.z_low = z_low
+    self.z_high = z_high
+    self.z_tot = z_tot
+    self.mean_isigi = mean_isigi
+    self.mean_count = mean_count
+    self.mean_isigi_low_correction_factor = mean_isigi_low_correction_factor
+    self.frac_below_low_correction = frac_below_low_correction
+    self.mean_isigi_high_correction_factor = mean_isigi_high_correction_factor
+    self.frac_below_high_correction = frac_below_high_correction
 
-    message = """indicates that there probably is no significant systematic
-noise amplification."""
-    if z_tot > z_level:
-      if mean_isigi_high_correction_factor < level:
-        message =  """indicates that there probably is significant
-systematic noise amplification that could possibly lead to artefacts in the
-maps or difficulties in refinement"""
-      else:
-        message =  """indicates that there probably is some systematic dependence
-between the anisotropy and not-so-well-defined  intensities. Because the signal
-to noise for the most affected intensities is relatively good, the affect on maps
-or refinement behavior is most likely not very serious."""
-
-    txt = """
-For the resolution shell spanning between %4.2f - %4.2f Angstrom,
-the mean I/sigI is equal to %5.2f. %4.1f %% of these intensities have
-an I/sigI > 3. When sorting these intensities by their anisotropic
-correction factor and analysing the I/sigI behavior for this ordered
-list, we can gauge the presence of 'anisotropy induced noise amplification'
-in reciprocal space.
-
-  The quarter of Intensities *least* affected by the anisotropy correction show
-    <I/sigI>                 :   %5.2e
-    Fraction of I/sigI > 3   :   %5.2e     ( Z = %8.2f )
-
-  The quarter of Intensities *most* affected by the anisotropy correction show
-    <I/sigI>                 :   %5.2e
-    Fraction of I/sigI > 3   :   %5.2e     ( Z = %8.2f )
-
-The combined Z-score of %8.2f %s
-
-Z-scores are computed on the basis of a Bernoulli model assuming independence of weak reflections wrst anisotropy.
-
-    """%(max_d, min_d,
-         mean_isigi, 100.0*mean_count,
-         mean_isigi_low_correction_factor, frac_below_low_correction,  z_low,
-         mean_isigi_high_correction_factor, frac_below_high_correction, z_high,
-         z_tot, message
-        )
-
-
-    #assert 3 ==0
-    return txt
-
-
-
-
-
-
-
-
-
-
-  def show(self,
-           out=None,
-           verbose=1):
-    if out is None:
-      out = sys.stdout
-    try: b_cart = self.b_cart
-    except AttributeError, e:
-      print >> out, "*** ERROR ***"
-      print >> out, str(e)
-      show_exception_info_if_full_testing()
-      return
-
-    if verbose>0:
-
-      print >> out
-      print >> out
-      print >> out,"ML estimate of overall B_cart value of %s:" \
-            % str(self.info)
-      # XXX: for GUI
-      self.overall_b_cart = """\
-%5.2f, %5.2f, %5.2f
-%12.2f, %5.2f
-%19.2f
+  def _show_impl (self, out) :
+    assert (self.b_cart is not None)
+    out.show_sub_header("Maximum likelihood anisotropic Wilson scaling")
+    out.show("ML estimate of overall B_cart value:")
+    out.show_preformatted_text("""\
+  %5.2f, %5.2f, %5.2f
+  %12.2f, %5.2f
+  %19.2f
 """ % (self.b_cart[0], self.b_cart[3], self.b_cart[4],
                        self.b_cart[1], self.b_cart[5],
-                                       self.b_cart[2])
-      #print >> out,"%5.2f," %(self.b_cart[0]), "%5.2f,"\
-      #      %(self.b_cart[3]),"%5.2f" %(self.b_cart[4])
-      #print >> out,"%12.2f," %(self.b_cart[1]),"%5.2f" %(self.b_cart[5])
-      #print >> out,"%19.2f"  %(self.b_cart[2])
-      print >> out, self.overall_b_cart
-
-      print >> out,"Equivalent representation as U_cif: "
-      print >> out,"%5.2f," %(self.u_cif[0]), "%5.2f," \
-            %(self.u_cif[3]), "%5.2f" %(self.u_cif[4])
-      print >> out,"%12.2f," %(self.u_cif[1]),"%5.2f" %(self.u_cif[5])
-      print >> out,"%19.2f"  %(self.u_cif[2])
-      print >> out
-      print >> out, "Eigen analyses of B-cart:"
-      print >> out, "                 Value   Vector"
-      print >> out, "Eigenvector 1 : %s  (%s, %s, %s)"%(self.format_it(self.eigen_values[0],"%5.3f"),
-                                                        self.format_it(self.eigen_vectors[0]),
-                                                        self.format_it(self.eigen_vectors[1]),
-                                                        self.format_it(self.eigen_vectors[2]))
-      print >> out, "Eigenvector 2 : %s  (%s, %s, %s)"%(self.format_it(self.eigen_values[1],"%5.3f"),
-                                                        self.format_it(self.eigen_vectors[3]),
-                                                        self.format_it(self.eigen_vectors[4]),
-                                                        self.format_it(self.eigen_vectors[5]))
-      print >> out, "Eigenvector 3 : %s  (%s, %s, %s)"%(self.format_it(self.eigen_values[2],"%5.3f"),
-                                                        self.format_it(self.eigen_vectors[6]),
-                                                        self.format_it(self.eigen_vectors[7]),
-                                                        self.format_it(self.eigen_vectors[8]))
-      print >> out
-      print >> out,"ML estimate of  -log of scale factor of %s:" \
-             % str(self.info)
-      print >> out,"%5.2f" %(self.p_scale)
-
-      print >> out
-      print >> out
-      print >> out, "----------------    Anisotropy analyses     ----------------"
-      print >> out
-      if (self.eigen_values[0] == 0) :
-        raise Sorry("Fatal error: eigenvector 1 of B_cart is zero.  This "+
-          "may indicate severe problems with the input data, for instance "+
-          "if only a single plane through reciprocal space is present.")
-      anirat = abs(self.eigen_values[0]-self.eigen_values[2])/self.eigen_values[0]
-      self.anirat = anirat
-      ani_rat_p = self.aniso_ratio_p_value(anirat)
-      if ani_rat_p < 0:
-        ani_rat_p = 0.0
-      print >> out, "Anisotropy    ( [MaxAnisoB-MinAnisoB]/[MaxAnisoB] ) :  %7.3e"%(anirat)
-      print >> out, "                          Anisotropic ratio p-value :  %7.3e"%(ani_rat_p)
-      print >> out
-      print >> out, "     The p-value is a measure of the severity of anisotropy as observed in the PDB."
-      print >> out, "     The p-value of %5.3e indicates that roughly %4.1f %% of datasets available in the PDB have"%(ani_rat_p,100.0*math.exp(-ani_rat_p))
-      print >> out, "     an anisotropy equal to or worse than this dataset."
-      print >> out
-
-      print >> out, self.analyze_aniso_correction()
-      print >> out
-
-
-
+                                       self.b_cart[2]))
+    out.show("Equivalent representation as U_cif:")
+    out.show_preformatted_text("""\
+  %5.2f, %5.2f, %5.2f
+  %12.2f, %5.2f
+  %19.2f
+""" % (self.u_cif[0], self.u_cif[3], self.u_cif[4],
+                      self.u_cif[1], self.u_cif[5],
+                                     self.u_cif[2]))
+    out.show("Eigen analyses of B-cart:")
+    def format_it (x,format="%3.2f"):
+      xx = format%(x)
+      if x > 0:
+        xx = " "+xx
+      return(xx)
+    rows = [
+      [ "1", format_it(self.eigen_values[0],"%5.3f"),
+       "(%s, %s, %s)" % (format_it(self.eigen_vectors[0]),
+       format_it(self.eigen_vectors[1]),
+       format_it(self.eigen_vectors[2])) ],
+      [ "2", format_it(self.eigen_values[1],"%5.3f"),
+       "(%s, %s, %s)" % (format_it(self.eigen_vectors[3]),
+       format_it(self.eigen_vectors[4]),
+       format_it(self.eigen_vectors[5])) ],
+      [ "3", format_it(self.eigen_values[2],"%5.3f"),
+       "(%s, %s, %s)" % (format_it(self.eigen_vectors[6]),
+       format_it(self.eigen_vectors[7]),
+       format_it(self.eigen_vectors[8])) ],
+    ]
+    table = table_utils.simple_table(
+      column_headers=["Eigenvector", "Value", "Vector"],
+      table_rows=rows)
+    out.show_table(table)
+    out.show("ML estimate of  -log of scale factor:")
+    out.show_preformatted_text("  %5.2f" %(self.p_scale))
+    out.show_sub_header("Anisotropy analyses")
+    if (self.eigen_values[0] == 0) :
+      raise Sorry("Fatal error: eigenvector 1 of the overall anisotropic "+
+        "B-factor B_cart is zero.  This "+
+        "may indicate severe problems with the input data, for instance "+
+        "if only a single plane through reciprocal space is present.")
+    ani_rat_p = self.aniso_ratio_p_value(self.anirat)
+    if ani_rat_p < 0:
+      ani_rat_p = 0.0
+    out.show_preformatted_text("""\
+Anisotropy    ( [MaxAnisoB-MinAnisoB]/[MaxAnisoB] ) :  %7.3e
+                          Anisotropic ratio p-value :  %7.3e
+""" % (self.anirat, ani_rat_p))
+    out.show("""
+ The p-value is a measure of the severity of anisotropy as observed in the PDB.
+ The p-value of %5.3e indicates that roughly %4.1f %% of datasets available in
+ the PDB have an anisotropy equal to or worse than this dataset.""" %
+      (ani_rat_p, 100.0*math.exp(-ani_rat_p)))
+    message = """indicates that there probably is no
+ significant systematic noise amplification."""
+    if (self.z_tot is not None) and (self.z_tot > self.z_level) :
+      if self.mean_isigi_high_correction_factor < self.level:
+        message =  """indicates that there probably is significant
+ systematic noise amplification that could possibly lead to artefacts in the
+ maps or difficulties in refinement"""
+      else:
+        message =  """indicates that there probably is some
+ systematic dependence between the anisotropy and not-so-well-defined
+ intensities. Because the signal to noise for the most affected intensities
+ is relatively good, the affect on maps or refinement behavior is most likely
+ not very serious."""
+    if (self.mean_count is not None) :
+      out.show("""
+ For the resolution shell spanning between %4.2f - %4.2f Angstrom,
+ the mean I/sigI is equal to %5.2f. %4.1f %% of these intensities have
+ an I/sigI > 3. When sorting these intensities by their anisotropic
+ correction factor and analysing the I/sigI behavior for this ordered
+ list, we can gauge the presence of 'anisotropy induced noise amplification'
+ in reciprocal space.
+""" % (self.max_d, self.min_d, self.mean_isigi, 100.0*self.mean_count))
+      out.show("""\
+ The quarter of Intensities *least* affected by the anisotropy correction show
+""")
+      out.show_preformatted_text("""\
+    <I/sigI>                 :   %5.2e
+    Fraction of I/sigI > 3   :   %5.2e     ( Z = %8.2f )""" %
+        (self.mean_isigi_low_correction_factor,
+        self.frac_below_low_correction,
+        self.z_low))
+      out.show("""\
+  The quarter of Intensities *most* affected by the anisotropy correction show
+""")
+      out.show_preformatted_text("""\
+    <I/sigI>                 :   %5.2e
+    Fraction of I/sigI > 3   :   %5.2e     ( Z = %8.2f )""" %
+        (self.mean_isigi_high_correction_factor,
+         self.frac_below_high_correction,
+         self.z_high))
+      out.show(""" The combined Z-score of %8.2f %s""" % (self.z_tot,
+        message))
+      out.show("""\
+ Z-scores are computed on the basis of a Bernoulli model assuming independence
+ of weak reflections with respect to anisotropy.""")
 
 class kernel_normalisation(object):
   def __init__(self,
@@ -896,16 +926,12 @@ class kernel_normalisation(object):
       assert (auto_kernel is not False)
     if auto_kernel is not False:
       assert (kernel_width==None)
-
     assert miller_array.size()>0
-
-
     ## intensity arrays please
     work_array = None
     if not miller_array.is_real_array():
       raise RuntimeError("Please provide real arrays only")
       ## I might have to change this upper condition
-
     if miller_array.is_xray_amplitude_array():
       work_array = miller_array.f_as_f_sq()
     if miller_array.is_xray_intensity_array():
@@ -916,7 +942,6 @@ class kernel_normalisation(object):
     if not miller_array.is_xray_intensity_array():
       if not miller_array.is_xray_amplitude_array():
         raise RuntimeError("Observation type unknown")
-
     ## declare some shorthands
     I_obs = work_array.data()
     epsilons = work_array.epsilons().data().as_double()
@@ -925,10 +950,8 @@ class kernel_normalisation(object):
     ## Set up some limits
     if d_star_sq_low is None:
       d_star_sq_low = flex.min(d_star_sq_hkl)
-
     if d_star_sq_high is None:
       d_star_sq_high = flex.max(d_star_sq_hkl)
-
     ## A feeble attempt to determine an appropriate kernel width
     ## that seems to work reasonable in practice
     self.kernel_width=kernel_width
@@ -940,26 +963,21 @@ class kernel_normalisation(object):
         number=number_of_sorted_reflections_for_auto_kernel
       else:
         number=int(auto_kernel)
-
       if number > d_star_sq_hkl.size():
         number = d_star_sq_hkl.size()-1
-
       self.kernel_width = d_star_sq_hkl[sort_permut[number]]-d_star_sq_low
       assert self.kernel_width > 0
-
     ## Making the d_star_sq_array
     assert (n_bins>1) ## assure that there are more then 1 bins for interpolation
-
     self.d_star_sq_array = chebyshev_lsq_fit.chebyshev_nodes(
-          n=n_bins,
-          low=d_star_sq_low,
-          high=d_star_sq_high,
-          include_limits=True)
+      n=n_bins,
+      low=d_star_sq_low,
+      high=d_star_sq_high,
+      include_limits=True)
 
     ## Now get the average intensity please
     ##
     ## This step can be reasonably time consuming
-
     self.mean_I_array = scaling.kernel_normalisation(
       d_star_sq_hkl = d_star_sq_hkl,
       I_hkl = I_obs,
@@ -967,7 +985,6 @@ class kernel_normalisation(object):
       d_star_sq_array = self.d_star_sq_array,
       kernel_width = self.kernel_width
       )
-
     self.var_I_array = scaling.kernel_normalisation(
       d_star_sq_hkl = d_star_sq_hkl,
       I_hkl = I_obs*I_obs,
@@ -975,9 +992,7 @@ class kernel_normalisation(object):
       d_star_sq_array = self.d_star_sq_array,
       kernel_width = self.kernel_width
       )
-
     self.var_I_array = self.var_I_array - self.mean_I_array*self.mean_I_array
-
     self.weight_sum = self.var_I_array = scaling.kernel_normalisation(
       d_star_sq_hkl = d_star_sq_hkl,
       I_hkl = I_obs*0.0+1.0,
@@ -985,9 +1000,9 @@ class kernel_normalisation(object):
       d_star_sq_array = self.d_star_sq_array,
       kernel_width = self.kernel_width
       )
-
     eps = 1e-16 # XXX Maybe this should be larger?
-    sel_pos = (self.mean_I_array > eps).iselection()
+    self.bin_selection = (self.mean_I_array > eps)
+    sel_pos = self.bin_selection.iselection()
     # FIXME rare bug: this crashes when the majority of the data are zero,
     # e.g. because resolution limit was set too high and F/I filled in with 0.
     # it would be good to catch such cases in advance by inspecting the binned
@@ -1002,7 +1017,6 @@ class kernel_normalisation(object):
     self.d_star_sq_array = self.d_star_sq_array.select(sel_pos)
     self.var_I_array = flex.log( self.var_I_array.select( sel_pos ) )
     self.weight_sum = self.weight_sum.select(sel_pos)
-
     self.mean_I_array = flex.log( self.mean_I_array )
     ## Fit a chebyshev polynome please
     normalizer_fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(
@@ -1014,7 +1028,6 @@ class kernel_normalisation(object):
       d_star_sq_low,
       d_star_sq_high,
       normalizer_fit_lsq.coefs)
-
     var_lsq_fit = chebyshev_lsq_fit.chebyshev_lsq_fit(
       n_term,
       self.d_star_sq_array,
@@ -1024,7 +1037,6 @@ class kernel_normalisation(object):
       d_star_sq_low,
       d_star_sq_high,
       var_lsq_fit.coefs)
-
     ws_fit = chebyshev_lsq_fit.chebyshev_lsq_fit(
       n_term,
       self.d_star_sq_array,
@@ -1035,22 +1047,15 @@ class kernel_normalisation(object):
       d_star_sq_high,
       ws_fit.coefs)
 
-
-
-
     ## The data wil now be normalised using the
     ## chebyshev polynome we have just obtained
     self.mean_I_array = flex.exp( self.mean_I_array)
     self.normalizer_for_miller_array =  flex.exp( self.normalizer.f(d_star_sq_hkl) )
-
     self.var_I_array = flex.exp( self.var_I_array )
     self.var_norm = flex.exp( self.var_norm.f(d_star_sq_hkl) )
     self.weight_sum = flex.exp( self.weight_sum.f(d_star_sq_hkl))
-
-
     self.normalised_miller = None
     self.normalised_miller_dev_eps = None
-
     if work_array.sigmas() is not None:
       self.normalised_miller = work_array.customized_copy(
         data = work_array.data()/self.normalizer_for_miller_array,
@@ -1060,7 +1065,6 @@ class kernel_normalisation(object):
         data = self.normalised_miller.data()/epsilons,
         sigmas = self.normalised_miller.sigmas()/epsilons)\
         .set_observation_type(work_array)
-
     else:
       self.normalised_miller = work_array.customized_copy(
         data = work_array.data()/self.normalizer_for_miller_array
@@ -1068,5 +1072,3 @@ class kernel_normalisation(object):
       self.normalised_miller_dev_eps = self.normalised_miller.customized_copy(
         data = self.normalised_miller.data()/epsilons)\
         .set_observation_type(work_array)
-
-    ## all done
