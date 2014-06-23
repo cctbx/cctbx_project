@@ -4287,7 +4287,7 @@ class array(set):
     import libtbx.load_env
     if (not libtbx.env.has_module("mmtbx")) :
       raise ImportError("mmtbx is required for this functionality.")
-    from mmtbx.scaling import twin_analyses_new as twin_analyses # FIXME
+    from mmtbx.scaling import twin_analyses as twin_analyses
     return twin_analyses.analyze_intensity_statistics(
       self=self,
       d_min=d_min,
