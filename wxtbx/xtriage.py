@@ -4,6 +4,7 @@ Classes for displaying Xtriage results using wxPython (and matplotlib).
 """
 
 from __future__ import division
+import wxtbx.misc_dialogs
 import wxtbx.windows
 import wxtbx.tables
 import wxtbx.plots
@@ -108,11 +109,11 @@ class wx_output (wxtbx.windows.ChoiceBook,
       block = " ".join([ l.strip() for l in block.splitlines() ]).strip()
       wxtxt = wx.StaticText(parent=self._current_panel,
         label=block)
-      wxtxt.Wrap(TEXT_WIDTH)
       font = wxtxt.GetFont()
       font.SetWeight(wx.FONTWEIGHT_BOLD)
       wxtxt.SetFont(font)
       wxtxt.SetForegroundColour((240,0,0))
+      wxtxt.Wrap(TEXT_WIDTH)
       self._current_sizer.Add(wxtxt, 0, wx.ALL, 5)
 
   def show_lines (self, text) :
@@ -211,10 +212,34 @@ class XtriageFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     super(XtriageFrame, self).__init__(*args, **kwds)
     self.output_panel = wx_output(parent=self)
+    self.SetupToolbar()
     self._result = None
+
+  def SetupToolbar (self) :
+    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    self.AddAppSpecificButtons()
+    bmp = wxtbx.bitmaps.fetch_icon_bitmap("mimetypes", "spreadsheet")
+    btn = self.toolbar.AddLabelTool(-1, "Save graph", bmp,
+      shortHelp="Save graph", kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.output_panel.OnSaveImage, btn)
+    bmp = wxtbx.bitmaps.fetch_icon_bitmap("mimetypes", "txt")
+    btn = self.toolbar.AddLabelTool(-1, "View log file", bmp,
+      shortHelp="View log file", kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnDisplayLog, btn)
+    self.toolbar.Realize()
+
+  def AddAppSpecificButtons (self) :
+    pass
 
   def SetResult (self, result) :
     self._result = result
     result.show(out=self.output_panel)
     self.output_panel.SetupScrolling()
     self.output_panel.SetPage(0)
+
+  def OnDisplayLog (self, event) :
+    if (self._result.log_file_name is not None) :
+      if (sys.platform == "darwin") :
+        easy_run.call("open -a TextEdit %s" % self._result.log_file_name)
+      else :
+        pass
