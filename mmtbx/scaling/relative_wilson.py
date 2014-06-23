@@ -233,7 +233,7 @@ class summary (mmtbx.scaling.xtriage_analysis) :
 All resolution shells have Z-scores above %4.2f sigma.  This is indicative of
 severe problems with the input data, including processing errors or ice rings.
 We recommend checking the logs for data processing and inspecting the raw
-images.\n""")
+images.\n""" % self.cutoff)
     else :
       out.show_text("""\
 All relative wilson plot outliers above %4.2f sigma are reported.
