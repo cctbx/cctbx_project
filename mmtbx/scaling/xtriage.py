@@ -227,10 +227,10 @@ input {
          .help="Keep data cutoffs from the basic_analyses module (I/sigma,Wilson scaling,Anisotropy) when twin stats are computed."
 
      }
-    optional {
-      include scope mmtbx.scaling.massage_twin_detwin_data.output_params_str
-      include scope mmtbx.scaling.massage_twin_detwin_data.master_params
-    }
+   }
+   optional {
+     include scope mmtbx.scaling.massage_twin_detwin_data.output_params_str
+     include scope mmtbx.scaling.massage_twin_detwin_data.master_params
    }
 
    expert_level=1
@@ -722,6 +722,11 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     return getattr(self.anomalous_info, "low_d_cut", None)
 
   @property
+  def iso_b_wilson (self) :
+    """Convenience method for isotropic Wilson B-factor"""
+    return self.wilson_scaling.iso_b_wilson
+
+  @property
   def low_d_cut (self) :
     """Shortcut to resolution_limit_of_anomalous_signal()."""
     return self.resolution_limit_of_anomalous_signal()
@@ -1051,25 +1056,26 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     reference_pass = True
 
   xtriage_results = xtriage_analyses(
-    miller_obs   = miller_array,
-    miller_calc  = f_calc_miller,
-    miller_ref   = reference_array,
-    params       = params,
-    text_out     = log,
-    unmerged_obs = unmerged_array)
+    miller_obs    = miller_array,
+    miller_calc   = f_calc_miller,
+    miller_ref    = reference_array,
+    params        = params,
+    text_out      = log,
+    unmerged_obs  = unmerged_array,
+    log_file_name = params.scaling.input.parameters.reporting.log)
 
   if(params.scaling.input.parameters.reporting.log is not None):
     output_file = open( params.scaling.input.parameters.reporting.log  ,'w')
     output_file.write(string_buffer.getvalue())
 
-  if (params.scaling.input.parameters.optional.hklout is not None) :
+  if (params.scaling.input.optional.hklout is not None) :
     # FIXME DEPRECATED, replace with mmtbx.command_line.massage_data
     from mmtbx.scaling import massage_twin_detwin_data
     massaged_obs = massage_twin_detwin_data.massage_data(
       miller_array=raw_data,
-      parameters=params.scaling.input.parameters.optional,
+      parameters=params.scaling.input.optional,
       out=log)
-    params2 = params.scaling.input.parameters.optional
+    params2 = params.scaling.input.optional
     massaged_obs.write_data(
       file_name=params2.hklout,
       output_type=params2.hklout_type,
@@ -1131,8 +1137,8 @@ def finish_job (result) :
   output_files = []
   stats = []
   if (result is not None) :
-    if (result.log_file is not None) :
-      output_files.append((result.log_file, "Log file and graphs"))
+    if (result.log_file_name is not None) :
+      output_files.append((result.log_file_name, "Log file and graphs"))
     if (result.low_d_cut is not None) :
       stats.append(("Limit of useful anomalous signal",
         "%.2f" % result.low_d_cut))
