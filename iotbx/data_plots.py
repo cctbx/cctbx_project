@@ -128,6 +128,16 @@ class table_data (object) :
     self._column_width = 10
     self.plot_type = "GRAPH"
 
+  # Backwards compatibility
+  def __setstate__ (self, state) :
+    self.__dict__.update(state)
+    if (not hasattr(self, "first_two_columns_are_resolution")) :
+      self.first_two_columns_are_resolution = None
+    if (not hasattr(self, "force_exact_x_labels")) :
+      self.force_exact_x_labels = None
+    if (not hasattr(self, "reference_marks")) :
+      self.reference_marks = None
+
   @property
   def n_rows (self) :
     return len(self.data[0])
