@@ -148,7 +148,8 @@ class real_space (validation) :
         params=rsc_params,
         log=null_out())
     except Exception, e :
-      print >> out, "Error: %s" % str(e)
+      print "Error: %s" % str(e)
+      #raise
     else :
       rsc_by_res = []
       for i, result_ in enumerate(rsc) :

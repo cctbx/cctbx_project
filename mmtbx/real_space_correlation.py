@@ -388,7 +388,7 @@ def compute(pdb_hierarchy,
                   occupancy   = atom.occ,
                   n_atoms     = 1)
                 results.append(result)
-          if(detail == "residue"):
+          if(detail == "residue") and (len(r_mv1) > 0) :
             sel = maptbx.grid_indices_around_sites(
               unit_cell  = unit_cell,
               fft_n_real = fft_n_real,
