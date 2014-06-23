@@ -2737,6 +2737,7 @@ wxtbx/command_line/pdb_editor.py -text
 wxtbx/command_line/pdb_statistics.py -text
 wxtbx/command_line/plot_anomalous_scattering.py -text
 wxtbx/command_line/show_file_info.py -text
+wxtbx/command_line/xtriage.py -text
 wxtbx/custom_restraints.py -text
 wxtbx/ensemble_validation.py -text
 wxtbx/errors.py -text
