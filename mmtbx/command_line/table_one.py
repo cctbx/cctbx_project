@@ -381,7 +381,7 @@ class table_one (iotbx.table_one.table) :
     for structure, result in zip(params.structure, results) :
       print >> out, ""
       print >> out, "Collecting stats for structure %s" % structure.name
-      column = result.as_table1_column(
+      column = result.validation.as_table1_column(
         label=structure.name,
         wavelength=structure.wavelength,
         re_compute_r_factors=params.processing.re_compute_r_factors,
