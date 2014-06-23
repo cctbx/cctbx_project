@@ -38,12 +38,18 @@ tst_list = (
   "$D/ncs/tst_asu_as_one_ncs_copy.py",
   ["$D/ncs/ncs.py", "exercise"],
   "$D/regression/tst_adp_restraints.py",
+  # Xtriage
   "$D/scaling/tst_scaling.py",
   "$D/scaling/tst_outlier.py",
+  "$D/scaling/tst_absences.py",
+  "$D/scaling/tst_xtriage.py",
+  "$D/scaling/tst_xtriage_twin_analyses.py",
   "$D/scaling/matthews.py",
   "$D/scaling/absence_likelihood.py",
   ["$D/scaling/thorough_outlier_test.py", "P21"],
   "$D/twinning/probabalistic_detwinning.py",
+  #"$D/scaling/tst_xtriage_massage_data.py",
+  # monomer library
   "$D/monomer_library/tst_rna_sugar_pucker_analysis.py",
   "$D/monomer_library/tst_cif_types.py",
   "$D/monomer_library/tst_motif.py",
@@ -57,6 +63,7 @@ tst_list = (
   "$D/monomer_library/tst_geo_reduce_for_tardy.py",
   "$D/monomer_library/tst_chg.py",
   "$D/monomer_library/tst_neutron_distance.py",
+  #
   "$D/regression/tst_altloc_remediate.py",
   "$D/regression/tst_altloc_chain_break.py",
   "$D/hydrogens/build_hydrogens.py",
@@ -109,6 +116,7 @@ tst_list = (
   "$D/regression/tst_cablam.py",
   "$D/regression/tst_anomalous_substructure.py",
   "$D/regression/tst_map_coeffs_simple.py",
+  # ion picking
   "$D/ions/tst_parameters.py",
   "$D/ions/tst_pick_ca.py",
   "$D/ions/tst_pick_mg.py",
@@ -117,6 +125,7 @@ tst_list = (
   "$D/ions/tst_validate_mg.py",
   #"$D/ions/tst_validate_zn.py", # FIXME
   "$D/ions/tst_symmetry_axis.py",
+  #
   "$D/regression/tst_ringer.py",
   "$D/regression/tst_fmodel_no_cryst1.py",
   "$D/regression/tst_fmodel_misc.py",
@@ -126,6 +135,7 @@ tst_list = (
   "$D/regression/tst_dynamics_cli.py",
   "$D/ligands/tst_xtal_screens.py",
   "$D/regression/tst_mtz2map.py",
+  # validation/molprobity
   "$D/validation/regression/tst_waters.py",
   "$D/validation/regression/tst_nqh_minimize.py",
   "$D/validation/regression/tst_mp_geo.py",
@@ -137,6 +147,7 @@ tst_list = (
   "$D/validation/regression/tst_rna_validate.py",
   "$D/validation/regression/tst_model_properties.py",
   "$D/validation/regression/tst_molprobity.py",
+  #
   "$D/refinement/tst_select_best_starting_model.py",
   "$D/regression/tst_refine_anomalous_substructure.py",
   "$D/regression/tst_command_line_input.py",
@@ -157,6 +168,7 @@ tst_list = (
   "$D/refinement/tst_minimization_ncs_constraints.py",
   "$D/refinement/real_space/tst_minimization_ncs_constraints.py",
   "$D/monomer_library/tst_correct_hydrogens.py",
+  # automatic linking
   ["$D/monomer_library/tst_linking.py", "1"],
   ["$D/monomer_library/tst_linking.py", "2"],
   ["$D/monomer_library/tst_linking.py", "3"],
@@ -181,11 +193,11 @@ tst_list = (
   ["$D/monomer_library/tst_linking.py", "22"],
   ["$D/monomer_library/tst_linking.py", "23"],
   ["$D/monomer_library/tst_linking.py", "24"],
+  #
   "$D/regression/tst_anneal_real_space.py",
   "$D/regression/tst_generate_disorder.py",
   "$D/secondary_structure/tst_base_pairing.py",
   "$D/ions/tst_pick_ca_svm.py",
-  "$D/scaling/tst_xtriage_massage_data.py",
   )
 
 def run():

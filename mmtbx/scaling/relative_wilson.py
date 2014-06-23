@@ -1,10 +1,13 @@
 from __future__ import division
 from mmtbx.scaling import absolute_scaling
+import mmtbx.scaling
 from iotbx import data_plots
 from scitbx.array_family import flex
 from scitbx.math import scale_curves
 from scitbx import simplex
 from scitbx.math import chebyshev_polynome
+from libtbx.utils import Sorry
+from libtbx import table_utils
 import sys,math
 
 low_lim = 0.00142857142857
@@ -16,39 +19,54 @@ std_coefs = flex.double([0.22609807236783072, -0.051083004382385722, 0.100502233
 
 
 
-class relative_wilson(object):
-  def __init__(self, miller_obs, miller_calc, min_d_star_sq=0.0, max_d_star_sq=2.0, n_points=2000):
+class relative_wilson (mmtbx.scaling.xtriage_analysis) :
+  def __init__(self,
+      miller_obs,
+      miller_calc,
+      min_d_star_sq=0.0,
+      max_d_star_sq=2.0,
+      n_points=2000,
+      level=6.0):
+    assert miller_obs.indices().all_eq(miller_calc.indices())
+    if (miller_obs.is_xray_amplitude_array()) :
+      miller_obs = miller_obs.f_as_f_sq()
+    if (miller_calc.is_xray_amplitude_array()) :
+      miller_calc = miller_calc.f_as_f_sq()
     self.obs  = miller_obs.deep_copy()
     self.calc = miller_calc.deep_copy()
     self.mind = min_d_star_sq
     self.maxd = max_d_star_sq
     self.m    = n_points
     self.n    = 2
+    self.level = level
 
-    self.calc = self.calc.f_as_f_sq()
-
-    self.norma_obs  = absolute_scaling.kernel_normalisation(
+    norma_obs  = absolute_scaling.kernel_normalisation(
       miller_array=self.obs,
       auto_kernel=True,
       n_bins=45,
       n_term=17)
-    self.norma_calc = absolute_scaling.kernel_normalisation(
+    norma_calc = absolute_scaling.kernel_normalisation(
       miller_array=self.calc,
       auto_kernel=True,
       n_bins=45,
       n_term=17)
 
-    self.obs_d_star_sq  = self.norma_obs.d_star_sq_array
-    self.calc_d_star_sq = self.norma_calc.d_star_sq_array
-    sel  = (flex.bool(self.obs_d_star_sq > low_lim) &
-            flex.bool(self.obs_d_star_sq < high_lim))
+    obs_d_star_sq  = norma_obs.d_star_sq_array
+    calc_d_star_sq = norma_calc.d_star_sq_array
+    sel_calc_obs = norma_calc.bin_selection.select(norma_obs.bin_selection)
+    sel_obs_calc = norma_obs.bin_selection.select(norma_calc.bin_selection)
+    sel  = ((obs_d_star_sq > low_lim) & (obs_d_star_sq < high_lim) &
+            (norma_obs.mean_I_array > 0))
+    sel = sel.select(sel_calc_obs)
 
-    self.obs_d_star_sq  = self.obs_d_star_sq.select( sel )
-    self.calc_d_star_sq = self.calc_d_star_sq.select( sel )
-    self.mean_obs       = self.norma_obs.mean_I_array.select(sel)
-    self.mean_calc      = self.norma_calc.mean_I_array.select(sel)
-    self.var_obs        = self.norma_obs.var_I_array.select(sel)
-    self.var_calc       = self.norma_calc.var_I_array.select(sel)
+    self.obs_d_star_sq  = obs_d_star_sq.select( sel )
+    self.calc_d_star_sq = calc_d_star_sq.select( sel_obs_calc ).select(sel)
+    self.mean_obs       = norma_obs.mean_I_array.select(sel)
+    self.mean_calc      = norma_calc.mean_I_array.select(
+                            sel_obs_calc).select(sel)
+    self.var_obs        = norma_obs.var_I_array.select(sel)
+    self.var_calc       = norma_calc.var_I_array.select(
+      sel_obs_calc).select(sel)
 
     # make an interpolator object please
     self.interpol = scale_curves.curve_interpolator( self.mind, self.maxd,
@@ -70,10 +88,11 @@ class relative_wilson(object):
 
     self.x = flex.double([0,0])
 
-    self.low_lim_for_scaling = 1.0/(4.0*4.0) #0.025
+    self.low_lim_for_scaling = 1.0/(4.0*4.0) #0.0625
     selection = (self.calc_d_star_sq > self.low_lim_for_scaling)
     if (selection.count(True) == 0) :
-      raise RuntimeError("No reflections meeting selection criteria.")
+      raise Sorry("No reflections within required resolution range after "+
+        "filtering.")
     self.weight_array = selection.as_double() / (2.0 * self.var_obs)
     assert (not self.weight_array.all_eq(0.0))
 
@@ -93,59 +112,52 @@ class relative_wilson(object):
     self.b_value = sol[1]
 
     self.modify_weights()
-    assert (not self.weight_array.all_eq(0.0))
-    s = 1.0/(flex.sum(self.weight_array*self.mean_calc) /
-             flex.sum(self.weight_array*self.mean_obs))
-    b = 0.0
-    self.sart_simplex = [ flex.double([s,b]), flex.double([s+0.1,b+1.1]),
-                          flex.double([s-0.1,b-1.1]) ]
-    self.opti = simplex.simplex_opt( 2, self.sart_simplex, self)
+    self.all_bad_z_scores = self.weight_array.all_eq(0.0)
+    if (not self.all_bad_z_scores) :
+      s = 1.0/(flex.sum(self.weight_array*self.mean_calc) /
+               flex.sum(self.weight_array*self.mean_obs))
+      b = 0.0
+      self.sart_simplex = [ flex.double([s,b]), flex.double([s+0.1,b+1.1]),
+                            flex.double([s-0.1,b-1.1]) ]
+      self.opti = simplex.simplex_opt( 2, self.sart_simplex, self)
     #self.mean_calc = self.mean_calc*self.scale*flex.exp(self.calc_d_star_sq*self.b_value)
-    self.table = self.get_data_plot()
-    self.show_summary()
 
-  def __getstate__ (self) :
-    """
-    Hack to enable pickling.
-    """
-    self.mean_ratio_engine = None
-    self.std_ratio_engine = None
-    return self.__dict__
+  def summary (self) :
+    i_scaled = flex.exp( self.calc_d_star_sq*self.b_value ) * \
+                self.mean_calc * self.scale
+    sel = (self.mean_obs > 0).iselection()
+    ratio  = flex.log(i_scaled.select(sel) / self.mean_obs.select(sel))
+    ratio_ = flex.double(self.mean_obs.size(), 0)
+    ratio_.set_selected(sel, ratio)
+    curves = [
+      self.calc_d_star_sq,
+      -ratio_, # observed
+      self.curve( self.calc_d_star_sq ), # expected
+      self.get_z_scores(self.scale, self.b_value)
+    ]
+    return summary(
+      all_curves=curves,
+      level=self.level,
+      all_bad_z_scores=self.all_bad_z_scores)
 
   def modify_weights(self,level=5):
     z_scores = self.get_z_scores(self.scale, self.b_value)
     sel  = flex.double(list(flex.bool(z_scores<level)))
     self.weight_array = self.weight_array*sel
 
-
   def get_z_scores(self, scale, b_value):
     i_scaled = flex.exp( self.calc_d_star_sq*b_value )*self.mean_calc*scale
-    ratio  = i_scaled / self.mean_obs
-    mean = self.curve( self.calc_d_star_sq )
+    sel = ((self.mean_obs > 0) & (i_scaled > 0)) .iselection()
+    ratio  = i_scaled.select(sel) / self.mean_obs.select(sel)
+    mean = self.curve( self.calc_d_star_sq ).select(sel)
     assert ratio.all_gt(0) # FIXME need to filter first!
     ratio = flex.log(ratio)
-    var = self.std(self.calc_d_star_sq)
+    var = self.std(self.calc_d_star_sq).select(sel)
+    assert var.all_ne(0)
     z = flex.abs(ratio-mean)/var
-    return z
-
-  def get_data_plot (self) :
-    table = data_plots.table_data(
-      title="Relative Wilson plot",
-      column_labels=["Max. resolution", "log(I_exp/I_obs)", "Z-score",
-        "Reference curve"],
-      graph_names=["Relative Wilson plot"],
-      graph_labels=[("High resolution", "")],
-      graph_columns=[list(range(4))],
-      x_is_inverse_d_min=True,
-      data=list(self.get_all_curves()))
-    return table
-
-  def get_all_curves(self):
-    i_scaled = flex.exp( self.calc_d_star_sq*self.b_value )*self.mean_calc*self.scale
-    ratio  = i_scaled / self.mean_obs
-    ratio = flex.log(ratio)
-    return self.calc_d_star_sq, -ratio, flex.abs(ratio)/self.std(self.calc_d_star_sq), self.curve( self.calc_d_star_sq )
-
+    z_ = flex.double(self.mean_obs.size(), -1)
+    z_.set_selected(sel, z)
+    return z_
 
   def target(self,vector):
     v=1.0
@@ -155,10 +167,8 @@ class relative_wilson(object):
       b_value = 200.0
     if b_value < -200.0:
       b_value = -200.0
-
     i_scaled = flex.exp( self.calc_d_star_sq*b_value )*self.mean_calc*scale
     ratio  = i_scaled / self.mean_obs
-
     curve = self.curve( self.calc_d_star_sq )
     result = ratio - flex.exp(curve)
     if (flex.max(result) > math.sqrt(sys.float_info.max)) :
@@ -173,7 +183,6 @@ class relative_wilson(object):
     result = flex.sum( result )
     return result
 
-
   def curve(self,d_star_sq):
     result =  self.mean_ratio_engine.f( d_star_sq )
     return result
@@ -182,32 +191,63 @@ class relative_wilson(object):
     result = self.std_ratio_engine.f( d_star_sq )
     return result
 
-  def show(self,out=None):
-    if out is None:
-      out = sys.stdout
-    ss,rr,zz,ii = self.table.data
-    for s,r,z,i in zip( ss,rr,zz,ii ):
-      print >> out, s,r,z,i
+  def show_summary (self, out) :
+    return self.summary().show(out=out)
 
-  def show_summary(self,level=6.0,out=None):
-    if out is None:
-      out = sys.stdout
+class summary (mmtbx.scaling.xtriage_analysis) :
+  def __init__ (self,
+      all_curves,
+      level=6.0,
+      all_bad_z_scores=False) :
+    self.table = data_plots.table_data(
+      title="Relative Wilson plot",
+      column_labels=["Max. resolution", "log(I_exp/I_obs)", "Reference curve",
+        "Z-score"],
+      graph_names=["Relative Wilson plot"],
+      graph_labels=[("High resolution", "")],
+      graph_columns=[list(range(4))],
+      x_is_inverse_d_min=True,
+      data=[ list(array) for array in all_curves ])
+    self.cutoff = level
+    self.all_bad_z_scores = all_bad_z_scores
 
-    ss,rr,zz,ii = self.table.data
-    flagged = flex.bool(zz>level)
+  def n_outliers (self) :
+    ss,rr,ii,zz = self.data_as_flex_arrays()
+    flagged = zz > self.cutoff
+    return flagged.count(True)
+
+  def data_as_flex_arrays (self) :
+    return [ flex.double(column) for column in self.table.data ]
+
+  def _show_impl (self, out) :
+    ss,rr,ii,zz = self.data_as_flex_arrays()
+    flagged = zz > self.cutoff
     sel_ss = ss.select(flagged)
     sel_z = zz.select(flagged)
     sel_r = rr.select(flagged)
     sel_i = ii.select(flagged)
-    print >> out
-    print >> out, "  Relative Wilson plot Analayses  "
-    print >> out, "     - All relative wilson plot outliers above %4.2f sigma are reported"%level
+    out.show_sub_header("Relative Wilson plot")
+    out.show_plot(self.table)
+    if (self.all_bad_z_scores) :
+      out.warn("""\
+All resolution shells have Z-scores above %4.2f sigma.  This is indicative of
+severe problems with the input data, including processing errors or ice rings.
+We recommend checking the logs for data processing and inspecting the raw
+images.\n""")
+    else :
+      out.show_text("""\
+All relative wilson plot outliers above %4.2f sigma are reported.
+""" % self.cutoff)
+    out.newline()
+    rows = []
     if len(sel_ss) > 0:
       for s,z,r,i in zip(sel_ss,sel_z,sel_r,sel_i):
         sss = math.sqrt(1.0/s)
-        print >> out, "d-spacing: %5.2f  Z-score: %5.2f    Observed and expected Log[ratio]: %5.2e  %5.2e"%(sss,z,r,i)
-
+        rows.append([ "%8.2f" % sss, "%9.3e" % r, "%9.3e" % i, "%5.2f" % z ])
+      table = table_utils.simple_table(
+        column_headers=["d-spacing", "Obs. Log[ratio]", "Expected Log[ratio]",
+          "Z-score"],
+        table_rows=rows)
+      out.show_table(table)
     else:
-      print >> out, "The Relative wilson plot doesn't indicate any serious errors"
-    print >> out
-    #self.show()
+      out.show("The Relative wilson plot doesn't indicate any serious errors.")

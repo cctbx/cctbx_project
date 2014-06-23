@@ -916,10 +916,10 @@ def twin_the_data_and_analyse(twin_operator,twin_fraction=0.2):
                                        out=out_string,
                                        verbose=-100)
 
-  index = twin_anal_object.twin_summary.twin_results.most_worrysome_twin_law
+  index = twin_anal_object.twin_summary.most_worrysome_twin_law
 
   assert approx_equal(
-    twin_anal_object.twin_summary.twin_results.britton_alpha[index],
+    twin_anal_object.twin_summary.britton_alpha[index],
     twin_fraction,eps=0.1)
 
   assert approx_equal(twin_anal_object.twin_law_dependent_analyses[index].ml_murray_rust.estimated_alpha,
@@ -930,7 +930,7 @@ def twin_the_data_and_analyse(twin_operator,twin_fraction=0.2):
     ## L-test
     assert approx_equal(twin_anal_object.l_test.mean_l, 0.50,eps=0.1)
     ## Wilson ratios
-    assert approx_equal(twin_anal_object.twin_summary.twin_results.i_ratio,
+    assert approx_equal(twin_anal_object.twin_summary.i_ratio,
                         2.00,
                         eps=0.1)
     ## H-test
@@ -942,16 +942,16 @@ def twin_the_data_and_analyse(twin_operator,twin_fraction=0.2):
   ## Perfect twin standards
   if twin_fraction==0.5:
     assert approx_equal(twin_anal_object.l_test.mean_l, 0.375,eps=0.1)
-    assert approx_equal(twin_anal_object.twin_summary.twin_results.i_ratio,
+    assert approx_equal(twin_anal_object.twin_summary.i_ratio,
                         1.50,eps=0.1)
     assert approx_equal(
       twin_anal_object.twin_law_dependent_analyses[index].h_test.mean_h,
       0.00,eps=0.1)
   ## Just make sure we actually detect significant twinning
   if twin_fraction > 0.10:
-    assert (twin_anal_object.twin_summary.twin_results.maha_l > 3.0)
+    assert (twin_anal_object.twin_summary.maha_l > 3.0)
   ## The patterson origin peak should be smallish ...
-  assert (twin_anal_object.twin_summary.twin_results.patterson_p_value > 0.01)
+  assert (twin_anal_object.twin_summary.patterson_p_value > 0.01)
   # and the brief test should be passed as well
   answer = t_a.twin_analyses_brief( twinned_miller,out=out_string,verbose=-100 )
   if twin_fraction > 0.10:

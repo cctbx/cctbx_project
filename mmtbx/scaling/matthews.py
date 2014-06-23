@@ -1,6 +1,9 @@
-from __future__ import division
+
 ## Peter Zwart Mai 10, 2005
 ## refactored by Gabor & Nat 20111104
+
+from __future__ import division
+from mmtbx import scaling
 import math
 import sys
 
@@ -163,84 +166,97 @@ class p_vm_calculator(object):
         guess = ii+1
     return guess
 
-def matthews_rupp(crystal_symmetry,
-                  n_residues=None,
-                  n_bases=None,
-                  out=None,
-                  verbose=0):
+class matthews_rupp (scaling.xtriage_analysis) :
   """Probabilistic estimation of number of copies in the asu"""
-  from iotbx import data_plots
-  if out is None:
-    out = sys.stdout
-  if (n_residues==None):
-    if (n_bases==None):
-      print >> out
-      print >> out, "Number of residues unknown, assuming 50% solvent content"
-      n_residues=1
-      n_bases=0
-      verbose=0
-      print >> out
-  vm_estimator = p_vm_calculator(crystal_symmetry, n_residues, n_bases)
-  if verbose>0:
-    print >> out,"-" * 64
-    print >> out,"| Copies | Solvent content | Matthews Coef. | P(solvent cont.) |"
-    print >> out,"|--------|-----------------|----------------|------------------|"
+  def __init__ (self,
+      crystal_symmetry,
+      n_residues=None,
+      n_bases=None) :
+    from iotbx import data_plots
+    self.n_residues_in = n_residues
+    self.n_bases_in = n_bases
+    best_guess_is_n_residues = False
+    if (n_residues is None) and (n_bases is None) :
+      n_residues = 1
+      n_bases = 0
+      best_guess_is_n_residues = True
+    vm_estimator = p_vm_calculator(crystal_symmetry, n_residues, n_bases)
+    if (best_guess_is_n_residues) :
+      self.n_copies = 1
+      self.n_residues = int(vm_estimator.best_guess)
+      self.n_bases = 0
+    else :
+      self.n_copies = int(vm_estimator.best_guess)
+      self.n_residues = vm_estimator.n_residues
+      self.n_bases = vm_estimator.n_bases
+    self.solvent_content = vm_estimator.vm_prop[vm_estimator.best_guess-1][1]
+    self.table = data_plots.table_data(
+      title="Solvent content analysis",
+      column_labels=["Copies", "Solvent content", "Matthews coeff.",
+                     "P(solvent content)"],
+      column_formats=["%d","%.3f", "%.2f", "%.3f"],
+      graph_names=["Solvent content", "Matthews coeff."],
+      graph_columns=[[0,1], [0,2]])
+    self.n_possible_contents = 0
     for ii in range( len(vm_estimator.vm_prop) ):
-      print >> out,"|%7.0f" %(vm_estimator.vm_prop[ii][0]),"|" \
-            "%11.3f" %(vm_estimator.vm_prop[ii][1]),"     |" \
-            "%11.3f" %(vm_estimator.vm_prop[ii][2]),"    |" \
-            "%12.3f" %(vm_estimator.vm_prop[ii][3]),"     |"
-  print >> out,"-" * 64
-  if verbose>0:
-    print >> out,"|              Best guess : %4.0f" %(vm_estimator.best_guess),\
-          " copies in the asu            |"
-  if verbose<=0:
-    print >> out,"|              Best guess : %4.0f" %(vm_estimator.best_guess),\
-          " residues in the asu          |"
-  print >> out, "-" * 64
-  if verbose==0:
-    vm_estimator.n_residues = vm_estimator.best_guess
-    vm_estimator.n_bases=0.0
-    vm_estimator.best_guess = 1 # XXX why?
-  matthews_table = data_plots.table_data(
-    title="Solvent content analysis",
-    column_labels=["Copies", "Solvent content", "Matthews coeff.",
-                   "P(solvent content)"],
-    graph_names=["Solvent content", "Matthews coeff."],
-    graph_columns=[[0,1], [0,2]])
-  for ii in range( len(vm_estimator.vm_prop) ):
-    matthews_table.add_row(vm_estimator.vm_prop[ii])
-  return( [vm_estimator.n_residues,
-           vm_estimator.n_bases,
-           vm_estimator.best_guess,
-           vm_estimator.vm_prop[vm_estimator.best_guess-1][1],
-           matthews_table])
+      self.n_possible_contents += 1
+      row = []
+      for jj in range(len(vm_estimator.vm_prop[ii])) :
+        if (jj == 0) : row.append(int(vm_estimator.vm_prop[ii][jj]))
+        else : row.append(vm_estimator.vm_prop[ii][jj])
+      self.table.add_row(row)
+
+  def _show_impl (self, out) :
+    out.show_header("Solvent content and Matthews coefficient")
+    if (self.n_residues_in is None) and (self.n_bases_in is None) :
+      out.newline()
+      out.show_text(" Number of residues unknown, assuming 50% solvent content")
+      out.newline()
+    else :
+      clauses = []
+      if (self.n_residues_in is not None) and (self.n_residues_in != 0) :
+        clauses.append("%d protein residues" % self.n_residues_in)
+      if (self.n_bases_in is not None) and (self.n_bases_in != 0) :
+        clauses.append("%d nucleic acid bases" % self.n_bases_in)
+      out.show_text(" Crystallized molecule(s) defined as %s" %
+        " and ".join(clauses))
+    if (self.n_residues_in is None) and (self.n_bases_in is None) :
+      out.show_text("  Best guess : %4d residues in the ASU" %
+        self.n_residues)
+    else :
+      out.show_table(self.table)
+      if (self.n_copies == 1) :
+        out.show_text(" Best guess : 1 copy in the ASU")
+      else :
+        out.show_text(" Best guess : %4d copies in the ASU" % self.n_copies)
+      if (self.n_possible_contents > 1) :
+        out.show_text("""
+ Caution: this estimate is based on the distribution of solvent content across
+ structures in the PDB, but it does not take into account the resolution of
+ the data (which is strongly correlated with solvent content) or the physical
+ properties of the model (such as oligomerization state, et cetera).  If you
+ encounter problems with molecular replacement and/or refinement, you may need
+ to consider the possibility that the ASU contents are different than expected.
+""")
 
 ########################################################################
 # REGRESSION
 def exercise () :
   from cctbx import crystal
-  from libtbx.test_utils import approx_equal, contains_substring
-  from libtbx.utils import null_out
+  from libtbx.test_utils import approx_equal
   from cStringIO import StringIO
   symm = crystal.symmetry(
     unit_cell=(77.3,107.6,84.4,90,94.2,90),
     space_group_symbol="P21")
   out = StringIO()
-  results = matthews_rupp(
+  result = matthews_rupp(
     crystal_symmetry=symm,
-    n_residues=153,
-    out=out,
-    verbose=1)
-  assert contains_substring(out.getvalue(),
-    """|      1 |      0.940      |     20.337     |       0.000      |""")
-  assert (results[2] == 8)
-  assert approx_equal(results[3], 0.5165, eps=0.0001)
-  results = matthews_rupp(
-    crystal_symmetry=symm,
-    out=null_out(),
-    verbose=1)
-  assert (results[0] == 1281)
+    n_residues=153)
+  result.show(out)
+  assert ("8 copies in the ASU" in out.getvalue())
+  assert approx_equal(result.solvent_content, 0.5165, eps=0.0001)
+  result = matthews_rupp(crystal_symmetry=symm)
+  assert (result.n_residues == 1281)
 
 if (__name__ == "__main__") :
   exercise()
