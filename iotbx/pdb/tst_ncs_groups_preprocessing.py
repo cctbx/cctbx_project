@@ -1,6 +1,4 @@
 from __future__ import division
-from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
-from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
 from  iotbx.pdb.multimer_reconstruction import ncs_group_object
 from libtbx.utils import null_out
 from scitbx import matrix
@@ -10,6 +8,11 @@ import tempfile
 import shutil
 import os
 import sys
+
+import libtbx.load_env
+have_phenix = False
+if libtbx.env.has_module(name="phenix"):
+  have_phenix = True
 
 
 class TestNcsGroupPreprocessing(unittest.TestCase):
@@ -119,6 +122,11 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_spec_reading(self):
     """ verify creating and processing spec """
+    if not have_phenix:
+      print "Skipping test_spec_reading(): phenix not available"
+      return
+    from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
+    from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
     print 'Running ',sys._getframe().f_code.co_name
     # creating a spec file
     params = ncs_master_params.extract()
@@ -190,6 +198,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
   def test_processing_of_asu(self):
     """ processing complete ASU
     If MTRIX records are present, they are ignored """
+    if not have_phenix:
+      print "Skipping test_processing_of_asu(): phenix not available"
+      return
     print 'Running ',sys._getframe().f_code.co_name
 
     # reading and processing the spec file
