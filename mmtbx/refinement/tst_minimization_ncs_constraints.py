@@ -94,7 +94,7 @@ class ncs_minimization_test(object):
       xrs_shaken = xrs_shaken.set_u_iso(values=u_random)
     if self.transformations:
       transforms_obj = ncs_group_object()
-      transforms_obj.build_ncs_obj_from_pdb_ncs(
+      transforms_obj.preprocess_ncs_obj(
       transform_info = mtrix_object,
       pdb_hierarchy_inp = pdb_obj)
       x = nu.concatenate_rot_tran(transforms_obj)
@@ -102,7 +102,7 @@ class ncs_minimization_test(object):
         x = x,
         shake_angles_sigma=self.shake_angles_sigma,
         shake_translation_sigma=self.shake_translation_sigma)
-      transforms_obj = nu.separate_rot_tran(x,transforms_obj)
+      transforms_obj = nu.separate_rot_tran(x=x,transforms_obj=transforms_obj)
       mtrix_object = transforms_obj.build_MTRIX_object()
     ph.adopt_xray_structure(xrs_shaken)
     of = open("one_ncs_in_asu_shaken.pdb", "w")
@@ -140,11 +140,11 @@ class ncs_minimization_test(object):
     m_shaken.write(
       pdb_output_file_name='asu_shaken.pdb',
       crystal_symmetry=self.xrs_one_ncs.crystal_symmetry())
-    self.transforms_obj = m_shaken.transforms_obj
+    tr_obj = m_shaken.transforms_obj
+    self.ncs_restraints_group_list = tr_obj.get_ncs_restraints_group_list()
     # Create a boolean selection string for selecting chains in NCS
-    ncs_selection = self.transforms_obj.ncs_atom_selection
-    self.ncs_atom_selection = self.transforms_obj.ncs_atom_selection
-    assert ncs_selection.count(True) > 0
+    self.ncs_atom_selection = tr_obj.ncs_atom_selection
+    assert self.ncs_atom_selection.count(True) > 0
     self.fmodel = mmtbx.f_model.manager(
       f_obs                        = self.f_obs,
       r_free_flags                 = self.r_free_flags,
@@ -156,14 +156,15 @@ class ncs_minimization_test(object):
     print "start r_factor: %6.4f" % r_start
     for macro_cycle in xrange(self.n_macro_cycle):
       if self.transformations and \
-              not self.transforms_obj.transform_chain_assignment: continue
+              not self.ncs_restraints_group_list: continue
       data_weight = None
       if(self.use_geometry_restraints):
         data_weight = nu.get_weight(self)
       target_and_grads_object = mmtbx.refinement.minimization_ncs_constraints.\
         target_function_and_grads_reciprocal_space(
           fmodel                 = self.fmodel,
-          transforms_obj         = self.transforms_obj,
+          ncs_restraints_group_list = self.ncs_restraints_group_list,
+          ncs_atom_selection     = self.ncs_atom_selection,
           restraints_manager     = self.grm,
           data_weight            = data_weight,
           refine_sites           = self.sites,
@@ -173,7 +174,8 @@ class ncs_minimization_test(object):
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         target_and_grads_object      = target_and_grads_object,
         xray_structure               = self.fmodel.xray_structure,
-        transforms_obj               = self.transforms_obj,
+        ncs_restraints_group_list    = self.ncs_restraints_group_list,
+        ncs_atom_selection           = self.ncs_atom_selection,
         finite_grad_differences_test = self.finite_grad_differences_test,
         max_iterations               = 60,
         refine_sites                 = self.sites,
@@ -215,7 +217,8 @@ class ncs_minimization_test(object):
       pdb_inp_answer = iotbx.pdb.input(source_info=None, lines=ncs_1_copy)
       pdb_inp_refined = iotbx.pdb.input(file_name=output_file_name)
       xrs1 = pdb_inp_answer.xray_structure_simple()
-      xrs2 = pdb_inp_refined.xray_structure_simple().select(ncs_selection)
+      xrs2 = pdb_inp_refined.xray_structure_simple().select(
+        self.ncs_atom_selection)
       mmtbx.utils.assert_xray_structures_equal(
         x1 = xrs1,
         x2 = xrs2,

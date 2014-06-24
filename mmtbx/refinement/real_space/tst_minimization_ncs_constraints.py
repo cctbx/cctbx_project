@@ -128,17 +128,19 @@ def run(prefix="tst", d_min=1.0):
   it = [tv[0]]
   # create transformation object
   transforms_obj = ncs_group_object()
-  transforms_obj.build_ncs_obj_from_pdb_ncs(
+  transforms_obj.preprocess_ncs_obj(
     pdb_hierarchy_inp = ph_poor_obj,
     rotations=rm,
     translations=tv)
-  x = nu.concatenate_rot_tran(transforms_obj)
+  x = nu.concatenate_rot_tran(transforms_obj=transforms_obj)
   x = nu.shake_transformations(
     x = x,
     shake_angles_sigma=1*math.pi/180,
     shake_translation_sigma=0.1)
-  transforms_obj = nu.separate_rot_tran(x,transforms_obj)
-  rm,tv = nu.get_rotation_translation_as_list(transforms_obj)
+  transforms_obj = nu.separate_rot_tran(
+    x=x, transforms_obj=transforms_obj)
+  rm,tv = nu.get_rotation_translation_as_list(
+    transforms_obj=transforms_obj)
   # just to see how result of shaking looks like
   rm_ = ir+rm
   tv_ = it+tv
@@ -149,6 +151,8 @@ def run(prefix="tst", d_min=1.0):
   ncs_obj_poor.write_pdb_file(file_name="asu2.pdb",
     crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
   transforms_obj = nu.update_transforms(transforms_obj,rm,tv)
+  ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
+  ncs_atom_selection = transforms_obj.ncs_atom_selection
   #
   for i in xrange(5):
     data_weight = 1
@@ -167,7 +171,8 @@ def run(prefix="tst", d_min=1.0):
         target_function_and_grads_real_space(
           map_data                   = map_data,
           xray_structure             = xrs_poor,
-          transforms_obj             = transforms_obj,
+          ncs_restraints_group_list  = ncs_restraints_group_list,
+          ncs_atom_selection         = ncs_atom_selection,
           real_space_gradients_delta = d_min/4,
           restraints_manager         = restraints_manager,
           data_weight                = data_weight,
@@ -176,7 +181,8 @@ def run(prefix="tst", d_min=1.0):
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         target_and_grads_object      = tfg_obj,
         xray_structure               = xrs_poor,
-         transforms_obj              = transforms_obj,
+        ncs_restraints_group_list  = ncs_restraints_group_list,
+        ncs_atom_selection         = ncs_atom_selection,
         finite_grad_differences_test = False,
         max_iterations               = 60,
         refine_sites                 = refine_sites,
@@ -186,7 +192,8 @@ def run(prefix="tst", d_min=1.0):
       #
       ncs_obj_poor = mmtbx.ncs.asu_ncs_converter(pdb_hierarchy = ph_poor,
         add_identity=False)
-      rm,tv = nu.get_rotation_translation_as_list(transforms_obj)
+      rm,tv = nu.get_rotation_translation_as_list(
+        ncs_restraints_group_list= ncs_restraints_group_list)
       # rm = ncs_obj_poor.back_rotation_matrices
       # tv = ncs_obj_poor.back_translation_vectors
   #
