@@ -220,35 +220,21 @@ class ncs_group_object(object):
     self.ncs_group_map = {}
     # map transform name (s1,s2,...) to transform object
     self.ncs_transform = {}
-
-    # list of which transform is applied to which chain
-    # (the keys of ncs_to_asu_map, asu_to_ncs_map and ncs_group)
+    # list of transform to chain assignemnt
     self.transform_chain_assignment = []
-
-    # map transformation to atoms in ncs. keys are s+transform serial number
-    # ie s1,s2.... values are list of ncs_to_asu_map keys
+    # map transform to list of master ncs parts in its ncs groups
     self.transform_to_ncs = {}
-
-    # flex.bool ncs_atom_selection
-    # (the atom selection includes any atoms not included in any
-    # ncs operation. The ncs_selection_str is not)
+    # master ncs atoms selection in a string and a flex.bool types
     self.ncs_atom_selection = None
     self.ncs_selection_str = ''
-
-    # selection of all chains in NCS
-    self.all_pdb_selection = ''
+    # list of selection strings of master NCS
     self.ncs_chain_selection = []
-
-    # unique identifiers
+    # unique chains or selection identifiers
     self.model_unique_chains_ids = tuple()
     self.selection_ids = set()
     # transform application order
     self.model_order_chain_ids = []
     self.transform_to_be_used = set()
-
-    # del: consider deleting self.selection_names_index
-    # Use to produce new unique names for atom selections
-    self.selection_names_index = [65,65]
     # order of transforms  - used when concatenating or separating them
     self.transform_order = []
 
@@ -350,7 +336,6 @@ class ncs_group_object(object):
     translations : matrix.col 3x1 object
     """
     self.collect_basic_info_from_pdb(pdb_hierarchy_inp=pdb_hierarchy_inp)
-    self.ncs_selection_str = self.all_pdb_selection
     assert bool(transform_info or (rotations and translations))
     if rotations:
       # add rotations,translations to ncs_refinement_groups
@@ -662,7 +647,7 @@ class ncs_group_object(object):
       self.model_unique_chains_ids = tuple(sorted(chain_ids))
       self.model_order_chain_ids = [x.id for x in model.chains()]
       s = ' or chain '.join(self.model_unique_chains_ids)
-      self.all_pdb_selection = 'chain ' + s
+      self.ncs_selection_str = 'chain ' + s
       assert self.ncs_chain_selection == []
       self.ncs_chain_selection =\
         ['chain ' + s for s in self.model_unique_chains_ids]
@@ -841,20 +826,6 @@ class ncs_group_object(object):
         coordinates_present=transform.coordinates_present,
         serial_number=transform.serial_num)
     return result
-
-  def produce_selection_name(self):
-    """
-    Create a new unique name each time called, to name the NCS selections,
-    since they do not have to be the chain names
-    """
-    top_i = ord('Z')
-    i,j = self.selection_names_index
-    new_selection_name = 'S' + chr(i) + chr(j)
-    i += (j == ord('Z')) * 1
-    j = 65 + (j - 65 + 1) % 26
-    assert i <= top_i
-    self.selection_names_index = [i,j]
-    return new_selection_name
 
   def make_chains_names(self,
                         transform_assignment,
