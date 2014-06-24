@@ -66,7 +66,7 @@ output {
     .short_caption = Output file prefix
     .help = Output file prefix (defaults to the MTZ file name base)
   include scope libtbx.phil.interface.tracking_params
-  format = xplor *ccp4
+  format = xplor *ccp4 dsn6
     .type = choice
     .caption = XPLOR CCP4
   extension = *Auto ccp4 xplor map
@@ -318,6 +318,8 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
     if params.output.extension == "Auto" :
       if format == "ccp4" :
         extension = "ccp4"
+      elif format == "dsn6" :
+        extension = "omap"
       else :
         extension = "xplor"
     else :
@@ -339,6 +341,18 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
         file_name=map_file_name,
         buffer=params.buffer)
       file_info.append((map_file_name, "XPLOR map"))
+    elif (format == "dsn6") :
+      if (sites_cart is not None) :
+        import iotbx.map_tools
+        iotbx.map_tools.write_dsn6_map(
+          sites_cart=sites_cart,
+          unit_cell=map_coeffs.unit_cell(),
+          map_data=map.real_map(),
+          n_real=map.n_real(),
+          file_name=map_file_name,
+          buffer=params.buffer)
+      else :
+        map.as_dsn6_map(file_name=map_file_name)
     else :
       if sites_cart is not None :
         import iotbx.map_tools
