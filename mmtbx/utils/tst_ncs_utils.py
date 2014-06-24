@@ -50,7 +50,7 @@ class test_rotation_angles_conversion(object):
     print 'Running ',sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
     transforms_obj = ncs_group_object()
-    transforms_obj.build_ncs_obj_from_pdb_ncs(
+    transforms_obj.preprocess_ncs_obj(
       pdb_hierarchy_inp=pdb_obj,
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])
@@ -73,7 +73,7 @@ class test_rotation_angles_conversion(object):
     print 'Running ',sys._getframe().f_code.co_name
     transforms_obj = ncs_group_object()
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
-    transforms_obj.build_ncs_obj_from_pdb_ncs(
+    transforms_obj.preprocess_ncs_obj(
       pdb_hierarchy_inp=pdb_obj,
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])
@@ -174,23 +174,29 @@ class test_rotation_angles_conversion(object):
     print 'Running ',sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
     transforms_obj = ncs_group_object()
-    transforms_obj.build_ncs_obj_from_pdb_ncs(
+    transforms_obj.preprocess_ncs_obj(
       pdb_hierarchy_inp=pdb_obj,
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])
-    x1 = nu.concatenate_rot_tran(transforms_obj)
-    x2 = nu.concatenate_rot_tran(transforms_obj)
-    assert sum(abs(x1-x2)) < 1.0e-6
 
-    x3 = nu.shake_transformations(
+    ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
+    x1 = nu.concatenate_rot_tran(transforms_obj)
+    x2 = nu.shake_transformations(
       x = x1,
       shake_angles_sigma=0.035,
       shake_translation_sigma=0.5)
-    transforms_obj = nu.separate_rot_tran(x3,transforms_obj)
-    x4 = nu.concatenate_rot_tran(transforms_obj)
+    # update with shaken parameters
+    transforms_obj = nu.separate_rot_tran(
+      x=x2, transforms_obj=transforms_obj)
+    ncs_restraints_group_list = nu.separate_rot_tran(
+      x=x2, ncs_restraints_group_list=ncs_restraints_group_list)
 
+    x3 = nu.concatenate_rot_tran(
+      ncs_restraints_group_list=ncs_restraints_group_list)
+    x4 = nu.concatenate_rot_tran(transforms_obj=transforms_obj)
+    assert abs(sum(list(x3-x4))) < 1.0e-3
 
-    the,psi,phi =x3[6:9]
+    the,psi,phi =x2[6:9]
     rot = scitbx.rigid_body.rb_mat_xyz(
       the=the, psi=psi, phi=phi, deg=False)
     a3 = rot.rot_mat()
