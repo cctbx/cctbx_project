@@ -327,8 +327,7 @@ class density_modification(object):
     self.matthews_result = matthews.matthews_rupp(
       crystal_symmetry=self.f_obs,
       n_residues=self.params.asu_contents.n_residues,
-      n_bases=self.params.asu_contents.n_bases,
-      out=self.log, verbose=1)
+      n_bases=self.params.asu_contents.n_bases).show(self.log)
     self.params.asu_contents.n_residues = self.matthews_result[0]
     self.params.asu_contents.n_bases = self.matthews_result[1]
     if self.params.asu_contents.n_copies_per_asu is None:
