@@ -89,9 +89,9 @@ class multimer(object):
       pdb_obj = pdb.hierarchy.input(file_name=file_name)
       pdb_inp = pdb.input(file_name=file_name)
     else:
-      self.pdb_input_file_name = pdb_str
+      # self.pdb_input_file_name = pdb_str
       pdb_obj = pdb.hierarchy.input(pdb_string=pdb_str)
-      pdb_inp = pdb.input(lines=pdb_str)
+      pdb_inp = pdb.input(lines=pdb_str, source_info=None)
     pdb_obj_new = pdb_obj.hierarchy.deep_copy()
     self.assembled_multimer = pdb_obj_new
     if reconstruction_type == 'ba':
@@ -121,7 +121,6 @@ class multimer(object):
 
     # Calculate ASU (if there are any transforms to apply)
     if self.transforms_obj.transform_to_be_used:
-      self.ncs_unique_chains_ids = self.transforms_obj.ncs_copies_chains_names
       self.number_of_transforms = len(self.transforms_obj.transform_to_be_used)
       nrg = self.transforms_obj.get_ncs_restraints_group_list()
       new_sites = apply_transforms(
@@ -202,7 +201,7 @@ class ncs_group_object(object):
     transform_info:  an object produced from the PDB MTRIX or BIOMT records
     ncs_refinement_params: an object produced by the PHIL parameters
     """
-    # Todo:  check if all attributes are being used
+    # Todo:  check if all attributes are being used or if can be simply removed
 
     self.total_asu_length = None
     # iselection maps, each master ncs to its copies position in the asu
@@ -263,7 +262,6 @@ class ncs_group_object(object):
     5) spec file
     6) mmcif file
     7) iotbx.pdb.hierarchy.input object
-    8) list of ncs_resitrains_groups
 
     :param pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
     :param transform_info: object containing MTRIX or BIOMT transformation info
@@ -348,13 +346,10 @@ class ncs_group_object(object):
       msg = 'MTRIX record error : Mixed present and not-present NCS copies'
       assert assert_test,msg
       self.process_pdb(transform_info=transform_info)
-
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
-
     self.ncs_copies_chains_names = self.make_chains_names(
       transform_assignment=self.transform_chain_assignment,
       unique_chain_names = self.model_unique_chains_ids)
-
     # build self.ncs_to_asu_selection
     for k in self.transform_chain_assignment:
       selection_str = 'chain ' + self.ncs_copies_chains_names[k]
@@ -363,7 +358,6 @@ class ncs_group_object(object):
         self.ncs_to_asu_selection[key].append(selection_str)
       else:
         self.ncs_to_asu_selection[key] = [selection_str]
-
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
   def build_ncs_obj_from_phil(self,
@@ -584,7 +578,6 @@ class ncs_group_object(object):
     self.ncs_selection_str = '('+ self.ncs_chain_selection[0] +')'
     for i in range(1,len(self.ncs_chain_selection)):
       self.ncs_selection_str += ' or (' + self.ncs_chain_selection[i] + ')'
-
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
@@ -595,10 +588,6 @@ class ncs_group_object(object):
     Build transforms objects and NCS <-> ASU mapping using mmcif file
     """
     # TODO: build function
-
-  def build_ncs_obj_from_ncs_resitrains_groups(self,ncs_resitrains_groups):
-    # Todo: build method
-    pass
 
   def add_transforms_to_ncs_refinement_groups(self,rotations,translations):
     """
@@ -652,9 +641,6 @@ class ncs_group_object(object):
       self.ncs_chain_selection =\
         ['chain ' + s for s in self.model_unique_chains_ids]
       self.ncs_chain_selection.sort()
-
-      # Note: probably not needed - used for asu entry
-      # modify the code to only modify existing hierarchy
       self.ncs_copies_chains_names = [x.id for x in model.chains()]
 
   def compute_ncs_asu_coordinates_map(self,pdb_hierarchy_inp):
@@ -809,7 +795,7 @@ class ncs_group_object(object):
       asu_total_length += ncs_selection.count(True)
     return asu_total_length
 
-  def build_MTRIX_object(self):
+  def build_MTRIX_object(self,ncs_only=True):
     """
     Build a MTRIX object from ncs_group_object
     Used for testing
@@ -820,10 +806,14 @@ class ncs_group_object(object):
     tr_sorted = sorted(tr_dict,key=lambda k:tr_dict[k].serial_num)
     for key in tr_sorted:
       transform = self.ncs_transform[key]
+      r = transform.r
+      t = transform.t
+      identity_test = (r.is_r3_identity_matrix() and t.is_col_zero())
+      cp = (not ncs_only) or identity_test
       result.add(
-        r=transform.r,
-        t=transform.t,
-        coordinates_present=transform.coordinates_present,
+        r=r,
+        t=t,
+        coordinates_present=cp,
         serial_number=transform.serial_num)
     return result
 
@@ -889,7 +879,6 @@ class ncs_group_object(object):
     """
     if pdb_hierarchy_inp:
       self.compute_ncs_asu_coordinates_map(pdb_hierarchy_inp=pdb_hierarchy_inp)
-
     self.transform_order = sorted(self.transform_to_ncs)
 
   def get_ncs_restraints_group_list(self):
@@ -933,6 +922,69 @@ class ncs_group_object(object):
         master_isel.extend(self.asu_to_ncs_map[key])
       assert nrg.ncs_copy_iselection == ncs_isel
       assert nrg.master_ncs_iselection == master_isel
+
+  def write_transform_records(self, file_name=None,
+                          ncs_only=True,
+                          pdb_hierarchy=None,
+                          xrs=None,
+                          mtrix=None,
+                          biomt=None):
+    """
+    Write to a file or prints transformation records.
+    with or without PDB atoms and cryst records.
+
+    Arguments:
+    file_name: (str) output file name
+    ncs_only: (bool) When False, the comple ASU will be printed (applicable
+              only with MTRIX records)
+    pdb_hierarchy: (pdb_hierarchy object)
+    xrs: (xray structure) for crystal symmetry
+    mtrix: (bool) When True -> write MTRIX records
+    biomt: (bool) When True -> write BIOMT records
+    """
+    if (not mtrix) and (not biomt):
+      mtrix = True
+      biomt = False
+    assert bool(mtrix) == (not bool(biomt))
+    if biomt: ncs_only = True
+    mtrix_object = self.build_MTRIX_object(ncs_only=ncs_only)
+    pdb_header_str = ''
+    new_ph_str = ''
+    if pdb_hierarchy:
+      ph = pdb_hierarchy
+      if xrs:
+        pdb_str = ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
+      else:
+        pdb_str = ph.as_pdb_string()
+      pdb_str = pdb_str.splitlines()
+      # collect CRYST and SCALE records
+      pdb_header_lines = []
+      for x in pdb_str:
+        if x.startswith('ATOM'): break
+        else: pdb_header_lines.append(x)
+      pdb_header_str = '\n'.join(pdb_header_str)
+      if ncs_only:
+        new_ph = ph.select(self.ncs_atom_selection.iselection())
+      else:
+        msg = 'The complete ASU hierarchy need to be provided !!!'
+        assert len(self.ncs_atom_selection) == len(ph.atoms()),msg
+        new_ph = ph
+      new_ph_str = new_ph.as_pdb_string(crystal_symmetry=None)
+
+    if mtrix:
+      transform_rec = mtrix_object.as_pdb_string()
+    elif biomt:
+      transform_rec = mtrix_object.format_BOIMT_pdb_string()
+    if file_name:
+      f = open(file_name,'w')
+      print >> f, pdb_header_str
+      print >> f, transform_rec
+      print >> f, new_ph_str
+      f.close()
+    else:
+      print pdb_header_str
+      print transform_rec
+      print new_ph_str
 
 def apply_transforms(ncs_coordinates,
                      ncs_restraints_group_list,
@@ -1008,7 +1060,8 @@ def order_transforms(transform_to_ncs):
 
 def uniqueness_test(unique_selection_set,new_item):
   """
-  Insert new item to set, if not there, raise an error if already in set
+  When processing phil parameters. Insert new item to set, if not there,
+  raise an error if already in set
 
   :param unique_selection_set: (set)
   :param new_item: (str)
@@ -1023,8 +1076,8 @@ def uniqueness_test(unique_selection_set,new_item):
 def get_rot_trans(master_ncs_ph,ncs_copy_ph):
   """
   Get rotation and translation using superpose
-
-  :param ph: pdb hierarchy input object
+  :param master_ncs_ph: pdb hierarchy input object
+  :param ncs_copy_ph: pdb hierarchy input object
   :return r: rotation matrix
   :return t: translation vector
   """
