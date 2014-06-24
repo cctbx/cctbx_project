@@ -123,8 +123,11 @@ class multimer(object):
     if self.transforms_obj.transform_to_be_used:
       self.ncs_unique_chains_ids = self.transforms_obj.ncs_copies_chains_names
       self.number_of_transforms = len(self.transforms_obj.transform_to_be_used)
-      new_sites = self.transforms_obj.apply_transforms(
+      nrg = self.transforms_obj.get_ncs_restraints_group_list()
+      new_sites = apply_transforms(
         ncs_coordinates = pdb_obj.hierarchy.atoms().extract_xyz(),
+        ncs_restraints_group_list = nrg,
+        total_asu_length =  self.transforms_obj.total_asu_length,
         round_coordinates = round_coordinates)
       # apply the transformation
       model = pdb_obj_new.models()[0]
@@ -138,7 +141,6 @@ class multimer(object):
           new_chain.append_residue_group(res.detached_copy())
         model.append_chain(new_chain)
       self.assembled_multimer.atoms().set_xyz(new_sites)
-
 
   def get_ncs_hierarchy(self):
     """
@@ -200,33 +202,18 @@ class ncs_group_object(object):
     transform_info:  an object produced from the PDB MTRIX or BIOMT records
     ncs_refinement_params: an object produced by the PHIL parameters
     """
-    # summery of NCS groups selection and operators
-    # [[[ncs group 1 master selection],[ncs group 2 master selection],..]]
-    # ,[[[r1_1,  t1_1],[r2_1,t2_1]],[[r1_2, t1_2],[r2_2,t2_2],[r2_3,t2_3]],..]
-    self.group_selection_and_transforms = [[],[]]
-
     # Todo:  check if all attributes are being used
-    # When ncs is known, reproduce asu even if the PDB file already contains
-    # the complete asu
+
     self.total_asu_length = None
-
-    # maps each chain in the ncs to its copies position in the asu, and the
-    # asu back to the ncs.
-    # the keys are chain-id_transform-serial-number, ie A_3
-    # values are flex iselection of the corresponding atoms in the asu
+    # iselection maps, each master ncs to its copies position in the asu
     self.ncs_to_asu_map = {}
-
+    # iselection maps of each ncs copy to its master ncs
+    self.asu_to_ncs_map = {}
     # iselection of all part in ASU that are not related via NCS operators
     self.non_ncs_region_selection = None
-
     # keys are items in ncs_chain_selection, values are lists of selection str
     self.ncs_to_asu_selection = {}
-    # values are flex iselection of the corresponding atoms in the ncs
-    self.asu_to_ncs_map = {}
-
     self.ncs_copies_chains_names = {}
-    # map all dictionaries key to chain ID or ncs_selection
-    self.map_keys_to_ncs_selection = {}
     # dictionary of transform names, same keys as ncs_to_asu_map
     self.chain_transform_assignment = {}
     self.number_of_ncs_groups = 1
@@ -264,6 +251,88 @@ class ncs_group_object(object):
     self.selection_names_index = [65,65]
     # order of transforms  - used when concatenating or separating them
     self.transform_order = []
+
+  def preprocess_ncs_obj(self,
+                         pdb_hierarchy_inp=None,
+                         transform_info=None,
+                         rotations = None,
+                         translations = None,
+                         ncs_selection_params = None,
+                         ncs_phil_groups = None,
+                         file_name=None,
+                         file_path='',
+                         spec_file_str='',
+                         spec_source_info='',
+                         cif_string = '',
+                         quiet=True,
+                         spec_ncs_groups=None):
+    """
+    Select method to build ncs_group_object
+
+    order of implementation:
+    1) rotations,translations
+    2) transform_info
+    3) ncs_selection_params
+    4) ncs_phil_groups
+    5) spec file
+    6) mmcif file
+    7) iotbx.pdb.hierarchy.input object
+    8) list of ncs_resitrains_groups
+
+    :param pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
+    :param transform_info: object containing MTRIX or BIOMT transformation info
+    :param rotations: matrix.sqr 3x3 object
+    :param translations: matrix.col 3x1 object
+    :param ncs_selection_params: Phil parameters
+           Phil structure
+              ncs_group_selection {
+                ncs_group (multiple)
+                {
+                  master_ncs_selection = ''
+                  selection_copy = ''   (multiple)
+                }
+              }
+    :param ncs_phil_groups: a list of ncs_groups_container object, containing
+           master NCS selection and a list of NCS copies selection
+    :param file_name: (str) spec or mmcif file name
+    :param file_path: (str)
+    :param spec_file_str: (str) spec format data
+    :param spec_source_info:
+    :param quiet: (bool) When True -> quiet output when processing files
+    :param spec_ncs_groups: ncs_groups object as produced by simple_ncs_from_pdb
+    :param cif_string: (str) string of cif type data
+    """
+    #
+    if transform_info or rotations:
+      self.build_ncs_obj_from_pdb_ncs(
+        pdb_hierarchy_inp = pdb_hierarchy_inp,
+        rotations=rotations,
+        translations=translations,
+        transform_info=transform_info)
+    elif ncs_selection_params or ncs_phil_groups:
+      self.build_ncs_obj_from_phil(
+        ncs_selection_params=ncs_selection_params,
+        ncs_phil_groups=ncs_phil_groups,
+        pdb_hierarchy_inp=pdb_hierarchy_inp)
+    elif (file_name and file_name[-9:] == '.ncs_spec') or \
+            spec_file_str or spec_source_info or spec_ncs_groups:
+      self.build_ncs_obj_from_spec_file(
+        file_name=file_name,
+        file_path=file_path,
+        file_str=spec_file_str,
+        source_info=spec_source_info,
+        pdb_hierarchy_inp=pdb_hierarchy_inp,
+        spec_ncs_groups=spec_ncs_groups,
+        quiet=quiet)
+    elif (file_name and file_name[-4:] == '.cif') or cif_string:
+      self.build_ncs_obj_from_mmcif(
+        file_name=file_name,
+        file_path=file_path,
+        cif_string=cif_string)
+    elif pdb_hierarchy_inp:
+      self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
+    else:
+      raise IOError,'Please provide one of the supported input'
 
   def build_ncs_obj_from_pdb_ncs(self,
                                  pdb_hierarchy_inp,
@@ -427,7 +496,7 @@ class ncs_group_object(object):
     # Basic case: Assume first chain is the master
 
     if len(n_atoms_per_chain_dict.keys()) == 1:
-      # Note: even when there all chain ae of the same length, master NCS
+      # Note: even when there all chain are of the same length, master NCS
       # might be made of several chains
       new_ncs_group = ncs_groups_container()
       key = n_atoms_per_chain_dict.keys()[0]
@@ -447,21 +516,24 @@ class ncs_group_object(object):
         pdb_hierarchy_inp=pdb_hierarchy_inp,
         ncs_phil_groups=ncs_phil_groups)
     else:
-      # FIXME Phenix dependencies should be avoided
-      from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
-      from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
-      params = ncs_master_params.extract()
-      params.simple_ncs_from_pdb.min_length = 1
-      ncs_from_pdb=simple_ncs_from_pdb(
-        pdb_inp=pdb_hierarchy_inp.input,
-        hierarchy=pdb_hierarchy_inp.hierarchy,
-        quiet=True,
-        log=null_out(),
-        params=params)
-      spec_ncs_groups = ncs_from_pdb.ncs_object.ncs_groups()
-      self.build_ncs_obj_from_spec_file(
-        pdb_hierarchy_inp=pdb_hierarchy_inp,
-        spec_ncs_groups=spec_ncs_groups)
+      import libtbx.load_env
+      if libtbx.env.has_module(name="phenix"):
+        from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
+        from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
+        params = ncs_master_params.extract()
+        params.simple_ncs_from_pdb.min_length = 1
+        ncs_from_pdb=simple_ncs_from_pdb(
+          pdb_inp=pdb_hierarchy_inp.input,
+          hierarchy=pdb_hierarchy_inp.hierarchy,
+          quiet=True,
+          log=null_out(),
+          params=params)
+        spec_ncs_groups = ncs_from_pdb.ncs_object.ncs_groups()
+        self.build_ncs_obj_from_spec_file(
+          pdb_hierarchy_inp=pdb_hierarchy_inp,
+          spec_ncs_groups=spec_ncs_groups)
+
+    # Todo Add some notification if process was not successful
 
 
   def build_ncs_obj_from_spec_file(self,file_name=None,file_path='',
@@ -531,11 +603,17 @@ class ncs_group_object(object):
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
-  def build_ncs_obj_from_mmcif(self):
+  def build_ncs_obj_from_mmcif(self,
+                               file_name=None,file_path=None,
+                               cif_string=None):
     """
     Build transforms objects and NCS <-> ASU mapping using mmcif file
     """
     # TODO: build function
+
+  def build_ncs_obj_from_ncs_resitrains_groups(self,ncs_resitrains_groups):
+    # Todo: build method
+    pass
 
   def add_transforms_to_ncs_refinement_groups(self,rotations,translations):
     """
@@ -646,18 +724,6 @@ class ncs_group_object(object):
           asu_selection =flex.bool(self.total_asu_length,
                                    temp_selection.iselection())
           self.ncs_to_asu_map[transform_key] = asu_selection.iselection()
-
-    for select,tr in self.ncs_group_map.itervalues():
-      if len(select) == 1:
-        s = select.pop()
-      else:
-        s = ' or '.join(select)
-      ncs_group_selection = temp.selection(s)
-      selection = ncs_group_selection.iselection()
-      nt = self.ncs_transform
-      transforms = [[nt[x].r, nt[x].t] for x in tr]
-      self.group_selection_and_transforms[0].append(selection)
-      self.group_selection_and_transforms[1].append(transforms)
 
 
   def add_identity_transform(self,ncs_selection,ncs_group_id=1,transform_sn=1):
@@ -846,101 +912,88 @@ class ncs_group_object(object):
     new_names_dictionary = {x:y for (x,y) in zippedlists}
     return new_names_dictionary
 
-  def apply_transforms(self,
-                      ncs_coordinates,
-                      round_coordinates = True):
-    """
-    Apply transformation to the information in the transforms_obj to the
-    ncs_coordinates (flex.vec3), and round the results if
-    round_coordinates is True
-
-    Returns:
-    complete asymmetric or the biological unit
-    """
-    asu_xyz = flex.vec3_double([(0,0,0)]*self.total_asu_length)
-    s = flex.size_t_range(len(ncs_coordinates))
-    asu_xyz.set_selected(s,ncs_coordinates)
-
-    for trans in self.transform_chain_assignment:
-      asu_selection = self.ncs_to_asu_map[trans]
-      ncs_selection = self.asu_to_ncs_map[trans.split('_')[0]]
-      ncs_xyz = ncs_coordinates.select(ncs_selection)
-      tr_key = 's' + trans.split('_')[1]
-      assert self.ncs_transform.has_key(tr_key)
-      tr = self.ncs_transform[tr_key]
-      new_sites = tr.r.elems* ncs_xyz+tr.t
-      asu_xyz.set_selected(asu_selection,new_sites)
-    if round_coordinates:
-      return flex.vec3_double(asu_xyz).round(3)
-    else:
-      return flex.vec3_double(asu_xyz)
-
-  def identify_ncs(self,transform_info):
-    """
-    Find the ncs group and create total NCS selection string
-
-    Arguments:
-    transform_info : an object containing MTRIX
-    """
-    # Todo: add find NCS from PDB ASU
-    # Todo: update self.ncs_chain_selection to include only the NCS chains selection
-    # FIXME Phenix dependencies should be avoided
-    from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
-    from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
-    params = ncs_master_params.extract()
-    params.simple_ncs_from_pdb.min_length = 1
-    ncs_from_pdb=simple_ncs_from_pdb(
-    pdb_inp=pdb_obj.input,
-    hierarchy=pdb_obj.hierarchy,
-    quiet=True,
-    log=null_out(),
-    params=params)
-
-    # update ncs_chain_selection to include only master NCS chains
-    self.ncs_chain_selection =['chain ' + s for s in ncs_chain_ids]
-    self.ncs_chain_selection.sort()
-    # set str selection
-    self.ncs_selection_str = '('+ self.ncs_chain_selection[0] +')'
-    for i in range(1,len(self.ncs_chain_selection)):
-      self.ncs_selection_str += ' or (' + self.ncs_chain_selection[i] + ')'
-
-
   def finalize_pre_process(self,pdb_hierarchy_inp=None):
     """
     Steps that are common to most method of transform info
     """
     if pdb_hierarchy_inp:
-      # get the mapping between NCS and ASU
-      self.map_keys_to_ncs_selection=\
-        {k:k.split('_')[0] for k in self.chain_transform_assignment}
       self.compute_ncs_asu_coordinates_map(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
     self.transform_order = sorted(self.transform_to_ncs)
 
-class transform(object):
-
-  def __init__(self,
-               rotation,
-               translation,
-               serial_num,
-               coordinates_present,
-               ncs_group_id):
+  def get_ncs_restraints_group_list(self):
     """
-    Basic transformation properties
-
-    Argument:
-    rotation : Rotation matrix object
-    translation: Translation matrix object
-    serial_num : (int) Transform serial number
-    coordinates_present: equals 1 when coordinates are presents in PDB file
-    ncs_group_id : (int) ncs groups in, all the selections that the same
-                   transforms are being applied to
+    :return: a list of ncs_restraint_group objects
     """
-    self.r = rotation
-    self.t = translation
-    self.serial_num = serial_num
-    self.coordinates_present = bool(coordinates_present)
-    self.ncs_group_id = ncs_group_id
+    ncs_restraints_group_list = []
+    for tr in self.transform_order:
+      new_nrg = ncs_restraint_group()
+      new_nrg.r = self.ncs_transform[tr].r
+      new_nrg.t = self.ncs_transform[tr].t
+      master_isel = flex.size_t()
+      ncs_isel = flex.size_t()
+      for sel in self.transform_to_ncs[tr]:
+        key = sel.split('_')[0]
+        ncs_isel.extend(self.ncs_to_asu_map[sel])
+        master_isel.extend(self.asu_to_ncs_map[key])
+      new_nrg.ncs_copy_iselection = ncs_isel
+      new_nrg.master_ncs_iselection = master_isel
+      ncs_restraints_group_list.append(new_nrg)
+    return ncs_restraints_group_list
+
+  def update_using_ncs_restraints_group_list(self,ncs_restraints_group_list):
+    """
+    Update ncs_group_object rotations and transformations.
+
+    Note that to insure proper assignment the ncs_restraints_group_list
+    should be produced using the get_ncs_restraints_group_list method
+
+    :param ncs_restraints_group_list: a list of ncs_restraint_group objects
+    """
+    for tr in self.transform_order:
+      nrg = ncs_restraints_group_list.pop(0)
+      self.ncs_transform[tr].r = nrg.r
+      self.ncs_transform[tr].t = nrg.t
+      for sel in self.transform_to_ncs[tr]:
+        master_isel = flex.size_t()
+        ncs_isel = flex.size_t()
+        key = sel.split('_')[0]
+        ncs_isel.extend(self.ncs_to_asu_map[sel])
+        master_isel.extend(self.asu_to_ncs_map[key])
+      assert nrg.ncs_copy_iselection == ncs_isel
+      assert nrg.master_ncs_iselection == master_isel
+
+def apply_transforms(ncs_coordinates,
+                     ncs_restraints_group_list,
+                     total_asu_length,
+                     round_coordinates = True):
+  """
+  Apply transformation to ncs_coordinates,
+  and round the results if round_coordinates is True
+
+  Argument:
+  ncs_coordinates: (flex.vec3)
+  ncs_restraints_group_list: list of ncs_restraint_group objects
+  total_asu_length: (int) Complete ASU length
+
+  Returns:
+  complete asymmetric or the biological unit
+  """
+  s = flex.size_t_range(len(ncs_coordinates))
+  asu_xyz = flex.vec3_double([(0,0,0)]*total_asu_length)
+  asu_xyz.set_selected(s,ncs_coordinates)
+
+  for nrg in ncs_restraints_group_list:
+    master_ncs_selection = nrg.master_ncs_iselection
+    asu_selection = nrg.ncs_copy_iselection
+    ncs_xyz = ncs_coordinates.select(master_ncs_selection)
+    new_sites = nrg.r.elems* ncs_xyz+nrg.t
+    asu_xyz.set_selected(asu_selection,new_sites)
+  if round_coordinates:
+    return flex.vec3_double(asu_xyz).round(3)
+  else:
+    return flex.vec3_double(asu_xyz)
+
 
 def format_num_as_str(n):
   """  return a 3 digit string of n  """
@@ -1086,3 +1139,48 @@ class ncs_groups_container(object):
   def __init__(self):
     self.master_ncs_selection = ''
     self.selection_copy = []
+
+class ncs_restraint_group(object):
+  """ Minimal object of NCS groups selection and operators  """
+
+  def __init__(self,
+               master_ncs_iselection = None,
+               ncs_copy_iselection = None,
+               rotation = None,
+               translation = None):
+    """
+
+    :param master_ncs_iselection: (flex.size_t or flex.bool)
+    :param ncs_copy_iselection: (flex.size_t or flex.bool)
+    :param rotation: matrix.sqr 3x3 object
+    :param translation: matrix.col 3x1 object
+    """
+    self.master_ncs_iselection = master_ncs_iselection
+    self.ncs_copy_iselection = ncs_copy_iselection
+    self.r = rotation
+    self.t = translation
+
+class transform(object):
+
+  def __init__(self,
+               rotation = None,
+               translation = None,
+               serial_num = None,
+               coordinates_present = None,
+               ncs_group_id = None):
+    """
+    Basic transformation properties
+
+    Argument:
+    rotation : Rotation matrix object
+    translation: Translation matrix object
+    serial_num : (int) Transform serial number
+    coordinates_present: equals 1 when coordinates are presents in PDB file
+    ncs_group_id : (int) ncs groups in, all the selections that the same
+                   transforms are being applied to
+    """
+    self.r = rotation
+    self.t = translation
+    self.serial_num = serial_num
+    self.coordinates_present = bool(coordinates_present)
+    self.ncs_group_id = ncs_group_id
