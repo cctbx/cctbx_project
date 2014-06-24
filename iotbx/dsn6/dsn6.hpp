@@ -53,7 +53,7 @@ namespace iotbx { namespace dsn6 {
     }
     double rho_range = rho_max - rho_min;
     IOTBX_ASSERT(rho_range > 0);
-    std::ofstream mapfile(file_name, std::ios::out | std::ios::binary);
+    std::ofstream mapfile(file_name.c_str(), std::ios::out | std::ios::binary);
     // origin
     for (unsigned i = 0; i < 3; i++) {
       short n = static_cast<short>(gridding_first[i]);
