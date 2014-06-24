@@ -67,7 +67,7 @@ class FormatEDFALS733(Format):
     return self._scan_factory.single(
       filename = self._image_file,
       format = "EDF",
-      exposure_time = self.detectorbase.parameters["count_time"],
+      exposure_times = self.detectorbase.parameters["count_time"],
       osc_start = 0.0,
       osc_width = 0.0,
       epoch = None)

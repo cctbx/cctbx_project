@@ -67,7 +67,7 @@ class FormatDIP2030b(Format):
     return self._scan_factory.single(
       filename = self._image_file,
       format = "DIP",
-      exposure_time = self.detectorbase.parameters["TIME"],
+      exposure_times = self.detectorbase.parameters["TIME"],
       osc_start = self.detectorbase.parameters["OSC_START"],
       osc_width = self.detectorbase.parameters["OSC_RANGE"],
       epoch = None)
