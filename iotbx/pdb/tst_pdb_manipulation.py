@@ -2,6 +2,7 @@ from __future__ import division
 from  iotbx.pdb.multimer_reconstruction import format_num_as_str
 from  iotbx.pdb.multimer_reconstruction import ncs_group_object
 from  iotbx.pdb.multimer_reconstruction import multimer
+from  iotbx.pdb.multimer_reconstruction import apply_transforms
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 from iotbx import pdb
@@ -57,8 +58,10 @@ class TestMultimerReconstruction(unittest.TestCase):
     # Test getting non-rounded ASU
     transforms_obj = cau_multimer_data.transforms_obj
     source_xyz = cau_multimer_data.get_ncs_hierarchy().atoms().extract_xyz()
-    xyz = transforms_obj.apply_transforms(
+    xyz = apply_transforms(
       ncs_coordinates = source_xyz,
+      ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list(),
+      total_asu_length = transforms_obj.total_asu_length,
       round_coordinates=False)
     cau_multimer_xyz = list(xyz)
     cau_multimer_xyz.sort()
@@ -137,7 +140,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     r.append(matrix.sqr([1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.4]))
     t = [matrix.col([0,2,1])]
     t.append(matrix.col([-1,3,-2]))
-    transforms_obj.build_ncs_obj_from_pdb_ncs(
+    transforms_obj.preprocess_ncs_obj(
       pdb_hierarchy_inp = pdb_obj,
       rotations=r,
       translations=t)
@@ -151,7 +154,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     # check that if transforms are provided MTRIX record ignored
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transforms_obj = ncs_group_object()
-    transforms_obj.build_ncs_obj_from_pdb_ncs(
+    transforms_obj.preprocess_ncs_obj(
       pdb_hierarchy_inp = pdb_obj,
       rotations=r,
       translations=t)
@@ -180,7 +183,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transform_info = pdb_inp.process_mtrix_records()
-    transforms_obj.build_ncs_obj_from_pdb_ncs(
+    transforms_obj.preprocess_ncs_obj(
       transform_info=transform_info,
       pdb_hierarchy_inp=pdb_obj)
 
