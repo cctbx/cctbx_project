@@ -51,7 +51,7 @@ ATOM      9  O   ALA A   2      -8.089  -0.114  -9.659  1.00  0.00           O
 ATOM     10  CB  ALA A   2      -7.511  -0.985  -6.610  1.00  0.00           C
 """
 
-beta4_pdb_str = """
+beta_pdb_str = """
 ATOM      1  N   ALA A   1      27.961   0.504   1.988  1.00  0.00           N
 ATOM      2  CA  ALA A   1      29.153   0.205   2.773  1.00  0.00           C
 ATOM      3  C   ALA A   1      30.420   0.562   2.003  1.00  0.00           C
@@ -170,9 +170,7 @@ def side_chain_placement(ag_to_place, current_reference_ag, rotamer_manager):
 def make_ss_structure_from_sequence(pdb_str,
       sequence=None,
       pdb_hierarchy_template=None,
-      sigma_on_reference=None,
-      rotamer_manager=None,
-      log = null_out()):
+      rotamer_manager=None):
   """ Return pdb.hierarchy with secondary structure according to sequence or
   reference hierarcy. If reference hierarchy provided, the resulting hierarchy
   will be rigid body aligned to it. Residue numbers will start from 1.
@@ -180,7 +178,6 @@ def make_ss_structure_from_sequence(pdb_str,
   pdb_str - "ideal" structure at least 2 residues long.
   sequence - string with sequence (one-letter codes)
   pdb_hierarchy_template - reference hierarchy.
-  sigma_on_reference - if None, no geometry refinement occurs.
   """
   if rotamer_manager is None:
     rotamer_manager = RotamerEval()
@@ -325,11 +322,10 @@ def substitute_ss(real_h,
       cumm_bsel.set_selected(isel, True)
       sel_h = real_h.select(all_bsel, copy_atoms=True)
       ideal_h = make_ss_structure_from_sequence(
-          pdb_str=beta4_pdb_str,
+          pdb_str=beta_pdb_str,
           sequence=None,
           pdb_hierarchy_template=sel_h,
           rotamer_manager=rotamer_manager,
-          sigma_on_reference=None,
           )
       edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
 
