@@ -328,12 +328,12 @@ class density_modification(object):
       crystal_symmetry=self.f_obs,
       n_residues=self.params.asu_contents.n_residues,
       n_bases=self.params.asu_contents.n_bases).show(self.log)
-    self.params.asu_contents.n_residues = self.matthews_result[0]
-    self.params.asu_contents.n_bases = self.matthews_result[1]
+    self.params.asu_contents.n_residues = self.matthews_result.n_residues
+    self.params.asu_contents.n_bases = self.matthews_result.n_bases
     if self.params.asu_contents.n_copies_per_asu is None:
-      self.params.asu_contents.n_copies_per_asu = self.matthews_result[2]
+      self.params.asu_contents.n_copies_per_asu = self.matthews_result.n_copies
     if self.params.solvent_fraction is None:
-      self.params.solvent_fraction = self.matthews_result[3]
+      self.params.solvent_fraction = self.matthews_result.solvent_content
 
   def anisotropic_correction(self):
     if not self.params.anisotropic_correction: return
@@ -345,7 +345,7 @@ class density_modification(object):
       miller_array=self.f_obs,
       n_residues=n_residues*self.f_obs.space_group().order_z()*n_copies_solc,
       n_bases=n_bases*self.f_obs.space_group().order_z()*n_copies_solc)
-    self.aniso_scale_and_b.show(out=self.log,verbose=1)
+    self.aniso_scale_and_b.show(out=self.log)
     b_cart = self.aniso_scale_and_b.b_cart
     trace = sum(b_cart[:3])/3
     b_cart = [b_cart[0]-trace, b_cart[1]-trace, b_cart[2]-trace,
