@@ -49,6 +49,7 @@ if (libtbx.env.has_module("ccp4io")):
 
 SConscript("pdb/SConscript")
 SConscript("xplor/SConscript")
+SConscript("dsn6/SConscript")
 
 if (not env_etc.no_boost_python):
   SConscript("detectors/SConscript")

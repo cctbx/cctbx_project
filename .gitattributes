@@ -1203,6 +1203,10 @@ iotbx/detectors/tst_py_cbf.py -text
 iotbx/detectors/url_support.py -text
 iotbx/detectors/util/__init__.py -text
 iotbx/detectors/util/filters.py -text
+iotbx/dsn6/SConscript -text
+iotbx/dsn6/__init__.py -text
+iotbx/dsn6/dsn6.hpp -text
+iotbx/dsn6/ext.cpp -text
 iotbx/error.h svneol=native#text/plain
 iotbx/examples/__init__.py svneol=native#text/x-python
 iotbx/examples/iotbx_cif.py -text
