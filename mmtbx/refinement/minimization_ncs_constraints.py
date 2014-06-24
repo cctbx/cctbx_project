@@ -1,4 +1,5 @@
 from __future__ import division
+from iotbx.pdb.multimer_reconstruction import apply_transforms
 import mmtbx.utils.ncs_utils as nu
 from cctbx import xray
 import scitbx.lbfgs
@@ -7,7 +8,8 @@ from scitbx.array_family import flex
 import cctbx.maptbx.real_space_refinement_simple
 
 def grads_asu_to_one_ncs(
-      transforms_obj,
+      ncs_restraints_group_list,
+      ncs_atom_selection,
       grad,
       refine_sites):
   """
@@ -15,51 +17,43 @@ def grads_asu_to_one_ncs(
   gradients corresponding to one NCS copy.
 
   Arguments:
-  transforms_obj: an object containing information on the rotation matrices
-                   and about ncs -> asu relations
+  ncs_restraints_group_list: list of ncs_restraint_group objects
   grad: gradient of the complete asu
   refine_sites: (bool) Flag indicating sites refinement
   """
-  # TODO: write a test for this function, change g_ave to g_sum
+  # TODO: write a test for this function
   # Get total length of NCS
   # Get the NCS gradient
-  g_ncs = grad.select(transforms_obj.ncs_atom_selection)
-  for transform in transforms_obj.transform_chain_assignment:
-    asu_selection = transforms_obj.ncs_to_asu_map[transform]
-    ncs_selection = transforms_obj.asu_to_ncs_map[transform.split('_')[0]]
+  g_ncs = grad.select(ncs_atom_selection)
+  for nrg in ncs_restraints_group_list:
+    ncs_selection = nrg.master_ncs_iselection
+    asu_selection = nrg.ncs_copy_iselection
     g = grad.select(asu_selection)
     if(refine_sites):
       # apply inverse transformation
-      tr = transforms_obj.chain_transform_assignment[transform]
-      rt = transforms_obj.ncs_transform[tr].r.transpose().elems
+      rt = nrg.r.transpose().elems
       g = rt*g
+    # fixme: fix this line
     g_ncs.set_selected(ncs_selection, g + g_ncs.select(ncs_selection))
-
-  # del: No Need to average  !!!
-  # # taking the appropriate average for each part of the ncs
-  # for ncs_selection in transforms_obj.asu_to_ncs_map.itervalues():
-  # # for k,v in transforms_obj.asu_to_ncs_map.iteritems():
-  #   ncs_selection  = v
-  #   n = transforms_obj.number_of_ncs_copies[k]
-  #   g = g_ave.select(ncs_selection)*(1.0/n)
-  #   g_ave.set_selected(ncs_selection, g)
 
   if(refine_sites): g_ncs = flex.vec3_double(g_ncs)
   assert type(grad)==type(g_ncs)
   return g_ncs
 
-def grads_one_ncs_to_asu(transforms_obj,ncs_grad):
+def grads_one_ncs_to_asu(ncs_restraints_group_list,
+                         total_asu_length,
+                         ncs_atom_selection,
+                         ncs_grad):
   """
   Expand average gradient of a single NCS to all ASU
   (only for u_iso refinement)
 
   Arguments:
-  transforms_obj: an object containing information on the rotation matrices
-                   and about ncs -> asu relations
+  ncs_restraints_group_list: list of ncs_restraint_group objects
   ncs_grad: gradient of ta single ncs
   """
   # TODO: Add test to make sure this works, check asu_to_ncs_map
-  g_length = transforms_obj.total_asu_length
+  g_length = total_asu_length
   if isinstance(ncs_grad,flex.vec3_double):
     g = flex.vec3_double([(0.0,0.0,0.0)]*g_length)
   elif isinstance(ncs_grad,flex.double):
@@ -67,11 +61,11 @@ def grads_one_ncs_to_asu(transforms_obj,ncs_grad):
   else:
     raise TypeError('Non supported grad type')
   # update newly created flex.vec3 with master NCS info
-  g.set_selected(transforms_obj.ncs_atom_selection ,ncs_grad)
+  g.set_selected(ncs_atom_selection ,ncs_grad)
   # update newly created flex.vec3 with NCS copies
-  for transform in transforms_obj.transform_chain_assignment:
-    asu_selection = transforms_obj.ncs_to_asu_map[transform]
-    ncs_selection = transforms_obj.asu_to_ncs_map[transform.split('_')[0]]
+  for nrg in ncs_restraints_group_list:
+    ncs_selection = nrg.master_ncs_iselection
+    asu_selection = nrg.ncs_copy_iselection
     ncs_grad_portion = ncs_grad.select(ncs_selection)
     g.set_selected(asu_selection,ncs_grad_portion)
   return g.as_double()
@@ -79,7 +73,8 @@ def grads_one_ncs_to_asu(transforms_obj,ncs_grad):
 def restraints_target_and_grads(
       restraints_manager,
       xray_structure,
-      transforms_obj,
+      ncs_restraints_group_list,
+      ncs_atom_selection,
       lbfgs_self,
       grad,
       refine_sites=False,
@@ -110,7 +105,7 @@ def restraints_target_and_grads(
         compute_gradients = True)
       ef_grad = nu.compute_transform_grad(
         grad_wrt_xyz      = ef.gradients.as_double(),
-        transforms_obj    = transforms_obj,
+        ncs_restraints_group_list = ncs_restraints_group_list,
         xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
         x                 = lbfgs_self.x)
   if(ef is not None): return ef.target, ef_grad
@@ -129,7 +124,8 @@ class target_function_and_grads_real_space(object):
         self,
         map_data,
         xray_structure,
-        transforms_obj,
+        ncs_restraints_group_list,
+        ncs_atom_selection,
         real_space_gradients_delta,
         restraints_manager=None,
         data_weight=None,
@@ -155,7 +151,7 @@ class target_function_and_grads_real_space(object):
         grad_wrt_xyz = tg.gradients().as_double()
         g = nu.compute_transform_grad(
           grad_wrt_xyz      = grad_wrt_xyz,
-          transforms_obj    = self.transforms_obj,
+          ncs_restraints_group_list = self.ncs_restraints_group_list,
           xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
           x                 = lbfgs_self.x)
     return t, g
@@ -167,7 +163,8 @@ class target_function_and_grads_real_space(object):
     t_restraints, g_restraints = restraints_target_and_grads(
       restraints_manager     = self.restraints_manager,
       xray_structure         = self.xray_structure,
-      transforms_obj         = self.transforms_obj,
+      ncs_restraints_group_list = self.ncs_restraints_group_list,
+      ncs_atom_selection     = self.ncs_atom_selection,
       refine_sites           = self.refine_sites,
       refine_transformations = self.refine_transformations,
       lbfgs_self             = lbfgs_self,
@@ -178,7 +175,8 @@ class target_function_and_grads_real_space(object):
       g = g_data*self.data_weight + g_restraints
       if(not self.refine_transformations):
         g = grads_asu_to_one_ncs(
-          transforms_obj      = self.transforms_obj,
+          ncs_restraints_group_list = self.ncs_restraints_group_list,
+          ncs_atom_selection = self.ncs_atom_selection,
           grad                 = g,
           refine_sites         = self.refine_sites).as_double()
     return t, g
@@ -190,7 +188,8 @@ class target_function_and_grads_reciprocal_space(object):
   def __init__(
         self,
         fmodel,
-        transforms_obj,
+        ncs_restraints_group_list,
+        ncs_atom_selection,
         restraints_manager=None,
         data_weight=None,
         refine_sites=False,
@@ -229,7 +228,7 @@ class target_function_and_grads_reciprocal_space(object):
         grad_wrt_xyz = tgx.gradients_wrt_atomic_parameters(site=True).packed()
         g = nu.compute_transform_grad(
           grad_wrt_xyz      = grad_wrt_xyz,
-          transforms_obj    = self.transforms_obj,
+          ncs_restraints_group_list = self.ncs_restraints_group_list,
           xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
           x                 = lbfgs_self.x)
     return t, g
@@ -244,7 +243,8 @@ class target_function_and_grads_reciprocal_space(object):
     t_restraints, g_restraints =  restraints_target_and_grads(
       restraints_manager     = self.restraints_manager,
       xray_structure         = self.xray_structure,
-      transforms_obj         = self.transforms_obj,
+      ncs_restraints_group_list = self.ncs_restraints_group_list,
+      ncs_atom_selection     = self.ncs_atom_selection,
       refine_sites           = self.refine_sites,
       refine_u_iso           = self.refine_u_iso,
       refine_transformations = self.refine_transformations,
@@ -258,7 +258,8 @@ class target_function_and_grads_reciprocal_space(object):
       g = g_data*self.data_weight + g_restraints
       if(not self.refine_transformations):
         g = grads_asu_to_one_ncs(
-          transforms_obj      = self.transforms_obj,
+          ncs_restraints_group_list = self.ncs_restraints_group_list,
+          ncs_atom_selection = self.ncs_atom_selection,
           grad                 = g,
           refine_sites         = self.refine_sites).as_double()
     return t, g
@@ -273,9 +274,10 @@ class target_function_and_grads_reciprocal_space(object):
 
 class lbfgs(object):
   def __init__(self,
-        transforms_obj,
+        ncs_restraints_group_list,
         target_and_grads_object,
         xray_structure,
+        ncs_atom_selection = None,
         finite_grad_differences_test = False,
         finite_grad_difference_val   = 0,
         max_iterations               = 35,
@@ -289,7 +291,8 @@ class lbfgs(object):
     adopt_init_args(self, locals())
     assert [self.refine_sites,
             self.refine_u_iso, self.refine_transformations].count(True) == 1
-    self.ncs_atom_selection = transforms_obj.ncs_atom_selection
+    self.ncs_atom_selection = ncs_atom_selection
+    self.total_asu_length = len(xray_structure.sites_cart())
     assert self.ncs_atom_selection.count(True) > 0
     traditional_convergence_test_eps = 1.0e-6
     if self.use_strict_ncs:
@@ -304,7 +307,8 @@ class lbfgs(object):
         xray_structure_one_ncs_copy.use_u_iso().count(True)
       self.x = xray_structure_one_ncs_copy.extract_u_iso_or_u_equiv()
     elif self.refine_transformations:
-      self.x = nu.concatenate_rot_tran(self.transforms_obj)
+      self.x = nu.concatenate_rot_tran(
+        ncs_restraints_group_list=self.ncs_restraints_group_list)
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
       termination_params=scitbx.lbfgs.termination_parameters(
@@ -332,8 +336,9 @@ class lbfgs(object):
     """
     if not x: x = self.x
     if self.refine_transformations:
-      self.transforms_obj = nu.separate_rot_tran(
-        x=x, transforms_obj=self.transforms_obj)
+      # update the ncs_restraint_groups transforms
+      self.ncs_restraints_group_list = nu.separate_rot_tran(
+        x=x, ncs_restraints_group_list=self.ncs_restraints_group_list)
       # Use the new transformations to create the ASU
       x_ncs = nu.get_ncs_sites_cart(self).as_double()
       x_asu = self.refinable_params_one_ncs_to_asu(x_ncs)
@@ -356,13 +361,19 @@ class lbfgs(object):
     if not x : x = self.x
     if self.refine_sites or self.refine_transformations:
       if self.use_strict_ncs or self.refine_transformations:
-        new_x = self.transforms_obj.apply_transforms(
+        new_x = apply_transforms(
           ncs_coordinates = flex.vec3_double(x),
-          round_coordinates=False)
+          ncs_restraints_group_list = self.ncs_restraints_group_list,
+          total_asu_length = self.total_asu_length,
+          round_coordinates = False)
       return new_x.as_double()
     elif self.refine_u_iso:
       if self.use_strict_ncs:
-        return grads_one_ncs_to_asu(self.transforms_obj,x)
+        return grads_one_ncs_to_asu(
+          ncs_restraints_group_list = self.ncs_restraints_group_list,
+          ncs_atom_selection = self.ncs_atom_selection,
+          total_asu_length = self.total_asu_length,
+          ncs_grad = x)
       else:
         return flex.double(list(x))
 
@@ -393,6 +404,7 @@ class lbfgs(object):
     """
     Analyze and combine similar transformations
     """
+    # todo: check if still needed
     from  iotbx.pdb.multimer_reconstruction import ncs_group_object
     new_transforms_obj =  ncs_group_object()
     pass
