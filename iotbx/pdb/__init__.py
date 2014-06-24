@@ -1058,7 +1058,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       fmt1="REMARK 350   BIOMT1  %2d%10.6f%10.6f%10.6f     %10.5f"
       fmt2="REMARK 350   BIOMT2  %2d%10.6f%10.6f%10.6f     %10.5f"
       fmt3="REMARK 350   BIOMT3  %2d%10.6f%10.6f%10.6f     %10.5f"
-      for sn_, r_, t_, p_ in zip(self.serial_number, self.r, self.t):
+      for sn_, r_, t_ in zip(self.serial_number, self.r, self.t):
         lines.append(fmt1%(int(sn_), r_[0],r_[1],r_[2], t_[0]))
         lines.append(fmt2%(int(sn_), r_[3],r_[4],r_[5], t_[1]))
         lines.append(fmt3%(int(sn_), r_[6],r_[7],r_[8], t_[2]))
