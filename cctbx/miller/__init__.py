@@ -4685,6 +4685,25 @@ class fft_map(maptbx.crystal_gridding):
       map_data=map_data,
       labels=flex.std_string(labels))
 
+  def as_dsn6_map (self,
+      file_name,
+      gridding_first=None,
+      gridding_last=None) :
+    from iotbx import dsn6
+    map_data = self.real_map(direct_access=False)
+    if gridding_first is None :
+      gridding_first = (0,0,0)
+    if gridding_last is None :
+      gridding_last = tuple(self.n_real())
+      # only write out the exact unit cell, without padding
+      if (gridding_first == (0,0,0)) :
+        gridding_last = tuple([ (n-1) for n in gridding_last ])
+    dsn6.write_dsn6_map(file_name=file_name,
+      unit_cell=self.unit_cell(),
+      gridding_first=gridding_first,
+      gridding_last=gridding_last,
+      map_data=map_data)
+
 def patterson_map(crystal_gridding, f_patt, f_000=None,
                   sharpening=False,
                   origin_peak_removal=False):
