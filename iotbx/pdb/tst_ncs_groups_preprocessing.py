@@ -35,7 +35,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     expected_ncs_chains = [['chain A'],['chain A', 'chain B']]
     for i,phil_case in enumerate([user_phil1,user_phil2]):
       trans_obj = ncs_group_object()
-      trans_obj.build_ncs_obj_from_phil(
+      trans_obj.preprocess_ncs_obj(
         ncs_selection_params = phil_case)
       self.assertEqual(trans_obj.ncs_selection_str,expected_ncs_selection[i])
       self.assertEqual(trans_obj.ncs_to_asu_selection,expected_ncs_to_asu[i])
@@ -44,7 +44,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     for pc in [user_phil3,user_phil4,user_phil5]:
       trans_obj = ncs_group_object()
       self.assertRaises(
-        IOError,trans_obj.build_ncs_obj_from_phil,ncs_selection_params=pc)
+        IOError,trans_obj.preprocess_ncs_obj,ncs_selection_params=pc)
 
   def test_phil_processing(self):
     """ Verify that phil parameters are properly processed   """
@@ -52,7 +52,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     trans_obj = ncs_group_object()
-    trans_obj.build_ncs_obj_from_phil(
+    trans_obj.preprocess_ncs_obj(
         ncs_selection_params = pdb_test_data2_phil,
         pdb_hierarchy_inp=pdb_obj)
 
@@ -80,7 +80,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data1)
     trans_obj = ncs_group_object()
-    trans_obj.build_ncs_obj_from_phil(
+    trans_obj.preprocess_ncs_obj(
         ncs_selection_params = pdb_test_data1_phil,
         pdb_hierarchy_inp=pdb_obj)
 
@@ -149,7 +149,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # reading and processing the spec file
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
     trans_obj = ncs_group_object()
-    trans_obj.build_ncs_obj_from_spec_file(
+    trans_obj.preprocess_ncs_obj(
       file_name="simple_ncs_from_pdb.ncs_spec",
       # file_str=test_ncs_spec,  # use output string directly
       pdb_hierarchy_inp = pdb_obj)
@@ -206,7 +206,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # reading and processing the spec file
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
     trans_obj = ncs_group_object()
-    trans_obj.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp = pdb_obj)
+    trans_obj.preprocess_ncs_obj(pdb_hierarchy_inp = pdb_obj)
 
     # test created object
     self.assertEqual(len(trans_obj.transform_chain_assignment),3)
