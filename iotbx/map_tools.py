@@ -455,6 +455,29 @@ def write_ccp4_map (sites_cart, unit_cell, map_data, n_real, file_name,
     map_data=map_data,
     labels=flex.std_string(["iotbx.map_conversion.write_ccp4_map_box"]))
 
+def write_dsn6_map (sites_cart, unit_cell, map_data, n_real, file_name,
+    buffer=10) :
+  import iotbx.dsn6
+  from cctbx import sgtbx
+  from scitbx.array_family import flex
+  if sites_cart is not None :
+    frac_min, frac_max = unit_cell.box_frac_around_sites(
+      sites_cart=sites_cart,
+      buffer=buffer)
+  else :
+    frac_min, frac_max = (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)
+  gridding_first = tuple([ifloor(f*n) for f,n in zip(frac_min,n_real)])
+  gridding_last = tuple([iceil(f*n) for f,n in zip(frac_max,n_real)])
+  print "n_real:", n_real
+  print "gridding start:", gridding_first
+  print "gridding end:", gridding_last
+  iotbx.dsn6.write_dsn6_map(
+    file_name=file_name,
+    unit_cell=unit_cell,
+    gridding_first=gridding_first,
+    gridding_last=gridding_last,
+    map_data=map_data)
+
 ########################################################################
 # convenience functions
 def convert_resolve_map (mtz_file, **kwds) :
