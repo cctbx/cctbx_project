@@ -108,19 +108,6 @@ class TestMultimerReconstruction(unittest.TestCase):
     assert approx_equal(ba_expected_results,ba_multimer_xyz,eps=0.001)
     self.assertEqual(ba_multimer_data.number_of_transforms,9)
 
-  def test_selection_naming(self):
-    """
-    Verify naming of selection done as expected
-    """
-    print 'Running ',sys._getframe().f_code.co_name
-    transforms_obj = ncs_group_object()
-    result = []
-    for i in range(26*2):
-      result.append(transforms_obj.produce_selection_name())
-    chr_list = string.ascii_uppercase
-    expected = ['S'+a+b for a in chr_list[:2] for b in chr_list]
-    self.assertEqual(result,expected)
-
   def test_ncs_copies_naming(self):
     print 'Running ',sys._getframe().f_code.co_name
     transforms_obj = ncs_group_object()
