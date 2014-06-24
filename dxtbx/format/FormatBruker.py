@@ -84,7 +84,7 @@ class FormatBruker(Format):
       # It's not at all clear how to recover the exposure time from the header
       # or even whether it is recorded.
       # XXX Here it will simply be set to a default number.
-      exposure_time = 1,
+      exposure_times = 1,
       osc_start = self.detectorbase.parameters["OSC_START"],
       osc_width = self.detectorbase.parameters["OSC_RANGE"],
       epoch = None)
