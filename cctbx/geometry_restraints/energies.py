@@ -19,6 +19,7 @@ class energies(scitbx.restraints.energies):
                ncs_dihedral_proxies=None,
                chirality_proxies=None,
                planarity_proxies=None,
+               parallelity_proxies=None,
                bond_similarity_proxies=None,
                generic_restraints_manager=None,
                external_energy_function=None,
@@ -173,6 +174,28 @@ class energies(scitbx.restraints.energies):
             gradient_array=self.gradients)
       self.number_of_restraints += self.n_planarity_proxies
       self.residual_sum += self.planarity_residual_sum
+
+    if parallelity_proxies is None:
+      self.n_parallelity_proxies = None
+      self.parallelity_residual_sum = 0
+    else:
+      self.n_parallelity_proxies = len(parallelity_proxies)
+      if unit_cell is None: # ignore proxy.i_seqs
+        self.parallelity_residual_sum = geometry_restraints \
+          .parallelity_residual_sum(
+            sites_cart=sites_cart,
+            proxies=parallelity_proxies,
+            gradient_array=self.gradients)
+      else:
+        self.parallelity_residual_sum = geometry_restraints \
+          .parallelity_residual_sum(
+            unit_cell=unit_cell,
+            sites_cart=sites_cart,
+            proxies=parallelity_proxies,
+            gradient_array=self.gradients)
+      self.number_of_restraints += self.n_parallelity_proxies
+      self.residual_sum += self.parallelity_residual_sum
+
     if (bond_similarity_proxies is None):
       self.n_bond_similarity_proxies = None
       self.bond_similarity_residual_sum = 0
@@ -403,6 +426,9 @@ class energies(scitbx.restraints.energies):
     if (self.n_planarity_proxies is not None):
       print >> f, prefix+"  planarity_residual_sum (n=%d): %.6g" % (
         self.n_planarity_proxies, self.planarity_residual_sum)
+    if (self.n_parallelity_proxies is not None):
+      print >> f, prefix+"  parallelity_residual_sum (n=%d): %.6g" % (
+        self.n_parallelity_proxies, self.parallelity_residual_sum)
     if (self.n_hbond_proxies >0):
       print >> f, prefix+"  hbonds_residual_sum (n=%d): %.6g" % (
         self.n_hbond_proxies, self.hbond_residual_sum)

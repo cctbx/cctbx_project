@@ -181,6 +181,7 @@ class run2(object):
                dihedral                       = False,
                chirality                      = False,
                planarity                      = False,
+               parallelity                    = False,
                generic_restraints             = False,
                rmsd_bonds_termination_cutoff  = 0,
                rmsd_angles_termination_cutoff = 0,
@@ -196,7 +197,8 @@ class run2(object):
     self.minimized = None
     self.restraints_manager = restraints_manager
     assert max_number_of_iterations+number_of_macro_cycles > 0
-    assert [bond,nonbonded,angle,dihedral,chirality,planarity].count(False) < 6
+    assert [bond,nonbonded,angle,dihedral,chirality,planarity,
+            parallelity].count(False) < 7
     self.cdl_proxies = None
     if(cdl):
       from mmtbx.conformation_dependent_library import setup_restraints
@@ -216,6 +218,7 @@ class run2(object):
       dihedral           = dihedral,
       chirality          = chirality,
       planarity          = planarity,
+      parallelity        = parallelity,
       reference_dihedral = True,
       bond_similarity    = True,
       generic_restraints = True)

@@ -11,6 +11,7 @@ namespace cctbx { namespace geometry_restraints { namespace boost_python {
   void wrap_dihedral();
   void wrap_chirality();
   void wrap_planarity();
+  void wrap_parallelity();
   void wrap_motif();
 
 namespace {
@@ -26,6 +27,7 @@ namespace {
     wrap_dihedral();
     wrap_chirality();
     wrap_planarity();
+    wrap_parallelity();
     wrap_motif();
   }
 

@@ -13,6 +13,7 @@ class flags(object):
         ncs_dihedral=None,
         chirality=None,
         planarity=None,
+        parallelity=None,
         bond_similarity=None,
         generic_restraints=None,
         default=False):
@@ -24,6 +25,7 @@ class flags(object):
     if (ncs_dihedral is None): ncs_dihedral = default
     if (chirality is None): chirality = default
     if (planarity is None): planarity = default
+    if (parallelity is None): parallelity = default
     if (bond_similarity is None): bond_similarity = default
     if (generic_restraints is None) : generic_restraints = default
     adopt_init_args(self, locals())
@@ -38,5 +40,6 @@ class flags(object):
     print >> f, "  reference dihedral:", self.reference_dihedral
     print >> f, "  chirality:", self.chirality
     print >> f, "  planarity:", self.planarity
+    print >> f, "  parallelity:", self.parallelity
     print >> f, "  bond similarity:", self.bond_similarity
     print >> f, "  other (generic):", self.generic_restraints

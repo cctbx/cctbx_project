@@ -369,7 +369,8 @@ class manager(object):
             angle     = True,
             dihedral  = True,
             chirality = True,
-            planarity = True)
+            planarity = True,
+            parallelity = True)
       sites_cart_mac_after = \
         self.xray_structure.sites_cart().select(not_hd_selection)
       assert approx_equal(flex.max(sites_cart_mac_before.as_double() -
@@ -636,12 +637,14 @@ class manager(object):
                             dihedral                       = False,
                             chirality                      = False,
                             planarity                      = False,
+                            parallelity                    = False,
                             generic_restraints             = False,
                             rmsd_bonds_termination_cutoff  = 0,
                             rmsd_angles_termination_cutoff = 0):
     # XXX consolidate with mmtbx.refinement.geometry_minimization.run2
     assert max_number_of_iterations+number_of_macro_cycles > 0
-    assert [bond,nonbonded,angle,dihedral,chirality,planarity].count(False) < 6
+    assert [bond,nonbonded,angle,dihedral,chirality,planarity,
+            parallelity].count(False) < 7
     from mmtbx.refinement import geometry_minimization
     import scitbx.lbfgs
     lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
@@ -653,6 +656,7 @@ class manager(object):
       dihedral           = dihedral,
       chirality          = chirality,
       planarity          = planarity,
+      parallelity        = parallelity,
       generic_restraints = generic_restraints)
     for i in xrange(number_of_macro_cycles):
       sites_cart = self.xray_structure.sites_cart()

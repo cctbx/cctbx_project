@@ -80,6 +80,25 @@ namespace cctbx { namespace geometry_restraints {
     return result;
   }
 
+  // Placeholder for selection (???) of parallelity proxy
+  // Most likely doesn't work, just compiles
+  template <typename ProxyType>
+  af::shared<ProxyType>
+  shared_parallelity_proxy_select(
+    af::const_ref<ProxyType> const& self,
+    std::size_t n_seq,
+    af::const_ref<std::size_t> const& iselection)
+  {
+    af::shared<ProxyType> result;
+    for(std::size_t i_proxy=0;i_proxy<self.size();i_proxy++) {
+      ProxyType const& p = self[i_proxy];
+      result.push_back(p);
+    }
+    return result;
+  }
+
+
+
   template <typename ProxyType>
   af::shared<ProxyType>
   shared_proxy_remove(
