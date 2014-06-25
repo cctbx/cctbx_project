@@ -191,7 +191,7 @@ class refinement_monitor(object):
       self.rigid_body_shift_accumulator = rigid_body_shift_accumulator
     t2 = time.time()
     time_collect_and_process += (t2 - t1)
-    self.call_back(model, fmodel)
+    self.call_back(model, fmodel, method=step)
 
   def call_back (self, model, fmodel, method="monitor_collect") :
     if self.call_back_handler is not None and callable(self.call_back_handler) :
