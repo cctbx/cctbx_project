@@ -462,7 +462,7 @@ class rec(object):
     xxyy = x*x + y*y
     if (abs(xxyy + c*c - 1) > is_normal_vector_threshold):
       raise RuntimeError("self is not a normal vector.")
-    s = (xxyy)**0.5
+    s = math.sqrt(xxyy)
     if (s < sin_angle_is_zero_threshold):
       if (c > 0):
         return sqr((1,0,0,0,1,0,0,0,1))
