@@ -236,6 +236,8 @@ class ncs_group_object(object):
     self.transform_to_be_used = set()
     # order of transforms  - used when concatenating or separating them
     self.transform_order = []
+    # keep hierarchy for writing (To have a source of atoms labels)
+    self.hierarchy = None
 
   def preprocess_ncs_obj(self,
                          pdb_hierarchy_inp=None,
@@ -879,6 +881,8 @@ class ncs_group_object(object):
     """
     if pdb_hierarchy_inp:
       self.compute_ncs_asu_coordinates_map(pdb_hierarchy_inp=pdb_hierarchy_inp)
+      # keep hierarchy for writing
+      self.hierarchy = pdb_hierarchy_inp.hierarchy
     self.transform_order = sorted(self.transform_to_ncs)
 
   def get_ncs_restraints_group_list(self):
@@ -927,6 +931,7 @@ class ncs_group_object(object):
                           ncs_only=True,
                           pdb_hierarchy=None,
                           xrs=None,
+                          fmodel=None,
                           mtrix=None,
                           biomt=None):
     """
@@ -939,8 +944,12 @@ class ncs_group_object(object):
               only with MTRIX records)
     pdb_hierarchy: (pdb_hierarchy object)
     xrs: (xray structure) for crystal symmetry
+    fmodel: (fmodel object)
     mtrix: (bool) When True -> write MTRIX records
     biomt: (bool) When True -> write BIOMT records
+
+    Return:
+    PDB string
     """
     if (not mtrix) and (not biomt):
       mtrix = True
@@ -950,19 +959,28 @@ class ncs_group_object(object):
     mtrix_object = self.build_MTRIX_object(ncs_only=ncs_only)
     pdb_header_str = ''
     new_ph_str = ''
+    if fmodel:
+      xrs = fmodel.xray_structure
+    if xrs and not pdb_hierarchy:
+      pdb_hierarchy = self.hierarchy
+      pdb_str = xrs.as_pdb_file()
+      pdb_header_str = get_pdb_header(pdb_str)
+      xyz = pdb_hierarchy.atoms().extract_xyz()
+      new_xyz = xrs.sites_cart()
+      if new_xyz.size() > xyz.size():
+        xrs = xrs.select(self.ncs_atom_selection.iselection())
+        new_xyz = xrs.sites_cart()
+      assert new_xyz.size() == xyz.size()
+      pdb_hierarchy.atoms().set_xyz(new_xyz)
     if pdb_hierarchy:
       ph = pdb_hierarchy
       if xrs:
         pdb_str = ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
       else:
         pdb_str = ph.as_pdb_string()
-      pdb_str = pdb_str.splitlines()
       # collect CRYST and SCALE records
-      pdb_header_lines = []
-      for x in pdb_str:
-        if x.startswith('ATOM'): break
-        else: pdb_header_lines.append(x)
-      pdb_header_str = '\n'.join(pdb_header_str)
+      if not pdb_header_str:
+       pdb_header_str = get_pdb_header(pdb_str)
       if ncs_only:
         new_ph = ph.select(self.ncs_atom_selection.iselection())
       else:
@@ -985,6 +1003,56 @@ class ncs_group_object(object):
       print pdb_header_str
       print transform_rec
       print new_ph_str
+
+    return '\n'.join([pdb_header_str,transform_rec,new_ph_str])
+
+  def write_ncs_info_to_spec(self,pdb_hierarchy_asu):
+    spec_object = ncs.ncs()
+    # spec_ncs_group_list = []
+    # spec_object._ncs_groups = spec_ncs_group_list
+
+    sorted_keys = sorted(self.ncs_copies_chains_names)
+    current_master_chain_id = ''
+    for k in sorted_keys:
+      chain_id = self.ncs_copies_chains_names[k]
+      key = k.split('_')[0]
+      main_chain = key.replace('chain ','')
+      if current_master_chain_id != main_chain:
+        current_master_chain_id = main_chain
+        master_sel = self.asu_to_ncs_map[key]
+        center_orth = get_center_orth(pdb_hierarchy_asu,master_sel)
+        # todo: write get_res_in_common
+        res_in_common_list = get_res_in_common(pdb_hierarchy_asu,master_sel)
+        # Todo: insert identity t and r
+      transform_key = 's' + k.split('_')[1]
+      tr = self.ncs_transform[transform_key]
+      spec_object.import_ncs_group(
+        center_orth = center_orth,
+        ncs_rota_matr = tr.r,
+        trans_orth = tr.t,
+        chain_residue_id = chain_id,
+        residues_in_common_list = res_in_common_list,
+        ncs_domain_pdb = None)
+
+    #Fields to populate
+    gr.chain_residue_id()
+    gr.rota_matrices()[i]
+    gr.translations_orth()[i]
+
+
+    ncs_group_object=ncs.ncs_group(
+      ncs_rota_matr=self._ncs_rota_matr,
+      trans_orth=self._ncs_trans_orth,
+      source_of_ncs_info=self.source_info,
+      ncs_domain_pdb=self._ncs_domain_pdb, # 041309
+      rmsd_list=self._rmsd_list,
+      residues_in_common_list=self._residues_in_common_list,
+      chain_residue_id=self._chain_residue_id,
+      cc=self._cc)
+
+    spec_object.self._ncs_groups = spec_ncs_group_list
+
+
 
 def apply_transforms(ncs_coordinates,
                      ncs_restraints_group_list,
@@ -1017,6 +1085,26 @@ def apply_transforms(ncs_coordinates,
   else:
     return flex.vec3_double(asu_xyz)
 
+def get_pdb_header(pdb_str):
+  """
+  :param pdb_str: (str) pdb type string
+  :return: the portion of the pdb_str till the first ATOM
+  """
+  pdb_str = pdb_str.splitlines()
+  pdb_header_lines = []
+  for x in pdb_str:
+    if x.startswith('ATOM'): break
+    else: pdb_header_lines.append(x)
+  return '\n'.join(pdb_header_lines)
+
+def get_center_orth(pdb_hierarchy,selection):
+  """
+  :param pdb_hierarchy:
+  :param selection:
+  :return:(flex.vec3_double) center of coordinates for the selected coordinates
+  """
+  new_ph = pdb_hierarchy.select(selection)
+  return new_ph.atoms().extract_xyz().mean()
 
 def format_num_as_str(n):
   """  return a 3 digit string of n  """
