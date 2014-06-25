@@ -1209,6 +1209,7 @@ iotbx/dsn6/SConscript -text
 iotbx/dsn6/__init__.py -text
 iotbx/dsn6/dsn6.hpp -text
 iotbx/dsn6/ext.cpp -text
+iotbx/dsn6/tst.py -text
 iotbx/error.h svneol=native#text/plain
 iotbx/examples/__init__.py svneol=native#text/x-python
 iotbx/examples/iotbx_cif.py -text

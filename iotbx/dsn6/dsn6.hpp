@@ -113,7 +113,6 @@ namespace iotbx { namespace dsn6 {
     int n_blocks[3];
     for (unsigned i = 0; i < 3; i++) {
       n_blocks[i] = (int) std::ceil(((float) dim[i]) / 8.0);
-      std::cout << "n_blocks " << i << " " << n_blocks[i] << std::endl;
     }
     char brick[512];
     char brick_swapped[512];
@@ -128,13 +127,11 @@ namespace iotbx { namespace dsn6 {
                 int i = (xx * 8) + x + gridding_first[0];
                 int j = (yy * 8) + y + gridding_first[1];
                 int k = (zz * 8) + z + gridding_first[2];
-                //std::cout << i << "," << j << "," << k << " ";
                 double rho = map_data(i,j,k);
                 double rho_scaled = (rho - rho_min) * scale_factor;
                 char rhoc = static_cast<char>(rho_scaled);
                 brick[i_byte++] = rhoc;
           }}}
-          //std::cout << std::endl;
           IOTBX_ASSERT(i_byte == 512);
           // XXX not sure about the byte swapping here, but this was
           // necessary to be able to read DSN6 maps from the EDS...
