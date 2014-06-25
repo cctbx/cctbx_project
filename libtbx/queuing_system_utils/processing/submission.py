@@ -111,7 +111,7 @@ class AsynchronousCmdLine(Submission):
   Submits jobs asynchronously
   """
 
-  def __init__(self, cmds, qdel, name, out, err, extract, poller, handler, namelength = None):
+  def __init__(self, cmds, qdel, name, out, err, extract, poller, handler, namelength = None, cwd = "."):
 
     super( AsynchronousCmdLine, self ).__init__(
       cmds = cmds,
@@ -124,6 +124,7 @@ class AsynchronousCmdLine(Submission):
     self.extract = extract
     self.poller = poller
     self.handler = handler
+    self.cwd = cwd
 
 
   def __call__(self, name, executable, script, include, cleanup):
@@ -131,7 +132,7 @@ class AsynchronousCmdLine(Submission):
     ( process, outfile, errfile ) = self.create( name = name )
 
     ( out, err ) = process.communicate(
-      input = self.handler.script( include = include, executable = executable, script = script )
+      input = self.handler.script( include = include, executable = executable, script = script, cwd = self.cwd )
       )
 
     if process.poll():
@@ -205,6 +206,7 @@ class AsynchronousCmdLine(Submission):
   def PBSPro(cls, poller, command = [ "qsub" ]):
 
     from libtbx.queuing_system_utils.processing import status
+    import os
 
     return cls(
       cmds = command,
@@ -216,6 +218,7 @@ class AsynchronousCmdLine(Submission):
       poller = poller,
       handler = status.StdStreamStrategy,
       namelength = 15,
+      cwd = os.getcwd(),
       )
 
 
