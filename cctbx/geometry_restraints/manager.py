@@ -36,6 +36,7 @@ class manager(object):
         ncs_dihedral_proxies=None,
         chirality_proxies=None,
         planarity_proxies=None,
+        parallelity_proxies=None,
         generic_restraints_manager=None,
         external_energy_function=None,
         plain_pairs_radius=None,
@@ -294,6 +295,7 @@ class manager(object):
       ncs_dihedral_proxies=self.ncs_dihedral_proxies,
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
+      parallelity_proxies=self.parallelity_proxies,
       plain_pairs_radius=self.plain_pairs_radius)
 
   def select(self, selection=None, iselection=None):
@@ -385,6 +387,11 @@ class manager(object):
       if (n_seq is None): n_seq = get_n_seq()
       selected_planarity_proxies = self.planarity_proxies.proxy_select(
         n_seq, iselection)
+    selected_parallelity_proxies = None
+    if (self.parallelity_proxies is not None):
+      if (n_seq is None): n_seq = get_n_seq()
+      selected_parallelity_proxies = self.parallelity_proxies.proxy_select(
+        n_seq, iselection)
     generic_restraints_manager = None
     if (self.generic_restraints_manager is not None) :
       generic_restraints_manager = self.generic_restraints_manager.select(
@@ -411,6 +418,7 @@ class manager(object):
       ncs_dihedral_proxies=selected_ncs_dihedral_proxies,
       chirality_proxies=selected_chirality_proxies,
       planarity_proxies=selected_planarity_proxies,
+      parallelity_proxies=selected_parallelity_proxies,
       plain_pairs_radius=self.plain_pairs_radius)
 
   def discard_symmetry(self, new_unit_cell):
@@ -440,6 +448,7 @@ class manager(object):
       ncs_dihedral_proxies=self.ncs_dihedral_proxies,
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
+      parallelity_proxies=self.parallelity_proxies,
       plain_pairs_radius=self.plain_pairs_radius)
 
   def remove_angles_in_place(self, selection):
@@ -464,6 +473,10 @@ class manager(object):
 
   def remove_planarities_in_place(self, selection):
     self.planarity_proxies = self.planarity_proxies.proxy_remove(
+      selection=selection)
+
+  def remove_parallelities_in_place(self, selection):
+    self.parallelity_proxies = self.parallelity_proxies.proxy_remove(
       selection=selection)
 
   def set_generic_restraints (self, manager) :
@@ -728,7 +741,8 @@ class manager(object):
      ncs_dihedral_proxies,
      chirality_proxies,
      planarity_proxies,
-     generic_restraints) = [None]*10
+     parallelity_proxies,
+     generic_restraints) = [None]*11
     if (flags.bond):
       assert pair_proxies.bond_proxies is not None
       bond_proxies = pair_proxies.bond_proxies
@@ -746,6 +760,7 @@ class manager(object):
     if (flags.ncs_dihedral): ncs_dihedral_proxies = self.ncs_dihedral_proxies
     if (flags.chirality): chirality_proxies = self.chirality_proxies
     if (flags.planarity): planarity_proxies = self.planarity_proxies
+    if (flags.parallelity): parallelity_proxies = self.parallelity_proxies
     if (flags.generic_restraints) :
       generic_restraints = self.generic_restraints_manager
     return geometry_restraints.energies.energies(
@@ -759,6 +774,7 @@ class manager(object):
       ncs_dihedral_proxies=ncs_dihedral_proxies,
       chirality_proxies=chirality_proxies,
       planarity_proxies=planarity_proxies,
+      parallelity_proxies=parallelity_proxies,
       generic_restraints_manager=generic_restraints,
       external_energy_function=external_energy_function,
       compute_gradients=compute_gradients,
@@ -963,6 +979,8 @@ class manager(object):
             if (delta is not None):
               print >> f, "delta: %8.5f," % delta,
             print >> f, "weight: %.6g" % weight
+    if (self.parallelity_proxies is not None):
+      print >> f, "parallelity functional is not implemented"
     if (pair_proxies.nonbonded_proxies is not None):
       simple = pair_proxies.nonbonded_proxies.simple
       asu = pair_proxies.nonbonded_proxies.asu
@@ -1065,6 +1083,11 @@ class manager(object):
       print >> f
     if (self.planarity_proxies is not None):
       self.planarity_proxies.show_sorted(
+        by_value="residual",
+        sites_cart=sites_cart, site_labels=site_labels, f=f)
+      print >> f
+    if (self.parallelity_proxies is not None):
+      self.parallelity_proxies.show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels, f=f)
       print >> f

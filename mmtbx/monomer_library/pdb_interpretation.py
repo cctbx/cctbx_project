@@ -258,6 +258,13 @@ master_params_str = """\
       .short_caption = Omega-ESD override value
     include scope mmtbx.geometry_restraints.ramachandran.master_phil
   }
+  restraint_parallel_dna_rna = False
+    .type = bool
+    .short_caption = Determine consecutive DNA/RNA basepairs and restraint \
+      them to be parallel
+  weight_parallel_dna_rna = 0.05
+    .type=float
+    .short_caption = weight for parallelity DNA/RNA restraints
   max_reasonable_bond_distance = 50.0
     .type=float
   nonbonded_distance_cutoff = None
@@ -823,6 +830,7 @@ class monomer_mapping(slots_getstate_setstate):
     "pdb_residue",
     "pdb_residue_id_str",
     "planarity_counters",
+    "parallelity_counters",
     "residue_name",
     "unexpected_atoms",
     "chainid",
@@ -1340,6 +1348,16 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       counters=counters(label="planarity"),
       m_i=self,
       m_j=None,
+      plane_list=self.monomer.get_planes(),
+      planarity_proxy_registry=planarity_proxy_registry,
+      special_position_indices=special_position_indices).counters
+
+  def add_parallelity_proxies(self, special_position_indices,
+                                  parallelity_proxy_registry):
+    self.parallelity_counters = add_parallelity_proxies(
+      counters=counters(label="parallelity"),
+      m_i=self,
+      m_j=self,
       plane_list=self.monomer.get_planes(),
       planarity_proxy_registry=planarity_proxy_registry,
       special_position_indices=special_position_indices).counters
@@ -1972,6 +1990,46 @@ class add_planarity_proxies(object):
           registry_process_result=registry_process_result,
           lines=["plane id: " + str(plane.plane_id)])
 
+class add_parallelity_proxies(object):
+
+  def __init__(self,
+        counters,
+        m_i,
+        m_j,
+        parallelity_proxy_registry,
+        special_position_indices,
+        broken_bond_i_seq_pairs=None,
+        weight=0.05):
+    self.counters = counters
+    if (    m_j is not None
+        and m_i.i_conformer != 0 and m_j.i_conformer != 0):
+      assert m_i.i_conformer == m_j.i_conformer
+    counters.resolved += 1
+    # makign i_seqs, j_seqs,weight
+    i_seqs = []
+    j_seqs = []
+    for seqs, m in [(i_seqs, m_i), (j_seqs, m_j)]:
+      for p in m.monomer.get_planes():
+        for plane_atom in p.plane_atoms:
+          atom = m.expected_atoms.get(plane_atom.atom_id, None)
+          if atom is not None and atom.i_seq not in seqs:
+            seqs.append(atom.i_seq)
+    if (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs+j_seqs)):
+      #print "skipped broken bond"
+      pass
+    else:
+      registry_process_result = parallelity_proxy_registry.process(
+        source_info=source_info_server(m_i=m_i, m_j=m_j),
+        proxy=geometry_restraints.parallelity_proxy(
+          i_seqs=flex.size_t(i_seqs),
+          j_seqs=flex.size_t(j_seqs),
+          weight=weight))
+      evaluate_registry_process_result(
+        proxy_label="parallelity", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
+        registry_process_result=registry_process_result,
+        lines=["plane id: " + "???"])
+
+
 # XXX TODO synonymes
 def ener_lib_as_nonbonded_params(
       ener_lib,
@@ -2048,6 +2106,8 @@ class build_chain_proxies(object):
         mon_lib_srv,
         ener_lib,
         translate_cns_dna_rna_residue_names,
+        restraint_parallel_dna_rna,
+        weight_parallel_dna_rna,
         rna_sugar_pucker_analysis_params,
         apply_cif_modifications,
         apply_cif_links_mm_pdbres_dict,
@@ -2100,6 +2160,7 @@ class build_chain_proxies(object):
     n_unresolved_chain_link_dihedrals = 0
     n_unresolved_chain_link_chiralities = 0
     n_unresolved_chain_link_planarities = 0
+    n_unresolved_chain_link_parallelities = 0
     corrupt_monomer_library_definitions = dicts.with_default_value(0)
     n_bond_proxies_already_assigned_to_first_conformer = 0
     n_unresolved_non_hydrogen_bonds = 0
@@ -2259,6 +2320,21 @@ class build_chain_proxies(object):
               broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
             n_unresolved_chain_link_planarities \
               += link_resolution.counters.unresolved_non_hydrogen
+            # add_parallelity_proxies
+            if restraint_parallel_dna_rna:
+              if (len(broken_bond_i_seq_pairs) == 0 and # link is not broken... 
+                  prev_mm.is_rna_dna and mm.is_rna_dna): # and they are rna/dna 
+                link_resolution = add_parallelity_proxies(
+                  counters=counters(label="link_parallelity"),
+                  m_i=prev_mm,
+                  m_j=mm,
+                  parallelity_proxy_registry=geometry_proxy_registries.parallelity,
+                  special_position_indices=special_position_indices,
+                  broken_bond_i_seq_pairs=broken_bond_i_seq_pairs,
+                  weight=weight_parallel_dna_rna)
+                n_unresolved_chain_link_parallelities \
+                  += link_resolution.counters.unresolved_non_hydrogen
+            
       if (mm.monomer is not None):
         if (mm.is_unusual()):
           unusual_residues[mm.residue_name] += 1
@@ -2431,6 +2507,9 @@ class build_chain_proxies(object):
       if (n_unresolved_chain_link_planarities > 0):
         print >> log, "          Unresolved chain link planarities:", \
           n_unresolved_chain_link_planarities
+      if (n_unresolved_chain_link_parallelities > 0):
+        print >> log, "          Unresolved chain link parallelities:", \
+          n_unresolved_chain_link_parallelities
       if (len(corrupt_monomer_library_definitions) > 0):
         print >> log, "          Corrupt monomer library definitions:", \
           corrupt_monomer_library_definitions
@@ -2496,6 +2575,8 @@ class geometry_restraints_proxy_registries(object):
       strict_conflict_handling=strict_conflict_handling)
     self.planarity = geometry_restraints.planarity_proxy_registry(
       strict_conflict_handling=strict_conflict_handling)
+    self.parallelity = geometry_restraints.parallelity_proxy_registry(
+      strict_conflict_handling=strict_conflict_handling)
 
   # XXX TODO use counts to modify weights
 
@@ -2505,6 +2586,7 @@ class geometry_restraints_proxy_registries(object):
     self.dihedral.initialize_table()
     self.chirality.initialize_table()
     self.planarity.initialize_table()
+    self.parallelity.initialize_table()
 
   def discard_tables(self):
     self.bond_simple.discard_table()
@@ -2512,6 +2594,7 @@ class geometry_restraints_proxy_registries(object):
     self.dihedral.discard_table()
     self.chirality.discard_table()
     self.planarity.discard_table()
+    self.parallelity.discard_table()
 
   def report(self, prefix, log):
     if (self.bond_simple.n_resolved_conflicts > 0):
@@ -2533,6 +2616,10 @@ class geometry_restraints_proxy_registries(object):
     if (self.planarity.n_resolved_conflicts > 0):
       print >> log, prefix + (
         "Number of resolved planarity restraint conflicts: %d"
+          % self.planarity.n_resolved_conflicts)
+    if (self.parallelity.n_resolved_conflicts > 0):
+      print >> log, prefix + (
+        "Number of resolved parallelity restraint conflicts: %d"
           % self.planarity.n_resolved_conflicts)
 
 from mmtbx.monomer_library.linking_mixins import linking_mixins
@@ -2735,6 +2822,8 @@ class build_all_chain_proxies(linking_mixins):
             ener_lib=ener_lib,
             translate_cns_dna_rna_residue_names
               =self.params.translate_cns_dna_rna_residue_names,
+            restraint_parallel_dna_rna=self.params.restraint_parallel_dna_rna,
+            weight_parallel_dna_rna=self.params.weight_parallel_dna_rna,
             rna_sugar_pucker_analysis_params
               =self.params.rna_sugar_pucker_analysis,
             apply_cif_modifications=self.apply_cif_modifications,
@@ -2785,10 +2874,9 @@ class build_all_chain_proxies(linking_mixins):
           cystein_sulphur_atoms_exclude = []
           for atom in self.pdb_atoms:
             e = atom.element.strip().upper()
-            if not e.strip():
-              self.pdb_atoms.set_chemical_element_simple_if_necessary()
-              e = atom.element.strip().upper()
-            if not e.strip(): continue
+            # PVA: undo Nigel's 'bug fix' until further clarification
+            # this breaks phenix_regression/mmtbx/geometry_minimization/tst_06.py
+            #if not e.strip(): continue
             if(not e in exclusion_list):
               for cs_i_seq in self.cystein_sulphur_i_seqs:
                 csa = self.pdb_atoms[cs_i_seq]
@@ -4382,6 +4470,7 @@ class build_all_chain_proxies(linking_mixins):
       dihedral_proxies=self.geometry_proxy_registries.dihedral.proxies,
       chirality_proxies=self.geometry_proxy_registries.chirality.proxies,
       planarity_proxies=self.geometry_proxy_registries.planarity.proxies,
+      parallelity_proxies=self.geometry_proxy_registries.parallelity.proxies,
       generic_restraints_manager=generic_restraints_manager,
       external_energy_function=external_energy_function,
       max_reasonable_bond_distance=self.params.max_reasonable_bond_distance,

@@ -128,6 +128,9 @@ minimization
   planarity = True
     .type = bool
     .short_caption = Planarity
+  parallelity = True
+    .type = bool
+    .short_caption = Parallelity
   }
 }
   include scope mmtbx.geometry_restraints.external.external_energy_params_str
@@ -249,6 +252,7 @@ def run_minimization(
     dihedral                       = params.move.dihedral,
     chirality                      = params.move.chirality,
     planarity                      = params.move.planarity,
+    parallelity                    = params.move.parallelity,
     generic_restraints             = False,
     rmsd_bonds_termination_cutoff  = params.rmsd_bonds_termination_cutoff,
     rmsd_angles_termination_cutoff = params.rmsd_angles_termination_cutoff,
@@ -281,6 +285,7 @@ def run_minimization_amber (
     dihedral                       = params.move.dihedral,
     chirality                      = params.move.chirality,
     planarity                      = params.move.planarity,
+    parallelity                    = params.move.parallelity,
     generic_restraints             = False,
     grmsd_termination_cutoff       = params.grmsd_termination_cutoff,
     alternate_nonbonded_off_on     = params.alternate_nonbonded_off_on,

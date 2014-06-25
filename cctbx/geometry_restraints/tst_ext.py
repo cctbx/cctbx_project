@@ -2841,6 +2841,72 @@ x,y,z
     sites_cart[i_site] = sori
   assert approx_equal(grads_ana, grads_fin)
 
+def exercise_parallelity():
+  # values
+  test_sites_1 = ([(1,1,0), (2,3,0), (1,2,0)],
+                  [(1,1,1), (2,2,1), (1,2,1)])
+  test_sites_2 = ([(1,0,0), (2,0,0), (1,1,0)],
+                  [(1,0,0), (2,0,0), (1,0,1)])
+  # 60 degrees
+  test_sites_21 = ([(1,0,0), (2,0,0), (1,1.732050807568877,-1)],
+                   [(1,0,0), (2,0,0), (1,0,1)])
+  test_sites_3 = ([(1,0,0), (2,0,0), (1,1,0),(3,0,0), (3,3,0), (1,1,0)],
+                  [(1,0,0), (2,0,0), (1,0,1)])
+  test_sites_4 = ([(1,0,0), (2,0,0) ],
+                  [(1,0,0), (2,0,0), (1,0,1)])
+  p = geometry_restraints.parallelity(i_sites=test_sites_1[0],
+                  j_sites=test_sites_1[1],
+                  weight=1)
+  assert approx_equal(p.residual(), 0, 0.00001)
+  p = geometry_restraints.parallelity(i_sites=test_sites_2[0],
+                  j_sites=test_sites_2[1],
+                  weight=1)
+  assert approx_equal(p.residual(), 1, 0.00001)
+  p = geometry_restraints.parallelity(i_sites=test_sites_2[0],
+                  j_sites=test_sites_2[1],
+                  weight=0.02)
+  assert approx_equal(p.residual(), 2500, 0.00001)
+  p = geometry_restraints.parallelity(i_sites=test_sites_21[0],
+                  j_sites=test_sites_21[1],
+                  weight=1)
+  assert approx_equal(p.residual(), 0.5, 0.00001)
+  p = geometry_restraints.parallelity(i_sites=test_sites_3[0],
+                  j_sites=test_sites_3[1],
+                  weight=1)
+  assert approx_equal(p.residual(), 1.0, 0.00001)
+  # gradients
+  def make_points(one_d):
+    result = []
+    for i in range(int(len(one_d)/3)):
+      result.append(tuple(one_d[i*3:i*3+3]))
+    return result
+  h=1.e-5
+  test_sites= [(1,0,0), (2,0,0), (1,1.732050807568877,-1),
+               (1,0,0), (2,0,0), (1,0,1)]
+  test_sites_1d = [1,0,0, 2,0,0, 1,1.732050807568877,-1,
+                   1,0,0, 2,0,0, 1,0,1]
+  p_original = geometry_restraints.parallelity(i_sites=test_sites[:3],
+                           j_sites=test_sites[3:],
+                           weight=1)
+  grad = list(p_original.gradients())
+  fin_dif_grad = []
+  for i in range(len(test_sites_1d)):
+    test_sites_1d[i]+=h
+    points = make_points(test_sites_1d)
+    p1 = geometry_restraints.parallelity(i_sites=points[:3],
+                     j_sites=points[3:],
+                     weight=1)
+    test_sites_1d[i]-=2*h
+    points = make_points(test_sites_1d)
+    p2 = geometry_restraints.parallelity(i_sites=points[:3],
+                     j_sites=points[3:],
+                     weight=1)
+    test_sites_1d[i]+=h
+    fin_dif_grad.append((p1.residual()-p2.residual())/(2.0*h))
+  sites_fdg = make_points(fin_dif_grad)
+  assert approx_equal(grad, sites_fdg, 1.e-7)
+
+
 def exercise():
   exercise_bond_similarity()
   exercise_bond()
@@ -2852,6 +2918,7 @@ def exercise():
   exercise_chirality()
   exercise_planarity()
   exercise_proxy_show()
+  exercise_parallelity()
   print "OK"
 
 if (__name__ == "__main__"):

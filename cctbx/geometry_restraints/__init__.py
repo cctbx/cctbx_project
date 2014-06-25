@@ -322,6 +322,45 @@ class planarity_proxy_registry(proxy_registry_base):
         self.counts[i_list] += 1
     return result
 
+class parallelity_proxy_registry(proxy_registry_base):
+  def __init__(self, strict_conflict_handling):
+    proxy_registry_base.__init__(self,
+        proxies=shared_parallelity_proxy(),
+        strict_conflict_handling=strict_conflict_handling)
+
+  def process(self, source_info, proxy, tolerance=1.e-6):
+    assert proxy.i_seqs.size() > 0
+    assert proxy.j_seqs.size() > 0
+    result = proxy_registry_process_result()
+    proxy = proxy.sort_ij_seqs()
+    # here we want to make sure that we don't have this proxy yet
+    tab_i_seqs = tuple(proxy.i_seqs)
+    tab_j_seqs = tuple(proxy.j_seqs)
+    if (self.table.get((tab_i_seqs, tab_j_seqs), -1) <0 and  
+        self.table.get((tab_j_seqs, tab_i_seqs), -1) <0):
+      # saving proxy number in list
+      self.table[(tab_i_seqs, tab_j_seqs)]= self.proxies.size() 
+      self._append_proxy(
+        source_info=source_info,
+        proxy=proxy,
+        process_result=result)
+    else:
+      # conflict, we have precisely the same proxy!!!
+      i_list = max(self.table.get((tab_i_seqs, tab_j_seqs), -1),
+                   self.table.get((tab_j_seqs, tab_i_seqs), -1))
+      # number of duplicated proxy
+      result.tabulated_proxy = self.proxies[i_list]
+      if (not approx_equal(result.tabulated_proxy.weight, proxy.weight,
+                           eps=tolerance)):
+        self._handle_conflict(
+          source_info=source_info,
+          proxy=proxy,
+          i_list=i_list,
+          process_result=result)
+      if (not result.is_conflicting):
+        self.counts[i_list] += 1 # mark somewhere that this is duplicated
+    return result
+
 class _(boost.python.injector, prolsq_repulsion_function):
 
   def customized_copy(O, c_rep=None, k_rep=None, irexp=None, rexp=None):
@@ -1107,7 +1146,7 @@ class _(boost.python.injector, shared_planarity_proxy):
         restraint = planarity(unit_cell=unit_cell, sites_cart=sites_cart,
                               proxy=proxy)
       restraint_atoms = []
-      for i, (i_seq,weight,delta,l) in enumerate(zip(proxy.i_seqs, proxy.weights,
+      for i,(i_seq,weight,delta,l) in enumerate(zip(proxy.i_seqs, proxy.weights,
                                       restraint.deltas(), labels)):
         sym_op = ""
         if proxy.sym_ops:
@@ -1193,6 +1232,82 @@ class _(boost.python.injector, shared_planarity_proxy):
     n_not_shown = O.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+
+class _(boost.python.injector, parallelity):
+
+  def _show_sorted_item(O, f, prefix):
+    print >> f, "%s    ideal   model   delta" \
+      "    sigma   weight residual" % prefix
+    print >> f, " likely here will be angle between normal vectors" 
+
+  def _get_sorted_item(self):
+    return [self.residual()]
+
+class _(boost.python.injector, shared_parallelity_proxy):
+
+  def deltas_rms(O, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return parallelity_deltas(sites_cart=sites_cart, proxies=O)
+    else:
+      return parallelity_deltas(
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=O)
+
+  def residuals(O, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return parallelity_residuals(sites_cart=sites_cart, proxies=O)
+    else:
+      return parallelity_residuals(
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=O)
+
+  def show_sorted(self,
+        by_value,
+        sites_cart,
+        site_labels=None,
+        f=None,
+        prefix="",
+        max_items=None):
+    if (f is None): f = sys.stdout
+    sorted_table, n_not_shown = self.get_sorted(
+          by_value=by_value,
+          sites_cart=sites_cart,
+          site_labels=site_labels,
+          max_items=max_items)
+    print >> f, "Parallelity restraints: %d" % (self.size())
+    if (self.size() == 0): return
+    if (max_items is not None and max_items <= 0): return
+    print >> f, "%sSorted by %s:" % (prefix, by_value)
+    for info in sorted_table:
+      #proxy = info[-1]
+      #restraint = info[-2]
+      residual = info[1]
+      print >> f, "parallelity     plane 1   |             plane 2  "+\
+          "      | residual"
+      print >> f, "    "+"-"*51+"| %f" % residual
+      i_labels = info[0][0]
+      j_labels = info[0][1]
+      #print i_seqs, j_seqs
+      #STOP()
+      i = 0
+      long_len = max(len(i_labels), len(j_labels))
+      while i < long_len:
+        print >> f, "    %s | %s" % \
+            (i_labels[i] if i < len(i_labels) else " "*21, 
+             j_labels[i] if i < len(j_labels) else "")
+        i += 1
+      print >> f
+    if (n_not_shown != 0):
+      print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+
+  def get_sorted(self,
+        by_value,
+        sites_cart,
+        site_labels=None,
+        max_items=None):
+    return _get_sorted_impl(O=self,
+        proxy_type=parallelity,
+        by_value=by_value, unit_cell=None, sites_cart=sites_cart,
+        site_labels=site_labels, max_items=max_items,
+        get_restraints_only=False)
 
 class _(boost.python.injector, shared_bond_similarity_proxy):
 
@@ -1344,6 +1459,7 @@ def _get_sorted_impl(O,
   for i_proxy in i_proxies_sorted:
     proxy = O[i_proxy]
     labels = []
+    labels_j = []
     for n, i_seq in enumerate(proxy.i_seqs):
       if (site_labels is None): l = str(i_seq)
       else:                     l = site_labels[i_seq]
@@ -1352,6 +1468,16 @@ def _get_sorted_impl(O,
         if not sym_op.is_unit_mx():
           l += "  %s" %sym_op.as_xyz()
       labels.append(l)
+    if proxy_type==parallelity:
+      for n, i_seq in enumerate(proxy.j_seqs):
+        if (site_labels is None): l = str(i_seq)
+        else:                     l = site_labels[i_seq]
+        if unit_cell and proxy.sym_ops:
+          sym_op = proxy.sym_ops[n]
+          if not sym_op.is_unit_mx():
+            l += "  %s" %sym_op.as_xyz()
+        labels_j.append(l)
+      labels = [labels,labels_j]
     if unit_cell is None:
       restraint = proxy_type(
         sites_cart=sites_cart,

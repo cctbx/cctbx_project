@@ -15,4 +15,5 @@ env_bpl.SharedLibrary(
     "dihedral_bpl.cpp",
     "chirality_bpl.cpp",
     "planarity_bpl.cpp",
+    "parallelity_bpl.cpp",
     "motif_bpl.cpp"])
