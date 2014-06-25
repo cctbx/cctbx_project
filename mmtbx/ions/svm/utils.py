@@ -4,7 +4,7 @@ Utility functions used within this module.
 """
 from __future__ import division
 
-def iterate_sites(pdb_hierarchy, split_sites = False, res_filter = None):
+def iterate_sites(pdb_hierarchy, split_sites=False, res_filter=None):
   """
   Returns a generator iterating over all atoms in pdb_hierarchy. Optionally
   skips sites with alternate conformations and can filter by residue name.
@@ -23,9 +23,12 @@ def iterate_sites(pdb_hierarchy, split_sites = False, res_filter = None):
     for chain in model.chains():
       for residue_group in chain.residue_groups():
         for atom_group in residue_group.atom_groups():
-          if res_filter is None or \
-            atom_group.resname.strip().upper() in res_filter:
+          resname = atom_group.resname.strip().upper()
+          if res_filter is None or resname in res_filter:
             atoms = atom_group.atoms()
             if len(atoms) == 1 or split_sites:
               for atom in atoms:
+                element = atom.element.strip().upper()
+                if element in ["H", "D"]:
+                  continue
                 yield atom
