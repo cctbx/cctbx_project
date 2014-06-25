@@ -173,9 +173,9 @@ class Asynchronous(JobStatus):
 
 
   @classmethod
-  def script(cls, include, executable, script):
+  def script(cls, include, executable, script, cwd = "."):
 
-    return cls.SCRIPT % ( include, executable, script )
+    return cls.SCRIPT % ( cwd, include, executable, script )
 
 
 class StdStreamStrategy(Asynchronous):
@@ -185,6 +185,7 @@ class StdStreamStrategy(Asynchronous):
 
   SCRIPT = \
 """\
+cd %s
 source %s
 %s 2>&1 << EOF
 %s
@@ -223,6 +224,7 @@ class SlurmStdStreamStrategy(StdStreamStrategy):
   SCRIPT = \
 """\
 #!/bin/sh
+cd %s
 source %s
 srun %s 2>&1 << EOF
 %s
@@ -239,6 +241,7 @@ class AccountingStrategy(Asynchronous):
 
   SCRIPT = \
 """\
+cd %s
 source %s
 %s << EOF
 %s
@@ -289,6 +292,7 @@ class LogfileStrategy(Asynchronous):
 
   SCRIPT = \
 """\
+cd %s
 #!/bin/sh
 source %s
 %s << EOF
