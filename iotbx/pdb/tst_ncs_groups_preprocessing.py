@@ -108,7 +108,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertTrue(max(d)<0.01)
 
     # test that ncs_asu does not contain the identity transforms
-    expected = {'chain A_002', 'chain A_003', 'chain B_005', 'chain B_006'}
+    expected = {'chain A_s002', 'chain A_s003', 'chain B_s005', 'chain B_s006'}
     self.assertEqual(expected,set(trans_obj.ncs_to_asu_map.keys()))
 
     # test mapping of the different selection in the NCS
@@ -116,7 +116,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(list(trans_obj.asu_to_ncs_map['chain B']),[2])
 
     # test that transform_chain_assignment contains all transforms
-    expected = {'chain A_002', 'chain A_003', 'chain B_005', 'chain B_006'}
+    expected = {'chain A_s002', 'chain A_s003', 'chain B_s005', 'chain B_s006'}
     self.assertEqual(expected,set(trans_obj.transform_chain_assignment))
 
 
