@@ -1,9 +1,9 @@
 from __future__ import division
-from  iotbx.pdb.multimer_reconstruction import ncs_group_object
 import mmtbx.refinement.minimization_ncs_constraints
 import mmtbx.refinement.real_space.weight
 import mmtbx.utils.ncs_utils as nu
 import mmtbx.utils
+import iotbx.ncs
 import iotbx.pdb
 import mmtbx.ncs
 import time
@@ -127,8 +127,7 @@ def run(prefix="tst", d_min=1.0):
   ir = [rm[0]]
   it = [tv[0]]
   # create transformation object
-  transforms_obj = ncs_group_object()
-  transforms_obj.preprocess_ncs_obj(
+  transforms_obj = iotbx.ncs.input(
     pdb_hierarchy_inp = ph_poor_obj,
     rotations=rm,
     translations=tv)

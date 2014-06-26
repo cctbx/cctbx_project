@@ -1,5 +1,4 @@
 from __future__ import division
-from  iotbx.pdb.multimer_reconstruction import ncs_group_object
 from iotbx.pdb.multimer_reconstruction import multimer
 import mmtbx.refinement.minimization_ncs_constraints
 from libtbx.test_utils import approx_equal
@@ -9,6 +8,7 @@ from libtbx import adopt_init_args
 import mmtbx.utils.ncs_utils as nu
 import mmtbx.f_model
 import mmtbx.utils
+import iotbx.ncs
 import iotbx.pdb
 import os
 import sys
@@ -93,8 +93,7 @@ class ncs_minimization_test(object):
       u_random = flex.random_double(xrs_shaken.scatterers().size())
       xrs_shaken = xrs_shaken.set_u_iso(values=u_random)
     if self.transformations:
-      transforms_obj = ncs_group_object()
-      transforms_obj.preprocess_ncs_obj(
+      transforms_obj = iotbx.ncs.input(
       transform_info = mtrix_object,
       pdb_hierarchy_inp = pdb_obj)
       x = nu.concatenate_rot_tran(transforms_obj)

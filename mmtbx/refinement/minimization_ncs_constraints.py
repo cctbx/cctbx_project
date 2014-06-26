@@ -1,11 +1,10 @@
 from __future__ import division
-from iotbx.pdb.multimer_reconstruction import apply_transforms
+import cctbx.maptbx.real_space_refinement_simple
+from scitbx.array_family import flex
+from libtbx import adopt_init_args
 import mmtbx.utils.ncs_utils as nu
 from cctbx import xray
 import scitbx.lbfgs
-from libtbx import adopt_init_args
-from scitbx.array_family import flex
-import cctbx.maptbx.real_space_refinement_simple
 
 def grads_asu_to_one_ncs(
       ncs_restraints_group_list,
@@ -360,7 +359,7 @@ class lbfgs(object):
     if not x : x = self.x
     if self.refine_sites or self.refine_transformations:
       if self.use_strict_ncs or self.refine_transformations:
-        new_x = apply_transforms(
+        new_x = nu.apply_transforms(
           ncs_coordinates = flex.vec3_double(x),
           ncs_restraints_group_list = self.ncs_restraints_group_list,
           total_asu_length = self.total_asu_length,
