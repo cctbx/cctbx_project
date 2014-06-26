@@ -491,7 +491,6 @@ class ExperimentListDict(object):
   def _make_sweep(self, imageset, scan):
     ''' Make an image sweep. '''
     from dxtbx.sweep_filenames import template_image_range
-    from dxtbx.format.Registry import Registry
     from dxtbx.imageset import ImageSetFactory
     from dxtbx.serialize.filename import load_path
 
@@ -728,19 +727,19 @@ class ExperimentListFactory(object):
     for i in range(len(imageset)):
       try:
         beam.append(imageset.get_beam(i))
-      except:
+      except Exception:
         beam.append(None)
       try:
         detector.append(imageset.get_detector(i))
-      except:
+      except Exception:
         detector.append(None)
       try:
         gonio.append(imageset.get_goniometer(i))
-      except:
+      except Exception:
         gonio.append(None)
       try:
         scan.append(imageset.get_scan(i))
-      except:
+      except Exception:
         scan.append(None)
     models = zip(beam, detector, gonio, scan)
 
