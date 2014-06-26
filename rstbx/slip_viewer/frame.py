@@ -312,7 +312,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
         self.spotfinder_layer = self.pyslip.AddPointLayer(
           tdata, color="green", name="<spotfinder_layer>",
           radius=2,
-          renderer = frame.pyslip.LightweightDrawPointLayer,
+          renderer = self.pyslip.LightweightDrawPointLayer,
           show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
     elif self.spotfinder_layer is not None:
       self.pyslip.DeleteLayer(self.spotfinder_layer)
