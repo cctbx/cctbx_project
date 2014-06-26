@@ -93,6 +93,7 @@ def to_crystal(filename):
 def xds_detector_name(dxtbx_name):
   '''Translate from a xia2 name from the detector library to an XDS detector
   name.'''
+  # http://xds.mpimf-heidelberg.mpg.de/html_doc/xds_parameters.html#DETECTOR=
 
   if 'pilatus' in dxtbx_name:
     return 'PILATUS'
@@ -104,6 +105,10 @@ def xds_detector_name(dxtbx_name):
     return 'SATURN'
   if 'raxis' in dxtbx_name:
     return 'RAXIS'
+  if 'mar-345' in dxtbx_name:
+    return 'MAR345'
+  if 'mar' in dxtbx_name:
+    return 'MAR'
 
   raise RuntimeError, 'detector %s unknown' % dxtbx_name
 
