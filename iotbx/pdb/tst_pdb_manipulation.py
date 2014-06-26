@@ -112,9 +112,9 @@ class TestMultimerReconstruction(unittest.TestCase):
     print 'Running ',sys._getframe().f_code.co_name
     transforms_obj = ncs_group_object()
     result =  transforms_obj.make_chains_names(
-      ['chain A_001','chain B_001','chain A_002','chain B_002'],('A','B'))
-    expected = {'chain A_001': 'C', 'chain B_001': 'D', 'chain A_002': 'E',
-                'chain B_002': 'F'}
+      ['chain A_s001','chain B_s001','chain A_s002','chain B_s002'],('A','B'))
+    expected = {'chain A_s001': 'C', 'chain B_s001': 'D', 'chain A_s002': 'E',
+                'chain B_s002': 'F'}
     self.assertEqual(result,expected)
 
   def test_adding_transforms_directly(self):
@@ -132,8 +132,8 @@ class TestMultimerReconstruction(unittest.TestCase):
       rotations=r,
       translations=t)
     result = transforms_obj.transform_to_ncs
-    expected = {'s002': ['chain A_002', 'chain B_002'],
-                's003': ['chain A_003', 'chain B_003']}
+    expected = {'s002': ['chain A_s002', 'chain B_s002'],
+                's003': ['chain A_s003', 'chain B_s003']}
     self.assertEqual(result,expected)
     result = transforms_obj.ncs_selection_str
     expected = 'chain A or chain B'
@@ -146,8 +146,8 @@ class TestMultimerReconstruction(unittest.TestCase):
       rotations=r,
       translations=t)
     result = transforms_obj.transform_to_ncs
-    expected = {'s002': ['chain A_002', 'chain B_002'],
-                's003': ['chain A_003', 'chain B_003']}
+    expected = {'s002': ['chain A_s002', 'chain B_s002'],
+                's003': ['chain A_s003', 'chain B_s003']}
     self.assertEqual(result,expected)
     result = transforms_obj.ncs_selection_str
     expected = 'chain A or chain B'
@@ -174,11 +174,12 @@ class TestMultimerReconstruction(unittest.TestCase):
       transform_info=transform_info,
       pdb_hierarchy_inp=pdb_obj)
 
-    expected = ['chain A_002', 'chain B_002', 'chain A_003', 'chain B_003']
+    expected = ['chain A_s002', 'chain B_s002', 'chain A_s003', 'chain B_s003']
     self.assertEqual(transforms_obj.transform_chain_assignment,expected)
 
-    expected = {'chain A_002': 'C', 'chain A_003': 'E',
-                'chain B_002': 'D', 'chain B_003': 'F'}
+    expected = {
+      'chain A_s002': 'C','chain A_s003': 'E','chain A_s001': 'A',
+      'chain B_s002': 'D','chain B_s003': 'F','chain B_s001': 'B'}
     self.assertEqual(transforms_obj.ncs_copies_chains_names,expected)
 
     expected = [0, 1, 2, 5, 6]
@@ -190,11 +191,11 @@ class TestMultimerReconstruction(unittest.TestCase):
     self.assertEqual(results,expected)
 
     expected = [7, 8, 9, 12, 13]
-    results = list(transforms_obj.ncs_to_asu_map['chain A_002'])
+    results = list(transforms_obj.ncs_to_asu_map['chain A_s002'])
     self.assertEqual(results,expected)
 
     expected = [17, 18]
-    results = list(transforms_obj.ncs_to_asu_map['chain B_003'])
+    results = list(transforms_obj.ncs_to_asu_map['chain B_s003'])
     self.assertEqual(results,expected)
 
     self.assertEqual(len(transforms_obj.ncs_atom_selection),21)
@@ -206,6 +207,45 @@ class TestMultimerReconstruction(unittest.TestCase):
     self.assertEqual(format_num_as_str(46),'046')
     self.assertEqual(format_num_as_str(6),'006')
     self.assertEqual(format_num_as_str(0),'000')
+
+  # def test_pdb_writing(self):
+  #   print 'Running ',sys._getframe().f_code.co_name
+  #   transforms_obj = ncs_group_object()
+  #   pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
+  #   pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
+  #   transform_info = pdb_inp.process_mtrix_records()
+  #   transforms_obj.preprocess_ncs_obj(
+  #     transform_info=transform_info,
+  #     pdb_hierarchy_inp=pdb_obj)
+  #   transforms_obj.write_transform_records(
+  #     ncs_only=True,
+  #     pdb_hierarchy=pdb_obj.hierarchy)
+  #   print '='*60
+  #   transforms_obj.write_transform_records(
+  #     pdb_hierarchy=pdb_obj.hierarchy,
+  #     biomt=True)
+  #   print '='*60
+  #   pdbstr = transforms_obj.write_transform_records(
+  #     xrs=pdb_obj.xray_structure_simple(),
+  #     biomt=True)
+  #   print '='*60
+  #   print pdbstr
+
+  # def test_writing_spec_file(self):
+  #   print 'Running ',sys._getframe().f_code.co_name
+  #   transforms_obj = ncs_group_object()
+  #   pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
+  #   pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
+  #   transform_info = pdb_inp.process_mtrix_records()
+  #   transforms_obj.preprocess_ncs_obj(
+  #     transform_info=transform_info,
+  #     pdb_hierarchy_inp=pdb_obj)
+
+    # asu = multimer(
+    #   pdb_str=pdb_test_data2,
+    #   reconstruction_type='cau')
+    # transforms_obj.write_ncs_info_to_spec(asu.assembled_multimer)
+
 
   def tearDown(self):
     '''remove temp files and folder'''

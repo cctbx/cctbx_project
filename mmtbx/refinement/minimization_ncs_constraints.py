@@ -33,7 +33,6 @@ def grads_asu_to_one_ncs(
       # apply inverse transformation
       rt = nrg.r.transpose().elems
       g = rt*g
-    # fixme: fix this line
     g_ncs.set_selected(ncs_selection, g + g_ncs.select(ncs_selection))
 
   if(refine_sites): g_ncs = flex.vec3_double(g_ncs)

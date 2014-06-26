@@ -238,6 +238,8 @@ class ncs_group_object(object):
     self.transform_order = []
     # keep hierarchy for writing (To have a source of atoms labels)
     self.hierarchy = None
+    # residues related via NCS operators. same keys as ncs_copies_chains_names
+    self.common_res_dict = {}
 
   def preprocess_ncs_obj(self,
                          pdb_hierarchy_inp=None,
@@ -643,7 +645,6 @@ class ncs_group_object(object):
       self.ncs_chain_selection =\
         ['chain ' + s for s in self.model_unique_chains_ids]
       self.ncs_chain_selection.sort()
-      self.ncs_copies_chains_names = [x.id for x in model.chains()]
 
   def compute_ncs_asu_coordinates_map(self,pdb_hierarchy_inp):
     """ Calculates coordinates maps from ncs to asu and from asu to ncs """
@@ -781,7 +782,7 @@ class ncs_group_object(object):
     """
     if not (transform.r.is_r3_identity_matrix() and transform.t.is_col_zero()):
       self.transform_to_be_used.add(transform.serial_num)
-      key = selection_id + '_' + format_num_as_str(transform.serial_num)
+      key = selection_id + '_s' + format_num_as_str(transform.serial_num)
       self.chain_transform_assignment[key] = transform_id
       if self.transform_to_ncs.has_key(transform_id):
         self.transform_to_ncs[transform_id].append(key)
@@ -838,9 +839,6 @@ class ncs_group_object(object):
     Returns:
     new_names : a dictionary. {'A_1': 'G', 'A_2': 'H',....} map a chain
     name and a transform number to a new chain name
-
-    >>> self.make_chains_names((1,2),['chain A_002','chain B_002'],('A','B'))
-    {'A_1': 'C', 'A_2': 'D', 'B_1': 'E', 'B_2': 'F'}
     """
     if not transform_assignment or not unique_chain_names: return {}
     # create list of character from which to assemble the list of names
@@ -873,6 +871,15 @@ class ncs_group_object(object):
     # create the dictionary
     zippedlists = zip(transform_assignment,dictionary_values)
     new_names_dictionary = {x:y for (x,y) in zippedlists}
+    # add the master NCS to dictionary
+    tr_set  = {'s' + format_num_as_str(x) for x in self.transform_to_be_used}
+    for k,v in self.ncs_group_map.iteritems():
+      tr_str = (v[1] - tr_set)
+      assert len(tr_str) == 1
+      tr_str = tr_str.pop()
+      for ch_sel in v[0]:
+        if not ' or ' in ch_sel:
+          new_names_dictionary[ch_sel+'_'+tr_str] = ch_sel.replace('chain ','')
     return new_names_dictionary
 
   def finalize_pre_process(self,pdb_hierarchy_inp=None):
@@ -883,7 +890,38 @@ class ncs_group_object(object):
       self.compute_ncs_asu_coordinates_map(pdb_hierarchy_inp=pdb_hierarchy_inp)
       # keep hierarchy for writing
       self.hierarchy = pdb_hierarchy_inp.hierarchy
-    self.transform_order = sorted(self.transform_to_ncs)
+      self.set_common_res_dict()
+
+    self.transform_order = sort_dict_keys(self.transform_to_ncs)
+
+  def set_common_res_dict(self):
+    """
+    Build common residues list for use when writing spec files
+    :return: list of common residues for each chain - transform pair
+    """
+    sorted_keys = sort_dict_keys(self.ncs_copies_chains_names)
+    asu_hierarchy = self.hierarchy.atoms().size() == self.total_asu_length
+    for key in sorted_keys:
+      ch_sel = key.split('_')[0]
+      if asu_hierarchy and self.ncs_to_asu_map.has_key(key):
+        res_sel = self.ncs_to_asu_map[key]
+      else:
+        # for master ncs
+        # Fixme: problem with keys
+        if len(ch_sel)>8:
+          print 'check'
+        res_sel = self.asu_to_ncs_map[ch_sel]
+      # get continuous res ids
+      ph = self.hierarchy.select(res_sel)
+      chains = ph.models()[0].chains()
+      range_list = []
+      for chain in chains:
+        res_id = []
+        for rs in chain.residue_groups():
+          ch_id,j = rs.id_str().split()
+          res_id.append(int(j))
+        range_list.append([min(res_id),max(res_id)])
+      self.common_res_dict[key] = range_list
 
   def get_ncs_restraints_group_list(self):
     """
@@ -933,7 +971,8 @@ class ncs_group_object(object):
                           xrs=None,
                           fmodel=None,
                           mtrix=None,
-                          biomt=None):
+                          biomt=None,
+                          quiet=False):
     """
     Write to a file or prints transformation records.
     with or without PDB atoms and cryst records.
@@ -947,6 +986,7 @@ class ncs_group_object(object):
     fmodel: (fmodel object)
     mtrix: (bool) When True -> write MTRIX records
     biomt: (bool) When True -> write BIOMT records
+    quiet: (bool) when True, will return spec_object but will not write to file
 
     Return:
     PDB string
@@ -959,15 +999,17 @@ class ncs_group_object(object):
     mtrix_object = self.build_MTRIX_object(ncs_only=ncs_only)
     pdb_header_str = ''
     new_ph_str = ''
+    #
     if fmodel:
       xrs = fmodel.xray_structure
-    if xrs and not pdb_hierarchy:
+    if xrs and self.hierarchy and (not pdb_hierarchy):
       pdb_hierarchy = self.hierarchy
       pdb_str = xrs.as_pdb_file()
       pdb_header_str = get_pdb_header(pdb_str)
       xyz = pdb_hierarchy.atoms().extract_xyz()
       new_xyz = xrs.sites_cart()
       if new_xyz.size() > xyz.size():
+        ncs_only = True
         xrs = xrs.select(self.ncs_atom_selection.iselection())
         new_xyz = xrs.sites_cart()
       assert new_xyz.size() == xyz.size()
@@ -978,7 +1020,6 @@ class ncs_group_object(object):
         pdb_str = ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
       else:
         pdb_str = ph.as_pdb_string()
-      # collect CRYST and SCALE records
       if not pdb_header_str:
        pdb_header_str = get_pdb_header(pdb_str)
       if ncs_only:
@@ -988,70 +1029,100 @@ class ncs_group_object(object):
         assert len(self.ncs_atom_selection) == len(ph.atoms()),msg
         new_ph = ph
       new_ph_str = new_ph.as_pdb_string(crystal_symmetry=None)
-
+    #
     if mtrix:
       transform_rec = mtrix_object.as_pdb_string()
     elif biomt:
       transform_rec = mtrix_object.format_BOIMT_pdb_string()
-    if file_name:
-      f = open(file_name,'w')
-      print >> f, pdb_header_str
-      print >> f, transform_rec
-      print >> f, new_ph_str
-      f.close()
-    else:
-      print pdb_header_str
-      print transform_rec
-      print new_ph_str
+    #
+    if not quiet:
+      if file_name:
+        f = open(file_name,'w')
+        print >> f, pdb_header_str
+        print >> f, transform_rec
+        print >> f, new_ph_str
+        f.close()
+      else:
+        print pdb_header_str
+        print transform_rec
+        print new_ph_str
 
     return '\n'.join([pdb_header_str,transform_rec,new_ph_str])
 
-  def write_ncs_info_to_spec(self,pdb_hierarchy_asu):
+  def write_ncs_info_to_spec(
+          self,
+          pdb_hierarchy_asu=None,
+          xrs=None,
+          fmodel=None,
+          file_name=None,
+          quiet=False):
+    """
+    Write to a ncs spec file or prints transformation records.
+
+    Arguments:
+    file_name: (str) output file name
+    pdb_hierarchy: (pdb_hierarchy object)
+    xrs: (xray structure) for crystal symmetry
+    fmodel: (fmodel object)
+    quiet: (bool) when True, will return spec_object but will not write to file
+
+    Return:
+    spec_object
+    """
     spec_object = ncs.ncs()
     # spec_ncs_group_list = []
     # spec_object._ncs_groups = spec_ncs_group_list
+    if fmodel:
+      xrs = fmodel.xray_structure
+    if xrs and (not pdb_hierarchy_asu):
+      xyz = xrs.sites_cart()
+    else:
+      xyz = pdb_hierarchy_asu.atoms().extract_xyz()
 
-    sorted_keys = sorted(self.ncs_copies_chains_names)
-    current_master_chain_id = ''
-    for k in sorted_keys:
-      chain_id = self.ncs_copies_chains_names[k]
-      key = k.split('_')[0]
-      main_chain = key.replace('chain ','')
-      if current_master_chain_id != main_chain:
-        current_master_chain_id = main_chain
-        master_sel = self.asu_to_ncs_map[key]
-        center_orth = get_center_orth(pdb_hierarchy_asu,master_sel)
-        # todo: write get_res_in_common
-        res_in_common_list = get_res_in_common(pdb_hierarchy_asu,master_sel)
-        # Todo: insert identity t and r
-      transform_key = 's' + k.split('_')[1]
-      tr = self.ncs_transform[transform_key]
+    for gn,gr in self.ncs_group_map.iteritems():
+      gr_dict = {}
+      for gr_chain in gr[0]:
+        for s_str in gr[1]:
+          gr_key = gr_chain + '_' + s_str
+          gr_dict[gr_key] = self.ncs_copies_chains_names[gr_key]
+      sorted_keys = sort_dict_keys(gr_dict)
+      center_orth = []
+      rotations = []
+      translations = []
+      chain_residue_id_list = []
+      chain_residue_range_list = []
+      rmsd_list = []
+      residues_in_common_list = []
+      for k in sorted_keys:
+        chain_id = self.ncs_copies_chains_names[k]
+        if self.ncs_to_asu_map.has_key(k):
+          ncs_sel = self.ncs_to_asu_map[k]
+        else:
+          # for master ncs
+          ncs_sel = self.asu_to_ncs_map[k.split('_')[0]]
+        chain_residue_id_list.append(chain_id)
+        chain_residue_range_list.append(self.common_res_dict[k])
+        # chain_ids.append([chain_id,self.common_res_dict[k]])
+        center_orth.append(get_center_orth(xyz,ncs_sel))
+        transform_key = k.split('_')[1]
+        # Todo: ask if rmsd can be had from someplace
+        rmsd_list.append(0)
+        tr = self.ncs_transform[transform_key]
+        rotations.append(tr.r)
+        translations.append(tr.t)
+        residues_in_common_list.append(len(ncs_sel))
+      # build group
       spec_object.import_ncs_group(
         center_orth = center_orth,
-        ncs_rota_matr = tr.r,
-        trans_orth = tr.t,
-        chain_residue_id = chain_id,
-        residues_in_common_list = res_in_common_list,
+        ncs_rota_matr = rotations,
+        trans_orth = translations,
+        rmsd_list = rmsd_list,
+        chain_residue_id = [chain_residue_id_list,chain_residue_range_list],
+        residues_in_common_list = residues_in_common_list,
         ncs_domain_pdb = None)
-
-    #Fields to populate
-    gr.chain_residue_id()
-    gr.rota_matrices()[i]
-    gr.translations_orth()[i]
-
-
-    ncs_group_object=ncs.ncs_group(
-      ncs_rota_matr=self._ncs_rota_matr,
-      trans_orth=self._ncs_trans_orth,
-      source_of_ncs_info=self.source_info,
-      ncs_domain_pdb=self._ncs_domain_pdb, # 041309
-      rmsd_list=self._rmsd_list,
-      residues_in_common_list=self._residues_in_common_list,
-      chain_residue_id=self._chain_residue_id,
-      cc=self._cc)
-
-    spec_object.self._ncs_groups = spec_ncs_group_list
-
+    if not quiet:
+      spec_object.format_all_for_group_specification(file_name=file_name)
+    return spec_object
 
 
 def apply_transforms(ncs_coordinates,
@@ -1087,6 +1158,7 @@ def apply_transforms(ncs_coordinates,
 
 def get_pdb_header(pdb_str):
   """
+  Collect CRYST and SCALE records
   :param pdb_str: (str) pdb type string
   :return: the portion of the pdb_str till the first ATOM
   """
@@ -1097,14 +1169,14 @@ def get_pdb_header(pdb_str):
     else: pdb_header_lines.append(x)
   return '\n'.join(pdb_header_lines)
 
-def get_center_orth(pdb_hierarchy,selection):
+def get_center_orth(xyz,selection):
   """
-  :param pdb_hierarchy:
+  :param xyz:(flex.vec3_double) the complete asu sites cart (atoms coordinates)
   :param selection:
   :return:(flex.vec3_double) center of coordinates for the selected coordinates
   """
-  new_ph = pdb_hierarchy.select(selection)
-  return new_ph.atoms().extract_xyz().mean()
+  new_xyz = xyz.select(selection)
+  return new_xyz.mean()
 
 def format_num_as_str(n):
   """  return a 3 digit string of n  """
@@ -1212,6 +1284,7 @@ def get_ncs_group_selection(chain_residue_id):
   :param chain_residue_id: [[chain id's],[[[residues range]],[[...]]]
   :return: selection lists, with selection string for each ncs copy in the group
   """
+  # Fixme: something is wrong with the chain_residue_id interpretation
   chains = chain_residue_id[0]
   res_ranges = chain_residue_id[1]
   assert len(chains) == len(res_ranges)
@@ -1244,6 +1317,9 @@ def update_ncs_group_map(
   else:
     ncs_group_map[ncs_group_id] = [set(selection_ids),{transform_id}]
   return ncs_group_map
+
+def sort_dict_keys(dict):
+  return sorted(dict,key=lambda k:dict[k])
 
 
 class ncs_groups_container(object):
