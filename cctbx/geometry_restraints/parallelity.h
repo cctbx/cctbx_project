@@ -449,8 +449,6 @@ namespace cctbx { namespace geometry_restraints {
       void
       init_deltas()
       {
-        af::const_ref<scitbx::vec3<double> > i_sites_ref = i_sites.const_ref();
-        af::const_ref<scitbx::vec3<double> > j_sites_ref = j_sites.const_ref();
         i_center_of_mass_ = calculate_C(i_sites);
         j_center_of_mass_ = calculate_C(j_sites);
         i_S_ = calculate_S(i_sites, i_center_of_mass_);
