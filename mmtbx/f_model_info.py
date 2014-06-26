@@ -541,11 +541,12 @@ def export_bins_table_data (bins, title="Statistics by resolution bin") :
                  "Phase error vs. resolution",
                  "Scale factor vs. resolution"]
   graph_columns = [[0,1,2], [0,3], [0,4], [0,5], [0,6]]
-  if hasattr(bins[0], "cc_work") :
+  if hasattr(bins[0], "cc_work") and (bins[0].cc_work is not None) :
     table_stats.insert(2, "cc_work")
     table_stats.insert(3, "cc_free")
     labels.insert(3, "CC(work)")
     labels.insert(4, "CC(free)")
+    graph_columns.append([0,7,8])
     graph_names.insert(1, "CC-work/CC-free vs. resolution")
   data_rows = []
   for bin in bins :

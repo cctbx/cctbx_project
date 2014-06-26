@@ -1,4 +1,9 @@
 
+"""
+Classes for MolProbity validation, combining all other analyses in
+mmtbx.validation, which use the same APIs for storing and displaying results.
+"""
+
 # TODO combine with some parts of mmtbx.kinemage.validation
 
 from __future__ import division
@@ -61,6 +66,35 @@ class molprobity (slots_getstate_setstate) :
   restraints manager is available, the deviations from standard covalent
   geometry will also be displayed.  Passing an fmodel object enables the
   re-calculation of R-factors and real-space correlation.
+
+  :param pdb_hierarchy: model PDB hierarchy (required)
+  :param xray_structure: model X-ray scatterers
+  :param fmodel: mmtbx.f_model.manager object, after bulk solvent/scaling
+  :param fmodel_neutron: separate Fmodel manager for neutron data (used in
+                         phenix.refine for join X/N refinement)
+  :param geometry_restraints_manager: geometry restraints extracted by \
+                                      mmtbx.monomer_library.pdb_interpretation
+  :param sequences: parsed sequence objects (from iotbx.bioinformatics)
+  :param crystal_symmetry: cctbx.crystal.symmetry object
+  :param flags: object containing boolean flags for analyses to perform
+  :param header_info: extracted statistics from PDB file header
+  :param raw_data: input data before French-Wilson treatment, etc.
+  :param unmerged_data: separate unmerged intensities for merging statistics
+  :param all_chain_proxies: object containing restraints information and \
+      advanced selections from mmtbx.monomer_library.pdb_interpretation
+  :param keep_hydrogens: don't discard and replace existing hydrogens for \
+      clashscore calculation
+  :param nuclear: use nuclear hydrogen distances (for neutron experiments)
+  :param save_probe_unformatted_file: file name for Probe output suitable for \
+      display in Coot
+  :param show_hydrogen_outliers: show geometry outliers for hydrogen atoms
+  :param min_cc_two_fofc: Fo-Fc map cutoff for real-space outliers
+  :param n_bins_data: Number of resolution bins for data statistics
+  :param count_anomalous_pairs_separately: count F+ and F- as separate \
+      reflections (default=False)
+  :param outliers_only: only display validation outliers
+  :param use_pdb_header_resolution_cutoffs: use resolution cutoff(s) \
+      specified in PDB header for data statistics
   """
 
   # XXX this is used to distinguish objects of this type from an older (and
@@ -77,6 +111,7 @@ class molprobity (slots_getstate_setstate) :
     "restraints",
     "missing_atoms",
     "data_stats",
+    "neutron_stats",
     "real_space",
     "crystal_symmetry",
     "model_stats",
@@ -88,11 +123,19 @@ class molprobity (slots_getstate_setstate) :
     "file_name",
   ]
 
+  # backwards compatibility with saved results
+  def __setstate__(self, state):
+    for name,value in state.items(): setattr(self, name, value)
+    for name in self.__slots__ :
+      if not hasattr(self, name) : setattr(self, name, None)
+
   def __init__ (self,
       pdb_hierarchy,
       xray_structure=None,
       fmodel=None,
+      fmodel_neutron=None,
       geometry_restraints_manager=None,
+      crystal_symmetry=None,
       sequences=None,
       flags=None,
       header_info=None,
@@ -106,7 +149,6 @@ class molprobity (slots_getstate_setstate) :
       min_cc_two_fofc=0.8,
       n_bins_data=10,
       count_anomalous_pairs_separately=False,
-      crystal_symmetry=None,
       outliers_only=True,
       use_pdb_header_resolution_cutoffs=False,
       file_name=None) :
@@ -213,6 +255,10 @@ class molprobity (slots_getstate_setstate) :
           unmerged_i_obs=unmerged_data,
           anomalous=count_anomalous_pairs_separately,
           n_bins=n_bins_data)
+    if (fmodel_neutron is not None) and (flags.rfactors) :
+      self.neutron_stats = experimental.data_statistics(fmodel_neutron,
+        n_bins=n_bins_data,
+        count_anomalous_pairs_separately=False)
     if (pdb_hierarchy.models_size() == 1) :
       self._multi_criterion = multi_criterion_view(pdb_hierarchy)
 
@@ -274,6 +320,7 @@ class molprobity (slots_getstate_setstate) :
       make_header("Summary", out=out)
       self.show_summary(out=out, prefix="  ",
         show_percentiles=show_percentiles)
+    return self
 
   def summarize (self) :
     """
@@ -446,6 +493,10 @@ class molprobity (slots_getstate_setstate) :
     mc.display_wx_plots()
 
   def write_coot_script (self, file_name) :
+    """
+    Write a Python script for displaying outlier lists with click-to-recenter
+    enabled.
+    """
     coot_script = libtbx.env.find_in_repositories(
       relative_path="cctbx_project/cootbx/validation_lists.py",
       test=os.path.isfile)
@@ -472,8 +523,6 @@ class molprobity (slots_getstate_setstate) :
     f.write("gui = coot_molprobity_todo_list_gui(data=data)\n")
     f.close()
 
-  #---------------------------------------------------------------------
-  # POLYGON stuff
   def get_polygon_statistics (self, stat_names) :
     stats = {}
     for name in stat_names :
@@ -487,8 +536,25 @@ class molprobity (slots_getstate_setstate) :
       elif (name == "clashscore") : val = self.clashscore()
       elif (name == "bond_rmsd") : val = self.rms_bonds()
       elif (name == "angle_rmsd") : val = self.rms_angles()
-      elif (name == "adp_mean_all") : pass
+      elif (name == "adp_mean_all") : val = self.b_iso_mean()
       stats[name] = val
+    return stats
+
+  def get_statistics_for_phenix_gui (self) :
+    mp = self
+    stats = [
+      ("R-work", format_value("%.4f", mp.r_work())),
+      ("R-free", format_value("%.4f", mp.r_free())),
+      ("RMS(bonds)", format_value("%.3f", mp.rms_bonds())),
+      ("RMS(angles)", format_value("%.4f", mp.rms_angles())),
+      ("Clashscore", format_value("%.2f", mp.clashscore())),
+      ("MolProbity score", format_value("%.3f", mp.molprobity_score())),
+    ]
+    if (self.neutron_stats is not None) :
+      stats.extend([
+        ("R-work (neutron)", format_value("%.4f", self.neutron_stats.r_work)),
+        ("R-free (neutron)", format_value("%.4f", self.neutron_stats.r_free)),
+      ])
     return stats
 
 class summary (slots_getstate_setstate_default_initializer) :

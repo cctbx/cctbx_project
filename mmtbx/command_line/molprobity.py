@@ -102,7 +102,10 @@ Run comprehensive MolProbity validation plus R-factor calculation (if data
 supplied).
 """
 
-def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
+def run (args,
+    out=sys.stdout,
+    program_name="phenix.molprobity",
+    return_input_objects=False) : # for testing
   rotarama_dir = libtbx.env.find_in_repositories(
     relative_path="chem_data/rotarama_data",
     test=os.path.isdir)
@@ -235,8 +238,8 @@ def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
       app = wxtbx.app.CCTBXApp(0)
       validation.display_wx_plots()
       app.MainLoop()
-  if (return_model_fmodel_objects) :
-    return validation, cmdline.pdb_hierarchy, cmdline.fmodel
+  if (return_input_objects) :
+    return validation, cmdline
   return result(
     program_name="phenix.molprobity",
     job_title=params.output.job_title,
@@ -264,16 +267,7 @@ class result (program_result) :
     return self.other_files[0]
 
   def get_final_stats (self) :
-    mp = self.validation
-    return [
-      ("R-work", str_utils.format_value("%.4f", mp.r_work())),
-      ("R-free", str_utils.format_value("%.4f", mp.r_free())),
-      ("RMS(bonds)", str_utils.format_value("%.3f", mp.rms_bonds())),
-      ("RMS(angles)", str_utils.format_value("%.4f", mp.rms_angles())),
-      ("Clashscore", str_utils.format_value("%.2f", mp.clashscore())),
-      ("MolProbity score", str_utils.format_value("%.3f",
-        mp.molprobity_score())),
-    ]
+    return self.validation.get_statistics_for_phenix_gui()
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
