@@ -1,6 +1,7 @@
 
 from __future__ import division
 from mmtbx.command_line import molprobity
+import mmtbx.validation.molprobity
 import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
 from libtbx.easy_pickle import loads, dumps, dump
@@ -10,7 +11,7 @@ import libtbx.load_env
 from cStringIO import StringIO
 import os.path as op
 
-# test for corner cases
+# test for corner cases (synthetic data okay)
 def exercise_synthetic () :
   from mmtbx.regression import tst_build_alt_confs
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=tst_build_alt_confs.pdb_raw)
@@ -61,6 +62,7 @@ def exercise_synthetic () :
   out = StringIO()
   result.show(out=out)
 
+# test on protein - we need real model/data for this
 def exercise_protein () :
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3ifk.pdb",
@@ -88,6 +90,8 @@ def exercise_protein () :
   assert (out2.getvalue() == out1.getvalue())
   dump("tst_molprobity.pkl", result)
   mc = result.as_multi_criterion_view()
+  assert (result.neutron_stats is None)
+  mpscore = result.molprobity_score()
   # percentiles
   out4 = StringIO()
   result.show_summary(out=out4, show_percentiles=True)
@@ -128,9 +132,16 @@ def exercise_protein () :
 """)
   # now with data
   args2 = args1 + [ hkl_file, "--maps" ]
-  result = molprobity.run(args=args2, out=null_out()).validation
+  result, cmdline = molprobity.run(args=args2,
+    out=null_out(),
+    return_input_objects=True)
   out = StringIO()
   result.show(out=out)
+  stats = result.get_statistics_for_phenix_gui()
+  #print stats
+  stats = result.get_polygon_statistics(["r_work","r_free","adp_mean_all",
+    "angle_rmsd", "bond_rmsd", "clashscore"])
+  #print stats
   assert approx_equal(result.r_work(), 0.2276, eps=0.001)
   assert approx_equal(result.r_free(), 0.2805, eps=0.001)
   assert approx_equal(result.d_min(), 2.0302, eps=0.0001)
@@ -146,7 +157,24 @@ def exercise_protein () :
   assert (len(bins) == 10)
   assert approx_equal(result.atoms_to_observations_ratio(), 0.09755,
     eps=0.0001)
+  assert approx_equal(result.b_iso_mean(), 31.11739)
   assert op.isfile("tst_molprobity_maps.mtz")
+  assert approx_equal(result.atoms_to_observations_ratio(), 0.0975493)
+  bins = result.fmodel_statistics_by_resolution()
+  #bins.show()
+  bin_plot = result.fmodel_statistics_graph_data()
+  lg = bin_plot.format_loggraph()
+  # fake fmodel_neutron
+  fmodel_neutron = cmdline.fmodel.deep_copy()
+  result2 = mmtbx.validation.molprobity.molprobity(
+    pdb_hierarchy=cmdline.pdb_hierarchy,
+    fmodel=cmdline.fmodel,
+    fmodel_neutron=fmodel_neutron,
+    geometry_restraints_manager=cmdline.geometry,
+    nuclear=True,
+    keep_hydrogens=True)
+  stats = result2.get_statistics_for_phenix_gui()
+  assert ('R-work (neutron)' in [ label for (label, stat) in stats ])
 
 def exercise_rna () :
   regression_pdb = libtbx.env.find_in_repositories(
