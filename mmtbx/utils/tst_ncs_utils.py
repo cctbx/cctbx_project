@@ -1,9 +1,8 @@
 from __future__ import division
-from  iotbx.pdb.multimer_reconstruction import ncs_group_object
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 import mmtbx.utils.ncs_utils as nu
-from libtbx.utils import null_out
+import iotbx.ncs
 from scitbx import matrix
 import scitbx.rigid_body
 from iotbx import pdb
@@ -49,8 +48,7 @@ class test_rotation_angles_conversion(object):
     """ Verify correct concatenation of rotation and translations """
     print 'Running ',sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
-    transforms_obj = ncs_group_object()
-    transforms_obj.preprocess_ncs_obj(
+    transforms_obj = iotbx.ncs.input(
       pdb_hierarchy_inp=pdb_obj,
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])
@@ -71,9 +69,8 @@ class test_rotation_angles_conversion(object):
     Verify correct conversion from angles and translation
     to rotation matrices and translations """
     print 'Running ',sys._getframe().f_code.co_name
-    transforms_obj = ncs_group_object()
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
-    transforms_obj.preprocess_ncs_obj(
+    transforms_obj = iotbx.ncs.input(
       pdb_hierarchy_inp=pdb_obj,
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])
@@ -173,8 +170,7 @@ class test_rotation_angles_conversion(object):
     """    Verify that transforms are getting updated    """
     print 'Running ',sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
-    transforms_obj = ncs_group_object()
-    transforms_obj.preprocess_ncs_obj(
+    transforms_obj = iotbx.ncs.input(
       pdb_hierarchy_inp=pdb_obj,
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])

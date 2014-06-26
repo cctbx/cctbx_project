@@ -1,12 +1,12 @@
 from __future__ import division
-from  iotbx.pdb.multimer_reconstruction import format_num_as_str
-from  iotbx.pdb.multimer_reconstruction import ncs_group_object
 from  iotbx.pdb.multimer_reconstruction import multimer
-from  iotbx.pdb.multimer_reconstruction import apply_transforms
+from iotbx.ncs.ncs_preprocess import format_num_as_str
+from iotbx.ncs.ncs_preprocess import ncs_group_object
+from mmtbx.utils.ncs_utils import apply_transforms
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 from iotbx import pdb
-import string
+import iotbx.ncs
 import unittest
 import tempfile
 import shutil
@@ -43,36 +43,35 @@ class TestMultimerReconstruction(unittest.TestCase):
     [39.954, 52.026, 72.372]]
 
     # use MTRIX data
-    cau_multimer_data = multimer(
+    multimer_data = multimer(
       file_name='multimer_test_data.pdb',
       reconstruction_type='cau')
-    cau_multimer_xyz = list(cau_multimer_data.sites_cart())
+    cau_multimer_xyz = list(multimer_data.sites_cart())
 
     cau_multimer_xyz.sort()
     cau_expected_results.sort()
     assert approx_equal(cau_expected_results,cau_multimer_xyz,eps=0.001)
 
     # Test that the number of MTRIX record to process is correct
-    self.assertEqual(cau_multimer_data.number_of_transforms,4)
+    self.assertEqual(multimer_data.number_of_transforms,4)
 
     # Test getting non-rounded ASU
-    transforms_obj = cau_multimer_data.transforms_obj
-    source_xyz = cau_multimer_data.get_ncs_hierarchy().atoms().extract_xyz()
+    source_xyz = multimer_data.get_ncs_hierarchy().atoms().extract_xyz()
     xyz = apply_transforms(
       ncs_coordinates = source_xyz,
-      ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list(),
-      total_asu_length = transforms_obj.total_asu_length,
+      ncs_restraints_group_list = multimer_data.get_ncs_restraints_group_list(),
+      total_asu_length = multimer_data.total_asu_length(),
       round_coordinates=False)
     cau_multimer_xyz = list(xyz)
     cau_multimer_xyz.sort()
     assert approx_equal(cau_expected_results,cau_multimer_xyz,eps=0.00001)
 
     # Test multimer without rounding
-    cau_multimer_data = multimer(
+    multimer_data = multimer(
       file_name='multimer_test_data.pdb',
       round_coordinates=False,
       reconstruction_type='cau')
-    cau_multimer_xyz = list(cau_multimer_data.sites_cart())
+    cau_multimer_xyz = list(multimer_data.sites_cart())
     cau_multimer_xyz.sort()
     cau_expected_results.sort()
     assert approx_equal(cau_expected_results,cau_multimer_xyz,eps=0.00001)
@@ -122,15 +121,15 @@ class TestMultimerReconstruction(unittest.TestCase):
     Verify that processing of transforms provided manually is done properly """
     print 'Running ',sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data4)
-    transforms_obj = ncs_group_object()
     r = [matrix.sqr([0.1,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9])]
     r.append(matrix.sqr([1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.4]))
     t = [matrix.col([0,2,1])]
     t.append(matrix.col([-1,3,-2]))
-    transforms_obj.preprocess_ncs_obj(
+    transforms_obj = iotbx.ncs.input(
       pdb_hierarchy_inp = pdb_obj,
       rotations=r,
       translations=t)
+
     result = transforms_obj.transform_to_ncs
     expected = {'s002': ['chain A_s002', 'chain B_s002'],
                 's003': ['chain A_s003', 'chain B_s003']}
@@ -140,8 +139,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     self.assertEqual(result,expected)
     # check that if transforms are provided MTRIX record ignored
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-    transforms_obj = ncs_group_object()
-    transforms_obj.preprocess_ncs_obj(
+    transforms_obj = iotbx.ncs.input(
       pdb_hierarchy_inp = pdb_obj,
       rotations=r,
       translations=t)
@@ -166,11 +164,10 @@ class TestMultimerReconstruction(unittest.TestCase):
     Verify that transform order is kept even when chain selection is complex
     """
     print 'Running ',sys._getframe().f_code.co_name
-    transforms_obj = ncs_group_object()
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transform_info = pdb_inp.process_mtrix_records()
-    transforms_obj.preprocess_ncs_obj(
+    transforms_obj = iotbx.ncs.input(
       transform_info=transform_info,
       pdb_hierarchy_inp=pdb_obj)
 
