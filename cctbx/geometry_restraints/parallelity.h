@@ -208,7 +208,7 @@ namespace cctbx { namespace geometry_restraints {
       double calculate_tau_S(double g_S, double h_S)
       {
         double e_S = -0.5*h_S*pow(1.0/3.0*g_S,-1.5);
-        return cos(acos(e_S)/3.0+2.0/3.0*3.14159265358979323846);
+        return cos(acos(e_S)/3.0+2.0/3.0*scitbx::constants::pi);
       }
 
       double
