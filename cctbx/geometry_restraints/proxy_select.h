@@ -80,8 +80,6 @@ namespace cctbx { namespace geometry_restraints {
     return result;
   }
 
-  // Placeholder for selection (???) of parallelity proxy
-  // Intended to work now
   template <typename ProxyType>
   af::shared<ProxyType>
   shared_parallelity_proxy_select(
