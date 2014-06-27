@@ -2906,6 +2906,29 @@ def exercise_parallelity():
   sites_fdg = make_points(fin_dif_grad)
   assert approx_equal(grad, sites_fdg, 1.e-7)
 
+  # Proxy selections
+  def make_proxy(i_seqs, j_seqs, weight):
+    return geometry_restraints.parallelity_proxy(
+      flex.size_t(i_seqs),
+      flex.size_t(j_seqs),
+      weight)
+  proxies = geometry_restraints.shared_parallelity_proxy([
+    make_proxy([0,1,2,3],  [2,3,4,5],    1),
+    make_proxy([1,2,3,4],  [3,4,5,6],    2),
+    make_proxy([2,3,10,11], [4,5,12,13], 3),
+    make_proxy([3,1,12,14], [5,6,14,15], 4)])
+  selected = proxies.proxy_select(n_seq=16, iselection=flex.size_t([0,2,4]))
+  assert selected.size() == 0
+  selected = proxies.proxy_select(n_seq=16,
+                                  iselection=flex.size_t([1,2,3,4,6]))
+  assert selected.size() == 2
+  assert list(selected[0].i_seqs) == [0, 1, 2]
+  assert list(selected[0].j_seqs) == [1, 2, 3]
+  assert list(selected[1].i_seqs) == [0, 1, 2, 3]
+  assert list(selected[1].j_seqs) == [2, 3, 4]
+  assert approx_equal(selected[0].weight, 1)
+  assert approx_equal(selected[1].weight, 2)
+
 
 def exercise():
   exercise_bond_similarity()
