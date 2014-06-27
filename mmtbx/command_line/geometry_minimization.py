@@ -263,7 +263,6 @@ def run_minimization(
     log                            = log)
 
 def run_minimization_amber (
-      sites_cart,
       selection,
       restraints_manager,
       pdb_hierarchy,
@@ -273,7 +272,6 @@ def run_minimization_amber (
       ambcrd):
   import amber_adaptbx.amber_geometry_minimization
   o = amber_adaptbx.amber_geometry_minimization.run(
-    sites_cart                     = sites_cart,
     restraints_manager             = restraints_manager,
     pdb_hierarchy = pdb_hierarchy,
     max_number_of_iterations       = params.max_iterations,
@@ -463,8 +461,11 @@ class run(object):
     if hasattr(self.params, "amber"):
       use_amber = self.params.amber.use_amber
     if(use_amber):
+      if not self.params.amber.topology_file_name:
+        raise Sorry("Need to supply topology file using amber.topology_file_name=<filename>")
+      if not self.params.amber.coordinate_file_name:
+        raise Sorry("Need to supply topology file using amber.coordinate_file_name=<filename>")
       run_minimization_amber(
-        sites_cart = sites_cart,
         selection = self.selection,
         restraints_manager = self.grm,
         params = self.params.minimization,
