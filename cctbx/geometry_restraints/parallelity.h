@@ -6,7 +6,6 @@
 #include <scitbx/matrix/eigensystem.h>
 #include <scitbx/array_family/sort.h>
 #include <scitbx/array_family/shared_algebra.h>
-//#include <scitbx/sym_mat3.h>
 #include <scitbx/array_family/misc_functions.h>
 
 namespace cctbx { namespace geometry_restraints {
@@ -209,7 +208,7 @@ namespace cctbx { namespace geometry_restraints {
       double calculate_tau_S(double g_S, double h_S)
       {
         double e_S = -0.5*h_S*pow(1.0/3.0*g_S,-1.5);
-        return cos(acos(e_S)/3.0+2.0/3.0*M_PI);
+        return cos(acos(e_S)/3.0+2.0/3.0*3.14159265358979323846);
       }
 
       double
@@ -449,6 +448,8 @@ namespace cctbx { namespace geometry_restraints {
       void
       init_deltas()
       {
+        af::const_ref<scitbx::vec3<double> > i_sites_ref = i_sites.const_ref();
+        af::const_ref<scitbx::vec3<double> > j_sites_ref = j_sites.const_ref();
         i_center_of_mass_ = calculate_C(i_sites);
         j_center_of_mass_ = calculate_C(j_sites);
         i_S_ = calculate_S(i_sites, i_center_of_mass_);
@@ -476,6 +477,9 @@ namespace cctbx { namespace geometry_restraints {
         }
         i_n = i_N.normalize();
         j_n = j_N.normalize();
+
+        delta = 1 - i_n * j_n;
+
         //==================================
         // gradients
         //==================================
@@ -532,6 +536,8 @@ namespace cctbx { namespace geometry_restraints {
       af::shared<scitbx::vec3<double> > i_sites, j_sites;
       //! Weight.
       double weight;
+      //! Delta.
+      double delta;
 
       //! Default constructor. Some data members are not initialized!
       parallelity() {}
@@ -619,21 +625,11 @@ namespace cctbx { namespace geometry_restraints {
         init_deltas();
       }
 
-      //! Delta.
-      double
-      delta() const { return 1 - i_n * j_n; }
-
-      // Temporary nothing
-      //double
-      //rms_deltas() const { return 0; }
-
       //! Sum of weight * delta**2 over all sites.
       // CHANGE will be weight * <something from init_deltas>
       double
       residual() const
       {
-        //double result = delta_;
-        // CCTBX_ASSERT(1 == 2);
         return (1 - i_n * j_n)/weight/weight;
       }
 
@@ -692,16 +688,12 @@ namespace cctbx { namespace geometry_restraints {
 
   inline
   af::shared<double>
-  parallelity_deltas_rms(
+  parallelity_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<parallelity_proxy> const& proxies)
   {
-    CCTBX_ASSERT(1 == 2);
-    af::shared<double> result((af::reserve(proxies.size())));
-    for(std::size_t i=0;i<proxies.size();i++) {
-      //result.push_back(parallelity(sites_cart, proxies[i]).rms_deltas());
-    }
-    return result;
+    return detail::generic_deltas<parallelity_proxy, parallelity>::get(
+      sites_cart, proxies);
   }
 
   /*! \brief Fast computation of parallelity::residual() given an array
@@ -746,17 +738,14 @@ namespace cctbx { namespace geometry_restraints {
    */
   inline
   af::shared<double>
-  parallelity_deltas_rms(
+  parallelity_deltas(
     uctbx::unit_cell const& unit_cell,
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<parallelity_proxy> const& proxies)
   {
     CCTBX_ASSERT(1 == 2);
-    af::shared<double> result((af::reserve(proxies.size())));
-    for(std::size_t i=0;i<proxies.size();i++) {
-      //result.push_back(parallelity(unit_cell, sites_cart, proxies[i]).rms_deltas());
-    }
-    return result;
+    return detail::generic_deltas<parallelity_proxy, parallelity>::get(
+      sites_cart, proxies);
   }
 
   /*! \brief Fast computation of parallelity::residual() given an array

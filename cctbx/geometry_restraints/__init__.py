@@ -336,10 +336,10 @@ class parallelity_proxy_registry(proxy_registry_base):
     # here we want to make sure that we don't have this proxy yet
     tab_i_seqs = tuple(proxy.i_seqs)
     tab_j_seqs = tuple(proxy.j_seqs)
-    if (self.table.get((tab_i_seqs, tab_j_seqs), -1) <0 and  
+    if (self.table.get((tab_i_seqs, tab_j_seqs), -1) <0 and
         self.table.get((tab_j_seqs, tab_i_seqs), -1) <0):
       # saving proxy number in list
-      self.table[(tab_i_seqs, tab_j_seqs)]= self.proxies.size() 
+      self.table[(tab_i_seqs, tab_j_seqs)]= self.proxies.size()
       self._append_proxy(
         source_info=source_info,
         proxy=proxy,
@@ -1238,14 +1238,14 @@ class _(boost.python.injector, parallelity):
   def _show_sorted_item(O, f, prefix):
     print >> f, "%s    ideal   model   delta" \
       "    sigma   weight residual" % prefix
-    print >> f, " likely here will be angle between normal vectors" 
+    print >> f, " likely here will be angle between normal vectors"
 
   def _get_sorted_item(self):
     return [self.residual()]
 
 class _(boost.python.injector, shared_parallelity_proxy):
 
-  def deltas_rms(O, sites_cart, unit_cell=None):
+  def deltas(O, sites_cart, unit_cell=None):
     if unit_cell is None:
       return parallelity_deltas(sites_cart=sites_cart, proxies=O)
     else:
@@ -1291,7 +1291,7 @@ class _(boost.python.injector, shared_parallelity_proxy):
       long_len = max(len(i_labels), len(j_labels))
       while i < long_len:
         print >> f, "    %s | %s" % \
-            (i_labels[i] if i < len(i_labels) else " "*21, 
+            (i_labels[i] if i < len(i_labels) else " "*21,
              j_labels[i] if i < len(j_labels) else "")
         i += 1
       print >> f

@@ -84,7 +84,7 @@ namespace {
         .add_property("i_sites", make_getter(&w_t::i_sites, rbv()))
         .add_property("j_sites", make_getter(&w_t::j_sites, rbv()))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
-        .def("delta", &w_t::delta, rbv())
+        .add_property("delta", make_getter(&w_t::delta, rbv()))
         //.def("rms_deltas", &w_t::rms_deltas)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
@@ -99,11 +99,11 @@ namespace {
     using namespace boost::python;
     parallelity_proxy_wrappers::wrap();
     parallelity_wrappers::wrap();
-    def("parallelity_deltas_rms",
+    def("parallelity_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<parallelity_proxy> const&))
-      parallelity_deltas_rms,
+      parallelity_deltas,
       (arg("sites_cart"), arg("proxies")));
     def("parallelity_residuals",
       (af::shared<double>(*)(
@@ -118,12 +118,12 @@ namespace {
         af::ref<scitbx::vec3<double> > const&))
       parallelity_residual_sum,
       (arg("sites_cart"), arg("proxies"), arg("gradient_array")));
-    def("parallelity_deltas_rms",
+    def("parallelity_deltas",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<parallelity_proxy> const&))
-      parallelity_deltas_rms,
+      parallelity_deltas,
       (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
     def("parallelity_residuals",
       (af::shared<double>(*)(
