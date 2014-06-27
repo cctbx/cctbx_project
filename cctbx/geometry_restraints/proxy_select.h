@@ -81,7 +81,7 @@ namespace cctbx { namespace geometry_restraints {
   }
 
   // Placeholder for selection (???) of parallelity proxy
-  // Most likely doesn't work, just compiles
+  // Intended to work now
   template <typename ProxyType>
   af::shared<ProxyType>
   shared_parallelity_proxy_select(
@@ -90,9 +90,37 @@ namespace cctbx { namespace geometry_restraints {
     af::const_ref<std::size_t> const& iselection)
   {
     af::shared<ProxyType> result;
+    af::shared<std::size_t>
+      reindexing_array = scitbx::af::reindexing_array(n_seq, iselection);
+    af::const_ref<std::size_t>
+      reindexing_array_ref = reindexing_array.const_ref();
     for(std::size_t i_proxy=0;i_proxy<self.size();i_proxy++) {
       ProxyType const& p = self[i_proxy];
-      result.push_back(p);
+      af::const_ref<typename ProxyType::i_seqs_type::value_type>
+          i_seqs = p.i_seqs.const_ref();
+      af::const_ref<typename ProxyType::i_seqs_type::value_type>
+          j_seqs = p.j_seqs.const_ref();
+      af::shared<typename ProxyType::i_seqs_type::value_type> new_i_seqs;
+      af::shared<typename ProxyType::i_seqs_type::value_type> new_j_seqs;
+      for(std::size_t i=0;i<i_seqs.size();i++) {
+        std::size_t i_seq = i_seqs[i];
+        CCTBX_ASSERT(i_seq < n_seq);
+        std::size_t new_i_seq = reindexing_array_ref[i_seq];
+        if (new_i_seq != n_seq) {
+          new_i_seqs.push_back(new_i_seq);
+        }
+      }
+      for(std::size_t j=0;j<j_seqs.size();j++) {
+        std::size_t j_seq = j_seqs[j];
+        CCTBX_ASSERT(j_seq < n_seq);
+        std::size_t new_j_seq = reindexing_array_ref[j_seq];
+        if (new_j_seq != n_seq) {
+          new_j_seqs.push_back(new_j_seq);
+        }
+      }
+      if (new_i_seqs.size() > 2 && new_j_seqs.size() > 2) {
+        result.push_back(ProxyType(new_i_seqs, new_j_seqs, p.weight));
+      }
     }
     return result;
   }
