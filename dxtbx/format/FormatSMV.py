@@ -43,14 +43,16 @@ class FormatSMV(Format):
     header_size = int(FormatSMV.open_file(image_file, 'rb').read(45).split(
         '\n')[1].split('=')[1].replace(';', '').strip())
     header_text = FormatSMV.open_file(image_file, 'rb').read(header_size)
-
-    # check we have the whole header in here... it is contained within { }
-
-    assert('}' in header_text)
-
     header_dictionary = { }
 
+    # Check that we have the whole header, contained within { }.  Stop
+    # extracting data once a record solely composed of a closing curly
+    # brace is seen.  If there is no such character in header_text
+    # either HEADER_BYTES caused a short read of the header or the
+    # header is malformed.
     for record in header_text.split('\n'):
+      if record == '}':
+        break
       if not '=' in record:
         continue
 
