@@ -781,7 +781,8 @@ class manager(object):
       gradients=gradients,
       disable_asu_cache=disable_asu_cache,
       normalization=normalization,
-      extension_objects=extension_objects)
+      extension_objects=extension_objects,
+      hbonds_in_bond_list=self.hbonds_in_bond_list)
 
   def harmonic_restraints(self, variables, type_indices, type_weights):
     assert self.shell_sym_tables is not None

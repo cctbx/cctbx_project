@@ -37,15 +37,16 @@ class geometry(object):
     self.c = esg.chirality_deviations()
     self.d = esg.dihedral_deviations()
     self.p = esg.planarity_deviations()
+    self.ll = esg.parallelity_deviations()
     self.n = esg.nonbonded_deviations()
     self.a_number = esg.n_angle_proxies
-    self.b_number = esg.n_bond_proxies
+    self.b_number = esg.get_filtered_n_bond_proxies()
     self.d_number = esg.n_dihedral_proxies
     self.c_number = esg.n_chirality_proxies
     self.p_number = esg.n_planarity_proxies
     self.n_number = esg.n_nonbonded_proxies
     #
-    for restraint_type in ["b", "a", "c", "p", "d", "n"] :
+    for restraint_type in ["b", "a", "c", "p", "ll", "d", "n"] :
       for value_type in [("mean",2), ("max",1), ("min",0)] :
         name = "%s_%s" % (restraint_type, value_type[0])
         setattr(self, name, getattr(self, restraint_type)[value_type[1]])
@@ -75,6 +76,7 @@ class geometry(object):
       esg.dihedral_residual_sum+
       esg.nonbonded_residual_sum+
       esg.planarity_residual_sum+
+      esg.parallelity_residual_sum+
       esg.reference_dihedral_residual_sum+
       esg.ncs_dihedral_residual_sum+
       esg.generic_restraint_residual_sum)

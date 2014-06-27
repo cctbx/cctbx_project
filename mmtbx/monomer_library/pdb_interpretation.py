@@ -2017,6 +2017,8 @@ class add_parallelity_proxies(object):
     if (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs+j_seqs)):
       #print "skipped broken bond"
       pass
+    elif len(i_seqs) < 3 or len(j_seqs) < 3:
+      pass
     else:
       registry_process_result = parallelity_proxy_registry.process(
         source_info=source_info_server(m_i=m_i, m_j=m_j),
@@ -2322,8 +2324,8 @@ class build_chain_proxies(object):
               += link_resolution.counters.unresolved_non_hydrogen
             # add_parallelity_proxies
             if restraint_parallel_dna_rna:
-              if (len(broken_bond_i_seq_pairs) == 0 and # link is not broken... 
-                  prev_mm.is_rna_dna and mm.is_rna_dna): # and they are rna/dna 
+              if (len(broken_bond_i_seq_pairs) == 0 and # link is not broken...
+                  prev_mm.is_rna_dna and mm.is_rna_dna): # and they are rna/dna
                 link_resolution = add_parallelity_proxies(
                   counters=counters(label="link_parallelity"),
                   m_i=prev_mm,
@@ -2334,7 +2336,7 @@ class build_chain_proxies(object):
                   weight=weight_parallel_dna_rna)
                 n_unresolved_chain_link_parallelities \
                   += link_resolution.counters.unresolved_non_hydrogen
-            
+
       if (mm.monomer is not None):
         if (mm.is_unusual()):
           unusual_residues[mm.residue_name] += 1

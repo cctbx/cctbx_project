@@ -27,7 +27,8 @@ class energies(scitbx.restraints.energies):
                gradients=None,
                disable_asu_cache=False,
                normalization=False,
-               extension_objects=[]):
+               extension_objects=[],
+               hbonds_in_bond_list=None):
     adopt_init_args(self, locals())
     scitbx.restraints.energies.__init__(self,
                                         compute_gradients=compute_gradients,
@@ -245,6 +246,28 @@ class energies(scitbx.restraints.energies):
       extension_obj.energies_add(energies_obj=self)
     self.finalize_target_and_gradients()
 
+  def get_filtered_n_bond_proxies(self):
+    if self.hbonds_in_bond_list is not None:
+      return self.n_bond_proxies - len(self.hbonds_in_bond_list)
+    else:
+      return self.n_bond_proxies
+
+  def get_filtered_bond_deltas(self):
+    if self.n_bond_proxies is not None:
+      if self.n_bond_proxies > 0:
+        sorted_table, n_not_shown = self.bond_proxies.get_sorted(
+            by_value="residual",
+            sites_cart=self.sites_cart,
+            site_labels=None,
+            max_items=None,
+            exclude=self.hbonds_in_bond_list)
+        assert n_not_shown == 0
+        return flex.double([x[4] for x in sorted_table])
+      else:
+        return None
+    else:
+      return None
+
   def bond_deviations_z(self):
     '''
     Calculate rmsz of bond deviations
@@ -267,24 +290,32 @@ class energies(scitbx.restraints.energies):
     if(self.n_bond_proxies is not None):
       bond_deltas = geometry_restraints.bond_deltas(
         sites_cart         = self.sites_cart,
-        sorted_asu_proxies = self.bond_proxies)         # asu is asymmetric unit
-      sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.bond_proxies.simple]
-      z_scores = flex.double([(bond_delta/sigma) for bond_delta,sigma in zip(bond_deltas,sigmas)])
-      b_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
-      b_z_max = flex.max_default(flex.abs(z_scores), 0)
-      b_z_min = flex.min_default(flex.abs(z_scores), 0)
-      return b_z_min, b_z_max, b_rmsz
+        sorted_asu_proxies = self.bond_proxies)
+      #bond_deltas = self.get_filtered_bond_deltas()
+      if bond_deltas is not None:
+        sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.bond_proxies.simple]
+        z_scores = flex.double([(bond_delta/sigma) for bond_delta,sigma in zip(bond_deltas,sigmas)])
+        b_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
+        b_z_max = flex.max_default(flex.abs(z_scores), 0)
+        b_z_min = flex.min_default(flex.abs(z_scores), 0)
+        return b_z_min, b_z_max, b_rmsz
+      else:
+        return 0,0,0
 
   def bond_deviations(self):
     if(self.n_bond_proxies is not None):
       bond_deltas = geometry_restraints.bond_deltas(
         sites_cart         = self.sites_cart,
         sorted_asu_proxies = self.bond_proxies)
-      b_sq  = bond_deltas * bond_deltas
-      b_ave = math.sqrt(flex.mean_default(b_sq, 0))
-      b_max = math.sqrt(flex.max_default(b_sq, 0))
-      b_min = math.sqrt(flex.min_default(b_sq, 0))
-      return b_min, b_max, b_ave
+      #bond_deltas = self.get_filtered_bond_deltas()
+      if bond_deltas is not None:
+        b_sq  = bond_deltas * bond_deltas
+        b_ave = math.sqrt(flex.mean_default(b_sq, 0))
+        b_max = math.sqrt(flex.max_default(b_sq, 0))
+        b_min = math.sqrt(flex.min_default(b_sq, 0))
+        return b_min, b_max, b_ave
+      else:
+        return 0,0,0
 
   def angle_deviations_z(self):
     '''
@@ -394,6 +425,17 @@ class energies(scitbx.restraints.energies):
         sites_cart = self.sites_cart,
         proxies    = self.planarity_proxies)
       p_sq  = planarity_deltas * planarity_deltas
+      p_ave = math.sqrt(flex.mean_default(p_sq, 0))
+      p_max = math.sqrt(flex.max_default(p_sq, 0))
+      p_min = math.sqrt(flex.min_default(p_sq, 0))
+      return p_min, p_max, p_ave
+
+  def parallelity_deviations(self):
+    if self.n_parallelity_proxies is not None:
+      parallelity_deltas = geometry_restraints.parallelity_deltas(
+        sites_cart = self.sites_cart,
+        proxies    = self.parallelity_proxies)
+      p_sq  = parallelity_deltas * parallelity_deltas
       p_ave = math.sqrt(flex.mean_default(p_sq, 0))
       p_max = math.sqrt(flex.max_default(p_sq, 0))
       p_min = math.sqrt(flex.min_default(p_sq, 0))
