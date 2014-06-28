@@ -64,10 +64,13 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
     model_data.update_scene_data(self, scene)
 
   def update_structure (self, pdb_hierarchy, atomic_bonds,
+      special_position_settings=None,
       mmtbx_selection_function=None) :
-    model_data.update_structure(self, pdb_hierarchy, atomic_bonds)
+    model_data.update_structure(self, pdb_hierarchy, atomic_bonds,
+      special_position_settings=special_position_settings)
     mouse_selection_manager.update_selection_handlers(self, pdb_hierarchy,
-      mmtbx_selection_function)
+      mmtbx_selection_function=mmtbx_selection_function,
+      special_position_settings=special_position_settings)
 
   def recalculate_visibility (self) :
     model_data.recalculate_visibility(self)
@@ -243,9 +246,11 @@ class selection_editor_mixin (model_viewer_mixin) :
     self.update_scene = True
 
   def add_model (self, model_id, pdb_hierarchy, atomic_bonds,
+      xray_structure=None,
       mmtbx_selection_function=None) :
     assert isinstance(model_id, str) or isinstance(model_id, unicode)
     model = model_data_with_selection(model_id, pdb_hierarchy, atomic_bonds,
+      special_position_settings=xray_structure.special_position_settings(),
       base_color=self.settings.opengl.base_atom_color)
     model.set_mmtbx_selection_function(mmtbx_selection_function)
     model.set_selection_callback(self._callback)

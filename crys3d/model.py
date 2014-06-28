@@ -25,6 +25,7 @@ element_shades = {'H'  : (0.95, 0.95, 0.95), # very light grey
 
 class model_data (object) :
   def __init__ (self, object_id, pdb_hierarchy, atomic_bonds,
+      special_position_settings=None,
       base_color=(0.0,1.0,1.0)) :
     self.object_id = object_id
     self.base_color = base_color
@@ -43,7 +44,9 @@ class model_data (object) :
     self.flag_show_ribbon = False
     self.flag_show_ellipsoids = False
     self.flag_show_noncovalent_bonds = False
-    self.update_structure(pdb_hierarchy, atomic_bonds)
+    self.update_structure(pdb_hierarchy=pdb_hierarchy,
+      atomic_bonds=atomic_bonds,
+      special_position_settings=special_position_settings)
     from scitbx.array_family import flex
     self.use_u_aniso = flex.bool(self.atoms.size())
     #self.recalculate_visibility()
@@ -109,7 +112,8 @@ class model_data (object) :
     self._color_cache["b"] = None
     self.is_changed = True
 
-  def update_structure (self, pdb_hierarchy, atomic_bonds) :
+  def update_structure (self, pdb_hierarchy, atomic_bonds,
+      special_position_settings=None) :
     from scitbx.array_family import flex
     self.pdb_hierarchy = pdb_hierarchy
     self.atoms = pdb_hierarchy.atoms()
@@ -118,7 +122,8 @@ class model_data (object) :
     if atomic_bonds is None :
       atomic_bonds = flex.stl_set_unsigned(self.atom_count)
     self.atomic_bonds = atomic_bonds
-    self.selection_cache = pdb_hierarchy.atom_selection_cache()
+    self.selection_cache = pdb_hierarchy.atom_selection_cache(
+      special_position_settings=special_position_settings)
     #self.index_atoms()
     atom_index = []
     atom_labels = flex.std_string()
@@ -127,7 +132,7 @@ class model_data (object) :
       atom_labels.append(format_atom_label(atom))
     self.atom_index = atom_index
     self.atom_labels = atom_labels
-    self.trace_bonds = extract_trace(pdb_hierarchy) #, self.selection_cache)
+    self.trace_bonds = extract_trace(pdb_hierarchy, self.selection_cache)
     if self.draw_mode is None or self.draw_mode.startswith("trace") :
       self.current_bonds = self.trace_bonds
     else :
