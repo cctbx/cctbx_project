@@ -485,10 +485,14 @@ class model_viewer_mixin (wxGLWindow) :
     self.pick_object[model_id] = True
     self.update_scene = True
 
-  def update_model (self, model_id, pdb_hierarchy, atomic_bonds) :
+  def update_model (self, model_id, pdb_hierarchy, atomic_bonds,
+      xray_structure=None) :
     model = self.get_model(model_id)
     if model is not None :
-      model.update_structure(pdb_hierarchy, atomic_bonds)
+      model.update_structure(
+        pdb_hierarchy=pdb_hierarchy,
+        atomic_bonds=atomic_bonds,
+        special_position_settings=xray_structure.special_position_settings())
       model.set_draw_mode(model.draw_mode)
       if model_id in self.scene_objects :
         self.scene_objects.pop(model_id)

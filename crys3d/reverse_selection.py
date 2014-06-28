@@ -133,10 +133,11 @@ class mouse_selection_manager (object) :
     self.mmtbx_selection_function = mmtbx_selection_function
 
   def update_selection_handlers (self, pdb_hierarchy,
-      mmtbx_selection_function) :
+      mmtbx_selection_function, special_position_settings=None) :
     from scitbx.array_family import flex
     self.mmtbx_selection_function = mmtbx_selection_function
-    self.selection_cache = pdb_hierarchy.atom_selection_cache()
+    self.selection_cache = pdb_hierarchy.atom_selection_cache(
+      special_position_settings=special_position_settings)
     self.atom_selection = flex.bool()
     #--- XXX: for testing only
     if not hasattr(self, "atom_index") :
@@ -191,6 +192,7 @@ class mouse_selection_manager (object) :
     except KeyboardInterrupt :
       raise
     except Exception, e :
+      raise
       atom_selection =None
     return atom_selection
 
