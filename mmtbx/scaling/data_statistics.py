@@ -174,10 +174,12 @@ class analyze_resolution_limits (scaling.xtriage_analysis) :
   def _show_impl (self, out) :
     out.show_sub_header("Analysis of resolution limits")
     out.show_text("""\
-Your data have been examined to determine the effective resolution limits
+Your data have been examined to determine the resolution limits of the data
 along the reciprocal space axes (a*, b*, and c*).  These are expected to vary
 slightly depending on unit cell dimensions and overall resolution, but should
-never be significantly different for good data.""")
+never be significantly different for complete data.  (This is distinct from the
+amount of anisotropy present in the data, which changes the effective
+resolution but does not actually exclude reflections.)""")
     max_delta = self.max_d_min_delta()
     out.show_preformatted_text("""
     overall d_min                = %.3f
@@ -192,9 +194,9 @@ never be significantly different for good data.""")
 The resolution limit appears to be direction-dependent, which may indicate
 that the data have been collected or processed incorrectly, or that elliptical
 truncation has been applied.  We do not recommend using elliptically truncated
-data, as anisotropy is handled automatically by phenix.refine and related
-programs, and discarding large numbers of weak reflections may result in
-increased map bias and/or artifacts.  You should always deposit the original,
+data, as anisotropy is handled automatically by Phaser, phenix.refine, and
+related programs, and discarding large numbers of weak reflections may result
+in increased map bias and/or artifacts.  You should always deposit the original,
 uncorrected reflections in the PDB, not the truncated data.""")
     else :
       out.show_text("""Resolution limits are within expected tolerances.""")
@@ -218,9 +220,10 @@ class log_binned_completeness (scaling.xtriage_analysis) :
       bin_array = miller_array.select(selection)
       d_max, d_min = bin_array.d_max_min()
       n_refl = bin_array.size()
-      completeness = bin_array.completeness()
-      rows.append(("%.4f - %.4f" % (d_max, d_min), str(n_refl),
-        "%.1f%%" % (completeness*100)))
+      n_refl_expect = bin_array.complete_set(d_max=d_max).size()
+      completeness = bin_array.completeness(d_max=d_max)
+      rows.append(("%.4f - %.4f" % (d_max, d_min), "%d/%d" % (n_refl,
+        n_refl_expect), "%.1f%%" % (completeness*100)))
     self.table = table_utils.simple_table(
       column_headers=["Resolution", "Reflections", "Completeness"],
       table_rows=rows)
@@ -470,21 +473,21 @@ class ice_ring_checker(scaling.xtriage_analysis):
     for ii in range(10):
       if self.ice_ring_bin_location[ii] is not None:
         icy_shells.append([ "%9.3f" % self.ice_d_spacings[ii],
+                            "%10.3f" % abs(self.ice_rel_intens[ii]),
                             "%7.2f" % abs(self.value_intensity[ii]),
-                            "%7.2f" % abs(self.value_completeness[ii]),
-                            "%10.3f" % abs(self.ice_rel_intens[ii]) ])
+                            "%7.2f" % abs(self.value_completeness[ii]), ])
     self.table = table_utils.simple_table(
       table_rows=icy_shells,
-      column_headers=["d_spacing","z_score","compl.", "Rel. ice int."])
+      column_headers=["d_spacing", "Expected rel. I", "Data Z-score", "Completeness"])
     self.warnings = 0 ## Number of ice ring related warnings
     cutoff = self.completeness_abnormality_level
     for ii in range(10):
       if ((self.ice_ring_bin_location[ii] is not None) and
           (self.ice_rel_intens[ii] > self.intensity_level)) :
         abnormality_completeness = abs(self.abnormality_completeness[ii])
-        if (abnormality_completeness >= cutoff) :
-          self.warnings += 1
-        elif (abs(self.abnormality_intensity[ii]) >= cutoff):
+        if ((abnormality_completeness >= cutoff) or
+            (self.value_intensity[ii] > 15) or
+            (abs(self.abnormality_intensity[ii]) >= cutoff)) :
           self.warnings += 1
 
   def _show_impl (self, out) :
@@ -500,8 +503,10 @@ class ice_ring_checker(scaling.xtriage_analysis):
         ( rms deviation   : %4.2f )
 """ % (self.mean_z_score, self.std_z_score, self.mean_comp, self.std_comp))
     out.show("""\
- The following table shows the z-scores and completeness in ice-ring sensitive
- areas.  Large z-scores and high completeness in these resolution ranges might
+ The following table shows the Wilson plot Z-scores and completeness for
+ observed data in ice-ring sensitive areas.  The expected relative intensity
+ is the theoretical intensity of crystalline ice at the given resolution.
+ Large z-scores and high completeness in these resolution ranges might
  be a reason to re-assess your data processsing if ice rings were present.
 """)
     out.show_table(self.table, indent=2)
@@ -528,7 +533,8 @@ class ice_ring_checker(scaling.xtriage_analysis):
             out.show("""\
  Even though the completeness is lower as expected, the mean intensity is
  still reasonable at this resolution.""")
-        if (abs(self.abnormality_intensity[ii]) >= cutoff):
+        if ((abs(self.abnormality_intensity[ii]) >= cutoff) or
+            (abs(self.value_intensity[ii]) > 15)) :
           problems_detected = True
           if (abs(self.abnormality_completeness[ii])<=cutoff):
             out.show("""\
@@ -577,8 +583,6 @@ class analyze_measurability(scaling.xtriage_analysis):
     if miller_array is not None:
       work_array = miller_array.deep_copy()
       work_array.setup_binner(n_bins=10)
-      # FIXME very inefficient storage-wise; need to extract the bin data and
-      # save in a leaner object
       self.meas_table = work_array.measurability(
         use_binning=True).as_simple_table(data_label="Measurability")
     self.table = data_plots.table_data(
@@ -759,11 +763,14 @@ or omission of reflections by data-processing software.""")
       return self.data_strength.resolution_cut
 
 class anomalous (scaling.xtriage_analysis) :
-  def __init__ (self, miller_array) :
+  def __init__ (self, miller_array, merging_stats=None) :
     assert miller_array.anomalous_flag()
     tmp_miller = miller_array.deep_copy()
     tmp_miller.setup_binner_d_star_sq_step(auto_binning=True)
     self.d_star_sq_ori = tmp_miller.binner().bin_centers(2)
+    self.cc_anom_table = None
+    if (merging_stats is not None) :
+      self.cc_anom_table = merging_stats.cc_anom_table
     self.measurability = None
     # Get measurability if data is anomalous
     if (tmp_miller.sigmas() is not None) :
@@ -790,6 +797,18 @@ class anomalous (scaling.xtriage_analysis) :
 
   def _show_impl (self, out) :
     out.show_header("Anomalous signal")
+    if (self.cc_anom_table is not None) :
+      out.show_sub_header("Half-dataset anomalous correlation")
+      out.show_text("""\
+ This statistic (also called CC_anom) is calculated from unmerged data, which
+ have been split into two half-datasets of approximately the same size and
+ merged to obtain unique (anomalous) intensities, and their anomalous
+ differences compared.  Resolution shells with CC_anom above 0.3 contain
+ substantial anomalous signal useful for heavy atom location.""")
+      if (out.gui_output) :
+        out.show_plot(self.cc_anom_table)
+      else :
+        out.show_table(self.cc_anom_table)
     if (self.measurability is not None) :
       self.measurability.show(out)
 
@@ -895,11 +914,13 @@ class wilson_scaling (scaling.xtriage_analysis) :
     absolute_miller = miller_array.resolution_filter(
       d_max = math.sqrt(1.0/0.008),
       d_min = math.sqrt(1.0/0.69))
+    #absolute_miller.as_mtz_dataset(column_root_label="F").mtz_object().write("start.mtz")
     ## anisotropy correction, bring data to absolute scale and B-value zero
     absolute_miller = absolute_scaling.anisotropic_correction(
       cache_0=absolute_miller,
       p_scale=self.aniso_p_scale,
       u_star=self.aniso_u_star)
+    #absolute_miller.as_mtz_dataset(column_root_label="F").mtz_object().write("end.mtz")
     absolute_miller.set_observation_type( miller_array )
     # Now do some binning ala Popov&Bourenkov
     absolute_miller.setup_binner_d_star_sq_step(auto_binning=True)
@@ -966,7 +987,7 @@ class wilson_scaling (scaling.xtriage_analysis) :
                     "<I> via binning", "<I> expected"],
       graph_names=["Intensity plots"],
       graph_labels=[("Resolution", "<I>")],
-      graph_columns=[[0,1,2,3]],
+      graph_columns=[[0,1,2]],
       data=[list(self.d_star_sq), list(self.mean_I_normalisation),
             list(self.mean_I_obs_data), list(self.mean_I_obs_theory)],
       x_is_inverse_d_min=True)
