@@ -31,6 +31,7 @@ def exercise_synthetic () :
     "tst_molprobity_1.mtz",
     "--kinemage",
     "--maps",
+    "flags.clashscore=False",
   ]
   result = molprobity.run(args=args, out=null_out()).validation
   out = StringIO()
@@ -57,6 +58,7 @@ def exercise_synthetic () :
     "tst_molprobity_1.mtz",
     "--kinemage",
     "--maps",
+    "flags.clashscore=False",
   ]
   result = molprobity.run(args=args, out=null_out()).validation
   out = StringIO()
