@@ -173,7 +173,7 @@ geometry_restraints.edits {
     line1 = line1.strip()
     line2 = line2.strip()
     if (line1.startswith("Date") or line1.startswith("PID") or
-        line1.startswith("Command line") or line1.startswith("Time building")):
+        line1.startswith("Command line") or line1.startswith("Time")):
       continue
     else :
       assert not show_diff(line1, line2)
