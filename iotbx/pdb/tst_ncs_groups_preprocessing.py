@@ -2,8 +2,8 @@ from __future__ import division
 from iotbx.ncs.ncs_preprocess import ncs_group_object
 from libtbx.utils import null_out
 from scitbx import matrix
-from iotbx import pdb
 import iotbx.ncs
+from iotbx import pdb
 import unittest
 import tempfile
 import shutil

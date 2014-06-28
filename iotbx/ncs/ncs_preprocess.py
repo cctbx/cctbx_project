@@ -12,6 +12,7 @@ from iotbx import pdb
 import string
 import math
 import os
+import sys
 
 
 # parameters for manual specification of NCS - ASU mapping
@@ -50,8 +51,6 @@ class ncs_group_object(object):
     self.ncs_to_asu_map = {}
     # iselection maps of each ncs copy to its master ncs
     self.asu_to_ncs_map = {}
-    # iselection of all part in ASU that are not related via NCS operators
-    self.non_ncs_region_selection = None
     # keys are items in ncs_chain_selection, values are lists of selection str
     self.ncs_to_asu_selection = {}
     self.ncs_copies_chains_names = {}
@@ -61,13 +60,16 @@ class ncs_group_object(object):
     self.ncs_group_map = {}
     # map transform name (s1,s2,...) to transform object
     self.ncs_transform = {}
-    # list of transform to chain assignemnt
+    # list of transform to chain assignment
     self.transform_chain_assignment = []
     # map transform to list of master ncs parts in its ncs groups
     self.transform_to_ncs = {}
-    # master ncs atoms selection in a string and a flex.bool types
+    # master ncs and non-ncs selection in a string and a flex.bool types
     self.ncs_atom_selection = None
     self.ncs_selection_str = ''
+    # iselection of all part in ASU that are not related via NCS operators
+    self.non_ncs_region_selection = flex.size_t()
+    self.all_master_ncs_selections = flex.size_t()
     # list of selection strings of master NCS
     self.ncs_chain_selection = []
     # unique chains or selection identifiers
@@ -135,6 +137,9 @@ class ncs_group_object(object):
     """
     extension = ''
     if file_name: extension = os.path.splitext(file_name)[1]
+    if pdb_hierarchy_inp:
+      msg = 'pdb_hierarchy_inp is not iotbx.pdb.hierarchy.input object'
+      assert isinstance(pdb_hierarchy_inp,iotbx.pdb.hierarchy.input),msg
     if extension.lower() == '.pdb':
       pdb_hierarchy_inp = pdb.hierarchy.input(file_name=file_name)
     elif (not pdb_hierarchy_inp) and pdb_string:
@@ -311,6 +316,12 @@ class ncs_group_object(object):
     Arguments:
     pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
     """
+    class ncs_groups_container(object):
+
+      def __init__(self):
+        self.master_ncs_selection = ''
+        self.selection_copy = []
+
     # identify the NCS copies of each group
     # Todo: evaluate if there is a simple NCS groups. replace the
     # simple_find_ncs_operators
@@ -525,12 +536,16 @@ class ncs_group_object(object):
         self.ncs_to_asu_map[k] = asu_selection.iselection()
       self.non_ncs_region_selection = (~selection_ref).iselection()
       # add the non ncs regions to the master ncs copy
+      self.all_master_ncs_selections = self.ncs_atom_selection.iselection()
       self.ncs_atom_selection = self.ncs_atom_selection | (~selection_ref)
+      assert (self.non_ncs_region_selection.intersection(
+        self.all_master_ncs_selections)).size() == 0
     elif pdb_length == ncs_length:
       # this case is when the pdb hierarchy contain only the master NCS copy
       self.total_asu_length = self.get_asu_length(temp)
       ns = [True]*pdb_length + [False]*(self.total_asu_length - pdb_length)
       self.ncs_atom_selection = flex.bool(ns)
+      self.all_master_ncs_selections=self.ncs_atom_selection.iselection()
       sorted_keys = sorted(self.transform_to_ncs)
       i = 0
       for k in sorted_keys:
@@ -779,18 +794,25 @@ class ncs_group_object(object):
     :return: a list of ncs_restraint_group objects
     """
     ncs_restraints_group_list = []
-    for tr in self.transform_order:
-      new_nrg = ncs_restraint_group()
-      new_nrg.r = self.ncs_transform[tr].r
-      new_nrg.t = self.ncs_transform[tr].t
+    group_id_list = sort_dict_keys(self.ncs_group_map)
+    for k in group_id_list:
+      v = self.ncs_group_map[k]
       master_isel = flex.size_t()
-      ncs_isel = flex.size_t()
-      for sel in self.transform_to_ncs[tr]:
-        key = sel.split('_')[0]
-        ncs_isel.extend(self.ncs_to_asu_map[sel])
-        master_isel.extend(self.asu_to_ncs_map[key])
-      new_nrg.ncs_copy_iselection = ncs_isel
-      new_nrg.master_ncs_iselection = master_isel
+      for key in v[0]:
+        if self.asu_to_ncs_map.has_key(key):
+          master_isel.extend(self.asu_to_ncs_map[key])
+      new_nrg = ncs_restraint_group(master_isel)
+
+      for tr in sorted(list(v[1])):
+        if self.transform_to_ncs.has_key(tr):
+          r = self.ncs_transform[tr].r
+          t = self.ncs_transform[tr].t
+          ncs_isel = flex.size_t()
+          for sel in self.transform_to_ncs[tr]:
+            ncs_isel.extend(self.ncs_to_asu_map[sel])
+          new_ncs_copy = ncs_copy(copy_iselection=ncs_isel, rot=r, tran=t)
+          new_nrg.copies.append(new_ncs_copy)
+      # compare master_isel_test and master_isel
       ncs_restraints_group_list.append(new_nrg)
     return ncs_restraints_group_list
 
@@ -803,30 +825,37 @@ class ncs_group_object(object):
 
     :param ncs_restraints_group_list: a list of ncs_restraint_group objects
     """
-    for tr in self.transform_order:
+    assert len(ncs_restraints_group_list) == len(self.ncs_group_map)
+    group_id_list = sort_dict_keys(self.ncs_group_map)
+    for k in group_id_list:
+      v = self.ncs_group_map[k]
       nrg = ncs_restraints_group_list.pop(0)
-      self.ncs_transform[tr].r = nrg.r
-      self.ncs_transform[tr].t = nrg.t
-      for sel in self.transform_to_ncs[tr]:
-        master_isel = flex.size_t()
-        ncs_isel = flex.size_t()
-        key = sel.split('_')[0]
-        ncs_isel.extend(self.ncs_to_asu_map[sel])
-        master_isel.extend(self.asu_to_ncs_map[key])
-      assert nrg.ncs_copy_iselection == ncs_isel
-      assert nrg.master_ncs_iselection == master_isel
+      for tr in sorted(list(v[1])):
+        if self.transform_to_ncs.has_key(tr):
+          ncs_copy = nrg.copies.pop(0)
+          self.ncs_transform[tr].r = ncs_copy.r
+          self.ncs_transform[tr].t = ncs_copy.t
+          # Test that the correct transforms are updated
+          ncs_isel = flex.size_t()
+          for sel in self.transform_to_ncs[tr]:
+            ncs_isel.extend(self.ncs_to_asu_map[sel])
+          assert ncs_copy.ncs_copy_iselection == ncs_isel
 
-  def write_transform_records(self, file_name=None,
+  def get_transform_records(self, file_name=None,
                           ncs_only=True,
                           pdb_hierarchy=None,
                           xrs=None,
                           fmodel=None,
+                          crystal_symmetry=None,
                           mtrix=None,
                           biomt=None,
-                          quiet=False):
+                          write=False,
+                          log = sys.stdout):
     """
     Write to a file or prints transformation records.
-    with or without PDB atoms and cryst records.
+    with or without PDB atoms and Cryst records.
+    If no pdb_hierarchy, xray structure or fmodel are provided, the function
+    will return only the MTRIX/BIOMT records
 
     Arguments:
     file_name: (str) output file name
@@ -835,9 +864,10 @@ class ncs_group_object(object):
     pdb_hierarchy: (pdb_hierarchy object)
     xrs: (xray structure) for crystal symmetry
     fmodel: (fmodel object)
+    crystal_symmetry: crystal symmetry records
     mtrix: (bool) When True -> write MTRIX records
     biomt: (bool) When True -> write BIOMT records
-    quiet: (bool) when True, will return spec_object but will not write to file
+    write: (bool) when False, will will not write to file or print
 
     Return:
     PDB string
@@ -868,9 +898,8 @@ class ncs_group_object(object):
     if pdb_hierarchy:
       ph = pdb_hierarchy
       if xrs:
-        pdb_str = ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
-      else:
-        pdb_str = ph.as_pdb_string()
+        crystal_symmetry = xrs.crystal_symmetry()
+      pdb_str = ph.as_pdb_string(crystal_symmetry=crystal_symmetry)
       if not pdb_header_str:
        pdb_header_str = get_pdb_header(pdb_str)
       if ncs_only:
@@ -886,7 +915,7 @@ class ncs_group_object(object):
     elif biomt:
       transform_rec = mtrix_object.format_BOIMT_pdb_string()
     #
-    if not quiet:
+    if write:
       if file_name:
         f = open(file_name,'w')
         print >> f, pdb_header_str
@@ -894,28 +923,31 @@ class ncs_group_object(object):
         print >> f, new_ph_str
         f.close()
       else:
-        print pdb_header_str
-        print transform_rec
-        print new_ph_str
+        print >> log,pdb_header_str
+        print >> log,transform_rec
+        print >> log,new_ph_str
 
     return '\n'.join([pdb_header_str,transform_rec,new_ph_str])
 
-  def write_ncs_info_to_spec(
+  def get_ncs_info_to_spec(
           self,
           pdb_hierarchy_asu=None,
           xrs=None,
           fmodel=None,
           file_name=None,
-          quiet=False):
+          log = sys.stdout,
+          write=False):
     """
-    Write to a ncs spec file or prints transformation records.
+    Returns and writes to a ncs spec file or prints transformation records.
+    Note that the spec_object has methods format_all_for_resolve
+    and format_all_for_phenix_refine
 
     Arguments:
     file_name: (str) output file name
     pdb_hierarchy: (pdb_hierarchy object)
     xrs: (xray structure) for crystal symmetry
     fmodel: (fmodel object)
-    quiet: (bool) when True, will return spec_object but will not write to file
+    write: (bool) when False, will not write to file or print
 
     Return:
     spec_object
@@ -956,9 +988,9 @@ class ncs_group_object(object):
         # chain_ids.append([chain_id,self.common_res_dict[k]])
         center_orth.append(get_center_orth(xyz,ncs_sel))
         transform_key = k.split('_')[1]
-        # Todo: ask if rmsd can be had from someplace
-        rmsd_list.append(0)
         tr = self.ncs_transform[transform_key]
+        # Todo: ask if rmsd can be had from someplace
+        rmsd_list.append(tr.rmsd)
         rotations.append(tr.r)
         translations.append(tr.t)
         residues_in_common_list.append(len(ncs_sel))
@@ -971,8 +1003,9 @@ class ncs_group_object(object):
         chain_residue_id = [chain_residue_id_list,chain_residue_range_list],
         residues_in_common_list = residues_in_common_list,
         ncs_domain_pdb = None)
-    if not quiet:
-      spec_object.format_all_for_group_specification(file_name=file_name)
+    if write:
+      spec_object.format_all_for_group_specification(
+        file_name=file_name,log=log)
     return spec_object
 
 def get_pdb_header(pdb_str):
@@ -1141,31 +1174,19 @@ def sort_dict_keys(dict):
   return sorted(dict,key=lambda k:dict[k])
 
 
-class ncs_groups_container(object):
+class ncs_copy():
 
-  def __init__(self):
-    self.master_ncs_selection = ''
-    self.selection_copy = []
+  def __init__(self,copy_iselection, rot, tran):
+    self.ncs_copy_iselection = copy_iselection
+    self.r = rot
+    self.t = tran
 
 class ncs_restraint_group(object):
-  """ Minimal object of NCS groups selection and operators  """
 
-  def __init__(self,
-               master_ncs_iselection = None,
-               ncs_copy_iselection = None,
-               rotation = None,
-               translation = None):
-    """
-
-    :param master_ncs_iselection: (flex.size_t or flex.bool)
-    :param ncs_copy_iselection: (flex.size_t or flex.bool)
-    :param rotation: matrix.sqr 3x3 object
-    :param translation: matrix.col 3x1 object
-    """
+  def __init__(self,master_ncs_iselection):
     self.master_ncs_iselection = master_ncs_iselection
-    self.ncs_copy_iselection = ncs_copy_iselection
-    self.r = rotation
-    self.t = translation
+    self.copies = []
+
 
 class transform(object):
 
@@ -1174,7 +1195,8 @@ class transform(object):
                translation = None,
                serial_num = None,
                coordinates_present = None,
-               ncs_group_id = None):
+               ncs_group_id = None,
+               rmsd = 0):
     """
     Basic transformation properties
 
@@ -1191,3 +1213,4 @@ class transform(object):
     self.serial_num = serial_num
     self.coordinates_present = bool(coordinates_present)
     self.ncs_group_id = ncs_group_id
+    self.rmsd = rmsd

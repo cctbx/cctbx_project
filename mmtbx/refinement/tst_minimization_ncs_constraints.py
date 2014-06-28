@@ -141,9 +141,9 @@ class ncs_minimization_test(object):
       crystal_symmetry=self.xrs_one_ncs.crystal_symmetry())
     tr_obj = m_shaken.transforms_obj
     self.ncs_restraints_group_list = tr_obj.get_ncs_restraints_group_list()
-    # Create a boolean selection string for selecting chains in NCS
-    self.ncs_atom_selection = tr_obj.ncs_atom_selection
-    assert self.ncs_atom_selection.count(True) > 0
+    # refine both ncs related and not related atoms
+    self.refine_selection = tr_obj.ncs_atom_selection
+    assert self.refine_selection.count(True) > 0
     self.fmodel = mmtbx.f_model.manager(
       f_obs                        = self.f_obs,
       r_free_flags                 = self.r_free_flags,
@@ -163,7 +163,7 @@ class ncs_minimization_test(object):
         target_function_and_grads_reciprocal_space(
           fmodel                 = self.fmodel,
           ncs_restraints_group_list = self.ncs_restraints_group_list,
-          ncs_atom_selection     = self.ncs_atom_selection,
+          refine_selection     = self.refine_selection,
           restraints_manager     = self.grm,
           data_weight            = data_weight,
           refine_sites           = self.sites,
@@ -174,7 +174,7 @@ class ncs_minimization_test(object):
         target_and_grads_object      = target_and_grads_object,
         xray_structure               = self.fmodel.xray_structure,
         ncs_restraints_group_list    = self.ncs_restraints_group_list,
-        ncs_atom_selection           = self.ncs_atom_selection,
+        refine_selection           = self.refine_selection,
         finite_grad_differences_test = self.finite_grad_differences_test,
         max_iterations               = 60,
         refine_sites                 = self.sites,
@@ -217,7 +217,7 @@ class ncs_minimization_test(object):
       pdb_inp_refined = iotbx.pdb.input(file_name=output_file_name)
       xrs1 = pdb_inp_answer.xray_structure_simple()
       xrs2 = pdb_inp_refined.xray_structure_simple().select(
-        self.ncs_atom_selection)
+        self.refine_selection)
       mmtbx.utils.assert_xray_structures_equal(
         x1 = xrs1,
         x2 = xrs2,
