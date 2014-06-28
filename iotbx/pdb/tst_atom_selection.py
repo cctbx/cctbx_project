@@ -4,7 +4,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
 
 def exercise_selection():
-  hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 CRYST1   50.800   50.800  155.300  90.00  90.00  90.00 P 43 21 2     8
 MODEL        1
 ATOM      4  N   SER     1       8.753  29.755  61.685  1.00 49.13
@@ -104,8 +104,10 @@ ATOM   2016  A1  CCCZZA003       9.242  30.200  62.974  1.00 46.62
 ATOM   2017  A1  AAAUU  1K       8.753  29.755  61.685  1.00 49.13
 ENDMDL
 END
-""")).construct_hierarchy()
-  sel_cache = hierarchy.atom_selection_cache()
+"""))
+  hierarchy = pdb_inp.construct_hierarchy()
+  sel_cache = hierarchy.atom_selection_cache(
+    special_position_settings=pdb_inp.special_position_settings())
   assert sel_cache.n_seq == hierarchy.atoms_size()
   isel = sel_cache.iselection
   assert isel("").size() == 0
@@ -204,6 +206,8 @@ END
   assert list(isel(r"hetero")) == list(isel(r"hetatm")) == [
     40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,
     59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69]
+  assert list(isel("within(3, resname PRO)")) == [7, 8, 9, 17, 18, 19, 20, 21,
+    22, 23, 24, 25, 32, 33, 73, 77, 80]
   #
   try: isel(r"resseq")
   except pdb.atom_selection.AtomSelectionError, e:
@@ -419,6 +423,12 @@ HETATM   4   O  KHOH     6      16.545  29.521  64.086  0.00 19.76
   assert list(isel("occupancy > 0")) == [0,1,2,3,4,5]
   assert list(isel("occupancy < 1")) == [3,6,7]
   assert list(isel("occupancy = 0")) == [6,7]
+  try :
+    isel("within(5, resname PRO)")
+  except pdb.atom_selection.AtomSelectionError :
+    pass
+  else :
+    raise Exception_expected
 
 def run():
   exercise_selection()

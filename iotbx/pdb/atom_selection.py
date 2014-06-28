@@ -1,6 +1,13 @@
+
+"""
+Tools for creating atom selection arrays (flex.bool or flex.size_t) based on
+a simple keyword syntax and boolean operators.
+"""
+
 from __future__ import division
 from iotbx import simple_parser
 from iotbx import wildcard
+from cctbx import crystal
 from scitbx.array_family import flex
 from scitbx import stl
 import scitbx.stl.map
@@ -107,6 +114,18 @@ class AtomSelectionError(Sorry):
   __module__ = "exceptions"
 
 class cache(slots_getstate_setstate):
+  """
+  Manager for interpreting atom selection strings, with caching of partial
+  selections.  This has some limited understanding of chemical identities via
+  keywords like pepnames, water, or single_atom_residue, but more advanced
+  selections require the use of a callback.  In practice this would usually
+  involve wrapping the cache in another object, for example the class
+  build_all_chain_proxies in mmtbx.monomer_library.pdb_interpretation.
+
+  Because the selections available here are used in some situations where setup
+  speed is important, the "within" keyword may optionally be supported if the
+  special_position_settings attribute is not None.
+  """
 
   __slots__ = [
     "root",
@@ -129,9 +148,11 @@ class cache(slots_getstate_setstate):
     "pepnames",
     "single_atom_residue",
     "water",
-    "hetero",]
+    "hetero",
+    "special_position_settings"]
 
-  def __init__(self, root, wildcard_escape_char='\\'):
+  def __init__(self, root, wildcard_escape_char='\\',
+      special_position_settings=None):
     self.root = root
     self.wildcard_escape_char = wildcard_escape_char
     root.get_atom_selection_cache(self)
@@ -139,6 +160,8 @@ class cache(slots_getstate_setstate):
     self.single_atom_residue = None
     self.water = None
     self.hetero = None
+    self.special_position_settings = special_position_settings
+    assert special_position_settings is not None
 
   def get_name(self, pattern):
     return _get_map_string(
@@ -418,6 +441,16 @@ class cache(slots_getstate_setstate):
   def sel_occupancy (self, op, value) :
     return self.union(iselections=self.get_occupancy(op, value))
 
+  def sel_within(self, radius, primary_selection):
+    assert radius > 0
+    assert self.special_position_settings is not None
+    return crystal.neighbors_fast_pair_generator(
+      asu_mappings=self.special_position_settings.asu_mappings(
+        buffer_thickness=radius,
+        sites_cart=self.root.atoms().extract_xyz()),
+      distance_cutoff=radius).neighbors_of(
+        primary_selection=primary_selection)
+
   def selection_tokenizer(self, string, contiguous_word_characters=None):
     return selection_tokenizer(string, contiguous_word_characters)
 
@@ -581,6 +614,17 @@ class cache(slots_getstate_setstate):
                 result_stack.append(self.sel_bfactor(op, val))
               else :
                 result_stack.append(self.sel_occupancy(op, val))
+        elif ((lword == "within") and
+              (self.special_position_settings is not None)) :
+          assert word_iterator.pop().value == "("
+          radius = float(word_iterator.pop().value)
+          assert word_iterator.pop().value == ","
+          sel = self.selection_parser(
+            word_iterator=word_iterator,
+            callback=callback,
+            expect_nonmatching_closing_parenthesis=True)
+          result_stack.append(self.sel_within(radius=radius,
+            primary_selection=sel))
         elif (callback is not None):
           if (not callback(
                     word=word,
@@ -605,6 +649,10 @@ class cache(slots_getstate_setstate):
         optional=True,
         contiguous_word_characters=None,
         callback=None):
+    """
+    Given a selection string, return the corresponding flex.bool selection
+    of the same size as root.atoms().
+    """
     try:
       return self.selection_parser(
         word_iterator=self.selection_tokenizer(
@@ -619,6 +667,10 @@ class cache(slots_getstate_setstate):
       raise AtomSelectionError("\n".join(msg))
 
   def iselection(self, string, optional=True, contiguous_word_characters=None):
+    """
+    Given a selection string, return the corresponding flex.size_t array
+    specifying atom indices.
+    """
     result = self.selection(
       string=string,
       optional=optional,
