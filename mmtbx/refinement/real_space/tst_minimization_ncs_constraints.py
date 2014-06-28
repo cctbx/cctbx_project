@@ -151,7 +151,12 @@ def run(prefix="tst", d_min=1.0):
     crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
   transforms_obj = nu.update_transforms(transforms_obj,rm,tv)
   ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
-  ncs_atom_selection = transforms_obj.ncs_atom_selection
+  #
+  all_master_ncs_selection = transforms_obj.all_master_ncs_selections
+  non_ncs_region_selection = transforms_obj.non_ncs_region_selection
+  # Combine selection of ncs regions and regions not ncs related
+  refine_selection = non_ncs_region_selection.concatenate(
+    all_master_ncs_selection)
   #
   for i in xrange(5):
     data_weight = 1
@@ -171,7 +176,7 @@ def run(prefix="tst", d_min=1.0):
           map_data                   = map_data,
           xray_structure             = xrs_poor,
           ncs_restraints_group_list  = ncs_restraints_group_list,
-          ncs_atom_selection         = ncs_atom_selection,
+          refine_selection           = refine_selection,
           real_space_gradients_delta = d_min/4,
           restraints_manager         = restraints_manager,
           data_weight                = data_weight,
@@ -180,8 +185,8 @@ def run(prefix="tst", d_min=1.0):
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         target_and_grads_object      = tfg_obj,
         xray_structure               = xrs_poor,
-        ncs_restraints_group_list  = ncs_restraints_group_list,
-        ncs_atom_selection         = ncs_atom_selection,
+        ncs_restraints_group_list    = ncs_restraints_group_list,
+        refine_selection             = refine_selection,
         finite_grad_differences_test = False,
         max_iterations               = 60,
         refine_sites                 = refine_sites,

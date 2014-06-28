@@ -8,7 +8,7 @@ import scitbx.lbfgs
 
 def grads_asu_to_one_ncs(
       ncs_restraints_group_list,
-      ncs_atom_selection,
+      refine_selection,
       grad,
       refine_sites):
   """
@@ -23,16 +23,17 @@ def grads_asu_to_one_ncs(
   # TODO: write a test for this function
   # Get total length of NCS
   # Get the NCS gradient
-  g_ncs = grad.select(ncs_atom_selection)
+  g_ncs = grad.select(refine_selection)
   for nrg in ncs_restraints_group_list:
     ncs_selection = nrg.master_ncs_iselection
-    asu_selection = nrg.ncs_copy_iselection
-    g = grad.select(asu_selection)
-    if(refine_sites):
-      # apply inverse transformation
-      rt = nrg.r.transpose().elems
-      g = rt*g
-    g_ncs.set_selected(ncs_selection, g + g_ncs.select(ncs_selection))
+    for ncs_copy in nrg.copies:
+      asu_selection = ncs_copy.ncs_copy_iselection
+      g = grad.select(asu_selection)
+      if(refine_sites):
+        # apply inverse transformation
+        rt = ncs_copy.r.transpose().elems
+        g = rt*g
+      g_ncs.set_selected(ncs_selection, g + g_ncs.select(ncs_selection))
 
   if(refine_sites): g_ncs = flex.vec3_double(g_ncs)
   assert type(grad)==type(g_ncs)
@@ -40,7 +41,7 @@ def grads_asu_to_one_ncs(
 
 def grads_one_ncs_to_asu(ncs_restraints_group_list,
                          total_asu_length,
-                         ncs_atom_selection,
+                         refine_selection,
                          ncs_grad):
   """
   Expand average gradient of a single NCS to all ASU
@@ -59,20 +60,21 @@ def grads_one_ncs_to_asu(ncs_restraints_group_list,
   else:
     raise TypeError('Non supported grad type')
   # update newly created flex.vec3 with master NCS info
-  g.set_selected(ncs_atom_selection ,ncs_grad)
+  g.set_selected(refine_selection ,ncs_grad)
   # update newly created flex.vec3 with NCS copies
   for nrg in ncs_restraints_group_list:
     ncs_selection = nrg.master_ncs_iselection
-    asu_selection = nrg.ncs_copy_iselection
-    ncs_grad_portion = ncs_grad.select(ncs_selection)
-    g.set_selected(asu_selection,ncs_grad_portion)
+    for ncs_copy in nrg.copies:
+      asu_selection = ncs_copy.ncs_copy_iselection
+      ncs_grad_portion = ncs_grad.select(ncs_selection)
+      g.set_selected(asu_selection,ncs_grad_portion)
   return g.as_double()
 
 def restraints_target_and_grads(
       restraints_manager,
       xray_structure,
       ncs_restraints_group_list,
-      ncs_atom_selection,
+      refine_selection,
       lbfgs_self,
       grad,
       refine_sites=False,
@@ -123,7 +125,7 @@ class target_function_and_grads_real_space(object):
         map_data,
         xray_structure,
         ncs_restraints_group_list,
-        ncs_atom_selection,
+        refine_selection,
         real_space_gradients_delta,
         restraints_manager=None,
         data_weight=None,
@@ -162,7 +164,7 @@ class target_function_and_grads_real_space(object):
       restraints_manager     = self.restraints_manager,
       xray_structure         = self.xray_structure,
       ncs_restraints_group_list = self.ncs_restraints_group_list,
-      ncs_atom_selection     = self.ncs_atom_selection,
+      refine_selection       = self.refine_selection,
       refine_sites           = self.refine_sites,
       refine_transformations = self.refine_transformations,
       lbfgs_self             = lbfgs_self,
@@ -174,7 +176,7 @@ class target_function_and_grads_real_space(object):
       if(not self.refine_transformations):
         g = grads_asu_to_one_ncs(
           ncs_restraints_group_list = self.ncs_restraints_group_list,
-          ncs_atom_selection = self.ncs_atom_selection,
+          refine_selection     = self.refine_selection,
           grad                 = g,
           refine_sites         = self.refine_sites).as_double()
     return t, g
@@ -187,7 +189,7 @@ class target_function_and_grads_reciprocal_space(object):
         self,
         fmodel,
         ncs_restraints_group_list,
-        ncs_atom_selection,
+        refine_selection,
         restraints_manager=None,
         data_weight=None,
         refine_sites=False,
@@ -242,7 +244,7 @@ class target_function_and_grads_reciprocal_space(object):
       restraints_manager     = self.restraints_manager,
       xray_structure         = self.xray_structure,
       ncs_restraints_group_list = self.ncs_restraints_group_list,
-      ncs_atom_selection     = self.ncs_atom_selection,
+      refine_selection       = self.refine_selection,
       refine_sites           = self.refine_sites,
       refine_u_iso           = self.refine_u_iso,
       refine_transformations = self.refine_transformations,
@@ -257,7 +259,7 @@ class target_function_and_grads_reciprocal_space(object):
       if(not self.refine_transformations):
         g = grads_asu_to_one_ncs(
           ncs_restraints_group_list = self.ncs_restraints_group_list,
-          ncs_atom_selection = self.ncs_atom_selection,
+          refine_selection     = self.refine_selection,
           grad                 = g,
           refine_sites         = self.refine_sites).as_double()
     return t, g
@@ -275,7 +277,7 @@ class lbfgs(object):
         ncs_restraints_group_list,
         target_and_grads_object,
         xray_structure,
-        ncs_atom_selection = None,
+        refine_selection = None,
         finite_grad_differences_test = False,
         finite_grad_difference_val   = 0,
         max_iterations               = 35,
@@ -289,13 +291,13 @@ class lbfgs(object):
     adopt_init_args(self, locals())
     assert [self.refine_sites,
             self.refine_u_iso, self.refine_transformations].count(True) == 1
-    self.ncs_atom_selection = ncs_atom_selection
+    # self.refine_selection = refine_selection
     self.total_asu_length = len(xray_structure.sites_cart())
-    assert self.ncs_atom_selection.count(True) > 0
+    assert self.refine_selection.size() > 0
     traditional_convergence_test_eps = 1.0e-6
     if self.use_strict_ncs:
       xray_structure_one_ncs_copy = xray_structure.select(
-        self.ncs_atom_selection)
+        self.refine_selection)
     else:
       xray_structure_one_ncs_copy = xray_structure
     if self.refine_sites:
@@ -369,7 +371,7 @@ class lbfgs(object):
       if self.use_strict_ncs:
         return grads_one_ncs_to_asu(
           ncs_restraints_group_list = self.ncs_restraints_group_list,
-          ncs_atom_selection = self.ncs_atom_selection,
+          refine_selection = self.refine_selection,
           total_asu_length = self.total_asu_length,
           ncs_grad = x)
       else:

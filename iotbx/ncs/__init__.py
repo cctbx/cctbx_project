@@ -70,4 +70,33 @@ def input(pdb_hierarchy_inp=None,
       pdb_string=pdb_string)
     return ncs_group_obj
 
+def apply_transforms(ncs_coordinates,
+                     ncs_restraints_group_list,
+                     total_asu_length,
+                     round_coordinates = True):
+  """
+  Apply transformation to ncs_coordinates,
+  and round the results if round_coordinates is True
 
+  Argument:
+  ncs_coordinates: (flex.vec3) master ncs coordinates
+  ncs_restraints_group_list: list of ncs_restraint_group objects
+  total_asu_length: (int) Complete ASU length
+
+  Returns:
+  complete asymmetric or the biological unit
+  """
+  s = flex.size_t_range(len(ncs_coordinates))
+  asu_xyz = flex.vec3_double([(0,0,0)]*total_asu_length)
+  asu_xyz.set_selected(s,ncs_coordinates)
+
+  for nrg in ncs_restraints_group_list:
+    master_ncs_selection = nrg.master_ncs_iselection
+    asu_selection = nrg.ncs_copy_iselection
+    ncs_xyz = ncs_coordinates.select(master_ncs_selection)
+    new_sites = nrg.r.elems* ncs_xyz+nrg.t
+    asu_xyz.set_selected(asu_selection,new_sites)
+  if round_coordinates:
+    return flex.vec3_double(asu_xyz).round(3)
+  else:
+    return flex.vec3_double(asu_xyz)

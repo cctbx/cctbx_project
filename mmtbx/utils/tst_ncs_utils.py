@@ -81,7 +81,7 @@ class test_rotation_angles_conversion(object):
     transforms_obj = nu.separate_rot_tran(
       x=x,transforms_obj=transforms_obj,s=s)
     rot_results, tran_results = nu.get_rotation_translation_as_list(
-      transforms_obj)
+      transforms_obj=transforms_obj)
     rot_expected = [self.rotation1, self.rotation2]
     tran_expected = [self.translation1,self.translation2]
     assert approx_equal(tran_results,tran_expected,1.0e-4)
