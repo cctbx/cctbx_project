@@ -692,9 +692,10 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         md.transfer_chains_from_other(other=other_md)
         self.append_model(model=md)
 
-  def atom_selection_cache(self):
+  def atom_selection_cache(self, special_position_settings=None):
     from iotbx.pdb.atom_selection import cache
-    return cache(root=self)
+    return cache(root=self,
+      special_position_settings=special_position_settings)
 
   def occupancy_groups_simple(self, common_residue_name_class_only=None,
                               always_group_adjacent=True,
