@@ -655,6 +655,9 @@ SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
   assert n_hbonds == [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 3, 4, 2, 2]
 
 def exercise_segid():
+  if (not libtbx.env.has_module(name="ksdssp")):
+    print "KSDSSP not available, skipping exercise_segid()"
+    return
   pdb_par_segid_input = iotbx.pdb.hierarchy.input(pdb_string = """\
 CRYST1   46.460   46.460  193.210  90.00  90.00 120.00 P 31 2 1
 SCALE1      0.021524  0.012427  0.000000        0.00000

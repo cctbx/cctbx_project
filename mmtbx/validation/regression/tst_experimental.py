@@ -5,6 +5,7 @@ from __future__ import division
 from mmtbx.command_line import molprobity
 import iotbx.pdb.hierarchy
 from libtbx.utils import null_out
+import libtbx.load_env
 
 # Deuterium as ligand - formerly crashed real-space correlation
 def exercise_01 () :
@@ -38,6 +39,7 @@ HETATM 6419  D2  DOD A1001      -4.625   2.741 -13.845  1.00 14.81           D
     "tst_validate_experimental.pdb",
     "tst_validate_experimental.mtz",
   ]
+  args.append("flags.clashscore=%s" % libtbx.env.has_module("probe"))
   result = molprobity.run(args=args, out=null_out()).validation
   assert result.real_space is not None
 
