@@ -40,7 +40,9 @@ HETATM 6419  D2  DOD A1001      -4.625   2.741 -13.845  1.00 14.81           D
     "tst_validate_experimental.mtz",
   ]
   args.append("flags.clashscore=%s" % libtbx.env.has_module("probe"))
-  result = molprobity.run(args=args, out=null_out()).validation
+  result = molprobity.run(args=args,
+    ignore_missing_modules=True,
+    out=null_out()).validation
   assert result.real_space is not None
 
 if (__name__ == "__main__") :
