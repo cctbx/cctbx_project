@@ -444,6 +444,24 @@ class dataset_statistics (object) :
       table.add_row([ data[0] ] + data[7:12])
     return table
 
+  @property
+  def cc_anom_table (self) :
+    column_labels = ["1/d**2", "CC(anom)"]
+    graph_columns = [[0,1]]
+    graph_names = ["CC(anom)"]
+    table = data_plots.table_data(
+      title="Half-dataset anomalous correlation",
+      column_labels=["1/d**2", "CC(anom)"],
+      column_formats=["%6.2f", "%5.3f"],
+      graph_names=["CC(anom)"],
+      graph_columns=[[0,1]],
+      x_is_inverse_d_min=True,
+      force_exact_x_labels=True)
+    for bin in self.bins :
+      data = bin.table_data()
+      table.add_row([ (1/bin.d_min**2), bin.anom_half_corr ])
+    return table
+
   def get_estimated_cutoffs (self) :
     return getattr(self, "cutoffs", None)
 
