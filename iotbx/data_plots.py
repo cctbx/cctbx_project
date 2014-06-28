@@ -1,3 +1,9 @@
+
+"""
+Tools for handling plottable data, usually similar to CCP4's loggraph format
+(which may be parsed and output by this module).
+"""
+
 from __future__ import division
 from libtbx import adopt_init_args
 from libtbx.utils import Sorry
