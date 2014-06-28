@@ -5,12 +5,17 @@ Classes for displaying Xtriage results using wxPython (and matplotlib).
 
 from __future__ import division
 import wxtbx.misc_dialogs
+import wxtbx.path_dialogs
 import wxtbx.windows
 import wxtbx.tables
 import wxtbx.plots
 import mmtbx.scaling
 import wx.lib.scrolledpanel
+from libtbx.utils import Sorry
+from libtbx import easy_pickle
 import wx
+import os.path
+import sys
 
 TEXT_WIDTH = 800
 
@@ -29,6 +34,7 @@ class wx_output (wxtbx.windows.ChoiceBook,
     self._current_panel = None
     self._current_sizer = None
     self._graphs = []
+    self._tables = []
     self._in_box = False
 
   def SetupScrolling (self) :
@@ -93,9 +99,10 @@ class wx_output (wxtbx.windows.ChoiceBook,
     wx_txt = wx.StaticText(parent=self._current_panel,
       label=text)
     font = wx_txt.GetFont()
+    font2 = wx.Font(font.GetPointSize(), wx.FONTFAMILY_MODERN, wx.NORMAL,
+      wx.FONTWEIGHT_NORMAL, face="Courier")
     # FIXME this seems not to work on wxPython 3/Mac OS 10.9
-    font.SetFamily(wx.FONTFAMILY_MODERN)
-    wx_txt.SetFont(font)
+    wx_txt.SetFont(font2)
     self._current_sizer.Add(wx_txt, 0, wx.ALL, 5)
 
   def warn (self, text) :
@@ -151,7 +158,8 @@ class wx_output (wxtbx.windows.ChoiceBook,
       style=wx.LC_REPORT|wx.SIMPLE_BORDER,
       size=(width, height))
     wxtable.SetTable(table)
-    self._current_sizer.Add(wxtable, 0, wx.ALL, 5)
+    self._tables.append(wxtable)
+    self._current_sizer.Add(wxtable, 0, wx.ALL|wx.EXPAND, 5)
     if (plot_button) :
       assert hasattr(table, "get_graph")
       btn = wx.Button(parent=self._current_panel, label="Show graphs")
@@ -204,6 +212,17 @@ class wx_output (wxtbx.windows.ChoiceBook,
     (graph, title) = self._graphs[graph_index]
     graph.save_image()
 
+  def add_change_symmetry_button (self) :
+    data_file = os.path.join(os.getcwd(), "xtriage_data.pkl")
+    if (not os.path.exists(data_file)) :
+      return
+    btn = wx.Button(parent=self._current_panel,
+      label="Save data in selected setting...")
+    btn.data_file = data_file
+    btn.symm_table = self._tables[-1]
+    self._current_sizer.Add(btn, 0, wx.ALL, 5)
+    self.Bind(wx.EVT_BUTTON, OnChangeSymmetry, btn)
+
 class XtriageFrame (wx.Frame) :
   """
   Frame for displaying a wx_output notebook independently (used in AutoSol
@@ -243,3 +262,29 @@ class XtriageFrame (wx.Frame) :
         easy_run.call("open -a TextEdit %s" % self._result.log_file_name)
       else :
         pass
+
+def OnChangeSymmetry (event) :
+  from mmtbx.scaling.xtriage import change_symmetry
+  button = event.GetEventObject()
+  data_file = button.data_file
+  assert (data_file is not None) and os.path.isfile(data_file)
+  item = button.symm_table.GetFirstSelected()
+  if (item == -1) :
+    raise Sorry("Please select a symmetry setting first!")
+  default_file = os.path.join(os.path.dirname(data_file), "reindexed.mtz")
+  file_name = wxtbx.path_dialogs.manager().select_file(
+    parent=button,
+    message="Output data file in new symmetry",
+    style=wx.SAVE,
+    wildcard="MTZ files (*.mtz)|*.mtz",
+    current_file=default_file)
+  data = easy_pickle.load(data_file)
+  space_group_symbol = str(button.symm_table.GetItemText(item))
+  change_symmetry(
+    miller_array=data,
+    space_group_symbol=space_group_symbol,
+    file_name=str(file_name),
+    log=sys.stdout)
+  assert os.path.isfile(file_name)
+  wx.MessageBox(("The data (as amplitudes) have been saved to %s "+
+      "with the selected symmetry setting.") % file_name)
