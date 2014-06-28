@@ -235,6 +235,7 @@ class binner(ext.binner):
       data,
       data_label,
       data_fmt=None,
+      replace_none_with="---"
       show_bin_number=False,
       show_unused=False) :
     """
@@ -265,6 +266,8 @@ class binner(ext.binner):
         else:
           s = data_fmt(binner=self, i_bin=i_bin, data=data)
           row.append(s)
+      else :
+        row.append(replace_none_with)
       table_rows.append(row)
     labels = ["Resolution range", "N(obs)/N(possible)", data_label ]
     return libtbx.table_utils.simple_table(
