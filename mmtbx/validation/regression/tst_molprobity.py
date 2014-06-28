@@ -33,7 +33,9 @@ def exercise_synthetic () :
     "--maps",
     "flags.clashscore=False",
   ]
-  result = molprobity.run(args=args, out=null_out()).validation
+  result = molprobity.run(args=args,
+    ignore_missing_modules=True,
+    out=null_out()).validation
   out = StringIO()
   result.show(out=out)
   # case 2: no test set in high-res shell
@@ -41,7 +43,9 @@ def exercise_synthetic () :
   flags_all = flags.concatenate(other=flags2)
   mtz_out = fc.as_mtz_dataset(column_root_label="F")
   mtz_out.add_miller_array(flags_all, column_root_label="FreeR_flag")
-  result = molprobity.run(args=args, out=null_out()).validation
+  result = molprobity.run(args=args,
+    ignore_missing_modules=True,
+    out=null_out()).validation
   out = StringIO()
   result.show(out=out)
   # case 3: multi-MODEL structure
@@ -60,7 +64,9 @@ def exercise_synthetic () :
     "--maps",
     "flags.clashscore=False",
   ]
-  result = molprobity.run(args=args, out=null_out()).validation
+  result = molprobity.run(args=args,
+    ignore_missing_modules=True,
+    out=null_out()).validation
   out = StringIO()
   result.show(out=out)
 
