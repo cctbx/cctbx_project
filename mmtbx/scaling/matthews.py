@@ -207,6 +207,15 @@ class matthews_rupp (scaling.xtriage_analysis) :
       self.table.add_row(row)
 
   def _show_impl (self, out) :
+    def show_warning () :
+      out.show_text("""
+ Caution: this estimate is based on the distribution of solvent content across
+ structures in the PDB, but it does not take into account the resolution of
+ the data (which is strongly correlated with solvent content) or the physical
+ properties of the model (such as oligomerization state, et cetera).  If you
+ encounter problems with molecular replacement and/or refinement, you may need
+ to consider the possibility that the ASU contents are different than expected.
+""")
     out.show_header("Solvent content and Matthews coefficient")
     if (self.n_residues_in is None) and (self.n_bases_in is None) :
       out.newline()
@@ -223,6 +232,7 @@ class matthews_rupp (scaling.xtriage_analysis) :
     if (self.n_residues_in is None) and (self.n_bases_in is None) :
       out.show_text("  Best guess : %4d residues in the ASU" %
         self.n_residues)
+      show_warning()
     else :
       out.show_table(self.table)
       if (self.n_copies == 1) :
@@ -230,14 +240,7 @@ class matthews_rupp (scaling.xtriage_analysis) :
       else :
         out.show_text(" Best guess : %4d copies in the ASU" % self.n_copies)
       if (self.n_possible_contents > 1) :
-        out.show_text("""
- Caution: this estimate is based on the distribution of solvent content across
- structures in the PDB, but it does not take into account the resolution of
- the data (which is strongly correlated with solvent content) or the physical
- properties of the model (such as oligomerization state, et cetera).  If you
- encounter problems with molecular replacement and/or refinement, you may need
- to consider the possibility that the ASU contents are different than expected.
-""")
+        show_warning()
 
 ########################################################################
 # REGRESSION

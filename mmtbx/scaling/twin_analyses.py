@@ -228,15 +228,24 @@ PM: Pseudomerohedral twin law""")
 
   def _show_impl (self, out):
     assert (self.m + self.pm)==len(self.operators)
-    out.show_header("Twin law identification")
-    if (len(self.operators) != 0) :
-      out.show_sub_header("Possible twin laws")
+    out.show_sub_header("Twin law identification")
+    if (len(self.operators) == 0) :
+      out.show("\nNo twin laws are possible for this crystal lattice.\n")
+    else:
+      out.show_paragraph_header("Possible twin laws:")
       out.show_table(self.table, indent=2)
       out.show_lines("""
 %(m)-3.0f merohedral twin operators found
 %(pm)-3.0f pseudo-merohedral twin operators found
 In total, %(n_op)3.0f twin operators were found""" %
         ({ "m" : self.m, "pm" : self.pm, "n_op" : len(self.operators) }))
+      out.show("""
+ Please note that the possibility of twin laws only means that the lattice
+ symmetry permits twinning; it does not mean that the data are actually
+ twinned.  You should only treat the data as twinned if the intensity
+ statistics are abnormal.""")
+    # XXX disabled 2014-06-28
+    if False :
       out.show("""
  The presence of twin laws indicates that the symmetry of the lattice (unit
  cell) is higher (has more elements) than the point group of the assigned
@@ -283,8 +292,6 @@ The present crystal symmetry does not allow to have the its lattice symmetry
 expressed in the setting desired.  Becasue of this, a full coset table cannot
 be produced. Working with the data in the reduced cell will solve this.
 """)
-    else:
-      out.show("\nNo twin laws are possible for this crystal lattice.\n")
 
 def get_twin_laws (miller_array) :
   """
@@ -588,6 +595,12 @@ class detect_pseudo_translations (scaling.xtriage_analysis):
  a large anomalous scatterer such as Hg, whereas values smaller than 1e-3 are
  a very strong indication for the presence of translational pseudo symmetry.
 """ % self.high_p_value)
+    if (self.high_peak >= 20) :
+      out.show_text("""\
+ Translational pseudo-symmetry is very likely present in these data.  Be
+ aware that this will change the intensity statistics and may impact subsequent
+ analyses, and in practice may lead to higher R-factors in refinement.
+""")
     if (self.high_p_value <= self.p_value_cut) :
       out.show(" The full list of Patterson peaks is:")
       table_rows = []
@@ -1682,6 +1695,9 @@ A summary of R values for various possible point groups follow.
        str(sgtbx.space_group_info(group=self.pg_low_prim_set)),
        str(self.pg_lattice_name)))
     out.show_table(self.table, indent=2)
+    # Phenix GUI hack
+    if hasattr(out, "add_change_symmetry_button") :
+      out.add_change_symmetry_button()
     out.show_lines("""
 R_used: mean and maximum R value for symmetry operators *used* in this point group
 R_unused: mean and minimum R value for symmetry operators *not used* in this point group
@@ -2092,6 +2108,8 @@ refinement might provide an answer.
 
   def _show_impl (self, out):
     out.show_header("Twinning and intensity statistics summary")
+    out.show_sub_header("Final verdict")
+    self.show_verdict(out=out)
     out.show_sub_header("Statistics independent of twin laws")
     out.show_lines("""\
   <I^2>/<I>^2 : %(i_ratio)5.3f  (untwinned: 2.0, perfect twin: 1.5)
@@ -2117,8 +2135,6 @@ refinement might provide an answer.
       out.show_table(self.table, indent=2)
     else:
       out.show("\nNo (pseudo)merohedral twin laws were found.\n")
-    out.show_sub_header("Final verdict")
-    self.show_verdict(out=out)
 
 class twin_analyses (scaling.xtriage_analysis):
   """Perform various twin related tests"""
@@ -2310,15 +2326,16 @@ class twin_analyses (scaling.xtriage_analysis):
     out.show_header("Diagnostic tests for twinning and pseudosymmetry")
     out.show("Using data between %4.2f to %4.2f Angstrom." % (self.d_max,
       self.d_min))
-    self.wilson_moments.show(out)
     if (self.translational_pseudo_symmetry is not None) :
       self.translational_pseudo_symmetry.show(out)
+    self.wilson_moments.show(out)
     self.nz_test.show(out)
     if (self.l_test is not None) :
       self.l_test.show(out)
+    out.show_header("Twin laws")
     self.possible_twin_laws.show(out=out)
     if (self.n_twin_laws > 0) :
-      out.show_header("Twin law-specific tests")
+      out.show_sub_header("Twin law-specific tests")
       out.show("""\
  The following tests analyze the input data with each of the possible twin
  laws applied.  If twinning is present, the most appropriate twin law will

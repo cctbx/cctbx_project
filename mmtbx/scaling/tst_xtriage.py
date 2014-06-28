@@ -180,7 +180,8 @@ Copies             Solvent content    Matthews coeff.    P(solvent content)
   assert (ws.outliers.centric_outliers_table.data is None)
   assert (len(ws.ice_rings.table._rows) == 10)
   assert (ws.ice_rings.table._rows[0] ==
-          ['    3.897', '   0.52', '   1.00', '     1.000'])
+          ['    3.897', '     1.000', '   0.52', '   1.00']), \
+          ws.ice_rings.table._rows[0]
   tw = result.twin_results
   wm = tw.wilson_moments
   out = StringIO()
@@ -234,7 +235,7 @@ Centric reflections:
   out = StringIO()
   log_binned = ds.log_binned_completeness(f_obs_3)
   log_binned.show(out=out)
-  assert ("""| 21.9856 - 4.2407 | 100         | 95.2%        |""" in
+  assert ("""| 21.9856 - 4.2407 | 100/104     | 96.2%        |""" in
           out.getvalue())
   # test with no acentrics
   cf = f_obs.centric_flags().data()

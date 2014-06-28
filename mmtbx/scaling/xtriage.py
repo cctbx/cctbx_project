@@ -456,7 +456,7 @@ are for the merged data.""")
       ("File name:", str(source)),
       ("Data labels:", str(label_string())),
       ("Space group:", str(self.space_group)),
-      ("Unit cell:", str(self.unit_cell)),
+      ("Unit cell:", "%.6g, %.6g, %.6g, %.6g, %.6g, %.6g" % self.unit_cell),
       ("Data type:", str(self.obs_type)),
       ("Resolution:", "%g - %g" % self.d_max_min),
       ("Anomalous:", str(self.anomalous_flag)),
@@ -586,7 +586,8 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     self.anomalous_info = None
     if miller_obs.anomalous_flag() :
       self.anomalous_info = data_statistics.anomalous(
-        miller_array=miller_obs).show(out=text_out)
+        miller_array=miller_obs,
+        merging_stats=self.merging_stats).show(out=text_out)
     # Wilson statistics
     self.wilson_scaling = data_statistics.wilson_scaling(
       miller_array=miller_obs,
@@ -976,9 +977,11 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     if (not os.path.isfile(reference_params.structure.file_name)) :
       raise Sorry("Can't open reference structure - not a valid file.")
     assert f_calc_miller is None
-    reference_structure = iotbx.pdb.input(
+    pdb_in = iotbx.pdb.input(
       file_name=reference_params.structure.file_name,
-      raise_sorry_if_format_error=True).xray_structure_simple(
+      raise_sorry_if_format_error=True)
+    pdb_in.atoms().set_chemical_element_simple_if_necessary()
+    reference_structure = pdb_in.xray_structure_simple(
         crystal_symmetry = miller_array.crystal_symmetry())
     miller_tmp = miller_array
     if (not miller_tmp.is_unique_set_under_symmetry()) :
@@ -1130,7 +1133,6 @@ class launcher (runtime_utils.target_with_save_result) :
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=list(self.args),
-      return_result=True,
       data_file_name="xtriage_data.pkl")
 
 def finish_job (result) :

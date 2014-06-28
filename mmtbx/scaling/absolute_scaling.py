@@ -224,8 +224,6 @@ class expected_intensity (object):
     self.sigma_intensity*= math.exp(-p_scale)
 
 
-
-
 class scattering_information(object):
   def __init__(self,
                n_residues=None,
@@ -853,18 +851,18 @@ class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
         "B-factor B_cart is zero.  This "+
         "may indicate severe problems with the input data, for instance "+
         "if only a single plane through reciprocal space is present.")
-    ani_rat_p = self.aniso_ratio_p_value(self.anirat)
-    if ani_rat_p < 0:
-      ani_rat_p = 0.0
-    out.show_preformatted_text("""\
-Anisotropy    ( [MaxAnisoB-MinAnisoB]/[MaxAnisoB] ) :  %7.3e
-                          Anisotropic ratio p-value :  %7.3e
-""" % (self.anirat, ani_rat_p))
-    out.show("""
- The p-value is a measure of the severity of anisotropy as observed in the PDB.
- The p-value of %5.3e indicates that roughly %4.1f %% of datasets available in
- the PDB have an anisotropy equal to or worse than this dataset.""" %
-      (ani_rat_p, 100.0*math.exp(-ani_rat_p)))
+#    ani_rat_p = self.aniso_ratio_p_value(self.anirat)
+#    if ani_rat_p < 0:
+#      ani_rat_p = 0.0
+#    out.show_preformatted_text("""\
+#Anisotropy    ( [MaxAnisoB-MinAnisoB]/[MaxAnisoB] ) :  %7.3e
+#                          Anisotropic ratio p-value :  %7.3e
+#""" % (self.anirat, ani_rat_p))
+#    out.show("""
+# The p-value is a measure of the severity of anisotropy as observed in the PDB.
+# The p-value of %5.3e indicates that roughly %4.1f %% of datasets available in
+# the PDB have an anisotropy equal to or worse than this dataset.""" %
+#      (ani_rat_p, 100.0*math.exp(-ani_rat_p)))
     message = """indicates that there probably is no
  significant systematic noise amplification."""
     if (self.z_tot is not None) and (self.z_tot > self.z_level) :
@@ -905,8 +903,8 @@ Anisotropy    ( [MaxAnisoB-MinAnisoB]/[MaxAnisoB] ) :  %7.3e
         (self.mean_isigi_high_correction_factor,
          self.frac_below_high_correction,
          self.z_high))
-      out.show(""" The combined Z-score of %8.2f %s""" % (self.z_tot,
-        message))
+      #out.show(""" The combined Z-score of %8.2f %s""" % (self.z_tot,
+      #  message))
       out.show("""\
  Z-scores are computed on the basis of a Bernoulli model assuming independence
  of weak reflections with respect to anisotropy.""")
