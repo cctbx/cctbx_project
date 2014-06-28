@@ -161,7 +161,6 @@ class cache(slots_getstate_setstate):
     self.water = None
     self.hetero = None
     self.special_position_settings = special_position_settings
-    assert special_position_settings is not None
 
   def get_name(self, pattern):
     return _get_map_string(
