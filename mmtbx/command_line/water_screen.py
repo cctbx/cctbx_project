@@ -79,6 +79,7 @@ environment, electron density maps, and atomic properties.
     out = out,
     debug = params.debug,
     candidates = candidates)
+  return results, pdb_hierarchy
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
