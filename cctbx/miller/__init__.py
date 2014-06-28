@@ -235,7 +235,7 @@ class binner(ext.binner):
       data,
       data_label,
       data_fmt=None,
-      replace_none_with="---"
+      replace_none_with="---",
       show_bin_number=False,
       show_unused=False) :
     """
