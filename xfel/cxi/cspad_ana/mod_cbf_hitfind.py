@@ -26,22 +26,15 @@ class mod_cbf_hitfind(mod_cspad_cbf):
   """
 
   def __init__(self,
-               out_dirname,
-               out_basename,
                target_phil = None,
                **kwds):
     """The mod_cbf_hitfind class constructor stores the parameters passed from
     the pyana configuration file in instance variables.
 
-    @param out_dirname  Directory portion of output image pathname
-    @param out_basename Filename prefix of output image pathname
     @param target_phil  File with spotfinding parameters
     """
 
     super(mod_cbf_hitfind, self).__init__(**kwds)
-
-    self._basename = cspad_tbx.getOptString(out_basename)
-    self._dirname = cspad_tbx.getOptString(out_dirname)
 
     # get default parameters
     config = Registry().config()
