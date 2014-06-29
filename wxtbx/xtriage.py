@@ -57,7 +57,10 @@ class wx_output (wxtbx.windows.ChoiceBook,
     panel.SetSizer(szr)
     self._current_panel = panel
     self._current_sizer = szr
-    self.AddPage(panel, title)
+    if (title == "Twinning and intensity statistics summary") :
+      self.InsertPage(0, panel, title)
+    else :
+      self.AddPage(panel, title)
 
   def show_sub_header (self, title) :
     """
@@ -180,7 +183,18 @@ class wx_output (wxtbx.windows.ChoiceBook,
     self._current_sizer.Add(graph, 0, wx.ALL|wx.EXPAND, 5)
 
   def show_plots_row (self, tables) :
-    pass
+    szr = wx.BoxSizer(wx.HORIZONTAL)
+    self._current_sizer.Add(szr, 0, wx.EXPAND)
+    plot_w = (TEXT_WIDTH / 3) - 10
+    plot_dimensions = (plot_w, min(360, plot_w * 0.9))
+    for table in tables :
+      graph = wxtbx.plots.small_plot(
+        parent=self._current_panel,
+        table=table,
+        size=plot_dimensions)
+      graph.set_plot(table.only_plot())
+      self._graphs.append((graph, table.title))
+      szr.Add(graph, 0, wx.ALL|wx.EXPAND, 5)
 
   def show_text_columns (self, rows, indent=0) :
     prefix = " "*indent
