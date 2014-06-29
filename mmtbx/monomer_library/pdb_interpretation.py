@@ -4293,13 +4293,14 @@ class build_all_chain_proxies(linking_mixins):
       loop.add_row(("SS", "1", "SG", "2", "SG", "single", "2.031", "0.020"))
       cif_block.add_loop(loop)
       self.cif["link_SS"] = cif_block
-      cif_block = iotbx.cif.model.block()
-      loop = iotbx.cif.model.loop(header=(
-        "_phenix.link_id",
-        "_phenix.atom_id_1",
-        "_phenix.atom_id_2",
-        "_phenix.sym_op",
-      ))
+      # FIXME missing loop contents
+      #cif_block = iotbx.cif.model.block()
+      #loop = iotbx.cif.model.loop(header=(
+      #  "_phenix.link_id",
+      #  "_phenix.atom_id_1",
+      #  "_phenix.atom_id_2",
+      #  "_phenix.sym_op",
+      #))
     #
     max_bond_distance = max_disulfide_bond_distance
     if (bond_distances_model.size() > 0):
