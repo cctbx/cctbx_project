@@ -896,6 +896,7 @@ class britton_test (scaling.xtriage_analysis):
                miller_array, # ideally intensities!
                cc_cut_off=0.995,
                verbose=0):
+    self.twin_law = twin_law
     self.max_iter=1000
     result = [0.5,1.0,0,0]
     miller_array = miller_array.select(
@@ -969,12 +970,13 @@ class britton_test (scaling.xtriage_analysis):
 
   @property
   def table (self) :
-    self.britton_table = data_plots.table_data(
-        title = "Britton plot for twin law %s" % twin_law_name,
+    return data_plots.table_data(
+        title = "Britton plot for twin law %s" % str(self.twin_law),
         column_labels=["alpha", "percentage negatives", "fit"],
         graph_names=["Britton plot"],
         graph_labels=[("alpha", "percentage negatives")],
         graph_columns=[[0,1,2]],
+        reference_marks=[[self.estimated_alpha]],
         data=[self.britton_alpha, self.britton_obs, self.britton_fit])
 
   def _show_impl (self, out):
@@ -994,6 +996,7 @@ class h_test (scaling.xtriage_analysis):
                miller_array, # ideally intensities!
                fraction=0.50) :
     self.fraction = fraction
+    self.twin_law = twin_law
     miller_array = miller_array.select(
       miller_array.data()>0).set_observation_type(miller_array)
     if not miller_array.is_xray_intensity_array():
@@ -1029,11 +1032,12 @@ class h_test (scaling.xtriage_analysis):
   @property
   def table (self) :
     return data_plots.table_data(
-        title="H test for possible twin law %s" % twin_law_name,
+        title="H test for possible twin law %s" % str(self.twin_law),
         column_labels=["H", "Observed S(H)", "Fitted S(H)"],
         graph_names=["H test for acentric data"],
         graph_labels=[("H", "S(H)")],
         graph_columns=[[0,1,2]],
+        reference_marks=[[self.estimated_alpha]],
         data=[self.h_array, self.cumul_obs, self.cumul_fit])
 
   def _show_impl (self, out) :
@@ -1238,6 +1242,7 @@ class ml_murray_rust (scaling.xtriage_analysis):
       anomalous_flag=tmp_array.anomalous_flag(),
       twin_law=twin_law,
       n_hermite=n_points)
+    self.twin_law = twin_law
     self.twin_fraction = []
     self.nll = []
     for ii in xrange(1,23):
@@ -1272,11 +1277,12 @@ class ml_murray_rust (scaling.xtriage_analysis):
   def table (self) :
     return data_plots.table_data(
       title="Likelihood based twin fraction estimation for twin law %s"%\
-            twin_law_name,
+            str(self.twin_law),
       column_labels=["alpha", "-Log[Likelihood]"],
       graph_names=["Likelihood-based twin fraction estimate"],
       graph_labels=[("alpha", "-Log[Likelihood]")],
       graph_columns=[[0,1]],
+      reference_marks=[[self.estimated_alpha]],
       data=[self.twin_fraction, self.nll])
 
   def _show_impl (self, out) :
@@ -1460,6 +1466,10 @@ class twin_law_dependent_twin_tests(scaling.xtriage_analysis):
       self.r_values.show(out)
       if (self.correlation is not None) :
         self.correlation.show(out)
+      tables = [self.h_test.table, self.britton_test.table]
+      if (self.ml_murray_rust is not None) :
+        tables.append(self.ml_murray_rust.table)
+      out.show_plots_row(tables)
     else:
       out.show(("The twin completeness is only %3.2f. Twin law dependent "+
         "tests not performed.") % (self.twin_completeness))

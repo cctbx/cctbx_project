@@ -34,6 +34,18 @@ class ChoiceBook (wx.Panel) :
     items.append(label)
     self._chooser.SetItems(items)
 
+  def InsertPage (self, index, page, label) :
+    """
+    Insert a panel in the notebook (and the label to the wx.Choice) at the
+    specified index.
+    """
+    page.Hide()
+    self._pages.insert(0, page)
+    self.GetSizer().Add(page, 1, wx.ALL|wx.EXPAND, 0)
+    items = list(self._chooser.GetItems())
+    items.insert(0, label)
+    self._chooser.SetItems(items)
+
   def GetPage (self, i_page) :
     return self._pages[i_page]
 
