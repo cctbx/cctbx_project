@@ -1379,6 +1379,7 @@ libtbx/auto_build/create_mac_pkg.py -text
 libtbx/auto_build/create_windows_exe.py -text
 libtbx/auto_build/install -text
 libtbx/auto_build/install_base_packages.py -text
+libtbx/auto_build/install_distribution.py -text
 libtbx/auto_build/installer_utils.py -text
 libtbx/auto_build/package_defs.py -text
 libtbx/auto_build/regenerate_module_files.py -text
