@@ -105,6 +105,7 @@ supplied).
 def run (args,
     out=sys.stdout,
     program_name="phenix.molprobity",
+    ignore_missing_modules=False,
     return_input_objects=False) : # for testing
   rotarama_dir = libtbx.env.find_in_repositories(
     relative_path="chem_data/rotarama_data",
@@ -112,8 +113,9 @@ def run (args,
   if (rotarama_dir is None) :
     raise ImportError("Rotamer and Ramachandran distributions not available; "+
       "you will need these to run MolProbity.")
-  elif ((not libtbx.env.has_module("reduce")) or
-        (not libtbx.env.has_module("probe"))) :
+  elif (((not libtbx.env.has_module("reduce")) or
+         (not libtbx.env.has_module("probe"))) and
+         (not ignore_missing_modules)) :
     raise ImportError("Reduce and/or Probe not configured.")
   import mmtbx.validation.molprobity
   import mmtbx.command_line
