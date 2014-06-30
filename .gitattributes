@@ -1254,6 +1254,7 @@ iotbx/mtz/tst_unmerged.py -text
 iotbx/ncs/__init__.py -text
 iotbx/ncs/ncs_preprocess.py -text
 iotbx/ncs/tst.py -text
+iotbx/ncs/tst_ncs_groups_preprocessing.py -text
 iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/pdb/atom_selection.cpp svneol=native#text/plain
 iotbx/pdb/atom_selection.py svneol=native#text/x-python
@@ -1293,7 +1294,6 @@ iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py -text
 iotbx/pdb/tst_hierarchy.py svneol=native#text/x-python
 iotbx/pdb/tst_mmcif.py -text
 iotbx/pdb/tst_mmcif_hierarchy.py -text
-iotbx/pdb/tst_ncs_groups_preprocessing.py -text
 iotbx/pdb/tst_pdb_manipulation.py -text
 iotbx/pdb/tst_rna_dna_atom_names.py -text
 iotbx/pdb/tst_tls.py -text

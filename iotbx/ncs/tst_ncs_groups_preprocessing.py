@@ -282,17 +282,15 @@ TER
 """
 
 pdb_test_data1_phil = '''\
-ncs_group_selection {
-  ncs_group {
-    master_ncs_selection = 'chain A'
-    selection_copy = 'chain C'
-    selection_copy = 'chain E'
-  }
-  ncs_group {
-    master_ncs_selection = 'chain B'
-    selection_copy = 'chain D'
-    selection_copy = 'chain F'
-  }
+ncs_group {
+  master_ncs_selection = 'chain A'
+  selection_copy = 'chain C'
+  selection_copy = 'chain E'
+}
+ncs_group {
+  master_ncs_selection = 'chain B'
+  selection_copy = 'chain D'
+  selection_copy = 'chain F'
 }
 '''
 
@@ -313,84 +311,72 @@ TER
 """
 
 pdb_test_data2_phil = '''\
-ncs_group_selection {
-  ncs_group {
-    master_ncs_selection = 'chain A'
-    selection_copy = 'chain D'
-    selection_copy = 'chain G'
-  }
-  ncs_group {
-    master_ncs_selection = 'chain B or chain C'
-    selection_copy = 'chain E or chain F'
-    selection_copy = 'chain H or chain I'
-  }
+ncs_group {
+  master_ncs_selection = 'chain A'
+  selection_copy = 'chain D'
+  selection_copy = 'chain G'
+}
+ncs_group {
+  master_ncs_selection = 'chain B or chain C'
+  selection_copy = 'chain E or chain F'
+  selection_copy = 'chain H or chain I'
 }
 '''
 
 user_phil1 = '''\
-ncs_group_selection {
-  ncs_group {
-    master_ncs_selection = 'chain A'
-    selection_copy = 'chain B'
-    selection_copy = 'chain C'
-  }
+ncs_group {
+  master_ncs_selection = 'chain A'
+  selection_copy = 'chain B'
+  selection_copy = 'chain C'
 }
 '''
 
 user_phil2 = '''\
-ncs_group_selection {
-  ncs_group {
-    master_ncs_selection = 'chain A'
-    selection_copy = 'chain C'
-    selection_copy = 'chain E'
-  }
-  ncs_group {
-    master_ncs_selection = 'chain B'
-    selection_copy = 'chain D'
-    selection_copy = 'chain F'
-  }
+ncs_group {
+  master_ncs_selection = 'chain A'
+  selection_copy = 'chain C'
+  selection_copy = 'chain E'
+}
+ncs_group {
+  master_ncs_selection = 'chain B'
+  selection_copy = 'chain D'
+  selection_copy = 'chain F'
 }
 '''
 
 user_phil3 = '''\
-ncs_group_selection {
-  ncs_group {
-    master_ncs_selection = 'chain A'
-    selection_copy = 'chain B'
-    selection_copy = 'chain C'
-  }
-  ncs_group {
-    master_ncs_selection = 'chain B'
-    selection_copy = 'chain D'
-  }
+ncs_group {
+  master_ncs_selection = 'chain A'
+  selection_copy = 'chain B'
+  selection_copy = 'chain C'
+}
+ncs_group {
+  master_ncs_selection = 'chain B'
+  selection_copy = 'chain D'
 }
 '''
 
 user_phil4 = '''\
-ncs_group_selection {
-  ncs_group {
-    master_ncs_selection = 'chain A'
-    selection_copy = 'chain C'
-    selection_copy = 'chain D'
-  }
-  ncs_group {
-    master_ncs_selection = 'chain B'
-    selection_copy = 'chain D'
-  }
+ncs_group {
+  master_ncs_selection = 'chain A'
+  selection_copy = 'chain C'
+  selection_copy = 'chain D'
+}
+ncs_group {
+  master_ncs_selection = 'chain B'
+  selection_copy = 'chain D'
 }
 '''
 
 user_phil5 = '''\
-ncs_group_selection {
-  ncs_group {
-    master_ncs_selection = 'chain A'
-    selection_copy = 'chain C'
-    selection_copy = 'chain D'
-  }
-  ncs_group {
-    master_ncs_selection = 'chain C'
-    selection_copy = 'chain E'
-  }
+ncs_group {
+  master_ncs_selection = 'chain A'
+  selection_copy = 'chain C'
+  selection_copy = 'chain D'
+}
+ncs_group {
+  master_ncs_selection = 'chain C'
+  selection_copy = 'chain E'
 }
 '''
 
