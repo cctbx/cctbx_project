@@ -1,10 +1,8 @@
 from __future__ import division
-from iotbx import crystal_symmetry_from_any
 import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
 from libtbx.utils import null_out
 from scitbx.math import superpose
-from libtbx.utils import Sorry
 from libtbx.phil import parse
 from mmtbx.ncs import ncs
 from scitbx import matrix
@@ -44,8 +42,6 @@ class ncs_group_object(object):
     transform_info:  an object produced from the PDB MTRIX or BIOMT records
     ncs_refinement_params: an object produced by the PHIL parameters
     """
-    # Todo:  check if all attributes are being used or if can be simply removed
-
     self.total_asu_length = None
     # iselection maps, each master ncs to its copies position in the asu
     self.ncs_to_asu_map = {}
@@ -929,7 +925,7 @@ class ncs_group_object(object):
 
     return '\n'.join([pdb_header_str,transform_rec,new_ph_str])
 
-  def get_ncs_info_to_spec(
+  def get_ncs_info_as_spec(
           self,
           pdb_hierarchy_asu=None,
           xrs=None,
@@ -1161,7 +1157,8 @@ def get_transform_order(transform_to_ncs):
 
 def update_ncs_group_map(
         ncs_group_map, ncs_group_id, selection_ids, transform_id):
-  """  Update ncs_group_map  """
+  """  Update ncs_group_map that maps a group ID to a master selection and a
+  list of objects containing transforms and copies selections """
   if isinstance(selection_ids, str): selection_ids = [selection_ids]
   if ncs_group_map.has_key(ncs_group_id):
     ncs_group_map[ncs_group_id][0].update(set(selection_ids))
