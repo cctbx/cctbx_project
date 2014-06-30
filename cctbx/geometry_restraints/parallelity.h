@@ -131,7 +131,7 @@ namespace cctbx { namespace geometry_restraints {
   {
     protected:
       scitbx::vec3<double> i_n, j_n;
-      af::shared<scitbx::vec3<double> > i_dF__dsites, j_dF__dsites;
+      af::shared<scitbx::vec3<double> > i_dF__doriginal, j_dF__doriginal;
 
       // Function to calculate commonly used values for residual and
       // gradient calculations
@@ -415,13 +415,14 @@ namespace cctbx { namespace geometry_restraints {
           dF__dX_K[2] = 2.0*x[2]* DF__DS(2,2) +
                             x[0]*(DF__DS(2,0)+DF__DS(0,2)) +
                             x[1]*(DF__DS(2,1)+DF__DS(1,2));
-          dF__dcentered[i_site] = dF__dX_K;
+          dF__dcentered.push_back(dF__dX_K);
         }
       }
 
       void
       derive_dF__doriginal(
-        af::shared<scitbx::vec3<double> > &      dF__dcentered)
+        af::shared<scitbx::vec3<double> > &       dF__doriginal,
+        af::shared<scitbx::vec3<double> > const & dF__dcentered)
       {
         scitbx::vec3<double> sum_dF__dY_divK = 0;
         for (std::size_t i_site=0;i_site<dF__dcentered.size();i_site++) {
@@ -429,7 +430,9 @@ namespace cctbx { namespace geometry_restraints {
         }
         sum_dF__dY_divK /= double(dF__dcentered.size());
         for(std::size_t i_site=0;i_site<dF__dcentered.size();i_site++) {
-          dF__dcentered[i_site] -= sum_dF__dY_divK;
+          scitbx::vec3<double> dF__dx;
+          dF__dx =  dF__dcentered[i_site] - sum_dF__dY_divK;
+          dF__doriginal.push_back(dF__dx);
         }
       }
 
@@ -507,12 +510,15 @@ namespace cctbx { namespace geometry_restraints {
         scitbx::mat3<double> i_DF__DS, j_DF__DS;
         i_DF__DS = derive_DF__DS(i_DF__Da_S, i_DF__Db_S, i_DF__Dc_S, i_dF__dS, i_S_);
         j_DF__DS = derive_DF__DS(j_DF__Da_S, j_DF__Db_S, j_DF__Dc_S, j_dF__dS, j_S_);
-        i_dF__dsites.reserve(i_sites_ref.size());
-        j_dF__dsites.reserve(j_sites_ref.size());
-        derive_dF__dcentered(i_dF__dsites, i_DF__DS, i_sites_ref, i_center_of_mass_);
-        derive_dF__dcentered(j_dF__dsites, j_DF__DS, j_sites_ref, j_center_of_mass_);
-        derive_dF__doriginal(i_dF__dsites);
-        derive_dF__doriginal(j_dF__dsites);
+        af::shared<scitbx::vec3<double> > i_dF__dcentered, j_dF__dcentered;
+        i_dF__dcentered.reserve(i_sites_ref.size());
+        j_dF__dcentered.reserve(j_sites_ref.size());
+        derive_dF__dcentered(i_dF__dcentered, i_DF__DS, i_sites_ref, i_center_of_mass_);
+        derive_dF__dcentered(j_dF__dcentered, j_DF__DS, j_sites_ref, j_center_of_mass_);
+        i_dF__doriginal.reserve(i_sites_ref.size());
+        j_dF__doriginal.reserve(j_sites_ref.size());
+        derive_dF__doriginal(i_dF__doriginal, i_dF__dcentered);
+        derive_dF__doriginal(j_dF__doriginal, j_dF__dcentered);
       }
 
     public:
@@ -625,10 +631,10 @@ namespace cctbx { namespace geometry_restraints {
         af::shared<scitbx::vec3<double> > i_result, j_result, result;
         result.reserve(i_sites.size()+j_sites.size());
         for(std::size_t i_site=0;i_site<i_sites.size();i_site++) {
-          result.push_back(i_dF__dsites[i_site]);
+          result.push_back(i_dF__doriginal[i_site]);
         }
         for(std::size_t j_site=0;j_site<j_sites.size();j_site++) {
-          result.push_back(j_dF__dsites[j_site]);
+          result.push_back(j_dF__doriginal[j_site]);
         }
         return result;
       }
