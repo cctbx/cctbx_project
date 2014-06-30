@@ -248,8 +248,9 @@ class TestMultimerReconstruction(unittest.TestCase):
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transform_info = pdb_inp.process_mtrix_records()
     transforms_obj.preprocess_ncs_obj(
-      transform_info=transform_info,
-      pdb_hierarchy_inp=pdb_obj)
+      # transform_info=transform_info,
+      # pdb_hierarchy_inp=pdb_obj,
+      pdb_inp=pdb_inp)
 
     asu = multimer(
       pdb_str=pdb_test_data2,

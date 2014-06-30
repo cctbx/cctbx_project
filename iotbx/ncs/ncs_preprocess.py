@@ -83,6 +83,7 @@ class ncs_group_object(object):
 
   def preprocess_ncs_obj(self,
                          pdb_hierarchy_inp=None,
+                         pdb_inp=None,
                          transform_info=None,
                          rotations = None,
                          translations = None,
@@ -109,6 +110,7 @@ class ncs_group_object(object):
     7) iotbx.pdb.hierarchy.input object
 
     :param pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
+    :param pdb_inp: pdb input object
     :param transform_info: object containing MTRIX or BIOMT transformation info
     :param rotations: matrix.sqr 3x3 object
     :param translations: matrix.col 3x1 object
@@ -136,6 +138,9 @@ class ncs_group_object(object):
     if pdb_hierarchy_inp:
       msg = 'pdb_hierarchy_inp is not iotbx.pdb.hierarchy.input object'
       assert isinstance(pdb_hierarchy_inp,iotbx.pdb.hierarchy.input),msg
+    elif pdb_inp:
+      ph = pdb_inp.construct_hierarchy()
+      pdb_hierarchy_inp = iotbx.pdb.hierarchy.input_hierarchy_pair(pdb_inp,ph)
     if extension.lower() == '.pdb':
       pdb_hierarchy_inp = pdb.hierarchy.input(file_name=file_name)
     elif (not pdb_hierarchy_inp) and pdb_string:
