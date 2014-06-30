@@ -36,12 +36,10 @@ def input(pdb_hierarchy_inp=None,
     :param translations: matrix.col 3x1 object
     :param ncs_selection_params: Phil parameters
            Phil structure
-              ncs_group_selection {
-                ncs_group (multiple)
-                {
-                  master_ncs_selection = ''
-                  selection_copy = ''   (multiple)
-                }
+              ncs_group (multiple)
+              {
+                master_ncs_selection = ''
+                selection_copy = ''   (multiple)
               }
     :param ncs_phil_groups: a list of ncs_groups_container object, containing
            master NCS selection and a list of NCS copies selection

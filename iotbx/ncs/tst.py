@@ -46,49 +46,53 @@ ATOM      9  O   TYR D   4     189.583 273.076 175.423  1.00  0.00           O
 TER
   """
   ncs_params_str = """
-ncs_group_selection {
-  ncs_group {
-    master_ncs_selection = chain A
-    selection_copy = chain B
-    selection_copy = chain C
-  }
+ncs_group {
+  master_ncs_selection = chain A
+  selection_copy = chain B
+  selection_copy = chain C
 }
   """
-  def check_result(ncs_inp):
+  def check_result(ncs_inp, test_i):
+    if test_i == 0:
+      l1, l2, l3 = [0,1,2,3], [4,5,6,7], [8,9,10,11]
+    elif test_i == 1:
+      l1, l2, l3 = [1,2,3,4], [5,6,7,8], [9,10,11,12]
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
     assert len(ncs_groups) == 1
     ncs_group = ncs_groups[0]
-    assert approx_equal(ncs_group.master_ncs_iselection, [0,1,2,3])
+    assert approx_equal(ncs_group.master_ncs_iselection, l1)
     assert len(ncs_group.copies) == 2
-    assert approx_equal(ncs_group.copies[0].ncs_copy_iselection, [4,5,6,7])
-    assert approx_equal(ncs_group.copies[1].ncs_copy_iselection, [8,9,10,11])
-  # for pdb_str in [pdb_str_1, pdb_str_2]: # XXX pdb_str_2 does not work
-  for pdb_str in [pdb_str_1,]:
+    assert approx_equal(ncs_group.copies[0].ncs_copy_iselection, l2)
+    assert approx_equal(ncs_group.copies[1].ncs_copy_iselection, l3)
+
+  for test_i in [0,1]:
+    pdb_str = [pdb_str_1, pdb_str_2][test_i]
     of = open(pdb_file_name, "w")
     print >> of, pdb_str
     of.close()
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
-    # using pdb_inp
-    ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp)
-    check_result(ncs_inp)
-    # using file_name
-    ncs_inp = iotbx.ncs.input(file_name = pdb_file_name)
-    check_result(ncs_inp)
-    # using pdb string
-    ncs_inp = iotbx.ncs.input(pdb_string = pdb_str)
-    check_result(ncs_inp)
+    if test_i == 0:
+      # using pdb_inp
+      ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp)
+      check_result(ncs_inp,test_i)
+      # using file_name
+      ncs_inp = iotbx.ncs.input(file_name = pdb_file_name)
+      check_result(ncs_inp,test_i)
+      # using pdb string
+      ncs_inp = iotbx.ncs.input(pdb_string = pdb_str)
+      check_result(ncs_inp,test_i)
     # using combination of pdb_inp and Phil parameter string
     ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
       ncs_selection_params = ncs_params_str)
-    check_result(ncs_inp)
+    check_result(ncs_inp,test_i)
     # using combination of pdb file name and Phil parameter string
     ncs_inp = iotbx.ncs.input(file_name = pdb_file_name,
       ncs_selection_params = ncs_params_str)
-    check_result(ncs_inp)
+    check_result(ncs_inp,test_i)
     # using combination of pdb string and Phil parameter string
     ncs_inp = iotbx.ncs.input(pdb_string = pdb_str,
       ncs_selection_params = ncs_params_str)
-    check_result(ncs_inp)
+    check_result(ncs_inp,test_i)
 
 if (__name__ == "__main__"):
   exercise_00()

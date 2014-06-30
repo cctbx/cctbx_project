@@ -32,7 +32,6 @@ tst_list = (
   "$D/pdb/tst_extract_rfactors_resolutions_sigma.py",
   "$D/pdb/tst_pdb.py",
   "$D/pdb/tst_pdb_manipulation.py",
-  "$D/pdb/tst_ncs_groups_preprocessing.py",
   "$D/pdb/secondary_structure.py",
   "$D/examples/iotbx_cif.py",
   "$D/examples/pdb_to_map_simple.py",
@@ -78,6 +77,7 @@ tst_list = (
   "$D/scalepack/tst_no_merge_original_index.py",
   "$D/regression/tst_export_scalepack_unmerged.py",
   ["$D/dsn6/tst.py", "P31"],
+  "$D/ncs/tst_ncs_groups_preprocessing.py",
   "$D/ncs/tst.py",
   )
 

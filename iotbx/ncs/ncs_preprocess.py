@@ -1,9 +1,10 @@
 from __future__ import division
-import iotbx.pdb.hierarchy
+from mmtbx.utils.ncs_utils import apply_transforms
 from scitbx.array_family import flex
 from libtbx.utils import null_out
 from scitbx.math import superpose
 from libtbx.phil import parse
+import iotbx.pdb.hierarchy
 from mmtbx.ncs import ncs
 from scitbx import matrix
 from iotbx import pdb
@@ -15,18 +16,16 @@ import sys
 
 # parameters for manual specification of NCS - ASU mapping
 master_phil = parse("""
-  ncs_group_selection {
-    ncs_group
+  ncs_group
+    .multiple = True
+    {
+    master_ncs_selection = ''
+      .type = str
+      .help = 'Residue selection string for the complete master NCS copy'
+    selection_copy = ''
+      .type = str
+      .help = 'Residue selection string for each NCS copy location in ASU'
       .multiple = True
-      {
-      master_ncs_selection = ''
-        .type = str
-        .help = 'Residue selection string for the complete master NCS copy'
-      selection_copy = ''
-        .type = str
-        .help = 'Residue selection string for each NCS copy location in ASU'
-        .multiple = True
-    }
   }
   """)
 
@@ -116,12 +115,10 @@ class ncs_group_object(object):
     :param translations: matrix.col 3x1 object
     :param ncs_selection_params: Phil parameters
            Phil structure
-              ncs_group_selection {
-                ncs_group (multiple)
-                {
-                  master_ncs_selection = ''
-                  selection_copy = ''   (multiple)
-                }
+              ncs_group (multiple)
+              {
+                master_ncs_selection = ''
+                selection_copy = ''   (multiple)
               }
     :param ncs_phil_groups: a list of ncs_groups_container object, containing
            master NCS selection and a list of NCS copies selection
@@ -234,12 +231,10 @@ class ncs_group_object(object):
     pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
 
     Phil structure
-    ncs_group_selection {
-      ncs_group (multiple)
-      {
-        master_ncs_selection = ''
-        selection_copy = ''   (multiple)
-      }
+    ncs_group (multiple)
+    {
+      master_ncs_selection = ''
+      selection_copy = ''   (multiple)
     }
     """
     # process params
@@ -250,7 +245,7 @@ class ncs_group_object(object):
         source=ncs_selection_params,track_unused_definitions=True)
       working_phil = phil_param[0].extract()
       assert  phil_param[1] == [],'Check phil parameters...'
-      ncs_phil_groups = working_phil.ncs_group_selection.ncs_group
+      ncs_phil_groups = working_phil.ncs_group
     else:
       assert not (ncs_phil_groups is None)
     assert self.ncs_selection_str == ''
@@ -1008,6 +1003,40 @@ class ncs_group_object(object):
       spec_object.format_all_for_group_specification(
         file_name=file_name,log=log)
     return spec_object
+
+  def build_asu_hierarchy(self,
+                          pdb_hierarchy,
+                          round_coordinates=True):
+    """
+    Build ASU hierarchy
+
+    Arguments:
+    pdb_hierarchy: pdb hierarchy of the master NCS
+    round_coordinates: (bool) round coordinates of new NCS copies,
+                        for sites_cart constancy
+    Return:
+    ASU hierarchy
+    """
+    new_ph = pdb_hierarchy.deep_copy()
+    ncs_restraints_group_list = self.get_ncs_restraints_group_list()
+    new_sites = apply_transforms(
+      ncs_coordinates = pdb_hierarchy.atoms().extract_xyz(),
+      ncs_restraints_group_list = ncs_restraints_group_list,
+      total_asu_length =  self.total_asu_length,
+      round_coordinates = round_coordinates)
+    model = new_ph.models()[0]
+    for tr in self.transform_chain_assignment:
+      key = tr.split('_')[0]
+      ncs_selection = self.asu_to_ncs_map[key]
+      new_part = pdb_hierarchy.select(ncs_selection).deep_copy()
+      new_chain = iotbx.pdb.hierarchy.ext.chain()
+      new_chain.id = self.ncs_copies_chains_names[tr]
+      for res in new_part.residue_groups():
+        new_chain.append_residue_group(res.detached_copy())
+      model.append_chain(new_chain)
+    new_ph.atoms().set_xyz(new_sites)
+    return new_ph
+
 
 def get_pdb_header(pdb_str):
   """
