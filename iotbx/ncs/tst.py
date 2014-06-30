@@ -193,12 +193,15 @@ ncs_group {
     # using combination of pdb_inp and Phil parameter string
     ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
       ncs_selection_params = ncs_params_str)
+    ncs_groups = ncs_inp.get_ncs_restraints_group_list()
     # using combination of pdb file name and Phil parameter string
     ncs_inp = iotbx.ncs.input(file_name = pdb_file_name,
       ncs_selection_params = ncs_params_str)
+    ncs_groups = ncs_inp.get_ncs_restraints_group_list()
     # using combination of pdb string and Phil parameter string
     ncs_inp = iotbx.ncs.input(pdb_string = pdb_str,
       ncs_selection_params = ncs_params_str)
+    ncs_groups = ncs_inp.get_ncs_restraints_group_list()
 
 if (__name__ == "__main__"):
   exercise_00()
