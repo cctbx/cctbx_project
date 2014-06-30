@@ -4,6 +4,7 @@ from scitbx.array_family import flex
 
 
 def input(pdb_hierarchy_inp=None,
+          pdb_inp=None,
           transform_info=None,
           rotations = None,
           translations = None,
@@ -55,6 +56,7 @@ def input(pdb_hierarchy_inp=None,
     ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
     ncs_group_obj.preprocess_ncs_obj(
       pdb_hierarchy_inp=pdb_hierarchy_inp,
+      pdb_inp=pdb_inp,
       transform_info=transform_info,
       rotations=rotations,
       translations=translations,
