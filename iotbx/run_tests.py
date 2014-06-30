@@ -78,6 +78,7 @@ tst_list = (
   "$D/scalepack/tst_no_merge_original_index.py",
   "$D/regression/tst_export_scalepack_unmerged.py",
   ["$D/dsn6/tst.py", "P31"],
+  "$D/ncs/tst.py",
   )
 
 def run():
