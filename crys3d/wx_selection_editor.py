@@ -249,8 +249,11 @@ class selection_editor_mixin (model_viewer_mixin) :
       xray_structure=None,
       mmtbx_selection_function=None) :
     assert isinstance(model_id, str) or isinstance(model_id, unicode)
+    special_position_settings = None
+    if (xray_structure is not None) :
+      special_position_settings = xray_structure.special_position_settings()
     model = model_data_with_selection(model_id, pdb_hierarchy, atomic_bonds,
-      special_position_settings=xray_structure.special_position_settings(),
+      special_position_settings=special_position_settings,
       base_color=self.settings.opengl.base_atom_color)
     model.set_mmtbx_selection_function(mmtbx_selection_function)
     model.set_selection_callback(self._callback)
