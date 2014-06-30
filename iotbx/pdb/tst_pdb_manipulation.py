@@ -205,43 +205,57 @@ class TestMultimerReconstruction(unittest.TestCase):
     self.assertEqual(format_num_as_str(6),'006')
     self.assertEqual(format_num_as_str(0),'000')
 
-  # def test_pdb_writing(self):
-  #   print 'Running ',sys._getframe().f_code.co_name
-  #   transforms_obj = ncs_group_object()
-  #   pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
-  #   pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-  #   transform_info = pdb_inp.process_mtrix_records()
-  #   transforms_obj.preprocess_ncs_obj(
-  #     transform_info=transform_info,
-  #     pdb_hierarchy_inp=pdb_obj)
-  #   transforms_obj.write_transform_records(
-  #     ncs_only=True,
-  #     pdb_hierarchy=pdb_obj.hierarchy)
-  #   print '='*60
-  #   transforms_obj.write_transform_records(
-  #     pdb_hierarchy=pdb_obj.hierarchy,
-  #     biomt=True)
-  #   print '='*60
-  #   pdbstr = transforms_obj.write_transform_records(
-  #     xrs=pdb_obj.xray_structure_simple(),
-  #     biomt=True)
-  #   print '='*60
-  #   print pdbstr
+  def test_pdb_writing(self):
+    print 'Running ',sys._getframe().f_code.co_name
+    """
+    Verify that there are no errors processing the write command
+    No inception of the output is done.
+    To view the output change the write=False to ,write=True
+    """
+    transforms_obj = ncs_group_object()
+    pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
+    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
+    transform_info = pdb_inp.process_mtrix_records()
+    transforms_obj.preprocess_ncs_obj(
+      transform_info=transform_info,
+      pdb_hierarchy_inp=pdb_obj)
 
-  # def test_writing_spec_file(self):
-  #   print 'Running ',sys._getframe().f_code.co_name
-  #   transforms_obj = ncs_group_object()
-  #   pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
-  #   pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-  #   transform_info = pdb_inp.process_mtrix_records()
-  #   transforms_obj.preprocess_ncs_obj(
-  #     transform_info=transform_info,
-  #     pdb_hierarchy_inp=pdb_obj)
+    transforms_obj.get_transform_records(
+      ncs_only=True,
+      pdb_hierarchy=pdb_obj.hierarchy,
+      write=False)
 
-    # asu = multimer(
-    #   pdb_str=pdb_test_data2,
-    #   reconstruction_type='cau')
-    # transforms_obj.write_ncs_info_to_spec(asu.assembled_multimer)
+    transforms_obj.get_transform_records(
+      pdb_hierarchy=pdb_obj.hierarchy,
+      biomt=True,
+      write=False)
+
+    pdbstr = transforms_obj.get_transform_records(
+      xrs=pdb_obj.xray_structure_simple(),
+      biomt=True,
+      write=False)
+    # print pdbstr
+
+  def test_writing_spec_file(self):
+    print 'Running ',sys._getframe().f_code.co_name
+    """
+    Verify that there are no errors processing the write command
+    No inception of the output is done.
+    To view the output change the write=False to ,write=True
+    """
+    transforms_obj = ncs_group_object()
+    pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
+    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
+    transform_info = pdb_inp.process_mtrix_records()
+    transforms_obj.preprocess_ncs_obj(
+      transform_info=transform_info,
+      pdb_hierarchy_inp=pdb_obj)
+
+    asu = multimer(
+      pdb_str=pdb_test_data2,
+      reconstruction_type='cau')
+    transforms_obj.get_ncs_info_as_spec(
+      pdb_hierarchy_asu=asu.assembled_multimer,write=False)
 
 
   def tearDown(self):
