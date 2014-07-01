@@ -203,6 +203,25 @@ class test_rotation_angles_conversion(object):
     a4 = rot.rot_mat()
     assert abs(sum(list(a3-a4))) < 1.0e-3
 
+  def test_ncs_selection(self):
+    """
+    verify that extended_ncs_selection, which include the master ncs copy and
+    the portion of the protein we want to refine.
+    """
+    print 'Running ',sys._getframe().f_code.co_name
+    transforms_obj = iotbx.ncs.input(
+      pdb_string=test_pdb_str,
+      rotations=[self.rotation1,self.rotation2],
+      translations=[self.translation1,self.translation2])
+    ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
+    refine_selection = flex.size_t(range(30))
+    result = nu.get_extended_ncs_selection(
+      ncs_restraints_group_list=ncs_restraints_group_list,
+      refine_selection=refine_selection)
+    expected = [0, 1, 2, 3, 4, 5, 6, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+    assert list(result) == expected
+
+
 test_pdb_str = '''\
 ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
 ATOM      2  CA  THR A   1       9.559   8.931  10.615  1.00 20.00           C
@@ -224,4 +243,5 @@ if __name__=='__main__':
   t.test_concatenate_rot_tran()
   t.test_separate_rot_tran()
   t.test_update_x()
+  t.test_ncs_selection()
 

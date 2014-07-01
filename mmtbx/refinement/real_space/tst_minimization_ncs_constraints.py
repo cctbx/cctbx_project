@@ -1,6 +1,7 @@
 from __future__ import division
 import mmtbx.refinement.minimization_ncs_constraints
 import mmtbx.refinement.real_space.weight
+from scitbx.array_family import flex
 import mmtbx.utils.ncs_utils as nu
 import mmtbx.utils
 import iotbx.ncs
@@ -151,12 +152,10 @@ def run(prefix="tst", d_min=1.0):
     crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
   transforms_obj = nu.update_transforms(transforms_obj,rm,tv)
   ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
-  #
-  all_master_ncs_selection = transforms_obj.all_master_ncs_selections
-  non_ncs_region_selection = transforms_obj.non_ncs_region_selection
-  # Combine selection of ncs regions and regions not ncs related
-  refine_selection = non_ncs_region_selection.concatenate(
-    all_master_ncs_selection)
+  refine_selection = flex.size_t(xrange(transforms_obj.total_asu_length))
+  # extended_ncs_selection = nu.get_extended_ncs_selection(
+  #     ncs_restraints_group_list=ncs_restraints_group_list,
+  #     refine_selection=refine_selection)
   #
   for i in xrange(5):
     data_weight = 1

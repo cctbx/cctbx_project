@@ -21,7 +21,7 @@ ATOM     11  C   GLY C  34     188.920 271.622 173.510  1.00  0.00           C
 ATOM     12  O   GLY C  34     189.986 271.004 173.508  1.00  0.00           O
 TER
 """
-  
+
 pdb_str_2 = """
 CRYST1  399.000  399.000  399.000  90.00  90.00  90.00 P 1
 ATOM      1  O   HOH S   1     109.583 203.076 175.423  1.00  0.00           O
@@ -132,7 +132,7 @@ ncs_group {
     ncs_inp = iotbx.ncs.input(pdb_string = pdb_str,
       ncs_selection_params = ncs_params_str)
     check_result(ncs_inp,test_i)
-    
+
 def exercise_01(prefix="iotbx_ncs_exercise_01"):
   """
   Make sure provided selections take precedence and are correctly respected.
@@ -173,7 +173,7 @@ ncs_group {
     ncs_inp = iotbx.ncs.input(pdb_string = pdb_str,
       ncs_selection_params = ncs_params_str)
     check_result(ncs_inp,test_i)
-    
+
 def exercise_02(prefix="iotbx_ncs_exercise_02"):
   """
   This is expected to fail as requested chains cannot be matched.
