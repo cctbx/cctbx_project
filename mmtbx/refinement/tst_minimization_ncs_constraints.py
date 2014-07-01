@@ -142,8 +142,11 @@ class ncs_minimization_test(object):
     tr_obj = m_shaken.transforms_obj
     self.ncs_restraints_group_list = tr_obj.get_ncs_restraints_group_list()
     # refine both ncs related and not related atoms
-    self.refine_selection = tr_obj.ncs_atom_selection
-    assert self.refine_selection.count(True) > 0
+    self.refine_selection = flex.size_t(range(tr_obj.total_asu_length))
+    self.extended_ncs_selection = nu.get_extended_ncs_selection(
+      ncs_restraints_group_list=tr_obj.get_ncs_restraints_group_list(),
+      refine_selection=self.refine_selection)
+    assert self.refine_selection.size() == 21
     self.fmodel = mmtbx.f_model.manager(
       f_obs                        = self.f_obs,
       r_free_flags                 = self.r_free_flags,
@@ -217,7 +220,7 @@ class ncs_minimization_test(object):
       pdb_inp_refined = iotbx.pdb.input(file_name=output_file_name)
       xrs1 = pdb_inp_answer.xray_structure_simple()
       xrs2 = pdb_inp_refined.xray_structure_simple().select(
-        self.refine_selection)
+        minimized.extended_ncs_selection)
       mmtbx.utils.assert_xray_structures_equal(
         x1 = xrs1,
         x2 = xrs2,

@@ -534,6 +534,7 @@ class ncs_group_object(object):
       # add the non ncs regions to the master ncs copy
       self.all_master_ncs_selections = self.ncs_atom_selection.iselection()
       self.ncs_atom_selection = self.ncs_atom_selection | (~selection_ref)
+      # fixme: change to sets. intersection might not work well
       assert (self.non_ncs_region_selection.intersection(
         self.all_master_ncs_selections)).size() == 0
     elif pdb_length == ncs_length:
