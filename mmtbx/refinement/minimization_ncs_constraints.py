@@ -21,9 +21,6 @@ def grads_asu_to_one_ncs(
   refine_sites: (bool) Flag indicating sites refinement
   """
   # TODO: write a test for this function
-  # Get total length of NCS
-  # Get the NCS gradient
-  g_ncs = grad.select(extended_ncs_selection)
   for nrg in ncs_restraints_group_list:
     ncs_selection = nrg.master_ncs_iselection
     for ncs_copy in nrg.copies:
@@ -32,9 +29,10 @@ def grads_asu_to_one_ncs(
       if(refine_sites):
         # apply inverse transformation
         rt = ncs_copy.r.transpose().elems
-        g = rt*g
-      g_ncs.set_selected(ncs_selection, g + g_ncs.select(ncs_selection))
+        g = (rt*g)
+      grad.set_selected(ncs_selection, g + grad.select(ncs_selection))
 
+  g_ncs = grad.select(extended_ncs_selection)
   if(refine_sites): g_ncs = flex.vec3_double(g_ncs)
   assert type(grad)==type(g_ncs)
   return g_ncs
@@ -106,7 +104,6 @@ def restraints_target_and_grads(
       ef_grad = nu.compute_transform_grad(
         grad_wrt_xyz      = ef.gradients.as_double(),
         ncs_restraints_group_list = ncs_restraints_group_list,
-        # xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
         xyz_asu           = lbfgs_self.xray_structure.sites_cart(),
         x                 = lbfgs_self.x)
   if(ef is not None): return ef.target, ef_grad
@@ -236,7 +233,6 @@ class target_function_and_grads_reciprocal_space(object):
         g = nu.compute_transform_grad(
           grad_wrt_xyz      = grad_wrt_xyz,
           ncs_restraints_group_list = self.ncs_restraints_group_list,
-          # xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
           xyz_asu           = lbfgs_self.xray_structure.sites_cart(),
           x                 = lbfgs_self.x)
     return t, g
@@ -376,6 +372,7 @@ class lbfgs(object):
           ncs_coordinates = flex.vec3_double(x),
           ncs_restraints_group_list = self.ncs_restraints_group_list,
           total_asu_length = x_old.size(),
+          extended_ncs_selection = self.extended_ncs_selection,
           round_coordinates = False)
         new_x = new_x.select(self.refine_selection)
         new_x = x_old.set_selected(self.refine_selection,new_x)
