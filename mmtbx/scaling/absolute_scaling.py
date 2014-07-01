@@ -909,6 +909,14 @@ class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
  Z-scores are computed on the basis of a Bernoulli model assuming independence
  of weak reflections with respect to anisotropy.""")
 
+  def summarize_issues (self) :
+    b_cart_min = min(self.b_cart[0:3])
+    b_cart_range = max(self.b_cart[0:3]) - b_cart_min
+    if (b_cart_range > 2*b_cart_min) :
+      return [(1, "The data show significant anisotropy.",
+        "Maximum likelihood anisotropic Wilson scaling")]
+    return []
+
 class kernel_normalisation(object):
   def __init__(self,
                miller_array,

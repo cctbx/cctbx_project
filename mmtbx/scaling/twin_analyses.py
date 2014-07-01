@@ -21,6 +21,11 @@ from cStringIO import StringIO
 import math
 import sys
 
+# some cutoffs that may need to be adjusted
+TWIN_FRAC_SIGNIFICANT = 0.05
+PATT_HEIGHT_MISSED_CENTERING = 75
+PATT_HEIGHT_TNCS = 0.2
+
 class obliquity (slots_getstate_setstate):
   __slots__ = ["type", "u", "h", "t", "tau", "delta"]
   def __init__(self, reduced_cell, rot_mx, deg=True):
@@ -1983,9 +1988,9 @@ class twin_results_interpretation(scaling.xtriage_analysis):
     if self.has_pseudo_translational_symmetry() :
       out.show("""
  The analyses of the Patterson function reveals a significant off-origin
- peak that is %3.2f %% of the origin peak, indicating pseudo translational
+ peak that is %3.2f %% of the origin peak, indicating pseudo-translational
  symmetry.  The chance of finding a peak of this or larger height by random
- in a structure without pseudo translational symmetry is equal to %5.4e.
+ in a structure without pseudo-translational symmetry is equal to %5.4e.
 """ % (self.patterson_height, self.patterson_p_value))
       if self.i_ratio > 2:
         out.show("""
@@ -2064,7 +2069,8 @@ more details on your choice of space groups.""")
       if (self.n_twin_laws > 0) :
         if (not self.has_higher_symmetry()) :
           if (self.most_worrysome_twin_law is not None) :
-            if (self.britton_alpha[ self.most_worrysome_twin_law ]> 0.05) :
+            if (self.britton_alpha[ self.most_worrysome_twin_law ]>
+                TWIN_FRAC_SIGNIFICANT) :
               out.show("""\
 The correlation between the intensities related by the twin law
 %(twin_law)s with an estimated twin fraction of %(alpha)3.2f is most likely
@@ -2145,6 +2151,51 @@ refinement might provide an answer.
       out.show_table(self.table, indent=2)
     else:
       out.show("\nNo (pseudo)merohedral twin laws were found.\n")
+
+  def max_twin_fraction (self) :
+    if (self.most_worrysome_twin_law is not None) :
+      return self.britton_alpha[ self.most_worrysome_twin_law ]
+    return 0
+
+  def summarize_issues (self) :
+    issues = []
+    bad_data = False
+    if self.has_abnormal_intensity_statistics() :
+      if ((self.n_twin_laws > 0) and
+          (self.max_twin_fraction() > TWIN_FRAC_SIGNIFICANT)) :
+        issues.append((2, "Intensity statistics suggest twinning "+
+          "(intensities are significantly different from expected for "+
+          "normal data) and one or more twin operators show a significant "+
+          "twin fraction.", "Statistics depending on twin laws"))
+      else :
+        issues.append((1, "The intensity statistics look unusual, but "+
+          "twinning is not indicated or not possible in the given space "+
+          "group.", "Wilson ratio and moments"))
+    else :
+      issues.append((0, "The intensity statistics look normal, indicating "+
+        "that the data are not twinned.", "Wilson ratio and moments"))
+      if (self.max_twin_fraction() > TWIN_FRAC_SIGNIFICANT) :
+        issues.append((1, "One or more twin operators show a significant "+
+          "twin fraction but since the intensity statistics do not indicate "+
+          "twinning, you may have an NCS rotation axis parallel to a "+
+          "crystallographic axis.", "Statistics depending on twin laws"))
+      if self.has_higher_symmetry() :
+        issues.append((1, "One or more symmetry operators suggest that the "+
+          "data has a higher "+
+          "crystallographic symmetry (%s)." % str(self.suspected_space_group),
+          "Point group and R-factor analysis"))
+    if (self.patterson_height > 75) :
+      issues.append((1, "Translational NCS is present at a level that might "+
+        "be a result of a missed centering operation (one or more peaks "+
+        "greater than 75% of the origin).", "Patterson analyses"))
+    elif (self.patterson_height > 20) :
+      issues.append((2, "Translational NCS is present at a level that may "+
+        "complicate refinement (one or more peaks greater than 20% of the "+
+        "origin)", "Patterson analyses"))
+    else :
+      issues.append((0, "Translational NCS does not appear to be present.",
+        "Patterson analyses"))
+    return issues
 
 class twin_analyses (scaling.xtriage_analysis):
   """Perform various twin related tests"""

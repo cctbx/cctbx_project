@@ -59,6 +59,8 @@ class wx_output (wxtbx.windows.ChoiceBook,
     self._current_sizer = szr
     if (title == "Twinning and intensity statistics summary") :
       self.InsertPage(0, panel, title)
+    elif (title == "Summary of possible issues") :
+      self.InsertPage(0, panel, title)
     else :
       self.AddPage(panel, title)
 
@@ -236,6 +238,41 @@ class wx_output (wxtbx.windows.ChoiceBook,
     btn.symm_table = self._tables[-1]
     self._current_sizer.Add(btn, 0, wx.ALL, 5)
     self.Bind(wx.EVT_BUTTON, OnChangeSymmetry, btn)
+
+  def show_issues (self, issues) :
+    grid = wx.FlexGridSizer(rows=len(issues), cols=2, vgap=4)
+    self._current_sizer.Add(grid, 0, wx.ALL, 10)
+    for severity, message, linkto in issues :
+      ctrl = LightControl(parent=self._current_panel,
+        size=(32,32),
+        style=wx.SIMPLE_BORDER).SetLevel(severity)
+      grid.Add(ctrl, 0, wx.ALL, 0)
+      txt = wx.StaticText(parent=self._current_panel,
+        label=message)
+      txt.Wrap(TEXT_WIDTH - 60)
+      grid.Add(txt, 0, wx.ALL, 5)
+
+class LightControl (wx.PyControl) :
+  def __init__ (self, **kwds) :
+    super(LightControl, self).__init__(**kwds)
+    self._level = 0
+    self.Bind(wx.EVT_PAINT, self.OnPaint)
+
+  def SetLevel (self, level) :
+    self._level = level
+    return self
+
+  def OnPaint (self, evt) :
+    dc = wx.AutoBufferedPaintDCFactory(self)
+    gc = wx.GraphicsContext.Create(dc)
+    w, h = self.GetSize()
+    if (self._level == 0) :
+      gc.SetBrush(wx.Brush((0,255,0)))
+    elif (self._level == 1) :
+      gc.SetBrush(wx.Brush((255,255,0)))
+    else :
+      gc.SetBrush(wx.Brush((255,0,0)))
+    gc.DrawEllipse(2, 2, w - 8, h - 8)
 
 class XtriageFrame (wx.Frame) :
   """
