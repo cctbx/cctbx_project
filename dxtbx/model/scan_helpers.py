@@ -15,75 +15,49 @@ import string
 import math
 import copy
 
+# N.B. these are reversed patterns...
+
+patterns = [r'([0-9]{2,12})\.(.*)',
+            r'(.*)\.([0-9]{2,12})_(.*)',
+            r'(.*)\.([0-9]{2,12})(.*)']
+
+joiners = ['.', '_', '']
+
+compiled_patterns = [re.compile(pattern) for pattern in patterns]
+
+def template_regex(filename):
+  '''Try a bunch of templates to work out the most sensible. N.B. assumes
+  that the image index will be the last digits found in the file name.'''
+
+  rfilename = filename[::-1]
+
+  global patterns, compiled_patterns
+
+  for j, cp in enumerate(compiled_patterns):
+    match = cp.match(rfilename)
+    if not match:
+      continue
+    groups = match.groups()
+
+    if len(groups) == 3:
+      exten = '.' + groups[0][::-1]
+      digits = groups[1][::-1]
+      prefix = groups[2][::-1] + joiners[j]
+    else:
+      exten = ''
+      digits = groups[0][::-1]
+      prefix = groups[1][::-1] + joiners[j]
+
+    template = prefix + ''.join(['#' for d in digits]) + exten
+    break
+
+  return template, int(digits)
+
 def image2template(filename):
-  '''Return a template to match this filename.'''
-
-  assert(not '#' in filename)
-
-  # the patterns in the order I want to test them - these should be kept
-  # in an extensible singleton somewhere
-
-  pattern_keys = [r'([^\.]*)\.([0-9]+)\Z',
-                  r'([^\.]*)\.([0-9]+)(.*)',
-                  r'(.*)_([0-9]*)\.(.*)',
-                  r'(.*?)([0-9]*)\.(.*)']
-
-  # patterns is a dictionary of possible regular expressions with
-  # the format strings to put the file name back together
-
-  patterns = {r'([^\.]*)\.([0-9]+)\Z':'%s.%s%s',
-              r'([^\.]*)\.([0-9]+)(.*)':'%s.%s%s',
-              r'(.*)_([0-9]*)\.(.*)':'%s_%s.%s',
-              r'(.*?)([0-9]*)\.(.*)':'%s%s.%s'}
-
-  for pattern in pattern_keys:
-    match = re.compile(pattern).match(filename)
-
-    if match:
-      prefix = match.group(1)
-      number = match.group(2)
-      try:
-        exten = match.group(3)
-      except: # intentional
-        exten = ''
-
-      for digit in string.digits:
-        number = number.replace(digit, '#')
-
-      return patterns[pattern] % (prefix, number, exten)
-
-  raise RuntimeError, 'filename %s not understood as a template' % \
-        filename
+  return template_regex(filename)[0]
 
 def image2image(filename):
-  '''Return an integer for the template to match this filename.'''
-
-  # check that the file name doesn't contain anything mysterious
-  if filename.count('#'):
-    raise RuntimeError, '# characters in filename'
-
-  # the patterns in the order I want to test them
-
-  pattern_keys = [r'([^\.]*)\.([0-9]+)\Z',
-                  r'([^\.]*)\.([0-9]+)(.*)',
-                  r'(.*)_([0-9]*)\.(.*)',
-                  r'(.*?)([0-9]*)\.(.*)']
-
-  for pattern in pattern_keys:
-    match = re.compile(pattern).match(filename)
-
-    if match:
-      prefix = match.group(1)
-      number = match.group(2)
-      try:
-        exten = match.group(3)
-      except: # intentional
-        exten = ''
-
-      return int(number)
-
-  raise RuntimeError, 'filename %s not understood as a template' % \
-        filename
+  return template_regex(filename)[1]
 
 def image2template_directory(filename):
   '''Separate out the template and directory from an image name.'''
