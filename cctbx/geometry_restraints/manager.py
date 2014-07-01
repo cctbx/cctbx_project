@@ -9,7 +9,7 @@ from libtbx import introspection
 from libtbx import adopt_init_args
 from libtbx import dict_with_default_0
 from libtbx.utils import Sorry
-import sys, math
+import sys, math, StringIO
 
 #from mmtbx.geometry_restraints.hbond import get_simple_bonds
 
@@ -1032,9 +1032,23 @@ class manager(object):
       sites_cart = self._sites_cart_used_for_pair_proxies
     if pair_proxies.bond_proxies is not None:
       pair_proxies.bond_proxies.show_sorted(
-        by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=f, exclude=self.hbonds_in_bond_list)
+          by_value="residual",
+          sites_cart=sites_cart,
+          site_labels=site_labels,
+          f=f,
+          exclude=self.hbonds_in_bond_list)
       print >> f
+      tempbuffer = StringIO.StringIO()
+      if self.hbonds_in_bond_list is not None:
+        pair_proxies.bond_proxies.show_sorted(
+            by_value="residual",
+            sites_cart=sites_cart,
+            site_labels=site_labels,
+            f=tempbuffer,
+            prefix="",
+            exclude=self.hbonds_in_bond_list,
+            exclude_output_only=True)
+        print >> f, "Bond-like", tempbuffer.getvalue()[5:]
     if (self.angle_proxies is not None):
       self.angle_proxies.show_sorted(
         by_value="residual",
