@@ -41,7 +41,7 @@ def work_helper_image_files():
   assert(scan_helper_image_files.image_to_template(
       'image_001.dat') == 'image_###.dat')
 
-  assert scan_helper_image_files.image_to_index("image_6.8kev_1_001.cbf") == 1
+  assert(scan_helper_image_files.image_to_index("image_6.8kev_1_001.cbf") == 1)
 
   return
 
