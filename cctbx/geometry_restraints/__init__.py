@@ -379,14 +379,16 @@ def _bond_show_sorted_impl(self,
                            f=None,
                            prefix="",
                            max_items=None,
-                           exclude=None):
+                           exclude=None,
+                           exclude_output_only=False):
   if unit_cell is None:
     sorted_table, n_not_shown = self.get_sorted(
       by_value=by_value,
       sites_cart=sites_cart,
       site_labels=site_labels,
       max_items=max_items,
-      exclude=exclude)
+      exclude=exclude,
+      exclude_output_only=exclude_output_only)
   else:
     sorted_table, n_not_shown = self.get_sorted(
       by_value=by_value,
@@ -394,7 +396,8 @@ def _bond_show_sorted_impl(self,
       unit_cell=unit_cell,
       site_labels=site_labels,
       max_items=max_items,
-      exclude=exclude)
+      exclude=exclude,
+      exclude_output_only=exclude_output_only)
   if sorted_table is None :
     return
   if exclude is not None:
@@ -433,7 +436,8 @@ class _(boost.python.injector, shared_bond_simple_proxy):
         site_labels=None,
         unit_cell=None,
         max_items=None,
-        exclude=None):
+        exclude=None,
+        exclude_output_only=False):
     assert exclude==None # not implemented
     assert by_value in ["residual", "delta"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
@@ -525,7 +529,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         cutoff_warn_extreme=20,
         f=None,
         prefix="",
-        exclude=None):
+        exclude=None,
+        exclude_output_only=False):
     if (self.n_total() == 0): return None
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of bond lengths:" % prefix
@@ -538,7 +543,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
       sorted_table, n_not_shown = self.get_sorted(
                          by_value="delta",
                          sites_cart=sites_cart,
-                         exclude=exclude)
+                         exclude=exclude,
+                         exclude_output_only=exclude_output_only)
       hdata = [x[2] for x in sorted_table]
 
     histogram = flex.histogram(
@@ -572,7 +578,9 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         n_slots=5,
         f=None,
         prefix="",
-        exclude=None):
+        exclude=None,
+        exclude_output_only=False):
+    assert not exclude_output_only, "Not implemented"
     if (self.n_total() == 0): return
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of bond deltas:" % prefix
@@ -583,7 +591,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
       sorted_table, n_not_shown = self.get_sorted(
                          by_value="delta",
                          sites_cart=sites_cart,
-                         exclude=exclude)
+                         exclude=exclude,
+                         exclude_output_only=exclude_output_only)
       hdata = [x[4] for x in sorted_table]
     histogram = flex.histogram(
       data=flex.abs(hdata),
@@ -601,7 +610,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         sites_cart,
         site_labels=None,
         max_items=None,
-        exclude=None):
+        exclude=None,
+        exclude_output_only=False):
     assert by_value in ["residual", "delta"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if (self.n_total() == 0): return None, None
@@ -652,7 +662,9 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         if (site_labels is None): l = str(i)
         else:                     l = site_labels[i]
         labels.append(l)
-      if (i_seq,j_seq) not in exclude:
+      if (((i_seq,j_seq) not in exclude and not exclude_output_only) or
+          ((i_seq,j_seq)     in exclude and     exclude_output_only)):
+
         sorted_table.append(
           (labels, restraint.distance_ideal, restraint.distance_model,
            restraint.slack, restraint.delta,
@@ -675,7 +687,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         f=None,
         prefix="",
         max_items=None,
-        exclude=None):
+        exclude=None,
+        exclude_output_only=False):
     if f is None: f = sys.stdout
     if exclude is None:
       print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
@@ -685,7 +698,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
                            f=f,
                            prefix=prefix,
                            max_items=max_items,
-                           exclude=exclude)
+                           exclude=exclude,
+                           exclude_output_only=exclude_output_only)
 
 class _(boost.python.injector, nonbonded_sorted_asu_proxies):
 
@@ -1236,12 +1250,12 @@ class _(boost.python.injector, shared_planarity_proxy):
 class _(boost.python.injector, parallelity):
 
   def _show_sorted_item(O, f, prefix):
+    assert 0
     print >> f, "%s    ideal   model   delta" \
       "    sigma   weight residual" % prefix
-    print >> f, " likely here will be angle between normal vectors"
 
   def _get_sorted_item(self):
-    return [self.residual()]
+    return [self.residual(), self.weight, self.delta]
 
 class _(boost.python.injector, shared_parallelity_proxy):
 
@@ -1277,22 +1291,23 @@ class _(boost.python.injector, shared_parallelity_proxy):
     if (max_items is not None and max_items <= 0): return
     print >> f, "%sSorted by %s:" % (prefix, by_value)
     for info in sorted_table:
-      #proxy = info[-1]
-      #restraint = info[-2]
       residual = info[1]
-      print >> f, "parallelity     plane 1   |             plane 2  "+\
-          "      | residual"
-      print >> f, "    "+"-"*51+"| %f" % residual
+      delta = info[3]
+      delta_deg = math.degrees(math.acos(1-delta))
+      weight = info[2]
+      print >> f, "    plane 1                plane 2  "+\
+          "              residual  delta(deg) sigma"
+      r_info = "  %.2e %8.4f  %8.4f" % (residual, delta_deg, weight)
       i_labels = info[0][0]
       j_labels = info[0][1]
-      #print i_seqs, j_seqs
-      #STOP()
       i = 0
       long_len = max(len(i_labels), len(j_labels))
       while i < long_len:
-        print >> f, "    %s | %s" % \
+        print >> f, "    %s  %s%s" % \
             (i_labels[i] if i < len(i_labels) else " "*21,
-             j_labels[i] if i < len(j_labels) else "")
+             j_labels[i] if i < len(j_labels) else "",
+             r_info)
+        r_info = ""
         i += 1
       print >> f
     if (n_not_shown != 0):
