@@ -461,6 +461,7 @@ dxtbx/format/FormatCBFFull.py -text
 dxtbx/format/FormatCBFFullPilatus.py -text
 dxtbx/format/FormatCBFMini.py -text
 dxtbx/format/FormatCBFMiniPilatus.py -text
+dxtbx/format/FormatCBFMiniPilatusDLS12M.py -text
 dxtbx/format/FormatCBFMiniPilatusDLS6MSN100.py -text
 dxtbx/format/FormatCBFMiniPilatusHelpers.py -text
 dxtbx/format/FormatDIP2030b.py -text
