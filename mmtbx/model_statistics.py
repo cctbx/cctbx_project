@@ -145,7 +145,7 @@ class geometry(object):
     return result
 
   def format_molprobity_scores(self, prefix=""):
-    result=None
+    result=""
     if(self.ramachandran_outliers is not None):
       result = """%sMOLPROBITY STATISTICS.
 %s ALL-ATOM CLASHSCORE : %-6.2f
@@ -163,7 +163,7 @@ class geometry(object):
         prefix, self.ramachandran_favored, "%",
         prefix, str("%6.2f"%(self.rotamer_outliers)).strip(),"%",
         prefix, self.c_beta_dev)
-      return result
+    return result
 
   def as_cif_block(self, cif_block=None):
     import iotbx.cif.model

@@ -194,7 +194,8 @@ class manager(object):
         shell_sym_tables=reduced_shell_sym_tables,
         angle_proxies=reduced_angle_proxies,
         dihedral_proxies=reduced_dihedral_proxies,
-        ncs_dihedral_proxies=self.ncs_dihedral_proxies)
+        ncs_dihedral_proxies=self.ncs_dihedral_proxies,
+        hbonds_in_bond_list=self.hbonds_in_bond_list)
     else:
       return manager(
         crystal_symmetry=self.crystal_symmetry,
@@ -204,7 +205,8 @@ class manager(object):
         angle_proxies=reduced_angle_proxies,
         dihedral_proxies=reduced_dihedral_proxies,
         ncs_dihedral_proxies=self.ncs_dihedral_proxies,
-        generic_restraints_manager=self.generic_restraints_manager)
+        generic_restraints_manager=self.generic_restraints_manager,
+        hbonds_in_bond_list=self.hbonds_in_bond_list)
 
   def sites_cart_used_for_pair_proxies(self):
     return self._sites_cart_used_for_pair_proxies
@@ -296,7 +298,8 @@ class manager(object):
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
-      plain_pairs_radius=self.plain_pairs_radius)
+      plain_pairs_radius=self.plain_pairs_radius,
+      hbonds_in_bond_list=self.hbonds_in_bond_list)
 
   def select(self, selection=None, iselection=None):
     assert [selection, iselection].count(None) == 1
@@ -419,7 +422,8 @@ class manager(object):
       chirality_proxies=selected_chirality_proxies,
       planarity_proxies=selected_planarity_proxies,
       parallelity_proxies=selected_parallelity_proxies,
-      plain_pairs_radius=self.plain_pairs_radius)
+      plain_pairs_radius=self.plain_pairs_radius,
+      hbonds_in_bond_list=self.hbonds_in_bond_list)
 
   def discard_symmetry(self, new_unit_cell):
     assert self.site_symmetry_table is not None #XXX lazy
@@ -449,7 +453,8 @@ class manager(object):
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
-      plain_pairs_radius=self.plain_pairs_radius)
+      plain_pairs_radius=self.plain_pairs_radius,
+      hbonds_in_bond_list=self.hbonds_in_bond_list)
 
   def remove_angles_in_place(self, selection):
     self.angle_proxies = self.angle_proxies.proxy_remove(
