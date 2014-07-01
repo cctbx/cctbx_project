@@ -288,10 +288,10 @@ class energies(scitbx.restraints.energies):
     b_z_min/max: min/max abolute values of z-scors
     '''
     if(self.n_bond_proxies is not None):
-      bond_deltas = geometry_restraints.bond_deltas(
-        sites_cart         = self.sites_cart,
-        sorted_asu_proxies = self.bond_proxies)
-      #bond_deltas = self.get_filtered_bond_deltas()
+      #bond_deltas = geometry_restraints.bond_deltas(
+      #  sites_cart         = self.sites_cart,
+      #  sorted_asu_proxies = self.bond_proxies)
+      bond_deltas = self.get_filtered_bond_deltas()
       if bond_deltas is not None:
         sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.bond_proxies.simple]
         z_scores = flex.double([(bond_delta/sigma) for bond_delta,sigma in zip(bond_deltas,sigmas)])
@@ -304,10 +304,10 @@ class energies(scitbx.restraints.energies):
 
   def bond_deviations(self):
     if(self.n_bond_proxies is not None):
-      bond_deltas = geometry_restraints.bond_deltas(
-        sites_cart         = self.sites_cart,
-        sorted_asu_proxies = self.bond_proxies)
-      #bond_deltas = self.get_filtered_bond_deltas()
+      #bond_deltas = geometry_restraints.bond_deltas(
+      #  sites_cart         = self.sites_cart,
+      #  sorted_asu_proxies = self.bond_proxies)
+      bond_deltas = self.get_filtered_bond_deltas()
       if bond_deltas is not None:
         b_sq  = bond_deltas * bond_deltas
         b_ave = math.sqrt(flex.mean_default(b_sq, 0))
