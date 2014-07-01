@@ -4,6 +4,7 @@ from iotbx.ncs.ncs_preprocess import format_num_as_str
 from iotbx.ncs.ncs_preprocess import ncs_group_object
 from mmtbx.utils.ncs_utils import apply_transforms
 from libtbx.test_utils import approx_equal
+from scitbx.array_family import flex
 from scitbx import matrix
 from iotbx import pdb
 import iotbx.ncs
@@ -61,6 +62,7 @@ class TestMultimerReconstruction(unittest.TestCase):
       ncs_coordinates = source_xyz,
       ncs_restraints_group_list = multimer_data.get_ncs_restraints_group_list(),
       total_asu_length = multimer_data.total_asu_length(),
+      extended_ncs_selection = flex.size_t_range(source_xyz.size()),
       round_coordinates=False)
     cau_multimer_xyz = list(xyz)
     cau_multimer_xyz.sort()

@@ -1024,6 +1024,7 @@ class ncs_group_object(object):
       ncs_coordinates = pdb_hierarchy.atoms().extract_xyz(),
       ncs_restraints_group_list = ncs_restraints_group_list,
       total_asu_length =  self.total_asu_length,
+      extended_ncs_selection = flex.size_t_range(pdb_hierarchy.atoms().size()),
       round_coordinates = round_coordinates)
     model = new_ph.models()[0]
     for tr in self.transform_chain_assignment:
