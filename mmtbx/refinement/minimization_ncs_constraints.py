@@ -106,7 +106,8 @@ def restraints_target_and_grads(
       ef_grad = nu.compute_transform_grad(
         grad_wrt_xyz      = ef.gradients.as_double(),
         ncs_restraints_group_list = ncs_restraints_group_list,
-        xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
+        # xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
+        xyz_asu           = lbfgs_self.xray_structure.sites_cart(),
         x                 = lbfgs_self.x)
   if(ef is not None): return ef.target, ef_grad
   elif not grad: return 0, 0
@@ -155,7 +156,7 @@ class target_function_and_grads_real_space(object):
         g = nu.compute_transform_grad(
           grad_wrt_xyz      = grad_wrt_xyz,
           ncs_restraints_group_list = self.ncs_restraints_group_list,
-          xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
+          xyz_asu           = lbfgs_self.xray_structure.sites_cart(),
           x                 = lbfgs_self.x)
     return t, g
 
@@ -235,7 +236,8 @@ class target_function_and_grads_reciprocal_space(object):
         g = nu.compute_transform_grad(
           grad_wrt_xyz      = grad_wrt_xyz,
           ncs_restraints_group_list = self.ncs_restraints_group_list,
-          xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
+          # xyz_ncs           = nu.get_ncs_sites_cart(lbfgs_self),
+          xyz_asu           = lbfgs_self.xray_structure.sites_cart(),
           x                 = lbfgs_self.x)
     return t, g
 
