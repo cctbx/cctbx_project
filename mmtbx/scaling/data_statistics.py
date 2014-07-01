@@ -261,6 +261,7 @@ class possible_outliers (scaling.xtriage_analysis):
     work_array = work_array.array(
       data=normalizer.normalised_miller.data()
       /work_array.epsilons().data().as_double())
+    self.n_refl = work_array.size()
     # array processing
     centric_cut = work_array.select_centric().set_observation_type(work_array)
     acentric_cut = work_array.select_acentric().set_observation_type(
@@ -328,6 +329,11 @@ class possible_outliers (scaling.xtriage_analysis):
                               self.centric_outlier_extreme_val):
       self.centric_outliers_table.add_row([d, hkl, e, p, extr])
 
+  def fraction_outliers (self) :
+    n_acentric = self.acentric_outlier_miller.size()
+    n_centric = self.centric_outlier_miller.size()
+    return (n_acentric + n_centric) / self.n_refl
+
   def remove_outliers(self, miller_array):
     ## remove the outliers please
     centric_matches = miller.match_indices( miller_array.indices(),
@@ -379,6 +385,14 @@ class possible_outliers (scaling.xtriage_analysis):
  Both measures can be used for outlier detection. p(extreme)
  takes into account the size of the dataset.
 """)
+
+  def summarize_issues (self) :
+    if (self.fraction_outliers() > 0.001) :
+      return [(1, "There are a large number of outliers in the data.",
+        "Possible outliers")]
+    else :
+      return [(0, "The fraction of outliers in the data is less than 0.1%.",
+        "Possible outliers")]
 
 #-----------------------------------------------------------------------
 # ICE RINGS
@@ -556,6 +570,14 @@ class ice_ring_checker(scaling.xtriage_analysis):
  There were %d ice ring related warnings.  This could indicate the presence of
  ice rings.""" % self.warnings)
 
+  def summarize_issues (self) :
+    if (self.warnings > 0) :
+      return [(1, "The data appear to have one or more ice rings.",
+        "Ice ring related problems")]
+    else :
+      return [(0, "Ice rings do not appear to be present.",
+        "Ice ring related problems")]
+
 #-----------------------------------------------------------------------
 # ANOMALOUS MEASURABILITY
 class analyze_measurability(scaling.xtriage_analysis):
@@ -705,12 +727,16 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
         miller_array,
         isigi_cut=isigi_cut,
         completeness_cut=completeness_cut)
+    self.completeness_overall = miller_array.completeness()
     # low-resolution completeness
     tmp_miller_lowres = miller_array.resolution_filter(d_min=5.0)
     self.low_resolution_completeness = None
+    self.low_resolution_completeness_overall = None
     self.low_res_table = None
     if (tmp_miller_lowres.indices().size()>0):
       tmp_miller_lowres.setup_binner(n_bins=10)
+      self.low_resolution_completeness_overall = \
+        tmp_miller_lowres.completeness(use_binning=False)
       low_resolution_completeness = tmp_miller_lowres.completeness(
         use_binning=True)
       self.low_resolution_completeness = \
@@ -761,6 +787,32 @@ or omission of reflections by data-processing software.""")
       return self.data_strength.resolution_at_least
     else:
       return self.data_strength.resolution_cut
+
+  def summarize_issues (self) :
+    issues = []
+    if self.d_min_directional.is_elliptically_truncated() :
+      issues.append((2,"The data appear to have been elliptically truncated.",
+        "Analysis of resolution limits"))
+    else :
+      issues.append((0,
+        "The resolution cutoff appears to be similar in all directions.",
+        "Analysis of resolution limits"))
+    if (0 < self.low_resolution_completeness_overall < 0.75) :
+      issues.append((2, "The overall completeness in low-resolution shells "+
+        "is less than 90%.", "Low resolution completeness analyses"))
+    elif (0.75 <= self.low_resolution_completeness_overall < 0.9) :
+      issues.append((1, "The overall completeness in low-resolution shells "+
+        "is less than 90%.", "Low resolution completeness analyses"))
+    else :
+      issues.append((0, "The overall completeness in low-resolution shells "+
+        "is at least 90%.", "Low resolution completeness analyses"))
+    if (self.completeness_overall < 0.75) :
+      issues.append((2, "Overall completeness is less than 75%.", None))
+    elif (self.completeness_overall < 0.90) :
+      issues.append((1, "Overall completeness is less than 90%.", None))
+    else :
+      issues.append((0, "Overall completeness is above 90%.", None))
+    return issues
 
 class anomalous (scaling.xtriage_analysis) :
   def __init__ (self, miller_array, merging_stats=None) :
@@ -1064,6 +1116,14 @@ class wilson_scaling (scaling.xtriage_analysis) :
     self.outliers.show(out)
     if self.ice_rings is not None:
       self.ice_rings.show(out)
+
+  def summarize_issues (self) :
+    issues = []
+    if self.ice_rings is not None:
+      issues.extend(self.ice_rings.summarize_issues())
+    issues.extend(self.outliers.summarize_issues())
+    issues.extend(self.aniso_scale_and_b.summarize_issues())
+    return issues
 
   # Objects of this class are relatively bulky due to the storage of multiple
   # derived Miller arrays that may be used elsewhere.  Since we do not need

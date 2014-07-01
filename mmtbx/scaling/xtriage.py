@@ -20,7 +20,7 @@ import iotbx.phil
 from cctbx.array_family import flex
 from cctbx import crystal
 from libtbx.utils import Sorry, multi_out
-from libtbx.str_utils import StringIO, make_big_header
+from libtbx.str_utils import StringIO, make_big_header, wordwrap
 from libtbx.utils import null_out
 from libtbx import runtime_utils
 import libtbx.callbacks # import dependency
@@ -29,6 +29,9 @@ import os
 import sys
 
 MIN_ACENTRICS = 25
+CC_ONE_HALF_OUTER_POOR = 0.3
+CC_ONE_HALF_OUTER_MED = 0.7
+CC_ONE_HALF_OUTER_HIGH = 0.9
 
 master_params = iotbx.phil.parse("""\
 scaling {
@@ -415,12 +418,51 @@ lower than shown here.
 The overall R-merge is greater than 0.2, suggesting that the choice of space
 group may be incorrect.  We suggest that you try merging in lower symmetry
 to see if this improves the statistics.""")
+    elif (self.cc_one_half_outer > CC_ONE_HALF_OUTER_HIGH) :
+      out.warn("""\
+The correlation of half-datasets (CC1/2)in the outer resolution shell suggests
+that the useful resolution range extends significantly beyond the cutoff used
+in the input data.""")
+    elif (self.cc_one_half_outer > CC_ONE_HALF_OUTER_MED) :
+      out.warn("""\
+The correlation of half-datasets (CC1/2)in the outer resolution shell suggests
+that the useful resolution range may extend beyond the cutoff used in the input
+data.""")
+    elif (self.cc_one_half_outer > CC_ONE_HALF_OUTER_POOR) :
+      out.warn("""\
+The correlation of half-datasets (CC1/2)in the outer resolution shell suggests
+that the useful resolution range may be lower than that of the input data.""")
     # TODO more warnings?  need to figure out appropriate cutoffs...
     out.show_sub_header("Multiplicity, completeness, and signal")
     out.show_table(self.signal_table, plot_button=True)
     out.show_sub_header("Dataset consistency")
     out.show_table(self.quality_table, plot_button=True)
     out.show_lines("References:\n"+iotbx.merging_statistics.citations_str)
+
+  @property
+  def cc_one_half_outer (self) :
+    return self.bins[-1].cc_one_half
+
+  def summarize_issues (self) :
+    if (self.overall.r_merge > 0.2) :
+      is_p1 = self.crystal_symmetry.space_group_info().type().number() == 1
+      if (not is_p1) :
+        return [ (2, "The merging statistics indicate that the data may "+
+          "be assigned to the wrong space group.", "Dataset consistency") ]
+      else :
+        return [ (2, "The merging statistics are unusually poor, but the "+
+          "space group is P1, suggesting problems with data processing.",
+          "Dataset consistency") ]
+    if (self.cc_one_half_outer > CC_ONE_HALF_OUTER_MED) :
+      return [ (1, "The resolution of the data may be useful to higher "+
+        "resolution than the given resolution.", "Dataset consistency") ]
+    elif (self.cc_one_half_outer < CC_ONE_HALF_OUTER_POOR) :
+      return [ (1, "The resolution of the data may be lower than the given "+
+        "resolution.", "Dataset consistency") ]
+    else :
+      return [ (0, "The resolution limit of the data seems appropriate.",
+        "Dataset consistency") ]
+    return []
 
 class data_summary (mmtbx.scaling.xtriage_analysis) :
   """
@@ -693,6 +735,8 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
       if isinstance(out, mmtbx.scaling.printed_output) :
         make_big_header("Twinning and symmetry", out=out)
       self.twin_results.show(out)
+    summary = self.summarize_issues()
+    summary.show(out)
 
   def matthews_n_copies (self) :
     """
@@ -749,6 +793,48 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     """
     b_cart = self.wilson_scaling.aniso_scale_and_b.b_cart
     return max(b_cart[0:3]) - min(b_cart[0:3])
+
+  def summarize_issues (self) :
+    issues = []
+    if (self.twin_results is not None) :
+      issues.extend(self.twin_results.twin_summary.summarize_issues())
+    issues.extend(self.wilson_scaling.summarize_issues())
+    if (self.merging_stats is not None) :
+      issues.extend(self.merging_stats.summarize_issues())
+    issues.extend(self.data_strength_and_completeness.summarize_issues())
+    if (self.anomalous_info is not None) :
+      pass
+    return summary(issues)
+
+class summary (mmtbx.scaling.xtriage_analysis) :
+  def __init__ (self, issues, sort=True) :
+    self._issues = issues
+    if (sort) :
+      self._issues.sort(lambda a,b: cmp(b[0], a[0]))
+
+  @property
+  def n_problems (self) :
+    return len(self._issues)
+
+  def _show_impl (self, out) :
+    out.show_header("Summary of possible issues")
+    if (self.n_problems == 0) :
+      out.show("""\
+No obvious problems were found with this dataset.  However, we recommend that
+you inspect the individual results closely, as it is difficult to automatically
+detect all issues.""")
+    else :
+      if hasattr(out, "show_issues") : # XXX GUI hack
+        out.show_issues(self._issues)
+      else :
+        for severity, message, linkto in self._issues :
+          if (severity > 1) :
+            out.warn(message)
+          else :
+            out.show(wordwrap(message, max_chars=78))
+      out.show("""
+Please inspect all individual results closely, as it is difficlut to
+automatically detect all issues.""")
 
 def check_for_pathological_input_data (miller_array) :
   acentrics = miller_array.select_acentric()

@@ -225,3 +225,6 @@ class xtriage_analysis (object) :
 
   def _show_impl (self, out) :
     raise NotImplementedError()
+
+  def summarize_issues (self) :
+    return []

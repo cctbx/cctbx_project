@@ -1,4 +1,6 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
+# LIBTBX_SET_DISPATCHER_NAME wxtbx.xtriage
+# LIBTBX_SET_DISPATCHER_NAME mmtbx.xtriage_gui
 
 from __future__ import division
 import wxtbx.xtriage
