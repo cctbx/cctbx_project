@@ -368,7 +368,7 @@ def is_linked_basepairs(atom1, atom2):
     vn = v1p.cross(v2p)
     vl = flex.vec3_double([(atom2.xyz)]) - flex.vec3_double([(atom1.xyz)])
     cos_phi = vn.dot(vl)/vn.norm()/vl.norm()
-    print "cos_phi:", cos_phi[0], "phi:", math.acos(cos_phi[0])*360/math.pi, abs(cos_phi[0]) < 0.55
+    #print "cos_phi:", cos_phi[0], "phi:", math.acos(cos_phi[0])*360/math.pi, abs(cos_phi[0]) < 0.55
     # we have cosine between normal to plane group and link, and want this angle
     # to be around 90 degrees
     return abs(cos_phi[0]) < 0.55
