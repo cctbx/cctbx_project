@@ -910,12 +910,19 @@ class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
  of weak reflections with respect to anisotropy.""")
 
   def summarize_issues (self) :
-    b_cart_min = min(self.b_cart[0:3])
-    b_cart_range = max(self.b_cart[0:3]) - b_cart_min
-    if (b_cart_range > 2*b_cart_min) :
-      return [(1, "The data show significant anisotropy.",
+    b_cart_mean = sum(self.b_cart[0:3]) / 3
+    b_cart_range = max(self.b_cart[0:3]) - min(self.b_cart[0:3])
+    aniso_ratio = b_cart_range / b_cart_mean
+    # Using VTF cutoffs (from Read et al. 2011)
+    if (aniso_ratio >= 1) and (b_cart_mean > 20) :
+      return [(2, "The data show severe anisotropy.",
         "Maximum likelihood anisotropic Wilson scaling")]
-    return []
+    elif (aniso_ratio >= 0.5) and (b_cart_mean > 20) :
+      return [(1, "The data are moderately anisotropic.",
+        "Maximum likelihood anisotropic Wilson scaling")]
+    else :
+      return [(0, "The data are not significantly anisotropic.",
+        "Maximum likelihood anisotropic Wilson scaling")]
 
 class kernel_normalisation(object):
   def __init__(self,
