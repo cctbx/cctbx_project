@@ -20,7 +20,7 @@ class ChoiceBook (wx.Panel) :
     szr.Add(self._chooser, 0, wx.ALL|wx.ALIGN_CENTER, 5)
     self._page_sizer = wx.BoxSizer(wx.VERTICAL)
     szr.Add(self._page_sizer, 1, wx.EXPAND)
-    self.Bind(wx.EVT_SHOW, self.OnShow)
+    self.Bind(wx.EVT_SHOW, self.OnShow, self)
     self.Bind(wx.EVT_CHOICE, self.OnChoose, self._chooser)
 
   def AddPage (self, page, label) :
@@ -57,7 +57,17 @@ class ChoiceBook (wx.Panel) :
     if hasattr(self._current_page, "SetupScrolling") : # scrolledpanel hack
       self._current_page.SetupScrolling(scrollToTop=False)
     self._current_page.Show()
+    self._chooser.SetSelection(i_page)
     self.Layout()
+
+  def SetSelection (self, i_page) :
+    self.SetPage(i_page)
+
+  def GetPageIndex (self, page) :
+    for i_page, other in enumerate(self._pages) :
+      if (other is page) :
+        return i_page
+    return -1
 
   def GetPageCount (self) :
     return len(self._pages)
