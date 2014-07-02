@@ -1350,12 +1350,14 @@ class manager(object):
       cdl_restraints     = cdl_restraints,
       )
 
-  def show_geometry_statistics(self, ignore_hd, message = "", out = None):
+  def show_geometry_statistics(self, ignore_hd, message = "", out = None,
+      molprobity_scores=False):
     if(self.restraints_manager is None): return None
     global time_model_show
     if(out is None): out = self.log
     timer = user_plus_sys_time()
-    result = self.geometry_statistics(ignore_hd = ignore_hd)
+    result = self.geometry_statistics(ignore_hd = ignore_hd, 
+        molprobity_scores=molprobity_scores)
     result.show(message = message, out = out)
     time_model_show += timer.elapsed()
     return result
