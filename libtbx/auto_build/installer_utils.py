@@ -171,3 +171,21 @@ def regenerate_relative_symlinks (dir_name, log=sys.stdout) :
       print >> log, "  creating symlink to %s" % new_path
       os.remove(file_name)
       os.symlink(new_path, file_name)
+
+def find_and_delete_files (dir_name, file_name=None, file_ext=None) :
+  deleted = []
+  for dirname, dirnames, filenames in os.walk(dir_name) :
+    for dn in dirnames :
+      if (dn == file_name) :
+        full_path = op.join(dirname, dn)
+        shutil.rmtree(full_path)
+        deleted.append(full_path)
+    for fn in filenames :
+      full_path = op.join(dirname, fn)
+      if (fn == file_name) :
+        os.remove(full_path)
+        deleted.append(full_path)
+      elif (file_ext is not None) and fn.endswith(file_ext) :
+        os.remoe(full_path)
+        deleted.append(full_path)
+  return deleted

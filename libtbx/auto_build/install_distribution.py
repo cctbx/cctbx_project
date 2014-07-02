@@ -16,21 +16,22 @@ INSTALLER_DIR/lib/libtbx/   # complete libtbx distribution
 INSTALLER_DIR/bundles/      # compressed binary distribution
 INSTALLER_DIR/source/       # source tarballs
 INSTALLER_DIR/dependencies  # third-party software
-INSTALLER_DIR/base          # bas
 
 The last four directories contain the actual distribution; depending on whether
 the installer is source or binary, they may not all be present.  The 'bundles'
 directory will have one or more tar.gz files containing all compiled files
 (and many Python modules).  The 'sources' directory will contain a set of
 tar.gz files for the distributed modules, one of which will be a CCTBX source
-bundle (plus various add-ons like ccp4io, cbflib, etc.).  The 'base' directory
-contains non-compiled packages, and 'dependencies' is for third-party packages
-such as Python that need to be compiled for source installation.
+bundle (plus various add-ons like ccp4io, cbflib, etc.).  'dependencies' is for
+third-party packages such as Python that need to be compiled for source
+installation.
 
 In addition to the required contents, the installer may also contain files
 named README, LICENSE, etc.; these will automatically be propagated to the
 installed package.  Information describing the version may also be provided
-but the implementation of this is left up to each product.
+but the implementation of this is left up to each product.  Installers may also
+have additional directories for non-compiled packages such as geometry
+restraints or documentation.
 
 To implement an installer for distribution, an install script should be written
 along these lines:
@@ -552,35 +553,7 @@ class installer (object) :
       epilogue=epilogue,
       out=out)
     assert op.isfile(dispatcher)
-    # csh/tcsh environment setup file
-    print >> out, "generating %s environment setup scripts:" % \
-      self.product_name
-    print >> out, "  csh: %s/%s_env" % (self.dest_dir, self.dest_dir_prefix)
-    env_csh = open(op.join(self.dest_dir, "%s_env" % self.dest_dir_prefix), "w")
-    env_csh.write("#!/bin/csh -f\n")
-    env_csh.write("#\n")
-    env_csh.write("setenv PHENIX \"%s\"\n" % self.dest_dir)
-    env_csh.write("setenv PHENIX_VERSION %s\n" % self.version)
-    env_csh_template = open(op.join(installer_dir, "bin",
-      "phenix_env_stub.csh"))
-    for line in env_csh_template.read().splitlines() :
-      if (line[0:4] != "#XXX") :
-        env_csh.write(line + "\n")
-    env_csh.close()
-    # phenix_env.sh
-    print >> out, "  sh:  %s/phenix_env.sh" % self.dest_dir
-    env_sh = open(op.join(self.dest_dir, "phenix_env.sh"), "w")
-    env_sh.write("#!/bin/sh\n")
-    env_sh.write("#\n")
-    env_sh.write("export PHENIX=\"%s\"\n" % self.dest_dir)
-    env_sh.write("export PHENIX_VERSION=%s\n" % self.base_version)
-    env_sh.write("export PHENIX_RELEASE_TAG=%s\n" % self.release_tag)
-    env_sh_template = open(op.join(installer_dir, "bin",
-      "phenix_env_stub.sh"))
-    for line in env_sh_template.read().splitlines() :
-      if (line[0:4] != "#XXX") :
-        env_sh.write(line + "\n")
-    env_sh.close()
+    self.write_environment_files(out)
     # run configure.py to generate dispatchers
     print >> out, "configuring %s components..." % self.product_name
     os.chdir(self.build_dir)
@@ -669,7 +642,7 @@ class installer (object) :
     env_sh.write("#!/bin/sh\n")
     env_sh.write("#\n")
     env_sh.write("export %s=\"%s\"\n" % (self.product_name, self.dest_dir))
-    env_sh.write("export %s_VERSION=%s\n" % self.base_version)
+    env_sh.write("export %s_VERSION=%s\n" % self.version)
     env_csh.write(". $%s/build/%s/setpaths.sh\n" (self.product_name,
       self.mtype))
     env_sh.close()
