@@ -177,7 +177,7 @@ class ncs_minimization_test(object):
         target_and_grads_object      = target_and_grads_object,
         xray_structure               = self.fmodel.xray_structure,
         ncs_restraints_group_list    = self.ncs_restraints_group_list,
-        refine_selection           = self.refine_selection,
+        refine_selection             = self.refine_selection,
         finite_grad_differences_test = self.finite_grad_differences_test,
         max_iterations               = 60,
         refine_sites                 = self.sites,

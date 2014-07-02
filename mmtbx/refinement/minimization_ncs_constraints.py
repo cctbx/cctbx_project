@@ -22,9 +22,9 @@ def grads_asu_to_one_ncs(
   """
   # TODO: write a test for this function
   for nrg in ncs_restraints_group_list:
-    ncs_selection = nrg.master_ncs_iselection
+    ncs_selection = nrg.master_iselection
     for ncs_copy in nrg.copies:
-      asu_selection = ncs_copy.ncs_copy_iselection
+      asu_selection = ncs_copy.copy_iselection
       g = grad.select(asu_selection)
       if(refine_sites):
         # apply inverse transformation
@@ -61,9 +61,9 @@ def grads_one_ncs_to_asu(ncs_restraints_group_list,
   g.set_selected(extended_ncs_selection ,ncs_grad)
   # update newly created flex.vec3 with NCS copies
   for nrg in ncs_restraints_group_list:
-    ncs_selection = nrg.master_ncs_iselection
+    ncs_selection = nrg.master_iselection
     for ncs_copy in nrg.copies:
-      asu_selection = ncs_copy.ncs_copy_iselection
+      asu_selection = ncs_copy.copy_iselection
       ncs_grad_portion = ncs_grad.select(ncs_selection)
       g.set_selected(asu_selection,ncs_grad_portion)
   return g.as_double()
@@ -263,9 +263,9 @@ class target_function_and_grads_reciprocal_space(object):
       if(not self.refine_transformations):
         g = grads_asu_to_one_ncs(
           ncs_restraints_group_list = self.ncs_restraints_group_list,
-          extended_ncs_selection     = self.extended_ncs_selection,
-          grad                 = g,
-          refine_sites         = self.refine_sites).as_double()
+          extended_ncs_selection    = self.extended_ncs_selection,
+          grad                      = g,
+          refine_sites              = self.refine_sites).as_double()
     return t, g
 
   def finalize(self):
