@@ -4,6 +4,7 @@ Classes for displaying Xtriage results using wxPython (and matplotlib).
 """
 
 from __future__ import division
+from wxtbx import metallicbutton
 import wxtbx.misc_dialogs
 import wxtbx.path_dialogs
 import wxtbx.windows
@@ -33,6 +34,7 @@ class wx_output (wxtbx.windows.ChoiceBook,
     super(wx_output, self).__init__(*args, **kwds)
     self._current_panel = None
     self._current_sizer = None
+    self._sections = {}
     self._graphs = []
     self._tables = []
     self._in_box = False
@@ -77,6 +79,7 @@ class wx_output (wxtbx.windows.ChoiceBook,
     box_szr = wx.StaticBoxSizer(box, wx.VERTICAL)
     self._current_sizer.Add(box_szr, 0, wx.ALL|wx.EXPAND, 5)
     self._current_sizer = box_szr
+    self._sections[title] = box
     self._in_box = True
 
   def show_text (self, text) :
@@ -240,39 +243,62 @@ class wx_output (wxtbx.windows.ChoiceBook,
     self.Bind(wx.EVT_BUTTON, OnChangeSymmetry, btn)
 
   def show_issues (self, issues) :
-    grid = wx.FlexGridSizer(rows=len(issues), cols=2, vgap=4)
+    """
+    Display a list of possible issues with traffic light-like symbols
+    indicating severity.  Each item is a button that links to the appropriate
+    results section (if defined).
+    """
+    grid = wx.FlexGridSizer(rows=len(issues), cols=1, vgap=4)
     self._current_sizer.Add(grid, 0, wx.ALL, 10)
     for severity, message, linkto in issues :
-      ctrl = LightControl(parent=self._current_panel,
-        size=(32,32),
-        style=wx.SIMPLE_BORDER).SetLevel(severity)
-      grid.Add(ctrl, 0, wx.ALL, 0)
-      txt = wx.StaticText(parent=self._current_panel,
-        label=message)
-      txt.Wrap(TEXT_WIDTH - 60)
-      grid.Add(txt, 0, wx.ALL, 5)
+      ctrl = DrawStatusLightControl(parent=self._current_panel,
+        #size=(32,32),
+        message=message,
+        name=linkto,
+        level=severity)#style=wx.SIMPLE_BORDER).SetLevel(severity)
+      self.Bind(wx.EVT_BUTTON, self.OnShowSection, ctrl)
+      grid.Add(ctrl, 0, wx.ALL|wx.EXPAND, 0)
 
-class LightControl (wx.PyControl) :
-  def __init__ (self, **kwds) :
-    super(LightControl, self).__init__(**kwds)
-    self._level = 0
-    self.Bind(wx.EVT_PAINT, self.OnPaint)
+  def OnShowSection (self, evt) :
+    """
+    Change the page selection in response to clicking on one of the issue
+    summaries, and scroll the corresponding results section into view.
+    """
+    section_name = evt.GetEventObject().GetName()
+    if (section_name is None) or (section_name == "button") : return
+    section = self._sections.get(section_name)
+    assert (section is not None), section_name
+    page = section.GetParent()
+    self.SetPage(self.GetPageIndex(page))
+    page.ScrollChildIntoView(section)
 
-  def SetLevel (self, level) :
-    self._level = level
-    return self
-
-  def OnPaint (self, evt) :
-    dc = wx.AutoBufferedPaintDCFactory(self)
-    gc = wx.GraphicsContext.Create(dc)
-    w, h = self.GetSize()
-    if (self._level == 0) :
-      gc.SetBrush(wx.Brush((0,255,0)))
-    elif (self._level == 1) :
-      gc.SetBrush(wx.Brush((255,255,0)))
-    else :
-      gc.SetBrush(wx.Brush((255,0,0)))
-    gc.DrawEllipse(2, 2, w - 8, h - 8)
+def DrawStatusLightControl (parent, message, name, level) :
+  """
+  Create a control (based on wxtbx.metallicbutton) with a traffic light-like
+  symbol indicating the severity of a message, with the actual message next to
+  it.
+  """
+  bmp = wx.EmptyBitmap(32, 32)
+  dc = wx.MemoryDC()
+  dc.SelectObject(bmp)
+  dc.SetBackground(wx.TRANSPARENT_BRUSH)
+  gc = wx.GraphicsContext.Create(dc)
+  dc.Clear()
+  if (level == 0) :
+    gc.SetBrush(wx.Brush((0,255,0)))
+  elif (level == 1) :
+    gc.SetBrush(wx.Brush((255,255,0)))
+  else :
+    gc.SetBrush(wx.Brush((255,0,0)))
+  gc.DrawEllipse(4, 4, 28, 28)
+  btn = metallicbutton.MetallicButton(
+    parent=parent,
+    label=message,
+    bmp=bmp)
+  btn.SetFont(parent.GetFont())
+  if (name is not None) :
+    btn.SetName(name)
+  return btn
 
 class XtriageFrame (wx.Frame) :
   """
