@@ -399,6 +399,13 @@ class manager(object):
     if (self.generic_restraints_manager is not None) :
       generic_restraints_manager = self.generic_restraints_manager.select(
         n_seq, iselection)
+    selected_hbonds_in_list=[]
+    if self.hbonds_in_bond_list is not None:
+      for pair in self.hbonds_in_bond_list:
+        if pair[0] in iselection and pair[1] in iselection:
+          selected_hbonds_in_list.append(pair)
+      if len(selected_hbonds_in_list) == 0:
+        selected_hbonds_in_list = None
     return manager(
       crystal_symmetry=self.crystal_symmetry,
       model_indices=selected_model_indices,
@@ -423,7 +430,7 @@ class manager(object):
       planarity_proxies=selected_planarity_proxies,
       parallelity_proxies=selected_parallelity_proxies,
       plain_pairs_radius=self.plain_pairs_radius,
-      hbonds_in_bond_list=self.hbonds_in_bond_list)
+      hbonds_in_bond_list=selected_hbonds_in_list)
 
   def discard_symmetry(self, new_unit_cell):
     assert self.site_symmetry_table is not None #XXX lazy

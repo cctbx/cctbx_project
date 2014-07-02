@@ -84,21 +84,22 @@ namespace cctbx { namespace geometry_restraints {
     {
       af::const_ref<std::size_t> i_seqs_cr = i_seqs.const_ref();
       af::const_ref<std::size_t> j_seqs_cr = j_seqs.const_ref();
-
       i_seqs_type i_seqs_result, j_seqs_result;
       i_seqs_result.reserve(i_seqs_cr.size());
       j_seqs_result.reserve(j_seqs_cr.size());
-
+      i_seqs_type i_perm = af::sort_permutation(i_seqs_cr);
+      i_seqs_type j_perm = af::sort_permutation(j_seqs_cr);
+      af::const_ref<std::size_t> i_perm_cr = i_perm.const_ref();
+      af::const_ref<std::size_t> j_perm_cr = j_perm.const_ref();
       for(std::size_t i=0;i<i_seqs_cr.size();i++) {
-        i_seqs_result.push_back(i_seqs_cr[i]);
+        i_seqs_result.push_back(i_seqs_cr[i_perm_cr[i]]);
       }
-
       for(std::size_t j=0;j<j_seqs_cr.size();j++) {
-        j_seqs_result.push_back(j_seqs_cr[j]);
+        j_seqs_result.push_back(j_seqs_cr[j_perm_cr[j]]);
       }
 
       // Need to figure out what's going on here with sym_ops
-
+      // They are not used yet.
       if ( sym_ops.get() != 0 ) {
         af::const_ref<sgtbx::rt_mx> sym_ops_cr = sym_ops.get()->const_ref();
         af::shared<sgtbx::rt_mx> sym_ops_result;
@@ -480,12 +481,16 @@ namespace cctbx { namespace geometry_restraints {
         dF__dN_1 = derive_dFparallelity__dN(dFparallelity__dn_1, i_N);
         dF__dN_2 = derive_dFparallelity__dN(dFparallelity__dn_2, j_N);
         scitbx::vec3<double> i_dF__dt_1, i_dF__dt_2, j_dF__dt_1, j_dF__dt_2;
-        derive_dFparallelity__dt(i_dF__dt_1, i_dF__dt_2, dF__dN_1, i_t_1, i_t_2);
-        derive_dFparallelity__dt(j_dF__dt_1, j_dF__dt_2, dF__dN_2, j_t_1, j_t_2);
+        derive_dFparallelity__dt(
+            i_dF__dt_1, i_dF__dt_2, dF__dN_1, i_t_1, i_t_2);
+        derive_dFparallelity__dt(
+            j_dF__dt_1, j_dF__dt_2, dF__dN_2, j_t_1, j_t_2);
         scitbx::mat3<double> i_dF__dS, j_dF__dS;
         double i_dF__dlambda_plus, j_dF__dlambda_plus;
-        i_dF__dlambda_plus = derive_dF__dS__dlambda_plus(i_dF__dS, i_dF__dt_1, i_dF__dt_2, i_variant);
-        j_dF__dlambda_plus = derive_dF__dS__dlambda_plus(j_dF__dS, j_dF__dt_1, j_dF__dt_2, j_variant);
+        i_dF__dlambda_plus = derive_dF__dS__dlambda_plus(
+                                  i_dF__dS, i_dF__dt_1, i_dF__dt_2, i_variant);
+        j_dF__dlambda_plus = derive_dF__dS__dlambda_plus(
+                                  j_dF__dS, j_dF__dt_1, j_dF__dt_2, j_variant);
         double i_dF__da_S = -i_dF__dlambda_plus/3.0;
         double j_dF__da_S = -j_dF__dlambda_plus/3.0;
         double i_dF__dg_S = i_dF__dlambda_plus*pow(3*i_g_S,-0.5)*i_tau_S;
@@ -495,8 +500,10 @@ namespace cctbx { namespace geometry_restraints {
         double i_dF_dksi_S = i_dF__dtau_S/(12.0*i_tau_S*i_tau_S-3.0);
         double j_dF_dksi_S = j_dF__dtau_S/(12.0*j_tau_S*j_tau_S-3.0);
         //p.21
-        double i_DF__Dg_S = i_dF_dksi_S*i_h_S/4.0*pow(i_g_S/3.0,-2.5)+i_dF__dg_S;
-        double j_DF__Dg_S = j_dF_dksi_S*j_h_S/4.0*pow(j_g_S/3.0,-2.5)+j_dF__dg_S;
+        double i_DF__Dg_S = i_dF_dksi_S*i_h_S/4.0*pow(i_g_S/3.0,-2.5)+
+                            i_dF__dg_S;
+        double j_DF__Dg_S = j_dF_dksi_S*j_h_S/4.0*pow(j_g_S/3.0,-2.5)+
+                            j_dF__dg_S;
         double i_dF__dh_S = -i_dF_dksi_S/2.0*pow(i_g_S/3.0, -1.5);
         double j_dF__dh_S = -j_dF_dksi_S/2.0*pow(j_g_S/3.0, -1.5);
         //p.22
@@ -504,17 +511,23 @@ namespace cctbx { namespace geometry_restraints {
         double j_DF__Dc_S =  j_dF__dh_S;
         double i_DF__Db_S = -i_dF__dh_S/3.0*i_a_S - i_DF__Dg_S;
         double j_DF__Db_S = -j_dF__dh_S/3.0*j_a_S - j_DF__Dg_S;
-        double i_DF__Da_S = i_dF__dh_S*(2.0/9.0*i_a_S*i_a_S-i_b_S/3.0) + 2.0/3.0*i_a_S*i_DF__Dg_S + i_dF__da_S;
-        double j_DF__Da_S = j_dF__dh_S*(2.0/9.0*j_a_S*j_a_S-j_b_S/3.0) + 2.0/3.0*j_a_S*j_DF__Dg_S + j_dF__da_S;
+        double i_DF__Da_S = i_dF__dh_S*(2.0/9.0*i_a_S*i_a_S-i_b_S/3.0) +
+                                2.0/3.0*i_a_S*i_DF__Dg_S + i_dF__da_S;
+        double j_DF__Da_S = j_dF__dh_S*(2.0/9.0*j_a_S*j_a_S-j_b_S/3.0) +
+                                2.0/3.0*j_a_S*j_DF__Dg_S + j_dF__da_S;
         //p.23
         scitbx::mat3<double> i_DF__DS, j_DF__DS;
-        i_DF__DS = derive_DF__DS(i_DF__Da_S, i_DF__Db_S, i_DF__Dc_S, i_dF__dS, i_S_);
-        j_DF__DS = derive_DF__DS(j_DF__Da_S, j_DF__Db_S, j_DF__Dc_S, j_dF__dS, j_S_);
+        i_DF__DS = derive_DF__DS(
+            i_DF__Da_S, i_DF__Db_S, i_DF__Dc_S, i_dF__dS, i_S_);
+        j_DF__DS = derive_DF__DS(
+            j_DF__Da_S, j_DF__Db_S, j_DF__Dc_S, j_dF__dS, j_S_);
         af::shared<scitbx::vec3<double> > i_dF__dcentered, j_dF__dcentered;
         i_dF__dcentered.reserve(i_sites_ref.size());
         j_dF__dcentered.reserve(j_sites_ref.size());
-        derive_dF__dcentered(i_dF__dcentered, i_DF__DS, i_sites_ref, i_center_of_mass_);
-        derive_dF__dcentered(j_dF__dcentered, j_DF__DS, j_sites_ref, j_center_of_mass_);
+        derive_dF__dcentered(
+            i_dF__dcentered, i_DF__DS, i_sites_ref, i_center_of_mass_);
+        derive_dF__dcentered(
+            j_dF__dcentered, j_DF__DS, j_sites_ref, j_center_of_mass_);
         i_dF__doriginal.reserve(i_sites_ref.size());
         j_dF__doriginal.reserve(j_sites_ref.size());
         derive_dF__doriginal(i_dF__doriginal, i_dF__dcentered);
