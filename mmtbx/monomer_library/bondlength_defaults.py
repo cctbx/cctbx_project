@@ -3353,7 +3353,8 @@ def get_basepair_target_distance(atom1, atom2, which_basepair):
   for link in basepairs_lengths[which_basepair]:
     if (an1, an2) == link[:2] or (an2, an1) == link[:2]:
       return link[2:]
-  return None
+  return [2.90, 0.2, 0.0] # default - weak hbond. It returns when basepair
+                        # is so distorted that wrong atoms seems to be linked
 
 def run(atom1, atom2, return_non_protein=True):
   from linking_utils import ad_hoc_single_metal_residue_element_types

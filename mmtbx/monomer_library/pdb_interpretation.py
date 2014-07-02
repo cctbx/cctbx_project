@@ -262,7 +262,7 @@ master_params_str = """\
     .type = bool
     .short_caption = Determine consecutive DNA/RNA basepairs and restraint \
       them to be parallel
-  weight_parallel_dna_rna = 0.05
+  weight_parallel_dna_rna = 0.2
     .type=float
     .short_caption = weight for parallelity DNA/RNA restraints
   max_reasonable_bond_distance = 50.0
@@ -4399,6 +4399,18 @@ class build_all_chain_proxies(linking_mixins):
         )
     if len(hbonds_in_bond_list) == 0:
       hbonds_in_bond_list = None
+    else:
+      # ouputting bonds for debugging purposes
+      if False:
+        dashes = open('dashes.pml', 'w')
+        for pair in hbonds_in_bond_list:
+          s1 = self.pdb_atoms[pair[0]].id_str()
+          s2 = self.pdb_atoms[pair[1]].id_str()
+          ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (s1[14:15],
+             s1[16:19], s1[5:8], s2[14:15], s2[16:19], s2[5:8])
+          dashes.write(ps)
+        dashes.close()
+
     #
     #if (hydrogen_bonds is not None) :
     #  for proxy in hydrogen_bonds.bond_sym_proxies :
