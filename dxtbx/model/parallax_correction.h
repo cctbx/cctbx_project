@@ -12,12 +12,14 @@
 #define DXTBX_MODEL_PARALLAX_CORRECTION_H
 
 #include <scitbx/vec2.h>
+#include <scitbx/vec3.h>
 #include <cmath>
 
 namespace dxtbx { namespace model {
 
   using std::sqrt;
   using scitbx::vec2;
+  using scitbx::vec3;
 
   /**
    * Function to perform a parallax correction on a given coordinate. Find the
@@ -62,6 +64,33 @@ namespace dxtbx { namespace model {
     return xy - la * xyp / sqrt(d * d + xyp.length_sq());
   }
 
+  /**
+   * Function to perform a parallax correction on a given coordinate correctly,
+   * given the sensor thickness and so on. X corresponds to the fast direction,
+   * Y to the slow direction in input & output. Returns corrected mm position.
+   * @param mu Linear attenuation coefficient (mm^-1)
+   * @param t0 Sensor thickness (mm)
+   * @param fast Detector fast direction
+   * @param slow Detector slow direction
+   * @param s1 Direction of incoming ray
+   */
+  inline
+  vec2<double> parallax_correction2(double mu, double t0,
+                                    vec2<double> xy,
+                                    vec3<double> fast,
+                                    vec3<double> slow,
+                                    vec3<double> s1) {
+    vec3<double> normal;
+    vec2<double> c_xy;
+    double cos_t, o;
+    s1 = s1.normalize();
+    normal = fast.cross(slow);
+    cos_t = s1 * normal;
+    o = ((1.0 / mu) - (t0 / cos_t + 1.0 / mu)) * exp(- mu * t0 / cos_t);
+    c_xy[0] = xy[0] + (s1 * fast) * o;
+    c_xy[1] = xy[1] + (s1 * slow) * o;
+    return c_xy;
+  }
 
 }} // namespace dxtbx::model
 
