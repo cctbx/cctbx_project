@@ -116,9 +116,32 @@ def run(argv=None):
     if command_line.options.verbose:
       print "Converting %s to %s..."%(imgpath, destpath)
 
-    img = dxtbx.load(imgpath)
+    try:
+      img = dxtbx.load(imgpath)
+    except IOError:
+      img = None
+      pass
 
-    detector = img.get_detector()
+    if img is None:
+      import numpy as np
+      try:
+        raw_data = np.loadtxt(imgpath)
+
+        from scitbx.array_family import flex
+        raw_data = flex.double(raw_data.astype(np.double))
+      except ValueError:
+        raise Usage("Couldn't load %s, no supported readers"%imgpath)
+
+      detector = None
+      beam = None
+      scan = None
+    else:
+      raw_data = img.get_raw_data()
+      detector = img.get_detector()
+      beam = img.get_beam()
+      scan = img.get_scan()
+
+
     if detector is None:
       if command_line.options.distance is None:
         raise Usage("Can't get distance from image. Override with -d")
@@ -146,8 +169,6 @@ def run(argv=None):
       else:
         overload = command_line.options.overload
 
-
-    beam = img.get_beam()
     if beam is None:
       if command_line.options.wavelength is None:
         raise Usage("Can't get wavelength from image. Override with -w")
@@ -160,11 +181,16 @@ def run(argv=None):
 
     if beam is None and detector is None:
       if command_line.options.beam_center_x is None:
-        raise Usage("Can't get beam x position from image. Override with -x")
+        print "Can't get beam x position from image. Using image center. Override with -x"
+        beam_x = raw_data.focus()[0] * pixel_size
+      else:
+        beam_x = command_line.options.beam_center_x * pixel_size
+
       if command_line.options.beam_center_y is None:
-        raise Usage("Can't get beam y position from image. Override with -y")
-      beam_x = command_line.options.beam_center_x * pixel_size
-      beam_y = command_line.options.beam_center_y * pixel_size
+        print "Can't get beam y position from image. Using image center. Override with -y"
+        beam_y = raw_data.focus()[1] * pixel_size
+      else:
+        beam_y = command_line.options.beam_center_y * pixel_size
     else:
       if command_line.options.beam_center_x is None:
         beam_x = detector.get_beam_centre(beam.get_s0())[0]
@@ -176,14 +202,13 @@ def run(argv=None):
       else:
         beam_y = command_line.options.beam_center_y * pixel_size
 
-    scan = img.get_scan()
     if scan is None:
       timestamp = None
     else:
       msec, sec = math.modf(scan.get_epochs()[0])
       timestamp = evt_timestamp((sec,msec))
 
-    data = dpack(data=img.get_raw_data(),
+    data = dpack(data=raw_data,
                  distance=distance,
                  pixel_size=pixel_size,
                  wavelength=wavelength,
