@@ -22,6 +22,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       arg("d"), arg("la"), arg("xy0"), arg("xy")));
     def("parallax_correction_inv", &parallax_correction_inv, (
       arg("d"), arg("la"), arg("xy0"), arg("xy")));
+    def("parallax_correction2", &parallax_correction2, (
+      arg("mu"), arg("t0"), arg("xy"), arg("fast"), arg("slow"), arg("s1")));
   }
 
 }}} // namespace = dxtbx::model::boost_python
