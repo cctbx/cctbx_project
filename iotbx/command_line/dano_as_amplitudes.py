@@ -49,7 +49,7 @@ def run (args) :
     raise Sorry("Must provide anomalous data.")
   if data.is_xray_intensity_array() :
     data = data.f_sq_as_f()
-  dano = data.anomalous_differences()
+  dano = abs(data.anomalous_differences())
   dano.set_observation_type_xray_amplitude()
   dano.as_mtz_dataset(column_root_label="F").mtz_object().write(params.mtz_out)
   print "Wrote DANO to %s" % params.mtz_out
