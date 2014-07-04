@@ -545,7 +545,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     self.log_file_name = log_file_name
     assert (miller_obs is not None)
     if miller_obs.is_unmerged_intensity_array() :
-      unmerged_obs = self.miller_obs.deep_copy()
+      unmerged_obs = miller_obs.deep_copy()
     def process_input_array (miller_array) :
       if (miller_array is None) : return None
       info = miller_array.info()
