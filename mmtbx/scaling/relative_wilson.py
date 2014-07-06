@@ -227,6 +227,18 @@ class summary (mmtbx.scaling.xtriage_analysis) :
     sel_r = rr.select(flagged)
     sel_i = ii.select(flagged)
     out.show_sub_header("Relative Wilson plot")
+    out.show_text("""\
+The relative Wilson plot compares the mean intensity of the observed data with
+the mean intensity computed from the model, as a function of resolution.  This
+curve is expected to fall off at low resolution if no contribution for bulk
+solvent is provided for the calculated intensities, because the presence of
+bulk solvent reduces the observed intensities at low resolution by reducing
+the contrast.  At high resolution, the curve should be a straight line with a
+slope that reflects the difference in overall B-factor between the model and
+the data.  Compared to the normal Wilson plot, the relative Wilson plot is
+more linear because the influence of favored distances between atoms, caused
+by bonding and secondary structure, is cancelled out.
+""")
     out.show_plot(self.table)
     if (self.all_bad_z_scores) :
       out.warn("""\

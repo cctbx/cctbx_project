@@ -1042,7 +1042,7 @@ class wilson_scaling (scaling.xtriage_analysis) :
                     "<I> via binning", "<I> expected"],
       graph_names=["Intensity plots"],
       graph_labels=[("Resolution", "<I>")],
-      graph_columns=[[0,1,2]],
+      graph_columns=[[0,1,2,3]],
       data=[list(self.d_star_sq), list(self.mean_I_normalisation),
             list(self.mean_I_obs_data), list(self.mean_I_obs_theory)],
       x_is_inverse_d_min=True)
