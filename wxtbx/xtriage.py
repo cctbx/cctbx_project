@@ -293,7 +293,9 @@ def DrawStatusLightControl (parent, message, name, level) :
   gc.DrawEllipse(4, 4, 28, 28)
   btn = metallicbutton.MetallicButton(
     parent=parent,
-    label=message,
+    label2=message,
+    size=(800,-1),
+    caption_size=12,
     bmp=bmp)
   btn.SetFont(parent.GetFont())
   if (name is not None) :
