@@ -2210,6 +2210,7 @@ class twin_analyses (scaling.xtriage_analysis):
                verbose = 1,
                miller_calc=None,
                additional_parameters=None):
+    assert miller_array.is_unique_set_under_symmetry()
     if out is None:
       out = sys.stdout
     self.max_delta = 3.0

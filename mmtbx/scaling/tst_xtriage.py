@@ -5,6 +5,7 @@ from mmtbx.scaling import xtriage
 from mmtbx.command_line import fmodel
 from iotbx import file_reader
 from cctbx import crystal
+from cctbx import miller
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected, show_diff
 from libtbx.development import show_pickle_sizes
@@ -231,6 +232,16 @@ Centric reflections:
   reso.show(out=out)
   assert ("max. difference between axes = 0.756" in out.getvalue())
   assert ("elliptically truncated" in out.getvalue())
+  # make sure the elliptical truncation detection still works in higher space
+  # groups - we only need a miller.set for this
+  miller_set = miller.build_set(
+    crystal_symmetry=crystal.symmetry((20,20,20,90,90,90), "P422"),
+    d_min=1.5,
+    anomalous_flag=False)
+  reso = ds.analyze_resolution_limits(miller_set)
+  out = StringIO()
+  reso.show(out=out)
+  assert ("Resolution limits are within expected tolerances" in out.getvalue())
   # log binning
   out = StringIO()
   log_binned = ds.log_binned_completeness(f_obs_3)

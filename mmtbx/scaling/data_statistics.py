@@ -149,10 +149,13 @@ class analyze_resolution_limits (scaling.xtriage_analysis) :
   anisotropy automatically, and users tend to apply it blindly (and even
   deposit the modified data).
   """
-  def __init__ (self, miller_array, d_min_max_delta=0.25) :
-    self.d_min_overall = miller_array.d_min()
+  def __init__ (self, miller_set, d_min_max_delta=0.25) :
+    # XXX very important - we need to look at all of reciprocal space, not
+    # just the ASU, otherwise we get false positives
+    tmp_miller = miller_set.expand_to_p1()
+    self.d_min_overall = tmp_miller.d_min()
     self.d_min_a, self.d_min_b, self.d_min_c = \
-      miller_array.d_min_along_a_b_c_star()
+      tmp_miller.d_min_along_a_b_c_star()
     self.d_min_max_delta = d_min_max_delta
 
   def max_d_min_delta (self) :
