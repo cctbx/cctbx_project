@@ -4,13 +4,13 @@ from __future__ import division
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
 from xfel.cxi.display_spots import run_one_index
-from libtbx.utils import Usage
+from libtbx.utils import Usage, Sorry
 import libtbx.option_parser
 import sys,os
 
 if (__name__ == "__main__"):
   command_line = (libtbx.option_parser.option_parser(
-    usage="%s [-d] [-s] [-n num_procs] [-o output_dir] [-b output_basename] target=targetpath files" % libtbx.env.dispatcher_name,
+    usage="%s [-d] [-s] [-n num_procs] [-o output_dir] [-b output_basename] [-e extension] target=targetpath files" % libtbx.env.dispatcher_name,
     more_help=["Target: the phil file containing further indexing/integration parameters"])
                   .option(None, "--no_display", "-d",
                           action="store_true",
@@ -37,10 +37,21 @@ if (__name__ == "__main__"):
                           default="int_",
                           dest="output_basename",
                           help="String to append to the front of output integration pickles")
+                  .option(None, "--extension", "-e",
+                          type="string",
+                          default=".pickle",
+                          dest="extension",
+                          help="File extension use to filter input files if a directory is given as input")
                   ).process(args=sys.argv[1:])
 
   files = [arg for arg in command_line.args if os.path.isfile(arg)]
-  arguments = [arg for arg in command_line.args if not os.path.isfile(arg)]
+  dirs = [arg for arg in command_line.args if os.path.isdir(arg)]
+  for directory in dirs:
+    for path in os.listdir(directory):
+      if os.path.splitext(path)[1] == command_line.options.extension:
+        files.append(os.path.join(directory, path))
+
+  arguments = [arg for arg in command_line.args if not os.path.isfile(arg) and not os.path.isdir(arg)]
 
   found_it = False
   for arg in arguments:
@@ -57,15 +68,19 @@ if (__name__ == "__main__"):
     display = True
 
   assert command_line.options.num_procs > 0
+  if command_line.options.output_dir is not None and \
+    not os.path.isdir(command_line.options.output_dir):
+    raise Sorry("Output dir %s doesn't exist"%command_line.options.output_dir)
+
   def do_work(item):
     file, arguments, kwargs = item
     try:
       run_one_index(file, *arguments, **({'display':display}))
     except Exception, e:
       if hasattr(e, "classname"):
-        print e.classname, ":",
+        print e.classname, "for %s:"%file,
       else:
-        print "Indexing error:",
+        print "Indexing error for %s:"%file,
       print e
 
   if command_line.options.num_procs == 1:
