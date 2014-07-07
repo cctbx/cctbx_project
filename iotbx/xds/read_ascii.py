@@ -126,7 +126,9 @@ class reader(object):
         wavelength=self.wavelength))
       .set_observation_type_xray_intensity())
     if (merge_equivalents) :
-      array = array.merge_equivalents().array()
+      info = array.info()
+      info.merged = True
+      array = array.merge_equivalents().array().set_info(info)
     return array
 
   def as_miller_arrays(self,
