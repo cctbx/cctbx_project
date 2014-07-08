@@ -98,7 +98,9 @@ class model_scene (object) :
 
   @debug
   def update_bonds (self, bonds) :
-    assert bonds.size() == self.points.size()
+    if (bonds.size() != self.points.size()) :
+      raise RuntimeError("Mismatch in bonds versus points arrays: %d, %d" %
+        (bonds.size(), self.points.size()))
     self.bonds = bonds
 
   @debug
