@@ -888,7 +888,7 @@ def exercise_00():
       force_symmetry = True)
     xray_structure = processed_pdb_file.xray_structure()
     assert xray_structure is not None
-    s = flex.bool(xray_structure.scatterers().size(),flex.size_t(range(40,104)))
+    s = flex.bool(xray_structure.scatterers().size(),flex.size_t(range(40,504)))
     geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = 5.0)

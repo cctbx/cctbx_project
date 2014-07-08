@@ -1,5 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
+#include <scitbx/array_family/selections.h>
+
 #include <scitbx/math/linear_regression.h>
 #include <scitbx/math/linear_correlation.h>
 #include <scitbx/sym_mat3.h>
@@ -504,6 +506,13 @@ namespace {
     linear_correlation_wrappers::wrap();
 
     def("integer_offsets_vs_pointers", integer_offsets_vs_pointers);
+    def("reindexing_array",
+      (af::shared<int>(*)(
+        std::size_t selectee_size,
+        const_ref<int> const&  iselection
+        ))
+      reindexing_array,
+      (arg("selectee_size"), arg("iselection")));
 
     {
       typedef cost_of_m_handle_in_af_shared wt;
