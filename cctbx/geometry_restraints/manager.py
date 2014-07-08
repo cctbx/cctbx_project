@@ -11,6 +11,10 @@ from libtbx import dict_with_default_0
 from libtbx.utils import Sorry
 import sys, math, StringIO
 
+import boost.python
+boost.python.import_ext("scitbx_array_family_flex_ext")
+from scitbx_array_family_flex_ext import reindexing_array
+
 #from mmtbx.geometry_restraints.hbond import get_simple_bonds
 
 class manager(object):
@@ -401,9 +405,11 @@ class manager(object):
         n_seq, iselection)
     selected_hbonds_in_list=[]
     if self.hbonds_in_bond_list is not None:
+      r_a = reindexing_array(n_seq, iselection.as_int())
       for pair in self.hbonds_in_bond_list:
         if pair[0] in iselection and pair[1] in iselection:
-          selected_hbonds_in_list.append(pair)
+          reindexed_pair = (r_a[pair[0]], r_a[pair[1]])
+          selected_hbonds_in_list.append(reindexed_pair)
       if len(selected_hbonds_in_list) == 0:
         selected_hbonds_in_list = None
     return manager(
