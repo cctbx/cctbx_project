@@ -886,13 +886,15 @@ def exercise_00():
       file_name      = None,
       raw_records    = pdb_str_00,
       force_symmetry = True)
+    xray_structure = processed_pdb_file.xray_structure()
+    s = flex.bool(xray_structure.scatterers().size(),flex.size_t(range(40,104)))
     geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = 5.0)
-    xray_structure = processed_pdb_file.xray_structure()
+    geometry = geometry.select(s)
     assert xray_structure is not None
     es = geometry.energies_sites(
-          sites_cart = xray_structure.sites_cart())
+          sites_cart = xray_structure.sites_cart().select(s))
     a = es.angle_deviations()[2]
     b = es.bond_deviations()[2]
     return a, b
@@ -901,11 +903,11 @@ def exercise_00():
   # using custom bonds
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.automatic_linking.link_all=True
+  params.restraint_parallel_dna_rna=True
   a2,b2 = get_ab(params=params)
   #
   assert approx_equal(a1,a2)
   assert approx_equal(b1,b2)
-
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
