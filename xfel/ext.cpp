@@ -586,7 +586,7 @@ scitbx::vec2<int> const& lower_right) {
  * this file.
  */
 #include "merging.cpp"
-#include "cxi/cspad_ana/project.cpp"
+#include "project.cpp"
 
 namespace boost_python { namespace {
 
