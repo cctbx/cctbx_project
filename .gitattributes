@@ -2908,3 +2908,4 @@ xfel/mono_simulation/max_like.py -text
 xfel/mono_simulation/mono_treatment.py -text
 xfel/mono_simulation/parameters.h -text
 xfel/mono_simulation/vector_collection.h -text
+xfel/project.cpp -text
