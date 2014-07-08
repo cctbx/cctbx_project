@@ -576,7 +576,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
           d_max=params.scaling.input.xray_data.low_resolution,
           n_bins=params.scaling.input.parameters.merging.n_bins,
           log=text_out)
-        self.merging_stats.show(out=text_out, header=False)
+        self.merging_stats.show(out=text_out)
         print >> text_out, ""
         print >> text_out, "References:"
         print >> text_out, merging_statistics.citations_str
