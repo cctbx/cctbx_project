@@ -887,12 +887,12 @@ def exercise_00():
       raw_records    = pdb_str_00,
       force_symmetry = True)
     xray_structure = processed_pdb_file.xray_structure()
+    assert xray_structure is not None
     s = flex.bool(xray_structure.scatterers().size(),flex.size_t(range(40,104)))
     geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = 5.0)
     geometry = geometry.select(s)
-    assert xray_structure is not None
     es = geometry.energies_sites(
           sites_cart = xray_structure.sites_cart().select(s))
     a = es.angle_deviations()[2]
