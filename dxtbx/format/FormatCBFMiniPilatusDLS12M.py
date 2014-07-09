@@ -88,7 +88,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     root.set_local_frame(
       (1, 0, 0),
       (0, 1, 0),
-      (0, 0, 250))
+      (0, 0, -250))
 
     for j in range(24):
 
