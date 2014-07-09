@@ -7,7 +7,8 @@ specific to Phenix removed.
 
 The installer makes several assumptions about the distribution bundle, and
 will break if it does not encounter the expected files and directories.  The
-expected directory structure is:
+recommended way to create an installer package is to start with the script
+setup_installer.py in the same directory.  The expected directory structure is:
 
 INSTALLER_DIR/bin/
 INSTALLER_DIR/bin/install   # main executable, subclasses 'installer' class
@@ -46,9 +47,6 @@ along these lines:
     make_apps = ["phenix"]
     installer_dir = os.path.dirname(os.path.dirname(__file__))
 
-    def get_version (self) :
-      return open(self.installer_dir, "version").read()
-
   if (__name__ == "__main__") :
     installer(sys.argv[1:])
 
@@ -63,6 +61,12 @@ import shutil
 import time
 import os
 import sys
+# set nproc automatically if possible
+try :
+  import multiprocessing
+  NPROC_DEFAULT = min(24, multiprocessing.cpu_count())
+except Exception :
+  NPROC_DEFAULT = 1
 # local imports
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
@@ -84,7 +88,7 @@ class installer (object) :
   """
   # some basic configuration variables - override in subclasses
   product_name = "CCTBX"
-  destination = "usr/local"
+  destination = "/usr/local"
   dest_dir_prefix = "cctbx"
   installer_dir = os.environ.get(product_name + "_INSTALLER", None)
   include_gui_packages = True
@@ -133,9 +137,9 @@ class installer (object) :
         "workstations.") % self.product_name)
     parser.add_option("--prefix", dest="prefix", action="store",
       help="Directory where %s is to be installed" % self.product_name,
-      default="/usr/local")
+      default=self.destination)
     parser.add_option("--nproc", dest="nproc", action="store", type="int",
-      help="Number of processors for source install", default=1)
+      help="Number of processors for source install", default=NPROC_DEFAULT)
     if (self.include_gui_packages) :
       parser.add_option("--no-gui", dest="no_gui", action="store_true",
         help="Disable building of GUI dependencies (source install only)",
@@ -181,7 +185,7 @@ class installer (object) :
     self.dependencies_dir = op.join(self.installer_dir, "dependencies")
     print >> out, """
   ==========================================================================
-                        %(product) Installation
+                        %(product)s Installation
 
                         version: %(version)s
                    machine type: %(mtype)s
@@ -277,8 +281,6 @@ class installer (object) :
         raise InstallerError(error)
     self.source_install = source_install
     self.binary_install = binary_install
-    if (self.options.rosetta) and (self.source_install) :
-      self.options.python_static = False
     return True
 
   def setup_directories (self) :
@@ -318,9 +320,9 @@ class installer (object) :
 %(product)s installation target directory <%(product)s_LOC > set to:
    %(dest_dir)s
 %(product)s installation source directory set to:
-   %(inst_dir)
+   %(inst_dir)s
 %(product)s installation build directory set to:
-   %(build_dir)
+   %(build_dir)s
 %(product)s temporary build directory set to:
    %(tmp_dir)s
 """ % { "product" : self.product_name,
@@ -342,8 +344,7 @@ class installer (object) :
       "--build_dir=%s" % self.build_dir,
       "--tmp_dir=%s" % self.tmp_dir,
       "--pkg_dir=%s" % self.src_dir,
-      "--pkg_dir=%s" % self.base_dir,
-      "--pkg_dir=%s" % self.gui_dir,
+      "--pkg_dir=%s" % self.dependencies_dir,
       "--nproc=%s" % self.options.nproc,
     ] + self.base_package_options
     if (self.flag_build_gui) :
@@ -653,8 +654,12 @@ class installer (object) :
   def get_version (self) :
     """
     Determine the version suffix (if any) for the destination directory.  This
-    must be implemented by subclasses.
+    must be implemented by subclasses unless a file named VERSION is present
+    at the top level of the installer folder.
     """
+    version_file = op.join(self.installer_dir, "VERSION")
+    if op.isfile(version_file) :
+      return open(version_file).read().strip()
     return NotImplementedError()
 
   #---------------------------------------------------------------------

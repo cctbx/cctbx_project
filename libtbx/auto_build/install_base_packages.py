@@ -11,7 +11,6 @@ from __future__ import division
 from installer_utils import *
 from package_defs import *
 from optparse import OptionParser
-import urllib2
 import os.path as op
 import sys
 # XXX HACK
@@ -96,6 +95,12 @@ class installer (object) :
     self.flag_is_mac = (sys.platform == "darwin")
     self.cppflags_start = os.environ.get("CPPFLAGS", "")
     self.ldflags_start = os.environ.get("LDFLAGS", "")
+    # configure package download
+    self.fetch_package = fetch_packages(
+      dest_dir=self.tmp_dir,
+      log=log,
+      pkg_dirs=options.pkg_dirs,
+      no_download=options.no_download)
     self.build_cctbx_dependencies()
     # On Mac OS X all of the Python-related executables located in base/bin
     # are actually symlinks to absolute paths inside the Python.framework, so
@@ -207,35 +212,6 @@ class installer (object) :
       src_out.write(line)
     src_in.close()
     src_out.close()
-
-  def fetch_package (self, pkg_name, pkg_url=None) :
-    if (pkg_url is None) :
-      pkg_url = BASE_CCI_PKG_URL
-    os.chdir(self.tmp_dir)
-    print >> self.log, "  getting package %s..." % pkg_name
-    if (self.pkg_dirs is not None) and (len(self.pkg_dirs) > 0) :
-      for pkg_dir in self.pkg_dirs :
-        static_file = op.join(pkg_dir, pkg_name)
-        if (op.exists(static_file)) :
-          print >> self.log, "    using %s" % static_file
-          return static_file
-    if (op.exists(pkg_name)) :
-      print >> self.log, "    using ./%s" % pkg_name
-      return op.join(self.tmp_dir, pkg_name)
-    else :
-      if (self.options.no_download) :
-        raise RuntimeError(("Package '%s' not found on local filesystems.  ") %
-          pkg_name)
-      full_url = "%s/%s" % (pkg_url, pkg_name)
-      self.log.write("    downloading from %s : " % pkg_url)
-      f = open(pkg_name, "wb")
-      data = urllib2.urlopen(full_url).read()
-      assert (len(data) > 0), pkg_name
-      self.log.write("%d KB\n" % (len(data) / 1024))
-      self.log.flush()
-      f.write(data)
-      f.close()
-      return op.join(self.tmp_dir, pkg_name)
 
   def fetch_untar_and_chdir (self, pkg_name, pkg_url=None, log=None) :
     if (log is None) : log = self.log
