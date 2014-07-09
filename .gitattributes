@@ -2398,6 +2398,7 @@ scitbx/math/fliege_mayer_900_ylm.py -text
 scitbx/math/gaussian_fit_1d_analytical.h -text
 scitbx/math/gcd.h svneol=native#text/plain
 scitbx/math/imaginary.h -text
+scitbx/math/incremental_SO3_sampling.py -text
 scitbx/math/inertia_tensor.h svneol=native#text/plain
 scitbx/math/interpolation.h -text
 scitbx/math/jacks_expf.h svneol=native#text/plain
