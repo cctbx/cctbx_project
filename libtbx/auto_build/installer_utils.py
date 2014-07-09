@@ -1,6 +1,7 @@
 
 from __future__ import division
 import warnings
+import shutil
 import time
 import stat
 import re
@@ -96,7 +97,8 @@ def copy_file (src_path, dest_path, executable=None) :
 # this is not a general solution, but it is good enough for the installer
 # process (at least on Unix)
 def copy_tree (src_path, dest_path, verbose=False, log=sys.stdout) :
-  assert os.path.isdir(src_path) and not os.path.exists(dest_path)
+  assert os.path.isdir(src_path), src_path
+  assert not os.path.exists(dest_path), dest_path
   if (verbose) :
     print >> log, "creating %s" % dest_path
   os.makedirs(dest_path)
@@ -186,6 +188,6 @@ def find_and_delete_files (dir_name, file_name=None, file_ext=None) :
         os.remove(full_path)
         deleted.append(full_path)
       elif (file_ext is not None) and fn.endswith(file_ext) :
-        os.remoe(full_path)
+        os.remove(full_path)
         deleted.append(full_path)
   return deleted
