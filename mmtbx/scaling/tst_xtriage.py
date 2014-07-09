@@ -6,7 +6,8 @@ from mmtbx.command_line import fmodel
 from iotbx import file_reader
 from cctbx import crystal
 from cctbx import miller
-from scitbx.array_family import flex
+from cctbx import sgtbx
+from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected, show_diff
 from libtbx.development import show_pickle_sizes
 from libtbx.easy_pickle import dumps, loads
@@ -301,6 +302,21 @@ def test_pickle_consistency_and_size (result) :
   result_pkl.show(out=all_out_pkl)
   assert not show_diff(all_out.getvalue(), all_out_pkl.getvalue())
 
+def exercise_analyze_resolution_limits () :
+  for x in range(1, 231) :
+    sg = sgtbx.space_group_info(number=x)
+    #sg = sgtbx.space_group_info("P222")
+    uc = sg.any_compatible_unit_cell(80000)
+    ms = miller.build_set(
+      crystal_symmetry=crystal.symmetry(
+        space_group_info=sg,
+        unit_cell=uc),
+      anomalous_flag=True,
+      d_min=1.5)
+    arl = ds.analyze_resolution_limits(ms)
+    if (x > 2) :
+      assert (arl.max_d_min_delta() < 0.1)
+
 # real data
 def exercise_2 () :
   hkl_file = libtbx.env.find_in_repositories(
@@ -389,5 +405,6 @@ def exercise_2 () :
 
 if (__name__ == "__main__") :
   exercise_1()
+  exercise_analyze_resolution_limits()
   exercise_2()
   print "OK"
