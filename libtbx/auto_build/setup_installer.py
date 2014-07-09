@@ -23,6 +23,7 @@ import sys
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
 if (not libtbx_path in sys.path) :
   sys.path.append(libtbx_path)
+from installer_utils import *
 from package_defs import *
 
 def run (args) :
@@ -80,6 +81,9 @@ def run (args) :
     open("README", "w").write(open(options.readme).read())
   if op.isfile(options.license) :
     open("LICENSE", "w").write(open(options.license).read())
+  print ""
+  print "********** FETCHING DEPENDENCIES **********"
+  print ""
   fetch_all_dependencies(
     dest_dir=op.join(options.dest, installer_dir, "dependencies"),
     log=sys.stdout,
@@ -95,9 +99,27 @@ def run (args) :
   fetch_package(
     pkg_name="cctbx_bundle_for_installer.tar.gz",
     pkg_url="http://cci.lbl.gov/build/results/current")
+  os.rename("cctbx_bundle_for_installer.tar.gz", "cctbx_bundle.tar.gz")
+  os.chdir(op.join(options.dest, installer_dir, "source"))
   if (options.modules is not None) :
-    for module_name in options.modules :
-      pass # TODO
+    print ""
+    print "********** FETCHING MODULES **********"
+    print ""
+    have_modules = []
+    for module_name in options.modules.split(",") :
+      for pkg_dir in options.pkg_dirs :
+        dir_contents = os.listdir(pkg_dir)
+        for fn in dir_contents :
+          if (fn == module_name) and op.isdir(op.join(pkg_dir, fn)) :
+            full_path = op.join(pkg_dir, fn)
+            print "using module '%s' from %s" % (module_name, full_path)
+            archive_dist(full_path)
+            assert op.isfile(module_name + ".tar.gz")
+            have_modules.append(module_name)
+          elif (fn == module_name + "_hot.tar.gz") :
+            full_path = os.path.abspath(op.join(pkg_dir, fn))
+            print "using module '%s' from %s" % (module_name, full_path)
+            copy_file(full_path, module_name + ".tar.gz")
   os.chdir(op.join(options.dest, installer_dir))
   # actual Python installer script
   if (options.script is not None) :
@@ -125,8 +147,8 @@ if (not libtbx_path in sys.path) :
 from libtbx.auto_build import install_distribution
 
 class installer (install_distribution.installer) :
-  product_name = "%(pkg)s"
-  dest_dir_prefix = "%(product)s"
+  product_name = "%(product)s"
+  dest_dir_prefix = "%(pkg)s"
   make_apps = []
   configure_modules = install_distribution.installer.configure_modules + \\
     %(modules)s
@@ -167,6 +189,24 @@ $PYTHON_EXE ./bin/install.py $@
   f.close()
   st = os.stat("install")
   os.chmod("install", st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+def archive_dist (dir_name) :
+  dir_name = op.abspath(dir_name)
+  assert op.isdir(dir_name) and (dir_name != os.getcwd())
+  module_name = op.basename(dir_name)
+  local_path = op.join(os.getcwd(), module_name)
+  copy_tree(dir_name, local_path)
+  find_and_delete_files(local_path, file_ext=".pyc")
+  find_and_delete_files(local_path, file_ext=".pyo")
+  find_and_delete_files(local_path, file_ext=".swp")
+  find_and_delete_files(local_path, file_name=".svn")
+  find_and_delete_files(local_path, file_name=".git")
+  find_and_delete_files(local_path, file_name=".sconsign")
+  call("tar -czf %s.tar.gz %s" % (module_name, module_name), log=sys.stdout)
+  tar_file = op.join(os.getcwd(), module_name + ".tar.gz")
+  assert op.isfile(tar_file)
+  shutil.rmtree(local_path)
+  return tar_file
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
