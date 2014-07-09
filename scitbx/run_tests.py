@@ -49,6 +49,7 @@ tst_list = (
   "$D/python_utils/tst_graph.py",
   "$D/math/superpose.py",
   "$D/math/spe.py",
+  "$D/math/incremental_SO3_sampling.py",
   "$D/math/tests/tst_curve_fitting.py",
   "$D/math/tests/tst_weighted_correlation.py",
   "$D/math/tests/tst_exp_functions.py",
