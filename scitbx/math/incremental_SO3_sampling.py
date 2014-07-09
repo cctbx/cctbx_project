@@ -54,3 +54,4 @@ def tst():
 
 if __name__ == "__main__":
   tst()
+  print "OK"
