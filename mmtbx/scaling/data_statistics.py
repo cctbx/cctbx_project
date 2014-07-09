@@ -15,6 +15,7 @@ from cctbx.array_family import flex
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 from scitbx.math import erf
+from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
 from libtbx import table_utils
 import math
@@ -100,6 +101,12 @@ class i_sigi_completeness_stats (scaling.xtriage_analysis):
  retained, while other intensities are discarded. The resulting completeness
  profiles are an indication of the strength of the data.
 """)
+    if (self.amplitudes_flag) :
+      out.warn("""\
+Please be aware that the input data were given as amplitudes and squared for
+the purposes of this analysis, therefore the numbers displayed here are less
+reliable than the values calculated from the raw intensities.
+""")
     out.show_table(self.table, indent=2)
     out.show_plot(self.table)
     message = """\
@@ -150,10 +157,20 @@ class analyze_resolution_limits (scaling.xtriage_analysis) :
   deposit the modified data).
   """
   def __init__ (self, miller_set, d_min_max_delta=0.25) :
-    # XXX very important - we need to look at all of reciprocal space, not
-    # just the ASU, otherwise we get false positives
+    # XXX very important - for high-symmetry space groups we need to examine
+    # all possible positive indices
     tmp_miller = miller_set.expand_to_p1()
+    if (miller_set.space_group().order_z() > 2) :
+      all_pos_neg_indices = flex.miller_index()
+      for h,k,l in tmp_miller.indices() :
+        if (h >= 0 and k >= 0 and l >= 0) or (h <= 0 and k <= 0 and l <= 0) :
+          all_pos_neg_indices.append((h,k,l))
+      if isinstance(tmp_miller, miller.array) :
+        tmp_miller = tmp_miller.set(indices=all_pos_neg_indices)
+      else :
+        tmp_miller = tmp_miller.customized_copy(indices=all_pos_neg_indices)
     self.d_min_overall = tmp_miller.d_min()
+    assert approx_equal(self.d_min_overall, miller_set.d_min(), eps=0.001)
     self.d_min_a, self.d_min_b, self.d_min_c = \
       tmp_miller.d_min_along_a_b_c_star()
     self.d_min_max_delta = d_min_max_delta
@@ -179,7 +196,7 @@ class analyze_resolution_limits (scaling.xtriage_analysis) :
     out.show_text("""\
 Your data have been examined to determine the resolution limits of the data
 along the reciprocal space axes (a*, b*, and c*).  These are expected to vary
-slightly depending on unit cell dimensions and overall resolution, but should
+slightly depending on unit cell parameters and overall resolution, but should
 never be significantly different for complete data.  (This is distinct from the
 amount of anisotropy present in the data, which changes the effective
 resolution but does not actually exclude reflections.)""")
