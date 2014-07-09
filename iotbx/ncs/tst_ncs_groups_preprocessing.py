@@ -202,7 +202,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
     # reading and processing the spec file
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
-    trans_obj = iotbx.ncs.input(pdb_hierarchy_inp = pdb_obj)
+    trans_obj = iotbx.ncs.input(
+      pdb_hierarchy_inp = pdb_obj,
+      use_simple_ncs_from_pdb=True)
 
     # test created object
     self.assertEqual(len(trans_obj.transform_chain_assignment),3)

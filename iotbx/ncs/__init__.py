@@ -17,7 +17,8 @@ def input(pdb_hierarchy_inp=None,
           cif_string = '',
           quiet=True,
           spec_ncs_groups=None,
-          pdb_string=None):
+          pdb_string=None,
+          use_simple_ncs_from_pdb=False):
     """
     Select method to build ncs_group_object
 
@@ -67,6 +68,7 @@ def input(pdb_hierarchy_inp=None,
       cif_string=cif_string,
       quiet=quiet,
       spec_ncs_groups=spec_ncs_groups,
-      pdb_string=pdb_string)
+      pdb_string=pdb_string,
+      use_simple_ncs_from_pdb=use_simple_ncs_from_pdb)
     return ncs_group_obj
 
