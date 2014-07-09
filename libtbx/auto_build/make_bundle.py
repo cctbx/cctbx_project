@@ -1,3 +1,4 @@
+#!/usr/bin/python
 
 """
 Create a "bundle" (.tar.gz) of all Python modules and compiled code in a

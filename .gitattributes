@@ -1388,6 +1388,7 @@ libtbx/auto_build/make_bundle.py -text
 libtbx/auto_build/package_defs.py -text
 libtbx/auto_build/regenerate_module_files.py -text
 libtbx/auto_build/rpath.py -text
+libtbx/auto_build/setup_installer.py -text
 libtbx/auto_build/write_gui_dispatcher_include.py -text
 libtbx/binary_search.py svneol=native#text/x-python
 libtbx/callbacks.py -text
