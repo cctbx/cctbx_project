@@ -90,6 +90,10 @@ test_cdl_params = """\
     .type = bool
   conformation_dependent_restraints_esd = True
     .type = bool
+  cdl_interpolation = False
+    .type = bool
+  rdl = False
+    .type = bool
 """
 
 altloc_weighting_params = """\
@@ -103,7 +107,7 @@ altloc_weighting_params = """\
       .type = bool
     angles = True
       .type = bool
-    factor = 1
+    factor = 1.
       .type = float
     sqrt = False
       .type = bool
@@ -118,8 +122,8 @@ master_params_str = """\
     .help = Use Conformation Dependent Library (CDL) \
       for geometry minimization restraints
     .style = bold
-  rdl = False
-    .type = bool
+  cdl_weight = 1.
+    .type = float
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
@@ -2143,6 +2147,8 @@ class build_chain_proxies(object):
         fatal_problem_max_lines=10,
                ):
     if restraints_loading_flags is None: restraints_loading_flags={}
+    import iotbx.cif.model
+    self.cif = iotbx.cif.model.cif()
     self.conformation_dependent_restraints_list = \
       conformation_dependent_restraints_list
     unknown_residues = dicts.with_default_value(0)
@@ -2205,6 +2211,10 @@ class build_chain_proxies(object):
         resolution_range=restraints_loading_flags.get(
           "resolution_dependent_restraints", None),
         )
+
+      if mm.monomer and mm.monomer.cif_object:
+        self.cif["comp_%s" % residue.resname] = mm.monomer.cif_object
+
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
           if (   residue.atoms_size() != 1
@@ -2651,6 +2661,8 @@ class build_all_chain_proxies(linking_mixins):
         #use_neutron_distances=False,
         restraints_loading_flags=None,
                ):
+    import iotbx.cif.model
+    self.cif = iotbx.cif.model.cif()
     if restraints_loading_flags is None:
       restraints_loading_flags = get_restraints_loading_flags(params)
     self.mon_lib_srv = mon_lib_srv
@@ -2861,6 +2873,7 @@ class build_all_chain_proxies(linking_mixins):
               =self.params.show_max_items.fatal_problem_max_lines,
             log=log,
             )
+          self.cif.update(chain_proxies.cif)
           self.conformation_dependent_restraints_list = \
             chain_proxies.conformation_dependent_restraints_list
           del chain_proxies
@@ -4071,6 +4084,7 @@ class build_all_chain_proxies(linking_mixins):
         sel_cache=sel_cache, params=params, log=log)
     result.planarity_proxies=self.process_geometry_restraints_edits_planarity(
         sel_cache=sel_cache, params=params, log=log)
+#    assert 0
     return result
 
   def process_hydrogen_bonds (self, bonds_table, log, verbose=False) :
@@ -4239,9 +4253,6 @@ class build_all_chain_proxies(linking_mixins):
         den_manager=None,
         reference_manager=None,
         log=None):
-    import iotbx.cif.model
-    self.cif = iotbx.cif.model.cif()
-
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
     if (params_edits is not None) :
@@ -4297,13 +4308,13 @@ class build_all_chain_proxies(linking_mixins):
       cif_block.add_loop(loop)
       self.cif["link_SS"] = cif_block
       # FIXME missing loop contents in some situations
-      disulfide_cif_block = iotbx.cif.model.block()
-      disulfide_cif_loop = iotbx.cif.model.loop(header=(
-        "_phenix.link_id",
-        "_phenix.atom_id_1",
-        "_phenix.atom_id_2",
-        "_phenix.sym_op",
-      ))
+      #disulfide_cif_block = iotbx.cif.model.block()
+      #disulfide_cif_loop = iotbx.cif.model.loop(header=(
+      #  "_phenix.link_id",
+      #  "_phenix.atom_id_1",
+      #  "_phenix.atom_id_2",
+      #  "_phenix.sym_op",
+      #))
     #
     max_bond_distance = max_disulfide_bond_distance
     if (bond_distances_model.size() > 0):
@@ -4340,6 +4351,7 @@ class build_all_chain_proxies(linking_mixins):
     assert disulfide_bond.value_dist > 0
     assert disulfide_bond.value_dist_esd is not None
     assert disulfide_bond.value_dist_esd > 0
+    added = False
     # FIXME this does not work in some situations
     for sym_pair in disulfide_sym_table.iterator():
       i_seq = self.cystein_sulphur_i_seqs[sym_pair.i_seq]
@@ -4362,9 +4374,31 @@ class build_all_chain_proxies(linking_mixins):
                     self.pdb_atoms[j_seq].pdb_label_columns(),
                     sym_str,
                     ))
-    #if (disulfide_cif_block is not None) :
-    #  disulfide_cif_block.add_loop(disulfide_cif_loop)
-    #  self.cif["phenix_applied_SS"] = disulfide_cif_block
+      added = True
+    if added:
+      cif_block = iotbx.cif.model.block()
+      loop = iotbx.cif.model.loop(header=(
+        "_chem_link_bond.link_id",
+        "_chem_link_bond.atom_1_comp_id",
+        "_chem_link_bond.atom_id_1",
+        "_chem_link_bond.atom_2_comp_id",
+        "_chem_link_bond.atom_id_2",
+        "_chem_link_bond.type",
+        "_chem_link_bond.value_dist",
+        "_chem_link_bond.value_dist_esd",
+      ))
+      loop.add_row(("SS", "1", "SG", "2", "SG", "single", "2.031", "0.020"))
+      cif_block.add_loop(loop)
+      self.cif["link_SS"] = cif_block
+      #cif_block = iotbx.cif.model.block()
+      #loop = iotbx.cif.model.loop(header=(
+      #  "_phenix.link_id",
+      #  "_phenix.atom_id_1",
+      #  "_phenix.atom_id_2",
+      #  "_phenix.sym_op",
+      #))
+      #cif_block.add_loop(loop)
+      #self.cif["phenix_applied_SS"] = cif_block
     #
     if (processed_edits is not None):
       for proxy in processed_edits.bond_sym_proxies:
@@ -4517,7 +4551,7 @@ class build_all_chain_proxies(linking_mixins):
       print >> log, """\
   Conformation dependent library (CDL) restraints added in %0.1f %sseconds
   """ % utils.greek_time(cdl_time)
-    if self.params.rdl:
+    if getattr(self.params, "rdl", False):
       from mmtbx.conformation_dependent_library import rotamers
       import time
       from libtbx import utils

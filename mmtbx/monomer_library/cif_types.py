@@ -176,7 +176,9 @@ class comp_comp_id(slots_getstate_setstate):
     "rotamer_info_phil_str_list",
     "__rotamer_info",
     "classification",
-    "normalized_rna_dna"]
+    "normalized_rna_dna",
+    "cif_object",
+    ]
 
   def __init__(self, source_info, chem_comp):
     self.source_info = source_info
@@ -191,6 +193,7 @@ class comp_comp_id(slots_getstate_setstate):
     self.__rotamer_info = None
     self.classification = None
     self.normalized_rna_dna = None
+    self.cif_object = None
 
   def normalize_atom_ids_in_place(self):
     atom_ids_mod = []

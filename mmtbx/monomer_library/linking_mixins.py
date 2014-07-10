@@ -430,6 +430,7 @@ class linking_mixins(object):
                                   log                         = None,
                                   verbose                     = False,
                                   ):
+    assert hasattr(self, "cif")
     if max_bonded_cutoff is None:
       max_bonded_cutoff = max(metal_coordination_cutoff,
                               amino_acid_bond_cutoff,
@@ -663,6 +664,12 @@ Residue classes
       class_key = [class1, class2]
       class_key.sort()
       class_key = tuple(class_key)
+      #
+      if not link_metals and "metal" in class_key: continue
+      if not link_dna_rna and "common_rna_dna" in class_key: continue
+      if not link_residues and "common_amino_acid" in class_key: continue
+      if not link_carbohydrates and "common_saccharide" in class_key: continue
+      #
       names = [atom1.name, atom2.name]
       names.sort()
       # exclude duplicate symmetry op.
@@ -718,6 +725,7 @@ Residue classes
         link_rt_mx_ji = sgtbx.rt_mx(symbol=done_key[2], t_den=space_group.t_den())
       #
       if link:
+        # apply a standard link
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
         _apply_link_using_proxies(link,
@@ -730,6 +738,7 @@ Residue classes
                                   rt_mx_ji=link_rt_mx_ji,
                                   )
         if verbose: print "predefined residue named link",key
+        self.cif["link_%s" % key] = link.cif_object
         continue
       #
       rc = linking_utils.process_atom_groups_for_linking_single_link(
@@ -739,15 +748,13 @@ Residue classes
         )
       if not rc:
         done.remove_link(done_key, names)
-        #if key in done:
-        #  del done[key]
         continue
       pdbres, link_key, link_atoms = rc
       assert len(link_key)==1
       key = link_key[0]
       link = self.mon_lib_srv.link_link_id_dict.get(key, None)
       if key.find("ALPHA")>-1 or key.find("BETA")>-1:
-        key = glyco_utils.apply_glyco_link_using_proxies_and_atoms(
+        key, cif = glyco_utils.apply_glyco_link_using_proxies_and_atoms(
           atom_group2,
           atom_group1,
           bond_params_table,
@@ -757,6 +764,7 @@ Residue classes
           )
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
+        self.cif["link_%s" % key] = cif
         continue
       elif link:
         links.setdefault(key, [])

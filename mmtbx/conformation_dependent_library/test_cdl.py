@@ -893,11 +893,10 @@ def convert_dict_to_excel(keys_number=4,
                           column_number=6,
                           ):
   key = sorted(cdl_database.keys())[keys_number]
-  outl = "PHI/PSI %s %s" % (key, column_number)
   outl = " "
   phi_range = (0, 370, 10)
   psi_range = (0, 370, 10)
-  phi_range = (-180, 190, 10)
+  phi_range = (180, -190, -10)
   psi_range = (-180, 190, 10)
   for i, psi in enumerate(range(*psi_range)):
     outl += ", %d" % psi
@@ -914,15 +913,216 @@ def convert_dict_to_excel(keys_number=4,
   print outl
   return outl
 
+def convert_dict_to_gnuplot(keys_number=4,
+                            column_number=6,
+                            dales_format=False,
+                            ):
+  key = sorted(cdl_database.keys())[keys_number]
+  outl = " "
+  if dales_format:
+    header = """set terminal png size 1850,2000 linewidth 1
+set output '%s.png'
+set border 4095 front linetype -1 linewidth 1.000
+
+set title "CDL for (!Gly,!Pro,!Ile,!Val)-!Pro"
+set xlabel "phi"
+set ylabel "psi"
+#unset key
+#unset colorbar
+#set tic scale 0
+
+set palette rgbformulae 33,13,10   # rainbow
+set cbrange [%s:%s]
+
+set ticslevel 60
+set xtic 60
+set xrange [-180:180]
+set ytic 60
+set yrange [-180:180]
+
+set view map
+set samples 36, 36
+set isosamples 36, 36
+splot '-' matrix using (10*$2-180):(10*$1-180):3 with image
+"""
+    outl = ""
+    phi_range = (-180, 190, 10)
+    psi_range = (-180, 190, 10)
+    data = []
+    for i, phi in enumerate(range(*phi_range)):
+      if phi>=180: kphi=phi-360
+      else: kphi=phi
+      for j, psi in enumerate(range(*psi_range)):
+        if psi>=180: kpsi=psi-360
+        else: kpsi=psi
+        outl += " %7.3f" % (cdl_database[key][(kphi, kpsi)][column_number])
+        data.append(cdl_database[key][(kphi, kpsi)][column_number])
+      outl += "\n"
+    outl = header % (key, min(data), max(data)) + outl
+  else:
+    phi_range = (0, 370, 10)
+    psi_range = (0, 370, 10)
+    for i, phi in enumerate(range(*phi_range)):
+      if phi>=180: kphi=phi-360
+      else: kphi=phi
+      for j, psi in enumerate(range(*psi_range)):
+        if psi>=180: kpsi=psi-360
+        else: kpsi=psi
+        outl += " %12.5f %12.5f %12.5f\n" % (phi, psi, cdl_database[key][(kphi, kpsi)][column_number])
+  return outl
+
+def convert_dict_to_scilab(keys_number=4,
+                           column_number=6,
+                           ):
+  key = sorted(cdl_database.keys())[keys_number]
+  phi_range = (0, 370, 10)
+  psi_range = (0, 370, 10)
+  #phi_range = (-180, 190, 10)
+  #psi_range = (-180, 190, 10)
+  outl = ''
+  outl += "X = [\n"
+  for i, phi in enumerate(range(*phi_range)):
+    outl += " %12.5f" % phi
+  outl += "];\n"
+  outl += "Y = [\n"
+  for i, psi in enumerate(range(*psi_range)):
+    outl += " %12.5f" % psi
+  outl += "];\n"
+  outl += "Z = ["
+  for i, phi in enumerate(range(*phi_range)):
+    if phi>=180: kphi=phi-360
+    else: kphi=phi
+    for j, psi in enumerate(range(*psi_range)):
+      if psi>=180: kpsi=psi-360
+      else: kpsi=psi
+      outl += " %12.5f" % (cdl_database[key][(kphi, kpsi)][column_number]-110)
+    outl += "\n"
+  outl += "];\n"
+  outl += """
+  surf(X,Y,Z);
+  """
+  #scf(10)
+  #axfig10=gca();
+  #surf(axfig10,Z,'zdat',[100:119],'marker','d','markerfac','green','markeredg','yel') // draw onto the axe of figure 10
+
+  print outl
+  return outl
+
+def convert_dict_to_kin2Dcont(keys_number=4,
+                           column_number=6,
+                           ):
+  key = sorted(cdl_database.keys())[keys_number]
+  outl = "PHI/PSI %s %s" % (key, column_number)
+  outl = """# Table name/description: "motif.loose_threeten"
+  # Number of dimensions: 2
+  # For each dimension, 1 to 2: lower_bound  upper_bound  number_of_bins  wrapping
+  #   x1: -180.0 180.0 120 true
+  #   x2: -180.0 180.0 120 true
+  # List of table coordinates and values. (Value is last number on each line.)
+  """
+  phi_range = (0, 370, 10)
+  psi_range = (0, 370, 10)
+  #phi_range = (-180, 190, 10)
+  #psi_range = (-180, 190, 10)
+  for i, phi in enumerate(range(*phi_range)):
+    if phi>=180: kphi=phi-360
+    else: kphi=phi
+    for j, psi in enumerate(range(*psi_range)):
+      if psi>=180: kpsi=psi-360
+      else: kpsi=psi
+      outl += " %12.5f %12.5f %12.5f\n" % (phi, psi, cdl_database[key][(kphi, kpsi)][column_number])
+
+  print outl
+  return outl
+
+def get_min_max_table():
+  from mmtbx.conformation_dependent_library import columns
+  def anglise(s):
+    outl = ""
+    for c in s:
+      if c in ["m", "s"]: continue
+      if c=="A":
+        outl += "%s-" % "CA"
+      elif c=="B":
+        outl += "%s-" % "CB"
+      else:
+        outl += "%s-" % c
+    return outl[:-1]
+  svl_data = [None, None,
+              121.7, 1.8,
+              110.4, 1.5,
+              111.2, 2.8,
+              None, None,
+              120.8, 1.7,
+              116.2, 2.0,
+              123.0, 1.6,
+              ]
+  ##
+  min_values = [1e9]*26
+  min_data = [None]*26
+  max_values = [-1e9]*26
+  max_data = [None]*26
+  for i, (residue_class, resdiue_data) in enumerate(cdl_database.items()):
+    if residue_class.startswith("Gly"): continue
+    if residue_class.startswith("Pro"): continue
+    print residue_class
+    for j, (phi_psi, data) in enumerate(sorted(resdiue_data.items())):
+      for k, d in enumerate(data):
+        if k<2: continue
+        if d<min_values[k]:
+          min_values[k]=d
+          min_data[k]=(residue_class, phi_psi)
+        if d>max_values[k]:
+          max_values[k]=d
+          max_data[k]=(residue_class, phi_psi)
+  print min_values
+  print max_values
+  print min_data
+  print max_data
+  outl = "Angle\tSVL\tmin(CDL)\tmax(CDL)\n"
+  for i, c in enumerate(columns):
+    if i<2: continue
+    if i>15: continue
+    if c.startswith("s"): continue
+    print i, c
+    outl += anglise(c)
+    if svl_data[i] is None:
+      outl += "\t-"
+    else:
+      outl += "\t%0.1f" % svl_data[i]
+    outl += "\t%0.1f" % min_values[i]
+    outl += "\t%0.1f" % max_values[i]
+    #outl += "\t#%s %s" % min_data[i]
+    #outl += "\t%s %s" % max_data[i]
+    outl += "\n"
+    print outl
+  assert 0
+
 def run(filename=None):
   if 0:
-    f=file("n_ca_c_m.dat", "wb")
+    print get_min_max_table()
+    assert 0
+  if 0:
+    for i, key in enumerate(sorted(cdl_database)):
+      output = "n_ca_c_m_%s.dat" % key
+      print i+1,key,output
+      f=file(output, "wb")
+      f.write(convert_dict_to_gnuplot(keys_number=i, dales_format=True))
+      f.close()
+      cmd = "gnuplot %s" % output
+      os.system(cmd)
+    assert 0
+    f=file("n_ca_c_e.dat", "wb")
+    f.write(convert_dict_to_gnuplot(column_number=7))
+    f.close()
+    f=file("n_ca_c_m.csv", "wb")
     f.write(convert_dict_to_excel())
     f.close()
-    f=file("n_ca_c_e.dat", "wb")
-    f.write(convert_dict_to_excel(column_number=7))
+    f=file("n_ca_c_m.cse", "wb")
+    f.write(convert_dict_to_scilab())
     f.close()
     assert 0
+
   if filename:
     print 'run CDL on',filename
     run_apply(filename,

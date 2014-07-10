@@ -241,7 +241,7 @@ class ThreeProteinResidues(list):
           break
     return atoms
 
-  def get_cdl_key(self, verbose=False):
+  def get_cdl_key(self, exact=False, verbose=False):
     backbone_i_minus_1, junk = get_c_ca_n(self[0])
     backbone_i, junk = get_c_ca_n(self[1])
     backbone_i_plus_1, junk = get_c_ca_n(self[2])
@@ -264,6 +264,7 @@ class ThreeProteinResidues(list):
     psi = dihedral_angle(sites=[atom.xyz for atom in psi_atoms], deg=True)
     if verbose:
       print "psi, phi",psi,phi
+    if exact: return (phi, psi)
     key = (round_to_ten(phi), round_to_ten(psi))
     return key
 
@@ -272,6 +273,7 @@ class ThreeProteinResidues(list):
                     cdl_proxies,
                     ideal=True,
                     esd=True,
+                    esd_factor=1.,
                     average=True,
                     verbose=False,
                     ):
@@ -325,12 +327,12 @@ class ThreeProteinResidues(list):
             angle_proxy.angle_ideal,
             angle_proxy.weight,
             restraint_values[i],
-            restraint_values[i+1],
+            1/restraint_values[i+1]**2,
             )
         names.sort()
         registry[tuple(names)] = restraint_values[i]
         if ideal: angle_proxy.angle_ideal = restraint_values[i]
-        if esd: angle_proxy.weight = 1/restraint_values[i+1]**2
+        if esd: angle_proxy.weight = esd_factor * 1/restraint_values[i+1]**2
       elif len(names)==2:
         bond=self.bond_params_table.lookup(*names)
         assert bond
@@ -340,13 +342,13 @@ class ThreeProteinResidues(list):
             bond.distance_ideal,
             bond.weight,
             restraint_values[i],
-            restraint_values[i+1],
+            1/restraint_values[i+1]**2,
             )
         names.sort()
         registry[tuple(names)] = restraint_values[i]
         #print "BOND", 1/restraint_values[i+1]**2/bond.weight,1/restraint_values[i+1]**2, bond.weight
         if ideal: bond.distance_ideal = restraint_values[i]
-        if esd: bond.weight = 1/restraint_values[i+1]**2
+        if esd: bond.weight = esd_factor * 1/restraint_values[i+1]**2
       else:
         assert 0
 
@@ -407,6 +409,28 @@ def round_to_ten(d):
   if t==180: return -180
   return t
 
+def get_restraint_values(threes, interpolate=False):
+  from mmtbx.conformation_dependent_library import utils
+  res_type_group = get_res_type_group(
+    threes[1].resname,
+    threes[2].resname,
+  )
+  if res_type_group is None: return None
+  if interpolate:
+    restraint_values = ["2", -1]
+    key = threes.get_cdl_key(exact=interpolate)
+    for i in range(2,26):
+      grid = utils.get_grid_values(res_type_group, key[0], key[1], column=i)
+      #utils.print_grid(grid, key[0], key[1])
+      index = utils.get_index(*key)
+      r = utils.interpolate_2d(grid, index)
+      #print i, key, index, r
+      restraint_values.append(r)
+  else:
+    key = threes.get_cdl_key()
+    restraint_values = cdl_database[res_type_group][key]
+  return restraint_values
+
 def generate_protein_threes(hierarchy,
                             geometry, #restraints_manager,
                             verbose=False,
@@ -451,6 +475,8 @@ def update_restraints(hierarchy,
                       cdl_proxies=None,
                       ideal=True,
                       esd=True,
+                      esd_factor=1.,
+                      interpolate=False,
                       log=None,
                       verbose=False,
                       ):
@@ -471,6 +497,8 @@ def update_restraints(hierarchy,
       #atom_lookup[atom.id_str()] = j_seq
 
   threes = None
+  average_updates = 0
+  total_updates = 0
   for threes in generate_protein_threes(hierarchy,
                                         geometry, #restraints_manager,
                                         #verbose=verbose,
@@ -480,23 +508,36 @@ def update_restraints(hierarchy,
         print 'cis '*20
         print threes
       continue
-    res_type_group = get_res_type_group(
-      threes[1].resname,
-      threes[2].resname,
-      )
-    if res_type_group is None:
-      continue
 
-    key = threes.get_cdl_key() #verbose=verbose)
+    if 0:
+      res_type_group = get_res_type_group(
+        threes[1].resname,
+        threes[2].resname,
+         )
+      if res_type_group is None: continue
+      key = threes.get_cdl_key() #verbose=verbose)
+      restraint_values = cdl_database[res_type_group][key]
+      print restraint_values
+      print len(restraint_values)
+      assert 0
+    else:
+      restraint_values = get_restraint_values(threes, interpolate=interpolate)
 
-    restraint_values = cdl_database[res_type_group][key]
     #if 1:
     #  print threes, threes.are_linked(), res_type_group, key, restraint_values
 
+    if restraint_values is None: continue
+
+    if restraint_values[0]=="I":
+      #print threes, threes.are_linked(), res_type_group, key, restraint_values[:4]
+      average_updates += 1
+    else:
+      total_updates += 1
     threes.apply_updates(restraint_values,
                          cdl_proxies,
                          ideal=ideal,
                          esd=esd,
+                         esd_factor=esd_factor,
                          )
   if registry.n: threes.apply_average_updates(registry)
 #  restraints_manager.geometry.reset_internals()
@@ -509,6 +550,8 @@ def update_restraints(hierarchy,
         log.write("%s\n" % line)
       else:
         print line
+#  print 'average updates',average_updates,total_updates
+#  assert average_updates==0
   return geometry #restraints_manager
 
 def run(filename):
@@ -525,4 +568,13 @@ def run(filename):
                     )
 
 if __name__=="__main__":
+  if 0:
+    psi = -180
+    lookup = "Gly_nonxpro"
+    print lookup
+    for phi in range(170,181):
+      key = (round_to_ten(psi),round_to_ten(phi))
+      print 'key',psi,phi,round_to_ten(psi),round_to_ten(phi),key,
+      print cdl_database[lookup][key][:4]
+
   run(sys.argv[1])

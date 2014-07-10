@@ -503,13 +503,12 @@ def is_atom_pair_linked(atom1,
     class2 = 'sulfur'
   lookup = [class1, class2]
   lookup.sort()
-  #print lookup, skip_if_both
   if verbose: print 'lookup',lookup,skip_if_both #.get(lookup, None)
   if lookup in skip_if_both: return False
   lookup = tuple(lookup)
   if verbose: print 'lookup',lookup
   limit = skip_if_longer.get(lookup, None)
-  if limit:
+  if limit is not None:
     if ( atom1.element not in ad_hoc_first_row or
          atom2.element not in ad_hoc_first_row):
       limit += second_row_buffer**2 # not completely accurate
@@ -517,7 +516,7 @@ def is_atom_pair_linked(atom1,
     d2 = distance**2
   else:
     d2 = get_distance2(atom1, atom2)
-  if limit and limit<d2:
+  if limit is not None and limit<d2:
     if verbose: print 'limit < d2',limit,d2
     return False
   #
