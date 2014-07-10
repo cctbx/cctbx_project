@@ -93,7 +93,7 @@ namespace dxtbx { namespace model {
     c_xy[1] = xy[1] + (s1 * slow) * o;
     return c_xy;
   }
-  
+
   /**
    * Function to perform an inverse parallax correction on a given coordinate
    * correctly, given the sensor thickness and so on. X corresponds to the fast

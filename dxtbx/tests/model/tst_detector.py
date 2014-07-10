@@ -110,7 +110,10 @@ def tst_detector():
   tst_get_names(detector)
 
   # Attenuation length
-  la = 0.252500934883
+  from cctbx.eltbx import attenuation_coefficient
+  table = attenuation_coefficient.get_table("Si")
+  mu = table.mu_at_angstrom(1) / 10
+  t0 = 0.0
 
   # Create the detector
   detector = Detector(Panel(
@@ -122,7 +125,7 @@ def tst_detector():
       (0.172, 0.172),     # Pixel size
       (512, 512),         # Image size
       (0, 1000),          # Trusted range
-      ParallaxCorrectedPxMmStrategy(la)))
+      ParallaxCorrectedPxMmStrategy(mu, t0)))
 
   tst_parallax_correction(detector)
 

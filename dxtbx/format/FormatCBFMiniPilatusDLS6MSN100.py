@@ -107,10 +107,16 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
     beam_x, beam_y = map(float, beam_xy)
 
+    wavelength = float(
+        self._cif_header_dictionary['Wavelength'].split()[0])
+
     pixel_xy = self._cif_header_dictionary['Pixel_size'].replace(
         'm', '').replace('x', '').split()
 
     pixel_x, pixel_y = map(float, pixel_xy)
+
+    thickness = float(
+      self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
 
     nx = int(
         self._cif_header_dictionary['X-Binary-Size-Fastest-Dimension'])
@@ -121,8 +127,12 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
         self._cif_header_dictionary['Count_cutoff'].split()[0])
     underload = -1
 
-    # FIXME take into consideration here the thickness of the sensor? also the
+    # take into consideration here the thickness of the sensor also the
     # wavelength of the radiation (which we have in the same file...)
+    from cctbx.eltbx import attenuation_coefficient
+    table = attenuation_coefficient.get_table("Si")
+    mu = table.mu_at_angstrom(wavelength) / 10.0
+    t0 = thickness
 
     # FIXME would also be very nice to be able to take into account the
     # misalignment of the individual modules given the calibration information...
@@ -132,7 +142,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
                                    beam_y * pixel_y * 1000.0), '+x', '-y',
         (1000 * pixel_x, 1000 * pixel_y),
         (nx, ny), (underload, overload), [],
-        ParallaxCorrectedPxMmStrategy(0.252500934883))
+        ParallaxCorrectedPxMmStrategy(mu, t0))
 
     for f0, s0, f1, s1 in determine_pilatus_mask(detector):
       detector[0].add_mask(f0, s0, f1, s1)

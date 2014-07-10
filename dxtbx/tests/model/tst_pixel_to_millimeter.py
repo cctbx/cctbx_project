@@ -18,8 +18,12 @@ class Test(object):
     import dxtbx
     models = dxtbx.load(filename)
     self.detector = models.get_detector()
+    self.beam = models.get_beam()
     assert(len(self.detector) == 1)
-    self.attlen = 0.252500934883
+    self.t0 = 0.0
+    from cctbx.eltbx import attenuation_coefficient
+    table = attenuation_coefficient.get_table("Si")
+    self.mu = table.mu_at_angstrom(self.beam.get_wavelength()) / 10
     self.distance = self.detector[0].get_distance()
     self.origin = self.detector[0].get_ray_intersection(
         self.detector[0].get_normal())[1]
@@ -69,24 +73,29 @@ class Test(object):
 
   def correct_gold(self, xy):
     from scitbx import matrix
-    s1 = matrix.col(self.detector[0].get_lab_coord(xy))
-    lab = self.attlen * s1 / s1.length()
-    d = self.detector[0].get_d_matrix()
-    d0 = matrix.col((d[0], d[3], d[6]))
-    d1 = matrix.col((d[1], d[4], d[7]))
-    mm0 = d0.dot(lab) / d0.length()
-    mm1 = d1.dot(lab) / d1.length()
-    mmcal = matrix.col((xy[0] + mm0, xy[1] + mm1))
-    return (mmcal[0] / self.pixel_size[0], mmcal[1] / self.pixel_size[1])
+    from math import exp
+    mu = self.mu
+    t0 = self.t0
+    s1 = matrix.col(self.detector[0].get_lab_coord(xy)).normalize()
+    d0 = matrix.col(self.detector[0].get_origin())
+    d1 = matrix.col(self.detector[0].get_fast_axis())
+    d2 = matrix.col(self.detector[0].get_slow_axis())
+    dn = d1.cross(d2)
+    cos_theta = s1.dot(dn)
+    t = t0 / cos_theta
+    o = (1.0 / mu) - (t + 1.0 / mu) * exp(-mu * t)
+    cx = xy[0] + s1.dot(d1) * o
+    cy = xy[1] + s1.dot(d2) * o
+    return (cx / self.pixel_size[0], cy / self.pixel_size[1])
 
   def correct(self, xy):
     from dxtbx.model import ParallaxCorrectedPxMmStrategy
-    convert = ParallaxCorrectedPxMmStrategy(self.attlen)
+    convert = ParallaxCorrectedPxMmStrategy(self.mu, self.t0)
     return convert.to_pixel(self.detector[0], xy)
 
   def correct_inv(self, xy):
     from dxtbx.model import ParallaxCorrectedPxMmStrategy
-    convert = ParallaxCorrectedPxMmStrategy(self.attlen)
+    convert = ParallaxCorrectedPxMmStrategy(self.mu, self.t0)
     return convert.to_millimeter(self.detector[0], xy)
 
 
