@@ -2207,7 +2207,29 @@ def exercise_diagnostics () :
   da, db, dc = ms.d_min_along_a_b_c_star()
   assert approx_equal([da, db, dc], [3.0, 3.076923, 3.529412])
 
+def exercise_convert_to_non_anomalous_if_ratio_pairs_lone_less_than():
+  xs = crystal.symmetry((30,40,50), "P1")
+  ms = miller.build_set(crystal_symmetry=xs, anomalous_flag=True, d_min=2.0)
+  print ms.indices()
+  d = flex.double(ms.indices().size(), 0)
+  ma = miller.array(ms, data=d)
+  asu, matches = ma.match_bijvoet_mates()
+  sel = matches.pairs().column(0)
+  sel_ = flex.random_bool(sel.size(), 0.7)
+  sel = sel.select(sel_)
+  sel = ~flex.bool(d.size(), sel)
+  ma = ma.select(sel)
+  assert ma.completeness() < 0.66
+  assert ma.anomalous_flag()
+  ma=ma.convert_to_non_anomalous_if_ratio_pairs_lone_less_than(threshold=0.1)
+  assert ma.completeness() < 0.66
+  assert ma.anomalous_flag()
+  ma=ma.convert_to_non_anomalous_if_ratio_pairs_lone_less_than(threshold=0.5)
+  assert ma.completeness()>0.99
+  assert ma.anomalous_flag() is False
+
 def run(args):
+  exercise_convert_to_non_anomalous_if_ratio_pairs_lone_less_than()
   exercise_diagnostics()
   exercise_randomize_amplitude_and_phase()
   exercise_hoppe_gassmann_modification()
