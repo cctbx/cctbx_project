@@ -204,6 +204,15 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::dict result;
     std::string name = obj->name();
     result["type"] = name;
+    if (name == "SimplePxMmStrategy") {
+    }else if (name == "ParallaxCorrectedPxMmStrategy") {
+      boost::shared_ptr<ParallaxCorrectedPxMmStrategy> d = 
+        boost::static_pointer_cast<ParallaxCorrectedPxMmStrategy>(obj);
+      result["mu"] = d->mu();
+      result["t0"] = d->t0();
+    } else {
+      DXTBX_ERROR("Unknown PxMmStrategy");
+    }
     return result;
   }
 
@@ -247,14 +256,16 @@ namespace dxtbx { namespace model { namespace boost_python {
       result->set_mask(mask.const_ref());
     }
     if (obj.has_key("px_mm_strategy")) {
-      std::string name = boost::python::extract<std::string>(
-          obj["px_mm_strategy"]["type"]);
+      boost::python::object st = obj["px_mm_strategy"];
+      std::string name = boost::python::extract<std::string>(st["type"]);
       if (name == "SimplePxMmStrategy") {
         shared_ptr<PxMmStrategy> strategy(new SimplePxMmStrategy());
         result->set_px_mm_strategy(strategy);
       } else if (name == "ParallaxCorrectedPxMmStrategy") {
-        double la = 0.252500934883;
-        shared_ptr<PxMmStrategy> strategy(new ParallaxCorrectedPxMmStrategy(la));
+        double mu = boost::python::extract<double>(st["mu"]);
+        double t0 = boost::python::extract<double>(st["t0"]);
+        shared_ptr<PxMmStrategy> strategy(
+            new ParallaxCorrectedPxMmStrategy(mu, t0));
         result->set_px_mm_strategy(strategy);
       } else {
         DXTBX_ASSERT(false);
