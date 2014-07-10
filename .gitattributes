@@ -438,6 +438,7 @@ dxtbx/SConscript -text
 dxtbx/__init__.py -text
 dxtbx/boost_python/ext.cpp -text
 dxtbx/boost_python/to_ewald_sphere_helpers.cc -text
+dxtbx/command_line/display_parallax_correction.py -text
 dxtbx/command_line/export_bitmaps.py -text
 dxtbx/command_line/import_datablock.py -text
 dxtbx/command_line/overload.py -text

@@ -536,7 +536,7 @@ class detector_factory:
 
     detector = detector_factory.make_detector(
         detector_factory.sensor(sensor),
-        fast, slow, origin, pixel_size, image_size, trusted_range)
+        fast, slow, origin, pixel_size, image_size, trusted_range, px_mm)
     detector[0].mask = mask
     return detector
 
@@ -582,7 +582,7 @@ class detector_factory:
     detector = detector_factory.make_detector(
         detector_factory.sensor(sensor),
         (R * fast), (R * slow), (R * origin), pixel_size,
-        image_size, trusted_range)
+        image_size, trusted_range, px_mm)
 
     detector.mask = mask
     return detector
@@ -604,7 +604,7 @@ class detector_factory:
 
     return detector_factory.make_detector(
             detector_factory.sensor(sensor),
-            fast, slow, origin, pixel, size, trusted_range)
+            fast, slow, origin, pixel, size, trusted_range, px_mm)
 
   @staticmethod
   def imgCIF(cif_file, sensor):
