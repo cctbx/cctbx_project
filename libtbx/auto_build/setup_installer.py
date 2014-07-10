@@ -109,18 +109,20 @@ def run (args) :
     have_modules = []
     for module_name in options.modules.split(",") :
       for pkg_dir in options.pkg_dirs :
-        dir_contents = os.listdir(pkg_dir)
-        for fn in dir_contents :
-          if (fn == module_name) and op.isdir(op.join(pkg_dir, fn)) :
-            full_path = op.join(pkg_dir, fn)
-            print "using module '%s' from %s" % (module_name, full_path)
-            archive_dist(full_path)
-            assert op.isfile(module_name + ".tar.gz")
-            have_modules.append(module_name)
-          elif (fn == module_name + "_hot.tar.gz") :
-            full_path = os.path.abspath(op.join(pkg_dir, fn))
-            print "using module '%s' from %s" % (module_name, full_path)
-            copy_file(full_path, module_name + ".tar.gz")
+        dist_dir = op.join(pkg_dir, module_name)
+        tarfile = op.join(pkg_dir, module_name + "_hot.tar.gz")
+        if op.exists(tarfile) :
+          print "using module '%s' from %s" % (module_name, tarfile)
+          copy_file(tarfile, module_name + ".tar.gz")
+          have_modules.append(module_name)
+          break
+        elif op.isdir(dist_dir) :
+          print "using module '%s' from %s" % (module_name, dist_dir)
+          archive_dist(dist_dir)
+          assert op.isfile(module_name + ".tar.gz")
+          copy_file(full_path, module_name + ".tar.gz")
+          have_modules.append(module_name)
+          break
   os.chdir(op.join(options.dest, installer_dir))
   # actual Python installer script
   if (options.script is not None) :
