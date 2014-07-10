@@ -96,7 +96,7 @@ namespace dxtbx { namespace model {
    */
   class ParallaxCorrectedPxMmStrategy : public SimplePxMmStrategy {
   public:
-    ParallaxCorrectedPxMmStrategy(double mu, double t0) 
+    ParallaxCorrectedPxMmStrategy(double mu, double t0)
       : mu_(mu),
         t0_(t0) {}
 

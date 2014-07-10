@@ -206,8 +206,8 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["type"] = name;
     if (name == "SimplePxMmStrategy") {
     }else if (name == "ParallaxCorrectedPxMmStrategy") {
-      boost::shared_ptr<ParallaxCorrectedPxMmStrategy> d = 
-        boost::static_pointer_cast<ParallaxCorrectedPxMmStrategy>(obj);
+      boost::shared_ptr<ParallaxCorrectedPxMmStrategy> d =
+        boost::dynamic_pointer_cast<ParallaxCorrectedPxMmStrategy>(obj);
       result["mu"] = d->mu();
       result["t0"] = d->t0();
     } else {
