@@ -70,25 +70,58 @@ namespace dxtbx { namespace model {
    * Y to the slow direction in input & output. Returns corrected mm position.
    * @param mu Linear attenuation coefficient (mm^-1)
    * @param t0 Sensor thickness (mm)
+   * @param xy The xy mm coordinate
    * @param fast Detector fast direction
    * @param slow Detector slow direction
-   * @param s1 Direction of incoming ray
+   * @param origin Direction of detector origin
    */
   inline
   vec2<double> parallax_correction2(double mu, double t0,
                                     vec2<double> xy,
                                     vec3<double> fast,
                                     vec3<double> slow,
-                                    vec3<double> s1) {
+                                    vec3<double> origin) {
     vec3<double> normal;
     vec2<double> c_xy;
     double cos_t, o;
+    vec3<double> s1 = origin + xy[0] * fast + xy[1] * slow;
     s1 = s1.normalize();
     normal = fast.cross(slow);
     cos_t = s1 * normal;
-    o = ((1.0 / mu) - (t0 / cos_t + 1.0 / mu)) * exp(- mu * t0 / cos_t);
+    o = (1.0 / mu) - (t0 / cos_t + 1.0 / mu) * exp(- mu * t0 / cos_t);
     c_xy[0] = xy[0] + (s1 * fast) * o;
     c_xy[1] = xy[1] + (s1 * slow) * o;
+    return c_xy;
+  }
+  
+  /**
+   * Function to perform an inverse parallax correction on a given coordinate
+   * correctly, given the sensor thickness and so on. X corresponds to the fast
+   * direction, Y to the slow direction in input & output. Returns corrected mm
+   * position.
+   * @param mu Linear attenuation coefficient (mm^-1)
+   * @param t0 Sensor thickness (mm)
+   * @param xy The xy mm coordinate
+   * @param fast Detector fast direction
+   * @param slow Detector slow direction
+   * @param origin Direction of detector origin
+   */
+  inline
+  vec2<double> parallax_correction_inv2(double mu, double t0,
+                                    vec2<double> xy,
+                                    vec3<double> fast,
+                                    vec3<double> slow,
+                                    vec3<double> origin) {
+    vec3<double> normal;
+    vec2<double> c_xy;
+    double cos_t, o;
+    vec3<double> s1 = origin + xy[0] * fast + xy[1] * slow;
+    s1 = s1.normalize();
+    normal = fast.cross(slow);
+    cos_t = s1 * normal;
+    o = (1.0 / mu) - (t0 / cos_t + 1.0 / mu) * exp(- mu * t0 / cos_t);
+    c_xy[0] = xy[0] - (s1 * fast) * o;
+    c_xy[1] = xy[1] - (s1 * slow) * o;
     return c_xy;
   }
 
