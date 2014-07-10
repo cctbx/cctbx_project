@@ -510,6 +510,31 @@ class set(crystal.symmetry):
           no_sys_abs.anomalous_signal())
     return self
 
+  def convert_to_non_anomalous_if_ratio_pairs_lone_less_than(self, threshold):
+    """
+    Convert anomalous array into nonanomalous if the number of Bijvoet pairs is
+    too small compared to the number of lone Bijvoet mates.
+    """
+    if(not self.anomalous_flag()): return self
+    no_sys_abs = self.copy()
+    if (self.space_group_info() is not None):
+      is_unique_set_under_symmetry = no_sys_abs.is_unique_set_under_symmetry()
+      sys_absent_flags = self.sys_absent_flags().data()
+      n_sys_abs = sys_absent_flags.count(True)
+      if (n_sys_abs != 0):
+        no_sys_abs = self.select(selection=~sys_absent_flags)
+      n_centric = no_sys_abs.centric_flags().data().count(True)
+    if (self.space_group_info() is not None
+        and no_sys_abs.anomalous_flag()
+        and is_unique_set_under_symmetry):
+      asu, matches = no_sys_abs.match_bijvoet_mates()
+      n_pairs = matches.pairs().size()
+      n_lone_mates = matches.n_singles() - n_centric
+      if(n_lone_mates != 0 and n_pairs*1./n_lone_mates < threshold):
+        merged = self.as_non_anomalous_array().merge_equivalents()
+        self = merged.array().set_observation_type(self)
+    return self
+
   def show_completeness(self, reflections_per_bin = 500, out = None):
     if(out is None): out = sys.stdout
     self.setup_binner(reflections_per_bin = reflections_per_bin)
