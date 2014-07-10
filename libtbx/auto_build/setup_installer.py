@@ -75,6 +75,7 @@ def run (args) :
   lib_dir = op.join(os.getcwd(), "lib")
   shutil.copytree(libtbx_path, op.join(lib_dir, "libtbx"))
   find_and_delete_files(lib_dir, file_ext=".pyc")
+  find_and_delete_files(lib_dir, file_name=".svn")
   # write VERSION
   open("VERSION", "w").write(options.version)
   if op.isfile(options.readme) :
