@@ -268,7 +268,8 @@ class installer (object) :
         self.mtype)
     elif (source_install and binary_install) :
       if (self.options.source) :
-        print >> out, "performing source installation\n"
+        print >> out, "performing source installation"
+        print >> out, "  will use %d CPU core(s)\n" % self.options.nproc
         binary_install = False
       else :
         print >> out, "source and binary both available, defaulting to "+\
@@ -637,6 +638,7 @@ class installer (object) :
     self.reconfigure(log=log)
     log.close()
     print >> out, "ok"
+    self.display_final_message(out)
 
   def write_environment_files (self, out) :
     """
@@ -725,5 +727,11 @@ class installer (object) :
   def product_specific_finalize_install (self, log) :
     """
     Additional installation setup, file cleanup, more add-ons, etc.
+    """
+    pass
+
+  def display_final_message (self) :
+    """
+    Final instructions for user, etc.
     """
     pass
