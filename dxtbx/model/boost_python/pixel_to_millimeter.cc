@@ -27,7 +27,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   struct ParallaxCorrectedPxMmStrategyPickleSuite : boost::python::pickle_suite {
     static
     boost::python::tuple getinitargs(const ParallaxCorrectedPxMmStrategy& obj) {
-      return boost::python::make_tuple(obj.attenuation_length());
+      return boost::python::make_tuple(obj.mu(), obj.t0());
     }
   };
 
@@ -44,9 +44,9 @@ namespace dxtbx { namespace model { namespace boost_python {
 
     class_<ParallaxCorrectedPxMmStrategy, bases<SimplePxMmStrategy> >(
       "ParallaxCorrectedPxMmStrategy", no_init)
-      .def(init<double>((arg("la"))))
-      .def("attenuation_length",
-        &ParallaxCorrectedPxMmStrategy::attenuation_length)
+      .def(init<double, double>((arg("mu"), arg("t0"))))
+      .def("mu",&ParallaxCorrectedPxMmStrategy::mu)
+      .def("t0",&ParallaxCorrectedPxMmStrategy::t0)
       .def_pickle(ParallaxCorrectedPxMmStrategyPickleSuite());
 
     register_ptr_to_python<shared_ptr<PxMmStrategy> >();

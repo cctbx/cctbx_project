@@ -96,7 +96,9 @@ namespace dxtbx { namespace model {
    */
   class ParallaxCorrectedPxMmStrategy : public SimplePxMmStrategy {
   public:
-    ParallaxCorrectedPxMmStrategy(double la) : la_(la) {}
+    ParallaxCorrectedPxMmStrategy(double mu, double t0) 
+      : mu_(mu),
+        t0_(t0) {}
 
     /** Virtual desctructor */
     virtual ~ParallaxCorrectedPxMmStrategy() {}
@@ -106,9 +108,14 @@ namespace dxtbx { namespace model {
       return "ParallaxCorrectedPxMmStrategy";
     }
 
-    /** @returns the attenuation length */
-    double attenuation_length() const {
-      return la_;
+    /** @returns the linear attenutation coefficient (mm^-1) */
+    double mu() const {
+      return mu_;
+    }
+
+    /** @returns the sensor thickness (mm) */
+    double t0() const {
+      return t0_;
     }
 
     /**
@@ -119,9 +126,12 @@ namespace dxtbx { namespace model {
      */
     vec2<double> to_millimeter(const PanelData &panel,
         vec2<double> xy) const {
-      return parallax_correction_inv(
-        panel.get_distance(), la_, panel.get_normal_origin(),
-        SimplePxMmStrategy::to_millimeter(panel, xy));
+      return parallax_correction_inv2(
+          mu_, t0_,
+          SimplePxMmStrategy::to_millimeter(panel, xy),
+          panel.get_fast_axis(),
+          panel.get_slow_axis(),
+          panel.get_origin());
     }
 
     /**
@@ -133,12 +143,17 @@ namespace dxtbx { namespace model {
     vec2<double> to_pixel(const PanelData &panel,
         vec2<double> xy) const {
       return SimplePxMmStrategy::to_pixel(panel,
-        parallax_correction(panel.get_distance(), la_,
-          panel.get_normal_origin(), xy));
+        parallax_correction2(
+          mu_, t0_,
+          xy,
+          panel.get_fast_axis(),
+          panel.get_slow_axis(),
+          panel.get_origin()));
     }
 
   protected:
-    double la_;
+    double mu_;
+    double t0_;
   };
 
 }} // namespace dxtbx::model
