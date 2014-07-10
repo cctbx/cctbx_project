@@ -607,6 +607,8 @@ Residue classes
       if classes1.common_rna_dna and classes2.common_rna_dna:
         if not link_dna_rna:
           continue
+      #else:
+      #  continue # Hard hookup to disable all but DNA/RNA basepair linking
       if sym_op:
         if classes1.common_amino_acid and classes2.common_saccharide: continue
         if classes2.common_amino_acid and classes1.common_saccharide: continue

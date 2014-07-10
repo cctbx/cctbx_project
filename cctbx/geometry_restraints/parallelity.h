@@ -31,6 +31,7 @@ namespace cctbx { namespace geometry_restraints {
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
+      CCTBX_ASSERT(weight > 0);
     }
 
     //! Constructor.
@@ -47,6 +48,7 @@ namespace cctbx { namespace geometry_restraints {
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
+      CCTBX_ASSERT(weight > 0);
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
       }
@@ -65,6 +67,7 @@ namespace cctbx { namespace geometry_restraints {
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
+      CCTBX_ASSERT(weight > 0);
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
       }

@@ -384,6 +384,15 @@ def is_linked_basepairs(atom1, atom2):
     atom2 = t
   rn1 = atom1.parent().resname.strip()[-1]
   rn2 = atom2.parent().resname.strip()[-1]
+  atom1_idstr = atom1.id_str()
+  atom2_idstr = atom2.id_str()
+  # Don't link two consecutive residues in the same chain
+  try:
+    if ((atom1_idstr[14:15] == atom2_idstr[14:15]) and 
+        abs(int(atom1_idstr[16:19]) - int(atom2_idstr[16:19])) < 2 ):
+      return None
+  except ValueError:
+    pass
   if rn1 == 'T': rn1 = 'U'
   if rn2 == 'T': rn2 = 'U'
   an1 = atom1.name.strip()

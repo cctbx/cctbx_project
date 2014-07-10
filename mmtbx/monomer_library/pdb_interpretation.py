@@ -2000,6 +2000,8 @@ class add_parallelity_proxies(object):
         special_position_indices,
         broken_bond_i_seq_pairs=None,
         weight=0.05):
+    if weight <=0:
+      raise Sorry("Weight for parallelity restraint should be > 0.")
     self.counters = counters
     if (    m_j is not None
         and m_i.i_conformer != 0 and m_j.i_conformer != 0):
@@ -4410,7 +4412,6 @@ class build_all_chain_proxies(linking_mixins):
              s1[16:19], s1[5:8], s2[14:15], s2[16:19], s2[5:8])
           dashes.write(ps)
         dashes.close()
-
     #
     #if (hydrogen_bonds is not None) :
     #  for proxy in hydrogen_bonds.bond_sym_proxies :
