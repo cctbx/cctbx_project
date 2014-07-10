@@ -49,6 +49,7 @@ def to_imageset(input_filename, extra_filename=None):
       from dxtbx.model import ParallaxCorrectedPxMmStrategy
       from cctbx.eltbx import attenuation_coefficient
       table = attenuation_coefficient.get_table("Si")
+      wavelength = models.get_beam().get_wavelength()
       mu = table.mu_at_angstrom(wavelength) / 10.0
       t0 = handle.sensor_thickness
       for panel in detector:
