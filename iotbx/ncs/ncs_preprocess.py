@@ -323,133 +323,180 @@ class ncs_group_object(object):
         self.master_ncs_selection = ''
         self.selection_copy = []
 
+    # # initialize parameters
+    # ncs_phil_groups = []
+    # transform_dict = {}
+    # transform_to_group = {}
+    # copy_to_trnasform = {}
+    # chains_in_groups = set()
+    # tr_sn = 0
+    # if (not use_simple_ncs_from_pdb):
+    #   # collect unique chain IDs
+    #   ph = pdb_hierarchy_inp
+    #   model  = ph.hierarchy.models()[0]
+    #   chain_ids = list({x.id for x in model.chains()})
+    #   # loop over all chains
+    #   n_chains = len(chain_ids)
+    #   ph_chains = model.chains()
+    #   for i in xrange(n_chains-1):
+    #     master_ch_id = ph_chains[i].id
+    #     master_sel = 'chain ' + master_ch_id
+    #     master_atoms = get_pdb_selection(ph=ph,selection_str=master_sel)
+    #     for j in xrange(i+1,n_chains):
+    #       copy_ch_id = ph_chains[j].id
+    #       copy_sel = 'chain ' + copy_ch_id
+    #       copy_atoms = get_pdb_selection(ph=ph,selection_str=copy_sel)
+    #       r,t = get_rot_trans(master_atoms=master_atoms,copy_atoms= copy_atoms)
+    #       if r:
+    #         # the chains relates by ncs operation
+    #         tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
+    #         if is_transpose:
+    #           temp_master, temp_copy = copy_ch_id, master_ch_id
+    #         else:
+    #           temp_master, temp_copy = master_ch_id, copy_ch_id
+    #         if tr_num:
+    #           copies_ids = transform_to_group[tr_num][1]
+    #           if not (temp_master in copies_ids):
+    #             # clean up when adding to new group
+    #             if copy_to_trnasform.has_key(temp_copy):
+    #               tr_list = copy_to_trnasform.pop(temp_copy,None)
+    #               for tr in tr_list:
+    #                 t1 = transform_to_group.has_key(tr)
+    #                 if t1 and (len(transform_to_group[tr][1]) == 1):
+    #                   transform_to_group.pop(tr,None)
+    #               copy_to_trnasform = add_to_dict(
+    #                 d=copy_to_trnasform,k=temp_copy,v=tr_num)
+    #             # clean up new master
+    #             if copy_to_trnasform.has_key(temp_master):
+    #               tr_list = copy_to_trnasform.pop(temp_master,None)
+    #               for tr in tr_list:
+    #                 t1 = transform_to_group.has_key(tr)
+    #                 if t1 and (len(transform_to_group[tr][1]) == 1):
+    #                   transform_to_group.pop(tr,None)
+    #             # update dictionaries with additions to master and copies
+    #             transform_to_group[tr_num][0].append(temp_master)
+    #             transform_to_group[tr_num][1].append(temp_copy)
+    #             chains_in_groups.update(set(transform_to_group[tr_num][1]))
+    #         else:
+    #           # create a new transform object and update groups
+    #           tr_sn += 1
+    #           transform_to_group[tr_sn] = [[temp_master],[temp_copy],(r,t)]
+    #           copy_to_trnasform = add_to_dict(
+    #             d=copy_to_trnasform,k=temp_copy,v=tr_sn)
+    #
+    #   # remove masters if appear in copies
+    #   for k,v in transform_to_group.iteritems():
+    #     masters = v[0]
+    #     copies = v[1]
+    #     common_ids = set(masters) & set(copies)
+    #     while common_ids:
+    #       ch_id = common_ids.pop()
+    #       i = masters.index(ch_id)
+    #       masters.pop(i)
+    #       copies.pop(i)
+    #       common_ids = set(masters) & set(copies)
+    #     transform_to_group[k][0] = masters
+    #     transform_to_group[k][1] = copies
+    #
+    #   #clean up singles
+    #
+    #   multiple_tr_num = [k for k,v in transform_to_group.iteritems() if
+    #                     (len(v[0]) > 1)]
+    #   singles_tr_num = [k for k,v in transform_to_group.iteritems() if
+    #                     (len(v[0]) == 1)]
+    #   for m_tr_num in multiple_tr_num:
+    #     m_m = transform_to_group[m_tr_num][0]
+    #     m_c = transform_to_group[m_tr_num][1]
+    #     for s_tr_num in singles_tr_num:
+    #       if transform_to_group.has_key(s_tr_num):
+    #         s_m = transform_to_group[s_tr_num][0][0]
+    #         s_c = transform_to_group[s_tr_num][1][0]
+    #         if (s_m in m_m) and (s_c in m_c):
+    #           transform_to_group.pop(s_tr_num,None)
+    #         elif (s_c in m_m) and (s_m in m_c):
+    #           transform_to_group.pop(s_tr_num,None)
+    #         elif (s_c in m_c) and (s_m in m_c):
+    #           transform_to_group.pop(s_tr_num,None)
+    #         elif (s_c in m_m) and (s_m in m_m):
+    #           transform_to_group.pop(s_tr_num,None)
+    #         elif (s_c in chains_in_groups) and (s_m in chains_in_groups):
+    #           transform_to_group.pop(s_tr_num,None)
+    #
+    #   # remove overlapping selection
+    #   largest_master = True
+    #   largest_transform_number = False
+    #   assert [largest_master,largest_transform_number].count(True) == 1
+    #   if largest_master:
+    #     master_size = [[len(v[0]),k] for k,v in transform_to_group.iteritems()]
+    #     master_size.sort()
+    #     chain_left_to_add = set(chain_ids)
+    #     transform_to_use = set()
+    #     while bool(chain_left_to_add) and bool(master_size):
+    #       [n,k] = master_size.pop()
+    #       tr = transform_to_group[k]
+    #       if bool(set(tr[1]) & chain_left_to_add):
+    #         transform_to_use.add(k)
+    #         chain_left_to_add -= set(tr[1])
+    #         chain_left_to_add -= set(tr[0])
+    #   elif largest_transform_number:
+    #     # Todo: think if we want to have more transforms or larger ncs groups
+    #     pass
+    #
+    #
+    #   # find all groups with common masters and organize at same order
+    #   for k,v in transform_to_group.iteritems():
+    #     sorted_key = sorted(v[0])
+    #     # organize at same order
+    #     sort_map = [v[0].index(x) for x in sorted_key]
+    #     v[1] = [v[1][i] for i in sort_map]
+    #     key = '_'.join(sorted_key)
+    #     if transform_dict.has_key(key):
+    #       transform_dict[key][1].append(v[1])
+    #     else:
+    #       transform_dict[key] = [sorted_key,[v[1]]]
+    #
+    #   # build ncs group selection list
+    #   for v in transform_dict.itervalues():
+    #     new_ncs_group = ncs_groups_container()
+    #     masters = ['chain ' + x for x in v[0]]
+    #     copies  = []
+    #     for cp in v[1]:
+    #       temp = ['chain ' + x for x in cp]
+    #       copies.append(' or '.join(temp))
+    #
+    #     new_ncs_group.master_ncs_selection = ' or '.join(masters)
+    #     new_ncs_group.selection_copy = copies
+    #     ncs_phil_groups.append(new_ncs_group)
+
+
     # initialize parameters
     ncs_phil_groups = []
-    transform_dict = {}
-    transform_to_group = {}
-    copy_to_trnasform = {}
-    chains_in_groups = set()
-    tr_sn = 0
-    if (not use_simple_ncs_from_pdb):
-      # collect unique chain IDs
-      ph = pdb_hierarchy_inp
-      model  = ph.hierarchy.models()[0]
-      chain_ids = list({x.id for x in model.chains()})
-      # loop over all chains
-      n_chains = len(chain_ids)
-      ph_chains = model.chains()
-      for i in xrange(n_chains-1):
-        master_ch_id = ph_chains[i].id
-        master_sel = 'chain ' + master_ch_id
-        master_atoms = get_pdb_selection(ph=ph,selection_str=master_sel)
-        for j in xrange(i+1,n_chains):
-          copy_ch_id = ph_chains[j].id
-          copy_sel = 'chain ' + copy_ch_id
-          copy_atoms = get_pdb_selection(ph=ph,selection_str=copy_sel)
-          r,t = get_rot_trans(master_atoms=master_atoms,copy_atoms= copy_atoms)
-          if r:
-            # the chains relates by ncs operation
-            tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
-            if is_transpose:
-              temp_master, temp_copy = copy_ch_id, master_ch_id
-            else:
-              temp_master, temp_copy = master_ch_id, copy_ch_id
-            if tr_num:
-              copies_ids = transform_to_group[tr_num][1]
-              if not (temp_master in copies_ids):
-                # clean up when adding to new group
-                if copy_to_trnasform.has_key(temp_copy):
-                  tr_list = copy_to_trnasform.pop(temp_copy,None)
-                  for tr in tr_list:
-                    t1 = transform_to_group.has_key(tr)
-                    if t1 and (len(transform_to_group[tr][1]) == 1):
-                      transform_to_group.pop(tr,None)
-                  copy_to_trnasform = add_to_dict(
-                    d=copy_to_trnasform,k=temp_copy,v=tr_sn)
-                # clean up new master
-                if copy_to_trnasform.has_key(temp_master):
-                  tr_list = copy_to_trnasform.pop(temp_master,None)
-                  for tr in tr_list:
-                    t1 = transform_to_group.has_key(tr)
-                    if t1 and (len(transform_to_group[tr][1]) == 1):
-                      transform_to_group.pop(tr,None)
-                # update dictionaries with additions to master and copies
-                transform_to_group[tr_num][0].append(temp_master)
-                transform_to_group[tr_num][1].append(temp_copy)
-                chains_in_groups.update(set(transform_to_group[tr_num][1]))
-            else:
-              # create a new transform object and update groups
-              tr_sn += 1
-              transform_to_group[tr_sn] = [[temp_master],[temp_copy],(r,t)]
-              copy_to_trnasform = add_to_dict(
-                d=copy_to_trnasform,k=temp_copy,v=tr_sn)
+    n_atoms_per_chain = []
+    n_atoms_per_chain_dict = {}
 
-      # remove masters if appear in copies
-      for k,v in transform_to_group.iteritems():
-        masters = v[0]
-        copies = v[1]
-        common_ids = set(masters) & set(copies)
-        while common_ids:
-          ch_id = common_ids.pop()
-          i = masters.index(ch_id)
-          masters.pop(i)
-          copies.pop(i)
-          common_ids = set(masters) & set(copies)
-        transform_to_group[k][0] = masters
-        transform_to_group[k][1] = copies
+    # evaluate possible master NCS possibilities
+    for chain in pdb_hierarchy_inp.hierarchy.chains():
+      n_atoms = chain.atoms_size()
+      n_atoms_per_chain.append(n_atoms)
+      if n_atoms_per_chain_dict.has_key(n_atoms):
+        n_atoms_per_chain_dict[n_atoms].append('chain ' + chain.id)
+      else:
+        n_atoms_per_chain_dict[n_atoms] = ['chain ' + chain.id]
 
-      #clean up singles
 
-      multiple_tr_num = [k for k,v in transform_to_group.iteritems() if
-                        (len(v[0]) > 1)]
-      singles_tr_num = [k for k,v in transform_to_group.iteritems() if
-                        (len(v[0]) == 1)]
-      for m_tr_num in multiple_tr_num:
-        m_m = transform_to_group[m_tr_num][0]
-        m_c = transform_to_group[m_tr_num][1]
-        for s_tr_num in singles_tr_num:
-          if transform_to_group.has_key(s_tr_num):
-            s_m = transform_to_group[s_tr_num][0][0]
-            s_c = transform_to_group[s_tr_num][1][0]
-            if (s_m in m_m) and (s_c in m_c):
-              transform_to_group.pop(s_tr_num,None)
-            elif (s_c in m_m) and (s_m in m_c):
-              transform_to_group.pop(s_tr_num,None)
-            elif (s_c in m_c) and (s_m in m_c):
-              transform_to_group.pop(s_tr_num,None)
-            elif (s_c in m_m) and (s_m in m_m):
-              transform_to_group.pop(s_tr_num,None)
-            elif (s_c in chains_in_groups) and (s_m in chains_in_groups):
-              transform_to_group.pop(s_tr_num,None)
-
-      # find all groups with common masters and organize at same order
-      for k,v in transform_to_group.iteritems():
-        sorted_key = sorted(v[0])
-        # organize at same order
-        sort_map = [v[0].index(x) for x in sorted_key]
-        v[1] = [v[1][i] for i in sort_map]
-        key = '_'.join(sorted_key)
-        if transform_dict.has_key(key):
-          transform_dict[key][1].append(v[1])
-        else:
-          transform_dict[key] = [sorted_key,[v[1]]]
-
-      # build ncs group selection list
-      for v in transform_dict.itervalues():
-        new_ncs_group = ncs_groups_container()
-        masters = ['chain ' + x for x in v[0]]
-        copies  = []
-        for cp in v[1]:
-          temp = ['chain ' + x for x in cp]
-          copies.append(' or '.join(temp))
-
-        new_ncs_group.master_ncs_selection = ' or '.join(masters)
-        new_ncs_group.selection_copy = copies
-        ncs_phil_groups.append(new_ncs_group)
+    if len(n_atoms_per_chain_dict.keys()) == 1:
+      # Note: even when there all chain are of the same length, master NCS
+      # might be made of several chains
+      new_ncs_group = ncs_groups_container()
+      key = n_atoms_per_chain_dict.keys()[0]
+      chains = n_atoms_per_chain_dict[key]
+      new_ncs_group.master_ncs_selection = chains[0]
+      new_ncs_group.selection_copy = chains[1:]
+      ncs_phil_groups.append(new_ncs_group)
 
     if (ncs_phil_groups != []):
       self.build_ncs_obj_from_phil(
-        pdb_hierarchy_inp=ph,
+        pdb_hierarchy_inp=pdb_hierarchy_inp,
         ncs_phil_groups=ncs_phil_groups)
     else:
       import libtbx.load_env
@@ -1139,7 +1186,7 @@ def add_to_dict(d,k,v):
     d[k] = [v]
   return d
 
-def find_same_transform(r,t,transforms,eps=0.25,angle_eps=5):
+def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
   """
   Check if the rotation r and translation t exist in the transform dictionary.
 
