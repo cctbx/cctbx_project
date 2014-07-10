@@ -90,6 +90,8 @@ test_cdl_params = """\
     .type = bool
   conformation_dependent_restraints_esd = True
     .type = bool
+  conformation_dependent_restraints_default = True
+    .type = bool
   cdl_interpolation = False
     .type = bool
   rdl = False
@@ -4369,12 +4371,13 @@ class build_all_chain_proxies(linking_mixins):
       sym_str = str(sym_pair.rt_mx_ji)
       if not sym_str:
         sym_str = "."
-      disulfide_cif_loop.add_row(("SS",
-                    self.pdb_atoms[i_seq].pdb_label_columns(),
-                    self.pdb_atoms[j_seq].pdb_label_columns(),
-                    sym_str,
-                    ))
-      added = True
+      if disulfide_cif_loop is not None:
+        disulfide_cif_loop.add_row(("SS",
+                                    self.pdb_atoms[i_seq].pdb_label_columns(),
+                                    self.pdb_atoms[j_seq].pdb_label_columns(),
+                                    sym_str,
+                                    ))
+        added = True
     if added:
       cif_block = iotbx.cif.model.block()
       loop = iotbx.cif.model.loop(header=(
