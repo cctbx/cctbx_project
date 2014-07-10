@@ -120,7 +120,6 @@ def run (args) :
           print "using module '%s' from %s" % (module_name, dist_dir)
           archive_dist(dist_dir)
           assert op.isfile(module_name + ".tar.gz")
-          copy_file(full_path, module_name + ".tar.gz")
           have_modules.append(module_name)
           break
   os.chdir(op.join(options.dest, installer_dir))
