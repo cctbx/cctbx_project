@@ -16,20 +16,20 @@ class ChoiceBook (wx.Panel) :
     self.SetSizer(szr)
     self._pages = []
     self._current_page = None
-    self._chooser = wx.Choice(parent=self, )#size=(200,-1))
+    self._was_shown = False
+    self._chooser = wx.Choice(parent=self, size=(400,-1))
     szr.Add(self._chooser, 0, wx.ALL|wx.ALIGN_CENTER, 5)
-    self._page_sizer = wx.BoxSizer(wx.VERTICAL)
-    szr.Add(self._page_sizer, 1, wx.EXPAND)
-    self.Bind(wx.EVT_SHOW, self.OnShow, self)
+    self._page_sizer = szr #wx.BoxSizer(wx.VERTICAL)
+    #szr.Add(self._page_sizer, 1, wx.EXPAND|wx.ALL)
     self.Bind(wx.EVT_CHOICE, self.OnChoose, self._chooser)
 
   def AddPage (self, page, label) :
     """
     Add a panel to the notebook (and the label to the wx.Choice).
     """
-    page.Hide()
     self._pages.append(page)
     self.GetSizer().Add(page, 1, wx.ALL|wx.EXPAND, 0)
+    page.Hide()
     items = list(self._chooser.GetItems())
     items.append(label)
     self._chooser.SetItems(items)
@@ -39,9 +39,9 @@ class ChoiceBook (wx.Panel) :
     Insert a panel in the notebook (and the label to the wx.Choice) at the
     specified index.
     """
-    page.Hide()
     self._pages.insert(0, page)
     self.GetSizer().Add(page, 1, wx.ALL|wx.EXPAND, 0)
+    page.Hide()
     items = list(self._chooser.GetItems())
     items.insert(0, label)
     self._chooser.SetItems(items)
@@ -72,12 +72,21 @@ class ChoiceBook (wx.Panel) :
   def GetPageCount (self) :
     return len(self._pages)
 
-  def OnShow (self, evt) :
-    self._chooser.Layout()
-    self.GetSizer().Layout()
-    if (self.GetPageCount() > 0) and (self._current_page is None) :
-      self.SetPage(0)
-
   def OnChoose (self, evt) :
     i_page = self._chooser.GetSelection()
     self.SetPage(i_page)
+
+if (__name__ == "__main__") :
+  import wx.lib.scrolledpanel
+  app = wx.App(0)
+  frame = wx.Frame(None, title="Test frame", size=(800,600))
+  nb = ChoiceBook(frame)
+  page = wx.lib.scrolledpanel.ScrolledPanel(nb, style=wx.SUNKEN_BORDER)
+  szr = wx.BoxSizer(wx.VERTICAL)
+  page.SetSizer(szr)
+  txt  = wx.StaticText(page, -1, "This is some text")
+  szr.Add(txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 200)
+  nb.AddPage(page, "Page 1")
+  nb.SetPage(0)
+  frame.Show()
+  app.MainLoop()
