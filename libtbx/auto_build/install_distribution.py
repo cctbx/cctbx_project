@@ -76,6 +76,7 @@ from libtbx.auto_build import write_gui_dispatcher_include
 from libtbx.auto_build import regenerate_module_files
 from libtbx.auto_build import install_base_packages
 from libtbx.auto_build import create_mac_app
+from libtbx.auto_build import package_defs
 from libtbx.auto_build.installer_utils import *
 
 class InstallerError (Exception) :
@@ -234,6 +235,8 @@ class installer (object) :
     if (op.isdir(self.src_dir)) :
       source_install = True
     bundle_dir = op.join(self.installer_dir, "bundles")
+    self.base_bundle = op.join(self.bundle_dir, "base-%s-%s.tar.gz" %
+      (self.version, self.mtype))
     self.bundle_file = op.join(self.bundle_dir, "bundle-%s-%s.tar.gz" %
       (self.version, self.mtype))
     self.alias_mtype = self.mtype
@@ -281,6 +284,9 @@ class installer (object) :
         raise InstallerError(error)
     self.source_install = source_install
     self.binary_install = binary_install
+    self.base_bundle = op.join(self.bundle_dir, "base-%s-%s.tar.gz" %
+      (self.version, self.alias_mtype))
+    self.base_binary_install = op.isfile(self.base_bundle)
     return True
 
   def setup_directories (self) :
@@ -339,23 +345,34 @@ class installer (object) :
     self.show_installation_paths()
     # PART 1: dependencies
     # install Python 2.7 and other dependencies (wxPython, etc.)
-    base_args = [
-      # XXX will this allow spaces in path names?
-      "--build_dir=%s" % self.build_dir,
-      "--tmp_dir=%s" % self.tmp_dir,
-      "--pkg_dir=%s" % self.src_dir,
-      "--pkg_dir=%s" % self.dependencies_dir,
-      "--nproc=%s" % self.options.nproc,
-    ] + self.base_package_options
-    if (self.flag_build_gui) :
-      base_args.append("--gui")
-    if (self.options.debug) :
-      base_args.append("--debug")
-    if (not self.options.python_static) :
-      base_args.append("--python-shared")
-    install_base_packages.installer(
-      args=base_args,
-      log=out)
+    if (self.base_binary_install) :
+      os.chdir(self.dest_dir)
+      print >> out, "Using precompiled base bundle..."
+      untar(self.base_bundle, log=out, verbose=True,
+        change_ownership=False, check_output_path=False)
+      os.chdir(self.installer_dir)
+    else :
+      base_args = [
+        # XXX will this allow spaces in path names?
+        "--build_dir=%s" % self.build_dir,
+        "--tmp_dir=%s" % self.tmp_dir,
+        "--pkg_dir=%s" % self.src_dir,
+        "--pkg_dir=%s" % self.dependencies_dir,
+        "--nproc=%s" % self.options.nproc,
+        "--no-download",
+      ] + self.base_package_options
+      # XXX wxPython (et al.) installation is optional depending on the
+      # tarfile actually being present
+      wxpython_file = op.join(self.dependencies_dir, package_defs.WXPYTHON_PKG)
+      if (self.flag_build_gui) and op.isfile(wxpython_file) :
+        base_args.append("--gui")
+      if (self.options.debug) :
+        base_args.append("--debug")
+      if (not self.options.python_static) :
+        base_args.append("--python-shared")
+      install_base_packages.installer(
+        args=base_args,
+        log=out)
     python_bin = op.join(self.build_dir, "base", "bin", "python")
     assert op.isfile(python_bin)
     print >> out, ""
@@ -388,7 +405,7 @@ class installer (object) :
     tag_file = op.join(self.dest_dir, "TAG")
     if op.isfile(tag_file) :
       os.rename(tag_file, op.join(self.dest_dir, "cctbx_bundle_TAG"))
-    self.product_specific_setup_before_compile()
+    self.product_specific_setup_before_compile(log=out)
     log_file = op.join(self.tmp_dir, "compile_%s.log" % self.dest_dir_prefix)
     log = open(log_file, "w")
     os.chdir(self.build_dir)
@@ -472,6 +489,9 @@ class installer (object) :
     os.chdir(self.dest_dir)
     untar(self.bundle_file, log=log, verbose=True, change_ownership=False,
       check_output_path=False)
+    if (self.base_binary_install) :
+      untar(self.base_bundle, log=log, verbose=True,
+        change_ownership=False, check_output_path=False)
     if (not op.isdir(lib_dir)) or (not op.isdir(base_dir)) :
       raise RuntimeError("One or more missing directories:\n  %s\n  %s" %
         (lib_dir, base_dir))
@@ -536,8 +556,9 @@ class installer (object) :
       "export %s=\"%s\"" % (self.product_name, self.dest_dir),
       "export %s_VERSION=%s" % (self.product_name, self.version),
       "export %s_ENVIRONMENT=1" % self.product_name,
-      "export %S_MTYPE=%s" % (self.product_name, self.mtype),
+      "export %s_MTYPE=%s" % (self.product_name, self.mtype),
     ] + self.product_specific_dispatcher_prologue())
+    epilogue = "\n".join(self.product_specific_dispatcher_epilogue())
     dispatcher_opts = [
       "--build_dir=%s" % self.build_dir,
       "--suffix=%s" % self.dest_dir_prefix,
@@ -627,13 +648,13 @@ class installer (object) :
     # csh/tcsh environment setup file
     print >> out, "generating %s environment setup scripts:" % \
       self.product_name
-    print >> out, "  csh: %s/%s_env" % (self.dest_dir, self.dest_dir_prefix)
+    print >> out, "  csh: %s/%s_env.csh" % (self.dest_dir, self.dest_dir_prefix)
     env_csh = open(op.join(self.dest_dir, "%s_env" % self.dest_dir_prefix), "w")
     env_csh.write("#!/bin/csh -f\n")
     env_csh.write("#\n")
     env_csh.write("setenv %s \"%s\"\n" % (self.product_name, self.dest_dir))
     env_csh.write("setenv %s_VERSION %s\n" % (self.product_name, self.version))
-    env_csh.write("source $%s/build/%s/setpaths.csh\n" (self.product_name,
+    env_csh.write("source $%s/build/%s/setpaths.csh\n" % (self.product_name,
       self.mtype))
     env_csh.close()
     # phenix_env.sh
@@ -643,8 +664,8 @@ class installer (object) :
     env_sh.write("#!/bin/sh\n")
     env_sh.write("#\n")
     env_sh.write("export %s=\"%s\"\n" % (self.product_name, self.dest_dir))
-    env_sh.write("export %s_VERSION=%s\n" % self.version)
-    env_csh.write(". $%s/build/%s/setpaths.sh\n" (self.product_name,
+    env_sh.write("export %s_VERSION=%s\n" % (self.product_name, self.version))
+    env_sh.write(". $%s/build/%s/setpaths.sh\n" % (self.product_name,
       self.mtype))
     env_sh.close()
 
