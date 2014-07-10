@@ -158,6 +158,7 @@ def convert_list_block(
         for row in rows.iterrows():
           lst.append(typ(**dict(row)))
       if (obj_outer is not None):
+        obj_outer.cif_object = cif_data
         yield obj_outer
 
 def convert_comp_list(source_info, cif_object):

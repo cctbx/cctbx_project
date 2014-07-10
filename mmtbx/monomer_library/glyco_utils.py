@@ -68,6 +68,15 @@ def get_alpha_beta(code):
   elif cs < 0: return "ALPHA"
   else: return "BETA"
 
+atom_types = ["anomeric_carbon",
+              "ring_oxygen",
+              "ring_carbon",
+              "link_oxygen",
+              "link_carbon",
+              "anomeric_hydrogen",
+              ]
+
+
 class glyco_link_class:
   def __init__(self,
                anomeric_carbon,
@@ -87,13 +96,7 @@ class glyco_link_class:
 
   def __repr__(self):
     outl = "\nGlycosidic atoms\n"
-    for attr in ["anomeric_carbon",
-                 "ring_oxygen",
-                 "ring_carbon",
-                 "link_oxygen",
-                 "link_carbon",
-                 "anomeric_hydrogen",
-                 ]:
+    for attr in atom_types:
       try: outl += "  %-20s : %s" % (attr, getattr(self, attr).quote())
       except Exception: outl += "  %-20s : ???" % (attr)
       if attr=="anomeric_carbon":
@@ -111,7 +114,7 @@ class glyco_link_class:
       return False
     return True
 
-  def get_chiral_i_seqs(self):
+  def get_chiral_i_seqs(self, return_names=False):
     i_seqs = []
     for atom in [self.anomeric_carbon,
                  self.link_oxygen,
@@ -119,8 +122,128 @@ class glyco_link_class:
                  self.ring_carbon,
                  ]:
       if atom is None: return None
-      i_seqs.append(getattr(atom, "i_seq"))
+      if return_names:
+        i_seqs.append(getattr(atom, "name"))
+      else:
+        i_seqs.append(getattr(atom, "i_seq"))
     return i_seqs
+
+  def get_isomer(self):
+    isomer = get_alpha_beta(self.anomeric_carbon.parent().resname)
+    if self.anomeric_carbon.name.strip()[-1] in digits:
+      isomer += self.anomeric_carbon.name.strip()[-1]
+    else:
+      isomer += " %s " % self.anomeric_carbon.name.strip()
+    if self.link_oxygen.name.strip()[-1] in digits:
+      isomer += "-%s" % self.link_oxygen.name.strip()[-1]
+    else:
+      isomer += "- %s " % self.link_oxygen.name.strip()
+    return isomer
+
+  def get_code(self):
+    names = []
+    resnames = []
+    for attr in atom_types:
+      atom = getattr(self, attr, None)
+      if atom is None: continue
+      names.append(atom.name)
+      resnames.append(atom.parent().resname)
+    print names
+    print resnames
+    return "%s_%s" % (resnames[0], resnames[3])
+    #if names == [' C1 ', ' O5 ', ' C2 ', ' O4 ', ' C4 ']: return ""
+
+  def as_cif(self):
+    import iotbx.cif
+    print self
+    isomer = self.get_isomer()
+    print isomer
+    code = self.get_code()
+    print code
+    code = "%s-%s" % (isomer, code)
+    code = isomer
+    print code
+    cif_block = iotbx.cif.model.block()
+    loop = iotbx.cif.model.loop(header=(
+      "_chem_link_bond.link_id",
+      "_chem_link_bond.atom_1_comp_id",
+      "_chem_link_bond.atom_id_1",
+      "_chem_link_bond.atom_2_comp_id",
+      "_chem_link_bond.atom_id_2",
+      "_chem_link_bond.type",
+      "_chem_link_bond.value_dist",
+      "_chem_link_bond.value_dist_esd", # neutron????
+      ))
+    loop.add_row((code,
+                  "1",
+                  self.anomeric_carbon.name.strip(),
+                  "2",
+                  self.link_oxygen.name.strip(),
+                  "single",
+                  "1.439", # need to check this
+                  "0.020",
+                  ))
+    cif_block.add_loop(loop)
+    loop = iotbx.cif.model.loop(header=(
+      "_chem_link_angle.link_id",
+      "_chem_link_angle.atom_1_comp_id",
+      "_chem_link_angle.atom_id_1",
+      "_chem_link_angle.atom_2_comp_id",
+      "_chem_link_angle.atom_id_2",
+      "_chem_link_angle.atom_3_comp_id",
+      "_chem_link_angle.atom_id_3",
+      "_chem_link_angle.value_angle",
+      "_chem_link_angle.value_angle_esd",
+      ))
+    for (id1, a1, id2, a2, id3, a3), angle, esd in [
+      [['1', self.link_carbon, '1', self.link_oxygen,     '2', self.anomeric_carbon],   108.7,  3.],
+      [['1', self.link_oxygen, '2', self.anomeric_carbon, '2', self.ring_oxygen],       112.3,  3.],
+      [['1', self.link_oxygen, '2', self.anomeric_carbon, '2', self.ring_carbon],       109.47, 3.],
+      [['1', self.link_oxygen, '2', self.anomeric_carbon, '2', self.anomeric_hydrogen], 109.47, 3.],
+      ]:
+      if a1 is None or a2 is None or a3 is None: continue
+      loop.add_row((code,
+                    id1,
+                    a1.name.strip(),
+                    id2,
+                    a2.name.strip(),
+                    id3,
+                    a3.name.strip(),
+                    "%0.1f" % angle,
+                    "%0.1f" % esd,
+                    ))
+    cif_block.add_loop(loop)
+    loop = iotbx.cif.model.loop(header=(
+      "_chem_link_chir.link_id",
+      "_chem_link_chir.atom_centre_comp_id",
+      "_chem_link_chir.atom_id_centre",
+      "_chem_link_chir.atom_1_comp_id",
+      "_chem_link_chir.atom_id_1",
+      "_chem_link_chir.atom_2_comp_id",
+      "_chem_link_chir.atom_id_2",
+      "_chem_link_chir.atom_3_comp_id",
+      "_chem_link_chir.atom_id_3",
+      "_chem_link_chir.volume_sign",
+      ))
+    value = get_chiral_sign(self.anomeric_carbon.parent().resname)
+    if value>0:
+      value = "positiv"
+    else:
+      value = "negativ"
+    names = self.get_chiral_i_seqs(return_names=True)
+    loop.add_row((code,
+                  "2",
+                  names[0].strip(),
+                  "1",
+                  names[1].strip(),
+                  "2",
+                  names[2].strip(),
+                  "2",
+                  names[3].strip(),
+                  value,
+                  ))
+    cif_block.add_loop(loop)
+    return cif_block
 
 def get_distance2(a1, a2):
   d2 = 0
@@ -431,13 +554,6 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
   if value:
     esd = 0.02
     _add_chiral(i_seqs, geometry_proxy_registries, value, esd)
-  isomer = get_alpha_beta(gla.anomeric_carbon.parent().resname)
-  if gla.anomeric_carbon.name.strip()[-1] in digits:
-    isomer += gla.anomeric_carbon.name.strip()[-1]
-  else:
-    isomer += " %s " % gla.anomeric_carbon.name.strip()
-  if gla.link_oxygen.name.strip()[-1] in digits:
-    isomer += "-%s" % gla.link_oxygen.name.strip()[-1]
-  else:
-    isomer += "- %s " % gla.link_oxygen.name.strip()
-  return isomer
+
+  return gla.get_isomer(), gla.as_cif()
+

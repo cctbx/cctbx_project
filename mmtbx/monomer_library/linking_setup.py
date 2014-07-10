@@ -67,11 +67,13 @@ def update_skip_if_longer(amino_acid_bond_cutoff,
                           sulfur_bond_cutoff,
                           other_bond_cutoff,
                           ):
+  
   skip_if_longer = {
     ("common_amino_acid", "common_amino_acid") : amino_acid_bond_cutoff**2,
     ("common_amino_acid", "other")             : intra_residue_bond_cutoff**2,
     #
     ("common_rna_dna", "common_rna_dna") : rna_dna_bond_cutoff**2,
+    ("common_rna_dna", "metal")          : metal_coordination_cutoff**2,
     ("common_rna_dna", "other")          : other_bond_cutoff**2,
     #
     ("common_amino_acid", "common_saccharide") : saccharide_bond_cutoff**2,
@@ -83,10 +85,13 @@ def update_skip_if_longer(amino_acid_bond_cutoff,
     #
     ("sulfur", "sulfur") : sulfur_bond_cutoff**2, # is there another place?
     #
-    ("common_amino_acid", "common_rna_dna") : amino_acid_bond_cutoff*rna_dna_bond_cutoff,
-    ("common_rna_dna", "common_small_molecule") : rna_dna_bond_cutoff*other_bond_cutoff,
+    #
+    ("common_amino_acid", "common_rna_dna") : amino_acid_bond_cutoff**2,
+    ("common_rna_dna", "common_small_molecule") : other_bond_cutoff**2,
     ("common_amino_acid", "common_small_molecule") : amino_acid_bond_cutoff*other_bond_cutoff,
     ("other", "common_small_molecule") : amino_acid_bond_cutoff*other_bond_cutoff,
+    #
+    ("metal", "metal") : metal_coordination_cutoff**2,
     }
   for c in ["other",
             "common_water",
@@ -95,6 +100,9 @@ def update_skip_if_longer(amino_acid_bond_cutoff,
     key = ["metal", c]
     key.sort()
     skip_if_longer[tuple(key)] = metal_coordination_cutoff**2
+
+  ## for key in sorted(skip_if_longer):
+  ##   print key, skip_if_longer[key]
   return skip_if_longer
 
 skip_if_longer = update_skip_if_longer(amino_acid_bond_cutoff,

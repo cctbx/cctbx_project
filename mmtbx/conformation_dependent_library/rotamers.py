@@ -34,6 +34,13 @@ def generate_rotamer_data(pdb_hierarchy,
                           ):
   r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy)
   for rot in r.results:
+    #if rot.outlier:
+    #  print (rot.resname,
+    #       rot.id_str(),
+    #       rot.chain_id,
+    #       rot.altloc,
+    #       rot.rotamer_name)
+    #  assert 0
     if exclude_outliers and rot.outlier: continue
     yield (rot.resname,
            rot.id_str(),
@@ -47,6 +54,7 @@ def adjust_rotamer_restraints(pdb_hierarchy,
                               log=None,
                               verbose=False,
                               ):
+  assert 0
   if log is None: log = sys.stdout
   t0=time.time()
   print >> log, "  Rotamer Conformation Library"
@@ -144,6 +152,8 @@ def update_restraints(hierarchy,
                       current_geometry=None, # xray_structure!!
                       sites_cart=None,
                       rdl_proxies=None,
+                      esd_factor=1.,
+                      exclude_backbone=True,
                       log=None,
                       verbose=False,
                       ):
@@ -161,7 +171,6 @@ def update_restraints(hierarchy,
   #
   if rdl_proxies is None:
     rdl_proxies = []
-  print 'rdl_proxies',rdl_proxies
   i_seqs_restraints = {}
   i_seqs_restraints_reverse = {}
   #
@@ -187,13 +196,31 @@ def update_restraints(hierarchy,
           rdl_proxies.append(atom_group.id_str())
           for names, values in restraints.items():
             i_seqs = []
+            if exclude_backbone and names[1] in ["N", "CA", "C"]: continue
             for name in names:
               for atom in atom_group.atoms():
                 if name.strip()==atom.name.strip():
                   i_seqs.append(atom.i_seq)
                   break
             i_seqs_restraints[tuple(i_seqs)] = values
-            i_seqs_restraints_reverse[tuple(i_seqs)] = defaults[names]
+            if names in defaults:
+              i_seqs_restraints_reverse[tuple(i_seqs)] = defaults[names]
+  # reset to default
+  for angle_proxy in geometry.angle_proxies:
+    if angle_proxy.i_seqs in i_seqs_restraints_reverse:
+      if verbose: print " i_seqs %-15s initial %12.3f %12.3f" % (
+        angle_proxy.i_seqs,
+        angle_proxy.angle_ideal,
+        angle_proxy.weight,
+        )
+      angle_proxy.angle_ideal = i_seqs_restraints_reverse[angle_proxy.i_seqs][0]
+      angle_proxy.weight = 1/i_seqs_restraints_reverse[angle_proxy.i_seqs][1]**2
+      if verbose: print " i_seqs %-15s final   %12.3f %12.3f" % (
+        angle_proxy.i_seqs,
+        angle_proxy.angle_ideal,
+        angle_proxy.weight,
+        )
+  #
   count = 0
   for angle_proxy in geometry.angle_proxies:
     if angle_proxy.i_seqs in i_seqs_restraints:
@@ -202,10 +229,8 @@ def update_restraints(hierarchy,
         angle_proxy.angle_ideal,
         angle_proxy.weight,
         )
-      print i_seqs_restraints[angle_proxy.i_seqs]
-      print i_seqs_restraints_reverse[angle_proxy.i_seqs]
       angle_proxy.angle_ideal = i_seqs_restraints[angle_proxy.i_seqs][0]
-      angle_proxy.weight = 1/i_seqs_restraints[angle_proxy.i_seqs][1]**2
+      angle_proxy.weight = esd_factor/i_seqs_restraints[angle_proxy.i_seqs][1]**2
       if verbose: print " i_seqs %-15s final   %12.3f %12.3f" % (
         angle_proxy.i_seqs,
         angle_proxy.angle_ideal,
@@ -214,9 +239,6 @@ def update_restraints(hierarchy,
       count += 1
   print >> log, "    Number of angles RDL adjusted : %d" % count
   print >> log, "    Time to adjust                : %0.3f" % (time.time()-t0)
-
-  print 'rdl_proxies'
-  print rdl_proxies
   return rdl_proxies
 
 def run(pdb_filename):
