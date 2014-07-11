@@ -240,11 +240,12 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     d = map(abs,d)
     self.assertTrue(max(d)<0.01)
 
+  @unittest.SkipTest
   def test_rotaion_translation_input(self):
     """
     Verify correct processing
-    :return:
     """
+    print 'Running ',sys._getframe().f_code.co_name
   # def test_build_pdb(self):
   #   """ produce test pdb file """
   #   from iotbx import pdb
