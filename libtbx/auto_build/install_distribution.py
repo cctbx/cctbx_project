@@ -449,7 +449,7 @@ class installer (object) :
     print >> out, "done"
     self.product_specific_source_install(log=log)
     print >> out, ""
-    msg = "%s %s INSTALLATION COMPLETE" % self.product_name
+    msg = "%s INSTALLATION COMPLETE" % self.product_name
     print >> out, "*" * (len(msg) + 4)
     print >> out, "* " + msg + " *"
     print >> out, "*" * (len(msg) + 4)

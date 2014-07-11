@@ -3,7 +3,7 @@ from __future__ import division
 import os
 import re
 import subprocess
-import argparse
+import optparse
 import sys
 
 # This code is partially derived from a similar module I wrote
@@ -180,21 +180,20 @@ class FixMacRpath(object):
           cmd(['install_name_tool', '-change', lib, rlib, f], cwd=root, ignorefail=True)
 
 def run (args) :
-  parser = argparse.ArgumentParser()
-  parser.add_argument("root", help="Build path")
-  parser.add_argument("--otherroot", help="Other build path")
-  parser.add_argument("--dry", help="Dry run", action="store_true")
-  args = parser.parse_args(args)
+  parser = optparse.OptionParser()
+  parser.add_option("--otherroot", help="Other build path")
+  parser.add_option("--dry", help="Dry run", action="store_true")
+  options, args = parser.parse_args(args)
 
-  if args.dry:
+  if options.dry:
     DRY_RUN = True
 
   # Setup args.
-  root = args.root
+  root = args[-1]
   replace = {}
   replace['^lib'] = '@rpath/lib'
-  if args.otherroot:
-    replace[args.otherroot] = '@rpath'
+  if options.otherroot:
+    replace[options.otherroot] = '@rpath'
 
   # Run the rpath fixer.
   cls = FixLinuxRpath
