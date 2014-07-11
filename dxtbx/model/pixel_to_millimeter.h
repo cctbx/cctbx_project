@@ -14,6 +14,7 @@
 #include <scitbx/vec2.h>
 #include <dxtbx/model/parallax_correction.h>
 #include <dxtbx/model/panel_data.h>
+#include <dxtbx/error.h>
 
 namespace dxtbx { namespace model {
 
@@ -98,7 +99,10 @@ namespace dxtbx { namespace model {
   public:
     ParallaxCorrectedPxMmStrategy(double mu, double t0)
       : mu_(mu),
-        t0_(t0) {}
+        t0_(t0) {
+      DXTBX_ASSERT(mu > 0);
+      DXTBX_ASSERT(t0 > 0);
+    }
 
     /** Virtual desctructor */
     virtual ~ParallaxCorrectedPxMmStrategy() {}
