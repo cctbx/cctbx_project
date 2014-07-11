@@ -539,14 +539,18 @@ class linking_mixins(object):
     print >> log, """
   Automatic linking
     Parameters for automatic linking
-      Bond cutoffs
-        Metal        : %0.2f
-        Amino acid   : %0.2f
-        RNA/DNA      : %0.2f
-        Carbohydrate : %0.2f
-      """ % (metal_coordination_cutoff,
+      Linking & cutoffs
+        Metal        : %-5s - %0.2f
+        Amimo acid   : %-5s - %0.2f
+        RNA/DNA      : %-5s - %0.2f
+        Carbohydrate : %-5s - %0.2f
+      """ % (link_metals,
+             metal_coordination_cutoff,
+             link_residues,
              amino_acid_bond_cutoff,
+             link_dna_rna,
              rna_dna_bond_cutoff,
+             link_carbohydrates,
              carbohydrate_bond_cutoff,
              )
     t0=time.time()
@@ -683,8 +687,8 @@ Residue classes
       if(current_number_of_links >=
          linking_setup.maximum_inter_residue_links.get(class_key, 1)
          ):
-        if verbose: print "too many links"
-        print "too many links:",current_number_of_links,linking_setup.maximum_inter_residue_links.get(class_key, 1), class_key
+        if verbose:
+          print "too many links:",current_number_of_links,linking_setup.maximum_inter_residue_links.get(class_key, 1), class_key
         continue
       #
       done[key].append(names)
