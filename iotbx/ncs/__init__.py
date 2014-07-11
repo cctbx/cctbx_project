@@ -51,6 +51,8 @@ def input(pdb_hierarchy_inp=None,
     :param quiet: (bool) When True -> quiet output when processing files
     :param spec_ncs_groups: ncs_groups object as produced by simple_ncs_from_pdb
     :param cif_string: (str) string of cif type data
+    :param use_simple_ncs_from_pdb: (bool) When True,
+           forces ncs look-up using use_simple_ncs_from_pdb
     """
     ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
     ncs_group_obj.preprocess_ncs_obj(
