@@ -175,6 +175,11 @@ def regenerate_relative_symlinks (dir_name, log=sys.stdout) :
       os.symlink(new_path, file_name)
 
 def find_and_delete_files (dir_name, file_name=None, file_ext=None) :
+  """
+  Recursively walk through a directory and delete any files (or directories)
+  with the specified file name or extension.  Effectively equivalent to
+  running 'find . -name "PATTERN" | xargs rm -rf'.
+  """
   deleted = []
   for dirname, dirnames, filenames in os.walk(dir_name) :
     for dn in dirnames :
@@ -191,3 +196,30 @@ def find_and_delete_files (dir_name, file_name=None, file_ext=None) :
         os.remove(full_path)
         deleted.append(full_path)
   return deleted
+
+def archive_dist (dir_name, create_tarfile=True, use_shutil=True) :
+  """
+  Create a clean copy of a source repository, optionally bundling it as a
+  gzipped tar file.
+  """
+  dir_name = op.abspath(dir_name)
+  assert op.isdir(dir_name) and (dir_name != os.getcwd())
+  module_name = op.basename(dir_name)
+  local_path = op.join(os.getcwd(), module_name)
+  if (use_shutil) :
+    shutil.copytree(dir_name, local_path)
+  else :
+    copy_tree(dir_name, local_path)
+  find_and_delete_files(local_path, file_ext=".pyc")
+  find_and_delete_files(local_path, file_ext=".pyo")
+  find_and_delete_files(local_path, file_ext=".swp")
+  find_and_delete_files(local_path, file_name=".svn")
+  find_and_delete_files(local_path, file_name=".git")
+  find_and_delete_files(local_path, file_name=".sconsign")
+  if (create_tarfile) :
+    call("tar -czf %s.tar.gz %s" % (module_name, module_name), log=sys.stdout)
+    tar_file = op.join(os.getcwd(), module_name + ".tar.gz")
+    assert op.isfile(tar_file)
+    shutil.rmtree(local_path)
+    return tar_file
+  return op.join(os.getcwd(), module_name)

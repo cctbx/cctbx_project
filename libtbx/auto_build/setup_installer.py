@@ -54,6 +54,8 @@ def run (args) :
     help="Local modules to include", default=None)
   parser.add_option("--product_name", dest="product_name", action="store",
     help="Name of installed package", default=None)
+  parser.add_option("--cctbx_bundle", dest="cctbx_bundle", action="store",
+    help="Path to CCTBX installer bundle (if not downloaded)", default=None)
   options, args = parser.parse_args(args)
   assert len(args) == 1
   package_name = args[-1]
@@ -97,11 +99,15 @@ def run (args) :
     log=sys.stdout,
     pkg_dirs=options.pkg_dirs,
     copy_files=True)
-  fetch_package(
-    pkg_name="cctbx_bundle_for_installer.tar.gz",
-    pkg_url="http://cci.lbl.gov/build/results/current")
-  os.rename("cctbx_bundle_for_installer.tar.gz", "cctbx_bundle.tar.gz")
   os.chdir(op.join(options.dest, installer_dir, "source"))
+  if (options.cctbx_bundle is None) :
+    fetch_package(
+      pkg_name="cctbx_bundle_for_installer.tar.gz",
+      pkg_url="http://cci.lbl.gov/build/results/current")
+    os.rename("cctbx_bundle_for_installer.tar.gz", "cctbx_bundle.tar.gz")
+  else :
+    assert op.isfile(options.cctbx_bundle)
+    copy_file(options.cctbx_bundle, "cctbx_bundle.tar.gz")
   if (options.modules is not None) :
     print ""
     print "********** FETCHING MODULES **********"
@@ -191,24 +197,6 @@ $PYTHON_EXE ./bin/install.py $@
   f.close()
   st = os.stat("install")
   os.chmod("install", st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-
-def archive_dist (dir_name) :
-  dir_name = op.abspath(dir_name)
-  assert op.isdir(dir_name) and (dir_name != os.getcwd())
-  module_name = op.basename(dir_name)
-  local_path = op.join(os.getcwd(), module_name)
-  copy_tree(dir_name, local_path)
-  find_and_delete_files(local_path, file_ext=".pyc")
-  find_and_delete_files(local_path, file_ext=".pyo")
-  find_and_delete_files(local_path, file_ext=".swp")
-  find_and_delete_files(local_path, file_name=".svn")
-  find_and_delete_files(local_path, file_name=".git")
-  find_and_delete_files(local_path, file_name=".sconsign")
-  call("tar -czf %s.tar.gz %s" % (module_name, module_name), log=sys.stdout)
-  tar_file = op.join(os.getcwd(), module_name + ".tar.gz")
-  assert op.isfile(tar_file)
-  shutil.rmtree(local_path)
-  return tar_file
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
