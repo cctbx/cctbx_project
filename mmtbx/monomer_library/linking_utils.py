@@ -357,7 +357,11 @@ def is_atom_group_pair_linked(atom_group1,
   return None, None, None
 
 
-def is_linked_basepairs(atom1, atom2):
+def is_linked_basepairs(
+        atom1,
+        atom2,
+        rna_dna_bond_cutoff=3.4,
+        rna_dna_cosangle_cutoff=0.55):
   def final_link_direction_check():
     import math
     a1p = atom1.parent().get_atom('C4')
@@ -371,11 +375,11 @@ def is_linked_basepairs(atom1, atom2):
     #print "cos_phi:", cos_phi[0], "phi:", math.acos(cos_phi[0])*360/math.pi, abs(cos_phi[0]) < 0.55
     # we have cosine between normal to plane group and link, and want this angle
     # to be around 90 degrees
-    return abs(cos_phi[0]) < 0.55
+    return abs(cos_phi[0]) < rna_dna_cosangle_cutoff
   def get_distance_atoms(name1, name2):
     return atom1.parent().get_atom(name1).distance(atom2.parent().get_atom(name2))
 
-  if atom1.distance(atom2) > 3.4:
+  if atom1.distance(atom2) > rna_dna_bond_cutoff:
     return None
   from bondlength_defaults import basepairs_lengths
   if atom1.parent().resname.strip()[-1] > atom2.parent().resname.strip()[-1]:
@@ -388,7 +392,7 @@ def is_linked_basepairs(atom1, atom2):
   atom2_idstr = atom2.id_str()
   # Don't link two consecutive residues in the same chain
   try:
-    if ((atom1_idstr[14:15] == atom2_idstr[14:15]) and 
+    if ((atom1_idstr[14:15] == atom2_idstr[14:15]) and
         abs(int(atom1_idstr[16:19]) - int(atom2_idstr[16:19])) < 2 ):
       return None
   except ValueError:
@@ -471,7 +475,8 @@ def is_atom_pair_linked(atom1,
                         distance=None,
                         max_bonded_cutoff=3.,
                         amino_acid_bond_cutoff=1.9,
-                        rna_dna_bond_cutoff=2.5,
+                        rna_dna_bond_cutoff=3.4,
+                        rna_dna_cosangle_cutoff=0.55,
                         inter_residue_bond_cutoff=1.99,
                         second_row_buffer=.5,
                         metal_coordination_cutoff=3.,
@@ -533,7 +538,11 @@ def is_atom_pair_linked(atom1,
   # DNA base-pairs
   #
   if lookup.count("common_rna_dna") == 2:
-    link_class = is_linked_basepairs(atom1, atom2)
+    link_class = is_linked_basepairs(
+        atom1,
+        atom2,
+        rna_dna_bond_cutoff=rna_dna_bond_cutoff,
+        rna_dna_cosangle_cutoff=rna_dna_cosangle_cutoff)
     if link_class is not None:
       #print "DO LINKING, class = ", link_class, atom1.id_str(), atom2.id_str()
       return True
@@ -701,7 +710,7 @@ def process_atom_groups_for_linking(pdb_hierarchy,
                                     classes2,
                                     #bond_cutoff=2.75,
                                     amino_acid_bond_cutoff=1.9,
-                                    rna_dna_bond_cutoff=3.5,
+                                    rna_dna_bond_cutoff=3.4,
                                     intra_residue_bond_cutoff=1.99,
                                     verbose=False,
                                     ):

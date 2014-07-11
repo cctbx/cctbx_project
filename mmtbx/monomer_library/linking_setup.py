@@ -16,7 +16,7 @@ ad_hoc_first_row = "Li Be B C N O F".upper().split()
 # most be alpha order
 #
 amino_acid_bond_cutoff = 1.9
-rna_dna_bond_cutoff = 2.5
+rna_dna_bond_cutoff = 3.4
 intra_residue_bond_cutoff = 1.99
 saccharide_bond_cutoff = 3.
 metal_coordination_cutoff = 3.5
@@ -67,7 +67,7 @@ def update_skip_if_longer(amino_acid_bond_cutoff,
                           sulfur_bond_cutoff,
                           other_bond_cutoff,
                           ):
-  
+
   skip_if_longer = {
     ("common_amino_acid", "common_amino_acid") : amino_acid_bond_cutoff**2,
     ("common_amino_acid", "other")             : intra_residue_bond_cutoff**2,

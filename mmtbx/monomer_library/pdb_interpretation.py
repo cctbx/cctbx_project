@@ -151,9 +151,13 @@ master_params_str = """\
     link_dna_rna = True
       .type = bool
       .short_caption = Find and link opposite basepairs in RNA/DNA
-    rna_dna_bond_cutoff = 4
+    rna_dna_bond_cutoff = 3.4
       .type = float
       .short_caption = Distance cutoff for automatic linking of RNA/DNA
+    rna_dna_cosangle_cutoff = 0.55
+      .type = float
+      .short_caption = cosine of angle between normal to basepair plane and \
+        link
     link_residues = True
       .type = bool
     inter_residue_bond_cutoff = 2.5
@@ -268,7 +272,7 @@ master_params_str = """\
     .type = bool
     .short_caption = Determine consecutive DNA/RNA basepairs and restraint \
       them to be parallel
-  weight_parallel_dna_rna = 0.2
+  weight_parallel_dna_rna = 0.027
     .type=float
     .short_caption = weight for parallelity DNA/RNA restraints
   max_reasonable_bond_distance = 50.0
@@ -4434,6 +4438,7 @@ class build_all_chain_proxies(linking_mixins):
         inter_residue_bond_cutoff = al_params.inter_residue_bond_cutoff,
         second_row_buffer         = al_params.buffer_for_second_row_elements,
         rna_dna_bond_cutoff       = al_params.rna_dna_bond_cutoff,
+        rna_dna_cosangle_cutoff   = al_params.rna_dna_cosangle_cutoff,
         log=log,
         )
     if len(hbonds_in_bond_list) == 0:
