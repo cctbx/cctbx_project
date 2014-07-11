@@ -68,16 +68,17 @@ def run (args) :
   # copy over directories
   for module_name in required :
     module_path = op.join(repositories, module_name)
-    if (not op.isdir(module_path)) :
+    tarfile_path = module_path + "_hot.tar.gz"
+    if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)) :
       raise OSError("Essential module '%s' not found in %s!" % (module_name,
         repositories))
-    print "Copying %s..." % module_path
-    archive_dist(module_path, create_tarfile=False)
+    copy_dist(module_path, tarfile_path)
     have_modules.append(module_name)
   # recommended modules - can be skipped if necessary
   for module_name in recommended :
     module_path = op.join(repositories, module_name)
-    if (not op.isdir(module_path)) :
+    tarfile_path = module_path + "_hot.tar.gz"
+    if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)) :
       if (options.ignore_missing) :
         warnings.warn(("Skipping recommended module '%s' (not found in "+
           "repositories directory %s)") % (module_name, repositories))
@@ -86,13 +87,13 @@ def run (args) :
         raise OSError(("Recommended module '%s' not found in %s!  If you want "+
           "to continue without this module, re-run with --ignore-missing.") %
           (module_name, repositories))
-    print "Copying %s..." % module_path
-    archive_dist(module_path, create_tarfile=False)
+    copy_dist(module_path, tarfile_path)
     have_modules.append(module_name)
   # optional
   for module_name in optional :
     module_path = op.join(repositories, module_name)
-    if (not op.isdir(module_path)) :
+    tarfile_path = module_path + "_hot.tar.gz"
+    if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)) :
       if (not options.require_all) :
         warnings.warn(("Skipping optional module '%s' (not found in "+
           "repositories directory %s)") % (module_name, repositories))
@@ -101,8 +102,7 @@ def run (args) :
         raise OSError(("Required module '%s' not found in %s!  If you want "+
           "to continue without this module, re-run without --require-all.") %
           (module_name, repositories))
-    print "Copying %s..." % module_path
-    archive_dist(module_path, create_tarfile=False)
+    copy_dist(module_path, tarfile_path)
     have_modules.append(module_name)
   # create the archive
   call("tar -cvzf %s %s" % (options.tarfile, " ".join(have_modules)),
@@ -111,9 +111,19 @@ def run (args) :
   if (options.destination is not None) :
     assert op.isdir(options.destination)
     shutil.move(options.tarfile, options.destination)
+  else :
+    shutil.move(options.tarfile, options.tmp_dir)
   # cleanup
   os.chdir(options.tmp_dir)
   shutil.rmtree("cctbx_tmp")
+
+def copy_dist (dir_name, file_name) :
+  if op.isfile(file_name) :
+    print "Untarring %s..." % file_name
+    call("tar zxf %s" % file_name, log=sys.stdout)
+  else :
+    print "Copying %s..." % dir_name
+    archive_dist(dir_name, create_tarfile=False)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
