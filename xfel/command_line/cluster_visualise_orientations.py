@@ -26,3 +26,4 @@ if __name__ == "__main__":
                       help='One or more folers containing integration pickles.')
   args = parser.parse_args()
   result = run(args)
+
