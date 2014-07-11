@@ -14,13 +14,18 @@ class manager(object):
         torsion_ncs_groups=None,
         normalization=False,
         use_amber=False,
-        amber_mdgx_structs=None) :
+        amber_mdgx_structs=None,
+        use_afitt=False, #afitt
+        afitt_object=None) :
     self.geometry = geometry
     self.ncs_groups = ncs_groups
     self.torsion_ncs_groups = torsion_ncs_groups
     self.normalization = normalization
     self.use_amber = use_amber
     self.amber_mdgx_structs = amber_mdgx_structs
+    #afitt
+    self.use_afitt = use_afitt
+    self.afitt_object = afitt_object
 
   def select(self, selection):
     if (self.geometry is None):
@@ -104,7 +109,24 @@ class manager(object):
           gradients=result.gradients,
           disable_asu_cache=disable_asu_cache,
           normalization=False)
-        result += result.geometry
+
+      #afitt
+      ##################################################################
+      #                                                                #
+      # AFITT CALL - OpenEye AFITT gradients and target                #
+      #                                                                #
+      ##################################################################
+      if (self.use_afitt and len(sites_cart)==self.afitt_object.total_model_atoms):
+        afitt_input='afitt_in'
+        afitt_output='afitt_out'
+        self.afitt_object.make_afitt_input(sites_cart=sites_cart,
+              afitt_input=afitt_input)
+        from amber_adaptbx import afitt
+        afitt.call_afitt(afitt_input, afitt_output, self.afitt_object.ff)
+        result.geometry = afitt.process_afitt_output(
+              afitt_output, result.geometry, self.afitt_object)
+
+      result += result.geometry
     if (self.ncs_groups is None):
       result.ncs_groups = None
     else:

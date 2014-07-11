@@ -30,3 +30,21 @@ if (qb_installed) :
       include scope qbpy.qb_params.qblib_master_params
     }
 """
+
+#afitt
+import subprocess
+afitt_installed=False
+if libtbx.env.has_module("afitt_adaptbx") :
+  build_dir = libtbx.env.under_build("afitt_adaptbx")
+  if (build_dir is not None) and (os.path.isdir(build_dir)) :
+    afitt_installed = True
+
+if (afitt_installed) :
+  external_energy_params_str += """
+    afitt
+      .help = Parameters for using AFITT ligand gradients.
+      .expert_level = 3
+    {
+      include scope amber_adaptbx.afitt.master_phil_str
+    }
+"""
