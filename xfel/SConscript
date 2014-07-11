@@ -32,6 +32,11 @@ builder(
   source=["mono_simulation/bandpass_gaussian.cpp",
           "mono_simulation/ccixfel_core.cpp",
   ])
+builder(
+  target="#lib/legacy_scale",
+  source=["metrology/legacy_scale/scale_core.cpp",
+          "metrology/legacy_scale/bandpass_gaussian.cpp"
+  ])
 
 if (not env_etc.no_boost_python):
   Import("env_boost_python_ext")
@@ -44,9 +49,23 @@ if (not env_etc.no_boost_python):
                  target="#lib/xfel_ext", source="ext.cpp")
   env_xfel_boost_python_ext.SharedLibrary(
                  target="#lib/xfel_metrology_ext", source="metrology_ext.cpp")
+
+  env_legacy_boost_python_ext = env_boost_python_ext.Clone()
+  env_legacy_boost_python_ext.Prepend(
+                 LIBS=["legacy_scale", "cctbx", "scitbx_boost_python"])
+  env_legacy_boost_python_ext.SharedLibrary(
+                 target="#lib/xfel_legacy_scale_ext", source="metrology/legacy_scale/ext.cpp")
+
+
   env_etc.include_registry.append(
     env=env_xfel_boost_python_ext,
     paths=env_etc.xfel_common_includes)
   Export("env_xfel_boost_python_ext")
+
+  env_etc.include_registry.append(
+    env=env_legacy_boost_python_ext,
+    paths=env_etc.xfel_common_includes)
+  Export("env_legacy_boost_python_ext")
+
   SConscript("mono_simulation/SConscript")
 
