@@ -113,7 +113,7 @@ def tst_detector():
   from cctbx.eltbx import attenuation_coefficient
   table = attenuation_coefficient.get_table("Si")
   mu = table.mu_at_angstrom(1) / 10
-  t0 = 0.0
+  t0 = 0.320
 
   # Create the detector
   detector = Detector(Panel(
