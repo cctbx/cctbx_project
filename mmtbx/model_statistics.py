@@ -117,7 +117,6 @@ class geometry(object):
     if(out is None): out = sys.stdout
     if(pdb_deposition): prefix = "REMARK   3  "
     print >> out, self.format_basic_geometry_statistics(prefix=prefix)
-    print >> out, prefix
     print >> out, self.format_molprobity_scores(prefix=prefix)
     out.flush()
 
@@ -126,23 +125,25 @@ class geometry(object):
 
   def format_basic_geometry_statistics(self, prefix=""):
     fmt = "%6.3f %7.3f %6d"
-    result = ""
+    result = "%s" % prefix
     rl = "GEOSTD + MON.LIB."
     if self.cdl_restraints:
       rl += " + CDL v1.2"
-      result = """%sRESTRAINTS LIBRARY
+    result = """%sRESTRAINTS LIBRARY
 %s  %s
 %s""" % (prefix, prefix, rl, prefix)
 
     if getattr(self, "b_mean", None):
-      result += """%sDEVIATIONS FROM IDEAL VALUES.
+      result += """
+%sDEVIATIONS FROM IDEAL VALUES.
 %s               RMSD     MAX  COUNT
 %s BOND      : %s
 %s ANGLE     : %s
 %s CHIRALITY : %s
 %s PLANARITY : %s
 %s DIHEDRAL  : %s
-%s MIN NONBONDED DISTANCE : %s"""%(
+%s MIN NONBONDED DISTANCE : %s
+%s"""%(
        prefix,
        prefix,
        prefix, fmt%(self.b_mean, self.b_max, self.b_number),
@@ -150,13 +151,15 @@ class geometry(object):
        prefix, fmt%(self.c_mean, self.c_max, self.c_number),
        prefix, fmt%(self.p_mean, self.p_max, self.p_number),
        prefix, fmt%(self.d_mean, self.d_max, self.d_number),
-       prefix, str("%-6.3f"%self.n[0]))
+       prefix, str("%-6.3f"%self.n[0]),
+       prefix,
+       )
     if not prefix:
       result = self._capitalize(result)
     return result
 
   def format_molprobity_scores(self, prefix=""):
-    result=""
+    result="%s" % prefix
     if(self.ramachandran_outliers is not None):
       result = """%sMOLPROBITY STATISTICS.
 %s ALL-ATOM CLASHSCORE : %-6.2f
@@ -173,7 +176,8 @@ class geometry(object):
         prefix, self.ramachandran_allowed, "%",
         prefix, self.ramachandran_favored, "%",
         prefix, str("%6.2f"%(self.rotamer_outliers)).strip(),"%",
-        prefix, self.c_beta_dev)
+        prefix, self.c_beta_dev,
+        )
     if not prefix:
       result = self._capitalize(result)
     return result
