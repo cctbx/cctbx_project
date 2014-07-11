@@ -29,26 +29,57 @@ class geometry(object):
       restraints_manager.energies_sites(
         sites_cart        = sites_cart,
         compute_gradients = False)
+    # molprobity scores
+    self.clashscore            = None
+    self.ramachandran_outliers = None
+    self.ramachandran_allowed  = None
+    self.ramachandran_favored  = None
+    self.rotamer_outliers      = None
+    self.c_beta_dev            = None
+    self.mpscore               = None
+    if(molprobity_scores):
+      self.ramalyze_obj = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
+      self.ramachandran_outliers = self.ramalyze_obj.percent_outliers
+      self.ramachandran_allowed  = self.ramalyze_obj.percent_allowed
+      self.ramachandran_favored  = self.ramalyze_obj.percent_favored
+      self.rotalyze_obj = rotalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
+      self.rotamer_outliers = self.rotalyze_obj.percent_outliers
+      self.cbetadev_obj = cbetadev(
+        pdb_hierarchy = pdb_hierarchy,
+        outliers_only = True,
+        out           = null_out())
+      self.c_beta_dev = self.cbetadev_obj.get_outlier_count()
+      self.clashscore = clashscore(pdb_hierarchy=pdb_hierarchy).get_clashscore()
+      self.mpscore = molprobity_score(
+        clashscore = self.clashscore,
+        rota_out   = self.rotamer_outliers,
+        rama_fav   = self.ramachandran_favored)
+    #
     if(hasattr(energies_sites, "geometry")):
       esg = energies_sites.geometry
     else: esg = energies_sites
+    self.a = None
+    self.b = None
+    if not hasattr(esg, "angle_deviations"): return
     self.a = esg.angle_deviations()
     self.b = esg.bond_deviations()
+    self.a_number = esg.n_angle_proxies
+    self.b_number = esg.get_filtered_n_bond_proxies()
+
     self.c = esg.chirality_deviations()
     self.d = esg.dihedral_deviations()
     self.p = esg.planarity_deviations()
     self.ll = esg.parallelity_deviations()
     self.n = esg.nonbonded_deviations()
-    self.a_number = esg.n_angle_proxies
-    self.b_number = esg.get_filtered_n_bond_proxies()
-    self.d_number = esg.n_dihedral_proxies
     self.c_number = esg.n_chirality_proxies
+    self.d_number = esg.n_dihedral_proxies
     self.p_number = esg.n_planarity_proxies
     self.n_number = esg.n_nonbonded_proxies
     #
     for restraint_type in ["b", "a", "c", "p", "ll", "d", "n"] :
       for value_type in [("mean",2), ("max",1), ("min",0)] :
         name = "%s_%s" % (restraint_type, value_type[0])
+        if getattr(self, restraint_type) is None: continue
         setattr(self, name, getattr(self, restraint_type)[value_type[1]])
     #
     if(hasattr(restraints_manager, "geometry")):
@@ -81,31 +112,6 @@ class geometry(object):
       esg.ncs_dihedral_residual_sum+
       esg.generic_restraint_residual_sum)
     del energies_sites, esg # we accumulate this object, so make it clean asap
-    # molprobity scores
-    self.clashscore            = None
-    self.ramachandran_outliers = None
-    self.ramachandran_allowed  = None
-    self.ramachandran_favored  = None
-    self.rotamer_outliers      = None
-    self.c_beta_dev            = None
-    self.mpscore               = None
-    if(molprobity_scores):
-      self.ramalyze_obj = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
-      self.ramachandran_outliers = self.ramalyze_obj.percent_outliers
-      self.ramachandran_allowed  = self.ramalyze_obj.percent_allowed
-      self.ramachandran_favored  = self.ramalyze_obj.percent_favored
-      self.rotalyze_obj = rotalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
-      self.rotamer_outliers = self.rotalyze_obj.percent_outliers
-      self.cbetadev_obj = cbetadev(
-        pdb_hierarchy = pdb_hierarchy,
-        outliers_only = True,
-        out           = null_out())
-      self.c_beta_dev = self.cbetadev_obj.get_outlier_count()
-      self.clashscore = clashscore(pdb_hierarchy=pdb_hierarchy).get_clashscore()
-      self.mpscore = molprobity_score(
-        clashscore = self.clashscore,
-        rota_out   = self.rotamer_outliers,
-        rama_fav   = self.ramachandran_favored)
 
   def show(self, out=None, prefix="", pdb_deposition=False, message = ""):
     if(out is None): out = sys.stdout
@@ -115,6 +121,9 @@ class geometry(object):
     print >> out, self.format_molprobity_scores(prefix=prefix)
     out.flush()
 
+  def _capitalize(self, s):
+    return s.capitalize()
+
   def format_basic_geometry_statistics(self, prefix=""):
     fmt = "%6.3f %7.3f %6d"
     result = ""
@@ -123,10 +132,10 @@ class geometry(object):
       rl += " + CDL v1.2"
       result = """%sRESTRAINTS LIBRARY
 %s  %s
-%s
-""" % (prefix, prefix, rl, prefix)
+%s""" % (prefix, prefix, rl, prefix)
 
-    result += """%sDEVIATIONS FROM IDEAL VALUES.
+    if getattr(self, "b_mean", None):
+      result += """%sDEVIATIONS FROM IDEAL VALUES.
 %s               RMSD     MAX  COUNT
 %s BOND      : %s
 %s ANGLE     : %s
@@ -142,6 +151,8 @@ class geometry(object):
        prefix, fmt%(self.p_mean, self.p_max, self.p_number),
        prefix, fmt%(self.d_mean, self.d_max, self.d_number),
        prefix, str("%-6.3f"%self.n[0]))
+    if not prefix:
+      result = self._capitalize(result)
     return result
 
   def format_molprobity_scores(self, prefix=""):
@@ -163,6 +174,8 @@ class geometry(object):
         prefix, self.ramachandran_favored, "%",
         prefix, str("%6.2f"%(self.rotamer_outliers)).strip(),"%",
         prefix, self.c_beta_dev)
+    if not prefix:
+      result = self._capitalize(result)
     return result
 
   def as_cif_block(self, cif_block=None):

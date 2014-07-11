@@ -1,4 +1,6 @@
 from __future__ import division
+from stdlib import math
+from libtbx.utils import Sorry
 class energies(object):
 
   def __init__(O,
@@ -30,6 +32,12 @@ class energies(object):
       if (O.gradients.id() != rhs.gradients.id()):
         O.gradients += rhs.gradients
     return O
+
+  def __setattr__(self, attr, value):
+    if attr=="target":
+      if math.isnan(value):
+        raise Sorry('target value (energy) is "nan"')
+    object.__setattr__(self, attr, value)
 
   def finalize_target_and_gradients(O):
     O.target = O.residual_sum
