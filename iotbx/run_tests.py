@@ -79,6 +79,7 @@ tst_list = (
   ["$D/dsn6/tst.py", "P31"],
   "$D/ncs/tst_ncs_groups_preprocessing.py",
   "$D/ncs/tst.py",
+  "$D/ncs/tst_finding_ncs.py",
   )
 
 def run():
