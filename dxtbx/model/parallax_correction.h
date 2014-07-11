@@ -14,6 +14,7 @@
 #include <scitbx/vec2.h>
 #include <scitbx/vec3.h>
 #include <cmath>
+#include <dxtbx/error.h>
 
 namespace dxtbx { namespace model {
 
@@ -88,6 +89,7 @@ namespace dxtbx { namespace model {
     s1 = s1.normalize();
     normal = fast.cross(slow);
     cos_t = s1 * normal;
+    DXTBX_ASSERT(mu > 0 && cos_t != 0);
     o = (1.0 / mu) - (t0 / cos_t + 1.0 / mu) * exp(- mu * t0 / cos_t);
     c_xy[0] = xy[0] + (s1 * fast) * o;
     c_xy[1] = xy[1] + (s1 * slow) * o;
