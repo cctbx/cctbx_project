@@ -138,7 +138,7 @@ def run(refine, target, residues_per_window = 1, d_min=2):
   """
   Makes sure this actually work:
   'real-space' ADP refinement by converting the map into 'Fobs' and
-  then actually doing usual reciprocal-space refinement. Surprisingly this 
+  then actually doing usual reciprocal-space refinement. Surprisingly this
   converges to R=0 exactly regardless the resolution. ML does not work perhaps
   becase starting point is too far.
   """
@@ -206,4 +206,3 @@ def run(refine, target, residues_per_window = 1, d_min=2):
 
 if (__name__ == "__main__"):
   run(refine="refine_adp", target="ls_wunit_k1")
-

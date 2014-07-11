@@ -172,7 +172,10 @@ class refinement_monitor(object):
     ignore_hd = True
     if self.neutron_refinement or use_amber:
       ignore_hd = False
-    geom = model.geometry_statistics(ignore_hd = ignore_hd)
+    geom = model.geometry_statistics(
+      ignore_hd = ignore_hd,
+      cdl_restraints=self.params.pdb_interpretation.cdl,
+      )
     if(geom is not None): self.geom.append(geom)
     hd_sel = None
     if(not self.neutron_refinement and not self.is_neutron_monitor):
