@@ -166,7 +166,13 @@ class refinement_monitor(object):
     self.steps.append(step)
     self.r_works.append(fmodel.r_work())
     self.r_frees.append(fmodel.r_free())
-    geom = model.geometry_statistics(ignore_hd = not self.neutron_refinement)
+    use_amber = False
+    if hasattr(self.params, "amber"): # loaded amber scope
+      use_amber = self.params.amber.use_amber
+    ignore_hd = True
+    if self.neutron_refinement or use_amber:
+      ignore_hd = False
+    geom = model.geometry_statistics(ignore_hd = ignore_hd)
     if(geom is not None): self.geom.append(geom)
     hd_sel = None
     if(not self.neutron_refinement and not self.is_neutron_monitor):
@@ -177,16 +183,20 @@ class refinement_monitor(object):
     self.bs_iso_min_a.append(flex.min_default( b_isos, 0))
     self.bs_iso_ave_a.append(flex.mean_default(b_isos, 0))
     self.n_solv.append(model.number_of_ordered_solvent_molecules())
-    if([self.bond_start,self.angle_start].count(None) == 2):
+    if (len(self.geom)>0 and
+        getattr(self.geom[0], "b", None) and
+        getattr(self.geom[0], "a", None)
+        ):
+      if([self.bond_start,self.angle_start].count(None) == 2):
+        if(len(self.geom)>0):
+          self.bond_start  = self.geom[0].b[2]
+          self.angle_start = self.geom[0].a[2]
       if(len(self.geom)>0):
-        self.bond_start  = self.geom[0].b[2]
-        self.angle_start = self.geom[0].a[2]
-    if(len(self.geom)>0):
-      self.bond_final  = self.geom[len(self.geom)-1].b[2]
-      self.angle_final = self.geom[len(self.geom)-1].a[2]
-    elif(len(self.geom)==1):
-      self.bond_final  = self.geom[0].b[2]
-      self.angle_final = self.geom[0].a[2]
+        self.bond_final  = self.geom[len(self.geom)-1].b[2]
+        self.angle_final = self.geom[len(self.geom)-1].a[2]
+      elif(len(self.geom)==1):
+        self.bond_final  = self.geom[0].b[2]
+        self.angle_final = self.geom[0].a[2]
     if(rigid_body_shift_accumulator is not None):
       self.rigid_body_shift_accumulator = rigid_body_shift_accumulator
     t2 = time.time()
@@ -235,22 +245,35 @@ class refinement_monitor(object):
        print >> out, remark + "1_occ: refinement of occupancies                                        "
     print >> out, remark + separator
     #
-    print >> out, remark + \
-      " stage       r-work r-free bonds angles b_min b_max b_ave n_water shift"
-    format = remark + "%s%ds"%("%",max_step_len)+\
-      " %6.4f %6.4f %5.3f %5.2f %5.1f %5.1f %5.1f %3d %s"
+    has_bonds_angles=True
+    if len(self.geom):
+      if self.geom[0].a is None:
+        has_bonds_angles=False
+    if has_bonds_angles:
+      print >> out, remark + \
+        " stage       r-work r-free bonds angles b_min b_max b_ave n_water shift"
+      format = remark + "%s%ds"%("%",max_step_len)+\
+        " %6.4f %6.4f %5.3f %5.2f %5.1f %5.1f %5.1f %3d %s"
+    else:
+      print >> out, remark + \
+        " stage       r-work r-free b_min b_max b_ave n_water shift"
+      format = remark + "%s%ds"%("%",max_step_len)+\
+        " %6.4f %6.4f %5.1f %5.1f %5.1f %3d %s"
     for a,b,c,d,e,f,g,h,i in zip(self.steps,
-                                 self.r_works,
-                                 self.r_frees,
-                                 self.geom,
-                                 self.bs_iso_min_a,
-                                 self.bs_iso_max_a,
-                                 self.bs_iso_ave_a,
-                                 self.n_solv,
-                                 self.shifts):
-      if(type(1.)==type(i)): i = "     "+str("%5.3f"%i)
-      else: i = "%9s"%i
-      print >> out, format % (a,b,c,d.b[2],d.a[2],e,f,g,h,i)
+                                   self.r_works,
+                                   self.r_frees,
+                                   self.geom,
+                                   self.bs_iso_min_a,
+                                   self.bs_iso_max_a,
+                                   self.bs_iso_ave_a,
+                                   self.n_solv,
+                                   self.shifts):
+        if(type(1.)==type(i)): i = "     "+str("%5.3f"%i)
+        else: i = "%9s"%i
+        if has_bonds_angles:
+          print >> out, format % (a,b,c,d.b[2],d.a[2],e,f,g,h,i)
+        else:
+          print >> out, format % (a,b,c,e,f,g,h,i)
     print >> out, remark + separator
     out.flush()
     #
