@@ -140,7 +140,7 @@ master_params_str = """\
         ligand-protein or ligand-nucleic acid covalent bonds. This includes \
         sugars, amino acid modifications, and other prosthetic groups.
       .style = bold renderer:draw_automatic_linking_control
-    link_metals = True
+    link_metals = False
       .type = bool
     metal_coordination_cutoff = 3.5
       .type = float
@@ -148,7 +148,7 @@ master_params_str = """\
     amino_acid_bond_cutoff = 1.9
       .type = float
       .short_caption = Distance cutoff for automatic linking of aminoacids
-    link_dna_rna = True
+    link_dna_rna = False
       .type = bool
       .short_caption = Find and link opposite basepairs in RNA/DNA
     rna_dna_bond_cutoff = 3.4
@@ -158,7 +158,7 @@ master_params_str = """\
       .type = float
       .short_caption = cosine of angle between normal to basepair plane and \
         link
-    link_residues = True
+    link_residues = False
       .type = bool
     inter_residue_bond_cutoff = 2.5
       .type = float
@@ -167,7 +167,7 @@ master_params_str = """\
       .type = float
       .short_caption = Distance to add to intra_residue_bond_cutoff if one \
         or more element is in the second (or more) row
-    link_carbohydrates = True
+    link_carbohydrates = False
       .type = bool
     carbohydrate_bond_cutoff = 1.99
       .type = float
@@ -4423,7 +4423,22 @@ class build_all_chain_proxies(linking_mixins):
     #
     al_params = self.params.automatic_linking
     hbonds_in_bond_list = []
+    #
+    any_links = False
+    link_attrs = ["link_metals",
+                  "link_residues",
+                  "link_carbohydrates",
+                  "link_dna_rna",
+                  ]
     if al_params.link_all:
+      for attr in link_attrs:
+        setattr(al_params, attr, True)
+        any_links = True
+    for attr in link_attrs:
+      if getattr(al_params, attr, False):
+        any_links = True
+        break
+    if any_links:
       hbonds_in_bond_list = self.process_nonbonded_for_links(
         bond_params_table,
         bond_asu_table,
