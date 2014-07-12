@@ -23,6 +23,16 @@ bravais_setting_id = None
 max_frames = None
   .type = int(value_min=2)
   .help = From all the input images, only use the first max_frames for metrology analysis.
+min_count = 25
+  .type = int(value_min=3)
+  .help = One each sensor, require this minimum number of spots before proposing unit pixel translations.
+  .help = On the CSPAD, 1 sensor is a pair of 2 ASICs.
+detector_format_version = None
+  .type = str
+  .help = CSPAD format version, as defined in spotfinder/applications/xfel/cxi_phil.py
+  .help = If given, program will print out old and new unit pixel translations, to be pasted back into code
+  .help = If not given, program will print increments to the whatever translations were used for integration,
+  .help = also to be pasted back into the code.
 show_plots = False
   .type = bool
   .help = Show graphical plots using matplotlib (expert only)
@@ -31,7 +41,8 @@ show_consistency = False
   .help = Run the consistency controls (expert only)
 effective_tile_boundaries = None
   .type = ints
-  .help = effective integer tile boundaries applied to convert xtc stream to pickled image files. Must be 64 * 4 integers.
+  .help = Effective integer tile boundaries applied to convert xtc stream to pickled image files. Must be 64 * 4 integers.
+  .help = Boundaries should not be under user control, they are provided by the input data (pickle files).
 """
 
 def get_phil(args):
@@ -66,7 +77,6 @@ def validate_phil(wp):
   triclinic=1 monoclinic=2 orthorhombic=5 rhombohedral=5
   tetragonal=9 hexagonal=12 cubic=22""")
 
-
 def run(args):
 
   work_params = get_phil(args)
@@ -94,9 +104,5 @@ if (__name__ == "__main__"):
   run(args=sys.argv[1:])
 
 #cspad.metrology data=/reg/d/psdm/CXI/cxid9114/ftc/sauter/results/r010[2-9]/018/integration max_frames=300 bravais_setting_id=9
-#[nksauter@psexport02][~/phenix/src/cctbx_project/xfel/metrology]$ diff ../../../cctbx_project/xfel/mono_simulation/parameters.h ../../../scale/parameters.h
-#12c12
-#< #include <xfel/mono_simulation/vector_collection.h>
-#---
-#> #include <scale/vector_collection.h>
-#suggests that the code I need may already be in mono_simulation
+#cspad.metrology data=/reg/d/psdm/CXI/cxid9114/ftc/brewster/results/r00[3-4]*/003/integration max_frames=300 bravais_setting_id=9
+#cspad.metrology data=/reg/d/psdm/CXI/cxid9114/ftc/brewster/results/r00[3-4]*/003/integration max_frames=300 bravais_setting_id=9 min_count=20
