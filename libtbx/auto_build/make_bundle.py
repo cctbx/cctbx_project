@@ -48,21 +48,26 @@ def run (args, out=sys.stdout) :
     help="Architecture type", default=machine_type())
   parser.add_option("--ignore", dest="ignore", action="store",
     help="Subdirectories to ignore", default="")
-  parser.add_option("--remove_src", dest="remove_src", action="store",
+  parser.add_option("--remove_src", dest="remove_src", action="store_true",
     help="Remove compiled source files (.h, .cpp, etc.)", default=False)
-  parser.add_option("--keep_base", dest="keep_base", action="store",
+  parser.add_option("--keep_base", dest="keep_base", action="store_true",
     help="Keep base packages with main bundle", default=False)
   parser.add_option("--dest", dest="dest", action="store",
     help="Destination directory for bundle tarfiles", default=None)
+  parser.add_option("--verbose", dest="verbose", action="store_true")
   options, args = parser.parse_args(args)
   target_dir = args[0]
   assert op.isdir(target_dir), target_dir
+  target_dir = op.abspath(target_dir)
+  if (options.dest is not None) :
+    assert op.isdir(options.dest)
   os.chdir(options.tmp_dir)
   pkg_dir = op.basename(target_dir)
   build_dir = op.join(target_dir, "build", options.mtype)
   print >> out, "Setting rpath in shared libraries..."
   stdout_old = sys.stdout
-  sys.stdout = StringIO()
+  if (not options.verbose) :
+    sys.stdout = StringIO()
   rpath.run([build_dir])
   sys.stdout = stdout_old
   # create temp dir
@@ -72,6 +77,14 @@ def run (args, out=sys.stdout) :
     shutil.rmtree(tmp_dir)
   os.mkdir(tmp_dir)
   os.chdir(tmp_dir)
+  # build directory
+  print >> out, "Copying dependencies..."
+  tmp_build_dir = op.join(tmp_dir, "build", options.mtype)
+  os.makedirs(tmp_build_dir)
+  for dir_name in ["lib", "base"] :
+    full_path = op.join(build_dir, dir_name)
+    assert op.isdir(full_path)
+    copy_tree(full_path, op.join(tmp_build_dir, dir_name))
   # copy over non-compiled files
   print >> out, "Copying base modules..."
   ignore_dirs = options.ignore.split(",")
@@ -82,13 +95,6 @@ def run (args, out=sys.stdout) :
     if op.isdir(full_path) :
       print >> out, "  copying %s..." % file_name
       copy_tree(full_path, op.join(tmp_dir, file_name))
-  # build directory
-  tmp_build_dir = op.join(tmp_dir, "build", options.mtype)
-  os.makedirs(tmp_build_dir)
-  for dir_name in ["lib", "base"] :
-    full_path = op.join(build_dir, dir_name)
-    assert op.isdir(full_path)
-    copy_tree(full_path, op.join(tmp_build_dir, dir_name))
   # remove unnecessary base directories/files
   for dir_name in [
       "base/bin/gtk-demo",

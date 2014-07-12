@@ -638,7 +638,7 @@ class installer (object) :
     self.reconfigure(log=log)
     log.close()
     print >> out, "ok"
-    self.display_final_message(out)
+    self.display_final_message()
 
   def write_environment_files (self, out) :
     """
@@ -650,8 +650,9 @@ class installer (object) :
     # csh/tcsh environment setup file
     print >> out, "generating %s environment setup scripts:" % \
       self.product_name
+    csh_file = op.join(self.dest_dir, "%s_env.csh" % self.dest_dir_prefix)
     print >> out, "  csh: %s/%s_env.csh" % (self.dest_dir, self.dest_dir_prefix)
-    env_csh = open(op.join(self.dest_dir, "%s_env" % self.dest_dir_prefix), "w")
+    env_csh = open(csh_file, "w")
     env_csh.write("#!/bin/csh -f\n")
     env_csh.write("#\n")
     env_csh.write("setenv %s \"%s\"\n" % (self.product_name, self.dest_dir))
