@@ -401,6 +401,110 @@ class fit_translation4(mark5_iteration,fit_translation2):
     print
     print table_utils.format(table_data,has_header=1,justify='center',delim=" ")
 
+  def print_table_2(self):
+
+    from libtbx import table_utils
+    from libtbx.str_utils import format_value
+    table_header = ["Tile","Dist","Nobs","aRmsd","Rmsd","delx","dely","disp","rotdeg",
+                    "Rsigma","Tsigma","Transx","Transy","DelRot","Rotdeg"]
+    table_data = []
+    table_data.append(table_header)
+    sort_radii = flex.sort_permutation(flex.double(self.radii))
+    tile_rmsds = flex.double()
+    radial_sigmas = flex.double(len(self.tiles) // 4)
+    tangen_sigmas = flex.double(len(self.tiles) // 4)
+
+    wtaveg = [0.]*(len(self.tiles) // 4)
+    for x in range(len(self.tiles) // 4):
+      if self.tilecounts[x] >= 3:
+        wtaveg[x] = self.weighted_average_angle_deg_from_tile(x, self.post_mean_cv[x], self.correction_vector_x,
+          self.correction_vector_y)
+
+    def add_line_to_table(idx):
+      x = sort_radii[idx]
+      if self.tilecounts[x] < 3:
+        radial = (0,0)
+        tangential = (0,0)
+        rmean,tmean,rsigma,tsigma=(0,0,1,1)
+      else:
+        radial,tangential,rmean,tmean,rsigma,tsigma = get_radial_tangential_vectors(self,x,
+          self.post_mean_cv[x],
+          self.correction_vector_x, self.correction_vector_y,
+          self.model_calcx-self.refined_cntr_x,
+          self.model_calcy-self.refined_cntr_y)
+
+      table_data.append(  [
+        format_value("%3d",   x),
+        format_value("%7.2f", self.radii[x]),
+        format_value("%6d",  self.tilecounts[x]),
+        format_value("%5.2f", self.asymmetric_tile_rmsd[x]),
+        format_value("%5.2f", self.tile_rmsd[x]),
+        format_value("%5.2f", self.post_mean_cv[x][0]),
+        format_value("%5.2f", self.post_mean_cv[x][1]),
+        format_value("%5.2f", matrix.col(self.post_mean_cv[x]).length()),
+        format_value("%6.2f", wtaveg[x]),
+        format_value("%6.2f", rsigma),
+        format_value("%6.2f", tsigma),
+        format_value("%5.2f", self.tile_translations.x[2*x]),
+        format_value("%5.2f", self.tile_translations.x[2*x+1]),
+        "",
+        format_value("%5.2f", self.tile_rotations.x[x])
+      ])
+
+    # order the printout by sensor, starting from innermost
+    new_order = []
+    mutable = list(sort_radii)
+    idx = 0
+    unit_translation_increments = flex.double(len(mutable)*2)
+    while 1:
+      if self.radii[mutable[idx]]==0.0:
+        idx+=1; continue
+      tile_select = mutable[idx]
+      if tile_select%2 == 0:
+        # even
+        sensor_tiles = (tile_select, tile_select+1)
+        sensor_ptrs = (idx, mutable.index(tile_select+1))
+      else:
+        # odd
+        sensor_tiles = (tile_select-1, tile_select)
+        sensor_ptrs = ( mutable.index(tile_select-1), idx)
+
+      if self.tilecounts[mutable[sensor_ptrs[0]]] + self.tilecounts[mutable[sensor_ptrs[1]]] < \
+         self.params.min_count:
+         idx+=1
+         continue
+
+      sum_weight = 0.0
+      sum_wt_x = 0.0
+      sum_wt_y = 0.0
+      for iptr, ptr in enumerate(sensor_ptrs):
+        if ptr in new_order: break
+        if self.tilecounts[mutable[ptr]] > 0:
+          #print mutable[ptr]
+          add_line_to_table (ptr)
+          sum_weight += self.tilecounts[mutable[ptr]]
+          sum_wt_x += self.tilecounts[mutable[ptr]] * self.tile_translations.x[2*mutable[ptr]]
+          sum_wt_y += self.tilecounts[mutable[ptr]] * self.tile_translations.x[2*mutable[ptr]+1]
+        new_order.append(ptr)
+        if iptr==1:
+          #print
+          sensor_line = [""]*len(table_header)
+          sensor_line[2]="%6d"%sum_weight
+          sensor_line[11]="%5.2f"%round(sum_wt_x/sum_weight,0)
+          sensor_line[12]="%5.2f"%round(sum_wt_y/sum_weight,0)
+          unit_translation_increments[2*mutable[ptr]-2] = round(sum_wt_x/sum_weight,0)
+          unit_translation_increments[2*mutable[ptr]-1] = round(sum_wt_y/sum_weight,0)
+          unit_translation_increments[2*mutable[ptr]] = round(sum_wt_x/sum_weight,0)
+          unit_translation_increments[2*mutable[ptr]+1] = round(sum_wt_y/sum_weight,0)
+          table_data.append(sensor_line)
+          table_data.append([""]*len(table_header))
+      idx+=1
+      if idx>=len(mutable): break
+
+    print "Grouped by sensor, listing lowest Q-angle first:"
+    print table_utils.format(table_data,has_header=1,justify='center',delim=" ")
+    return unit_translation_increments
+
   def same_sensor_table(self,verbose=True):
     radii = flex.double() # from-instrument-center distance in pixels
     delrot= flex.double() # delta rotation in degrees
@@ -440,6 +544,46 @@ class fit_translation4(mark5_iteration,fit_translation2):
     stats = flex.mean_and_variance(flex.double([t[1] for t in unrotated_displacement]),weight)
     print "transverse gap is %7.3f px +/- %7.3f"%(stats.mean(), stats.gsl_stats_wsd())
 
+  @staticmethod
+  def print_unit_translations(data, params):
+    from scitbx.array_family import flex
+    def pretty_format():
+      out = """"""
+      for quad in [0,1,2,3]:
+        for blockof2 in [0,1,2,3]:
+          format = "%3.0f,"*8
+          if quad==3 and blockof2==3:
+            format = format[0:-1]
+          format = "     %s"%format
+          out+=format+"""
+"""
+        if quad<3: out += """
+"""
+      return out
+
+    from spotfinder.applications.xfel.cxi_phil import cxi_versioned_extract
+    if params.detector_format_version is not None:
+      stuff = cxi_versioned_extract(["distl.detector_format_version=%s"%params.detector_format_version])
+      old = flex.double(stuff.distl.tile_translations)
+      print "cctbx already defines unit pixel translations for detector format version %s:"%params.detector_format_version
+      print pretty_format()%tuple(old)
+      print "new unit pixel increments will be SUBTRACTED off these to get final translations"
+      print
+
+    else:
+      print "no pre-existing translations were input"
+      print
+      old = flex.double(128)
+
+    print "Unit translations to be pasted into spotfinder/applications/xfel/cxi_phil.py:"
+
+    new = old - flex.double(data)
+    overall_format = """    working_extract.distl.tile_translations = [
+"""+pretty_format()+"""    ]"""
+
+    print overall_format%tuple(new)
+
+
   def run_cycle_a(self):
     self.bandpass_models = {}
 
@@ -459,6 +603,8 @@ class fit_translation4(mark5_iteration,fit_translation2):
     #sys.exit(0) # HATTNE
 
     C.print_table()
+    unit_translations = C.print_table_2()
+    self.print_unit_translations(unit_translations, self.params)
 
     #import sys
     #sys.exit(0) # HATTNE
