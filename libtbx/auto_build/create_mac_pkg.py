@@ -11,6 +11,7 @@ import os.path as op
 import shutil
 import time
 import sys
+import os
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
 if (not libtbx_path in sys.path) :
@@ -20,6 +21,9 @@ def run (args, out=sys.stdout) :
   if (sys.platform != "darwin") :
     print "ERROR: this program can only be run on Macintosh systems."
     return False
+  # XXX this prevents tar on OS X from including resource fork files, which
+  # break the object relocation.  thanks to Francis Reyes for pointing this out.
+  os.environ["COPYFILE_DISABLE"] = "true"
   datestamp = time.strftime("%Y-%m-%d", time.localtime())
   parser = OptionParser()
   parser.add_option("--tmp_dir", dest="tmp_dir", action="store",
