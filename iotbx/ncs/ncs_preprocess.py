@@ -1,6 +1,4 @@
 from __future__ import division
-from iotbx.ncs.simple_ncs_from_pdb import simple_ncs_from_pdb
-from iotbx.ncs.simple_ncs_from_pdb import ncs_master_params
 from mmtbx.utils.ncs_utils import apply_transforms
 from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
@@ -333,18 +331,22 @@ class ncs_group_object(object):
         pdb_hierarchy_inp=pdb_hierarchy_inp,
         ncs_phil_groups=ncs_phil_groups)
     else:
-      params = ncs_master_params.extract()
-      params.simple_ncs_from_pdb.min_length = 1
-      ncs_from_pdb=simple_ncs_from_pdb(
-        pdb_inp=pdb_hierarchy_inp.input,
-        hierarchy=pdb_hierarchy_inp.hierarchy,
-        quiet=True,
-        log=null_out(),
-        params=params)
-      spec_ncs_groups = ncs_from_pdb.ncs_object.ncs_groups()
-      self.build_ncs_obj_from_spec_file(
-        pdb_hierarchy_inp=pdb_hierarchy_inp,
-        spec_ncs_groups=spec_ncs_groups)
+      import libtbx.load_env
+      if libtbx.env.has_module(name="phenix"):
+        from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
+        from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
+        params = ncs_master_params.extract()
+        params.simple_ncs_from_pdb.min_length = 1
+        ncs_from_pdb=simple_ncs_from_pdb(
+          pdb_inp=pdb_hierarchy_inp.input,
+          hierarchy=pdb_hierarchy_inp.hierarchy,
+          quiet=True,
+          log=null_out(),
+          params=params)
+        spec_ncs_groups = ncs_from_pdb.ncs_object.ncs_groups()
+        self.build_ncs_obj_from_spec_file(
+          pdb_hierarchy_inp=pdb_hierarchy_inp,
+          spec_ncs_groups=spec_ncs_groups)
 
     # Todo Add some notification if process was not successful
 
