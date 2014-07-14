@@ -193,13 +193,15 @@ class installer (object) :
                      OS version: %(os)s
                      user shell: %(shell)s
                     destination: %(dest)s
+                # of processors: %(nproc)s
   =========================================================================
   """ % { "product" : self.product_name,
           "version" : self.version,
           "mtype"   : self.mtype,
           "os"      : get_os_version(),
           "shell"   : os.environ['SHELL'],
-          "dest"    : self.options.prefix }
+          "dest"    : self.options.prefix,
+          "nproc"   : self.options.nproc, }
     if (self.mtype is None) :
       raise InstallerError("Machine type not recognized")
     elif ((not self.mtype in self.supported_mtypes) and
@@ -269,7 +271,6 @@ class installer (object) :
     elif (source_install and binary_install) :
       if (self.options.source) :
         print >> out, "performing source installation"
-        print >> out, "  will use %d CPU core(s)\n" % self.options.nproc
         binary_install = False
       else :
         print >> out, "source and binary both available, defaulting to "+\
@@ -324,7 +325,7 @@ class installer (object) :
   def show_installation_paths (self) :
     out = self.out
     print >> out, """
-%(product)s installation target directory <%(product)s_LOC > set to:
+%(product)s installation target directory <%(product)s_LOC> set to:
    %(dest_dir)s
 %(product)s installation source directory set to:
    %(inst_dir)s
