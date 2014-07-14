@@ -77,10 +77,6 @@ class lbfgs(object):
         compute_gradients=compute_gradients,
         disable_asu_cache=self.tmp.disable_asu_cache,
         site_labels=self.site_labels)
-    bd = self.tmp.target_result.bond_deviations()
-    if(bd is not None): self.rmsd_bonds = bd[2]
-    ad = self.tmp.target_result.angle_deviations()
-    if(ad is not None): self.rmsd_angles = ad[2]
 
   def compute_functional_and_gradients(self):
     if (self.first_target_result is None):
