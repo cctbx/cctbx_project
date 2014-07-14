@@ -255,14 +255,20 @@ class energies(scitbx.restraints.energies):
   def get_filtered_bond_deltas(self):
     if self.n_bond_proxies is not None:
       if self.n_bond_proxies > 0:
-        sorted_table, n_not_shown = self.bond_proxies.get_sorted(
-            by_value="residual",
-            sites_cart=self.sites_cart,
-            site_labels=None,
-            max_items=None,
-            exclude=self.hbonds_in_bond_list)
-        assert n_not_shown == 0
-        return flex.double([x[4] for x in sorted_table])
+        if self.hbonds_in_bond_list is not None:
+          sorted_table, n_not_shown = self.bond_proxies.get_sorted(
+              by_value="residual",
+              sites_cart=self.sites_cart,
+              site_labels=None,
+              max_items=None,
+              exclude=self.hbonds_in_bond_list)
+          assert n_not_shown == 0
+          return flex.double([x[4] for x in sorted_table])
+        else:
+          bond_deltas = geometry_restraints.bond_deltas(
+            sites_cart         = self.sites_cart,
+            sorted_asu_proxies = self.bond_proxies)
+          return bond_deltas
       else:
         return None
     else:
