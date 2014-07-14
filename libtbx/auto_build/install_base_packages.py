@@ -649,3 +649,6 @@ Please install the X11 development packages to compile the GUI components,
 or use the --no-gui option to disable GUI compilation.
 """
   return None
+  
+if __name__ == "__main__":
+  installer(args=sys.argv, log=sys.stdout)
