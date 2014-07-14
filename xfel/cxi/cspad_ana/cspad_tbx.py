@@ -1086,6 +1086,8 @@ def evt_wavelength(evt, delta_k=0):
       ebeam = evt.getEBeam()
     except NotImplementedError:
       ebeam = None
+    if hasattr(ebeam, 'fEbeamPhotonEnergy') and ebeam.fEbeamPhotonEnergy > 0:
+      return 12398.4187 / ebeam.fEbeamPhotonEnergy
     if hasattr(ebeam, 'fEbeamL3Energy') and ebeam.fEbeamL3Energy > 0:
       gamma = ebeam.fEbeamL3Energy / 0.510998910
       K = 3.5 + delta_k
