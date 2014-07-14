@@ -223,6 +223,18 @@ Centric reflections:
     "log=tst_xtriage_1.log",
   ]
   result = xtriage.run(args=xtriage_args, out=null_out())
+  result.summarize_issues()
+  # test in lower symmetry
+  f_obs_3 = f_obs.expand_to_p1()
+  mtz_file = "tst_xtriage_in_3.mtz"
+  f_obs_3.as_mtz_dataset(column_root_label="F").mtz_object().write(mtz_file)
+  xtriage_args = [
+    mtz_file,
+    seq_file,
+    "log=tst_xtriage_2.log",
+  ]
+  result = xtriage.run(args=xtriage_args, out=null_out())
+  assert ((1, 'One or more symmetry operators suggest that the data has a higher crystallographic symmetry (P 2 1 1).', 'Point group and R-factor analysis') in result.summarize_issues()._issues)
   # test with elliptical truncation
   f_obs_3 = f_obs.customized_copy(
     crystal_symmetry=crystal.symmetry((23,5,20,90,107.8,90), "P 21"))

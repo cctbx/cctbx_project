@@ -2182,7 +2182,7 @@ refinement might provide an answer.
       if self.has_higher_symmetry() :
         issues.append((1, "One or more symmetry operators suggest that the "+
           "data has a higher "+
-          "crystallographic symmetry (%s)." % str(self.suspected_space_group),
+          "crystallographic symmetry (%s)." % str(self.suspected_point_group),
           "Point group and R-factor analysis"))
     if (self.patterson_height > 75) :
       issues.append((1, "Translational NCS is present at a level that might "+
