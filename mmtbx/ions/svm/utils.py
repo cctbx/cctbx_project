@@ -24,11 +24,13 @@ def iterate_sites(pdb_hierarchy, split_sites=False, res_filter=None):
       for residue_group in chain.residue_groups():
         for atom_group in residue_group.atom_groups():
           resname = atom_group.resname.strip().upper()
+          if atom_group.altloc.strip() != "" and not split_sites:
+            continue
           if res_filter is None or resname in res_filter:
             atoms = atom_group.atoms()
-            if len(atoms) == 1 or split_sites:
-              for atom in atoms:
-                element = atom.element.strip().upper()
-                if element in ["H", "D"]:
-                  continue
-                yield atom
+            if len(atoms) == 1:
+              atom = atoms[0]
+              element = atom.element.strip().upper()
+              if element in ["H", "D"]:
+                continue
+              yield atom
