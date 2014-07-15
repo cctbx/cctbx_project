@@ -6,7 +6,7 @@ from libtbx import easy_pickle
 from scitbx.array_family import flex
 import scitbx.matrix
 from xfel.cxi.cspad_ana import cspad_tbx
-
+from math import sin, atan
 
 def cspad_unbound_pixel_mask():
   # Every 10th pixel along the diagonal from the top left hand corner are not
@@ -198,10 +198,20 @@ def get_spectrum(spectrum_focus, mask_focus=None):
 
   return plot_x, plot_y
 
+#Written by Muhamed Amin
+def plot_energy(plot_x):
+    plot_E=[x * 0.1109 for x in plot_x]
+    plot_E1=[(y/2)-(95*0.1109) for y in plot_E]
+    E=[1.2398e+004/(2*0.9601*sin(atan(500/(z+50)))) for z in plot_E1]
+    return E
+
 def output_spectrum(spectrum_focus, mask_focus=None, output_dirname="."):
   plot_x, plot_y = get_spectrum(spectrum_focus, mask_focus=mask_focus)
   spec_plot(plot_x,plot_y,spectrum_focus,
             os.path.join(output_dirname, "spectrum")+ ".png")
+  plot_E=plot_energy(plot_x)
+  spec_plot(plot_E,plot_y,spectrum_focus,
+            os.path.join(output_dirname, "spectrum_E")+ ".png")
   f = open(os.path.join(output_dirname, "spectrum.txt"), "wb")
   print >> f, "\n".join(["%i %f" %(x, y) for x, y in zip(plot_x, plot_y)])
   f.close()
@@ -298,8 +308,11 @@ def spec_plot(x, y, img, file_name, figure_size=(10,5), transparent=False):
   p.set_title("X-ray emission spectrum")
   p2 = fig.add_subplot(212)
   p2.set_position([0.1, 0.05, 0.8, 0.2])
-  p2.imshow(img.as_numpy_array())
-  #p2.imshow(img.as_numpy_array(), cmap=matplotlib.cm.gist_yarg)
+  im=p2.imshow(img.as_numpy_array(), cmap='spectral')
+  position=fig.add_axes([0.93,0.1,0.02,0.35])
+#  p2.imshow(img.as_numpy_array(), cmap=matplotlib.cm.gist_yarg)
+  p3=fig.colorbar(im, ticks=[-1, 0, 1], orientation='vertical', cax=position)
+#  p2.set_position([0.1, 0.05, 0.8, 0.2])
   canvas.draw()
   fig.savefig(file_name, dpi=200, format="png")
 
