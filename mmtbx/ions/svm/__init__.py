@@ -50,8 +50,9 @@ CLASSIFIERS_PATH = libtbx.env.find_in_repositories(
 _CLASSIFIER = {}
 _CLASSIFIER_OPTIONS = {}
 
-ALLOWED_IONS = ["HOH", "MN", "ZN", "FE", "NI", "CA"]
-ALLOWED_IONS += ["NA", "MG"]
+ALLOWED_IONS = [
+  "HOH", "NA", "MG", "CL", "K", "CA", "MN", "FE", "CO", "NI", "CU", "ZN", "CD",
+  ]
 
 def _get_classifier(svm_name=None):
   """
@@ -141,7 +142,7 @@ def ion_class(chem_env):
 def ion_vector(chem_env, scatter_env, use_scatter=True, use_chem=True,
                b_iso=True, occ=True, diff_peak=True, geometry=True,
                elements=None, valence=True, anom=True, ratios=True,
-               anom_peak=False):
+               anom_peak=False, d_min=True):
   """
   Creates a vector containing all of the useful properties contained
   within ion. Merges together the vectors from ion_*_vector().
@@ -180,6 +181,7 @@ def ion_vector(chem_env, scatter_env, use_scatter=True, use_chem=True,
   anom_peak : bool, optional
       Whether to use the actual height of the anomalous map instead of the
       calculated f'' values.
+  d_min : bool, optional
 
   Returns
   -------
@@ -197,7 +199,7 @@ def ion_vector(chem_env, scatter_env, use_scatter=True, use_chem=True,
   """
   assert (np is not None)
   return np.concatenate((
-    ion_model_vector(scatter_env),
+    ion_model_vector(scatter_env, d_min=d_min),
     ion_electron_density_vector(
       scatter_env, b_iso=b_iso, occ=occ, diff_peak=diff_peak)
     if use_scatter else [],
@@ -212,7 +214,7 @@ def ion_vector(chem_env, scatter_env, use_scatter=True, use_chem=True,
     if use_scatter and anom else [],
     ))
 
-def ion_model_vector(scatter_env, nearest_res=0.5):
+def ion_model_vector(scatter_env, d_min=True, nearest_res=0.5):
   """
   Creates a vector containing information about the general properties of the
   model in which the site is found. Currently this only includes the minimum
@@ -223,6 +225,7 @@ def ion_model_vector(scatter_env, nearest_res=0.5):
   scatter_env : mmtbx.ions.environment.ScatteringEnvironment
       An object containing information about the scattering environment at a
       site.
+  d_min : bool, optional
   nearest_res : float, optional
       If not None, the nearest value to round d_min to. Default value is 0.5
       angstroms.
@@ -232,6 +235,9 @@ def ion_model_vector(scatter_env, nearest_res=0.5):
   numpy.array of float
       A vector containing quantitative properties for classification.
   """
+  if not d_min:
+    return np.array([], dtype=float)
+
   d_min = scatter_env.d_min
   if nearest_res is not None:
     # Rounds d_min to the nearest value divisible by nearest_res
