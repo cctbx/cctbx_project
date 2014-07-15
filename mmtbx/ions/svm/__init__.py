@@ -362,7 +362,6 @@ def ion_valence_vector(chem_env, elements=None):
       element=element,
       charge=mmtbx.ions.server.get_charge(element)))
 
-  # print "valence", ret
   # Flatten the list
   return _flatten_list(ret)
 
@@ -507,8 +506,6 @@ def predict_ion(chem_env, scatter_env, elements=None, svm_name=None):
   svm.libsvm.svm_predict_probability(classifier, xi, prob_estimates)
   probs = prob_estimates[:nr_class]
   labels = [ALLOWED_IONS[i] for i in classifier.get_labels()]
-
-  # print "__predict_ion__:", dict(zip(labels, probs))
 
   lst = zip(labels, probs)
   lst.sort(key=lambda x: -x[-1])
