@@ -514,7 +514,7 @@ class Cluster:
     ax.plot([0, -1 * G / minus_2B], [G, 0], 'y-', lw=2)
     plt.xlabel("(sin(theta)/lambda)^2")
     plt.ylabel("ln(I)")
-    plt.title("Post-refined simple Wilson fit\n{}".format(fit_info))
+    plt.title("Simple Wilson fit\n{}".format(fit_info))
     plt.tight_layout()
 
     if direct_visualisation:
