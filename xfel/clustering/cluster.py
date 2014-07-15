@@ -1,4 +1,3 @@
-from __future__ import division
 import os
 import math
 import logging
@@ -49,7 +48,7 @@ class Cluster:
   ouput of a cluster object method (ToDo)
   """
 
-  def __init__(self, data, cname, info, ):
+  def __init__(self, data, cname, info):
     """
     Contains a list of SingFrame objects, as well as information about these
     as a cluster (e.g. mean unit cell).
@@ -82,7 +81,8 @@ class Cluster:
 
   @classmethod
   def from_directories(cls, path_to_integration_dir,
-                       _prefix='cluster_from_file'):
+                       _prefix='cluster_from_file',
+                       use_b=True):
     """Constructor to get a cluster from pickle files, from the recursively
     walked paths. Can take more than one argument for multiple folders.
     usage: Cluster.from_directories(..)"""
@@ -91,7 +91,7 @@ class Cluster:
       for (dirpath, dirnames, filenames) in os.walk(arg):
         for filename in filenames:
           path = os.path.join(dirpath, filename)
-          this_frame = SingleFrame(path, filename)
+          this_frame = SingleFrame(path, filename, use_b_factor=use_b)
           if hasattr(this_frame, 'name'):
             data.append(this_frame)
           else:
@@ -200,7 +200,9 @@ class Cluster:
     """ Do hierarchical clustering using the Andrews-Berstein distance from
     Andrews & Bernstein J Appl Cryst 47:346 (2014) on the Niggli cells. Returns
     the largest cluster if max_only is true, otherwise a list of clusters. Also
-    return a matplotlib axes object for display of a dendogram."""
+    return a matplotlib axes object for display of a dendogram.
+    :return: A list of Clusters ordered by largest Cluster to smallest
+    """
 
     logging.info("Hierarchical clustering of unit cells using Andrews-Bernstein"
                  "Distance from Andrews & Bernstein J Appl Cryst 47:346 (2014)")
@@ -290,7 +292,7 @@ class Cluster:
     def cart2sph(x, y, z):
       # cctbx (+z to source, y to ceiling) to
       # lab frame (+x to source, z to ceiling)
-      #z, x, y = x, y, z
+      z, x, y = x, y, z
       dxy = np.sqrt(x ** 2 + y ** 2)
       r = np.sqrt(dxy ** 2 + z ** 2)
       theta = np.arctan2(y, x)
@@ -455,3 +457,6 @@ class Cluster:
       plt.show()
 
     return axes_to_return
+
+
+
