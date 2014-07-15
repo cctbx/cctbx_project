@@ -425,6 +425,16 @@ class Cluster:
 
 
   def intensity_statistics(self, ax=None):
+    """
+    Uses the per-frame B and G fits (gradient and intercept of the ln(i) vs
+    (sin(theta)/lambda)**2 plot) to create three agregate plots:
+    1) histogram of standard errors on the per-frame fits
+    2) histogram of B factors
+    3) scatter  plot of intercept vs. gradient (G vs. B)
+    :param ax: optionally hand the method three matplotlib axes objects to plot
+    onto. If not specified, will plot the data.
+    :return: the three axes, with the data plotted onto them.
+    """
     if ax is None:
       plt.figure(figsize=(10, 14))
       axes_to_return = [plt.subplot2grid((3, 1), (0, 0)),
@@ -458,5 +468,59 @@ class Cluster:
 
     return axes_to_return
 
+  def all_frames_intensity_stats(self, ax=None, smoothing_width=2000):
+    """
+    Goes through all frames in the cluster, and plots all the partial intensites.
+    Then does a linear fit through these, and  rolling average/
+    :param smoothing_width: the width of the smoothing window. Default 2000
+    reflections.
+    :param ax: Optional matplotlib axes object to plot to.
+    :return: the axis, with the data plotted onto it.
+    """
+    from scipy.stats import linregress
+    from xfel.clustering.singleframe import SingleFrame as Sf
+
+    if ax is None:
+      fig = plt.figure("All images intensity statistics")
+      ax = fig.gca()
+      direct_visualisation = True
+    else:
+      direct_visualisation = False
+
+
+    all_logi = []
+    all_one_over_d_squared = []
+
+    for frame in self.members:
+      all_logi.append(frame.log_i)
+      all_one_over_d_squared.append(frame.sinsqtheta_over_lambda_sq)
+
+    all_logi = np.concatenate(all_logi)
+    all_one_over_d_squared = np.concatenate(all_one_over_d_squared)
+
+    plotting_data = sorted(zip(all_logi, all_one_over_d_squared),
+                           key = lambda x: x[1])
+
+    log_i, one_over_d_square = zip(*[i for i in plotting_data
+                                     if i[0] >=0])
+    minus_2B, G, r_val, _, std_err = linregress(one_over_d_square, log_i)
+    fit_info = "G: {}, -2B: {}, r: {}, std_err: {}".format(G, minus_2B,
+                                                            r_val, std_err)
+
+    smooth = Sf._moving_average(log_i, n=smoothing_width)
+    ax.plot(one_over_d_square, log_i, 'bo', ms=1)
+    ax.plot(one_over_d_square[smoothing_width - 1:], smooth,'--r', lw=2)
+    plt.xlim([0, max(one_over_d_square)])
+    ax.plot([0, -1 * G / minus_2B], [G, 0], 'y-', lw=2)
+    plt.xlabel("(sin(theta)/lambda)^2")
+    plt.ylabel("ln(I)")
+    plt.title("Post-refined simple Wilson fit\n{}".format(fit_info))
+    plt.tight_layout()
+
+    if direct_visualisation:
+      fig.savefig("{}_dendogram.pdf".format(self.cname))
+      plt.show()
+
+    return ax
 
 
