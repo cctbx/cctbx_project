@@ -15,6 +15,7 @@ from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 import iotbx.merging_statistics
+import iotbx.bioinformatics
 from iotbx import pdb
 import iotbx.phil
 from cctbx.array_family import flex
