@@ -12,8 +12,10 @@ class SingleFrame:
   """ Class that creates single-image agregate metrics/scoring that can then be
   used in downstream clustering or filtering procedures.
   """
+  ANGSTROMS_TO_EV = 12398.425
 
-  def __init__(self, path, filename, crystal_num=0, remove_negative=False):
+  def __init__(self, path, filename, crystal_num=0, remove_negative=False,
+               use_b_factor=True):
     try:
       # Warn on error, but continue directory traversal.
       d = easy_pickle.load(path)
@@ -44,14 +46,15 @@ class SingleFrame:
       # Do polarization correction
       self.polarization_correction()
       self.minus_2B, self.G, self.log_i, \
-          self.sinsqtheta_over_lambda_sq, self.wilson_err = self.init_calc_wilson()
+          self.sinsqtheta_over_lambda_sq, \
+          self.wilson_err = self.init_calc_wilson(use_b_factor)
 
       if logging.Logger.root.level < logging.DEBUG:  # Extreme debug!
         self.plot_wilson()
       logging.debug("Extracted image {}".format(filename))
     except KeyError:
       logging.warning("Could not extract point group and unit cell from %s" % path)
-    except (cPickle.UnpicklingError, ValueError, EOFError):
+    except (cPickle.UnpicklingError, ValueError, EOFError, IOError):
       logging.warning("Could not read %s. It may not be a pickle file." % path)
 
   def trim_res_limit(self, d_min=None, d_max=None):
@@ -77,33 +80,59 @@ class SingleFrame:
     self.miller_array = self.miller_array.select(i_I_positive).sort()
     self.mapped_predictions = self.mapped_predictions.select(i_I_positive)
 
+  def n_reflections_by_sigi(self, sig_i_cuttoff):
+    """
+    Currently a placeholder that returns None.
 
-  def init_calc_wilson(self):
-    """ Do a linear regression to fit G and B. Returns the coeficients minus_2B,
-    G, the transformed data log_i, and one_over_d_sqare. Also returns fit_stats,
-    which is a dictionairy.
+    This method will :return the number of reflection in the frame that have an
+    I/sig(I) > :param sig_i_cuttoff
+    """
+    reflections_above_cuttoff = None
+    return len(reflections_above_cuttoff)
+
+  def init_calc_wilson(self, use_b_factor, i_corrections=None):
+    """ If use_b_factor is True, do a linear regression to fit G and B.
+    Returns the coeficients minus_2B, G, the transformed data log_i, and
+    one_over_d_sqare. Also returns fit_stats, which is a dictionairy.
+
+    If use_b_factor is False, then B is 0, and G is the mean intensity of the
+    image. The r_value is then 0 (by definition), and the std_err is the
+    standard error on the mean.
+
+    :param i_corrections allows flex array of correction factors
+          (e.g. partialities) to be specified
 
     :return: minus_2B (gradient of fit),
              G (intercept of fit),
              log_i (dependent variable of fit),
              one_over_d_square (independent variable of fit).
     """
-    log_i = flex.log(self.miller_array.sort().data())\
-        .as_numpy_array()
+    if i_corrections:
+      inten = (self.miller_array.sort().data() * i_corrections).as_numpy_array()
+    else:
+      inten = self.miller_array.sort().data().as_numpy_array()
     sinsqtheta_over_labmdasq = self.miller_array.sort()\
       .sin_theta_over_lambda_sq().data().as_numpy_array()
 
      # Discard negatives ToDo: one could get the mod of the negative values,
      # then plot them as negative in the linear fit.
-    log_i, sinsqtheta_over_labmdasq = zip(*[i for i in zip(log_i, sinsqtheta_over_labmdasq)
-                                  if i[0] >=0])
+    inten, sinsqtheta_over_labmdasq = zip(*[i for i
+                                            in zip(inten,
+                                                   sinsqtheta_over_labmdasq)
+                                            if i[0] >= 0])
 
-    minus_2B, G, r_val, _, std_err = linregress(sinsqtheta_over_labmdasq, log_i)
+    if use_b_factor:
+      minus_2B, G, r_val, _, std_err = linregress(sinsqtheta_over_labmdasq,
+                                                  np.log(inten))
+    else:
+      # If the model is a constant value, r_val = 0, and
+      from scipy.stats import sem
+      minus_2B, G, r_val, std_err = 0, np.mean(inten), 0, sem(inten)
 
     # ignore p_val since this will be insanely small
     logging.debug("G: {}, -2B: {}, r: {}, std_err: {}".
       format(G, minus_2B, r_val, std_err))
-    return minus_2B, G, log_i, sinsqtheta_over_labmdasq, {"R": r_val,
+    return minus_2B, G, np.log(inten), sinsqtheta_over_labmdasq, {"R": r_val,
                                                    "Standard Error": std_err}
 
   def plot_wilson(self, width=30, ax=None):
