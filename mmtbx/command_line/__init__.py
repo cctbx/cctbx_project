@@ -480,6 +480,17 @@ class load_model_and_data (object) :
       new_file_object=log_file)
     return self.log
 
+  def save_data_mtz (self, file_name) :
+    assert (self.f_obs is not None)
+    mtz_data = self.f_obs.as_mtz_dataset(column_root_label="F")
+    if (self.hl_coeffs is not None) :
+      mtz_data.add_miller_array(self.hl_coeffs,
+        column_root_label="HL")
+    if (self.r_free_flags is not None) :
+      mtz_data.add_miller_array(self.r_free_flags,
+        column_root_label="FreeR_flag")
+    mtz_data.mtz_object().write(file_name)
+
 def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
     log=sys.stdout) :
   from iotbx import merging_statistics
