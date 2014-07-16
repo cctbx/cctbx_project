@@ -1139,11 +1139,13 @@ def load_f_obs_and_r_free (file_name, anomalous_flag=False, phases=False) :
       f_obs_info = array.info()
   if (f_obs is None) and (f_obs_anom is not None) :
     f_obs = f_obs_anom.average_bijvoet_mates()
+  f_obs = f_obs.eliminate_sys_absent()
   # XXX this may still be necessary
   f_obs = f_obs.common_set(other=r_free)
   r_free = r_free.common_set(other=f_obs)
   assert (not None in [f_obs, r_free])
   if (f_obs_anom is not None) and (anomalous_flag) :
+    f_obs_anom = f_obs_anom.eliminate_sys_absent()
     r_free = r_free.generate_bijvoet_mates()
     f_obs = f_obs_anom.common_set(other=r_free).set_info(f_obs_anom_info)
     r_free = r_free.common_set(other=f_obs).set_info(r_free_info)
