@@ -16,6 +16,47 @@ class SingleFrame:
 
   def __init__(self, path, filename, crystal_num=0, remove_negative=False,
                use_b_factor=True):
+    """
+    Constructor for SingleFrame object, using a cctbx.xfel integration pickle.
+
+    :param path: path to integration pickle
+    :param filename: the file name alone (used as a label)
+    :param crystal_num: if multiple lattices present, the latice number.
+    :param remove_negative: Boolean for removal of negative intensities
+    :param use_b_factor: if True, initialise scale and B, if false, use only
+    mean-intensity scaling.
+
+    --------------------------------------------------
+
+    :return: a SingleFrame object, with the following Object attributes:
+
+    --------------------------------------------------
+
+    Object attributes are:
+    :var is_polarization_corrected: Boolean flag indicatinf if polarization
+    correction has been applied
+    :var miller_array: the cctbx.miller miller array of spot intensities.
+    :var mapped_predictions: the mapped_predictions locations
+    :var path: full path to the original file
+    :var name: file-name, used as an identifier
+    :var crystal_system:
+    :var pg: point group of pickle
+    :var uc: unit cell as a tuple
+    :var orientation: cctbx crystal_orientation object
+    :var total_i: the total integrated intensity for this frame
+    :var xbeam: x-location of beam centre
+    :var ybeam: y-location of beam centre
+    :var wavelength:
+    :var spot_offset: the mean offset between observed spots and predicted
+    centroids. Only created if integration was performed using verbose_cv=True.
+    Otherwise None.
+    :var minus_2B: the gradient of the ln(i) vs. sinsqtheta_over_lambda_sq plot
+    :var G: intercept of the of the ln(i) vs. sinsqtheta_over_lambda_sq plot
+    :var log_i: list of log_i intensities
+    :var sinsqtheta_over_lambda_sq: list of sinsqtheta_over_lambda_sq
+    :var wilson_err: standard error on the fit of ln(i) vs.
+    sinsqtheta_over_lambda_sq
+    """
     try:
       # Warn on error, but continue directory traversal.
       d = easy_pickle.load(path)
@@ -39,6 +80,12 @@ class SingleFrame:
       self.xbeam = d['xbeam']
       self.ybeam = d['ybeam']
       self.wavelength = d['wavelength']
+      if 'correction_vectors' in d:
+        self.spot_offset = np.mean([np.sqrt((spot['refinedcenter']) ** 2
+                                          - (spot['obscenter']) ** 2)
+                                    for spot in d['correction_vectors']])
+      else:
+        self.spot_offset = None
 
       if remove_negative:
         self.filter_negative_intensities()
