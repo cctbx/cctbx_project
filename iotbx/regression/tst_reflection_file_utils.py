@@ -816,6 +816,8 @@ def exercise_automation_wrappers () :
   processed.write_mtz_file(mtz_file, title="tst_iotbx", wavelength=0.9792)
   f_obs, r_free = load_f_obs_and_r_free(mtz_file)
   change_space_group(mtz_file, sgtbx.space_group_info("P21"))
+  f_obs_new, r_free_new = load_f_obs_and_r_free(mtz_file)
+  assert (f_obs_new.size() == f_obs.size() - 4)
   f_obs_new, r_free_new = load_f_obs_and_r_free(mtz_file,
     anomalous_flag=True)
   assert (str(f_obs_new.space_group_info()) == "P 1 21 1")
