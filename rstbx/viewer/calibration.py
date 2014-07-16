@@ -34,7 +34,7 @@ class sb_wrapper:
     center_x, center_y = panel._img.get_beam_center()
     xc, yc = panel._img.image_coords_as_screen_coords(center_x, center_y)
     dc.SetPen(wx.Pen('red'))
-    #dc.SetBrush(wx.TRANSPARENT_BRUSH)
+    dc.SetBrush(wx.TRANSPARENT_BRUSH)
 
     wavelength = panel._img._raw.wavelength #should be this
     wavelength_from_avg_file = False
