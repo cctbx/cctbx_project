@@ -81,9 +81,12 @@ class SingleFrame:
       self.ybeam = d['ybeam']
       self.wavelength = d['wavelength']
       if 'correction_vectors' in d:
-        self.spot_offset = np.mean([np.sqrt((spot['refinedcenter']) ** 2
-                                          - (spot['obscenter']) ** 2)
-                                    for spot in d['correction_vectors']])
+        all_corrections = []
+        for spot in d['correction_vectors'][crystal_num]:
+          dta = np.sqrt((spot['refinedcenter'][0] - spot['obscenter'][0]) ** 2
+                      + (spot['refinedcenter'][1] - spot['obscenter'][1]) ** 2)
+          all_corrections.append(dta)
+        self.spot_offset = np.mean(all_corrections)
       else:
         self.spot_offset = None
 
