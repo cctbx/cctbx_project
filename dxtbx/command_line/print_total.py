@@ -12,11 +12,12 @@ def print_total():
     print 'Using header reader: %s' % format_class.__name__
     i = format_class(arg)
     image_size = i.get_detector()[0].get_image_size()
-    print 'Total Counts:'
-    total = sum(i.get_raw_data())
-    print total
-    print 'Average Counts:'
-    print '%.2f' % (total / (image_size[0] * image_size[1]))
+    data = i.get_raw_data()
+    selection = (data < 0)
+    data = data.set_selected(selection, 0)
+    total = sum(data)
+    print 'Total Counts: %d' % total
+    print 'Average Counts: %.2f' % (total / (image_size[0] * image_size[1]))
 
 if __name__ == '__main__':
   print_total()
