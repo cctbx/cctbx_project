@@ -149,8 +149,7 @@ namespace dxtbx { namespace model {
     double get_resolution_at_pixel(vec3<double> s0, vec2<double> xy) const {
       DXTBX_ASSERT(s0.length() > 0);
       vec3<double> xyz = get_pixel_lab_coord(xy);
-      vec3<double> beam_centre = get_beam_centre_lab(s0);
-      double sintheta = sin(0.5 * angle_safe(beam_centre, xyz));
+      double sintheta = sin(0.5 * angle_safe(s0, xyz));
       DXTBX_ASSERT(sintheta != 0);
       return 1.0 / (2.0 * s0.length() * sintheta);
     }
