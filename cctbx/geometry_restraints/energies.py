@@ -297,7 +297,10 @@ class energies(scitbx.restraints.energies):
       #bond_deltas = geometry_restraints.bond_deltas(
       #  sites_cart         = self.sites_cart,
       #  sorted_asu_proxies = self.bond_proxies)
-      bond_deltas = self.get_filtered_bond_deltas()
+      #bond_deltas = self.get_filtered_bond_deltas()
+      bond_deltas = self.bond_proxies.get_filtered_deltas(
+          sites_cart=self.sites_cart,
+          exclude=self.hbonds_in_bond_list)
       if bond_deltas is not None:
         sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.bond_proxies.simple]
         z_scores = flex.double([(bond_delta/sigma) for bond_delta,sigma in zip(bond_deltas,sigmas)])
@@ -313,7 +316,10 @@ class energies(scitbx.restraints.energies):
       #bond_deltas = geometry_restraints.bond_deltas(
       #  sites_cart         = self.sites_cart,
       #  sorted_asu_proxies = self.bond_proxies)
-      bond_deltas = self.get_filtered_bond_deltas()
+      #bond_deltas = self.get_filtered_bond_deltas()
+      bond_deltas = self.bond_proxies.get_filtered_deltas(
+          sites_cart=self.sites_cart,
+          exclude=self.hbonds_in_bond_list)
       if bond_deltas is not None:
         b_sq  = bond_deltas * bond_deltas
         b_ave = math.sqrt(flex.mean_default(b_sq, 0))

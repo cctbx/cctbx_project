@@ -650,7 +650,7 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
           proxy=proxy)
       else:
         proxy = self.asu[i_proxy-n_simple]
-        i_seq,j_seq = proxy.i_seq,proxy.j_seq
+        i_seq,j_seq = proxy.i_seq, proxy.j_seq
         rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
         sym_op_j = " sym.op."
         restraint = bond(
@@ -679,6 +679,40 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
       n += 1
     n_not_shown = n_proxies - n_outputted - n_excluded
     return sorted_table, n_not_shown
+
+  def get_filtered_deltas(self,
+      sites_cart,
+      exclude=None):
+    n_proxies = self.n_total()
+    if (n_proxies == 0): return None
+    if exclude is None:
+      return self.deltas(sites_cart=sites_cart)
+    else:
+      result = flex.double()
+      n_simple = self.simple.size()
+      for i in range(n_simple):
+        proxy = self.simple[i]
+        i_seq,j_seq = proxy.i_seqs
+        if (i_seq,j_seq) not in exclude:
+          rt_mx = None
+          sym_op_j = ""
+          restraint = bond(
+            sites_cart=sites_cart,
+            proxy=proxy)
+          result.append(restraint.delta)
+      for i in range(n_simple, n_proxies):
+        proxy = self.asu[i-n_simple]
+        i_seq,j_seq = proxy.i_seq, proxy.j_seq
+        if (i_seq,j_seq) not in exclude:
+          rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
+          sym_op_j = " sym.op."
+          restraint = bond(
+            sites_cart=sites_cart,
+            asu_mappings=asu_mappings,
+            proxy=proxy)
+          result.append(restraint.delta)
+      return result if len(result) > 0 else None
+
 
   def show_sorted(self,
         by_value,
