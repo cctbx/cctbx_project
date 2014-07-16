@@ -11,7 +11,7 @@ def print_total():
     format_class = Registry.find(arg)
     print 'Using header reader: %s' % format_class.__name__
     i = format_class(arg)
-    image_size = i.get_detector().get_image_size()
+    image_size = i.get_detector()[0].get_image_size()
     print 'Total Counts:'
     total = sum(i.get_raw_data())
     print total
