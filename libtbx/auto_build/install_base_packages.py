@@ -81,8 +81,8 @@ class installer (object) :
     self.build_dir = options.build_dir
     self.pkg_dirs = options.pkg_dirs
     self.base_dir = op.join(self.build_dir, "base")
-    if options.skip_if_exists and os.path.exists(self.build_dir):
-      print >> log, "Build directory already exists and --skip-if-exists set; exiting."
+    if options.skip_if_exists and os.path.exists(self.base_dir):
+      print >> log, "Base directory already exists and --skip-if-exists set; exiting."
       return
     
     print >> log, "Setting up directories..."
