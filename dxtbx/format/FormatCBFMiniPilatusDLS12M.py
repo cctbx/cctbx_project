@@ -100,7 +100,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       p = detector.add_panel()
       p.set_name('row-%02d' % j)
       p.set_image_size((2463, 195))
-      p.set_trusted_range((0, 1000000))
+      p.set_trusted_range((-1, 1000000))
       p.set_pixel_size((0.172, 0.172))
       p.set_local_frame(
         fast.elems,
