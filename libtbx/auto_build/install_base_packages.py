@@ -72,6 +72,8 @@ class installer (object) :
     parser.add_option("--python-shared", dest="python_shared",
       action="store_true", default=False,
       help="Compile Python as shared library (Linux only)")
+    parser.add_option("--skip-if-exists", action="store_true",
+      help="Exit if build_dir exists; used with automated builds.")
     options, args = parser.parse_args(args)
     # basic setup
     self.tmp_dir = options.tmp_dir
@@ -79,6 +81,10 @@ class installer (object) :
     self.build_dir = options.build_dir
     self.pkg_dirs = options.pkg_dirs
     self.base_dir = op.join(self.build_dir, "base")
+    if options.skip_if_exists and os.path.exists(self.build_dir):
+      print >> log, "Build directory already exists and --skip-if-exists set; exiting."
+      return
+    
     print >> log, "Setting up directories..."
     for dir_name in [self.tmp_dir,self.build_dir,self.base_dir] : #self.src_dir
       if (not op.isdir(dir_name)) :
