@@ -81,11 +81,16 @@ class Cluster:
 
   @classmethod
   def from_directories(cls, path_to_integration_dir,
-                       _prefix='cluster_from_file',
+                       _prefix='cluster_from_dir',
                        use_b=True):
     """Constructor to get a cluster from pickle files, from the recursively
     walked paths. Can take more than one argument for multiple folders.
-    usage: Cluster.from_directories(..)"""
+    usage: Cluster.from_directories(..)
+    :param path_to_integration_dir: list of directories containing pickle files.
+    Will be searched recursively.
+    :param use_b: Boolean. If True, intialise Scale and B. If false, use only
+    mean intensity scalling.
+    """
     data = []
     for arg in path_to_integration_dir:
       for (dirpath, dirnames, filenames) in os.walk(arg):
@@ -98,6 +103,25 @@ class Cluster:
             logging.info('skipping file {}'.format(filename))
     return cls(data, _prefix,
                'Made from files in {}'.format(path_to_integration_dir[:]))
+
+  @classmethod
+  def from_files(cls, pickle_list,
+                       _prefix='cluster_from_file',
+                       use_b=True):
+    """Constructor to get a cluster from a list of pickle files.
+    :param pickle_list: list of pickle files
+    :param use_b: Boolean. If True, intialise Scale and B. If false, use only
+    mean intensity scalling.
+    """
+    data = []
+    for filename in pickle_list:
+      name_only = filename.split('/')[-1]
+      this_frame = SingleFrame(filename, name_only, use_b_factor=use_b)
+      if hasattr(this_frame, 'name'):
+        data.append(this_frame)
+      else:
+        logging.info('skipping file {}'.format(filename))
+    return cls(data, _prefix, 'Made by Cluster.from_files')
 
   def make_sub_cluster(self, new_members, new_prefix, new_info):
     """ Make a sub-cluster from a list of SingleFrame objects from the old
