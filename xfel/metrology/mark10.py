@@ -457,6 +457,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
     idx = 0
     unit_translation_increments = flex.double(len(mutable)*2)
     while 1:
+      if idx >= len(mutable): break
       if self.radii[mutable[idx]]==0.0:
         idx+=1; continue
       tile_select = mutable[idx]
