@@ -1494,7 +1494,7 @@ def rplace(dst, src, angle, center):
 
 # For the moment, the XPP CSPAD detector's metrology is stored here
 # as a series of active areas
-xpp_active_areas = {
+_xpp_active_areas = {
   'XPP 7.1': { # metrology recorded 1/24/13 and processed by flatfile.py
     'active_areas': flex.int([
            865, 1121, 1059, 1306, 1062, 1121, 1256, 1306,
@@ -1620,3 +1620,5 @@ xpp_active_areas = {
   },
 
 }
+_xpp_active_areas['XPP 9.1'] = _xpp_active_areas['XPP 8.1']
+xpp_active_areas = _xpp_active_areas

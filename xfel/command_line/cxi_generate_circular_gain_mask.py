@@ -62,34 +62,40 @@ if (__name__ == "__main__") :
   timestamp = evt_timestamp((timestamp,0))
 
   raw_data = numpy.zeros((11840,194))
-  calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
-  sections = calib2sections(calib_dir)
-  asic_start = 0
-  data3d = []
-  for i_quad in range(4):
-    asic_size = 185 * 194
-    section_size = asic_size * 4
-    quad_start = i_quad * section_size * 4
-    quad_asics = []
-    for i_2x2 in range(4):
-      for i_asic in range(2):
-        asic_end = asic_start + 185
-        a = raw_data[asic_start:asic_end, :]
-        asic_start = asic_end
+  if "XPP" in params.detector_format_version:
+    from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
+    active_areas = xpp_active_areas[params.detector_format_version]['active_areas']
+    data = flex.int(flex.grid((1765,1765)))
+    beam_center = (1765 // 2, 1765 // 2)
+  else:
+    calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
+    sections = calib2sections(calib_dir)
+    asic_start = 0
+    data3d = []
+    for i_quad in range(4):
+      asic_size = 185 * 194
+      section_size = asic_size * 4
+      quad_start = i_quad * section_size * 4
+      quad_asics = []
+      for i_2x2 in range(4):
+        for i_asic in range(2):
+          asic_end = asic_start + 185
+          a = raw_data[asic_start:asic_end, :]
+          asic_start = asic_end
 
-        asic_end = asic_start + 185
-        b = raw_data[asic_start:asic_end, :]
-        asic_start = asic_end
+          asic_end = asic_start + 185
+          b = raw_data[asic_start:asic_end, :]
+          asic_start = asic_end
 
-        quad_asics.append(numpy.concatenate((a,b),axis=1))
-    quad_data = numpy.dstack(quad_asics)
-    quad_data = numpy.rollaxis(quad_data, 2,0)
-    data3d.append(fake_cspad_ElementV2(quad_data, i_quad))
+          quad_asics.append(numpy.concatenate((a,b),axis=1))
+      quad_data = numpy.dstack(quad_asics)
+      quad_data = numpy.rollaxis(quad_data, 2,0)
+      data3d.append(fake_cspad_ElementV2(quad_data, i_quad))
 
-  env = fake_env(fake_config())
-  evt = fake_evt(data3d)
-  beam_center, active_areas = cbcaa(fake_config(),sections)
-  data = flex.int(CsPadDetector(address, evt, env, sections).astype(numpy.float64))
+    env = fake_env(fake_config())
+    evt = fake_evt(data3d)
+    beam_center, active_areas = cbcaa(fake_config(),sections)
+    data = flex.int(CsPadDetector(address, evt, env, sections).astype(numpy.float64))
 
   img_dict = dpack(
           active_areas=active_areas,
@@ -113,6 +119,7 @@ if (__name__ == "__main__") :
   effective_active_areas = tm.effective_tiling_as_flex_int()
 
   radius = params.distance * math.tan(2*math.sinh(params.wavelength/(2*params.resolution)))/pixel_size
+  print "Pixel radius:", radius
 
   print "Percent done: 0",; sys.stdout.flush()
   next_percent = 10
@@ -125,11 +132,16 @@ if (__name__ == "__main__") :
         data[y,x] = 1
   print 100
 
-  collapsed_sections = []
-  for quad in sections:
-    for section in quad:
-      collapsed_sections.append(section)
-  assert len(collapsed_sections) == int(len(effective_active_areas)/8)
+  if 'XPP' in params.detector_format_version:
+    rotations = xpp_active_areas[params.detector_format_version]['rotations']
+    angles = [(x+1) * 90 for x in rotations]
+  else:
+    angles = []
+    for quad in sections:
+      for section in quad:
+        angles.append(section.angle)
+        angles.append(section.angle)
+  assert len(angles) == int(len(effective_active_areas)/4)
 
   raw_data = flex.int(flex.grid((11840,194)))
   for i in xrange(int(len(effective_active_areas)/4)):
@@ -138,7 +150,7 @@ if (__name__ == "__main__") :
     lr_slow = effective_active_areas[4 * i + 2]
     lr_fast = effective_active_areas[4 * i + 3]
 
-    angle = collapsed_sections[int(i/2)].angle
+    angle = angles[i]
 
     block = data.matrix_copy_block(
       i_row=ul_slow,i_column=ul_fast,

@@ -245,7 +245,7 @@ def cxi_versioned_extract(*args):
                                                 2, -21]
     return working_extract
 
-  elif cxi_version in ["XPP 8.1"]:
+  elif cxi_version in ["XPP 8.1", "XPP 9.1"]:
     working_extract = working_phil.command_extractor
 
     corrected_auxiliary_translations = [

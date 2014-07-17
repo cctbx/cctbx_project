@@ -121,6 +121,11 @@ def _get_detector_format_version_dict():
       'address':'CxiDs2-0|Cspad-0',
       'start_time':timegm(strptime('2014-03-27, 17:00 UTC', f)),
       'end_time'  :timegm(strptime('2014-08-05, 16:00 UTC', f))
+    },
+    'XPP 9.1': {
+      'address':'XppGon-0|Cspad-0',
+      'start_time':timegm(strptime('2014-03-27, 17:00 UTC', f)),
+      'end_time'  :timegm(strptime('2014-08-05, 16:00 UTC', f))
     }
   }
 _detector_format_version_dict = _get_detector_format_version_dict()
