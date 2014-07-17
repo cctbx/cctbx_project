@@ -94,6 +94,11 @@ def run(args):
                      ).process(args=args)
   output_filename = command_line.options.output_filename
   detector_format_version = command_line.options.detector_format_version
+  if 'XPP' in detector_format_version:
+    beam_center_x = 1765 // 2 * 0.11
+    beam_center_y = 1765 // 2 * 0.11
+  else:
+    beam_center = None
   address, timestamp = address_and_timestamp_from_detector_format_version(detector_format_version)
   timestamp = evt_timestamp((timestamp,0))
   args = command_line.args
@@ -111,7 +116,8 @@ def run(args):
   gain_map.as_1d().set_selected(img_sel.iselection(), 1/img_diff.as_1d().select(img_sel))
   gain_map /= flex.mean(gain_map.as_1d().select(img_sel))
   d = cspad_tbx.dpack(data=gain_map, address=address, active_areas=active_areas, timestamp=timestamp,
-    distance=command_line.options.distance,wavelength=command_line.options.wavelength)
+    distance=command_line.options.distance,wavelength=command_line.options.wavelength,
+    beam_center_x = beam_center_x, beam_center_y = beam_center_y)
   easy_pickle.dump(output_filename, d)
 
 
@@ -151,7 +157,7 @@ def convert_detector(raw_data, detector_format_version, address):
         col = active_areas[i*4 + 1]
         block = flex.double(raw_data[i * 185:(i+1)*185, :])
         det.matrix_paste_block_in_place(block.matrix_rot90(rotations[i]), row, col)
-      return det, None
+      return det, active_areas
 
     else:
       calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
