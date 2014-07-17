@@ -160,7 +160,7 @@ class analyze_resolution_limits (scaling.xtriage_analysis) :
     # XXX very important - for high-symmetry space groups we need to examine
     # all possible positive indices
     tmp_miller = miller_set.expand_to_p1()
-    if (miller_set.space_group().order_z() > 2) :
+    if (miller_set.space_group().n_smx() > 2) :
       all_pos_neg_indices = flex.miller_index()
       for h,k,l in tmp_miller.indices() :
         if (h >= 0 and k >= 0 and l >= 0) or (h <= 0 and k <= 0 and l <= 0) :
@@ -426,9 +426,11 @@ class ice_ring_checker(scaling.xtriage_analysis):
                completeness_data,
                z_scores_data,
                completeness_abnormality_level=4.0,
-               intensity_level=0.1):
+               intensity_level=0.1,
+               z_score_limit=10):
     self.completeness_abnormality_level = completeness_abnormality_level
     self.intensity_level = intensity_level
+    self.z_score_limit = z_score_limit
     self.ice_d_spacings=flex.double(
       [3.897,3.669,3.441,2.671,2.249,
        2.072,1.948,1.918,1.883,1.721])
@@ -520,7 +522,7 @@ class ice_ring_checker(scaling.xtriage_analysis):
           (self.ice_rel_intens[ii] > self.intensity_level)) :
         abnormality_completeness = abs(self.abnormality_completeness[ii])
         if ((abnormality_completeness >= cutoff) or
-            (self.value_intensity[ii] > 15) or
+            (self.value_intensity[ii] > z_score_limit) or
             (abs(self.abnormality_intensity[ii]) >= cutoff)) :
           self.warnings += 1
 
@@ -568,7 +570,7 @@ class ice_ring_checker(scaling.xtriage_analysis):
  Even though the completeness is lower as expected, the mean intensity is
  still reasonable at this resolution.""")
         if ((abs(self.abnormality_intensity[ii]) >= cutoff) or
-            (abs(self.value_intensity[ii]) > 15)) :
+            (abs(self.value_intensity[ii]) > self.z_score_limit)) :
           problems_detected = True
           if (abs(self.abnormality_completeness[ii])<=cutoff):
             out.show("""\
