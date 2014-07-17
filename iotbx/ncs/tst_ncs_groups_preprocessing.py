@@ -25,6 +25,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.tempdir = tempfile.mkdtemp('tempdir')
     os.chdir(self.tempdir)
 
+  # @unittest.SkipTest
   def test_phil_param_read(self):
     """ Verify that phil parameters are properly read   """
     print 'Running ',sys._getframe().f_code.co_name
@@ -45,6 +46,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       self.assertRaises(
         IOError,iotbx.ncs.input,ncs_selection_params=pc)
 
+  # @unittest.SkipTest
   def test_phil_processing(self):
     """ Verify that phil parameters are properly processed   """
     print 'Running ',sys._getframe().f_code.co_name
@@ -72,12 +74,12 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(group_keys,{'s005','s004','s006','s001','s003','s002'})
     self.assertEqual(trans_obj.ncs_atom_selection.count(True),4)
 
+  # @unittest.SkipTest
   def test_superpos_pdb(self):
     """  verify creation of transformations using superpose_pdb   """
     print 'Running ',sys._getframe().f_code.co_name
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data1)
-    trans_obj = ncs_group_object()
     trans_obj = iotbx.ncs.input(
         ncs_selection_params = pdb_test_data1_phil,
         pdb_hierarchy_inp=pdb_obj)
@@ -117,7 +119,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     expected = {'chain A_s002', 'chain A_s003', 'chain B_s005', 'chain B_s006'}
     self.assertEqual(expected,set(trans_obj.transform_chain_assignment))
 
-
+  # @unittest.SkipTest
   def test_spec_reading(self):
     """ verify creating and processing spec """
     if not have_phenix:
@@ -181,11 +183,11 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertTrue(r1.is_r3_identity_matrix())
     expected_r = matrix.sqr(
       [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
-    d = r2 - expected_r
+    d = r2 - expected_r.transpose()
     d = map(abs,d)
     self.assertTrue(max(d)<0.01)
 
-
+  # @unittest.SkipTest
   def test_mmcif_reading(self):
     print 'Running ',sys._getframe().f_code.co_name
     # Todo: test_mmcif_reading
@@ -236,16 +238,37 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertTrue(r1.is_r3_identity_matrix())
     expected_r = matrix.sqr(
       [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
-    d = r2 - expected_r
+    # the transformation in the spec files are from the copy to the master
+    d = r2 - expected_r.transpose()
     d = map(abs,d)
     self.assertTrue(max(d)<0.01)
 
-  @unittest.SkipTest
+
+    # Verify that spec object are produced properly
+    spec_output = trans_obj.get_ncs_info_as_spec(
+      pdb_hierarchy_asu=pdb_obj.hierarchy,write=False)
+    trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
+
+    t1 = trans_obj.ncs_transform['s002'].r
+    t2 = trans_obj2.ncs_transform['s002'].r
+    self.assertEqual(t1,t2)
+
+    t1 = trans_obj.ncs_to_asu_selection
+    t2 = trans_obj2.ncs_to_asu_selection
+    self.assertEqual(t1,t2)
+
+    t1 = trans_obj.tr_id_to_selection['chain A_s003']
+    t2 = trans_obj2.tr_id_to_selection['chain A_s003']
+    self.assertEqual(t1,t2)
+
+  # @unittest.SkipTest
   def test_rotaion_translation_input(self):
     """
     Verify correct processing
     """
     print 'Running ',sys._getframe().f_code.co_name
+
+
   # def test_build_pdb(self):
   #   """ produce test pdb file """
   #   from iotbx import pdb
@@ -474,7 +497,7 @@ tran_orth    -0.0003   -0.0002    0.0003
 
 center_orth    5.1208    9.3744   13.7718
 CHAIN B
-RMSD 0.000490318808456
+RMSD 0.0005
 MATCHING 9
   RESSEQ 151:159
 
@@ -487,7 +510,7 @@ tran_orth     0.0002    0.0004   -0.0006
 
 center_orth    4.5304    3.5021   16.4612
 CHAIN C
-RMSD 0.000475964539946
+RMSD 0.0005
 MATCHING 9
   RESSEQ 151:159
 
@@ -514,7 +537,7 @@ tran_orth     0.0000   -0.0000    0.0000
 
 center_orth    8.5917   -9.9770    9.4397
 CHAIN E
-RMSD 7.50647770368e-16
+RMSD 0.0
 MATCHING 7
   RESSEQ 1:7
 
