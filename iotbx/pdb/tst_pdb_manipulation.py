@@ -29,7 +29,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     open('multimer_test_data.pdb', 'w').write(pdb_test_data)
     open('multimer_test_data2.pdb', 'w').write(pdb_test_data2)
 
-
+  # @unittest.SkipTest
   def test_MTRIX(self):
     '''Test MTRIX record processing'''
     print 'Running ',sys._getframe().f_code.co_name
@@ -78,6 +78,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     cau_expected_results.sort()
     assert approx_equal(cau_expected_results,cau_multimer_xyz,eps=0.00001)
 
+  # @unittest.SkipTest
   def test_BIOMT(self):
     '''Test MTRIX record processing'''
     print 'Running ',sys._getframe().f_code.co_name
@@ -109,6 +110,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     assert approx_equal(ba_expected_results,ba_multimer_xyz,eps=0.001)
     self.assertEqual(ba_multimer_data.number_of_transforms,9)
 
+  # @unittest.SkipTest
   def test_ncs_copies_naming(self):
     print 'Running ',sys._getframe().f_code.co_name
     transforms_obj = ncs_group_object()
@@ -118,6 +120,7 @@ class TestMultimerReconstruction(unittest.TestCase):
                 'chain B_s002': 'F'}
     self.assertEqual(result,expected)
 
+  # @unittest.SkipTest
   def test_adding_transforms_directly(self):
     """
     Verify that processing of transforms provided manually is done properly """
@@ -161,6 +164,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     expected = ['s001', 's003', 's002']
     self.assertEqual(result,expected)
 
+  # @unittest.SkipTest
   def test_transform_application_order(self):
     """
     Verify that transform order is kept even when chain selection is complex
@@ -200,6 +204,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     self.assertEqual(len(transforms_obj.ncs_atom_selection),21)
     self.assertEqual(transforms_obj.ncs_atom_selection.count(True),7)
 
+  # @unittest.SkipTest
   def test_num_to_str(self):
     print 'Running ',sys._getframe().f_code.co_name
     self.assertEqual(format_num_as_str(946),'946')
@@ -238,6 +243,35 @@ class TestMultimerReconstruction(unittest.TestCase):
       write=False)
     # print pdbstr
 
+  def test_spec_file_format(self):
+    """ Verify that spec object are produced properly """
+    print 'Running ',sys._getframe().f_code.co_name
+
+    multimer_data = multimer(
+      pdb_str=pdb_test_data2,
+      reconstruction_type='cau')
+
+    trans_obj = iotbx.ncs.input(pdb_string=pdb_test_data2)
+
+    pdb_hierarchy_asu = multimer_data.assembled_multimer
+    spec_output = trans_obj.get_ncs_info_as_spec(
+      pdb_hierarchy_asu=pdb_hierarchy_asu,write=True)
+    trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
+
+    # t1 = trans_obj.ncs_transform['s002'].r
+    # t2 = trans_obj2.ncs_transform['s002'].r
+    # self.assertEqual(t1,t2)
+    # self.assertEqual(len(trans_obj.ncs_transform),len(trans_obj2.ncs_transform))
+    #
+    # t1 = trans_obj.ncs_to_asu_selection
+    # t2 = trans_obj2.ncs_to_asu_selection
+    # self.assertEqual(t1,t2)
+    #
+    # t1 = trans_obj.tr_id_to_selection['chain A_s003']
+    # t2 = trans_obj2.tr_id_to_selection['chain A_s003']
+    # self.assertEqual(t1,t2)
+
+  # @unittest.SkipTest
   def test_writing_spec_file(self):
     print 'Running ',sys._getframe().f_code.co_name
     """
@@ -338,12 +372,12 @@ MTRIX1   3 -0.317946 -0.173437  0.932111        0.00000
 MTRIX2   3  0.760735 -0.633422  0.141629        0.00000
 MTRIX3   3  0.565855  0.754120  0.333333        0.00000
 ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
-ATOM      2  CA  THR A   1       9.559   8.931  10.615  1.00 20.00           C
-ATOM      3  C   THR A   1       9.634   7.903  11.739  1.00 20.00           C
-ATOM      4  O   THR B   1      10.449   8.027  12.653  1.00 20.00           O
-ATOM      5  CB  THR B   1      10.660   8.630   9.582  1.00 20.00           C
-ATOM      6  OG1 THR A   1      10.560   9.552   8.490  1.00 20.00           O
-ATOM      7  CG2 THR A   1      10.523   7.209   9.055  1.00 20.00           C
+ATOM      2  CA  THR A   2       9.559   8.931  10.615  1.00 20.00           C
+ATOM      3  C   THR A   3       9.634   7.903  11.739  1.00 20.00           C
+ATOM      4  O   THR B   4      10.449   8.027  12.653  1.00 20.00           O
+ATOM      5  CB  THR B   5      10.660   8.630   9.582  1.00 20.00           C
+ATOM      6  OG1 THR A   6      10.560   9.552   8.490  1.00 20.00           O
+ATOM      7  CG2 THR A   7      10.523   7.209   9.055  1.00 20.00           C
 TER
 """
 
@@ -366,12 +400,12 @@ END
 
 pdb_test_data4="""\
 ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
-ATOM      2  CA  THR A   1       9.559   8.931  10.615  1.00 20.00           C
-ATOM      3  C   THR A   1       9.634   7.903  11.739  1.00 20.00           C
-ATOM      4  O   THR B   1      10.449   8.027  12.653  1.00 20.00           O
-ATOM      5  CB  THR B   1      10.660   8.630   9.582  1.00 20.00           C
-ATOM      6  OG1 THR A   1      10.560   9.552   8.490  1.00 20.00           O
-ATOM      7  CG2 THR A   1      10.523   7.209   9.055  1.00 20.00           C
+ATOM      2  CA  THR A   2       9.559   8.931  10.615  1.00 20.00           C
+ATOM      3  C   THR A   3       9.634   7.903  11.739  1.00 20.00           C
+ATOM      4  O   THR B   4      10.449   8.027  12.653  1.00 20.00           O
+ATOM      5  CB  THR B   5      10.660   8.630   9.582  1.00 20.00           C
+ATOM      6  OG1 THR A   6      10.560   9.552   8.490  1.00 20.00           O
+ATOM      7  CG2 THR A   7      10.523   7.209   9.055  1.00 20.00           C
 """
 
 pdb_test_data3_expected_results = """\
