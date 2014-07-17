@@ -441,6 +441,25 @@ planarity
   sigma = None
     .type = float
 }
+parallelity
+  .optional = True
+  .multiple = True
+  .short_caption = Parallelity
+  .style = auto_align
+{
+  action = *add delete change
+    .type = choice
+  atom_selection_1 = None
+    .type = atom_selection
+    .multiple = True
+    .input_size = 400
+  atom_selection_2 = None
+    .type = atom_selection
+    .multiple = True
+    .input_size = 400
+  sigma = 0.027
+    .type = float
+}
 scale_restraints
   .multiple = True
   .optional = True
@@ -2344,16 +2363,33 @@ class build_chain_proxies(object):
             if restraint_parallel_dna_rna:
               if (len(broken_bond_i_seq_pairs) == 0 and # link is not broken...
                   prev_mm.is_rna_dna and mm.is_rna_dna): # and they are rna/dna
-                link_resolution = add_parallelity_proxies(
-                  counters=counters(label="link_parallelity"),
-                  m_i=prev_mm,
-                  m_j=mm,
-                  parallelity_proxy_registry=geometry_proxy_registries.parallelity,
-                  special_position_indices=special_position_indices,
-                  broken_bond_i_seq_pairs=broken_bond_i_seq_pairs,
-                  weight=weight_parallel_dna_rna)
-                n_unresolved_chain_link_parallelities \
-                  += link_resolution.counters.unresolved_non_hydrogen
+                def additional_check(m_i, m_j):
+                  atom = m_j.expected_atoms.get('C2', None)
+                  distances = []
+                  for aname in ['C2', 'C4', 'C5', 'C6', 'C1*']:
+                    a1 = m_i.expected_atoms.get(aname, None)
+                    a2 = m_j.expected_atoms.get(aname, None)
+                    if a1 is not None and a2 is not None:
+                      distances.append(a1.distance(a2))
+                  max_dist = max(distances)
+                  min_dist = min(distances)
+                  diff_dist = max(distances)-min(distances)
+                  result = diff_dist < 2.5 and max_dist < 8
+                  if not result and False:
+                    print "Rejecting parallelity for ", m_i.pdb_residue_id_str, m_j.pdb_residue_id_str,
+                    print "%5.2f %5.2f %5.2f" % ( diff_dist, max_dist, min_dist)
+                  return result
+                if additional_check(prev_mm, mm):
+                  link_resolution = add_parallelity_proxies(
+                    counters=counters(label="link_parallelity"),
+                    m_i=prev_mm,
+                    m_j=mm,
+                    parallelity_proxy_registry=geometry_proxy_registries.parallelity,
+                    special_position_indices=special_position_indices,
+                    broken_bond_i_seq_pairs=broken_bond_i_seq_pairs,
+                    weight=weight_parallel_dna_rna)
+                  n_unresolved_chain_link_parallelities \
+                    += link_resolution.counters.unresolved_non_hydrogen
 
       if (mm.monomer is not None):
         if (mm.is_unusual()):
@@ -4023,6 +4059,36 @@ class build_all_chain_proxies(linking_mixins):
     print >> log, "    Total number of custom planarities:", len(result)
     return result
 
+  def process_geometry_restraints_edits_parallelity(self,
+                                                  sel_cache,
+                                                  params,
+                                                  log):
+    result = []
+    if len(params.parallelity) == 0: 
+      return result
+    print >> log, "  Custom parallelities:"
+    for parallelity in params.parallelity:
+      if (parallelity.sigma is None) or (parallelity.sigma <= 0) :
+        raise Sorry("Custom parallelity sigma is undefined or zero/negative - "+
+          "this must be a positive decimal number.")
+      elif (parallelity.action != "add"):
+        raise Sorry("%s = %s not implemented." %
+          parallelity.__phil_path_and_value__("action"))
+      i_seqs = self.phil_atom_selections_as_i_seqs_multiple(
+        cache=sel_cache, scope_extract=parallelity, sel_attrs=["atom_selection_1"])
+      j_seqs = self.phil_atom_selections_as_i_seqs_multiple(
+        cache=sel_cache, scope_extract=parallelity, sel_attrs=["atom_selection_2"])
+      weight = parallelity.sigma
+      print i_seqs, j_seqs, weight
+      proxy = geometry_restraints.parallelity_proxy(
+        i_seqs=i_seqs,
+        j_seqs=j_seqs,
+        weight=weight)
+      result.append(proxy)
+    print >> log, "    Total number of custom parallelities:", len(result)
+    return result
+
+
   def process_geometry_restraints_scale (self, params, log) :
     """
     Scale the weights for selected basic geometry restraints for given
@@ -4089,6 +4155,8 @@ class build_all_chain_proxies(linking_mixins):
     result.angle_proxies=self.process_geometry_restraints_edits_angle(
         sel_cache=sel_cache, params=params, log=log)
     result.planarity_proxies=self.process_geometry_restraints_edits_planarity(
+        sel_cache=sel_cache, params=params, log=log)
+    result.parallelity_proxies=self.process_geometry_restraints_edits_parallelity(
         sel_cache=sel_cache, params=params, log=log)
 #    assert 0
     return result
@@ -4420,6 +4488,8 @@ class build_all_chain_proxies(linking_mixins):
         self.geometry_proxy_registries.angle.append_custom_proxy(proxy=proxy)
       for proxy in processed_edits.planarity_proxies:
         self.geometry_proxy_registries.planarity.append_custom_proxy(proxy=proxy)
+      for proxy in processed_edits.parallelity_proxies:
+        self.geometry_proxy_registries.parallelity.append_custom_proxy(proxy=proxy)
     #
     al_params = self.params.automatic_linking
     hbonds_in_bond_list = []
