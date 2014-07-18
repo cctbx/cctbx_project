@@ -35,7 +35,7 @@ def to_imageset(input_filename, extra_filename=None):
   handle.read_file(input_filename)
 
   # Get the template
-  template = handle.name_template_of_data_frames.replace('?', '#')
+  template = handle.name_template_of_data_frames[0].replace('?', '#')
   detector_name = handle.detector
 
   # Create the imageset

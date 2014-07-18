@@ -159,7 +159,7 @@ class reader:
       elif name == 'FRIEDEL\'S_LAW=':
         self.friedels_law = bool(parameter[-1])
       elif name == 'NAME_TEMPLATE_OF_DATA_FRAMES=':
-        self.name_template_of_data_frames = parameter[-1]
+        self.name_template_of_data_frames = parameter[1:]
       elif name == 'STARTING_ANGLE=':
         self.starting_angle = float(parameter[1])
       elif name == 'STARTING_FRAME=':
