@@ -243,7 +243,7 @@ class UCSettingsPanel(wx.Panel):
     frame = self.GetParent().GetParent()
 
     try:
-      uc = symmetry(unit_cell=self._cell, space_group_symbol=self._spacegroup)
+      uc = symmetry(unit_cell=self._cell, space_group_symbol=str(self._spacegroup))
       hkl_list = cctbx.miller.build_set(uc, False, d_min=self.d_min_ctrl.GetValue())
     except Exception, e:
       frame.update_statusbar(e.message)
