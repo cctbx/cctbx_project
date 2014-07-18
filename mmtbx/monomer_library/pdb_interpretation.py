@@ -158,6 +158,11 @@ master_params_str = """\
       .type = float
       .short_caption = cosine of angle between normal to basepair plane and \
         link
+    rna_dna_basepair_parallelity_enabled = False
+      .type = bool
+    rna_dna_basepair_parallelity_sigma = 0.027
+      .type = float
+      .short_caption = sigma for basepaired parallelity
     link_residues = False
       .type = bool
     inter_residue_bond_cutoff = 2.5
@@ -272,6 +277,9 @@ master_params_str = """\
     .type = bool
     .short_caption = Determine consecutive DNA/RNA basepairs and restraint \
       them to be parallel
+  skip_additional_check_on_dna_rna = False
+    .type = bool
+    .short_caption = Disable additional checking for consecutive DNA/RNA bases
   weight_parallel_dna_rna = 0.027
     .type=float
     .short_caption = weight for parallelity DNA/RNA restraints
@@ -2140,6 +2148,7 @@ class build_chain_proxies(object):
         ener_lib,
         translate_cns_dna_rna_residue_names,
         restraint_parallel_dna_rna,
+        skip_additional_check_on_dna_rna,
         weight_parallel_dna_rna,
         rna_sugar_pucker_analysis_params,
         apply_cif_modifications,
@@ -2375,11 +2384,11 @@ class build_chain_proxies(object):
                   min_dist = min(distances)
                   diff_dist = max(distances)-min(distances)
                   result = diff_dist < 2.5 and max_dist < 8
-                  if not result and False:
+                  if not result:
                     print "Rejecting parallelity for ", m_i.pdb_residue_id_str, m_j.pdb_residue_id_str,
                     print "%5.2f %5.2f %5.2f" % ( diff_dist, max_dist, min_dist)
                   return result
-                if additional_check(prev_mm, mm):
+                if additional_check(prev_mm, mm) or skip_additional_check_on_dna_rna:
                   link_resolution = add_parallelity_proxies(
                     counters=counters(label="link_parallelity"),
                     m_i=prev_mm,
@@ -2881,6 +2890,7 @@ class build_all_chain_proxies(linking_mixins):
             translate_cns_dna_rna_residue_names
               =self.params.translate_cns_dna_rna_residue_names,
             restraint_parallel_dna_rna=self.params.restraint_parallel_dna_rna,
+            skip_additional_check_on_dna_rna=self.params.skip_additional_check_on_dna_rna,
             weight_parallel_dna_rna=self.params.weight_parallel_dna_rna,
             rna_sugar_pucker_analysis_params
               =self.params.rna_sugar_pucker_analysis,
@@ -4079,7 +4089,7 @@ class build_all_chain_proxies(linking_mixins):
       j_seqs = self.phil_atom_selections_as_i_seqs_multiple(
         cache=sel_cache, scope_extract=parallelity, sel_attrs=["atom_selection_2"])
       weight = parallelity.sigma
-      print i_seqs, j_seqs, weight
+      #print i_seqs, j_seqs, weight
       proxy = geometry_restraints.parallelity_proxy(
         i_seqs=i_seqs,
         j_seqs=j_seqs,
@@ -4526,6 +4536,26 @@ class build_all_chain_proxies(linking_mixins):
         rna_dna_cosangle_cutoff   = al_params.rna_dna_cosangle_cutoff,
         log=log,
         )
+    if hbonds_in_bond_list > 0:
+      if al_params.rna_dna_basepair_parallelity_enabled:
+        # Do parallelity restraints for 'horizontal' basepairing
+        self.geometry_proxy_registries.parallelity.initialize_table()
+        for bond_seqs in hbonds_in_bond_list:
+          r1 = self.pdb_atoms[bond_seqs[0]].parent()
+          r2 = self.pdb_atoms[bond_seqs[1]].parent()
+          i_seqs = []
+          j_seqs = []
+          for (seqs, r) in [(i_seqs,r1), (j_seqs,r2)]:
+            for aname in ['C2', 'C4', 'C6']:
+              seqs.append(r.get_atom(aname).i_seq)
+          proxy = geometry_restraints.parallelity_proxy(
+            i_seqs=i_seqs,
+            j_seqs=j_seqs,
+            weight=al_params.rna_dna_basepair_parallelity_sigma)
+          self.geometry_proxy_registries.parallelity.add_if_not_duplicated(
+              proxy=proxy)
+        self.geometry_proxy_registries.parallelity.discard_table()
+        
     if len(hbonds_in_bond_list) == 0:
       hbonds_in_bond_list = None
     else:
