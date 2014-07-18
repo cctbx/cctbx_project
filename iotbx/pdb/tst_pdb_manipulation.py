@@ -256,20 +256,36 @@ class TestMultimerReconstruction(unittest.TestCase):
     pdb_hierarchy_asu = multimer_data.assembled_multimer
     spec_output = trans_obj.get_ncs_info_as_spec(
       pdb_hierarchy_asu=pdb_hierarchy_asu,write=True)
+
     trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
 
-    # t1 = trans_obj.ncs_transform['s002'].r
-    # t2 = trans_obj2.ncs_transform['s002'].r
-    # self.assertEqual(t1,t2)
-    # self.assertEqual(len(trans_obj.ncs_transform),len(trans_obj2.ncs_transform))
-    #
-    # t1 = trans_obj.ncs_to_asu_selection
-    # t2 = trans_obj2.ncs_to_asu_selection
-    # self.assertEqual(t1,t2)
-    #
-    # t1 = trans_obj.tr_id_to_selection['chain A_s003']
-    # t2 = trans_obj2.tr_id_to_selection['chain A_s003']
-    # self.assertEqual(t1,t2)
+    t1 = trans_obj.ncs_transform['s002'].r
+    t2 = trans_obj2.ncs_transform['s002'].r
+    self.assertEqual(t1,t2)
+    self.assertEqual(len(trans_obj.ncs_transform),len(trans_obj2.ncs_transform))
+
+    t1 = trans_obj.ncs_to_asu_selection
+    t1_expected = {'chain A': ['chain C', 'chain E'],
+                   'chain B': ['chain D', 'chain F']}
+    self.assertEqual(t1,t1_expected)
+    t2 = trans_obj2.ncs_to_asu_selection
+    t2_expected = {
+      'chain A and (resseq 1:3 or resseq 6:7)':
+        ['chain C and (resseq 1:3 or resseq 6:7)',
+         'chain E and (resseq 1:3 or resseq 6:7)'],
+      'chain B and (resseq 4:5)':
+        ['chain D and (resseq 4:5)', 'chain F and (resseq 4:5)']}
+    self.assertEqual(t2,t2_expected)
+
+    t1 = trans_obj.tr_id_to_selection['chain A_s003']
+    t1_expected = ('chain A',
+                   'chain E')
+    self.assertEqual(t1,t1_expected)
+
+    t2 = trans_obj2.tr_id_to_selection['chain A_s003']
+    t2_expected = ('chain A and (resseq 1:3 or resseq 6:7)',
+                   'chain E and (resseq 1:3 or resseq 6:7)')
+    self.assertEqual(t2,t2_expected)
 
   # @unittest.SkipTest
   def test_writing_spec_file(self):
