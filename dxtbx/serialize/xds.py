@@ -36,10 +36,19 @@ def to_imageset(input_filename, extra_filename=None):
 
   # Get the template
   template = handle.name_template_of_data_frames[0].replace('?', '#')
+  image_range = handle.data_range
   detector_name = handle.detector
 
+  if extra_filename is not None:
+    # we can get all the extra dxtbx models from extra_filename
+    check_format = False
+  else:
+    # we need the image files present to get the dxtbx models
+    check_format = True
+
   # Create the imageset
-  imageset = ImageSetFactory.from_template(template)[0]
+  imageset = ImageSetFactory.from_template(
+    template, image_range=image_range, check_format=False)[0]
 
   # If an extra filename has been specified, try to load models
   if extra_filename:
@@ -57,6 +66,10 @@ def to_imageset(input_filename, extra_filename=None):
     imageset.set_beam(models.get_beam())
     imageset.set_detector(detector)
     imageset.set_goniometer(models.get_goniometer())
+    # take the image range from XDS.INP
+    scan = models.get_scan()
+    scan.set_image_range(image_range)
+    imageset.set_scan(scan)
 
   # Return the imageset
   return imageset

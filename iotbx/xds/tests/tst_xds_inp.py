@@ -50,7 +50,7 @@ class Test(object):
     assert handle.unit_cell_constants == [42.45, 42.45, 39.8, 90.0, 90.0, 90.0]
     assert handle.space_group_number == 89
     assert handle.max_fac_rmeas == 3.0
-    assert handle.data_range == [1]
+    assert handle.data_range == [1,900]
 
     filename_1 = os.path.join(iotbx_dir, 'xds', 'tests', 'XDS_2.INP')
     tmp_dir = open_tmp_directory()

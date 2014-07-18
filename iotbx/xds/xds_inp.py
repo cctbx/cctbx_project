@@ -173,4 +173,4 @@ class reader:
       elif name == 'MAX_FAC_Rmeas=':
         self.max_fac_rmeas = float(parameter[-1])
       elif name == 'DATA_RANGE=':
-        self.data_range = map(int, parameter[-2])
+        self.data_range = map(int, parameter[-2:])
