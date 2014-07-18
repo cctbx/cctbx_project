@@ -328,9 +328,26 @@ class parallelity_proxy_registry(proxy_registry_base):
         proxies=shared_parallelity_proxy(),
         strict_conflict_handling=strict_conflict_handling)
 
+  def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
+    assert proxy.i_seqs.size() > 2
+    assert proxy.j_seqs.size() > 2
+    proxy = proxy.sort_ij_seqs()
+    tab_i_seqs = tuple(proxy.i_seqs)
+    tab_j_seqs = tuple(proxy.j_seqs)
+    if (self.table.get((tab_i_seqs, tab_j_seqs), -1) <0 and
+        self.table.get((tab_j_seqs, tab_i_seqs), -1) <0):
+      # saving proxy number in list
+      self.table[(tab_i_seqs, tab_j_seqs)]= self.proxies.size()
+      self.proxies.append(proxy)
+      self.counts.append(1)
+      return True
+    else:
+      return True
+
+
   def process(self, source_info, proxy, tolerance=1.e-6):
-    assert proxy.i_seqs.size() > 0
-    assert proxy.j_seqs.size() > 0
+    assert proxy.i_seqs.size() > 2
+    assert proxy.j_seqs.size() > 2
     result = proxy_registry_process_result()
     proxy = proxy.sort_ij_seqs()
     # here we want to make sure that we don't have this proxy yet
@@ -685,6 +702,10 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
       exclude=None):
     n_proxies = self.n_total()
     if (n_proxies == 0): return None
+    if (self.asu.size() == 0):
+      asu_mappings = None
+    else:
+      asu_mappings = self.asu_mappings()
     if exclude is None:
       return self.deltas(sites_cart=sites_cart)
     else:
