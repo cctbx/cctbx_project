@@ -41,7 +41,8 @@ class Test(object):
     assert handle.fraction_of_polarization == 0.99
     assert handle.polarization_plane_normal == [0.0, 1.0, 0.0]
     assert handle.friedels_law
-    assert handle.name_template_of_data_frames.endswith(
+    assert len(handle.name_template_of_data_frames) == 1
+    assert handle.name_template_of_data_frames[0].endswith(
       'X4_lots_M1S4_1_????.cbf')
     assert handle.starting_angle == 0
     assert handle.starting_frame == 1
@@ -60,6 +61,9 @@ class Test(object):
     handle.read_file(filename_2)
     assert handle.corrections is None
     assert handle.incident_beam_direction == [-0.003, 0.001, 1.032]
+    assert len(handle.name_template_of_data_frames) == 2
+    assert handle.name_template_of_data_frames[0] == '/blah/xtal1_1_????.cbf'
+    assert handle.name_template_of_data_frames[1] == 'CBF'
 
     print 'OK'
 
