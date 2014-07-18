@@ -245,7 +245,7 @@ def cxi_versioned_extract(*args):
                                                 2, -21]
     return working_extract
 
-  elif cxi_version in ["XPP 8.1", "XPP 9.1"]:
+  elif cxi_version in ["XPP 8.1"]:
     working_extract = working_phil.command_extractor
 
     corrected_auxiliary_translations = [
@@ -278,6 +278,42 @@ def cxi_versioned_extract(*args):
                                                0, 1,
                                                0, 1,
                                                0, 1]
+    return working_extract
+
+
+  elif cxi_version in ["XPP 9.1"]:
+    working_extract = working_phil.command_extractor
+
+    corrected_auxiliary_translations = [
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0]
+
+    from scitbx.array_family import flex
+    total_tile_translations = flex.int(corrected_auxiliary_translations)
+
+    TT = list(total_tile_translations)
+    working_extract.distl.tile_translations = TT
+
+    # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.  For the
+    # XPP CSPAD, this is effectively correcting for the beam center.
+    working_extract.distl.quad_translations = [2, -1,
+                                               3, 0,
+                                               3, -1,
+                                               4, -3]
     return working_extract
 
 
