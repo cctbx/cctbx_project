@@ -1255,7 +1255,6 @@ iotbx/mtz/tst_miller_dict.py -text
 iotbx/mtz/tst_unmerged.py -text
 iotbx/ncs/__init__.py -text
 iotbx/ncs/ncs_preprocess.py -text
-iotbx/ncs/simple_ncs_from_pdb.py -text
 iotbx/ncs/tst.py -text
 iotbx/ncs/tst_finding_ncs.py -text
 iotbx/ncs/tst_ncs_groups_preprocessing.py -text
