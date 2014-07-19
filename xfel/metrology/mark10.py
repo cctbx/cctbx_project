@@ -138,7 +138,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
     # for eventual write-out, deep copy the input:
     self.OUTPUT = copy.deepcopy(self.FRAMES)
 
-    if params.max_frames==0:
+    if params.max_frames==None:
       FR_LIMIT = len(self.FRAMES["frame_id"]) # don't adjust for degrees of freedom
       self.n_refined_frames = FR_LIMIT
     else:
