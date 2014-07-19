@@ -70,6 +70,7 @@ if (__name__ == "__main__"):
       new_quad_trans[isensor*2]-=Q.coordmax[0]
       new_quad_trans[isensor*2 + 1]-=Q.coordmax[1]
 
+    print "The OLD QUAD translations are:",list(old_quad_trans)
     print "\nThe NEW QUAD translations are:",list(new_quad_trans)
     print """These should be pasted into spotfinder/applications/xfel/cxi_phil.py
     with NEW replacing the OLD."""
