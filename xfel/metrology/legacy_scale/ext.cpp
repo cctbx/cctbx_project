@@ -12,6 +12,7 @@
 #include <xfel/metrology/legacy_scale/bandpass_gaussian.h>
 #include <xfel/metrology/legacy_scale/vector_collection.h>
 #include <xfel/metrology/legacy_scale/a_g_conversion.h>
+#include <xfel/metrology/legacy_scale/quadrants.h>
 
 #include <vector>
 #include <map>
@@ -172,6 +173,7 @@ namespace boost_python { namespace {
     //  .add_property("G",make_getter(&cctbx::agconvert::AG::G, rbv()))
     //;
     def("best_fit_limit",xfel_legacy::parameter::best_fit_limit);
+    def("quadrant_self_correlation",xfel_legacy::qsc);
   }
 
 }

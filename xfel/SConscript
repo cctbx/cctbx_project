@@ -52,7 +52,7 @@ if (not env_etc.no_boost_python):
 
   env_legacy_boost_python_ext = env_boost_python_ext.Clone()
   env_legacy_boost_python_ext.Prepend(
-                 LIBS=["legacy_scale", "cctbx", "scitbx_boost_python"])
+                 LIBS=["legacy_scale", "cctbx", "scitbx_boost_python", "ann"])
   env_legacy_boost_python_ext.SharedLibrary(
                  target="#lib/xfel_legacy_scale_ext", source="metrology/legacy_scale/ext.cpp")
 
