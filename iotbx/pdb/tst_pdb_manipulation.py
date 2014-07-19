@@ -227,21 +227,42 @@ class TestMultimerReconstruction(unittest.TestCase):
       transform_info=transform_info,
       pdb_hierarchy_inp=pdb_obj)
 
-    transforms_obj.get_transform_records(
-      ncs_only=True,
-      pdb_hierarchy=pdb_obj.hierarchy,
-      write=False)
+    multimer_data = multimer(
+      pdb_str=pdb_test_data2,
+      reconstruction_type='cau')
 
-    transforms_obj.get_transform_records(
-      pdb_hierarchy=pdb_obj.hierarchy,
-      biomt=True,
+    pdb_hierarchy_asu = multimer_data.assembled_multimer
+
+    # print '--- using ASU hierarchy ---'
+    pdbstr = transforms_obj.get_transform_records(
+      ncs_only=True,
+      pdb_hierarchy=pdb_hierarchy_asu,
       write=False)
+    # print pdbstr
+    # print '='*50
 
     pdbstr = transforms_obj.get_transform_records(
-      xrs=pdb_obj.xray_structure_simple(),
+      ncs_only=False,
+      pdb_hierarchy=pdb_hierarchy_asu,
+      write=False)
+    # print pdbstr
+
+    # print '--- using the hierarchy of only the master NCS ---'
+    pdbstr = transforms_obj.get_transform_records(
+      pdb_hierarchy=pdb_obj.hierarchy,
       biomt=True,
       write=False)
     # print pdbstr
+
+    # print '--- from xray structure ---'
+    xrs = pdb_hierarchy_asu.extract_xray_structure()
+    pdbstr = transforms_obj.get_transform_records(
+      # xrs=pdb_obj.xray_structure_simple(),
+      xrs=xrs,
+      biomt=True,
+      write=False)
+    # print pdbstr
+    # print '='*50
 
   def test_spec_file_format(self):
     """ Verify that spec object are produced properly """
@@ -255,7 +276,7 @@ class TestMultimerReconstruction(unittest.TestCase):
 
     pdb_hierarchy_asu = multimer_data.assembled_multimer
     spec_output = trans_obj.get_ncs_info_as_spec(
-      pdb_hierarchy_asu=pdb_hierarchy_asu,write=True)
+      pdb_hierarchy_asu=pdb_hierarchy_asu,write=False)
 
     trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
 
@@ -292,7 +313,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     print 'Running ',sys._getframe().f_code.co_name
     """
     Verify that there are no errors processing the write command
-    No inception of the output is done.
+    No inception of the output is done. Just making sure it does not break
     To view the output change the write=False to ,write=True
     """
     transforms_obj = ncs_group_object()

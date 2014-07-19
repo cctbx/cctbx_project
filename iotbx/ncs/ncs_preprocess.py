@@ -557,7 +557,17 @@ class ncs_group_object(object):
       chain_ids = {x.id for x in model.chains()}
       # Collect order if chains IDs and unique IDs
       self.model_unique_chains_ids = tuple(sorted(chain_ids))
-      self.model_order_chain_ids = [x.id for x in model.chains()]
+      model_order_ch_ids = [(x.id,x.atoms().size()) for x in model.chains()]
+      ch_n_atoms = {x:None for x in self.model_unique_chains_ids}
+      for (ch,n) in model_order_ch_ids:
+        if ch_n_atoms[ch] is None:
+          ch_n_atoms[ch] = [(0,n)]
+        else:
+          _,last_n = ch_n_atoms[ch][-1]
+          ch_n_atoms[ch].append((last_n, last_n + n))
+      for ch,n in model_order_ch_ids:
+        selection_range = ch_n_atoms[ch].pop(0)
+        self.model_order_chain_ids.append((ch,selection_range))
       s = ' or chain '.join(self.model_unique_chains_ids)
       self.ncs_selection_str = 'chain ' + s
       assert self.ncs_chain_selection == []
@@ -1101,6 +1111,8 @@ class ncs_group_object(object):
     Return:
     ASU hierarchy
     """
+    # Build only for PDB when there is a single NCS group
+    assert self.number_of_ncs_groups == 1
     new_ph = pdb_hierarchy.deep_copy()
     ncs_restraints_group_list = self.get_ncs_restraints_group_list()
     new_sites = apply_transforms(
@@ -1110,9 +1122,16 @@ class ncs_group_object(object):
       extended_ncs_selection = flex.size_t_range(pdb_hierarchy.atoms().size()),
       round_coordinates = round_coordinates)
     model = new_ph.models()[0]
-    for tr in self.transform_chain_assignment:
-      key = tr.split('_')[0]
-      ncs_selection = self.asu_to_ncs_map[key]
+    tr_assignment_order = []
+    for tr in self.transform_order:
+      for (ch_id, (sel_start,sel_end)) in self.model_order_chain_ids:
+        key = 'chain ' + ch_id
+        tr_key  =  key + '_' + tr
+
+        ncs_selection = self.asu_to_ncs_map[key][sel_start:sel_end]
+        tr_assignment_order.append([tr_key,ncs_selection])
+
+    for tr,ncs_selection in tr_assignment_order:
       new_part = pdb_hierarchy.select(ncs_selection).deep_copy()
       new_chain = iotbx.pdb.hierarchy.ext.chain()
       new_chain.id = self.ncs_copies_chains_names[tr]

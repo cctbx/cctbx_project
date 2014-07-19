@@ -58,7 +58,7 @@ class multimer(object):
 
     @author: Youval Dar (2013)
     '''
-    # todo : add ability to reconstruct ASU for multiple groups
+    # Todo : add ability to reconstruct ASU for multiple groups
     assert file_name or pdb_str
     # Read and process the pdb file
     if file_name:
