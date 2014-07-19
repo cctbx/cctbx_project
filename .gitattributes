@@ -2851,6 +2851,7 @@ xfel/command_line/monitor_trials.py -text
 xfel/command_line/overlay_spectra.py -text
 xfel/command_line/plot_to_subpixel.py -text
 xfel/command_line/postrefine.py -text
+xfel/command_line/quadrants.py -text
 xfel/command_line/radial_average.py -text
 xfel/command_line/smooth_spectrum.py -text
 xfel/command_line/subtract_background.py -text
@@ -2911,12 +2912,14 @@ xfel/metrology/legacy_scale/bandpass_gaussian.cpp -text
 xfel/metrology/legacy_scale/bandpass_gaussian.h -text
 xfel/metrology/legacy_scale/ext.cpp -text
 xfel/metrology/legacy_scale/parameters.h -text
+xfel/metrology/legacy_scale/quadrants.h -text
 xfel/metrology/legacy_scale/scale_core.cpp -text
 xfel/metrology/legacy_scale/vector_collection.h -text
 xfel/metrology/mark0.py -text
 xfel/metrology/mark1.py -text
 xfel/metrology/mark10.py -text
 xfel/metrology/mark3.py -text
+xfel/metrology/quadrant.py -text
 xfel/metrology_ext.cpp -text
 xfel/mono_simulation/SConscript -text
 xfel/mono_simulation/__init__.py -text
