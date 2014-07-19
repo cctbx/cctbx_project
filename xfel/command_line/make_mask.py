@@ -82,6 +82,11 @@ def run(argv=None):
                           default=-2,
                           dest="mask_pix_val",
                           help="Value for masked out pixels")
+                  .option(None, "--detector_format_version", "-d",
+                          type="string",
+                          default=None,
+                          dest="detector_format_version",
+                          help="detector format version string")
                   ).process(args=argv[1:])
 
   # Must have exactly three remaining arguments.
@@ -89,6 +94,14 @@ def run(argv=None):
   if (len(paths) != 3):
     command_line.parser.print_usage(file=sys.stderr)
     return
+
+  if command_line.options.detector_format_version is None:
+    address = timestamp = None
+  else:
+    from xfel.cxi.cspad_ana.cspad_tbx import evt_timestamp
+    from xfel.detector_formats import address_and_timestamp_from_detector_format_version
+    address, timestamp = address_and_timestamp_from_detector_format_version(command_line.options.detector_format_version)
+    timestamp = evt_timestamp((timestamp,0))
 
   poly_mask = None
   if not command_line.options.poly_mask == None:
@@ -215,12 +228,12 @@ def run(argv=None):
 
   d = dpack(
     active_areas=avg_i.parameters['ACTIVE_AREAS'],
-    address=None,
+    address=address,
     beam_center_x=bcx,
     beam_center_y=bcy,
     data=shifted_int_data_new,
     distance=avg_i.distance,
-    timestamp=None,
+    timestamp=timestamp,
     wavelength=avg_i.wavelength,
     xtal_target=None,
     pixel_size=avg_i.pixel_size,
@@ -239,4 +252,3 @@ def run(argv=None):
 
 if (__name__ == "__main__"):
   sys.exit(run())
-
