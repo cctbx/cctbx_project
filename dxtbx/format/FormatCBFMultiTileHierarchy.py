@@ -164,15 +164,48 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
     d = HierarchicalDetector()
 
-    for i in xrange(cbf.count_elements()):
-      ele_id = cbf.get_element_id(i)
-      cbf.find_category("diffrn_data_frame")
-      cbf.find_column("detector_element_id")
-      cbf.find_row(ele_id)
+    # find the panel elment names. Either array ids or section ids
+    cbf.find_category("array_structure_list")
+    try:
+      cbf.find_column("array_section_id")
+    except Exception, e:
+      if "CBF_NOTFOUND" not in e.message: raise e
       cbf.find_column("array_id")
-      array_id = cbf.get_value()
 
+    panel_names = []
+    for i in xrange(cbf.count_rows()):
+      cbf.select_row(i)
+      if cbf.get_typeofvalue() == 'null':
+        continue
+
+      val = cbf.get_value()
+      if val not in panel_names:
+        panel_names.append(val)
+
+    # the cbf detector objects are not guaranteed to be in the same order
+    # as this array of panel names. re-iterate, associating root axes of
+    # detector objects with panel names
+    detector_axes = []
+
+    for i in xrange(len(panel_names)):
       cbf_detector = cbf.construct_detector(i)
+      axis0 = cbf_detector.get_detector_surface_axes(0)
+      detector_axes.append(axis0)
+    panel_names_detectororder = []
+    cbf.find_category("array_structure_list")
+    for detector_axis in detector_axes:
+      cbf.find_column("axis_set_id")
+      cbf.find_row(detector_axis)
+      try:
+        cbf.find_column("array_section_id")
+      except Exception, e:
+        if "CBF_NOTFOUND" not in e.message: raise e
+        cbf.find_column("array_id")
+      panel_names_detectororder.append(cbf.get_value())
+
+
+    for panel_name in panel_names:
+      cbf_detector = cbf.construct_detector(panel_names_detectororder.index(panel_name))
 
       # code adapted below from dxtbx.model.detector.detector_factory.imgCIF_H
       pixel = (cbf_detector.get_inferred_pixel_size(1),
@@ -224,7 +257,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       p.set_pixel_size(tuple(map(float, pixel)))
       p.set_image_size(size)
       p.set_trusted_range(tuple(map(float, trusted_range)))
-      p.set_name(array_id)
+      p.set_name(panel_name)
       #p.set_px_mm_strategy(px_mm) FIXME
 
       cbf_detector.__swig_destroy__(cbf_detector)
@@ -239,6 +272,9 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
   def get_raw_data(self, index=None):
     if self._raw_data is None:
+      import numpy
+      from scitbx.array_family import flex
+
       self._raw_data = []
 
       cbf = self._cbf_handle
@@ -251,50 +287,72 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
         cbf.next_row()
       assert len(types) == cbf.count_rows()
 
-      # find the data
-      cbf.select_category(0)
-      while cbf.category_name().lower() != "array_data":
-        try:
-          cbf.next_category()
-        except Exception, e:
-          return None
-      cbf.select_column(0)
-      cbf.select_row(0)
-
-      d = self.get_detector()
-
-      import numpy
-      from scitbx.array_family import flex
-
-      for i, panel in enumerate(d):
-        name = panel.get_name()
+      # read the data
+      data = {}
+      cbf.find_category("array_data")
+      for i in xrange(cbf.count_rows()):
         cbf.find_column("array_id")
-        assert name == cbf.get_value()
+        name = cbf.get_value()
 
         cbf.find_column("data")
         assert cbf.get_typeofvalue().find('bnry') > -1
 
         if types[i] == 'signed 32-bit integer':
-          image_string = cbf.get_integerarray_as_string()
-          image = flex.int(numpy.fromstring(image_string, numpy.int32))
+          array_string = cbf.get_integerarray_as_string()
+          array = flex.int(numpy.fromstring(array_string, numpy.int32))
           parameters = cbf.get_integerarrayparameters_wdims_fs()
-          image_size = (parameters[10], parameters[9])
+          array_size = (parameters[11], parameters[10], parameters[9])
         elif types[i] == 'signed 64-bit real IEEE':
-          image_string = cbf.get_realarray_as_string()
-          image = flex.double(numpy.fromstring(image_string, numpy.float))
+          array_string = cbf.get_realarray_as_string()
+          array = flex.double(numpy.fromstring(array_string, numpy.float))
           parameters = cbf.get_realarrayparameters_wdims_fs()
-          image_size = (parameters[6], parameters[5])
+          array_size = (parameters[7], parameters[6], parameters[5])
         else:
           return None # type not supported
 
-        image.reshape(flex.grid(*image_size))
+        array.reshape(flex.grid(*array_size))
+        data[name] = array
+        cbf.next_row()
 
-        self._raw_data.append(image)
+      # extract the data for each panel
+      has_sections = True
+      try:
+        cbf.find_category("array_structure_list_section")
+      except Exception, e:
+        if "CBF_NOTFOUND" not in e.message: raise e
+        has_sections = False
 
-        try:
+      if has_sections:
+        section_shapes = {}
+        for i in xrange(cbf.count_rows()):
+          cbf.find_column("id")
+          section_name = cbf.get_value()
+          if not section_name in section_shapes:
+            section_shapes[section_name] = {}
+          cbf.find_column("array_id")
+          if not "array_id" in section_shapes[section_name]:
+            section_shapes[section_name]["array_id"] = cbf.get_value()
+          else:
+            assert section_shapes[section_name]["array_id"] == cbf.get_value()
+          cbf.find_column("index"); axis_index = int(cbf.get_value())-1
+          cbf.find_column("start"); axis_start = int(cbf.get_value())-1
+          cbf.find_column("end");   axis_end   = int(cbf.get_value())
+
+          section_shapes[section_name][axis_index] = slice(axis_start, axis_end)
           cbf.next_row()
-        except Exception, e:
-          break
+
+        for section_name in sorted(section_shapes):
+          section_shape  = section_shapes[section_name]
+          section = data[section_shape["array_id"]][ \
+            section_shape[2], section_shape[1], section_shape[0]]
+          section.reshape(flex.grid(section.focus()[-2], section.focus()[-1]))
+          self._raw_data.append(section)
+      else:
+        for key in sorted(data):
+          data[key].reshape(flex.grid(data[key].focus()[-2],data[key].focus()[-1]))
+          self._raw_data.append(data[key])
+
+      d = self.get_detector()
       assert len(d) == len(self._raw_data)
 
     if index is not None:
