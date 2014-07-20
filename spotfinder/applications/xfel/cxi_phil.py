@@ -284,23 +284,28 @@ def cxi_versioned_extract(*args):
   elif cxi_version in ["XPP 9.1"]:
     working_extract = working_phil.command_extractor
 
+    # metrology from trial 14, runs 40, 41, xppe0314
     corrected_auxiliary_translations = [
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0]
+       1,  2,  1,  2,  1,  2,  1,  2,
+       2,  1,  2,  1,  2,  2,  2,  2,
+      -1, -1, -1, -1,  0,  0,  0,  0,
+      -2,  1, -2,  1, -1,  2, -1,  2,
+
+       0, -1,  0, -1,  0,  0,  0,  0,
+      -2, -1, -2, -1, -2, -1, -2, -1,
+      -2,  0, -2,  0, -3, -1, -3, -1,
+       0, -2,  0, -2,  0, -1,  0, -1,
+
+       1, -1,  1, -1,  1, -1,  1, -1,
+       0, -3,  0, -3,  1, -2,  1, -2,
+      -2, -3, -2, -3,  0,  0,  0,  0,
+      -3,  0, -3,  0,  0, -1,  0, -1,
+
+      -1,  0, -1,  0,  0,  0,  0,  0,
+      -3,  1, -3,  1, -3,  1, -3,  1,
+      -1,  2, -1,  2, -4,  2, -4,  2,
+       0,  0,  0,  0,  0, -1,  0, -1
+    ]
 
     from scitbx.array_family import flex
     total_tile_translations = flex.int(corrected_auxiliary_translations)
@@ -310,10 +315,16 @@ def cxi_versioned_extract(*args):
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.  For the
     # XPP CSPAD, this is effectively correcting for the beam center.
-    working_extract.distl.quad_translations = [2, -1,
-                                               3, 0,
-                                               3, -1,
-                                               4, -3]
+    # analysis by hand from run 40+41, xppe0314.
+    #working_extract.distl.quad_translations = [3, -1,
+    #                                           6, -1,
+    #                                           4, -1,
+    #                                           4, -5]
+    # account for a change in beam center.  offset 7 pixels in the x direction
+    working_extract.distl.quad_translations = [3,  6,
+                                               6,  6,
+                                               4,  6,
+                                               4,  1]
     return working_extract
 
 
