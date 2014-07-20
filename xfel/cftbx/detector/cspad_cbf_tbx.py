@@ -462,6 +462,9 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, saturations):
     cbf.add_row([array_name,str(i+1),"linear","1.0","0.1",str(saturations[i]),"0.0"])
 
 def add_tiles_to_cbf(cbf, tiles, verbose = False):
+  """
+  Given a cbf handle, add the raw data and the necessary tables to support it
+  """
   array_names = []
   cbf.find_category("diffrn_data_frame")
   while True:
@@ -475,6 +478,7 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
 
   tileisint = flex.bool()
   for tilekey in sorted(tiles.keys()):
+    assert len(tiles[tilekey].focus()) == 3
     if isinstance(tiles[tilekey],flex.int):
       tileisint.append(True)
     elif isinstance(tiles[tilekey],flex.double):
@@ -507,9 +511,9 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
     data = tiles[tilekey].copy_to_byte_str()
     elements = len(tiles[tilekey])
     byteorder = "little_endian"
-    dimfast = focus[1]
-    dimmid = focus[0]
-    dimslow = 1
+    dimfast = focus[2]
+    dimmid = focus[1]
+    dimslow = focus[0]
     padding = 0
 
     if tileisint[i]:
@@ -557,6 +561,7 @@ def copy_cbf_header(src_cbf):
                 "diffrn_detector_element",
                 "diffrn_data_frame",
                 "array_structure_list",
+                "array_structure_list_section",
                 "array_structure_list_axis",
                 "axis",
                 "diffrn_scan_axis",
@@ -662,27 +667,34 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
   for name in detector_axes_names:
     cbf.add_row(["CSPAD_FRONT",name])
 
-  tilestrs = []
-  tilekeys = sorted([key for key in metro if len(key) == 4])
-
   # create a series of strings representing each asic.  Q here is for quadrant instead of panel.
+  tilestrs = []
+  tilequads = []
+  tilekeys = sorted([key for key in metro if len(key) == 4])
   for tilekey in tilekeys:
     tilestrs.append("D%dQ%dS%dA%d"%tilekey)
+    tilequads.append("D%dQ%d"%(tilekey[0],tilekey[1]))
+
+  # create a series of strings representing each quad.  Q here is for quadrant instead of panel.
+  quadstrs = []
+  quadkeys = sorted([key for key in metro if len(key) == 2])
+  for quadkey in quadkeys:
+    quadstrs.append("D%dQ%d"%quadkey)
 
   """Data items in the DIFFRN_DETECTOR_ELEMENT category record
    the details about spatial layout and other characteristics
    of each element of a detector which may have multiple elements."""
   cbf.add_category("diffrn_detector_element",["id","detector_id"])
 
-  for tilename in tilestrs:
-    cbf.add_row(["ELE_" + tilename, "CSPAD_FRONT"])
+  for quadname in quadstrs:
+    cbf.add_row(["ELE_" + quadname, "CSPAD_FRONT"])
 
   """Data items in the DIFFRN_DATA_FRAME category record
    the details about each frame of data."""
   cbf.add_category("diffrn_data_frame",["id","detector_element_id","array_id","binary_id"])
 
-  for i, tilename in enumerate(tilestrs):
-    cbf.add_row(["FRAME1","ELE_"+tilename,"ARRAY_"+tilename,"%d"%(i+1)])
+  for i, quadname in enumerate(quadstrs):
+    cbf.add_row(["FRAME1","ELE_"+quadname,"ARRAY_"+quadname,"%d"%(i+1)])
 
   if not header_only:
     add_frame_specific_cbf_tables(cbf, wavelength, timestamp, [metro[k].saturation for k in tilekeys])
@@ -763,11 +775,45 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
   """Data items in the ARRAY_STRUCTURE_LIST category record the size
      and organization of each array dimension.
      The relationship to physical axes may be given."""
-  cbf.add_category("array_structure_list",["array_id","index","dimension","precedence","direction","axis_set_id"])
-  for tilename,tilekey in zip(tilestrs,tilekeys):
+
+  # find the panel sizes
+  for tilekey in tilekeys:
     b = metro[tilekey]
-    cbf.add_row(["ARRAY_"+tilename,"1","%d"%b.dimension[0],"1","increasing","AXIS_"+tilename+"_F"])
-    cbf.add_row(["ARRAY_"+tilename,"2","%d"%b.dimension[1],"2","increasing","AXIS_"+tilename+"_S"])
+    if not "x_dim" in locals():
+      x_dim = b.dimension[0]
+      y_dim = b.dimension[1]
+    else:
+      assert x_dim == b.dimension[0] and y_dim == b.dimension[1]
+
+  for quadkey in quadkeys:
+    if not "z_dim" in locals():
+      z_dim = quadstrs.count(quadkey)
+    else:
+      assert z_dim == quadstrs.count(quad_key)
+
+  cbf.add_category("array_structure_list",["array_section","array_section_id","index","dimension","precedence","direction","axis_set_id"])
+  for quadname in quadstrs:
+    cbf.add_row(["ARRAY_"+quadname,".","1",x_dim,"1","increasing","."])
+    cbf.add_row(["ARRAY_"+quadname,".","2",y_dim,"2","increasing","."])
+    cbf.add_row(["ARRAY_"+quadname,".","3",z_dim,"3","increasing","."])
+  for tilename,tilekey,tilequad in zip(tilestrs,tilekeys,tilequads):
+    b = metro[tilekey]
+    cbf.add_row(["ARRAY_"+tilequad,"ARRAY_"+tilename,"1","%d"%b.dimension[0],"1","increasing","AXIS_"+tilename+"_F"])
+    cbf.add_row(["ARRAY_"+tilequad,"ARRAY_"+tilename,"2","%d"%b.dimension[1],"2","increasing","AXIS_"+tilename+"_S"])
+
+  """Data items in the ARRAY_STRUCTURE_LIST_SECTION category identify
+     the dimension-by-dimension start, end and stride of each section of an
+     array that is to be referenced."""
+  cbf.add_category("array_structure_list_section",["array_id","id","index","start","end"])
+  for tilename,tilekey,tilequad in zip(tilestrs,tilekeys,tilequads):
+    b = metro[tilekey]
+    if tilekey[3] == 0:
+      x_dim = (1, b.dimension[0])
+    elif tilekey[3] == 1:
+      x_dim = (b.dimension[0]+1, 2*b.dimension[0])
+    cbf.add_row(["ARRAY_"+tilequad,"ARRAY_"+tilename,"1","%d"%x_dim[0],"%d"%x_dim[1]])
+    cbf.add_row(["ARRAY_"+tilequad,"ARRAY_"+tilename,"2","1","%d"%b.dimension[1]])
+    cbf.add_row(["ARRAY_"+tilequad,"ARRAY_"+tilename,"3","%d"%(tilekey[2]+1),"%d"%(tilekey[2]+1)])
 
   """Data items in the ARRAY_STRUCTURE_LIST_AXIS category describe
      the physical settings of sets of axes for the centres of pixels that
