@@ -28,7 +28,7 @@ class mod_event_info(object):
     @param delta_k           Correction to the K value used when calculating
                              wavelength
     """
-
+    logging.basicConfig()
     self.logger = logging.getLogger(self.__class__.__name__)
     self.logger.setLevel(logging.INFO)
 
@@ -74,7 +74,8 @@ class mod_event_info(object):
     """
 
     # XXX Not needed now that the distance is read in the event?
-    env.update(evt)
+    if hasattr(env, "update"):
+      env.update(evt)
 
     self.nfail  = 0
     self.nshots = 0
@@ -160,12 +161,24 @@ class mod_event_info(object):
         self.logger.info("ms since laser 1 status change: %i" %self.laser_1_ms_since_change)
       if self.laser_4_ms_since_change is not None:
         self.logger.info("ms since laser 4 status change: %i" %self.laser_4_ms_since_change)
-      self.logger.info("Laser 1 status: %i" %int(self.laser_1_status.status))
-      self.logger.info("Laser 4 status: %i" %int(self.laser_4_status.status))
+      if self.laser_1_status is not None and self.laser_1_status.status is not None:
+        self.logger.info("Laser 1 status: %i" %int(self.laser_1_status.status))
+      if self.laser_4_status is not None and self.laser_4_status.status is not None:
+        self.logger.info("Laser 4 status: %i" %int(self.laser_4_status.status))
 
 
-  def endjob(self, env):
-    return
+  #signature for pyana:
+  #def endjob(self, env):
+
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
 
 
 class laser_status(object):

@@ -713,13 +713,25 @@ def env_laser_status(env, laser_id):
 
   if env is not None:
     pv_in = env.epicsStore().value('CXI:LAS:SHT:%02i:IN' % laser_id)
-    if pv_in is None or len(pv_in.values) != 1:
-      return
     pv_out = env.epicsStore().value('CXI:LAS:SHT:%02i:OUT' % laser_id)
-    if pv_out is None or len(pv_out.values) != 1:
+
+    if pv_in is None or pv_out is None:
       return
-    laser_off = pv_in.values[0]
-    laser_on = pv_out.values[0]
+
+    if hasattr(pv_in, "values"):
+      if len(pv_in.values) != 1:
+        return
+      laser_off = pv_in.values[0]
+    else:
+      laser_off = pv_in
+
+    if hasattr(pv_out, "values"):
+      if len(pv_out.values) != 1:
+        return
+      laser_on = pv_out.values[0]
+    else:
+      laser_on = pv_out
+
     assert not (laser_on and laser_off)
     return bool(laser_on)
 
@@ -830,10 +842,16 @@ def env_sifoil(env):
     # http://henke.lbl.gov/optical_constants/filter2.html
 
     #print "For ", pvname, " got ", pv, " and ", pv.values[0]
-    if (pv is not None # and pv.units          == "mm"
-        and                len(pv.values)    == 1
-        and                abs(pv.values[0]) <  7):
-      si_tot += si_len
+    if pv is not None: # and pv.units          == "mm"
+      if hasattr(pv, "values"):
+        # pyana
+        if len(pv.values) == 1 and abs(pv.values[0]) <  7:
+          si_tot += si_len
+      else:
+        # psana
+        if abs(pv) < 7:
+          si_tot += si_len
+
   return (si_tot)
 
 
@@ -954,6 +972,15 @@ def evt_pulse_length(evt):
   if (evt is not None):
     try:
       ebeam = evt.getEBeam()
+      if (ebeam is not None and ebeam.fEbeamPkCurrBC2 > 0):
+        return 1e6 * ebeam.fEbeamCharge / ebeam.fEbeamPkCurrBC2
+    except AttributeError:
+      from psana import Source, Bld
+      ebeam = evt.get(Bld.BldDataEBeamV4, Source('BldInfo(EBeam)'))
+      if ebeam is None:
+        ebeam = evt.get(Bld.BldDataEBeamV6, Source('BldInfo(EBeam)'))
+      if (ebeam is not None and ebeam.ebeamPkCurrBC2() > 0):
+        return 1e6 * ebeam.ebeamCharge() / ebeam.ebeamPkCurrBC2()
     except NotImplementedError:
       # XXX This needs to be sorted out!  All other invocations of
       # getEBeam() in this file are similarly kludged.
@@ -961,8 +988,6 @@ def evt_pulse_length(evt):
       # NotImplementedError: Error: DataObjectFactory unsupported type
       # EBeamBld_V5
       ebeam = None
-    if (ebeam is not None and ebeam.fEbeamPkCurrBC2 > 0):
-      return 1e6 * ebeam.fEbeamCharge / ebeam.fEbeamPkCurrBC2
   return None
 
 
@@ -1002,6 +1027,13 @@ def evt_beam_charge(evt):
   if evt is not None:
     try:
       ebeam = evt.getEBeam()
+    except AttributeError:
+      from psana import Source, Bld
+      ebeam = evt.get(Bld.BldDataEBeamV4, Source('BldInfo(EBeam)'))
+      if ebeam is None:
+        ebeam = evt.get(Bld.BldDataEBeamV6, Source('BldInfo(EBeam)'))
+      if ebeam is not None:
+        return ebeam.ebeamCharge()
     except NotImplementedError:
       ebeam = None
     if ebeam is not None:
@@ -1044,10 +1076,15 @@ def evt_time(evt=None):
     s = int(math.floor(t))
     return (s, int(round((t - s) * 1000)))
 
-  t = evt.getTime()
-  if t is None:
-    return None
-  return (t.seconds(), t.nanoseconds() // 1000000)
+  if hasattr(evt, "getTime"):
+    t = evt.getTime()
+    if t is None:
+      return None
+    return (t.seconds(), t.nanoseconds() // 1000000)
+  else:
+    from psana import EventId
+    id = evt.get(EventId)
+    return (id.time()[0], id.time()[1] // 1000000)
 
 
 def evt_timestamp(t=None):
@@ -1083,16 +1120,31 @@ def evt_wavelength(evt, delta_k=0):
 
   if evt is not None:
     try:
+      # pyana
       ebeam = evt.getEBeam()
+    except AttributeError, e:
+      from psana import Source, Bld
+      ebeam = evt.get(Bld.BldDataEBeamV4, Source('BldInfo(EBeam)'))
+      if ebeam is None:
+        ebeam = evt.get(Bld.BldDataEBeamV6, Source('BldInfo(EBeam)'))
     except NotImplementedError:
       ebeam = None
     if hasattr(ebeam, 'fEbeamPhotonEnergy') and ebeam.fEbeamPhotonEnergy > 0:
       return 12398.4187 / ebeam.fEbeamPhotonEnergy
+    if hasattr(ebeam, 'ebeamPhotonEnergy') and ebeam.ebeamPhotonEnergy() > 0:
+      return 12398.4187 / ebeam.ebeamPhotonEnergy()
+
     if hasattr(ebeam, 'fEbeamL3Energy') and ebeam.fEbeamL3Energy > 0:
+      # pyana
       gamma = ebeam.fEbeamL3Energy / 0.510998910
-      K = 3.5 + delta_k
-      L = 3.0e8
-      return L / (2 * gamma**2) * (1 + K**2 / 2)
+    elif hasattr(ebeam, 'ebeamL3Energy') and ebeam.ebeamL3Energy() > 0:
+      # psana
+      gamma = ebeam.ebeamL3Energy() / 0.510998910
+    else:
+      return None
+    K = 3.5 + delta_k
+    L = 3.0e8
+    return L / (2 * gamma**2) * (1 + K**2 / 2)
   return None
 
 
