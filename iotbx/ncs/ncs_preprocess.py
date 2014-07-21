@@ -278,14 +278,16 @@ class ncs_group_object(object):
       asu_locations = []
       for asu_select in group.selection_copy:
         unique_selections = uniqueness_test(unique_selections,asu_select)
+        ncs_copy_atoms = get_pdb_selection(
+          ph=pdb_hierarchy_inp,selection_str=asu_select)
+        r, t = get_rot_trans(
+          master_atoms=master_ncs_atoms,copy_atoms= ncs_copy_atoms,
+          rms_eps=100)
+        assert r,'Master NCS and Copy are very poorly related, check selection.'
         asu_locations.append(asu_select)
         transform_sn += 1
         key = 's' + format_num_as_str(transform_sn)
         self.update_tr_id_to_selection(gns,asu_select,key)
-        ncs_copy_atoms = get_pdb_selection(
-          ph=pdb_hierarchy_inp,selection_str=asu_select)
-        r, t = get_rot_trans(
-          master_atoms=master_ncs_atoms,copy_atoms= ncs_copy_atoms)
         tr = transform(
           rotation = r,
           translation = t,
@@ -1336,7 +1338,7 @@ def get_rot_trans(master_ncs_ph=None,
                   ncs_copy_ph=None,
                   master_atoms=None,
                   copy_atoms=None,
-                  rms_eps=0.01):
+                  rms_eps=0.02):
   """
   Get rotation and translation using superpose
   :param master_ncs_ph: pdb hierarchy input object
