@@ -2,7 +2,7 @@
 #
 # $Id:
 
-"""Base class for dark subtraction, gain masking and creation of dxtbx ojbect
+"""Base class for creation of dxtbx ojbect
 """
 from __future__ import division
 
@@ -15,19 +15,22 @@ from xfel.cftbx.detector import cspad_cbf_tbx
 import os, copy
 from dxtbx.format.Registry import Registry
 import numpy as np
+import psana
 
 class mod_cspad_cbf(mod_event_info):
-  """Dark subtraction and gain masking
+  """ Create dxtbx object from event
   """
 
 
   def __init__(self,
                address,
                metrology=None,
-               dark_path=None,
-               mask_path=None,
-               gain_map_path=None,
-               gain_map_level=None,
+               inkey=None,
+               outkey=None,
+#               dark_path=None,
+#               mask_path=None,
+#               gain_map_path=None,
+#               gain_map_level=None,
                **kwds):
     """The mod_cspad_cbf class constructor stores the
     parameters passed from the pyana configuration file in instance
@@ -35,20 +38,22 @@ class mod_cspad_cbf(mod_event_info):
 
     @param address         Address string XXX Que?!
     @param metrology       CBF header containing metrology info
-    @param dark_path       Path to input average dark image
-    @param mask_path       Path to input mask.  Pixels to mask out should be set to -2
-    @param gain_map_path   Path to input gain map.  Multplied times the image.
-    @param gain_map_level  If set, all the '1' pixels in the gain_map are set to this multiplier
+    @param inkey           Look for the cspad data in this key
+    @param outkey          Put the dxtbx format object in this key
+#    @param dark_path       Path to input average dark image
+#    @param mask_path       Path to input mask.  Pixels to mask out should be set to -2
+#    @param gain_map_path   Path to input gain map.  Multplied times the image.
+#    @param gain_map_level  If set, all the '1' pixels in the gain_map are set to this multiplier
                            and all the '0' pixels in the gain_map are set to '1'. If not set,
                            use the values in the gain_map directly
     """
 
     super(mod_cspad_cbf, self).__init__(address=address, **kwds)
 
-    self.dark_path = cspad_tbx.getOptEvalOrString(dark_path)
-    self.mask_path = cspad_tbx.getOptEvalOrString(mask_path)
-    gain_map_path = cspad_tbx.getOptString(gain_map_path)
-    self.gain_map_level = cspad_tbx.getOptFloat(gain_map_level)
+#    self.dark_path = cspad_tbx.getOptEvalOrString(dark_path)
+#    self.mask_path = cspad_tbx.getOptEvalOrString(mask_path)
+#    gain_map_path = cspad_tbx.getOptString(gain_map_path)
+#    self.gain_map_level = cspad_tbx.getOptFloat(gain_map_level)
 
     self.cspad_img = None # The current image - set by self.event()
 
@@ -58,7 +63,11 @@ class mod_cspad_cbf(mod_event_info):
     self.metrology = cspad_tbx.getOptString(metrology)
     assert os.path.isfile(self.metrology)
 
+    self.inkey = cspad_tbx.getOptString(inkey)
+    self.outkey = cspad_tbx.getOptString(outkey)
+    assert self.inkey is not None and self.outkey is not None
 
+    """
     # Load the dark image and ensure it is signed and at least 32 bits
     # wide, since it will be used for differencing.  If a dark image
     # is provided, a standard deviation image is required, and all the
@@ -92,6 +101,7 @@ class mod_cspad_cbf(mod_event_info):
           sel.reshape(flex.grid(map.focus()))
           map = map.set_selected(~sel, self.gain_map_level)
           self.gain_map[i] = map.set_selected(sel, 1)
+  """
 
 
   def beginjob(self, evt, env):
@@ -108,6 +118,7 @@ class mod_cspad_cbf(mod_event_info):
     self.base_cbf = self.base_dxtbx._cbf_handle
     self.base_dxtbx._cbf_handle = None # have to do this because copy.deep_copy fails on
                                        # swig objects, which _cbf_handle is based on
+    self.source = psana.Source("DetInfo(%s)"%self.address)
 
     super(mod_cspad_cbf, self).beginjob(evt, env)
 
@@ -131,8 +142,7 @@ class mod_cspad_cbf(mod_event_info):
       return
 
     # Early return if the full detector image is already stored in the
-    # event.  Otherwise, get it from the stream as a double-precision
-    # floating-point flex array.
+    # event.  Otherwise, get it from the stream
     self.cspad_img = evt.get(self.address)
     if self.cspad_img is None:
       # Set up the dxtbx object and its cbf handle
@@ -140,8 +150,12 @@ class mod_cspad_cbf(mod_event_info):
       self.cspad_img._cbf_handle = cbf = cspad_cbf_tbx.copy_cbf_header(self.base_cbf)
       cbf.set_datablockname(self.address + "_" + self.timestamp)
 
-      quads = evt.getCsPadQuads(self.address, env)
-      n_asics = sum([len(quad.data()) for quad in quads]) * 2
+      # the data needs to have already been processed and put into the event by psana
+      data = evt.get(psana.ndarray_int16_3, self.source, self.inkey)
+      data = flex.int(data.astype(np.int32))
+      data.reshape(flex.grid((4,8,185,388)))
+
+      n_asics = data.focus()[0] * data.focus()[1]
       cspad_cbf_tbx.add_frame_specific_cbf_tables(cbf, self.wavelength,self.timestamp,
         [cspad_tbx.dynamic_range]*n_asics)
 
@@ -158,25 +172,23 @@ class mod_cspad_cbf(mod_event_info):
       # Explicitly set up the beam object now that the tables are all loaded correctly
       self.cspad_img._beam_instance = self.cspad_img._beam()
 
-      # Get the data and add it to the cbf handle
+      # Get the data and add it to the cbf handle. Split it out by quads.
       tiles = {}
-      for quad in quads:
-        for s in xrange(len(quad.data())):
-          sensor = quad.data()[s]
-          for a in xrange(2):
-            tiles[(0,quad.quad(),s,a)] = flex.int(sensor[:,194*a:194*(a+1)].astype(np.int32))
+      for i in xrange(4):
+        tiles[(0,i)] = data[i:i+1,:,:,:]
+        tiles[(0,i)].reshape(flex.grid((8,185,388)))
 
       # If a dark image was provided, subtract it from the image.
-      if (self.dark_img is not None):
-        assert len(tiles) == len(self.dark_img.get_detector())
-        for i, k in enumerate(sorted(tiles)):
-          tiles[k] -= self.dark_img.get_raw_data(i).iround()
+#      if (self.dark_img is not None):
+#        assert len(tiles) == len(self.dark_img.get_detector())
+#        for i, k in enumerate(sorted(tiles)):
+#          tiles[k] -= self.dark_img.get_raw_data(i).iround()
 
       # If a gain map was provided, multiply it times the image
-      if self.gain_map is not None:
-        assert len(tiles) == len(self.gain_map)
-        for i, k in enumerate(sorted(tiles)):
-          tiles[k] *= self.gain_map[i].iround()
+#      if self.gain_map is not None:
+#        assert len(tiles) == len(self.gain_map)
+#        for i, k in enumerate(sorted(tiles)):
+#          tiles[k] *= self.gain_map[i].iround()
 
       # add the pixel data
       cspad_cbf_tbx.add_tiles_to_cbf(cbf,tiles)
@@ -199,7 +211,7 @@ class mod_cspad_cbf(mod_event_info):
     #  self.cspad_img.set_selected(sel, -2)
 
 
-  def endjob(self, env):
+  def endjob(self, evt, env):
     """
     @param env Environment object
     """
