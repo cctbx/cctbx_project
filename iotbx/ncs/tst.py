@@ -1,6 +1,6 @@
+from __future__ import division
 import iotbx.ncs
 import iotbx.pdb
-import iotbx.phil
 from libtbx.test_utils import approx_equal
 
 pdb_str_1 = """

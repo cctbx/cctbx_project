@@ -1,9 +1,7 @@
 from __future__ import division
 import iotbx.pdb
-import mmtbx.utils
 import mmtbx.refinement.group
 from cctbx import miller
-from scitbx.array_family import flex
 
 pdb_answer_str = """\n
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2

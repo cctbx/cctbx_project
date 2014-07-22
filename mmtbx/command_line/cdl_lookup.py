@@ -5,7 +5,7 @@ from __future__ import division
 
 import libtbx.phil
 import libtbx.phil.command_line
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import Sorry
 #from libtbx import easy_run
 import sys
 import os

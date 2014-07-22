@@ -1,6 +1,5 @@
 from __future__ import division
 import iotbx.ncs.ncs_preprocess
-from scitbx.array_family import flex
 
 
 def input(pdb_hierarchy_inp=None,

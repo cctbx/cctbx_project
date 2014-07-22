@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
 
 step = 10

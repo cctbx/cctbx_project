@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 import math
 import logging
@@ -546,5 +547,3 @@ class Cluster:
       plt.show()
 
     return ax
-
-

@@ -84,7 +84,7 @@ class installer (object) :
     if options.skip_if_exists and os.path.exists(self.base_dir):
       print >> log, "Base directory already exists and --skip-if-exists set; exiting."
       return
-    
+
     print >> log, "Setting up directories..."
     for dir_name in [self.tmp_dir,self.build_dir,self.base_dir] : #self.src_dir
       if (not op.isdir(dir_name)) :
@@ -655,6 +655,6 @@ Please install the X11 development packages to compile the GUI components,
 or use the --no-gui option to disable GUI compilation.
 """
   return None
-  
+
 if __name__ == "__main__":
   installer(args=sys.argv, log=sys.stdout)

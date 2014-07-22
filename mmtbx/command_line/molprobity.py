@@ -6,7 +6,6 @@ from libtbx.program_utils.result import program_result
 from libtbx.utils import Sorry, multi_out
 from libtbx import runtime_utils
 from libtbx import easy_pickle
-from libtbx import str_utils
 from libtbx import Auto
 import libtbx.load_env
 import os.path

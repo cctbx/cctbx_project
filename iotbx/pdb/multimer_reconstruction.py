@@ -1,5 +1,4 @@
 from __future__ import division
-from mmtbx.utils.ncs_utils import apply_transforms
 from iotbx import crystal_symmetry_from_any
 import iotbx.ncs.ncs_preprocess
 import iotbx.pdb.hierarchy
