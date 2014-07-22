@@ -89,7 +89,8 @@ class FixLinuxRpath(object):
     ret = []
     p = check_output(['ldd', filename])
     for line in p.split("\n"):
-      lib, _, found = line.partition("=>")
+      fields = line.split("=>")
+      lib, found = fields[0], fields[1]
       if "not found" in found:
         ret.append(lib.strip())
     return ret

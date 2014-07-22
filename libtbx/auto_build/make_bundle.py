@@ -5,10 +5,9 @@ Create a "bundle" (.tar.gz) of all Python modules and compiled code in a
 product.  The target directory is expected to look something like this:
 
 CCTBX-<version>/
+CCTBX-<version>/base/
 CCTBX-<version>/build/
-CCTBX-<version>/build/<mtype>/
-CCTBX-<version>/build/<mtype>/base/
-CCTBX-<version>/build/<mtype>/lib/
+CCTBX-<version>/build/lib/
 CCTBX-<version>/cctbx_project/
 
 plus any number of module directories in the top level.  The resulting bundle
@@ -63,7 +62,7 @@ def run (args, out=sys.stdout) :
     assert op.isdir(options.dest)
   os.chdir(options.tmp_dir)
   pkg_dir = op.basename(target_dir)
-  build_dir = op.join(target_dir, "build", options.mtype)
+  build_dir = op.join(target_dir, "build")
   print >> out, "Setting rpath in shared libraries..."
   stdout_old = sys.stdout
   if (not options.verbose) :
@@ -77,19 +76,17 @@ def run (args, out=sys.stdout) :
     shutil.rmtree(tmp_dir)
   os.mkdir(tmp_dir)
   os.chdir(tmp_dir)
-  # build directory
+  # base and build/lib directories
   print >> out, "Copying dependencies..."
-  tmp_build_dir = op.join(tmp_dir, "build", options.mtype)
+  tmp_build_dir = op.join(tmp_dir, "build")
   os.makedirs(tmp_build_dir)
-  for dir_name in ["lib", "base"] :
-    full_path = op.join(build_dir, dir_name)
-    assert op.isdir(full_path)
-    copy_tree(full_path, op.join(tmp_build_dir, dir_name))
+  copy_tree(op.join(build_dir, "lib"), op.join(tmp_build_dir, "lib"))
+  copy_tree(op.join(target_dir, "base"), op.join(tmp_dir, "base"))
   # copy over non-compiled files
   print >> out, "Copying base modules..."
   ignore_dirs = options.ignore.split(",")
   for file_name in os.listdir(target_dir) :
-    if (file_name == "build") or (file_name in ignore_dirs) :
+    if (file_name in ["build", "base"]) or (file_name in ignore_dirs) :
       continue
     full_path = op.join(target_dir, file_name)
     if op.isdir(full_path) :
@@ -134,12 +131,11 @@ def run (args, out=sys.stdout) :
   os.chdir(tmp_dir)
   # create base bundle
   if (not options.keep_base) :
-    base_dir = op.join("build", options.mtype, "base")
     base_tarfile = "../base-%(version)s-%(mtype)s.tar.gz" % \
       {"version":options.version, "mtype":options.mtype}
-    call("tar -czf %(tarfile)s %(base)s" %
-      {"tarfile":base_tarfile, "base":base_dir}, log=out)
-    shutil.rmtree(base_dir)
+    call("tar -czf %(tarfile)s base" %
+      {"tarfile":base_tarfile,}, log=out)
+    shutil.rmtree("base")
     assert op.isfile(base_tarfile)
     if (options.dest is not None) :
       shutil.move(base_tarfile, options.dest)

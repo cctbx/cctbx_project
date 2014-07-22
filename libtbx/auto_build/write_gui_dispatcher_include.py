@@ -18,6 +18,8 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
     help="Additional dispatcher include to prepend")
   parser.add_option("--epilogue", dest="epilogue", action="store",
     help="Additional dispatcher include to append")
+  parser.add_option("--base_dir", dest="base_dir", action="store",
+    help="Directory for base packages (Python etc.)", default=None)
   parser.add_option("--ignore_missing_dirs", dest="ignore_missing_dirs",
     action="store_true", help="Don't raise error if GTK paths don't exist")
   parser.add_option("--quiet", action="store_true")
@@ -30,7 +32,9 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
   if (not os.path.isdir(build_path)) :
     raise OSError("The specified build directory (%s) does not exist." %
       build_path)
-  base_path = os.path.join(build_path, "base")
+  base_path = options.base_dir
+  if (base_path is None) :
+    base_path = os.path.join(build_path, "base")
   if (not os.path.isdir(base_path)) :
     raise OSError("%s does not exist." % base_path)
   ld_library_paths = [ os.path.join(base_path, "lib"), ]
