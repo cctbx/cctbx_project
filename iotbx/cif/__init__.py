@@ -142,11 +142,13 @@ class crystal_symmetry_as_cif_block(object):
 
   def __init__(self, crystal_symmetry,
                cell_covariance_matrix=None,
-               format="coreCIF"):
+               format="coreCIF",
+               numeric_format="%.3f") :
     self.format = format.lower()
     assert self.format in ("corecif", "mmcif")
     if self.format == "mmcif": self.separator = '.'
     else: self.separator = '_'
+    assert numeric_format.startswith("%")
     self.cif_block = model.block()
     cell_prefix = '_cell%s' %self.separator
     if crystal_symmetry.space_group() is not None:
@@ -184,13 +186,13 @@ class crystal_symmetry_as_cif_block(object):
         var_v = (d_v_d_params * vcv).dot(d_v_d_params)
         volume = format_float_with_su(volume, math.sqrt(var_v))
       a,b,c,alpha,beta,gamma = params
-      self.cif_block[cell_prefix+'length_a'] = a
-      self.cif_block[cell_prefix+'length_b'] = b
-      self.cif_block[cell_prefix+'length_c'] = c
-      self.cif_block[cell_prefix+'angle_alpha'] = alpha
-      self.cif_block[cell_prefix+'angle_beta'] = beta
-      self.cif_block[cell_prefix+'angle_gamma'] = gamma
-      self.cif_block[cell_prefix+'volume'] = volume
+      self.cif_block[cell_prefix+'length_a'] = numeric_format % a
+      self.cif_block[cell_prefix+'length_b'] = numeric_format % b
+      self.cif_block[cell_prefix+'length_c'] = numeric_format % c
+      self.cif_block[cell_prefix+'angle_alpha'] = numeric_format % alpha
+      self.cif_block[cell_prefix+'angle_beta'] = numeric_format % beta
+      self.cif_block[cell_prefix+'angle_gamma'] = numeric_format % gamma
+      self.cif_block[cell_prefix+'volume'] = numeric_format % volume
 
 
 class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
