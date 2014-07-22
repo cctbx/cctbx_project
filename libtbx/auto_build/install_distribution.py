@@ -180,7 +180,6 @@ class installer (object) :
     self.mtype = self.machine_type()
     self.version = self.get_version()
     assert (self.version is not None)
-    self.base_dir = op.join(self.installer_dir, "base")
     self.src_dir = op.join(self.installer_dir, "source")
     self.bundle_dir = op.join(self.installer_dir, "bundles")
     self.dependencies_dir = op.join(self.installer_dir, "dependencies")
@@ -315,9 +314,12 @@ class installer (object) :
       if (not os.access(self.dest_dir, os.W_OK)) :
         raise InstallerError("you do not have write permissions to %s" %
           self.dest_dir)
-    self.build_dir = op.join(self.dest_dir, "build", self.mtype)
+    self.build_dir = op.join(self.dest_dir, "build")
+    self.base_dir = op.join(self.dest_dir, "base")
     if (not op.exists(self.build_dir)) :
       os.makedirs(self.build_dir)
+    if (not op.exists(self.base_dir)) :
+      os.makedirs(self.base_dir)
     # environment variables required by other scripts
     os.environ["%s_LOC" % self.product_name] = self.dest_dir
     os.environ["%s_BUILD" % self.product_name] = self.build_dir
@@ -356,7 +358,7 @@ class installer (object) :
     else :
       base_args = [
         # XXX will this allow spaces in path names?
-        "--build_dir=%s" % self.build_dir,
+        "--build_dir=%s" % self.dest_dir,
         "--tmp_dir=%s" % self.tmp_dir,
         "--pkg_dir=%s" % self.src_dir,
         "--pkg_dir=%s" % self.dependencies_dir,
@@ -375,7 +377,7 @@ class installer (object) :
       install_base_packages.installer(
         args=base_args,
         log=out)
-    python_bin = op.join(self.build_dir, "base", "bin", "python")
+    python_bin = op.join(self.base_dir, "bin", "python")
     assert op.isfile(python_bin)
     print >> out, ""
     print >> out, "******************************"
@@ -475,14 +477,13 @@ class installer (object) :
     # check for existing installations
     print >> out, "finding existing installations..."
     lib_dir = op.join(self.build_dir, "lib")
-    base_dir = op.join(self.build_dir, "base")
     if (op.exists(lib_dir)) :
       print >> out, "Removing out-of-date lib directory...",
       shutil.rmtree(lib_dir)
       print >> out, "ok"
-    if (op.exists(base_dir)) :
+    if (op.exists(self.base_dir)) :
       print >> out, "Removing out-of-date base software directory...",
-      shutil.rmtree(base_dir)
+      shutil.rmtree(self.base_dir)
       print >> out, "ok"
     # XXX there used to be a bunch of version check stuff in here, but this
     # is no longer necessary
@@ -494,11 +495,11 @@ class installer (object) :
     if (self.base_binary_install) :
       untar(self.base_bundle, log=log, verbose=True,
         change_ownership=False, check_output_path=False)
-    if (not op.isdir(lib_dir)) or (not op.isdir(base_dir)) :
+    if (not op.isdir(lib_dir)) or (not op.isdir(self.base_dir)) :
       raise RuntimeError("One or more missing directories:\n  %s\n  %s" %
-        (lib_dir, base_dir))
+        (lib_dir, self.base_dir))
     if (sys.platform != "darwin") :
-      os.environ["LD_LIBRARY_PATH"] = op.join(base_dir, "lib")
+      os.environ["LD_LIBRARY_PATH"] = op.join(self.base_dir, "lib")
     print >> out, "ok"
     self.product_specific_binary_install(log=log)
     os.chdir(self.build_dir)
@@ -521,7 +522,7 @@ class installer (object) :
     """
     os.chdir(self.build_dir)
     args = [
-      "\"%s/base/bin/python\"" % self.build_dir,
+      "\"%s/bin/python\"" % self.base_dir,
       "\"%s/cctbx_project/libtbx/configure.py\"" % self.dest_dir,
       "--current_working_directory=%s" % self.build_dir,
     ] + self.configure_modules
@@ -543,8 +544,8 @@ class installer (object) :
     print >> out, "  log file is %s" % log_path
     log = open(log_path, "w")
     if (self.flag_build_gui) and (sys.platform != "darwin") :
-      os.environ["LD_LIBRARY_PATH"] = op.join(self.build_dir, "base", "lib")
-      regenerate_module_files.run(args=["--build_dir=%s" % self.build_dir],
+      os.environ["LD_LIBRARY_PATH"] = op.join(self.dest_dir, "base", "lib")
+      regenerate_module_files.run(args=["--build_dir=%s" % self.dest_dir],
         out=out)
     # write dispatcher_include file
     print >> out, "generating %s environment additions for dispatchers" % \
@@ -563,6 +564,7 @@ class installer (object) :
     epilogue = "\n".join(self.product_specific_dispatcher_epilogue())
     dispatcher_opts = [
       "--build_dir=%s" % self.build_dir,
+      "--base_dir=%s" % self.base_dir,
       "--suffix=%s" % self.dest_dir_prefix,
       "--gtk_version=2.10.0", # XXX this can change!
       "--quiet",
@@ -658,8 +660,7 @@ class installer (object) :
     env_csh.write("#\n")
     env_csh.write("setenv %s \"%s\"\n" % (self.product_name, self.dest_dir))
     env_csh.write("setenv %s_VERSION %s\n" % (self.product_name, self.version))
-    env_csh.write("source $%s/build/%s/setpaths.csh\n" % (self.product_name,
-      self.mtype))
+    env_csh.write("source $%s/build/setpaths.csh\n" % (self.product_name))
     env_csh.close()
     # phenix_env.sh
     sh_file = op.join(self.dest_dir, "%s_env.sh" % self.dest_dir_prefix)
@@ -669,8 +670,7 @@ class installer (object) :
     env_sh.write("#\n")
     env_sh.write("export %s=\"%s\"\n" % (self.product_name, self.dest_dir))
     env_sh.write("export %s_VERSION=%s\n" % (self.product_name, self.version))
-    env_sh.write(". $%s/build/%s/setpaths.sh\n" % (self.product_name,
-      self.mtype))
+    env_sh.write(". $%s/build/setpaths.sh\n" % (self.product_name))
     env_sh.close()
 
   #---------------------------------------------------------------------
