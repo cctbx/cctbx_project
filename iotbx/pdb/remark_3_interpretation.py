@@ -252,46 +252,46 @@ class extract_tls_parameters(object):
         if(rec.startswith("REMARK   3    ORIGIN FOR THE GROUP (A):")):
           rec = prepocess_line(rec)
           try: x = float(rec.split()[7])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract origin.", rec=rec)
             return []
           try: y = float(rec.split()[8])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract origin.", rec=rec)
             return []
           try: z = float(rec.split()[9])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract origin.", rec=rec)
             return []
           origin = [x,y,z]
         if(rec.startswith("REMARK   3") and rec.count("T11:")==1):
           assert [T11, T22, T33, T12, T13, T23].count(None) == 6
           try: T11 = float(rec.split()[3])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract T.", rec=rec)
             return []
           try: T22 = float(rec.split()[5])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract T.", rec=rec)
             return []
         if(rec.startswith("REMARK   3") and rec.count("T33:")==1):
           assert [T11, T22, T33, T12, T13, T23].count(None) == 4
           try: T33 = float(rec.split()[3])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract T.", rec=rec)
             return []
           try: T12 = float(rec.split()[5])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract T.", rec=rec)
             return []
         if(rec.startswith("REMARK   3") and rec.count("T13:")==1):
           assert [T11, T22, T33, T12, T13, T23].count(None) == 2
           try: T13 = float(rec.split()[3])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract T.", rec=rec)
             return []
           try: T23 = float(rec.split()[5])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract T.", rec=rec)
             return []
           T=[T11, T22, T33, T12, T13, T23]
@@ -300,13 +300,13 @@ class extract_tls_parameters(object):
           try: L11 = float(rec.split()[3])
           except Exception:
             try: L11 = float(rec[20:30])
-            except ValueError:
+            except Exception:
               self.format_err(msg="Cannot extract L.", rec=rec)
               return []
           try: L22 = float(rec.split()[5])
           except Exception:
             try: L22 = float(rec[34:44])
-            except ValueError:
+            except Exception:
               self.format_err(msg="Cannot extract L.", rec=rec)
               return []
         if(rec.startswith("REMARK   3") and rec.count("L33:")==1):
@@ -314,13 +314,13 @@ class extract_tls_parameters(object):
           try: L33 = float(rec.split()[3])
           except Exception:
             try: L33 = float(rec[20:30])
-            except ValueError:
+            except Exception:
               self.format_err(msg="Cannot extract L.", rec=rec)
               return []
           try: L12 = float(rec.split()[5])
           except Exception:
             try: L12 = float(rec[34:44])
-            except ValueError:
+            except Exception:
               self.format_err(msg="Cannot extract L.", rec=rec)
               return []
         if(rec.startswith("REMARK   3") and rec.count("L13:")==1):
@@ -328,52 +328,52 @@ class extract_tls_parameters(object):
           try: L13 = float(rec.split()[3])
           except Exception:
             try: L13 = float(rec[20:30])
-            except ValueError:
+            except Exception:
               self.format_err(msg="Cannot extract L.", rec=rec)
               return []
           try: L23 = float(rec.split()[5])
           except Exception:
             try: L23 = float(rec[34:44])
-            except ValueError:
+            except Exception:
               self.format_err(msg="Cannot extract L.", rec=rec)
               return []
           L=[L11, L22, L33, L12, L13, L23]
         if(rec.startswith("REMARK   3") and rec.count("S11:")==1):
           assert [S11, S12, S13, S21, S22, S23, S31, S32, S33].count(None) == 9
           try: S11 = float(rec.split()[3])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract S.", rec=rec)
             return []
           try: S12 = float(rec.split()[5])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract S.", rec=rec)
             return []
           try: S13 = float(rec.split()[7])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract S.", rec=rec)
             return []
         if(rec.startswith("REMARK   3") and rec.count("S21:")==1):
           assert [S11, S12, S13, S21, S22, S23, S31, S32, S33].count(None) == 6
           try: S21 = float(rec.split()[3])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract S.", rec=rec)
             return []
           try: S22 = float(rec.split()[5])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract S.", rec=rec)
             return []
           try: S23 = float(rec.split()[7])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract S.", rec=rec)
             return []
         if(rec.startswith("REMARK   3") and rec.count("S31:")==1):
           assert [S11, S12, S13, S21, S22, S23, S31, S32, S33].count(None) == 3
           try: S31 = float(rec.split()[3])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract S.", rec=rec)
             return []
           try: S32 = float(rec.split()[5])
-          except ValueError:
+          except Exception:
             self.format_err(msg="Cannot extract S.", rec=rec)
             return []
           try: S33 = float(rec.split()[7])
@@ -381,7 +381,7 @@ class extract_tls_parameters(object):
             try:
               if(rec.split()[7].count("NULL")):
                 S33 = - (S11 + S22)
-            except ValueError:
+            except Exception:
               self.format_err(msg="Cannot extract S.", rec=rec)
               return []
           S=[S11, S12, S13, S21, S22, S23, S31, S32, S33]
