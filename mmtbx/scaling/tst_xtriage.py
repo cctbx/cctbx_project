@@ -259,8 +259,8 @@ Centric reflections:
   out = StringIO()
   log_binned = ds.log_binned_completeness(f_obs_3)
   log_binned.show(out=out)
-  assert ("""| 21.9856 - 4.2407 | 100/104     | 96.2%        |""" in
-          out.getvalue())
+  assert ("""| 1.9724 - 1.5094  | 368/1230    | 29.9%        |""" in
+          out.getvalue()), out.getvalue()
   # test with no acentrics
   cf = f_obs.centric_flags().data()
   centrics = f_obs.select(cf)
