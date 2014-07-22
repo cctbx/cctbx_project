@@ -19,11 +19,11 @@ class SingleFrame:
     """
     Constructor for SingleFrame object, using a cctbx.xfel integration pickle.
 
-    :param path: path to integration pickle
-    :param filename: the file name alone (used as a label)
-    :param crystal_num: if multiple lattices present, the latice number.
-    :param remove_negative: Boolean for removal of negative intensities
-    :param use_b_factor: if True, initialise scale and B, if false, use only
+    :param:path: path to integration pickle
+    :param:filename: the file name alone (used as a label)
+    :param:crystal_num: if multiple lattices present, the latice number.
+    :param:remove_negative: Boolean for removal of negative intensities
+    :param:use_b_factor: if True, initialise scale and B, if false, use only
     mean-intensity scaling.
 
     --------------------------------------------------
@@ -112,8 +112,8 @@ class SingleFrame:
     Remove all miller indicies outside the range of _d_min, _d_max.
     Changes the object in place.
 
-    :param d_min: min res of new miller array. Defaults to current value.
-    :param d_max: max res of new miller array. Defaults to current value.
+    :param:d_min: min res of new miller array. Defaults to current value.
+    :param:d_max: max res of new miller array. Defaults to current value.
     """
     if d_min is None:
       d_min = self.miller_array.d_min()
@@ -135,7 +135,7 @@ class SingleFrame:
     Currently a placeholder that returns None.
 
     This method will :return the number of reflection in the frame that have an
-    I/sig(I) > :param sig_i_cuttoff
+    I/sig(I) > :param:sig_i_cuttoff
     """
     reflections_above_cuttoff = None
     return len(reflections_above_cuttoff)
@@ -149,7 +149,7 @@ class SingleFrame:
     image. The r_value is then 0 (by definition), and the std_err is the
     standard error on the mean.
 
-    :param i_corrections allows flex array of correction factors
+    :param:i_corrections allows flex array of correction factors
           (e.g. partialities) to be specified
 
     :return: minus_2B (gradient of fit),
@@ -253,7 +253,7 @@ class SingleFrame:
     """
     Calculares to distance using NCDist from Andrews and Bernstein J. Appl.
     Cryst. 2014 between this frame and some other unit cell.
-    :param other_uc: a 6-tuple of a, b, c, alpha, beta, gamma for some unit cell
+    :param:other_uc: a 6-tuple of a, b, c, alpha, beta, gamma for some unit cell
     :return: the NCDist in A^2 to other_uc
     """
     from cctbx.uctbx.determine_unit_cell import NCDist
