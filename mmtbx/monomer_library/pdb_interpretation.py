@@ -4074,7 +4074,7 @@ class build_all_chain_proxies(linking_mixins):
                                                   params,
                                                   log):
     result = []
-    if len(params.parallelity) == 0: 
+    if len(params.parallelity) == 0:
       return result
     print >> log, "  Custom parallelities:"
     for parallelity in params.parallelity:
@@ -4555,7 +4555,7 @@ class build_all_chain_proxies(linking_mixins):
           self.geometry_proxy_registries.parallelity.add_if_not_duplicated(
               proxy=proxy)
         self.geometry_proxy_registries.parallelity.discard_table()
-        
+
     if len(hbonds_in_bond_list) == 0:
       hbonds_in_bond_list = None
     else:

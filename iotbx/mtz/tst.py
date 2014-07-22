@@ -457,7 +457,6 @@ def exercise_wavelength () :
 
 def exercise_unmerged(space_group_info):
   import random
-  import ccp4io_adaptbx
   from cctbx import sgtbx
   # shuffle the
   space_group = sgtbx.space_group('P 1', no_expand=True)

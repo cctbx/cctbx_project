@@ -32,7 +32,6 @@ if (qb_installed) :
 """
 
 #afitt
-import subprocess
 afitt_installed=False
 if libtbx.env.has_module("afitt_adaptbx") :
   build_dir = libtbx.env.under_build("afitt_adaptbx")

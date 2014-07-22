@@ -11,7 +11,6 @@ from __future__ import division
 
 import os
 import re
-import string
 import math
 import copy
 

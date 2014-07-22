@@ -1,4 +1,5 @@
 """ Utilitites for dealing with lists of clusters. """
+from __future__ import division
 __author__ = 'zeldin'
 
 def unit_cell_info(sub_clusters):

@@ -93,7 +93,7 @@ def mon_lib_ener_lib_cif(path=None, strict=False):
       path=path,
       relative_path_components=["geostd_ener_lib.cif"],
       strict=strict)
-  except:
+  except MonomerLibraryServerError:
     geostd_ener = None
   if geostd_ener:
     mon_lib_ener = merge_and_overwrite_cifs(geostd_ener, mon_lib_ener)
