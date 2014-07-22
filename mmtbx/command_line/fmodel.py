@@ -353,7 +353,11 @@ def run(args, log = sys.stdout):
           "CRYST1 record in input PDB file is incomplete or missing. "+
           "If you want the program to generate P1 symmetry automatically, "+
           "set generate_fake_p1_symmetry=True.")
-  xray_structure = pdb_inp.xray_structure_simple(crystal_symmetry = cryst1)
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  # need to preserve the order in the hierarchy in case we have to perform an
+  # atom selection later
+  xray_structure = pdb_hierarchy.extract_xray_structure(
+    crystal_symmetry = cryst1)
   if (cryst1 is None) :
     cryst1 = xray_structure.crystal_symmetry()
   if (miller_array is not None) :
@@ -361,7 +365,6 @@ def run(args, log = sys.stdout):
       miller_array = miller_array.customized_copy(crystal_symmetry=cryst1)
   xray_structure.show_summary(f = log, prefix="  ")
   if(len(params.anomalous_scatterers.group) != 0):
-    pdb_hierarchy = pdb_inp.construct_hierarchy()
     pdb_atoms = pdb_hierarchy.atoms()
     pdb_atoms.reset_i_seq()
     set_fp_fdp_for_anomalous_scatterers(
