@@ -309,7 +309,7 @@ Type of data: double, size=11
 Type of sigmas: double, size=11
 Number of Miller indices: 11
 Anomalous flag: False
-Unit cell: (7.9999, 9.3718, 14.7362, 82.625, 81.527, 81.726)
+Unit cell: (7.999, 9.372, 14.736, 82.625, 81.527, 81.726)
 Space group: P -1 (No. 2)
 """)
 
@@ -360,9 +360,9 @@ loop_
  'x, y, z'
  '-x, -y, -z'
 
-_cell_length_a     7.9999
-_cell_length_b     9.3718
-_cell_length_c    14.7362
+_cell_length_a      7.999
+_cell_length_b      9.372
+_cell_length_c     14.736
 _cell_angle_alpha  82.625
 _cell_angle_beta   81.527
 _cell_angle_gamma  81.726
