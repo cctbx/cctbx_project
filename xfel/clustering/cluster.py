@@ -53,9 +53,9 @@ class Cluster:
     Contains a list of SingFrame objects, as well as information about these
     as a cluster (e.g. mean unit cell).
 
-    :param data: a list of SingleFrame objects
-    :param cname: the name of the cluster, as a string.
-    :param info: an info-string for the cluster.
+    :param:data: a list of SingleFrame objects
+    :param:cname: the name of the cluster, as a string.
+    :param:info: an info-string for the cluster.
     :return: a Cluster object
     """
 
@@ -86,9 +86,9 @@ class Cluster:
     """Constructor to get a cluster from pickle files, from the recursively
     walked paths. Can take more than one argument for multiple folders.
     usage: Cluster.from_directories(..)
-    :param path_to_integration_dir: list of directories containing pickle files.
+    :param:path_to_integration_dir: list of directories containing pickle files.
     Will be searched recursively.
-    :param use_b: Boolean. If True, intialise Scale and B. If false, use only
+    :param:use_b: Boolean. If True, intialise Scale and B. If false, use only
     mean intensity scalling.
     """
     data = []
@@ -109,8 +109,8 @@ class Cluster:
                        _prefix='cluster_from_file',
                        use_b=True):
     """Constructor to get a cluster from a list of pickle files.
-    :param pickle_list: list of pickle files
-    :param use_b: Boolean. If True, intialise Scale and B. If false, use only
+    :param:pickle_list: list of pickle files
+    :param:use_b: Boolean. If True, intialise Scale and B. If false, use only
     mean intensity scalling.
     """
     data = []
@@ -455,7 +455,7 @@ class Cluster:
     1) histogram of standard errors on the per-frame fits
     2) histogram of B factors
     3) scatter  plot of intercept vs. gradient (G vs. B)
-    :param ax: optionally hand the method three matplotlib axes objects to plot
+    :param:ax: optionally hand the method three matplotlib axes objects to plot
     onto. If not specified, will plot the data.
     :return: the three axes, with the data plotted onto them.
     """
@@ -496,9 +496,9 @@ class Cluster:
     """
     Goes through all frames in the cluster, and plots all the partial intensites.
     Then does a linear fit through these, and  rolling average/
-    :param smoothing_width: the width of the smoothing window. Default 2000
+    :param:smoothing_width: the width of the smoothing window. Default 2000
     reflections.
-    :param ax: Optional matplotlib axes object to plot to.
+    :param:ax: Optional matplotlib axes object to plot to.
     :return: the axis, with the data plotted onto it.
     """
     from scipy.stats import linregress
