@@ -181,7 +181,8 @@ class _ (oop.injector, molprobity.molprobity) :
     r_free = self.r_free()
     n_tls_groups = None
     if (self.header_info is not None) :
-      n_tls_groups = self.header_info.n_tls_groups
+      if (self.header_info.n_tls_groups > 0) :
+        n_tls_groups = self.header_info.n_tls_groups
       use_header_values = (not re_compute_r_factors or
           (not self.header_info.is_phenix_refinement() and
            (recalculate_r_factors is Auto)))
