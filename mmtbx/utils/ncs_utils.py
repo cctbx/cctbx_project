@@ -9,7 +9,8 @@ import random
 import math
 
 
-def concatenate_rot_tran(transforms_obj=None,ncs_restraints_group_list=None,s=1):
+def concatenate_rot_tran(transforms_obj=None,
+                         ncs_restraints_group_list=None, s=1):
   """
   Concatenate rotation angles, corresponding to the rotation
   matrices and scaled translation vectors to a single long flex.double object
@@ -498,3 +499,23 @@ def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection):
   extended_ncs_selection = refine_selection - total_ncs_related_selection
   return flex.size_t(list(extended_ncs_selection))
 
+def get_ncs_related_selection(ncs_restraints_group_list,asu_size):
+  """
+  :param ncs_restraints_group_list: list of ncs_restraint_group objects
+  total_asu_length: (int) Complete ASU length
+  :param asu_size: (int) the total size of the ASU
+  :return: (flex.bool) selection of all ncs related atom in the ASU
+  """
+  total_master_ncs_selection = set()
+  total_ncs_related_selection = set()
+  for nrg in ncs_restraints_group_list:
+    master_ncs_selection = nrg.master_iselection
+    total_master_ncs_selection.update(set(master_ncs_selection))
+    for ncs_copy in nrg.copies:
+      asu_selection = ncs_copy.copy_iselection
+      total_ncs_related_selection.update(set(asu_selection))
+  #
+  total_ncs_related_selection.update(total_master_ncs_selection)
+  ts = flex.size_t(list(total_ncs_related_selection))
+  selection = flex.bool(asu_size, ts)
+  return selection
