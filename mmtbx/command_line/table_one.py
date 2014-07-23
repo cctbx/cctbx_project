@@ -99,6 +99,12 @@ table_one {
       .help = If true, the program will treat F+ and F- (if present) as \
         independent reflections when calculating data statistics.  (Not \
         recommended.)
+    ligand_selection = None
+      .type = str
+      .short_caption = Ligand atom selection
+      .help = If specified, will determine which atoms or residues are \
+        counted as ligands (instead of automatic behavior).
+      .input_size = 400
   }
   multiprocessing {
     include scope libtbx.easy_mp.parallel_phil_str_no_threading
@@ -155,6 +161,7 @@ class _ (oop.injector, molprobity.molprobity) :
     merging_outer = dummy_validation()
     n_refl_uniq = data_stats.n_refl
     n_refl_refine = data_stats.n_refl_refine
+    n_free = data_stats.n_free
     completeness = data_stats.completeness
     d_max_min = self.d_max_min()
     d_max, d_min = d_max_min
@@ -172,7 +179,9 @@ class _ (oop.injector, molprobity.molprobity) :
             merging_stats.d_max, merging_stats.d_min))
     r_work = self.r_work()
     r_free = self.r_free()
+    n_tls_groups = None
     if (self.header_info is not None) :
+      n_tls_groups = self.header_info.n_tls_groups
       use_header_values = (not re_compute_r_factors or
           (not self.header_info.is_phenix_refinement() and
            (recalculate_r_factors is Auto)))
@@ -204,6 +213,7 @@ class _ (oop.injector, molprobity.molprobity) :
       cc_star=merging_stats.cc_star,
       # refinement
       n_refl_refine=n_refl_refine,
+      n_free=n_free,
       r_work=r_work,
       r_free=r_free,
       cc_work=merging_stats.cc_work,
@@ -225,6 +235,7 @@ class _ (oop.injector, molprobity.molprobity) :
       adp_mean_mm=self.model_stats.macromolecules.b_mean,
       adp_mean_lig=self.model_stats.ligands.b_mean,
       adp_mean_wat=self.model_stats.water.b_mean,
+      n_tls_groups=n_tls_groups,
       anomalous_flag=data_stats.anomalous_flag,
       ).add_outer_shell(
         # XXX we need a consistency check here as well
@@ -232,6 +243,7 @@ class _ (oop.injector, molprobity.molprobity) :
         n_refl=data_stats.n_refl_outer,
         n_refl_all=merging_outer.n_obs,
         n_refl_refine=data_stats.n_refl_refine_outer,
+        n_free=data_stats.n_free_outer,
         cc_one_half=merging_outer.cc_one_half,
         cc_star=merging_outer.cc_star,
         r_sym=merging_outer.r_merge,
@@ -328,6 +340,7 @@ def rfactor_sanity_check (
 def run_single_structure (params,
     n_bins,
     count_anomalous_pairs_separately,
+    ligand_selection=None,
     log=None) :
   if (log is None) : log = null_out()
   molprobity_args = [
@@ -342,7 +355,10 @@ def run_single_structure (params,
     "maps=False",
     "probe_dots=False",
     "use_pdb_header_resolution_cutoffs=True",
+    "--quiet",
   ] + [ "monomers.file_name=\"%s\"" % cif for cif in params.cif_file ]
+  if (ligand_selection is not None) :
+    molprobity_args.append("ligand_selection=\"%s\"" % ligand_selection)
   if (params.unmerged_data is not None) :
     molprobity_args.extend([
       "unmerged_data.file_name=\"%s\"" % params.unmerged_data,
@@ -392,7 +408,8 @@ class table_one (iotbx.table_one.table) :
     return run_single_structure(
       params=self.params.structure[i_struct],
       n_bins=self.params.processing.n_bins,
-      count_anomalous_pairs_separately=self.count_anomalous_pairs_separately)
+      count_anomalous_pairs_separately=self.count_anomalous_pairs_separately,
+      ligand_selection=self.params.processing.ligand_selection)
 
   def save_multiple (self, file_base, formats) :
     for format in formats :

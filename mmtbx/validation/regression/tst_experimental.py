@@ -4,12 +4,15 @@
 from __future__ import division
 from mmtbx.command_line import molprobity
 import iotbx.pdb.hierarchy
+from scitbx.array_family import flex
 from libtbx.utils import null_out
 import libtbx.load_env
+import random
 
 # Deuterium as ligand - formerly crashed real-space correlation
 def exercise_01 () :
   pdb_raw = """\
+CRYST1   10.000   15.000   10.000  90.00  90.00  90.00 P 1
 ATOM   6407  N   GLY A 388      -0.783   9.368 -16.436  1.00 51.96           N
 ATOM   6408  CA  GLY A 388      -0.227   9.888 -15.197  1.00 54.04           C
 ATOM   6409  C   GLY A 388      -0.637  11.320 -14.897  1.00 55.86           C
@@ -24,6 +27,8 @@ HETATM 6417  O   DOD A1001      -4.151   4.107 -16.592  1.00 13.40           O
 HETATM 6418  D1  DOD A1001      -4.760   3.026 -11.326  1.00 15.45           D
 HETATM 6419  D2  DOD A1001      -4.625   2.741 -13.845  1.00 14.81           D
 """
+  random.seed(12345)
+  flex.set_random_seed(12345)
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
   xrs = pdb_in.input.xray_structure_simple()
   pdb_in.hierarchy.atoms().reset_i_seq()
@@ -44,6 +49,8 @@ HETATM 6419  D2  DOD A1001      -4.625   2.741 -13.845  1.00 14.81           D
     ignore_missing_modules=True,
     out=null_out()).validation
   assert result.real_space is not None
+  ds = result.data_stats
+  assert (ds.n_free > 0)
 
 if (__name__ == "__main__") :
   exercise_01()

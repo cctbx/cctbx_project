@@ -31,19 +31,31 @@ class model_statistics (slots_getstate_setstate) :
   def __init__ (self, pdb_hierarchy,
       xray_structure,
       all_chain_proxies=None,
-      ignore_hd=True) :
+      ignore_hd=True,
+      ligand_selection=None) :
     for name in self.__slots__ :
       setattr(self, name, None)
+    if isinstance(ligand_selection, basestring) :
+      if (all_chain_proxies is not None) :
+        ligand_selection = all_chain_proxies.selection(ligand_selection)
+      else :
+        ligand_selection = pdb_hierarchy.atom_selection_cache().selection(
+          ligand_selection)
     self.ignore_hd = ignore_hd
     self.n_atoms = xray_structure.scatterers().size()
     self.n_hydrogens = xray_structure.hd_selection().count(True)
     self.n_models = len(pdb_hierarchy.models())
-    first_model = pdb_hierarchy.models()[0]
     counts = pdb_hierarchy.overall_counts()
     resnames = counts.resnames
     self.n_waters = resnames.get("HOH", 0) + resnames.get("WAT", 0)
     self.n_polymer = 0
     self.n_nuc = self.n_protein = 0
+    hierarchy_tmp = pdb_hierarchy
+    # make sure the ligand selection is not counted as part of the protein
+    # chains
+    if (ligand_selection is not None) :
+      hierarchy_tmp = pdb_hierarchy.select(~ligand_selection)
+    first_model = hierarchy_tmp.models()[0]
     # FIXME not totally confident that this will always work...
     for chain in first_model.chains() :
       is_protein = chain.is_protein()
@@ -69,8 +81,11 @@ class model_statistics (slots_getstate_setstate) :
     if (all_chain_proxies is not None) :
       macro_sel = all_chain_proxies.selection("protein or rna or dna")
       water_sel = all_chain_proxies.selection("water")
-      ligand_sel = all_chain_proxies.selection(
-        "not (protein or dna or rna or water)")
+      if (ligand_selection is None) :
+        ligand_selection = all_chain_proxies.selection(
+          "not (protein or dna or rna or water)")
+      # make sure we exclude ligands from the "macromolecule" selection!
+      macro_sel &= ~ligand_selection
       if (macro_sel.count(True) > 0) :
         self._macromolecules = xray_structure_statistics(
           pdb_hierarchy=pdb_hierarchy.select(macro_sel),
@@ -81,11 +96,11 @@ class model_statistics (slots_getstate_setstate) :
           pdb_hierarchy=pdb_hierarchy.select(water_sel),
           xray_structure=xray_structure.select(water_sel),
           ignore_hd=ignore_hd)
-      if (ligand_sel.count(True) > 0) :
-        self._ligands = xray_structure_statistics(
-          pdb_hierarchy=pdb_hierarchy.select(ligand_sel),
-          xray_structure=xray_structure.select(ligand_sel),
-          ignore_hd=ignore_hd)
+    if (ligand_selection is not None) and (ligand_selection.count(True) > 0) :
+      self._ligands = xray_structure_statistics(
+        pdb_hierarchy=pdb_hierarchy.select(ligand_selection),
+        xray_structure=xray_structure.select(ligand_selection),
+        ignore_hd=ignore_hd)
     # make sure original i_seq is used
     #pdb_hierarchy.atoms().reset_i_seq()
 
