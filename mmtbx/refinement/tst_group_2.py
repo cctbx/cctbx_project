@@ -1,6 +1,7 @@
 from __future__ import division
 import iotbx.pdb
 import mmtbx.refinement.group
+import mmtbx.f_model
 from cctbx import miller
 
 pdb_answer_str = """\n
