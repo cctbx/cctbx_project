@@ -67,6 +67,7 @@ keywords = [
   ("adp_mean_mm", "  macromolecules", "%.2f", None),
   ("adp_mean_lig", "  ligands", "%.2f", None),
   ("adp_mean_wat", "  solvent", "%.2f", None),
+  ("n_tls_groups", "Number of TLS groups", "%d", None),
 #  ("solvent_content", "Solvent content", "%.1f%%", None),
 ]
 
@@ -76,6 +77,7 @@ optional_if_none = set([
   "n_residues", "n_ligand_atoms", "n_waters", "n_nuc",
   "rama_favored", "rama_allowed", "rama_outliers", "rota_outliers",
   "adp_mean_lig", "adp_mean_wat", "cc_work", "cc_free", "cc_star",
+  "n_tls_groups",
 ])
 
 keyword_formats = dict([ (kw, fs) for (kw, label, fs, cif_tag) in keywords ])
@@ -170,9 +172,12 @@ class table (slots_getstate_setstate) :
     rows = []
     rows.append([""] + [ column.label for column in self.columns ])
     for (stat_name, label, fstring, cif_tag) in keywords :
-      row = [label]
+      row = []
       for column in self.columns :
         row.append(column.format_stat(stat_name))
+      if (row == [ None for x in range(len(row)) ]) :
+        continue
+      row.insert(0, label)
       rows.append(row)
     return "\n".join([ ",".join(row) for row in rows ])
 
