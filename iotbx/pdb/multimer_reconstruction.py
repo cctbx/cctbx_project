@@ -65,7 +65,7 @@ class multimer(object):
       pdb_obj = pdb.hierarchy.input(file_name=file_name)
       pdb_inp = pdb.input(file_name=file_name)
     else:
-      # self.pdb_input_file_name = pdb_str
+      self.pdb_input_file_name = 'complete_reconstructed_unit.pdb'
       pdb_obj = pdb.hierarchy.input(pdb_string=pdb_str)
       pdb_inp = pdb.input(lines=pdb_str, source_info=None)
     if reconstruction_type == 'ba':
@@ -140,7 +140,7 @@ class multimer(object):
       self.pdb_output_file_name = pdb_output_file_name
     # we need to add crystal symmetry to the new file since it is
     # sometimes needed when calculating the R-work factor (r_factor_calc.py)
-    if not crystal_symmetry:
+    if not crystal_symmetry and os.path.isfile(self.pdb_input_file_name):
       crystal_symmetry = crystal_symmetry_from_any.extract_from(
         self.pdb_input_file_name)
     # using the pdb hierarchy pdb file writing method

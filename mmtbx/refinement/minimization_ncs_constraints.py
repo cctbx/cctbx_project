@@ -133,8 +133,18 @@ class target_function_and_grads_real_space(object):
     self.extended_ncs_selection = nu.get_extended_ncs_selection(
       ncs_restraints_group_list=ncs_restraints_group_list,
       refine_selection=refine_selection)
+
     self.unit_cell = self.xray_structure.unit_cell()
-    self.selection = flex.bool(xray_structure.scatterers().size(), True)
+    # get selection to refine
+    asu_size = xray_structure.scatterers().size()
+    if refine_sites:
+      # Use all atoms to refine
+      self.selection = flex.bool(asu_size, refine_selection)
+    elif refine_transformations:
+      # use only NCS related atoms (Without the Master NCS copy)
+      self.selection = nu.get_ncs_related_selection(
+        ncs_restraints_group_list=ncs_restraints_group_list,
+        asu_size=asu_size)
 
   def data_target_and_grads(self, compute_gradients, lbfgs_self):
     g = None
