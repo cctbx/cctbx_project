@@ -37,8 +37,8 @@ namespace mmtbx { namespace secondary_structure { namespace dssp {
     bool have_caN = false;
     bool have_cN = false;
     scitbx::vec3<double> N_xyz = N.data->xyz;
-    scitbx::vec3<double> caN_xyz;
-    scitbx::vec3<double> cN_xyz;
+    scitbx::vec3<double> caN_xyz(0,0,0);
+    scitbx::vec3<double> cN_xyz(0,0,0);
     // find CA attached to N
     boost::optional<atom_group> ag_N = N.parent();
     MMTBX_ASSERT(ag_N);
@@ -111,7 +111,7 @@ namespace mmtbx { namespace secondary_structure { namespace dssp {
     scitbx::vec3<double> N_xyz = N.data->xyz;
     scitbx::vec3<double> O_xyz = O.data->xyz;
     bool have_cO = false;
-    scitbx::vec3<double> cO_xyz;
+    scitbx::vec3<double> cO_xyz(0,0,0);
     boost::optional< scitbx::vec3<double> > hN_xyz;
     // find C attached to O
     boost::optional<atom_group> ag_O = O.parent();
