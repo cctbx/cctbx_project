@@ -1406,3 +1406,10 @@ class download_target (object) :
     if (file_name is None) :
       return None
     return op.abspath(self.file_name)
+
+def cmd_exists(cmd):
+  import subprocess
+  return subprocess.call("type " + cmd,
+                         shell=True, 
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE) == 0
