@@ -151,7 +151,8 @@ class molprobity (slots_getstate_setstate) :
       count_anomalous_pairs_separately=False,
       outliers_only=True,
       use_pdb_header_resolution_cutoffs=False,
-      file_name=None) :
+      file_name=None,
+      ligand_selection=None) :
     for name in self.__slots__ :
       setattr(self, name, None)
     # very important - the i_seq attributes may be extracted later
@@ -211,7 +212,8 @@ class molprobity (slots_getstate_setstate) :
         pdb_hierarchy=pdb_hierarchy,
         xray_structure=xray_structure,
         all_chain_proxies=all_chain_proxies,
-        ignore_hd=(not nuclear))
+        ignore_hd=(not nuclear),
+        ligand_selection=ligand_selection)
     if (geometry_restraints_manager is not None) and (flags.restraints) :
       assert (xray_structure is not None)
       self.restraints = restraints.combined(
@@ -646,8 +648,8 @@ class pdb_header_info (slots_getstate_setstate) :
   Container for information extracted from the PDB header (if available).
   """
   __slots__ = ["d_min", "d_max", "r_work", "r_free", "rms_bonds", "rms_angles",
-    "refinement_program"]
-  def __init__ (self, pdb_file) :
+    "refinement_program", "n_tls_groups"]
+  def __init__ (self, pdb_file, pdb_hierarchy=None) :
     for name in self.__slots__ :
       setattr(self, name, None)
     if (pdb_file is not None) :
@@ -670,6 +672,10 @@ class pdb_header_info (slots_getstate_setstate) :
           self.rms_bonds = float(fields[-4])
           self.rms_angles = float(fields[-1])
           break
+      if (pdb_hierarchy is not None) :
+        tls_groups = pdb_in.input.extract_tls_params(pdb_hierarchy).tls_params
+        if (tls_groups is not None) :
+          self.n_tls_groups = len(tls_groups)
 
   def is_phenix_refinement (self) :
     return (self.refinement_program is not None and

@@ -47,6 +47,9 @@ molprobity {
   {
     include scope mmtbx.validation.molprobity.master_phil_str
   }
+  ligand_selection = None
+    .type = atom_selection
+    .expert_level = 3
 }
 output {
   quiet = False
@@ -138,7 +141,8 @@ def run (args,
     params.molprobity.keep_hydrogens = \
       (params.input.scattering_table == "neutron")
   header_info = mmtbx.validation.molprobity.pdb_header_info(
-    pdb_file=params.input.pdb.file_name[0])
+    pdb_file=params.input.pdb.file_name[0],
+    pdb_hierarchy=cmdline.pdb_hierarchy)
   pdb_prefix = os.path.splitext(os.path.basename(
     params.input.pdb.file_name[0]))[0]
   if (params.output.prefix is None) :
@@ -167,7 +171,8 @@ def run (args,
       params.molprobity.use_pdb_header_resolution_cutoffs,
     count_anomalous_pairs_separately=\
       params.molprobity.count_anomalous_pairs_separately,
-    file_name=params.input.pdb.file_name[0])
+    file_name=params.input.pdb.file_name[0],
+    ligand_selection=params.molprobity.ligand_selection)
   map_file = None
   if (not params.output.quiet) :
     out2 = multi_out()

@@ -44,6 +44,7 @@ class data_statistics (slots_getstate_setstate) :
     "wavelength",
     "n_refl",
     "n_refl_refine",
+    "n_free",
     "r_work",
     "r_free",
     "twin_law",
@@ -56,12 +57,14 @@ class data_statistics (slots_getstate_setstate) :
     "completeness_outer",
     "n_refl_outer",
     "n_refl_refine_outer",
+    "n_free_outer",
     "anomalous_flag",
   ]
   def __init__ (self, fmodel, raw_data=None, n_bins=10,
       count_anomalous_pairs_separately=False) :
     # FIXME n_bins should be automatic by default
     f_obs = fmodel.f_obs().deep_copy()
+    r_free_flags = fmodel.r_free_flags().deep_copy()
     self.anomalous_flag = f_obs.anomalous_flag()
     self.d_max = f_obs.d_max_min()[0]
     self.d_min = f_obs.d_min()
@@ -78,9 +81,11 @@ class data_statistics (slots_getstate_setstate) :
     if (not count_anomalous_pairs_separately) and (self.anomalous_flag) :
       f_obs = f_obs.average_bijvoet_mates()
       raw_data = raw_data.average_bijvoet_mates()
+      r_free_flags = r_free_flags.average_bijvoet_mates()
     f_obs.setup_binner(n_bins=n_bins)
     self.n_refl = raw_data.indices().size()
     self.n_refl_refine = f_obs.indices().size()
+    self.n_free = r_free_flags.data().count(True)
     self.r_free = self.info.r_free
     self.r_work = self.info.r_work
     self.twin_law = fmodel.twin_law
@@ -101,6 +106,9 @@ class data_statistics (slots_getstate_setstate) :
     f_obs_outer = f_obs.resolution_filter(d_max=self.d_max_outer,
       d_min=self.d_min_outer)
     self.n_refl_refine_outer = f_obs_outer.indices().size()
+    r_free_flags_outer = r_free_flags.resolution_filter(d_max=self.d_max_outer,
+      d_min=self.d_min_outer)
+    self.n_free_outer = r_free_flags_outer.data().count(True)
 
   def show_summary (self, out=sys.stdout, prefix="") :
     print >> out, "%sHigh resolution       = %7.3f" % (prefix, self.d_min)

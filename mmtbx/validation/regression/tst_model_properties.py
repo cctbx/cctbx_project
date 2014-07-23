@@ -4,7 +4,7 @@ from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.monomer_library import server
 from mmtbx.validation import model_properties
 import iotbx.pdb.hierarchy
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import show_diff, approx_equal
 from libtbx.easy_pickle import loads, dumps
 from libtbx.utils import null_out
 from cStringIO import StringIO
@@ -221,7 +221,67 @@ HETATM 6419  D2  DOD A1001      -4.625  -4.741 -37.845  1.00 14.81           D
   assert ("Ligands:" in out.getvalue())
   assert ("B_iso: mean =  15.2  max =  15.2  min =  15.2" in out.getvalue())
 
+# explicitly specified ligand selection
+def exercise_3 () :
+  pdb_raw = """\
+ATOM      1  CA  GLY A   1      -0.227   9.888 -15.197  1.00 54.04           C
+ATOM      2  CA  GLY A   2      -0.227   9.888 -15.197  1.00 54.04           C
+ATOM      3  CA  GLY A   3      -0.227   9.888 -15.197  1.00 54.04           C
+ATOM      4  CA  GLY A   4      -0.227   9.888 -15.197  1.00 54.04           C
+ATOM      5  CA  GLY A   5      -0.227   9.888 -15.197  1.00 54.04           C
+ATOM      6  CA  GLY A   6      -0.227   9.888 -15.197  1.00 54.04           C
+ATOM      7  CA  GLY A   7      -0.227   9.888 -15.197  1.00 54.04           C
+ATOM      8  CA  GLY A   8      -0.227   9.888 -15.197  1.00 54.04           C
+ATOM      9  CA  GLY A   9      -0.227   9.888 -15.197  1.00 54.04           C
+ATOM     10  CA  GLY A  10      -0.227   9.888 -15.197  1.00 54.04           C
+HETATM   11  N   SEP A  11      -2.112   0.368  -0.991  1.00 20.00      A    N
+HETATM   12  CA  SEP A  11      -0.692   0.284  -0.951  1.00 20.00      A    C
+HETATM   13  CB  SEP A  11      -0.234   0.166   0.485  1.00 20.00      A    C
+HETATM   14  OG  SEP A  11       1.130  -0.184   0.515  1.00 20.00      A    O
+HETATM   15  C   SEP A  11      -0.237  -0.930  -1.727  1.00 20.00      A    C
+HETATM   16  O   SEP A  11      -0.767  -2.051  -1.509  1.00 20.00      A    O
+HETATM   18  P   SEP A  11       1.922  -0.008   1.871  1.00 20.00      A    P
+HETATM   19  O1P SEP A  11       2.139   1.462   2.140  1.00 20.00      A    O
+HETATM   20  O2P SEP A  11       3.259  -0.703   1.767  1.00 20.00      A    O-1
+HETATM   21  O3P SEP A  11       1.127  -0.614   3.002  1.00 20.00      A    O-1
+END"""
+  mon_lib_srv = server.server()
+  ener_lib = server.ener_lib()
+  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
+  xrs = pdb_in.input.xray_structure_simple()
+  processed_pdb_file = pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    raw_records=pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs),
+    crystal_symmetry=xrs,
+    log=null_out())
+  pdb_in.hierarchy.atoms().reset_i_seq()
+  ligand_sel = pdb_in.hierarchy.atom_selection_cache().selection("resname SEP")
+  mstats = model_properties.model_statistics(
+    pdb_hierarchy=pdb_in.hierarchy,
+    xray_structure=xrs,
+    all_chain_proxies=processed_pdb_file.all_chain_proxies,
+    ligand_selection=ligand_sel,
+    ignore_hd=True)
+  out = StringIO()
+  mstats.show(out=out)
+  assert (mstats.n_protein == 10)
+  assert ("Ligands:" in out.getvalue())
+  assert approx_equal(mstats.macromolecules.b_mean, 54.04)
+  # now with just the raw selection string
+  mstats = model_properties.model_statistics(
+    pdb_hierarchy=pdb_in.hierarchy,
+    xray_structure=xrs,
+    all_chain_proxies=processed_pdb_file.all_chain_proxies,
+    ligand_selection="resname SEP",
+    ignore_hd=True)
+  out = StringIO()
+  mstats.show(out=out)
+  assert (mstats.n_protein == 10)
+  assert ("Ligands:" in out.getvalue())
+
 if (__name__ == "__main__") :
   exercise_1()
   exercise_2()
+  exercise_3()
   print "OK"

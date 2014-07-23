@@ -1,6 +1,6 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.xtriage
 
+from __future__ import division
 from mmtbx.scaling import xtriage
 import sys
 
