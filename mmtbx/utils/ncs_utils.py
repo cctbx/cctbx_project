@@ -62,13 +62,13 @@ def update_transforms(transforms_obj,rm,tv):
   return transforms_obj
 
 def update_ncs_restraints_group_list(ncs_restraints_group_list,rm,tv):
-  """ Update of the rotation matrices (rm) and translation vectors (vt) """
+  """ Update of the rotation matrices (rm) and translation vectors (tv) """
   assert len(rm) == len(tv)
   new_list = []
   for gr in ncs_restraints_group_list:
     for tr in gr.copies:
       tr.r = rm.pop(0)
-      tr.t = tm.pop(0)
+      tr.t = tv.pop(0)
     new_list.append(gr)
   return new_list
 
