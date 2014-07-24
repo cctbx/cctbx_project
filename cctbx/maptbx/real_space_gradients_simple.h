@@ -78,6 +78,7 @@ namespace cctbx { namespace maptbx {
     af::shared<v3_t> result(sites_cart.size(), af::init_functor_null<v3_t>());
     v3_t* res = result.begin();
     for(std::size_t i_site=0;i_site<sites_cart.size();i_site++,res++) {
+      result[i_site]=scitbx::vec3<SiteFloatType>(0,0,0);
       if(selection[i_site]) {
         v3_t piv = sites_cart[i_site];
         v3_t piv_d = piv;
