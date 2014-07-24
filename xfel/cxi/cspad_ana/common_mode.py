@@ -471,12 +471,12 @@ class common_mode_correction(mod_event_info):
                 i_row    = i_row,
                 i_column = i_column)
 
+    if self.gain_map is not None:
+      self.cspad_img *= self.gain_map
+
     if (self.mask_img is not None):
       sel = self.mask_img == -2
       self.cspad_img.set_selected(sel, -2)
-
-    if self.gain_map is not None:
-      self.cspad_img *= self.gain_map
 
     if self.cache_image:
       # Store the image in the event.
