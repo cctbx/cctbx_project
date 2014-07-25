@@ -403,29 +403,17 @@ class lbfgs(object):
 
     finite_grad_difference_val = abs(analytical - finite differences)
     """
-    # plot_t_vs_dx
-    # self_x_copy = self.x.deep_copy()
-    # t,_ = self.compute_functional_and_gradients(compute_gradients=False)
-    # data_points = [[0,t]]
-    # for d in xrange(-10,10):
-    #   dx = d * 1.0e-6
-    #   self.x[0]  = self_x_copy[0] + dx
-    #   t,_ = self.compute_functional_and_gradients(compute_gradients=False)
-    #   data_points.append([dx,t])
-    # grad_data = []
-    # l = len(data_points)
-    # x1, y1 = data_points[0]
-    # for j in range(1,l):
-    #   x2, y2 = data_points[j]
-    #   grad_data.append([x2,(y2-y1)/(x2-x1)])
-    #   x1, y1 = x2, y2
-
-    #
     g = g.as_double()
     # find the index of the max gradient value
-    i_g_max = flex.max_index(flex.abs(g))
+    # i_g_max = flex.max_index(flex.abs(g))
+
     # Set displacement for finite gradient calculation to 1e-5 of largest value
-    d = max(self.x[i_g_max]*1e-6,1e-8)
+    if self.refine_transformations:
+      d = 1.0e-3
+      i_g_max = 0
+    else:
+      i_g_max = flex.max_index(flex.abs(g))
+      d = max(self.x[i_g_max]*1e-6,1e-6)
     # calc t(x+d)
     self.x[i_g_max] = self.x[i_g_max] + d
     t1,_ = self.compute_functional_and_gradients(compute_gradients=False)
