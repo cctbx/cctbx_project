@@ -14,9 +14,10 @@ def run(_args):
 
   ucs = Cluster.from_directories(_args.folders, "cxi_targt_uc")
 
-  fig = plt.figure("Andrews-Bernstein distance dendogram", figsize=(12,8))
+  fig = plt.figure("Andrews-Bernstein distance dendogram", figsize=(12, 8))
   ax = plt.gca()
-  clusters, cluster_axes = ucs.ab_cluster(_args.t, log=_args.log, ax=ax)
+  clusters, cluster_axes = ucs.ab_cluster(_args.t, log=_args.log, ax=ax,
+                                          write_file_lists=_args.files)
 
   print unit_cell_info(clusters)
   plt.tight_layout()
@@ -36,6 +37,8 @@ if __name__ == "__main__":
                       help="Do not display plots")
   parser.add_argument('--log', action='store_true',
                     help="Display the dendrogram with a log scale")
+  parser.add_argument('--files', action='store_true', default=False,
+                      help="Display the dendrogram with a log scale")
   args = parser.parse_args()
   run(args)
 #  parser.add_argument('-m', type=str, default='distance',
