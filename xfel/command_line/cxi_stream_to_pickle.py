@@ -15,27 +15,6 @@ import logging
 FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
 logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 
-import argparse
-parser = argparse.ArgumentParser(description=
-                                 ('Create indexing pickles from a'
-                                  'crystfel stream file.'))
-parser.add_argument('filename', type=str, nargs=1,
-                    help='The filename of the stream file to be converted.')
-parser.add_argument('point_group', type=str, nargs=1,
-                    help='The space group to be assigned.')
-parser.add_argument('--tag', type=str, nargs=1,
-                    help="Prefix to be used for the indexing pickles.")
-args = parser.parse_args()
-stream_file = args.filename[0]
-point_group = args.point_group[0]
-if args.tag:
-    tag = args.tag[0]
-else:
-    tag = stream_file[0].split('.')[0]
-
-
-logging.critical("NOT READY FOR PRIME-TIME. CONTACT ZELDIN@STANFORD.EDU IF YOU WANT TO USE THIS.")
-
 EV_PER_A = 12398.4187
 # Regular expressions, set up so one can use groups to extract the data
 re_energy = re.compile("photon_energy_eV\s=\s([0-9]+\.[0-9]+)")
@@ -145,6 +124,28 @@ def make_int_pickle(img_dict, filename):
     logging.warning("Failed to make a dictionairy for image {}".format(filename))
 
 if __name__ == "__main__":
+
+  logging.critical("NOT READY FOR PRIME-TIME. CONTACT ZELDIN@STANFORD.EDU IF YOU WANT TO USE THIS.")
+
+  import argparse
+  parser = argparse.ArgumentParser(description=
+                                 ('Create indexing pickles from a'
+                                  'crystfel stream file.'))
+  parser.add_argument('filename', type=str, nargs=1,
+                    help='The filename of the stream file to be converted.')
+  parser.add_argument('point_group', type=str, nargs=1,
+                    help='The space group to be assigned.')
+  parser.add_argument('--tag', type=str, nargs=1,
+                    help="Prefix to be used for the indexing pickles.")
+  args = parser.parse_args()
+  stream_file = args.filename[0]
+  point_group = args.point_group[0]
+  if args.tag:
+    tag = args.tag[0]
+  else:
+    tag = stream_file[0].split('.')[0]
+
+
   things_in_image = {'Millers', 'Is', 'sigIs', 'unit cell', 'aStar', 'bStar',
                      'cStar', 'wavelength', 'centering', 'lattice_type',
                      'location'}
