@@ -33,7 +33,7 @@ class Cluster:
   passes and fails into different clusters. This is acheived through the
   make_sub_cluster() method. This also keeps track of a sub-clusters heritage
   through the .info string, which is appended to. The idea is to be able to
-  write filter scripts for each data. e.g:
+  write filter scripts for each data. e.g::
 
     test_cluster = Cluster.from_directories(["~/test_data"],
                                           'test_script')
@@ -221,11 +221,25 @@ class Cluster:
 
 
   def ab_cluster(self, threshold=10000, method='distance',
-                 linkage_method='single', log=False, ax=None):
-    """ Do hierarchical clustering using the Andrews-Berstein distance from
+                 linkage_method='single', log=False,
+                 ax=None, write_file_lists=True):
+    """
+    Do hierarchical clustering using the Andrews-Berstein distance from
     Andrews & Bernstein J Appl Cryst 47:346 (2014) on the Niggli cells. Returns
     the largest cluster if max_only is true, otherwise a list of clusters. Also
     return a matplotlib axes object for display of a dendogram.
+
+    :param threshold: the threshold to use for prunning the tree into clusters.
+    :param method: which clustering method from scipy to use when creating the
+    tree (see scipy.cluster.hierarchy)
+    :param linkage_method: which linkage method from scipy to use when creating
+    the linkages.
+    (see scipy.cluster.hierarchy)
+    :param log: if True, use log scale on y axis.
+    :param ax: if a matplotlib axes object is provided, plot to this. Otherwise,
+    create a new axes object and display on screen.
+    :param write_file_lists: if True, write out the files that make up each
+    cluster.
     :return: A list of Clusters ordered by largest Cluster to smallest
     """
 
@@ -266,7 +280,15 @@ class Cluster:
                                                   cluster + 1),
                                                 info_string))
 
-      sub_clusters = sorted(sub_clusters, key=lambda x: len(x.members))
+    sub_clusters = sorted(sub_clusters, key=lambda x: len(x.members))
+    # Rename to order by size
+    for num, cluster in enumerate(sub_clusters):
+      cluster.cname = 'cluster_{}'.format(num + 1)
+
+    # 3.5 optionally write out the clusters to files.
+    if write_file_lists:
+      for cluster in sub_clusters:
+        cluster.dump_file_list(out_file_name=".lst".format(cluster.cname))
 
     # 4. Plot a dendogram to the axes if no axis is passed, otherwise just
     #    return the axes object
