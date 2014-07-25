@@ -10,7 +10,8 @@ import math
 
 
 def concatenate_rot_tran(transforms_obj=None,
-                         ncs_restraints_group_list=None, s=1):
+                         ncs_restraints_group_list=None,
+                         deg=True, s=1):
   """
   Concatenate rotation angles, corresponding to the rotation
   matrices and scaled translation vectors to a single long flex.double object
@@ -34,7 +35,8 @@ def concatenate_rot_tran(transforms_obj=None,
   if ncs_restraints_group_list:
     for gr in ncs_restraints_group_list:
       for tr in gr.copies:
-        x.extend(list(rotation_to_angles(tr.r.elems)) + list((tr.t/s).elems))
+        x.extend(list(rotation_to_angles(rotation=tr.r.elems,deg=deg))
+                 + list((tr.t/s).elems))
   return flex.double(x)
 
 def get_rotation_translation_as_list(transforms_obj=None,
@@ -73,9 +75,10 @@ def update_ncs_restraints_group_list(ncs_restraints_group_list,rm,tv):
     new_list.append(gr)
   return new_list
 
-def separate_rot_tran(x,s=1.0,
-                      transforms_obj=None,
-                      ncs_restraints_group_list=None):
+def update_rot_tran(x,s=1.0,
+                    transforms_obj=None,
+                    ncs_restraints_group_list=None,
+                    deg=True):
   """
   Convert the refinemable parameters, rotations angles and
   scaled translations, back to rotation matrices and translation vectors and
@@ -104,10 +107,10 @@ def separate_rot_tran(x,s=1.0,
       for tr in gr.copies:
         the,psi,phi =x[i*6:i*6+3]
         rot = scitbx.rigid_body.rb_mat_xyz(
-          the=the, psi=psi, phi=phi, deg=False)
+          the=the, psi=psi, phi=phi, deg=deg)
         tran = matrix.rec(x[i*6+3:i*6+6],(3,1))*s
-        tr.r = rot.rot_mat()
-        tr.t = tran
+        tr.r = (rot.rot_mat()).round(8)
+        tr.t = tran.round(8)
         copies.append(tr)
         i += 1
       gr.copies = copies
@@ -118,7 +121,7 @@ def separate_rot_tran(x,s=1.0,
     else:
       return ncs_restraints_group_list
 
-def rotation_to_angles(rotation, deg=False):
+def rotation_to_angles(rotation, deg=True):
   """
   Get the rotation angles around the axis x,y,x for rotation r
   Such that r = Rx*Ry*Rz
@@ -165,9 +168,9 @@ def rotation_to_angles(rotation, deg=False):
     # Convert to degrees
     angles = 180*angles/math.pi
     # angles2 = 180*angles2/math.pi
-  return angles
+  return angles.round(5)
 
-def angles_to_rotation(angles_xyz, deg=False, rotation_is_tuple=False):
+def angles_to_rotation(angles_xyz, deg=True, rotation_is_tuple=False):
   """
   Calculate rotation matrix R, such that R = Rx(alpha)*Ry(beta)*Rz(gamma)
 
@@ -185,9 +188,9 @@ def angles_to_rotation(angles_xyz, deg=False, rotation_is_tuple=False):
   rot = scitbx.rigid_body.rb_mat_xyz(the=alpha, psi=beta, phi=gamma, deg=deg)
   R = rot.rot_mat()
   if rotation_is_tuple:
-    return R.round(8).elems
+    return R.round(6).elems
   else:
-    return flex.double(R.round(8))
+    return flex.double(R.round(6))
 
 def shake_transformations(x,
                           shake_angles_sigma      = 0.035,
@@ -221,7 +224,8 @@ def compute_transform_grad(grad_wrt_xyz,
                            xyz_asu,
                            x,
                            ncs_restraints_group_list=None,
-                           transforms_obj=None):
+                           transforms_obj=None,
+                           deg=True):
   """
   Compute gradient in respect to the rotation angles and the translation
   vectors. R = Rx(the)Ry(psi)Rz(phi)
@@ -248,18 +252,22 @@ def compute_transform_grad(grad_wrt_xyz,
     xyz_ncs_transform = xyz_asu.select(nrg.master_iselection)
     for nrg_copy in nrg.copies:
       grad_ncs_wrt_xyz = grad_wrt_xyz.select(nrg_copy.copy_iselection)
-      assert xyz_ncs_transform.size() == grad_ncs_wrt_xyz.size()
+      xyz_len = xyz_ncs_transform.size()
+      assert xyz_len == grad_ncs_wrt_xyz.size()
       grad_wrt_t = list(grad_ncs_wrt_xyz.sum())
+      # Use the coordinate center for rotation
+      mu_c = flex.vec3_double([xyz_ncs_transform.sum()]) * (1/xyz_len)
+      xyz_cm = xyz_ncs_transform - flex.vec3_double(list(mu_c) * xyz_len)
       # Sum angles gradient over the coordinates
-      m = grad_ncs_wrt_xyz.transpose_multiply(xyz_ncs_transform)
+      m = grad_ncs_wrt_xyz.transpose_multiply(xyz_cm)
       m = matrix.sqr(m)
       # Calculate gradient with respect to the rotation angles
       the,psi,phi = x[i*6:i*6+3]
       rot = scitbx.rigid_body.rb_mat_xyz(
-        the=the, psi=psi, phi=phi, deg=False)
-      g_the = (m*rot.r_the().transpose()).trace()
-      g_psi = (m*rot.r_psi().transpose()).trace()
-      g_phi = (m*rot.r_phi().transpose()).trace()
+        the=the, psi=psi, phi=phi, deg=deg)
+      g_the = (m * rot.r_the().transpose()).trace()
+      g_psi = (m * rot.r_psi().transpose()).trace()
+      g_phi = (m * rot.r_phi().transpose()).trace()
       g.extend([g_the, g_psi, g_phi])
       g.extend(grad_wrt_t)
       i += 1
@@ -519,3 +527,4 @@ def get_ncs_related_selection(ncs_restraints_group_list,asu_size):
   ts = flex.size_t(list(total_ncs_related_selection))
   selection = flex.bool(asu_size, ts)
   return selection
+

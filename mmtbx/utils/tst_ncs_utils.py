@@ -38,6 +38,8 @@ class test_rotation_angles_conversion(object):
       (-0.4017753, math.pi/2, 2.6422171))
     self.rot_angles3 = flex.double(
       (-0.4017753, -math.pi/2, 2.6422171))
+    self.rot_angles1_deg = flex.double(
+      (-0.4017753, 1.2001985, 2.6422171)) * 180/math.pi
     self.rotation1 = matrix.sqr(self.rot1.as_double())
     self.rotation2 = matrix.sqr(self.rot2.as_double())
     self.translation1 = matrix.rec((0.5,-0.5,0),(3,1))
@@ -52,19 +54,19 @@ class test_rotation_angles_conversion(object):
       pdb_hierarchy_inp=pdb_obj,
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])
-    results = nu.concatenate_rot_tran(transforms_obj)
+    results = nu.concatenate_rot_tran(transforms_obj,deg=False)
     expected = flex.double([
       -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
       2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
     assert approx_equal(results,expected,1.0e-4)
     s = 2.0
-    results = nu.concatenate_rot_tran(transforms_obj,s=s)
+    results = nu.concatenate_rot_tran(transforms_obj,s=s,deg=False)
     expected = flex.double([
       -0.40177529, 1.20019851, 2.64221706, 0.5/s, -0.5/s, 0.0,
       2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
     assert approx_equal(results,expected,1.0e-4)
 
-  def test_separate_rot_tran(self):
+  def test_update_rot_tran(self):
     """
     Verify correct conversion from angles and translation
     to rotation matrices and translations """
@@ -78,8 +80,8 @@ class test_rotation_angles_conversion(object):
     x = flex.double([
       -0.40177529, 1.20019851, 2.64221706, 0.5/s, -0.5/s, 0.0,
       2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
-    transforms_obj = nu.separate_rot_tran(
-      x=x,transforms_obj=transforms_obj,s=s)
+    transforms_obj = nu.update_rot_tran(
+      x=x,transforms_obj=transforms_obj,s=s,deg=False)
     rot_results, tran_results = nu.get_rotation_translation_as_list(
       transforms_obj=transforms_obj)
     rot_expected = [self.rotation1, self.rotation2]
@@ -100,7 +102,7 @@ class test_rotation_angles_conversion(object):
     result = nu.angles_to_rotation(angles_xyz=angles,deg=False)
     assert approx_equal(expected,result,1e-4)
     # convert to Degrees
-    angles = angles/math.pi*180
+    angles = self.rot_angles1/math.pi*180
     result = nu.angles_to_rotation(angles_xyz=angles,deg=True)
     assert approx_equal(expected,result,1e-4)
     # test the rotations with sin(beta)==0
@@ -124,6 +126,9 @@ class test_rotation_angles_conversion(object):
     r = self.rot1.as_double()
     expected_angles = self.rot_angles1
     angles = nu.rotation_to_angles(rotation=r, deg=False)
+    assert approx_equal(expected_angles,angles,1e-3)
+    expected_angles = self.rot_angles1_deg
+    angles = nu.rotation_to_angles(rotation=r, deg=True)
     assert approx_equal(expected_angles,angles,1e-3)
     # Test cos(beta)=0
     # sin(beta) = 1
@@ -176,20 +181,23 @@ class test_rotation_angles_conversion(object):
       translations=[self.translation1,self.translation2])
 
     ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
-    x1 = nu.concatenate_rot_tran(transforms_obj)
+    x1 = nu.concatenate_rot_tran(transforms_obj,deg=False)
     x2 = nu.shake_transformations(
       x = x1,
       shake_angles_sigma=0.035,
       shake_translation_sigma=0.5)
     # update with shaken parameters
-    transforms_obj = nu.separate_rot_tran(
-      x=x2, transforms_obj=transforms_obj)
-    ncs_restraints_group_list = nu.separate_rot_tran(
-      x=x2, ncs_restraints_group_list=ncs_restraints_group_list)
+    transforms_obj = nu.update_rot_tran(
+      x=x2, transforms_obj=transforms_obj,deg=False)
+    ncs_restraints_group_list = nu.update_rot_tran(
+      x=x2, ncs_restraints_group_list=ncs_restraints_group_list,
+      deg=False)
 
     x3 = nu.concatenate_rot_tran(
-      ncs_restraints_group_list=ncs_restraints_group_list)
-    x4 = nu.concatenate_rot_tran(transforms_obj=transforms_obj)
+      ncs_restraints_group_list=ncs_restraints_group_list,
+      deg=False)
+    x4 = nu.concatenate_rot_tran(
+      transforms_obj=transforms_obj,deg=False)
     assert abs(sum(list(x3-x4))) < 1.0e-3
 
     the,psi,phi =x2[6:9]
@@ -202,6 +210,25 @@ class test_rotation_angles_conversion(object):
       the=the, psi=psi, phi=phi, deg=False)
     a4 = rot.rot_mat()
     assert abs(sum(list(a3-a4))) < 1.0e-3
+
+    # test that update_rot_tran dose not unintentionally change x
+    round_val = 3
+    r_elems = []
+    for rec in ncs_restraints_group_list:
+      for c in rec.copies:
+        r = c.r.round(round_val)
+        r_elems.append(r.elems)
+
+    for deg in [True,False]:
+      x = nu.concatenate_rot_tran(
+        ncs_restraints_group_list=ncs_restraints_group_list,deg=deg)
+      ncs_restraints_group_list = nu.update_rot_tran(
+        x=x,deg=deg,
+        ncs_restraints_group_list=ncs_restraints_group_list)
+      for rec in ncs_restraints_group_list:
+        for i,c in enumerate(rec.copies):
+          r = c.r.round(round_val)
+          assert r_elems[i] == r.elems
 
   def test_ncs_selection(self):
     """
@@ -258,7 +285,7 @@ if __name__=='__main__':
   t.test_matrix_to_angles()
   t.test_working_with_tuples()
   t.test_concatenate_rot_tran()
-  t.test_separate_rot_tran()
+  t.test_update_rot_tran()
   t.test_update_x()
   t.test_ncs_selection()
   t.test_ncs_related_selction()
