@@ -472,8 +472,25 @@ class XrayFrame (AppFrame,XFBaseClass) :
     if dialog.GetFilterIndex() == 0:
         from cStringIO import StringIO
 
-        flex_img = self.pyslip.tiles.raw_image.get_flex_image(
-          brightness=self.settings.brightness / 100)
+        # XXX Copied from tile_generation.py; all its disclaimers
+        # apply.
+        raw_img = self.pyslip.tiles.raw_image
+        detector = raw_img.get_detector()
+        if len(detector) > 1:
+          from tile_generation import _get_flex_image_multipanel
+          flex_img = _get_flex_image_multipanel(
+            brightness=self.settings.brightness / 100,
+            panels=detector,
+            raw_data=[raw_img.get_raw_data(i)
+                      for i in range(len(detector))])
+        else:
+          from tile_generation import _get_flex_image
+          flex_img = _get_flex_image(
+            brightness=self.settings.brightness / 100,
+            data=raw_img.get_raw_data(),
+            saturation=detector[0].get_trusted_range()[1],
+            vendortype=raw_img.__class__.__name__)
+
         if flex_img.supports_rotated_tiles_antialiasing_recommended:
             currentZoom = self.pyslip.level
             self.pyslip.tiles.UseLevel(0) #1:1 zoom level
