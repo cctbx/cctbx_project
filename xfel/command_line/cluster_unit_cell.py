@@ -38,7 +38,8 @@ if __name__ == "__main__":
   parser.add_argument('--log', action='store_true',
                     help="Display the dendrogram with a log scale")
   parser.add_argument('--files', action='store_true', default=False,
-                      help="Display the dendrogram with a log scale")
+                      help="Write files with lists of the images making up "
+                           "each cluster")
   args = parser.parse_args()
   run(args)
 #  parser.add_argument('-m', type=str, default='distance',
