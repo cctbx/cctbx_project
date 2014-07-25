@@ -137,10 +137,8 @@ def run(prefix="tst", d_min=1.0):
     x = x,
     shake_angles_sigma=1*math.pi/180,
     shake_translation_sigma=0.1)
-  transforms_obj = nu.separate_rot_tran(
-    x=x, transforms_obj=transforms_obj)
-  rm,tv = nu.get_rotation_translation_as_list(
-    transforms_obj=transforms_obj)
+  transforms_obj = nu.update_rot_tran(x=x, transforms_obj=transforms_obj)
+  rm,tv = nu.get_rotation_translation_as_list(transforms_obj=transforms_obj)
   # just to see how result of shaking looks like
   rm_ = ir+rm
   tv_ = it+tv

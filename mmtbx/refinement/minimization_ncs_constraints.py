@@ -187,9 +187,9 @@ class target_function_and_grads_real_space(object):
       if(not self.refine_transformations):
         g = grads_asu_to_one_ncs(
           ncs_restraints_group_list = self.ncs_restraints_group_list,
-          extended_ncs_selection     = self.extended_ncs_selection,
-          grad                 = g,
-          refine_sites         = self.refine_sites).as_double()
+          extended_ncs_selection    = self.extended_ncs_selection,
+          grad                      = g,
+          refine_sites              = self.refine_sites).as_double()
     return t, g
 
 class target_function_and_grads_reciprocal_space(object):
@@ -291,7 +291,7 @@ class lbfgs(object):
         ncs_restraints_group_list,
         target_and_grads_object,
         xray_structure,
-        refine_selection = None,
+        refine_selection             = None,
         finite_grad_differences_test = False,
         finite_grad_difference_val   = 0,
         max_iterations               = 35,
@@ -353,7 +353,7 @@ class lbfgs(object):
     if not x: x = self.x
     if self.refine_transformations:
       # update the ncs_restraint_groups transforms
-      self.ncs_restraints_group_list = nu.separate_rot_tran(
+      self.ncs_restraints_group_list = nu.update_rot_tran(
         x=x, ncs_restraints_group_list=self.ncs_restraints_group_list)
       # Use the new transformations to create the ASU
       x_ncs = nu.get_ncs_sites_cart(self).as_double()
@@ -403,6 +403,24 @@ class lbfgs(object):
 
     finite_grad_difference_val = abs(analytical - finite differences)
     """
+    # plot_t_vs_dx
+    # self_x_copy = self.x.deep_copy()
+    # t,_ = self.compute_functional_and_gradients(compute_gradients=False)
+    # data_points = [[0,t]]
+    # for d in xrange(-10,10):
+    #   dx = d * 1.0e-6
+    #   self.x[0]  = self_x_copy[0] + dx
+    #   t,_ = self.compute_functional_and_gradients(compute_gradients=False)
+    #   data_points.append([dx,t])
+    # grad_data = []
+    # l = len(data_points)
+    # x1, y1 = data_points[0]
+    # for j in range(1,l):
+    #   x2, y2 = data_points[j]
+    #   grad_data.append([x2,(y2-y1)/(x2-x1)])
+    #   x1, y1 = x2, y2
+
+    #
     g = g.as_double()
     # find the index of the max gradient value
     i_g_max = flex.max_index(flex.abs(g))
