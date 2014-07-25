@@ -179,7 +179,7 @@ class ncs_minimization_test(object):
         ncs_restraints_group_list    = self.ncs_restraints_group_list,
         refine_selection             = self.refine_selection,
         finite_grad_differences_test = self.finite_grad_differences_test,
-        max_iterations               = 100,
+        max_iterations               = 150,
         refine_sites                 = self.sites,
         refine_u_iso                 = self.u_iso,
         refine_transformations       = self.transformations)
