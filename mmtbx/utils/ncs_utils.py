@@ -223,6 +223,7 @@ def shake_transformations(x,
 def compute_transform_grad(grad_wrt_xyz,
                            xyz_asu,
                            x,
+                           coordinate_center = True,
                            ncs_restraints_group_list=None,
                            transforms_obj=None,
                            deg=True):
@@ -259,7 +260,10 @@ def compute_transform_grad(grad_wrt_xyz,
       mu_c = flex.vec3_double([xyz_ncs_transform.sum()]) * (1/xyz_len)
       xyz_cm = xyz_ncs_transform - flex.vec3_double(list(mu_c) * xyz_len)
       # Sum angles gradient over the coordinates
-      m = grad_ncs_wrt_xyz.transpose_multiply(xyz_cm)
+      if coordinate_center:
+        m = grad_ncs_wrt_xyz.transpose_multiply(xyz_cm)
+      else:
+        m = grad_ncs_wrt_xyz.transpose_multiply(xyz_ncs_transform)
       m = matrix.sqr(m)
       # Calculate gradient with respect to the rotation angles
       the,psi,phi = x[i*6:i*6+3]
