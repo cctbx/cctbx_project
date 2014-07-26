@@ -68,8 +68,8 @@ output {
   include scope libtbx.phil.interface.tracking_params
   format = xplor *ccp4 dsn6
     .type = choice
-    .caption = XPLOR CCP4
-  extension = *Auto ccp4 xplor map
+    .caption = XPLOR CCP4 DSN6
+  extension = *Auto ccp4 xplor map dsn6
     .type = choice
 }
 r_free_flags {
