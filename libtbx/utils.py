@@ -27,7 +27,21 @@ CON PRN AUX NUL COM1 COM2 COM3 COM4 COM5 COM6 COM7 COM8 COM9
 LPT1 LPT2 LPT3 LPT4 LPT5 LPT6 LPT7 LPT8 LPT9""".split()
 
 def xfrange(start, stop=None, step=None, tolerance=None):
-  """A float range generator."""
+  """
+  A float range generator.
+
+  Parameters
+  ----------
+  start : float
+  stop : float, optional
+      If empty, start at 0 and stop at the start parameter.
+  step : float, optional
+  tolerance : float, optional
+
+  Returns
+  -------
+  generator of float
+  """
 
   if stop is None:
     stop = start + 0.0
@@ -46,24 +60,91 @@ def xfrange(start, stop=None, step=None, tolerance=None):
     yield start + i * step
 
 def frange(start, stop=None, step=None):
+  """
+  Non-generator version of xfrange.
+
+  Parameters
+  ----------
+  start : float
+  stop : float, optional
+      If empty, start at 0 and stop at the start parameter.
+  step : float, optional
+
+  Returns
+  -------
+  list of float
+
+  See Also
+  --------
+  libtbx.utils.xfrange
+  """
   return list(xfrange(start, stop=stop, step=step))
 
 def xsamples(start, stop=None, step=None, tolerance=1e-6):
+  """
+  Wraps xfrange, acts identically.
+
+  Parameters
+  ----------
+  start : float
+  stop : float, optional
+      If empty, start at 0 and stop at the start parameter.
+  step : float, optional
+  tolerance : float, optional
+
+  Returns
+  -------
+  generator of float
+
+  See Also
+  --------
+  libtbx.utils.xfrange
+  """
   return xfrange(start, stop, step, tolerance)
 
 def samples(start, stop=None, step=None, tolerance=1e-6):
+  """
+  Non-generator version of xsamples.
+
+  Parameters
+  ----------
+  start : float
+  stop : float, optional
+      If empty, start at 0 and stop at the start parameter.
+  step : float, optional
+  tolerance : float, optional
+
+  Returns
+  -------
+  list of float
+
+  See Also
+  --------
+  libtbx.utils.xfrange, libtbx.utils.xsamples
+  """
   return list(xsamples(start, stop, step, tolerance))
 
 def escape_sh_double_quoted(s):
-  "the result is supposed to be double-quoted when passed to sh"
+  """
+  The result is supposed to be double-quoted when passed to sh.
+  """
   if (s is None): return None
   return s.replace('\\','\\\\').replace('"','\\"')
 
 def xlen(seq):
+  """
+  """
   if (seq is None): return seq
   return len(seq)
 
 def product(seq):
+  """
+  Calculates the result of multiplying all elements of a sequence together.
+
+  Parameters
+  ----------
+  seq : iterable
+  """
   result = None
   for val in seq:
     if (result is None):
@@ -73,21 +154,54 @@ def product(seq):
   return result
 
 def sequence_index_dict(seq, must_be_unique=True):
+  """
+  Builds a dictionary for each element in seq mapped to its index in the sequence.
+
+  Parameters
+  ----------
+  seq : iterable of object
+  must_be_unique : bool, optional
+
+  Returns
+  -------
+  dict of object, int
+
+  Examples
+  --------
+  >>> libtbx.utils.sequence_index_dict(['a', 'b'])
+  {'a': 0, 'b': 1}
+  """
   result = {}
-  for i,elem in enumerate(seq):
-    if (must_be_unique): assert elem not in result
+  for i, elem in enumerate(seq):
+    if must_be_unique:
+      assert elem not in result
     result[elem] = i
   return result
 
 def number_from_string(string):
+  """
+  Tries to covert a string into an integer, using builtin int() as well as eval().
+
+  Parameters
+  ----------
+  string : str
+
+  Returns
+  -------
+  int
+
+  Raises
+  ------
+  ValueError
+      If string cannot be converted into an integer.
+  """
   # similar to libtbx.phil.number_from_value_string
   # (please review if making changes here)
   if (string.lower() in ["true", "false"]):
     raise ValueError(
       'Error interpreting "%s" as a numeric expression.' % string)
   try: return int(string)
-  except KeyboardInterrupt: raise
-  except Exception: pass
+  except ValueError: pass
   try: return eval(string, math.__dict__, {})
   except KeyboardInterrupt: raise
   except Exception:
@@ -96,6 +210,23 @@ def number_from_string(string):
         string, format_exception()))
 
 def gzip_open(file_name, mode):
+  """
+  Wraps gzip.open to open a .gz file.
+
+  Parameters
+  ----------
+  file_name : str
+  mode : str
+
+  Returns
+  -------
+  file
+
+  Raises
+  ------
+  RuntimeError
+      If gzip is not available.
+  """
   assert mode in ["r", "rb", "w", "wb", "a", "ab"]
   if (gzip is None):
     un = ""
@@ -106,6 +237,23 @@ def gzip_open(file_name, mode):
   return gzip.open(file_name, mode)
 
 def bz2_open(file_name, mode):
+  """
+  Wraps bz2.open to open a .bz2 file.
+
+  Parameters
+  ----------
+  file_name : str
+  mode : str
+
+  Returns
+  -------
+  file
+
+  Raises
+  ------
+  RuntimeError
+      If bz2 is not available.
+  """
   assert mode in ('r', 'w')
   if bz2 is None:
     raise RuntimeError('bz2 module not available: cannot %compress file %s'
@@ -117,6 +265,9 @@ def warn_if_unexpected_md5_hexdigest(
       expected_md5_hexdigests,
       hints=[],
       out=None):
+  """
+  ...
+  """
   m = hashlib_md5()
   m.update("\n".join(open(path).read().splitlines()))
   current_md5_hexdigest = m.hexdigest()
@@ -136,6 +287,9 @@ def warn_if_unexpected_md5_hexdigest(
   return True
 
 def get_memory_from_string(mem_str):
+  """
+  ...
+  """
   if type(mem_str)==type(1): return mem_str
   if type(mem_str)==type(1.): return mem_str
   mem_str = mem_str.replace(" ","").strip().upper()
@@ -167,6 +321,9 @@ def get_memory_from_string(mem_str):
   return num*factor
 
 def getenv_bool(variable_name, default=False):
+  """
+  ...
+  """
   value = os.environ.get(variable_name, None)
   if (value is None): return default
   value_lower = value.lower()
@@ -177,9 +334,32 @@ def getenv_bool(variable_name, default=False):
   return (value_lower in ["true", "1"])
 
 def file_size(file_name):
+  """
+  Wraps os.stat to calculate a file's size.
+
+  Parameters
+  ----------
+  file_name : str
+
+  Returns
+  -------
+  int : size of file, in bytes
+  """
   return os.stat(file_name).st_size
 
 def copy_file(source, target, compress=None):
+  """
+  Copies a file from source to target, optionally compressing it before writing
+  it out.
+
+  Parameters
+  ----------
+  source : str
+  target : str
+  compress : str, optional
+      The compression algorithm to use. Currently only ".gz" is supported. If
+      set, target becomes target + compress.
+  """
   assert op.isfile(source)
   if (op.isdir(target)):
     target = op.join(target, op.basename(source))
@@ -192,6 +372,15 @@ def copy_file(source, target, compress=None):
   del t
 
 def remove_files(pattern=None, paths=None, ensure_success=True):
+  """
+  Removes a file from disk.
+
+  Parameters
+  ----------
+  pattern : str, optional
+  paths : iterable of str, optional
+  ensure_success : bool, optional
+  """
   assert [pattern, paths].count(None) == 1
   if (paths is None):
     paths = glob.glob(pattern)
@@ -206,6 +395,19 @@ def remove_files(pattern=None, paths=None, ensure_success=True):
         os.remove(path)
 
 def find_files (dir_name, pattern="*", files_only=True) :
+  """
+  Find files matching a pattern in a directory.
+
+  Parameters
+  ----------
+  dir_name : str
+  pattern: str, optional
+  files_only : bool, optional
+
+  Returns
+  -------
+  list of str
+  """
   assert os.path.isdir(dir_name) and (pattern is not None)
   regex = re.compile(pattern)
   files = os.listdir(dir_name)
@@ -219,6 +421,19 @@ def find_files (dir_name, pattern="*", files_only=True) :
   return matching_files
 
 def sort_files_by_mtime (file_names=None, dir_name=None, reverse=False) :
+  """
+  Sorts a list of file names by when they were last modified, ascending.
+
+  Parameters
+  ----------
+  file_names : iterable of str, optional
+  dir_name : str, optional
+  reverse : bool, optional
+
+  Returns
+  -------
+  list of str
+  """
   assert ([file_names, dir_name].count(None) == 1)
   if (dir_name is not None) :
     assert os.path.isdir(dir_name)
@@ -226,19 +441,43 @@ def sort_files_by_mtime (file_names=None, dir_name=None, reverse=False) :
   files_and_mtimes = []
   for file_name in file_names :
     files_and_mtimes.append((file_name, os.path.getmtime(file_name)))
-  files_and_mtimes.sort(lambda x,y: cmp(x[1], y[1]))
+  files_and_mtimes.sort(key=lambda x: x[1])
   if (reverse) :
     files_and_mtimes.reverse()
   return [ file_name for file_name, mtime in files_and_mtimes ]
 
 def tupleize(x):
+  """
+  Coverts x into a tuple, either as a direct cast or by making it the sole
+  element of a tuple.
+
+  Parameters
+  ----------
+  x : object
+
+  Returns
+  -------
+  tuple
+  """
   try:
     return tuple(x)
-  except KeyboardInterrupt: raise
-  except Exception:
+  except TypeError:
     return (x,)
 
 def plural_s(n, suffix="s"):
+  """
+  Returns a suffix if n != 1.
+
+  Parameters
+  ----------
+  n : int
+  suffix : str, optional
+
+  Returns
+  -------
+  int
+  str
+  """
   if (n == 1): return n, ""
   return n, suffix
 
@@ -1102,6 +1341,19 @@ def get_build_tag(path=None):
   return tag
 
 def getcwd_safe () :
+  """
+  Returns the current working directory, raising Sorry if it has been deleted or
+  unmounted.
+
+  Returns
+  -------
+  str
+
+  Raises
+  ------
+  Sorry
+      If the current working directory has been deleted or unmounted.
+  """
   try :
     cwd = os.getcwd()
   except OSError, e :
@@ -1113,6 +1365,17 @@ def getcwd_safe () :
   return cwd
 
 def getcwd_or_default (default=None) :
+  """
+  Returns the current working directory or default if it cannot be found.
+
+  Parameters
+  ----------
+  default : str, optional
+
+  Returns
+  -------
+  str
+  """
   if (default is None) :
     if (os.name == "nt") :
       home_drive = os.environ.get("HOMEDRIVE", "C:")
@@ -1122,7 +1385,7 @@ def getcwd_or_default (default=None) :
       default = os.environ.get("HOME", "/")
   try :
     cwd = os.getcwd()
-  except OSError, e :
+  except OSError as e:
     if (e.errno == 2) :
       cwd = default
     else :
@@ -1191,6 +1454,13 @@ class tmp_dir_wrapper (object) :
     return True
 
 def show_development_warning (out=sys.stdout) :
+  """
+  Shows a warning when running an experimental program.
+
+  Parameters
+  ----------
+  out : file, optional
+  """
   print >> out, """
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!                  WARNING - EXPERIMENTAL PROGRAM                        !!
@@ -1410,6 +1680,6 @@ class download_target (object) :
 def cmd_exists(cmd):
   import subprocess
   return subprocess.call("type " + cmd,
-                         shell=True, 
+                         shell=True,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE) == 0
