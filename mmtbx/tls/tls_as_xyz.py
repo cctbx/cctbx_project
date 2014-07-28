@@ -197,7 +197,7 @@ class decompose_tls(object):
       l_3 = matrix.col((vecs[6], vecs[7], vecs[8]))
       l_x, l_y, l_z = l_3, l_2, l_1
       vals = [vals[2], vals[1], vals[0]]
-      print >> self.log, "re-assign: x, y, z = 3, 2, 1"
+      print >> self.log, "  re-assign: x, y, z = 3, 2, 1"
       tmp = l_x.cross(l_y) - l_z
       if(abs(tmp[0])>self.eps or abs(tmp[1])>self.eps or abs(tmp[2])>self.eps):
         print >> self.log, "  convert to right-handed"
@@ -206,37 +206,60 @@ class decompose_tls(object):
     elif(abs(vals[0]-vals[1])<self.eps and
          abs(vals[1]-vals[2])<self.eps and
          abs(vals[0]-vals[2])<self.eps):
+      print >> self.log, "  three eigenvalues are equal: make eigenvectors unit."
       l_x = matrix.col((1, 0, 0))
       l_y = matrix.col((0, 1, 0))
       l_z = matrix.col((0, 0, 1))
     elif([abs(vals[0]-vals[1])<self.eps,
           abs(vals[1]-vals[2])<self.eps,
           abs(vals[0]-vals[2])<self.eps].count(True)==1):
-      l_x = matrix.col((1, 0, 0))
-      l_y = matrix.col((0, 1, 0))
-      l_z = matrix.col((0, 0, 1))
-      #print "LOOK"
-      #l_1 = matrix.col((vecs[0], vecs[1], vecs[2]))
-      #l_2 = matrix.col((vecs[3], vecs[4], vecs[5]))
-      #l_3 = matrix.col((vecs[6], vecs[7], vecs[8]))
-      #l_x, l_y, l_z = l_3, l_2, l_1
-      ##
-      #from scitbx.array_family import flex
-      #tmp = flex.double([l_z[0], l_z[1], l_z[2]])
-      #ma = flex.min(flex.abs(tmp))
-      #zz = 999
-      #ib = None
-      #for i in xrange(3):
-      #  zz_ = abs(l_z[i]-ma)
-      #  if(zz_<zz):
-      #    zz = zz_
-      #    ib = i
-      #l_y =  matrix.col((l_z[0], l_z[1], l_z[2]))
-      #l_y = [l_y[0], l_y[1], l_y[2]]
-      #l_y[ib]=0
-      #l_y = matrix.col(l_y)
-      #l_y = l_y/math.sqrt(l_y[0]**2+l_y[1]**2+l_y[2]**2)
-      #l_x = l_y.cross(l_z)
+      print >> self.log, "  two eigenvalues are equal."
+      #def normalize_double(v):
+      #  i_small = None
+      #  v_small = v[0]
+      #  for i, vi in enumerate(v):
+      #    if(abs(vi)<=v_small):
+      #      v_small = abs(vi)
+      #      i_small = i
+      #  #
+      #  v[i_small]=0
+      #  ind = [0,1,2]
+      #  ind.remove(i_small)
+      #  v0 = v[ind[0]]
+      #  v1 = v[ind[1]]
+      #  v[ind[0]]=v1
+      #  v[ind[1]]=v0
+      #  #
+      #  i_small = None
+      #  v_small = v[0]
+      #  for i, vi in enumerate(v):
+      #    if(vi<=v_small):
+      #      v_small = vi
+      #      i_small = i
+      #  v[i_small] = -1.*v[i_small]
+      #  #
+      #  n = math.sqrt(v[0]**2+v[1]**2+v[2]**2)
+      #  v = [v[0]/n, v[1]/n, v[2]/n]
+      #  return v
+      #if(abs(vals[1]-vals[2])<self.eps):
+      #  l_x = matrix.col((vecs[0], vecs[1], vecs[2]))
+      #  ly = normalize_double(v=[l_x[0], l_x[1], l_x[2]])
+      #  l_y = matrix.col((ly[0], ly[1], ly[2]))
+      #  l_z = l_y.cross(l_x)
+      #elif(abs(vals[0]-vals[1])<self.eps):
+      #  l_z = matrix.col((vecs[6], vecs[7], vecs[8]))
+      #  ly = normalize_double(v=[l_z[0], l_z[1], l_z[2]])
+      #  l_y = matrix.col((ly[0], ly[1], ly[2]))
+      #  l_x = l_y.cross(l_z)
+      #else: assert 0
+      #
+      l_x = matrix.col((vecs[0], vecs[1], vecs[2]))
+      l_y = matrix.col((vecs[3], vecs[4], vecs[5]))
+      l_z = matrix.col((vecs[6], vecs[7], vecs[8]))
+      tmp = l_x.cross(l_y) - l_z
+      if(abs(tmp[0])>self.eps or abs(tmp[1])>self.eps or abs(tmp[2])>self.eps):
+        print >> self.log, "  convert to right-handed"
+        l_z = -1. * l_z
     #
     print >> self.log, "  eigen values :", " ".join([self.ff%i for i in vals])
     print >> self.log, "  eigen vectors:"
