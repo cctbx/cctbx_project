@@ -159,7 +159,9 @@ else:
 
 def adopt_init_args(obj, args, exclude=(), hide=False):
   """
-
+  Adopts the initial arguments passed to an object, allowing developers to skip
+  the tedious task of assigning each attribute of an instance in its __init__
+  method.
 
   Parameters
   ----------
@@ -170,7 +172,14 @@ def adopt_init_args(obj, args, exclude=(), hide=False):
 
   Examples
   --------
-
+  >>> class foo(object):
+  ...     def __init__(self, x, y=1, z=None):
+  ...         adopt_init_args(self, locals())
+  ...
+  >>> a = foo('a', z=10)
+  >>> assert a.x == 'a'
+  >>> assert a.y == 1
+  >>> assert a.z == 10
   """
   if ("self" in args): del args["self"]
   else:                del args["O"]
@@ -189,7 +198,7 @@ def adopt_init_args(obj, args, exclude=(), hide=False):
 def adopt_optional_init_args(obj, kwds):
   """
   Easy management of long list of arguments with default value
-  passed to __init__
+  passed to __init__.
 
   Parameters
   ----------
@@ -200,14 +209,12 @@ def adopt_optional_init_args(obj, kwds):
   --------
   >>> class foo(object):
   ...     z = 1
-  ...     def __init__(self, x, y, **kwds):
-  ...       self.x = x
-  ...       self.y = y
+  ...     def __init__(self, **kwds):
   ...       libtbx.adopt_optional_init_args(self, kwds)
   ...
-  >>> a = foo(x,y)
+  >>> a = foo()
   >>> assert a.z == 1
-  >>> a = foo(x,y, z=10)
+  >>> a = foo(z=10)
   >>> assert a.z == 10
   """
   for k,v in kwds.iteritems():
