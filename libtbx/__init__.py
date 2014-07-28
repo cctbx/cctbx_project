@@ -43,6 +43,18 @@ class AutoType(object):
   Class for creating the Auto instance, which mimics the behavior of None
   with respect to the 'is' and '==' operators; this is used throughout
   CCTBX to indicate parameters that should be determined automatically.
+
+  Examples
+  --------
+  >>> def f(optional=libtbx.Auto)
+  ...    if optional is libtbx.Auto:
+  ...        optional = 5
+  ...    return optional
+  ...
+  >>> print f()
+  5
+  >>> print f(optional=10)
+  10
   """
   singleton = None
 
@@ -57,39 +69,67 @@ class AutoType(object):
 Auto = AutoType()
 
 class slots_getstate_setstate(object):
+  """
+  Implements getstate and setstate for classes with __slots__ defined. Allows an
+  object to easily pickle only certain attributes.
+
+  Examples
+  --------
+  >>> class sym_pair(libtbx.slots_getstate_setstate):
+  ...     __slots__ = ["i_seq", "j_seq", "rt_mx_ji"]
+  ...     def __init__(self, i_seq, j_seq, rt_mx_ji):
+  ...         self.i_seq = i_seq
+  ...         self.j_seq = j_seq
+  ...         self.rt_mx_ji = rt_mx_ji
+  ...
+  """
 
   __slots__ = []
 
   def __getstate__(self):
-    return dict([(name, getattr(self, name)) for name in self.__slots__])
+    return dict((name, getattr(self, name)) for name in self.__slots__)
 
   def __setstate__(self, state):
     for name,value in state.items(): setattr(self, name, value)
 
 class mutable(slots_getstate_setstate):
-
   __slots__ = ["value"]
 
   def __init__(O, value):
     O.value = value
 
 class slots_getstate_setstate_default_initializer (slots_getstate_setstate) :
+  """
+  Merges together functionality from slots_getstate_setstate with
+  adopt_optional_init_args.
+  """
   def __init__ (self, **kwds) :
     kwds = dict(kwds)
     for key in kwds :
       setattr(self, key, kwds.get(key, None))
 
 class unpicklable(object):
+  """
+  An inheritable class that raises a runtime exception that an object is
+  unpicklable.
+  """
 
-  def raise_error(O):
+  def _raise_error(O):
     raise RuntimeError(
       "pickling of %s objects is disabled." % O.__class__.__name__)
 
-  def __getinitargs__(O): O.raise_error()
-  def __getstate__(O): O.raise_error()
-  def __setstate__(O, state): O.raise_error()
+  def __getinitargs__(O): O._raise_error()
+  def __getstate__(O): O._raise_error()
+  def __setstate__(O, state): O._raise_error()
 
 def only_element(sequence):
+  """
+  Raises an exception if sequence contains anything other than one element.
+
+  Parameters
+  ----------
+  sequence : list
+  """
   n = len(sequence)
   if (n == 1):
     return sequence[0]
@@ -118,6 +158,20 @@ else:
       return val
 
 def adopt_init_args(obj, args, exclude=(), hide=False):
+  """
+
+
+  Parameters
+  ----------
+  obj : object
+  args : list
+  exclude : list of str
+  hide : bool, optional
+
+  Examples
+  --------
+
+  """
   if ("self" in args): del args["self"]
   else:                del args["O"]
   for param in exclude:
@@ -133,22 +187,28 @@ def adopt_init_args(obj, args, exclude=(), hide=False):
       obj.__dict__[_key] = args[key]
 
 def adopt_optional_init_args(obj, kwds):
-  """\
-  Description:
-    Easy management of long list of arguments with default value
-    passed to __init__
-  Synopsis:
-    class foo(object):
-      z = 1
-      def __init__(self, x, y, **kwds):
-        self.x = x
-        self.y = y
-        adopt_optional_init_args(self, kwds)
+  """
+  Easy management of long list of arguments with default value
+  passed to __init__
 
-    a = foo(x,y)
-    assert a.z == 1
-    a = foo(x,y, z=10)
-    assert a.z == 10
+  Parameters
+  ----------
+  obj : object
+  kwds : dict
+
+  Examples
+  --------
+  >>> class foo(object):
+  ...     z = 1
+  ...     def __init__(self, x, y, **kwds):
+  ...       self.x = x
+  ...       self.y = y
+  ...       libtbx.adopt_optional_init_args(self, kwds)
+  ...
+  >>> a = foo(x,y)
+  >>> assert a.z == 1
+  >>> a = foo(x,y, z=10)
+  >>> assert a.z == 10
   """
   for k,v in kwds.iteritems():
     if not hasattr(obj.__class__, k):
@@ -203,21 +263,20 @@ if (sys.platform == "cygwin"):
 
 
 class property(object):
-  """ Syntactic sugar for defining class properties for those poor souls
+  """
+  Syntactic sugar for defining class properties for those poor souls
   who must stay compatible with older versions of Python which do not
   feature the @property decorator.
 
-  Synopsis:
-
-     class foo(object):
-
-        class bar(libtbx.property):
-           ''' documentation of the property
-               In the following, self is the object featuring the property.
-           '''
-           def fget(self): # getter
-           def fset(self, value): # setter
-           def fdel(self): # deleter
+  Examples
+  --------
+  >>> class foo(object):
+  ...     class bar(libtbx.property):
+  ...         'documentation of the property'
+  ...         # In the following, self is the object featuring the property.
+  ...         def fget(self): # getter
+  ...         def fset(self, value): # setter
+  ...         def fdel(self): # deleter
   """
 
   class __metaclass__(type):
