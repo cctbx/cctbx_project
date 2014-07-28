@@ -234,7 +234,7 @@ class matthews_rupp (scaling.xtriage_analysis) :
         self.n_residues)
       show_warning()
     else :
-      out.show_table(self.table)
+      out.show_table(self.table, equal_widths=False)
       if (self.n_copies == 1) :
         out.show_text(" Best guess : 1 copy in the ASU")
       else :
