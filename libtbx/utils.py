@@ -275,7 +275,19 @@ def warn_if_unexpected_md5_hexdigest(
       hints=[],
       out=None):
   """
-  ...
+  Checks the md5 hash of a file to see if it matches the expected hash.
+
+  Parameters
+  ----------
+  path : str
+  expected_md5_hexdigests : list of str
+  hints : list of str, optional
+  out : file, optional
+
+  Returns
+  -------
+  bool
+      False if md5 hash of file does not appear in expected_md5_hexdigests.
   """
   m = hashlib_md5()
   m.update("\n".join(open(path).read().splitlines()))
@@ -297,10 +309,28 @@ def warn_if_unexpected_md5_hexdigest(
 
 def get_memory_from_string(mem_str):
   """
-  ...
+  Converts a string of a memory or file size (i.e. "10G") into a number.
+
+  Parameters
+  ----------
+  mem_str : int or float
+
+  Returns
+  -------
+  int or float
+
+  Examples
+  --------
+  >>> libtbx.utils.get_memory_from_string("10G")
+  10737418240.0
+  >>> libtbx.utils.get_memory_from_string("10M")
+  10485760.0
+
+  Raises
+  ------
+  RuntimeError
   """
-  if type(mem_str)==type(1): return mem_str
-  if type(mem_str)==type(1.): return mem_str
+  if type(mem_str) in [type(1), type(1.)]: return mem_str
   mem_str = mem_str.replace(" ","").strip().upper()
   if mem_str == "": return 0
   factor=1024
@@ -313,7 +343,7 @@ def get_memory_from_string(mem_str):
     if num_str is not None:
       try:
         num = float(num_str)
-      except ValueError, e:
+      except ValueError as e:
         raise RuntimeError("""
    The numerical portion of %s is not a valid float
 """ % mem_str)
@@ -322,7 +352,7 @@ def get_memory_from_string(mem_str):
   else:
     try:
       num = int(mem_str)
-    except ValueError, e:
+    except ValueError as e:
       raise RuntimeError("""
    There is no memory unit or valid float in %s
 """ % mem_str)
@@ -331,7 +361,17 @@ def get_memory_from_string(mem_str):
 
 def getenv_bool(variable_name, default=False):
   """
-  ...
+  Checks the environment variables for variable, returning it as a boolean.
+
+  Parameters
+  ----------
+  variable_name : str
+  default : bool, optional
+      Returned if variable_name is not found.
+
+  Returns
+  -------
+  bool
   """
   value = os.environ.get(variable_name, None)
   if (value is None): return default
@@ -662,7 +702,15 @@ def format_exception():
 
 def show_exception_info_if_full_testing(prefix="EXCEPTION_INFO: "):
   """
-  ...
+  Shows information about an exception.
+
+  Parameters
+  ----------
+  prefix : str, optional
+
+  Returns
+  -------
+  str or None
   """
   import libtbx.load_env
   if (    not libtbx.env.full_testing
@@ -748,7 +796,6 @@ def date_and_time():
        + " %s %+03d%02d (%.2f s)" % (
            tzname, offs//3600, offs//60%60, seconds_since_epoch)
 
-
 class timer_base(object):
   """
   Base timer class used to calculate the time elapsed by various operations.
@@ -758,37 +805,78 @@ class timer_base(object):
     self.t = self.get()
 
   def elapsed(self):
+    """
+    Returns the time elapsed since object was initialized.
+
+    Returns
+    -------
+    time
+    """
     t = self.get()
     d = t - self.t
     return d
 
   def delta(self):
+    """
+    Returns time since last call of delta().
+
+    Returns
+    -------
+    time
+    """
     t = self.get()
     d = t - self.t
     self.t = t
     return d
 
   def show_elapsed(self, prefix="", out=None):
+    """
+    Prints the time since object was initialized.
+
+    Parameters
+    ----------
+    prefix : str, optional
+    out : file, optional
+    """
     if (out == None): out = sys.stdout
     print >> out, prefix+"%.2f s" % self.elapsed()
 
   def show_delta(self, prefix="", out=None):
+    """
+    Prints the time since last call of delta() or show_delta().
+
+    Parameters
+    ----------
+    prefix : str, optional
+    out : file, optional
+    """
     if (out == None): out = sys.stdout
     print >> out, prefix+"%.2f s" % self.delta()
 
 
 class user_plus_sys_time(timer_base):
   """
-  Timer class using os.times() to calculate time.
+  Timer class using os.times() to calculate time. Subclasses timer_base.
+
+  Methods
+  -------
+  get
   """
 
   def get(self):
+    """
+    Uses os.times() to calculate the time.
+    """
     t = os.times()
     return t[0] + t[1]
 
 class wall_clock_time(timer_base):
   """
-  Timer class using time.time() to calculate time.
+  Timer class using time.time() to calculate time. Subclasses timer_base.
+
+  Methods
+  -------
+  get
 
   Notes
   -----
@@ -799,10 +887,14 @@ class wall_clock_time(timer_base):
   """
 
   def get(self):
+    """
+    Uses time.time() to calculate the time.
+    """
     return time.time()
 
 class time_log(object):
   """
+  Class used to log the time that tasks take.
   """
 
   def __init__(self, label, use_wall_clock=False):
@@ -814,6 +906,9 @@ class time_log(object):
     self.timer = None
 
   def start(self):
+    """
+    Starts the timer.
+    """
     if (self.use_wall_clock):
       self.timer = wall_clock_time()
     else:
@@ -821,25 +916,58 @@ class time_log(object):
     return self
 
   def stop(self):
+    """
+    Stops the timer.
+    """
     self.delta = self.timer.delta()
     self.timer = None
     self.accumulation += self.delta
     self.n += 1
 
   def average(self):
-    return self.accumulation / max(1,self.n)
+    """
+    Calculates the average length for runs of the timer.
+
+    Returns
+    -------
+    float
+    """
+    return self.accumulation / max(1, self.n)
 
   def log(self):
+    """
+    Stops the timer and runs its report method.
+    """
     self.stop()
     return self.report()
 
   def log_elapsed(self, local_label):
+    """
+    Returns a string displaying the time elapsed since the timer was started.
+
+    Parameters
+    ----------
+    local_label : str
+        String appended to the end of the output
+
+    Returns
+    -------
+    str
+    """
     return "time_log: %s: %.2f elapsed %s" % (
       self.label, self.timer.elapsed(), local_label)
 
   legend = "time_log: label: n accumulation delta average"
 
   def report(self):
+    """
+    Returns a string including the label, number of stops, accumulated time,
+    delta time, and average time for runs of timer.
+
+    Returns
+    -------
+    str
+    """
     assert self.timer is None
     return "time_log: %s: %d %.2f %.3g %.3g" % (
       self.label, self.n, self.accumulation,
@@ -952,6 +1080,15 @@ def format_cpu_times(show_micro_seconds_per_tick=True):
 def show_total_time(
       out=None,
       show_micro_seconds_per_bytecode_instruction=True):
+  """
+  Prints the total CPU time and average time for each Python bytecode
+  instruction since the process was started.
+
+  Parameters
+  ----------
+  out : file, optional
+  show_micro_seconds_per_bytecode_instruction : bool, optional
+  """
   if (out == None): out = sys.stdout
   total_time = user_plus_sys_time().get()
   try: python_ticker = sys.gettickeraccumulation()
@@ -962,6 +1099,21 @@ def show_total_time(
   print >> out, "Total CPU time: %.2f %s" % human_readable_time(total_time)
 
 def show_wall_clock_time(seconds, out=None):
+  """
+  Prints seconds in a human-readable format.
+
+  Parameters
+  ----------
+  seconds : float
+  out : file, optional
+
+  Examples
+  --------
+  >>> show_wall_clock_time(750)
+  wall clock time: 12 minutes 30.00 seconds (750.00 seconds total)
+  >>> show_wall_clock_time(20)
+  wall clock time: 20.00 seconds
+  """
   if (out is None): out = sys.stdout
   print >> out, "wall clock time:",
   if (seconds < 120):
