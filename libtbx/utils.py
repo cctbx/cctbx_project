@@ -518,6 +518,9 @@ class Sorry(Exception):
   __module__ = Exception.__module__
 
   def reset_module (self) :
+    """
+    Reset the class module on an instance to libtbx.utils.
+    """
     self.__class__.__module__ = self.__class__.__orig_module__
 
 disable_tracebacklimit = "LIBTBX_DISABLE_TRACEBACKLIMIT" in os.environ
@@ -555,9 +558,21 @@ class Abort(Sorry) :
   __module__ = Exception.__module__
 
 class Failure(Sorry) :
+  """
+  Subclass of Sorry.
+  """
   __module__ = Exception.__module__
 
 def detect_multiprocessing_problem():
+  """
+  Checks python and library versions and availability to diagnose why
+  multiprocessing fails to work.
+
+  Returns
+  -------
+  str or None
+      String indicating why multiprocessing is not working.
+  """
   vers_info = sys.version_info[:2]
   if (vers_info < (2,6)):
     return "multiprocessing module not available:" \
@@ -586,10 +601,16 @@ def detect_multiprocessing_problem():
   return None
 
 def if_none(value, default):
+  """
+  Returns value or default if value is None.
+  """
   if (value is None): return default
   return value
 
 def format_exception():
+  """
+  Formats an Exception object...
+  """
   ei = sys.exc_info()
   type_ = ei[0].__name__
   value = str(ei[1])
@@ -604,6 +625,9 @@ def format_exception():
   return ("%s: %s" % (type_, value)).rstrip()
 
 def show_exception_info_if_full_testing(prefix="EXCEPTION_INFO: "):
+  """
+  ...
+  """
   import libtbx.load_env
   if (    not libtbx.env.full_testing
       and not disable_tracebacklimit):
@@ -629,6 +653,19 @@ def show_exception_info_if_full_testing(prefix="EXCEPTION_INFO: "):
   return msg
 
 def base36_encode(integer, width=None):
+  """
+  Encodes integer as a string in base 36, prepending 0's until string is of
+  length equal to width.
+
+  Parameters
+  ----------
+  integer : int
+  width : int, optional
+
+  Returns
+  -------
+  str
+  """
   digit_set = "0123456789abcdefghijklmnopqrstuvwxyz"
   digits = []
   while (integer != 0):
@@ -641,12 +678,28 @@ def base36_encode(integer, width=None):
   return "".join(digits)
 
 def base36_timestamp(seconds_since_epoch=None, multiplier=1000, width=10):
+  """
+  Encodes the number of seconds since the epoch in base 36.
+
+  Parameters
+  ----------
+  seconds_since_epoch : time, optional
+  multiplier : int, optional
+  width : int, optional
+  """
   s = seconds_since_epoch
   if (s is None):
     s = time.time()
   return base36_encode(integer=int(s * multiplier + 0.5), width=width)
 
 def date_and_time():
+  """
+  Converts the current time into a string.
+
+  Returns
+  -------
+  str
+  """
   seconds_since_epoch = time.time()
   localtime = time.localtime(seconds_since_epoch)
   if (time.daylight and localtime[8] != 0):
@@ -661,6 +714,9 @@ def date_and_time():
 
 
 class timer_base(object):
+  """
+  Base timer class used to calculate the time elapsed by various operations.
+  """
 
   def __init__(self):
     self.t = self.get()
@@ -686,23 +742,32 @@ class timer_base(object):
 
 
 class user_plus_sys_time(timer_base):
+  """
+  Timer class using os.times() to calculate time.
+  """
 
   def get(self):
     t = os.times()
     return t[0] + t[1]
 
-
 class wall_clock_time(timer_base):
-  """ motivation: when running multithreaded code, user_plus_sys_time
-  would report the cumulated times for all threads: not very useful
-  to analyse the scaling with the number of threads! Wall clock time, although
-  it is less reliable is the only solution in that case """
+  """
+  Timer class using time.time() to calculate time.
+
+  Notes
+  -----
+  When running multithreaded code, user_plus_sys_time would report the cumulated
+  times for all threads: not very useful to analyse the scaling with the number
+  of threads! Wall clock time, although it is less reliable is the only solution
+  in that case.
+  """
 
   def get(self):
     return time.time()
 
-
 class time_log(object):
+  """
+  """
 
   def __init__(self, label, use_wall_clock=False):
     self.label = label
@@ -745,6 +810,20 @@ class time_log(object):
       self.delta, self.average())
 
 def human_readable_time(time_in_seconds):
+  """
+  Rounds a time in seconds to the nearest days / hours / minutes, depending on
+  what unit is appropriate.
+
+  Parameters
+  ----------
+  time_in_seconds : int
+      Time, in seconds.
+
+  Returns
+  -------
+  int : The rounded time in some unit.
+  str : The accompanying units for the time.
+  """
   time_units = time_in_seconds
   time_unit = "seconds"
   if (time_units > 120):
@@ -759,6 +838,18 @@ def human_readable_time(time_in_seconds):
   return time_units, time_unit
 
 def human_readable_time_as_seconds(time_units, time_unit):
+  """
+  Converts time_units and time_unit back into a time with units of seconds.
+
+  Parameters
+  ----------
+  time_units : int
+  time_unit : str
+
+  Returns
+  -------
+  int
+  """
   if (isinstance(time_units, str)): time_units = float(time_units)
   if (time_unit == "seconds"): return time_units
   if (time_unit == "minutes"): return time_units*60
@@ -767,6 +858,20 @@ def human_readable_time_as_seconds(time_units, time_unit):
   raise RuntimeError("Unknown time_unit: %s" % time_unit)
 
 def format_timestamp_12_hour (unix_time, short=False, replace_with="unknown") :
+  """
+  Formats a unix_time in a 12-hour format.
+
+  Parameters
+  ----------
+  unix_time : time
+  short : bool, optional
+  replace_with : str, optional
+      Returned when unix_time is None.
+
+  Returns
+  -------
+  str
+  """
   if unix_time is None :
     return replace_with
   elif short :
@@ -775,6 +880,20 @@ def format_timestamp_12_hour (unix_time, short=False, replace_with="unknown") :
     return time.strftime("%b %d %Y %I:%M %p", time.localtime(float(unix_time)))
 
 def format_timestamp_24_hour (unix_time, short=False, replace_with="unknown") :
+  """
+  Formats a unix_time in a 24-hour format.
+
+  Parameters
+  ----------
+  unix_time : time
+  short : bool, optional
+  replace_with : str, optional
+      Returned when unix_time is None.
+
+  Returns
+  -------
+  str
+  """
   if unix_time is None :
     return "unknown"
   elif short :
@@ -936,6 +1055,14 @@ def allow_delete_directory (target_dir) :
   """
   Check for specified reserved directories which are standard on many systems;
   these should never be deleted as part of any program.
+
+  Parameters
+  ----------
+  target_dir : str
+
+  Returns
+  -------
+  bool
   """
   homedir = host_and_user().homedir
   safe_dirs = [
@@ -1031,7 +1158,9 @@ class buffered_indentor(indentor):
     self.buffer = []
 
 class null_out(object):
-  """Pseudo-filehandle for suppressing printed output."""
+  """
+  Pseudo-filehandle for suppressing printed output.
+  """
 
   def isatty(self): return False
   def close(self): pass
@@ -1040,7 +1169,20 @@ class null_out(object):
   def writelines(self, sequence): pass
 
 class raise_if_output(object):
-  "example use: sys.stdout = raise_if_output()"
+  """
+  Raises an exception when written to.
+
+  Raises
+  ------
+  RuntimeError
+
+  Examples
+  --------
+  >>> import sys
+  >>> sys.stdout = libtbx.utils.raise_if_output()
+  >>> print
+  RuntimeError
+  """
 
   def isatty(self): return False
   def close(self): pass
@@ -1068,7 +1210,16 @@ class multi_out(object):
         if (a is not None): a.write(f.getvalue())
 
   def register(self, label, file_object, atexit_send_to=None):
-    """Adds an output stream to the list."""
+    """
+    Adds an output stream to the list.
+
+    Parameters
+    ----------
+    label : str
+        Label for replacing the stream later
+    file_object : file
+    atexit_send_to : file, optional
+    """
     assert not self.closed
     self.labels.append(label)
     self.file_objects.append(file_object)
@@ -1080,6 +1231,16 @@ class multi_out(object):
         new_label,
         new_file_object,
         new_atexit_send_to=None):
+    """
+    Replaces a registered stream with a new file.
+
+    Parameters
+    ----------
+    old_label : str
+    new_label : str
+    new_file_object : file
+    new_atexit_send_to : file, optional
+    """
     i = self.labels.index(old_label)
     old_file_object = self.file_objects[i]
     new_file_object.write(old_file_object.getvalue())
@@ -1112,6 +1273,15 @@ class multi_out(object):
       file_object.writelines(sequence)
 
 def write_this_is_auto_generated(f, file_name_generator):
+  """
+  Writes a C header to a file indicating it was generated automatically.
+
+  Parameters
+  ----------
+  f : file
+  file_name_generator : str
+      Name of source generator.
+  """
   print >> f, """\
 /* *****************************************************
    THIS IS AN AUTOMATICALLY GENERATED FILE. DO NOT EDIT.
@@ -1164,6 +1334,23 @@ class input_with_prompt(object):
       sys.tracebacklimit = self.previous_tracebacklimit
 
 def count_max(assert_less_than):
+  """
+  Counts the number of times its generator is called, raising an exception if
+  called too many times.
+
+  Parameters
+  ----------
+  assert_less_than : int
+
+  Returns
+  -------
+  generator of None
+
+  Raises
+  ------
+  AssertionError
+      If .next() is called more than assert_less_than on the generator.
+  """
   i = 0
   while True:
     yield None
