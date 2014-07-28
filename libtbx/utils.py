@@ -1479,6 +1479,18 @@ def search_for(
       re_flags=0,
       lines=None,
       file_name=None):
+  """
+  Searches for a pattern in a file's contents.
+
+  Parameters
+  ----------
+  pattern : str
+  mode : str
+      One of "==", "find", "startswith", "endswith", "re.search", "re.match"
+  re_flags : int, optional
+  lines : iterable of str, optional
+  file_name : str, optional
+  """
   assert mode in ["==", "find", "startswith", "endswith", "re.search", "re.match"]
   assert [lines, file_name].count(None) == 1
   if (lines is None):
@@ -1508,7 +1520,6 @@ def search_for(
       if (re.match(pattern=pattern, string=l, flags=re_flags) is not None):
         a(l)
   return result
-
 
 class progress_displayed_as_fraction(object):
 
@@ -1544,6 +1555,25 @@ class progress_bar(progress_displayed_as_fraction):
     self.i += 1
 
 def format_float_with_standard_uncertainty(value, standard_uncertainty):
+  """
+  Formats a float, including the uncertainty in its value.
+
+  Parameters
+  ----------
+  value : float
+  standard_uncertainty : float
+
+  Returns
+  -------
+  str
+
+  Examples
+  --------
+  >>> libtbx.utils.format_float_with_standard_uncertainty(5e-3, 1e-3)
+  '0.0050(10)'
+  >>> libtbx.utils.format_float_with_standard_uncertainty(5e-3, 1e-6)
+  '0.0050000(10)'
+  """
   if standard_uncertainty < 1e-16: return str(value)
   precision = -int(round(math.log10(standard_uncertainty)))
   if precision > -1:
@@ -1560,6 +1590,17 @@ def format_float_with_standard_uncertainty(value, standard_uncertainty):
     return fmt_str %(round(value, precision), su)
 
 def random_hex_code(number_of_digits):
+  """
+  Creates a random string of hex characters.
+
+  Parameters
+  ----------
+  number_of_digits : int
+
+  Returns
+  -------
+  str
+  """
   import random
   digits = []
   for i_digit in xrange(number_of_digits):
@@ -1589,6 +1630,17 @@ def get_svn_revision(path=None):
   return rev
 
 def get_build_tag(path=None):
+  """
+  Returns the build tag for libtbx.
+
+  Parameters
+  ----------
+  path : str, optional
+
+  Returns
+  -------
+  str
+  """
   tag = None
   if path is None:
     import libtbx.load_env
@@ -1767,6 +1819,25 @@ def concatenate_python_script (out, file_name) :
   print >> out, ""
 
 def greek_time(secs):
+  """
+  Converts seconds into its closest form in greek units.
+
+  Parameters
+  ----------
+  secs : float
+
+  Returns
+  -------
+  float
+  str
+
+  Examples
+  --------
+  >>> libtbx.utils.greek_time(1e-3)
+  (1, "milli")
+  >>> libtbx.utils.greek_time(1e-6)
+  (1, "micro")
+  """
   for greek in ["","milli", "micro", "nano"]:
     if secs>1:
       break
