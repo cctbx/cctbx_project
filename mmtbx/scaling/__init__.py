@@ -67,7 +67,8 @@ class xtriage_output (slots_getstate_setstate) :
     """
     raise NotImplementedError()
 
-  def show_table (self, table, indent=0, plot_button=None) :
+  def show_table (self, table, indent=0, plot_button=None,
+      equal_widths=True) :
     """
     Display a formatted table.
     """
@@ -147,8 +148,8 @@ class printed_output (xtriage_output) :
   def show_lines (self, text) :
     print >> self.out, text
 
-  def show_table (self, table, indent=2, plot_button=None) :
-    print >> self.out, table.format(indent=indent)
+  def show_table (self, table, indent=2, plot_button=None, equal_widths=True) :
+    print >> self.out, table.format(indent=indent, equal_widths=equal_widths)
 
   def show_plot (self, table) :
     pass
@@ -194,8 +195,8 @@ class loggraph_output (xtriage_output) :
   def show_paragraph_header (self, text) : pass
   def show_preformatted_text (self, text) : pass
   def show_lines (self, text) : pass
-  def show_table (self, table, indent=2, plot_button=None) : pass
-  def show_text_columns (self, rows, indent=0) : pass
+  def show_table (self, *args, **kwds) : pass
+  def show_text_columns (self, *args, **kwds) : pass
   def newline (self) : pass
   def write (self, text) : pass
   def warn (self, text) : pass

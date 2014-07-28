@@ -92,7 +92,8 @@ class simple_table (object) :
     self.column_headers = list(column_headers)
     self._rows = table_rows
 
-  def format (self, indent=0) :
+  def format (self, indent=0, equal_widths=None) :
+    # FIXME equal_widths is a placeholder, does not currently work
     prefix = " " * indent
     return format(
       rows=[ self.column_headers ]+self._rows,

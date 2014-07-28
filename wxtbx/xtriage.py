@@ -152,7 +152,8 @@ class wx_output (wxtbx.windows.ChoiceBook,
     wx_text.SetFont(font)
     self._current_sizer.Add(wx_text, 0, wx.ALL, 5)
 
-  def show_table (self, table, indent=0, plot_button=False) :
+  def show_table (self, table, indent=0, plot_button=False,
+      equal_widths=None) :
     """
     Draw a wx.ListCtrl and populate from the table.  Can optionally include
     a button to launch a graph viewer window; this is used when the table
