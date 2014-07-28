@@ -133,6 +133,15 @@ def escape_sh_double_quoted(s):
 
 def xlen(seq):
   """
+  Returns the length of a sequence or None.
+
+  Parameters
+  ----------
+  seq : iterable or None
+
+  Returns
+  -------
+  int or None
   """
   if (seq is None): return seq
   return len(seq)
@@ -501,13 +510,27 @@ def flat_list(nested_list):
   return result
 
 def select_matching(key, choices, default=None):
+  """
+  Selects a value from choices where its key pattern matches key.
+
+  Parameters
+  ----------
+  key : str
+  choices : iterable of str, object
+  default : object, optional
+      Returned if no pattern matches key.
+
+  Returns
+  -------
+  object
+  """
   for key_pattern, value in choices:
     m = re.search(key_pattern, key)
     if m is not None: return value
   return default
 
-
-class Keep: pass
+class Keep:
+  pass
 
 class Sorry(Exception):
   """
@@ -528,6 +551,19 @@ disable_tracebacklimit = "LIBTBX_DISABLE_TRACEBACKLIMIT" in os.environ
 __prev_excepthook = sys.excepthook
 
 def sorry_excepthook(type, value, traceback):
+  """
+  Intercepts exception tracebacks, removing tracebacks for Sorry exceptions.
+
+  Parameters
+  ----------
+  type : type
+  value : Exception
+  traceback : traceback
+
+  Returns
+  -------
+  str
+  """
   tb_off = (not disable_tracebacklimit and isinstance(value, Sorry))
   if (tb_off):
     class __not_set(object): pass
@@ -940,8 +976,17 @@ def show_wall_clock_time(seconds, out=None):
     out_flush()
 
 class show_times:
+  """
+  Class to track the time past an instance's initialization.
+  """
 
   def __init__(self, time_start=None, out=None):
+    """
+    Parameters
+    ----------
+    time_start : time or str, optional
+    out : file, optional
+    """
     if (time_start is None):
       t = os.times()
       self.time_start = time.time() - (t[0] + t[1])
@@ -967,6 +1012,18 @@ class show_times:
     show_wall_clock_time(seconds=time.time()-self.time_start, out=out)
 
 def show_times_at_exit(time_start=None, out=None):
+  """
+  Shows the time since time_start at exit.
+
+  Parameters
+  ----------
+  time_start : time, optional
+  out : file, optional
+
+  See Also
+  --------
+  libtbx.utils.show_times
+  """
   atexit.register(show_times(time_start=time_start, out=out))
 
 class host_and_user:
@@ -1172,10 +1229,6 @@ class raise_if_output(object):
   """
   Raises an exception when written to.
 
-  Raises
-  ------
-  RuntimeError
-
   Examples
   --------
   >>> import sys
@@ -1184,11 +1237,29 @@ class raise_if_output(object):
   RuntimeError
   """
 
-  def isatty(self): return False
-  def close(self): pass
-  def flush(self): pass
-  def write(self, str): raise RuntimeError
-  def writelines(self, sequence): raise RuntimeError
+  def isatty(self):
+    return False
+
+  def close(self):
+    pass
+
+  def flush(self):
+    pass
+
+  def write(self, str):
+    """
+    Raises
+    ------
+    RuntimeError
+    """
+    raise RuntimeError
+  def writelines(self, sequence):
+    """
+    Raises
+    ------
+    RuntimeError
+    """
+    raise RuntimeError
 
 class multi_out(object):
   """
@@ -1760,25 +1831,62 @@ class download_progress (object) :
     self.n_kb_elapsed = 0
 
   def set_total_size (self, n_kb_total) :
+    """
+    Updates the total number of bytes to download and resets the number of bytes
+    downloaded.
+
+    Parameters
+    ----------
+    n_kb_total : int
+        Total size of download, in kilobytes.
+    """
     self.n_kb_total = n_kb_total
     self.n_kb_elapsed = 0
 
   def increment (self, n_kb) :
+    """
+    Increments the number of bytes downloaded.
+
+    Parameters
+    ----------
+    n_kb : int
+
+    Returns
+    -------
+    bool
+    """
     assert (self.n_kb_total is not None)
     self.n_kb_elapsed += n_kb
     return self.show_progress()
 
   def show_progress (self) :
+    """
+    Prints the number of bytes downloaded out of the total.
+
+    Returns
+    -------
+    bool
+    """
     self.log.write("\r%d/%d KB downloaded" % (self.n_kb_elapsed,
       self.n_kb_total))
     self.log.flush()
     return True
 
   def percent_finished (self) :
+    """
+    Calculates the percent completion of download.
+
+    Returns
+    -------
+    float
+    """
     assert (self.n_kb_total is not None)
     return 100 * min(1.0, self.n_kb_elapsed / self.n_kb_total)
 
   def complete (self) :
+    """
+    Prints a final message indicating download completion.
+    """
     self.log.write("\rDownload complete")
 
   def run_continuously (self) :
