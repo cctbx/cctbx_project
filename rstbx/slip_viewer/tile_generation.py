@@ -228,6 +228,38 @@ class _Tiles(object):
 
         self.flex_image.adjust(color_scheme=self.current_color_scheme)
 
+    def set_image_data(self, raw_image_data):
+      self.reset_the_cache()
+      # XXX Since there doesn't seem to be a good way to refresh the
+      # image (yet), the metrology has to be applied here, and not
+      # in frame.py.
+
+      detector = self.raw_image.get_detector()
+
+      if len(detector) > 1 and metrology_matrices is not None:
+        self.raw_image.apply_metrology_from_matrices(metrology_matrices)
+
+      if len(detector) > 1:
+        raise RuntimeError("Multipanel detectors not supported!")
+        ## XXX Special-case read of new-style images until multitile
+        ## images are fully supported in dxtbx.
+
+        ## beam should be close to 0 0 1 but don't kill ourselves with an assertion
+        ## assert self.raw_image.get_beam().get_direction()==(0.0,0.0,1.0)
+        #self.flex_image = _get_flex_image_multipanel(
+          #brightness=self.current_brightness / 100,
+          #panels=detector,
+          #raw_data=[self.raw_image.get_raw_data(i)
+                    #for i in range(len(self.raw_image.get_detector()))])
+      else:
+        self.flex_image = _get_flex_image(
+          brightness=self.current_brightness / 100,
+          data=raw_image_data,
+          saturation=self.raw_image.get_detector()[0].get_trusted_range()[1],
+          vendortype=self.raw_image.__class__.__name__)
+
+      self.flex_image.adjust(color_scheme=self.current_color_scheme)
+
     def update_brightness(self,b,color_scheme=0):
         if len(self.raw_image.get_detector()) > 1:
           # XXX Special-case read of new-style images until multitile
