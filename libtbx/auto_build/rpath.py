@@ -90,9 +90,13 @@ class FixLinuxRpath(object):
     p = check_output(['ldd', filename])
     for line in p.split("\n"):
       fields = line.split("=>")
-      lib, found = fields[0], fields[1]
-      if "not found" in found:
-        ret.append(lib.strip())
+      try :
+        lib, found = fields[0], fields[1]
+        if "not found" in found:
+          ret.append(lib.strip())
+      except Exception :
+        print "PARSER ERROR:"
+        print fields
     return ret
 
   def run(self, root, replace=None):
