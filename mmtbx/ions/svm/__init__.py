@@ -9,8 +9,6 @@ details.
 
 See Also
 --------
-mmtbx.ions.environment
-mmtbx.ions.geometry
 phenix_dev.ion_identification.nader_ml
 """
 
