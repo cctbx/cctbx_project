@@ -3,12 +3,24 @@ from __future__ import division
 from libtbx.utils import Sorry
 
 class fmodels(object):
+  """
+  Container object for F_model values used during refinement.
+
+  Attributes
+  ----------
+  fmodel_xray :
+  fmodel_neutron :
+  xray_scattering_dict :
+  neutron_scattering_dict :
+  neutron_refinement :
+  twin_law :
+  """
   def __init__(self, fmodel_xray = None,
                      fmodel_neutron = None,
                      xray_scattering_dict = None,
                      neutron_scattering_dict = None,
                      neutron_refinement = None,
-                     twin_law = None, # XXX used below in ONE plase to avoid running into a BUG in twin_f_model
+                     twin_law = None, # XXX used below in ONE place to avoid running into a BUG in twin_f_model
                      log = None):
     self.fmodel_x = fmodel_xray
     self.fmodel_n = fmodel_neutron
@@ -29,6 +41,13 @@ class fmodels(object):
     self.create_target_functors()
 
   def pseudo_deep_copy(self):
+    """
+    Makes a deep copy of self.
+
+    Returns
+    -------
+    mmtbx.fmodels
+    """
     fmodel_n_dc = None
     if(self.fmodel_n is not None):
       fmodel_n_dc = self.fmodel_n.deep_copy()
@@ -43,6 +62,23 @@ class fmodels(object):
     return result
 
   def resolution_filter(self, d_min):
+    """
+    Returns a copy of self with a resolution filter applied to the x-ray and
+    neutron maps above a given resolution.
+
+    Parameters
+    ----------
+    d_min : float
+        Reflections with resolutions <= d_min are removed.
+
+    Returns
+    -------
+    mmtbx.fmodels
+
+    See Also
+    --------
+    mmtbx.f_model.manager.resolution_filter
+    """
     fmodel_n_dc = None
     if(self.fmodel_n is not None):
       fmodel_n_dc = self.fmodel_n.resolution_filter(d_min = d_min)
@@ -56,6 +92,9 @@ class fmodels(object):
     return result
 
   def fmodel_xray(self, xray_structure = None):
+    """
+    ...
+    """
     if(self.fmodel_x is not None):
       if(self.fmodel_n is not None):
         if(xray_structure is not None):
@@ -71,6 +110,9 @@ class fmodels(object):
     return self.fmodel_x
 
   def fmodel_neutron(self, xray_structure = None):
+    """
+    ...
+    """
     if(self.fmodel_n is not None):
       if(xray_structure is not None):
         self.fmodel_n.xray_structure = xray_structure
@@ -87,6 +129,9 @@ class fmodels(object):
                                   update_f_calc  = None,
                                   update_f_mask  = None,
                                   force_update_f_mask = False):
+    """
+    ...
+    """
     if(self.fmodel_x is not None):
       self.fmodel_xray(xray_structure = xray_structure).update_xray_structure(
         xray_structure = xray_structure,
@@ -101,6 +146,9 @@ class fmodels(object):
         force_update_f_mask = force_update_f_mask)
 
   def show_short(self, log=None):
+    """
+    ...
+    """
     if log is None: log = self.log
     if(self.fmodel_x is not None):
       prefix = ""
@@ -113,6 +161,9 @@ class fmodels(object):
         header = "neutron data", out = log)
 
   def show_comprehensive(self, message = ""):
+    """
+    ...
+    """
     from mmtbx.refinement import print_statistics
     print_statistics.make_sub_header("X-ray data", out = self.log)
     if(self.fmodel_x is not None):
@@ -132,6 +183,9 @@ class fmodels(object):
         log                 = None,
         apply_back_trace    = False,
         refine_hd_scattering=None):
+    """
+    ...
+    """
     if log is None: log = self.log
     fast=True
     if(params.mode=="slow"): fast=False
@@ -174,6 +228,9 @@ class fmodels(object):
       self.fmodel_n.show(log = log, suffix = msg)
 
   def show_targets(self, log, text=""):
+    """
+    ...
+    """
     prefix_x = ""
     if(self.fmodel_n is not None):
       prefix_x = "xray"
@@ -182,23 +239,35 @@ class fmodels(object):
       self.fmodel_neutron().info().show_targets(out= log, text="neutron "+text)
 
   def update(self, target_name=None):
+    """
+    ...
+    """
     if(self.fmodel_x is not None):
       self.fmodel_x.update(target_name=target_name)
     if(self.fmodel_n is not None):
       self.fmodel_n.update(target_name=target_name)
 
   def create_target_functors(self):
+    """
+    ...
+    """
     self.target_functor_xray = self.fmodel_xray().target_functor()
     self.target_functor_neutron = None
     if(self.fmodel_n is not None):
       self.target_functor_neutron = self.fmodel_neutron().target_functor()
 
   def prepare_target_functors_for_minimization(self):
+    """
+    ...
+    """
     self.target_functor_xray.prepare_for_minimization()
     if (self.target_functor_neutron is not None):
       self.target_functor_neutron.prepare_for_minimization()
 
   def target_functions_are_invariant_under_allowed_origin_shifts(self):
+    """
+    ...
+    """
     for f in [
           self.target_functor_xray,
           self.target_functor_neutron]:
@@ -208,10 +277,16 @@ class fmodels(object):
     return True
 
   def target_functor_result_xray(self, compute_gradients):
+    """
+    ...
+    """
     fmx = self.fmodel_xray()
     return self.target_functor_xray(compute_gradients = compute_gradients)
 
   def target_functor_result_neutron(self, compute_gradients):
+    """
+    ...
+    """
     result = None
     if(self.fmodel_n is not None):
       fmn = self.fmodel_neutron()
@@ -220,6 +295,9 @@ class fmodels(object):
 
   def target_and_gradients(self, weights, compute_gradients,
         u_iso_refinable_params = None, occupancy = False):
+    """
+    ...
+    """
     tfx = self.target_functor_result_xray
     tfn = self.target_functor_result_neutron
     class tg(object):
@@ -269,6 +347,23 @@ class fmodels(object):
     return result
 
 class map_names(object):
+  """
+  Class used for parsing and external display of a map type's name.
+
+  Attributes
+  ----------
+  k : float
+     Scale for F_obs.
+  n : float
+      Scale for F_model.
+  ml_map : bool
+  anomalous : bool
+  anomalous_residual : bool
+  phaser_sad_llg : bool
+  kicked : bool
+  f_obs_filled : bool
+
+  """
 
   FC = ['fcalc','fcal','fc', 'fmodel','fmod','fm']
   DFC = ['dfcalc','dfcal','dfc', 'dfmodel','dfmod','dfm']
@@ -390,6 +485,9 @@ class map_names(object):
       #if self.n < 0: self.n *= -1
 
   def error(self, s):
+    """
+    Raises an exception for bad map names.
+    """
     msg="""\n
 Wrong map type requested: %s
   Allowed format is: %s
@@ -405,6 +503,14 @@ Wrong map type requested: %s
     raise Sorry(msg%(s,format))
 
   def format(self):
+    """
+    Formats a map name for external display.
+
+    Examples
+    --------
+    >>> r = mmtbx.map_names(map_name_string="mFo-DFc ")
+    ... assert r.format() == "mFobs-DFmodel"
+    """
     if (not self.anomalous) and (not self.phaser_sad_llg) :
       if(abs(int(self.k)-self.k)<1.e-6): k = str(int(self.k))
       else: k = str(self.k)
