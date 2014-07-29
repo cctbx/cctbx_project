@@ -348,7 +348,7 @@ class fmodels(object):
 
 class map_names(object):
   """
-  Class used for parsing and external display of a map type's name.
+  Class used for parsing and external display of map's name.
 
   Attributes
   ----------
@@ -362,7 +362,6 @@ class map_names(object):
   phaser_sad_llg : bool
   kicked : bool
   f_obs_filled : bool
-
   """
 
   FC = ['fcalc','fcal','fc', 'fmodel','fmod','fm']
