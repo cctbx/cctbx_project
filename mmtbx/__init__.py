@@ -509,7 +509,8 @@ Wrong map type requested: %s
     Examples
     --------
     >>> r = mmtbx.map_names(map_name_string="mFo-DFc ")
-    ... assert r.format() == "mFobs-DFmodel"
+    >>> print r.format()
+    mFobs-DFmodel
     """
     if (not self.anomalous) and (not self.phaser_sad_llg) :
       if(abs(int(self.k)-self.k)<1.e-6): k = str(int(self.k))
