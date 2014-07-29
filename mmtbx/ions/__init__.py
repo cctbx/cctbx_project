@@ -49,6 +49,14 @@ class metal_parameters (group_args) :
     Returns
     -------
     str
+
+    Examples
+    --------
+    >>> from mmtbx.ions import metal_parameters
+    >>> print metal_parameters(element="FE", charge=3).scattering_type()
+    FE3+
+    >>> print metal_parameters(element="CL", charge=-1).scattering_type()
+    CL1-
     """
     charge_symbol = ""
     if (self.charge > 0) :
@@ -78,7 +86,7 @@ class parameter_server (slots_getstate_setstate) :
 
   def is_supported_element (self, symbol):
     """
-    Checks if symbol is a supported ion.
+    Checks if symbol is a supported element by this parameter server.
 
     Parameters
     ----------
@@ -111,13 +119,23 @@ class parameter_server (slots_getstate_setstate) :
 
     Parameters
     ----------
-    atom1 : ...
-    atom2 : ...
+    atom1 : mmtbx.ions.metal_parameters
+    atom2 : mmtbx.ions.metal_parameters
 
     Returns
     -------
     float or None
+        r_0 in the equation exp((r - r_0) / b)
     float or None
+        b in the equation exp((r - r_0) / b)
+
+    Examples
+    --------
+    >>> from mmtbx.ions import server, metal_parameters
+    >>> print server.get_valence_params(
+    ...   metal_parameters(element="ZN", charge=2),
+    ...   metal_parameters(element="N", charge=-3))
+    (1.77, 0.37)
     """
     for i_elem, symbol in enumerate(self.params['_lib_valence.atom_symbol']) :
       if (symbol == atom1.element) :
@@ -181,7 +199,7 @@ class parameter_server (slots_getstate_setstate) :
 
     Parameters
     ----------
-    atom : ...
+    atom : iotbx.pdb.hierarchy.atom or str
 
     Returns
     -------
@@ -195,7 +213,7 @@ class parameter_server (slots_getstate_setstate) :
       if hasattr(atom, "element") and isinstance(atom.element, str):
         return atom.element.strip().upper()
       resname = atom.fetch_labels().resname.strip().upper()
-    return self._get_charge_params(resname = resname)[0]
+    return self._get_charge_params(resname=resname)[0]
 
   def get_charge(self, atom):
     """
@@ -203,11 +221,23 @@ class parameter_server (slots_getstate_setstate) :
 
     Parameters
     ----------
-    atom : ...
+    atom : iotbx.pdb.hierarchy.atom or str
 
     Returns
     -------
     int
+
+    Examples
+    --------
+    >>> from iotbx.pdb.hierarchy import atom
+    >>> from mmtbx.ions import server
+    >>> atom_dummy = atom()
+    >>> atom_dummy.element = "N"
+    >>> atom_dummy.charge = "-3"
+    >>> print server.get_charge(atom_dummy)
+    -3
+    >>> print server.get_charge("N")
+    -3
     """
     if isinstance(atom, str):
       atom = atom.strip().upper()
@@ -228,15 +258,33 @@ class parameter_server (slots_getstate_setstate) :
 
   def get_charges(self, atom):
     """
-    Return all charges associated with element within ion_parameters.cif.
-    """
+    Retrieves all charges that are expected to be associated with an atom within
+    ion_parameters.cif. This list is manually updated based on the ligand IDs
+    listed by the PDB.
+
+    Parameters
+    ----------
+    atom : iotbx.pdb.hierarchy.atom or str
+
+    Returns
+    -------
+    list of int
+
+    Examples
+    --------
+    >>> from mmtbx.ions import server
+    >>> print server.get_charges("CU")
+    [1, 2, 3]
+    >>> print server.get_charges("ZN")
+    [1, 2, 3]
+   """
     element = self.get_element(atom)
     p = self.params
-    charges = []
+    charges = set()
     for i_elem, elem in enumerate(p["_lib_charge.element"]):
       if elem == element:
-        charges.append(int(p["_lib_charge.charge"][i_elem]))
-    return charges
+        charges.add(int(p["_lib_charge.charge"][i_elem]))
+    return sorted(charges)
 
   def get_metal_parameters (self, element):
     """
@@ -290,22 +338,32 @@ class parameter_server (slots_getstate_setstate) :
 
     Parameters
     ----------
-    ion : str
-    donor : str
+    ion : mmtbx.ions.metal_parameters
+    donor : mmtbx.ions.metal_parameters
     distance : float
 
     Returns
     -------
     float
+
+    Examples
+    --------
+    >>> from mmtbx.ions import server, metal_parameters
+    >>> ion = server.get_metal_parameters("ZN")
+    >>> donor = metal_parameters(element="N", charge="-3")
+    >>> valence = server.calculate_valence(ion, donor, 2.20)
+    >>> print round(valence, 2)
+    0.31
     """
-    if (not self.is_supported_donor(donor.element)) :
+    element = donor.element
+    if (not self.is_supported_donor(element)) :
       return 0
     r_0, b = self.get_valence_params(ion, donor)
     if (r_0 is None) :
       # Try again, this time using the default charge for the donor
       donor = metal_parameters(
-        charge = self.get_charge(donor.element),
-        element = donor.element)
+        charge=self.get_charge(element),
+        element=element)
       r_0, b = self.get_valence_params(ion, donor)
       if r_0 is None:
         return 0
@@ -319,20 +377,46 @@ class parameter_server (slots_getstate_setstate) :
 
     Parameters
     ----------
-    ion : str
+    ion : mmtbx.ions.metal_parameters
     nearby_atoms : list of mmtbx.ions.environment.atom_contact
 
     Returns
     -------
-    list of vector
+    list of scitbx.matrix.rec
         List of vectors, whose magnitudes are equal to the valence contributions
         from each donor atom.
+
+    Examples
+    --------
+    >>> from libtbx import group_args
+    >>> from iotbx.pdb.hierarchy import atom
+    >>> from mmtbx.ions import server
+    >>> from mmtbx.ions.environment import atom_contact
+    >>> from scitbx.matrix import rec
+    >>> ion = server.get_metal_parameters("ZN")
+    >>> vector_1 = rec([2.0, 0, 0], [1, 3])
+    >>> vector_2 = rec([-2.0, 0, 0], [1, 3])
+    >>> vector_3 = rec([0, 2.0, 0], [1, 3])
+    >>> vector_4 = rec([0, 0, 2.0], [1, 3])
+    >>> atom_dummy = atom()
+    >>> atom_dummy.element = "N"
+    >>> atom_dummy.charge = "-3"
+    >>> atom_dummy.occ = 1
+    >>> atom_dummy.parent = lambda: group_args(atoms=lambda: [])
+    >>> donors = [atom_contact(atom_dummy, vector_1, None, None),
+    ...           atom_contact(atom_dummy, vector_2, None, None),
+    ...           atom_contact(atom_dummy, vector_3, None, None),
+    ...           atom_contact(atom_dummy, vector_4, None, None)]
+    >>> vectors = server.calculate_valences(ion, donors)
+    >>> bvs = sum(abs(i) for i in vectors)
+    >>> print round(bvs, 2)
+    2.15
     """
     vectors = []
     for contact in nearby_atoms:
       donor = metal_parameters(
-        element = contact.element,
-        charge = contact.charge)
+        element=contact.element,
+        charge=contact.charge)
       distance = abs(contact.vector)
       valence = self.calculate_valence(ion, donor, distance) * contact.occ
       if valence == 0:
@@ -358,6 +442,12 @@ def check_supported (elements):
   Raises
   ------
   libtbx.utils.Sorry
+
+  Examples
+  --------
+  >>> from mmtbx.ions import check_supported
+  >>> check_supported(["CA", "ZN", "FE"])
+  True
   """
   if (elements is None) :
     raise Sorry("No elements specified for ion picking - must be either "+
