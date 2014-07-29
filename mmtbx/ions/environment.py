@@ -5,15 +5,14 @@ chemical environments.
 """
 
 from __future__ import division
+
+from collections import Counter
+
 from mmtbx import ions
 from iotbx.pdb import common_residue_names_get_class as get_class
-from scitbx.array_family import flex
-from scitbx.math import gaussian_fit_1d_analytical
 from scitbx.matrix import col, distance_from_plane
-from libtbx.utils import Sorry, xfrange
+from libtbx.utils import Sorry
 from libtbx import slots_getstate_setstate
-from collections import Counter
-from math import pi, cos, sin
 
 # Enums for the chemical environments supported by this module
 N_SUPPORTED_ENVIRONMENTS = 14
@@ -34,6 +33,9 @@ chem_carboxy, \
 
 
 class ScatteringEnvironment (slots_getstate_setstate):
+  """
+  Container for information summarizing a site's scattering environment.
+  """
   __slots__ = ["d_min", "wavelength", "fp", "fpp", "b_iso", "b_mean_hoh", "occ",
                "fo_density", "fofc_density", "anom_density", "pai"]
   def __init__(self,
@@ -55,7 +57,7 @@ class ScatteringEnvironment (slots_getstate_setstate):
     if (fo_density is not None) :
       self.fo_density = fo_density
     else :
-      self.fo_density = fit_gaussian(manager.unit_cell, atom.xyz, fo_map)
+      self.fo_density = ions.utils.fit_gaussian(manager.unit_cell, atom.xyz, fo_map)
     if (fofc_density is not None) :
       self.fofc_density = fofc_density
     else :
@@ -102,7 +104,7 @@ class atom_contact (slots_getstate_setstate) :
     """Distance from another contact"""
     return abs(self.vector - other.vector)
 
-  def id_str (self, suppress_rt_mx = False) :
+  def id_str (self, suppress_rt_mx=False) :
     if (not self.rt_mx.is_unit_mx()) and (not suppress_rt_mx) :
       return self.atom.id_str() + " " + str(self.rt_mx)
     else :
@@ -146,6 +148,9 @@ class atom_contact (slots_getstate_setstate) :
     return self.id_str()
 
 class ChemicalEnvironment (slots_getstate_setstate):
+  """
+  Container for information summarizing a site's chemical environment.
+  """
   __slots__ = ["atom", "contacts", "contacts_no_alts", "chemistry", "geometry"]
 
   def __init__(self, i_seq, contacts, manager):
@@ -171,14 +176,14 @@ class ChemicalEnvironment (slots_getstate_setstate):
     self.chemistry = self._get_chemical_environment(
       self.contacts_no_alts, manager)
     self.geometry = ions.geometry.find_coordination_geometry(
-      self.contacts_no_alts, minimizer_method = True)
+      self.contacts_no_alts, minimizer_method=True)
 
     # We can either store the contacts or generate a list of valences for all of
     # the atom types we want to test. I'm choosing the former because it's more
     # flexible down the road and contacts is pickable anyways.
     # self.valences = None
 
-  def get_valence(self, element, charge = None):
+  def get_valence(self, element, charge=None):
     """
     Calculates the BVS and VECSUM for a given element / charge identity.
 
@@ -192,9 +197,9 @@ class ChemicalEnvironment (slots_getstate_setstate):
     Returns
     -------
     float
-        BVS
+        Bond-valence sum (BVS).
     float
-        VECSUM
+        Vector sum (VECSUM).
 
     Notes
     -----
@@ -204,7 +209,7 @@ class ChemicalEnvironment (slots_getstate_setstate):
     """
     if charge is None:
       charge = ions.server.get_charge(element)
-    ion_params = ions.metal_parameters(element = element, charge = charge)
+    ion_params = ions.metal_parameters(element=element, charge=charge)
     vectors = ions.server.calculate_valences(ion_params, self.contacts)
     bvs = sum([abs(i) for i in vectors])
     vecsum = abs(sum(vectors, col((0, 0, 0))))
@@ -272,7 +277,7 @@ class ChemicalEnvironment (slots_getstate_setstate):
       # Add any of our included elements
       element = contact.element
       i_seq = contact.atom.i_seq
-      neighbor_elements = [ ions.server.get_element(manager.pdb_atoms[i])
+      neighbor_elements = [ions.server.get_element(manager.pdb_atoms[i])
                            for i in _non_hydrogen_neighbors(i_seq)]
 
       n_neighbors = _n_non_altlocs(_non_hydrogen_neighbors(i_seq))
@@ -335,13 +340,29 @@ def find_nearby_atoms (
     asu_mappings,
     asu_table,
     connectivity,
-    far_distance_cutoff = 3.0,
-    near_distance_cutoff = 1.5,
-    filter_by_bonding = True) :
+    far_distance_cutoff=3.0,
+    near_distance_cutoff=1.5,
+    filter_by_bonding=True):
   """
   Given site in the structure, return a list of nearby atoms with the
   supplied cutoff, and the vectors between them and the atom's site. Takes
   into account symmetry operations when finding nearby sites.
+
+  Parameters
+  ----------
+  i_seq : int
+  xray_structure : ...
+  pdb_atoms : ...
+  asu_mappings : ...
+  asu_table : ...
+  connectivity : ...
+  far_distance_cutoff : float, optional
+  near_distance_cutoff : float, optional
+  filter_by_bonding : bool, optional
+
+  Returns
+  -------
+  list of mmtbx.ions.environment.atom_contact
   """
   contacts = []
   unit_cell = xray_structure.unit_cell()
@@ -418,94 +439,8 @@ def find_nearby_atoms (
 ########################################################################
 # UTILITY METHODS
 #
-def _get_points_within_radius(point, radius, radius_step = 0.2,
-                              angle_step = pi / 5):
-  """
-  Generates a list of points and their associated radius in steps around a
-  sphere.
-
-  Parameters
-  ----------
-  point : tuple of float, float, float
-      X, Y, Z, coordinates to center the sampling around.
-  radius : float
-      Max radius around the center to sample.
-  radius_step : float, optional
-      Steps along the radius to use when sampling.
-  angle_step : float, optional
-      Steps around each radii distance to use when sampling. Amount is in
-      radians.
-
-  Returns
-  -------
-  list of tuple of float, float, float
-      List of points to be sampled.
-  list of float
-      List of radii corresponding to each point.
-  """
-
-  points = [point]
-  radiuses = [0]
-  for r in xfrange(radius_step, radius, radius_step):
-    for theta in xfrange(-pi, pi, angle_step):
-      for phi in xfrange(-pi, pi, angle_step):
-        x = r * cos(theta) * sin(phi) + point[0]
-        y = r * sin(theta) * sin(phi) + point[1]
-        z = r * cos(phi) + point[2]
-        points.append((x, y, z))
-        radiuses.append(r)
-
-  return points, radiuses
-
-def fit_gaussian(unit_cell, site_cart, real_map, radius=1.6):
-  """
-  Fit a gaussian function to the map around a site. Samples points in concentric
-  spheres up to radius away from the site.
-
-  f(x) = a * exp(-b * x ** 2)
-
-  Parameters
-  ----------
-  unit_cell : uctbx.unit_cell object
-  site_cart : tuple of float, float, float
-      The site's cartesian coordinates to sample the density around.
-  real_map : scitbx.array_family.flex
-      Real space map of the electron density in the unit cell.
-  radius : float, optional
-      The max radius to use for sampling.
-
-  Returns
-  -------
-  float
-      Height of gaussian curve.
-  float
-      Spread of guassian curve.
-  """
-  points, radiuses = _get_points_within_radius(site_cart, radius)
-
-  map_heights = \
-    [real_map.tricubic_interpolation(unit_cell.fractionalize(i))
-     for i in points]
-
-  # Gaussian functions can't have negative values, filter sampled points below
-  # zero to allow us to find the analytical solution (radius = 2.0 is too big
-  # for most atoms anyways)
-  x, y = flex.double(), flex.double()
-  for rad, height in zip(radiuses, map_heights):
-    if height > 0:
-      x.append(rad)
-      y.append(height)
-
-  try:
-    fit = gaussian_fit_1d_analytical(x = x, y = y)
-  except RuntimeError as err:
-    print(err)
-    return 0., 0.
-  else:
-    return fit.a, fit.b
-
 # XXX distance cutoff may be too generous, but 0.5 is too strict
-def is_coplanar_with_sidechain (atom, residue, distance_cutoff = 0.75) :
+def is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.75):
   """
   Given an isolated atom and an interacting residue with one or more amine
   groups, determine whether the atom is approximately coplanar with the terminus
@@ -569,7 +504,7 @@ def same_atom_different_altloc(atom1, atom2):
   res1, res2 = label1.resid(), label2.resid()
   return name1 == name2 and chain1 == chain2 and res1 == res2
 
-def count_coordinating_residues (nearby_atoms, distance_cutoff = 3.0) :
+def count_coordinating_residues (nearby_atoms, distance_cutoff=3.0):
   """
   Count the number of residues of each type involved in the coordination
   sphere.  This may yield additional clues to the identity of ions, e.g. only

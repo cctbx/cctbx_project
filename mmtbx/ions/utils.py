@@ -1,34 +1,44 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
-from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
-from libtbx.utils import null_out
-from math import sqrt
+
+from math import cos, pi, sin, sqrt
 import sys
 
-def anonymize_ions (hierarchy, log=sys.stdout) :
+from cctbx import crystal
+from cctbx.eltbx import sasaki, chemical_elements
+from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
+from libtbx.utils import null_out, xfrange
+from mmtbx.ions import server
+from scitbx.array_family import flex
+from scitbx.math import gaussian_fit_1d_analytical
+
+def anonymize_ions (hierarchy, log=sys.stdout):
   """
   Convert any elemental ions in the PDB hierarchy to water, resetting the
   occupancy and scaling the B-factor.  The atom segids will be set to the old
   resname.  NOTE: this does not change the corresponding scatterer in the xray
   structure, but a new xray structure can be obtained by calling
   hierarchy.extract_xray_structure(crystal_symmetry).
+
+  Parameters
+  ----------
+  hierarchy : ...
+  log : file, optional
   """
-  from cctbx.eltbx import sasaki, chemical_elements
-  import mmtbx.ions
   ion_resnames = set(chemical_elements.proper_upper_list())
-  for resname in mmtbx.ions.server.params["_lib_charge.resname"]:
+  for resname in server.params["_lib_charge.resname"]:
     if resname not in WATER_RES_NAMES:
       ion_resnames.add(resname)
   n_converted = 0
   hierarchy = hierarchy.deep_copy()
-  for model in hierarchy.models() :
-    for chain in model.chains() :
-      for residue_group in chain.residue_groups() :
-        for atom_group in residue_group.atom_groups() :
-          if (atom_group.resname.strip() in ion_resnames) :
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        for atom_group in residue_group.atom_groups():
+          if atom_group.resname.strip() in ion_resnames:
             atoms = atom_group.atoms()
             id_strs = []
-            for atom in atoms :
+            for atom in atoms:
               elem = atom.element.strip()
               if elem in ["H", "D"]:
                 atomic_number = 1
@@ -44,44 +54,54 @@ def anonymize_ions (hierarchy, log=sys.stdout) :
               atom.occupancy = 1.0
               atom.b = atom.b * (10 / atomic_number)
             atom_group.resname = "HOH"
-            for atom, id_str in zip(atoms, id_strs) :
+            for atom, id_str in zip(atoms, id_strs):
               print >> log, "%s --> %s, B-iso = %.2f" % (id_str, atom.id_str(),
                 atom.b)
               n_converted += 1
   return hierarchy, n_converted
 
-def sort_atoms_permutation (pdb_atoms, xray_structure) :
-  assert (pdb_atoms.size() == xray_structure.scatterers().size())
-  from scitbx.array_family import flex
+def sort_atoms_permutation (pdb_atoms, xray_structure):
+  """
+  """
+  assert pdb_atoms.size() == xray_structure.scatterers().size()
   pdb_atoms.reset_i_seq()
-  atoms_sorted = sorted(pdb_atoms, cmp_atom)
-  sele = flex.size_t([ atom.i_seq for atom in atoms_sorted ])
+  atoms_sorted = sorted(pdb_atoms, _cmp_atom)
+  sele = flex.size_t([atom.i_seq for atom in atoms_sorted])
   return sele
 
 # compare mass, then occupancy, then B_iso
-def cmp_atom (a, b) :
-  from cctbx.eltbx import sasaki
+def _cmp_atom (a, b):
   mass_a = sasaki.table(a.element.strip().upper()).atomic_number()
   mass_b = sasaki.table(b.element.strip().upper()).atomic_number()
-  if (mass_a == mass_b) :
-    if (a.occ == b.occ) :
+  if mass_a == mass_b:
+    if a.occ == b.occ:
       return cmp(b.b, a.b)
-    else :
+    else:
       return cmp(b.occ, a.occ)
-  else :
+  else:
     return cmp(mass_b, mass_a)
 
-def collect_ions (pdb_hierarchy) :
-  from cctbx.eltbx import chemical_elements
+def collect_ions (pdb_hierarchy):
+  """
+  Collects a list of all ions in pdb_hierarchy.
+
+  Parameters
+  ----------
+  pdb_hierarchy : ...
+
+  Returns
+  -------
+  list of atoms...
+  """
   elements = chemical_elements.proper_upper_list()
   ions = []
-  for model in pdb_hierarchy.models() :
-    for chain in model.chains() :
-      for residue_group in chain.residue_groups() :
-        for atom_group in residue_group.atom_groups() :
-          if (atom_group.resname.strip() in elements) :
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        for atom_group in residue_group.atom_groups():
+          if atom_group.resname.strip() in elements:
             atoms = atom_group.atoms()
-            assert (len(atoms) == 1)
+            assert len(atoms) == 1
             for atom in atoms:
               ions.append(atom)
   return ions
@@ -89,20 +109,20 @@ def collect_ions (pdb_hierarchy) :
 # TODO add test
 def compare_ions (hierarchy, reference_hierarchy, reference_xrs,
     distance_cutoff=2.0, log=None, ignore_elements=(), only_elements=(),
-    sel_str_base="segid ION") :
-  if (log is None) : log = null_out()
+    sel_str_base="segid ION"):
+  if log is None:
+    log = null_out()
   sel_cache = hierarchy.atom_selection_cache()
   sel_str = sel_str_base
-  if (len(only_elements) > 0) :
+  if len(only_elements) > 0:
     sel_str += " and (%s)" % " or ".join(
-      [ "element %s" % e for e in only_elements ])
-  elif (len(ignore_elements) > 0) :
+      ["element %s" % e for e in only_elements])
+  elif len(ignore_elements) > 0:
     sel_str += " and not (%s)" % " or ".join(
-      [ "element %s" % e for e in ignore_elements ])
+      ["element %s" % e for e in ignore_elements])
   ion_isel = sel_cache.selection(sel_str).iselection()
-  if (len(ion_isel) == 0) :
+  if len(ion_isel) == 0:
     return [], []
-  from cctbx import crystal
   pdb_atoms = hierarchy.atoms()
   pdb_atoms.reset_i_seq()
   ions = pdb_atoms.select(ion_isel)
@@ -112,22 +132,22 @@ def compare_ions (hierarchy, reference_hierarchy, reference_xrs,
   sites_cart = ions.extract_xyz()
   sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
   asu_mappings.process_sites_frac(sites_frac,
-    min_distance_sym_equiv = reference_xrs.min_distance_sym_equiv())
+    min_distance_sym_equiv=reference_xrs.min_distance_sym_equiv())
   pair_generator = crystal.neighbors_fast_pair_generator(
-    asu_mappings = asu_mappings,
-    distance_cutoff = distance_cutoff)
+    asu_mappings=asu_mappings,
+    distance_cutoff=distance_cutoff)
   reference_atoms = reference_hierarchy.atoms()
   n_xray = reference_xrs.scatterers().size()
   ion_ref_i_seqs = []
-  for k in range(len(ions)) :
+  for k in range(len(ions)):
     ion_ref_i_seqs.append([])
   for pair in pair_generator:
     if ((pair.i_seq < n_xray and pair.j_seq < n_xray) or
-        (pair.i_seq >= n_xray and pair.j_seq >= n_xray)) :
+        (pair.i_seq >= n_xray and pair.j_seq >= n_xray)):
       continue
-    if (pair.i_seq < n_xray) :
+    if pair.i_seq < n_xray:
       ion_seq, ref_seq = pair.j_seq, pair.i_seq
-    else :
+    else:
       ion_seq, ref_seq = pair.i_seq, pair.j_seq
     site_frac = sites_frac[ion_seq - n_xray]
     dxyz = sqrt(pair.dist_sq)
@@ -137,27 +157,113 @@ def compare_ions (hierarchy, reference_hierarchy, reference_xrs,
   # the reference model, although I haven't found a case of this yet
   matched = []
   missing = []
-  for i_seq, ref_i_seqs in enumerate(ion_ref_i_seqs) :
+  for i_seq, ref_i_seqs in enumerate(ion_ref_i_seqs):
     ion = ions[i_seq]
-    if (len(ref_i_seqs) == 0) :
+    if len(ref_i_seqs) == 0:
       print >> log, "No match for %s" % ion.id_str()
       missing.append(ion.id_str())
-    else :
+    else:
       ref_ions = []
-      for i_seq in ref_i_seqs :
+      for i_seq in ref_i_seqs:
         ref_atom = reference_atoms[i_seq]
-        if (ion.element.upper() == ref_atom.element.upper()) :
+        if ion.element.upper() == ref_atom.element.upper():
           ref_ions.append(ref_atom.id_str())
-      if (len(ref_ions) >= 1) :
+      if len(ref_ions) >= 1:
         matched.append(ion.id_str())
-        if (len(ref_ions) > 1) :
+        if len(ref_ions) > 1:
           print >> log, "Multiple matches for %s:" % ion.id_str()
-          for ref_ion in ref_ions :
+          for ref_ion in ref_ions:
             print >> log, "  %s" % ref_ion
-        else :
+        else:
           print >> log, "Ion %s matches %s" % (ion.id_str(),
             ref_ions[0])
-      else :
+      else:
         print >> log, "No match for %s" % ion.id_str()
         missing.append(ion.id_str())
   return matched, missing
+
+def _get_points_within_radius(point, radius, radius_step=0.2,
+                              angle_step=pi / 5):
+  """
+  Generates a list of points and their associated radius in steps around a
+  sphere.
+
+  Parameters
+  ----------
+  point : tuple of float, float, float
+      X, Y, Z, coordinates to center the sampling around.
+  radius : float
+      Max radius around the center to sample.
+  radius_step : float, optional
+      Steps along the radius to use when sampling.
+  angle_step : float, optional
+      Steps around each radii distance to use when sampling. Amount is in
+      radians.
+
+  Returns
+  -------
+  list of tuple of float, float, float
+      List of points to be sampled.
+  list of float
+      List of radii corresponding to each point.
+  """
+
+  points = [point]
+  radiuses = [0]
+  for r in xfrange(radius_step, radius, radius_step):
+    for theta in xfrange(-pi, pi, angle_step):
+      for phi in xfrange(-pi, pi, angle_step):
+        x = r * cos(theta) * sin(phi) + point[0]
+        y = r * sin(theta) * sin(phi) + point[1]
+        z = r * cos(phi) + point[2]
+        points.append((x, y, z))
+        radiuses.append(r)
+
+  return points, radiuses
+
+def fit_gaussian(unit_cell, site_cart, real_map, radius=1.6):
+  """
+  Fit a gaussian function to the map around a site. Samples points in concentric
+  spheres up to radius away from the site.
+
+  f(x) = a * exp(-b * x ** 2)
+
+  Parameters
+  ----------
+  unit_cell : uctbx.unit_cell object
+  site_cart : tuple of float, float, float
+      The site's cartesian coordinates to sample the density around.
+  real_map : scitbx.array_family.flex
+      Real space map of the electron density in the unit cell.
+  radius : float, optional
+      The max radius to use for sampling.
+
+  Returns
+  -------
+  float
+      Height of gaussian curve.
+  float
+      Spread of guassian curve.
+  """
+  points, radiuses = _get_points_within_radius(site_cart, radius)
+
+  map_heights = \
+    [real_map.tricubic_interpolation(unit_cell.fractionalize(i))
+     for i in points]
+
+  # Gaussian functions can't have negative values, filter sampled points below
+  # zero to allow us to find the analytical solution (radius = 2.0 is too big
+  # for most atoms anyways)
+  x, y = flex.double(), flex.double()
+  for rad, height in zip(radiuses, map_heights):
+    if height > 0:
+      x.append(rad)
+      y.append(height)
+
+  try:
+    fit = gaussian_fit_1d_analytical(x=x, y=y)
+  except RuntimeError as err:
+    print err
+    return 0., 0.
+  else:
+    return fit.a, fit.b
