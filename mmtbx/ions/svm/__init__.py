@@ -75,8 +75,8 @@ def _get_classifier(svm_name=None):
       The libsvm classifier used to predict the identities of ion sites.
   dict of str, bool
       Options to pass to ion_vector when collecting features about these sites.
-  tuple of (tuple of numpy.array of float, numpy.array of float), tuple of
-  float)
+  tuple of ((tuple of numpy.array of float, numpy.array of float),
+            tuple of float)
       The scaling parameters passed to scale_to.
   numpy.array of bool
       The features of the vector that were selected as important for
@@ -88,13 +88,13 @@ def _get_classifier(svm_name=None):
   --------
   svm.libsvm.svm_predict_probability
   mmtbx.ions.svm.predict_ion
-  phenix_dev.ion_identification.nader_ml.ions_test_ml_combos.train_svm
+  phenix_dev.ion_identification.nader_ml.ions_train_svms
   """
   assert (svmutil is not None)
   global _CLASSIFIER, _CLASSIFIER_OPTIONS
 
-  if svm_name is None:
-    svm_name = "heavy"
+  if not svm_name or svm_name is Auto:
+    svm_name = "merged_high_res"
 
   if svm_name not in _CLASSIFIER:
     svm_path = os.path.join(CLASSIFIERS_PATH, "{}.model".format(svm_name))
@@ -122,12 +122,12 @@ def ion_class(chem_env):
   Parameters
   ----------
   chem_env : mmtbx.ions.environment.ChemicalEnvironment
-      The object to extract the class from.
+      The object to extract the ion class from.
 
   Returns
   -------
   str
-      The class associated with the ion.
+      The class associated with the ion (i.e. "HOH" or "ZN").
   """
   if hasattr(chem_env.atom, "segid") and chem_env.atom.segid.strip():
     name = chem_env.atom.segid.strip().upper()
@@ -180,6 +180,7 @@ def ion_vector(chem_env, scatter_env, use_scatter=True, use_chem=True,
       Whether to use the actual height of the anomalous map instead of the
       calculated f'' values.
   d_min : bool, optional
+      Include the high resolution associated with the model as a feature.
 
   Returns
   -------
@@ -224,9 +225,10 @@ def ion_model_vector(scatter_env, d_min=True, nearest_res=0.5):
       An object containing information about the scattering environment at a
       site.
   d_min : bool, optional
+      Include the high resolution associated with the model as a feature.
   nearest_res : float, optional
-      If not None, the nearest value to round d_min to. Default value is 0.5
-      angstroms.
+      If not None, the nearest value to round d_min to. This value has no effect
+      if nearest_res is False.
 
   Returns
   -------
@@ -481,8 +483,8 @@ def predict_ion(chem_env, scatter_env, elements=None, svm_name=None):
   Returns
   -------
   list of tuple of str, float or None
-      Returns a list of classes and the probability associated with each or None
-      if the trained classifier cannot be loaded.
+      A sorted list of classes and the predicted probabilities associated with
+      each or None if the trained classifier cannot be loaded.
   """
 
   # Load the classifier and the parameters used to interact with it
@@ -571,6 +573,12 @@ svm_phil_str = """
 svm
   .expert_level = 3
 {
+  svm_name = Auto
+    .type = str
+    .help = "Name of SVM classifier to use"
+  filtered_outputs = True
+    .type = bool
+    .help = "Apply an filter to the outputs of the SVM, ensuring they are chemically sane"
   min_score = 0.2
     .type = float
   min_score_above = 0.1
@@ -638,7 +646,10 @@ class manager (mmtbx.ions.identify.manager) :
       candidates = None
     else:
       candidates.append("HOH")
-    predictions = predict_ion(chem_env, scatter_env, elements = candidates)
+    predictions = predict_ion(
+      chem_env, scatter_env,
+      elements=candidates, svm_name=self.params.svm.svm_name,
+      )
     if predictions is not None:
       # XXX: filtered candidates == probability > threshold?
       final_choice = None

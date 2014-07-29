@@ -4,6 +4,8 @@ Utility functions used within this module.
 """
 from __future__ import division
 
+from libtbx import Auto
+
 def iterate_sites(pdb_hierarchy, split_sites=False, res_filter=None):
   """
   Returns a generator iterating over all atoms in pdb_hierarchy. Optionally
@@ -34,3 +36,150 @@ def iterate_sites(pdb_hierarchy, split_sites=False, res_filter=None):
               if element in ["H", "D"]:
                 continue
               yield atom
+
+def _is_favorable_halide_environment(
+    chem_env, scatter_env, assume_hydrogens_all_missing=Auto,
+    ):
+  assume_hydrogens_all_missing = True
+  atom = chem_env.atom
+  binds_amide_hydrogen = False
+  near_cation = False
+  near_lys = False
+  near_hydroxyl = False
+  xyz = col(atom.xyz)
+  min_distance_to_cation = None
+  min_distance_to_hydroxyl = min_distance_to_cation
+  for contact in chem_env.contacts:
+    other = contact.atom
+    resname = contact.resname()
+    atom_name = contact.atom_name()
+    element = contact.element
+    distance = abs(contact)
+    # XXX need to figure out exactly what this should be - CL has a
+    # fairly large radius though (1.67A according to ener_lib.cif)
+    if distance < 2.5:
+      return False
+    if not element in ["C", "N", "H", "O", "S"]:
+      charge = server.get_charge(element)
+      if charge < 0 and distance <= 3.5:
+        # Nearby anion that is too close
+        return False
+      if charge > 0 and distance <= 3.5:
+        # Nearby cation
+        near_cation = True
+        if min_distance_to_cation is None or \
+          distance < min_distance_to_cation:
+          min_distance_to_cation = distance
+    # Lysine sidechains (can't determine planarity)
+    elif (atom_name in ["NZ"] and #, "NE", "NH1", "NH2"] and
+          resname in ["LYS"] and
+          distance <= 3.5):
+      near_lys = True
+      if min_distance_to_cation is None or \
+        distance < min_distance_to_cation:
+        min_distance_to_cation = distance
+    # sidechain amide groups, no hydrogens (except Arg)
+    # XXX this would be more reliable if we also calculate the expected
+    # hydrogen positions and use the vector method below
+    elif (atom_name in ["NZ", "NH1", "NH2", "ND2", "NE2"] and
+          resname in ["ARG", "ASN", "GLN"] and
+          (assume_hydrogens_all_missing or resname == "ARG") and
+          distance <= 3.5):
+      binds_amide_hydrogen = True
+      if resname == "ARG" and (
+          min_distance_to_cation is None or
+          distance < min_distance_to_cation):
+        min_distance_to_cation = distance
+    # hydroxyl groups - note that the orientation of the hydrogen is usually
+    # arbitrary and we can't determine precise bonding
+    elif ((atom_name in ["OG1", "OG2", "OH1"]) and
+          (resname in ["SER", "THR", "TYR"]) and
+          (distance <= 3.5)):
+      near_hydroxyl = True
+      if distance < min_distance_to_hydroxyl:
+        min_distance_to_hydroxyl = distance
+    # Backbone amide, implicit H
+    elif atom_name in ["N"] and assume_hydrogens_all_missing:
+      binds_amide_hydrogen = True
+      # xyz_n = col(contact.site_cart)
+      # bonded_atoms = connectivity[j_seq]
+      # ca_same = c_prev = None
+      # for k_seq in bonded_atoms:
+      #   other2 = pdb_atoms[k_seq]
+      #   if other2.name.strip().upper() in ["CA"]:
+      #     ca_same = col(get_site(k_seq))
+      #   elif other2.name.strip().upper() in ["C"]:
+      #     c_prev = col(get_site(k_seq))
+      # if ca_same is not None and c_prev is not None:
+      #   xyz_cca = (ca_same + c_prev) / 2
+      #   vec_ncca = xyz_n - xyz_cca
+      #   # 0.86 is the backbone N-H bond distance in geostd
+      #   xyz_h = xyz_n + (vec_ncca.normalize() * 0.86)
+      #   vec_nh = xyz_n - xyz_h
+      #   vec_nx = xyz_n - xyz
+      #   angle = abs(vec_nh.angle(vec_nx, deg=True))
+      #   if abs(angle - 180) <= 20:
+      #     binds_amide_hydrogen = True
+  # now check again for negatively charged sidechain (etc.) atoms (e.g.
+  # carboxyl groups), but with some leeway if a cation is also nearby.
+  # backbone carbonyl atoms are also excluded.
+  for contact in chem_env.contacts:
+    if contact.altloc() not in ["", "A"]:
+      continue
+    resname = contact.resname()
+    atom_name = contact.atom_name()
+    distance = abs(contact)
+    if ((distance < 3.2) and
+        (min_distance_to_cation is not None and
+         distance < (min_distance_to_cation + 0.2)) and
+        environment.is_negatively_charged_oxygen(atom_name, resname)):
+      return False
+  return binds_amide_hydrogen or near_cation or near_lys
+
+def filter_svm_outputs(chem_env, scatter_env, elements):
+  """
+  ...
+
+  Parameters
+  ----------
+  chem_env : mmtbx.ions.environment.ChemicalEnvironment
+  scatter_env : mmtbx.ions.environment.ScatteringEnvironment
+  elements : list of str
+
+  Returns
+  -------
+  list of str
+  """
+  bvs_ratio = 0.5
+  vecsum_cutoff = 1.0
+  ok_elements = []
+  for element in elements:
+    if element != "HOH":
+      if scatter_env.fo_density[0] < 1:
+        continue
+      if element not in ["NA", "MG"]:
+        if scatter_env.fofc_density[0] < 0:
+          continue
+      bvs, vecsum = chem_env.get_valence(element)
+      # bvs <= 0.5 * lower or bvs >= 1.5 * upper
+      if element not in ["F", "CL", "BR", "I"]:
+        # Require cations have okay BVS values
+        charges = _get_charges(element)
+        if bvs <= (1 - bvs_ratio) * min(charges):
+          continue
+        if bvs >= (1 + bvs_ratio) * max(charges):
+          continue
+      else:
+        # Require halides be touching at least one atom with a positive charge
+        if not _is_favorable_halide_environment(chem_env, scatter_env):
+          continue
+        # if len(chem_env.contacts) == 0 or \
+        #   not any(server.get_charge(i.atom) > 0 for i in chem_env.contacts):
+        #   print [(i.atom.id_str(), server.get_charge(i.atom)) for i in chem_env.contacts]
+        #   continue
+      if vecsum > 1:
+        continue
+      if any(abs(i.vector) < 1.8 for i in chem_env.contacts):
+        continue
+    ok_elements.append(element)
+  return ok_elements
