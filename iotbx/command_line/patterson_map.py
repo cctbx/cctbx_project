@@ -22,6 +22,8 @@ min_sigma_ratio = 3.0
   .optional = False
 remove_origin_peak = False
   .type = bool
+mandatory_factors = None
+  .type = ints
 """
 
 master_phil = libtbx.phil.parse("""
@@ -58,11 +60,14 @@ def calculate_patterson_map (data, params, normalize=False) :
   #d_star_sq = e.unit_cell().d_star_sq(e.indices())
   #dw = flex.exp(d_star_sq*2*(math.pi**2)*u_base)
   #eb = miller.array(miller_set=e, data=e.data()/dw)
+ 
   map = data.patterson_map(
     resolution_factor=params.resolution_factor,
+    mandatory_factors=params.mandatory_factors,
     d_min=params.high_resolution,
     sharpening=params.sharpening,
     origin_peak_removal=params.remove_origin_peak)
+  print "Map gridding: ",map.n_real()
   if (params.scaling == "sigma") :
     map.apply_sigma_scaling()
   else :
