@@ -51,7 +51,7 @@ _CLASSIFIER = {}
 _CLASSIFIER_OPTIONS = {}
 
 ALLOWED_IONS = [
-  "HOH", "NA", "MG", "CL", "K", "CA", "MN", "FE", "CO", "NI", "CU", "ZN", "CD",
+  "HOH", "MN", "ZN", "FE", "NI", "CA", "NA", "MG", "CL", "CU", "CO", "CD", "K",
   ]
 
 def _get_classifier(svm_name=None):
