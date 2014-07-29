@@ -369,11 +369,11 @@ def find_nearby_atoms (
   Parameters
   ----------
   i_seq : int
-  xray_structure : ...
-  pdb_atoms : ...
-  asu_mappings : ...
-  asu_table : ...
-  connectivity : ...
+  xray_structure : cctbx.xray.structure.structure
+  pdb_atoms : iotbx.pdb.hierarchy.af_shared_atom?
+  asu_mappings : cctbx.crystal.direct_space_asu.asu_mappings
+  asu_table : cctbx.crystal.pair_tables.pair_asu_table
+  connectivity : scitbx.array_family.shared.stl_set_unsigned
   far_distance_cutoff : float, optional
   near_distance_cutoff : float, optional
   filter_by_bonding : bool, optional
@@ -464,6 +464,16 @@ def is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.75):
   groups, determine whether the atom is approximately coplanar with the terminus
   of the sidechain (and thus interacting with the amine hydrogen(s) along
   approximately the same axis as the N-H bond).
+
+  Parameters
+  ----------
+  atom : iotbx.pdb.hierarchy.atom
+  residue : iotbx.pdb.hierarchy.residue
+  distance_cutoff : float, optional
+
+  Returns
+  -------
+  bool
   """
   sidechain_sites = []
   resname = residue.resname
