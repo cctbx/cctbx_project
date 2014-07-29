@@ -1,27 +1,30 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 
 from __future__ import division
-from libtbx import group_args, Auto, slots_getstate_setstate
-from libtbx.utils import Sorry
-from libtbx import group_args
+
 from math import exp
 import time
 import os
+
+import iotbx.cif
+from libtbx import group_args, Auto, slots_getstate_setstate
+from libtbx.utils import Sorry
+from libtbx import group_args
 
 DEFAULT_IONS = ["MG", "CA", "ZN", "CL"]
 HALIDES = ["F", "CL", "BR", "IOD"]
 TRANSITION_METALS = ["MN", "FE", "CO", "CU", "NI", "ZN", "PT"]
 SUPPORTED = TRANSITION_METALS + HALIDES + ["NA", "MG", "K", "CA", "CD", "HG"]
 
-def cif_param_as_list (param) :
+def _cif_param_as_list (param) :
   if (param == ".") : return None
   return param.split(",")
 
-def cif_param_as_int (param) :
+def _cif_param_as_int (param) :
   if (param == ".") : return None
   return int(param)
 
-def cif_param_as_float (param) :
+def _cif_param_as_float (param) :
   if (param == ".") : return None
   return float(param)
 
@@ -29,10 +32,24 @@ class metal_parameters (group_args) :
   def __str__ (self) :
     return "%s%+d" % (self.element.upper(), self.charge)
 
-  def charge_as_int (self) :
+  def charge_as_int (self):
+    """
+    Gets the charge of a parameter as an integer.
+
+    Returns
+    -------
+    int
+    """
     return self.charge
 
-  def scattering_type (self) :
+  def scattering_type (self):
+    """
+    Makes a string showing the element and its associated charge.
+
+    Returns
+    -------
+    str
+    """
     charge_symbol = ""
     if (self.charge > 0) :
       charge_symbol = "+"
@@ -49,10 +66,9 @@ class parameter_server (slots_getstate_setstate) :
   __slots__ = ["params", "_metal_params", "_charge_params", "_resname_elem",
                "_default_charges"]
   def __init__ (self) :
-    import iotbx.cif
     params_path = os.path.join(os.path.split(__file__)[0],
       "ion_parameters.cif")
-    assert (os.path.isfile(params_path))
+    assert os.path.isfile(params_path)
     cif_model = iotbx.cif.reader(file_path=params_path).model()
     self.params = cif_model["ions"]
     self._metal_params = {}
@@ -60,13 +76,49 @@ class parameter_server (slots_getstate_setstate) :
     self._resname_elem = {}
     self._default_charges = {}
 
-  def is_supported_element (self, symbol) :
-    return (symbol in self.params['_lib_valence.atom_symbol'])
+  def is_supported_element (self, symbol):
+    """
+    Checks if symbol is a supported ion.
+
+    Parameters
+    ----------
+    symbol : str
+
+    Returns
+    -------
+    bool
+    """
+    return symbol in self.params['_lib_valence.atom_symbol']
 
   def is_supported_donor (self, symbol) :
-    return (symbol in self.params['_lib_valence.donor_symbol'])
+    """
+    Checks if an element is a supported donor atom.
 
-  def get_valence_params (self, atom1, atom2) :
+    Parameters
+    ----------
+    symbol : str
+
+    Returns
+    -------
+    bool
+    """
+    return symbol in self.params['_lib_valence.donor_symbol']
+
+  def get_valence_params (self, atom1, atom2):
+    """
+    Gets the valence parameters (r_0 and b) used for calculating valences from
+    bond distances.
+
+    Parameters
+    ----------
+    atom1 : ...
+    atom2 : ...
+
+    Returns
+    -------
+    float or None
+    float or None
+    """
     for i_elem, symbol in enumerate(self.params['_lib_valence.atom_symbol']) :
       if (symbol == atom1.element) :
         i_charge = int(self.params['_lib_valence.atom_charge'][i_elem])
@@ -92,7 +144,7 @@ class parameter_server (slots_getstate_setstate) :
         return charge
     return 0
 
-  def _get_charge_params(self, resname, element = None):
+  def _get_charge_params(self, resname, element=None):
     resname = resname.strip().upper()
     if element is not None:
       element = element.strip().upper()
@@ -124,6 +176,17 @@ class parameter_server (slots_getstate_setstate) :
     return elem_charge
 
   def get_element(self, atom):
+    """
+    Gets the element associated with an atom.
+
+    Parameters
+    ----------
+    atom : ...
+
+    Returns
+    -------
+    str
+    """
     if isinstance(atom, str):
       resname = atom.strip().upper()
       if resname in self.params["_lib_charge.element"]:
@@ -135,14 +198,23 @@ class parameter_server (slots_getstate_setstate) :
     return self._get_charge_params(resname = resname)[0]
 
   def get_charge(self, atom):
+    """
+    Gets the charge associated with an atom.
+
+    Parameters
+    ----------
+    atom : ...
+
+    Returns
+    -------
+    int
+    """
     if isinstance(atom, str):
       atom = atom.strip().upper()
       try:
-        charge = \
-          self._get_charge_params(resname = atom)[1]
+        charge = self._get_charge_params(resname=atom)[1]
       except Sorry:
-        charge = \
-          self._get_charge_params(resname = "", element = atom)[1]
+        charge = self._get_charge_params(resname="", element=atom)[1]
     else:
       charge = atom.charge
       if not isinstance(charge, int):
@@ -151,12 +223,12 @@ class parameter_server (slots_getstate_setstate) :
         return charge
       resname = atom.fetch_labels().resname.strip().upper()
       element = atom.element.strip().upper()
-      charge = self._get_charge_params(resname = resname, element = element)[1]
+      charge = self._get_charge_params(resname=resname, element=element)[1]
     return charge
 
   def get_charges(self, atom):
     """
-    Return all charges associated with element in our table.
+    Return all charges associated with element within ion_parameters.cif.
     """
     element = self.get_element(atom)
     p = self.params
@@ -166,7 +238,18 @@ class parameter_server (slots_getstate_setstate) :
         charges.append(int(p["_lib_charge.charge"][i_elem]))
     return charges
 
-  def get_metal_parameters (self, element) :
+  def get_metal_parameters (self, element):
+    """
+    Gets all element parameters associated with an element.
+
+    Parameters
+    ----------
+    element : str
+
+    Returns
+    -------
+    mmtbx.ions.metal_parameters or None
+    """
     p = self.params
     for i_elem, symbol in enumerate(p['_lib_elems.element']) :
       if (symbol == element.upper()) :
@@ -175,26 +258,26 @@ class parameter_server (slots_getstate_setstate) :
         assert (p['_lib_ligands.element'][i_elem] == symbol)
         params = metal_parameters(
           element=symbol,
-          charge=cif_param_as_int(p['_lib_elems.charge'][i_elem]),
-          vec_sum_cutoff=cif_param_as_float(
+          charge=_cif_param_as_int(p['_lib_elems.charge'][i_elem]),
+          vec_sum_cutoff=_cif_param_as_float(
             p["_lib_elems.vec_sum_cutoff"][i_elem]),
-          coord_num_lower=cif_param_as_int(
+          coord_num_lower=_cif_param_as_int(
             p["_lib_elems.coord_num_lower"][i_elem]),
-          coord_num_upper=cif_param_as_int(
+          coord_num_upper=_cif_param_as_int(
             p["_lib_elems.coord_num_upper"][i_elem]),
-          min_coordinating_non_waters=cif_param_as_int(
+          min_coordinating_non_waters=_cif_param_as_int(
             p["_lib_elems.min_coordinating_non_waters"][i_elem]),
-          cvbs_lower=cif_param_as_float(p['_lib_elems.cvbs_lower'][i_elem]),
-          cvbs_upper=cif_param_as_float(p['_lib_elems.cvbs_upper'][i_elem]),
-          cvbs_expected=cif_param_as_float(
+          cvbs_lower=_cif_param_as_float(p['_lib_elems.cvbs_lower'][i_elem]),
+          cvbs_upper=_cif_param_as_float(p['_lib_elems.cvbs_upper'][i_elem]),
+          cvbs_expected=_cif_param_as_float(
             p['_lib_elems.cvbs_expected'][i_elem]),
-          allowed_coordinating_atoms=cif_param_as_list(
+          allowed_coordinating_atoms=_cif_param_as_list(
             p['_lib_ligands.allowed_coordinating_atoms'][i_elem]),
-          allowed_coordinating_residues=cif_param_as_list(
+          allowed_coordinating_residues=_cif_param_as_list(
             p['_lib_ligands.allowed_coordinating_residues'][i_elem]),
-          allowed_geometries=cif_param_as_list(
+          allowed_geometries=_cif_param_as_list(
             p['_lib_ligands.allowed_geometries'][i_elem]),
-          allowed_backbone_atoms=cif_param_as_list(
+          allowed_backbone_atoms=_cif_param_as_list(
             p['_lib_ligands.allowed_backbone_atoms'][i_elem]))
         self._metal_params[symbol] = params
         return params
@@ -204,6 +287,16 @@ class parameter_server (slots_getstate_setstate) :
     """
     Calculates the single valence contribution of one ion donor pair,
     separated by distance. ion and donor should be AtomGuess objects.
+
+    Parameters
+    ----------
+    ion : str
+    donor : str
+    distance : float
+
+    Returns
+    -------
+    float
     """
     if (not self.is_supported_donor(donor.element)) :
       return 0
@@ -224,8 +317,16 @@ class parameter_server (slots_getstate_setstate) :
     atom of nearby_atoms, each element of which should be a tuple of an
     atom and a vector from the ion's location.
 
-    Returns a list of vectors, whose magnitudes are equal to the valence
-    contributions from each donor atom.
+    Parameters
+    ----------
+    ion : str
+    nearby_atoms : list of mmtbx.ions.environment.atom_contact
+
+    Returns
+    -------
+    list of vector
+        List of vectors, whose magnitudes are equal to the valence contributions
+        from each donor atom.
     """
     vectors = []
     for contact in nearby_atoms:
@@ -242,7 +343,22 @@ class parameter_server (slots_getstate_setstate) :
         vectors.append(contact.vector / distance * valence)
     return vectors
 
-def check_supported (elements) :
+def check_supported (elements):
+  """
+  Checks if elements are supported by ion identitication process.
+
+  Parameters
+  ----------
+  elements : list of str
+
+  Returns
+  -------
+  bool
+
+  Raises
+  ------
+  libtbx.utils.Sorry
+  """
   if (elements is None) :
     raise Sorry("No elements specified for ion picking - must be either "+
       "'Auto' or a comma-separated list of element symbols.")
