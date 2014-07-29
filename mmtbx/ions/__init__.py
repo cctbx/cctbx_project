@@ -217,7 +217,7 @@ class parameter_server (slots_getstate_setstate) :
 
   def get_charge(self, atom):
     """
-    Gets the charge associated with an atom.
+    Gets the charge associated with an atom or element.
 
     Parameters
     ----------
@@ -258,9 +258,9 @@ class parameter_server (slots_getstate_setstate) :
 
   def get_charges(self, atom):
     """
-    Retrieves all charges that are expected to be associated with an atom within
-    ion_parameters.cif. This list is manually updated based on the ligand IDs
-    listed by the PDB.
+    Retrieves all charges that are expected to be associated with an atom or
+    element within ion_parameters.cif. This list is manually updated based on
+    the ligand IDs listed by the PDB.
 
     Parameters
     ----------
@@ -288,7 +288,7 @@ class parameter_server (slots_getstate_setstate) :
 
   def get_metal_parameters (self, element):
     """
-    Gets all element parameters associated with an element.
+    Gets all metal parameters associated with an element.
 
     Parameters
     ----------
