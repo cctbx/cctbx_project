@@ -1,6 +1,11 @@
 
++++++++++++++++++++++++++++++++++++++
+Computational Crystallography Toolbox
++++++++++++++++++++++++++++++++++++++
+
 .. _introduction:
 .. toctree::
+   :maxdepth: 1
 
    installation
    tour
@@ -10,12 +15,9 @@
    boost_adaptbx/index
    iotbx/index
    scitbx/index
-   cctbx/index
+   cctbx/cctbx
    mmtbx/index
 
-+++++++++++++++++++++++++++++++++++++
-Computational Crystallography Toolbox
-+++++++++++++++++++++++++++++++++++++
 
 Welcome to CCTBX's documentation!
 =================================
@@ -96,12 +98,13 @@ between the cctbx *project* and the cctbx *module*. In retrospect we should have
 chosen a different name for the project, but the current naming reflects how the
 modules have evolved and it would be too disruptive to start a grand renaming.
 
-:ref:`API Documentation for cctbx <cctbx>`
+:doc:`API Documentation for cctbx <cctbx/cctbx>`
 
 iotbx
 -----
 
 Libraries for reading and writing established file formats.
+
 
 :ref:`API Documentation for iotbx <iotbx>`
 
