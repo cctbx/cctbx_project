@@ -139,7 +139,7 @@ def run (args, out=sys.stdout) :
     base_tarfile = "../base-%(version)s-%(mtype)s.tar.gz" % \
       {"version":options.version, "mtype":options.mtype}
     call("tar -czf %(tarfile)s base" %
-      {"tarfile":base_tarfile, "base":base_dir}, log=out)
+      {"tarfile":base_tarfile}, log=out)
     shutil.rmtree("base")
     assert op.isfile(base_tarfile)
     if (options.dest is not None) :

@@ -636,11 +636,6 @@ class installer (object) :
     # run custom finalization
     self.product_specific_finalize_install(log)
     # reconfigure one last time (possibly unnecessary)
-    print >> out, "Updating build directory...",
-    log = open(op.join(self.tmp_dir, "final_config.log"), "w")
-    self.reconfigure(log=log)
-    log.close()
-    print >> out, "ok"
     self.display_final_message()
 
   def write_environment_files (self, out) :
