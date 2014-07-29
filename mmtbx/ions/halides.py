@@ -46,6 +46,26 @@ def is_favorable_halide_environment (
     unit_cell,
     params,
     assume_hydrogens_all_missing=Auto) :
+  """
+  Detects if an atom's site exists in a favorable environment for a halide
+  ion. This includes coordinating by a positively charged sidechain or backbone
+  as well as an absense of negatively charged coordinating groups.
+
+  Parameters
+  ----------
+  i_seq :
+  contacts : list of mmtbx.ions.environment.atom_contact
+  pdb_atoms :
+  sites_frac :
+  connectivity :
+  unit_cell :
+  params :
+  assume_hydrogens_all_missing : bool, optional
+
+  Returns
+  -------
+  bool
+  """
   if (assume_hydrogens_all_missing in [None, Auto]) :
     elements = pdb_atoms.extract_element()
     assume_hydrogens_all_missing = not ("H" in elements or "D" in elements)
