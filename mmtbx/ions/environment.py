@@ -6,7 +6,7 @@ chemical environments.
 
 from __future__ import division
 
-from collections import Counter
+from collections import Counter, defaultdict
 
 from mmtbx import ions
 from iotbx.pdb import common_residue_names_get_class as get_class
@@ -97,11 +97,29 @@ class atom_contact (slots_getstate_setstate) :
     self.charge = ions.server.get_charge(atom)
 
   def distance (self) :
-    """Actual distance from target atom"""
+    """
+    Actual distance from target atom.
+
+    Returns
+    -------
+    float
+        Distance, in angstroms.
+    """
     return abs(self.vector)
 
   def distance_from (self, other) :
-    """Distance from another contact"""
+    """
+    Distance from another coordinating atom.
+
+    Parameters
+    ----------
+    other : mmtbx.ions.environment.atom_contact
+
+    Returns
+    -------
+    float
+        Distance, in angstroms.
+    """
     return abs(self.vector - other.vector)
 
   def id_str (self, suppress_rt_mx=False) :
@@ -468,6 +486,15 @@ def is_negatively_charged_oxygen (atom_name, resname) :
   Determine whether the oxygen atom of interest is either negatively charged
   (usually a carboxyl group or sulfate/phosphate), or has a lone pair (and
   no hydrogen atom) that would similarly repel anions.
+
+  Parameters
+  -----------
+  atom_name : str
+  resname : str
+
+  Returns
+  -------
+  bool
   """
   if ((atom_name in ["OD1","OD2","OE1","OE2"]) and
       (resname in ["GLU","ASP","GLN","ASN"])) :
@@ -481,7 +508,22 @@ def is_negatively_charged_oxygen (atom_name, resname) :
     return True
   return False
 
-def is_carboxy_terminus (pdb_object) :
+def is_carboxy_terminus (pdb_object):
+  """
+  Checks if an atom or residue is part of a carboxy terminus.
+
+  Parameters
+  ----------
+  pdb_object : iotbx.pdb.hierarchy.atom or iotbx.pdb.hierarchy.residue_group or
+               iotbx.pdb.hierarchy.atom_group
+
+  Returns
+  -------
+  bool
+
+  .. note:: Deprecated in favor ChemicalEnvironment._get_chemical_environment in
+            the SVM code.
+  """
   atoms = None
   if (type(pdb_object).__name__ == "atom") :
     atoms = pdb_object.parent().atoms()
@@ -496,6 +538,15 @@ def is_carboxy_terminus (pdb_object) :
 def same_atom_different_altloc(atom1, atom2):
   """
   Determines whether atom1 and atom2 differ only by their alternate location.
+
+  Parameters
+  ----------
+  atom1 : iotbx.pdb.hierarchy.atom
+  atom2 : iotbx.pdb.hierarchy.atom
+
+  Returns
+  -------
+  bool
   """
 
   label1, label2 = [i.fetch_labels() for i in [atom1, atom2]]
@@ -509,19 +560,26 @@ def count_coordinating_residues (nearby_atoms, distance_cutoff=3.0):
   Count the number of residues of each type involved in the coordination
   sphere.  This may yield additional clues to the identity of ions, e.g. only
   Zn will have 4 Cys residues.
+
+  Parameters
+  ----------
+  nearby_atoms : list of mmtbx.ions.environment.atom_contact
+  distance_cutoff : float, optional
+
+  Returns
+  -------
+  dict of str, int
   """
   unique_residues = []
-  residue_counts = {}
-  for contact in nearby_atoms :
-    if (contact.distance() <= distance_cutoff) :
+  residue_counts = defaultdict(int)
+  for contact in nearby_atoms:
+    if contact.distance() <= distance_cutoff:
       parent = contact.atom.parent()
-      for residue in unique_residues :
-        if (residue == parent) :
+      for residue in unique_residues:
+        if residue == parent:
           break
-      else :
+      else:
         resname = parent.resname
-        if (not resname in residue_counts) :
-          residue_counts[resname] = 0
         residue_counts[resname] += 1
         unique_residues.append(parent)
   return residue_counts

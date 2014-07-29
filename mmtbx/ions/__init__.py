@@ -1,4 +1,15 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
+"""
+This package is used to model elemental ions in crystal structures. It handles
+both identification and building of ions, but relies on the solvent module to
+flag candidate sites for screening.
+
+Notes
+-----
+.. [1] Echols, N. et al. Automated identification of elemental ions in
+       macromolecular crystal structures. Acta Crystallogr. D. Biol.
+       Crystallogr. 70, 1104–14 (2014).
+"""
 
 from __future__ import division
 
