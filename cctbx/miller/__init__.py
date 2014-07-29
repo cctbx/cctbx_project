@@ -630,6 +630,7 @@ class set(crystal.symmetry):
     return index_span(self.indices())
 
   def min_max_indices(self):
+    """Return the range of h,k,l indices"""
     span = self.index_span()
     return (span.min(), span.max())
 
@@ -716,6 +717,20 @@ class set(crystal.symmetry):
         u_star=None,
         exp_arg_limit=50,
         truncate_exp_arg=False):
+    """
+    Given an isotropic or anisotropic displacement or B-factor, alculate
+    resolution-dependent scale factors corresponding to the indices.
+    (Note that to simply apply one of the input parameters to an existing
+    Miller array, you can call array.apply_debye_waller_factors)
+
+    :param u_iso: Isotropic displacement (in Angstroms)
+    :param b_iso: Isotropic B-factor (8*pi^2*u_iso^2)
+    :param u_cart: Anisotropic displacement tensor
+    :param b_cart: Anisotropic B-factor
+    :param u_star: Anisotropic displacement tensor in fractional space
+    :param u_cif: Anisotropic displacement tensor, dimensionless basis
+    :returns: cctbx.miller.array object
+    """
     return self.array(data=self.unit_cell().debye_waller_factors(
       miller_indices=self.indices(),
       u_iso=u_iso, b_iso=b_iso,
@@ -730,6 +745,10 @@ class set(crystal.symmetry):
     return matches.pairs().size()
 
   def as_non_anomalous_set(self):
+    """
+    Return a copy of the set using the same indices but with the anomalous flag
+    set to false.
+    """
     return set(
       crystal_symmetry=self,
       indices=self.indices(),
@@ -753,6 +772,9 @@ class set(crystal.symmetry):
       anomalous_flag=anomalous_flag)
 
   def is_unique_set_under_symmetry(self):
+    """
+    Determine whether the indices in the set are symmetry-unique.
+    """
     return ext.is_unique_set_under_symmetry(
       space_group_type=self.space_group_info().type(),
       anomalous_flag=self.anomalous_flag(),
@@ -977,6 +999,14 @@ class set(crystal.symmetry):
     return asu, matches
 
   def sort_permutation(self, by_value="resolution", reverse=False):
+    """
+    Generate the selection array (flex.size_t object) to reorder the array
+    by resolution or Miller index.
+
+    :param by_value: sort type, must be "resolution" or "packed_indices"
+    :param reverse: invert order
+    :returns: flex.size_t object
+    """
     assert by_value in ["resolution", "packed_indices"]
     assert reverse in [False, True]
     if (by_value == "resolution"):
@@ -1524,6 +1554,10 @@ class set(crystal.symmetry):
                    auto_binning=False,
                    reflections_per_bin=0,
                    n_bins=0):
+    """
+    Create internal resolution binner object; required for many other methods
+    to work.
+    """
     assert auto_binning or reflections_per_bin != 0 or n_bins != 0
     assert auto_binning or (reflections_per_bin == 0 or n_bins == 0)
     if (auto_binning):
@@ -1543,6 +1577,10 @@ class set(crystal.symmetry):
 
   def log_binning(self, n_reflections_in_lowest_resolution_bin=100, eps=1.e-4,
                   max_number_of_bins = 30, min_reflections_in_bin=50):
+    """
+    Create resolution bins on a logarithmic scale.  See Urzhumtsev et al.
+    (2009) Acta Crystallogr D Biol Crystallogr. 65:1283-91.
+    """
     #XXX Move entire implementation into C++: can be ~100 times faster.
     assert max_number_of_bins > 1
     if(n_reflections_in_lowest_resolution_bin   >= self.indices().size() or
@@ -1871,7 +1909,9 @@ def raw_array_summary(array):
 
 class array(set):
   """
-  Extension of the set class with addition of data and sigmas flex arrays.
+  Extension of the set class with addition of data and (optional) sigmas
+  flex arrays, plus an optional array_info object and an optional flag for
+  the observation type (amplitude, intensity, or reconstructed amplitude).
   """
   def __init__(self, miller_set, data=None, sigmas=None):
     set._copy_constructor(self, miller_set)
@@ -1902,10 +1942,16 @@ class array(set):
     return self
 
   def set_observation_type_xray_amplitude(self):
+    """
+    Flag the array as X-ray amplitudes (F).
+    """
     from cctbx.xray import observation_types
     return self.set_observation_type(observation_types.amplitude())
 
   def set_observation_type_xray_intensity(self):
+    """
+    Flag the array as X-ray intensities (I).
+    """
     from cctbx.xray import observation_types
     return self.set_observation_type(observation_types.intensity())
 
@@ -1991,6 +2037,9 @@ class array(set):
     return (self.is_xray_amplitude_array() or self.is_xray_intensity_array())
 
   def copy(self):
+    """
+    Create a new array object using references to internal objects.
+    """
     return (array(
       miller_set=self,
       data=self.data(),
@@ -1999,6 +2048,9 @@ class array(set):
       .set_observation_type(self))
 
   def deep_copy(self):
+    """
+    Clone the array, making copies of all internal array objects.
+    """
     d = None
     s = None
     if (self.data() is not None): d = self.data().deep_copy()
@@ -2050,6 +2102,9 @@ class array(set):
         anomalous_flag=Keep,
         unit_cell=Keep,
         space_group_info=Keep):
+    """
+    Return the basic cctbx.miller.set object for the array.
+    """
     return set.customized_copy(self,
       crystal_symmetry=crystal_symmetry,
       indices=indices,
@@ -2173,6 +2228,12 @@ class array(set):
     return result
 
   def f_sq_as_f(self, algorithm="xtal_3_7", tolerance=1.e-6):
+    """
+    Given an intensity/F^2 array (or undefined observation type), return the
+    equivalent amplitudes.  Note that negative intensities will be discarded;
+    for French-Wilson treatment, call the separate array.french_wilson()
+    method.
+    """
     from cctbx import xray
     assert self.observation_type() is None or  self.is_xray_intensity_array()
     converters = {
@@ -2246,6 +2307,11 @@ class array(set):
     return self
 
   def map_to_asu(self, deg=None):
+    """
+    Convert all indices to lie within the canonical asymmetric unit for the
+    current space group (while preserving anomalous flag).  Required for many
+    downstream steps.
+    """
     i = self.indices().deep_copy()
     d = self.data().deep_copy()
     if (self.is_complex_array() or self.is_hendrickson_lattman_array()):
@@ -2340,6 +2406,15 @@ class array(set):
     return self.customized_copy(indices=i, data=d, sigmas=s)
 
   def sort_permutation(self, by_value="resolution", reverse=False):
+    """
+    Generate the selection array (flex.size_t object) to reorder the array
+    by resolution, Miller index, data values, or absolute data values.
+
+    :param by_value: sort type, must be "resolution", "packed_indices", "data",
+                     or "abs"
+    :param reverse: invert order
+    :returns: flex.size_t object
+    """
     assert reverse in (False, True)
     if (by_value in ["resolution", "packed_indices"]):
       result = set.sort_permutation(self,
@@ -2367,6 +2442,9 @@ class array(set):
       self.sigmas())
 
   def expand_to_p1(self, phase_deg=None, return_iselection=False):
+    """
+    Generate the equivalent P1 dataset.
+    """
     assert self.space_group_info() is not None
     assert self.indices() is not None
     assert self.anomalous_flag() is not None
@@ -2745,8 +2823,6 @@ class array(set):
      return None
 
 
-
-
   def measurability(self, use_binning=False, cutoff=3.0, return_fail=None):
     ## Peter Zwart 2005-Mar-04
     """Fraction of reflections for which
@@ -3106,6 +3182,14 @@ class array(set):
     return result
 
   def apply_scaling(self, target_max=None, factor=None):
+    """
+    Apply a scale factor to the data (and optionally sigmas).
+
+    :param target_max: target maximum value for the scaled data - the scale
+                       factor will be determined automatically
+    :param factor: explicit scale factor
+    :returns: custumozed copy with scaled data and sigmas
+    """
     assert [target_max, factor].count(None) == 1
     assert self.data() is not None
     s = None
@@ -3129,6 +3213,19 @@ class array(set):
         apply_to_sigmas=True,
         exp_arg_limit=50,
         truncate_exp_arg=False):
+    """
+    Given an isotropic or anisotropic displacement or B-factor, apply
+    resolution-dependent scale factors to the data (and optionally sigmas).
+
+    :param u_iso: Isotropic displacement (in Angstroms)
+    :param b_iso: Isotropic B-factor (8*pi^2*u_iso^2)
+    :param u_cart: Anisotropic displacement tensor
+    :param b_cart: Anisotropic B-factor
+    :param u_star: Anisotropic displacement tensor in fractional space
+    :param u_cif: Anisotropic displacement tensor, dimensionless basis
+    :param apply_to_sigmas: Also scale sigma values (if present)
+    :returns: cctbx.miller.array object with scaled data
+    """
     dws = self.debye_waller_factors(
       u_iso=u_iso, b_iso=b_iso,
       u_cart=u_cart, b_cart=b_cart,
@@ -3334,7 +3431,7 @@ class array(set):
   def __abs__(self):
     """
     Return a copy of the array with data replaced by absolute values, i.e.
-    complex arrays will be converted to amplitudes.
+    complex arrays will be converted to amplitudes.  Enables abs(array).
     """
     return array(self, flex.abs(self.data()), self.sigmas())
 
@@ -3405,6 +3502,10 @@ class array(set):
       return self.as_non_anomalous_array().merge_equivalents().array()
 
   def eliminate_sys_absent(self, integral_only=False, log=None, prefix=""):
+    """
+    Remove all reflections which should be systematically absent in the current
+    space group.
+    """
     sys_absent_flags = self.sys_absent_flags(
       integral_only=integral_only).data()
     n = sys_absent_flags.count(True)
@@ -3441,10 +3542,11 @@ class array(set):
       integral_only=integral_only).data())
 
   def __add__(self, other):
+    """Overload the '+' operator."""
     assert self.indices() is not None
     assert self.data() is not None
     if (type(other) != type(self)):
-      # add a scalar
+      # add a scalar or compatible flex array
       return array(self, self.data() + other)
     # add arrays
     assert other.indices() is not None
@@ -3588,6 +3690,19 @@ class array(set):
                     max_prime=5,
                     assert_shannon_sampling=True,
                     f_000=None):
+    """
+    Calculate the FFT for the array, assuming the data are complex doubles.
+
+    :param resolution_factor: when multiplied times the resolution limit, gives
+                              the approximate grid spacing of the map.
+    :param d_min: High-resolution cutoff
+    :param crystal_gridding: optional gridding to use (overrides automatic
+                             gridding)
+    :param symmetry_flags: specifies how the grid should be constructed to
+                           handle symmetry
+    :param f_000: Optional F(0,0,0) value (scalar added to entire map)
+    :returns: an fft_map object
+    """
     if(crystal_gridding is not None):
       return fft_map(
         crystal_gridding=crystal_gridding,
@@ -3607,6 +3722,11 @@ class array(set):
         f_000=f_000)
 
   def direct_summation_at_point (self, site_frac, sigma=None) :
+    """
+    Calculates the exact map value at the specified fractional coordinate
+    using direct Fourier summation.  Relatively slow but avoids interpolation
+    errors.
+    """
     assert (self.is_complex_array())
     map_coeffs = self
     if (self.space_group_info().type().number() != 1) :
@@ -3753,6 +3873,9 @@ class array(set):
                           f_000=None,
                           sharpening=False,
                           origin_peak_removal=False):
+    """
+    Calculate an unphased Patterson map.
+    """
     f_patt = self.patterson_symmetry()
     return patterson_map(
       crystal_gridding=f_patt.crystal_gridding(
@@ -3814,6 +3937,10 @@ class array(set):
         project_name="project",
         dataset_name="dataset",
         wavelength=None):
+    """
+    Generate an iotbx.mtz.dataset object for the array, which can be extended
+    with additional arrays and eventually written to an MTZ file.
+    """
     import iotbx.mtz
     if (wavelength is None) :
       info = self.info()
