@@ -2606,6 +2606,7 @@ smtbx/refinement/constraints/tests/tst_lbfgs.py -text
 smtbx/refinement/floating-origin-restraints-2.nb -text
 smtbx/refinement/floating-origin-restraints.nb -text
 smtbx/refinement/tests/tst_least_squares.py -text
+sphinx/Makefile -text
 sphinx/boost_adaptbx/index.rst -text
 sphinx/build_system.rst -text
 sphinx/cctbx/index.rst -text
