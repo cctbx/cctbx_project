@@ -1,7 +1,0 @@
-cctbx.regression.tst_direct_space_asu module
-============================================
-
-.. automodule:: cctbx.regression.tst_direct_space_asu
-    :members:
-    :undoc-members:
-    :show-inheritance:
