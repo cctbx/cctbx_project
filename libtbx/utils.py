@@ -2161,7 +2161,7 @@ class download_target (object) :
     if (not self.use_curl) :
       if (not None in [self.user, self.password]) :
         passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
-        passman.add_password(None, self.base_url, params.user, params.password)
+        passman.add_password(None, self.base_url, self.user, self.password)
         authhandler = urllib2.HTTPBasicAuthHandler(passman)
         opener = urllib2.build_opener(authhandler)
         urllib2.install_opener(opener)
