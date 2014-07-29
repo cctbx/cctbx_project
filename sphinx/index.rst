@@ -16,7 +16,7 @@ Computational Crystallography Toolbox
    iotbx/index
    scitbx/index
    cctbx/cctbx
-   mmtbx/index
+   mmtbx/mmtbx
 
 
 Welcome to CCTBX's documentation!
@@ -126,7 +126,7 @@ calculation of weighted map coefficients, and most of the methods implemented
 in phenix.refine.  The majority of infrastructure for the MolProbity
 validation server (and Phenix equivalent) is also located here.
 
-:ref:`API Documentation for mmtbx <mmtbx>`
+:ref:`API Documentation for mmtbx <mmtbx/mmtbx>`
 
 smtbx
 -----
