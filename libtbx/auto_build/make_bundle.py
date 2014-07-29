@@ -100,10 +100,15 @@ def run (args, out=sys.stdout) :
       "base/info",
       "base/share/gtk-doc",
       "base/share/locale",
+      "base/lib/python2.7/test",
     ] :
-    full_path = op.join(tmp_build_dir, dir_name)
+    full_path = op.join(tmp_dir, dir_name)
     if op.exists(full_path) :
       shutil.rmtree(full_path)
+  site_pkg_dir = op.join(tmp_dir, "base/lib/python2.7/site-packages")
+  find_and_delete_files(tmp_dir, file_name="tests")
+  if sys.platform.startswith("linux") :
+    strip_libs(op.join(tmp_dir, "base", "lib"), log=out)
   # XXX what about base/include?
   # copy over build executable directories
   for file_name in os.listdir(build_dir) :
@@ -134,7 +139,7 @@ def run (args, out=sys.stdout) :
     base_tarfile = "../base-%(version)s-%(mtype)s.tar.gz" % \
       {"version":options.version, "mtype":options.mtype}
     call("tar -czf %(tarfile)s base" %
-      {"tarfile":base_tarfile,}, log=out)
+      {"tarfile":base_tarfile, "base":base_dir}, log=out)
     shutil.rmtree("base")
     assert op.isfile(base_tarfile)
     if (options.dest is not None) :

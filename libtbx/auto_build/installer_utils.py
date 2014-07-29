@@ -227,3 +227,18 @@ def archive_dist (dir_name, create_tarfile=True, use_shutil=True) :
     shutil.rmtree(local_path)
     return tar_file
   return op.join(os.getcwd(), module_name)
+
+def strip_libs (dir_name, log) :
+  for dirname, dirnames, filenames in os.walk(dir_name) :
+    for dn in dirnames :
+      if (dn == file_name) :
+        full_path = op.join(dirname, dn)
+        shutil.rmtree(full_path)
+        deleted.append(full_path)
+    for fn in filenames :
+      full_path = op.join(dirname, fn)
+      if fn.endswith(".so") and op.isfile(full_path) :
+        try :
+          call("strip %s" % full_path, log=log)
+        except RuntimeError :
+          pass
