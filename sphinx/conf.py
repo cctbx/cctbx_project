@@ -53,7 +53,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'CCTBX'
-copyright = u'2014, Computational Crystallography Initiative'
+copyright = u'2014, University of California'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
