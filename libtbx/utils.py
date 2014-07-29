@@ -343,7 +343,7 @@ def get_memory_from_string(mem_str):
     if num_str is not None:
       try:
         num = float(num_str)
-      except ValueError as e:
+      except ValueError, e:
         raise RuntimeError("""
    The numerical portion of %s is not a valid float
 """ % mem_str)
@@ -352,7 +352,7 @@ def get_memory_from_string(mem_str):
   else:
     try:
       num = int(mem_str)
-    except ValueError as e:
+    except ValueError, e:
       raise RuntimeError("""
    There is no memory unit or valid float in %s
 """ % mem_str)
@@ -1847,7 +1847,7 @@ def getcwd_or_default (default=None) :
       default = os.environ.get("HOME", "/")
   try :
     cwd = os.getcwd()
-  except OSError as e:
+  except OSError, e:
     if (e.errno == 2) :
       cwd = default
     else :
