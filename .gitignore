@@ -66,4 +66,5 @@ mmtbx/validation/*.pyc
 mmtbx/wwpdb/*.pyc
 scitbx/array_family/detail/operator_functors.h
 scitbx/array_family/detail/std_imports.h
+sphinx/build
 xfel/clustering/test_cluster.py
