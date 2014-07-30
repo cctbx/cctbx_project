@@ -56,7 +56,7 @@ def run_0(symbol = "C 2"):
   f_masks = fmodel.f_masks()
   f_model = fmodel.f_model()
   f_obs   = abs(f_model)
-  r_free_flags = f_obs.generate_r_free_flags()
+  r_free_flags = f_obs.generate_r_free_flags(use_lattice_symmetry=False)
   #
   assert approx_equal(bulk_solvent.r_factor(f_obs.data(), f_model.data()), 0)
   aso = scaler.run(

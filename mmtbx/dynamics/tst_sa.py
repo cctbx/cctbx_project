@@ -158,7 +158,7 @@ def exercise_1():
   flex.set_random_seed(0)
   pi = get_pdb_inputs(pdb_str=pdb_str_1)
   f_obs = abs(pi.xrs.structure_factors(d_min = 2.5).f_calc())
-  r_free_flags = f_obs.generate_r_free_flags()
+  r_free_flags = f_obs.generate_r_free_flags(use_lattice_symmetry=False)
   if(0):
     pi.ph.adopt_xray_structure(pi.xrs)
     pi.ph.write_pdb_file(file_name="start.pdb",
@@ -209,7 +209,7 @@ def exercise_2(d_min = 1.5):
   for shake in [True, False]:
     pi = get_pdb_inputs(pdb_str=pdb_str_1)
     f_obs = abs(pi.xrs.structure_factors(d_min = d_min).f_calc())
-    r_free_flags = f_obs.generate_r_free_flags()
+    r_free_flags = f_obs.generate_r_free_flags(use_lattice_symmetry=False)
     xrs_poor = pi.xrs.deep_copy_scatterers()
     if(shake):
       xrs_poor = shake_sites(xrs = pi.xrs.deep_copy_scatterers(), random=False,
