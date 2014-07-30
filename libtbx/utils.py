@@ -569,8 +569,15 @@ def select_matching(key, choices, default=None):
     if m is not None: return value
   return default
 
-class Keep:
-  pass
+class KeepType (object) :
+  def __str__ (self) :
+    return "Keep"
+  def __repr__ (self) :
+    return "Keep"
+  def __eq__ (self, other) :
+    return type(other) is self.__class__
+
+Keep = KeepType()
 
 class Sorry(Exception):
   """
