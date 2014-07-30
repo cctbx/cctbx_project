@@ -378,7 +378,7 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
   f_model_data = scale*k_anisotropic*(f_calc.data()+k_mask*f_mask.data())
   f_model = f_calc.customized_copy(data = f_model_data)
   f_obs = abs(f_model)
-  r_free_flags = f_obs.generate_r_free_flags()
+  r_free_flags = f_obs.generate_r_free_flags(use_lattice_symmetry=False)
   sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   sfg_params.algorithm = "direct"
   bin_selections = []
@@ -665,10 +665,10 @@ def exercise_6_instantiate_consistency(symbol = "C 2"):
               assert approx_equal(r1, r2), [r1, r2]
 
 def run():
+  exercise_5_bulk_sol_and_scaling()
   exercise_6_instantiate_consistency()
   exercise_f_model_no_scales()
   exercise_top_largest_f_obs_f_model_differences()
-  exercise_5_bulk_sol_and_scaling()
   exercise_5_bulk_sol_and_scaling_and_H()
   exercise_1()
   exercise_2()

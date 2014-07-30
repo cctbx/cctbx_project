@@ -2071,7 +2071,8 @@ class fmodel_from_xray_structure(object):
                      twin_law = None,
                      twin_fraction = None,
                      target = "ml",
-                     out = None):
+                     out = None,
+                     merge_r_free_flags = None):
     if(out is None): out = sys.stdout
     self.add_sigmas = add_sigmas
     if(params is None):
@@ -2123,7 +2124,8 @@ class fmodel_from_xray_structure(object):
       else:
         xray_structure.scattering_type_registry(
           table = params.scattering_table, d_min = f_obs.d_min())
-    r_free_flags = f_obs.generate_r_free_flags(fraction = r_free_flags_fraction)
+    r_free_flags = f_obs.generate_r_free_flags(fraction = r_free_flags_fraction,
+      use_lattice_symmetry=False)
     fmodel = mmtbx.f_model.manager(
       xray_structure               = xray_structure,
       sf_and_grads_accuracy_params = params.structure_factors_accuracy,
@@ -2164,6 +2166,8 @@ class fmodel_from_xray_structure(object):
       self.f_model._sigmas = sigmas
     if(params.r_free_flags_fraction is not None):
       self.r_free_flags = fmodel.r_free_flags()
+      if merge_r_free_flags and self.r_free_flags.anomalous_flag() :
+        self.r_free_flags = self.r_free_flags.average_bijvoet_mates()
 
   def Sorry_high_resolution_is_not_defined(self):
     raise Sorry("High resolution limit is not defined. "\
