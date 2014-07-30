@@ -1,9 +1,10 @@
+from __future__ import division
+# LIBTBX_SET_DISPATCHER_NAME prime.postrefine
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 7/13/2014
 Description : Commands linked to prime.postrefine libraries.
 '''
-from __future__ import division
 import os, sys
 from libtbx.easy_mp import pool_map
 import numpy as np
