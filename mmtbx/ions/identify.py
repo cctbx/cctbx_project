@@ -5,8 +5,8 @@ their density and chemical environment to determine if they are correctly
 identified, or if there are better candidate ions that they can be replaced
 with.
 
-See mmtbx.ions.build to actually modify the structure, code in this module
-only prints out messages to the log.
+See mmtbx.ions.build to actually modify the structure, the code in this module
+handles ion identification, but only prints out messages to a log.
 """
 
 from __future__ import division
@@ -238,6 +238,11 @@ class manager (object) :
         self.refine_anomalous_substructure(log = log)
 
   def water_selection (self) :
+    """
+    Returns
+    -------
+    ...
+    """
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
     sel_str = "({}) and element O and altloc ' '".format(
       " or ".join([ "resname " + i for i in WATER_RES_NAMES ]))
@@ -248,6 +253,10 @@ class manager (object) :
     Run simple "substructure completion" implemented using CCTBX tools (the
     command-line equivalent is mmtbx.refine_anomalous_substructure).  A faster
     alternative to Phaser, but not clear how effective this is at the moment.
+
+    Parameters
+    ----------
+    log : file
     """
     from mmtbx.refinement import anomalous_scatterer_groups
     fmodel_tmp = self.fmodel.deep_copy()
@@ -276,6 +285,14 @@ class manager (object) :
     """
     Set the current atomic data: PDB hierarchy, Xray structure, and simple
     connectivity list.
+
+    Parameters
+    ----------
+    pdb_hierarchy : iotbx.pdb.hierarchy.root
+    xray_structure : cctbx.xray.structure.structure
+    connectivity : ...
+    log : file, optional
+    refine_if_necessary : bool, optional
     """
     self.pdb_hierarchy = pdb_hierarchy
     self.xray_structure = xray_structure
@@ -324,12 +341,29 @@ class manager (object) :
       self.refine_anomalous_substructure(log = log)
 
   def get_initial_b_iso (self) :
+    """
+    Returns
+    -------
+    float
+    """
+
     if (getattr(self, "b_mean_hoh", None) is not None) :
       return self.b_mean_hoh
     else :
       return self.b_mean_all
 
   def get_map (self, map_type) :
+    """
+    Creates the real-space version of a given map type.
+
+    Parameters
+    ----------
+    map_type : str
+
+    Returns
+    -------
+    ....
+    """
     map_coeffs = self.fmodel.map_coefficients(
       map_type = map_type,
       exclude_free_r_reflections = True,
@@ -448,6 +482,11 @@ class manager (object) :
       del fo_map
 
   def show_current_scattering_statistics (self, out = sys.stdout) :
+    """
+    Parameters
+    ----------
+    out : file, optional
+    """
     print >> out, ""
     print >> out, "Model and map statistics:"
     print >> out, "  mean mFo map height @ carbon: %s" % format_value("%.2f",
@@ -479,6 +518,14 @@ class manager (object) :
     print >> out, ""
 
   def get_strict_valence_flag (self) :
+    """
+    Checks whether the resolution of a model is high enough to use more strict
+    thresholds for ion valences.
+
+    Returns
+    -------
+    bool
+    """
     d_min = self.fmodel.f_obs().d_min()
     return (d_min < self.params.d_min_strict_valence)
 
@@ -488,6 +535,18 @@ class manager (object) :
     """
     Given site in the structure, return a list of contacts, optionally
     filtering by connectivity and 2mFo-DFc map level.
+
+    Parameters
+    ----------
+    i_seq : int
+    far_distance_cutoff : float, optional
+    near_distance_cutoff : float, optional
+    filter_by_bonding : bool, optional
+    fitler_by_two_fofc : bool, optional
+
+    Returns
+    -------
+    ...
     """
     assert (i_seq < len(self.sites_frac))
     # Use pair_asu_table to find atoms within distance_cutoff of one another,
@@ -530,6 +589,14 @@ class manager (object) :
     coordinating atoms.  This should partially compensate for the deflation of
     the B-factor due to incorrect scattering type, and consequently make the
     occupancy refinement more accurate.
+
+    Parameters
+    ----------
+    i_seq : int
+
+    Returns
+    -------
+    float
     """
     contacts = self.find_nearby_atoms(i_seq, far_distance_cutoff = 3.0)
     if (len(contacts) == 0) :
@@ -544,6 +611,14 @@ class manager (object) :
     Extracts the map grid points around a site, and calculates the axes of
     inertia (using the density values as weights). This is used to calculate
     the sphericity of the blob of density around a site.
+
+    Parameters
+    ----------
+    i_seq : int
+
+    Returns
+    -------
+    ...
     """
     return self._principal_axes_of_inertia[i_seq]
 
@@ -552,10 +627,29 @@ class manager (object) :
     Calculate the density levels for points on a sphere around a given point.
     This will give us some indication whether the density falls off in the
     expected manner around a single atom.
+
+    Parameters
+    ----------
+    i_seq : int
+
+    Returns
+    -------
+    float
     """
     return self._map_variances[i_seq]
 
   def get_b_iso (self, i_seq) :
+    """
+    Calculates the isotropic b-factor of a site.
+
+    Parameters
+    ----------
+    i_seq : int
+
+    Returns
+    -------
+    float
+    """
     sc = self.xray_structure.scatterers()[i_seq]
     return adptbx.u_as_b(sc.u_iso_or_equiv(self.unit_cell))
 
@@ -563,6 +657,16 @@ class manager (object) :
     """
     Given a site in the structure, find the signal of the 2FoFc, FoFc, and
     anomalous map (When available).
+
+    Parameters
+    ----------
+    i_seq : int
+
+    Returns
+    -------
+    group_args
+        Object with .two_fofc, .fofc, and .anom properties for the associated
+        signals in each map.
     """
     value_2fofc = self._map_values["2mFo-DFc"][i_seq]
     value_fofc = self._map_values["mFo-DFc"][i_seq]
@@ -575,6 +679,17 @@ class manager (object) :
       anom = value_anom)
 
   def get_map_gaussian_fit (self, map_type, i_seq) :
+    """
+    Parameters
+    ----------
+    map_type : str
+    i_seq : int
+
+    Returns
+    -------
+    float
+    float
+    """
     map_gaussians = self._map_gaussian_fits.get(map_type, None)
     if (map_gaussians is not None) :
       return map_gaussians[i_seq]
@@ -584,6 +699,14 @@ class manager (object) :
     """
     Guesses the molecular weight of a site by scaling the signal from
     the mFo map by the average signal from carbon atoms.
+
+    Parameters
+    ----------
+    i_seq : int
+
+    Returns
+    -------
+    float
     """
     map_values = self._map_values.get("mFo", None)
     if (map_values is None) : return None
@@ -601,6 +724,14 @@ class manager (object) :
     which are close enough to be essentially equivalent.  Used to analyze the
     anomalously-scattering substructure calculated by Phaser.
 
+    Parameters
+    ----------
+    site_cart : ...
+    distance_cutoff : float, optional
+    distance_cutoff_same_site : float, optional
+
+    Returns
+    -------
     Returns same_atoms, a list of atoms within distance_cutoff_same_site of
     site_cart, and and other_atoms, the rest of the atoms within
     distance_cutoff of site_cart.
@@ -648,8 +779,22 @@ class manager (object) :
     """
     Given a list of AX pseudo-atoms placed by Phaser, finds the nearest real
     atoms, and if possible determines their equivalence.
+
+    Parameters
+    ----------
+    log : file, optional
+    verbose : bool, optional
     """
     def ax_atom_id (atom) :
+      """
+      Parameters
+      ----------
+      atom : iotbx.pdb.hierarchy.atom
+
+      Returns
+      -------
+      str
+      """
       return "AX %s (fpp=%.3f)" % (atom.serial.strip(), atom.occ)
 
     assert (self.phaser_substructure is not None)
@@ -657,6 +802,15 @@ class manager (object) :
     if (log is None) or (not verbose) : log = null_out()
 
     def _filter_site_infos(site_infos):
+      """
+      Parameters
+      ----------
+      site_infos : ...
+
+      Returns
+      -------
+      list of ...
+      """
       # Organize a dictionary, keyed with each site's atom i_seq
       from collections import OrderedDict
       i_seqs = OrderedDict()
@@ -707,6 +861,14 @@ class manager (object) :
     Retrieve the refined f'' for a site.  Because this can come from either the
     built-in anomalous refinement or Phaser, it is handled differently than
     the f' retrieval.
+
+    Parameters
+    ----------
+    i_seq : int
+
+    Returns
+    -------
+    float or None
     """
     if (not self.use_fdp[i_seq]) :
       return None
@@ -719,6 +881,14 @@ class manager (object) :
   def get_fp (self, i_seq) :
     """
     Retrieve the refined f' for a site.
+
+    Parameters
+    ----------
+    i_seq : int
+
+    Returns
+    -------
+    float or None
     """
     if (self.site_fp is None) or (not self.use_fdp[i_seq]) :
       return None
@@ -735,6 +905,16 @@ class manager (object) :
     negatively charged atoms.  Note that this procedure has a very high
     false positive rate when used by itself, so additional information about
     the electron count (map, occ, b) is absolutely essential.
+
+    Parameters
+    ----------
+    i_seq : int
+    element : str
+    assume_hydrogens_all_missing : bool, optional
+
+    Returns
+    -------
+    bool
     """
     atom = self.pdb_atoms[i_seq]
     sites_frac = self.xray_structure.sites_frac()
@@ -784,6 +964,18 @@ class manager (object) :
     no_final is used internally, when candidates is not Auto, to try all of the
     Auto without selecting any as a final choice when none of the elements in
     candidates appear to probable ion identities.
+
+    Parameters
+    ----------
+    i_seq : int
+    debug : bool, optional
+    candidates : list of str, optional
+    no_file : bool, optional
+    out : file, optional
+
+    Returns
+    -------
+    mmtbx.ions.identify.water_result
     """
 
     atom = self.pdb_atoms[i_seq]
@@ -807,7 +999,7 @@ class manager (object) :
     atom_type = atom_props.get_atom_type(params=self.params.water,
       aggressive=self.params.aggressive)
     if (atom_type == WATER_POOR) : # not trustworthy, skip
-      #PRINT_DEBUG("SKIPPING %s" % atom.id_str())
+      #_PRINT_DEBUG("SKIPPING %s" % atom.id_str())
       return None
 
     # XXX everything SVM-related happens in mmtbx.ions.svm, using a subclass of
@@ -857,6 +1049,16 @@ class manager (object) :
 
     # Try each different ion and see what is reasonable
     def try_candidates (require_valence = True) :
+      """
+      Parameters
+      ----------
+      require_valence : bool, optional
+
+      Returns
+      -------
+      list of tuple of mmtbx.ions.metal_parameters, float
+      list of tuple of mmtbx.ions.metal_parameters, float
+      """
       reasonable = []
       unreasonable = []
       for elem_params in filtered_candidates:
@@ -973,9 +1175,9 @@ class manager (object) :
             atom_props.BAD_FPP not in inaccuracies and
             not inaccuracies.intersection([atom_props.BAD_GEOMETRY,
                                            atom_props.NO_GEOMETRY])):
-          PRINT_DEBUG(atom.id_str())
-          PRINT_DEBUG(filtered_candidates)
-          PRINT_DEBUG(compatible)
+          _PRINT_DEBUG(atom.id_str())
+          _PRINT_DEBUG(filtered_candidates)
+          _PRINT_DEBUG(compatible)
 
     if (len(reasonable) == 1) :
       final_choice = reasonable[0][0]
@@ -1004,7 +1206,7 @@ class manager (object) :
       wavelength = self.wavelength,
       no_final = no_final)
 
-  def extract_waters (self) :
+  def _extract_waters (self) :
     model = self.pdb_hierarchy.only_model()
     water_i_seqs = []
     for chain in model.chains():
@@ -1026,8 +1228,17 @@ class manager (object) :
     environment to check their identity and suggest likely ions where
     appropriate.
 
-    Returns a list of (i_seq, MetalParameter), which indicate that waters of
-    i_seq would be better changed to the new metal identity.
+    Parameters
+    ----------
+    out : file, otpional
+    debug : bool, optional
+    candidates : list of str, optional
+
+    Returns
+    -------
+    list of tuple of int, mmtbx.ions.metal_parameters
+        i_seq and metal parameters which indicate that waters of i_seq would be
+        better changed to that new metal identity.
     """
     waters = self.water_selection()
     print >> out, ""
@@ -1082,6 +1293,12 @@ class manager (object) :
     """
     Examines one site in the model and determines if it was correctly modelled,
     returning a boolean indicating correctness.
+
+    Parameters
+    ----------
+    i_seq : int
+    out : file, optional
+    debug : bool, optional
     """
 
     atom_props = self.atoms_to_props[i_seq]
@@ -1120,6 +1337,13 @@ class manager (object) :
 
     Prints out a table of bad ions and their information and returns a list of
     their sites' i_seqs.
+
+    Parameters
+    ----------
+    out : file, optional
+    debug : bool, optional
+    segid : str, optional
+        If present, only validate ions with this segid.
     """
 
     if segid is None:
@@ -1204,7 +1428,7 @@ class _analyze_water_wrapper (object) :
       # only accept final choice if it's in the original list of elements
       if (not getattr(result, "no_final", False)) :
         final_choice = getattr(result, "final_choice", None)
-        #PRINT_DEBUG("final_choice = %s" % final_choice)
+        #_PRINT_DEBUG("final_choice = %s" % final_choice)
       return i_seq, final_choice, result_str
     except KeyboardInterrupt :
       return (None, None, None)
@@ -1262,6 +1486,14 @@ class water_result (object):
     adopt_init_args(self, locals())
 
   def show_summary (self, out = None, debug = False) :
+    """
+    Prints out a summary of a site's chemical and scattering environment.
+
+    Parameters
+    ----------
+    out : file, optional
+    debug : bool, optional
+    """
     if (out is None) : out = sys.stdout
     results = self.matching_candidates
     if (len(results) > 0) :
@@ -1400,7 +1632,7 @@ class AtomProperties (object) :
         else :
           nearby_atoms_no_alts.append(contact)
 
-    self.residue_counts = environment.count_coordinating_residues(
+    self.residue_counts = utils.count_coordinating_residues(
       self.nearby_atoms)
     self.geometries = find_coordination_geometry(nearby_atoms_no_alts)
 
@@ -1434,7 +1666,15 @@ class AtomProperties (object) :
 
   def is_correctly_identified(self, identity = None):
     """
-    Returns whether factors indicate that the atom was correctly identified.
+    Calculates whether factors indicate that the atom was correctly identified.
+
+    Parameters
+    ----------
+    identity : mmtbx.ions.metal_parameters
+
+    Returns
+    -------
+    bool
     """
     if identity is None:
       identity = self.identity()
@@ -1446,6 +1686,14 @@ class AtomProperties (object) :
     Indicates whether the coordinating atoms are of the allowed type (e.g.
     no N or S atoms coordinating CA, etc.) and residue (e.g. Ser is not an
     appropriate ligand for ZN).
+
+    Parameters
+    ----------
+    identity : mmtbx.ions.metal_parameters
+
+    Returns
+    -------
+    bool
     """
     return ((len(self.bad_coords[identity]) == 0) and
             (not self.BAD_COORD_RESIDUE in self.inaccuracies[identity]))
@@ -1455,6 +1703,16 @@ class AtomProperties (object) :
     """
     More minimal criteria for determining whether a site is chemically
     compatible, allowing for incomplete coordination shells.
+
+    Parameters
+    ----------
+    ion_params : mmtbx.ions.metal_parameters
+    require_anom : bool, optional
+    ignore_valence : bool, optional
+
+    Returns
+    -------
+    bool
     """
     inaccuracies = self.inaccuracies[str(ion_params)]
     anom_allowed = self.is_compatible_anomalous_scattering(ion_params) or \
@@ -1470,6 +1728,16 @@ class AtomProperties (object) :
     """
     Counts the number of preferred residues coordinating the atom.  Used for
     approximate detection of transition-metal binding sites.
+
+    Parameters
+    ----------
+    ion_params : mmtbx.ions.metal_parameters
+    distance : float, optional
+    exclude_atoms : tuple of ...
+
+    Returns
+    -------
+    int
     """
     n_res = 0
     resids = []
@@ -1488,6 +1756,17 @@ class AtomProperties (object) :
     return n_res
 
   def number_of_atoms_within_radius (self, distance_cutoff) :
+    """
+    Counts the number of coordinating atoms within a given radius.
+
+    Parameters
+    ----------
+    float
+
+    Returns
+    -------
+    int
+    """
     n_atoms = 0
     atom_ids = []
     for contact in self.nearby_atoms:
@@ -1498,7 +1777,18 @@ class AtomProperties (object) :
         atom_ids.append(other_id) # check for alt confs.
     return n_atoms
 
-  def number_of_backbone_oxygens (self, distance_cutoff = 3.0) :
+  def number_of_backbone_oxygens (self, distance_cutoff=3.0) :
+    """
+    Counts the number of backbone oxygens coordinating a site.
+
+    Parameters
+    ----------
+    distance_cutoff : float, optional
+
+    Returns
+    -------
+    int
+    """
     n_bb_ox = 0
     for contact in self.nearby_atoms :
       if (contact.atom_name() == "O") :
@@ -1528,7 +1818,14 @@ class AtomProperties (object) :
     Evaluates whether factors indicate that the atom is lighter, heavier, or
     isoelectric to what it is currently identified as.
 
-    Returns -1 if lighter, 0 if isoelectronic, and 1 if heavier.
+    Parameters
+    ----------
+    manager : mmtbx.ions.identify.manager
+
+    Returns
+    -------
+    int
+        -1 if lighter, 0 if isoelectronic, and 1 if heavier.
     """
     identity = "HOH" if self.resname in WATER_RES_NAMES else self.identity()
     # Waters that don't have B-factors at least 1 stddev below the mean are
@@ -1554,6 +1851,12 @@ class AtomProperties (object) :
     parameters, specified by ion_params, such as valence sum, geometry, etc.
     The criteria used here are quite strict, but many of the analyses are
     saved for later if we want to use looser critera.
+
+    Parameters
+    ----------
+    ion_params : mmtbx.ions.metal_parameters
+    wavelength : float, optional
+    require_valence : bool, optional
     """
     from iotbx.pdb import common_residue_names_get_class as get_class
 
@@ -1721,7 +2024,21 @@ class AtomProperties (object) :
       wavelength,
       fpp_ratio_min = 0.3,
       fpp_ratio_max = 1.05) :
-    """Compare the refined and theoretical f'' values if available"""
+    """
+    Compare the refined and theoretical f'' values if available.
+
+    Parameters
+    ----------
+    ion_params : mmtbx.ions.metal_parameters
+    wavelength : float
+    fpp_ratio_min : float, optional
+    fpp_ratio_max : float, optional
+
+    Returns
+    -------
+    float
+        f'' / f''_expected
+    """
     identity = str(ion_params)
     inaccuracies = self.inaccuracies.get(identity, None)
     if (inaccuracies is None) :
@@ -1754,6 +2071,11 @@ class AtomProperties (object) :
   def show_properties (self, identity, out = sys.stdout) :
     """
     Show atomic properties that are independent of the suspected identity.
+
+    Parameters
+    ----------
+    identity : mmtbx.ions.metal_parameters
+    out : file, optional
     """
     print >> out, "%s:" % self.atom.id_str()
     b_flag = ""
@@ -1817,6 +2139,13 @@ class AtomProperties (object) :
       confirmed = False, valence_used = True):
     """
     Show statistics for a proposed element identity.
+
+    Parameters
+    ----------
+    identity : mmtbx.ions.metal_parameters
+    out : file, optional
+    confirmed : bool, optional
+    valence_used : bool, optional
     """
 
     if not identity:
@@ -1882,6 +2211,15 @@ class AtomProperties (object) :
     """
     Decide whether the atom is coordinating phosphate oxygens from a
     nucleotide, based on common atom names.
+
+    Parameters
+    ----------
+    min_phosphate_oxygen_atoms : int, optional
+    distance_cutoff : float, optional
+
+    Returns
+    -------
+    bool
     """
     n_phosphate_oxygens = 0
     for contact in self.nearby_atoms :
@@ -1894,9 +2232,17 @@ class AtomProperties (object) :
           n_phosphate_oxygens += 1
     return (n_phosphate_oxygens == min_phosphate_oxygen_atoms)
 
-  def identity(self, ion = None):
+  def identity(self, ion=None):
     """
     Covers an atom into a string representing its element and charge.
+
+    Parameters
+    ----------
+    ion : iotbx.pdb.hierarchy.atom, optional
+
+    Returns
+    -------
+    str
     """
     if ion is None:
       ion = self.atom
@@ -1910,6 +2256,16 @@ class AtomProperties (object) :
     Updates self with any inaccuracies noticed (Surpringly low b-factor,
     high occupancy, etc).  Note that HEAVY_ION does not necessarily rule out
     NA/MG, as these often have mFo-DFc peaks at high resolution.
+
+    Parameters
+    ----------
+    params : libtbx.phil.scope_extract
+    aggressive : bool, optional
+
+    Returns
+    -------
+    int
+        One of WATER, WATER_POOR, HEAVY_ION, LIGHT_ION
     """
     inaccuracies = self.inaccuracies["HOH"] = set()
     atom_type = WATER
@@ -1989,6 +2345,27 @@ def create_manager (
     verbose = False,
     log = None,
     manager_class=None) :
+  """
+  Wrapper around mmtbx.ions.identify.manager init method. Retrieves the
+  connectivity and xray_structure from fmodel automatically.
+
+  Parameters
+  ----------
+  pdb_hierarchy : iotbx.pdb.hierarchy.root
+  geometry_restraints_manager : cctbx.geometry_restraints.manager.manager
+  fmodel : mmtbx.f_model.manager
+  wavelength : float
+  params : libtbx.phil.scope_extract
+  resolution_factor : float, optional
+  nproc : int, optional
+  verbose : bool, optional
+  log : file, optional
+  manager_class : class, optional
+
+  Returns
+  -------
+  mmtbx.ions.identify.manager or mmtbx.ions.svm.manager
+  """
   connectivity = \
     geometry_restraints_manager.shell_sym_tables[0].full_simple_connectivity()
   if (manager_class is None) :
@@ -2005,5 +2382,8 @@ def create_manager (
     log = log)
   return manager_obj
 
-def PRINT_DEBUG (*args) :
+def _PRINT_DEBUG (*args) :
+  """
+  Prints a debugging message to stderr.
+  """
   print >> sys.stderr, sys.stderr, args

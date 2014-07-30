@@ -12,18 +12,35 @@ from scitbx.matrix import col
 
 def _bond_angles(vectors):
   """
-  Returns a list of angles (In degrees) between all two-element combinations
+  Creates a list of angles (In degrees) between all two-element combinations
   in vectors.
+
+  Parameters
+  ----------
+  vectors : scitbx.matrix.col
+
+  Returns
+  -------
+  list of float
   """
 
-  return [(v1, v2, v1.angle(v2, deg = True))
+  return [(v1, v2, v1.angle(v2, deg=True))
           for index, v1 in enumerate(vectors)
           for v2 in vectors[index + 1:]]
 
-def _is_tetrahedron(vectors, dev_cutoff = 20):
+def _is_tetrahedron(vectors, dev_cutoff=20):
   """
   Tetrahedrons have four vertices, with angles between all pairs of vertices
   uniformly about 104.5 degrees.
+
+  Parameters
+  ----------
+  vectors : list scitbx.matrix.col
+  dev_cutoff : float, optional
+
+  Returns
+  -------
+  bool
   """
 
   if len(vectors) > 4 or len(vectors) < 3:
@@ -35,11 +52,20 @@ def _is_tetrahedron(vectors, dev_cutoff = 20):
   if deviation <= dev_cutoff:
     return deviation, 4 - len(vectors)
 
-def _is_trigonal_plane(vectors, dev_cutoff = 20):
+def _is_trigonal_plane(vectors, dev_cutoff=20):
   """
   Triangular planar geometry has three vertices (By definition all on the same
   equatorial plane). The expected angles are 120 degrees between neighboring
   vertices.
+
+  Parameters
+  ----------
+  vectors : list scitbx.matrix.col
+  dev_cutoff : float, optional
+
+  Returns
+  -------
+  bool
   """
   if len(vectors) != 3:
     return
@@ -55,11 +81,20 @@ def _is_trigonal_plane(vectors, dev_cutoff = 20):
   if deviation <= dev_cutoff:
     return deviation, 3 - len(vectors)
 
-def _is_square_plane(vectors, dev_cutoff = 20):
+def _is_square_plane(vectors, dev_cutoff=20):
   """
   Square planar geometry has four vertices, all on the same equatorial plane.
   The expected angles are 90 degrees between neighboring vertices and 180
   degrees between vertices across from one another.
+
+  Parameters
+  ----------
+  vectors : list scitbx.matrix.col
+  dev_cutoff : float, optional
+
+  Returns
+  -------
+  bool
   """
 
   if len(vectors) != 4:
@@ -87,10 +122,19 @@ def _is_square_plane(vectors, dev_cutoff = 20):
   if deviation <= dev_cutoff:
     return deviation, 4 - len(vectors)
 
-def _is_square_pyramid(vectors, dev_cutoff = 20):
+def _is_square_pyramid(vectors, dev_cutoff=20):
   """
   Square bipyramids have five vertices, four on the same equatorial plane with
   one above. The expected angles are all either 90 degrees or 180 degrees.
+
+  Parameters
+  ----------
+  vectors : list scitbx.matrix.col
+  dev_cutoff : float, optional
+
+  Returns
+  -------
+  bool
   """
   if len(vectors) != 5:
     return
@@ -112,13 +156,22 @@ def _is_square_pyramid(vectors, dev_cutoff = 20):
   if deviation <= dev_cutoff:
     return deviation, 5 - len(vectors)
 
-def _is_octahedron(vectors, dev_cutoff = 20):
+def _is_octahedron(vectors, dev_cutoff=20):
   """
   Octahedrons have six vertices (Their name comes from their eight faces).
   The expected angles are all either 90 degrees (Next to each other),
   or 180 degrees (Across from each other).
 
   Another name for this shape is square bipyramidal.
+
+  Parameters
+  ----------
+  vectors : list scitbx.matrix.col
+  dev_cutoff : float, optional
+
+  Returns
+  -------
+  bool
   """
   if len(vectors) != 6:
     return
@@ -140,11 +193,20 @@ def _is_octahedron(vectors, dev_cutoff = 20):
   if deviation <= dev_cutoff:
     return deviation, 6 - len(vectors)
 
-def _is_trigonal_pyramid(vectors, dev_cutoff = 15):
+def _is_trigonal_pyramid(vectors, dev_cutoff=15):
   """
   Trigional pyramids have four vertices. Three vertices form a plane with
   angles of 120 degrees between each pair. The last vertex resides axial
   to the plane, at 90 degrees from all of the equatorial vertices.
+
+  Parameters
+  ----------
+  vectors : list scitbx.matrix.col
+  dev_cutoff : float, optional
+
+  Returns
+  -------
+  bool
   """
   if len(vectors) != 4:
     return
@@ -166,12 +228,21 @@ def _is_trigonal_pyramid(vectors, dev_cutoff = 15):
   if deviation <= dev_cutoff:
     return deviation, 4 - len(vectors)
 
-def _is_trigonal_bipyramid(vectors, dev_cutoff = 15):
+def _is_trigonal_bipyramid(vectors, dev_cutoff=15):
   """
   Trigonal bipyramids have five vertices. Three vertices form a plane in the
   middle and the angles between all three are 120 degrees. The two other
   vertices reside axial to the plane, at 90 degrees from all the equatorial
   vertices.
+
+  Parameters
+  ----------
+  vectors : list scitbx.matrix.col
+  dev_cutoff : float, optional
+
+  Returns
+  -------
+  bool
   """
   if len(vectors) > 5 or len(vectors) < 4:
     return
@@ -179,7 +250,7 @@ def _is_trigonal_bipyramid(vectors, dev_cutoff = 15):
   angles = _bond_angles(vectors)
 
   # Grab the two axial vectors
-  ax1, ax2, axial_angle = max(angles, key = lambda x: abs(x[-1]))
+  ax1, ax2, axial_angle = max(angles, key=lambda x: abs(x[-1]))
 
   if axial_angle < 150:
     # Missing one of the two axial vectors, just quit
@@ -196,7 +267,7 @@ def _is_trigonal_bipyramid(vectors, dev_cutoff = 15):
     elif (v1 not in [ax1, ax2]) and (v2 not in [ax1, ax2]):
       equatorial_angles += angle,
 
-  deviants =  [axial_angle - 180]
+  deviants = [axial_angle - 180]
   deviants += [i - 90 for i in base_to_axials]
   deviants += [i - 120 for i in equatorial_angles]
   deviation = sqrt(sum(i ** 2 for i in deviants) / len(deviants))
@@ -204,11 +275,20 @@ def _is_trigonal_bipyramid(vectors, dev_cutoff = 15):
   if deviation <= dev_cutoff:
     return deviation, 5 - len(vectors)
 
-def _is_pentagonal_bipyramid(vectors, dev_cutoff = 15):
+def _is_pentagonal_bipyramid(vectors, dev_cutoff=15):
   """
   Pentagonal bipyramids have seven vertices. Five vertices form a plane in the
   middle and the angles between all five are 72 degrees. The two other vertices
   reside axial to the plane, at 90 degrees from all the equatorial vertices.
+
+  Parameters
+  ----------
+  vectors : list scitbx.matrix.col
+  dev_cutoff : float, optional
+
+  Returns
+  -------
+  bool
   """
   if len(vectors) > 7 or len(vectors) < 6:
     return
@@ -221,7 +301,7 @@ def _is_pentagonal_bipyramid(vectors, dev_cutoff = 15):
     v_angles = []
     for v2 in vectors:
       if v2 != v1:
-        v_angles.append(v1.angle(v2, deg = True))
+        v_angles.append(v1.angle(v2, deg=True))
 
     a_180s = len([i for i in v_angles if abs(i - 180) < 20])
     a_90s = len([i for i in v_angles if abs(i - 90) < 20])
@@ -234,7 +314,7 @@ def _is_pentagonal_bipyramid(vectors, dev_cutoff = 15):
     return
 
   ax1, ax2 = axials
-  axial_angle = ax1.angle(ax2, deg = True)
+  axial_angle = ax1.angle(ax2, deg=True)
 
   base_to_axials = []
   equatorial_angles = []
@@ -247,7 +327,7 @@ def _is_pentagonal_bipyramid(vectors, dev_cutoff = 15):
     elif (v1 not in [ax1, ax2]) and (v2 not in [ax1, ax2]):
       equatorial_angles += angle,
 
-  deviants =  [axial_angle - 180]
+  deviants = [axial_angle - 180]
   deviants += [i - 90 for i in base_to_axials]
   deviants += [min(abs(i - 72), abs(i - 144)) for i in equatorial_angles]
   deviation = sqrt(sum(i ** 2 for i in deviants) / len(deviants))
@@ -255,7 +335,7 @@ def _is_pentagonal_bipyramid(vectors, dev_cutoff = 15):
   if deviation <= dev_cutoff:
     return deviation, 7 - len(vectors)
 
-def _is_trigonal_prism(vectors, dev_cutoff = 15):
+def _is_trigonal_prism(vectors, dev_cutoff=15):
   """
   Triangular prisms are defined by 3 vertices in a triangular pattern on two
   aligned planes. Unfortunately, the angles are dependent on the length and
@@ -263,6 +343,15 @@ def _is_trigonal_prism(vectors, dev_cutoff = 15):
   detecting this shape.
 
   For now, this code is experimental.
+
+  Parameters
+  ----------
+  vectors : list scitbx.matrix.col
+  dev_cutoff : float, optional
+
+  Returns
+  -------
+  bool
   """
   if len(vectors) != 6:
     return
@@ -296,32 +385,6 @@ SUPPORTED_GEOMETRIES_OLD = OrderedDict([
   ("trigonal_prism", _is_trigonal_prism),
   ])
 
-def _tetrahedron():
-  return [
-    col([1, 1, 1]),
-    col([-1, -1, 1]),
-    col([-1, 1, -1]),
-    col([1, -1, -1]),
-    ]
-
-def _octahedron():
-  return _bipyramid(_square_plane())
-
-def _trigonal_plane():
-  return [
-    col([0, 1, 0]),
-    col([-sqrt(3) / 2, -1 / 2, 0]),
-    col([sqrt(3) / 2, -1 / 2, 0]),
-    ]
-
-def _square_plane():
-  return [
-    col([0, 1, 0]),
-    col([0, -1, 0]),
-    col([1, 0, 0]),
-    col([-1, 0, 0]),
-    ]
-
 def _concatenate(*args):
   """
   Reduces a list of a mixture of elements and lists down to a single list.
@@ -343,25 +406,106 @@ def _concatenate(*args):
       lst.append(arg)
   return lst
 
+def _tetrahedron():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
+  return [
+    col([1, 1, 1]),
+    col([-1, -1, 1]),
+    col([-1, 1, -1]),
+    col([1, -1, -1]),
+    ]
+
+def _octahedron():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
+  return _bipyramid(_square_plane())
+
+def _trigonal_plane():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
+  return [
+    col([0, 1, 0]),
+    col([-sqrt(3) / 2, -1 / 2, 0]),
+    col([sqrt(3) / 2, -1 / 2, 0]),
+    ]
+
+def _square_plane():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
+  return [
+    col([0, 1, 0]),
+    col([0, -1, 0]),
+    col([1, 0, 0]),
+    col([-1, 0, 0]),
+    ]
+
 def _pyramid(base):
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _concatenate(base, col([0, 0, 1]))
 
 def _bipyramid(base):
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _concatenate(base, col([0, 0, 1]), col([0, 0, -1]))
 
 def _square_pyramid():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _pyramid(_square_plane())
 
 def _square_bipyramid():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _bipyramid(_square_plane())
 
 def _trigonal_pyramid():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _pyramid(_trigonal_plane())
 
 def _trigonal_bipyramid():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _bipyramid(_trigonal_plane())
 
 def _trigonal_prism():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _concatenate(
     [i + col([0, 0, 1]) for i in _trigonal_plane()],
     [i + col([0, 0, -1]) for i in _trigonal_plane()],
@@ -369,7 +513,7 @@ def _trigonal_prism():
 
 def _pentagon():
   """
-  Returns a list of vectors in the shape of a planar pentagon.
+  Create a list of vectors in the shape of a planar pentagon.
 
   Returns
   -------
@@ -393,12 +537,27 @@ def _pentagon():
     ]
 
 def _pentagonal_pyramid():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _pyramid(_pentagon())
 
 def _pentagonal_bipyramid():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _bipyramid(_pentagon())
 
 def _square_pyramid_bidentate_miss_1():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _concatenate(
     _square_plane(),
     col([sqrt(2) / 2, sqrt(2) / 2, -1]),
@@ -406,6 +565,11 @@ def _square_pyramid_bidentate_miss_1():
     )
 
 def _square_pyramid_bidentate_miss_2():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return [
     col([0, 1, 0]),
     col([0, -1, 0]),
@@ -416,6 +580,11 @@ def _square_pyramid_bidentate_miss_2():
     ]
 
 def _square_pyramid_bidentate_miss_3():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return [
     col([0, 1, 0]),
     col([0, -1, 0]),
@@ -426,6 +595,11 @@ def _square_pyramid_bidentate_miss_3():
     ]
 
 def _square_pyramid_bidentate():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _concatenate(
     _square_pyramid(),
     col([sqrt(2) / 2, sqrt(2) / 2, -1]),
@@ -433,6 +607,11 @@ def _square_pyramid_bidentate():
     )
 
 def _pentagonal_pyramid_bidentate():
+  """
+  Returns
+  -------
+  list of scitbx.matrix.col
+  """
   return _concatenate(
     _pentagonal_pyramid(),
     col([sqrt(2) / 2, sqrt(2) / 2, -1]),
@@ -443,6 +622,10 @@ def _pentagonal_bibidentate_miss_1():
   """
   A planar pentagon with bidentate atoms coordinating directly above and
   below. One atom from the plane is missing in this case.
+
+  Returns
+  -------
+  list of scitbx.matrix.col
   """
   return _concatenate(
     col([sqrt(2) / 2, sqrt(2) / 2, 1]),
@@ -456,6 +639,10 @@ def _pentagonal_bibidentate_miss_2():
   """
   A planar pentagon with bidentate atoms coordinating directly above and
   below. One atom from the plane is missing in this case.
+
+  Returns
+  -------
+  list of scitbx.matrix.col
   """
   return _concatenate(
     col([sqrt(2) / 2, sqrt(2) / 2, 1]),
@@ -469,6 +656,10 @@ def _pentagonal_bibidentate_miss_3():
   """
   A planar pentagon with bidentate atoms coordinating directly above and
   below. One atom from the plane is missing in this case.
+
+  Returns
+  -------
+  list of scitbx.matrix.col
   """
   pentagon = _pentagon()
   return _concatenate(
@@ -486,6 +677,10 @@ def _pentagonal_bibidentate_miss_4():
   """
   A planar pentagon with bidentate atoms coordinating directly above and
   below. One atom from a bidentate coordinator is missing in this case.
+
+  Returns
+  -------
+  list of scitbx.matrix.col
   """
   return _concatenate(
     _pentagon(),
@@ -498,6 +693,10 @@ def _pentagonal_bibidentate_miss_5():
   """
   A planar pentagon with bidentate atoms coordinating directly above and
   below. One atom from a bidentate coordinator is missing in this case.
+
+  Returns
+  -------
+  list of scitbx.matrix.col
   """
   return _concatenate(
     _pentagon(),
@@ -509,6 +708,10 @@ def _pentagonal_bibidentate_miss_5():
 def _pentagonal_bibidentate():
   """
   A planar pentagon with bidentate atoms coordinating directly above and below.
+
+  Returns
+  -------
+  list of scitbx.matrix.col
   """
   return _concatenate(
     _pentagon(),
@@ -521,6 +724,10 @@ def _pentagonal_bibidentate():
 def _see_saw():
   """
   An octahedron missing two adjacent points.
+
+  Returns
+  -------
+  list of scitbx.matrix.col
   """
   return [
     col([1, 0, 0]),
@@ -533,6 +740,10 @@ def _three_legs():
   """
   Better name? Imagine 3 orthogonal vectors pointed in the x, y, and z
   directions.
+
+  Returns
+  -------
+  list of scitbx.matrix.col
   """
   return [
     col([1, 0, 0]),
@@ -540,7 +751,6 @@ def _three_legs():
     col([0, 0, 1]),
     ]
 
-# XXX: Do we want to represent this differently? Use enums or classes instead?
 SUPPORTED_GEOMETRIES = OrderedDict([
   (3, [
     ("three_legs", _three_legs, 15),
@@ -581,29 +791,42 @@ SUPPORTED_GEOMETRIES = OrderedDict([
   ])
 
 SUPPORTED_GEOMETRY_NAMES = \
-  [lst[0] for vals in SUPPORTED_GEOMETRIES.values() for lst in vals]
+  [lst_i[0] for vals in SUPPORTED_GEOMETRIES.values() for lst_i in vals]
 
 def _angles_deviation(vectors_a, vectors_b):
+  """
+  Calculates the root mean square of the angle deviation (in degrees) between
+  two lists of vectors.
+
+  Parameters
+  ----------
+  vectors_a : list of scitbx.matrix.col
+  vectors_b : list of scitbx.matrix.col
+
+  Returns
+  -------
+  float
+  """
   assert len(vectors_a) == len(vectors_b)
 
-  angles_a = [vec.angle(vec_o, deg = True)
+  angles_a = [vec.angle(vec_o, deg=True)
               for index, vec in enumerate(vectors_a)
               for vec_o in vectors_a[index + 1:]]
 
-  angles_b = [vec.angle(vec_o, deg = True)
+  angles_b = [vec.angle(vec_o, deg=True)
               for index, vec in enumerate(vectors_b)
               for vec_o in vectors_b[index + 1:]]
 
   angles_a.sort()
   angles_b.sort()
 
-  angle_deviation = sqrt(sum([(i - j) ** 2 for i, j in zip(angles_a, angles_b)])
+  angle_deviation = sqrt(sum((i - j) ** 2 for i, j in zip(angles_a, angles_b))
                    / len(angles_a))
 
   return angle_deviation
 
-def find_coordination_geometry(nearby_atoms, minimizer_method = False,
-                               cutoff = 2.9):
+def find_coordination_geometry(nearby_atoms, minimizer_method=False,
+                               cutoff=2.9):
   """
   Searches through a list of geometries to find those that fit nearby_atom.
 
@@ -613,8 +836,9 @@ def find_coordination_geometry(nearby_atoms, minimizer_method = False,
 
   Parameters
   ----------
-  nearby_atoms: list of scitbx.matrix.rec
-      A list of vectors indicating the vertices of the shape to be recognized.
+  nearby_atoms: list of mmtbx.ions.environment.atom_contact
+      A list of atom contacts, indicating the vertices of the shape to be
+      recognized.
   minimizer_method: bool, optional
       Optional parameter to use the new, more efficient version of geometry
       recognition. The old method will be depreciated in later versions of
@@ -631,8 +855,8 @@ def find_coordination_geometry(nearby_atoms, minimizer_method = False,
 
   See Also
   --------
-  SUPPORTED_GEOMETRY_NAMES contains a list of geometries supported by this
-  function. See SUPPORTED_GEOMETRIES_OLD for when minimizer_method == False.
+  mmtbx.ions.geometry.SUPPORTED_GEOMETRY_NAMES,
+  mmtbx.ions.geometry.SUPPORTED_GEOMETRIES_OLD
   """
 
   # Filter out overlapping atoms, we just want an idea of the coordinating
@@ -666,13 +890,13 @@ def find_coordination_geometry(nearby_atoms, minimizer_method = False,
         geometries.append((name, rmsa))
 
     if geometries:
-      geometries.sort(key = lambda x: x[-1])
+      geometries.sort(key=lambda x: x[-1])
       geometries = [geometries[0]]
   else:
     for name, func in SUPPORTED_GEOMETRIES_OLD.items():
       val = func(filtered)
       if val:
-        deviation, missing = val
+        deviation = val[0]
         geometries.append((name, deviation))
 
   return geometries

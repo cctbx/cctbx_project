@@ -1,6 +1,7 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
 
+from collections import defaultdict
 from math import cos, pi, sin, sqrt
 import sys
 
@@ -12,7 +13,7 @@ from mmtbx.ions import server
 from scitbx.array_family import flex
 from scitbx.math import gaussian_fit_1d_analytical
 
-def anonymize_ions (hierarchy, log=sys.stdout):
+def anonymize_ions (pdb_hierarchy, log=sys.stdout):
   """
   Convert any elemental ions in the PDB hierarchy to water, resetting the
   occupancy and scaling the B-factor.  The atom segids will be set to the old
@@ -22,16 +23,23 @@ def anonymize_ions (hierarchy, log=sys.stdout):
 
   Parameters
   ----------
-  hierarchy : ...
+  pdb_hierarchy : iotbx.pdb.hierarchy.root
   log : file, optional
+
+  Returns
+  -------
+  iotbx.pdb.hierarchy.root
+      New pdb hierarchy with its ions anonymized
+  int
+      Number of atoms that were anonymized.
   """
   ion_resnames = set(chemical_elements.proper_upper_list())
   for resname in server.params["_lib_charge.resname"]:
     if resname not in WATER_RES_NAMES:
       ion_resnames.add(resname)
   n_converted = 0
-  hierarchy = hierarchy.deep_copy()
-  for model in hierarchy.models():
+  pdb_hierarchy = pdb_hierarchy.deep_copy()
+  for model in pdb_hierarchy.models():
     for chain in model.chains():
       for residue_group in chain.residue_groups():
         for atom_group in residue_group.atom_groups():
@@ -58,40 +66,45 @@ def anonymize_ions (hierarchy, log=sys.stdout):
               print >> log, "%s --> %s, B-iso = %.2f" % (id_str, atom.id_str(),
                 atom.b)
               n_converted += 1
-  return hierarchy, n_converted
+  return pdb_hierarchy, n_converted
 
-def sort_atoms_permutation (pdb_atoms, xray_structure):
+def sort_atoms_permutation(pdb_atoms, xray_structure):
   """
+  Creates a list of atoms in pdb_atoms, sorted first by their atomic number,
+  then by occupancy, and finally, by isotropic b-factor.
+
+  Parameters
+  ----------
+  pdb_atoms : iotbx.pdb.hierarchy.af_shared_atom
+  xray_structure : cctbx.xray.structure.structure
+
+  Returns
+  -------
+  flex.size_t of int
+      i_seqs of sorted atoms
   """
   assert pdb_atoms.size() == xray_structure.scatterers().size()
   pdb_atoms.reset_i_seq()
-  atoms_sorted = sorted(pdb_atoms, _cmp_atom)
+  atoms_sorted = sorted(
+    pdb_atoms,
+    key=lambda x:
+    (sasaki.table(x.element.strip().upper()).atomic_number(), x.occ, x.b),
+    reverse=True,
+    )
   sele = flex.size_t([atom.i_seq for atom in atoms_sorted])
   return sele
 
-# compare mass, then occupancy, then B_iso
-def _cmp_atom (a, b):
-  mass_a = sasaki.table(a.element.strip().upper()).atomic_number()
-  mass_b = sasaki.table(b.element.strip().upper()).atomic_number()
-  if mass_a == mass_b:
-    if a.occ == b.occ:
-      return cmp(b.b, a.b)
-    else:
-      return cmp(b.occ, a.occ)
-  else:
-    return cmp(mass_b, mass_a)
-
-def collect_ions (pdb_hierarchy):
+def collect_ions(pdb_hierarchy):
   """
   Collects a list of all ions in pdb_hierarchy.
 
   Parameters
   ----------
-  pdb_hierarchy : ...
+  pdb_hierarchy : iotbx.pdb.hierarchy.root
 
   Returns
   -------
-  list of atoms...
+  list of iotbx.pdb.hierarchy.atom
   """
   elements = chemical_elements.proper_upper_list()
   ions = []
@@ -110,6 +123,28 @@ def collect_ions (pdb_hierarchy):
 def compare_ions (hierarchy, reference_hierarchy, reference_xrs,
     distance_cutoff=2.0, log=None, ignore_elements=(), only_elements=(),
     sel_str_base="segid ION"):
+  """
+  Compares two pdb structures to determine the number of ions that appear in the
+  reference structure and are either matched or missing in the other structure.
+
+  Parameters
+  ----------
+  hierarchy : iotbx.pdb.hierarchy.root
+  reference_hierarchy : iotbx.pdb.hierarchy.root
+  reference_xrs : ...
+  distance_cutoff : float, optional
+  log : file, optional
+  ignore_element : iterable, optional
+  only_elements : iterable, optional
+  sel_str_base : str, optional
+
+  Returns
+  -------
+  int
+      Number of ions in reference_hierarchy that were also found in hierarchy.
+  int
+      Number of ions in reference_hierarchy that were not found in hierarchy.
+  """
   if log is None:
     log = null_out()
   sel_cache = hierarchy.atom_selection_cache()
@@ -230,7 +265,7 @@ def fit_gaussian(unit_cell, site_cart, real_map, radius=1.6):
 
   Parameters
   ----------
-  unit_cell : uctbx.unit_cell object
+  unit_cell : uctbx.unit_cell
   site_cart : tuple of float, float, float
       The site's cartesian coordinates to sample the density around.
   real_map : scitbx.array_family.flex
@@ -267,3 +302,32 @@ def fit_gaussian(unit_cell, site_cart, real_map, radius=1.6):
     return 0., 0.
   else:
     return fit.a, fit.b
+
+def count_coordinating_residues (nearby_atoms, distance_cutoff=3.0):
+  """
+  Count the number of residues of each type involved in the coordination
+  sphere.  This may yield additional clues to the identity of ions, e.g. only
+  Zn will have 4 Cys residues.
+
+  Parameters
+  ----------
+  nearby_atoms : list of mmtbx.ions.environment.atom_contact
+  distance_cutoff : float, optional
+
+  Returns
+  -------
+  dict of str, int
+  """
+  unique_residues = []
+  residue_counts = defaultdict(int)
+  for contact in nearby_atoms:
+    if contact.distance() <= distance_cutoff:
+      parent = contact.atom.parent()
+      for residue in unique_residues:
+        if residue == parent:
+          break
+      else:
+        resname = parent.resname
+        residue_counts[resname] += 1
+        unique_residues.append(parent)
+  return residue_counts

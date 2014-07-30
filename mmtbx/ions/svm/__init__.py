@@ -542,7 +542,7 @@ def _flatten_list(lst):
 
   Parameters
   ----------
-  lst : list or list of list or list of list of list or ...
+  lst : list or  list of list or list of list of list or ...
       A list to be flattened
 
   Returns
@@ -674,7 +674,7 @@ class manager (mmtbx.ions.identify.manager) :
     return None
 
   def analyze_waters (self, out=sys.stdout, debug=True, candidates=Auto) :
-    waters = self.extract_waters()
+    waters = self._extract_waters()
     print >> out, "  %d waters to analyze" % len(waters)
     print >> out, ""
     if (len(waters) == 0) : return

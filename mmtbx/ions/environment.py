@@ -6,11 +6,11 @@ chemical environments.
 
 from __future__ import division
 
-from collections import Counter, defaultdict
+from collections import Counter
 
 from mmtbx import ions
 from iotbx.pdb import common_residue_names_get_class as get_class
-from scitbx.matrix import col, distance_from_plane
+from scitbx.matrix import col
 from libtbx.utils import Sorry
 from libtbx import slots_getstate_setstate
 
@@ -31,10 +31,24 @@ chem_carboxy, \
   chem_nitrogen, \
   chem_sulfur = range(N_SUPPORTED_ENVIRONMENTS)
 
-
 class ScatteringEnvironment (slots_getstate_setstate):
   """
   Container for information summarizing a site's scattering environment.
+
+  Attributes
+  ----------
+  d_min : float
+  wavelengeth : float
+  fp : float
+  fpp : float
+  b_iso : float
+  b_mean_hoh : float
+  occ : float
+  fo_density : tuple of float, float
+  fofo_density : tuple of float, float
+  anom_density : tuple of float, float
+  pai : float
+      Principal axes of inertia at site, currently unused.
   """
   __slots__ = ["d_min", "wavelength", "fp", "fpp", "b_iso", "b_mean_hoh", "occ",
                "fo_density", "fofc_density", "anom_density", "pai"]
@@ -84,12 +98,21 @@ class atom_contact (slots_getstate_setstate) :
   Container for information about an interacting atom.  Most of the methods
   are simply wrappers for frequently called operations on the atom object, but
   symmetry-aware.
+
+  Attributes
+  ----------
+  atom : iotbx.pdb.hierarchy.atom
+  charge : int
+  element : str
+  rt_mx : cctbx.sgtbx.rt_mx
+  site_cart : tuple of float, float, float
+  vector : scitbx.matrix.rec
   """
   __slots__ = ["atom", "vector", "site_cart", "rt_mx", "is_carboxy_terminus",
                "element", "charge"]
   def __init__ (self, atom, vector, site_cart, rt_mx) :
     self.atom = atom.fetch_labels()
-    self.is_carboxy_terminus = is_carboxy_terminus(atom)
+    self.is_carboxy_terminus = _is_carboxy_terminus(atom)
     self.vector = vector
     self.site_cart = site_cart
     self.rt_mx = rt_mx
@@ -123,30 +146,89 @@ class atom_contact (slots_getstate_setstate) :
     return abs(self.vector - other.vector)
 
   def id_str (self, suppress_rt_mx=False) :
+    """
+    Creates a string from the atom's id string and the symmetry operator
+    associated with that site.
+
+    Parameters
+    ----------
+    suppress_rt_mx : bool, optional
+        Don't include symmetry operator information in the string.
+
+    Returns
+    -------
+    str
+    """
     if (not self.rt_mx.is_unit_mx()) and (not suppress_rt_mx) :
       return self.atom.id_str() + " " + str(self.rt_mx)
     else :
       return self.atom.id_str()
 
   def atom_name (self) :
+    """
+    Retrieves the coordinating atom's name (i.e. "OX1")
+
+    Returns
+    -------
+    str
+    """
     return self.atom.name.strip()
 
   def resname (self) :
+    """
+    Retrieves the residue name associated with te coordinating atom (i.e. "ARG")
+
+    Returns
+    -------
+    str
+    """
     return self.atom.fetch_labels().resname.strip().upper()
 
   @property
   def occ (self) :
+    """
+    Occupancy of the coordinating atom.
+
+    Returns
+    -------
+    float
+    """
     return self.atom.occ
 
   def atom_i_seq (self) :
+    """
+    Retrieves the sequence ID of the coordinating atom.
+
+    Returns
+    -------
+    int
+    """
     return self.atom.i_seq
 
   def altloc (self) :
+    """
+    Retrieves the alternate conformation label, if any, of the coordinating
+    atom.
+
+    Returns
+    -------
+    str
+    """
     return self.atom.fetch_labels().altloc.strip()
 
-  def atom_id_no_altloc (self, suppress_rt_mx = False) :
-    """Unique identifier for an atom, ignoring the altloc but taking the
-    symmetry operator (if any) into account."""
+  def atom_id_no_altloc (self, suppress_rt_mx=False) :
+    """
+    Unique identifier for an atom, ignoring the altloc but taking the symmetry
+    operator (if any) into account.
+
+    Parameters
+    ----------
+    suppress_rt_mx : bool, optional
+
+    Returns
+    -------
+    str
+    """
     labels = self.atom.fetch_labels()
     base_id = labels.chain_id + labels.resid() + self.atom.name
     if (self.rt_mx.is_unit_mx()) or (suppress_rt_mx) :
@@ -155,8 +237,18 @@ class atom_contact (slots_getstate_setstate) :
       return base_id + " " + str(self.rt_mx)
 
   def __eq__ (self, other) :
-    """Equality operator, taking symmetry into account but ignoring the
-    altloc identifier."""
+    """
+    Equality operator, taking symmetry into account but ignoring the
+    altloc identifier.
+
+    Parameters
+    ----------
+    other : mmtbx.ions.environment.atom_contact
+
+    Returns
+    -------
+    bool
+    """
     return (other.atom_id_no_altloc() == self.atom_id_no_altloc())
 
   def __abs__ (self) :
@@ -168,10 +260,25 @@ class atom_contact (slots_getstate_setstate) :
 class ChemicalEnvironment (slots_getstate_setstate):
   """
   Container for information summarizing a site's chemical environment.
+
+  Attributes
+  ----------
+  atom : iotbx.pdb.hierarchy.atom
+  contacts : list of mmtbx.ions.environment.atom_contact
+  contacts_no_alts : list of mmtbx.ions.environment.atom_contact
+  chemistry : collections.Counter of int, int
+  geometry : list of tuples of str, float
   """
   __slots__ = ["atom", "contacts", "contacts_no_alts", "chemistry", "geometry"]
 
   def __init__(self, i_seq, contacts, manager):
+    """
+    Parameters
+    ----------
+    i_seq : int
+    contacts : list of mmtbx.ions.environment.atom_contact
+    manager : mmtbx.ions.identify.manager
+    """
     self.atom = manager.pdb_atoms[i_seq].fetch_labels()
 
     self.contacts = contacts
@@ -184,7 +291,7 @@ class ChemicalEnvironment (slots_getstate_setstate):
 
       no_alt_loc = True
       for other_contact in contacts[index + 1:]:
-        if same_atom_different_altloc(contact.atom, other_contact.atom) and \
+        if _same_atom_different_altloc(contact.atom, other_contact.atom) and \
           contact.rt_mx == other_contact.rt_mx:
           no_alt_loc = False
           break
@@ -281,7 +388,7 @@ class ChemicalEnvironment (slots_getstate_setstate):
       for index, i_seq in enumerate(i_seqs):
         no_alt_loc = True
         for j_seq in i_seqs[index + 1:]:
-          if same_atom_different_altloc(
+          if _same_atom_different_altloc(
               manager.pdb_atoms[i_seq], manager.pdb_atoms[j_seq]):
             no_alt_loc = False
             break
@@ -370,7 +477,7 @@ def find_nearby_atoms (
   ----------
   i_seq : int
   xray_structure : cctbx.xray.structure.structure
-  pdb_atoms : iotbx.pdb.hierarchy.af_shared_atom?
+  pdb_atoms : iotbx.pdb.hierarchy.af_shared_atom
   asu_mappings : cctbx.crystal.direct_space_asu.asu_mappings
   asu_table : cctbx.crystal.pair_tables.pair_asu_table
   connectivity : scitbx.array_family.shared.stl_set_unsigned
@@ -398,7 +505,7 @@ def find_nearby_atoms (
     if atom_j.element.upper().strip() in ["H", "D"]:
       continue
     # Filter out alternate conformations of this atom
-    if same_atom_different_altloc(atom_i, atom_j):
+    if _same_atom_different_altloc(atom_i, atom_j):
       continue
     # Gather up contacts with all symmetric copies
     for j_sym_group in j_sym_groups:
@@ -457,68 +564,7 @@ def find_nearby_atoms (
 ########################################################################
 # UTILITY METHODS
 #
-# XXX distance cutoff may be too generous, but 0.5 is too strict
-def is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.75):
-  """
-  Given an isolated atom and an interacting residue with one or more amine
-  groups, determine whether the atom is approximately coplanar with the terminus
-  of the sidechain (and thus interacting with the amine hydrogen(s) along
-  approximately the same axis as the N-H bond).
-
-  Parameters
-  ----------
-  atom : iotbx.pdb.hierarchy.atom
-  residue : iotbx.pdb.hierarchy.residue
-  distance_cutoff : float, optional
-
-  Returns
-  -------
-  bool
-  """
-  sidechain_sites = []
-  resname = residue.resname
-  for other in residue.atoms() :
-    name = other.name.strip()
-    if (resname == "ARG") and (name in ["NH1","NH2","NE"]) :
-      sidechain_sites.append(other.xyz)
-    elif (resname == "GLN") and (name in ["OE1","NE2","CD"]) :
-      sidechain_sites.append(other.xyz)
-    elif (resname == "ASN") and (name in ["OD1","ND2","CG"]) :
-      sidechain_sites.append(other.xyz)
-  if (len(sidechain_sites) != 3) : # XXX probably shouldn't happen
-    return False
-  D = distance_from_plane(atom.xyz, sidechain_sites)
-  #print atom.id_str(), D
-  return (D <= distance_cutoff)
-
-def is_negatively_charged_oxygen (atom_name, resname) :
-  """
-  Determine whether the oxygen atom of interest is either negatively charged
-  (usually a carboxyl group or sulfate/phosphate), or has a lone pair (and
-  no hydrogen atom) that would similarly repel anions.
-
-  Parameters
-  -----------
-  atom_name : str
-  resname : str
-
-  Returns
-  -------
-  bool
-  """
-  if ((atom_name in ["OD1","OD2","OE1","OE2"]) and
-      (resname in ["GLU","ASP","GLN","ASN"])) :
-    return True
-  elif ((atom_name == "O") and (not resname in ["HOH","WAT"])) :
-    return True # sort of - the lone pair acts this way
-  elif ((len(atom_name) == 3) and (atom_name[0:2] in ["O1","O2","O3"]) and
-        (atom_name[2] in ["A","B","G"])) :
-    return True
-  elif (resname in ["SO4","PO4"]) :
-    return True
-  return False
-
-def is_carboxy_terminus (pdb_object):
+def _is_carboxy_terminus (pdb_object):
   """
   Checks if an atom or residue is part of a carboxy terminus.
 
@@ -545,7 +591,7 @@ def is_carboxy_terminus (pdb_object):
       return True
   return False
 
-def same_atom_different_altloc(atom1, atom2):
+def _same_atom_different_altloc(atom1, atom2):
   """
   Determines whether atom1 and atom2 differ only by their alternate location.
 
@@ -564,32 +610,3 @@ def same_atom_different_altloc(atom1, atom2):
   chain1, chain2 = label1.chain_id, label2.chain_id
   res1, res2 = label1.resid(), label2.resid()
   return name1 == name2 and chain1 == chain2 and res1 == res2
-
-def count_coordinating_residues (nearby_atoms, distance_cutoff=3.0):
-  """
-  Count the number of residues of each type involved in the coordination
-  sphere.  This may yield additional clues to the identity of ions, e.g. only
-  Zn will have 4 Cys residues.
-
-  Parameters
-  ----------
-  nearby_atoms : list of mmtbx.ions.environment.atom_contact
-  distance_cutoff : float, optional
-
-  Returns
-  -------
-  dict of str, int
-  """
-  unique_residues = []
-  residue_counts = defaultdict(int)
-  for contact in nearby_atoms:
-    if contact.distance() <= distance_cutoff:
-      parent = contact.atom.parent()
-      for residue in unique_residues:
-        if residue == parent:
-          break
-      else:
-        resname = parent.resname
-        residue_counts[resname] += 1
-        unique_residues.append(parent)
-  return residue_counts
