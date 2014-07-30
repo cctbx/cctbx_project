@@ -80,6 +80,10 @@ class metal_parameters (group_args) :
 class parameter_server (slots_getstate_setstate) :
   """
   Class for retrieving information from ion_parameters.cif
+
+  Attributes
+  ----------
+  params : iotbx.cif.model.block
   """
 
   __slots__ = ["params", "_metal_params", "_charge_params", "_resname_elem",
@@ -143,9 +147,9 @@ class parameter_server (slots_getstate_setstate) :
     Examples
     --------
     >>> from mmtbx.ions import server, metal_parameters
-    >>> print server.get_valence_params(
-    ...   metal_parameters(element="ZN", charge=2),
-    ...   metal_parameters(element="N", charge=-3))
+    >>> zn_params = metal_parameters(element="ZN", charge=2)
+    >>> n_params = metal_parameters(element="N", charge=-3)
+    >>> print server.get_valence_params(zn_params, n_params)
     (1.77, 0.37)
     """
     for i_elem, symbol in enumerate(self.params['_lib_valence.atom_symbol']) :
@@ -287,8 +291,8 @@ class parameter_server (slots_getstate_setstate) :
     >>> print server.get_charges("CU")
     [1, 2, 3]
     >>> print server.get_charges("ZN")
-    [1, 2, 3]
-   """
+    [2]
+    """
     element = self.get_element(atom)
     p = self.params
     charges = set()

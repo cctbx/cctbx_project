@@ -75,6 +75,23 @@ def find_and_build_ions (
       occupancy_strategy_enabled=False,
       group_anomalous_strategy_enabled=False,
       use_svm=None) :
+  """
+
+  Parameters
+  ----------
+  manager : mmtbx.ions.identity.manager
+  fmodels : mmtbx.fmodels
+  model : ...
+  wavelength : float
+  params : libtbx.phil.scope_extract
+  nproc : int, optional
+  elements : list of str, optional
+  out : file, optional
+  run_ordered_solvent : bool, optional
+  occupancy_strategy_enabled : bool, optional
+  group_anomalous_strategy_enabled : bool, optional
+  use_svm : bool, optional
+  """
   import mmtbx.refinement.minimization
   from mmtbx.refinement.anomalous_scatterer_groups import \
     get_single_atom_selection_string
@@ -295,6 +312,19 @@ def find_and_build_ions (
   return manager
 
 def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
+  """
+  Parameters
+  ----------
+  fmodel : mmtbx.f_model.manager
+  model :
+  params : libtbx.phil.scope_extract
+  log : file, optional
+  verbose : bool, optional
+
+  Returns
+  -------
+  model...
+  """
   if (log is None) :
     log = null_out()
   import mmtbx.ions.utils

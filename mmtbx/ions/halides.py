@@ -5,10 +5,10 @@ much more sophisticated analysis.
 """
 
 from __future__ import division
-from mmtbx.ions import environment
-import mmtbx.ions
-from scitbx.matrix import col
+
 from libtbx import Auto
+from mmtbx.ions import server
+from scitbx.matrix import col, distance_from_plane
 
 chloride_params_str = """
 max_distance_to_amide_n = 3.5
@@ -37,6 +37,67 @@ max_deviation_from_plane = 0.8
   .type = float
 """
 
+def _is_negatively_charged_oxygen (atom_name, resname) :
+  """
+  Determine whether the oxygen atom of interest is either negatively charged
+  (usually a carboxyl group or sulfate/phosphate), or has a lone pair (and
+  no hydrogen atom) that would similarly repel anions.
+
+  Parameters
+  -----------
+  atom_name : str
+  resname : str
+
+  Returns
+  -------
+  bool
+  """
+  if ((atom_name in ["OD1","OD2","OE1","OE2"]) and
+      (resname in ["GLU","ASP","GLN","ASN"])) :
+    return True
+  elif ((atom_name == "O") and (not resname in ["HOH","WAT"])) :
+    return True # sort of - the lone pair acts this way
+  elif ((len(atom_name) == 3) and (atom_name[0:2] in ["O1","O2","O3"]) and
+        (atom_name[2] in ["A","B","G"])) :
+    return True
+  elif (resname in ["SO4","PO4"]) :
+    return True
+  return False
+
+# XXX distance cutoff may be too generous, but 0.5 is too strict
+def _is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.75):
+  """
+  Given an isolated atom and an interacting residue with one or more amine
+  groups, determine whether the atom is approximately coplanar with the terminus
+  of the sidechain (and thus interacting with the amine hydrogen(s) along
+  approximately the same axis as the N-H bond).
+
+  Parameters
+  ----------
+  atom : iotbx.pdb.hierarchy.atom
+  residue : iotbx.pdb.hierarchy.residue
+  distance_cutoff : float, optional
+
+  Returns
+  -------
+  bool
+  """
+  sidechain_sites = []
+  resname = residue.resname
+  for other in residue.atoms() :
+    name = other.name.strip()
+    if (resname == "ARG") and (name in ["NH1","NH2","NE"]) :
+      sidechain_sites.append(other.xyz)
+    elif (resname == "GLN") and (name in ["OE1","NE2","CD"]) :
+      sidechain_sites.append(other.xyz)
+    elif (resname == "ASN") and (name in ["OD1","ND2","CG"]) :
+      sidechain_sites.append(other.xyz)
+  if (len(sidechain_sites) != 3) : # XXX probably shouldn't happen
+    return False
+  D = distance_from_plane(atom.xyz, sidechain_sites)
+  #print atom.id_str(), D
+  return (D <= distance_cutoff)
+
 def is_favorable_halide_environment (
     i_seq,
     contacts,
@@ -53,13 +114,13 @@ def is_favorable_halide_environment (
 
   Parameters
   ----------
-  i_seq :
+  i_seq : int
   contacts : list of mmtbx.ions.environment.atom_contact
-  pdb_atoms :
-  sites_frac :
-  connectivity :
-  unit_cell :
-  params :
+  pdb_atoms : iotbx.pdb.hierarchy.af_shared_atom
+  sites_frac : tuple of float, float, float
+  connectivity : scitbx.array_family.shared.stl_set_unsigned
+  unit_cell : uctbx.unit_cell
+  params : libtbx.phil.scope_extract
   assume_hydrogens_all_missing : bool, optional
 
   Returns
@@ -94,7 +155,7 @@ def is_favorable_halide_environment (
     if (distance < params.min_distance_to_other_sites) :
       return False
     if not element in ["C", "N", "H", "O", "S"]:
-      charge = mmtbx.ions.server.get_charge(element)
+      charge = server.get_charge(element)
       if charge < 0 and distance <= params.min_distance_to_anion:
         # Nearby anion that is too close
         return False
@@ -117,7 +178,7 @@ def is_favorable_halide_environment (
           resname in ["ARG","ASN","GLN"] and
           (assume_hydrogens_all_missing or resname == "ARG") and
           distance <= params.max_distance_to_cation) :
-      if (environment.is_coplanar_with_sidechain(atom, other.parent(),
+      if (_is_coplanar_with_sidechain(atom, other.parent(),
             distance_cutoff = params.max_deviation_from_plane)) :
         binds_amide_hydrogen = True
         if (resname == "ARG") and (distance < min_distance_to_cation) :
@@ -195,7 +256,7 @@ def is_favorable_halide_environment (
     distance = abs(contact)
     if ((distance < 3.2) and
         (distance < (min_distance_to_cation + 0.2)) and
-        environment.is_negatively_charged_oxygen(atom_name, resname)) :
+        _is_negatively_charged_oxygen(atom_name, resname)) :
       #print contact.id_str(), distance
       return False
   return (binds_amide_hydrogen or near_cation or near_lys)
