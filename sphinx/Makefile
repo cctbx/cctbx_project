@@ -4,7 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 #SPHINXBUILD   = sphinx-build
-SPHINXBUILD   = cctbx.python `which sphinx-build`
+SPHINXBUILD   = sphinx.build
 PAPER         =
 BUILDDIR      = build
 
