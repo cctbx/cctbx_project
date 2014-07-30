@@ -21,6 +21,72 @@ skip_rsr = False
   .type = bool
 """
 
+def correct_sequence (pdb_hierarchy,
+    sequences,
+    truncate_to_cbeta=False,
+    out=sys.stdout) :
+  """
+  Modify the sequence for the pdb hierarchy to match that of the aligned
+  sequence.  This will remove incompatible atoms; the sidechains will still
+  need to be extended separated.  For proteins only - mismatches in nucleic
+  acids will only result in a warning.
+
+  :param pdb_hierarchy: iotbx.pdb.hierarchy.root object
+  :param sequences: list of iotbx.bioinformatics.sequence objects
+  :param trucate_to_cbeta: chop off entire sidechain to C-beta (default: leave
+                           common atoms in place)
+  :param out: output filehandle (default = stdout)
+  :returns: number of atom_group objects renamed
+  """
+  from mmtbx.monomer_library import idealized_aa
+  import mmtbx.validation.sequence
+  from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
+  seq_validation = mmtbx.validation.sequence.validation(
+    pdb_hierarchy=pdb_hierarchy,
+    sequences=sequences,
+    log=out)
+  for chain_seq in seq_validation.chains :
+    if (chain_seq.chain_type == mmtbx.validation.sequence.NUCLEIC_ACID) :
+      if (len(chain_seq.mismatch) > 0) :
+        print >> out, \
+          "  WARNING: will skip %d mismatches in nucleic acid chain '%s'" % \
+          chain_seq.chain_id
+  res_dict = idealized_aa.residue_dict()
+  expected_names = {}
+  for resname in res_dict.keys() :
+    if (not "_h" in resname) :
+      ideal_res = res_dict[resname]
+      expected_names[resname] = set([ a.name for a in ideal_res.atoms() ])
+  n_changed = 0
+  for chain in pdb_hierarchy.only_model().chains() :
+    if (not chain.is_protein()) :
+      continue
+    for chain_seq in seq_validation.chains :
+      if (chain.id == chain_seq.chain_id) and (len(chain_seq.mismatch) > 0) :
+        for residue_group in chain.residue_groups() :
+          resid = residue_group.resid()
+          if (resid in chain_seq.mismatch) :
+            idx = chain_seq.mismatch.index(resid)
+            new_code = chain_seq.actual_code[idx]
+            new_resname = three_letter_given_one_letter.get(new_code)
+            if (new_resname is not None) :
+              expected_atoms = expected_names[new_resname.lower()]
+              if (truncate_to_cbeta) :
+                expected_atoms = expected_names["ala"]
+              for atom_group in residue_group.atom_groups() :
+                n_changed += 1
+                n_removed = 0
+                atom_group.resname = new_resname
+                for atom in atom_group.atoms() :
+                  if (not atom.name in expected_atoms) :
+                    atom_group.remove_atom(atom)
+                    n_removed += 1
+              print >> out, "  chain '%s' %s %s --> %s (%d atoms removed)" % \
+                (chain.id, resid, residue_group.atom_groups()[0].resname,
+                 new_resname, n_removed)
+  pdb_hierarchy.atoms().reset_i_seq()
+  return n_changed
+
 class conformation_scorer (object) :
   """
   Stand-in for the conformation scoring class in mmtbx.refinement.real_space;
@@ -332,6 +398,7 @@ class extend_and_refine (object) :
       output_map_coeffs=None,
       prefix=None,
       write_files=True,
+      reset_segid=True,
       verbose=True) :
     if (write_files) :
       assert ((prefix is not None) or
@@ -367,6 +434,9 @@ class extend_and_refine (object) :
     self.r_free = fmodel.r_free()
     self.n_new_atoms = n_atoms_end - n_atoms_start
     self.pdb_file = self.map_file = None
+    if reset_segid :
+      for atom in pdb_hierarchy.atoms() :
+        atom.segid = ""
     if (write_files) :
       if (output_model is None) :
         output_model = prefix + "_extended.pdb"

@@ -52,6 +52,7 @@ class chain (object) :
     self.extra = []
     self.unknown = []
     self.mismatch = []
+    self.actual_code = []
     self._xyz = []
     self._table = None
     self._flag_indices = []
@@ -115,6 +116,7 @@ class chain (object) :
             self.unknown.append(resid)
           else :
             self.mismatch.append(resid)
+            self.actual_code.append(symbol_seq)
           self._flag_indices.append(i_aln)
       prev_char = symbol_pdb
       i_aln += 1
