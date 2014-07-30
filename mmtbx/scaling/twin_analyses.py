@@ -1118,7 +1118,6 @@ class ml_murray_rust_with_ncs(object):
     self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
       termination_params=term_parameters)
     scitbx.lbfgs.run(target_evaluator=self)
-    self.print_it()
     self.log_likelihood = self.f
     self.twin_fraction = self.twin_cap/(1+math.exp(-(self.x[0])))
     table = []
@@ -1135,13 +1134,13 @@ class ml_murray_rust_with_ncs(object):
     if calc_data is not None:
       self.calc_correlation(
         obs=tmp_miller_array,
-        calc=calc_datai,
+        calc=calc_data,
         out=out)
 
   def string_it(self,x):
     return str("%4.3f"%(x))
 
-  def calc_correlation(self,obs,calc):
+  def calc_correlation(self,obs,calc, out=sys.stdout):
     if calc.is_xray_amplitude_array():
       calc = calc.f_as_f_sq()
     calc = calc.common_set( other=obs )
