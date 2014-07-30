@@ -1,5 +1,6 @@
 
 from __future__ import division
+from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
 import os.path
 import sys
@@ -35,9 +36,26 @@ Rebuild sidechains with missing non-hydrogen atoms.  Includes real-space
 refinement (but needs work).""")
   params = cmdline.params
   prefix = os.path.splitext(os.path.basename(params.input.pdb.file_name[0]))[0]
+  pdb_hierarchy = cmdline.pdb_hierarchy
+  xray_structure = cmdline.xray_structure
+  if (cmdline.params.input.sequence is not None) :
+    from iotbx.bioinformatics import any_sequence_format
+    sequences, nc = any_sequence_format(cmdline.params.input.sequence)
+    make_sub_header("Correcting model sequence", out=out)
+    n_changed = mmtbx.building.extend_sidechains.correct_sequence(
+      pdb_hierarchy=pdb_hierarchy,
+      sequences=sequences,
+      out=out)
+    if (n_changed == 0) :
+      print >> out, "  No modifications required."
+    else :
+      xray_structure = pdb_hierarchy.extract_xray_structure(
+        crystal_symmetry=xray_structure.crystal_symmetry())
+      cmdline.fmodel.update_xray_structure(xray_structure,
+        update_f_calc=True)
   return mmtbx.building.extend_sidechains.extend_and_refine(
-    pdb_hierarchy=cmdline.pdb_hierarchy,
-    xray_structure=cmdline.xray_structure,
+    pdb_hierarchy=pdb_hierarchy,
+    xray_structure=xray_structure,
     fmodel=cmdline.fmodel,
     params=params,
     prefix=prefix,

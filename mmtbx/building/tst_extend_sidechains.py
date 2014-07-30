@@ -67,8 +67,40 @@ def exercise_cmdline () :
   r2 = rotalyze.rotalyze(pdb_hierarchy=pdb_new.hierarchy, outliers_only=False)
   for o1, o2 in zip(r1.results, r2.results) :
     assert o1.rotamer_name == o2.rotamer_name
+  # Part 2: with sequence corrections
+  seq_file = "tst_extend_sidechains.fa"
+  open(seq_file, "w").write(">1yjp_new\nGNDQQNY")
+  pdb_out = "tst_extend_sidechains_out2.pdb"
+  extend_sidechains.run(
+    args=[pdb_file, mtz_file, seq_file, "output_model=%s" % pdb_out],
+    out=out)
+  assert ("2 sidechains extended." in out.getvalue())
+
+def exercise_correct_sequence () :
+  from mmtbx.building import extend_sidechains
+  from mmtbx.regression import model_1yjp
+  import iotbx.pdb.hierarchy
+  import iotbx.bioinformatics
+  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=model_1yjp)
+  sequences = [ iotbx.bioinformatics.sequence("GNDQQNY") ]
+  out = StringIO()
+  n_changed = extend_sidechains.correct_sequence(
+    pdb_hierarchy=pdb_in.hierarchy.deep_copy(),
+    sequences=sequences,
+    out=out)
+  assert (n_changed == 1)
+  assert ("  chain 'A'    3  ASP --> ASP (1 atoms removed)" in out.getvalue())
+  out = StringIO()
+  n_changed = extend_sidechains.correct_sequence(
+    pdb_hierarchy=pdb_in.hierarchy.deep_copy(),
+    sequences=sequences,
+    truncate_to_cbeta=True,
+    out=out)
+  assert (n_changed == 1)
+  assert ("  chain 'A'    3  ASP --> ASP (3 atoms removed)" in out.getvalue())
 
 if (__name__ == "__main__") :
   exercise_model_only()
+  exercise_correct_sequence()
   exercise_cmdline()
   print "OK"
