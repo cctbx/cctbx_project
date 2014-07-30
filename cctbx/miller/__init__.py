@@ -346,21 +346,37 @@ class set(crystal.symmetry):
     self._binner = None
 
   def indices(self):
+    """
+    Return a reference to the internal array of indices.
+
+    :returns: a cctbx.array_family.flex.miller_index array
+    """
     return self._indices
 
   def anomalous_flag(self):
+    """Indicate whether the set or array is anomalous or not."""
     return self._anomalous_flag
 
   def size(self):
+    """Return the number of reflections in the set or array."""
     return self.indices().size()
 
   def copy(self):
+    """
+    Create a copy of the set, keeping references to the same crystal symmetry
+    and indices.
+    """
     return set(
       crystal_symmetry=self,
       indices=self._indices,
       anomalous_flag=self._anomalous_flag)
 
   def deep_copy(self):
+    """
+    Create a copy of the set, also copying the crystal symmetry and indices.
+
+    :returns: a set object with all-new attributes.
+    """
     unit_cell = self.unit_cell()
     if (unit_cell is not None):
       unit_cell = uctbx.unit_cell(parameters=unit_cell.parameters())
@@ -419,7 +435,7 @@ class set(crystal.symmetry):
       anomalous_flag=self.anomalous_flag())
 
   def show_summary(self, f=None, prefix=""):
-    "Minimal Miller set summary"
+    """Minimal Miller set summary"""
     if (f is None): f = sys.stdout
     print >> f, prefix + "Number of Miller indices:", len(self.indices())
     print >> f, prefix + "Anomalous flag:", self.anomalous_flag()
@@ -459,7 +475,7 @@ class set(crystal.symmetry):
       print >> of, fmt%(i_mi, i_mi, rsv[0]*scale, rsv[1]*scale, rsv[2]*scale)
 
   def show_comprehensive_summary(self, f=None, prefix=""):
-    "Comprehensive Miller set or array summary"
+    """Display comprehensive Miller set or array summary"""
     if (f is None): f = sys.stdout
     self.show_summary(f=f, prefix=prefix)
     no_sys_abs = self.copy()
@@ -536,6 +552,9 @@ class set(crystal.symmetry):
     return self
 
   def show_completeness(self, reflections_per_bin = 500, out = None):
+    """
+    Display the completeness in resolution bins.
+    """
     if(out is None): out = sys.stdout
     self.setup_binner(reflections_per_bin = reflections_per_bin)
     for i_bin in self.binner().range_used():
@@ -577,6 +596,13 @@ class set(crystal.symmetry):
       self.space_group().is_centric(self.indices()))
 
   def multiplicities(self):
+    """
+    Generate a Miller array (with integer data) indicating the multiplicity of
+    each unique reflection.  (If the set or array is already symmetry-unique,
+    the multiplicity will be 1 for every reflection.)
+
+    :returns: array object with flex.int data
+    """
     return array(
       self,
       self.space_group().multiplicity(self.indices(), self.anomalous_flag()))
@@ -615,14 +641,20 @@ class set(crystal.symmetry):
       self, self.unit_cell().two_theta(self.indices(), wavelength, deg))
 
   def d_min(self):
-    """High-resolution limit."""
+    """
+    High-resolution limit.
+    :returns: Python float
+    """
     return uctbx.d_star_sq_as_d(self.unit_cell().max_d_star_sq(self.indices()))
 
   def min_max_d_star_sq(self):
     return self.unit_cell().min_max_d_star_sq(self.indices())
 
   def d_max_min(self):
-    """Low- and high-resolution limits."""
+    """
+    Low- and high-resolution limits.
+    :returns: Python tuple of floats
+    """
     return tuple([uctbx.d_star_sq_as_d(d_star_sq)
       for d_star_sq in self.min_max_d_star_sq()])
 
@@ -706,6 +738,7 @@ class set(crystal.symmetry):
     return 2 * self.d_min() * (1-tolerance)
 
   def resolution_range(self):
+    """Synonym for d_max_min()."""
     return self.d_max_min()
 
   def debye_waller_factors(self,
@@ -740,6 +773,7 @@ class set(crystal.symmetry):
       truncate_exp_arg=truncate_exp_arg))
 
   def n_bijvoet_pairs(self):
+    """Return the number of Bijvoet pairs."""
     asu, matches = self.match_bijvoet_mates(
       assert_is_unique_set_under_symmetry=False)
     return matches.pairs().size()
@@ -756,6 +790,12 @@ class set(crystal.symmetry):
 
   def auto_anomalous(self, min_n_bijvoet_pairs=None,
                            min_fraction_bijvoet_pairs=None):
+    """
+    Set the anomalous flag automatically depending on whether the data
+    contain Bijvoet pairs (optionally given minimum cutoffs).
+
+    :returns: a copy of the array with (maybe) a new anomalous flag
+    """
     assert [min_n_bijvoet_pairs, min_fraction_bijvoet_pairs].count(None) > 0
     if (self.indices().size() == 0):
       anomalous_flag = False
@@ -792,6 +832,11 @@ class set(crystal.symmetry):
     return self.select(sel)
 
   def is_in_asu(self):
+    """
+    Indicate whether the array is entirely contained within the reciprocal
+    space asymmetric unit (ASU).  Warning: this calls map_to_asu internally,
+    so it is better to simply call map_to_asu without checking in many cases.
+    """
     #XXX could be made more efficient
     return self.map_to_asu().indices().all_eq(self.indices())
 
@@ -876,6 +921,14 @@ class set(crystal.symmetry):
     return flex.bool(self.indices().size(), True)
 
   def select(self, selection, negate=False, anomalous_flag=None):
+    """
+    Select a subset of reflections.
+
+    :param selection: flex.bool or flex.size_t selection
+    :param negate: select the inverse of the selection array
+    :param anomalous_flag: anomalous flag for the new set
+    :returns: a new set with a subset of indices
+    """
     assert self.indices() is not None
     if (anomalous_flag is None):
       anomalous_flag = self.anomalous_flag()
@@ -884,9 +937,19 @@ class set(crystal.symmetry):
     return set(self, i, anomalous_flag)
 
   def select_acentric(self):
+    """
+    Select only acentric reflections.
+
+    :returns: A Miller set or array (depending on object type).
+    """
     return self.select(~self.centric_flags().data())
 
   def select_centric(self):
+    """
+    Select only centric reflections.
+
+    :returns: A Miller set or array (depending on object type).
+    """
     return self.select(self.centric_flags().data())
 
   def remove_systematic_absences(self, negate=False):
@@ -904,6 +967,14 @@ class set(crystal.symmetry):
     return result
 
   def resolution_filter(self, d_max=0, d_min=0, negate=0):
+    """
+    Select a subset within the indicated resolution range.
+
+    :param d_max: Low-resolution cutoff
+    :param d_min: High-resolution cutoff
+    :param negate: Select outside this range instead
+    :returns: set or array depending on object type
+    """
     return self.select(
       selection=self.resolution_filter_selection(d_max=d_max, d_min=d_min),
       negate=negate)
@@ -1057,37 +1128,11 @@ class set(crystal.symmetry):
       sigmas_new = s.sigmas().concatenate(ol.sigmas())
     return self.customized_copy(data = d_new, indices = i_new, sigmas = sigmas_new)
 
-  def complete_with_bin_average(self, reflections_per_bin=100):
-    assert isinstance(self.data(), flex.double)
-    cs = self.complete_set()
-    ls = cs.lone_set(self)
-    self.setup_binner(reflections_per_bin = reflections_per_bin)
-    result = []
-    for i_bin in self.binner().range_used():
-      sel = self.binner().selection(i_bin)
-      d_range = self.binner().bin_legend(
-        i_bin=i_bin, show_bin_number=False, show_counts=False)
-      ssel = self.select(selection=sel)
-      d_max, d_min = ssel.d_max_min()
-      data_mean = flex.mean(ssel.data())
-      result.append([d_max, d_min, data_mean])
-    data_lone = flex.double()
-    indices = flex.miller_index()
-    for d, mi in zip(ls.d_spacings().data(), ls.indices()):
-      for r in result:
-        if(d>=r[1] and d<=r[0]):
-          data_lone.append(r[2])
-          indices.append(mi)
-          break
-    lms = set(self, indices, anomalous_flag=False)
-    la = array(lms, data_lone)
-    return self.complete_with(other=la)
-
   def generate_r_free_flags (self,
         fraction=0.1,
         max_free=2000,
         lattice_symmetry_max_delta=5.0,
-        use_lattice_symmetry=False, # XXX should this be True by default?
+        use_lattice_symmetry=True,
         use_dataman_shells=False,
         n_shells=20,
         format="cns") :
@@ -1163,20 +1208,6 @@ class set(crystal.symmetry):
       anomalous_flag=self.anomalous_flag())
     return ms.array(data = result_data)
 
-  def randomize_amplitude_and_phase(self, amplitude_error,
-        phase_error_deg, selection=None, random_seed=None):
-    assert self.is_complex_array()
-    if(selection is None): selection = flex.bool(self.indices().size(), True)
-    import random
-    if(random_seed is None): random_seed = random.randint(0, 1000000)
-    new_data = ext.randomize_amplitude_and_phase(
-      data=self.data(),
-      selection=selection,
-      amplitude_error=amplitude_error,
-      phase_error_deg=phase_error_deg,
-      random_seed=random_seed)
-    return self.customized_copy(data = new_data)
-
   def generate_r_free_flags_on_lattice_symmetry(self,
         fraction=0.10,
         max_free=2000,
@@ -1186,6 +1217,16 @@ class set(crystal.symmetry):
         use_dataman_shells=False,
         n_shells=20,
         format="cns"):
+    """
+    Generate R-free flags by converting to the highest possible lattice
+    symmetry (regardless of intensity symmetry), creating flags, and expanding
+    back to the original symmetry.  This is a safeguard against reflections
+    that are correlated due to twinning being split between the work and test
+    sets.
+
+    This method should usually not be called directly, but rather through
+    set.generate_r_free_flags(...).
+    """
     # the max_number of reflections is wrst the non anomalous set
     n_original = self.indices().size()
     if n_original<=0:
@@ -1782,6 +1823,17 @@ class set(crystal.symmetry):
 
 def build_set(crystal_symmetry, anomalous_flag, d_min=None, d_max=None,
               max_index=None):
+  """
+  Given crystal symmetry, anomalous flag, and resolution limits, create a
+  complete set object.
+
+  :param crystal_symmetry: cctbx.crystal.symmetry object
+  :param anomalous_flag: Boolean, indicates whether to generate anomalous indices
+  :param d_min: High-resolution limit (optional if max_index is specified)
+  :param d_max: Low-resolution limit (optional)
+  :param max_index: highest-resolution Miller index
+  :returns: a set object
+  """
   if(max_index is not None):
     assert [d_min, d_max].count(None) == 2
     result = set(
@@ -1843,6 +1895,10 @@ class array_info(object):
         crystal_symmetry_from_file=Keep,
         type_hints_from_file=Keep,
         wavelength=Keep):
+    """
+    Create a modified copy of the array_info object, keeping all attributes
+    that are not explicitly modified.
+    """
     if (source is Keep): source = self.source
     if (source_type is Keep): source_type = self.source_type
     if (history is Keep): history = self.history
@@ -1989,6 +2045,12 @@ class array(set):
     return self
 
   def observation_type(self):
+    """
+    Return the (experimental) data type, if defined.  See the module
+    cctbx.xray.observation_types for details.
+
+    :returns: an object from cctbx.xray.observation_types
+    """
     return self._observation_type
 
   def size(self):
@@ -2113,6 +2175,9 @@ class array(set):
       space_group_info=space_group_info)
 
   def discard_sigmas(self):
+    """
+    Create a copy of the array without sigmas.
+    """
     return array.customized_copy(self, sigmas=None)
 
   def conjugate(self):
@@ -2120,6 +2185,10 @@ class array(set):
     return array.customized_copy(self, data=flex.conj(self.data()))
 
   def as_double(self):
+    """
+    Create a copy of the array with the data converted to a flex.double type.
+    Will fail for incompatible arrays.
+    """
     return self.array(data=self.data().as_double())
 
   def __getitem__(self, slice_object):
@@ -2679,6 +2748,23 @@ class array(set):
     e = flex.mean(scitbx.math.phase_error(phi1=p1, phi2=p2))
     return e * 180/math.pi
 
+  def randomize_amplitude_and_phase(self, amplitude_error,
+        phase_error_deg, selection=None, random_seed=None):
+    """
+    Add random error to reflections.
+    """
+    assert self.is_complex_array()
+    if(selection is None): selection = flex.bool(self.indices().size(), True)
+    import random
+    if(random_seed is None): random_seed = random.randint(0, 1000000)
+    new_data = ext.randomize_amplitude_and_phase(
+      data=self.data(),
+      selection=selection,
+      amplitude_error=amplitude_error,
+      phase_error_deg=phase_error_deg,
+      random_seed=random_seed)
+    return self.customized_copy(data = new_data)
+
   def anomalous_differences(self):
     """
     Returns an array object with DANO (i.e. F(+) - F(-)) as data, and
@@ -3128,6 +3214,14 @@ class array(set):
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
   def select(self, selection, negate=False, anomalous_flag=None):
+    """
+    Select a sub-array.
+
+    :param selection: flex.bool or flex.size_t selection
+    :param negate: select the inverse of the selection array
+    :param anomalous_flag: anomalous flag for the new set
+    :returns: a new array with a subset of indices and data/sigmas
+    """
     assert self.indices() is not None
     if (anomalous_flag is None):
       anomalous_flag = self.anomalous_flag()
@@ -3599,7 +3693,8 @@ class array(set):
 
   def generate_bijvoet_mates(self):
     """
-    Given a non-anomalous array, expand to generate anomalous pairs.
+    If the array is not already anomalous, expand to generate anomalous pairs
+    (without changing data).
     """
     if (self.anomalous_flag()): return self
     sel = ~self.centric_flags().data()
@@ -3630,6 +3725,17 @@ class array(set):
         other,
         use_binning=False,
         assert_is_similar_symmetry=True):
+    """
+    Calculate correlation coefficient between two arrays (either globally or
+    binned).
+
+    :param other: another array of real numbers
+    :param use_binning: calculate CC in resolution bins (default = calculate
+                         a single global value)
+    :param assert_is_similar_symmetry: check that arrays have compatible
+                                       crystal symmetry
+    :returns: a Python float (if use_binning=False), or a binned_data object
+    """
     if (assert_is_similar_symmetry):
       assert self.is_similar_symmetry(other)
     assert self.is_real_array()
@@ -3741,6 +3847,32 @@ class array(set):
       return sum / sigma
     else :
       return sum / self.unit_cell().volume()
+
+  def complete_with_bin_average(self, reflections_per_bin=100):
+    assert isinstance(self.data(), flex.double)
+    cs = self.complete_set()
+    ls = cs.lone_set(self)
+    self.setup_binner(reflections_per_bin = reflections_per_bin)
+    result = []
+    for i_bin in self.binner().range_used():
+      sel = self.binner().selection(i_bin)
+      d_range = self.binner().bin_legend(
+        i_bin=i_bin, show_bin_number=False, show_counts=False)
+      ssel = self.select(selection=sel)
+      d_max, d_min = ssel.d_max_min()
+      data_mean = flex.mean(ssel.data())
+      result.append([d_max, d_min, data_mean])
+    data_lone = flex.double()
+    indices = flex.miller_index()
+    for d, mi in zip(ls.d_spacings().data(), ls.indices()):
+      for r in result:
+        if(d>=r[1] and d<=r[0]):
+          data_lone.append(r[2])
+          indices.append(mi)
+          break
+    lms = set(self, indices, anomalous_flag=False)
+    la = array(lms, data_lone)
+    return self.complete_with(other=la)
 
   def hoppe_gassmann_modification(self, mean_scale, n_iterations,
         resolution_factor=0.25, d_min=None):
@@ -3893,6 +4025,9 @@ class array(set):
   def export_as_shelx_hklf(self,
         file_object=None,
         normalise_if_format_overflow=False):
+    """
+    Write reflections to a SHELX-format .hkl file.
+    """
     from iotbx.shelx import hklf
     hklf.miller_array_export_as_shelx_hklf(
       miller_array=self,
@@ -3905,6 +4040,9 @@ class array(set):
         info=[],
         array_names=None,
         r_free_flags=None):
+    """
+    Write reflections to a CNS-format file.
+    """
     from iotbx.cns.miller_array import export_as_cns_hkl as implementation
     implementation(self,
       file_object=file_object,
@@ -3919,6 +4057,16 @@ class array(set):
       batch_numbers=None,
       spindle_flags=None,
       scale_intensities_for_scalepack_merge=False) :
+    """
+    Write data in unmerged scalepack format.
+
+    :param file_object: filehandle-like object
+    :param file_name: output file to write
+    :param batch_numbers: integer array indicating the batch (image) numbers
+                          corresponding to the indices (optional)
+    :param spindle_flags: integer array indicating the position of the
+                          reflections on the detector (optional)
+    """
     from iotbx.scalepack.no_merge_original_index import writer
     writer(i_obs=self,
       file_object=file_object,
@@ -3977,6 +4125,9 @@ class array(set):
         phases=None,
         phases_deg=None,
         figures_of_merit=None):
+    """
+    Write phases to .phs file.
+    """
     import iotbx.phases
     iotbx.phases.miller_array_as_phases_phs(
       self=self,
@@ -4049,6 +4200,10 @@ class array(set):
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
   def from_cif(cls, file_object=None, file_path=None, data_block_name=None):
+    """
+    Class method for building an array from a CIF file (or filehandle).
+    Depends on iotbx.cif.
+    """
     import iotbx.cif
     from iotbx.cif import builders
     arrays = iotbx.cif.cctbx_data_structures_from_cif(
@@ -4157,6 +4312,13 @@ class array(set):
     return result
 
   def french_wilson (self, **kwds) :
+    """
+    Perform French-Wilson treatment of X-ray intensities to estimate the "true"
+    intensities, replacing very weak and/or negative values, and takes the
+    square root to obtain amplitudes.
+
+    :returns: an array of all-positive X-ray amplitudes
+    """
     assert self.is_xray_intensity_array()
     from cctbx import french_wilson
     kwds = dict(kwds)
@@ -4165,6 +4327,11 @@ class array(set):
 
   def remove_cone(self, fraction_percent, vertex=(0,0,0), axis_point_1=(0,0,0),
         axis_point_2=(0,0,1), negate=False):
+    """
+    Remove reflections corresponding to a cone shape in reciprocal space with
+    the apex at the origin.  Used to simulate incomplete data due to poor
+    alignment of the crystal with the goniometer axis.
+    """
     # single cone equation:
     # cos(half_opening_angle)*|R - VERTEX|*|AXIS| = (R-VERTEX,AXIS)
     # where R is any point on cone surface
@@ -4363,11 +4530,18 @@ class array(set):
     return binned_data(binner=tmp_array.binner(), data=data, data_fmt="%6.3f")
 
   def cc_anom (self, *args, **kwds) :
+    """
+    Alias for array.half_dataset_anomalous_correlation()
+    """
     return self.half_dataset_anomalous_correlation(*args, **kwds)
 
   def twin_data (self, twin_law, alpha) :
     """
     Apply a twin law to the data, returning an array of the same original type.
+
+    :params twin_law: a valid twin law expressed as h,k,l operations
+    :params alpha: predicted twin fraction (0 to 0.5)
+    :returns: a new array with synthetically twinned data
     """
     assert (alpha is not None) and (0.0 <= alpha <= 0.5)
     assert (twin_law is not None)
@@ -4395,6 +4569,10 @@ class array(set):
     """
     Detwin data using a known twin fraction, returning an array with the same
     original data type.
+
+    :params twin_law: a valid twin law expressed as h,k,l operations
+    :params alpha: predicted twin fraction (0 to 0.5)
+    :returns: a new array with detwinned data
     """
     assert (alpha is not None) and (0.0 <= alpha <= 0.5)
     assert (twin_law is not None)
@@ -4542,10 +4720,19 @@ class normalised_amplitudes(object):
 
 
 class merge_equivalents(object):
-
+  """
+  Wrapper for merging redundant observations to obtain a symmetry-unique
+  array.  This also calculates some useful statistics resulting from the
+  merging operation.  Normally this would not be instantiated directly, but
+  instead obtained by calling array.merge_equivalents(...).
+  """
   def __init__(self, miller_array, algorithm="gaussian",
                incompatible_flags_replacement=None,
                use_internal_variance=True):
+    """
+    :param miller_array: a non-unique array of experimental data
+    :param algorithm: merging method (options are "gaussian" or "shelx")
+    """
     assert algorithm in ["gaussian", "shelx"]
     self._r_linear = None
     self._r_square = None
@@ -4627,9 +4814,16 @@ class merge_equivalents(object):
     self._redundancies = merge_ext.redundancies
 
   def array(self):
+    """
+    Return the merged Miller array.
+    """
     return self._array
 
   def redundancies(self):
+    """
+    Return an array representing the redundancy or multiplicity of each
+    reflection in the merged array.
+    """
     return self._array.array(data=self._redundancies)
 
   def r_linear(self):
@@ -4646,12 +4840,23 @@ class merge_equivalents(object):
     return self._r_int
 
   def r_merge (self) :
+    """
+    Standard (but flawed) metric of dataset internal consistency.
+    """
     return self._r_merge
 
   def r_meas (self) :
+    """
+    Alternate metric of dataset internal consistency.  Explained in detail in
+    Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275.
+    """
     return self._r_meas
 
   def r_pim (self) :
+    """
+    Alternate metric of dataset internal consistency or quality.  Explained in
+    detail in Weiss MS (2001) J Appl Cryst 34:130-135.
+    """
     return self._r_pim
 
   def inconsistent_equivalents(self):
@@ -4728,7 +4933,13 @@ class merge_equivalents(object):
       print >> out, prefix + (fmt % tuple(fields)).rstrip()
 
 class fft_map(maptbx.crystal_gridding):
-
+  """
+  Container for an FFT from reciprocal space (complex double) into real space.
+  Normally this is obtained by calling array.fft_map(...), not instantiated
+  directly outside this module.  If the input array is anomalous, the
+  resulting map will be a flex.complex_double (with grid accessor), otherwise
+  it will be a flex.double.
+  """
   def __init__(self, crystal_gridding, fourier_coefficients, f_000=None):
     maptbx.crystal_gridding._copy_constructor(self, crystal_gridding)
     assert fourier_coefficients.anomalous_flag() in (False, True)
@@ -4763,6 +4974,11 @@ class fft_map(maptbx.crystal_gridding):
     return self._anomalous_flag
 
   def real_map(self, direct_access=True):
+    """
+    Extract the real component of the FFT'd map.
+
+    :returns: a flex.double object with grid accessor.
+    """
     if (not self.anomalous_flag()):
       assert ((self._real_map.is_padded()) or (not direct_access))
       if (direct_access) :
@@ -4772,6 +4988,12 @@ class fft_map(maptbx.crystal_gridding):
       return flex.real(self._complex_map)
 
   def real_map_unpadded(self, in_place=True):
+    """
+    Extract the real component of the FFT'd map, removing any padding required
+    for the FFT grid.
+
+    :returns: a flex.double object with grid accessor.
+    """
     if (in_place) :
       assert (not self._real_map_accessed)
     result = self.real_map(direct_access=False)
@@ -4800,9 +5022,15 @@ class fft_map(maptbx.crystal_gridding):
     return self.apply_scaling(scale=1/matrix.col(self.n_real()).product())
 
   def apply_volume_scaling(self):
+    """
+    Volume-scale the map values in place.
+    """
     return self.apply_scaling(scale=1/self.unit_cell().volume())
 
   def apply_sigma_scaling(self):
+    """
+    Sigma-scale the map values in place.
+    """
     statistics = self.statistics()
     if (statistics.sigma() == 0):
       return self
@@ -4822,6 +5050,9 @@ class fft_map(maptbx.crystal_gridding):
                    gridding_first=None,
                    gridding_last=None,
                    labels=["cctbx.miller.fft_map"]) :
+    """
+    Write the real component of the map to a CCP4-format file.
+    """
     from iotbx import ccp4_map
     map_data = self.real_map(direct_access=False)
     if gridding_first is None :
@@ -4844,6 +5075,9 @@ class fft_map(maptbx.crystal_gridding):
       file_name,
       gridding_first=None,
       gridding_last=None) :
+    """
+    Write the real component of the map to a DSN6-format file.
+    """
     from iotbx import dsn6
     map_data = self.real_map(direct_access=False)
     if gridding_first is None :
