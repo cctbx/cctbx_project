@@ -27,8 +27,12 @@ def detect_problem():
 
 def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
   """
-  Switch for using multiple CPUs, usually called at the beginning of an app.
-  If nproc is Auto or None and we are running Windows, it will be reset to 1.
+  Switch for using multiple CPUs with the pool_map function, usually called at
+  the beginning of an app.  If nproc is Auto or None and we are running
+  Windows, it will be reset to 1.
+
+  :param nproc: default number of processors to use
+  :returns: number of processors to use (None or Auto means automatic)
   """
   if (nproc == 1) or (nproc == 0) :
     return 1
@@ -60,6 +64,9 @@ def get_processes (processes) :
   """
   Determine number of processes dynamically: number of CPUs minus the current
   load average (with a minimum of 1).
+
+  :param processes: default number of processes (may be None or Auto)
+  :returns: actual number of processes to use
   """
   if (processes in [None, Auto]) :
     if (os.name == "nt") or (sys.version_info < (2,6)) :
@@ -297,6 +304,32 @@ def pool_map(
   :param iterable: argument list
   :param args: same as iterable (alternate keyword)
   :param chunksize: number of arguments to process at once
+
+  Examples
+  --------
+  >>> def f (x) :
+  ...   return some_long_running_method(x)
+  ...
+  >>> args = range(1000)
+  >>> result = easy_mp.pool_map(
+  ...   func=f,
+  ...   args=args)
+  ...
+  >>> print len(result)
+  ... 1000
+
+  >>> class f_caller (object) :
+  ...   def __init__ (self, non_pickleable_object) :
+  ...     self._obj = non_pickleable_object
+  ...   def __call__ (self, x) :
+  ...     return some_long_running_method(x, self._obj)
+  ...
+  >>> args = range(1000)
+  >>> f = f_caller(processed_pdb_file)
+  >>> result = easy_mp.pool_map(
+  ...   fixed_func=f,
+  ...   args=args)
+  ...
   """
   assert [func, fixed_func].count(None) == 1
   assert [iterable, args].count(None) == 1
