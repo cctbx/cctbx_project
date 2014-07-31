@@ -137,7 +137,10 @@ refinement program (smtbx.refine).
 
 :ref:`API Documentation for smtbx <smtbx>`
 
-Many other libraries have more specialized functionality, including:
+Other
+-----
+
+Many additional libraries have more specialized functionality, including:
 
 * dxtbx - the Diffraction Image Toolbox (also used by iotbx)
 * spotfinder - fast detection of Bragg peaks in diffraction images

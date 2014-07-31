@@ -2876,6 +2876,8 @@ sphinx/index.rst -text
 sphinx/installation.rst -text
 sphinx/iotbx/index.rst -text
 sphinx/libtbx/index.rst -text
+sphinx/libtbx/libtbx.easy_mp.rst -text
+sphinx/libtbx/libtbx.phil.rst -text
 sphinx/libtbx_config -text
 sphinx/mmtbx/mmtbx.ions.build.rst -text
 sphinx/mmtbx/mmtbx.ions.environment.rst -text
