@@ -45,6 +45,15 @@ class parallel_driver (object) :
     model_hierarchy.append_model(model)
     return summary(pdb_hierarchy=model_hierarchy)
 
+molprobity_stat_labels = [
+  "Ramachandran outliers",
+  "Ramachandran favored",
+  "Rotamer outliers",
+  "C-beta outliers",
+  "Clashscore",
+  "MolProbity score",
+]
+
 class ensemble (slots_getstate_setstate) :
   """
   MolProbity validation results for an ensemble of models.  Note that the
