@@ -1389,6 +1389,7 @@ libtbx/auto_build/install_distribution.py -text
 libtbx/auto_build/installer_utils.py -text
 libtbx/auto_build/make_bundle.py -text
 libtbx/auto_build/package_defs.py -text
+libtbx/auto_build/plus_installer.py svneol=native#text/x-python
 libtbx/auto_build/regenerate_module_files.py -text
 libtbx/auto_build/rpath.py -text
 libtbx/auto_build/setup_installer.py -text
