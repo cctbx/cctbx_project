@@ -65,6 +65,8 @@ class installer (object) :
       help="Build all recommended dependencies", default=False)
     parser.add_option("--scipy", dest="build_scipy", action="store_true",
       help="Build SciPy (requires Fortran compiler)", default=False)
+    parser.add_option("--sphinx", dest="build_sphinx", action="store_true",
+      help="Build Sphinx (and numpydoc) for generating documentation")
     parser.add_option("-g", "--debug", dest="debug", action="store_true",
       help="Build in debugging mode", default=False)
     parser.add_option("--no-download", dest="no_download", action="store_true",
@@ -163,6 +165,17 @@ class installer (object) :
       self.build_wxpython_dependencies()
       self.build_wxpython()
       self.build_misc()
+    if (options.build_sphinx) :
+      self.build_python_module_simple(
+        pkg_url=BASE_CCI_PKG_URL,
+        pkg_name=SPHINX_PKG,
+        pkg_name="Sphinx",
+        confirm_import_module="sphinx")
+      self.build_python_module_simple(
+        pkg_url=BASE_CCI_PKG_URL,
+        pkg_name=NUMPYDOC_PKG,
+        pkg_name="numpydoc",
+        confirm_import_module=None)
     print >> self.log, "Dependencies finished building."
 
   def call (self, args, log=None) :
