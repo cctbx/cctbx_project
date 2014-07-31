@@ -391,7 +391,7 @@ def _concatenate(*args):
 
   Parameters
   ----------
-  args :
+  args : tuple of (object or list of object)
 
   Returns
   -------
@@ -546,6 +546,8 @@ def _pentagonal_pyramid():
 
 def _pentagonal_bipyramid():
   """
+  Creates a square bipyramid shape.
+
   Returns
   -------
   list of scitbx.matrix.col
@@ -554,6 +556,9 @@ def _pentagonal_bipyramid():
 
 def _square_pyramid_bidentate_miss_1():
   """
+  Creates a square pyramid shape with one vertex replaced with a bidentate
+  coordination group. One vertex is missing in this shape.
+
   Returns
   -------
   list of scitbx.matrix.col
@@ -566,6 +571,9 @@ def _square_pyramid_bidentate_miss_1():
 
 def _square_pyramid_bidentate_miss_2():
   """
+  Creates a square pyramid shape with one vertex replaced with a bidentate
+  coordination group. One vertex is missing in this shape.
+
   Returns
   -------
   list of scitbx.matrix.col
@@ -581,6 +589,9 @@ def _square_pyramid_bidentate_miss_2():
 
 def _square_pyramid_bidentate_miss_3():
   """
+  Creates a square pyramid shape with one vertex replaced with a bidentate
+  coordination group. One vertex is missing in this shape.
+
   Returns
   -------
   list of scitbx.matrix.col
@@ -596,6 +607,9 @@ def _square_pyramid_bidentate_miss_3():
 
 def _square_pyramid_bidentate():
   """
+  Creates a square pyramid shape with one vertex replaced with a bidentate
+  coordination group.
+
   Returns
   -------
   list of scitbx.matrix.col
@@ -608,6 +622,9 @@ def _square_pyramid_bidentate():
 
 def _pentagonal_pyramid_bidentate():
   """
+  Creates a pentagonal pyramid shape with one vertex replaced with a bidentate
+  coordination group.
+
   Returns
   -------
   list of scitbx.matrix.col
@@ -621,7 +638,7 @@ def _pentagonal_pyramid_bidentate():
 def _pentagonal_bibidentate_miss_1():
   """
   A planar pentagon with bidentate atoms coordinating directly above and
-  below. One atom from the plane is missing in this case.
+  below. One vertex from the plane is missing in this shape.
 
   Returns
   -------
@@ -638,7 +655,7 @@ def _pentagonal_bibidentate_miss_1():
 def _pentagonal_bibidentate_miss_2():
   """
   A planar pentagon with bidentate atoms coordinating directly above and
-  below. One atom from the plane is missing in this case.
+  below. One vertex from the plane is missing in this shape.
 
   Returns
   -------
@@ -655,7 +672,7 @@ def _pentagonal_bibidentate_miss_2():
 def _pentagonal_bibidentate_miss_3():
   """
   A planar pentagon with bidentate atoms coordinating directly above and
-  below. One atom from the plane is missing in this case.
+  below. One vertex from the plane is missing in this shape.
 
   Returns
   -------
@@ -676,7 +693,7 @@ def _pentagonal_bibidentate_miss_3():
 def _pentagonal_bibidentate_miss_4():
   """
   A planar pentagon with bidentate atoms coordinating directly above and
-  below. One atom from a bidentate coordinator is missing in this case.
+  below. One vertex from a bidentate coordinator is missing in this shape.
 
   Returns
   -------
@@ -692,7 +709,7 @@ def _pentagonal_bibidentate_miss_4():
 def _pentagonal_bibidentate_miss_5():
   """
   A planar pentagon with bidentate atoms coordinating directly above and
-  below. One atom from a bidentate coordinator is missing in this case.
+  below. One vertex from a bidentate coordinator is missing in this shape.
 
   Returns
   -------

@@ -4,21 +4,23 @@ from __future__ import division
 
 import os
 import sys
-from pickle import load
 
-import libtbx
+from libtbx.easy_pickle import load
+from libtbx.easy_run import fully_buffered
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
-from mmtbx.ions.svm.dump_sites import main
 from mmtbx.ions.svm import ion_class
 
 def exercise():
   wavelength = 1.025
   mtz_file, pdb_file = generate_zinc_inputs(anonymize=True)
-  null_out = libtbx.utils.null_out()
-  main(["skip_twin_detection=True",
-        "input.pdb.file_name=" + pdb_file,
-        "input.xray_data.file_name=" + mtz_file,
-        "wavelength={}".format(wavelength)], out=null_out)
+  args = [
+    "input.pdb.file_name=" + pdb_file,
+    "input.xray_data.file_name=" + mtz_file,
+    "wavelength={}".format(wavelength),
+    ]
+  fully_buffered(
+    "phenix.python -m mmtbx.ions.svm.dump_sites " + " ".join(args),
+    ).raise_if_errors()
 
   os.remove(pdb_file)
   os.remove(os.path.splitext(pdb_file)[0][:-4] + ".pdb")
@@ -27,7 +29,7 @@ def exercise():
   os.remove(os.path.splitext(pdb_file)[0][:-4] + "_fmodel.eff")
 
   sites_path = os.path.splitext(pdb_file)[0] + "_sites.pkl"
-  sites = load(open(sites_path))
+  sites = load(sites_path)
 
   os.remove(sites_path)
 

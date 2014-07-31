@@ -76,11 +76,10 @@ class slots_getstate_setstate(object):
   Examples
   --------
   >>> class sym_pair(libtbx.slots_getstate_setstate):
-  ...     __slots__ = ["i_seq", "j_seq", "rt_mx_ji"]
-  ...     def __init__(self, i_seq, j_seq, rt_mx_ji):
+  ...     __slots__ = ["i_seq", "j_seq"]
+  ...     def __init__(self, i_seq, j_seq):
   ...         self.i_seq = i_seq
   ...         self.j_seq = j_seq
-  ...         self.rt_mx_ji = rt_mx_ji
   ...
   """
 
@@ -102,6 +101,15 @@ class slots_getstate_setstate_default_initializer (slots_getstate_setstate) :
   """
   Merges together functionality from slots_getstate_setstate with
   adopt_optional_init_args.
+
+  Examples
+  --------
+  >>> class sym_pair(libtbx.slots_getstate_setstate_default_initializer):
+  ...     __slots__ = ["i_seq", "j_seq"]
+  ...
+  >>> svm_pair(i_seq=1, j_seq=2)
+  >>> print svm_pair.i_seq
+  1
   """
   def __init__ (self, **kwds) :
     kwds = dict(kwds)
@@ -236,6 +244,16 @@ class copy_init_args(object):
     self.__dict__.update(args)
 
 class group_args(object):
+  """
+  Class to build an arbitrary object from a list of keyword arguments.
+
+  Examples
+  --------
+  >>> from libtbx import group_args
+  >>> obj = group_args(a=1, b=2, c=3)
+  >>> print obj.a, obj.b, obj.c
+  1 2 3
+  """
 
   def __init__(self, **keyword_arguments):
     self.__dict__.update(keyword_arguments)

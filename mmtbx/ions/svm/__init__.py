@@ -13,23 +13,25 @@ phenix_dev.ion_identification.nader_ml
 """
 
 from __future__ import division, absolute_import
-from mmtbx.ions.environment import N_SUPPORTED_ENVIRONMENTS
-from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES
-import mmtbx.ions.identify
-from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
-from cctbx.eltbx import sasaki
-from libtbx import Auto, slots_getstate_setstate_default_initializer
-from libtbx.str_utils import make_sub_header
-from libtbx.utils import Sorry
-import libtbx.load_env
 
 from collections import Iterable
 from cStringIO import StringIO
 from ctypes import c_double
-from cPickle import load
 import errno
 import os
 import sys
+
+from libtbx import Auto, slots_getstate_setstate_default_initializer
+from libtbx.easy_pickle import load
+from libtbx.str_utils import make_sub_header
+from libtbx.utils import Sorry
+import libtbx.load_env
+from cctbx.eltbx import sasaki
+from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
+from mmtbx.ions.environment import N_SUPPORTED_ENVIRONMENTS
+from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES
+import mmtbx.ions.identify
+from mmtbx.ions.svm import utils
 
 try : # XXX required third-party dependencies
   import numpy as np
@@ -45,6 +47,8 @@ CLASSIFIERS_PATH = libtbx.env.find_in_repositories(
   test = os.path.isdir,
   )
 
+_DEFAULT_SVM_NAME = "merged_high_res"
+#_DEFAULT_SVM_NAME = "heavy"
 _CLASSIFIER = {}
 _CLASSIFIER_OPTIONS = {}
 
@@ -94,7 +98,7 @@ def _get_classifier(svm_name=None):
   global _CLASSIFIER, _CLASSIFIER_OPTIONS
 
   if not svm_name or svm_name is Auto:
-    svm_name = "merged_high_res"
+    svm_name = _DEFAULT_SVM_NAME
 
   if svm_name not in _CLASSIFIER:
     svm_path = os.path.join(CLASSIFIERS_PATH, "{}.model".format(svm_name))
@@ -108,8 +112,7 @@ def _get_classifier(svm_name=None):
       else:
         _CLASSIFIER[svm_name] = None
         _CLASSIFIER_OPTIONS[svm_name] = (None, None, None)
-    with open(options_path) as f:
-      _CLASSIFIER_OPTIONS[svm_name] = load(f)
+    _CLASSIFIER_OPTIONS[svm_name] = load(options_path)
 
   vector_options, scaling, features = _CLASSIFIER_OPTIONS[svm_name]
   return _CLASSIFIER[svm_name], vector_options, scaling, features
@@ -374,7 +377,9 @@ def ion_valence_vector(chem_env, elements=None):
 def ion_anomalous_vector(scatter_env, elements=None, ratios=True,
                          anom_peak=False):
   """
-  Calculate the f'' / f''_expected for a variety of ion identities.
+  Creates a vector of the anomalous features of a site. These can either include
+  the f'' / f''_expected for a variety of ion identities or the exact anomalous
+  peak height.
 
   Parameters
   ----------
@@ -419,47 +424,6 @@ def ion_anomalous_vector(scatter_env, elements=None, ratios=True,
     ret = _flatten_list([height,])
   return ret
 
-def scale_to(matrix, source, target):
-  """
-  Given an upper and lower bound for each row of matrix, scales the values to be
-  within the range specified by target.
-
-  Parameters
-  ----------
-  matrix : numpy.array of float
-      The matrix to be scaled.
-  source : tuple of numpy.array of float
-      The upper and lower bound on the values of each row in the original
-      matrix.
-  target : tuple of float
-      The target range to scale to.
-
-  Returns
-  -------
-  matrix : numpy.array of float
-      The matrix with scaled values.
-
-  Examples
-  --------
-  >>> import numpy as np
-  >>> matrix = np.array([[0, 1, 2],
-                         [2, 3, 4],
-                         [1, 2, 3]])
-  >>> source = (np.array([2, 3, 4]),
-                np.array([0, 1, 2]))
-  >>> target = (0, 1)
-  >>> _scale_to(matrix, source, target)
-  array([[ 1. ,  1. ,  1. ],
-         [ 0. ,  0. ,  0. ],
-         [ 0.5,  0.5,  0.5]])
-  """
-  matrix = np.array(matrix)
-  keep_rows = source[0] != source[1]
-  matrix = matrix[:, keep_rows]
-  source = (source[0][keep_rows], source[1][keep_rows])
-  return (matrix - source[0]) * (target[1] - target[0]) / \
-    (source[1] - source[0]) + target[0]
-
 def predict_ion(chem_env, scatter_env, elements=None, svm_name=None):
   """
   Uses the trained classifier to predict the ions that most likely fit a given
@@ -495,7 +459,7 @@ def predict_ion(chem_env, scatter_env, elements=None, svm_name=None):
 
   # Convert our data into a format that libsvm will accept
   vector = ion_vector(chem_env, scatter_env, **vector_options)
-  vector = scale_to(vector, scaling[0], scaling[1])
+  vector = utils.scale_to(vector, scaling[0], scaling[1])
 
   assert len(vector) == len(features)
 
@@ -589,19 +553,51 @@ svm
 """
 
 class svm_prediction (slots_getstate_setstate_default_initializer) :
+  """
+  Contains information about a SVM's prediction of a site's identity.
+
+  Attributes
+  ----------
+  i_seq : int
+  pdb_id_str : str
+  atom_info_str : str
+  map_stats : group_args
+  atom_types : list of str
+  scores : list of float
+      Probabilities associated with each element listed by atom_types.
+  final_choice : mmtbx.ions.metal_parameters
+  """
   __slots__ = ["i_seq", "pdb_id_str", "atom_info_str", "map_stats",
                "atom_types", "scores", "final_choice"]
 
   def show (self, out=sys.stdout, prefix="") :
+    """
+    Shows information about a SVM's prediction of a site's identity.
+
+    Parameters
+    ----------
+    out : file, optional
+    prefix : str, optional
+    """
     for line in self.atom_info_str.splitlines() :
       print >> out, prefix+line.rstrip()
     print >> out, prefix+"SVM scores:"
-    for elem, score in zip(self.atom_types, self.scores) :
+    scores = sorted(zip(self.atom_types, self.scores), key=lambda x: -x[1])
+    for elem, score in scores:
       print >> out, prefix+"  %4s : %.3f" % (elem, score)
     if (self.final_choice is not None) :
       print >> out, prefix+"Final choice: %s" % self.final_choice
 
   def show_brief (self, out=sys.stdout, prefix="") :
+    """
+    Shows a brief description of a SVM's prediction of a site's identity, for
+    use in output as a table.
+
+    Parameters
+    ----------
+    out : file, optional
+    prefix : str, optional
+    """
     final_choice = self.final_choice
     if (final_choice is None) :
       final_choice = "----"
@@ -617,6 +613,20 @@ class svm_prediction (slots_getstate_setstate_default_initializer) :
 
 class manager (mmtbx.ions.identify.manager) :
   def analyze_water (self, i_seq, debug=True, candidates=Auto) :
+    """
+    Analyzes a single water site using a SVM to decide whether to re-assign it
+    as an ion.
+
+    Parameters
+    ----------
+    i_seq : int
+    debug : bool, optional
+    candidates : list of str, optional
+
+    Returns
+    -------
+    svm_prediction or None
+    """
     atom_props = mmtbx.ions.identify.AtomProperties(i_seq, self)
     expected_atom_type = atom_props.get_atom_type(
       params=self.params.water)
@@ -630,6 +640,10 @@ class manager (mmtbx.ions.identify.manager) :
     candidates = [i.strip().upper() for i in candidates]
     if (candidates == ['X']) : # XXX hack for testing - X is "dummy" element
       candidates = []
+    if auto_candidates:
+      candidates = None
+    else:
+      candidates.append("HOH")
     from mmtbx.ions.environment import ScatteringEnvironment, \
       ChemicalEnvironment
     chem_env = ChemicalEnvironment(
@@ -642,24 +656,23 @@ class manager (mmtbx.ions.identify.manager) :
       fo_density=self.get_map_gaussian_fit("mFo", i_seq),
       fofc_density=self.get_map_gaussian_fit("mFo-DFc", i_seq),
       anom_density=self.get_map_gaussian_fit("anom", i_seq))
-    if auto_candidates:
-      candidates = None
-    else:
-      candidates.append("HOH")
+    ### XXX: filter_svm_outputs?
     predictions = predict_ion(
       chem_env, scatter_env,
       elements=candidates, svm_name=self.params.svm.svm_name,
       )
     if predictions is not None:
-      # XXX: filtered candidates == probability > threshold?
       final_choice = None
-      predictions.sort(lambda a,b: cmp(b[1], a[1]))
+      predictions.sort(key=lambda x: -x[1])
       best_guess, best_score = predictions[0]
       if (best_guess != "HOH") :
-        next_guess, next_score = predictions[1]
-        if ((best_score >= self.params.svm.min_score) and
-            (best_score>=(next_score*self.params.svm.min_fraction_of_next))) :
+        if len(predictions) == 1:
           final_choice = mmtbx.ions.server.get_metal_parameters(best_guess)
+        else:
+          next_guess, next_score = predictions[1]
+          if ((best_score >= self.params.svm.min_score) and
+              (best_score>=(next_score*self.params.svm.min_fraction_of_next))) :
+            final_choice = mmtbx.ions.server.get_metal_parameters(best_guess)
       atom_info_out = StringIO()
       atom_props.show_properties(identity="HOH", out=atom_info_out)
       result = svm_prediction(
@@ -674,6 +687,20 @@ class manager (mmtbx.ions.identify.manager) :
     return None
 
   def analyze_waters (self, out=sys.stdout, debug=True, candidates=Auto) :
+    """
+    Uses a SVM to analyze all of a model's water sites and decide whether to
+    re-assign them as ions.
+
+    Parameters
+    ----------
+    out : file, optional
+    debug : bool, optional
+    candidates : list of str, optional
+
+    Returns
+    -------
+    list of svm_prediction
+    """
     waters = self._extract_waters()
     print >> out, "  %d waters to analyze" % len(waters)
     print >> out, ""

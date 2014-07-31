@@ -1,4 +1,10 @@
+"""
+Provides a command-line utility for fetching PDB files and their associated
+reflection data and electron density maps.
+"""
+
 from __future__ import division
+
 # LIBTBX_SET_DISPATCHER_NAME phenix.fetch_pdb
 
 # XXX most of this code is unused when run from the command line, but the
@@ -40,6 +46,21 @@ fetch_pdb
 
 # XXX for use in the PHENIX GUI only - run2 is used from the command line
 def run (args=(), params=None, out=sys.stdout) :
+  """
+  For use in PHENIX GUI only, fetches pdb files and their associated maps and/or
+  reflection data from the PDB.
+
+  Parameters
+  ----------
+  args : list of str, optional
+  params : libtbx.phil.scope_extract, optional
+  out : file, optional
+
+  Returns
+  -------
+  output_files : list of str
+  errors : list of str
+  """
   assert (params is not None)
   output_files = []
   errors = []
@@ -57,7 +78,7 @@ def run (args=(), params=None, out=sys.stdout) :
         data_files = run2(args=args, log=out)
         print >> out, "\n".join(data_files)
         output_files.extend(data_files)
-      except Exception, e :
+      except Exception as e:
         errors.append(str(e))
     else :
       pdb_file = run2(args=[mirror,id], log=out)
@@ -66,6 +87,20 @@ def run (args=(), params=None, out=sys.stdout) :
   return output_files, errors
 
 def run2 (args, log=sys.stdout) :
+  """
+  Fetches pdb files and their associated maps and/or reflection data from the
+  PDB.
+
+  Parameters
+  ----------
+  args : list of str
+  log : file, optional
+
+  Returns
+  -------
+  str or list of str
+      List of file names that were downloaded.
+  """
   if len(args) < 1 :
     raise Usage("""\
 phenix.fetch_pdb [-x|-f|--all] [--mtz] [--maps] [-q] ID1 [ID2, ...]
@@ -166,6 +201,22 @@ Command-line options:
     return files
 
 def validate_params (params) :
+  """
+  Validates that the input parameters specify a PDB file to download.
+
+  Parameters
+  ----------
+  params : libtbx.phil.scope_extract
+
+  Returns
+  -------
+  bool
+
+  Raises
+  ------
+  Sorry
+      Raised if a pdb file is not specified to be fetched within params.
+  """
   if (params.fetch_pdb.pdb_ids is None) or (len(params.fetch_pdb.pdb_ids)==0) :
     raise Sorry("No PDB IDs specified!")
   return True

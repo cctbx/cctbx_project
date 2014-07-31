@@ -4,7 +4,14 @@ Utility functions used within this module.
 """
 from __future__ import division
 
+try : # XXX required third-party dependencies
+  import numpy as np
+except ImportError :
+  np = None
+
 from libtbx import Auto
+from mmtbx.ions import server, environment
+from scitbx.matrix import col
 
 def iterate_sites(pdb_hierarchy, split_sites=False, res_filter=None):
   """
@@ -142,7 +149,9 @@ def _is_favorable_halide_environment(
 
 def filter_svm_outputs(chem_env, scatter_env, elements):
   """
-  ...
+  Applies a simple set of filters to the accepted ions that might match a given
+  chemical and scattering environment to help catch corner cases where the SVM
+  might fail.
 
   Parameters
   ----------
@@ -168,7 +177,7 @@ def filter_svm_outputs(chem_env, scatter_env, elements):
       # bvs <= 0.5 * lower or bvs >= 1.5 * upper
       if element not in ["F", "CL", "BR", "I"]:
         # Require cations have okay BVS values
-        charges = _get_charges(element)
+        charges = server.get_charges(element)
         if bvs <= (1 - bvs_ratio) * min(charges):
           continue
         if bvs >= (1 + bvs_ratio) * max(charges):
@@ -181,9 +190,51 @@ def filter_svm_outputs(chem_env, scatter_env, elements):
         #   not any(server.get_charge(i.atom) > 0 for i in chem_env.contacts):
         #   print [(i.atom.id_str(), server.get_charge(i.atom)) for i in chem_env.contacts]
         #   continue
-      if vecsum > 1:
+      if vecsum > vecsum_cutoff:
         continue
       if any(abs(i.vector) < 1.8 for i in chem_env.contacts):
         continue
     ok_elements.append(element)
   return ok_elements
+
+def scale_to(matrix, source, target):
+  """
+  Given an upper and lower bound for each row of matrix, scales the values to be
+  within the range specified by target.
+
+  Parameters
+  ----------
+  matrix : numpy.array of float
+      The matrix to be scaled.
+  source : tuple of numpy.array of float
+      The upper and lower bound on the values of each row in the original
+      matrix.
+  target : tuple of float
+      The target range to scale to.
+
+  Returns
+  -------
+  matrix : numpy.array of float
+      The matrix with scaled values.
+
+  Examples
+  --------
+  >>> from mmtbx.ions.svm.utils import scale_to
+  >>> import numpy as np
+  >>> matrix = np.array([[0, 1, 2],
+                         [2, 3, 4],
+                         [1, 2, 3]])
+  >>> source = (np.array([2, 3, 4]),
+                np.array([0, 1, 2]))
+  >>> target = (0, 1)
+  >>> scale_to(matrix, source, target)
+  array([[ 1. ,  1. ,  1. ],
+         [ 0. ,  0. ,  0. ],
+         [ 0.5,  0.5,  0.5]])
+  """
+  matrix = np.array(matrix)
+  keep_rows = source[0] != source[1]
+  matrix = matrix[:, keep_rows]
+  source = (source[0][keep_rows], source[1][keep_rows])
+  return (matrix - source[0]) * (target[1] - target[0]) / \
+    (source[1] - source[0]) + target[0]

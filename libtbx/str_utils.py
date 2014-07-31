@@ -129,6 +129,25 @@ def make_header (line, out=None, header_len=80):
   out.flush()
 
 def make_sub_header(text, out=None, header_len=80, sep='-'):
+  """
+  Prints a subheader to an output location.
+
+  Parameters
+  ----------
+  text : str
+  out : file, optional
+  header_len : int, optional
+  sep : str, optional
+
+  Examples
+  --------
+  >>> from libtbx.str_utils import make_sub_header
+  >>> make_sub_header("Predicted ions", header_len=20)
+
+     ----------Predicted ions----------
+
+  >>>
+  """
   if (out is None): out = sys.stdout
   assert isinstance(sep, basestring)
   border = sep*10

@@ -31,7 +31,6 @@ Subpackages
     mmtbx.polygon
     mmtbx.real_space
     mmtbx.refinement
-    mmtbx.regression
     mmtbx.rotamer
     mmtbx.rsr
     mmtbx.scaling
