@@ -538,7 +538,13 @@ def wait(task_name = "easy_qsub",
   parameters. i.e. No jobs matching <user>, no jobs matching <job_id>, and no
   jobs matching <task_name>.
 
-  job_id and task_name may be ints, strings, or lists of ints or strings.
+  Parameters
+  ----------
+  task_name : int or str or list of int or list of str or None, optional
+  job_id : int or str or list of int or list of str or None, optional
+  user : str, optional
+  qstat_cmd : str, optional
+  sleep_time : int, optional
   """
 
   # Turn job_id into an array of strings if it isn't already one

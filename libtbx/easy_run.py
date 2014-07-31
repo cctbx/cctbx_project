@@ -178,6 +178,26 @@ def go(command, stdin_lines=None):
     join_stdout_stderr=True)
 
 def call(command):
+  """
+  Wraps subprocess.call to run a command.
+
+  Parameters
+  ----------
+  command : str
+
+  Returns
+  -------
+  int
+      Exit code of subprocess.
+
+  Examples
+  --------
+  >>> from libtbx.easy_run import call
+  >>> ret = call("echo 1")
+  1
+  >>> print ret
+  0
+  """
   for s in [sys.stdout, sys.stderr]:
     flush = getattr(s, "flush", None)
     if (flush is not None): flush()

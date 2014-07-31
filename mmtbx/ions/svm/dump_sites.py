@@ -22,7 +22,7 @@ from mmtbx.ions.svm.utils import iterate_sites
 from mmtbx.command_line import load_model_and_data
 from mmtbx.command_line.water_screen import master_phil
 
-def main(args, out=sys.stdout):
+def _main(args, out=sys.stdout):
   """
   Main entry point to this script.
 
@@ -121,4 +121,4 @@ def dump_sites(manager):
   return properties
 
 if __name__ == "__main__":
-  main(sys.argv[1:])
+  _main(sys.argv[1:])

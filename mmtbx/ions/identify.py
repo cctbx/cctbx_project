@@ -239,9 +239,11 @@ class manager (object) :
 
   def water_selection (self) :
     """
+    Fetchs the selection for all waters in the model.
+
     Returns
     -------
-    ...
+    scitbx.array_family.flex.size_t
     """
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
     sel_str = "({}) and element O and altloc ' '".format(
@@ -342,11 +344,14 @@ class manager (object) :
 
   def get_initial_b_iso (self) :
     """
+    Calculates the isotropic b-factor to assign to newly labeled ions during the
+    building process. Uses either the mean b-factor of waters or of all atoms if
+    the former is unavailable.
+
     Returns
     -------
     float
     """
-
     if (getattr(self, "b_mean_hoh", None) is not None) :
       return self.b_mean_hoh
     else :
@@ -362,7 +367,7 @@ class manager (object) :
 
     Returns
     -------
-    ....
+    scitbx.array_family.flex.double
     """
     map_coeffs = self.fmodel.map_coefficients(
       map_type = map_type,
@@ -481,8 +486,11 @@ class manager (object) :
             self.carbon_fo_values.append(map_value)
       del fo_map
 
-  def show_current_scattering_statistics (self, out = sys.stdout) :
+  def show_current_scattering_statistics (self, out=sys.stdout):
     """
+    Prints out information about an entire model's scattering statistics, such
+    as mean map heights and b-factors for carbons and waters.
+
     Parameters
     ----------
     out : file, optional
@@ -546,7 +554,7 @@ class manager (object) :
 
     Returns
     -------
-    ...
+    list of mmtbx.ions.environment.atom_contact
     """
     assert (i_seq < len(self.sites_frac))
     # Use pair_asu_table to find atoms within distance_cutoff of one another,
@@ -680,6 +688,9 @@ class manager (object) :
 
   def get_map_gaussian_fit (self, map_type, i_seq) :
     """
+    Retrieves the two parameters of a gaussian function, fit to a given map at
+    a site.
+
     Parameters
     ----------
     map_type : str
@@ -687,8 +698,7 @@ class manager (object) :
 
     Returns
     -------
-    float
-    float
+    (tuple of float, float) or None
     """
     map_gaussians = self._map_gaussian_fits.get(map_type, None)
     if (map_gaussians is not None) :
@@ -715,7 +725,7 @@ class manager (object) :
     assert (mean_carbon > 0)
     return 6 * height / mean_carbon
 
-  def find_atoms_near_site (self,
+  def _find_atoms_near_site (self,
       site_cart,
       distance_cutoff = 1.5,
       distance_cutoff_same_site = 0.5) :
@@ -726,15 +736,15 @@ class manager (object) :
 
     Parameters
     ----------
-    site_cart : ...
+    site_cart : tuple of float, float, float
     distance_cutoff : float, optional
     distance_cutoff_same_site : float, optional
 
     Returns
     -------
-    Returns same_atoms, a list of atoms within distance_cutoff_same_site of
-    site_cart, and and other_atoms, the rest of the atoms within
-    distance_cutoff of site_cart.
+    same_atoms : list of group_args
+        List of atoms within distance_cutoff_same_site of site_cart, and and
+        other_atoms, the rest of the atoms within distance_cutoff of site_cart.
     """
     site_frac = self.unit_cell.fractionalize(site_cart = site_cart)
     sites_frac = flex.vec3_double([site_frac])
@@ -805,11 +815,11 @@ class manager (object) :
       """
       Parameters
       ----------
-      site_infos : ...
+      site_infos : list of group_args
 
       Returns
       -------
-      list of ...
+      list of group_args
       """
       # Organize a dictionary, keyed with each site's atom i_seq
       from collections import OrderedDict
@@ -832,7 +842,7 @@ class manager (object) :
     make_sub_header("Analyzing Phaser anomalous substructure", out = log)
     for atom in self.phaser_substructure :
       print >> log, ax_atom_id(atom)
-      same_atoms, other_atoms = self.find_atoms_near_site(
+      same_atoms, other_atoms = self._find_atoms_near_site(
         atom.xyz,
         distance_cutoff=self.params.phaser.distance_cutoff,
         distance_cutoff_same_site=self.params.phaser.distance_cutoff_same_site)
