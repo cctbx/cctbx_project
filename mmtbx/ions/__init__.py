@@ -55,7 +55,9 @@ class metal_parameters (group_args) :
 
   def scattering_type (self):
     """
-    Makes a string showing the element and its associated charge.
+    Makes a string showing the element and its associated charge. Note that this
+    format is slightly different from the __str__ method, which puts the +/-
+    between the element symbol and the charge number.
 
     Returns
     -------
@@ -64,6 +66,8 @@ class metal_parameters (group_args) :
     Examples
     --------
     >>> from mmtbx.ions import metal_parameters
+    >>> print metal_parameters(element="FE", charge=3)
+    FE+3
     >>> print metal_parameters(element="FE", charge=3).scattering_type()
     FE3+
     >>> print metal_parameters(element="CL", charge=-1).scattering_type()

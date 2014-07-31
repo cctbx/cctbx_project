@@ -13,50 +13,62 @@ from __future__ import division
 import os
 import sys
 
-from mmtbx import ions
-from mmtbx.ions.identify import WATER_RES_NAMES
-from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
-from mmtbx.ions.svm.utils import iterate_sites
-import mmtbx.command_line
-from mmtbx.command_line.water_screen import master_phil
-from libtbx.str_utils import make_header
 from libtbx import easy_pickle
+from libtbx.str_utils import make_header
+from mmtbx import ions
+from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
+from mmtbx.ions.identify import WATER_RES_NAMES
+from mmtbx.ions.svm.utils import iterate_sites
+from mmtbx.command_line import load_model_and_data
+from mmtbx.command_line.water_screen import master_phil
 
-def main(args, out = sys.stdout):
+def main(args, out=sys.stdout):
+  """
+  Main entry point to this script.
+
+  Parameters
+  ----------
+  args : list of str
+      List of arguments, should not include the first argument with the
+      executable name.
+  out : file, optional
+  """
   usage_string = """\
-mmtbx.dump_sites model.pdb data.mtz [options ...]
+phenix.python -m mmtbx.ions.svm.dump_sites model.pdb data.mtz [options ...]
 
 Utility to dump information about the properties of water and ion sites in a
 model. This properties include local environment, electron density maps, and
 atomic properties.
 """
-  cmdline = mmtbx.command_line.load_model_and_data(
-    args = args,
-    master_phil = master_phil(),
-    out = out,
-    process_pdb_file = True,
-    create_fmodel = True,
-    prefer_anomalous = True,
-    set_wavelength_from_model_header = True,
-    set_inelastic_form_factors = "sasaki",
-    usage_string = usage_string)
+  cmdline = load_model_and_data(
+    args=args,
+    master_phil=master_phil(),
+    out=out,
+    process_pdb_file=True,
+    create_fmodel=True,
+    prefer_anomalous=True,
+    set_wavelength_from_model_header=True,
+    set_inelastic_form_factors="sasaki",
+    usage_string=usage_string,
+    )
 
   params = cmdline.params
   params.use_svm = True
 
-  make_header("Inspecting sites", out = out)
+  make_header("Inspecting sites", out=out)
 
   manager = ions.identify.create_manager(
-    pdb_hierarchy = cmdline.pdb_hierarchy,
-    fmodel = cmdline.fmodel,
-    geometry_restraints_manager = cmdline.geometry,
-    wavelength = params.input.wavelength,
-    params = params,
-    verbose = params.debug,
-    nproc = params.nproc,
-    log = out)
+    pdb_hierarchy=cmdline.pdb_hierarchy,
+    fmodel=cmdline.fmodel,
+    geometry_restraints_manager=cmdline.geometry,
+    wavelength=params.input.wavelength,
+    params=params,
+    verbose=params.debug,
+    nproc=params.nproc,
+    log=out,
+    )
 
-  manager.show_current_scattering_statistics(out = out)
+  manager.show_current_scattering_statistics(out=out)
 
   sites = dump_sites(manager)
 
@@ -64,16 +76,26 @@ atomic properties.
   print >> out, "Dumping to", out_name
   easy_pickle.dump(out_name, sites)
 
-def dump_sites (manager):
+def dump_sites(manager):
   """
   Iterate over all the ions and waters built into the model and dump out
   information about their properties.
+
+  Parameters
+  ----------
+  manager : mmtbx.ions.identify.manager
+
+  Returns
+  -------
+  list of tuple of mmtbx.ions.environment.ChemicalEnvironment, \
+  mmtbx.ions.environment.ScatteringEnvironment
   """
 
   atoms = iterate_sites(
     manager.pdb_hierarchy,
-    res_filter = ions.SUPPORTED + WATER_RES_NAMES,
-    split_sites = True)
+    res_filter=ions.SUPPORTED + WATER_RES_NAMES,
+    split_sites=True,
+    )
 
   # Can't pickle entire AtomProperties because they include references to the
   # Atom object. Instead, gather what properties we want and store them in a

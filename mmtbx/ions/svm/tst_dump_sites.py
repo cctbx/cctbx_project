@@ -20,8 +20,16 @@ def exercise():
         "input.xray_data.file_name=" + mtz_file,
         "wavelength={}".format(wavelength)], out=null_out)
 
+  os.remove(pdb_file)
+  os.remove(os.path.splitext(pdb_file)[0][:-4] + ".pdb")
+  os.remove(mtz_file)
+  # "zn_frag_hoh.pdb" => "zn_frag_fmodel.eff"
+  os.remove(os.path.splitext(pdb_file)[0][:-4] + "_fmodel.eff")
+
   sites_path = os.path.splitext(pdb_file)[0] + "_sites.pkl"
   sites = load(open(sites_path))
+
+  os.remove(sites_path)
 
   assert len(sites) == 7
   for chem_env, scatter_env in sites:
@@ -40,12 +48,6 @@ def exercise():
         if getattr(scatter_env, name) is None:
           print "Error: scatter_env.{} is not set".format(name)
           sys.exit()
-
-  os.remove(pdb_file)
-  os.remove(mtz_file)
-  os.remove(sites_path)
-  # "zn_frag_hoh.pdb" => "zn_frag_fmodel.eff"
-  os.remove(os.path.splitext(pdb_file)[0][:-4] + "_fmodel.eff")
 
   print "OK"
 

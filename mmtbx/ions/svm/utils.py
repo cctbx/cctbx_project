@@ -13,12 +13,16 @@ def iterate_sites(pdb_hierarchy, split_sites=False, res_filter=None):
 
   Parameters
   ----------
-  pdb_hierarchy: iotbx.pdb_hierarchy
+  pdb_hierarchy: iotbx.pdb.hierarchy.root
   split_sites: bool, optional
       Indicates whether to iterate over sites with alternate conformations, by
       default they are not included.
   res_filter: list of str, optional
       List of residue names to include, by default, all residues are examined.
+
+  Returns
+  -------
+  generator of iotbx.pdb.hierarchy.atom
   """
 
   for model in pdb_hierarchy.models():
