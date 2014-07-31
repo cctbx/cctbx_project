@@ -148,6 +148,51 @@ class load_model_and_data (object) :
        xray_structure.
   If at any point the inputs are ambiguous, hopefully the program will stop
   and raise an interpretable error.
+
+  Attributes
+  ----------
+  args : list of str
+  cif_file_names : libtbx.phil.scope_extract_list
+  cif_objects : list of ...
+  crystal_symmetry : cctbx.crystal.symmetry
+  f_obs : cctbx.miller.array
+  fmodel : mmtbx.f_model.manager
+  geometry : cctbx.geometry_restraints.manager.manager
+  hl_coeffs : ...
+  intensity_flag : bool
+  log : file
+  master_phil : libtbx.phil.scope
+  miller_arrays : list of cctbx.miller.array
+  params : libtbx.phil.scope_extract
+  pdb_file_names : libtbx.phil.scope_extract_list
+  pdb_hierarchy : iotbx.pdb.hierarchy.root
+  pdb_inp : iotbx.pdb.input
+  processed_pdb_file : mmtbx.monomer_library.pdb_interpretation.process
+  r_free_flags : cctbx.miller.array
+  raw_data : cctbx.miller.array
+  raw_flags : cctbx.miller.array
+  sequence : ...
+  test_flag_value : int
+  unknown_residues_flag : bool
+  unknown_residues_error_message : str
+  unmerged_i_obs : ...
+  working_phil : libtbx.phil.scope
+  xray_structure : cctbx.xray.structure.structure
+
+  Examples
+  --------
+  >>> from mmtbx.command_line.water_screen import master_phil
+  >>> from mmtbx.command_line import load_model_and_data
+  >>> cmdline = load_model_and_data(
+  ...  args=["model.pdb", "data.mtz"],
+  ...  master_phil=master_phil(),
+  ...  prefer_anomalous=True,
+  ...  set_wavelength_from_model_header=True,
+  ...  set_inelastic_form_factors="sasaki",
+  ...  )
+  >>> assert cmdline.pdb_hierarchy is not None
+  >>> assert cmdline.fmodel is not None
+  >>> assert cmdline.params.input.wavelength is not None
   """
   def __init__ (self,
       args,

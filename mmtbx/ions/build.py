@@ -76,12 +76,14 @@ def find_and_build_ions (
       group_anomalous_strategy_enabled=False,
       use_svm=None) :
   """
+  Analyzes the water molecules in a structure and re-labels them as ions if
+  they scatter and bind environments that we expect of that ion.
 
   Parameters
   ----------
   manager : mmtbx.ions.identity.manager
   fmodels : mmtbx.fmodels
-  model : ...
+  model : mmtbx.model.manager
   wavelength : float
   params : libtbx.phil.scope_extract
   nproc : int, optional
@@ -91,6 +93,10 @@ def find_and_build_ions (
   occupancy_strategy_enabled : bool, optional
   group_anomalous_strategy_enabled : bool, optional
   use_svm : bool, optional
+
+  See Also
+  --------
+  mmtbx.ions.identify.manager.analyze_waters
   """
   import mmtbx.refinement.minimization
   from mmtbx.refinement.anomalous_scatterer_groups import \
@@ -316,14 +322,15 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
   Parameters
   ----------
   fmodel : mmtbx.f_model.manager
-  model :
+  model : mmtbx.model.manager
   params : libtbx.phil.scope_extract
   log : file, optional
   verbose : bool, optional
 
   Returns
   -------
-  model...
+  mmtbx.model.manager
+      An updated model with ions corrected.
   """
   if (log is None) :
     log = null_out()
