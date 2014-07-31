@@ -23,6 +23,8 @@ ZLIB_PKG = "zlib-1.2.7.tar.gz"
 SCIPY_PKG = "scipy-0.14.0.tar.gz"        # not used by default
 PYRTF_PKG = "PyRTF-0.45.tar.gz"          # for phenix.table_one, etc.
 BIOPYTHON_PKG = "biopython-1.64.tar.gz"  # used in iotbx
+SPHINX_PKG = "Sphinx-1.2.2.tar.gz"       # for documentation
+NUMPYDOC_PKG = "numpydoc-0.5.tar.gz"     # for documentation
 
 # from xia2 page
 HDF5_PKG = "hdf5-1.8.8.tar.bz2"      # dxtbx
