@@ -169,12 +169,12 @@ class installer (object) :
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=SPHINX_PKG,
-        pkg_name="Sphinx",
+        pkg_name_label="Sphinx",
         confirm_import_module="sphinx")
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=NUMPYDOC_PKG,
-        pkg_name="numpydoc",
+        pkg_name_label="numpydoc",
         confirm_import_module=None)
     print >> self.log, "Dependencies finished building."
 
