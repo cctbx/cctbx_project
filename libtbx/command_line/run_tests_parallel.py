@@ -86,7 +86,7 @@ def run (args) :
       params.nproc)
     for test in all_tests :
       print "  " + test
-  log = open("zlog", "wb")
+  log = open("run_tests_parallel_zlog", "wb")
   libtbx.test_utils.parallel.run_command_list(
     cmd_list=all_tests,
     nprocs=params.nproc,
