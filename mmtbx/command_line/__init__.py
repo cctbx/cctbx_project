@@ -52,6 +52,29 @@ def generate_master_phil_with_inputs (
     enable_full_geometry_params=False,
     enable_unmerged_data=False,
     as_phil_string=False) :
+  """
+  Generate a complete PHIL parameter block with generic input parameters plus
+  user-specified options.  The result is suitable for input for the class
+  load_model_and_data.  Depending on the target application, the exact input
+  options can be adjusted.
+
+  :param phil_string: application-specific parameters
+  :param enable_twin_law: allow twinned f_model calculation
+  :param enable_automatic_twin_detection: allow automatic detection of twinning
+      and setup of the f_model object
+  :param enable_experimental_phases: use Hendrickson-Lattman coefficients
+  :param enable_pdb_interpretation_params: show options for modifying the
+      behavior of mmtbx.monomer_library.pdb_interpretation
+  :param enable_stop_for_unknowns: modify behavior of restraint interpretation
+      when unknown atoms are encountered.  Default is None; if True, the
+      program will not raise an error; if False, the program will raise an
+      error which may be suppressed by the user
+  :param enable_full_geometry_params: include parameters for specifying custom
+      geometry resraints
+  :param enable_unmerged_data: accept separate unmerged intensities
+  :param as_phil_string: return parameter string instead of PHIL object
+  :returns: PHIL object (unless as_phil_string=True)
+  """
   import iotbx.phil
   phil_extra_dict = {
     "phases" : "",
@@ -122,6 +145,9 @@ def generate_master_phil_with_inputs (
   return iotbx.phil.parse(master_phil_str, process_includes=True)
 
 def generic_simple_input_phil () :
+  """
+  Generate minimal PHIL input string with no additional parameters.
+  """
   return generate_master_phil_with_inputs(
     phil_string="",
     enable_automatic_twin_detection=True)
@@ -181,11 +207,10 @@ class load_model_and_data (object) :
 
   Examples
   --------
-  >>> from mmtbx.command_line.water_screen import master_phil
   >>> from mmtbx.command_line import load_model_and_data
   >>> cmdline = load_model_and_data(
   ...  args=["model.pdb", "data.mtz"],
-  ...  master_phil=master_phil(),
+  ...  master_phil=master_phil,
   ...  prefer_anomalous=True,
   ...  set_wavelength_from_model_header=True,
   ...  set_inelastic_form_factors="sasaki",
@@ -517,6 +542,13 @@ class load_model_and_data (object) :
     print >> self.log, "End of input processing"
 
   def start_log_file (self, file_name) :
+    """
+    Open a log file and write out the existing output buffer, returning the
+    multi_out pseudo-filehandle.
+
+    :param file_name: log file to create
+    :returns: libtbx.utils.multi_out object
+    """
     assert type(self.log).__name__ == 'multi_out'
     log_file = open(file_name, "w")
     self.log.replace_stringio(
@@ -526,6 +558,10 @@ class load_model_and_data (object) :
     return self.log
 
   def save_data_mtz (self, file_name) :
+    """
+    Write the processed amplitudes, optional Hendrickson-Lattman coefficients,
+    and R-free flags to the designated MTZ file.
+    """
     assert (self.f_obs is not None)
     mtz_data = self.f_obs.as_mtz_dataset(column_root_label="F")
     if (self.hl_coeffs is not None) :
@@ -559,6 +595,9 @@ def show_symmetry_error (file1, file2, symm1, symm2) :
     (file1, symm_out1.getvalue(), file2, symm_out2.getvalue()))
 
 def validate_input_params (params) :
+  """
+  Check for completeness of mandatory input parameters
+  """
   if params.input.pdb.file_name is None :
     raise Sorry("No PDB file defined.")
   elif params.input.xray_data.file_name is None :

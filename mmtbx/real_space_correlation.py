@@ -652,6 +652,9 @@ def extract_map_stats_for_single_atoms (xray_structure, pdb_atoms, fmodel,
   """
   Memory-efficient routine for harvesting map values for individual atoms
   (e.g. waters).  Only one FFT'd map at a time is in memory.
+
+  :param selection: optional atom selection (flex array)
+  :returns: group_args object with various simple metrics
   """
   if (selection is None) :
     selection = ~(xray_structure.hd_selection())
