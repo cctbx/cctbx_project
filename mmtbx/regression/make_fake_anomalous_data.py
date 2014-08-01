@@ -9,7 +9,7 @@ from libtbx import easy_run
 from iotbx.file_reader import any_file
 from mmtbx.ions.utils import anonymize_ions
 
-def generate_calcium_inputs (file_base="ca_frag", anonymize = True) :
+def generate_calcium_inputs (file_base="ca_frag", anonymize=True) :
   """
   Generate both a PDB file and an MTZ file for the calcium-bound structure,
   with the calcium optionally  replaced by solvent after F(model) was
@@ -17,13 +17,24 @@ def generate_calcium_inputs (file_base="ca_frag", anonymize = True) :
 
   (This method is also a suitable template for generating any other model/data
   files for specific structures.)
+
+  Parameters
+  ----------
+  file_base : str, optional
+  anonymize : bool, optional
+      Replace all ions in the returned pdb file with waters.
+
+  Returns
+  -------
+  mtz_path : str
+  pdb_path : str
   """
   pdb_file = write_pdb_input_calcium_binding(file_base=file_base)
   mtz_file = generate_mtz_file(
     file_base=file_base,
     d_min=1.5,
-    anomalous_scatterers = [
-      group_args(selection="element CA", fp = 0.25, fdp = 0.5)
+    anomalous_scatterers=[
+      group_args(selection="element CA", fp=0.25, fdp=0.5)
       ])
   assert (os.path.isfile(pdb_file)) and (os.path.isfile(mtz_file))
   if anonymize:
@@ -32,12 +43,25 @@ def generate_calcium_inputs (file_base="ca_frag", anonymize = True) :
     hierarchy, n = anonymize_ions(hierarchy, log=null_out())
     pdb_file = file_base + "_hoh.pdb"
     hierarchy.write_pdb_file(
-      file_name = pdb_file,
+      file_name=pdb_file,
       crystal_symmetry=pdb_in.file_object.crystal_symmetry())
     assert os.path.isfile(pdb_file)
   return os.path.abspath(mtz_file), os.path.abspath(pdb_file)
 
 def generate_cd_cl_inputs (file_base="cd_cl_frag") :
+  """
+  Creates a fake model and reflection data for a structure containing cadmium
+  and chloride ions.
+
+  Parameters
+  ----------
+  file_base : str, optional
+
+  Returns
+  -------
+  mtz_path : str
+  pdb_path : str
+  """
   pdb_file = write_pdb_input_cd_cl(file_base=file_base)
   mtz_file = generate_mtz_file(
     file_base=file_base,
@@ -49,53 +73,101 @@ def generate_cd_cl_inputs (file_base="cd_cl_frag") :
   assert (os.path.isfile(pdb_file)) and (os.path.isfile(mtz_file))
   return mtz_file, pdb_file
 
-def generate_zinc_inputs (file_base = "zn_frag", anonymize = True) :
+def generate_zinc_inputs (file_base="zn_frag", anonymize=True) :
   """
   Generate both a PDB file and an MTZ file for the zinc-bound structure,
   with the zinc optionally replaced by solvent after F(model) was
   calculated. Zinc is simulated as an anomalous scatterer at 1.54 A.
+
+  Parameters
+  ----------
+  file_base : str, optional
+  anonymize : bool, optional
+      Replace all ions in the returned pdb file with waters.
+
+  Returns
+  -------
+  mtz_path : str
+  pdb_path : str
   """
-  pdb_file = write_pdb_input_zinc_binding(file_base = file_base)
+  pdb_file = write_pdb_input_zinc_binding(file_base=file_base)
   mtz_file = generate_mtz_file(
-    file_base = file_base,
-    d_min = 1.9,
-    anomalous_scatterers = [
-      group_args(selection = "element ZN", fp = -1.3, fdp = 0.47),
+    file_base=file_base,
+    d_min=1.9,
+    anomalous_scatterers=[
+      group_args(selection="element ZN", fp=-1.3, fdp=0.47),
     ])
   assert os.path.isfile(pdb_file) and os.path.isfile(mtz_file)
   if anonymize:
     pdb_in = any_file(pdb_file)
     hierarchy = pdb_in.file_object.construct_hierarchy()
-    hierarchy, n = anonymize_ions(hierarchy, log = null_out())
+    hierarchy, n = anonymize_ions(hierarchy, log=null_out())
     pdb_file = file_base + "_hoh.pdb"
     hierarchy.write_pdb_file(
-      file_name = pdb_file,
-      crystal_symmetry = pdb_in.file_object.crystal_symmetry())
+      file_name=pdb_file,
+      crystal_symmetry=pdb_in.file_object.crystal_symmetry())
     assert os.path.isfile(pdb_file)
   return os.path.abspath(mtz_file), os.path.abspath(pdb_file)
 
-def generate_magnessium_inputs (file_base = "mg_frag", anonymize = True) :
-  pdb_file = write_pdb_input_magnessium_binding (file_base = file_base)
+def generate_magnessium_inputs (file_base="mg_frag", anonymize=True) :
+  """
+  Creates a fake model and reflection data for a structure containing magnesium
+  ions.
+
+  Parameters
+  ----------
+  file_base : str, optional
+  anonymize : bool, optional
+      Replace all ions in the returned pdb file with waters.
+
+  Returns
+  -------
+  mtz_path : str
+  pdb_path : str
+  """
+  pdb_file = write_pdb_input_magnessium_binding (file_base=file_base)
   mtz_file = generate_mtz_file(
-    file_base = file_base,
-    d_min = 1.5)
+    file_base=file_base,
+    d_min=1.5)
   assert os.path.isfile(pdb_file) and os.path.isfile(mtz_file)
   if anonymize:
     pdb_in = any_file(pdb_file)
     hierarchy = pdb_in.file_object.construct_hierarchy()
-    hierarchy, n = anonymize_ions(hierarchy, log = null_out())
+    hierarchy, n = anonymize_ions(hierarchy, log=null_out())
     pdb_file = file_base + "_hoh.pdb"
     hierarchy.write_pdb_file(
-      file_name = pdb_file,
-      crystal_symmetry = pdb_in.file_object.crystal_symmetry())
+      file_name=pdb_file,
+      crystal_symmetry=pdb_in.file_object.crystal_symmetry())
     assert os.path.isfile(pdb_file)
   return os.path.abspath(mtz_file), os.path.abspath(pdb_file)
 
-def generate_mtz_file (file_base, d_min, anomalous_scatterers = None) :
+def generate_mtz_file (file_base, d_min, anomalous_scatterers=None) :
   """
   Create an MTZ file containing amplitudes (and R-free-flags) calculated from
   the PDB file, at the specified resolution and with enumerated anomalous
   scatterer groups.
+
+  Parameters
+  ----------
+  file_base : str
+  d_min : float
+  anomalous_scatterers : group_args
+
+  Returns
+  -------
+  mtz_path : str
+
+  Examples
+  --------
+  >>> from libtbx import group_args
+  >>> from mmtbx.regression import make_fake_anomalous_data as mfad
+  >>> file_base = "tst_gen_file"
+  >>> pdb_file = mfad.write_pdb_input_calcium_binding(file_base=file_base)
+  >>> scatterers = group_args(selection="element CA", fp=0.25, fdp=0.5)
+  >>> mtz_file = mfad.generate_mtz_file(
+  ...   file_base, 1.5, anomalous_scatterers=[scatterers]
+  ...   )
+  >>> assert os.path.isfile(pdb_file) and os.path.isfile(mtz_file)
   """
   mtz_file = file_base + ".mtz"
   if (os.path.isfile(mtz_file)) :
@@ -130,6 +202,17 @@ def write_pdb_input_calcium_binding (file_base="ca_frag", write_files=True) :
   """
   Outputs a selection of atoms from a structure of a calcium-binding fold.
   Original data: d_min=1.4, wavelength=1.116
+
+  Parameters
+  ----------
+  file_base : str, optional
+  write_files : bool, optional
+      If false, just return the pdb hierarchy and x-ray crystal structure,
+      instead of writing it to a file.
+
+  Returns
+  -------
+  str or tuple of iotbx.pdb.hierarchy.root, cctbx.xray.structure.structure
   """
   import iotbx.pdb.hierarchy
   pdb_in = iotbx.pdb.hierarchy.input(source_info=None, pdb_string="""\
@@ -274,6 +357,14 @@ def write_pdb_input_cd_cl (file_base="cd_cl_frag") :
   """
   Outputs a selection of atoms from a structure crystallized in cadmium cloride.
   Original data: d_min=1.37, wavelength=1.116
+
+  Parameters
+  ----------
+  file_base : str, optional
+
+  Returns
+  -------
+  str
   """
   import iotbx.pdb.hierarchy
   pdb_in = iotbx.pdb.hierarchy.input(source_info=None, pdb_string="""\
@@ -372,7 +463,21 @@ END""")
   f.close()
   return pdb_file
 
-def write_pdb_input_zinc_binding(file_base = "zn_frag", write_files = True):
+def write_pdb_input_zinc_binding(file_base="zn_frag", write_files=True):
+  """
+  Outputs a selection of atoms from a structure crystallized with zinc.
+
+  Parameters
+  ----------
+  file_base : str, optional
+  write_files : bool, optional
+      If false, just return the pdb hierarchy and x-ray crystal structure,
+      instead of writing it to a file.
+
+  Returns
+  -------
+  str or tuple of iotbx.pdb.hierarchy.root, cctbx.xray.structure.structure
+  """
   import iotbx.pdb.hierarchy
   # XXX extracted from 2whz (thermolysin, wavelength = 1.54A), but with an
   # incomplete coordination shell
@@ -506,7 +611,22 @@ END
     return pdb_file
   else:
     return pdb_in, xrs
-def write_pdb_input_magnessium_binding (file_base = "mg_frag", write_files = True):
+
+def write_pdb_input_magnessium_binding (file_base="mg_frag", write_files=True):
+  """
+  Outputs a selection of atoms from a structure crystallized with magnesium.
+
+  Parameters
+  ----------
+  file_base : str, optional
+  write_files : bool, optional
+      If false, just return the pdb hierarchy and x-ray crystal structure,
+      instead of writing it to a file.
+
+  Returns
+  -------
+  str or tuple of iotbx.pdb.hierarchy.root, cctbx.xray.structure.structure
+  """
   import iotbx.pdb.hierarchy
   pdb_in = iotbx.pdb.hierarchy.input(source_info=None, pdb_string="""\
 REMARK  fragment derived from 3ip0
