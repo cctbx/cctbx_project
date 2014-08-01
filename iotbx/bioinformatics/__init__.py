@@ -324,6 +324,11 @@ class alignment(object):
       for ( seq, name ) in zip( self.alignments, self.names ) ] )
 
 
+  def simple_format(self, width):
+
+    return self.format( width = width )
+
+
   def extend(self, sequences):
 
     if len( sequences ) != self.multiplicity():
@@ -436,6 +441,11 @@ class fasta_alignment(alignment):
       ] )
 
 
+  def simple_format(self, width):
+
+    return self.format( width = width )
+
+
   def extra(self):
 
     return {
@@ -476,6 +486,11 @@ class pir_alignment(alignment):
       ] )
 
 
+  def simple_format(self, width):
+
+    return self.format( width = width )
+
+
   def extra(self):
 
     return {
@@ -511,7 +526,7 @@ class clustal_alignment(alignment):
     return aln_info
 
 
-  def format(self, aln_width, caption_width, middle_line=None):
+  def format(self, aln_width, caption_width, number_width = None, middle_line=None):
 
     if not middle_line:
       middle_line = midline().compare(
@@ -521,6 +536,9 @@ class clustal_alignment(alignment):
 
     elif len( middle_line ) != self.length():
       raise ValueError, "Incorrect midline length"
+
+    if number_width is None:
+      number_width = self.length_digits()
 
     # All alignments
     aln_infos = [
@@ -539,7 +557,7 @@ class clustal_alignment(alignment):
       )
 
     def fmt_num():
-      if num: return " %s" % num
+      if num: return " " + str( num ).rjust( number_width )
       return ""
     return (
       "%s multiple sequence alignment\n\n" % self.program
@@ -552,6 +570,24 @@ class clustal_alignment(alignment):
           for zipped_infos in zip( *aln_infos )
           ]
         )
+      )
+
+
+  def length_digits(self):
+
+    import math
+    return int( math.log10( self.length() ) ) + 1
+
+
+  def simple_format(self, width):
+
+    aln_width = int( 0.8 * width )
+    num_width = min( self.length_digits(), width - aln_width )
+    caption_width = max( width - ( aln_width + 1 ) - ( num_width + 1 ), 1 )
+    return self.format(
+      aln_width = aln_width,
+      caption_width = caption_width,
+      number_width = num_width,
       )
 
 
