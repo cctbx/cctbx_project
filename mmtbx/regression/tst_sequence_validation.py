@@ -51,7 +51,7 @@ END""")
   v.show(out=out)
   assert contains_lines(out.getvalue(), """\
   sequence identity: 76.47%
-  12 residue(s) missing from PDB chain (9 at start, 1 at end)
+  13 residue(s) missing from PDB chain (9 at start, 1 at end)
   2 gap(s) in chain
   4 mismatches to sequence
     residue IDs:  12 13 15 24""")
