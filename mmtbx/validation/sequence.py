@@ -129,6 +129,7 @@ class chain (object) :
            (i_resid >= len(self.resnames) or
            self.resnames[i_resid] is None))) :
         self.n_missing_end += 1
+        self.n_missing += 1
       i_aln -= 1
     assert (len(self.sec_str) == len(alignment.a))
 
