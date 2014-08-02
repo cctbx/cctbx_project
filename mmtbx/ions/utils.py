@@ -279,6 +279,10 @@ def fit_gaussian(unit_cell, site_cart, real_map, radius=1.6):
       Height of gaussian curve.
   float
       Spread of guassian curve.
+
+  See Also
+  --------
+  scitbx.math.gaussian_fit_1d_analytical
   """
   points, radiuses = _get_points_within_radius(site_cart, radius)
 

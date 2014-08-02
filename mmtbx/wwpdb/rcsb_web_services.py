@@ -19,9 +19,25 @@ url_search = url_base + "/search"
 def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
     protein_only=False, data_only=False, identity_cutoff=None, log=None,
     sort_by_resolution=False) :
-  """Generate the full XML for a multi-part query with generic search options,
+  """
+  Generate the full XML for a multi-part query with generic search options,
   starting from the basic query passed by another function, post it to the
-  RCSB's web service, and return a list of matching PDB IDs."""
+  RCSB's web service, and return a list of matching PDB IDs.
+
+  Parameters
+  ----------
+  query_xml : str or None
+  xray_only : bool, optional
+  d_max : float, optional
+  d_min : float, optional
+  protein_only : bool, optional
+  data_only : bool, optional
+  identity_cutoff : int, optional
+      Apply sequence filtering to remove structures with greater than this
+      percentage sequence identity. Must be one of 100, 95, 90, 70, 50, 40, 30.
+  log : file, optional
+  sort_by_resolution : bool, optional
+  """
   if (log is None) :
     log = libtbx.utils.null_out()
   queries = []
@@ -113,7 +129,21 @@ def sequence_search (sequence, **kwds) :
   return post_query(query_str, **kwds)
 
 def chemical_id_search (resname, **kwds) :
-  """Find all entry IDs with the specified chemical ID."""
+  """
+  Find all entry IDs with the specified chemical ID.
+
+  Parameters
+  ----------
+  resname : str
+  kwds : dict
+      Keyword arguments passed to post_query.
+
+  Examples
+  --------
+  >>> from mmtbx.wwpdb.rcsb_web_services import chemical_id_search
+  >>> len(chemical_id_search("ZN", data_only=True, identity_cutoff=70))
+  2874
+  """
   assert (1 <= len(resname) <= 3)
   polymeric_type = kwds.pop("polymeric_type", "Any")
   assert (polymeric_type in ["Any", "Free", "Polymeric"])

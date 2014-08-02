@@ -38,6 +38,19 @@ except ImportError:
   import random
 
 class rec(object):
+  """
+  Base rectangle object, used to store 2-dimensional data.
+
+  Examples
+  --------
+  >>> from scitbx.matix import rec
+  >>> m = rec((1, 2, 3, 4), (2, 2))
+  >>> print m.trace()
+  5
+  >>> other = rec((1, 1, 1, 1), (2, 2))
+  >>> print m.dot(other)
+  10
+  """
 
   container_type = tuple
 
@@ -775,7 +788,20 @@ class col_mixin(object):
     return cls([ uniform(a,b) for i in xrange(n) ])
   random = classmethod(random)
 
-class col(col_mixin, rec): pass
+class col(col_mixin, rec):
+    """
+    Class type built on top of rec and col_mixin, allows for single-dimensional
+    vectors.
+
+    Examples
+    --------
+    >>> from scitbx.matrix import col
+    >>> vector = col([3, 0, 4])
+    >>> print abs(vector)
+    5.0
+    """
+    pass
+
 class mutable_col(col_mixin, mutable_rec): pass
 
 class sqr(rec):
