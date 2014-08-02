@@ -7,6 +7,31 @@ from scitbx.array_family import flex
 from boost import rational # implicit import
 from stdlib import math
 
+gaussian_fit_1d_analytical.__doc__ = """
+Fits a gaussian function to a list of points.
+
+Parameters
+----------
+x : scitbx.array_family.flex.double
+y : scitbx.array_family.flex.double
+
+Returns
+-------
+scitbx.math.gaussian_fit_1d_analytical
+
+Examples
+--------
+>>> from scitbx.array_family import flex
+>>> from scitbx.math import gaussian_fit_1d_analytical
+>>> x, y = flex.double(), flex.double()
+>>> x.append(-1) ; y.append(.1)
+>>> x.append(0) ; y.append(1)
+>>> x.append(1) ; y.append(.1)
+>>> fit = gaussian_fit_1d_analytical(x, y)
+>>> print fit.a, fit.b
+1.0 2.30258509299
+"""
+
 def median_statistics(data):
   return flex.median.dispersion(data)
 
