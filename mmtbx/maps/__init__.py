@@ -213,7 +213,7 @@ maps {
       .type = bool
       .short_caption = Include R-free flags in output MTZ file
   }
-  scattering_table = wk1995  it1992  *n_gaussian  neutron
+  scattering_table = wk1995  it1992  *n_gaussian  neutron electron
     .type = choice
     .help = Choices of scattering table for structure factors calculations
   wavelength = None
