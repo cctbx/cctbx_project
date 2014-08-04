@@ -548,7 +548,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
   @staticmethod
   def print_unit_translations(data, params):
     from scitbx.array_family import flex
-    def pretty_format():
+    def pretty_format(data):
       out = """"""
       for quad in [0,1,2,3]:
         for blockof2 in [0,1,2,3]:
@@ -560,6 +560,13 @@ class fit_translation4(mark5_iteration,fit_translation2):
 """
         if quad<3: out += """
 """
+      # reality check here in case the PAD is not 64-tiles
+      Nparam = len(data)
+      decoration = out.split("%3.0f,")
+      if len(decoration)>Nparam+1:
+        decoration = decoration[len(decoration)-Nparam:]
+        return "%3.0f,".join(decoration)
+
       return out
 
     from spotfinder.applications.xfel.cxi_phil import cxi_versioned_extract
@@ -567,7 +574,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
       stuff = cxi_versioned_extract(["distl.detector_format_version=%s"%params.detector_format_version])
       old = flex.double(stuff.distl.tile_translations)
       print "cctbx already defines unit pixel translations for detector format version %s:"%params.detector_format_version
-      print pretty_format()%tuple(old)
+      print pretty_format(old)%tuple(old)
       print "new unit pixel increments will be SUBTRACTED off these to get final translations"
       print
 
@@ -580,7 +587,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
 
     new = old - flex.double(data)
     overall_format = """    working_extract.distl.tile_translations = [
-"""+pretty_format()+"""    ]"""
+"""+pretty_format(new)+"""    ]"""
 
     print overall_format%tuple(new)
 
