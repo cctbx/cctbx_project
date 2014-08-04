@@ -22,7 +22,7 @@ All new development will be focussed on the sgtbx.
 SgLite and SgInfo are not being developed anymore.
 More information: `sgtbx development history details <history_sgtbx.html>`_
 
-.. _SgLite: http://svn.sourceforge.net/viewcvs.cgi/pymol/trunk/pymol/contrib/sglite/
+.. _SgLite: https://sourceforge.net/p/pymol/code/HEAD/tree/trunk/pymol/contrib/sglite/
 .. _`SgInfo 1.01`: http://cci.lbl.gov/sginfo/
 
 The other toolboxes are developed by the
