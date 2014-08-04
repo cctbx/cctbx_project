@@ -69,6 +69,12 @@ class serial_file_name_handler(object):
       result.append( self.name_from_number( id ) )
     return result
 
+  def names_from_range(self, range_txt):
+    result = []
+    range_list = range_to_list( range_parser( range_txt ) )
+    result = self.names_from_range_list( range_list )
+
+
 
 def tst_file_names():
   base="lysozyme_1_####.img"
