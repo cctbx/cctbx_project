@@ -73,6 +73,7 @@ class serial_file_name_handler(object):
     result = []
     range_list = range_to_list( range_parser( range_txt ) )
     result = self.names_from_range_list( range_list )
+    return result
 
 
 
@@ -102,6 +103,15 @@ def tst_file_names():
   assert lst[1] == "000002.lysozyme_1.img"
   assert lst[2] == "000003.lysozyme_1.img"
   assert len(lst)==3
+
+
+  base = "######.lysozyme_1.img"
+  obj = serial_file_name_handler(base)
+  range_txt = "1-3"
+  name_list =  obj.names_from_range(range_txt)
+  assert name_list[0] == '000001.lysozyme_1.img'
+  assert name_list[1] == '000002.lysozyme_1.img'
+  assert name_list[2] == '000003.lysozyme_1.img'
 
 def tst_ranges():
   range_txt="1-9,10,11,13-16"
