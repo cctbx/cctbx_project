@@ -225,6 +225,9 @@ class crystal_model(object):
   def get_unit_cell(self):
     return self._uc
 
+  def set_space_group(self, space_group):
+    self._sg = space_group
+
   def get_space_group(self):
     return self._sg
 
