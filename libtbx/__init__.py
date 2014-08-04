@@ -86,7 +86,7 @@ class slots_getstate_setstate(object):
   __slots__ = []
 
   def __getstate__(self):
-    return dict((name, getattr(self, name)) for name in self.__slots__)
+    return dict([(name, getattr(self, name)) for name in self.__slots__])
 
   def __setstate__(self, state):
     for name,value in state.items(): setattr(self, name, value)
