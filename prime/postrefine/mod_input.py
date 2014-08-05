@@ -20,7 +20,7 @@ title = None
 scale
   .help = "Parameters used to generate mean-intensity scaled reference set."
 {
-  d_min = 0
+  d_min = 0.1
     .type = float
     .help = Minimum resolution.
   d_max = 99
@@ -36,7 +36,7 @@ postref
   scale
     .help = Scale factors
   {
-    d_min = 0
+    d_min = 0.1
       .type = float
       .help = Minimum resolution.
     d_max = 99
@@ -55,7 +55,7 @@ postref
     flag_on = True
       .type = bool
       .help = Set to False to turn post-refinement in this section off.
-    d_min = 0
+    d_min = 0.1
       .type = float
       .help = Minimum resolution.
     d_max = 99
@@ -74,7 +74,7 @@ postref
     flag_on = True
       .type = bool
       .help = Set to False to turn post-refinement in this section off.
-    d_min = 0
+    d_min = 0.1
       .type = float
       .help = Minimum resolution.
     d_max = 99
@@ -93,7 +93,7 @@ postref
     flag_on = True
       .type = bool
       .help = Set to False to turn post-refinement in this section off.
-    d_min = 0
+    d_min = 0.1
       .type = float
       .help = Minimum resolution.
     d_max = 99
@@ -113,7 +113,7 @@ postref
 merge
   .help = "Parameters used in merging"
 {
-  d_min = 0
+  d_min = 0.1
     .type = float
     .help = Minimum resolution.
   d_max = 99
@@ -184,33 +184,13 @@ pixel_size_mm = None
   .type = float
   .help = Pixel size in mm. (MAR = 0.079346)
   .optional = False
-detector_distance_mm = None
-  .type = float
-  .help = Detector distance
-  .optional = False
 frame_accept_min_cc = 0.25
   .type = float
   .help = CC cut-off for the rejection of frames before merging.
-asu_contents
-  .help = "Defines the ASU contents"
-{
-  C = None
-    .type = int
-    .help = No. of carbon atoms.
-    .optional = False
-  H = 0
-    .type = int
-    .help = No. of hydrogen atoms.
-  O = 0
-    .type = int
-    .help = No. of oxygen atoms.
-  N = 0
-    .type = int
-    .help = No. of nitrogen atoms.
-  S = 0
-    .type = int
-    .help = No. of sulfur atoms.
-}
+n_residues = None
+  .type = int
+  .help = No. of residues in asymmetric unit.
+  .optional = False
 flag_apply_b_by_frame = False
   .type = bool
   .help = Set to True to apply B-factor on each frame.
@@ -264,7 +244,7 @@ def process_input(argv=None):
   with Capturing() as output:
     working_phil.show()
 
-  txt_out = 'prime.postrefine input:\n'
+  txt_out = 'prime.postrefine (140804a) input:\n'
   for one_output in output:
     txt_out += one_output + '\n'
 
