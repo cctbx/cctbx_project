@@ -1331,7 +1331,7 @@ class manager(object):
                           ignore_hd,
                           molprobity_scores = False,
                           cdl_restraints = False,
-                          general_selection = None, # use for removing ligand 
+                          general_selection = None, # use for removing ligand
                                                     # from output e.g. afitt
                                                     # supersedes ignore_hd
                           ):

@@ -33,7 +33,7 @@ class energies(object):
         O.gradients += rhs.gradients
     return O
 
-  def __setattr__(self, attr, value):
+  def __setattr1__(self, attr, value):
     if attr=="target":
       if math.isnan(value):
         raise Sorry('target value (energy) is "nan"')
