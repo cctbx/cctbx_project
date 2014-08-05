@@ -184,7 +184,7 @@ class intensities_scaler(object):
                 R_final_all.append(pres.R_final)
                 R_xy_init_all.append(pres.R_xy_init)
                 R_xy_final_all.append(pres.R_xy_final)
-                
+
                 miller_indices_all.extend(pres.observations.indices())
                 I_all.extend(pres.observations.data())
                 sigI_all.extend(pres.observations.sigmas())
@@ -194,7 +194,7 @@ class intensities_scaler(object):
                 sin_sq_all.extend(sin_theta_over_lambda_sq)
                 SE_all.extend(flex.double([pres.SE]*len(pres.observations.data())))
                 wavelength_all.extend(flex.double([pres.wavelength]*len(pres.observations.data())))
-                
+
                 print pres.frame_no, img_filename, ' merged'
               else:
                 print pres.frame_no, img_filename, ' discarded - unit-cell exceeds the limits (%6.2f %6.2f %6.2f %5.2f %5.2f %5.2f)'%(pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], pres.uc_params[4], pres.uc_params[5])
