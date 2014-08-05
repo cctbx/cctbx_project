@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
 import math
-from libtbx import easy_pickle
 import logging
 from cctbx.array_family import flex
 import cPickle
@@ -14,17 +13,20 @@ class SingleFrame:
   """
   ANGSTROMS_TO_EV = 12398.425
 
-  def __init__(self, path, filename, crystal_num=0, remove_negative=False,
-               use_b_factor=True):
+  def __init__(self, path=None, filename=None, crystal_num=0, remove_negative=False,
+               use_b_factor=True, dicti=None):
     """
     Constructor for SingleFrame object, using a cctbx.xfel integration pickle.
 
-    :param:path: path to integration pickle
-    :param:filename: the file name alone (used as a label)
-    :param:crystal_num: if multiple lattices present, the latice number.
-    :param:remove_negative: Boolean for removal of negative intensities
-    :param:use_b_factor: if True, initialise scale and B, if false, use only
+    :param path: path to integration pickle
+    :param filename: the file name alone (used as a label)
+    :param crystal_num: if multiple lattices present, the latice number.
+    :param remove_negative: Boolean for removal of negative intensities
+    :param use_b_factor: if True, initialise scale and B, if false, use only
     mean-intensity scaling.
+    :param dicti: optional. If a dictionairy is supplied here, will create
+    object from that rather than attempting to read the file specified in path,
+    filename.
 
     --------------------------------------------------
 
@@ -57,9 +59,16 @@ class SingleFrame:
     :var wilson_err: standard error on the fit of ln(i) vs.
     sinsqtheta_over_lambda_sq
     """
+    if dicti is not None:
+      d = dicti
+    else:
+      try:
+        d = cPickle.load(open(path, 'rb'))
+      except (cPickle.UnpicklingError, ValueError, EOFError, IOError):
+        d = {}
+        logging.warning("Could not read %s. It may not be a pickle file." % path)
     try:
       # Warn on error, but continue directory traversal.
-      d = easy_pickle.load(path)
       self.is_polarization_corrected = False
       # Miller arrays
       self.miller_array = d['observations'][crystal_num].sort()
@@ -104,8 +113,6 @@ class SingleFrame:
       logging.debug("Extracted image {}".format(filename))
     except KeyError:
       logging.warning("Could not extract point group and unit cell from %s" % path)
-    except (cPickle.UnpicklingError, ValueError, EOFError, IOError):
-      logging.warning("Could not read %s. It may not be a pickle file." % path)
 
   def trim_res_limit(self, d_min=None, d_max=None):
     """
@@ -164,7 +171,6 @@ class SingleFrame:
     sinsqtheta_over_labmdasq = self.miller_array.sort()\
       .sin_theta_over_lambda_sq().data().as_numpy_array()
 
-     # Discard negatives ToDo: one could get the mod of the negative values,
      # then plot them as negative in the linear fit.
     inten, sinsqtheta_over_labmdasq = zip(*[i for i
                                             in zip(inten,
