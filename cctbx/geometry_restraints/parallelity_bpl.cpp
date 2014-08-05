@@ -27,13 +27,19 @@ namespace {
         .def(init<
           af::shared<std::size_t> const&,
           af::shared<std::size_t> const&,
+          double,
           double >((
-            arg("i_seqs"), arg("j_seqs"), arg("weight"))))
+            arg("i_seqs"),
+            arg("j_seqs"),
+            arg("weight"),
+            arg("target_angle_deg")=0)))
         .def("scale_weight", &w_t::scale_weight, (arg("factor")))
         .def("sort_ij_seqs", &w_t::sort_ij_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("j_seqs", make_getter(&w_t::j_seqs, rbv()))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
+        .add_property("target_angle_deg",
+            make_getter(&w_t::target_angle_deg, rbv()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
       ;
       {
@@ -72,8 +78,12 @@ namespace {
         .def(init<
           af::shared<scitbx::vec3<double> > const&,
           af::shared<scitbx::vec3<double> > const&,
-          double >(
-            (arg("i_sites"), arg("j_sites"), arg("weight"))))
+          double,
+          double >((
+              arg("i_sites"),
+              arg("j_sites"),
+              arg("weight"),
+              arg("target_angle_deg")=0)))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   parallelity_proxy const&>(
           (arg("sites_cart"), arg("proxy"))))
@@ -84,8 +94,9 @@ namespace {
         .add_property("i_sites", make_getter(&w_t::i_sites, rbv()))
         .add_property("j_sites", make_getter(&w_t::j_sites, rbv()))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
+        .add_property("target_angle_deg",
+            make_getter(&w_t::target_angle_deg, rbv()))
         .add_property("delta", make_getter(&w_t::delta, rbv()))
-        //.def("rms_deltas", &w_t::rms_deltas)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
       ;
