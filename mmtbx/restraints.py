@@ -121,14 +121,14 @@ class manager(object):
         afitt_input='afitt_in'
         afitt_output='afitt_out'
         for resname_i,resname in enumerate(self.afitt_object.resname):
-          for instance_i, instance in enumerate(self.afitt_object.res_ids[resname_i]): 
+          for instance_i, instance in enumerate(self.afitt_object.res_ids[resname_i]):
             self.afitt_object.make_afitt_input(sites_cart,
-                                               afitt_input, 
+                                               afitt_input,
                                                resname_i,
                                                instance_i,
                                                )
             afitt.call_afitt(afitt_input, afitt_output, self.afitt_object.ff)
-        
+
             if compute_gradients and 0:
               f=open("phenix_gradients",'a')
               f.write("START\n")
@@ -136,7 +136,7 @@ class manager(object):
                 f.write("%10.4f %10.4f %10.4f\n" %(result.geometry.gradients[i][0], result.geometry.gradients[i][1], result.geometry.gradients[i][2]))
               f.write("END\n")
               f.close()
-        
+
             result.geometry = afitt.process_afitt_output(
               afitt_output,
               result.geometry,
@@ -152,7 +152,7 @@ class manager(object):
                 f.write("%10.4f %10.4f %10.4f\n" %(result.geometry.gradients[i][0], result.geometry.gradients[i][1], result.geometry.gradients[i][2]))
               f.write("END\n")
               f.close()
-            
+
       result += result.geometry
     if (self.ncs_groups is None):
       result.ncs_groups = None
