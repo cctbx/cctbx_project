@@ -1,3 +1,4 @@
+from __future__ import division
 import os, sys
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
@@ -312,7 +313,7 @@ def run(pdb_file, cif_file, ligand_names, ff='mmff'):
   for energy in energies:
     print "%s_%d AFITT_ENERGY: %10.4f" %(energy[0], energy[1], energy[2])
 
-if (__name__ == "__main__"):
+def run2():
   import argparse
   parser = argparse.ArgumentParser()
   parser.add_argument("pdb_file", help="pdb file")
@@ -322,3 +323,6 @@ if (__name__ == "__main__"):
   args = parser.parse_args()
   ligand_names=args.ligand_names.split(',')
   run(args.pdb_file, args.cif_file, ligand_names, args.ff)
+
+if (__name__ == "__main__"):
+  run2()
