@@ -26,7 +26,7 @@ chem_carboxy, \
   chem_nitrogen_primary, \
   chem_nitrogen_secondary, \
   chem_nitrogen_tertiary, \
-  chem_chlorine, \
+  chem_chloride, \
   chem_oxygen, \
   chem_nitrogen, \
   chem_sulfur = range(N_SUPPORTED_ENVIRONMENTS)
@@ -426,7 +426,7 @@ class ChemicalEnvironment (slots_getstate_setstate):
 
       # Check for waters, sulfates, phosphates, chlorides, etc
       if element == "CL":
-        chem_env[chem_chlorine] += 1
+        chem_env[chem_chloride] += 1
       elif element == "O":
         chem_env[chem_oxygen] += 1
         if get_class(contact.resname()) in ["common_water"]:
