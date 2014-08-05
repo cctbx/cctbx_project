@@ -1576,6 +1576,7 @@ mmtbx/cablam/fingerprints/threeten_general.pickle -text
 mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
+mmtbx/command_line/afitt.py -text
 mmtbx/command_line/altloc_remediate.py -text
 mmtbx/command_line/analyze_peptides.py -text
 mmtbx/command_line/analyze_static_disorder.py -text
@@ -1746,6 +1747,7 @@ mmtbx/geometry/topology.py -text
 mmtbx/geometry/volume.py -text
 mmtbx/geometry_restraints/SConscript -text
 mmtbx/geometry_restraints/__init__.py -text
+mmtbx/geometry_restraints/afitt.py -text
 mmtbx/geometry_restraints/boost_python/hbond_ext.cpp -text
 mmtbx/geometry_restraints/boost_python/ramachandran_ext.cpp -text
 mmtbx/geometry_restraints/boost_python/reference_coordinate_ext.cpp svneol=native#text/plain
