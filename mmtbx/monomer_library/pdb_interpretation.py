@@ -467,6 +467,8 @@ parallelity
     .input_size = 400
   sigma = 0.027
     .type = float
+  target_angle_deg = 0
+    .type = float
 }
 scale_restraints
   .multiple = True
@@ -516,6 +518,10 @@ def validate_geometry_edits_params (params) :
     elif (plane.sigma is None) :
       raise Sorry(("The sigma for custom plane #%d is not defined.  (Atom "+
         "selection: '%s')") % (k, plane.atom_selection))
+  for k, parallelity in enumerate(params.parallelity) :
+    if (None in [parallelity.atom_selection_1, parallelity.atom_selection_2]):
+      raise Sorry(("A custom parallelity definition (#%d in the list) is "+
+          "incomplete; two atom selections are required.") % k)
   return True
 
 geometry_restraints_remove_str = """\
@@ -4089,11 +4095,13 @@ class build_all_chain_proxies(linking_mixins):
       j_seqs = self.phil_atom_selections_as_i_seqs_multiple(
         cache=sel_cache, scope_extract=parallelity, sel_attrs=["atom_selection_2"])
       weight = parallelity.sigma
+      target_angle_deg = parallelity.target_angle_deg
       #print i_seqs, j_seqs, weight
       proxy = geometry_restraints.parallelity_proxy(
         i_seqs=i_seqs,
         j_seqs=j_seqs,
-        weight=weight)
+        weight=weight,
+        target_angle_deg=target_angle_deg)
       result.append(proxy)
     print >> log, "    Total number of custom parallelities:", len(result)
     return result

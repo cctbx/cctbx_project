@@ -2869,7 +2869,7 @@ def exercise_parallelity():
   p = geometry_restraints.parallelity(i_sites=test_sites_21[0],
                   j_sites=test_sites_21[1],
                   weight=1)
-  assert approx_equal(p.residual(), 0.5, 0.00001)
+  assert approx_equal(p.residual(), 0.25, 0.00001)
   p = geometry_restraints.parallelity(i_sites=test_sites_3[0],
                   j_sites=test_sites_3[1],
                   weight=1)
@@ -2885,26 +2885,30 @@ def exercise_parallelity():
                (1,0,0), (2,0,0), (1,0,1)]
   test_sites_1d = [1,0,0, 2,0,0, 1,1.732050807568877,-1,
                    1,0,0, 2,0,0, 1,0,1]
-  p_original = geometry_restraints.parallelity(i_sites=test_sites[:3],
-                           j_sites=test_sites[3:],
-                           weight=1)
-  grad = list(p_original.gradients())
-  fin_dif_grad = []
-  for i in range(len(test_sites_1d)):
-    test_sites_1d[i]+=h
-    points = make_points(test_sites_1d)
-    p1 = geometry_restraints.parallelity(i_sites=points[:3],
-                     j_sites=points[3:],
-                     weight=1)
-    test_sites_1d[i]-=2*h
-    points = make_points(test_sites_1d)
-    p2 = geometry_restraints.parallelity(i_sites=points[:3],
-                     j_sites=points[3:],
-                     weight=1)
-    test_sites_1d[i]+=h
-    fin_dif_grad.append((p1.residual()-p2.residual())/(2.0*h))
-  sites_fdg = make_points(fin_dif_grad)
-  assert approx_equal(grad, sites_fdg, 1.e-7)
+  for target_angle_deg in [0,10]:
+    p_original = geometry_restraints.parallelity(i_sites=test_sites[:3],
+                             j_sites=test_sites[3:],
+                             weight=1,
+                             target_angle_deg=target_angle_deg)
+    grad = list(p_original.gradients())
+    fin_dif_grad = []
+    for i in range(len(test_sites_1d)):
+      test_sites_1d[i]+=h
+      points = make_points(test_sites_1d)
+      p1 = geometry_restraints.parallelity(i_sites=points[:3],
+                       j_sites=points[3:],
+                       weight=1,
+                       target_angle_deg=target_angle_deg)
+      test_sites_1d[i]-=2*h
+      points = make_points(test_sites_1d)
+      p2 = geometry_restraints.parallelity(i_sites=points[:3],
+                       j_sites=points[3:],
+                       weight=1,
+                       target_angle_deg=target_angle_deg)
+      test_sites_1d[i]+=h
+      fin_dif_grad.append((p1.residual()-p2.residual())/(2.0*h))
+    sites_fdg = make_points(fin_dif_grad)
+    assert approx_equal(grad, sites_fdg, 1.e-7)
 
   # Proxy selections
   def make_proxy(i_seqs, j_seqs, weight):

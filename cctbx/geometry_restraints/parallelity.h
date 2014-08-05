@@ -23,11 +23,13 @@ namespace cctbx { namespace geometry_restraints {
     parallelity_proxy(
       i_seqs_type const& i_seqs_,
       i_seqs_type const& j_seqs_,
-      double weight_)
+      double weight_,
+      double target_angle_deg_ = 0)
     :
       i_seqs(i_seqs_),
       j_seqs(j_seqs_),
-      weight(weight_)
+      weight(weight_),
+      target_angle_deg(target_angle_deg_)
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
@@ -39,12 +41,14 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs_type const& i_seqs_,
       i_seqs_type const& j_seqs_,
       optional_container<af::shared<sgtbx::rt_mx> > const& sym_ops_,
-      double weight_)
+      double weight_,
+      double target_angle_deg_ = 0)
     :
       i_seqs(i_seqs_),
       j_seqs(j_seqs_),
       sym_ops(sym_ops_),
-      weight(weight_)
+      weight(weight_),
+      target_angle_deg(target_angle_deg_)
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
@@ -63,7 +67,8 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs(i_seqs_),
       j_seqs(j_seqs_),
       sym_ops(proxy.sym_ops),
-      weight(proxy.weight)
+      weight(proxy.weight),
+      target_angle_deg(proxy.target_angle_deg)
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
@@ -75,10 +80,10 @@ namespace cctbx { namespace geometry_restraints {
 
 
     parallelity_proxy
-    scale_weight(
-      double factor) const
+    scale_weight(double factor) const
     {
-      return parallelity_proxy(i_seqs, j_seqs, sym_ops, weight*factor);
+      return parallelity_proxy(
+        i_seqs, j_seqs, sym_ops, weight*factor, target_angle_deg);
     }
 
     //! Sorts i_seqs and j_seqs such that, e.g. i_seq[0] < i_seq[2].
@@ -114,10 +119,12 @@ namespace cctbx { namespace geometry_restraints {
           i_seqs_result,
           j_seqs_result,
           optional_container<af::shared<sgtbx::rt_mx> >(sym_ops_result),
-          weight);
+          weight,
+          target_angle_deg);
       }
       else {
-        return parallelity_proxy(i_seqs_result,j_seqs_result, weight);
+        return parallelity_proxy(
+          i_seqs_result,j_seqs_result, weight, target_angle_deg);
       }
     }
 
@@ -128,6 +135,8 @@ namespace cctbx { namespace geometry_restraints {
     optional_container<af::shared<sgtbx::rt_mx> > sym_ops;
     //! Weight.
     double weight;
+    //! Target angle in degrees
+    double target_angle_deg;
   };
 
 
@@ -473,13 +482,16 @@ namespace cctbx { namespace geometry_restraints {
         i_n = i_N.normalize();
         j_n = j_N.normalize();
 
-        delta = 1 - i_n * j_n;
+        //delta = 1 - i_n * j_n;
+        double n1n2 = i_n * j_n;
+        double cos_alpha_0 = cos(scitbx::deg_as_rad(target_angle_deg));
+        delta = pow((cos_alpha_0 - n1n2),2);
 
         //==================================
         // gradients
         //==================================
-        scitbx::vec3<double> dFparallelity__dn_1 = -j_n/weight/weight;
-        scitbx::vec3<double> dFparallelity__dn_2 = -i_n/weight/weight;
+        scitbx::vec3<double> dFparallelity__dn_1 = -j_n*2.0*(cos_alpha_0-n1n2)/weight/weight;
+        scitbx::vec3<double> dFparallelity__dn_2 = -i_n*2.0*(cos_alpha_0-n1n2)/weight/weight;
         scitbx::vec3<double> dF__dN_1, dF__dN_2;
         dF__dN_1 = derive_dFparallelity__dN(dFparallelity__dn_1, i_N);
         dF__dN_2 = derive_dFparallelity__dN(dFparallelity__dn_2, j_N);
@@ -543,6 +555,8 @@ namespace cctbx { namespace geometry_restraints {
       af::shared<scitbx::vec3<double> > i_sites, j_sites;
       //! Weight.
       double weight;
+      //! Target angle in degrees
+      double target_angle_deg;
       //! Delta.
       double delta;
 
@@ -553,11 +567,13 @@ namespace cctbx { namespace geometry_restraints {
       parallelity(
         af::shared<scitbx::vec3<double> > const& i_sites_,
         af::shared<scitbx::vec3<double> > const& j_sites_,
-        double weight_)
+        double weight_,
+        double target_angle_deg_)
       :
         i_sites(i_sites_),
         j_sites(j_sites_),
-        weight(weight_)
+        weight(weight_),
+        target_angle_deg(target_angle_deg_)
       {
         CCTBX_ASSERT(i_sites.size() > 2);
         CCTBX_ASSERT(j_sites.size() > 2);
@@ -571,7 +587,8 @@ namespace cctbx { namespace geometry_restraints {
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         parallelity_proxy const& proxy)
       :
-        weight(proxy.weight)
+        weight(proxy.weight),
+        target_angle_deg(proxy.target_angle_deg)
       {
         af::const_ref<std::size_t> i_seqs_ref = proxy.i_seqs.const_ref();
         af::const_ref<std::size_t> j_seqs_ref = proxy.j_seqs.const_ref();
@@ -599,7 +616,8 @@ namespace cctbx { namespace geometry_restraints {
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         parallelity_proxy const& proxy)
       :
-        weight(proxy.weight)
+        weight(proxy.weight),
+        target_angle_deg(proxy.target_angle_deg)
       {
         af::const_ref<std::size_t> i_seqs_ref = proxy.i_seqs.const_ref();
         af::const_ref<std::size_t> j_seqs_ref = proxy.j_seqs.const_ref();
@@ -637,7 +655,7 @@ namespace cctbx { namespace geometry_restraints {
       double
       residual() const
       {
-        return (1 - i_n * j_n)/weight/weight;
+        return pow((cos(scitbx::deg_as_rad(target_angle_deg)) - i_n * j_n),2)/weight/weight;
       }
 
       //! Gradients with respect to the sites.
