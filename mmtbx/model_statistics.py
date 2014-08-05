@@ -474,10 +474,13 @@ class model(object):
                use_molprobity=True,
                ncs_manager=None,
                cdl_restraints=False,
+               general_selection=None,
                ):
-    self.geometry = model.geometry_statistics(ignore_hd = ignore_hd,
+    self.geometry = model.geometry_statistics(
+      ignore_hd = ignore_hd,
       molprobity_scores=use_molprobity,
       cdl_restraints=cdl_restraints,
+      general_selection=general_selection,
       )
     self.content = model_content(model)
     self.adp = adp(model)
@@ -716,6 +719,7 @@ class info(object):
                      fmodel_n          = None,
                      refinement_params = None,
                      ignore_hd         = True,
+                     general_selection = None,
                      use_molprobity    = True,
                      ncs_manager       = None):
     ref_par = refinement_params
@@ -732,6 +736,7 @@ class info(object):
       use_molprobity = use_molprobity,
       ncs_manager = ncs_manager,
       cdl_restraints = ref_par.pdb_interpretation.cdl,
+      general_selection = general_selection,
       )
     self.data_x, self.data_n = None, None
     if(fmodel_x is not None):
