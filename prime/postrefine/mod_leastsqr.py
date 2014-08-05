@@ -189,7 +189,7 @@ class leastsqr_handler(object):
   def optimize_scalefactors(self, I_r_flex, observations_original,
               wavelength, crystal_init_orientation,
               alpha_angle, spot_pred_x_mm, spot_pred_y_mm, iparams,
-              pres_in, observations_non_polar):
+              pres_in, observations_non_polar, detector_distance_mm):
 
     pr_d_min = iparams.postref.scale.d_min
     pr_d_max = iparams.postref.scale.d_max
@@ -239,7 +239,7 @@ class leastsqr_handler(object):
                                                                 iparams.b_refine_d_min,
                                                                 crystal_init_orientation,
                                                                 spot_pred_x_mm_sel, spot_pred_y_mm_sel,
-                                                                iparams.detector_distance_mm,
+                                                                detector_distance_mm,
                                                                 refine_mode, const_params),
                                                           full_output=True, maxfev=100)
     G_fin, B_fin = xopt
@@ -265,7 +265,7 @@ class leastsqr_handler(object):
   def optimize(self, I_r_flex, observations_original,
               wavelength, crystal_init_orientation,
               alpha_angle, spot_pred_x_mm, spot_pred_y_mm, iparams,
-              pres_in, observations_non_polar):
+              pres_in, observations_non_polar, detector_distance_mm):
 
     refine_steps = ['scale_factor']
 
@@ -337,7 +337,8 @@ class leastsqr_handler(object):
                                                                   spot_pred_y_mm,
                                                                   iparams,
                                                                   pres_in,
-                                                                  observations_non_polar)
+                                                                  observations_non_polar,
+                                                                  detector_distance_mm)
             G, B = xopt_scalefactors
             ry = spot_radius
             rz = spot_radius
@@ -360,7 +361,7 @@ class leastsqr_handler(object):
         #filter by partiality
         two_theta = observations_original_sel.two_theta(wavelength=wavelength).data()
         uc = unit_cell((a,b,c,alpha,beta,gamma))
-        partiality_init, delta_xy_init = calc_partiality_anisotropy_set(uc, rotx, roty, observations_original_sel.indices(), ry, rz, re, two_theta, alpha_angle_sel, wavelength, crystal_init_orientation, spot_pred_x_mm_sel, spot_pred_y_mm_sel, iparams.detector_distance_mm)
+        partiality_init, delta_xy_init = calc_partiality_anisotropy_set(uc, rotx, roty, observations_original_sel.indices(), ry, rz, re, two_theta, alpha_angle_sel, wavelength, crystal_init_orientation, spot_pred_x_mm_sel, spot_pred_y_mm_sel, detector_distance_mm)
         i_sel_p = partiality_init > pr_partiality_min
         observations_original_sel = observations_original_sel.customized_copy(
             indices=observations_original_sel.indices().select(i_sel_p),
@@ -392,7 +393,7 @@ class leastsqr_handler(object):
 
         xopt, cov_x, infodict, mesg, ier = optimize.leastsq(func, xinp,
                                                             args=(I_r_true,
-                                                                  observations_original_sel, wavelength, alpha_angle_sel, iparams.b_refine_d_min, crystal_init_orientation, spot_pred_x_mm_sel, spot_pred_y_mm_sel, iparams.detector_distance_mm,
+                                                                  observations_original_sel, wavelength, alpha_angle_sel, iparams.b_refine_d_min, crystal_init_orientation, spot_pred_x_mm_sel, spot_pred_y_mm_sel, detector_distance_mm,
                                                                   refine_mode, const_params),
                                                             full_output=True, maxfev=100)
 
@@ -436,7 +437,7 @@ class leastsqr_handler(object):
                                                                 iparams.b_refine_d_min,
                                                                 crystal_init_orientation,
                                                                 spot_pred_x_mm_sel, spot_pred_y_mm_sel,
-                                                                iparams.detector_distance_mm,
+                                                                detector_distance_mm,
                                                                 refine_mode, const_params),
                                                           full_output=True, maxfev=100)
 
@@ -453,7 +454,7 @@ class leastsqr_handler(object):
                                                                       two_theta, alpha_angle, wavelength,
                                                                       crystal_init_orientation,
                                                                       spot_pred_x_mm, spot_pred_y_mm,
-                                                                      iparams.detector_distance_mm)
+                                                                      detector_distance_mm)
 
       I_o_init = (1 * np.exp(-2*-0*sin_theta_over_lambda_sq) * observations_original.data())/partiality_init
     else:
@@ -464,7 +465,7 @@ class leastsqr_handler(object):
                                                                       two_theta, alpha_angle, wavelength,
                                                                       crystal_init_orientation,
                                                                       spot_pred_x_mm, spot_pred_y_mm,
-                                                                      iparams.detector_distance_mm)
+                                                                      detector_distance_mm)
       I_o_init = (pres_in.G * np.exp(-2*pres_in.B*sin_theta_over_lambda_sq) * observations_original.data())/partiality_init
 
 
@@ -475,7 +476,7 @@ class leastsqr_handler(object):
                                                                               two_theta, alpha_angle, wavelength,
                                                                               crystal_init_orientation,
                                                                               spot_pred_x_mm, spot_pred_y_mm,
-                                                                              iparams.detector_distance_mm)
+                                                                              detector_distance_mm)
     I_o_fin = (G * np.exp(-2*B*sin_theta_over_lambda_sq) * observations_original.data())/partiality_fin
     SE_of_the_estimate = standard_error_of_the_estimate(I_r_flex/observations_original.sigmas(), I_o_fin/observations_original.sigmas(), 13)
     R_sq = coefficient_of_determination(I_r_flex/observations_original.sigmas(), I_o_fin/observations_original.sigmas())*100

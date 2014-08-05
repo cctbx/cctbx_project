@@ -28,6 +28,7 @@ class postref_handler(object):
     the alpha angle (meridional to equatorial).
     """
     observations = observations_pickle["observations"][0]
+    detector_distance_mm = observations_pickle['distance']
     mm_predictions = iparams.pixel_size_mm*(observations_pickle['mapped_predictions'][0])
     xbeam = observations_pickle["xbeam"]
     ybeam = observations_pickle["ybeam"]
@@ -101,7 +102,8 @@ class postref_handler(object):
     observations_as_f = observations.as_amplitude_array()
     observations_as_f.setup_binner(auto_binning=True)
     from cctbx import statistics
-    pdb_asu_contents = {'C':iparams.asu_contents.C,'H':iparams.asu_contents.H,'N':iparams.asu_contents.N,'O':iparams.asu_contents.O,'S':iparams.asu_contents.S}
+
+    pdb_asu_contents = {'C':iparams.n_residues*5,'H':0,'N':iparams.n_residues*2,'O':int(round(iparams.n_residues*1.5)),'S':0}
     wilson_plot = statistics.wilson_plot(observations_as_f, pdb_asu_contents)
     wilson_k_b = (wilson_plot.wilson_intensity_scale_factor, wilson_plot.wilson_b)
     wilson_b = wilson_k_b[1]
@@ -136,7 +138,7 @@ class postref_handler(object):
       sigI_b = flex.exp(-2*wilson_b*sin_theta_over_lambda_sq) * observations.sigmas()
       observations = observations.customized_copy(data=I_b, sigmas=sigI_b)
 
-    return observations, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, wilson_b
+    return observations, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, wilson_b, detector_distance_mm
 
 
   def determine_polar(self, observations_original, iparams, pickle_filename):
@@ -192,7 +194,7 @@ class postref_handler(object):
     imgname = pickle_filename
 
     try:
-      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm,  wilson_b = self.organize_input(observations_pickle, iparams)
+      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm,  wilson_b, detector_distance_mm = self.organize_input(observations_pickle, iparams)
     except Exception:
       observations_original = None
 
@@ -238,12 +240,13 @@ class postref_handler(object):
                                                                spot_pred_x_mm_set, spot_pred_y_mm_set,
                                                                iparams,
                                                                pres_in,
-                                                               observations_non_polar_sel)
+                                                               observations_non_polar_sel,
+                                                               detector_distance_mm)
 
     #caculate partiality for output (with target_anomalous check)
     G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, re_fin, \
         a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = refined_params
-    observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm,  wilson_b = \
+    observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm,  wilson_b, detector_distance_mm = \
         self.organize_input(observations_pickle, iparams, mode='output')
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
     from mod_leastsqr import calc_partiality_anisotropy_set
@@ -258,7 +261,7 @@ class postref_handler(object):
                                                            ry_fin, rz_fin, re_fin,
                                                            two_theta, alpha_angle, wavelength, crystal_init_orientation,
                                                            spot_pred_x_mm, spot_pred_y_mm,
-                                                           iparams.detector_distance_mm)
+                                                           detector_distance_mm)
 
     #calculate the new crystal orientation
     O = sqr(uc_fin.orthogonalization_matrix()).transpose()
@@ -289,7 +292,7 @@ class postref_handler(object):
     wavelength = observations_pickle["wavelength"]
 
     try:
-      observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, wilson_b = self.organize_input(observations_pickle, iparams)
+      observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, wilson_b, detector_distance_mm = self.organize_input(observations_pickle, iparams)
     except Exception:
       observations_original = None
 
@@ -313,7 +316,7 @@ class postref_handler(object):
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
 
     try:
-      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, wilson_b = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
+      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, wilson_b, detector_distance_mm = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
     except Exception:
       observations_original = None
 
@@ -409,7 +412,8 @@ class postref_handler(object):
                                                                    spot_pred_x_mm_set, spot_pred_y_mm_set,
                                                                    iparams,
                                                                    None,
-                                                                   observations_non_polar_sel)
+                                                                   observations_non_polar_sel,
+                                                                   detector_distance_mm)
         G, B = refined_params
 
 
@@ -430,7 +434,7 @@ class postref_handler(object):
     re = 0.0026
     rotx = 0
     roty = 0
-    partiality_init, delta_xy_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, iparams.detector_distance_mm)
+    partiality_init, delta_xy_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm)
 
     refined_params = np.array([G,B,rotx,roty,ry,rz,re,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
 
