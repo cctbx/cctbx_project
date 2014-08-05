@@ -31,6 +31,23 @@ chem_carboxy, \
   chem_nitrogen, \
   chem_sulfur = range(N_SUPPORTED_ENVIRONMENTS)
 
+CHEM_ENV_LABELS = [
+  "Coordinating carboxy group",
+  "Coordinating amide group",
+  "Coordinating backbone atom",
+  "Coordinating water molecule",
+  "Coordinating sulfate group",
+  "Coordinating phosphate group",
+  "Coordinating disulfide group",
+  "Coordinating primary nitrogen",
+  "Coordinating secondary nitrogen",
+  "Coordinating tertiary nitrogen",
+  "Coordinating chloride",
+  "Coordinating oxygen",
+  "Coordinating nitrogen",
+  "Coordinating sulfur",
+  ]
+
 class ScatteringEnvironment (slots_getstate_setstate):
   """
   Container for information summarizing a site's scattering environment.
