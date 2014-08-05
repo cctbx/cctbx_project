@@ -33,9 +33,8 @@ if (qb_installed) :
 
 #afitt
 afitt_installed=False
-if libtbx.env.has_module("afitt_adaptbx") :
-  build_dir = libtbx.env.under_build("afitt_adaptbx")
-  if (build_dir is not None) and (os.path.isdir(build_dir)) :
+if os.environ.get("OS_DIR", None) :
+  if os.path.exists(os.environ["OS_DIR"]):
     afitt_installed = True
 
 if (afitt_installed) :
@@ -44,6 +43,6 @@ if (afitt_installed) :
       .help = Parameters for using AFITT ligand gradients.
       .expert_level = 3
     {
-      include scope amber_adaptbx.afitt.master_phil_str
+      include scope mmtbx.geometry_restraints.afitt.master_phil_str
     }
 """
