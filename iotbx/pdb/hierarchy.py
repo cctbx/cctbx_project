@@ -1473,8 +1473,37 @@ class input_hierarchy_pair(object):
     return xrs.select(perm)
 
 class input(input_hierarchy_pair):
+  """
+  Class used for reading a PDB hierarchy from a file or string.
+
+  Attributes
+  ----------
+  input : iotbx.pdb.pdb_input_from_any
+  hierarchy : iotbx.pdb.hierarchy.root
+
+  Examples
+  --------
+  >>> import iotbx.pdb.hierarchy
+  >>> pdb_in = iotbx.pdb.hierarchy.input(pdb_string='''
+  ... ATOM      1  N   ASP A  37      10.710  14.456   9.568  1.00 15.78           N
+  ... ATOM      2  CA  ASP A  37       9.318  14.587   9.999  1.00 18.38           C
+  ... ''')
+  >>> print pdb_in.hierarchy.atoms_size()
+  2
+  "")
+  """
 
   def __init__(self, file_name=None, pdb_string=None, source_info=Auto):
+    """
+    Initializes an input from a file or string.
+
+    Parameters
+    ----------
+    file_name : str, optional
+    pdb_string : str, optional
+    source_info : str, optional
+        Indicates where this PDB came from (i.e. "string")
+    """
     assert [file_name, pdb_string].count(None) == 1
     import iotbx.pdb
     if (file_name is not None):
