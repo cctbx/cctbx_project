@@ -789,13 +789,13 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
     if not "z_dim" in locals():
       z_dim = quadstrs.count(quadkey)
     else:
-      assert z_dim == quadstrs.count(quad_key)
+      assert z_dim == quadstrs.count(quadkey)
 
   cbf.add_category("array_structure_list",["array_section","array_section_id","index","dimension","precedence","direction","axis_set_id"])
   for quadname in quadstrs:
-    cbf.add_row(["ARRAY_"+quadname,".","1",x_dim,"1","increasing","."])
-    cbf.add_row(["ARRAY_"+quadname,".","2",y_dim,"2","increasing","."])
-    cbf.add_row(["ARRAY_"+quadname,".","3",z_dim,"3","increasing","."])
+    cbf.add_row(["ARRAY_"+quadname,".","1","%d"%x_dim,"1","increasing","."])
+    cbf.add_row(["ARRAY_"+quadname,".","2","%d"%y_dim,"2","increasing","."])
+    cbf.add_row(["ARRAY_"+quadname,".","3","%d"%z_dim,"3","increasing","."])
   for tilename,tilekey,tilequad in zip(tilestrs,tilekeys,tilequads):
     b = metro[tilekey]
     cbf.add_row(["ARRAY_"+tilequad,"ARRAY_"+tilename,"1","%d"%b.dimension[0],"1","increasing","AXIS_"+tilename+"_F"])
