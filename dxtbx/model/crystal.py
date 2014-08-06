@@ -313,6 +313,15 @@ class crystal_model(object):
       assert other.num_scan_points == self.num_scan_points
     return other
 
+  def update(self, other):
+    self._U = other._U
+    self._B = other._B
+    self._A_at_scan_points = other._A_at_scan_points
+    self._num_scan_points = other._num_scan_points
+    self._sg = other._sg
+    self._uc = other._uc
+    self._mosaicity = other._mosaicity
+
 def crystal_model_from_mosflm_matrix(mosflm_A_matrix,
                                      unit_cell=None,
                                      wavelength=None,
