@@ -703,6 +703,30 @@ def pathsubst(format_string, evt, env, **kwargs):
                     subprocess=env.subprocess(),
                     user=getuser())
 
+def get_ebeam(evt):
+  try:
+    # pyana
+    ebeam = evt.getEBeam()
+  except AttributeError, e:
+    from psana import Source, Bld
+    src = Source('BldInfo(EBeam)')
+    ebeam = evt.get(Bld.BldDataEBeamV6, src)
+    if ebeam is None:
+      ebeam = evt.get(Bld.BldDataEBeamV5, src)
+    if ebeam is None:
+      ebeam = evt.get(Bld.BldDataEBeamV4, src)
+    if ebeam is None:
+      ebeam = evt.get(Bld.BldDataEBeamV3, src)
+    if ebeam is None:
+      ebeam = evt.get(Bld.BldDataEBeamV2, src)
+    if ebeam is None:
+      ebeam = evt.get(Bld.BldDataEBeamV1, src)
+    if ebeam is None:
+      ebeam = evt.get(Bld.BldDataEBeamV0, src)
+    if ebeam is None:
+      ebeam = evt.get(Bld.BldDataEBeam, src)
+
+  return ebeam
 
 def env_laser_status(env, laser_id):
   """The return value is a bool that indicates whether the laser in
@@ -778,8 +802,16 @@ def env_detz(address, env):
     else:
       return None
 
-    if pv is not None and len(pv.values) == 1:
-      return pv.values[0]
+    if pv is None:
+      return None
+
+    if hasattr(pv, "values"):
+      if len(pv.values) == 1:
+        return pv.values[0]
+      else:
+        return None
+    return pv
+
   return None
 
 
@@ -970,24 +1002,17 @@ def evt_pulse_length(evt):
   """
 
   if (evt is not None):
+    ebeam = get_ebeam(evt)
+
+    if ebeam is None:
+      return
+
     try:
-      ebeam = evt.getEBeam()
-      if (ebeam is not None and ebeam.fEbeamPkCurrBC2 > 0):
+      if ebeam.fEbeamPkCurrBC2 > 0:
         return 1e6 * ebeam.fEbeamCharge / ebeam.fEbeamPkCurrBC2
     except AttributeError:
-      from psana import Source, Bld
-      ebeam = evt.get(Bld.BldDataEBeamV4, Source('BldInfo(EBeam)'))
-      if ebeam is None:
-        ebeam = evt.get(Bld.BldDataEBeamV6, Source('BldInfo(EBeam)'))
-      if (ebeam is not None and ebeam.ebeamPkCurrBC2() > 0):
+      if ebeam.ebeamPkCurrBC2() > 0:
         return 1e6 * ebeam.ebeamCharge() / ebeam.ebeamPkCurrBC2()
-    except NotImplementedError:
-      # XXX This needs to be sorted out!  All other invocations of
-      # getEBeam() in this file are similarly kludged.
-      #
-      # NotImplementedError: Error: DataObjectFactory unsupported type
-      # EBeamBld_V5
-      ebeam = None
   return None
 
 
@@ -1025,19 +1050,15 @@ def evt_beam_charge(evt):
   """
 
   if evt is not None:
+    ebeam = get_ebeam(evt)
+
+    if ebeam is None:
+      return
     try:
       ebeam = evt.getEBeam()
-    except AttributeError:
-      from psana import Source, Bld
-      ebeam = evt.get(Bld.BldDataEBeamV4, Source('BldInfo(EBeam)'))
-      if ebeam is None:
-        ebeam = evt.get(Bld.BldDataEBeamV6, Source('BldInfo(EBeam)'))
-      if ebeam is not None:
-        return ebeam.ebeamCharge()
-    except NotImplementedError:
-      ebeam = None
-    if ebeam is not None:
       return ebeam.fEbeamCharge
+    except AttributeError:
+      return ebeam.ebeamCharge()
   return None
 
 
@@ -1119,16 +1140,8 @@ def evt_wavelength(evt, delta_k=0):
   """
 
   if evt is not None:
-    try:
-      # pyana
-      ebeam = evt.getEBeam()
-    except AttributeError, e:
-      from psana import Source, Bld
-      ebeam = evt.get(Bld.BldDataEBeamV4, Source('BldInfo(EBeam)'))
-      if ebeam is None:
-        ebeam = evt.get(Bld.BldDataEBeamV6, Source('BldInfo(EBeam)'))
-    except NotImplementedError:
-      ebeam = None
+    ebeam = get_ebeam(evt)
+
     if hasattr(ebeam, 'fEbeamPhotonEnergy') and ebeam.fEbeamPhotonEnergy > 0:
       return 12398.4187 / ebeam.fEbeamPhotonEnergy
     if hasattr(ebeam, 'ebeamPhotonEnergy') and ebeam.ebeamPhotonEnergy() > 0:
