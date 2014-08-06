@@ -195,8 +195,22 @@ END"""
   f.close()
   try :
     pdb = any_file("tmp1_bad.pdb", raise_sorry_if_not_expected_format=True)
-  except Sorry :
+  except Sorry, e :
     pass
+  else :
+    raise Exception_expected
+  try :
+    pdb = any_file("tmp1_bad.pdb", force_type="phil")
+  except RuntimeError, e :
+    pass
+  else :
+    raise Exception_expected
+  try :
+    pdb = any_file("tmp1_bad.pdb",
+      force_type="pdb",
+      raise_sorry_if_errors=True)
+  except Sorry, e :
+    assert ("Couldn't read 'tmp1_bad.pdb' as file type 'pdb'" in str(e))
   else :
     raise Exception_expected
 

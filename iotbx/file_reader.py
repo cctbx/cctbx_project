@@ -214,7 +214,8 @@ class any_file_input (object) :
           try :
             read_method()
           except Exception, e :
-            raise Sorry(str(e))
+            raise Sorry("Couldn't read '%s' as file type '%s': %s" %
+              (file_name, force_type, str(e)))
         else :
           read_method()
     else :
