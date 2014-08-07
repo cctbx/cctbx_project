@@ -496,6 +496,15 @@ def finite_difference_test(pdb_file,
 
   return 0
 
+def bond_test(model):
+  rm = model.restraints_manager
+  bond_params_table = rm.geometry.bond_params_table
+  bond = bond_params_table.lookup(0,1)
+  print bond.distance_ideal,bond.weight
+  bond = bond_params_table.lookup(0,10)
+  print bond
+  assert 0
+
 def run(pdb_file, cif_file, ligand_names, ff='mmff94s'):
   import iotbx.pdb
   assert os.path.isfile(pdb_file), "File %s does not exist." %pdb_file
