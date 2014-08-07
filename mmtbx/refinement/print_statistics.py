@@ -178,9 +178,15 @@ class refinement_monitor(object):
     general_selection = None
     if use_afitt:
       from mmtbx.geometry_restraints import afitt
-      general_selection = afitt.get_non_afitt_selection(model,
-                                                        ignore_hd,
-                                                        )
+      if 0:
+        general_selection = afitt.get_afitt_selection(model, ignore_hd)
+        afitt_geom = model.geometry_statistics(
+          ignore_hd = ignore_hd,
+          cdl_restraints=self.params.pdb_interpretation.cdl,
+          general_selection=general_selection,
+          )
+        afitt_geom.show()
+      general_selection = afitt.get_non_afitt_selection(model, ignore_hd)
     geom = model.geometry_statistics(
       ignore_hd = ignore_hd,
       cdl_restraints=self.params.pdb_interpretation.cdl,
