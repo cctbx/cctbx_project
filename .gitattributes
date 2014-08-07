@@ -1577,6 +1577,7 @@ mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
 mmtbx/command_line/afitt.py -text
+mmtbx/command_line/afitt_fd.py -text
 mmtbx/command_line/altloc_remediate.py -text
 mmtbx/command_line/analyze_peptides.py -text
 mmtbx/command_line/analyze_static_disorder.py -text

@@ -99,6 +99,7 @@ class manager(object):
         result.geometry = amber_geometry_manager.energies_sites(
           compute_gradients=compute_gradients)
 
+      # default restraints manager
       else :
         result.geometry = self.geometry.energies_sites(
           sites_cart=sites_cart,
@@ -118,41 +119,28 @@ class manager(object):
       ##################################################################
       if (self.use_afitt and len(sites_cart)==self.afitt_object.total_model_atoms):
         from mmtbx.geometry_restraints import afitt
-        afitt_input='afitt_in'
-        afitt_output='afitt_out'
+        result.complex_residual_sum = result.geometry.residual_sum
+        afitt_allgradients = {}
+        afitt_alltargets = {}
         for resname_i,resname in enumerate(self.afitt_object.resname):
           for instance_i, instance in enumerate(self.afitt_object.res_ids[resname_i]):
-            self.afitt_object.make_afitt_input(sites_cart,
-                                               afitt_input,
-                                               resname_i,
-                                               instance_i,
-                                               )
-            afitt.call_afitt(afitt_input, afitt_output, self.afitt_object.ff)
-
-            if compute_gradients and 0:
-              f=open("phenix_gradients",'a')
-              f.write("START\n")
-              for i in range(sites_cart.size()):
-                f.write("%10.4f %10.4f %10.4f\n" %(result.geometry.gradients[i][0], result.geometry.gradients[i][1], result.geometry.gradients[i][2]))
-              f.write("END\n")
-              f.close()
-
-            result.geometry = afitt.process_afitt_output(
-              afitt_output,
-              result.geometry,
-              self.afitt_object,
-              resname_i,
-              instance_i,
-              )
-
-            if compute_gradients and 0:
-              f=open("afitt_gradients",'a')
-              f.write("START\n")
-              for i in range(sites_cart.size()):
-                f.write("%10.4f %10.4f %10.4f\n" %(result.geometry.gradients[i][0], result.geometry.gradients[i][1], result.geometry.gradients[i][2]))
-              f.write("END\n")
-              f.close()
-
+            afitt_input = self.afitt_object.make_afitt_input(sites_cart,
+                                                             resname_i,
+                                                             instance_i,
+                                                           )
+            lines = afitt.call_afitt(afitt_input, self.afitt_object.ff)
+            afitt.process_afitt_output(lines,
+                                       result.geometry,
+                                       self.afitt_object,
+                                       resname_i,
+                                       instance_i,
+                                       afitt_allgradients,
+                                       afitt_alltargets)
+        result.geometry = afitt.apply_target_gradients(result.geometry,
+                                                       afitt_allgradients,
+                                                       afitt_alltargets)
+        result.afitt_residual_sum = result.geometry.residual_sum -\
+                                    result.complex_residual_sum
       result += result.geometry
     if (self.ncs_groups is None):
       result.ncs_groups = None

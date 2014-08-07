@@ -352,9 +352,6 @@ def write_pdb_header(params, out=sys.stdout, remark="REMARK   3  "):
   print >> out, "%s" % remark
 
 def adjust_energy(result, model, afitt_object, verbose=False):
-  verbose=1
-  print 'ADJUST_ENERGY '*10
-  print 'afitt_object',afitt_object
   if result.afitt_residual_sum<1e-6: return result
   general_selection = get_afitt_selection(model, False)
   rm = model.restraints_manager.select(general_selection)
