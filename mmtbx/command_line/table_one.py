@@ -185,7 +185,7 @@ class _ (oop.injector, molprobity.molprobity) :
         n_tls_groups = self.header_info.n_tls_groups
       use_header_values = (not re_compute_r_factors or
           (not self.header_info.is_phenix_refinement() and
-           (recalculate_r_factors is Auto)))
+           (re_compute_r_factors is Auto)))
       r_work, r_free, warned = rfactor_sanity_check(
         r_work_pdb=self.header_info.r_work,
         r_free_pdb=self.header_info.r_free,
