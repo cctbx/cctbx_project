@@ -318,7 +318,8 @@ class XrayFrame (wx.Frame) :
       self.settings.zoom_level = 0
     else :
       self.settings.zoom_level += 1
-    self.viewer.update_settings(layout=True)
+    if hasattr(self.viewer, "update_settings") :
+      self.viewer.update_settings(layout=True)
     if (self.settings_frame is not None) :
       self.settings_frame.update_controls()
 
