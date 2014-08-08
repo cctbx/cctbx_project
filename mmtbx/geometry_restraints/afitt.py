@@ -17,6 +17,22 @@ master_phil_str = """
     .type = str
 """
 
+class covalent_object:
+  def __init__(self, covalent_partner, pdb_hierarchy):
+    self.n_atoms = None
+    self.resname = None
+    self.res_id = None
+    self.resseq = None
+    self.res_id_ligand = None
+    self.charge = None
+    self.partial_charges = []
+    self.atom_elements = []
+    self.bonds = []
+    self.nbonds = None
+    self.sites_cart_ptrs = []
+    self.formal_charges = []
+
+
 class afitt_object:
   def __init__(self,
                ligand_path,   # ligand CIF restraints file
@@ -40,6 +56,7 @@ class afitt_object:
     self.scale = scale
     self.ligand_path = ligand_path
     self.pdb_hierarchy = pdb_hierarchy
+    self.covalent_data = {}
 
     cif_object = self.read_cif_file(ligand_path)
     self.process_cif_object(cif_object, pdb_hierarchy)
@@ -92,6 +109,22 @@ class afitt_object:
               ids.append([chain.id,conformer.altloc,residue.resseq])
     return ids
 
+  def check_covalent(self, pdb_hierarchy, chain_id, altloc, resseq):
+    cov_res=None
+    for model in pdb_hierarchy.models():
+      for chain in model.chains():
+        if chain.id != chain_id: continue
+        for conformer in chain.conformers():
+          if conformer.altloc != altloc: continue
+          for residue in conformer.residues():
+            if residue.resseq != resseq: continue
+            for atom in residue.atoms():
+              #if atom is bound to another atom return residue id and name
+              # should return only unique resid/names
+              # cov_res = [i_seq, i_seq]
+              continue
+    return cov_res
+
   def process_cif_object(self, cif_object, pdb_hierarchy):
     for res in self.resname:
       for i, id in enumerate(cif_object['comp_list']['_chem_comp.id']):
@@ -136,6 +169,24 @@ class afitt_object:
           )
       else:
         self.formal_charges.append([])
+
+      for residue_instance in self.res_ids[-1]:
+        covalent_partner=self.check_covalent( pdb_hierarchy,
+                                          chain_id=residue_instance[0],
+                                          altloc=residue_instance[1],
+                                          resseq=residue_instance[2])
+        covalent_partner=[35,36]
+        if covalent_partner is None: continue
+        self.covalent_data[(res,
+                            residue_instance[0],
+                            residue_instance[1],
+                            residue_instance[2])] = \
+                        covalent_object(covalent_partner, pdb_hierarchy)
+        print self.covalent_data
+
+
+
+
     self.total_model_atoms=pdb_hierarchy.atoms_size()
     #~ import code; code.interact(local=dict(globals(), **locals()))
 
@@ -201,11 +252,11 @@ def process_afitt_output(afitt_output,
   ### end_debug
   #geometry.residual_sum += afitt_energy
 
+
   #~ import inspect
   #~ for i in inspect.stack():
     #~ print i[1], i[2], i[4]
   #~ print "\n\n\n\n"
-
   if (geometry.gradients is not None):
     assert afitt_gradients.size() == len(ptrs)
     if afitt_object.scale == 'gnorm':
@@ -406,7 +457,6 @@ def finite_difference_test(pdb_file,
   pdb_hierarchy.atoms().reset_i_seq()
   xrs = pdb_hierarchy.extract_xray_structure()
   sites_cart=xrs.sites_cart()
-  uc = xrs.unit_cell()
   grm = processed_pdb_file.geometry_restraints_manager(
     show_energies = False, plain_pairs_radius = 5.0)
   afitt_o = afitt_object(
@@ -428,15 +478,13 @@ def finite_difference_test(pdb_file,
   afitt_alltargets = {}
   for resname_i,resname in enumerate(afitt_o.resname):
     for instance_i, instance in enumerate(afitt_o.res_ids[resname_i]):
-      afitt_o.make_afitt_input(sites_cart,
-                               afitt_input,
-                               resname_i,
-                               instance_i)
-      call_afitt(afitt_input,
-                       afitt_output,
-                       afitt_o.ff)
+      afitt_input = afitt_o.make_afitt_input(sites_cart,
+                                             resname_i,
+                                             instance_i)
+      lines = call_afitt(afitt_input,
+                         afitt_o.ff)
       process_afitt_output(
-          afitt_output, geometry, afitt_o,
+          lines, geometry, afitt_o,
           resname_i, instance_i, afitt_allgradients, afitt_alltargets)
   if verbose: print "  afitt target:    %10.5f" %afitt_alltargets[(0,0)]
   if verbose:
@@ -472,15 +520,13 @@ def finite_difference_test(pdb_file,
     phts.append(geometry.target)
     for resname_i,resname in enumerate(afitt_o.resname):
       for instance_i, instance in enumerate(afitt_o.res_ids[resname_i]):
-        afitt_o.make_afitt_input(sites_cart,
-                                 afitt_input,
-                                 resname_i,
-                                 instance_i)
-        call_afitt(afitt_input,
-                         afitt_output,
-                         afitt_o.ff)
+        afitt_input = afitt_o.make_afitt_input(sites_cart,
+                                               resname_i,
+                                               instance_i)
+        lines = call_afitt(afitt_input,
+                           afitt_o.ff)
         process_afitt_output(
-            afitt_output, geometry, afitt_o,
+            lines, geometry, afitt_o,
             resname_i, instance_i, afitt_allgradients, afitt_alltargets)
     if verbose: print "  afitt target:    %10.5f" %afitt_alltargets[(0,0)]
     afts.append(afitt_alltargets[(0,0)])
