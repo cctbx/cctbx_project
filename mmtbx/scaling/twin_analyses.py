@@ -607,7 +607,6 @@ class detect_pseudo_translations (scaling.xtriage_analysis):
  analyses, and in practice may lead to higher R-factors in refinement.
 """)
     if (self.high_p_value <= self.p_value_cut) :
-      out.show(" The full list of Patterson peaks is:")
       table_rows = []
       for ii in range(len(self.suspected_peaks)):
         if self.suspected_peaks[ii][2] > self.p_value_cut:
@@ -617,6 +616,7 @@ class detect_pseudo_translations (scaling.xtriage_analysis):
           "%8.3f" % self.suspected_peaks[ii][1],
           "%9.3e" % self.suspected_peaks[ii][2] ])
       if (len(table_rows) > 1) :
+        out.show(" The full list of Patterson peaks is:")
         table = table_utils.simple_table(
           table_rows=table_rows,
           column_headers=["XYZ", "height", "p-value(height)"])
