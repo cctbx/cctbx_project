@@ -13,8 +13,8 @@ class SingleFrame:
   """
   ANGSTROMS_TO_EV = 12398.425
 
-  def __init__(self, path=None, filename=None, crystal_num=0, remove_negative=False,
-               use_b_factor=True, dicti=None):
+  def __init__(self, path=None, filename=None, crystal_num=0,
+               remove_negative=False, use_b=True, scale=True, dicti=None):
     """
     Constructor for SingleFrame object, using a cctbx.xfel integration pickle.
 
@@ -22,9 +22,10 @@ class SingleFrame:
     :param filename: the file name alone (used as a label)
     :param crystal_num: if multiple lattices present, the latice number.
     :param remove_negative: Boolean for removal of negative intensities
-    :param use_b_factor: if True, initialise scale and B, if false, use only
+    :param use_b: if True, initialise scale and B, if false, use only
     mean-intensity scaling.
     :param dicti: optional. If a dictionairy is supplied here, will create
+    :param scale: if False, will intialise scales to G=1, B=0.
     object from that rather than attempting to read the file specified in path,
     filename.
 
@@ -71,7 +72,7 @@ class SingleFrame:
       # Warn on error, but continue directory traversal.
       self.is_polarization_corrected = False
       # Miller arrays
-      self.miller_array = d['observations'][crystal_num].sort()
+      self.miller_array = d['observations'][crystal_num]
       self.mapped_predictions = d['mapped_predictions'][0]
       # Image pickle info
       self.path = path
@@ -106,8 +107,10 @@ class SingleFrame:
       self.polarization_correction()
       self.minus_2B, self.G, self.log_i, \
           self.sinsqtheta_over_lambda_sq, \
-          self.wilson_err = self.init_calc_wilson(use_b_factor)
-
+          self.wilson_err = self.init_calc_wilson(use_b)
+      if not scale:
+        self.minus_2B = 0
+        self.G = 1
       if logging.Logger.root.level < logging.DEBUG:  # Extreme debug!
         self.plot_wilson()
       logging.debug("Extracted image {}".format(filename))
