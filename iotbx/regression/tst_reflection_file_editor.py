@@ -728,6 +728,54 @@ mtz_file {
   params.mtz_file.r_free_flags.remediate_mismatches = True
   params.mtz_file.r_free_flags.preserve_input_values = False
   miller_arrays = run_and_reload(params, "tst11.mtz")
+  # R-free flags extension - corner case where (1,1,0) was being missed
+  symm = crystal.symmetry(
+    unit_cell=(45.23, 51.24, 80.49, 90, 90, 90),
+    space_group_symbol="P212121")
+  ms = miller.build_set(
+    crystal_symmetry=symm,
+    d_min=1.67290,
+    anomalous_flag=True).resolution_filter(d_max=33.9095)
+  ma = ms.array(data=flex.double(ms.size(), 100.0),
+                sigmas=flex.double(ms.size(), 1.0))
+  #FIXME check on other systems
+  #assert (ma.average_bijvoet_mates().size() == 22238)
+  ma.set_observation_type_xray_intensity()
+  ma.export_as_scalepack_unmerged(file_name="tst_data12.sca")
+  flags = ma.generate_r_free_flags().average_bijvoet_mates()
+  cs2 = symm.customized_copy(unit_cell=(45.215, 51.203, 80.425, 90, 90, 90))
+  flags = flags.customized_copy(crystal_symmetry=cs2).resolution_filter(
+    d_max=24.396, d_min=1.94701)
+  flags.as_mtz_dataset(column_root_label="FreeR_flag").mtz_object().write(
+    "tst_flags.mtz")
+  new_phil = libtbx.phil.parse("""
+mtz_file {
+  output_file = tst12.mtz
+  crystal_symmetry {
+    unit_cell = 45.215 51.203 80.425 90 90 90
+    space_group = P 21 21 21
+    output_unit_cell = 45.23 51.24 80.49 90 90 90
+  }
+  miller_array {
+    file_name = tst_data12.sca
+    labels = I(+),SIGI(+),I(-),SIGI(-),merged
+    output_labels = I(+) SIGI(+) I(-) SIGI(-)
+  }
+  miller_array {
+    file_name = tst_flags.mtz
+    labels = FreeR_flag
+    output_labels = FreeR_flag
+  }
+  r_free_flags {
+    extend = True
+    relative_to_complete_set = True
+  }
+}""")
+  params = master_phil.fetch(source=new_phil).extract()
+  miller_arrays = run_and_reload(params, "tst12.mtz")
+  f_obs, r_free_flags = miller_arrays
+  ls = f_obs.average_bijvoet_mates().lone_set(other=r_free_flags)
+  assert (ls.size() == 0)
 
 ########################################################################
 # this requires data in phenix_regression

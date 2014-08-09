@@ -596,6 +596,10 @@ class process_arrays (object) :
         combined_set = make_joined_set(self.final_arrays)
         complete_set = combined_set.complete_set(d_min=d_min-eps,
           d_max=d_max+eps)
+        # XXX big hack
+        missing = combined_set.lone_set(other=complete_set)
+        if (missing.size() > 0) :
+          complete_set = complete_set.concatenate(other=missing)
       if (len(self.final_arrays) > 1) :
         warnings.warn("Multiple Miller arrays are already present in this "+
           "file; the R-free flags will be generated based on the total "+
@@ -1374,6 +1378,9 @@ def validate_params (params) :
               params.mtz_file.crystal_symmetry.unit_cell] :
     raise Sorry("Missing or incomplete symmetry information.")
   if (params.mtz_file.r_free_flags.preserve_input_values) :
+    if (not (0 < params.mtz_file.r_free_flags.fraction < 0.5)) :
+      raise Sorry("The R-free flags fraction must be greater than zero and "+
+        "less than 0.5.")
     if (params.mtz_file.r_free_flags.export_for_ccp4) :
       raise Sorry("r_free_flags.preserve_input_values and "+
         "r_free_flags.export_for_ccp4 may not be used together.")
