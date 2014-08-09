@@ -83,7 +83,7 @@ class Cluster:
   @classmethod
   def from_directories(cls, path_to_integration_dir,
                        _prefix='cluster_from_dir',
-                       use_b=True):
+                       **kwargs):
     """Constructor to get a cluster from pickle files, from the recursively
     walked paths. Can take more than one argument for multiple folders.
     usage: Cluster.from_directories(..)
@@ -97,8 +97,8 @@ class Cluster:
       for (dirpath, dirnames, filenames) in os.walk(arg):
         for filename in filenames:
           path = os.path.join(dirpath, filename)
-          this_frame = SingleFrame(path, filename, use_b_factor=use_b)
-          if hasattr(this_frame, 'name'):
+          this_frame = SingleFrame(path, filename, **kwargs)
+          if hasattr(this_frame, 'miller_array'):
             data.append(this_frame)
           else:
             logging.info('skipping file {}'.format(filename))
@@ -117,7 +117,7 @@ class Cluster:
     data = []
     for filename in pickle_list:
       name_only = filename.split('/')[-1]
-      this_frame = SingleFrame(filename, name_only, use_b_factor=use_b)
+      this_frame = SingleFrame(filename, name_only, use_b=use_b)
       if hasattr(this_frame, 'name'):
         data.append(this_frame)
       else:
