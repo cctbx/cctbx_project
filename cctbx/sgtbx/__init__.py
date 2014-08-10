@@ -309,6 +309,15 @@ class space_group_info(object):
         translation=cb_op.c() * translation_frac)
 
   def is_allowed_origin_shift(self, shift, tolerance):
+    """
+    Determine whether the specified fractional coordinate shift is allowed
+    under the space group rules.
+
+    :param shift: tuple specifying fractional coordinate shift
+    :param tolerance: tolerance for coordinate shifts outside the allowed
+                      range
+    :returns: Python boolean
+    """
     from libtbx.math_utils import iround
     is_ltr = lambda v: max([ abs(x-iround(x)) for x in v ]) < tolerance
     z2p_op = self.group().z2p_op()
@@ -325,6 +334,15 @@ class space_group_info(object):
       return True
 
   def any_compatible_unit_cell(self, volume=None, asu_volume=None):
+    """
+    Generate a unit cell of arbitrary dimensions (optionally filling the
+    desired volume) with parameters compatible with the specified space
+    group.
+
+    :param volume: desired unit cell volume
+    :param asu_volume: desired volume of the asymmetric unit
+    :returns: uctbx.unit_cell object
+    """
     assert [volume, asu_volume].count(None) == 1
     if (volume is None):
       volume = asu_volume * self.group().order_z()
