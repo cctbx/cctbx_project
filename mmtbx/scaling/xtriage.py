@@ -1181,28 +1181,14 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
   return xtriage_results
 
 def change_symmetry (miller_array, space_group_symbol, file_name=None,
-    log=None) :
+    log=sys.stdout) :
   """
   Encapsulates all operations required to convert the original data to a
   different symmetry as suggested by Xtriage.
   """
-  from iotbx.reflection_file_converter import apply_change_of_basis
-  if (log is None) :
-    log = null_out()
-  miller_array = miller_array.niggli_cell()
-  symm = miller_array.crystal_symmetry()
-  symm_new = crystal.symmetry(
-    unit_cell=symm.unit_cell(),
-    space_group_symbol=space_group_symbol)
-  miller_array = miller_array.customized_copy(crystal_symmetry=symm_new)
-  miller_array, cb_op = apply_change_of_basis(
-    miller_array=miller_array,
-    change_of_basis="to_reference_setting",
-    eliminate_invalid_indices=True,
-    out=log)
-  if (not miller_array.is_unique_set_under_symmetry()) :
-    miller_array = miller_array.merge_equivalents().array()
-  miller_array.show_summary(f=log)
+  miller_array = miller_array.change_symmetry(
+    space_group_symbol=space_group_symbol,
+    log=log)
   if (file_name is not None) :
     column_root_label = None
     if (miller_array.is_xray_amplitude_array()) :
