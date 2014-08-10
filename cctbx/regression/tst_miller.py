@@ -13,9 +13,10 @@ import scitbx.math
 from libtbx import complex_math
 from libtbx.test_utils import \
   approx_equal, not_approx_equal, show_diff, Exception_expected
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from libtbx import Auto
 from cStringIO import StringIO
+import warnings
 import pickle
 import random
 import math
@@ -2210,7 +2211,6 @@ def exercise_diagnostics () :
 def exercise_convert_to_non_anomalous_if_ratio_pairs_lone_less_than():
   xs = crystal.symmetry((30,40,50), "P1")
   ms = miller.build_set(crystal_symmetry=xs, anomalous_flag=True, d_min=2.0)
-  print ms.indices()
   d = flex.double(ms.indices().size(), 0)
   ma = miller.array(ms, data=d)
   asu, matches = ma.match_bijvoet_mates()
@@ -2228,7 +2228,60 @@ def exercise_convert_to_non_anomalous_if_ratio_pairs_lone_less_than():
   assert ma.completeness()>0.99
   assert ma.anomalous_flag() is False
 
+def exercise_change_symmetry () :
+  # these should run without warnings
+  with warnings.catch_warnings(record=True) as w:
+    test_inputs = [
+      ( (10, 20, 30, 89.9, 75, 90.1), "P1", "P2"),
+      ( (10, 20, 30, 90, 89.95, 90), "P21", "P21212"),
+      ( (40.1, 40.2, 65, 89.98, 90.02, 60.05), "P1", "P63" ),
+      ( (40.1, 40.2, 65, 89.98, 90.02, 120.05), "P1", "P63" ),
+      ( (40.1, 40.2, 65, 90, 90, 90), "P222", "P4"),
+      ( (40.1, 40.2, 65, 90, 90, 90), "P222", "P1"),
+    ]
+    expected_unit_cells = [
+      (10, 20, 29.0639, 90, 85.5888, 90),
+      (10, 20, 30, 90, 90, 90),
+      (40.1602, 40.1602, 65, 90, 90, 120),
+      (40.1399, 40.1399, 65, 90, 90, 120),
+      (40.15, 40.15, 65, 90, 90, 90),
+      (40.1, 40.2, 65, 90, 90, 90),
+    ]
+    for i_inp, (uc_old, sg_old, sg_new) in enumerate(test_inputs) :
+      cs = crystal.symmetry(
+        unit_cell=uc_old,
+        space_group_symbol=sg_old)
+      ms = miller.build_set(
+        crystal_symmetry=cs,
+        anomalous_flag=False,
+        d_min=1.5)
+      ma = ms.array(data=flex.double(ms.size(), 1.0))
+      ma_new = ma.change_symmetry(sg_new, log=null_out())
+      assert approx_equal(ma_new.unit_cell().parameters(),
+        expected_unit_cells[i_inp], eps=0.001)
+      assert (ma_new.completeness() >= 0.99), ma_new.completeness()
+    assert len(w) == 0
+  # test warnings
+  with warnings.catch_warnings(record=True) as w:
+    test_inputs = [
+      ( (39.0, 40.7, 65, 89.98, 90.02, 121.05), "P1", "P63" ),
+      ( (40.1, 40.2, 65, 90, 90, 90), "P222", "P1"),
+    ]
+    for i_inp, (uc_old, sg_old, sg_new) in enumerate(test_inputs) :
+      cs = crystal.symmetry(
+        unit_cell=uc_old,
+        space_group_symbol=sg_old)
+      ms = miller.build_set(
+        crystal_symmetry=cs,
+        anomalous_flag=False,
+        d_min=3.0)
+      ma = ms.array(data=flex.double(ms.size(), 1.0))
+      ma_new = ma.change_symmetry(sg_new, log=null_out(),
+        expand_to_p1_if_necessary=False)
+    assert len(w) == 2
+
 def run(args):
+  exercise_change_symmetry()
   exercise_convert_to_non_anomalous_if_ratio_pairs_lone_less_than()
   exercise_diagnostics()
   exercise_randomize_amplitude_and_phase()

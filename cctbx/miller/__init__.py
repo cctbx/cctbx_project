@@ -24,6 +24,7 @@ from libtbx.utils import Sorry, Keep, plural_s
 from libtbx import group_args, Auto
 import libtbx.table_utils
 from itertools import count, izip
+import warnings
 import math
 import types
 import sys
@@ -4536,13 +4537,12 @@ class array(set):
     return self.half_dataset_anomalous_correlation(*args, **kwds)
 
   def r_anom (self) :
-    """
-    Calculate R_anom, which measures the agreement between Friedel mates.
+    """Calculate R_anom, which measures the agreement between Friedel mates.
     Unlike CC_anom and various other R-factors (such as R_pim, which it is
     usually compared to), this requires merged data.
 
     .. math::
-       R_{anom} = \dfrac{\sum{|I_{hkl} - I_{-h,-k,-l}|}}{\sum{\mean{I_{hkl}}}}
+      R_{anom} = \\dfrac{\\sum_{hkl}{|I_{hkl} - I_{-h,-k,-l}|}}{\\sum_{hkl}{\\left \\langle I_{hkl} \\right \\rangle}}
     """
     assert self.is_xray_intensity_array()
     tmp_array = self.customized_copy(
@@ -4631,6 +4631,162 @@ class array(set):
     if (self.is_xray_amplitude_array()) :
       return detwinned.f_sq_as_f()
     return detwinned
+
+  # TODO separate test - currently tested implicitly as part of change_symmetry
+  def apply_change_of_basis (self,
+        change_of_basis,
+        eliminate_invalid_indices=True,
+        out=None) :
+    """
+    Encapsulates a variety of reindexing operations, including handling for a
+    variety of corner cases.
+
+    :param change_of_basis: Python str for change-of-basis operator
+    :param eliminate_invalid_indices: remove reflections with non-integral
+      indices
+    :returns: new Miller array
+    """
+    if (out is None) :
+      out = sys.stdout
+    miller_array = self
+    print >> out, "Change of basis:"
+    if   (change_of_basis == "to_reference_setting"):
+      cb_op = miller_array.change_of_basis_op_to_reference_setting()
+    elif (change_of_basis == "to_primitive_setting"):
+      cb_op = miller_array.change_of_basis_op_to_primitive_setting()
+    elif (change_of_basis == "to_niggli_cell"):
+      cb_op = miller_array.change_of_basis_op_to_niggli_cell()
+    elif (change_of_basis == "to_inverse_hand"):
+      cb_op = miller_array.change_of_basis_op_to_inverse_hand()
+    else:
+      try :
+        cb_op = sgtbx.change_of_basis_op(change_of_basis)
+      except ValueError, e :
+        raise Sorry(("The change-of-basis operator '%s' is invalid "+
+          "(original error: %s)") % (change_of_basis, str(e)))
+    if (cb_op.c_inv().t().is_zero()):
+      print >> out, "  Change of basis operator in both h,k,l and x,y,z notation:"
+      print >> out, "   ", cb_op.as_hkl()
+    else:
+      print >> out, "  Change of basis operator in x,y,z notation:"
+    print >> out, "    %s [Inverse: %s]" % (cb_op.as_xyz(),
+      cb_op.inverse().as_xyz())
+    d = cb_op.c().r().determinant()
+    print >> out, "  Determinant:", d
+    if (d < 0 and change_of_basis != "to_inverse_hand"):
+      print >> out, \
+        "  **************************************************************"
+      print >> out, \
+        "  W A R N I N G: This change of basis operator changes the hand!"
+      print >> out, \
+        "  **************************************************************"
+    if(eliminate_invalid_indices):
+      sel = cb_op.apply_results_in_non_integral_indices(
+        miller_indices=miller_array.indices())
+      toss = flex.bool(miller_array.indices().size(),sel)
+      keep = ~toss
+      keep_array = miller_array.select(keep)
+      toss_array = miller_array.select(toss)
+      print >> out, "  Mean value for kept reflections:", \
+        flex.mean(keep_array.data())
+      if (len(toss_array.data()) > 0) :
+        print >> out, "  Mean value for invalid reflections:", \
+          flex.mean(toss_array.data())
+      miller_array=keep_array
+    processed_array = miller_array.change_basis(cb_op=cb_op)
+    print >> out, "  Crystal symmetry after change of basis:"
+    crystal.symmetry.show_summary(processed_array, prefix="    ", f=out)
+    return processed_array, cb_op
+
+  def change_symmetry (self,
+      space_group_symbol=None,
+      space_group_info=None,
+      volume_warning_threshold=0.001,
+      expand_to_p1_if_necessary=True,
+      remove_systematic_absences=True,
+      merge_non_unique=True,
+      log=None) :
+    """
+    Encapsulates all operations required to convert the original data to a
+    different symmetry (e.g. as suggested by Xtriage).  This includes
+    reindexing and adjusting the unit cell parameters if necessary, and
+    expansion to P1 (for moving to lower symmetry) or merging equivalents.
+
+    :param space_group_symbol: Python str for space group symbol (any format)
+    :param space_group_info: Pre-defined sgtbx.space_group_info object
+    :param volume_warning_threshold: Cutoff for relative change in unit cell
+      volume beyond which a warning is issued.
+    :param expand_to_p1_if_necessary: When moving to lower symmetry, expand the
+      data to P1 first.
+    :param remove_systematic_absences: eliminate reflections that are
+      systematically absent in the new symmetry.
+    :param merge_non_unique: merge reflections that are no longer symmetry-
+      unique under the new symmetry.
+    :param log: filehandle-like object
+    :returns: Miller array in the new symmetry
+    """
+    if (log is None) :
+      log = null_out()
+    assert [space_group_symbol,space_group_info].count(None) == 1
+    miller_array = self
+    symm = miller_array.crystal_symmetry()
+    space_group_old = symm.space_group()
+    print >> log, "Current symmetry:"
+    symm.show_summary(f=log, prefix="  ")
+    # change to Niggli cell
+    miller_array = miller_array.niggli_cell()
+    symm = miller_array.crystal_symmetry()
+    print >> log, "Niggli cell symmetry:"
+    symm.show_summary(f=log, prefix="  ")
+    if (space_group_info is None) :
+      space_group_info = sgtbx.space_group_info(space_group_symbol)
+    space_group_new = space_group_info.group()
+    if (space_group_new.n_smx() < space_group_old.n_smx()) :
+      if expand_to_p1_if_necessary :
+        print >> log, "Changing to lower symmetry, expanding to P1 first"
+        miller_array = miller_array.expand_to_p1()
+      else :
+        warnings.warn("This operation will result in incomplete data without "+
+          "symmetry expansion!")
+    unit_cell = symm.unit_cell()
+    number = space_group_info.type().number()
+    if (143 <= number < 195) :
+      cb_op = sgtbx.change_of_basis_op("a,-b,-c")
+      unit_cell_new = unit_cell.change_basis(cb_op)
+      if (unit_cell_new.parameters()[-1] > unit_cell.parameters()[-1]) :
+        print >> log, "Reindexing with a,-b,-c"
+        miller_array = miller_array.change_basis(cb_op)
+        unit_cell = unit_cell_new
+    if (not space_group_info.group().is_compatible_unit_cell(unit_cell)) :
+      unit_cell_old = unit_cell
+      unit_cell = space_group_info.group().average_unit_cell(unit_cell)
+      print >> log, "Coercing unit cell into parameters compatible with %s" % \
+        space_group_info
+      print >> log, "  Old cell: %s" % str(unit_cell_old.parameters())
+      print >> log, "  New cell: %s" % str(unit_cell.parameters())
+      volume_start = unit_cell_old.volume()
+      volume_new = unit_cell.volume()
+      volume_change_fraction = abs(volume_new - volume_start) / volume_new
+      if (volume_change_fraction > volume_warning_threshold) :
+        warnings.warn("This operation will change the unit cell volume by "+
+          "more than %.1f%%." % (volume_change_fraction*100), UserWarning)
+    symm_new = crystal.symmetry(
+      unit_cell=unit_cell,
+      space_group_info=space_group_info)
+    miller_array = miller_array.customized_copy(crystal_symmetry=symm_new)
+    miller_array, cb_op = miller_array.apply_change_of_basis(
+      change_of_basis="to_reference_setting",
+      eliminate_invalid_indices=True,
+      out=log)
+    if merge_non_unique and (not miller_array.is_unique_set_under_symmetry()) :
+      miller_array = miller_array.merge_equivalents().array()
+    if remove_systematic_absences :
+      ma_old = miller_array.deep_copy()
+      miller_array = miller_array.remove_systematic_absences()
+      ls = ma_old.lone_set(other=miller_array)
+    print >> log, "New Miller array:"
+    miller_array.show_summary(f=log, prefix="  ")
+    return miller_array
 
   #---------------------------------------------------------------------
   # Xtriage extensions - tested in mmtbx/scaling/tst_xtriage_twin_analyses.py
@@ -4865,6 +5021,9 @@ class merge_equivalents(object):
   def r_merge (self) :
     """
     Standard (but flawed) metric of dataset internal consistency.
+
+    .. math::
+       R_{merge} = \dfrac{\sum_{hkl}{\sum_{i}{|I_{i}(hkl) - \left \langle I_{i}(hkl) \\right \\rangle|}}}{\sum_{hkl}{\sum_{i}{I_{i}(hkl)}}}
     """
     return self._r_merge
 
@@ -4872,6 +5031,9 @@ class merge_equivalents(object):
     """
     Alternate metric of dataset internal consistency.  Explained in detail in
     Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275.
+
+    .. math::
+       R_{meas} = \\dfrac{\\sum_{hkl}{ {\\left \\{ N(hkl) / [N(hkl) - 1] \\right \\} }^{1/2} \\times \\sum_{i}{|I_{i}(hkl) - \\left \\langle I_{i}(hkl) \\right \\rangle|}}}{\\sum_{hkl}{\\sum_{i}{I_{i}(hkl)}}}
     """
     return self._r_meas
 
@@ -4879,6 +5041,9 @@ class merge_equivalents(object):
     """
     Alternate metric of dataset internal consistency or quality.  Explained in
     detail in Weiss MS (2001) J Appl Cryst 34:130-135.
+
+    .. math::
+       R_{meas} = \\dfrac{\\sum_{hkl}{ {\\left \\{ 1 / [N(hkl) - 1] \\right \\} }^{1/2} \\times \\sum_{i}{|I_{i}(hkl) - \\left \\langle I_{i}(hkl) \\right \\rangle|}}}{\\sum_{hkl}{\\sum_{i}{I_{i}(hkl)}}}
     """
     return self._r_pim
 
