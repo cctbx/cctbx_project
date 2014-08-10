@@ -4535,6 +4535,29 @@ class array(set):
     """
     return self.half_dataset_anomalous_correlation(*args, **kwds)
 
+  def r_anom (self) :
+    """
+    Calculate R_anom, which measures the agreement between Friedel mates.
+    Unlike CC_anom and various other R-factors (such as R_pim, which it is
+    usually compared to), this requires merged data.
+
+    .. math::
+       R_{anom} = \dfrac{\sum{|I_{hkl} - I_{-h,-k,-l}|}}{\sum{\mean{I_{hkl}}}}
+    """
+    assert self.is_xray_intensity_array()
+    tmp_array = self.customized_copy(
+      anomalous_flag=True).map_to_asu()
+    if (not tmp_array.is_unique_set_under_symmetry()) :
+      tmp_array = tmp_array.merge_equivalents().array()
+    d_ano = tmp_array.anomalous_differences()
+    # XXX this appears to be consistent with the published descriptions, but
+    # I need to confirm that this is what other programs do too
+    i_mean = tmp_array.average_bijvoet_mates().common_set(other=d_ano)
+    numerator = flex.sum(flex.abs(d_ano.data()))
+    denominator = flex.sum(flex.abs(i_mean.data()))
+    assert (denominator > 0)
+    return numerator / denominator
+
   def twin_data (self, twin_law, alpha) :
     """
     Apply a twin law to the data, returning an array of the same original type.
