@@ -101,6 +101,8 @@ def exercise_unmerged () :
   assert approx_equal(i_obs.cc_one_half(), 0.9998, eps=0.001)
   assert i_obs.resolution_filter(d_max=1.2).cc_one_half() > 0
   assert i_obs.cc_anom() > 0.1
+  r_ano = i_obs.r_anom()
+  assert approx_equal(r_ano, 0.080756, eps=0.0001)
   # merging stats
   i_mrg = i_obs.merge_equivalents()
   assert i_mrg.r_merge() < 0.1
