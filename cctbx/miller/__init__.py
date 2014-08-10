@@ -4726,7 +4726,7 @@ class array(set):
     :returns: Miller array in the new symmetry
     """
     if (log is None) :
-      log = null_out()
+      log = sys.stdout
     assert [space_group_symbol,space_group_info].count(None) == 1
     miller_array = self
     symm = miller_array.crystal_symmetry()
@@ -4750,16 +4750,19 @@ class array(set):
           "symmetry expansion!")
     unit_cell = symm.unit_cell()
     number = space_group_info.type().number()
-    if (143 <= number < 195) :
+    # reindex automatically if new lattice is P3 or P6 and angles are ~90,90,60
+    # but only if the reference setting is requested!
+    if (143 <= number < 195) and space_group_info.is_reference_setting() :
       cb_op = sgtbx.change_of_basis_op("a,-b,-c")
       unit_cell_new = unit_cell.change_basis(cb_op)
       if (unit_cell_new.parameters()[-1] > unit_cell.parameters()[-1]) :
         print >> log, "Reindexing with a,-b,-c"
         miller_array = miller_array.change_basis(cb_op)
-        unit_cell = unit_cell_new
+        symm = miller_array.crystal_symmetry()
+        unit_cell = symm.unit_cell()
     if (not space_group_info.group().is_compatible_unit_cell(unit_cell)) :
       unit_cell_old = unit_cell
-      unit_cell = space_group_info.group().average_unit_cell(unit_cell)
+      unit_cell = space_group_info.group().average_unit_cell(unit_cell_old)
       print >> log, "Coercing unit cell into parameters compatible with %s" % \
         space_group_info
       print >> log, "  Old cell: %s" % str(unit_cell_old.parameters())
