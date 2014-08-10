@@ -86,6 +86,8 @@ public:
     af::shared<int> peak_args;
     FloatType lv=0, rv=0, eps=1.e-3;
     // find peaks; does not handle flat peaks like 0 1 222 1 0
+    FloatType p_min = 0, p_min_=1.e+9, p_max_=-1.e+9;
+    FloatType p_max = 0;
     for(int i = 0; i < 256; i++) {
       FloatType v = f[i];
       if(std::abs(v-1.)>eps && v>1.) {
@@ -94,6 +96,8 @@ public:
           if(v>rv) {
             peaks.push_back(v);
             peak_args.push_back(i);
+            if(v<p_min_) p_min_ = v;
+            if(v>p_max_) p_max_ = v;
           }
         }
         else if(i==255) {
@@ -101,6 +105,8 @@ public:
           if(v>lv) {
             peaks.push_back(v);
             peak_args.push_back(i);
+            if(v<p_min_) p_min_ = v;
+            if(v>p_max_) p_max_ = v;
           }
         }
         else {
@@ -109,15 +115,17 @@ public:
           if(v>lv && v>rv) {
             peaks.push_back(v);
             peak_args.push_back(i);
+            if(v<p_min_) p_min_ = v;
+            if(v>p_max_) p_max_ = v;
           }
         }
       }
     }
+    p_min = p_min_;
+    p_max = p_max_;
+    FloatType p_max_over_2 = p_max/2;
     // analyze peaks
     if(peaks.size()==0) return 0;
-    FloatType p_min = af::min(peaks.ref());
-    FloatType p_max = af::max(peaks.ref());
-
     int i_result;
     // only one peak
     if(peaks.size()==1) {
@@ -126,14 +134,15 @@ public:
     }
     // several similar peaks
     else {
-      af::shared<int> i_results;
+      int i_result_ = 1.e+9;
       for(int i = 0; i < peaks.size(); i++) {
-        if(peaks[i]<=p_max && peaks[i]>=p_max/2) {
-          i_results.push_back(peak_args[i]);
+        FloatType peak = peaks[i];
+        if(peak<=p_max && peak>=p_max_over_2) {
+          FloatType pa = peak_args[i];
+          if(pa<i_result_) i_result_ = pa;
         }
       }
-      if(i_results.size()>0) i_result = af::min(i_results.ref());
-      else i_result = af::min(peak_args.ref());
+      i_result = i_result_;
     }
     FloatType i_result_f = (FloatType)i_result;
     if(i_result>0 && i_result<255) {
