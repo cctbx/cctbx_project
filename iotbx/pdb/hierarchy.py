@@ -338,7 +338,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
   Root node of the PDB hierarchy object.  This is returned by the method
   construct_hierarchy() of the PDB/mmCIF input objects, but it may also be
   created programatically.  Note that it does not contain any reference to
-  crystal symmetry or X-ray scattering information, meaning that in practice
+  crystal symmetry or source scattering information, meaning that in practice
   it must often be tracked alongside an equivalent cctbx.xray.structure object.
   Pickling is supported, simply by writing out and reading back the PDB-format
   representation of the hierarchy.
