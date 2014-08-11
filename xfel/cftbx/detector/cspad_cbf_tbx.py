@@ -627,10 +627,7 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
       basis.equipment_component = "detector_asic"
       basis.depends_on = "FS_D%dQ%dS%d"%key[0:3]
       basis.pixel_size = (pixel_size,pixel_size)
-      if tiles is None:
-        basis.dimension = asic_dimension
-      else:
-        basis.dimension = tuple(reversed(tiles[key].focus()))
+      basis.dimension = asic_dimension
       basis.saturation = dynamic_range
     else:
       assert False # shouldn't be reached as it would indicate more than four levels of hierarchy for this detector

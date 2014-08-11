@@ -11,6 +11,7 @@ from libtbx.utils import Usage
 from xfel.cftbx.detector.cspad_cbf_tbx import write_cspad_cbf
 from libtbx import easy_pickle
 from xfel.cxi.cspad_ana.parse_calib import calib2sections
+from scitbx.array_family import flex
 
 master_phil = libtbx.phil.parse("""
 pickle_file = None
@@ -75,10 +76,7 @@ if (__name__ == "__main__") :
     from xfel.cftbx.detector.metrology2phil import metrology2phil
     metro = metrology2phil(params.new_metrology,False)
 
-    args = [
-      "beam_center=(%f,%f)"%(img['BEAM_CENTER_X'],img['BEAM_CENTER_Y']),
-      "timestamp=%s"%        img['TIMESTAMP'],
-      ]
+    args = []
 
     import iotbx.phil
     for arg in args:
@@ -105,11 +103,13 @@ if (__name__ == "__main__") :
     img = easy_pickle.load(filename)
 
     tiles = {}
+    asics = {}
     data = img['DATA']
 
     if os.path.isdir(params.old_metrology):
+      num_sections = len(sections)
 
-      for p in xrange(len(sections)):
+      for p in xrange(num_sections):
         for s in xrange(len(sections[p])):
 
           # Pull the sensor block from the image, and rotate it back to
@@ -122,8 +122,21 @@ if (__name__ == "__main__") :
               i_column=c[a][1],
               n_rows=c[a][2] - c[a][0],
               n_columns=c[a][3] - c[a][1])
-            tiles[(0, p, s, a)] = asic.matrix_rot90(k)
+            asics[(0, p, s, a)] = asic.matrix_rot90(k)
 
+      # validate the quadrants all have the same number of sections, with matching asics
+      for p in xrange(num_sections):
+        if not 'section_len' in locals():
+          section_len = len(sections[p])
+        else:
+          assert section_len == len(sections[p])
+
+        for s in xrange(len(sections[p])):
+          for a in xrange(2):
+            if 'asic_focus' not in locals():
+              asic_focus = asics[(0,p,s,a)].focus()
+            else:
+              assert asic_focus == asics[(0,p,s,a)].focus()
     else:
       active_areas = xpp_active_areas[params.old_metrology]['active_areas']
       rotations    = xpp_active_areas[params.old_metrology]['rotations']
@@ -136,13 +149,33 @@ if (__name__ == "__main__") :
 
       tile_id = 0
 
-      for p in xrange(4):
-        for s in xrange(8):
+      num_sections = 4
+      section_len = 8
+
+      for p in xrange(num_sections):
+        for s in xrange(section_len):
           for a in xrange(2):
             x1,y1,x2,y2 = active_areas[tile_id]
             block = data[x1:x2,y1:y2]
-            tiles[(0, p, s, a)] = block.matrix_rot90(-rotations[tile_id])
+            asics[(0, p, s, a)] = block.matrix_rot90(-rotations[tile_id])
             tile_id += 1
+
+            if not 'asic_focus' in locals():
+              asic_focus = asics[(0, p, s, a)].focus()
+            else:
+              assert asic_focus == asics[(0, p, s, a)].focus()
+
+    # make the tiles dictionary
+    for p in xrange(num_sections):
+      tiles[(0,p)] = type(data)(flex.grid(asic_focus[0]*section_len,asic_focus[1]*2))
+      for s in xrange(section_len):
+        tiles[(0,p)].matrix_paste_block_in_place(asics[(0,p,s,0)],
+                                                 i_row = s*asic_focus[0],
+                                                 i_column = 0)
+        tiles[(0,p)].matrix_paste_block_in_place(asics[(0,p,s,1)],
+                                                 i_row = s*asic_focus[0],
+                                                 i_column = asic_focus[1])
+      tiles[(0,p)].reshape(flex.grid((section_len,asic_focus[0],asic_focus[1]*2)))
 
     # Write the cbf file
     destpath = os.path.splitext(filename)[0] + ".cbf"
