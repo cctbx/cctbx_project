@@ -126,8 +126,9 @@ Parameters:"""%h
   #
   if(got_map):
     print_statistics.make_sub_header("CCP4 map", out=log)
-    af = file_reader.any_file(params.ccp4_map_file)
-    af.try_as_ccp4_map()
+    af = file_reader.any_file(params.ccp4_map_file,
+      force_type="ccp4_map",
+      raise_sorry_if_errors=True)
     ccp4_map_object = af.file_object
     ccp4_map_object.show_summary()
     map_data = ccp4_map_object.data

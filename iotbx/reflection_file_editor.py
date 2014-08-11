@@ -821,9 +821,7 @@ class process_arrays (object) :
       column_types, out=sys.stdout) :
     # apply change of basis here
     if (self.params.mtz_file.crystal_symmetry.change_of_basis is not None) :
-      from iotbx.reflection_file_converter import apply_change_of_basis
-      output_array, cb_op = apply_change_of_basis(
-        miller_array=output_array,
+      output_array, cb_op = output_array.apply_change_of_basis(
         change_of_basis=self.params.mtz_file.crystal_symmetry.change_of_basis,
         eliminate_invalid_indices=\
           self.params.mtz_file.crystal_symmetry.eliminate_invalid_indices,
