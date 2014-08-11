@@ -8,6 +8,19 @@ if this fails, it will then try other formats.  This is used on the command
 line and the Phenix GUI to process bulk file input.  In most other cases a
 specific file type is desired, and the force_type argument will ensure that
 only this format is attempted.
+
+Examples
+--------
+>>> from iotbx.file_reader import any_file
+>>> input_file = any_file(sys.argv[1:])
+>>> file_data = input_file.file_object
+
+>>> pdb_in = any_file("model.pdb", force_type="pdb")
+>>> pdb_in.assert_file_type("pdb")
+>>> hierarchy = pdb_in.file_object.construct_hierarchy()
+
+>>> mtz_in = any_file("data.mtz", force_type="hkl")
+>>> miller_arrays = mtz_in.file_server.miller_arrays
 """
 
 # MTZ file handling is kludgy, but unfortunately there are circumstances
@@ -146,6 +159,19 @@ def any_file (file_name,
               raise_sorry_if_not_expected_format=False) :
   """
   Main input method, wrapper for any_file_input class.
+
+  :param file_name: path to file (relative or absolute)
+  :param get_processed_file: TODO
+  :param valid_types: file types to consider
+  :param allow_directories: process directory if given as file_name
+  :param force_type: read as this format, don't try any others
+  :param input_class: optional substitute for any_file_input, with additional
+    parsers
+  :param raise_sorry_if_errors: raise a Sorry exception if parsing fails (used
+    with force_type)
+  :param raise_sorry_if_not_expected_format: raise a Sorry exception if the
+    file extension does not match the parsed file type
+  :returns: any_file_input object, or an instance of the input_class param
   """
   file_name_raw = file_name
   file_name = strip_shelx_format_extension(file_name)
@@ -179,6 +205,11 @@ def splitext (file_name) :
   return (file_base, file_ext)
 
 class any_file_input (object) :
+  """
+  Container for file data of any supported type.  Usually obtained via the
+  any_file() function rather than being instantiated directly.
+  """
+
   __extensions__ = standard_file_extensions
   __descriptions__ = standard_file_descriptions
 
@@ -205,7 +236,7 @@ class any_file_input (object) :
     (file_base, file_ext) = splitext(file_name)
     file_ext = file_ext.lower()
     if (force_type not in [None, "None"]) :
-      read_method = getattr(self, "try_as_%s" % force_type, None)
+      read_method = getattr(self, "_try_as_%s" % force_type, None)
       if (read_method is None) :
         raise Sorry("Couldn't force file type to '%s' - unrecognized format." %
                     force_type)
@@ -225,7 +256,7 @@ class any_file_input (object) :
       for file_type in valid_types :
         if ((file_ext[1:] in self.__extensions__[file_type]) and
             (not file_ext in [".txt"])) :
-          read_method = getattr(self, "try_as_%s" % file_type)
+          read_method = getattr(self, "_try_as_%s" % file_type)
           self._tried_types.append(file_type)
           try :
             read_method()
@@ -259,7 +290,7 @@ class any_file_input (object) :
           err=sys.stderr)
     return self._file_server
 
-  def try_as_pdb (self) :
+  def _try_as_pdb (self) :
     """
     PDB parser, actually tries both 'classic' PDB and mmCIF formats.
     """
@@ -273,7 +304,7 @@ class any_file_input (object) :
     self.file_type = "pdb"
     self.file_object = pdb_inp
 
-  def try_as_hkl (self) :
+  def _try_as_hkl (self) :
     from iotbx.reflection_file_reader import any_reflection_file
     # XXX this is unfortunate, but unicode breaks Boost.Python extensions
     hkl_file = any_reflection_file(str(self.file_name))
@@ -281,7 +312,7 @@ class any_file_input (object) :
     self.file_type = "hkl"
     self.file_object = hkl_file
 
-  def try_as_cif (self) :
+  def _try_as_cif (self) :
     # XXX hack to avoid choking on CCP4 maps and images
     file_ext = os.path.splitext(self.file_name)[1]
     assert (not file_ext in [".ccp4", ".img", ".osc", ".mccd"])
@@ -302,14 +333,14 @@ class any_file_input (object) :
           strict=False)
         self.file_type = "cif"
 
-  def try_as_phil (self) :
+  def _try_as_phil (self) :
     from iotbx.phil import parse as parse_phil
     phil_object = parse_phil(file_name=self.file_name, process_includes=True)
     assert (len(phil_object.objects) > 0), "Empty parameter file."
     self.file_type = "phil"
     self.file_object = phil_object
 
-  def try_as_seq (self) :
+  def _try_as_seq (self) :
     # XXX hack to avoid choking on CCP4 maps
     assert (not self.file_name.endswith(".ccp4"))
     from iotbx.bioinformatics import any_sequence_format
@@ -319,7 +350,7 @@ class any_file_input (object) :
     for seq_obj in objects :
       assert (not "-" in seq_obj.sequence)
     self.file_object = objects
-#    self.try_as_txt()
+#    self._try_as_txt()
 #    assert len(self.file_object) != 0
 #    for _line in self.file_object.splitlines() :
 #      assert not _line.startswith(" ")
@@ -331,49 +362,49 @@ class any_file_input (object) :
 #              line.isalpha())
     self.file_type = "seq"
 
-  def try_as_hhr (self) :
+  def _try_as_hhr (self) :
     from iotbx.bioinformatics import any_hh_file
     hh_object = any_hh_file(self.file_name)
     assert (not hh_object.query in ["", None])
     self.file_object = hh_object
     self.file_type = "hhr"
 
-  def try_as_aln (self) :
+  def _try_as_aln (self) :
     from iotbx.bioinformatics import any_alignment_file
     aln_object = any_alignment_file(self.file_name)
     self.file_object = aln_object
     self.file_type = "aln"
 
-  def try_as_xplor_map (self) :
+  def _try_as_xplor_map (self) :
     import iotbx.xplor.map
     map_object = iotbx.xplor.map.reader(file_name=str(self.file_name))
     self.file_type = "xplor_map"
     self.file_object = map_object
 
-  def try_as_ccp4_map (self) :
+  def _try_as_ccp4_map (self) :
     import iotbx.ccp4_map
     map_object = iotbx.ccp4_map.map_reader(file_name=str(self.file_name))
     self.file_type = "ccp4_map"
     self.file_object = map_object
 
-  def try_as_pkl (self) :
+  def _try_as_pkl (self) :
     pkl_object = cPickle.load(open(self.file_name, "rb"))
     self.file_type = "pkl"
     self.file_object = pkl_object
 
-  def try_as_txt (self) :
+  def _try_as_txt (self) :
     file_as_string = open(self.file_name).read()
     file_as_ascii = file_as_string.decode("ascii")
     self.file_type = "txt"
     self.file_object = file_as_string
 
-  def try_as_xml (self) :
+  def _try_as_xml (self) :
     import xml.dom.minidom
     xml_in = xml.dom.minidom.parse(self.file_name)
     self.file_type = "xml"
     self.file_object = xml_in
 
-  def try_as_img (self) :
+  def _try_as_img (self) :
     from iotbx.detectors import ImageFactory
     img = ImageFactory(self.file_name)
     img.read()
@@ -383,7 +414,7 @@ class any_file_input (object) :
   def try_all_types (self) :
     for filetype in self.valid_types :
       if (filetype in self._tried_types) : continue
-      read_method = getattr(self, "try_as_%s" % filetype)
+      read_method = getattr(self, "_try_as_%s" % filetype)
       try :
         read_method()
       except KeyboardInterrupt :
@@ -410,6 +441,9 @@ class any_file_input (object) :
       raise NotImplementedError()
 
   def file_info (self, show_file_size=True) :
+    """
+    Format a string containing the file type and size.
+    """
     file_size_str = ""
     if show_file_size :
       file_size = self.file_size
@@ -430,6 +464,9 @@ class any_file_input (object) :
         file_size_str)
 
   def assert_file_type (self, expected_type) :
+    """
+    Verify that the automatically determined file type is the expected format.
+    """
     if (expected_type is None) :
       return self
     elif (self.file_type == expected_type) :
@@ -440,6 +477,10 @@ class any_file_input (object) :
         (expected_type, str(self.file_name), str(self.file_type)))
 
   def check_file_type (self, expected_type=None, multiple_formats=()) :
+    """
+    Verify that the automatically determined file type is the expected format,
+    with the option to consider multiple formats.
+    """
     if (expected_type is not None) :
       if (self.file_type != expected_type) :
         raise Sorry(("This file format ('%s') is not supported as input for "+
@@ -457,6 +498,9 @@ class any_file_input (object) :
     return self
 
   def show_summary (self, out=sys.stdout) :
+    """
+    Print out some basic information about the file.
+    """
     if (self.file_type is None) :
       print >> out, "File type could not be determined."
     else :

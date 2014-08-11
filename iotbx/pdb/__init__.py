@@ -742,6 +742,10 @@ class pdb_input_mixin(object):
         cstringio=None,
         link_records=Auto,
         return_cstringio=Auto):
+    """
+    Generate standard PDB format.  Will use built-in crystal symmetry if
+    available.
+    """
     if (cstringio is None):
       cstringio = StringIO()
       if (return_cstringio is Auto):
@@ -818,6 +822,10 @@ class pdb_input_mixin(object):
         enable_scattering_type_unknown=False,
         atom_names_scattering_type_const
           =default_atom_names_scattering_type_const):
+    """
+    Create a single cctbx.xray.structure object from the atom records, using
+    only the first model found.
+    """
     return self.xray_structures_simple(
       one_structure_for_each_model=False,
       crystal_symmetry=crystal_symmetry,
@@ -847,6 +855,11 @@ class pdb_input_mixin(object):
         enable_scattering_type_unknown=False,
         atom_names_scattering_type_const
           =default_atom_names_scattering_type_const):
+    """
+    Create a list of cctbx.xray.structure objects, one per model in the
+    input file.  Note that for most single-model structures (i.e. nearly all
+    crystal structures), this will be a single-item list.
+    """
     from cctbx import xray
     from cctbx import crystal
     from cctbx import uctbx
@@ -918,6 +931,11 @@ class pdb_input_mixin(object):
     return result
 
 class _(boost.python.injector, ext.input, pdb_input_mixin):
+  """
+  This class parses PDB format, including non-ATOM records.  Atom objects will
+  be created as part of the parsing, but the full PDB hierarchy object requires
+  calling the construct_hierarchy() method.
+  """
 
   def __getinitargs__(self):
     lines = flex.std_string()
