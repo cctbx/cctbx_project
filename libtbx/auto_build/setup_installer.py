@@ -30,6 +30,8 @@ def run (args) :
   parser = OptionParser()
   parser.add_option("--version", dest="version", action="store",
     help="Package version", default=time.strftime("%Y_%m_%d",time.localtime()))
+  parser.add_option("--binary", dest="binary", action="store",
+    help="Setup for binary installer only (no source packages)", default=False)
   parser.add_option("--pkg_dir", dest="pkg_dirs", action="append",
     help="Directory with source packages", default=None)
   parser.add_option("--basic", dest="basic", action="store_true",
@@ -71,8 +73,9 @@ def run (args) :
   os.chdir(installer_dir)
   os.mkdir("bin")
   os.mkdir("lib")
-  os.mkdir("source")
-  os.mkdir("dependencies")
+  if (not options.binary) :
+    os.mkdir("source")
+    os.mkdir("dependencies")
   # copy over libtbx
   lib_dir = op.join(os.getcwd(), "lib")
   shutil.copytree(libtbx_path, op.join(lib_dir, "libtbx"))
@@ -84,50 +87,51 @@ def run (args) :
     open("README", "w").write(open(options.readme).read())
   if op.isfile(options.license) :
     open("LICENSE", "w").write(open(options.license).read())
-  print ""
-  print "********** FETCHING DEPENDENCIES **********"
-  print ""
-  fetch_all_dependencies(
-    dest_dir=op.join(options.dest, installer_dir, "dependencies"),
-    log=sys.stdout,
-    pkg_dirs=options.pkg_dirs,
-    gui_packages=(options.dials or options.gui or options.all),
-    dials_packages=(options.dials or options.xia2 or options.all))
-  # local packages
-  fetch_package = fetch_packages(
-    dest_dir=op.join(options.dest, installer_dir, "source"),
-    log=sys.stdout,
-    pkg_dirs=options.pkg_dirs,
-    copy_files=True)
-  os.chdir(op.join(options.dest, installer_dir, "source"))
-  if (options.cctbx_bundle is None) :
-    fetch_package(
-      pkg_name="cctbx_bundle_for_installer.tar.gz",
-      pkg_url="http://cci.lbl.gov/build/results/current")
-    os.rename("cctbx_bundle_for_installer.tar.gz", "cctbx_bundle.tar.gz")
-  else :
-    assert op.isfile(options.cctbx_bundle)
-    copy_file(options.cctbx_bundle, "cctbx_bundle.tar.gz")
-  if (options.modules is not None) :
+  if (not options.binary) :
     print ""
-    print "********** FETCHING MODULES **********"
+    print "********** FETCHING DEPENDENCIES **********"
     print ""
-    have_modules = []
-    for module_name in options.modules.split(",") :
-      for pkg_dir in options.pkg_dirs :
-        dist_dir = op.join(pkg_dir, module_name)
-        tarfile = op.join(pkg_dir, module_name + "_hot.tar.gz")
-        if op.exists(tarfile) :
-          print "using module '%s' from %s" % (module_name, tarfile)
-          copy_file(tarfile, module_name + ".tar.gz")
-          have_modules.append(module_name)
-          break
-        elif op.isdir(dist_dir) :
-          print "using module '%s' from %s" % (module_name, dist_dir)
-          archive_dist(dist_dir)
-          assert op.isfile(module_name + ".tar.gz")
-          have_modules.append(module_name)
-          break
+    fetch_all_dependencies(
+      dest_dir=op.join(options.dest, installer_dir, "dependencies"),
+      log=sys.stdout,
+      pkg_dirs=options.pkg_dirs,
+      gui_packages=(options.dials or options.gui or options.all),
+      dials_packages=(options.dials or options.xia2 or options.all))
+    # local packages
+    fetch_package = fetch_packages(
+      dest_dir=op.join(options.dest, installer_dir, "source"),
+      log=sys.stdout,
+      pkg_dirs=options.pkg_dirs,
+      copy_files=True)
+    os.chdir(op.join(options.dest, installer_dir, "source"))
+    if (options.cctbx_bundle is None) :
+      fetch_package(
+        pkg_name="cctbx_bundle_for_installer.tar.gz",
+        pkg_url="http://cci.lbl.gov/build/results/current")
+      os.rename("cctbx_bundle_for_installer.tar.gz", "cctbx_bundle.tar.gz")
+    else :
+      assert op.isfile(options.cctbx_bundle)
+      copy_file(options.cctbx_bundle, "cctbx_bundle.tar.gz")
+    if (options.modules is not None) :
+      print ""
+      print "********** FETCHING MODULES **********"
+      print ""
+      have_modules = []
+      for module_name in options.modules.split(",") :
+        for pkg_dir in options.pkg_dirs :
+          dist_dir = op.join(pkg_dir, module_name)
+          tarfile = op.join(pkg_dir, module_name + "_hot.tar.gz")
+          if op.exists(tarfile) :
+            print "using module '%s' from %s" % (module_name, tarfile)
+            copy_file(tarfile, module_name + ".tar.gz")
+            have_modules.append(module_name)
+            break
+          elif op.isdir(dist_dir) :
+            print "using module '%s' from %s" % (module_name, dist_dir)
+            archive_dist(dist_dir)
+            assert op.isfile(module_name + ".tar.gz")
+            have_modules.append(module_name)
+            break
   os.chdir(op.join(options.dest, installer_dir))
   # actual Python installer script
   if (options.script is not None) :
