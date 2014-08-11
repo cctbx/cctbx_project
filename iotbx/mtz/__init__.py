@@ -490,7 +490,8 @@ class _(boost.python.injector, ext.object):
     for crystal in self.crystals():
       crystal_symmetry_from_file = cctbx.crystal.symmetry(
         unit_cell=crystal.unit_cell(),
-        space_group_info=self.space_group_info())
+        space_group_info=self.space_group_info(),
+        raise_sorry_if_incompatible_unit_cell=True)
       crystal_symmetry = crystal_symmetry_from_file.join_symmetry(
         other_symmetry=other_symmetry,
         force=force_symmetry)
