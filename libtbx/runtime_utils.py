@@ -382,7 +382,7 @@ class detached_process_client (detached_base) :
     if (force) and (not None in [self._process_host, self._process_pid]) :
       info = host_and_user()
       if (info.get_host_name() == self._process_host) :
-        os.kill(self._process_pid)
+        os.kill(self._process_pid, signal.SIGTERM)
         self.running = False
         self.callback_abort()
 
