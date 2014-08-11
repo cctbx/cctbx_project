@@ -192,6 +192,7 @@ class _ (oop.injector, molprobity.molprobity) :
         r_work_fmodel=r_work,
         r_free_fmodel=r_free,
         out=log,
+        structure_name=label,
         re_compute_r_factors=not use_header_values)
       if (use_header_values) :
         n_refl_refine = data_stats.n_refl
@@ -265,24 +266,25 @@ def resolution_sanity_check (
     d_min_pdb,
     d_max_f_obs,
     d_min_f_obs,
+    structure_name,
     out) :
   warned = False
   if (d_max_pdb is not None) :
     (d_max, d_min) = (d_max_pdb, d_min_pdb)
     print >> out, \
       "Using resolution limits reported in PDB file for structure %s" % \
-      structure.name
+      structure_name
     if ((d_max != d_max_pdb) or (d_min != d_min_pdb)) :
       warned = True
       print >> out, """\
-*** WARNING: Resolution limits in the PDB file for structure
+*** WARNING: Resolution limits in the PDB file for structure '%s'
              are inconsistent with resolution limits in the MTZ file:
              %.2f - %.2f (in PDB file)
              %.2f - %.2f (in MTZ file)
     This is not a fatal error, since the data processing may output more data
     than are used in refinement, but you should check to make sure that you
     have not accidentally specified the wrong model file.
-""" % (d_max_pdb, d_min_pdb, d_max_f_obs, d_min_f_obs)
+""" % (structure_name, d_max_pdb, d_min_pdb, d_max_f_obs, d_min_f_obs)
   else :
     (d_max, d_min) = (d_max_f_obs, d_min_f_obs)
   return (d_max, d_min, warned)
@@ -293,6 +295,7 @@ def rfactor_sanity_check (
     r_work_fmodel,
     r_free_fmodel,
     out,
+    structure_name,
     re_compute_r_factors,
     tolerance_ignore=0.001,
     tolerance_warn=0.004) :
@@ -334,7 +337,7 @@ def rfactor_sanity_check (
 """ % (r_work_pdb, r_free_pdb, r_work_fmodel, r_free_fmodel)
   else :
     print >> out, "Using re-computed R-factors for structure %s" % \
-      structure.name
+      structure_name
     (r_work, r_free) = (r_work_fmodel, r_free_fmodel)
   return (r_work, r_free, warned)
 
