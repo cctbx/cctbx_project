@@ -108,7 +108,7 @@ bond10.add_target_atom(
   atomname = ' O  ',
   anyseqdist = True)
 
-cablam_fingerprints.make_pickle(antiparallel_beta_bridge_close)
+#-------------------------------------------------------------------------------
 
 #Original by Christopher Williams, converted to new format by Danny Oh
 #Two strands:
@@ -202,5 +202,6 @@ bond8.add_target_atom(
 residue7 = antiparallel_beta_bridge_wide.add_residue(
   end_of_motif = True,
   index = 'i')
-
-cablam_fingerprints.make_pickle(antiparallel_beta_bridge_wide)
+if __name__ == "__main__":
+  cablam_fingerprints.make_pickle(antiparallel_beta_bridge_close)
+  cablam_fingerprints.make_pickle(antiparallel_beta_bridge_wide)

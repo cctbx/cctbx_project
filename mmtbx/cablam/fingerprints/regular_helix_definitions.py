@@ -31,7 +31,7 @@ bond3.add_target_atom(
   atomname = ' H  ',
   seqdist = 4)
 
-cablam_fingerprints.make_pickle(alpha_helix_3os)
+#-------------------------------------------------------------------------------
 
 #Loose helix definitions, c-terminal end
 
@@ -63,7 +63,7 @@ bond3.add_target_atom(
   atomname = ' O  ',
   seqdist = -4)
 
-cablam_fingerprints.make_pickle(alpha_helix_3hs)
+#-------------------------------------------------------------------------------
 
 #Regular helix definition
 
@@ -110,7 +110,7 @@ bond6.add_target_atom(
   atomname = ' O  ',
   seqdist = -4)
 
-cablam_fingerprints.make_pickle(alpha_helix_3_full)
+#-------------------------------------------------------------------------------
 
 threeten_general = cablam_fingerprints.motif(
   motif_name = 'threeten_general',
@@ -167,5 +167,8 @@ bond5 = res5.add_bond(
 bond5.add_target_atom(
   atomname = ' O  ',
   seqdist = -3)
-
-cablam_fingerprints.make_pickle(threeten_general)
+if __name__ == "__main__":
+  cablam_fingerprints.make_pickle(alpha_helix_3os)
+  cablam_fingerprints.make_pickle(alpha_helix_3hs)
+  cablam_fingerprints.make_pickle(alpha_helix_3_full)
+  cablam_fingerprints.make_pickle(threeten_general)

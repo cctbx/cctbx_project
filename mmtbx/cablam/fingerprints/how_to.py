@@ -10,11 +10,15 @@ from mmtbx.cablam import cablam_fingerprints
 #Create an instance of the motif class
 replace_this_with_name_of_motif = cablam_fingerprints.motif(
   motif_name = "replace_this_with_name_of_motif",
-  residue_names = {"a":"residue1","b":"residue"})
+  residue_names = {"a":"residue1","b":"residue"},
+  superpose_order = {"b":["CA","N"],"c":["CA"],"d":["CA"],"e":["CA","OH"]})
 #Pass the class a name for the motif (as a string). This will be used in
 #  printing, filenameing, etc.
 #motif_name is an attribute of the motif class, not something to replace with
 #  the name of the motif
+#superpose_order defines the atoms from each indexed residue to be used for
+#  automated superposition with superpose_pdbs.  Optional unless that feature is
+#  desired for the motif.
 #Pass the class a dictionary of names for the residues in the motif
 #  The keys for this dictionary must correspond to the indices used to identify
 #  residues later in the fingerprint.  Some functions may .sort() these keys for
@@ -127,10 +131,13 @@ bond1.add_target_atom(
 #  overwrite.
 
 #Add this to the bottom of the code:
-cablam_fingerprints.make_pickle(replace_this_with_name_of_motif)
-#Multiple motifs can be stored in the same code, but each needs its own call to
-#  fingerprints2.make_pickle
-cablam_fingerprints.make_pickle(another_motif)
+if __name__ == "__main__":
+  cablam_fingerprints.make_pickle(replace_this_with_name_of_motif)
+  #Multiple motifs can be stored in the same code, but each needs its own call
+  #  to cablam_fingerprints.make_pickle, like so:
+  cablam_fingerprints.make_pickle(another_motif)
+  #Place all make_pickle calls at the end in a if __name__==__main__ to prevent
+  #  spontaneous generation of pickle files if the definitions are imported
 
 #Run the code from the commandline using phenix.python.  This will generate
 #  motif files in cctbx/mmtbx/cablam/fingerprints for cablam to use.

@@ -162,7 +162,7 @@ bond14.add_target_atom(
   atomname = ' O  ',
   anyseqdist = True)
 
-cablam_fingerprints.make_pickle(antiparallel_beta_wcw)
+#-------------------------------------------------------------------------------
 
 #Antiparallel beta wide
 #Original by Christopher Williams, converted to new format by Danny Oh
@@ -332,4 +332,6 @@ residue12 = antiparallel_beta_cwc.add_residue(
   end_of_motif = True,
   index = 'g')
 
-cablam_fingerprints.make_pickle(antiparallel_beta_cwc)
+if __name__ == "__main__":
+  cablam_fingerprints.make_pickle(antiparallel_beta_wcw)
+  cablam_fingerprints.make_pickle(antiparallel_beta_cwc)
