@@ -41,6 +41,8 @@ Utility classes
 ---------------
 
 .. autoclass:: cctbx.miller.merge_equivalents
+    :members:
+
 .. autoclass:: cctbx.miller.fft_map
 .. autoclass:: cctbx.miller.array_info
 .. autoclass:: cctbx.miller.normalised_amplitudes
