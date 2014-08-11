@@ -2878,6 +2878,8 @@ sphinx/history.rst -text
 sphinx/index.rst -text
 sphinx/installation.rst -text
 sphinx/iotbx/index.rst -text
+sphinx/iotbx/iotbx.file_reader.rst -text
+sphinx/iotbx/iotbx.pdb.rst -text
 sphinx/libtbx/index.rst -text
 sphinx/libtbx/libtbx.easy_mp.rst -text
 sphinx/libtbx/libtbx.phil.rst -text
