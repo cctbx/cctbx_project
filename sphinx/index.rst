@@ -128,6 +128,14 @@ validation server (and Phenix equivalent) is also located here.
 
 :ref:`API Documentation for mmtbx <mmtbx/mmtbx>`
 
+xfel
+-----
+
+Software for processing serial data collected using an X-ray free electron laser.
+Includes spotfinding, integration, data clustering/filering and merging tools.
+
+:ref:`API Documentation for mmtbx <xfel/xfel>`
+
 smtbx
 -----
 
