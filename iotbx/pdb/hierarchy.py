@@ -334,6 +334,19 @@ class __hash_eq_mixin(object):
     return not ( self == other )
 
 class _(boost.python.injector, ext.root, __hash_eq_mixin):
+  __doc__ = """
+  Root node of the PDB hierarchy object.  This is returned by the method
+  construct_hierarchy() of the PDB/mmCIF input objects, but it may also be
+  created programatically.  Note that it does not contain any reference to
+  crystal symmetry or X-ray scattering information, meaning that in practice
+  it must often be tracked alongside an equivalent cctbx.xray.structure object.
+  Pickling is supported, simply by writing out and reading back the PDB-format
+  representation of the hierarchy.
+
+  Examples
+  --------
+  >>> hierarchy = iotbx.pdb.hierarchy.root()
+  """
 
   def __getstate__(self):
     version = 2
@@ -365,17 +378,24 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       self.append_model(model=model)
 
   def chains(self):
+    """
+    Iterate over all chains in all models.
+    """
     for model in self.models():
       for chain in model.chains():
         yield chain
 
   def residue_groups(self):
+    """Iterate over all residue groups (by model and then chain)"""
     for model in self.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
           yield rg
 
   def atom_groups(self):
+    """
+    Iterate over all atom groups (by model, then chain, then residue group)
+    """
     for model in self.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
@@ -405,6 +425,12 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     return self.only_atom_group().only_atom()
 
   def overall_counts(self):
+    """
+    Calculate basic statistics for contents of the PDB hierarchy, including
+    number of residues of each type.
+
+    :returns: iotbx.pdb.hierarchy.overall_counts object
+    """
     result = overall_counts()
     self.get_overall_counts(result)
     return result
@@ -414,6 +440,9 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         prefix="",
         level_id=None,
         level_id_exception=ValueError):
+    """
+    Display a summary of hierarchy contents.
+    """
     if (level_id == None): level_id = "atom"
     try: level_no = level_ids.index(level_id)
     except ValueError:
@@ -484,6 +513,9 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         prefix="",
         level_id=None,
         level_id_exception=ValueError):
+    """
+    Alias for show().
+    """
     out = StringIO()
     self.show(
       out=out,
@@ -506,6 +538,19 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         output_break_records=True, # TODO deprecate
         cstringio=None,
         return_cstringio=Auto):
+    """
+    Generate complete PDB-format string representation.  External crystal
+    symmetry is strongly recommended if this is being output to a file.
+
+    :param crystal_symmetry: cctbx.crystal.symmetry object or equivalent (such
+      as an xray.structure object or Miller array)
+    :param write_scale_records: write fractional scaling records (SCALE) if
+      crystal symmetry is provided
+    :param anisou: write ANISOU records for anisotropic atoms
+    :param sigatm: write SIGATM records if applicable
+    :param siguij: write SIGUIJ records if applicable
+    :returns: Python str
+    """
     if (cstringio is None):
       cstringio = StringIO()
       if (return_cstringio is Auto):
@@ -533,6 +578,9 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     return cstringio.getvalue()
 
   def as_pdb_input (self, crystal_symmetry=None) :
+    """
+    Generate corresponding pdb.input object.
+    """
     import iotbx.pdb
     pdb_str = self.as_pdb_string(crystal_symmetry=crystal_symmetry)
     pdb_inp = iotbx.pdb.input(
@@ -541,6 +589,9 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     return pdb_inp
 
   def as_cif_input(self, crystal_symmetry=None):
+    """
+    Generate corresponding mmcif input object.
+    """
     import iotbx.cif.model
     from iotbx.pdb import mmcif
     cif_block = self.as_cif_block(crystal_symmetry=crystal_symmetry)
@@ -550,9 +601,20 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     return cif_input
 
   def extract_xray_structure(self, crystal_symmetry=None) :
+    """
+    Generate the equivalent cctbx.xray.structure object.  If the crystal
+    symmetry is not provided, this will be placed in a P1 box.  In practice it
+    is usually best to keep the original xray structure object around, but this
+    method is helpful in corner cases.
+    """
     return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
 
   def adopt_xray_structure(self, xray_structure, assert_identical_id_str=True):
+    """
+    Apply the current (refined) atomic parameters from the cctbx.xray.structure
+    object to the atoms in the PDB hierarchy.  This will fail if the labels of
+    the scatterers do not match the atom labels.
+    """
     from iotbx.pdb import common_residue_names_get_class as gc
     from cctbx import adptbx
     if(self.atoms().size() != xray_structure.scatterers().size()):
@@ -644,6 +706,10 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     f.close()
 
   def atoms_with_labels(self):
+    """
+    Generator for atom_with_labels objects, presented in the same order as
+    the array returned by the atoms() method.
+    """
     for model in self.models():
       for chain in model.chains():
         is_first_in_chain = True
@@ -765,6 +831,9 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       atoms.reset_i_seq()
 
   def get_peptide_c_alpha_selection(self):
+    """
+    Extract atom selection (flex.size_t) for protein C-alpha atoms.
+    """
     result = flex.size_t()
     import iotbx.pdb
     get_class = iotbx.pdb.common_residue_names_get_class
@@ -781,18 +850,31 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     return result
 
   def contains_protein (self) :
+    """
+    Inspect residue names (stored in atom_group objects) to determine if any of
+    them are protein.
+    """
     for model in self.models() :
       for chain in self.chains() :
         if chain.is_protein() : return True
     return False
 
   def contains_nucleic_acid (self) :
+    """
+    Inspect residue names (stored in atom_group objects) to determine if any of
+    them are RNA or DNA.
+    """
+    import iotbx.pdb
     for model in self.models() :
       for chain in self.chains() :
         if chain.is_na() : return True
     return False
 
   def contains_rna (self) :
+    """
+    Inspect residue names (stored in atom_group objects) to determine if any of
+    them are RNA.
+    """
     import iotbx.pdb
     get_class = iotbx.pdb.common_residue_names_get_class
     for model in self.models():
@@ -831,6 +913,18 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     return n_removed
 
 class _(boost.python.injector, ext.model, __hash_eq_mixin):
+  """
+  Class representing MODEL blocks in a PDB file (or equivalent mmCIF).  There
+  will always be at least one of these in a hierarchy root extracted from a
+  PDB file even if no MODEL records are present.
+
+  Example
+  -------
+  >>> hierarchy = iotbx.pdb.hierarchy.root()
+  >>> model = iotbx.pdb.hierarchy.model(id="1")
+  >>> hierarchy.append_model(model)
+  >>> model = hierarchy.only_model()
+  """
 
   def residue_groups(self):
     for chain in self.chains():
@@ -863,6 +957,14 @@ class _(boost.python.injector, ext.model, __hash_eq_mixin):
     return self.only_atom_group().only_atom()
 
 class _(boost.python.injector, ext.chain, __hash_eq_mixin):
+  """
+  Class representing a continuous chain of atoms, as defined by the combination
+  of chain ID field and TER records (or the chain index in mmCIF format).  Note
+  that this does not necessarily correspond to a covalently linked entity, as
+  it may be used to group various heteroatoms (including water), but
+  chemically distinct protein or nucleic acid chains will typically be
+  grouped into exactly one chain object apiece.
+  """
 
   def atom_groups(self):
     for rg in self.residue_groups():
@@ -951,6 +1053,13 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     return result
 
   def get_residue_names_and_classes (self) :
+    """
+    Extract the residue names and counts of each residue type (protein,
+    nucleic acid, etc) within the chain.
+
+    :returns: a tuple containing a list of residue names, and a dictionary of
+      residue type frequencies.
+    """
     from iotbx.pdb import common_residue_names_get_class
     from iotbx.pdb import residue_name_plus_atom_names_interpreter
     rn_seq = []
@@ -972,6 +1081,12 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     return (rn_seq, residue_classes)
 
   def as_sequence (self, substitute_unknown='X') :
+    """
+    Naively extract single-character protein or nucleic acid sequence, without
+    accounting for residue numbering.
+
+    :param substitute_unknown: character to use for unrecognized 3-letter codes
+    """
     assert ((isinstance(substitute_unknown, str)) and
             (len(substitute_unknown) == 1))
     rn_seq, residue_classes = self.get_residue_names_and_classes()
@@ -1003,6 +1118,10 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
 
   def as_padded_sequence(self, missing_char='X', skip_insertions=False,
                          pad=True, substitute_unknown='X', pad_at_start=True):
+    """
+    Extract protein or nucleic acid sequence, taking residue numbering into
+    account so that apparent gaps will be filled with substitute characters.
+    """
     seq = self.as_sequence()
     padded_seq = []
     last_resseq = 0
@@ -1054,6 +1173,10 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     return resnames
 
   def is_protein (self, min_content=0.8, ignore_water=True) :
+    """
+    Determine whether the chain represents an amino acid polymer, based on the
+    frequency of residue names.
+    """
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
@@ -1069,6 +1192,10 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     return False
 
   def is_na (self, min_content=0.8, ignore_water=True) :
+    """
+    Determine whether the chain represents a nucleic acid polymer, based on the
+    frequency of base names.
+    """
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
@@ -1104,6 +1231,12 @@ class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
     return self.atoms()[0]
 
   def get_atom (self, name) :
+    """
+    Extract the child atom with the given (unaligned) name.
+
+    :param name: atom name, explicit case but no spaces.
+    :returns: atom object if found, otherwise None
+    """
     for atom in self.atoms() :
       if (atom.name.strip() == name) :
         return atom
@@ -1137,7 +1270,15 @@ class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
     return min_max_mean.mean
 
 class _(boost.python.injector, ext.atom, __hash_eq_mixin):
-
+  __doc__ = """
+  The basic unit of the PDB hierarchy (or the PDB input object in general),
+  representing a single point scatterer corresponding to an ATOM or HETATM
+  record in PDB format (plus associated ANISOU or related records if present).
+  Note that this does not directly store attributes of higher-level entities
+  whose identity is also recorded in ATOM records, such as the chain ID or
+  residue name.  These may be retrieved either by walking up the hierarchy
+  starting with atom.parent(), or by calling atom.fetch_labels().
+  """
   def chain (self) :
     """
     Convenience method for fetching the chain object associated with this
@@ -1151,6 +1292,11 @@ class _(boost.python.injector, ext.atom, __hash_eq_mixin):
     return None
 
   def is_in_same_conformer_as(self, other):
+    """
+    Indicate whether two atoms are part of the same conformer and thus are
+    capable of interacting directly, as defined by the parent atom_group and
+    model object(s).
+    """
     ag_i = self.parent(optional=False)
     ag_j = other.parent(optional=False)
     altloc_i = ag_i.altloc
@@ -1186,6 +1332,11 @@ class _(boost.python.injector, ext.atom, __hash_eq_mixin):
     return True
 
   def charge_as_int(self):
+    """
+    Extract the atomic charge from the (string) charge field.
+
+    :returns: Python int, defaulting to zero
+    """
     charge = self.charge_tidy()
     if charge is None:
       return 0
@@ -1200,7 +1351,11 @@ class _(boost.python.injector, ext.atom, __hash_eq_mixin):
       return 0
 
 class _(boost.python.injector, ext.conformer):
-
+  __doc__ = """
+  Alternate view into a chain object, grouping sequential residues with
+  equivalent altlocs.  As a general rule it is preferrable to iterate over
+  chain.residue_groups() instead.
+  """
   def only_residue(self):
     residues = self.residues()
     assert len(residues) == 1
@@ -1428,6 +1583,10 @@ class _(boost.python.injector, ext.residue):
       return_mon_lib_dna_name=return_mon_lib_dna_name)
 
 class _(boost.python.injector, ext.atom_with_labels):
+  __doc__ = """
+  Stand-in for atom object, which explicitly records the attributes normally
+  reserved for parent classes such as residue name, chain ID, etc.
+  """
   def __getstate__ (self) :
     labels_dict = {}
     for attr in [ "xyz", "sigxyz", "occ", "sigocc", "b", "sigb", "uij",
@@ -1556,6 +1715,9 @@ def append_chain_id_suffixes(roots, suffixes=Auto):
         chain.id += suffix
 
 def join_roots(roots, chain_id_suffixes=Auto):
+  """
+  Combine two root objects.
+  """
   if (chain_id_suffixes is not None):
     append_chain_id_suffixes(roots=roots, suffixes=chain_id_suffixes)
   result = root()
@@ -1565,6 +1727,10 @@ def join_roots(roots, chain_id_suffixes=Auto):
 
 # XXX: Nat's utility functions
 def new_hierarchy_from_chain (chain) :
+  """
+  Given a chain object, create an entirely new hierarchy object contaning only
+  this chain (using a new copy).
+  """
   import iotbx.pdb.hierarchy
   hierarchy = iotbx.pdb.hierarchy.root()
   model = iotbx.pdb.hierarchy.model()
@@ -1572,11 +1738,15 @@ def new_hierarchy_from_chain (chain) :
   hierarchy.append_model(model)
   return hierarchy
 
-# XXX: this will only replace the *first* chain it finds with an identical
-# model/ID combination, for situations where water molecules are given the
-# same ID as the nearest macromolecule.
 def find_and_replace_chains (original_hierarchy, partial_hierarchy,
     log=sys.stdout) :
+  """
+  Delete and replace the first chain in the original hierarchy corresponding
+  to each model/ID combination in the partial hierarchy.  Note that this means
+  that if waters and heteroatoms are given the same ID as a protein chain
+  (separated by other chains or TER record(s)), but the partial hierarchy only
+  contains a substitute protein chain, the heteroatom chain will be kept.
+  """
   for original_model in original_hierarchy.models() :
     for partial_model in partial_hierarchy.models() :
       if original_model.id == partial_model.id :
