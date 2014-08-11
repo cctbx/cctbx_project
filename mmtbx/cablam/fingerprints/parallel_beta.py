@@ -139,7 +139,7 @@ residue11 = parallel_beta.add_residue(
   end_of_motif = True,
   index = 'i')
 
-cablam_fingerprints.make_pickle(parallel_beta)
+#-------------------------------------------------------------------------------
 
 #Parallel beta bridges
 #Original by Christopher Williams, converted to new format by Danny Oh
@@ -235,4 +235,6 @@ residue7 = parallel_beta_bridge.add_residue(
   end_of_motif = True,
   index = 'i')
 
-cablam_fingerprints.make_pickle(parallel_beta_bridge)
+if __name__ == "__main__":
+  cablam_fingerprints.make_pickle(parallel_beta)
+  cablam_fingerprints.make_pickle(parallel_beta_bridge)
