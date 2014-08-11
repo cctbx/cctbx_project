@@ -1,6 +1,6 @@
 from __future__ import division
 from cctbx.eltbx import neutron
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, Exception_expected
 
 def exercise():
   t = neutron.neutron_news_1992_table("eu")
@@ -19,6 +19,12 @@ def exercise():
     u = neutron.neutron_news_1992_table(t.label())
     assert u.label() == t.label()
   assert n == 86
+  try :
+    t = neutron.neutron_news_1992_table("XX")
+  except ValueError, e :
+    pass
+  else :
+    raise Exception_expected
 
 def run():
   exercise()

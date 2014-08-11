@@ -122,7 +122,7 @@ namespace {
       }
     }
     if (exact || !matching_record) {
-      throw error("Unknown element label.");
+      throw std::invalid_argument("Unknown element label:" + work_label);
     }
     return matching_record;
   }

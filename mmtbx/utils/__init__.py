@@ -1383,8 +1383,11 @@ def setup_scattering_dictionaries(scattering_table,
       print_statistics.make_sub_header("X-ray scattering dictionary",out=log)
       xray_structure.scattering_type_registry().show(out = log)
   if(scattering_table == "neutron"):
-    neutron_scattering_dict = \
-      xray_structure.switch_to_neutron_scattering_dictionary()
+    try :
+      neutron_scattering_dict = \
+        xray_structure.switch_to_neutron_scattering_dictionary()
+    except ValueError, e :
+      raise Sorry("Error setting up neutron scattering dictionary: %s"%str(e))
     if(log is not None):
       print_statistics.make_sub_header(
         "Neutron scattering dictionary", out = log)
