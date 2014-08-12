@@ -207,6 +207,16 @@ def random_new_directory_name(prefix="tmp_dir_", number_of_hex_code_digits=8):
   else:
     raise AssertionError
 
+def makedirs (path) :
+  """
+  Wrapper for os.makedirs that catches OSError and re-raises as Sorry.
+  """
+  try :
+    os.makedirs(path)
+  except OSError, e :
+    from libtbx.utils import Sorry
+    raise Sorry(str(e))
+
 def makedirs_race(
       path=None,
       max_trials=10,
