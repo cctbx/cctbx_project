@@ -139,6 +139,20 @@ class ComparisonFrame (HKLViewFrame) :
       data_only=True)
     array2 = self.load_reflections_file(file_name_2, set_array=False,
       data_only=True)
+    symm1 = array1.crystal_symmetry()
+    symm2 = array2.crystal_symmetry()
+    if (symm1 is None) :
+      raise Sorry(("No crystal symmetry found in %s!  Please convert to a "+
+        "more appropriate format.") % file_name_1)
+    if (symm2 is None) :
+      raise Sorry(("No crystal symmetry found in %s!  Please convert to a "+
+        "more appropriate format.") % file_name_2)
+    if (symm1.unit_cell() is None) :
+      symm1 = symm1.customized_copy(unit_cell=symm2.unit_cell())
+      array1 = array1.customized_copy(crystal_symmetry=symm1)
+    if (symm2.unit_cell() is None) :
+      symm2 = symm2.customized_copy(unit_cell=symm1.unit_cell())
+      array2 = array2.customized_copy(crystal_symmetry=symm2)
     if (not array1.is_similar_symmetry(array2)) :
       from cctbx import crystal
       space_group_1 = array1.space_group_info()
