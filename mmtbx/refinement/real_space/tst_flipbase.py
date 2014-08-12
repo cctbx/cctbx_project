@@ -136,8 +136,13 @@ def exercise():
             geometry_restraints_manager = pi_poor.grm,
             selection                   = sele)
         print 'real-space refinement FINISHED'.center(79,'*')
+        xrs_refined = ero.xray_structure
   if not ero : raise RuntimeError('Specified residue not found')
-  return ero.pdb_hierarchy.write_pdb_file(file_name="refined.pdb",
+  d = xrs_good.distances(other=xrs_refined)
+  print d.min_max_mean().as_tuple()
+  assert flex.max(d)<0.07
+  assert flex.mean(d)<0.03
+  ero.pdb_hierarchy.write_pdb_file(file_name="refined.pdb",
     crystal_symmetry=xrs_good.crystal_symmetry())
 
 
