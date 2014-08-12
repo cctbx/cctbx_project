@@ -27,7 +27,7 @@ class mod_cspad_cbf(mod_event_info):
                metrology=None,
                inkey=None,
                outkey=None,
-#               dark_path=None,
+               dark_path=None,
 #               mask_path=None,
 #               gain_map_path=None,
 #               gain_map_level=None,
@@ -40,7 +40,7 @@ class mod_cspad_cbf(mod_event_info):
     @param metrology       CBF header containing metrology info
     @param inkey           Look for the cspad data in this key
     @param outkey          Put the dxtbx format object in this key
-#    @param dark_path       Path to input average dark image
+    @param dark_path       Path to input average dark image
 #    @param mask_path       Path to input mask.  Pixels to mask out should be set to -2
 #    @param gain_map_path   Path to input gain map.  Multplied times the image.
 #    @param gain_map_level  If set, all the '1' pixels in the gain_map are set to this multiplier
@@ -50,7 +50,7 @@ class mod_cspad_cbf(mod_event_info):
 
     super(mod_cspad_cbf, self).__init__(address=address, **kwds)
 
-#    self.dark_path = cspad_tbx.getOptEvalOrString(dark_path)
+    self.dark_path = cspad_tbx.getOptEvalOrString(dark_path)
 #    self.mask_path = cspad_tbx.getOptEvalOrString(mask_path)
 #    gain_map_path = cspad_tbx.getOptString(gain_map_path)
 #    self.gain_map_level = cspad_tbx.getOptFloat(gain_map_level)
@@ -67,19 +67,48 @@ class mod_cspad_cbf(mod_event_info):
     self.outkey = cspad_tbx.getOptString(outkey)
     assert self.inkey is not None and self.outkey is not None
 
-    """
     # Load the dark image and ensure it is signed and at least 32 bits
-    # wide, since it will be used for differencing.  If a dark image
-    # is provided, a standard deviation image is required, and all the
-    # ADU scales must match up.
-    self.dark_img = None
+    # wide, since it will be used for differencing.
     if (self.dark_path is not None):
+      # read the raw data, assembled as quadrants, not as asics, from the cbf handle
       reader = Registry.find(self.dark_path)
-      self.dark_img = reader(self.dark_path)
+      dark_img = reader(self.dark_path)
+      cbf = dark_img._cbf_handle
 
-      # read the data, causing the data to be cached so multi-processing will work
-      self.dark_img.get_raw_data()
+      cbf.find_category('array_structure')
+      cbf.find_column('encoding_type')
+      cbf.select_row(0)
+      types = []
+      for i in xrange(cbf.count_rows()):
+        types.append(cbf.get_value())
+        cbf.next_row()
+      assert len(types) == cbf.count_rows()
 
+      self._dark_data = []
+      cbf.find_category("array_data")
+      for i in xrange(cbf.count_rows()):
+        cbf.find_column("data")
+        assert cbf.get_typeofvalue().find('bnry') > -1
+
+        if types[i] == 'signed 32-bit integer':
+          array_string = cbf.get_integerarray_as_string()
+          array = flex.int(np.fromstring(array_string, np.int32))
+          parameters = cbf.get_integerarrayparameters_wdims_fs()
+          array_size = (parameters[11], parameters[10], parameters[9])
+        elif types[i] == 'signed 64-bit real IEEE':
+          array_string = cbf.get_realarray_as_string()
+          array = flex.double(np.fromstring(array_string, np.float)).iround()
+          parameters = cbf.get_realarrayparameters_wdims_fs()
+          array_size = (parameters[7], parameters[6], parameters[5])
+        else:
+          from libtbx.utils import Sorry
+          raise Sorry("Dark image data type not supported")
+
+        array.reshape(flex.grid(*array_size))
+        self._dark_data.append(array)
+        cbf.next_row()
+
+    """
     # Load the mask image and ensure it is signed and at least 32 bits
     # wide, since it will be used for differencing.
     self.mask_img = None
@@ -179,10 +208,10 @@ class mod_cspad_cbf(mod_event_info):
         tiles[(0,i)].reshape(flex.grid((8,185,388)))
 
       # If a dark image was provided, subtract it from the image.
-#      if (self.dark_img is not None):
-#        assert len(tiles) == len(self.dark_img.get_detector())
-#        for i, k in enumerate(sorted(tiles)):
-#          tiles[k] -= self.dark_img.get_raw_data(i).iround()
+      if (self._dark_data is not None):
+        assert len(tiles) == len(self._dark_data)
+        for i, k in enumerate(sorted(tiles)):
+          tiles[k] -= self._dark_data[i]
 
       # If a gain map was provided, multiply it times the image
 #      if self.gain_map is not None:
