@@ -888,14 +888,28 @@ class manager(object):
       sites_cart = sites_cart.select(~self.ias_selection)
     ref_m_rm = self.reference_model_restraints_manager
     if(self.reference_sites_cart is None): ref_m_rm = None
-    return self.restraints_manager.energies_sites(
+    skip_finalize=False
+    if self.restraints_manager.afitt_object:
+      skip_finalize=True
+    result = self.restraints_manager.energies_sites(
       sites_cart=sites_cart,
       geometry_flags=geometry_flags,
       external_energy_function=ref_m_rm,
       custom_nonbonded_function=custom_nonbonded_function,
       compute_gradients=compute_gradients,
       gradients=gradients,
-      disable_asu_cache=disable_asu_cache)
+      disable_asu_cache=disable_asu_cache,
+      skip_finalize=skip_finalize,
+    )
+    if self.restraints_manager.afitt_object:
+      from mmtbx.geometry_restraints import afitt
+      result = afitt.adjust_energy_and_gradients(
+        result,
+        self,
+        self.restraints_manager.afitt_object,
+      )
+      result.target = result.residual_sum
+    return result
 
   def solvent_selection(self, include_ions=False):
     result = flex.bool()

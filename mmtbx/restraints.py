@@ -65,6 +65,7 @@ class manager(object):
         gradients=None,
         force_restraints_model=False,
         disable_asu_cache=False,
+        skip_finalize=False,
         ):
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
@@ -99,6 +100,27 @@ class manager(object):
         result.geometry = amber_geometry_manager.energies_sites(
           compute_gradients=compute_gradients)
 
+      #afitt
+      ##################################################################
+      #                                                                #
+      # AFITT CALL - OpenEye AFITT gradients and target                #
+      #                                                                #
+      ##################################################################
+      elif (self.use_afitt and len(sites_cart)==self.afitt_object.total_model_atoms):
+        from mmtbx.geometry_restraints import afitt
+        result.geometry = self.geometry.energies_sites(
+          sites_cart=sites_cart,
+          flags=geometry_flags,
+          external_energy_function=external_energy_function,
+          custom_nonbonded_function=custom_nonbonded_function,
+          compute_gradients=compute_gradients,
+          gradients=result.gradients,
+          disable_asu_cache=disable_asu_cache,
+          normalization=False,
+          #skip_finalize=True,
+          )
+        result = afitt.apply(result, self.afitt_object, sites_cart)
+
       # default restraints manager
       else :
         result.geometry = self.geometry.energies_sites(
@@ -111,37 +133,8 @@ class manager(object):
           disable_asu_cache=disable_asu_cache,
           normalization=False)
 
-      #afitt
-      ##################################################################
-      #                                                                #
-      # AFITT CALL - OpenEye AFITT gradients and target                #
-      #                                                                #
-      ##################################################################
-      if (self.use_afitt and len(sites_cart)==self.afitt_object.total_model_atoms):
-        from mmtbx.geometry_restraints import afitt
-        result.complex_residual_sum = result.geometry.residual_sum
-        afitt_allgradients = {}
-        afitt_alltargets = {}
-        for resname_i,resname in enumerate(self.afitt_object.resname):
-          for instance_i, instance in enumerate(self.afitt_object.res_ids[resname_i]):
-            afitt_input = self.afitt_object.make_afitt_input(sites_cart,
-                                                             resname_i,
-                                                             instance_i,
-                                                           )
-            lines = afitt.call_afitt(afitt_input, self.afitt_object.ff)
-            afitt.process_afitt_output(lines,
-                                       result.geometry,
-                                       self.afitt_object,
-                                       resname_i,
-                                       instance_i,
-                                       afitt_allgradients,
-                                       afitt_alltargets)
-        result.geometry = afitt.apply_target_gradients(result.geometry,
-                                                       afitt_allgradients,
-                                                       afitt_alltargets)
-        result.afitt_residual_sum = result.geometry.residual_sum -\
-                                    result.complex_residual_sum
       result += result.geometry
+
     if (self.ncs_groups is None):
       result.ncs_groups = None
     else:
@@ -151,7 +144,8 @@ class manager(object):
         gradients=result.gradients,
         normalization=False)
       result += result.ncs_groups
-    result.finalize_target_and_gradients()
+    if not skip_finalize:
+      result.finalize_target_and_gradients()
     return result
 
   def energies_adp_iso(self,

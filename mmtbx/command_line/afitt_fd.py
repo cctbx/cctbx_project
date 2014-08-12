@@ -1,6 +1,7 @@
 from mmtbx.geometry_restraints.afitt import finite_difference_test
 
 pdb_lines = """
+CRYST1   94.100   94.100  131.400  90.00  90.00 120.00 P 61 2 2
 ATOM    890  N   ALA E 113      32.525  39.841  -1.660  1.00 15.64           N
 ATOM    891  CA  ALA E 113      31.553  40.901  -1.907  1.00 15.53           C
 ATOM    893  C   ALA E 113      31.742  41.398  -3.334  1.00 15.47           C
@@ -146,7 +147,6 @@ if (__name__ == "__main__"):
     parser.epilog='Example: phenix.python afitt_fd.py vAla3.pdb vAla3.cif NME 37'
     args = parser.parse_args()
     ligand_names=args.ligand_names.split(',')
-    print args.verbose
     run(args.pdb_file, args.cif_file, ligand_names, int(args.atom),
       args.scale, args.verbose)
 
