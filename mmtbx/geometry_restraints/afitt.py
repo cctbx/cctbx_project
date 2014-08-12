@@ -58,6 +58,7 @@ class afitt_object:
     self.ligand_path = ligand_path
     self.pdb_hierarchy = pdb_hierarchy
     self.covalent_data = {}
+    self.occupancies = []
 
     cif_object = self.read_cif_file(ligand_path)
     self.process_cif_object(cif_object, pdb_hierarchy)
@@ -107,8 +108,21 @@ class afitt_object:
         for conformer in chain.conformers():
           for residue in conformer.residues():
             if residue.resname == resname:
-              ids.append([chain.id,conformer.altloc,residue.resseq])
+              id_list=[chain.id,conformer.altloc,residue.resseq]
+              ids.append(id_list)
     return ids
+
+  def get_occupancies(self, ptrs, pdb_hierarchy):
+    for ptr in ptrs:
+      for atom in pdb_hierarchy.atoms():
+        if atom.i_seq == ptr:
+          if 'occ' in locals():
+            if occ > atom.occ:
+              occ=atom.occ
+          else:
+            occ=atom.occ
+    return occ
+
 
   def check_covalent(self, geometry):
     for resname_i,resname in enumerate(self.resname):
@@ -122,8 +136,8 @@ class afitt_object:
 
 
             print ligand_atom, nonligand_atom
-    import code; code.interact(local=dict(globals(), **locals()))
-    sys.exit()
+    # import code; code.interact(local=dict(globals(), **locals()))
+    # sys.exit()
     #           #if atom is bound to another atom return residue id and name
     #           # should return only unique resid/names
     #           # cov_res = [i_seq, i_seq]
@@ -183,6 +197,10 @@ class afitt_object:
                                           resseq=residue_instance[2])
                                         )
       self.sites_cart_ptrs.append( this_res_sites_cart_ptrs )
+      this_occupancies=[]
+      for ptrs in this_res_sites_cart_ptrs:
+        this_occupancies.append( self.get_occupancies(ptrs, pdb_hierarchy) )
+      self.occupancies.append( this_occupancies )
       if cif_object[comp_rname].has_key('_chem_comp_atom.charge'):
         self.formal_charges.append(
           [float(i) for i in cif_object[comp_rname]['_chem_comp_atom.charge']]
@@ -246,14 +264,14 @@ def call_afitt(afitt_input, ff):
 
 def process_afitt_output(afitt_output,
                          geometry,
-                         afitt_object,
+                         afitt_o,
                          resname_i,
                          instance_i,
                          afitt_allgradients,
                          afitt_alltargets):
   r_i=resname_i
   i_i=instance_i
-  ptrs = afitt_object.sites_cart_ptrs[r_i][i_i]
+  ptrs = afitt_o.sites_cart_ptrs[r_i][i_i]
   afitt_gradients = flex.vec3_double()
   for line in afitt_output.getvalue().splitlines():
     if line.startswith('ENERGYTAG'):
@@ -265,9 +283,9 @@ def process_afitt_output(afitt_output,
            float(line.split()[3]) ) )
   ### debug_stuff
   print ("AFITT_ENERGY %s_%d_%s: %10.4f\n"
-                  %(afitt_object.resname[r_i],
-                    int(afitt_object.res_ids[r_i][i_i][2]),
-                    afitt_object.res_ids[r_i][i_i][1],
+                  %(afitt_o.resname[r_i],
+                    int(afitt_o.res_ids[r_i][i_i][2]),
+                    afitt_o.res_ids[r_i][i_i][1],
                     afitt_energy ))
   ### end_debug
   #geometry.residual_sum += afitt_energy
@@ -277,7 +295,7 @@ def process_afitt_output(afitt_output,
   #~ print "\n\n\n\n"
   if (geometry.gradients is not None):
     assert afitt_gradients.size() == len(ptrs)
-    if afitt_object.scale == 'gnorm':
+    if afitt_o.scale == 'gnorm':
       from math import sqrt
       phenix_norm=0
       afitt_norm=0
@@ -289,16 +307,16 @@ def process_afitt_output(afitt_output,
       gr_scale = phenix_norm/afitt_norm
       ### debug_stuff
       print ("GRNORM_RATIO %s_%d_%s: %10.4f\n"
-                    %(afitt_object.resname[r_i],
-                      int(afitt_object.res_ids[r_i][i_i][2]),
-                      afitt_object.res_ids[r_i][i_i][1],
+                    %(afitt_o.resname[r_i],
+                      int(afitt_o.res_ids[r_i][i_i][2]),
+                      afitt_o.res_ids[r_i][i_i][1],
                       gr_scale ))
 
       ### end_debug
-    elif afitt_object.scale == 'noafitt':
+    elif afitt_o.scale == 'noafitt':
       gr_scale = None
     else:
-      gr_scale = float(afitt_object.scale)
+      gr_scale = float(afitt_o.scale)
 
     ### debug_stuff
     print_gradients = False
@@ -311,35 +329,59 @@ def process_afitt_output(afitt_output,
             afitt_gradient[0], afitt_gradient[1], afitt_gradient[2])
     ### end_debug
     if gr_scale:
-      for afitt_gradient, ptr in zip(afitt_gradients, ptrs):
-        scaled_gradient = (afitt_gradient[0]*gr_scale,
-                         afitt_gradient[1]*gr_scale,
-                         afitt_gradient[2]*gr_scale)
-        if afitt_allgradients.has_key(ptr):
-          afitt_allgradients[ptr].append(scaled_gradient)
-        else:
-          afitt_allgradients[ptr] = [scaled_gradient]
-      afitt_alltargets[(resname_i,instance_i)] = gr_scale*afitt_energy
+      scaled_gradients = []
+      occupancy = afitt_o.occupancies[r_i][i_i]
+      for afitt_gradient in afitt_gradients:
+        scaled_gradient = (afitt_gradient[0]*gr_scale*occupancy,
+                           afitt_gradient[1]*gr_scale*occupancy,
+                           afitt_gradient[2]*gr_scale*occupancy)
+        scaled_gradients.append(scaled_gradient)
+      afitt_allgradients[(r_i,i_i)] = scaled_gradients
+      afitt_alltargets[(r_i,i_i)] = gr_scale*afitt_energy*occupancy
 
-def apply_target_gradients(geometry, afitt_allgradients, afitt_alltargets):
+      #
+      # for afitt_gradient, i_seq in zip(afitt_gradients, ptrs):
+      #   scaled_gradient = (afitt_gradient[0]*gr_scale,
+      #                    afitt_gradient[1]*gr_scale,
+      #                    afitt_gradient[2]*gr_scale)
+      #   gx = scaled_gradient[0] * occupancy + geometry.gradients[i_seq][0]
+      #   gy = scaled_gradient[1] * occupancy + geometry.gradients[i_seq][1]
+      #   gz = scaled_gradient[2] * occupancy + geometry.gradients[i_seq][2]
+      #   geometry.gradients[i_seq] = (gx,gy,gz)
+      # geometry.residual_sum += gr_scale * afitt_energy * occupancy
+
+def apply_target_gradients(afitt_o, geometry, afitt_allgradients, afitt_alltargets):
   # import code; code.interact(local=dict(globals(), **locals()))
   # sys.exit()
   if (geometry.gradients is not None):
-    for i_seq in afitt_allgradients:
-      gradient=[0,0,0]
-      for loc in afitt_allgradients[i_seq]:
-        gradient[0] += loc[0]
-        gradient[1] += loc[1]
-        gradient[2] += loc[2]
-      if len(afitt_allgradients[i_seq]) >1:
-        for r in range(3):
-          gradient[r] /= len(afitt_allgradients[i_seq])
-      gx = gradient[0] + geometry.gradients[i_seq][0]
-      gy = gradient[1] + geometry.gradients[i_seq][1]
-      gz = gradient[2] + geometry.gradients[i_seq][2]
-      geometry.gradients[i_seq] = (gx,gy,gz)
-  for target in afitt_alltargets:
-    geometry.residual_sum += afitt_alltargets[target]
+    for key in afitt_allgradients:
+      r_i = key[0]
+      i_i = key[1]
+      gradients = afitt_allgradients[key]
+      target = afitt_alltargets[key]
+      ptrs=afitt_o.sites_cart_ptrs[r_i][i_i]
+      for i_seq, gradient in zip(ptrs,gradients):
+        gx = gradient[0] + geometry.gradients[i_seq][0]
+        gy = gradient[1] + geometry.gradients[i_seq][1]
+        gz = gradient[2] + geometry.gradients[i_seq][2]
+        geometry.gradients[i_seq] = (gx,gy,gz)
+      geometry.residual_sum += target
+
+  #   for i_seq in afitt_allgradients:
+  #     gradient=[0,0,0]
+  #     for loc in afitt_allgradients[i_seq]:
+  #       gradient[0] += loc[0]
+  #       gradient[1] += loc[1]
+  #       gradient[2] += loc[2]
+  #     if len(afitt_allgradients[i_seq]) >1:
+  #       for r in range(3):
+  #         gradient[r] /= len(afitt_allgradients[i_seq])
+  #     gx = gradient[0] + geometry.gradients[i_seq][0]
+  #     gy = gradient[1] + geometry.gradients[i_seq][1]
+  #     gz = gradient[2] + geometry.gradients[i_seq][2]
+  #     geometry.gradients[i_seq] = (gx,gy,gz)
+  # for target in afitt_alltargets:
+  #   geometry.residual_sum += afitt_alltargets[target]
   return geometry
 
 def get_afitt_energy(cif_file, ligand_names, pdb_hierarchy, ff, sites_cart):
@@ -375,37 +417,37 @@ def validate_afitt_params(params):
   # if params.scale not in ["gnorm"] or if type(params.scale) not  :
   #   raise Sorry("Invalid scale")
 
-def get_non_afitt_selection(model, ignore_hd, verbose=False):
+def get_non_afitt_selection(restraints_manager,xray_structure, ignore_hd, verbose=False):
   if ignore_hd:
-    general_selection = ~model.xray_structure.hd_selection()
+    general_selection = ~xray_structure.hd_selection()
   else:
-    general_selection = model.xray_structure.all_selection()
+    general_selection = xray_structure.all_selection()
   ligand_i_seqs = []
-  for ligand in model.restraints_manager.afitt_object.sites_cart_ptrs:
+  for ligand in restraints_manager.afitt_object.sites_cart_ptrs:
     for group in ligand:
       ligand_i_seqs += group
   for i_seq in ligand_i_seqs:
     general_selection[i_seq] = False
   if verbose:
-    print model.restraints_manager.afitt_object
+    print restraints_manager.afitt_object
     print "\nNumber of atoms in selection : %d" % len(filter(None, general_selection))
   return general_selection
 
-def get_afitt_selection(model, ignore_hd, verbose=False):
+def get_afitt_selection(restraints_manager,xray_structure, ignore_hd, verbose=False):
   if ignore_hd:
-    hd_selection = ~model.xray_structure.hd_selection()
+    hd_selection = ~xray_structure.hd_selection()
   else:
-    hd_selection = model.xray_structure.all_selection()
-  general_selection = ~model.xray_structure.all_selection()
+    hd_selection = xray_structure.all_selection()
+  general_selection = ~xray_structure.all_selection()
   ligand_i_seqs = []
-  for ligand in model.restraints_manager.afitt_object.sites_cart_ptrs:
+  for ligand in restraints_manager.afitt_object.sites_cart_ptrs:
     for group in ligand:
       ligand_i_seqs += group
   for i_seq in ligand_i_seqs:
     general_selection[i_seq] = True
   rc = general_selection&hd_selection
   if verbose:
-    print model.restraints_manager.afitt_object
+    print restraints_manager.afitt_object
     print "\nNumber of atoms in selection : %d" % len(filter(None, general_selection))
   return rc
 
@@ -422,28 +464,34 @@ def write_pdb_header(params, out=sys.stdout, remark="REMARK   3  "):
 def _show_gradient(g):
   return "(%9.3f %9.3f %9.3f)" % (g)
 
-def adjust_energy_and_gradients(result, model, afitt_object, verbose=False):
+def adjust_energy_and_gradients(result,
+                                restraints_manager,
+                                xray_structure,
+                                afitt_o,
+                                verbose=False):
+  # import code; code.interact(local=dict(globals(), **locals()))
+  # sys.exit()
   if result.afitt_residual_sum<1e-6:
     if verbose: 'returning without adjusting energy and gradients'
     return result
-  general_selection = get_non_afitt_selection(model, False)
-  rm = model.restraints_manager.select(general_selection)
-  xs = model.xray_structure.select(general_selection)
+  general_selection = get_non_afitt_selection(restraints_manager,xray_structure, False)
+  rm = restraints_manager.select(general_selection)
+  xs = xray_structure.select(general_selection)
   es = rm.energies_sites(
     sites_cart = xs.sites_cart(),
     compute_gradients = True,
-    skip_finalize = True,
+    #normalization = False,
   )
   protein_residual_sum = es.residual_sum
   protein_gradients = es.gradients
   #
-  general_selection = get_afitt_selection(model, False)
-  rm = model.restraints_manager.select(general_selection)
-  xs = model.xray_structure.select(general_selection)
+  general_selection = get_afitt_selection(restraints_manager,xray_structure, False)
+  rm = restraints_manager.select(general_selection)
+  xs = xray_structure.select(general_selection)
   es = rm.energies_sites(
     sites_cart = xs.sites_cart(),
     compute_gradients = True,
-    skip_finalize = True,
+    #normalization = False, #skip_finalize = True,
   )
   ligand_residual_sum = es.residual_sum
   ligand_gradients = es.gradients
@@ -472,13 +520,13 @@ def adjust_energy_and_gradients(result, model, afitt_object, verbose=False):
   #result.residual_sum -= nonbonded_residual_sum
   result.residual_sum -= ligand_residual_sum
   #result.ligand_gradients = result.complex_gradients.select(general_selection) - ligand_gradients
-  
+
   ligand_i = 0
   protein_i = 0
   if verbose:
-    print "%-40s %-40s %-40s %-40s" % ("phenix protein+ligand", 
-                                       "phenix+afitt", 
-                                       "phenix ligand only", 
+    print "%-40s %-40s %-40s %-40s" % ("phenix protein+ligand",
+                                       "phenix+afitt",
+                                       "phenix ligand only",
                                        "phenix+afitt final",
                                        )
   for i, g in enumerate(result.complex_gradients):
@@ -527,7 +575,11 @@ def adjust_energy_and_gradients(result, model, afitt_object, verbose=False):
     print 'really final',result.residual_sum
     for i, (s) in enumerate(result.gradients):
       print i, _show_gradient(s)
-    result.finalize_target_and_gradients()
+
+  result.normalization = True
+  result.finalize_target_and_gradients()
+
+  if verbose:
     print 'normalised',result.residual_sum
     for i, (s) in enumerate(result.gradients):
       print i, _show_gradient(s)
@@ -557,8 +609,9 @@ def finite_difference_test(pdb_file,
   pdb_hierarchy.atoms().reset_i_seq()
   xrs = pdb_hierarchy.extract_xray_structure()
   sites_cart=xrs.sites_cart()
+
   grm = processed_pdb_file.geometry_restraints_manager(
-    show_energies = False, 
+    show_energies = False,
     plain_pairs_radius = 5.0,
     )
   afitt_o = afitt_object(
@@ -574,6 +627,9 @@ def finite_difference_test(pdb_file,
     compute_gradients = True)
   if verbose: print "  phenix target:   %10.16f" %geometry.target
   if verbose: print "  phenix gradient: %10.16f" %geometry.gradients[atom][0]
+
+  geometry.complex_residual_sum = geometry.residual_sum
+  geometry.complex_gradients = copy.deepcopy(geometry.gradients)
   afitt_allgradients = {}
   afitt_alltargets = {}
   for resname_i,resname in enumerate(afitt_o.resname):
@@ -588,17 +644,28 @@ def finite_difference_test(pdb_file,
           resname_i, instance_i, afitt_allgradients, afitt_alltargets)
   if verbose: print "  afitt target:    %10.16f" %afitt_alltargets[(0,0)]
   if verbose:
-    if atom in afitt_allgradients.keys():
-      print "  afitt gradients: %10.16f" %afitt_allgradients[atom][0][0]
+    if atom in afitt_o.sites_cart_ptrs[0][0]:
+      i = afitt_o.sites_cart_ptrs[0][0].index(atom)
+      print "  afitt gradients: %10.16f" %afitt_allgradients[(0,0)][i][0]
 
-  geometry = apply_target_gradients(
-      geometry, afitt_allgradients, afitt_alltargets)
-  geometry.finalize_target_and_gradients()
+  geometry = apply_target_gradients(afitt_o,
+                                    geometry,
+                                    afitt_allgradients,
+                                    afitt_alltargets)
+  #geometry.finalize_target_and_gradients()
+  geometry.afitt_residual_sum = geometry.residual_sum -\
+                                geometry.complex_residual_sum
+  grm.afitt_object = afitt_o
+  geometry = adjust_energy_and_gradients(geometry,
+                                         grm,
+                                         xrs,
+                                         afitt_o,
+                                       )
+  geometry.target = geometry.residual_sum
 
   if verbose: print "  final target:    %10.16f" %geometry.target
   if verbose: print "  final gradient:  %10.16f" %geometry.gradients[atom][0]
   print "-> %10.9f"%(geometry.gradients[atom][0])
-
 
   if verbose: print "\nFinite Diff. Gradient"
   # finite differences
@@ -618,6 +685,10 @@ def finite_difference_test(pdb_file,
       compute_gradients = True)
     if verbose: print "  phenix target:   %10.16f" %geometry.target
     phts.append(geometry.target)
+
+
+    geometry.complex_residual_sum = geometry.residual_sum
+    geometry.complex_gradients = copy.deepcopy(geometry.gradients)
     for resname_i,resname in enumerate(afitt_o.resname):
       for instance_i, instance in enumerate(afitt_o.res_ids[resname_i]):
         afitt_input = afitt_o.make_afitt_input(sites_cart,
@@ -631,8 +702,19 @@ def finite_difference_test(pdb_file,
     if verbose: print "  afitt target:    %10.16f" %afitt_alltargets[(0,0)]
     afts.append(afitt_alltargets[(0,0)])
     geometry = apply_target_gradients(
-        geometry, afitt_allgradients, afitt_alltargets)
+        afitt_o, geometry, afitt_allgradients, afitt_alltargets)
     geometry.finalize_target_and_gradients()
+    geometry.afitt_residual_sum = geometry.residual_sum -\
+                                geometry.complex_residual_sum
+    grm.afitt_object = afitt_o
+    geometry = adjust_energy_and_gradients(
+      geometry,
+      grm,
+      xrs,
+      afitt_o,
+      )
+    geometry.target = geometry.residual_sum
+
     if verbose: print "  final target:    %10.16f" %geometry.target
     t=geometry.target
     ts.append(t)
@@ -642,29 +724,30 @@ def finite_difference_test(pdb_file,
 
   return 0
 
-def apply(result, afitt_object, sites_cart):
+def apply(result, afitt_o, sites_cart):
   result.complex_residual_sum = result.geometry.residual_sum
   # needs to be more selective!!!
   result.complex_gradients = copy.deepcopy(result.geometry.gradients)
   afitt_allgradients = {}
   afitt_alltargets = {}
-  for resname_i,resname in enumerate(afitt_object.resname):
-    for instance_i, instance in enumerate(afitt_object.res_ids[resname_i]):
-      afitt_input = afitt_object.make_afitt_input(sites_cart,
+  for resname_i,resname in enumerate(afitt_o.resname):
+    for instance_i, instance in enumerate(afitt_o.res_ids[resname_i]):
+      afitt_input = afitt_o.make_afitt_input(sites_cart,
                                                   resname_i,
                                                   instance_i,
       )
-      lines = call_afitt(afitt_input, afitt_object.ff)
+      lines = call_afitt(afitt_input, afitt_o.ff)
       process_afitt_output(lines,
                            result.geometry,
-                           afitt_object,
+                           afitt_o,
                            resname_i,
                            instance_i,
                            afitt_allgradients,
                            afitt_alltargets)
-  result.geometry = apply_target_gradients(result.geometry,
+  result.geometry = apply_target_gradients(afitt_o, result.geometry,
                                            afitt_allgradients,
                                            afitt_alltargets)
+
   # used as a trigger for adjust the energy and gradients
   result.afitt_residual_sum = result.geometry.residual_sum -\
                               result.complex_residual_sum
