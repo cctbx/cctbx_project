@@ -1,5 +1,6 @@
 from __future__ import division
 import os, sys
+import copy
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
 import StringIO
@@ -109,21 +110,40 @@ class afitt_object:
               ids.append([chain.id,conformer.altloc,residue.resseq])
     return ids
 
-  def check_covalent(self, pdb_hierarchy, chain_id, altloc, resseq):
-    cov_res=None
-    for model in pdb_hierarchy.models():
-      for chain in model.chains():
-        if chain.id != chain_id: continue
-        for conformer in chain.conformers():
-          if conformer.altloc != altloc: continue
-          for residue in conformer.residues():
-            if residue.resseq != resseq: continue
-            for atom in residue.atoms():
-              #if atom is bound to another atom return residue id and name
-              # should return only unique resid/names
-              # cov_res = [i_seq, i_seq]
-              continue
-    return cov_res
+  def check_covalent(self, geometry):
+    for resname_i,resname in enumerate(self.resname):
+      for instance_i, instance in enumerate(self.res_ids[resname_i]):
+        for ligand_atom in self.sites_cart_ptrs[resname_i][instance_i]:
+          nonligand_atoms = [atom.i_seq for atom in self.pdb_hierarchy.atoms() if atom.i_seq not in self.sites_cart_ptrs[resname_i][instance_i] ]
+    # cov_res=None
+          for nonligand_atom in nonligand_atoms:
+            bond = geometry.bond_params_table.lookup(ligand_atom, nonligand_atom)
+            if bond == None: continue
+
+
+            print ligand_atom, nonligand_atom
+    import code; code.interact(local=dict(globals(), **locals()))
+    sys.exit()
+    #           #if atom is bound to another atom return residue id and name
+    #           # should return only unique resid/names
+    #           # cov_res = [i_seq, i_seq]
+    #           continue
+    # return cov_res
+
+        # for residue_instance in self.res_ids[-1]:
+        # covalent_partner=self.check_covalent( pdb_hierarchy,
+        #                                   chain_id=residue_instance[0],
+        #                                   altloc=residue_instance[1],
+        #                                   resseq=residue_instance[2])
+        # covalent_partner=[35,36]
+        # if covalent_partner is None: continue
+        # self.covalent_data[(res,
+        #                     residue_instance[0],
+        #                     residue_instance[1],
+        #                     residue_instance[2])] = \
+        #                 covalent_object(covalent_partner, pdb_hierarchy)
+        # print self.covalent_data
+
 
   def process_cif_object(self, cif_object, pdb_hierarchy):
     for res in self.resname:
@@ -170,19 +190,19 @@ class afitt_object:
       else:
         self.formal_charges.append([])
 
-      for residue_instance in self.res_ids[-1]:
-        covalent_partner=self.check_covalent( pdb_hierarchy,
-                                          chain_id=residue_instance[0],
-                                          altloc=residue_instance[1],
-                                          resseq=residue_instance[2])
-        covalent_partner=[35,36]
-        if covalent_partner is None: continue
-        self.covalent_data[(res,
-                            residue_instance[0],
-                            residue_instance[1],
-                            residue_instance[2])] = \
-                        covalent_object(covalent_partner, pdb_hierarchy)
-        print self.covalent_data
+      # for residue_instance in self.res_ids[-1]:
+      #   covalent_partner=self.check_covalent( pdb_hierarchy,
+      #                                     chain_id=residue_instance[0],
+      #                                     altloc=residue_instance[1],
+      #                                     resseq=residue_instance[2])
+      #   covalent_partner=[35,36]
+      #   if covalent_partner is None: continue
+      #   self.covalent_data[(res,
+      #                       residue_instance[0],
+      #                       residue_instance[1],
+      #                       residue_instance[2])] = \
+      #                   covalent_object(covalent_partner, pdb_hierarchy)
+      #   print self.covalent_data
 
 
 
@@ -251,8 +271,6 @@ def process_afitt_output(afitt_output,
                     afitt_energy ))
   ### end_debug
   #geometry.residual_sum += afitt_energy
-
-
   #~ import inspect
   #~ for i in inspect.stack():
     #~ print i[1], i[2], i[4]
@@ -316,12 +334,11 @@ def apply_target_gradients(geometry, afitt_allgradients, afitt_alltargets):
       if len(afitt_allgradients[i_seq]) >1:
         for r in range(3):
           gradient[r] /= len(afitt_allgradients[i_seq])
-      gx = gradient[0] #+ geometry.gradients[i_seq][0]
-      gy = gradient[1] #+ geometry.gradients[i_seq][1]
-      gz = gradient[2] #+ geometry.gradients[i_seq][2]
+      gx = gradient[0] + geometry.gradients[i_seq][0]
+      gy = gradient[1] + geometry.gradients[i_seq][1]
+      gz = gradient[2] + geometry.gradients[i_seq][2]
       geometry.gradients[i_seq] = (gx,gy,gz)
   for target in afitt_alltargets:
-    print 'target',target,afitt_alltargets[target],geometry.residual_sum
     geometry.residual_sum += afitt_alltargets[target]
   return geometry
 
@@ -355,8 +372,8 @@ def validate_afitt_params(params):
                 params.ligand_file_name)
   if params.ff not in ["mmff94", "mmff94s", "pm3", "am1"]:
     raise Sorry("Invalid force field\n\t afitt.ff=%s" % params.ff)
-  if params.scale not in ["gnorm"]:
-    raise Sorry("Invalid scale")
+  # if params.scale not in ["gnorm"] or if type(params.scale) not  :
+  #   raise Sorry("Invalid scale")
 
 def get_non_afitt_selection(model, ignore_hd, verbose=False):
   if ignore_hd:
@@ -402,35 +419,118 @@ def write_pdb_header(params, out=sys.stdout, remark="REMARK   3  "):
                                  )
   print >> out, "%s" % remark
 
-def adjust_energy(result, model, afitt_object, verbose=False):
-  if result.afitt_residual_sum<1e-6: return result
-  general_selection = get_afitt_selection(model, False)
-  rm = model.restraints_manager.select(general_selection)
-  xs = model.xray_structure.select(general_selection)
-  es = rm.energies_sites(
-    sites_cart = xs.sites_cart(),
-    compute_gradients = False)
-  ligand_residual_sum = es.residual_sum
+def _show_gradient(g):
+  return "(%9.3f %9.3f %9.3f)" % (g)
+
+def adjust_energy_and_gradients(result, model, afitt_object, verbose=False):
+  if result.afitt_residual_sum<1e-6:
+    if verbose: 'returning without adjusting energy and gradients'
+    return result
   general_selection = get_non_afitt_selection(model, False)
   rm = model.restraints_manager.select(general_selection)
   xs = model.xray_structure.select(general_selection)
   es = rm.energies_sites(
     sites_cart = xs.sites_cart(),
-    compute_gradients = False)
+    compute_gradients = True,
+    skip_finalize = True,
+  )
   protein_residual_sum = es.residual_sum
-  nonbonded_residual_sum = result.complex_residual_sum -\
-                           (ligand_residual_sum + protein_residual_sum)
+  protein_gradients = es.gradients
+  #
+  general_selection = get_afitt_selection(model, False)
+  rm = model.restraints_manager.select(general_selection)
+  xs = model.xray_structure.select(general_selection)
+  es = rm.energies_sites(
+    sites_cart = xs.sites_cart(),
+    compute_gradients = True,
+    skip_finalize = True,
+  )
+  ligand_residual_sum = es.residual_sum
+  ligand_gradients = es.gradients
+  #
+  if verbose:
+    print 'gradients'
+    print 'phenix + afitt'
+    for i, s in enumerate(general_selection):
+      ls = ""
+      if s: ls = "*"
+      print "%3d %s %s" % (i+1,_show_gradient(result.gradients[i]), ls)
+    print 'protein-ligand complex'
+    for i, s in enumerate(general_selection):
+      ls = ""
+      if s: ls = "*"
+      print "%3d %s %s" % (i+1,_show_gradient(result.complex_gradients[i]), ls)
+    print 'protein only'
+    for i, s in enumerate(protein_gradients):
+      print "%3d %s" % (i+1,_show_gradient(s))
+    print 'ligand only'
+    for i, s in enumerate(ligand_gradients):
+      print "%3d %s" % (i+1,_show_gradient(s))
+
+  #nonbonded_residual_sum = result.complex_residual_sum -\
+  #                         (ligand_residual_sum + protein_residual_sum)
+  #result.residual_sum -= nonbonded_residual_sum
+  result.residual_sum -= ligand_residual_sum
+  #result.ligand_gradients = result.complex_gradients.select(general_selection) - ligand_gradients
+  
+  ligand_i = 0
+  protein_i = 0
+  if verbose:
+    print "%-40s %-40s %-40s %-40s" % ("phenix protein+ligand", 
+                                       "phenix+afitt", 
+                                       "phenix ligand only", 
+                                       "phenix+afitt final",
+                                       )
+  for i, g in enumerate(result.complex_gradients):
+    if verbose:
+      outl = "%5d %s %s" % (i,_show_gradient(g),str(general_selection[i])[0])
+      outl += _show_gradient(result.gradients[i])
+    if general_selection[i]:
+      # ligand
+      result.gradients[i] = (
+        result.gradients[i][0] - ligand_gradients[ligand_i][0],
+        result.gradients[i][1] - ligand_gradients[ligand_i][1],
+        result.gradients[i][2] - ligand_gradients[ligand_i][2],
+      )
+      if verbose:
+        outl += " %3d %s %s" % ( ligand_i,
+                                 _show_gradient(ligand_gradients[ligand_i]),
+                                 _show_gradient(result.gradients[i]),
+                                 )
+      ligand_i+=1
+    if verbose: print outl
+
   if verbose:
     print 'total (phenix+afitt) residual_sum',result.residual_sum
     print result.complex_residual_sum
-    print 'complex_residual_sum', result.complex_residual_sum 
+    print 'complex_residual_sum', result.complex_residual_sum
     print 'afitt_residual_sum', result.afitt_residual_sum
     print 'ligand_residual_sum',ligand_residual_sum
     print 'protein_residual_sum',protein_residual_sum
-    print 'nonbonded_residual_sum',nonbonded_residual_sum
-  result.residual_sum -= nonbonded_residual_sum
-  result.residual_sum -= ligand_residual_sum
-  if verbose: print 'really final',result.residual_sum
+    #print 'nonbonded_residual_sum',nonbonded_residual_sum
+    print '\n\n'
+    print 'gradients'
+    print 'protein only'
+    for i, s in enumerate(protein_gradients):
+      print "%3d %s" % (i,_show_gradient(s))
+    print 'ligand only'
+    for i, s in enumerate(ligand_gradients):
+      print "%3d %s" % (i,_show_gradient(s))
+    print 'protein-ligand complex'
+    for i, s in enumerate(result.complex_gradients):
+      print "%3d %s" % (i,_show_gradient(s))
+    print 'unadjusted'
+    for i, s in enumerate(result.gradients):
+      print "%3d %s" % (i,_show_gradient(s))
+
+  if verbose:
+    print 'really final',result.residual_sum
+    for i, (s) in enumerate(result.gradients):
+      print i, _show_gradient(s)
+    result.finalize_target_and_gradients()
+    print 'normalised',result.residual_sum
+    for i, (s) in enumerate(result.gradients):
+      print i, _show_gradient(s)
   return result
 
 def finite_difference_test(pdb_file,
@@ -458,14 +558,14 @@ def finite_difference_test(pdb_file,
   xrs = pdb_hierarchy.extract_xray_structure()
   sites_cart=xrs.sites_cart()
   grm = processed_pdb_file.geometry_restraints_manager(
-    show_energies = False, plain_pairs_radius = 5.0)
+    show_energies = False, 
+    plain_pairs_radius = 5.0,
+    )
   afitt_o = afitt_object(
               cif_file,
               ligand_names,
               pdb_hierarchy,
               scale=scale)
-  afitt_input='afitt_in'
-  afitt_output='afitt_out'
 
   if verbose: print "Analytical Gradient"
 
@@ -486,10 +586,10 @@ def finite_difference_test(pdb_file,
       process_afitt_output(
           lines, geometry, afitt_o,
           resname_i, instance_i, afitt_allgradients, afitt_alltargets)
-  if verbose: print "  afitt target:    %10.5f" %afitt_alltargets[(0,0)]
+  if verbose: print "  afitt target:    %10.16f" %afitt_alltargets[(0,0)]
   if verbose:
     if atom in afitt_allgradients.keys():
-      print "  afitt gradients: %10.5f" %afitt_allgradients[atom][0][0]
+      print "  afitt gradients: %10.16f" %afitt_allgradients[atom][0][0]
 
   geometry = apply_target_gradients(
       geometry, afitt_allgradients, afitt_alltargets)
@@ -497,7 +597,7 @@ def finite_difference_test(pdb_file,
 
   if verbose: print "  final target:    %10.16f" %geometry.target
   if verbose: print "  final gradient:  %10.16f" %geometry.gradients[atom][0]
-  print "%10.9f"%(geometry.gradients[atom][0])
+  print "-> %10.9f"%(geometry.gradients[atom][0])
 
 
   if verbose: print "\nFinite Diff. Gradient"
@@ -528,7 +628,7 @@ def finite_difference_test(pdb_file,
         process_afitt_output(
             lines, geometry, afitt_o,
             resname_i, instance_i, afitt_allgradients, afitt_alltargets)
-    if verbose: print "  afitt target:    %10.5f" %afitt_alltargets[(0,0)]
+    if verbose: print "  afitt target:    %10.16f" %afitt_alltargets[(0,0)]
     afts.append(afitt_alltargets[(0,0)])
     geometry = apply_target_gradients(
         geometry, afitt_allgradients, afitt_alltargets)
@@ -536,11 +636,39 @@ def finite_difference_test(pdb_file,
     if verbose: print "  final target:    %10.16f" %geometry.target
     t=geometry.target
     ts.append(t)
-  if verbose: print (phts[0]-phts[1])/(2*e)
-  if verbose: print (afts[0]-afts[1])/(2*e)
-  print "%10.9f" %((ts[0]-ts[1])/(2*e))
+  if verbose: print "  phenix finite diff.: %10.16f" %((phts[0]-phts[1])/(2*e))
+  if verbose: print "  afitt finite diff.: %10.16f" %((afts[0]-afts[1])/(2*e))
+  print "-> %10.9f" %((ts[0]-ts[1])/(2*e))
 
   return 0
+
+def apply(result, afitt_object, sites_cart):
+  result.complex_residual_sum = result.geometry.residual_sum
+  # needs to be more selective!!!
+  result.complex_gradients = copy.deepcopy(result.geometry.gradients)
+  afitt_allgradients = {}
+  afitt_alltargets = {}
+  for resname_i,resname in enumerate(afitt_object.resname):
+    for instance_i, instance in enumerate(afitt_object.res_ids[resname_i]):
+      afitt_input = afitt_object.make_afitt_input(sites_cart,
+                                                  resname_i,
+                                                  instance_i,
+      )
+      lines = call_afitt(afitt_input, afitt_object.ff)
+      process_afitt_output(lines,
+                           result.geometry,
+                           afitt_object,
+                           resname_i,
+                           instance_i,
+                           afitt_allgradients,
+                           afitt_alltargets)
+  result.geometry = apply_target_gradients(result.geometry,
+                                           afitt_allgradients,
+                                           afitt_alltargets)
+  # used as a trigger for adjust the energy and gradients
+  result.afitt_residual_sum = result.geometry.residual_sum -\
+                              result.complex_residual_sum
+  return result
 
 def bond_test(model):
   rm = model.restraints_manager
