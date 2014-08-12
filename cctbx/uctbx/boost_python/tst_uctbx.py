@@ -468,21 +468,23 @@ def exercise_exceptions():
     return
   try:
     u = uctbx.unit_cell((0,0,0,0,0,0))
-  except RuntimeError, e:
-    assert str(e) == "cctbx Error: Unit cell parameter is zero or negative."
+  except ValueError, e:
+    assert str(e) == "Unit cell parameter is zero or negative.",\
+      str(e)
   else:
     raise AssertionError, 'exception expected'
   try:
     u = uctbx.unit_cell(metrical_matrix=(0,0,0,0,0,0))
-  except RuntimeError, e:
-    assert str(e) == "cctbx Error: Corrupt metrical matrix."
+  except ValueError, e:
+    assert str(e) == "Corrupt metrical matrix.", str(e)
   else:
     raise AssertionError, 'exception expected'
   u = uctbx.unit_cell((2,3,5,80,100,110))
   try:
     u.two_theta((-3,4,-5), 1.5)
   except RuntimeError, e:
-    assert str(e).endswith("CCTBX_ASSERT(sin_theta <= 1.0) failure.")
+    assert str(e).endswith("CCTBX_ASSERT(sin_theta <= 1.0) failure."), \
+      str(e)
   else:
     raise AssertionError, 'exception expected'
 

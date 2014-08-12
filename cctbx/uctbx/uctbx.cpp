@@ -28,7 +28,7 @@ namespace cctbx { namespace uctbx {
 
     void throw_corrupt_metrical_matrix()
     {
-      throw error("Corrupt metrical matrix.");
+      throw std::invalid_argument("Corrupt metrical matrix.");
     }
 
     double
@@ -83,9 +83,11 @@ namespace cctbx { namespace uctbx {
     double d = 1.;
     for(std::size_t i=0;i<3;i++) d -= cos_ang_[i] * cos_ang_[i];
     d += 2. * cos_ang_[0] * cos_ang_[1] * cos_ang_[2];
-    if (d < 0.) throw error("Square of unit cell volume is negative.");
+    if (d < 0.) throw std::invalid_argument(
+        "Square of unit cell volume is negative.");
         volume_ = params_[0] * params_[1] * params_[2] * std::sqrt(d);
-    if (volume_ <= 0.) throw error("Unit cell volume is zero or negative.");
+    if (volume_ <= 0.) throw std::invalid_argument(
+      "Unit cell volume is zero or negative.");
 
     af::double6 &f = d_volume_d_params_;
         using scitbx::constants::pi_180;
@@ -118,7 +120,7 @@ namespace cctbx { namespace uctbx {
     }
     for(std::size_t i=0;i<3;i++) {
       if (r_cos_ang_[i] < -1 || r_cos_ang_[i] > 1) {
-        throw error(error_msg);
+        throw std::invalid_argument(error_msg);
       }
       double a_rad = std::acos(r_cos_ang_[i]);
       r_params_[i+3] = scitbx::rad_as_deg(a_rad);
@@ -139,7 +141,7 @@ namespace cctbx { namespace uctbx {
 
     double s1rca2 = std::sqrt(1. - r_cos_ang_[0] * r_cos_ang_[0]);
     if (s1rca2 == 0.) {
-      throw error(
+      throw std::invalid_argument(
        "Reciprocal unit cell alpha angle is zero or extremely close to zero.");
     }
 
@@ -238,20 +240,21 @@ namespace cctbx { namespace uctbx {
     std::size_t i;
     for(i=0;i<6;i++) {
       if (params_[i] <= 0.) {
-        throw error("Unit cell parameter is zero or negative.");
+        throw std::invalid_argument("Unit cell parameter is zero or negative.");
       }
     }
     for(i=3;i<6;i++) {
       double a_deg = params_[i];
       if (a_deg >= 180.) {
-        throw error(
+        throw std::invalid_argument(
           "Unit cell angle is greater than or equal to 180 degrees.");
       }
       double a_rad = scitbx::deg_as_rad(a_deg);
       cos_ang_[i-3] = std::cos(a_rad);
       sin_ang_[i-3] = std::sin(a_rad);
       if (sin_ang_[i-3] == 0.) {
-        throw error("Unit cell angle is zero or or extremely close to zero.");
+        throw std::invalid_argument(
+          "Unit cell angle is zero or or extremely close to zero.");
       }
     }
     init_volume();
@@ -295,7 +298,7 @@ namespace cctbx { namespace uctbx {
       initialize();
     }
     catch (error const&) {
-      throw error("Corrupt orthogonalization matrix.");
+      throw std::invalid_argument("Corrupt orthogonalization matrix.");
     }
   }
 

@@ -488,8 +488,12 @@ class _(boost.python.injector, ext.object):
       base_array_info = miller.array_info(source_type="ccp4_mtz")
     result = []
     for crystal in self.crystals():
+      try :
+        unit_cell = crystal.unit_cell()
+      except ValueError, e :
+        raise Sorry(str(e))
       crystal_symmetry_from_file = cctbx.crystal.symmetry(
-        unit_cell=crystal.unit_cell(),
+        unit_cell=unit_cell,
         space_group_info=self.space_group_info(),
         raise_sorry_if_incompatible_unit_cell=True)
       crystal_symmetry = crystal_symmetry_from_file.join_symmetry(
@@ -805,8 +809,12 @@ def mend_non_conforming_anomalous_column_types(all_types, all_labels):
 class _(boost.python.injector, ext.crystal):
 
   def crystal_symmetry(self):
+    try :
+      unit_cell = self.unit_cell()
+    except ValueError, e :
+      raise Sorry(str(e))
     return cctbx.crystal.symmetry(
-      unit_cell=self.unit_cell(),
+      unit_cell=unit_cell,
       space_group_info=self.mtz_object().space_group_info())
 
   def miller_set(self, anomalous_flag=None):
