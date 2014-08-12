@@ -121,6 +121,7 @@ class torsion_ncs(object):
     self.log = log
     self.params = params
     self.dp_ncs = None
+    self.rotamer_search_manager = None
     self.ncs_dihedral_proxies = ncs_dihedral_proxies
     self.ncs_groups = ncs_groups
     self.alignments = alignments
@@ -264,7 +265,6 @@ class torsion_ncs(object):
     self.min_length = 10
     self.sa = SidechainAngles(False)
     self.sidechain_angle_hash = self.build_sidechain_angle_hash()
-    self.rotamer_search_manager = None
     self.r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy)
     self.unit_cell = None
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
