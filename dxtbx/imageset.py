@@ -1136,6 +1136,7 @@ class ImageSetFactory(object):
     # Get the format class
     if check_format:
       format_class = Registry.find(filenames[0])
+      from format.FormatMultiImage import FormatMultiImage
       if issubclass(format_class, FormatMultiImage):
         assert len(filenames) == 1
         format_instance = format_class(filenames[0])
