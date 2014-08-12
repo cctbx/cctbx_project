@@ -65,7 +65,6 @@ class manager(object):
         gradients=None,
         force_restraints_model=False,
         disable_asu_cache=False,
-        skip_finalize=False,
         ):
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
@@ -117,7 +116,6 @@ class manager(object):
           gradients=result.gradients,
           disable_asu_cache=disable_asu_cache,
           normalization=False,
-          #skip_finalize=True,
           )
         result = afitt.apply(result, self.afitt_object, sites_cart)
 
@@ -144,8 +142,6 @@ class manager(object):
         gradients=result.gradients,
         normalization=False)
       result += result.ncs_groups
-    if not skip_finalize:
-      result.finalize_target_and_gradients()
     return result
 
   def energies_adp_iso(self,

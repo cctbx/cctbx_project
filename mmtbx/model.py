@@ -888,9 +888,10 @@ class manager(object):
       sites_cart = sites_cart.select(~self.ias_selection)
     ref_m_rm = self.reference_model_restraints_manager
     if(self.reference_sites_cart is None): ref_m_rm = None
-    skip_finalize=False
+    #
+    rm_norm = self.restraints_manager.normalization
     if self.restraints_manager.afitt_object:
-      skip_finalize=True
+      self.restraints_manager.normalization=False
     result = self.restraints_manager.energies_sites(
       sites_cart=sites_cart,
       geometry_flags=geometry_flags,
@@ -899,13 +900,14 @@ class manager(object):
       compute_gradients=compute_gradients,
       gradients=gradients,
       disable_asu_cache=disable_asu_cache,
-      skip_finalize=skip_finalize,
     )
+    self.restraints_manager.normalization = rm_norm
     if self.restraints_manager.afitt_object:
       from mmtbx.geometry_restraints import afitt
       result = afitt.adjust_energy_and_gradients(
         result,
-        self,
+        self.restraints_manager,
+        self.xray_structure,
         self.restraints_manager.afitt_object,
       )
       result.target = result.residual_sum
