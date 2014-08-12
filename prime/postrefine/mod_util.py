@@ -24,10 +24,10 @@ class intensities_scaler(object):
     '''
 
   def calc_avg_I(self, group_no, miller_index, I, sigI, G, B,
-                     p, sin_theta_over_lambda_sq, SE, avg_mode, iparams):
+                     p_set, ri_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams):
 
-    I_full = (G * flex.exp(-2*B*sin_theta_over_lambda_sq) * I)/p
-    sigI_full = (G * flex.exp(-2*B*sin_theta_over_lambda_sq) * sigI)/p
+    I_full = (G * flex.exp(-2*B*sin_theta_over_lambda_sq) * I)/p_set
+    sigI_full = (G * flex.exp(-2*B*sin_theta_over_lambda_sq) * sigI)/p_set
 
     #filter outliers iteratively (Read, 1999)
     sigma_max = 3
@@ -150,6 +150,7 @@ class intensities_scaler(object):
     B_all = flex.double()
     k_all = flex.double()
     p_all = flex.double()
+    ri_all = flex.double()
     SE_all = flex.double()
     sin_sq_all = flex.double()
     wavelength_all = flex.double()
@@ -191,6 +192,7 @@ class intensities_scaler(object):
                 G_all.extend(flex.double([pres.G]*len(pres.observations.data())))
                 B_all.extend(flex.double([pres.B]*len(pres.observations.data())))
                 p_all.extend(pres.partiality)
+                ri_all.extend(pres.ri_set)
                 sin_sq_all.extend(sin_theta_over_lambda_sq)
                 SE_all.extend(flex.double([pres.SE]*len(pres.observations.data())))
                 wavelength_all.extend(flex.double([pres.wavelength]*len(pres.observations.data())))
@@ -237,6 +239,7 @@ class intensities_scaler(object):
     G_all_sort = G_all.select(perm)
     B_all_sort = B_all.select(perm)
     p_all_sort = p_all.select(perm)
+    ri_all_sort = ri_all.select(perm)
     sin_sq_all_sort = sin_sq_all.select(perm)
     SE_all_sort = SE_all.select(perm)
 
@@ -274,7 +277,10 @@ class intensities_scaler(object):
                                                                      np.std(R_xy_final_all))
     txt_out += '\n'
 
-    return cn_group, group_id_list, miller_indices_all_sort, I_obs_all_sort, sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, np.median(wavelength_all), txt_out
+    return cn_group, group_id_list, miller_indices_all_sort, \
+           I_obs_all_sort, sigI_obs_all_sort,G_all_sort, B_all_sort, \
+           p_all_sort, ri_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, \
+           np.median(wavelength_all), txt_out
 
 
   def write_output(self, miller_indices_merge, I_merge, sigI_merge, stat_all,
@@ -350,8 +356,8 @@ class intensities_scaler(object):
     csv_out +='Bin, Low, High, Completeness, <N_obs>, Qmeas, Qw, CC1/2, N_ind, CCiso, N_ind, <I/sigI>\n'
     txt_out = '\n'
     txt_out += 'Summary for '+output_mtz_file_prefix+'_merge.mtz\n'
-    txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |Qmeas    Qw     CC1/2   N_ind |CCiso   Riso  N_ind| <I/sigI>   <I>\n'
-    txt_out += '---------------------------------------------------------------------------------------------------------------------------\n'
+    txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |Qmeas    Qw     CC1/2   N_ind |CCiso   N_ind| <I/sigI>   <I>\n'
+    txt_out += '--------------------------------------------------------------------------------------------------------------------\n'
     sum_r_meas_w_top = 0
     sum_r_meas_w_btm = 0
     sum_r_meas_top = 0
@@ -455,10 +461,10 @@ class intensities_scaler(object):
           plt.ylabel('I_obs')
           plt.show()
 
-      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %7.2f %6.0f %7.2f %10.2f' \
+      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f' \
           %(i, binner_template_asu.bin_d_range(i)[0], binner_template_asu.bin_d_range(i)[1], completeness*100, \
           len(miller_indices_obs_bin), len(miller_indices_bin),\
-          multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12_bin*100, n_refl_cc12_bin, cc_iso_bin*100, r_iso_bin*100, n_refl_cciso_bin, mean_i_over_sigi_bin, np.mean(I_bin))
+          multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12_bin*100, n_refl_cc12_bin, cc_iso_bin*100, n_refl_cciso_bin, mean_i_over_sigi_bin, np.mean(I_bin))
       txt_out += '\n'
 
 
@@ -511,13 +517,13 @@ class intensities_scaler(object):
     else:
       r_meas = float('Inf')
 
-    txt_out += '---------------------------------------------------------------------------------------------------------------------------\n'
-    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %7.2f %6.0f %7.2f %10.2f\n' \
+    txt_out += '--------------------------------------------------------------------------------------------------------------------\n'
+    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f\n' \
     %((sum_refl_obs/sum_refl_complete)*100, sum_refl_obs, \
      sum_refl_complete, np.mean(multiplicity_all), \
      r_meas*100, r_meas_w*100, cc12*100, len(I_even.select(i_even_filter_sel)), cc_iso*100, \
-     r_iso*100, n_refl_iso, np.mean(miller_array_merge.data()/miller_array_merge.sigmas()), np.mean(miller_array_merge.data()))
-    txt_out += '---------------------------------------------------------------------------------------------------------------------------\n'
+     n_refl_iso, np.mean(miller_array_merge.data()/miller_array_merge.sigmas()), np.mean(miller_array_merge.data()))
+    txt_out += '--------------------------------------------------------------------------------------------------------------------\n'
     txt_out += 'Average unit-cell parameters: (%6.2f, %6.2f, %6.2f %6.2f, %6.2f, %6.2f)'%(uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5])
     txt_out += '\n'
 
