@@ -18,6 +18,7 @@ class postref_results(object):
       refined_params=None,
       stats=None,
       partiality=None,
+      ri_set=None,
       frame_no=None,
       pickle_filename=None,
       wavelength=None,
@@ -26,6 +27,7 @@ class postref_results(object):
     self.observations = observations
     self.refined_params = refined_params
     self.partiality = partiality
+    self.ri_set = ri_set
     self.frame_no = frame_no
     self.pickle_filename = pickle_filename
     self.wavelength = wavelength

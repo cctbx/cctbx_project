@@ -41,9 +41,9 @@ class postref_handler(object):
     wavelength = observations_pickle["wavelength"]
 
     two_theta = observations.two_theta(wavelength=wavelength).data()
-    one_over_LP = (2 * flex.sin(two_theta))/(1 + (flex.cos(two_theta)**2))
     one_over_P = 2/(1 + (flex.cos(two_theta)**2))
-    observations = observations.customized_copy(data=observations.data()*one_over_P)
+    one_over_LP = (8 * (flex.sin(two_theta/2)))/(1 + (flex.cos(two_theta)**2))
+    observations = observations.customized_copy(data=observations.data()*one_over_LP)
 
     #set observations with target space group - !!! required for correct
     #merging due to map_to_asu command.
@@ -256,7 +256,7 @@ class postref_handler(object):
       crystal_init_orientation = pres_in.crystal_orientation
 
     two_theta = observations_original.two_theta(wavelength=wavelength).data()
-    partiality_fin, dummy = calc_partiality_anisotropy_set(uc_fin, rotx_fin, roty_fin,
+    partiality_fin, dummy, ri_fin = calc_partiality_anisotropy_set(uc_fin, rotx_fin, roty_fin,
                                                            observations_original.indices(),
                                                            ry_fin, rz_fin, re_fin,
                                                            two_theta, alpha_angle, wavelength, crystal_init_orientation,
@@ -276,6 +276,7 @@ class postref_handler(object):
             refined_params=refined_params,
             stats=stats,
             partiality=partiality_fin,
+            ri_set=ri_fin,
             frame_no=frame_no,
             pickle_filename=pickle_filename,
             wavelength=wavelength,
@@ -434,7 +435,7 @@ class postref_handler(object):
     re = 0.0026
     rotx = 0
     roty = 0
-    partiality_init, delta_xy_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm)
+    partiality_init, delta_xy_init, ri_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm)
 
     refined_params = np.array([G,B,rotx,roty,ry,rz,re,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
 
@@ -443,6 +444,7 @@ class postref_handler(object):
             refined_params=refined_params,
             stats=stats,
             partiality=partiality_init,
+            ri_set=ri_init,
             frame_no=frame_no,
             pickle_filename=pickle_filename,
             wavelength=wavelength)
@@ -462,13 +464,14 @@ def prepare_output(results,
   prep_output = inten_scaler.prepare_output(results, iparams, avg_mode)
   return prep_output
 
-def calc_avg_I(group_no, miller_index, I, sigI, G, B, p, sin_theta_over_lambda_sq, SE, avg_mode, iparams):
+def calc_avg_I(group_no, miller_index, I, sigI, G, B, p_set, rs_set,
+               sin_theta_over_lambda_sq, SE, avg_mode, iparams):
 
   #results is a list of postref_results objects
   #lenght of this list equals to number of input frames
   inten_scaler = intensities_scaler()
   avg_I_result = inten_scaler.calc_avg_I(group_no, miller_index, I, sigI, G, B,
-                     p, sin_theta_over_lambda_sq, SE, avg_mode, iparams)
+                     p_set, rs_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams)
   return avg_I_result
 
 def write_output(miller_indices_merge, I_merge, sigI_merge, stat_all,
