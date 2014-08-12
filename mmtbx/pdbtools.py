@@ -612,8 +612,11 @@ def set_atomic_charge (
   the scattering_type attributes will override the atom's element and charge
   when the structure is written out.
   """
-  assert isinstance(charge, int) and (selection is not None)
-  assert (abs(charge) < 10)
+  assert isinstance(charge, int)
+  if (selection is None) :
+    raise Sorry("You must specify an atom selection to apply a charge to.")
+  if (abs(charge) >= 10) :
+    raise Sorry("The charge must be in the range from -9 to 9.")
   if (log is None) : log = null_out()
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.selection(selection).iselection()
