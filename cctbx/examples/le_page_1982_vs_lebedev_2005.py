@@ -34,7 +34,7 @@ def sample(two_folds, fudge_factor, deltas, perturbations):
         uc_fudge = list(sym.unit_cell().parameters())
         for i in xrange(6): uc_fudge[i] *= 1+(random.random()*2-1)*fudge_factor
         try: uc_fudge = uctbx.unit_cell(uc_fudge)
-        except RuntimeError: pass
+        except ValueError: pass
         else: break
       deltas.append(
         two_fold.le_page_1982_delta(reduced_cell=uc_fudge, deg=True))

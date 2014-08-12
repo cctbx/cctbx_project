@@ -1768,7 +1768,8 @@ class pdb_file(object):
       raise Sorry("No coordinate file given.")
     self.pdb_raw_records = pdb_combined.raw_records
     self.pdb_inp = iotbx.pdb.input(source_info = None,
-      lines = flex.std_string(self.pdb_raw_records))
+      lines = flex.std_string(self.pdb_raw_records),
+      raise_sorry_if_format_error=True)
     if(crystal_symmetry is not None and crystal_symmetry.unit_cell() is not None):
       self.pdb_inp.crystal_symmetry(crystal_symmetry = crystal_symmetry)
 
