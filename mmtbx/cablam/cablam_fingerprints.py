@@ -137,12 +137,16 @@ class motif_instance(object):
 #{{{ check protein
 #-------------------------------------------------------------------------------
 def check_protein(protein, motif_name_list):
+  #debug = True
   debug = False
   found_motifs = {}
   motif_list = fetch_fingerprints(motif_name_list)
+  reslist = protein.keys()
+  reslist.sort()
   for motif in motif_list:
     found_motifs[motif.motif_name] = []
-  for resid in protein:
+  #for resid in protein:
+  for resid in reslist:
     residue = protein[resid]
     for motif in motif_list:
       candidate = motif_instance(motif)

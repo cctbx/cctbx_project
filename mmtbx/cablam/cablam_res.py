@@ -13,6 +13,7 @@ from __future__ import division
 #  non-standard residues?
 #2013-09-17: changed formatting for id_with_resname to rg.atom.pdb_label_columns
 #  Tried to add handling for HETATOMS in __init__. May or may not fully work.
+#Next: added mp_id() to produce MolPribity-friendly resids
 
 
 import sys
@@ -82,6 +83,27 @@ class linked_residue(object):
     # Formatted as: 'ALA A####I'
     resid_string = self.rg.atoms()[0].pdb_label_columns()[5:]
     return resid_string
+
+  def mp_id(self):
+    #An id consistent with MolProbity 'cnit' ids
+    #Formatted as: ccnnnnilttt
+    #  c: 2-char Chain ID, space for none
+    #  n: sequence number, right justified, space padded
+    #  i: insertion code, space for none
+    #  l: alternate ID, space for none
+    #  t: residue type (ALA, LYS, etc.), all caps left justified, space padded
+    #(Not sure about the 2-char Chain IDs just yet)
+    #(alternates are not going to be handled properly yet)
+    resid_string = self.id_with_resname()
+    resname = resid_string[0:3]
+    chain   = resid_string[3:5]
+    resnum  = resid_string[5:9]
+    ins     = resid_string[9:10]
+    alt     = self.firstalt("CA")
+    if alt is None or alt == '':
+      alt = " "
+    mpid_string = chain + resnum + ins + alt + resname
+    return mpid_string
 
   #Removes the references that sequence-adjacent linked_residue class instances
   #  have to this instance. Helps maintain correct sequence connectivity and may
