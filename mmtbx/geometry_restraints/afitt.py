@@ -237,37 +237,19 @@ class afitt_object:
       else:
         self.formal_charges.append([])
 
-      # for residue_instance in self.res_ids[-1]:
-      #   covalent_partner=self.check_covalent( pdb_hierarchy,
-      #                                     chain_id=residue_instance[0],
-      #                                     altloc=residue_instance[1],
-      #                                     resseq=residue_instance[2])
-      #   covalent_partner=[35,36]
-      #   if covalent_partner is None: continue
-      #   self.covalent_data[(res,
-      #                       residue_instance[0],
-      #                       residue_instance[1],
-      #                       residue_instance[2])] = \
-      #                   covalent_object(covalent_partner, pdb_hierarchy)
-      #   print self.covalent_data
-
-
-
-
     self.total_model_atoms=pdb_hierarchy.atoms_size()
     #~ import code; code.interact(local=dict(globals(), **locals()))
 
   def make_afitt_input(self, sites_cart, resname_i, instance_i):
     r_i=resname_i
     i_i=instance_i
-    cov_obj =  self.covalent_data[r_i][i_i]
     sites_cart_ptrs=self.sites_cart_ptrs[r_i][i_i]
     elements=self.atom_elements[r_i]
     assert len(elements) ==  len(sites_cart_ptrs), \
            "No. of atoms in residue %s, instance %d does not equal to \
            number of atom seq pointers." %(self.resname[resname_i], instance_i)
     f=StringIO.StringIO()
-    # if cov_obj is None:
+    # if len(self.covlanet_data) == 0 or self.covalent_data[r_i][i_i] == None:
     if True:
       f.write('%d\n' %self.n_atoms[r_i])
       f.write('residue_type %s chain %s number %d total_charge %d\n'
@@ -283,6 +265,7 @@ class afitt_object:
         for fcharge in self.formal_charges[r_i]:
           f.write ('%d\n' %fcharge)
     else:
+      cov_obj =  self.covalent_data[r_i][i_i]
       f.write('%d\n' %(self.n_atoms[r_i] + cov_obj.n_atoms) )
       f.write('residue_type %s chain %s number %d total_charge %d\n'
               %(self.resname[r_i],
@@ -563,13 +546,20 @@ def adjust_energy_and_gradients(result,
     return result
   general_selection = get_non_afitt_selection(restraints_manager, sites_cart, hd_selection, False)
   rm = restraints_manager.select(general_selection)
-  old_normalisation = rm.normalization
-  rm.normalization=False
-  es = rm.energies_sites(
-    sites_cart = sites_cart.select(general_selection),
-    compute_gradients = True,
-  )
-  rm.normalization = old_normalisation
+  old_normalisation = getattr(rm, "normalization", None)
+  if old_normalisation is None:
+    es = rm.energies_sites(
+      sites_cart = sites_cart.select(general_selection),
+      compute_gradients = True,
+      normalization = False,
+    )
+  else:
+    rm.normalization=False
+    es = rm.energies_sites(
+      sites_cart = sites_cart.select(general_selection),
+      compute_gradients = True,
+    )
+    rm.normalization = old_normalisation
   protein_residual_sum = es.residual_sum
   protein_gradients = es.gradients
   #
@@ -579,13 +569,20 @@ def adjust_energy_and_gradients(result,
                                           False,
                                          )
   rm = restraints_manager.select(general_selection)
-  old_normalisation = rm.normalization
-  rm.normalization=False  
-  es = rm.energies_sites(
-    sites_cart = sites_cart.select(general_selection),
-    compute_gradients = True,
-  )
-  rm.normalization = old_normalisation
+  old_normalisation = getattr(rm, "normalization", None)
+  if old_normalisation is None:
+    es = rm.energies_sites(
+      sites_cart = sites_cart.select(general_selection),
+      compute_gradients = True,
+      normalization = False,
+    )
+  else:
+    rm.normalization=False
+    es = rm.energies_sites(
+      sites_cart = sites_cart.select(general_selection),
+      compute_gradients = True,
+    )
+    rm.normalization = old_normalisation
   ligand_residual_sum = es.residual_sum
   ligand_gradients = es.gradients
   #
@@ -735,10 +732,21 @@ def finite_difference_test(pdb_file,
   grm.afitt_object = afitt_o
   geometry = adjust_energy_and_gradients(geometry,
                                          grm,
-                                         xrs,
+                                         xrs.sites_cart(),
+                                         xrs.hd_selection(),
                                          afitt_o,
                                        )
   geometry.target = geometry.residual_sum
+  # geometry.afitt_residual_sum = geometry.residual_sum -\
+  #                               geometry.complex_residual_sum
+  # grm.afitt_object = afitt_o
+  # geometry = adjust_energy_and_gradients(
+  #       geometry,
+  #       grm,
+  #       xrs,
+  #       afitt_o,
+  #     )
+  # geometry.target = geometry.residual_sum
 
   if verbose: print "  final target:    %10.16f" %geometry.target
   if verbose: print "  final gradient:  %10.16f" %geometry.gradients[atom][0]
@@ -787,7 +795,8 @@ def finite_difference_test(pdb_file,
     geometry = adjust_energy_and_gradients(
       geometry,
       grm,
-      xrs,
+      sites_cart,
+      xrs.hd_selection(),
       afitt_o,
       )
     geometry.target = geometry.residual_sum
