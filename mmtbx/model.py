@@ -900,17 +900,8 @@ class manager(object):
       compute_gradients=compute_gradients,
       gradients=gradients,
       disable_asu_cache=disable_asu_cache,
+      hd_selection=self.xray_structure.hd_selection(),
     )
-    self.restraints_manager.normalization = rm_norm
-    if self.restraints_manager.afitt_object:
-      from mmtbx.geometry_restraints import afitt
-      result = afitt.adjust_energy_and_gradients(
-        result,
-        self.restraints_manager,
-        self.xray_structure,
-        self.restraints_manager.afitt_object,
-      )
-      result.target = result.residual_sum
     return result
 
   def solvent_selection(self, include_ions=False):
