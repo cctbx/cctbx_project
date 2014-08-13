@@ -65,6 +65,7 @@ class manager(object):
         gradients=None,
         force_restraints_model=False,
         disable_asu_cache=False,
+        hd_selection=None,
         ):
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
@@ -98,7 +99,6 @@ class manager(object):
           mdgx_structs=self.amber_mdgx_structs)
         result.geometry = amber_geometry_manager.energies_sites(
           compute_gradients=compute_gradients)
-        result.finalize_target_and_gradients()
 
       elif (self.use_afitt and
             len(sites_cart)==self.afitt_object.total_model_atoms
@@ -120,7 +120,15 @@ class manager(object):
           normalization=False,
           )
         result = afitt.apply(result, self.afitt_object, sites_cart)
-
+        result = afitt.adjust_energy_and_gradients(
+          result,
+          self,
+          sites_cart,
+          hd_selection,
+          self.afitt_object,
+        )
+        result.target = result.residual_sum
+ 
       # default restraints manager
       else :
         result.geometry = self.geometry.energies_sites(
@@ -132,13 +140,11 @@ class manager(object):
           gradients=result.gradients,
           disable_asu_cache=disable_asu_cache,
           normalization=False)
-        result.finalize_target_and_gradients()
 
       result += result.geometry
 
     if (self.ncs_groups is None):
       result.ncs_groups = None
-      result.finalize_target_and_gradients()
     else:
       result.ncs_groups = self.ncs_groups.energies_sites(
         sites_cart=sites_cart,
@@ -146,7 +152,7 @@ class manager(object):
         gradients=result.gradients,
         normalization=False)
       result += result.ncs_groups
-      result.finalize_target_and_gradients()
+    result.finalize_target_and_gradients()
     return result
 
   def energies_adp_iso(self,

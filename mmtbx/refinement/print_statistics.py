@@ -190,7 +190,8 @@ class refinement_monitor(object):
         afitt_geom.show()
       general_selection = afitt.get_non_afitt_selection(
         model.restraints_manager,
-        model.xray_structure,
+        model.xray_structure.sites_cart(),
+        model.xray_structure.hd_selection(),
         ignore_hd)
     geom = model.geometry_statistics(
       ignore_hd = ignore_hd,

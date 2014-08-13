@@ -417,11 +417,16 @@ def validate_afitt_params(params):
   # if params.scale not in ["gnorm"] or if type(params.scale) not  :
   #   raise Sorry("Invalid scale")
 
-def get_non_afitt_selection(restraints_manager,xray_structure, ignore_hd, verbose=False):
+def get_non_afitt_selection(restraints_manager,
+                            sites_cart,
+                            hd_selection,
+                            ignore_hd,
+                            verbose=False,
+                            ):
   if ignore_hd:
-    general_selection = ~xray_structure.hd_selection()
+    general_selection = ~hd_selection
   else:
-    general_selection = xray_structure.all_selection()
+    general_selection = hd_selection|~hd_selection
   ligand_i_seqs = []
   for ligand in restraints_manager.afitt_object.sites_cart_ptrs:
     for group in ligand:
@@ -431,14 +436,22 @@ def get_non_afitt_selection(restraints_manager,xray_structure, ignore_hd, verbos
   if verbose:
     print restraints_manager.afitt_object
     print "\nNumber of atoms in selection : %d" % len(filter(None, general_selection))
+    print list(general_selection)
   return general_selection
 
-def get_afitt_selection(restraints_manager,xray_structure, ignore_hd, verbose=False):
+def get_afitt_selection(restraints_manager,
+                        sites_cart,
+                        hd_selection,
+                        ignore_hd,
+                        verbose=False,
+                        ):
   if ignore_hd:
-    hd_selection = ~xray_structure.hd_selection()
+    hd_selection = ~hd_selection
   else:
-    hd_selection = xray_structure.all_selection()
-  general_selection = ~xray_structure.all_selection()
+    hd_selection = hd_selection|~hd_selection
+  general_selection = hd_selection&~hd_selection
+  print 'general_selection'
+  print list(general_selection)
   ligand_i_seqs = []
   for ligand in restraints_manager.afitt_object.sites_cart_ptrs:
     for group in ligand:
@@ -466,7 +479,8 @@ def _show_gradient(g):
 
 def adjust_energy_and_gradients(result,
                                 restraints_manager,
-                                xray_structure,
+                                sites_cart,
+                                hd_selection,
                                 afitt_o,
                                 verbose=False):
   # import code; code.interact(local=dict(globals(), **locals()))
@@ -474,25 +488,31 @@ def adjust_energy_and_gradients(result,
   if result.afitt_residual_sum<1e-6:
     if verbose: 'returning without adjusting energy and gradients'
     return result
-  general_selection = get_non_afitt_selection(restraints_manager,xray_structure, False)
+  general_selection = get_non_afitt_selection(restraints_manager, sites_cart, hd_selection, False)
   rm = restraints_manager.select(general_selection)
-  xs = xray_structure.select(general_selection)
+  old_normalisation = rm.normalization
+  rm.normalization=False
   es = rm.energies_sites(
-    sites_cart = xs.sites_cart(),
+    sites_cart = sites_cart.select(general_selection),
     compute_gradients = True,
-    #normalization = False,
   )
+  rm.normalization = old_normalisation
   protein_residual_sum = es.residual_sum
   protein_gradients = es.gradients
   #
-  general_selection = get_afitt_selection(restraints_manager,xray_structure, False)
+  general_selection = get_afitt_selection(restraints_manager,
+                                          sites_cart,
+                                          hd_selection,
+                                          False,
+                                         )
   rm = restraints_manager.select(general_selection)
-  xs = xray_structure.select(general_selection)
+  old_normalisation = rm.normalization
+  rm.normalization=False  
   es = rm.energies_sites(
-    sites_cart = xs.sites_cart(),
+    sites_cart = sites_cart.select(general_selection),
     compute_gradients = True,
-    #normalization = False, #skip_finalize = True,
   )
+  rm.normalization = old_normalisation
   ligand_residual_sum = es.residual_sum
   ligand_gradients = es.gradients
   #
@@ -515,11 +535,7 @@ def adjust_energy_and_gradients(result,
     for i, s in enumerate(ligand_gradients):
       print "%3d %s" % (i+1,_show_gradient(s))
 
-  #nonbonded_residual_sum = result.complex_residual_sum -\
-  #                         (ligand_residual_sum + protein_residual_sum)
-  #result.residual_sum -= nonbonded_residual_sum
   result.residual_sum -= ligand_residual_sum
-  #result.ligand_gradients = result.complex_gradients.select(general_selection) - ligand_gradients
 
   ligand_i = 0
   protein_i = 0
@@ -571,18 +587,6 @@ def adjust_energy_and_gradients(result,
     for i, s in enumerate(result.gradients):
       print "%3d %s" % (i,_show_gradient(s))
 
-  if verbose:
-    print 'really final',result.residual_sum
-    for i, (s) in enumerate(result.gradients):
-      print i, _show_gradient(s)
-
-  result.normalization = True
-  result.finalize_target_and_gradients()
-
-  if verbose:
-    print 'normalised',result.residual_sum
-    for i, (s) in enumerate(result.gradients):
-      print i, _show_gradient(s)
   return result
 
 def finite_difference_test(pdb_file,
