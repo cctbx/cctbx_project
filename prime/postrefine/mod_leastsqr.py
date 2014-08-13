@@ -518,7 +518,6 @@ class leastsqr_handler(object):
     R_xy_init = np.sum(delta_xy_init**2)
     R_xy_final = np.sum(delta_xy_fin**2)
 
-    print R_init, R_final, CC_init, CC_final
     if R_init < R_final:
       CC_final = CC_init
       R_final = R_init
