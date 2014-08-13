@@ -98,14 +98,16 @@ class manager(object):
           mdgx_structs=self.amber_mdgx_structs)
         result.geometry = amber_geometry_manager.energies_sites(
           compute_gradients=compute_gradients)
+        result.finalize_target_and_gradients()
 
-      #afitt
-      ##################################################################
-      #                                                                #
-      # AFITT CALL - OpenEye AFITT gradients and target                #
-      #                                                                #
-      ##################################################################
-      elif (self.use_afitt and len(sites_cart)==self.afitt_object.total_model_atoms):
+      elif (self.use_afitt and
+            len(sites_cart)==self.afitt_object.total_model_atoms
+            ):
+        ##################################################################
+        #                                                                #
+        # AFITT CALL - OpenEye AFITT gradients and target                #
+        #                                                                #
+        ##################################################################
         from mmtbx.geometry_restraints import afitt
         result.geometry = self.geometry.energies_sites(
           sites_cart=sites_cart,
@@ -130,11 +132,13 @@ class manager(object):
           gradients=result.gradients,
           disable_asu_cache=disable_asu_cache,
           normalization=False)
+        result.finalize_target_and_gradients()
 
       result += result.geometry
 
     if (self.ncs_groups is None):
       result.ncs_groups = None
+      result.finalize_target_and_gradients()
     else:
       result.ncs_groups = self.ncs_groups.energies_sites(
         sites_cart=sites_cart,
@@ -142,6 +146,7 @@ class manager(object):
         gradients=result.gradients,
         normalization=False)
       result += result.ncs_groups
+      result.finalize_target_and_gradients()
     return result
 
   def energies_adp_iso(self,
