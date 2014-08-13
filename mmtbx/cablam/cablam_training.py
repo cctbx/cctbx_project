@@ -1193,7 +1193,7 @@ def run(args):
       elif params.probe_mode == 'superpose':
         #trim_motifs(resdata, filename, motif_list)
         superpose_refs = trim_motifs(found_motifs, filename,superpose_refs)
-        superpose_motifs(motif_list)
+        #superpose_motifs(motif_list)
       else:
         sys.stderr.write('\n\nUnrecognized probemode request\n\n')
         sys.exit()

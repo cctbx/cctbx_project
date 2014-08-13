@@ -49,6 +49,7 @@ from __future__ import division
 #  Added stand-alone output for HELIX/SHEET records.
 #2014-03-07: cleaned up commandline control for outputs, now all "output="
 #Next: iotbx.file_reader incorporated to control input, cleaned up oneline output
+#Next: give_text now in MolProbity format (colons and cnit ids)
 
 import os, sys
 import libtbx.phil.command_line #argument parsing
@@ -798,13 +799,15 @@ def give_points(outliers, writeto=sys.stdout):
 def give_text(outliers, writeto=sys.stdout):
   #This prints a comma-separated line of data for each outlier residue
   #Intended for easy machine readability
-  writeto.write('\nresidue,contour_level,loose_alpha,regular_alpha,loose_beta,regular_beta,threeten')
+  #writeto.write('\nresidue,contour_level,loose_alpha,regular_alpha,loose_beta,regular_beta,threeten')
+  writeto.write('residue,contour_level,loose_alpha,regular_beta,threeten')
   reskeys = outliers.keys()
   reskeys.sort()
   for resid in reskeys:
     outlier = outliers[resid]
-    outlist = [outlier.residue.id_with_resname(), '%.5f' %outlier.outlier_level, '%.5f' %outlier.loose_alpha, '%.5f' %outlier.regular_alpha, '%.5f' %outlier.loose_beta, '%.5f' %outlier.regular_beta, '%.5f' %outlier.loose_threeten]
-    writeto.write('\n'+','.join(outlist))
+    #outlist = [outlier.residue.mp_id(), '%.5f' %outlier.outlier_level, '%.5f' %outlier.loose_alpha, '%.5f' %outlier.regular_alpha, '%.5f' %outlier.loose_beta, '%.5f' %outlier.regular_beta, '%.5f' %outlier.loose_threeten]
+    outlist = [outlier.residue.mp_id(), '%.5f' %outlier.outlier_level, '%.5f' %outlier.loose_alpha, '%.5f' %outlier.regular_beta, '%.5f' %outlier.loose_threeten]
+    writeto.write('\n'+':'.join(outlist))
   writeto.write('\n')
 #-------------------------------------------------------------------------------
 #}}}
@@ -1006,78 +1009,137 @@ def run(args):
 #-------------------------------------------------------------------------------
 #}}}
 
-class beta_strand(object):
-  def __init__(self):
-    self.members = []
-    self.mates = []
-
-def get_strands(motifs):
-  strands = []
-  for motif in motifs:
-    if motif.motif_type == 'sheet':
-      strand = beta_strand()
-      start = motif.motif_start
-      end = motif.motif_end
-      curres = start
-      strand.members.append(start)
-      while curres is not end:
-        curres = curres.nextres
-        strand.members.append(curres)
-      strands.append(strand)
-  return strands
-
-def pair_beta(strands):
-  #CA-CA interstrand distance for antiparallel alternates between ~4 and ~6
-  #for parallel, distances are consistantly just under 5
-  dist_cutoff = 6.5
-  index1 = 0
-  while index1 < len(strands):
-    strand1 = strands[index1]
-    index2 = index1 + 1
-    while index2 < len(strands):
-      strand2 = strands[index2]
-      for residue1 in strand1.members:
-        res1ca = residue1.getatomxyz('CA')
-        for residue2 in strand2.members:
-          res2ca = residue2.getatomxyz('CA')
-          resdist = cablam_math.veclen(cablam_math.vectorize(res1ca,res2ca))
-          if resdist <= dist_cutoff:
-            strand1.mates.append(strand2)
-            strand2.mates.append(strand1)
-      index2 += 1
-    index1 += 1
-
-
-
-#The following is a function in progress to connect beta strands into sheets.
-#Do not use without further development
-def stitch_beta(motifs): #pass in an iterable of motif_chunk class instances
-  strands = []
-  for motif in motifs:
-    if motif.motif_type == 'sheet':
-      strands.append(motif)
-    else: pass
-  for strand1 in strands:
-    for strand2 in strands:
-      strand1_dir = cablam_math.vectorize(strand1.motif_start.getatomxyz('CA'),strand1.motif_end.getatomxyz('CA'))
-      strand2_dir = cablam_math.vectorize(strand2.motif_start.getatomxyz('CA'),strand2.motif_end.getatomxyz('CA'))
-      strand_dot_product = cablam_math.dot(strand1_dir,strand2_dir)
-      if strand_dot_product < 0: #antiparallel
-        curres = strand1.motif_start
-        pass
-      elif strand_dot_product >0: #parallel
-        pass
-      pass
-      #check if parallel or antiparallel with dot product
-      #for residue in strand 1:
-      #for residue in strand 2:
-        #if close enough:
-        #walk in direction
-
-
-  return sheets
-
-#Find potential mates based on distance
-#For each mate, see if there's a good parrallel/ antiparallel local direction (3 residues?)
-#Based on par/anti-par, find best alignment of residues minimizing res-res distance
-#Check pleat for this alignment
+#class beta_strand(object):
+#  def __init__(self):
+#    self.members = []
+#    self.mates = []
+#
+#def get_strands(motifs):
+#  strands = []
+#  for motif in motifs:
+#    if motif.motif_type == 'sheet':
+#      strand = beta_strand()
+#      start = motif.motif_start
+#      end = motif.motif_end
+#      curres = start
+#      strand.members.append(start)
+#      while curres is not end:
+#        curres = curres.nextres
+#        strand.members.append(curres)
+#      strands.append(strand)
+#  return strands
+#
+#def pair_beta(strands):
+#  #CA-CA interstrand distance for antiparallel alternates between ~4 and ~6
+#  #for parallel, distances are consistantly just under 5
+#  dist_cutoff = 6.5
+#  index1 = 0
+#  while index1 < len(strands):
+#    strand1 = strands[index1]
+#    index2 = index1 + 1
+#    while index2 < len(strands):
+#      strand2 = strands[index2]
+#      for residue1 in strand1.members:
+#        res1ca = residue1.getatomxyz('CA')
+#        for residue2 in strand2.members:
+#          res2ca = residue2.getatomxyz('CA')
+#          resdist = cablam_math.veclen(cablam_math.vectorize(res1ca,res2ca))
+#          if resdist <= dist_cutoff:
+#            strand1.mates.append(strand2)
+#            strand2.mates.append(strand1)
+#      index2 += 1
+#    index1 += 1
+#
+#
+#
+##The following is a function in progress to connect beta strands into sheets.
+##Do not use without further development
+#def stitch_beta(motifs): #pass in an iterable of motif_chunk class instances
+#  strands = []
+#  for motif in motifs:
+#    if motif.motif_type == 'sheet':
+#      strands.append(motif)
+#    else: pass
+#  for strand1 in strands:
+#    for strand2 in strands:
+#      strand1_dir = cablam_math.vectorize(strand1.motif_start.getatomxyz('CA'),strand1.motif_end.getatomxyz('CA'))
+#      strand2_dir = cablam_math.vectorize(strand2.motif_start.getatomxyz('CA'),strand2.motif_end.getatomxyz('CA'))
+#      strand_dot_product = cablam_math.dot(strand1_dir,strand2_dir)
+#      if strand_dot_product < 0: #antiparallel
+#        curres = strand1.motif_start
+#        pass
+#      elif strand_dot_product >0: #parallel
+#        pass
+#      pass
+#      #check if parallel or antiparallel with dot product
+#      #for residue in strand 1:
+#      #for residue in strand 2:
+#        #if close enough:
+#        #walk in direction
+#
+#
+#  return sheets
+#
+##Find potential mates based on distance
+##For each mate, see if there's a good parrallel/ antiparallel local direction (3 residues?)
+##Based on par/anti-par, find best alignment of residues minimizing res-res distance
+##Check pleat for this alignment
+##
+##Define units as peptides, not residues
+#class beta_strand(object):
+#  def __init__(self):
+#    self.residues
+#    self.peptides = []
+#    self.mates = []
+#
+#class peptide(object):
+#  def check_for_mate(self, other_peptide, dist_cutoff = 6.5):
+#    dist11 = find_distance(self.res1_CA,other_peptide.res1_CA)
+#    dist22 = find_distance(self.res2_CA,other_peptide.res2_CA)
+#    dist12 = find_distance(self.res1_CA,other_peptide.res2_CA)
+#    dist21 = find_distance(self.res2_CA,other_peptide.res1_CA)
+#    if dist11 <= dist_cutoff and dist22 <= dist_cutoff:
+#      self.mates.append(peptide_mate(other_peptide))
+#    elif dist12 <= dist_cutoff and dist21 <= dist_cutoff:
+#      self.mates.append(peptide_mate(other_peptide))
+#    else:
+#      pass
+#
+#  def __init__(self, residue):
+#    self.dist_cutoff = 6.5
+#    self.res1 = residue
+#    self.res1_CA = residue.getatomxyz("CA")
+#    self.res2 = residue.nextres
+#    self.res2_CA = res2.getatomxyz("CA")
+#    self.mates = []
+#    self.nextpep = None
+#    self.prevpep = None
+#
+#class peptide_mate(object):
+#  def __init__(self, peptide):
+#    self.peptide = peptide
+#
+#def find_distance(point1,point2):
+#  return cablam_math.veclen(cablam_math.vectorize(point1,point2))
+#
+#def get_strands(motifs):
+#  strands = []
+#  for motif in motifs:
+#    if motif.motif_type == 'sheet':
+#      strand = beta_strand()
+#      start = motif.motif_start
+#      end = motif.motif_end
+#      curres = start
+#      strand.members.append(start)
+#      prevpep = None
+#      while curres is not end:
+#        peptide = peptide(curres)
+#        if prevpep:
+#          peptide.prevpep = prevpep
+#          prevpep.nextpep = peptide
+#        strand.peptides.append(peptide)
+#        curres = curres.nextres
+#        prevpep = peptide
+#        strand.residues.append(curres)
+#      strands.append(strand)
+#  return strands
