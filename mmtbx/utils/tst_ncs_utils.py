@@ -54,7 +54,7 @@ class test_rotation_angles_conversion(object):
       pdb_hierarchy_inp=pdb_obj,
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])
-    results = nu.concatenate_rot_tran(transforms_obj,deg=False)
+    results = nu.concatenate_rot_tran(transforms_obj)
     expected = flex.double([
       -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
       2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
@@ -74,7 +74,7 @@ class test_rotation_angles_conversion(object):
       -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
       2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
     transforms_obj = nu.update_rot_tran(
-      x=x,transforms_obj=transforms_obj,deg=False)
+      x=x,transforms_obj=transforms_obj)
     rot_results, tran_results = nu.get_rotation_translation_as_list(
       transforms_obj=transforms_obj)
     rot_expected = [self.rotation1, self.rotation2]
@@ -173,23 +173,21 @@ class test_rotation_angles_conversion(object):
       translations=[self.translation1,self.translation2])
 
     ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
-    x1 = nu.concatenate_rot_tran(transforms_obj,deg=False)
+    x1 = nu.concatenate_rot_tran(transforms_obj)
     x2 = nu.shake_transformations(
       x = x1,
       shake_angles_sigma=0.035,
       shake_translation_sigma=0.5)
     # update with shaken parameters
     transforms_obj = nu.update_rot_tran(
-      x=x2, transforms_obj=transforms_obj,deg=False)
+      x=x2, transforms_obj=transforms_obj)
     ncs_restraints_group_list = nu.update_rot_tran(
-      x=x2, ncs_restraints_group_list=ncs_restraints_group_list,
-      deg=False)
+      x=x2, ncs_restraints_group_list=ncs_restraints_group_list)
 
     x3 = nu.concatenate_rot_tran(
-      ncs_restraints_group_list=ncs_restraints_group_list,
-      deg=False)
+      ncs_restraints_group_list=ncs_restraints_group_list)
     x4 = nu.concatenate_rot_tran(
-      transforms_obj=transforms_obj,deg=False)
+      transforms_obj=transforms_obj)
     assert abs(sum(list(x3-x4))) < 1.0e-3
 
     the,psi,phi =x2[6:9]
@@ -213,9 +211,9 @@ class test_rotation_angles_conversion(object):
 
     for deg in [True,False]:
       x = nu.concatenate_rot_tran(
-        ncs_restraints_group_list=ncs_restraints_group_list,deg=deg)
+        ncs_restraints_group_list=ncs_restraints_group_list)
       ncs_restraints_group_list = nu.update_rot_tran(
-        x=x,deg=deg,
+        x=x,
         ncs_restraints_group_list=ncs_restraints_group_list)
       for rec in ncs_restraints_group_list:
         for i,c in enumerate(rec.copies):
@@ -257,6 +255,41 @@ class test_rotation_angles_conversion(object):
                 False, False, False, False]
     assert list(result) == expected
 
+  def test_center_of_coordinates_shift(self):
+    """
+    test shifting translation to and from the center of coordinates of the
+    master ncs copy
+    """
+    # Fixme: finish this test
+    print 'Running ',sys._getframe().f_code.co_name
+    pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
+    transforms_obj = iotbx.ncs.input(
+      pdb_hierarchy_inp=pdb_obj,
+      rotations=[self.rotation1,self.rotation2],
+      translations=[self.translation1,self.translation2])
+
+    xrs = pdb_obj.xray_structure_simple()
+    nrg = transforms_obj.get_ncs_restraints_group_list()
+
+    shifts = nu.get_ncs_gorups_centers(
+      xray_structure = xrs,
+      ncs_restraints_group_list=nrg)
+
+    # test shifts
+    assert True
+
+    # test shift to center
+    new_nrg = nu.shift_translation_to_center(
+      shifts = shifts,
+      ncs_restraints_group_list=nrg)
+    assert True
+
+    # back to original coordinates system
+    old_nrg = nu.shift_translation_back_to_place(
+      shifts=shifts,
+      ncs_restraints_group_list=new_nrg)
+    assert True
+
 
 test_pdb_str = '''\
 ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
@@ -281,4 +314,5 @@ if __name__=='__main__':
   t.test_update_x()
   t.test_ncs_selection()
   t.test_ncs_related_selction()
+  t.test_center_of_coordinates_shift()
 
