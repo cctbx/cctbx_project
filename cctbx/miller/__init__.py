@@ -25,8 +25,10 @@ from libtbx import group_args, Auto
 import libtbx.table_utils
 from itertools import count, izip
 import warnings
+import random
 import math
 import types
+import time
 import sys
 from scitbx import matrix
 
@@ -5312,11 +5314,17 @@ def compute_cc_one_half (unmerged, n_trials=1) :
   cc_all = []
   unmerged = unmerged.select(unmerged.sigmas() > 0)
   for x in range(n_trials) :
+    # this will obviously not be very random, but it's close enough for
+    # the purpose of sampling different outcomes
+    seed = 0
+    if (n_trials > 1) :
+      seed = int(random.random()*10000)
     data_1 = data_2 = None
     split_datasets = split_unmerged(
       unmerged_indices=unmerged.indices(),
       unmerged_data=unmerged.data(),
-      unmerged_sigmas=unmerged.sigmas())
+      unmerged_sigmas=unmerged.sigmas(),
+      seed=seed)
     data_1 = split_datasets.data_1
     data_2 = split_datasets.data_2
     cc = flex.linear_correlation(data_1, data_2).coefficient()

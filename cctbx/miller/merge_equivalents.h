@@ -542,9 +542,11 @@ namespace cctbx { namespace miller {
         af::const_ref<index<> > const& unmerged_indices,
         af::const_ref<FloatType> const& unmerged_data,
         af::const_ref<FloatType> const& unmerged_sigmas,
-        bool weighted=true)
+        bool weighted=true,
+        unsigned seed=0)
       {
         if (unmerged_indices.size() == 0) return;
+        if (seed != 0) gen.seed(seed);
         CCTBX_ASSERT(unmerged_sigmas.all_gt(0.0));
         std::size_t group_begin = 0;
         std::size_t group_end = 1;
