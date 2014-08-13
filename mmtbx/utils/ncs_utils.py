@@ -181,10 +181,8 @@ def angles_to_rotation(angles_xyz, deg=False, rotation_is_tuple=False):
   rot = scitbx.rigid_body.rb_mat_xyz(the=alpha, psi=beta, phi=gamma, deg=deg)
   R = rot.rot_mat()
   # adjust rounding to angle format
-  if deg:
-    i = 6
-  else:
-    i = 8
+  if deg: i = 6
+  else: i = 8
   if rotation_is_tuple:
     return R.round(i).elems
   else:
@@ -493,7 +491,7 @@ def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection):
   total_asu_length: (int) Complete ASU length
   :param refine_selection: (flex.siz_t) of all ncs related copies and
   non ncs related parts to be included in selection
-  :return: (flex.siz_t) selection of all ncs groups master ncs selection and
+  :return flex.siz_t: selection of all ncs groups master ncs selection and
   non ncs related portions that are being refined
   """
   refine_selection = set(refine_selection)
@@ -518,7 +516,7 @@ def get_ncs_related_selection(ncs_restraints_group_list,asu_size):
   :param ncs_restraints_group_list: list of ncs_restraint_group objects
   total_asu_length: (int) Complete ASU length
   :param asu_size: (int) the total size of the ASU
-  :return: (flex.bool) selection of all ncs related atom in the ASU
+  :return selection: (flex.bool) selection of all ncs related atom in the ASU
   """
   total_master_ncs_selection = set()
   total_ncs_related_selection = set()
@@ -564,7 +562,7 @@ def shift_translation_back_to_place(shifts, ncs_restraints_group_list):
                  for the shift of the master copy to the coordinate center
                  mu is (dx,dy,dz)
   :param ncs_restraints_group_list: ncs_restraints_group_list
-  :return: ncs_restraints_group_list
+  :return new_list: list of ncs_restraints_group objects
   """
   if bool(shifts):
     i = 0
@@ -604,7 +602,7 @@ def ncs_restraints_group_list_copy(ncs_restraints_group_list):
   """
   Deep copy of ncs_restraints_group_list
   :param ncs_restraints_group_list: list of ncs_restraint_group
-  :return: a copy of ncs_restraints_group_list
+  :return new_list: a deep copy of ncs_restraints_group_list
   """
   from iotbx.ncs.ncs_preprocess import ncs_restraint_group
   from iotbx.ncs.ncs_preprocess import ncs_copy
