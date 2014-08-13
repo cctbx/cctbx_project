@@ -59,12 +59,6 @@ class test_rotation_angles_conversion(object):
       -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
       2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
     assert approx_equal(results,expected,1.0e-4)
-    s = 2.0
-    results = nu.concatenate_rot_tran(transforms_obj,s=s,deg=False)
-    expected = flex.double([
-      -0.40177529, 1.20019851, 2.64221706, 0.5/s, -0.5/s, 0.0,
-      2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
-    assert approx_equal(results,expected,1.0e-4)
 
   def test_update_rot_tran(self):
     """
@@ -76,19 +70,17 @@ class test_rotation_angles_conversion(object):
       pdb_hierarchy_inp=pdb_obj,
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])
-    s = 2.0
     x = flex.double([
-      -0.40177529, 1.20019851, 2.64221706, 0.5/s, -0.5/s, 0.0,
+      -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
       2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
     transforms_obj = nu.update_rot_tran(
-      x=x,transforms_obj=transforms_obj,s=s,deg=False)
+      x=x,transforms_obj=transforms_obj,deg=False)
     rot_results, tran_results = nu.get_rotation_translation_as_list(
       transforms_obj=transforms_obj)
     rot_expected = [self.rotation1, self.rotation2]
     tran_expected = [self.translation1,self.translation2]
     assert approx_equal(tran_results,tran_expected,1.0e-4)
     assert approx_equal(rot_results,rot_expected,1.0e-4)
-
 
   def test_angles_to_matrix(self):
     """

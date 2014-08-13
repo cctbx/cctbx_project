@@ -11,7 +11,7 @@ import math
 
 def concatenate_rot_tran(transforms_obj=None,
                          ncs_restraints_group_list=None,
-                         deg=True, s=1):
+                         deg=False):
   """
   Concatenate rotation angles, corresponding to the rotation
   matrices and scaled translation vectors to a single long flex.double object
@@ -22,12 +22,10 @@ def concatenate_rot_tran(transforms_obj=None,
                    matrices(lists of objects matrix.rec) and Translation vectors
                    (lists of objects matrix.rec)
   ncs_restraints_group_list : a list of ncs_restraint_group objects
-  s : (float) scaling factor, scale translation to be of the
-      same order ot the translation
 
   Return:
   flex.double object of the form
-  [(alpha_1,beta_1,gamma_1,Tx_1/s,Ty_1/s,Tz_1/s)...]
+  [(alpha_1,beta_1,gamma_1,Tx_1,Ty_1,Tz_1)...]
   """
   x = []
   if (not ncs_restraints_group_list) and transforms_obj:
@@ -36,7 +34,7 @@ def concatenate_rot_tran(transforms_obj=None,
     for gr in ncs_restraints_group_list:
       for tr in gr.copies:
         x.extend(list(rotation_to_angles(rotation=tr.r.elems,deg=deg))
-                 + list((tr.t/s).elems))
+                 + list(tr.t.elems))
   return flex.double(x)
 
 def get_rotation_translation_as_list(transforms_obj=None,
@@ -75,10 +73,10 @@ def update_ncs_restraints_group_list(ncs_restraints_group_list,rm,tv):
     new_list.append(gr)
   return new_list
 
-def update_rot_tran(x,s=1.0,
+def update_rot_tran(x,
                     transforms_obj=None,
                     ncs_restraints_group_list=None,
-                    deg=True):
+                    deg=False):
   """
   Convert the refinemable parameters, rotations angles and
   scaled translations, back to rotation matrices and translation vectors and
@@ -91,8 +89,6 @@ def update_rot_tran(x,s=1.0,
   transforms_obj : (ncs_group_object) containing information on Rotation
                    matrices, Translation vectors and NCS
   ncs_restraints_group_list : a list of ncs_restraint_group objects
-  s : (float) scaling factor, scale translation to be of the
-      same order ot the translation
 
   Returns:
   The same type of input object with converted transforms
@@ -108,9 +104,11 @@ def update_rot_tran(x,s=1.0,
         the,psi,phi =x[i*6:i*6+3]
         rot = scitbx.rigid_body.rb_mat_xyz(
           the=the, psi=psi, phi=phi, deg=deg)
-        tran = matrix.rec(x[i*6+3:i*6+6],(3,1))*s
-        tr.r = (rot.rot_mat()).round(8)
-        tr.t = tran.round(8)
+        tran = matrix.rec(x[i*6+3:i*6+6],(3,1))
+        tr.r = (rot.rot_mat())
+        # tr.r = (rot.rot_mat()).round(8)
+        # tr.t = tran.round(8)
+        tr.t = tran
         copies.append(tr)
         i += 1
       gr.copies = copies
@@ -121,7 +119,7 @@ def update_rot_tran(x,s=1.0,
     else:
       return ncs_restraints_group_list
 
-def rotation_to_angles(rotation, deg=True):
+def rotation_to_angles(rotation, deg=False):
   """
   Get the rotation angles around the axis x,y,x for rotation r
   Such that r = Rx*Ry*Rz
@@ -167,10 +165,11 @@ def rotation_to_angles(rotation, deg=True):
   if deg:
     # Convert to degrees
     angles = 180*angles/math.pi
+    angles = angles.round(5)
     # angles2 = 180*angles2/math.pi
-  return angles.round(5)
+  return angles
 
-def angles_to_rotation(angles_xyz, deg=True, rotation_is_tuple=False):
+def angles_to_rotation(angles_xyz, deg=False, rotation_is_tuple=False):
   """
   Calculate rotation matrix R, such that R = Rx(alpha)*Ry(beta)*Rz(gamma)
 
@@ -187,10 +186,15 @@ def angles_to_rotation(angles_xyz, deg=True, rotation_is_tuple=False):
   alpha,beta,gamma = angles_xyz
   rot = scitbx.rigid_body.rb_mat_xyz(the=alpha, psi=beta, phi=gamma, deg=deg)
   R = rot.rot_mat()
-  if rotation_is_tuple:
-    return R.round(6).elems
+  # adjust rounding to angle format
+  if deg:
+    i = 6
   else:
-    return flex.double(R.round(6))
+    i = 8
+  if rotation_is_tuple:
+    return R.round(i).elems
+  else:
+    return flex.double(R.round(i))
 
 def shake_transformations(x,
                           shake_angles_sigma      = 0.035,
@@ -223,10 +227,10 @@ def shake_transformations(x,
 def compute_transform_grad(grad_wrt_xyz,
                            xyz_asu,
                            x,
-                           coordinate_center = True,
+                           center_of_coordinates = True,
                            ncs_restraints_group_list=None,
                            transforms_obj=None,
-                           deg=True):
+                           deg=False):
   """
   Compute gradient in respect to the rotation angles and the translation
   vectors. R = Rx(the)Ry(psi)Rz(phi)
@@ -251,18 +255,20 @@ def compute_transform_grad(grad_wrt_xyz,
   i = 0
   for nrg in ncs_restraints_group_list:
     xyz_ncs_transform = xyz_asu.select(nrg.master_iselection)
+    xyz_len = xyz_ncs_transform.size()
+    # calc the coordinates of the master NCS at its coordinates center system
+    mu_c = flex.vec3_double([xyz_ncs_transform.sum()]) * (1/xyz_len)
+    xyz_cm = xyz_ncs_transform - flex.vec3_double(list(mu_c) * xyz_len)
     for nrg_copy in nrg.copies:
       grad_ncs_wrt_xyz = grad_wrt_xyz.select(nrg_copy.copy_iselection)
-      xyz_len = xyz_ncs_transform.size()
       assert xyz_len == grad_ncs_wrt_xyz.size()
       grad_wrt_t = list(grad_ncs_wrt_xyz.sum())
-      # Use the coordinate center for rotation
-      mu_c = flex.vec3_double([xyz_ncs_transform.sum()]) * (1/xyz_len)
-      xyz_cm = xyz_ncs_transform - flex.vec3_double(list(mu_c) * xyz_len)
       # Sum angles gradient over the coordinates
-      if coordinate_center:
+      if center_of_coordinates:
+        # Use the coordinate center for rotation
         m = grad_ncs_wrt_xyz.transpose_multiply(xyz_cm)
       else:
+        print 'No cm grad !!!'
         m = grad_ncs_wrt_xyz.transpose_multiply(xyz_ncs_transform)
       m = matrix.sqr(m)
       # Calculate gradient with respect to the rotation angles
@@ -320,7 +326,8 @@ def get_weight(minimization_obj=None,
                transformations=None,
                u_iso=None,
                ncs_restraints_group_list=None,
-               refine_selection=None):
+               refine_selection=None,
+               deg=False):
   """
   Calculates weights for refinements
 
@@ -359,7 +366,8 @@ def get_weight(minimization_obj=None,
     fmdc.xray_structure.shake_adp()
   elif transformations and have_transforms:
     x = concatenate_rot_tran(
-      ncs_restraints_group_list = ncs_restraints_group_list)
+      ncs_restraints_group_list = ncs_restraints_group_list,
+      deg=deg)
     x = shake_transformations(
       x = x,
       shake_angles_sigma=0.035,
@@ -418,12 +426,14 @@ def get_weight(minimization_obj=None,
       grad_wrt_xyz      = gxc_xyz.as_double(),
       ncs_restraints_group_list = ncs_restraints_group_list,
       xyz_asu           = fmdc.xray_structure.sites_cart(),
-      x                 = x)
+      x                 = x,
+      deg               = deg)
     gc = compute_transform_grad(
       grad_wrt_xyz      = gc_xyz.as_double(),
       ncs_restraints_group_list = ncs_restraints_group_list,
       xyz_asu           = fmdc.xray_structure.sites_cart(),
-      x                 = x)
+      x                 = x,
+      deg               = deg)
 
   weight = 1.
   gc_norm  = gc.norm()
@@ -456,7 +466,8 @@ def apply_transforms(ncs_coordinates,
                      ncs_restraints_group_list,
                      total_asu_length,
                      extended_ncs_selection,
-                     round_coordinates = True):
+                     round_coordinates = True,
+                     center_of_coordinates = None):
   """
   Apply transformation to ncs_coordinates,
   and round the results if round_coordinates is True
@@ -466,6 +477,8 @@ def apply_transforms(ncs_coordinates,
   ncs_restraints_group_list: list of ncs_restraint_group objects
   total_asu_length: (int) Complete ASU length
   extended_ncs_selection: (flex.size_t) master ncs and non-ncs related parts
+  center_of_coordinates : when not None, contains the center of coordinate of
+                          the master for each ncs copy
 
   Returns:
   Asymmetric or biological unit parts that are related via ncs operations
@@ -473,6 +486,11 @@ def apply_transforms(ncs_coordinates,
   asu_xyz = flex.vec3_double([(0,0,0)]*total_asu_length)
   asu_xyz.set_selected(extended_ncs_selection,ncs_coordinates)
 
+  # get the rotation and translation for the native coordinate system
+  if bool(center_of_coordinates):
+    ncs_restraints_group_list = shift_translation_back_to_place(
+      shifts = center_of_coordinates,
+      ncs_restraints_group_list = ncs_restraints_group_list)
   for nrg in ncs_restraints_group_list:
     master_ncs_selection = nrg.master_iselection
     for ncs_copy in nrg.copies:
@@ -532,3 +550,89 @@ def get_ncs_related_selection(ncs_restraints_group_list,asu_size):
   selection = flex.bool(asu_size, ts)
   return selection
 
+def shift_translation_to_center(shifts, ncs_restraints_group_list):
+  """
+  Add shifts to the translation component of ncs_restraints_group_list
+  towards the center of coordinates
+  :param shifts: (list) [mu_1, mu_1, mu_2...] where the mu stands
+                 for the shift of the master copy to the coordinate center
+                 mu is (dx,dy,dz)
+  :param ncs_restraints_group_list: ncs_restraints_group_list
+  :return: ncs_restraints_group_list
+  """
+  if bool(shifts):
+    new_list = ncs_restraints_group_list_copy(ncs_restraints_group_list)
+    i = 0
+    for nrg in new_list:
+      for ncs_copy in nrg.copies:
+        mu = shifts[i]
+        i += 1
+        # Only the translation is changing
+        t = ncs_copy.r.elems * mu + ncs_copy.t - mu
+        ncs_copy.t = matrix.col(t[0])
+  return new_list
+
+def shift_translation_back_to_place(shifts, ncs_restraints_group_list):
+  """
+  shifts to the translation component of ncs_restraints_group_list from the
+  center of coordinates back to place
+  :param shifts :  shifts: (list) [mu_1, mu_1, mu_2...] where the mu stands
+                 for the shift of the master copy to the coordinate center
+                 mu is (dx,dy,dz)
+  :param ncs_restraints_group_list: ncs_restraints_group_list
+  :return: ncs_restraints_group_list
+  """
+  # Todo: make function and test
+  if bool(shifts):
+    i = 0
+    new_list = ncs_restraints_group_list_copy(ncs_restraints_group_list)
+    for nrg in new_list:
+      for ncs_copy in nrg.copies:
+        mu = shifts[i]
+        i += 1
+        # Only the translation is changing
+        t = mu - ncs_copy.r.elems * mu + ncs_copy.t
+        ncs_copy.t = matrix.col(t[0])
+  else:
+    new_list = ncs_restraints_group_list
+  return new_list
+
+def get_ncs_gorups_centers(xray_structure, ncs_restraints_group_list):
+  """
+  calculate the center of coordinate for the master of each ncs copy
+  :param xray_structure:
+  :param ncs_restraints_group_list:
+  :return shifts: (list) [mu_1, mu_1, mu_2...] where the mu stands
+                 for the shift of the master copy to the coordinate center
+                 mu is (dx,dy,dz)
+  """
+  shifts = []
+  asu_xyz = xray_structure.sites_cart()
+  for nrg in ncs_restraints_group_list:
+    master_ncs_selection = nrg.master_iselection
+    master_xyz = asu_xyz.select(master_ncs_selection)
+    mu_m = matrix.col(master_xyz.sum()) / len(master_ncs_selection)
+    mu_m = flex.vec3_double([mu_m.elems])
+    for ncs_copy in nrg.copies:
+      shifts.append(mu_m)
+  return shifts
+
+def ncs_restraints_group_list_copy(ncs_restraints_group_list):
+  """
+  Deep copy of ncs_restraints_group_list
+  :param ncs_restraints_group_list: list of ncs_restraint_group
+  :return: a copy of ncs_restraints_group_list
+  """
+  from iotbx.ncs.ncs_preprocess import ncs_restraint_group
+  from iotbx.ncs.ncs_preprocess import ncs_copy
+  new_list = []
+  for nrg in ncs_restraints_group_list:
+    new_nrg = ncs_restraint_group(nrg.master_iselection)
+    for ncs in nrg.copies:
+      new_ncs_copy = ncs_copy(
+        copy_iselection=ncs.copy_iselection,
+        rot=ncs.r,
+        tran=ncs.t)
+      new_nrg.copies.append(new_ncs_copy)
+    new_list.append(new_nrg)
+  return new_list
