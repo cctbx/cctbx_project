@@ -450,8 +450,6 @@ def get_afitt_selection(restraints_manager,
   else:
     hd_selection = hd_selection|~hd_selection
   general_selection = hd_selection&~hd_selection
-  print 'general_selection'
-  print list(general_selection)
   ligand_i_seqs = []
   for ligand in restraints_manager.afitt_object.sites_cart_ptrs:
     for group in ligand:
