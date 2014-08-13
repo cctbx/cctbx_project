@@ -244,11 +244,12 @@ class target_function_and_grads_reciprocal_space(object):
           grad_wrt_xyz      = grad_wrt_xyz,
           ncs_restraints_group_list = self.ncs_restraints_group_list,
           xyz_asu           = lbfgs_self.xray_structure.sites_cart(),
-          x                 = lbfgs_self.x)
+          x                 = lbfgs_self.x,
+          deg=False)
     return t, g
 
   def target_and_gradients(self, compute_gradients, lbfgs_self, xray_structure):
-    self.xray_structure.set_sites_cart(sites_cart = xray_structure.sites_cart())
+    self.xray_structure.set_sites_cart(sites_cart=xray_structure.sites_cart())
     self.fmodel.update_xray_structure(
       xray_structure = self.xray_structure,
       update_f_calc  = True)
@@ -298,11 +299,13 @@ class lbfgs(object):
         refine_sites                 = False,
         refine_u_iso                 = False,
         refine_transformations       = False,
-        use_strict_ncs               = True):
+        use_strict_ncs               = True,
+        deg=False):
     """
     NCS constrained ADP and coordinates refinement. Also refines NCS operators.
     """
     adopt_init_args(self, locals())
+    self.ncs_groups_coordinates_centers = []
     self.extended_ncs_selection = nu.get_extended_ncs_selection(
       ncs_restraints_group_list=ncs_restraints_group_list,
       refine_selection=refine_selection)
@@ -323,8 +326,15 @@ class lbfgs(object):
         xray_structure_one_ncs_copy.use_u_iso().count(True)
       self.x = xray_structure_one_ncs_copy.extract_u_iso_or_u_equiv()
     elif self.refine_transformations:
+      # move refinable parameters to coordinate center
+      self.ncs_groups_coordinates_centers = nu.get_ncs_gorups_centers(
+        xray_structure=self.xray_structure,
+        ncs_restraints_group_list=ncs_restraints_group_list)
+      self.ncs_restraints_group_list = nu.shift_translation_to_center(
+        shifts = self.ncs_groups_coordinates_centers,
+        ncs_restraints_group_list = self.ncs_restraints_group_list)
       self.x = nu.concatenate_rot_tran(
-        ncs_restraints_group_list=self.ncs_restraints_group_list)
+        ncs_restraints_group_list=self.ncs_restraints_group_list,deg=deg)
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
       termination_params=scitbx.lbfgs.termination_parameters(
@@ -334,6 +344,11 @@ class lbfgs(object):
         ignore_line_search_failed_rounding_errors=True,
         ignore_line_search_failed_step_at_lower_bound=True,
         ignore_line_search_failed_maxfev=True))
+    # change transforms to the original coordinate system
+    if self.refine_transformations:
+      self.ncs_restraints_group_list = nu.shift_translation_back_to_place(
+          shifts = self.ncs_groups_coordinates_centers,
+          ncs_restraints_group_list = self.ncs_restraints_group_list)
     if(getattr(self.target_and_grads_object, "finalize", None)):
       self.target_and_grads_object.finalize()
 
@@ -354,7 +369,7 @@ class lbfgs(object):
     if self.refine_transformations:
       # update the ncs_restraint_groups transforms
       self.ncs_restraints_group_list = nu.update_rot_tran(
-        x=x, ncs_restraints_group_list=self.ncs_restraints_group_list)
+        x=x, ncs_restraints_group_list=self.ncs_restraints_group_list,deg=False)
       # Use the new transformations to create the ASU
       x_ncs = nu.get_ncs_sites_cart(self).as_double()
       x_asu = self.refinable_params_one_ncs_to_asu(x_ncs)
@@ -383,7 +398,8 @@ class lbfgs(object):
           ncs_restraints_group_list = self.ncs_restraints_group_list,
           total_asu_length = x_old.size(),
           extended_ncs_selection = self.extended_ncs_selection,
-          round_coordinates = False)
+          round_coordinates = False,
+          center_of_coordinates = self.ncs_groups_coordinates_centers)
         new_x = new_x.select(self.refine_selection)
         new_x = x_old.set_selected(self.refine_selection,new_x)
       return new_x.as_double()
@@ -405,15 +421,14 @@ class lbfgs(object):
     """
     g = g.as_double()
     # find the index of the max gradient value
-    # i_g_max = flex.max_index(flex.abs(g))
+    i_g_max = flex.max_index(flex.abs(g))
+    # Set displacement for finite gradient calculation
+    d = max(self.x[i_g_max]*1e-6,1e-6)
 
-    # Set displacement for finite gradient calculation to 1e-5 of largest value
-    if self.refine_transformations:
-      d = 1.0e-3
-      i_g_max = 0
-    else:
-      i_g_max = flex.max_index(flex.abs(g))
-      d = max(self.x[i_g_max]*1e-6,1e-6)
+    # print 'i_g_max is angle',(i_g_max % 6 < 3)
+    # if self.refine_transformations and (i_g_max % 6 < 3):
+    #   d = 1.0e-2
+
     # calc t(x+d)
     self.x[i_g_max] = self.x[i_g_max] + d
     t1,_ = self.compute_functional_and_gradients(compute_gradients=False)
@@ -433,7 +448,6 @@ class lbfgs(object):
     # todo: check if still needed
     from  iotbx.pdb.multimer_reconstruction import ncs_group_object
     new_transforms_obj =  ncs_group_object()
-    pass
 
   def __call__(self):
     # TODO: Check if using this instead of "self" as a parameter works

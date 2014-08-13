@@ -1713,7 +1713,6 @@ def get_largest_common_ncs_groups(pdb_hierarchy_inp):
 
   return ncs_phil_groups
 
-
 class ncs_copy():
 
   def __init__(self,copy_iselection, rot, tran):
