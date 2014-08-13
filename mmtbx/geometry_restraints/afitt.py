@@ -19,12 +19,11 @@ master_phil_str = """
 """
 
 class covalent_object:
-  def __init__(self, covalent_partner, pdb_hierarchy):
+  def __init__(self):
     self.n_atoms = None
     self.resname = None
     self.res_id = None
-    self.resseq = None
-    self.res_id_ligand = None
+    self.ligand_res_id = None
     self.charge = None
     self.partial_charges = []
     self.atom_elements = []
@@ -32,6 +31,7 @@ class covalent_object:
     self.nbonds = None
     self.sites_cart_ptrs = []
     self.formal_charges = []
+    self.res_bond = []
 
 
 class afitt_object:
@@ -57,7 +57,7 @@ class afitt_object:
     self.scale = scale
     self.ligand_path = ligand_path
     self.pdb_hierarchy = pdb_hierarchy
-    self.covalent_data = {}
+    self.covalent_data = []
     self.occupancies = []
 
     cif_object = self.read_cif_file(ligand_path)
@@ -123,41 +123,70 @@ class afitt_object:
             occ=atom.occ
     return occ
 
-
   def check_covalent(self, geometry):
     for resname_i,resname in enumerate(self.resname):
+      self.covalent_data.append([])
       for instance_i, instance in enumerate(self.res_ids[resname_i]):
-        for ligand_atom in self.sites_cart_ptrs[resname_i][instance_i]:
-          nonligand_atoms = [atom.i_seq for atom in self.pdb_hierarchy.atoms() if atom.i_seq not in self.sites_cart_ptrs[resname_i][instance_i] ]
-    # cov_res=None
-          for nonligand_atom in nonligand_atoms:
-            bond = geometry.bond_params_table.lookup(ligand_atom, nonligand_atom)
-            if bond == None: continue
+        nonlig_atoms = [atom for atom in self.pdb_hierarchy.atoms() if atom.i_seq not in self.sites_cart_ptrs[resname_i][instance_i] ]
+        bond = []
+        for lig_atm_iseq in self.sites_cart_ptrs[resname_i][instance_i]:
+          for atom in nonlig_atoms:
+            bond_t = geometry.bond_params_table.lookup(lig_atm_iseq, atom.i_seq)
+            if bond_t != None:
+              bond.append([atom, lig_atm_iseq])
+        assert len(bond) < 2, "Ligand %s has more than one covalent bond " \
+                              "to the model. This is unsupported at " \
+                              "present." %(resname)
+        if len(bond) == 0:
+          self.covalent_data[-1].append(None)
+          continue
+        cov_obj = covalent_object()
+        cov_res=bond[0][0].parent()
+        cov_obj.resname = cov_res.resname
+        cov_obj.res_id=[cov_res.parent().parent().id,
+                       cov_res.altloc,
+                       cov_res.parent().resseq]
+        cov_obj.ligand_resname = resname
+        cov_obj.ligand_res_id = instance
 
+        from mmtbx import monomer_library
+        import mmtbx.monomer_library.server
+        mon_lib_srv = monomer_library.server.server()
+        get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
+        if (get_func is not None):
+          ml=get_func(comp_id=cov_obj.resname)
+        else:
+          ml=mon_lib_srv.get_comp_comp_id_direct(comp_id=cov_obj.resname)
+        cif_object = ml.cif_object
+        cov_obj.n_atoms = len(cif_object['_chem_comp_atom.atom_id'])
+        cov_obj.partial_charges = [float(i) for i in cif_object['_chem_comp_atom.partial_charge']]
+        cov_obj.charge = sum(cov_obj.partial_charges)
+        cov_obj.atom_elements = [i for i in cif_object['_chem_comp_atom.type_symbol']]
+        atom_ids = \
+          [i for i in cif_object['_chem_comp_atom.atom_id']]
+        bond_atom_1 = \
+          [atom_ids.index(i) for i in cif_object['_chem_comp_bond.atom_id_1']]
+        bond_atom_2 = \
+          [atom_ids.index(i) for i in cif_object['_chem_comp_bond.atom_id_2']]
+        bond_dict={'single':1, 'double':2, 'triple':3, 'aromatic':4, 'coval':1}
+        bond_type = \
+          [bond_dict[i] for i in cif_object['_chem_comp_bond.type']]
+        cov_obj.bonds = zip(bond_atom_1, bond_atom_2, bond_type)
+        cov_obj.nbonds = len(cov_obj.bonds)
+        cov_obj.sites_cart_ptrs = self.get_sites_cart_pointers(
+                                          atom_ids,
+                                          self.pdb_hierarchy,
+                                          chain_id=cov_obj.res_id[0],
+                                          altloc=cov_obj.res_id[1],
+                                          resseq=cov_obj.res_id[2])
+        if cif_object.has_key('_chem_comp_atom.charge'):
+          cov_obj.formal_charges = \
+            [float(i) for i in cif_object['_chem_comp_atom.charge']]
+        self.covalent_data[-1].append(cov_obj)
 
-            print ligand_atom, nonligand_atom
-    # import code; code.interact(local=dict(globals(), **locals()))
-    # sys.exit()
-    #           #if atom is bound to another atom return residue id and name
-    #           # should return only unique resid/names
-    #           # cov_res = [i_seq, i_seq]
-    #           continue
-    # return cov_res
-
-        # for residue_instance in self.res_ids[-1]:
-        # covalent_partner=self.check_covalent( pdb_hierarchy,
-        #                                   chain_id=residue_instance[0],
-        #                                   altloc=residue_instance[1],
-        #                                   resseq=residue_instance[2])
-        # covalent_partner=[35,36]
-        # if covalent_partner is None: continue
-        # self.covalent_data[(res,
-        #                     residue_instance[0],
-        #                     residue_instance[1],
-        #                     residue_instance[2])] = \
-        #                 covalent_object(covalent_partner, pdb_hierarchy)
-        # print self.covalent_data
-
+        lig_atom_i = self.sites_cart_ptrs[resname_i][instance_i].index(bond[0][1])
+        cov_atom_i = atom_ids.index(bond[0][0].name.strip())
+        cov_obj.res_bond = [lig_atom_i, self.n_atoms[resname_i]+cov_atom_i, 1]
 
   def process_cif_object(self, cif_object, pdb_hierarchy):
     for res in self.resname:
@@ -231,25 +260,71 @@ class afitt_object:
   def make_afitt_input(self, sites_cart, resname_i, instance_i):
     r_i=resname_i
     i_i=instance_i
+    cov_obj =  self.covalent_data[r_i][i_i]
     sites_cart_ptrs=self.sites_cart_ptrs[r_i][i_i]
     elements=self.atom_elements[r_i]
-    f=StringIO.StringIO() #open(afitt_input,'wb')
-    f.write('%d\n' %self.n_atoms[r_i])
-    f.write('residue_type %s chain %s number %d total_charge %d\n'
-            %(self.resname[r_i], self.res_ids[r_i][i_i][0],1,self.charge[r_i] ))
     assert len(elements) ==  len(sites_cart_ptrs), \
-            "No. of atoms in residue %s, instance %d does not equal to \
-            number of atom seq pointers." %(self.resname[resname_i], instance_i)
-    for atom,ptr in zip(elements, sites_cart_ptrs):
-      f.write('%s   %20.16f   %20.16f   %20.16f\n' %(atom,
-            sites_cart[ptr][0], sites_cart[ptr][1], sites_cart[ptr][2]) )
-    f.write('bond_table_nbonds %d\n' %self.nbonds[r_i])
-    for bond in self.bonds[r_i]:
-      f.write('%d %d %d\n' %(bond[0], bond[1], bond[2]))
-    if self.formal_charges[r_i]:
-      f.write("formal charges\n")
-      for fcharge in self.formal_charges[r_i]:
-        f.write ('%d\n' %fcharge)
+           "No. of atoms in residue %s, instance %d does not equal to \
+           number of atom seq pointers." %(self.resname[resname_i], instance_i)
+    f=StringIO.StringIO()
+    # if cov_obj is None:
+    if True:
+      f.write('%d\n' %self.n_atoms[r_i])
+      f.write('residue_type %s chain %s number %d total_charge %d\n'
+              %(self.resname[r_i], self.res_ids[r_i][i_i][0],1,self.charge[r_i] ))
+      for atom,ptr in zip(elements, sites_cart_ptrs):
+        f.write('%s   %20.16f   %20.16f   %20.16f\n' %(atom,
+              sites_cart[ptr][0], sites_cart[ptr][1], sites_cart[ptr][2]) )
+      f.write('bond_table_nbonds %d\n' %self.nbonds[r_i])
+      for bond in self.bonds[r_i]:
+        f.write('%d %d %d\n' %(bond[0], bond[1], bond[2]))
+      if self.formal_charges[r_i]:
+        f.write("formal charges\n")
+        for fcharge in self.formal_charges[r_i]:
+          f.write ('%d\n' %fcharge)
+    else:
+      f.write('%d\n' %(self.n_atoms[r_i] + cov_obj.n_atoms) )
+      f.write('residue_type %s chain %s number %d total_charge %d\n'
+              %(self.resname[r_i],
+                self.res_ids[r_i][i_i][0],
+                1,
+                self.charge[r_i] + cov_obj.charge ))
+      for atom,ptr in zip(elements, sites_cart_ptrs):
+        f.write('%s   %20.16f   %20.16f   %20.16f\n' %(atom,
+              sites_cart[ptr][0], sites_cart[ptr][1], sites_cart[ptr][2]) )
+      for atom,ptr in zip(cov_obj.atom_elements, cov_obj.sites_cart_ptrs):
+        f.write('%s   %20.16f   %20.16f   %20.16f\n' %(atom,
+              sites_cart[ptr][0], sites_cart[ptr][1], sites_cart[ptr][2]) )
+      f.write('bond_table_nbonds %d\n'
+              %(self.nbonds[r_i]+cov_obj.nbonds+1) )
+      for bond in self.bonds[r_i]:
+        f.write('%d %d %d\n' %(bond[0], bond[1], bond[2]))
+      for bond in cov_obj.bonds:
+        f.write('%d %d %d\n' %(
+          bond[0] + self.n_atoms[r_i],
+          bond[1] + self.n_atoms[r_i],
+          bond[2]))
+      f.write('%d %d %d\n' %(
+          cov_obj.res_bond[0],
+          cov_obj.res_bond[1],
+          cov_obj.res_bond[2]))
+      if self.formal_charges[r_i]:
+        f.write("formal charges\n")
+        for fcharge in self.formal_charges[r_i]:
+          f.write ('%d\n' %fcharge)
+        if cov_obj.formal_charges:
+          for fcharge in cov_obj.formal_charges:
+            f.write('%d\n' %fcharge)
+        else:
+          for atom in range(cov_obj.n_atoms):
+            f.write('0\n')
+      f.write('fixed_atoms %d\n' %cov_obj.n_atoms)
+      for i in range(cov_obj.n_atoms):
+        f.write('%d\n' %(i+self.n_atoms[r_i]))
+    # ofile=open('tmpfile','w')
+    # ofile.write(f.getvalue())
+    # ofile.close()
+    # sys.exit()
     return f.getvalue()
 
 def call_afitt(afitt_input, ff):
