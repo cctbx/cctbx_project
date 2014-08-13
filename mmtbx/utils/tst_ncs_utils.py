@@ -248,7 +248,7 @@ class test_rotation_angles_conversion(object):
     result = nu.get_ncs_related_selection(
       ncs_restraints_group_list=ncs_restraints_group_list,
       asu_size=25)
-    # Note that ASU length is set to 25 (not 21)
+    # ASU length is set to 25 (not 21)
     expected = [True, True, True, True, True, True, True,
                 True, True, True, True, True, True, True,
                 True, True, True, True, True, True, True,
@@ -260,7 +260,6 @@ class test_rotation_angles_conversion(object):
     test shifting translation to and from the center of coordinates of the
     master ncs copy
     """
-    # Fixme: finish this test
     print 'Running ',sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
     transforms_obj = iotbx.ncs.input(
@@ -275,20 +274,28 @@ class test_rotation_angles_conversion(object):
       xray_structure = xrs,
       ncs_restraints_group_list=nrg)
 
+    xyz = pdb_obj.hierarchy.atoms().extract_xyz()
+    center_of_coor = (flex.vec3_double([xyz.sum()]) * (1/xyz.size())).round(8)
     # test shifts
-    assert True
+    t1 = shifts[0].round(8)
+    t2 = shifts[1].round(8)
+    d1 = flex.sqrt((center_of_coor-t1).dot()).min_max_mean().as_tuple()
+    d2 = flex.sqrt((center_of_coor-t2).dot()).min_max_mean().as_tuple()
+    assert (d1 == d2) and (d1 == (0,0,0))
 
     # test shift to center
     new_nrg = nu.shift_translation_to_center(
       shifts = shifts,
       ncs_restraints_group_list=nrg)
-    assert True
-
+    expected = (-4.62169, -5.42257, 5.288)
+    assert (new_nrg[0].copies[0].t.round(5)).elems == expected
     # back to original coordinates system
     old_nrg = nu.shift_translation_back_to_place(
       shifts=shifts,
       ncs_restraints_group_list=new_nrg)
-    assert True
+    expected = (old_nrg[0].copies[0].t.round(5)).elems
+    result = (nrg[0].copies[0].t.round(5)).elems
+    assert result == expected
 
 
 test_pdb_str = '''\
@@ -303,7 +310,6 @@ ATOM      7  CG2 THR A   1      10.523   7.209   9.055  1.00 20.00
 
 if __name__=='__main__':
   t = test_rotation_angles_conversion()
-  # TODO: Consider adding more tests
   # run tests
   t.test_rotations_are_good()
   t.test_angles_to_matrix()
