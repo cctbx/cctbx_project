@@ -39,7 +39,7 @@ class intensities_scaler(object):
         i_r = random.randint(0,len(I_full)-1)
         i_seq_sel = (i_seq != i_r)
         i_full_sel = I_full.select(i_seq_sel)
-        if abs((I_full[i_r] - np.mean(i_full_sel))/np.std(i_full_sel)) > sigma_max:
+        if abs((I_full[i_r] - np.median(i_full_sel))/np.std(i_full_sel)) > sigma_max:
           #discard this observation
           I_full = I_full.select(i_seq_sel)
           sigI_full = sigI_full.select(i_seq_sel)
