@@ -10,8 +10,7 @@ import math
 
 
 def concatenate_rot_tran(transforms_obj=None,
-                         ncs_restraints_group_list=None,
-                         deg=False):
+                         ncs_restraints_group_list=None):
   """
   Concatenate rotation angles, corresponding to the rotation
   matrices and scaled translation vectors to a single long flex.double object
@@ -33,7 +32,7 @@ def concatenate_rot_tran(transforms_obj=None,
   if ncs_restraints_group_list:
     for gr in ncs_restraints_group_list:
       for tr in gr.copies:
-        x.extend(list(rotation_to_angles(rotation=tr.r.elems,deg=deg))
+        x.extend(list(rotation_to_angles(rotation=tr.r.elems))
                  + list(tr.t.elems))
   return flex.double(x)
 
@@ -54,7 +53,7 @@ def get_rotation_translation_as_list(transforms_obj=None,
   return r,t
 
 def update_transforms(transforms_obj,rm,tv):
-  """ Update of the rotation matrices (rm) and translation vectors (vt) """
+  """ Update of the rotation matrices (rm) and translation vectors (tv) """
   assert len(transforms_obj.transform_order) == len(rm)
   assert len(rm) == len(tv)
   for tr,r,t in zip(transforms_obj.transform_order,rm,tv):
@@ -73,10 +72,7 @@ def update_ncs_restraints_group_list(ncs_restraints_group_list,rm,tv):
     new_list.append(gr)
   return new_list
 
-def update_rot_tran(x,
-                    transforms_obj=None,
-                    ncs_restraints_group_list=None,
-                    deg=False):
+def update_rot_tran(x,transforms_obj=None,ncs_restraints_group_list=None):
   """
   Convert the refinemable parameters, rotations angles and
   scaled translations, back to rotation matrices and translation vectors and
@@ -103,11 +99,9 @@ def update_rot_tran(x,
       for tr in gr.copies:
         the,psi,phi =x[i*6:i*6+3]
         rot = scitbx.rigid_body.rb_mat_xyz(
-          the=the, psi=psi, phi=phi, deg=deg)
+          the=the, psi=psi, phi=phi, deg=False)
         tran = matrix.rec(x[i*6+3:i*6+6],(3,1))
         tr.r = (rot.rot_mat())
-        # tr.r = (rot.rot_mat()).round(8)
-        # tr.t = tran.round(8)
         tr.t = tran
         copies.append(tr)
         i += 1
@@ -228,8 +222,7 @@ def compute_transform_grad(grad_wrt_xyz,
                            xyz_asu,
                            x,
                            ncs_restraints_group_list=None,
-                           transforms_obj=None,
-                           deg=False):
+                           transforms_obj=None):
   """
   Compute gradient in respect to the rotation angles and the translation
   vectors. R = Rx(the)Ry(psi)Rz(phi)
@@ -269,7 +262,7 @@ def compute_transform_grad(grad_wrt_xyz,
       # Calculate gradient with respect to the rotation angles
       the,psi,phi = x[i*6:i*6+3]
       rot = scitbx.rigid_body.rb_mat_xyz(
-        the=the, psi=psi, phi=phi, deg=deg)
+        the=the, psi=psi, phi=phi, deg=False)
       g_the = (m * rot.r_the().transpose()).trace()
       g_psi = (m * rot.r_psi().transpose()).trace()
       g_phi = (m * rot.r_phi().transpose()).trace()
@@ -321,8 +314,7 @@ def get_weight(minimization_obj=None,
                transformations=None,
                u_iso=None,
                ncs_restraints_group_list=None,
-               refine_selection=None,
-               deg=False):
+               refine_selection=None):
   """
   Calculates weights for refinements
 
@@ -361,8 +353,7 @@ def get_weight(minimization_obj=None,
     fmdc.xray_structure.shake_adp()
   elif transformations and have_transforms:
     x = concatenate_rot_tran(
-      ncs_restraints_group_list = ncs_restraints_group_list,
-      deg=deg)
+      ncs_restraints_group_list = ncs_restraints_group_list)
     x = shake_transformations(
       x = x,
       shake_angles_sigma=0.035,
@@ -421,14 +412,12 @@ def get_weight(minimization_obj=None,
       grad_wrt_xyz      = gxc_xyz.as_double(),
       ncs_restraints_group_list = ncs_restraints_group_list,
       xyz_asu           = fmdc.xray_structure.sites_cart(),
-      x                 = x,
-      deg               = deg)
+      x                 = x)
     gc = compute_transform_grad(
       grad_wrt_xyz      = gc_xyz.as_double(),
       ncs_restraints_group_list = ncs_restraints_group_list,
       xyz_asu           = fmdc.xray_structure.sites_cart(),
-      x                 = x,
-      deg               = deg)
+      x                 = x)
 
   weight = 1.
   gc_norm  = gc.norm()
@@ -489,10 +478,10 @@ def apply_transforms(ncs_coordinates,
   for nrg in ncs_restraints_group_list:
     master_ncs_selection = nrg.master_iselection
     for ncs_copy in nrg.copies:
-      asu_selection = ncs_copy.copy_iselection
+      copy_selection = ncs_copy.copy_iselection
       ncs_xyz = asu_xyz.select(master_ncs_selection)
       new_sites = ncs_copy.r.elems * ncs_xyz + ncs_copy.t
-      asu_xyz.set_selected(asu_selection,new_sites)
+      asu_xyz.set_selected(copy_selection,new_sites)
   if round_coordinates:
     return flex.vec3_double(asu_xyz).round(3)
   else:
@@ -577,7 +566,6 @@ def shift_translation_back_to_place(shifts, ncs_restraints_group_list):
   :param ncs_restraints_group_list: ncs_restraints_group_list
   :return: ncs_restraints_group_list
   """
-  # Todo: make function and test
   if bool(shifts):
     i = 0
     new_list = ncs_restraints_group_list_copy(ncs_restraints_group_list)
