@@ -1583,6 +1583,7 @@ mmtbx/command_line/analyze_peptides.py -text
 mmtbx/command_line/analyze_static_disorder.py -text
 mmtbx/command_line/angle.py -text
 mmtbx/command_line/anneal_real_space.py -text
+mmtbx/command_line/apply_ncs_to_ligand.py -text
 mmtbx/command_line/b_factor_statistics.py -text
 mmtbx/command_line/build_alt_confs.py -text
 mmtbx/command_line/cablam_training.py -text
@@ -1947,6 +1948,7 @@ mmtbx/regression/tst_generate_disorder.py -text
 mmtbx/regression/tst_geo_min_restraints_phil.py -text
 mmtbx/regression/tst_interpolation.py -text
 mmtbx/regression/tst_isomorphous_difference_misc.py -text
+mmtbx/regression/tst_ligand_ncs.py -text
 mmtbx/regression/tst_map_coeffs_simple.py -text
 mmtbx/regression/tst_map_type_parser.py -text
 mmtbx/regression/tst_maps_misc.py -text
