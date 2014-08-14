@@ -39,7 +39,15 @@ namespace cctbx { namespace maptbx { namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       class_<w_t>("map_accumulator", no_init)
-        .def(init<af::int3 const&>(arg("n_real")))
+        .def(init<af::int3 const&,
+             double const&,
+             double const&,
+             int const&,
+             bool >((arg("n_real"),
+                     arg("smearing_b"),
+                     arg("max_peak_scale"),
+                     arg("smearing_span"),
+                     arg("use_exp_table"))))
         .def("as_median_map", &w_t::as_median_map)
         .def("add", &w_t::add, (arg("map_data")))
         .def("at_index", &w_t::at_index, (arg("n")))
