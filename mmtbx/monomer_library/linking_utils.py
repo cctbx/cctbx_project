@@ -94,7 +94,7 @@ def is_glyco_bond(atom1, atom2, verbose=False):
   if not get_type(atom1.parent().resname).upper() in sugar_types: return False
   if not get_type(atom2.parent().resname).upper() in sugar_types: return False
   #
-  if atom2.parent().resname in not_correct_sugars: return False
+  #if atom2.parent().resname in not_correct_sugars: return False
   return True
 
 def is_glyco_amino_bond(atom1, atom2, verbose=False):
@@ -356,7 +356,6 @@ def is_atom_group_pair_linked(atom_group1,
     return mon_lib_srv.link_link_id_dict[simple_key], True, simple_key
   return None, None, None
 
-
 def is_linked_basepairs(
         atom1,
         atom2,
@@ -483,6 +482,7 @@ def is_atom_pair_linked(atom1,
                         saccharide_bond_cutoff=3.,
                         sulfur_bond_cutoff=2.5,
                         other_bond_cutoff=2., # this is the ligand distance
+                        use_only_bond_cutoff=False,
                         verbose=False,
                         ):
   if atom1.element.strip().upper() in ad_hoc_non_linking_elements:
@@ -508,22 +508,26 @@ def is_atom_pair_linked(atom1,
     class2 = 'sulfur'
   lookup = [class1, class2]
   lookup.sort()
-  if verbose: print 'lookup',lookup,skip_if_both #.get(lookup, None)
+  if verbose: print 'lookup1',lookup,skip_if_both #.get(lookup, None)
   if lookup in skip_if_both: return False
   lookup = tuple(lookup)
-  if verbose: print 'lookup',lookup
+  if verbose: print 'lookup2',lookup
   limit = skip_if_longer.get(lookup, None)
   if limit is not None:
     if ( atom1.element not in ad_hoc_first_row or
          atom2.element not in ad_hoc_first_row):
       limit += second_row_buffer**2 # not completely accurate
+  if verbose: print 'limit',limit
   if distance:
     d2 = distance**2
   else:
     d2 = get_distance2(atom1, atom2)
+  if verbose: print "d2",d2
   if limit is not None and limit<d2:
     if verbose: print 'limit < d2',limit,d2
     return False
+  if use_only_bond_cutoff:
+    return True
   #
   if "common_rna_dna" in lookup and "common_amino_acid" in lookup:
     return True
@@ -533,7 +537,6 @@ def is_atom_pair_linked(atom1,
     return True
   if "other" in lookup and "common_small_molecule" in lookup:
     return True
-
   #
   # DNA base-pairs
   #
@@ -585,11 +588,12 @@ def is_atom_pair_linked(atom1,
   #
   # non-standard amino acids
   #
-  #if class1=="common_amino_acid" or class2=="common_amino_acid":
-  #  print "AMINO ACIDS",atom1.quote(), atom2.quote()
+  if class1=="common_amino_acid" and class2=="common_amino_acid":
+    if verbose:
+      print "AMINO ACIDS",atom1.quote(), atom2.quote()
   #  assert 0
   if "other" in lookup: return True
-  if verbose: 'drop through'
+  if verbose: print 'drop through '*5
   return False
 
 ##   if class1=="common_element" or class2=="common_element":

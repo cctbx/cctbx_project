@@ -209,6 +209,26 @@ def _apply_link_using_proxies(link,
       geometry_proxy_registries.planarity.append_custom_proxy(proxy=proxy)
   return count
 
+def possible_cyclic_peptide(atom1,
+                            atom2,
+                            ):
+  if 0:
+    print atom1.quote(),atom2.quote()
+  chain1 = atom1.parent().parent().parent()
+  chain2 = atom1.parent().parent().parent()
+  if not chain1.id == chain2.id: return False
+  fl = {}
+  rgs = chain1.residue_groups()
+  for i in range(0,-2,-1):
+    for atom in rgs[i].atoms():
+      if atom.quote()==atom1.quote():
+        fl[i]=atom1
+        break
+      elif atom.quote()==atom2.quote():
+        fl[i]=atom2
+        break
+  return len(fl)==2
+
 def check_for_peptide_links(atom1,
                             atom2,
                             ):
@@ -515,10 +535,9 @@ class linking_mixins(object):
     def _nonbonded_pair_generator_geometry_restraints_sort(
         nonbonded_proxies,
         max_bonded_cutoff=3.):
-#      assert max_bonded_cutoff>3.4
       rc = nonbonded_proxies.get_sorted(by_value="delta",
-                                              sites_cart=sites_cart,
-                                              include_proxy=True,
+                                        sites_cart=sites_cart,
+                                        include_proxy=True,
         )
       if rc is None: return
       rc, junk = rc
@@ -579,10 +598,11 @@ class linking_mixins(object):
       labels, i_seq, j_seq, distance, vdw_distance, sym_op, rt_mx_ji, proxy = item
       # XXX this is a poor job!!!
       if bond_asu_table.contains(i_seq, j_seq, 0): continue
+      if bond_asu_table.contains(i_seq, j_seq, 1): continue
       atom1 = atoms[i_seq]
       atom2 = atoms[j_seq]
       if verbose:
-        print atom1.quote(),
+        print i_seq, j_seq, atom1.quote(),
         print atom2.quote(),
         print "Distance: %0.2f" % distance, rt_mx_ji, sym_op
 
@@ -602,6 +622,7 @@ class linking_mixins(object):
       # don't link some classes
       classes1 = linking_utils.get_classes(atom1)
       classes2 = linking_utils.get_classes(atom2)
+      use_only_bond_cutoff = False
       if verbose:
         print """
 Residue classes
@@ -609,7 +630,14 @@ Residue classes
 %s
 %s """ % (classes1, classes2)
       # is_proxy_set between any of the atoms ????????
-      if classes1.common_amino_acid and classes2.common_amino_acid: continue
+      if classes1.common_amino_acid and classes2.common_amino_acid:
+        if not link_residues:
+          continue
+        # special amino acid linking
+        #  - cyclic
+        #  - beta, delta ???
+        if possible_cyclic_peptide(atom1, atom2): # first & last peptide
+          use_only_bond_cutoff = True
       if classes1.common_rna_dna and classes2.common_rna_dna:
         if not link_dna_rna:
           continue
@@ -639,7 +667,7 @@ Residue classes
       if sym_op:
         key.append(str(rt_mx_ji))
       key = tuple(key)
-      # bond length cutoff
+      # bond length cutoff & some logic
       if not linking_utils.is_atom_pair_linked(
           atom1,
           atom2,
@@ -652,6 +680,7 @@ Residue classes
           second_row_buffer=second_row_buffer,
           saccharide_bond_cutoff=carbohydrate_bond_cutoff,
           metal_coordination_cutoff=metal_coordination_cutoff,
+          use_only_bond_cutoff=use_only_bond_cutoff,
           verbose=verbose,
           ):
         if verbose:
