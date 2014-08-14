@@ -1,30 +1,33 @@
-from __future__ import division
+""" This module is designed to provide tools to deal with groups of serial
+crystallography images.
+
+The class Cluster allows the creation, storage and manipulation of these sets
+of frames. Methods exist to create sub-clusters (new cluster objects) or to act
+on an existing cluster, e.g. to plot the unit cell distributions.
+
+**Author:**   Oliver Zeldin <zeldin@stanford.edu>
+"""
+__author__ = 'zeldin'
+
+from cctbx.array_family import flex
 import os
 import math
 import logging
-from xfel.clustering.singleframe import SingleFrame
+from xfel.clustering.singleframe import SingleFrame, ImageNode
 from cctbx.uctbx.determine_unit_cell import NCDist
 import numpy as np
 import matplotlib.patheffects as patheffects
 import matplotlib.pyplot as plt
-
-""" This package is designed to provide tools to deal with clusters of
-singleframe objects. The class Cluster allows the creation, storage and
-manipulation of these sets of frames. Methods exist to create sub-clusters (new
-cluster objects) or to act on an existing cluster, e.g. to plot the unit cell
-distributions.
-"""
-__author__ = 'zeldin'
+import random
 
 
 class Cluster:
-  """Groups single XFEL images (here described by SingleImage objects) as
-  cluster objects. You can create a cluster object directly, by using the
-  __init__ method, which takes in a list of SingleImage objects, and some
-  string-info, or by using a classmethod e.g. to create an object from a folder
-  full of integration pickles. SingleImage objects have most of the stuff from
-  an integration pickle, but can also have methods to calculate things relating
-  to one image at a time. Whenever a method can plot, there is the option of
+  """Class for operation on groups of single XFEL images (here described by
+  SingleFrame objects) as cluster objects.
+
+  Objects can be created directily using the __init__ method, or by using a
+  classmethod e.g. to create an object from a folder full of integration
+  pickles. Whenever a method can plot, there is the option of
   passing it an appropriate number of matplotlib axes objects, which will then
   get returned for use in composite plots. See cluster.42 for an example.
   If no axes are passed, the methods will just plot the result to the screen.
@@ -33,31 +36,32 @@ class Cluster:
   passes and fails into different clusters. This is acheived through the
   make_sub_cluster() method. This also keeps track of a sub-clusters heritage
   through the .info string, which is appended to. The idea is to be able to
-  write filter scripts for each data. e.g::
+  write filter scripts for each data.
+  e.g ::
 
-    test_cluster = Cluster.from_directories(["~/test_data"],
-                                          'test_script')
-    P3_only = test_cluster.point_group_filer('P3')
-    sub_clusters = P3_only.ab_cluster(1200)
-    big_cluster = max(sub_clusters, key=lambda x: len(x.members))
-    best_data = big_cluster.total_intensity_filter(res=6.5,
-                                                   completeness_threshold=0.1,
-                                                   plot=False)
-    print best_data.info
+      >>> test_cluster = Cluster.from_directories(["~/test_data"],
+      ...                                        'test_script')
+      >>> P3_only = test_cluster.point_group_filer('P3')
+      >>> sub_clusters = P3_only.ab_cluster(1200)
+      >>> big_cluster = max(sub_clusters, key=lambda x: len(x.members))
+      >>> best_data = big_cluster.total_intensity_filter(res=6.5,
+      ...                                               completeness_threshold=0.1,
+      ...                                               plot=False)
+      >>> print best_data.info
 
-  cxi.postrefine (or any other merging thing) will be able to be called on the
-  ouput of a cluster object method (ToDo)
+  Subsequent postrefinenment/merging programs can be called on an output
+  cluster.lst file::
+      >>> prime.postrefine params.phil $(cat cluster.lst)
   """
 
   def __init__(self, data, cname, info):
     """
-    Contains a list of SingFrame objects, as well as information about these
-    as a cluster (e.g. mean unit cell).
+    Builds a cluster from a list of SingleFrame objects, as well as information
+    about these as a cluster (e.g. mean unit cell).
 
-    :param:data: a list of SingleFrame objects
-    :param:cname: the name of the cluster, as a string.
-    :param:info: an info-string for the cluster.
-    :return: a Cluster object
+    :param data: a list of SingleFrame objects
+    :param cname: the name of the cluster, as a string.
+    :param info: an info-string for the cluster.
     """
 
     self.cname = cname
@@ -87,9 +91,9 @@ class Cluster:
     """Constructor to get a cluster from pickle files, from the recursively
     walked paths. Can take more than one argument for multiple folders.
     usage: Cluster.from_directories(..)
-    :param:path_to_integration_dir: list of directories containing pickle files.
+    :param path_to_integration_dir: list of directories containing pickle files.
     Will be searched recursively.
-    :param:use_b: Boolean. If True, intialise Scale and B. If false, use only
+    :param use_b: Boolean. If True, intialise Scale and B. If false, use only
     mean intensity scalling.
     """
     data = []
@@ -110,8 +114,8 @@ class Cluster:
                        _prefix='cluster_from_file',
                        use_b=True):
     """Constructor to get a cluster from a list of pickle files.
-    :param:pickle_list: list of pickle files
-    :param:use_b: Boolean. If True, intialise Scale and B. If false, use only
+    :param pickle_list: list of pickle files
+    :param use_b: Boolean. If True, intialise Scale and B. If false, use only
     mean intensity scalling.
     """
     data = []
@@ -127,6 +131,13 @@ class Cluster:
   def make_sub_cluster(self, new_members, new_prefix, new_info):
     """ Make a sub-cluster from a list of SingleFrame objects from the old
     SingleFrame array.
+
+    :param new_members: a new set of SingleFrame objects, typically a subset of
+    the current cluster.
+    :param new_prefix: prefix to be passed directly to __init__
+    :param new_info: new information about this cluster. This is inteligently
+    appended to the old info string so that the history of sub-clusters is
+    tracted.
     """
     return Cluster(new_members, new_prefix,
                    ('{}\n{} Next filter {}\n{}\n{} of {} images passed'
@@ -161,11 +172,15 @@ class Cluster:
   def total_intensity_filter(self, res='',
                              completeness_threshold=0.95,
                              plot=False):
-    """ Creates a sub-cluster using the highest total intensity images that
-          yield a dataset specified by:
-          res -- desired resolution. Defaults to that of the dataset.
-          completeness -- the desired completeness of the subset
-          multiplicity -- the desired multiplicity of the subset
+    """
+    .. note::
+      This is still in development, use at own risk!
+
+    Creates an optimal sub-cluster using the fewest images that fulfil the
+    criteria defined by:
+    :param res: desired resolution. Defaults to that of the dataset.
+    :param completeness: the desired completeness of the subset
+    :param multiplicity: the desired multiplicity of the subset
     """
     logging.info(("Performing intensity filtering, aiming for {}% overall "
                   "completenes at {} A resolution").format(
@@ -222,25 +237,21 @@ class Cluster:
 
   def ab_cluster(self, threshold=10000, method='distance',
                  linkage_method='single', log=False,
-                 ax=None, write_file_lists=True):
+                 ax=None, write_file_lists=True, fast=False):
     """
-    Do hierarchical clustering using the Andrews-Berstein distance from
-    Andrews & Bernstein J Appl Cryst 47:346 (2014) on the Niggli cells. Returns
-    the largest cluster if max_only is true, otherwise a list of clusters. Also
-    return a matplotlib axes object for display of a dendogram.
+    Hierarchical clustering using the unit cell dimentions.
 
     :param threshold: the threshold to use for prunning the tree into clusters.
-    :param method: which clustering method from scipy to use when creating the
-    tree (see scipy.cluster.hierarchy)
-    :param linkage_method: which linkage method from scipy to use when creating
-    the linkages.
-    (see scipy.cluster.hierarchy)
+    :param fast: if True, use simple euclidian distance, otherwise, use Andrews-Berstein distance from Andrews & Bernstein J Appl Cryst 47:346 (2014) on the Niggli cells.
+    :param method: which clustering method from scipy to use when creating the tree (see scipy.cluster.hierarchy)
+    :param linkage_method: which linkage method from scipy to use when creating the linkages. x (see scipy.cluster.hierarchy)
     :param log: if True, use log scale on y axis.
-    :param ax: if a matplotlib axes object is provided, plot to this. Otherwise,
-    create a new axes object and display on screen.
-    :param write_file_lists: if True, write out the files that make up each
-    cluster.
+    :param ax: if a matplotlib axes object is provided, plot to this. Otherwise, create a new axes object and display on screen.
+    :param write_file_lists: if True, write out the files that make up each cluster.
     :return: A list of Clusters ordered by largest Cluster to smallest
+    .. note::
+      Use 'fast' option with caution, since it can cause strange behaviour
+      around symmetry boundaries.
     """
 
     logging.info("Hierarchical clustering of unit cells using Andrews-Bernstein"
@@ -253,8 +264,18 @@ class Cluster:
                          for image in self.members])
 
     # 2. Do hierarchichal clustering, using the find_distance method above.
+
     pair_distances = dist.pdist(g6_cells,
                                 metric=lambda a, b: NCDist(a, b))
+    ''' replace with:
+       X = g6_cells
+            k = 0
+        for i in xrange(0, m - 1):
+            for j in xrange(i + 1, m):
+                dm[k] = dfun(X[i], X[j])
+                k = k + 1
+
+    '''
     logging.debug("Distances have been calculated")
     this_linkage = hcluster.linkage(pair_distances,
                                     method=linkage_method,
@@ -315,8 +336,10 @@ class Cluster:
     return sub_clusters, ax
 
   def dump_file_list(self, out_file_name=None):
-    """ Simply dumps a list of paths to inegration pickle files to a file. One
-    line per image
+    """ Dumps a list of paths to inegration pickle files to a file. One
+    line per image. Provides easy input into post-refinement programs.
+
+    :param out_file_name: the output file name.
     """
     if out_file_name is None:
       out_file_name = self.cname
@@ -328,13 +351,13 @@ class Cluster:
   def visualise_orientational_distribution(self, axes_to_return=None,
                                            cbar=True):
 
-    """ Creates a plot of the orientational distribution of the unit cells. Will
-    plot if given no axes, otherwise, requires 3 axes objects, and will return
-    them.
+    """ Creates a plot of the orientational distribution of the unit cells.
+
+    :param axes_to_return: if None, print to screen, otherwise, requires 3 axes objects, and will return them.
+    :param cbar: boolean to specify if a color bar should be used.
     """
     from mpl_toolkits.basemap import Basemap
     import scipy.ndimage as ndi
-    from cctbx.array_family import flex
 
     def cart2sph(x, y, z):
       # cctbx (+z to source, y to ceiling) to
@@ -409,7 +432,10 @@ class Cluster:
         # Get position of symetry mates
         symmetry_operations = list(point_group_type.smx())[1:]
         for mx in symmetry_operations:
-          rotated_orientation = list(mx.r().as_double() * orientation)
+          rotated_orientation = list(mx.r().as_double() * orientation)  # <--
+          # should make sense if orientation was a vector, not clear what is
+          # going on since orientation is a matrix. Or, make some test cases
+          # with 'orientation' and see if the behave as desired.
           sym_x, sym_y, sym_lo, sym_la \
             = xy_lat_lon_from_orientation(rotated_orientation, axis_id)
           #assert (sym_x, sym_y) != (main_x, main_y)
@@ -478,8 +504,8 @@ class Cluster:
     1) histogram of standard errors on the per-frame fits
     2) histogram of B factors
     3) scatter  plot of intercept vs. gradient (G vs. B)
-    :param:ax: optionally hand the method three matplotlib axes objects to plot
-    onto. If not specified, will plot the data.
+
+    :param ax: optionally hand the method three matplotlib axes objects to plot onto. If not specified, will plot the data.
     :return: the three axes, with the data plotted onto them.
     """
     if ax is None:
@@ -518,10 +544,10 @@ class Cluster:
   def all_frames_intensity_stats(self, ax=None, smoothing_width=2000):
     """
     Goes through all frames in the cluster, and plots all the partial intensites.
-    Then does a linear fit through these, and  rolling average/
-    :param:smoothing_width: the width of the smoothing window. Default 2000
-    reflections.
-    :param:ax: Optional matplotlib axes object to plot to.
+    Then does a linear fit and rolling average on these.
+
+    :param smoothing_width: the width of the smoothing window.
+    :param ax: Optional matplotlib axes object to plot to. Otherwise, plot to screen.
     :return: the axis, with the data plotted onto it.
     """
     from scipy.stats import linregress
@@ -569,3 +595,391 @@ class Cluster:
       plt.show()
 
     return ax
+
+
+class Edge:
+  """
+  .. note::
+    Developmental code. Do not use without contacting zeldin@stanford.edu
+
+  Defines an undirected edge in a graph. Contains the connecting vertices, and a
+  weight.
+  """
+
+  def __init__(self, vertex_a, vertex_b, weight):
+    self.vertex_a = vertex_a
+    self.vertex_b = vertex_b
+    self.weight = weight
+
+  def mean_residual(self):
+    """
+    :return: the mean residual of the absolute value of the all the weigts on this edge.
+    """
+    return np.mean(np.abs(self.residuals()))
+
+  def other_vertex(self, vertex):
+    """
+    Simple method to get the other vertex along and edge.
+
+    :param vertex: a vertex that is on one end of this edge
+    :return: the vertex at the other end of the edge
+    """
+    assert vertex == self.vertex_a or vertex == self.vertex_b
+    if vertex is self.vertex_a:
+      return self.vertex_b
+    elif vertex is self.vertex_b:
+      return self.vertex_a
+
+  def residuals(self):
+    """
+    Calculates the edge residual, as defined as the sum over all common miller
+    indices of:
+      log(scale * partiality of a) - log(scale * partiality of b) - log(I_a/I_b)
+
+    :return: the residual score for this edge
+    """
+    # 1. Create flex selection array
+    # 2. Trim these so that they only contain common reflections
+    # 3. Calculate residual
+
+    partialities_a = self.vertex_a.partialities
+    partialities_b = self.vertex_b.partialities
+    scales_a = self.vertex_a.scales
+    scales_b = self.vertex_b.scales
+
+    mtch_indcs = self.vertex_a.miller_array. \
+      match_indices(self.vertex_b.miller_array,
+                    assert_is_similar_symmetry=False)
+
+    va_selection = mtch_indcs.pair_selection(0)
+    vb_selection = mtch_indcs.pair_selection(1)
+
+    sp_a = partialities_a.select(va_selection) * scales_a.select(va_selection)
+    sp_b = partialities_b.select(vb_selection) * scales_b.select(vb_selection)
+
+    ia_over_ib = self.vertex_a.miller_array.data().select(va_selection) / \
+                 self.vertex_b.miller_array.data().select(vb_selection)
+    residuals = (flex.log(sp_a) - flex.log(sp_b) - flex.log(ia_over_ib))
+    residuals = residuals.as_numpy_array()
+    #logging.debug("Mean Residual: {}".format(np.mean(residuals)))
+    return residuals[~np.isnan(residuals)]
+
+
+class Graph(Cluster):
+  """
+  .. note::
+    Developmental code. Do not use without contacting zeldin@stanford.edu
+
+  Class for treating a graph of serial still XFEL shots as a graph.
+  """
+  def __init__(self, vertices, min_common_reflections=10):
+    """
+    Extends the constructor from cluster.Cluster to describe the cluster as a
+    graph.
+
+    :param min_common_reflections: number of reflections two images must have in
+    common for an edge to be created.
+    """
+    Cluster.__init__(self, vertices, "Graph cluster", "made as a graph")
+    self.common_miller_threshold = min_common_reflections
+    self.edges = self._make_edges()
+
+
+  def _make_edges(self):
+    all_edges = []
+    for a, vertex1 in enumerate(self.members):
+      for b, vertex2 in enumerate(self.members[:a]):
+        miller1 = vertex1.miller_array
+        miller2 = vertex2.miller_array
+        edge_weight = miller1.common_set(miller2,
+                                         assert_is_similar_symmetry=False).size()
+        if edge_weight >= self.common_miller_threshold:
+          logging.debug("Making edge: ({}, {}) {}, {}"
+                        .format(a, b, vertex1.name, vertex2.name))
+          this_edge = Edge(vertex1, vertex2, edge_weight)
+          logging.debug("Edge weight: {}".format(edge_weight))
+          all_edges.append(this_edge)
+          vertex1.edges.append(this_edge)
+          vertex2.edges.append(this_edge)
+    return all_edges
+
+
+  @classmethod
+  def from_directories(cls, folder, **kwargs):
+    """
+    Creates a Graph class instance from a directory of files (recursively)
+
+    :param folder: the root directory containing integration pickles.
+    :return: A Graph instance.
+    """
+    def add_frame(all_vertices, dirpath, filename, **kwargs):
+      path = os.path.join(dirpath, filename)
+      this_frame = ImageNode(path, filename, **kwargs)
+      if hasattr(this_frame, 'miller_array'):
+        all_vertices.append(this_frame)
+      else:
+        logging.info('skipping file {}'.format(filename))
+
+    nmax = kwargs.get('nmax', None)
+
+    all_vertices = []
+    for arg in folder:
+      for (dirpath, dirnames, filenames) in os.walk(arg):
+        for filename in filenames:
+          if not nmax:
+            add_frame(all_vertices, dirpath, filename, **kwargs)
+          else:
+            if len(all_vertices) <= nmax:
+              add_frame(all_vertices, dirpath, filename)
+    return cls(all_vertices)
+
+  def make_nx_graph(self, edge_width=False, saveas=None, show_singletons=True,
+                    **kwargs):
+    """
+    Create a networkx Graph, and visualise it.
+
+    :param edge_width: if edge widths should be proportional to number of common miller indices.
+    :param saveas: optional filename to save the graph as a pdf as. Displays graph if not specified.
+    :param pos: an optional networkx position dictionairy for plotting the graph
+    :return: the position dictionairy, so that mutiple plots can be made using the same set of positions.
+    """
+    import networkx as nx
+    nx_graph = nx.Graph()
+    if show_singletons:
+      nx_graph.add_nodes_from(self.members)
+    else:
+      nx_graph.add_nodes_from([vert for vert in self.members if vert.edges])
+
+    logging.debug("Vertices added to graph.")
+    for edge in self.edges:
+      nx_graph.add_edge(edge.vertex_a, edge.vertex_b, {'n_conn': edge.weight,
+                                                       'residual': np.mean(np.abs(edge.residuals()))})
+    logging.debug("Edges added to graph.")
+
+    mean_I = np.mean([node.total_i for node in self.members])
+    abs_residuals = [edge[2]["residual"]
+                     for edge in nx_graph.edges_iter(data=True)]
+    if edge_width:
+      edge_widths = [edge[2]["n_conn"]
+                     for edge in nx_graph.edges_iter(data=True)]
+    else:
+      edge_widths = [1 for edge in nx_graph.edges_iter()]
+
+    if not kwargs.has_key('pos') :
+      kwargs['pos'] = nx.spring_layout(nx_graph, iterations=1000)
+
+
+    fig = plt.figure(figsize=(12, 9))
+    im_vertices = nx.draw_networkx_nodes(nx_graph, with_labels=False,
+                                         node_color='0.7', **kwargs)
+    im_edges = nx.draw_networkx_edges(nx_graph, vmin=0,
+                                      vmax=max(abs_residuals),
+                                      edge_color=abs_residuals,
+                                      edge_cmap=plt.get_cmap("jet"),
+                                      width=edge_widths,
+                                      **kwargs)
+    cb = plt.colorbar(im_edges)
+    cmin, cmax = cb.get_clim()
+    ticks = np.linspace(cmin, cmax, 7)
+    cb.set_ticks(ticks)
+    cb.set_ticklabels(['{:.3f}'.format(t) for t in ticks])
+    cb.set_label("Edge Residual")
+    plt.axis('off')
+    plt.tight_layout()
+    plt.title("Network Processing\nThickness shows number of connections")
+    if saveas is not None:
+      plt.savefig(saveas, bbox_inches='tight')
+    else:
+      plt.show()
+    return kwargs['pos']
+
+  def merge_dict(self, estimate_fullies=True):
+    """ Make a dict of Miller indices with  ([list of intensities], resolution)
+    value tuples for each miller index. Use the fully-corrected equivalent.
+
+    :param estimate_fullies: Boolean for if the partialities and scales should be used.
+    """
+    intensity_miller = {}
+    for vertex in self.members:
+      if vertex.edges:
+        miller_array = vertex.miller_array
+        if estimate_fullies:
+          miller_array = miller_array / (vertex.partialities
+                                         * vertex.scales)
+        #miller_array = miller_array.map_to_asu()
+        d_spacings = list(miller_array.d_spacings().data())
+        miller_indeces = list(miller_array.indices())
+        miller_intensities = list(miller_array.data())
+
+        for observation in zip(miller_indeces, miller_intensities, d_spacings):
+          try:
+            intensity_miller[observation[0]][0].append(observation[1])
+          except KeyError:
+            intensity_miller[observation[0]] = ([observation[1]],
+                                                observation[2])
+    return intensity_miller
+
+  def cc_half(self, nbins=10, estimate_fullies=True):
+    """
+    Calculate the correlation coefficients for the vertices of the graph.
+
+    :param nbins: number of bins to use for binned correlations.
+    :param estimate_fullies: if True, use current orientation, spot profile and scale to estimate the 'full' intensity of each reflection.
+
+    :return cc_half, p_value: overall CC1/2 for all reflections in the cluster.
+    :return pretty_string: string with the CC by bin. Lowest resolution bin is extended if data cannot be split into n_bins evenly.
+    """
+    from scipy.stats import pearsonr
+    import operator
+
+    intensity_miller = self.merge_dict(estimate_fullies=estimate_fullies)
+
+    # Remove miller indices that are only measured once.
+    multiple_millers = [values for values in intensity_miller.values()
+                        if len(values[0]) > 1]
+
+    # Sort, since we will be binning later
+    multiple_millers.sort(key=lambda x: x[1])
+
+    # Avoid corner case where number of millers goes exactly into the bins
+    if len(multiple_millers) % nbins == 0:
+      nbins += 1
+
+    # Figure out bin sizes:
+    bin_size = int(len(multiple_millers) / nbins)
+    bin_edges = [multiple_millers[i][1] for i in range(0, len(multiple_millers),
+                                                       bin_size)]
+
+    # Extend the last bin does not cover the whole resolution range
+    bin_edges[-1] = multiple_millers[-1][1]
+
+    assert bin_edges[0] == multiple_millers[0][1]
+    assert bin_edges[-1] == multiple_millers[-1][1]
+    assert len(bin_edges) == nbins + 1
+
+    # For bins of size bin_size, split each miller index into two, and add half
+    # the observations to first_half and half to second_half
+    first_half = [[] for _ in range(nbins)]
+    second_half = [[] for _ in range(nbins)]
+    for indx, intensities in enumerate(multiple_millers):
+      # Extending the last bin if necesarry
+      bin_id = indx // bin_size if indx // bin_size < nbins else nbins - 1
+      obs = intensities[0]
+      random.shuffle(obs)
+      middle = len(obs) // 2
+      first_half[bin_id].append(np.mean(obs[:middle]))
+      second_half[bin_id].append(np.mean(obs[middle:]))
+
+    # Calculate the CC for the two halves of each resolution bin.
+    logging.info("Calculating CC1/2 by resolution bin. "
+                 "{} miller indices per bin".format(bin_size))
+    pretty_string = ''
+    for bin_id in reversed(range(nbins)):
+      bin_cc, bin_p = pearsonr(first_half[bin_id], second_half[bin_id])
+      bin_str = "{:6.3f} - {:6.3f}: {:4.3f}".format(bin_edges[bin_id + 1],
+                                                    bin_edges[bin_id],
+                                                    bin_cc)
+      logging.info(bin_str)
+      pretty_string += bin_str + "\n"
+
+    # Combine all the split millers, and take the CC of everything
+    first_half_all = reduce(operator.add, first_half)
+    second_half_all = reduce(operator.add, second_half)
+    cc_half, p_value = pearsonr(first_half_all, second_half_all)
+    logging.info("CC 1/2 calculated: {:4.3f}, p-value: {}".format(cc_half,
+                                                                  p_value))
+
+    return cc_half, p_value, pretty_string
+
+  @staticmethod
+  def total_score(params, *args):
+    """ return to total residual given params, which is a list of tuples, each
+    containing the parameters to refine for one image. Formated for use with
+    the scipy minimization routines.
+    There are thus 12*N_images parameters, and sum_edges(edge_weight) variables
+
+    :param params: a list of the parameters for the minimisation as a tuple, only including vertices that have edges. See ImageNode.get_x0() for details of parameters.
+    :param *args: is the Graph to be minimised, the starting point of params for each new frame, as a list, and a list of the vertex objects that are to be used.
+    :return: the total squared residual of the graph minimisation
+    """
+    assert len(args) == 3, "Must have 2 args: Graph object, and length of each" \
+                           "set of parameters."
+
+    graph = args[0]
+    param_knots = args[1]
+    x0 = args[2]
+
+    # Scale the normalised params up by their starting values.
+    params = params * x0
+
+    # 0. break params up into a list of correct length
+    param_list = []
+    current_pos = 0
+    for x0_length in param_knots:
+      param_list.append(params[current_pos:current_pos + x0_length])
+      current_pos += x0_length
+    params = param_list
+
+    # 1. Update scales and partialities for each node that has edges
+    # using params.
+    for v_id, vertex in enumerate([vertex for vertex in graph.members
+                                   if vertex.edges]):
+      vertex.partialties = vertex.calc_partiality(params[v_id])
+      vertex.scales = vertex.calc_scales(params[v_id])
+      vertex.G = params[v_id][0]
+      vertex.B = params[v_id][1]
+
+    # 2. Calculate all new residuals
+    residuals_by_edge = []
+    for edge in graph.edges:
+      residuals_by_edge.append(edge.residuals())
+
+    # 3. Return the sum squared of all residuals
+    total_sum = 0
+    for edge in residuals_by_edge:
+      for residual in edge:
+        total_sum += residual**2
+
+    logging.debug("Total Score: {}".format(total_sum))
+    return total_sum
+
+  def global_minimise(self, nsteps=15000):
+    """
+    Perform a global minimisation on the total squared residuals on all the
+    edges, as calculated by Edge.residuals(). Uses the L-BFGS algorithm.
+
+    :param nsteps: max number of iterations for L-BFGS to use.
+    """
+    from scipy.optimize import fmin_l_bfgs_b as lbfgs
+
+    # 1. Make a big array of all x0 values
+    x0 = []
+    param_knots = []
+    for vertex in self.members:
+      if vertex.edges:
+        x0.extend(vertex.get_x0())
+        param_knots.append(len(vertex.get_x0()))
+
+    # Test for the above:
+    current_pos = 0
+    vertices_with_edges = [vert for vert in self.members if vert.edges]
+    for im_num, x0_length in enumerate(param_knots):
+      these_params = x0[current_pos:current_pos+ x0_length]
+      assert all(these_params == vertices_with_edges[im_num].get_x0())
+      current_pos += x0_length
+
+    # 2. Do the magic
+    final_params, min_total_res, info_dict = lbfgs(Graph.total_score,
+                                                   x0,
+                                                   approx_grad=True,
+                                                   epsilon=0.001,
+                                                   args=(self, param_knots,
+                                                         np.ones(len(x0))),
+                                                   factr=10**12,
+                                                   iprint=0,
+                                                   disp=10,
+                                                   maxiter=nsteps)
+
+    return final_params, min_total_res, info_dict
+
+

@@ -1,4 +1,8 @@
-from __future__ import division
+""" Module for working with single images in a serial crystallography
+dataset"""
+from libtbx import easy_pickle
+from scitbx.matrix import sqr
+from cctbx.uctbx import unit_cell
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
@@ -14,7 +18,8 @@ class SingleFrame:
   ANGSTROMS_TO_EV = 12398.425
 
   def __init__(self, path=None, filename=None, crystal_num=0,
-               remove_negative=False, use_b=True, scale=True, dicti=None):
+               remove_negative=False, use_b=True, scale=True, dicti=None,
+               pixel_size=None):
     """
     Constructor for SingleFrame object, using a cctbx.xfel integration pickle.
 
@@ -22,53 +27,51 @@ class SingleFrame:
     :param filename: the file name alone (used as a label)
     :param crystal_num: if multiple lattices present, the latice number.
     :param remove_negative: Boolean for removal of negative intensities
-    :param use_b: if True, initialise scale and B, if false, use only
-    mean-intensity scaling.
-    :param dicti: optional. If a dictionairy is supplied here, will create
+    :param use_b: if True, initialise scale and B, if false, use only mean-intensity scaling.
+    :param dicti: optional. If a dictionairy is supplied here, will create object from that rather than attempting to read the file specified in path, filename.
+    :param pixel_size: the size of pixels in mm. Defaults to a MAR detector with a warning.
     :param scale: if False, will intialise scales to G=1, B=0.
-    object from that rather than attempting to read the file specified in path,
-    filename.
 
-    --------------------------------------------------
 
     :return: a SingleFrame object, with the following Object attributes:
 
-    --------------------------------------------------
 
     Object attributes are:
-    :var is_polarization_corrected: Boolean flag indicatinf if polarization
-    correction has been applied
-    :var miller_array: the cctbx.miller miller array of spot intensities.
-    :var mapped_predictions: the mapped_predictions locations
-    :var path: full path to the original file
-    :var name: file-name, used as an identifier
-    :var crystal_system:
-    :var pg: point group of pickle
-    :var uc: unit cell as a tuple
-    :var orientation: cctbx crystal_orientation object
-    :var total_i: the total integrated intensity for this frame
-    :var xbeam: x-location of beam centre
-    :var ybeam: y-location of beam centre
-    :var wavelength:
-    :var spot_offset: the mean offset between observed spots and predicted
-    centroids. Only created if integration was performed using verbose_cv=True.
-    Otherwise None.
-    :var minus_2B: the gradient of the ln(i) vs. sinsqtheta_over_lambda_sq plot
-    :var G: intercept of the of the ln(i) vs. sinsqtheta_over_lambda_sq plot
-    :var log_i: list of log_i intensities
-    :var sinsqtheta_over_lambda_sq: list of sinsqtheta_over_lambda_sq
-    :var wilson_err: standard error on the fit of ln(i) vs.
-    sinsqtheta_over_lambda_sq
+        - `is_polarization_corrected`: Boolean flag indicatinf if polarization correction has been applied
+        - `miller_array`: the cctbx.miller miller array of spot intensities.
+        - `mapped_predictions`: the mapped_predictions locations
+        - `path`: full path to the original file
+        - `name`: file-name, used as an identifier
+        - `crystal_system:
+        - `pg`: point group of pickle
+        - `uc`: unit cell as a tuple
+        - `orientation`: cctbx crystal_orientation object
+        - `total_i`: the total integrated intensity for this frame
+        - `xbeam`: x-location of beam centre
+        - `ybeam`: y-location of beam centre
+        - `wavelength:
+        - `spot_offset`: the mean offset between observed spots and predicted centroids. Only created if integration was performed using verbose_cv=True. Otherwise None.
+        - `minus_2B`: the gradient of the ln(i) vs. sinsqtheta_over_lambda_sq plot
+        - `G`: intercept of the of the ln(i) vs. sinsqtheta_over_lambda_sq plot
+        - `log_i`: list of log_i intensities
+        - `sinsqtheta_over_lambda_sq`: list of sinsqtheta_over_lambda_sq
+        - `wilson_err`: standard error on the fit of ln(i) vs. sinsqtheta_over_lambda_sq
     """
     if dicti is not None:
       d = dicti
     else:
       try:
-        d = cPickle.load(open(path, 'rb'))
+        d = easy_pickle.load(path)
       except (cPickle.UnpicklingError, ValueError, EOFError, IOError):
         d = {}
         logging.warning("Could not read %s. It may not be a pickle file." % path)
     try:
+      if pixel_size:
+        self.pixel_size = pixel_size
+      else:
+        logging.warning("No pixel size specified, defaulting to MAR (0.079346). "
+                        "Bad times if this is not the correct detector!")
+        self.pixel_size = 0.079346
       # Warn on error, but continue directory traversal.
       self.is_polarization_corrected = False
       # Miller arrays
@@ -122,8 +125,8 @@ class SingleFrame:
     Remove all miller indicies outside the range of _d_min, _d_max.
     Changes the object in place.
 
-    :param:d_min: min res of new miller array. Defaults to current value.
-    :param:d_max: max res of new miller array. Defaults to current value.
+    :param d_min: min res of new miller array. Defaults to current value.
+    :param d_max: max res of new miller array. Defaults to current value.
     """
     if d_min is None:
       d_min = self.miller_array.d_min()
@@ -144,28 +147,18 @@ class SingleFrame:
     """
     Currently a placeholder that returns None.
 
-    This method will :return the number of reflection in the frame that have an
-    I/sig(I) > :param:sig_i_cuttoff
+    This method should return the number of reflection in the frame that have an
+    I/sig(I) > sig_i_cuttoff
     """
     reflections_above_cuttoff = None
     return len(reflections_above_cuttoff)
 
   def init_calc_wilson(self, use_b_factor, i_corrections=None):
-    """ If use_b_factor is True, do a linear regression to fit G and B.
-    Returns the coeficients minus_2B, G, the transformed data log_i, and
-    one_over_d_sqare. Also returns fit_stats, which is a dictionairy.
+    """ If use_b_factor is
+    :param i_corrections: allows flex array of correction factors (e.g. partialities) to be specified
+    :param use_b_factor: if True, do a linear regression to fit G and B and returns the coeficients minus_2B, G, the transformed data log_i, and one_over_d_sqare. Also returns fit_stats, which is a dictionairy. If use_b_factor is False, then B is 0, and G is the mean intensity of the image. The r_value is then 0 (by definition), and the std_err is the standard error on the mean.
 
-    If use_b_factor is False, then B is 0, and G is the mean intensity of the
-    image. The r_value is then 0 (by definition), and the std_err is the
-    standard error on the mean.
-
-    :param:i_corrections allows flex array of correction factors
-          (e.g. partialities) to be specified
-
-    :return: minus_2B (gradient of fit),
-             G (intercept of fit),
-             log_i (dependent variable of fit),
-             one_over_d_square (independent variable of fit).
+    :return minus_2B, G, log_i, on_over_d_square: `minus_2B`: gradient of fit; `G`: intercept of fit; `log_i`: dependent variable of fit; `one_over_d_square`: independent variable of fit.
     """
     if i_corrections:
       inten = (self.miller_array.sort().data() * i_corrections).as_numpy_array()
@@ -288,3 +281,147 @@ class SingleFrame:
       e = 2 * uc[0] * uc[2] * math.cos(uc[4])
       f = 2 * uc[0] * uc[1] * math.cos(uc[5])
       return [a, b, c, d, e, f]
+
+
+class ImageNode(SingleFrame):
+  """ Extends a SingleFrame object to make it a vertex in a graph. Adds a list
+   of edges.
+  """
+
+  def __init__(self, *args, **kwargs):
+    """ Constructor is same as for SingleFrame object, but has additional
+    kwargs:
+    :param kwargs['scale']: default True. Specifies if the images should be scaled upon creation. Mainly switched off for testing.
+    :param kwargs['use_b']: default True. If false, only initialise the scale factor, not the B factor.
+    """
+    SingleFrame.__init__(self, *args, **kwargs)
+    if hasattr(self, 'miller_array'):  # i.e. if the above worked.
+      self.use_scales = kwargs.get('scale', True)
+      self.use_b = kwargs.get('use_b', True)
+      self.edges = []
+      self.partialities = self.calc_partiality(self.get_x0(),
+                                               update_wilson=self.use_scales)
+      self.scales = self.calc_scales(self.get_x0())
+
+
+  def calc_partiality(self, params_in, update_wilson=True):
+    """ Reuturn a partiality vector for all the reflections in self, using the
+    parameters defined in the array params.
+
+    :params: a tuple of the form appropriate for the crystal symetry, such as
+    one produced by get_x0()
+    :return: a list of partialities for the miller indicies in self.
+    """
+    from xfel.cxi.postrefine.mod_leastsqr import prep_output, \
+      get_crystal_orientation
+    from xfel.cxi.postrefine.mod_partiality \
+      import partiality_handler as PartialityHandler
+
+    # Expand to triclinic params, and unpack
+    params_all = prep_output(params_in, self.crystal_system)
+    G, B, rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma = params_all
+
+    # Create a unit cell based on params, not the initialised values.
+    try:
+      uc = unit_cell((a, b, c, alpha, beta, gamma))
+    except RuntimeError:
+      return  None
+      logging.warning("Could not create unit cell with ({}, {}, {}, {}, {}, {})"
+                      ". Resetting unit cell to original value."
+                      .format(a, b, c, alpha, beta, gamma))
+      uc = self.orientation.unit_cell()
+
+    ortho_matrix = uc.orthogonalization_matrix()
+    orientation_matrix = self.orientation.crystal_rotation_matrix()
+
+    crystal_init_orientation = get_crystal_orientation(ortho_matrix,
+                                                       orientation_matrix)
+    crystal_orientation_model = crystal_init_orientation \
+      .rotate_thru((1, 0, 0), rotx).rotate_thru((0, 1, 0), roty)
+    a_star = sqr(crystal_orientation_model.reciprocal_matrix())
+
+    # set up variables
+    miller_indices = self.miller_array.indices()
+    ph = PartialityHandler(self.wavelength, None)
+    bragg_angle_set = self.miller_array.two_theta(wavelength=self.wavelength) \
+      .data()
+    mm_predictions = self.pixel_size * self.mapped_predictions
+    alpha_angle_obs = flex.double([math.atan(abs(pred[0] - self.xbeam) /
+                                             abs(pred[1] - self.ybeam))
+                                   for pred in mm_predictions])
+    assert len(alpha_angle_obs) == len(self.miller_array.indices()), \
+      'Size of alpha angles and observations are not equal %6.0f, %6.0f' \
+      % (len(alpha_angle_obs), len(self.miller_array.indices()))
+
+    partiality = ph.calc_partiality_anisotropy_set(a_star, miller_indices, ry,
+                                                   rz, re, bragg_angle_set,
+                                                   alpha_angle_obs)
+    if update_wilson:
+      self.minus_2B, self.G, self.log_i, self.sinsqtheta_over_lambda_sq, \
+      self.wilson_err = self.init_calc_wilson(use_b_factor=self.use_b,
+                                              i_corrections=(1 / partiality))
+    return partiality
+
+  def calc_scales(self, params_in):
+    """ Calculate an array of scales based on scale, B and wavelength using the
+    equation $scale * exp(-2*B*(sin(theta)/wavelength)^2)$
+
+    Reuturn a scale vector for all the reflections in self, using the
+    parameters defined in the array params.
+
+    :params: a tuple of the form appropriate for the crystal symetry, such as
+    one produced by get_x0(). This method only uses params[0] (scale) and
+    params[1] (B)
+
+    :return: a list of scales for all the miller indicies in self
+    """
+    if self.use_scales:
+      scale = params_in[0]
+      B = params_in[1]
+      sin_sq_theta = self.miller_array.two_theta(wavelength=self.wavelength) \
+        .sin_theta_over_lambda_sq().data()
+
+      scales = scale * self.miller_array.data()
+      exp_arg = flex.double(-2 * B * sin_sq_theta)
+      return flex.double(scales * flex.exp(exp_arg))
+    else:
+      # Horrible way to get vector of ones...
+      return flex.double(self.miller_array.data()/self.miller_array.data())
+
+
+  def get_x0(self):
+    """
+    Return the initial estimages of parameters to be refined for this frame
+    :return: inital (G, B, rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma)
+    for lowest symetry, up to (G, B, rotx, roty, ry, rz, re, a) for cubic.
+    values, using:
+
+      - G: initial guess from linear regression
+      - B: initial guess from linear regression
+      - rotx: 0
+      - roty: 0
+      - ry: spot radius initial guess
+      - rz: spot radius initial guess
+      - re: 0.0026 (From Winkler et al. paper)
+      - [a, b, c, alpha, beta, gamma]: from initial indexing solution, dependent on crystal system:
+
+            Triclinic: (G, B, rotx, roty, ry, rz, re, a)
+            Monoclinic: (G, B, rotx, roty, ry, rz, re,a,b,c,beta])
+            Orthorhombic: (G, B, rotx, roty, ry, rz, re,a,b,c)
+            Tetragonal: (G, B, rotx, roty, ry, rz, re,a,c)
+            Trigonal or Hexagonal: (G, B, rotx, roty, ry, rz, re,a,c)
+            Cubic: (G, B, rotx, roty, ry, rz, re,a)
+    """
+    from xfel.cxi.postrefine.mod_leastsqr import prep_input
+    from xfel.cxi.postrefine.test_rs import calc_spot_radius
+
+    a_star = sqr(self.orientation.reciprocal_matrix())
+    miller_indices = self.miller_array.indices()
+    spot_radius = calc_spot_radius(a_star, miller_indices, self.wavelength)
+    x_init = [self.G, - 1 * self.minus_2B / 2, 0, 0,
+              spot_radius, spot_radius, 0.0026]
+    x_init.extend(self.uc)
+    x0_all = np.array(x_init)
+    x0 = prep_input(x0_all, self.crystal_system)
+    return x0
+
