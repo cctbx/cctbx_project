@@ -175,6 +175,30 @@ class load_model_and_data (object) :
   If at any point the inputs are ambiguous, hopefully the program will stop
   and raise an interpretable error.
 
+  Parameters
+  ----------
+  args: list of command-line arguments
+  master_phil: PHIL master (can optionally be an unparsed string)
+  update_f_part1_for: determine F(model) handling of bulk solvent mask; can \
+    be None (no correction), "refinement", or "map" (aggressive correction)
+  out: filehandle-like object
+  process_pdb_file: run full restraints generation
+  use_conformation_dependent_library: use CDL for restraints
+  require_data: raise error if no experimental data supplied
+  create_fmodel: setup mmtbx.f_model.manager object
+  prefer_anomalous: preferentially use anomalous data if present
+  force_non_anomalous: merge anomalous data if present
+  set_wavelength_from_model_header: interpret PDB or mmCIF header to set \
+    experimental wavelength
+  set_inelastic_form_factors: table to use (if any) for setting anomalous \
+    scattering form factors
+  usage_string: console output for no arguments or --help
+  create_log_buffer: store log output for later output to file
+  remove_unknown_scatterers: delete atoms with scattering type 'X'
+  generate_input_phil: specifies that the master_phil object is a string \
+    containing onky the app-specific options, and automatically add the \
+    standard input parameters
+
   Attributes
   ----------
   args : list of str
@@ -234,13 +258,17 @@ class load_model_and_data (object) :
       set_inelastic_form_factors=None,
       usage_string=None,
       create_log_buffer=False,
-      remove_unknown_scatterers=False) :
+      remove_unknown_scatterers=False,
+      generate_input_phil=False) :
     import mmtbx.monomer_library.pdb_interpretation
     import mmtbx.monomer_library.server
     import mmtbx.utils
     from iotbx import crystal_symmetry_from_any
     from iotbx import file_reader
     import iotbx.phil
+    if generate_input_phil :
+      assert isinstance(master_phil, basestring)
+      master_phil = generate_master_phil_with_inputs(phil_string=master_phil)
     if isinstance(master_phil, str) :
       master_phil = iotbx.phil.parse(master_phil)
     if (usage_string is not None) :
@@ -574,6 +602,9 @@ class load_model_and_data (object) :
 
 def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
     log=sys.stdout) :
+  """
+  Read in (and verify) unmerged intensities, e.g. from scalepack or XDS.
+  """
   from iotbx import merging_statistics
   unmerged_i_obs = merging_statistics.select_data(
     file_name=file_name,
