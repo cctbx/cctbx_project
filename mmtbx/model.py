@@ -888,10 +888,6 @@ class manager(object):
       sites_cart = sites_cart.select(~self.ias_selection)
     ref_m_rm = self.reference_model_restraints_manager
     if(self.reference_sites_cart is None): ref_m_rm = None
-    #
-    rm_norm = self.restraints_manager.normalization
-    if self.restraints_manager.afitt_object:
-      self.restraints_manager.normalization=False
     result = self.restraints_manager.energies_sites(
       sites_cart=sites_cart,
       geometry_flags=geometry_flags,
