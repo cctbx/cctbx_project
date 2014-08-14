@@ -67,17 +67,30 @@ def grads_one_ncs_to_asu(ncs_restraints_group_list,
   return g.as_double()
 
 def restraints_target_and_grads(
+      ncs_restraints_group_list,
       restraints_manager,
       xray_structure,
-      ncs_restraints_group_list,
-      refine_selection,
-      lbfgs_self,
       grad,
+      x,
       refine_sites=False,
       refine_u_iso=False,
       refine_transformations=False,
       iso_restraints=None,
       use_hd=None):
+  """
+  :param ncs_restraints_group_list: NCS operator list
+  :param restraints_manager: (object)
+  :param xray_structure: (object)
+  :param grad: gradient without restraints
+  :param x: refined parameter
+  :param refine_sites: (bool) indicate refinement type
+  :param refine_u_iso: (bool) indicate refinement type
+  :param refine_transformations: (bool) indicate refinement type
+  :param iso_restraints: (object) iso restraints parameters
+  :param use_hd: (bool) Use hydrogen
+  :return ef_target: (float) restraints target function value
+  :return ef_grad: (flex.double or flex.vec3_double) restraints gradient
+  """
   assert [refine_sites, refine_u_iso, refine_transformations].count(True)==1
   ef_grad = None
   ef = None
@@ -102,8 +115,8 @@ def restraints_target_and_grads(
       ef_grad = nu.compute_transform_grad(
         grad_wrt_xyz      = ef.gradients.as_double(),
         ncs_restraints_group_list = ncs_restraints_group_list,
-        xyz_asu           = lbfgs_self.xray_structure.sites_cart(),
-        x                 = lbfgs_self.x)
+        xyz_asu           = xray_structure.sites_cart(),
+        x                 = x)
   if(ef is not None): return ef.target, ef_grad
   elif not grad: return 0, 0
   elif isinstance(grad,flex.vec3_double):
@@ -144,7 +157,11 @@ class target_function_and_grads_real_space(object):
         ncs_restraints_group_list=ncs_restraints_group_list,
         asu_size=asu_size)
 
-  def data_target_and_grads(self, compute_gradients, lbfgs_self):
+  def data_target_and_grads(self, compute_gradients,x):
+    """
+    :param compute_gradients: (bool) when True compute gradients
+    :param x: refined parameters
+    """
     g = None
     tg = cctbx.maptbx.real_space_refinement_simple.target_and_gradients(
       unit_cell                  = self.unit_cell,
@@ -159,25 +176,28 @@ class target_function_and_grads_real_space(object):
       elif self.refine_transformations:
         grad_wrt_xyz = tg.gradients().as_double()
         g = nu.compute_transform_grad(
-          grad_wrt_xyz      = grad_wrt_xyz,
+          grad_wrt_xyz              = grad_wrt_xyz,
           ncs_restraints_group_list = self.ncs_restraints_group_list,
-          xyz_asu           = lbfgs_self.xray_structure.sites_cart(),
-          x                 = lbfgs_self.x)
+          xyz_asu                   = self.xray_structure.sites_cart(),
+          x                         = x)
     return t, g
 
-  def target_and_gradients(self, compute_gradients, lbfgs_self, xray_structure):
+  def target_and_gradients(self,compute_gradients,xray_structure,x):
+    """
+    :param compute_gradients: (bool) when True compute gradients
+    :param xray_structure: xray_structure object
+    :param x: refined parameters
+    """
     self.xray_structure.set_sites_cart(sites_cart = xray_structure.sites_cart())
     g = None
-    self.ncs_restraints_group_list = lbfgs_self.ncs_restraints_group_list
-    t_data, g_data = self.data_target_and_grads(compute_gradients, lbfgs_self)
+    t_data, g_data = self.data_target_and_grads(compute_gradients,x)
     t_restraints, g_restraints = restraints_target_and_grads(
       restraints_manager     = self.restraints_manager,
       xray_structure         = self.xray_structure,
       ncs_restraints_group_list = self.ncs_restraints_group_list,
-      refine_selection       = self.refine_selection,
       refine_sites           = self.refine_sites,
       refine_transformations = self.refine_transformations,
-      lbfgs_self             = lbfgs_self,
+      x                      = x,
       grad                   = g_data)
     if(self.data_weight is None): self.data_weight=1.
     t = t_data*self.data_weight + t_restraints
@@ -227,7 +247,7 @@ class target_function_and_grads_reciprocal_space(object):
         scatterers = self.fmodel.xray_structure.scatterers(),
         site       = True)
 
-  def data_target_and_grads(self, compute_gradients, lbfgs_self):
+  def data_target_and_grads(self, compute_gradients, sites_cart, x):
     g = None
     tgx = self.x_target_functor(compute_gradients=compute_gradients)
     t = tgx.target_work()
@@ -242,27 +262,27 @@ class target_function_and_grads_reciprocal_space(object):
         g = nu.compute_transform_grad(
           grad_wrt_xyz      = grad_wrt_xyz,
           ncs_restraints_group_list = self.ncs_restraints_group_list,
-          xyz_asu           = lbfgs_self.xray_structure.sites_cart(),
-          x                 = lbfgs_self.x)
+          xyz_asu           = sites_cart,
+          x                 = x)
     return t, g
 
-  def target_and_gradients(self, compute_gradients, lbfgs_self, xray_structure):
-    self.xray_structure.set_sites_cart(sites_cart=xray_structure.sites_cart())
+  def target_and_gradients(self, compute_gradients, xray_structure, x):
+    sites_cart = xray_structure.sites_cart()
+    self.xray_structure.set_sites_cart(sites_cart=sites_cart)
     self.fmodel.update_xray_structure(
       xray_structure = self.xray_structure,
       update_f_calc  = True)
-    self.ncs_restraints_group_list = lbfgs_self.ncs_restraints_group_list
     g = None
-    t_data, g_data = self.data_target_and_grads(compute_gradients, lbfgs_self)
+    t_data, g_data = self.data_target_and_grads(
+      compute_gradients=compute_gradients, x=x, sites_cart=sites_cart)
     t_restraints, g_restraints =  restraints_target_and_grads(
       restraints_manager     = self.restraints_manager,
       xray_structure         = self.xray_structure,
       ncs_restraints_group_list = self.ncs_restraints_group_list,
-      refine_selection       = self.refine_selection,
       refine_sites           = self.refine_sites,
       refine_u_iso           = self.refine_u_iso,
       refine_transformations = self.refine_transformations,
-      lbfgs_self             = lbfgs_self,
+      x                      = x,
       iso_restraints         = self.iso_restraints,
       use_hd                 = self.use_hd,
       grad                   = g_data)
@@ -335,7 +355,7 @@ class lbfgs(object):
         ncs_restraints_group_list = self.ncs_restraints_group_list)
       self.x = nu.concatenate_rot_tran(
         ncs_restraints_group_list=self.ncs_restraints_group_list)
-    self.minimizer = scitbx.lbfgs.run(
+    minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
       termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=max_iterations,
@@ -359,8 +379,9 @@ class lbfgs(object):
 
   def compute_functional_and_gradients(self, compute_gradients=True):
     t,g = self.target_and_grads_object.target_and_gradients(
-      compute_gradients=compute_gradients, lbfgs_self=self,
-      xray_structure = self.update_xray_structure())
+      compute_gradients=compute_gradients,
+      xray_structure = self.update_xray_structure(),
+      x=self.x)
     if(self.finite_grad_differences_test and compute_gradients):
       self.finite_difference_test(g)
     return t, g
@@ -441,14 +462,3 @@ class lbfgs(object):
     finite_gard = (t1-t2)/(d*2)
     self.finite_grad_difference_val = abs(g[i_g_max] - finite_gard)
 
-  def group_same_transforms(self):
-    """
-    Analyze and combine similar transformations
-    """
-    # todo: check if still needed
-    from  iotbx.pdb.multimer_reconstruction import ncs_group_object
-    new_transforms_obj =  ncs_group_object()
-
-  def __call__(self):
-    # TODO: Check if using this instead of "self" as a parameter works
-    return self

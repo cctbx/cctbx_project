@@ -259,7 +259,7 @@ def exercise_without_geometry_restaints():
 def exercise_site_refinement():
   print 'Running ',sys._getframe().f_code.co_name
   t = ncs_minimization_test(
-    n_macro_cycle   = 60,
+    n_macro_cycle   = 40,
     sites           = True,
     u_iso           = False,
     transformations = False,
@@ -273,7 +273,7 @@ def exercise_site_refinement():
 def exercise_u_iso_refinement():
   print 'Running ',sys._getframe().f_code.co_name
   t = ncs_minimization_test(
-    n_macro_cycle   = 50,
+    n_macro_cycle   = 40,
     sites           = False,
     u_iso           = True,
     transformations = False,
