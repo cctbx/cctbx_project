@@ -167,6 +167,7 @@ tst_list = (
   "$D/disorder/tst_backbone.py",
   "$D/disorder/tst_analyze_model.py",
   "$D/refinement/tst_minimization_ncs_constraints.py",
+  "$D/refinement/tst_minimization_ncs_constraints2.py",
   "$D/refinement/real_space/tst_minimization_ncs_constraints.py",
   "$D/monomer_library/tst_correct_hydrogens.py",
   # automatic linking
