@@ -1,3 +1,9 @@
+
+"""
+Wrapper module for computing targets and gradients for restraints (or other
+energy functions) on coordinates and B-factors; used in phenix.refine.
+"""
+
 from __future__ import division
 import cctbx.adp_restraints
 import math
@@ -7,6 +13,12 @@ from cctbx import adptbx
 from libtbx.utils import Sorry
 
 class manager(object):
+  """
+  Central management of restraints on molecular geometry and ADPs.  This
+  includes the standard stereochemistry restraints (i.e. Engh & Huber),
+  non-crystallographic symmetry restraints, reference model restraints, and
+  optionally.
+  """
 
   def __init__(self,
         geometry=None,
@@ -67,6 +79,13 @@ class manager(object):
         disable_asu_cache=False,
         hd_selection=None,
         ):
+    """
+    Compute energies for coordinates.  Originally this just used the standard
+    geometry restraints from the monomer library, but it has since been
+    extended to optionally incorporate a variety of external energy functions.
+
+    :returns: scitbx.restraints.energies object
+    """
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
       gradients=gradients,
@@ -128,7 +147,6 @@ class manager(object):
           self.afitt_object,
         )
         result.target = result.residual_sum
- 
       # default restraints manager
       else :
         result.geometry = self.geometry.energies_sites(
@@ -140,9 +158,7 @@ class manager(object):
           gradients=result.gradients,
           disable_asu_cache=disable_asu_cache,
           normalization=False)
-
       result += result.geometry
-
     if (self.ncs_groups is None):
       result.ncs_groups = None
     else:
@@ -165,6 +181,12 @@ class manager(object):
         tan_b_iso_max=None,
         u_iso_refinable_params=None,
         gradients=None):
+    """
+    Compute target and gradients for isotropic ADPs/B-factors relative to
+    restraints.
+
+    :returns: scitbx.restraints.energies object
+    """
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
       gradients=gradients,
@@ -227,6 +249,12 @@ class manager(object):
         selection = None,
         compute_gradients=False,
         gradients=None):
+    """
+    Compute target and gradients for isotropic ADPs/B-factors relative to
+    restraints.
+
+    :returns: scitbx.restraints.energies object
+    """
     result = cctbx.adp_restraints.adp_aniso_restraints(
         restraints_manager = self.geometry,
         xray_structure = xray_structure,

@@ -1,3 +1,13 @@
+
+"""
+Utility functions for analyzing lattice contacts.  Used in:
+
+`Fraser JS, van den Bedem H, Samelson AJ, Lang PT, Holton JM, Echols N, Alber
+T. Accessing protein conformational ensembles using room-temperature X-ray
+crystallography. Proc Natl Acad Sci U S A. 2011 Sep 27;108(39):16247-52.
+<http://www.ncbi.nlm.nih.gov/pubmed/21918110>`_
+"""
+
 from __future__ import division
 import sys
 

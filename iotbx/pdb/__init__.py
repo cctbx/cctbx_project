@@ -689,6 +689,25 @@ def input(
     lines=None,
     pdb_id=None,
     raise_sorry_if_format_error=False):
+  """
+  Main input method for both PDB and mmCIF files; will automatically determine
+  the actual format and return the appropriate data type.
+
+  Parameters
+  ----------
+  file_name: path to PDB or mmCIF file
+  source_info: string describing source of input (e.g. file name)
+  lines: flex.std_string array of input lines
+  pdb_id: PDB ID to automatically retrieve from local mirror
+  raise_sorry_if_format_error: re-raise any low-level parser errors as a
+    libtbx.utils.Sorry exception instance for clean user feedback
+
+  Returns
+  -------
+  An object representing the result of parsing, including an array of atom
+  objects; the actual class will differ depending on the input format.  Much of
+  the API will be the same in either case.
+  """
   return pdb_input_from_any(
     file_name=file_name,
     source_info=source_info,
