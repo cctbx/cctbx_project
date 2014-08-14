@@ -326,7 +326,8 @@ def process_afitt_output(afitt_output,
                          resname_i,
                          instance_i,
                          afitt_allgradients,
-                         afitt_alltargets):
+                         afitt_alltargets,
+                         verbose=False):
   r_i=resname_i
   i_i=instance_i
   ptrs = afitt_o.sites_cart_ptrs[r_i][i_i]
@@ -340,7 +341,8 @@ def process_afitt_output(afitt_output,
            float(line.split()[2]),
            float(line.split()[3]) ) )
   ### debug_stuff
-  print ("AFITT_ENERGY %s_%d_%s: %10.4f\n"
+  if verbose:
+    print ("AFITT_ENERGY %s_%d_%s: %10.4f\n"
                   %(afitt_o.resname[r_i],
                     int(afitt_o.res_ids[r_i][i_i][2]),
                     afitt_o.res_ids[r_i][i_i][1],
@@ -364,7 +366,8 @@ def process_afitt_output(afitt_output,
       afitt_norm = sqrt(afitt_norm)
       gr_scale = phenix_norm/afitt_norm
       ### debug_stuff
-      print ("GRNORM_RATIO %s_%d_%s: %10.4f\n"
+      if verbose:
+        print ("GRNORM_RATIO %s_%d_%s: %10.4f\n"
                     %(afitt_o.resname[r_i],
                       int(afitt_o.res_ids[r_i][i_i][2]),
                       afitt_o.res_ids[r_i][i_i][1],
@@ -397,16 +400,6 @@ def process_afitt_output(afitt_output,
       afitt_allgradients[(r_i,i_i)] = scaled_gradients
       afitt_alltargets[(r_i,i_i)] = gr_scale*afitt_energy*occupancy
 
-      #
-      # for afitt_gradient, i_seq in zip(afitt_gradients, ptrs):
-      #   scaled_gradient = (afitt_gradient[0]*gr_scale,
-      #                    afitt_gradient[1]*gr_scale,
-      #                    afitt_gradient[2]*gr_scale)
-      #   gx = scaled_gradient[0] * occupancy + geometry.gradients[i_seq][0]
-      #   gy = scaled_gradient[1] * occupancy + geometry.gradients[i_seq][1]
-      #   gz = scaled_gradient[2] * occupancy + geometry.gradients[i_seq][2]
-      #   geometry.gradients[i_seq] = (gx,gy,gz)
-      # geometry.residual_sum += gr_scale * afitt_energy * occupancy
 
 def apply_target_gradients(afitt_o, geometry, afitt_allgradients, afitt_alltargets):
   # import code; code.interact(local=dict(globals(), **locals()))
@@ -726,7 +719,6 @@ def finite_difference_test(pdb_file,
                                     geometry,
                                     afitt_allgradients,
                                     afitt_alltargets)
-  #geometry.finalize_target_and_gradients()
   geometry.afitt_residual_sum = geometry.residual_sum -\
                                 geometry.complex_residual_sum
   grm.afitt_object = afitt_o
@@ -737,20 +729,12 @@ def finite_difference_test(pdb_file,
                                          afitt_o,
                                        )
   geometry.target = geometry.residual_sum
-  # geometry.afitt_residual_sum = geometry.residual_sum -\
-  #                               geometry.complex_residual_sum
-  # grm.afitt_object = afitt_o
-  # geometry = adjust_energy_and_gradients(
-  #       geometry,
-  #       grm,
-  #       xrs,
-  #       afitt_o,
-  #     )
-  # geometry.target = geometry.residual_sum
+
 
   if verbose: print "  final target:    %10.16f" %geometry.target
   if verbose: print "  final gradient:  %10.16f" %geometry.gradients[atom][0]
-  print "-> %10.9f"%(geometry.gradients[atom][0])
+  ana_gradient = geometry.gradients[atom][0]
+  print "-> %10.9f"%(ana_gradient)
 
   if verbose: print "\nFinite Diff. Gradient"
   # finite differences
@@ -770,8 +754,6 @@ def finite_difference_test(pdb_file,
       compute_gradients = True)
     if verbose: print "  phenix target:   %10.16f" %geometry.target
     phts.append(geometry.target)
-
-
     geometry.complex_residual_sum = geometry.residual_sum
     geometry.complex_gradients = copy.deepcopy(geometry.gradients)
     for resname_i,resname in enumerate(afitt_o.resname):
@@ -788,7 +770,6 @@ def finite_difference_test(pdb_file,
     afts.append(afitt_alltargets[(0,0)])
     geometry = apply_target_gradients(
         afitt_o, geometry, afitt_allgradients, afitt_alltargets)
-    geometry.finalize_target_and_gradients()
     geometry.afitt_residual_sum = geometry.residual_sum -\
                                 geometry.complex_residual_sum
     grm.afitt_object = afitt_o
@@ -806,8 +787,12 @@ def finite_difference_test(pdb_file,
     ts.append(t)
   if verbose: print "  phenix finite diff.: %10.16f" %((phts[0]-phts[1])/(2*e))
   if verbose: print "  afitt finite diff.: %10.16f" %((afts[0]-afts[1])/(2*e))
-  print "-> %10.9f" %((ts[0]-ts[1])/(2*e))
-
+  num_gradient = (ts[0]-ts[1])/(2*e)
+  print "-> %10.9f" %(num_gradient)
+  gradient_diff = num_gradient - ana_gradient
+  assert abs(gradient_diff) <= 1e-6, \
+    "TEST FAILS: (analytical - numerical)= %10.9f" %(gradient_diff)
+  print "TEST PASSES: (analytical - numerical)= %10.9f" %(gradient_diff)
   return 0
 
 def apply(result, afitt_o, sites_cart):
@@ -829,7 +814,8 @@ def apply(result, afitt_o, sites_cart):
                            resname_i,
                            instance_i,
                            afitt_allgradients,
-                           afitt_alltargets)
+                           afitt_alltargets,
+                           verbose=True)
   result.geometry = apply_target_gradients(afitt_o, result.geometry,
                                            afitt_allgradients,
                                            afitt_alltargets)
