@@ -209,17 +209,6 @@ class test_rotation_angles_conversion(object):
         r = c.r.round(round_val)
         r_elems.append(r.elems)
 
-    for deg in [True,False]:
-      x = nu.concatenate_rot_tran(
-        ncs_restraints_group_list=ncs_restraints_group_list)
-      ncs_restraints_group_list = nu.update_rot_tran(
-        x=x,
-        ncs_restraints_group_list=ncs_restraints_group_list)
-      for rec in ncs_restraints_group_list:
-        for i,c in enumerate(rec.copies):
-          r = c.r.round(round_val)
-          assert r_elems[i] == r.elems
-
   def test_ncs_selection(self):
     """
     verify that extended_ncs_selection, which include the master ncs copy and
@@ -238,7 +227,7 @@ class test_rotation_angles_conversion(object):
     expected = [0, 1, 2, 3, 4, 5, 6, 21, 22, 23, 24, 25, 26, 27, 28, 29]
     assert list(result) == expected
 
-  def test_ncs_related_selction(self):
+  def test_ncs_related_selection(self):
     print 'Running ',sys._getframe().f_code.co_name
     transforms_obj = iotbx.ncs.input(
       pdb_string=test_pdb_str,
@@ -319,6 +308,6 @@ if __name__=='__main__':
   t.test_update_rot_tran()
   t.test_update_x()
   t.test_ncs_selection()
-  t.test_ncs_related_selction()
+  t.test_ncs_related_selection()
   t.test_center_of_coordinates_shift()
 
