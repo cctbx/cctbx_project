@@ -2,6 +2,7 @@
 #define CCTBX_MAPTBX_MAP_ACCUMULATOR_H
 
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <cctbx/xray/sampling_base.h>
 
 #if defined(_MSC_VER) && _MSC_VER < 1600
 typedef unsigned char     uint8_t;
@@ -15,10 +16,22 @@ public:
   af::versa<af::shared<uint8_t>, GridType> map_new;
   af::shared<FloatType> v_values_;
   af::int3 n_real;
+  cctbx::xray::detail::exponent_table<FloatType> exp_table_;
+  FloatType smearing_b;
+  FloatType max_peak_scale;
+  int smearing_span;
+  bool use_exp_table;
 
-  map_accumulator(af::int3 const& n_real_)
+  map_accumulator(
+    af::int3 const& n_real_,
+    FloatType const& smearing_b_,
+    FloatType const& max_peak_scale_,
+    int const& smearing_span_,
+    bool use_exp_table_)
   :
-  n_real(n_real_)
+  n_real(n_real_), exp_table_(-100), smearing_b(smearing_b_),
+  max_peak_scale(max_peak_scale_), smearing_span(smearing_span_),
+  use_exp_table(use_exp_table_)
   {
     map_new.resize(GridType(n_real));
     for(std::size_t i=0;i<map_new.size(); i++) map_new[i]=af::shared<uint8_t>();
@@ -47,22 +60,27 @@ public:
     return result;
   }
 
-  inline FloatType smear(FloatType x, FloatType a, FloatType b)
+  inline FloatType smear(FloatType x_mins_a, FloatType two_b_sq)
   {
-    return std::exp(-std::pow(x-a,2)/(2*b*b));
+    if(!this->use_exp_table) { return std::exp(-x_mins_a*x_mins_a/two_b_sq); }
+    else { return exp_table_(-x_mins_a*x_mins_a/two_b_sq); }
   }
 
   af::shared<FloatType> int_to_float_at_index(af::int3 const& n)
   {
     af::shared<uint8_t> as = map_new(n);
     af::shared<FloatType> result;
+    FloatType b = this->smearing_b;
+    FloatType two_b_sq = 2 * b * b;
+    int ss = this->smearing_span;
     result.resize(256, 0);
     for(int i = 0; i < as.size(); i++) {
       int a = (int)as[i];
-      for(int j = -10; j <=10; j++) {
+      for(int j = -ss; j <=ss; j++) {
         int x = a + j;
         if(x>=0 && x<=255) {
-          result[x] += smear((FloatType)x, (FloatType)a, 5.0); // b=5
+          FloatType x_mins_a = (FloatType)x - (FloatType)a;
+          result[x] += smear(x_mins_a, two_b_sq);
         }
     }}
     return result;
@@ -123,7 +141,7 @@ public:
     }
     p_min = p_min_;
     p_max = p_max_;
-    FloatType p_max_over_2 = p_max/2;
+    FloatType p_max_over_2 = p_max/this->max_peak_scale;
     // analyze peaks
     if(peaks.size()==0) return 0;
     int i_result;

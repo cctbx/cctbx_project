@@ -27,6 +27,16 @@ flex.double.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.eight_point_interpolation = eight_point_interpolation
 flex.double.tricubic_interpolation = tricubic_interpolation
 
+def map_accumulator(n_real, smearing_b=5, max_peak_scale=2, smearing_span=10,
+      use_exp_table=True):
+  """
+  Good defaults for 2mFo-DFc type maps:
+    smearing_b=1, max_peak_scale=100, smearing_span=5
+  """
+  return ext.map_accumulator(n_real=n_real, smearing_b=smearing_b,
+    max_peak_scale=max_peak_scale, smearing_span=smearing_span,
+      use_exp_table=use_exp_table)
+
 def peak_volume_estimate(map_data, sites_cart, crystal_symmetry, cutoff,
       atom_radius=2.0):
   # XXX This needs to be done reliably looking in concentric spehres abuot an
