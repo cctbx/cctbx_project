@@ -1,3 +1,11 @@
+
+"""
+Module for managing and manipulating all properties (and underlying objects)
+associated with an atomic (or pseudo-atomic) model, including both basic
+attributes stored in a PDB file, scattering information, and geometry
+restraints.
+"""
+
 from __future__ import division
 from cctbx.array_family import flex
 import math
@@ -107,6 +115,10 @@ class xh_connectivity_table2(object):
           self.table.setdefault(ih).append(p.i_seqs)
 
 class manager(object):
+  """
+  Wrapper class for storing and manipulating an iotbx.pdb.hierarchy object and
+  a cctbx.xray.structure object, plus optional restraints-related objects.
+  """
   def __init__(self, xray_structure,
                      pdb_hierarchy,
                      processed_pdb_files_srv = None,
@@ -150,6 +162,14 @@ class manager(object):
     self.sync_pdb_hierarchy_with_xray_structure()
 
   def pdb_hierarchy(self, sync_with_xray_structure=False):
+    """
+    Accessor for the underlying PDB hierarchy, incorporating optional update of
+    properties from the xray_structure attribute.
+
+    :param sync_with_xray_structure: update all properties of the atoms in the
+      hierarchy to agree with the xray_structure scatterers.  Will fail if the
+      scatterer labels do not match the atom labels.
+    """
     if(sync_with_xray_structure):
       self._pdb_hierarchy.adopt_xray_structure(
         xray_structure = self.xray_structure)
@@ -231,6 +251,11 @@ class manager(object):
     return selection
 
   def reset_adp_for_hydrogens(self):
+    """
+    Set the isotropic B-factor for all hydrogens to those of the associated
+    heavy atoms (using the total isotropic equivalent) times a scale factor of
+    1.2.
+    """
     if(self.restraints_manager is None): return
     hd_sel = self.xray_structure.hd_selection()
     if(hd_sel.count(True) > 0):
@@ -242,6 +267,9 @@ class manager(object):
       self.xray_structure.set_b_iso(values = bfi, selection = hd_sel)
 
   def reset_occupancies_for_hydrogens(self):
+    """
+    Set hydrogen occupancies to those of the associated heavy atoms.
+    """
     occupancy_refinement_selections_1d = flex.size_t()
     if(self.refinement_flags.s_occupancies is not None):
       for occsel in self.refinement_flags.s_occupancies:
@@ -336,6 +364,9 @@ class manager(object):
       prefix, hc.hrot_occ_sum, "%", hc.hrot_fraction_of_total)
 
   def idealize_h(self, selection=None, show=True):
+    """
+    Perform geometry regularization on hydrogen atoms only.
+    """
     if(self.restraints_manager is None): return
     if(self.xray_structure.hd_selection().count(True) > 0):
       hd_selection = self.xray_structure.hd_selection()
@@ -541,7 +572,11 @@ class manager(object):
     self.idealize_h()
 
   def reprocess_pdb_hierarchy_inefficient(self):
-    # XXX very inefficient: re-process PDB from scratch and create restraints
+    # XXX very inefficient
+    """
+    Re-process PDB from scratch and create restraints.  Not recommended for
+    general use.
+    """
     raw_records = [iotbx.pdb.format_cryst1_record(
       crystal_symmetry=self.xray_structure)]
     raw_records.extend(self._pdb_hierarchy.as_pdb_string().splitlines())
@@ -704,6 +739,9 @@ class manager(object):
 
   def add_ias(self, fmodel=None, ias_params=None, file_name=None,
                                                              build_only=False):
+    """
+    Generate interatomic scatterer pseudo-atoms.
+    """
     if(self.ias_manager is not None):
        self.remove_ias()
        fmodel.update_xray_structure(xray_structure = self.xray_structure,

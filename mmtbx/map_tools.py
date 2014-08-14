@@ -1,3 +1,10 @@
+
+"""
+This module contains a variety of functions related to map calculation, many
+of which are access via the mmtbx.f_model.manager API.  It has some overlap
+with the separate mmtbx.maps module.
+"""
+
 from __future__ import division
 from cctbx.array_family import flex
 from cctbx import miller
@@ -645,6 +652,22 @@ skip_difference_map = Auto
 # code, instead of making map averaging an afterthought.  however, the
 # external overhead is currently substantial.
 class ncs_averager (object) :
+  """
+  Callable wrapper class for running RESOLVE NCS averaging on any map
+  coefficients array.
+
+  Parameters
+  ----------
+  ncs_object: mmtbx.ncs.ncs.ncs_group object
+  params: phil scope_extract object containing parameters
+  log: filehandle-like object
+
+  Examples
+  --------
+  >>> average = ncs_averager(ncs_object, log=null_out())
+  >>> for array in map_coeffs :
+  >>>   array = average(array, fmodel)
+  """
   def __init__ (self, ncs_object, params=None, log=None, verbose=False) :
     if (params is None) :
       params = libtbx.phil.parse(ncs_averaging_params).extract()

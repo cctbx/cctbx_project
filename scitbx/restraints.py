@@ -1,8 +1,18 @@
+
+"""
+Handling for normalized target and gradients.
+"""
+
 from __future__ import division
 from stdlib import math
 from libtbx.utils import Sorry
-class energies(object):
 
+class energies(object):
+  """
+  Convenient wrapper class for encapsulating the output of any arbitrary
+  restraining target function, such as the geometry restraints used elsewhere
+  in CCTBX.  Tracks the number of restraints to facilitate normalized targets.
+  """
   def __init__(O,
         compute_gradients,
         gradients,
