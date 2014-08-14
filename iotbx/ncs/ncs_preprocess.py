@@ -99,7 +99,8 @@ class ncs_group_object(object):
                          quiet=True,
                          spec_ncs_groups=None,
                          pdb_string=None,
-                         use_simple_ncs_from_pdb=False):
+                         use_simple_ncs_from_pdb=False,
+                         use_minimal_master_ncs=True):
     """
     Select method to build ncs_group_object
 
@@ -133,6 +134,8 @@ class ncs_group_object(object):
     :param quiet: (bool) When True -> quiet output when processing files
     :param spec_ncs_groups: ncs_groups object as produced by simple_ncs_from_pdb
     :param cif_string: (str) string of cif type data
+    :param use_minimal_master_ncs: (bool) use maximal or minimal common chains
+           in master ncs groups
     """
     extension = ''
     if file_name: extension = os.path.splitext(file_name)[1]
@@ -178,7 +181,8 @@ class ncs_group_object(object):
     elif pdb_hierarchy_inp:
       self.build_ncs_obj_from_pdb_asu(
         pdb_hierarchy_inp=pdb_hierarchy_inp,
-        use_simple_ncs_from_pdb=use_simple_ncs_from_pdb)
+        use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
+        use_minimal_master_ncs=use_minimal_master_ncs)
     else:
       raise IOError,'Please provide one of the supported input'
 
@@ -320,7 +324,8 @@ class ncs_group_object(object):
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
   def build_ncs_obj_from_pdb_asu(self,pdb_hierarchy_inp,
-                                 use_simple_ncs_from_pdb=False):
+                                 use_simple_ncs_from_pdb=False,
+                                 use_minimal_master_ncs=True):
     """
     Build transforms objects and NCS <-> ASU mapping from a complete ASU
     Note that the MTRIX record are ignored, they are produced in the
@@ -329,10 +334,15 @@ class ncs_group_object(object):
     Arguments:
     pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
     use_simple_ncs_from_pdb : force using use_simple_ncs_from_pdb
+    use_minimal_master_ncs : (bool) indicate if using maximal or minimal NCS
+    groups
     """
     ncs_phil_groups = []
     if (not use_simple_ncs_from_pdb):
-      ncs_phil_groups = get_minimal_master_ncs_group(pdb_hierarchy_inp)
+      if use_minimal_master_ncs:
+        ncs_phil_groups = get_minimal_master_ncs_group(pdb_hierarchy_inp)
+      else:
+        ncs_phil_groups = get_largest_common_ncs_groups(pdb_hierarchy_inp)
 
     if (ncs_phil_groups != []):
       self.build_ncs_obj_from_phil(
@@ -350,6 +360,7 @@ class ncs_group_object(object):
           hierarchy=pdb_hierarchy_inp.hierarchy,
           quiet=True,
           log=null_out(),
+          suppress_print=True,
           params=params)
         spec_ncs_groups = ncs_from_pdb.ncs_object.ncs_groups()
         self.build_ncs_obj_from_spec_file(
@@ -513,7 +524,8 @@ class ncs_group_object(object):
     """
     Build transforms objects and NCS <-> ASU mapping using mmcif file
     """
-    # TODO: build function
+    from iotbx.pdb.mmcif import cif_input
+    # TODO: build mmcif function
 
   def add_transforms_to_ncs_refinement_groups(self,rotations,translations):
     """
@@ -1569,7 +1581,7 @@ def get_largest_common_ncs_groups(pdb_hierarchy_inp):
   :param pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
   :return ncs_phil_groups: (list) list of ncs_groups_container
   """
-  # Todo: add option to use this function
+  # Todo : redo all test for this section
   # initialize parameters
   ncs_phil_groups = []
   transform_dict = {}

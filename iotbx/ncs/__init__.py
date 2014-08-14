@@ -17,7 +17,8 @@ def input(pdb_hierarchy_inp=None,
           quiet=True,
           spec_ncs_groups=None,
           pdb_string=None,
-          use_simple_ncs_from_pdb=False):
+          use_simple_ncs_from_pdb=False,
+          use_minimal_master_ncs=True):
     """
     Select method to build ncs_group_object
 
@@ -52,6 +53,8 @@ def input(pdb_hierarchy_inp=None,
     :param cif_string: (str) string of cif type data
     :param use_simple_ncs_from_pdb: (bool) When True,
            forces ncs look-up using use_simple_ncs_from_pdb
+    :param use_minimal_master_ncs: (bool) use maximal or minimal common chains
+           in master ncs groups
     """
     ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
     ncs_group_obj.preprocess_ncs_obj(
@@ -70,6 +73,7 @@ def input(pdb_hierarchy_inp=None,
       quiet=quiet,
       spec_ncs_groups=spec_ncs_groups,
       pdb_string=pdb_string,
-      use_simple_ncs_from_pdb=use_simple_ncs_from_pdb)
+      use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
+      use_minimal_master_ncs=use_minimal_master_ncs)
     return ncs_group_obj
 
