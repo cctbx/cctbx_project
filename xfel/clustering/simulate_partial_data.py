@@ -1,3 +1,4 @@
+# LIBTBX_SET_DISPATCHER_NAME cluster.simulate_partial_data
 """
 This module contains tools for simulating partial integration data. In
 particular, it is intended to help test XFEL data merging tools.
@@ -7,10 +8,17 @@ from iotbx import mtz
 import cctbx.miller
 from cctbx.crystal_orientation import crystal_orientation, basis_type
 from scitbx.matrix import sqr, col
-from xfel.Toy_Network.generate_toy_data import ImageNode
+#from xfel.Toy_Network.generate_toy_data import ImageNode
+from xfel.clustering.singleframe import ImageNode
 from dials.array_family import flex
 from dxtbx.model.detector import detector_factory
+
+import random
 import cPickle
+import logging
+
+eps = 0.001  # Tolerance for assertions
+p_threshold = 0.1  # Partiality threshold for inclusion
 
 def process_mtz(filename):
   mtzfile = mtz.object(filename)
@@ -71,29 +79,89 @@ def run(args):
 
   # 3.Create some image_pickle dictionairies that contain 'full' intensities,
   # but are otherwise complete.
-  dict_list = []
-  for im in range(args.n):
+  im = 0
+  while im < args.n:
+    im += 1
     A = sqr(flex.random_double_r3_rotation_matrix()) * ortho
     orientation = crystal_orientation(A, basis_type.reciprocal)
     pix_coords, miller_set = get_pix_coords(wavelength, A, mill_array, detector)
-    miller_set = cctbx.miller.set(mill_array.crystal_symmetry(), miller_set,
-            anomalous_flag=False)
-    obs = mill_array.common_set(miller_set)
-    temp_dict = {'observations': [obs],
-                 'mapped_predictions': [pix_coords],
-                 'pointgroup': None,
-                 'current_orientation': [orientation],
-                 'xbeam': centre[0],
-                 'ybeam': centre[1],
-                 'wavelength': wavelength}
-    node = ImageNode(dicti=temp_dict)
-    temp_dict['full_observations'] = [obs]
-    temp_dict['observations'] = [obs*node.partialities]
+    if len(miller_set) > 10:  # at least 10 reflections
+        miller_set = cctbx.miller.set(mill_array.crystal_symmetry(), miller_set,
+                anomalous_flag=False)
+        obs = mill_array.common_set(miller_set)
+        temp_dict = {'observations': [obs],
+                     'mapped_predictions': [pix_coords],
+                     'pointgroup': None,
+                     'current_orientation': [orientation],
+                     'xbeam': centre[0],
+                     'ybeam': centre[1],
+                     'wavelength': wavelength}
+        old_node = ImageNode(dicti=temp_dict, scale=False)
+        # Remove all reflection that are not at least p partial
+        partial_sel = (old_node.partialities > p_threshold)
 
-    with(open("simulated_data_{}.pickle".format(im), 'wb')) as pkl:
-        cPickle.dump(temp_dict, pkl)
-  # 4. Calculate 'corrected' intensities for each orientation
-  # i.e find the partialities for each, and 'partialise'
+        temp_dict['full_observations'] = [obs.select(partial_sel)]
+        temp_dict['observations'] = [obs.select(partial_sel)
+                            * old_node.partialities.select(partial_sel)]
+        temp_dict['mapped_predictions'] = \
+                    [temp_dict['mapped_predictions'][0].select(partial_sel)]
+
+        if logging.Logger.root.level <= logging.DEBUG:  # debug!
+          before = temp_dict['full_observations'][0]
+          after = temp_dict['observations'][0] / old_node.partialities
+          assert sum(abs(before.data() - after.data())) < eps
+
+        if args.r:
+          partials = list(temp_dict['observations'][0].data())
+          jiggled_partials = flex.double([random.gauss(obs, args.r * obs)
+                                          for obs in partials])
+          temp_dict['observations'][0] = temp_dict['observations'][0] \
+                                      .customized_copy(data=jiggled_partials)
+
+        pkl_name = "simulated_data_{0:04d}.pickle".format(im)
+        with(open(pkl_name, 'wb')) as pkl:
+          cPickle.dump(temp_dict, pkl)
+
+        ''' Only works with no noise:
+        if logging.Logger.root.level <= logging.DEBUG:  # debug!
+          new_node = ImageNode(pkl_name, scale=False)
+          assert sum(old_node.partialities != new_node.partialities) == 0
+          new_node.G = 1
+          assert sum(new_node.miller_array.indices() !=
+                     old_node.miller_array.indices()) == 0
+
+          old_arr = old_node.miller_array
+          new_arr = new_node.miller_array / (new_node.partialities *
+                                                    new_node.scales)
+          assert sum(old_arr.indices() != new_arr.indices()) == 0
+          assert sum(abs(old_arr.data() - new_arr.data())) < eps, \
+            "delta is {}".format(sum(abs(old_arr.data() - new_arr.data())) )
+          assert new_node.G == 1
+          assert new_node.minus_2B == 0
+          assert len(set(list(new_node.scales))) == 1, "Scales: {}"\
+                      .format(new_node.scales)
+          assert old_node.G == 1
+          assert old_node.minus_2B == 0
+          assert len(set(list(old_node.scales))) == 1
+          # Testing more:
+          d_spacings = list(new_node.miller_array.d_spacings().data())
+          miller_indeces = list(new_node.miller_array.indices())
+          miller_intensities = list(new_node.miller_array.data()
+                                    / (new_node.partialities * new_node.scales))
+
+          for observation in zip(miller_indeces, miller_intensities):
+            try:
+              test_dict[observation[0]].append(observation[1])
+            except KeyError:
+              test_dict[observation[0]] = [observation[1]]
+
+  if logging.Logger.root.level <= logging.DEBUG:  # debug!
+    for miller in test_dict:
+      assert max(test_dict[miller]) - min(test_dict[miller]) < eps,  \
+        "Miller index {} were not all equal: {}".format(miller,
+                                                        test_dict[miller])
+        '''
+
 
   # 5. Optional: add some random scale to the images.
 
@@ -113,6 +181,10 @@ if __name__ == '__main__':
                       help='Number of pickles to generate')
   parser.add_argument('-w', type=float, default=1,
                       help='wavelength of simulated data.')
+  parser.add_argument('-r', type=float, default=None,
+                      help='Random noise to be applied to partials. Parameter '
+                      'is the standard deviation of normally distributed'
+                      'noise as a fraction of the partial intensity.')
   args = parser.parse_args()
   run(args)
 
