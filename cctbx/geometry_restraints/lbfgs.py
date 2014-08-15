@@ -16,11 +16,13 @@ class lbfgs(object):
       lbfgs_exception_handling_params=None,
       disable_asu_cache=False,
       sites_cart_selection=None,
-      site_labels=None):
+      site_labels=None,
+      states_collector=None):
     if (lbfgs_termination_params is None):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations=1000)
     self.site_labels = site_labels
+    self.states_collector = states_collector
     self.tmp = empty()
     self.rmsd_bonds, self.rmsd_angles = None, None
     if sites_cart_selection:
@@ -58,6 +60,8 @@ class lbfgs(object):
       self.tmp.sites_shifted.set_selected(self.sites_cart_selection, shifted)
     else:
       self.tmp.sites_shifted = self.tmp.sites_cart + flex.vec3_double(self.x)
+    if(self.states_collector is not None):
+      self.states_collector.add(sites_cart = self.tmp.sites_shifted)
     if (self.tmp.geometry_restraints_manager.crystal_symmetry is not None):
       crystal_symmetry = self.tmp.geometry_restraints_manager.crystal_symmetry
       site_symmetry_table \

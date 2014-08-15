@@ -33,9 +33,11 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
         lbfgs_exception_handling_params=None,
         rmsd_bonds_termination_cutoff=0,
         rmsd_angles_termination_cutoff=0,
+        states_collector=None,
         site_labels=None):
     self.rmsd_bonds_termination_cutoff = rmsd_bonds_termination_cutoff
     self.rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff
+    self.states_collector = states_collector
     geometry_restraints.lbfgs.lbfgs.__init__(self,
       sites_cart=sites_cart,
       geometry_restraints_manager=geometry_restraints_manager,
@@ -43,7 +45,8 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
       lbfgs_termination_params=lbfgs_termination_params,
       sites_cart_selection=sites_cart_selection,
       lbfgs_exception_handling_params=lbfgs_exception_handling_params,
-      site_labels=site_labels)
+      site_labels=site_labels,
+      states_collector=states_collector)
 
   def callback_after_step(self, minimizer):
     self.apply_shifts()
@@ -189,6 +192,7 @@ class run2(object):
                cdl                            = False,
                correct_hydrogens              = False,
                fix_rotamer_outliers           = True,
+               states_collector               = None,
                log                            = None):
     self.log = log
     if self.log is None:
@@ -247,6 +251,7 @@ class run2(object):
         sites_cart_selection            = selection,
         rmsd_bonds_termination_cutoff   = rmsd_bonds_termination_cutoff,
         rmsd_angles_termination_cutoff  = rmsd_angles_termination_cutoff,
+        states_collector                = states_collector,
         site_labels                     = None)
       self.pdb_hierarchy.atoms().set_xyz(sites_cart)
       self.show()
