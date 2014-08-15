@@ -109,9 +109,17 @@ sites
 }
 occupancies
   .help = Scope of options to modify occupancies of selected atoms
+  .multiple = True
   .short_caption=Modify occupancies
   .style  = noauto menu_item parent_submenu:model_modifications
 {
+  atom_selection = None
+    .type = atom_selection
+    .help = Selection for atoms to be modified. \\
+            Overrides parent-level selection.
+    .input_size=400
+    .short_caption = Modify sites for selection
+    .style = bold
   randomize = False
     .type = bool
     .help = Randomize occupancies within a certain range
@@ -358,7 +366,7 @@ class modify(object):
     self._rotate_about_axis()
     self._process_adp()
     self._process_sites()
-    self._process_occupancies(selection = self.top_selection)
+    self._process_occupancies()
     try: self._put_in_box()
     except KeyboardInterrupt: raise
     except Exception: pass
@@ -511,39 +519,48 @@ class modify(object):
         trans     = trans,
         selection = selection.indices)
 
-  def _process_occupancies(self, selection):
+  def _process_occupancies(self):
     def check_if_already_modified() :
+      if(self.top_selection): return
       if (self._occupancies_modified):
         raise Sorry("Can't modify occupancies (already modified).")
       else:
         self._occupancies_modified = True
-    if(self.params.occupancies.randomize):
-      self._print_action(
-        text = "Randomizing occupancies",
-        selection = selection)
-      check_if_already_modified()
-      self.xray_structure.shake_occupancies(selection=selection.flags)
-    if(self.params.occupancies.set is not None):
-      self._print_action(
-        text = "Setting occupancies to: %8.3f"% \
-                self.params.occupancies.set,
-        selection = selection)
-      check_if_already_modified()
-      self.xray_structure.set_occupancies(
-          value = self.params.occupancies.set,
-          selection = selection.flags)
-    # FIXME since this is done *before* any atoms are removed from the
-    # structure, it may not always have the desired effect
-    if (self.params.occupancies.normalize) :
-      self._print_action(
-        text = "Resetting total occupancy to 1.0",
-        selection = selection)
-      check_if_already_modified()
-      normalize_occupancies(
-        hierarchy=self.pdb_hierarchy,
-        selection=selection.flags,
-        xray_structure=self.xray_structure,
-        log=self.log)
+    for occ in self.params.occupancies:
+      if(occ.atom_selection is None):
+        selection = self.top_selection
+      else:
+        selection = flex.smart_selection(
+          flags=utils.get_atom_selections(
+            iselection=False,
+            all_chain_proxies=self.all_chain_proxies,
+            selection_strings=[occ.atom_selection],
+            xray_structure=self.xray_structure)[0])
+      if(occ.randomize):
+        self._print_action(
+          text = "Randomizing occupancies",
+          selection = selection)
+        check_if_already_modified()
+        self.xray_structure.shake_occupancies(selection=selection.flags)
+      if(occ.set is not None):
+        self._print_action(
+          text = "Setting occupancies to: %8.3f"%occ.set, selection = selection)
+        check_if_already_modified()
+        self.xray_structure.set_occupancies(
+            value = occ.set,
+            selection = selection.flags)
+      # FIXME since this is done *before* any atoms are removed from the
+      # structure, it may not always have the desired effect
+      if (occ.normalize) :
+        self._print_action(
+          text = "Resetting total occupancy to 1.0",
+          selection = selection)
+        check_if_already_modified()
+        normalize_occupancies(
+          hierarchy=self.pdb_hierarchy,
+          selection=selection.flags,
+          xray_structure=self.xray_structure,
+          log=self.log)
 
   def report_number_of_atoms_to_be_removed(self):
     if (    self.remove_selection is not None
