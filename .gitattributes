@@ -2879,6 +2879,9 @@ sphinx/cctbx/cctbx.xray.weighting_schemes.rst -text
 sphinx/cctbx/modules.rst -text
 sphinx/command_line/build.py -text
 sphinx/conf.py -text
+sphinx/dxtbx/dxtbx.model.rst -text
+sphinx/dxtbx/dxtbx.serialize.rst -text
+sphinx/dxtbx/index.rst -text
 sphinx/history.rst -text
 sphinx/index.rst -text
 sphinx/installation.rst -text
