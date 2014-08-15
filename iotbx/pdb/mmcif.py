@@ -15,6 +15,9 @@ from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
 import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
+# keep the python float function
+py_float = float
+from phenix.foundation.PhenixTypes import float
 
 
 class pdb_hierarchy_builder(crystal_symmetry_builder):
@@ -534,6 +537,63 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def get_experiment_type (self) :
     exptl_method = self.cif_block.get('_exptl.method')
     return exptl_method
+
+  def process_mtrix_records(self,error_handle=True,eps=1e-4):
+    """
+    Read MTRIX records from a pdb file
+
+    Arguments:
+    ----------
+    error_handle -- True: will stop execution on improper rotation matrices
+                    False: will continue execution but will replace the values in the
+                           rotation matrix with [0,0,0,0,0,0,0,0,0]
+    eps -- Rounding accuracy for avoiding numerical issue when when testing proper rotation
+
+    error_handle can be use if one does not want a 'Sorry' to be raised. The program will continue to execute
+    but all coordinates of the bad rotation matrix will zero out
+
+    Returns:
+    --------
+    result : object containing information on all NCS operations
+    """
+    from scitbx import matrix
+
+    trans = []
+    rots = []
+    serial_number = []
+    coordinates_present = []
+
+    for i,sn in enumerate(self.cif_block.get('_struct_ncs_oper.id')):
+      serial_number.append((sn,i))
+      coordinates_present.append(
+        self.cif_block.get('_struct_ncs_oper.code')[i] == 'given')
+      r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y))[i])
+        for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+      rots.append(matrix.sqr(map(py_float,r)))
+      t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
+        for x in '123']
+      trans.append(matrix.col(map(py_float,t)))
+    # sort records by serial number
+    serial_number.sort()
+    items_order = [i for (_,i) in serial_number]
+    trans = [trans[i] for i in items_order]
+    rots = [rots[i] for i in items_order]
+    coordinates_present = [coordinates_present[i] for i in items_order]
+    serial_number = [j for (j,_) in serial_number]
+    # collect results
+    result = iotbx.pdb._._mtrix_and_biomt_records_container()
+    for sn,r,t,cp in zip(serial_number,rots,trans,coordinates_present):
+      if not r.is_r3_rotation_matrix(rms_tolerance=eps):
+        if error_handle:
+          raise Sorry('Rotation matrices are not proper! ')
+        else:
+          print Sorry('Rotation matrices are not proper! ')
+      ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
+      result.add(
+        r=r, t=t,
+        coordinates_present=(cp or ignore_transform),
+        serial_number=sn)
+    return result
 
 def _float_or_None(value):
   if value is not None:
