@@ -127,7 +127,6 @@ def test_quiet(file_name, verbose):
   assert file_name.find('"') < 0
   cmd= 'phenix.pdbtools "%s" output.file_name=%s shake=0.1 --quiet > log'%(
     file_name, output_file_name)
-  print cmd
   run_command(command=cmd, verbose=verbose)
   lines = open("log","r").readlines()
   assert len(lines) == 0
@@ -379,6 +378,16 @@ sites {
   translate = 1 2 3
   rotate = 4 5 6
 }
+occupancies
+{
+  atom_selection = chain A
+  randomize = True
+}
+occupancies
+{
+  atom_selection = chain C
+  set = 0.1
+}
 }
 """
   open("params", "w").write(params)
@@ -386,6 +395,7 @@ sites {
   assert file_name.find('"') < 0
   cmd = 'phenix.pdbtools "%s" modify.output.file_name=modified.pdb params' % (
     file_name)
+  print cmd
   result = run_command(command=cmd, verbose=verbose)
   lines = result.stdout_lines
   for i,line in enumerate(lines):
@@ -394,12 +404,14 @@ sites {
   else:
     raise RuntimeError("Expected output not found.")
   assert lines[i+1] == ""
-  assert lines[i+6] == ""
-  assert not show_diff("\n".join(lines[i+2:i+6]), """\
+  assert lines[i+8] == ""
+  assert not show_diff("\n".join(lines[i+2:i+8]), """\
 Randomizing ADP: selected atoms: 12 of 36
 Adding shift = 10.00 to all ADP: selected atoms: 12 of 36
 Shaking sites (RMS = 1.500): selected atoms: 12 of 36
-Rigid body shift: selected atoms: 24 of 36""")
+Rigid body shift: selected atoms: 24 of 36
+Randomizing occupancies: selected atoms: 12 of 36
+Setting occupancies to:    0.100: selected atoms: 12 of 36""")
 
 def exercise_no_cryst1(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "t.pdb")
