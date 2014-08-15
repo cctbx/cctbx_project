@@ -139,7 +139,7 @@ def get_chir_volume_ideal(volume_sign, bonds, angles):
   try:
     uc = uctbx.unit_cell(  [bond.value_dist for bond in bonds]
                          + [angle.value_angle for angle in angles])
-  except RuntimeError:
+  except ValueError:
     return None
   if (volume_sign.startswith("neg")):
     return -uc.volume()
