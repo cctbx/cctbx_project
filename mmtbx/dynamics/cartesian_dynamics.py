@@ -78,6 +78,8 @@ master_params = iotbx.phil.parse("""\
     .type = int
   random_seed = None
     .type = int
+  n_collect = 10
+    .type = int
 """)
 
 class gradients_calculator_geometry_restraints(object):
@@ -208,12 +210,14 @@ class run(object):
                initial_velocities_zero_fraction = 0,
                vxyz                             = None,
                n_print                          = 20,
+               n_collect                        = 10,
                interleaved_minimization         = False,
                reset_velocities                 = True,
                stop_cm_motion                   = False,
                log                              = None,
                stop_at_diff                     = None,
                random_seed                      = None,
+               states_collector                 = None,
                verbose                          = -1):
     adopt_init_args(self, locals())
     assert self.n_print > 0
@@ -222,6 +226,8 @@ class run(object):
     assert self.time_step >= 0.0
     assert self.log is not None or self.verbose < 1
     self.sites_cart_start = self.xray_structure.sites_cart()
+    if(self.states_collector is not None):
+      self.states_collector.add(sites_cart = self.sites_cart_start)
     self.k_boltz = boltzmann_constant_akma
     self.current_temperature = 0.0
     self.ekin = 0.0
@@ -333,15 +339,20 @@ class run(object):
   def verlet_leapfrog_integration(self):
     # start verlet_leapfrog_integration loop
     for cycle in range(1,self.n_steps+1,1):
+      if([self.stop_at_diff,self.states_collector].count(None) == 0):
+        sites_cart = self.xray_structure.sites_cart()
       if(self.stop_at_diff is not None):
-        dist = flex.mean(flex.sqrt((self.sites_cart_start -
-          self.xray_structure.sites_cart()).dot()))
+        dist = flex.mean(flex.sqrt((self.sites_cart_start - sites_cart).dot()))
         if(dist >= self.stop_at_diff): return
       accelerations = self.accelerations()
       print_flag = 0
       switch = math.modf(float(cycle)/self.n_print)[0]
       if((switch==0 or cycle==1 or cycle==self.n_steps) and self.verbose >= 1):
         print_flag = 1
+      if(self.states_collector is not None):
+        switch2 = math.modf(float(cycle)/self.n_collect)[0]
+        if(switch2==0 or cycle==1 or cycle==self.n_steps):
+          self.states_collector.add(sites_cart = sites_cart)
       if(print_flag == 1):
         text = "integration step number = %5d"%cycle
         self.center_of_mass_info()
