@@ -53,71 +53,61 @@ class unit_cell(ext.unit_cell):
     else:
       ext.unit_cell.__init__(self, parameters=[])
 
-  def metrical_matrix(self):
-    """
-    Access to the metrical matrix:
+ext.unit_cell.metrical_matrix.__func__.__doc__ = """
+Access to the metrical matrix:
 
-    .. math::
-       \\begin{pmatrix}
-         a^2                & a b \\cos(\\gamma) & a c \\cos(\\beta)  \\\\
-         a b \\cos(\\gamma) & b^2                & b c \\cos(\\alpha) \\\\
-         a c \\cos(\\beta)  & b c \\cos(\\alpha) & c^2                \\\\
-       \\end{pmatrix}
+.. math::
+   \\begin{pmatrix}
+     a^2                & a b \\cos(\\gamma) & a c \\cos(\\beta)  \\\\
+     a b \\cos(\\gamma) & b^2                & b c \\cos(\\alpha) \\\\
+     a c \\cos(\\beta)  & b c \\cos(\\alpha) & c^2                \\\\
+   \\end{pmatrix}
 
-    :returns: the metrical matrix
-    :rtype: tuple
-    """
-    return super(unit_cell, self).metrical_matrix()
+:returns: the metrical matrix
+:rtype: tuple
+"""
 
-  def orthogonalization_matrix(self):
-    """
-    Matrix for the conversion of fractional to Cartesian coordinates:
+ext.unit_cell.orthogonalization_matrix.__func__.__doc__ = """
+Matrix for the conversion of fractional to Cartesian coordinates:
 
-    .. math::
-      \\mathbf{x}_\\textrm{Cartesian} = \\mathbf{O} \\mathbf{x}_\\textrm{fractional}
+.. math::
+  \\mathbf{x}_\\textrm{Cartesian} = \\mathbf{O} \\mathbf{x}_\\textrm{fractional}
 
-    :returns: the orthogonalization matrix
-    :rtype: tuple
-    """
-    return super(unit_cell, self).orthogonalization_matrix()
+:returns: the orthogonalization matrix
+:rtype: tuple
+"""
 
-  def fractionalization_matrix(self):
-    """
-    Matrix for the conversion of fractional to Cartesian coordinates:
+ext.unit_cell.fractionalization_matrix.__func__.__doc__ = """
+Matrix for the conversion of fractional to Cartesian coordinates:
 
-    .. math::
-      \\mathbf{x}_\\textrm{fractional} = \\mathbf{F} \\mathbf{x}_\\textrm{Cartesian}
+.. math::
+  \\mathbf{x}_\\textrm{fractional} = \\mathbf{F} \\mathbf{x}_\\textrm{Cartesian}
 
-    :returns: the fractionalization matrix
-    :rtype: tuple
-    """
-    return super(unit_cell, self).fractionalization_matrix()
+:returns: the fractionalization matrix
+:rtype: tuple
+"""
 
-  def orthogonalize(self, sites_frac):
-    """
-    Conversion of fractional coordinates to Cartesian coordinates.
+ext.unit_cell.orthogonalize.__func__.__doc__ = """
+Conversion of fractional coordinates to Cartesian coordinates.
 
-    :param sites_frac: The fractional coordinates.
-                       Either coordinates for a single site (3-tuple) or a
-                       flex.vec3_double array of coordinates.
+:param sites_frac: The fractional coordinates.
+                   Either coordinates for a single site (3-tuple) or a
+                   flex.vec3_double array of coordinates.
 
-    :returns: the Cartesian coordinates
-    :rtype: 3-tuple or flex.vec3_double
-    """
-    return super(unit_cell, self).orthogonalize()
+:returns: the Cartesian coordinates
+:rtype: 3-tuple or flex.vec3_double
+"""
 
-  def fractionalize(self, sites_cart):
-    """
-    Conversion of Cartesian coordinates to fractional coordinates.
+ext.unit_cell.fractionalize.__func__.__doc__ = """
+Conversion of Cartesian coordinates to fractional coordinates.
 
-    :param sites_cart: The Cartesian coordinates.
-                       Either coordinates for a single site (3-tuple) or a
-                       flex.vec3_double array of coordinates.
+:param sites_cart: The Cartesian coordinates.
+                   Either coordinates for a single site (3-tuple) or a
+                   flex.vec3_double array of coordinates.
 
-    :returns: the fractional coordinates
-    :rtype: 3-tuple or flex.vec3_double
-    """
-    return super(unit_cell, self).fractionalize()
+:returns: the fractional coordinates
+:rtype: 3-tuple or flex.vec3_double
+"""
 
 
 class _(boost.python.injector, ext.unit_cell):
