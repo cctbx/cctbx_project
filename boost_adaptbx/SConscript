@@ -20,11 +20,19 @@ env_etc.boost_version = libtbx.env.boost_version
 print "BOOST_VERSION: %i" %env_etc.boost_version
 
 if (not env_etc.no_boost_python):
-  env_etc.cxxflags_bpl_defines_base = [
-    "-DBOOST_PYTHON_MAX_BASES=2"]
+  if sys.platform == 'win32':
+    env_etc.cxxflags_bpl_defines_base = [
+      "/DBOOST_PYTHON_MAX_BASES=2"]
+  else:
+    env_etc.cxxflags_bpl_defines_base = [
+      "-DBOOST_PYTHON_MAX_BASES=2"]
   if (libtbx.env.build_options.boost_python_no_py_signatures):
-    env_etc.cxxflags_bpl_defines_base.append(
-      "-DBOOST_PYTHON_NO_PY_SIGNATURES")
+    if sys.platform == 'win32':
+      env_etc.cxxflags_bpl_defines_base.append(
+        "/DBOOST_PYTHON_NO_PY_SIGNATURES")
+    else:
+      env_etc.cxxflags_bpl_defines_base.append(
+        "-DBOOST_PYTHON_NO_PY_SIGNATURES")
   env_no_includes_boost_python_ext = env_base.Clone(
     SHLINKFLAGS=env_etc.shlinkflags_bpl,
     SHLIBPREFIX="",
@@ -164,12 +172,21 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
   env = env_base.Clone(LIBS=env_etc.libs_python)
   env.Append(LIBPATH=env_etc.libpath_python)
   env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
-  env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_SOURCE"])
+  if sys.platform == 'win32':
+    env.Append(SHCXXFLAGS=["/DBOOST_PYTHON_SOURCE"])
+  else:
+    env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_SOURCE"])
   if (libtbx.env.build_options.boost_python_bool_int_strict):
-    env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_BOOL_INT_STRICT"])
+    if sys.platform == 'win32':
+      env.Append(SHCXXFLAGS=["/DBOOST_PYTHON_BOOL_INT_STRICT"])
+    else:
+      env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_BOOL_INT_STRICT"])
   env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
   env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
-  env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
+  if sys.platform == 'win32':
+    env.Append(CXXFLAGS="/DBOOST_PYTHON_SOURCE")
+  else:
+    env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
   env.Replace(LINKFLAGS=env_etc.shlinkflags)
   env_etc.include_registry.append(
     env=env,
