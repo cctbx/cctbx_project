@@ -18,10 +18,9 @@ Submodules
    cctbx.uctbx.krivy_gruber_1976
    cctbx.uctbx.reduction_base
 
-Module contents
----------------
+The unit cell
+-------------
 
-.. automodule:: cctbx.uctbx
+.. autoclass:: cctbx.uctbx.unit_cell
     :members:
     :undoc-members:
-    :show-inheritance:
