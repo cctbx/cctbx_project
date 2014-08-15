@@ -14,6 +14,9 @@ master_params_str = """
 %s
 dynamics_type = *cartesian
   .type = choice
+stop_at_diff = None
+  .type = float
+  .help = stop after reaching specified cutoff value
 cartesian_dynamics
   .short_caption = Cartesian dynamics
 {
@@ -25,8 +28,10 @@ def master_params():
 
 def run_cartesian_dynamics (
     xray_structure,
+    states_collector,
     restraints_manager,
     params,
+    stop_at_diff,
     log) :
   from mmtbx.dynamics import cartesian_dynamics
   make_header("Simple cartesian dynamics", out=log)
@@ -40,10 +45,12 @@ def run_cartesian_dynamics (
     xray_structure=xray_structure,
     gradients_calculator=gradients_calculator,
     temperature=params.temperature,
+    states_collector=states_collector,
     n_steps=params.number_of_steps,
     time_step=params.time_step,
     initial_velocities_zero_fraction=params.initial_velocities_zero_fraction,
     n_print=params.n_print,
+    stop_at_diff=stop_at_diff,
     log=log,
     verbose=1)
   sites_cart_end = xray_structure.sites_cart()
@@ -66,13 +73,14 @@ Usage examples:
 
   def __execute (self) :
     #
-    self.caller(func = self.initialize,     prefix="Initialization, inputs")
-    self.caller(func = self.process_inputs, prefix="Processing inputs")
-    self.caller(func = self.atom_selection, prefix="Atom selection")
-    self.caller(func = self.get_restraints, prefix="Geometry Restraints")
-    self.caller(func = self.dynamics,       prefix="Dynamics")
-    self.caller(func = self.write_pdb_file, prefix="Write PDB file")
-    self.caller(func = self.write_geo_file, prefix="Write GEO file")
+    self.caller(self.initialize,           "Initialization, inputs")
+    self.caller(self.process_inputs,       "Processing inputs")
+    self.caller(self.atom_selection,       "Atom selection")
+    self.caller(self.get_restraints,       "Geometry Restraints")
+    self.caller(self.reference_restraints, "Add reference restraints")
+    self.caller(self.dynamics,             "Dynamics")
+    self.caller(self.write_pdb_file,       "Write PDB file")
+    self.caller(self.write_geo_file,       "Write GEO file")
     #
     self.show_times()
 
@@ -88,7 +96,9 @@ Usage examples:
       run_cartesian_dynamics(
         xray_structure=self.xray_structure,
         restraints_manager=self.grm,
+        states_collector=self.states_collector,
         params=self.params.cartesian_dynamics,
+        stop_at_diff=self.params.stop_at_diff,
         log=self.log)
     else : # TODO
       raise NotImplementedError()
