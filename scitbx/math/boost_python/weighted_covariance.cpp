@@ -32,8 +32,35 @@ namespace scitbx { namespace math { namespace boost_python {
     }
   };
 
+
+  template <typename FloatType>
+  struct multivariate_moments_wrapper
+  {
+    typedef multivariate_moments<FloatType> wt;
+    typedef af::const_ref<FloatType> const &const_ref_t;
+
+    static void wrap(char const *name) {
+      using namespace boost::python;
+      class_<wt>(name,no_init)
+        .def(init<>())
+        .def(init<const_ref_t>
+              ((arg("weights"))))
+        .def("update", &wt::update,
+               (arg("data")) )
+        .def("mean", &wt::mean)
+        .def("variance", &wt::variance)
+        .def("vcv_upper_triangle_packed", &wt::vcv_upper_triangle_packed)
+        .def("vcv_raw_upper_triangle_packed", &wt::vcv_raw_upper_triangle_packed)
+        ;
+    }
+
+
+  };
+
+
   void wrap_weighted_covariance() {
     weighted_covariance_wrapper<double>::wrap("weighted_covariance");
+    multivariate_moments_wrapper<double>::wrap("multivariate_moments");
   }
 
 
