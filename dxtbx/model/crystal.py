@@ -187,15 +187,29 @@ class crystal_model(object):
     self._num_scan_points = len(A_list)
 
   def get_A_at_scan_point(self, t):
-    '''Return the setting matrix with index t. This will typically have been
+    '''Return the setting matrix with index t.
+
+    This will typically have been
     set with reference to a particular scan, such that it equals the UB matrix
     appropriate at the start of the rotation for the image with array index t
+
+    :param t: index into the list of scan points.
+
+    :returns: The A matrix at index t
+    :rtype: :py:class:`scitbx.matrix.sqr`
     '''
 
     return self._A_at_scan_points[t]
 
   def get_U_at_scan_point(self, t):
-    '''Return orientation matrix with index t.'''
+    '''
+    Return orientation matrix with index t.
+
+    :param t: index into the list of scan points.
+
+    :returns: The U matrix at index t
+    :rtype: :py:class:`scitbx.matrix.sqr`
+    '''
 
     Bt = self.get_B_at_scan_point(t)
     At = self._A_at_scan_points[t]
@@ -203,7 +217,14 @@ class crystal_model(object):
     return At * Bt.inverse()
 
   def get_B_at_scan_point(self, t):
-    '''Return orthogonalisation matrix with index t.'''
+    '''
+    Return orthogonalisation matrix with index t.
+
+    :param t: index into the list of scan points.
+
+    :returns: The B matrix at index t
+    :rtype: :py:class:`scitbx.matrix.sqr`
+    '''
 
     At = self._A_at_scan_points[t]
     uc = unit_cell(orthogonalization_matrix=At.transpose().inverse())
@@ -211,7 +232,15 @@ class crystal_model(object):
     return matrix.sqr(uc.fractionalization_matrix()).transpose()
 
   def get_unit_cell_at_scan_point(self, t):
-    '''Return unit cell with index t.'''
+    '''
+    Return unit cell with index t.
+
+    :param t: index into the list of scan points.
+    :type t: int
+
+    :returns: The unit cell at index t
+    :rtype: :py:class:`cctbx.uctbx.unit_cell`
+    '''
 
     At = self._A_at_scan_points[t]
     uc = unit_cell(orthogonalization_matrix=At.transpose().inverse())
@@ -223,15 +252,36 @@ class crystal_model(object):
     self._A_at_scan_points = None
 
   def get_unit_cell(self):
+    '''
+    :returns: The unit cell
+    :rtype: :py:class:`cctbx.uctbx.unit_cell`
+    '''
     return self._uc
 
   def set_space_group(self, space_group):
+    '''
+    :param space_group:
+    :type space_group: cctbx.sgtbx.space_group
+    '''
     self._sg = space_group
 
   def get_space_group(self):
+    '''
+    :returns: The current space group
+    :rtype: :py:class:`cctbx.sgtbx.space_group`
+    '''
     return self._sg
 
   def get_mosaicity(self, deg=True):
+    '''
+    Get the current value of the mosaicity.
+
+    :param deg: If True, return the mosaicity in degrees, else return the
+                mosaicity in radians.
+    :type deg: bool
+    :returns: The mosaicity
+    :rtype: float or None
+    '''
     from math import pi
     if deg == True:
       return self._mosaicity * 180.0 / pi
@@ -239,6 +289,17 @@ class crystal_model(object):
     return self._mosaicity
 
   def set_mosaicity(self, mosaicity, deg=True):
+    '''
+    Update the value of the mosaicity.
+
+    :param mosaicity: The mosaicity
+    :type mosaicity: float
+    :param deg: If True, assume the mosaicity is given in degrees, else
+                assume it is given in radians.
+    :type deg: bool
+    :returns: The mosaicity
+    :rtype: float or None
+    '''
     from math import pi
     if deg == True:
       self._mosaicity = mosaicity * pi / 180.0
@@ -266,12 +327,27 @@ class crystal_model(object):
     return NotImplemented
 
   def get_real_space_vectors(self):
+    '''
+    Get the real space unit cell basis vectors.
+
+    :returns: Real space unit cell basis vectors
+    :rtype: list of :py:class:`scitbx.matrix.col`
+    '''
     A_inv = self.get_A().inverse()
     return (matrix.col(A_inv[:3]),
             matrix.col(A_inv[3:6]),
             matrix.col(A_inv[6:9]))
 
   def change_basis(self, change_of_basis_op):
+    '''
+    Returns a copy of the current crystal model transformed by the given
+    change of basis operator to the new basis.
+
+    :param change_of_basis_op: The change of basis operator.
+    :type cctbx.sgtbx.change_of_basis_op:
+    :returns: The crystal model transformed to the new basis.
+    :rtype: :py:class:`crystal_model`
+    '''
     # cctbx change of basis matrices and those Giacovazzo are related by
     # inverse and transpose, i.e. Giacovazzo's "M" is related to the cctbx
     # cb_op as follows:
@@ -314,6 +390,12 @@ class crystal_model(object):
     return other
 
   def update(self, other):
+    '''
+    Update the current crystal model such that self == other.
+
+    :param other: A crystal model to update self with.
+    :type other: crystal_model
+    '''
     self._U = other._U
     self._B = other._B
     self._A_at_scan_points = other._A_at_scan_points
@@ -326,8 +408,9 @@ def crystal_model_from_mosflm_matrix(mosflm_A_matrix,
                                      unit_cell=None,
                                      wavelength=None,
                                      space_group=None):
-  '''Create a crystal_model from a Mosflm A matrix (a*, b*, c*); N.B. assumes
-  the mosflm coordinate frame:
+  '''
+  Create a crystal_model from a Mosflm A matrix (a*, b*, c*); N.B. assumes
+  the mosflm coordinate frame::
 
                                                    /!
                       Y-axis                      / !
@@ -349,8 +432,20 @@ def crystal_model_from_mosflm_matrix(mosflm_A_matrix,
                  axis                        !/
                                              O
 
-  Also assume that the mosaic spread is 0. If space_group is None spacegroup
-  will be assigned as P1.
+  Also assume that the mosaic spread is 0.
+
+  :param mosflm_A_matrix: The A matrix in Mosflm convention.
+  :type mosflm_A_matrix: tuple of floats
+  :param unit_cell: The unit cell parameters which are used to determine the
+                    wavelength from the Mosflm A matrix.
+  :type unit_cell: cctbx.uctbx.unit_cell
+  :param wavelength: The wavelength to scale the A matrix
+  :type wavelength: float
+  :param space_group: If the space group is None then the space_group will
+                      be assigned as P1
+  :type space_group: cctbx.sgtbx.space_group
+  :returns: A crystal model derived from the given Mosflm A matrix
+  :rtype: :py:class:`crystal_model`
   '''
 
   if not space_group:
