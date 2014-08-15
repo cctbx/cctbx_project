@@ -104,16 +104,16 @@ def randomize_completeness(map_coeffs, crystal_gridding, n_cycles=10,
 def randomize_struture_factors(map_coeffs, number_of_kicks, phases_only=False):
   map_coeff_data = None
   for kick in xrange(number_of_kicks):
-    rc, ar, pr = random.choice([(0.1, 0.10, 10),
-                                (0.2, 0.09, 9),
-                                (0.3, 0.08, 8),
-                                (0.4, 0.07, 7),
-                                (0.5, 0.06, 6),
-                                (0.6, 0.05, 5),
-                                (0.7, 0.04, 4),
-                                (0.8, 0.03, 3),
-                                (0.9, 0.02, 2),
-                                (1.0, 0.01, 1)
+    rc, ar, pr = random.choice([(0.1, 0.10, 40),
+                                (0.2, 0.09, 40),
+                                (0.3, 0.08, 30),
+                                (0.4, 0.07, 30),
+                                (0.5, 0.06, 20),
+                                (0.6, 0.05, 20),
+                                (0.7, 0.04, 20),
+                                (0.8, 0.03, 10),
+                                (0.9, 0.02, 10),
+                                (1.0, 0.01, 10)
                                ])
     if(phases_only): ar = 0
     sel = flex.random_bool(map_coeffs.size(), rc)
