@@ -306,7 +306,7 @@ def resolve_dm_map(
       use_model_hl,
       fill,
       solvent_content=None,
-      solvent_content_attenuator=0.15,
+      solvent_content_attenuator=0.1,
       mask_cycles  = 2,
       minor_cycles = 2,
       input_text   = None):
