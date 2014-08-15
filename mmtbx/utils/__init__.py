@@ -185,6 +185,9 @@ data_and_flags_str = """\
     .short_caption = Use anomalous data
     .style = tribool
     .expert_level = 1
+  convert_to_non_anomalous_if_ratio_pairs_lone_less_than_threshold=0.5
+    .type = float
+    .expert_level = 2
   r_free_flags
     .expert_level=0
     .style = box auto_align
@@ -524,6 +527,10 @@ class determine_data_and_flags(object):
         f_obs = f_obs.generate_bijvoet_mates()
         f_obs.set_observation_type(observation_type)
         print >> self.log
+    else:
+      f_obs = f_obs.convert_to_non_anomalous_if_ratio_pairs_lone_less_than(
+        threshold=self.parameters.
+          convert_to_non_anomalous_if_ratio_pairs_lone_less_than_threshold)
     if(f_obs_data_size != f_obs.data().size()):
       print >> self.log, "\nFobs statistics after all cutoffs applied:\n"
       f_obs.show_comprehensive_summary(f = self.log)
@@ -2543,37 +2550,46 @@ class shift_origin(object):
   def __init__(self, map_data, pdb_hierarchy, crystal_symmetry):
     self.pdb_hierarchy = pdb_hierarchy
     self.crystal_symmetry = crystal_symmetry
-    a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
-    N = map_data.all()
-    O=map_data.origin()
-    sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
-    fm = crystal_symmetry.unit_cell().fractionalization_matrix()
-    self.map_data = map_data.shift_origin()
-    t_best=-9999.
-    sites_cart_best = None
-    for inc1 in [0]:#[-2,-1,0,1,2]:
-      for inc2 in [0]:#[-2,-1,0,1,2]:
-        N_ = (N[0]-inc1,N[1]-inc1,N[2]-inc1)
-        O_ = (O[0]-inc2,O[1]-inc2,O[2]-inc2)
-        sx,sy,sz = a/N_[0]*O_[0], b/N_[1]*O_[1], c/N_[2]*O_[2]
-        sites_cart_shifted = sites_cart+\
-          flex.vec3_double(sites_cart.size(), [-sx,-sy,-sz])
-        sites_frac_shifted = fm*sites_cart
-        t = maptbx.map_sum_at_sites_frac(map_data=self.map_data,
-          sites_frac=sites_frac_shifted)
-        print inc1, inc2, t
-        if(t>t_best):
-          t_best=t
-          sites_cart_best=sites_cart_shifted.deep_copy()
-    if(sites_cart_best is not None):
-      self.pdb_hierarchy.atoms().set_xyz(sites_cart_best)
+    self.map_data = map_data
+    self.shifted = False
+    shift_needed = not \
+      (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
+       map_data.is_0_based())
+    if(shift_needed):
+      if(not crystal_symmetry.space_group().type().number() in [0,1]):
+        raise RuntimeError("Not implemented")
+      self.shifted = True
+      a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
+      N = map_data.all()
+      O=map_data.origin()
+      sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      fm = crystal_symmetry.unit_cell().fractionalization_matrix()
+      self.map_data = self.map_data.shift_origin()
+      t_best=-9999.
+      sites_cart_best = None
+      for inc1 in [0]:#[-2,-1,0,1,2]:
+        for inc2 in [0]:#[-2,-1,0,1,2]:
+          N_ = (N[0]-inc1,N[1]-inc1,N[2]-inc1)
+          O_ = (O[0]-inc2,O[1]-inc2,O[2]-inc2)
+          sx,sy,sz = a/N_[0]*O_[0], b/N_[1]*O_[1], c/N_[2]*O_[2]
+          sites_cart_shifted = sites_cart+\
+            flex.vec3_double(sites_cart.size(), [-sx,-sy,-sz])
+          sites_frac_shifted = fm*sites_cart
+          t = maptbx.map_sum_at_sites_frac(map_data=self.map_data,
+            sites_frac=sites_frac_shifted)
+          print inc1, inc2, t
+          if(t>t_best):
+            t_best=t
+            sites_cart_best=sites_cart_shifted.deep_copy()
+      if(sites_cart_best is not None):
+        self.pdb_hierarchy.atoms().set_xyz(sites_cart_best)
 
   def show_shifted(self):
-    self.pdb_hierarchy.write_pdb_file(file_name="shifted.pdb",
+    self.pdb_hierarchy.write_pdb_file(file_name="origin_shifted.pdb",
       crystal_symmetry=self.crystal_symmetry)
     from iotbx import ccp4_map
     ccp4_map.write_ccp4_map(
-      file_name="shifted.ccp4",
+      file_name="origin_shifted.ccp4",
       unit_cell=self.crystal_symmetry.unit_cell(),
       space_group=self.crystal_symmetry.space_group(),
       #gridding_first=(0,0,0),# This causes a bug (map gets shifted)
