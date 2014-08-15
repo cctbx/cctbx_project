@@ -894,7 +894,7 @@ def exercise_00():
       plain_pairs_radius = 5.0)
     geometry = geometry.select(s)
     es = geometry.energies_sites(
-          sites_cart = xray_structure.sites_cart().select(s))
+      sites_cart = xray_structure.sites_cart().select(s))
     a = es.angle_deviations()[2]
     b = es.bond_deviations()[2]
     return a, b
