@@ -8,7 +8,7 @@ iotbx.cif
 Overview
 --------
 
-``iotbx.cif`` is a module for the development of applications that make use of
+:py:mod:`iotbx.cif` is a module for the development of applications that make use of
 the CIF format. Comprehensive tools are provided for input, output and
 validation of CIFs, as well as for interconversion with high-level cctbx
 crystallographic objects. The interface to the library is written in Python,
@@ -16,12 +16,14 @@ whilst parsing is carried out using a compiled parser, combining the
 performance of a compiled language (C++) with the benefits of using an
 interpreted language.
 
-If you use ``iotbx.cif`` in your work please cite:
+If you use :py:mod:`iotbx.cif` in your work please cite:
 
   R. J. Gildea, L. J. Bourhis, O. V. Dolomanov, R. W. Grosse-Kunstleve,
   H. Puschmann, P. D. Adams and J. A. K. Howard:
   *iotbx.cif: a comprehensive CIF toolbox*.
   `J. Appl. Cryst. (2011). 44, 1259-1263 <http://dx.doi.org/10.1107/S0021889811041161>`_.
+
+See also http://www.iucr.org/resources/cif.
 
 Reading a CIF file
 ------------------
@@ -49,23 +51,26 @@ representation of the quartz structure::
      O O 0.197 -0.197 0.833 0.200
   """
 
-Next we import the ``iotbx.cif`` module, and extract an instance of
-``xray.structure`` from the CIF string::
+Next we import the :py:mod:`iotbx.cif` module, and extract an instance of
+:py:class:`cctbx.xray.structure` from the CIF string::
 
   import iotbx.cif
   quartz_structure = iotbx.cif.reader(
     input_string=quartz_as_cif).build_crystal_structures()["quartz"]
 
-The ``iotbx.cif.reader`` reads the CIF string and builds a Python
-representation of the CIF. We then call the ``build_crystal_structures()``
-method which constructs an instance of ``xray.structure`` for each crystal
+The :py:class:`iotbx.cif.reader` class reads the CIF string and builds a Python
+representation of the CIF. We then call the
+:py:meth:`~iotbx.cif.reader.build_crystal_structures`
+method which constructs an instance of :py:class:`cctbx.xray.structure` for each crystal
 structure it finds in the CIF. Since a single CIF file may contain multiple
-crystal structures, the ``build_crystal_structures`` method returns a dictionary
+crystal structures, the :py:meth:`~iotbx.cif.reader.build_crystal_structures`
+method returns a dictionary
 of all the crystal structures found in the given CIF, where the keys are the
 name of each data block containing a crystal structure.
 
-We then call consecutively the ``show_summary()`` and ``show_scatterers()``
-methods of the ``xray.structure`` object ::
+We then call consecutively the :py:meth:`~cctbx.xray.structure.show_summary`
+and :py:meth:`~cctbx.xray.structure.show_scatterers`
+methods of the :py:class:`cctbx.xray.structure` object ::
 
   quartz_structure.show_summary().show_scatterers()
 
@@ -79,7 +84,7 @@ which produces the following output::
   Si   Si     3 ( 0.5000  0.5000  0.3333) 1.00 0.2000 [ - ]
   O    O      6 ( 0.1970 -0.1970  0.8333) 1.00 0.2000 [ - ]
 
-Next we explore the ``quartz_structure`` object further by examining the
+Next we explore the :py:obj:`quartz_structure` object further by examining the
 symmetry of each site in the structure::
 
   for scatterer in quartz_structure.scatterers():
@@ -97,18 +102,20 @@ This will produce the output::
     point group type: 2
     special position operator: x,-x,5/6
 
-Now we would like to calculate some intensities for our ``quartz_structure`` and
+Now we would like to calculate some intensities for our :py:obj:`quartz_structure` and
 output them in CIF format. The cctbx provides several pretabulated  scattering
 factor tables that we can use; here we choose to use those from the
 International Tables::
 
   quartz_structure.scattering_type_registry(table="it1992")
 
-First we calculate the structure factors from the ``quartz_structure``
-by calling the ``structure_factors()`` method of ``xray.structure``,
+First we calculate the structure factors from the :py:obj:`quartz_structure`
+by calling the :py:meth:`~cctbx.xray.structure.structure_factors` method of
+:py:class:`cctbx.xray.structure`,
 passing the argument ``d_min=2`` to indicate that we only want to calculate the
 structure factors for miller indices with d-spacings not less than 2 Angstroms.
-Following that we call the ``as_intensity_array()`` method of ``miller.array``
+Following that we call the :py:meth:`~cctbx.miller.array.as_intensity_array`
+method of :py:class:`~cctbx.miller.array`
 to convert the complex structure factors to intensities::
 
   f_calc = quartz_structure.structure_factors(d_min=2).f_calc()
@@ -124,18 +131,20 @@ Finally we output the calculated intensities to a CIF file::
 Python representation of a CIF file
 -----------------------------------
 
-The module ``iotbx.cif.model`` contains three important classes that represent
-different levels of the CIF hierarchy. The class ``model.cif`` is equivalent to
+The module :py:mod:`iotbx.cif.model` contains three important classes that
+represent different levels of the CIF hierarchy. The class
+:py:class:`iotbx.model.cif` is equivalent to
 a full CIF file, and contains zero or more CIF data blocks, which in turn are
-represented by the class ``model.block``. These two classes behave in a very
-similar way to a normal Python dictionary, and values can be set or accessed
-using the familiar square bracket syntax. A ``model.block`` object consists of
-a set of data names and associated data values, which may or may not be looped
-items. Querying a ``model.block`` object for a given data name will return a
-simple string if the item is not looped, or a `flex.std_string`_ array for
-looped values.
+represented by the class :py:class:`iotbx.model.block`. These two classes
+behave in a very similar way to a normal Python dictionary, and values can be
+set or accessed using the familiar square bracket syntax.
+A :py:class:`iotbx.model.block` object consists of a set of data names and
+associated data values, which may or may not be looped items. Querying a
+:py:class:`iotbx.model.block` object for a given data name will return a
+simple string if the item is not looped, or a
+:py:class:`scitbx.flex.std_string` array for looped values.
 
-Starting with the ``quartz_structure`` already obtained above we will create a
+Starting with the :py:obj:`quartz_structure` already obtained above we will create a
 cif block containing the symmetry information about the structure::
 
   from iotbx.cif import model
@@ -143,9 +152,9 @@ cif block containing the symmetry information about the structure::
   cif = model.cif()
   cif_block = model.block()
 
-First we add the unit cell parameters to the ``cif_block`` using the square
+First we add the unit cell parameters to the :py:obj:`cif_block` using the square
 bracket syntax to add key-value (data name, data value) pairs to the
-``cif_block``::
+:py:obj:`cif_block`::
 
   unit_cell = quartz_structure.unit_cell()
   params = unit_cell.parameters()
@@ -158,9 +167,9 @@ bracket syntax to add key-value (data name, data value) pairs to the
   cif_block["_cell_volume"] = unit_cell.volume()
 
 Now we will create a CIF loop object containing the space group symmetry
-operations. First we create an instance of ``model.loop`` providing the
-data names (``header``) for the loop, before adding data values one row at
-a time::
+operations. First we create an instance of :py:class:`iotbx.cif.model.loop`
+providing the data names (``header``) for the loop, before adding data values
+one row at a time::
 
   space_group = quartz_structure.space_group()
   symop_loop = model.loop(header=("_space_group_symop_id",
@@ -168,7 +177,8 @@ a time::
   for symop_id, symop in enumerate(space_group):
     symop_loop.add_row((symop_id + 1, symop.as_xyz()))
 
-Next we add the ``symop_loop`` and other space group items to the cif_block::
+Next we add the :py:obj:`symop_loop` and other space group items to the
+:py:obj:`cif_block`::
 
   space_group_type = quartz_structure.space_group_info().type()
   cif_block["_space_group_crystal_system"] = space_group.crystal_system().lower()
@@ -177,8 +187,8 @@ Next we add the ``symop_loop`` and other space group items to the cif_block::
   cif_block["_space_group_name_Hall"] = space_group_type.hall_symbol()
   cif_block.add_loop(symop_loop)
 
-Finally we add cif_block to the cif object with the data block name "quartz"
-and print the cif object to the standard output::
+Finally we add :py:obj:`cif_block` to the :py:obj:`cif` object with the
+data block name "quartz" and print the :py:obj:`cif` object to the standard output::
 
   cif["quartz"] = cif_block
   print cif
@@ -187,7 +197,7 @@ and print the cif object to the standard output::
 Dictionary validation
 ---------------------
 
-We shall take the ``quartz_as_cif string`` from above and intentionally add some
+We shall take the :py:obj:`quartz_as_cif` from above and intentionally add some
 extra CIF items that contain will be interpreted as  errors when validated
 against the `core CIF dictionary`_::
 
@@ -195,22 +205,24 @@ against the `core CIF dictionary`_::
 
   cif_model = iotbx.cif.reader(input_string=quartz_as_cif).model()
 
-Here we call the ``iotbx.cif.reader`` class as before, and then following that
-we call the ``model()`` method to get direct access to the Python representation
-of the CIF that has been constructed by the ``reader`` class. We can then
+Here we call the :py:class:`iotbx.cif.reader` class as before, and then
+following that we call the :py:meth:`iotbx.cif.reader.model` method to get
+direct access to the Python representation of the CIF that has been
+constructed by the :py:class:`~iotbx.cif.reader` class. We can then
 interact with this to add new data items::
 
   cif_model["quartz"]["_diffrn_radiation_probe"] = "xray"
   cif_model["quartz"]["_space_group_crystal_system"] = "Monoclinic"
   cif_model["quartz"]["_space_group_IT_number"] = "one hundred and eighty"
 
-Next we add take the ``symop_loop`` constructed above and add another column
+Next we add take the :py:obj:`symop_loop` constructed above and add another column
 to the loop, before adding the loop to the "quartz" CIF block::
 
   symop_loop.add_column("_space_group_symop_sg_id", [1]*12)
   cif_model["quartz"].add_loop(symop_loop)
 
-We can load a cif dictionary object using the ``smart_load_dictionary`` function.
+We can load a cif dictionary object using the
+:py:func:`iotbx.cif.validation.smart_load_dictionary` function.
 This can load a dictionary from a given file path or url, or given the name of
 a dictionary it will attempt to first find a local copy of the dictionary, then
 alternatively look up the dictionary in the IUCr cif dictionary register and
@@ -231,7 +243,7 @@ This will give the following output detailing the errors found::
 Creating a standalone C++ CIF parser
 ------------------------------------
 
-Using the ``ucif`` module it is possible to very easily integrate a CIF parser
+Using the :py:mod:`ucif` module it is possible to very easily integrate a CIF parser
 with minimal dependencies into any C++ software. For further details see the
 `ucif documentation`_.
 
