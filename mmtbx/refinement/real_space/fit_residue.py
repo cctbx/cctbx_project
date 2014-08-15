@@ -303,7 +303,7 @@ class manager(object):
             if(debug): print score_rotamers.target, 3
             score_rotamers.update(sites_cart = rotamer_sites_cart.deep_copy())
             if(debug): print score_rotamers.target, 4
-          if(debug): print rotamer.id, score_rotamers.target, score_rotamers.tmp#, score_rotamer.target
+          if(debug): print rotamer.id, score_rotamers.target, score_rotamers.tmp
         if(debug): print "final:", score_rotamers.target, score_rotamers.tmp
         if(score_rotamers.sites_cart is not None):
           self.residue.atoms().set_xyz(new_xyz = score_rotamers.sites_cart)
