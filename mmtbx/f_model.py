@@ -1198,20 +1198,7 @@ class manager(manager_mixin):
     assert approx_equal(rw, self.r_work(), 1.e-4)
     assert approx_equal(rf, self.r_free(), 1.e-4)
 
-  def show(self, log=None, suffix=None, show_header=True, show_approx=True):
-    if(log is None): log = sys.stdout
-    l="Statistics in resolution bins"
-    if(suffix is not None): l += " %s"%suffix
-    f1 = "Total model structure factor:"
-    f2 = "  F_model = k_total * (F_calc + k_mask * F_mask)\n"
-    f3 = "    k_total = k_isotropic * k_anisotropic"
-    m=(77-len(l))//2
-    if(show_header): print >> log, "\n","="*m,l,"="*m,"\n"
-    print >> log, f1
-    print >> log, f2
-    print >> log, f3
-    fmt="%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f %5.3f %s"
-    print >> log, "   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> kiso   kani kmask"
+  def bins(self):
     k_masks       = self.k_masks()
     k_isotropic   = self.k_isotropic()
     k_anisotropic = self.k_anisotropic()
@@ -1219,7 +1206,7 @@ class manager(manager_mixin):
     f_obs         = self.f_obs()
     work_flags    =~self.r_free_flags().data()
     free_flags    = self.r_free_flags().data()
-    kmf = "%4.2f "*len(k_masks)
+    result = []
     for sel in self.bin_selections:
       d        = self.arrays.d_spacings.select(sel)
       d_min    = flex.min(d)
@@ -1238,7 +1225,36 @@ class manager(manager_mixin):
         f_obs.select(sel_work).data(),
         f_model.select(sel_work).data(), 1)
       km = " ".join(["%5.3f"%flex.mean(km_.select(sel)) for km_ in k_masks])
-      print >> log, fmt % (d_max,d_min,cmpl,nw,nf,r,fo_mean,fm_mean,ki,ka,km)
+      result.append(group_args(
+        d_min   = d_min,
+        d_max   = d_max,
+        nw      = nw,
+        nf      = nf,
+        fo_mean = fo_mean,
+        fm_mean = fm_mean,
+        cmpl    = cmpl,
+        ki      = ki,
+        ka      = ka,
+        r       = r,
+        km      = km))
+    return result
+
+  def show(self, log=None, suffix=None, show_header=True, show_approx=True):
+    if(log is None): log = sys.stdout
+    l="Statistics in resolution bins"
+    if(suffix is not None): l += " %s"%suffix
+    f1 = "Total model structure factor:"
+    f2 = "  F_model = k_total * (F_calc + k_mask * F_mask)\n"
+    f3 = "    k_total = k_isotropic * k_anisotropic"
+    m=(77-len(l))//2
+    if(show_header): print >> log, "\n","="*m,l,"="*m,"\n"
+    print >> log, f1
+    print >> log, f2
+    print >> log, f3
+    fmt="%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f %5.3f %s"
+    print >> log, "   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> kiso   kani kmask"
+    for b in self.bins():
+      print >> log, fmt % (b.d_max,b.d_min,b.cmpl,b.nw,b.nf,b.r,b.fo_mean,b.fm_mean,b.ki,b.ka,b.km)
     def overall_isotropic_kb_estimate(self):
       k_total = self.k_isotropic() * self.k_anisotropic()
       assert self.ss.size() == self.k_isotropic().size()
