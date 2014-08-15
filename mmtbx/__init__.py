@@ -176,6 +176,7 @@ class fmodels(object):
         self,
         update_f_part1_for,
         refine_threshold,
+        remove_outliers     = True,
         params              = None,
         optimize_mask       = False,
         force_update_f_mask = False,
@@ -202,6 +203,7 @@ class fmodels(object):
       self.fmodel_xray().update_all_scales(
         update_f_part1_for   = update_f_part1_for,
         refine_threshold     = refine_threshold,
+        remove_outliers      = remove_outliers,
         params               = params,
         fast                 = fast,
         log                  = log,
@@ -217,6 +219,7 @@ class fmodels(object):
       self.fmodel_neutron().update_all_scales(
         update_f_part1_for   = update_f_part1_for,
         refine_threshold     = refine_threshold,
+        remove_outliers      = remove_outliers,
         params               = params,
         fast                 = fast,
         log                  = log,
