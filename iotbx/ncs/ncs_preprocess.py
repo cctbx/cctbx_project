@@ -145,10 +145,12 @@ class ncs_group_object(object):
     elif pdb_inp:
       ph = pdb_inp.construct_hierarchy()
       pdb_hierarchy_inp = iotbx.pdb.hierarchy.input_hierarchy_pair(pdb_inp,ph)
-    if extension.lower() == '.pdb':
+    if extension.lower() in ['.pdb','.cif', '.mmcif']:
       pdb_hierarchy_inp = pdb.hierarchy.input(file_name=file_name)
-    elif (not pdb_hierarchy_inp) and pdb_string:
-      pdb_hierarchy_inp = pdb.hierarchy.input(pdb_string=pdb_string)
+    elif (not pdb_hierarchy_inp) and (pdb_string or cif_string):
+      if pdb_string: input_str = pdb_string
+      else: input_str = cif_string
+      pdb_hierarchy_inp = pdb.hierarchy.input(pdb_string=input_str)
     if pdb_hierarchy_inp and (not transform_info):
       transform_info = pdb_hierarchy_inp.input.process_mtrix_records()
       if transform_info.as_pdb_string() == '': transform_info = None
@@ -517,15 +519,6 @@ class ncs_group_object(object):
     for k,c,m in zip(tr_keys,copies_selection_list,master_selection_list):
       key = k + '_' + tr_id
       self.tr_id_to_selection[key] = (m,c)
-
-  def build_ncs_obj_from_mmcif(self,
-                               file_name=None,file_path=None,
-                               mmcif_string=None):
-    """
-    Build transforms objects and NCS <-> ASU mapping using mmcif file
-    """
-    from iotbx.pdb.mmcif import cif_input
-    # TODO: build mmcif function
 
   def add_transforms_to_ncs_refinement_groups(self,rotations,translations):
     """
