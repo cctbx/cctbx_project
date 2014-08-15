@@ -48,6 +48,13 @@ class manager(object):
     if(clash_list.size()>0):
       self.loop_over_residues(iselection = clash_list, use_clash_filter=True,
         use_torsion_search=True, use_rotamer_iterator=False)
+    ####
+    # TODO: attemp to search valid rotamer outliers
+    #for r in self.structure_monitor.residue_monitors:
+    #  print r.id_str, r.map_cc_all, r.map_cc_backbone, r.map_cc_sidechain
+    #  if(r.map_cc_backbone>0.9 and r.map_cc_sidechain<0.5):
+    #    print r.id_str
+    ####
 
   def on_special_position(self, sm_residue):
     if(self.special_position_indices.size()==0): return False
@@ -66,6 +73,7 @@ class manager(object):
     if(use_torsion_search is None): use_torsion_search = self.use_torsion_search
     if(use_rotamer_iterator is None): use_rotamer_iterator = self.use_rotamer_iterator
     sm = self.structure_monitor
+    xrs = sm.xray_structure.deep_copy_scatterers()
     sites_cart = sm.xray_structure.sites_cart()
     get_class = iotbx.pdb.common_residue_names_get_class
     for i_res, r in enumerate(sm.residue_monitors):
@@ -89,7 +97,7 @@ class manager(object):
         #print r.residue.resname, r.residue.resseq
         #t0=time.time()
         negate_selection = mmtbx.refinement.real_space.selection_around_to_negate(
-          xray_structure          = sm.xray_structure,
+          xray_structure          = xrs,
           selection_within_radius = 5, # XXX make residue dependent !!!!
           iselection              = r.residue.atoms().extract_i_seq(),
           selection_good          = self.selection_good,
@@ -99,7 +107,7 @@ class manager(object):
         #print "sel: %6.4f"%(time.time()-t0)
         target_map_ = mmtbx.refinement.real_space.\
           negate_map_around_selected_atoms_except_selected_atoms(
-            xray_structure          = sm.xray_structure,
+            xray_structure          = xrs,
             map_data                = sm.target_map_object.data.deep_copy(),
             negate_selection        = negate_selection,
             atom_radius             = self.atom_radius_to_negate_map_within)
@@ -116,12 +124,12 @@ class manager(object):
         mmtbx.refinement.real_space.fit_residue.manager(
           target_map           = target_map_,
           mon_lib_srv          = self.mon_lib_srv,
-          special_position_settings = sm.xray_structure.special_position_settings(),
+          special_position_settings = xrs.special_position_settings(),
           residue              = r.residue,
           sites_cart_all       = sites_cart,
           rotamer_manager      = self.rotamer_manager,
           use_clash_filter     = use_clash_filter,
-          debug                = debug,# XXX
+          debug                = debug,
           use_slope            = use_slope,
           use_torsion_search   = use_torsion_search,
           use_rotamer_iterator = use_rotamer_iterator,
@@ -134,7 +142,6 @@ class manager(object):
           log                        = self.log)
         sites_cart = sites_cart.set_selected(r.residue.atoms().extract_i_seq(),
           r.residue.atoms().extract_xyz())
-        sm.xray_structure.set_sites_cart(sites_cart)
+        xrs.set_sites_cart(sites_cart)
         #print "ref: %6.4f"%(time.time()-t0)
-    sm.pdb_hierarchy.adopt_xray_structure(sm.xray_structure)
-    sm.update(xray_structure = sm.xray_structure, accept_as_is=False)
+    sm.update(xray_structure = xrs, accept_as_is=False)

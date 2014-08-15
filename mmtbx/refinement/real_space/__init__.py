@@ -260,16 +260,9 @@ class structure_monitor(object):
         map_cc_all       = self.map_cc(sites_cart = sca, other_map = current_map)
         map_cc_sidechain = self.map_cc(sites_cart = scs, other_map = current_map)
         map_cc_backbone  = self.map_cc(sites_cart = scb, other_map = current_map)
-        #map_value_sidechain = target_simple(target_map=current_map,
-        #  sites_cart=scs, unit_cell=self.unit_cell)
-        #map_value_backbone = target_simple(target_map=current_map,
-        #  sites_cart=scb, unit_cell=self.unit_cell)
         flag = map_cc_all      >= r.map_cc_all and \
                map_cc_backbone >= r.map_cc_backbone and \
-               map_cc_backbone >= map_cc_sidechain
-        #if(r.map_value_backbone > r.map_value_sidechain):
-        #  if(map_value_backbone < map_value_sidechain):
-        #    flag = False
+               map_cc_sidechain>= r.map_cc_sidechain
         if(flag):
           residue_sites_cart_new = sites_cart.select(r.selection_all)
           sites_cart_ = sites_cart_.set_selected(r.selection_all,
