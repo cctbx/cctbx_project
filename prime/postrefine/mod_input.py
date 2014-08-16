@@ -200,6 +200,12 @@ wilson_b_max = 999
 b_refine_d_min = 99
   .type = float
   .help = Minimum resolution.
+partiality_model = Lorentzian
+  .type = str
+  .help = Your choice of partiality model: Lorentzian (default), Disc, Kabsch, or Rossmann.
+flag_volume_correction = True
+  .type = bool
+  .help = Turn volume correction on.
 """)
 
 

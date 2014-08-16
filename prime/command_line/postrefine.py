@@ -40,7 +40,7 @@ def postrefine_by_frame_mproc(frame_no, frame_files, iparams, miller_array_ref, 
   return pres
 
 def calc_average_I_mproc(group_no, group_id_list, miller_indices_all, I_all, sigI_all, G_all, B_all,
-                     p_all, ri_all, sin_theta_over_lambda_sq_all, SE_all, avg_mode, iparams):
+                     p_all, rs_all, sin_theta_over_lambda_sq_all, SE_all, avg_mode, iparams):
   #select only this group
   i_sel = (group_id_list == group_no)
   miller_indices = miller_indices_all.select(i_sel)
@@ -49,12 +49,12 @@ def calc_average_I_mproc(group_no, group_id_list, miller_indices_all, I_all, sig
   G = G_all.select(i_sel)
   B = B_all.select(i_sel)
   p_set = p_all.select(i_sel)
-  ri_set = ri_all.select(i_sel)
+  rs_set = rs_all.select(i_sel)
   sin_theta_over_lambda_sq = sin_theta_over_lambda_sq_all.select(i_sel)
   SE = SE_all.select(i_sel)
 
   from prime.postrefine import calc_avg_I
-  result = calc_avg_I(group_no, miller_indices[0], I, sigI, G, B, p_set, ri_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams)
+  result = calc_avg_I(group_no, miller_indices[0], I, sigI, G, B, p_set, rs_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams)
   return result
 
 def read_pickles(data):
@@ -126,13 +126,13 @@ if (__name__ == "__main__"):
 
     if prep_output is not None:
       cn_group, group_id_list, miller_indices_all_sort, I_obs_all_sort, \
-      sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, ri_all_sort, \
+      sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, \
       sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, txt_prep_out = prep_output
 
       def calc_average_I_mproc_wrapper(arg):
         return calc_average_I_mproc(arg, group_id_list, miller_indices_all_sort, \
                                     I_obs_all_sort, sigI_obs_all_sort, \
-                                    G_all_sort, B_all_sort, p_all_sort, ri_all_sort, \
+                                    G_all_sort, B_all_sort, p_all_sort, rs_all_sort, \
                                     sin_sq_all_sort, SE_all_sort, avg_mode, iparams)
 
       calc_average_I_result = pool_map(
@@ -230,13 +230,13 @@ if (__name__ == "__main__"):
 
       if prep_output is not None:
         cn_group, group_id_list, miller_indices_all_sort, I_obs_all_sort, \
-        sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, ri_all_sort, sin_sq_all_sort, \
+        sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, sin_sq_all_sort, \
         SE_all_sort, uc_mean, wavelength_mean, txt_prep_out = prep_output
 
         def calc_average_I_mproc_wrapper(arg):
           return calc_average_I_mproc(arg, group_id_list, miller_indices_all_sort, \
                                       I_obs_all_sort, sigI_obs_all_sort, \
-                                      G_all_sort, B_all_sort, p_all_sort, ri_all_sort, \
+                                      G_all_sort, B_all_sort, p_all_sort, rs_all_sort, \
                                       sin_sq_all_sort, SE_all_sort, avg_mode, iparams)
 
         calc_average_I_result = pool_map(

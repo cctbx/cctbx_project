@@ -43,7 +43,7 @@ class postref_handler(object):
     two_theta = observations.two_theta(wavelength=wavelength).data()
     one_over_P = 2/(1 + (flex.cos(two_theta)**2))
     one_over_LP = (8 * (flex.sin(two_theta/2)))/(1 + (flex.cos(two_theta)**2))
-    observations = observations.customized_copy(data=observations.data()*one_over_LP)
+    observations = observations.customized_copy(data=observations.data()*one_over_P)
 
     #set observations with target space group - !!! required for correct
     #merging due to map_to_asu command.
@@ -256,12 +256,13 @@ class postref_handler(object):
       crystal_init_orientation = pres_in.crystal_orientation
 
     two_theta = observations_original.two_theta(wavelength=wavelength).data()
-    partiality_fin, dummy, ri_fin = calc_partiality_anisotropy_set(uc_fin, rotx_fin, roty_fin,
+    partiality_fin, dummy, rs_fin = calc_partiality_anisotropy_set(uc_fin, rotx_fin, roty_fin,
                                                            observations_original.indices(),
                                                            ry_fin, rz_fin, re_fin,
                                                            two_theta, alpha_angle, wavelength, crystal_init_orientation,
                                                            spot_pred_x_mm, spot_pred_y_mm,
-                                                           detector_distance_mm)
+                                                           detector_distance_mm,
+                                                           iparams.partiality_model)
 
     #calculate the new crystal orientation
     O = sqr(uc_fin.orthogonalization_matrix()).transpose()
@@ -276,7 +277,7 @@ class postref_handler(object):
             refined_params=refined_params,
             stats=stats,
             partiality=partiality_fin,
-            ri_set=ri_fin,
+            rs_set=rs_fin,
             frame_no=frame_no,
             pickle_filename=pickle_filename,
             wavelength=wavelength,
@@ -284,7 +285,7 @@ class postref_handler(object):
     print '%6.0f %5.2f %8.0f %8.0f %8.2f %8.2f %8.2f %8.2f %9.2f %7.2f %10.2f %10.2f   '%( \
       pres.frame_no, observations_non_polar.d_min(), len(observations_non_polar.indices()), \
       n_refl_postrefined, pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, \
-      pres.CC_init, pres.CC_final,pres.CC_iso_init, pres.CC_iso_final), polar_hkl
+      pres.CC_init*100, pres.CC_final*100,pres.CC_iso_init*100, pres.CC_iso_final*100), polar_hkl
 
     return pres
 
@@ -432,10 +433,11 @@ class postref_handler(object):
     sin_theta_over_lambda_sq = observations_original.two_theta(wavelength=wavelength).sin_theta_over_lambda_sq().data()
     ry = spot_radius
     rz = spot_radius
-    re = 0.0026
+    re = 0.003
     rotx = 0
     roty = 0
-    partiality_init, delta_xy_init, ri_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm)
+    partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm,
+                                                                             iparams.partiality_model)
 
     refined_params = np.array([G,B,rotx,roty,ry,rz,re,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
 
@@ -444,7 +446,7 @@ class postref_handler(object):
             refined_params=refined_params,
             stats=stats,
             partiality=partiality_init,
-            ri_set=ri_init,
+            rs_set=rs_init,
             frame_no=frame_no,
             pickle_filename=pickle_filename,
             wavelength=wavelength)

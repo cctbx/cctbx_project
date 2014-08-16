@@ -29,6 +29,13 @@ from cctbx.uctbx import unit_cell
 from cctbx.crystal_orientation import crystal_orientation, basis_type
 import logging
 
+def calc_full_refl(I_o_p_set, sin_theta_over_lambda_sq_set, G, B, p_set, rs_set, flag_volume_correction):
+  if flag_volume_correction:
+    I_o_full_set = flex.double(((G * np.exp(-2*B*sin_theta_over_lambda_sq_set) * I_o_p_set)/p_set)*((4/3)*rs_set))
+  else:
+    I_o_full_set = flex.double(((G * np.exp(-2*B*sin_theta_over_lambda_sq_set) * I_o_p_set)/p_set))
+  return I_o_full_set
+
 def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
   #calculate spot_radius based on rms delta_S for all spots
   delta_S_all = flex.double()
@@ -45,7 +52,7 @@ def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
 
   spot_radius = math.sqrt(flex.mean(delta_S_all*delta_S_all))
 
-  return spot_radius
+  return 0
 
 def coefficient_of_determination(y, y_model):
   mean_y = np.mean(y)
@@ -58,7 +65,8 @@ def standard_error_of_the_estimate(y, y_model, n_params):
 
 def calc_partiality_anisotropy_set(my_uc, rotx, roty, miller_indices, ry, rz, re,
     bragg_angle_set, alpha_angle_set, wavelength, crystal_init_orientation,
-    spot_pred_x_mm_set, spot_pred_y_mm_set, detector_distance_mm):
+    spot_pred_x_mm_set, spot_pred_y_mm_set, detector_distance_mm,
+    partiality_model):
   #use III.4 in Winkler et al 1979 (A35; P901) for set of miller indices
   O = sqr(my_uc.orthogonalization_matrix()).transpose()
   R = sqr(crystal_init_orientation.crystal_rotation_matrix()).transpose()
@@ -70,26 +78,35 @@ def calc_partiality_anisotropy_set(my_uc, rotx, roty, miller_indices, ry, rz, re
 
   partiality_set = flex.double()
   delta_xy_set = flex.double()
-  ri_set = flex.double()
+  rs_set = flex.double()
   for miller_index, bragg_angle, alpha_angle, spot_pred_x_mm, spot_pred_y_mm in \
       zip(miller_indices, bragg_angle_set, alpha_angle_set,
           spot_pred_x_mm_set, spot_pred_y_mm_set):
-    #rs = math.sqrt((ry * math.cos(alpha_angle))**2 + (rz * math.sin(alpha_angle))**2) + (re*math.tan(bragg_angle))
-    rs = ry + re*math.tan(bragg_angle)
+    rs = math.sqrt((ry * math.cos(alpha_angle))**2 + (rz * math.sin(alpha_angle))**2) + (re*math.tan(bragg_angle))
     h = col(miller_index)
     x = A_star * h
     S = x + S0
     rh = S.length() - (1/wavelength)
-    #spot_partiality = ((rs**2)/((2*(rh**2))+(rs**2)))
-    if (rs**2)-(rh**2) > 0:
-      spot_partiality = (math.sqrt((rs**2)-(rh**2))**3)/(rs**3)
-      ri = math.sqrt((rs**2)-(rh**2))
-    else:
-      spot_partiality = 0.02
-      ri = pow(spot_partiality, 1/3)*rs
+
+    if partiality_model == 'Lorentzian':
+      #Lorenzian
+      spot_partiality = ((rs**2)/((2*(rh**2))+(rs**2)))
+    elif partiality_model == 'Disc':
+      #Disc
+      if abs(rs) - abs(rh) > 0:
+        spot_partiality = 1-(rh**2/rs**2)
+      else:
+        spot_partiality = 0.02
+    elif partiality_model == 'Kabsch':
+      #Kabsch
+      t = rh*2.5/(math.sqrt(2)*rs)
+      spot_partiality = math.exp(-(t**2))
+    elif partiality_model == 'Rossmann':
+      q=(rs-rh)/(2*rs);
+      spot_partiality = (3*(q**2)) - (2*(q**3));
 
     partiality_set.append(spot_partiality)
-    ri_set.append(ri)
+    rs_set.append(rs)
 
     #finding coordinate x,y on the detector
     d_ratio = -detector_distance_mm/S[2]
@@ -100,7 +117,7 @@ def calc_partiality_anisotropy_set(my_uc, rotx, roty, miller_indices, ry, rz, re
     diff_xy = pred_xy - calc_xy
     delta_xy_set.append(diff_xy.length())
 
-  return partiality_set, delta_xy_set, ri_set
+  return partiality_set, delta_xy_set, rs_set
 
 def prep_input(params, cs):
   #From crystal system cs, determine refined parameters
@@ -148,6 +165,8 @@ def func(params, *args):
   detector_distance_mm = args[8]
   refine_mode = args[9]
   const_params = args[10]
+  partiality_model = args[11]
+  flag_volume_correction = args[12]
   I_o = miller_array_o.data().as_numpy_array()
   sigI_o = miller_array_o.sigmas().as_numpy_array()
   miller_indices_original = miller_array_o.indices()
@@ -170,7 +189,7 @@ def func(params, *args):
 
   uc = unit_cell((a,b,c,alpha,beta,gamma))
 
-  partiality_model_flex, delta_xy_flex, ri_set = calc_partiality_anisotropy_set(uc, rotx, roty,
+  p_calc_flex, delta_xy_flex, rs_set = calc_partiality_anisotropy_set(uc, rotx, roty,
                                                                                 miller_indices_original,
                                                                                 ry, rz, re,
                                                                                 two_theta_flex,
@@ -178,31 +197,24 @@ def func(params, *args):
                                                                                 wavelength, crystal_init_orientation,
                                                                                 spot_pred_x_mm_set,
                                                                                 spot_pred_y_mm_set,
-                                                                                detector_distance_mm)
-  partiality_model = partiality_model_flex.as_numpy_array()
+                                                                                detector_distance_mm,
+                                                                                partiality_model)
+  p_calc_set = p_calc_flex.as_numpy_array()
 
   if miller_array_o.d_min() < b_refine_d_min:
-    I_o_full = (G * np.exp(-2*B*sin_theta_over_lambda_sq) * I_o)/partiality_model
+    I_o_full = calc_full_refl(I_o, sin_theta_over_lambda_sq,
+                              G, B, p_calc_set, rs_set, flag_volume_correction)
+
   else:
-    I_o_full = (G * I_o)/partiality_model
+    I_o_full = calc_full_refl(I_o, sin_theta_over_lambda_sq,
+                              G, 0, p_calc_set, rs_set, flag_volume_correction)
 
-  '''
-  error_I = np.absolute((I_r - I_o_full)/sigI_o)
-  sum_err_sqr_I = np.sum(error_I**2)
-  w0 = math.sqrt(1/sum_err_sqr_I)
 
-  error_xy = np.absolute(delta_xy_flex)
-  sum_err_sqr_xy = np.sum(error_xy**2)
-  w1 = math.sqrt(1/sum_err_sqr_xy)
-
-  error = w0*error_I + w1*error_xy
-  '''
   if refine_mode == 'unit_cell':
     error = delta_xy_flex
   else:
     error = ((I_r - I_o_full)/sigI_o)
-
-  #print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g f=%.4g'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, re, a, b, c, alpha, beta, gamma, np.sum(error**2))
+  #print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g rz=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g f=%.4g'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, rz, re, a, b, c, alpha, beta, gamma, np.sum(error**2))
   return error
 
 
@@ -214,8 +226,10 @@ class leastsqr_handler(object):
 
   def __init__(self):
     '''
-    Do nothing
+    Intialitze parameters
     '''
+    self.gamma_e = 0.003
+
   def optimize_scalefactors(self, I_r_flex, observations_original,
               wavelength, crystal_init_orientation,
               alpha_angle, spot_pred_x_mm, spot_pred_y_mm, iparams,
@@ -254,7 +268,7 @@ class leastsqr_handler(object):
     B = 0
     ry = spot_radius
     rz = spot_radius
-    re = 0.0026
+    re = self.gamma_e
     rotx = 0.0
     roty = 0.0
     a,b,c,alpha,beta,gamma = crystal_init_orientation.unit_cell().parameters()
@@ -270,21 +284,40 @@ class leastsqr_handler(object):
                                                                 crystal_init_orientation,
                                                                 spot_pred_x_mm_sel, spot_pred_y_mm_sel,
                                                                 detector_distance_mm,
-                                                                refine_mode, const_params),
+                                                                refine_mode, const_params,
+                                                                iparams.partiality_model,
+                                                                iparams.flag_volume_correction),
                                                           full_output=True, maxfev=100)
     G_fin, B_fin = xopt
 
-    sin_theta_over_lambda_sq = observations_original.two_theta(wavelength=wavelength).sin_theta_over_lambda_sq().data()
 
-    I_o_init = G * np.exp(-2*B*sin_theta_over_lambda_sq) * observations_original.data()
-    I_o_fin = G_fin * np.exp(-2*B_fin*sin_theta_over_lambda_sq) * observations_original.data()
-    SE_of_the_estimate = standard_error_of_the_estimate(I_r_flex/observations_original.sigmas(), I_o_fin/observations_original.sigmas(), 2)
-    R_sq = coefficient_of_determination(I_r_flex/observations_original.sigmas(), I_o_fin/observations_original.sigmas())*100
+    two_theta = observations_original.two_theta(wavelength=wavelength)
+    sin_theta_over_lambda_sq = two_theta.sin_theta_over_lambda_sq().data()
+    uc = unit_cell((a,b,c,alpha,beta,gamma))
+    partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(uc, rotx, roty,
+                                                                             observations_original.indices(), ry, rz, re,
+                                                                             two_theta.data(),
+                                                                             alpha_angle,
+                                                                             wavelength,
+                                                                             crystal_init_orientation, spot_pred_x_mm,
+                                                                             spot_pred_y_mm,
+                                                                             detector_distance_mm,
+                                                                             iparams.partiality_model)
+
+    I_o_init = calc_full_refl(observations_original.data(), sin_theta_over_lambda_sq,
+                              G, B, partiality_init, rs_init, iparams.flag_volume_correction)
+    I_o_fin = calc_full_refl(observations_original.data(), sin_theta_over_lambda_sq,
+                              G_fin, B_fin, partiality_init, rs_init, iparams.flag_volume_correction)
+
+    SE_of_the_estimate = standard_error_of_the_estimate(I_r_flex/observations_original.sigmas(),
+                                                        I_o_fin/observations_original.sigmas(), 2)
+    R_sq = coefficient_of_determination(I_r_flex/observations_original.sigmas(),
+                                        I_o_fin/observations_original.sigmas())*100
 
     CC_init = np.corrcoef(I_r_flex, I_o_init)[0,1]
     CC_final = np.corrcoef(I_r_flex, I_o_fin)[0,1]
-    R_init = np.sum(((I_r_flex - I_o_init)/observations_original.sigmas())**2)/np.sum(I_r_flex)
-    R_final = np.sum(((I_r_flex - I_o_fin)/observations_original.sigmas())**2)/np.sum(I_r_flex)
+    R_init = np.sum(((I_r_flex - I_o_init)/observations_original.sigmas())**2)
+    R_final = np.sum(((I_r_flex - I_o_fin)/observations_original.sigmas())**2)
     R_xy_init = 0
     R_xy_final = 0
     CC_iso_init = 0
@@ -372,7 +405,7 @@ class leastsqr_handler(object):
             G, B = xopt_scalefactors
             ry = spot_radius
             rz = spot_radius
-            re = 0.0026
+            re = self.gamma_e
             rotx = 0.0
             roty = 0.0
             a,b,c,alpha,beta,gamma = crystal_init_orientation.unit_cell().parameters()
@@ -391,7 +424,15 @@ class leastsqr_handler(object):
         #filter by partiality
         two_theta = observations_original_sel.two_theta(wavelength=wavelength).data()
         uc = unit_cell((a,b,c,alpha,beta,gamma))
-        partiality_init, delta_xy_init, ri_init = calc_partiality_anisotropy_set(uc, rotx, roty, observations_original_sel.indices(), ry, rz, re, two_theta, alpha_angle_sel, wavelength, crystal_init_orientation, spot_pred_x_mm_sel, spot_pred_y_mm_sel, detector_distance_mm)
+        partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(uc, rotx, roty,
+                                                                    observations_original_sel.indices(),
+                                                                    ry, rz, re, two_theta,
+                                                                    alpha_angle_sel, wavelength,
+                                                                    crystal_init_orientation,
+                                                                    spot_pred_x_mm_sel,
+                                                                    spot_pred_y_mm_sel,
+                                                                    detector_distance_mm,
+                                                                    iparams.partiality_model)
         i_sel_p = partiality_init > pr_partiality_min
         observations_original_sel = observations_original_sel.customized_copy(
             indices=observations_original_sel.indices().select(i_sel_p),
@@ -424,7 +465,9 @@ class leastsqr_handler(object):
         xopt, cov_x, infodict, mesg, ier = optimize.leastsq(func, xinp,
                                                             args=(I_r_true,
                                                                   observations_original_sel, wavelength, alpha_angle_sel, iparams.b_refine_d_min, crystal_init_orientation, spot_pred_x_mm_sel, spot_pred_y_mm_sel, detector_distance_mm,
-                                                                  refine_mode, const_params),
+                                                                  refine_mode, const_params,
+                                                                  iparams.partiality_model,
+                                                                  iparams.flag_volume_correction),
                                                             full_output=True, maxfev=100)
 
         if refine_mode == 'scale_factor':
@@ -468,7 +511,9 @@ class leastsqr_handler(object):
                                                                 crystal_init_orientation,
                                                                 spot_pred_x_mm_sel, spot_pred_y_mm_sel,
                                                                 detector_distance_mm,
-                                                                refine_mode, const_params),
+                                                                refine_mode, const_params,
+                                                                iparams.partiality_model,
+                                                                iparams.flag_volume_correction),
                                                           full_output=True, maxfev=100)
 
 
@@ -478,38 +523,48 @@ class leastsqr_handler(object):
     sin_theta_over_lambda_sq = observations_original.two_theta(wavelength=wavelength).sin_theta_over_lambda_sq().data()
 
     if pres_in is None:
-      partiality_init, delta_xy_init, ri_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(),
+      partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(),
                                                                       0.0, 0.0, observations_original.indices(),
-                                                                      spot_radius, spot_radius, 0.0026,
+                                                                      spot_radius, spot_radius,
+                                                                      self.gamma_e,
                                                                       two_theta, alpha_angle, wavelength,
                                                                       crystal_init_orientation,
                                                                       spot_pred_x_mm, spot_pred_y_mm,
-                                                                      detector_distance_mm)
+                                                                      detector_distance_mm,
+                                                                      iparams.partiality_model)
 
-      I_o_init = (1 * np.exp(-2*-0*sin_theta_over_lambda_sq) * observations_original.data())/partiality_init
+      I_o_init = calc_full_refl(observations_original.data(), sin_theta_over_lambda_sq,
+                                1, 0, partiality_init, rs_init, iparams.flag_volume_correction)
     else:
-      partiality_init, delta_xy_init, ri_init = calc_partiality_anisotropy_set(pres_in.unit_cell,
+      partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(pres_in.unit_cell,
                                                                       0.0, 0.0,
                                                                       observations_original.indices(),
                                                                       pres_in.ry, pres_in.rz, pres_in.re,
                                                                       two_theta, alpha_angle, wavelength,
                                                                       crystal_init_orientation,
                                                                       spot_pred_x_mm, spot_pred_y_mm,
-                                                                      detector_distance_mm)
-      I_o_init = (pres_in.G * np.exp(-2*pres_in.B*sin_theta_over_lambda_sq) * observations_original.data())/partiality_init
+                                                                      detector_distance_mm,
+                                                                      iparams.partiality_model)
+      I_o_init = calc_full_refl(observations_original.data(), sin_theta_over_lambda_sq,
+                              pres_in.G, pres_in.B, partiality_init, rs_init, iparams.flag_volume_correction)
 
 
-    partiality_fin, delta_xy_fin, ri_fin = calc_partiality_anisotropy_set(unit_cell((a,b,c,alpha,beta,gamma)),
+
+    partiality_fin, delta_xy_fin, rs_fin = calc_partiality_anisotropy_set(unit_cell((a,b,c,alpha,beta,gamma)),
                                                                               rotx, roty,
                                                                               observations_original.indices(),
                                                                               ry, rz, re,
                                                                               two_theta, alpha_angle, wavelength,
                                                                               crystal_init_orientation,
                                                                               spot_pred_x_mm, spot_pred_y_mm,
-                                                                              detector_distance_mm)
-    I_o_fin = (G * np.exp(-2*B*sin_theta_over_lambda_sq) * observations_original.data())/partiality_fin
-    SE_of_the_estimate = standard_error_of_the_estimate(I_r_flex/observations_original.sigmas(), I_o_fin/observations_original.sigmas(), 13)
-    R_sq = coefficient_of_determination(I_r_flex/observations_original.sigmas(), I_o_fin/observations_original.sigmas())*100
+                                                                              detector_distance_mm,
+                                                                              iparams.partiality_model)
+    I_o_fin = calc_full_refl(observations_original.data(), sin_theta_over_lambda_sq,
+                              G, B, partiality_fin, rs_fin, iparams.flag_volume_correction)
+    SE_of_the_estimate = standard_error_of_the_estimate(I_r_flex/observations_original.sigmas(),
+                                                        I_o_fin/observations_original.sigmas(), 13)
+    R_sq = coefficient_of_determination(I_r_flex/observations_original.sigmas(),
+                                        I_o_fin/observations_original.sigmas())*100
 
     CC_init = np.corrcoef(I_r_flex, I_o_init)[0,1]
     CC_final = np.corrcoef(I_r_flex, I_o_fin)[0,1]
@@ -529,7 +584,7 @@ class leastsqr_handler(object):
         B = 0.0
         ry = spot_radius
         rz = spot_radius
-        re = 0.0026
+        re = self.gamma_e
         rotx = 0.0
         roty = 0.0
         a,b,c,alpha,beta,gamma = crystal_init_orientation.unit_cell().parameters()
@@ -596,14 +651,14 @@ class leastsqr_handler(object):
       print 'Target R (x,y) = %.4g mm.'%(R_xy_final)
       print 'CC = %.4g'%(CC_final)
 
-      plt.subplot(131)
+      plt.subplot(221)
       plt.scatter(I_r_flex, I_o_init,s=10, marker='x', c='r')
-      plt.title('CC_init=%6.2f'%(CC_init))
+      plt.title('CCinit=%5.2f Rinit=%5.2f'%(CC_init, R_init))
       plt.xlabel('I_ref')
       plt.ylabel('I_obs')
-      plt.subplot(132)
+      plt.subplot(222)
       plt.scatter(I_r_flex, I_o_fin,s=10, marker='o', c='b')
-      plt.title('CC_final=%6.2f'%(CC_final))
+      plt.title('CCfinal=%5.2f Rfinal=%5.2f'%(CC_final, R_final))
       plt.xlabel('I_ref')
       plt.ylabel('I_obs')
 
@@ -620,15 +675,32 @@ class leastsqr_handler(object):
           avg_delta_xy_fin.append(np.mean(delta_xy_fin.select(i_binner)))
           one_dsqr.append(1/binner.bin_d_range(i)[1]**2)
 
-      plt.subplot(133)
+      plt.subplot(223)
       plt.plot(one_dsqr, avg_delta_xy_init, linestyle='-', linewidth=2.0, c='r', label='Initial <delta_xy>=%4.2f'%np.mean(delta_xy_init))
-      plt.plot(one_dsqr, avg_delta_xy_fin, linestyle='-', linewidth=2.0, c='b', label='After post-refinement <delta_xy>=%4.2f'%np.mean(delta_xy_fin))
+      plt.plot(one_dsqr, avg_delta_xy_fin, linestyle='-', linewidth=2.0, c='b', label='Final <delta_xy>=%4.2f'%np.mean(delta_xy_fin))
       legend = plt.legend(loc='upper left', shadow=False)
       for label in legend.get_texts():
         label.set_fontsize('medium')
       plt.title('Distance (delta_xy) from spot centroid')
       plt.xlabel('1/(d^2)')
       plt.ylabel('(mm)')
+
+      plt.subplot(224)
+      one_dsqr = 1/(observations_original.d_spacings().data()**2)
+      perm = flex.sort_permutation(one_dsqr, reverse=True)
+      one_dsqr_sort = one_dsqr.select(perm)
+      rs_fin_sort = rs_fin.select(perm)
+      rs_init_sort = rs_init.select(perm)
+      plt.plot(one_dsqr_sort, rs_init_sort, linestyle='-', linewidth=2.0, c='r',
+                           label='Initial ry=%.4g ry=%.4g re=%.4g'%(spot_radius,spot_radius,self.gamma_e))
+      plt.plot(one_dsqr_sort, rs_fin_sort, linestyle='-', linewidth=2.0, c='b',
+               label='Final ry=%.4g ry=%.4g re=%.4g'%(ry,rz,re))
+      legend = plt.legend(loc='lower right', shadow=False)
+      for label in legend.get_texts():
+        label.set_fontsize('medium')
+      plt.title('Reflecting range')
+      plt.xlabel('1/(d^2)')
+      plt.ylabel('1/Angstroms')
       plt.show()
 
     xopt = (G, B, rotx, roty, ry, rz, re,a,b,c,alpha,beta,gamma)
