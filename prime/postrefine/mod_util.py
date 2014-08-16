@@ -129,6 +129,27 @@ class intensities_scaler(object):
 
     return uc_mean, uc_std
 
+  def calc_mean_postref_parameters(self, results):
+    G_all = flex.double()
+    B_all = flex.double()
+    ry_all = flex.double()
+    rz_all = flex.double()
+    re_all = flex.double()
+    for pres in results:
+      if pres is not None:
+        G_all.append(pres.G)
+        B_all.append(pres.B)
+        ry_all.append(pres.ry)
+        rz_all.append(pres.rz)
+        re_all.append(pres.re)
+
+    pr_params_mean = flex.double([np.median(G_all), np.median(B_all),
+                                  np.median(ry_all), np.median(rz_all), np.median(re_all)])
+    pr_params_std = flex.double([np.std(G_all), np.std(B_all),
+                                  np.std(ry_all), np.std(rz_all), np.std(re_all)])
+
+    return pr_params_mean, pr_params_std
+
   def prepare_output(self, results, iparams, avg_mode):
     if avg_mode == 'average':
       cc_thres = 0
@@ -223,6 +244,8 @@ class intensities_scaler(object):
     uc_mean, uc_std = self.calc_mean_unit_cell(filtered_results)
     unit_cell_mean = unit_cell((uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]))
 
+    pr_params_mean, pr_params_std = self.calc_mean_postref_parameters(filtered_results)
+
     #from all observations merge them
     crystal_symmetry = crystal.symmetry(
         unit_cell=(uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]),
@@ -270,18 +293,25 @@ class intensities_scaler(object):
     txt_out += ' No. bad target R(x,y) :   %12.0f\n'%(cn_bad_R_xy)
     txt_out += ' No. observations:         %12.0f\n'%(len(I_obs_all_sort))
     txt_out += 'Mean target value (BEFORE)\n'
-    txt_out += ' post-refinement:          %12.2f (sigma: %7.2f)\n'%(np.median(R_init_all),
+    txt_out += ' post-refinement:          %12.2f (%7.2f)\n'%(np.median(R_init_all),
                                                                      np.std(R_init_all))
-    txt_out += ' (x,y) restraints:         %12.2f (sigma: %7.2f)\n'%(np.median(R_xy_init_all),
+    txt_out += ' (x,y) restraints:         %12.2f (%7.2f)\n'%(np.median(R_xy_init_all),
                                                                      np.std(R_xy_init_all))
     txt_out += 'Mean target value (AFTER)\n'
-    txt_out += ' post-refinement:          %12.2f (sigma: %7.2f)\n'%(np.median(R_final_all),
+    txt_out += ' post-refinement:          %12.2f (%7.2f)\n'%(np.median(R_final_all),
                                                                      np.std(R_final_all))
-    txt_out += ' (x,y) restraints:         %12.2f (sigma: %7.2f)\n'%(np.median(R_xy_final_all),
+    txt_out += ' (x,y) restraints:         %12.2f (%7.2f)\n'%(np.median(R_xy_final_all),
                                                                      np.std(R_xy_final_all))
-    txt_out += 'Average unit-cell parameters: %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f)' \
-    %(uc_mean[0], uc_std[0], uc_mean[1], uc_std[1], uc_mean[2], uc_std[2], uc_mean[3], uc_std[3], uc_mean[4], uc_std[4], uc_mean[5], uc_std[5])
-    txt_out += '\n'
+    txt_out += ' G:                        %12.2f (%7.2f)\n'%(pr_params_mean[0], pr_params_std[0])
+    txt_out += ' B:                        %12.2f (%7.2f)\n'%(pr_params_mean[1], pr_params_std[1])
+    txt_out += ' gamma_y:                  %12.5f (%7.2f)\n'%(pr_params_mean[2], pr_params_std[2])
+    txt_out += ' gamma_z:                  %12.5f (%7.2f)\n'%(pr_params_mean[3], pr_params_std[3])
+    txt_out += ' gamma_e:                  %12.5f (%7.2f)\n'%(pr_params_mean[4], pr_params_std[4])
+    txt_out += ' unit cell:                %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f)\n' \
+    %(uc_mean[0], uc_std[0], uc_mean[1], uc_std[1], uc_mean[2], uc_std[2])
+    txt_out += '                           %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f)\n' \
+    %(uc_mean[3], uc_std[3], uc_mean[4], uc_std[4], uc_mean[5], uc_std[5])
+    txt_out += '* (standard deviation)\n'
 
     return cn_group, group_id_list, miller_indices_all_sort, \
            I_obs_all_sort, sigI_obs_all_sort,G_all_sort, B_all_sort, \
