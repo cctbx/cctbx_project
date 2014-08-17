@@ -15,10 +15,6 @@ from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
 import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
-# keep the python float function
-py_float = float
-from phenix.foundation.PhenixTypes import float
-
 
 class pdb_hierarchy_builder(crystal_symmetry_builder):
 
@@ -569,10 +565,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         self.cif_block.get('_struct_ncs_oper.code')[i] == 'given')
       r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y))[i])
         for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
-      rots.append(matrix.sqr(map(py_float,r)))
+      rots.append(matrix.sqr(map(float,r)))
       t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
         for x in '123']
-      trans.append(matrix.col(map(py_float,t)))
+      trans.append(matrix.col(map(float,t)))
     # sort records by serial number
     serial_number.sort()
     items_order = [i for (_,i) in serial_number]
