@@ -339,7 +339,8 @@ class run(object):
   def verlet_leapfrog_integration(self):
     # start verlet_leapfrog_integration loop
     for cycle in range(1,self.n_steps+1,1):
-      if([self.stop_at_diff,self.states_collector].count(None) == 0):
+      sites_cart = None
+      if([self.stop_at_diff,self.states_collector].count(None) != 2):
         sites_cart = self.xray_structure.sites_cart()
       if(self.stop_at_diff is not None):
         dist = flex.mean(flex.sqrt((self.sites_cart_start - sites_cart).dot()))
