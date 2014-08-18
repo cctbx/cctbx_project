@@ -25,7 +25,7 @@ class installer (install_distribution.installer) :
     ['dxtbx', 'wxtbx', "gltbx", "crys3d", "rstbx", "spotfinder"]
   include_gui_packages = True
   base_package_options = ['--all']
-  source_packages = [ "cctbx_bundle" ] + ['cbflib',]
+  source_packages = [ "cctbx_bundle" ] + ['cbflib','annlib','annlib_adaptbx']
   #
 
   installer_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
