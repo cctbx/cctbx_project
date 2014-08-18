@@ -15,16 +15,14 @@ def concatenate_rot_tran(transforms_obj=None,
   Concatenate rotation angles, corresponding to the rotation
   matrices and scaled translation vectors to a single long flex.double object
 
-  Arguments:
-  transforms_obj : (mmtbx.refinement.minimization_ncs_constraints
-                   ncs_group_object) containing information on Rotation
-                   matrices(lists of objects matrix.rec) and Translation vectors
-                   (lists of objects matrix.rec)
-  ncs_restraints_group_list : a list of ncs_restraint_group objects
+  Parameters:
+    transforms_obj : (mmtbx.refinement.minimization_ncs_constraints
+      ncs_group_object) containing information on Rotation matrices (lists of
+      objects matrix.rec) and Translation vectors (lists of objects matrix.rec)
+    ncs_restraints_group_list : a list of ncs_restraint_group objects
 
-  Return:
-  flex.double object of the form
-  [(alpha_1,beta_1,gamma_1,Tx_1,Ty_1,Tz_1)...]
+  Returns:
+    flex.double : [(alpha_1,beta_1,gamma_1,Tx_1,Ty_1,Tz_1)...]
   """
   x = []
   if (not ncs_restraints_group_list) and transforms_obj:
@@ -53,7 +51,8 @@ def get_rotation_translation_as_list(transforms_obj=None,
   return r,t
 
 def update_transforms(transforms_obj,rm,tv):
-  """ Update of the rotation matrices (rm) and translation vectors (tv) """
+  """ Update transforms_obj with the rotation matrices (rm) and translation
+  vectors (tv) """
   assert len(transforms_obj.transform_order) == len(rm)
   assert len(rm) == len(tv)
   for tr,r,t in zip(transforms_obj.transform_order,rm,tv):
@@ -62,7 +61,8 @@ def update_transforms(transforms_obj,rm,tv):
   return transforms_obj
 
 def update_ncs_restraints_group_list(ncs_restraints_group_list,rm,tv):
-  """ Update of the rotation matrices (rm) and translation vectors (tv) """
+  """ Update ncs_restraints_group_list with the rotation matrices (rm) and
+  translation vectors (tv) """
   assert len(rm) == len(tv)
   new_list = []
   for gr in ncs_restraints_group_list:
@@ -74,20 +74,20 @@ def update_ncs_restraints_group_list(ncs_restraints_group_list,rm,tv):
 
 def update_rot_tran(x,transforms_obj=None,ncs_restraints_group_list=None):
   """
-  Convert the refinemable parameters, rotations angles and
+  Convert the refinable parameters, rotations angles and
   scaled translations, back to rotation matrices and translation vectors and
   updates the transforms_obj (ncs_restraints_group_list)
 
-  Arguments:
-  x : a flex.double of the form (theta_1,psi_1,phi_1,tx_1,ty_1,tz_1,..
+  Parameters:
+    x : a flex.double of the form (theta_1,psi_1,phi_1,tx_1,ty_1,tz_1,..
       theta_n,psi_n,phi_n,tx_n/s,ty_n/s,tz_n/s). where n is the number of
       transformations.
-  transforms_obj : (ncs_group_object) containing information on Rotation
-                   matrices, Translation vectors and NCS
+    transforms_obj : (ncs_group_object) containing information on Rotation
+      matrices, Translation vectors and NCS
   ncs_restraints_group_list : a list of ncs_restraint_group objects
 
   Returns:
-  The same type of input object with converted transforms
+    The same type of input object with converted transforms
   """
   assert bool(transforms_obj) == (not bool(ncs_restraints_group_list))
   if transforms_obj:
@@ -122,13 +122,13 @@ def rotation_to_angles(rotation, deg=False):
   only one. In the case that cos(beta) == 0 there are infinite number of
   solutions, the function returns the one where gamma = 0
 
-  Arguments:
-  r : (flex.double) of the form (Rxx,Rxy,Rxz,Ryx,Ryy,Ryz,Rzx,Rzy,Rzz)
-  deg : When False use radians, when True use degrees
+  Parameters:
+    r : (flex.double) of the form (Rxx,Rxy,Rxz,Ryx,Ryy,Ryz,Rzx,Rzy,Rzz)
+    deg : When False use radians, when True use degrees
 
-  Return:
-  angles: (flex.double) containing rotation angles in  the form
-          (alpha, beta, gamma)
+  Returns:
+    angles: (flex.double) containing rotation angles in  the form
+      (alpha, beta, gamma)
   """
   # make sure the rotation data type is flex.double
   if not isinstance(rotation,type(flex.double())):
@@ -167,11 +167,11 @@ def angles_to_rotation(angles_xyz, deg=False, rotation_is_tuple=False):
   """
   Calculate rotation matrix R, such that R = Rx(alpha)*Ry(beta)*Rz(gamma)
 
-  Arguments:
-  angles_xyz : (flex.double) (alpha,beta,gamma)
-  deg : (bool) When False use radians, when True degrees
-  rotation_is_tuple : (bool) when False, return flxe.double object,
-                      when True return tuple
+  Parameters:
+    angles_xyz : (flex.double) (alpha,beta,gamma)
+    deg : (bool) When False use radians, when True degrees
+    rotation_is_tuple : (bool) when False, return flxe.double object,
+      when True return tuple
 
   Returns:
   R : (tuple or flex.double) the components of a rotation matrix
@@ -195,16 +195,15 @@ def shake_transformations(x,
   Shake rotation matrices and translation vectors of a rotation matrices and
   translation vectors from the MTRIX records in a PDB file.
 
-  Argument:
-  x: flex.double object of the form
-     [(alpha_1,beta_1,gamma_1,Tx_1/s,Ty_1/s,Tz_1/s)...]
-  shake_angles_sigma: (float) the sigma (in radians) of the random gaussian
-                      shaking of the rotation angles
-  shake_translation_sigma: (float) the sigma (in angstrom) of the random
-                           gaussian shaking of the translation
+  Parameters:
+    x (flex.double): [(alpha_1,beta_1,gamma_1,Tx_1/s,Ty_1/s,Tz_1/s)...]
+    shake_angles_sigma (float): the sigma (in radians) of the random gaussian
+      shaking of the rotation angles
+    shake_translation_sigma (float): the sigma (in angstrom) of the random
+      gaussian shaking of the translation
 
   Return:
-  Shaken x, rotation matrices and translation vectors
+    new_x (flex.double): The shaken x
   """
   new_x = flex.double()
   for i in xrange(0,len(x),6):
@@ -225,17 +224,18 @@ def compute_transform_grad(grad_wrt_xyz,
   Compute gradient in respect to the rotation angles and the translation
   vectors. R = Rx(the)Ry(psi)Rz(phi)
 
-  Arguments:
-  grad_wrt_xyz : (flex.double) gradients with respect to xyz.
-  ncs_restraints_group_list: list containing ncs_restraint_group objects
-  transforms_obj : (ncs_group_object) containing information in rotation
-                    matrices and to which chains they apply
-  xyz_asu: (flex.vec3) The coordinates sites cart of the complete ASU
-  x: (flex double) The angles, in the form (theta_1,psi_1,phi_1,tx_1,ty_1,tz_1,..
+  Parameters:
+    grad_wrt_xyz (flex.double): gradients with respect to xyz.
+    ncs_restraints_group_list: list containing ncs_restraint_group objects
+    transforms_obj (ncs_group_object): containing information in rotation
+      matrices and to which chains they apply
+    xyz_asu (flex.vec3): The coordinates sites cart of the complete ASU
+    x (flex double): The angles, in the form
+      (theta_1,psi_1,phi_1,tx_1,ty_1,tz_1,..
       theta_n,psi_n,phi_n,tx_n/s,ty_n/s,tz_n/s)
 
   Returns:
-  g : (flex.double) a gradient
+  g (flex.double): the gradient
   """
   assert bool(transforms_obj) == (not bool(ncs_restraints_group_list))
   if transforms_obj:
@@ -275,11 +275,12 @@ def get_ncs_sites_cart(ncs_obj=None,
                        sites_cart=None,
                        extended_ncs_selection=None):
   """
-  Argument:
-  ncs_obj: an object that contains fmodel, sites_cart or xray_structure
-           and an atom selection flags for a single NCS copy.
+  Parameters:
+    ncs_obj: an object that contains fmodel, sites_cart or xray_structure
+      and an atom selection flags for a single NCS copy.
 
-  Return: (flex.vec3) coordinate sites cart of the single NCS copy
+  Returns:
+    (flex.vec3): coordinate sites cart of the single NCS copy
   """
   if ncs_obj:
     if hasattr(ncs_obj, 'extended_ncs_selection'):
@@ -316,17 +317,18 @@ def get_weight(minimization_obj=None,
   """
   Calculates weights for refinements
 
-  Minimization object must contain the following methods and attributes:
-  - fmodel
-  - sites, u_iso, transformations: (bool)
-  - rotations, translations: (matrix objects)
-  - grm: Restraints manager
-  - iso_restraints: (libtbx.phil.scope_extract)
-                    object used for u_iso refinement parameters
-  - ncs_atom_selection: (flex bool) for a single ncs atom selection
+  :param minimization_obj:Minimization object containing all the other
+    parameters
+  :param sites (bool): Refine by sites
+  :param u_iso (bool): Refine using u_iso
+  :param transformations (bool): Refine using transformations
+  :param rotations, translations (matrix objects):
+  :param grm: Restraints manager
+  :param iso_restraints: (libtbx.phil.scope_extract) object used for u_iso
+    refinement parameters
+  :param ncs_atom_selection: (flex bool) for a single ncs atom selection
 
-  Return:
-  weight: (int)
+  :returns weight (int):
   """
   if minimization_obj:
     mo = minimization_obj
@@ -454,16 +456,17 @@ def apply_transforms(ncs_coordinates,
   Apply transformation to ncs_coordinates,
   and round the results if round_coordinates is True
 
-  Argument:
-  ncs_coordinates: (flex.vec3) master ncs coordinates
-  ncs_restraints_group_list: list of ncs_restraint_group objects
-  total_asu_length: (int) Complete ASU length
-  extended_ncs_selection: (flex.size_t) master ncs and non-ncs related parts
-  center_of_coordinates : when not None, contains the center of coordinate of
-                          the master for each ncs copy
+  Parameters:
+    ncs_coordinates (flex.vec3): master ncs coordinates
+    ncs_restraints_group_list: list of ncs_restraint_group objects
+    total_asu_length (int): Complete ASU length
+      extended_ncs_selection (flex.size_t): master ncs and non-ncs related parts
+    center_of_coordinates : when not None, contains the center of coordinate of
+      the master for each ncs copy
 
   Returns:
-  Asymmetric or biological unit parts that are related via ncs operations
+    (flex.vec3_double): Asymmetric or biological unit parts that are related via
+    ncs operations
   """
   asu_xyz = flex.vec3_double([(0,0,0)]*total_asu_length)
   asu_xyz.set_selected(extended_ncs_selection,ncs_coordinates)
@@ -488,11 +491,10 @@ def apply_transforms(ncs_coordinates,
 def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection):
   """
   :param ncs_restraints_group_list: list of ncs_restraint_group objects
-  total_asu_length: (int) Complete ASU length
-  :param refine_selection: (flex.siz_t) of all ncs related copies and
-  non ncs related parts to be included in selection
-  :return flex.siz_t: selection of all ncs groups master ncs selection and
-  non ncs related portions that are being refined
+  :param refine_selection (flex.siz_t): of all ncs related copies and
+    non ncs related parts to be included in selection
+  :return (flex.siz_t): selection of all ncs groups master ncs selection and
+    non ncs related portions that are being refined
   """
   refine_selection = set(refine_selection)
   total_master_ncs_selection = set()
@@ -513,10 +515,9 @@ def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection):
 
 def get_ncs_related_selection(ncs_restraints_group_list,asu_size):
   """
-  :param ncs_restraints_group_list: list of ncs_restraint_group objects
-  total_asu_length: (int) Complete ASU length
-  :param asu_size: (int) the total size of the ASU
-  :return selection: (flex.bool) selection of all ncs related atom in the ASU
+  :param ncs_restraints_group_list (list): list of ncs_restraint_group objects
+  :param asu_size (int): the total size of the ASU
+  :return selection (flex.bool): selection of all ncs related atom in the ASU
   """
   total_master_ncs_selection = set()
   total_ncs_related_selection = set()
@@ -536,11 +537,10 @@ def shift_translation_to_center(shifts, ncs_restraints_group_list):
   """
   Add shifts to the translation component of ncs_restraints_group_list
   towards the center of coordinates
-  :param shifts: (list) [mu_1, mu_1, mu_2...] where the mu stands
-                 for the shift of the master copy to the coordinate center
-                 mu is (dx,dy,dz)
-  :param ncs_restraints_group_list: ncs_restraints_group_list
-  :return: ncs_restraints_group_list
+  :param shifts (list): [mu_1, mu_1, mu_2...] where the mu stands
+    for the shift of the master copy to the coordinate center mu is (dx,dy,dz)
+  :param ncs_restraints_group_list (list): ncs_restraints_group_list
+  :return ncs_restraints_group_list (list):
   """
   if bool(shifts):
     new_list = ncs_restraints_group_list_copy(ncs_restraints_group_list)
@@ -558,11 +558,10 @@ def shift_translation_back_to_place(shifts, ncs_restraints_group_list):
   """
   shifts to the translation component of ncs_restraints_group_list from the
   center of coordinates back to place
-  :param shifts :  shifts: (list) [mu_1, mu_1, mu_2...] where the mu stands
-                 for the shift of the master copy to the coordinate center
-                 mu is (dx,dy,dz)
+  :param shifts (list): [mu_1, mu_1, mu_2...] where the mu stands
+    for the shift of the master copy to the coordinate center mu is (dx,dy,dz)
   :param ncs_restraints_group_list: ncs_restraints_group_list
-  :return new_list: list of ncs_restraints_group objects
+  :return new_list (list): list of ncs_restraints_group objects
   """
   if bool(shifts):
     i = 0
@@ -583,9 +582,8 @@ def get_ncs_gorups_centers(xray_structure, ncs_restraints_group_list):
   calculate the center of coordinate for the master of each ncs copy
   :param xray_structure:
   :param ncs_restraints_group_list:
-  :return shifts: (list) [mu_1, mu_1, mu_2...] where the mu stands
-                 for the shift of the master copy to the coordinate center
-                 mu is (dx,dy,dz)
+  :return shifts (list): [mu_1, mu_1, mu_2...] where the mu stands
+    for the shift of the master copy to the coordinate center mu is (dx,dy,dz)
   """
   shifts = []
   asu_xyz = xray_structure.sites_cart()
@@ -626,10 +624,10 @@ def ncs_groups_selection(ncs_restraints_group_list,selection):
   Also modify "selection" to include ncs related atoms only if selected in
   both master and ALL ncs copies
 
-  :param ncs_restraints_group_list: list of ncs_restraints_group objects
-  :param selection: (flex.bool) atom selection
-  :return: new_nrg_list: list of modified ncs_restraints_group objects
-  :return: selection: modified selection
+  :param ncs_restraints_group_list (list): list of ncs_restraints_group objects
+  :param selection (flex.bool or flex.size_t): atom selection
+  :return new_nrg_list (list): list of modified ncs_restraints_group objects
+  :return selection (flex.size_t): modified selection
   """
   if isinstance(selection,flex.bool): selection = selection.iselection()
   sel_set = set(selection)
@@ -664,10 +662,11 @@ def selected_positions(selection,positions):
   Returns only the selected indices in the positions specified in "positions"
   keeping the order
 
-  :param selection: flex.size_t object
-  :param positions: set of allowed positions in the selections
-  :return sel: flex.size_t object
+  :param selection (flex.size_t): Atoms selection
+  :param positions (set or list): the allowed positions in the selections
+  :return (flex.size_t, flex.size_t): (selected atoms, atoms, not selected)
 
+  Examples:
   >>>a = flex.size_t([1,2,5,6,4])
   >>>pos = {0,3,4}
   >>>s,d = selected_positions(a,pos)
@@ -687,10 +686,11 @@ def remove_items_from_selection(selection,remove):
   """
   Remove a set of atoms from "selection"
 
-  :param selection: flex.size_t
-  :param remove: remove
-  :return: flex.size_t
+  :param selection (flex.size_t): atom selection
+  :param remove (flex.size_t): atoms to remove from selection
+  :return (flex.size_t): modified atom selection
 
+  Examples:
   >>>a = flex.size_t([1,2,5,6,4])
   >>>r = flex.size_t([2,5])
   >>>s = remove_items_from_selection(a,r,10)
