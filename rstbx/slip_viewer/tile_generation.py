@@ -23,7 +23,7 @@ import wx
 '''
 
 def _get_flex_image(
-    data, vendortype, binning=1, brightness=1.0, saturation=65535.0):
+    data, vendortype, binning=1, brightness=1.0, saturation=65535.0, show_untrusted=False):
   # This is a combination of the get_data_type() and get_flex_image()
   # functions from iotbx.detectors.detectorbase.  XXX This may turn
   # out to be generally useful (see
@@ -40,10 +40,12 @@ def _get_flex_image(
     brightness=brightness,
     rawdata=data,
     saturation=int(round(saturation)),
-    vendortype=vendortype)
+    vendortype=vendortype,
+    show_untrusted = show_untrusted
+  )
 
 
-def _get_flex_image_multipanel(panels, raw_data, brightness=1.0):
+def _get_flex_image_multipanel(panels, raw_data, brightness=1.0, show_untrusted=False):
   # From xfel.cftbx.cspad_detector.readHeader() and
   # xfel.cftbx.cspad_detector.get_flex_image().  XXX Is it possible to
   # merge this with _get_flex_image() above?  XXX Move to dxtbx Format
@@ -88,7 +90,9 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0):
     size1_readout=data_max_focus[0],
     size2_readout=data_max_focus[1],
     brightness=brightness,
-    saturation=saturation)
+    saturation=saturation,
+    show_untrusted=show_untrusted
+  )
 
   # XXX If a point is contained in two panels simultaneously, it will
   # be assigned to the panel defined first.  XXX Use a Z-buffer
@@ -182,6 +186,8 @@ class _Tiles(object):
         self.current_color_scheme = 0
         self.user_requests_antialiasing = False
 
+        self.show_untrusted = False
+
     def set_image(self, file_name_or_data, metrology_matrices=None):
 
         self.reset_the_cache()
@@ -217,6 +223,7 @@ class _Tiles(object):
           self.flex_image = _get_flex_image_multipanel(
             brightness=self.current_brightness / 100,
             panels=detector,
+            show_untrusted=self.show_untrusted,
             raw_data=[self.raw_image.get_raw_data(i)
                       for i in range(len(self.raw_image.get_detector()))])
         else:
@@ -224,7 +231,9 @@ class _Tiles(object):
             brightness=self.current_brightness / 100,
             data=self.raw_image.get_raw_data(),
             saturation=self.raw_image.get_detector()[0].get_trusted_range()[1],
-            vendortype=self.raw_image.__class__.__name__)
+            vendortype=self.raw_image.__class__.__name__,
+            show_untrusted=self.show_untrusted
+          )
 
         self.flex_image.adjust(color_scheme=self.current_color_scheme)
 
@@ -256,7 +265,9 @@ class _Tiles(object):
           brightness=self.current_brightness / 100,
           data=raw_image_data,
           saturation=self.raw_image.get_detector()[0].get_trusted_range()[1],
-          vendortype=self.raw_image.__class__.__name__)
+          vendortype=self.raw_image.__class__.__name__,
+          show_untrusted=self.show_untrusted
+        )
 
       self.flex_image.adjust(color_scheme=self.current_color_scheme)
 
@@ -267,6 +278,7 @@ class _Tiles(object):
           self.flex_image = _get_flex_image_multipanel(
             brightness=b / 100,
             panels=self.raw_image.get_detector(),
+            show_untrusted=self.show_untrusted,
             raw_data=[self.raw_image.get_raw_data(i)
                       for i in range(len(self.raw_image.get_detector()))])
         else:
@@ -274,7 +286,9 @@ class _Tiles(object):
             brightness=b / 100,
             data=self.raw_image.get_raw_data(),
             saturation=self.raw_image.get_detector()[0].get_trusted_range()[1],
-            vendortype=self.raw_image.__class__.__name__ )
+            vendortype=self.raw_image.__class__.__name__,
+            show_untrusted=self.show_untrusted
+          )
 
         self.update_color_scheme(color_scheme)
         self.current_brightness = b

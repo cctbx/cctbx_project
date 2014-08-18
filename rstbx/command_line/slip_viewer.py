@@ -35,6 +35,9 @@ show_spotfinder_results = False
 show_effective_tiling = False
   .type = bool
   .help = "Show the effective tiling of the detector"
+show_untrusted = False
+  .type = bool
+  .help = "Always highlyight untrusted pixels, regardless of detector type"
 """
 
 def run(argv=None):
@@ -57,6 +60,7 @@ def run(argv=None):
   # instantiated).
   frame.params = work_params
   frame.pyslip.tiles.user_requests_antialiasing = work_params.anti_aliasing
+  frame.pyslip.tiles.show_untrusted = frame.params.show_untrusted
 
   frame.settings_frame.panel.center_ctrl.SetValue(
     work_params.beam_center)
