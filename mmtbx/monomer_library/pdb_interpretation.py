@@ -4516,7 +4516,7 @@ class build_all_chain_proxies(linking_mixins):
     link_attrs = ["link_metals",
                   "link_residues",
                   "link_carbohydrates",
-                  "link_dna_rna",
+                  #"link_dna_rna",
                   ]
     if al_params.link_all:
       for attr in link_attrs:
