@@ -110,6 +110,7 @@ public:
   int export_anchor_y;
   const int nchannels;
   int color_scheme_state;
+  bool show_untrusted;
 
   inline
   af::versa<DataType, af::c_grid<2> > raw_to_sampled(
@@ -154,7 +155,7 @@ public:
 
       af::versa<int, af::c_grid<2> > z(raw.accessor());
 
-      bool has_pilatus_inactive_flag = false;
+      bool has_pilatus_inactive_flag = show_untrusted;
       ptr_area detector_location = ptr_area(new ActiveAreaDefault());
       if (vendortype=="Pilatus-6M") {
         detector_location = ptr_area(new ActiveAreaPilatus6M());
@@ -235,6 +236,7 @@ public:
 
       double percentile = *(raw_active.begin()+nth_offset);
       double adjlevel = 0.4;
+
       return (percentile>0.) ? brightness * adjlevel/percentile : 1.0;
   }
 
@@ -259,15 +261,16 @@ public:
 
 public:
   inline
-  FlexImage(array_t rawdata,const double& brightness = 1.0, const DataType& saturation = 1.0):
+  FlexImage(array_t rawdata,const double& brightness = 1.0, const DataType& saturation = 1.0,
+      const bool& show_untrusted = false):
     rawdata(rawdata),
     brightness(brightness),saturation(saturation), nchannels(4),supports_rotated_tiles_antialiasing_recommended(false),
-    color_scheme_state(COLOR_GRAY){}
+    color_scheme_state(COLOR_GRAY),show_untrusted(show_untrusted){}
 
   inline
   FlexImage(array_t rawdata, const int& power_of_two,
             const std::string& vendortype, const double& brightness = 1.0,
-            const DataType& saturation = 65535):
+            const DataType& saturation = 65535, const bool& show_untrusted = false):
     brightness(brightness),
     saturation(saturation),
     rawdata(rawdata),
@@ -275,7 +278,8 @@ public:
     supports_rotated_tiles_antialiasing_recommended(false),
     color_scheme_state(COLOR_GRAY),
     binning(power_of_two),
-    vendortype(vendortype){
+    vendortype(vendortype),
+    show_untrusted(show_untrusted){
     //Assert that binning is a power of two
     SCITBX_ASSERT ( binning > 0 && (binning & (binning-1) )==0 );
     zoom = 1./ binning;
@@ -588,8 +592,9 @@ class generic_flex_image: public FlexImage<double>{
     const int& size1_readout,
     const int& size2_readout,
     const double& brightness = 1.0,
-    const double& saturation = 1.0)
-    : FlexImage<double>(rawdata,brightness, saturation),
+    const double& saturation = 1.0,
+    const bool& show_untrusted = false)
+    : FlexImage<double>(rawdata, brightness, saturation, show_untrusted),
       size1_readout(size1_readout),
       size2_readout(size2_readout)
   {
