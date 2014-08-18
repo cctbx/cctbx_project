@@ -20,6 +20,7 @@ tst_list = (
   "$D/shelx/tst_hklf.py",
   "$D/shelx/tst_writer.py",
   "$D/shelx/tst_fvar_encoding.py",
+  "$D/pdb/tst_mmcif.py",
   "$D/pdb/tst_mmcif_hierarchy.py",
   "$D/pdb/tst_tls.py",
   ["$D/pdb/hybrid_36.py", "exercise"],
