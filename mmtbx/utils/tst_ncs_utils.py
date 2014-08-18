@@ -286,6 +286,84 @@ class test_rotation_angles_conversion(object):
     result = (nrg[0].copies[0].t.round(5)).elems
     assert result == expected
 
+  def test_nrg_selection(self):
+    """
+    test that a atom selection propagates correctly to ncs_restraints_group_list
+    """
+    print 'Running ',sys._getframe().f_code.co_name
+    pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
+    transforms_obj = iotbx.ncs.input(
+      pdb_hierarchy_inp=pdb_obj,
+      rotations=[self.rotation1,self.rotation2],
+      translations=[self.translation1,self.translation2])
+
+    nrg = transforms_obj.get_ncs_restraints_group_list()
+
+    m1 = list(nrg[0].master_iselection)
+    c1 = list(nrg[0].copies[0].copy_iselection)
+    c2 = list(nrg[0].copies[1].copy_iselection)
+
+    assert len(m1) == len(c1)
+    assert m1 == [0,   1,  2,  5,  6,  3,  4]
+    assert c1 == [7,   8,  9, 12, 13, 10, 11]
+    assert c2 == [14, 15, 16, 19, 20, 17, 18]
+
+    selection1 = flex.size_t([0,1,5,3,100,101])
+    selection2 = flex.size_t([0,1,5,3,7,8,9,12,100,101])
+    selection3 = flex.size_t([0,1,5,3,7,8,9,12,14,15,19,17,100,101])
+
+    new_nrg, new_selection = nu.ncs_groups_selection(
+      ncs_restraints_group_list=nrg,
+      selection=selection1)
+    # only atoms in master are selected
+    mt = list(new_nrg[0].master_iselection)
+    c1t = list(new_nrg[0].copies[0].copy_iselection)
+
+    assert mt == []
+    assert c1t == []
+    assert list(new_selection) == [100, 101]
+
+    # atoms selected in both master and copies
+    new_nrg, new_selection = nu.ncs_groups_selection(
+      ncs_restraints_group_list=nrg,
+      selection=selection2)
+    # only atoms in master are selected
+    mt = list(new_nrg[0].master_iselection)
+    c1t = list(new_nrg[0].copies[0].copy_iselection)
+
+    assert mt == []
+    assert c1t == []
+    assert list(new_selection) == [100, 101]
+
+    new_nrg, new_selection = nu.ncs_groups_selection(
+      ncs_restraints_group_list=nrg,
+      selection=selection3)
+    # only atoms in master are selected
+    mt = list(new_nrg[0].master_iselection)
+    c1t = list(new_nrg[0].copies[0].copy_iselection)
+    c2t = list(new_nrg[0].copies[1].copy_iselection)
+
+    assert mt == [0, 1, 5]
+    assert c1t == [7, 8, 12]
+    assert c2t == [14, 15, 19]
+    assert list(new_selection) == [0, 1, 5, 7, 8, 12, 14, 15, 19, 100, 101]
+
+  def test_selected_positions(self):
+    print 'Running ',sys._getframe().f_code.co_name
+
+    a=flex.size_t([1,2,5,6,4])
+    pos=set([0,3,4])
+    s, d = nu.selected_positions(a,pos)
+    assert list(s) == [1,6,4]
+    assert list(d) == [2,5]
+
+  def test_remove_items_from_selection(self):
+    print 'Running ',sys._getframe().f_code.co_name
+
+    a=flex.size_t([1,2,5,6,4])
+    r = flex.size_t([2,5])
+    s = nu.remove_items_from_selection(a,r)
+    assert list(s) == [1,6,4]
 
 test_pdb_str = '''\
 ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
@@ -310,4 +388,7 @@ if __name__=='__main__':
   t.test_ncs_selection()
   t.test_ncs_related_selection()
   t.test_center_of_coordinates_shift()
+  t.test_nrg_selection()
+  t.test_selected_positions()
+  t.test_remove_items_from_selection()
 

@@ -617,3 +617,87 @@ def ncs_restraints_group_list_copy(ncs_restraints_group_list):
       new_nrg.copies.append(new_ncs_copy)
     new_list.append(new_nrg)
   return new_list
+
+def ncs_groups_selection(ncs_restraints_group_list,selection):
+  """
+  Modifies the selections of master and copies according the "selection"
+  - Keep the order of selected atoms
+  - Keep only atoms that appear in master and ALL copies
+  Also modify "selection" to include ncs related atoms only if selected in
+  both master and ALL ncs copies
+
+  :param ncs_restraints_group_list: list of ncs_restraints_group objects
+  :param selection: (flex.bool) atom selection
+  :return: new_nrg_list: list of modified ncs_restraints_group objects
+  :return: selection: modified selection
+  """
+  if isinstance(selection,flex.bool): selection = selection.iselection()
+  sel_set = set(selection)
+  new_nrg_list = ncs_restraints_group_list_copy(ncs_restraints_group_list)
+  # check what are the selection that shows in both master and all copies
+  for nrg in new_nrg_list:
+    m = set(nrg.master_iselection)
+    m_list = [(pos,indx) for pos,indx in enumerate(list(nrg.master_iselection))]
+    m_in_sel = m.intersection(sel_set)
+    common_selection_pos = {pos for (pos,indx) in m_list if indx in m_in_sel}
+    for ncs in nrg.copies:
+      c = set(ncs.copy_iselection)
+      c_list = [(pos,indx) for pos,indx in enumerate(list(ncs.copy_iselection))]
+      copy_in_sel = c.intersection(sel_set)
+      include_set = {pos for (pos,indx) in c_list if indx in copy_in_sel}
+      common_selection_pos.intersection_update(include_set)
+      if not bool(common_selection_pos): break
+    # use the common_selection_pos to update all selections
+    nrg.master_iselection, not_included = selected_positions(
+      nrg.master_iselection,common_selection_pos)
+    selection = remove_items_from_selection(selection,not_included)
+    for ncs in nrg.copies:
+      ncs.copy_iselection, not_included = selected_positions(
+        ncs.copy_iselection,common_selection_pos)
+      selection = remove_items_from_selection(selection,not_included)
+
+  return new_nrg_list, selection
+
+
+def selected_positions(selection,positions):
+  """
+  Returns only the selected indices in the positions specified in "positions"
+  keeping the order
+
+  :param selection: flex.size_t object
+  :param positions: set of allowed positions in the selections
+  :return sel: flex.size_t object
+
+  >>>a = flex.size_t([1,2,5,6,4])
+  >>>pos = {0,3,4}
+  >>>s,d = selected_positions(a,pos)
+  >>>list(s)
+  [1,6,4]
+  >>>list(d)
+  [2,5]
+  """
+  assert isinstance(selection,flex.size_t)
+  if isinstance(positions,set): positions = flex.size_t(list(positions))
+  if isinstance(positions,list): positions = flex.size_t(positions)
+  include = flex.bool(selection.size(),positions)
+  not_include = ~include
+  return selection.select(include), selection.select(not_include)
+
+def remove_items_from_selection(selection,remove):
+  """
+  Remove a set of atoms from "selection"
+
+  :param selection: flex.size_t
+  :param remove: remove
+  :return: flex.size_t
+
+  >>>a = flex.size_t([1,2,5,6,4])
+  >>>r = flex.size_t([2,5])
+  >>>s = remove_items_from_selection(a,r,10)
+  >>>list(s)
+  [1,6,4]
+  """
+  selection = list(selection)
+  remove = set(remove)
+  new_selection = [x for x in selection if not (x in remove)]
+  return flex.size_t(new_selection)
