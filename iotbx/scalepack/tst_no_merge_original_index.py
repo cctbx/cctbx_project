@@ -1,6 +1,7 @@
 
 from __future__ import division
 from libtbx.test_utils import show_diff
+import warnings
 
 def exercise () :
   from iotbx.scalepack import no_merge_original_index
@@ -59,6 +60,73 @@ def exercise () :
   batches = reader.batch_as_miller_array(crystal_symmetry=symm)
   assert batches.indices().all_eq(i_obs.indices())
   assert (batches.data()[0] == 316)
+  # space group symbol and symops conflict (Scalepack bug?)
+  sca_bad = """\
+   24 f4132
+  1  0  0  0  1  0  0  0  1
+  0  0  0
+  0  0  1  1  0  0  0  1  0
+  0  0  0
+  0  1  0  0  0  1  1  0  0
+  0  0  0
+ -1  0  0  0  0 -1  0 -1  0
+  9  9  9
+  0 -1  0 -1  0  0  0  0 -1
+  9  9  9
+  0  0 -1  0 -1  0 -1  0  0
+  9  9  9
+  1  0  0  0 -1  0  0  0 -1
+  6  6  0
+  0  0  1 -1  0  0  0 -1  0
+  6  6  0
+  0  1  0  0  0 -1 -1  0  0
+  6  6  0
+ -1  0  0  0  0  1  0  1  0
+  3  9  3
+  0 -1  0  1  0  0  0  0  1
+  3  9  3
+  0  0 -1  0  1  0  1  0  0
+  3  9  3
+ -1  0  0  0  1  0  0  0 -1
+  0  6  6
+  0  0 -1  1  0  0  0 -1  0
+  0  6  6
+  0 -1  0  0  0  1 -1  0  0
+  0  6  6
+  1  0  0  0  0 -1  0  1  0
+  3  3  9
+  0  1  0 -1  0  0  0  0  1
+  3  3  9
+  0  0  1  0 -1  0  1  0  0
+  3  3  9
+ -1  0  0  0 -1  0  0  0  1
+  6  0  6
+  0  0 -1 -1  0  0  0  1  0
+  6  0  6
+  0 -1  0  0  0 -1  1  0  0
+  6  0  6
+  1  0  0  0  0  1  0 -1  0
+  9  3  3
+  0  1  0  1  0  0  0  0 -1
+  9  3  3
+  0  0  1  0  1  0 -1  0  0
+  9  3  3
+  -2  -2  -2   2   2   2   658 0 0  4  3624.3   344.2
+  -2  -2   2   2   2   2   582 0 0  8  3220.1   344.8
+   2   2  -2   2   2   2   579 0 1 12  3376.5   344.3
+   1   3   1   3   1   1   320 0 0  3   544.3    55.1
+   1   3   1   3   1   1   677 0 1  3   476.8    53.8
+  -3  -1  -1   3   1   1   217 0 1  4   588.2    53.9
+  -3  -1  -1   3   1   1   579 0 0  4   552.4    53.9
+"""
+  hkl_in = "tst_scalepack_unmerged_writer2.sca"
+  hkl_out = "tst_scalepack_unmerged_writer2_out.sca"
+  open(hkl_in, "w").write(sca_bad)
+  reader = no_merge_original_index.reader(hkl_in)
+  with warnings.catch_warnings(record=True) as w:
+    space_group_info = reader.space_group_info()
+    assert (len(w) == 1)
+    assert (str(space_group_info) == "F 41 3 2")
 
 if (__name__ == "__main__") :
   exercise()
