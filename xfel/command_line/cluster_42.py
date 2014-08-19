@@ -32,7 +32,8 @@ def run(_args):
 
   orr_axes = ucs.visualise_orientational_distribution(orr_axes, cbar=True)
   inten_axes = ucs.intensity_statistics(inten_axes)
-  clusters, cluster_ax = ucs.ab_cluster(_args.t, log=_args.log, ax=clust_ax)
+  clusters, cluster_ax = ucs.ab_cluster(_args.t, log=_args.log, ax=clust_ax,
+                                        fast=_args.fast, write_file_lists=False)
 
   #plt.text("cluster.42 Plot Everything!")
   plt.tight_layout()
@@ -50,10 +51,11 @@ if __name__ == "__main__":
   parser.add_argument('-t', type=float, default=5000,
                       help='threshold value for the unit cell clustering. '
                            'Default = 5000')
-  parser.add_argument('-o', type=str, default='clustering',
-                      help='output file name for unit cells.')
   parser.add_argument('--log', action='store_true',
                       help="Display the dendrogram with a log scale")
+  parser.add_argument('--fast', action='store_true',
+                      help="Use Euclidean distance for dendogram. Faster but "
+                           "less accurate")
   args = parser.parse_args()
   run(args)
 
