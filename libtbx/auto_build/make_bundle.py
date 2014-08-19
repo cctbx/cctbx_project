@@ -63,10 +63,14 @@ def run (args, out=sys.stdout) :
   os.chdir(options.tmp_dir)
   pkg_dir = op.basename(target_dir)
   build_dir = op.join(target_dir, "build")
-  print >> out, "Setting rpath in shared libraries..."
+  base_dir = op.join(target_dir, "base")
   stdout_old = sys.stdout
   if (not options.verbose) :
-    sys.stdout = StringIO()
+    f = open("rpath.log", "w")
+    sys.stdout = f
+  print >> out, "Setting rpath in base packages..."
+  rpath.run([base_dir])
+  print >> out, "Setting rpath in shared libraries..."
   rpath.run([build_dir])
   sys.stdout = stdout_old
   # create temp dir
@@ -78,10 +82,11 @@ def run (args, out=sys.stdout) :
   os.chdir(tmp_dir)
   # base and build/lib directories
   print >> out, "Copying dependencies..."
+  copy_tree(op.join(target_dir, "base"), op.join(tmp_dir, "base"))
+  print >> out, "Copying shared libraries..."
   tmp_build_dir = op.join(tmp_dir, "build")
   os.makedirs(tmp_build_dir)
   copy_tree(op.join(build_dir, "lib"), op.join(tmp_build_dir, "lib"))
-  copy_tree(op.join(target_dir, "base"), op.join(tmp_dir, "base"))
   # copy over non-compiled files
   print >> out, "Copying base modules..."
   ignore_dirs = options.ignore.split(",")
@@ -111,6 +116,7 @@ def run (args, out=sys.stdout) :
     strip_libs(op.join(tmp_dir, "base", "lib"), log=out)
   # XXX what about base/include?
   # copy over build executable directories
+  print >> out, "Copying standalone executables..."
   for file_name in os.listdir(build_dir) :
     full_path = op.join(build_dir)
     if op.isdir(full_path) :
