@@ -15,10 +15,10 @@ def grads_asu_to_one_ncs(
   Apply NCS constraints to reduce the gradients corresponding to whole ASU, to
   gradients corresponding to one NCS copy.
 
-  Arguments:
-  ncs_restraints_group_list: list of ncs_restraint_group objects
-  grad: gradient of the complete asu
-  refine_sites: (bool) Flag indicating sites refinement
+  Args:
+    ncs_restraints_group_list: list of ncs_restraint_group objects
+    grad: gradient of the complete asu
+    refine_sites: (bool) Flag indicating sites refinement
   """
   for nrg in ncs_restraints_group_list:
     ncs_selection = nrg.master_iselection
@@ -136,6 +136,7 @@ class target_function_and_grads_real_space(object):
         ncs_restraints_group_list,
         refine_selection,
         real_space_gradients_delta,
+        use_strict_ncs=True,
         restraints_manager=None,
         data_weight=None,
         refine_sites=False,
@@ -144,7 +145,6 @@ class target_function_and_grads_real_space(object):
     self.extended_ncs_selection = nu.get_extended_ncs_selection(
       ncs_restraints_group_list=ncs_restraints_group_list,
       refine_selection=refine_selection)
-
     self.unit_cell = self.xray_structure.unit_cell()
     # get selection to refine
     asu_size = xray_structure.scatterers().size()
@@ -204,11 +204,14 @@ class target_function_and_grads_real_space(object):
     if(compute_gradients):
       g = g_data*self.data_weight + g_restraints
       if(not self.refine_transformations):
-        g = grads_asu_to_one_ncs(
-          ncs_restraints_group_list = self.ncs_restraints_group_list,
-          extended_ncs_selection    = self.extended_ncs_selection,
-          grad                      = g,
-          refine_sites              = self.refine_sites).as_double()
+        if self.use_strict_ncs:
+          g = grads_asu_to_one_ncs(
+            ncs_restraints_group_list = self.ncs_restraints_group_list,
+            extended_ncs_selection    = self.extended_ncs_selection,
+            grad                      = g,
+            refine_sites              = self.refine_sites).as_double()
+        else:
+          g = g.as_double()
     return t, g
 
 class target_function_and_grads_reciprocal_space(object):
@@ -220,6 +223,7 @@ class target_function_and_grads_reciprocal_space(object):
         fmodel,
         ncs_restraints_group_list,
         refine_selection,
+        use_strict_ncs=True,
         restraints_manager=None,
         data_weight=None,
         refine_sites=False,
@@ -291,11 +295,14 @@ class target_function_and_grads_reciprocal_space(object):
     if(compute_gradients):
       g = g_data*self.data_weight + g_restraints
       if(not self.refine_transformations):
-        g = grads_asu_to_one_ncs(
-          ncs_restraints_group_list = self.ncs_restraints_group_list,
-          extended_ncs_selection    = self.extended_ncs_selection,
-          grad                      = g,
-          refine_sites              = self.refine_sites).as_double()
+        if self.use_strict_ncs:
+          g = grads_asu_to_one_ncs(
+            ncs_restraints_group_list = self.ncs_restraints_group_list,
+            extended_ncs_selection    = self.extended_ncs_selection,
+            grad                      = g,
+            refine_sites              = self.refine_sites).as_double()
+        else:
+          g = g.as_double()
     return t, g
 
   def finalize(self):
@@ -317,12 +324,12 @@ class lbfgs(object):
         max_iterations               = 35,
         refine_sites                 = False,
         refine_u_iso                 = False,
-        refine_transformations       = False,
-        use_strict_ncs               = True):
+        refine_transformations       = False):
     """
     NCS constrained ADP and coordinates refinement. Also refines NCS operators.
     """
     adopt_init_args(self, args=locals(),exclude=['ncs_restraints_group_list'])
+    self.use_strict_ncs = target_and_grads_object.use_strict_ncs
     self.ncs_restraints_group_list = nu.ncs_restraints_group_list_copy(
       ncs_restraints_group_list)
     self.ncs_groups_coordinates_centers = []
@@ -338,7 +345,7 @@ class lbfgs(object):
       xray_structure_one_ncs_copy = xray_structure.select(
         self.extended_ncs_selection)
     else:
-      xray_structure_one_ncs_copy = xray_structure
+      xray_structure_one_ncs_copy = xray_structure.select(self.refine_selection)
     if self.refine_sites:
       self.x = xray_structure_one_ncs_copy.sites_cart().as_double()
     elif self.refine_u_iso:
@@ -401,6 +408,7 @@ class lbfgs(object):
       x_asu = self.refinable_params_one_ncs_to_asu(x_ncs)
       self.xray_structure.set_sites_cart(
         sites_cart = flex.vec3_double(x_asu))
+      # print_x(self.x,'update: ')
     elif self.refine_sites:
       x_asu = self.refinable_params_one_ncs_to_asu(x)
       self.xray_structure.set_sites_cart(
@@ -428,6 +436,8 @@ class lbfgs(object):
           center_of_coordinates = self.ncs_groups_coordinates_centers)
         new_x = new_x.select(self.refine_selection)
         new_x = x_old.set_selected(self.refine_selection,new_x)
+      else:
+        new_x = self.x
       return new_x.as_double()
     elif self.refine_u_iso:
       if self.use_strict_ncs:
@@ -462,3 +472,8 @@ class lbfgs(object):
     finite_gard = (t1-t2)/(d*2)
     self.finite_grad_difference_val = abs(g[i_g_max] - finite_gard)
 
+def print_x(x,title):
+  x = list(x)
+  s = ['{%i:6.3f} '%i for i in range(len(x))]
+  s = ''.join(s)
+  print title, s.format(*x)
