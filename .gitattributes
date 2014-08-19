@@ -2951,6 +2951,7 @@ sphinx/mmtbx/modules.rst -text
 sphinx/python_cpp_mix.png -text
 sphinx/scitbx/index.rst -text
 sphinx/scitbx/scitbx.array_family.rst -text
+sphinx/scitbx/scitbx.matrix.rst -text
 sphinx/tour.rst -text
 sphinx/xfel/modules.rst -text
 sphinx/xfel/xfel.cftbx.detector.rst -text
