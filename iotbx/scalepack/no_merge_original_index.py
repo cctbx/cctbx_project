@@ -4,6 +4,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from libtbx.str_utils import show_string
+import warnings
 import sys, os
 
 import boost.python
@@ -273,7 +274,19 @@ def combine_symops_and_symbol(space_group_from_ops, space_group_symbol):
   if (   space_group_exp is None
       or space_group_from_symbol is None
       or space_group_exp != space_group_from_symbol):
-    raise RuntimeError(
+    if space_group_from_symbol:
+      warnings.warn("""
+WARNING:
+  Symmetry operations in input file are for space group %(space_group_exp)s
+  However space group symbol is: %(space_group_symbol)s
+  This may be a format error in the Scalepack file!
+  Using %(space_group_symbol)s
+""" % {"space_group_exp" : str(space_group_exp.info()),
+       "space_group_symbol" : show_string(space_group_symbol), },
+        UserWarning, stacklevel=10)
+      space_group_exp = space_group_from_symbol
+    else:
+      raise RuntimeError(
       "Symmetry operations in unmerged SCALEPACK file incompatible with"
       " space group symbol %s"
         % show_string(space_group_symbol))
