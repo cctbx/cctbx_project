@@ -379,7 +379,7 @@ struct flex_image_wrapper {
             arg_("vendortype"),
             arg_("brightness"),
             arg_("saturation"),
-            arg_("show_untrusted")
+            arg_("show_untrusted")=false
             )
           ))
       .def("spot_convention", &w_t::spot_convention)
@@ -453,7 +453,7 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
             arg_("size2_readout"),
             arg_("brightness"),
             arg_("saturation"),
-            arg_("show_untrusted")
+            arg_("show_untrusted")=false
             )
           ))
       .def("prep_string",&iotbx::detectors::display::generic_flex_image::prep_string)
