@@ -4793,6 +4793,19 @@ class array(set):
     miller_array.show_summary(f=log, prefix="  ")
     return miller_array
 
+  def show_all_possible_systematic_absences (self, out=sys.stdout, prefix="") :
+    """
+    For each possible space group sharing the same basic intensity symmetry,
+    show a list of possible systematically absent reflections and corresponding
+    I/sigmaI.  Note that if the data have already been processed in a specific
+    space group rather than the basic point group, for example P212121 instead
+    of P222, all systematically absent reflections are likely to have been
+    removed already.
+
+    :returns: a systematic_absences_info object
+    """
+    return systematic_absences_info(self).show(out=out, prefix=prefix)
+
   #---------------------------------------------------------------------
   # Xtriage extensions - tested in mmtbx/scaling/tst_xtriage_twin_analyses.py
   def analyze_intensity_statistics (self, d_min=2.5, log=None) :
@@ -5330,3 +5343,70 @@ def compute_cc_one_half (unmerged, n_trials=1) :
     cc = flex.linear_correlation(data_1, data_2).coefficient()
     cc_all.append(cc)
   return sum(cc_all) / n_trials
+
+class systematic_absences_info (object) :
+  """
+  Container for information about possible systematically absent reflections in
+  the array, trying both the current space group and all intensity-equivalent
+  groups (i.e. all possible screw axis combinations).  This object would
+  normally be instantiated directly from a Miller array, but is self-contained
+  to enable saving as part of Xtriage results.
+
+  :param obs: X-ray intensity (preferred) or amplitude array
+  """
+  def __init__ (self, obs) :
+    assert (obs.sigmas() is not None)
+    obs = obs.sort("packed_indices")
+    if obs.is_xray_amplitude_array() :
+      obs = obs.f_as_f_sq()
+    assert obs.is_xray_intensity_array()
+    if (not obs.is_unique_set_under_symmetry()) :
+      obs = obs.merge_equivalents().array()
+    if obs.anomalous_flag() :
+      obs = obs.average_bijvoet_mates()
+    self.space_group_info = obs.space_group_info()
+    assert (self.space_group_info is not None)
+    all_groups = self.space_group_info.reflection_intensity_equivalent_groups()
+    point_group = self.space_group_info.group().build_derived_point_group()
+    complete_sel = obs.customized_copy(
+      space_group_info=point_group.info()).complete_set()
+    self.space_group_symbols_and_selections = []
+    for group in all_groups :
+      absent_sel = group.is_sys_absent(obs.indices()).iselection()
+      all_possible = group.is_sys_absent(complete_sel.indices()).iselection()
+      if (len(absent_sel) > 0) : # systematic absences found
+        absences = obs.select(absent_sel)
+        self.space_group_symbols_and_selections.append((group.info(), absences))
+      elif (len(all_possible) == 0) : # no possible absences in this SG
+        self.space_group_symbols_and_selections.append((group.info(), False))
+      else : # absences possible, but not present in array
+        self.space_group_symbols_and_selections.append((group.info(), None))
+
+  # FIXME there must be a cleaner way to display this...
+  def show (self, out=sys.stdout, prefix="") :
+    """
+    For each possible space group, show a list of possible systematically
+    absent reflections and corresponding I/sigmaI.
+    """
+    for group_info, absences in self.space_group_symbols_and_selections :
+      group_note = ""
+      if (str(group_info) == str(self.space_group_info)) :
+        group_note = " (input space group)"
+      if (absences == False) :
+        print >> out, prefix+"%s%s: no systematic absences possible" % \
+          (group_info, group_note)
+      elif (absences is None) :
+        print >> out, prefix+"%s%s: no absences found" % \
+          (group_info, group_note)
+      else :
+        print >> out, prefix+"%s%s:" % (group_info, group_note)
+        for i_hkl, hkl in enumerate(absences.indices()) :
+          intensity = absences.data()[i_hkl]
+          sigma = absences.sigmas()[i_hkl]
+          indices_fmt = "(%4d, %4d, %4d)" % hkl
+          if (sigma == 0) :
+            print >> out, prefix+"  %s: i/sigi = undefined" % indices_fmt
+          else :
+            print >> out, prefix+"  %s: i/sigi = %6.1f" % (indices_fmt,
+              intensity/sigma)
+    return self

@@ -2283,7 +2283,26 @@ def exercise_change_symmetry () :
         expand_to_p1_if_necessary=False)
     assert len(w) == 2
 
+def exercise_systematic_absences_info () :
+  xrs = random_structure.xray_structure(
+    sgtbx.space_group_info("P21212"),
+    elements=["const"]*100)
+  f_calc = xrs.structure_factors(d_min=2.5).f_calc()
+  i_calc = abs(f_calc).f_as_f_sq().set_observation_type_xray_intensity()
+  i_calc = i_calc.customized_copy(
+    space_group_info=sgtbx.space_group_info("P222"),
+    sigmas=flex.double(i_calc.size(), 1.0))
+  complete_set = i_calc.complete_set()
+  lone_set = complete_set.lone_set(other=i_calc)
+  i_abs = lone_set.array(data=flex.double(lone_set.size(), 0.05),
+    sigmas=flex.double(lone_set.size(), 0.1))
+  i_calc = i_calc.concatenate(other=i_abs).set_observation_type_xray_intensity()
+  out = StringIO()
+  absences = i_calc.show_all_possible_systematic_absences(out=out)
+  assert (out.getvalue().count("  (   0,    3,    0): i/sigi =    0.5") == 4)
+
 def run(args):
+  exercise_systematic_absences_info()
   exercise_change_symmetry()
   exercise_convert_to_non_anomalous_if_ratio_pairs_lone_less_than()
   exercise_diagnostics()

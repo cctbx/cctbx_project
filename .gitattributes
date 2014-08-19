@@ -1177,6 +1177,7 @@ iotbx/command_line/poscar_as_xray_structure.py svneol=native#text/x-python
 iotbx/command_line/r_free_flags_completion_simple.py svneol=native#text/x-python
 iotbx/command_line/reflection_file_editor.py -text
 iotbx/command_line/reindex.py -text
+iotbx/command_line/show_systematic_absences.py -text
 iotbx/command_line/simple_map_coefficients.py -text
 iotbx/command_line/symmetry_search.py svneol=native#text/x-python
 iotbx/detectors/active_area_filter.py -text
@@ -1331,6 +1332,7 @@ iotbx/regression/tst_poscar.py svneol=native#text/x-python
 iotbx/regression/tst_reflection_file_editor.py -text
 iotbx/regression/tst_reflection_file_utils.py svneol=native#text/x-python
 iotbx/regression/tst_reindex.py -text
+iotbx/regression/tst_show_systematic_absences.py -text
 iotbx/regression/tst_simple_map_coefficients.py -text
 iotbx/regression/tst_simple_parser.py svneol=native#text/x-python
 iotbx/regression/tst_split_models.py -text

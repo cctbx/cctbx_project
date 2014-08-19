@@ -28,7 +28,7 @@ format = *Auto png eps
   .type = choice
 """, process_includes=True)
 
-def run (args) :
+def run (args, out=sys.stdout, silent=True) :
   if (len(args) == 0) :
     params_out = StringIO()
     master_phil.show(out=params_out, prefix="  ")
@@ -75,7 +75,7 @@ slice_mode = True
   if (selected_array is None) :
     if (len(obs_arrays) == 1) :
       selected_array = obs_arrays[0]
-      print "Using %s since no labels were specified." % \
+      print >> out, "Using %s since no labels were specified." % \
         selected_array.info().label_string()
     elif (len(obs_arrays) > 1) :
       raise Sorry("""Multiple equally suitable arrays of data found:
@@ -133,7 +133,7 @@ Please choose one by specifying the 'labels' parameter.""" %
     canvas = open(params.output_file, "w")
     render.paint(canvas)
     canvas.close()
-  else :
+  elif (not silent) :
     render = render_pil(
       w=params.width*8,
       h=params.height*8,
@@ -144,7 +144,10 @@ Please choose one by specifying the 'labels' parameter.""" %
     render.render(canvas)
     im2 = im.resize((params.width, params.height), Image.ANTIALIAS)
     im2.save(params.output_file)
-  print "Wrote %s" % params.output_file
+  if (not silent) :
+    print >> out, "Wrote %s" % params.output_file
+  else :
+    return scene, params
 
 def frac2int (c) :
   return (int(c[0]*255), int(c[1]*255), int(c[2]*255))
