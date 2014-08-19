@@ -1,5 +1,5 @@
-mmtbx package
-=============
+mmtbx - macromolecular crystallography
+======================================
 
 Subpackages
 -----------

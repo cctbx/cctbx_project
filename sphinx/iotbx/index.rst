@@ -1,5 +1,9 @@
-iotbx package
-=============
+
+.. _iotbx:
+
+
+iotbx - file readers and writers
+================================
 
 The iotbx module contains most tools for reading and writing the standard
 formats used by both macromolecular and small-molecule crystallographers,
