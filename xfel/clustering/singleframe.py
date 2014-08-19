@@ -29,7 +29,7 @@ class SingleFrame:
     :param remove_negative: Boolean for removal of negative intensities
     :param use_b: if True, initialise scale and B, if false, use only mean-intensity scaling.
     :param dicti: optional. If a dictionairy is supplied here, will create object from that rather than attempting to read the file specified in path, filename.
-    :param pixel_size: the size of pixels in mm. Defaults to a MAR detector with a warning.
+    :param pixel_size: the size of pixels in mm. Defaults to a MAR detector with a warning at debug level of logging.
     :param scale: if False, will intialise scales to G=1, B=0.
 
 
@@ -69,7 +69,7 @@ class SingleFrame:
       if pixel_size:
         self.pixel_size = pixel_size
       else:
-        logging.warning("No pixel size specified, defaulting to MAR (0.079346). "
+        logging.debug("No pixel size specified, defaulting to MAR (0.079346). "
                         "Bad times if this is not the correct detector!")
         self.pixel_size = 0.079346
       # Warn on error, but continue directory traversal.
