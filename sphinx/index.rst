@@ -142,19 +142,25 @@ smtbx
 Functionality specific to small-molecule crystallography, including a complete
 refinement program (smtbx.refine).
 
+:doc:`API Documentation for smtbx <smtbx>`
 
-:ref:`API Documentation for smtbx <smtbx>`
+dxtbx
+-----
+
+The Diffraction Image Toolbox, a library for handling X-ray detector data
+of arbitrary complexity from a variety of standard formats.  (Also used by
+routines in iotbx.)
+
+:doc:`API documentation for dxtbx <dxtbx>`
 
 Other
 -----
 
 Many additional libraries have more specialized functionality, including:
 
-* dxtbx - the Diffraction Image Toolbox (also used by iotbx)
 * spotfinder - fast detection of Bragg peaks in diffraction images
 * ucif - the core CIF I/O library (used by iotbx)
 * rstbx - Reciprocal Space Toolbox, used for data processing
-* xfel - analysis and processing of free-electron laser data
 * gltbx - OpenGL bindings, including a wxPython-based viewer framework
 * crys3d - Modules for the display of molecules, electron density, and reciprocal space data
 * fable - a program (and compatibility library) for porting Fortran77 to C++

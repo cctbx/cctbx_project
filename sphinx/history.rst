@@ -1,6 +1,6 @@
----------------------------
-cctbx - Development history
----------------------------
+-------------------------
+CCTBX development history
+-------------------------
 
 eltbx - Element Toolbox
 =======================

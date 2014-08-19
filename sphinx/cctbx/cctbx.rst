@@ -1,5 +1,5 @@
-cctbx package
-=============
+cctbx - core crystallographic objects and functions
+===================================================
 
 Subpackages
 -----------
