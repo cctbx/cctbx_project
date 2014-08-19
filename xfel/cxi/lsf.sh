@@ -26,7 +26,7 @@ if ! test -x "${PYANA}"; then
 fi
 
 # IP-address of a random host that mounts all needed file systems.
-NODE="psexport.slac.stanford.edu"
+NODE="psanacs055.slac.stanford.edu"
 NODE=`host "${NODE}" | grep "has address" | head -n 1 | cut -d ' ' -f 1`
 
 # Create a directory for temporary files and open a master connection
