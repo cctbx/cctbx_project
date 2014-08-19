@@ -40,10 +40,12 @@ class postref_handler(object):
     #Lorentz-polarization correction
     wavelength = observations_pickle["wavelength"]
 
-    two_theta = observations.two_theta(wavelength=wavelength).data()
-    one_over_P = 2/(1 + (flex.cos(two_theta)**2))
-    one_over_LP = (8 * (flex.sin(two_theta/2)))/(1 + (flex.cos(two_theta)**2))
-    observations = observations.customized_copy(data=observations.data()*one_over_P)
+
+    if iparams.flag_LP_correction:
+      two_theta = observations.two_theta(wavelength=wavelength).data()
+      one_over_P = 2/(1 + (flex.cos(two_theta)**2))
+      one_over_L = 2 * (flex.sin(two_theta/2)**2)
+      observations = observations.customized_copy(data=observations.data()*one_over_L*one_over_P)
 
     #set observations with target space group - !!! required for correct
     #merging due to map_to_asu command.
@@ -250,6 +252,9 @@ class postref_handler(object):
         self.organize_input(observations_pickle, iparams, mode='output')
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
     from mod_leastsqr import calc_partiality_anisotropy_set
+    from mod_leastsqr import calc_spot_radius
+    spot_radius = calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
+                                  observations_original_sel.indices(), wavelength)
     from cctbx.uctbx import unit_cell
     uc_fin = unit_cell((a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin))
     if pres_in is not None:
@@ -258,7 +263,7 @@ class postref_handler(object):
     two_theta = observations_original.two_theta(wavelength=wavelength).data()
     partiality_fin, dummy, rs_fin = calc_partiality_anisotropy_set(uc_fin, rotx_fin, roty_fin,
                                                            observations_original.indices(),
-                                                           ry_fin, rz_fin, re_fin,
+                                                           ry_fin, rz_fin, spot_radius, re_fin,
                                                            two_theta, alpha_angle, wavelength, crystal_init_orientation,
                                                            spot_pred_x_mm, spot_pred_y_mm,
                                                            detector_distance_mm,
@@ -431,12 +436,12 @@ class postref_handler(object):
     spot_radius = calc_spot_radius(a_star_init, observations_original.indices(), wavelength)
     two_theta = observations_original.two_theta(wavelength=wavelength).data()
     sin_theta_over_lambda_sq = observations_original.two_theta(wavelength=wavelength).sin_theta_over_lambda_sq().data()
-    ry = spot_radius
-    rz = spot_radius
+    ry = 0
+    rz = 0
     re = 0.003
     rotx = 0
     roty = 0
-    partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm,
+    partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, spot_radius, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm,
                                                                              iparams.partiality_model)
 
     refined_params = np.array([G,B,rotx,roty,ry,rz,re,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])

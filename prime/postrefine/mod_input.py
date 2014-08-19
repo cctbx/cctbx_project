@@ -206,6 +206,9 @@ partiality_model = Lorentzian
 flag_volume_correction = True
   .type = bool
   .help = Turn volume correction on.
+flag_LP_correction = False
+  .type = bool
+  .help = Do Lorentz-factor and polarization correction.
 """)
 
 
@@ -250,7 +253,7 @@ def process_input(argv=None):
   with Capturing() as output:
     working_phil.show()
 
-  txt_out = 'prime.postrefine (140804a) input:\n'
+  txt_out = 'prime.postrefine (140818a) input:\n'
   for one_output in output:
     txt_out += one_output + '\n'
 
