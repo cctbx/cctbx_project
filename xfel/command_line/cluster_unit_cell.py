@@ -11,17 +11,24 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 def run(_args):
   if _args < 2:
     raise IOError("Must give at least one path to folder of pickles")
-
   ucs = Cluster.from_directories(_args.folders, "cxi_targt_uc")
 
-  fig = plt.figure("Andrews-Bernstein distance dendogram", figsize=(12, 8))
-  ax = plt.gca()
-  clusters, cluster_axes = ucs.ab_cluster(_args.t, log=_args.log, ax=ax,
-                                          write_file_lists=_args.files)
+  if not _args.noplot:
+    clusters, _ = ucs.ab_cluster(_args.t, log=_args.log,
+                               write_file_lists=_args.nofiles,
+                               fast=_args.fast,
+                               doplot=_args.noplot)
+  else:
+    plt.figure("Andrews-Bernstein distance dendogram", figsize=(12, 8))
+    ax = plt.gca()
+    clusters, cluster_axes = ucs.ab_cluster(_args.t, log=_args.log, ax=ax,
+                                            write_file_lists=_args.nofiles,
+                                            fast=_args.fast,
+                                            doplot=_args.noplot)
+    plt.tight_layout()
+    plt.show()
 
   print unit_cell_info(clusters)
-  plt.tight_layout()
-  plt.show()
 
 if __name__ == "__main__":
   import argparse
@@ -31,17 +38,20 @@ if __name__ == "__main__":
                       help='One or more folers containing integration pickles.')
   parser.add_argument('-t', type=float, default=5000,
                       help='threshold value for the clustering. Default = 5000')
-  parser.add_argument('-o', type=str, default='clustering',
-                      help='output file name for unit cells.')
-  parser.add_argument('--noplot', action='store_true',
+  parser.add_argument('--noplot', action='store_false',
                       help="Do not display plots")
   parser.add_argument('--log', action='store_true',
                     help="Display the dendrogram with a log scale")
-  parser.add_argument('--files', action='store_true', default=False,
+  parser.add_argument('--fast', action='store_true',
+                    help="Use euclidian distance only for increased speed."\
+                    "Risky!")
+  parser.add_argument('--nofiles', action='store_false',
                       help="Write files with lists of the images making up "
                            "each cluster")
   args = parser.parse_args()
   run(args)
+  #import cProfile
+  #cProfile.run('run(args)')
 #  parser.add_argument('-m', type=str, default='distance',
 #                      help='Clustering method for numpy clustering.')
 #  parser.add_argument('-l', type=str, default='single',
