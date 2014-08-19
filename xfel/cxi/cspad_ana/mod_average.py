@@ -3,7 +3,7 @@
 # $Id$
 """First- and second-order statistics for CS-PAD images
 
-The mod_average user analysis module computes the mean and the
+The mod_average user analysis module computes the (arithmetic) mean and the
 standard deviation from the images in an XTC stream.  On successful
 completion, the mean and standard deviation images are written to disk
 as pickled dictionaries.
@@ -27,6 +27,9 @@ class mod_average(average_tbx.average_mixin):
 
   def __init__(self,
                address,
+               max_out=None,
+               mean_out=None,
+               std_out=None,
                **kwds):
     """The mod_average class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -37,6 +40,53 @@ class mod_average(average_tbx.average_mixin):
     """
 
     super(mod_average, self).__init__(address=address, **kwds)
+
+    self._max_out = cspad_tbx.getOptString(max_out)
+    self._mean_out = cspad_tbx.getOptString(mean_out)
+    self._std_out = cspad_tbx.getOptString(std_out)
+
+    # XXX Ugly hack here instead of modifying avg_tbx.py
+    if max_out is not None:
+      self._have_max = True
+    if mean_out is not None:
+      self._have_mean = True
+    if std_out is not None:
+      self._have_std = True
+
+
+  def beginjob(self, evt, env):
+    """The beginjob() function does one-time initialisation from
+    event- or environment data.  It is called at an XTC configure
+    transition.
+
+    @param evt Event data object, a configure object
+    @param env Environment object
+    """
+
+    super(mod_average, self).beginjob(evt, env)
+
+    # XXX Potential problem if one uses stream substitution, which may
+    # change between the time of substitution, and the time the stream
+    # is written.  Since files are written in endjob() (which doesn't
+    # trigger on an event) substitutions cannot be made there.  Just
+    # note the caveats here, perhaps?
+
+#    print "*** P _mean_out : ", self._mean_out
+#    print "*** P _max_out  : ", self._max_out
+#    print "*** P _std_out  : ", self._std_out
+
+    if self._mean_out is not None:
+      self._mean_out = cspad_tbx.pathsubst(self._mean_out, evt, env)
+
+    if self._max_out is not None:
+      self._max_out = cspad_tbx.pathsubst(self._max_out, evt, env)
+
+    if self._std_out is not None:
+      self._std_out = cspad_tbx.pathsubst(self._std_out, evt, env)
+
+#    print "*** S _mean_out : ", self._mean_out
+#    print "*** S _max_out  : ", self._max_out
+#    print "*** S _std_out  : ", self._std_out
 
 
   def event(self, evt, env):
@@ -79,7 +129,8 @@ class mod_average(average_tbx.average_mixin):
 
     if stats['nmemb'] > 0:
       if self.avg_dirname  is not None or \
-         self.avg_basename is not None:
+         self.avg_basename is not None or \
+         self._mean_out    is not None:
         d = cspad_tbx.dpack(
           active_areas=self.active_areas,
           address=self.address,
@@ -91,11 +142,15 @@ class mod_average(average_tbx.average_mixin):
           saturated_value=saturated_value,
           timestamp=cspad_tbx.evt_timestamp(stats['time']),
           wavelength=stats['wavelength'])
-        p = cspad_tbx.dwritef(d, self.avg_dirname, self.avg_basename)
+        if self._mean_out is not None:
+          p = cspad_tbx.dwritef2(d, self._mean_out)
+        else:
+          p = cspad_tbx.dwritef(d, self.avg_dirname, self.avg_basename)
         self.logger.info("Average written to %s" % p)
 
       if self.stddev_dirname  is not None or \
-         self.stddev_basename is not None:
+         self.stddev_basename is not None or \
+         self._std_out    is not None:
         d = cspad_tbx.dpack(
           active_areas=self.active_areas,
           address=self.address,
@@ -107,11 +162,15 @@ class mod_average(average_tbx.average_mixin):
           saturated_value=saturated_value,
           timestamp=cspad_tbx.evt_timestamp(stats['time']),
           wavelength=stats['wavelength'])
-        p = cspad_tbx.dwritef(d, self.stddev_dirname, self.stddev_basename)
+        if self._std_out is not None:
+          p = cspad_tbx.dwritef2(d, self._std_out)
+        else:
+          p = cspad_tbx.dwritef(d, self.stddev_dirname, self.stddev_basename)
         self.logger.info("Standard deviation written to %s" % p)
 
       if self.max_dirname  is not None or \
-         self.max_basename is not None:
+         self.max_basename is not None or \
+         self._max_out    is not None:
         d = cspad_tbx.dpack(
           active_areas=self.active_areas,
           address=self.address,
@@ -123,7 +182,10 @@ class mod_average(average_tbx.average_mixin):
           saturated_value=saturated_value,
           timestamp=cspad_tbx.evt_timestamp(stats['time']),
           wavelength=stats['wavelength'])
-        p = cspad_tbx.dwritef(d, self.max_dirname, self.max_basename)
+        if self._max_out is not None:
+          p = cspad_tbx.dwritef2(d, self._max_out)
+        else:
+          p = cspad_tbx.dwritef(d, self.max_dirname, self.max_basename)
         self.logger.info("Max written to %s" % p)
 
     if stats['nfail'] == 0:
