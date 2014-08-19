@@ -237,7 +237,7 @@ class Cluster:
 
   def ab_cluster(self, threshold=10000, method='distance',
                  linkage_method='single', log=False,
-                 ax=None, write_file_lists=True, fast=False):
+                 ax=None, write_file_lists=True, fast=False, doplot=True):
     """
     Hierarchical clustering using the unit cell dimentions.
 
@@ -254,8 +254,7 @@ class Cluster:
       around symmetry boundaries.
     """
 
-    logging.info("Hierarchical clustering of unit cells using Andrews-Bernstein"
-                 "Distance from Andrews & Bernstein J Appl Cryst 47:346 (2014)")
+    logging.info("Hierarchical clustering of unit cells")
     import scipy.spatial.distance as dist
     import scipy.cluster.hierarchy as hcluster
 
@@ -264,22 +263,24 @@ class Cluster:
                          for image in self.members])
 
     # 2. Do hierarchichal clustering, using the find_distance method above.
-
-    pair_distances = dist.pdist(g6_cells,
+    if fast:
+      logging.info("Using Euclidean distance")
+      pair_distances = dist.pdist(g6_cells, metric='euclidean')
+      logging.info("Distances have been calculated")
+      this_linkage = hcluster.linkage(pair_distances,
+                                      method=linkage_method,
+                                      metric='euclidean')
+    else:
+      logging.info("Using Andrews-Bernstein distance from Andrews & Bernstein "
+                   "J Appl Cryst 47:346 (2014)")
+      pair_distances = dist.pdist(g6_cells,
                                 metric=lambda a, b: NCDist(a, b))
-    ''' replace with:
-       X = g6_cells
-            k = 0
-        for i in xrange(0, m - 1):
-            for j in xrange(i + 1, m):
-                dm[k] = dfun(X[i], X[j])
-                k = k + 1
+      logging.info("Distances have been calculated")
+      this_linkage = hcluster.linkage(pair_distances,
+                                      method=linkage_method,
+                                      metric=lambda a, b: NCDist(a, b))
 
-    '''
-    logging.debug("Distances have been calculated")
-    this_linkage = hcluster.linkage(pair_distances,
-                                    method=linkage_method,
-                                    metric=lambda a, b: NCDist(a, b))
+
     cluster_ids = hcluster.fcluster(this_linkage,
                                     threshold,
                                     criterion=method)
@@ -309,29 +310,32 @@ class Cluster:
     # 3.5 optionally write out the clusters to files.
     if write_file_lists:
       for cluster in sub_clusters:
-        cluster.dump_file_list(out_file_name=".lst".format(cluster.cname))
+        if len(cluster.members) > 1:
+          cluster.dump_file_list(out_file_name="{}.lst".format(cluster.cname))
 
-    # 4. Plot a dendogram to the axes if no axis is passed, otherwise just
-    #    return the axes object
-    if ax is None:
-      fig = plt.figure("Distance Dendogram")
-      ax = fig.gca()
-      direct_visualisation = True
-    else:
-      direct_visualisation = False
+    if doplot:
+      # 4. Plot a dendogram to the axes if no axis is passed, otherwise just
+      #    return the axes object
+      if ax is None:
+        fig = plt.figure("Distance Dendogram")
+        ax = fig.gca()
+        direct_visualisation = True
+      else:
+        direct_visualisation = False
 
-    hcluster.dendrogram(this_linkage,
-                        labels=[image.name for image in self.members],
-                        leaf_font_size=8, leaf_rotation=90.0,
-                        color_threshold=threshold, ax=ax)
-    if log:
-      ax.set_yscale("log")
-    else:
-      ax.set_ylim(-ax.get_ylim()[1] / 100, ax.get_ylim()[1])
+      hcluster.dendrogram(this_linkage,
+                          labels=[image.name for image in self.members],
+                          leaf_font_size=8, leaf_rotation=90.0,
+                          color_threshold=threshold, ax=ax)
 
-    if direct_visualisation:
-      fig.savefig("{}_dendogram.pdf".format(self.cname))
-      plt.show()
+      if log:
+        ax.set_yscale("symlog", linthreshx=(-1,1))
+      else:
+        ax.set_ylim(-ax.get_ylim()[1] / 100, ax.get_ylim()[1])
+
+      if direct_visualisation:
+        fig.savefig("{}_dendogram.pdf".format(self.cname))
+        plt.show()
 
     return sub_clusters, ax
 
@@ -344,7 +348,7 @@ class Cluster:
     if out_file_name is None:
       out_file_name = self.cname
 
-    with open("{}.members".format(out_file_name), 'wb') as outfile:
+    with open(out_file_name, 'wb') as outfile:
       for i in self.members:
         outfile.write(i.path + "\n")
 
