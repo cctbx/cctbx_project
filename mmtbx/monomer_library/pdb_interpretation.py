@@ -163,6 +163,10 @@ master_params_str = """\
     rna_dna_basepair_parallelity_sigma = 0.027
       .type = float
       .short_caption = sigma for basepaired parallelity
+    rna_dna_basepair_planarity_enabled = False
+      .type = bool
+    rna_dna_basepair_planarity_sigma = 0.12
+      .type = float
     link_residues = False
       .type = bool
     inter_residue_bond_cutoff = 2.5
@@ -2392,7 +2396,8 @@ class build_chain_proxies(object):
                   result = diff_dist < 2.5 and max_dist < 8
                   if not result:
                     print "Rejecting parallelity for ", m_i.pdb_residue_id_str, m_j.pdb_residue_id_str,
-                    print "%5.2f %5.2f %5.2f" % ( diff_dist, max_dist, min_dist)
+                    print "%5.2f %5.2f %5.2f" % ( diff_dist, max_dist, min_dist),
+                    print " in additional check (skip_additional_check_on_dna_rna)"
                   return result
                 if additional_check(prev_mm, mm) or skip_additional_check_on_dna_rna:
                   link_resolution = add_parallelity_proxies(
@@ -4526,6 +4531,8 @@ class build_all_chain_proxies(linking_mixins):
       if getattr(al_params, attr, False):
         any_links = True
         break
+    if al_params.link_dna_rna:
+      any_links = True
     if any_links:
       hbonds_in_bond_list = self.process_nonbonded_for_links(
         bond_params_table,
@@ -4563,6 +4570,34 @@ class build_all_chain_proxies(linking_mixins):
           self.geometry_proxy_registries.parallelity.add_if_not_duplicated(
               proxy=proxy)
         self.geometry_proxy_registries.parallelity.discard_table()
+      if al_params.rna_dna_basepair_planarity_enabled:
+        from iotbx.pdb import residue_name_plus_atom_names_interpreter
+        # Do planarity restraints for 'horizontal' basepairing
+        self.geometry_proxy_registries.planarity.initialize_table()
+        for bond_seqs in hbonds_in_bond_list:
+          r1 = self.pdb_atoms[bond_seqs[0]].parent()
+          r2 = self.pdb_atoms[bond_seqs[1]].parent()
+          i_seqs = []
+          for r in [r1, r2]:
+            rnpani = residue_name_plus_atom_names_interpreter(
+              r.resname, r.atoms().extract_name(),return_mon_lib_dna_name=True)
+            cif_object = self.mon_lib_srv.get_comp_comp_id_direct(
+              rnpani.work_residue_name)
+            planes = cif_object.get_planes()
+            plengths = [len(x.plane_atoms) for x in planes]
+            nmax = plengths.index(max(plengths))
+            for a in planes[nmax].plane_atoms:
+              aname = a.atom_id
+              aname = aname.replace("*","'")
+              a = r.get_atom(aname)
+              if a is not None:
+                i_seqs.append(r.get_atom(aname).i_seq)
+          proxy = geometry_restraints.planarity_proxy(
+            i_seqs=i_seqs,
+            weights=[1./al_params.rna_dna_basepair_planarity_sigma**2]*len(i_seqs))
+          self.geometry_proxy_registries.planarity.add_if_not_duplicated(
+              proxy=proxy)
+        self.geometry_proxy_registries.planarity.discard_table()
 
     if len(hbonds_in_bond_list) == 0:
       hbonds_in_bond_list = None
