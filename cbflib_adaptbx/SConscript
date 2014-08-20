@@ -18,11 +18,17 @@ env_etc.cbflib_common_includes = [
   env_etc.cbflib_include[1], # for the cbflib c-files
 ]
 
-# for the hdf5.h file
+# for the hdf5.h file - look at where Python is coming from unless is OS X
+# framework build... messy but appears to work on Linux and OS X
 
-cctbx_include_root = os.path.split(env_etc.python_include)[0]
-if os.path.exists(os.path.join(cctbx_include_root, 'hdf5.h')):
-  env_etc.cbflib_common_includes.append(cctbx_include_root)
+include_root = os.path.split(env_etc.python_include)[0]
+if 'Python.framework' in include_root:
+  include_root = os.path.join(
+    include_root.split('Python.framework')[0], 'include')
+if os.path.exists(os.path.join(include_root, 'hdf5.h')):
+  env_etc.cbflib_common_includes.append(include_root)
+else:
+  raise RuntimeError, 'cannot build CBFlib without hdf5.h'
 
 env = env_base.Clone(
   SHLINKFLAGS=env_etc.shlinkflags)
