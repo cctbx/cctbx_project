@@ -237,7 +237,8 @@ class Cluster:
 
   def ab_cluster(self, threshold=10000, method='distance',
                  linkage_method='single', log=False,
-                 ax=None, write_file_lists=True, fast=False, doplot=True):
+                 ax=None, write_file_lists=True, fast=False, doplot=True,
+                 labels='default'):
     """
     Hierarchical clustering using the unit cell dimentions.
 
@@ -314,6 +315,12 @@ class Cluster:
           cluster.dump_file_list(out_file_name="{}.lst".format(cluster.cname))
 
     if doplot:
+      if labels == 'default':
+        if len(self.members) > 100:
+          labels = ['' for _ in self.members]
+        else:
+          labels = [image.name for image in self.members]
+
       # 4. Plot a dendogram to the axes if no axis is passed, otherwise just
       #    return the axes object
       if ax is None:
@@ -324,7 +331,7 @@ class Cluster:
         direct_visualisation = False
 
       hcluster.dendrogram(this_linkage,
-                          labels=[image.name for image in self.members],
+                          labels=labels,
                           leaf_font_size=8, leaf_rotation=90.0,
                           color_threshold=threshold, ax=ax)
 
