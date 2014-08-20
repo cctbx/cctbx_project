@@ -5,14 +5,13 @@ chemical environments.
 """
 
 from __future__ import division
-
-from collections import Counter
-
 from mmtbx import ions
 from iotbx.pdb import common_residue_names_get_class as get_class
+from cctbx.eltbx import sasaki
 from scitbx.matrix import col
 from libtbx.utils import Sorry
 from libtbx import slots_getstate_setstate
+from collections import Counter
 
 # Enums for the chemical environments supported by this module
 N_SUPPORTED_ENVIRONMENTS = 14
@@ -85,30 +84,45 @@ class ScatteringEnvironment (slots_getstate_setstate):
     self.d_min = manager.fmodel.f_obs().d_min()
     self.wavelength = manager.wavelength
     self.fp, self.fpp = manager.get_fp(i_seq), manager.get_fpp(i_seq)
+    site_frac = manager.unit_cell.fractionalize(atom.xyz)
     if (fo_density is not None) :
       self.fo_density = fo_density
     else :
-      self.fo_density = ions.utils.fit_gaussian(manager.unit_cell, atom.xyz, fo_map)
+      self.fo_density = ions.utils.fit_gaussian(manager.unit_cell, atom.xyz,
+        fo_map)
     if (fofc_density is not None) :
       self.fofc_density = fofc_density
     else :
-      self.fofc_density = (
-        fofc_map.eight_point_interpolation(manager.unit_cell.fractionalize(atom.xyz)),
-        0,
-        )
+      self.fofc_density = (fofc_map.eight_point_interpolation(site_frac), 0,)
     if anom_density is not None:
       self.anom_density = anom_density
     elif anom_map is not None:
-      self.anom_density = (
-        anom_map.eight_point_interpolation(manager.unit_cell.fractionalize(atom.xyz)),
-        0,
-        )
+      self.anom_density = (anom_map.eight_point_interpolation(site_frac), 0,)
     else:
       self.anom_density = None, None
     self.b_iso = manager.get_b_iso(i_seq)
     self.b_mean_hoh = manager.b_mean_hoh
     self.occ = atom.occ
     self.pai = manager.principal_axes_of_inertia(i_seq).center_of_mass()
+
+# TODO
+#  def is_outlier (self, element) :
+#    """
+#    Indicate whether the scattering is consistent with the given element (which
+#    is assumed to be the refined scattering type).
+#    """
+#    flags = []
+#    fp_fdp = None
+#    if (self.wavelength is not None) :
+#      table = sasaki.table(element)
+#      fp_fdp = table.at_angstrom(self.wavelength)
+#    if (self.fpp is not None) :
+#      if (fp_fdp is not None) :
+#        fdp_expected = fp_fdp.fdp()
+#        if (self.fpp > fdp_expected*1.2) :
+#          flags.append(flag_anom_high
+#    if (self.anom_density is not None) :
+#      if (fp_fdp.wave
 
 class atom_contact (slots_getstate_setstate) :
   """

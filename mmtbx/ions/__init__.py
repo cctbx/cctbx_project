@@ -12,15 +12,14 @@ Notes
 """
 
 from __future__ import division
-
-from math import exp
-import time
-import os
-
 import iotbx.cif
 from libtbx import group_args, Auto, slots_getstate_setstate
 from libtbx.utils import Sorry
 from libtbx import group_args
+from math import exp
+import time
+import os
+import sys
 
 DEFAULT_IONS = ["MG", "CA", "ZN", "CL"]
 HALIDES = ["F", "CL", "BR", "IOD"]
@@ -488,3 +487,93 @@ def check_supported (elements):
 
 # global parameter_server instance
 server = parameter_server()
+
+class atom_type_flags (object) :
+  """
+  Simple container for information about the identity of an atom via a set of
+  enumerated boolean flags.  The responsibility for toggling these flags based
+  on analysis of the site is left to external code.
+
+  Parameters
+  ----------
+  name: element symbol or HOH
+
+  Examples
+  --------
+  >>> flags = atom_type_flags("HOH")
+  >>> if (fofc_map_value > 3.0) :
+  ...   flags.high_fofc = True
+  """
+  flag_names_and_labels = [
+    # these flags usually indicate a heavier atom type
+    ("low_b_iso", "Abnormally low B-factor"),
+    ("high_occ", "Abnormally high occupancy"),
+    ("high_fofc", "mFo-DFc peak"),
+    ("high_two_fofc", "Abnormally high 2mFo-DFc map value"),
+    ("high_anom", "Anomalous map peak"),
+    ("high_fdp", "Abnormally high refined f''"),
+    # the next set suggest a lighter element (or water, or nothing)
+    ("high_b_iso", "Abnormally high B-factor"),
+    ("low_occ", "Abnormally low occupancy"),
+    ("low_two_fofc", "Low 2mFo-DFc map value"),
+    ("low_fofc", "mFo-DFc hole"),
+    ("low_anom", "Poor anomalous map value"),
+    ("low_fdp", "Abnormally low refined f''"),
+    #
+    ("bad_geom", "Unexpected coordination geometry"),
+    ("missing_geom", "No recognizable coordination geometry"),
+    ("bad_vectors", "Bad coordination vectors"),
+    ("bad_valence", "Bad bond valence sum"),
+    ("too_few_non_waters", "Too few non-water coordinating atoms"),
+    ("too_few_coord", "Too few coordinating atoms"),
+    ("too_many_coord", "Too many coordinating atoms"),
+    ("like_coord", "Coordinating atom of same charge"),
+    ("bad_coord_atom", "Disallowed or unusual coordinating atom"),
+    ("bad_coord_residue", "Disallowed or unusual coordinating residue"),
+    ("very_bad_valence", "Very bad bond valence sum"),
+    ("bad_halide", "Poor halide site"),
+    ("coord_geom",
+      "Appears to be coordinating another site with distinct geometry"),
+    ("close_contact", "Unusually close contact to oxygen atom"),
+  ]
+  __slots__ = [ fl for (fl, label) in flag_names_and_labels ] + ["name"]
+  def __init__ (self, name) :
+    self.name = name
+    for attr in self.__slots__[:-1] :
+      setattr(self, attr, False)
+
+  def get_flag_captions (self) :
+    """
+    Retrieve a list of strings describing the issues that have been identified.
+    These will have '+++' or '---' appended if they indicate that the actual
+    element is heavier or lighter than the current refined scatterer type.
+    """
+    captions = []
+    for i_attr, attr in enumerate(self.__slots__[:-1]) :
+      if getattr(self, attr) :
+        if (i_attr < 6) : # probably something heavier
+          captions.append("%s (+++)" % self.flag_names_and_labels[i_attr][1])
+        elif (6 <= i_attr < 12) : # probably something lighter
+          captions.append("%s (---)" % self.flag_names_and_labels[i_attr][1])
+        else :
+          captions.append(self.flag_names_and_labels[i_attr][1])
+    return captions
+
+  def show (self, out=sys.stdout, prefix="") :
+    """
+    Print out a list of all issues that have been identified.
+    """
+    captions = self.get_flag_captions()
+    if (len(captions) == 0) :
+      print >> out, prefix+"(No problems detected.)"
+    else :
+      print >> out, prefix+"The following problems were detected with %s:" %\
+        self.name
+      have_plus = have_minus = False
+      for caption in caption :
+        print >> out, prefix+"  %s" % caption
+        if ("---" in caption) : have_minus = True
+        elif ("+++" in caption) : have_plus = True
+      if (have_plus or have_minus) :
+        print >> out, prefix+\
+          "(+++ indicates a heavier element, --- indicates a lighter one)"
