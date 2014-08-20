@@ -10,10 +10,8 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, date_and_time, plural_s
 from cStringIO import StringIO
-import warnings
 import random
 import os
-import sys
 
 def run(
       args,

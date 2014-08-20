@@ -20,7 +20,6 @@ with the latest source, which should speed up installer generation.
 
 from __future__ import division
 from optparse import OptionParser
-from cStringIO import StringIO
 import os.path as op
 import shutil
 import time

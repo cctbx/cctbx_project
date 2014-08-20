@@ -1,5 +1,6 @@
 """ Module for working with single images in a serial crystallography
 dataset"""
+from __future__ import division
 from libtbx import easy_pickle
 from scitbx.matrix import sqr
 from cctbx.uctbx import unit_cell

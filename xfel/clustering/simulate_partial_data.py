@@ -3,6 +3,7 @@
 This module contains tools for simulating partial integration data. In
 particular, it is intended to help test XFEL data merging tools.
 """
+from __future__ import division
 
 from iotbx import mtz
 import cctbx.miller
@@ -187,5 +188,3 @@ if __name__ == '__main__':
                       'noise as a fraction of the partial intensity.')
   args = parser.parse_args()
   run(args)
-
-
