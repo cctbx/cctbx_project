@@ -1,3 +1,25 @@
+
+"""
+This module provides a generic frontend to all of the reflection file formats
+supported in ``iotbx``.  Note that this module can also be used indirectly via
+the even more generic :py:mod:`iotbx.file_reader` module, which provides
+a unified API for reading in any file (but calls
+:py:class:`iotbx.reflection_file_reader.any_reflection_file` internally).
+
+Note that the underlying formats do not always contain complete information
+about the crystal or even the data type.  SHELX format is especially
+problematic as it not only omits crystal symmetry, but the same format may be
+used to store either amplitudes or intensities, without any distinguishing
+features.  As a crude workaround for the latter problem, the data type may be
+specified as part of the file name::
+
+  hkl_file = any_reflection_file("data.hkl=hklf4")
+  hkl_file = any_reflection_file("data.hkl=intensities")
+
+Other formats (CNS, unmerged Scalepack) may have incomplete or missing crystal
+symmetry.  MTZ, XDS, and (usually) CIF files will be more complete.
+"""
+
 from __future__ import division
 from iotbx import mtz
 from iotbx.scalepack import merge as scalepack_merge
@@ -96,6 +118,20 @@ def try_all_readers(file_name):
 
 
 class any_reflection_file(object):
+  """
+  Proxy object for reading a reflection file of unspecified format, and
+  extracting the Miller arrays contained therein.
+
+  Examples
+  --------
+  >>> from iotbx.reflection_file_reader import any_reflection_file
+  >>> hkl_file = any_reflection_file("data.mtz")
+  >>> print hkl_file.file_type()
+  'ccp4_mtz'
+  >>> print type(hkl_file.file_content())
+  <class 'iotbx_mtz_ext.object'>
+  >>> miller_arrays = hkl_file.as_miller_arrays()
+  """
 
   def __init__(self, file_name, ensure_read_access=True, strict=True):
     # strict is no longer used
@@ -140,12 +176,15 @@ class any_reflection_file(object):
         file_name=file_name)
 
   def file_name(self):
+    """Returns the file name."""
     return self._file_name
 
   def file_type(self):
+    """Return a string specifying the format type (e.g. 'ccp4_mtz')."""
     return self._file_type
 
   def file_content(self):
+    """Return the underlying format-specific object."""
     return self._file_content
 
   def as_miller_arrays(self,
@@ -154,6 +193,23 @@ class any_reflection_file(object):
         merge_equivalents=True,
         base_array_info=None,
         assume_shelx_observation_type_is=None):
+    """
+    Convert the contents of the reflection file into a list of
+    :py:class:`cctbx.miller.array` objects, each of which may contain multiple
+    columns of data from the underlying file.  By default this will
+    automatically merge redundant observations to obtain a unique set under
+    symmetry.
+
+    :param crystal_symmetry: :py:class:`cctbx.crystal.symmetry` object
+      (defaults to using internally specified symmetry, if any)
+    :param force_symmetry: TODO
+    :param merge_equivalents: merge redundant obervations (default=True)
+    :param base_array_info: :py:class:`cctbx.miller.array_info` object
+      containing basic information to be propagated to the arrays
+    :param assume_shelx_observation_type_is: if specified, instead of raising
+      an exception if the SHELX file type is not known from the file name plus
+      data type tag, the function will force the specified data type.
+    """
     assert (assume_shelx_observation_type_is in
             [None, "amplitudes", "intensities"])
     if (self._file_type is None):

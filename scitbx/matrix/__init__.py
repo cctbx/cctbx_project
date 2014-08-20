@@ -791,7 +791,8 @@ class col_mixin(object):
 class col(col_mixin, rec):
     """
     Class type built on top of rec and col_mixin, allows for single-dimensional
-    vectors.
+    vectors.  This is especially convenient when working with 3D coordinate
+    data in Python.
 
     Examples
     --------
@@ -968,6 +969,17 @@ def rotate_point_around_axis(
       point,
       angle,
       deg=False):
+  """
+  Rotate a 3D coordinate about a given arbitrary axis by the specified angle.
+
+  :param axis_point_1: tuple representing 3D coordinate at one end of the axis
+  :param axis_point_2: tuple representing 3D coordinate at other end of the axis
+  :param point: tuple representing 3D coordinate of starting point to rotate
+  :param angle: rotation angle (defaults to radians)
+  :param deg: Python boolean (default=False), specifies whether the angle is
+    in degrees
+  :returns: Python tuple (len=3) of rotated point
+  """
   if (deg): angle *= math.pi/180.
   xa,ya,za = axis_point_1
   xb,yb,zb = axis_point_2
@@ -1000,6 +1012,24 @@ def rotate_point_around_axis(
   return (x_new,y_new,z_new)
 
 class rt(object):
+  """
+  Object for representing associated rotation and translation matrices.  These
+  will usually be a 3x3 matrix and a 1x3 matrix, internally represented by
+  objects of type :py:class:`scitbx.matrix.sqr` and
+  :py:class:`scitbx.matrix.col`.  Transformations may be applied to
+  :py:module:`scitbx.array_family.flex` arrays using the overloaded
+  multiplication operator.
+
+  Examples
+  --------
+  >>> from scitbx.matrix import rt
+  >>> symop = rt((-1,0,0,0,1,0,0,0,-1), (0,0.5,0)) # P21 symop
+  >>> from scitbx.array_family import flex
+  >>> sites_frac = flex.vec3_double([(0.1,0.1,0.1), (0.1,0.2,0.3)])
+  >>> sites_symm = symop * sites_frac
+  >>> print list(sites_symm)
+  [(-0.1, 0.6, -0.1), (-0.1, 0.7, -0.3)]
+  """
 
   def __init__(self, tuple_r_t):
     if (hasattr(tuple_r_t[0], "elems")):

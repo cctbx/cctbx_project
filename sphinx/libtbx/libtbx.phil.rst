@@ -5,7 +5,6 @@ libtbx.phil - Python-based hierarchical interchange language
 :Author: Ralf W. Grosse-Kunstleve
 
 .. contents:: Sections
-.. section-numbering::
 
 **Links**
 
