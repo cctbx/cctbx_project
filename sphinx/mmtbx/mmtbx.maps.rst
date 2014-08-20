@@ -44,38 +44,6 @@ mmtbx.maps.superpose module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.maps.tst_composite_omit_map module
-----------------------------------------
-
-.. automodule:: mmtbx.maps.tst_composite_omit_map
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.maps.tst_composite_omit_map_2 module
-------------------------------------------
-
-.. automodule:: mmtbx.maps.tst_composite_omit_map_2
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.maps.tst_composite_omit_map_3 module
-------------------------------------------
-
-.. automodule:: mmtbx.maps.tst_composite_omit_map_3
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.maps.tst_utils module
----------------------------
-
-.. automodule:: mmtbx.maps.tst_utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 mmtbx.maps.utils module
 -----------------------
 

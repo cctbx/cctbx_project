@@ -4,14 +4,6 @@ mmtbx.ligands package
 Submodules
 ----------
 
-mmtbx.ligands.tst_xtal_screens module
--------------------------------------
-
-.. automodule:: mmtbx.ligands.tst_xtal_screens
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 mmtbx.ligands.xtal_screens module
 ---------------------------------
 

@@ -44,23 +44,6 @@ mmtbx.rotamer.sidechain_angles module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.rotamer.tst_geostd_vs_sidechain_angles_props module
----------------------------------------------------------
-
-.. automodule:: mmtbx.rotamer.tst_geostd_vs_sidechain_angles_props
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.rotamer.tst_rotamer_eval module
--------------------------------------
-
-.. automodule:: mmtbx.rotamer.tst_rotamer_eval
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 

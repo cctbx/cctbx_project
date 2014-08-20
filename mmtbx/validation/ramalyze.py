@@ -116,6 +116,10 @@ class ramachandran_ensemble (residue) :
     pass
 
 class ramalyze (validation) :
+  """
+  Frontend for calculating Ramachandran statistics for a model.  Can directly
+  generate the corresponding plots.
+  """
   __slots__ = validation.__slots__ + ["out_percent", "fav_percent",
     "n_allowed", "n_favored", "n_type", "_outlier_i_seqs" ]
   program_description = "Analyze protein backbone ramachandran"
@@ -271,6 +275,12 @@ class ramalyze (validation) :
     self.fav_percent = fav_percent * 100.0
 
   def write_plots (self, plot_file_base, out) :
+    """
+    Write a set of six PNG images representing the plots for each residue type.
+
+    :param plot_file_base: file name prefix
+    :param out: log filehandle
+    """
     from mmtbx.validation import utils
     print >> out, ""
     print >> out, "Creating images of plots..."

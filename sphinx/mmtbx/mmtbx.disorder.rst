@@ -20,31 +20,6 @@ mmtbx.disorder.backbone module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.disorder.tst module
--------------------------
-
-.. automodule:: mmtbx.disorder.tst
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.disorder.tst_analyze_model module
----------------------------------------
-
-.. automodule:: mmtbx.disorder.tst_analyze_model
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.disorder.tst_backbone module
-----------------------------------
-
-.. automodule:: mmtbx.disorder.tst_backbone
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 

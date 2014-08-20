@@ -28,31 +28,6 @@ mmtbx.ncs.restraints module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.ncs.tst_asu_as_one_ncs_copy module
-----------------------------------------
-
-.. automodule:: mmtbx.ncs.tst_asu_as_one_ncs_copy
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.ncs.tst_restraints module
--------------------------------
-
-.. automodule:: mmtbx.ncs.tst_restraints
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.ncs.tst_restraints_2 module
----------------------------------
-
-.. automodule:: mmtbx.ncs.tst_restraints_2
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 

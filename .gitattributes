@@ -2788,7 +2788,6 @@ sphinx/cctbx/cctbx.omz.pdb_dev.rst -text
 sphinx/cctbx/cctbx.omz.rst -text
 sphinx/cctbx/cctbx.omz.tardy_adaptor.rst -text
 sphinx/cctbx/cctbx.r_free_utils.rst -text
-sphinx/cctbx/cctbx.regression.rst -text
 sphinx/cctbx/cctbx.rst -text
 sphinx/cctbx/cctbx.run_examples.rst -text
 sphinx/cctbx/cctbx.run_tests.rst -text
@@ -2915,6 +2914,7 @@ sphinx/mmtbx/mmtbx.den.rst -text
 sphinx/mmtbx/mmtbx.density_modification.rst -text
 sphinx/mmtbx/mmtbx.disorder.rst -text
 sphinx/mmtbx/mmtbx.dynamics.rst -text
+sphinx/mmtbx/mmtbx.f_model.rst -text
 sphinx/mmtbx/mmtbx.geometry.rst -text
 sphinx/mmtbx/mmtbx.geometry_restraints.rst -text
 sphinx/mmtbx/mmtbx.hydrogens.rst -text
@@ -2936,6 +2936,7 @@ sphinx/mmtbx/mmtbx.masks.rst -text
 sphinx/mmtbx/mmtbx.max_lik.rst -text
 sphinx/mmtbx/mmtbx.monomer_library.rst -text
 sphinx/mmtbx/mmtbx.ncs.rst -text
+sphinx/mmtbx/mmtbx.pdbtools.rst -text
 sphinx/mmtbx/mmtbx.polygon.rst -text
 sphinx/mmtbx/mmtbx.real_space.rst -text
 sphinx/mmtbx/mmtbx.refinement.ensemble_refinement.rst -text

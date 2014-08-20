@@ -55,14 +55,6 @@ Submodules
    cctbx.examples.sub_group_graph
    cctbx.examples.symops_530
    cctbx.examples.trigonal_r_vs_tetragonal_i
-   cctbx.examples.tst_exp_i_alpha_derivatives
-   cctbx.examples.tst_g_exp_i_alpha_derivatives
-   cctbx.examples.tst_phase_o_phrenia
-   cctbx.examples.tst_space_subgroups
-   cctbx.examples.tst_structure_factor_derivatives
-   cctbx.examples.tst_structure_factor_derivatives_2
-   cctbx.examples.tst_structure_factor_derivatives_3
-   cctbx.examples.tst_structure_factor_derivatives_4
    cctbx.examples.unit_cell_minimizers
    cctbx.examples.unit_cell_refinement
    cctbx.examples.view_fft_map

@@ -9,8 +9,13 @@ encapsulated in the top-level mmtbx.command_line module, and simplify the
 process of loading models and data to just a few lines of code for each new
 application.
 
-.. autofunction:: mmtbx.command_line.generate_master_phil_with_inputs
-.. autoclass:: mmtbx.command_line.load_model_and_data
+API documentation
+-----------------
+
+.. automodule:: mmtbx.command_line
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 A more complex example, which identifies suspect ligands based on electron
 density:
@@ -44,11 +49,3 @@ density:
   ...   min_acceptable_cc=params.min_acceptable_cc,
   ...   log=log)
   ...
-
-Module contents
----------------
-
-.. automodule:: mmtbx.command_line
-    :members:
-    :undoc-members:
-    :show-inheritance:

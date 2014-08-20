@@ -20,15 +20,6 @@ mmtbx.hydrogens.find module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.hydrogens.tst module
---------------------------
-
-.. automodule:: mmtbx.hydrogens.tst
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 

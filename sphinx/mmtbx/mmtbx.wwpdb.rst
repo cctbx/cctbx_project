@@ -20,30 +20,6 @@ mmtbx.wwpdb.standard_geometry_cif module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.wwpdb.tst_rcsb_web_services module
-----------------------------------------
-
-.. automodule:: mmtbx.wwpdb.tst_rcsb_web_services
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.wwpdb.tst_standard_geometry_cif module
---------------------------------------------
-
-.. automodule:: mmtbx.wwpdb.tst_standard_geometry_cif
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.wwpdb.tst_utils module
-----------------------------
-
-.. automodule:: mmtbx.wwpdb.tst_utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 mmtbx.wwpdb.utils module
 ------------------------
 

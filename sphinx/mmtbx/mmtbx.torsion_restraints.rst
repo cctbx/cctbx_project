@@ -28,22 +28,6 @@ mmtbx.torsion_restraints.torsion_ncs module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.torsion_restraints.tst_reference_model module
----------------------------------------------------
-
-.. automodule:: mmtbx.torsion_restraints.tst_reference_model
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.torsion_restraints.tst_torsion_ncs module
------------------------------------------------
-
-.. automodule:: mmtbx.torsion_restraints.tst_torsion_ncs
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 mmtbx.torsion_restraints.utils module
 -------------------------------------
 

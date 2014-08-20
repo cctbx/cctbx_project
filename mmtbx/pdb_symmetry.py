@@ -1,5 +1,11 @@
-from __future__ import division
 
+"""
+Create a simple table of crystal symmetry in structures deposited in the PDB.
+This can be used for comparison with "novel" datasets, possibly indicating
+whether a crystallized is actually a previously characterized contaminant.
+"""
+
+from __future__ import division
 import libtbx.load_env
 from libtbx import easy_pickle
 from libtbx import group_args

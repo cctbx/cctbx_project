@@ -27,30 +27,6 @@ mmtbx.building.make_library module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.building.tst module
--------------------------
-
-.. automodule:: mmtbx.building.tst
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.building.tst_extend_sidechains module
--------------------------------------------
-
-.. automodule:: mmtbx.building.tst_extend_sidechains
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.building.tst_make_library module
---------------------------------------
-
-.. automodule:: mmtbx.building.tst_make_library
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 Module contents
 ---------------

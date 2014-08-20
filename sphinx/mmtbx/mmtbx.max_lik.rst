@@ -20,31 +20,6 @@ mmtbx.max_lik.maxlik module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.max_lik.tst_max_lik module
---------------------------------
-
-.. automodule:: mmtbx.max_lik.tst_max_lik
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.max_lik.tst_maxlik module
--------------------------------
-
-.. automodule:: mmtbx.max_lik.tst_maxlik
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.max_lik.tst_maxlik_comprehensive module
----------------------------------------------
-
-.. automodule:: mmtbx.max_lik.tst_maxlik_comprehensive
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 

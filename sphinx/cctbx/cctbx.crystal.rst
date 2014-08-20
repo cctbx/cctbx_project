@@ -13,8 +13,6 @@ Submodules
    cctbx.crystal.distance_based_connectivity
    cctbx.crystal.find_best_cell
    cctbx.crystal.reindex
-   cctbx.crystal.tst_distance_based_connectivity
-   cctbx.crystal.tst_ext
 
 Module contents
 ---------------
