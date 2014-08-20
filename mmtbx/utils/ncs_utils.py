@@ -710,23 +710,23 @@ def remove_items_from_selection(selection,remove):
   new_selection = [x for x in selection if not (x in remove)]
   return flex.size_t(new_selection)
 
-def turn_copy_to_master(ncs_restraints_group_list,copies_list):
+def change_ncs_groups_master(ncs_restraints_group_list,new_masters):
   """
-  Switch master NCS copy with one of the copies, as specified in the copies_list
+  Switch master NCS copy with one of the copies, as specified in the new_masters
 
   Args:
     ncs_restraints_group_list: list of ncs restraints group objects
-    copies_list (list of integers): the number of the copy, in each group,
+    new_masters (list of integers): the number of the copy, in each group,
     that will become the new master
 
   Returns:
     Modified ncs_restraints_group_list
   """
-  assert isinstance(copies_list,list)
-  assert len(ncs_restraints_group_list) == len(copies_list)
+  assert isinstance(new_masters,list)
+  assert len(ncs_restraints_group_list) == len(new_masters)
   nrg_list = ncs_restraints_group_list_copy(ncs_restraints_group_list)
 
-  for nrg,c in zip(nrg_list,copies_list):
+  for nrg,c in zip(nrg_list,new_masters):
     # c for the master is 0 and for the first copy is 1
     if c == 0: continue
     c_i = c - 1
