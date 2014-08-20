@@ -724,9 +724,8 @@ def change_ncs_groups_master(ncs_restraints_group_list,new_masters):
   """
   assert isinstance(new_masters,list)
   assert len(ncs_restraints_group_list) == len(new_masters)
-  nrg_list = ncs_restraints_group_list_copy(ncs_restraints_group_list)
 
-  for nrg,c in zip(nrg_list,new_masters):
+  for nrg,c in zip(ncs_restraints_group_list,new_masters):
     # c for the master is 0 and for the first copy is 1
     if c == 0: continue
     c_i = c - 1
@@ -742,7 +741,7 @@ def change_ncs_groups_master(ncs_restraints_group_list,new_masters):
         # change translation before rotation
         nrg.copies[i].t = (nrg.copies[i].r * t + nrg.copies[i].t)
         nrg.copies[i].r = (nrg.copies[i].r * r)
-  return nrg_list
+  return ncs_restraints_group_list
 
 
 def get_list_of_best_ncs_copy_map_correlation(
