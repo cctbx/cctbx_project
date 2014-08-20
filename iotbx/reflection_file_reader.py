@@ -5,6 +5,37 @@ supported in ``iotbx``.  Note that this module can also be used indirectly via
 the even more generic :py:mod:`iotbx.file_reader` module, which provides
 a unified API for reading in any file (but calls
 :py:class:`iotbx.reflection_file_reader.any_reflection_file` internally).
+Currently, the supported formats include:
+
+- **CIF**: Crystallographic Information Format, the common syntax for
+  specifying most structured data encountered in crystallography (but more
+  widely used in small-molecule versus macromolecular crystallography), usually
+  as ASCII text.  May encapsulate a variety of other data types, but only
+  reflection data (of any type) is handled by this particular module.  Uses
+  :py:mod:`iotbx.cif` internally.
+- **MTZ**: Binary file format established by `CCP4 <http://www.ccp4.ac.uk>`_
+  capable of storing any numerical data, and used by most major macromolecular
+  crystallography software packages.
+  Because of its speed and broad compatibility, this is the primary interchange
+  format for reflection data in Phenix.  Uses :py:mod:`iotbx.mtz` internally.
+- **Scalepack**: Fixed-format ASCII text produced by the program of the same
+  name and the HKL2000 graphical interface.  This is actually two separate
+  formats: one for merged intensities (with or without Friedel mates), another
+  for unmerged intensities and associated processing metadata.  Uses either
+  :py:mod:`iotbx.scalepack.merge` or :py:mod:`iotbx.scalepack.no_merge_original_index` internally.
+- **CNS**: ASCII format, not as flexible as MTZ or CIF but able to store
+  either amplitudes or intensities, R-free flags, and Hendrickson-Lattman
+  coefficients.  Uses :py:mod:`iotbx.cns.reflection_reader` internally.
+- **SHELX**: Fixed-format ASCII used by the eponymous software suite.  This
+  format has significan disadvantages, discussed below.  Uses
+  :py:mod:`iotbx.shelx.hklf` internally.
+- **XDS**: ASCII format for processed intensities (both merged and unmerged).
+  Uses :py:mod:`iotbx.xds.read_ascii` internally.
+- **D*Trek**: ASCII format produced by software sold by Rigaku.
+
+Independently, the :py:class:`cctbx.miller.array` class defines output methods
+for CIF, MTZ, CNS, SHELX, and unmerged Scalepack files (although only the first
+two are recommended for routine use).
 
 Note that the underlying formats do not always contain complete information
 about the crystal or even the data type.  SHELX format is especially
