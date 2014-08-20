@@ -199,8 +199,9 @@ class manager (object) :
     # this can use either the CCTBX anomalous group refinement or Phaser's
     # substructure completion (but not both).  Some additional machinery is
     # required to handle this distinction.
-    refine_substructure = \
-      params.find_anomalous_substructure if params is not None else False
+    refine_substructure = False
+    if (params is not None) :
+      refine_substructure = params.find_anomalous_substructure
     if (refine_substructure is Auto) :
       refine_substructure = fmodel.f_obs().anomalous_flag() and \
                             (wavelength is not None)

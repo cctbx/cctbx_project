@@ -9,7 +9,7 @@ from mmtbx import monomer_library
 from mmtbx.ions.environment import chem_carboxy, chem_amide, chem_backbone, \
      chem_water, chem_phosphate, \
      chem_nitrogen_primary, chem_nitrogen_secondary, \
-     chem_chlorine, chem_oxygen, chem_nitrogen, chem_sulfur
+     chem_chloride, chem_oxygen, chem_nitrogen, chem_sulfur
 import libtbx.load_env
 from collections import OrderedDict, Counter
 import os
@@ -78,10 +78,10 @@ def exercise () :
                chem_water: 3}),
       ]),
     ("1tgg", [
-      Counter({chem_oxygen: 5, chem_chlorine: 1, chem_carboxy: 4,
+      Counter({chem_oxygen: 5, chem_chloride: 1, chem_carboxy: 4,
                chem_water: 1}),
-      Counter({chem_oxygen: 3, chem_chlorine: 2, chem_carboxy: 3}),
-      Counter({chem_oxygen: 4, chem_chlorine: 2, chem_carboxy: 4}),
+      Counter({chem_oxygen: 3, chem_chloride: 2, chem_carboxy: 3}),
+      Counter({chem_oxygen: 4, chem_chloride: 2, chem_carboxy: 4}),
       ]),
     ("3zu8", [
       Counter({chem_oxygen: 7, chem_carboxy: 3, chem_water: 1,
