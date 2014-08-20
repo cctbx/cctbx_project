@@ -20,4 +20,6 @@ Subpackages
     iotbx.file_reader
     iotbx.cif
     iotbx.pdb
+    iotbx.shelx
+    iotbx.xds
     iotbx.reflection_file_reader

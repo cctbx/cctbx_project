@@ -2896,6 +2896,8 @@ sphinx/iotbx/iotbx.file_reader.rst -text
 sphinx/iotbx/iotbx.pdb.rst -text
 sphinx/iotbx/iotbx.pdb_tutorial.rst -text
 sphinx/iotbx/iotbx.reflection_file_reader.rst -text
+sphinx/iotbx/iotbx.shelx.rst -text
+sphinx/iotbx/iotbx.xds.rst -text
 sphinx/libtbx/index.rst -text
 sphinx/libtbx/libtbx.easy_mp.rst -text
 sphinx/libtbx/libtbx.phil.rst -text
@@ -2956,6 +2958,8 @@ sphinx/mmtbx/modules.rst -text
 sphinx/python_cpp_mix.png -text
 sphinx/scitbx/index.rst -text
 sphinx/scitbx/scitbx.array_family.rst -text
+sphinx/scitbx/scitbx.lbfgs.rst -text
+sphinx/scitbx/scitbx.lstbx.rst -text
 sphinx/scitbx/scitbx.matrix.rst -text
 sphinx/tour.rst -text
 sphinx/xfel/modules.rst -text

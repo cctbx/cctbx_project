@@ -24,3 +24,5 @@ Submodules
 
     scitbx.array_family
     scitbx.matrix
+    scitbx.lbfgs
+    scitbx.lstbx
