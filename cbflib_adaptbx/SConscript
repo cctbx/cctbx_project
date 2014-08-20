@@ -18,6 +18,12 @@ env_etc.cbflib_common_includes = [
   env_etc.cbflib_include[1], # for the cbflib c-files
 ]
 
+# for the hdf5.h file
+
+cctbx_include_root = os.path.split(env_etc.python_include)[0]
+if os.path.exists(os.path.join(cctbx_include_root, 'hdf5.h')):
+  env_etc.cbflib_common_includes.append(cctbx_include_root)
+
 env = env_base.Clone(
   SHLINKFLAGS=env_etc.shlinkflags)
 if (env_etc.compiler == "win32_cl"):
