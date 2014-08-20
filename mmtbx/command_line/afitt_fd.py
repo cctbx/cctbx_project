@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.geometry_restraints.afitt import finite_difference_test
 
 pdb_lines = """
@@ -122,7 +123,7 @@ def run(pdb_file, cif_file, ligand_names,atom,scale,verbose):
   finite_difference_test(pdb_file, cif_file, ligand_names,atom,scale,verbose)
 
 if (__name__ == "__main__"):
-  import os, sys
+  import sys
   if len(sys.argv)==1:
     f=file("afitt_fd.pdb", "wb")
     f.write(pdb_lines)

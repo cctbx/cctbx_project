@@ -780,6 +780,3 @@ def get_list_of_best_ncs_copy_map_correlation(
     cc = mp.calc_correlation_coefficient(selections)
     best_list.append(cc.index(max(cc)))
   return best_list
-
-
-

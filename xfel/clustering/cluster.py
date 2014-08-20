@@ -7,6 +7,7 @@ on an existing cluster, e.g. to plot the unit cell distributions.
 
 **Author:**   Oliver Zeldin <zeldin@stanford.edu>
 """
+from __future__ import division
 __author__ = 'zeldin'
 
 from cctbx.array_family import flex
@@ -992,5 +993,3 @@ class Graph(Cluster):
                                                    maxiter=nsteps)
 
     return final_params, min_total_res, info_dict
-
-
