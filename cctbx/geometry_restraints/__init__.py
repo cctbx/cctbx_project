@@ -296,6 +296,18 @@ class planarity_proxy_registry(proxy_registry_base):
       proxies=shared_planarity_proxy(),
       strict_conflict_handling=strict_conflict_handling)
 
+  def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
+    assert proxy.i_seqs.size() > 2
+    proxy = proxy.sort_i_seqs()
+    tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
+    i_seqs_1_up = tuple(proxy.i_seqs[1:])
+    if (not tab_i_seq_0.has_key(i_seqs_1_up)):
+      tab_i_seq_0[i_seqs_1_up] = self.proxies.size()
+      # saving proxy number in list
+      self.proxies.append(proxy)
+      self.counts.append(1)
+    return True
+
   def process(self, source_info, proxy, tolerance=1.e-6):
     assert proxy.i_seqs.size() > 0
     result = proxy_registry_process_result()
