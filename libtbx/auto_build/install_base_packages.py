@@ -159,7 +159,8 @@ class installer (object) :
         pkg_name=REPORTLAB_PKG,
         pkg_name_label="reportlab",
         confirm_import_module="reportlab")
-    if (options.xia2) or (options.build_all) or (options.dials) :
+    if ((options.xia2) or (options.build_all) or (options.dials) or
+        (options.labelit)) :
       self.build_hdf5()
     if (options.build_gui) or (options.build_all) :
       self.build_wxpython_dependencies()
