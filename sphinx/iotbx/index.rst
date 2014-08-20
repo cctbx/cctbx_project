@@ -13,6 +13,7 @@ Subpackages
 -----------
 
 .. toctree::
+    iotbx.file_reader
     iotbx.cif
     iotbx.pdb
-    iotbx.file_reader
+    iotbx.reflection_file_reader

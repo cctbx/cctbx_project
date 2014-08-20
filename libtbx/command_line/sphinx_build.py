@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME sphinx.build
+
 import sys
 
 if __name__ == '__main__':

@@ -1,0 +1,606 @@
+iotbx.pdb tutorial: ``pdb_truncate_to_ala``
+===========================================
+
+This tutorial was written by Ralf Grosse-Kunstleve for the 2008
+`SBGrid <http://www.sbgrid.org>`_ meeting.  It is designed for novices to
+CCTBX (or programming in general), but gives a good practical overview of how
+the :py:mod:`iotbx.pdb` facilities may be used.
+
+Overview
+--------
+
+The ``pdb_truncate_to_ala`` tutorial shows how to use the ``iotbx.pdb``
+module to truncate the amino-acid residues in a PDB file to alanine
+(e.g. in preparation for molecular replacement). The tutorial consists
+of five scripts with increasing sophistication:
+
+  - `v0_getting_started.py`_
+       Reads a PDB file and shows some information about the content.
+
+  - `v1_loop_over_atoms.py`_
+       Also loops over the atoms in the PDB file and prints
+       residue information and atom names.
+
+  - `v2_simple.py`_
+       Simple version removing amino-acid side chain atoms,
+       except C-beta.
+
+  - `v3_better.py`_
+       Improved removal of side chain atoms that works even if
+       there are alternative conformations with a mix of
+       residue names.
+
+  - `v4_with_bells_and_whistles.py`_
+       Additional bookkeeping for a few informative print statements.
+
+The full source listing for these scripts is shown at the end of this document.
+
+Use print and help()!
+---------------------
+
+Before you study any of the scripts below, install the CCTBX.
+This will enable you to run the scripts. Use the
+PDB files in the `Tutorial directory`_ as inputs, or any other PDB file
+you may have. While analyzing a script, insert ``print`` statements
+and run the script to find out more about the objects. It may also
+be useful to insert ``help(obj)`` to see the attributes and methods of
+``obj``, where ``obj`` can be any of the objects created in the script.
+
+If you don't know what an object is: *thing* is a pretty good
+approximation.
+
+``v0_getting_started.py``
+-------------------------
+
+The ``iotbx.pdb`` module implements highly efficient procedures for:
+
+- Processing the records (i.e. lines) in a PDB file.
+
+- Constructing a *hierarchy* object. This is a five-deep nested
+  data structure::
+
+    model
+      chain
+        residue_group
+          atom_group
+            atom
+
+``v0_getting_started.py`` is a complete Python script for executing
+these steps::
+
+  import iotbx.pdb
+  import sys
+
+  def run(args):
+    if (len(args) == 0):
+      raise RuntimeError("Please specify one or more pdb file names.")
+    for file_name in args:
+      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
+      pdb_obj.hierarchy.overall_counts().show()
+
+  if (__name__ == "__main__"):
+    run(sys.argv[1:])
+
+Most of this script is so called *boilerplate* code, i.e. code that in
+some form or shape is found in most Python scripts. At the beginning of
+the script are ``import`` statements. These import the modules needed
+for a task. The bottom lines represent best practice. They enable
+the script to be imported and used from other Python scripts. The
+first two lines of the ``run()`` function are a minimalistic - but
+often sufficient - way to give users a hint how to use the script. It
+works both for someone reading the source code of the script, and a
+user running the script without arguments. For example::
+
+  % iotbx.python v0_getting_started.py
+  Traceback (most recent call last):
+    File "v0_getting_started.py", line 12, in <module>
+      run(sys.argv[1:])
+    File "v0_getting_started.py", line 6, in run
+      raise RuntimeError("Please specify one or more pdb file names.")
+  RuntimeError: Please specify one or more pdb file names.
+
+In addition to showing the error message, Python is so friendly show
+us exactly where the error originates. This is often extremely helpful.
+
+The meat of the script is in these two lines::
+
+      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
+      pdb_obj.hierarchy.overall_counts().show()
+
+The first line executes the two steps outline above. This is really
+all we need, but the second line produces output that is useful to
+give the user a quick overview of what is in the PDB file::
+
+  % iotbx.python v0_getting_started.py crambin_pieces.pdb
+  total number of:
+    models:      1
+    chains:      2
+    alt. conf.:  4
+    residues:    3
+    atoms:      23
+    anisou:      0
+  number of atom element+charge types: 3
+  histogram of atom element+charge frequency:
+    " C  " 16
+    " O  "  5
+    " N  "  2
+  residue name classes:
+    "common_amino_acid" 2
+    "other"             1
+  number of chain ids: 2
+  histogram of chain id frequency:
+    " " 1
+    "A" 1
+  number of alt. conf. ids: 2
+  histogram of alt. conf. id frequency:
+    "A" 2
+    "B" 2
+  residue alt. conf. situations:
+    pure main conf.:     1
+    pure alt. conf.:     1
+    proper alt. conf.:   1
+    improper alt. conf.: 0
+  chains with mix of proper and improper alt. conf.: 0
+  number of residue names: 3
+  histogram of residue name frequency:
+    "EOH" 1    other
+    "ILE" 1
+    "SER" 1
+
+
+``v1_loop_over_atoms.py``
+-------------------------
+
+The ``model``, ``chain``, and ``atom`` levels of the hierarchy
+object are probably immediately obvious to someone familiar with
+the content of PDB files. The ``residue_group`` and ``atom_group``
+levels are more complex. This complexity is related to *alternative
+conformations*. If there are no alternative conformations in
+a PDB file, all residue groups contain exactly one atom group,
+which contains all the atoms of a residue. A file with alternative
+conformations will lead to residue groups with multiple atom groups,
+one for each conformer. The `crambin_pieces.pdb`_ file used above
+is a file with alternative conformations (about 24% of the files
+in the PDB database contain alternative conformations).
+
+To truncate amino-acid residues to alanine, we need to know which
+residues are amino-acids, and the atom names. A more detailed
+presentation of the hierarchy object shows where we can find this
+information::
+
+  model
+    id
+    chain(s)
+      id
+      residue_group(s)
+        resid
+        atom_group(s)
+          altloc, resname
+          atom(s)
+            name
+            segid
+            element
+            charge
+            serial
+            xyz sigxyz
+            occ sigocc
+            b sigb
+            uij siguij
+            hetero
+
+We don't need all this information for the truncation procedure,
+just this subset of the hierarchy::
+
+  model
+    chain(s)
+      residue_group(s)
+        resid
+        atom_group(s)
+          altloc, resname
+          atom(s)
+            name
+
+This presentation translates directly into Python code,
+as found in `v1_loop_over_atoms.py`_::
+
+  from __future__ import division
+  import iotbx.pdb
+  import sys
+  
+  def run(args):
+    if (len(args) == 0):
+      raise RuntimeError("Please specify one or more pdb file names.")
+    for file_name in args:
+      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
+      pdb_obj.hierarchy.overall_counts().show()
+      for model in pdb_obj.hierarchy.models():
+        for chain in model.chains():
+          for rg in chain.residue_groups():
+            print 'resid: "%s"' % rg.resid()
+            for ag in rg.atom_groups():
+              print '  altloc: "%s", resname: "%s"' % (ag.altloc, ag.resname)
+              for atom in ag.atoms():
+                print '    ', atom.name
+  
+  if (__name__ == "__main__"):
+    run(sys.argv[1:])
+
+
+The script contains interleaved print statements. The output of::
+
+  % iotbx.python v1_loop_over_atoms.py crambin_pieces.pdb
+
+can be found here:
+`<http://cctbx.sourceforge.net/sbgrid2008/v1_loop_over_atoms_crambin_pieces.out>`_
+
+
+``v2_simple.py``
+----------------
+
+We have residue names and atom names now, but we still need the
+information to decide what residues are amino acids, and what atom
+names we want to keep.
+
+The ``iotbx.pdb`` module contains a sub-module ``amino_acid_codes``.
+This sub-module contains two Python dictionaries, one of which is
+(shortened)::
+
+  one_letter_given_three_letter = {
+  "ALA": "A",
+  "ARG": "R",
+  ...
+  "TYR": "Y",
+  "VAL": "V"}
+
+We don't need the one-letter codes, but we can re-use the keys of
+this dictionary to efficently decide if a residue name corresponds
+to an amino acid. The relevant lines in `v2_simple.py`_ are::
+
+  import iotbx.pdb.amino_acid_codes
+  ...
+    aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
+  ...
+              if (ag.resname in aa_resnames):
+
+For the atom names, we use a Python ``set``. The relevant lines
+in `v2_simple.py`_ are::
+
+  ala_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
+  ...
+                if (atom.name not in ala_atom_names):
+
+We use a Python ``set`` because it uses hashing techniques for element
+lookup when processing the ``in`` in the ``if`` statement. For a
+small list like here it doesn't really matter, but in Python it is
+so easy to use advanced hashing techniques, simply by converting the
+``list`` of atom names to a ``set``, there is no reason not to take
+advantage of them.
+
+Now that we know which residues we want to truncate, and which atom
+names we want to keep, we just need one more line to remove the
+side chain atoms::
+
+                  ag.remove_atom(atom=atom)
+
+This removes the atom from the atom group. The only thing left to
+do once the nested loops over the hierarchy are finished, is to
+write the modified hierarchy to a file::
+
+    output_pdb = "v2_truncated_to_ala_"+file_name
+    pdb_obj.hierarchy.write_pdb_file(file_name=output_pdb)
+
+The first line builds the output file name by concatenating two
+strings with the ``+`` operator. In the second line the
+``.write_pdb_file()`` method of the hierarchy object is used
+to write the file to disk.
+
+The complete source for this script::
+
+  from __future__ import division
+  import iotbx.pdb
+  import iotbx.pdb.amino_acid_codes
+  import sys
+  
+  def run(args):
+    if (len(args) == 0):
+      raise RuntimeError("Please specify one or more pdb file names.")
+    aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
+    ala_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
+    for file_name in args:
+      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
+      pdb_obj.hierarchy.overall_counts().show()
+      for model in pdb_obj.hierarchy.models():
+        for chain in model.chains():
+          for rg in chain.residue_groups():
+            for ag in rg.atom_groups():
+              if (ag.resname in aa_resnames):
+                for atom in ag.atoms():
+                  if (atom.name not in ala_atom_names):
+                    ag.remove_atom(atom=atom)
+      output_pdb = "v2_truncated_to_ala_"+file_name
+      pdb_obj.hierarchy.write_pdb_file(file_name=output_pdb)
+  
+  if (__name__ == "__main__"):
+    run(sys.argv[1:])
+
+The output PDB file of::
+
+  % iotbx.python v2_simple.py crambin_pieces.pdb
+
+can be found here:
+`<http://cctbx.sourceforge.net/sbgrid2008/v2_truncated_to_ala_crambin_pieces.pdb>`_
+
+
+``v3_better.py``
+----------------
+
+For most practical purposes, the ``v2_simple.py`` script is completely
+sufficient. However, there are currently 16 files in the PDB (of 50623
+total, as of Apr 30, 2008) for which this is not true. One example is
+the structure with the PDB ID ``1ysl``. The file `resname_mix.pdb`_
+contains the problematic residue::
+
+  HETATM 3907  N  ACSD B 111      25.006  36.731  16.222  0.50 18.83           N
+  HETATM 3908  CA ACSD B 111      25.536  35.903  15.152  0.50 19.90           C
+  HETATM 3909  CB ACSD B 111      25.931  36.658  13.876  0.50 21.09           C
+  HETATM 3910  SG ACSD B 111      25.414  38.295  13.671  0.50 26.29           S
+  HETATM 3911  C  ACSD B 111      26.713  35.054  15.562  0.50 19.23           C
+  HETATM 3912  O  ACSD B 111      27.472  34.533  14.697  0.50 20.10           O
+  HETATM 3913  OD1ACSD B 111      23.793  38.008  13.181  0.50 30.17           O
+  HETATM 3914  OD2ACSD B 111      25.111  39.102  15.048  0.50 26.06           O
+  ATOM   3915  N  BCYS B 111      24.996  36.697  16.246  0.50 13.39           N
+  ATOM   3916  CA BCYS B 111      25.522  35.913  15.123  0.50 16.53           C
+  ATOM   3917  C  BCYS B 111      26.790  35.104  15.498  0.50 15.20           C
+  ATOM   3918  O  BCYS B 111      27.342  34.391  14.660  0.50 16.26           O
+  ATOM   3919  CB BCYS B 111      25.840  36.879  13.947  0.50 20.05           C
+  ATOM   3920  SG BCYS B 111      24.645  38.257  14.039  0.50 29.86           S
+
+Rare cases like this are the very reason why we need the
+``residue_group`` and ``atom_group`` levels in the hierarchy. Here
+we have two different residue names for the same member of a
+chain. Even though this sitution is rare (there are only 37 additional
+non-amino-acid instances in the PDB), they are entirely plausible and
+valid, and a comprehensive PDB processing library has to be able to
+handle them.
+
+The ``v2_simple.py`` script will only truncate the ``CYS`` residue
+above::
+
+  % iotbx.python v2_simple.py resname_mix.pdb
+
+Output:
+`<http://cctbx.sourceforge.net/sbgrid2008/v2_truncated_to_ala_resname_mix.pdb>`_
+
+It would be better if it also truncated the non-standard ``CSD``
+residue in the ``A`` alternative conformation. Let's find out what
+it takes to achieve this.
+
+The basic idea is to check if there is at least one amino acid in a
+residue group, and if so, apply the truncation to all residues in the
+group, even if they don't have a standard residue name. This means,
+for each residue group we have to loop over the atom groups twice,
+first to scan for at least one standard amino-acid residue name,
+and if there is one, a second time to do the truncation.
+The bad news is, to achieve this, we have to double our effort.
+The good news is, the extra effort is only five lines.
+
+This is the part of ``v2_simple.py`` we have to work on::
+
+          for ag in rg.atom_groups():
+            if (ag.resname in aa_resnames):
+              for atom in ag.atoms():
+                if (atom.name not in ala_atom_names):
+                  ag.remove_atom(atom=atom)
+
+The extra effort goes into finding out if there is at least
+one amino acid in the residue group::
+
+          def have_amino_acid():
+            for ag in rg.atom_groups():
+              if (ag.resname in aa_resnames):
+                return True
+            return False
+
+Once that's settled, we can move the
+``if (ag.resname in aa_resnames)`` test outside the loop
+over the atom groups and replace it with ``if (have_amino_acid())``.
+The rest of the v2 code is unchanged::
+
+          if (have_amino_acid()):
+            for ag in rg.atom_groups():
+              for atom in ag.atoms():
+                if (atom.name not in ala_atom_names):
+                  ag.remove_atom(atom=atom)
+
+Note that ``have_amino_acid()`` is a nested function. Nested functions
+are often very useful to centralize small sub-tasks without taking
+them completely out of context. Since our nested function is aware
+of the context, we don't need to pass any arguments.
+
+The complete source for this script::
+
+  from __future__ import division
+  import iotbx.pdb
+  import iotbx.pdb.amino_acid_codes
+  import sys
+  
+  def run(args):
+    if (len(args) == 0):
+      raise RuntimeError("Please specify one or more pdb file names.")
+    aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
+    ala_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
+    for file_name in args:
+      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
+      pdb_obj.hierarchy.overall_counts().show()
+      for model in pdb_obj.hierarchy.models():
+        for chain in model.chains():
+          for rg in chain.residue_groups():
+            def have_amino_acid():
+              for ag in rg.atom_groups():
+                if (ag.resname in aa_resnames):
+                  return True
+              return False
+            if (have_amino_acid()):
+              for ag in rg.atom_groups():
+                for atom in ag.atoms():
+                  if (atom.name not in ala_atom_names):
+                    ag.remove_atom(atom=atom)
+      output_pdb = "v3_truncated_to_ala_"+file_name
+      pdb_obj.hierarchy.write_pdb_file(file_name=output_pdb)
+  
+  if (__name__ == "__main__"):
+    run(sys.argv[1:])
+
+The output PDB file of::
+
+  % iotbx.python v3_better.py resname_mix.pdb
+
+can be found here:
+`<http://cctbx.sourceforge.net/sbgrid2008/v3_truncated_to_ala_resname_mix.pdb>`_
+
+``v4_with_bells_and_whistles.py``
+---------------------------------
+
+The ``v3_better.py`` script does a comprehensive job, but it
+doesn't tell the user anything about the manipulations. It would
+be interesting to know how many atoms were deleted, how many
+residue are affected, and how many residue are unchanged. The
+``v4_with_bells_and_whistles.py`` script produces this information.
+
+To get the desired counts, we need counters, and we need to initialize
+them before we enter the nested loops over the hierarchy::
+
+    n_amino_acid_residues = 0
+    n_other_residues = 0
+    n_atoms_removed = 0
+
+Here ``n`` is a shorthand for *number of*.
+Inside the loop over the residue groups, we keep track of the
+amino-acid counts::
+
+          if (not have_amino_acid()):
+            n_other_residues += 1
+          else:
+            n_amino_acid_residues += 1
+
+And instead of just removing the atoms, we remove and count::
+
+                  ag.remove_atom(atom=atom)
+                  n_atoms_removed += 1
+
+When the loops over the hierarchy are finished, we print the counts::
+
+    print "Number of amino acid residues:", n_amino_acid_residues
+    print "Number of other residues:", n_other_residues
+    print "Number of atoms removed:", n_atoms_removed
+
+Since we can now easily find out if no atoms were removed (e.g. because
+someone passed in a DNA model), we should take advantage of it and
+write the output PDB file only if there are changes::
+
+    if (n_atoms_removed != 0):
+      output_pdb = "v4_truncated_to_ala_"+os.path.basename(file_name)
+      if (output_pdb.endswith(".gz")): output_pdb = output_pdb[:-3]
+      print "Writing file:", output_pdb
+      pdb_obj.hierarchy.write_pdb_file(
+        file_name=output_pdb,
+        crystal_symmetry=pdb_obj.input.crystal_symmetry(),
+        append_end=True)
+
+There are three more small enhancements compared to the
+``v3_better.py`` script:
+
+  - ``os.path.basename()`` is used to remove any directory name
+    component from the input file name, if present. With this,
+    it is certain that the output file is written in the current
+    working directory, not the directory of the input file (which
+    may be in another user's directory or a system directory)
+
+  - ``iotbx.pdb.hierarchy.input`` is able to open `.gz` files
+    directly (e.g. compressed files as downloaded from the PDB).
+    However, the ``.write_pdb_file()`` method always writes plain
+    (non-compressed) files. Therefore the ``.gz`` extension has to be
+    removed, if present. The string method ``.endswith()`` is used to
+    detect the extension, and string slicing (``[:-3]``) to remove it.
+
+  - The input crystal symmetry information (unit cell and space group)
+    is passed to the ``.write_pdb_file()`` method, which then
+    writes CRYST1 and SCALE records to the output file. In addtion,
+    the optional ``append_end`` argument is used to request that
+    an END record is written at the end of the output file.
+
+Full source::
+
+  from __future__ import division
+  import iotbx.pdb
+  import iotbx.pdb.amino_acid_codes
+  import sys, os
+  
+  def run(args):
+    if (len(args) == 0):
+      raise RuntimeError("Please specify one or more pdb file names.")
+    aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
+    ala_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
+    for file_name in args:
+      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
+      pdb_obj.hierarchy.overall_counts().show()
+      n_amino_acid_residues = 0
+      n_other_residues = 0
+      n_atoms_removed = 0
+      for model in pdb_obj.hierarchy.models():
+        for chain in model.chains():
+          for rg in chain.residue_groups():
+            def have_amino_acid():
+              for ag in rg.atom_groups():
+                if (ag.resname in aa_resnames):
+                  return True
+              return False
+            if (not have_amino_acid()):
+              n_other_residues += 1
+            else:
+              n_amino_acid_residues += 1
+              for ag in rg.atom_groups():
+                for atom in ag.atoms():
+                  if (atom.name not in ala_atom_names):
+                    ag.remove_atom(atom=atom)
+                    n_atoms_removed += 1
+      print "Number of amino acid residues:", n_amino_acid_residues
+      print "Number of other residues:", n_other_residues
+      print "Number of atoms removed:", n_atoms_removed
+      if (n_atoms_removed != 0):
+        output_pdb = "v4_truncated_to_ala_"+os.path.basename(file_name)
+        if (output_pdb.endswith(".gz")): output_pdb = output_pdb[:-3]
+        print "Writing file:", output_pdb
+        pdb_obj.hierarchy.write_pdb_file(
+          file_name=output_pdb,
+          crystal_symmetry=pdb_obj.input.crystal_symmetry(),
+          append_end=True)
+      print
+  
+  if (__name__ == "__main__"):
+    run(sys.argv[1:])
+
+
+Source and PDB files
+--------------------
+
+.. _`v0_getting_started.py`:
+   http://cctbx.sourceforge.net/sbgrid2008/v0_getting_started.py
+
+.. _`v1_loop_over_atoms.py`:
+   http://cctbx.sourceforge.net/sbgrid2008/v1_loop_over_atoms.py
+
+.. _`v2_simple.py`:
+   http://cctbx.sourceforge.net/sbgrid2008/v2_simple.py
+
+.. _`v3_better.py`:
+   http://cctbx.sourceforge.net/sbgrid2008/v3_better.py
+
+.. _`v4_with_bells_and_whistles.py`:
+   http://cctbx.sourceforge.net/sbgrid2008/v4_with_bells_and_whistles.py
+
+.. _`crambin_pieces.pdb`:
+   http://cctbx.sourceforge.net/sbgrid2008/crambin_pieces.pdb
+
+.. _`resname_mix.pdb`:
+   http://cctbx.sourceforge.net/sbgrid2008/resname_mix.pdb

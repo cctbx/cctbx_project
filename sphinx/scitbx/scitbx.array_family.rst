@@ -67,6 +67,13 @@ element types, even outside the scitbx module. This would be extremely
 difficult to do with NumPy, and is virtually impossible if the user-defined
 types are implemented in C++.
 
+The extensible nature of the :py:module:`scitbx.array_family` library is used
+elsewhere in CCTBX to wrap everything from additional
+crystallography-specific numerical types such as Miller indices (``(h,k,l)``),
+to X-ray scatterer objects, atoms represented in a PDB file, and geometry
+restraints.  These array types are described elsewhere, but many of the same
+principles explained here (especially selections) will apply to them as well.
+
 Create a toy array::
 
   a = flex.double([10,11,12])
@@ -243,6 +250,30 @@ errors::
 In the first case we have attempted to use an improperly sized :py:class:`flex.bool` array
 to denote the selection; in the second, a :py:class:`flex.size_t` array containing
 elements with a value that overflows the bounds of the target array.
+
+For selections of type :py:class:`flex.size_t`, the items do not necessarily
+have to be in sequential order, and in fact this allows us to reorder any flex
+array via a selection::
+
+  >>> from scitbx.array_family import flex
+  >>> I = flex.int([10,20,30,40,50,60,70,80,90,100])
+  >>> sel = flex.size_t([9,7,5,3,1])
+  >>> J = I.select(sel)
+  >>> print list(J)
+  [100, 80, 60, 40, 20]
+
+We also take advantage of this behavior to enable sorting of flex arrays using
+the accessory function :py:class:`flex.sort_permutation`, which generates a
+selection rather than directly sorting the array.  Continuing the above
+example::
+
+  >>> sel_perm = flex.sort_permutation(J)
+  >>> print list(sel_perm)
+  [4, 3, 2, 1, 0]
+  >>> K = J.select(sel_perm)
+  >>> print list(K)
+  [20, 40, 60, 80, 100]
+
 
 API documentation
 -----------------

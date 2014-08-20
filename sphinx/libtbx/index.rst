@@ -17,8 +17,8 @@ Submodules
     libtbx.phil
     libtbx.easy_mp
 
-libtbx
-======
+Basic functionality
+===================
 
 The base ``libtbx`` module contains several convenience tools for simplifying
 other modules.

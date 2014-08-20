@@ -13,7 +13,12 @@ The PDB format is the predominant working format for atomic parameters (coordina
 
 The evolution of the cctbx PDB handling tools has gone through three main stages spread out over several years. A simple parser implemented in Python has been available for a long time. In many cases Python's runtime performance is sufficient for interactive processing of PDB files, but can be limiting for large files, or for repeatedly traversing the entire PDB database. This has prompted us to implement a fast C++ parser that is described in Grosse-Kunstleve et al. (2006). However, initially the fast cctbx PDB handling tools only supported "read-only" access. Writing of PDB files was supported only at a very basic level. This shortcoming has been removed and the current cctbx version provides comprehensive tools for reading, manipulating, and writing PDB files. These tools are available from both Python and C++, under the iotbx.pdb module.
 
-This article presents an overview of the main types in the iotbx.pdb module, considerations that lead to the design, and related important nomenclature. It is not a tutorial for using the iotbx.pdb facilities. For this, refer to http://cctbx.sourceforge.net/sbgrid2008/tutorial.html. See also http://cci.lbl.gov/hybrid_36/ which describes iotbx.pdb facilities for handling very large models.
+This article presents an overview of the main types in the iotbx.pdb module,
+considerations that lead to the design, and related important nomenclature.
+It is not a tutorial for using the iotbx.pdb facilities.  For this, refer to
+the separate `iotbx.pdb tutorial <iotbx.pdb_tutorial.html>`_ given at the
+2008 SBGrid meeting.  See also http://cci.lbl.gov/hybrid_36/ which describes
+iotbx.pdb facilities for handling very large models.
 
 Real-world PDB files
 --------------------

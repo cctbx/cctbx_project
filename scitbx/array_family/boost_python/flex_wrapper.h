@@ -886,8 +886,8 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__ne__", ne_a_a)
         .def("__eq__", eq_a_s)
         .def("__ne__", ne_a_s)
-        .def("all_eq", all_eq_a_a)
-        .def("all_ne", all_ne_a_a)
+        .def("all_eq", all_eq_a_a, "Tests whether all elements in the array are equal to the specified value, or corresponding items in another array of the same type.")
+        .def("all_ne", all_ne_a_a, "Tests whether all elements in the array are not equal to the specified value, or corresponding items in another array of the same type.")
         .def("all_eq", all_eq_a_s)
         .def("all_ne", all_ne_a_s)
       ;
@@ -935,8 +935,8 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__ne__", ne_a_a)
         .def("__eq__", eq_a_s)
         .def("__ne__", ne_a_s)
-        .def("all_eq", all_eq_a_a)
-        .def("all_ne", all_ne_a_a)
+        .def("all_eq", all_eq_a_a, "Tests whether all elements in the array are equal to the specified value, or corresponding items in another array of the same type.")
+        .def("all_ne", all_ne_a_a, "Tests whether all elements in the array are not equal to the specified value, or corresponding items in another array of the same type.")
         .def("all_eq", all_eq_a_s)
         .def("all_ne", all_ne_a_s)
       ;
