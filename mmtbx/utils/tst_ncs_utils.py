@@ -421,9 +421,9 @@ class Test_ncs_utils(unittest.TestCase):
     master = nrg[0].master_iselection
     copy_1 = nrg[0].copies[0].copy_iselection
     # switch master with the first copy
-    nrg_new = nu.turn_copy_to_master(
+    nrg_new = nu.change_ncs_groups_master(
       ncs_restraints_group_list=nrg,
-      copies_list=[1])
+      new_masters=[1])
     # test that selection have switched
     assert list(copy_1) == list(nrg_new[0].master_iselection)
     assert list(master) == list(nrg_new[0].copies[0].copy_iselection)
@@ -445,9 +445,9 @@ class Test_ncs_utils(unittest.TestCase):
     assert T3.round(6).elems == nrg_new[0].copies[2].t.round(6).elems
 
     # flip back to original formation
-    nrg_original = nu.turn_copy_to_master(
+    nrg_original = nu.change_ncs_groups_master(
       ncs_restraints_group_list=nrg_new,
-      copies_list=[1])
+      new_masters=[1])
     # test that selection have switched
     r1 = self.rotation1
     r2 = self.rotation2
