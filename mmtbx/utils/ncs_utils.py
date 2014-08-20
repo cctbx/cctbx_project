@@ -1,4 +1,5 @@
 from __future__ import division
+from mmtbx.utils.map_correlation import Map_correlation
 from scitbx.array_family import flex
 import mmtbx.monomer_library.server
 from mmtbx import monomer_library
@@ -580,6 +581,7 @@ def shift_translation_back_to_place(shifts, ncs_restraints_group_list):
 def get_ncs_gorups_centers(xray_structure, ncs_restraints_group_list):
   """
   calculate the center of coordinate for the master of each ncs copy
+
   :param xray_structure:
   :param ncs_restraints_group_list:
   :return shifts (list): [mu_1, mu_1, mu_2...] where the mu stands
@@ -599,8 +601,12 @@ def get_ncs_gorups_centers(xray_structure, ncs_restraints_group_list):
 def ncs_restraints_group_list_copy(ncs_restraints_group_list):
   """
   Deep copy of ncs_restraints_group_list
-  :param ncs_restraints_group_list: list of ncs_restraint_group
-  :return new_list: a deep copy of ncs_restraints_group_list
+
+  Args:
+    ncs_restraints_group_list: list of ncs_restraint_group
+
+  Returns:
+    new_list: a deep copy of ncs_restraints_group_list
   """
   from iotbx.ncs.ncs_preprocess import ncs_restraint_group
   from iotbx.ncs.ncs_preprocess import ncs_copy
@@ -667,6 +673,7 @@ def selected_positions(selection,positions):
   :return (flex.size_t, flex.size_t): (selected atoms, atoms, not selected)
 
   Examples:
+  ---------
   >>>a = flex.size_t([1,2,5,6,4])
   >>>pos = {0,3,4}
   >>>s,d = selected_positions(a,pos)
@@ -691,6 +698,7 @@ def remove_items_from_selection(selection,remove):
   :return (flex.size_t): modified atom selection
 
   Examples:
+  ---------
   >>>a = flex.size_t([1,2,5,6,4])
   >>>r = flex.size_t([2,5])
   >>>s = remove_items_from_selection(a,r,10)
@@ -701,3 +709,77 @@ def remove_items_from_selection(selection,remove):
   remove = set(remove)
   new_selection = [x for x in selection if not (x in remove)]
   return flex.size_t(new_selection)
+
+def turn_copy_to_master(ncs_restraints_group_list,copies_list):
+  """
+  Switch master NCS copy with one of the copies, as specified in the copies_list
+
+  Args:
+    ncs_restraints_group_list: list of ncs restraints group objects
+    copies_list (list of integers): the number of the copy, in each group,
+    that will become the new master
+
+  Returns:
+    Modified ncs_restraints_group_list
+  """
+  assert isinstance(copies_list,list)
+  assert len(ncs_restraints_group_list) == len(copies_list)
+  nrg_list = ncs_restraints_group_list_copy(ncs_restraints_group_list)
+
+  for nrg,c in zip(nrg_list,copies_list):
+    # c for the master is 0 and for the first copy is 1
+    if c == 0: continue
+    c_i = c - 1
+    # switch master and copy selection
+    nrg.master_iselection, nrg.copies[c_i].copy_iselection = \
+      nrg.copies[c_i].copy_iselection, nrg.master_iselection
+    # Adjust rotation ans translation
+    r = nrg.copies[c_i].r = (nrg.copies[c_i].r.transpose())
+    t = nrg.copies[c_i].t = (- nrg.copies[c_i].r * nrg.copies[c_i].t)
+    # change selected copy
+    for i,ncs in enumerate(nrg.copies):
+      if i != c_i:
+        # change translation before rotation
+        nrg.copies[i].t = (nrg.copies[i].r * t + nrg.copies[i].t)
+        nrg.copies[i].r = (nrg.copies[i].r * r)
+  return nrg_list
+
+
+def get_list_of_best_ncs_copy_map_correlation(
+        ncs_restraints_group_list,
+        xray_structure=None,
+        fmodel=None,
+        map_data=None,
+        d_min=1.0):
+  """
+  Finds the copy with best map correlation in each ncs group
+
+  Args:
+    ncs_restraints_group_list: list of ncs restraints group objects
+    xray_structure (object):
+    fmodel (object):
+    map_data (object):
+    d_min (float): min data resolution
+
+  Returns:
+    best_list (list of int): list of the copy with the best map correlation.
+    (the master copy is 0)
+  """
+  best_list = []
+  mp = Map_correlation(
+    xray_structure = xray_structure,
+    fmodel         = fmodel,
+    map_data       = map_data,
+    d_min          = d_min)
+
+  for nrg in ncs_restraints_group_list:
+    selections = []
+    selections.append(nrg.master_iselection)
+    for ncs in nrg.copies:
+      selections.append(ncs.copy_iselection)
+    cc = mp.calc_correlation_coefficient(selections)
+    best_list.append(cc.index(max(cc)))
+  return best_list
+
+
+
