@@ -12,15 +12,6 @@ mmtbx.chemical_components.cif_parser module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.chemical_components.tst module
-------------------------------------
-
-.. automodule:: mmtbx.chemical_components.tst
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 

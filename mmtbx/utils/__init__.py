@@ -1,3 +1,15 @@
+
+"""
+Library of convenience functions for working with models and reflection data.
+This contains a number of routines used in phenix.refine and related programs,
+mainly concerned with the repetitive process of loading model and data files
+and initializing the appropriate objects.  Note that if you are writing a
+program that uses similar inputs, it may be significantly easier to use the
+unified input handling encapsulated in :py:mod:`mmtbx.command_line`, which
+wraps much of the functionality in :py:mod:`mmtbx.utils` while hiding the
+messy details.
+"""
+
 from __future__ import division
 from mmtbx.scaling import twin_analyses
 from cctbx import miller
@@ -252,6 +264,13 @@ def data_and_flags_master_params(master_scope_name=None):
     return iotbx.phil.parse(data_and_flags_str, process_includes=True)
 
 class determine_data_and_flags(object):
+  """
+  Encapsulates logic for extracting experimental amplitudes and R-free flags
+  from the given input file(s).  This expects that the standard parameter block
+  is being used.  Determination of appropriate data labels will be as automatic
+  as possible, or will give clear feedback when ambiguity exists.  If not
+  found in the inputs, the R-free flags can be created if desired.
+  """
   def __init__(self, reflection_file_server,
                      parameters = None,
                      data_parameter_scope = "",
@@ -425,6 +444,14 @@ class determine_data_and_flags(object):
     return r_free_flags
 
   def data_as_f_obs(self, f_obs):
+    """
+    Convert input data array to amplitudes, adjusting the data type and
+    applying additional filters if necessary.
+
+    :param f_obs: selected input data
+    :returns: :py:class:`cctbx.miller.array` of real numbers with observation
+      type set to amplitudes
+    """
     if(not f_obs.sigmas_are_sensible()):
       f_obs = f_obs.customized_copy(
         indices=f_obs.indices(),
@@ -723,6 +750,10 @@ def determine_experimental_phases(reflection_file_server,
                                   working_point_group,
                                   symmetry_safety_check,
                                   ignore_all_zeros = True):
+  """
+  Extract experimental phases from the given inputs if possible.  Returns None
+  if not found.
+  """
   try:
     experimental_phases = \
       reflection_file_server.get_experimental_phases(
@@ -771,6 +802,12 @@ pdb_params = iotbx.phil.parse("""\
 """)
 
 def find_overlapping_selections (selections, selection_strings) :
+  """
+  Given a list of atom selections (:py:class:`scitbx.array_family.flex.bool`
+  arrays) and corresponding selection strings, inspect the selections to
+  determine whether any two arrays overlap.  Returns a tuple of the first pair
+  of selection strings found to overlap, or None if all selections are unique.
+  """
   assert (len(selections) == len(selection_strings))
   for i_sel in range(len(selections) - 1) :
     selection1 = selections[i_sel]
@@ -910,6 +947,10 @@ def write_pdb_file(
       atoms_reset_serial = True,
       out = None,
       return_pdb_string = False):
+  """
+  Write the specified model to a PDB-format file, incorporating refined atomic
+  parameters.
+  """
   if (write_cryst1_record and out is not None):
     crystal_symmetry = xray_structure.crystal_symmetry()
     print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
@@ -2919,6 +2960,13 @@ class detect_hydrogen_nomenclature_problem (object) :
      for HD22 for an N-linked Asn, even though it may not actually be replaced
      by a sugar link.
   2) general issues with hydrogen nomenclature
+
+  Attributes
+  ----------
+  bad_hydrogens: a list of problematic atom ID strings
+  n_asn_hd22: number of inappropriate ASN HD22 atoms
+  n_hydrogen: number of hydrogens missing geometry restraints
+  n_other: number of non-hydrogen atoms missing geometry restraints
   """
   def __init__ (self, pdb_file, cif_files=()) :
     args = [ pdb_file, ] + list(cif_files)

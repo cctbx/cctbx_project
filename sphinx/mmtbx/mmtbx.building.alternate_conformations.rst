@@ -20,15 +20,6 @@ mmtbx.building.alternate_conformations.single_residue module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.building.alternate_conformations.tst module
--------------------------------------------------
-
-.. automodule:: mmtbx.building.alternate_conformations.tst
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 

@@ -1,4 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.mtz2map
+# LIBTBX_SET_DISPATCHER_NAME phenix.fft
+# LIBTBX_SET_DISPATCHER_NAME mmtbx.fft
 
 # TODO: remove R-free set from map coefficients?
 

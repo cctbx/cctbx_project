@@ -12,23 +12,6 @@ mmtbx.polygon.output module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.polygon.tst module
-------------------------
-
-.. automodule:: mmtbx.polygon.tst
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.polygon.tst_gui module
-----------------------------
-
-.. automodule:: mmtbx.polygon.tst_gui
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 

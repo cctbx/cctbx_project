@@ -57,6 +57,7 @@ TER
   assert (r_factor < 0.001)
   cmdline.save_data_mtz("tmp_mmtbx_cmdline_data.mtz")
   assert os.path.isfile("tmp_mmtbx_cmdline_data.mtz")
+  model = cmdline.create_model_manager()
   # UNMERGED DATA INPUT
   log = cmdline.start_log_file("tst_mmtbx_cmdline.log")
   fc2 = xrs.structure_factors(d_min=1.3).f_calc().generate_bijvoet_mates()

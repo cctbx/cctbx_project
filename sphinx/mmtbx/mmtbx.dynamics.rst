@@ -36,23 +36,6 @@ mmtbx.dynamics.simulated_annealing module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.dynamics.tst_cartesian_dynamics module
---------------------------------------------
-
-.. automodule:: mmtbx.dynamics.tst_cartesian_dynamics
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.dynamics.tst_sa module
-----------------------------
-
-.. automodule:: mmtbx.dynamics.tst_sa
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 

@@ -35,22 +35,6 @@ mmtbx.secondary_structure.proteins module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.secondary_structure.tst module
-------------------------------------
-
-.. automodule:: mmtbx.secondary_structure.tst
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-mmtbx.secondary_structure.tst_base_pairing module
--------------------------------------------------
-
-.. automodule:: mmtbx.secondary_structure.tst_base_pairing
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 mmtbx.secondary_structure.utils module
 --------------------------------------
 

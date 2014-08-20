@@ -194,7 +194,8 @@ class load_model_and_data (object) :
     scattering form factors
   usage_string: console output for no arguments or --help
   create_log_buffer: store log output for later output to file
-  remove_unknown_scatterers: delete atoms with scattering type 'X'
+  remove_unknown_scatterers: delete atoms with scattering type 'X' (only \
+    used when process_pdb_file=False)
   generate_input_phil: specifies that the master_phil object is a string \
     containing onky the app-specific options, and automatically add the \
     standard input parameters
@@ -599,6 +600,23 @@ class load_model_and_data (object) :
       mtz_data.add_miller_array(self.r_free_flags,
         column_root_label="FreeR_flag")
     mtz_data.mtz_object().write(file_name)
+
+  def create_model_manager (self, log=None) :
+    """
+    Instantiate an mmtbx.model.manager object with the current pdb hierarchy,
+    xray structure, and geometry restraints.
+    """
+    if (log is None) : log = self.log
+    import mmtbx.restraints
+    import mmtbx.model
+    restraints_manager = mmtbx.restraints.manager(
+      geometry=self.geometry,
+      normalization=True)
+    return mmtbx.model.manager(
+      xray_structure=self.xray_structure,
+      pdb_hierarchy=self.pdb_hierarchy,
+      restraints_manager=restraints_manager,
+      log=log)
 
 def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
     log=sys.stdout) :
