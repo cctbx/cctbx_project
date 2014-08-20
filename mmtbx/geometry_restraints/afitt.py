@@ -14,7 +14,7 @@ master_phil_str = """
     .type = str
   ff = 'mmff94s'
     .type = str
-  scale = 'gnorm'
+  scale = 10
     .type = str
 """
 
@@ -40,7 +40,7 @@ class afitt_object:
                ligand_names,  # ligand 3-codes
                pdb_hierarchy, #
                ff='mmff94s',     #
-               scale='gnorm', #
+               scale=10, #
                ):
     self.n_atoms = []
     self.resname = ligand_names
@@ -103,6 +103,7 @@ class afitt_object:
 
   def get_res_ids(self, pdb_hierarchy, resname):
     ids=[]
+    atoms=[]
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         for conformer in chain.conformers():
@@ -110,7 +111,26 @@ class afitt_object:
             if residue.resname == resname:
               id_list=[chain.id,conformer.altloc,residue.resseq]
               ids.append(id_list)
-    return ids
+              atoms.append([atom.i_seq for atom in residue.atoms()])
+
+    #if different ligand residues have the same chain name and only one
+    #of them has an altcon , multiple instances will be created of all
+    #of them. This ugly piece of code removes the extra copies of residues
+    #that have only one altconf. There must be a prettier way...
+    id_to_remove=[]
+    for i in range(len(ids)-1):
+      for j in range(i+1,len(ids)):
+        atoms_i=atoms[i]
+        atoms_j=atoms[j]
+        if len(list(set(atoms_i) & set(atoms_j))) == len(atoms_i) and \
+           len(list(set(atoms_i) & set(atoms_j))) == len(atoms_j):
+          id_to_remove.append(i)
+          break
+    filtered_ids=[]
+    for id in range(len(ids)):
+      if id not in id_to_remove:
+        filtered_ids.append(ids[id])
+    return filtered_ids
 
   def get_occupancies(self, ptrs, pdb_hierarchy):
     for ptr in ptrs:
@@ -126,8 +146,12 @@ class afitt_object:
   def check_covalent(self, geometry):
     for resname_i,resname in enumerate(self.resname):
       self.covalent_data.append([])
+      lig_atoms = []
       for instance_i, instance in enumerate(self.res_ids[resname_i]):
-        nonlig_atoms = [atom for atom in self.pdb_hierarchy.atoms() if atom.i_seq not in self.sites_cart_ptrs[resname_i][instance_i] ]
+        lig_atoms = lig_atoms + self.sites_cart_ptrs[resname_i][instance_i]
+      for instance_i, instance in enumerate(self.res_ids[resname_i]):
+        nonlig_atoms = [atom for atom in self.pdb_hierarchy.atoms()
+                        if atom.i_seq not in lig_atoms ]
         bond = []
         for lig_atm_iseq in self.sites_cart_ptrs[resname_i][instance_i]:
           for atom in nonlig_atoms:
@@ -327,7 +351,8 @@ def process_afitt_output(afitt_output,
                          instance_i,
                          afitt_allgradients,
                          afitt_alltargets,
-                         verbose=False):
+                         verbose=False,
+                         phenix_gnorms=None):
   r_i=resname_i
   i_i=instance_i
   ptrs = afitt_o.sites_cart_ptrs[r_i][i_i]
@@ -357,6 +382,7 @@ def process_afitt_output(afitt_output,
     assert afitt_gradients.size() == len(ptrs)
     if afitt_o.scale == 'gnorm':
       from math import sqrt
+      # phenix_norm=phenix_gnorms[r_i][i_i]
       phenix_norm=0
       afitt_norm=0
       for afitt_gradient, ptr in zip(afitt_gradients, ptrs):
@@ -372,7 +398,7 @@ def process_afitt_output(afitt_output,
                       int(afitt_o.res_ids[r_i][i_i][2]),
                       afitt_o.res_ids[r_i][i_i][1],
                       gr_scale ))
-
+        # print phenix_norm, afitt_norm
       ### end_debug
     elif afitt_o.scale == 'noafitt':
       gr_scale = None
@@ -391,14 +417,14 @@ def process_afitt_output(afitt_output,
     ### end_debug
     if gr_scale:
       scaled_gradients = []
-      occupancy = afitt_o.occupancies[r_i][i_i]
+      # occupancy = afitt_o.occupancies[r_i][i_i]
       for afitt_gradient in afitt_gradients:
-        scaled_gradient = (afitt_gradient[0]*gr_scale*occupancy,
-                           afitt_gradient[1]*gr_scale*occupancy,
-                           afitt_gradient[2]*gr_scale*occupancy)
+        scaled_gradient = (afitt_gradient[0]*gr_scale,
+                           afitt_gradient[1]*gr_scale,
+                           afitt_gradient[2]*gr_scale)
         scaled_gradients.append(scaled_gradient)
       afitt_allgradients[(r_i,i_i)] = scaled_gradients
-      afitt_alltargets[(r_i,i_i)] = gr_scale*afitt_energy*occupancy
+      afitt_alltargets[(r_i,i_i)] = gr_scale*afitt_energy
 
 
 def apply_target_gradients(afitt_o, geometry, afitt_allgradients, afitt_alltargets):
@@ -453,7 +479,7 @@ def get_afitt_energy(cif_file, ligand_names, pdb_hierarchy, ff, sites_cart):
       for line in lines.getvalue().splitlines():
         if line.startswith('ENERGYTAG'):
           energy=float(line.split()[1])
-      energies.append([resname, int(instance[2]), energy] )
+      energies.append([resname, int(instance[2]), instance[1].strip(), energy] )
   return energies
 
 def validate_afitt_params(params):
@@ -601,7 +627,7 @@ def adjust_energy_and_gradients(result,
   result.residual_sum -= ligand_residual_sum
 
   ligand_i = 0
-  protein_i = 0
+  # protein_i = 0
   if verbose:
     print "%-40s %-40s %-40s %-40s" % ("phenix protein+ligand",
                                        "phenix+afitt",
@@ -651,6 +677,61 @@ def adjust_energy_and_gradients(result,
       print "%3d %s" % (i,_show_gradient(s))
 
   return result
+
+def adjusted_phenix_g_norm (geometry,
+                            restraints_manager,
+                            sites_cart,
+                            hd_selection,
+                            afitt_o,
+                            verbose=False):
+  from math import sqrt
+  general_selection = get_afitt_selection(restraints_manager,
+                                          sites_cart,
+                                          hd_selection,
+                                          False,
+                                         )
+  rm = restraints_manager.select(general_selection)
+  old_normalisation = getattr(rm, "normalization", None)
+  if old_normalisation is None:
+    es = rm.energies_sites(
+      sites_cart = sites_cart.select(general_selection),
+      compute_gradients = True,
+      normalization = False,
+    )
+  else:
+    rm.normalization=False
+    es = rm.energies_sites(
+      sites_cart = sites_cart.select(general_selection),
+      compute_gradients = True,
+    )
+    rm.normalization = old_normalisation
+  ligand_gradients = es.gradients
+  ligand_gradients_and_sites={}
+  i=0
+  for site in range(len(general_selection)):
+    if general_selection[site]:
+      ligand_gradients_and_sites[site]=ligand_gradients[i]
+      i+=1
+
+
+
+  gnorms=[]
+  for resname_i,resname in enumerate(afitt_o.resname):
+    gnorms.append([])
+    for instance_i, instance in enumerate(afitt_o.res_ids[resname_i]):
+      gnorm = 0
+      ptrs = afitt_o.sites_cart_ptrs[resname_i][instance_i]
+      # import code; code.interact(local=dict(globals(), **locals()))
+      for ptr in ptrs:
+        l1 = ligand_gradients_and_sites[ptr][0]
+        l2 = ligand_gradients_and_sites[ptr][1]
+        l3 = ligand_gradients_and_sites[ptr][2]
+        gnorm += l1**2+l2**2+l3**2
+        i+=1
+      gnorm = sqrt(gnorm)
+      gnorms[resname_i].append(gnorm)
+  return gnorms
+
 
 def finite_difference_test(pdb_file,
                            cif_file,
@@ -790,12 +871,12 @@ def finite_difference_test(pdb_file,
   num_gradient = (ts[0]-ts[1])/(2*e)
   print "-> %10.9f" %(num_gradient)
   gradient_diff = num_gradient - ana_gradient
-  assert abs(gradient_diff) <= 1e-6, \
+  assert abs(gradient_diff) <= 1e-4, \
     "TEST FAILS: (analytical - numerical)= %10.9f" %(gradient_diff)
   print "TEST PASSES: (analytical - numerical)= %10.9f" %(gradient_diff)
   return 0
 
-def apply(result, afitt_o, sites_cart):
+def apply(result, afitt_o, sites_cart,phenix_gnorms=None):
   result.complex_residual_sum = result.geometry.residual_sum
   # needs to be more selective!!!
   result.complex_gradients = copy.deepcopy(result.geometry.gradients)
@@ -815,7 +896,8 @@ def apply(result, afitt_o, sites_cart):
                            instance_i,
                            afitt_allgradients,
                            afitt_alltargets,
-                           verbose=True)
+                           verbose=True,
+                           phenix_gnorms=phenix_gnorms)
   result.geometry = apply_target_gradients(afitt_o, result.geometry,
                                            afitt_allgradients,
                                            afitt_alltargets)
@@ -850,7 +932,7 @@ def run(pdb_file, cif_file, ligand_names, ff='mmff94s'):
                               ff,
                               sites_cart)
   for energy in energies:
-    print "%s_%d AFITT_ENERGY: %10.4f" %(energy[0], energy[1], energy[2])
+    print "%s_%d_%s AFITT_ENERGY: %10.4f" %(energy[0], energy[1], energy[2], energy[3])
 
 def run2():
   import argparse

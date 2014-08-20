@@ -143,7 +143,7 @@ if (__name__ == "__main__"):
                                      "be a ligand atom)")
     parser.add_argument( "-s", "--scale", default=1, help="weight applied" \
                         "to AFITT gradient/traget", type=float)
-    parser.add_argument('-v', dest='verbose', action='store_true')
+    parser.add_argument('-v', dest='verbose', action='store_true', help="verbose output")
     parser.epilog='Example: phenix.python afitt_fd.py vAla3.pdb vAla3.cif NME 37'
     args = parser.parse_args()
     ligand_names=args.ligand_names.split(',')
