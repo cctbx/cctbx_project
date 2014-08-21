@@ -205,6 +205,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
     trans_obj = iotbx.ncs.input(
       pdb_hierarchy_inp = pdb_obj,
+      use_cctbx_find_ncs_tools=False,
       use_simple_ncs_from_pdb=True)
 
     # test created object
