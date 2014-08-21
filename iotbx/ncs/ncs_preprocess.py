@@ -99,7 +99,8 @@ class ncs_group_object(object):
                          quiet=True,
                          spec_ncs_groups=None,
                          pdb_string=None,
-                         use_simple_ncs_from_pdb=False,
+                         use_cctbx_find_ncs_tools=True,
+                         use_simple_ncs_from_pdb=True,
                          use_minimal_master_ncs=True):
     """
     Select method to build ncs_group_object
@@ -113,29 +114,32 @@ class ncs_group_object(object):
     6) mmcif file
     7) iotbx.pdb.hierarchy.input object
 
-    :param pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
-    :param pdb_inp: pdb input object
-    :param transform_info: object containing MTRIX or BIOMT transformation info
-    :param rotations: matrix.sqr 3x3 object
-    :param translations: matrix.col 3x1 object
-    :param ncs_selection_params: Phil parameters
-           Phil structure
-              ncs_group (multiple)
-              {
-                master_ncs_selection = ''
-                selection_copy = ''   (multiple)
-              }
-    :param ncs_phil_groups: a list of ncs_groups_container object, containing
-           master NCS selection and a list of NCS copies selection
-    :param file_name: (str) .ncs_spec or .mmcif  or .pdb file name
-    :param file_path: (str)
-    :param spec_file_str: (str) spec format data
-    :param spec_source_info:
-    :param quiet: (bool) When True -> quiet output when processing files
-    :param spec_ncs_groups: ncs_groups object as produced by simple_ncs_from_pdb
-    :param cif_string: (str) string of cif type data
-    :param use_minimal_master_ncs: (bool) use maximal or minimal common chains
-           in master ncs groups
+    Args:
+    -----
+      pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
+      transform_info: object containing MTRIX or BIOMT transformation info
+      rotations: matrix.sqr 3x3 object
+      translations: matrix.col 3x1 object
+      ncs_selection_params: Phil parameters
+        Phil structure
+           ncs_group (multiple)
+           {
+             master_ncs_selection = ''
+             selection_copy = ''   (multiple)
+           }
+      ncs_phil_groups: a list of ncs_groups_container object, containing
+        master NCS selection and a list of NCS copies selection
+      file_name: (str) .ncs_spec or .mmcif  or .pdb file name
+      file_path: (str)
+      spec_file_str: (str) spec format data
+      spec_source_info:
+      quiet: (bool) When True -> quiet output when processing files
+      spec_ncs_groups: ncs_groups object as produced by simple_ncs_from_pdb
+      cif_string: (str) string of cif type data
+      use_cctbx_find_ncs_tools: (bool) Enable using of chain base NCS search
+      use_simple_ncs_from_pdb: (bool) Enable using use_simple_ncs_from_pdb
+      use_minimal_master_ncs: (bool) use maximal or minimal common chains
+        in master ncs groups
     """
     extension = ''
     if file_name: extension = os.path.splitext(file_name)[1]
@@ -183,6 +187,7 @@ class ncs_group_object(object):
     elif pdb_hierarchy_inp:
       self.build_ncs_obj_from_pdb_asu(
         pdb_hierarchy_inp=pdb_hierarchy_inp,
+        use_cctbx_find_ncs_tools=use_cctbx_find_ncs_tools,
         use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
         use_minimal_master_ncs=use_minimal_master_ncs)
     else:
@@ -326,7 +331,8 @@ class ncs_group_object(object):
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
   def build_ncs_obj_from_pdb_asu(self,pdb_hierarchy_inp,
-                                 use_simple_ncs_from_pdb=False,
+                                 use_cctbx_find_ncs_tools=True,
+                                 use_simple_ncs_from_pdb=True,
                                  use_minimal_master_ncs=True):
     """
     Build transforms objects and NCS <-> ASU mapping from a complete ASU
@@ -335,12 +341,13 @@ class ncs_group_object(object):
 
     Arguments:
     pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
-    use_simple_ncs_from_pdb : force using use_simple_ncs_from_pdb
-    use_minimal_master_ncs : (bool) indicate if using maximal or minimal NCS
+    use_cctbx_find_ncs_tools (bool): Enable using of chain base NCS search
+    use_simple_ncs_from_pdb (bool): Enable using use_simple_ncs_from_pdb
+    use_minimal_master_ncs (bool): indicate if using maximal or minimal NCS
     groups
     """
     ncs_phil_groups = []
-    if (not use_simple_ncs_from_pdb):
+    if use_cctbx_find_ncs_tools:
       if use_minimal_master_ncs:
         ncs_phil_groups = get_minimal_master_ncs_group(pdb_hierarchy_inp)
       else:
@@ -350,7 +357,7 @@ class ncs_group_object(object):
       self.build_ncs_obj_from_phil(
         pdb_hierarchy_inp=pdb_hierarchy_inp,
         ncs_phil_groups=ncs_phil_groups)
-    else:
+    elif use_simple_ncs_from_pdb:
       import libtbx.load_env
       if libtbx.env.has_module(name="phenix"):
         from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
@@ -509,9 +516,10 @@ class ncs_group_object(object):
 
   def update_tr_id_to_selection(self,masters, copies,tr_id):
     """
-    :param masters: (str) selection of master ncs
-    :param copies: (str) selection of copy
-    :param tr_id: (str) string like s_001 where 001 is the transform number
+    Args:
+      masters: (str) selection of master ncs
+      copies: (str) selection of copy
+      tr_id: (str) string like s_001 where 001 is the transform number
     """
     tr_keys = get_list_of_chains_selection(masters)
     master_selection_list = separate_selection_string(masters)
@@ -916,7 +924,8 @@ class ncs_group_object(object):
     Note that to insure proper assignment the ncs_restraints_group_list
     should be produced using the get_ncs_restraints_group_list method
 
-    :param ncs_restraints_group_list: a list of ncs_restraint_group objects
+    Args:
+      ncs_restraints_group_list: a list of ncs_restraint_group objects
     """
     assert len(ncs_restraints_group_list) == len(self.ncs_group_map)
     group_id_list = sort_dict_keys(self.ncs_group_map)
@@ -1162,8 +1171,9 @@ def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
   Comparing rotations and the result of applying rotation and translation on
   a test vector
 
-  :param angle_eps: (float) allowed difference in similar rotations
-  :param eps: (float) allowed difference in the average distance between
+  Args:
+    angle_eps: (float) allowed difference in similar rotations
+    eps: (float) allowed difference in the average distance between
   :return tr_num: (str) transform serial number
   :return is_transpose: (bool) True if the matching transform is transpose
   """
@@ -1183,9 +1193,12 @@ def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
 
 def is_same_transform(r1,t1,r2,t2,eps=0.1,angle_eps=5):
   """
-  :param r1, r2: Rotation matrices
-  :param t1, t2: Translation vectors
-  :param eps, angle_eps: allowed numerical difference
+  Args:
+    r1, r2: Rotation matrices
+    t1, t2: Translation vectors
+    eps, angle_eps: allowed numerical difference
+
+  Returns:
   :return: (bool,bool) (is_the_same, is_transpose)
   """
   assert r1.is_r3_rotation_matrix(rms_tolerance=0.001)
@@ -1218,7 +1231,10 @@ def inverse_transform(r,t):
 
 def get_list_of_chains_selection(selection_str):
   """
-  :param selection_str: (str) selection string
+  Args:
+    selection_str: (str) selection string
+
+  Returns:
   :return: (list of str) of the format ['chain X', 'chain Y',...]
   """
   sstr = selection_str.replace(')',' ')
@@ -1262,7 +1278,11 @@ def angle_between_rotations(v1,v2):
 def get_pdb_header(pdb_str):
   """
   Collect CRYST and SCALE records
-  :param pdb_str: (str) pdb type string
+
+  Args:
+    pdb_str: (str) pdb type string
+
+  Returns:
   :return: the portion of the pdb_str till the first ATOM
   """
   pdb_str = pdb_str.splitlines()
@@ -1274,8 +1294,11 @@ def get_pdb_header(pdb_str):
 
 def get_center_orth(xyz,selection):
   """
-  :param xyz:(flex.vec3_double) the complete asu sites cart (atoms coordinates)
-  :param selection:
+  Args:
+    xyz:(flex.vec3_double) the complete asu sites cart (atoms coordinates)
+    selection:
+
+  Returns:
   :return:(flex.vec3_double) center of coordinates for the selected coordinates
   """
   new_xyz = xyz.select(selection)
@@ -1295,7 +1318,11 @@ def all_ncs_copies_not_present(transform_info):
   """
   Check if a single NCS is in transform_info, all transforms, but the
   identity should no be present
-  :param transform_info: (transformation object)
+
+  Args:
+    transform_info: (transformation object)
+
+  Returns:
   :return: (bool)
   """
   test = False
@@ -1312,7 +1339,11 @@ def all_ncs_copies_present(transform_info):
   """
   Check if all transforms coordinates are present,
   if the complete ASU is present
-  :param transform_info: (transformation object)
+
+  Args:
+    transform_info: (transformation object)
+
+  Returns:
   :return: (bool)
   """
   test = True
@@ -1329,8 +1360,11 @@ def uniqueness_test(unique_selection_set,new_item):
   When processing phil parameters. Insert new item to set, if not there,
   raise an error if already in set
 
-  :param unique_selection_set: (set)
-  :param new_item: (str)
+  Args:
+    unique_selection_set: (set)
+    new_item: (str)
+
+  Returns:
   :return: updated set
   """
   if new_item in unique_selection_set:
@@ -1346,10 +1380,14 @@ def get_rot_trans(master_ncs_ph=None,
                   rms_eps=0.02):
   """
   Get rotation and translation using superpose
-  :param master_ncs_ph: pdb hierarchy input object
-  :param ncs_copy_ph: pdb hierarchy input object
-  :param master_atoms: (flex.vec3_double) master atoms sites cart
-  :param copy_atoms: (flex.vec3_double) copy atoms sites cart
+
+  Args:
+    master_ncs_ph: pdb hierarchy input object
+    ncs_copy_ph: pdb hierarchy input object
+    master_atoms: (flex.vec3_double) master atoms sites cart
+    copy_atoms: (flex.vec3_double) copy atoms sites cart
+
+  Returns:
   :return r: rotation matrix
   :return t: translation vector
   If can't match the two selection or if it is a bad match return: None, None
@@ -1379,8 +1417,11 @@ def get_rot_trans(master_ncs_ph=None,
 
 def get_pdb_selection(ph,selection_str):
   """
-  :param ph: pdb hierarchy input object
-  :param selection_str:
+  Args:
+    ph: pdb hierarchy input object
+    selection_str:
+
+  Returns:
   :return: atoms of the portion of the hierarchy according to the
            selection
   """
@@ -1408,7 +1449,10 @@ def update_selection_ref(selection_ref,new_selection):
 
 def get_ncs_group_selection(chain_residue_id):
   """
-  :param chain_residue_id: [[chain id's],[[[residues range]],[[...]]]
+  Args:
+    chain_residue_id: [[chain id's],[[[residues range]],[[...]]]
+
+  Returns:
   :return: selection lists, with selection string for each ncs copy in the group
   """
   chains = chain_residue_id[0]
@@ -1450,8 +1494,11 @@ def sort_dict_keys(dict):
 
 def g(x,y):
   """ Cantor pairing
-  :param x: (int)
-  :param y: (int)
+  Args:
+    x: (int)
+    y: (int)
+
+  Returns:
   :return: unique key
   """
   x = abs(x)
@@ -1462,7 +1509,11 @@ def f(r):
   """
   Use Cantor pairing to get a numerical key for a rotation and the rotation
   transpose
-  :param r: rotation matrix
+
+  Args:
+    r: rotation matrix
+
+  Returns:
   :return: key1,key2
   """
   (r11,r12,r13,r21,r22,r23,r31,r32,r33) = (10*r).round(0).elems
@@ -1476,8 +1527,12 @@ def f(r):
 def get_minimal_master_ncs_group(pdb_hierarchy_inp):
   """
   Finds minimal number ncs relations, the largest common ncs groups
-  :param pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
-  :return ncs_phil_groups: (list) list of ncs_groups_container
+
+  Args:
+    pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
+
+  Returns:
+    ncs_phil_groups: (list) list of ncs_groups_container
   """
   # initialize parameters
   ncs_phil_groups = []
@@ -1571,7 +1626,11 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp):
 def get_largest_common_ncs_groups(pdb_hierarchy_inp):
   """
   Finds minimal number ncs relations, the largest common ncs groups
-  :param pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
+
+  Args:
+    pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
+
+  Returns:
   :return ncs_phil_groups: (list) list of ncs_groups_container
   """
   # Todo : redo all test for this section

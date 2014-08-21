@@ -6,26 +6,24 @@ import sys
 
 class TestFindNCSOperators(unittest.TestCase):
 
-  # @unittest.SkipTest
   def test_two_chain_master(self):
     """
     Testing one ncs group and master ncs with two chains of different length
     and chains are not in order
     """
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     trans_obj = iotbx.ncs.input(pdb_string=test_pdb1)
     t = trans_obj.ncs_to_asu_selection
     self.assertEqual(t.keys(),['chain A or chain B'])
     self.assertEqual(t.values(),[['chain C or chain D', 'chain E or chain F']])
 
-  # @unittest.SkipTest
   def test_three_chain_master(self):
     """
     Test case of:
-    Two groups, different number of chain in each group. to chains that are
+    Two groups, different number of chain in each group. two chains that are
     not ncs related
     """
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     trans_obj = iotbx.ncs.input(pdb_string=test_pdb2)
     t = trans_obj.ncs_to_asu_selection
     self.assertEqual(t.keys(),['chain D', 'chain A'])
@@ -34,19 +32,35 @@ class TestFindNCSOperators(unittest.TestCase):
     self.assertEqual(trans_obj.ncs_group_map[1][0],{'chain A'})
     self.assertEqual(trans_obj.ncs_group_map[2][0],{'chain D'})
 
-  # @unittest.SkipTest
   def test_master_build_from_two_related_chains(self):
     """
     Test that minimal number of chains in master ncs are selected (not the
     minimal number of transformations)
     """
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     trans_obj = iotbx.ncs.input(pdb_string=test_pdb3)
     t = trans_obj.ncs_to_asu_selection
     self.assertEqual(t.keys(),['chain A'])
     self.assertEqual(t.values(),
                      [['chain C', 'chain D', 'chain E', 'chain F',
                        'chain G', 'chain H', 'chain I', 'chain B']])
+
+  def test_largest_common_ncs(self):
+    """
+    Test that minimal number of transformations in
+    master ncs are selected (not the minimal number of chains)
+    """
+    print sys._getframe().f_code.co_name
+    trans_obj = iotbx.ncs.input(
+      pdb_string=test_pdb3,
+      use_simple_ncs_from_pdb=False,
+      use_minimal_master_ncs=False)
+    t = trans_obj.ncs_to_asu_selection
+    self.assertEqual(t.keys(),['chain A or chain B or chain C'])
+    self.assertEqual(t.values(),
+                     [['chain D or chain E or chain F',
+                       'chain G or chain H or chain I']])
+
 
 test_pdb1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
@@ -173,5 +187,20 @@ ATOM      4  O   THR B   1      10.727  14.426  12.727  1.00 20.00           O
 TER
 '''
 
-if __name__ == "__main__":
+def run_selected_tests():
+  """  Run selected tests
+
+  1) List in "tests" the names of the particular test you want to run
+  2) Comment out unittest.main()
+  3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
+  """
+  tests = ['test_largest_common_ncs']
+  suite = unittest.TestSuite(map(TestFindNCSOperators,tests))
+  return suite
+
+if __name__=='__main__':
+  # use for individual tests
+  # unittest.TextTestRunner().run(run_selected_tests())
+
+  # Use to run all tests
   unittest.main()
