@@ -45,7 +45,7 @@ class postref_handler(object):
       two_theta = observations.two_theta(wavelength=wavelength).data()
       one_over_P = 2/(1 + (flex.cos(two_theta)**2))
       one_over_L = 2 * (flex.sin(two_theta/2)**2)
-      observations = observations.customized_copy(data=observations.data()*one_over_L*one_over_P)
+      observations = observations.customized_copy(data=observations.data()*one_over_P)
 
     #set observations with target space group - !!! required for correct
     #merging due to map_to_asu command.
