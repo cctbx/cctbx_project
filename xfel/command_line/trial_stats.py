@@ -3,7 +3,6 @@ from __future__ import division
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
-from cxi_xdr_xes.cftbx.cspad_ana import db as db
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
 import sys
@@ -20,6 +19,11 @@ master_phil = libtbx.phil.parse("""
 """)
 
 def run (args) :
+  try:
+    from cxi_xdr_xes.cftbx.cspad_ana import db as db
+  except ImportError:
+    raise Sorry("Trial logging not supported for this installation. Conact the developers for access.")
+
   user_phil = []
   # TODO: replace this stuff with iotbx.phil.process_command_line_with_files
   # as soon as I can safely modify it
