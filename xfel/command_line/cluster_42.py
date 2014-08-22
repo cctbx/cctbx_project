@@ -33,7 +33,7 @@ def run(_args):
   orr_axes = ucs.visualise_orientational_distribution(orr_axes, cbar=True)
   inten_axes = ucs.intensity_statistics(inten_axes)
   clusters, cluster_ax = ucs.ab_cluster(_args.t, log=_args.log, ax=clust_ax,
-                                        fast=_args.fast, write_file_lists=False)
+                                        schnell=_args.fast, write_file_lists=False)
 
   #plt.text("cluster.42 Plot Everything!")
   plt.tight_layout()

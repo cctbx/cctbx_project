@@ -238,13 +238,13 @@ class Cluster:
 
   def ab_cluster(self, threshold=10000, method='distance',
                  linkage_method='single', log=False,
-                 ax=None, write_file_lists=True, fast=False, doplot=True,
+                 ax=None, write_file_lists=True, schnell=False, doplot=True,
                  labels='default'):
     """
     Hierarchical clustering using the unit cell dimentions.
 
     :param threshold: the threshold to use for prunning the tree into clusters.
-    :param fast: if True, use simple euclidian distance, otherwise, use Andrews-Berstein distance from Andrews & Bernstein J Appl Cryst 47:346 (2014) on the Niggli cells.
+    :param schnell: if True, use simple euclidian distance, otherwise, use Andrews-Berstein distance from Andrews & Bernstein J Appl Cryst 47:346 (2014) on the Niggli cells.
     :param method: which clustering method from scipy to use when creating the tree (see scipy.cluster.hierarchy)
     :param linkage_method: which linkage method from scipy to use when creating the linkages. x (see scipy.cluster.hierarchy)
     :param log: if True, use log scale on y axis.
@@ -265,7 +265,7 @@ class Cluster:
                          for image in self.members])
 
     # 2. Do hierarchichal clustering, using the find_distance method above.
-    if fast:
+    if schnell:
       logging.info("Using Euclidean distance")
       pair_distances = dist.pdist(g6_cells, metric='euclidean')
       logging.info("Distances have been calculated")

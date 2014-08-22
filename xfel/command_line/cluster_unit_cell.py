@@ -16,14 +16,14 @@ def run(_args):
   if not _args.noplot:
     clusters, _ = ucs.ab_cluster(_args.t, log=_args.log,
                                write_file_lists=_args.nofiles,
-                               fast=_args.fast,
+                               schnell=_args.fast,
                                doplot=_args.noplot)
   else:
     plt.figure("Andrews-Bernstein distance dendogram", figsize=(12, 8))
     ax = plt.gca()
     clusters, cluster_axes = ucs.ab_cluster(_args.t, log=_args.log, ax=ax,
                                             write_file_lists=_args.nofiles,
-                                            fast=_args.fast,
+                                            schnell=_args.schnell,
                                             doplot=_args.noplot)
     plt.tight_layout()
     plt.show()
@@ -42,7 +42,7 @@ if __name__ == "__main__":
                       help="Do not display plots")
   parser.add_argument('--log', action='store_true',
                     help="Display the dendrogram with a log scale")
-  parser.add_argument('--fast', action='store_true',
+  parser.add_argument('--schnell', action='store_true',
                     help="Use euclidian distance only for increased speed."\
                     "Risky!")
   parser.add_argument('--nofiles', action='store_false',
