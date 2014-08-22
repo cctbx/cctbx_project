@@ -62,6 +62,13 @@ copyright = u'2014, University of California'
 #
 # The short X.Y version.
 version = 'None'
+try :
+  from libtbx.utils import get_svn_revision
+  version_ = get_svn_revision()
+  if (version_ is not None) :
+    version = "r" + str(version_)
+except ImportError :
+  pass
 # The full version, including alpha/beta/rc tags.
 release = 'None'
 

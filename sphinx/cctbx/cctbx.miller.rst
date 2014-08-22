@@ -1,3 +1,6 @@
+
+.. py:module:: cctbx.miller
+
 ====================
 cctbx.miller package
 ====================
