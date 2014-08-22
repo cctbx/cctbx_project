@@ -1,6 +1,9 @@
+====================
 cctbx.miller package
 ====================
 
+:py:mod:`cctbx.miller` is one of the most important modules in CCTBX; it
+encompasses nearly every operation performed directly on experimental data.
 The core classes in cctbx.miller are the :ref:`set <the-miller-set>` and the
 :ref:`array <the-miller-array>`.  The set (not to be confused with the built-in
 Python type) contains the crystal symmetry, an array (type
@@ -40,6 +43,7 @@ These conventions greatly simplify keeping track of and manipulating related
 data items.
 Output to various file formats will still follow the appropriate conventions.
 
+---------------
 Getting started
 ---------------
 
@@ -158,6 +162,7 @@ However, you should use caution when disabling the symmetry check, as this
 will also mean that comparisons between radically different crystal symmetries
 (e.g. ``P 63 2 2`` versus ``I 41``) will be performed silently.
 
+--------
 File I/O
 --------
 
@@ -197,7 +202,10 @@ object; other attributes are properties of the array itself::
 
 (The final line is simply printing the Python representation of the array
 itself - this is because the ``show_summary()`` method returns a reference to
-``self``, which allows **chaining** of successive methods.)
+``self``, which allows **chaining** of successive methods.)  Note that the
+``array_info`` object returned by ``array.info()`` contains the file name
+and original column labels; elsewhere, these attributes are used to select
+specific arrays from multi-purpose formats such as MTZ.
 
 From here we can quickly convert to amplitudes::
 
@@ -233,6 +241,129 @@ arrays to be combined (provided that they have identical crystal symmetry)::
 In addition to conventional formats, since all of the internal types can be
 serialized as Python pickles, the same applies to set and array objects.
 
+Processing input data - practical aspects
+-----------------------------------------
+
+In practice, preparing input arrays for the various other algorithms in CCTBX
+is often significantly more complicated than implied in the previous section.
+Suppose for example we have an MTZ
+file with these columns (output excerpted from ``phenix.mtz.dump data.mtz``)::
+
+    label      #valid  %valid    min     max type
+    H           75612 100.00% -40.00   38.00 H: index h,k,l
+    K           75612 100.00%   0.00   25.00 H: index h,k,l
+    L           75612 100.00%   0.00   70.00 H: index h,k,l
+    I(+)        74981  99.17% -11.10 2777.70 K: I(+) or I(-)
+    SIGI(+)     74981  99.17%   0.10   89.50 M: standard deviation
+    I(-)        69529  91.95% -14.00 2808.50 K: I(+) or I(-)
+    SIGI(-)     69529  91.95%   0.10   64.90 M: standard deviation
+    FreeR_flag  75773 100.00%   0.00    1.00 I: integer
+
+We would eventually like to be able to use these data for calculation of
+R-factors (versus some hypothetical set of structure factors derived from a
+model or map).  This requires several steps to ensure that any subsequent
+actions will behave sensibly: we must make sure that the input data are of
+the correct type, symmetry-unique, using conventional indices, and consistent
+with the R-free flags; we also want to use the R-free flags to separate out
+"working" and "test" arrays.  To begin with, we read in the data::
+
+  >>> from iotbx.reflection_file_reader import any_reflection_file
+  >>> hkl_in = any_reflection_file(file_name="data.mtz")
+  >>> miller_arrays = hkl_in.as_miller_arrays()
+  >>> i_obs = miller_arrays[0]
+  >>> flags = miller_arrays[1]
+  >>> f_obs = i_obs.f_sq_as_f().map_to_asu()
+  >>> flags = flags.customized_copy(data=flags.data()==1).map_to_asu()
+  >>> f_obs = f_obs.merge_equivalents().array()
+  >>> flags = flags.merge_equivalents().array()
+  >>> flags_plus_minus = flags.generate_bijvoet_mates()
+  >>> f_obs, flags_plus_minus = f_obs.common_sets(other=flags_plus_minus)
+  >>> f_obs_work = f_obs.select(~flags_plus_minus.data())
+  >>> f_obs_free = f_obs.select(flags_plus_minus.data())
+
+By the end of this block of code, we have ensured that the experimental
+amplitudes and R-free flags have identically sized and ordered arrays, and
+are suitable for comparison with any other (similarly prepared) set of data.
+A number of consistency checks built in to the various set and array methods
+may raise exceptions if these steps are skipped - for instance, the separate
+storage of ``(h,k,l)`` and ``(-h,-k,-l)`` requires us to expand the R-free
+flags to be "anomalous", and if we skip that step::
+
+  >>> f_obs, flags = f_obs.common_sets(other=flags)
+  Traceback (most recent call last):
+    File "<stdin>", line 1, in <module>
+    File "/home/nat/src/cctbx_project/cctbx/miller/__init__.py", line 1032, in common_sets
+      assert_is_similar_symmetry=assert_is_similar_symmetry)
+    File "/home/nat/src/cctbx_project/cctbx/miller/__init__.py", line 1008, in match_indices
+      assert self.anomalous_flag() == other.anomalous_flag()
+  AssertionError
+
+Or if we omit the call to ``common_sets()``::
+
+  >>> f_obs_work = f_obs.select(~flags_plus_minus.data())
+  Traceback (most recent call last):
+    File "<stdin>", line 1, in <module>
+    File "/home/nat/src/cctbx_project/cctbx/miller/__init__.py", line 3232, in select
+      i = self.indices().select(selection)
+  RuntimeError: scitbx Internal Error: /home/nat/src/cctbx_project/scitbx/array_family/selections.h(44): SCITBX_ASSERT(flags.size() == self.size()) failure.
+
+(In practice, our use of ``common_sets()`` here is less than ideal; programs
+in Phenix instead check that every reflection for which we have data also has
+a corresponding R-free flag - after expansion to anomalous if necessary - and
+exit with an error if this is not the case.)
+
+Note that in the above example we are making many assumptions about the
+contents and order of the input file, whereas in practice MTZ and CIF formats
+may be arbitrarily complex and contain multiple arrays of each type.
+(Additionally, the conventions for specifying R-free flags differ between
+various software suites, and ``1`` will not necessarily be the appropriate
+test flag value; fortunately, it is usually possible to guess the convention
+being used.)   For
+actual applications (as opposed to quick scripts and development code),
+the utilities available in :py:mod:`iotbx.reflection_file_utils` enable
+standardized retrieval of different array types based on a combination of
+automatic behavior and user input (i.e. label strings), and the general-purpose
+input wrapper in :py:mod:`mmtbx.command_line` encapsulates nearly all of these 
+steps.
+
+------------------------------
+Working with experimental data
+------------------------------
+
+TODO
+
+-------------------
+From arrays to maps
+-------------------
+
+TODO
+
+::
+
+  fft_map = map_coeffs.fft_map(resolution_factor=0.25)
+  fft_map.apply_sigma_scaling()
+  real_map = fft_map.real_map_unpadded()
+  site_map_values = flex.double()
+  for site in xray_structure.sites_frac() :
+    rho = real_map.eight_point_interpolation(site)
+    site_map_values.append(rho)
+
+As an extreme example of the ease of scripting repetitive actions using
+``cctbx.miller``, here is a complete six-line script to convert all sets of map
+coefficients in an MTZ file to sigma-scaled CCP4-format map files (covering the
+unit cell)::
+
+  from iotbx.reflection_file_reader import any_reflection_file
+  hkl_in = any_reflection_file(file_name="map_coeffs.mtz")
+  for i_map, array in enumerate(hkl_in.as_miller_arrays()) :
+    if array.is_complex_array() :
+      fft_map = array.fft_map(resolution_factor=0.25).apply_sigma_scaling()
+      fft_map.as_ccp4_map(file_name="map_%d.ccp4" % (i_map+1))
+
+See the documentation for :py:mod:`cctbx.maptbx` for details of working with
+map objects.
+
+--------------
 The Miller set
 --------------
 
@@ -243,6 +374,7 @@ The Miller set
 
 .. autofunction:: cctbx.miller.build_set
 
+----------------
 The Miller array
 ----------------
 
@@ -251,6 +383,7 @@ The Miller array
     :undoc-members:
     :show-inheritance:
 
+---------------
 Utility classes
 ---------------
 
