@@ -876,6 +876,8 @@ Residue classes
         bond_data.append( (atoms[i_seq].id_str(),
                            atoms[j_seq].id_str(),
                            rt_mx_ji,
+                           "h-dna" if (classes1.common_rna_dna and
+                             classes2.common_rna_dna) else "bond",
             )
           )
         bond_data_i_seqs.setdefault(i_seq, [])
@@ -888,6 +890,8 @@ Residue classes
         bond_data.append( (atoms[i_seq].id_str(),
                            atoms[j_seq].id_str(),
                            None, #rt_mx,
+                           "h-dna" if (classes1.common_rna_dna and
+                             classes2.common_rna_dna) else "bond",
             )
           )
         bond_data_i_seqs.setdefault(i_seq, [])
@@ -963,7 +967,7 @@ Residue classes
       for label1, label2, sym_op, link_name in sorted(link_data):
         if sym_op is None:
           print >> log, "    Simple link:   %s - %s" % (label1, label2)
-      for label1, label2, sym_op in sorted(bond_data):
+      for label1, label2, sym_op, bond_type in sorted(bond_data):
         if sym_op:
           print >> log, "    Symmetry link: %s - %s sym. op: %s" % (label1,
                                                                     label2,
@@ -1009,14 +1013,17 @@ Residue classes
         simple_bonds,
         sym_bonds,
         )
-      for label1, label2, sym_op in sorted(bond_data):
-        if sym_op is None:
-          print >> log, "    Simple bond:   %s - %s" % (label1, label2)
-      for label1, label2, sym_op in sorted(bond_data):
-        if sym_op:
-          print >> log, "    Symmetry bond: %s - %s sym. op: %s" % (label1,
-                                                                    label2,
-                                                                    sym_op,
+      for caption, bond_type in [("Nucleic acid basepair bonds",'h-dna'),
+                                 ("Other bonds",'bond')]:
+        print >> log, "  %s:" % caption
+        for label1, label2, sym_op, bt in sorted(bond_data):
+          if sym_op is None and bt == bond_type:
+            print >> log, "    Simple bond:   %s - %s" % (label1, label2)
+        for label1, label2, sym_op, bt in sorted(bond_data):
+          if sym_op and bt == bond_type:
+            print >> log, "    Symmetry bond: %s - %s sym. op: %s" % (label1,
+                                                                      label2,
+                                                                      sym_op,
             )
     print >> log, '  Time building additional restraints: %0.2f' % (time.time()-t0)
     return hbonds_in_bond_list
