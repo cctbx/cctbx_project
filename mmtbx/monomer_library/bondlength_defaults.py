@@ -3383,11 +3383,6 @@ def run(atom1, atom2, return_non_protein=True):
                              return_non_protein=return_non_protein,
         )
   if rc is None:
-    from mmtbx.monomer_library import linking_utils
-    which_basepair = linking_utils.is_linked_basepairs(atom1, atom2)
-    if which_basepair is not None:
-      rc = get_basepair_target_distance(atom1, atom2, which_basepair)
-  if rc is None:
     if not hasattr(atom1, "symbol"): # iotbx atom
       return get_default_bondlength(atom1.element.strip(),
                                     atom2.element.strip(),

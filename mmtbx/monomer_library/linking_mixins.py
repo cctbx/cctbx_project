@@ -737,11 +737,14 @@ Residue classes
           tmp.sort()
           ij_seqs.append(tuple(tmp))
 
+      # !!! For every possible link we are looping over _all_ bond proxies?
+      # Impossible for DNA/RNA links due to enormous runtime (hundreds links).
       link_found = False
-      for bond_simple_proxy in geometry_proxy_registries.bond_simple.proxies:
-        if bond_simple_proxy.i_seqs in ij_seqs:
-          link_found = True
-          break
+      if not (classes1.common_rna_dna and classes2.common_rna_dna):
+        for bond_simple_proxy in geometry_proxy_registries.bond_simple.proxies:
+          if bond_simple_proxy.i_seqs in ij_seqs:
+            link_found = True
+            break
       if link_found: continue
       # get predefined link
       link, swap, key = linking_utils.is_atom_group_pair_linked(
@@ -920,7 +923,15 @@ Residue classes
       atom2 = atoms[j_seq]
       if (sym_pair.rt_mx_ji.is_unit_mx()): n_simple += 1
       else:                                n_symmetry += 1
-      ans = bondlength_defaults.run(atom1, atom2)
+      # check for NA linkage
+      classes1 = linking_utils.get_classes(atom1)
+      classes2 = linking_utils.get_classes(atom2)
+      if (classes1.common_rna_dna and classes2.common_rna_dna
+          and na_params.enabled and na_params.bonds.enabled):
+        ans = [na_params.bonds.target_value,
+               na_params.bonds.sigma, na_params.bonds.slack]
+      else:
+        ans = bondlength_defaults.run(atom1, atom2)
       equil = 2.3
       weight = 0.02
       slack = 0.
@@ -943,7 +954,6 @@ Residue classes
         i_seq=i_seq,
         j_seq=j_seq,
         rt_mx_ji=sym_pair.rt_mx_ji)
-
     # output
     if link_data:
       print >> log, "  Number of additional links: simple=%d, symmetry=%d" % (
