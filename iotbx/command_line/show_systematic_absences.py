@@ -68,6 +68,8 @@ iotbx.show_systematic_absences data.hkl [space_group] [unit_cell]""")
     space_group_info=space_group,
     unit_cell=unit_cell)
   data = data.customized_copy(crystal_symmetry=symm)
+  if (data.sigmas() is None) :
+    raise Sorry("Input data are missing experimental sigmas.")
   data.show_all_possible_systematic_absences(out=out)
 
 if (__name__ == "__main__") :

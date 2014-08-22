@@ -37,6 +37,15 @@ def exercise () :
   args.append(",".join([ str(x) for x in xrs.unit_cell().parameters() ]))
   show_systematic_absences.run(args=args, out=out)
   assert (out.getvalue().count("  (   0,    3,    0): i/sigi =    0.5") == 4)
+  i_calc = i_calc.customized_copy(sigmas=None)
+  i_calc.as_mtz_dataset(column_root_label="I").mtz_object().write("tst_sys_absent.mtz")
+  args = ["tst_sys_absent.mtz"]
+  try :
+    show_systematic_absences.run(args=args, out=out)
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
 
 if (__name__ == "__main__") :
   exercise()

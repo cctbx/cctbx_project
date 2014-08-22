@@ -82,6 +82,8 @@ def exercise_analyze_absences () :
     complete_set = i_calc.complete_set()
     missing_set = complete_set.lone_set(i_calc)
     assert missing_set.size() == 0 # should be complete so far
+    i_calc_orig = i_calc.deep_copy().customized_copy(
+      sigmas=flex.double(i_calc.size(), 0.01))
     symm = i_calc.crystal_symmetry().customized_copy(
       space_group_info=ig.info())
     i_calc = i_calc.customized_copy(crystal_symmetry=symm)
@@ -96,7 +98,8 @@ def exercise_analyze_absences () :
     i_calc = i_calc.set_observation_type_xray_intensity()
     # i_calc is now complete with respect to the derived reflection intensity
     # group, with I/sigma=1 for all systematic absences
-    psgc = protein_space_group_choices(miller_array=i_calc)
+    psgc = protein_space_group_choices(miller_array=i_calc,
+      original_data=i_calc_orig)
     table = psgc.suggest_likely_candidates()
     min_score = min([ row[-1] for row in table ])
     expected_failures = ["I 4", "I 4 2 2", "P 42 3 2"]

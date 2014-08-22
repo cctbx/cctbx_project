@@ -140,7 +140,7 @@ class printed_output (xtriage_output) :
     print >> self.out, text
 
   def show_paragraph_header (self, text) :
-    print >> self.out, text + ":"
+    print >> self.out, text #+ ":"
 
   def show_preformatted_text (self, text) :
     print >> self.out, text

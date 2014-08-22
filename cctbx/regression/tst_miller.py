@@ -2300,6 +2300,16 @@ def exercise_systematic_absences_info () :
   out = StringIO()
   absences = i_calc.show_all_possible_systematic_absences(out=out)
   assert (out.getvalue().count("  (   0,    3,    0): i/sigi =    0.5") == 4)
+  fc = i_calc.f_sq_as_f()
+  absences = fc.show_all_possible_systematic_absences(out=out)
+  assert (absences.input_amplitudes)
+  i_calc = i_calc.customized_copy(sigmas=None)
+  try :
+    absences = i_calc.show_all_possible_systematic_absences(out=out)
+  except AssertionError :
+    pass
+  else :
+    raise Exception_expected
 
 def run(args):
   exercise_systematic_absences_info()
