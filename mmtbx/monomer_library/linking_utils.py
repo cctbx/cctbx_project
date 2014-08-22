@@ -409,64 +409,8 @@ def is_linked_basepairs(
         possible_classes.append(k)
   if len(possible_classes) == 0:
     return None
-  elif len(possible_classes) == 1:
+  elif len(possible_classes) >= 1:
     return possible_classes[0] if final_link_direction_check() else None
-  elif len(possible_classes) > 1:
-    if (rn1, rn2) == ('A','A'):
-      if an1 == "N7" or an2 == "N7":
-        # 2 vs 5
-        if get_distance_atoms("N6","N1") < 3.2:
-          return 5 if final_link_direction_check() else None
-        else:
-          return 2 if final_link_direction_check() else None
-      else:
-        # 1 vs 5
-        if get_distance_atoms("N7","N6") < 3.2:
-          return 5 if final_link_direction_check() else None
-        else:
-          return 1 if final_link_direction_check() else None
-    elif (rn1, rn2) == ('A','C'):
-      if get_distance_atoms("N7","N4") < 3.2:
-        return 25 if final_link_direction_check() else None
-      else:
-        return 26 if final_link_direction_check() else None
-    elif (rn1, rn2) == ('A','G'):
-      if an1 == "06" or an2 == "06":
-        # 8 vs 9
-        if get_distance_atoms("N1","N1") < 3.1:
-          return 8 if final_link_direction_check() else None
-        else:
-          return 9 if final_link_direction_check() else None
-      else:
-        # 10 vs 11
-        if get_distance_atoms("N1","N2") < 3.1:
-          return 10 if final_link_direction_check() else None
-        else:
-          return 11 if final_link_direction_check() else None
-    elif (rn1, rn2) == ('A','U'):
-      if an1 == "O4" or an2 == "O4":
-        # 20 vs 23
-        if get_distance_atoms("N1","N3") < 3.:
-          return 20 if final_link_direction_check() else None
-        else:
-          return 23 if final_link_direction_check() else None
-      else:
-        # 21 vs 24
-        if get_distance_atoms("N1","N3") < 3.:
-          return 21 if final_link_direction_check() else None
-        else:
-          return 24 if final_link_direction_check() else None
-    elif (rn1, rn2) == ('G','G'):
-      # 3 vs 6
-      if get_distance_atoms("N7","N2") < 3.1:
-        return 6 if final_link_direction_check() else None
-      else:
-        return 3 if final_link_direction_check() else None
-    elif (rn1, rn2) == ('G','U'):
-      if get_distance_atoms("N1","O2") < 3.:
-        return 28 if final_link_direction_check() else None
-      else:
-        return 27 if final_link_direction_check() else None
   return None
 
 def is_atom_pair_linked(atom1,
