@@ -405,7 +405,7 @@ TER
 
 def exercise_00(prefix="exercise_00"):
   "Build poly-ALA alpha helix"
-  ph = ssb.make_ss_structure_from_sequence(
+  ph = ssb.secondary_structure_from_sequence(
     alpha_helix_template, "".join(["A"]*12))
   #ph.write_pdb_file(file_name="%s_result.pdb"%prefix)
   sites_1 = ph.atoms().extract_xyz()
@@ -422,7 +422,7 @@ def exercise_00(prefix="exercise_00"):
 
 def exercise_01(prefix="exercise_01"):
   "Build poly-ALA beta strand"
-  ph = ssb.make_ss_structure_from_sequence(
+  ph = ssb.secondary_structure_from_sequence(
     beta_strand_template, "".join(["A"]*22))
   sites_1 = ph.atoms().extract_xyz()
   sites_2 = iotbx.pdb.input(source_info=None,
@@ -444,11 +444,11 @@ def exercise_r_t_matrices():
   except Exception, e:
     assert str(e) == "pdb_str should contain at least 2 residues"
 
-def exercise_ss_structure_from_sequence():
+def exercise_secondary_structure_from_sequence():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=correct_answer)
   cs = pdb_inp.xray_structure_simple().crystal_symmetry()
   correct_h = pdb_inp.construct_hierarchy()
-  test_h = ssb.make_ss_structure_from_sequence(alpha_pdb_str,
+  test_h = ssb.secondary_structure_from_sequence(alpha_pdb_str,
     sequence="ACEDGFIHKMLNQPSRTWVY")
   test_h.atoms().reset_serial()
   # why this passes...
@@ -474,7 +474,7 @@ def exercise_ss_structure_from_sequence():
 
   assert approx_equal(test_h.atoms().extract_xyz(),
                       correct_h.atoms().extract_xyz(), eps=0.002)
-  try: ssb.make_ss_structure_from_sequence(alpha_pdb_str, sequence="")
+  try: ssb.secondary_structure_from_sequence(alpha_pdb_str, sequence="")
   except Exception, e:
     assert str(e) == "sequence should contain at least one residue."
 
@@ -483,7 +483,7 @@ def exercise():
   exercise_00()
   exercise_01()
   exercise_r_t_matrices()
-  exercise_ss_structure_from_sequence()
+  exercise_secondary_structure_from_sequence()
 
 if (__name__ == "__main__"):
   exercise()

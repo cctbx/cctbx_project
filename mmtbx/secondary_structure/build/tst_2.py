@@ -873,7 +873,7 @@ def exercise_pure_polyala_alpha(prefix="tst_2_ex_ppa"):
   h_records = """\
 HELIX    1   1 ALA A    1  ALA A   20  1                                  20
 """
-  h = ssb.make_ss_structure_from_sequence(ssb.alpha_helix_str,"A"*20)
+  h = ssb.secondary_structure_from_sequence(ssb.alpha_helix_str,"A"*20)
   #h.write_pdb_file(file_name=prefix+'h0.pdb')
   d1 = get_distances(h)
   ann = ioss.annotation(records=h_records.split('\n'))
