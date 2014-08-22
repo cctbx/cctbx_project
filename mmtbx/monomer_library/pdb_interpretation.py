@@ -148,25 +148,6 @@ master_params_str = """\
     amino_acid_bond_cutoff = 1.9
       .type = float
       .short_caption = Distance cutoff for automatic linking of aminoacids
-    link_dna_rna = False
-      .type = bool
-      .short_caption = Find and link opposite basepairs in RNA/DNA
-    rna_dna_bond_cutoff = 3.4
-      .type = float
-      .short_caption = Distance cutoff for automatic linking of RNA/DNA
-    rna_dna_cosangle_cutoff = 0.55
-      .type = float
-      .short_caption = cosine of angle between normal to basepair plane and \
-        link
-    rna_dna_basepair_parallelity_enabled = False
-      .type = bool
-    rna_dna_basepair_parallelity_sigma = 0.027
-      .type = float
-      .short_caption = sigma for basepaired parallelity
-    rna_dna_basepair_planarity_enabled = False
-      .type = bool
-    rna_dna_basepair_planarity_sigma = 0.12
-      .type = float
     link_residues = False
       .type = bool
     inter_residue_bond_cutoff = 2.5
@@ -277,16 +258,58 @@ master_params_str = """\
       .short_caption = Omega-ESD override value
     include scope mmtbx.geometry_restraints.ramachandran.master_phil
   }
-  restraint_parallel_dna_rna = False
-    .type = bool
-    .short_caption = Determine consecutive DNA/RNA basepairs and restraint \
-      them to be parallel
-  skip_additional_check_on_dna_rna = False
-    .type = bool
-    .short_caption = Disable additional checking for consecutive DNA/RNA bases
-  weight_parallel_dna_rna = 0.027
-    .type=float
-    .short_caption = weight for parallelity DNA/RNA restraints
+  nucleic_acid_restraints
+    .short_caption = Nucleic Acid restraints settings
+  {
+    enabled = False
+      .type = bool
+      .short_caption = Enable set of nucleic acid (DNA/RNA) restraints
+      .help = If true special set of restraints for DNA/RNA nucleobases will \
+        be generated. This includes hydrogen bonds for basepairing \
+        interactions, planarity for basepairs and parallelity restraints for \
+        simulate stacking interactions.
+    bonds {
+      enabled = True
+        .type = bool
+        .short_caption = Enable hydrogen bonds between basepairing nucleobases
+      bond_distance_cutoff = 3.4
+        .type = float
+        .short_caption = Distance cutoff for hydrogen bonds
+      target_value = 2.89
+        .type = float
+      sigma = 0.08
+        .type = float
+      angle_between_bond_and_nucleobase_cutoff = 35.0
+        .type = float
+        .short_caption = Angle between bond and nucleobase cutoff for \
+          hydrogen bonds
+        .help = If angle between supposed hydrogen bond and \
+          basepair plane (defined by C4, C5, C6 atoms) is less than this \
+          value (in degrees), the bond will not be established.
+      }
+    basepair_planarity {
+      enabled = True
+        .type = bool
+        .short_caption = Enable planarity restraints for basepairing \
+          nucleobases
+      sigma = 0.176
+        .type = float
+    }
+    stacking {
+      enabled = True
+        .type = bool
+        .short_caption = Enable parallelity restraints for stacking nucleobases
+      sigma = 0.027
+        .type = float
+      skip_additional_distance_ckecking = False
+        .type = bool
+        .short_caption = Additional distance check
+        .help = Measure distances between 'C2', 'C4', 'C5', 'C6', 'C1*' atoms \
+          of both nucleobases (if exist). \
+          result = max(distances)-min(distances) < 2.5 and max(distances) < 8 \
+          Probably this function will be deleted soon.
+    }
+  }
   max_reasonable_bond_distance = 50.0
     .type=float
   nonbonded_distance_cutoff = None
@@ -2157,9 +2180,7 @@ class build_chain_proxies(object):
         mon_lib_srv,
         ener_lib,
         translate_cns_dna_rna_residue_names,
-        restraint_parallel_dna_rna,
-        skip_additional_check_on_dna_rna,
-        weight_parallel_dna_rna,
+        na_params,
         rna_sugar_pucker_analysis_params,
         apply_cif_modifications,
         apply_cif_links_mm_pdbres_dict,
@@ -2379,7 +2400,7 @@ class build_chain_proxies(object):
             n_unresolved_chain_link_planarities \
               += link_resolution.counters.unresolved_non_hydrogen
             # add_parallelity_proxies
-            if restraint_parallel_dna_rna:
+            if na_params.enabled and na_params.stacking.enabled:
               if (len(broken_bond_i_seq_pairs) == 0 and # link is not broken...
                   prev_mm.is_rna_dna and mm.is_rna_dna): # and they are rna/dna
                 def additional_check(m_i, m_j):
@@ -2390,16 +2411,21 @@ class build_chain_proxies(object):
                     a2 = m_j.expected_atoms.get(aname, None)
                     if a1 is not None and a2 is not None:
                       distances.append(a1.distance(a2))
-                  max_dist = max(distances)
-                  min_dist = min(distances)
-                  diff_dist = max(distances)-min(distances)
-                  result = diff_dist < 2.5 and max_dist < 8
+                  max_dist = min_dist = diff_dist = 0
+                  if len(distances) > 0:
+                    max_dist = max(distances)
+                    min_dist = min(distances)
+                    diff_dist = max(distances)-min(distances)
+                    result = diff_dist < 2.5 and max_dist < 8
+                  else:
+                    result = False
                   if not result:
                     print "Rejecting parallelity for ", m_i.pdb_residue_id_str, m_j.pdb_residue_id_str,
                     print "%5.2f %5.2f %5.2f" % ( diff_dist, max_dist, min_dist),
                     print " in additional check (skip_additional_check_on_dna_rna)"
                   return result
-                if additional_check(prev_mm, mm) or skip_additional_check_on_dna_rna:
+                if (na_params.stacking.skip_additional_distance_ckecking
+                    or additional_check(prev_mm, mm)):
                   link_resolution = add_parallelity_proxies(
                     counters=counters(label="link_parallelity"),
                     m_i=prev_mm,
@@ -2407,7 +2433,7 @@ class build_chain_proxies(object):
                     parallelity_proxy_registry=geometry_proxy_registries.parallelity,
                     special_position_indices=special_position_indices,
                     broken_bond_i_seq_pairs=broken_bond_i_seq_pairs,
-                    weight=weight_parallel_dna_rna)
+                    weight=na_params.stacking.sigma)
                   n_unresolved_chain_link_parallelities \
                     += link_resolution.counters.unresolved_non_hydrogen
 
@@ -2900,9 +2926,7 @@ class build_all_chain_proxies(linking_mixins):
             ener_lib=ener_lib,
             translate_cns_dna_rna_residue_names
               =self.params.translate_cns_dna_rna_residue_names,
-            restraint_parallel_dna_rna=self.params.restraint_parallel_dna_rna,
-            skip_additional_check_on_dna_rna=self.params.skip_additional_check_on_dna_rna,
-            weight_parallel_dna_rna=self.params.weight_parallel_dna_rna,
+            na_params=self.params.nucleic_acid_restraints,
             rna_sugar_pucker_analysis_params
               =self.params.rna_sugar_pucker_analysis,
             apply_cif_modifications=self.apply_cif_modifications,
@@ -4515,13 +4539,13 @@ class build_all_chain_proxies(linking_mixins):
         self.geometry_proxy_registries.parallelity.append_custom_proxy(proxy=proxy)
     #
     al_params = self.params.automatic_linking
+    na_params = self.params.nucleic_acid_restraints
     hbonds_in_bond_list = []
     #
     any_links = False
     link_attrs = ["link_metals",
                   "link_residues",
                   "link_carbohydrates",
-                  #"link_dna_rna",
                   ]
     if al_params.link_all:
       for attr in link_attrs:
@@ -4531,46 +4555,26 @@ class build_all_chain_proxies(linking_mixins):
       if getattr(al_params, attr, False):
         any_links = True
         break
-    if al_params.link_dna_rna:
+    if na_params.enabled and na_params.bonds.enabled:
       any_links = True
     if any_links:
       hbonds_in_bond_list = self.process_nonbonded_for_links(
         bond_params_table,
         bond_asu_table,
         self.geometry_proxy_registries,
+        na_params                 = na_params,
         link_metals               = al_params.link_metals,
         link_residues             = al_params.link_residues,
         link_carbohydrates        = al_params.link_carbohydrates,
-        link_dna_rna              = al_params.link_dna_rna,
         amino_acid_bond_cutoff    = al_params.amino_acid_bond_cutoff,
         metal_coordination_cutoff = al_params.metal_coordination_cutoff,
         carbohydrate_bond_cutoff  = al_params.carbohydrate_bond_cutoff,
         inter_residue_bond_cutoff = al_params.inter_residue_bond_cutoff,
         second_row_buffer         = al_params.buffer_for_second_row_elements,
-        rna_dna_bond_cutoff       = al_params.rna_dna_bond_cutoff,
-        rna_dna_cosangle_cutoff   = al_params.rna_dna_cosangle_cutoff,
         log=log,
         )
     if hbonds_in_bond_list > 0:
-      if al_params.rna_dna_basepair_parallelity_enabled:
-        # Do parallelity restraints for 'horizontal' basepairing
-        self.geometry_proxy_registries.parallelity.initialize_table()
-        for bond_seqs in hbonds_in_bond_list:
-          r1 = self.pdb_atoms[bond_seqs[0]].parent()
-          r2 = self.pdb_atoms[bond_seqs[1]].parent()
-          i_seqs = []
-          j_seqs = []
-          for (seqs, r) in [(i_seqs,r1), (j_seqs,r2)]:
-            for aname in ['C2', 'C4', 'C6']:
-              seqs.append(r.get_atom(aname).i_seq)
-          proxy = geometry_restraints.parallelity_proxy(
-            i_seqs=i_seqs,
-            j_seqs=j_seqs,
-            weight=al_params.rna_dna_basepair_parallelity_sigma)
-          self.geometry_proxy_registries.parallelity.add_if_not_duplicated(
-              proxy=proxy)
-        self.geometry_proxy_registries.parallelity.discard_table()
-      if al_params.rna_dna_basepair_planarity_enabled:
+      if na_params.basepair_planarity.enabled:
         from iotbx.pdb import residue_name_plus_atom_names_interpreter
         # Do planarity restraints for 'horizontal' basepairing
         self.geometry_proxy_registries.planarity.initialize_table()
@@ -4594,7 +4598,7 @@ class build_all_chain_proxies(linking_mixins):
                 i_seqs.append(r.get_atom(aname).i_seq)
           proxy = geometry_restraints.planarity_proxy(
             i_seqs=i_seqs,
-            weights=[1./al_params.rna_dna_basepair_planarity_sigma**2]*len(i_seqs))
+            weights=[1./na_params.basepair_planarity.sigma**2]*len(i_seqs))
           self.geometry_proxy_registries.planarity.add_if_not_duplicated(
               proxy=proxy)
         self.geometry_proxy_registries.planarity.discard_table()

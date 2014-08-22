@@ -903,7 +903,8 @@ def exercise_00():
   # using custom bonds
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.automatic_linking.link_all=True
-  params.restraint_parallel_dna_rna=True
+  params.nucleic_acid_restraints.enabled=True
+  params.nucleic_acid_restraints.stacking.enabled=True
   a2,b2 = get_ab(params=params)
   #
   assert approx_equal(a1,a2)
