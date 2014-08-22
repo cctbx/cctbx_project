@@ -46,7 +46,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
     std::string const& label)
   {
     if (label == "const") return true;
-    if (label == "TX") return true;
+    if (label == "TX" || label == "XX") return true;
     if (label == "unknown") return true;
     return false;
   }
@@ -70,7 +70,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
     bool optional=false)
   {
     if (label == "const") return boost::optional<std::string>(label);
-    if (label == "TX") return boost::optional<std::string>(label);
+    if (label == "TX" || label == "XX") return boost::optional<std::string>(label);
     std::string work_label = basic::strip_label(label, exact);
     const char* result = 0;
     int m = 0;
