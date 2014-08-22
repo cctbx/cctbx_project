@@ -360,7 +360,7 @@ def is_linked_basepairs(
         atom1,
         atom2,
         rna_dna_bond_cutoff=3.4,
-        rna_dna_cosangle_cutoff=0.55):
+        rna_dna_angle_cutoff=35):
   def final_link_direction_check():
     import math
     a1p = atom1.parent().get_atom('C4')
@@ -374,7 +374,7 @@ def is_linked_basepairs(
     #print "cos_phi:", cos_phi[0], "phi:", math.acos(cos_phi[0])*360/math.pi, abs(cos_phi[0]) < 0.55
     # we have cosine between normal to plane group and link, and want this angle
     # to be around 90 degrees
-    return abs(cos_phi[0]) < rna_dna_cosangle_cutoff
+    return 90 - math.degrees(math.acos(abs(cos_phi[0]))) < rna_dna_angle_cutoff
   def get_distance_atoms(name1, name2):
     return atom1.parent().get_atom(name1).distance(atom2.parent().get_atom(name2))
 
@@ -475,7 +475,7 @@ def is_atom_pair_linked(atom1,
                         max_bonded_cutoff=3.,
                         amino_acid_bond_cutoff=1.9,
                         rna_dna_bond_cutoff=3.4,
-                        rna_dna_cosangle_cutoff=0.55,
+                        rna_dna_angle_cutoff=35,
                         inter_residue_bond_cutoff=1.99,
                         second_row_buffer=.5,
                         metal_coordination_cutoff=3.,
@@ -545,7 +545,7 @@ def is_atom_pair_linked(atom1,
         atom1,
         atom2,
         rna_dna_bond_cutoff=rna_dna_bond_cutoff,
-        rna_dna_cosangle_cutoff=rna_dna_cosangle_cutoff)
+        rna_dna_angle_cutoff=rna_dna_angle_cutoff)
     if link_class is not None:
       #print "DO LINKING, class = ", link_class, atom1.id_str(), atom2.id_str()
       return True

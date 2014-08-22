@@ -436,17 +436,15 @@ class linking_mixins(object):
                                   bond_params_table,
                                   bond_asu_table,
                                   geometry_proxy_registries,
+                                  na_params,
                                   link_metals                 = True,
                                   link_residues               = True,
                                   link_carbohydrates          = True,
-                                  link_dna_rna                = True,
                                   max_bonded_cutoff           = None,
                                   metal_coordination_cutoff   = 3.,
                                   amino_acid_bond_cutoff      = 2.,
                                   inter_residue_bond_cutoff   = 2.,
                                   second_row_buffer           = 0.5,
-                                  rna_dna_bond_cutoff         = 3.4,
-                                  rna_dna_cosangle_cutoff     = 0.55,
                                   carbohydrate_bond_cutoff    = 2.,
                                   log                         = None,
                                   verbose                     = False,
@@ -455,7 +453,7 @@ class linking_mixins(object):
     if max_bonded_cutoff is None:
       max_bonded_cutoff = max(metal_coordination_cutoff,
                               amino_acid_bond_cutoff,
-                              rna_dna_bond_cutoff,
+                              na_params.bonds.bond_distance_cutoff,
                               carbohydrate_bond_cutoff,
                               inter_residue_bond_cutoff+second_row_buffer,
                               )
@@ -470,7 +468,7 @@ class linking_mixins(object):
       second_row_buffer         %s
       """ % ( metal_coordination_cutoff,
               amino_acid_bond_cutoff,
-              rna_dna_bond_cutoff,
+              na_params.bonds.bond_distance_cutoff,
               carbohydrate_bond_cutoff,
               inter_residue_bond_cutoff,
               second_row_buffer,
@@ -567,8 +565,8 @@ class linking_mixins(object):
              metal_coordination_cutoff,
              link_residues,
              amino_acid_bond_cutoff,
-             link_dna_rna,
-             rna_dna_bond_cutoff,
+             (na_params.enabled and na_params.bonds.enabled),
+             na_params.bonds.bond_distance_cutoff,
              link_carbohydrates,
              carbohydrate_bond_cutoff,
              )
@@ -639,7 +637,7 @@ Residue classes
         if possible_cyclic_peptide(atom1, atom2): # first & last peptide
           use_only_bond_cutoff = True
       if classes1.common_rna_dna and classes2.common_rna_dna:
-        if not link_dna_rna:
+        if not na_params.enabled:
           continue
       #else:
       #  continue # Hard hookup to disable all but DNA/RNA basepair linking
@@ -674,8 +672,9 @@ Residue classes
           distance=distance,
           max_bonded_cutoff=max_bonded_cutoff,
           amino_acid_bond_cutoff=amino_acid_bond_cutoff,
-          rna_dna_bond_cutoff=rna_dna_bond_cutoff,
-          rna_dna_cosangle_cutoff=rna_dna_cosangle_cutoff,
+          rna_dna_bond_cutoff=na_params.bonds.bond_distance_cutoff,
+          rna_dna_angle_cutoff=na_params.bonds.\
+              angle_between_bond_and_nucleobase_cutoff,
           inter_residue_bond_cutoff=inter_residue_bond_cutoff,
           second_row_buffer=second_row_buffer,
           saccharide_bond_cutoff=carbohydrate_bond_cutoff,
@@ -687,6 +686,7 @@ Residue classes
           print "is not linked", atom1.quote(),atom2.quote(),key
         continue
       # got a link....
+
       if classes1.common_rna_dna and classes2.common_rna_dna:
         hbonds_in_bond_list.append(tuple(sorted([atom1.i_seq, atom2.i_seq])))
 
@@ -701,7 +701,8 @@ Residue classes
       class_key = tuple(class_key)
       #
       if not link_metals and "metal" in class_key: continue
-      if not link_dna_rna and "common_rna_dna" in class_key: continue
+      if (not na_params.enabled and na_params.bonds.enabled
+          and "common_rna_dna" in class_key): continue
       if not link_residues and "common_amino_acid" in class_key: continue
       if not link_carbohydrates and "common_saccharide" in class_key: continue
       #
