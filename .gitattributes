@@ -3200,7 +3200,6 @@ wxtbx/utils.py -text
 wxtbx/windows.py -text
 wxtbx/xtriage.py -text
 xfel/SConscript -text
-xfel/Toy_Network/__init__.py -text
 xfel/__init__.py -text
 xfel/cftbx/__init__.py -text
 xfel/cftbx/detector/__init__.py -text
