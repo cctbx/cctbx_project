@@ -27,7 +27,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
   # @unittest.SkipTest
   def test_phil_param_read(self):
     """ Verify that phil parameters are properly read   """
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     # check correctness
     expected_ncs_selection =['(chain A)','(chain A) or (chain B)']
     expected_ncs_to_asu = [
@@ -48,7 +48,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
   # @unittest.SkipTest
   def test_phil_processing(self):
     """ Verify that phil parameters are properly processed   """
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     trans_obj = iotbx.ncs.input(
@@ -76,7 +76,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
   # @unittest.SkipTest
   def test_superpos_pdb(self):
     """  verify creation of transformations using superpose_pdb   """
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data1)
     trans_obj = iotbx.ncs.input(
@@ -126,7 +126,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       return
     from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
     from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     # creating a spec file
     params = ncs_master_params.extract()
     params.simple_ncs_from_pdb.min_length = 1
@@ -188,7 +188,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   # @unittest.SkipTest
   def test_mmcif_reading(self):
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     # Todo: test_mmcif_reading
     pass
 
@@ -199,7 +199,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     if not have_phenix:
       print "Skipping test_processing_of_asu(): phenix not available"
       return
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
 
     # reading and processing the spec file
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
@@ -266,7 +266,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     """
     Verify correct processing
     """
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
 
 
   # def test_build_pdb(self):
@@ -546,5 +546,21 @@ MATCHING 7
 
 '''
 
-if __name__ == "__main__":
+
+def run_selected_tests():
+  """  Run selected tests
+
+  1) List in "tests" the names of the particular test you want to run
+  2) Comment out unittest.main()
+  3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
+  """
+  tests = ['test_processing_of_asu']
+  suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
+  return suite
+
+if __name__=='__main__':
+  # use for individual tests
+  # unittest.TextTestRunner().run(run_selected_tests())
+
+  # Use to run all tests
   unittest.main()

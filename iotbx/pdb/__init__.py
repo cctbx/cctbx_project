@@ -1192,8 +1192,6 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
 
     error_handle can be use if one does not want a 'Sorry' to be raised. The program will continue to execute
     but all coordinates of the bad rotation matrix will zero out
-
-    @edited: Youval Dar (2013)
     '''
     source_info = self.source_info()
     if (len(source_info) > 0): source_info = " (%s)" % source_info
@@ -1228,10 +1226,10 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       if (sorted(done) != [1,2,3] or len(set(present)) != 1):
         raise RuntimeError(
           "Improper set of PDB MTRIX records%s" % source_info)
-      ingnor_transform = rm.is_r3_identity_matrix() and tv.is_col_zero()
+      identity_transform = rm.is_r3_identity_matrix() and tv.is_col_zero()
       result.add(
         r=rm, t=tv,
-        coordinates_present=(present[0]==1 or ingnor_transform),
+        coordinates_present=(present[0]==1 or identity_transform),
         serial_number=serial_number)
     return result
 

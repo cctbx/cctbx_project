@@ -78,16 +78,19 @@ def restraints_target_and_grads(
       iso_restraints=None,
       use_hd=None):
   """
-  :param ncs_restraints_group_list: NCS operator list
-  :param restraints_manager: (object)
-  :param xray_structure: (object)
-  :param grad: gradient without restraints
-  :param x: refined parameter
-  :param refine_sites: (bool) indicate refinement type
-  :param refine_u_iso: (bool) indicate refinement type
-  :param refine_transformations: (bool) indicate refinement type
-  :param iso_restraints: (object) iso restraints parameters
-  :param use_hd: (bool) Use hydrogen
+  Args:
+    ncs_restraints_group_list: NCS operator list
+    restraints_manager: (object)
+    xray_structure: (object)
+    grad: gradient without restraints
+    x: refined parameter
+    refine_sites: (bool) indicate refinement type
+    refine_u_iso: (bool) indicate refinement type
+    refine_transformations: (bool) indicate refinement type
+    iso_restraints: (object) iso restraints parameters
+    use_hd: (bool) Use hydrogen
+
+  Returns:
   :return ef_target: (float) restraints target function value
   :return ef_grad: (flex.double or flex.vec3_double) restraints gradient
   """
@@ -159,8 +162,9 @@ class target_function_and_grads_real_space(object):
 
   def data_target_and_grads(self, compute_gradients,x):
     """
-    :param compute_gradients: (bool) when True compute gradients
-    :param x: refined parameters
+    Args:
+      compute_gradients: (bool) when True compute gradients
+      x: refined parameters
     """
     g = None
     tg = cctbx.maptbx.real_space_refinement_simple.target_and_gradients(
@@ -184,9 +188,10 @@ class target_function_and_grads_real_space(object):
 
   def target_and_gradients(self,compute_gradients,xray_structure,x):
     """
-    :param compute_gradients: (bool) when True compute gradients
-    :param xray_structure: xray_structure object
-    :param x: refined parameters
+    Args:
+      compute_gradients: (bool) when True compute gradients
+      xray_structure: xray_structure object
+      x: refined parameters
     """
     self.xray_structure.set_sites_cart(sites_cart = xray_structure.sites_cart())
     g = None
