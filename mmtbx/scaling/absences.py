@@ -1,10 +1,10 @@
 
 from __future__ import division
 import mmtbx.scaling
-from cctbx import sgtbx
 from cctbx.array_family import flex
-from cctbx import sgtbx
 from cctbx import crystal
+from cctbx import miller
+from cctbx import sgtbx
 from libtbx import table_utils
 import math
 
@@ -632,7 +632,8 @@ class protein_space_group_choices(mmtbx.scaling.xtriage_analysis):
       threshold = 3,
       protein=True,
       print_all=True,
-      sigma_inflation=1.0):
+      sigma_inflation=1.0,
+      original_data=None):
     self.threshold = 3.0
     assert miller_array.is_xray_intensity_array()
     self.miller_array = miller_array.deep_copy().f_sq_as_f(
@@ -643,6 +644,12 @@ class protein_space_group_choices(mmtbx.scaling.xtriage_analysis):
       miller_array=self.miller_array,
       isigi_cut=threshold,
       sigma_inflation=sigma_inflation)
+    if (original_data is not None) :
+      self.absences_list = absences_list(obs=original_data,
+        was_filtered=False)
+    else :
+      self.absences_list = absences_list(obs=self.miller_array,
+        was_filtered=True)
 
     self.sg_iterator = sgi_iterator(chiral = True,
       intensity_symmetry = \
@@ -728,6 +735,9 @@ removed while processing the data, they will be regarded as missing
 information, rather then as enforcing that absence in the space group choices.
 """)
     out.show_table(self.sorted_table)
+    if (getattr(self, "absences_list", None) is not None) : # backwards compat.
+      if (self.absences_list.n_possible_max > 0) :
+        self.absences_list.show(out)
 
   def suggest_likely_candidates( self, acceptable_violations = 1e+90 ):
     used = flex.bool( len(self.sg_choices), False )
@@ -763,6 +773,56 @@ information, rather then as enforcing that absence in the space group choices.
 
     return sorted_rows
 
+class absences_list (mmtbx.scaling.xtriage_analysis,
+                     miller.systematic_absences_info) :
+  """
+  Container for lists of systematic absences.  This subclass simply overrides
+  the default output of the base class in cctbx.miller to be consistent with
+  the rest of Xtriage.
+  """
+  def show (self, *args, **kwds) :
+    mmtbx.scaling.xtriage_analysis.show(self, *args, **kwds)
+
+  def _show_impl (self, out) :
+    """
+    For each possible space group, show a list of possible systematically
+    absent reflections and corresponding I/sigmaI.
+    """
+    out.show_sub_header("List of individual systematic absences")
+    out.show_text("""\
+ Note: this analysis uses the original input data rather than the filtered data
+ used for twinning detection; therefore, the results shown here may include
+ more reflections than shown above.
+""")
+    if (self.input_amplitudes) :
+      out.show_text("""\
+ Also note that the input data were amplitudes, which means that weaker
+ reflections may have been modified by French-Wilson treatment or discarded
+ altogether, and the original intensities will not be recovered.
+""")
+    for group_info, absences in self.space_group_symbols_and_selections :
+      group_note = ""
+      if (str(group_info) == str(self.space_group_info)) :
+        group_note = " (input space group)"
+      if (absences == False) :
+        out.show_paragraph_header("%s%s: no systematic absences possible" % \
+          (group_info, group_note))
+      elif (absences is None) :
+        out.show_paragraph_header("%s%s: no absences found" % \
+          (group_info, group_note))
+      else :
+        out.show_paragraph_header("%s%s" % (group_info, group_note))
+        lines = []
+        for i_hkl, hkl in enumerate(absences.indices()) :
+          intensity = absences.data()[i_hkl]
+          sigma = absences.sigmas()[i_hkl]
+          indices_fmt = "(%4d, %4d, %4d)" % hkl
+          if (sigma == 0) :
+            lines.append("  %s: i/sigi = undefined" % indices_fmt)
+          else :
+            lines.append("  %s: i/sigi = %6.1f" % (indices_fmt,
+              intensity/sigma))
+        out.show_preformatted_text("\n".join(lines))
 
 def test():
   tmp = absences()

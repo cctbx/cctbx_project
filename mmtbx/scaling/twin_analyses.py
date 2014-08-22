@@ -2208,7 +2208,8 @@ class twin_analyses (scaling.xtriage_analysis):
                out_plots = None,
                verbose = 1,
                miller_calc=None,
-               additional_parameters=None):
+               additional_parameters=None,
+               original_data=None):
     assert miller_array.is_unique_set_under_symmetry()
     if out is None:
       out = sys.stdout
@@ -2296,7 +2297,8 @@ class twin_analyses (scaling.xtriage_analysis):
         self.abs_sg_anal = absences.protein_space_group_choices(
           miller_array = self.normalised_intensities.all,
           threshold = 3.0,
-          sigma_inflation=sigma_inflation)#.show(out)
+          sigma_inflation=sigma_inflation,
+          original_data=original_data)#.show(out)
     except Sorry: pass
 
     centric_cut = self.normalised_intensities.centric

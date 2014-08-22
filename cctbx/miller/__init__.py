@@ -5354,11 +5354,14 @@ class systematic_absences_info (object) :
 
   :param obs: X-ray intensity (preferred) or amplitude array
   """
-  def __init__ (self, obs) :
+  def __init__ (self, obs, was_filtered=None) :
+    self.was_filtered = was_filtered
+    self.input_amplitudes = False
     assert (obs.sigmas() is not None)
     obs = obs.sort("packed_indices")
     if obs.is_xray_amplitude_array() :
       obs = obs.f_as_f_sq()
+      self.input_amplitudes = True
     assert obs.is_xray_intensity_array()
     if (not obs.is_unique_set_under_symmetry()) :
       obs = obs.merge_equivalents().array()
@@ -5371,10 +5374,17 @@ class systematic_absences_info (object) :
     complete_sel = obs.customized_copy(
       space_group_info=point_group.info()).complete_set()
     self.space_group_symbols_and_selections = []
+    self.n_possible_max = 0
+    self.n_found_max = 0
     for group in all_groups :
       absent_sel = group.is_sys_absent(obs.indices()).iselection()
       all_possible = group.is_sys_absent(complete_sel.indices()).iselection()
+      n_possible = len(all_possible)
+      if (n_possible > self.n_possible_max) :
+        self.n_possible_max = n_possible
       if (len(absent_sel) > 0) : # systematic absences found
+        if (len(absent_sel) > self.n_found_max) :
+          self.n_found_max = len(absent_sel)
         absences = obs.select(absent_sel)
         self.space_group_symbols_and_selections.append((group.info(), absences))
       elif (len(all_possible) == 0) : # no possible absences in this SG
@@ -5388,6 +5398,17 @@ class systematic_absences_info (object) :
     For each possible space group, show a list of possible systematically
     absent reflections and corresponding I/sigmaI.
     """
+    if (self.n_possible_max == 0) :
+      print >> out, \
+        "No systematic absences possible in any intensity-equivalent groups."
+      return self
+    if (self.input_amplitudes) :
+      print >> out, """\
+Please note that the input data were amplitudes, which means that weaker
+reflections may have been modified by French-Wilson treatment or discarded
+altogether, and the original intensities will not be recovered.  For best
+results, use intensities as input.
+"""
     for group_info, absences in self.space_group_symbols_and_selections :
       group_note = ""
       if (str(group_info) == str(self.space_group_info)) :

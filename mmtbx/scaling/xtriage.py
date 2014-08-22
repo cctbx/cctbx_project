@@ -553,6 +553,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
       miller_array = miller_array.merge_equivalents().array()
       return miller_array.remove_systematic_absences().set_info(info)
     miller_obs = process_input_array(miller_obs)
+    miller_original = miller_obs.deep_copy()
     miller_calc = process_input_array(miller_calc)
     miller_ref = process_input_array(miller_ref)
     self.data_summary = data_summary(miller_obs,
@@ -704,7 +705,8 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
         normalise=True,
         out=text_out,
         miller_calc=miller_calc,
-        additional_parameters=twin_params)
+        additional_parameters=twin_params,
+        original_data=miller_original)
       self.twin_results.show(text_out)
       text_out.flush()
     else :
@@ -875,6 +877,8 @@ def run(args, command_name="phenix.xtriage", return_result=False,
     pdb_file_def="scaling.input.xray_data.reference.structure.file_name",
     seq_file_def="scaling.input.asu_contents.sequence_file",
     reflection_file_def="scaling.input.xray_data.file_name",
+    unit_cell_def="scaling.input.xray_data.unit_cell",
+    space_group_def="scaling.input.xray_data.space_group",
     usage_string="phenix.xtriage [options] reflection_file parameters [...]")
   effective_params = cmdline.work
   params = effective_params.extract()
