@@ -149,7 +149,7 @@ class ncs_group_object(object):
     elif pdb_inp:
       ph = pdb_inp.construct_hierarchy()
       pdb_hierarchy_inp = iotbx.pdb.hierarchy.input_hierarchy_pair(pdb_inp,ph)
-    if extension.lower() in ['.pdb','.cif', '.mmcif']:
+    if extension.lower() in ['.pdb','.cif', '.mmcif', '.gz']:
       pdb_hierarchy_inp = pdb.hierarchy.input(file_name=file_name)
     elif (not pdb_hierarchy_inp) and (pdb_string or cif_string):
       if pdb_string: input_str = pdb_string
@@ -159,11 +159,19 @@ class ncs_group_object(object):
       transform_info = pdb_hierarchy_inp.input.process_mtrix_records()
       if transform_info.as_pdb_string() == '': transform_info = None
     if transform_info or rotations:
-      self.build_ncs_obj_from_pdb_ncs(
-        pdb_hierarchy_inp = pdb_hierarchy_inp,
-        rotations=rotations,
-        translations=translations,
-        transform_info=transform_info)
+      if ncs_only(transform_info):
+        self.build_ncs_obj_from_pdb_ncs(
+          pdb_hierarchy_inp = pdb_hierarchy_inp,
+          rotations=rotations,
+          translations=translations,
+          transform_info=transform_info)
+      else:
+        # in the case that all ncs copies are in pdb
+        self.build_ncs_obj_from_pdb_asu(
+            pdb_hierarchy_inp=pdb_hierarchy_inp,
+            use_cctbx_find_ncs_tools=True,
+            use_simple_ncs_from_pdb=False,
+            use_minimal_master_ncs=True)
     elif ncs_selection_params or ncs_phil_groups:
       self.build_ncs_obj_from_phil(
         ncs_selection_params=ncs_selection_params,
@@ -202,11 +210,11 @@ class ncs_group_object(object):
     Build transforms objects and NCS <-> ASU mapping using PDB file containing
     a single NCS copy and MTRIX  or BIOMT records
 
-    Arguments:
-    pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
-    transform_info : an object containing MTRIX or BIOMT transformation info
-    rotations : matrix.sqr 3x3 object
-    translations : matrix.col 3x1 object
+    Args:
+      pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
+      transform_info : an object containing MTRIX or BIOMT transformation info
+      rotations : matrix.sqr 3x3 object
+      translations : matrix.col 3x1 object
     """
     self.collect_basic_info_from_pdb(pdb_hierarchy_inp=pdb_hierarchy_inp)
     assert bool(transform_info or (rotations and translations))
@@ -217,9 +225,6 @@ class ncs_group_object(object):
         translations=translations)
     else:
       # use only MTRIX/BIOMT records from PDB
-      assert_test = all_ncs_copies_not_present(transform_info)
-      msg = 'MTRIX record error : Mixed present and not-present NCS copies'
-      assert assert_test,msg
       self.process_pdb(transform_info=transform_info)
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
     self.ncs_copies_chains_names = self.make_chains_names(
@@ -505,7 +510,6 @@ class ncs_group_object(object):
 
       self.ncs_to_asu_selection[gs_new] = asu_locations
       self.ncs_group_map[k][0].add(gs_new)
-
     return found_same_group
 
   def update_ncs_copies_chains_names(self,masters, copies, tr_id):
@@ -684,6 +688,7 @@ class ncs_group_object(object):
     to the model, even if the chain ID already exist. so there model.
     chains() might contain several chains that have the same chain ID
     """
+    # Todo: Consider removing all the 's' from the transforms keys
     transform_info_available = bool(transform_info) and bool(transform_info.r)
     if transform_info_available:
       ti = transform_info
@@ -717,16 +722,15 @@ class ncs_group_object(object):
                            selection_id):
     """
     Apply all non-identity transforms
-
-    Arguments:
-    transform_id : (str) s001,s002...
-    transform : transform object, containing information on transformation
-    selection_id : (str) NCS selection string
-
     Build transform_to_ncs dictionary, which provides the location of the
     particular chains or selections in the NCS
+
+    Args:
+      transform_id (str): s001,s002...
+      transform : transform object, containing information on transformation
+      selection_id (str): NCS selection string
     """
-    if not is_identity(transform.r,transform.t):
+    if (not is_identity(transform.r,transform.t)):
       self.transform_to_be_used.add(transform.serial_num)
       key = selection_id + '_s' + format_num_as_str(transform.serial_num)
       # key = selection_id
@@ -843,7 +847,7 @@ class ncs_group_object(object):
     """
     Build common residues list and related RMSD
     for use when writing spec files
-    :return: list of common residues for each chain - transform pair
+        list of common residues for each chain - transform pair
     """
     sorted_keys = sort_dict_keys(self.ncs_copies_chains_names)
     only_master_ncs_in_hierarchy = False
@@ -892,7 +896,7 @@ class ncs_group_object(object):
 
   def get_ncs_restraints_group_list(self):
     """
-    :return: a list of ncs_restraint_group objects
+        a list of ncs_restraint_group objects
     """
     ncs_restraints_group_list = []
     group_id_list = sort_dict_keys(self.ncs_group_map)
@@ -1172,10 +1176,15 @@ def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
   a test vector
 
   Args:
-    angle_eps: (float) allowed difference in similar rotations
-    eps: (float) allowed difference in the average distance between
-  :return tr_num: (str) transform serial number
-  :return is_transpose: (bool) True if the matching transform is transpose
+    r (matrix.sqr): rotation
+    t (matrix.col): translation
+    transforms (dict): dictionary of all transforms
+    angle_eps (float): allowed difference in similar rotations
+    eps (float): allowed difference in the average distance between
+
+  Returns:
+    tr_num: (str) transform serial number
+    is_transpose: (bool) True if the matching transform is transpose
   """
   is_transpose = False
   tr_num = None
@@ -1199,7 +1208,7 @@ def is_same_transform(r1,t1,r2,t2,eps=0.1,angle_eps=5):
     eps, angle_eps: allowed numerical difference
 
   Returns:
-  :return: (bool,bool) (is_the_same, is_transpose)
+    (bool,bool) (is_the_same, is_transpose)
   """
   assert r1.is_r3_rotation_matrix(rms_tolerance=0.001)
   assert r2.is_r3_rotation_matrix(rms_tolerance=0.001)
@@ -1235,7 +1244,7 @@ def get_list_of_chains_selection(selection_str):
     selection_str: (str) selection string
 
   Returns:
-  :return: (list of str) of the format ['chain X', 'chain Y',...]
+    (list of str) of the format ['chain X', 'chain Y',...]
   """
   sstr = selection_str.replace(')',' ')
   sstr = sstr.replace('CHAIN','chain')
@@ -1283,7 +1292,7 @@ def get_pdb_header(pdb_str):
     pdb_str: (str) pdb type string
 
   Returns:
-  :return: the portion of the pdb_str till the first ATOM
+    the portion of the pdb_str till the first ATOM
   """
   pdb_str = pdb_str.splitlines()
   pdb_header_lines = []
@@ -1299,7 +1308,7 @@ def get_center_orth(xyz,selection):
     selection:
 
   Returns:
-  :return:(flex.vec3_double) center of coordinates for the selected coordinates
+    (flex.vec3_double) center of coordinates for the selected coordinates
   """
   new_xyz = xyz.select(selection)
   return new_xyz.mean()
@@ -1314,23 +1323,24 @@ def format_num_as_str(n):
     s3 = n%10
     return str(s1) + str(s2) + str(s3)
 
-def all_ncs_copies_not_present(transform_info):
+def ncs_only(transform_info):
   """
-  Check if a single NCS is in transform_info, all transforms, but the
-  identity should no be present
+  Verify that all transforms are not present
+  (excluding the identity transform)
 
   Args:
     transform_info: (transformation object)
 
   Returns:
-  :return: (bool)
+    (bool): True if all transforms are not present
   """
-  test = False
-  ti = transform_info
-  for (r,t,n,cp) in zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present):
-    if not is_identity(r,t):
-      test = test or cp
-  return not test
+  present = False
+  if transform_info:
+    ti = transform_info
+    for (r,t,n,cp) in zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present):
+      if not is_identity(r,t):
+        present = present or cp
+  return not present
 
 def is_identity(r,t):
   return (r.is_r3_identity_matrix() and t.is_col_zero())
@@ -1344,7 +1354,7 @@ def all_ncs_copies_present(transform_info):
     transform_info: (transformation object)
 
   Returns:
-  :return: (bool)
+    (bool)
   """
   test = True
   for cp in transform_info.coordinates_present:
@@ -1365,7 +1375,7 @@ def uniqueness_test(unique_selection_set,new_item):
     new_item: (str)
 
   Returns:
-  :return: updated set
+    unique_selection_set: updated set
   """
   if new_item in unique_selection_set:
     raise IOError,'Phil selection strings are not unique !!!'
@@ -1388,9 +1398,10 @@ def get_rot_trans(master_ncs_ph=None,
     copy_atoms: (flex.vec3_double) copy atoms sites cart
 
   Returns:
-  :return r: rotation matrix
-  :return t: translation vector
-  If can't match the two selection or if it is a bad match return: None, None
+    r: rotation matrix
+    t: translation vector
+
+    If can't match the two selection or if it is a bad match return: None, None
   """
   if (not master_atoms) and bool(master_ncs_ph): master_ncs_ph.atoms()
   if (not copy_atoms) and bool(ncs_copy_ph): copy_atoms = ncs_copy_ph.atoms()
@@ -1422,8 +1433,7 @@ def get_pdb_selection(ph,selection_str):
     selection_str:
 
   Returns:
-  :return: atoms of the portion of the hierarchy according to the
-           selection
+    atoms of the portion of the hierarchy according to the selection
   """
   if not (ph is None):
     temp = ph.hierarchy.atom_selection_cache()
@@ -1453,7 +1463,7 @@ def get_ncs_group_selection(chain_residue_id):
     chain_residue_id: [[chain id's],[[[residues range]],[[...]]]
 
   Returns:
-  :return: selection lists, with selection string for each ncs copy in the group
+    selection lists, with selection string for each ncs copy in the group
   """
   chains = chain_residue_id[0]
   res_ranges = chain_residue_id[1]
@@ -1499,7 +1509,7 @@ def g(x,y):
     y: (int)
 
   Returns:
-  :return: unique key
+      unique key
   """
   x = abs(x)
   y = abs(y)
@@ -1514,7 +1524,7 @@ def f(r):
     r: rotation matrix
 
   Returns:
-  :return: key1,key2
+      key1,key2
   """
   (r11,r12,r13,r21,r22,r23,r31,r32,r33) = (10*r).round(0).elems
   key1 = str(int(g(r11,g(r22,r33))))
@@ -1532,7 +1542,7 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp):
     pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
 
   Returns:
-    ncs_phil_groups: (list) list of ncs_groups_container
+    ncs_phil_groups (list): list of ncs_groups_container
   """
   # initialize parameters
   ncs_phil_groups = []
@@ -1631,7 +1641,7 @@ def get_largest_common_ncs_groups(pdb_hierarchy_inp):
     pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
 
   Returns:
-  :return ncs_phil_groups: (list) list of ncs_groups_container
+    ncs_phil_groups (list): list of ncs_groups_container
   """
   # Todo : redo all test for this section
   # initialize parameters
