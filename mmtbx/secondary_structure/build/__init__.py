@@ -167,7 +167,7 @@ def side_chain_placement(ag_to_place, current_reference_ag, rotamer_manager):
 
 
 
-def make_ss_structure_from_sequence(pdb_str,
+def secondary_structure_from_sequence(pdb_str,
       sequence=None,
       pdb_hierarchy_template=None,
       rotamer_manager=None):
@@ -187,7 +187,7 @@ def make_ss_structure_from_sequence(pdb_str,
     lk = len(pht.altloc_indices().keys())
     if lk ==0:
       raise Sorry(
-          "Hierarchy template in make_ss_structure_from_sequence is empty")
+          "Hierarchy template in secondary_structure_from_sequence is empty")
     else:
       assert len(pht.altloc_indices().keys()) == 1, \
           "Alternative conformations are not supported"
@@ -235,7 +235,7 @@ def make_ss_structure_from_sequence(pdb_str,
 def get_helix(helix_class, rotamer_manager, sequence=None, pdb_hierarchy_template=None):
   if helix_class not in helix_class_to_pdb_str.keys():
     raise Sorry("Unsupported helix type.")
-  return make_ss_structure_from_sequence(
+  return secondary_structure_from_sequence(
     pdb_str=helix_class_to_pdb_str[helix_class],
     sequence=sequence,
     rotamer_manager=rotamer_manager,
@@ -321,7 +321,7 @@ def substitute_ss(real_h,
       all_bsel.set_selected(isel, True)
       cumm_bsel.set_selected(isel, True)
       sel_h = real_h.select(all_bsel, copy_atoms=True)
-      ideal_h = make_ss_structure_from_sequence(
+      ideal_h = secondary_structure_from_sequence(
           pdb_str=beta_pdb_str,
           sequence=None,
           pdb_hierarchy_template=sel_h,
@@ -476,21 +476,21 @@ def substitute_ss(real_h,
 
 
 def beta():
-  pdb_hierarchy = make_ss_structure_from_sequence(beta_pdb_str,
+  pdb_hierarchy = secondary_structure_from_sequence(beta_pdb_str,
       "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_beta_seq.pdb")
 
 def alpha_310():
-  pdb_hierarchy = make_ss_structure_from_sequence(alpha310_pdb_str,
+  pdb_hierarchy = secondary_structure_from_sequence(alpha310_pdb_str,
       "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_helix310_seq.pdb")
 
 def alpha_pi():
-  pdb_hierarchy = make_ss_structure_from_sequence(alpha_pi_pdb_str,
+  pdb_hierarchy = secondary_structure_from_sequence(alpha_pi_pdb_str,
       "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_helix_pi_seq.pdb")
 
 def alpha():
-  pdb_hierarchy = make_ss_structure_from_sequence(alpha_pdb_str,
+  pdb_hierarchy = secondary_structure_from_sequence(alpha_pdb_str,
       "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_helix_seq.pdb")
