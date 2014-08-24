@@ -1,5 +1,4 @@
-
-# TODO replace existing phenix.table_one
+# LIBTBX_SET_DISPATCHER_NAME phenix.table_one
 
 from __future__ import division
 from mmtbx.validation import dummy_validation
