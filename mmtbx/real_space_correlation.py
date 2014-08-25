@@ -230,7 +230,6 @@ Examples:
     r_free_flags = data_and_flags.f_obs.array(
       data = flex.bool(data_and_flags.f_obs.size(), False))
     fmodel = mmtbx.utils.fmodel_simple(
-      update_f_part1_for  = "map",
       xray_structures     = [pdbo.xray_structure],
       scattering_table    = params.scattering_table,
       f_obs               = data_and_flags.f_obs,
@@ -238,7 +237,7 @@ Examples:
     broadcast(m="R-factors, reflection counts and scales", log=log)
     fmodel.show(log=log, show_header=False)
     # compute map coefficients
-    e_map_obj = fmodel.electron_density_map(update_f_part1=True)
+    e_map_obj = fmodel.electron_density_map()
     coeffs_1 = e_map_obj.map_coefficients(
       map_type     = params.map_1.type,
       fill_missing = params.map_1.fill_missing_reflections,
@@ -259,7 +258,7 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
   if(params is None): params =master_params().extract()
   if(log is None): log = sys.stdout
   # compute map coefficients
-  e_map_obj = fmodel.electron_density_map(update_f_part1=True)
+  e_map_obj = fmodel.electron_density_map()
   coeffs_1 = e_map_obj.map_coefficients(
     map_type     = params.map_1.type,
     fill_missing = params.map_1.fill_missing_reflections,
@@ -524,7 +523,7 @@ def map_statistics_for_atom_selection (
   assert (atom_selection is not None) and (len(atom_selection) > 0)
   if (fmodel is not None) :
     assert (map1 is None) and (map2 is None) and (xray_structure is None)
-    edm = fmodel.electron_density_map(update_f_part1=True)
+    edm = fmodel.electron_density_map()
     map1_coeffs = edm.map_coefficients(map1_type)
     map1 = map1_coeffs.fft_map(
       resolution_factor=resolution_factor).apply_sigma_scaling().real_map()
@@ -585,7 +584,7 @@ def find_suspicious_residues (
   if (log is None) : log = null_out()
   xray_structure = fmodel.xray_structure
   assert (len(pdb_hierarchy.atoms()) == xray_structure.scatterers().size())
-  edm = fmodel.electron_density_map(update_f_part1=True)
+  edm = fmodel.electron_density_map()
   map_coeffs1 = edm.map_coefficients(
     map_type="2mFo-DFc",
     fill_missing=False)

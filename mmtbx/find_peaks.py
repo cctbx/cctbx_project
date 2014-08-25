@@ -101,8 +101,7 @@ class peaks_holder(object):
 class manager(object):
   def __init__(self, fmodel, map_type, map_cutoff, params = None, log = None,
                      use_kick_map = False, kick_map_params = None,
-                     use_all_data = True, silent = False, map_coeffs=None,
-                     update_f_part1 = True):
+                     use_all_data = True, silent = False, map_coeffs=None):
     adopt_init_args(self, locals())
     assert (map_type is not None) or (map_coeffs is not None)
     self.mapped = False
@@ -132,8 +131,7 @@ class manager(object):
       fft_map_data = fft_map.real_map_unpadded()
       map_units = "sigma"
     else:
-      fft_map = self.fmodel.electron_density_map(
-        update_f_part1=update_f_part1).\
+      fft_map = self.fmodel.electron_density_map().\
           fft_map(resolution_factor = self.params.resolution_factor,
                   symmetry_flags    = maptbx.use_space_group_symmetry,
                   map_type          = self.map_type,

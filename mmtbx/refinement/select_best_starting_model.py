@@ -65,8 +65,7 @@ class evaluate_model (slots_getstate_setstate) :
       r_free_flags=r_free_flags,
       xray_structures=[xray_structure],
       skip_twin_detection=skip_twin_detection,
-      scattering_table=scattering_table,
-      update_f_part1_for="refinement")
+      scattering_table=scattering_table)
     self.r_work_start = fmodel.r_work()
     self.r_free_start = fmodel.r_free()
     if (not rigid_body_refine) :

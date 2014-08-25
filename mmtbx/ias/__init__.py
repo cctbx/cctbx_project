@@ -412,7 +412,7 @@ def set_ias_name_and_predicted_position(iass, params):
 
 def set_peaks(iass, fmodel, grid_step, map_type, scaling):
   assert grid_step > 0
-  fft_map = fmodel.electron_density_map(update_f_part1=False).fft_map(
+  fft_map = fmodel.electron_density_map().fft_map(
     map_type = map_type,
     resolution_factor = 1./(int(fmodel.f_obs().d_min()/grid_step)+1))
   if(scaling == "volume"):

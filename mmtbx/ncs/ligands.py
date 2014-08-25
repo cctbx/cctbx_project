@@ -289,7 +289,7 @@ class sample_operators (object) :
     """
     Create 2mFo-DFc, mFo-DFc, and Fc maps.
     """
-    map_helper = self.fmodel.electron_density_map(update_f_part1=True)
+    map_helper = self.fmodel.electron_density_map()
     map_coeffs = map_helper.map_coefficients("2mFo-DFc")
     diff_map_coeffs = map_helper.map_coefficients("mFo-DFc")
     fft_map = map_coeffs.fft_map(resolution_factor=1/3.)
@@ -315,8 +315,7 @@ class sample_operators (object) :
       xray_structure=xrs_new,
       update_f_calc=True,
       update_f_mask=True)
-    fcalc = self.fmodel.electron_density_map(
-      update_f_part1=True).map_coefficients("Fc")
+    fcalc = self.fmodel.electron_density_map().map_coefficients("Fc")
     fcalc_map = fcalc.fft_map(resolution_factor=1/3.)
     fcalc_map.apply_sigma_scaling()
     # XXX now revert to original xray structure
@@ -443,7 +442,7 @@ class get_final_maps_and_cc (object) :
       log) :
     from cctbx import maptbx
     from scitbx.array_family import flex
-    map_helper = fmodel.electron_density_map(update_f_part1=True)
+    map_helper = fmodel.electron_density_map()
     self.two_fofc_map_coeffs = map_helper.map_coefficients("2mFo-DFc")
     self.fofc_map_coeffs = map_helper.map_coefficients("mFo-DFc")
     fft_map = self.two_fofc_map_coeffs.fft_map(resolution_factor=0.25)

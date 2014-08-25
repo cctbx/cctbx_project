@@ -263,7 +263,7 @@ def run_fit_rotatable(
     if(log is not None):
       print >> log, "  H omit: r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(),
         fmodel.r_free())
-  fft_map = fmodel.electron_density_map(update_f_part1=True).fft_map(
+  fft_map = fmodel.electron_density_map().fft_map(
     resolution_factor = 1./4.,
     map_type          = map_type,
     symmetry_flags    = maptbx.use_space_group_symmetry)
