@@ -755,7 +755,6 @@ def run(args,
   f_obs = f_obs.sort(reverse=True, by_value="packed_indices")
   r_free_flags = r_free_flags.sort(reverse=True, by_value="packed_indices")
   fmodel = utils.fmodel_simple(
-    update_f_part1_for  = "refinement",
     xray_structures     = xray_structures,
     scattering_table    = scattering_table,
     mask_params         = mp,
@@ -807,7 +806,6 @@ def run(args,
     tmp_sel &= fmodel.f_obs().d_spacings().data() < pub_low
   if(tmp_sel.count(True) != tmp_sel.size() and tmp_sel.count(True) > 0):
     fmodel_cut = utils.fmodel_simple(
-      update_f_part1_for  = "refinement",
       xray_structures     = xray_structures,
       scattering_table    = scattering_table,
       f_obs               = fmodel.f_obs().select(tmp_sel),

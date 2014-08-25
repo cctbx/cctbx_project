@@ -160,7 +160,7 @@ class asu_mask(object):
         solvent_radius           = self.mask_params.solvent_radius,
         shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
     else:
-      self.asu_mask = masks.atom_mask(
+      self.asu_mask = atom_mask(
         unit_cell                = self.xray_structure.unit_cell(),
         space_group              = self.xray_structure.space_group(),
         gridding_n_real          = self.n_real,

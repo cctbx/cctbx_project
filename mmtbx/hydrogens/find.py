@@ -991,8 +991,7 @@ def obs_map(
     fmodel,
     map_type,
     resolution_factor=0.25):
-  map_coeffs = fmodel.electron_density_map(
-    update_f_part1=True).map_coefficients(map_type)
+  map_coeffs = fmodel.electron_density_map().map_coefficients(map_type)
   return map_coeffs.fft_map(
     resolution_factor=resolution_factor).apply_sigma_scaling().real_map()
 
