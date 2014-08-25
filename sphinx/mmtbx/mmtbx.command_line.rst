@@ -31,7 +31,6 @@ density:
   ...       .type = float""")
   ...
   >>> cmdline = mmtbx.command_line.load_model_and_data(
-  ...  update_f_part1_for="map",
   ...  args=sys.argv[1:],
   ...  master_phil=master_phil,
   ...  out=sys.stdout,
