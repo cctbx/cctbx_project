@@ -289,6 +289,33 @@ af::versa<DataType, af::c_grid<3> > conditional_solvent_region_filter(
   return result_map;
 }
 
+template <typename DataType1, typename DataType2>
+af::versa<DataType2, af::c_grid<3> > update_f_part1_helper(
+  af::const_ref<DataType1, af::c_grid_padded<3> > const& connectivity_map,
+  af::const_ref<DataType2, af::c_grid<3> > const& map_data,
+  int const& region_id)
+{
+  af::tiny<int, 3> a2 = connectivity_map.accessor().all();
+  af::c_grid<3> a1 = map_data.accessor();
+  for(int i = 0; i < 3; i++) CCTBX_ASSERT(a1[i]==a2[i]);
+  af::versa<DataType2, af::c_grid<3> > result_map(a1,
+    af::init_functor_null<DataType2>());
+  af::ref<DataType2, af::c_grid<3> > result_map_ref = result_map.ref();
+  for(int i = 0; i < a1[0]; i++) {
+    for(int j = 0; j < a1[1]; j++) {
+      for(int k = 0; k < a1[2]; k++) {
+        DataType1 cm = connectivity_map(i,j,k);
+        DataType1 md = map_data(i,j,k);
+        if(cm==region_id) {
+          result_map_ref(i,j,k) = -1.*md;
+        }
+        else {
+          result_map_ref(i,j,k) = 0;
+        }
+  }}}
+  return result_map;
+}
+
 template <typename DataType>
 void set_box(
   DataType const& value,
