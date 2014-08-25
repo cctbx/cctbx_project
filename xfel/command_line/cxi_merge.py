@@ -16,7 +16,7 @@ from cctbx.crystal import symmetry
 from cctbx.sgtbx.bravais_types import bravais_lattice
 from cctbx import uctbx
 from libtbx.str_utils import format_value
-from libtbx.utils import Usage, multi_out
+from libtbx.utils import Usage, Sorry, multi_out
 from libtbx import easy_pickle
 from libtbx import adopt_init_args, group_args, Auto
 from cStringIO import StringIO
@@ -77,6 +77,9 @@ include_bulk_solvent = True
   .type = bool
 wavelength = None
   .type = float
+pixel_size = None
+  .type = float
+  .help = Detector-specific parameter for pixel size in mm
 elements = None
   .type = str
   .multiple = True
@@ -250,10 +253,19 @@ def load_result (file_name,
   print >> out, sg_info
   print >> out, unit_cell
 
-  # XXX OBVIOUSLY THIS NEEDS TO BE GENERALIZED.  Currently supports the CSPAD/LCLS only.
-  HARD_CODED_PIXEL_SZ_MM = 0.11
+  #Check for pixel size (at this point we are assuming we have square pixels, all experiments described in one
+  #refined_experiments.json file use the same detector, and all panels on the detector have the same pixel size)
+
+  if params.pixel_size is not None:
+    pixel_size = params.pixel_size
+  elif "pixel_size" in obj:
+    pixel_size = obj["pixel_size"]
+  else:
+    raise Sorry("Cannot find pixel size. Specify appropriate pixel size in mm for your detector in phil file.")
+
+  #Calculate displacements based on pixel size
   assert obj['mapped_predictions'][0].size() == obj["observations"][0].size()
-  mm_predictions = HARD_CODED_PIXEL_SZ_MM*(obj['mapped_predictions'][0])
+  mm_predictions = pixel_size*(obj['mapped_predictions'][0])
   mm_displacements = flex.vec3_double()
   cos_two_polar_angle = flex.double()
   for pred in mm_predictions:
