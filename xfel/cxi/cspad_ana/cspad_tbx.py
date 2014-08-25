@@ -567,7 +567,7 @@ def dwritef2(obj, path):
   """
 
   dirname = os.path.dirname(path)
-  if not os.path.isdir(dirname):
+  if dirname is not "" and not os.path.isdir(dirname):
     os.makedirs(dirname)
 
   easy_pickle.dump(path, obj)

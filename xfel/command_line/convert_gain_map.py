@@ -98,7 +98,8 @@ def run(args):
     beam_center_x = 1765 // 2 * 0.11
     beam_center_y = 1765 // 2 * 0.11
   else:
-    beam_center = None
+    beam_center_x = None
+    beam_center_y = None
   address, timestamp = address_and_timestamp_from_detector_format_version(detector_format_version)
   timestamp = evt_timestamp((timestamp,0))
   args = command_line.args

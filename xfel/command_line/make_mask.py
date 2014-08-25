@@ -16,7 +16,7 @@ from __future__ import division
 #
 
 from dxtbx.format.Registry import Registry
-from xfel.cxi.cspad_ana.cspad_tbx import dpack, dwritef
+from xfel.cxi.cspad_ana.cspad_tbx import dpack, dwritef2
 from scitbx.array_family import flex
 import sys
 
@@ -46,7 +46,7 @@ def run(argv=None):
     argv = sys.argv
 
   command_line = (libtbx.option_parser.option_parser(
-    usage="%s [-v] [-p poly_mask] [-c circle_mask] [-a avg_max] [-s stddev_max] [-m maxproj_min] [-x mask_pix_val] avg_path stddev_path max_path" % libtbx.env.dispatcher_name)
+    usage="%s [-v] [-p poly_mask] [-c circle_mask] [-a avg_max] [-s stddev_max] [-m maxproj_min] [-x mask_pix_val] [-o output] avg_path stddev_path max_path" % libtbx.env.dispatcher_name)
                   .option(None, "--verbose", "-v",
                           action="store_true",
                           default=False,
@@ -87,6 +87,11 @@ def run(argv=None):
                           default=None,
                           dest="detector_format_version",
                           help="detector format version string")
+                  .option(None, "--output", "-o",
+                          type="string",
+                          default="mask_.pickle",
+                          dest="destpath",
+                          help="output file path, should be *.pickle")
                   ).process(args=argv[1:])
 
   # Must have exactly three remaining arguments.
@@ -239,8 +244,7 @@ def run(argv=None):
     pixel_size=avg_i.pixel_size,
     saturated_value=avg_i.saturation)
 
-  destpath = "mask_"
-  dwritef(d, ".", destpath)
+  dwritef2(d, command_line.options.destpath)
 
   #the minimum number of pixels to mask out cooresponding to the interstitial regions for the CS-PAD
   min_count  = 818265 # (1765 * 1765) - (194 * 185 * 64)
