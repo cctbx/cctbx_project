@@ -24,7 +24,7 @@ HETATM  115  O   HOH A  19       5.000   5.000   8.000  0.90 10.00           O
 TER
 END
   """
-  for update_f_part1_for in [None, "map"]:
+  for update_f_part1 in [True, False]:
     pdb_inp = iotbx.pdb.input(source_info=None, lines=bad)
     xrs = pdb_inp.xray_structure_simple()
     xrs.scattering_type_registry(table = "wk1995")
@@ -43,7 +43,7 @@ END
         xray_structure               = xrs.deep_copy_scatterers(),
         target_name                  = target_name,
         sf_and_grads_accuracy_params = sfp)
-      fmodel.update_all_scales(update_f_part1_for=None)
+      fmodel.update_all_scales(update_f_part1=update_f_part1)
       alpha_beta = fmodel.alpha_beta()
       print "R-work: %6.4f"%fmodel.r_work()
       #

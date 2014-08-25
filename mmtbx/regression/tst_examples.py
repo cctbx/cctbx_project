@@ -22,7 +22,7 @@ def exercise () :
   args = [script_file, pdb_file, mtz_file]
   result = easy_run.fully_buffered("mmtbx.python \"%s\" \"%s\" \"%s\"" %
     (script_file, pdb_file, mtz_file)).raise_if_errors()
-  assert ("CC(obs-calc): 0.956" in result.stdout_lines)
+  assert ("CC(obs-calc): 0.954" in result.stdout_lines)
   print "OK"
 
 if (__name__ == "__main__") :

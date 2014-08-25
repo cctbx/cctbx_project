@@ -1037,7 +1037,7 @@ def run(prefix="tst_fmodel_2"):
       f_obs          = f_obs.resolution_filter(d_min=d_min),
       xray_structure = xrs)
     r_start = fmodel.r_work()
-    fmodel.update_all_scales(update_f_part1_for=None,remove_outliers=False)
+    fmodel.update_all_scales(update_f_part1=False,remove_outliers=False)
     print "  r(before/after): %6.4f %6.4f"%(r_start, fmodel.r_work())
     k_sol, b_sol = fmodel.k_sol_b_sol_from_k_mask()
     print k_sol, b_sol

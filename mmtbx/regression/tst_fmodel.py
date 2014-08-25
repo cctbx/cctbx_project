@@ -504,22 +504,30 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
       k_isotropic    = k_isotropic,
       r_free_flags   = r_free_flags,
       sf_and_grads_accuracy_params = sfg_params)
+    fmodel_dc = fmodel.deep_copy()
     assert fmodel.r_work() > 0.02, fmodel.r_work()
-    fmodel.update_f_hydrogens()
+    fmodel.update_f_hydrogens_grid_search()
     assert approx_equal(fmodel.k_h, k_h_), [it, fmodel.k_h, fmodel.r_work()]
     assert approx_equal(fmodel.b_h, 0)
     assert approx_equal(fmodel.r_work(), 0)
+    fmodel_dc.update_f_hydrogens()
+    assert fmodel_dc.r_work() < 0.01
     # test 2
     fmodel = mmtbx.f_model.manager(
       xray_structure = x,
       f_obs          = f_obs,
       r_free_flags   = r_free_flags,
       sf_and_grads_accuracy_params = sfg_params)
+    fmodel_dc = fmodel.deep_copy()
     assert fmodel.r_work() > 0.25
-    fmodel.update_all_scales(cycles=6, fast=False, update_f_part1_for=None)
+    fmodel.update_all_scales(cycles=6, fast=False, update_f_part1=False,
+      refine_hd_scattering_method="slow")
     assert approx_equal(fmodel.k_h, k_h_)
     assert approx_equal(fmodel.b_h, 0)
     assert approx_equal(fmodel.r_work(), 0)
+    fmodel_dc.update_all_scales(update_f_part1=False,
+      refine_hd_scattering_method="fast")
+    assert fmodel_dc.r_work() < 0.05
     # test 3
     fmodel = mmtbx.f_model.manager(
       xray_structure = x,
@@ -528,7 +536,7 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
       sf_and_grads_accuracy_params = sfg_params)
     assert fmodel.r_work() > 0.25
     fmodel.update_all_scales(cycles=6, fast=True, show=False,
-      update_f_part1_for=None)
+      update_f_part1=False, refine_hd_scattering_method="slow")
     assert approx_equal(fmodel.k_h, k_h_)
     assert approx_equal(fmodel.b_h, 0)
     assert fmodel.r_work() < 0.025
@@ -553,7 +561,7 @@ def exercise_top_largest_f_obs_f_model_differences(threshold_percent=10,
   fmodel = mmtbx.f_model.manager(
     xray_structure = x,
     f_obs          = f_obs)
-  fmodel.update_all_scales(update_f_part1_for=None)
+  fmodel.update_all_scales(update_f_part1=False)
   v, d = fmodel.top_largest_f_obs_f_model_differences(
     threshold_percent=threshold_percent)
   n = (d>v).count(True)*100./d.size()
@@ -592,7 +600,7 @@ def exercise_6_instantiate_consistency(symbol = "C 2"):
     for k_sol in [0, 0.3]:
       for b_sol in [0, 50]:
         for set_h_occ_to_zero in [True, False]:
-          for update_f_part1_for in [None, "map"]:
+          for update_f_part1 in [True, False]:
             for apply_scale_to in ["f_obs", "f_model"]:
               # Simulate Fobs START
               x = random_structure.xray_structure(
@@ -637,7 +645,7 @@ def exercise_6_instantiate_consistency(symbol = "C 2"):
                 f_obs          = f_obs,
                 r_free_flags   = r_free_flags)
               fmodel.update_all_scales(fast=True, show=False,
-                update_f_part1_for=update_f_part1_for)
+                update_f_part1=update_f_part1)
               f_part1_data = fmodel.f_calc().data()*flex.random_double(
                 fmodel.f_calc().data().size())
               f_part1 = fmodel.f_calc().customized_copy(data = f_part1_data)
@@ -661,7 +669,7 @@ def exercise_6_instantiate_consistency(symbol = "C 2"):
                   flex.mean(abs(fmodel.f_part2()).data()), \
                   flex.mean(abs(fmodel.f_calc()).data())), \
                   "set_h_occ_to_zero=", set_h_occ_to_zero,\
-                  "update_f_part1_for=", update_f_part1_for
+                  "update_f_part1=", update_f_part1
               assert approx_equal(r1, r2), [r1, r2]
 
 def run():
