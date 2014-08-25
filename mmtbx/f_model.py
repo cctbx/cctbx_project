@@ -349,10 +349,12 @@ class manager(manager_mixin):
          b_cart =None,
          _target_memory               = None,
          n_resolution_bins_output     = None,
-         f_part_1_updated_for_purpose = None):
+         f_part_1_updated_for_purpose = None,
+         scale_method="combo"):
     if(twin_law is not None): target_name = "twin_lsq_f"
     self.f_part_1_updated_for_purpose = f_part_1_updated_for_purpose
     self.bin_selections = bin_selections
+    self.scale_method = scale_method
     self.arrays = None
     self.twin_law = twin_law
     self.twin_law_str = twin_law
@@ -963,6 +965,10 @@ class manager(manager_mixin):
         return False
     return True
 
+  def f_obs_f_model_abs_differences(self):
+    return flex.abs(flex.abs(self.f_obs().data()) -
+      flex.abs(self.f_model_scaled_with_k1().data()))
+
   def compute_f_part1(self, params, log = None):
     phenix_masks = None
     if(not libtbx.env.has_module(name="solve_resolve")):
@@ -972,7 +978,7 @@ class manager(manager_mixin):
     if(log is None): log = sys.stdout
     return phenix_masks.nu(fmodel = self, params = params)
 
-  def update_f_hydrogens(self, log=None):
+  def update_f_hydrogens_grid_search(self, log=None):
     if(self.xray_structure is None): return None
     def f_k_exp_scaled(k,b,ss,f):
       return f.customized_copy(data = k*flex.exp(-b*ss)*f.data())
@@ -1022,6 +1028,78 @@ class manager(manager_mixin):
     self.update_core(f_part2 = fh_kb, f_part2_twin = fh_kb_twin)
     self.k_h, self.b_h = kbest, bbest
 
+  def update_f_hydrogens(self, log=None):
+    """
+    Include scattering contribution from H atoms.
+    Fmodel = scale_1 * (F_atoms + scale_2 * F_mask + scale_3 * F_H)
+    """
+    if(self.twin_law is not None):
+      self.update_f_hydrogens_grid_search()
+      return
+    zero = flex.complex_double(self.f_calc().data().size(),0)
+    f_model = self.f_model().deep_copy()
+    #f_model = self.f_model_no_scales().deep_copy()
+    if(self.xray_structure is None): return None
+    # check for early termination conditions
+    hds = self.xray_structure.hd_selection()
+    if(hds.count(True)==0): return None
+    # compute unscaled F_H
+    xrsh = self.xray_structure.select(selection = hds)
+    occ = xrsh.scatterers().extract_occupancies()
+    if(occ.all_eq(0)): xrsh.set_occupancies(value=1)
+    fh = self.f_obs().structure_factors_from_scatterers(
+      xray_structure = xrsh,
+      algorithm      = self.sfg_params.algorithm).f_calc()
+    # find F_H scale using minimization
+    fmodel_core_data = manager_kbu(
+      f_obs   = self.f_obs(),
+      f_calc  = f_model,
+      f_masks = [fh],
+      ss      = self.ss)
+    minimized = bss.kbu_minimizer(
+      fmodel_core_data      = fmodel_core_data,
+      f_obs                 = self.f_obs(),
+      k_initial             = [0],
+      b_initial             = 0,
+      u_initial             = [0,0,0,0,0,0],
+      refine_k              = True,
+      refine_b              = True,
+      refine_u              = False,
+      min_iterations        = 50,
+      max_iterations        = 50,
+      fmodel_core_data_twin = None,
+      twin_fraction         = None,
+      symmetry_constraints_on_b_cart = False,
+      k_sol_max = 200.,
+      k_sol_min =-200.,
+      b_sol_max = 150.,
+      b_sol_min =-150.)
+    # find approximate scale using very coarse grid search
+    def f_k_exp_scaled(k,b,ss,f):
+      return f.customized_copy(data = k*flex.exp(-b*ss)*f.data())
+    ss = self.ss
+    kbest, bbest = minimized.k_min[0], minimized.b_min
+    fh_kb = f_k_exp_scaled(k = kbest, b = bbest, ss = ss, f = fh)
+    fh = fh_kb
+    # scale again using finer scaler and filtered F_H, then update fmodel
+    fm = manager(
+      f_obs          = self.f_obs(),
+      r_free_flags   = self.r_free_flags(),
+      f_calc         = f_model, # important: not f_model_scaled_with_k1()
+      f_mask         = fh,
+      scale_method   = "combo")
+    fm.update_all_scales(remove_outliers=False, update_f_part1=False)
+    kt  = self.k_isotropic()*self.k_anisotropic()
+    ktp = fm.k_isotropic()*fm.k_anisotropic()
+    assert kt.all_ne(0)
+    self.update_core(
+      k_isotropic   = flex.double(kt.size(),1),
+      k_anisotropic = kt*ktp,
+      f_part2       = fh.customized_copy(
+        data = fh.data()*(1/kt)*fm.k_masks()[0]))
+    # thise are values from coarse grid search and are not accurate
+    self.k_h, self.b_h = kbest, bbest
+
   def update_f_part1_all(self, purpose, map_neg_cutoff=None,
                      refinement_neg_cutoff=-2.5, refine_threshold=True):
     zero = flex.complex_double(self.f_calc().data().size(),0)
@@ -1039,7 +1117,7 @@ class manager(manager_mixin):
       unit_cell             = self.xray_structure.unit_cell(),
       space_group_info      = self.f_obs().space_group_info(),
       pre_determined_n_real = bulk_solvent_mask.focus())
-    mc = self.electron_density_map(update_f_part1 = False).map_coefficients(
+    mc = self.electron_density_map().map_coefficients(
       map_type   = "mFo-DFc",
       isotropize = True,
       exclude_free_r_reflections = False)
@@ -1064,7 +1142,7 @@ class manager(manager_mixin):
       r_free_flags = self.r_free_flags(),
       f_calc       = self.f_model(), # important: not f_model_scaled_with_k1() !
       f_mask       = f_diff)
-    fm.update_all_scales(remove_outliers=False, update_f_part1_for=None)
+    fm.update_all_scales(remove_outliers=False, update_f_part1=False)
     rw, rf = fm.r_work(), fm.r_free()
     # put back into self: tricky!
     kt  = self.k_isotropic()*self.k_anisotropic()
@@ -1081,39 +1159,7 @@ class manager(manager_mixin):
     assert approx_equal(rf, self.r_free(), 1.e-4)
     self.f_part_1_updated_for_purpose="map"
 
-  def update_f_part1(self, purpose, map_neg_cutoff=None,
-                     refinement_neg_cutoff=-2.5, refine_threshold=True):
-    if(purpose == "refinement"):
-      if(refine_threshold):
-        r_free_start = self.r_free()
-        r_free_best = r_free_start
-        delta_best = 999
-        sigma_best = None
-        was_better = False
-        for sc in [2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5]:
-          self._update_f_part1(purpose="refinement", refinement_neg_cutoff=-sc,
-            map_neg_cutoff=map_neg_cutoff)
-          r_free_ = self.r_free()
-          if(r_free_ < r_free_best):
-            sigma_best = sc
-            r_free_best = r_free_
-            was_better = True
-          elif(not was_better):
-            delta_ = r_free_ - r_free_best
-            if(delta_ < delta_best):
-              delta_best = delta_
-              sigma_best = sc
-        self._update_f_part1(purpose="refinement",
-          refinement_neg_cutoff=-sigma_best, map_neg_cutoff=map_neg_cutoff)
-      else:
-        self._update_f_part1(purpose=purpose, map_neg_cutoff=map_neg_cutoff,
-                      refinement_neg_cutoff=refinement_neg_cutoff)
-    else:
-      self._update_f_part1(purpose=purpose, map_neg_cutoff=map_neg_cutoff,
-                      refinement_neg_cutoff=refinement_neg_cutoff)
-
-  def _update_f_part1(self, purpose, map_neg_cutoff,
-                      refinement_neg_cutoff):
+  def update_f_part1(self):
     """
     Identify negative blobs in mFo-DFc synthesis in solvent region only,
     then leave only those blobs (set everything else to zero),
@@ -1125,78 +1171,104 @@ class manager(manager_mixin):
                they are noise or errors of bulk-solvent model, so they are
                always good to remove.
     """
-    self.f_part_1_updated_for_purpose = purpose
     zero = flex.complex_double(self.f_calc().data().size(),0)
     zero_a = self.f_calc().customized_copy(data = zero)
     self.update_core(f_part1 = zero_a)
-    if(map_neg_cutoff is None): map_neg_cutoff = -2.0
     if(self.xray_structure is None): return # need mask
-    assert purpose in ["refinement", "map"]
-    mp = mmtbx.masks.mask_master_params.extract()
-    if(purpose == "map"):
-      mp.solvent_radius = mp.solvent_radius/2
-      mp.shrink_truncation_radius = mp.shrink_truncation_radius/2
+    sgt = self.f_obs().space_group().type()
+    d_spacings = self.f_calc().d_spacings().data()
+    if(flex.max(d_spacings)>3.0 and (d_spacings>3.0).count(True)>500):
+      S_E_L_F = self.resolution_filter(d_min=3.0)
+    else:
+      S_E_L_F = self.deep_copy()
+    crystal_gridding = S_E_L_F.f_obs().crystal_gridding(
+      d_min              = S_E_L_F.f_obs().d_min(),
+      symmetry_flags     = maptbx.use_space_group_symmetry,
+      resolution_factor  = 1./6)
+    # bulk-solvent mask filter
     mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
-      xray_structure = self.xray_structure.expand_to_p1(sites_mod_positive=True),
-      d_min          = self.f_obs().d_min(),
-      mask_params    = mp)
+      xray_structure = S_E_L_F.xray_structure.expand_to_p1(sites_mod_positive=True),
+      n_real         = crystal_gridding.n_real())
+    asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
     bulk_solvent_mask = mmtbx_masks_asu_mask_obj.mask_data_whole_uc()
-    crystal_gridding = maptbx.crystal_gridding(
-      unit_cell             = self.xray_structure.unit_cell(),
-      space_group_info      = self.f_obs().space_group_info(),
-      pre_determined_n_real = bulk_solvent_mask.focus())
-    if(purpose == "map"): exclude_free_r_reflections = False
-    else:                 exclude_free_r_reflections = True
-    mc = self.electron_density_map(update_f_part1 = False).map_coefficients(
+    # residual map
+    mc = S_E_L_F.electron_density_map().map_coefficients(
       map_type   = "mFo-DFc",
       isotropize = True,
       exclude_free_r_reflections = False)
-    r_free_flags_data = self.r_free_flags().data()
+    #
+    exclude_free_r_reflections = True
+    r_free_flags_data = S_E_L_F.r_free_flags().data()
     if(exclude_free_r_reflections and
        0 not in [r_free_flags_data.count(True),r_free_flags_data.count(False)]):
       mc = mc.customized_copy(
         data = mc.data().set_selected(r_free_flags_data, 0+0j))
-    fft_map = mc.fft_map(crystal_gridding = crystal_gridding)
+    fft_map = mc.fft_map(
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      crystal_gridding = crystal_gridding)
     map_data = fft_map.real_map_unpadded() # important: not scaled!
-    if(purpose == "refinement"):
-      maptbx.map_box_average(
-        map_data   = map_data,
-        cutoff     = flex.max(map_data)*2,
-        index_span = 1)
-    unit_cell_volume = self.xray_structure.unit_cell().volume()
-    cutoff=None
-    if(purpose == "map"): cutoff = map_neg_cutoff
-    else:                 cutoff = refinement_neg_cutoff
-    maptbx.truncate(
-      map_data           = map_data,
-      by_sigma_less_than = cutoff,
-      scale_by           = 1./unit_cell_volume)
-    map_data *= bulk_solvent_mask
-    f_diff = mc.structure_factors_from_map(
-      map            = map_data,
-      use_scale      = True,
-      anomalous_flag = False,
-      use_sg         = False)
+    # in P1
+    map_filtered_inverted = map_data * bulk_solvent_mask *(-1.)
+    # in ASU
+    asu_map = asu_map_ext.asymmetric_map(sgt, map_filtered_inverted)
+    map_data_asu = asu_map.data()
+    map_data_asu = map_data_asu.shift_origin()
+    # connectivity analysis; work at 0.2 e/A**3 (lower end of solvent density)
+    co = maptbx.connectivity(map_data=map_data_asu/mc.unit_cell().volume(),
+      threshold=0.2)
+    conn = co.result()
+    #print "n blobs:", flex.max(conn)
+    #print list(co.regions())
+    good = []
+    r_free = S_E_L_F.r_free()
+    for i, v in enumerate(co.regions()):
+      if(i==0): continue
+      if(v>40):
+        map_data_asu_ = maptbx.update_f_part1_helper(
+          connectivity_map = conn,
+          map_data         = map_data_asu,
+          region_id        = i)
+        asu_map = asu_map_ext.asymmetric_map(sgt, map_data_asu_,
+          crystal_gridding.n_real())
+        f_diff = mc.customized_copy(
+          data = asu_map.structure_factors(mc.indices()))
+        fm = manager(
+          f_obs        = S_E_L_F.f_obs(),
+          r_free_flags = S_E_L_F.r_free_flags(),
+          f_calc       = S_E_L_F.f_model(), # not f_model_scaled_with_k1() !
+          f_mask       = f_diff)
+        fm.update_all_scales(remove_outliers=False, update_f_part1=False)
+        if(fm.r_free() < r_free): good.append(i)
+    # may be inefficient?
+    F = conn.deep_copy()
+    if(not 1 in good): F = F.set_selected(F==1, 0)
+    for i in good:
+      F = F.set_selected(F==i, 1)
+    F = F.set_selected(F!=1, 0)
+    # filter and invert back to negative
+    map_data_asu_ = map_data_asu * (F.as_double() * (-1.))
+    asu_map = asu_map_ext.asymmetric_map(sgt, map_data_asu_,
+      crystal_gridding.n_real())
+    f_diff = mc.customized_copy(
+      indices = mc.indices(),
+      data    = asu_map.structure_factors(mc.indices()))
     fm = manager(
-      f_obs        = self.f_obs(),
-      r_free_flags = self.r_free_flags(),
-      f_calc       = self.f_model(), # important: not f_model_scaled_with_k1() !
+      f_obs        = S_E_L_F.f_obs(),
+      r_free_flags = S_E_L_F.r_free_flags(),
+      f_calc       = S_E_L_F.f_model(), # not f_model_scaled_with_k1() !
       f_mask       = f_diff)
-    fm.update_all_scales(remove_outliers=False, update_f_part1_for=None)
-    rw, rf = fm.r_work(), fm.r_free()
-    # put back into self: tricky!
-    kt  = self.k_isotropic()*self.k_anisotropic()
+    fm.update_all_scales(remove_outliers=False, update_f_part1=False)
+    kt  = S_E_L_F.k_isotropic()*S_E_L_F.k_anisotropic()
     ktp = fm.k_isotropic()*fm.k_anisotropic()
-    assert kt.all_ne(0)
-    self.update_core(
-      k_isotropic   = flex.double(kt.size(),1),
-      k_anisotropic = kt*ktp,
-      f_part1       = f_diff.customized_copy(
-        data = f_diff.data()*(1/kt)*fm.k_masks()[0]))
-    # normally it holds up to 1.e-6, so if assertion below breakes then
-    # there must be something terribly wrong!
-    assert approx_equal(rw, self.r_work(), 1.e-4)
-    assert approx_equal(rf, self.r_free(), 1.e-4)
+    f_part1 = f_diff.customized_copy(data = f_diff.data()*(1/kt)*fm.k_masks()[0])
+    # concatenate
+    fc = self.f_calc()
+    fc_lp = fc.lone_set(f_part1)
+    fc_lp = fc_lp.customized_copy(data = fc_lp.data()*0)
+    f_part1 = f_part1.concatenate(fc_lp)
+    f_part1, fc = f_part1.common_sets(fc)
+    # add to self (fmodel)
+    self.update(f_part1 = f_part1)
 
   def bins(self):
     k_masks       = self.k_masks()
@@ -1321,7 +1393,7 @@ class manager(manager_mixin):
       xray_structure = xray_structure_truncated,
       update_f_calc  = True,
       update_f_mask  = True)
-    fmodel_result.update_all_scales(update_f_part1_for=None)
+    fmodel_result.update_all_scales(update_f_part1=False)
     return fmodel_result
 
   def classical_dm_map_coefficients(self):
@@ -1407,7 +1479,7 @@ class manager(manager_mixin):
 
   def update_all_scales(
         self,
-        update_f_part1_for,
+        update_f_part1 = True,
         refine_threshold=True,
         apply_back_trace=False,
         params = None, # XXX DUMMY
@@ -1416,6 +1488,7 @@ class manager(manager_mixin):
         fast = True,
         optimize_mask = False,
         refine_hd_scattering = True,
+        refine_hd_scattering_method = "fast",
         bulk_solvent_and_scaling = True,
         remove_outliers = True,
         show = False,
@@ -1423,7 +1496,7 @@ class manager(manager_mixin):
         verbose=None,
         log = None):
     if(log is None): log = sys.stdout
-    assert update_f_part1_for in [False, None, "map", "refinement"]
+    assert refine_hd_scattering_method in ["fast", "slow"]
     def get_r(self):
       return "r_work=%6.4f r_free=%6.4f"%(self.r_work(), self.r_free())
     if(show): print >> log, "start: %s"%get_r(self), \
@@ -1451,7 +1524,7 @@ class manager(manager_mixin):
     twinned = self.arrays.core_twin is not None
     mask_defined = (not self.check_f_mask_all_zero()) or bulk_solvent_and_scaling
     if(cycles is None):
-      flags = [refine_hd_scattering, twinned, mask_defined]
+      flags = [twinned, mask_defined]
       if(  flags.count(True)> 1): cycles = 2
       elif(flags.count(True)==1): cycles = 1
       elif(flags.count(True)==0): cycles = 0
@@ -1469,16 +1542,16 @@ class manager(manager_mixin):
           verbose=verbose)
         if(show):
           print >> log, "    bulk-solvent and scaling: %s"%get_r(self)
-      if(refine_hd_scattering): self.update_f_hydrogens()
-      if(refine_hd_scattering and show and [self.k_h, self.b_h].count(None)==0):
-        print >> log, "    HD scattering refinement: %s k_h=%4.2f b_h=%-7.2f"%(
-          get_r(self), self.k_h, self.b_h)
+      if(refine_hd_scattering):
+        if(refine_hd_scattering_method=="fast"): self.update_f_hydrogens()
+        else: self.update_f_hydrogens_grid_search()
+      if(refine_hd_scattering and show):
+        print >> log, "    HD scattering refinement: %s"%(get_r(self))
     if(remove_outliers):
       self.remove_outliers(use_model=True)
       if(show): print >> log, "    remove outliers:          %s"%get_r(self)
-    if(update_f_part1_for):
-      self.update_f_part1(purpose=update_f_part1_for,
-        map_neg_cutoff=map_neg_cutoff, refine_threshold=refine_threshold)
+    if(update_f_part1):
+      self.update_f_part1()
       if(show): print >> log, "    correct solvent mask:     %s"%get_r(self)
     if(show):
       print >> log, "final: %s"%get_r(self), "n_reflections:", \
@@ -1534,15 +1607,16 @@ class manager(manager_mixin):
       bulk_solvent = True
       if(params is not None): bulk_solvent = params.bulk_solvent
       result = mmtbx.bulk_solvent.scaler.run(
-        f_obs          = self.f_obs(),
-        f_calc         = f_calc,
-        f_mask         = f_masks,
-        r_free_flags   = self.r_free_flags(),
-        bulk_solvent   = bulk_solvent,
-        ss             = self.ss,
+        f_obs            = self.f_obs(),
+        f_calc           = f_calc,
+        f_mask           = f_masks,
+        r_free_flags     = self.r_free_flags(),
+        bulk_solvent     = bulk_solvent,
+        ss               = self.ss,
         number_of_cycles = 100,
-        bin_selections = self.bin_selections,
-        verbose        = verbose)
+        scale_method     = self.scale_method,
+        bin_selections   = self.bin_selections,
+        verbose          = verbose)
       k_anisotropic_twin = None
       if(result.scale_matrices is not None):
         if(flex.double(result.scale_matrices).size()==6):
@@ -2440,24 +2514,11 @@ class manager(manager_mixin):
       result = tmp(phase_source = phase_source)
     return result
 
-  def electron_density_map(self, update_f_part1):
-    if(update_f_part1):
-      if(self.f_part1().data().all_eq(0) or
-         self.f_part_1_updated_for_purpose != "map"):
-        fmodel = self.deep_copy()
-        fast=True
-        if(len(self.f_masks()) != 1): fast = False
-        fmodel.update_all_scales(fast = fast, update_f_part1_for = "map")
-      else: fmodel = self
-    else:
-      fmodel = self
-    if(update_f_part1):
-      assert fmodel.f_part_1_updated_for_purpose == "map", \
-        fmodel.f_part_1_updated_for_purpose
-    return map_tools.electron_density_map(fmodel = fmodel)
+  def electron_density_map(self):
+    return map_tools.electron_density_map(fmodel = self)
 
   def map_coefficients (self, **kwds) :
-    emap = self.electron_density_map(update_f_part1=True)
+    emap = self.electron_density_map()
     return emap.map_coefficients(**kwds)
 
   def _get_real_map (self, **kwds) :
