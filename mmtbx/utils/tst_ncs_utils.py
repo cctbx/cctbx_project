@@ -358,7 +358,7 @@ class Test_ncs_utils(unittest.TestCase):
     selection2 = flex.size_t([0,1,5,3,7,8,9,12,100,101])
     selection3 = flex.size_t([0,1,5,3,7,8,9,12,14,15,19,17,100,101])
 
-    new_nrg, new_selection = nu.ncs_groups_selection(
+    new_nrg = nu.ncs_groups_selection(
       ncs_restraints_group_list=nrg,
       selection=selection1)
     # only atoms in master are selected
@@ -367,10 +367,9 @@ class Test_ncs_utils(unittest.TestCase):
 
     assert mt == []
     assert c1t == []
-    assert list(new_selection) == [100, 101]
 
     # atoms selected in both master and copies
-    new_nrg, new_selection = nu.ncs_groups_selection(
+    new_nrg = nu.ncs_groups_selection(
       ncs_restraints_group_list=nrg,
       selection=selection2)
     # only atoms in master are selected
@@ -379,9 +378,8 @@ class Test_ncs_utils(unittest.TestCase):
 
     assert mt == []
     assert c1t == []
-    assert list(new_selection) == [100, 101]
 
-    new_nrg, new_selection = nu.ncs_groups_selection(
+    new_nrg = nu.ncs_groups_selection(
       ncs_restraints_group_list=nrg,
       selection=selection3)
     # only atoms in master are selected
@@ -392,7 +390,6 @@ class Test_ncs_utils(unittest.TestCase):
     assert mt == [0, 1, 5]
     assert c1t == [7, 8, 12]
     assert c2t == [14, 15, 19]
-    assert list(new_selection) == [0, 1, 5, 7, 8, 12, 14, 15, 19, 100, 101]
 
   def test_selected_positions(self):
     print sys._getframe().f_code.co_name
