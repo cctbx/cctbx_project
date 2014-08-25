@@ -582,6 +582,15 @@ namespace {
       arg("map_data"),
       arg("threshold")));
 
+    def("update_f_part1_helper",
+      (af::versa<double, af::c_grid<3> >(*)
+        (af::const_ref<int, af::c_grid_padded<3> > const&,
+         af::const_ref<double, af::c_grid<3> > const&,
+         int const&)) update_f_part1_helper, (
+      arg("connectivity_map"),
+      arg("map_data"),
+      arg("region_id")));
+
     def("map_sum_at_sites_frac",
       (double(*)
         (af::const_ref<double, af::c_grid<3> > const&,
