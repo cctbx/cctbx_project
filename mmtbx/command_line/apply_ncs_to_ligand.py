@@ -23,7 +23,6 @@ def run (args, out=sys.stdout) :
   cmdline = load_model_and_data(
     args=args,
     master_phil=master_phil_str % mmtbx.ncs.ligands.ncs_ligand_phil,
-    update_f_part1_for="map",
     out=out,
     process_pdb_file=True,
     generate_input_phil=True,

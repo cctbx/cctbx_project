@@ -33,7 +33,6 @@ def run (args, out=None) :
     master_phil=master_phil(),
     process_pdb_file=True,
     create_fmodel=True,
-    update_f_part1_for="map",
     out=out)
   params = cmdline.params
   validate_params(params)

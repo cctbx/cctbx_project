@@ -88,7 +88,7 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     r_free_flags   = r_free_flags,
     xray_structure = xray_structure,
     mask_params    = mask_params)
-  fmodel.update_all_scales(update_f_part1_for=None)
+  fmodel.update_all_scales(update_f_part1=False) # XXX ?
   fmodel.show(show_approx=False)
   print >> log, "r_work: %6.4f r_free: %6.4f"%(fmodel.r_work(), fmodel.r_free())
   fem = mmtbx.maps.fem.run(fmodel=fmodel, use_omit=params.omit,

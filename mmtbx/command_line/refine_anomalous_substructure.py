@@ -34,7 +34,6 @@ residual map (simple or Phaser LLG), followed by refinement of the anomalous
 scattering coefficients.  Intended as a diagnostic/development tool only!
 """
   cmdline = mmtbx.command_line.load_model_and_data(
-    update_f_part1_for="refinement",
     args=args,
     master_phil=master_phil,
     out=out,

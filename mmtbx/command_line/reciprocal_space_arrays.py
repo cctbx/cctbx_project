@@ -217,7 +217,7 @@ def run(args, log = sys.stdout):
     f_obs          = f_obs,
     abcd           = experimental_phases)
   fmodel.update_all_scales(
-    update_f_part1_for = "refinement",
+    update_f_part1 = True,
     remove_outliers = params.remove_f_obs_outliers,
     bulk_solvent_and_scaling = params.bulk_solvent_and_scaling)
   print "Overall statistics:"
