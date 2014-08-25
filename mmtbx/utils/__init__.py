@@ -1514,7 +1514,6 @@ def fmodel_manager(
   return fmodel
 
 def fmodel_simple(f_obs,
-                  update_f_part1_for,
                   xray_structures,
                   scattering_table,
                   r_free_flags             = None,
@@ -1540,7 +1539,7 @@ def fmodel_simple(f_obs,
     bss_params = bss.master_params.extract()
   bss_params.bulk_solvent = bulk_solvent_correction
   bss_params.anisotropic_scaling = anisotropic_scaling
-  def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp, ro, om, ofp1):
+  def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp, ro, om):
     fmodel = fmodel_manager(
       xray_structure = xrs.deep_copy_scatterers(),
       f_obs          = f_obs.deep_copy(),
@@ -1549,8 +1548,7 @@ def fmodel_simple(f_obs,
       mask_params    = mp,
       twin_law       = tl)
     if(bssf):
-      fmodel.update_all_scales(params = bssp, log = log, optimize_mask=om,
-        update_f_part1_for=ofp1)
+      fmodel.update_all_scales(params = bssp, log = log, optimize_mask=om)
     return fmodel
   if((twin_laws is None or twin_laws==[None]) and not skip_twin_detection):
     twin_laws = twin_analyses.get_twin_laws(miller_array=f_obs)
@@ -1561,14 +1559,14 @@ def fmodel_simple(f_obs,
     if(twin_laws.count(None)==0): twin_laws.append(None)
     fmodel = get_fmodel(f_obs=f_obs, xrs=xray_structures[0], flags=r_free_flags,
       mp=mask_params, tl=None, bssf=bulk_solvent_and_scaling, bssp=bss_params,
-      ro = outliers_rejection,om=optimize_mask, ofp1=False)
+      ro = outliers_rejection,om=optimize_mask)
     r_work = fmodel.r_work()
     for twin_law in twin_laws:
       if(twin_law is not None):
         fmodel_ = get_fmodel(f_obs=f_obs, xrs=xray_structures[0],
           flags=r_free_flags, mp=mask_params, tl=twin_law,
           bssf=bulk_solvent_and_scaling, bssp=bss_params, ro = outliers_rejection,
-          om=optimize_mask, ofp1=False)
+          om=optimize_mask)
         r_work_ = fmodel_.r_work()
         fl = abs(r_work-r_work_)*100 > twin_switch_tolerance and r_work_<r_work
         if(fl):
@@ -1623,13 +1621,10 @@ def fmodel_simple(f_obs,
           mask_params    = mask_params,
           twin_law       = None)
     if(bulk_solvent_and_scaling):
-      fmodel_result.update_all_scales(update_f_part1_for=update_f_part1_for,
-        remove_outliers = outliers_rejection)
+      fmodel_result.update_all_scales(remove_outliers = outliers_rejection)
     fmodel = fmodel_result
   if(bulk_solvent_and_scaling and not fmodel.twin): # "not fmodel.twin" for runtime only
-    fmodel.update_all_scales(
-      update_f_part1_for = update_f_part1_for,
-      remove_outliers    = outliers_rejection)
+    fmodel.update_all_scales(remove_outliers = outliers_rejection)
   return fmodel
 
 class process_command_line_args(object):
@@ -2100,7 +2095,6 @@ class guess_observation_type(object):
     params.b_sol_step = 45.
     params.target = "ls_wunit_k1"
     fmodel = fmodel_simple(
-      update_f_part1_for       = None,
       f_obs                    = f_obs,
       scattering_table         = scattering_table,
       xray_structures          = [xray_structure],
