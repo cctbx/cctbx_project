@@ -179,8 +179,6 @@ class load_model_and_data (object) :
   ----------
   args: list of command-line arguments
   master_phil: PHIL master (can optionally be an unparsed string)
-  update_f_part1_for: determine F(model) handling of bulk solvent mask; can \
-    be None (no correction), "refinement", or "map" (aggressive correction)
   out: filehandle-like object
   process_pdb_file: run full restraints generation
   use_conformation_dependent_library: use CDL for restraints
@@ -247,7 +245,6 @@ class load_model_and_data (object) :
   def __init__ (self,
       args,
       master_phil,
-      update_f_part1_for="refinement",
       out=sys.stdout,
       process_pdb_file=True,
       use_conformation_dependent_library=False, # FIXME
@@ -525,7 +522,6 @@ class load_model_and_data (object) :
       if (twin_law is Auto) :
         print >> self.log, "Twinning will be detected automatically."
         self.fmodel = mmtbx.utils.fmodel_simple(
-          update_f_part1_for=update_f_part1_for,
           xray_structures=[self.xray_structure],
           scattering_table=params.input.scattering_table,
           f_obs=self.f_obs,
@@ -548,8 +544,7 @@ class load_model_and_data (object) :
           params=None,
           log=self.log,
           optimize_mask=True,
-          show=True,
-          update_f_part1_for=update_f_part1_for)
+          show=True)
       self.fmodel.info().show_rfactors_targets_scales_overall(out=self.log)
     # SEQUENCE
     if (params.input.sequence is not None) :

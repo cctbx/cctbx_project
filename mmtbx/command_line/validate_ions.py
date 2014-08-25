@@ -28,7 +28,6 @@ environment, electron density maps, and atomic properties.
   import mmtbx.ions.identify
   import mmtbx.command_line
   cmdline = mmtbx.command_line.load_model_and_data(
-    update_f_part1_for="map",
     args=args,
     master_phil=master_phil(),
     out=out,

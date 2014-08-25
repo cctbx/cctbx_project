@@ -219,7 +219,6 @@ Full parameters:
     f_obs, r_free_flags = f_obs.map_to_asu().common_sets(
       other=r_free_flags.map_to_asu())
     fmodel = fmodel_simple(
-      update_f_part1_for="refinement",
       f_obs=f_obs,
       r_free_flags=r_free_flags,
       xray_structures=[xray_structure],

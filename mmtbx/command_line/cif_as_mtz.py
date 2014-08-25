@@ -58,11 +58,6 @@ def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
         default=False,
         type="string",
         help="Output mtz file name.")
-      .option(None, "--use_model",
-        action="store",
-        default=False,
-        type="string",
-        help="Use PDB model to make better guess about reflection data type.")
       .option(None, "--wavelength_id",
         action="store",
         default=None,
@@ -110,11 +105,6 @@ def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
     if(str(e) != "0"): print str(e)
     sys.exit(0)
   crystal_symmetry = command_line.symmetry
-  if(command_line.symmetry.unit_cell() is None or
-     command_line.symmetry.space_group_info() is None):
-    if(command_line.options.use_model):
-      crystal_symmetry = crystal_symmetry_from_pdb.extract_from(
-         file_name=command_line.options.use_model)
   if(len(command_line.args) > 1):
     print >> out, "%d arguments are given from the command line:"% \
       len(command_line.args), command_line.args
@@ -131,7 +121,6 @@ def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
   result=process_files(
     file_name=file_name,
     crystal_symmetry=crystal_symmetry,
-    pdb_file_name=command_line.options.use_model,
     output_file_name=command_line.options.output_file_name,
     wavelength_id=command_line.options.wavelength_id,
     crystal_id=command_line.options.crystal_id,
@@ -151,7 +140,6 @@ def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
 
 def process_files (file_name,
                    crystal_symmetry,
-                   pdb_file_name,
                    output_file_name,
                    wavelength_id,
                    crystal_id,
@@ -185,49 +173,6 @@ def process_files (file_name,
     return mtz_object
 
   if(mtz_object is not None):
-    if (pdb_file_name):
-      pdb_raw_records = smart_open.for_reading(
-        file_name=pdb_file_name).read().splitlines()
-      xray_structure = None
-      try:
-        xray_structure = iotbx.pdb.input(file_name =
-          pdb_file_name).xray_structure_simple()
-      except Exception, e:
-        print "Cannot extract xray_structure: ", str(e)
-      if(xray_structure is not None):
-        miller_arrays = mtz_object.as_miller_arrays()
-        if(len(miller_arrays) == 1):
-          f_obs = miller_arrays[0]
-          r_free_flags = None
-        else:
-          if (len(miller_arrays) != 2) :
-            raise Sorry("The --use-model flag is not supported when more "+
-              "than one array of experimental data is present.")
-          r_free_flags = None
-          for miller_array in miller_arrays:
-            if(miller_array.observation_type() is not None):
-              f_obs = miller_array
-            else:
-              r_free_flags = miller_array
-              assert isinstance(r_free_flags.data(), flex.int)
-        data_label = f_obs.info().labels[0]
-        if(r_free_flags is not None):
-          reset_anomalous = False
-          if (f_obs.anomalous_flag()) and (not r_free_flags.anomalous_flag()) :
-            r_free_flags = r_free_flags.generate_bijvoet_mates()
-            reset_anomalous = True
-          f_obs = f_obs.common_set(r_free_flags)
-          r_free_flags = r_free_flags.common_set(f_obs)
-          if (reset_anomalous) :
-            r_free_flags = r_free_flags.average_bijvoet_mates()
-        f_obs = f_obs.merge_equivalents().array()
-        if(r_free_flags is not None):
-          r_free_flags = r_free_flags.merge_equivalents().array()
-        mtz_object = mmtbx.utils.guess_observation_type(
-          f_obs          = f_obs,
-          label          = data_label,
-          xray_structure = xray_structure,
-          r_free_flags   = r_free_flags).mtz_object()
     if not output_file_name :
       basename = os.path.basename(file_name)
       if(basename[-4:-3] == "."): output_file_name = basename[:-4]+".mtz"
@@ -567,10 +512,6 @@ output_file_name = None
   .style = new_file bold
 include scope libtbx.phil.interface.tracking_params
 options {
-  use_model = False
-    .type = bool
-    .short_caption = Use model to help guess data type
-    .help = If false, the model will only be used to extract crystal symmetry.
   merge = False
     .type = bool
     .short_caption = Merge non-unique data
@@ -651,8 +592,6 @@ def run2 (args,
   if params.output_file_name is None :
     base, ext = os.path.splitext(params.input.cif_file)
     params.output_file_name = os.path.join(os.getcwd(), base + ".mtz")
-  if not params.options.use_model :
-    params.input.pdb_file = None
   if symm is None :
     assert (type(params.crystal_symmetry.space_group).__name__ ==
             "space_group_info")
@@ -662,7 +601,6 @@ def run2 (args,
   n_refl = process_files(
     file_name=params.input.cif_file,
     crystal_symmetry=symm,
-    pdb_file_name=params.input.pdb_file,
     output_file_name=params.output_file_name,
     wavelength_id=params.input.wavelength_id,
     crystal_id=params.input.crystal_id,

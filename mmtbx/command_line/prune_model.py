@@ -415,7 +415,6 @@ correction) to remove spurious loops and sidechains.
   cmdline = load_model_and_data(
     args=args,
     master_phil=get_master_phil(),
-    update_f_part1_for="map",
     out=out,
     process_pdb_file=False,
     create_fmodel=True)
@@ -430,7 +429,7 @@ correction) to remove spurious loops and sidechains.
   out2 = multi_out()
   out2.register("out", out)
   out2.register("log", log)
-  map_helper = fmodel.electron_density_map(update_f_part1=True)
+  map_helper = fmodel.electron_density_map()
   f_map_coeffs = map_helper.map_coefficients(map_type="2mFo-DFc")
   diff_map_coeffs = map_helper.map_coefficients(map_type="mFo-DFc")
   model_map_coeffs = map_helper.map_coefficients(map_type="Fc")

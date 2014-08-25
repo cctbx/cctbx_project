@@ -42,7 +42,6 @@ Utility to compute a single set of map coefficients with minimal input.
   from mmtbx import map_tools
   import iotbx.mtz
   cmdline = mmtbx.command_line.load_model_and_data(
-    update_f_part1_for="map",
     args=args,
     master_phil=master_params,
     process_pdb_file=False,

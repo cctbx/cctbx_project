@@ -81,7 +81,6 @@ def run (args, out=sys.stdout) :
     master_phil=get_master_phil(),
     process_pdb_file=True,
     create_fmodel=True,
-    update_f_part1_for="map",
     out=out,
     usage_string="""\
 mmtbx.generate_disorder model.pdb data.mtz selection="resname ATP" [occ=0.6]

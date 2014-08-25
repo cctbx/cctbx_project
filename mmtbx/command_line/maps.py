@@ -308,7 +308,6 @@ def run (args, log = sys.stdout, use_output_directory=True,
   print >> log, "-"*79
   print >> log, "Bulk solvent correction and anisotropic scaling:"
   fmodel = mmtbx.utils.fmodel_simple(
-    update_f_part1_for      = "map",
     xray_structures         = [xray_structure],
     scattering_table        = params.maps.scattering_table,
     f_obs                   = f_obs,
