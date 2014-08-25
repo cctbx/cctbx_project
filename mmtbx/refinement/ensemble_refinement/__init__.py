@@ -1706,7 +1706,6 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       out=out)
     return
   inputs = mmtbx.command_line.load_model_and_data(
-    update_f_part1_for="refinement",
     args=command_line.args,
     master_phil=master_params,
     out=out,
@@ -1916,7 +1915,6 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     return None
 
   fmodel = mmtbx.utils.fmodel_simple(
-    update_f_part1_for         = "refinement",
     f_obs                      = f_obs,
     xray_structures            = [model.xray_structure],
     scattering_table           = "n_gaussian",
