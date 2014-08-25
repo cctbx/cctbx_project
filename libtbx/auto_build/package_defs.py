@@ -120,7 +120,7 @@ def fetch_all_dependencies (dest_dir,
     copy_files=copy_files)
   for pkg_name in [
       PYTHON_PKG, NUMPY_PKG, IMAGING_PKG, REPORTLAB_PKG, ZLIB_PKG,
-      SCIPY_PKG, PYRTF_PKG, BIOPYTHON_PKG,
+      SCIPY_PKG, PYRTF_PKG, BIOPYTHON_PKG, SPHINX_PKG, NUMPYDOC_PKG,
     ] :
     fetch_package(pkg_name)
   if (gui_packages) :
