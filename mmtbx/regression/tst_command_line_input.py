@@ -46,7 +46,6 @@ TER
   mtz.mtz_object().write(file_base+".mtz")
   open(file_base+".fa", "w").write(">Tyr\nY\n")
   cmdline = mmtbx.command_line.load_model_and_data(
-    update_f_part1_for=None,
     args=[ file_base + ext for ext in [".pdb",".mtz",".fa"] ],
     master_phil=mmtbx.command_line.generate_master_phil_with_inputs(""),
     out=StringIO(),
@@ -74,7 +73,6 @@ TER
     phil_string="",
     enable_unmerged_data=True)
   cmdline = mmtbx.command_line.load_model_and_data(
-    update_f_part1_for=None,
     args=[ file_base + ext for ext in [".pdb",".mtz",".fa",] ] +
       ["unmerged_data.file_name=%s.sca" % file_base ],
     master_phil=master_phil,
@@ -91,7 +89,6 @@ ATOM     59  UNK UNL A   7       0.000   0.000   0.000  1.00 20.00           X
     hierarchy.as_pdb_string(crystal_symmetry=xrs))
   try :
     cmdline = mmtbx.command_line.load_model_and_data(
-      update_f_part1_for=None,
       args=[ file_base + ext for ext in [".pdb",".mtz",".fa",] ],
       master_phil=master_phil,
       out=StringIO(),
@@ -102,7 +99,6 @@ ATOM     59  UNK UNL A   7       0.000   0.000   0.000  1.00 20.00           X
   else :
     raise Exception_expected
   cmdline = mmtbx.command_line.load_model_and_data(
-    update_f_part1_for=None,
     args=[ file_base + ext for ext in [".pdb",".mtz",".fa",] ],
     master_phil=master_phil,
     out=StringIO(),
