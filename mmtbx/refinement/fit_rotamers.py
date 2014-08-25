@@ -565,7 +565,7 @@ def get_map_data(fmodel, map_type, resolution_factor=1./4, kick=False,
     map_data = km.map_data
     fft_map = km.fft_map
   else:
-    map_obj = fmodel.electron_density_map(update_f_part1=False)
+    map_obj = fmodel.electron_density_map()
     fft_map = map_obj.fft_map(resolution_factor = resolution_factor,
       map_type = map_type, use_all_data=(not exclude_free_r_reflections))
     fft_map.apply_sigma_scaling()
