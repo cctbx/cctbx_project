@@ -682,7 +682,7 @@ def ncs_groups_selection(ncs_restraints_group_list,selection):
         ncs.copy_iselection,common_selection_pos)
       selection = remove_items_from_selection(selection,not_included)
 
-  return new_nrg_list, selection
+  return new_nrg_list
 
 
 def selected_positions(selection,positions):

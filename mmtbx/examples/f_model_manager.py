@@ -62,8 +62,7 @@ def run():
   print "r_free:", fmodel.r_free()
   fmodel.show()
   # we can get get 3d array of map values
-  fft_map = fmodel.electron_density_map(
-    update_f_part1=True).fft_map(map_type = "mFobs-DFmodel")
+  fft_map = fmodel.electron_density_map().fft_map(map_type = "mFobs-DFmodel")
   fft_map.apply_sigma_scaling()
   map_data = fft_map.real_map_unpadded(in_place=False)
   # output map in X-plor formatted file
@@ -74,7 +73,7 @@ def run():
     gridding_last=fft_map.n_real())
   # we can compute another map
   map_coeffs = fmodel.electron_density_map(
-    update_f_part1=True).map_coefficients(map_type = "2mFobs-DFmodel")
+    ).map_coefficients(map_type = "2mFobs-DFmodel")
   # output it as MTZ file
   mtz_dataset = map_coeffs.as_mtz_dataset(column_root_label="2mFoDFc")
   mtz_object = mtz_dataset.mtz_object()

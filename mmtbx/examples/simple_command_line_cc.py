@@ -22,7 +22,6 @@ def run (args, out=sys.stdout) :
   # and creates an fmodel object using the data, flags, and xray.structure
   # object from the PDB file.
   cmdline = mmtbx.command_line.load_model_and_data(
-    update_f_part1_for="map",
     args=args,
     master_phil=master_phil(),
     out=out,
