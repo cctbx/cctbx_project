@@ -91,6 +91,13 @@ def run(args):
   C = fit_translation4(work_params)
   print "done constructor"
 
+  #parse a phil file from the args
+  for item in args:
+    if os.path.isfile(item):
+      from xfel.phil_preferences import load_cxi_phil
+      C.optional_params = load_cxi_phil(item,[])
+      break
+
   print
   C.run_cycle_a()
   C.run_cycle_b(0)

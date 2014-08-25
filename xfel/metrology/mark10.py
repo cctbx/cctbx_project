@@ -129,6 +129,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
         self.FRAMES["distance_refined"][item])
 
   def __init__(self,params):
+    self.optional_params = None
     self.frame_id_to_param_no = {}
     correction_vectors.__init__(self)
     # XXX Set in mark0.correction_vectors.read_data()
@@ -546,7 +547,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
     print "transverse gap is %7.3f px +/- %7.3f"%(stats.mean(), stats.gsl_stats_wsd())
 
   @staticmethod
-  def print_unit_translations(data, params):
+  def print_unit_translations(data, params, optional):
     from scitbx.array_family import flex
     def pretty_format(data):
       out = """"""
@@ -571,7 +572,16 @@ class fit_translation4(mark5_iteration,fit_translation2):
 
     from spotfinder.applications.xfel.cxi_phil import cxi_versioned_extract
     if params.detector_format_version is not None:
-      stuff = cxi_versioned_extract(["distl.detector_format_version=%s"%params.detector_format_version])
+      base_arguments = ["distl.detector_format_version=%s"%params.detector_format_version]
+
+      if optional is not None:
+
+        if optional.distl.quad_translations is not None:
+          base_arguments.append("distl.quad_translations="+",".join([str(s) for s in optional.distl.quad_translations]))
+        if optional.distl.tile_translations is not None:
+          base_arguments.append("distl.tile_translations="+",".join([str(s) for s in optional.distl.tile_translations]))
+
+      stuff = cxi_versioned_extract(base_arguments)
       old = flex.double(stuff.distl.tile_translations)
       print "cctbx already defines unit pixel translations for detector format version %s:"%params.detector_format_version
       print pretty_format(old)%tuple(old)
@@ -586,8 +596,9 @@ class fit_translation4(mark5_iteration,fit_translation2):
     print "Unit translations to be pasted into spotfinder/applications/xfel/cxi_phil.py:"
 
     new = old - flex.double(data)
-    overall_format = """    working_extract.distl.tile_translations = [
-"""+pretty_format(new)+"""    ]"""
+    #overall_format = """    working_extract.distl.tile_translations = [
+    overall_format = '''distl {\n  tile_translations = """
+'''+pretty_format(new)+'''    """}'''
 
     print overall_format%tuple(new)
 
@@ -612,7 +623,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
 
     C.print_table()
     unit_translations = C.print_table_2()
-    self.print_unit_translations(unit_translations, self.params)
+    self.print_unit_translations(unit_translations, self.params, self.optional_params)
 
     #import sys
     #sys.exit(0) # HATTNE
