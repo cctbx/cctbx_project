@@ -12,7 +12,6 @@ from rstbx.bandpass import use_case_bp3,parameters_bp3
 from scitbx.matrix import col
 from cctbx.crystal import symmetry
 from math import pi
-from labelit_regression.xfel.subpixel import tp038_trans
 
 class fit_translation2(fit_translation):
   def parameter_based_model(self,params):
@@ -55,8 +54,6 @@ class fit_translation2(fit_translation):
 
         ucbp3.set_sensor_model( thickness_mm = 0.5, mu_rho = 8.36644, # CS_PAD detector at 1.3 Angstrom
           signal_penetration = integration_signal_penetration)
-        #tp038_trans_values = [x for x in tp038_trans]
-        #ucbp3.set_subpixel( flex.double(tp038_trans_values) ) #back off this; let minimizer figure it out.
 
         half_mosaicity_rad = self.FRAMES["half_mosaicity_deg"][iframe] * pi/180.
         ucbp3.set_mosaicity(half_mosaicity_rad)
