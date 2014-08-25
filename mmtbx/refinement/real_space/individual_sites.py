@@ -7,6 +7,8 @@ from cctbx.array_family import flex
 from mmtbx import utils
 from libtbx.test_utils import approx_equal
 from cctbx import crystal
+from libtbx import group_args
+import mmtbx.refinement.minimization_ncs_constraints
 
 class easy(object):
   """
@@ -63,7 +65,8 @@ class simple(object):
         real_space_gradients_delta=1./4,
         selection_real_space=None,
         max_iterations=150,
-        states_accumulator=None):
+        states_accumulator=None,
+        ncs_groups=None):
     adopt_init_args(self, locals())
     self.lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations)
@@ -77,23 +80,51 @@ class simple(object):
     self.site_symmetry_table = None
 
   def refine(self, weight, xray_structure):
-    self.crystal_symmetry = xray_structure.crystal_symmetry()
-    self.site_symmetry_table = xray_structure.site_symmetry_table()
-    self.refined = maptbx.real_space_refinement_simple.lbfgs(
-      selection_variable              = self.selection,
-      selection_variable_real_space   = self.selection_real_space,
-      sites_cart                      = xray_structure.sites_cart(),
-      density_map                     = self.target_map,
-      geometry_restraints_manager     = self.geometry_restraints_manager,
-      real_space_target_weight        = weight,
-      real_space_gradients_delta      = self.real_space_gradients_delta,
-      lbfgs_termination_params        = self.lbfgs_termination_params,
-      lbfgs_exception_handling_params = self.lbfgs_exception_handling_params,
-      states_collector                = self.states_accumulator)
+    if(self.ncs_groups is None):
+      self.crystal_symmetry = xray_structure.crystal_symmetry()
+      self.site_symmetry_table = xray_structure.site_symmetry_table()
+      self.refined = maptbx.real_space_refinement_simple.lbfgs(
+        selection_variable              = self.selection,
+        selection_variable_real_space   = self.selection_real_space,
+        sites_cart                      = xray_structure.sites_cart(),
+        density_map                     = self.target_map,
+        geometry_restraints_manager     = self.geometry_restraints_manager,
+        real_space_target_weight        = weight,
+        real_space_gradients_delta      = self.real_space_gradients_delta,
+        lbfgs_termination_params        = self.lbfgs_termination_params,
+        lbfgs_exception_handling_params = self.lbfgs_exception_handling_params,
+        states_collector                = self.states_accumulator)
+    else:
+      refine_selection = flex.bool(xray_structure.scatterers().size(),
+        True).iselection()
+      self.refined = mmtbx.refinement.minimization_ncs_constraints.\
+        target_function_and_grads_real_space(
+          map_data                   = self.target_map,
+          xray_structure             = xray_structure.deep_copy_scatterers(),
+          ncs_restraints_group_list  = self.ncs_groups,
+          refine_selection           = refine_selection,
+          real_space_gradients_delta = self.real_space_gradients_delta,
+          restraints_manager         = self.geometry_restraints_manager,
+          data_weight                = weight,
+          refine_sites               = True,
+          refine_transformations     = False)
+      minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
+        target_and_grads_object      = self.refined,
+        xray_structure               = xray_structure.deep_copy_scatterers(),
+        ncs_restraints_group_list    = self.ncs_groups,
+        refine_selection             = refine_selection,
+        finite_grad_differences_test = False,
+        max_iterations               = self.max_iterations,
+        refine_sites                 = True,
+        refine_transformations       = False)
 
   def sites_cart(self):
     assert self.refined is not None
-    sites_cart = self.refined.sites_cart
+    if(self.ncs_groups is None):
+      sites_cart = self.refined.sites_cart
+    else:
+      sites_cart = self.refined.xray_structure.sites_cart()
+      return sites_cart #XXX TRAP
     if(self.selection):
       sites_cart.set_selected(self.selection, self.refined.sites_cart_variable)
     special_position_indices = self.site_symmetry_table.special_position_indices()
@@ -248,7 +279,8 @@ class box_refinement_manager(object):
                target_map,
                geometry_restraints_manager,
                real_space_gradients_delta=1./4,
-               max_iterations = 50):
+               max_iterations = 50,
+               ncs_groups = None):
     self.xray_structure = xray_structure
     self.sites_cart = xray_structure.sites_cart()
     self.target_map = target_map
@@ -256,6 +288,7 @@ class box_refinement_manager(object):
     self.max_iterations=max_iterations
     self.real_space_gradients_delta = real_space_gradients_delta
     self.weight_optimal = None
+    self.ncs_groups = ncs_groups
 
   def update_xray_structure(self, new_xray_structure):
     self.xray_structure = new_xray_structure
@@ -271,46 +304,74 @@ class box_refinement_manager(object):
              box_cushion=2,
              rms_bonds_limit = 0.03,
              rms_angles_limit = 3.0):
-    sites_cart_moving = self.sites_cart
-    selection_within = self.xray_structure.selection_within(
-      radius    = selection_buffer_radius,
-      selection = selection)
-    sel = selection.select(selection_within)
-    iselection = flex.size_t()
-    for i, state in enumerate(selection):
-      if state:
-        iselection.append(i)
-    box = utils.extract_box_around_model_and_map(
-      xray_structure = self.xray_structure,
-      map_data       = self.target_map,
-      selection      = selection_within,
-      box_cushion    = box_cushion)
-    new_unit_cell = box.xray_structure_box.unit_cell()
-    geo_box = \
-      self.geometry_restraints_manager.select(box.selection_within)
-    geo_box = geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
-    map_box = box.map_box
-    sites_cart_box = box.xray_structure_box.sites_cart()
-    selection = flex.bool(sites_cart_box.size(), True)
-    rsr_simple_refiner = simple(
-      target_map                  = map_box,
-      selection                   = sel,
-      real_space_gradients_delta  = self.real_space_gradients_delta,
-      max_iterations              = self.max_iterations,
-      geometry_restraints_manager = geo_box)
-    real_space_result = refinery(
-      refiner                  = rsr_simple_refiner,
-      xray_structure           = box.xray_structure_box,
-      optimize_weight          = optimize_weight,
-      start_trial_weight_value = start_trial_weight_value,
-      rms_bonds_limit = rms_bonds_limit,
-      rms_angles_limit = rms_angles_limit)
-    self.weight_optimal = real_space_result.weight_final
-    sites_cart_box_refined = real_space_result.sites_cart_result
-    sites_cart_box_refined_shifted_back = \
-      sites_cart_box_refined + box.shift_to_map_boxed_sites_back
-    sites_cart_refined = sites_cart_box_refined_shifted_back.select(sel)
-    sites_cart_moving = sites_cart_moving.set_selected(
-      iselection, sites_cart_refined)
-    self.xray_structure.set_sites_cart(sites_cart_moving)
-    self.sites_cart = self.xray_structure.sites_cart()
+    if(self.ncs_groups is None): # no NCS constraints
+      sites_cart_moving = self.sites_cart
+      selection_within = self.xray_structure.selection_within(
+        radius    = selection_buffer_radius,
+        selection = selection)
+      sel = selection.select(selection_within)
+      iselection = flex.size_t()
+      for i, state in enumerate(selection):
+        if state:
+          iselection.append(i)
+      box = utils.extract_box_around_model_and_map(
+        xray_structure = self.xray_structure,
+        map_data       = self.target_map,
+        selection      = selection_within,
+        box_cushion    = box_cushion)
+      new_unit_cell = box.xray_structure_box.unit_cell()
+      geo_box = \
+        self.geometry_restraints_manager.select(box.selection_within)
+      geo_box = geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
+      map_box = box.map_box
+      sites_cart_box = box.xray_structure_box.sites_cart()
+      rsr_simple_refiner = simple(
+        target_map                  = map_box,
+        selection                   = sel,
+        real_space_gradients_delta  = self.real_space_gradients_delta,
+        max_iterations              = self.max_iterations,
+        geometry_restraints_manager = geo_box)
+      real_space_result = refinery(
+        refiner                  = rsr_simple_refiner,
+        xray_structure           = box.xray_structure_box,
+        optimize_weight          = optimize_weight,
+        start_trial_weight_value = start_trial_weight_value,
+        rms_bonds_limit = rms_bonds_limit,
+        rms_angles_limit = rms_angles_limit)
+      self.weight_optimal = real_space_result.weight_final
+      sites_cart_box_refined = real_space_result.sites_cart_result
+      sites_cart_box_refined_shifted_back = \
+        sites_cart_box_refined + box.shift_to_map_boxed_sites_back
+      sites_cart_refined = sites_cart_box_refined_shifted_back.select(sel)
+      sites_cart_moving = sites_cart_moving.set_selected(
+        iselection, sites_cart_refined)
+      self.xray_structure.set_sites_cart(sites_cart_moving)
+      self.sites_cart = self.xray_structure.sites_cart()
+    else: # NCS constraints are present
+      # select on xrs, grm, ncs_groups
+      grm = self.geometry_restraints_manager.select(selection)
+      xrs = self.xray_structure.select(selection)
+      sel = flex.bool(xrs.scatterers().size(), True)
+      size = self.xray_structure.scatterers().size()
+      ncs_groups_ = utils.ncs_utils.ncs_groups_selection(
+        ncs_restraints_group_list = self.ncs_groups,
+        selection                 = selection)
+      #
+      rsr_simple_refiner = simple(
+        target_map                  = self.target_map,
+        selection                   = sel,
+        real_space_gradients_delta  = self.real_space_gradients_delta,
+        max_iterations              = self.max_iterations,
+        geometry_restraints_manager = grm,
+        ncs_groups                  = ncs_groups_)
+      real_space_result = refinery(
+        refiner                  = rsr_simple_refiner,
+        xray_structure           = xrs,
+        optimize_weight          = optimize_weight,
+        start_trial_weight_value = start_trial_weight_value,
+        rms_bonds_limit          = rms_bonds_limit,
+        rms_angles_limit         = rms_angles_limit)
+      self.weight_optimal = real_space_result.weight_final
+#      # XXX undefined
+#      self.xray_structure = None #XXX undefined
+#      self.sites_cart = None     #XXX undefined

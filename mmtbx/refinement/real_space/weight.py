@@ -10,6 +10,7 @@ class run(object):
       xray_structure,
       pdb_hierarchy,
       geometry_restraints_manager,
+      ncs_groups=None,
       rms_bonds_limit=0.015,
       rms_angles_limit=2.0,
       real_space_gradients_delta=1./4,
@@ -58,7 +59,8 @@ of individual sites.
       target_map                  = map_data,
       geometry_restraints_manager = grm_dc.geometry,
       real_space_gradients_delta  = real_space_gradients_delta,
-      max_iterations              = max_iterations)
+      max_iterations              = max_iterations,
+      ncs_groups                  = ncs_groups)
     optimal_weights = flex.double()
     # loop over chunks: determine best weight for each chunk
     if(len(result)==0):
