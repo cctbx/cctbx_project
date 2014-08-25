@@ -50,8 +50,7 @@ class run(object):
         log=sys.stdout):
     sgt = fmodel.f_obs().space_group().type()
     def get_map(fmodel, map_type, fft_map_ref):
-      f_map = fmodel.electron_density_map(
-        update_f_part1=False).map_coefficients(
+      f_map = fmodel.electron_density_map().map_coefficients(
           map_type     = map_type,
           isotropize   = True,
           exclude_free_r_reflections=exclude_free_r_reflections,
