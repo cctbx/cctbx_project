@@ -27,8 +27,7 @@ class omit_p1_specific(object):
     sgt = fmodel.f_obs().space_group().type()
     assert sgt.number() == 1
     def get_map(fmodel, map_type, external_complete_set=None):
-      f_map = fmodel.electron_density_map(
-        update_f_part1=False).map_coefficients(
+      f_map = fmodel.electron_density_map().map_coefficients(
           map_type     = map_type,
           isotropize   = True,
           fill_missing = False)
@@ -104,7 +103,7 @@ def run():
     xray_structure = xrs,
     f_obs          = f_obs,
     r_free_flags   = f_obs.generate_r_free_flags())
-  fmodel.update_all_scales(update_f_part1_for=None)
+  fmodel.update_all_scales(update_f_part1=False)
   crystal_gridding = fmodel.f_obs().crystal_gridding(
     d_min = fmodel.f_obs().d_min(), resolution_factor = 0.25)
   # compute OMIT maps

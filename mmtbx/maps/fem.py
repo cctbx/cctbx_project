@@ -80,7 +80,7 @@ class run(object):
       fmdc.update_xray_structure(
         xray_structure = xrs,
         update_f_calc = True)
-      fmdc.update_all_scales(update_f_part1_for=None)
+      fmdc.update_all_scales(update_f_part1=False)
       maps_2 = maps(fmodel = fmdc)
       fmodel = fmdc
     m_filter = None

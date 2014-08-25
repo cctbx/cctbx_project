@@ -163,7 +163,6 @@ class fast_maps_from_hkl_file (object) :
       d_min            = self.f_obs.d_min(),
       log              = null_out())
     fmodel = mmtbx.utils.fmodel_simple(
-      update_f_part1_for="map",
       xray_structures=[self.xray_structure],
       scattering_table = self.scattering_table,
       f_obs=self.f_obs,
@@ -189,7 +188,7 @@ class fast_maps_from_hkl_file (object) :
 
 def get_maps_from_fmodel (fmodel, fill_missing_f_obs=True,
     exclude_free_r_reflections=False) :
-  map_manager = fmodel.electron_density_map(update_f_part1=True)
+  map_manager = fmodel.electron_density_map()
   two_fofc_coeffs = map_manager.map_coefficients(map_type = "2mFo-DFc",
     exclude_free_r_reflections=exclude_free_r_reflections,
     fill_missing=fill_missing_f_obs)
@@ -203,7 +202,7 @@ def get_maps_from_fmodel (fmodel, fill_missing_f_obs=True,
   return (two_fofc_coeffs, fofc_coeffs)
 
 def get_anomalous_map (fmodel) :
-  map_manager = fmodel.electron_density_map(update_f_part1=True)
+  map_manager = fmodel.electron_density_map()
   anom_coeffs = map_manager.map_coefficients(map_type="anom")
   if (anom_coeffs.anomalous_flag()) :
     anom_coeffs = anom_coeffs.average_bijvoet_mates()
@@ -222,7 +221,6 @@ class generate_water_omit_map (object) :
       exclude_free_r_reflections=False,
       fill_missing_f_obs=False,
       write_f_model=False,
-      update_f_part1=True,
       log=None) :
     if (log is None) :
       log = null_out()
@@ -248,24 +246,21 @@ class generate_water_omit_map (object) :
       fmodel.update_xray_structure(xrs,
         update_f_calc=True)
     #    update_f_mask=False)
-      if (update_f_part1) :
-        fmodel.update_all_scales(update_f_part1_for="maps", log=log)
-      else :
-        fmodel.update_all_scales(update_f_part1_for=None, log=log)
+      fmodel.update_all_scales(log=log)
       self.two_fofc_map = fmodel.electron_density_map(
-        update_f_part1=update_f_part1).map_coefficients(
+        ).map_coefficients(
           map_type="2mFo-DFc",
           exclude_free_r_reflections=exclude_free_r_reflections,
           fill_missing=fill_missing_f_obs)
       self.fofc_map = fmodel.electron_density_map(
-        update_f_part1=update_f_part1).map_coefficients(
+        ).map_coefficients(
           map_type="mFo-DFc",
           exclude_free_r_reflections=exclude_free_r_reflections,
           fill_missing=False,
           merge_anomalous=True)
       if (fmodel.f_obs().anomalous_flag()) :
         self.anom_map = fmodel.electron_density_map(
-          update_f_part1=update_f_part1).map_coefficients(
+          ).map_coefficients(
             map_type="anom",
             exclude_free_r_reflections=exclude_free_r_reflections,
             fill_missing=fill_missing_f_obs)

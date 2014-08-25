@@ -182,8 +182,7 @@ def kick_fmodel(
   r2 = fmodel_dc.r_work()
   assert approx_equal(r1, r2, 1.e-4), [r1, r2]
   def get_mc(fm):
-   return fm.electron_density_map(
-     update_f_part1=False).map_coefficients(
+   return fm.electron_density_map().map_coefficients(
        map_type     = map_type,
        isotropize   = True,
        fill_missing = False)
@@ -356,5 +355,5 @@ class run(object):
         f_obs = f_obs,
         r_free_flags = r_free_flags,
         xray_structure = fmodel.xray_structure)
-      fmodel.update_all_scales(update_f_part1_for="refinement")
+      fmodel.update_all_scales()
     return fmodel

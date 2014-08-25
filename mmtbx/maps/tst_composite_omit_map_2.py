@@ -88,8 +88,7 @@ def run(args):
   #
   fmodel = mmtbx.f_model.manager(f_obs = abs(FB), xray_structure = xrs)
   # mc is model biased: one should not see any density for resseq 2
-  mc = fmodel.electron_density_map(
-    update_f_part1 = False).map_coefficients(
+  mc = fmodel.electron_density_map().map_coefficients(
       map_type     = "Fo",
       isotropize   = False,
       fill_missing = False)

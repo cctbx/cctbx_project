@@ -30,7 +30,6 @@ def exercise_1 () :
   flags = mtz_in.file_server.miller_arrays[1]
   flags = flags.customized_copy(data=flags.data()==1)
   fmodel = mmtbx.utils.fmodel_simple(
-    update_f_part1_for=None, # could be "=maps"
     f_obs=f_obs,
     r_free_flags=flags,
     scattering_table="n_gaussian",

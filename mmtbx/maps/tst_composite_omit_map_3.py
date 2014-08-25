@@ -57,7 +57,7 @@ def run(space_group_info):
     xray_structure = xrs,
     f_obs          = f_obs,
     r_free_flags   = f_obs.generate_r_free_flags())
-  fmodel.update_all_scales(update_f_part1_for=None)
+  fmodel.update_all_scales(update_f_part1=False)
   mc1 = fmodel.electron_density_map(
     update_f_part1=False).map_coefficients(
       map_type     = "2mFo-DFc",
