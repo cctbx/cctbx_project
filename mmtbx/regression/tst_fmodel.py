@@ -302,11 +302,15 @@ def exercise_4_f_hydrogens():
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     sf_and_grads_accuracy_params = sfg_params)
+  fmodel_dc = fmodel.deep_copy()
   assert fmodel.r_work() > 0.15
-  fmodel.update_f_hydrogens()
+  assert approx_equal(fmodel.r_work(), fmodel_dc.r_work())
+  fmodel.update_f_hydrogens_grid_search()
   assert approx_equal(fmodel.k_h, 0.9)
   assert approx_equal(fmodel.b_h, 0)
   assert approx_equal(fmodel.r_work(), 0)
+  fmodel_dc.update_f_hydrogens()
+  assert fmodel_dc.r_work() < 0.002
   # test map convenience functions
   map1 = fmodel.two_fofc_map()
   map2 = fmodel.fofc_map()
