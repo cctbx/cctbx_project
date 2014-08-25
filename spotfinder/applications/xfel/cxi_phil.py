@@ -22,6 +22,35 @@ def cxi_basic_start():
   return new_horizons_phil
 
 def cxi_versioned_extract(*args):
+  import copy
+
+  # args is one or more lists of phil parameters, as would be passed
+  # in through the command line; to be processed sequentially.
+
+  working_phil = cxi_basic_start()
+
+  #for arg in args:
+  for arg in copy.deepcopy(args):
+    working_phil.merge_command_line(arg)
+  working_extract = working_phil.command_extractor
+
+  if working_extract.distl.tile_translations is not None and \
+     working_extract.distl.quad_translations is not None:
+    return working_extract
+
+  # Get the working tile translations for the given detector format version
+  # from previous experiments
+  legacy_extract = cxi_versioned_extract_detail(args)
+
+  if working_extract.distl.tile_translations is None:
+    working_extract.distl.tile_translations = legacy_extract.distl.tile_translations
+
+  if working_extract.distl.quad_translations is None:
+    working_extract.distl.quad_translations = legacy_extract.distl.quad_translations
+
+  return working_extract
+
+def cxi_versioned_extract_detail(args):
 
   # args is one or more lists of phil parameters, as would be passed
   # in through the command line; to be processed sequentially.
@@ -100,6 +129,8 @@ def cxi_versioned_extract(*args):
     total_tile_translations = flex.int(corrected_auxiliary_translations)
 
     TT = list(total_tile_translations)
+    #added NKS 8/19/14
+    #TT = [0]*128
     working_extract.distl.tile_translations = TT
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y
