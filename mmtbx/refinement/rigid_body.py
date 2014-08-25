@@ -325,7 +325,7 @@ class manager(object):
                fast=True
                if(bss.mode=="slow"): fast=False
                fmodel_copy.update_all_scales(
-                 update_f_part1_for   = False,
+                 update_f_part1       = False,
                  params               = bss,
                  fast                 = fast,
                  log                  = log,
@@ -377,7 +377,7 @@ class manager(object):
           fast=True
           if(bss.mode=="slow"): fast=False
           fmodel_copy.update_all_scales(
-            update_f_part1_for   = None,
+            update_f_part1       = False,
             params               = bss,
             fast                 = fast,
             log                  = log,
@@ -396,7 +396,7 @@ class manager(object):
       fast=True
       if(bss.mode=="slow"): fast=False
       fmodel_copy.update_all_scales(
-        update_f_part1_for   = False,
+        update_f_part1       = False,
         params               = bss,
         fast                 = fast,
         log                  = log,

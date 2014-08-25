@@ -181,7 +181,6 @@ def run(refine, target, residues_per_window = 1, d_min=2):
     sf_and_grads_accuracy_params = sfp,
     xray_structure               = xrs_poor,
     f_obs                        = f_obs)
-  # this makes ML semi-work: fmodel.update_all_scales(update_f_part1_for=None)
   fmodel.show()
   fmodel.update(target_name=target)
   print "Initial r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free())
