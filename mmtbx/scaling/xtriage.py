@@ -820,21 +820,24 @@ class summary (mmtbx.scaling.xtriage_analysis) :
     return len(self._issues)
 
   def _show_impl (self, out) :
-    out.show_header("Summary of possible issues")
-    if (self.n_problems == 0) :
-      out.show("""\
-No obvious problems were found with this dataset.  However, we recommend that
-you inspect the individual results closely, as it is difficult to automatically
-detect all issues.""")
-    else :
+    out.show_header("Xtriage summary")
+    have_problems = False
+    if (self.n_problems > 0) :
       if hasattr(out, "show_issues") : # XXX GUI hack
         out.show_issues(self._issues)
       else :
         for severity, message, linkto in self._issues :
           if (severity > 1) :
+            have_problems = True
             out.warn(message)
           else :
             out.show(wordwrap(message, max_chars=78))
+    if (not have_problems) :
+      out.show("""
+No obvious problems were found with this dataset.  However, we recommend that
+you inspect the individual results closely, as it is difficult to automatically
+detect all issues.""")
+    else :
       out.show("""
 Please inspect all individual results closely, as it is difficlut to
 automatically detect all issues.""")
