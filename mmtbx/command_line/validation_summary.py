@@ -19,7 +19,7 @@ def summary (pdb_file=None, pdb_hierarchy=None) :
     assert (pdb_file is not None)
     pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
     pdb_in.assert_file_type("pdb")
-    pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+    pdb_hierarchy = pdb_in.file_object.hierarchy
     pdb_hierarchy.atoms().reset_i_seq()
     header_info = molprobity.pdb_header_info(
       pdb_file=pdb_file)
@@ -129,8 +129,8 @@ run phenix.model_vs_data or the validation GUI.)
     raise Sorry("Not a file: %s" % pdb_file)
   from iotbx.file_reader import any_file
   pdb_in = any_file(pdb_file, force_type="pdb").check_file_type("pdb")
-  hierarchy = pdb_in.file_object.construct_hierarchy()
-  xrs = pdb_in.file_object.xray_structures_simple()
+  hierarchy = pdb_in.file_object.hierarchy
+  xrs = pdb_in.file_object.input.xray_structures_simple()
   s = None
   extra = ""
   if (len(xrs) == 1) :

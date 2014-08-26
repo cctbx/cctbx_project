@@ -181,7 +181,7 @@ def exercise () :
   #
   pdb_in, mtz_in = make_inputs()
   pdb_file = file_reader.any_file(pdb_in, force_type="pdb")
-  hierarchy = pdb_file.file_object.construct_hierarchy()
+  hierarchy = pdb_file.file_object.hierarchy
   old_ligand = None
   for chain in hierarchy.only_model().chains() :
     if (chain.id != "B") : continue
@@ -206,7 +206,7 @@ def exercise () :
   assert result.n_ligands_new == 1
   assert op.isfile("ncs_ligands.pdb")
   pdb_out = file_reader.any_file("ncs_ligands.pdb", force_type="pdb")
-  hierarchy_new = pdb_out.file_object.construct_hierarchy()
+  hierarchy_new = pdb_out.file_object.hierarchy
   new_ligand = None
   for chain in hierarchy_new.only_model().chains() :
     if (chain.id != "B") : continue

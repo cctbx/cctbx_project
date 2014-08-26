@@ -341,8 +341,8 @@ def strip_model (
     pdb_in = file_reader.any_file(file_name, force_type="pdb",
       raise_sorry_if_errors=True)
     pdb_in.check_file_type("pdb")
-    remarks = pdb_in.file_object.remark_section()
-    pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+    remarks = pdb_in.file_object.input.remark_section()
+    pdb_hierarchy = pdb_in.file_object.hierarchy
     xray_structure = pdb_in.file_object.xray_structure_simple()
   else :
     # XXX work with copies, not the original structure

@@ -365,7 +365,7 @@ def run (args, out=None, verbose=True) :
   validate_params(params)
   pdb_in = file_reader.any_file(params.model, force_type="pdb")
   pdb_in.check_file_type("pdb")
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   hierarchy.atoms().reset_i_seq()
   map_coeffs = ccp4_map = difference_map_coeffs = None
   if (params.map_coeffs is not None) :

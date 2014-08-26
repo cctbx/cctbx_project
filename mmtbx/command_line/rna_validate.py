@@ -43,6 +43,7 @@ Example:
 def run (args, out=sys.stdout, quiet=False) :
   from mmtbx.monomer_library import pdb_interpretation
   from mmtbx.monomer_library import server
+  import iotbx.pdb
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=get_master_phil(),
@@ -51,13 +52,13 @@ def run (args, out=sys.stdout, quiet=False) :
   params = cmdline.work.extract()
   if (params.model is None) :
     raise Usage(usage_string)
-  pdb_in = cmdline.get_file(params.model, force_type="pdb")
+  pdb_in = iotbx.pdb.input(source_info=params.model, file_name=params.model)
   mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
-    pdb_inp=pdb_in.file_object,
+    pdb_inp=pdb_in,
     substitute_non_crystallographic_unit_cell_if_necessary=True)
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   geometry = processed_pdb_file.geometry_restraints_manager()

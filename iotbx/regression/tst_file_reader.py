@@ -130,7 +130,7 @@ HETATM 2650 MN MN    . MN  F 4 . 9.296   -44.783 -6.320  1.00 44.18 505 MN  A MN
   assert (str(symm.space_group_info()) == "P 61")
   assert (str(symm.unit_cell()) == "(150.582, 150.582, 38.633, 90, 90, 120)")
   assert mmcif.file_description == 'Model'
-  hierarchy = mmcif.file_object.construct_hierarchy()
+  hierarchy = mmcif.file_object.hierarchy
   assert len(hierarchy.atoms()) == 7
 
 def exercise_pdb () :
@@ -150,8 +150,7 @@ END
   except Sorry :
     pass
   else :
-    raise Exception_expected(
-      "Expected exception for 'pdb.assert_file_type(\"txt\")'.")
+    raise Exception_expected
   pdb.assert_file_type("pdb")
   pdb.check_file_type("pdb")
   try :

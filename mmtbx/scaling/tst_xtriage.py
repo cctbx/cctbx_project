@@ -367,7 +367,7 @@ def exercise_2 () :
   f_calc = None
   if (pdb_file is not None) :
     pdb_in = file_reader.any_file(pdb_file).assert_file_type("pdb")
-    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy = pdb_in.file_object.hierarchy
     xrs = pdb_in.file_object.xray_structure_simple(
       crystal_symmetry=i_obs)
     f_calc = xrs.structure_factors(d_min=i_obs.d_min()).f_calc()

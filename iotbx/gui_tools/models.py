@@ -23,8 +23,7 @@ class model_handler (iotbx.gui_tools.manager) :
                 debug=False,
                 cif_param_names=None,
                 multiple_cif_params=None,
-                tmp_dir=None,
-                construct_hierarchy=True) :
+                tmp_dir=None) :
     iotbx.gui_tools.manager.__init__(self,
       allowed_param_names=allowed_param_names,
       allowed_multiple_params=allowed_multiple_params,
@@ -33,7 +32,6 @@ class model_handler (iotbx.gui_tools.manager) :
       allowed_param_names=cif_param_names,
       allowed_multiple_params=multiple_cif_params)
     self.tmp_dir = tmp_dir
-    self.construct_hierarchy = construct_hierarchy
     self.add_callback = lambda file_name : True
     self.remove_callback = lambda file_name : True
     self._viewable_file_params = []
@@ -61,12 +59,10 @@ class model_handler (iotbx.gui_tools.manager) :
     self.remove_callback(file_name)
 
   def save_other_file_data (self, input_file) :
-    if self.construct_hierarchy :
-      file_name = input_file.file_name
-      pdb_hierarchy = input_file.file_object.construct_hierarchy()
-      pdb_hierarchy.atoms().reset_i_seq()
-      self._cached_pdb_hierarchies[file_name] = pdb_hierarchy
-      return pdb_hierarchy
+    file_name = input_file.file_name
+    pdb_hierarchy = input_file.file_object.hierarchy
+    self._cached_pdb_hierarchies[file_name] = pdb_hierarchy
+    return pdb_hierarchy
 
   def get_complete_model_file (self, file_param_name=None) :
     file_names = []
@@ -114,7 +110,7 @@ class model_handler (iotbx.gui_tools.manager) :
     hierarchies = []
     for file_name in file_names :
       pdb_file = self._cached_input_files[file_name]
-      file_symm = pdb_file.file_object.crystal_symmetry()
+      file_symm = pdb_file.crystal_symmetry()
       if (file_symm is not None) and (symm is not None) :
         symm = file_symm
       hierarchy_str = self.get_pdb_hierarchy(file_name).as_pdb_string()
@@ -140,10 +136,9 @@ class model_handler (iotbx.gui_tools.manager) :
     if (len(file_names) == 0) :
       raise Sorry("No PDB files loaded.")
     pdb_str = self.combine_pdb_files(file_names)
-    import iotbx.pdb
-    pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str)
-    hierarchy = pdb_in.construct_hierarchy()
-    hierarchy.atoms().reset_i_seq()
+    import iotbx.pdb.hierarchy
+    pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_str)
+    hierarchy = pdb_in.hierarchy
     xray_structure = pdb_in.xray_structure_simple()
     return (hierarchy, xray_structure)
 
@@ -177,8 +172,7 @@ class model_handler (iotbx.gui_tools.manager) :
     input_file = self.get_file(file_name)
     if (input_file is not None) :
       if (not file_name in self._cached_pdb_hierarchies) :
-        pdb_hierarchy = input_file.file_object.construct_hierarchy()
-        pdb_hierarchy.atoms().reset_i_seq()
+        pdb_hierarchy = input_file.file_object.hierarchy
         self._cached_pdb_hierarchies[file_name] = pdb_hierarchy
       return self._cached_pdb_hierarchies.get(file_name)
     return None
@@ -211,7 +205,7 @@ class model_handler (iotbx.gui_tools.manager) :
     if (pdb_file is None) :
       pdb_file = file_reader.any_file(file_name)
       pdb_file.assert_file_type("pdb")
-    return pdb_file.file_object.crystal_symmetry()
+    return pdb_file.crystal_symmetry()
 
   def create_copy_with_fake_symmetry (self, file_name, tmp_dir=None) :
     import iotbx.pdb

@@ -22,7 +22,7 @@ def exercise_1():
     print "phenix_regression not found, skipping test"
     return False
   pdb_in = file_reader.any_file(pdb_file)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   hierarchy.atoms().reset_i_seq()
   xrs = pdb_in.file_object.xray_structure_simple()
   mtz_in = file_reader.any_file(mtz_file)

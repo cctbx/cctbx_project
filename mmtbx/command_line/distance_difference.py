@@ -121,11 +121,11 @@ def calculate_matrix (params, log=None) :
   from iotbx import file_reader
   pdb_1 = file_reader.any_file(params.model_1, force_type="pdb")
   pdb_1.check_file_type("pdb")
-  hierarchy_1 = pdb_1.file_object.construct_hierarchy()
+  hierarchy_1 = pdb_1.file_object.hierarchy
   hierarchy_1.atoms().reset_i_seq()
   pdb_2 = file_reader.any_file(params.model_2, force_type="pdb")
   pdb_2.check_file_type("pdb")
-  hierarchy_2 = pdb_2.file_object.construct_hierarchy()
+  hierarchy_2 = pdb_2.file_object.hierarchy
   hierarchy_2.atoms().reset_i_seq()
   for k, hierarchy in enumerate([hierarchy_1,hierarchy_2]) :
     k += 1

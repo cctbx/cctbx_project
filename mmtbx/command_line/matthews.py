@@ -83,7 +83,7 @@ crystallized molecule(s).
     params.n_residues = 0
     params.n_bases = 0
     pdb_in = any_file(params.model)
-    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy = pdb_in.file_object.hierarchy
     for chain in hierarchy.models()[0].chains() :
       if chain.is_protein() :
         params.n_residues += chain.residue_groups_size()

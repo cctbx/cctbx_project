@@ -1313,7 +1313,7 @@ TER
     ]
     fmodel.run(args=args, log=null_out())
   pdb_file = file_reader.any_file(pdb_in)
-  hierarchy = pdb_file.file_object.construct_hierarchy()
+  hierarchy = pdb_file.file_object.hierarchy
   xrs = pdb_file.file_object.xray_structure_simple()
   for atom in hierarchy.atoms() :
     atom.b = 5

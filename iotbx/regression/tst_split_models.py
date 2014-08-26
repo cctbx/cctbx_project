@@ -51,7 +51,7 @@ END""")
   for file in ["multi_model_1.pdb", "multi_model_2.pdb"] :
     pdb_in = file_reader.any_file(file, force_type="pdb")
     pdb_in.assert_file_type("pdb")
-    h = pdb_in.file_object.construct_hierarchy()
+    h = pdb_in.file_object.hierarchy
     assert (len(h.models()) == 1)
     sites.append(h.atoms().extract_xyz())
   assert approx_equal(sites[0].rms_difference(sites[1]), 38.9216638)

@@ -48,7 +48,7 @@ def run (args=(), params=None, out=None) :
   pdb_in = file_reader.any_file(params.pdb_file, force_type="pdb")
   pdb_in.check_file_type("pdb")
   symm = pdb_in.file_object.crystallographic_section()
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   if (len(hierarchy.models()) > 1) :
     raise Sorry("Multi-model PDB files are not supported.  You can use "+
       "iotbx.pdb.split_models to break the structure into individual model "+

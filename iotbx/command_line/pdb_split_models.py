@@ -46,7 +46,7 @@ Splits a multi-model PDB file into separate files for each model.
   from iotbx import file_reader
   pdb_in = file_reader.any_file(params.split_models.file_name, force_type="pdb")
   pdb_in.check_file_type("pdb")
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   if (len(hierarchy.models()) <= 1) :
     raise Sorry("The PDB file %s already has a single model." %
       params.split_models.file_name)

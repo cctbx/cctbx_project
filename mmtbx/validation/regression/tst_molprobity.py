@@ -125,7 +125,7 @@ def exercise_protein () :
   import mmtbx.validation.molprobity
   from iotbx import file_reader
   pdb_in = file_reader.any_file(pdb_file)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   flags = mmtbx.validation.molprobity.molprobity_flags()
   flags.clashscore = False
   flags.model_stats = False

@@ -161,7 +161,7 @@ def run (args=(), params=None, out=sys.stdout) :
     base_name = os.path.basename(params.pdb_file)
     params.output = os.path.splitext(base_name)[0] + "_split.pdb"
   f = open(params.output, "w")
-  f.write("\n".join(pdb_in.crystallographic_section()) + "\n")
+  f.write("\n".join(pdb_in.input.crystallographic_section()) + "\n")
   f.write(hierarchy.as_pdb_string())
   f.close()
   print >> out, "Old model: %d atoms" % n_atoms

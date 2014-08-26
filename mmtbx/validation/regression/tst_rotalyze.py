@@ -22,7 +22,7 @@ def exercise_rotalyze():
   from mmtbx.validation import rotalyze
   from iotbx import file_reader
   pdb_in = file_reader.any_file(file_name=regression_pdb)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   pdb_io = pdb.input(file_name=regression_pdb)
   r = rotalyze.rotalyze(
     pdb_hierarchy=hierarchy,
@@ -78,7 +78,7 @@ def exercise_rotalyze():
     print "Skipping exercise_ramalyze(): input pdb (pdb1jxt.ent) not available"
     return
   pdb_in = file_reader.any_file(file_name=regression_pdb)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   pdb_io = pdb.input(file_name=regression_pdb)
   r = rotalyze.rotalyze(
     pdb_hierarchy=hierarchy,

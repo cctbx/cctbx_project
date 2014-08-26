@@ -73,7 +73,7 @@ def morph_models (params, out=None, debug=False) :
   for pdb_file in params.morph.pdb_file :
     pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
     pdb_in.check_file_type("pdb")
-    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy = pdb_in.file_object.hierarchy
     pdb_hierarchies.append(hierarchy)
   new_pdb = homogenize_structures(
     pdb_hierarchies=pdb_hierarchies,

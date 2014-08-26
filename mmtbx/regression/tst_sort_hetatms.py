@@ -88,7 +88,7 @@ END
     out=out)
   assert ("""Residue group pdb=" O   HOH    10 " added to chain A (distance = 2.814, symop = -x-1,y-1/2,-z)""" in out.getvalue())
   pdb_in = file_reader.any_file("unsorted_sorted.pdb")
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   chains = hierarchy.models()[0].chains()
   assert (len(chains) == 4)
   rgsA = chains[-2].residue_groups()
@@ -98,7 +98,7 @@ END
     args=[pdb_file, "preserve_chain_id=True", "renumber=False"],
     out=StringIO())
   pdb_in = file_reader.any_file("unsorted_sorted.pdb")
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   chains = hierarchy.models()[0].chains()
   assert (len(chains) == 3)
   assert (chains[-1].id == "A")

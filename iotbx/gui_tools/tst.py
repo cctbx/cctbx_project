@@ -353,7 +353,7 @@ def exercise_model () :
           "113.068 113.068 53.292 90 90 90")
   f = model_handler.create_copy_with_fake_symmetry(pdb_file2,
     tmp_dir=os.getcwd())
-  pdb_in = file_reader.any_file(f, force_type="pdb").file_object
+  pdb_in = file_reader.any_file(f, force_type="pdb")
   symm = pdb_in.crystal_symmetry()
   assert (str(symm.space_group_info()) == "P 1")
   assert (reflections.unit_cell_as_str(symm.unit_cell()) ==

@@ -49,10 +49,10 @@ def compare_ligands (ligand_code,
     from iotbx import file_reader
     pdb_1 = file_reader.any_file(pdb_file_1, force_type="pdb")
     pdb_1.check_file_type("pdb")
-    hierarchy_1 = pdb_1.file_object.construct_hierarchy()
+    hierarchy_1 = pdb_1.file_object.hierarchy
     pdb_2 = file_reader.any_file(pdb_file_2, force_type="pdb")
     pdb_2.check_file_type("pdb")
-    hierarchy_2 = pdb_2.file_object.construct_hierarchy()
+    hierarchy_2 = pdb_2.file_object.hierarchy
   # XXX should this use residues or atom_groups?
   ligands_1 = extract_ligand_residue(hierarchy_1, ligand_code)
   ligands_2 = extract_ligand_residue(hierarchy_2, ligand_code)
@@ -294,7 +294,7 @@ def validate_ligands (
   if (reference_structure is not None) :
     from iotbx import file_reader
     pdb_in = file_reader.any_file(reference_structure, force_type="pdb")
-    reference_hierarchy = pdb_in.file_object.construct_hierarchy()
+    reference_hierarchy = pdb_in.file_object.hierarchy
     # XXX currently using the residue objects for reference ligands, but the
     # atom_group object for the target ligands.  This is because we assume
     # that the target is newly placed and doesn't already have alternate

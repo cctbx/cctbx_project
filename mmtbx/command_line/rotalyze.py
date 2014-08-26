@@ -42,7 +42,7 @@ def run (args, out=sys.stdout, quiet=False) :
   if (params.model is None) :
     raise Usage(usage_string)
   pdb_in = cmdline.get_file(params.model, force_type="pdb")
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   result = mmtbx.validation.rotalyze.rotalyze(
     pdb_hierarchy=hierarchy,
     show_errors=params.show_errors,

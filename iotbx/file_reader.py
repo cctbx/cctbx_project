@@ -17,7 +17,7 @@ Examples
 
 >>> pdb_in = any_file("model.pdb", force_type="pdb")
 >>> pdb_in.assert_file_type("pdb")
->>> hierarchy = pdb_in.file_object.construct_hierarchy()
+>>> hierarchy = pdb_in.file_object.hierarchy
 
 >>> mtz_in = any_file("data.mtz", force_type="hkl")
 >>> miller_arrays = mtz_in.file_server.miller_arrays
@@ -326,12 +326,12 @@ class any_file_input (object) :
     """
     PDB parser, actually tries both 'classic' PDB and mmCIF formats.
     """
-    from iotbx.pdb import input as pdb_input
+    import iotbx.pdb.hierarchy
     try :
-      pdb_inp = pdb_input(self.file_name)
+      pdb_inp = iotbx.pdb.hierarchy.input(self.file_name)
     except ValueError, e :
       raise Sorry(str(e))
-    if (len(pdb_inp.atoms()) == 0) :
+    if (pdb_inp.hierarchy.models_size() == 0) :
       raise ValueError("No ATOM or HETATM records found in %s."%self.file_name)
     self._file_type = "pdb"
     self._file_object = pdb_inp
@@ -466,7 +466,7 @@ class any_file_input (object) :
     and reflection files.
     """
     if (self._file_type == "pdb") :
-      return self._file_object.crystal_symmetry()
+      return self._file_object.input.crystal_symmetry()
     elif (self._file_type == "hkl") :
       return self._file_object.file_content().crystal_symmetry()
     else :
@@ -540,8 +540,8 @@ class any_file_input (object) :
       print >> out, "Format: %s (%s)" % (self._file_type,
         standard_file_descriptions.get(self._file_type, "unknown"))
     if (self._file_type == "pdb") :
-      print >> out, "Atoms in file: %d" % (len(self._file_object.atoms()))
-      title = "\n".join(self._file_object.title_section())
+      print >> out, "Atoms in file: %d" % (len(self._file_object.input.atoms()))
+      title = "\n".join(self._file_object.input.title_section())
       if (title != "") :
         print >> out, "Title section:"
         print >> out, title

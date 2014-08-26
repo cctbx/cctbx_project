@@ -9,7 +9,7 @@ def exercise_anomalous_maps_misc () :
   mtz_file, pdb_file = generate_cd_cl_inputs(
     file_base = "tst_mmtbx_maps_misc")
   pdb_in = file_reader.any_file(pdb_file)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   xrs = pdb_in.file_object.xray_structure_simple()
   for s in xrs.scatterers() :
     if (s.scattering_type == "Cd2+") :
