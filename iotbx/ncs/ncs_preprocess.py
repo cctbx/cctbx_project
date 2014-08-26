@@ -4,6 +4,7 @@ from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
 from libtbx.utils import null_out
 from scitbx.math import superpose
+from libtbx.utils import Sorry
 from libtbx.phil import parse
 import iotbx.pdb.hierarchy
 from mmtbx.ncs import ncs
@@ -82,6 +83,10 @@ class ncs_group_object(object):
     self.hierarchy = None
     # residues related via NCS operators. same keys as ncs_copies_chains_names
     self.common_res_dict = {}
+    # flag indicating if ncs operation found
+    self.found_ncs_transforms = False
+    # Collect messages, recommendation and errors
+    self.messages = ''
 
   def preprocess_ncs_obj(self,
                          pdb_hierarchy_inp=None,
@@ -101,7 +106,9 @@ class ncs_group_object(object):
                          pdb_string=None,
                          use_cctbx_find_ncs_tools=True,
                          use_simple_ncs_from_pdb=True,
-                         use_minimal_master_ncs=True):
+                         use_minimal_master_ncs=True,
+                         rms_eps=0.02,
+                         Error_msg_on=True):
     """
     Select method to build ncs_group_object
 
@@ -140,6 +147,11 @@ class ncs_group_object(object):
       use_simple_ncs_from_pdb: (bool) Enable using use_simple_ncs_from_pdb
       use_minimal_master_ncs: (bool) use maximal or minimal common chains
         in master ncs groups
+      rms_eps (float): limit of rms difference between chains to be considered
+        as copies
+      Error_msg_on (bool): When True, raise error if chains that are
+        nearly the same length (but not exactly the same) and are NCS related.
+        Raise error if NCS relations are not found
     """
     extension = ''
     if file_name: extension = os.path.splitext(file_name)[1]
@@ -156,10 +168,10 @@ class ncs_group_object(object):
       else: input_str = cif_string
       pdb_hierarchy_inp = pdb.hierarchy.input(pdb_string=input_str)
     if pdb_hierarchy_inp and (not transform_info):
-      transform_info = pdb_hierarchy_inp.input.process_mtrix_records()
+      transform_info = pdb_hierarchy_inp.input.process_mtrix_records(eps=0.01)
       if transform_info.as_pdb_string() == '': transform_info = None
     if transform_info or rotations:
-      if ncs_only(transform_info):
+      if ncs_only(transform_info) or rotations:
         self.build_ncs_obj_from_pdb_ncs(
           pdb_hierarchy_inp = pdb_hierarchy_inp,
           rotations=rotations,
@@ -197,9 +209,17 @@ class ncs_group_object(object):
         pdb_hierarchy_inp=pdb_hierarchy_inp,
         use_cctbx_find_ncs_tools=use_cctbx_find_ncs_tools,
         use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
-        use_minimal_master_ncs=use_minimal_master_ncs)
+        use_minimal_master_ncs=use_minimal_master_ncs,
+        rms_eps=rms_eps)
     else:
       raise IOError,'Please provide one of the supported input'
+    # error handling
+    self.found_ncs_transforms = (len(self.transform_to_be_used) > 0)
+    if Error_msg_on:
+      if self.found_ncs_transforms == 0:
+        raise Sorry('No NCS relation were found !!!')
+      if self.messages != '':
+        raise Sorry(self.messages)
 
   def build_ncs_obj_from_pdb_ncs(self,
                                  pdb_hierarchy_inp,
@@ -278,8 +298,7 @@ class ncs_group_object(object):
       gns = group.master_ncs_selection
       self.ncs_chain_selection.append(gns)
       unique_selections = uniqueness_test(unique_selections,gns)
-      master_ncs_atoms = get_pdb_selection(ph=pdb_hierarchy_inp,
-                                           selection_str=gns)
+      master_ncs_ph = get_pdb_selection(ph=pdb_hierarchy_inp,selection_str=gns)
       ncs_group_id += 1
       transform_sn += 1
       self.add_identity_transform(
@@ -294,11 +313,11 @@ class ncs_group_object(object):
       asu_locations = []
       for asu_select in group.selection_copy:
         unique_selections = uniqueness_test(unique_selections,asu_select)
-        ncs_copy_atoms = get_pdb_selection(
+        ncs_copy_ph = get_pdb_selection(
           ph=pdb_hierarchy_inp,selection_str=asu_select)
-        r, t = get_rot_trans(
-          master_atoms=master_ncs_atoms,copy_atoms= ncs_copy_atoms,
-          rms_eps=100)
+        r, t, msg, master_id, atoms_used = get_rot_trans(
+          master_ncs_ph=master_ncs_ph,ncs_copy_ph= ncs_copy_ph,rms_eps=100)
+        self.messages += msg
         assert r,'Master NCS and Copy are very poorly related, check selection.'
         asu_locations.append(asu_select)
         transform_sn += 1
@@ -338,25 +357,31 @@ class ncs_group_object(object):
   def build_ncs_obj_from_pdb_asu(self,pdb_hierarchy_inp,
                                  use_cctbx_find_ncs_tools=True,
                                  use_simple_ncs_from_pdb=True,
-                                 use_minimal_master_ncs=True):
+                                 use_minimal_master_ncs=True,
+                                 rms_eps=0.02):
     """
     Build transforms objects and NCS <-> ASU mapping from a complete ASU
     Note that the MTRIX record are ignored, they are produced in the
     process of identifying the master NCS
 
-    Arguments:
-    pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
-    use_cctbx_find_ncs_tools (bool): Enable using of chain base NCS search
-    use_simple_ncs_from_pdb (bool): Enable using use_simple_ncs_from_pdb
-    use_minimal_master_ncs (bool): indicate if using maximal or minimal NCS
-    groups
+    Args::
+      pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
+      use_cctbx_find_ncs_tools (bool): Enable using of chain base NCS search
+      use_simple_ncs_from_pdb (bool): Enable using use_simple_ncs_from_pdb
+      use_minimal_master_ncs (bool): indicate if using maximal or minimal NCS
+        groups
+      rms_eps (float): limit of rms difference between chains to be considered
+        as copies
     """
     ncs_phil_groups = []
     if use_cctbx_find_ncs_tools:
       if use_minimal_master_ncs:
-        ncs_phil_groups = get_minimal_master_ncs_group(pdb_hierarchy_inp)
+        ncs_phil_groups, msg = get_minimal_master_ncs_group(
+          pdb_hierarchy_inp=pdb_hierarchy_inp,rms_eps=rms_eps)
       else:
-        ncs_phil_groups = get_largest_common_ncs_groups(pdb_hierarchy_inp)
+        ncs_phil_groups, msg = get_largest_common_ncs_groups(
+          pdb_hierarchy_inp=pdb_hierarchy_inp,rms_eps=rms_eps)
+      self.messages += msg
 
     if (ncs_phil_groups != []):
       self.build_ncs_obj_from_phil(
@@ -889,7 +914,9 @@ class ncs_group_object(object):
       for chain in chain_residues_list:
         res_id = []
         for rs in chain.residue_groups():
-          ch_id,j = rs.id_str().split()
+          ch_id = rs.id_str()[:3].strip()
+          j = rs.id_str()[3:].strip()
+          # ch_id,j = rs.id_str().split()
           res_id.append(int(j))
         range_list.append([min(res_id),max(res_id)])
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
@@ -1387,53 +1414,171 @@ def get_rot_trans(master_ncs_ph=None,
                   ncs_copy_ph=None,
                   master_atoms=None,
                   copy_atoms=None,
+                  process_similar_chains=False,
                   rms_eps=0.02):
   """
-  Get rotation and translation using superpose
+  Get rotation and translation using superpose.
+  Can raise "Sorry" if chains are not exactly the same length, but a large
+  subset of them is NCS related. Return the subset of atoms indices used in
+  such a case.
+  Note that if the master and copy have the same length it will not check
+  for similarity.
 
   Args:
     master_ncs_ph: pdb hierarchy input object
     ncs_copy_ph: pdb hierarchy input object
     master_atoms: (flex.vec3_double) master atoms sites cart
     copy_atoms: (flex.vec3_double) copy atoms sites cart
+    process_similar_chains (bool): When True, process chains that are close
+      in length without raising errors
+    rms_eps (float): limit of rms difference between chains to be considered
+      as copies
 
   Returns:
     r: rotation matrix
     t: translation vector
+    master_chain_id (str):
+    master_selection (flex.size_t): if only a subset of the chains is NCS
+      related, master_selection indicates that subset
+    msg (str): "sorry" messages
 
-    If can't match the two selection or if it is a bad match return: None, None
+    If can't match the two selection or if it is a bad match return:
+    None, None, msg
   """
-  if (not master_atoms) and bool(master_ncs_ph): master_ncs_ph.atoms()
-  if (not copy_atoms) and bool(ncs_copy_ph): copy_atoms = ncs_copy_ph.atoms()
+  msg = ''
+  m_id = 'master'
+  c_id = 'copy'
+  atoms_used = None
+  similarity = 0.95
+  if (not master_atoms) and bool(master_ncs_ph):
+    master_atoms = master_ncs_ph.atoms()
+  if (not copy_atoms) and bool(ncs_copy_ph):
+    copy_atoms = ncs_copy_ph.atoms()
   t1 = not (master_atoms is None)
   t2 = not (copy_atoms is None)
   if t1 and t2:
-    test_length = master_atoms.size() != copy_atoms.size()
-    if test_length: return None,None
-    reference_sites = copy_atoms.extract_xyz()
-    other_sites     = master_atoms.extract_xyz()
+    ml = master_atoms.size()
+    cl = copy_atoms.size()
+    different_length = (ml != cl)
+    length_similarity = 1 - abs(ml - cl)/ml
+    almost_same_length = (length_similarity >= similarity)
+    if not different_length:
+      ref_sites = copy_atoms.extract_xyz()
+      other_sites = master_atoms.extract_xyz()
+    elif almost_same_length and (bool(master_ncs_ph) and (bool(ncs_copy_ph))):
+      # collect chains information
+      ref_sites, other_sites, m_id, c_id, atoms_used = \
+        common_atoms(master_ncs_ph,ncs_copy_ph)
+      if (ref_sites.size()/ml) < similarity:
+        # similarity between chains is small, do not consider as same chains
+        return None,None,msg,m_id,atoms_used
+    else:
+      # different chains
+      return None,None,msg,m_id,atoms_used
+    # get common residues
     lsq_fit_obj = superpose.least_squares_fit(
-      reference_sites = reference_sites,
+      reference_sites = ref_sites,
       other_sites     = other_sites)
     r = lsq_fit_obj.r
     t = lsq_fit_obj.t
     # test fit quality
     xyz = r.elems * other_sites + t
-    delta = reference_sites.rms_difference(xyz)
-    if delta > rms_eps: return None,None
+    delta = ref_sites.rms_difference(xyz)
+    if delta > rms_eps:
+      return None,None,msg,m_id,atoms_used
+    elif different_length:
+      msg = 'Chains {0} and {1} appear to be NCS related but differ in length..'
+      msg = msg.format(m_id,c_id)
+      if not process_similar_chains:
+        raise Sorry(msg)
   else:
     r = matrix.sqr([0]*9)
     t = matrix.col([0,0,0])
-  return r,t
+  return r,t,msg, m_id, atoms_used
+
+def get_chain_info(chain_ph):
+  """
+  Args:
+    chain_ph (iotbx_pdb_hierarchy_ext): hierarchy of a single chain
+
+  Returns:
+    chain_id (str)
+    chain_sequence (str)
+  """
+  atoms = chain_ph.atoms()
+  chain_id = atoms[0].chain().id
+  chain_sequence = atoms.extract_element()
+  t = [True for x in chain_sequence if len(x.strip()) > 1]
+  assert t.count(True) == 0
+  return chain_id, chain_sequence
+
+def common_atoms(master_ncs_ph, ncs_copy_ph,similarity):
+  """
+  Find best alignment of between two hierarchies
+
+  Args:
+    master_ncs_ph (hierarchy object): NCS master copy
+    ncs_copy_ph (hierarchy object): NCS copy
+    similarity (float): minimum boundary on how good the alignment should be
+
+  Returns:
+    reference_common_sites (flex.vec3_double): Master common coordinates
+    other_common_sites (flex.vec3_double): Copy common coordinates
+    master_chain_id (str)
+    copy_chain_id (str)
+  """
+  # Fixme: build function and test
+  master_chain_id, m_seq = get_chain_info(master_ncs_ph)
+  copy_chain_id, c_seq = get_chain_info(ncs_copy_ph)
+  reference_sites = flex.vec3_double()
+  other_sites = flex.vec3_double()
+  sel_master, sel_copy = simple_alignment(
+    seq_a=m_seq, seq_b=c_seq, similarity=similarity)
+  if sel_master:
+    master_atoms = master_ncs_ph.select(sel_master).atoms()
+    copy_atoms = ncs_copy_ph.select(sel_copy).atoms()
+    reference_sites = copy_atoms.extract_xyz()
+    other_sites     = master_atoms.extract_xyz()
+    assert other_sites.size() == reference_sites.size()
+  return reference_sites, other_sites, master_chain_id, copy_chain_id
+
+
+def simple_alignment(seq_a, seq_b, stop_on_bad_alignment=True, similarity=0.9):
+  """
+  Do basic alignment of seq_a and seq_b using dynamic programing
+
+  Give penalty for misalignment and gaps. Do not give any points for
+  alignment. (score only change when "bad" things happens - allow use of
+  smaller data structures and reduce calculations)
+
+  Args:
+    seq_a, seq_b (lists of str): list of characters to compare
+    similarity (float): minimum boundary on how good should be the alignment
+    stop_on_bad_alignment (bool):stop if the alignment is less than "similarity"
+
+  Returns:
+    aligned_sel_a (flex.size_t): the indices of the aligned components of seq_a
+    aligned_sel_b (flex.size_t): the indices of the aligned components of seq_b
+  """
+  # NOTE: move to mmtbx when done
+  penalty = -1
+  aligned_sel_a = None
+  aligned_sel_b = None
+  # Starting score according to the required similarity
+  s = round((1 - similarity) * min(len(seq_a),len(seq_b)))
+  if aligned_sel_a and aligned_sel_b:
+    assert aligned_sel_a.size() == aligned_sel_b.size()
+
+  return aligned_sel_a, aligned_sel_b
 
 def get_pdb_selection(ph,selection_str):
   """
   Args:
     ph: pdb hierarchy input object
-    selection_str:
+    selection_str (str): selection string
 
   Returns:
-    atoms of the portion of the hierarchy according to the selection
+    portion of the hierarchy according to the selection
   """
   if not (ph is None):
     temp = ph.hierarchy.atom_selection_cache()
@@ -1441,8 +1586,8 @@ def get_pdb_selection(ph,selection_str):
     selection_indices = flex.size_t()
     for sel_str in selection_str_list:
       selection_indices.extend(temp.selection(sel_str).iselection())
-    atoms = ph.hierarchy.atoms()
-    return atoms.select(selection_indices)
+    selection = flex.size_t(sorted(selection_indices))
+    return ph.hierarchy.select(selection)
   else:
     return None
 
@@ -1509,8 +1654,9 @@ def g(x,y):
     y: (int)
 
   Returns:
-      unique key
+    unique key
   """
+  # todo: check if those functions still being used
   x = abs(x)
   y = abs(y)
   return math.floor(0.5*(1 + x + y)*(x + y) + y)
@@ -1534,17 +1680,21 @@ def f(r):
   return key1,key2
 
 
-def get_minimal_master_ncs_group(pdb_hierarchy_inp):
+def get_minimal_master_ncs_group(pdb_hierarchy_inp,rms_eps=0.02):
   """
   Finds minimal number ncs relations, the largest common ncs groups
 
   Args:
     pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
+    rms_eps (float): limit of rms difference between chains to be considered
+      as copies
 
   Returns:
     ncs_phil_groups (list): list of ncs_groups_container
+    msg (str): Error messages
   """
   # initialize parameters
+  err_msg = ''
   ncs_phil_groups = []
   transform_dict = {}
   transform_to_group = {}
@@ -1561,13 +1711,15 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp):
     master_ch_id = ph_chains[i].id
     if master_ch_id in chains_in_groups: continue
     master_sel = 'chain ' + master_ch_id
-    master_atoms = get_pdb_selection(ph=ph,selection_str=master_sel)
+    master_atoms_ph = get_pdb_selection(ph=ph,selection_str=master_sel)
     for j in xrange(i+1,n_chains):
       copy_ch_id = ph_chains[j].id
       if copy_ch_id in chains_in_groups: continue
       copy_sel = 'chain ' + copy_ch_id
-      copy_atoms = get_pdb_selection(ph=ph,selection_str=copy_sel)
-      r,t = get_rot_trans(master_atoms=master_atoms,copy_atoms= copy_atoms)
+      copy_atoms_ph = get_pdb_selection(ph=ph,selection_str=copy_sel)
+      r, t, msg, master_id, atoms_used = get_rot_trans(
+        master_ncs_ph=master_atoms_ph,ncs_copy_ph=copy_atoms_ph,rms_eps=rms_eps)
+      err_msg += msg
       if r:
         # the chains relates by ncs operation
         tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
@@ -1629,22 +1781,24 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp):
     new_ncs_group.master_ncs_selection = ' or '.join(masters)
     new_ncs_group.selection_copy = copies
     ncs_phil_groups.append(new_ncs_group)
+  return ncs_phil_groups, err_msg
 
-  return ncs_phil_groups
 
-
-def get_largest_common_ncs_groups(pdb_hierarchy_inp):
+def get_largest_common_ncs_groups(pdb_hierarchy_inp,rms_eps=0.02):
   """
   Finds minimal number ncs relations, the largest common ncs groups
 
   Args:
     pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
+    rms_eps (float): limit of rms difference between chains to be considered
+      as copies
 
   Returns:
     ncs_phil_groups (list): list of ncs_groups_container
+    msg (str): Error messages
   """
-  # Todo : redo all test for this section
   # initialize parameters
+  err_msg = ''
   ncs_phil_groups = []
   transform_dict = {}
   transform_to_group = {}
@@ -1661,12 +1815,14 @@ def get_largest_common_ncs_groups(pdb_hierarchy_inp):
   for i in xrange(n_chains-1):
     master_ch_id = ph_chains[i].id
     master_sel = 'chain ' + master_ch_id
-    master_atoms = get_pdb_selection(ph=ph,selection_str=master_sel)
+    master_atoms_ph = get_pdb_selection(ph=ph,selection_str=master_sel)
     for j in xrange(i+1,n_chains):
       copy_ch_id = ph_chains[j].id
       copy_sel = 'chain ' + copy_ch_id
-      copy_atoms = get_pdb_selection(ph=ph,selection_str=copy_sel)
-      r,t = get_rot_trans(master_atoms=master_atoms,copy_atoms= copy_atoms)
+      copy_atoms_ph = get_pdb_selection(ph=ph,selection_str=copy_sel)
+      r, t, msg, master_id, atoms_used = get_rot_trans(
+        master_ncs_ph=master_atoms_ph,ncs_copy_ph=copy_atoms_ph,rms_eps=rms_eps)
+      err_msg += msg
       if r:
         # the chains relates by ncs operation
         tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
@@ -1785,7 +1941,7 @@ def get_largest_common_ncs_groups(pdb_hierarchy_inp):
     new_ncs_group.selection_copy = copies
     ncs_phil_groups.append(new_ncs_group)
 
-  return ncs_phil_groups
+  return ncs_phil_groups, err_msg
 
 class ncs_copy():
 

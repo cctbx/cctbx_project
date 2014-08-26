@@ -132,7 +132,8 @@ class SuperposePDB(object):
   # Alignment cache.
   _seqalign_cache = {}
 
-  def __init__(self, filename=None, pdb=None, selection=None, preset=None, chain=None, quiet=False, log=None, desc=None):
+  def __init__(self, filename=None, pdb=None, selection=None, preset=None,
+               chain=None, quiet=False, log=None, desc=None):
     """A filename or pdb instance is required. You may also provide arguments
     for the atom selection. The quiet option will suppress informational
     output. The desc option provides a label for the log output.
@@ -142,7 +143,7 @@ class SuperposePDB(object):
     self.desc = desc or os.path.basename(filename)
 
     # Validate input.
-    if filename is None and pdb is None:
+    if (filename is None) and (pdb is None):
       raise Sorry("Filename or PDB instance required.")
 
     # Read PDB or used specified pdb_hierarchy.

@@ -32,7 +32,7 @@ class TestMultimerReconstruction(unittest.TestCase):
   # @unittest.SkipTest
   def test_MTRIX(self):
     '''Test MTRIX record processing'''
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     cau_expected_results  = [
     [1.0, 1.0, 1.0], [1.0, -1.0, 1.0], [-0.366025, 1.366025, 1.0], [-1.366025, 0.366025, 1.0],
     [1.0, 1.5, 1.0], [94.618, -5.253, 91.582],
@@ -81,7 +81,7 @@ class TestMultimerReconstruction(unittest.TestCase):
   # @unittest.SkipTest
   def test_BIOMT(self):
     '''Test MTRIX record processing'''
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     ba_expected_results  = [
     [1.0, 1.0, 1.0], [1.0, -1.0, 1.0], [1.0, 1.0, -1.0], [-1.0, 1.0, 1.0], [1.0, 1.0, -1.0],
     [-1.0, 1.0, -1.0], [-0.366025, 1.366025, 1.0], [-1.366025, 0.366025, 1.0], [1.0, 1.5, 1.0],
@@ -112,7 +112,7 @@ class TestMultimerReconstruction(unittest.TestCase):
 
   # @unittest.SkipTest
   def test_ncs_copies_naming(self):
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     transforms_obj = ncs_group_object()
     result =  transforms_obj.make_chains_names(
       ['chain A_s001','chain B_s001','chain A_s002','chain B_s002'],('A','B'))
@@ -124,7 +124,7 @@ class TestMultimerReconstruction(unittest.TestCase):
   def test_adding_transforms_directly(self):
     """
     Verify that processing of transforms provided manually is done properly """
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data4)
     r = [matrix.sqr([0.1,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9])]
     r.append(matrix.sqr([1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.4]))
@@ -169,7 +169,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     """
     Verify that transform order is kept even when chain selection is complex
     """
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transform_info = pdb_inp.process_mtrix_records()
@@ -206,14 +206,14 @@ class TestMultimerReconstruction(unittest.TestCase):
 
   # @unittest.SkipTest
   def test_num_to_str(self):
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     self.assertEqual(format_num_as_str(946),'946')
     self.assertEqual(format_num_as_str(46),'046')
     self.assertEqual(format_num_as_str(6),'006')
     self.assertEqual(format_num_as_str(0),'000')
 
   def test_pdb_writing(self):
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     """
     Verify that there are no errors processing the write command
     No inception of the output is done.
@@ -266,7 +266,7 @@ class TestMultimerReconstruction(unittest.TestCase):
 
   def test_spec_file_format(self):
     """ Verify that spec object are produced properly """
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
 
     multimer_data = multimer(
       pdb_str=pdb_test_data2,
@@ -310,7 +310,7 @@ class TestMultimerReconstruction(unittest.TestCase):
 
   # @unittest.SkipTest
   def test_writing_spec_file(self):
-    print 'Running ',sys._getframe().f_code.co_name
+    print sys._getframe().f_code.co_name
     """
     Verify that there are no errors processing the write command
     No inception of the output is done. Just making sure it does not break
@@ -463,5 +463,20 @@ ATOM   1495  N   UNK F  67       7.362 108.699  49.412  1.00  0.00           N
 TER
 """
 
-if __name__ == "__main__":
+def run_selected_tests():
+  """  Run selected tests
+
+  1) List in "tests" the names of the particular test you want to run
+  2) Comment out unittest.main()
+  3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
+  """
+  tests = ['test_spec_file_format']
+  suite = unittest.TestSuite(map(TestMultimerReconstruction,tests))
+  return suite
+
+if __name__=='__main__':
+  # use for individual tests
+  # unittest.TextTestRunner().run(run_selected_tests())
+
+  # Use to run all tests
   unittest.main()

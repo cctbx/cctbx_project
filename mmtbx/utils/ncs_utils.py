@@ -647,7 +647,8 @@ def ncs_groups_selection(ncs_restraints_group_list,selection):
   - Keep the order of selected atoms
   - Keep only atoms that appear in master and ALL copies
   Also modify "selection" to include ncs related atoms only if selected in
-  both master and ALL ncs copies
+  both master and ALL ncs copies (The modified selection is not returned in
+  current version)
 
   Args:
     ncs_restraints_group_list (list): list of ncs_restraints_group objects
@@ -655,7 +656,6 @@ def ncs_groups_selection(ncs_restraints_group_list,selection):
 
   Returns:
     new_nrg_list (list): list of modified ncs_restraints_group objects
-    selection (flex.size_t): modified selection
   """
   if isinstance(selection,flex.bool): selection = selection.iselection()
   sel_set = set(selection)
