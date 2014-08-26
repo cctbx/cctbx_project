@@ -529,31 +529,6 @@ class set(crystal.symmetry):
           no_sys_abs.anomalous_signal())
     return self
 
-  def convert_to_non_anomalous_if_ratio_pairs_lone_less_than(self, threshold):
-    """
-    Convert anomalous array into nonanomalous if the number of Bijvoet pairs is
-    too small compared to the number of lone Bijvoet mates.
-    """
-    if(not self.anomalous_flag()): return self
-    no_sys_abs = self.copy()
-    if (self.space_group_info() is not None):
-      is_unique_set_under_symmetry = no_sys_abs.is_unique_set_under_symmetry()
-      sys_absent_flags = self.sys_absent_flags().data()
-      n_sys_abs = sys_absent_flags.count(True)
-      if (n_sys_abs != 0):
-        no_sys_abs = self.select(selection=~sys_absent_flags)
-      n_centric = no_sys_abs.centric_flags().data().count(True)
-    if (self.space_group_info() is not None
-        and no_sys_abs.anomalous_flag()
-        and is_unique_set_under_symmetry):
-      asu, matches = no_sys_abs.match_bijvoet_mates()
-      n_pairs = matches.pairs().size()
-      n_lone_mates = matches.n_singles() - n_centric
-      if(n_lone_mates != 0 and n_pairs*1./n_lone_mates < threshold):
-        merged = self.as_non_anomalous_array().merge_equivalents()
-        self = merged.array().set_observation_type(self)
-    return self
-
   def show_completeness(self, reflections_per_bin = 500, out = None):
     """
     Display the completeness in resolution bins.
@@ -700,31 +675,6 @@ class set(crystal.symmetry):
     """
     return self._indices.first_index(miller_index)
 
-  def data_at_first_index(self, miller_index):
-    """
-    Returns the value of data of the first index matching
-    `miller_index`. If the `miller_index` is not found in `self`,
-    then returns ``None``.
-
-    :param miller_index: Miller index as a 3-tuple
-    :type miller_index: tuple
-    :returns: int, float, complex, None -- data value or None
-    """
-    return self.at_first_index(self._data, miller_index)
-
-  def sigma_at_first_index(self, miller_index):
-    """
-    Returns the value of sigmas of the first index matching
-    `miller_index`. If the `miller_index` is not found in `self`,
-    then returns ``None``.
-
-    :param miller_index: Miller index as a 3-tuple
-    :type miller_index: tuple
-    :returns: int, float, complex, None -- sigmas value or None
-    """
-    assert self._sigmas is not None
-    return self.at_first_index(self._sigmas, miller_index)
-
   def d_min_along_a_b_c_star(self):
     """
     Returns the effective resolution limits along the reciprocal space axes.
@@ -797,7 +747,7 @@ class set(crystal.symmetry):
     Set the anomalous flag automatically depending on whether the data
     contain Bijvoet pairs (optionally given minimum cutoffs).
 
-    :returns: a copy of the array with (maybe) a new anomalous flag
+    :returns: a copy of the set with (maybe) a new anomalous flag
     """
     assert [min_n_bijvoet_pairs, min_fraction_bijvoet_pairs].count(None) > 0
     if (self.indices().size() == 0):
@@ -982,26 +932,6 @@ class set(crystal.symmetry):
       selection=self.resolution_filter_selection(d_max=d_max, d_min=d_min),
       negate=negate)
 
-  def multiscale(self, other, reflections_per_bin = None):
-    if(reflections_per_bin is None):
-      reflections_per_bin = other.indices().size()
-    assert self.indices().all_eq(other.indices())
-    assert self.is_similar_symmetry(other)
-    self.setup_binner(reflections_per_bin = reflections_per_bin)
-    other.use_binning_of(self)
-    scale = flex.double(self.indices().size(),-1)
-    for i_bin in self.binner().range_used():
-      sel = self.binner().selection(i_bin)
-      f1  = self.select(sel)
-      f2  = other.select(sel)
-      scale_ = 1.0
-      den = flex.sum(flex.abs(f2.data())*flex.abs(f2.data()))
-      if(den != 0):
-        scale_ = flex.sum(flex.abs(f1.data())*flex.abs(f2.data())) / den
-      scale.set_selected(sel, scale_)
-    assert (scale > 0).count(True) == scale.size()
-    return other.array(data = other.data()*scale)
-
   def match_indices(self, other, assert_is_similar_symmetry=True):
     if (assert_is_similar_symmetry):
       assert self.is_similar_symmetry(other)
@@ -1099,38 +1029,6 @@ class set(crystal.symmetry):
     return self.select(
       self.sort_permutation(by_value=by_value, reverse=reverse))
 
-  def scale(self, other, resolution_dependent=False):
-    s, o = self.common_sets(other)
-    if(resolution_dependent): ss = 1./flex.pow2(s.d_spacings().data()) / 4.
-    s, o = abs(s).data(), abs(o).data()
-    scale_factor = 1
-    if(resolution_dependent):
-      r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(ss), y=s, z=o)
-      ss_other = 1./flex.pow2(other.d_spacings().data()) / 4.
-      scale_factor = r.a*flex.exp(-ss_other*r.b)
-    else:
-      den = flex.sum(o*o)
-      if(den != 0):
-        scale_factor = flex.sum(s*o)/den
-    return other.customized_copy(data = other.data()*scale_factor)
-
-  def complete_with(self, other, scale=False, replace_phases=False):
-    s, o = self, other
-    if(scale): o = s.scale(other = o)
-    if(replace_phases):
-      assert isinstance(o.data(), flex.complex_double)
-      s_c, c_o = s.common_sets(o)
-      s_c = s_c.phase_transfer(phase_source = c_o)
-      s_l, c_l = s.lone_sets(o)
-      s = s_c.concatenate(s_l)
-    ol = o.lone_set(s)
-    d_new = s.data().concatenate(ol.data())
-    i_new = s.indices().concatenate(ol.indices())
-    sigmas_new = None
-    if(s.sigmas() is not None):
-      sigmas_new = s.sigmas().concatenate(ol.sigmas())
-    return self.customized_copy(data = d_new, indices = i_new, sigmas = sigmas_new)
-
   def generate_r_free_flags (self,
         fraction=0.1,
         max_free=2000,
@@ -1188,28 +1086,6 @@ class set(crystal.symmetry):
     return crystal.symmetry(
       unit_cell = self.unit_cell(),
       space_group_info = self.space_group_info())
-
-  def combine(self, other, scale = True, scale_for_lones = 1):
-    assert self.anomalous_flag() == other.anomalous_flag()
-    assert self.sigmas() is None # not implemented
-    f1_c, f2_c = self.common_sets(other = other)
-    f1_l, f2_l = self.lone_sets(other = other)
-    scale_k1 = 1
-    if(scale):
-      den = flex.sum(flex.abs(f2_c.data())*flex.abs(f2_c.data()))
-      if(den != 0):
-        scale_k1 = flex.sum(flex.abs(f1_c.data())*flex.abs(f2_c.data())) / den
-    result_data = f1_c.data() + f2_c.data()*scale_k1
-    result_data.extend(f1_l.data()*scale_for_lones)
-    result_data.extend(f2_l.data()*scale_k1*scale_for_lones)
-    result_indices = f1_c.indices()
-    result_indices.extend(f1_l.indices())
-    result_indices.extend(f2_l.indices())
-    ms = set(
-      crystal_symmetry=self.crystal_symmetry(),
-      indices=result_indices,
-      anomalous_flag=self.anomalous_flag())
-    return ms.array(data = result_data)
 
   def generate_r_free_flags_on_lattice_symmetry(self,
         fraction=0.10,
@@ -2451,6 +2327,60 @@ class array(set):
         pairs.column(0), self.sigmas().select(pairs.column(1)))
     return other.array(data=data, sigmas=sigmas)
 
+  def scale(self, other, resolution_dependent=False):
+    s, o = self.common_sets(other)
+    if(resolution_dependent): ss = 1./flex.pow2(s.d_spacings().data()) / 4.
+    s, o = abs(s).data(), abs(o).data()
+    scale_factor = 1
+    if(resolution_dependent):
+      r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(ss), y=s, z=o)
+      ss_other = 1./flex.pow2(other.d_spacings().data()) / 4.
+      scale_factor = r.a*flex.exp(-ss_other*r.b)
+    else:
+      den = flex.sum(o*o)
+      if(den != 0):
+        scale_factor = flex.sum(s*o)/den
+    return other.customized_copy(data = other.data()*scale_factor)
+
+  def complete_with(self, other, scale=False, replace_phases=False):
+    s, o = self, other
+    if(scale): o = s.scale(other = o)
+    if(replace_phases):
+      assert isinstance(o.data(), flex.complex_double)
+      s_c, c_o = s.common_sets(o)
+      s_c = s_c.phase_transfer(phase_source = c_o)
+      s_l, c_l = s.lone_sets(o)
+      s = s_c.concatenate(s_l)
+    ol = o.lone_set(s)
+    d_new = s.data().concatenate(ol.data())
+    i_new = s.indices().concatenate(ol.indices())
+    sigmas_new = None
+    if(s.sigmas() is not None):
+      sigmas_new = s.sigmas().concatenate(ol.sigmas())
+    return self.customized_copy(data = d_new, indices = i_new, sigmas = sigmas_new)
+
+  def combine(self, other, scale = True, scale_for_lones = 1):
+    assert self.anomalous_flag() == other.anomalous_flag()
+    assert self.sigmas() is None # not implemented
+    f1_c, f2_c = self.common_sets(other = other)
+    f1_l, f2_l = self.lone_sets(other = other)
+    scale_k1 = 1
+    if(scale):
+      den = flex.sum(flex.abs(f2_c.data())*flex.abs(f2_c.data()))
+      if(den != 0):
+        scale_k1 = flex.sum(flex.abs(f1_c.data())*flex.abs(f2_c.data())) / den
+    result_data = f1_c.data() + f2_c.data()*scale_k1
+    result_data.extend(f1_l.data()*scale_for_lones)
+    result_data.extend(f2_l.data()*scale_k1*scale_for_lones)
+    result_indices = f1_c.indices()
+    result_indices.extend(f1_l.indices())
+    result_indices.extend(f2_l.indices())
+    ms = set(
+      crystal_symmetry=self.crystal_symmetry(),
+      indices=result_indices,
+      anomalous_flag=self.anomalous_flag())
+    return ms.array(data = result_data)
+
   def complete_array(self,
         d_min_tolerance=1.e-6,
         d_min=None,
@@ -2830,6 +2760,31 @@ class array(set):
         d_max=d_max_bin, d_min=d_min_bin,
         relative_to_complete_set=relative_to_complete_set))
     return binned_data(binner=self.binner(), data=results, data_fmt="%5.3f")
+
+  def convert_to_non_anomalous_if_ratio_pairs_lone_less_than(self, threshold):
+    """
+    Convert anomalous array into nonanomalous if the number of Bijvoet pairs is
+    too small compared to the number of lone Bijvoet mates.
+    """
+    if(not self.anomalous_flag()): return self
+    no_sys_abs = self.copy()
+    if (self.space_group_info() is not None):
+      is_unique_set_under_symmetry = no_sys_abs.is_unique_set_under_symmetry()
+      sys_absent_flags = self.sys_absent_flags().data()
+      n_sys_abs = sys_absent_flags.count(True)
+      if (n_sys_abs != 0):
+        no_sys_abs = self.select(selection=~sys_absent_flags)
+      n_centric = no_sys_abs.centric_flags().data().count(True)
+    if (self.space_group_info() is not None
+        and no_sys_abs.anomalous_flag()
+        and is_unique_set_under_symmetry):
+      asu, matches = no_sys_abs.match_bijvoet_mates()
+      n_pairs = matches.pairs().size()
+      n_lone_mates = matches.n_singles() - n_centric
+      if(n_lone_mates != 0 and n_pairs*1./n_lone_mates < threshold):
+        merged = self.as_non_anomalous_array().merge_equivalents()
+        self = merged.array().set_observation_type(self)
+    return self
 
   def anomalous_signal(self, use_binning=False):
     """Get the anomalous signal according to this formula:
@@ -3300,6 +3255,26 @@ class array(set):
       .set_info(self.info()) \
       .set_observation_type(self)
 
+  def multiscale(self, other, reflections_per_bin = None):
+    if(reflections_per_bin is None):
+      reflections_per_bin = other.indices().size()
+    assert self.indices().all_eq(other.indices())
+    assert self.is_similar_symmetry(other)
+    self.setup_binner(reflections_per_bin = reflections_per_bin)
+    other.use_binning_of(self)
+    scale = flex.double(self.indices().size(),-1)
+    for i_bin in self.binner().range_used():
+      sel = self.binner().selection(i_bin)
+      f1  = self.select(sel)
+      f2  = other.select(sel)
+      scale_ = 1.0
+      den = flex.sum(flex.abs(f2.data())*flex.abs(f2.data()))
+      if(den != 0):
+        scale_ = flex.sum(flex.abs(f1.data())*flex.abs(f2.data())) / den
+      scale.set_selected(sel, scale_)
+    assert (scale > 0).count(True) == scale.size()
+    return other.array(data = other.data()*scale)
+
   def apply_debye_waller_factors(self,
         u_iso=None,
         b_iso=None,
@@ -3693,6 +3668,31 @@ class array(set):
     hkl_array = self.select_indices([hkl])
     assert (len(hkl_array.data()) == 1)
     return hkl_array.data()[0]
+
+  def data_at_first_index(self, miller_index):
+    """
+    Returns the value of data of the first index matching
+    `miller_index`. If the `miller_index` is not found in `self`,
+    then returns ``None``.
+
+    :param miller_index: Miller index as a 3-tuple
+    :type miller_index: tuple
+    :returns: int, float, complex, None -- data value or None
+    """
+    return self.at_first_index(self._data, miller_index)
+
+  def sigma_at_first_index(self, miller_index):
+    """
+    Returns the value of sigmas of the first index matching
+    `miller_index`. If the `miller_index` is not found in `self`,
+    then returns ``None``.
+
+    :param miller_index: Miller index as a 3-tuple
+    :type miller_index: tuple
+    :returns: int, float, complex, None -- sigmas value or None
+    """
+    assert self._sigmas is not None
+    return self.at_first_index(self._sigmas, miller_index)
 
   def generate_bijvoet_mates(self):
     """
