@@ -108,7 +108,7 @@ class ncs_group_object(object):
                          use_simple_ncs_from_pdb=True,
                          use_minimal_master_ncs=True,
                          rms_eps=0.02,
-                         Error_msg_on=True):
+                         Error_msg_on=False):
     """
     Select method to build ncs_group_object
 
@@ -1549,7 +1549,7 @@ def simple_alignment(seq_a, seq_b, stop_on_bad_alignment=True, similarity=0.9):
 
   Give penalty for misalignment and gaps. Do not give any points for
   alignment. (score only change when "bad" things happens - allow use of
-  smaller data structures and reduce calculations)
+  smaller data structures and reduce number of calculations)
 
   Args:
     seq_a, seq_b (lists of str): list of characters to compare
@@ -1672,6 +1672,7 @@ def f(r):
   Returns:
       key1,key2
   """
+  # todo: check if those functions still being used
   (r11,r12,r13,r21,r22,r23,r31,r32,r33) = (10*r).round(0).elems
   key1 = str(int(g(r11,g(r22,r33))))
 

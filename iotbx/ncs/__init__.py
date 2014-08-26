@@ -21,7 +21,7 @@ def input(pdb_hierarchy_inp=None,
           use_simple_ncs_from_pdb=True,
           use_minimal_master_ncs=True,
           rms_eps=0.02,
-          Error_msg_on=True):
+          Error_msg_on=False):
     """
     Select method to build ncs_group_object
 
