@@ -221,9 +221,9 @@ class any_file_input (object) :
       raise_sorry_if_errors=False,
       raise_sorry_if_not_expected_format=False) : # XXX should probably be True
     self.valid_types = valid_types
-    self.file_name = file_name
-    self.file_object = None
-    self.file_type = None
+    self._file_name = file_name
+    self._file_object = None
+    self._file_type = None
     self._file_server = None
     self.file_description = None
     self._cached_file = None # XXX: used in phenix.file_reader
@@ -265,28 +265,60 @@ class any_file_input (object) :
           except FormatError, e :
             raise e
           except Exception, e :
+            # XXX we need to be a little careful about what extensions we
+            # do this for - they are not necessarily all unambiguous!
             if ((raise_sorry_if_not_expected_format) and
-                (file_ext in [".pdb",".mtz",".cif"])) :
+                (file_ext in [".pdb",".mtz",".cif",".sca",".xml",".phil"])) :
               raise Sorry("File format error:\n" + str(e))
             self._errors[file_type] = str(e)
-            self.file_type = None
-            self.file_object = None
+            self._file_type = None
+            self._file_object = None
           else :
             break
-      if self.file_type is None :
+      if self._file_type is None :
         self.try_all_types()
-    if self.file_type is not None :
+    if self._file_type is not None :
       self.file_description = self.__descriptions__[self.file_type]
 
   @property
+  def file_name (self) :
+    return self._file_name
+
+  @property
+  def file_type (self) :
+    """
+    Return a string representing the generic data type, for example 'pdb' or
+    'hkl'.  Note that this is not necessarily the same as the underlying
+    format, for example 'pdb' can mean either PDB or mmCIF format, and 'hkl'
+    could mean MTZ, CIF, XDS, Scalepack, or SHELX format.
+    """
+    return self._file_type
+
+  @property
+  def file_object (self) :
+    """Synonym for file_content()"""
+    return self._file_object
+
+  @property
+  def file_content (self) :
+    """Return the underlying format-specific object containing file data."""
+    return self._file_object
+
+  @property
   def file_server (self) :
+    """
+    For reflection files only, returns an
+    :py:class:`iotbx.reflection_file_utils.reflection_file_server` object
+    containing the extracted Miller arrays.  Note that this will implicitly
+    merge any non-unique observations.
+    """
     from iotbx.reflection_file_utils import reflection_file_server
     if (self._file_server is None) :
-      if (self.file_type == "hkl") :
+      if (self._file_type == "hkl") :
         self._file_server = reflection_file_server(
           crystal_symmetry=None,
           force_symmetry=True,
-          reflection_files=[self.file_object],
+          reflection_files=[self._file_object],
           err=sys.stderr)
     return self._file_server
 
@@ -301,16 +333,16 @@ class any_file_input (object) :
       raise Sorry(str(e))
     if (len(pdb_inp.atoms()) == 0) :
       raise ValueError("No ATOM or HETATM records found in %s."%self.file_name)
-    self.file_type = "pdb"
-    self.file_object = pdb_inp
+    self._file_type = "pdb"
+    self._file_object = pdb_inp
 
   def _try_as_hkl (self) :
     from iotbx.reflection_file_reader import any_reflection_file
     # XXX this is unfortunate, but unicode breaks Boost.Python extensions
     hkl_file = any_reflection_file(str(self.file_name))
     assert (hkl_file.file_type() is not None), "Not a valid reflections file."
-    self.file_type = "hkl"
-    self.file_object = hkl_file
+    self._file_type = "hkl"
+    self._file_object = hkl_file
 
   def _try_as_cif (self) :
     # XXX hack to avoid choking on CCP4 maps and images
@@ -321,24 +353,24 @@ class any_file_input (object) :
     from iotbx.reflection_file_utils import reflection_file_server
     cif_file = any_reflection_file(str(self.file_name))
     if cif_file.file_type() is not None:
-      self.file_object = cif_file
-      self.file_type = "hkl"
+      self._file_object = cif_file
+      self._file_type = "hkl"
     else:
       from iotbx.pdb.mmcif import cif_input
       try:
-        self.file_object = cif_input(file_name=self.file_name)
-        self.file_type = "pdb"
+        self._file_object = cif_input(file_name=self.file_name)
+        self._file_type = "pdb"
       except Exception, e:
-        self.file_object = iotbx.cif.reader(file_path=self.file_name,
+        self._file_object = iotbx.cif.reader(file_path=self.file_name,
           strict=False)
-        self.file_type = "cif"
+        self._file_type = "cif"
 
   def _try_as_phil (self) :
     from iotbx.phil import parse as parse_phil
     phil_object = parse_phil(file_name=self.file_name, process_includes=True)
     assert (len(phil_object.objects) > 0), "Empty parameter file."
-    self.file_type = "phil"
-    self.file_object = phil_object
+    self._file_type = "phil"
+    self._file_object = phil_object
 
   def _try_as_seq (self) :
     # XXX hack to avoid choking on CCP4 maps
@@ -349,10 +381,10 @@ class any_file_input (object) :
     assert (len(non_compliant) == 0), "Misformatted data in file."
     for seq_obj in objects :
       assert (not "-" in seq_obj.sequence)
-    self.file_object = objects
+    self._file_object = objects
 #    self._try_as_txt()
-#    assert len(self.file_object) != 0
-#    for _line in self.file_object.splitlines() :
+#    assert len(self._file_object) != 0
+#    for _line in self._file_object.splitlines() :
 #      assert not _line.startswith(" ")
 #      line = re.sub(" ", "", _line)
 #      assert ((len(line) == 0) or
@@ -360,56 +392,56 @@ class any_file_input (object) :
 #              (line == "*") or
 #              ((line[-1] == '*') and line[:-1].isalpha()) or
 #              line.isalpha())
-    self.file_type = "seq"
+    self._file_type = "seq"
 
   def _try_as_hhr (self) :
     from iotbx.bioinformatics import any_hh_file
     hh_object = any_hh_file(self.file_name)
     assert (not hh_object.query in ["", None])
-    self.file_object = hh_object
-    self.file_type = "hhr"
+    self._file_object = hh_object
+    self._file_type = "hhr"
 
   def _try_as_aln (self) :
     from iotbx.bioinformatics import any_alignment_file
     aln_object = any_alignment_file(self.file_name)
-    self.file_object = aln_object
-    self.file_type = "aln"
+    self._file_object = aln_object
+    self._file_type = "aln"
 
   def _try_as_xplor_map (self) :
     import iotbx.xplor.map
     map_object = iotbx.xplor.map.reader(file_name=str(self.file_name))
-    self.file_type = "xplor_map"
-    self.file_object = map_object
+    self._file_type = "xplor_map"
+    self._file_object = map_object
 
   def _try_as_ccp4_map (self) :
     import iotbx.ccp4_map
     map_object = iotbx.ccp4_map.map_reader(file_name=str(self.file_name))
-    self.file_type = "ccp4_map"
-    self.file_object = map_object
+    self._file_type = "ccp4_map"
+    self._file_object = map_object
 
   def _try_as_pkl (self) :
     pkl_object = cPickle.load(open(self.file_name, "rb"))
-    self.file_type = "pkl"
-    self.file_object = pkl_object
+    self._file_type = "pkl"
+    self._file_object = pkl_object
 
   def _try_as_txt (self) :
     file_as_string = open(self.file_name).read()
     file_as_ascii = file_as_string.decode("ascii")
-    self.file_type = "txt"
-    self.file_object = file_as_string
+    self._file_type = "txt"
+    self._file_object = file_as_string
 
   def _try_as_xml (self) :
     import xml.dom.minidom
     xml_in = xml.dom.minidom.parse(self.file_name)
-    self.file_type = "xml"
-    self.file_object = xml_in
+    self._file_type = "xml"
+    self._file_object = xml_in
 
   def _try_as_img (self) :
     from iotbx.detectors import ImageFactory
     img = ImageFactory(self.file_name)
     img.read()
-    self.file_type = "img"
-    self.file_object = img
+    self._file_type = "img"
+    self._file_object = img
 
   def try_all_types (self) :
     for filetype in self.valid_types :
@@ -421,11 +453,11 @@ class any_file_input (object) :
         raise
       except Exception, e :
         self._errors[filetype] = str(e)
-        self.file_type = None
-        self.file_object = None
+        self._file_type = None
+        self._file_object = None
         continue
       else :
-        if self.file_type is not None :
+        if self._file_type is not None :
           break
 
   def crystal_symmetry (self) :
@@ -433,10 +465,10 @@ class any_file_input (object) :
     Extract the crystal symmetry (if any).  Only valid for model (PDB/mmCIF)
     and reflection files.
     """
-    if (self.file_type == "pdb") :
-      return self.file_object.crystal_symmetry()
-    elif (self.file_type == "hkl") :
-      return self.file_object.file_content().crystal_symmetry()
+    if (self._file_type == "pdb") :
+      return self._file_object.crystal_symmetry()
+    elif (self._file_type == "hkl") :
+      return self._file_object.file_content().crystal_symmetry()
     else :
       raise NotImplementedError()
 
@@ -457,10 +489,10 @@ class any_file_input (object) :
         file_size_str = " (%.1f KB)" % (self.file_size / 1000.0)
       else :
         file_size_str = " (%d B)" % self.file_size
-    if self.file_type == None :
+    if self._file_type == None :
       return "Unknown file%s" % file_size_str
     else :
-      return "%s%s" % (self.__descriptions__[self.file_type],
+      return "%s%s" % (self.__descriptions__[self._file_type],
         file_size_str)
 
   def assert_file_type (self, expected_type) :
@@ -469,12 +501,12 @@ class any_file_input (object) :
     """
     if (expected_type is None) :
       return self
-    elif (self.file_type == expected_type) :
+    elif (self._file_type == expected_type) :
       return self
     else :
       raise Sorry(("Expected file type '%s' for %s, got '%s'.  This is " +
         "almost certainly a bug; please contact the developers.") %
-        (expected_type, str(self.file_name), str(self.file_type)))
+        (expected_type, str(self.file_name), str(self._file_type)))
 
   def check_file_type (self, expected_type=None, multiple_formats=()) :
     """
@@ -482,17 +514,17 @@ class any_file_input (object) :
     with the option to consider multiple formats.
     """
     if (expected_type is not None) :
-      if (self.file_type != expected_type) :
+      if (self._file_type != expected_type) :
         raise Sorry(("This file format ('%s') is not supported as input for "+
           "this field; only files of type '%s' are allowed.") % (
-          standard_file_descriptions.get(self.file_type, "Unknown"),
+          standard_file_descriptions.get(self._file_type, "Unknown"),
           standard_file_descriptions.get(expected_type, "Unknown")))
     else :
       assert (len(multiple_formats) > 0)
-      if (not self.file_type in multiple_formats) :
+      if (not self._file_type in multiple_formats) :
         raise Sorry(("This file format ('%s') is not supported as input for "+
           "this field; only the following types are supported:\n  %s") % (
-          standard_file_descriptions.get(self.file_type, "Unknown"),
+          standard_file_descriptions.get(self._file_type, "Unknown"),
           "\n  ".join([ standard_file_descriptions.get(f, "Unknown")
                         for f in multiple_formats ])))
     return self
@@ -501,24 +533,24 @@ class any_file_input (object) :
     """
     Print out some basic information about the file.
     """
-    if (self.file_type is None) :
+    if (self._file_type is None) :
       print >> out, "File type could not be determined."
     else :
       print >> out, "File name: %s" % self.file_name
-      print >> out, "Format: %s (%s)" % (self.file_type,
-        standard_file_descriptions.get(self.file_type, "unknown"))
-    if (self.file_type == "pdb") :
-      print >> out, "Atoms in file: %d" % (len(self.file_object.atoms()))
-      title = "\n".join(self.file_object.title_section())
+      print >> out, "Format: %s (%s)" % (self._file_type,
+        standard_file_descriptions.get(self._file_type, "unknown"))
+    if (self._file_type == "pdb") :
+      print >> out, "Atoms in file: %d" % (len(self._file_object.atoms()))
+      title = "\n".join(self._file_object.title_section())
       if (title != "") :
         print >> out, "Title section:"
         print >> out, title
-    elif (self.file_type == "hkl") :
+    elif (self._file_type == "hkl") :
       for array in self.file_server.miller_arrays :
         print >> out, ""
         array.show_comprehensive_summary(f=out)
-    elif (self.file_type == "ccp4_map") :
-      self.file_object.show_summary(out)
+    elif (self._file_type == "ccp4_map") :
+      self._file_object.show_summary(out)
 
 def any_file_fast (file_name,
               get_processed_file=False,
