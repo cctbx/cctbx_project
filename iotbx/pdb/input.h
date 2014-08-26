@@ -398,7 +398,7 @@ namespace detail {
       hierarchy::root
       construct_hierarchy(
         bool residue_group_post_processing=true,
-        bool set_atom_i_seq=false);
+        bool set_atom_i_seq=true);
 
     protected:
       std::string source_info_;

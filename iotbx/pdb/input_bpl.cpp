@@ -132,7 +132,7 @@ namespace {
           arg("siguij")))
         .def("construct_hierarchy", &w_t::construct_hierarchy, (
           arg("residue_group_post_processing")=true,
-          arg("set_atom_i_seq")=false)) // TODO make this default to true
+          arg("set_atom_i_seq")=true))
       ;
     }
   };

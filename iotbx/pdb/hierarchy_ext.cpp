@@ -422,6 +422,7 @@ namespace {
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(model)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms, (arg("interleaved_conf")=0))
+        .def("reset_atom_i_seqs", &w_t::reset_atom_i_seqs)
         .def("atoms_with_i_seq_mismatch", &w_t::atoms_with_i_seq_mismatch)
         .def("atoms_reset_serial", &w_t::atoms_reset_serial, (
           arg("interleaved_conf")=0,
