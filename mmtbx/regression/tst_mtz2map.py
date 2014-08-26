@@ -13,7 +13,7 @@ def exercise () :
   from scitbx.array_family import flex
   mtz_file, pdb_file = generate_cd_cl_inputs(file_base = "tst_mmtbx_mtz2map")
   pdb_in = file_reader.any_file(pdb_file)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   xrs = pdb_in.file_object.xray_structure_simple()
   mtz_in = file_reader.any_file(mtz_file)
   f_obs = mtz_in.file_server.miller_arrays[0]

@@ -228,7 +228,7 @@ class prepare_data (object) :
       f.assert_file_type("hkl")
       self.hkl_in = f.file_object
     if (self.pdb_in is not None) :
-      self.pdb_hierarchy = self.pdb_in.construct_hierarchy()
+      self.pdb_hierarchy = self.pdb_in.hierarchy
     if (self.hkl_in is not None) :
       make_header("Extracting experimental data", out=sys.stdout)
       f_raw, r_free = self.from_hkl()
@@ -303,7 +303,7 @@ class prepare_data (object) :
     if (self.pdb_hierarchy is not None) and (params.write_modified_pdb) :
       pdb_out = os.path.splitext(params.output_file)[0] + ".pdb"
       f = open(pdb_out, "w")
-      f.write("%s\n" % "\n".join(self.pdb_in.crystallographic_section()))
+      f.write("%s\n" % "\n".join(self.pdb_in.input.crystallographic_section()))
       f.write(self.pdb_hierarchy.as_pdb_string())
       f.close()
       print >> out, "  Wrote modified model to %s" % pdb_out
@@ -765,7 +765,7 @@ class profile_sigma_generator (object) :
     if (wilson_b is not None) and (pdb_file is not None) :
       print >> out, "  Correcting reference data intensity falloff..."
       f_obs = i_obs.f_sq_as_f()
-      pdb_hierarchy = any_file(pdb_file).file_object.construct_hierarchy()
+      pdb_hierarchy = any_file(pdb_file).file_object.hierarchy
       n_residues, n_bases = get_counts(pdb_hierarchy)
       iso_scale, aniso_scale = wilson_scaling(
         F=f_obs,

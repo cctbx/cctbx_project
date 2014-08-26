@@ -39,7 +39,7 @@ def generate_calcium_inputs (file_base="ca_frag", anonymize=True) :
   assert (os.path.isfile(pdb_file)) and (os.path.isfile(mtz_file))
   if anonymize:
     pdb_in = any_file(pdb_file)
-    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy = pdb_in.file_object.hierarchy
     hierarchy, n = anonymize_ions(hierarchy, log=null_out())
     pdb_file = file_base + "_hoh.pdb"
     hierarchy.write_pdb_file(
@@ -100,7 +100,7 @@ def generate_zinc_inputs (file_base="zn_frag", anonymize=True) :
   assert os.path.isfile(pdb_file) and os.path.isfile(mtz_file)
   if anonymize:
     pdb_in = any_file(pdb_file)
-    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy = pdb_in.file_object.hierarchy
     hierarchy, n = anonymize_ions(hierarchy, log=null_out())
     pdb_file = file_base + "_hoh.pdb"
     hierarchy.write_pdb_file(
@@ -132,7 +132,7 @@ def generate_magnessium_inputs (file_base="mg_frag", anonymize=True) :
   assert os.path.isfile(pdb_file) and os.path.isfile(mtz_file)
   if anonymize:
     pdb_in = any_file(pdb_file)
-    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy = pdb_in.file_object.hierarchy
     hierarchy, n = anonymize_ions(hierarchy, log=null_out())
     pdb_file = file_base + "_hoh.pdb"
     hierarchy.write_pdb_file(

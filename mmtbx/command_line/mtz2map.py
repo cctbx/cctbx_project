@@ -221,7 +221,7 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
       data=raw_array.data()==flag_value).map_to_asu().average_bijvoet_mates()
   sites_cart = None
   if pdb_file is not None :
-    pdb_hierarchy = pdb_file.file_object.construct_hierarchy()
+    pdb_hierarchy = pdb_file.file_object.hierarchy
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
     if params.selection is not None :
       selection_cache = pdb_hierarchy.atom_selection_cache()

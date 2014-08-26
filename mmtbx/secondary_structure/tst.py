@@ -31,9 +31,8 @@ def exercise_protein () :
   expected_distances = [2.9, 1.975]
   for k, file_name in enumerate([pdb_file, pdb_file_h]) :
     pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
-    pdb_hierarchy = pdb_in.construct_hierarchy()
-    pdb_hierarchy.atoms().reset_i_seq()
-    sec_str_from_pdb_file = pdb_in.extract_secondary_structure()
+    pdb_hierarchy = pdb_in.hierarchy
+    sec_str_from_pdb_file = pdb_in.input.extract_secondary_structure()
     m = manager(pdb_hierarchy=pdb_hierarchy,
       sec_str_from_pdb_file=sec_str_from_pdb_file)
     m.find_automatically(log=log)
@@ -82,9 +81,8 @@ def exercise_nucleic_acids () :
   if (libtbx.env.has_module(name="reduce") and
       libtbx.env.has_module(name="probe")):
     pdb_in = file_reader.any_file(pdb_file_rna, force_type="pdb").file_object
-    pdb_hierarchy = pdb_in.construct_hierarchy()
-    pdb_hierarchy.atoms().reset_i_seq()
-    sec_str_from_pdb_file = pdb_in.extract_secondary_structure()
+    pdb_hierarchy = pdb_in.hierarchy
+    sec_str_from_pdb_file = pdb_in.input.extract_secondary_structure()
     m = manager(pdb_hierarchy=pdb_hierarchy,
       sec_str_from_pdb_file=sec_str_from_pdb_file)
     log = null_out()
@@ -104,9 +102,8 @@ def exercise_nucleic_acids () :
     assert db.get_pair_type("C-G", [('N4', 'O6'), ('N3', 'N1'), ('O2', 'N2')], False) == "XIX"
     # DNA
     pdb_in = file_reader.any_file(pdb_file_dna, force_type="pdb").file_object
-    pdb_hierarchy = pdb_in.construct_hierarchy()
-    pdb_hierarchy.atoms().reset_i_seq()
-    sec_str_from_pdb_file = pdb_in.extract_secondary_structure()
+    pdb_hierarchy = pdb_in.hierarchy
+    sec_str_from_pdb_file = pdb_in.input.extract_secondary_structure()
     m = manager(pdb_hierarchy=pdb_hierarchy,
       sec_str_from_pdb_file=sec_str_from_pdb_file)
     log = null_out()

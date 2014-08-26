@@ -23,7 +23,7 @@ def exercise_1 () :
   assert (len(maps_in.file_server.miller_arrays) == 3)
   # generate_water_omit_map
   pdb_in = any_file(pdb_file)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   xrs = pdb_in.file_object.xray_structure_simple()
   mtz_in = any_file(mtz_file)
   f_obs = mtz_in.file_server.miller_arrays[0]

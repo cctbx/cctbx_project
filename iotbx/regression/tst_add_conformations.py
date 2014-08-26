@@ -23,7 +23,7 @@ def exercise () :
   run([pdb_file, "new_occ=0.4", "atom_selection=\"resseq 1:275\""], out=out)
   from iotbx import file_reader
   pdb_in = file_reader.any_file("1ywf_split.pdb", force_type="pdb").file_object
-  atoms = pdb_in.atoms()
+  atoms = pdb_in.input.atoms()
   occ = atoms.extract_occ()
   assert (occ.count(0.6) == occ.count(0.4) == 1858)
   out = cStringIO.StringIO()
@@ -33,7 +33,7 @@ def exercise () :
 WARNING: zero-occupancy atom:
 HETATM 1941  O  AHOH A 354      -0.009  56.525  -3.872  0.25 29.17           O\
 """)
-  atoms = pdb_in.atoms()
+  atoms = pdb_in.input.atoms()
   assert (atoms.size() == 6381)
   occ = atoms.extract_occ()
   assert (occ.count(0.5) == 2126) and (occ.count(0.25) == 4254)

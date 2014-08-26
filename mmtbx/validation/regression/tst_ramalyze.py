@@ -22,7 +22,7 @@ def exercise_ramalyze():
   from iotbx import file_reader
   # Exercise 1
   pdb_in = file_reader.any_file(file_name=regression_pdb)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   pdb_io = pdb.input(file_name=regression_pdb)
   hierarchy.atoms().reset_i_seq()
   r = ramalyze.ramalyze(
@@ -109,7 +109,7 @@ def exercise_ramalyze():
     relative_path="phenix_regression/pdb/pdb1jxt.ent",
     test=os.path.isfile)
   pdb_in = file_reader.any_file(file_name=regression_pdb)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   hierarchy.atoms().reset_i_seq()
   r = ramalyze.ramalyze(
     pdb_hierarchy=hierarchy,

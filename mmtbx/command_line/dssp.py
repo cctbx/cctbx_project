@@ -16,7 +16,7 @@ def run (args, out=sys.stdout) :
   if (params.file_name is None) :
     raise Sorry("Please specify a PDB file.")
   f = any_file(params.file_name, force_type="pdb")
-  pdb_hierarchy = f.file_object.construct_hierarchy()
+  pdb_hierarchy = f.file_object.hierarchy
   xray_structure = f.file_object.xray_structure_simple()
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()

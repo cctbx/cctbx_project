@@ -27,7 +27,7 @@ def exercise_1 () :
   pickle_unpickle(rv)
   pdb_in = file_reader.any_file(regression_pdb)
   result = mmtbx.validation.rna_validate.rna_validation(
-    pdb_hierarchy=pdb_in.file_object.construct_hierarchy(),
+    pdb_hierarchy=pdb_in.file_object.hierarchy,
     geometry_restraints_manager=None,
     params=None)
   pickle_unpickle(result)

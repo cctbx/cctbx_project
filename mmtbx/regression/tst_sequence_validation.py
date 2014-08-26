@@ -394,7 +394,7 @@ END
   if (pdb_file is not None) :
     seq = iotbx.bioinformatics.sequence("MGSSHHHHHHSSGLVPRGSHMAVRELPGAWNFRDVADTATALRPGRLFRSSELSRLDDAGRATLRRLGITDVADLRSSREVARRGPGRVPDGIDVHLLPFPDLADDDADDSAPHETAFKRLLTNDGSNGESGESSQSINDAATRYMTDEYRQFPTRNGAQRALHRVVTLLAAGRPVLTHCFAGKDRTGFVVALVLEAVGLDRDVIVADYLRSNDSVPQLRARISEMIQQRFDTELAPEVVTFTKARLSDGVLGVRAEYLAAARQTIDETYGSLGGYLRDAGISQATVNRMRGVLLG")
     pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy = pdb_in.file_object.hierarchy
     v = validation(
       pdb_hierarchy=hierarchy,
       sequences=[seq],

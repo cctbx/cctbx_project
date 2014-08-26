@@ -21,7 +21,7 @@ def exercise_heavy () :
       group_args(selection="element CL", fp=0.256, fdp=0.5),
     ])
   pdb_in = any_file(pdb_file)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   hierarchy, n = mmtbx.ions.utils.anonymize_ions(hierarchy, log=null_out())
   hierarchy.write_pdb_file("%s_start.pdb" % file_base,
     crystal_symmetry=pdb_in.file_object.crystal_symmetry())

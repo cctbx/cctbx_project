@@ -45,7 +45,7 @@ def run (args, out=sys.stdout) :
       print >> out, "%d sequences in file - will only use the first" % n_seqs
     sequence = seq_file.file_object[0].sequence
   pdb_file = cmdline.get_file(params.model, force_type="pdb")
-  hierarchy = pdb_file.file_object.construct_hierarchy()
+  hierarchy = pdb_file.file_object.hierarchy
   reference_hierarchy = iotbx.pdb.hierarchy.root()
   model = iotbx.pdb.hierarchy.model()
   reference_hierarchy.append_model(model)

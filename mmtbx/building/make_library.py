@@ -248,7 +248,7 @@ def load_related_models_in_directory (
     dir_name=dir_name,
     limit_extensions=limit_extensions,
     recursive=recursive)
-  sources_and_models = [ (file_name, file_object.construct_hierarchy())
+  sources_and_models = [ (file_name, file_object.hierarchy)
       for file_name, file_object in file_names_and_objects ]
   related = extract_related_models(
     sources_and_models=sources_and_models,

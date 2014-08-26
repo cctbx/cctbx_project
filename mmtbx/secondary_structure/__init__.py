@@ -670,7 +670,7 @@ def manager_from_pdb_file (pdb_file) :
   from iotbx import file_reader
   assert os.path.isfile(pdb_file)
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-  pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+  pdb_hierarchy = pdb_in.file_object.hierarchy
   pdb_hierarchy.atoms().reset_i_seq()
   ss_manager  = manager(pdb_hierarchy=pdb_hierarchy)
   return ss_manager

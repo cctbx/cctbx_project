@@ -41,7 +41,7 @@ def exercise_calcium_substitution () :
   fft_map = coeffs.fft_map(resolution_factor=0.25)
   minus_map = fft_map.apply_sigma_scaling().real_map_unpadded()
   pdb_in = any_file(pdb_file)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   xrs = pdb_in.file_object.xray_structure_simple()
   for i_seq, atom in enumerate(hierarchy.atoms()) :
     if (atom.element == "CA") :

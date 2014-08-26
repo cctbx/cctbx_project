@@ -111,7 +111,7 @@ TER
   with open(file_base + ".pdb", "w") as f:
     f.write(pdb_in)
   f = any_file(file_base + ".pdb")
-  hierarchy = f.file_object.construct_hierarchy()
+  hierarchy = f.file_object.hierarchy
   xrs = f.file_object.xray_structure_simple()
   hierarchy, n = mmtbx.ions.utils.anonymize_ions(hierarchy, log=null_out())
   assert (n == 3)

@@ -16,7 +16,7 @@ def exercise_cbetadev():
   from mmtbx.validation import cbetadev
   from iotbx import file_reader
   pdb_in = file_reader.any_file(file_name=regression_pdb)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   validation = cbetadev.cbetadev(
     pdb_hierarchy=hierarchy,
     outliers_only=True)

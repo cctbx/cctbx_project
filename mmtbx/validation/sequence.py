@@ -682,7 +682,7 @@ def get_sequence_n_copies_from_files (seq_file, pdb_file, **kwds) :
     raise_sorry_if_not_expected_format=True)
   if (pdb_in.file_type != "pdb") :
     raise Sorry("Can't parse %s as a PDB or mmCIF file.")
-  kwds['pdb_hierarchy'] = pdb_in.file_object.construct_hierarchy()
+  kwds['pdb_hierarchy'] = pdb_in.file_object.hierarchy
   kwds['sequences'] = seq_in.file_object
   return get_sequence_n_copies(**kwds)
 
@@ -699,7 +699,7 @@ def group_chains_and_sequences (seq_file, pdb_file, **kwds) :
     raise_sorry_if_not_expected_format=True)
   if (pdb_in.file_type != "pdb") :
     raise Sorry("Can't parse %s as a PDB or mmCIF file.")
-  kwds['pdb_hierarchy'] = pdb_in.file_object.construct_hierarchy()
+  kwds['pdb_hierarchy'] = pdb_in.file_object.hierarchy
   kwds['sequences'] = seq_in.file_object
   v = validation(**kwds)
   chain_to_sequence_mappings = {}

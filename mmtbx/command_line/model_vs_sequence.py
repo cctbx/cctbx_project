@@ -48,7 +48,7 @@ and other inconsistencies (similar to validation upon PDB deposition).""")
   pdb_in.check_file_type("pdb")
   seq_in = any_file(params.input.seq_file, force_type="seq")
   seq_in.check_file_type("seq")
-  pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+  pdb_hierarchy = pdb_in.file_object.hierarchy
   sequences = seq_in.file_object
   if (len(sequences) == 0) :
     raise Sorry("There don't appear to be any valid sequences in %s!" %

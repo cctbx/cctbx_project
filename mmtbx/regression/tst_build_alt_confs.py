@@ -212,7 +212,7 @@ def prepare_inputs (prefix="tst_build_alt_confs") :
   ]
   fmodel.run(args=args, log=null_out())
   pdb_file = file_reader.any_file(pdb_in)
-  hierarchy = pdb_file.file_object.construct_hierarchy()
+  hierarchy = pdb_file.file_object.hierarchy
   xrs = pdb_file.file_object.xray_structure_simple()
   for chain in hierarchy.only_model().chains() :
     for residue_group in chain.residue_groups() :
@@ -230,7 +230,7 @@ def prepare_inputs (prefix="tst_build_alt_confs") :
 
 def get_rotamers (file_name) :
   pdb_in = file_reader.any_file(file_name)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   validate = rotalyze.rotalyze(pdb_hierarchy=hierarchy,
     outliers_only=False)
   return [ (r.id_str(), r.rotamer_name) for r in validate.results ]

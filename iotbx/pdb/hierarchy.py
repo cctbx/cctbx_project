@@ -8,6 +8,7 @@ from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
 from libtbx import Auto, dict_with_default_0
 from cStringIO import StringIO
+import warnings
 import math
 import sys
 
@@ -1617,19 +1618,46 @@ class input_hierarchy_pair(object):
     raise PicklingError
 
   def hierarchy_to_input_atom_permutation(self):
+    """
+    Return the permutation selection
+    (:py:class:`scitbx.array_family.flex.size_t`) mapping the atoms as ordered
+    by the hierarchy to their original positions in the PDB/mmCIF file.
+    """
     h_atoms = self.hierarchy.atoms()
     sentinel = h_atoms.reset_tmp(first_value=0, increment=1)
     return self.input.atoms().extract_tmp_as_size_t()
 
   def input_to_hierarchy_atom_permutation(self):
+    """
+    Return the permutation selection
+    (:py:class:`scitbx.array_family.flex.size_t`) mapping the atoms as ordered
+    in the original PDB/mmCIF file to their positions in the hierarchy.
+    """
     i_atoms = self.input.atoms()
     sentinel = i_atoms.reset_tmp(first_value=0, increment=1)
     return self.hierarchy.atoms().extract_tmp_as_size_t()
 
   def xray_structure_simple (self, *args, **kwds) :
+    """
+    Wrapper for the equivalent method of the input object - extracts the
+    :py:class:`cctbx.xray.structure` with scatterers in the same order as in
+    the hierarchy.
+    """
     perm = self.input_to_hierarchy_atom_permutation()
     xrs = self.input.xray_structure_simple(*args, **kwds)
     return xrs.select(perm)
+
+  def construct_hierarchy (self, *args, **kwds) : # TODO remove eventually
+    """
+    Returns a reference to the existing hierarchy.  For backwards compatibility
+    only, and issues a :py:class:`warnings.DeprecationWarning`.
+    """
+    warnings.warn("Please access input.hierarchy directly.",
+      DeprecationWarning)
+    return self.hierarchy
+
+  def crystal_symmetry (self, *args, **kwds) :
+    return self.input.crystal_symmetry(*args, **kwds)
 
 class input(input_hierarchy_pair):
   """

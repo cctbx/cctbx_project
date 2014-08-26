@@ -16,9 +16,10 @@ def exercise () :
   pdb_out = pdb_expand_ncs.run(args=[pdb_file], out=null_out())
   assert (os.path.isfile(pdb_out))
   pdb_in = any_file(pdb_out, force_type="pdb")
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   chains = hierarchy.models()[0].chains()
   assert (len(chains) == 180)
+  return True
 
 if (__name__ == "__main__") :
   if (exercise()) : print "OK"

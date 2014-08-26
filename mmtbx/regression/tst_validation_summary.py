@@ -28,7 +28,7 @@ def exercise () :
   sss.show(out=out_2)
   assert out_1.getvalue() == out_2.getvalue()
   pdb_in = file_reader.any_file(regression_pdb)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   new_hierarchy = iotbx.pdb.hierarchy.root()
   for i in range(5) :
     model = hierarchy.only_model().detached_copy()

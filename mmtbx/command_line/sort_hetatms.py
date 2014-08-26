@@ -355,7 +355,7 @@ Full parameters:
   validate_params(params)
   pdb_in = file_reader.any_file(params.file_name, force_type="pdb")
   pdb_in.check_file_type("pdb")
-  pdb_symm = pdb_in.file_object.crystal_symmetry()
+  pdb_symm = pdb_in.crystal_symmetry()
   space_group = params.space_group
   unit_cell = params.unit_cell
   if (pdb_symm is None) and (not params.ignore_symmetry) :
@@ -372,8 +372,7 @@ Full parameters:
     final_symm = crystal.symmetry(
       space_group_info=space_group,
       unit_cell=unit_cell)
-  pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
-  pdb_hierarchy.atoms().reset_i_seq()
+  pdb_hierarchy = pdb_in.file_object.hierarchy
   xray_structure = pdb_in.file_object.xray_structure_simple(
     crystal_symmetry=final_symm)
   if (sorting_params is None) :
@@ -390,7 +389,7 @@ Full parameters:
       os.path.basename(params.file_name))[0] + "_sorted.pdb"
   f = open(params.output_file, "w")
   if (params.preserve_remarks) :
-    remarks = pdb_in.file_object.remark_section()
+    remarks = pdb_in.file_object.input.remark_section()
     if (len(remarks) > 0) :
       f.write("\n".join(remarks))
       f.write("\n")
