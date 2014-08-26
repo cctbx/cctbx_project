@@ -227,6 +227,8 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
       selection_cache = pdb_hierarchy.atom_selection_cache()
       selection = selection_cache.selection(params.selection)
       sites_cart = sites_cart.select(selection)
+      if (len(sites_cart) == 0) :
+        raise Sorry("No atoms found matching the specified selection.")
   else :
     print >> log, "No model input - will output map(s) in unit cell."
   file_info = []

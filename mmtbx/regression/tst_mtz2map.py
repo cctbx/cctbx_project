@@ -93,6 +93,14 @@ def exercise () :
     pass
   else :
     raise Exception_expected
+  # bad atom selection
+  try :
+    file_info = mtz2map.run([pdb_file, map_file, "selection=\"resname ZN\""],
+      log=null_out())
+  except Sorry, s  :
+    assert (str(s) == "No atoms found matching the specified selection.")
+  else :
+    raise Exception_expected
   # remove R-free flags
   out = StringIO()
   mtz2map.run([pdb_file, "tst_mmtbx_mtz2map_map_coeffs.mtz",
