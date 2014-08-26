@@ -19,7 +19,9 @@ def input(pdb_hierarchy_inp=None,
           pdb_string=None,
           use_cctbx_find_ncs_tools=True,
           use_simple_ncs_from_pdb=True,
-          use_minimal_master_ncs=True):
+          use_minimal_master_ncs=True,
+          rms_eps=0.02,
+          Error_msg_on=True):
     """
     Select method to build ncs_group_object
 
@@ -58,6 +60,11 @@ def input(pdb_hierarchy_inp=None,
       use_simple_ncs_from_pdb: (bool) Enable using use_simple_ncs_from_pdb
       use_minimal_master_ncs: (bool) use maximal or minimal common chains
         in master ncs groups
+      rms_eps (float): limit of rms difference between chains to be considered
+        as copies
+      Error_msg_on (bool): When True, raise error if chains that are
+        nearly the same length (but not exactly the same) and are NCS related.
+        Raise error if NCS relations are not found
     """
     ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
     ncs_group_obj.preprocess_ncs_obj(
@@ -78,6 +85,8 @@ def input(pdb_hierarchy_inp=None,
       pdb_string=pdb_string,
       use_cctbx_find_ncs_tools=use_cctbx_find_ncs_tools,
       use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
-      use_minimal_master_ncs=use_minimal_master_ncs)
+      use_minimal_master_ncs=use_minimal_master_ncs,
+      rms_eps=rms_eps,
+      Error_msg_on=Error_msg_on)
     return ncs_group_obj
 

@@ -1226,10 +1226,10 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       if (sorted(done) != [1,2,3] or len(set(present)) != 1):
         raise RuntimeError(
           "Improper set of PDB MTRIX records%s" % source_info)
-      identity_transform = rm.is_r3_identity_matrix() and tv.is_col_zero()
+      ingnor_transform = rm.is_r3_identity_matrix() and tv.is_col_zero()
       result.add(
         r=rm, t=tv,
-        coordinates_present=(present[0]==1 or identity_transform),
+        coordinates_present=(present[0]==1 or ingnor_transform),
         serial_number=serial_number)
     return result
 
