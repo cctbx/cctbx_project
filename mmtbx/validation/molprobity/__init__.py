@@ -51,6 +51,8 @@ waters = True
   .type = bool
 seq = True
   .type = bool
+xtriage = False
+  .type = bool
 """
 
 def molprobity_flags () :
@@ -119,6 +121,7 @@ class molprobity (slots_getstate_setstate) :
     "header_info",
     "merging",
     "sequence",
+    "xtriage",
     "_multi_criterion",
     "file_name",
   ]
@@ -257,6 +260,18 @@ class molprobity (slots_getstate_setstate) :
           unmerged_i_obs=unmerged_data,
           anomalous=count_anomalous_pairs_separately,
           n_bins=n_bins_data)
+      if (flags.xtriage) :
+        import mmtbx.scaling.xtriage
+        f_model = abs(fmodel.f_model()).set_observation_type_xray_amplitude()
+        if (raw_data is not None) :
+          f_model, obs = f_model.common_sets(other=raw_data)
+        else :
+          obs = fmodel.f_obs()
+        self.xtriage = mmtbx.scaling.xtriage.xtriage_analyses(
+          miller_obs=obs,
+          miller_calc=f_model,
+          unmerged_obs=unmerged_data,
+          text_out=null_out())
     if (fmodel_neutron is not None) and (flags.rfactors) :
       self.neutron_stats = experimental.data_statistics(fmodel_neutron,
         n_bins=n_bins_data,
@@ -284,9 +299,8 @@ class molprobity (slots_getstate_setstate) :
     """
     Comprehensive output with individual outlier lists, plus summary.
     """
-    if (self.model_stats is not None) :
-      make_header("Model properties", out=out)
-      self.model_stats.show(prefix="  ", out=out)
+    if (self.xtriage is not None) :
+      self.xtriage.summarize_issues().show(out=out)
     if (self.data_stats is not None) :
       make_header("Experimental data", out=out)
       self.data_stats.show(out=out, prefix="  ")
@@ -296,6 +310,9 @@ class molprobity (slots_getstate_setstate) :
       if (self.waters is not None) :
         make_sub_header("Suspicious water molecules", out=out)
         self.waters.show(out=out, prefix="  ")
+    if (self.model_stats is not None) :
+      make_header("Model properties", out=out)
+      self.model_stats.show(prefix="  ", out=out)
     if (self.restraints is not None) :
       make_header("Geometry restraints", out=out)
       self.restraints.show(out=out, prefix="  ")

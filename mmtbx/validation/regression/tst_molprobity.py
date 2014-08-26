@@ -32,6 +32,7 @@ def exercise_synthetic () :
     "--kinemage",
     "--maps",
     "flags.clashscore=False",
+    "flags.xtriage=True",
   ]
   result = molprobity.run(args=args,
     ignore_missing_modules=True,
@@ -86,6 +87,7 @@ def exercise_protein () :
     "outliers_only=True",
     "output.prefix=tst_molprobity",
     "--pickle",
+    "flags.xtriage=True",
   ]
   result = molprobity.run(args=args1, out=null_out()).validation
   out1 = StringIO()
