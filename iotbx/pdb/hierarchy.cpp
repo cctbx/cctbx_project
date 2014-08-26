@@ -218,6 +218,24 @@ namespace {
     return result;
   }
 
+  // reset atom.i_seq sequentially, without the overhead of constructing an
+  // af::shared array of atoms
+  std::size_t
+  root::reset_atom_i_seqs ()
+  {
+    std::size_t i_seq = 0;
+    IOTBX_PDB_HIERARCHY_CPP_ROOT_ATOM_GROUPS_LOOPS
+    std::vector<atom> const& atoms = ags[i_ag].atoms();
+    for(unsigned i_at=0; i_at<n_ats; i_at++) {
+      atom const& a = atoms[i_at];
+      a.data->i_seq = i_seq;
+      i_seq++;
+    }
+    }}}} // close macro
+    return i_seq;
+  }
+
+
   unsigned
   model::atoms_size() const
   {

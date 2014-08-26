@@ -17,7 +17,7 @@ namespace iotbx { namespace pdb {
       std::map<str4, std::vector<unsigned> >& altloc_resname_indices,
       bool residue_group_post_processing,
       unsigned i_seq_start=0,
-      bool set_atom_i_seq=false)
+      bool set_atom_i_seq=true)
     {
       hierarchy::residue_group rg(
         iall->resseq_small().elems,

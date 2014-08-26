@@ -1371,6 +1371,9 @@ namespace hierarchy {
       unsigned
       atoms_size() const;
 
+      std::size_t
+      reset_atom_i_seqs ();
+
       //! Not available in Python.
       af::shared<atom>
       atoms_sequential_conf() const;

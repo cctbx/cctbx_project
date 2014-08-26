@@ -2869,7 +2869,7 @@ HETATM    3  O   HOH B   2       4.000   0.000   0.000  1.0  20.0            O
 """
   pdb_in = pdb.input(source_info=None, lines=flex.split_lines(pdb_str))
   assert pdb_in.atoms().extract_i_seq().all_eq(0)
-  hierarchy = pdb_in.construct_hierarchy()
+  hierarchy = pdb_in.construct_hierarchy(set_atom_i_seq=False)
   pdb_atoms_1 = hierarchy.atoms()
   assert pdb_atoms_1.extract_i_seq().all_eq(0)
   pdb_atoms_1.reset_i_seq()
@@ -2879,6 +2879,13 @@ HETATM    3  O   HOH B   2       4.000   0.000   0.000  1.0  20.0            O
   i_seqs_2 = pdb_atoms_2.extract_i_seq()
   assert not i_seqs_2.all_eq(0)
   assert i_seqs_2.all_eq(pdb_atoms_1.extract_i_seq())
+  pdb_in = pdb.input(source_info=None, lines=flex.split_lines(pdb_str))
+  hierarchy = pdb_in.construct_hierarchy()
+  hierarchy.reset_atom_i_seqs()
+  pdb_atoms_3 = hierarchy.atoms()
+  i_seqs_3 = pdb_atoms_3.extract_i_seq()
+  assert not i_seqs_3.all_eq(0)
+  assert i_seqs_3.all_eq(pdb_atoms_1.extract_i_seq())
 
 def exercise_convenience_generators():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -4637,7 +4644,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert approx_equal(atoms.extract_fp(), new_fp)
   assert approx_equal(atoms.extract_fdp(), new_fdp)
   #
-  h = pdb_inp.construct_hierarchy()
+  h = pdb_inp.construct_hierarchy(set_atom_i_seq=False)
   for i in xrange(2):
     s = h.as_pdb_string()
     d = hashlib_md5(s).hexdigest()
@@ -4648,7 +4655,8 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     h.write_pdb_file(file_name="tmp_tst_hierarchy.pdb")
     assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), s)
     h = pdb.input(
-      source_info=None, lines=flex.split_lines(s)).construct_hierarchy()
+      source_info=None, lines=flex.split_lines(s)).construct_hierarchy(
+        set_atom_i_seq=False)
   #
   atoms = h.atoms().select(indices=flex.size_t([2,5,3,0]))
   assert [a.name for a in atoms] == [" Q  ", "CA  ", " O  ", " N  "]

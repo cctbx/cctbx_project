@@ -1609,7 +1609,7 @@ class input_hierarchy_pair(object):
   def __init__(self, input, hierarchy=None):
     self.input = input
     if (hierarchy is None):
-      hierarchy = self.input.construct_hierarchy()
+      hierarchy = self.input.construct_hierarchy(set_atom_i_seq=True)
     self.hierarchy = hierarchy
 
   def __getinitargs__(self):
