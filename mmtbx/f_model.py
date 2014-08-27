@@ -349,10 +349,9 @@ class manager(manager_mixin):
          b_cart =None,
          _target_memory               = None,
          n_resolution_bins_output     = None,
-         f_part_1_updated_for_purpose = None,
          scale_method="combo"):
     if(twin_law is not None): target_name = "twin_lsq_f"
-    self.f_part_1_updated_for_purpose = f_part_1_updated_for_purpose
+    self.k_sol, self.b_sol, self.b_cart = k_sol, b_sol, b_cart
     self.bin_selections = bin_selections
     self.scale_method = scale_method
     self.arrays = None
@@ -362,8 +361,8 @@ class manager(manager_mixin):
     self.twin_set = self._set_twin_set(miller_array = f_obs)
     self.ss = 1./flex.pow2(f_obs.d_spacings().data()) / 4.
     assert [k_sol, b_sol].count(None) in [0,2]
-    assert [k_sol, k_mask].count(None) in [2,1]
-    assert [b_cart, k_anisotropic].count(None) in [2,1]
+    #XXX check consistency instead XXX assert [k_sol, k_mask].count(None) in [2,1]
+    #XXX check consistency instead XXX assert [b_cart, k_anisotropic].count(None) in [2,1]
     if([k_sol, b_sol].count(None)==0):
       k_mask = ext.k_mask(self.ss, k_sol, b_sol)
     if(b_cart is not None):
@@ -707,7 +706,9 @@ class manager(manager_mixin):
       k_anisotropic_twin           = k_anisotropic_twin,
       _target_memory               = self._target_memory,
       n_resolution_bins_output     = self.n_resolution_bins_output,
-      f_part_1_updated_for_purpose = self.f_part_1_updated_for_purpose)
+      k_sol                        = self.k_sol,
+      b_sol                        = self.b_sol,
+      b_cart                       = self.b_cart)
     result.twin = self.twin
     result.twin_law_str = self.twin_law_str
     result.k_h = self.k_h
@@ -969,6 +970,60 @@ class manager(manager_mixin):
     return flex.abs(flex.abs(self.f_obs().data()) -
       flex.abs(self.f_model_scaled_with_k1().data()))
 
+  def f_model_full_set_in_box(self, n_real):
+    assert [self.k_sol, self.b_sol, self.b_cart].count(None) == 0
+    assert self.twin_law is None
+    u_star = adptbx.u_cart_as_u_star(
+      self.f_calc().unit_cell(), adptbx.b_as_u(self.b_cart))
+    core = ext.core(
+      f_calc        = self.f_calc().data(),
+      shell_f_masks = [self.f_masks()[0].data()],
+      k_sols        = [self.k_sol],
+      b_sol         = self.b_sol,
+      f_part1       = self.f_part1().data(),
+      f_part2       = self.f_part2().data(),
+      u_star        = u_star,
+      hkl           = self.f_calc().indices(),
+      uc            = self.f_calc().unit_cell(),
+      ss            = self.ss)
+    k1 = _scale_helper(num=self.f_obs().data(), den=flex.abs(core.f_model))
+    # consistency check BEGIN
+    fmodel_data = core.f_model*k1
+    fm1 = abs(self.f_model_scaled_with_k1()).data()
+    fm2 = flex.abs(fmodel_data)
+    d = flex.abs(fm1-fm2)
+    assert approx_equal(d.min_max_mean().as_tuple(), [0,0,0])
+    # consistency check END
+    #max_index = [int((i-1)/2.) for i in n_real]
+    max_index = [(i-1)//2 for i in n_real]
+    full_set = miller.build_set(
+      crystal_symmetry = self.f_calc().crystal_symmetry(),
+      anomalous_flag   = self.f_obs().anomalous_flag(),
+      max_index        = max_index)
+    zero = flex.complex_double(full_set.indices().size(), 0)
+    f_calc_full_set = self.compute_f_calc(miller_array = full_set)
+    f_mask_full_set = masks.manager(
+      miller_array = f_calc_full_set,
+      mask_params  = self.mask_params).shell_f_masks(
+        xray_structure = self.xray_structure,
+        force_update   = True)[0]
+    ss_full_set = 1./flex.pow2(f_calc_full_set.d_spacings().data()) / 4.
+    core = ext.core(
+      f_calc        = f_calc_full_set.data(),
+      shell_f_masks = [f_mask_full_set.data()],
+      k_sols        = [self.k_sol],
+      b_sol         = self.b_sol,
+      f_part1       = zero,
+      f_part2       = zero,
+      u_star        = u_star,
+      hkl           = full_set.indices(),
+      uc            = full_set.unit_cell(),
+      ss            = ss_full_set)
+    fmodel_data_full_set = core.f_model*k1
+    return miller.array(
+      miller_set = full_set,
+      data       = fmodel_data_full_set)
+
   def compute_f_part1(self, params, log = None):
     phenix_masks = None
     if(not libtbx.env.has_module(name="solve_resolve")):
@@ -1100,8 +1155,8 @@ class manager(manager_mixin):
     # thise are values from coarse grid search and are not accurate
     self.k_h, self.b_h = kbest, bbest
 
-  def update_f_part1_all(self, purpose, map_neg_cutoff=None,
-                     refinement_neg_cutoff=-2.5, refine_threshold=True):
+  def update_f_part1_all(self, purpose,
+                     refinement_neg_cutoff=-2.5):
     zero = flex.complex_double(self.f_calc().data().size(),0)
     zero_a = self.f_calc().customized_copy(data = zero)
     self.update_core(f_part1 = zero_a)
@@ -1157,7 +1212,6 @@ class manager(manager_mixin):
     # there must be something terribly wrong!
     assert approx_equal(rw, self.r_work(), 1.e-4)
     assert approx_equal(rf, self.r_free(), 1.e-4)
-    self.f_part_1_updated_for_purpose="map"
 
   def update_f_part1(self):
     """
@@ -1480,7 +1534,6 @@ class manager(manager_mixin):
   def update_all_scales(
         self,
         update_f_part1 = True,
-        refine_threshold=True,
         apply_back_trace=False,
         params = None, # XXX DUMMY
         nproc = None,  # XXX DUMMY
@@ -1492,7 +1545,6 @@ class manager(manager_mixin):
         bulk_solvent_and_scaling = True,
         remove_outliers = True,
         show = False,
-        map_neg_cutoff=None,
         verbose=None,
         log = None):
     if(log is None): log = sys.stdout
@@ -1706,9 +1758,10 @@ class manager(manager_mixin):
         params          = params,
         log             = out,
         nproc           = nproc)
-      #print >> out, result.k_sols()
-      #print >> out, result.b_sol()
-      #print >> out, (result.b_cart()[0]+result.b_cart()[1]+result.b_cart()[2])/3
+      if(len(result.k_sols())==1):
+        self.k_sol  = result.k_sols()[0]
+        self.b_sol  = result.b_sol()
+        self.b_cart = result.b_cart()
       u_star = adptbx.u_cart_as_u_star(self.f_obs().unit_cell(), adptbx.b_as_u(result.b_cart()))
       k_anisotropic = mmtbx.f_model.ext.k_anisotropic(self.f_obs().indices(),u_star)
       k_anisotropic_twin = None
