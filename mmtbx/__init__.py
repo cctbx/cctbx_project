@@ -175,7 +175,6 @@ class fmodels(object):
   def update_all_scales(
         self,
         update_f_part1,
-        refine_threshold,
         remove_outliers     = True,
         params              = None,
         optimize_mask       = False,
@@ -202,7 +201,6 @@ class fmodels(object):
         print >> log, msg
       self.fmodel_xray().update_all_scales(
         update_f_part1       = update_f_part1,
-        refine_threshold     = refine_threshold,
         remove_outliers      = remove_outliers,
         params               = params,
         fast                 = fast,
@@ -218,7 +216,6 @@ class fmodels(object):
       print >> log, msg
       self.fmodel_neutron().update_all_scales(
         update_f_part1       = update_f_part1,
-        refine_threshold     = refine_threshold,
         remove_outliers      = remove_outliers,
         params               = params,
         fast                 = fast,
