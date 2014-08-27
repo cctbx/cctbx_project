@@ -64,7 +64,9 @@ def run(space_group_info):
       exclude_free_r_reflections=False,
       fill_missing = False)
   crystal_gridding = fmodel.f_obs().crystal_gridding(
-    d_min = fmodel.f_obs().d_min(), resolution_factor = 0.25)
+    d_min             = fmodel.f_obs().d_min(),
+    symmetry_flags    = maptbx.use_space_group_symmetry,
+    resolution_factor = 0.25)
   # compute OMIT map
   r = cfom.run(
     crystal_gridding = crystal_gridding,
