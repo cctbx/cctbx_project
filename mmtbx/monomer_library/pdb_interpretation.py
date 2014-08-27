@@ -303,7 +303,7 @@ master_params_str = """\
         .short_caption = Enable parallelity restraints for stacking nucleobases
       sigma = 0.027
         .type = float
-      skip_additional_distance_ckecking = False
+      skip_additional_distance_checking = False
         .type = bool
         .short_caption = Additional distance check
         .help = Measure distances between 'C2', 'C4', 'C5', 'C6', 'C1*' atoms \
@@ -570,6 +570,11 @@ chiralities=None
   .multiple=True
   .input_size=400
 planarities=None
+  .optional=True
+  .type=str
+  .multiple=True
+  .input_size=400
+parallelities=None
   .optional=True
   .type=str
   .multiple=True
@@ -2426,7 +2431,7 @@ class build_chain_proxies(object):
                     print "%5.2f %5.2f %5.2f" % ( diff_dist, max_dist, min_dist),
                     print " in additional check (skip_additional_check_on_dna_rna)"
                   return result
-                if (na_params.stacking.skip_additional_distance_ckecking
+                if (na_params.stacking.skip_additional_distance_checking
                     or additional_check(prev_mm, mm)):
                   link_resolution = add_parallelity_proxies(
                     counters=counters(label="link_parallelity"),
@@ -3905,6 +3910,9 @@ class build_all_chain_proxies(linking_mixins):
     for atom_selection in params.planarities:
       grm.remove_planarities_in_place(selection=self.atom_selection(
         parameter_name=path+"planarities", string=atom_selection, cache=cache))
+    for atom_selection in params.parallelities:
+      grm.remove_parallelities_in_place(selection=self.atom_selection(
+        parameter_name=path+"parallelities", string=atom_selection, cache=cache))
 
   def process_geometry_restraints_edits_bond(self, sel_cache, params, log):
     bond_sym_proxies = []
