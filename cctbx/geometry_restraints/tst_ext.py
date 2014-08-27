@@ -2933,6 +2933,15 @@ def exercise_parallelity():
   assert approx_equal(selected[0].weight, 1)
   assert approx_equal(selected[1].weight, 2)
 
+  # - geometry_restraints.remove.parallelities
+  rest = proxies.proxy_remove(selection=flex.bool([True]*16))
+  assert len(rest) == 0
+  rest = proxies.proxy_remove(selection=flex.bool([True]*6+[False]*10))
+  assert len(rest) == 2
+  assert list(rest[0].i_seqs) == [2, 3, 10, 11]
+  assert list(rest[0].j_seqs) == [4, 5, 12, 13]
+  assert list(rest[1].i_seqs) == [3, 1, 12, 14]
+  assert list(rest[1].j_seqs) == [5, 6, 14, 15]
 
 def exercise():
   exercise_bond_similarity()
