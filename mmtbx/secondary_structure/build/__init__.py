@@ -9,7 +9,10 @@ from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as three_on
 from mmtbx.refinement.geometry_minimization import run2
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 import mmtbx.utils
-from mmtbx.command_line import geometry_minimization
+#from mmtbx.command_line.geometry_minimization import master_params
+from mmtbx import secondary_structure
+from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+import os
 
 
 alpha_helix_str = """
@@ -350,8 +353,7 @@ def substitute_ss(real_h,
   if verbose:
     log.write("Replacing ss-elements with ideal ones:\n")
   for h in ann.helices:
-    if verbose:
-      log.write("%s\n" % h.as_pdb_str())
+    log.write("%s\n" % h.as_pdb_str())
     ss_sels = h.as_atom_selections()[0]
     selstring = main_chain_selection_prefix % ss_sels
     isel = selection_cache.iselection(selstring)
@@ -362,8 +364,7 @@ def substitute_ss(real_h,
     nonss_for_tors_selection.set_selected(isel, False)
 
   for sheet in ann.sheets:
-    if verbose:
-      log.write("%s\n" % sheet.as_pdb_str())
+    log.write("%s\n" % sheet.as_pdb_str())
     for ss_sels in sheet.as_atom_selections():
       selstring = main_chain_selection_prefix % ss_sels
       isel = selection_cache.iselection(selstring)
@@ -381,26 +382,50 @@ def substitute_ss(real_h,
     sheet_selection = sheet_selection & ~helix_sheet_intersection
   assert ((helix_selection | sheet_selection) & other_selection).count(True)==0
 
-  params = geometry_minimization.master_params()
+  params_line = grand_master_phil_str
+  params_line += "secondary_structure {%s}" % secondary_structure.sec_str_master_phil_str
+  params = iotbx.phil.parse(input_string=params_line, process_includes=True)
   custom_pars = params.fetch(source = iotbx.phil.parse("\n".join([
       "secondary_structure {h_bond_restraints.remove_outliers = False\n%s}" \
           % phil_str,
       "pdb_interpretation.peptide_link.ramachandran_restraints = True",
       "use_c_beta_deviation_restraints = True",
-      "secondary_structure_restraints=True"])))
+      "secondary_structure_restraints=True"]))).extract()
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
           crystal_symmetry= xray_structure.crystal_symmetry(),
-          pdb_interpretation_params = custom_pars.extract().pdb_interpretation,
-          log=log)
+          pdb_interpretation_params = custom_pars.pdb_interpretation,
+          log=null_out())
   processed_pdb_file, junk = processed_pdb_files_srv.\
       process_pdb_files(raw_records=flex.split_lines(real_h.as_pdb_string()))
-
-  grm = geometry_minimization.get_geometry_restraints_manager(
-      processed_pdb_file=processed_pdb_file,
-      xray_structure=xray_structure,
-      params=custom_pars.extract(),
-      log=log)
+  has_hd = None
+  if(xray_structure is not None):
+    sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
+    has_hd = "H" in sctr_keys or "D" in sctr_keys
+  sec_str = mmtbx.secondary_structure.process_structure(
+    params             = custom_pars.secondary_structure,
+    processed_pdb_file = processed_pdb_file,
+    tmp_dir            = os.getcwd(),
+    log                = null_out(),
+    assume_hydrogens_all_missing=(not has_hd))
+  sec_str.initialize(log=null_out())
+  build_proxies = sec_str.create_hbond_proxies(
+    log          = null_out(),
+    hbond_params = None)
+  hbond_params = build_proxies.proxies
+  geometry = processed_pdb_file.geometry_restraints_manager(
+    show_energies                = False,
+    show_nonbonded_clashscore    = False,
+    params_edits                 = custom_pars.geometry_restraints.edits,
+    plain_pairs_radius           = 5,
+    hydrogen_bond_proxies        = hbond_params,
+    assume_hydrogens_all_missing = not has_hd)
+  restraints_manager = mmtbx.restraints.manager(
+    geometry      = geometry,
+    normalization = True)
+  if(xray_structure is not None):
+    restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
+  grm = restraints_manager
 
   # Adding Cbeta restraints
   grm.geometry.generic_restraints_manager.\

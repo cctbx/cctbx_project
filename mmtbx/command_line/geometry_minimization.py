@@ -15,6 +15,7 @@ import sys
 from cStringIO import StringIO
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.rotamer.rotamer_eval import RotamerEval
+from mmtbx.secondary_structure.build import substitute_ss
 
 base_params_str = """\
 silent = False
@@ -65,6 +66,9 @@ include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 secondary_structure_restraints = False
   .type = bool
   .short_caption = Secondary structure restraints
+replace_secondary_structure = False
+  .type = bool
+  .short_caption = Replace secondary structure elements with ideal ones
 secondary_structure
   .alias = refinement.secondary_structure
 {
@@ -207,6 +211,42 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
     has_hd = "H" in sctr_keys or "D" in sctr_keys
   hbond_params = None
+  id_params = params.secondary_structure.idealization
+  reference_torsion_proxies = None
+  if id_params.enabled:
+    print >> log, "Substituting secondary structure elements with ideal ones."
+    annot = None
+    if len(params.secondary_structure.helix) +\
+       len(params.secondary_structure.sheet) >0:
+      annot = iotbx.pdb.secondary_structure.annotation(
+          helices=params.secondary_structure.helix,
+          sheets=params.secondary_structure.sheet)
+    else:
+      annot = processed_pdb_file.all_chain_proxies.pdb_inp.\
+          extract_secondary_structure()
+    if annot is not None:
+      reference_torsion_proxies = substitute_ss(
+          real_h=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+          xray_structure=xray_structure,
+          ss_annotation=annot,
+          sigma_on_reference_non_ss=id_params.sigma_on_reference_non_ss,
+          sigma_on_reference_helix=id_params.sigma_on_reference_helix,
+          sigma_on_reference_sheet=id_params.sigma_on_reference_sheet,
+          sigma_on_torsion_ss=id_params.sigma_on_torsion_ss,
+          sigma_on_torsion_nonss=id_params.sigma_on_torsion_nonss,
+          sigma_on_ramachandran=id_params.sigma_on_ramachandran,
+          sigma_on_cbeta=id_params.sigma_on_cbeta,
+          n_macro=id_params.n_macro,
+          n_iter=id_params.n_iter,
+          log=log,
+          verbose=False)
+      xray_structure.set_sites_cart(
+          processed_pdb_file.all_chain_proxies.pdb_hierarchy.\
+              atoms().extract_xyz())
+    else:
+      print >> log, "No secondary structure definition found in phil"+\
+          "or HELIX/SHEET records. No substitution done."
+
   if(params.secondary_structure_restraints):
     sec_str = mmtbx.secondary_structure.process_structure(
       params             = params.secondary_structure,
@@ -229,6 +269,13 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry,
     normalization = True)
+
+  if (reference_torsion_proxies is not None
+      and id_params.restrain_torsion_angles):
+    geometry.generic_restraints_manager.\
+        reference_manager.add_existing_reference_torsion_proxies(
+            proxies=reference_torsion_proxies)
+
   if(xray_structure is not None):
     restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
   if(params.c_beta_restraints):

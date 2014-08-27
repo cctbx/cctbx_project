@@ -63,6 +63,31 @@ ss_group_params_str = """%s\n%s""" % (proteins.helix_group_params_str,
 ss_tardy_params_str = "" # XXX: remove this later
 
 sec_str_master_phil_str = """
+idealization
+{
+  enabled = False
+    .type = bool
+  restrain_torsion_angles = False
+    .type = bool
+  sigma_on_reference_non_ss = 1
+    .type = float
+  sigma_on_reference_helix = 1
+    .type = float
+  sigma_on_reference_sheet = 0.5
+    .type = float
+  sigma_on_torsion_ss = 5
+    .type = float
+  sigma_on_torsion_nonss = 5
+    .type = float
+  sigma_on_ramachandran = 1
+    .type = float
+  sigma_on_cbeta = 2.5
+    .type = float
+  n_macro=3
+    .type = int
+  n_iter=300
+    .type = int
+}
 input
   .style = box auto_align
 {
