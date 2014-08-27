@@ -138,7 +138,7 @@ def run (args=(), params=None, out=sys.stdout) :
   from iotbx import file_reader
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
   pdb_in.assert_file_type("pdb")
-  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy = pdb_in.file_object.hierarchy
   hierarchy.atoms().reset_i_seq()
   xrs = pdb_in.file_object.xray_structure_simple()
   return analyze(pdb_hierarchy=hierarchy,
