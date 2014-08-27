@@ -63,7 +63,7 @@ def run (args, viewer_class=selection_editor_mixin) :
     t1 = time.time()
     if fast_connectivity :
       pdb_in = file_reader.any_file(file_name, force_type="pdb")
-      pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+      pdb_hierarchy = pdb_in.file_object.hierarchy
       atomic_bonds = pdb_hierarchy.distance_based_simple_two_way_bond_sets()
       acp_selection = None
     else :

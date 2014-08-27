@@ -33,7 +33,7 @@ class SitesList (wx.ListCtrl,
     pdb_in = file_reader.any_file(file_name, force_type="pdb")
     pdb_in.check_file_type("pdb")
     self._symm = pdb_in.file_object.crystal_symmetry()
-    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy = pdb_in.file_object.hierarchy
     counts = hierarchy.overall_counts()
     if (counts.n_models > 1) :
       raise Sorry("Multi-model PDB files not allowed.")

@@ -161,7 +161,7 @@ class PDBFileInfo (InfoPanelBase) :
       raise_sorry_if_errors=True,
       raise_sorry_if_not_expected_format=True)
     self._pdb_in.check_file_type("pdb")
-    self._hierarchy = self._pdb_in.file_object.construct_hierarchy()
+    self._hierarchy = self._pdb_in.file_object.hierarchy
     info_list = iotbx.pdb.show_file_summary(
       pdb_in=self._pdb_in.file_object,
       hierarchy=self._hierarchy)
@@ -246,7 +246,7 @@ class PDBChainBisoPanel (InfoPanelBase) :
         raise_sorry_if_errors=True,
         raise_sorry_if_not_expected_format=True)
       pdb_in.check_file_type("pdb")
-      hierarchy = pdb_in.file_object.construct_hierarchy()
+      hierarchy = pdb_in.file_object.hierarchy
     if (len(hierarchy.models()) > 1) :
       raise Sorry("Multi-MODEL PDB files not supported.")
     self._hierarchy = hierarchy

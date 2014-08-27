@@ -1589,7 +1589,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     pdb_in = file_reader.any_file(file_name,
       force_type="pdb",
       raise_sorry_if_errors=True)
-    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy = pdb_in.file_object.hierarchy
     if (len(hierarchy.models()) > 1) :
       raise Sorry("Multi-MODEL PDB files not supported for this action.")
     return hierarchy
@@ -1959,8 +1959,8 @@ class PDBTreeFrame (wx.Frame) :
       force_type="pdb",
       raise_sorry_if_errors=True)
     self._pdb_in = f
-    self._crystal_symmetry = f.file_object.crystal_symmetry()
-    hierarchy = f.file_object.construct_hierarchy()
+    self._crystal_symmetry = f.crystal_symmetry()
+    hierarchy = f.file_object.hierarchy
     self._hierarchy = hierarchy
     atoms = hierarchy.atoms()
     atoms.reset_i_seq()
@@ -1997,7 +1997,7 @@ class PDBTreeFrame (wx.Frame) :
     save_header = self._header_box.GetValue()
     f = open(file_name, "w")
     for method in ["title_section",] :
-      section_lines = getattr(self._pdb_in.file_object, method)()
+      section_lines = getattr(self._pdb_in.file_object.input, method)()
       for line in section_lines :
         f.write(line + "\n")
     if (save_header) :
@@ -2008,7 +2008,7 @@ class PDBTreeFrame (wx.Frame) :
           "remark_section",
           "heterogen_section",
           "secondary_structure_section",] :
-        section_lines = getattr(self._pdb_in.file_object, method)()
+        section_lines = getattr(self._pdb_in.file_object.input, method)()
         for line in section_lines :
           f.write(line + "\n")
     reset_serial = self._serial_box.GetValue()

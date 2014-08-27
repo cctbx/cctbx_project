@@ -28,7 +28,7 @@ class StringsCtrl (ValidatedTextCtrl) :
     if (value is None) :
       ValidatedTextCtrl.SetValue(self, "")
     else :
-      assert isinstance(value, list)
+      assert isinstance(value, list), value
       ValidatedTextCtrl.SetValue(self, self.FormatValue(value))
 
 class StringsValidator (TextCtrlValidator) :
