@@ -13,7 +13,7 @@ import scitbx.math
 from libtbx import complex_math
 from libtbx.test_utils import \
   approx_equal, not_approx_equal, show_diff, Exception_expected
-from libtbx.utils import Sorry, null_out
+from libtbx.utils import Sorry, Keep, null_out
 from libtbx import Auto
 from cStringIO import StringIO
 import warnings
@@ -553,6 +553,10 @@ def exercise_array():
       == "a,b,c,merged,systematic_absences_eliminated"
   ma.set_info("Test")
   assert ma.info() == "Test"
+  ma2 = ma.customized_copy()
+  assert (ma2.info() is None)
+  ma2 = ma.customized_copy(info=Keep)
+  assert (ma2.info() == "Test")
   ma.set_observation_type_xray_amplitude()
   assert ma.is_xray_amplitude_array()
   ma.set_observation_type_xray_intensity()

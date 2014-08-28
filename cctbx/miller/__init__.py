@@ -2012,10 +2012,12 @@ class array(set):
         anomalous_flag=Keep,
         unit_cell=Keep,
         space_group_info=Keep,
-        observation_type=Keep):
+        observation_type=Keep,
+        info=None):
     if (miller_set is Keep): miller_set = self
     if (data is Keep): data = self.data()
     if (sigmas is Keep): sigmas = self.sigmas()
+    if (info is Keep) : info = self.info()
     if observation_type is Keep: observation_type = self.observation_type()
     miller_set = set.customized_copy(miller_set,
       crystal_symmetry=crystal_symmetry,
@@ -2024,7 +2026,7 @@ class array(set):
       unit_cell=unit_cell,
       space_group_info=space_group_info)
     return array(miller_set=miller_set, data=data, sigmas=sigmas)\
-           .set_observation_type(observation_type)
+           .set_observation_type(observation_type).set_info(info)
 
   def concatenate(self, other, assert_is_similar_symmetry=True):
     if([self.sigmas(), other.sigmas()].count(None) == 0):
