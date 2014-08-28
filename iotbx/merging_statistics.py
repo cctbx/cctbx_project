@@ -8,7 +8,7 @@ from __future__ import division
 from iotbx import data_plots
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, null_out
-from libtbx import group_args, Auto, slots_getstate_setstate
+from libtbx import group_args, Auto
 from math import sqrt
 import cStringIO
 import sys
@@ -674,13 +674,16 @@ class dataset_statistics (object) :
       max_r_meas=sys.maxint,
       min_cc_anom=-1,
       min_completeness=0) :
+    if ([min_i_over_sigma,min_cc_one_half,max_r_merge,max_r_meas,min_cc_anom,
+          min_completeness].count(None) == 6) :
+      return None
     d_min = None
     last_bin = None
     for bin in self.bins :
       if ((bin.i_over_sigma_mean < min_i_over_sigma) or
           (bin.cc_one_half < min_cc_one_half) or
-          (bin.r_merge > max_r_merge) or
-          (bin.r_meas > max_r_meas) or
+          ((max_r_merge is not None) and (bin.r_merge > max_r_merge)) or
+          ((max_r_meas is not None) and (bin.r_meas > max_r_meas)) or
           (bin.cc_anom < min_cc_anom) or
           (bin.completeness < min_completeness)) :
         break
