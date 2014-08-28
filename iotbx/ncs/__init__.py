@@ -21,7 +21,8 @@ def input(pdb_hierarchy_inp=None,
           use_simple_ncs_from_pdb=True,
           use_minimal_master_ncs=True,
           rms_eps=0.02,
-          Error_msg_on=False):
+          Error_msg_on=False,
+          process_similar_chains=False):
     """
     Select method to build ncs_group_object
 
@@ -65,6 +66,8 @@ def input(pdb_hierarchy_inp=None,
       Error_msg_on (bool): When True, raise error if chains that are
         nearly the same length (but not exactly the same) and are NCS related.
         Raise error if NCS relations are not found
+      process_similar_chains (bool): When True, process chains that are close
+       in length without raising errors
     """
     ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
     ncs_group_obj.preprocess_ncs_obj(
@@ -87,6 +90,7 @@ def input(pdb_hierarchy_inp=None,
       use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
       use_minimal_master_ncs=use_minimal_master_ncs,
       rms_eps=rms_eps,
-      Error_msg_on=Error_msg_on)
+      Error_msg_on=Error_msg_on,
+      process_similar_chains=process_similar_chains)
     return ncs_group_obj
 

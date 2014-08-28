@@ -2035,7 +2035,9 @@ mmtbx/utils/fab_elbow_angle.py -text
 mmtbx/utils/map_correlation.py -text
 mmtbx/utils/ncs_utils.py -text
 mmtbx/utils/rotatable_bonds.py -text
+mmtbx/utils/simple_alignment.py -text
 mmtbx/utils/tst_ncs_utils.py -text
+mmtbx/utils/tst_simple_alignment.py -text
 mmtbx/utils/tst_switch_rotamers.py -text
 mmtbx/utils/utils.h -text
 mmtbx/utils/utils_ext.cpp -text
