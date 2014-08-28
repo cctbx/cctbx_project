@@ -61,7 +61,7 @@ class wx_output (wxtbx.windows.ChoiceBook,
     self._current_sizer = szr
     if (title == "Twinning and intensity statistics summary") :
       self.InsertPage(0, panel, title)
-    elif (title == "Summary of possible issues") :
+    elif (title == "Xtriage summary") :
       self.InsertPage(0, panel, title)
     else :
       self.AddPage(panel, title)
