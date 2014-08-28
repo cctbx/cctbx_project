@@ -581,7 +581,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
         self.merging_stats.show(out=text_out)
         print >> text_out, ""
         print >> text_out, "References:"
-        print >> text_out, merging_statistics.citations_str
+        print >> text_out, iotbx.merging_statistics.citations_str
         print >> text_out, ""
       except Exception, e :
         print >> text_out, \
@@ -796,6 +796,17 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     """
     b_cart = self.wilson_scaling.aniso_scale_and_b.b_cart
     return max(b_cart[0:3]) - min(b_cart[0:3])
+
+  def estimate_d_min (self, **kwds) :
+    """
+    Suggest resolution cutoffs based on selected statistics (if merging was
+    included in analyses).  See
+    :py:class:`iotbx.merging_statistics.dataset_statistics` for underlying
+    function documentation.
+    """
+    if (self.merging_stats is not None) :
+      return self.merging_stats.estimate_d_min(**kwds)
+    return None
 
   def summarize_issues (self) :
     issues = []
