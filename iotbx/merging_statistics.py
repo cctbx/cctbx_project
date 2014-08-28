@@ -674,9 +674,26 @@ class dataset_statistics (object) :
       max_r_meas=sys.maxint,
       min_cc_anom=-1,
       min_completeness=0) :
+    """
+    Determine approximate resolution cutoffs based on a variety of metrics.
+    Numbers are assumed to be fractional, not percentage values, except for
+    the completeness which will be treated as a percent if the cutoff is
+    greater than 1.
+
+    :param min_i_over_sigma: minimum Mean(I/sigmaI) for outer shell
+    :param min_cc_one_half: minimum CC1/2 for outer shell
+    :param max_r_merge: maximum R-merge for outer shell
+    :param max_r_meas: maximum R-meas for outer shell
+    :param min_cc_anom: minimum CC(anom) for outer shell
+    :param min_completeness: minimum completeness for outer shell
+    :returns: Python float representing d_min for the outermost acceptable
+      resolution bin, or None if no bins meet the given criteria
+    """
     if ([min_i_over_sigma,min_cc_one_half,max_r_merge,max_r_meas,min_cc_anom,
           min_completeness].count(None) == 6) :
       return None
+    if (min_completeness > 1) :
+      min_completeness /= 100.
     d_min = None
     last_bin = None
     for bin in self.bins :
