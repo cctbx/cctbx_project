@@ -205,8 +205,14 @@ if (__name__ == "__main__"):
   txt_merge_postref = ''
   postrefine_by_frame_result = None
   for i in range(n_iters):
-    txt_merge_postref += 'Start post-refinement cycle '+str(i+1)+'\n'
-    print 'Start post-refinement cycle '+str(i+1)+'\n'
+    if i == (n_iters-1):
+      avg_mode = 'final'
+    else:
+      avg_mode = 'weighted'
+    _txt_merge_postref = 'Start post-refinement cycle '+str(i+1)+'\n'
+    _txt_merge_postref += 'Average mode: '+avg_mode+'\n'
+    txt_merge_postref += _txt_merge_postref
+    print _txt_merge_postref
     print 'Frame# Res.(A) N_refl N_refl_used  R_init R_final R_xy_init R_xy_final CC_init CC_final CCiso_init CCiso_final  Basis'
     print '------------------------------------------------------------------------------------------------------------------------'
     def postrefine_by_frame_mproc_wrapper(arg):
@@ -224,7 +230,7 @@ if (__name__ == "__main__"):
         postrefine_by_frame_good.append(pres)
 
     if len(postrefine_by_frame_good) > 0:
-      avg_mode = 'weighted'
+
       from prime.postrefine import prepare_output
       prep_output = prepare_output(postrefine_by_frame_good, iparams, avg_mode)
 
