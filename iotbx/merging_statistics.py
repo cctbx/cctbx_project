@@ -239,6 +239,10 @@ class merging_stats (object) :
       self.cc_work, self.cc_free, self.r_work, self.r_free = \
         model_arrays.cc_work_and_free(array_merged)
 
+  @property
+  def cc_anom (self) :
+    return getattr(self, "anom_half_corr", None)
+
   def format (self) :
     return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f  %5.3f" % (
       self.d_max, self.d_min,
@@ -331,7 +335,6 @@ class dataset_statistics (object) :
       model_arrays=None,
       sigma_filtering=Auto,
       d_min_tolerance=1.e-6,
-      estimate_cutoffs=False, # XXX slow
       log=None) :
     self.file_name = file_name
     if (log is None) : log = null_out()
@@ -401,9 +404,6 @@ class dataset_statistics (object) :
         sigma_filtering=sigma_filtering)
       self.bins.append(bin_stats)
       self.table.add_row(bin_stats.table_data())
-    self.cutoffs = None
-    if (estimate_cutoffs) :
-      self.cutoffs = estimate_crude_resolution_cutoffs(i_obs=i_obs)
 
   @property
   def signal_table (self) :
@@ -461,21 +461,6 @@ class dataset_statistics (object) :
       data = bin.table_data()
       table.add_row([ (1/bin.d_min**2), bin.anom_half_corr ])
     return table
-
-  def get_estimated_cutoffs (self) :
-    return getattr(self, "cutoffs", None)
-
-  def show_estimated_cutoffs (self, out=sys.stdout, prefix="") :
-    cutoffs = self.get_estimated_cutoffs()
-    if (cutoffs is None) : return
-    print >> out, ""
-    print >> out, ""
-    cutoffs.show(out=out, prefix=prefix)
-    print >> out, ""
-    print >> out, "NOTE: we do not endorse the use of any of these cutoffs!"
-    print >> out, "It is preferrable that the resolution limit be determined"
-    print >> out, "by the information content of the data, which can only"
-    print >> out, "be judged by refinement."
 
   def show_loggraph (self, out=None) :
     if (out is None) : out = sys.stdout
@@ -682,6 +667,62 @@ class dataset_statistics (object) :
     else :
       print >> out, prefix + "  CC(free)        :  not available"
 
+  def estimate_d_min (self,
+      min_i_over_sigma=0,
+      min_cc_one_half=0,
+      max_r_merge=sys.maxint,
+      max_r_meas=sys.maxint,
+      min_cc_anom=-1,
+      min_completeness=0) :
+    d_min = None
+    last_bin = None
+    for bin in self.bins :
+      if ((bin.i_over_sigma_mean < min_i_over_sigma) or
+          (bin.cc_one_half < min_cc_one_half) or
+          (bin.r_merge > max_r_merge) or
+          (bin.r_meas > max_r_meas) or
+          (bin.cc_anom < min_cc_anom) or
+          (bin.completeness < min_completeness)) :
+        break
+      last_bin = bin
+    if (last_bin is None) :
+      return None
+    else :
+      return last_bin.d_min
+
+  def show_estimated_cutoffs (self, out=sys.stdout, prefix="") :
+    print >> out, ""
+    print >> out, ""
+    def format_d_min (value) :
+      if (value is None) :
+        return "(use all data)" #% self.d_min_overall
+      return "%7.3f" % value
+    make_sub_header("Resolution cutoff estimates", out=out)
+    print >> out, prefix + "  resolution of all data          : %7.3f" % \
+      self.overall.d_min
+    cc_one_half_cut = self.estimate_d_min(min_cc_one_half=0.33)
+    i_over_sigma_cut = self.estimate_d_min(min_i_over_sigma=2.0)
+    r_merge_cut = self.estimate_d_min(max_r_merge=0.5)
+    r_meas_cut = self.estimate_d_min(max_r_meas=0.5)
+    cc_anom_cut = self.estimate_d_min(min_cc_anom=0.3)
+    completeness_cut_conservative = self.estimate_d_min(min_completeness=0.9)
+    completeness_cut_permissive = self.estimate_d_min(min_completeness=0.5)
+    print >> out, prefix + "  based on CC(1/2) >= 0.33        : %s" % \
+      format_d_min(cc_one_half_cut)
+    print >> out, prefix + "  based on mean(I/sigma) >= 2.0   : %s" % \
+      format_d_min(i_over_sigma_cut)
+    print >> out, prefix + "  based on R-merge < 0.5          : %s" % \
+      format_d_min(r_merge_cut)
+    print >> out, prefix + "  based on R-meas < 0.5           : %s" % \
+      format_d_min(r_meas_cut)
+    print >> out, prefix + "  based on completeness >= 90%%    : %s" % \
+      format_d_min(completeness_cut_conservative)
+    print >> out, prefix + "  based on completeness >= 50%%    : %s" % \
+      format_d_min(completeness_cut_permissive)
+    print >> out, ""
+    print >> out, "NOTE: we recommend using all data out to the CC(1/2) limit"
+    print >> out, "for refinement."
+
 def select_data (file_name, data_labels, log=None,
     assume_shelx_observation_type_is=None) :
   if (log is None) : log = null_out()
@@ -712,90 +753,3 @@ def select_data (file_name, data_labels, log=None,
   if (not i_obs.is_xray_intensity_array()) :
     raise Sorry("%s is not an intensity array." % i_obs.info().label_string())
   return i_obs
-
-class estimate_crude_resolution_cutoffs (slots_getstate_setstate) :
-  """
-  Uses incredibly simplistic criteria to determine the approximate
-  resolution limit of the data based on the merging statistics (using much
-  smaller bins than normal).  Not really appropriate for routine use, but
-  useful for the pedantic and just-curious.
-  """
-  cutoffs_attr = ["i_over_sigma_cut", "r_merge_cut", "r_meas_cut",
-    "completeness_cut_conservative", "completeness_cut_permissive",
-    "cc_one_half_cut",]
-  __slots__ = ["n_bins", "i_over_sigma_min", "r_merge_max", "r_meas_max",
-    "completeness_min_conservative", "completeness_min_permissive",
-    "cc_one_half_min", "d_min_overall",] + cutoffs_attr
-  def __init__ (self,
-      i_obs,
-      crystal_symmetry=None,
-      n_bins=100,
-      i_over_sigma_min=2.0,
-      r_merge_max=0.5,
-      r_meas_max=0.5,
-      completeness_min_conservative=0.9,
-      completeness_min_permissive=0.5,
-      cc_one_half_min=0.5) :
-    self.n_bins = n_bins
-    self.i_over_sigma_min = i_over_sigma_min
-    self.r_merge_max = r_merge_max
-    self.r_meas_max = r_meas_max
-    self.completeness_min_conservative = completeness_min_conservative
-    self.completeness_min_permissive = completeness_min_permissive
-    self.cc_one_half_min = cc_one_half_min
-    for attr in self.cutoffs_attr :
-      setattr(self, attr, None)
-    stats = dataset_statistics(
-      i_obs=i_obs,
-      crystal_symmetry=crystal_symmetry)
-    self.d_min_overall = stats.overall.d_min
-    d_min_last = float("inf")
-    for bin in stats.bins :
-      if (self.i_over_sigma_cut is None) :
-        if (bin.i_over_sigma_mean < self.i_over_sigma_min) :
-          self.i_over_sigma_cut = d_min_last
-      if (self.cc_one_half_cut is None) :
-        if (bin.cc_one_half < self.cc_one_half_min) :
-          self.cc_one_half_cut = d_min_last
-      if (self.r_merge_cut is None) :
-        if (bin.r_merge > self.r_merge_max) :
-          self.r_merge_cut = d_min_last
-      if (self.r_meas_cut is None) :
-        if (bin.r_meas > self.r_meas_max) :
-          self.r_meas_cut = d_min_last
-      if (self.completeness_cut_conservative is None) :
-        if (bin.completeness < completeness_min_conservative) :
-          self.completeness_cut_conservative = d_min_last
-      if (self.completeness_cut_permissive is None) :
-        if (bin.completeness < completeness_min_permissive) :
-          self.completeness_cut_permissive = d_min_last
-      d_min_last = bin.d_min
-
-  def show (self, out=sys.stdout, prefix="") :
-    def format_d_min (value) :
-      if (value is None) :
-        return "(use all data)" #% self.d_min_overall
-      return "%7.3f" % value
-    print >> out, prefix + "Crude resolution cutoff estimates:"
-    print >> out, prefix + "  resolution of all data          : %7.3f" % \
-      self.d_min_overall
-    if (self.cc_one_half_min is not None) :
-      print >> out, prefix + "  based on CC(1/2) > %-6g       : %s" % \
-        (self.cc_one_half_min, format_d_min(self.cc_one_half_cut))
-    if (self.i_over_sigma_min is not None) :
-      print >> out, prefix + "  based on mean(I/sigma) > %-6g : %s" % \
-        (self.i_over_sigma_min, format_d_min(self.i_over_sigma_cut))
-    if (self.r_merge_max is not None) :
-      print >> out, prefix + "  based on R-merge < %-6g       : %s" % \
-        (self.r_merge_max, format_d_min(self.r_merge_cut))
-    if (self.r_meas_max is not None) :
-      print >> out, prefix + "  based on R-meas < %-6g        : %s" % \
-        (self.r_meas_max, format_d_min(self.r_meas_cut))
-    if (self.completeness_min_conservative is not None) :
-      print >> out, prefix + "  based on completeness > %-6g  : %s" % \
-        (self.completeness_min_conservative,
-         format_d_min(self.completeness_cut_conservative))
-    if (self.completeness_min_permissive is not None) :
-      print >> out, prefix + "  based on completeness > %-6g  : %s" % \
-        (self.completeness_min_permissive,
-         format_d_min(self.completeness_cut_permissive))
