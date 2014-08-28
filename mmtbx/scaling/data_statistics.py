@@ -572,7 +572,7 @@ class ice_ring_checker(scaling.xtriage_analysis):
  Even though the completeness is lower as expected, the mean intensity is
  still reasonable at this resolution.""")
         if ((abs(self.abnormality_intensity[ii]) >= cutoff) or
-            (abs(self.value_intensity[ii]) > self.z_score_limit)) :
+            (abs(self.value_intensity[ii])>getattr(self,"z_score_limit",10))):
           problems_detected = True
           if (abs(self.abnormality_completeness[ii])<=cutoff):
             out.show("""\
