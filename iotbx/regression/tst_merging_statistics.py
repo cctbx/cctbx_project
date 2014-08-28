@@ -60,15 +60,14 @@ def exercise (debug=False) :
   if (debug) :
     print out.getvalue()
   for line in """\
-Crude resolution cutoff estimates:
   resolution of all data          :   2.000
-  based on CC(1/2) > 0.5          : (use all data)
-  based on mean(I/sigma) > 2      :   2.155
+  based on CC(1/2) >= 0.33        :   2.000
+  based on mean(I/sigma) >= 2.0   :   2.155
   based on R-merge < 0.5          :   2.372
   based on R-meas < 0.5           :   2.521
-  based on completeness > 0.9     : (use all data)
-  based on completeness > 0.5     : (use all data)""".splitlines() :
-    assert line in out.getvalue()
+  based on completeness >= 90%    :   2.000
+  based on completeness >= 50%    :   2.000""".splitlines() :
+    assert line in out.getvalue(), out.getvalue()
 
 if (__name__ == "__main__") :
   exercise(debug=("--debug" in sys.argv))

@@ -34,7 +34,6 @@ loggraph = False
   .type = bool
 estimate_cutoffs = False
   .type = bool
-  .expert_level = 4
 include scope libtbx.phil.interface.tracking_params
 """ % iotbx.merging_statistics.merging_params_str
 
@@ -52,12 +51,20 @@ class cmdline_processor (iotbx.phil.process_command_line_with_files) :
             arg))
     return False
 
-def run (args, out=None, assume_shelx_observation_type_is="intensities") :
+def run (args, out=None, master_params=None,
+    assume_shelx_observation_type_is="intensities") :
   if (out is None) : out = sys.stdout
   import iotbx.phil
-  master_params = iotbx.phil.parse(master_phil, process_includes=True)
-  if (len(args) == 0) :
-    raise Usage("""\
+  if (master_params is None) :
+    master_params = iotbx.phil.parse(master_phil, process_includes=True)
+  cmdline = cmdline_processor(
+    args=args,
+    master_phil=master_params,
+    reflection_file_def="file_name",
+    pdb_file_def="symmetry_file",
+    space_group_def="space_group",
+    unit_cell_def="unit_cell",
+    usage_string="""\
 phenix.merging_statistics [data_file] [options...]
 
 Calculate merging statistics for non-unique data, including R-merge, R-meas,
@@ -65,15 +72,7 @@ R-pim, and redundancy.  Any format supported by Phenix is allowed, including
 MTZ, unmerged Scalepack, or XDS/XSCALE (and possibly others).  Data should
 already be on a common scale, but with individual observations unmerged.
 %s
-
-Full parameters:
-%s
-""" % (citations_str, master_params.as_str(prefix="  ")))
-  cmdline = cmdline_processor(
-    args=args,
-    master_phil=master_params,
-    reflection_file_def="file_name",
-    pdb_file_def="symmetry_file")
+""" % citations_str)
   params = cmdline.work.extract()
   i_obs = iotbx.merging_statistics.select_data(
     file_name=params.file_name,
@@ -116,12 +115,12 @@ Full parameters:
     debug=params.debug,
     file_name=params.file_name,
     sigma_filtering=params.sigma_filtering,
-    estimate_cutoffs=params.estimate_cutoffs,
     log=out)
   result.show(out=out)
-  if (params.loggraph) :
+  if (getattr(params, "loggraph", False)) :
     result.show_loggraph(out=out)
-  result.show_estimated_cutoffs(out=out)
+  if (params.estimate_cutoffs) :
+    result.show_estimated_cutoffs(out=out)
   print >> out, ""
   print >> out, "References:"
   print >> out, citations_str
