@@ -18,6 +18,7 @@ from libtbx.str_utils import show_string, overwrite_at, contains_one_of
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args, slots_getstate_setstate
 import warnings
+import string
 import re
 import sys, os
 
@@ -1150,3 +1151,25 @@ class _(boost.python.injector, ext.batch):
     print >> out, "detector tilt angle:", list(self.theta())
     print >> out, "min & max values of detector coords (pixels):", \
       list(self.detlm())
+
+def cutoff_data (file_name, d_min_cut) :
+  """
+  Utility function for applying a global resolution cutoff to an MTZ file
+  without reference to the contents.  This is only used internally in cases
+  where the input MTZ has already been processed by CCTBX.
+  """
+  mtz_in = object(file_name=file_name)
+  cut_arrays = []
+  labels = ["H","K","L"]
+  for miller_array in mtz_in.as_miller_arrays() :
+    cut_arrays.append(miller_array.resolution_filter(d_min=d_min_cut))
+    labels.extend(miller_array.info().labels)
+  mtz_dataset = cut_arrays[0].as_mtz_dataset(column_root_label="A")
+  for k, other_array in enumerate(cut_arrays[1:], start=1) :
+    mtz_dataset.add_miller_array(other_array,
+      column_root_label=string.uppercase[k])
+  mtz_obj = mtz_dataset.mtz_object()
+  assert (len(list(mtz_obj.columns())) == len(labels))
+  for k, column in enumerate(mtz_obj.columns()) :
+    column.set_label(labels[k])
+  mtz_obj.write(file_name)

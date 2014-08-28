@@ -558,7 +558,23 @@ def exercise_unmerged(space_group_info):
       #miller.map_to_asu(m.space_group().type(), False, extracted_indices)
       #assert (extracted_indices == m.extract_miller_indices()).count(False) == 0
 
-
+def exercise_util () :
+  miller_set = miller.build_set(
+    crystal.symmetry(
+      unit_cell=(10,10,10,90,90,90),
+      space_group_symbol="P1"),
+    d_min=1.5,
+    anomalous_flag=True)
+  f_obs = miller_set.array(data=flex.double(miller_set.size(), 1.0),
+    sigmas=flex.double(miller_set.size(), 0.1))
+  flags = f_obs.generate_r_free_flags()
+  mtz_dataset = f_obs.as_mtz_dataset(column_root_label="F")
+  mtz_dataset.add_miller_array(flags, column_root_label="FreeR_flag")
+  mtz_dataset.mtz_object().write("tst_mtz_cutoff.mtz")
+  mtz.cutoff_data("tst_mtz_cutoff.mtz", 2.5)
+  mtz_in = mtz.object(file_name="tst_mtz_cutoff.mtz")
+  ma = mtz_in.as_miller_arrays()
+  assert approx_equal(ma[0].d_min(), 2.5)
 
 def exercise():
   if (mtz is None):
@@ -572,6 +588,7 @@ def exercise():
   exercise_miller_array_data_types()
   for anomalous_flag in [False, True]:
     exercise_hl_ab_only(anomalous_flag=anomalous_flag)
+  exercise_util()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 def run():

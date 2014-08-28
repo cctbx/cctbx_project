@@ -4,7 +4,7 @@ from __future__ import division
 import iotbx.merging_statistics
 import iotbx.phil
 from libtbx.str_utils import format_value
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import Sorry
 from libtbx import runtime_utils
 import sys
 
