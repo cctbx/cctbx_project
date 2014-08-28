@@ -25,12 +25,17 @@ class intensities_scaler(object):
 
   def calc_avg_I(self, group_no, miller_index, I, sigI, G, B,
                      p_set, rs_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams):
-
+    
+    #only apply volume correction in the last cycle of the refinement
+    flag_volume_correction = False
+    if avg_mode == 'final':
+      flag_volume_correction = True
+      
     from mod_leastsqr import calc_full_refl
     I_full = calc_full_refl(I, sin_theta_over_lambda_sq,
-                            G, B, p_set, rs_set, iparams.flag_volume_correction)
+                            G, B, p_set, rs_set, flag_volume_correction=flag_volume_correction)
     sigI_full = calc_full_refl(sigI, sin_theta_over_lambda_sq,
-                               G, B, p_set, rs_set, iparams.flag_volume_correction)
+                               G, B, p_set, rs_set, flag_volume_correction=flag_volume_correction)
 
     #filter outliers iteratively (Read, 1999)
     sigma_max = 3
@@ -61,7 +66,7 @@ class intensities_scaler(object):
       b = max_w - (m*flex.min(SE))
       SE_norm = (m*SE) + b
 
-    if avg_mode == 'weighted':
+    if avg_mode == 'weighted' or avg_mode == 'final':
       I_avg = np.sum(SE_norm * I_full)/np.sum(SE_norm)
       sigI_avg = np.sum(SE_norm * sigI_full)/np.sum(SE_norm)
     elif avg_mode== 'average':
@@ -99,7 +104,7 @@ class intensities_scaler(object):
         I_odd.append(I_even[len(I_even)-1])
         SE_norm_odd.append(SE_norm_even[len(I_even)-1])
 
-      if avg_mode == 'weighted':
+      if avg_mode == 'weighted' or avg_mode == 'final':
         I_avg_even = np.sum(SE_norm_even * I_even)/np.sum(SE_norm_even)
         I_avg_odd = np.sum(SE_norm_odd * I_odd)/np.sum(SE_norm_odd)
       elif avg_mode== 'average':
@@ -135,6 +140,7 @@ class intensities_scaler(object):
     ry_all = flex.double()
     rz_all = flex.double()
     re_all = flex.double()
+    r0_all = flex.double()
     for pres in results:
       if pres is not None:
         G_all.append(pres.G)
@@ -142,11 +148,14 @@ class intensities_scaler(object):
         ry_all.append(pres.ry)
         rz_all.append(pres.rz)
         re_all.append(pres.re)
+        r0_all.append(pres.spot_radius)
 
     pr_params_mean = flex.double([np.median(G_all), np.median(B_all),
-                                  np.median(ry_all), np.median(rz_all), np.median(re_all)])
+                                  np.median(ry_all), np.median(rz_all), 
+                                  np.median(re_all), np.median(r0_all)])
     pr_params_std = flex.double([np.std(G_all), np.std(B_all),
-                                  np.std(ry_all), np.std(rz_all), np.std(re_all)])
+                                  np.std(ry_all), np.std(rz_all), 
+                                  np.std(re_all), np.std(r0_all)])
 
     return pr_params_mean, pr_params_std
 
@@ -304,9 +313,10 @@ class intensities_scaler(object):
                                                                      np.std(R_xy_final_all))
     txt_out += ' G:                        %12.2f (%7.2f)\n'%(pr_params_mean[0], pr_params_std[0])
     txt_out += ' B:                        %12.2f (%7.2f)\n'%(pr_params_mean[1], pr_params_std[1])
-    txt_out += ' gamma_y:                  %12.5f (%7.2f)\n'%(pr_params_mean[2], pr_params_std[2])
-    txt_out += ' gamma_z:                  %12.5f (%7.2f)\n'%(pr_params_mean[3], pr_params_std[3])
-    txt_out += ' gamma_e:                  %12.5f (%7.2f)\n'%(pr_params_mean[4], pr_params_std[4])
+    txt_out += ' gamma_y:                  %12.5f (%7.5f)\n'%(pr_params_mean[2], pr_params_std[2])
+    txt_out += ' gamma_z:                  %12.5f (%7.5f)\n'%(pr_params_mean[3], pr_params_std[3])
+    txt_out += ' gamma_0:                  %12.5f (%7.5f)\n'%(pr_params_mean[5], pr_params_std[5])
+    txt_out += ' gamma_e:                  %12.5f (%7.5f)\n'%(pr_params_mean[4], pr_params_std[4])
     txt_out += ' unit cell:                %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f)\n' \
     %(uc_mean[0], uc_std[0], uc_mean[1], uc_std[1], uc_mean[2], uc_std[2])
     txt_out += '                           %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f)\n' \

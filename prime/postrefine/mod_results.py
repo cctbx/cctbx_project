@@ -22,7 +22,8 @@ class postref_results(object):
       frame_no=None,
       pickle_filename=None,
       wavelength=None,
-      crystal_orientation=None):
+      crystal_orientation=None,
+      spot_radius=None):
 
     self.observations = observations
     self.refined_params = refined_params
@@ -31,6 +32,7 @@ class postref_results(object):
     self.frame_no = frame_no
     self.pickle_filename = pickle_filename
     self.wavelength = wavelength
+    self.spot_radius = spot_radius
 
     #refined_params
     #note params = G,B,rotx,roty,ry,a,b,c,alpha,beta,gamma
