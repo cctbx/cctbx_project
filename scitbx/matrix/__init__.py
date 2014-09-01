@@ -1017,7 +1017,7 @@ class rt(object):
   will usually be a 3x3 matrix and a 1x3 matrix, internally represented by
   objects of type :py:class:`scitbx.matrix.sqr` and
   :py:class:`scitbx.matrix.col`.  Transformations may be applied to
-  :py:module:`scitbx.array_family.flex` arrays using the overloaded
+  :py:mod:`scitbx.array_family.flex` arrays using the overloaded
   multiplication operator.
 
   Examples
