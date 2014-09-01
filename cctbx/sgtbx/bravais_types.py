@@ -64,8 +64,11 @@ class bravais_lattice(object):
     return "%s%s"%(self.crystal_family_symbols[self.crystal_system],
                    self.centring_symbol)
 
-  def __eq__(self,other):
-    return str(self)==str(other)
+  def __eq__(self, other):
+    return str(self) == str(other)
+
+  def __ne__(self, other):
+    return str(self) != str(other)
 
 def tst_bravais_types(verbose):
   from cctbx import sgtbx
