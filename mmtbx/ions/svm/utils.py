@@ -10,7 +10,8 @@ except ImportError :
   np = None
 
 from libtbx import Auto
-from mmtbx.ions import server, environment
+from mmtbx.ions import server
+from mmtbx.ions import halides
 from scitbx.matrix import col
 
 def iterate_sites(pdb_hierarchy, split_sites=False, res_filter=None):
@@ -143,7 +144,7 @@ def _is_favorable_halide_environment(
     if ((distance < 3.2) and
         (min_distance_to_cation is not None and
          distance < (min_distance_to_cation + 0.2)) and
-        environment.is_negatively_charged_oxygen(atom_name, resname)):
+        halides.is_negatively_charged_oxygen(atom_name, resname)):
       return False
   return binds_amide_hydrogen or near_cation or near_lys
 
@@ -164,7 +165,7 @@ def filter_svm_outputs(chem_env, scatter_env, elements):
   list of str
   """
   bvs_ratio = 0.5
-  vecsum_cutoff = 1.0
+  vecsum_cutoff = 0.6
   ok_elements = []
   for element in elements:
     if element != "HOH":

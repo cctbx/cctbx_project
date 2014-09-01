@@ -367,8 +367,11 @@ class ChemicalEnvironment (slots_getstate_setstate):
       charge = ions.server.get_charge(element)
     ion_params = ions.metal_parameters(element=element, charge=charge)
     vectors = ions.server.calculate_valences(ion_params, self.contacts)
-    bvs = sum([abs(i) for i in vectors])
-    vecsum = abs(sum(vectors, col((0, 0, 0))))
+    bvs = sum(abs(i) for i in vectors)
+    if bvs > 0:
+      vecsum = abs(sum(vectors, col((0, 0, 0)))) / bvs
+    else:
+      vecsum = 0
     return bvs, vecsum
 
   def _get_chemical_environment(self, contacts, manager):

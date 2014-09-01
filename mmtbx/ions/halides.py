@@ -37,7 +37,7 @@ max_deviation_from_plane = 0.8
   .type = float
 """
 
-def _is_negatively_charged_oxygen (atom_name, resname) :
+def is_negatively_charged_oxygen (atom_name, resname) :
   """
   Determine whether the oxygen atom of interest is either negatively charged
   (usually a carboxyl group or sulfate/phosphate), or has a lone pair (and
