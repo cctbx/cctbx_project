@@ -214,7 +214,7 @@ def func(params, *args):
     error = delta_xy_flex
   else:
     error = ((I_r - I_o_full)/sigI_o)
-  #print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g rz=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g f=%.4g'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, rz, re, a, b, c, alpha, beta, gamma, np.sum(error**2))
+  #print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g rz=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g f=%.4g'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, rz, re, a, b, c, alpha, beta, gamma, np.sum(error**2)), len(I_o_full)
   return error
 
 
@@ -276,6 +276,12 @@ class leastsqr_handler(object):
     refine_mode = 'scale_factor'
     xinp = np.array([G,B])
 
+    #scale the intensity
+    I_r_true = I_r_true/np.std(I_r_true)
+    observations_original_sel = observations_original_sel.customized_copy(
+      data=observations_original_sel.data()/np.std(observations_original.data()),
+      sigmas=observations_original_sel.sigmas()/np.std(observations_original.sigmas()))
+
     const_params = (rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma)
     xopt, cov_x, infodict, mesg, ier = optimize.leastsq(func, xinp,
                                                           args=(I_r_true, observations_original_sel,
@@ -289,7 +295,6 @@ class leastsqr_handler(object):
                                                                 spot_radius),
                                                           full_output=True, maxfev=100)
     G_fin, B_fin = xopt
-
 
     two_theta = observations_original.two_theta(wavelength=wavelength)
     sin_theta_over_lambda_sq = two_theta.sin_theta_over_lambda_sq().data()
@@ -317,8 +322,12 @@ class leastsqr_handler(object):
 
     CC_init = np.corrcoef(I_r_flex, I_o_init)[0,1]
     CC_final = np.corrcoef(I_r_flex, I_o_fin)[0,1]
-    R_init = np.sum(((I_r_flex - I_o_init))**2)/np.sum(I_o_init**2)
-    R_final = np.sum(((I_r_flex - I_o_fin))**2)/np.sum(I_o_fin**2)
+    err_init = ((I_r_flex/np.std(I_r_flex))-(I_o_init/np.std(observations_original.data()))) / \
+          (observations_original.sigmas()/np.std(observations_original.sigmas()))
+    R_init = np.sum(err_init**2)
+    err_final = ((I_r_flex/np.std(I_r_flex))-(I_o_fin/np.std(observations_original.data()))) / \
+          (observations_original.sigmas()/np.std(observations_original.sigmas()))
+    R_final = np.sum(err_final**2)
     R_xy_init = 0
     R_xy_final = 0
     CC_iso_init = 0
@@ -447,9 +456,13 @@ class leastsqr_handler(object):
 
         I_r_true = I_ref_sel.as_numpy_array()
         I_o_true = observations_original_sel.data().as_numpy_array()
-        sigI_o_true = observations_original_sel.sigmas().as_numpy_array()
         cs = observations_original_sel.crystal_symmetry().space_group().crystal_system()
 
+        #scale the intensity
+        I_r_true = I_r_true/np.std(I_r_flex)
+        observations_original_sel = observations_original_sel.customized_copy(
+              data=observations_original_sel.data()/np.std(observations_original.data()),
+              sigmas=observations_original_sel.sigmas()/np.std(observations_original.sigmas()))
 
         if refine_mode == 'scale_factor':
           xinp = np.array([G,B])
@@ -528,7 +541,7 @@ class leastsqr_handler(object):
       partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(),
                                                                       0.0, 0.0,
                                                                       observations_original.indices(),
-                                                                      spot_radius, spot_radius,
+                                                                      0, 0,
                                                                       spot_radius, self.gamma_e,
                                                                       two_theta, alpha_angle, wavelength,
                                                                       crystal_init_orientation,
@@ -543,7 +556,7 @@ class leastsqr_handler(object):
                                                                       0.0, 0.0,
                                                                       observations_original.indices(),
                                                                       pres_in.ry, pres_in.rz,
-                                                                      spot_radius, pres_in.re,
+                                                                      pres_in.spot_radius, pres_in.re,
                                                                       two_theta, alpha_angle, wavelength,
                                                                       crystal_init_orientation,
                                                                       spot_pred_x_mm, spot_pred_y_mm,
@@ -572,8 +585,12 @@ class leastsqr_handler(object):
 
     CC_init = np.corrcoef(I_r_flex, I_o_init)[0,1]
     CC_final = np.corrcoef(I_r_flex, I_o_fin)[0,1]
-    R_init = np.sum(((I_r_flex - I_o_init))**2)/np.sum(I_o_init**2)
-    R_final = np.sum(((I_r_flex - I_o_fin))**2)/np.sum(I_o_fin**2)
+    err_init = ((I_r_flex/np.std(I_r_flex))-(I_o_init/np.std(observations_original.data()))) / \
+      (observations_original.sigmas()/np.std(observations_original.sigmas()))
+    R_init = np.sum(err_init**2)
+    err_final = ((I_r_flex/np.std(I_r_flex))-(I_o_fin/np.std(observations_original.data()))) / \
+          (observations_original.sigmas()/np.std(observations_original.sigmas()))
+    R_final = np.sum(err_final**2)
     R_xy_init = np.sum(delta_xy_init**2)
     R_xy_final = np.sum(delta_xy_fin**2)
 

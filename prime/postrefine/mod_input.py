@@ -250,7 +250,7 @@ def process_input(argv=None):
   with Capturing() as output:
     working_phil.show()
 
-  txt_out = 'prime.postrefine (140818a) input:\n'
+  txt_out = 'prime.postrefine input:\n'
   for one_output in output:
     txt_out += one_output + '\n'
 
