@@ -101,13 +101,24 @@ class mod_average(average_tbx.average_mixin):
       return
     self.logger.info("Shot number %i"  % self._nmemb)
 
+  #signature for pyana:
+  #def endjob(self, env):
 
-  def endjob(self, env):
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
     """The endjob() function writes the mean and standard deviation images
     to disk.
 
+    @param evt Event object (psana only)
     @param env Environment object
     """
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
 
     stats = super(mod_average, self).endjob(env)
     if stats is None:
