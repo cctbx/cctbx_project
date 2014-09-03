@@ -38,6 +38,9 @@ def exercise():
     assert approx_equal(
       get_array_by_label(miller_arrays, '_refln.F_meas_au').sigmas(),
       get_array_by_label(mtz_arrays, 'FOBS').sigmas())
+    flags1 = get_array_by_label(miller_arrays,'_refln.pdbx_r_free_flag').data()
+    flags2 = get_array_by_label(mtz_arrays, 'R-free-flags').data()
+    assert flags1.all_eq(flags2)
 
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/1zff.mtz",
@@ -84,7 +87,7 @@ def exercise():
     f_anom_mtz = get_array_by_label(mtz_arrays, 'F-obs(+)')
     f_anom_cif, f_anom_mtz = f_anom_cif.common_sets(
       f_anom_mtz, assert_no_singles=True)
-    rfree_cif = get_array_by_label(miller_arrays, '_refln.phenix_R_free_flags')
+    rfree_cif = get_array_by_label(miller_arrays, '_refln.pdbx_r_free_flag')
     rfree_mtz = get_array_by_label(mtz_arrays, 'R-free-flags(+)')
     assert f_anom_cif.anomalous_flag()
     assert f_anom_mtz.anomalous_flag()
@@ -92,9 +95,8 @@ def exercise():
     assert rfree_mtz.anomalous_flag()
     assert approx_equal(f_anom_cif.data(), f_anom_mtz.data(), 1e-2)
     assert approx_equal(f_anom_cif.sigmas(), f_anom_mtz.sigmas(), 1e-2)
-    assert approx_equal(
-      rfree_cif.generate_bijvoet_mates().common_set(rfree_mtz).data(),
-      rfree_mtz.data())
+    assert rfree_mtz.data().all_eq(
+      rfree_cif.generate_bijvoet_mates().common_set(rfree_mtz).data())
 
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/outside_4_exptl_fobs_phases_freeR_flags.mtz",
@@ -133,9 +135,9 @@ def exercise():
     fobs_mtz = get_array_by_label(mtz_arrays, 'FOBS_N')
     assert approx_equal(fobs_cif.data(), fobs_mtz.data())
     assert approx_equal(fobs_cif.sigmas(), fobs_mtz.sigmas())
-    rfree_cif = get_array_by_label(miller_arrays, '_refln.phenix_R_free_flags')
+    rfree_cif = get_array_by_label(miller_arrays, '_refln.pdbx_r_free_flag')
     rfree_mtz = get_array_by_label(mtz_arrays, 'R-free-flags')
-    assert approx_equal(rfree_cif.data(), rfree_mtz.data())
+    assert rfree_cif.data().all_eq(rfree_mtz.data())
 
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/ur0013.sf.mtz",

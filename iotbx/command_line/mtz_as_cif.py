@@ -35,7 +35,7 @@ phenix_to_cif_labels_dict = {
   'SIGI-obs(+)': '_refln.pdbx_I_plus_sigma',
   'I-obs(-)': '_refln.pdbx_I_minus',
   'SIGI-obs(-)': '_refln.pdbx_I_minus_sigma',
-  'R-free-flags': '_refln.phenix_R_free_flags',
+  'R-free-flags': '_refln.pdbx_r_free_flag',
   'HLA': '_refln.pdbx_HL_A_iso',
   'HLB': '_refln.pdbx_HL_B_iso',
   'HLC': '_refln.pdbx_HL_C_iso',
@@ -52,7 +52,7 @@ ccp4_to_cif_labels_dict = {
   'PHWT': '_refln.pdbx_PHWT',
   'DELFWT': '_refln.pdbx_DELFWT',
   'DELPHWT': '_refln.pdbx_DELPHWT',
-  'FREE': '_refln.status',
+  'FREE': '_refln.pdbx_r_free_flag',
   'F': '_refln.F_meas_au',
   'SIGF': '_refln.F_meas_sigma_au',
   'FP': '_refln.F_meas_au',
@@ -292,7 +292,7 @@ class mtz_as_cif_blocks(object):
         f_obs_filtered = f_obs_filtered_neutron
       if self.cif_blocks[data_type] is not None and r_free is not None:
         self.cif_blocks[data_type].add_miller_array(
-          array=r_free, column_name='_refln.phenix_R_free_flags')
+          array=r_free, column_name='_refln.pdbx_r_free_flag')
 
       if input_obs is None or r_free is None: continue
       if (test_flag_value is None) :
