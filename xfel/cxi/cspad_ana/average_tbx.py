@@ -290,19 +290,31 @@ class average_mixin(common_mode.common_mode_correction):
     self._nmemb += 1
 
 
-  def endjob(self, env):
+  #signature for pyana:
+  #def endjob(self, env):
+
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
     """The endjob() function finalises the mean and standard deviation
     images.  The distance and wavelength in all images is actually the
     mean distance and wavelength, since standard deviations or maximum
     values of those quantities do not make much sense in
     visualisation.
 
+    @param evt Event object (psana only)
     @param env Environment object
     @return    A dictionary object with accumulated statistics or @c
                none if the contribution from the worker process is
                accounted for elsewhere
     """
 
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
     from Queue import Empty
 
     super(average_mixin, self).endjob(env)

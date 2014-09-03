@@ -251,6 +251,17 @@ def CsPad2x2Image(data, config, sections):
     rplace(det, s_data, angle, center)
   return (det)
 
+def evt_get_quads(address, evt, env):
+  try:
+    # pyana
+    quads = evt.getCsPadQuads(address, env)
+  except AttributeError:
+    # psana
+    from psana import Source, CsPad
+    src = Source(address)
+    cspad = evt.get(CsPad.DataV2, src)
+    quads = [cspad.quads(i) for i in xrange(cspad.quads_shape()[0])]
+  return quads
 
 def CsPadDetector(address, evt, env, sections, right=True):
   """The CsPadDetector() function assembles a two-dimensional image
@@ -280,7 +291,8 @@ def CsPadDetector(address, evt, env, sections, right=True):
 
   # For consistency, one could/should verify that len(quads) is equal
   # to len(sections).
-  quads = evt.getCsPadQuads(address, env)
+  quads = evt_get_quads(address, evt, env)
+
   if quads is None or len(quads) != len(sections):
     return None
 
@@ -306,7 +318,15 @@ def CsPadDetector(address, evt, env, sections, right=True):
     q_idx = quad.quad()
     if swap:
       q_idx = [0,1,3,2][q_idx]
-    q_mask = config.sections(q_idx)
+    try:
+      # pyana
+      # example: if the third sensor (2x1) is disabled, q_mask = [0,1,3,4,5,6,7]
+      q_mask = config.sections(q_idx)
+    except AttributeError:
+      # psana
+      # as above, using config.roiMask, a bitstring where the ith bit is true if the ith sensor is active. x << y means bitwise shift
+      # x, y times, and & is the bitwise AND operator
+      q_mask = [i for i in xrange(len(sections[q_idx])) if 1 << i & config.roiMask(q_idx)]
 
     # For consistency, assert that there is data for each unmasked
     # section.
@@ -685,21 +705,42 @@ def pathsubst(format_string, evt, env, **kwargs):
     epoch = None
   fmt = CaseFormatter()
 
+  try:
+    # psana
+    expNum = env.expNum()
+  except AttributeError:
+    # pyana
+    expNum = evt.expNum()
+
+  try:
+    # pyana
+    chunk = evt.chunk()
+  except AttributeError:
+    # not supported in psana
+    chunk = None
+
+  try:
+    # pyana
+    stream = evt.stream()
+  except AttributeError:
+    # not supported in psana
+    stream = None
+
   # If chunk or stream numbers cannot be determined, which may happen
   # if the XTC file has a non-standard name, evt.chunk() and
   # evt.stream() will return None.
   return fmt.format(format_string,
-                    chunk=evt.chunk(),
+                    chunk=chunk,
                     epoch=epoch,
                     experiment=env.experiment(),
-                    expNum=evt.expNum(),
+                    expNum=expNum,
                     instrument=env.instrument(),
                     iso8601=evt_timestamp(t),
                     jobName=env.jobName(),
                     jobNameSub=env.jobNameSub(),
                     run=evt.run(),
                     seqno=int(evt_seqno(evt)),
-                    stream=evt.stream(),
+                    stream=stream,
                     subprocess=env.subprocess(),
                     user=getuser())
 
@@ -1143,8 +1184,10 @@ def evt_wavelength(evt, delta_k=0):
     ebeam = get_ebeam(evt)
 
     if hasattr(ebeam, 'fEbeamPhotonEnergy') and ebeam.fEbeamPhotonEnergy > 0:
+      # pyana
       return 12398.4187 / ebeam.fEbeamPhotonEnergy
     if hasattr(ebeam, 'ebeamPhotonEnergy') and ebeam.ebeamPhotonEnergy() > 0:
+      # psana
       return 12398.4187 / ebeam.ebeamPhotonEnergy()
 
     if hasattr(ebeam, 'fEbeamL3Energy') and ebeam.fEbeamL3Energy > 0:
@@ -1310,19 +1353,19 @@ def image(address, config, evt, env, sections=None):
       return img
 
   elif device == 'Cspad':
-    quads = evt.getCsPadQuads(address, env)
-    if quads is not None:
-      if sections is not None:
-        return CsPadDetector(address, evt, env, sections)
-      else:
-        # XXX This is obsolete code, provided for backwards
-        # compatibility with the days before detector metrology was
-        # used.
-        qimages = numpy.empty((4, npix_quad, npix_quad), dtype='uint16')
-        for q in quads:
-          qimages[q.quad()] = CsPadElement(q.data(), q.quad(), config)
-        return numpy.vstack((numpy.hstack((qimages[0], qimages[1])),
-                             numpy.hstack((qimages[3], qimages[2]))))
+    if sections is not None:
+      return CsPadDetector(address, evt, env, sections)
+    else:
+      # XXX This is obsolete code, provided for backwards
+      # compatibility with the days before detector metrology was
+      # used.
+      assert False # sections always required now as of Sep 1 2014
+      quads = evt.getCsPadQuads(address, env)
+      qimages = numpy.empty((4, npix_quad, npix_quad), dtype='uint16')
+      for q in quads:
+        qimages[q.quad()] = CsPadElement(q.data(), q.quad(), config)
+      return numpy.vstack((numpy.hstack((qimages[0], qimages[1])),
+                           numpy.hstack((qimages[3], qimages[2]))))
 
   elif device == 'Cspad2x2':
     quads = evt.get(TypeId.Type.Id_Cspad2x2Element, address)
@@ -1344,57 +1387,6 @@ def image(address, config, evt, env, sections=None):
       img[img > 2**14 - 1] = 2**14 - 1
       return img
   return None
-
-
-def image_central(address, config, evt, env):
-  """The image_central() function returns a list of the raw data
-  arrays from the sections closest to the detector centre for each
-  quadrant.
-
-  @param address Full data source address of the DAQ device
-  @param config  XXX
-  @param evt     Event data object, a configure object
-  @param env     Environment object
-  @return        List of numpy arrays of the central sections
-  """
-  if (address != "CxiDs1-0|Cspad-0"):
-    return (None)
-
-  quads = evt.getCsPadQuads(address, env)
-  if (quads is None):
-    return (None)
-  mask = map(config.sections, xrange(4))
-
-  # The section closest to the detector centre has index 1.
-  l = []
-  s = 1
-  for q in quads:
-    if (s not in mask[q.quad()]):
-      continue
-    l.append(q.data()[s])
-  return (l)
-
-
-def image_central2(address, config, evt, env):
-  """Low-levelish implementation of image_central().
-  """
-
-  from pypdsdata.xtc import TypeId
-
-  # Get the first XTC object matching the address and the type.
-  xtcObj = evt.findFirstXtc(
-    address=address, typeId=TypeId.Type.Id_CspadElement)
-  if not xtcObj:
-    return None
-
-  l = []
-  p = xtcObj.payload()
-  s = 1
-  for i in xrange(config.numQuads()):
-    l.append(p.data(config)[s])
-    p = p.next(config)
-  return l
-
 
 def image_xpp(address, evt, env, aa):
   """Assemble the uint16 detector image, see also
@@ -1421,7 +1413,7 @@ def image_xpp(address, evt, env, aa):
 
   # For consistency, one could/should verify that len(quads) is equal
   # to len(sections).
-  quads = evt.getCsPadQuads(address, env)
+  quads = evt_get_quads(address, evt, env)
   if quads is None or len(quads) != len(aa) // (8 * 2 * 4):
     return None
 
