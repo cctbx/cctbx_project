@@ -95,6 +95,8 @@ def run (args) :
     output_junit_xml=params.output_junit_xml)
   log.close()
   print """
+See run_tests_parallel_zlog for full output.
+
 ============================================================================
 Reminder: Please do not forget: libtbx.find_clutter
           See also: cctbx_project/libtbx/development/dev_guidelines.txt
