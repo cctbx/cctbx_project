@@ -256,7 +256,7 @@ def is_favorable_halide_environment (
     distance = abs(contact)
     if ((distance < 3.2) and
         (distance < (min_distance_to_cation + 0.2)) and
-        _is_negatively_charged_oxygen(atom_name, resname)) :
+        is_negatively_charged_oxygen(atom_name, resname)) :
       #print contact.id_str(), distance
       return False
   return (binds_amide_hydrogen or near_cation or near_lys)
