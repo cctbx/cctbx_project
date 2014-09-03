@@ -37,8 +37,10 @@ class model_handler (iotbx.gui_tools.manager) :
     self._viewable_file_params = []
 
   def get_file_type_label (self, file_name=None, input_file=None) :
+    if (file_name is not None) and (input_file is None) :
+      input_file = self._cached_input_files.get(file_name, None)
     if (input_file is not None) :
-      file_type = input_file.file_object.file_type()
+      file_type = input_file.file_object.input.file_type()
       return model_file_types[file_type]
 
   def clear_format_specific_cache (self) :
