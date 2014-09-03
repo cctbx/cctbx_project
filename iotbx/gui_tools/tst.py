@@ -313,6 +313,7 @@ def exercise_model () :
   model_handler.set_param_file(
     file_name=pdb_file,
     file_param_name="refinement.input.pdb.file_name")
+  assert (model_handler.get_file_type_label(file_name=pdb_file) == "PDB")
   model_handler.set_param_cif_file(
     file_name=cif_file,
     file_param_name="refinement.input.monomers.file_name")
