@@ -25,12 +25,12 @@ class intensities_scaler(object):
 
   def calc_avg_I(self, group_no, miller_index, I, sigI, G, B,
                      p_set, rs_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams):
-    
+
     #only apply volume correction in the last cycle of the refinement
     flag_volume_correction = False
     if avg_mode == 'final':
       flag_volume_correction = True
-      
+
     from mod_leastsqr import calc_full_refl
     I_full = calc_full_refl(I, sin_theta_over_lambda_sq,
                             G, B, p_set, rs_set, flag_volume_correction=flag_volume_correction)
@@ -151,10 +151,10 @@ class intensities_scaler(object):
         r0_all.append(pres.spot_radius)
 
     pr_params_mean = flex.double([np.median(G_all), np.median(B_all),
-                                  np.median(ry_all), np.median(rz_all), 
+                                  np.median(ry_all), np.median(rz_all),
                                   np.median(re_all), np.median(r0_all)])
     pr_params_std = flex.double([np.std(G_all), np.std(B_all),
-                                  np.std(ry_all), np.std(rz_all), 
+                                  np.std(ry_all), np.std(rz_all),
                                   np.std(re_all), np.std(r0_all)])
 
     return pr_params_mean, pr_params_std
@@ -315,7 +315,6 @@ class intensities_scaler(object):
     txt_out += ' B:                        %12.2f (%7.2f)\n'%(pr_params_mean[1], pr_params_std[1])
     txt_out += ' gamma_y:                  %12.5f (%7.5f)\n'%(pr_params_mean[2], pr_params_std[2])
     txt_out += ' gamma_z:                  %12.5f (%7.5f)\n'%(pr_params_mean[3], pr_params_std[3])
-    txt_out += ' gamma_0:                  %12.5f (%7.5f)\n'%(pr_params_mean[5], pr_params_std[5])
     txt_out += ' gamma_e:                  %12.5f (%7.5f)\n'%(pr_params_mean[4], pr_params_std[4])
     txt_out += ' unit cell:                %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f)\n' \
     %(uc_mean[0], uc_std[0], uc_mean[1], uc_std[1], uc_mean[2], uc_std[2])
