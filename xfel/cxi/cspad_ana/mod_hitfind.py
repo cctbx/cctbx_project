@@ -371,12 +371,24 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       self.logger.info("Accepted #%05d @ %s" %
                        (self.nshots, self.timestamp))
 
+  #signature for pyana:
+  #def endjob(self, env):
 
-  def endjob(self, env):
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
     """The endjob() function logs the number of processed shots.
 
+    @param evt Event object (psana only)
     @param env Environment object
     """
+
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
 
     super(mod_hitfind, self).endjob(env)
     if (env.subprocess() >= 0):
