@@ -583,6 +583,8 @@ class HKLViewFrame (wx.Frame) :
       self.view_2d = HKLViewFrame2D(self, -1, "2D data viewer")
       self.view_2d.set_miller_array(self.viewer.miller_array)
       self.view_2d.Show()
+      if (wxtbx.MAC_OS_X_MAVERICKS) :
+        wx.GetApp().SafeYield(self.view_2d, True)
     self.view_2d.Raise()
 
   def OnDeleteReflection (self, event) :
