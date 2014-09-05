@@ -208,10 +208,10 @@ fi
 
 # Determine if pyana or psana will be used by examining the config
 # file for either the [pyana] or [psana] section.
-if test `grep '\[pyana\]' ${cfg} | wc -l` -gt 0; then
+if grep -q '^\[pyana\]' "${cfg}"; then
   ana_mod=pyana
 else
-  if test `grep '\[psana\]' ${cfg} | wc -l` -gt 0; then
+  if grep -q '^\[psana\]' "${cfg}"; then
     ana_mod=psana
   else
     echo "No pyana or psana section found in config file"
