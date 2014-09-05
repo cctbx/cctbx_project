@@ -1,12 +1,17 @@
 from __future__ import division
 import wx
+import os
 
 global default_font_size
 
+MAC_OS_X_MAVERICKS = False
 if (wx.Platform == '__WXMSW__') :
   default_font_size = 9
 elif (wx.Platform == '__WXMAC__') :
   default_font_size = 12
+  os_version = os.uname()[2].split(".")
+  if (int(os_version[0]) >= 13) :
+    MAC_OS_X_MAVERICKS = True
 else :
   default_font_size = 11
 
