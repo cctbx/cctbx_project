@@ -186,6 +186,7 @@ class ncs_group_object(object):
         self.build_ncs_obj_from_pdb_asu(
             pdb_hierarchy_inp=pdb_hierarchy_inp,
             use_cctbx_find_ncs_tools=True,
+            # fixme: change to allow simple_ncs_from_pdb
             use_simple_ncs_from_pdb=False,
             # use_simple_ncs_from_pdb=True,
             use_minimal_master_ncs=True,
@@ -910,20 +911,22 @@ class ncs_group_object(object):
         copy_selection_indices = sc.selection(master_sel_str).iselection()
         rmsd = 0
       else:
-        s = 'and ((not resname hoh) and altloc " ")'
+        s = ' and ((not resname hoh) and altloc " ")'
         chain_residues_list = chains_dict[ncs_chain_name]
         s_copy = ncs_selection_str + s
         s_master = master_sel_str + s
         copy_selection_indices = sc.selection(s_copy)
         master_selection_indices = sc.selection(s_master)
-        # Fixme: use only the common atoms
         xyz_copy = self.hierarchy.atoms().select(copy_selection_indices)
         xyz_master = self.hierarchy.atoms().select(master_selection_indices)
         xyz_copy = xyz_copy.extract_xyz()
         xyz_master = xyz_master.extract_xyz()
         tr = self.ncs_transform[key.split('_')[1]]
         xyz_master = tr.r.elems * xyz_master + tr.t
-        rmsd = round(xyz_master.rms_difference(xyz_copy),4)
+        # Fixme: use only the common atoms (when using spec - we have only res)
+        if xyz_master.sise() == xyz_copy.size():
+          rmsd = round(xyz_master.rms_difference(xyz_copy),4)
+
 
       # get continuous res ids
       range_list = []
