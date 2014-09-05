@@ -849,7 +849,7 @@ class ncs_group_object(object):
       chr_list = chr_list[:chr_number]
       extra_names = set([ x+y for x in chr_list for y in chr_list])
       # make sure not using existing names
-      extra_names = list(extra_names - unique_chain_names)
+      extra_names = list(extra_names - set(unique_chain_names))
       extra_names.sort()
       new_names_list.extend(extra_names)
     assert len(new_names_list) >= total_chains_number
