@@ -87,6 +87,7 @@ cctbx/boost_python/french_wilson_ext.cpp -text
 cctbx/boost_python/orientation_ext.cpp -text
 cctbx/command_line/brehm_diederichs.py -text
 cctbx/command_line/cod_select_and_pickle.py svneol=native#text/x-python
+cctbx/command_line/diffuse.py -text
 cctbx/command_line/find_reticular_twin_laws.py -text
 cctbx/command_line/precession_view.py -text
 cctbx/command_line/space_group_info.py svneol=native#text/x-python
@@ -214,6 +215,7 @@ cctbx/regression/structure_ideal.pickle -text
 cctbx/regression/structure_start.pickle -text
 cctbx/regression/tst_adp_constraints_cartesian.py -text
 cctbx/regression/tst_connectivity.py -text
+cctbx/regression/tst_diffuse.py -text
 cctbx/regression/tst_direct_scaling.py -text
 cctbx/regression/tst_fourier_transform_real_part_at_x.py -text
 cctbx/regression/tst_french_wilson.py -text
