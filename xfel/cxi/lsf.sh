@@ -13,18 +13,6 @@
 #
 # $Id$
 
-# Path to the chosen pyana script.  This should not need to be
-# changed.  According to Marc Messerschmidt following ana-current
-# should always be fine, unless one really wants to make sure
-# everything is kept at the point where one started developing.  Do
-# not use the shell's built-in which(1), which may give a relative
-# path.
-PYANA=`/usr/bin/which cxi.pyana 2> /dev/null`
-if ! test -x "${PYANA}"; then
-    echo "Cannot execute cxi.pyana" > /dev/stderr
-    exit 1
-fi
-
 # IP-address of a random host that mounts all needed file systems.
 NODE="psana.slac.stanford.edu"
 NODE=`host "${NODE}" | grep "has address" | head -n 1 | cut -d ' ' -f 1`
@@ -218,6 +206,33 @@ if test "${#}" -gt 0; then
     cleanup_and_exit 1
 fi
 
+# Determine if pyana or psana will be used by examining the config
+# file for either the [pyana] or [psana] section.
+if test `grep '\[pyana\]' ${cfg} | wc -l` -gt 0; then
+  ana_mod=pyana
+else
+  if test `grep '\[psana\]' ${cfg} | wc -l` -gt 0; then
+    ana_mod=psana
+  else
+    echo "No pyana or psana section found in config file"
+    cleanup_and_exit 1
+  fi
+fi
+
+# Path to the chosen analysis script.  This should not need to be
+# changed.  According to Marc Messerschmidt following ana-current
+# should always be fine, unless one really wants to make sure
+# everything is kept at the point where one started developing.  Do
+# not use the shell's built-in which(1), which may give a relative
+# path.
+ANA_MOD_PATH=`/usr/bin/which cxi.${ana_mod} 2> /dev/null`
+if ! test -x "${ANA_MOD_PATH}"; then
+    echo "Cannot execute cxi.${ana_mod}" > /dev/stderr
+    exit 1
+fi
+
+
+
 # Take ${exp} from the environment unless overridden on the command
 # line, and find its absolute path.  Set up the directory with the XTC
 # files (i.e. the input directory) as a absolute path to a
@@ -309,7 +324,7 @@ if test -z "${out}"; then
     cleanup_and_exit 1
 fi
 
-# Copy the pyana configuration file, while substituting paths to any
+# Copy the configuration file, while substituting paths to any
 # phil files, and recursively copying them, too.  Once paths have been
 # subjected to substitution, keep track of what output directories
 # need to be created.  Then write a configuration file for the
@@ -334,10 +349,10 @@ while read -r line; do
         echo "${line}"                      \
             | awk -F= -vdst="${out}/${dst}" \
                 '{ printf("%s= %s.phil\n", $1, dst); }' \
-            >> "${tmpdir}/pyana.cfg"
+            >> "${tmpdir}/${ana_mod}.cfg"
         copy_phil "${src}" "${tmpdir}/${dst}"
     else
-        echo "${line}" >> "${tmpdir}/pyana.cfg"
+        echo "${line}" >> "${tmpdir}/${ana_mod}.cfg"
     fi
 done < "${cfg}"
 cd "${opwd}"
@@ -356,7 +371,7 @@ for s in ${streams}; do
     # they're all identical!
     oifs=${IFS}
     IFS=""
-    rm -f "${tmpdir}/pyana_s${s}.cfg"
+    rm -f "${tmpdir}/${ana_mod}_s${s}.cfg"
     while read -r line; do
         # XXX Legacy substitution for backwards compatibility.  Should
         # not be necessary with interpolation.
@@ -406,8 +421,8 @@ for s in ${streams}; do
             directories="${directories}${out}/${d}\n"
 
         fi
-        echo "${line}" >> "${tmpdir}/pyana_s${s}.cfg"
-    done < "${tmpdir}/pyana.cfg"
+        echo "${line}" >> "${tmpdir}/${ana_mod}_s${s}.cfg"
+    done < "${tmpdir}/${ana_mod}.cfg"
     IFS=${oifs}
 
     # Process each stream on a single host as a base-1 indexed job,
@@ -424,13 +439,13 @@ for s in ${streams}; do
     fi
     cat >> "${tmpdir}/submit.sh" << EOF
 bsub -J "${job_name}" -n "${nproc}" -o "\${OUT}/stdout/s${s}.out" \\
-    -q "${queue}" -R "span[hosts=1]" "\${OUT}/pyana_s${s}.sh"
+    -q "${queue}" -R "span[hosts=1]" "\${OUT}/${ana_mod}_s${s}.sh"
 EOF
     # limited cores/user:  psfehq.  unlimited: psfehmpiq
     # Create the run-script for stream ${s}.  Fall back on using a
     # single processor if the number of available processors cannot be
     # obtained from the environment or is less than or equal to two.
-    cat > "${tmpdir}/pyana_s${s}.sh" << EOF
+    cat > "${tmpdir}/${ana_mod}_s${s}.sh" << EOF
 #! /bin/sh
 
 NPROC=\`printenv LSB_MCPU_HOSTS \
@@ -438,31 +453,31 @@ NPROC=\`printenv LSB_MCPU_HOSTS \
 EOF
 
     if test "X${single_host}" = "Xyes"; then
-        cat >> "${tmpdir}/pyana_s${s}.sh" << EOF
+        cat >> "${tmpdir}/${ana_mod}_s${s}.sh" << EOF
 STREAMS=\`ls "${xtc}"/e*-r${run}-s*.xtc                         \
              "${xtc}"/e*-r${run}-s*.xtc.inprogress 2> /dev/null \
     | tr -s '[:space:]' ' '\`
 EOF
     else
-        cat >> "${tmpdir}/pyana_s${s}.sh" << EOF
+        cat >> "${tmpdir}/${ana_mod}_s${s}.sh" << EOF
 STREAMS=\`ls "${xtc}"/e*-r${run}-s${s}-c*.xtc                         \
              "${xtc}"/e*-r${run}-s${s}-c*.xtc.inprogress 2> /dev/null \
     | tr -s '[:space:]' ' '\`
 EOF
     fi
 
-    cat >> "${tmpdir}/pyana_s${s}.sh" << EOF
+    cat >> "${tmpdir}/${ana_mod}_s${s}.sh" << EOF
 test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
-"${PYANA}" \\
-    -c "${out}/pyana_s${s}.cfg" \\
+"${ANA_MOD_PATH}" \\
+    -c "${out}/${ana_mod}_s${s}.cfg" \\
     -p "\${NPROC}" \\
     "\${STREAMS}"
 EOF
-    chmod 755 "${tmpdir}/pyana_s${s}.sh"
+    chmod 755 "${tmpdir}/${ana_mod}_s${s}.sh"
     test "X${single_host}" = "Xyes" && break
 done
 
-cp --preserve=timestamps "${cfg}" "${tmpdir}/pyana.cfg"
+cp --preserve=timestamps "${cfg}" "${tmpdir}/${ana_mod}.cfg"
 chmod 755 "${tmpdir}/submit.sh"
 
 # Create all directories for the output from the analysis.  This
@@ -476,9 +491,9 @@ echo -e "${directories}" | grep -v "^$" | sort -u \
 # bash(1)'s nullglob option.
 scp -o "ControlPath ${tmpdir}/control.socket" -pq `ls \
     "${tmpdir}"/params_*.phil                         \
-    "${tmpdir}"/pyana.cfg                             \
-    "${tmpdir}"/pyana_s[0-9N][0-9N].cfg               \
-    "${tmpdir}"/pyana_s[0-9N][0-9N].sh                \
+    "${tmpdir}"/${ana_mod}.cfg                             \
+    "${tmpdir}"/${ana_mod}_s[0-9N][0-9N].cfg               \
+    "${tmpdir}"/${ana_mod}_s[0-9N][0-9N].sh                \
     "${tmpdir}/submit.sh" 2> /dev/null` "${NODE}:${out}"
 if test "${?}" -ne "0"; then
     echo "Failed to copy configuration files" > /dev/stderr
