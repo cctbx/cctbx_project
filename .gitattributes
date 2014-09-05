@@ -1868,6 +1868,7 @@ mmtbx/monomer_library/tst_rna_sugar_pucker_analysis.py svneol=native#text/x-pyth
 mmtbx/monomer_library/tst_rotamer_utils.py svneol=native#text/x-python
 mmtbx/msa.py -text
 mmtbx/ncs/ligands.py -text
+mmtbx/ncs/ncs_from_pdb.py -text
 mmtbx/ncs/tst_asu_as_one_ncs_copy.py -text
 mmtbx/pdb_distances.py -text
 mmtbx/pdb_symmetry.py -text
