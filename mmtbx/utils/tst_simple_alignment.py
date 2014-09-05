@@ -4,7 +4,7 @@ import time
 import sys
 
 from iotbx.ncs.ncs_preprocess import align_residues
-from NCS.junk.simple_alignment_tmp import simple_alignment
+from mmtbx.utils.simple_alignment import simple_alignment
 from iotbx import pdb
 
 
