@@ -1,9 +1,9 @@
 from __future__ import division
+from mmtbx.ncs.ncs_from_pdb import get_ncs_object_from_pdb
 from mmtbx.utils.simple_alignment import align_residues
 from mmtbx.utils.ncs_utils import apply_transforms
 from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
-from libtbx.utils import null_out
 from scitbx.math import superpose
 from libtbx.utils import Sorry
 from libtbx.phil import parse
@@ -408,23 +408,14 @@ class ncs_group_object(object):
         ncs_phil_groups=ncs_phil_groups,
         process_similar_chains=process_similar_chains)
     elif use_simple_ncs_from_pdb:
-      import libtbx.load_env
-      if libtbx.env.has_module(name="phenix"):
-        from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
-        from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
-        params = ncs_master_params.extract()
-        params.simple_ncs_from_pdb.min_length = 1
-        ncs_from_pdb=simple_ncs_from_pdb(
-          pdb_inp=pdb_hierarchy_inp.input,
-          hierarchy=pdb_hierarchy_inp.hierarchy,
-          quiet=True,
-          log=null_out(),
-          suppress_print=True,
-          params=params)
-        spec_ncs_groups = ncs_from_pdb.ncs_object.ncs_groups()
-        self.build_ncs_obj_from_spec_file(
-          pdb_hierarchy_inp=pdb_hierarchy_inp,
-          spec_ncs_groups=spec_ncs_groups)
+      ncs_object = get_ncs_object_from_pdb(
+        pdb_inp=pdb_hierarchy_inp.input,
+        hierarchy=pdb_hierarchy_inp.hierarchy)
+
+      spec_ncs_groups = ncs_object.ncs_groups()
+      self.build_ncs_obj_from_spec_file(
+        pdb_hierarchy_inp=pdb_hierarchy_inp,
+        spec_ncs_groups=spec_ncs_groups)
 
   def build_ncs_obj_from_spec_file(self,file_name=None,file_path='',
                                    file_str='',source_info="",quiet=True,
@@ -1566,7 +1557,7 @@ def common_atoms(master_ncs_ph, ncs_copy_ph,similarity):
     other_common_sites (flex.vec3_double): Copy common coordinates
     selections (selections obj): containing master and copy selection info
   """
-  # Fixme: build test
+  # Fixme: Update ncs master and copies selection according to the alignment
   reference_sites = flex.vec3_double()
   other_sites = flex.vec3_double()
   sel_m, sel_c, not_sel_m, not_sel_c ,m_chain_id, c_chain_id = align_residues(

@@ -1,10 +1,11 @@
 from __future__ import division
-from iotbx.ncs.ncs_preprocess import align_residues
-from NCS.simple_alignment_tmp import simple_alignment
-from iotbx import pdb
 import unittest
 import time
 import sys
+
+from iotbx.ncs.ncs_preprocess import align_residues
+from NCS.junk.simple_alignment_tmp import simple_alignment
+from iotbx import pdb
 
 
 class TestSimpleAlignment(unittest.TestCase):
