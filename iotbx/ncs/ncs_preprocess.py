@@ -183,12 +183,11 @@ class ncs_group_object(object):
           transform_info=transform_info)
       else:
         # in the case that all ncs copies are in pdb
+        assert [use_cctbx_find_ncs_tools,use_simple_ncs_from_pdb].count(True)>0
         self.build_ncs_obj_from_pdb_asu(
             pdb_hierarchy_inp=pdb_hierarchy_inp,
-            use_cctbx_find_ncs_tools=True,
-            # fixme: change to allow simple_ncs_from_pdb
-            use_simple_ncs_from_pdb=False,
-            # use_simple_ncs_from_pdb=True,
+            use_cctbx_find_ncs_tools=use_cctbx_find_ncs_tools,
+            use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
             use_minimal_master_ncs=True,
             process_similar_chains=process_similar_chains,
             rms_eps=rms_eps)
@@ -924,7 +923,7 @@ class ncs_group_object(object):
         tr = self.ncs_transform[key.split('_')[1]]
         xyz_master = tr.r.elems * xyz_master + tr.t
         # Fixme: use only the common atoms (when using spec - we have only res)
-        if xyz_master.sise() == xyz_copy.size():
+        if xyz_master.size() == xyz_copy.size():
           rmsd = round(xyz_master.rms_difference(xyz_copy),4)
 
 
@@ -942,7 +941,7 @@ class ncs_group_object(object):
 
   def get_ncs_restraints_group_list(self):
     """
-        a list of ncs_restraint_group objects
+    a list of ncs_restraint_group objects
     """
     ncs_restraints_group_list = []
     group_id_list = sort_dict_keys(self.ncs_group_map)
