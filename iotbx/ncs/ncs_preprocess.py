@@ -1464,7 +1464,8 @@ def get_rot_trans(master_ncs_ph=None,
   msg = ''
   m_id = 'master'
   c_id = 'copy'
-  similarity = 0.95
+  # fixme: add similarity as an input
+  similarity = 0.75
   # ignore water and alternative location
   master_atoms, m_sel, m_not_sel = get_atoms(master_atoms,master_ncs_ph)
   copy_atoms, c_sel, c_not_sel = get_atoms(copy_atoms,ncs_copy_ph)
