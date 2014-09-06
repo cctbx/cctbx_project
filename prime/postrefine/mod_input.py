@@ -109,6 +109,28 @@ postref
       .type = float
       .help = Unit-cell tolerance in percent.
   }
+  allparams
+    .help = All parameters
+  {
+    flag_on = False
+      .type = bool
+      .help = Set to True to refine all parameters together.
+    d_min = 0.1
+      .type = float
+      .help = Minimum resolution.
+    d_max = 99
+      .type = float
+      .help = Maximum resolution.
+    sigma_min = 1.5
+      .type = float
+      .help = Minimum I/sigI cutoff.
+    partiality_min = 0.1
+      .type = float
+      .help = Minimum partiality cutoff.
+    uc_tolerance = 3
+      .type = float
+      .help = Unit-cell tolerance in percent.
+  }
 }
 merge
   .help = "Parameters used in merging"
