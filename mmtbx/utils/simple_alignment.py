@@ -25,7 +25,8 @@ def simple_alignment(seq_a, seq_b, similarity=0.9):
   # limit the number of mis-alignments
   n_max = int((1 - similarity) * min(a,b))
   # Starting score according to the required similarity
-  score = n_max + 1
+  # Fixme: check what the max score should be
+  score = n_max + 100
   # build score matrix
   R = build_matrix(row=a,col=b,max_score=score,gap_penalty=gap_penalty)
   # populate score matrix
@@ -41,6 +42,8 @@ def simple_alignment(seq_a, seq_b, similarity=0.9):
     R=R,row=a,col=b,seq_a=seq_a,seq_b=seq_b,gap_penalty=gap_penalty)
   if aligned_sel_a and aligned_sel_b:
     assert aligned_sel_a.size() == aligned_sel_b.size()
+  if (a - aligned_sel_a.size()) > n_max:
+    return flex.size_t([]), flex.size_t([])
   return aligned_sel_a, aligned_sel_b
 
 def build_matrix(row, col, max_score=None,gap_penalty=1):
@@ -63,8 +66,9 @@ def build_matrix(row, col, max_score=None,gap_penalty=1):
   for i in xrange(row + 1):
     R.append([0] * (col + 1))
   # populate zero cases
-  for i in xrange(max_score):
+  for i in xrange(row + 1):
     R[i][0] = max_score - (i * gap_penalty)
+  for i in xrange(col + 1):
     R[0][i] = max_score - (i * gap_penalty)
   return R
 
@@ -90,6 +94,7 @@ def get_matching_indices(R,row,col,seq_a,seq_b,gap_penalty):
   sel_a = []
   sel_b = []
   assert (len(seq_a) == row) and (len(seq_b) == col)
+  # Fixme:  does not work if max score is not properly assign
   if R[i_max][j_max] <= 0:
     # best alignment is not good
     return flex.size_t(sel_a), flex.size_t(sel_b)
