@@ -3,12 +3,12 @@
 This module provides tools for examining a set of vectors and find the geometry
 that best fits from a set of built in shapes.
 """
-from __future__ import division
 
+from __future__ import division
+from scitbx.matrix import col
 from collections import OrderedDict, Iterable
 from math import sqrt
 
-from scitbx.matrix import col
 
 def _bond_angles(vectors):
   """

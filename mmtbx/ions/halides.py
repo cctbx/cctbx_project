@@ -5,10 +5,9 @@ much more sophisticated analysis.
 """
 
 from __future__ import division
-
-from libtbx import Auto
 from mmtbx.ions import server
 from scitbx.matrix import col, distance_from_plane
+from libtbx import Auto
 
 chloride_params_str = """
 max_distance_to_amide_n = 3.5
