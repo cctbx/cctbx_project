@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <rstbx/bandpass/parameters.h>
+#include <rstbx/bandpass/subpixel_joint_model.h>
 
 namespace rstbx { namespace bandpass {
 
@@ -264,10 +265,15 @@ namespace rstbx { namespace bandpass {
               observed_flag[idx]=false;
             } else if (subpixel_translations_set) {
               vec3 subpixel_trans(subpixel[2*aaf.tile_id],subpixel[1+2*aaf.tile_id],0.0);
+              vec3 joint_lo_E_limit = sjm.laboratory_to_fictitious(lo_E_limit[idx], aaf.tile_id, aaf.centers[aaf.tile_id]);
+              vec3 joint_hi_E_limit = sjm.laboratory_to_fictitious(hi_E_limit[idx], aaf.tile_id, aaf.centers[aaf.tile_id]);
               lo_E_limit[idx] += subpixel_trans;
               hi_E_limit[idx] += subpixel_trans;
               lo_E_limit[idx] = rotated_spot(aaf.centers[aaf.tile_id], lo_E_limit[idx], rotations_rad[aaf.tile_id]);
               hi_E_limit[idx] = rotated_spot(aaf.centers[aaf.tile_id], hi_E_limit[idx], rotations_rad[aaf.tile_id]);
+              SCITBX_ASSERT((lo_E_limit[idx] - joint_lo_E_limit).length() < 1.E-8);
+              SCITBX_ASSERT((hi_E_limit[idx] - joint_hi_E_limit).length() < 1.E-8);
+              SCITBX_CHECK_POINT;
             }
           }
       }
@@ -832,6 +838,7 @@ namespace rstbx { namespace bandpass {
     bool subpixel_translations_set;
     scitbx::af::shared<double> subpixel;
     scitbx::af::shared<double> rotations_rad;
+    subpixel_joint_model sjm;
     void set_subpixel(scitbx::af::shared<double> s, scitbx::af::shared<double> rotations_deg){
       subpixel_translations_set=true;
       subpixel=s;
@@ -840,6 +847,7 @@ namespace rstbx { namespace bandpass {
         rotations_rad.push_back(scitbx::constants::pi_180*rotations_deg[ixx]);
       }
       SCITBX_ASSERT( s.size() == 2 * rotations_rad.size());
+      sjm = subpixel_joint_model(s,rotations_deg);
     }
     void set_mosaicity(double const& half_mosaicity_rad){
       P.half_mosaicity_rad=half_mosaicity_rad;}
