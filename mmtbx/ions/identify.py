@@ -10,29 +10,27 @@ handles ion identification, but only prints out messages to a log.
 """
 
 from __future__ import division
-
-from math import sqrt
-import cStringIO
-import time
-import sys
-
-from cctbx.eltbx import sasaki, henke
-from cctbx import crystal, adptbx
-from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
-from libtbx.str_utils import make_sub_header, format_value, framed_output
-from libtbx import group_args, adopt_init_args, Auto
-from libtbx.utils import null_out, Sorry
-from libtbx import easy_mp
-import libtbx.load_env
-import libtbx.phil
 from mmtbx.ions.geometry import find_coordination_geometry
 from mmtbx.ions import environment
 from mmtbx.ions import halides
 from mmtbx.ions import utils
 from mmtbx import validation
 import mmtbx.ions
+from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
+from cctbx.eltbx import sasaki, henke
+from cctbx import crystal, adptbx
 from scitbx.array_family import flex
 from scitbx.matrix import col
+from libtbx.str_utils import make_sub_header, format_value, framed_output
+from libtbx import group_args, adopt_init_args, Auto
+from libtbx.utils import null_out, Sorry
+from libtbx import easy_mp
+import libtbx.load_env
+import libtbx.phil
+from math import sqrt
+import cStringIO
+import time
+import sys
 
 ion_identification_phil_str = """
 require_valence = False

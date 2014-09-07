@@ -1,13 +1,11 @@
 
 from __future__ import division
-
-import os
-
+from mmtbx.ions.utils import anonymize_ions
+from iotbx.file_reader import any_file
 from libtbx.utils import null_out
 from libtbx import group_args
 from libtbx import easy_run
-from iotbx.file_reader import any_file
-from mmtbx.ions.utils import anonymize_ions
+import os
 
 def generate_calcium_inputs (file_base="ca_frag", anonymize=True) :
   """
@@ -73,7 +71,8 @@ def generate_cd_cl_inputs (file_base="cd_cl_frag") :
   assert (os.path.isfile(pdb_file)) and (os.path.isfile(mtz_file))
   return mtz_file, pdb_file
 
-def generate_zinc_inputs (file_base="zn_frag", anonymize=True) :
+def generate_zinc_inputs (file_base="zn_frag", anonymize=True,
+    wavelength=None) :
   """
   Generate both a PDB file and an MTZ file for the zinc-bound structure,
   with the zinc optionally replaced by solvent after F(model) was
@@ -90,13 +89,17 @@ def generate_zinc_inputs (file_base="zn_frag", anonymize=True) :
   mtz_path : str
   pdb_path : str
   """
+  anom = None
+  if (wavelength is None) :
+    fp = -1.3
+    fdp = 0.47
+    anom = [ group_args(selection="element ZN", fp=fp, fdp=fdp), ]
   pdb_file = write_pdb_input_zinc_binding(file_base=file_base)
   mtz_file = generate_mtz_file(
     file_base=file_base,
     d_min=1.9,
-    anomalous_scatterers=[
-      group_args(selection="element ZN", fp=-1.3, fdp=0.47),
-    ])
+    anomalous_scatterers=anom,
+    wavelength=wavelength)
   assert os.path.isfile(pdb_file) and os.path.isfile(mtz_file)
   if anonymize:
     pdb_in = any_file(pdb_file)
@@ -141,7 +144,8 @@ def generate_magnessium_inputs (file_base="mg_frag", anonymize=True) :
     assert os.path.isfile(pdb_file)
   return os.path.abspath(mtz_file), os.path.abspath(pdb_file)
 
-def generate_mtz_file (file_base, d_min, anomalous_scatterers=None) :
+def generate_mtz_file (file_base, d_min, anomalous_scatterers=None,
+    wavelength=None) :
   """
   Create an MTZ file containing amplitudes (and R-free-flags) calculated from
   the PDB file, at the specified resolution and with enumerated anomalous
@@ -177,11 +181,12 @@ def generate_mtz_file (file_base, d_min, anomalous_scatterers=None) :
     r_free_flags_fraction = 0.1
     add_sigmas = True
     pdb_file = %s.pdb
+    wavelength = %s
     output {
       label = F
       type = *real complex
       file_name = %s.mtz
-    }\n""" % (d_min, file_base, file_base)
+    }\n""" % (d_min, file_base, wavelength, file_base)
   if anomalous_scatterers is not None:
     params += "anomalous_scatterers {\n"
     for group in anomalous_scatterers :
