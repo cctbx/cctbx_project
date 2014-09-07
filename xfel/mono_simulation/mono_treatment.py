@@ -171,31 +171,6 @@ class refinement(refinement_base):
               jacobian.matrix_paste_column_in_place(der_r,j)
             pfh.add_equations(residuals, jacobian, weights=None)
 
-        def fvec_callable_NOT_USED_AFTER_BUGFIX(pfh,current_values):
-          rotx = current_values[0]
-          roty = current_values[1]
-          effective_orientation = OO.input_orientation.rotate_thru((1,0,0),rotx
-           ).rotate_thru((0,1,0),roty
-           ).rotate_thru((0,0,1),0.0)
-          OO.ucbp3.set_orientation(effective_orientation)
-          pfh.last_set_orientation = effective_orientation
-          OO.ucbp3.gaussian_fast_slow()
-
-          excursions = flex.double(
-            [OO.ucbp3.simple_forward_calculation_spot_position(
-            wavelength = OO.central_wavelength_ang,
-            observation_no = obsno).rotax_excursion_rad/(2.*math.pi)
-            for obsno in xrange(len(OO.parent.indexed_pairs))])
-
-          degrees = 360.*excursions
-          rmsdexc = math.sqrt(flex.mean(degrees*degrees))
-          print "rotx %7.3f roty %7.3f degrees, RMSD excursion %7.3f degrees"%(
-          (rotx * 180./math.pi),(roty * 180./math.pi), rmsdexc)
-          # Note.  Luc Bourhis wants scale to be from 0 to 1. So instead of
-          # returning on scale of degrees, use radians/(2*pi)
-          # The parameters rotx roty are still expressed in radians
-          return excursions
-
         def fvec_callable_pvr(pfh,current_values):
           rotx = current_values[0]
           roty = current_values[1]
@@ -359,13 +334,18 @@ class refinement(refinement_base):
       if False: # Excursion vs resolution fit
         from matplotlib import pyplot as plt
         plt.plot(two_thetas, final, "g*")
-        plt.plot(two_thetas_env, excursion_rads_env *180./math.pi, "r-")
-        plt.plot(two_thetas_env, -excursion_rads_env *180./math.pi, "r-")
-        plt.plot(two_thetas, tan_phi_deg, "r.")
-        plt.plot(two_thetas, -tan_phi_deg, "r.")
-        plt.plot(two_thetas, tan_outer_deg, "r.")
-        plt.plot(two_thetas, -tan_outer_deg, "r.")
-        if OO.mosaic_refinement_target=="ML":  plt.plot(two_thetas, tan_outer_deg_ML, "g.")
+        if OO.mosaic_refinement_target=="ML":
+          plt.plot(two_thetas, tan_phi_deg_ML, "r.")
+          plt.plot(two_thetas, -tan_phi_deg_ML, "r.")
+          plt.plot(two_thetas, tan_outer_deg_ML, "g.")
+          plt.plot(two_thetas, -tan_outer_deg_ML, "g.")
+        else:
+          plt.plot(two_thetas_env, excursion_rads_env *180./math.pi, "r-")
+          plt.plot(two_thetas_env, -excursion_rads_env *180./math.pi, "r-")
+          plt.plot(two_thetas, tan_phi_deg, "r.")
+          plt.plot(two_thetas, -tan_phi_deg, "r.")
+          plt.plot(two_thetas, tan_outer_deg, "r.")
+          plt.plot(two_thetas, -tan_outer_deg, "r.")
         plt.show()
 
       if OO.mosaic_refinement_target=="ML":
