@@ -2136,6 +2136,7 @@ rstbx/bandpass/__init__.py -text
 rstbx/bandpass/ext.cpp -text
 rstbx/bandpass/parameters.h -text
 rstbx/bandpass/simulated_annealing.py -text
+rstbx/bandpass/subpixel_joint_model.h -text
 rstbx/bpcx/SConscript -text
 rstbx/bpcx/__init__.py -text
 rstbx/bpcx/compare_mosflm_xds.py -text
