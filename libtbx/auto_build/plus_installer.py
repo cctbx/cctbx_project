@@ -20,7 +20,7 @@ class installer (install_distribution.installer) :
   # XXX most settings can be edited here
   product_name = "CCTBX"
   dest_dir_prefix = "cctbx"
-  make_apps = []
+  make_apps = ["cctbx.image_viewer", "phenix.data_viewer"]
   configure_modules = install_distribution.installer.configure_modules + \
     ['dxtbx', 'wxtbx', "gltbx", "crys3d", "rstbx", "spotfinder"]
   include_gui_packages = True
