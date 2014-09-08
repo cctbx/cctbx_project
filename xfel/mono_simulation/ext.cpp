@@ -75,6 +75,8 @@ namespace boost_python { namespace {
          &xfel::parameter::streak_parameters::rotax, rbv()))
       .add_property("position",make_getter(
          &xfel::parameter::streak_parameters::position, rbv()))
+      .add_property("position_to_fictitious",make_getter(
+         &xfel::parameter::streak_parameters::position_to_fictitious, rbv()))
       .add_property("rotax_excursion_rad",make_getter(
          &xfel::parameter::streak_parameters::rotax_excursion_rad, rbv()))
       .add_property("rotax_excursion_rad_pvr",make_getter(
@@ -100,7 +102,8 @@ namespace boost_python { namespace {
          &xfel::parameter::bandpass_gaussian::part_distance, rbv()))
       .add_property("observed_flag",make_getter(
          &xfel::parameter::bandpass_gaussian::observed_flag, rbv()))
-      .def("set_subpixel", &xfel::parameter::bandpass_gaussian::set_subpixel)
+      .def("set_subpixel", &xfel::parameter::bandpass_gaussian::set_subpixel,(
+           arg("translations"), arg("rotations_deg")))
       .def("set_mosaicity", &xfel::parameter::bandpass_gaussian::set_mosaicity)
       .def("set_domain_size", &xfel::parameter::bandpass_gaussian::set_domain_size)
       .def("set_bandpass", &xfel::parameter::bandpass_gaussian::set_bandpass)

@@ -38,11 +38,36 @@ class refinement_base(object):
        detector_origin=detector_origin
     )
     OO.ucbp3 = bandpass_gaussian(parameters=parameters)
-    OO.ucbp3.set_active_areas( [0,0,1700,1700] )
+
+    if OO.parent.__dict__.has_key("horizons_phil"):
+      the_tiles = OO.parent.imagefiles.images[OO.parent.image_number
+      ].get_tile_manager(OO.parent.horizons_phil
+      ).effective_tiling_as_flex_int(
+      reapply_peripheral_margin=True,encode_inactive_as_zeroes=True)
+      OO.ucbp3.set_active_areas( the_tiles )
+    else:
+      OO.ucbp3.set_active_areas( [0,0,1700,1700] )
     integration_signal_penetration=0.0 # easier to calculate distance derivatives
 
     OO.ucbp3.set_sensor_model( thickness_mm = 0.5, mu_rho = 8.36644, # CS_PAD detector at 1.3 Angstrom
       signal_penetration = integration_signal_penetration)
+
+    # test for horizons_phil simply skips the subpixel correction for initial labelit indexing
+    if OO.parent.__dict__.has_key("horizons_phil"):
+      if OO.parent.horizons_phil.integration.subpixel_joint_model.translations is not None:
+        "Subpixel corrections: using joint-refined translation + rotation"
+        T = OO.parent.horizons_phil.integration.subpixel_joint_model.translations
+        import copy
+        resortedT = copy.copy(T)
+        for tt in xrange(0,len(T),2):
+          resortedT[tt] = T[tt+1]
+          resortedT[tt+1] = T[tt]
+        OO.ucbp3.set_subpixel(
+            translations = resortedT, rotations_deg = flex.double(
+             OO.parent.horizons_phil.integration.subpixel_joint_model.rotations)
+          )
+    else:
+      pass; "Subpixel corrections: none used"
 
     half_mosaicity_rad = (self.inputai.getMosaicity()/2.) * math.pi/180.
     OO.ucbp3.set_mosaicity(half_mosaicity_rad)
@@ -57,7 +82,7 @@ class refinement(refinement_base):
     OO.pvr_fix = pvr_fix
     refinement_base.__init__(OO,self,use_inverse_beam)
 
-  def contour_plot(OO):
+  def contour_plot_DEPRECATED_DOES_NOT_APPLY_SUBPIXEL_METROLOGY(OO):
       self = OO.parent
       # see if I can reproduce the predicted positions
       pxlsz = self.pixel_size # mm/pixel
@@ -482,6 +507,7 @@ def post_outlier_rejection(parent,image_number,cb_op_to_primitive,horizons_phil,
   """As implemented the refine2 seems to skew the excursion vs. resolution plot so as to
      make the domain-size result not meaningful.  Therefore comment this refinement
      out for now.
+     P.S. 9/2014 Problem seems to that the code did not implement the subpixel joint model.
   """
   if refine2:
     R2 = refinement2(parent)
