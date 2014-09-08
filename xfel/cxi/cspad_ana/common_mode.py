@@ -483,10 +483,18 @@ class common_mode_correction(mod_event_info):
       evt.put(self.cspad_img, self.address)
 
 
-  def endjob(self, env):
-    """
-    @param env Environment object
-    """
+  #signature for pyana:
+  #def endjob(self, env):
+
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
 
     if 0 and self._dark_path is not None and self.nmemb > 1:
       print self.sum_common_mode, self.sumsq_common_mode
