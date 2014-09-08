@@ -71,11 +71,19 @@ def address_split(address):
 
   import re
 
+  # pyana
   m = re.match(
     '^(?P<det>\S+)\-(?P<det_id>\d+)\|(?P<dev>\S+)\-(?P<dev_id>\d+)$', address)
-  if m is None:
-    return (None, None, None, None)
-  return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
+  if m is not None:
+    return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
+
+  # psana
+  m = re.match(
+    '^(?P<det>\S+)\.(?P<det_id>\d+)\:(?P<dev>\S+)\.(?P<dev_id>\d+)$', address)
+  if m is not None:
+    return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
+
+  return (None, None, None, None)
 
 
 def cbcaa(config, sections):
@@ -263,7 +271,7 @@ def evt_get_quads(address, evt, env):
     quads = [cspad.quads(i) for i in xrange(cspad.quads_shape()[0])]
   return quads
 
-def CsPadDetector(address, evt, env, sections, right=True):
+def CsPadDetector(address, evt, env, sections, right=True, quads=None):
   """The CsPadDetector() function assembles a two-dimensional image
   from the Ds1 detector readout in @p data3d and the calibration
   information in @p sections.  XXX General question: do
@@ -291,7 +299,8 @@ def CsPadDetector(address, evt, env, sections, right=True):
 
   # For consistency, one could/should verify that len(quads) is equal
   # to len(sections).
-  quads = evt_get_quads(address, evt, env)
+  if quads is None:
+    quads = evt_get_quads(address, evt, env)
 
   if quads is None or len(quads) != len(sections):
     return None
