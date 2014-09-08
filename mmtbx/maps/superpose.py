@@ -170,6 +170,7 @@ class transform_maps (object) :
         unit_cell=self.unit_cell,
         lsq_fit_obj=self.lsq_fit_obj,
         pdb_hierarchy=self.pdb_hierarchy,
+        resolution_factor=self.resolution_factor,
         buffer=self.buffer,
         d_min=d_min,
         file_name=file_name,
