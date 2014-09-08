@@ -92,6 +92,7 @@ class rotalyze (validation) :
   def get_result_class (self) : return rotamer
 
   def __init__ (self, pdb_hierarchy,
+      data_version="500",
       outliers_only=False,
       show_errors=False,
       out=sys.stdout,
@@ -101,8 +102,13 @@ class rotalyze (validation) :
     from mmtbx.rotamer import rotamer_eval
     from mmtbx.rotamer.rotamer_eval import RotamerID
     from mmtbx.validation import utils
+#     self.data_version = data_version
+    if data_version == "500":    outlier_threshold = 0.01
+    elif data_version == "8000": outlier_threshold = 0.003
+    else: raise Sorry("data_version given to RotamerEval not recognized.")
     sidechain_angles = SidechainAngles(show_errors)
-    rotamer_evaluator = rotamer_eval.RotamerEval()
+    rotamer_evaluator = rotamer_eval.RotamerEval(
+                             data_version=data_version)
     rotamer_id = rotamer_eval.RotamerID() # loads in the rotamer names
     use_segids = utils.use_segids_in_place_of_chainids(
                    hierarchy=pdb_hierarchy)
@@ -156,7 +162,7 @@ class rotalyze (validation) :
                   symmetry=False)
                 sym_chis = wrap_chis[:]
                 sym_chis = rotamer_id.wrap_sym(resname.strip(), sym_chis)
-                if value < 0.01:
+                if value < outlier_threshold:
                   self.n_outliers += 1
                   kwargs['outlier'] = True
                   kwargs['rotamer_name'] = "OUTLIER"
@@ -219,6 +225,7 @@ def evaluate_rotamer(
     rotamer_evaluator,
     rotamer_id,
     all_dict,
+    outlier_threshold=0.003,
     sites_cart=None) :
   atom_dict = all_dict.get(atom_group.altloc)
   resname = atom_group.resname
@@ -233,7 +240,7 @@ def evaluate_rotamer(
   rotamer_name = rotamer_id.identify(resname.strip(), wrap_chis)
   if (value is None):
     return None, None, None
-  elif (value < 0.01):
+  elif (value < outlier_threshold):
     return 'OUTLIER', chis, value
   else:
     return rotamer_name, chis, value
@@ -281,8 +288,12 @@ def evaluate_residue(
       sa,
       r,
       all_dict,
+      data_version="500",
       sites_cart=None):
   is_outlier = False
+  if data_version == "500":    outlier_threshold = 0.01
+  elif data_version == "8000": outlier_threshold = 0.003
+  else: raise Sorry("data_version given to RotamerEval not recognized.")
   for ag in residue_group.atom_groups():
     atom_dict = all_dict.get(ag.altloc)
     try:
@@ -296,18 +307,20 @@ def evaluate_residue(
     if (value is None):
       is_outlier = False
       return is_outlier, value
-    elif (value < 0.01):
+    elif (value < outlier_threshold):
       is_outlier = True
       return is_outlier, value
     else:
       return is_outlier, value
 
 class residue_evaluator (object) :
-  def __init__ (self) :
+  def __init__ (self,
+        data_version="500") :
     from mmtbx.rotamer.sidechain_angles import SidechainAngles
     from mmtbx.rotamer import rotamer_eval
     self.sa = SidechainAngles(False)
-    self.r = rotamer_eval.RotamerEval()
+    self.data_version = data_version
+    self.r = rotamer_eval.RotamerEval(data_version=self.data_version)
 
   def evaluate_residue (self, residue_group) :
     all_dict = construct_complete_sidechain(residue_group)
@@ -315,7 +328,8 @@ class residue_evaluator (object) :
       residue_group=residue_group,
       sa=self.sa,
       r=self.r,
-      all_dict=all_dict)
+      all_dict=all_dict,
+      data_version=self.data_version)
 
   def __call__ (self, *args, **kwds) :
     return self.evaluate_residue(*args, **kwds)
