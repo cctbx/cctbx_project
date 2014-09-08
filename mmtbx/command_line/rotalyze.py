@@ -10,6 +10,9 @@ import sys
 def get_master_phil():
   return iotbx.phil.parse(input_string="""
     include scope mmtbx.validation.molprobity_cmdline_phil_str
+    data_version = 500
+      .type = str
+      .help = '''Choose which dataset to use, Top \'8000\' or \'500\' '''
     show_errors = False
       .type = bool
       .help = '''Print out errors'''
@@ -26,6 +29,8 @@ Options:
   model=input_file        input PDB file
   outliers_only=False   only print outliers
   verbose=False         verbose text output
+  data_version=500      Give \'500\' to use the Top500 data and
+                        \'8000\' to use the Top8000 data.
 
 Example:
 
@@ -45,6 +50,7 @@ def run (args, out=sys.stdout, quiet=False) :
   hierarchy = pdb_in.file_object.hierarchy
   result = mmtbx.validation.rotalyze.rotalyze(
     pdb_hierarchy=hierarchy,
+    data_version=params.data_version,
     show_errors=params.show_errors,
     outliers_only=params.outliers_only,
     out=out,

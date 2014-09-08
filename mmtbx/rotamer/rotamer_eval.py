@@ -138,7 +138,8 @@ class RotamerEval:
                self,
                sidechain_angles=None,
                mon_lib_srv=None,
-               log=None):
+               log=None,
+               data_version="500"):
     if sidechain_angles is None:
       sidechain_angles = SidechainAngles(True)
     self.sidechain_angles = sidechain_angles
@@ -146,6 +147,14 @@ class RotamerEval:
       mon_lib_srv = mmtbx.monomer_library.server.server()
     if log is None:
       log = sys.stdout
+    self.data_version = data_version
+    if self.data_version == "500":
+      self.outlier_threshold = 0.01
+      fileprefix = "rota500-"
+    elif self.data_version == "8000":
+      self.outlier_threshold = 0.003
+      fileprefix = "rota8000-"
+    else: raise Sorry("data_version given to RotamerEval not recognized.")
     self.log = log
     self.mon_lib_srv = mon_lib_srv
     self.rot_id = RotamerID()
@@ -159,10 +168,8 @@ class RotamerEval:
     target_db = open_rotarama_dlite(rotarama_data_dir=rotamer_data_dir)
     for aa, aafile in aminoAcids.items():
       if (self.aaTables.get(aa) is not None): continue
-      data_file = "rota500-"+aafile+".data"
-      pickle_file = "rota500-"+aafile+".pickle"
-#      data_file = "rota500-"+aafile+".data"
-#      pickle_file = "rota500-"+aafile+".pickle"
+      data_file = fileprefix+aafile+".data"
+      pickle_file = fileprefix+aafile+".pickle"
       pair_info = target_db.pair_info(
                     source_path=data_file,
                     target_path=pickle_file,
@@ -182,7 +189,7 @@ class RotamerEval:
   def evaluate(self, aaName, chiAngles):
     '''Evaluates the specified rotamer from 0.0 (worst) to 1.0 (best).
 
-       Values below 0.01 are generally considered outliers.
+       Values below 0.003 are generally considered outliers.
        If the 3-letter amino acid name is not recognized, returns None.'''
     ndt = self.aaTables.get(aaName.lower())
     if (ndt is None): return None
@@ -237,9 +244,9 @@ class RotamerEval:
     if(rotamer_name == "EXCEPTION"):
       assert value is None
       return rotamer_name
-    if rotamer_name == "" and (value >= 0.1):
+    if rotamer_name == "" and (value >= outlier_threshold):
       return "UNCLASSIFIED"
-    elif (value < 0.01):
+    elif (value < self.outlier_threshold):
       return "OUTLIER"
     else:
       return rotamer_name
