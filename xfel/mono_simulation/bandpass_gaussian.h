@@ -6,6 +6,7 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/lbfgs.h>
 #include <scitbx/mat2.h>
+#include <rstbx/bandpass/subpixel_joint_model.h>
 
 namespace xfel {
 
@@ -24,6 +25,7 @@ namespace parameter {
     double rotax_excursion_rad_pvr; //guaranteed to be principle value region
     double domain_size_inv_ang;
     vec3 position;
+    vec3 position_to_fictitious;
     vec3 part_position_part_wavelength;
   };
 
@@ -209,8 +211,12 @@ namespace parameter {
 
           if (observed_flag[idx]) {
             if (subpixel_translations_set) {
-              vec3 subpixel_trans(subpixel[2*aaf.tile_id],subpixel[1+2*aaf.tile_id],0.0);
-              mean_position[idx] += subpixel_trans;
+              //Not sure if correct, changes behavior of function. However, old behavior was
+              // wrong because it doesn't seem to have captured proper tile_id and did not
+              // implement the subpixel joint model.
+              SCITBX_EXAMINE("WARNING: xfel::parameter::bandpass_gaussian code should not be called: contact authors");
+              aaf(vec3(mean_position[idx][1],mean_position[idx][0],0.));   // sets the aaf.tile_id
+              mean_position[idx] = sjm.laboratory_to_fictitious(mean_position[idx],aaf.tile_id, aaf.centers[aaf.tile_id]);
             }
             part_distance[idx] = mean_position_part_r_part_distance;
           }
@@ -221,7 +227,7 @@ namespace parameter {
     }
 
     streak_parameters simple_forward_calculation_spot_position (
-      double const& wavelength, int const& observation_no) const {
+      double const& wavelength, int const& observation_no) {
       streak_parameters result;
 
       scitbx::mat3<double> A = P.orientation.reciprocal_matrix();
@@ -257,6 +263,11 @@ namespace parameter {
       double y = r * P.detector_slow;
       result.position = scitbx::vec3<double> ((x/P.pixel_size[0])+P.pixel_offset[0],
                                               (y/P.pixel_size[1])+P.pixel_offset[1],0. );
+      if (subpixel_translations_set) {
+        aaf(vec3(result.position[1],result.position[0],0.));
+        result.position_to_fictitious =
+          sjm.laboratory_to_fictitious(result.position,aaf.tile_id, aaf.centers[aaf.tile_id]);
+      }
 
       //get some partial derivatives with respect to wavelength
       scitbx::vec3<double> s0_prime = -P.incident_beam/(wavelength*wavelength);
@@ -369,10 +380,11 @@ namespace parameter {
     }
 
     bool subpixel_translations_set;
-    scitbx::af::shared<double> subpixel;
-    void set_subpixel(scitbx::af::shared<double> s){
+    rstbx::bandpass::subpixel_joint_model sjm;
+    void set_subpixel(scitbx::af::shared<double> s, scitbx::af::shared<double> rotations_deg){
       subpixel_translations_set=true;
-      subpixel=s;}
+      sjm = rstbx::bandpass::subpixel_joint_model(s,rotations_deg);
+    }
     void set_mosaicity(double const& half_mosaicity_rad){
       P.half_mosaicity_rad=half_mosaicity_rad;}
     double p_domain_size_ang;
@@ -459,7 +471,7 @@ namespace parameter {
     streak_parameters
     refine_streak_limit_one_obs (vec3 const& streak_limit,
                                  double const& W,
-                                 int const& observation_no) const{
+                                 int const& observation_no){
       bool verbose(false);
       bool verbose_pos(false);
       //First want to modify the streak limit position with rotz rotation
