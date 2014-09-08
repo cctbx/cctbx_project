@@ -86,8 +86,6 @@ namespace boost_python { namespace {
       .def("set_active_areas", &xfel::parameter::bandpass_gaussian::set_active_areas)
       .def("set_sensor_model", &xfel::parameter::bandpass_gaussian::set_sensor_model,(
          arg("thickness_mm"), arg("mu_rho"), arg("signal_penetration")))
-      .def("picture_fast_slow_force",
-         &xfel::parameter::bandpass_gaussian::picture_fast_slow_force)
       .def("gaussian_fast_slow",
          &xfel::parameter::bandpass_gaussian::gaussian_fast_slow)
       .add_property("hi_E_limit",make_getter(
