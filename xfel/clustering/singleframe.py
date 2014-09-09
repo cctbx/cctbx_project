@@ -299,10 +299,12 @@ class ImageNode(SingleFrame):
     if hasattr(self, 'miller_array'):  # i.e. if the above worked.
       self.use_scales = kwargs.get('scale', True)
       self.use_b = kwargs.get('use_b', True)
-      self.edges = []
+      self.edges = []  # this is populated when the Graph is made.
       self.partialities = self.calc_partiality(self.get_x0(),
                                                update_wilson=self.use_scales)
       self.scales = self.calc_scales(self.get_x0())
+      self.label = None  # to be used for classification after instantiation
+      self.source = None  # for testing, when we know the 'source' of the image
 
 
   def calc_partiality(self, params_in, update_wilson=True):
