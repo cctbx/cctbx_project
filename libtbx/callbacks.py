@@ -99,6 +99,8 @@ class manager (object) :
     self.warn(message)
 
   def warn (self, message) :
+    if (not isinstance(message, basestring)) :
+      message = str(message)
     self.__call__(message="warn", data=message, accumulate=True, cached=True)
     if (self._log is not None) :
       log = self._log
