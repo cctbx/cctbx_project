@@ -4,6 +4,7 @@ import copy
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
 import StringIO
+from libtbx import easy_run
 
 master_phil_str = """
   use_afitt = False
@@ -223,6 +224,7 @@ class afitt_object:
 
   def process_cif_object(self, cif_object, pdb_hierarchy):
     for res in self.resname:
+      # doesn't work for value pairs
       for i, id in enumerate(cif_object['comp_list']['_chem_comp.id']):
         if res == id:
           self.n_atoms.append(
@@ -366,9 +368,27 @@ class afitt_object:
     # print f.getvalue()
     return f.getvalue()
 
+def get_afitt_command():
+  cmd = "flynn" # used because buster_helper_mmff hangs on no input
+  ero = easy_run.fully_buffered(command=cmd,
+                               )
+  out = StringIO.StringIO()
+  ero.show_stderr(out=out)
+  exe = "buster_helper_mmff"
+  if out.getvalue().find("FLYNN")>-1:
+    return exe
+  if os.environ.get("OE_DIR", False):
+    oe_dir = os.environ.get("OE_DIR")
+    exe = os.path.join(oe_dir, exe)
+    if os.path.exists(exe):
+      return exe
+  return None
+
 def call_afitt(afitt_input, ff):
-  from libtbx import easy_run
-  cmd = 'buster_helper_mmff -ff %s' % (ff)
+  exe = get_afitt_command()
+  if exe is None:
+    raise Sorry("AFITT command not found. Add to path or correctly set OE_DIR")
+  cmd = '%s -ff %s' % (exe, ff)
   ero = easy_run.fully_buffered(command=cmd,
                                 stdin_lines=afitt_input,
                                )
