@@ -244,15 +244,19 @@ class Cluster:
     Hierarchical clustering using the unit cell dimentions.
 
     :param threshold: the threshold to use for prunning the tree into clusters.
-    :param schnell: if True, use simple euclidian distance, otherwise, use Andrews-Berstein distance from Andrews & Bernstein J Appl Cryst 47:346 (2014) on the Niggli cells.
     :param method: which clustering method from scipy to use when creating the tree (see scipy.cluster.hierarchy)
     :param linkage_method: which linkage method from scipy to use when creating the linkages. x (see scipy.cluster.hierarchy)
     :param log: if True, use log scale on y axis.
     :param ax: if a matplotlib axes object is provided, plot to this. Otherwise, create a new axes object and display on screen.
     :param write_file_lists: if True, write out the files that make up each cluster.
+    :param schnell: if True, use simple euclidian distance, otherwise, use Andrews-Berstein distance from Andrews & Bernstein J Appl Cryst 47:346 (2014) on the Niggli cells.
+    :param doplot: Boolean flag for if the plotting should be done at all.
+    Runs faster if switched off.
+    :param labels: 'default' will not display any labels for more than 100 images, but will display file names for fewer. This can be manually overidden with a boolean flag.
     :return: A list of Clusters ordered by largest Cluster to smallest
+
     .. note::
-      Use 'fast' option with caution, since it can cause strange behaviour
+      Use 'schnell' option with caution, since it can cause strange behaviour
       around symmetry boundaries.
     """
 
@@ -281,8 +285,6 @@ class Cluster:
       this_linkage = hcluster.linkage(pair_distances,
                                       method=linkage_method,
                                       metric=lambda a, b: NCDist(a, b))
-
-
     cluster_ids = hcluster.fcluster(this_linkage,
                                     threshold,
                                     criterion=method)
@@ -316,7 +318,11 @@ class Cluster:
           cluster.dump_file_list(out_file_name="{}.lst".format(cluster.cname))
 
     if doplot:
-      if labels == 'default':
+      if labels is True:
+        labels = [image.name for image in self.members]
+      elif labels is False:
+        labels = ['' for _ in self.members]
+      elif labels == 'default':
         if len(self.members) > 100:
           labels = ['' for _ in self.members]
         else:
@@ -468,7 +474,10 @@ class Cluster:
       # Use a histogram to bin the data in lattitude/longitude space, smooth it,
       # then plot this as a contourmap. This is for all the symetry-related
       # copies
-      density_hist = np.histogram2d(lat + sym_lat, lon + sym_lon,
+      #density_hist = np.histogram2d(lat + sym_lat, lon + sym_lon,
+      #                                    bins=[range(-90, 91), range(0, 361)])
+      # No symmetry mates until we can verify what the cctbx libs are doing
+      density_hist = np.histogram2d(lat, lon,
                                     bins=[range(-90, 91), range(0, 361)])
       smoothed = ndi.gaussian_filter(density_hist[0], (15, 15), mode='wrap')
       local_intensity = []
@@ -622,6 +631,8 @@ class Edge:
     self.vertex_a = vertex_a
     self.vertex_b = vertex_b
     self.weight = weight
+    self.intra = None  # True means we assume it connects two edges from the
+                       # same class, False means it is an iter-class edge.
 
   def mean_residual(self):
     """
@@ -704,7 +715,7 @@ class Graph(Cluster):
         miller1 = vertex1.miller_array
         miller2 = vertex2.miller_array
         edge_weight = miller1.common_set(miller2,
-                                         assert_is_similar_symmetry=False).size()
+                                      assert_is_similar_symmetry=False).size()
         if edge_weight >= self.common_miller_threshold:
           logging.debug("Making edge: ({}, {}) {}, {}"
                         .format(a, b, vertex1.name, vertex2.name))
@@ -713,6 +724,8 @@ class Graph(Cluster):
           all_edges.append(this_edge)
           vertex1.edges.append(this_edge)
           vertex2.edges.append(this_edge)
+
+    assert len(all_edges) == sum([len(v.edges) for v in self.members])/2
     return all_edges
 
 
@@ -745,57 +758,103 @@ class Graph(Cluster):
               add_frame(all_vertices, dirpath, filename)
     return cls(all_vertices)
 
-  def make_nx_graph(self, edge_width=False, saveas=None, show_singletons=True,
+  def make_nx_graph(self, saveas=None, show_singletons=True, force_res=False,
                     **kwargs):
     """
     Create a networkx Graph, and visualise it.
 
-    :param edge_width: if edge widths should be proportional to number of common miller indices.
     :param saveas: optional filename to save the graph as a pdf as. Displays graph if not specified.
     :param pos: an optional networkx position dictionairy for plotting the graph
+    :param force_res: if True, use the edge residual field to color them. Otherwise use edge labels if available.
     :return: the position dictionairy, so that mutiple plots can be made using the same set of positions.
     """
     import networkx as nx
+    import brewer2mpl
+    cols = brewer2mpl.get_map('BrBG', 'Diverging', 3).mpl_colors
+
     nx_graph = nx.Graph()
+    # Add vertices to graph
     if show_singletons:
       nx_graph.add_nodes_from(self.members)
     else:
       nx_graph.add_nodes_from([vert for vert in self.members if vert.edges])
-
     logging.debug("Vertices added to graph.")
+
+    # Add edges to graph
     for edge in self.edges:
-      nx_graph.add_edge(edge.vertex_a, edge.vertex_b, {'n_conn': edge.weight,
-                                                       'residual': np.mean(np.abs(edge.residuals()))})
+      nx_graph.add_edge(edge.vertex_a, edge.vertex_b,
+                        {'n_conn': edge.weight,
+                         'residual': np.mean(np.abs(edge.residuals())),
+                         'intra': edge.intra})
     logging.debug("Edges added to graph.")
 
-    mean_I = np.mean([node.total_i for node in self.members])
-    abs_residuals = [edge[2]["residual"]
-                     for edge in nx_graph.edges_iter(data=True)]
-    if edge_width:
-      edge_widths = [edge[2]["n_conn"]
-                     for edge in nx_graph.edges_iter(data=True)]
-    else:
-      edge_widths = [1 for edge in nx_graph.edges_iter()]
-
+    # Position vertices
     if not kwargs.has_key('pos') :
       kwargs['pos'] = nx.spring_layout(nx_graph, iterations=1000)
 
+    # Organise Edge colors
+    if all([e.intra is None for e in self.edges]) or force_res:
+      # color by residual
+      e_cols = [edge[2]["residual"]
+                     for edge in nx_graph.edges_iter(data=True)]
+      e_cmap = plt.get_cmap('jet')
+      e_vmax = max(e_cols)
+      e_vmin = 0
+    else:
+      # color by edge
+      e_cmap = None
+      e_vmin = None
+      e_vmax = None
+      e_cols = []
+      for edge in nx_graph.edges_iter(data=True):
+        intra = edge[2]["intra"]
+        if intra is None:
+          e_cols.append('0.5')
+        elif intra is True:
+          e_cols.append('black')
+        elif intra is False:
+          e_cols.append('red')
+        else:
+          raise Exception("something bad happened here")
+
+    # Organise Vertex colors
+    for v in nx_graph:
+      if v.label is None:
+        v.col = 0.7
+      elif v.label == 0:
+        v.col = cols[0]
+      elif v.label == 1:
+        v.col = cols[2]
+
+    if all([v.source is not None for v in nx_graph]):
+      nxlabels = {v: v.source for v in nx_graph}
+    else:
+      nxlabels = None
 
     fig = plt.figure(figsize=(12, 9))
     im_vertices = nx.draw_networkx_nodes(nx_graph, with_labels=False,
-                                         node_color='0.7', **kwargs)
-    im_edges = nx.draw_networkx_edges(nx_graph, vmin=0,
-                                      vmax=max(abs_residuals),
-                                      edge_color=abs_residuals,
-                                      edge_cmap=plt.get_cmap("jet"),
-                                      width=edge_widths,
+                                         node_color=[v.col for v in nx_graph],
+                                         **kwargs)
+
+    im_edges = nx.draw_networkx_edges(nx_graph,
+                                      vmin=e_vmin,
+                                      vmax=e_vmax,
+                                      edge_color=e_cols,
+                                      edge_cmap=e_cmap,
                                       **kwargs)
-    cb = plt.colorbar(im_edges)
-    cmin, cmax = cb.get_clim()
-    ticks = np.linspace(cmin, cmax, 7)
-    cb.set_ticks(ticks)
-    cb.set_ticklabels(['{:.3f}'.format(t) for t in ticks])
-    cb.set_label("Edge Residual")
+
+    # Organize labels
+    if all([v.source is not None for v in nx_graph]):
+      nx.draw_networkx_labels(nx_graph,labels=nxlabels, **kwargs)
+
+    if e_cmap:
+      cb = plt.colorbar(im_edges)
+      cmin, cmax = cb.get_clim()
+      ticks = np.linspace(cmin, cmax, 7)
+      cb.set_ticks(ticks)
+      cb.set_ticklabels(['{:.3f}'.format(t) for t in ticks])
+      cb.set_label("Edge Residual")
+
     plt.axis('off')
     plt.tight_layout()
     plt.title("Network Processing\nThickness shows number of connections")
@@ -993,3 +1052,147 @@ class Graph(Cluster):
                                                    maxiter=nsteps)
 
     return final_params, min_total_res, info_dict
+
+
+  def k_means_edges(self):
+    """
+    Preforms k-means clustering on the edge residuals, updating the Edge.intra attribute depending on if it is in the 1st (edge.intra = True) or 2nd (edge.intra=False) cluster.
+    """
+    from scipy.cluster.vq import kmeans2
+
+    # 0. Make an array of edge residuals
+    edge_residuals = np.array([e.mean_residual() for e in self.edges])
+
+    # 1. split into in-cluster and between-cluster using k-means
+    labels = kmeans2(edge_residuals, 2)
+
+    # 2. find which cluster corresponds to intra-group edges (ie. is smallest)
+    if labels[0][0] < labels[0][1]:
+      intra = 0
+    else:
+      intra = 1
+
+    # 2. assign these labels to the edges
+    for edge, group in zip(self.edges, labels[1]):
+      if group == intra:
+        edge.intra = True
+      else:
+        edge.intra = False
+
+    logging.info(('initial edge assignment complete: {} intra edges, '
+                  '{} inter edges').format(
+                                  sum([e.intra == True for e in self.edges]),
+                                  sum([e.intra == False for e in self.edges])))
+
+
+  def label_vertices(self, max_iter=100):
+    """
+    Labels the vertices in the graph as members of cluster 0 or 1.
+    Currently just does a BFS to get through the graph, and updates each node
+    the first time it comes across is.
+
+    Next step would be to take a majority vote for each vertex, update, and
+    repeat this process until convergence.
+
+    :param max_iter: Maximum number of rounds of 'majority vote' updates for
+    vertex labeling.
+
+    """
+    from collections import deque
+
+    if not all([e.intra is not None for e in self.edges]):
+       logging.warning("k_means_edges has not been run -- edges are not \
+           labled. Running this now.")
+       self.k_means_edges()
+    assert all([e.intra is not None for e in self.edges])
+
+    def majority_vote(vertex):
+      """ Reasign the vertex id based on the nearest neighbours.
+      """
+      from scipy.stats import mode
+      votes = []
+      for e in vertex.edges:
+        other_class = e.other_vertex(vertex).label
+        if e.intra:
+          votes.append(other_class)
+        else:
+          if other_class == 0:
+            votes.append(1)
+          elif vertex.label == 1:
+            votes.append(0)
+
+      new_label, frequency = mode(votes)
+      if new_label != vertex.label:
+        logging.debug("updating vertex to {}, with {}/{} votes" \
+                              .format(new_label[0], frequency[0], len(votes)))
+        vertex.label = int(new_label)
+
+    # 0. Get the most connected node.
+    most_conn = max(self.members, key=lambda x: len(x.edges))
+    most_conn.label = 0
+    q = deque([most_conn])
+
+    # 1. BFS, calling the near_edges each time a node is popped.
+    # ToDo: when we move to a mixed model for edges, use a priority queue to
+    # pick the best edge to move along.
+    for v in self.members:
+      v.visited = False
+    curr_node = most_conn
+    curr_node.visited = True
+    while q:
+      curr_node = q.popleft()  # Take a node of the stack
+      curr_node.visited = True
+      """ Take a vertex, and updates the labels of all the
+      vertices around it using the argument vertex's edge labels. If a vertex
+      at the other end of the edge already has a label, skip it.
+      """
+      assert curr_node.label is not None, "Vertex must already have a label."
+      for e in curr_node.edges:
+        other_v = e.other_vertex(curr_node)
+        # Is the curr_node on the other end already assigned? if yes, skip
+        if other_v.label is not None:
+          continue
+        if e.intra:
+          other_v.label = curr_node.label
+        elif not e.intra:
+          if curr_node.label == 0:
+            other_v.label = 1
+          elif curr_node.label == 1:
+            other_v.label = 0
+      # add this node's connections to the stack
+      q.extend([e.other_vertex(curr_node) for e in curr_node.edges
+                if not e.other_vertex(curr_node).visited])
+
+    logging.info(('initial vertex assignment complete: {} vertices in group 0, '
+                  '{} in group 1').format(
+                                    sum([v.label == 0 for v in self.members]),
+                                    sum([v.label == 1 for v in self.members])))
+
+    if logging.Logger.root.level <= logging.DEBUG:  # Extreme debug!
+      self.make_nx_graph()
+
+    # 2. Majority vote
+    original_labels = [v.label for v in self.members]
+    current_labels = [v.label for v in self.members]
+    v_iter = 0
+    while v_iter <= max_iter:
+      v_iter += 1
+      for v in self.members:
+        majority_vote(v)
+      new_labels = [v.label for v in self.members]
+      if current_labels == new_labels:
+        logging.info("Majority vote converged after {} iterations. {} "
+                     "vertices out of {} have been changed." \
+                         .format(v_iter, sum([new_labels[i] != original_labels[i]
+                                              for i in range(len(new_labels))]),
+                               len(new_labels)))
+        break
+      if iter == max_iter:
+        logging.info("Majority voting did no make vertex labels "
+                     "converge. final state: {}/{} different" \
+                     .format(sum([new_labels[i] != original_labels[i]
+                                  for i in range(len(new_labels))]),
+                             len(new_labels)))
+
+      current_labels = new_labels
+
