@@ -1,10 +1,11 @@
+
 from __future__ import division
-import sys
-from cStringIO import StringIO
-import libtbx.phil
+from libtbx.test_utils import show_diff, Exception_expected
 from libtbx.phil import interface
-from libtbx.test_utils import show_diff
 import libtbx.load_env
+import libtbx.phil
+from cStringIO import StringIO
+import sys
 
 def exercise () :
   master_phil = libtbx.phil.parse("""
@@ -218,6 +219,23 @@ pdb_out = foo.modified.pdb
   pdb_map = i.get_file_type_map("pdb")
   assert (pdb_map.get_param_names() == ['pdb_in'])
   assert (i.get_input_files() == [('foo.pdb', 'Input model', 'pdb_in')])
+  # test captions
+  master_phil = libtbx.phil.parse("""
+my_options {
+opt1 = *foo bar
+  .type = choice
+  .caption = Foo Bar
+opt2 = *two_fofc fofc
+  .type = choice(multi=True)
+  .caption = 2mFo-DFc
+}
+""")
+  try :
+    libtbx.phil.interface.validate_choice_captions(master_phil)
+  except AssertionError, e :
+    assert (str(e) == "my_options.opt2")
+  else :
+    raise Exception_expected
 
 # XXX sorry about the cross-import here, but I really need to test this on
 # something large and complex
