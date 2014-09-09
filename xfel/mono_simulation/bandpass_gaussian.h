@@ -214,7 +214,8 @@ namespace parameter {
               //Not sure if correct, changes behavior of function. However, old behavior was
               // wrong because it doesn't seem to have captured proper tile_id and did not
               // implement the subpixel joint model.
-              SCITBX_EXAMINE("WARNING: xfel::parameter::bandpass_gaussian code should not be called: contact authors");
+              // The code is actually called but is believed to have no effect on the integration
+              //"WARNING: xfel::parameter::bandpass_gaussian code should not be called: contact authors"
               aaf(vec3(mean_position[idx][1],mean_position[idx][0],0.));   // sets the aaf.tile_id
               mean_position[idx] = sjm.laboratory_to_fictitious(mean_position[idx],aaf.tile_id, aaf.centers[aaf.tile_id]);
             }
