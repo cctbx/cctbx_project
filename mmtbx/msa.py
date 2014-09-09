@@ -402,7 +402,7 @@ def run (args=(), params=None, out=sys.stdout) :
     if (file_name.endswith(".pdb") or file_name.endswith(".ent") or
         file_name.endswith(".pdb.gz") or file_name.endswith(".ent.gz")) :
       pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
-      hierarchy = pdb_in.construct_hierarchy()
+      hierarchy = pdb_in.hierarchy
       first_model = hierarchy.models()[0]
       found_protein = False
       for chain in first_model.chains() :
