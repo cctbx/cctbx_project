@@ -73,6 +73,14 @@ class basis(object):
   """ Bucket for detector element information """
   def __init__(self, orientation = None, translation = None, panelgroup = None):
     if orientation is None or translation is None:
+      """
+      Provide only orientation + translation or a panelgroup
+
+      @param orientation rotation in the form of a quarternion
+      @param translation vector translation in relation to the parent frame
+      @param panelgroup dxtbx panelgroup object whose local d matrix will represent the
+      basis shift
+      """
       assert orientation is None and translation is None
 
       d_mat = panelgroup.get_local_d_matrix()
@@ -101,6 +109,72 @@ class basis(object):
                        r3[3],r3[4],r3[5],self.translation[1],
                        r3[6],r3[7],r3[8],self.translation[2],
                        0,0,0,1))
+
+def read_slac_metrology(path, plot=False):
+  def basis_from_geo(geo):
+    rotx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(
+      geo.rot_x + geo.tilt_x, deg=True)
+    roty = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(
+      geo.rot_y + geo.tilt_y, deg=True)
+    rotz = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(
+      geo.rot_z + geo.tilt_z, deg=True)
+
+    rot = (rotx*roty*rotz).r3_rotation_matrix_as_unit_quaternion()
+
+    return basis(orientation = rot,
+                 translation = matrix.col((geo.x0/1000, geo.y0/1000, geo.z0/1000)))
+
+
+  from PSCalib.GeometryAccess import GeometryAccess
+
+  metro = {}
+
+  try:
+    geometry = GeometryAccess(path)
+  except Exception, e:
+    raise Sorry("Can't parse this metrology file")
+
+  pixel_size = geometry.get_pixel_scale_size()/1000
+  null_ori = matrix.col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
+
+  root = geometry.get_top_geo()
+  metro[(0,)] = basis_from_geo(root)
+
+  for quad_id, quad in enumerate(root.get_list_of_children()):
+    metro[(0,quad_id)] = basis_from_geo(quad)
+    for sensor_id, sensor in enumerate(quad.get_list_of_children()):
+      metro[(0,quad_id,sensor_id)] = basis_from_geo(sensor)
+
+      x, y, z = sensor.get_pixel_coords()
+      x/=1000; y/=1000; z/=1000
+      assert x.shape == y.shape == z.shape
+      sensor_px_slow = x.shape[0]
+      sensor_px_fast = x.shape[1]
+      assert sensor_px_fast % 2 == 0
+
+      a0ul = sul = matrix.col((x[0,0],y[0,0],z[0,0]))
+      a1ur = sur = matrix.col((x[0,sensor_px_fast-1],y[0,sensor_px_fast-1],z[0,sensor_px_fast-1]))
+      a1lr = slr = matrix.col((x[sensor_px_slow-1,sensor_px_fast-1],y[sensor_px_slow-1,sensor_px_fast-1],z[sensor_px_slow-1,sensor_px_fast-1]))
+      a0ll = sll = matrix.col((x[sensor_px_slow-1,0],y[sensor_px_slow-1,0],z[sensor_px_slow-1,0]))
+
+      a0ur = matrix.col((x[0,sensor_px_fast//2-1],y[0,sensor_px_fast//2-1],z[0,sensor_px_fast//2-1]))
+      a0lr = matrix.col((x[sensor_px_slow-1,sensor_px_fast//2-1],y[sensor_px_slow-1,sensor_px_fast//2-1],z[sensor_px_slow-1,sensor_px_fast//2-1]))
+
+      a1ul = matrix.col((x[0,sensor_px_fast//2],y[0,sensor_px_fast//2],z[0,sensor_px_fast//2]))
+      a1ll = matrix.col((x[sensor_px_slow-1,sensor_px_fast//2],y[sensor_px_slow-1,sensor_px_fast//2],z[sensor_px_slow-1,sensor_px_fast//2]))
+
+      sensor_center = center([sul,sur,slr,sll])
+      asic0_center = center([a0ul,a0ur,a0lr,a0ll])
+      asic1_center = center([a1ul,a1ur,a1lr,a1ll])
+
+      asic_trans0 = (asic0_center-sensor_center).length()
+      asic_trans1 = (asic1_center-sensor_center).length()
+
+      metro[(0,quad_id,sensor_id,0)] = basis(orientation=null_ori,translation=matrix.col((-asic_trans0,0,0)))
+      metro[(0,quad_id,sensor_id,1)] = basis(orientation=null_ori,translation=matrix.col((+asic_trans1,0,0)))
+
+  return metro
+
 
 def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimension, asic_gap, plot = False, old_style_diff_path = None):
   """ Read a flat optical metrology file from LCLS and apply some corrections.  Partly adapted from xfel.metrology.flatfile
