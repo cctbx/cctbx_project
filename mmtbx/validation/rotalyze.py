@@ -105,7 +105,8 @@ class rotalyze (validation) :
 #     self.data_version = data_version
     if data_version == "500":    outlier_threshold = 0.01
     elif data_version == "8000": outlier_threshold = 0.003
-    else: raise Sorry("data_version given to RotamerEval not recognized.")
+    else: raise ValueError(
+      "data_version given to RotamerEval not recognized (%s)." % data_version)
     sidechain_angles = SidechainAngles(show_errors)
     rotamer_evaluator = rotamer_eval.RotamerEval(
                              data_version=data_version)

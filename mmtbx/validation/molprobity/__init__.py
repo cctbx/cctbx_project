@@ -155,7 +155,8 @@ class molprobity (slots_getstate_setstate) :
       outliers_only=True,
       use_pdb_header_resolution_cutoffs=False,
       file_name=None,
-      ligand_selection=None) :
+      ligand_selection=None,
+      rotamer_library="500") :
     for name in self.__slots__ :
       setattr(self, name, None)
     # very important - the i_seq attributes may be extracted later
@@ -176,19 +177,20 @@ class molprobity (slots_getstate_setstate) :
       if (flags.ramalyze) :
         self.ramalyze = ramalyze.ramalyze(
           pdb_hierarchy=pdb_hierarchy,
-          outliers_only=False,
+          outliers_only=outliers_only,
           out=null_out(),
           quiet=True)
       if (flags.rotalyze) :
         self.rotalyze = rotalyze.rotalyze(
           pdb_hierarchy=pdb_hierarchy,
-          outliers_only=False,
+          data_version=rotamer_library,
+          outliers_only=outliers_only,
           out=null_out(),
           quiet=True)
       if (flags.cbetadev) :
         self.cbetadev = cbetadev.cbetadev(
           pdb_hierarchy=pdb_hierarchy,
-          outliers_only=True,
+          outliers_only=outliers_only,
           out=null_out(),
           quiet=True)
       if (flags.nqh) :
