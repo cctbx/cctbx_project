@@ -86,7 +86,9 @@ class afitt_object:
     return cif_object
 
   def get_sites_cart_pointers(self, atom_ids, pdb_hierarchy, chain_id, altloc, resseq):
+    phrase='hello'
     sites_cart_ptrs=[0]*len(atom_ids)
+    #this should be simplified by using iotbx.pdb.atom_selection.cache
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         if chain.id != chain_id: continue
@@ -104,6 +106,7 @@ class afitt_object:
   def get_res_ids(self, pdb_hierarchy, resname):
     ids=[]
     atoms=[]
+    #this should be simplified by using iotbx.pdb.atom_selection.cache
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         for conformer in chain.conformers():
@@ -114,9 +117,12 @@ class afitt_object:
               atoms.append([atom.i_seq for atom in residue.atoms()])
 
     #if different ligand residues have the same chain name and only one
-    #of them has an altcon , multiple instances will be created of all
+    #of them has an altconf , multiple instances will be created of all
     #of them. This ugly piece of code removes the extra copies of residues
-    #that have only one altconf. There must be a prettier way...
+    #that have only one altconf. There must be a prettier way... Yes, I think
+    #you need to use the 'pure main conf' and 'pure alt.conf' and 'proper
+    #alt.conf' classification (see http://cci.lbl.gov/cctbx_docs/iotbx/iotbx.pdb.html#api-documentation)
+    #but haven't done this yet.
     id_to_remove=[]
     for i in range(len(ids)-1):
       for j in range(i+1,len(ids)):
@@ -153,6 +159,7 @@ class afitt_object:
         nonlig_atoms = [atom for atom in self.pdb_hierarchy.atoms()
                         if atom.i_seq not in lig_atoms ]
         bond = []
+        # print geometry.bond_params_table.lookup(1291, 1737)
         for lig_atm_iseq in self.sites_cart_ptrs[resname_i][instance_i]:
           for atom in nonlig_atoms:
             bond_t = geometry.bond_params_table.lookup(lig_atm_iseq, atom.i_seq)
@@ -197,12 +204,13 @@ class afitt_object:
           [bond_dict[i] for i in cif_object['_chem_comp_bond.type']]
         cov_obj.bonds = zip(bond_atom_1, bond_atom_2, bond_type)
         cov_obj.nbonds = len(cov_obj.bonds)
-        cov_obj.sites_cart_ptrs = self.get_sites_cart_pointers(
-                                          atom_ids,
-                                          self.pdb_hierarchy,
-                                          chain_id=cov_obj.res_id[0],
-                                          altloc=cov_obj.res_id[1],
-                                          resseq=cov_obj.res_id[2])
+        # cov_obj.sites_cart_ptrs = self.get_sites_cart_pointers(
+        #                                   atom_ids,
+        #                                   self.pdb_hierarchy,
+        #                                   chain_id=cov_obj.res_id[0],
+        #                                   altloc=cov_obj.res_id[1],
+        #                                   resseq=cov_obj.res_id[2])
+        cov_obj.sites_cart_ptrs = [atom.i_seq for atom in cov_res.atoms()]
         if cif_object.has_key('_chem_comp_atom.charge'):
           cov_obj.formal_charges = \
             [float(i) for i in cif_object['_chem_comp_atom.charge']]
@@ -211,6 +219,7 @@ class afitt_object:
         lig_atom_i = self.sites_cart_ptrs[resname_i][instance_i].index(bond[0][1])
         cov_atom_i = atom_ids.index(bond[0][0].name.strip())
         cov_obj.res_bond = [lig_atom_i, self.n_atoms[resname_i]+cov_atom_i, 1]
+        # import code; code.interact(local=dict(globals(), **locals()))
 
   def process_cif_object(self, cif_object, pdb_hierarchy):
     for res in self.resname:
@@ -220,9 +229,12 @@ class afitt_object:
             int(cif_object['comp_list']['_chem_comp.number_atoms_all'][i]) )
       comp_rname='comp_%s' %res
       assert cif_object.has_key(comp_rname), "Residue %s not in cif file!" %res
-      self.partial_charges.append(
-        [float(i) for i in cif_object[comp_rname]['_chem_comp_atom.partial_charge']]
-        )
+      try:
+        self.partial_charges.append(
+          [float(i) for i in cif_object[comp_rname]['_chem_comp_atom.partial_charge']]
+          )
+      except:
+        self.partial_charges.append( [0]*self.n_atoms[-1] )   
       self.atom_elements.append(
         [i for i in cif_object[comp_rname]['_chem_comp_atom.type_symbol']]
         )
@@ -262,7 +274,7 @@ class afitt_object:
         self.formal_charges.append([])
 
     self.total_model_atoms=pdb_hierarchy.atoms_size()
-    #~ import code; code.interact(local=dict(globals(), **locals()))
+
 
   def make_afitt_input(self, sites_cart, resname_i, instance_i):
     r_i=resname_i
@@ -273,23 +285,36 @@ class afitt_object:
            "No. of atoms in residue %s, instance %d does not equal to \
            number of atom seq pointers." %(self.resname[resname_i], instance_i)
     f=StringIO.StringIO()
-    # if len(self.covlanet_data) == 0 or self.covalent_data[r_i][i_i] == None:
-    if True:
-      f.write('%d\n' %self.n_atoms[r_i])
+    # print "PAWEL %d\n" %len(self.covalent_data)
+    # print self.covalent_data
+    if len(self.covalent_data) == 0 or self.covalent_data[r_i][i_i] == None:
+    # if True:
+      f.write(  '%d\n' %self.n_atoms[r_i])
       f.write('residue_type %s chain %s number %d total_charge %d\n'
               %(self.resname[r_i], self.res_ids[r_i][i_i][0],1,self.charge[r_i] ))
+      #~ import code; code.interact(local=dict(globals(), **locals()))       
       for atom,ptr in zip(elements, sites_cart_ptrs):
+
         f.write('%s   %20.16f   %20.16f   %20.16f\n' %(atom,
               sites_cart[ptr][0], sites_cart[ptr][1], sites_cart[ptr][2]) )
       f.write('bond_table_nbonds %d\n' %self.nbonds[r_i])
       for bond in self.bonds[r_i]:
         f.write('%d %d %d\n' %(bond[0], bond[1], bond[2]))
       if self.formal_charges[r_i]:
-        f.write("formal charges\n")
-        for fcharge in self.formal_charges[r_i]:
-          f.write ('%d\n' %fcharge)
+        n_non_zero_charges = len([ch for ch in self.formal_charges[r_i] if ch != 0])
+        f.write("formal_charges %d\n" %n_non_zero_charges)
+        if self.formal_charges[r_i]:
+          for i,fcharge in enumerate(self.formal_charges[r_i]):
+            if fcharge != 0:
+              f.write ('%d %d\n' %(i,fcharge))
+      f.write('fixed_atoms 0\n')
     else:
+      # print "COVALENT!!!\n"
+
+      # print elements
       cov_obj =  self.covalent_data[r_i][i_i]
+      # print cov_obj.atom_elements
+      # print '%d %d\n ' %(self.n_atoms[r_i] , cov_obj.n_atoms)
       f.write('%d\n' %(self.n_atoms[r_i] + cov_obj.n_atoms) )
       f.write('residue_type %s chain %s number %d total_charge %d\n'
               %(self.resname[r_i],
@@ -302,6 +327,7 @@ class afitt_object:
       for atom,ptr in zip(cov_obj.atom_elements, cov_obj.sites_cart_ptrs):
         f.write('%s   %20.16f   %20.16f   %20.16f\n' %(atom,
               sites_cart[ptr][0], sites_cart[ptr][1], sites_cart[ptr][2]) )
+      # import code; code.interact(local=dict(globals(), **locals()))
       f.write('bond_table_nbonds %d\n'
               %(self.nbonds[r_i]+cov_obj.nbonds+1) )
       for bond in self.bonds[r_i]:
@@ -315,16 +341,21 @@ class afitt_object:
           cov_obj.res_bond[0],
           cov_obj.res_bond[1],
           cov_obj.res_bond[2]))
-      if self.formal_charges[r_i]:
-        f.write("formal charges\n")
-        for fcharge in self.formal_charges[r_i]:
-          f.write ('%d\n' %fcharge)
+      if self.formal_charges[r_i] or cov_obj.formal_charges:
+        n_non_zero_charges = 0
+        if self.formal_charges[r_i]:
+          n_non_zero_charges += len([ch for ch in self.formal_charges[r_i] if ch != 0])
         if cov_obj.formal_charges:
-          for fcharge in cov_obj.formal_charges:
-            f.write('%d\n' %fcharge)
-        else:
-          for atom in range(cov_obj.n_atoms):
-            f.write('0\n')
+          n_non_zero_charges += len([ch for ch in cov_obj.formal_charges if ch != 0])
+        f.write("formal_charges %d\n" %n_non_zero_charges)
+        if self.formal_charges[r_i]:
+          for i,fcharge in enumerate(self.formal_charges[r_i]):
+            if fcharge != 0:
+              f.write ('%d %d\n' %(i,fcharge))
+        if cov_obj.formal_charges:
+          for i, fcharge in enumerate(cov_obj.formal_charges):
+            if fcharge != 0:
+              f.write('%d\n' %fcharge)
       f.write('fixed_atoms %d\n' %cov_obj.n_atoms)
       for i in range(cov_obj.n_atoms):
         f.write('%d\n' %(i+self.n_atoms[r_i]))
@@ -332,6 +363,7 @@ class afitt_object:
     # ofile.write(f.getvalue())
     # ofile.close()
     # sys.exit()
+    # print f.getvalue()
     return f.getvalue()
 
 def call_afitt(afitt_input, ff):
@@ -342,6 +374,10 @@ def call_afitt(afitt_input, ff):
                                )
   out = StringIO.StringIO()
   ero.show_stdout(out=out)
+  if 'ENERGYTAG' not in out.getvalue().split():
+    ero.show_stderr()
+    print "AFITT energy call exited with errors printed above."
+    sys.exit()
   return out
 
 def process_afitt_output(afitt_output,
@@ -378,8 +414,17 @@ def process_afitt_output(afitt_output,
   #~ for i in inspect.stack():
     #~ print i[1], i[2], i[4]
   #~ print "\n\n\n\n"
+  cov_ptrs=[]
+  if afitt_o.covalent_data[r_i][i_i] is not None:
+    cov_ptrs= afitt_o.covalent_data[r_i][i_i].sites_cart_ptrs
   if (geometry.gradients is not None):
-    assert afitt_gradients.size() == len(ptrs)
+    # AFITT prints gradient lines for fixed atoms too so I need to check
+    # that no. of gradient == ligand atoms + fixed atoms. But since the
+    # fixed atom gradient's are always zero and we add gradients to the
+    # Phenix gradients, I don't add code to actually do anything with the
+    # fixed atom gradients. NOTE: if one day for some reason we decide to
+    # replace Phenix gradients with AFITT gradients, this would need to be added.
+    assert afitt_gradients.size() == len(ptrs)  +  len(cov_ptrs)
     if afitt_o.scale == 'gnorm':
       from math import sqrt
       # phenix_norm=phenix_gnorms[r_i][i_i]
@@ -437,7 +482,10 @@ def apply_target_gradients(afitt_o, geometry, afitt_allgradients, afitt_alltarge
       gradients = afitt_allgradients[key]
       target = afitt_alltargets[key]
       ptrs=afitt_o.sites_cart_ptrs[r_i][i_i]
-      for i_seq, gradient in zip(ptrs,gradients):
+      cov_ptrs=[]
+      if afitt_o.covalent_data[r_i][i_i] is not None:
+        cov_ptrs= afitt_o.covalent_data[r_i][i_i].sites_cart_ptrs
+      for i_seq, gradient in zip(ptrs+cov_ptrs,gradients):
         gx = gradient[0] + geometry.gradients[i_seq][0]
         gy = gradient[1] + geometry.gradients[i_seq][1]
         gz = gradient[2] + geometry.gradients[i_seq][2]
@@ -461,12 +509,19 @@ def apply_target_gradients(afitt_o, geometry, afitt_allgradients, afitt_alltarge
   #   geometry.residual_sum += afitt_alltargets[target]
   return geometry
 
-def get_afitt_energy(cif_file, ligand_names, pdb_hierarchy, ff, sites_cart):
+def get_afitt_energy(cif_file,
+                     ligand_names,
+                     pdb_hierarchy,
+                     ff,
+                     sites_cart,
+                     geometry=None):
   afitt_o = afitt_object(
                 cif_file,
                 ligand_names,
                 pdb_hierarchy,
                 ff)
+  if geometry is not None:
+    afitt_o.check_covalent(geometry)
   energies=[]
   for resname_i,resname in enumerate(afitt_o.resname):
     for instance_i, instance in enumerate(afitt_o.res_ids[resname_i]):
@@ -916,7 +971,7 @@ def bond_test(model):
   print bond
   assert 0
 
-def run(pdb_file, cif_file, ligand_names, ff='mmff94s'):
+def run(pdb_file, cif_file, ligand_names, ff='mmff94s',covalent=False):
   import iotbx.pdb
   assert os.path.isfile(pdb_file), "File %s does not exist." %pdb_file
   assert os.path.isfile(cif_file), "File %s does not exist." %cif_file
@@ -925,12 +980,30 @@ def run(pdb_file, cif_file, ligand_names, ff='mmff94s'):
   pdb_hierarchy.atoms().reset_i_seq()
   xrs = pdb_hierarchy.extract_xray_structure()
   sites_cart=xrs.sites_cart()
-
+  grm=None
+  if covalent:
+    from mmtbx import monomer_library
+    import mmtbx.monomer_library.server
+    import mmtbx.monomer_library.pdb_interpretation
+    mon_lib_srv = monomer_library.server.server()
+    ener_lib = monomer_library.server.ener_lib()
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv    = mon_lib_srv,
+      ener_lib       = ener_lib,
+      file_name      = pdb_file,
+      raw_records    = None,
+      force_symmetry = True)
+    grm = processed_pdb_file.geometry_restraints_manager(
+      show_energies = False,
+      plain_pairs_radius = 5.0,
+      )
   energies = get_afitt_energy(cif_file,
                               ligand_names,
                               pdb_hierarchy,
                               ff,
-                              sites_cart)
+                              sites_cart,
+                              grm)
+
   for energy in energies:
     print "%s_%d_%s AFITT_ENERGY: %10.4f" %(energy[0], energy[1], energy[2], energy[3])
 
@@ -941,9 +1014,10 @@ def run2():
   parser.add_argument("cif_file", help="cif file", default=0)
   parser.add_argument("ligand_names", help="3-letter ligand names separated by commas")
   parser.add_argument("-ff", help="afitt theory: mmff94, mmff94s pm3 or am1", default='mmff94s')
+  parser.add_argument('-covalent', dest='covalent', action='store_true', help="calculate covalent energy (only for debugging)")
   args = parser.parse_args()
   ligand_names=args.ligand_names.split(',')
-  run(args.pdb_file, args.cif_file, ligand_names, args.ff)
+  run(args.pdb_file, args.cif_file, ligand_names, args.ff, args.covalent)
 
 if (__name__ == "__main__"):
   run2()
