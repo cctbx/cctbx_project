@@ -1,5 +1,5 @@
 from __future__ import division
-# LIBTBX_SET_DISPATCHER_NAME libtbx.zipyton
+# LIBTBX_SET_DISPATCHER_NAME libtbx.ipyton
 import re
 import sys
 
