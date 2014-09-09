@@ -1,5 +1,8 @@
 
 from __future__ import division
+from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
+from mmtbx.validation import rotalyze
+from iotbx import file_reader
 from iotbx import pdb
 from libtbx.test_utils import show_diff, Exception_expected
 from libtbx.utils import Sorry
@@ -9,7 +12,6 @@ from cStringIO import StringIO
 import os.path
 
 def exercise_rotalyze():
-  from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/jcm.pdb",
     test=os.path.isfile)
@@ -19,8 +21,6 @@ def exercise_rotalyze():
   if (find_rotarama_data_dir(optional=True) is None):
     print "Skipping exercise_rotalyze(): rotarama_data directory not available"
     return
-  from mmtbx.validation import rotalyze
-  from iotbx import file_reader
   pdb_in = file_reader.any_file(file_name=regression_pdb)
   hierarchy = pdb_in.file_object.hierarchy
   pdb_io = pdb.input(file_name=regression_pdb)
@@ -150,6 +150,7 @@ def exercise_rotalyze():
  A  46  ASN:1.00:34.0:301.6:117.9:::m120
 """)
 
+def exercise_2 () :
   pdb_str = """\
 ATOM   2527  N   LEU A 261     -31.022 -24.808 107.479  1.00 28.22           N
 ATOM   2528  CA  LEU A 261     -30.054 -23.719 107.237  1.00 21.77           C
@@ -237,6 +238,24 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
  A  49  LYS:1.00:0.0:288.6:263.2:251.7:233.0:OUTLIER
 """
 
+  r = rotalyze.rotalyze(pdb_hierarchy=hierarchy,
+    data_version="8000")
+  out = StringIO()
+  r.show_old_output(out=out, verbose=False)
+  assert (out.getvalue() == """\
+ A  47  PRO:1.00:96.6:329.3::::Cg_exo
+ A  48  MSE:0.70:2.0:287.6:214.8:138.3::mtt
+ A  49  LYS:1.00:0.0:288.6:263.2:251.7:233.0:OUTLIER
+""")
+
+  try :
+    r = rotalyze.rotalyze(pdb_hierarchy=hierarchy,
+      data_version="9000")
+  except ValueError :
+    pass
+  else :
+    raise Exception_expected
+
   from mmtbx.rotamer.rotamer_eval import RotamerEval
   rotamer_manager = RotamerEval()
   results = []
@@ -246,7 +265,8 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
         cur_rot = rotamer_manager.evaluate_residue(residue)
         results.append(cur_rot)
   assert results == ['Cg_exo', 'mtt', 'OUTLIER']
-  print "OK"
 
 if (__name__ == "__main__") :
   exercise_rotalyze()
+  exercise_2()
+  print "OK"

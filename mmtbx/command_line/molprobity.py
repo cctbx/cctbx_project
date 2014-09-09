@@ -42,6 +42,10 @@ molprobity {
   count_anomalous_pairs_separately = False
     .type = bool
     .expert_level = 2
+  rotamer_library = *500 8000
+    .type = choice
+    .help = Library of rotamer probabilities (Top500 or Top8000)
+    .expert_level = 2
   flags
     .expert_level = 3
   {
@@ -167,12 +171,14 @@ def run (args,
     save_probe_unformatted_file=probe_file,
     min_cc_two_fofc=params.molprobity.min_cc_two_fofc,
     n_bins_data=params.molprobity.n_bins,
+    outliers_only=params.molprobity.outliers_only,
     use_pdb_header_resolution_cutoffs=\
       params.molprobity.use_pdb_header_resolution_cutoffs,
     count_anomalous_pairs_separately=\
       params.molprobity.count_anomalous_pairs_separately,
     file_name=params.input.pdb.file_name[0],
-    ligand_selection=params.molprobity.ligand_selection)
+    ligand_selection=params.molprobity.ligand_selection,
+    rotamer_library=params.molprobity.rotamer_library)
   map_file = None
   if (not params.output.quiet) :
     out2 = multi_out()
