@@ -1,14 +1,17 @@
-from __future__ import division
 
 # XXX: this module is used exclusively by the Phenix GUI, which needs an
 # index of all current phil parameters, and an easy way to change them.
 
-import os, sys, re, string
-import libtbx.phil
-from libtbx.phil import gui_objects
-from libtbx.utils import Sorry
+from __future__ import division
 from libtbx import easy_pickle, str_utils, smart_open
 from libtbx import adopt_init_args, Auto
+from libtbx.phil import gui_objects
+from libtbx.utils import Sorry
+import libtbx.phil
+import string
+import re
+import os
+import sys
 
 tracking_params = libtbx.phil.parse("""
   job_title = None
@@ -920,5 +923,16 @@ def join_scope_paths (scope1, scope2) :
 
 def get_adjoining_phil_path (def_path, def_name) :
   return ".".join(def_path.split(".")[:-1]) + "." + def_name
+
+def validate_choice_captions (phil_scope) :
+  if (phil_scope.is_definition) :
+    if (phil_scope.type.phil_type == "choice") :
+      words = phil_scope.words
+      if (phil_scope.caption is not None) :
+        labels = phil_scope.caption.split()
+        assert (len(labels) == len(words)), ("%s" % phil_scope.full_path())
+  else :
+    for phil_object in phil_scope.objects :
+      validate_choice_captions(phil_object)
 
 #---end
