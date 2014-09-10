@@ -13,6 +13,7 @@ class rotamer (residue) :
   """
   __rotamer_attr__ = [
     "score",
+    "evaluation",
     "rotamer_name",
     "chi_angles",
     "incomplete",
@@ -52,8 +53,9 @@ class rotamer (residue) :
     s_occ = format_value("%.2f", self.occupancy)
     s_score = format_value("%.1f", self.score)
     chis = list(self.chi_angles)
-    return "%s:%s:%s:%s:%s" % (self.id_str(), s_occ, s_score,
-      self.format_chi_angles(pad=True, sep=":"), self.rotamer_name)
+    return "%s:%s:%s:%s:%s:%s" % (self.id_str(), s_occ, s_score,
+      self.format_chi_angles(pad=True, sep=":"), 
+      self.evaluation,self.rotamer_name)
 
   # GUI output
   def as_table_row_phenix (self) :
@@ -82,9 +84,11 @@ class rotamer_ensemble (residue) :
     return "%-20s %s" % (self.id_str(), ", ".join(rot_out))
 
 class rotalyze (validation) :
-  __slots__ = validation.__slots__ + ["out_percent"]
+  __slots__ = validation.__slots__ + ["n_allowed", "n_favored", "out_percent",
+        "outlier_threshold", "data_version"]
   program_description = "Analyze protein sidechain rotamers"
-  output_header = "residue:occupancy:score%:chi1:chi2:chi3:chi4:rotamer"
+  output_header = "residue:occupancy:score%:chi1:chi2:chi3:chi4:"
+  output_header+= "evaluation:rotamer"
   gui_list_headers = ["Chain","Residue","Score","Chi1","Chi2","Chi3","Chi4"]
   gui_formats = ["%s", "%s", "%.2f", "%.1f", "%.1f", "%.1f", "%.1f"]
   wx_column_widths = [120]*7
@@ -98,13 +102,15 @@ class rotalyze (validation) :
       out=sys.stdout,
       quiet=False) :
     validation.__init__(self)
+    self.n_allowed = 0
+    self.n_favored = 0
     from mmtbx.rotamer.sidechain_angles import SidechainAngles
     from mmtbx.rotamer import rotamer_eval
     from mmtbx.rotamer.rotamer_eval import RotamerID
     from mmtbx.validation import utils
-#     self.data_version = data_version
-    if data_version == "500":    outlier_threshold = 0.01
-    elif data_version == "8000": outlier_threshold = 0.003
+    self.data_version = data_version
+    if self.data_version == "500":    self.outlier_threshold = 0.01
+    elif self.data_version == "8000": self.outlier_threshold = 0.003
     else: raise ValueError(
       "data_version given to RotamerEval not recognized (%s)." % data_version)
     sidechain_angles = SidechainAngles(show_errors)
@@ -163,10 +169,11 @@ class rotalyze (validation) :
                   symmetry=False)
                 sym_chis = wrap_chis[:]
                 sym_chis = rotamer_id.wrap_sym(resname.strip(), sym_chis)
-                if value < outlier_threshold:
-                  self.n_outliers += 1
+                evaluation = self.evaluateScore(value)
+                kwargs['evaluation'] = evaluation
+                if evaluation == "OUTLIER":
                   kwargs['outlier'] = True
-                  kwargs['rotamer_name'] = "OUTLIER"
+                  kwargs['rotamer_name'] = evaluation
                 else:
                   kwargs['outlier'] = False
                   kwargs['rotamer_name'] = rotamer_id.identify(resname,
@@ -183,12 +190,27 @@ class rotalyze (validation) :
     out_count, out_percent = self.get_outliers_count_and_fraction()
     self.out_percent = out_percent * 100.0
 
+  def evaluateScore(self, value) :
+    if value >= 0.02:
+      self.n_favored += 1
+      return "Favored"
+    elif value >= self.outlier_threshold:
+      self.n_allowed += 1
+      return "Allowed"
+    else:
+      self.n_outliers += 1
+      return "OUTLIER"
+
   def show_summary (self, out=sys.stdout, prefix="") :
     print >> out, prefix + 'SUMMARY: %.2f%% outliers (Goal: %s)' % \
       (self.out_percent, self.get_outliers_goal())
 
   def get_outliers_goal(self):
-    return "< 1%"
+    if self.data_version == '500' return "< 1%"
+    else: return "< 0.3%"
+
+  def get_favored_goal(self):
+    return "> 98%"
 
   def coot_todo (self):
     return ""
