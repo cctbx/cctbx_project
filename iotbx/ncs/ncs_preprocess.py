@@ -926,16 +926,19 @@ class ncs_group_object(object):
         if xyz_master.size() == xyz_copy.size():
           rmsd = round(xyz_master.rms_difference(xyz_copy),4)
 
-
       # get continuous res ids
       range_list = []
       for chain in chain_residues_list:
         res_id = []
         for rs in chain.residue_groups():
-          ch_id = rs.id_str()[:3].strip()
-          j = rs.id_str()[3:].strip()
-          # ch_id,j = rs.id_str().split()
-          res_id.append(int(j))
+          resid = rs.resid().strip()
+          j = rs.resseq_as_int()
+          if str(j) == resid:
+            res_id.append(j)
+          else:
+            # Fixme: properly handle insertions where res-id can be non
+            # integer like :"3T"
+            pass
         range_list.append([min(res_id),max(res_id)])
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
 

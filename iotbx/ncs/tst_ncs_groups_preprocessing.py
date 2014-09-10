@@ -261,13 +261,18 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     t2 = trans_obj2.tr_id_to_selection['chain A_s003']
     self.assertEqual(t1,t2)
 
+  def test_insertion_processing(self):
+    """  Verify correct processing of PDBs that have insertions residues   """
+    print sys._getframe().f_code.co_name
+    # Todo: Add test
+    pass
+
   # @unittest.SkipTest
   def test_rotaion_translation_input(self):
-    """
-    Verify correct processing
-    """
+    """ Verify correct processing    """
     print sys._getframe().f_code.co_name
-
+    # Todo: Add test
+    pass
 
   # def test_build_pdb(self):
   #   """ produce test pdb file """
