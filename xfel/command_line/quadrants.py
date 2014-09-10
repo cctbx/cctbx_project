@@ -44,7 +44,7 @@ if (__name__ == "__main__"):
     if image.horizons_phil_cache.distl.detector_format_version != \
        phil_params.distl.detector_format_version:
          raise Sorry(
-         '''it is necessary to put distl.dectector_format_version="%s" on the command line.'''%(
+         '''it is necessary to put distl.detector_format_version="%s" on the command line.'''%(
        image.horizons_phil_cache.distl.detector_format_version))
 
     M = image.get_tile_manager(phil = phil_params)
