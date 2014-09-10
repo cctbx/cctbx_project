@@ -25,6 +25,7 @@ PYRTF_PKG = "PyRTF-0.45.tar.gz"          # for phenix.table_one, etc.
 BIOPYTHON_PKG = "biopython-1.64.tar.gz"  # used in iotbx
 SPHINX_PKG = "Sphinx-1.2.2.tar.gz"       # for documentation
 NUMPYDOC_PKG = "numpydoc-0.5.tar.gz"     # for documentation
+IPYTHON_PKG = "ipython-2.1.0.tar.gz"     # IPython
 
 # from xia2 page
 HDF5_PKG = "hdf5-1.8.8.tar.bz2"      # dxtbx
@@ -51,7 +52,7 @@ GTK_ENGINE_PKG = "clearlooks-0.5.tar.gz"
 GTK_THEME_PKG = "gtk_themes.tar.gz"
 # end Linux-only
 FONT_PKG = "fonts.tar.gz"
-WXPYTHON_DEV_PKG = "wxPython-src-3.0.0.0_cci.tar.gz"  # Mac 64-bit
+WXPYTHON_DEV_PKG = "wxPython-src-3.0.1.0.tar.gz"  # Mac 64-bit
 WXPYTHON_PKG = "wxPython-src-2.8.12.1.tar.gz"         # Linux, Mac 32-bit
 WEBKIT_PKG = "wxwebkit.tar.gz"                        # not currently used
 MATPLOTLIB_PKG = "matplotlib-1.3.1.tar.gz"
