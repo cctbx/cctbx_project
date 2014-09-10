@@ -6,6 +6,7 @@ from mmtbx import monomer_library
 from scitbx import matrix
 import scitbx.rigid_body
 from cctbx import xray
+import mmtbx.utils
 import random
 import math
 
@@ -38,7 +39,12 @@ def concatenate_rot_tran(transforms_obj=None,
 def get_rotation_translation_as_list(transforms_obj=None,
                                      ncs_restraints_group_list=None):
   """
-  Collect and returns rotations matrices and translations vectors to two lists
+  Get rotations and translations vectors from ncs_restraints_group_list or
+  transforms_obj
+
+  Returns:
+    r (list): list of rotation matrices
+    t (list): list of translation vectors
   """
   r = []
   t = []
@@ -431,23 +437,30 @@ def get_weight(minimization_obj=None,
   weight =min(weight,1e6)
   return weight
 
-def get_restraints_manager(pdb_file_name=None,pdb_string=None):
+def get_restraints_manager(pdb_file_name=None,pdb_string=None,
+                           normalization=True):
   """  Generate restraint manager from a PDB file or a PDB string  """
   assert [pdb_file_name,pdb_string].count(None)==1
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   if pdb_string: pdb_lines = pdb_string.splitlines()
   else: pdb_lines = None
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
+  # processed_pdb_file : ppf
+  ppf = monomer_library.pdb_interpretation.process(
     mon_lib_srv    = mon_lib_srv,
     ener_lib       = ener_lib,
     file_name      = pdb_file_name,
     raw_records    = pdb_lines,
     force_symmetry = True)
-  geometry = processed_pdb_file.geometry_restraints_manager(
+
+  # plain_pairs_radius is set to 5.0 for u_iso_refinement
+  geometry = ppf.geometry_restraints_manager(
     show_energies = False, plain_pairs_radius = 5.0)
-  return mmtbx.restraints.manager(
-    geometry = geometry, normalization = False)
+
+  restraints_manager = mmtbx.restraints.manager(
+    geometry = geometry,
+    normalization = normalization)
+  return restraints_manager
 
 def apply_transforms(ncs_coordinates,
                      ncs_restraints_group_list,
@@ -491,12 +504,12 @@ def apply_transforms(ncs_coordinates,
   else:
     return flex.vec3_double(asu_xyz)
 
-def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection):
+def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection=[]):
   """
   Args:
     ncs_restraints_group_list: list of ncs_restraint_group objects
     refine_selection (flex.siz_t): of all ncs related copies and
-      non ncs related parts to be included in selection
+      non ncs related parts to be included in selection (to be refined)
 
   Returns:
     (flex.siz_t): selection of all ncs groups master ncs selection and
@@ -511,13 +524,17 @@ def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection):
     for ncs_copy in nrg.copies:
       asu_selection = ncs_copy.copy_iselection
       total_ncs_related_selection.update(set(asu_selection))
-  # make sure all ncs related parts are in refine_selection
-  all_ncs = total_master_ncs_selection | total_ncs_related_selection
-  msg = 'refine_selection does not contain all ncs related atoms'
-  assert not bool(all_ncs - refine_selection), msg
-  #
-  extended_ncs_selection = refine_selection - total_ncs_related_selection
-  return flex.size_t(list(extended_ncs_selection))
+  if refine_selection:
+    # make sure all ncs related parts are in refine_selection
+    all_ncs = total_master_ncs_selection | total_ncs_related_selection
+    msg = 'refine_selection does not contain all ncs related atoms'
+    assert not bool(all_ncs - refine_selection), msg
+    #
+    extended_ncs_selection = refine_selection - total_ncs_related_selection
+    return flex.size_t(list(extended_ncs_selection))
+  else:
+    # if refine_selection is None
+    return flex.size_t(list(total_master_ncs_selection))
 
 def get_ncs_related_selection(ncs_restraints_group_list,asu_size):
   """
@@ -805,3 +822,11 @@ def get_list_of_best_ncs_copy_map_correlation(
     cc = mp.calc_correlation_coefficient(selections)
     best_list.append(cc.index(max(cc)))
   return best_list
+
+def get_refine_selection(refine_selection,xray_structure):
+  """ populate refine_selection with all atoms if no selection is given  """
+  if not bool(refine_selection):
+      # select to refine all atoms
+      selection_list = range(xray_structure.sites_cart().size())
+      refine_selection = flex.size_t(selection_list)
+  return refine_selection

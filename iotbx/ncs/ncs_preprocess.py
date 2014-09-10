@@ -1008,20 +1008,20 @@ class ncs_group_object(object):
     If no pdb_hierarchy, xray structure or fmodel are provided, the function
     will return only the MTRIX/BIOMT records
 
-    Arguments:
-    file_name: (str) output file name
-    ncs_only: (bool) When False, the comple ASU will be printed (applicable
-              only with MTRIX records)
-    pdb_hierarchy: (pdb_hierarchy object)
-    xrs: (xray structure) for crystal symmetry
-    fmodel: (fmodel object)
-    crystal_symmetry: crystal symmetry records
-    mtrix: (bool) When True -> write MTRIX records
-    biomt: (bool) When True -> write BIOMT records
-    write: (bool) when False, will will not write to file or print
+    Args:
+      file_name: (str) output file name
+      ncs_only: (bool) When False, the comple ASU will be printed (applicable
+                only with MTRIX records)
+      pdb_hierarchy: (pdb_hierarchy object)
+      xrs: (xray structure) for crystal symmetry
+      fmodel: (fmodel object)
+      crystal_symmetry: crystal symmetry records
+      mtrix: (bool) When True -> write MTRIX records
+      biomt: (bool) When True -> write BIOMT records
+      write: (bool) when False, will will not write to file or print
 
     Return:
-    PDB string
+      PDB string
     """
     if (not mtrix) and (not biomt):
       mtrix = True
