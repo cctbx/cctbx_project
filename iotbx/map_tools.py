@@ -352,7 +352,7 @@ class server (object) :
     sites_cart = None
     if (pdb_file is not None) :
       pdb_in = self.get_pdb_file(pdb_file)
-      sites_cart = pdb_in.atoms().extract_xyz()
+      sites_cart = pdb_in.hierarchy.atoms().extract_xyz()
     if (output_file is None) :
       if (simple_file_name) :
         output_file = os.path.splitext(self.file_name)[0] + ".ccp4"
