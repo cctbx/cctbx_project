@@ -846,7 +846,7 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
      and organization of each array dimension.
      The relationship to physical axes may be given."""
 
-  # find the panel sizes
+  # find the asic sizes
   for tilekey in tilekeys:
     b = metro[tilekey]
     if not "x_dim" in locals():
@@ -855,15 +855,16 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
     else:
       assert x_dim == b.dimension[0] and y_dim == b.dimension[1]
 
+  sensor_quad_keys = [(key[0],key[1]) for key in metro if len(key) == 3]
   for quadkey in quadkeys:
     if not "z_dim" in locals():
-      z_dim = quadstrs.count(quadkey)
+      z_dim = sensor_quad_keys.count(quadkey)
     else:
-      assert z_dim == quadstrs.count(quadkey)
+      assert z_dim == sensor_quad_keys.count(quadkey)
 
   cbf.add_category("array_structure_list",["array_section","array_section_id","index","dimension","precedence","direction","axis_set_id"])
   for quadname in quadstrs:
-    cbf.add_row(["ARRAY_"+quadname,".","1","%d"%x_dim,"1","increasing","."])
+    cbf.add_row(["ARRAY_"+quadname,".","1","%d"%(2*x_dim),"1","increasing","."])
     cbf.add_row(["ARRAY_"+quadname,".","2","%d"%y_dim,"2","increasing","."])
     cbf.add_row(["ARRAY_"+quadname,".","3","%d"%z_dim,"3","increasing","."])
   for tilename,tilekey,tilequad in zip(tilestrs,tilekeys,tilequads):

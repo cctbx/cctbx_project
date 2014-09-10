@@ -48,14 +48,15 @@ if (__name__ == "__main__") :
   # categories required to match between the two files.  Tuples of category names
   # and table column names which are keys, I.E., there should be only one row in the
   # category with a given value in the table
-  required_categories = [("diffrn"                   , "id"),
-                         ("diffrn_source"            , "diffrn_id"),
-                         ("diffrn_detector"          , "id"),
-                         ("diffrn_detector_axis"     , "axis_id"),
-                         ("diffrn_detector_element"  , "id"),
-                         ("diffrn_data_frame"        , "detector_element_id"),
-                         ("array_structure_list"     , "axis_set_id"),
-                         ("array_structure_list_axis", "axis_set_id")]
+  required_categories = [("diffrn"                      , "id"),
+                         ("diffrn_source"               , "diffrn_id"),
+                         ("diffrn_detector"             , "id"),
+                         ("diffrn_detector_axis"        , "axis_id"),
+                         ("diffrn_detector_element"     , "id"),
+                         ("diffrn_data_frame"           , "detector_element_id"),
+                         ("array_structure_list"        , None),
+                         ("array_structure_list_axis"   , "axis_set_id"),
+                         ("array_structure_list_section", None)]
 
   # categories whose data to copy from one cbf to another
   copy_categories =     [("axis"                     , "id"),
@@ -68,11 +69,12 @@ if (__name__ == "__main__") :
   src_cbf.read_widefile(params.source_cbf, pycbf.MSG_DIGEST)
 
   # verify all the categories are present in the source cbf
-  print "Testing for required categories:"
+  print "Testing for required categories in source:"
   src_cbf.select_category(0)
   n_found = 0
   while True:
-    assert src_cbf.category_name() in names
+    if not src_cbf.category_name() in names:
+      raise Sorry("%s not a recognized category"%src_cbf.category_name())
     print "Found", src_cbf.category_name()
     n_found += 1
     try:
@@ -103,14 +105,21 @@ if (__name__ == "__main__") :
         dst_cbf.rewind_column()
 
         src_cbf.select_row(j)
-        src_cbf.find_column(key)
-        dst_cbf.find_column(key)
-        dst_cbf.find_row(src_cbf.get_value())
+        if key is None:
+          # for tables with non-unique key column, compare row by row
+          dst_cbf.select_row(j)
+        else:
+          # for tables with unique key column, don't assume the rows are in the
+          # same order
+          src_cbf.find_column(key)
+          dst_cbf.find_column(key)
+          dst_cbf.find_row(src_cbf.get_value())
 
         for i in xrange(src_cbf.count_columns()):
           src_cbf.select_column(i)
           dst_cbf.find_column(src_cbf.column_name())
-          assert src_cbf.get_value() == dst_cbf.get_value()
+          if src_cbf.get_value() != dst_cbf.get_value():
+            raise Sorry("Non matching values: table %s, row %d, column %s, %s vs. %s"%(category, i, src_cbf.column_name(),src_cbf.get_value(), dst_cbf.get_value()))
 
     # Copy
     for category, key in copy_categories:
@@ -157,4 +166,3 @@ if (__name__ == "__main__") :
     shutil.move(destpath, path)
 
     print "Done"
-

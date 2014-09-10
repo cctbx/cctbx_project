@@ -51,10 +51,13 @@ if (__name__ == "__main__") :
     if reader is None:
       # see if it's a SLAC geometry file
       from PSCalib.GeometryAccess import GeometryAccess
+      from scitbx import matrix
       try:
         geometry = GeometryAccess(params.metrology)
       except Exception, e:
         raise Sorry("Can't parse this metrology file")
+
+      root = geometry.get_top_geo()
 
       # get pixel mappings to real space.
       x, y, z = geometry.get_pixel_coords()
@@ -62,8 +65,19 @@ if (__name__ == "__main__") :
       assert len(x.shape) == 4
       sensor_slow = x.shape[2]
       sensor_fast = x.shape[3]
-      for quad_id in xrange(x.shape[0]):
-        for sensor_id in xrange(x.shape[1]):
+      for quad_id, quad in enumerate(root.get_list_of_children()):
+        ax.arrow(0, 0, quad.x0/1000, quad.y0/1000, head_width=0.05, head_length=0.1, fc='k', ec='k')
+        for sensor_id, sensor in enumerate(quad.get_list_of_children()):
+          sensor_x, sensor_y, sensor_z = sensor.get_pixel_coords()
+          transformed_x, transformed_y, transformed_z = quad.transform_geo_coord_arrays(sensor_x, sensor_y, sensor_z)
+
+          arrow_start = matrix.col((quad.x0/1000, quad.y0/1000))
+          arrow_end = matrix.col((transformed_x[0,0]/1000, transformed_y[0,0]/1000))
+          dx, dy = arrow_end - arrow_start
+          ax.arrow(quad.x0/1000, quad.y0/1000, dx, dy, head_width=0.05, head_length=0.1, fc='k', ec='k')
+          if quad_id == 0 and sensor_id == 0:
+            print x[quad_id,sensor_id,0,0]/1000, transformed_x[0,0]/1000
+
           p0 = col((x[quad_id,sensor_id,0,0]/1000,
                     y[quad_id,sensor_id,0,0]/1000))
           p1 = col((x[quad_id,sensor_id,sensor_slow-1,0]/1000,
