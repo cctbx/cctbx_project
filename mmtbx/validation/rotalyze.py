@@ -51,10 +51,10 @@ class rotamer (residue) :
   # Old output
   def format_old (self) :
     s_occ = format_value("%.2f", self.occupancy)
-    s_score = format_value("%.1f", self.score)
+    s_score = format_value("%.2f", self.score)
     chis = list(self.chi_angles)
     return "%s:%s:%s:%s:%s:%s" % (self.id_str(), s_occ, s_score,
-      self.format_chi_angles(pad=True, sep=":"), 
+      self.format_chi_angles(pad=True, sep=":"),
       self.evaluation,self.rotamer_name)
 
   # GUI output
@@ -206,7 +206,7 @@ class rotalyze (validation) :
       (self.out_percent, self.get_outliers_goal())
 
   def get_outliers_goal(self):
-    if self.data_version == '500' return "< 1%"
+    if self.data_version == '500' : return "< 1%"
     else: return "< 0.3%"
 
   def get_favored_goal(self):
