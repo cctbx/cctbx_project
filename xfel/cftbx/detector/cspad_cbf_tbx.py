@@ -114,16 +114,15 @@ def read_slac_metrology(path, plot=False):
   def basis_from_geo(geo):
     rotx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(
       geo.rot_x + geo.tilt_x, deg=True)
-    roty = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(
+    roty = matrix.col((0,1,0)).axis_and_angle_as_r3_rotation_matrix(
       geo.rot_y + geo.tilt_y, deg=True)
-    rotz = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(
+    rotz = matrix.col((0,0,1)).axis_and_angle_as_r3_rotation_matrix(
       geo.rot_z + geo.tilt_z, deg=True)
 
-    rot = (rotx*roty*rotz).r3_rotation_matrix_as_unit_quaternion()
+    rot = (rotz*roty*rotx).r3_rotation_matrix_as_unit_quaternion()
 
     return basis(orientation = rot,
                  translation = matrix.col((geo.x0/1000, geo.y0/1000, geo.z0/1000)))
-
 
   from PSCalib.GeometryAccess import GeometryAccess
 
