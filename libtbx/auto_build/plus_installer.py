@@ -24,7 +24,7 @@ class installer (install_distribution.installer) :
   configure_modules = install_distribution.installer.configure_modules + \
     ['dxtbx', 'wxtbx', "gltbx", "crys3d", "rstbx", "spotfinder"]
   include_gui_packages = True
-  base_package_options = ['--all', "--sphinx"]
+  base_package_options = ['--all', "--sphinx", "--ipython"]
   source_packages = [ "cctbx_bundle" ] + ['cbflib','annlib','annlib_adaptbx']
   #
 
