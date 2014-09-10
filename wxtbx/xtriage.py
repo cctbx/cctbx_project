@@ -24,14 +24,14 @@ class wx_panel (wx.lib.scrolledpanel.ScrolledPanel) :
   def OnChildFocus (self, evt) :
     pass
 
-class wx_output (wxtbx.windows.ChoiceBook,
-                 mmtbx.scaling.xtriage_output) :
+class wx_output_base (mmtbx.scaling.xtriage_output) :
   """
-  Xtriage output handler implemented as a wxPython notebook.
+  Implements wxPython controls for Xtriage output handler, independent of
+  window type.
   """
   gui_output = True
   def __init__ (self, *args, **kwds) :
-    super(wx_output, self).__init__(*args, **kwds)
+    super(wx_output_base, self).__init__(*args, **kwds)
     self._current_panel = None
     self._current_sizer = None
     self._sections = {}
@@ -39,14 +39,11 @@ class wx_output (wxtbx.windows.ChoiceBook,
     self._tables = []
     self._in_box = False
 
-  def SetupScrolling (self) :
-    """
-    Initialize scrollbars on child panels.
-    """
-    for i_page in range(self.GetPageCount()) :
-      panel = self.GetPage(i_page)
-      panel.Layout()
-      panel.SetupScrolling(scrollToTop=True)
+  def create_panel (self) :
+    raise NotImplementedError()
+
+  def add_panel (self, panel, title) :
+    raise NotImplementedError()
 
   def show_header (self, title) :
     """
@@ -54,17 +51,12 @@ class wx_output (wxtbx.windows.ChoiceBook,
     output panel for all subsequent method calls until show_header() is called
     again.
     """
-    panel = wx_panel(parent=self, style=wx.SUNKEN_BORDER)
+    panel = self.create_panel()
     szr = wx.BoxSizer(wx.VERTICAL)
     panel.SetSizer(szr)
     self._current_panel = panel
     self._current_sizer = szr
-    if (title == "Twinning and intensity statistics summary") :
-      self.InsertPage(0, panel, title)
-    elif (title == "Xtriage summary") :
-      self.InsertPage(0, panel, title)
-    else :
-      self.AddPage(panel, title)
+    self.add_panel(panel, title)
 
   def show_sub_header (self, title) :
     """
@@ -273,6 +265,43 @@ class wx_output (wxtbx.windows.ChoiceBook,
     self.SetPage(self.GetPageIndex(page))
     page.ScrollChildIntoView(section)
 
+class wx_output (wx_output_base, wxtbx.windows.ChoiceBook) :
+  """
+  Xtriage output implemented as a wxPython notebook.
+  """
+  def SetupScrolling (self) :
+    """
+    Initialize scrollbars on child panels.
+    """
+    for i_page in range(self.GetPageCount()) :
+      panel = self.GetPage(i_page)
+      panel.Layout()
+      panel.SetupScrolling(scrollToTop=True)
+
+  def create_panel (self) :
+    return wx_panel(parent=self, style=wx.SUNKEN_BORDER)
+
+  def add_panel (self, panel, title) :
+    if (title == "Twinning and intensity statistics summary") :
+      self.InsertPage(0, panel, title)
+    elif (title == "Xtriage summary") :
+      self.InsertPage(0, panel, title)
+    else :
+      self.AddPage(panel, title)
+
+class wx_output_panel (wx_output_base, wx_panel) :
+  """
+  Single panel for displaying an individual Xtriage result.  If more than
+  one section is displayed (corresponding to multiple notebook pages in the
+  standard window), an error will be raised.
+  """
+  def create_panel (self) :
+    assert (self._current_panel is None)
+    return self
+
+  def add_panel (self, panel, title) :
+    pass
+
 def DrawStatusLightControl (parent, message, name, level) :
   """
   Create a control (based on wxtbx.metallicbutton) with a traffic light-like
@@ -310,9 +339,12 @@ class XtriageFrame (wx.Frame) :
   """
   def __init__ (self, *args, **kwds) :
     super(XtriageFrame, self).__init__(*args, **kwds)
-    self.output_panel = wx_output(parent=self)
+    self.output_panel = self.create_panel()
     self.SetupToolbar()
     self._result = None
+
+  def create_panel (self) :
+    return wx_output(parent=self)
 
   def SetupToolbar (self) :
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
@@ -334,7 +366,8 @@ class XtriageFrame (wx.Frame) :
     self._result = result
     result.show(out=self.output_panel)
     self.output_panel.SetupScrolling()
-    self.output_panel.SetPage(0)
+    if hasattr(self.output_panel, "SetPage") :
+      self.output_panel.SetPage(0)
 
   def OnDisplayLog (self, event) :
     if (self._result.log_file_name is not None) :
@@ -342,6 +375,10 @@ class XtriageFrame (wx.Frame) :
         easy_run.call("open -a TextEdit %s" % self._result.log_file_name)
       else :
         pass
+
+class XtriageFrameSingleResult (XtriageFrame) :
+  def create_panel (self) :
+    return wx_output_panel(parent=self)
 
 def OnChangeSymmetry (event) :
   from mmtbx.scaling.xtriage import change_symmetry
