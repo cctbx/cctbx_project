@@ -72,15 +72,17 @@ cablam_validate {
   pdb_infile = None
     .type = path
     .help = '''input PDB file or dirpath'''
-  output = *text kin ca_kin full_kin points records oneline
+  output = *text kin ca_kin full_kin markup_no_ribbons points records records_plus_pdb oneline
     .type = choice
     .help = '''choose output type,
     =text for comma-separated outlier summary
     =kin print markup kinemage to screen
     =ca_kin print CA geo markup kinemage to screen
     =full_kin open in King a multi-crit-type kinemage with markup
+    =markup_no_ribbons print allowed, outlier, and ca geom outlier markup kin
     =points print cablam-space points to sys.stdout, in kinemage dotlist format
-    =records print HELIX and SHEET=style records based on CaBLAM analysis
+    =records print HELIX and SHEET-style records based on CaBLAM analysis
+    =records_plus_pdb print HELIX and SHHET-style records as part of a pdb file
     =oneline print one-line validation to sys.stdout: percent of cablam outliers
     '''
   outlier_cutoff = 0.05
@@ -201,7 +203,8 @@ Options:
                              e.g. outlier_cutoff=0.01 for accepting the top 99%,
                              defaults to 0.05
   output=
-                           kin : prints markup kinemage to screen
+                           kin : prints markup kinemage for a single outlier
+                             cutoff to screen
                            text : prints machine-readable columnated and comma-
                              separated data to screen
                              (default output)
@@ -210,12 +213,16 @@ Options:
                            records : prints HELIX and SHEET-style records to
                              screen, based on CaBLAM secondary structure
                              analysis
+                           records_plus_pdb : prints HELIX and SHEET records and
+                             the associated pdb file to screen
                            ca_kin : prints a kinemage with ca-contour outliers
                              marked
                            full_kin : opens a phenix.king window with multicrit
                              style markup for the submitted structure. Also
                              saves a .pdb with HELIX and SHEET records and a
                              .kin with other markup to working dir
+                           markup_no_ribbons : prints 'allowed', 'outlier', and
+                             'ca geom outlier' kinemage markup to screen
                            oneline : prints oneline-style output to screen.
                              Supports printing for multiple files
 
@@ -659,7 +666,7 @@ def check_prolines(hierarchy,pdbid='pdbid'):
 #-------------------------------------------------------------------------------
 #This function accepts a hierarchy object and returns HELIX and SHEET-style
 #  records for major secondary structure elements found in that model by CaBLAM.
-#  cablam_multicrit_kin() also returns  these records, but as part of a pbd file
+#  cablam_multicrit_kin() also returns these records, but as part of a pbd file
 def print_helix_sheet_records(hierarchy, ca_cutoff=0.005, pdbid='pdbid',writeto=sys.stdout):
   resdata=setup(hierarchy,pdbid)
   ca_expectations = fetch_ca_expectations()
@@ -673,6 +680,27 @@ def print_helix_sheet_records(hierarchy, ca_cutoff=0.005, pdbid='pdbid',writeto=
     motif.print_record(writeto=writeto)
 #-------------------------------------------------------------------------------
 #}}}
+
+def print_pdb_with_new_helix_sheet_records(hierarchy, ca_cutoff=0.005, pdbid='pdbid', writeto=sys.stdout):
+  #This function prints CaBLAM-based HELIX and SHEET records as part of a pdb
+  #  file.
+  print_helix_sheet_records(hierarchy, ca_cutoff, pdbid, writeto)
+  writeto.write(hierarchy.as_pdb_string())
+
+def print_cablam_markup_kin(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0.005, pdbid='pdbid', writeto=sys.stdout):
+  resdata=setup(hierarchy,pdbid)
+  peptide_expectations = fetch_peptide_expectations()
+  ca_expectations = fetch_ca_expectations()
+  motif_contours = fetch_motifs()
+
+  peptide_outliers=find_peptide_outliers(resdata,peptide_expectations,cutoff=peptide_cutoff)
+  helix_or_sheet(peptide_outliers,motif_contours)
+  give_kin(peptide_outliers, peptide_cutoff, color='purple', writeto=writeto)
+  give_kin(peptide_outliers, peptide_bad_cutoff, color='magenta', writeto=writeto)
+
+  ca_outliers = find_ca_outliers(resdata,ca_expectations,cutoff=ca_cutoff)
+  helix_or_sheet(ca_outliers,motif_contours)
+  give_ca_kin(ca_outliers, ca_cutoff, writeto=writeto)
 
 #{{{ cablam_multicrit_kin function
 #-------------------------------------------------------------------------------
@@ -690,10 +718,11 @@ def cablam_multicrit_kin(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01
   peptide_outliers=find_peptide_outliers(resdata,peptide_expectations,cutoff=peptide_cutoff)
   helix_or_sheet(peptide_outliers,motif_contours)
   give_kin(peptide_outliers, peptide_cutoff, color='purple', writeto=outfile_kin)
+  give_kin(peptide_outliers, peptide_bad_cutoff, color='magenta', writeto=outfile_kin)
 
-  peptide_bad_outliers=find_peptide_outliers(resdata,peptide_expectations,cutoff=peptide_bad_cutoff)
-  helix_or_sheet(peptide_bad_outliers,motif_contours)
-  give_kin(peptide_bad_outliers, peptide_bad_cutoff, color='magenta', writeto=outfile_kin)
+  #peptide_bad_outliers=find_peptide_outliers(resdata,peptide_expectations,cutoff=peptide_bad_cutoff)
+  #helix_or_sheet(peptide_bad_outliers,motif_contours)
+  #give_kin(peptide_bad_outliers, peptide_bad_cutoff, color='magenta', writeto=outfile_kin)
 
   ca_outliers = find_ca_outliers(resdata,ca_expectations,cutoff=ca_cutoff)
   helix_or_sheet(ca_outliers,motif_contours) #This call for dev purposes, need to know what's flagged and interesting
@@ -722,12 +751,15 @@ def give_kin(outliers, outlier_cutoff, color='purple', writeto=sys.stdout):
   #  markup, and because the cablam measures share some philosophical
   #  similarity with perp distance in RNA markup
   #writeto.write('\n@kinemage')
-  writeto.write('\n@group {cablam out '+str(outlier_cutoff)+'} dominant\n')
-  writeto.write('@vectorlist {cablam outliers} color= '+color+' width= 4 \n')
+  writeto.write('\n@subgroup {cablam out '+str(outlier_cutoff)+'} dominant\n')
+  writeto.write('@vectorlist {cablam outliers} color= '+color+' width= 4 master={cablam out '+str(outlier_cutoff)+'}')
+  #writeto.write('@vectorlist')
   reskeys = outliers.keys()
   reskeys.sort()
   for resid in reskeys:
     outlier = outliers[resid]
+    if outlier.outlier_level >= outlier_cutoff:
+      continue
     #Shouldn't have to do checking here, since only residues with calculable values should get to this point
     residue = outlier.residue
     prevres = residue.prevres
@@ -753,8 +785,8 @@ def give_kin(outliers, outlier_cutoff, color='purple', writeto=sys.stdout):
 def give_ca_kin(outliers, outlier_cutoff, writeto=sys.stdout):
   #Kinemage markup as red CA virtual angles, since that is the measure unique to
   #this validation.
-  writeto.write('@group {ca out '+str(outlier_cutoff)+'} dominant\n')
-  writeto.write('@vectorlist {ca outliers} color= red width= 4 \n')
+  writeto.write('\n@subgroup {ca out '+str(outlier_cutoff)+'} dominant\n')
+  writeto.write('@vectorlist {ca outliers} color= red width= 4 master={ca geom outliers}')
   reskeys = outliers.keys()
   reskeys.sort()
   for resid in reskeys:
@@ -992,10 +1024,14 @@ def run(args):
       give_ca_kin(ca_outliers,params.outlier_cutoff)
     elif params.output=='full_kin':
       cablam_multicrit_kin(hierarchy,peptide_cutoff=params.outlier_cutoff,pdbid=pdbid)
+    elif params.output=='markup_no_ribbons':
+      print_cablam_markup_kin(hierarchy, pdbid=pdbid)
     elif params.check_prolines:
       check_prolines(hierarchy,pdbid=pdbid)
     elif params.output=='records':
       print_helix_sheet_records(hierarchy,ca_cutoff=0.005,pdbid='pdbid',writeto=sys.stdout)
+    elif params.output=='records_plus_pdb':
+      print_pdb_with_new_helix_sheet_records(hierarchy,ca_cutoff=0.005,pdbid='pdbid',writeto=sys.stdout)
     else:
       outliers = analyze_pdb(
         hierarchy, outlier_cutoff=params.outlier_cutoff, pdbid=pdbid)
