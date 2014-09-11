@@ -13,6 +13,8 @@ input {
     .type = bool
 }
 include scope mmtbx.refinement.select_best_starting_model.master_phil
+nproc = Auto
+  .type = int
 output {
   write_files = False
     .type = bool
@@ -26,7 +28,7 @@ output {
 def master_params () :
   return libtbx.phil.parse(master_phil_str, process_includes=True)
 
-def run (args, out=sys.stdout) :
+def run (args, external_params=None, out=sys.stdout) :
   from mmtbx.refinement import select_best_starting_model
   import mmtbx.utils
   from iotbx.file_reader import any_file
@@ -57,15 +59,21 @@ rigid-body refinement on suitable models if requested.""")
     model_in = cmdline.get_file(
       file_name=file_name,
       force_type="pdb").file_object
-    pdb_hierarchy = model_in.construct_hierarchy()
+    pdb_hierarchy = model_in.hierarchy
     xray_structure = model_in.xray_structure_simple()
     model_data.append((pdb_hierarchy, xray_structure))
+  # we can optionally pass a parameter block from elsewhere (e.g. phenix ligand
+  # pipeline) and just use this run() method to load files
+  params_ = external_params
+  if (params_ is None) :
+    params_ = params
   result = select_best_starting_model.select_model(
     model_names=params.input.model,
     model_data=model_data,
     f_obs=data_and_flags.f_obs,
     r_free_flags=data_and_flags.r_free_flags,
-    params=params,
+    params=params_,
+    nproc=params.nproc,
     skip_twin_detection=params.input.skip_twin_detection,
     log=out)
   if result.success() and params.output.write_files :
