@@ -120,6 +120,23 @@ class TestMultimerReconstruction(unittest.TestCase):
                 'chain B_s002': 'F'}
     self.assertEqual(result,expected)
 
+  def test_identity_tranform_insertion(self):
+    """
+    Verify that insertion and reordering of the identity transform is done
+    properly
+    """
+    print sys._getframe().f_code.co_name
+    for pdb_str in [pdb_test_data5,pdb_test_data6]:
+      ncs_inp = iotbx.ncs.input(pdb_string=pdb_test_data5)
+      transform_info = ncs_inp.build_MTRIX_object()
+      self.assertEqual(len(transform_info.r),3)
+      self.assertEqual(len(transform_info.t),3)
+      self.assertEqual(transform_info.r[0].is_r3_identity_matrix(),True)
+      self.assertEqual(transform_info.t[0].is_col_zero(),True)
+      sn = [int(x) for x in transform_info.serial_number]
+      self.assertEqual(sn,[1,2,3])
+
+
   # @unittest.SkipTest
   def test_adding_transforms_directly(self):
     """
@@ -443,6 +460,37 @@ ATOM      4  O   THR B   4      10.449   8.027  12.653  1.00 20.00           O
 ATOM      5  CB  THR B   5      10.660   8.630   9.582  1.00 20.00           C
 ATOM      6  OG1 THR A   6      10.560   9.552   8.490  1.00 20.00           O
 ATOM      7  CG2 THR A   7      10.523   7.209   9.055  1.00 20.00           C
+"""
+
+pdb_test_data5="""\
+MTRIX1   1  0.309017 -0.809017  0.500000        0.00000
+MTRIX2   1  0.809017  0.500000  0.309017        0.00000
+MTRIX3   1 -0.500000  0.309017  0.809017        0.00000
+MTRIX1   2 -0.809017 -0.500000  0.309017        0.00000
+MTRIX2   2  0.500000 -0.309017  0.809017        0.00000
+MTRIX3   2 -0.309017  0.809017  0.500000        0.00000
+MTRIX1   3  1.000000  0.000000  0.000000        0.00000    1
+MTRIX2   3  0.000000  1.000000  0.000000        0.00000    1
+MTRIX3   3  0.000000  0.000000  1.000000        0.00000    1
+ATOM    749  O   UNK A  90      28.392  67.262  97.682  1.00  0.00           O
+ATOM    750  N   UNK A  91      30.420  66.924  98.358  1.00  0.00           N
+TER
+ATOM   1495  N   UNK B  67      33.124   2.704 114.920  1.00  0.00           N
+END
+"""
+
+pdb_test_data6="""\
+MTRIX1   1  0.309017 -0.809017  0.500000        0.00000
+MTRIX2   1  0.809017  0.500000  0.309017        0.00000
+MTRIX3   1 -0.500000  0.309017  0.809017        0.00000
+MTRIX1   2 -0.809017 -0.500000  0.309017        0.00000
+MTRIX2   2  0.500000 -0.309017  0.809017        0.00000
+MTRIX3   2 -0.309017  0.809017  0.500000        0.00000
+ATOM    749  O   UNK A  90      28.392  67.262  97.682  1.00  0.00           O
+ATOM    750  N   UNK A  91      30.420  66.924  98.358  1.00  0.00           N
+TER
+ATOM   1495  N   UNK B  67      33.124   2.704 114.920  1.00  0.00           N
+END
 """
 
 pdb_test_data3_expected_results = """\
