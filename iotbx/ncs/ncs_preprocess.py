@@ -606,7 +606,10 @@ class ncs_group_object(object):
           transform_id = key)
 
   def collect_basic_info_from_pdb(self,pdb_hierarchy_inp):
-    """  Build chain selection string and collect chains IDs from pdb """
+    """
+    Build chain selection string and collect chains IDs from pdb
+    Consider that chains can be not continuous
+    """
     if pdb_hierarchy_inp:
       model  = pdb_hierarchy_inp.hierarchy.models()[0]
       chain_ids = {x.id for x in model.chains()}
@@ -670,10 +673,8 @@ class ncs_group_object(object):
       self.ncs_atom_selection = flex.bool(ns)
       self.all_master_ncs_selections=self.ncs_atom_selection.iselection()
       sorted_keys = sorted(self.transform_to_ncs)
-      i = 0
-      for k in sorted_keys:
+      for i,k in enumerate(sorted_keys):
         v = self.transform_to_ncs[k]
-        i += 1
         for transform_key in v:
           key =  transform_key.split('_')[0]
           ncs_basic_selection = temp.selection(key)
@@ -681,12 +682,9 @@ class ncs_group_object(object):
           if not self.asu_to_ncs_map.has_key(key):
             self.asu_to_ncs_map[key] = ncs_selection.iselection()
           # make the selection at the proper location at the ASU
-          selection_list = list(ncs_basic_selection)
-          temp_selection = flex.bool([False]*i*ncs_length + selection_list)
-          asu_selection =flex.bool(self.total_asu_length,
-                                   temp_selection.iselection())
+          temp_iselection = self.asu_to_ncs_map[key] + ((i + 1) * ncs_length)
+          asu_selection = flex.bool(self.total_asu_length,temp_iselection)
           self.ncs_to_asu_map[transform_key] = asu_selection.iselection()
-
 
   def add_identity_transform(self,ncs_selection,ncs_group_id=1,transform_sn=1):
     """    Add identity transform
@@ -767,7 +765,7 @@ class ncs_group_object(object):
       transform : transform object, containing information on transformation
       selection_id (str): NCS selection string
     """
-    if (not is_identity(transform.r,transform.t)):
+    if not is_identity(transform.r,transform.t):
       self.transform_to_be_used.add(transform.serial_num)
       key = selection_id + '_s' + format_num_as_str(transform.serial_num)
       # key = selection_id
@@ -951,7 +949,7 @@ class ncs_group_object(object):
     for k in group_id_list:
       v = self.ncs_group_map[k]
       master_isel = flex.size_t()
-      for key in v[0]:
+      for key in sorted(list(v[0])):
         if self.asu_to_ncs_map.has_key(key):
           master_isel.extend(self.asu_to_ncs_map[key])
       new_nrg = ncs_restraint_group(master_isel)
