@@ -327,6 +327,8 @@ class Cluster:
           labels = ['' for _ in self.members]
         else:
           labels = [image.name for image in self.members]
+      else:
+         labels = [getattr(v, labels, '') for v in self.members]
 
       # 4. Plot a dendogram to the axes if no axis is passed, otherwise just
       #    return the axes object
