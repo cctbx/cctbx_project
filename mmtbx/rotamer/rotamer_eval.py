@@ -244,7 +244,7 @@ class RotamerEval:
     if(rotamer_name == "EXCEPTION"):
       assert value is None
       return rotamer_name
-    if rotamer_name == "" and (value >= outlier_threshold):
+    if rotamer_name == "" and (value >= self.outlier_threshold):
       return "UNCLASSIFIED"
     elif (value < self.outlier_threshold):
       return "OUTLIER"
