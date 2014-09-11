@@ -18,7 +18,7 @@ import sys
 master_phil = libtbx.phil.parse("""
 d_min = None
   .type = float
-rigid_body_refine = False
+rigid_body_refine = True
   .type = bool
 optimize_b_factors = False
   .type = bool
@@ -238,6 +238,12 @@ class select_model (object) :
   def success (self) :
     return self.best_pdb_hierarchy is not None
 
+  def r_free (self) :
+    return getattr(self.best_result, "r_free", None)
+
+  def r_work (self) :
+    return getattr(self.best_result, "r_work", None)
+
   def get_best_model (self, update_structure=True) :
     if (self.best_result is None) :
       return None
@@ -278,6 +284,10 @@ class select_model (object) :
       r_free_flags=self.r_free_flags,
       rigid_body_refine=self.params.rigid_body_refine,
       skip_twin_detection=self.skip_twin_detection)
+
+  def space_group_info (self) :
+    xray_structure, pdb_hierarchy = self.get_best_model()
+    return xray_structure.space_group_info()
 
 strip_model_params = """
   remove_waters = True
