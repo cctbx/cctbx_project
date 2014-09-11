@@ -1318,7 +1318,6 @@ def separate_selection_string(s):
       s_list.append('chain ' + sel_str)
   return s_list
 
-
 def get_rotation_vec(r):
   eigen = eigensystem.real_symmetric(r.as_sym_mat3())
   eigenvectors = eigen.vectors()

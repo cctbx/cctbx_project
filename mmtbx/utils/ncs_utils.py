@@ -493,9 +493,9 @@ def apply_transforms(ncs_coordinates,
       shifts = center_of_coordinates,
       ncs_restraints_group_list = ncs_restraints_group_list)
   for nrg in ncs_restraints_group_list:
-    master_ncs_selection = nrg.master_iselection
+    master_ncs_selection = flex.bool(total_asu_length,nrg.master_iselection)
     for ncs_copy in nrg.copies:
-      copy_selection = ncs_copy.copy_iselection
+      copy_selection = flex.bool(total_asu_length,ncs_copy.copy_iselection)
       ncs_xyz = asu_xyz.select(master_ncs_selection)
       new_sites = ncs_copy.r.elems * ncs_xyz + ncs_copy.t
       asu_xyz.set_selected(copy_selection,new_sites)
