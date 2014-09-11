@@ -174,6 +174,8 @@ class ncs_group_object(object):
     if pdb_hierarchy_inp and (not transform_info):
       transform_info = pdb_hierarchy_inp.input.process_mtrix_records(eps=0.01)
       if transform_info.as_pdb_string() == '': transform_info = None
+      else:
+        transform_info = insure_identity_is_in_transform_info(transform_info)
     if transform_info or rotations:
       if ncs_only(transform_info) or rotations:
         self.build_ncs_obj_from_pdb_ncs(
@@ -1389,6 +1391,7 @@ def ncs_only(transform_info):
   return not present
 
 def is_identity(r,t):
+  """ test if r, rotation matrix is identity, and t, translation is zero """
   return (r.is_r3_identity_matrix() and t.is_col_zero())
 
 def all_ncs_copies_present(transform_info):
@@ -1927,8 +1930,52 @@ def get_largest_common_ncs_groups(pdb_hierarchy_inp,
     new_ncs_group.master_ncs_selection = ' or '.join(masters)
     new_ncs_group.selection_copy = copies
     ncs_phil_groups.append(new_ncs_group)
-
   return ncs_phil_groups, err_msg
+
+def insure_identity_is_in_transform_info(transform_info):
+  """
+  Add the identity matrix in cases where the pdb or mmcif files do not
+  contain it
+
+  Args:
+    transform_info (transformation object): contain rotation, translation,
+      serial number and indication if present
+
+  Return:
+    transform_info : Add or reorder the transform_info so that the
+      identity matrix has serial number 1
+  """
+  ti = transform_info
+  ti_zip =  zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present)
+  identity_sn = []
+  t_r = []
+  t_t = []
+  t_cp = []
+  for i,(r,t,sn,cp) in enumerate(ti_zip):
+    if is_identity(r=r,t=t):
+      identity_sn.append([i,sn])
+      if (i == 0) and (sn == 1):
+        t_r.append(r)
+        t_t.append(t)
+        t_cp.append(cp)
+    else:
+      t_r.append(r)
+      t_t.append(t)
+      t_cp.append(cp)
+  if identity_sn == [[0,1]]: return transform_info
+  # identity transform is missing or not in the first location
+  # add identity transform as the first transform
+  t_r.insert(0,matrix.sqr([1,0,0,0,1,0,0,0,1]))
+  t_t.insert(0,matrix.col([0,0,0]))
+  t_cp.insert(0,True)
+  # re-assign serial numbers
+  s = '{0:3d}'
+  t_sn = [s.format(i+1) for i in range(len(t_cp))]
+  ti.r = t_r
+  ti.t = t_t
+  ti.serial_number = t_sn
+  ti.coordinates_present = t_cp
+  return ti
 
 class ncs_copy():
 
