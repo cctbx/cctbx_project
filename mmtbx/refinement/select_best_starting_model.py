@@ -123,7 +123,7 @@ class select_model (object) :
         model_in = any_file(file_name,
           force_type="pdb",
           raise_sorry_if_errors=True).file_object
-        pdb_hierarchy = model_in.construct_hierarchy()
+        pdb_hierarchy = model_in.hierarchy
         xray_structure = model_in.xray_structure_simple()
         model_data.append((pdb_hierarchy, xray_structure))
     self.model_symmetries = []
@@ -282,20 +282,28 @@ class select_model (object) :
 strip_model_params = """
   remove_waters = True
     .type = bool
+    .help = Remove all water molecules (HOH)
   remove_hydrogens = True
     .type = bool
+    .help = Remove explicit hydrogen atoms
   remove_alt_confs = True
     .type = bool
+    .help = Remove alternate conformations
   convert_semet_to_met = True
     .type = bool
+    .help = Change MSE residues to MET
   convert_to_isotropic = True
     .type = bool
+    .help = Convert atoms to anisotropic
   reset_occupancies = True
     .type = bool
+    .help = Set occupancies to 1.0
   remove_ligands = False
     .type = bool
+    .help = Remove all ligands
   reset_hetatm_flag = False
     .type = bool
+    .help = Change HETATM records to ATOM
 """
 
 def strip_model (
@@ -313,6 +321,7 @@ def strip_model (
     reset_hetatm_flag=False,
     preserve_remarks=False,
     preserve_symmetry=True,
+    add_remarks=None,
     output_file=None,
     log=None) :
   """
@@ -420,6 +429,9 @@ def strip_model (
   assert xray_structure.scatterers().size() == pdb_hierarchy.atoms().size()
   if (output_file is not None) :
     f = open(output_file, "w")
+    if (add_remarks is not None) :
+      f.write("\n".join(add_remarks))
+      f.write("\n")
     if (preserve_remarks) and (remarks is not None) :
       f.write("\n".join(remarks))
       f.write("\n")
