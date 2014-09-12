@@ -2,7 +2,7 @@ from __future__ import division
 import math
 
 class neighbor_analysis(object):
-  def __init__(self, rs_vectors):
+  def __init__(self, rs_vectors, percentile=0.05):
     from scitbx.array_family import flex
     NEAR = 10
     self.NNBIN = 5 # target number of neighbors per histogram bin
@@ -44,11 +44,11 @@ class neighbor_analysis(object):
 
     # determine the 5th-percentile direct-space distance
     perm = flex.sort_permutation(direct, reverse=True)
-    percentile5 = direct[perm[int(0.05 * len(rs_vectors))]]
+    percentile = direct[perm[int(percentile * len(rs_vectors))]]
 
     MAXTOL = 1.5 # Margin of error for max unit cell estimate
     self.max_cell = max( MAXTOL * most_probable_neighbor,
-                         MAXTOL * percentile5)
+                         MAXTOL * percentile)
 
     if False:
       self.plot(direct)
