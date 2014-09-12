@@ -132,7 +132,7 @@ source %s
 
 %s
 
-phenix.python %s $SGE_TASK_ID %s %s >& %s.$SGE_TASK_ID.out
+libtbx.python %s $SGE_TASK_ID %s %s >& %s.$SGE_TASK_ID.out
 
 %s
 
@@ -340,7 +340,7 @@ def run(phenix_source=None,
     f.close()
     commands = []
     for i in range(10):
-      commands.append("phenix.python %s %s" % (os.path.join(
+      commands.append("libtbx.python %s %s" % (os.path.join(
                                                os.getcwd(),
                                                "easy_qsub_test_script.py"),
                                                i+100,
