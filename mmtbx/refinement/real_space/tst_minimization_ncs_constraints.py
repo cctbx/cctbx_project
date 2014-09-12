@@ -1,14 +1,16 @@
 from __future__ import division
+import time
+
 import mmtbx.refinement.minimization_ncs_constraints
 import mmtbx.refinement.real_space.weight
 from scitbx.array_family import flex
-import mmtbx.utils.ncs_utils as nu
+import mmtbx.ncs.ncs_utils as nu
 import mmtbx.utils
 import iotbx.ncs
 import iotbx.pdb
 import mmtbx.ncs
-import time
 import math
+
 
 pdb_str_answer = """\
 CRYST1   26.628   30.419   28.493  90.00  90.00  90.00 P 1

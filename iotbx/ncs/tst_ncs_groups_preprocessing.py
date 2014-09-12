@@ -314,14 +314,14 @@ TER
 
 pdb_test_data1_phil = '''\
 ncs_group {
-  master_ncs_selection = 'chain A'
-  selection_copy = 'chain C'
-  selection_copy = 'chain E'
+  master_selection = 'chain A'
+  copy_selection = 'chain C'
+  copy_selection = 'chain E'
 }
 ncs_group {
-  master_ncs_selection = 'chain B'
-  selection_copy = 'chain D'
-  selection_copy = 'chain F'
+  master_selection = 'chain B'
+  copy_selection = 'chain D'
+  copy_selection = 'chain F'
 }
 '''
 
@@ -343,71 +343,71 @@ TER
 
 pdb_test_data2_phil = '''\
 ncs_group {
-  master_ncs_selection = 'chain A'
-  selection_copy = 'chain D'
-  selection_copy = 'chain G'
+  master_selection = 'chain A'
+  copy_selection = 'chain D'
+  copy_selection = 'chain G'
 }
 ncs_group {
-  master_ncs_selection = 'chain B or chain C'
-  selection_copy = 'chain E or chain F'
-  selection_copy = 'chain H or chain I'
+  master_selection = 'chain B or chain C'
+  copy_selection = 'chain E or chain F'
+  copy_selection = 'chain H or chain I'
 }
 '''
 
 user_phil1 = '''\
 ncs_group {
-  master_ncs_selection = 'chain A'
-  selection_copy = 'chain B'
-  selection_copy = 'chain C'
+  master_selection = 'chain A'
+  copy_selection = 'chain B'
+  copy_selection = 'chain C'
 }
 '''
 
 user_phil2 = '''\
 ncs_group {
-  master_ncs_selection = 'chain A'
-  selection_copy = 'chain C'
-  selection_copy = 'chain E'
+  master_selection = 'chain A'
+  copy_selection = 'chain C'
+  copy_selection = 'chain E'
 }
 ncs_group {
-  master_ncs_selection = 'chain B'
-  selection_copy = 'chain D'
-  selection_copy = 'chain F'
+  master_selection = 'chain B'
+  copy_selection = 'chain D'
+  copy_selection = 'chain F'
 }
 '''
 
 user_phil3 = '''\
 ncs_group {
-  master_ncs_selection = 'chain A'
-  selection_copy = 'chain B'
-  selection_copy = 'chain C'
+  master_selection = 'chain A'
+  copy_selection = 'chain B'
+  copy_selection = 'chain C'
 }
 ncs_group {
-  master_ncs_selection = 'chain B'
-  selection_copy = 'chain D'
+  master_selection = 'chain B'
+  copy_selection = 'chain D'
 }
 '''
 
 user_phil4 = '''\
 ncs_group {
-  master_ncs_selection = 'chain A'
-  selection_copy = 'chain C'
-  selection_copy = 'chain D'
+  master_selection = 'chain A'
+  copy_selection = 'chain C'
+  copy_selection = 'chain D'
 }
 ncs_group {
-  master_ncs_selection = 'chain B'
-  selection_copy = 'chain D'
+  master_selection = 'chain B'
+  copy_selection = 'chain D'
 }
 '''
 
 user_phil5 = '''\
 ncs_group {
-  master_ncs_selection = 'chain A'
-  selection_copy = 'chain C'
-  selection_copy = 'chain D'
+  master_selection = 'chain A'
+  copy_selection = 'chain C'
+  copy_selection = 'chain D'
 }
 ncs_group {
-  master_ncs_selection = 'chain C'
-  selection_copy = 'chain E'
+  master_selection = 'chain C'
+  copy_selection = 'chain E'
 }
 '''
 

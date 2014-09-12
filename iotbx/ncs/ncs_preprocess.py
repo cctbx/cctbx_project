@@ -1,7 +1,7 @@
 from __future__ import division
 from mmtbx.ncs.ncs_from_pdb import get_ncs_object_from_pdb
-from mmtbx.utils.simple_alignment import align_residues
-from mmtbx.utils.ncs_utils import apply_transforms
+from mmtbx.ncs.ncs_search import align_residues
+from mmtbx.ncs.ncs_utils import apply_transforms
 from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
 from scitbx.math import superpose
@@ -23,10 +23,10 @@ master_phil = parse("""
   ncs_group
     .multiple = True
     {
-    master_ncs_selection = ''
+    master_selection = ''
       .type = str
       .help = 'Residue selection string for the complete master NCS copy'
-    selection_copy = ''
+    copy_selection = ''
       .type = str
       .help = 'Residue selection string for each NCS copy location in ASU'
       .multiple = True
@@ -109,7 +109,7 @@ class ncs_group_object(object):
                          use_simple_ncs_from_pdb=True,
                          use_minimal_master_ncs=True,
                          rms_eps=0.02,
-                         Error_msg_on=False,
+                         error_msg_on=False,
                          process_similar_chains=False):
     """
     Select method to build ncs_group_object
@@ -133,8 +133,8 @@ class ncs_group_object(object):
         Phil structure
            ncs_group (multiple)
            {
-             master_ncs_selection = ''
-             selection_copy = ''   (multiple)
+             master_selection = ''
+             copy_selection = ''   (multiple)
            }
       ncs_phil_groups: a list of ncs_groups_container object, containing
         master NCS selection and a list of NCS copies selection
@@ -151,7 +151,7 @@ class ncs_group_object(object):
         in master ncs groups
       rms_eps (float): limit of rms difference between chains to be considered
         as copies
-      Error_msg_on (bool): When True, raise error if chains that are
+      error_msg_on (bool): When True, raise error if chains that are
         nearly the same length (but not exactly the same) and are NCS related.
         Raise error if NCS relations are not found
       process_similar_chains (bool): When True, process chains that are close
@@ -224,7 +224,7 @@ class ncs_group_object(object):
       raise Sorry('Please provide one of the supported input')
     # error handling
     self.found_ncs_transforms = (len(self.transform_to_be_used) > 0)
-    if Error_msg_on:
+    if error_msg_on:
       if self.found_ncs_transforms == 0:
         raise Sorry('No NCS relation were found !!!')
       if self.messages != '':
@@ -287,8 +287,8 @@ class ncs_group_object(object):
     Phil structure
     ncs_group (multiple)
     {
-      master_ncs_selection = ''
-      selection_copy = ''   (multiple)
+      master_selection = ''
+      copy_selection = ''   (multiple)
     }
     """
     # process params
@@ -308,7 +308,7 @@ class ncs_group_object(object):
     ncs_group_id = 0
     # populate ncs selection and ncs to copies location
     for group in ncs_phil_groups:
-      gns = group.master_ncs_selection
+      gns = group.master_selection
       self.ncs_chain_selection.append(gns)
       unique_selections = uniqueness_test(unique_selections,gns)
       master_ncs_ph = get_pdb_selection(ph=pdb_hierarchy_inp,selection_str=gns)
@@ -324,7 +324,7 @@ class ncs_group_object(object):
             masters = gns,copies = gns, tr_id = key)
       self.update_tr_id_to_selection(gns,gns,key)
       asu_locations = []
-      for asu_select in group.selection_copy:
+      for asu_select in group.copy_selection:
         unique_selections = uniqueness_test(unique_selections,asu_select)
         ncs_copy_ph = get_pdb_selection(
           ph=pdb_hierarchy_inp,selection_str=asu_select)
@@ -900,6 +900,7 @@ class ncs_group_object(object):
     #
     for key in sorted_keys:
       ncs_chain_name = self.ncs_copies_chains_names[key]
+      rmsd = None
       if not self.tr_id_to_selection.has_key(key):
         self.tr_id_to_selection[key] = (key.split('_')[0],key.split('_')[0])
       master_sel_str, ncs_selection_str = self.tr_id_to_selection[key]
@@ -1762,8 +1763,8 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp,
       temp = ['chain ' + x for x in cp]
       copies.append(' or '.join(temp))
 
-    new_ncs_group.master_ncs_selection = ' or '.join(masters)
-    new_ncs_group.selection_copy = copies
+    new_ncs_group.master_selection = ' or '.join(masters)
+    new_ncs_group.copy_selection = copies
     ncs_phil_groups.append(new_ncs_group)
   return ncs_phil_groups, err_msg
 
@@ -1926,8 +1927,8 @@ def get_largest_common_ncs_groups(pdb_hierarchy_inp,
       temp = ['chain ' + x for x in cp]
       copies.append(' or '.join(temp))
 
-    new_ncs_group.master_ncs_selection = ' or '.join(masters)
-    new_ncs_group.selection_copy = copies
+    new_ncs_group.master_selection = ' or '.join(masters)
+    new_ncs_group.copy_selection = copies
     ncs_phil_groups.append(new_ncs_group)
   return ncs_phil_groups, err_msg
 
@@ -1992,8 +1993,8 @@ class ncs_restraint_group(object):
 class ncs_groups_container(object):
 
   def __init__(self):
-    self.master_ncs_selection = ''
-    self.selection_copy = []
+    self.master_selection = ''
+    self.copy_selection = []
 
 
 class transform(object):

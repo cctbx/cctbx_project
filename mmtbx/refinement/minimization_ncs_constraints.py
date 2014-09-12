@@ -2,7 +2,7 @@ from __future__ import division
 import cctbx.maptbx.real_space_refinement_simple
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
-import mmtbx.utils.ncs_utils as nu
+import mmtbx.ncs.ncs_utils as nu
 from cctbx import xray
 import scitbx.lbfgs
 

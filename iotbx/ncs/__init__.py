@@ -21,7 +21,7 @@ def input(pdb_hierarchy_inp=None,
           use_simple_ncs_from_pdb=True,
           use_minimal_master_ncs=True,
           rms_eps=0.02,
-          Error_msg_on=False,
+          error_msg_on=False,
           process_similar_chains=False):
     """
     Select method to build ncs_group_object
@@ -45,8 +45,8 @@ def input(pdb_hierarchy_inp=None,
         Phil structure
            ncs_group (multiple)
            {
-             master_ncs_selection = ''
-             selection_copy = ''   (multiple)
+             master_selection = ''
+             copy_selection = ''   (multiple)
            }
       ncs_phil_groups: a list of ncs_groups_container object, containing
         master NCS selection and a list of NCS copies selection
@@ -63,7 +63,7 @@ def input(pdb_hierarchy_inp=None,
         in master ncs groups
       rms_eps (float): limit of rms difference between chains to be considered
         as copies
-      Error_msg_on (bool): When True, raise error if chains that are
+      error_msg_on (bool): When True, raise error if chains that are
         nearly the same length (but not exactly the same) and are NCS related.
         Raise error if NCS relations are not found
       process_similar_chains (bool): When True, process chains that are close
@@ -90,7 +90,7 @@ def input(pdb_hierarchy_inp=None,
       use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
       use_minimal_master_ncs=use_minimal_master_ncs,
       rms_eps=rms_eps,
-      Error_msg_on=Error_msg_on,
+      error_msg_on=error_msg_on,
       process_similar_chains=process_similar_chains)
     return ncs_group_obj
 

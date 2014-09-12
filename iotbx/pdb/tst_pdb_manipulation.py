@@ -2,7 +2,7 @@ from __future__ import division
 from  iotbx.pdb.multimer_reconstruction import multimer
 from iotbx.ncs.ncs_preprocess import format_num_as_str
 from iotbx.ncs.ncs_preprocess import ncs_group_object
-from mmtbx.utils.ncs_utils import apply_transforms
+from mmtbx.ncs.ncs_utils import apply_transforms
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from scitbx import matrix
