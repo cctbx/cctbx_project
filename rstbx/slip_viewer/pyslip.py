@@ -659,7 +659,7 @@ class PySlip(_BufferedCanvas):
     DefaultTextTextColour = wx.BLACK
     DefaultTextOffsetX = 5
     DefaultTextOffsetY = 1
-    DefaultTextFontname = 'Arial'
+    DefaultTextFontname = 'ArialMT'
     DefaultTextFontSize = 9
     DefaultTextData = None
 
@@ -670,7 +670,7 @@ class PySlip(_BufferedCanvas):
     DefaultTextViewTextColour = wx.BLACK
     DefaultTextViewOffsetX = 0
     DefaultTextViewOffsetY = 0
-    DefaultTextViewFontname = 'Arial'
+    DefaultTextViewFontname = 'ArialMT'
     DefaultTextViewFontSize = 9
     DefaultTextViewData = None
 
@@ -1535,7 +1535,10 @@ class PySlip(_BufferedCanvas):
                 p_lonlat = []
                 for lonlat in p:
                     (x, y) = self.ConvertGeo2View(lonlat)
-                    p_lonlat.extend((x + x_off, y + y_off))
+                    if closed:
+                        p_lonlat.append((x + x_off, y + y_off))
+                    else:
+                        p_lonlat.extend((x + x_off, y + y_off))
 
                 pens.append(wx.Pen(colour, width=width))
 
@@ -1562,7 +1565,10 @@ class PySlip(_BufferedCanvas):
                 pp = []
                 for (x, y) in p:
                     exec place_exec
-                    pp.extend((x, y))
+                    if closed:
+                        pp.append((x, y))
+                    else:
+                        pp.extend((x, y))
 
                 pens.append(wx.Pen(colour, width=width))
                 if filled:
