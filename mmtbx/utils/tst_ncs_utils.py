@@ -1,12 +1,12 @@
 from __future__ import division
-from mmtbx.utils.map_correlation import Map_correlation
+import mmtbx.maps.correlation
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
-import mmtbx.ncs.ncs_utils as nu
+import mmtbx.utils.ncs_utils as nu
+import iotbx.ncs
 from scitbx import matrix
 import scitbx.rigid_body
 from iotbx import pdb
-import iotbx.ncs
 import unittest
 import math
 import sys
@@ -495,12 +495,12 @@ class Test_ncs_utils(unittest.TestCase):
     selections = [flex.size_t([0,1,2,3,4,5,6]),flex.size_t([7,8,9,10,11,12,13]),
                 flex.size_t([14,15,16,17,18,19,20])]
 
-    mp = Map_correlation(
+    mp = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
       xray_structure = xrs_poor,
       map_data       = map_data,
       d_min          = d_min)
 
-    cc = mp.calc_correlation_coefficient(selections)
+    cc = mp.cc(selections=selections)
 
     best_list = nu.get_list_of_best_ncs_copy_map_correlation(
       ncs_restraints_group_list,
