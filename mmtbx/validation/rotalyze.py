@@ -51,7 +51,7 @@ class rotamer (residue) :
   # Old output
   def format_old (self) :
     s_occ = format_value("%.2f", self.occupancy)
-    s_score = format_value("%.2f", self.score)
+    s_score = format_value("%.1f", self.score)
     chis = list(self.chi_angles)
     return "%s:%s:%s:%s:%s:%s" % (self.id_str(), s_occ, s_score,
       self.format_chi_angles(pad=True, sep=":"),
