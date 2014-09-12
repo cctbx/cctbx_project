@@ -3,8 +3,7 @@ import iotbx.ncs
 import unittest
 import sys
 
-
-class TestFindNCSOperators(unittest.TestCase):
+class test_find_ncs_operators(unittest.TestCase):
 
   def test_two_chain_master(self):
     """
@@ -195,12 +194,9 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['test_two_chain_master']
-  suite = unittest.TestSuite(map(TestFindNCSOperators,tests))
+  suite = unittest.TestSuite(map(test_find_ncs_operators,tests))
   return suite
 
 if __name__=='__main__':
-  # use for individual tests
-  # unittest.TextTestRunner().run(run_selected_tests())
-
   # Use to run all tests
   unittest.main()
