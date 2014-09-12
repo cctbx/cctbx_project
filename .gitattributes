@@ -1873,6 +1873,7 @@ mmtbx/msa.py -text
 mmtbx/ncs/ligands.py -text
 mmtbx/ncs/ncs_from_pdb.py -text
 mmtbx/ncs/ncs_search.py -text
+mmtbx/ncs/ncs_utils.py -text
 mmtbx/ncs/tst_asu_as_one_ncs_copy.py -text
 mmtbx/ncs/tst_ncs_search.py -text
 mmtbx/pdb_distances.py -text
@@ -2042,7 +2043,6 @@ mmtbx/utils/LICENSE.txt -text
 mmtbx/utils/SConscript -text
 mmtbx/utils/__init__.py -text
 mmtbx/utils/fab_elbow_angle.py -text
-mmtbx/utils/ncs_utils.py -text
 mmtbx/utils/rotatable_bonds.py -text
 mmtbx/utils/tst_ncs_utils.py -text
 mmtbx/utils/tst_switch_rotamers.py -text

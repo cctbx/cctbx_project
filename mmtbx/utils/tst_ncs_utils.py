@@ -1,15 +1,16 @@
 from __future__ import division
+import unittest
+import sys
+
 import mmtbx.maps.correlation
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
-import mmtbx.utils.ncs_utils as nu
+import mmtbx.ncs.ncs_utils as nu
 import iotbx.ncs
 from scitbx import matrix
 import scitbx.rigid_body
 from iotbx import pdb
-import unittest
 import math
-import sys
 
 
 test_pdb_str = '''\
