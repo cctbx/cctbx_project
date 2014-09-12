@@ -1,7 +1,7 @@
 from __future__ import division
+from libtbx.test_utils import approx_equal
 import iotbx.ncs
 import iotbx.pdb
-from libtbx.test_utils import approx_equal
 
 pdb_str_1 = """
 CRYST1  399.000  399.000  399.000  90.00  90.00  90.00 P 1
@@ -87,9 +87,9 @@ def exercise_00(prefix="iotbx_ncs_exercise_00"):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
 ncs_group {
-  master_ncs_selection = chain A
-  selection_copy = chain B
-  selection_copy = chain C
+  master_selection = chain A
+  copy_selection = chain B
+  copy_selection = chain C
 }
   """
   def check_result(ncs_inp, test_i):
@@ -140,8 +140,8 @@ def exercise_01(prefix="iotbx_ncs_exercise_01"):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
 ncs_group {
-  master_ncs_selection = chain C
-  selection_copy = chain A
+  master_selection = chain C
+  copy_selection = chain A
 }
   """
   def check_result(ncs_inp, test_i):
@@ -181,8 +181,8 @@ def exercise_02(prefix="iotbx_ncs_exercise_02"):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
 ncs_group {
-  master_ncs_selection = chain C
-  selection_copy = chain A
+  master_selection = chain C
+  copy_selection = chain A
 }
   """
   for test_i, pdb_str in enumerate([pdb_str_3, pdb_str_4]):

@@ -5,13 +5,13 @@ from libtbx.test_utils import approx_equal
 import mmtbx.refinement.adp_refinement
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
-import mmtbx.utils.ncs_utils as nu
+import mmtbx.ncs.ncs_utils as nu
 import mmtbx.f_model
 import mmtbx.utils
 import iotbx.ncs
 import iotbx.pdb
-import os
 import sys
+import os
 
 
 ncs_1_copy="""\

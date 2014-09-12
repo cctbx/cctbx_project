@@ -1,12 +1,9 @@
 from __future__ import division
 from iotbx import pdb
-import mmtbx.utils.ncs_utils as nu
+import mmtbx.ncs.ncs_utils as nu
 import iotbx.ncs
 import unittest
 import sys
-
-
-
 
 
 class TestMtrixRecFromCif(unittest.TestCase):
