@@ -30,7 +30,6 @@ from cctbx.crystal_orientation import crystal_orientation, basis_type
 
 def calc_full_refl(I_o_p_set, sin_theta_over_lambda_sq_set, G, B, p_set, rs_set, flag_volume_correction=False):
   I_o_full_set = flex.double(((G * np.exp(-2*B*sin_theta_over_lambda_sq_set) * I_o_p_set)/p_set))
-
   return I_o_full_set
 
 def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
@@ -204,11 +203,11 @@ def func(params, *args):
     I_o_full = calc_full_refl(I_o, sin_theta_over_lambda_sq,
                               G, 0, p_calc_set, rs_set)
 
-
   if refine_mode == 'unit_cell':
     error = delta_xy_flex
   else:
     error = ((I_r - I_o_full)/sigI_o)
+
   #print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g rz=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g f=%.4g'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, rz, re, a, b, c, alpha, beta, gamma, np.sum(error**2)), len(I_o_full)
   return error
 
@@ -239,7 +238,7 @@ class leastsqr_handler(object):
     '''
     Intialitze parameters
     '''
-    self.gamma_e = 0.000
+    self.gamma_e = 0.002
 
   def get_filtered_data(self, filter_mode, filter_params,
                         observations_in, alpha_angle_in,
@@ -293,7 +292,7 @@ class leastsqr_handler(object):
 
     spot_radius = calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
                                   observations_original_sel.indices(), wavelength)
-    G = np.median(I_ref_sel)/np.median(observations_original_sel.data())
+    G = 1
     B = 0
     ry = spot_radius
     rz = spot_radius

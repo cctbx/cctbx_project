@@ -96,7 +96,7 @@ if (__name__ == "__main__"):
   determine_mean_I_result = pool_map(
           args=frames,
           func=determine_mean_I_mproc_wrapper,
-          processes=None)
+          processes=iparams.n_processors)
 
   frames_mean_I = flex.double()
   for result in determine_mean_I_result:
@@ -112,7 +112,7 @@ if (__name__ == "__main__"):
   scale_frame_by_mean_I_result = pool_map(
           args=frames,
           func=scale_frame_by_mean_I_mproc_wrapper,
-          processes=None)
+          processes=iparams.n_processors)
 
   observations_merge_mean_set = []
   for pres in scale_frame_by_mean_I_result:
@@ -138,7 +138,7 @@ if (__name__ == "__main__"):
       calc_average_I_result = pool_map(
             args=range(cn_group),
             func=calc_average_I_mproc_wrapper,
-            processes=None)
+            processes=iparams.n_processors)
 
       miller_indices_merge = flex.miller_index()
       I_merge = flex.double()
@@ -222,7 +222,7 @@ if (__name__ == "__main__"):
     postrefine_by_frame_result = pool_map(
             args=frames,
             func=postrefine_by_frame_mproc_wrapper,
-            processes=None)
+            processes=iparams.n_processors)
 
     postrefine_by_frame_good = []
     for pres in postrefine_by_frame_result:
@@ -248,7 +248,7 @@ if (__name__ == "__main__"):
         calc_average_I_result = pool_map(
               args=range(cn_group),
               func=calc_average_I_mproc_wrapper,
-              processes=None)
+              processes=iparams.n_processors)
 
         miller_indices_merge = flex.miller_index()
         I_merge = flex.double()
