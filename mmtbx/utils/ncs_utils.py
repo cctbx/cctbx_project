@@ -1,5 +1,5 @@
 from __future__ import division
-from mmtbx.utils.map_correlation import Map_correlation
+import mmtbx.maps.correlation
 from scitbx.array_family import flex
 import mmtbx.monomer_library.server
 from mmtbx import monomer_library
@@ -808,7 +808,7 @@ def get_list_of_best_ncs_copy_map_correlation(
       (the master copy is 0)
   """
   best_list = []
-  mp = Map_correlation(
+  mp = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
     xray_structure = xray_structure,
     fmodel         = fmodel,
     map_data       = map_data,
@@ -819,7 +819,7 @@ def get_list_of_best_ncs_copy_map_correlation(
     selections.append(nrg.master_iselection)
     for ncs in nrg.copies:
       selections.append(ncs.copy_iselection)
-    cc = mp.calc_correlation_coefficient(selections)
+    cc = mp.cc(selections=selections)
     best_list.append(cc.index(max(cc)))
   return best_list
 
