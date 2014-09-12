@@ -228,6 +228,10 @@ partiality_model = Lorentzian
 flag_LP_correction = False
   .type = bool
   .help = Do Lorentz-factor and polarization correction.
+n_processors = 32
+  .type = int
+  .help = No. of processing units
+  .optional = True
 """)
 
 

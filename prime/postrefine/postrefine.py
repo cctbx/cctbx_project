@@ -298,10 +298,10 @@ class postref_handler(object):
             wavelength=wavelength,
             crystal_orientation=crystal_fin_orientation,
             spot_radius=spot_radius)
-    print '%6.0f %5.2f %8.0f %8.0f %8.2f %8.2f %8.2f %8.2f %9.2f %7.2f %10.2f %10.2f   '%( \
+    print '%6.0f %5.2f %8.0f %8.0f %8.2f %8.2f %8.2f %8.2f %9.2f %7.2f %10.2f %10.2f %5.2f'%( \
       pres.frame_no, observations_non_polar.d_min(), len(observations_non_polar.indices()), \
       n_refl_postrefined, pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, \
-      pres.CC_init*100, pres.CC_final*100,pres.CC_iso_init*100, pres.CC_iso_final*100), polar_hkl
+      pres.CC_init*100, pres.CC_final*100,pres.CC_iso_init*100, pres.CC_iso_final*100, pres.SE), polar_hkl
 
     return pres
 
@@ -324,7 +324,7 @@ class postref_handler(object):
 
     if len(observations_sel.data().select(i_sel)) == 0:
       return None
-    mean_I = np.median(observations_sel.data().select(i_sel))
+    mean_I = np.sum(observations_sel.data().select(i_sel))
 
     return mean_I
 
@@ -439,7 +439,7 @@ class postref_handler(object):
 
 
     if G == 0:
-      G = mean_of_mean_I/np.median(observations_original_sel.data())
+      G = mean_of_mean_I/np.sum(observations_original_sel.data())
       B = 0
       stats = (0,0,0,0,0,0,0,0,0,0)
 
@@ -449,7 +449,7 @@ class postref_handler(object):
     sin_theta_over_lambda_sq = observations_original.two_theta(wavelength=wavelength).sin_theta_over_lambda_sq().data()
     ry = spot_radius
     rz = spot_radius
-    re = 0.00
+    re = 0.002
     rotx = 0
     roty = 0
     partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, spot_radius, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm,
@@ -468,7 +468,7 @@ class postref_handler(object):
             wavelength=wavelength,
             spot_radius=spot_radius)
 
-    print 'frame %6.0f'%frame_no, '<I>=%9.2f <G>=%9.2f G=%9.2f B=%9.2f nrefl=%5.0f nrefl_used=%5.0f'%(np.median(observations_non_polar_sel.data()), mean_of_mean_I, G, B, len(observations_non_polar.data()), len(observations_non_polar_sel.data())), polar_hkl
+    print 'frame %6.0f'%frame_no, '<I>=%9.2f <G>=%9.2f G=%9.2f B=%9.2f nrefl=%5.0f nrefl_used=%5.0f'%(np.sum(observations_non_polar_sel.data()), mean_of_mean_I, G, B, len(observations_non_polar.data()), len(observations_non_polar_sel.data())), polar_hkl
     return pres
 
 

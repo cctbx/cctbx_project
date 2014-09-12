@@ -37,8 +37,10 @@ class intensities_scaler(object):
     sigI_full = calc_full_refl(sigI, sin_theta_over_lambda_sq,
                                G, B, p_set, rs_set, flag_volume_correction=flag_volume_correction)
 
+
+
     #filter outliers iteratively (Read, 1999)
-    sigma_max = 3
+    sigma_max = 3.0
     n_iters = len(I_full)*2
     for i_iter in range(n_iters):
       if len(I_full) > 2:
@@ -65,6 +67,7 @@ class intensities_scaler(object):
       m = (max_w - min_w)/(flex.min(SE)-flex.max(SE))
       b = max_w - (m*flex.min(SE))
       SE_norm = (m*SE) + b
+
 
     if avg_mode == 'weighted' or avg_mode == 'final':
       I_avg = np.sum(SE_norm * I_full)/np.sum(SE_norm)
@@ -365,20 +368,52 @@ class intensities_scaler(object):
         else:
           flag_hklisoin_found = False
 
-    #remove outliers
-    from mod_outlier import outlier_handler
-    olh = outlier_handler()
-    i_sel = olh.good_i_flags(miller_array_merge, iparams, flag_show_summary=True)
 
-    miller_array_merge = miller_array_merge.customized_copy(
-      indices=miller_indices_merge.select(i_sel),
-      data=I_merge.select(i_sel),
-      sigmas=sigI_merge.select(i_sel))
-    i_seq = flex.int([i for i in range(len(i_sel))])
-    stat_sel = [stat_all[i] for i in i_seq.select(i_sel)]
-    stat_all = stat_sel
-    I_even = I_even.select(i_sel)
-    I_odd = I_odd.select(i_sel)
+    #remove outliers
+    sigma_filter = 8.0
+    binner_merge = miller_array_merge.setup_binner(n_bins=iparams.n_bins)
+    binner_merge_indices = binner_merge.bin_indices()
+    miller_indices_merge_filter = flex.miller_index()
+    I_merge_filter = flex.double()
+    sigI_merge_filter = flex.double()
+    I_even_filter = flex.double()
+    I_odd_filter = flex.double()
+    stat_filter = []
+    i_seq = flex.int([j for j in range(len(binner_merge_indices))])
+    for i in range(1,iparams.n_bins+1):
+      i_binner = (binner_merge_indices == i)
+      if len(miller_array_merge.data().select(i_binner)) > 0:
+        I_obs_bin = miller_array_merge.data().select(i_binner)
+        sigI_obs_bin = miller_array_merge.sigmas().select(i_binner)
+        miller_indices_bin = miller_array_merge.indices().select(i_binner)
+        stat_bin = [stat_all[j] for j in i_seq.select(i_binner)]
+        I_even_bin = I_even.select(i_binner)
+        I_odd_bin = I_odd.select(i_binner)
+
+        i_filter = flex.abs((I_obs_bin - np.median(I_obs_bin))/np.median(I_obs_bin)) < sigma_filter
+        I_obs_bin_filter = I_obs_bin.select(i_filter)
+        sigI_obs_bin_filter = sigI_obs_bin.select(i_filter)
+        miller_indices_bin_filter = miller_indices_bin.select(i_filter)
+        i_seq_bin = flex.int([j for j in range(len(i_filter))])
+        stat_bin_filter = [stat_bin[j] for j in i_seq_bin.select(i_filter)]
+        I_even_bin_filter = I_even_bin.select(i_filter)
+        I_odd_bin_filter = I_odd_bin.select(i_filter)
+
+        for i_obs, sigi_obs, miller_index, stat, i_even, i_odd in zip(I_obs_bin_filter, sigI_obs_bin_filter,
+            miller_indices_bin_filter, stat_bin_filter, I_even_bin_filter, I_odd_bin_filter):
+          I_merge_filter.append(i_obs)
+          sigI_merge_filter.append(sigi_obs)
+          miller_indices_merge_filter.append(miller_index)
+          stat_filter.append(stat)
+          I_even_filter.append(i_even)
+          I_odd_filter.append(i_odd)
+
+    miller_array_merge = miller_array_merge.customized_copy(indices=miller_indices_merge_filter,
+                                                            data=I_merge_filter,
+                                                            sigmas=sigI_merge_filter)
+    stat_all = stat_filter
+    I_even = I_even_filter
+    I_odd = I_odd_filter
 
     if output_mtz_file_prefix != '':
       #write as mtz file
