@@ -1,6 +1,7 @@
 from __future__ import division
-from mmtbx.utils.simple_alignment import simple_alignment
 from iotbx.ncs.ncs_preprocess import align_residues
+from mmtbx.ncs.ncs_search import simple_alignment
+from mmtbx.ncs import ncs_search
 from iotbx import pdb
 import unittest
 import time
