@@ -2040,7 +2040,6 @@ mmtbx/utils/LICENSE.txt -text
 mmtbx/utils/SConscript -text
 mmtbx/utils/__init__.py -text
 mmtbx/utils/fab_elbow_angle.py -text
-mmtbx/utils/map_correlation.py -text
 mmtbx/utils/ncs_utils.py -text
 mmtbx/utils/rotatable_bonds.py -text
 mmtbx/utils/simple_alignment.py -text
