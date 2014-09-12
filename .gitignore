@@ -44,7 +44,6 @@ mmtbx/maps/*.pyc
 mmtbx/masks/*.pyc
 mmtbx/max_lik/*.pyc
 mmtbx/monomer_library/*.pyc
-mmtbx/ncs/*.pyc
 mmtbx/polygon/*.pyc
 mmtbx/real_space/*.pyc
 mmtbx/refinement/*.pyc
@@ -61,7 +60,6 @@ mmtbx/solvent/*.pyc
 mmtbx/tls/*.pyc
 mmtbx/torsion_restraints/*.pyc
 mmtbx/twinning/*.pyc
-mmtbx/utils/*.pyc
 mmtbx/validation/*.pyc
 mmtbx/wwpdb/*.pyc
 scitbx/array_family/detail/operator_functors.h
