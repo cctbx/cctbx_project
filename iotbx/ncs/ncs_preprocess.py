@@ -190,7 +190,7 @@ class ncs_group_object(object):
             pdb_hierarchy_inp=pdb_hierarchy_inp,
             use_cctbx_find_ncs_tools=use_cctbx_find_ncs_tools,
             use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
-            use_minimal_master_ncs=True,
+            use_minimal_master_ncs=use_minimal_master_ncs,
             process_similar_chains=process_similar_chains,
             rms_eps=rms_eps)
     elif ncs_selection_params or ncs_phil_groups:
