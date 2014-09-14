@@ -1,5 +1,10 @@
 from __future__ import division
-def get_observations (dir_name,data_subset):
+from cctbx.array_family import flex
+from scitbx.matrix import sqr, col
+import math
+
+
+def get_observations(dir_name,data_subset):
   file_names = []
   for file_name in os.listdir(dir_name):
     if (file_name.endswith("_00000.pickle")):
