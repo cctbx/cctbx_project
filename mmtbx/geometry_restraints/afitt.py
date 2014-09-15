@@ -224,7 +224,6 @@ class afitt_object:
 
   def process_cif_object(self, cif_object, pdb_hierarchy):
     for res in self.resname:
-      # doesn't work for value pairs
       for i, id in enumerate(cif_object['comp_list']['_chem_comp.id']):
         if res == id:
           self.n_atoms.append(
@@ -842,6 +841,7 @@ def finite_difference_test(pdb_file,
               ligand_names,
               pdb_hierarchy,
               scale=scale)
+  afitt_o.check_covalent(grm)
 
   if verbose: print "Analytical Gradient"
 
@@ -860,6 +860,7 @@ def finite_difference_test(pdb_file,
       afitt_input = afitt_o.make_afitt_input(sites_cart,
                                              resname_i,
                                              instance_i)
+
       lines = call_afitt(afitt_input,
                          afitt_o.ff)
       process_afitt_output(
