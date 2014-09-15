@@ -96,6 +96,9 @@ integration {
     enable_rotational_target_triclinic = True
       .type = bool
       .help = Protocol 5, use equation 2 (true) or protocol 4, use equation 1 (false) for triclinic Bravais-setting refinement
+    enable_simplex = False
+      .type = bool
+      .help = simplex_optimization
   }
 }
 """

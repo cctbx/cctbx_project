@@ -355,7 +355,7 @@ class refinement(refinement_base):
         tan_phi_rad_ML = helper.last_set_orientation.unit_cell().d(OO.reserve_indices) / (2. / M.x[0])
         tan_phi_deg_ML = tan_phi_rad_ML * 180./math.pi
         tan_outer_deg_ML = tan_phi_deg_ML + M.x[1]*180./math.pi
-
+      print "MEAN excursion ",flex.mean(final), "mosaicity deg FW=",M.x[1]*180./math.pi
       if False: # Excursion vs resolution fit
         from matplotlib import pyplot as plt
         plt.plot(two_thetas, final, "g*")
@@ -488,42 +488,73 @@ def pre_get_predictions(inputai,horizons_phil,raw_image,imageindex,spotfinder,li
     return wrapbp3
 
 def post_outlier_rejection(parent,image_number,cb_op_to_primitive,horizons_phil,kwargs):
+  reserve_wavelength = parent.inputai.wavelength
   verbose = False
-  """parent supplies all the "self" variables referred to above"""
-  # first refine rotx and roty
-  R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target,
-                 pvr_fix = horizons_phil.integration.mosaic.bugfix2_enable)
-  if verbose: excursions,positions = R.contour_plot()
-  minimum = R.refine_rotx_roty2(enable_rotational_target =
-    horizons_phil.integration.mosaic.enable_rotational_target_highsym)
-  if verbose: R.show_plot(excursions,positions,minimum)
-  parent.inputai.setOrientation(minimum[1])
-  print "RDISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
-    parent.inputai.xbeam(),parent.inputai.ybeam(),minimum[1].unit_cell().parameters()[0],
-    minimum[1].unit_cell().parameters()[2])
 
-  # now refine rotz, unit cell, distance, beamxy
-  refine2 = False
-  """As implemented the refine2 seems to skew the excursion vs. resolution plot so as to
-     make the domain-size result not meaningful.  Therefore comment this refinement
-     out for now.
-     P.S. 9/2014 Problem seems to that the code did not implement the subpixel joint model.
-  """
-  if refine2:
-    R2 = refinement2(parent)
-    minimum = R2.refine_all()
-
+  def core_optimization(operational_wavelength):
+    parent.inputai.setWavelength(operational_wavelength)
+    """parent supplies all the "self" variables referred to above"""
+    # first refine rotx and roty
+    R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target,
+                   pvr_fix = horizons_phil.integration.mosaic.bugfix2_enable)
+    if verbose: excursions,positions = R.contour_plot()
+    minimum = R.refine_rotx_roty2(enable_rotational_target =
+      horizons_phil.integration.mosaic.enable_rotational_target_highsym)
+    if verbose: R.show_plot(excursions,positions,minimum)
     parent.inputai.setOrientation(minimum[1])
-    print "R2DISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
+    print "RDISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
       parent.inputai.xbeam(),parent.inputai.ybeam(),minimum[1].unit_cell().parameters()[0],
       minimum[1].unit_cell().parameters()[2])
 
-  # last refine rotx and roty
-  R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target,
-                 pvr_fix = horizons_phil.integration.mosaic.bugfix2_enable)
-  if verbose: excursions,positions = R.contour_plot()
-  minimum = R.refine_rotx_roty2(enable_rotational_target =
-    horizons_phil.integration.mosaic.enable_rotational_target_highsym)
+    # now refine rotz, unit cell, distance, beamxy
+    refine2 = False
+    """As implemented the refine2 seems to skew the excursion vs. resolution plot so as to
+       make the domain-size result not meaningful.  Therefore comment this refinement
+       out for now.
+       P.S. 9/2014 Problem seems to that the code did not implement the subpixel joint model.
+    """
+    if refine2:
+      R2 = refinement2(parent)
+      minimum = R2.refine_all()
+
+      parent.inputai.setOrientation(minimum[1])
+      print "R2DISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
+        parent.inputai.xbeam(),parent.inputai.ybeam(),minimum[1].unit_cell().parameters()[0],
+        minimum[1].unit_cell().parameters()[2])
+
+    # last refine rotx and roty
+    R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target,
+                   pvr_fix = horizons_phil.integration.mosaic.bugfix2_enable)
+    if verbose: excursions,positions = R.contour_plot()
+    minimum = R.refine_rotx_roty2(enable_rotational_target =
+      horizons_phil.integration.mosaic.enable_rotational_target_highsym)
+    return minimum
+
+  from scitbx.simplex import simplex_opt
+  class apply_simplex_method(object):
+    def __init__(selfOO):
+      selfOO.starting_simplex=[]
+      selfOO.n = 1
+      for ii in range(selfOO.n+1):
+        selfOO.starting_simplex.append(flex.random_double(selfOO.n))
+      selfOO.optimizer = simplex_opt( dimension=selfOO.n,
+                                    matrix  = selfOO.starting_simplex,
+                                    evaluator = selfOO,
+                                    tolerance=1e-4)
+      selfOO.x = selfOO.optimizer.get_solution()
+
+    def target(selfOO, vector):
+      selfOO.minimum = core_optimization(
+        operational_wavelength = reserve_wavelength + vector[0]*0.001)
+      return parent.inputai.getMosaicity()
+
+  if horizons_phil.integration.mosaic.enable_simplex:
+    MIN = apply_simplex_method()
+    print "MINIMUM=",list(MIN.x)
+    minimum = MIN.minimum
+  else:
+    minimum = core_optimization(reserve_wavelength)
+
   if verbose: R.show_plot(excursions,positions,minimum)
   parent.inputai.setOrientation(minimum[1])
   print "R3DISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
