@@ -125,12 +125,6 @@ Full parameters:
           out=out)
       else :
         f_obs = data_array
-      if (f_obs.anomalous_flag()) :
-        info = f_obs.info()
-        f_obs = f_obs.average_bijvoet_mates().set_info(info)
-      print >> out, "F(obs):"
-      f_obs.show_summary(f=out, prefix="  ")
-      print >> out, ""
   else :
     for array in hkl_in.file_server.miller_arrays :
       array_labels = array.info().label_string()
