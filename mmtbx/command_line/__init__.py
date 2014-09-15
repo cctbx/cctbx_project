@@ -626,7 +626,20 @@ def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
   if ((unmerged_i_obs.space_group() is not None) and
       (unmerged_i_obs.unit_cell() is not None)) :
     if (not unmerged_i_obs.is_similar_symmetry(f_obs)) :
+      pg_f_obs = f_obs.space_group().build_derived_point_group()
+      pg_i_obs = unmerged_i_obs.space_group().build_derived_point_group()
+      if (pg_i_obs == pg_f_obs) :
+        # special case: same unit cell, same point group, different space group
+        if unmerged_i_obs.unit_cell().is_similar_to(f_obs.unit_cell()) :
+          return unmerged_i_obs
       show_symmetry_error("Data file", "Unmerged data", unmerged_i_obs, f_obs)
+  elif (unmerged_i_obs.space_group() is not None) :
+    pg_f_obs = f_obs.space_group().build_derived_point_group()
+    pg_i_obs = unmerged_i_obs.space_group().build_derived_point_group()
+    if (pg_i_obs != pg_f_obs) :
+      raise Sorry("Incompatible space groups in merged and unmerged data:"+
+        "%s versus %s" % (f_obs.space_group_info(),
+        unmerged_i_obs.space_group_info()))
   return unmerged_i_obs
 
 def show_symmetry_error (file1, file2, symm1, symm2) :

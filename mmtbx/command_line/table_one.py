@@ -120,7 +120,7 @@ table_one {
       .style = bold
     show_missing_fields = True
       .type = bool
-    format = *txt csv *rtf
+    format = txt csv *rtf
       .type = choice(multi=True)
       .caption = Text CSV RTF
       .short_caption = Output formats
@@ -495,6 +495,7 @@ def run (args,
   cmdline_phil = []
   pdb_file = None
   mtz_file = None
+  unmerged_data = None
   log_files = []
   for arg in args :
     if os.path.isfile(arg) :
@@ -508,6 +509,9 @@ def run (args,
       elif (f.file_type == "txt") :
         log_files.append(f.file_name)
     else :
+      if arg.startswith("unmerged_data=") :
+        unmerged_data = os.path.abspath("=".join(arg.split("=")[1:]))
+        continue
       if arg.startswith("--") :
         arg = arg[2:] + "=True"
       try :
@@ -531,6 +535,7 @@ def run (args,
     new_structure = structure_params.extract().structure[0]
     new_structure.pdb_file = pdb_file
     new_structure.mtz_file = mtz_file
+    new_structure.unmerged_data = unmerged_data
     params.table_one.structure.append(new_structure)
   if auto_extract_labels :
     extract_labels(params.table_one, out=out)

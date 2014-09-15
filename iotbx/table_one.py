@@ -278,7 +278,7 @@ def format_d_max_min (d_max_min) :
     return "%s - %s" % (d_max_str, d_min_str)
 
 def resize_column (cell_values, alignment="right") :
-  max_width = max([ len(cell) for cell in cell_values ])
+  max_width = max([ len(str(cell)) for cell in cell_values ])
   if (alignment == "right") :
     fs = "%%%ds" % max_width
     return [ fs % cell for cell in cell_values ]

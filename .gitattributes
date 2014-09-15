@@ -1950,6 +1950,7 @@ mmtbx/regression/tst_anomalous_substructure.py -text
 mmtbx/regression/tst_b_factor_statistics.py -text
 mmtbx/regression/tst_build_alt_confs.py -text
 mmtbx/regression/tst_cablam.py -text
+mmtbx/regression/tst_cc_star.py -text
 mmtbx/regression/tst_cif_as_mtz_wavelengths.py svneol=native#text/x-python
 mmtbx/regression/tst_command_line_input.py svneol=native#text/x-python
 mmtbx/regression/tst_compare_ligands.py -text
@@ -1981,6 +1982,7 @@ mmtbx/regression/tst_ringer.py -text
 mmtbx/regression/tst_sequence_validation.py -text
 mmtbx/regression/tst_sort_hetatms.py -text
 mmtbx/regression/tst_superpose.py -text
+mmtbx/regression/tst_table_one.py -text
 mmtbx/regression/tst_utils.py -text
 mmtbx/regression/tst_validation_summary.py -text
 mmtbx/resolve_resources.py -text
