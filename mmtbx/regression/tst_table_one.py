@@ -64,6 +64,24 @@ def exercise () :
   ]
   table_one.run(args=args, out=null_out(),
     use_current_directory_if_not_specified=True)
+  # now with phil file
+  f = open("tst_table_one_3.eff", "w")
+  f.write("""\
+table_one {
+  structure {
+    name = %(base)s
+    pdb_file = %(base)s.pdb
+    mtz_file = %(base)s.mtz
+    unmerged_data = %(base)s.hkl=hklf4
+  }
+  output {
+    directory = os.getcwd()
+    base_name = %(base)s_3
+  }
+}""" % {"base" : base })
+  args = [ "tst_table_one_3.eff" ]
+  table_one.run(args=args, out=null_out(),
+    use_current_directory_if_not_specified=True)
 
 if (__name__ == "__main__") :
   exercise()
