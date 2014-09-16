@@ -64,7 +64,7 @@ the best course of action."""
     used = flex.bool( len(matches), False )
     tmp_matches = []
     final_matches = []
-    done = False
+    done = not bool(matches)
     while not done:
       # find the largest domain please
       size, index = self.find_largest( matches, used )
