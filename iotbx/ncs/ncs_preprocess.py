@@ -343,9 +343,10 @@ class ncs_group_object(object):
           rms_eps=100,process_similar_chains=process_similar_chains,
           similarity=similarity)
         self.messages += msg
-        if not r:
+        if r.is_zero():
           err_m ='Master NCS and Copy are very poorly related, check selection.'
-          raise Sorry(err_m)
+          # Note: Consider how to add messages to user
+          # raise Sorry(err_m)
         asu_locations.append(asu_select)
         transform_sn += 1
         key = 's' + format_num_as_str(transform_sn)
@@ -1276,26 +1277,29 @@ def is_same_transform(r1,t1,r2,t2,eps=0.1,angle_eps=5):
   Returns:
     (bool,bool) (is_the_same, is_transpose)
   """
-  assert r1.is_r3_rotation_matrix(rms_tolerance=0.001)
-  assert r2.is_r3_rotation_matrix(rms_tolerance=0.001)
-  # test vector
-  xyz = flex.vec3_double([(11,103,523),(-500.0,2.0,10.0),(0.0,523.0,-103.0)])
-  a_ref = (r1.elems * xyz + t1).as_double()
-  rt, tt = inverse_transform(r1,t1)
-  a_ref_transpose = (rt.elems * xyz + tt).as_double()
-  v1 = get_rotation_vec(r1)
-  v2 = get_rotation_vec(r2)
-  a = (r2.elems * xyz + t2).as_double()
-  d = (a_ref-a)
-  d = (d.dot(d))**.5/a.size()
-  dt = (a_ref_transpose-a)
-  dt = (dt.dot(dt))**.5/a.size()
-  ang = angle_between_rotations(v1,v2)
-  d_ang = min(ang, (180 - ang))
-  if (d_ang < angle_eps) and (d < eps):
-    return True, False
-  elif (d_ang < angle_eps) and (dt < eps):
-    return True, True
+  if (not r1.is_zero()) and (not r2.is_zero()):
+    assert r1.is_r3_rotation_matrix(rms_tolerance=0.001)
+    assert r2.is_r3_rotation_matrix(rms_tolerance=0.001)
+    # test vector
+    xyz = flex.vec3_double([(11,103,523),(-500.0,2.0,10.0),(0.0,523.0,-103.0)])
+    a_ref = (r1.elems * xyz + t1).as_double()
+    rt, tt = inverse_transform(r1,t1)
+    a_ref_transpose = (rt.elems * xyz + tt).as_double()
+    v1 = get_rotation_vec(r1)
+    v2 = get_rotation_vec(r2)
+    a = (r2.elems * xyz + t2).as_double()
+    d = (a_ref-a)
+    d = (d.dot(d))**.5/a.size()
+    dt = (a_ref_transpose-a)
+    dt = (dt.dot(dt))**.5/a.size()
+    ang = angle_between_rotations(v1,v2)
+    d_ang = min(ang, (180 - ang))
+    if (d_ang < angle_eps) and (d < eps):
+      return True, False
+    elif (d_ang < angle_eps) and (dt < eps):
+      return True, True
+    else:
+      return False, False
   else:
     return False, False
 
@@ -1490,6 +1494,8 @@ def get_rot_trans(master_ncs_ph=None,
   master_atoms, m_sel, m_not_sel = get_atoms(master_atoms,master_ncs_ph)
   copy_atoms, c_sel, c_not_sel = get_atoms(copy_atoms,ncs_copy_ph)
   selection_update = selections()
+  r_zero = matrix.sqr([0]*9)
+  t_zero = matrix.col([0,0,0])
   #
   t1 = not (master_atoms is None)
   t2 = not (copy_atoms is None)
@@ -1510,10 +1516,10 @@ def get_rot_trans(master_ncs_ph=None,
         common_atoms(master_ncs_ph,ncs_copy_ph,similarity)
       if (ref_sites.size()/ml) < similarity:
         # similarity between chains is small, do not consider as same chains
-        return None,None,msg,selection_update
+        return r_zero,t_zero,msg,selection_update
     else:
       # different chains
-      return None,None,msg,selection_update
+      return r_zero,t_zero,msg,selection_update
     # get common residues
     lsq_fit_obj = superpose.least_squares_fit(
       reference_sites = ref_sites,
@@ -1524,15 +1530,15 @@ def get_rot_trans(master_ncs_ph=None,
     xyz = r.elems * other_sites + t
     delta = ref_sites.rms_difference(xyz)
     if delta > rms_eps:
-      return None,None,msg,selection_update
+      return r_zero,t_zero,msg,selection_update
     elif different_length:
       msg='Chains {0} and {1} appear to be NCS related but differ in length..\n'
       msg = msg.format(m_id,c_id)
       if not process_similar_chains:
         raise Sorry(msg)
   else:
-    r = matrix.sqr([0]*9)
-    t = matrix.col([0,0,0])
+    r = r_zero
+    t = t_zero
   # update selection with water and alternative locations
   selection_update.not_in_master.extend(m_not_sel)
   selection_update.not_in_copy.extend(c_not_sel)
@@ -1715,6 +1721,8 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp,
     if master_ch_id in chains_in_groups: continue
     master_sel = 'chain ' + master_ch_id
     master_atoms_ph = get_pdb_selection(ph=ph,selection_str=master_sel)
+    if master_ch_id == 'X':
+      print 'test'
     for j in xrange(i+1,n_chains):
       copy_ch_id = ph_chains[j].id
       if copy_ch_id in chains_in_groups: continue
@@ -1725,7 +1733,7 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp,
         rms_eps=rms_eps,process_similar_chains=process_similar_chains,
         similarity=similarity)
       err_msg += msg
-      if r:
+      if not r.is_zero():
         # the chains relates by ncs operation
         tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
         if is_transpose:
@@ -1840,7 +1848,7 @@ def get_largest_common_ncs_groups(pdb_hierarchy_inp,
         rms_eps=rms_eps,process_similar_chains=process_similar_chains,
         similarity=similarity)
       err_msg += msg
-      if r:
+      if not r.is_zero():
         # the chains relates by ncs operation
         tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
         if is_transpose:

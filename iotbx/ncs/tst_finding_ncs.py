@@ -19,8 +19,8 @@ class test_find_ncs_operators(unittest.TestCase):
   def test_three_chain_master(self):
     """
     Test case of:
-    Two groups, different number of chain in each group. two chains that are
-    not ncs related
+    Two groups, different number of chain in each group.
+    two chains that are NOT ncs related
     """
     print sys._getframe().f_code.co_name
     trans_obj = iotbx.ncs.input(pdb_string=test_pdb2)
@@ -193,10 +193,13 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_two_chain_master']
+  tests = ['test_three_chain_master']
   suite = unittest.TestSuite(map(test_find_ncs_operators,tests))
   return suite
 
 if __name__=='__main__':
+  # use for individual tests
+  unittest.TextTestRunner().run(run_selected_tests())
+
   # Use to run all tests
-  unittest.main()
+  # unittest.main()
