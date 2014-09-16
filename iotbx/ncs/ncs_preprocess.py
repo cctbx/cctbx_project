@@ -225,6 +225,7 @@ class ncs_group_object(object):
         use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
         use_minimal_master_ncs=use_minimal_master_ncs,
         similarity=similarity,
+        process_similar_chains=process_similar_chains,
         rms_eps=rms_eps)
     else:
       raise Sorry('Please provide one of the supported input')
