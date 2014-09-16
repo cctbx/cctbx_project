@@ -294,6 +294,9 @@ class any_file_input (object) :
     """
     return self._file_type
 
+  def set_file_type (self, file_type) :
+    self._file_type = file_type
+
   @property
   def file_object (self) :
     """Synonym for file_content()"""
