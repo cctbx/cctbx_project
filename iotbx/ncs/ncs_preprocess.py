@@ -670,7 +670,7 @@ class ncs_group_object(object):
         ncs_selection = temp.selection(key)
         if not self.asu_to_ncs_map.has_key(key):
           copy_count[key] = 0
-          selection_ref = update_selection_ref(selection_ref,ncs_selection)
+          selection_ref = (selection_ref | ncs_selection)
           self.asu_to_ncs_map[key] = ncs_selection.iselection()
         else:
           copy_count[key] += 1
@@ -1914,16 +1914,25 @@ def get_largest_common_ncs_groups(pdb_hierarchy_inp,
         elif (s_c in chains_in_groups) and (s_m in chains_in_groups):
           transform_to_group.pop(s_tr_num,None)
 
-  # remove overlapping selection
+  # remove overlapping selection, keep largest groups
   master_size = [[len(v[0]),k] for k,v in transform_to_group.iteritems()]
   master_size.sort()
   chain_left_to_add = set(chain_ids)
   transform_to_use = set()
+  chains_in_master = set()
+  chains_in_copies = set()
   while bool(chain_left_to_add) and bool(master_size):
     [n,k] = master_size.pop()
     tr = transform_to_group[k]
-    if bool(set(tr[1]) & chain_left_to_add):
+    # copies still not included
+    test1 = bool(set(tr[1]) & chain_left_to_add)
+    # copies are not masters
+    test2 = not bool(set(tr[1]).intersection(chains_in_master))
+    test3 = not bool(set(tr[0]).intersection(chains_in_copies))
+    if test1 and test2 and test3:
       transform_to_use.add(k)
+      chains_in_master.update(set(tr[0]))
+      chains_in_copies.update(set(tr[1]))
       chain_left_to_add -= set(tr[1])
       chain_left_to_add -= set(tr[0])
 
