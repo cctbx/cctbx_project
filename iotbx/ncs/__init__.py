@@ -22,7 +22,8 @@ def input(pdb_hierarchy_inp=None,
           use_minimal_master_ncs=True,
           rms_eps=0.02,
           error_msg_on=False,
-          process_similar_chains=False):
+          process_similar_chains=False,
+          similarity=0.75):
     """
     Select method to build ncs_group_object
 
@@ -68,6 +69,7 @@ def input(pdb_hierarchy_inp=None,
         Raise error if NCS relations are not found
       process_similar_chains (bool): When True, process chains that are close
        in length without raising errors
+      similarity (float): minimum boundary on how good the alignment should be
     """
     ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
     ncs_group_obj.preprocess_ncs_obj(
@@ -91,6 +93,7 @@ def input(pdb_hierarchy_inp=None,
       use_minimal_master_ncs=use_minimal_master_ncs,
       rms_eps=rms_eps,
       error_msg_on=error_msg_on,
-      process_similar_chains=process_similar_chains)
+      process_similar_chains=process_similar_chains,
+      similarity=similarity)
     return ncs_group_obj
 

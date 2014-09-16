@@ -1501,23 +1501,22 @@ def get_ncs_object_from_pdb(pdb_inp=None,hierarchy=None):
   if invariant_groups:
     groups = invariant_groups
     list_of_residue_range_list = invariant_list_of_residue_range_list
+    # build output object
+    for group,residue_range_list in zip(groups,list_of_residue_range_list):
+      rmsd_list,r_list,trans_list,center_list,residues_in_common_list = \
+        ncs_process.get_rmsd(
+          group,hierarchy,chains,chain_ids,
+          starting_residue_numbers,residue_range_list)
 
-  # build output object
-  for group,residue_range_list in zip(groups,list_of_residue_range_list):
-    rmsd_list,r_list,trans_list,center_list,residues_in_common_list = \
-      ncs_process.get_rmsd(
-        group,hierarchy,chains,chain_ids,
-        starting_residue_numbers,residue_range_list)
+      residue_range_list_with_offsets = \
+        ncs_process.add_offsets(residue_range_list,group)
 
-    residue_range_list_with_offsets = \
-      ncs_process.add_offsets(residue_range_list,group)
+      chain_residue_id=[group,residue_range_list_with_offsets]
+      ncs_object.import_ncs_group(ncs_rota_matr=r_list,
+       rmsd_list=rmsd_list,
+       residues_in_common_list=residues_in_common_list,
+       center_orth=center_list,
+       trans_orth=trans_list,
+       chain_residue_id=chain_residue_id)
+    return ncs_object
 
-    chain_residue_id=[group,residue_range_list_with_offsets]
-    ncs_object.import_ncs_group(ncs_rota_matr=r_list,
-     rmsd_list=rmsd_list,
-     residues_in_common_list=residues_in_common_list,
-     center_orth=center_list,
-     trans_orth=trans_list,
-     chain_residue_id=chain_residue_id)
-
-  return ncs_object

@@ -110,7 +110,8 @@ class ncs_group_object(object):
                          use_minimal_master_ncs=True,
                          rms_eps=0.02,
                          error_msg_on=False,
-                         process_similar_chains=False):
+                         process_similar_chains=False,
+                         similarity=0.75):
     """
     Select method to build ncs_group_object
 
@@ -156,6 +157,8 @@ class ncs_group_object(object):
         Raise error if NCS relations are not found
       process_similar_chains (bool): When True, process chains that are close
         in length without raising errors
+      similarity (float): similarity between chains when looking for ncs
+        relations
     """
     extension = ''
     if file_name: extension = os.path.splitext(file_name)[1]
@@ -192,12 +195,14 @@ class ncs_group_object(object):
             use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
             use_minimal_master_ncs=use_minimal_master_ncs,
             process_similar_chains=process_similar_chains,
+            similarity=similarity,
             rms_eps=rms_eps)
     elif ncs_selection_params or ncs_phil_groups:
       self.build_ncs_obj_from_phil(
         ncs_selection_params=ncs_selection_params,
         ncs_phil_groups=ncs_phil_groups,
-        pdb_hierarchy_inp=pdb_hierarchy_inp)
+        pdb_hierarchy_inp=pdb_hierarchy_inp,
+        similarity=similarity)
     elif extension.lower() == '.ncs_spec' or \
             spec_file_str or spec_source_info or spec_ncs_groups:
       self.build_ncs_obj_from_spec_file(
@@ -219,6 +224,7 @@ class ncs_group_object(object):
         use_cctbx_find_ncs_tools=use_cctbx_find_ncs_tools,
         use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
         use_minimal_master_ncs=use_minimal_master_ncs,
+        similarity=similarity,
         rms_eps=rms_eps)
     else:
       raise Sorry('Please provide one of the supported input')
@@ -273,7 +279,8 @@ class ncs_group_object(object):
                               ncs_selection_params = None,
                               ncs_phil_groups = None,
                               pdb_hierarchy_inp = None,
-                              process_similar_chains=True):
+                              process_similar_chains=True,
+                              similarity=0.75):
     """
     Build transforms objects and NCS <-> ASU mapping using phil selection
     strings and complete ASU
@@ -283,6 +290,8 @@ class ncs_group_object(object):
       pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
       process_similar_chains (bool): When True, process chains that are close
         in length without raising errors
+      similarity (float): similarity between chains when looking for ncs
+        relations
 
     Phil structure
     ncs_group (multiple)
@@ -330,7 +339,8 @@ class ncs_group_object(object):
           ph=pdb_hierarchy_inp,selection_str=asu_select)
         r, t, msg, selection_update = get_rot_trans(
           master_ncs_ph=master_ncs_ph,ncs_copy_ph= ncs_copy_ph,
-          rms_eps=100,process_similar_chains=process_similar_chains)
+          rms_eps=100,process_similar_chains=process_similar_chains,
+          similarity=similarity)
         self.messages += msg
         if not r:
           err_m ='Master NCS and Copy are very poorly related, check selection.'
@@ -375,7 +385,8 @@ class ncs_group_object(object):
                                  use_simple_ncs_from_pdb=True,
                                  use_minimal_master_ncs=True,
                                  rms_eps=0.02,
-                                 process_similar_chains=False):
+                                 process_similar_chains=False,
+                                 similarity=0.75):
     """
     Build transforms objects and NCS <-> ASU mapping from a complete ASU
     Note that the MTRIX record are ignored, they are produced in the
@@ -391,33 +402,38 @@ class ncs_group_object(object):
         as copies
       process_similar_chains (bool): When True, process chains that are close
       in length without raising errors
+      similarity (float): similarity between chains when looking for ncs
+        relations
     """
     ncs_phil_groups = []
     if use_cctbx_find_ncs_tools:
       if use_minimal_master_ncs:
         ncs_phil_groups, msg = get_minimal_master_ncs_group(
           pdb_hierarchy_inp=pdb_hierarchy_inp,
-          rms_eps=rms_eps,process_similar_chains=process_similar_chains)
+          rms_eps=rms_eps,process_similar_chains=process_similar_chains,
+          similarity=similarity)
       else:
         ncs_phil_groups, msg = get_largest_common_ncs_groups(
           pdb_hierarchy_inp=pdb_hierarchy_inp,
-          rms_eps=rms_eps,process_similar_chains=process_similar_chains)
+          rms_eps=rms_eps,process_similar_chains=process_similar_chains,
+          similarity=similarity)
       self.messages += msg
 
     if (ncs_phil_groups != []):
       self.build_ncs_obj_from_phil(
         pdb_hierarchy_inp=pdb_hierarchy_inp,
         ncs_phil_groups=ncs_phil_groups,
-        process_similar_chains=process_similar_chains)
+        process_similar_chains=process_similar_chains,
+        similarity=similarity)
     elif use_simple_ncs_from_pdb:
       ncs_object = get_ncs_object_from_pdb(
         pdb_inp=pdb_hierarchy_inp.input,
         hierarchy=pdb_hierarchy_inp.hierarchy)
-
-      spec_ncs_groups = ncs_object.ncs_groups()
-      self.build_ncs_obj_from_spec_file(
-        pdb_hierarchy_inp=pdb_hierarchy_inp,
-        spec_ncs_groups=spec_ncs_groups)
+      if ncs_object:
+        spec_ncs_groups = ncs_object.ncs_groups()
+        self.build_ncs_obj_from_spec_file(
+          pdb_hierarchy_inp=pdb_hierarchy_inp,
+          spec_ncs_groups=spec_ncs_groups)
 
   def build_ncs_obj_from_spec_file(self,file_name=None,file_path='',
                                    file_str='',source_info="",quiet=True,
@@ -1437,7 +1453,8 @@ def get_rot_trans(master_ncs_ph=None,
                   master_atoms=None,
                   copy_atoms=None,
                   process_similar_chains=False,
-                  rms_eps=0.02):
+                  rms_eps=0.02,
+                  similarity = 0.75):
   """
   Get rotation and translation using superpose.
   Can raise "Sorry" if chains are not exactly the same length, but a large
@@ -1468,8 +1485,6 @@ def get_rot_trans(master_ncs_ph=None,
   msg = ''
   m_id = 'master'
   c_id = 'copy'
-  # fixme: add similarity as an input
-  similarity = 0.75
   # ignore water and alternative location
   master_atoms, m_sel, m_not_sel = get_atoms(master_atoms,master_ncs_ph)
   copy_atoms, c_sel, c_not_sel = get_atoms(copy_atoms,ncs_copy_ph)
@@ -1662,7 +1677,8 @@ def sort_dict_keys(dict):
 
 def get_minimal_master_ncs_group(pdb_hierarchy_inp,
                                  rms_eps=0.02,
-                                 process_similar_chains=False):
+                                 process_similar_chains=False,
+                                 similarity=0.75):
   """
   Finds minimal number ncs relations, the largest common ncs groups
 
@@ -1672,6 +1688,8 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp,
       as copies
     process_similar_chains (bool): When True, process chains that are close
       in length without raising errors
+    similarity (float): similarity between chains when looking for ncs
+      relations
 
   Returns:
     ncs_phil_groups (list): list of ncs_groups_container
@@ -1703,7 +1721,8 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp,
       copy_atoms_ph = get_pdb_selection(ph=ph,selection_str=copy_sel)
       r, t, msg, selection_update = get_rot_trans(
         master_ncs_ph=master_atoms_ph,ncs_copy_ph=copy_atoms_ph,
-        rms_eps=rms_eps,process_similar_chains=process_similar_chains)
+        rms_eps=rms_eps,process_similar_chains=process_similar_chains,
+        similarity=similarity)
       err_msg += msg
       if r:
         # the chains relates by ncs operation
@@ -1712,16 +1731,15 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp,
           temp_master, temp_copy = copy_ch_id, master_ch_id
         else:
           temp_master, temp_copy = master_ch_id, copy_ch_id
+        chains_in_groups.add(temp_copy)
         if tr_num:
           # update dictionaries with additions to master and copies
           transform_to_group[tr_num][0].append(temp_master)
           transform_to_group[tr_num][1].append(temp_copy)
-          chains_in_groups.add(temp_copy)
         else:
           # create a new transform object and update groups
           tr_sn += 1
           transform_to_group[tr_sn] = [[temp_master],[temp_copy],(r,t)]
-          chains_in_groups.add(temp_copy)
 
   # remove overlapping selection
   master_size = [[len(v[0]),k] for k,v in transform_to_group.iteritems()]
@@ -1771,7 +1789,8 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp,
 
 def get_largest_common_ncs_groups(pdb_hierarchy_inp,
                                   rms_eps=0.02,
-                                  process_similar_chains=False):
+                                  process_similar_chains=False,
+                                  similarity=0.75):
   """
   Finds minimal number ncs relations, the largest common ncs groups
 
@@ -1781,6 +1800,8 @@ def get_largest_common_ncs_groups(pdb_hierarchy_inp,
       as copies
     process_similar_chains (bool): When True, process chains that are close
       in length without raising errors
+    similarity (float): similarity between chains when looking for ncs
+        relations
 
   Returns:
     ncs_phil_groups (list): list of ncs_groups_container
@@ -1811,7 +1832,8 @@ def get_largest_common_ncs_groups(pdb_hierarchy_inp,
       copy_atoms_ph = get_pdb_selection(ph=ph,selection_str=copy_sel)
       r, t, msg, selection_update = get_rot_trans(
         master_ncs_ph=master_atoms_ph,ncs_copy_ph=copy_atoms_ph,
-        rms_eps=rms_eps,process_similar_chains=process_similar_chains)
+        rms_eps=rms_eps,process_similar_chains=process_similar_chains,
+        similarity=similarity)
       err_msg += msg
       if r:
         # the chains relates by ncs operation
