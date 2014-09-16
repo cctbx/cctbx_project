@@ -309,6 +309,10 @@ class rec(object):
     """ Is the translation vector zero """
     return (self.elems == (0.0, 0.0, 0.0))
 
+  def is_zero(self):
+    """ Are all elements zero  """
+    return len([1 for x in self.elems if x != 0]) == 0
+
   def unit_quaternion_as_r3_rotation_matrix(self):
     assert self.n in [(1,4), (4,1)]
     q0,q1,q2,q3 = self.elems
