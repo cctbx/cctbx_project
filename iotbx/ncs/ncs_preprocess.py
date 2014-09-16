@@ -1729,7 +1729,11 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp,
         # the chains relates by ncs operation
         tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
         if is_transpose:
-          temp_master, temp_copy = copy_ch_id, master_ch_id
+          if master_ch_id in transform_to_group[tr_num][0]:
+            tr_num = None
+            temp_master, temp_copy = master_ch_id, copy_ch_id
+          else:
+            temp_master, temp_copy = copy_ch_id, master_ch_id
         else:
           temp_master, temp_copy = master_ch_id, copy_ch_id
         chains_in_groups.add(temp_copy)
