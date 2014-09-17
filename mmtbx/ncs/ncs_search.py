@@ -174,11 +174,9 @@ def align_residues(hierarchy_a, hierarchy_b, similarity=0.9):
     set_b = set(sb.iselection())
     d_res_num = min(set_a) - min(set_b)
     # temporarily adjust atoms numbers to count for shifts
-    set_b = {x + d_res_num for x in set_b}
+    set_b = {(x + d_res_num) for x in set_b}
     # update selections
-    exist_in_both = set_a.intersection(set_b)
-    sel_a = update_with_common_atoms(sel_a,set_a,exist_in_both,0)
-    sel_b = update_with_common_atoms(sel_b,set_b,exist_in_both,d_res_num)
+    sel_a,sel_b = update_with_common_atoms(sel_a,set_a,sel_b,set_b,d_res_num)
   not_sel_a = ~sel_a
   not_sel_b = ~sel_b
   sel_a = sel_a.iselection()
@@ -187,21 +185,22 @@ def align_residues(hierarchy_a, hierarchy_b, similarity=0.9):
   not_sel_b = not_sel_b.iselection()
   return sel_a, sel_b, not_sel_a, not_sel_b, chain_id_a, chain_id_b
 
-def update_with_common_atoms(sel_x,set_x,atoms_to_include,d_res_num):
+def update_with_common_atoms(sel_a,set_a,sel_b,set_b,d_res_num):
   """
   update selection (flex.bool) according to the size of the chain (set_x)
   and whether or not atoms should be included in selection
 
   Args:
-    sel_x (flex.bool): selected atoms
-    set_x (set of int): atoms in current chain
-    atoms_to_include (set of int): atoms to add as True to sel_x
-    d_res_num (int):
+    sel_a,sel_b (flex.bool): selected atoms
+    set_a,set_b (set of int): atoms in current chain
+    d_res_num (int):  min(set_a) - min(set_b)
 
   Returns:
-    sel_x (flex.bool): Updated selection
+    sel_a,sel_b (flex.bool): Updated selection
   """
-  for i in set_x:
-    if i in atoms_to_include:
-      sel_x[i -  d_res_num] = True
-  return sel_x
+  exist_in_both = set_a.intersection(set_b)
+  for i in exist_in_both:
+    if (sel_a[i] == False) and (sel_b[i - d_res_num] == False):
+      sel_a[i] = True
+      sel_b[i -  d_res_num] = True
+  return sel_a, sel_b
