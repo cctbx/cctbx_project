@@ -79,6 +79,8 @@ already be on a common scale, but with individual observations unmerged.
     data_labels=params.labels,
     log=out,
     assume_shelx_observation_type_is=assume_shelx_observation_type_is)
+  params.labels = i_obs.info().label_string()
+  validate_params(params)
   symm = None
   if (params.symmetry_file is not None) :
     from iotbx import crystal_symmetry_from_any
@@ -134,6 +136,10 @@ def validate_params (params) :
     raise Sorry("No data file specified!")
   elif (params.labels is None) :
     raise Sorry("No data labels selected!")
+  if (not None in [params.high_resolution, params.low_resolution]) :
+    if (params.low_resolution < params.high_resolution) :
+      raise Sorry("Resolution limits flipped - high resolution must be a "+
+        "smaller number than low resolution.")
   return True
 
 class launcher (runtime_utils.target_with_save_result) :
