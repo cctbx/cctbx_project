@@ -1,11 +1,13 @@
+
 from __future__ import division
-import libtbx.load_env
-from libtbx.test_utils import approx_equal
 from iotbx.command_line import merging_statistics
 from cctbx.array_family import flex
+from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.utils import Sorry
+import libtbx.load_env
+from cStringIO import StringIO
 import os
 import sys
-from cStringIO import StringIO
 
 def exercise (debug=False) :
   if (not libtbx.env.has_module("phenix_regression")) :
@@ -43,6 +45,28 @@ def exercise (debug=False) :
   remark_200 = result.as_remark_200(wavelength=0.9792).splitlines()
   assert ("REMARK 200  <I/SIGMA(I)> FOR SHELL         : 5.4942" in remark_200)
   assert ("REMARK 200  WAVELENGTH OR RANGE        (A) : 0.9792" in remark_200)
+  # test resolution cutoffs
+  args2 = list(args[:-1]) + ["high_resolution=2.5", "low_resolution=15"]
+  out = StringIO()
+  result = merging_statistics.run(args2, out=out)
+  if (debug) :
+    print out.getvalue()
+  assert ("Resolution: 14.96 - 2.50" in out.getvalue())
+  # these should crash
+  args2 = list(args[:-1]) + ["high_resolution=15", "low_resolution=2.5"]
+  try :
+    result = merging_statistics.run(args2, out=out)
+  except Sorry, s :
+    pass
+  else :
+    raise Exception_expected
+  args2 = list(args[:-1]) + ["high_resolution=1.5", "low_resolution=1.6"]
+  try :
+    result = merging_statistics.run(args2, out=out)
+  except Sorry, s :
+    pass
+  else :
+    raise Exception_expected
   # exercise 2: estimate resolution cutoffs (and symmetry_file argument)
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/harvesting/unmerged.sca",

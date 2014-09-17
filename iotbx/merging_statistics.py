@@ -355,11 +355,15 @@ class dataset_statistics (object) :
     d_max_cutoff = d_max
     if (d_min is not None) :
       d_min_cutoff *= (1-d_min_tolerance)
+      if (d_max is not None) :
+        assert (d_max > d_min)
     if (d_max is not None) :
       d_max_cutoff *= 1+d_min_tolerance
     i_obs = i_obs.resolution_filter(
       d_min=d_min_cutoff,
       d_max=d_max_cutoff).set_info(info)
+    if (i_obs.size() == 0) :
+      raise Sorry("No reflections left after applying resolution cutoffs.")
     i_obs.show_summary(f=log)
     self.anom_extra = ""
     if (not anomalous) :
