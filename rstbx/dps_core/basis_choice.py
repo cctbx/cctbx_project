@@ -157,9 +157,10 @@ def select_best_combo_of(ai,better_than=0.15,candidates=20,basis=15):
       #print "KG COMBO: (%d,%d,%d) rejected on Krivy-Gruber iterations"%(combo[0],combo[1],combo[2])
       #printcombo(ai,combo)
       continue
+    except ValueError, f :
+      if str(f).find("Corrupt metrical matrix")>=0: continue # colinear or coplanar
     except (RuntimeError),f:
       if str(f).find("Iteration limit exceeded")>0: continue
-      if str(f).find("Corrupt metrical matrix")>=0: continue # colinear or coplanar
       if str(f).find("Matrix is not invertible")>=0: continue# colinear or coplanar
       print "Report this problem to LABELIT developers:"
       print "COMBO: (%d,%d,%d) rejected on C++ runtime error"%(combo[0],combo[1],combo[2])
