@@ -958,7 +958,8 @@ class ncs_group_object(object):
             # Fixme: properly handle insertions where res-id can be non
             # integer like :"3T"
             pass
-        range_list.append([min(res_id),max(res_id)])
+        if res_id:
+          range_list.append([min(res_id),max(res_id)])
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
 
   def get_ncs_restraints_group_list(self):
