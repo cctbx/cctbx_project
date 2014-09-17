@@ -35,7 +35,7 @@ tst_list = (
   "$D/maps/tst_composite_omit_map_2.py",
   "$D/maps/tst_composite_omit_map_3.py",
   "$D/ncs/tst_ncs_utils.py",
-  "$D/ncs/tst_ncs_search.py.py",
+  "$D/ncs/tst_ncs_search.py",
   "$D/ncs/tst_restraints.py",
   "$D/ncs/tst_restraints_2.py",
   "$D/ncs/tst_asu_as_one_ncs_copy.py",
