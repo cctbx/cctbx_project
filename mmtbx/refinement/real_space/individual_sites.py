@@ -5,10 +5,12 @@ import scitbx.lbfgs
 from cctbx import maptbx
 from cctbx.array_family import flex
 from mmtbx import utils
+from mmtbx.ncs import ncs_utils
 from libtbx.test_utils import approx_equal
 from cctbx import crystal
 from libtbx import group_args
 import mmtbx.refinement.minimization_ncs_constraints
+
 
 class easy(object):
   """
@@ -353,7 +355,7 @@ class box_refinement_manager(object):
       xrs = self.xray_structure.select(selection)
       sel = flex.bool(xrs.scatterers().size(), True)
       size = self.xray_structure.scatterers().size()
-      ncs_groups_ = utils.ncs_utils.ncs_groups_selection(
+      ncs_groups_ = ncs_utils.ncs_groups_selection(
         ncs_restraints_group_list = self.ncs_groups,
         selection                 = selection)
       #
