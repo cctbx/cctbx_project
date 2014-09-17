@@ -72,6 +72,7 @@ def exercise_synthetic () :
     "tst_molprobity_1.pdb",
     "rotamer_library=500",
     "outliers_only=False",
+    "flags.clashscore=False",
   ]
   result = molprobity.run(args=args,
     ignore_missing_modules=True,
@@ -84,6 +85,7 @@ def exercise_synthetic () :
     "tst_molprobity_1.pdb",
     "rotamer_library=8000",
     "outliers_only=False",
+    "flags.clashscore=False",
   ]
   out = StringIO()
   result = molprobity.run(args=args2,
