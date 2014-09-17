@@ -1722,8 +1722,6 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp,
     if master_ch_id in chains_in_groups: continue
     master_sel = 'chain ' + master_ch_id
     master_atoms_ph = get_pdb_selection(ph=ph,selection_str=master_sel)
-    if master_ch_id == 'X':
-      print 'test'
     for j in xrange(i+1,n_chains):
       copy_ch_id = ph_chains[j].id
       if copy_ch_id in chains_in_groups: continue
