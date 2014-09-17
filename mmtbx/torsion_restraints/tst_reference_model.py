@@ -7,6 +7,7 @@ from cctbx.array_family import flex
 import iotbx.phil
 import iotbx.utils
 import iotbx.pdb
+from libtbx.test_utils import show_diff
 import libtbx.load_env
 import cStringIO
 import sys, os, time
@@ -186,15 +187,15 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   out2 = cStringIO.StringIO()
   r2.show_old_output(out=out2)
 
-  assert out1.getvalue() == """\
- C 236  ASN:1.00:1.2:227.3:80.2:::t30
- C 237  LEU:1.00:0.0:209.6:357.2:::OUTLIER
-"""
+  assert not show_diff(out1.getvalue(), """\
+ C 236  ASN:1.00:1.2:227.3:80.2:::Allowed:t30
+ C 237  LEU:1.00:0.0:209.6:357.2:::OUTLIER:OUTLIER
+""")
 
-  assert out2.getvalue() == """\
- C 236  ASN:1.00:41.4:203.2:43.6:::t30
- C 237  LEU:1.00:52.8:179.1:57.3:::tp
-"""
+  assert not show_diff(out2.getvalue(), """\
+ C 236  ASN:1.00:41.4:203.2:43.6:::Favored:t30
+ C 237  LEU:1.00:52.8:179.1:57.3:::Favored:tp
+""")
 
   xray_structure = pdb_hierarchy.extract_xray_structure()
   rm.set_rotamer_to_reference(
@@ -204,10 +205,10 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   r2 = rotalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
   out3 = cStringIO.StringIO()
   r2.show_old_output(out=out3)
-  assert out3.getvalue() == """\
- C 236  ASN:1.00:1.2:227.3:80.2:::t30
- C 237  LEU:1.00:52.8:179.1:57.3:::tp
-"""
+  assert not show_diff(out3.getvalue(), """\
+ C 236  ASN:1.00:1.2:227.3:80.2:::Allowed:t30
+ C 237  LEU:1.00:52.8:179.1:57.3:::Favored:tp
+""")
 
   match_map = rm.match_map['ref1']
   assert match_map == \
