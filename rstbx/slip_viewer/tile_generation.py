@@ -215,11 +215,6 @@ class _Tiles(object):
           self.raw_image.apply_metrology_from_matrices(metrology_matrices)
 
         if len(detector) > 1:
-          # XXX Special-case read of new-style images until multitile
-          # images are fully supported in dxtbx.
-
-          # beam should be close to 0 0 1 but don't kill ourselves with an assertion
-          # assert self.raw_image.get_beam().get_direction()==(0.0,0.0,1.0)
           self.flex_image = _get_flex_image_multipanel(
             brightness=self.current_brightness / 100,
             panels=detector,
@@ -245,21 +240,12 @@ class _Tiles(object):
 
       detector = self.raw_image.get_detector()
 
-      if len(detector) > 1 and metrology_matrices is not None:
-        self.raw_image.apply_metrology_from_matrices(metrology_matrices)
-
       if len(detector) > 1:
-        raise RuntimeError("Multipanel detectors not supported!")
-        ## XXX Special-case read of new-style images until multitile
-        ## images are fully supported in dxtbx.
-
-        ## beam should be close to 0 0 1 but don't kill ourselves with an assertion
-        ## assert self.raw_image.get_beam().get_direction()==(0.0,0.0,1.0)
-        #self.flex_image = _get_flex_image_multipanel(
-          #brightness=self.current_brightness / 100,
-          #panels=detector,
-          #raw_data=[self.raw_image.get_raw_data(i)
-                    #for i in range(len(self.raw_image.get_detector()))])
+        self.flex_image = _get_flex_image_multipanel(
+          brightness=self.current_brightness / 100,
+          panels=detector,
+          raw_data=[self.raw_image.get_raw_data(i)
+                    for i in range(len(self.raw_image.get_detector()))])
       else:
         self.flex_image = _get_flex_image(
           brightness=self.current_brightness / 100,
