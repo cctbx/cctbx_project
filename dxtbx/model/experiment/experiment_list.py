@@ -203,6 +203,26 @@ class ExperimentList(object):
     ''' Check all the models are consistent. '''
     return all([e.is_consistent() for e in self])
 
+  def all_stills(self):
+    ''' Check if all the experiments are stills '''
+    assert(len(self) > 0)
+    result = True
+    for e in self:
+      if e.goniometer is not None and e.scan is not None:
+        result = False
+        break
+    return result
+
+  def all_sweeps(self):
+    ''' Check if all the experiments are from sweeps '''
+    assert(len(self) > 0)
+    result = True
+    for e in self:
+      if e.goniometer is None or e.scan is None:
+        result = False
+        break
+    return result
+
   def to_dict(self):
     ''' Serialize the experiment list to dictionary. '''
     from libtbx.containers import OrderedDict
