@@ -36,7 +36,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       cbf_handle.find_category("axis")
       cbf_handle.find_column("equipment_component")
     except Exception, e:
-      if "CBF_NOTFOUND" in e.message:
+      if "CBF_NOTFOUND" in str(e):
         return False
       else:
         raise e
@@ -137,7 +137,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       try:
         pg.get_D_matrix() # test to see if we've initialized the detector basis yet
       except RuntimeError, e:
-        assert "DXTBX_ASSERT(D_)" in e.message
+        assert "DXTBX_ASSERT(D_)" in str(e)
       else:
         assert False # shouldn't be reached.  Detector should be initialized only once.
     else:
@@ -169,7 +169,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
     try:
       cbf.find_column("array_section_id")
     except Exception, e:
-      if "CBF_NOTFOUND" not in e.message: raise e
+      if "CBF_NOTFOUND" not in str(e): raise e
       cbf.find_column("array_id")
 
     panel_names = []
@@ -199,7 +199,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       try:
         cbf.find_column("array_section_id")
       except Exception, e:
-        if "CBF_NOTFOUND" not in e.message: raise e
+        if "CBF_NOTFOUND" not in str(e): raise e
         cbf.find_column("array_id")
       panel_names_detectororder.append(cbf.get_value())
 
@@ -218,7 +218,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       try:
         size = tuple(cbf.get_image_size_fs(i))
       except Exception, e:
-        if "CBF_NOTFOUND" in e.message:
+        if "CBF_NOTFOUND" in str(e):
           # no array data in the file, it's probably just a cbf header.  Get the image size elsewhere
           size = [0,0]
           cbf.find_category("array_structure_list")
@@ -319,7 +319,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       try:
         cbf.find_category("array_structure_list_section")
       except Exception, e:
-        if "CBF_NOTFOUND" not in e.message: raise e
+        if "CBF_NOTFOUND" not in str(e): raise e
         has_sections = False
 
       if has_sections:
