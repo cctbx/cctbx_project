@@ -117,6 +117,7 @@ already be on a common scale, but with individual observations unmerged.
     debug=params.debug,
     file_name=params.file_name,
     sigma_filtering=params.sigma_filtering,
+    extend_d_max_min=params.extend_d_max_min,
     log=out)
   result.show(out=out)
   if (getattr(params, "loggraph", False)) :
@@ -140,6 +141,10 @@ def validate_params (params) :
     if (params.low_resolution < params.high_resolution) :
       raise Sorry("Resolution limits flipped - high resolution must be a "+
         "smaller number than low resolution.")
+  elif (params.extend_d_max_min) :
+    raise Sorry("High and low resolution limits must be explicitly given "+
+      "when calculating statistics relative to user-defined resolution "+
+      "range (extend_d_max_min=True).")
   return True
 
 class launcher (runtime_utils.target_with_save_result) :
