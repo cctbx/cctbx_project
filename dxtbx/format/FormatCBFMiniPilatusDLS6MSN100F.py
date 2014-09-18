@@ -72,7 +72,7 @@ class FormatCBFMiniPilatusDLS6MSN100F(FormatCBFMiniPilatus):
     assert(self.understand(image_file))
 
     FormatCBFMiniPilatus.__init__(self, image_file)
-    
+
     self._raw_data = None
 
     return
