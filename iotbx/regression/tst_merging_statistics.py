@@ -52,6 +52,15 @@ def exercise (debug=False) :
   if (debug) :
     print out.getvalue()
   assert ("Resolution: 14.96 - 2.50" in out.getvalue())
+  # extend binning
+  args2 = list(args[:-1]) + ["high_resolution=1.5", "low_resolution=100",
+    "--extend_d_max_min"]
+  out = StringIO()
+  result = merging_statistics.run(args2, out=out)
+  if (debug) :
+    print out.getvalue()
+  assert ("Resolution: 100.00 - 1.50" in out.getvalue())
+  assert ("  1.55   1.50      0      0    0.00   0.00       0.0     0.0   None   None   None  0.000  0.000""" in out.getvalue())
   # these should crash
   args2 = list(args[:-1]) + ["high_resolution=15", "low_resolution=2.5"]
   try :
@@ -88,7 +97,7 @@ def exercise (debug=False) :
   based on CC(1/2) >= 0.33        :   2.000
   based on mean(I/sigma) >= 2.0   :   2.155
   based on R-merge < 0.5          :   2.372
-  based on R-meas < 0.5           :   2.521
+  based on R-meas < 0.5           :   2.520
   based on completeness >= 90%    :   2.000
   based on completeness >= 50%    :   2.000""".splitlines() :
     assert line in out.getvalue(), out.getvalue()

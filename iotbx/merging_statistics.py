@@ -41,6 +41,9 @@ n_bins = 10
   .short_caption = Number of resolution bins
   .input_size = 64
   .style = spinner
+extend_d_max_min = False
+  .type = bool
+  .expert_level = 2
 anomalous = False
   .type = bool
   .short_caption = Keep anomalous pairs separate in merging statistics
@@ -167,6 +170,7 @@ class merging_stats (object) :
   """
   def __init__ (self,
       array,
+      d_max_min=None,
       model_arrays=None,
       anomalous=False,
       debug=None,
@@ -188,7 +192,9 @@ class merging_stats (object) :
     filter = filter_intensities_by_sigma(
       array=array,
       sigma_filtering=sigma_filtering)
-    self.d_max, self.d_min = array.d_max_min()
+    if (d_max_min is None) :
+      d_max_min = array.d_max_min()
+    self.d_max, self.d_min = d_max_min
     self.observed_criterion_sigma_I = filter.observed_criterion_sigma_I
     array = filter.array
     merge = filter.merge
@@ -199,6 +205,11 @@ class merging_stats (object) :
     self.n_uniq = array_merged.indices().size()
     complete_set = array_merged.complete_set().resolution_filter(
       d_min=self.d_min, d_max=self.d_max)
+    if (self.n_uniq == 0) :
+      complete_set = cctbx.miller.build_set(
+        crystal_symmetry=array_merged,
+        anomalous_flag=anomalous,
+        d_min=self.d_min).resolution_filter(d_min=self.d_min, d_max=self.d_max)
     n_expected = len(complete_set.indices())
     if (n_expected == 0) :
       raise RuntimeError(("No reflections within specified resolution range "+
@@ -212,30 +223,39 @@ class merging_stats (object) :
       self.anom_completeness = array_merged.anomalous_completeness()
     redundancies = merge.redundancies().data()
     self.redundancies = {}
+    self.mean_redundancy = 0
+    self.i_mean = 0
+    self.sigi_mean = 0
+    self.i_over_sigma_mean = 0
+    self.i_mean_over_sigi_mean = 0
+    self.cc_one_half = 0
+    self.cc_star = 0
+    self.r_merge = self.r_meas = self.r_pim = None
     for x in sorted(set(redundancies)) :
       self.redundancies[x] = redundancies.count(x)
-    self.mean_redundancy = flex.mean(redundancies.as_double())
-    self.i_mean = flex.mean(array_merged.data())
-    self.sigi_mean = flex.mean(array_merged.sigmas())
-    nonzero_array = array_merged.select(array_merged.sigmas() > 0)
-    i_over_sigma = nonzero_array.data() / nonzero_array.sigmas()
-    self.i_over_sigma_mean = flex.mean(i_over_sigma)
-    self.i_mean_over_sigi_mean = self.i_mean/self.sigi_mean
-    self.r_merge = merge.r_merge()
-    self.r_meas = merge.r_meas()
-    self.r_pim = merge.r_pim()
-    self.cc_one_half = cctbx.miller.compute_cc_one_half(
-      unmerged=array)
-    if (self.cc_one_half == 0) :
-      self.cc_star = 0
-    else :
-      mult = 1.
-      if (self.cc_one_half < 0) :
-        mult = -1.
-      self.cc_star = mult * sqrt((2*abs(self.cc_one_half)) /
-                                 (1 + self.cc_one_half))
+    if (self.n_uniq > 0) :
+      self.mean_redundancy = flex.mean(redundancies.as_double())
+      self.i_mean = flex.mean(array_merged.data())
+      self.sigi_mean = flex.mean(array_merged.sigmas())
+      nonzero_array = array_merged.select(array_merged.sigmas() > 0)
+      i_over_sigma = nonzero_array.data() / nonzero_array.sigmas()
+      self.i_over_sigma_mean = flex.mean(i_over_sigma)
+      self.i_mean_over_sigi_mean = self.i_mean/self.sigi_mean
+      self.r_merge = merge.r_merge()
+      self.r_meas = merge.r_meas()
+      self.r_pim = merge.r_pim()
+      self.cc_one_half = cctbx.miller.compute_cc_one_half(
+        unmerged=array)
+      if (self.cc_one_half == 0) :
+        self.cc_star = 0
+      else :
+        mult = 1.
+        if (self.cc_one_half < 0) :
+          mult = -1.
+        self.cc_star = mult * sqrt((2*abs(self.cc_one_half)) /
+                                   (1 + self.cc_one_half))
     self.cc_work = self.cc_free = self.r_work = self.r_free = None
-    if (model_arrays is not None) :
+    if (model_arrays is not None) and (self.n_uniq > 0) :
       self.cc_work, self.cc_free, self.r_work, self.r_free = \
         model_arrays.cc_work_and_free(array_merged)
 
@@ -244,13 +264,20 @@ class merging_stats (object) :
     return getattr(self, "anom_half_corr", None)
 
   def format (self) :
-    return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f  %5.3f" % (
-      self.d_max, self.d_min,
-      self.n_obs, self.n_uniq,
-      self.mean_redundancy, self.completeness*100,
-      self.i_mean, self.i_over_sigma_mean,
-      self.r_merge, self.r_meas, self.r_pim,
-      self.cc_one_half, self.anom_half_corr)
+    return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %s  %s  %s  %5.3f  %5.3f" % (
+      self.d_max,
+      self.d_min,
+      self.n_obs,
+      self.n_uniq,
+      self.mean_redundancy,
+      self.completeness*100,
+      self.i_mean,
+      self.i_over_sigma_mean,
+      format_value("%5.3f", self.r_merge),
+      format_value("%5.3f", self.r_meas),
+      format_value("%5.3f", self.r_pim),
+      self.cc_one_half,
+      self.anom_half_corr)
 
   def format_for_model_cc (self) :
     return "%6.2f  %6.2f  %6d  %6.2f  %6.2f  %5.3f  %5.3f   %s   %s  %s  %s"%(
@@ -335,6 +362,7 @@ class dataset_statistics (object) :
       model_arrays=None,
       sigma_filtering=Auto,
       d_min_tolerance=1.e-6,
+      extend_d_max_min=False,
       log=None) :
     self.file_name = file_name
     if (log is None) : log = null_out()
@@ -369,9 +397,18 @@ class dataset_statistics (object) :
     if (not anomalous) :
       i_obs = i_obs.customized_copy(anomalous_flag=False).set_info(info)
       self.anom_extra = " (non-anomalous)"
-    i_obs.setup_binner(n_bins=n_bins)
+    overall_d_max_min = None
+    if extend_d_max_min :
+      i_obs.setup_binner(
+        n_bins=n_bins,
+        d_max=d_max_cutoff,
+        d_min=d_min_cutoff)
+      overall_d_max_min = d_max_cutoff, d_min_cutoff
+    else :
+      i_obs.setup_binner(n_bins=n_bins)
     merge = i_obs.merge_equivalents(use_internal_variance=False)
     self.overall = merging_stats(i_obs,
+      d_max_min=overall_d_max_min,
       model_arrays=model_arrays,
       anomalous=anomalous,
       debug=debug,
@@ -402,6 +439,7 @@ class dataset_statistics (object) :
     for bin in i_obs.binner().range_used() :
       sele_unmerged = i_obs.binner().selection(bin)
       bin_stats = merging_stats(i_obs.select(sele_unmerged),
+        d_max_min=i_obs.binner().bin_d_range(bin),
         model_arrays=model_arrays,
         anomalous=anomalous,
         debug=debug,
