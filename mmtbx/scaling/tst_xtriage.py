@@ -409,7 +409,8 @@ def exercise_2 () :
   out = StringIO()
   result.merging_stats.show(out=out)
   assert ("R-merge: 0.073" in out.getvalue())
-  assert approx_equal(result.estimate_d_min(min_i_over_sigma=10), 1.96463)
+  assert approx_equal(result.estimate_d_min(min_i_over_sigma=10), 1.9645,
+    eps=0.001)
   # FIXME PDB doesn't actually have unit cell!
   # test detection of symmetry in reference file
   if (pdb_file is not None) :
