@@ -80,6 +80,8 @@ master_params = iotbx.phil.parse("""\
     .type = int
   n_collect = 10
     .type = int
+  stop_cm_motion = True
+    .type = bool
 """)
 
 class gradients_calculator_geometry_restraints(object):
