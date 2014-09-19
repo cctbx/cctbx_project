@@ -50,6 +50,7 @@ def run_cartesian_dynamics (
     time_step=params.time_step,
     initial_velocities_zero_fraction=params.initial_velocities_zero_fraction,
     n_print=params.n_print,
+    stop_cm_motion=params.stop_cm_motion,
     stop_at_diff=stop_at_diff,
     log=log,
     verbose=1)
