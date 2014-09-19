@@ -30,7 +30,7 @@ class lbfgs(object):
                      qblib_params             = None,
                      macro_cycle              = None,
                      u_min                    = adptbx.b_as_u(-5.0),
-                     u_max                    = adptbx.b_as_u(1000.0),
+                     u_max                    = adptbx.b_as_u(999.99),
                      collect_monitor          = True):
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())

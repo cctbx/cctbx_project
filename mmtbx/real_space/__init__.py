@@ -26,7 +26,7 @@ class sampled_model_density(object):
        fft_m_real                       = (nx,ny,nz),
        u_base                           = u_base,
        wing_cutoff                      = 1.e-9,
-       exp_table_one_over_step_size     = -100,
+       exp_table_one_over_step_size     = -1000,
        force_complex                    = False,
        sampled_density_must_be_positive = False,
        tolerance_positive_definite      = 1.e-5)
