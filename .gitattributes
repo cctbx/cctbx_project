@@ -1970,6 +1970,7 @@ mmtbx/regression/tst_map_coeffs_simple.py -text
 mmtbx/regression/tst_map_type_parser.py -text
 mmtbx/regression/tst_maps_misc.py -text
 mmtbx/regression/tst_ml_estimate.py -text
+mmtbx/regression/tst_model_2.py -text
 mmtbx/regression/tst_msa.py -text
 mmtbx/regression/tst_mtz2map.py -text
 mmtbx/regression/tst_pdbtools.py -text
