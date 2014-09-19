@@ -103,8 +103,8 @@ ncs_group {
     ncs_group = ncs_groups[0]
     assert approx_equal(ncs_group.master_iselection, l1)
     assert len(ncs_group.copies) == 2
-    assert approx_equal(ncs_group.copies[0].copy_iselection, l2)
-    assert approx_equal(ncs_group.copies[1].copy_iselection, l3)
+    assert approx_equal(ncs_group.copies[0].iselection, l2)
+    assert approx_equal(ncs_group.copies[1].iselection, l3)
   for test_i, pdb_str in enumerate([pdb_str_1, pdb_str_2]):
     of = open(pdb_file_name, "w")
     print >> of, pdb_str
@@ -155,7 +155,7 @@ ncs_group {
     ncs_group = ncs_groups[0]
     assert approx_equal(ncs_group.master_iselection, l1)
     assert len(ncs_group.copies) == 1
-    assert approx_equal(ncs_group.copies[0].copy_iselection, l2)
+    assert approx_equal(ncs_group.copies[0].iselection, l2)
   for test_i, pdb_str in enumerate([pdb_str_1, pdb_str_2]):
     of = open(pdb_file_name, "w")
     print >> of, pdb_str

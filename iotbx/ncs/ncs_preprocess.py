@@ -1013,7 +1013,7 @@ class ncs_group_object(object):
           ncs_isel = flex.size_t()
           for sel in self.transform_to_ncs[tr]:
             ncs_isel.extend(self.ncs_to_asu_map[sel])
-          assert ncs_copy.copy_iselection == ncs_isel
+          assert ncs_copy.iselection == ncs_isel
 
   def get_transform_records(self, file_name=None,
                           ncs_only=True,
@@ -2023,7 +2023,7 @@ def insure_identity_is_in_transform_info(transform_info):
 class ncs_copy():
 
   def __init__(self,copy_iselection, rot, tran):
-    self.copy_iselection = copy_iselection
+    self.iselection = copy_iselection
     self.r = rot
     self.t = tran
 

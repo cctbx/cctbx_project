@@ -347,8 +347,8 @@ class Test_ncs_utils(unittest.TestCase):
 
     nrg = self.ncs_restraints_group_list
     m1 = list(nrg[0].master_iselection)
-    c1 = list(nrg[0].copies[0].copy_iselection)
-    c2 = list(nrg[0].copies[1].copy_iselection)
+    c1 = list(nrg[0].copies[0].iselection)
+    c2 = list(nrg[0].copies[1].iselection)
 
     assert len(m1) == len(c1)
     assert m1 == [0,   1,  2,  5,  6,  3,  4]
@@ -364,7 +364,7 @@ class Test_ncs_utils(unittest.TestCase):
       selection=selection1)
     # only atoms in master are selected
     mt = list(new_nrg[0].master_iselection)
-    c1t = list(new_nrg[0].copies[0].copy_iselection)
+    c1t = list(new_nrg[0].copies[0].iselection)
 
     assert mt == []
     assert c1t == []
@@ -375,7 +375,7 @@ class Test_ncs_utils(unittest.TestCase):
       selection=selection2)
     # only atoms in master are selected
     mt = list(new_nrg[0].master_iselection)
-    c1t = list(new_nrg[0].copies[0].copy_iselection)
+    c1t = list(new_nrg[0].copies[0].iselection)
 
     assert mt == []
     assert c1t == []
@@ -385,8 +385,8 @@ class Test_ncs_utils(unittest.TestCase):
       selection=selection3)
     # only atoms in master are selected
     mt = list(new_nrg[0].master_iselection)
-    c1t = list(new_nrg[0].copies[0].copy_iselection)
-    c2t = list(new_nrg[0].copies[1].copy_iselection)
+    c1t = list(new_nrg[0].copies[0].iselection)
+    c2t = list(new_nrg[0].copies[1].iselection)
 
     assert mt == [0, 1, 5]
     assert c1t == [7, 8, 12]
@@ -417,14 +417,14 @@ class Test_ncs_utils(unittest.TestCase):
     # fixme: finish test
     nrg = self.tr_obj2.get_ncs_restraints_group_list()
     master = nrg[0].master_iselection
-    copy_1 = nrg[0].copies[0].copy_iselection
+    copy_1 = nrg[0].copies[0].iselection
     # switch master with the first copy
     nrg_new = nu.change_ncs_groups_master(
       ncs_restraints_group_list=nrg,
       new_masters=[1])
     # test that selection have switched
     assert list(copy_1) == list(nrg_new[0].master_iselection)
-    assert list(master) == list(nrg_new[0].copies[0].copy_iselection)
+    assert list(master) == list(nrg_new[0].copies[0].iselection)
     # test that rotation matrices and translation vectors are properly converted
     R1 = self.rotation1.transpose()
     R2 = self.rotation2 * R1
@@ -456,7 +456,7 @@ class Test_ncs_utils(unittest.TestCase):
     t3 = self.translation3
 
     assert list(master) == list(nrg_original[0].master_iselection)
-    assert list(copy_1) == list(nrg_original[0].copies[0].copy_iselection)
+    assert list(copy_1) == list(nrg_original[0].copies[0].iselection)
     # test that rotation matrices and translation vectors are properly converted
     assert r1.round(4).elems == nrg_original[0].copies[0].r.round(4).elems
     assert r2.round(4).elems == nrg_original[0].copies[1].r.round(4).elems

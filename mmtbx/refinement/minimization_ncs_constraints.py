@@ -23,7 +23,7 @@ def grads_asu_to_one_ncs(
   for nrg in ncs_restraints_group_list:
     ncs_selection = nrg.master_iselection
     for ncs_copy in nrg.copies:
-      asu_selection = ncs_copy.copy_iselection
+      asu_selection = ncs_copy.iselection
       g = grad.select(asu_selection)
       if(refine_sites):
         # apply inverse transformation
@@ -61,7 +61,7 @@ def grads_one_ncs_to_asu(ncs_restraints_group_list,
   for nrg in ncs_restraints_group_list:
     ncs_selection = nrg.master_iselection
     for ncs_copy in nrg.copies:
-      asu_selection = ncs_copy.copy_iselection
+      asu_selection = ncs_copy.iselection
       ncs_grad_portion = ncs_grad.select(ncs_selection)
       g.set_selected(asu_selection,ncs_grad_portion)
   return g.as_double()

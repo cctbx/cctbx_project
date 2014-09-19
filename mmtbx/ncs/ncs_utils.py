@@ -257,7 +257,7 @@ def compute_transform_grad(grad_wrt_xyz,
     mu_c = flex.vec3_double([xyz_ncs_transform.sum()]) * (1/xyz_len)
     xyz_cm = xyz_ncs_transform - flex.vec3_double(list(mu_c) * xyz_len)
     for nrg_copy in nrg.copies:
-      grad_ncs_wrt_xyz = grad_wrt_xyz.select(nrg_copy.copy_iselection)
+      grad_ncs_wrt_xyz = grad_wrt_xyz.select(nrg_copy.iselection)
       assert xyz_len == grad_ncs_wrt_xyz.size()
       grad_wrt_t = list(grad_ncs_wrt_xyz.sum())
       # Sum angles gradient over the coordinates
@@ -495,7 +495,7 @@ def apply_transforms(ncs_coordinates,
   for nrg in ncs_restraints_group_list:
     master_ncs_selection = flex.bool(total_asu_length,nrg.master_iselection)
     for ncs_copy in nrg.copies:
-      copy_selection = flex.bool(total_asu_length,ncs_copy.copy_iselection)
+      copy_selection = flex.bool(total_asu_length,ncs_copy.iselection)
       ncs_xyz = asu_xyz.select(master_ncs_selection)
       new_sites = ncs_copy.r.elems * ncs_xyz + ncs_copy.t
       asu_xyz.set_selected(copy_selection,new_sites)
@@ -522,7 +522,7 @@ def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection=[]):
     master_ncs_selection = nrg.master_iselection
     total_master_ncs_selection.update(set(master_ncs_selection))
     for ncs_copy in nrg.copies:
-      asu_selection = ncs_copy.copy_iselection
+      asu_selection = ncs_copy.iselection
       total_ncs_related_selection.update(set(asu_selection))
   if refine_selection:
     # make sure all ncs related parts are in refine_selection
@@ -551,7 +551,7 @@ def get_ncs_related_selection(ncs_restraints_group_list,asu_size):
     master_ncs_selection = nrg.master_iselection
     total_master_ncs_selection.update(set(master_ncs_selection))
     for ncs_copy in nrg.copies:
-      asu_selection = ncs_copy.copy_iselection
+      asu_selection = ncs_copy.iselection
       total_ncs_related_selection.update(set(asu_selection))
   #
   total_ncs_related_selection.update(total_master_ncs_selection)
@@ -651,7 +651,7 @@ def ncs_restraints_group_list_copy(ncs_restraints_group_list):
     new_nrg = ncs_restraint_group(nrg.master_iselection)
     for ncs in nrg.copies:
       new_ncs_copy = ncs_copy(
-        copy_iselection=ncs.copy_iselection,
+        copy_iselection=ncs.iselection,
         rot=ncs.r,
         tran=ncs.t)
       new_nrg.copies.append(new_ncs_copy)
@@ -684,8 +684,8 @@ def ncs_groups_selection(ncs_restraints_group_list,selection):
     m_in_sel = m.intersection(sel_set)
     common_selection_pos = {pos for (pos,indx) in m_list if indx in m_in_sel}
     for ncs in nrg.copies:
-      c = set(ncs.copy_iselection)
-      c_list = [(pos,indx) for pos,indx in enumerate(list(ncs.copy_iselection))]
+      c = set(ncs.iselection)
+      c_list = [(pos,indx) for pos,indx in enumerate(list(ncs.iselection))]
       copy_in_sel = c.intersection(sel_set)
       include_set = {pos for (pos,indx) in c_list if indx in copy_in_sel}
       common_selection_pos.intersection_update(include_set)
@@ -695,8 +695,8 @@ def ncs_groups_selection(ncs_restraints_group_list,selection):
       nrg.master_iselection,common_selection_pos)
     selection = remove_items_from_selection(selection,not_included)
     for ncs in nrg.copies:
-      ncs.copy_iselection, not_included = selected_positions(
-        ncs.copy_iselection,common_selection_pos)
+      ncs.iselection, not_included = selected_positions(
+        ncs.iselection,common_selection_pos)
       selection = remove_items_from_selection(selection,not_included)
 
   return new_nrg_list
@@ -773,8 +773,8 @@ def change_ncs_groups_master(ncs_restraints_group_list,new_masters):
     if c == 0: continue
     c_i = c - 1
     # switch master and copy selection
-    nrg.master_iselection, nrg.copies[c_i].copy_iselection = \
-      nrg.copies[c_i].copy_iselection, nrg.master_iselection
+    nrg.master_iselection, nrg.copies[c_i].iselection = \
+      nrg.copies[c_i].iselection, nrg.master_iselection
     # Adjust rotation ans translation
     r = nrg.copies[c_i].r = (nrg.copies[c_i].r.transpose())
     t = nrg.copies[c_i].t = (- nrg.copies[c_i].r * nrg.copies[c_i].t)
@@ -818,7 +818,7 @@ def get_list_of_best_ncs_copy_map_correlation(
     selections = []
     selections.append(nrg.master_iselection)
     for ncs in nrg.copies:
-      selections.append(ncs.copy_iselection)
+      selections.append(ncs.iselection)
     cc = mp.cc(selections=selections)
     best_list.append(cc.index(max(cc)))
   return best_list
