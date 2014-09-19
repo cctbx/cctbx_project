@@ -66,9 +66,6 @@ include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 secondary_structure_restraints = False
   .type = bool
   .short_caption = Secondary structure restraints
-replace_secondary_structure = False
-  .type = bool
-  .short_caption = Replace secondary structure elements with ideal ones
 secondary_structure
   .alias = refinement.secondary_structure
 {
@@ -206,6 +203,9 @@ def process_input_files(inputs, params, log):
 
 def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
     log=sys.stdout):
+  """This function should be transfered to be a member of processed_pdb_file
+     class. It should be used in all places where geometry_restraints_manager
+     is needed. """
   has_hd = None
   if(xray_structure is not None):
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()

@@ -1160,17 +1160,17 @@ Simple disulfide: pdb=" SG  DCY A   4 " - pdb=" SG  DCY A  19 " distance=2.03
     1.503  1.507 -0.004 3.40e-02 8.65e+02 1.39e-02
 """)
   assert not block_show_diff(lv, """\
-  Bond angle restraints: 161
+  Bond angle restraints: 163
   Sorted by residual:
-  angle pdb=" CA  DPR A   7 "
-        pdb=" C   DPR A   7 "
-        pdb=" O   DPR A   7 "
+  angle pdb=" SG  DCY A   4 "
+        pdb=" SG  DCY A  19 "
+        pdb=" CB  DCY A  19 "
       ideal   model   delta    sigma   weight residual
-     119.00  119.98   -0.98 3.00e+00 1.11e-01 1.07e-01
+     103.80   80.00   23.80 1.80e+00 3.09e-01 1.75e+02
 """)
   assert not block_show_diff(lv, """\
-  Dihedral angle restraints: 47
-    sinusoidal: 31
+  Dihedral angle restraints: 48
+    sinusoidal: 32
       harmonic: 16
   Sorted by residual:
   dihedral pdb=" N   DPR A   7 "

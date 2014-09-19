@@ -222,6 +222,9 @@ master_params_str = """\
   disulfide_distance_cutoff = 3
     .type=float
     .optional=False
+  add_angle_and_dihedral_restraints_for_disulfides = True
+    .type = bool
+    .optional = False
   peptide_nucleotide_distance_cutoff = 3
     .type=float
     .optional=False
@@ -4416,7 +4419,7 @@ class build_all_chain_proxies(linking_mixins):
         else:
           self.params.max_reasonable_bond_distance = \
             flex.max(bond_distances_model)*2
-    # disulphides
+    # disulfides
     disulfide_sym_table, max_disulfide_bond_distance = \
       self.create_disulfides(
         disulfide_distance_cutoff=self.params.disulfide_distance_cutoff,
@@ -4500,6 +4503,40 @@ class build_all_chain_proxies(linking_mixins):
       sym_str = str(sym_pair.rt_mx_ji)
       if not sym_str:
         sym_str = "."
+      if (self.params.add_angle_and_dihedral_restraints_for_disulfides
+          and sym_str == "x,y,z"):
+        # Here we will add angles and torsions for disulfides because here
+        # we do know i_seq, j_seq of linked atoms, and we do know that there
+        # is no symmetry operation for this link
+        a1 = self.pdb_atoms[i_seq]
+        a2 = self.pdb_atoms[j_seq]
+        r1 = a1.parent()
+        r2 = a2.parent()
+        cb1_atom = r1.get_atom("CB")
+        cb2_atom = r2.get_atom("CB")
+        assert cb1_atom is not None
+        assert cb2_atom is not None
+        # SS       1 CB      1 SG      2 SG      103.800    1.800
+        # SS       1 SG      2 SG      2 CB      103.800    1.800
+        # SS       ss       1 CB     1 SG     2 SG     2 CB       90.00  10.0 2
+        # make  angle proxy
+        angle_weight = 1/1.8**2
+        proxy = geometry_restraints.angle_proxy(
+          i_seqs=[cb1_atom.i_seq,i_seq,j_seq],
+          angle_ideal=103.8,
+          weight=angle_weight)
+        self.geometry_proxy_registries.angle.append_custom_proxy(proxy=proxy)
+        proxy = geometry_restraints.angle_proxy(
+          i_seqs=[i_seq,j_seq,cb2_atom.i_seq],
+          angle_ideal=103.8,
+          weight=angle_weight)
+        self.geometry_proxy_registries.angle.append_custom_proxy(proxy=proxy)
+        proxy = geometry_restraints.dihedral_proxy(
+          i_seqs=[cb1_atom.i_seq,i_seq,j_seq, cb2_atom.i_seq],
+          angle_ideal=90.0,
+          weight=0.01,
+          periodicity=2)
+        self.geometry_proxy_registries.dihedral.append_custom_proxy(proxy=proxy)
       if disulfide_cif_loop is not None:
         disulfide_cif_loop.add_row(("SS",
                                     self.pdb_atoms[i_seq].pdb_label_columns(),
@@ -4531,6 +4568,7 @@ class build_all_chain_proxies(linking_mixins):
       #))
       #cif_block.add_loop(loop)
       #self.cif["phenix_applied_SS"] = cif_block
+    # ====================== End of disulfides ========================
     #
     if (processed_edits is not None):
       for proxy in processed_edits.bond_sym_proxies:
