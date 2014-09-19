@@ -79,31 +79,19 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   mask_params = mmtbx.masks.mask_master_params.extract()
   mask_params.ignore_zero_occupancy_atoms = params.ignore_zero_occupancy_atoms
   #
-  sel = f_obs.data()>0
-  f_obs = f_obs.select(sel)
-  r_free_flags = r_free_flags.select(sel)
-  #
-  fmodel = mmtbx.f_model.manager(
-    f_obs          = f_obs,
-    r_free_flags   = r_free_flags,
-    xray_structure = xray_structure,
-    mask_params    = mask_params)
-  fmodel.update_all_scales(update_f_part1=False) # XXX ?
-  fmodel.show(show_approx=False)
-  print >> log, "r_work: %6.4f r_free: %6.4f"%(fmodel.r_work(), fmodel.r_free())
-  fem = mmtbx.maps.fem.run(fmodel=fmodel, use_omit=params.omit,
-    sharp=params.sharp, signal_threshold=params.signal_threshold)
-  # output
-  mtz_dataset = fem.mc.as_mtz_dataset(column_root_label="2mFoDFc")
-  if(fem.mc_resolve is not None):
-    mtz_dataset.add_miller_array(
-      miller_array=fem.mc_resolve,
-      column_root_label="ResolveDM")
-  mtz_dataset.add_miller_array(
-    miller_array=fem.mc_result,
-    column_root_label=params.output.column_root_label)
-  mtz_object = mtz_dataset.mtz_object()
-  mtz_object.write(file_name = params.output.file_name)
+  pdb_inp = cmdline.pdb_inp
+  asc = cmdline.pdb_hierarchy.atom_selection_cache()
+  sol_sel = asc.selection(string="water")
+  fem = mmtbx.maps.fem.run(
+    f_obs             = f_obs,
+    r_free_flags      = r_free_flags,
+    xray_structure    = xray_structure,
+    solvent_selection = sol_sel,
+    log               = log)
+  fem.write_output_files(
+    file_name  = params.output.file_name,
+    fem_label  = params.output.column_root_label,
+    orig_label = "2mFo-DFc")
   return os.path.abspath(params.output.file_name)
 
 class launcher (runtime_utils.target_with_save_result) :
