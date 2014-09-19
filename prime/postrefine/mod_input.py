@@ -193,10 +193,10 @@ flag_plot_expert = False
 flag_force_no_postrefine = False
   .type = bool
   .help = Set to True to output only the mean-intensity scaled merged.
-n_postref_cycle = 1
+n_postref_cycle = 3
   .type = int
   .help = No. of cycles for post-refinement.
-n_postref_sub_cycle = 20
+n_postref_sub_cycle = 3
   .type = int
   .help = No. of cycles for the least-squares minimization in post-refinement.
 n_bins = 20
@@ -232,6 +232,9 @@ n_processors = 32
   .type = int
   .help = No. of processing units
   .optional = True
+gamma_e = 0.002
+  .type = float
+  .help = Initial spread of the energy spectrum (1/Angstrom).
 """)
 
 

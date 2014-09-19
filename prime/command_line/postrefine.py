@@ -209,6 +209,11 @@ if (__name__ == "__main__"):
       avg_mode = 'final'
     else:
       avg_mode = 'weighted'
+
+
+    if i > 1:
+      iparams.b_refine_d_min = 0.5
+
     _txt_merge_postref = 'Start post-refinement cycle '+str(i+1)+'\n'
     _txt_merge_postref += 'Average mode: '+avg_mode+'\n'
     txt_merge_postref += _txt_merge_postref

@@ -39,24 +39,14 @@ class intensities_scaler(object):
 
 
 
-    #filter outliers iteratively (Read, 1999)
+    #filter out outliers
     sigma_max = 3.0
-    n_iters = len(I_full)*2
-    for i_iter in range(n_iters):
-      if len(I_full) > 2:
-        import random
-        i_seq = flex.int([i for i in range(len(I_full))])
-        i_r = random.randint(0,len(I_full)-1)
-        i_seq_sel = (i_seq != i_r)
-        i_full_sel = I_full.select(i_seq_sel)
-        if abs((I_full[i_r] - np.median(i_full_sel))/np.std(i_full_sel)) > sigma_max:
-          #discard this observation
-          I_full = I_full.select(i_seq_sel)
-          sigI_full = sigI_full.select(i_seq_sel)
-          SE = SE.select(i_seq_sel)
-
-      else:
-        break
+    if len(I_full) > 4:
+      I_full_as_sigma = (I_full - np.mean(I_full))/ np.std(I_full)
+      i_sel = (flex.abs(I_full_as_sigma) <= sigma_max)
+      I_full = I_full.select(i_sel)
+      sigI_full = sigI_full.select(i_sel)
+      SE = SE.select(i_sel)
 
     #normalize the SE
     max_w = 1.0
@@ -132,7 +122,7 @@ class intensities_scaler(object):
         beta_all.append(pres.uc_params[4])
         gamma_all.append(pres.uc_params[5])
 
-    uc_mean = flex.double([np.median(a_all), np.median(b_all), np.median(c_all), np.median(alpha_all), np.median(beta_all), np.median(gamma_all)])
+    uc_mean = flex.double([np.mean(a_all), np.mean(b_all), np.mean(c_all), np.mean(alpha_all), np.mean(beta_all), np.mean(gamma_all)])
     uc_std = flex.double([np.std(a_all), np.std(b_all), np.std(c_all), np.std(alpha_all), np.std(beta_all), np.std(gamma_all)])
 
     return uc_mean, uc_std
@@ -140,6 +130,8 @@ class intensities_scaler(object):
   def calc_mean_postref_parameters(self, results):
     G_all = flex.double()
     B_all = flex.double()
+    rotx_all = flex.double()
+    roty_all = flex.double()
     ry_all = flex.double()
     rz_all = flex.double()
     re_all = flex.double()
@@ -148,17 +140,21 @@ class intensities_scaler(object):
       if pres is not None:
         G_all.append(pres.G)
         B_all.append(pres.B)
+        rotx_all.append(pres.rotx)
+        roty_all.append(pres.roty)
         ry_all.append(pres.ry)
         rz_all.append(pres.rz)
         re_all.append(pres.re)
         r0_all.append(pres.spot_radius)
 
-    pr_params_mean = flex.double([np.median(G_all), np.median(B_all),
-                                  np.median(ry_all), np.median(rz_all),
-                                  np.median(re_all), np.median(r0_all)])
+    pr_params_mean = flex.double([np.mean(G_all), np.mean(B_all),
+                                  np.mean(ry_all), np.mean(rz_all),
+                                  np.mean(re_all), np.mean(r0_all),
+                                  np.mean(flex.abs(rotx_all)), np.mean(flex.abs(roty_all))])
     pr_params_std = flex.double([np.std(G_all), np.std(B_all),
                                   np.std(ry_all), np.std(rz_all),
-                                  np.std(re_all), np.std(r0_all)])
+                                  np.std(re_all), np.std(r0_all),
+                                  np.std(flex.abs(rotx_all)), np.std(flex.abs(roty_all))])
 
     return pr_params_mean, pr_params_std
 
@@ -304,18 +300,16 @@ class intensities_scaler(object):
     txt_out += ' No. bad target R:         %12.0f\n'%(cn_bad_R)
     txt_out += ' No. bad target R(x,y) :   %12.0f\n'%(cn_bad_R_xy)
     txt_out += ' No. observations:         %12.0f\n'%(len(I_obs_all_sort))
-    txt_out += 'Mean target value (BEFORE)\n'
-    txt_out += ' post-refinement:          %12.2f (%7.2f)\n'%(np.median(R_init_all),
-                                                                     np.std(R_init_all))
-    txt_out += ' (x,y) restraints:         %12.2f (%7.2f)\n'%(np.median(R_xy_init_all),
-                                                                     np.std(R_xy_init_all))
-    txt_out += 'Mean target value (AFTER)\n'
-    txt_out += ' post-refinement:          %12.2f (%7.2f)\n'%(np.median(R_final_all),
-                                                                     np.std(R_final_all))
-    txt_out += ' (x,y) restraints:         %12.2f (%7.2f)\n'%(np.median(R_xy_final_all),
-                                                                     np.std(R_xy_final_all))
+    txt_out += 'Mean target value (BEFORE: Sum Mean (Std.))\n'
+    txt_out += ' post-refinement:          %12.2f %12.2f (%9.2f)\n'%(np.sum(R_init_all), np.mean(R_init_all), np.std(R_init_all))
+    txt_out += ' (x,y) restraints:         %12.2f %12.2f (%9.2f)\n'%(np.sum(R_xy_init_all), np.mean(R_xy_init_all), np.std(R_xy_init_all))
+    txt_out += 'Mean target value (AFTER: Sum Mean (Std.))\n'
+    txt_out += ' post-refinement:          %12.2f %12.2f (%9.2f)\n'%(np.sum(R_final_all), np.mean(R_final_all), np.std(R_final_all))
+    txt_out += ' (x,y) restraints:         %12.2f %12.2f (%9.2f)\n'%(np.sum(R_xy_final_all), np.mean(R_xy_final_all), np.std(R_xy_final_all))
     txt_out += ' G:                        %12.2f (%7.2f)\n'%(pr_params_mean[0], pr_params_std[0])
     txt_out += ' B:                        %12.2f (%7.2f)\n'%(pr_params_mean[1], pr_params_std[1])
+    txt_out += ' Rot.x:                    %12.2f (%7.2f)\n'%(pr_params_mean[6]*180/math.pi, pr_params_std[6]*180/math.pi)
+    txt_out += ' Rot.y:                    %12.2f (%7.2f)\n'%(pr_params_mean[7]*180/math.pi, pr_params_std[7]*180/math.pi)
     txt_out += ' gamma_y:                  %12.5f (%7.5f)\n'%(pr_params_mean[2], pr_params_std[2])
     txt_out += ' gamma_z:                  %12.5f (%7.5f)\n'%(pr_params_mean[3], pr_params_std[3])
     txt_out += ' gamma_e:                  %12.5f (%7.5f)\n'%(pr_params_mean[4], pr_params_std[4])

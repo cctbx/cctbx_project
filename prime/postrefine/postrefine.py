@@ -80,32 +80,13 @@ class postref_handler(object):
     spot_pred_x_mm = spot_pred_x_mm.select(i_sel_res)
     spot_pred_y_mm = spot_pred_y_mm.select(i_sel_res)
 
+
     #Filter weak
     i_sel = (observations.data()/observations.sigmas()) > iparams.merge.sigma_min
     observations = observations.customized_copy(indices=observations.indices().select(i_sel),
         data=observations.data().select(i_sel),
         sigmas=observations.sigmas().select(i_sel)
         )
-    alpha_angle_obs = alpha_angle_obs.select(i_sel)
-    spot_pred_x_mm = spot_pred_x_mm.select(i_sel)
-    spot_pred_y_mm = spot_pred_y_mm.select(i_sel)
-
-    #Remove negative intensity
-    i_sel = (observations.data() > 0)
-    observations = observations.customized_copy(indices=observations.indices().select(i_sel),
-        data=observations.data().select(i_sel),
-        sigmas=observations.sigmas().select(i_sel))
-    alpha_angle_obs = alpha_angle_obs.select(i_sel)
-    spot_pred_x_mm = spot_pred_x_mm.select(i_sel)
-    spot_pred_y_mm = spot_pred_y_mm.select(i_sel)
-
-    #Remove outliers using Wilson statistic
-    from mod_outlier import outlier_handler
-    olh = outlier_handler()
-    i_sel = olh.good_i_flags(observations, iparams)
-    observations = observations.customized_copy(indices=observations.indices().select(i_sel),
-            data=observations.data().select(i_sel),
-            sigmas=observations.sigmas().select(i_sel))
     alpha_angle_obs = alpha_angle_obs.select(i_sel)
     spot_pred_x_mm = spot_pred_x_mm.select(i_sel)
     spot_pred_y_mm = spot_pred_y_mm.select(i_sel)
@@ -298,10 +279,10 @@ class postref_handler(object):
             wavelength=wavelength,
             crystal_orientation=crystal_fin_orientation,
             spot_radius=spot_radius)
-    print '%6.0f %5.2f %8.0f %8.0f %8.2f %8.2f %8.2f %8.2f %9.2f %7.2f %10.2f %10.2f %5.2f'%( \
+    print '%6.0f %5.2f %8.0f %8.0f %8.2f %8.2f %8.2f %8.2f %9.2f %7.2f %10.2f %10.2f   '%( \
       pres.frame_no, observations_non_polar.d_min(), len(observations_non_polar.indices()), \
       n_refl_postrefined, pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, \
-      pres.CC_init*100, pres.CC_final*100,pres.CC_iso_init*100, pres.CC_iso_final*100, pres.SE), polar_hkl
+      pres.CC_init*100, pres.CC_final*100,pres.CC_iso_init*100, pres.CC_iso_final*100), polar_hkl
 
     return pres
 
@@ -449,11 +430,10 @@ class postref_handler(object):
     sin_theta_over_lambda_sq = observations_original.two_theta(wavelength=wavelength).sin_theta_over_lambda_sq().data()
     ry = spot_radius
     rz = spot_radius
-    re = 0.002
+    re = iparams.gamma_e
     rotx = 0
     roty = 0
-    partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, spot_radius, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm,
-                                                                             iparams.partiality_model)
+    partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, spot_radius, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm,iparams.partiality_model)
 
     refined_params = np.array([G,B,rotx,roty,ry,rz,re,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
 
