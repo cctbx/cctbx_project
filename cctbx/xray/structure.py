@@ -1632,7 +1632,7 @@ class structure(crystal.special_position_settings):
         unit_cell=self.unit_cell(),
         u_cart_tolerance=u_cart_tolerance)
 
-  def tidy_us(self, u_min = 1.e-6, u_max = adptbx.b_as_u(550.0),
+  def tidy_us(self, u_min = 1.e-6, u_max = adptbx.b_as_u(999.99),
                     anisotropy_min=0.25):
     """
     Clean up atomic displacements so they fall within a sensible range (this

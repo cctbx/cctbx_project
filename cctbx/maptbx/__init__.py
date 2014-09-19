@@ -38,45 +38,19 @@ def map_accumulator(n_real, smearing_b=5, max_peak_scale=2, smearing_span=10,
       use_exp_table=use_exp_table)
 
 def peak_volume_estimate(map_data, sites_cart, crystal_symmetry, cutoff,
-      atom_radius=2.0):
-  # XXX This needs to be done reliably looking in concentric spehres abuot an
-  # XXX atom
-  #rho_atoms = flex.double()
-  #sites_frac = crystal_symmetry.unit_cell().fractionalize(sites_cart)
-  #for site_frac in sites_frac:
-  #  rho_atoms.append(map_data.eight_point_interpolation(site_frac))
-  ##rho_mean = flex.mean_default(rho_atoms.select(rho_atoms>0.5), 0.5)
-  ##sel_exclude = rho_atoms >= min(rho_mean/2., 0.5001)
-  #rho_mean = flex.mean(rho_atoms.select(rho_atoms > 0.5))
-  #sel_exclude = rho_atoms > rho_mean/3
-  #sites_cart = sites_cart.select(sel_exclude)
-  #########
-  ### radia = flex.double()
-  ### for site_cart in sites_cart:
-  ###   dist, rho = map_peak_3d_as_2d(
-  ###       map_data=map_data,
-  ###       unit_cell = crystal_symmetry.unit_cell(),
-  ###       center_cart=site_cart,
-  ###       radius=2,
-  ###       step = 0.1,
-  ###       s_angle_sampling_step = 30,
-  ###       t_angle_sampling_step = 30)
-  ###   for d_, rho_ in zip(dist, rho):
-  ###     #print d_, rho_
-  ###     if(rho_ < 0.5):
-  ###       radia.append(d_)
-  ###       break
-  ### atom_radius = flex.mean(radia)
-  ### print "atom_radius:", atom_radius
-  #########
-  #
-  sel = grid_indices_around_sites(
-    unit_cell  = crystal_symmetry.unit_cell(),
-    fft_n_real = map_data.focus(),
-    fft_m_real = map_data.all(),
-    sites_cart = sites_cart,
-    site_radii = flex.double([atom_radius]*sites_cart.size()))
-  return (map_data.select(sel)>=cutoff).count(True)/sites_cart.size()
+      atom_radius=1.5):
+  v = flex.double()
+  for sc in sites_cart:
+    sel = grid_indices_around_sites(
+      unit_cell  = crystal_symmetry.unit_cell(),
+      fft_n_real = map_data.focus(),
+      fft_m_real = map_data.all(),
+      sites_cart = flex.vec3_double([sc]),
+      site_radii = flex.double([atom_radius]*1))
+    v.append((map_data.select(sel)>=cutoff).count(True))
+  r = flex.min(v)
+  if(r==0): return None
+  return r
 
 def truncate(map_data, by_sigma_less_than, scale_by, set_value=0):
   """
