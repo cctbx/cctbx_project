@@ -105,7 +105,9 @@ def run():
     r_free_flags   = f_obs.generate_r_free_flags())
   fmodel.update_all_scales(update_f_part1=False)
   crystal_gridding = fmodel.f_obs().crystal_gridding(
-    d_min = fmodel.f_obs().d_min(), resolution_factor = 0.25)
+    d_min             = fmodel.f_obs().d_min(),
+    symmetry_flags    = maptbx.use_space_group_symmetry,
+    resolution_factor = 0.25)
   # compute OMIT maps
   r1 = omit_p1_specific(
     crystal_gridding = crystal_gridding,
@@ -115,9 +117,10 @@ def run():
   r2 = cfom.run(
     crystal_gridding = crystal_gridding,
     fmodel           = fmodel.deep_copy(),
+    full_resolution_map = False,
     map_type         = "Fo",
     n_debias_cycles  = 1,
-    neutral_colume_box_cushion_width = 0,
+    neutral_volume_box_cushion_width = 0,
     box_size_as_fraction=0.05)
   assert approx_equal(r1.r, r2.r)
   def r_factor(x,y):

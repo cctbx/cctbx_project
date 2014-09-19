@@ -437,6 +437,7 @@ def map_coefficients_from_fmodel(
         fmodel = map_calculation_server.fmodel
       crystal_gridding = fmodel.f_obs().crystal_gridding(
         d_min              = fmodel.f_obs().d_min(),
+        symmetry_flags     = maptbx.use_space_group_symmetry,
         resolution_factor  = 0.25)
       coeffs = mmtbx.maps.kick.run(
         fmodel   = e_map_obj.fmodel,
