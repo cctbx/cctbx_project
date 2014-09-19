@@ -72,8 +72,9 @@ def run(space_group_info):
     crystal_gridding = crystal_gridding,
     fmodel           = fmodel.deep_copy(),
     map_type         = "Fo",
+    full_resolution_map = False,
     n_debias_cycles  = 1,
-    neutral_colume_box_cushion_width = 0,
+    neutral_volume_box_cushion_width = 0,
     box_size_as_fraction=0.1,
     log=False)
   ccs = get_cc(mc1=mc1, mc2=r.map_coefficients, xrs=xrs)

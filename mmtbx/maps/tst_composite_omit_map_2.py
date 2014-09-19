@@ -37,7 +37,9 @@ END
 
 def get_cc(mc1, mc2, xrs):
   crystal_gridding = mc1.crystal_gridding(
-    d_min = mc1.d_min(), resolution_factor = 0.25)
+    d_min             = mc1.d_min(),
+    symmetry_flags    = maptbx.use_space_group_symmetry,
+    resolution_factor = 0.25)
   fft_map = miller.fft_map(
     crystal_gridding     = crystal_gridding,
     fourier_coefficients = mc1)
@@ -99,15 +101,17 @@ def run(args):
   print
   #
   crystal_gridding = fmodel.f_obs().crystal_gridding(
-    d_min                   = fmodel.f_obs().d_min(),
-    resolution_factor       = 0.25)
+    d_min             = fmodel.f_obs().d_min(),
+    symmetry_flags    = maptbx.use_space_group_symmetry,
+    resolution_factor = 0.25)
   for i in [2]:
     if(i==0): i = 1
     oo = mmtbx.maps.composite_omit_map.run(
-      map_type="Fo",
-      crystal_gridding = crystal_gridding,
-      fmodel = fmodel.deep_copy(),
-      n_debias_cycles = i,
+      map_type             ="Fo",
+      crystal_gridding     = crystal_gridding,
+      full_resolution_map  = False,
+      fmodel               = fmodel.deep_copy(),
+      n_debias_cycles      = i,
       box_size_as_fraction = 0.01)
     mco = oo.map_coefficients
     print i, get_cc(mc1=mco, mc2=F, xrs=xrs1),\
