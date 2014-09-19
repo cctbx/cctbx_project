@@ -27,6 +27,7 @@ tst_list = (
   "$D/refinement/tst_refinement_flags.py",
   "$D/torsion_restraints/tst_reference_model.py",
   "$D/regression/tst_model.py",
+  "$D/regression/tst_model_2.py",
   "$D/regression/tst_fmodel.py",
   "$D/regression/tst_utils.py",
   "$D/regression/tst_alignment.py",

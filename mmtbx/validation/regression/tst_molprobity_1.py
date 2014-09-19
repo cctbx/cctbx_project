@@ -92,8 +92,8 @@ def exercise_synthetic () :
     ignore_missing_modules=True,
     out=null_out()).validation
   result.show(outliers_only=False, out=out)
-  assert ("""   A   7  TYR              m-85  92.91   299.6,92.0""" in
-    out.getvalue())
+  assert ("""   A   7  TYR              m-85  93.10   299.6,92.0""" in
+    out.getvalue()), out.getvalue()
 
 if (__name__ == "__main__") :
   exercise_synthetic()

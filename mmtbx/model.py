@@ -25,6 +25,10 @@ from mmtbx import utils
 from mmtbx import model_statistics
 import iotbx.pdb
 from libtbx import group_args
+from libtbx import easy_run
+import iotbx.pdb
+import random
+import os
 
 time_model_show = 0.0
 
@@ -363,10 +367,62 @@ class manager(object):
     print >> self.log, "%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
       prefix, hc.hrot_occ_sum, "%", hc.hrot_fraction_of_total)
 
-  def idealize_h(self, selection=None, show=True):
+  def rebuild_bad_hydrogens_with_reduce(self, nuclear = False,
+        deviation_threshold = 1.0):
+    pdb_hierarchy = self._pdb_hierarchy
+    hd_selection = self.xray_structure.hd_selection()
+    fn = "%s"%str(random.randint(1,1000000))
+    fo = open(fn, "w")
+    fo.write(pdb_hierarchy.select(~hd_selection).as_pdb_string(append_end=True))
+    fo.close()
+    if(nuclear): cmd = "phenix.reduce -quiet -allalt -NUClear %s"%fn
+    else:        cmd = "phenix.reduce -quiet -allalt %s"%fn
+    r = easy_run.fully_buffered(cmd)
+    os.remove(fn)
+    ph = iotbx.pdb.input(source_info=None,
+      lines=r.stdout_lines).construct_hierarchy()
+    get_class = iotbx.pdb.common_residue_names_get_class
+    supported = ["common_water", "common_amino_acid", "common_rna_dna"]
+    def cm_from_residue_non_hd(residue):
+     sites_cart = flex.vec3_double()
+     for atom in residue.atoms():
+       if(not atom.element_is_hydrogen()):
+         sites_cart.append(atom.xyz)
+     return sites_cart.mean()
+    def dist(r1, r2):
+      return math.sqrt((r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2)
+    def is_supported(residue):
+      return get_class(name=residue.resname) in supported
+    for model1 in ph.models():
+      for chain1 in model1.chains():
+        for conformer1 in chain1.conformers():
+          for residue1 in conformer1.residues():
+            if(not is_supported(residue1)): continue
+            cm1 = cm_from_residue_non_hd(residue=residue1)
+            for model2 in pdb_hierarchy.models():
+              for chain2 in model2.chains():
+                for conformer2 in chain2.conformers():
+                  for residue2 in conformer2.residues():
+                    if(not is_supported(residue2)): continue
+                    cm2 = cm_from_residue_non_hd(residue=residue1)
+                    if(residue1.id_str()==residue2.id_str() and
+                       dist(cm1,cm2)<1.e-3):
+                      for a1 in residue1.atoms():
+                        if(a1.element_is_hydrogen()):
+                          n1 = a1.name.strip()[1:]
+                          for a2 in residue2.atoms():
+                            n2 = a2.name.strip()[1:]
+                            if(a2.element_is_hydrogen() and n1 == n2):
+                              if(dist(a1.xyz, a2.xyz)>deviation_threshold):
+                                a2.set_xyz(a1.xyz)
+    self.xray_structure.set_sites_cart(pdb_hierarchy.atoms().extract_xyz())
+    self._pdb_hierarchy = pdb_hierarchy
+
+  def idealize_h(self, selection=None, show=True, nuclear=False):
     """
     Perform geometry regularization on hydrogen atoms only.
     """
+    self.rebuild_bad_hydrogens_with_reduce(nuclear=nuclear)
     if(self.restraints_manager is None): return
     if(self.xray_structure.hd_selection().count(True) > 0):
       hd_selection = self.xray_structure.hd_selection()
@@ -662,20 +718,21 @@ class manager(object):
           assert [adp_fl[i_seq_max_q], adp_fl[i_seq_min_q]].count(True) > 0
           scatterers[i_seq_min_q].u_iso = scatterers[i_seq_max_q].u_iso
 
-  def geometry_minimization(self,
-                            max_number_of_iterations       = 500,
-                            number_of_macro_cycles         = 5,
-                            selection                      = None,
-                            bond                           = False,
-                            nonbonded                      = False,
-                            angle                          = False,
-                            dihedral                       = False,
-                            chirality                      = False,
-                            planarity                      = False,
-                            parallelity                    = False,
-                            generic_restraints             = False,
-                            rmsd_bonds_termination_cutoff  = 0,
-                            rmsd_angles_termination_cutoff = 0):
+  def geometry_minimization(
+        self,
+        max_number_of_iterations       = 500,
+        number_of_macro_cycles         = 5,
+        selection                      = None,
+        bond                           = False,
+        nonbonded                      = False,
+        angle                          = False,
+        dihedral                       = False,
+        chirality                      = False,
+        planarity                      = False,
+        parallelity                    = False,
+        generic_restraints             = False,
+        rmsd_bonds_termination_cutoff  = 0,
+        rmsd_angles_termination_cutoff = 0):
     # XXX consolidate with mmtbx.refinement.geometry_minimization.run2
     assert max_number_of_iterations+number_of_macro_cycles > 0
     assert [bond,nonbonded,angle,dihedral,chirality,planarity,

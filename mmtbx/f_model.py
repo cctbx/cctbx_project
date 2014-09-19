@@ -970,7 +970,10 @@ class manager(manager_mixin):
     return flex.abs(flex.abs(self.f_obs().data()) -
       flex.abs(self.f_model_scaled_with_k1().data()))
 
-  def f_model_full_set_in_box(self, n_real):
+  def f_model_full_set(self, n_real, d_min=None, method="sphere",
+                       include_f000=True):
+    assert method in ["sphere","box"]
+    if(method == "sphere"): assert d_min is not None
     assert [self.k_sol, self.b_sol, self.b_cart].count(None) == 0
     assert self.twin_law is None
     u_star = adptbx.u_cart_as_u_star(
@@ -994,12 +997,22 @@ class manager(manager_mixin):
     d = flex.abs(fm1-fm2)
     assert approx_equal(d.min_max_mean().as_tuple(), [0,0,0])
     # consistency check END
-    #max_index = [int((i-1)/2.) for i in n_real]
-    max_index = [(i-1)//2 for i in n_real]
-    full_set = miller.build_set(
-      crystal_symmetry = self.f_calc().crystal_symmetry(),
-      anomalous_flag   = self.f_obs().anomalous_flag(),
-      max_index        = max_index)
+    if(method == "box"):
+      max_index = [(i-1)//2 for i in n_real]
+      full_set = miller.build_set(
+        crystal_symmetry = self.f_calc().crystal_symmetry(),
+        anomalous_flag   = self.f_obs().anomalous_flag(),
+        max_index        = max_index)
+    else:
+      full_set = miller.build_set(
+        crystal_symmetry = self.f_calc().crystal_symmetry(),
+        anomalous_flag   = self.f_obs().anomalous_flag(),
+        d_min            = d_min)
+    if(include_f000):
+      indices = full_set.indices()
+      indices.append((0,0,0))
+      full_set = full_set.customized_copy(indices = indices)
+    ##
     zero = flex.complex_double(full_set.indices().size(), 0)
     f_calc_full_set = self.compute_f_calc(miller_array = full_set)
     f_mask_full_set = masks.manager(
@@ -1271,8 +1284,6 @@ class manager(manager_mixin):
     co = maptbx.connectivity(map_data=map_data_asu/mc.unit_cell().volume(),
       threshold=0.2)
     conn = co.result()
-    #print "n blobs:", flex.max(conn)
-    #print list(co.regions())
     good = []
     r_free = S_E_L_F.r_free()
     for i, v in enumerate(co.regions()):
