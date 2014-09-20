@@ -55,8 +55,7 @@ def run(space_group_info):
   # create fmodel object
   fmodel = mmtbx.f_model.manager(
     xray_structure = xrs,
-    f_obs          = f_obs,
-    r_free_flags   = f_obs.generate_r_free_flags())
+    f_obs          = f_obs)
   fmodel.update_all_scales()
   mc1 = fmodel.electron_density_map().map_coefficients(
       map_type     = "2mFo-DFc",
