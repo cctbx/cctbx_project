@@ -84,9 +84,13 @@ def run(args, log=None):
     space_group_info  = cs.space_group_info(),
     #symmetry_flags     = maptbx.use_space_group_symmetry,
     pre_determined_n_real = n_real)
-  if(not params.box):
-    raise Sorry("d_min must be specified or box=true.")
-  if(params.d_min is None):
+  #
+  d_min = params.d_min
+  if(d_min is None and not params.box):
+    d_min = mmtbx.utils.d_min_from_map(
+      map_data  = m.data,
+      unit_cell = cs.unit_cell())
+  if(d_min is None):
     # box of reflections in |h|<N1/2, |k|<N2/2, 0<=|l|<N3/2
     max_index = [(i-1)//2 for i in n_real]
     print "max_index:", max_index
@@ -97,23 +101,23 @@ def run(args, log=None):
     indices = complete_set.indices()
     indices.append((0,0,0))
     complete_set = complete_set.customized_copy(indices = indices)
-    if(not params.box):
-      # XXX What is sphere resolution corresponding to given box?
-      uc = complete_set.unit_cell()
-      d1 = uc.d([0,0,max_index[2]])
-      d2 = uc.d([0,max_index[1],0])
-      d3 = uc.d([max_index[0],1,0])
-      print d1,d2,d3
-      complete_set_sp = miller.build_set(
-        crystal_symmetry = cs,
-        anomalous_flag   = False,
-        d_min            = min(d1,d2,d3))
-      complete_set = complete_set.common_set(complete_set_sp)
+    #if(not params.box):
+    #  # XXX What is sphere resolution corresponding to given box?
+    #  uc = complete_set.unit_cell()
+    #  d1 = uc.d([0,0,max_index[2]])
+    #  d2 = uc.d([0,max_index[1],0])
+    #  d3 = uc.d([max_index[0],1,0])
+    #  print d1,d2,d3
+    #  complete_set_sp = miller.build_set(
+    #    crystal_symmetry = cs,
+    #    anomalous_flag   = False,
+    #    d_min            = min(d1,d2,d3))
+    #  complete_set = complete_set.common_set(complete_set_sp)
   else:
     complete_set = miller.build_set(
       crystal_symmetry = cs,
       anomalous_flag   = False,
-      d_min            = params.d_min)
+      d_min            = d_min)
   broadcast(m="Complete set information:", log=log)
   complete_set.show_comprehensive_summary(prefix="  ")
   try:
