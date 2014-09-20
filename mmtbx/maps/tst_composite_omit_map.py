@@ -101,8 +101,7 @@ def run():
   xrs = xrs.select(sel)
   fmodel = mmtbx.f_model.manager(
     xray_structure = xrs,
-    f_obs          = f_obs,
-    r_free_flags   = f_obs.generate_r_free_flags())
+    f_obs          = f_obs)
   fmodel.update_all_scales(update_f_part1=False)
   crystal_gridding = fmodel.f_obs().crystal_gridding(
     d_min             = fmodel.f_obs().d_min(),
