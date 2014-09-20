@@ -258,9 +258,9 @@ def exercise_03(prefix="iotbx_ncs_exercise_03"):
   assert len(ncs_groups)==1
   ng = ncs_groups[0]
   assert approx_equal(sel_master.iselection(), ng.master_iselection)
-  assert approx_equal(sel_copy_1.iselection(), ng.copies[0].copy_iselection)
-  assert approx_equal(sel_copy_2.iselection(), ng.copies[1].copy_iselection)
-  assert approx_equal(sel_copy_3.iselection(), ng.copies[2].copy_iselection)
+  assert approx_equal(sel_copy_1.iselection(), ng.copies[0].iselection)
+  assert approx_equal(sel_copy_2.iselection(), ng.copies[1].iselection)
+  assert approx_equal(sel_copy_3.iselection(), ng.copies[2].iselection)
 
 if (__name__ == "__main__"):
   exercise_00()
