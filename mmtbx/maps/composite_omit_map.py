@@ -54,9 +54,10 @@ class run(object):
     # embedded utility functions
     def get_map(fmodel, map_type, crystal_gridding, asu=True):
       f_map = fmodel.electron_density_map().map_coefficients(
-        map_type     = map_type,
-        isotropize   = True,
-        fill_missing = False)
+        map_type                   = map_type,
+        isotropize                 = True,
+        exclude_free_r_reflections = True,
+        fill_missing               = False)
       fft_map = cctbx.miller.fft_map(
         crystal_gridding     = crystal_gridding,
         fourier_coefficients = f_map)
