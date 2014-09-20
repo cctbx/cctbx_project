@@ -444,19 +444,20 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       if sigf is None: continue  # hopeless
       # what are expected signal, useful cc_ano, cc_half-dataset, <I>/<sigI>
 
-      s_ano,cc_ano,cc_half,fpp_weak,cc_ano_weak,cc_half_weak,i_over_sigma=\
+      s_ano,cc_ano,cc_half,fpp_weak,cc_ano_weak,cc_half_weak,\
+         local_i_over_sigma=\
         get_values_from_sigf(nrefl,nsites,self.natoms,z,fpp,sigf,
           fa2=self.fa2,fb2=self.fb2,disorder_parameter=self.disorder_parameter,
           fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
           get_fpp_weak=True)
 
-      if i_over_sigma>=999:
+      if local_i_over_sigma>=999:
         self.skipped_resolutions.append(dmin)
         continue  # hopeless
       self.table_rows.append([
         "%5.2f" % dmin,
         "%7d" % nrefl,
-        "%6.0f" % i_over_sigma,
+        "%6.0f" % local_i_over_sigma,
         "%7.1f" % (100.*sigf),
         "%5.2f - %5.2f" % (cc_half_weak, cc_half),
         "%5.2f - %5.2f" % (cc_ano_weak, cc_ano),
@@ -464,8 +465,8 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       ])
       if ((self.representative_values is None) or
           len(self.dmin_ranges) < 2 or dmin == self.dmin_ranges[-2]) :
-        self.representative_values = [dmin,nsites,nrefl,fpp,i_over_sigma,sigf,
-           cc_half_weak,cc_half,cc_ano_weak,cc_ano,s_ano]
+        self.representative_values = [dmin,nsites,nrefl,fpp,local_i_over_sigma,
+           sigf,cc_half_weak,cc_half,cc_ano_weak,cc_ano,s_ano]
 
   def representative_dmin(self):
     return self.representative_values[0]
