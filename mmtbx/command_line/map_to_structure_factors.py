@@ -84,8 +84,8 @@ def run(args, log=None):
     space_group_info  = cs.space_group_info(),
     #symmetry_flags     = maptbx.use_space_group_symmetry,
     pre_determined_n_real = n_real)
-  if(params.box):
-    raise Sorry("d_min must nto be specified if box is requested.")
+  if(not params.box):
+    raise Sorry("d_min must be specified or box=true.")
   if(params.d_min is None):
     # box of reflections in |h|<N1/2, |k|<N2/2, 0<=|l|<N3/2
     max_index = [(i-1)//2 for i in n_real]
