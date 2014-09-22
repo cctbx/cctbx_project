@@ -33,8 +33,8 @@ if (qb_installed) :
 
 #afitt
 afitt_installed=False
-if os.environ.get("OE_DIR", None) :
-  if os.path.exists(os.environ["OE_DIR"]):
+if os.environ.get("OE_EXE", None) :
+  if os.path.exists(os.environ["OE_EXE"]):
     afitt_installed = True
 
 if (afitt_installed) :

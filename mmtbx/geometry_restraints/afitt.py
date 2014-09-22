@@ -151,27 +151,35 @@ class afitt_object:
     return occ
 
   def check_covalent(self, geometry):
+    # for each ligand type
     for resname_i,resname in enumerate(self.resname):
+      # covalent_data is a list of lists, has one list for each ligand type.
+      # Each ligand_type list holds a covalent_object for each instance of that
+      # ligand in the model.
       self.covalent_data.append([])
       lig_atoms = []
+      #for each instance of the ligand type
       for instance_i, instance in enumerate(self.res_ids[resname_i]):
+        #search for covalent bonds between ligand and other residues
         lig_atoms = lig_atoms + self.sites_cart_ptrs[resname_i][instance_i]
-      for instance_i, instance in enumerate(self.res_ids[resname_i]):
         nonlig_atoms = [atom for atom in self.pdb_hierarchy.atoms()
                         if atom.i_seq not in lig_atoms ]
         bond = []
-        # print geometry.bond_params_table.lookup(1291, 1737)
         for lig_atm_iseq in self.sites_cart_ptrs[resname_i][instance_i]:
           for atom in nonlig_atoms:
             bond_t = geometry.bond_params_table.lookup(lig_atm_iseq, atom.i_seq)
             if bond_t != None:
               bond.append([atom, lig_atm_iseq])
+        #if more than one covalent bond, exit
         assert len(bond) < 2, "Ligand %s has more than one covalent bond " \
                               "to the model. This is unsupported at " \
                               "present." %(resname)
+        # if no covalent bonds, add None covalent_object and continue
         if len(bond) == 0:
           self.covalent_data[-1].append(None)
           continue
+
+        #start populating the covalent object
         cov_obj = covalent_object()
         cov_res=bond[0][0].parent()
         cov_obj.resname = cov_res.resname
@@ -180,7 +188,9 @@ class afitt_object:
                        cov_res.parent().resseq]
         cov_obj.ligand_resname = resname
         cov_obj.ligand_res_id = instance
+        cov_obj.sites_cart_ptrs = [atom.i_seq for atom in cov_res.atoms()]
 
+        #get the cif file for the covalently bound residue (CBR)
         from mmtbx import monomer_library
         import mmtbx.monomer_library.server
         mon_lib_srv = monomer_library.server.server()
@@ -190,37 +200,69 @@ class afitt_object:
         else:
           ml=mon_lib_srv.get_comp_comp_id_direct(comp_id=cov_obj.resname)
         cif_object = ml.cif_object
-        cov_obj.n_atoms = len(cif_object['_chem_comp_atom.atom_id'])
-        cov_obj.partial_charges = [float(i) for i in cif_object['_chem_comp_atom.partial_charge']]
-        cov_obj.charge = sum(cov_obj.partial_charges)
-        cov_obj.atom_elements = [i for i in cif_object['_chem_comp_atom.type_symbol']]
-        atom_ids = \
-          [i for i in cif_object['_chem_comp_atom.atom_id']]
-        bond_atom_1 = \
-          [atom_ids.index(i) for i in cif_object['_chem_comp_bond.atom_id_1']]
-        bond_atom_2 = \
-          [atom_ids.index(i) for i in cif_object['_chem_comp_bond.atom_id_2']]
-        bond_dict={'single':1, 'double':2, 'triple':3, 'aromatic':4, 'coval':1}
-        bond_type = \
-          [bond_dict[i] for i in cif_object['_chem_comp_bond.type']]
-        cov_obj.bonds = zip(bond_atom_1, bond_atom_2, bond_type)
-        cov_obj.nbonds = len(cov_obj.bonds)
-        # cov_obj.sites_cart_ptrs = self.get_sites_cart_pointers(
-        #                                   atom_ids,
-        #                                   self.pdb_hierarchy,
-        #                                   chain_id=cov_obj.res_id[0],
-        #                                   altloc=cov_obj.res_id[1],
-        #                                   resseq=cov_obj.res_id[2])
-        cov_obj.sites_cart_ptrs = [atom.i_seq for atom in cov_res.atoms()]
-        if cif_object.has_key('_chem_comp_atom.charge'):
-          cov_obj.formal_charges = \
-            [float(i) for i in cif_object['_chem_comp_atom.charge']]
-        self.covalent_data[-1].append(cov_obj)
+        # atom id's in the CBR
+        atom_ids = [i for i in cif_object['_chem_comp_atom.atom_id']]
 
+        #MISSING ATOMS
+        # find atoms in the CBR cif that are misssing in the
+        # model (covalent bond deletes a hydrogen)
+        model_atom_ids = [atom.name.strip() for atom in cov_res.atoms()]
+        missing_atoms = [i for i in atom_ids if i not in model_atom_ids]
+
+        # get charges, elements, formal charges but exclude missing atom
+        partial_charges = [float(i) for i in cif_object['_chem_comp_atom.partial_charge']]
+        atom_elements = [i for i in cif_object['_chem_comp_atom.type_symbol']]
+        chem_comp_atoms = zip(atom_ids, partial_charges, atom_elements)
+        cov_obj.partial_charges = [i[1] for i in chem_comp_atoms if i[0] not in missing_atoms]
+        cov_obj.atom_elements = [i[2] for i in chem_comp_atoms if i[0] not in missing_atoms]
+        if cif_object.has_key('_chem_comp_atom.charge'):
+          formal_charges = [float(i) for i in cif_object['_chem_comp_atom.charge']]
+          chem_comp_atoms = zip(atom_ids, formal_charges)
+          cov_obj.formal_charges = [i[1] for i in chem_comp_atoms if i[0] not in missing_atoms]
+
+        # get bonds but exclude missing atom bonds and adjust atom indexes
+        bond_atom_1 = [i for i in cif_object['_chem_comp_bond.atom_id_1']]
+        bond_atom_2 = [i for i in cif_object['_chem_comp_bond.atom_id_2']]
+        bond_dict={'single':1, 'double':2, 'triple':3, 'aromatic':4, 'coval':1,
+                 'deloc':4}
+        bond_type = [bond_dict[i] for i in cif_object['_chem_comp_bond.type']]
+        bonds = zip(bond_atom_1, bond_atom_2, bond_type)
+        atom_ids_filt = [i for i in atom_ids if i not in missing_atoms]
+        for b in bonds:
+          if b[0] not in missing_atoms and b[1] not in missing_atoms:
+            cov_obj.bonds.append((atom_ids_filt.index(b[0]), atom_ids_filt.index(b[1]), b[2]))
+
+        # add the bond between ligand and CBR
         lig_atom_i = self.sites_cart_ptrs[resname_i][instance_i].index(bond[0][1])
-        cov_atom_i = atom_ids.index(bond[0][0].name.strip())
+        cov_atom_i = atom_ids_filt.index(bond[0][0].name.strip())
         cov_obj.res_bond = [lig_atom_i, self.n_atoms[resname_i]+cov_atom_i, 1]
-        # import code; code.interact(local=dict(globals(), **locals()))
+
+        # assert that all missing atoms would've been bound to the CBR atom
+        # linked to the ligand. Other atoms should not be missing!
+        for missing_atom in missing_atoms:
+          # missing_atom_i = atom_ids.index(missing_atom)
+          # cov_atom_i = atom_ids.index(bond[0][0].name.strip())
+          miss_atm_bound_to_cov_atm=False
+          for b in bonds:
+            if (b[0] == missing_atom and b[1] == bond[0][0].name.strip()) \
+              or (b[1] == missing_atom and b[0] == bond[0][0].name.strip()):
+                miss_atm_bound_to_cov_atm=True
+          assert miss_atm_bound_to_cov_atm==True,\
+            "Atom (%s) in residue (%s %s), which is covalently bound to " \
+            "ligand (%s %s), is missing" \
+            %(missing_atom, cov_res.resname,cov_res.parent().resseq.strip(),
+              resname, instance[2].strip())
+
+        cov_obj.charge = sum(cov_obj.partial_charges)
+        cov_obj.nbonds = len(cov_obj.bonds)
+        cov_obj.n_atoms = len(cov_obj.atom_elements)
+
+        #sanity checks
+        assert cov_obj.n_atoms == len(cov_res.atoms())
+        assert cov_obj.n_atoms == len(cov_obj.sites_cart_ptrs)
+
+        #add the covalent_object to covalent_data
+        self.covalent_data[-1].append(cov_obj)
 
   def process_cif_object(self, cif_object, pdb_hierarchy):
     for res in self.resname:
@@ -245,7 +287,8 @@ class afitt_object:
         [atom_ids.index(i) for i in cif_object[comp_rname]['_chem_comp_bond.atom_id_1']]
       bond_atom_2 = \
         [atom_ids.index(i) for i in cif_object[comp_rname]['_chem_comp_bond.atom_id_2']]
-      bond_dict={'single':1, 'double':2, 'triple':3, 'aromatic':4, 'coval':1}
+      bond_dict={'single':1, 'double':2, 'triple':3, 'aromatic':4, 'coval':1,
+                 'deloc':4}
       bond_type = \
         [bond_dict[i] for i in cif_object[comp_rname]['_chem_comp_bond.type']]
       self.bonds.append( zip(bond_atom_1, bond_atom_2, bond_type) )
@@ -281,6 +324,7 @@ class afitt_object:
     r_i=resname_i
     i_i=instance_i
     sites_cart_ptrs=self.sites_cart_ptrs[r_i][i_i]
+    # print sites_cart_ptrs
     elements=self.atom_elements[r_i]
     assert len(elements) ==  len(sites_cart_ptrs), \
            "No. of atoms in residue %s, instance %d does not equal to \
@@ -356,28 +400,29 @@ class afitt_object:
         if cov_obj.formal_charges:
           for i, fcharge in enumerate(cov_obj.formal_charges):
             if fcharge != 0:
-              f.write('%d\n' %fcharge)
+              f.write('%d %d\n' %(i+self.n_atoms[r_i], fcharge))
       f.write('fixed_atoms %d\n' %cov_obj.n_atoms)
       for i in range(cov_obj.n_atoms):
         f.write('%d\n' %(i+self.n_atoms[r_i]))
-    # ofile=open('tmpfile','w')
-    # ofile.write(f.getvalue())
-    # ofile.close()
+    ##
+    ofile=open('tmpfile','w')
+    ofile.write(f.getvalue())
+    ofile.close()
     # sys.exit()
     # print f.getvalue()
     return f.getvalue()
 
 def get_afitt_command():
-  cmd = "flynn" # used because buster_helper_mmff hangs on no input
+  cmd = "buster_helper_mmff help" # used because buster_helper_mmff hangs on no input
   ero = easy_run.fully_buffered(command=cmd,
                                )
   out = StringIO.StringIO()
   ero.show_stderr(out=out)
   exe = "buster_helper_mmff"
-  if out.getvalue().find("FLYNN")>-1:
+  if out.getvalue().find("OpenEye")>-1:
     return exe
-  if os.environ.get("OE_DIR", False):
-    oe_dir = os.environ.get("OE_DIR")
+  if os.environ.get("OE_EXE", False):
+    oe_dir = os.environ.get("OE_EXE")
     exe = os.path.join(oe_dir, exe)
     if os.path.exists(exe):
       return exe
@@ -539,8 +584,10 @@ def get_afitt_energy(cif_file,
                 ligand_names,
                 pdb_hierarchy,
                 ff)
+
   if geometry is not None:
     afitt_o.check_covalent(geometry)
+
   energies=[]
   for resname_i,resname in enumerate(afitt_o.resname):
     for instance_i, instance in enumerate(afitt_o.res_ids[resname_i]):
@@ -863,6 +910,10 @@ def finite_difference_test(pdb_file,
 
       lines = call_afitt(afitt_input,
                          afitt_o.ff)
+
+      # print "pawel"
+      # print afitt_o.covalent_data
+
       process_afitt_output(
           lines, geometry, afitt_o,
           resname_i, instance_i, afitt_allgradients, afitt_alltargets)
