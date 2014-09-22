@@ -160,7 +160,8 @@ class analyze_resolution_limits (scaling.xtriage_analysis) :
     # XXX very important - for high-symmetry space groups we need to examine
     # all possible positive indices
     tmp_miller = miller_set.expand_to_p1()
-    if (miller_set.space_group().n_smx() > 2) :
+    if (miller_set.unit_cell().parameters()[3:] != (90,90,90)) :
+    #if (miller_set.space_group().n_smx() > 2) :
       all_pos_neg_indices = flex.miller_index()
       for h,k,l in tmp_miller.indices() :
         if (h >= 0 and k >= 0 and l >= 0) or (h <= 0 and k <= 0 and l <= 0) :
@@ -169,6 +170,8 @@ class analyze_resolution_limits (scaling.xtriage_analysis) :
         tmp_miller = tmp_miller.set(indices=all_pos_neg_indices)
       else :
         tmp_miller = tmp_miller.customized_copy(indices=all_pos_neg_indices)
+    else :
+      tmp_miller = tmp_miller.expand_to_p1()
     self.d_min_overall = tmp_miller.d_min()
     # FIXME this still fails for some space groups - need to test on entire
     # PDB

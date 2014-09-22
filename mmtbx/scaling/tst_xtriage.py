@@ -243,7 +243,8 @@ Centric reflections:
   reso = ds.analyze_resolution_limits(f_obs_3)
   out = StringIO()
   reso.show(out=out)
-  assert ("max. difference between axes = 0.756" in out.getvalue())
+  assert ("max. difference between axes = 0.652" in out.getvalue()), \
+    out.getvalue()
   assert ("elliptically truncated" in out.getvalue())
   # make sure the elliptical truncation detection still works in higher space
   # groups - we only need a miller.set for this
