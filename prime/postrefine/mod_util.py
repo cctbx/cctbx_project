@@ -313,10 +313,13 @@ class intensities_scaler(object):
     txt_out += ' gamma_y:                  %12.5f (%7.5f)\n'%(pr_params_mean[2], pr_params_std[2])
     txt_out += ' gamma_z:                  %12.5f (%7.5f)\n'%(pr_params_mean[3], pr_params_std[3])
     txt_out += ' gamma_e:                  %12.5f (%7.5f)\n'%(pr_params_mean[4], pr_params_std[4])
-    txt_out += ' unit cell:                %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f)\n' \
-    %(uc_mean[0], uc_std[0], uc_mean[1], uc_std[1], uc_mean[2], uc_std[2])
-    txt_out += '                           %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f)\n' \
-    %(uc_mean[3], uc_std[3], uc_mean[4], uc_std[4], uc_mean[5], uc_std[5])
+    txt_out += ' unit cell\n'
+    txt_out += '   a:                        %12.5f (%7.5f)\n'%(uc_mean[0], uc_std[0])
+    txt_out += '   b:                        %12.5f (%7.5f)\n'%(uc_mean[1], uc_std[1])
+    txt_out += '   c:                        %12.5f (%7.5f)\n'%(uc_mean[2], uc_std[2])
+    txt_out += '   alpha:                    %12.5f (%7.5f)\n'%(uc_mean[3], uc_std[3])
+    txt_out += '   beta:                     %12.5f (%7.5f)\n'%(uc_mean[4], uc_std[4])
+    txt_out += '   gamma:                    %12.5f (%7.5f)\n'%(uc_mean[5], uc_std[5])
     txt_out += '* (standard deviation)\n'
 
     return cn_group, group_id_list, miller_indices_all_sort, \
