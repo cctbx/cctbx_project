@@ -54,7 +54,6 @@ def get_emma_model_from_sdb(file_name, crystal_symmetry):
     force=True)
   positions = []
   for i,site in enumerate(sdb_file.sites):
-    print "HELLO"
     if (crystal_symmetry.unit_cell() is None):
       raise RuntimeError("Unit cell parameters unknown.")
     positions.append(emma.position(
