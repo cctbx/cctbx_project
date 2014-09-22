@@ -472,6 +472,10 @@ class environment:
     self.lib_path     = r("lib")
     self.include_path = r("include")
 
+  def under_base(self, path, return_relocatable_path=False):
+    return abs(self.build_path / '..' / 'base' / path)
+    # return abs(os.path.join(abs(self.build_path), '..', 'base', path))
+
   def under_build(self, path, return_relocatable_path=False):
     result = self.as_relocatable_path(path)
     if return_relocatable_path:

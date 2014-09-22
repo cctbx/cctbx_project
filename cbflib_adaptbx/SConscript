@@ -9,6 +9,7 @@ env_etc.cbflib_include = [env_etc.norm_join(env_etc.cbflib_dist,"examples"),
 env_etc.cbflib_adaptbx_dist = libtbx.env.dist_path("cbflib_adaptbx")
 
 env_etc.cbflib_common_includes = [
+  env_etc.base_include, # ian todo: test for hdf5, include if necessary
   env_etc.libtbx_include,
   env_etc.scitbx_include,
   env_etc.boost_adaptbx_include,
@@ -20,7 +21,6 @@ env_etc.cbflib_common_includes = [
 
 # for the hdf5.h file - look at where Python is coming from unless is OS X
 # framework build... messy but appears to work on Linux and OS X
-
 include_root = os.path.split(env_etc.python_include)[0]
 if 'Python.framework' in include_root:
   include_root = os.path.join(
