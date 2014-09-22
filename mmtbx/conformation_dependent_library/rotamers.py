@@ -88,21 +88,21 @@ def adjust_rotamer_restraints(pdb_hierarchy,
     i_seqs_restraints_reversal = {}
     #
     for model in pdb_hierarchy.models():
-      if verbose: print 'model: "%s"' % model.id
+      #if verbose: print 'model: "%s"' % model.id
       for chain in model.chains():
         if chain.id.strip() not in chains: continue
-        if verbose: print 'chain: "%s"' % chain.id
+        #if verbose: print 'chain: "%s"' % chain.id
         for conformer in chain.conformers():
-          if verbose: print '  conformer: altloc="%s" only_residue="%s"' % (
-            conformer.altloc, conformer.only_residue)
+          #if verbose: print '  conformer: altloc="%s" only_residue="%s"' % (
+          #  conformer.altloc, conformer.only_residue)
           for residue in conformer.residues():
             if residue.resname not in residues: continue
-            if verbose:
-              if residue.resname not in ["HOH"]:
-                print '    residue: resname="%s" resid="%s"' % (
-                  residue.resname, residue.resid())
-                for atom in residue.atoms():
-                  if verbose: print '         atom: name="%s"' % (atom.name)
+            #if verbose:
+            #  if residue.resname not in ["HOH"]:
+            #    print '    residue: resname="%s" resid="%s"' % (
+            #      residue.resname, residue.resid())
+            #    for atom in residue.atoms():
+            #      if verbose: print '         atom: name="%s"' % (atom.name)
             for id_str, values in name_restraints.items():
               chain_id, resname, altloc, restraints, defaults = values
               if chain_id.strip()!=chain.id: continue
@@ -128,12 +128,17 @@ def adjust_rotamer_restraints(pdb_hierarchy,
       pdb_hierarchy,
       )
   count = 0
+  if verbose:
+    atoms = pdb_hierarchy.atoms()
   for angle_proxy in geometry_restraints_manager.angle_proxies:
     if angle_proxy.i_seqs in i_seqs_restraints:
-      if verbose: print " i_seqs %-15s initial %12.3f %12.3f" % (
-        angle_proxy.i_seqs,
-        angle_proxy.angle_ideal,
-        angle_proxy.weight,
+      if verbose: print " i_seqs %-15s initial %12.3f %12.3f :%s-%s-%s" % (
+          angle_proxy.i_seqs,
+          angle_proxy.angle_ideal,
+          angle_proxy.weight,
+          atoms[angle_proxy.i_seqs[0]].quote()[11:-12],
+          atoms[angle_proxy.i_seqs[1]].quote()[11:-12],
+          atoms[angle_proxy.i_seqs[2]].quote()[11:-12],
         )
       angle_proxy.angle_ideal = i_seqs_restraints[angle_proxy.i_seqs][0]
       angle_proxy.weight = 1/i_seqs_restraints[angle_proxy.i_seqs][1]**2
@@ -160,6 +165,53 @@ def update_restraints(hierarchy,
   from mmtbx.rotamer.sidechain_angles import SidechainAngles
   from mmtbx.rotamer import rotamer_eval
   from mmtbx.validation import rotalyze
+  #
+  def _set_or_reset_angle_restraints(geometry,
+                                     lookup,
+                                     verbose=False,
+                                     ):
+    count = 0
+    for angle_proxy in geometry.angle_proxies:
+      if angle_proxy.i_seqs in lookup:
+        if verbose: print " i_seqs %-15s initial %12.3f %12.3f" % (
+          angle_proxy.i_seqs,
+          angle_proxy.angle_ideal,
+          angle_proxy.weight,
+          )
+        angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
+        angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
+        if verbose: print " i_seqs %-15s final   %12.3f %12.3f" % (
+          angle_proxy.i_seqs,
+          angle_proxy.angle_ideal,
+          angle_proxy.weight,
+          )
+        count += 1
+    return count
+  #
+  def _set_or_reset_dihedral_restraints(geometry,
+                                        lookup,
+                                        verbose=False,
+                                        ):
+    count = 0
+    for angle_proxy in geometry.dihedral_proxies:
+      if angle_proxy.i_seqs in lookup:
+        if verbose: print " i_seqs %-15s initial %12.3f %12.3f %d" % (
+          angle_proxy.i_seqs,
+          angle_proxy.angle_ideal,
+          angle_proxy.weight,
+          angle_proxy.periodicity,
+          )
+        angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
+        angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
+        angle_proxy.periodicity = lookup[angle_proxy.i_seqs][2]
+        if verbose: print " i_seqs %-15s final   %12.3f %12.3f %d" % (
+          angle_proxy.i_seqs,
+          angle_proxy.angle_ideal,
+          angle_proxy.weight,
+          angle_proxy.periodicity,
+          )
+        count += 1
+    return count
   #
   t0=time.time()
   sa = SidechainAngles(False)
@@ -205,38 +257,20 @@ def update_restraints(hierarchy,
             i_seqs_restraints[tuple(i_seqs)] = values
             if names in defaults:
               i_seqs_restraints_reverse[tuple(i_seqs)] = defaults[names]
-  # reset to default
-  for angle_proxy in geometry.angle_proxies:
-    if angle_proxy.i_seqs in i_seqs_restraints_reverse:
-      if verbose: print " i_seqs %-15s initial %12.3f %12.3f" % (
-        angle_proxy.i_seqs,
-        angle_proxy.angle_ideal,
-        angle_proxy.weight,
-        )
-      angle_proxy.angle_ideal = i_seqs_restraints_reverse[angle_proxy.i_seqs][0]
-      angle_proxy.weight = 1/i_seqs_restraints_reverse[angle_proxy.i_seqs][1]**2
-      if verbose: print " i_seqs %-15s final   %12.3f %12.3f" % (
-        angle_proxy.i_seqs,
-        angle_proxy.angle_ideal,
-        angle_proxy.weight,
-        )
   #
-  count = 0
-  for angle_proxy in geometry.angle_proxies:
-    if angle_proxy.i_seqs in i_seqs_restraints:
-      if verbose: print " i_seqs %-15s initial %12.3f %12.3f" % (
-        angle_proxy.i_seqs,
-        angle_proxy.angle_ideal,
-        angle_proxy.weight,
-        )
-      angle_proxy.angle_ideal = i_seqs_restraints[angle_proxy.i_seqs][0]
-      angle_proxy.weight = esd_factor/i_seqs_restraints[angle_proxy.i_seqs][1]**2
-      if verbose: print " i_seqs %-15s final   %12.3f %12.3f" % (
-        angle_proxy.i_seqs,
-        angle_proxy.angle_ideal,
-        angle_proxy.weight,
-        )
-      count += 1
+  count = _set_or_reset_dihedral_restraints(geometry,
+                                            i_seqs_restraints_reverse,
+                                            )
+  count = _set_or_reset_dihedral_restraints(geometry,
+                                            i_seqs_restraints,
+                                            )
+  count = _set_or_reset_angle_restraints(geometry,
+                                         i_seqs_restraints_reverse,
+                                         )
+  count = _set_or_reset_angle_restraints(geometry,
+                                         i_seqs_restraints,
+                                         )
+  #
   print >> log, "    Number of angles RDL adjusted : %d" % count
   print >> log, "    Time to adjust                : %0.3f" % (time.time()-t0)
   return rdl_proxies
