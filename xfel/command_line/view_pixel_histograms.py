@@ -64,13 +64,22 @@ def run(args):
   window_title = path
   d = easy_pickle.load(path)
   args = args[1:]
-
   pixels = None
   if len(args) > 0:
     pixels = [eval(arg) for arg in args]
     for pixel in pixels:
       assert isinstance(pixel, tuple)
       assert len(pixel) == 2
+  if roi is not None:
+
+    summed_hist = {}
+    for i in range(roi[2], roi[3]):
+      for j in range(roi[0], roi[1]):
+        if (i,j) not in summed_hist:
+          summed_hist[(0,0)] = d[(i,j)]
+        else:
+          summed_hist[(0,0)].update(d[(i,j)])
+    d = summed_hist
 
   #if roi is not None:
 
@@ -87,9 +96,10 @@ def run(args):
          #normalise=normalise, save_image=save_image, fit_gaussians=fit_gaussians)
     #return
 
+
   histograms = pixel_histograms(d, estimated_gain=estimated_gain)
   histograms.plot(
-    pixels=pixels, starting_pixel=starting_pixel, fit_gaussians=fit_gaussians,
+     pixels=pixels, starting_pixel=starting_pixel, fit_gaussians=fit_gaussians,
     n_gaussians=n_gaussians, window_title=window_title, log_scale=log_scale,
     save_image=save_image)
 
@@ -266,6 +276,8 @@ class pixel_histograms(object):
     y = hist.slots().as_double()
     starting_gaussians = [curve_fitting.gaussian(
       a=flex.max(y[lower_slot:upper_slot]), b=mean, c=3)]
+   # print starting_gaussians
+    #mamin: fit gaussian will take the maximum between starting point (lower_slot) and ending (upper_slot) as a
     if zero_peak_gaussian is not None:
       y -= zero_peak_gaussian(x)
     if 1:
@@ -273,7 +285,7 @@ class pixel_histograms(object):
         starting_gaussians, x[lower_slot:upper_slot], y[lower_slot:upper_slot])
       sigma = abs(fit.functions[0].params[2])
       if sigma < 1 or sigma > 10:
-        if flex.sum(y[lower_slot:upper_slot]) < 15:
+        if flex.sum(y[lower_slot:upper_slot]) < 15: #mamin I changed 15 to 5
           # No point wasting time attempting to fit a gaussian if there aren't any counts
           #raise PixelFitError("Not enough counts to fit gaussian")
           return fit
