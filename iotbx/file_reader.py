@@ -360,8 +360,10 @@ class any_file_input (object) :
       self._file_type = "hkl"
     else:
       from iotbx.pdb.mmcif import cif_input
+      from iotbx.pdb.hierarchy import input_hierarchy_pair
       try:
-        self._file_object = cif_input(file_name=self.file_name)
+        cif_in = cif_input(file_name=self.file_name)
+        self._file_object = input_hierarchy_pair(cif_in, cif_in.hierarchy)
         self._file_type = "pdb"
       except Exception, e:
         self._file_object = iotbx.cif.reader(file_path=self.file_name,
