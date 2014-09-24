@@ -18,6 +18,7 @@ def get_master_phil () :
     enable_pdb_interpretation_params=True,
     enable_stop_for_unknowns=False,
     enable_unmerged_data=True,
+    enable_cdl=Auto,
     phil_string="""
 molprobity {
   outliers_only = True
@@ -133,7 +134,6 @@ def run (args,
     process_pdb_file=True,
     usage_string=usage_string,
     prefer_anomalous=True,
-    use_conformation_dependent_library=True,
     out=out)
   params = cmdline.params
   fmodel = cmdline.fmodel

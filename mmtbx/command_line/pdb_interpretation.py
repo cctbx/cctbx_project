@@ -1,5 +1,6 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb_interpretation
+from __future__ import division
+import sys
 
 def get_master_phil():
   import iotbx.phil
@@ -109,6 +110,7 @@ def run(args):
         reduced_geo = geo.reduce_for_tardy(tardy_tree=tardy_tree)
         write_geo(label="tardy ", geo=reduced_geo, geo_file_name=geo_file_name)
         print
+  return processed_pdb_files
 
 if (__name__ == "__main__"):
   import sys

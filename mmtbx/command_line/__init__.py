@@ -51,6 +51,7 @@ def generate_master_phil_with_inputs (
     enable_stop_for_unknowns=None,
     enable_full_geometry_params=False,
     enable_unmerged_data=False,
+    enable_cdl=None,
     as_phil_string=False) :
   """
   Generate a complete PHIL parameter block with generic input parameters plus
@@ -72,6 +73,7 @@ def generate_master_phil_with_inputs (
   :param enable_full_geometry_params: include parameters for specifying custom
       geometry resraints
   :param enable_unmerged_data: accept separate unmerged intensities
+  :param enable_cdl: change default setting for conformation-dependent library
   :param as_phil_string: return parameter string instead of PHIL object
   :returns: PHIL object (unless as_phil_string=True)
   """
@@ -141,8 +143,13 @@ def generate_master_phil_with_inputs (
     %s
   """ % (cmdline_input_phil_str, phil_string)
   if (as_phil_string) :
+    assert (enable_cdl is None)
     return master_phil_str
-  return iotbx.phil.parse(master_phil_str, process_includes=True)
+  master_phil = iotbx.phil.parse(master_phil_str, process_includes=True)
+  if (enable_cdl is not None) :
+    wp = iotbx.phil.parse("pdb_interpretation.cdl=%s" % enable_cdl)
+    master_phil = master_phil.fetch(source=wp)
+  return master_phil
 
 def generic_simple_input_phil () :
   """
@@ -181,7 +188,6 @@ class load_model_and_data (object) :
   master_phil: PHIL master (can optionally be an unparsed string)
   out: filehandle-like object
   process_pdb_file: run full restraints generation
-  use_conformation_dependent_library: use CDL for restraints
   require_data: raise error if no experimental data supplied
   create_fmodel: setup mmtbx.f_model.manager object
   prefer_anomalous: preferentially use anomalous data if present
@@ -247,7 +253,6 @@ class load_model_and_data (object) :
       master_phil,
       out=sys.stdout,
       process_pdb_file=True,
-      use_conformation_dependent_library=False, # FIXME
       require_data=True,
       create_fmodel=True,
       prefer_anomalous=None,
@@ -452,23 +457,6 @@ class load_model_and_data (object) :
       self.xray_structure = self.processed_pdb_file.xray_structure()
       chain_proxies = self.processed_pdb_file.all_chain_proxies
       self.pdb_hierarchy = chain_proxies.pdb_hierarchy
-      # FIXME note that the cdl parameter is always included in the parameters
-      # for pdb_interpretation regardless of whether it is actually used by
-      # the app in question
-      if use_conformation_dependent_library :
-        if pdb_interp_params.cdl :
-          from mmtbx.conformation_dependent_library import setup_restraints
-          from mmtbx.conformation_dependent_library import update_restraints
-          from mmtbx import restraints
-          restraints_manager = restraints.manager(geometry=self.geometry)
-          cdl_proxies = setup_restraints(restraints_manager)
-          update_restraints(
-            hierarchy=self.pdb_hierarchy,
-            restraints_manager=restraints_manager,
-            current_geometry=self.xray_structure,
-            cdl_proxies=cdl_proxies,
-            log=self.log,
-            verbose=True)
     else :
       pdb_file_object = mmtbx.utils.pdb_file(
         pdb_file_names=params.input.pdb.file_name,
