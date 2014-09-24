@@ -29,22 +29,39 @@ def get_nrefl(residues=200,dmin=2.5,solvent_fraction=0.5,chain_type='PROTEIN'):
 def get_sigf(nrefl,nsites,natoms,z,fpp,target_s_ano=15.,ntries=1000,
      min_cc_ano=None,
      fa2=None,fb2=None,disorder_parameter=None,
-     fo_list=None,fo_number_list=None,occupancy=None):
+     fo_list=None,fo_number_list=None,occupancy=None,include_zero=True,
+     ratio_for_failure=0.95):
   closest_sigf=None
   closest_dist2=None
-  for i in xrange(ntries):
+  start_value=1
+  if include_zero: start_value=0
+  for i in xrange(start_value,ntries):
     sigf=i*1./float(ntries)
     s_ano,cc_ano,cc_half,fpp_weak,cc_ano_weak,cc_half_weak,i_over_sigma=\
       get_values_from_sigf(nrefl,nsites,natoms,z,fpp,sigf,
           fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
           fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
           get_fpp_weak=False)
-    if min_cc_ano is not None and cc_ano_weak < min_cc_ano: continue
+    if min_cc_ano is not None and cc_ano_weak < min_cc_ano: 
+      continue
 
     dist2=(s_ano-target_s_ano)**2
     if closest_dist2 is None or dist2<closest_dist2:
      closest_dist2=dist2
      closest_sigf=sigf
+  if closest_sigf==0:  # try with target of 90% of maximum available
+    s_ano,cc_ano,cc_half,fpp_weak,cc_ano_weak,cc_half_weak,i_over_sigma=\
+       get_values_from_sigf(nrefl,nsites,natoms,z,fpp,closest_sigf,
+          fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
+          fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
+          get_fpp_weak=False)
+    closest_sigf=get_sigf(
+     nrefl,nsites,natoms,z,fpp,target_s_ano=s_ano*ratio_for_failure,
+     ntries=ntries,
+     min_cc_ano=min_cc_ano,
+     fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
+     fo_list=fo_list,fo_number_list=fo_number_list,
+     occupancy=occupancy,include_zero=False)
   return closest_sigf
 
 def get_sano(nrefl,nsites,natoms,z,fpp,sigf,
@@ -118,12 +135,8 @@ def estimate_fpp_weak(nrefl,nsites,natoms,z,fpp,sigf,
 
   target=sano/2.
   best_scale=1.0
-  d=1.0
-  while d>0.005:
-   d=d/2.
-   for i in xrange(1,2):
-    scale=best_scale+d*(i-2)
-    if scale <=0 : continue
+  for i in xrange(1,101):
+    scale=float(i)*0.01
     ss=get_sano(nrefl,nsites,natoms,z,fpp*scale,sigf,
       fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
       fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
@@ -359,7 +372,9 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       ideal_cc_anom=0.76,
       include_weak_anomalous_scattering=True,
       intrinsic_scatterers_as_noise=None,
+      ratio_for_failure=0.95,
       i_over_sigma=None,
+
       quiet=False) :
     self.chain_type = chain_type
     self.residues = residues
@@ -374,6 +389,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     else:
       self.atom_type=atom_type
     self.occupancy=occupancy
+    self.ratio_for_failure=ratio_for_failure
 
     vol_per_residue = get_vol_per_residue(chain_type=chain_type)
 
@@ -425,6 +441,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     self.table_rows = []
     self.representative_values = None
     self.skipped_resolutions = []
+    self.missed_target_resolutions = []
     for dmin in self.dmin_ranges:
       # Guess reflections from residues, dmin, solvent fraction
 
@@ -438,7 +455,8 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
         sigf=get_sigf(nrefl,nsites,self.natoms,z,fpp,target_s_ano=target_s_ano,
           min_cc_ano=min_cc_ano,
           fa2=self.fa2,fb2=self.fb2,disorder_parameter=self.disorder_parameter,
-          fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
+          fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
+          ratio_for_failure=self.ratio_for_failure)
       else:  # input i_over_sigma...estimate sigf
         sigf=get_sigf_from_i_over_sigma(i_over_sigma)
       if sigf is None: continue  # hopeless
@@ -454,6 +472,9 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       if local_i_over_sigma>=999:
         self.skipped_resolutions.append(dmin)
         continue  # hopeless
+      if s_ano<0.95*target_s_ano:  # must not be able to get target s_ano
+        self.missed_target_resolutions.append(dmin)
+
       self.table_rows.append([
         "%5.2f" % dmin,
         "%7d" % nrefl,
@@ -593,12 +614,23 @@ Normalized anomalous scattering:
       out.show_table(table)
     (dmin,nsites,nrefl,fpp,i_over_sigma,sigf,cc_half_weak,cc_half,cc_ano_weak,
       cc_ano,s_ano) = tuple(self.representative_values)
+
+    if self.missed_target_resolutions:
+      self.missed_target_resolutions.sort()
+      out.show_text("""
+Note: Target anomalous signal not achievable even with very high I/sigma 
+for  resolutions of %5.2f A and lower. I/sigma shown achieves about %3.0f%% of
+maximum anomalous signal.
+""" % (self.missed_target_resolutions[0],self.ratio_for_failure*100.))
+
     if self.skipped_resolutions:
       self.skipped_resolutions.sort()
       out.show_text("""
 Note: No plausible values of I/sigma found for  resolutions of %5.2f A
 and lower.
 """ % (self.skipped_resolutions[0]))
+
+
     out.show_text("""
 This table says that if you collect your data to a resolution of %5.1f A with
 an overall <I>/<sigma> of about %3.0f then the half-dataset anomalous
