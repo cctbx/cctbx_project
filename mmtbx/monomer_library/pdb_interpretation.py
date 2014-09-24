@@ -4770,6 +4770,8 @@ class build_all_chain_proxies(linking_mixins):
           use_cdl = False
       else :
         use_cdl = False
+      if (use_cdl) :
+        print >> log, "  Switching to conformation-dependent library"
     if use_cdl :
       from mmtbx.conformation_dependent_library import setup_restraints
       from mmtbx.conformation_dependent_library import update_restraints

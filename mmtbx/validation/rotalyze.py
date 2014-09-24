@@ -431,9 +431,9 @@ def draw_rotamer_plot (rotalyze_data,
   title = "Chi1-Chi2 plot for %s" % residue_name
   p.draw_plot(
     stats=rotarama_data,
+    contours=[0.05477, 0.14142],
     title=title,
     points=points,
     xyz=coords,
-    colormap="Blues",
-    contours=None)
+    colormap="Blues")
   p.save_image(file_name)
