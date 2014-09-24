@@ -132,6 +132,8 @@ HETATM 2650 MN MN    . MN  F 4 . 9.296   -44.783 -6.320  1.00 44.18 505 MN  A MN
   assert mmcif.file_description == 'Model'
   hierarchy = mmcif.file_object.hierarchy
   assert len(hierarchy.atoms()) == 7
+  remarks = mmcif.file_object.input.remark_section()
+  assert (len(remarks) == 0)
 
 def exercise_pdb () :
   pdb_data = """
