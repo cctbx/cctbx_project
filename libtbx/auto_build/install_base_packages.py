@@ -69,6 +69,8 @@ class installer (object) :
       help="Build Sphinx (and numpydoc) for generating documentation")
     parser.add_option("--ipython", dest="build_ipython", action="store_true",
       help="Build IPython", default=False)
+    parser.add_option("--pyopengl", dest="build_pyopengl", action="store_true",
+      help="Build PyOpenGL", default=False)
     parser.add_option("-g", "--debug", dest="debug", action="store_true",
       help="Build in debugging mode", default=False)
     parser.add_option("--no-download", dest="no_download", action="store_true",
@@ -185,6 +187,12 @@ class installer (object) :
         pkg_name=IPYTHON_PKG,
         pkg_name_label="IPython",
         confirm_import_module="IPython")
+    if (options.build_pyopengl) :
+      self.build_python_module_simple(
+        pkg_url=BASE_CCI_PKG_URL,
+        pkg_name=PyOpenGL_PKG,
+        pkg_name_label="PyOpenGL",
+        confirm_import_module="OpenGL")
     print >> self.log, "Dependencies finished building."
 
   def call (self, args, log=None) :

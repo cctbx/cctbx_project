@@ -85,6 +85,8 @@ def run (args, out=sys.stdout) :
   print >> out, "Copying shared libraries..."
   tmp_build_dir = op.join(tmp_dir, "build")
   os.makedirs(tmp_build_dir)
+  # save mtype information (for hypothetical future update mechanism)
+  open(op.join(tmp_build_dir, "MTYPE"), "w").write(options.mtype)
   copy_tree(op.join(build_dir, "lib"), op.join(tmp_build_dir, "lib"))
   # copy over non-compiled files
   print >> out, "Copying base modules..."
