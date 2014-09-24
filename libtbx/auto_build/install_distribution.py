@@ -155,6 +155,8 @@ class installer (object) :
       help="Enable OpenMP compilation if possible", default=False)
     parser.add_option("--no-opt", dest="no_opt", action="store_true",
       help="Disable optimization during compilation", default=False)
+    parser.add_option("--no-app", dest="no_app", action="store_true",
+      help="Disable generation of Mac app launcher(s)", default=False)
     parser.add_option("--debug", dest="debug", action="store_true",
       help="Turn on debugging during compilation", default=False)
     parser.add_option("--try-unsupported", dest="try_unsupported",
@@ -668,9 +670,6 @@ class installer (object) :
     env_sh.write(". $%s/build/setpaths.sh\n" % (self.product_name))
     env_sh.close()
 
-  #---------------------------------------------------------------------
-  # MANDATORY METHODS
-  # these must be re-implemented!
   def get_version (self) :
     """
     Determine the version suffix (if any) for the destination directory.  This
