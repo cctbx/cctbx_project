@@ -190,7 +190,7 @@ class installer (object) :
     if (options.build_pyopengl) :
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
-        pkg_name=PyOpenGL_PKG,
+        pkg_name=PYOPENGL_PKG,
         pkg_name_label="PyOpenGL",
         confirm_import_module="OpenGL")
     print >> self.log, "Dependencies finished building."
