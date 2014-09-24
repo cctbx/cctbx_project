@@ -2108,6 +2108,7 @@ omptbx/tst.py svneol=native#text/x-python
 prime/__init__.py -text
 prime/command_line/__init__.py -text
 prime/command_line/postrefine.py -text
+prime/command_line/viewstats.py -text
 prime/libtbx_config -text
 prime/postrefine/__init__.py -text
 prime/postrefine/mod_input.py -text
