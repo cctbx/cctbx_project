@@ -7,8 +7,10 @@ from libtbx.utils import Sorry, search_for, format_cpu_times, null_out
 from libtbx.test_utils import Exception_expected, block_show_diff
 import libtbx.load_env
 import iotbx.phil
+from libtbx import Auto
 from cStringIO import StringIO
 import os
+import sys
 
 def exercise_handle_case_insensitive(mon_lib_srv, ener_lib):
   def check(a, r, e):
@@ -1861,8 +1863,98 @@ ATOM     10  CA  VAL A  10      50.711  63.858  50.117  1.00  0.00           C
       "Unit cell volume is incompatible with number of atoms")
   else: raise Exception_expected
 
+# Test automatic detection of CDL
+def exercise_cdl_automatic () :
+  pdbstring = """\
+ATOM      0  CA  GLY A   3       5.804  -2.100   7.324  1.00  1.36           C
+ATOM      1  C   GLY A   3       4.651  -1.149   7.578  1.00  1.01           C
+ATOM      2  O   GLY A   3       3.598  -1.553   8.071  1.00  1.38           O
+ATOM      3  N   GLY A   3       6.706  -1.622   6.294  1.00  1.11           N
+ATOM      4  CA  PHE A   4       3.819   1.134   7.419  1.00  0.89           C
+ATOM      5  CB  PHE A   4       4.397   2.380   8.094  1.00  1.13           C
+ATOM      6  C   PHE A   4       3.185   1.509   6.084  1.00  0.94           C
+ATOM      7  N   PHE A   4       4.852   0.121   7.242  1.00  0.88           N
+ATOM      8  O   PHE A   4       2.361   2.421   6.010  1.00  1.47           O
+ATOM      9  CA  LEU A   5       3.055   1.059   3.693  1.00  0.87           C
+ATOM     10  CB  LEU A   5       3.965   0.435   2.634  1.00  1.13           C
+ATOM     11  C   LEU A   5       1.634   0.527   3.541  1.00  0.87           C
+ATOM     12  N   LEU A   5       3.576   0.800   5.030  1.00  0.92           N
+ATOM     13  O   LEU A   5       1.246  -0.440   4.196  1.00  1.23           O
+"""
+  pdb_1 = "REMARK   3    GEOSTD + MON.LIB. + CDL v1.2\n" + pdbstring
+  pdb_2 = pdbstring
+  open("tst_cdl_auto_1.pdb", "w").write(pdb_1)
+  open("tst_cdl_auto_2.pdb", "w").write(pdb_2)
+  cifstring = """\
+data_cdl_refine
+%s
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.pdbx_PDB_model_num
+  ATOM     1  N    .  GLY  A   1  ?   -9.12200   4.64529   5.82028  1.000  21.01594  N  ?  A  ?   1  1
+  ATOM     2  CA   .  GLY  A   1  ?   -9.14139   4.15860   4.44999  1.000  17.74125  C  ?  A  ?   1  1
+  ATOM     3  C    .  GLY  A   1  ?   -8.06917   3.11022   4.29606  1.000  17.40881  C  ?  A  ?   1  1
+  ATOM     4  O    .  GLY  A   1  ?   -7.63359   2.52149   5.28628  1.000  17.89287  O  ?  A  ?   1  1
+  ATOM     5  N    .  ASN  A   2  ?   -7.62610   2.88495   3.06334  1.000  16.11630  N  ?  A  ?   2  1
+  ATOM     6  CA   .  ASN  A   2  ?   -6.52361   1.96527   2.82704  1.000  15.02052  C  ?  A  ?   2  1
+  ATOM     7  C    .  ASN  A   2  ?   -5.24111   2.51732   3.42319  1.000  13.75642  C  ?  A  ?   2  1
+  ATOM     8  O    .  ASN  A   2  ?   -5.04518   3.73206   3.51450  1.000  13.09303  O  ?  A  ?   2  1
+  ATOM     9  CB   .  ASN  A   2  ?   -6.34271   1.71701   1.33679  1.000  14.87486  C  ?  A  ?   2  1
+  ATOM    10  CG   .  ASN  A   2  ?   -7.61171   1.23635   0.68846  1.000  16.71339  C  ?  A  ?   2  1
+  ATOM    11  OD1  .  ASN  A   2  ?   -8.11028   0.15702   1.01777  1.000  19.77837  O  ?  A  ?   2  1
+  ATOM    12  ND2  .  ASN  A   2  ?   -8.16730   2.04317  -0.21593  1.000  14.75765  N  ?  A  ?   2  1
+"""
+  cif_1 = cifstring % """\
+_refine.pdbx_stereochemistry_target_values 'GeoStd + Monomer Library + CDL v1.2'
+"""
+  cif_2 = cifstring % ""
+  open("tst_cdl_auto_1.cif", "w").write(cif_1)
+  open("tst_cdl_auto_2.cif", "w").write(cif_2)
+  model_files = [
+    ("tst_cdl_auto_1.pdb", "tst_cdl_auto_2.pdb"),
+    ("tst_cdl_auto_1.cif", "tst_cdl_auto_2.cif"),
+  ]
+  for file1, file2 in model_files :
+    # mmtbx.monomer_library.pdb_interpretation.run will not work with mmCIF,
+    # so I'm testing via the command-line tool instead
+    from mmtbx.command_line.pdb_interpretation import run
+    stdout_save = sys.stdout
+    sys.stdout = null_out()
+    ppf_1 = run(args=[file1])[0]
+    ppf_2 = run(args=[file2])[0]
+    grm_1 = ppf_1.geometry_restraints_manager()
+    grm_2 = ppf_2.geometry_restraints_manager()
+    assert not None in [grm_1, grm_2]
+    assert ppf_1.all_chain_proxies.use_cdl is None
+    assert ppf_2.all_chain_proxies.use_cdl is None
+    ppf_1 = run(args=[file1, "cdl=Auto"])[0]
+    ppf_2 = run(args=[file2, "cdl=Auto"])[0]
+    grm_1 = ppf_1.geometry_restraints_manager()
+    grm_2 = ppf_2.geometry_restraints_manager()
+    assert ppf_1.all_chain_proxies.use_cdl == True
+    assert ppf_2.all_chain_proxies.use_cdl is None
+    sys.stdout = stdout_save
+
 def run(args):
   assert len(args) == 0
+  exercise_cdl_automatic()
   exercise_flattened_cif_loop()
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()

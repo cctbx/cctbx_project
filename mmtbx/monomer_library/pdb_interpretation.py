@@ -2807,6 +2807,7 @@ class build_all_chain_proxies(linking_mixins):
     self._site_symmetry_table = None
     self.sites_cart = None
     self._sites_cart_exact = None
+    self.use_cdl = None
     if (max_atoms is not None
         and self.pdb_atoms.size() > max_atoms):
       if (log is not None):
@@ -4750,7 +4751,26 @@ class build_all_chain_proxies(linking_mixins):
       self.process_geometry_restraints_remove(
         params=params_remove, geometry_restraints_manager=result)
     self.time_building_geometry_restraints_manager = timer.elapsed()
-    if self.params.cdl:
+    use_cdl = self.params.cdl
+    if (use_cdl is Auto) :
+      if (self.pdb_inp.file_type() == "pdb") :
+        for line in self.pdb_inp.remark_section() :
+          if line.startswith("REMARK   3") and ("CDL" in line) :
+            use_cdl = True
+            break
+        else :
+          use_cdl = False
+      elif (self.pdb_inp.file_type() == "mmcif") :
+        for cif_key, cif_block in self.pdb_inp.cif_model.iteritems() :
+          target = cif_block.get("_refine.pdbx_stereochemistry_target_values")
+          if (target is not None) and ("CDL" in target) :
+            use_cdl = True
+            break
+        else :
+          use_cdl = False
+      else :
+        use_cdl = False
+    if use_cdl :
       from mmtbx.conformation_dependent_library import setup_restraints
       from mmtbx.conformation_dependent_library import update_restraints
       import time
@@ -4765,6 +4785,7 @@ class build_all_chain_proxies(linking_mixins):
         log=log,
         verbose=True,
         )
+      self.use_cdl = True
       cdl_time = time.time()-t0
       print >> log, """\
   Conformation dependent library (CDL) restraints added in %0.1f %sseconds
