@@ -476,7 +476,8 @@ class combined (slots_getstate_setstate) :
   Container for individual validations of each of the five covalent restraint
   classes.
   """
-  __slots__ = ["bonds", "angles", "dihedrals", "chiralities", "planarities"]
+  __geo_types__ = ["bonds", "angles", "dihedrals", "chiralities", "planarities"]
+  __slots__ = __geo_types__ + ["_use_cdl"]
   def __init__ (self,
       pdb_hierarchy,
       xray_structure,
@@ -484,7 +485,9 @@ class combined (slots_getstate_setstate) :
       ignore_hd=True,
       sigma_cutoff=4.0,
       outliers_only=True,
-      use_segids_in_place_of_chainids=False) :
+      use_segids_in_place_of_chainids=False,
+      cdl=None) :
+    self._use_cdl = cdl
     from mmtbx import restraints
     restraints_manager = restraints.manager(
       geometry=geometry_restraints_manager)
@@ -498,7 +501,7 @@ class combined (slots_getstate_setstate) :
     energies_sites = restraints_manager.energies_sites(
       sites_cart=sites_cart,
       compute_gradients=False).geometry
-    for geo_type in self.__slots__ :
+    for geo_type in self.__geo_types__ :
       restraint_validation_class = globals()[geo_type]
       if (geo_type == "bonds" ) :
         restraint_proxies = restraints_manager.geometry.pair_proxies(
@@ -519,9 +522,13 @@ class combined (slots_getstate_setstate) :
       setattr(self, geo_type, rv)
 
   def show (self, out=sys.stdout, prefix="", verbose=True) :
-    for geo_type in self.__slots__ :
+    for geo_type in self.__geo_types__ :
       rv = getattr(self, geo_type)
       make_sub_header(rv.restraint_label + "s", out=out)
+      if (geo_type == "angles") and getattr(self, "_use_cdl", False) :
+        print >> out, "  Using conformation-dependent library for mainchain "+\
+                      "bond angle targets"
+        print >> out, ""
       rv.show(out=out, prefix=prefix)
 
   def get_bonds_angles_rmsds (self) :
