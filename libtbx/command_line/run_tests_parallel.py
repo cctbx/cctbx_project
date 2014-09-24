@@ -82,7 +82,7 @@ def run (args) :
   if (params.shuffle) :
     random.shuffle(all_tests)
   if (not params.quiet) :
-    print "Running the following %d tests on %d processors:" % (len(all_tests),
+    print "Running the following %d tests on %s processors:" % (len(all_tests),
       params.nproc)
     for test in all_tests :
       print "  " + test
