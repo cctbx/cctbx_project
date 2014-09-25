@@ -544,7 +544,23 @@ class ml_iso_absolute_scaling (scaling.xtriage_analysis):
  data (where the crystal is poorly ordered along an axis).  The Wilson B is
  strongly correlated with refined atomic B-factors but these may differ by
  a significant amount, especially if anisotropy is present.""")
+    if (self.b_wilson < 0) :
+      out.warn("The Wilson B-factor is negative!  This indicates that "+
+        "the data are either unusually pathological, or have been "+
+        "artifically manipulated (for instance by applying anisotropic "+
+        "scaling directly).  Please inspect the raw data and/or use "+
+        "unmodified reflections for phasing and refinement, as any model "+
+        "generated from the current dataset will be unrealistic.")
     # TODO compare to datasets in PDB at similar resolution
+
+  def summarize_issues (self) :
+    if (self.b_wilson < 0) :
+      return [(2, "The Wilson plot isotropic B-factor is negative.",
+        "Maximum likelihood isotropic Wilson scaling")]
+    elif (self.b_wilson > 200) :
+      return [(1, "The Wilson plot isotropic B-factor is greater than 200.",
+        "Maximum likelihood isotropic Wilson scaling")]
+    return []
 
 class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
   """

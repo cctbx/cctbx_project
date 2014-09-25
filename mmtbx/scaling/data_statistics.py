@@ -217,7 +217,7 @@ resolution but does not actually exclude reflections.)""")
     if (max_delta > self.d_min_max_delta) :
       out.show_text("""\
 The resolution limit appears to be direction-dependent, which may indicate
-that the data have been collected or processed incorrectly, or that elliptical
+issues with the data collection geometry, processing errors, or that elliptical
 truncation has been applied.  We do not recommend using elliptically truncated
 data, as anisotropy is handled automatically by Phaser, phenix.refine, and
 related programs, and discarding large numbers of weak reflections may result
@@ -1153,6 +1153,7 @@ class wilson_scaling (scaling.xtriage_analysis) :
     if self.ice_rings is not None:
       issues.extend(self.ice_rings.summarize_issues())
     issues.extend(self.outliers.summarize_issues())
+    issues.extend(self.iso_scale_and_b.summarize_issues())
     issues.extend(self.aniso_scale_and_b.summarize_issues())
     return issues
 
