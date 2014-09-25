@@ -270,7 +270,199 @@ namespace rstbx { namespace bandpass {
           }
       }
     }
+    void
+    picture_fast_slow_force(){ //DEPRECATED; obsolete; sets translations but not rotations
+      //The effect of this function is to set the following three state vectors:
+      hi_E_limit = scitbx::af::shared<scitbx::vec3<double> >(P.indices.size(),scitbx::af::init_functor_null<scitbx::vec3<double> >());
+      lo_E_limit = scitbx::af::shared<scitbx::vec3<double> >(P.indices.size(),scitbx::af::init_functor_null<scitbx::vec3<double> >());
+      part_distance = scitbx::af::shared<scitbx::vec3<double> >(P.indices.size(),scitbx::af::init_functor_null<scitbx::vec3<double> >());
+      observed_flag = scitbx::af::shared<bool >(P.indices.size());
 
+      scitbx::af::shared<char > limit_types(P.indices.size());
+      scitbx::mat3<double> A = P.orientation.reciprocal_matrix();
+
+      //s0:  parallel to the direction of incident radiation
+      scitbx::vec3<double> s0 = (1./P.wavelengthHE) * P.incident_beam;
+      double s0_length = s0.length();
+      scitbx::vec3<double> s0_unit = s0.normalize();
+      scitbx::vec3<double> s1 = (1./P.wavelengthLE) * P.incident_beam;
+      double s1_length = s1.length();
+      SCITBX_ASSERT (s0_length > 0.);
+      SCITBX_ASSERT (s1_length > 0.);
+      scitbx::vec3<double> hi_E_part_r_part_distance = s0;//initialize only; values not used
+      scitbx::vec3<double> lo_E_part_r_part_distance = s1;
+
+      //  Cn, the circular section through the Ewald sphere.
+      for (int idx = 0; idx < P.indices.size(); ++idx){
+          double spot_resolution_ang = P.orientation.unit_cell().d(P.indices[idx]);
+          double effective_half_mosaicity_rad = (p_domain_size_ang > 0.)? P.half_mosaicity_rad + spot_resolution_ang / (2. * p_domain_size_ang) : P.half_mosaicity_rad;
+
+          scitbx::vec3<double> H(P.indices[idx][0],P.indices[idx][1], P.indices[idx][2]); // the Miller index
+          scitbx::vec3<double> s = A * H; //s, the reciprocal space coordinates, lab frame, of the oriented Miller index
+          double s_rad_sq = s.length_sq();
+          SCITBX_ASSERT(s_rad_sq > 0.);
+          scitbx::vec3<double> rotax = s.normalize().cross(s0_unit); //The axis that most directly brings the Bragg spot onto Ewald sphere
+          scitbx::vec3<double> chord_direction =      (rotax.cross(s0)).normalize();
+
+         //  ###########  Look at the high-energy wavelength boundary
+
+          double a = s.length_sq()/(2.*s0_length); // see diagram
+          double b = std::sqrt(s.length_sq() - (a*a));   //  Calculate half-length of the chord of intersection
+
+          scitbx::vec3<double> intersection = -a * s0_unit- b*chord_direction;
+
+          double acos_argument = (intersection * s) / (s_rad_sq);
+          double iangle_1= std::acos ( std::min(1.0,acos_argument) );//avoid math domain error
+          // assert approx_equal((intersection+s0).length()-s0_length,0. )
+
+          if (iangle_1 < effective_half_mosaicity_rad) {
+
+          scitbx::vec3<double> q = (intersection + s0);
+          scitbx::vec3<double> q_unit = q.normalize();
+
+          // check if diffracted ray parallel to detector face
+
+          double q_dot_n = q_unit * P.detector_normal;
+          SCITBX_ASSERT(q_dot_n != 0.);
+          scitbx::vec3<double> r = (q_unit * P.distance / q_dot_n) - P.detector_origin;
+
+          double x = r * P.detector_fast;
+          double y = r * P.detector_slow;
+
+          limit_types[idx] += 1; // indicate that the high-energy boundary is found
+          observed_flag[idx] = true;
+          hi_E_limit[idx] = scitbx::vec3<double> ( (x/P.pixel_size[0])+P.pixel_offset[0],(y/P.pixel_size[1])+P.pixel_offset[1],0. );
+          scitbx::vec3<double> part_r_part_d( q_unit / q_dot_n );
+          hi_E_part_r_part_distance = scitbx::vec3<double>( (part_r_part_d * P.detector_fast) / P.pixel_size[0],
+                                                            (part_r_part_d * P.detector_slow) / P.pixel_size[1],0.);
+          }
+         //  ###########  Look at the low-energy wavelength boundary
+
+          double alow = s.length_sq()/(2.*s1_length); // see diagram
+          double blow = std::sqrt(s.length_sq() - (alow*alow));   //  Calculate half-length of the chord of intersection
+
+          scitbx::vec3<double> intersectionlow = -alow * s0_unit- blow*chord_direction;
+          acos_argument = (intersectionlow * s) / (s_rad_sq);
+          double iangle_1low= std::acos ( std::min(1.0,acos_argument) );//avoid math domain error
+
+          // assert approx_equal((intersection+s0).length()-s0_length,0. )
+
+          if (iangle_1low < effective_half_mosaicity_rad) {
+
+          scitbx::vec3<double> q = (intersectionlow + s1);
+          scitbx::vec3<double> q_unit = q.normalize();
+
+          // check if diffracted ray parallel to detector face
+
+          double q_dot_n = q_unit * P.detector_normal;
+          SCITBX_ASSERT(q_dot_n != 0.);
+
+          limit_types[idx] += 2; // indicate that the low-energy boundary is found
+          observed_flag[idx] = true;
+          lo_E_limit[idx] = sensor.sensor_coords_in_pixels(signal_penetration, P, q_unit, q_dot_n);
+          scitbx::vec3<double> part_r_part_d( q_unit / q_dot_n );
+          lo_E_part_r_part_distance = scitbx::vec3<double>( (part_r_part_d * P.detector_fast) / P.pixel_size[0],
+                                                            (part_r_part_d * P.detector_slow) / P.pixel_size[1],0.);
+          }
+
+         //  ###########  Look at rocking the crystal along rotax toward hiE reflection condition
+          if (limit_types[idx]%2 == 0) { // ==3 or ==1 means that hiE test is unnecessary
+            scitbx::vec3<double> s_rot_hi = s.rotate_around_origin(rotax,effective_half_mosaicity_rad);
+            double a_hi = -s_rot_hi * s0_unit;
+            SCITBX_ASSERT(a_hi != 0.);
+            double r_n_hi = s_rad_sq/(2.*a_hi);
+            double wavelength_hi = 1./r_n_hi;
+            if (P.wavelengthHE < wavelength_hi && wavelength_hi < P.wavelengthLE) {
+              scitbx::vec3<double> s0_hi = r_n_hi * P.incident_beam;
+              scitbx::vec3<double> q = (s_rot_hi + s0_hi);
+              scitbx::vec3<double> q_unit = q.normalize();
+
+              double q_dot_n = q_unit * P.detector_normal;
+              SCITBX_ASSERT(q_dot_n != 0.);
+              scitbx::vec3<double> r = (q_unit * P.distance / q_dot_n) - P.detector_origin;
+
+              double x = r * P.detector_fast;
+              double y = r * P.detector_slow;
+              limit_types[idx] += 1; // indicate that the hi-energy boundary is found
+              observed_flag[idx] = true;
+              hi_E_limit[idx] = scitbx::vec3<double> ( (x/P.pixel_size[0])+P.pixel_offset[0],(y/P.pixel_size[1])+P.pixel_offset[1],0. );
+              scitbx::vec3<double> part_r_part_d( q_unit / q_dot_n );
+              hi_E_part_r_part_distance = scitbx::vec3<double>( (part_r_part_d * P.detector_fast) / P.pixel_size[0],
+                                                                (part_r_part_d * P.detector_slow) / P.pixel_size[1],0.);
+            }
+          }
+         //  ###########  Look at rocking the crystal along rotax toward loE reflection condition
+          if (limit_types[idx] < 2) { // >=2 means that loE test is unnecessary
+            scitbx::vec3<double> s_rot_lo = s.rotate_around_origin(rotax,-effective_half_mosaicity_rad);
+            double a_lo = -s_rot_lo * s0_unit;
+            SCITBX_ASSERT(a_lo != 0.);
+            double r_n_lo = s_rad_sq/(2.*a_lo);
+            double wavelength_lo = 1./r_n_lo;
+            if (P.wavelengthHE < wavelength_lo && wavelength_lo < P.wavelengthLE) {
+              scitbx::vec3<double> s0_lo = r_n_lo * P.incident_beam;
+              scitbx::vec3<double> q = (s_rot_lo + s0_lo);
+              scitbx::vec3<double> q_unit = q.normalize();
+
+              double q_dot_n = q_unit * P.detector_normal;
+              SCITBX_ASSERT(q_dot_n != 0.);
+
+              limit_types[idx] += 2; // indicate that the hi-energy boundary is found
+              observed_flag[idx] = true;
+              lo_E_limit[idx] = sensor.sensor_coords_in_pixels(signal_penetration, P, q_unit, q_dot_n);
+              scitbx::vec3<double> part_r_part_d( q_unit / q_dot_n );
+              lo_E_part_r_part_distance = scitbx::vec3<double>( (part_r_part_d * P.detector_fast) / P.pixel_size[0],
+                                                                (part_r_part_d * P.detector_slow) / P.pixel_size[1],0.);
+            }
+          }
+          if (!observed_flag[idx]) {
+            //bogus position in the case where reflection is out of bounds
+
+            //s0:  parallel to the direction of incident radiation
+            double meanwave = (P.wavelengthHE+P.wavelengthLE)/2.;
+            scitbx::vec3<double> s0_mean = (1./meanwave) * P.incident_beam;
+            double s0_mean_length = s0_mean.length();
+            scitbx::vec3<double> s0_mean_unit = s0_mean.normalize();
+
+
+            double a = s.length_sq()/(2.*s0_mean_length); // see diagram
+            double b = std::sqrt(s.length_sq() - (a*a));   //  Calculate half-length of the chord of intersection
+
+            scitbx::vec3<double> intersection = -a * s0_mean_unit- b*chord_direction;
+
+            scitbx::vec3<double> q = (intersection + s0_mean);
+            scitbx::vec3<double> q_unit = q.normalize();
+
+            // check if diffracted ray parallel to detector face
+
+            double q_dot_n = q_unit * P.detector_normal;
+            SCITBX_ASSERT(q_dot_n != 0.);
+            scitbx::vec3<double> r = (q_unit * P.distance / q_dot_n) - P.detector_origin;
+
+            double x = r * P.detector_fast;
+            double y = r * P.detector_slow;
+
+            observed_flag[idx] = true;
+            hi_E_limit[idx] = scitbx::vec3<double> ( (x/P.pixel_size[0])+P.pixel_offset[0],(y/P.pixel_size[1])+P.pixel_offset[1],0. );
+            lo_E_limit[idx] = hi_E_limit[idx];
+            scitbx::vec3<double> part_r_part_d( q_unit / q_dot_n );
+            lo_E_part_r_part_distance = scitbx::vec3<double>( (part_r_part_d * P.detector_fast) / P.pixel_size[0],
+                                                              (part_r_part_d * P.detector_slow) / P.pixel_size[1],0.);
+            hi_E_part_r_part_distance = lo_E_part_r_part_distance;
+          }
+          if (observed_flag[idx]) {
+            if (subpixel_translations_set) {
+              SCITBX_EXAMINE("NOT EXPECTED TO WORK BECAUSE aaf.tile_id NOT SET FOR THIS REFLECTION");
+              vec3 subpixel_trans(subpixel[2*aaf.tile_id],subpixel[1+2*aaf.tile_id],0.0);
+              lo_E_limit[idx] += subpixel_trans;
+              hi_E_limit[idx] += subpixel_trans;
+            }
+            part_distance[idx] = (lo_E_part_r_part_distance + hi_E_part_r_part_distance)/2.;
+          }
+      }
+      for ( int idx = 0; idx < P.indices.size(); ++idx){
+        SCITBX_ASSERT (observed_flag[idx]);
+      }
+    }
     scitbx::af::shared<vec3 >
     spot_rectangles(vec3ref beam_coor){
       vec3 beam_pos(
@@ -626,9 +818,17 @@ namespace rstbx { namespace bandpass {
     }
     bool subpixel_translations_set;
     subpixel_joint_model sjm;
+    scitbx::af::shared<double> subpixel; // DEPRECATED; delete with picture_fast_slow_force()
+    scitbx::af::shared<double> rotations_rad; // DEPRECATED; same message
     void set_subpixel(scitbx::af::shared<double> s, scitbx::af::shared<double> rotations_deg){
       subpixel_translations_set=true;
       sjm = subpixel_joint_model(s,rotations_deg);
+      subpixel=s; //DEPRECATED
+      rotations_rad=scitbx::af::shared<double>(); //DEPRECATED
+      for (int ixx=0; ixx< rotations_deg.size(); ++ixx){ //DEPRECATED
+        rotations_rad.push_back(scitbx::constants::pi_180*rotations_deg[ixx]);
+      }
+      SCITBX_ASSERT( s.size() == 2 * rotations_rad.size()); //DEPRECATED
     }
     void set_mosaicity(double const& half_mosaicity_rad){
       P.half_mosaicity_rad=half_mosaicity_rad;}
@@ -846,6 +1046,7 @@ namespace ext {
            arg("thickness_mm"), arg("mu_rho"), arg("signal_penetration")))
         .def("prescreen_indices", &use_case_bp3::prescreen_indices)
         .def("picture_fast_slow", &use_case_bp3::picture_fast_slow)
+        .def("picture_fast_slow_force", &use_case_bp3::picture_fast_slow_force)//DEPRECATED
         .add_property("hi_E_limit",make_getter(&use_case_bp3::hi_E_limit, rbv()))
         .add_property("lo_E_limit",make_getter(&use_case_bp3::lo_E_limit, rbv()))
         .add_property("part_distance",make_getter(&use_case_bp3::part_distance, rbv()))
