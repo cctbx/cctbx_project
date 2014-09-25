@@ -88,8 +88,10 @@ def get_residue_ramachandran_data (ramalyze_data,
                                    position_type,
                                    residue_name,
                                    point_type) :
-  if (not position_type in ["general", "glycine", "cis-proline",
-      "trans-proline", "pre-proline", "isoleucine or valine"]) :
+  #if (not position_type in ["general", "glycine", "cis-proline",
+  #    "trans-proline", "pre-proline", "isoleucine or valine"]) :
+  if (not position_type in ["General", "Gly", "cis-Pro", "trans-Pro", "pre-Pro",
+                   "Ile/Val"]) :
     raise ValueError("Ramachandran position type '%s' not recognized." %
       position_type)
   points, coords = [], []
