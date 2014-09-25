@@ -208,11 +208,14 @@ def find_and_build_ions (
       initial_b_iso = params.initial_b_iso
       if (initial_b_iso is Auto) :
         initial_b_iso = manager.guess_b_iso_real(i_seq)
+      element = final_choice.element
+      if (element == "IOD") : # FIXME
+        element = "I"
       modified_atom = model.convert_atom(
         i_seq=i_seq,
         scattering_type=final_choice.scattering_type(),
-        atom_name=final_choice.element,
-        element=final_choice.element,
+        atom_name=element,
+        element=element,
         charge=final_choice.charge,
         residue_name=final_choice.element,
         initial_occupancy=params.initial_occupancy,
