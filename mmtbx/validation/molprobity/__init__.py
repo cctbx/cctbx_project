@@ -273,7 +273,7 @@ class molprobity (slots_getstate_setstate) :
         self.xtriage = mmtbx.scaling.xtriage.xtriage_analyses(
           miller_obs=obs,
           miller_calc=f_model,
-          unmerged_obs=unmerged_data,
+          unmerged_obs=unmerged_data, # XXX some redundancy here...
           text_out=null_out())
     if (fmodel_neutron is not None) and (flags.rfactors) :
       self.neutron_stats = experimental.data_statistics(fmodel_neutron,
