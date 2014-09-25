@@ -1,3 +1,4 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.plan_sad_experiment
 
 from __future__ import division
 import mmtbx.scaling.plan_sad_experiment
