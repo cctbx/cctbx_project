@@ -55,6 +55,11 @@ standard_file_extensions = {
   'aln'  : ["aln", "ali", "clustal"],
   'hhr'  : ["hhr"],
   'img'  : ["img", "osc", "mccd", "cbf"],
+  # XXX these are not supported by this module, but are used in Phenix, so we
+  # need to be able to include them in GUI tools in wxtbx.
+  'smi' : ['smi'],
+  'sdf' : ['sdf'],
+  'rosetta' : ['gz'],
 }
 compression_extensions = ["gz", "Z", "bz2", "zip"]
 
@@ -73,6 +78,10 @@ standard_file_descriptions = {
   'aln'  : "Sequence alignment",
   'hhr'  : "HHpred alignment",
   'img'  : "Detector image",
+  # XXX see comment above
+  'smi' : "SMILES",
+  'sdf' : "Structure data file",
+  'rosetta' : "Rosetta fragments",
 }
 
 supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "aln", "txt",
@@ -83,7 +92,7 @@ ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "aln", "seq", "xml",
 "txt"]
 
 def get_wildcard_string (format) :
-  assert (format in standard_file_extensions)
+  assert (format in standard_file_extensions), format
   wildcards = [ "*.%s" % ext for ext in standard_file_extensions[format] ]
   wildcard_str = "%s file (%s)|%s" % (standard_file_descriptions[format],
     ", ".join(wildcards), ";".join(wildcards))
