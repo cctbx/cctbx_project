@@ -11,6 +11,7 @@ import os.path as op
 import time
 import os
 import sys
+import package_defs
 from installer_utils import *
 
 def run (args) :
@@ -18,10 +19,12 @@ def run (args) :
   parser = optparse.OptionParser()
   parser.add_option("--tag", dest="tag", action="store",
     help="Bundle identifier", default=datestamp)
-  parser.add_option("--ignore-missing", dest="ignore_missing", action="store",
-    help="Skip missing secondary packages", default=False)
-  parser.add_option("--require-all", dest="require_all", action="store",
+  parser.add_option("--ignore-missing", dest="ignore_missing",
+    action="store_true", help="Skip missing secondary packages", default=False)
+  parser.add_option("--require-all", dest="require_all", action="store_true",
     help="Require all listed packages, even optional ones", default=False)
+  parser.add_option("--download", dest="download", action="store_true",
+    help="Download any packages not found locally", default=False)
   parser.add_option("--tmp", dest="tmp_dir", action="store",
     help="Temporary directory", default=os.getcwd())
   parser.add_option("--tarfile", dest="tarfile", action="store",
@@ -56,11 +59,10 @@ def run (args) :
   ]
   # Provided if available, but not especially important
   optional = [
-    "clipper",
-    "tntbx",
     "gui_resources",
-    "lapack_fem",
-    "opt_resources",
+    "tntbx",
+    "annlib",
+    "annlib_adaptbx",
   ]
   # create tag file
   open("cctbx_bundle_TAG", "w").write(options.tag)
@@ -70,16 +72,22 @@ def run (args) :
     module_path = op.join(repositories, module_name)
     tarfile_path = module_path + "_hot.tar.gz"
     if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)) :
-      raise OSError("Essential module '%s' not found in %s!" % (module_name,
-        repositories))
-    copy_dist(module_path, tarfile_path)
+      if (not options.download) :
+        raise OSError("Essential module '%s' not found in %s!" % (module_name,
+          repositories))
+      else :
+        package_defs.fetch_remote_package(module_name)
+    else :
+      copy_dist(module_path, tarfile_path)
     have_modules.append(module_name)
   # recommended modules - can be skipped if necessary
   for module_name in recommended :
     module_path = op.join(repositories, module_name)
     tarfile_path = module_path + "_hot.tar.gz"
     if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)) :
-      if (options.ignore_missing) :
+      if (options.download) :
+        package_defs.fetch_remote_package(module_name)
+      elif (options.ignore_missing) :
         warnings.warn(("Skipping recommended module '%s' (not found in "+
           "repositories directory %s)") % (module_name, repositories))
         continue
@@ -87,14 +95,17 @@ def run (args) :
         raise OSError(("Recommended module '%s' not found in %s!  If you want "+
           "to continue without this module, re-run with --ignore-missing.") %
           (module_name, repositories))
-    copy_dist(module_path, tarfile_path)
+    else :
+      copy_dist(module_path, tarfile_path)
     have_modules.append(module_name)
   # optional
   for module_name in optional :
     module_path = op.join(repositories, module_name)
     tarfile_path = module_path + "_hot.tar.gz"
     if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)) :
-      if (not options.require_all) :
+      if (options.download) :
+        package_defs.fetch_remote_package(module_name)
+      elif (not options.require_all) :
         warnings.warn(("Skipping optional module '%s' (not found in "+
           "repositories directory %s)") % (module_name, repositories))
         continue
@@ -102,7 +113,8 @@ def run (args) :
         raise OSError(("Required module '%s' not found in %s!  If you want "+
           "to continue without this module, re-run without --require-all.") %
           (module_name, repositories))
-    copy_dist(module_path, tarfile_path)
+    else :
+      copy_dist(module_path, tarfile_path)
     have_modules.append(module_name)
   # create the archive
   call("tar -cvzf %s %s" % (options.tarfile, " ".join(have_modules)),
@@ -110,8 +122,12 @@ def run (args) :
   print "Wrote %s" % options.tarfile
   if (options.destination is not None) :
     assert op.isdir(options.destination)
+    if op.exists(op.join(options.destination, options.tarfile)) :
+      os.remove(op.join(options.destination, options.tarfile))
     shutil.move(options.tarfile, options.destination)
   else :
+    if op.exists(op.join(options.tmp_dir, options.tarfile)) :
+      os.remove(op.join(options.tmp_dir, options.tarfile))
     shutil.move(options.tarfile, options.tmp_dir)
   # cleanup
   os.chdir(options.tmp_dir)
