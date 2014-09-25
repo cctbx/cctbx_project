@@ -214,6 +214,9 @@ def archive_dist (dir_name, create_tarfile=True, use_shutil=True) :
     shutil.copytree(dir_name, local_path)
   else :
     copy_tree(dir_name, local_path)
+  if op.exists(op.join(local_path, ".svn")) :
+    call("svnversion %s > %s/.svnversion" % (module_name, module_name),
+      log=sys.stdout)
   find_and_delete_files(local_path, file_ext=".pyc")
   find_and_delete_files(local_path, file_ext=".pyo")
   find_and_delete_files(local_path, file_ext=".swp")

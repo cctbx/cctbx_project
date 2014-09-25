@@ -10,6 +10,7 @@ from installer_utils import *
 import urllib2
 import os.path as op
 import os
+import sys
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
@@ -59,6 +60,29 @@ MATPLOTLIB_PKG = "matplotlib-1.3.1.tar.gz"
 PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
 
+# Various dependencies from external repositories, distributed as static
+# tarballs (since they are not under active development by us or our
+# collaborators)
+dependency_tarballs = {
+  "boost":  ("http://cci.lbl.gov/hot", "boost_hot.tar.gz"),
+  "scons":  ("http://cci.lbl.gov/hot", "scons_hot.tar.gz"),
+  "annlib": ("http://cci.lbl.gov/hot", "annlib_hot.tar.gz"),
+}
+# External SVN repositories that may be required for certain components of
+# CCTBX to work.  This includes forked versions (with minimal changes) of the
+# core CCP4 libraries, MUSCLE, and ksDSSP, but also the development branch
+# of CBFLIB.
+subversion_repositories = {
+  "cbflib":"http://svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge",
+  "ccp4io": "http://cci.lbl.gov/svn/ccp4io/trunk",
+  "ccp4io_adaptbx": "http://cci.lbl.gov/svn/ccp4io_adaptbx/trunk",
+  "annlib_adaptbx": "http://cci.lbl.gov/svn/annlib_adaptbx/trunk",
+  "gui_resources": "http://cci.lbl.gov/svn/gui_resources/trunk",
+  "tntbx": "http://cci.lbl.gov/svn/tntbx/trunk",
+  "ksdssp": "http://cci.lbl.gov/svn/ksdssp/trunk",
+  "muscle": "http://cci.lbl.gov/svn/muscle/trunk",
+}
+
 class fetch_packages (object) :
   """
   Download manager for the packages defined by this module - this is used by
@@ -72,9 +96,11 @@ class fetch_packages (object) :
     self.no_download = no_download
     self.copy_files = copy_files
 
-  def __call__ (self, pkg_name, pkg_url=None) :
+  def __call__ (self, pkg_name, pkg_url=None, output_file=None) :
     if (pkg_url is None) :
       pkg_url = BASE_CCI_PKG_URL
+    if (output_file is None) :
+      output_file = pkg_name
     os.chdir(self.dest_dir)
     print >> self.log, "  getting package %s..." % pkg_name
     if (self.pkg_dirs is not None) and (len(self.pkg_dirs) > 0) :
@@ -83,8 +109,8 @@ class fetch_packages (object) :
         if (op.exists(static_file)) :
           print >> self.log, "    using %s" % static_file
           if self.copy_files :
-            copy_file(static_file, op.join(self.dest_dir, pkg_name))
-            return op.join(self.dest_dir, pkg_name)
+            copy_file(static_file, op.join(self.dest_dir, output_file))
+            return op.join(self.dest_dir, output_file)
           else :
             return static_file
     if (op.exists(pkg_name)) :
@@ -96,14 +122,14 @@ class fetch_packages (object) :
           pkg_name)
       full_url = "%s/%s" % (pkg_url, pkg_name)
       self.log.write("    downloading from %s : " % pkg_url)
-      f = open(pkg_name, "wb")
+      f = open(output_file, "wb")
       data = urllib2.urlopen(full_url).read()
       assert (len(data) > 0), pkg_name
       self.log.write("%d KB\n" % (len(data) / 1024))
       self.log.flush()
       f.write(data)
       f.close()
-      return op.join(self.dest_dir, pkg_name)
+      return op.join(self.dest_dir, output_file)
 
 def fetch_all_dependencies (dest_dir,
     log,
@@ -137,3 +163,43 @@ def fetch_all_dependencies (dest_dir,
   if (dials_packages) :
     for pkg_name in [ HDF5_PKG, H5PY_PKG, ] :
       fetch_package(pkg_name, BASE_XIA_PKG_URL)
+
+def fetch_repository (pkg_name, pkg_url=None, working_copy=True,
+    delete_if_present=False) :
+  """
+  Download an SVN repository, with or without metadata required for ongoing
+  development.
+  """
+  if op.exists(pkg_name) :
+    if delete_if_present :
+      shutil.rmtree(pkg_name)
+    else :
+      raise OSError("Directory '%s' already exists.")
+  if (pkg_url is None) :
+    pkg_url = optional_repositories[pkg_name]
+  if working_copy :
+    call("svn co %s %s" % (pkg_url, pkg_name), sys.stdout)
+  else :
+    call("svn export %s %s" % (pkg_url, pkg_name), sys.stdout)
+  assert op.isdir(pkg_name)
+
+def fetch_remote_package (module_name, log=sys.stdout, working_copy=False) :
+  if op.isdir(module_name) :
+    shutil.rmtree(module_name)
+  if (module_name in dependency_tarballs) :
+    pkg_url, pkg_name = dependency_tarballs[module_name]
+    tarfile = module_name + ".tar.gz"
+    fetch_packages(
+      dest_dir=os.getcwd(),
+      log=log).__call__(
+        pkg_name=pkg_name,
+        pkg_url=pkg_url,
+        output_file=tarfile)
+    untar(tarfile, log)
+    os.remove(tarfile)
+  elif (module_name in subversion_repositories) :
+    pkg_url = subversion_repositories[module_name]
+    fetch_repository(
+      pkg_name=module_name,
+      pkg_url=pkg_url,
+      working_copy=working_copy)
