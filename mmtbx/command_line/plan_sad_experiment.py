@@ -91,7 +91,7 @@ crystal_info {
     .short_caption = Occupancy of anomalously-scattering atoms
     .help = Estimate of occupancy of anomalously-scattering atoms
 
-               
+
    }
    i_over_sigma = None
      .type = float
@@ -99,7 +99,7 @@ crystal_info {
      .help = Optional I/sigI.  If supplied and resolution is supplied,  \
         the expected values of half-dataset correlation and cc*_ano based \
         on this I/sigI and resolution will be calculated.
- 
+
    target_signal = 30.
        .type = float
        .short_caption = Target anomalous signal
@@ -133,14 +133,14 @@ crystal_info {
              scattering from C, N, O as noise.  Additionally, \
              (see intrinsic_scatterers_as_noise) if intrinsic \
              anomalous scatterers (P and S) are weak, they will be counted \
-             as noise.  This weak anomalous scattering is effectively noise \ 
+             as noise.  This weak anomalous scattering is effectively noise \
              and has the same effect as the ideal_cc_anom but it can be \
              calculated from the composition. Its effects are added to those \
-             modeled by the ideal_cc_anom parameter. 
+             modeled by the ideal_cc_anom parameter.
 
    intrinsic_scatterers_as_noise = None
      .type = bool
-     .short_caption = Intrinsic scatterers as noise 
+     .short_caption = Intrinsic scatterers as noise
      .help = Applies if include_weak_anomalous_scattering=True.\
              You can choose to treat any intrinsic scatterers (S for \
              protein, P for nucleic acid) as noise, just like any \

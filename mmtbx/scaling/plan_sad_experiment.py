@@ -42,7 +42,7 @@ def get_sigf(nrefl,nsites,natoms,z,fpp,target_s_ano=15.,ntries=1000,
           fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
           fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
           get_fpp_weak=False)
-    if min_cc_ano is not None and cc_ano_weak < min_cc_ano: 
+    if min_cc_ano is not None and cc_ano_weak < min_cc_ano:
       continue
 
     dist2=(s_ano-target_s_ano)**2
@@ -86,11 +86,11 @@ def get_sano(nrefl,nsites,natoms,z,fpp,sigf,
 
   # note this is very close to:
   #  sano2=(4./5.)*nrefl*fpp**2/(natoms*z**2*sigf**2)
-  #  sano ~ sqrt(4./5.)*(fpp/z*sigf)*sqrt(nrefl/natoms) 
+  #  sano ~ sqrt(4./5.)*(fpp/z*sigf)*sqrt(nrefl/natoms)
   #     which is proportional to fpp and 1/sigf
   #sano=math.sqrt(sano2)
 
-  return sano_new 
+  return sano_new
 
 def get_cc_ano(nrefl,nsites,natoms,z,fpp,sigf,
       fa2=None,fb2=None,disorder_parameter=None,
@@ -101,7 +101,7 @@ def get_cc_ano(nrefl,nsites,natoms,z,fpp,sigf,
   # recalculate fa2 and fb2 based on fpp value:
   target_fpp_list=[fpp]
   target_fpp_number_list=[nsites]
-  
+
   local_fa2=get_normalized_scattering(
       fpp_list=target_fpp_list,
       fpp_number_list=target_fpp_number_list,
@@ -154,7 +154,7 @@ def get_i_over_sigma(sigf):
   else:
     return 999.
 
-def get_sigf_from_i_over_sigma(i_over_sigma): 
+def get_sigf_from_i_over_sigma(i_over_sigma):
   # just inverse of get_i_over_sigma
   #  ios=.88/sigf  -> sigf=0.88/ios
   if i_over_sigma > 0:
@@ -264,7 +264,7 @@ def get_residues_and_ha(seq_file,atom_type=None,
 
 def get_disorder_parameter(ideal_cc_anom=None):
   if not ideal_cc_anom:
-    return 0.  # 
+    return 0.  #
   else:
     # E=1+Q; ideal_cc_anom=1/sqrt(E) -> Q=1/ideal_cc_anom**2 - 1
     cc2=ideal_cc_anom**2
@@ -282,7 +282,7 @@ def include_intrinsic_scatterers(
     return True
   else:
     return False
-     
+
 
 def get_fo_list(chain_type="PROTEIN",wavelength=1.0,
     residues=1,
@@ -298,7 +298,7 @@ def get_fo_list(chain_type="PROTEIN",wavelength=1.0,
      intrinsic_scatterers_number_list=[number_of_s/residues]
      atoms_list=['C','N','O']
      atoms_number_list=[5.15,1.37,1.58] # average (for a2u-globulin)
-  else:  
+  else:
      intrinsic_scatterers_list=['P']
      intrinsic_scatterers_number_list=[1]
      atoms_list=['C','N','O']
@@ -316,7 +316,7 @@ def get_fo_list(chain_type="PROTEIN",wavelength=1.0,
   fo_list=[]
   fo_number_list=[]
   fpp_list=[]
-  fpp_number_list=[] 
+  fpp_number_list=[]
   noise_table_rows = []
   n_atoms=0
   for x,n in zip(atoms_list,atoms_number_list):
@@ -334,7 +334,7 @@ def get_fo_list(chain_type="PROTEIN",wavelength=1.0,
       )
   return fo_list,fo_number_list,fpp_list,fpp_number_list,\
       n_atoms,noise_table_rows
-  
+
 def get_normalized_scattering(
       fpp_list=[],
       fpp_number_list=[],
@@ -352,7 +352,7 @@ def get_normalized_scattering(
   if sum_real <=0:
     sum_real=1.
 
-  return sum_anom/sum_real 
+  return sum_anom/sum_real
 
 
 class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
@@ -393,7 +393,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
 
     vol_per_residue = get_vol_per_residue(chain_type=chain_type)
 
-    # q (disorder_parameter) = normalized mean square anom diff not due 
+    # q (disorder_parameter) = normalized mean square anom diff not due
     #   to target atoms, E=1+Q
     self.disorder_parameter=get_disorder_parameter(ideal_cc_anom=ideal_cc_anom)
 
@@ -415,14 +415,14 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     # fa2=Occ**2*sum(Z_a_i**2 N_a_i)/sum(Z_i**2 N_i)
     target_fpp_list=[self.fpp]
     target_fpp_number_list=[self.nsites]
-  
+
     self.fa2=get_normalized_scattering(
       fpp_list=target_fpp_list,
       fpp_number_list=target_fpp_number_list,
       fo_list=fo_list,
       fo_number_list=fo_number_list,
       occupancy=occupancy)
-     
+
     # scattering from all other anomalous atoms
     # fb2=sum(Z_b_i**2 N_b_i)/sum(Z_i**2 N_i)
 
@@ -557,7 +557,7 @@ Signal:   %5.1f - %5.1f
   Chain-type: %(chain_type)s
   Solvent_fraction: %(solvent_fraction)7.2f
   Atoms: %(natoms)d
-  Anomalously-scattering atom: %(atom_type)s 
+  Anomalously-scattering atom: %(atom_type)s
   Wavelength: %(wavelength)7.4f A
   Sites: %(nsites)d
   f-double-prime: %(fpp)7.2f
@@ -618,7 +618,7 @@ Normalized anomalous scattering:
     if self.missed_target_resolutions:
       self.missed_target_resolutions.sort()
       out.show_text("""
-Note: Target anomalous signal not achievable even with very high I/sigma 
+Note: Target anomalous signal not achievable even with very high I/sigma
 for  resolutions of %5.2f A and lower. I/sigma shown achieves about %3.0f%% of
 maximum anomalous signal.
 """ % (self.missed_target_resolutions[0],self.ratio_for_failure*100.))
@@ -636,7 +636,7 @@ This table says that if you collect your data to a resolution of %5.1f A with
 an overall <I>/<sigma> of about %3.0f then the half-dataset anomalous
 correlation should be in the range of %5.2f - %5.2f.  This should lead to a
 correlation of your anomalous data to the useful anomalous differences
-(CC*_ano) in the range of %5.2f - %5.2f and a useful anomalous signal around 
+(CC*_ano) in the range of %5.2f - %5.2f and a useful anomalous signal around
 %3.0f - %3.0f, where an anomalous correlation of about %5.2f and an
 anomalous signal of 10-15 should be sufficient to find the substructure and
 calculate phases.
@@ -667,8 +667,8 @@ contribute to 5 A, you should only consider data to 5 A in this analysis.
    accurate estimate of your half-dataset anomalous correlation and your
    estimated useful anomalous correlation cc*_anom.""")
     out.show_text("""\
-3. Compare the half-dataset anomalous correlation and cc*_anom with the 
-   estimated values in the table above. If they are lower than expected 
-   you may need to collect more data to obtain the target half-dataset 
+3. Compare the half-dataset anomalous correlation and cc*_anom with the
+   estimated values in the table above. If they are lower than expected
+   you may need to collect more data to obtain the target half-dataset
    correlation and target anomalous signal.
 """)
