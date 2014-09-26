@@ -161,7 +161,7 @@ def fetch_all_dependencies (dest_dir,
       ] :
       fetch_package(pkg_name)
   if (dials_packages) :
-    for pkg_name in [ HDF5_PKG, H5PY_PKG, ] :
+    for pkg_name in [ HDF5_PKG, H5PY_PKG, PYOPENGL_PKG ] :
       fetch_package(pkg_name, BASE_XIA_PKG_URL)
 
 def fetch_repository (pkg_name, pkg_url=None, working_copy=True,
