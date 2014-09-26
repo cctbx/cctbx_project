@@ -506,21 +506,6 @@ class ExperimentListDict(object):
     # Return the experiment list
     return el
 
-  def _create_experiment(self, imageset, beam, detector,
-                         goniometer, scan, crystal):
-    ''' Helper function. Create an experiment. '''
-
-
-    # Return the experiment instance
-    return Experiment(
-      imageset=imageset,
-      beam=beam,
-      detector=detector,
-      goniometer=goniometer,
-      scan=scan,
-      crystal=crystal
-    )
-
   def _make_stills(self, imageset):
     ''' Make a still imageset. '''
     from dxtbx.imageset import ImageSetFactory
