@@ -899,7 +899,7 @@ class ncs_from_pdb(object):
     try:
       selection=self.all_chain_proxies.selection(string = sel_str)
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       selection=None
     return selection
 

@@ -277,7 +277,7 @@ class afitt_object:
           [float(i) for i in cif_object[comp_rname]['_chem_comp_atom.partial_charge']]
           )
       except:
-        self.partial_charges.append( [0]*self.n_atoms[-1] )   
+        self.partial_charges.append( [0]*self.n_atoms[-1] )
       self.atom_elements.append(
         [i for i in cif_object[comp_rname]['_chem_comp_atom.type_symbol']]
         )
@@ -337,7 +337,7 @@ class afitt_object:
       f.write(  '%d\n' %self.n_atoms[r_i])
       f.write('residue_type %s chain %s number %d total_charge %d\n'
               %(self.resname[r_i], self.res_ids[r_i][i_i][0],1,self.charge[r_i] ))
-      #~ import code; code.interact(local=dict(globals(), **locals()))       
+      #~ import code; code.interact(local=dict(globals(), **locals()))
       for atom,ptr in zip(elements, sites_cart_ptrs):
 
         f.write('%s   %20.16f   %20.16f   %20.16f\n' %(atom,
