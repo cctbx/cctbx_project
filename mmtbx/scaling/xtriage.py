@@ -770,6 +770,10 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     return getattr(self.anomalous_info, "low_d_cut", None)
 
   @property
+  def i_over_sigma_outer_shell (self) :
+    return self.data_strength_and_completeness.i_over_sigma_outer_shell()
+
+  @property
   def iso_b_wilson (self) :
     """Convenience method for isotropic Wilson B-factor"""
     return self.wilson_scaling.iso_b_wilson
@@ -796,6 +800,57 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     """
     b_cart = self.wilson_scaling.aniso_scale_and_b.b_cart
     return max(b_cart[0:3]) - min(b_cart[0:3])
+
+  @property
+  def aniso_b_ratio (self) :
+    """
+    Ratio of the maximum difference between anisotropic B_cart tensors to the
+    mean of the tensors.  Used in PDB validation server.
+    """
+    b_cart = self.wilson_scaling.aniso_scale_and_b.b_cart
+    return (max(b_cart[0:3]) - min(b_cart[0:3])) / (sum(b_cart[0:3]) / 3)
+
+  @property
+  def number_of_wilson_outliers (self) :
+    """
+    Number of centric and acentric outliers flagged by Wilson plot analysis.
+    Used in PDB validation server.
+    """
+    return self.wilson_scaling.outliers.n_outliers()
+
+  @property
+  def l_test_mean_l (self) :
+    """
+    <|L|> from the L test for abnormal intensity distributions.  Used in PDB
+    validation server.
+    """
+    return self.twin_results.l_test.mean_l
+
+  @property
+  def l_test_mean_l_squared (self) :
+    """
+    <L^2> from the L test for abnormal intensity distributions.  Used in PDB
+    validation server.
+    """
+    return self.twin_results.l_test.mean_l2
+
+  # FIXME this uses the Britton test, but the PDB validation server appears to
+  # use the H test.  Which is correct?
+  @property
+  def max_estimated_twin_fraction (self) :
+    """
+    Estimated twin fraction from the most worrysome twin law.  Used by PDB
+    validation server.
+    """
+    return self.twin_results.twin_summary.max_twin_fraction()
+
+  @property
+  def patterson_verdict (self) :
+    """
+    Plain-English explanation of Patterson analysis for TNCS detection.  Used
+    by PDB validation server.
+    """
+    return self.twin_results.twin_summary.patterson_verdict()
 
   def estimate_d_min (self, **kwds) :
     """

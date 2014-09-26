@@ -206,6 +206,14 @@ Centric reflections:
    <|E^2 - 1|>    :0.996   (untwinned: 0.968; perfect twin 0.736)
 
 """)
+  # XXX PDB validation server
+  assert approx_equal(result.iso_b_wilson, 14.51, eps=0.1)
+  assert approx_equal(result.aniso_b_ratio, 0.271, eps=0.1)
+  assert (result.number_of_wilson_outliers == 2)
+  assert approx_equal(result.l_test_mean_l, 0.481, eps=0.1)
+  assert approx_equal(result.l_test_mean_l_squared, 0.322, eps=0.1)
+  assert approx_equal(result.i_over_sigma_outer_shell, 10.64, eps=0.01)
+  assert ("indicating pseudo-translationa" in result.patterson_verdict)
   # check relative Wilson
   # FIXME
   #result.relative_wilson.show()
@@ -396,6 +404,15 @@ def exercise_2 () :
     #assert (result.relative_wilson.n_outliers() == 34)
   #show_pickled_object_sizes(result)
   test_pickle_consistency_and_size(result)
+  # XXX PDB validation server
+  assert approx_equal(result.iso_b_wilson, 18.33, eps=0.1)
+  assert approx_equal(result.aniso_b_ratio, 0.546, eps=0.1)
+  assert (result.number_of_wilson_outliers == 0)
+  assert approx_equal(result.l_test_mean_l, 0.493, eps=0.1)
+  assert approx_equal(result.l_test_mean_l_squared, 0.326, eps=0.1)
+  assert approx_equal(result.i_over_sigma_outer_shell, 3.25, eps=0.1)
+  assert ("No significant pseudotranslation is detected" in
+          result.patterson_verdict)
   # test consistency of output after pickling and unpickling
   try :
     from phenix_dev.phenix_cloud import xtriage_json
@@ -419,7 +436,7 @@ def exercise_2 () :
     result = xtriage.run(args=args, out=null_out())
 
 if (__name__ == "__main__") :
+  exercise_2()
   exercise_1()
   exercise_analyze_resolution_limits()
-  exercise_2()
   print "OK"

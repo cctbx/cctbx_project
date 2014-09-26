@@ -1982,27 +1982,30 @@ class twin_results_interpretation(scaling.xtriage_analysis):
   def has_higher_symmetry (self) :
     return (self.input_point_group != self.suspected_point_group)
 
+  def patterson_verdict (self) :
+    verdict = ""
+    if self.has_pseudo_translational_symmetry() :
+      verdict = """\
+The analyses of the Patterson function reveals a significant off-origin
+peak that is %3.2f %% of the origin peak, indicating pseudo-translational
+symmetry.  The chance of finding a peak of this or larger height by random
+in a structure without pseudo-translational symmetry is equal to %5.4e.""" % \
+        (self.patterson_height, self.patterson_p_value)
+      if self.i_ratio > 2:
+        verdict += """
+The detected translational NCS is most likely also responsible for the
+elevated intensity ratio.  See the relevant section of the logfile for more
+details."""
+    elif (self.patterson_p_value is not None) :
+      verdict = """\
+The largest off-origin peak in the Patterson function is %3.2f%% of the
+height of the origin peak. No significant pseudotranslation is detected.""" % \
+        self.patterson_height
+    return verdict
+
   def show_verdict (self, out) :
     # First, TNCS verdict
-    if self.has_pseudo_translational_symmetry() :
-      out.show("""
- The analyses of the Patterson function reveals a significant off-origin
- peak that is %3.2f %% of the origin peak, indicating pseudo-translational
- symmetry.  The chance of finding a peak of this or larger height by random
- in a structure without pseudo-translational symmetry is equal to %5.4e.
-""" % (self.patterson_height, self.patterson_p_value))
-      if self.i_ratio > 2:
-        out.show("""
- The detected translational NCS is most likely also responsible for the
- elevated intensity ratio.  See the relevant section of the logfile for more
- details.
-""")
-    elif (self.patterson_p_value is not None) :
-      out.show("""
- The largest off-origin peak in the Patterson function is %3.2f%% of the
- height of the origin peak. No significant pseudotranslation is detected.
-""" % self.patterson_height)
-    #
+    out.show("\n%s\n" % self.patterson_verdict())
     # And now the rest:
     # Case 1: intensity statistics are suspicious
     if self.maha_l >= self.maha_l_cut:
@@ -2151,6 +2154,8 @@ refinement might provide an answer.
     else:
       out.show("\nNo (pseudo)merohedral twin laws were found.\n")
 
+  # FIXME this uses the Britton test, but the PDB validation server appears to
+  # use the H test.  Which is correct?
   def max_twin_fraction (self) :
     if (self.most_worrysome_twin_law is not None) :
       return self.britton_alpha[ self.most_worrysome_twin_law ]
