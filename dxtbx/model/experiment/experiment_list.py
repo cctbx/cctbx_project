@@ -439,18 +439,69 @@ class ExperimentListDict(object):
 
   def _extract_experiments(self):
     ''' Helper function. Extract the experiments. '''
+    from dxtbx.imageset import ImageSweep
+
+    # Map of imageset/scan pairs
+    imagesets = {}
 
     # For every experiment, use the given input to create
     # a sensible experiment.
     el = ExperimentList()
     for eobj in self._obj['experiment']:
-      el.append(self._create_experiment(
-        ExperimentListDict.model_or_none(self._ilist, eobj, 'imageset'),
-        ExperimentListDict.model_or_none(self._blist, eobj, 'beam'),
-        ExperimentListDict.model_or_none(self._dlist, eobj, 'detector'),
-        ExperimentListDict.model_or_none(self._glist, eobj, 'goniometer'),
-        ExperimentListDict.model_or_none(self._slist, eobj, 'scan'),
-        ExperimentListDict.model_or_none(self._clist, eobj, 'crystal')))
+
+      # Get the models
+      beam = ExperimentListDict.model_or_none(self._blist, eobj, 'beam')
+      detector = ExperimentListDict.model_or_none(self._dlist, eobj, 'detector')
+      goniometer = ExperimentListDict.model_or_none(self._glist, eobj, 'goniometer')
+      scan = ExperimentListDict.model_or_none(self._slist, eobj, 'scan')
+      crystal = ExperimentListDict.model_or_none(self._clist, eobj, 'crystal')
+      key = (eobj['imageset'], eobj.get('scan',None))
+      try:
+        imageset = imagesets[key]
+      except Exception:
+        imageset = ExperimentListDict.model_or_none(self._ilist, eobj, 'imageset')
+
+        # Create the imageset from the input data
+        if imageset is not None:
+          if imageset['__id__'] == 'ImageSet':
+            imageset = self._make_stills(imageset)
+          elif imageset['__id__'] == 'ImageSweep':
+            imageset = self._make_sweep(imageset, scan)
+
+          # Fill in any models if they aren't already there
+          if beam is None:
+            beam = imageset.get_beam()
+          if detector is None:
+            detector = imageset.get_detector()
+          if goniometer is None:
+            goniometer = imageset.get_goniometer()
+          if scan is None:
+            scan = imageset.get_scan()
+
+          # Update the imageset models
+          if isinstance(imageset, ImageSweep):
+            imageset.set_beam(beam)
+            imageset.set_detector(detector)
+            imageset.set_goniometer(goniometer)
+            imageset.set_scan(scan)
+          else:
+            for i in range(len(imageset)):
+              imageset.set_beam(beam, i)
+              imageset.set_detector(detector, i)
+              imageset.set_goniometer(goniometer, i)
+              imageset.set_scan(scan, i)
+
+        # Add the imageset to the dict
+        imagesets[key] = imageset
+
+      # Append the experiment
+      el.append(Experiment(
+        imageset=imageset,
+        beam=beam,
+        detector=detector,
+        goniometer=goniometer,
+        scan=scan,
+        crystal=crystal))
 
     # Return the experiment list
     return el
@@ -458,37 +509,7 @@ class ExperimentListDict(object):
   def _create_experiment(self, imageset, beam, detector,
                          goniometer, scan, crystal):
     ''' Helper function. Create an experiment. '''
-    from dxtbx.imageset import ImageSweep
 
-    # Create the imageset from the input data
-    if imageset is not None:
-      if imageset['__id__'] == 'ImageSet':
-        imageset = self._make_stills(imageset)
-      elif imageset['__id__'] == 'ImageSweep':
-        imageset = self._make_sweep(imageset, scan)
-
-      # Fill in any models if they aren't already there
-      if beam is None:
-        beam = imageset.get_beam()
-      if detector is None:
-        detector = imageset.get_detector()
-      if goniometer is None:
-        goniometer = imageset.get_goniometer()
-      if scan is None:
-        scan = imageset.get_scan()
-
-      # Update the imageset models
-      if isinstance(imageset, ImageSweep):
-        imageset.set_beam(beam)
-        imageset.set_detector(detector)
-        imageset.set_goniometer(goniometer)
-        imageset.set_scan(scan)
-      else:
-        for i in range(len(imageset)):
-          imageset.set_beam(beam, i)
-          imageset.set_detector(detector, i)
-          imageset.set_goniometer(goniometer, i)
-          imageset.set_scan(scan, i)
 
     # Return the experiment instance
     return Experiment(
