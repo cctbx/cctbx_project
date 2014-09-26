@@ -355,9 +355,12 @@ class possible_outliers (scaling.xtriage_analysis):
       self.centric_outliers_table.add_row([d, hkl, e, p, extr])
 
   def fraction_outliers (self) :
+    return self.n_outliers() / self.n_refl
+
+  def n_outliers (self) :
     n_acentric = self.acentric_outlier_miller.size()
     n_centric = self.centric_outlier_miller.size()
-    return (n_acentric + n_centric) / self.n_refl
+    return n_acentric + n_centric
 
   def remove_outliers(self, miller_array):
     ## remove the outliers please
@@ -818,6 +821,11 @@ or omission of reflections by data-processing software.""")
       return self.data_strength.resolution_at_least
     else:
       return self.data_strength.resolution_cut
+
+  def i_over_sigma_outer_shell (self) :
+    if (self.i_sig_i is not None) :
+      return self.i_sig_i[-1]
+    return None
 
   def summarize_issues (self) :
     issues = []
