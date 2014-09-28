@@ -125,3 +125,47 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
     assert len(root) == 4
 
     recursive_sync(self._cbf_handle, root, True)
+
+class FormatCBFCspadInMemory(FormatCBFCspad):
+  """ Overrides the Format object's init method to accept a cbf handle instead
+      of a file name. Used with XFELs when it is desirable to never write
+      a file to disk, but to process it only in memory.
+  """
+
+  @staticmethod
+  def understand(image_file):
+    """ This class shouldn't be found by the dxtbx Registry. Instead it should
+        be instantiated directly as needed
+    """
+    return False
+
+  def __init__(self, cbf_handle):
+    """ @param cbf_handle In memory cbf_handle, alredy initialized """
+    from dxtbx.model.detector import detector_factory
+    from dxtbx.model.beam import beam_factory
+
+    self._goniometer_instance = None
+    self._scan_instance = None
+    self._detector_instance = None
+    self._detector_factory = detector_factory
+    self._beam_factory = beam_factory
+
+    self._cbf_handle = cbf_handle
+    self._raw_data = None
+    try:
+      detector_instance = self._detector()
+      assert(isinstance(detector_instance, Detector))
+      self._detector_instance = detector_instance
+
+      beam_instance = self._beam()
+      assert(isinstance(beam_instance, Beam))
+      self._beam_instance = beam_instance
+
+    except Exception, e:
+    #except exceptions.Exception, e:
+      # FIXME ideally should not squash the errors here...
+      pass
+    finally:
+      self._end()
+
+    return
