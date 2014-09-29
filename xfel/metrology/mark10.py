@@ -673,16 +673,22 @@ class fit_translation4(mark5_iteration,fit_translation2):
     print "Cycle A translations & rotations"
     print {"translations": list(self.tile_translations.x),
            "rotations": list(self.tile_rotations.x)}
-    print "rotations"
+    print "integration {"
+    print "  subpixel_joint_model{"
+    print "rotations= \\"
     for irot in xrange(len(self.tile_rotations.x)):
       print " %11.8f "%self.tile_rotations.x[irot],
-      if irot%4==3: print "\\"
+      if irot%4==3 and irot!=len(self.tile_rotations.x)-1: print "\\"
     print
-    print "translations"
+    print "translations= \\"
     for irot in xrange(len(self.tile_translations.x)):
-      print " %11.8f "%self.tile_translations.x[irot],
-      if irot%4==3: print "\\"
+      print " %11.8f"%self.tile_translations.x[irot],
+      if irot%4==3 and irot!=len(self.tile_translations.x)-1: print "\\"
     print
+    print "  }"
+    print "}"
+    print
+
 
 
   def run_cycle_b(self,iteration):
