@@ -1,8 +1,9 @@
 from __future__ import division
+from iotbx.ncs.ncs_preprocess import format_80
 from libtbx.utils import null_out
 from scitbx import matrix
-import iotbx.ncs
 from iotbx import pdb
+import iotbx.ncs
 import unittest
 import tempfile
 import shutil
@@ -149,7 +150,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
     trans_obj = iotbx.ncs.input(
       file_name="simple_ncs_from_pdb.ncs_spec",
-      # file_str=test_ncs_spec,  # use output string directly
+      # spec_file_str=test_ncs_spec,  # use output string directly
       pdb_hierarchy_inp = pdb_obj)
 
     # test created object
@@ -189,7 +190,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
   # @unittest.SkipTest
   def test_mmcif_reading(self):
     print sys._getframe().f_code.co_name
-    # Todo: test_mmcif_reading
+    # Fixme: test_mmcif_reading
     pass
 
   # @unittest.SkipTest
@@ -246,7 +247,10 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
     # Verify that spec object are produced properly
     spec_output = trans_obj.get_ncs_info_as_spec(
-      pdb_hierarchy_asu=pdb_obj.hierarchy,write=False)
+      pdb_hierarchy_asu=pdb_obj.hierarchy,
+      write=False,
+      format_for_resolve=False,
+      format_for_phenix_refine=False)
     trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
 
     t1 = trans_obj.ncs_transform['s002'].r
@@ -264,15 +268,35 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
   def test_insertion_processing(self):
     """  Verify correct processing of PDBs that have insertions residues   """
     print sys._getframe().f_code.co_name
-    # Todo: Add test
+    # Fixmw: Add test
     pass
 
   # @unittest.SkipTest
   def test_rotaion_translation_input(self):
     """ Verify correct processing    """
     print sys._getframe().f_code.co_name
-    # Todo: Add test
+    # Fixme: Add test
     pass
+
+  def test_print_ncs_phil_param(self):
+    """ Verify correct printout of NCS phil parameters """
+    print sys._getframe().f_code.co_name
+    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
+    trans_obj = iotbx.ncs.input(
+      ncs_selection_params = pdb_test_data2_phil,
+      pdb_hierarchy_inp=pdb_obj)
+    result = trans_obj.print_ncs_phil_param(write=False)
+    test = (pdb_test_data2_phil == result)
+    test = test or (pdb_test_data2_phil_reverse == result)
+    self.assertTrue(test)
+    #
+    pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
+    trans_obj = iotbx.ncs.input(
+      spec_file_str=test_ncs_spec,
+      pdb_hierarchy_inp = pdb_obj)
+    result = trans_obj.print_ncs_phil_param(write=False)
+    self.assertEqual(result,test_phil_3)
+
 
   # def test_build_pdb(self):
   #   """ produce test pdb file """
@@ -287,6 +311,17 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
   #   of = open("test_ncs_spec.pdb", "w")
   #   print >> of, ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
   #   of.close()
+
+
+  def test_format_string_longer_than_80(self):
+    """ Check that strings longer that 80 characters are split correctly """
+    print sys._getframe().f_code.co_name
+    s = [str (x) for x in range(50)]
+    s = ''.join(s)
+    result = format_80(s)
+    expected = '0123456789101112131415161718192021222324252627282930313233' \
+               '3435363738394041424344 \\ \n4546474849'
+    self.assertEqual(result,expected)
 
   def tearDown(self):
     """ remove temp files and folder """
@@ -343,14 +378,39 @@ TER
 
 pdb_test_data2_phil = '''\
 ncs_group {
-  master_selection = 'chain A'
-  copy_selection = 'chain D'
-  copy_selection = 'chain G'
+  master_selection = chain A
+  copy_selection = chain D
+  copy_selection = chain G
 }
 ncs_group {
-  master_selection = 'chain B or chain C'
-  copy_selection = 'chain E or chain F'
-  copy_selection = 'chain H or chain I'
+  master_selection = chain B or chain C
+  copy_selection = chain E or chain F
+  copy_selection = chain H or chain I
+}
+'''
+
+pdb_test_data2_phil_reverse = '''\
+ncs_group {
+  master_selection = chain B or chain C
+  copy_selection = chain E or chain F
+  copy_selection = chain H or chain I
+}
+ncs_group {
+  master_selection = chain A
+  copy_selection = chain D
+  copy_selection = chain G
+}
+'''
+
+test_phil_3 = '''\
+ncs_group {
+  master_selection = chain D and (resseq 1:7)
+  copy_selection = chain E and (resseq 1:7)
+}
+ncs_group {
+  master_selection = chain A and (resseq 151:159)
+  copy_selection = chain B and (resseq 151:159)
+  copy_selection = chain C and (resseq 151:159)
 }
 '''
 
@@ -559,7 +619,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_processing_of_asu']
+  tests = ['test_print_ncs_phil_param','test_format_string_longer_than_80']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 
