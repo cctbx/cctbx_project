@@ -118,6 +118,10 @@ altloc_weighting_params = """\
   }
 """
 master_params_str = """\
+  rdl = False
+    .type = bool
+  rotamer_data_version = *500 8000
+    .type = choice
   cdl = False
     .type = bool
     .short_caption = Use Conformation-Dependent Library
@@ -4803,6 +4807,7 @@ class build_all_chain_proxies(linking_mixins):
         result,
         #current_geometry=model.xray_structure,
         rdl_proxies=rdl_proxies,
+        data_version=self.params.rotamer_data_version,
         log=log,
         verbose=True,
         )
