@@ -174,6 +174,57 @@ def read_slac_metrology(path, plot=False):
 
   return metro
 
+def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, address):
+  """
+  Given a preloaded dxtbx format object and raw data, assemble the tiles
+  and set the distance.
+  @param base_dxtbx A header only dxtbx format object
+  @param data 32x185x388 CSPAD byte array from XTC stream
+  @param distance Detector distance (mm)
+  @param wavelength Shot wavelength (angstroms)
+  @param timestamp Human readable timestamp
+  @param address Detector address, put in CBF header
+  """
+  import copy
+  import numpy as np
+  from xfel.cxi.cspad_ana.cspad_tbx import dynamic_range
+  base_cbf = base_dxtbx._cbf_handle
+  base_dxtbx._cbf_handle = None # have to do this because copy.deep_copy fails on
+                                # swig objects, which _cbf_handle is based on
+  cspad_img = copy.deepcopy(base_dxtbx)
+  cspad_img._cbf_handle = cbf = copy_cbf_header(base_cbf)
+  base_dxtbx._cbf_handle = base_cbf # put it back
+  cbf.set_datablockname(address + "_" + timestamp)
+
+  data = flex.int(data.astype(np.int32))
+  data.reshape(flex.grid((4,8,185,388)))
+
+  n_asics = data.focus()[0] * data.focus()[1]
+  add_frame_specific_cbf_tables(cbf, wavelength,timestamp,
+    [dynamic_range]*n_asics)
+
+  # Set the distance, I.E., the length translated along the Z axis
+  cbf.find_category("diffrn_scan_frame_axis")
+  cbf.find_column("axis_id")
+  cbf.find_row("AXIS_D0_Z") # XXX discover the Z axis somehow, don't use D0 here
+  cbf.find_column("displacement")
+  cbf.set_value(str(-distance))
+
+  # Explicitly reset the detector object now that the distance is set correctly
+  cspad_img._detector_instance = cspad_img._detector()
+
+  # Explicitly set up the beam object now that the tables are all loaded correctly
+  cspad_img._beam_instance = cspad_img._beam()
+
+  # Get the data and add it to the cbf handle. Split it out by quads.
+  tiles = {}
+  for i in xrange(4):
+    tiles[(0,i)] = data[i:i+1,:,:,:]
+    tiles[(0,i)].reshape(flex.grid((8,185,388)))
+  add_tiles_to_cbf(cbf,tiles)
+
+  return cspad_img
+
 
 def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimension, asic_gap, plot = False, old_style_diff_path = None):
   """ Read a flat optical metrology file from LCLS and apply some corrections.  Partly adapted from xfel.metrology.flatfile
@@ -659,7 +710,16 @@ def copy_cbf_header(src_cbf):
 
   return dst_cbf
 
-def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, distance, verbose = True, header_only = False):
+def write_cspad_cbf(tiles, metro, metro_style, timestamp, cbf_root, wavelength, distance, verbose = True, header_only = False):
+  cbf = get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelength, distance, verbose, header_only)
+
+  cbf.write_widefile(cbf_root,pycbf.CBF,\
+      pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
+
+  if verbose:
+    print "%s written"%cbf_root
+
+def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelength, distance, verbose = True, header_only = False):
   assert metro_style in ['calibdir','flatfile','cbf']
   if metro_style == 'calibdir':
     metro = metro_phil_to_basis_dict(metro)
@@ -709,7 +769,7 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
 
   # the data block is the root cbf node
   cbf=cbf_wrapper()
-  cbf.new_datablock(os.path.splitext(os.path.basename(destpath))[0])
+  cbf.new_datablock(os.path.splitext(os.path.basename(cbf_root))[0])
 
   # Each category listed here is preceded by the imageCIF description taken from here:
   # http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/index.html
@@ -898,8 +958,4 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
   if not header_only:
     add_tiles_to_cbf(cbf, tiles)
 
-  cbf.write_widefile(destpath,pycbf.CBF,\
-      pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
-
-  if verbose:
-    print "%s written"%destpath
+  return cbf
