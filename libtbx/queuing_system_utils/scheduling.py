@@ -1199,24 +1199,325 @@ Pool methods:
   shutdown():
 """
 
-class PoolProcess(object):
+class Immortal(object):
   """
-  A class that runs a worker of a pool
+  A worker that is not supposed to die
   """
 
-  def __call__(self, inqueue, outqueue):
+  def is_alive(self):
 
-    while True:
-      data = inqueue.get()
+    return True
 
-      # Sentinel
-      if not data:
-        break
 
-      assert len( data ) == 4
-      ( identifier, target, args, kwargs ) = data
-      result = target( *args, **kwargs )
-      outqueue.put( ( identifier, result ) )
+  def job_start(self):
+
+    pass
+
+
+  def job_done(self):
+
+    pass
+
+
+class JobCount(object):
+  """
+  A worker that completes N jobs, and then exits
+  """
+
+  def __init__(self, maxjobs):
+
+    self.jobs_to_go = maxjobs
+
+
+  def is_alive(self):
+
+    return 0 < self.jobs_to_go
+
+
+  def job_start(self):
+
+    pass
+
+
+  def job_done(self):
+
+    self.jobs_to_go -= 1
+
+
+class MaxTime(object):
+  """
+  A worker that exits when a time limit has been reached
+  """
+
+  def __init__(self, seconds):
+
+    self.endtime = time.time() + seconds
+
+
+  def is_alive(self):
+
+    return time.time() < self.endtime
+
+
+  def job_start(self):
+
+    pass
+
+
+  def job_done(self):
+
+    pass
+
+
+class MaxWallClock(object):
+  """
+  A worker that exits when a wall clock time limit has been reached
+  """
+
+  def __init__(self, seconds):
+
+    self.maxtime = time.clock() + seconds
+
+
+  def is_alive(self):
+
+    return time.clock() < self.maxtime
+
+
+  def job_start(self):
+
+    pass
+
+
+  def job_done(self):
+
+    pass
+
+
+def pool_process_cycle(pid, inqueue, outqueue, waittime, lifeman, sentinel):
+
+  manager = lifeman()
+  outqueue.put( ( worker_startup_event, pid ) )
+
+  from Queue import Empty
+
+  while manager.is_alive():
+    try:
+      data = inqueue.get( timeout = waittime )
+
+    except Empty:
+      continue
+
+    if data == sentinel:
+      outqueue.put( ( worker_shutdown_event, pid ) )
+      break
+
+    assert len( data ) == 4
+    ( jobid, target, args, kwargs ) = data
+    outqueue.put( ( job_started_event, ( jobid, pid ) ) )
+    manager.job_start()
+    result = target( *args, **kwargs )
+    outqueue.put( ( job_finished_event, ( jobid, pid, result ) ) )
+    manager.job_done()
+
+  else:
+    outqueue.put( ( worker_termination_event, pid ) )
+
+
+class ProcessRegister(object):
+  """
+  A simple class that encapsulates job management
+  """
+
+  def __init__(self):
+
+    self.running_on = {}
+    self.terminateds = deque()
+    self.requested_shutdowns = deque()
+    self.results = deque()
+
+
+  @property
+  def process_count(self):
+
+    return len( self.running_on )
+
+
+  def record_process_startup(self, pid):
+
+    if pid in self.running_on:
+      raise RuntimeError, "Existing worker with identical processID"
+
+    self.running_on[ pid ] = None
+
+
+  def record_job_start(self, jobid, pid):
+
+    if pid not in self.running_on:
+      raise RuntimeError, "Unknown processID"
+
+    if self.running_on[ pid ] is not None:
+      raise RuntimeError, "Attempt to start process on busy worker"
+
+    self.running_on[ pid ] = jobid
+
+
+  def record_job_finish(self, jobid, pid, value):
+
+    if pid not in self.running_on:
+      raise RuntimeError, "Unknown processID"
+
+    if self.running_on[ pid ] != jobid:
+      raise RuntimeError, "Inconsistent register information: jobid/pid mismatch"
+
+    self.running_on[ pid ] = None
+    self.results.append( ( jobid, result.Success( value = value ) ) )
+
+
+  def record_process_shutdown(self, pid):
+
+    self.record_process_exit( pid = pid, container = self.requested_shutdowns )
+
+
+  def record_process_termination(self, pid):
+
+    self.record_process_exit( pid = pid, container = self.terminateds )
+
+
+  def record_process_exit(self, pid, container):
+
+    if pid not in self.running_on:
+      raise RuntimeError, "Unknown processID"
+
+    if self.running_on[ pid ] is not None:
+      raise RuntimeError, "Shutdown of busy worker"
+
+    container.append( pid )
+    del self.running_on[ pid ]
+
+
+  def record_process_crash(self, pid, exception):
+
+    if pid not in self.running_on:
+      raise RuntimeError, "Unknown processID"
+
+    jobid = self.running_on[ pid ]
+
+    if jobid is not None:
+      self.results.append( ( jobid, result.Error( exception = exception ) ) )
+
+    del self.running_on[ pid ]
+    self.terminateds.append( pid )
+
+
+# Stand-alone functions for pickling
+def job_started_event(register, data):
+
+  ( jobid, pid ) = data
+  register.record_job_start( jobid = jobid, pid = pid )
+
+
+def job_finished_event(register, data):
+
+  ( jobid, pid, value ) = data
+  register.record_job_finish( jobid = jobid, pid = pid, value = value )
+
+
+def worker_startup_event(register, data):
+
+  register.record_process_startup( pid = data )
+
+
+def worker_shutdown_event(register, data):
+
+  register.record_process_shutdown( pid = data )
+
+
+def worker_termination_event(register, data):
+
+  register.record_process_termination( pid = data )
+
+
+def worker_crash_event(register, data):
+
+  ( pid, exception ) = data
+  register.record_process_crash( pid = pid, exception = exception )
+
+
+class ConstantStrategy(object):
+  """
+  Keep pool size constant
+  """
+
+  def __init__(self, capacity):
+
+    self.capacity = capacity
+
+
+  def target(self, job_count, process_count):
+
+    return self.capacity
+
+
+def normal_state(strategy, target, process_count):
+
+  if target < process_count:
+    strategy.state = downsize_state()
+    target = process_count
+
+  return target
+
+
+class downsize_state(object):
+
+  def __init__(self):
+
+    self.starttime = time.time()
+
+
+  def __call__(self, strategy, target, process_count):
+
+    if process_count <= target or strategy.grace < time.time() - self.starttime:
+      strategy.state = normal_state
+
+    else:
+      target = process_count
+
+    return target
+
+
+class BreathingStrategy(object):
+  """
+  Varies pool size according to load
+  """
+
+  def __init__(self, minimum, maximum, buffering, grace = 1):
+
+    self.minimum = minimum
+    self.maximum = maximum
+    self.buffering = buffering
+    self.grace = grace
+    self.state = normal_state
+
+
+  @property
+  def capacity(self):
+
+    return self.maximum
+
+
+  def target(self, job_count, process_count):
+
+    target = max(
+      min( self.maximum, job_count + self.buffering ),
+      self.minimum,
+      )
+
+    return self.state(
+      strategy = self,
+      target = target,
+      process_count = process_count,
+      )
 
 
 class ProcessPool(object):
@@ -1224,25 +1525,49 @@ class ProcessPool(object):
   Process pool
   """
 
-  def __init__(self, maintenance, count, waittime = 0.01, grace = 2):
+  SENTINEL = None
 
-    self.maintenance = maintenance
+  def __init__(self,
+    inqueue,
+    outqueue,
+    job_factory,
+    loadmanager,
+    lifemanager,
+    waittime = 0.01,
+    grace = 2,
+    ):
+
+    self.job_factory = job_factory
+    self.loadmanager = loadmanager
+    self.lifemanager = lifemanager
+
+    self.inqueue = inqueue
+    self.outqueue = outqueue
+
+    self.waittime = waittime
+    self.grace = grace
+
+    self.register = ProcessRegister()
+
+    from itertools import count
+
+    self.pid_assigner = count()
+    self.process_numbered_as = {}
+    self.recycleds = deque()
+    self.terminatings = set()
+    self.unreporteds = deque()
+    self.outstanding_shutdown_requests = 0
+
     self.identifier_for = {}
     self.completed_results = deque()
 
-    self.inqueue = self.maintenance.queue_create()
-    self.outqueue = self.maintenance.queue_create()
-
-    self.processes = set( [ self.create_new_process() for i in range( count ) ] )
-    self.dead = 0
-    self.grace = grace
-    self.waittime = waittime
+    self.manage()
 
 
   @property
   def job_count(self):
 
-    return max( len( self.identifier_for ) - self.dead, 0 )
+    return len( self.identifier_for )
 
 
   @property
@@ -1258,6 +1583,16 @@ class ProcessPool(object):
 
 
   @property
+  def process_count(self):
+
+    return (
+      len( self.process_numbered_as )
+      + len( self.terminatings )
+      - self.outstanding_shutdown_requests
+      )
+
+
+  @property
   def results(self):
 
     while self.known_jobs:
@@ -1268,8 +1603,9 @@ class ProcessPool(object):
   def submit(self, target, args = (), kwargs = {}):
 
     identifier = Identifier( target = target, args = args, kwargs = kwargs )
-    self.outqueue.put( ( id( identifier ), target, args, kwargs ) )
-    self.identifier_for[ id( identifier ) ] = identifier
+    jobid = id( identifier )
+    self.outqueue.put( ( jobid, target, args, kwargs ) )
+    self.identifier_for[ jobid ] = identifier
     return identifier
 
 
@@ -1280,7 +1616,7 @@ class ProcessPool(object):
 
   def is_full(self):
 
-    return self.job_count == len( self.processes )
+    return self.loadmanager.capacity <= self.job_count
 
 
   def wait(self):
@@ -1292,101 +1628,155 @@ class ProcessPool(object):
 
   def poll(self):
 
-    self.manage_workers()
+    for ( pid, process ) in self.process_numbered_as.items():
+      if not process.is_alive():
+        process.join()
 
-    if self.identifier_for:
-      if self.job_count == 0:
-        for identifier in self.identifier_for.keys():
-          iden = self.identifier_for[ identifier ]
-          res = Result(
-            identifier = self.identifier_for[ identifier ],
-            value = result.Error( exception = TerminatedException( "Worker died" ) ),
+        exit_code = getattr( process, "exitcode", 0 ) # Thread has no "exitcode" attribute
+
+        if exit_code != 0:
+          err = getattr(
+            process,
+            "err",
+            RuntimeError( "exit code = %s" % exit_code ),
             )
-          self.completed_results.append( res )
-          del self.identifier_for[ identifier ]
+          self.unreporteds.append( ( worker_crash_event, ( pid, err ) ) )
 
-        self.dead = 0
+        self.terminatings.add( pid )
+        del self.process_numbered_as[ pid ]
 
-      else:
-        self.process_next()
+    from Queue import Empty, Full
+
+    while self.unreporteds:
+      try:
+        self.inqueue.put( self.unreporteds[0], timeout = self.grace )
+
+      except Full:
+        break
+
+      self.unreporteds.popleft()
+
+    while True:
+      try:
+        ( event, data ) = self.inqueue.get( timeout = self.waittime )
+
+      except Empty:
+        break
+
+      event( register = self.register, data = data )
+
+    while self.register.terminateds:
+      pid = self.register.terminateds.popleft()
+
+      try:
+        self.terminatings.remove( pid )
+
+      except KeyError:
+        self.register.terminateds.appendleft( pid )
+        break
+
+      self.recycleds.append( pid )
+
+    while self.register.requested_shutdowns:
+      pid = self.register.requested_shutdowns.popleft()
+
+      try:
+        self.terminatings.remove( pid )
+
+      except KeyError:
+        self.register.requested_shutdowns.appendleft( pid )
+        break
+
+      self.recycleds.append( pid )
+      assert 0 < self.outstanding_shutdown_requests
+      self.outstanding_shutdown_requests -= 1
+
+    while self.register.results:
+      ( jobid, value ) = self.register.results.popleft()
+      self.completed_results.append(
+        Result( identifier = self.identifier_for[ jobid ], value = value ),
+        )
+      del self.identifier_for[ jobid ]
+
+    self.manage()
 
 
   def join(self):
 
-    while not self.is_empty():
+    self.shutdown()
+
+    while self.process_numbered_as:
       self.poll()
-      time.sleep( self.polling_interval )
+      time.sleep( self.waittime )
+
+    self.poll()
 
 
   def shutdown(self):
 
-    for p in self.processes:
-      self.outqueue.put( None )
+    self.loadmanager = ConstantStrategy( capacity = 0 )
+    self.manage()
 
-    for p in self.processes:
-      self.kill_worker( process = p )
 
-    self.processes = set()
+  def terminate(self):
 
-    self.maintenance.queue_teardown( self.inqueue )
-    self.maintenance.queue_teardown( self.outqueue )
+    self.shutdown()
+    time.sleep( self.waittime )
+    self.poll()
+
+    for process in self.process_numbered_as.values():
+      if process.is_alive():
+        process.terminate()
+
+    self.poll()
 
 
   # Internal methods
-  def process_next(self):
-
-    from Queue import Empty
+  def start_process(self):
 
     try:
-      ( identifier, value ) = self.inqueue.get( block = False )
+      pid = self.recycleds.popleft()
 
-    except Empty:
-      return
+    except IndexError:
+      pid = self.pid_assigner.next()
 
-    else:
-      res = Result(
-        identifier = self.identifier_for[ identifier ],
-        value = result.Success( value = value ),
-        )
-      self.completed_results.append( res )
-      del self.identifier_for[ identifier ]
-
-
-  def manage_workers(self):
-
-    dead = [ p for p in self.processes if not p.is_alive() ]
-    self.dead += len( dead )
-
-    for p in dead:
-      self.processes.remove( p )
-      p.join()
-      self.processes.add( self.create_new_process() )
-
-
-  def create_new_process(self):
-
-    return self.maintenance.launch(
-      executor = PoolProcess(),
-      inqueue = self.outqueue,
-      outqueue = self.inqueue
+    process = self.job_factory(
+      target = pool_process_cycle,
+      kwargs = {
+        "pid": pid,
+        "inqueue": self.outqueue,
+        "outqueue": self.inqueue,
+        "waittime": self.waittime,
+        "lifeman": self.lifemanager,
+        "sentinel": self.SENTINEL,
+        },
       )
 
+    process.start()
+    self.process_numbered_as[ pid ] = process
 
-  def kill_worker(self, process):
 
-    ttl = self.grace
+  def stop_process(self):
 
-    while 0 < ttl:
-      if not process.is_alive():
-        break
+    self.outqueue.put( self.SENTINEL )
+    self.outstanding_shutdown_requests += 1
 
-      time.sleep( self.waittime )
-      ttl -= self.waittime
 
-    else:
-      process.terminate()
+  def manage(self):
 
-    process.join()
+    count = self.process_count
+    target = self.loadmanager.target(
+      job_count = self.job_count,
+      process_count = count,
+      )
+
+    if count < target:
+      while self.process_count < target:
+        self.start_process()
+
+    elif target < count:
+      while target < self.process_count:
+        self.stop_process()
 
 
 # Parallel execution iterator
