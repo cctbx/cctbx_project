@@ -51,11 +51,34 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
       orig = col((d_mat[2],d_mat[5],d_mat[8]))
 
       if is_panel:
-        cbf.find_category("diffrn_data_frame")
-        cbf.find_column("array_id")
-        cbf.find_row(group.get_name())
-        cbf.find_column("binary_id")
-        array_num = int(cbf.get_value()) - 1
+        has_sections = True
+        try:
+          cbf.find_category("array_structure_list_section")
+        except Exception, e:
+          if "CBF_NOTFOUND" not in str(e): raise e
+          has_sections = False
+
+        if has_sections:
+          # figure out which panel number this panel is by finding it in array_structure_list_section
+          cbf.find_category("array_structure_list_section")
+          cbf.find_column("id")
+          array_num = 0
+          current = None # skip rows we've already examined
+          for i in xrange(cbf.count_rows()):
+            if current != cbf.get_value():
+              if group.get_name() == cbf.get_value():
+                break
+              current = cbf.get_value()
+              array_num += 1
+            cbf.next_row()
+        else:
+          # figure out which panel number this panel is by finding it in diffrn_data_frame
+          cbf.find_category("diffrn_data_frame")
+          cbf.find_column("array_id")
+          cbf.find_row(group.get_name())
+          cbf.find_column("binary_id")
+          array_num = int(cbf.get_value()) - 1
+
         cbf_detector = cbf.construct_detector(array_num)
         axis0 = cbf_detector.get_detector_surface_axes(0)
         axis1 = cbf_detector.get_detector_surface_axes(1)
