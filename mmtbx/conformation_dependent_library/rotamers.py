@@ -31,8 +31,10 @@ def setup_restraints():
 
 def generate_rotamer_data(pdb_hierarchy,
                           exclude_outliers=True,
+                          data_version="500",
                           ):
-  r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy)
+  r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy,
+                        data_version=data_version)
   for rot in r.results:
     #if rot.outlier:
     #  print (rot.resname,
@@ -53,6 +55,7 @@ def adjust_rotamer_restraints(pdb_hierarchy,
                               i_seqs_restraints=None,
                               log=None,
                               verbose=False,
+                              data_version="500",
                               ):
   assert 0
   if log is None: log = sys.stdout
@@ -62,7 +65,8 @@ def adjust_rotamer_restraints(pdb_hierarchy,
     name_restraints = {}
     chains=[]
     residues=[]
-    for item in generate_rotamer_data(pdb_hierarchy=pdb_hierarchy):
+    for item in generate_rotamer_data(pdb_hierarchy=pdb_hierarchy,
+                                      data_version=data_version):
       resname, id_str, chain, altloc, rotamer = item
       if resname not in rdl_database: continue
       if rotamer not in rdl_database[resname]: continue
@@ -158,9 +162,10 @@ def update_restraints(hierarchy,
                       sites_cart=None,
                       rdl_proxies=None,
                       esd_factor=1.,
-                      exclude_backbone=True,
+                      exclude_backbone=False,
                       log=None,
                       verbose=False,
+                      data_version="500",
                       ):
   from mmtbx.rotamer.sidechain_angles import SidechainAngles
   from mmtbx.rotamer import rotamer_eval
@@ -216,7 +221,7 @@ def update_restraints(hierarchy,
   t0=time.time()
   sa = SidechainAngles(False)
   rotamer_id = rotamer_eval.RotamerID()
-  rotamer_evaluator = rotamer_eval.RotamerEval()
+  rotamer_evaluator = rotamer_eval.RotamerEval(data_version=data_version)
   sites_cart = None
   if current_geometry:
     sites_cart = current_geometry.sites_cart()
