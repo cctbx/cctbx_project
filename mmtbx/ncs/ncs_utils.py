@@ -313,48 +313,79 @@ def get_ncs_sites_cart(ncs_obj=None,
       return xrs_one_ncs.select(extended_ncs_selection)
 
 
-def get_weight(minimization_obj=None,
-               fmodel=None,
-               grm=None,
+def get_weight(fmodel=None,
+               restraints_manager=None,
                sites=None,
                transformations=None,
                u_iso=None,
                ncs_restraints_group_list=None,
-               refine_selection=None):
+               refine_selection=None,
+               minimized_obj=None):
   """
-  Calculates weights for refinements
+  Calculates weights for refinements by slightly shaking the minimized
+  parameters and taking the ratio:
+  (restraint manager grad norm / parameters gradient norm)
+
+
+  When calling this function during refinement macro cycle, the minimized
+  object, "minimized_obj" , may contains fmodel, restraints_manager,
+  refinement type info (sites, transformations, u_iso) and
+  ncs_restraints_group_list.
+
 
   Args:
-    minimization_obj:Minimization object containing all the other
-    parameters
+    fmodel : F-model object
+    restraints_manager: Restraints manager object
     sites (bool): Refine by sites
     u_iso (bool): Refine using u_iso
     transformations (bool): Refine using transformations
       rotations, translations (matrix objects):
-    grm: Restraints manager
-    iso_restraints: (libtbx.phil.scope_extract) object used for u_iso
-      refinement parameters
-    ncs_atom_selection: (flex bool) for a single ncs atom selection
+    ncs_restraints_group_list: list of ncs_restraint_group objects
+    refine_selection (flex.size_t): selection of all ncs related copies and
+      non ncs related parts to be included in selection (to be refined)
+    minimized_obj:Minimization object containing all the other
+      parameters above
 
   Returns:
     weight (int):
+
+  Example:
+  >>>get_weight(minimized_obj=minimized_obj)
+
+  or
+
+  >>>get_weight(fmodel=fmodel,
+                restraints_manager=grm,
+                sites=sites,
+                transformations=transformations,
+                u_iso=u_iso,
+                ncs_restraints_group_list=ncs_restraints_group_list,
+                refine_selection=refine_selection)
   """
-  if minimization_obj:
-    mo = minimization_obj
+  grm  = restraints_manager
+  extended_ncs_selection = None
+  # extract parameters from minimized_obj
+  if minimized_obj:
+    mo = minimized_obj
     fmodel = mo.fmodel
     grm = mo.grm
     sites = mo.sites
     transformations = mo.transformations
     u_iso = mo.u_iso
     ncs_restraints_group_list = mo.ncs_restraints_group_list
-    extended_ncs_selection = mo.extended_ncs_selection
-  else:
+    if hasattr(mo,'extended_ncs_selection'):
+      extended_ncs_selection = mo.extended_ncs_selection
+  if not extended_ncs_selection:
     extended_ncs_selection = get_extended_ncs_selection(
       ncs_restraints_group_list=ncs_restraints_group_list,
       refine_selection=refine_selection)
 
+  # make sure sufficient input is provided
+  assert bool(fmodel), 'F-model is not provided'
+  assert bool(grm), 'F-restraints_manager is not provided'
+  assert [sites,transformations,u_iso].count(True)==1, 'Refinement type Error'
+  #
   have_transforms = ncs_restraints_group_list != []
-  assert [sites,u_iso,transformations].count(True)==1
   fmdc = fmodel.deep_copy()
   if sites:
     fmdc.xray_structure.shake_sites_in_place(mean_distance=0.3)
@@ -370,21 +401,20 @@ def get_weight(minimization_obj=None,
   fmdc.update_xray_structure(xray_structure = fmdc.xray_structure,
     update_f_calc=True)
   fmdc.xray_structure.scatterers().flags_set_grads(state=False)
-  if sites:
+  if sites or transformations:
     xray.set_scatterer_grad_flags(
       scatterers = fmdc.xray_structure.scatterers(),
       site       = True)
     # fmodel gradients
     gxc = flex.vec3_double(fmdc.one_time_gradients_wrt_atomic_parameters(
       site = True).packed())
-    # manager restraints, energy sites gradients
+    # restraints manager, energy sites gradients
     gc = grm.energies_sites(
       sites_cart        = fmdc.xray_structure.sites_cart(),
       compute_gradients = True).gradients
   elif u_iso:
-    # Create energies_site gradient, to create
-    # geometry_restraints_manager.plain_pair_sym_table
-    # needed for the energies_adp_iso
+    # Create energies_site gradient, to create geometry_restraints_manager
+    # plain_pair_sym_table needed for the energies_adp_iso
     import mmtbx.refinement.adp_refinement
     temp = mmtbx.refinement.adp_refinement.adp_restraints_master_params
     iso_restraints = temp.extract().iso
@@ -404,26 +434,15 @@ def get_weight(minimization_obj=None,
       use_u_local_only  = iso_restraints.use_u_local_only,
       use_hd            = False,
       compute_gradients = True).gradients
-  elif transformations and have_transforms:
-    xyz_ncs = get_ncs_sites_cart(
-      fmodel=fmodel, extended_ncs_selection=extended_ncs_selection)
-    xray.set_scatterer_grad_flags(
-      scatterers = fmdc.xray_structure.scatterers(),
-      site       = True)
-    # fmodel gradients
-    gxc_xyz = flex.vec3_double(fmdc.one_time_gradients_wrt_atomic_parameters(
-      site = True).packed())
-    # manager restraints, energy sites gradients
-    gc_xyz = grm.energies_sites(
-      sites_cart        = fmdc.xray_structure.sites_cart(),
-      compute_gradients = True).gradients
+  if transformations and have_transforms:
+    # Apply NCS relations to gradients
     gxc = compute_transform_grad(
-      grad_wrt_xyz      = gxc_xyz.as_double(),
+      grad_wrt_xyz      = gxc.as_double(),
       ncs_restraints_group_list = ncs_restraints_group_list,
       xyz_asu           = fmdc.xray_structure.sites_cart(),
       x                 = x)
     gc = compute_transform_grad(
-      grad_wrt_xyz      = gc_xyz.as_double(),
+      grad_wrt_xyz      = gc.as_double(),
       ncs_restraints_group_list = ncs_restraints_group_list,
       xyz_asu           = fmdc.xray_structure.sites_cart(),
       x                 = x)
@@ -434,12 +453,16 @@ def get_weight(minimization_obj=None,
   if(gxc_norm != 0.0):
     weight = gc_norm / gxc_norm
 
-  weight =min(weight,1e6)
+  weight =min(weight,1e6) # limit the weight max value
   return weight
 
 def get_restraints_manager(pdb_file_name=None,pdb_string=None,
-                           normalization=True):
-  """  Generate restraint manager from a PDB file or a PDB string  """
+                           normalization=True,return_data_num=False):
+  """  Generate restraint manager from a PDB file or a PDB string
+
+  Args:
+    return_data_num (bool): when True, return the number of restraints
+  """
   assert [pdb_file_name,pdb_string].count(None)==1
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
@@ -460,7 +483,14 @@ def get_restraints_manager(pdb_file_name=None,pdb_string=None,
   restraints_manager = mmtbx.restraints.manager(
     geometry = geometry,
     normalization = normalization)
-  return restraints_manager
+
+  if return_data_num:
+    proxies = [x for x in dir(geometry) if ('proxies' in x) and (x[0] != '_')]
+    len_str = lambda x: 'geometry' + '.' + x + '.__sizeof__()'
+    n_data = sum([eval(len_str(x)) for x in proxies])
+    return restraints_manager, n_data
+  else:
+    return restraints_manager
 
 def apply_transforms(ncs_coordinates,
                      ncs_restraints_group_list,
@@ -830,3 +860,43 @@ def get_refine_selection(refine_selection,xray_structure):
       selection_list = range(xray_structure.sites_cart().size())
       refine_selection = flex.size_t(selection_list)
   return refine_selection
+
+def iselection_ncs_to_asu(iselection_ncs,ncs_chain_id,hierarchy_asu):
+  """
+  Convert iselection of NCS related atoms in the NCS copy to the ASU iselection
+
+  Args:
+    ncs_len (int)
+    ncs_chain_id (str)
+    iselection_ncs (flex.size_t)
+    hierarchy_asu hierarchy object)
+
+  Returns:
+    iselection_asu (flex.size_t)
+  """
+  asu_len = hierarchy_asu.atoms().size()
+  atom_cache = hierarchy_asu.atom_selection_cache().selection
+  sel = atom_cache('chain ' + ncs_chain_id)
+  hierarchy_ncs = hierarchy_asu.select(sel)
+  sel = sel.iselection()
+  offset = min(list(sel))
+  iselection_ncs += offset
+  selection_bool = flex.bool(asu_len,iselection_ncs)
+  return selection_bool.iselection()
+
+def iselection_asu_to_ncs(iselection_asu,ncs_chain_id,hierarchy_asu):
+  """
+  Convert iselection of NCS related atoms in the NCS copy to the ASU iselection
+
+  Args:
+    ncs_chain_id (str)
+    iselection_asu (flex.size_t)
+    hierarchy_ncs (hierarchy object)
+
+  Returns:
+    iselection_ncs (flex.size_t)
+  """
+  atom_cache = hierarchy_asu.atom_selection_cache()
+  ph_ncs_select = atom_cache.selection('chain ' + ncs_chain_id)
+  chain_start =  min(list(ph_ncs_select.iselection()))
+  return iselection_asu - chain_start

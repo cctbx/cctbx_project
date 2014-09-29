@@ -1,17 +1,15 @@
 from __future__ import division
-import unittest
-import sys
-
-import mmtbx.maps.correlation
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 import mmtbx.ncs.ncs_utils as nu
-import iotbx.ncs
+import mmtbx.maps.correlation
 from scitbx import matrix
 import scitbx.rigid_body
 from iotbx import pdb
+import iotbx.ncs
+import unittest
 import math
-
+import sys
 
 test_pdb_str = '''\
 ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
@@ -512,6 +510,23 @@ class Test_ncs_utils(unittest.TestCase):
     assert [round(x,1) for x in cc] == [0.5,0.8,0.5]
     assert best_list == [1]
 
+  def test_iselection_ncs_to_asu(self):
+    print sys._getframe().f_code.co_name
+    pdb_inp = pdb.input(lines=pdb_answer_0,source_info=None)
+    ph = pdb_inp.construct_hierarchy()
+    isel_asu = flex.size_t([8,9,13])
+    isel_ncs = isel_asu - 7
+    results = nu.iselection_ncs_to_asu(isel_ncs,'B',ph)
+    self.assertEqual(list(isel_asu),list(results))
+
+  def test_iselection_asu_to_ncs(self):
+    print sys._getframe().f_code.co_name
+    pdb_inp = pdb.input(lines=pdb_answer_0,source_info=None)
+    ph = pdb_inp.construct_hierarchy()
+    isel_asu = flex.size_t([8,9,13])
+    isel_ncs = isel_asu - 7
+    results = nu.iselection_asu_to_ncs(isel_asu,'B',ph)
+    self.assertEqual(list(isel_ncs),list(results))
 
 def run_selected_tests():
   """  Run selected tests
