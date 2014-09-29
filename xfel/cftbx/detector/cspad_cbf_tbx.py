@@ -174,6 +174,25 @@ def read_slac_metrology(path, plot=False):
 
   return metro
 
+def env_dxtbx_from_slac_metrology(env, src):
+  """ Loads a dxtbx cspad cbf header only object from the metrology path stored
+      in a psana environment object's calibration store
+      @param env psana environment object
+      @param env psana DataSource
+  """
+  from psana import ndarray_uint8_1
+  cls = env.calibStore()
+  path_nda = cls.get(ndarray_uint8_1, src, 'geometry-calib')
+  if path_nda is None:
+    return None
+  metro_path = ''.join(map(chr, path_nda))
+
+  metro = read_slac_metrology(metro_path)
+  cbf = get_cspad_cbf_handle(None, metro, 'cbf', None, "test", None, 100, verbose = True, header_only = True)
+
+  from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
+  return FormatCBFCspadInMemory(cbf)
+
 def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, address):
   """
   Given a preloaded dxtbx format object and raw data, assemble the tiles

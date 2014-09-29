@@ -1,7 +1,7 @@
 from __future__ import division
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
-# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.mpi_average
+# LIBTBX_SET_DISPATCHER_NAME cxi.mpi_average
 #
 
 from psana import *
@@ -24,7 +24,12 @@ def average(argv=None):
     raise Sorry("MPI not found")
 
   command_line = (libtbx.option_parser.option_parser(
-    usage="%s -c config -x experiment -a address -r run -d detz_offset [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-v]" % libtbx.env.dispatcher_name)
+    usage="%s -p -c config -x experiment -a address -r run -d detz_offset [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-v]" % libtbx.env.dispatcher_name)
+                .option(None, "--as_pickle", "-p",
+                        action="store_true",
+                        default=False,
+                        dest="as_pickle",
+                        help="Write results as image pickle files instead of cbf files")
                 .option(None, "--config", "-c",
                         type="string",
                         default=None,
@@ -51,24 +56,24 @@ def average(argv=None):
                         default=None,
                         dest="detz_offset",
                         help="offset (in mm) from sample interaction region to back of CSPAD detector rail (CXI), or detector distance (XPP)")
-                .option(None, "--averagepath", "-A",
+                .option(None, "--averagebase", "-A",
                         type="string",
-                        default="{experiment!l}_avg-r{run:04d}.pickle",
+                        default="{experiment!l}_avg-r{run:04d}",
                         dest="averagepath",
                         metavar="PATH",
-                        help="Path to output average image. String substitution allowed")
-                .option(None, "--stddevpath", "-S",
+                        help="Path to output average image without extension. String substitution allowed")
+                .option(None, "--stddevbase", "-S",
                         type="string",
-                        default="{experiment!l}_stddev-r{run:04d}.pickle",
+                        default="{experiment!l}_stddev-r{run:04d}",
                         dest="stddevpath",
                         metavar="PATH",
-                        help="Path to output standard deviation image. String substitution allowed")
-                .option(None, "--maxpath", "-M",
+                        help="Path to output standard deviation image without extension. String substitution allowed")
+                .option(None, "--maxbase", "-M",
                         type="string",
-                        default="{experiment!l}_max-r{run:04d}.pickle",
+                        default="{experiment!l}_max-r{run:04d}",
                         dest="maxpath",
                         metavar="PATH",
-                        help="Path to output maximum projection image. String substitution allowed")
+                        help="Path to output maximum projection image without extension. String substitution allowed")
                 .option(None, "--numevents", "-n",
                         type="int",
                         default=None,
@@ -83,6 +88,7 @@ def average(argv=None):
 
 
   if len(command_line.args) > 0 or \
+      command_line.options.as_pickle is None or \
       command_line.options.config is None or \
       command_line.options.experiment is None or \
       command_line.options.run is None or \
@@ -209,58 +215,77 @@ def average(argv=None):
     saturated_value = cspad_tbx.dynamic_range
     timestamp = timeall[0] / totevent[0]
     timestamp = (int(timestamp), timestamp % int(timestamp) * 1000)
+    timestamp = cspad_tbx.evt_timestamp(timestamp)
 
-    sections = parse_calib.calib2sections(libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0"))
-    beam_center, active_areas = cspad_tbx.cbcaa(
-      cspad_tbx.getConfig(address, ds.env()), sections)
+    if command_line.options.as_pickle:
+      extension = ".pickle"
+    else:
+      extension = ".cbf"
 
-    class fake_quad(object):
-      def __init__(self, q, d):
-        self.q = q
-        self.d = d
+    dest_paths = [cspad_tbx.pathsubst(command_line.options.averagepath + extension, evt, ds.env()),
+                  cspad_tbx.pathsubst(command_line.options.stddevpath  + extension, evt, ds.env()),
+                  cspad_tbx.pathsubst(command_line.options.maxpath     + extension, evt, ds.env())]
 
-      def quad(self):
-        return self.q
+    if command_line.options.as_pickle:
+      sections = parse_calib.calib2sections(libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0"))
+      beam_center, active_areas = cspad_tbx.cbcaa(
+        cspad_tbx.getConfig(address, ds.env()), sections)
 
-      def data(self):
-        return self.d
+      class fake_quad(object):
+        def __init__(self, q, d):
+          self.q = q
+          self.d = d
 
-    quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in xrange(4)]
-    mean = cspad_tbx.CsPadDetector(
-      address, evt, ds.env(), sections, quads=quads)
-    mean = flex.double(mean.astype(np.float64))
+        def quad(self):
+          return self.q
 
-    quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in xrange(4)]
-    stddev = cspad_tbx.CsPadDetector(
-      address, evt, ds.env(), sections, quads=quads)
-    stddev = flex.double(stddev.astype(np.float64))
+        def data(self):
+          return self.d
 
-    quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
-    maxall = cspad_tbx.CsPadDetector(
-      address, evt, ds.env(), sections, quads=quads)
-    maxall = flex.double(maxall.astype(np.float64))
+      quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+      mean = cspad_tbx.CsPadDetector(
+        address, evt, ds.env(), sections, quads=quads)
+      mean = flex.double(mean.astype(np.float64))
 
-    split_address = cspad_tbx.address_split(address)
-    old_style_address = split_address[0] + "-" + split_address[1] + "|" + split_address[2] + "-" + split_address[3]
+      quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+      stddev = cspad_tbx.CsPadDetector(
+        address, evt, ds.env(), sections, quads=quads)
+      stddev = flex.double(stddev.astype(np.float64))
 
-    dest_paths = [cspad_tbx.pathsubst(command_line.options.averagepath, evt, ds.env()),
-                  cspad_tbx.pathsubst(command_line.options.stddevpath,  evt, ds.env()),
-                  cspad_tbx.pathsubst(command_line.options.maxpath,     evt, ds.env())]
+      quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+      maxall = cspad_tbx.CsPadDetector(
+        address, evt, ds.env(), sections, quads=quads)
+      maxall = flex.double(maxall.astype(np.float64))
 
-    for data, path in zip([mean, stddev, maxall], dest_paths):
-      d = cspad_tbx.dpack(
-        active_areas=active_areas,
-        address=old_style_address,
-        beam_center_x=pixel_size * beam_center[0],
-        beam_center_y=pixel_size * beam_center[1],
-        data=data,
-        distance=distance,
-        pixel_size=pixel_size,
-        saturated_value=saturated_value,
-        timestamp=cspad_tbx.evt_timestamp(timestamp),
-        wavelength=wavelength)
+      split_address = cspad_tbx.address_split(address)
+      old_style_address = split_address[0] + "-" + split_address[1] + "|" + split_address[2] + "-" + split_address[3]
 
-      easy_pickle.dump(path, d)
+      for data, path in zip([mean, stddev, maxall], dest_paths):
+        d = cspad_tbx.dpack(
+          active_areas=active_areas,
+          address=old_style_address,
+          beam_center_x=pixel_size * beam_center[0],
+          beam_center_y=pixel_size * beam_center[1],
+          data=data,
+          distance=distance,
+          pixel_size=pixel_size,
+          saturated_value=saturated_value,
+          timestamp=timestamp,
+          wavelength=wavelength)
+
+        easy_pickle.dump(path, d)
+    else:
+      # load a header only cspad cbf from the slac metrology
+      from xfel.cftbx.detector import cspad_cbf_tbx
+      import pycbf
+      base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run.env(), src)
+      if base_dxtbx is None:
+        raise Sorry("Couldn't load calibration file for run %d"%run.run())
+
+      for data, path in zip([mean, stddev, maxall], dest_paths):
+        cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, address)
+        cspad_img._cbf_handle.write_widefile(path, pycbf.CBF,\
+          pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
 
 
 if (__name__ == "__main__"):
