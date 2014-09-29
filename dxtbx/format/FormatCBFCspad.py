@@ -51,26 +51,9 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
       orig = col((d_mat[2],d_mat[5],d_mat[8]))
 
       if is_panel:
-        has_sections = True
-        try:
-          cbf.find_category("array_structure_list_section")
-        except Exception, e:
-          if "CBF_NOTFOUND" not in str(e): raise e
-          has_sections = False
-
-        if has_sections:
-          # figure out which panel number this panel is by finding it in array_structure_list_section
-          cbf.find_category("array_structure_list_section")
-          cbf.find_column("id")
-          array_num = 0
-          current = None # skip rows we've already examined
-          for i in xrange(cbf.count_rows()):
-            if current != cbf.get_value():
-              if group.get_name() == cbf.get_value():
-                break
-              current = cbf.get_value()
-              array_num += 1
-            cbf.next_row()
+        if cbf.has_sections():
+          # use the pre-mapping
+          cbf_detector = group._cbf_detector
         else:
           # figure out which panel number this panel is by finding it in diffrn_data_frame
           cbf.find_category("diffrn_data_frame")
@@ -79,7 +62,8 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
           cbf.find_column("binary_id")
           array_num = int(cbf.get_value()) - 1
 
-        cbf_detector = cbf.construct_detector(array_num)
+          cbf_detector = cbf.construct_detector(array_num)
+
         axis0 = cbf_detector.get_detector_surface_axes(0)
         axis1 = cbf_detector.get_detector_surface_axes(1)
         assert cbf.get_axis_depends_on(axis0) == axis1
@@ -147,7 +131,41 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
     root = detector.hierarchy()
     assert len(root) == 4
 
-    recursive_sync(self._cbf_handle, root, True)
+    cbf = self._cbf_handle
+    if cbf.has_sections():
+      """
+      when using sections, the order of the panels in the detector object doesn't match the
+      order returned by cbflib's construct_detector.  The mapping between them is found
+      in the table array_structure list, which maps an array_section_id to axis_set_id,
+      which can then be matchedup with the axes of the object returned by construct_detector
+      """
+      all_cbfdetectors = [cbf.construct_detector(i) for i in xrange(len(detector))]
+      all_panelnames = [panel.get_name() for panel in detector]
+
+      # map the array_section_ids, which match the panel names, to their root axis names
+      panel_name_mapping = {}
+      cbf.find_category("array_structure_list")
+      for i in xrange(cbf.count_rows()):
+        cbf.find_column("array_section_id")
+        name = cbf.get_value()
+        if name in all_panelnames and name not in panel_name_mapping.values():
+          cbf.find_column("axis_set_id")
+          panel_name_mapping[cbf.get_value()] = name
+        cbf.next_row()
+
+      # map the panel names (same as array_section_ids) to specific cbf detector objects
+      mapped_detectors = {}
+      for cbf_d in all_cbfdetectors:
+        root_axis = cbf_d.get_detector_surface_axes(0)
+        mapped_detectors[panel_name_mapping[root_axis]] = cbf_d
+
+      # save the mapped cbf detector objects on the panel objects
+      for quad in detector.hierarchy():
+        for sensor in quad:
+          for panel in sensor:
+            panel._cbf_detector = mapped_detectors[panel.get_name()]
+
+    recursive_sync(cbf, root, True)
 
 class FormatCBFCspadInMemory(FormatCBFCspad):
   """ Overrides the Format object's init method to accept a cbf handle instead
