@@ -104,9 +104,10 @@ cablam_validate {
 #This object holds information on one residue for purposes of cablam_validate
 #It's mostly just a package for data passing and access
 class cablam_validation(object):
-  def __init__(self, residue=None,outlier_level=None):
+  def __init__(self, residue=None,outlier_level=None,ca_geom_outlier_level=None):
     self.residue = residue #cablam_res.linked_residue object
     self.outlier_level = outlier_level #percentile level in "peptide_expectations" contours
+    self.ca_geom_outlier_level = ca_geom_outlier_level
     self.loose_alpha  = None #percentile level in motif contour
     self.regular_alpha= None #percentile level in motif contour
     self.loose_beta   = None #percentile level in motif contour
@@ -453,26 +454,49 @@ def find_ca_outliers(resdata,expectations,cutoff=0.005):
       if percentile < cutoff:
         outliers[resid] = cablam_validation(residue=residue,outlier_level=percentile)
   return outliers
+
+def find_all_residue_stats(resdata,peptide_expectations,ca_geom_expectations):
+  residue_stats = {}
+  reskeys = resdata.keys()
+  reskeys.sort()
+  for resid in reskeys:
+    residue = resdata[resid]
+    if 'CA_d_in' in residue.measures and 'CA_d_out' in residue.measures and 'CO_d_in' in residue.measures and 'CA_a' in residue.measures:
+      peptide_point = [residue.measures['CA_d_in'],residue.measures['CA_d_out'],residue.measures['CO_d_in']]
+      ca_geom_point = [residue.measures['CA_d_in'],residue.measures['CA_d_out'],residue.measures['CA_a']]
+      resname = residue.alts[residue.firstalt('CA')]['resname']
+      if resname.upper() == 'GLY':
+        peptide_percentile = peptide_expectations['gly'].valueAt(peptide_point)
+        ca_geom_percentile = ca_geom_expectations['gly'].valueAt(ca_geom_point)
+      elif resname.upper() == 'PRO':
+        peptide_percentile = peptide_expectations['pro'].valueAt(peptide_point)
+        ca_geom_percentile = ca_geom_expectations['pro'].valueAt(ca_geom_point)
+      else:
+        peptide_percentile = peptide_expectations['general'].valueAt(peptide_point)
+        ca_geom_percentile = ca_geom_expectations['general'].valueAt(ca_geom_point)
+
+      residue_stats[resid] = cablam_validation(residue=residue,outlier_level=peptide_percentile,ca_geom_outlier_level=ca_geom_percentile)
+  return residue_stats
 #-------------------------------------------------------------------------------
 #}}}
 
 #{{{ helix_or_sheet (wrapper) and helix_or_sheet_res
 #-------------------------------------------------------------------------------
 #Labels individual residues as alpha or beta
-def helix_or_sheet(outliers, motifs):
+def helix_or_sheet(residue_stats, motifs):
   alpha_cutoff = 0.001
   beta_cutoff = 0.0001
   threeten_cutoff = 0.001
-  for outlier in outliers.values():
-    residue = outlier.residue
+  for res_stat in residue_stats.values():
+    residue = res_stat.residue
     contours = helix_or_sheet_res(residue, motifs)
     if contours:
-      outlier.loose_alpha   = contours['loose_alpha']
-      outlier.regular_alpha = contours['regular_alpha']
-      outlier.loose_beta    = contours['loose_beta']
-      outlier.regular_beta  = contours['regular_beta']
-      outlier.loose_threeten= contours['loose_threeten']
-      outlier.regular_threeten = contours['regular_threeten']
+      res_stat.loose_alpha   = contours['loose_alpha']
+      res_stat.regular_alpha = contours['regular_alpha']
+      res_stat.loose_beta    = contours['loose_beta']
+      res_stat.regular_beta  = contours['regular_beta']
+      res_stat.loose_threeten= contours['loose_threeten']
+      res_stat.regular_threeten = contours['regular_threeten']
 
 #this single-residue level of the check is intentionally independent from the
 #  cablam_validation class in case getting contour levels for a single residue
@@ -487,6 +511,37 @@ def helix_or_sheet_res(residue, motifs):
   else:
     return None
 #-------------------------------------------------------------------------------
+#}}}
+
+#{{{ assign_sec_struc
+def assign_sec_struc(residues):
+  alpha_cutoff = 0.001
+  beta_cutoff = 0.0001
+  threeten_cutoff = 0.001
+  ca_geom_cutoff = 0.005
+  for resid in residues:
+    res = residues[resid]
+    res.suggestion = '                 '
+    if res.ca_geom_outlier_level < ca_geom_cutoff:
+      continue
+    if res.loose_alpha >= alpha_cutoff:
+      try:
+        if residues[res.residue.prevres.resid].loose_alpha >= alpha_cutoff and residues[res.residue.nextres.resid].loose_alpha >= alpha_cutoff:
+          res.suggestion = ' try alpha helix '
+      except KeyError:
+        pass
+    if res.regular_beta >= beta_cutoff:
+      try:
+        if residues[res.residue.prevres.resid].regular_beta >= beta_cutoff and residues[res.residue.nextres.resid].regular_beta >= beta_cutoff:
+          res.suggestion = ' try beta sheet  '
+      except KeyError:
+        pass
+    if res.loose_threeten >= threeten_cutoff and res.loose_threeten > res.loose_alpha:
+      try:
+        if residues[res.residue.prevres.resid].loose_threeten >= threeten_cutoff or residues[res.residue.nextres.resid].loose_threeten >= threeten_cutoff:
+          res.suggestion = ' try threeten    '
+      except KeyError:
+        pass
 #}}}
 
 #{{{ find_partial_sec_struc function
@@ -527,17 +582,17 @@ def find_partial_sec_struc(resdata,ca_outliers={}):
       continue
 
     #loose alpha
-    if allres[resid].loose_alpha > loose_alpha_cutoff:
+    if allres[resid].loose_alpha >= loose_alpha_cutoff:
       try:
-        if allres[residue.nextres.resid].loose_alpha > loose_alpha_cutoff and allres[residue.prevres.resid].loose_alpha > loose_alpha_cutoff:
+        if allres[residue.nextres.resid].loose_alpha >= loose_alpha_cutoff and allres[residue.prevres.resid].loose_alpha >= loose_alpha_cutoff:
           residue.motif_guess.loose_alpha = True
       except KeyError:
         pass
 
     #loose beta
-    if allres[resid].regular_beta > reg_beta_cutoff:
+    if allres[resid].regular_beta >= reg_beta_cutoff:
       try:
-        if allres[residue.nextres.resid].regular_beta > reg_beta_cutoff and allres[residue.prevres.resid].regular_beta > reg_beta_cutoff:
+        if allres[residue.nextres.resid].regular_beta >= reg_beta_cutoff and allres[residue.prevres.resid].regular_beta >= reg_beta_cutoff:
           residue.motif_guess.regular_beta = True
           residue.prevres.motif_guess.regular_beta = True
           residue.nextres.motif_guess.regular_beta = True
@@ -545,9 +600,9 @@ def find_partial_sec_struc(resdata,ca_outliers={}):
         pass
 
     #loose 3-10
-    if (allres[resid].loose_threeten > loose_threeten_cutoff) and (allres[resid].loose_threeten > allres[resid].loose_alpha):
+    if (allres[resid].loose_threeten >= loose_threeten_cutoff) and (allres[resid].loose_threeten > allres[resid].loose_alpha):
       try:
-        if allres[residue.nextres.resid].loose_threeten > loose_threeten_cutoff or allres[residue.prevres.resid].loose_threeten > loose_threeten_cutoff:
+        if allres[residue.nextres.resid].loose_threeten >= loose_threeten_cutoff or allres[residue.prevres.resid].loose_threeten >= loose_threeten_cutoff:
           residue.motif_guess.loose_threeten = True
       except KeyError:
         pass
@@ -681,13 +736,20 @@ def print_helix_sheet_records(hierarchy, ca_cutoff=0.005, pdbid='pdbid',writeto=
 #-------------------------------------------------------------------------------
 #}}}
 
+#{{{ print_pdb_with_new_helix_sheet_records function
+#-------------------------------------------------------------------------------
 def print_pdb_with_new_helix_sheet_records(hierarchy, ca_cutoff=0.005, pdbid='pdbid', writeto=sys.stdout):
   #This function prints CaBLAM-based HELIX and SHEET records as part of a pdb
   #  file.
   print_helix_sheet_records(hierarchy, ca_cutoff, pdbid, writeto)
   writeto.write(hierarchy.as_pdb_string())
+#-------------------------------------------------------------------------------
+#}}}
 
+#{{{ print_cablam_markup_kin function
+#-------------------------------------------------------------------------------
 def print_cablam_markup_kin(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0.005, pdbid='pdbid', writeto=sys.stdout):
+  #This function prints the three main kinemage markup vectorlists
   resdata=setup(hierarchy,pdbid)
   peptide_expectations = fetch_peptide_expectations()
   ca_expectations = fetch_ca_expectations()
@@ -701,6 +763,8 @@ def print_cablam_markup_kin(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0
   ca_outliers = find_ca_outliers(resdata,ca_expectations,cutoff=ca_cutoff)
   helix_or_sheet(ca_outliers,motif_contours)
   give_ca_kin(ca_outliers, ca_cutoff, writeto=writeto)
+#-------------------------------------------------------------------------------
+#}}}
 
 #{{{ cablam_multicrit_kin function
 #-------------------------------------------------------------------------------
@@ -811,7 +875,7 @@ def give_ca_kin(outliers, outlier_cutoff, writeto=sys.stdout):
   writeto.write('\n')
 
 
-def give_points(outliers, writeto=sys.stdout):
+def give_points(outliers, outlier_cutoff=0.05, writeto=sys.stdout):
   #This prints a dotlist in kinemage format
   #Each dot is one outlier residue in 3D space for visual comparison to expected
   #  behavior contours
@@ -822,6 +886,8 @@ def give_points(outliers, writeto=sys.stdout):
   reskeys.sort()
   for resid in reskeys:
     outlier = outliers[resid]
+    if outlier.outlier_level >= outlier_cutoff:
+      continue
     residue = outlier.residue
     if 'CA_d_in' in residue.measures and 'CA_d_out' in residue.measures and 'CO_d_in' in residue.measures:
       cablam_point = [residue.measures['CA_d_in'],residue.measures['CA_d_out'],residue.measures['CO_d_in']]
@@ -832,13 +898,25 @@ def give_text(outliers, writeto=sys.stdout):
   #This prints a comma-separated line of data for each outlier residue
   #Intended for easy machine readability
   #writeto.write('\nresidue,contour_level,loose_alpha,regular_alpha,loose_beta,regular_beta,threeten')
-  writeto.write('residue,contour_level,loose_alpha,regular_beta,threeten')
+  writeto.write('residue : outlier_type : contour_level : ca_contour_level : sec struc recommendation : alpha score : beta score : threeten score')
   reskeys = outliers.keys()
   reskeys.sort()
   for resid in reskeys:
     outlier = outliers[resid]
+    if outlier.ca_geom_outlier_level < 0.005:
+      outlier_type = ' CA Geo Outlier     '
+    elif outlier.outlier_level < 0.01:
+      outlier_type = ' Peptide Outlier    '
+    elif outlier.outlier_level < 0.05:
+      outlier_type = ' Peptide Disfavored '
+    else:
+      outlier_type =   '                    '
     #outlist = [outlier.residue.mp_id(), '%.5f' %outlier.outlier_level, '%.5f' %outlier.loose_alpha, '%.5f' %outlier.regular_alpha, '%.5f' %outlier.loose_beta, '%.5f' %outlier.regular_beta, '%.5f' %outlier.loose_threeten]
-    outlist = [outlier.residue.mp_id(), '%.5f' %outlier.outlier_level, '%.5f' %outlier.loose_alpha, '%.5f' %outlier.regular_beta, '%.5f' %outlier.loose_threeten]
+    #try:
+    outlist = [outlier.residue.mp_id(), outlier_type, '%.5f' %outlier.outlier_level, '%.5f' %outlier.ca_geom_outlier_level, outlier.suggestion, '%.5f' %outlier.loose_alpha, '%.5f' %outlier.regular_beta, '%.5f' %outlier.loose_threeten]
+    #except TypeError:
+    #  print '\n',outlier.residue.mp_id(), outlier_type, outlier.outlier_level, outlier.ca_geom_outlier_level, outlier.loose_alpha, outlier.regular_beta, outlier.loose_threeten
+    #  sys.exit()
     writeto.write('\n'+':'.join(outlist))
   writeto.write('\n')
 #-------------------------------------------------------------------------------
@@ -917,12 +995,14 @@ def oneline(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0
 def analyze_pdb(hierarchy, outlier_cutoff=0.05, pdbid='pdbid'):
   resdata=setup(hierarchy,pdbid)
   peptide_expectations = fetch_peptide_expectations()
+  ca_geom_expectations = fetch_ca_expectations()
   motifs = fetch_motifs()
 
-  outliers = find_peptide_outliers(resdata, peptide_expectations, cutoff=outlier_cutoff)
-  helix_or_sheet(outliers, motifs)
+  residue_stats = find_all_residue_stats(resdata, peptide_expectations, ca_geom_expectations)
+  helix_or_sheet(residue_stats, motifs)
+  assign_sec_struc(residue_stats)
 
-  return outliers
+  return residue_stats
 
 #Alternative call to find ca-trace outliers
 def analyze_pdb_ca(hierarchy, outlier_cutoff=0.005, pdbid='pdbid'):
@@ -1039,7 +1119,7 @@ def run(args):
       if params.output=='kin':
         give_kin(outliers,params.outlier_cutoff)
       if params.output=='points':
-        give_points(outliers)
+        give_points(outliers,params.outlier_cutoff)
       if params.output=='text':
         give_text(outliers)
 #-------------------------------------------------------------------------------
