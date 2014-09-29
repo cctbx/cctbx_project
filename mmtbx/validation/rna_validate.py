@@ -300,12 +300,17 @@ class rna_puckers (rna_geometry) :
 class rna_suites (rna_geometry) :
   output_header = "#suiteID:suite:suiteness:triaged_angle"
   label = "Backbone torsion suites"
-  gui_list_headers = ["Chain", "Residue", "Altloc", "Triaged angles"]
+  gui_list_headers = ["Chain", "Residue", "Altloc", "Triaged angles",]
   gui_formats = ["%s"] * 4
   wx_column_widths = [200] * 4
+  __slots__ = rna_geometry.__slots__ + ["n_incomplete", "n_triaged",
+    "n_suites", "average_suiteness"]
   def __init__ (self, pdb_hierarchy, geometry_restraints_manager,
       outliers_only=True) :
     rna_geometry.__init__(self)
+    self.n_triaged = self.n_incomplete = self.n_suites = 0
+    self.average_suiteness = None
+    total_suiteness = 0
     suitename = "phenix.suitename -report -pointIDfields 7 -altIDfield 6  -"
     backbone_dihedrals = utils.get_rna_backbone_dihedrals(
       processed_pdb_file=None,
@@ -331,6 +336,7 @@ class rna_suites (rna_geometry) :
         if ('!!' in line) :
           if (temp2[3] == 'trig'):
             triaged_angle = temp2[6]
+            self.n_triaged += 1
           is_outlier = True
           self.n_outliers += 1
         if (is_outlier) or (not outliers_only) :
@@ -342,20 +348,36 @@ class rna_suites (rna_geometry) :
             icode = temp[4],
             suite = temp[6][9:11],
             suite_id = key,
-            suiteness = temp[6][12:17],
+            suiteness = suiteness,
             triaged_angle=triaged_angle,
             outlier=is_outlier))
+        if (triaged_angle is None) :
+          try :
+            total_suiteness += float(suiteness)
+            self.n_suites += 1
+          except ValueError :
+            self.n_incomplete += 1
+    if (self.n_suites > 0) :
+      self.average_suiteness = total_suiteness / self.n_suites
 
   def get_result_class (self) : return rna_suite
 
   def show_summary (self, out=sys.stdout, prefix="") :
     if (self.n_total == 0) :
       print >> out, prefix + "No RNA suites found."
-    elif (self.n_outliers == 0) :
-      print >> out, prefix + "All RNA torsion suites are reasonable."
     else :
-      print >> out, prefix + "%d/%d suite outliers present" % (self.n_outliers,
-        self.n_total)
+      if hasattr(self, "n_triaged") :
+        print >> out, prefix + \
+          "%d suites triaged and %d incomplete leaving %d suites" %\
+          (self.n_triaged, self.n_incomplete, self.n_suites)
+      if (self.n_outliers == 0) :
+        print >> out, prefix + "All RNA torsion suites are reasonable."
+      else :
+        print >> out, prefix + "%d/%d suite outliers present" % \
+          (self.n_outliers, self.n_total)
+      if hasattr(self, "average_suiteness") :
+        print >> out, prefix + "Average suiteness: %s" % format_value("%.3f",
+          self.average_suiteness)
 
 class rna_validation (slots_getstate_setstate):
   __slots__ = ["bonds", "angles", "puckers", "suites"]
