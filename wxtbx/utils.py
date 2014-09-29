@@ -150,10 +150,6 @@ class LogViewer (wx.TextCtrl) :
       except UnicodeDecodeError, e :
         print "warning: %s (string = '%s')" % (str(e), text)
         return
-    # bug in version 2.9 necessitates setting font to something else before
-    # overriding it
-    if (wx.Platform == '__WXMSW__') and (wx.VERSION >= (2,9)):
-      self.SetFont(wx.Font(21, wx.MODERN, wx.NORMAL, wx.NORMAL))
     self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
     wx.TextCtrl.WriteText(self, text)
 
