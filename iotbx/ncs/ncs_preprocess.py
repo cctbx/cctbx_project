@@ -1100,7 +1100,6 @@ class ncs_group_object(object):
         print >> log,pdb_header_str
         print >> log,transform_rec
         print >> log,new_ph_str
-
     return '\n'.join([pdb_header_str,transform_rec,new_ph_str])
 
   def get_ncs_info_as_spec(
@@ -1110,25 +1109,28 @@ class ncs_group_object(object):
           fmodel=None,
           file_name=None,
           log = sys.stdout,
+          format_for_resolve=False,
+          format_for_phenix_refine=False,
           write=False):
     """
-    Returns and writes to a ncs spec file or prints transformation records.
-    Note that the spec_object has methods format_all_for_resolve
-    and format_all_for_phenix_refine
+    Returns ncs spec object and can prints ncs info in a ncs_spec,
+    format_all_for_resolve or format_all_for_phenix_refine format
 
     Note that while ncs_groups can master ncs can be comprised from several
     chains, the spec groups can not. So groups with multiple chains in the
     master selection are splitted
 
-    Arguments:
-    file_name: (str) output file name
-    pdb_hierarchy: (pdb_hierarchy object)
-    xrs: (xray structure) for crystal symmetry
-    fmodel: (fmodel object)
-    write: (bool) when False, will not write to file or print
+    Args:
+      file_name: (str) output file name
+      pdb_hierarchy: (pdb_hierarchy object)
+      xrs: (xray structure) for crystal symmetry
+      fmodel: (fmodel object)
+      write: (bool) when False, will not write to file or print
+      format_for_resolve (bool): Select output format when writing
+      format_for_phenix_refine (bool): Select output format when writing
 
     Return:
-    spec_object
+      spec_object
     """
     spec_object = ncs.ncs()
     if fmodel:
@@ -1182,9 +1184,53 @@ class ncs_group_object(object):
           residues_in_common_list = residues_in_common_list,
           ncs_domain_pdb = None)
     if write:
-      spec_object.format_all_for_group_specification(
-        file_name=file_name,log=log)
+      if format_for_resolve:
+        spec_object.format_all_for_resolve(log=log)
+      elif format_for_phenix_refine:
+        spec_object.format_all_for_phenix_refine(log=log)
+      else:
+        spec_object.format_all_for_group_specification(
+          file_name=file_name,log=log)
     return spec_object
+
+  def print_ncs_phil_param(self,write=False,log=sys.stdout):
+    """
+    Prints NCS information in the phil parameters format
+    lines longer that 80 characters are folded
+
+    Phil structure example:
+      ncs_group {
+        master_selection = 'chain A'
+        copy_selection = 'chain C'
+        copy_selection = 'chain E'
+      }
+      ncs_group {
+        master_selection = 'chain B'
+        copy_selection = 'chain D'
+        copy_selection = 'chain F'
+      }
+
+    Args:
+      write (bool): when true, print to log
+      log : location of output, an open file or sys.stdout
+
+    Returns:
+      (str): NCS phil paramter string
+    """
+    groups = []
+    for master, copies in self.ncs_to_asu_selection.iteritems():
+      master = format_80(master)
+      groups.append('ncs_group {')
+      groups.append("  master_selection = {}".format(master))
+      for cp in copies:
+        cp = format_80(cp)
+        groups.append("  copy_selection = {}".format(cp))
+      groups.append('}')
+    gr = '\n'.join(groups)
+    gr += '\n'
+    if write:
+      print >> log,gr
+    return gr
 
   def build_asu_hierarchy(self,
                           pdb_hierarchy,
@@ -1235,6 +1281,26 @@ def add_to_dict(d,k,v):
   else:
     d[k] = [v]
   return d
+
+def format_80(s):
+  """
+  Split string that is longer than 80 characters to several lines
+
+  Args:
+    s (str)
+
+  Returns:
+    ss (str): formatted string
+  """
+  i = 0
+  ss = ''
+  for x in s:
+    ss += x
+    i += 1
+    if i == 80:
+      i = 0
+      ss += ' \ \n'
+  return ss
 
 def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
   """
@@ -1774,9 +1840,11 @@ def get_minimal_master_ncs_group(pdb_hierarchy_inp,
 
   # find all groups with common masters and organize at same order
   for k,v in transform_to_group.iteritems():
+    # sort masters
     sorted_key = sorted(v[0])
     # organize at same order
     sort_map = [v[0].index(x) for x in sorted_key]
+    # adjust copies order
     v[1] = [v[1][i] for i in sort_map]
     key = '_'.join(sorted_key)
     if transform_dict.has_key(key):
