@@ -161,7 +161,7 @@ class ncs_minimization_test(object):
               not self.ncs_restraints_group_list: continue
       data_weight = None
       if(self.use_geometry_restraints):
-        data_weight = nu.get_weight(self)
+        data_weight = nu.get_weight(minimized_obj=self)
       target_and_grads_object = mmtbx.refinement.minimization_ncs_constraints.\
         target_function_and_grads_reciprocal_space(
           fmodel                 = self.fmodel,
