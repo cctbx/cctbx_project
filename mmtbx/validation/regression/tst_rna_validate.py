@@ -4,6 +4,7 @@ from mmtbx.command_line import rna_validate
 import mmtbx.validation.rna_validate
 from iotbx import file_reader
 from libtbx.easy_pickle import loads, dumps
+from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 import libtbx.load_env
 from cStringIO import StringIO
@@ -24,6 +25,7 @@ def exercise_1 () :
   assert len(rv.bonds.results) == 2
   assert len(rv.angles.results) == 14
   assert len(rv.suites.results) == 4
+  assert approx_equal(rv.suites.average_suiteness, 0.564246, eps=0.0001)
   pickle_unpickle(rv)
   pdb_in = file_reader.any_file(regression_pdb)
   result = mmtbx.validation.rna_validate.rna_validation(
