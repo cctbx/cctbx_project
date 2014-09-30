@@ -162,6 +162,92 @@ for G, G_s, B, B_s, rotx, rotx_s, roty, roty_s, ry, ry_s, rx, rx_s, \
   if n_cycle == i_row:
     break
 
+#convert absolute parameters to delta
+fpr_all_delta=np.array([0.0]*10)
+fxy_all_delta=np.array([0.0]*10)
+G_all_delta=np.array([0.0]*10)
+B_all_delta=np.array([0.0]*10)
+ry_all_delta=np.array([0.0]*10)
+rx_all_delta=np.array([0.0]*10)
+re_all_delta=np.array([0.0]*10)
+a_all_delta=np.array([0.0]*10)
+b_all_delta=np.array([0.0]*10)
+c_all_delta=np.array([0.0]*10)
+alpha_all_delta=np.array([0.0]*10)
+beta_all_delta=np.array([0.0]*10)
+gamma_all_delta=np.array([0.0]*10)
+
+fpr_std_delta=np.array([0.0]*10)
+fxy_std_delta=np.array([0.0]*10)
+G_std_delta=np.array([0.0]*10)
+B_std_delta=np.array([0.0]*10)
+ry_std_delta=np.array([0.0]*10)
+rx_std_delta=np.array([0.0]*10)
+re_std_delta=np.array([0.0]*10)
+a_std_delta=np.array([0.0]*10)
+b_std_delta=np.array([0.0]*10)
+c_std_delta=np.array([0.0]*10)
+alpha_std_delta=np.array([0.0]*10)
+beta_std_delta=np.array([0.0]*10)
+gamma_std_delta=np.array([0.0]*10)
+for i in range(i_row):
+  if i == 0:
+    fpr_all_delta[i] = fpr_all[i]
+    fpr_std_delta[i] = fpr_std[i]
+    fxy_all_delta[i] = fxy_all[i]
+    fxy_std_delta[i] = fxy_std[i]
+    G_all_delta[i] = G_all[i]
+    G_std_delta[i] = G_std[i]
+    B_all_delta[i] = B_all[i]
+    B_std_delta[i] = B_std[i]
+    ry_all_delta[i] = ry_all[i]
+    ry_std_delta[i] = ry_std[i]
+    rx_all_delta[i] = rx_all[i]
+    rx_std_delta[i] = rx_std[i]
+    re_all_delta[i] = re_all[i]
+    re_std_delta[i] = re_std[i]
+    a_all_delta[i] = a_all[i]
+    a_std_delta[i] = a_std[i]
+    b_all_delta[i] = b_all[i]
+    b_std_delta[i] = b_std[i]
+    c_all_delta[i] = c_all[i]
+    c_std_delta[i] = c_std[i]
+    alpha_all_delta[i] = alpha_all[i]
+    alpha_std_delta[i] = alpha_std[i]
+    beta_all_delta[i] = beta_all[i]
+    beta_std_delta[i] = beta_std[i]
+    gamma_all_delta[i] = gamma_all[i]
+    gamma_std_delta[i] = gamma_std[i]
+  else:
+    fpr_all_delta[i] = np.absolute(fpr_all[i] - fpr_all[i-1])
+    fpr_std_delta[i] = np.absolute(fpr_std[i] - fpr_std[i-1])
+    fxy_all_delta[i] = np.absolute(fxy_all[i] - fxy_all[i-1])
+    fxy_std_delta[i] = np.absolute(fxy_std[i] - fxy_std[i-1])
+    G_all_delta[i] = np.absolute(G_all[i] - G_all[i-1])
+    G_std_delta[i] = np.absolute(G_std[i] - G_std[i-1])
+    B_all_delta[i] = np.absolute(B_all[i] - B_all[i-1])
+    B_std_delta[i] = np.absolute(B_std[i] - B_std[i-1])
+    ry_all_delta[i] = np.absolute(ry_all[i] - ry_all[i-1])
+    ry_std_delta[i] = np.absolute(ry_std[i] - ry_std[i-1])
+    rx_all_delta[i] = np.absolute(rx_all[i] - rx_all[i-1])
+    rx_std_delta[i] = np.absolute(rx_std[i] - rx_std[i-1])
+    re_all_delta[i] = np.absolute(re_all[i] - re_all[i-1])
+    re_std_delta[i] = np.absolute(re_std[i] - re_std[i-1])
+    a_all_delta[i] = np.absolute(a_all[i] - a_all[i-1])
+    a_std_delta[i] = np.absolute(a_std[i] - a_std[i-1])
+    b_all_delta[i] = np.absolute(b_all[i] - b_all[i-1])
+    b_std_delta[i] = np.absolute(b_std[i] - b_std[i-1])
+    c_all_delta[i] = np.absolute(c_all[i] - c_all[i-1])
+    c_std_delta[i] = np.absolute(c_std[i] - c_std[i-1])
+    alpha_all_delta[i] = np.absolute(alpha_all[i] - alpha_all[i-1])
+    alpha_std_delta[i] = np.absolute(alpha_std[i] - alpha_std[i-1])
+    beta_all_delta[i] = np.absolute(beta_all[i] - beta_all[i-1])
+    beta_std_delta[i] = np.absolute(beta_std[i] - beta_std[i-1])
+    gamma_all_delta[i] = np.absolute(gamma_all[i] - gamma_all[i-1])
+    gamma_std_delta[i] = np.absolute(gamma_std[i] - gamma_std[i-1])
+
+
+
 #prepare data for plotting
 n_data = 200
 G_series = []
@@ -179,100 +265,102 @@ gamma_series = []
 beta_series = []
 fpr_series = []
 fxy_series = []
-for i in range(i_row):
-  if G_std[i] == 0:
+
+for i in range(1,i_row):
+  if G_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(G_all[i], G_std[i], n_data)
+    narr = np.random.normal(G_all_delta[i], G_std_delta[i], n_data)
+
   G_series.append(narr)
 
-  if B_std[i] == 0:
+  if B_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(B_all[i], B_std[i], n_data)
+    narr = np.random.normal(B_all_delta[i], B_std_delta[i], n_data)
   B_series.append(narr)
 
-  if rotx_std[i] == 0:
+  if rotx_std[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
     narr = np.random.normal(rotx_all[i], rotx_std[i], n_data)
   rotx_series.append(narr)
 
-  if roty_std[i] == 0:
+  if roty_std[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
     narr = np.random.normal(roty_all[i], roty_std[i], n_data)
   roty_series.append(narr)
 
-  if ry_std[i] == 0:
+  if ry_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(ry_all[i], ry_std[i], n_data)
+    narr = np.random.normal(ry_all_delta[i], ry_std_delta[i], n_data)
   ry_series.append(narr)
 
-  if rx_std[i] == 0:
+  if rx_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(rx_all[i], rx_std[i], n_data)
+    narr = np.random.normal(rx_all_delta[i], rx_std_delta[i], n_data)
   rx_series.append(narr)
 
-  if re_std[i] == 0:
-    narr = np.zeros(n_data)
+  if re_std_delta[i] < 0.0000001:
+    narr = np.random.normal(re_all_delta[i], 0.00001, n_data)
   else:
-    narr = np.random.normal(re_all[i], re_std[i], n_data)
+    narr = np.random.normal(re_all_delta[i], re_std_delta[i], n_data)
   re_series.append(narr)
 
-  if a_std[i] == 0:
+  if a_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(a_all[i], a_std[i], n_data)
+    narr = np.random.normal(a_all_delta[i], a_std_delta[i], n_data)
   a_series.append(narr)
 
-  if b_std[i] == 0:
+  if b_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(b_all[i], b_std[i], n_data)
+    narr = np.random.normal(b_all_delta[i], b_std_delta[i], n_data)
   b_series.append(narr)
 
-  if c_std[i] == 0:
+  if c_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(c_all[i], c_std[i], n_data)
+    narr = np.random.normal(c_all_delta[i], c_std_delta[i], n_data)
   c_series.append(narr)
 
-  if alpha_std[i] == 0:
+  if alpha_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(alpha_all[i], alpha_std[i], n_data)
+    narr = np.random.normal(alpha_all_delta[i], alpha_std_delta[i], n_data)
   alpha_series.append(narr)
 
-  if beta_std[i] == 0:
+  if beta_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(beta_all[i], beta_std[i], n_data)
+    narr = np.random.normal(beta_all_delta[i], beta_std_delta[i], n_data)
   beta_series.append(narr)
 
-  if gamma_std[i] == 0:
+  if gamma_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(gamma_all[i], gamma_std[i], n_data)
+    narr = np.random.normal(gamma_all_delta[i], gamma_std_delta[i], n_data)
   gamma_series.append(narr)
 
-  if fpr_std[i] == 0:
+  if fpr_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(fpr_all[i], fpr_std[i], n_data)
+    narr = np.random.normal(fpr_all_delta[i], fpr_std_delta[i], n_data)
   fpr_series.append(narr)
 
-  if fxy_std[i] == 0:
+  if fxy_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
-    narr = np.random.normal(fxy_all[i], fxy_std[i], n_data)
+    narr = np.random.normal(fxy_all_delta[i], fxy_std_delta[i], n_data)
   fxy_series.append(narr)
 
 
-x_range = range(1,i_row+1)
-x_label = ['Start']
+x_range = range(1,i_row)
+x_label = []
 for i in range(1,i_row):
   x_label.append(str(i))
 
@@ -281,93 +369,94 @@ font_plot = {'family':'Helvetica',
              'size'  : 12,
             }
 #begin plotting
-ax = plt.subplot(331, title='Fpr')
-plt.boxplot(fpr_series)
-plt.xticks(x_range, x_label)
-ax.title.set_fontweight('bold')
-ax.title.set_fontsize(12)
-
-ax = plt.subplot(332, title='Fxy')
-plt.boxplot(fxy_series)
-plt.xticks(x_range, x_label)
-ax.title.set_fontweight('bold')
-ax.title.set_fontsize(12)
-
-ax = plt.subplot(333, title='Linear scale factor (G)')
+ax = plt.subplot(331, title=r'$\Delta$G')
 plt.boxplot(G_series)
+#plt.ylabel(r'$\Delta$G', rotation=0)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(334, title='B-factor')
+ax = plt.subplot(332, title=r'$\Delta$B-factor')
 plt.boxplot(B_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(335, title=r'$\Delta$ rotation on x-axis ($\degree$)')
+ax = plt.subplot(333, title=r'$\Delta$rotation on x-axis ($\degree$)')
 plt.boxplot(rotx_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(336, title=r'$\Delta$ rotation on y-axis ($\degree$)')
+ax = plt.subplot(334, title=r'$\Delta$rotation on y-axis ($\degree$)')
 plt.boxplot(roty_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(337, title=r'$\gamma_y$')
+ax = plt.subplot(335, title=r'$\Delta\gamma_y (\frac{1}{\AA})$')
 plt.boxplot(ry_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(14)
 
-ax = plt.subplot(338, title=r'$\gamma_x$')
+ax = plt.subplot(336, title=r'$\Delta\gamma_x (\frac{1}{\AA})$')
 plt.boxplot(rx_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(14)
 
-ax = plt.subplot(339, title=r'$\gamma_e$')
+ax = plt.subplot(337, title=r'$\Delta\gamma_e (\frac{1}{\AA})$')
 plt.boxplot(re_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(14)
 
+ax = plt.subplot(338, title=r'$\Delta<F_{pr}>$')
+plt.boxplot(fpr_series)
+plt.xticks(x_range, x_label)
+ax.title.set_fontweight('bold')
+ax.title.set_fontsize(12)
+
+ax = plt.subplot(339, title=r'$\Delta <F_{xy}> (mm^2)$')
+plt.boxplot(fxy_series)
+plt.xticks(x_range, x_label)
+ax.title.set_fontweight('bold')
+ax.title.set_fontsize(12)
 plt.show()
 
-ax = plt.subplot(231, title=r'a ($\AA$)')
+
+ax = plt.subplot(231, title=r'$\Delta a (\AA)$')
 plt.boxplot(a_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(232, title=r'b ($\AA$)')
+ax = plt.subplot(232, title=r'$\Delta b (\AA)$')
 plt.boxplot(b_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(233, title=r'c ($\AA$)')
+ax = plt.subplot(233, title=r'$\Delta c (\AA)$')
 plt.boxplot(c_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(234, title=r'alpha ($\degree$)')
+ax = plt.subplot(234, title=r'$\Delta \alpha (\degree)$')
 plt.boxplot(alpha_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(235, title=r'beta ($\degree$)')
+ax = plt.subplot(235, title=r'$\Delta \beta (\degree)$')
 plt.boxplot(beta_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(236, title=r'gamma ($\degree$)')
+ax = plt.subplot(236, title=r'$\Delta \gamma (\degree)$')
 plt.boxplot(gamma_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight('bold')

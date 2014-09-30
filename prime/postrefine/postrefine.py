@@ -42,22 +42,20 @@ class postref_handler(object):
     wavelength = observations_pickle["wavelength"]
 
     if iparams.flag_LP_correction:
-      mm_displacements = flex.vec3_double()
-      cos_two_polar_angle = flex.double()
-      for pred in mm_predictions:
-        mm_displacements.append((pred[0]-xbeam,pred[1]-ybeam,0.0))
-        cos_two_polar_angle.append( math.cos( 2. * math.atan2(pred[1]-ybeam,pred[0]-xbeam) ) )
-      assert observations.size() == cos_two_polar_angle.size()
-      tt_vec = observations.two_theta(wavelength)
-      cos_tt_vec = flex.cos( tt_vec.data() )
-      sin_tt_vec = flex.sin( tt_vec.data() )
-      cos_sq_tt_vec = cos_tt_vec * cos_tt_vec
-      sin_sq_tt_vec = sin_tt_vec * sin_tt_vec
-      P_nought_vec = 0.5 * (1. + cos_sq_tt_vec)
-
-      F_prime = -1.0 # Hard-coded value defines the incident polarization axis
-      P_prime = 0.5 * F_prime * cos_two_polar_angle * sin_sq_tt_vec
-      observations = observations.customized_copy(data=observations.data()/( P_nought_vec - P_prime ))
+      fx = iparams.polarization_horizontal_fraction
+      fy = 1 - fx
+      if fx > 1.0 or fx < 0:
+        print 'Horizontal polarization fraction is not correct. The value must be >= 0 and <= 1'
+        print 'No polarization correction. Continue with post-refinement'
+      else:
+        phi_angle_obs = flex.double([math.atan2(pred[1]-ybeam, pred[0]-xbeam) \
+                                         for pred in mm_predictions])
+        bragg_angle_obs = observations.two_theta(wavelength).data()
+        I_prime = ((fx*((np.sin(phi_angle_obs)**2)+((np.cos(phi_angle_obs)**2)*np.cos(bragg_angle_obs)**2)))+\
+          (fy*((np.cos(phi_angle_obs)**2)+((np.sin(phi_angle_obs)**2)*np.cos(bragg_angle_obs)**2))))*\
+          observations.data()
+        I_prime_flex = flex.double(I_prime)
+        observations = observations.customized_copy(data=I_prime_flex)
 
     #set observations with target space group - !!! required for correct
     #merging due to map_to_asu command.
@@ -187,12 +185,13 @@ class postref_handler(object):
 
     #grab img. name
     imgname = pickle_filename
-
+    observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm,  wilson_b, detector_distance_mm = self.organize_input(observations_pickle, iparams)
+    """
     try:
       observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm,  wilson_b, detector_distance_mm = self.organize_input(observations_pickle, iparams)
     except Exception:
       observations_original = None
-
+    """
     if observations_original is None:
       print frame_no, '-fail obs is none'
       return None
