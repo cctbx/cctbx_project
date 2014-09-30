@@ -238,7 +238,8 @@ class MetallicButton (wx.PyControl) :
 
     # Calc Object Positions
     width, height = self.GetSize()
-    tw, th = gc.GetTextExtent(self.GetLabel())
+    #get text dimensions from dc rather than gc as gc reports wrong height for empty strings on Windows
+    tw, th = dc.GetTextExtent(self.GetLabel())
     if self._label2 != '' :
       txt_y = 4 #th + 4 #height - th - 4
       txt2_y = th + 8
