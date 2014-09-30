@@ -40,6 +40,9 @@ TER
   xrs.scattering_type_registry(
     d_min=1.5,
     table="n_gaussian")
+  xrs.set_inelastic_form_factors(
+    photon=1.54,
+    table="sasaki")
   file_base = "tmp_mmtbx_cmdline"
   open(file_base+".pdb", "w").write(
     hierarchy.as_pdb_string(crystal_symmetry=xrs))
@@ -49,18 +52,26 @@ TER
   mtz.add_miller_array(flags, column_root_label="FreeR_flag")
   mtz.mtz_object().write(file_base+".mtz")
   open(file_base+".fa", "w").write(">Tyr\nY\n")
+  base_args = [ file_base + ext for ext in [".pdb",".mtz",".fa"] ]
   cmdline = mmtbx.command_line.load_model_and_data(
-    args=[ file_base + ext for ext in [".pdb",".mtz",".fa"] ],
+    args=base_args+["wavelength=1.54"],
     master_phil=mmtbx.command_line.generate_master_phil_with_inputs(""),
     out=StringIO(),
     create_log_buffer=True)
   assert (cmdline.params.input.xray_data.file_name is not None)
   assert (cmdline.sequence is not None)
   r_factor = cmdline.fmodel.r_work()
-  assert (r_factor < 0.001)
+  assert (r_factor < 0.002)
   cmdline.save_data_mtz("tmp_mmtbx_cmdline_data.mtz")
   assert os.path.isfile("tmp_mmtbx_cmdline_data.mtz")
   model = cmdline.create_model_manager()
+  # energy input
+  cmdline = mmtbx.command_line.load_model_and_data(
+    args=base_args+["energy=8050"],
+    master_phil=mmtbx.command_line.generate_master_phil_with_inputs(""),
+    out=StringIO(),
+    create_log_buffer=True)
+  assert approx_equal(cmdline.params.input.wavelength, 1.54018, eps=0.0001)
   # UNMERGED DATA INPUT
   log = cmdline.start_log_file("tst_mmtbx_cmdline.log")
   fc2 = xrs.structure_factors(d_min=1.3).f_calc().generate_bijvoet_mates()

@@ -36,6 +36,8 @@ input {
     .type = choice
   wavelength = None
     .type = float
+  energy = None
+    .type = float
   %(phases_flag)s
   %(twin_law)s
 }
@@ -477,6 +479,10 @@ class load_model_and_data (object) :
         self.xray_structure = self.pdb_inp.xray_structure_simple(
           crystal_symmetry=self.crystal_symmetry)
     # wavelength
+    if (params.input.energy is not None) :
+      if (params.input.wavelength is not None) :
+        raise Sorry("Both wavelength and energy have been specified!")
+      params.input.wavelength = 12398.424468024265 / params.input.energy
     if (set_wavelength_from_model_header and params.input.wavelength is None) :
       wavelength = self.pdb_inp.extract_wavelength()
       if (wavelength is not None) :
