@@ -911,6 +911,10 @@ class set(crystal.symmetry):
       negate=not negate)
 
   def resolution_filter_selection(self, d_max=None, d_min=None):
+    """
+    Obtain the selection (flex.bool array) corresponding to the specified
+    resolution range.
+    """
     result = self.all_selection()
     d_star_sq = self.d_star_sq().data()
     assert d_star_sq.all_ge(0)
@@ -988,6 +992,10 @@ class set(crystal.symmetry):
             other.select(matches.singles(0))]
 
   def match_bijvoet_mates(self, assert_is_unique_set_under_symmetry=True):
+    """
+    Group Bijvoet mates (or Friedel mates) together, returning an object that
+    allows enumeration over matching pairs and/or singletons.
+    """
     assert self.anomalous_flag() in (None, True)
     assert self.indices() is not None
     if (self.space_group_info() is not None):
@@ -1208,6 +1216,11 @@ class set(crystal.symmetry):
         use_dataman_shells=False,
         n_shells=20,
         format="cns") :
+    """
+    Generate R-free flags, without taking lattice symmetry into account (not
+    recommended).  Should not normally be called directly - use
+    generate_r_free_flags(...) instead.
+    """
     if not (fraction > 0 and fraction < 0.5) :
       raise Sorry("R-free flags fraction must be greater than 0 and less "+
           "than 0.5.")
@@ -1343,6 +1356,11 @@ class set(crystal.symmetry):
                              mandatory_factors=None,
                              max_prime=5,
                              assert_shannon_sampling=True):
+    """
+    Calculate real-space grid for FFT given array crystal symmetry, d_min, and
+    desired resolution-dependent spacing.  The actual grid dimensions will be
+    adjusted to suit the needs of the FFT algorithm.
+    """
     if (d_min is None and grid_step is None): d_min = self.d_min()
     return maptbx.crystal_gridding(
       unit_cell=self.unit_cell(),
@@ -1357,6 +1375,18 @@ class set(crystal.symmetry):
 
   def structure_factors_from_map(self, map, in_place_fft=False,
       use_scale=False, anomalous_flag=None, use_sg=False):
+    """
+    Run FFT on a real-space map to calculate structure factors corresponding to
+    the current set of Miller indices.
+
+    :param map: flex.double map with 3D flex.grid accessor
+    :param in_place_fft: perform the FFT in place instead of creating a copy of
+      the map first
+    :param use_scale: perform volume-scaling using current unit cell
+    :param anomalous_flag: determines anomalous_flag for output array
+    :param use_sg: use space-group symmetry
+    :returns: array with same Miller indices and complex_double data
+    """
     assert map.focus_size_1d() > 0 and map.nd() == 3 and map.is_0_based()
     if(isinstance(map, flex.int)): map = map.as_double()
     assert isinstance(map, flex.double) or isinstance(map, flex.complex_double)
@@ -1405,6 +1435,16 @@ class set(crystal.symmetry):
                                         b_base=None,
                                         wing_cutoff=None,
                                         exp_table_one_over_step_size=None):
+    """
+    Calculate structure factors for an :py:class:`cctbx.xray.structure` object
+    corresponding to the current set of Miller indices.  Can use either FFT
+    or direct summation.
+
+    :param xray_structure: :py:class:`cctbx.xray.structure` object
+    :param algorithm: switch method to calculate structure factors - can be
+      'direct' or 'fft'
+    :returns: array with same Miller indices and complex_double data
+    """
     from cctbx import xray
     if (algorithm == "direct"):
       return xray.structure_factors.from_scatterers_direct(
@@ -1626,16 +1666,30 @@ class set(crystal.symmetry):
     return self.use_binning(binning=binning(self.unit_cell(), limits))
 
   def binner(self):
+    """
+    Return a reference to the current resolution binner (or None if undefined).
+    """
     return self._binner
 
   def use_binning(self, binning):
+    """
+    Use the resolution binning of the specified binner object (does not need
+    to be from an identically sized set).
+    """
     self._binner = binner(binning, self)
     return self._binner
 
   def use_binning_of(self, other):
+    """
+    Use the resolution binning of the specified set (does not need to be an
+    identical set of indices).
+    """
     return self.use_binning(binning=other.binner())
 
   def use_binner_of(self, other):
+    """
+    Use the exact binner of another set, which must have identical indices.
+    """
     assert self.indices().all_eq(other.indices())
     self._binner = other._binner
     return self._binner
