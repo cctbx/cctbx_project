@@ -51,11 +51,12 @@ class postref_handler(object):
         phi_angle_obs = flex.double([math.atan2(pred[1]-ybeam, pred[0]-xbeam) \
                                          for pred in mm_predictions])
         bragg_angle_obs = observations.two_theta(wavelength).data()
-        I_prime = ((fx*((np.sin(phi_angle_obs)**2)+((np.cos(phi_angle_obs)**2)*np.cos(bragg_angle_obs)**2)))+\
-          (fy*((np.cos(phi_angle_obs)**2)+((np.sin(phi_angle_obs)**2)*np.cos(bragg_angle_obs)**2))))*\
-          observations.data()
-        I_prime_flex = flex.double(I_prime)
-        observations = observations.customized_copy(data=I_prime_flex)
+        P = ((fx*((np.sin(phi_angle_obs)**2)+((np.cos(phi_angle_obs)**2)*np.cos(bragg_angle_obs)**2)))+\
+          (fy*((np.cos(phi_angle_obs)**2)+((np.sin(phi_angle_obs)**2)*np.cos(bragg_angle_obs)**2))))
+        I_prime = P * observations.data()
+        sigI_prime = P * observations.sigmas()
+        observations = observations.customized_copy(data=flex.double(I_prime),
+                                                    sigmas=flex.double(sigI_prime))
 
     #set observations with target space group - !!! required for correct
     #merging due to map_to_asu command.
