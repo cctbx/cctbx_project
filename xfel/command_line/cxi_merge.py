@@ -284,6 +284,11 @@ def load_result (file_name,
     raise OutlierCellError(
       "Skipping cell with outlier dimensions (%g %g %g %g %g %g" %
       unit_cell.parameters())
+  # Illustrate how a unit cell filter would be implemented.
+  #ucparams = unit_cell.parameters()
+  #if not (130.21 < ucparams[2] < 130.61) or not (92.84 < ucparams[0] < 93.24):
+  #  print "DOES NOT PASS ERSATZ UNIT CELL FILTER"
+  #  return None
   print >> out, "Integrated data:"
   result_array.show_summary(f=out, prefix="  ")
   # XXX don't force reference setting here, it will be done later, after the
@@ -932,6 +937,7 @@ class scaling_manager (intensity_data) :
       miller_indices_unique=self.miller_set.indices(),
       miller_indices=observations.indices())
 
+    use_weights = False # New facility for getting variance-weighted correlation
     if self.params.scaling.algorithm == 'mark1':
       # Because no correlation is computed, the correlation
       # coefficient is fixed at zero.  Setting slope = 1 means
@@ -956,6 +962,7 @@ class scaling_manager (intensity_data) :
       sum_yy = 0
       sum_x = 0
       sum_y = 0
+      sum_w = 0.
 
       for pair in matches.pairs():
         if self.params.scaling.simulation is not None:
@@ -968,26 +975,31 @@ class scaling_manager (intensity_data) :
           continue
         # Update statistics using reference intensities (I_r), and
         # observed intensities (I_o).
+        if use_weights: I_w = 1./(observations.sigmas()[pair[1]])**2 #variance weighting
+        else: I_w = 1.
+
         I_r = self.i_model.data()[pair[0]]
         I_o = observations.data()[pair[1]]
-        sum_xx += I_r**2
-        sum_yy += I_o**2
-        sum_xy += I_r * I_o
-        sum_x += I_r
-        sum_y += I_o
+        sum_xx += I_w * I_r**2
+        sum_yy += I_w * I_o**2
+        sum_xy += I_w * I_r * I_o
+        sum_x += I_w * I_r
+        sum_y += I_w * I_o
+        sum_w += I_w
       # Linearly fit I_r to I_o, i.e. find slope and offset such that
       # I_o = slope * I_r + offset, optimal in a least-squares sense.
       # XXX This is backwards, really.
       N = data.n_obs - data.n_rejected
-      if (N * sum_xx - sum_x**2) == 0:
-        print "Skipping frame with",N,sum_xx,sum_x**2
+      DELTA = sum_w * sum_xx - sum_x**2 # see p. 105 in Bevington & Robinson
+      if (DELTA) == 0:
+        print "Skipping frame with",sum_w,sum_xx,sum_x**2
         return null_data(file_name=file_name,
                          log_out=out.getvalue(),
                          low_signal=True)
-      slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
-      offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
-      corr = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
-                                             math.sqrt(N * sum_yy - sum_y**2))
+      slope = (sum_w * sum_xy - sum_x * sum_y) / DELTA
+      offset = (sum_xx * sum_y - sum_x * sum_xy) / DELTA
+      corr = (sum_w * sum_xy - sum_x * sum_y) / (math.sqrt(sum_w * sum_xx - sum_x**2) *
+                                                 math.sqrt(sum_w * sum_yy - sum_y**2))
 
     # Early return if there are no positive reflections on the frame.
     if data.n_obs <= data.n_rejected:
