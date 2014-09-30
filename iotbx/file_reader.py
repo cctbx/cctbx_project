@@ -45,7 +45,7 @@ standard_file_extensions = {
   'cif'  : ["cif", "mmcif"],
   'seq'  : ["fa", "faa", "seq", "pir", "dat", "fasta"],
   'xplor_map' : ["xplor", "map"],
-  'ccp4_map'  : ["ccp4", "map"],
+  'ccp4_map'  : ["ccp4", "map", "mrc"],
   'map'  : ["xplor", "map", "ccp4"],
   'phil' : ["params", "eff", "def", "phil", "param"],
   'xml'  : ["xml"],
