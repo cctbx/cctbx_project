@@ -5,19 +5,14 @@ from __future__ import division
 # $Id
 #
 
-import sys, os, dxtbx, math
+import sys, os, dxtbx, getpass
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
-from PSCalib.GeometryAccess import GeometryAccess
+from PSCalib.GeometryAccess import GeometryAccess, GeometryObject
 from scitbx.matrix import sqr, col
+from xfel.cxi.cspad_ana.cspad_tbx import evt_timestamp
 
 master_phil = libtbx.phil.parse("""
-reference_metrology_file = None
-  .type = str
-  .help = File with optical metrology information posistioning quadrants and sensors.
-  .help = Usually in the calib/geometry folder of the experiment, in the form of N-end.data
-  .help = Used as a starting point
-  .optional = False
 cbf_header = None
   .type = str
   .help = Cbf file with metrology to be converted
@@ -25,9 +20,109 @@ cbf_header = None
 out_metrology_file = 0-end.data
   .type = str
   .help = File with optical metrology information posistioning quadrants and sensors.
-  .help = Should be placed in the calib/geometry folder of the experiment, in the form of N-end.data
+  .help = Should be placed in the calib/<Csapd version>/<detector address/geometry folder
+  .help = of the experiment, in the form of N-end.data
   .optional = False
 """)
+
+class GeometryAccessFromCspadCBF(GeometryAccess):
+  """ Override of GeometryAccess to read the metrology from a CSPAD CBF instead
+      of a SLAC metrology file """
+
+  def load_pars_from_file(self, path=None) :
+    """ Use the dxtbx object model to build a GeometryObject hierarchy
+        @param path Path to the CSPAD CBF file
+    """
+    if path is not None : self.path = path
+
+    if self.pbits & 32 : print 'Load file: %s' % self.path
+
+    img = dxtbx.load(self.path)
+    cbf = img._cbf_handle
+    cbf.find_category("diffrn_source")
+    cbf.find_column("type")
+
+    self.dict_of_comments = {
+      "TITLE"     : "Geometry parameters of CSPAD",
+      "DATE_TIME" : evt_timestamp(),
+      "AUTHOR"    : getpass.getuser(),
+      "EXPERIMENT": cbf.get_value(),
+      "DETECTOR"  : "CSPAD",
+      "CALIB_TYPE": "geometry",
+      "COMMENT:01": "Table contains the list of geometry parameters for alignment of 2x1 sensors, quads, CSPAD, etc",
+      "COMMENT:02": " translation and rotation pars of the object are defined w.r.t. parent object Cartesian frame",
+      "PARAM:01"  : "PARENT     - name and version of the parent object",
+      "PARAM:02"  : "PARENT_IND - index of the parent object",
+      "PARAM:03"  : "OBJECT     - name and version of the object",
+      "PARAM:04"  : "OBJECT_IND - index of the new object",
+      "PARAM:05"  : "X0         - x-coordinate [um] of the object origin in the parent frame",
+      "PARAM:06"  : "Y0         - y-coordinate [um] of the object origin in the parent frame",
+      "PARAM:07"  : "Z0         - z-coordinate [um] of the object origin in the parent frame",
+      "PARAM:08"  : "ROT_Z      - object design rotation angle [deg] around Z axis of the parent frame",
+      "PARAM:09"  : "ROT_Y      - object design rotation angle [deg] around Y axis of the parent frame",
+      "PARAM:10"  : "ROT_X      - object design rotation angle [deg] around X axis of the parent frame",
+      "PARAM:11"  : "TILT_Z     - object tilt angle [deg] around Z axis of the parent frame",
+      "PARAM:12"  : "TILT_Y     - object tilt angle [deg] around Y axis of the parent frame",
+      "PARAM:13"  : "TILT_X     - object tilt angle [deg] around X axis of the parent frame"
+    }
+
+    self.list_of_geos = []
+
+    detector = img.get_detector()
+    hierarchy = detector.hierarchy()
+
+    for q, quad in enumerate(hierarchy):
+      for s, sensor in enumerate(quad):
+        self.list_of_geos.append(self._load_geo(q,"QUAD:V1",s,"SENS2X1:V1",sensor))
+
+    for q, quad in enumerate(hierarchy):
+      self.list_of_geos.append(self._load_geo(0,"CSPAD:V1",q,"QUAD:V1",quad))
+
+    self._set_relations()
+
+  def _load_geo(self, pindex, pname, oindex, oname, group):
+    """ Given a dxtbx panel group, assemble the appropiate GeometryObject
+        @param pindex Index of the parent object
+        @param pname  Name of the parent object
+        @param oindex Index of the current object
+        @param oname  Name of the current object
+        @param group  dxtbx panel group
+
+        @return an assembled GeometryObject
+    """
+    x = col(group.get_local_fast_axis())
+    y = col(group.get_local_slow_axis())
+    z = x.cross(y)
+    rot = sqr((x[0],y[0],z[0],
+               x[1],y[1],z[1],
+               x[2],y[2],z[2]))
+    rotx, roty, rotz = rot.r3_rotation_matrix_as_euler_angles(deg=True)
+
+    # round to the nearest 90 degrees
+    rrotx = round(rotx/90)*90
+    rroty = round(roty/90)*90
+    rrotz = round(rotz/90)*90
+
+    ox, oy, oz = group.get_local_origin()
+
+    d = {
+      'pname': pname,
+      'pindex':pindex,
+      'oname': oname,
+      'oindex':oindex,
+      'x0':    ox * 1000,
+      'y0':    oy * 1000,
+      'z0':    oz * 1000,
+      'rot_z': rrotz%360, # design
+      'rot_y': rroty%360, # design
+      'rot_x': rrotx%360, # design
+      'tilt_z':rotz - rrotz,
+      'tilt_y':roty - rroty,
+      'tilt_x':rotx - rrotx
+    }
+
+    return GeometryObject(**d)
+
 
 if (__name__ == "__main__") :
   user_phil = []
@@ -39,47 +134,13 @@ if (__name__ == "__main__") :
 
   params = master_phil.fetch(sources=user_phil).extract()
 
-  if params.reference_metrology_file is None or \
-     params.cbf_header is None or \
+  if params.cbf_header is None or \
      params.out_metrology_file is None:
-    raise Usage("%s reference_metrology_file=<path> cbf_header=<path> out_metrology_file=<path>"%libtbx.env.dispatcher_name)
+    raise Usage("%s cbf_header=<path> out_metrology_file=<path>"%libtbx.env.dispatcher_name)
 
-  if not os.path.exists(params.reference_metrology_file):
-    raise Sorry("File not found: %s"%params.reference_metrology_file)
   if not os.path.exists(params.cbf_header):
     raise Sorry("File not found: %s"%params.cbf_header)
 
-  geometry = GeometryAccess(params.reference_metrology_file)
-  top_geo = geometry.get_top_geo()
-
-  img = dxtbx.load(params.cbf_header)
-  detector = img.get_detector()
-
-  assert len(top_geo.get_list_of_children()) == len(detector.hierarchy())
-
-  for sq, dq in zip(top_geo.get_list_of_children(), detector.hierarchy()):
-    x = col(dq.get_local_fast_axis())
-    y = col(dq.get_local_slow_axis())
-    z = x.cross(y)
-    rot = sqr((x[0],y[0],z[0],
-               x[1],y[1],z[1],
-               x[2],y[2],z[2]))
-    q0, q1, q2, q3 = rot.r3_rotation_matrix_as_unit_quaternion()
-
-    # http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Conversion
-    rotx = 180*math.atan2(2*(q0*q1+q2*q3),1-2*(q1**2+q2**2))/math.pi
-    roty = 180*math.asin(2*(q0*q2-q3*q1))/math.pi
-    rotz = 180*math.atan2(2*(q0*q3+q1*q2),1-2*(q2**2+q3**2))/math.pi
-    sq.rot_x = round(rotx/90)*90
-    sq.rot_y = round(roty/90)*90
-    sq.rot_z = round(rotz/90)*90
-    sq.tilt_x = rotx - sq.rot_x
-    sq.tilt_y = roty - sq.rot_y
-    sq.tilt_z = rotz - sq.rot_z
-
-    ox, oy, oz = dq.get_local_origin()
-    dq.x0 = ox * 1000
-    dq.y0 = oy * 1000
-    dq.z0 = oz * 1000
+  geometry = GeometryAccessFromCspadCBF(params.cbf_header)
 
   geometry.save_pars_in_file(params.out_metrology_file)
