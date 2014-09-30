@@ -18,14 +18,19 @@ class MultiQueue(object):
     del self.queue_for[ name ]
 
 
-  def put(self, name, message):
+  def put(self, name, item, block = True, timeout = None):
 
-    self.queue_for[ name ].put( message )
+    self.queue_for[ name ].put( item, block = block, timeout = timeout )
 
 
   def get(self, name, block = True, timeout = None):
 
-    return self.queue_for[ name ].get( block, timeout )
+    return self.queue_for[ name ].get( block = block, timeout = timeout )
+
+
+  def put_nowait(self, name, item):
+
+    return self.queue_for[ name ].put_nowait( item )
 
 
   def get_nowait(self, name):
@@ -51,9 +56,14 @@ class Queue(object):
     self.server = None
 
 
-  def put(self, value):
+  def put(self, value, block = True, timeout = None):
 
-    self.server.multiqueue.put( self.identifier, value )
+    self.server.multiqueue.put(
+      self.identifier,
+      value,
+      block = block,
+      timeout = timeout,
+      )
 
 
   def get(self, block = True, timeout = None):
@@ -63,6 +73,11 @@ class Queue(object):
       block = block,
       timeout = timeout,
       )
+
+
+  def put_nowait(self, value):
+
+    return self.server.multiqueue.putt_nowait( self.identifier, value )
 
 
   def get_nowait(self):
