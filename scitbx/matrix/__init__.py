@@ -321,6 +321,78 @@ class rec(object):
       2*(q1*q2+q0*q3),   2*(q0*q0+q2*q2)-1, 2*(q2*q3-q0*q1),
       2*(q1*q3-q0*q2),   2*(q2*q3+q0*q1),   2*(q0*q0+q3*q3)-1))
 
+  def r3_rotation_matrix_as_euler_angles(self, deg=False, alternate_solution=False):
+    """
+    Get the rotation angles around the axis x,y,x for rotation r
+    Such that r = Rx*Ry*Rz
+
+    Note that typically there are two solutions, and this function will return
+    only one. In the case that cos(beta) == 0 there are infinite number of
+    solutions, the function returns the one where gamma = 0
+
+    Args:
+      deg : When False use radians, when True use degrees
+      alternate_solution: return the alternate solution for the angles
+
+    Returns:
+      angles: containing rotation angles in the form
+        (rotx, roty, rotz)
+    """
+    if (self.n != (3,3)): raise RuntimeError("Not a 3x3 matrix.")
+    Rxx,Rxy,Rxz,Ryx,Ryy,Ryz,Rzx,Rzy,Rzz = self.elems
+    if Rxz not in [1,-1]:
+      beta = math.asin(Rxz)
+      if alternate_solution:
+        beta = math.pi - beta
+
+      # using atan2 to take into account the possible different angles and signs
+      alpha = math.atan2(-Ryz/math.cos(beta),Rzz/math.cos(beta))
+      gamma = math.atan2(-Rxy/math.cos(beta),Rxx/math.cos(beta))
+    elif Rxz == 1:
+      beta = math.pi/2
+      alpha = math.atan2(Ryx,Ryy)
+      gamma = 0
+    elif Rxz == -1:
+      beta = -math.pi/2
+      alpha = math.atan2(-Ryx,Ryy)
+      gamma = 0
+    else:
+      raise ArithmeticError("Can't calculate rotation angles")
+
+    if deg:
+      # Convert to degrees
+      return 180*alpha/math.pi, \
+             180*beta /math.pi, \
+             180*gamma/math.pi
+    else:
+      return alpha, beta, gamma
+
+  def unit_quaternion_as_euler_angles(self, deg=False):
+    """ Get euler angles from a unit quaternion.  Only one solution is available
+        in contrast to r3_rotation_matrix_as_euler_angles.
+
+    Args:
+      deg : When False use radians, when True use degrees
+
+    Returns:
+      angles: containing rotation angles in the form
+        (rotx, roty, rotz)
+    """
+    assert self.n in [(1,4), (4,1)]
+    q0,q1,q2,q3 = self.elems
+
+    # http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Conversion
+    rotx = math.atan2(2*(q0*q1+q2*q3),1-2*(q1**2+q2**2))
+    roty = math.asin(2*(q0*q2-q3*q1))/math.pi
+    rotz = math.atan2(2*(q0*q3+q1*q2),1-2*(q2**2+q3**2))
+
+    if deg:
+      return 180*rotx/math.pi, \
+             180*roty/math.pi, \
+             180*rotz/math.pi
+    else:
+      return rotx, roty, rotz
+
   def r3_rotation_matrix_as_unit_quaternion(self):
     # Based on work by:
     #   Shepperd (1978), J. Guidance and Control, 1, 223-224.
