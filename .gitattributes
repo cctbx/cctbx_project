@@ -3236,6 +3236,7 @@ xfel/command_line/cluster_unit_cell.py -text
 xfel/command_line/cluster_visualise_orientations.py -text
 xfel/command_line/convert_gain_map.py -text
 xfel/command_line/cxi_calibdir2cbfheader.py -text
+xfel/command_line/cxi_cbfheader2slaccalib.py -text
 xfel/command_line/cxi_detector_format_versions.py -text
 xfel/command_line/cxi_diff.py -text
 xfel/command_line/cxi_image2pickle.py -text
