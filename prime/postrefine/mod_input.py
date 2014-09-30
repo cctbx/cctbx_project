@@ -235,6 +235,9 @@ n_processors = 32
 gamma_e = 0.002
   .type = float
   .help = Initial spread of the energy spectrum (1/Angstrom).
+polarization_horizontal_fraction = 1.0
+  .type = float
+  .help = Polarization fraction in horizontal direction.
 """)
 
 
