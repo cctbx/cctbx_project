@@ -315,14 +315,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
         cbf.next_row()
 
       # extract the data for each panel
-      has_sections = True
-      try:
-        cbf.find_category("array_structure_list_section")
-      except Exception, e:
-        if "CBF_NOTFOUND" not in str(e): raise e
-        has_sections = False
-
-      if has_sections:
+      if cbf.has_sections():
         section_shapes = {}
         for i in xrange(cbf.count_rows()):
           cbf.find_column("id")

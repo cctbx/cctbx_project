@@ -52,6 +52,17 @@ class cbf_wrapper(pycbf.cbf_handle_struct):
 
     axis_settings.append([basis.axis_name, "FRAME1", str(angle), "0"])
 
+  def has_sections(self):
+    """True if the cbf has the array_structure_list_section table, which
+       changes how its data is stored in the binary sections
+    """
+    try:
+      self.find_category("array_structure_list_section")
+    except Exception, e:
+      if "CBF_NOTFOUND" not in str(e): raise e
+      return False
+    return True
+
 def angle_and_axis(basis):
   """Normalize a quarternion and return the angle and axis
   @param params metrology object"""
