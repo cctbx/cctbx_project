@@ -33,12 +33,12 @@ ion_chain_id = X
   .input_size = 80
   .short_caption = Ion chain ID
 initial_occupancy = 1.0
-  .type = float
+  .type = float(value_min=0.01)
   .input_size = 80
   .help = Occupancy for newly placed ions - if less than 1.0, the occupancy \
     may be refined automatically in future runs of phenix.refine.
 initial_b_iso = Auto
-  .type = float
+  .type = float(value_min=1.0)
   .input_size = 80
   .short_caption = Initial B-iso
 refine_ion_occupancies = True
