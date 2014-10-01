@@ -128,9 +128,17 @@ our website).""" % { "package" : options.package_name,
   # write out distribution.xml
   misc_files = []
   if (options.background is not None) :
-    shutil.copyfile(options.background, "resources/background.jpg")
-    misc_files.append(
-      """<background file="background.jpg" mime-type="image/jpeg" alignment="topleft" scaling="proportional"/>""")
+    if (options.background.endswith(".jpg")) :
+      shutil.copyfile(options.background, "resources/background.jpg")
+      misc_files.append(
+        """<background file="background.jpg" mime-type="image/jpeg" """+
+        """alignment="topleft" scaling="proportional"/>""")
+    else :
+      assert options.background.endswith(".png")
+      shutil.copyfile(options.background, "resources/background.png")
+      misc_files.append(
+        """<background file="background.png" mime-type="image/png" """+
+        """alignment="topleft" scaling="proportional"/>""")
   if (options.license_file is not None) :
     shutil.copyfile(options.license_file, "resources/license.txt")
     misc_files.append(
