@@ -98,6 +98,8 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
       self._path_text.SetValue("")
     else :
       assert isinstance(value, str) or isinstance(value, unicode)
+      if isinstance(value, str) :
+        value = value.decode("utf-8")
       self._path_text.SetValue(value)
 
   def SetBackgroundColour (self, *args, **kwds) :
@@ -137,7 +139,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     if (self._path_style & WXTBX_PHIL_PATH_DIRECTORY) :
       new_path = path_manager.select_directory(
         message="Choose a directory: %s" % self.GetName(),
-        current_path=self.GetValue(),
+        current_path=self.GetValue().decode("utf-8"),
         style=flags|wx.DD_NEW_DIR_BUTTON,
         parent=self)
     else :
@@ -146,7 +148,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
       new_path = path_manager.select_file(
         parent=self,
         message="Choose a file: %s" % self.GetName(),
-        current_file=self.GetValue(),
+        current_file=self.GetValue().decode("utf-8"),
         style=flags,
         wildcard=wildcard)
     if (new_path is not None) :

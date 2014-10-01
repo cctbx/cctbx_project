@@ -20,7 +20,7 @@ class UnitCellCtrl (ValidatedTextCtrl) :
       uc = self.FormatValue(uc)
     elif (uc is None) :
       uc = ""
-    assert isinstance(uc, str)
+    assert isinstance(uc, basestring)
     wx.TextCtrl.SetValue(self, uc)
 
   def SetValue (self, value) :
@@ -44,7 +44,7 @@ class UnitCellValidator (TextCtrlValidator) :
     if (len(value) == 0) :
       return ""
     from cctbx import uctbx
-    uc = uctbx.unit_cell(value)
+    uc = uctbx.unit_cell(str(value))
     return uc
 #    return self.GetWindow().FormatValue(uc)
 

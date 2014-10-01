@@ -89,13 +89,15 @@ class TextCtrlValidator (wx.PyValidator) :
     ctrl = self.GetWindow()
     try :
       value_str = ctrl.GetValue()
-      if isinstance(value_str, unicode) :
+      if isinstance(value_str, str) :
         value_str = value_str.decode("utf-8")
       if (value_str == "") :
         ctrl.SetBackgroundColour(
           wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
         return True
       reformatted = self.CheckFormat(value_str)
+      if isinstance(reformatted, str) :
+        reformatted = reformatted.decode("utf-8")
       ctrl.SetValue(reformatted)
       ctrl.SetBackgroundColour(
         wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
@@ -108,9 +110,10 @@ class TextCtrlValidator (wx.PyValidator) :
       ctrl_name = str(ctrl.GetName())
       msg = "Inappropriate value given for \"%s\": %s" %(ctrl_name,str(e))
       if (type(e).__name__ == "UnicodeEncodeError") :
-        msg = "You have entered characters which cannot be converted to "+ \
-          "Latin characters in the control '%s'; due to limitations of the "+ \
-          "underlying code, only the standard ASCII character set is allowed."
+        msg = ("You have entered characters which cannot be converted to "+
+          "Latin characters in the control '%s'; due to limitations of the "+
+          "underlying code, only the standard ASCII character set is "+
+          "allowed.") % ctrl_name
       wx.MessageBox(caption="Format error", message=msg)
       ctrl.SetBackgroundColour("red")
       ctrl.SetFocus()
