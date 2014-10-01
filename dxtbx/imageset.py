@@ -667,7 +667,7 @@ class MemImageSet(ImageSet):
 
   def reader(self):
     ''' Return the image set reader. '''
-    raise NotImplementedError("MemImageSet has no reader")
+    return None #FIXME raise NotImplementedError("MemImageSet has no reader")
 
   def _image_index(self, index=None):
     ''' Convert image set index to image index.'''
@@ -704,6 +704,10 @@ class MemImageSet(ImageSet):
       models['goniometer'] = None
       models['scan'] = None
     return models
+
+  def complete_set(self):
+    ''' Return the set of all images (i.e. not just the subset). '''
+    return MemImageSet(self._images)
 
 class SweepFileList(object):
   '''Class implementing a file list interface for sweep templates.'''
