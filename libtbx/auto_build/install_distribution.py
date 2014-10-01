@@ -93,6 +93,7 @@ class installer (object) :
   dest_dir_prefix = "cctbx"
   installer_dir = os.environ.get(product_name + "_INSTALLER", None)
   include_gui_packages = True
+  remove_sources_default = False
   # options passed to install_base_packages.py
   base_package_options = []
   source_packages = [
@@ -159,6 +160,12 @@ class installer (object) :
       help="Disable generation of Mac app launcher(s)", default=False)
     parser.add_option("--debug", dest="debug", action="store_true",
       help="Turn on debugging during compilation", default=False)
+    if (self.remove_sources_default) :
+      parser.add_option("--no-compact", dest="compact", action="store_false",
+        help="Don't remove unnecessary files such as compiled sources")
+    else :
+      parser.add_option("--compact", dest="compact", action="store_true",
+        help="Remove unnecessary files such as compiled sources to save space")
     parser.add_option("--try-unsupported", dest="try_unsupported",
       action="store_true", default=False,
       help="Attempt source install on unsupported platform")
@@ -632,9 +639,12 @@ class installer (object) :
             print >> out, " failed."
             app_file = None
           else :
-            print "ok"
+            print >> out, "ok"
             if (not "SSH_CLIENT" in os.environ) :
               call(args=["open", self.dest_dir], log=log)
+    # remove source files if desired
+    if (self.options.compact) :
+      self.reduce_installation_size(out)
     # run custom finalization
     self.product_specific_finalize_install(log)
     # reconfigure one last time (possibly unnecessary)
@@ -681,6 +691,34 @@ class installer (object) :
       return open(version_file).read().strip()
     return NotImplementedError()
 
+  def reduce_installation_size (self, out) :
+    """
+    Remove all files not required for program execution to save disk space,
+    such as any C++ sources.  This can potentially save well over 100MB and is
+    recommended for purely user-facing packages, but may make it more difficult
+    to use packages for development purposes.
+    """
+    print >> out, "Removing unnecessary files to reduce disk usage...",
+    # XXX should this include .o files?
+    remove_extensions = [".cpp", ".cc", ".hpp", ".h", ".hh"]
+    n_deleted = 0
+    for dirname, dirnames, filenames in os.walk(self.dest_dir) :
+      for file_name in filenames :
+        for ext in remove_extensions :
+          if file_name.endswith(ext) :
+            full_path = op.join(dirname, file_name)
+            try :
+              os.remove(full_path)
+            except Exception, e :
+              print >> out, "  WARNING: error removing %s" % full_path
+              print >> out, str(e)
+            else :
+              n_deleted += 1
+    n_deleted_other = self.produce_specific_reduce_installation_size(out)
+    if (n_deleted_other is not None) :
+      n_deleted += n_deleted_other
+    print >> out, "%d files deleted" % n_deleted
+
   #---------------------------------------------------------------------
   # STUBS FOR SUBCLASSABLE METHODS
   def add_product_specific_options (self, parser) :
@@ -725,6 +763,12 @@ class installer (object) :
     Additional installation setup, file cleanup, more add-ons, etc.
     """
     pass
+
+  def produce_specific_reduce_installation_size (self, log) :
+    """
+    Remove unused files specific to this product, and return the number deleted.
+    """
+    return 0
 
   def display_final_message (self) :
     """
