@@ -30,6 +30,9 @@ from cctbx.crystal_orientation import crystal_orientation, basis_type
 
 def calc_full_refl(I_o_p_set, sin_theta_over_lambda_sq_set, G, B, p_set, rs_set, flag_volume_correction=False):
   I_o_full_set = flex.double(((G * np.exp(-2*B*sin_theta_over_lambda_sq_set) * I_o_p_set)/p_set))
+
+  if flag_volume_correction:
+    I_o_full_set = I_o_full_set * (4/3) * rs_set
   return I_o_full_set
 
 def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
