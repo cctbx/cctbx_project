@@ -677,6 +677,33 @@ class MemImageSet(ImageSet):
       raise IndexError('Index out of range')
     return self._indices[index]
 
+  def get_image_models(self, index=None, no_read=False):
+    ''' Get the models for the image.'''
+    image_index = self._image_index(index)
+    models = {}
+    if not no_read:
+      try:
+        models['detector'] = self.get_detector(image_index)
+      except Exception:
+        models['detector'] = None
+      try:
+        models['goniometer'] = self.get_goniometer(image_index)
+      except Exception:
+        models['goniometer'] = None
+      try:
+        models['beam'] = self.get_beam(image_index)
+      except Exception:
+        models['beam'] = None
+      try:
+        models['scan'] = self.get_scan(image_index)
+      except Exception:
+        models['scan'] = None
+    else:
+      models['detector'] = None
+      models['beam'] = None
+      models['goniometer'] = None
+      models['scan'] = None
+    return models
 
 class SweepFileList(object):
   '''Class implementing a file list interface for sweep templates.'''
