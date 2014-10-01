@@ -47,6 +47,8 @@ class manager (object) :
         default_dir, default_file = os.path.split(current_file)
       else :
         default_file = current_file
+    if isinstance(default_dir, str) :
+      default_dir = default_dir.decode("utf-8")
     dlg = wx.FileDialog(
       parent=parent,
       message=message,
@@ -82,6 +84,8 @@ class manager (object) :
     default_path = self.last_dir
     if (current_path is not None) and (current_path != "") :
       default_path = current_path
+    if isinstance(default_path, str) :
+      default_path = default_path.decode("utf-8")
     new_path = wx.DirSelector(
       message=message,
       defaultPath=default_path,

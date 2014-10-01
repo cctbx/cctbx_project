@@ -29,7 +29,7 @@ class SpaceGroupCtrl (wx.ComboBox, phil_controls.PhilCtrl) :
 
   def SetSpaceGroup (self, sg) :
     from cctbx import sgtbx
-    assert (type(sg).__name__ in ["NoneType", "str", "space_group",
+    assert (type(sg).__name__ in ["NoneType", "str", "space_group", "unicode",
       "space_group_info"])
     items = self.GetItems()
     if (isinstance(sg, sgtbx.space_group)) :
