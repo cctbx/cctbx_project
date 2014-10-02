@@ -31,7 +31,7 @@ def exercise () :
       test=os.path.isfile)
     from iotbx.file_reader import any_file
     pdb_in = any_file(pdb_file).file_object
-    hierarchy = pdb_in.construct_hierarchy()
+    hierarchy = pdb_in.hierarchy
     hierarchy.atoms().reset_i_seq()
     bp_phil = libtbx.phil.parse(base_pairing.dna_rna_params_str)
     params = bp_phil.fetch(source=libtbx.phil.parse("""
