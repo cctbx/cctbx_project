@@ -453,7 +453,9 @@ class ncs_group_object(object):
     join_same_spec_groups: (bool) True: combine groups with similar transforms
     """
     if (not bool(spec_ncs_groups)) and (file_name or file_str):
-      fn = os.path.join(file_path,file_name)
+      fn = ""
+      if (file_name is not None) :
+        fn = os.path.join(file_path,file_name)
       lines = file_str.splitlines()
       assert lines != [] or os.path.isfile(fn)
       spec_object = ncs.ncs()
