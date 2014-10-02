@@ -152,7 +152,7 @@ def sec_str_from_phil (phil_str) :
   ss_phil = iotbx.phil.parse(phil_str)
   return sec_str_master_phil.fetch(source=ss_phil).extract()
 
-def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stderr) :
+def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stdout) :
   atoms = None
   if params.verbose :
     assert pdb_hierarchy is not None
@@ -193,7 +193,7 @@ def hydrogen_bond_proxies_from_selections(
     as_python_objects=False,
     remove_outliers=False,
     master_selection=None,
-    log=sys.stderr) :
+    log=sys.stdout) :
   from mmtbx.geometry_restraints import hbond
   from scitbx.array_family import flex
   atoms = pdb_hierarchy.atoms()
@@ -337,13 +337,13 @@ class manager (object) :
   def as_phil_str (self, master_phil=sec_str_master_phil) :
     return master_phil.format(python_object=self.params)
 
-  def initialize (self, log=sys.stderr) :
+  def initialize (self, log=sys.stdout) :
     if not self._was_initialized :
       self.find_automatically(log=log)
       self.show_summary(out=log)
       self._was_initialized = True
 
-  def find_automatically (self, log=sys.stderr) :
+  def find_automatically (self, log=sys.stdout) :
     params = self.params
     find_automatically = params.input.find_automatically
     atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
@@ -403,7 +403,7 @@ class manager (object) :
           self.params.nucleic_acids.base_pair = \
             bp_params.nucleic_acids.base_pair
 
-  def find_sec_str (self, log=sys.stderr) :
+  def find_sec_str (self, log=sys.stdout) :
     if (self.params.input.use_ksdssp) :
       pdb_str = self.pdb_hierarchy.as_pdb_string()
       (records, stderr) = run_ksdssp_direct(pdb_str)
@@ -418,7 +418,7 @@ class manager (object) :
         pdb_atoms=self.pdb_atoms,
         out=null_out()).get_annotation()
 
-  def find_sec_str_with_segids (self, log=sys.stderr) :
+  def find_sec_str_with_segids (self, log=sys.stdout) :
     annotations = []
     for chain in self.pdb_hierarchy.models()[0].chains() :
       if not chain.conformers()[0].is_protein() :
@@ -434,7 +434,7 @@ class manager (object) :
         annotations.append((sec_str_from_pdb_file, segid))
     return annotations
 
-  def find_approximate_helices (self, log=sys.stderr) :
+  def find_approximate_helices (self, log=sys.stdout) :
     print >> log, "  Looking for approximately helical regions. . ."
     print >> log, "    warning: experimental, results not guaranteed to work!"
     find_helices = proteins.find_helices_simple(self.pdb_hierarchy)
@@ -442,14 +442,14 @@ class manager (object) :
     restraint_groups = find_helices.as_restraint_groups()
     return restraint_groups
 
-  def find_base_pairs (self, log=sys.stderr) :
+  def find_base_pairs (self, log=sys.stdout) :
     base_pairs = base_pairing.get_phil_base_pairs(
       pdb_hierarchy=self.pdb_hierarchy,
       prefix=None,
       log=log)
     return base_pairs
 
-  def find_base_pairs_with_segids (self, log=sys.stderr, force=False) :
+  def find_base_pairs_with_segids (self, log=sys.stdout, force=False) :
     annotations = []
     for chain in self.pdb_hierarchy.models()[0].chains() :
       if not force and not chain.conformers()[0].is_na() :
@@ -466,7 +466,7 @@ class manager (object) :
         annotations.append(base_pairs)
     return "\n".join(annotations)
 
-  def apply_phil_str (self, phil_string, log=sys.stderr, verbose=False) :
+  def apply_phil_str (self, phil_string, log=sys.stdout, verbose=False) :
     ss_phil = sec_str_master_phil.fetch(source=iotbx.phil.parse(phil_string))
     if verbose :
       ss_phil.show(out=log, prefix="    ")
@@ -676,7 +676,7 @@ def get_ksdssp_exe_path():
     raise RuntimeError("ksdssp executable is not available")
   return exe_path
 
-def run_ksdssp (file_name, log=sys.stderr) :
+def run_ksdssp (file_name, log=sys.stdout) :
   if not os.path.isfile(file_name) :
     raise RuntimeError("File %s not found.")
   exe_path = get_ksdssp_exe_path()

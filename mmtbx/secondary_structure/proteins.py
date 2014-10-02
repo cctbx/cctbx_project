@@ -76,7 +76,7 @@ helix_classes[2] = "pi"
 helix_classes[4] = "3_10"
 
 class _annotation (oop.injector, iotbx.pdb.secondary_structure.annotation) :
-  def as_restraint_groups (self, log=sys.stderr, prefix_scope="",
+  def as_restraint_groups (self, log=sys.stdout, prefix_scope="",
       add_segid=None) :
     phil_strs = []
     for helix in self.helices :
@@ -90,7 +90,7 @@ class _annotation (oop.injector, iotbx.pdb.secondary_structure.annotation) :
     return "\n".join(phil_strs)
 
 class _pdb_helix (oop.injector, iotbx.pdb.secondary_structure.pdb_helix) :
-  def as_restraint_group (self, log=sys.stderr, prefix_scope="",
+  def as_restraint_group (self, log=sys.stdout, prefix_scope="",
       add_segid=None) :
     if self.start_chain_id != self.end_chain_id :
       print >> log, "Helix chain ID mismatch: starts in %s, ends in %s" % (
@@ -117,7 +117,7 @@ class _pdb_helix (oop.injector, iotbx.pdb.secondary_structure.pdb_helix) :
     return rg
 
 class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
-  def as_restraint_group (self, log=sys.stderr, prefix_scope="",
+  def as_restraint_group (self, log=sys.stdout, prefix_scope="",
       add_segid=None) :
     if len(self.strands) == 0 :
       return None
@@ -541,7 +541,7 @@ def _get_strand_residues (
       break
   return strand_residues
 
-def restraint_groups_as_pdb_helices (pdb_hierarchy, helices, log=sys.stderr) :
+def restraint_groups_as_pdb_helices (pdb_hierarchy, helices, log=sys.stdout) :
   isel = pdb_hierarchy.atom_selection_cache().iselection
   atoms = [ a for a in pdb_hierarchy.atoms_with_labels() ]
   pdb_helices = []
@@ -575,7 +575,7 @@ def restraint_groups_as_pdb_helices (pdb_hierarchy, helices, log=sys.stderr) :
     pdb_helices.append(current_helix)
   return pdb_helices
 
-def restraint_groups_as_pdb_sheets (pdb_hierarchy, sheets, log=sys.stderr) :
+def restraint_groups_as_pdb_sheets (pdb_hierarchy, sheets, log=sys.stdout) :
   isel = pdb_hierarchy.atom_selection_cache().iselection
   atoms = [ a for a in pdb_hierarchy.atoms_with_labels() ]
   pdb_sheets = []

@@ -352,7 +352,7 @@ def get_resname(probe_field):
   return resname
 
 def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
-    log=sys.stderr, add_segid=None) :
+    log=sys.stdout, add_segid=None) :
   print >> log, "  Running PROBE to identify base pairs"
   base_pair_list = get_base_pairs(pdb_hierarchy, probe_flags)
   if len(base_pair_list) == 0 :
@@ -399,7 +399,7 @@ def create_hbond_proxies (
     slack,
     use_db_values=True,
     raise_error_if_missing_selection=False,
-    log=sys.stderr) :
+    log=sys.stdout) :
   assert (slack >= 0) and (sigma >= 0)
   from mmtbx.secondary_structure import utils as ss_utils
   selection_cache = pdb_hierarchy.atom_selection_cache()

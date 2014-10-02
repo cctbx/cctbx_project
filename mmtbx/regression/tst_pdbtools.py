@@ -484,7 +484,7 @@ END
   open("tmp_cl.pdb", "w").write(input_pdb)
   easy_run.call('phenix.pdbtools tmp_cl.pdb charge_selection="element Cl" charge=-1 --quiet')
   pdb_in = file_reader.any_file("tmp_cl.pdb_modified.pdb").file_object
-  hierarchy = pdb_in.construct_hierarchy()
+  hierarchy = pdb_in.hierarchy
   xrs = pdb_in.xray_structure_simple()
   assert (xrs.scatterers()[0].scattering_type == 'Cl1-')
   assert (hierarchy.atoms()[0].charge == '1-')
