@@ -112,7 +112,6 @@ def exercise_nucleic_acids () :
   else:
     print "Skipping base-pairing tests: reduce or probe module not available."
     pass
-  print "OK"
 
 def exercise_sheet_ends () :
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string="""\
@@ -760,3 +759,4 @@ if __name__ == "__main__" :
   exercise_nucleic_acids()
   exercise_sheets_bonding_pattern()
   exercise_segid()
+  print "OK"
