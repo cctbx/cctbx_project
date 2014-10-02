@@ -3248,6 +3248,7 @@ xfel/command_line/cxi_pyana.py -text
 xfel/command_line/cxi_spots.py -text
 xfel/command_line/cxi_stream_to_pickle.py -text
 xfel/command_line/cxi_view.py -text
+xfel/command_line/frame_unpickler.py -text
 xfel/command_line/get_next_trial_id.py -text
 xfel/command_line/histogram_finalise.py -text
 xfel/command_line/list_db_metadata.py -text
