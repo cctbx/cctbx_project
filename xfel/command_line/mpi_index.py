@@ -11,7 +11,7 @@ import pycbf, os, sys
 from libtbx.utils import Sorry
 from dials.util.options import OptionParser
 from libtbx.phil import parse
-from dxtbx.imageset import MemImageSet
+from dxtbx.imageset import MemImageSet, ImageSetFactory
 from dxtbx.datablock import DataBlockFactory
 
 phil_scope = parse('''
@@ -40,6 +40,10 @@ phil_scope = parse('''
     output_dir = .
       .type = str
       .help = "Directory output files will be placed"
+
+    datablock_filename = %s_datablock.json
+      .type = str
+      .help = "The filename for output datablock"
 
     strong_filename = %s_strong.pickle
       .type = str
@@ -71,11 +75,6 @@ phil_scope = parse('''
   include scope dials.algorithms.integration.interface.phil_scope
   include scope dials.algorithms.spot_prediction.reflection_predictor.phil_scope
 ''', process_includes=True)
-
-from xfel.cftbx.detector.cspad_cbf_tbx import cbf_wrapper
-def __stupid_but_swig_safe__deepcopy__(self, memo):
-  pass
-cbf_wrapper.__deepcopy__ = __stupid_but_swig_safe__deepcopy__
 
 from dials.command_line.process import Script as DialsProcessScript
 class InMemScript(DialsProcessScript):
@@ -167,6 +166,8 @@ class InMemScript(DialsProcessScript):
 
         t = timestamp
         s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
+        print "Processing shot", s
+
         base_name = "hit-" + s
 
         # stitch together the header, data and metadata into the final dxtbx format object
@@ -209,6 +210,19 @@ class InMemScript(DialsProcessScript):
           observed.as_pickle(strong_filename)
           Command.end('Saved {0} observed to {1}'.format(
               len(observed), strong_filename))
+
+        # reload the ImageSet. Workaround until MemImageSet is ready.
+        imgset = ImageSetFactory.new([dest_path])
+        datablock = DataBlockFactory.from_imageset(imgset)[0]
+
+        if params.output.datablock_filename:
+          if "%s" in params.output.datablock_filename:
+            datablock_filename = os.path.join(params.output.output_dir, params.output.datablock_filename%base_name)
+          else:
+            datablock_filename = os.path.join(params.output.output_dir, params.output.datablock_filename)
+          from dxtbx.datablock import DataBlockDumper
+          dump = DataBlockDumper(datablock)
+          dump.as_json(datablock_filename)
 
         # index, refine and integrate
         try:
