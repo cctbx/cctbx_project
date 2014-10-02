@@ -1,5 +1,5 @@
-from __future__ import division
 
+from __future__ import division
 import libtbx.test_utils.parallel
 from libtbx.utils import Sorry, Usage
 import libtbx.phil
@@ -19,6 +19,10 @@ nproc = 1
 shuffle = False
   .type = bool
 quiet = False
+  .type = bool
+verbosity = 1
+  .type = int
+stderr = False
   .type = bool
 run_in_tmp_dir = False
   .type = bool
@@ -81,17 +85,19 @@ def run (args) :
     raise Sorry("No test scripts found in %s." % params.directory)
   if (params.shuffle) :
     random.shuffle(all_tests)
-  if (not params.quiet) :
+  if (params.quiet) :
+    params.verbosity = 0
+  if (params.verbosity > 0) :
     print "Running the following %d tests on %s processors:" % (len(all_tests),
       params.nproc)
     for test in all_tests :
       print "  " + test
   log = open("run_tests_parallel_zlog", "wb")
-  libtbx.test_utils.parallel.run_command_list(
+  result = libtbx.test_utils.parallel.run_command_list(
     cmd_list=all_tests,
     nprocs=params.nproc,
     log=log,
-    quiet=params.quiet,
+    verbosity=params.verbosity,
     output_junit_xml=params.output_junit_xml)
   log.close()
   print """
@@ -102,6 +108,8 @@ Reminder: Please do not forget: libtbx.find_clutter
           See also: cctbx_project/libtbx/development/dev_guidelines.txt
 ============================================================================
 """
+  return result.failure
 
 if (__name__ == "__main__") :
-  run(sys.argv[1:])
+  if (run(sys.argv[1:]) > 0) :
+    sys.exit(1)

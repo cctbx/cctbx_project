@@ -1,15 +1,20 @@
+
 from __future__ import division
 from libtbx import easy_run
 from libtbx import test_utils
 import libtbx.load_env
 from libtbx.utils import import_python_object, Sorry, multi_out
-from libtbx import group_args
-from multiprocessing import Pool
+from libtbx import group_args, Auto
+from multiprocessing import Pool, cpu_count
 from cStringIO import StringIO
 import traceback
 import time
 import os
 import sys
+
+QUIET = 0
+DEFAULT_VERBOSITY = 1
+EXTRA_VERBOSE = 2 # for nightly builds
 
 max_time = 200 # XXX the lower the better
 
@@ -52,36 +57,22 @@ def find_tests (dir_name) :
   return all_tests
 
 def run_command(command,
-                verbose=False,
+                verbosity=DEFAULT_VERBOSITY,
                 out=None):
+  if (out is None) :
+    out = sys.stdout
   try :
     t0=time.time()
-    sys.stdout.flush()
-    sys.stderr.flush()
     cmd_result = easy_run.fully_buffered(
       command=command,
       #join_stdout_stderr=join_stdout_stderr,
       )
-    #if (len(cmd_result.stderr_lines) != 0):
-    #  if verbose :
-    #    print '!'*80
-    #    print "command"
-    #    print command
-    #    if (cmd_result.return_code != 0) :
-    #      print "ERROR - return code %d" % cmd_result.return_code
-    #    print "stderr"
-    #    #print "\n".join(cmd_result.stdout_lines)
-    #    print "\n".join(cmd_result.stderr_lines)
-    #    #cmd_result.raise_if_errors()
-    #    print '!'*80
     if 0:
       test_utils._check_command_output(
         lines=cmd_result.stdout_lines,
         show_command_if_error=1, #show_command_if_error,
         sorry_expected=0, #sorry_expected,
         )
-    sys.stdout.flush()
-    sys.stderr.flush()
     cmd_result.wall_time = time.time()-t0
     cmd_result.error_lines = evaluate_output(cmd_result)
     return cmd_result
@@ -108,20 +99,23 @@ class run_command_list (object) :
                 nprocs=1,
                 out=sys.stdout,
                 log=None,
-                quiet=False,
+                verbosity=DEFAULT_VERBOSITY,
                 output_junit_xml=False) :
     if (log is None) : log = null_out()
     self.out = multi_out()
     self.log = log
     self.out.register("stdout", out)
     self.out.register("log", log)
-    self.quiet = quiet
+    self.verbosity = verbosity
+    self.quiet = (verbosity == 0)
     self.cmd_list = []
     for cmd in cmd_list :
       if (not cmd in self.cmd_list) :
         self.cmd_list.append(cmd)
       else :
         print >> self.out, "  test %s repeated, skipping" % cmd
+    if (nprocs is Auto) :
+      nprocs = cpu_count()
     nprocs = min(nprocs, len(self.cmd_list))
     print >> self.out, "\n  Starting command list"
     print >> self.out, "    NProcs :",nprocs
@@ -134,10 +128,10 @@ class run_command_list (object) :
       if nprocs>1:
         pool.apply_async(
           run_command,
-          [command, (not quiet), out],
+          [command, verbosity, out],
           callback=self.save_result)
       else:
-        rc = run_command(command, verbose=(not quiet), out=out)
+        rc = run_command(command, verbosity=verbosity, out=out)
         self.save_result(rc)
     if nprocs>1:
       try :
@@ -153,10 +147,10 @@ class run_command_list (object) :
     print >> self.out, ""
     print >> self.out, "Elapsed time: %.2fs" %(t_end-t_start)
     print >> self.out, ""
-    finished = 0
-    warning = 0
+    self.finished = 0
+    self.warning = 0
     extra_stderr = 0
-    failure = 0
+    self.failure = 0
     failures = []
     long_jobs = []
     long_runtimes = []
@@ -165,14 +159,14 @@ class run_command_list (object) :
       from junit_xml import TestSuite, TestCase
       test_cases = []
     for result in self.results :
-      finished += 1
+      self.finished += 1
       runtimes.append(result.wall_time)
       if (result.return_code != 0) :
-        failure += 1
+        self.failure += 1
         failures.append(result)
       else :
         if (len(result.error_lines) != 0) :
-          warning += 1
+          self.warning += 1
           failures.append(result)
         if (len(result.stderr_lines) != 0):
           extra_stderr += 1
@@ -225,11 +219,11 @@ class run_command_list (object) :
       print >> self.out, "Please verify these tests manually."
       print >> self.out, ""
     print >> self.out, "Summary:"
-    print >> self.out, "  Tests run                    :",finished
-    print >> self.out, "  Failures                     :",failure
-    print >> self.out, "  Warnings (possible failures) :",warning
+    print >> self.out, "  Tests run                    :",self.finished
+    print >> self.out, "  Failures                     :",self.failure
+    print >> self.out, "  Warnings (possible failures) :",self.warning
     print >> self.out, "  Stderr output (discouraged)  :",extra_stderr
-    if (finished != len(self.cmd_list)) :
+    if (self.finished != len(self.cmd_list)) :
       print >> self.out, "*" * 80
       print >> self.out, "  WARNING: NOT ALL TESTS FINISHED!"
       print >> self.out, "*" * 80
@@ -248,21 +242,28 @@ class run_command_list (object) :
       alert = True
     if (not self.quiet) and (len(result.error_lines) > 0) :
       alert = True
-    if (alert) :
+    if (alert) or (self.verbosity == EXTRA_VERBOSE) :
       out = self.out
     else :
       out = self.log
-    print >> out, '_'*80
-    print >> out, '\ncommand : "%s"' % result.command
-    print >> out, 'return_code : %s' % result.return_code
+    print >> out, ""
+    print >> out, '\n#command : "%s"' % result.command
+    print >> out, '#return_code : %s' % result.return_code
+    if (self.verbosity == EXTRA_VERBOSE) :
+      print >> out, "\n".join(result.stdout_lines)
     oks = 0
     for line in result.stdout_lines:
       if line.find("OK")>-1:
         oks += 1
     print >> out, 'Found %d "OK"' % oks
     if (len(result.stderr_lines) != 0):
-      print >> out, 'stderr-'*10
+      print >> out, '#stderr-'*10
       print >> out, "\n".join(result.stderr_lines)
+      if (self.verbosity > QUIET) :
+        print >> sys.stderr, "#", result.command
+        print >> sys.stderr, "\n".join(result.stderr_lines)
+        print >> sys.stderr, ""
+        sys.stderr.flush()
     if (len(result.error_lines) > 0) :
       print >> out, "possible errors:"
       print >> out, "\n".join(result.error_lines)
@@ -273,6 +274,7 @@ class run_command_list (object) :
       print >> out, "!!  %-71s !!" %"TEST TAKES MORE THAN A MINUTE"
       print >> out, "!!","WARNING "*9,"!!"
       print >> out, '!'*78
+    out.flush()
 
 def make_commands (files) :
   commands = []
