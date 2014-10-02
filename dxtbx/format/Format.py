@@ -277,23 +277,30 @@ class Format(object):
   def is_bz2(filename):
     '''Check if a file pointed at by filename is bzip2 format.'''
 
+    if not '.bz2' in filename[-4:]:
+      return False
+
     return 'BZh' in open(filename, 'rb').read(3)
 
   @staticmethod
   def is_gzip(filename):
     '''Check if a file pointed at by filename is gzip compressed.'''
 
+    if not '.gz' in filename[-3:]:
+      return False
+
     magic = open(filename, 'rb').read(2)
 
     return ord(magic[0]) == 0x1f and ord(magic[1]) == 0x8b
 
   @staticmethod
-  def open_file(filename, mode = 'rb'):
+  def open_file(filename, mode='rb', url=False):
     '''Open file for reading, decompressing silently if necessary.'''
 
-    if Format.is_url(filename):
-      import urllib2
-      return urllib2.urlopen(filename)
+    if url:
+      if Format.is_url(filename):
+        import urllib2
+        return urllib2.urlopen(filename)
 
     if Format.is_bz2(filename):
       if bz2 is None:
