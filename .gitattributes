@@ -3256,6 +3256,7 @@ xfel/command_line/make_mask.py -text
 xfel/command_line/metrology.py -text
 xfel/command_line/monitor_detectors.py -text
 xfel/command_line/monitor_trials.py -text
+xfel/command_line/mpi_index.py -text
 xfel/command_line/or_mask.py -text
 xfel/command_line/overlay_spectra.py -text
 xfel/command_line/plot_to_subpixel.py -text
