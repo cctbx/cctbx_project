@@ -122,8 +122,9 @@ def update_rot_tran(x,transforms_obj=None,ncs_restraints_group_list=None):
 
 def rotation_to_angles(rotation, deg=False):
   """
-  Get the rotation angles around the axis x,y,x for rotation r
+  Get the rotation angles around the axis x,y,z for rotation r
   Such that r = Rx*Ry*Rz
+  Those angles are the Tait-Bryan angles form of Euler angles
 
   Note that typically there are two solutions, and this function will return
   only one. In the case that cos(beta) == 0 there are infinite number of
@@ -134,8 +135,7 @@ def rotation_to_angles(rotation, deg=False):
     deg : When False use radians, when True use degrees
 
   Returns:
-    angles: (flex.double) containing rotation angles in  the form
-      (alpha, beta, gamma)
+    angles (flex.double): (alpha, beta, gamma) rotation angles around the x,y,z
   """
   # make sure the rotation data type is flex.double
   if not isinstance(rotation,type(flex.double())):
