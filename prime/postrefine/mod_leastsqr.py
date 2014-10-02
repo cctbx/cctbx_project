@@ -29,7 +29,7 @@ from cctbx.uctbx import unit_cell
 from cctbx.crystal_orientation import crystal_orientation, basis_type
 
 def calc_full_refl(I_o_p_set, sin_theta_over_lambda_sq_set, G, B, p_set, rs_set, flag_volume_correction=False):
-  I_o_full_set = flex.double(((G * np.exp(-2*B*sin_theta_over_lambda_sq_set) * I_o_p_set)/p_set)) * (4/3) * rs_set
+  I_o_full_set = flex.double(((G * np.exp(-2*B*sin_theta_over_lambda_sq_set) * I_o_p_set)/p_set))
 
   return I_o_full_set
 
