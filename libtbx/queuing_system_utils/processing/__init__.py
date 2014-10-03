@@ -676,7 +676,7 @@ class JobFactory(object):
   """
 
   def __init__(self,
-    system,
+    platform,
     name = None,
     command = None,
     asynchronous = True,
