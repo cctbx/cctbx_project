@@ -3265,6 +3265,7 @@ xfel/command_line/postrefine.py -text
 xfel/command_line/quadrants.py -text
 xfel/command_line/radial_average.py -text
 xfel/command_line/smooth_spectrum.py -text
+xfel/command_line/stills_merge.py -text
 xfel/command_line/subtract_background.py -text
 xfel/command_line/trial_stats.py -text
 xfel/command_line/view_pixel_histograms.py -text
