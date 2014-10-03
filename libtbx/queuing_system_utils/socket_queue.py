@@ -175,3 +175,23 @@ class Manager(object):
 
     return manager
 
+
+class QFactory(object):
+  """
+  Creator pattern for socket queue, also include destruction
+  """
+
+  def __init__(self, port = 0, keylength = 16):
+
+    self.manager = Manager.Server( port = port, keylength = keylength )
+
+
+  def create(self):
+
+    return self.manager.Queue()
+
+
+  @staticmethod
+  def destroy(queue):
+
+    queue.shutdown()

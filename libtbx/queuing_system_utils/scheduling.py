@@ -1039,8 +1039,10 @@ class MainthreadQueue(object):
     self.deque = deque()
 
 
-  def put(self, obj):
+  def put(self, obj, block = True, timeout = None):
 
+    # NB: block and timeout are ignored, because it is not safe to use this
+    #     with multiple threads
     self.deque.append( obj )
 
 
@@ -1777,6 +1779,108 @@ class ProcessPool(object):
     elif target < count:
       while target < self.process_count:
         self.stop_process()
+
+
+class MainthreadPool(object):
+  """
+  Single process pool that executes on the main thread
+
+  This is used for all single-CPU jobs, as it is more efficient than spawning a
+  single job
+  """
+
+  def __init__(self):
+
+    self.waiting_jobs = deque()
+    self.completed_results = deque()
+
+
+  @property
+  def job_count(self):
+
+    return len( self.waiting_jobs )
+
+
+  @property
+  def completed_jobs(self):
+
+    return [ result.identifier for result in self.completed_results ]
+
+
+  @property
+  def known_jobs(self):
+
+    return list( self.waiting_jobs ) + self.completed_jobs
+
+
+  @property
+  def process_count(self):
+
+    return 1
+
+
+  @property
+  def results(self):
+
+    while self.known_jobs:
+      self.wait()
+      yield self.completed_results.popleft()
+
+
+  def submit(self, target, args = (), kwargs = {}):
+
+    identifier = Identifier( target = target, args = args, kwargs = kwargs )
+    self.waiting_jobs.append( identifier )
+    return identifier
+
+
+  def is_empty(self):
+
+    return not self.waiting_jobs
+
+
+  def is_full(self):
+
+    return 1 <= self.job_count
+
+
+  def wait(self):
+
+    while not self.completed_results and not self.is_empty():
+      self.poll()
+
+
+  def poll(self):
+
+    if self.waiting_jobs:
+      current = self.waiting_jobs.popleft()
+
+      try:
+        value = current.target( *current.args, **current.kwargs )
+
+      except Exception, e:
+        res = result.Error( exception = e )
+
+      else:
+        res = result.Success( value = value )
+
+      self.completed_results.append( Result( identifier = current, value = res ) )
+
+
+  def join(self):
+
+    while self.waiting_jobs:
+      self.poll()
+
+
+  def shutdown(self):
+
+    pass
+
+
+  def terminate(self):
+
+    pass
 
 
 # Parallel execution iterator

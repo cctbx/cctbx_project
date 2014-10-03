@@ -606,3 +606,401 @@ def parallel_map (
     raise Sorry, "Queue error: %s" % e
 
   return results
+
+
+# These getters are used for conditional imports
+def multiprocessing_getter(**kwargs):
+
+  from libtbx.queuing_system_utils import scheduling_helpers
+  return scheduling_helpers.ProcessFactory( **kwargs )
+
+
+def threading_getter(**kwargs):
+
+  from libtbx.queuing_system_utils import scheduling_helpers
+  return scheduling_helpers.ThreadFactory( **kwargs )
+
+
+class job_getter(object):
+
+  def __init__(self, system):
+
+    self.system = system
+
+
+  def __call__(self, **kwargs):
+
+    from libtbx.queuing_system_utils import processing
+    return processing.JobFactory( system = self.sytem, **kwargs )
+
+
+def multiprocessing_queue_getter(use_manager = False, **kwargs):
+
+  from libtbx.queuing_system_utils import scheduling_helpers
+
+  if use_manager:
+    return scheduling_helpers.MPManagerQFactory()
+
+  else:
+    return scheduling_helpers.MPQFactory
+
+
+def threading_queue_getter(**kwargs):
+
+  from libtbx.queuing_system_utils import scheduling_helpers
+  return scheduling_helpers.QQFactory
+
+
+def job_queue_getter(socket_based = False, **kwargs):
+
+  if socket_based:
+    from libtbx.queuing_system_utils import socket_queue
+    relevant = dict(
+      ( k[ 8 : ], v ) for ( k, v ) in kwargs.items() if k.startswith( "socketq_" )
+      )
+    return socket_queue.QFactory( **relevant )
+
+  else:
+    from libtbx.queuing_system_utils import file_queue
+    relevant = dict(
+      ( k[ 6 : ], v ) for ( k, v ) in kwargs.items() if k.startswith( "fileq_" )
+      )
+    return file_queue.QFactory( **relevant )
+
+
+class parallelization_info(object):
+  """
+  Data for setting up a parallel run
+  """
+
+  def __init__(self, caption, getter, qgetter):
+
+    self.caption = caption
+    self.getter = getter
+    self.qgetter = qgetter
+
+
+  def jfactory(self, **kwargs):
+
+    return self.getter( **kwargs)
+
+
+  def qfactory(self, **kwargs):
+
+    return self.qgetter( **kwargs )
+
+
+parallelization_method_named = {
+  "multiprocessing": parallelization_info(
+                      caption = "Multiprocessing",
+                      getter = multiprocessing_getter,
+                      qgetter = multiprocessing_queue_getter,
+                      ),
+  "threading": parallelization_info(
+                caption = "Threading",
+                getter = threading_getter,
+                qgetter = threading_queue_getter,
+                ),
+  "sge": parallelization_info(
+          caption = "Sun_Grid_Engine",
+          getter = job_getter( system = "sge" ),
+          qgetter = job_queue_getter,
+          ),
+  "lsf": parallelization_info(
+          caption = "LSF",
+          getter = job_getter( system = "lsf" ),
+          qgetter = job_queue_getter,
+          ),
+  "pbs": parallelization_info(
+          caption = "PBS",
+          getter = job_getter( system = "pbs" ),
+          qgetter = job_queue_getter,
+          ),
+  "pbspro": parallelization_info(
+              caption = "PBSPro",
+              getter = job_getter( system = "pbspro" ),
+              qgetter = job_queue_getter,
+              ),
+  "condor": parallelization_info(
+              caption = "Condor",
+              getter = job_getter( system = "condor" ),
+              qgetter = job_queue_getter,
+              ),
+  "slurm": parallelization_info(
+            caption = "SLURM",
+            getter = job_getter( system = "slurm" ),
+            qgetter = job_queue_getter,
+            ),
+  }
+
+
+class process_pool_holder(object):
+  """
+  Holds the pool and shuts it down at exit
+  """
+
+  def __init__(self, jfactory, qfactory, loadmanager):
+
+    self.qfactory = qfactory
+    self.inqueue = qfactory.create()
+    self.outqueue = qfactory.create()
+
+    from libtbx.queuing_system_utils import scheduling
+    self.pool = scheduling.ProcessPool(
+      inqueue = self.inqueue,
+      outqueue = self.outqueue,
+      job_factory = jfactory,
+      loadmanager = loadmanager,
+      lifemanager = scheduling.Immortal,
+      )
+
+
+  def __del__(self):
+
+    self.pool.terminate()
+    self.pool.join()
+
+    self.qfactory.destroy( self.inqueue )
+    self.qfactory.destroy( self.outqueue )
+
+
+class mainthread_pool_holder(object):
+  """
+  Holds a mainthread pool
+  """
+
+  def __init__(self):
+
+    from libtbx.queuing_system_utils import scheduling
+    self.pool = scheduling.MainthreadPool()
+
+
+class process_pool_user_interface(object):
+  """
+  Customize needs by application
+  """
+
+  def __init__(
+    self,
+
+    # Affect generated PHIL
+    enable_multiprocessing = True,
+    enable_threading = False,
+    enable_queuing_systems = True,
+    default = "multiprocessing",
+    enable_socket_queue = False,
+
+    # Does not show up in PHIL, but affect created ProcessPool
+    factory_name = None,
+    factory_preserve_exception_message = False,
+    factory_job_use_target_file = True,
+
+    qfactory_mp_use_manager = False,
+    qfactory_fileq_prefix = "tmp",
+    qfactory_fileq_folder = ".",
+    qfactory_fileq_waittime = 0.1,
+    qfactory_socketq_port = 0,
+    qfactory_socketq_keylength = 16,
+  ):
+
+    self.jkeywords = []
+
+    if enable_multiprocessing:
+      self.jkeywords.append( "multiprocessing" )
+
+    if enable_threading:
+      self.jkeywords.append( "threading" )
+
+    if enable_queuing_systems:
+      self.jkeywords.extend( [ "sge", "lsf", "pbs", "pbspro", "condor", "slurm" ] )
+
+    if default is not None and default not in parallelization_method_named:
+      raise ValueError, "Incorrect default for parallelization technology"
+
+    self.default = default
+    self.enable_socket_queue = enable_socket_queue
+
+    self.factory_name = factory_name
+    self.factory_preserve_exception_message = factory_preserve_exception_message
+    self.factory_job_use_target_file = factory_job_use_target_file
+
+    self.qfactory_mp_use_manager = qfactory_mp_use_manager
+    self.qfactory_fileq_prefix = qfactory_fileq_prefix
+    self.qfactory_fileq_folder = qfactory_fileq_folder
+    self.qfactory_fileq_waittime = qfactory_fileq_waittime
+    self.qfactory_socketq_port = qfactory_socketq_port
+    self.qfactory_socketq_keylength = qfactory_socketq_keylength
+
+
+  def phil_str(self):
+
+    base = """
+    nproc = 1
+      .type = int
+      .short_caption = Number of processes
+    technology = %(technologies)s
+      .type = choice
+      .short_caption = Parallelization method
+      .caption = %(captions)s
+      .optional = False
+    qsub_command = None
+      .type = str
+      .short_caption = qsub command
+    """ % {
+      "technologies": self.phil_choice(
+        keywords = self.jkeywords,
+        default = self.default,
+        ),
+      "captions": " ".join(
+        parallelization_method_named[ k ].caption for k in self.jkeywords
+        ),
+      }
+
+    if self.enable_socket_queue:
+      base += """network_based_channel = False
+        .type = bool
+        .help = Use network (as opposed to filesystem) to communicate with submitted jobs
+      """
+
+
+  def create_from_arguments(
+    self,
+    nproc = 1,
+    technology = "multiprocessing",
+    qsub_command = None,
+    network_based_channel = False,
+    ):
+
+    if nproc == 1 and not os.environ.get( "LIBTBX_FORCE_PARALLEL" ):
+      return mainthread_pool_holder()
+
+    pinfo = parallelization_method_named[ technology ]
+    from libtbx.queuing_system_utils import scheduling
+    from libtbx.queuing_system_utils.processing import errors
+    from libtbx.utils import Sorry
+
+    try:
+      return process_pool_holder(
+        jfactory = pinfo.jfactory(
+          name = self.factory_name,
+          preserve_exception_message = self.factory_preserve_exception_message,
+          command = qsub_command,
+          use_target_file = self.factory_job_use_target_file,
+          ),
+        qfactory = pinfo.qfactory(
+          use_manager = self.qfactory_mp_use_manager,
+          socket_based = network_based_channel,
+          fileq_prefix = self.qfactory_fileq_prefix,
+          fileq_folder = self.qfactory_fileq_folder,
+          fileq_waittime = self.qfactory_fileq_waittime,
+          socketq_port = self.qfactory_socketq_port,
+          socketq_keylength = self.qfactory_socketq_keylength,
+          ),
+        loadmanager = scheduling.ConstantStrategy( capacity = nproc ),
+        )
+
+    except errors.BatchQueueError, e:
+      raise Sorry, "Queue error: %s" % e
+
+
+  def create_from_phil(self, extract):
+
+    return self.create_from_arguments(
+      nproc = extract.nproc,
+      technology = extract.technology,
+      qsub_command = extract.qsub_command,
+      network_based_channel = (
+        extract.network_based_channel if self.enable_socket_queue else False
+        ),
+      )
+
+  @staticmethod
+  def phil_choice(keywords, default):
+
+    return " ".join( ( "*" + k ) if k == default else k for k in keywords )
+
+
+def pool_based_parallel_iterator(pool, func, iterable, preserve_order=True):
+
+  from libtbx.queuing_system_utils import scheduling
+  safe_run_func = python_exception_safe_run( func = func )
+  pfor = scheduling.ParallelForIterator(
+    calculations = ( ( safe_run_func, ( args, ), {} ) for args in iterable ),
+    manager = pool,
+    )
+
+  if preserve_order:
+    return scheduling.SubmissionOrder( parallel_for = pfor )
+
+  else:
+    return scheduling.FinishingOrder( parallel_for = pfor )
+
+
+def pool_based_parallel_map(pool, func, iterable, preserve_order = True, callback = None):
+
+  if callback is None:
+    callback = lambda result: None
+
+  from libtbx.queuing_system_utils.processing import errors
+  from libtbx.utils import Sorry
+
+  results = []
+
+  try:
+    piter = pool_based_parallel_iterator(
+      pool = pool,
+      func = func,
+      iterable = iterable,
+      preserve_order = preserve_order,
+      )
+
+    for ( params, result_wrapper ) in piter:
+      result_proxy = result_wrapper() # raise exception if worker crashed
+      result = result_proxy() # raise exception if error occurred in function
+      results.append( result )
+      callback( result )
+
+  except errors.BatchQueueError, e:
+    raise Sorry, "Queue error: %s" % e
+
+  return results
+
+
+def replacement_parallel_map(
+  func,
+  iterable,
+  params=None,
+  processes=1,
+  method="multiprocessing",
+  qsub_command=None,
+  asynchronous=True, # this is left in for compatibility
+  callback=None,
+  preserve_order=True,
+  preserve_exception_message=False,
+  use_manager=True,
+  ):
+
+  ui = process_pool_user_interface(
+    enable_threading = True,
+    factory_preserve_exception_message = preserve_exception_message,
+    qfactory_mp_use_manager = use_manager,
+    )
+
+  if (params is not None) :
+    method = params.technology
+    processes = params.nproc
+    qsub_command = params.qsub_command
+
+  holder = ui.create_from_arguments(
+    nproc = processes,
+    technology = method,
+    qsub_command = qsub_command,
+    )
+
+  return pool_based_parallel_map(
+    pool = holder.pool,
+    func = func,
+    iterable = iterable,
+    preserve_order = preserve_order,
+    callback = callback,
+    )
