@@ -623,15 +623,15 @@ def threading_getter(**kwargs):
 
 class job_getter(object):
 
-  def __init__(self, system):
+  def __init__(self, platform):
 
-    self.system = system
+    self.platform = platform
 
 
   def __call__(self, **kwargs):
 
     from libtbx.queuing_system_utils import processing
-    return processing.JobFactory( system = self.sytem, **kwargs )
+    return processing.JobFactory( platform = self.platform, **kwargs )
 
 
 def multiprocessing_queue_getter(use_manager = False, **kwargs):
@@ -703,32 +703,32 @@ parallelization_method_named = {
                 ),
   "sge": parallelization_info(
           caption = "Sun_Grid_Engine",
-          getter = job_getter( system = "sge" ),
+          getter = job_getter( platform = "sge" ),
           qgetter = job_queue_getter,
           ),
   "lsf": parallelization_info(
           caption = "LSF",
-          getter = job_getter( system = "lsf" ),
+          getter = job_getter( platform = "lsf" ),
           qgetter = job_queue_getter,
           ),
   "pbs": parallelization_info(
           caption = "PBS",
-          getter = job_getter( system = "pbs" ),
+          getter = job_getter( platform = "pbs" ),
           qgetter = job_queue_getter,
           ),
   "pbspro": parallelization_info(
               caption = "PBSPro",
-              getter = job_getter( system = "pbspro" ),
+              getter = job_getter( platform = "pbspro" ),
               qgetter = job_queue_getter,
               ),
   "condor": parallelization_info(
               caption = "Condor",
-              getter = job_getter( system = "condor" ),
+              getter = job_getter( platform = "condor" ),
               qgetter = job_queue_getter,
               ),
   "slurm": parallelization_info(
             caption = "SLURM",
-            getter = job_getter( system = "slurm" ),
+            getter = job_getter( platform = "slurm" ),
             qgetter = job_queue_getter,
             ),
   }
