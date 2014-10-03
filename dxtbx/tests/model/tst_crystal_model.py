@@ -195,9 +195,46 @@ Crystal:
     A_min = model_minimum.get_A_at_scan_point(i)
     assert A_min == A_orig * M_inv
 
+def exercise_similarity():
+
+  model_1 = crystal_model(real_space_a=(10,0,0),
+                          real_space_b=(0,11,0),
+                          real_space_c=(0,0,12),
+                          space_group_symbol="P 1",
+                          mosaicity=0.5)
+  model_2 = crystal_model(real_space_a=(10,0,0),
+                          real_space_b=(0,11,0),
+                          real_space_c=(0,0,12),
+                          space_group_symbol="P 1",
+                          mosaicity=0.5)
+  assert model_1.is_similar_to(model_2)
+
+  # mosaicity tests
+  model_1.set_mosaicity(-1)
+  model_2.set_mosaicity(-0.5)
+  assert model_1.is_similar_to(model_2) # test ignores negative mosaicity
+  model_1.set_mosaicity(0.5)
+  model_2.set_mosaicity(0.63) # outside tolerance
+  assert not model_1.is_similar_to(model_2)
+  model_2.set_mosaicity(0.625) #just inside tolerance
+  assert model_1.is_similar_to(model_2)
+
+  # orientation tests
+  R = model_2.get_U()
+  dr1 = matrix.col((1, 0, 0)).axis_and_angle_as_r3_rotation_matrix(0.0101, deg=True)
+  dr2 = matrix.col((1, 0, 0)).axis_and_angle_as_r3_rotation_matrix(0.0099, deg=True)
+  model_2.set_U(dr1 * R)
+  assert not model_1.is_similar_to(model_2) # outside tolerance
+  model_2.set_U(dr2 * R)
+  assert model_1.is_similar_to(model_2) # inside tolerance
+
+  # unit_cell.is_similar_to is tested elsewhere
+  return
+
 def run():
   exercise_crystal_model()
   exercise_crystal_model_from_mosflm_matrix()
+  exercise_similarity()
 
 if __name__ == '__main__':
   from libtbx.utils import show_times_at_exit

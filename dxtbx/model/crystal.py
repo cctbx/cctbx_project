@@ -326,6 +326,75 @@ class crystal_model(object):
               self._sg == other._sg)
     return NotImplemented
 
+  def is_similar_to(self, other, angle_tolerance=0.01,
+                    mosaicity_tolerance=0.8, uc_rel_length_tolerance=0.01,
+                    uc_abs_angle_tolerance=1.):
+    '''
+    Test similarity of this to another crystal model
+
+    :param other: the crystal model to test against
+    :type other: crystal_model
+    :param angle_tolerance: maximum tolerated orientation difference in degrees
+    :type angle_tolerance: float
+    :param mosaicity_tolerance: minimum tolerated fraction of the larger
+            mosaicity for the smaller mosaicity to retain similarity
+    :type mosaicity_tolerance:float
+    :param uc_rel_length_tolerance: relative length tolerance to pass to
+            unit_cell.is_similar_to
+    :type uc_rel_length_tolerance: float
+    :param uc_abs_angle_tolerance: absolute angle tolerance to pass to
+            unit_cell.is_similar_to
+    :type uc_abs_angle_tolerance: float
+    :returns: Whether the other crystal model is similar to this
+    :rtype: bool
+    '''
+
+    # space group test
+    if self.get_space_group() != other.get_space_group(): return False
+
+    # mosaicity test
+    m_a, m_b = self.get_mosaicity(deg=True), other.get_mosaicity(deg=True)
+    min_m, max_m = min(m_a, m_b), max(m_a, m_b)
+    if min_m <= 0.0:
+      if max_m > 0.0: return False
+    elif min_m / max_m < mosaicity_tolerance: return False
+
+    # static orientation test
+    U_a, U_b = self.get_U(), other.get_U()
+    assert U_a.is_r3_rotation_matrix()
+    assert U_b.is_r3_rotation_matrix()
+    R_ab = U_b * U_a.transpose()
+    uq = R_ab.r3_rotation_matrix_as_unit_quaternion()
+    angle = uq.unit_quaternion_as_axis_and_angle(deg=True)[0]
+    if abs(angle) > angle_tolerance: return False
+
+    # static unit cell test
+    uc_a, uc_b = self.get_unit_cell(), other.get_unit_cell()
+    if not uc_a.is_similar_to(uc_b,
+      relative_length_tolerance=uc_rel_length_tolerance,
+      absolute_angle_tolerance=uc_abs_angle_tolerance): return False
+
+    # scan varying tests
+    if self.num_scan_points > 0:
+      if other.num_scan_points != self.num_scan_points: return False
+      for i in range(self.num_scan_points):
+        U_a, U_b = self.get_U_at_scan_point(i), other.get_U_at_scan_point(i)
+        assert U_a.is_r3_rotation_matrix()
+        assert U_b.is_r3_rotation_matrix()
+        R_ab = U_b * U_a.transpose()
+        uq = R_ab.r3_rotation_matrix_as_unit_quaternion()
+        angle = uq.unit_quaternion_as_axis_and_angle(deg=True)[0]
+        if abs(angle) > angle_tolerance: return False
+
+        B_a, B_b = self.get_B_at_scan_point(i), other.get_B_at_scan_point(i)
+        uc_a = crystal_orientation(B_a,True).unit_cell()
+        uc_b = crystal_orientation(B_b,True).unit_cell()
+        if not uc_a.is_similar_to(uc_b,
+          relative_length_tolerance=uc_rel_length_tolerance,
+          absolute_angle_tolerance=uc_abs_angle_tolerance): return False
+
+    return True
+
   def get_real_space_vectors(self):
     '''
     Get the real space unit cell basis vectors.
