@@ -82,3 +82,115 @@ class Process(multiprocessing.Process):
     else:
       self.err = None
 
+
+class ThreadFactory(object):
+  """
+  Creator for threading.Thread or scheduling_helpers.Thread
+  """
+
+  def __init__(self, name = None, preserve_exception_message = False, **kwargs):
+
+    if preserve_exception_message:
+      self.factory = Thread
+
+    else:
+      self.factory = threading.Thread
+
+    self.name = name
+
+
+  def __call__(self, target, args = (), kwargs = {}):
+
+    return self.factory(
+      name = self.name,
+      target = target,
+      args = args,
+      kwargs = kwargs,
+      )
+
+
+class ProcessFactory(object):
+  """
+  Creator for multiprocessing.Process or scheduling_helpers.Process
+  """
+
+  def __init__(self, name = None, preserve_exception_message = False, **kwargs):
+
+    if preserve_exception_message:
+      self.factory = Process
+
+    else:
+      self.factory = multiprocessing.Process
+
+    self.name = name
+
+
+  def __call__(self, target, args = (), kwargs = {}):
+
+    return self.factory(
+      name = self.name,
+      target = target,
+      args = args,
+      kwargs = kwargs,
+      )
+
+
+class QQFactory(object):
+  """
+  Creator pattern for Queue.Queue, also include destruction
+
+  Note this is a singleton object
+  """
+
+  @staticmethod
+  def create():
+
+    import Queue
+    return Queue.Queue()
+
+
+  @staticmethod
+  def destroy(queue):
+
+    pass
+
+
+class MPQFactory(object):
+  """
+  Creator pattern for multiprocessing.Queue, also include destruction
+
+  Note this is a singleton object
+  """
+
+  @staticmethod
+  def create():
+
+    return multiprocessing.Queue()
+
+
+  @staticmethod
+  def destroy(queue):
+
+    pass
+
+
+class MPManagerQFactory(object):
+  """
+  Creator pattern for multiprocessing.Manager.Queue, also include destruction
+
+  Note this is a not singleton object
+  """
+
+  def __init__(self):
+
+    self.manager = multiprocessing.Manager()
+
+
+  def create(self):
+
+    return self.manager.Queue()
+
+
+  def destroy(self, queue):
+
+    pass

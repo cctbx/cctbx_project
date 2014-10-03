@@ -210,3 +210,25 @@ class Queue(object):
       if os.path.exists( fname ):
         os.remove( fname )
 
+
+class QFactory(object):
+  """
+  Creator pattern for file queue, also include destruction
+  """
+
+  def __init__(self, prefix = "tmp", folder = ".", waittime = 0.1):
+
+    self.prefix = prefix
+    self.folder = folder
+    self.waittime = waittime
+
+
+  def create(self):
+
+    return Queue( prefix = self.prefix, folder = self.folder, waittime = self.waittime )
+
+
+  @staticmethod
+  def destroy(queue):
+
+    queue.close()

@@ -642,7 +642,7 @@ INTERFACE_FOR = {
   "pbs": ( PBS, pbs_evaluate ),
   "pbspro": (PBSPro, pbspro_evaluate ),
   "condor": ( Condor, condor_evaluate ),
-  "slurm": ( Slurm, slurm_evaluate )
+  "slurm": ( Slurm, slurm_evaluate ),
   }
 
 def qsub (
@@ -669,3 +669,33 @@ def qsub (
 
   return qinterface.Job( target = target )
 
+
+class JobFactory(object):
+  """
+  Creator for Queue.Job objects
+  """
+
+  def __init__(self,
+    system,
+    name = None,
+    command = None,
+    asynchronous = True,
+    use_target_file = True,
+    preserve_exception_message = True,
+    **kwargs
+    ):
+
+    from libtbx.queuing_system_utils.processing import transfer
+    self.qinterface = INTERFACE_FOR[ platform ][0](
+      name = "libtbx_python" if name is None else name,
+      command = command,
+      asynchronous = asynchronous,
+      input = transfer.TemporaryFile if use_target_file else transfer.Stdin,
+      save_error = preserve_exception_message,
+      display_stderr = False,
+      )
+
+
+  def __call__(self, target, args = (), kwargs = {}):
+
+    return self.qinterface.Job( target = target, args = args, kwargs = kwargs)
