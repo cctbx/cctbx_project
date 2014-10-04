@@ -308,6 +308,8 @@ master_params_str = """\
       enabled = True
         .type = bool
         .short_caption = Enable parallelity restraints for stacking nucleobases
+      find_automatically = True
+        .type = bool
       sigma = 0.027
         .type = float
       skip_additional_distance_checking = False
@@ -317,6 +319,30 @@ master_params_str = """\
           of both nucleobases (if exist). \
           result = max(distances)-min(distances) < 2.5 and max(distances) < 8 \
           Probably this function will be deleted soon.
+    }
+    base_pair
+      .multiple = True
+      .optional = True
+      .help = Here user should define by phenix selections at least one \
+        atom in each residue. One of the convinient ways to do so is to \
+        use "resid 15" to define 15th residue.
+    {
+      base1 = None
+        .type = str
+      base2 = None
+        .type = str
+    }
+    stacking_pair
+      .multiple = True
+      .optional = True
+      .help = Here user should define by phenix selections at least one \
+        atom in each residue. One of the convinient ways to do so is to \
+        use "resid 15" to define 15th residue.
+    {
+      base1 = None
+        .type = str
+      base2 = None
+        .type = str
     }
   }
   max_reasonable_bond_distance = 50.0
@@ -2413,7 +2439,7 @@ class build_chain_proxies(object):
               broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
             n_unresolved_chain_link_planarities \
               += link_resolution.counters.unresolved_non_hydrogen
-            # add_parallelity_proxies
+            # Automatically add_parallelity_proxies
             if na_params.enabled and na_params.stacking.enabled:
               if (len(broken_bond_i_seq_pairs) == 0 and # link is not broken...
                   prev_mm.is_rna_dna and mm.is_rna_dna): # and they are rna/dna
@@ -2438,8 +2464,9 @@ class build_chain_proxies(object):
                     print "%5.2f %5.2f %5.2f" % ( diff_dist, max_dist, min_dist),
                     print " in additional check (skip_additional_check_on_dna_rna)"
                   return result
-                if (na_params.stacking.skip_additional_distance_checking
-                    or additional_check(prev_mm, mm)):
+                if (na_params.stacking.find_automatically 
+                    and (na_params.stacking.skip_additional_distance_checking
+                          or additional_check(prev_mm, mm))):
                   link_resolution = add_parallelity_proxies(
                     counters=counters(label="link_parallelity"),
                     m_i=prev_mm,
@@ -3187,9 +3214,9 @@ class build_all_chain_proxies(linking_mixins):
       else:
         carbohydrate_callback.pdb_interpretation_callback(self)
     #
-    self.geometry_proxy_registries.discard_tables()
-    self.scattering_type_registry.discard_tables()
-    self.nonbonded_energy_type_registry.discard_tables()
+    # self.geometry_proxy_registries.discard_tables()
+    # self.scattering_type_registry.discard_tables()
+    # self.nonbonded_energy_type_registry.discard_tables()
     if (log is not None):
       if (n_unique_models != 1):
         print >> log, "  Number of unique models:", n_unique_models
@@ -4377,6 +4404,25 @@ class build_all_chain_proxies(linking_mixins):
     if (have_header):
       print >> log
 
+  def get_i_seqs_from_na_planes(self, r):
+    """ Return i_seqs of atoms in planar groups for given atom_group r. """
+    from iotbx.pdb import residue_name_plus_atom_names_interpreter
+    i_seqs = []
+    rnpani = residue_name_plus_atom_names_interpreter(
+      r.resname, r.atoms().extract_name(),return_mon_lib_dna_name=True)
+    cif_object = self.mon_lib_srv.get_comp_comp_id_direct(
+      rnpani.work_residue_name)
+    planes = cif_object.get_planes()
+    plengths = [len(x.plane_atoms) for x in planes]
+    nmax = plengths.index(max(plengths))
+    for a in planes[nmax].plane_atoms:
+      aname = a.atom_id
+      aname = aname.replace("*","'")
+      a = r.get_atom(aname)
+      if a is not None:
+        i_seqs.append(a.i_seq)
+    return i_seqs
+
   def construct_geometry_restraints_manager(self,
         ener_lib,
         disulfide_link,
@@ -4530,18 +4576,18 @@ class build_all_chain_proxies(linking_mixins):
           i_seqs=[cb1_atom.i_seq,i_seq,j_seq],
           angle_ideal=103.8,
           weight=angle_weight)
-        self.geometry_proxy_registries.angle.append_custom_proxy(proxy=proxy)
+        self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
         proxy = geometry_restraints.angle_proxy(
           i_seqs=[i_seq,j_seq,cb2_atom.i_seq],
           angle_ideal=103.8,
           weight=angle_weight)
-        self.geometry_proxy_registries.angle.append_custom_proxy(proxy=proxy)
+        self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
         proxy = geometry_restraints.dihedral_proxy(
           i_seqs=[cb1_atom.i_seq,i_seq,j_seq, cb2_atom.i_seq],
           angle_ideal=90.0,
           weight=0.01,
           periodicity=2)
-        self.geometry_proxy_registries.dihedral.append_custom_proxy(proxy=proxy)
+        self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
       if disulfide_cif_loop is not None:
         disulfide_cif_loop.add_row(("SS",
                                     self.pdb_atoms[i_seq].pdb_label_columns(),
@@ -4585,16 +4631,36 @@ class build_all_chain_proxies(linking_mixins):
           j_seq=j_seq,
           rt_mx_ji=proxy.rt_mx_ji)
       for proxy in processed_edits.angle_proxies:
-        self.geometry_proxy_registries.angle.append_custom_proxy(proxy=proxy)
+        self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
       for proxy in processed_edits.planarity_proxies:
-        self.geometry_proxy_registries.planarity.append_custom_proxy(proxy=proxy)
+        self.geometry_proxy_registries.planarity.add_if_not_duplicated(proxy=proxy)
       for proxy in processed_edits.parallelity_proxies:
-        self.geometry_proxy_registries.parallelity.append_custom_proxy(proxy=proxy)
+        self.geometry_proxy_registries.parallelity.add_if_not_duplicated(proxy=proxy)
     #
     al_params = self.params.automatic_linking
     na_params = self.params.nucleic_acid_restraints
+    #========== Add user-defined parallelity restraints ==============
+    from iotbx.pdb import rna_dna_atom_names_backbone_reference_set
+    user_parallelity_proxies = []
+    selection_cache = self.pdb_hierarchy.atom_selection_cache()
+    for sp in na_params.stacking_pair:
+      if sp.base1 is not None and sp.base2 is not None:
+        a1 = self.pdb_atoms[selection_cache.iselection(sp.base1)[0]]
+        a2 = self.pdb_atoms[selection_cache.iselection(sp.base2)[0]]
+        r1 = a1.parent()
+        r2 = a2.parent()
+        i_seqs = get_i_seqs_from_na_planes(r1)
+        j_seqs = get_i_seqs_from_na_planes(r2)
+        weight = 1/(na_params.stacking.sigma**2)
+        proxy=geometry_restraints.parallelity_proxy(
+          i_seqs=flex.size_t(i_seqs),
+          j_seqs=flex.size_t(j_seqs),
+          weight=weight)
+        user_parallelity_proxies.append(proxy)
+    for proxy in user_parallelity_proxies:
+      self.geometry_proxy_registries.parallelity.add_if_not_duplicated(proxy=proxy)
+    #========== End user-defined parallelity restraints ==============
     hbonds_in_bond_list = []
-    #
     any_links = False
     link_attrs = ["link_metals",
                   "link_residues",
@@ -4627,34 +4693,21 @@ class build_all_chain_proxies(linking_mixins):
         log=log,
         )
     if hbonds_in_bond_list > 0:
-      if na_params.basepair_planarity.enabled:
+      if na_params.basepair_planarity.enabled and na_params.enabled:
         from iotbx.pdb import residue_name_plus_atom_names_interpreter
         # Do planarity restraints for 'horizontal' basepairing
-        self.geometry_proxy_registries.planarity.initialize_table()
+        weight = 1./na_params.basepair_planarity.sigma**2
         for bond_seqs in hbonds_in_bond_list:
           r1 = self.pdb_atoms[bond_seqs[0]].parent()
           r2 = self.pdb_atoms[bond_seqs[1]].parent()
           i_seqs = []
-          for r in [r1, r2]:
-            rnpani = residue_name_plus_atom_names_interpreter(
-              r.resname, r.atoms().extract_name(),return_mon_lib_dna_name=True)
-            cif_object = self.mon_lib_srv.get_comp_comp_id_direct(
-              rnpani.work_residue_name)
-            planes = cif_object.get_planes()
-            plengths = [len(x.plane_atoms) for x in planes]
-            nmax = plengths.index(max(plengths))
-            for a in planes[nmax].plane_atoms:
-              aname = a.atom_id
-              aname = aname.replace("*","'")
-              a = r.get_atom(aname)
-              if a is not None:
-                i_seqs.append(r.get_atom(aname).i_seq)
+          i_seqs += self.get_i_seqs_from_na_planes(r1)
+          i_seqs += self.get_i_seqs_from_na_planes(r2)
           proxy = geometry_restraints.planarity_proxy(
             i_seqs=i_seqs,
-            weights=[1./na_params.basepair_planarity.sigma**2]*len(i_seqs))
+            weights=[weight]*len(i_seqs))
           self.geometry_proxy_registries.planarity.add_if_not_duplicated(
               proxy=proxy)
-        self.geometry_proxy_registries.planarity.discard_table()
 
     if len(hbonds_in_bond_list) == 0:
       hbonds_in_bond_list = None
@@ -4669,6 +4722,63 @@ class build_all_chain_proxies(linking_mixins):
              s1[16:19], s1[5:8], s2[14:15], s2[16:19], s2[5:8])
           dashes.write(ps)
         dashes.close()
+    #========== Add user-defined basepair restraints (planarity+hbonds) =======
+    new_hbonds = []
+    weight = 1./na_params.basepair_planarity.sigma**2
+    for bp in na_params.base_pair:
+      if bp.base1 is not None and bp.base2 is not None:
+        a1 = self.pdb_atoms[selection_cache.iselection(bp.base1)[0]]
+        a2 = self.pdb_atoms[selection_cache.iselection(bp.base2)[0]]
+        r1 = a1.parent()
+        r2 = a2.parent()
+        i_seqs = self.get_i_seqs_from_na_planes(r1)
+        j_seqs = self.get_i_seqs_from_na_planes(r2)
+        proxy = geometry_restraints.planarity_proxy(
+          i_seqs=i_seqs+j_seqs,
+          weights=[weight]*len(i_seqs+j_seqs))
+        self.geometry_proxy_registries.planarity.add_if_not_duplicated(
+            proxy=proxy)
+        # hbonds
+        print r1.resname, r2.resname
+        if (r1.resname == "C" or r1.resname == "A" or
+             r1.resname == " DC" or r1.resname == " DA"):
+          t = r1
+          r1 = r2
+          r2 = t
+        # so now r2 - C or A, r1 - G or T(U)
+        if r2.resname == "C" or r2.resname == " DC":
+          link_atom_names_list = [("N2", "O2"), ("N1", "N3"), ("O6", "N4")]
+        else:
+          link_atom_names_list = [("N3", "N1"), ("O4", "N6")]
+        for n1, n2 in link_atom_names_list:
+          a1 = r1.get_atom(n1)
+          a2 = r2.get_atom(n2)
+          if a1 is not None and a2 is not None:
+            new_hbonds.append(tuple(sorted([a1.i_seq, a2.i_seq])))
+    bond_weight = 1.0/na_params.bonds.sigma**2
+    if len(new_hbonds) > 0 and hbonds_in_bond_list is None:
+      hbonds_in_bond_list = []
+    for hb in new_hbonds:
+      if hb not in hbonds_in_bond_list:
+        hbonds_in_bond_list.append(hb)
+        proxy = geometry_restraints.bond_simple_proxy(
+          i_seqs=hb,
+          distance_ideal=na_params.bonds.target_value,
+          weight=bond_weight,
+          slack=na_params.bonds.slack)
+        bond_params_table.update(i_seq=hb[0],
+                                 j_seq=hb[1],
+                                 params=proxy)
+        bond_asu_table.add_pair(
+          i_seq=hb[0],
+          j_seq=hb[1],
+          rt_mx_ji=sgtbx.rt_mx(symbol="x,y,z"),
+          )
+    #========== End add user-defined basepair restraints (planarity+hbonds) ===
+
+    self.geometry_proxy_registries.discard_tables()
+    self.scattering_type_registry.discard_tables()
+    self.nonbonded_energy_type_registry.discard_tables()
     #
     #if (hydrogen_bonds is not None) :
     #  for proxy in hydrogen_bonds.bond_sym_proxies :
