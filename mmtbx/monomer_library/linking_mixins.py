@@ -154,7 +154,7 @@ def _apply_link_using_proxies(link,
       i_seqs=i_seqs,
       angle_ideal=angle.value_angle,
       weight=1/angle.value_angle_esd**2)
-    geometry_proxy_registries.angle.append_custom_proxy(proxy=proxy)
+    geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
   #
   for tor in link.tor_list:
     i_seqs = _get_restraint_i_seqs(atom_group1,
@@ -168,7 +168,7 @@ def _apply_link_using_proxies(link,
       weight=1/tor.value_angle_esd**2,
       periodicity=tor.period,
       )
-    geometry_proxy_registries.dihedral.append_custom_proxy(proxy=proxy)
+    geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
   #
   for chir in link.chir_list:
     i_seqs = _get_restraint_i_seqs(atom_group1,
@@ -185,7 +185,7 @@ def _apply_link_using_proxies(link,
       both_signs=False,
       weight=25.,
       )
-    geometry_proxy_registries.chirality.append_custom_proxy(proxy=proxy)
+    geometry_proxy_registries.chirality.add_if_not_duplicated(proxy=proxy)
   #
   planes = {}
   weights = {}
@@ -206,7 +206,7 @@ def _apply_link_using_proxies(link,
         i_seqs=planes[plane_id],
         weights=weights[plane_id],
         )
-      geometry_proxy_registries.planarity.append_custom_proxy(proxy=proxy)
+      geometry_proxy_registries.planarity.add_if_not_duplicated(proxy=proxy)
   return count
 
 def possible_cyclic_peptide(atom1,
@@ -393,44 +393,44 @@ class linking_mixins(object):
       " "*6,
       time.time()-t0)
 
-  def process_nonbonded_for_linking(pdb_inp,
-                                    pdb_hierarchy,
-                                    geometry_restaints_manager,
-                                    verbose=False,
-                                    ):
-    assert 0
-    sorted_nonbonded_proxies = get_nonbonded(pdb_inp,
-                                             pdb_hierarchy,
-                                             geometry_restaints_manager,
-      )
-    atoms = pdb_hierarchy.atoms()
-    result = []
-    for item in sorted_nonbonded_proxies:
-      labels, i_seq, j_seq, distance, vdw_distance, sym_op, rt_mx_ji = item
-      item = empty()
-      item.labels = labels
-      item.i_seq = i_seq
-      item.j_seq = j_seq
-      item.distance = distance
-      if item.distance>2.75: break
-      item.sym_op = sym_op
-      item.rt_mx_ji = rt_mx_ji
-      atom1 = atoms[i_seq]
-      atom2 = atoms[j_seq]
-      if verbose:
-        print " Nonbonded: %s %s %0.3f %s %s" % (atoms[item.i_seq].id_str(),
-                                                 atoms[item.j_seq].id_str(),
-                                                 item.distance,
-                                                 item.sym_op,
-                                                 item.rt_mx_ji,
-                                                 ),
-
-      if is_atom_pair_linked(atom1, atom2):
-        print " Linking?"
-        result.append(item)
-      else:
-        print
-    return result
+  # def process_nonbonded_for_linking(pdb_inp,
+  #                                   pdb_hierarchy,
+  #                                   geometry_restaints_manager,
+  #                                   verbose=False,
+  #                                   ):
+  #   assert 0
+  #   sorted_nonbonded_proxies = get_nonbonded(pdb_inp,
+  #                                            pdb_hierarchy,
+  #                                            geometry_restaints_manager,
+  #     )
+  #   atoms = pdb_hierarchy.atoms()
+  #   result = []
+  #   for item in sorted_nonbonded_proxies:
+  #     labels, i_seq, j_seq, distance, vdw_distance, sym_op, rt_mx_ji = item
+  #     item = empty()
+  #     item.labels = labels
+  #     item.i_seq = i_seq
+  #     item.j_seq = j_seq
+  #     item.distance = distance
+  #     if item.distance>2.75: break
+  #     item.sym_op = sym_op
+  #     item.rt_mx_ji = rt_mx_ji
+  #     atom1 = atoms[i_seq]
+  #     atom2 = atoms[j_seq]
+  #     if verbose:
+  #       print " Nonbonded: %s %s %0.3f %s %s" % (atoms[item.i_seq].id_str(),
+  #                                                atoms[item.j_seq].id_str(),
+  #                                                item.distance,
+  #                                                item.sym_op,
+  #                                                item.rt_mx_ji,
+  #                                                ),
+  #
+  #     if is_atom_pair_linked(atom1, atom2):
+  #       print " Linking?"
+  #       result.append(item)
+  #     else:
+  #       print
+  #   return result
 
   def process_nonbonded_for_links(self,
                                   bond_params_table,
@@ -476,26 +476,26 @@ class linking_mixins(object):
     from cctbx import crystal
     from cctbx.array_family import flex
     #
-    def _nonbonded_pair_generator_from_pair_asu_table(max_bonded_cutoff=3.):
-      assert 0
-      xray_structure_simple=self.pdb_inp.xray_structure_simple()
-      pair_asu_table = xray_structure_simple.pair_asu_table(
-        distance_cutoff=10, #max_bonded_cutoff,
-        ) #self.clash_threshold)
-      bonded_i_seqs = []
-      for bp in self.geometry_proxy_registries.bond_simple.proxies:
-        bonded_i_seqs.append(bp.i_seqs)
-      pair_sym_table = pair_asu_table.extract_pair_sym_table()
-      atom_pairs_i_seqs, sym_atom_pairs_i_seqs = pair_sym_table.both_edge_list()
-      nonbonded_pairs = list(set(atom_pairs_i_seqs).difference(set(bonded_i_seqs)))
-      for ii, (i_seq, j_seq) in enumerate(nonbonded_pairs):
-        yield (i_seq, j_seq, None)
-        if ii>5: break
-      nonbonded_pairs = list(set(sym_atom_pairs_i_seqs).difference(set(bonded_i_seqs)))
-      for ii, (i_seq, j_seq, sym) in enumerate(nonbonded_pairs):
-        yield (i_seq, j_seq, sym)
-        if ii>5: break
-    #
+    # def _nonbonded_pair_generator_from_pair_asu_table(max_bonded_cutoff=3.):
+    #   assert 0
+    #   xray_structure_simple=self.pdb_inp.xray_structure_simple()
+    #   pair_asu_table = xray_structure_simple.pair_asu_table(
+    #     distance_cutoff=10, #max_bonded_cutoff,
+    #     ) #self.clash_threshold)
+    #   bonded_i_seqs = []
+    #   for bp in self.geometry_proxy_registries.bond_simple.proxies:
+    #     bonded_i_seqs.append(bp.i_seqs)
+    #   pair_sym_table = pair_asu_table.extract_pair_sym_table()
+    #   atom_pairs_i_seqs, sym_atom_pairs_i_seqs = pair_sym_table.both_edge_list()
+    #   nonbonded_pairs = list(set(atom_pairs_i_seqs).difference(set(bonded_i_seqs)))
+    #   for ii, (i_seq, j_seq) in enumerate(nonbonded_pairs):
+    #     yield (i_seq, j_seq, None)
+    #     if ii>5: break
+    #   nonbonded_pairs = list(set(sym_atom_pairs_i_seqs).difference(set(bonded_i_seqs)))
+    #   for ii, (i_seq, j_seq, sym) in enumerate(nonbonded_pairs):
+    #     yield (i_seq, j_seq, sym)
+    #     if ii>5: break
+    # #
     def _nonbonded_pair_objects(max_bonded_cutoff=3.,
                                 i_seqs=None,
                                 ):
@@ -542,16 +542,16 @@ class linking_mixins(object):
       for item in rc:
         yield item
     #
-    def _nonbonded_proxies_generator_geometry_restraints_sort(
-        nonbonded_proxies,
-        max_bonded_cutoff=3.,
-        ):
-      assert 0
-      rc = nonbonded_proxies.get_sorted_proxies(by_value="delta",
-                                                sites_cart=sites_cart,
-        )
-      for item in rc:
-        yield item
+    # def _nonbonded_proxies_generator_geometry_restraints_sort(
+    #     nonbonded_proxies,
+    #     max_bonded_cutoff=3.,
+    #     ):
+    #   assert 0
+    #   rc = nonbonded_proxies.get_sorted_proxies(by_value="delta",
+    #                                             sites_cart=sites_cart,
+    #     )
+    #   for item in rc:
+    #     yield item
     #
     print >> log, """
   Automatic linking
