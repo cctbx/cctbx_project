@@ -468,7 +468,7 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
       i_seqs=i_seqs,
       angle_ideal=value,
       weight=1/esd**2)
-    geometry_proxy_registries.angle.append_custom_proxy(proxy=proxy)
+    geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
   #
   def _add_chiral(i_seqs, geometry_proxy_registries, value, esd, both_signs=False):
     proxy = geometry_restraints.chirality_proxy(
@@ -477,7 +477,7 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
       both_signs=both_signs,
       weight=1/esd**2,
       )
-    geometry_proxy_registries.chirality.append_custom_proxy(proxy=proxy)
+    geometry_proxy_registries.chirality.add_if_not_duplicated(proxy=proxy)
 
   def atom_group_output(atom_group):
     outl = ""
