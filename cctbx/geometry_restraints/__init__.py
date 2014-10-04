@@ -167,6 +167,17 @@ class angle_proxy_registry(proxy_registry_base):
       proxies=shared_angle_proxy(),
       strict_conflict_handling=strict_conflict_handling)
 
+  def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
+    assert len(proxy.i_seqs) == 3
+    proxy = proxy.sort_i_seqs()
+    tab_i_seq_1 = self.table.setdefault(proxy.i_seqs[1], {})
+    i_seqs_0_2 = (proxy.i_seqs[0], proxy.i_seqs[2])
+    if (not tab_i_seq_1.has_key(i_seqs_0_2)):
+      tab_i_seq_1[i_seqs_0_2] = self.proxies.size()
+      self.proxies.append(proxy)
+      self.counts.append(1)
+    return True
+
   def process(self, source_info, proxy, tolerance=1.e-6):
     result = proxy_registry_process_result()
     proxy = proxy.sort_i_seqs()
@@ -210,6 +221,17 @@ class dihedral_proxy_registry(proxy_registry_base):
     proxy_registry_base.__init__(self,
       proxies=shared_dihedral_proxy(),
       strict_conflict_handling=strict_conflict_handling)
+
+  def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
+    assert len(proxy.i_seqs) == 4
+    proxy = proxy.sort_i_seqs()
+    tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
+    i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
+    if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
+      tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
+      self.proxies.append(proxy)
+      self.counts.append(1)
+    return True
 
   def process(self, source_info, proxy, tolerance=1.e-6):
     result = proxy_registry_process_result()
@@ -261,6 +283,17 @@ class chirality_proxy_registry(proxy_registry_base):
     proxy_registry_base.__init__(self,
       proxies=shared_chirality_proxy(),
       strict_conflict_handling=strict_conflict_handling)
+
+  def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
+    proxy = proxy.sort_i_seqs()
+    tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
+    i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
+    if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
+      tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
+      self.proxies.append(proxy)
+      self.counts.append(1)
+    return True
+
 
   def process(self, source_info, proxy, tolerance=1.e-6):
     result = proxy_registry_process_result()
