@@ -177,7 +177,8 @@ class DataBlock(object):
     # Loop through all the imagesets
     for iset in self._imagesets:
       if isinstance(iset, ImageSweep):
-        if issubclass(iset.reader().get_format_class(), FormatMultiImage):
+        if (iset.reader().get_format_class() is not None and
+            issubclass(iset.reader().get_format_class(), FormatMultiImage)):
           template = abspath(iset.reader().get_path())
         else:
           template = abspath(iset.get_template())
