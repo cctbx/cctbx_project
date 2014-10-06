@@ -997,10 +997,14 @@ def replacement_parallel_map(
     qsub_command = qsub_command,
     )
 
-  return pool_based_parallel_map(
+  results = pool_based_parallel_map(
     pool = holder.pool,
     func = func,
     iterable = iterable,
     preserve_order = preserve_order,
     callback = callback,
     )
+
+  holder.pool.join()
+  return results
+
