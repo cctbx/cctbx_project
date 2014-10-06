@@ -59,37 +59,29 @@ phil_scope = parse('''
     output_dir = .
       .type = str
       .help = "Directory output files will be placed"
-
     datablock_filename = %s_datablock.json
       .type = str
       .help = "The filename for output datablock"
-
-    mask_filename = %s_mask.p
-      .type = str
-      .help = "The filename for output mask used to remove ASIC edges"
-
     strong_filename = %s_strong.pickle
       .type = str
       .help = "The filename for strong reflections from spot finder output."
-
     indexed_filename = %s_indexed.pickle
       .type = str
       .help = "The filename for indexed reflections."
-
     refined_experiments_filename = %s_refined_experiments.json
       .type = str
       .help = "The filename for saving refined experimental models"
-
     integrated_filename = %s_integrated.pickle
       .type = str
       .help = "The filename for final integrated reflections."
-
     profile_filename = None
       .type = str
       .help = "The filename for output reflection profile parameters"
   }
 
-  include scope dials.command_line.generate_mask.phil_scope
+  border_mask {
+    include scope dials.command_line.generate_mask.phil_scope
+  }
   include scope dials.algorithms.peak_finding.spotfinder_factory.phil_scope
   indexing {
     include scope dials.algorithms.indexing.indexer.master_phil_scope
@@ -121,7 +113,6 @@ class InMemScript(DialsProcessScript):
 
     # The convention is to put %s in the phil parameter to add a time stamp to
     # each output datafile. Save the initial templates here.
-    mask_filename_template                = params.output.mask_filename
     strong_filename_template              = params.output.strong_filename
     indexed_filename_template             = params.output.indexed_filename
     refined_experiments_filename_template = params.output.refined_experiments_filename
@@ -211,8 +202,6 @@ class InMemScript(DialsProcessScript):
         datablock = DataBlockFactory.from_imageset(imgset)[0]
 
         # before calling DIALS for processing, set output paths according to the templates
-        if "%s" in mask_filename_template:
-          self.params.output.mask_filename = os.path.join(params.output.output_dir, mask_filename_template%base_name)
         if "%s" in indexed_filename_template:
           self.params.output.indexed_filename = os.path.join(params.output.output_dir, indexed_filename_template%base_name)
         if "%s" in refined_experiments_filename_template:
@@ -220,17 +209,13 @@ class InMemScript(DialsProcessScript):
         if "%s" in integrated_filename_template:
           self.params.output.integrated_filename = os.path.join(params.output.output_dir, integrated_filename_template%base_name)
 
-        if self.params.output.mask_filename is not None:
-          # Generate the mask
+        # if border is requested, generate a border only mask
+        if params.border_mask.border > 0:
           from dials.command_line.generate_mask import MaskGenerator
-          import cPickle as pickle
-          generator = MaskGenerator(params)
+          generator = MaskGenerator(params.border_mask)
           mask = generator.generate(imgset)
 
-          # Save the mask to file
-          pickle.dump(mask, open(params.output.mask_filename, "w"))
-
-          params.spotfinder.lookup.mask = params.output.mask_filename
+          params.spotfinder.lookup.mask = mask
 
         try:
           observed = self.find_spots(datablock)
