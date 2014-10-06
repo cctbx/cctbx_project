@@ -1587,10 +1587,10 @@ class ProcessPool(object):
   @property
   def process_count(self):
 
-    return (
-      len( self.process_numbered_as )
-      + len( self.terminatings )
-      - self.outstanding_shutdown_requests
+    return max(
+      ( len( self.process_numbered_as ) + len( self.terminatings )
+        - self.outstanding_shutdown_requests ),
+      0,
       )
 
 
@@ -1726,9 +1726,18 @@ class ProcessPool(object):
     time.sleep( self.waittime )
     self.poll()
 
-    for process in self.process_numbered_as.values():
+    for ( pid,  process ) in self.process_numbered_as.items():
       if process.is_alive():
-        process.terminate()
+        if hasattr( process, "terminate" ): # Thread has no terminate
+          try:
+            process.terminate()
+            process.join()
+
+          except Exception:
+            pass
+
+        self.terminatings.add( pid )
+        del self.process_numbered_as[ pid ]
 
     self.poll()
 
