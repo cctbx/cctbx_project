@@ -15,6 +15,25 @@ from dxtbx.imageset import MemImageSet, ImageSetFactory
 from dxtbx.datablock import DataBlockFactory
 
 phil_scope = parse('''
+  dispatch {
+    max_events = None
+      .type = int
+      .help = "If not specified, process all events. Otherwise, only process this many"
+    hit_finder = True
+      .type = bool
+      .help = "If the number of strong reflections is less than"
+      .help = "refinement.reflections.minimum_number_of_reflections, hit_filter=True"
+      .help = "will discard the image. hit_finder=False: process all images"
+    index = True
+      .type = bool
+      .help = "Attempt to index images"
+    integrate = True
+      .type = bool
+      .help = "Integrated indexed images. Ignored if index=False"
+    dump_all = False
+      .type = bool
+      .help = "All frames will be saved to cbf format if set to True"
+  }
   input {
     cfg = None
       .type = str
@@ -131,7 +150,10 @@ class InMemScript(DialsProcessScript):
     calib_dir = env.calibDir()
 
     # set this to sys.maxint to analyze all events
-    maxevents = sys.maxint # 10
+    if params.dispatch.max_events is None:
+      max_events = sys.maxint
+    else:
+      max_events = params.dispatch.max_events
 
     for run in ds.runs():
       # load a header only cspad cbf from the slac metrology
@@ -141,7 +163,7 @@ class InMemScript(DialsProcessScript):
 
       # list of all events
       times = run.times()
-      nevents = min(len(times),maxevents)
+      nevents = min(len(times),max_events)
       mylength = nevents//size # easy but sloppy. lose few events at end of run.
       # chop the list into pieces, depending on rank
       mytimes= times[rank*mylength:(rank+1)*mylength]
@@ -179,6 +201,12 @@ class InMemScript(DialsProcessScript):
         # stitch together the header, data and metadata into the final dxtbx format object
         cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)
 
+        if params.dispatch.dump_all:
+          # save cbf file
+          dest_path = os.path.join(params.output.output_dir, "shot-" + s + ".cbf")
+          cspad_img._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
+            pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
+
         imgset = MemImageSet([cspad_img])
         datablock = DataBlockFactory.from_imageset(imgset)[0]
 
@@ -204,9 +232,13 @@ class InMemScript(DialsProcessScript):
 
           params.spotfinder.lookup.mask = params.output.mask_filename
 
-        observed = self.find_spots(datablock)
+        try:
+          observed = self.find_spots(datablock)
+        except Exception, e:
+          print str(e)
+          continue
 
-        if len(observed) < params.refinement.reflections.minimum_number_of_reflections:
+        if params.dispatch.hit_finder and len(observed) < params.refinement.reflections.minimum_number_of_reflections:
           print "Not enough spots to index"
           continue
 
@@ -244,10 +276,22 @@ class InMemScript(DialsProcessScript):
           dump = DataBlockDumper(datablock)
           dump.as_json(datablock_filename)
 
-        # index, refine and integrate
+        if not params.dispatch.index:
+          continue
+
+        # index and refine
         try:
           experiments, indexed = self.index(datablock, observed)
           experiments = self.refine(experiments, indexed)
+        except Exception, e:
+          print str(e)
+          continue
+
+        if not params.dispatch.integrate:
+          continue
+
+        # integrate
+        try:
           integrated = self.integrate(experiments, indexed)
         except Exception, e:
           print str(e)
