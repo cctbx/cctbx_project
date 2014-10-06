@@ -203,7 +203,7 @@ echo exit_status $? 1>&2
       try:
         exit_code = extract_exit_code_text( output = stderr )
 
-      except RuntimeError:
+      except errors.ExtractionError:
         exit_code = 1 # Assume that job died/cancelled
 
     else:
@@ -282,7 +282,7 @@ def extract_exit_code_text(output):
       return exit_code
 
   else:
-    raise errors.ExtractionError, "Unexpected output:\n%s" % output
+    raise errors.ExtractionError, "Unexpected output: %r" % output
 
 
 class LogfileStrategy(Asynchronous):
