@@ -51,7 +51,7 @@ def pbs_single_evaluate(out, err):
   state = PBS_EVAL_REGEX().search( out )
 
   if not state:
-    raise errors.ExtractionError, "Unexpected response from PBS:\n%s" % out
+    raise errors.ExtractionError, "Unexpected response from PBS: %r" % out
 
   return state.group(1) == "C"
 
@@ -74,7 +74,7 @@ def slurm_single_evaluate(out, err):
   state = out.strip()
 
   if state not in SLURM_CODES:
-    raise errors.ExtractionError, "Unexpected response from Slurm:\n%s" % out
+    raise errors.ExtractionError, "Unexpected response from Slurm: %r" % out
 
   return state == "CD"
 
@@ -336,7 +336,7 @@ def lsf_text_evaluate(out, running, completed):
     return
 
   if not LSF_CENTRAL_HEADER_REGEX().match( out ):
-    raise errors.ExtractionError, "Unexpected response from queuing system"
+    raise errors.ExtractionError, "Unexpected response from LSF: %r" % out
 
   regex = LSF_CENTRAL_JOBID_REGEX()
 
@@ -344,7 +344,7 @@ def lsf_text_evaluate(out, running, completed):
     match = regex.match( line )
 
     if not match:
-      raise errors.ExtractionError, "Unexpected response from queuing system"
+      raise errors.ExtractionError, "Unexpected response from LSF: %r" % out
 
     jobid = match.group( 1 )
     running.add( jobid )
@@ -362,7 +362,7 @@ def pbspro_text_evaluate(out, running, completed):
     return
 
   if not PBSPRO_CENTRAL_HEADER_REGEX().match( out ):
-    raise errors.ExtractionError, "Unexpected response from queuing system"
+    raise errors.ExtractionError, "Unexpected response from PBSPro: %r" % out
 
   regex = PBSPRO_CENTRAL_JOBID_REGEX()
 
@@ -370,7 +370,7 @@ def pbspro_text_evaluate(out, running, completed):
     match = regex.match( line )
 
     if not match:
-      raise errors.ExtractionError, "Unexpected response from queuing system"
+      raise errors.ExtractionError, "Unexpected response from PBSPro: %r" % out
 
     jobid = match.group( 1 )
     running.add( jobid )
@@ -383,7 +383,7 @@ def slurm_text_evaluate(out, running, completed):
     pieces = line.split()
 
     if len( pieces ) != 2:
-      raise errors.ExtractionError, "Unexpected response from queuing system: '%s'" % line
+      raise errors.ExtractionError, "Unexpected response from Slurm: %r" % line
 
     ( jobid, status ) = pieces
 

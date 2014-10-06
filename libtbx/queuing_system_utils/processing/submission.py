@@ -350,7 +350,7 @@ def lsf_jobid_extract(output):
   match = LSF_JOBID_EXTRACT_REGEX().search( output )
 
   if not match:
-    raise errors.ExtractionError, "Unexpected response from queuing system"
+    raise errors.ExtractionError, "Unexpected response from LSF: %r" % output
 
   return match.group(1)
 
@@ -365,7 +365,7 @@ def condor_jobid_extract(output):
   match = CONDOR_JOBID_EXTRACT_REGEX().search( output )
 
   if not match:
-    raise errors.ExtractionError, "Unexpected response from queuing system"
+    raise errors.ExtractionError, "Unexpected response from Condor: %r" % output
 
   return match.group(1)
 
@@ -375,7 +375,7 @@ def slurm_jobid_extract(output):
   match = SLURM_JOBID_EXTRACT_REGEX().search( output )
 
   if not match:
-    raise errors.ExtractionError, "Unexpected response from queuing system"
+    raise errors.ExtractionError, "Unexpected response from Slurm: %r" % output
 
   return match.group(1)
 
