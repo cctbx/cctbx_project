@@ -545,11 +545,11 @@ class Cluster:
 
     errors = [i.wilson_err['Standard Error'] for i in self.members]
     axes_to_return[0].hist(errors, 50, range=[0, 200])
-    axes_to_return[0].set_title("Distribution of Standard Errors on the Wilson fit")
+    axes_to_return[0].set_title("Standard Errors on Wilson fit")
 
     rs = [-1 * i.minus_2B / 2 for i in self.members]
     axes_to_return[1].hist(rs, 50, range=[-50, 200])
-    axes_to_return[1].set_title("Distribution of B values for the Wilson plot")
+    axes_to_return[1].set_title("B values for Wilson plot")
 
     axes_to_return[2].plot([i.G for i in self.members],
              [-1 * i.minus_2B / 2 for i in self.members], 'x')
@@ -600,7 +600,7 @@ class Cluster:
     log_i, one_over_d_square = zip(*[i for i in plotting_data
                                      if i[0] >=0])
     minus_2B, G, r_val, _, std_err = linregress(one_over_d_square, log_i)
-    fit_info = "G: {}, -2B: {}, r: {}, std_err: {}".format(G, minus_2B,
+    fit_info = "G: {0:.2f}, -2B: {0:.2f}, r: {0:.2f}, std_err: {0:.2f}".format(G, minus_2B,
                                                             r_val, std_err)
 
     smooth = Sf._moving_average(log_i, n=smoothing_width)
