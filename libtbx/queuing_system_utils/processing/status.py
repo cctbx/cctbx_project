@@ -20,8 +20,21 @@ class JobStatus(object):
 
   def get_stdout(self):
 
+    import time
+
     if self.outfile is not None:
-      stdout = open( self.outfile ).read().strip()
+      while True:
+        try:
+          infile = open( self.outfile )
+
+        except IOError:
+          time.sleep( 1 )
+
+        else:
+          break
+
+      stdout = infile.read().strip()
+      infile.close()
 
     else:
       stdout = None
@@ -31,8 +44,21 @@ class JobStatus(object):
 
   def get_stderr(self):
 
+    import time
+
     if self.errfile is not None:
-      stderr = open( self.errfile ).read()
+      while True:
+        try:
+          infile = open( self.errfile )
+
+        except IOError:
+          time.sleep( 1 )
+
+        else:
+          break
+
+      stderr = infile.read()
+      infile.close()
 
     else:
       stderr = None
