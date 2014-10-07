@@ -141,6 +141,8 @@ if (__name__ == "__main__") :
   if not os.path.exists(params.cbf_header):
     raise Sorry("File not found: %s"%params.cbf_header)
 
+  print "Converting", params.cbf_header, "to", params.out_metrology_file
+
   geometry = GeometryAccessFromCspadCBF(params.cbf_header)
 
   geometry.save_pars_in_file(params.out_metrology_file)
