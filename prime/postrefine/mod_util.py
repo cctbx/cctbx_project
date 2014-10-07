@@ -22,6 +22,8 @@ class intensities_scaler(object):
     '''
     Constructor
     '''
+    self.CONST_SE_MIN_WEIGHT = 0.17
+    self.CONST_SE_MAX_WEIGHT = 1.0
 
   def calc_avg_I(self, group_no, miller_index, I, sigI, G, B,
                      p_set, rs_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams):
@@ -37,20 +39,26 @@ class intensities_scaler(object):
     sigI_full = calc_full_refl(sigI, sin_theta_over_lambda_sq,
                                G, B, p_set, rs_set, flag_volume_correction=flag_volume_correction)
 
-
-
     #filter out outliers
     sigma_max = 3.0
+    if avg_mode == 'average':
+      sigma_max = 99.0
     if len(I_full) > 4:
-      I_full_as_sigma = (I_full - np.mean(I_full))/ np.std(I_full)
+      I_full_as_sigma = (I_full - np.median(I_full))/ np.std(I_full)
       i_sel = (flex.abs(I_full_as_sigma) <= sigma_max)
       I_full = I_full.select(i_sel)
       sigI_full = sigI_full.select(i_sel)
       SE = SE.select(i_sel)
+      p_set = p_set.select(i_sel)
+      rs_set = rs_set.select(i_sel)
+      G = G.select(i_sel)
+      B = B.select(i_sel)
+      I = I.select(i_sel)
+      sigI = sigI.select(i_sel)
 
     #normalize the SE
-    max_w = 1.0
-    min_w = 0.6
+    max_w = self.CONST_SE_MAX_WEIGHT
+    min_w = math.sqrt(self.CONST_SE_MIN_WEIGHT)
     if len(SE) == 1 or ((flex.min(SE)-flex.max(SE)) == 0):
       SE_norm = flex.double([min_w+((max_w - min_w)/2)]*len(SE))
     else:
@@ -58,13 +66,11 @@ class intensities_scaler(object):
       b = max_w - (m*flex.min(SE))
       SE_norm = (m*SE) + b
 
+    if avg_mode == 'average':
+      SE_norm = flex.double([1]*len(I_full))
 
-    if avg_mode == 'weighted' or avg_mode == 'final':
-      I_avg = np.sum(SE_norm * I_full)/np.sum(SE_norm)
-      sigI_avg = np.sum(SE_norm * sigI_full)/np.sum(SE_norm)
-    elif avg_mode== 'average':
-      I_avg = np.mean(I_full)
-      sigI_avg = np.mean(sigI_full)
+    I_avg = flex.sum(SE_norm * I_full)/flex.sum(SE_norm)
+    sigI_avg = flex.sum(SE_norm * sigI_full)/flex.sum(SE_norm)
 
     #Rmeas, Rmeas_w, multiplicity
     multiplicity = len(I_full)
@@ -73,13 +79,16 @@ class intensities_scaler(object):
       r_meas_w_btm = 0
       r_meas_top = 0
       r_meas_btm = 0
+      r_meas = 0
+      r_meas_w = 0
     else:
       n_obs = multiplicity
       r_meas_w_top = flex.sum(((I_full - I_avg)*SE_norm)**2)*math.sqrt(n_obs/(n_obs-1))
       r_meas_w_btm = flex.sum((I_full*SE_norm)**2)
-      r_meas_top = flex.sum((I_full - I_avg)**2)*math.sqrt(n_obs/(n_obs-1))
-      r_meas_btm = flex.sum((I_full)**2)
-
+      r_meas_top = flex.sum(flex.abs((I_full - I_avg)*SE_norm))*math.sqrt(n_obs/(n_obs-1))
+      r_meas_btm = flex.sum(flex.abs(I_full*SE_norm))
+      r_meas = r_meas_top/r_meas_btm
+      r_meas_w = r_meas_w_top/r_meas_w_btm
 
     #for calculattion of cc1/2
     #sepearte the observations into two groups
@@ -104,7 +113,16 @@ class intensities_scaler(object):
         I_avg_even = np.mean(I_even)
         I_avg_odd = np.mean(I_odd)
 
-    return miller_index, I_avg, sigI_avg, (r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, multiplicity), I_avg_even, I_avg_odd
+    txt_obs_out = 'Reflection: '+str(miller_index[0])+','+str(miller_index[1])+','+str(miller_index[2])+'\n'
+    txt_obs_out += '    I_o        sigI_o    G      B     Eoc     rs      W      I_full     sigI_full\n'
+    for i_o, sigi_o, g, b, eoc, rs, se_norm, i_full, sigi_full  in \
+      zip(I, sigI, G, B, p_set, rs_set, SE_norm, I_full, sigI_full):
+      txt_obs_out += '%10.2f %10.2f %6.2f %6.2f %6.2f %7.5f %6.2f %10.2f %10.2f\n'%(\
+        i_o, sigi_o, 1/g, b, eoc, rs, se_norm, i_full, sigi_full)
+    txt_obs_out += 'Merged I, sigI: %6.2f, %6.2f\n'%(I_avg, sigI_avg)
+    txt_obs_out += 'Rmeas: %6.2f Qw: %6.2f\n'%(r_meas, r_meas_w)
+
+    return miller_index, I_avg, sigI_avg, (r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, multiplicity), I_avg_even, I_avg_odd, txt_obs_out
 
   def calc_mean_unit_cell(self, results):
     a_all = flex.double()
@@ -430,10 +448,10 @@ class intensities_scaler(object):
     one_dsqr_by_bin = flex.double()
 
     csv_out = ""
-    csv_out +='Bin, Low, High, Completeness, <N_obs>, Qmeas, Qw, CC1/2, N_ind, CCiso, N_ind, <I/sigI>\n'
+    csv_out +='Bin, Low, High, Completeness, <N_obs>, Rmeas, Qw, CC1/2, N_ind, CCiso, N_ind, <I/sigI>\n'
     txt_out = '\n'
     txt_out += 'Summary for '+output_mtz_file_prefix+'_merge.mtz\n'
-    txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |Qmeas    Qw     CC1/2   N_ind |CCiso   N_ind| <I/sigI>   <I>\n'
+    txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |Rmeas    Qw     CC1/2   N_ind |CCiso   N_ind| <I/sigI>   <I>\n'
     txt_out += '--------------------------------------------------------------------------------------------------------------------\n'
     sum_r_meas_w_top = 0
     sum_r_meas_w_btm = 0

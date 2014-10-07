@@ -186,13 +186,12 @@ class postref_handler(object):
 
     #grab img. name
     imgname = pickle_filename
-    observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm,  wilson_b, detector_distance_mm = self.organize_input(observations_pickle, iparams)
-    """
+
     try:
       observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm,  wilson_b, detector_distance_mm = self.organize_input(observations_pickle, iparams)
     except Exception:
       observations_original = None
-    """
+
     if observations_original is None:
       print frame_no, '-fail obs is none'
       return None

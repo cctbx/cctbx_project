@@ -148,7 +148,9 @@ if (__name__ == "__main__"):
       I_odd = flex.double()
       for results in calc_average_I_result:
         if results is not None:
-          miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd = results
+          miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd, txt_obs_out = results
+          if iparams.flag_output_verbose:
+            print txt_obs_out
           if math.isnan(stat[0]) or math.isinf(stat[0]) or math.isnan(stat[1]) or math.isinf(stat[1]):
             print miller_index, ' not merged (Qw=%.4g/%.4g)'%(stat[0],stat[1])
           else:
@@ -263,7 +265,9 @@ if (__name__ == "__main__"):
         I_odd = flex.double()
         for results in calc_average_I_result:
           if results is not None:
-            miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd = results
+            miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd, txt_obs_out = results
+            if iparams.flag_output_verbose:
+              print txt_obs_out
             if math.isnan(stat[0]) or math.isinf(stat[0]) or math.isnan(stat[1]) or math.isinf(stat[1]):
               print miller_index, ' not merged (Qw=%.4g/%.4g)'%(stat[0],stat[1])
             else:
