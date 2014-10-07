@@ -19,7 +19,34 @@ from cctbx.uctbx.determine_unit_cell import NCDist
 import numpy as np
 import matplotlib.patheffects as patheffects
 import matplotlib.pyplot as plt
-import random
+
+class SingleMiller():
+  """ Class for representing multiple measurements of a single miller index. """
+  def __init__(self, index, resolution):
+    self.index = index
+    self.resolution = resolution
+    self.intensities = []
+    self.sigmas = []
+
+  def add_obs(self, intensity, sigma):
+    """ Add an observation of the miller index """
+    self.intensities.append(intensity)
+    self.sigmas.append(sigma)
+
+  def weighted_mean_and_std(self):
+    """ return the mean of the observations, weighted by 1/sigmas.
+    :return: [weighted_mean, weighted_std_dev]
+    """
+    intensities = np.array(self.intensities)
+    weights = 1/np.array(self.sigmas)
+    w_mean = np.average(intensities, weights=weights)
+    w_std = np.sqrt(np.average((intensities - w_mean)**2, weights=weights))
+    return w_mean, w_std
+
+  def nobs(self):
+    """ return how many observations of index exist """
+    return len(self.intensities)
+
 
 
 class Cluster:
@@ -73,7 +100,7 @@ class Cluster:
     unit_cells = np.zeros([len(self.members), 6])
     self.pg_composition = {}
     for i, member in enumerate(self.members):
-      unit_cells[i, :] = member.uc
+      unit_cells[i, :] = member.orientation.unit_cell().parameters()
       # Calculate point group composition
       if member.pg in self.pg_composition.keys():
         self.pg_composition[member.pg] += 1
@@ -618,5 +645,39 @@ class Cluster:
       plt.show()
 
     return ax
+
+  def merge_dict(self):
+    """ Make a dict of Miller indices with  ([list of intensities], resolution)
+    value tuples for each miller index.
+    """
+
+    miller_dict = {}
+    for m in self.members:
+      miller_array = m.miller_array
+      d_spacings = list(miller_array.d_spacings().data())
+      miller_indeces = list(miller_array.indices())
+      miller_intensities = list(miller_array.data())
+      miller_sigmas = list(miller_array.sigmas())
+
+      for observation in zip(miller_indeces,
+                             miller_intensities,
+                             miller_sigmas,
+                             d_spacings):
+        try:
+          miller_dict[observation[0]].add_obs(observation[1],
+                                              observation[2])
+        except KeyError:
+          miller_dict[observation[0]] = SingleMiller(observation[0],
+                                                     observation[3])
+          miller_dict[observation[0]].add_obs(observation[1],
+                                              observation[2])
+    return miller_dict
+
+  def as_mtz(self, outname):
+    pass
+
+  def __len__(self):
+    """ Number of images in the cluster """
+    return len(self.members)
 
 
