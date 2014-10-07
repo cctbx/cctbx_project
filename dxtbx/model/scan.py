@@ -45,7 +45,7 @@ class scan_factory:
         tuple(map(int, image_range)),
         tuple(map(float, oscillation)),
         flex.double(list(map(float, exposure_times))),
-        flex.double(list(map(int, epoch_list))),
+        flex.double(list(map(float, epoch_list))),
         deg)
 
   @staticmethod
