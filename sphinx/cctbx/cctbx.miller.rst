@@ -76,7 +76,7 @@ The same set, instantiated directly::
   >>> from cctbx import miller
   >>> from cctbx import crystal
   >>> from cctbx.array_family import flex
-  >>> ms = miller.build_set(
+  >>> ms = miller.set(
   ...   crystal_symmetry=crystal.symmetry(
   ...     space_group_symbol="P212121",
   ...     unit_cell=(6,6,6,90,90,90)),
