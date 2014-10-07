@@ -38,9 +38,6 @@ phil_scope = parse('''
     cfg = None
       .type = str
       .help = "Path to psana config file"
-    output_dir = out
-      .type = str
-      .help = "Directory where results will be deposited"
     experiment = None
       .type = str
       .help = "Experiment identifier, e.g. cxi84914"
@@ -105,11 +102,13 @@ class InMemScript(DialsProcessScript):
     params, options = self.parser.parse_args(show_diff_phil=True)
 
     assert params.input.cfg is not None
-    assert params.input.output_dir is not None
     assert params.input.experiment is not None
     assert params.input.run_num is not None
     assert params.input.address is not None
     assert params.input.detz_offset is not None
+
+    if not os.path.exists(params.output.output_dir):
+      raise Sorry("Output path not found:" + params.output.output_dir)
 
     # The convention is to put %s in the phil parameter to add a time stamp to
     # each output datafile. Save the initial templates here.
@@ -243,10 +242,10 @@ class InMemScript(DialsProcessScript):
 
           from dials.util.command_line import Command
           Command.start('Saving {0} reflections to {1}'.format(
-              len(observed), strong_filename))
+              len(observed), os.path.basename(strong_filename)))
           observed.as_pickle(strong_filename)
           Command.end('Saved {0} observed to {1}'.format(
-              len(observed), strong_filename))
+              len(observed), os.path.basename(strong_filename)))
 
         # reload the ImageSet. Workaround until MemImageSet is ready.
         imgset = ImageSetFactory.new([dest_path])
