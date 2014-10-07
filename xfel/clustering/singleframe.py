@@ -43,7 +43,7 @@ class SingleFrame:
         - `name`: file-name, used as an identifier
         - `crystal_system:
         - `pg`: point group of pickle
-        - `uc`: unit cell as a tuple
+        - `uc`: Niggli unit cell as a tuple
         - `orientation`: cctbx crystal_orientation object
         - `total_i`: the total integrated intensity for this frame
         - `xbeam`: x-location of beam centre
