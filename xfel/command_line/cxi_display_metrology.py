@@ -75,8 +75,6 @@ if (__name__ == "__main__") :
           arrow_end = matrix.col((transformed_x[0,0]/1000, transformed_y[0,0]/1000))
           dx, dy = arrow_end - arrow_start
           ax.arrow(quad.x0/1000, quad.y0/1000, dx, dy, head_width=0.05, head_length=0.1, fc='k', ec='k')
-          if quad_id == 0 and sensor_id == 0:
-            print x[quad_id,sensor_id,0,0]/1000, transformed_x[0,0]/1000
 
           p0 = col((x[quad_id,sensor_id,0,0]/1000,
                     y[quad_id,sensor_id,0,0]/1000))

@@ -24,7 +24,7 @@ def average(argv=None):
     raise Sorry("MPI not found")
 
   command_line = (libtbx.option_parser.option_parser(
-    usage="%s -p -c config -x experiment -a address -r run -d detz_offset [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-v]" % libtbx.env.dispatcher_name)
+    usage="%s [-p] -c config -x experiment -a address -r run -d detz_offset [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-v]" % libtbx.env.dispatcher_name)
                 .option(None, "--as_pickle", "-p",
                         action="store_true",
                         default=False,
