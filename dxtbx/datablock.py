@@ -301,9 +301,88 @@ class FormatChecker(object):
         group_fnames = [filename]
         group_format = fmt
       if self._verbose:
-        print 'Using %s for %s' % (fmt.__name__, filename)
+        if fmt is not None:
+          print 'Using %s for %s' % (fmt.__name__, filename)
     if len(group_fnames) > 0:
       yield group_format, group_fnames
+
+
+class DataBlockTemplateImporter(object):
+  ''' A class to import a datablock from a template. '''
+  def __init__(self, templates, verbose=False):
+    ''' Import the datablocks from the given templates. '''
+    from dxtbx.sweep_filenames import locate_files_matching_template_string
+    assert(len(templates) > 0)
+
+    self.datablocks = []
+
+    # A function to append or create a new datablock
+    def append_to_datablocks(iset):
+      try:
+        self.datablocks[-1].append(iset)
+      except Exception:
+        self.datablocks.append(DataBlock([iset]))
+      if verbose:
+        print 'Added imageset to datablock %d' % (len(self.datablocks) - 1)
+
+    # For each template do an import
+    for template in templates:
+      paths = sorted(locate_files_matching_template_string(template))
+      if verbose:
+        print 'The following files matched the template string:'
+        if len(paths) > 0:
+          for p in paths:
+            print ' %s' % p
+        else:
+          print ' No files found'
+
+      # Get the format from the first image
+      find_format = FormatChecker(verbose=verbose)
+      fmt = find_format(paths[0])
+      if fmt is None:
+        raise RuntimeError('Image file %s format is unknown' % path[0])
+      else:
+        imageset = self._create_imageset(fmt, template, paths)
+        append_to_datablocks(imageset)
+
+  def _create_imageset(self, format_class, template, filenames):
+    ''' Create a mulit file sweep or imageset. '''
+    from dxtbx.imageset import ImageSetFactory
+    from dxtbx.sweep_filenames import template_string_number_index
+
+    # Get the image range
+    index = slice(*template_string_number_index(template))
+    first = int(filenames[0][index])
+    last = int(filenames[-1][index])
+
+    # Check all images in range are present
+    numbers = [int(f[index]) for f in filenames]
+    assert(all([x+1==y for x, y in zip(numbers, numbers[1:])]))
+
+    # Read the image
+    fmt = format_class(filenames[0])
+
+    # Get the meta data from the format
+    b = fmt.get_beam()
+    d = fmt.get_detector()
+    g = fmt.get_goniometer()
+    s = fmt.get_scan()
+
+    # Update the image range
+    s.set_image_range((first, last))
+
+    # Get the image range
+    image_range = s.get_image_range()
+    image_range = (image_range[0], image_range[1]+1)
+
+    # Create the sweep
+    imageset = ImageSetFactory.make_sweep(
+      template, range(*image_range),
+      format_class,
+      b, d, g, s)
+
+    # Return the imageset
+    return imageset
 
 
 class DataBlockFilenameImporter(object):
