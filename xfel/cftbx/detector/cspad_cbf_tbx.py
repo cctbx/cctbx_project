@@ -130,7 +130,7 @@ def read_slac_metrology(path, plot=False):
     rotz = matrix.col((0,0,1)).axis_and_angle_as_r3_rotation_matrix(
       geo.rot_z + geo.tilt_z, deg=True)
 
-    rot = (rotz*roty*rotx).r3_rotation_matrix_as_unit_quaternion()
+    rot = (rotx*roty*rotz).r3_rotation_matrix_as_unit_quaternion()
 
     return basis(orientation = rot,
                  translation = matrix.col((geo.x0/1000, geo.y0/1000, geo.z0/1000)))
