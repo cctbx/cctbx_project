@@ -238,6 +238,9 @@ gamma_e = 0.002
 polarization_horizontal_fraction = 1.0
   .type = float
   .help = Polarization fraction in horizontal direction.
+flag_output_verbose = False
+  .type = bool
+  .help = Output full detail of the refinement results.
 """)
 
 
