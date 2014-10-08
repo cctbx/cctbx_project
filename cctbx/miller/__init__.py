@@ -1019,11 +1019,25 @@ class set(crystal.symmetry):
     :param reverse: invert order
     :returns: flex.size_t object
     """
-    assert by_value in ["resolution", "packed_indices"]
+    assert by_value in ["resolution", "packed_indices","asu_indices"]
     assert reverse in [False, True]
     if (by_value == "resolution"):
       return flex.sort_permutation(
         data=self.unit_cell().d_star_sq(self.indices()), reverse=reverse)
+    elif (by_value == "asu_indices"):
+      # sort on asu_indices, keeping anom pairs together, group by Friedel mates
+      asu_indices=self.indices().deep_copy()
+      map_to_asu(self.space_group_info().type(),False,asu_indices)
+      asu_indices_anom=self.indices().deep_copy()
+      map_to_asu(self.space_group_info().type(),True,asu_indices_anom)
+
+      centric_flags = self.centric_flags().data()
+      friedel_mate_flags = ~(asu_indices == asu_indices_anom)
+      offset=flex.double(self.indices().size(), 0)
+      offset.set_selected(friedel_mate_flags.iselection(),0.01)
+      data=index_span(asu_indices).pack(asu_indices).as_double()+offset
+      return flex.sort_permutation(data=data,reverse=reverse)
+
     else:
       return flex.sort_permutation(
         data=index_span(self.indices()).pack(self.indices()), reverse=reverse)
@@ -2474,7 +2488,7 @@ class array(set):
     :returns: flex.size_t object
     """
     assert reverse in (False, True)
-    if (by_value in ["resolution", "packed_indices"]):
+    if (by_value in ["resolution", "packed_indices","asu_indices"]):
       result = set.sort_permutation(self,
         by_value=by_value, reverse=reverse)
     elif (by_value == "data"):

@@ -793,7 +793,8 @@ def select_data (file_name, data_labels, log=None,
   print >> log, "Format:", hkl_in.file_type()
   miller_arrays = hkl_in.as_miller_arrays(merge_equivalents=False,
     assume_shelx_observation_type_is=assume_shelx_observation_type_is)
-  if ((hkl_in.file_type() == "shelx_hklf") and (not "=" in file_name)) :
+  if ((hkl_in.file_type() == "shelx_hklf") and (not "=" in file_name) 
+       and assume_shelx_observation_type_is is None) :
     print >> log, "WARNING: SHELX file is assumed to contain intensities"
   i_obs = None
   all_i_obs = []
@@ -804,6 +805,12 @@ def select_data (file_name, data_labels, log=None,
       break
     elif (array.is_xray_intensity_array()) :
       all_i_obs.append(array)
+  # if no intensities...try again with amplitudes
+  if (i_obs is None and len(all_i_obs)==0) :
+    for array in miller_arrays :
+      if (array.is_xray_amplitude_array()) :
+        all_i_obs.append(array.f_as_f_sq())
+
   if (i_obs is None) :
     if (len(all_i_obs) == 0) :
       raise Sorry("No intensities found in %s." % file_name)
