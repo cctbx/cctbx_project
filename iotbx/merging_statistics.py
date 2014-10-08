@@ -806,11 +806,11 @@ def select_data (file_name, data_labels, log=None,
     elif (array.is_xray_intensity_array()) :
       all_i_obs.append(array)
   # if no intensities...try again with amplitudes
-  if (i_obs is None and len(all_i_obs)==0) :
-    for array in miller_arrays :
-      if (array.is_xray_amplitude_array()) :
-        all_i_obs.append(array.f_as_f_sq())
-
+  if (hkl_in.file_type() == "shelx_hklf") :
+    if (i_obs is None and len(all_i_obs)==0) :
+      for array in miller_arrays :
+        if (array.is_xray_amplitude_array()) :
+          all_i_obs.append(array.f_as_f_sq())
   if (i_obs is None) :
     if (len(all_i_obs) == 0) :
       raise Sorry("No intensities found in %s." % file_name)
