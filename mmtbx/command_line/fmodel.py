@@ -196,7 +196,6 @@ output
   label = FMODEL
     .type = str
     .short_caption = Data label
-    .expert_level=1
     .input_size = 100
   type = real *complex
     .type = choice
@@ -205,9 +204,13 @@ output
       'complex' is complete structure factors as complex numbers.
     .expert_level=1
     .style = bold
+  obs_type = *amplitudes intensities
+    .type = choice
+    .help = Experimental observation type to output.  Certain restrictions \
+      apply if intensities are selected.
+    .expert_level = 2
   file_name = None
     .type = path
-    .expert_level=1
     .short_caption = Output file
     .style = bold noauto new_file
   include scope libtbx.phil.interface.tracking_params
@@ -401,7 +404,8 @@ def run(args, log = sys.stdout):
     params         = params,
     twin_law       = params.twin_law,
     twin_fraction  = params.twin_fraction,
-    out            = log).write_to_file(file_name = ofn)
+    out            = log).write_to_file(file_name = ofn,
+      obs_type=params.output.obs_type)
   print >> log, "Output file name:", ofn
   print >> log, "All done."
   print >> log, "-"*79
@@ -437,6 +441,15 @@ def validate_params_command_line(params):
     if params.low_resolution < params.high_resolution :
       raise Sorry("Low-resolution cutoff must be larger than the high-"+
         "resolution cutoff.")
+  if (params.output.obs_type == "intensities") :
+    if (params.output.type == "complex") :
+      raise Sorry("Output type must be 'real' when intensities specified "+
+        "for obs_type.")
+    if (not params.output.label.upper().startswith("I")) :
+      raise Sorry("Output label must start with 'I' (any case) when "+
+        "intensities specified for obs_type (was: %s)." % params.output.label)
+    if (params.output.format != "mtz") :
+      raise Sorry("Output format must be 'mtz' when intensities specified.")
   return True
 
 def finish_job (result) :
