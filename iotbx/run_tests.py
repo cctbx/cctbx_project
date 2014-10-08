@@ -83,6 +83,7 @@ tst_list = (
   "$D/ncs/tst_finding_ncs.py",
   "$D/pdb/tst_read_mtrix_records_from_cif.py",
   "$D/regression/tst_show_systematic_absences.py",
+  "$D/regression/tst_miller_sort_asu.py",
   )
 
 def run():
