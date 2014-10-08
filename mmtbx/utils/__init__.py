@@ -2219,7 +2219,7 @@ class fmodel_from_xray_structure(object):
     raise Sorry("High resolution limit is not defined. "\
       "Use 'high_resolution' keyword to define it.")
 
-  def write_to_file(self, file_name):
+  def write_to_file(self, file_name, obs_type="amplitudes"):
     assert self.params.output.format in ["mtz", "cns"]
     assert file_name is not None
     op = self.params.output
@@ -2261,7 +2261,11 @@ class fmodel_from_xray_structure(object):
             print >> ofo, "INDE %d %d %d" % values[0],
             print >> ofo, " %s= %.6g TEST=%d" % (op.label, values[1],values[2])
     else:
-      mtz_dataset= self.f_model.as_mtz_dataset(column_root_label="%s"%op.label)
+      output_array = self.f_model
+      if (obs_type == "intensities") :
+        output_array = output_array.f_as_f_sq()
+        output_array.set_observation_type_xray_intensity()
+      mtz_dataset= output_array.as_mtz_dataset(column_root_label="%s"%op.label)
       if(self.params.r_free_flags_fraction is not None):
         mtz_dataset.add_miller_array(
           miller_array      = self.r_free_flags,

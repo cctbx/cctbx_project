@@ -5,8 +5,8 @@ from mmtbx.command_line import fmodel
 from iotbx import file_reader
 from cctbx import miller
 from scitbx.array_family import flex
-from libtbx.test_utils import approx_equal
-from libtbx.utils import null_out
+from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.utils import null_out, Sorry
 from libtbx import easy_run
 import os
 
@@ -38,6 +38,39 @@ def exercise () :
     ).raise_if_errors()
   assert (result.return_code == 0)
   print "OK"
+
+def exercise_intensity_output () :
+  if (os.path.isfile("tst_fmodel_anomalous.mtz")) :
+    os.remove("tst_fmodel_anomalous.mtz")
+  pdb_file = make_fake_anomalous_data.write_pdb_input_cd_cl(
+    file_base="tst_fmodel_anomalous")
+  # phenix.fmodel (with wavelength)
+  args = [
+    pdb_file,
+    "high_resolution=1.0",
+    "wavelength=1.116",
+    "obs_type=intensities",
+    "type=real",
+    "output.file_name=tst_fmodel_intensity.mtz",
+    "r_free_flags_fraction=0.1",
+  ]
+  args2 = args + ["label=Imodel"]
+  fmodel.run(args=args2, log=null_out())
+  assert os.path.isfile("tst_fmodel_intensity.mtz")
+  mtz_in = file_reader.any_file("tst_fmodel_intensity.mtz")
+  assert mtz_in.file_server.miller_arrays[0].is_xray_intensity_array()
+  try :
+    fmodel.run(args=args, log=null_out())
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
+  try :
+    fmodel.run(args=args+["format=cns"], log=null_out())
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
 
 def exercise_selection_consistency () :
   """
@@ -112,5 +145,6 @@ anomalous_scatterers {
       assert (map_val < 5)
 
 if (__name__ == "__main__") :
+  exercise_intensity_output()
   exercise_selection_consistency()
   exercise()
