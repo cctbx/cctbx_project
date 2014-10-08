@@ -1324,6 +1324,7 @@ iotbx/regression/tst_file_reader.py -text
 iotbx/regression/tst_lattice_symmetry.py svneol=native#text/x-python
 iotbx/regression/tst_map_tools.py -text
 iotbx/regression/tst_merging_statistics.py -text
+iotbx/regression/tst_miller_sort_asu.py -text
 iotbx/regression/tst_mtz_as_cif.py -text
 iotbx/regression/tst_patterson.py -text
 iotbx/regression/tst_pdb_as_cif.py -text
