@@ -4,39 +4,15 @@ import sys
 import libtbx.load_env
 from libtbx.utils import Sorry
 from iotbx import reflection_file_reader
+from cctbx import crystal
+from cctbx import miller
+from cctbx import xray
+
 from libtbx import easy_run
 from libtbx.test_utils import Exception_expected, open_tmp_file
 from iotbx.file_reader import any_file, sort_by_file_type, group_files
 
 def exercise_sort() :
-  unmerged_data = """    4 i4            
-  1  0  0  0  1  0  0  0  1
-  0  0  0
- -1  0  0  0 -1  0  0  0  1
-  0  0  0
-  0 -1  0  1  0  0  0  0  1
-  0  0  0
-  0  1  0 -1  0  0  0  0  1
-  0  0  0
-   0   0   4   0   0   4   188 1 1  1 80331.8  8648.0
-   0   0  12   0   0  12    22 1 0  1119801.4 12231.2
-   0   0  -4   0   0   4     8 2 1  1104526.7 11623.3
-   0   0  -8   0   0   8   198 2 0  1 50401.8  5464.6
-   0   0   8   0   0   8    19 1 0  1 44883.6  4527.6
-   0   0   8   0   0   8   184 1 1  1 41134.1  4431.9
-   0   0  -8   0   0   8     4 2 1  1 53386.0  5564.1
-   0   0  12   0   0  12   180 1 1  1105312.9 12602.2
-   0   0  16   0   0  16    26 1 0  1 14877.6  2161.5
-"""
-
-  merged_data = """    1
- -987
-   113.949   113.949    32.474    90.000    90.000    90.000 i4
-  65   2   1  6044.5   555.3  5871.7   534.6
-  64  11   1   438.1   251.3   602.3   247.0
-  64  10   2  7917.3   815.7  7919.8   696.0
-"""
-
   expected_unsorted_data="""    4 I 4
   1  0  0  0  1  0  0  0  1
   0  0  0
@@ -47,12 +23,12 @@ def exercise_sort() :
  -1  0  0  0 -1  0  0  0  1
   0  0  0
    0   0   4   0   0   4     0 1 0  1 80331.8  8648.0
-   0   0  12   0   0  12     0 1 0  1119801.4 12231.2
-   0   0  -4   0   0   4     0 2 0  1104526.7 11623.3
-   0   0  -8   0   0   8     0 2 0  1 50401.8  5464.6
-   0   0   8   0   0   8     0 1 0  1 44883.6  4527.6
-   0   0   8   0   0   8     0 1 0  1 41134.1  4431.9
-   0   0  -8   0   0   8     0 2 0  1 53386.0  5564.1
+   0   0  12   0   0  12     0 1 0  1104526.7 11623.3
+   0   0  -4   0   0   4     0 2 0  1 44883.6  4527.6
+   0   0  -8   0   0   8     0 2 0  1 41134.1  4431.9
+   0   0   8   0   0   8     0 1 0  1 50401.8  5464.6
+   0   0   8   0   0   8     0 1 0  1 53386.0  5564.1
+   0   0  -8   0   0   8     0 2 0  1119801.4 12231.2
    0   0  12   0   0  12     0 1 0  1105312.9 12602.2
    0   0  16   0   0  16     0 1 0  1 14877.6  2161.5
 """
@@ -66,30 +42,36 @@ def exercise_sort() :
  -1  0  0  0 -1  0  0  0  1
   0  0  0
    0   0   4   0   0   4     0 1 0  1 80331.8  8648.0
-   0   0  -4   0   0   4     0 2 0  1104526.7 11623.3
-   0   0   8   0   0   8     0 1 0  1 44883.6  4527.6
-   0   0   8   0   0   8     0 1 0  1 41134.1  4431.9
-   0   0  -8   0   0   8     0 2 0  1 50401.8  5464.6
-   0   0  -8   0   0   8     0 2 0  1 53386.0  5564.1
-   0   0  12   0   0  12     0 1 0  1119801.4 12231.2
+   0   0  -4   0   0   4     0 2 0  1 44883.6  4527.6
+   0   0   8   0   0   8     0 1 0  1 50401.8  5464.6
+   0   0   8   0   0   8     0 1 0  1 53386.0  5564.1
+   0   0  -8   0   0   8     0 2 0  1 41134.1  4431.9
+   0   0  -8   0   0   8     0 2 0  1119801.4 12231.2
+   0   0  12   0   0  12     0 1 0  1104526.7 11623.3
    0   0  12   0   0  12     0 1 0  1105312.9 12602.2
    0   0  16   0   0  16     0 1 0  1 14877.6  2161.5
 """
-  f1 = open("merged.sca","w")
-  f1.write(merged_data)
-  f1.close()
-  merged=reflection_file_reader.any_reflection_file("merged.sca")
-  crystal_symmetry=merged.as_miller_arrays()[0].crystal_symmetry()
 
-  f = open("unmerged.sca", "w")
-  f.write(unmerged_data)
-  f.close()
-  unmerged=reflection_file_reader.any_reflection_file("unmerged.sca")
+  from cctbx.xray import observation_types
+  from cctbx.array_family import flex
+  xs = crystal.symmetry((113.949,113.949,32.474,90.000,90.000,90.000), "I4")
+  mi = flex.miller_index((
+  (0,0,4), 
+  (0,0,12),
+  (0,0,-4),
+  (0,0,-8),
+  (0,0,8),
+  (0,0,8),
+  (0,0,-8),
+  (0,0,12),
+  (0,0,16),
+   ))
+  data = flex.double(( 80331.8, 104526.7, 44883.6, 41134.1, 50401.8, 53386.0, 119801.4, 105312.9, 14877.6,))
+  sigmas = flex.double((8648.0, 11623.3, 4527.6, 4431.9, 5464.6, 5564.1, 12231.2, 12602.2, 2161.5,))
+  ms = miller.set(xs, mi,anomalous_flag=True)
+  i_obs = miller.array(ms, data=data, sigmas=sigmas).set_observation_type(
+    observation_types.intensity() )
 
-  arrays=unmerged.as_miller_arrays()
-  i_obs=unmerged.as_miller_arrays(merge_equivalents=False)[0].customized_copy(
-      crystal_symmetry=crystal_symmetry)
-  
   i_obs.export_as_scalepack_unmerged(file_name='unsorted.sca',
      scale_intensities_for_scalepack_merge=True)
   i_obs=i_obs.sort(by_value="asu_indices")
