@@ -117,7 +117,8 @@ class manager(object):
           gradients_factory=flex.vec3_double,
           mdgx_structs=self.amber_mdgx_structs)
         result.geometry = amber_geometry_manager.energies_sites(
-          compute_gradients=compute_gradients)
+          crystal_symmetry = self.geometry.crystal_symmetry,
+          compute_gradients = compute_gradients)
 
       elif (self.use_afitt and
             len(sites_cart)==self.afitt_object.total_model_atoms
