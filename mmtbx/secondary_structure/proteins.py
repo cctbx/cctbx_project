@@ -397,7 +397,7 @@ def create_sheet_hydrogen_bond_proxies (
 Wrong registration in SHEET record. One of these selections 
 "%s" or "%s"
 yielded zero or several atoms. Possible reason for it is the presence of 
-insertion codes for one of these residues.""" \
+insertion codes or alternative conformations for one of these residues.""" \
 % (curr_strand.bond_start_current, curr_strand.bond_start_previous)
       raise Sorry(error_msg)
     curr_residues = _get_strand_residues(
