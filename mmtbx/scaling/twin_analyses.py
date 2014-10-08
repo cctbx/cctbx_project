@@ -2133,7 +2133,8 @@ refinement might provide an answer.
   <I^2>/<I>^2 : %(i_ratio)5.3f  (untwinned: 2.0, perfect twin: 1.5)
   <F>^2/<F^2> : %(f_ratio)5.3f  (untwinned: 0.785, perfect twin: 0.885)
   <|E^2-1|>   : %(e_sq_minus_1)5.3f  (untwinned: 0.736, perfect twin: 0.541)
-  <|L|>, <L^2>: %(l_mean)5.3f, %(l_sq_mean)4.3f
+  <|L|>       : %(l_mean)5.3f  (untwinned: 0.500; perfect twin: 0.375)
+  <L^2>       : %(l_sq_mean)5.3f  (untwinned: 0.333; perfect twin: 0.200)
   Multivariate Z score L-test: %(maha_l)5.3f
 """ % { "i_ratio" : self.i_ratio,
         "f_ratio" : self.f_ratio,
