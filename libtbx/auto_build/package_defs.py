@@ -149,6 +149,7 @@ def fetch_all_dependencies (dest_dir,
   for pkg_name in [
       PYTHON_PKG, NUMPY_PKG, IMAGING_PKG, REPORTLAB_PKG, ZLIB_PKG,
       SCIPY_PKG, PYRTF_PKG, BIOPYTHON_PKG, SPHINX_PKG, NUMPYDOC_PKG,
+      IPYTHON_PKG,
     ] :
     fetch_package(pkg_name)
   if (gui_packages) :
