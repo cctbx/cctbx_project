@@ -412,7 +412,6 @@ class Test_ncs_utils(unittest.TestCase):
     and then switching to the original configuration
     """
     print sys._getframe().f_code.co_name
-    # fixme: finish test
     nrg = self.tr_obj2.get_ncs_restraints_group_list()
     master = nrg[0].master_iselection
     copy_1 = nrg[0].copies[0].iselection
@@ -535,7 +534,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_ncs_restraints_group_list_switching']
+  tests = ['test_get_list_of_best_ncs_copy_map_correlation']
   suite = unittest.TestSuite(map(Test_ncs_utils,tests))
   return suite
 

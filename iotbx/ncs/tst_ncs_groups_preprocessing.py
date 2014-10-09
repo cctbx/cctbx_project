@@ -24,8 +24,10 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.currnet_dir = os.getcwd()
     self.tempdir = tempfile.mkdtemp('tempdir')
     os.chdir(self.tempdir)
+    self.pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
+    self.pdb_inp = pdb.input(source_info=None, lines=test_pdb_ncs_spec)
+    self.ph = self.pdb_inp.construct_hierarchy()
 
-  # @unittest.SkipTest
   def test_phil_param_read(self):
     """ Verify that phil parameters are properly read   """
     print sys._getframe().f_code.co_name
@@ -46,7 +48,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       self.assertRaises(
         IOError,iotbx.ncs.input,ncs_selection_params=pc)
 
-  # @unittest.SkipTest
   def test_phil_processing(self):
     """ Verify that phil parameters are properly processed   """
     print sys._getframe().f_code.co_name
@@ -71,10 +72,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(len(group_ids),6)
     self.assertEqual(set(group_ids),{1,2})
     self.assertEqual(tran_sn,{1,2,3,4,5,6})
-    self.assertEqual(group_keys,{'s005','s004','s006','s001','s003','s002'})
+    self.assertEqual(group_keys,{'005','004','006','001','003','002'})
     self.assertEqual(trans_obj.ncs_atom_selection.count(True),4)
 
-  # @unittest.SkipTest
   def test_superpos_pdb(self):
     """  verify creation of transformations using superpose_pdb   """
     print sys._getframe().f_code.co_name
@@ -92,13 +92,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
     tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
     group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-    r1 = trans_obj.ncs_transform['s004'].r
-    r2 = trans_obj.ncs_transform['s002'].r
+    r1 = trans_obj.ncs_transform['004'].r
+    r2 = trans_obj.ncs_transform['002'].r
     #
     self.assertEqual(len(group_ids),6)
     self.assertEqual(set(group_ids),{1,2})
     self.assertEqual(tran_sn,{1,2,3,4,5,6})
-    self.assertEqual(group_keys,{'s005','s004','s006','s001','s003','s002'})
+    self.assertEqual(group_keys,{'005','004','006','001','003','002'})
     #
     self.assertTrue(r1.is_r3_identity_matrix())
     expected_r = matrix.sqr(
@@ -108,7 +108,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertTrue(max(d)<0.01)
 
     # test that ncs_asu does not contain the identity transforms
-    expected = {'chain A_s002', 'chain A_s003', 'chain B_s005', 'chain B_s006'}
+    expected = {'chain A_002', 'chain A_003', 'chain B_005', 'chain B_006'}
     self.assertEqual(expected,set(trans_obj.ncs_to_asu_map.keys()))
 
     # test mapping of the different selection in the NCS
@@ -116,10 +116,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(list(trans_obj.asu_to_ncs_map['chain B']),[2])
 
     # test that transform_chain_assignment contains all transforms
-    expected = {'chain A_s002', 'chain A_s003', 'chain B_s005', 'chain B_s006'}
+    expected = {'chain A_002', 'chain A_003', 'chain B_005', 'chain B_006'}
     self.assertEqual(expected,set(trans_obj.transform_chain_assignment))
 
-  # @unittest.SkipTest
   def test_spec_reading(self):
     """ verify creating and processing spec """
     if not have_phenix:
@@ -131,14 +130,12 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # creating a spec file
     params = ncs_master_params.extract()
     params.simple_ncs_from_pdb.min_length = 1
-    pdb_inp = pdb.input(source_info=None, lines=test_pdb_ncs_spec)
-    ph = pdb_inp.construct_hierarchy()
-    xrs = pdb_inp.xray_structure_simple()
+    xrs = self.pdb_inp.xray_structure_simple()
     xrs_unit_cell = xrs.orthorhombic_unit_cell_around_centered_scatterers(
       buffer_size=8)
-    ph.adopt_xray_structure(xrs_unit_cell)
+    self.ph.adopt_xray_structure(xrs_unit_cell)
     of = open("test_ncs_spec.pdb", "w")
-    print >> of, ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
+    print >> of, self.ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
     of.close()
     ncs_from_pdb=simple_ncs_from_pdb(
       pdb_file="test_ncs_spec.pdb",
@@ -147,11 +144,10 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       params=params)
 
     # reading and processing the spec file
-    pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
     trans_obj = iotbx.ncs.input(
       file_name="simple_ncs_from_pdb.ncs_spec",
       # spec_file_str=test_ncs_spec,  # use output string directly
-      pdb_hierarchy_inp = pdb_obj)
+      pdb_hierarchy_inp = self.pdb_obj)
 
     # test created object
     self.assertEqual(len(trans_obj.transform_chain_assignment),3)
@@ -172,13 +168,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
     tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
     group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-    r1 = trans_obj.ncs_transform['s004'].r
-    r2 = trans_obj.ncs_transform['s002'].r
+    r1 = trans_obj.ncs_transform['004'].r
+    r2 = trans_obj.ncs_transform['002'].r
     #
     self.assertEqual(len(group_ids),5)
     self.assertEqual(set(group_ids),{1,2})
     self.assertEqual(tran_sn,{1,2,3,4,5})
-    self.assertEqual(group_keys,{'s001', 's002', 's003', 's004', 's005'})
+    self.assertEqual(group_keys,{'001', '002', '003', '004', '005'})
     #
     self.assertTrue(r1.is_r3_identity_matrix())
     expected_r = matrix.sqr(
@@ -187,13 +183,11 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     d = map(abs,d)
     self.assertTrue(max(d)<0.01)
 
-  # @unittest.SkipTest
   def test_mmcif_reading(self):
     print sys._getframe().f_code.co_name
     # Fixme: test_mmcif_reading
     pass
 
-  # @unittest.SkipTest
   def test_processing_of_asu(self):
     """ processing complete ASU
     If MTRIX records are present, they are ignored """
@@ -203,9 +197,8 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     print sys._getframe().f_code.co_name
 
     # reading and processing the spec file
-    pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
     trans_obj = iotbx.ncs.input(
-      pdb_hierarchy_inp = pdb_obj,
+      pdb_hierarchy_inp = self.pdb_obj,
       use_cctbx_find_ncs_tools=False,
       use_simple_ncs_from_pdb=True)
 
@@ -228,13 +221,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
     tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
     group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-    r1 = trans_obj.ncs_transform['s004'].r
-    r2 = trans_obj.ncs_transform['s002'].r
+    r1 = trans_obj.ncs_transform['004'].r
+    r2 = trans_obj.ncs_transform['002'].r
     #
     self.assertEqual(len(group_ids),5)
     self.assertEqual(set(group_ids),{1,2})
     self.assertEqual(tran_sn,{1,2,3,4,5})
-    self.assertEqual(group_keys,{'s001', 's002', 's003', 's004', 's005'})
+    self.assertEqual(group_keys,{'001', '002', '003', '004', '005'})
     #
     self.assertTrue(r1.is_r3_identity_matrix())
     expected_r = matrix.sqr(
@@ -244,34 +237,107 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     d = map(abs,d)
     self.assertTrue(max(d)<0.01)
 
-
     # Verify that spec object are produced properly
     spec_output = trans_obj.get_ncs_info_as_spec(
-      pdb_hierarchy_asu=pdb_obj.hierarchy,
+      pdb_hierarchy_asu=self.pdb_obj.hierarchy,
       write=False,
       format_for_resolve=False,
       format_for_phenix_refine=False)
     trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
 
-    t1 = trans_obj.ncs_transform['s002'].r
-    t2 = trans_obj2.ncs_transform['s002'].r
+    t1 = trans_obj.ncs_transform['002'].r
+    t2 = trans_obj2.ncs_transform['002'].r
     self.assertEqual(t1,t2)
 
     t1 = trans_obj.ncs_to_asu_selection
     t2 = trans_obj2.ncs_to_asu_selection
     self.assertEqual(t1,t2)
 
-    t1 = trans_obj.tr_id_to_selection['chain A_s003']
-    t2 = trans_obj2.tr_id_to_selection['chain A_s003']
+    t1 = trans_obj.tr_id_to_selection['chain A_003']
+    t2 = trans_obj2.tr_id_to_selection['chain A_003']
     self.assertEqual(t1,t2)
+
+  def test_processing_of_asu_2(self):
+    """ processing complete ASU
+    If MTRIX records are present, they are ignored """
+    if not have_phenix:
+      print "Skipping test_processing_of_asu(): phenix not available"
+      return
+    print sys._getframe().f_code.co_name
+
+    # reading and processing the spec file
+    trans_obj = iotbx.ncs.input(
+      pdb_hierarchy_inp = self.pdb_obj,
+      use_cctbx_find_ncs_tools=True,
+      use_simple_ncs_from_pdb=False)
+
+    # test created object
+    self.assertEqual(len(trans_obj.transform_chain_assignment),3)
+    expected = '(chain A) or (chain D)'
+    self.assertEqual(trans_obj.ncs_selection_str,expected)
+    # check that static parts are included in NCS and ASU
+    self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
+    self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
+    #
+    expected = {
+      'chain A': ['chain B', 'chain C'],
+      'chain D': ['chain E']}
+    self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
+
+    # check ncs_transform
+    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
+    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
+    group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
+    r1 = trans_obj.ncs_transform['004'].r
+    r2 = trans_obj.ncs_transform['002'].r
+    #
+    self.assertEqual(len(group_ids),5)
+    self.assertEqual(set(group_ids),{1,2})
+    self.assertEqual(tran_sn,{1,2,3,4,5})
+    self.assertEqual(group_keys,{'001', '002', '003', '004', '005'})
+    #
+    self.assertTrue(r1.is_r3_identity_matrix())
+    expected_r = matrix.sqr(
+      [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
+    # the transformation in the spec files are from the copy to the master
+    d = r2 - expected_r.transpose()
+    d = map(abs,d)
+    self.assertTrue(max(d)<0.01)
+
+    # Verify that spec object are produced properly
+    spec_output = trans_obj.get_ncs_info_as_spec(
+      pdb_hierarchy_asu=self.pdb_obj.hierarchy,
+      write=False,
+      format_for_resolve=False,
+      format_for_phenix_refine=False)
+    trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
+
+    t1 = trans_obj.ncs_transform['002'].r
+    t2 = trans_obj2.ncs_transform['002'].r
+    self.assertEqual(t1,t2)
+
+    t1 = trans_obj.ncs_to_asu_selection
+    t2 = trans_obj2.ncs_to_asu_selection
+    # Selection does not include the resseq if all the chain is selected
+    t1_exp = {'chain A': ['chain B', 'chain C'], 'chain D': ['chain E']}
+    self.assertEqual(t1,t1_exp)
+    t2_exp = {'chain A and (resseq 151:159)':
+                ['chain B and (resseq 151:159)','chain C and (resseq 151:159)'],
+              'chain D and (resseq 1:7)': ['chain E and (resseq 1:7)']}
+    self.assertEqual(t2,t2_exp)
+    #
+    t1 = trans_obj.tr_id_to_selection['chain A_003']
+    t2 = trans_obj2.tr_id_to_selection['chain A_003']
+    self.assertEqual(t1,('chain A', 'chain C'))
+    t2_exp = ('chain A and (resseq 151:159)', 'chain C and (resseq 151:159)')
+    self.assertEqual(t2,t2_exp)
 
   def test_insertion_processing(self):
     """  Verify correct processing of PDBs that have insertions residues   """
     print sys._getframe().f_code.co_name
-    # Fixmw: Add test
+    # Fixme: Add test
     pass
 
-  # @unittest.SkipTest
   def test_rotaion_translation_input(self):
     """ Verify correct processing    """
     print sys._getframe().f_code.co_name
@@ -290,12 +356,25 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     test = test or (pdb_test_data2_phil_reverse == result)
     self.assertTrue(test)
     #
-    pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
     trans_obj = iotbx.ncs.input(
       spec_file_str=test_ncs_spec,
-      pdb_hierarchy_inp = pdb_obj)
+      pdb_hierarchy_inp = self.pdb_obj)
     result = trans_obj.print_ncs_phil_param(write=False)
     self.assertEqual(result,test_phil_3)
+
+  def test_finding_partial_ncs(self):
+    print sys._getframe().f_code.co_name
+    ncs_inp = iotbx.ncs.input(
+      pdb_string=pdb_str,
+      use_simple_ncs_from_pdb=False,
+      use_cctbx_find_ncs_tools=True)
+
+    t = ncs_inp.ncs_to_asu_selection
+    exp_t = {
+      '(chain A and (resid 1 and (name N or name CA or name C or name O )))':
+        ['chain B',
+         '(chain C and (resid 1 and (name N or name CA or name C or name O )))']}
+    self.assertEqual(t,exp_t)
 
 
   # def test_build_pdb(self):
@@ -328,6 +407,34 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     os.chdir(self.currnet_dir)
     shutil.rmtree(self.tempdir)
 
+pdb_str = """\
+CRYST1   26.628   30.419   28.493  90.00  90.00  90.00 P 1
+ATOM      1  N   THR A   1      15.886  19.796  13.070  1.00 10.00           N
+ATOM      2  CA  THR A   1      15.489  18.833  12.050  1.00 10.00           C
+ATOM      3  C   THR A   1      15.086  17.502  12.676  1.00 10.00           C
+ATOM      4  O   THR A   1      15.739  17.017  13.600  1.00 10.00           O
+ATOM      5  CB  THR A   1      16.619  18.590  11.033  1.00 10.00           C
+ATOM      6  OG1 THR A   1      16.963  19.824  10.392  1.00 10.00           O
+ATOM      7  CG2 THR A   1      16.182  17.583   9.980  1.00 10.00           C
+TER       8      THR A   1
+ATOM      1  N   THR B   1      10.028  17.193  16.617  1.00 10.00           N
+ATOM      2  CA  THR B   1      11.046  16.727  15.681  1.00 10.00           C
+ATOM      3  C   THR B   1      12.336  16.360  16.407  1.00 10.00           C
+ATOM      4  O   THR B   1      12.772  17.068  17.313  1.00 10.00           O
+remark ATOM      5  CB  THR B   1      11.356  17.789  14.609  1.00 10.00           C
+remark ATOM      6  OG1 THR B   1      10.163  18.098  13.879  1.00 10.00           O
+remark ATOM      7  CG2 THR B   1      12.418  17.281  13.646  1.00 10.00           C
+TER      16      THR B   1
+ATOM      1  N   THR C   1      12.121   9.329  18.086  1.00 10.00           N
+ATOM      2  CA  THR C   1      12.245  10.284  16.991  1.00 10.00           C
+ATOM      3  C   THR C   1      13.707  10.622  16.718  1.00 10.00           C
+ATOM      4  O   THR C   1      14.493  10.814  17.645  1.00 10.00           O
+ATOM      5  CB  THR C   1      11.474  11.584  17.284  1.00 10.00           C
+ATOM      6  OG1 THR C   1      10.087  11.287  17.482  1.00 10.00           O
+ATOM      7  CG2 THR C   1      11.619  12.563  16.129  1.00 10.00           C
+TER      24      THR C   1
+END
+"""
 
 pdb_test_data1="""\
 ATOM    749  O   UNK A  90      28.392  67.262  97.682  1.00  0.00           O
@@ -619,7 +726,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_print_ncs_phil_param','test_format_string_longer_than_80']
+  tests = ['test_phil_param_read']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 

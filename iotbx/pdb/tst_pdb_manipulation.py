@@ -115,9 +115,9 @@ class TestMultimerReconstruction(unittest.TestCase):
     print sys._getframe().f_code.co_name
     transforms_obj = ncs_group_object()
     result =  transforms_obj.make_chains_names(
-      ['chain A_s001','chain B_s001','chain A_s002','chain B_s002'],('A','B'))
-    expected = {'chain A_s001': 'C', 'chain B_s001': 'D', 'chain A_s002': 'E',
-                'chain B_s002': 'F'}
+      ['chain A_001','chain B_001','chain A_002','chain B_002'],('A','B'))
+    expected = {'chain A_001': 'C', 'chain B_001': 'D', 'chain A_002': 'E',
+                'chain B_002': 'F'}
     self.assertEqual(result,expected)
 
   def test_identity_tranform_insertion(self):
@@ -153,8 +153,8 @@ class TestMultimerReconstruction(unittest.TestCase):
       translations=t)
 
     result = transforms_obj.transform_to_ncs
-    expected = {'s002': ['chain A_s002', 'chain B_s002'],
-                's003': ['chain A_s003', 'chain B_s003']}
+    expected = {'002': ['chain A_002', 'chain B_002'],
+                '003': ['chain A_003', 'chain B_003']}
     self.assertEqual(result,expected)
     result = transforms_obj.ncs_selection_str
     expected = 'chain A or chain B'
@@ -166,19 +166,20 @@ class TestMultimerReconstruction(unittest.TestCase):
       rotations=r,
       translations=t)
     result = transforms_obj.transform_to_ncs
-    expected = {'s002': ['chain A_s002', 'chain B_s002'],
-                's003': ['chain A_s003', 'chain B_s003']}
+    expected = {'002': ['chain A_002', 'chain B_002'],
+                '003': ['chain A_003', 'chain B_003']}
     self.assertEqual(result,expected)
     result = transforms_obj.ncs_selection_str
     expected = 'chain A or chain B'
     self.assertEqual(result,expected)
     # transforms that are not present
     result = transforms_obj.transform_to_ncs.keys()
-    expected = ['s003', 's002']
+    expected = ['003', '002']
     self.assertEqual(result,expected)
     # all transforms
     result = transforms_obj.ncs_transform.keys()
-    expected = ['s001', 's003', 's002']
+    expected = ['001', '002', '003']
+    result.sort()
     self.assertEqual(result,expected)
 
   # @unittest.SkipTest
@@ -194,12 +195,12 @@ class TestMultimerReconstruction(unittest.TestCase):
       transform_info=transform_info,
       pdb_hierarchy_inp=pdb_obj)
 
-    expected = ['chain A_s002', 'chain B_s002', 'chain A_s003', 'chain B_s003']
+    expected = ['chain A_002', 'chain B_002', 'chain A_003', 'chain B_003']
     self.assertEqual(transforms_obj.transform_chain_assignment,expected)
 
     expected = {
-      'chain A_s002': 'C','chain A_s003': 'E','chain A_s001': 'A',
-      'chain B_s002': 'D','chain B_s003': 'F','chain B_s001': 'B'}
+      'chain A_002': 'C','chain A_003': 'E','chain A_001': 'A',
+      'chain B_002': 'D','chain B_003': 'F','chain B_001': 'B'}
     self.assertEqual(transforms_obj.ncs_copies_chains_names,expected)
 
     expected = [0, 1, 2, 5, 6]
@@ -211,11 +212,11 @@ class TestMultimerReconstruction(unittest.TestCase):
     self.assertEqual(results,expected)
 
     expected = [7, 8, 9, 12, 13]
-    results = list(transforms_obj.ncs_to_asu_map['chain A_s002'])
+    results = list(transforms_obj.ncs_to_asu_map['chain A_002'])
     self.assertEqual(results,expected)
 
     expected = [17, 18]
-    results = list(transforms_obj.ncs_to_asu_map['chain B_s003'])
+    results = list(transforms_obj.ncs_to_asu_map['chain B_003'])
     self.assertEqual(results,expected)
 
     self.assertEqual(len(transforms_obj.ncs_atom_selection),21)
@@ -297,8 +298,8 @@ class TestMultimerReconstruction(unittest.TestCase):
 
     trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
 
-    t1 = trans_obj.ncs_transform['s002'].r
-    t2 = trans_obj2.ncs_transform['s002'].r
+    t1 = trans_obj.ncs_transform['002'].r
+    t2 = trans_obj2.ncs_transform['002'].r
     self.assertEqual(t1,t2)
     self.assertEqual(len(trans_obj.ncs_transform),len(trans_obj2.ncs_transform))
 
@@ -315,12 +316,12 @@ class TestMultimerReconstruction(unittest.TestCase):
         ['chain D and (resseq 4:5)', 'chain F and (resseq 4:5)']}
     self.assertEqual(t2,t2_expected)
 
-    t1 = trans_obj.tr_id_to_selection['chain A_s003']
+    t1 = trans_obj.tr_id_to_selection['chain A_003']
     t1_expected = ('chain A',
                    'chain E')
     self.assertEqual(t1,t1_expected)
 
-    t2 = trans_obj2.tr_id_to_selection['chain A_s003']
+    t2 = trans_obj2.tr_id_to_selection['chain A_003']
     t2_expected = ('chain A and (resseq 1:3 or resseq 6:7)',
                    'chain E and (resseq 1:3 or resseq 6:7)')
     self.assertEqual(t2,t2_expected)

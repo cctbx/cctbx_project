@@ -1,6 +1,5 @@
 from __future__ import division
-from iotbx.ncs.ncs_preprocess import align_residues
-from mmtbx.ncs.ncs_search import simple_alignment
+from mmtbx.ncs.ncs_search import res_alignment
 from mmtbx.ncs import ncs_search
 from iotbx import pdb
 import unittest
@@ -36,13 +35,23 @@ class TestSimpleAlignment(unittest.TestCase):
     b = 'cabfa'
     seq_a = list(a)
     seq_b = list(b)
-    sel_a, sel_b = simple_alignment(seq_a, seq_b, similarity=0.1)
+    # Test that aligned segments are at least min_contig_length long
+    sel_a, sel_b, similarity = res_alignment(
+      seq_a=seq_a, seq_b=seq_b,
+      min_fraction_domain =0.1,min_contig_length=3)
+    self.assertEqual([],list(sel_a))
+    self.assertEqual([],list(sel_b))
+    # Without length limitation
+    sel_a, sel_b,similarity = res_alignment(
+      seq_a=seq_a, seq_b=seq_b,
+      min_fraction_domain =0.1,min_contig_length=2)
     self.assertEqual([0,1,3,4],list(sel_a))
     self.assertEqual([1,2,3,4],list(sel_b))
 
   def test_2(self):
     print sys._getframe().f_code.co_name
-    sel_a, sel_b = simple_alignment(self.seq_a, self.seq_b, similarity=0.90)
+    sel_a, sel_b, similarity = res_alignment(
+      self.seq_a, self.seq_b, min_fraction_domain=0.9,min_contig_length=0)
     expected_1 = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 19,
                   20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
                   32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
@@ -68,17 +77,19 @@ class TestSimpleAlignment(unittest.TestCase):
 
   def test_3(self):
     print sys._getframe().f_code.co_name
-    sel_a, sel_b = simple_alignment(self.seq_a, self.seq_b, similarity=0.95)
+    sel_a, sel_b, similarity = res_alignment(
+      self.seq_a,self.seq_b,min_fraction_domain=0.95,min_contig_length=0)
     # difference is to large
     expected_1 = []
     expected_2 = []
     self.assertEqual(expected_1,list(sel_a))
     self.assertEqual(expected_2,list(sel_b))
 
-  def test_4(self):
+  def test_search_ncs_relations(self):
     print sys._getframe().f_code.co_name
-    sel_a, sel_b, not_sel_a, not_sel_b, chain_a_id, chain_b_id = \
-      align_residues(self.hierarchy_a, self.hierarchy_b)
+    chain_match_list = ncs_search.search_ncs_relations(
+      ph=self.ph,min_fraction_domain=0.75,min_contig_length=3)
+    [chain_a_id,chain_b_id,sel_a,sel_b,r1,r2,_] = chain_match_list[0]
     #
     self.assertEqual(chain_a_id,'A')
     self.assertEqual(chain_b_id,'B')
@@ -91,23 +102,20 @@ class TestSimpleAlignment(unittest.TestCase):
     #
     self.assertEqual(sel_a.size(),25)
     self.assertEqual(sel_b.size(),25)
+    # atom count including  water
+    self.assertEqual(32,atoms_in_A)
+    self.assertEqual(44,atoms_in_B)
     #
-    self.assertEqual(not_sel_a.size(),7)
-    self.assertEqual(not_sel_b.size(),19)
-    #
-    # note that the side chain of ILE in chain B is removed and that the
     # number of waters is different as well
     expected_sel_a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                       16, 17, 21, 22, 23, 24, 25, 26, 27]
-    expected_not_sel_a = [18, 19, 20, 28, 29, 30, 31]
-    expected_sel_b = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-                      16, 17, 18, 19, 20, 21, 22, 23, 24]
-    expected_not_sel_b = [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
-                          38, 39, 40, 41, 42, 43]
+    expected_sel_b = [28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41,
+                      42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]
     self.assertEqual(list(sel_a), expected_sel_a)
     self.assertEqual(list(sel_b), expected_sel_b)
-    self.assertEqual(list(not_sel_a), expected_not_sel_a)
-    self.assertEqual(list(not_sel_b), expected_not_sel_b)
+    #
+    self.assertEqual(r1,[0, 1, 2, 3])
+    self.assertEqual(r2,[0, 1, 2, 3])
 
 pdb_str = '''\
 CRYST1   37.760   43.710  107.440  90.00 108.54  90.00 P 1 21 1      4
@@ -192,8 +200,6 @@ HETATM 3135  O   HOH B 310      39.908 -13.756  54.831  1.00 11.05           O
 END
 '''
 
-
-
 def run_selected_tests():
   """  Run selected tests
 
@@ -201,7 +207,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['']
+  tests = ['test_search_ncs_relations']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 

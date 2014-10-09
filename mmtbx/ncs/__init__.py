@@ -8,7 +8,7 @@ class asu_ncs_converter(object):
   """
   Simple method of converting multiple NCS copy ASU content into one NCS copy
   and NCS transformations. Limitations:
-    - Asumes each chain to be individual NCS copy.
+    - Assumes each chain to be individual NCS copy.
     - Takes first NCS copy as the master copy.
     - Assume all copies are identical (number and order of atoms)
     - Anisotropic ADP are not handlesd.
