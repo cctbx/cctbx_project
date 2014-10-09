@@ -2,8 +2,6 @@ from __future__ import division
 from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
 from scitbx.math import superpose
-from operator import itemgetter
-import mmtbx.ncs.ncs_utils as nu
 from libtbx.utils import Sorry
 from scitbx import matrix
 import math

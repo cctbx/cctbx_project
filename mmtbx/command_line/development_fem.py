@@ -3,7 +3,6 @@
 
 from __future__ import division
 import mmtbx.command_line
-import mmtbx.f_model
 import mmtbx.maps
 import iotbx.phil
 import iotbx.pdb

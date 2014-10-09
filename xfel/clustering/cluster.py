@@ -679,5 +679,3 @@ class Cluster:
   def __len__(self):
     """ Number of images in the cluster """
     return len(self.members)
-
-

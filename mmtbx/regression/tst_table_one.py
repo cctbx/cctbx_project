@@ -7,10 +7,8 @@ from mmtbx.regression import model_1yjp
 from mmtbx.command_line import table_one
 import iotbx.pdb.hierarchy
 from cctbx import sgtbx
-from cctbx import uctbx
 from scitbx.array_family import flex
-from libtbx.test_utils import Exception_expected
-from libtbx.utils import Sorry, null_out
+from libtbx.utils import null_out
 import random
 
 def exercise () :
