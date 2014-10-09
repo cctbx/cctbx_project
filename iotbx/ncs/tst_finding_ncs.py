@@ -1,5 +1,7 @@
 from __future__ import division
+from mmtbx.ncs import ncs_search
 import iotbx.ncs
+import iotbx.pdb
 import unittest
 import sys
 
@@ -41,8 +43,8 @@ class test_find_ncs_operators(unittest.TestCase):
     t = trans_obj.ncs_to_asu_selection
     self.assertEqual(t.keys(),['chain A'])
     self.assertEqual(t.values(),
-                     [['chain C', 'chain D', 'chain E', 'chain F',
-                       'chain G', 'chain H', 'chain I', 'chain B']])
+                     [['chain B', 'chain C', 'chain D', 'chain E',
+                       'chain F', 'chain G', 'chain H', 'chain I']])
 
   def test_largest_common_ncs(self):
     """
@@ -60,6 +62,72 @@ class test_find_ncs_operators(unittest.TestCase):
                      [['chain D or chain E or chain F',
                        'chain G or chain H or chain I']])
 
+  def test_group_chains_by_domains_minimal_master_ncs_grouping(self):
+    """ """
+    print sys._getframe().f_code.co_name
+    #
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb3)
+    ph = pdb_inp.construct_hierarchy()
+    #
+    chain_match_list = ncs_search.search_ncs_relations(
+      ph=ph,min_contig_length=0,min_fraction_domain=0)
+    # make sure that all possible chains compared
+    model  = ph.models()[0]
+    chain_ids = list({x.id for x in model.chains()})
+    chain_ids = sorted(chain_ids)
+    n_chains = len(chain_ids)
+    self.assertEqual(n_chains,9)
+    self.assertEqual(len(chain_match_list),36)
+    #
+    match_dict = ncs_search.clean_chain_matching(chain_match_list,ph)
+    # Test minimal master NCS
+    transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
+    match_dict=match_dict)
+    group_dict = ncs_search.build_group_dict(
+      transform_to_group,match_dict)
+    self.assertEqual(len(group_dict),1)
+    gr_obj = group_dict[('A',)]
+    self.assertEqual(len(gr_obj.transforms),len(gr_obj.copies))
+    self.assertEqual(len(gr_obj.iselections),len(gr_obj.copies))
+    expected = [['A'], ['B'], ['C'], ['D'], ['E'], ['F'], ['G'], ['H'], ['I']]
+    self.assertEqual(gr_obj.copies,expected)
+    tr = gr_obj.transforms[0]
+    self.assertTrue(tr.r.is_r3_identity_matrix())
+    self.assertTrue(tr.t.is_col_zero())
+    tr = gr_obj.transforms[1]
+    self.assertFalse(tr.r.is_r3_identity_matrix())
+    self.assertFalse(tr.t.is_col_zero())
+
+
+
+  def test_group_chains_by_domains_minimal_NCS_operators(self):
+    """ Test minimal NCS operators """
+    print sys._getframe().f_code.co_name
+
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb3)
+    ph = pdb_inp.construct_hierarchy()
+    #
+    chain_match_list = ncs_search.search_ncs_relations(
+      ph=ph,min_contig_length=0,min_fraction_domain=0)
+    #
+    match_dict = ncs_search.clean_chain_matching(chain_match_list,ph)
+    #
+    transform_to_group,match_dict = ncs_search.minimal_ncs_operators_grouping(
+    match_dict=match_dict)
+    group_dict = ncs_search.build_group_dict(
+      transform_to_group,match_dict)
+    self.assertEqual(len(group_dict),1)
+    gr_obj = group_dict[('A', 'B', 'C')]
+    self.assertEqual(len(gr_obj.transforms),len(gr_obj.copies))
+    self.assertEqual(len(gr_obj.iselections),len(gr_obj.copies))
+    expected = [['A', 'B', 'C'], ['D', 'E', 'F'], ['G', 'H', 'I']]
+    self.assertEqual(gr_obj.copies,expected)
+    tr = gr_obj.transforms[0]
+    self.assertTrue(tr.r.is_r3_identity_matrix())
+    self.assertTrue(tr.t.is_col_zero())
+    tr = gr_obj.transforms[1]
+    self.assertFalse(tr.r.is_r3_identity_matrix())
+    self.assertFalse(tr.t.is_col_zero())
 
 test_pdb1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
@@ -193,7 +261,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_three_chain_master']
+  tests = ['test_master_build_from_two_related_chains']
   suite = unittest.TestSuite(map(test_find_ncs_operators,tests))
   return suite
 

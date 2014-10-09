@@ -23,7 +23,8 @@ def input(pdb_hierarchy_inp=None,
           rms_eps=0.02,
           error_msg_on=False,
           process_similar_chains=False,
-          similarity=0.75):
+          min_fraction_domain=0.2,
+          min_contig_length=10):
     """
     Select method to build ncs_group_object
 
@@ -69,7 +70,10 @@ def input(pdb_hierarchy_inp=None,
         Raise error if NCS relations are not found
       process_similar_chains (bool): When True, process chains that are close
        in length without raising errors
-      similarity (float): minimum boundary on how good the alignment should be
+      min_fraction_domain (float): Threshold for similarity between chains
+        similarity define as:
+        (number of matching res) / (number of res in longer chain)
+      min_contig_length (int): minimum length of matching chain segments
     """
     ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
     ncs_group_obj.preprocess_ncs_obj(
@@ -94,6 +98,7 @@ def input(pdb_hierarchy_inp=None,
       rms_eps=rms_eps,
       error_msg_on=error_msg_on,
       process_similar_chains=process_similar_chains,
-      similarity=similarity)
+      min_fraction_domain=min_fraction_domain,
+      min_contig_length=min_contig_length)
     return ncs_group_obj
 

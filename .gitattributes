@@ -1262,6 +1262,7 @@ iotbx/ncs/ncs_preprocess.py -text
 iotbx/ncs/tst.py -text
 iotbx/ncs/tst_finding_ncs.py -text
 iotbx/ncs/tst_ncs_groups_preprocessing.py -text
+iotbx/ncs/tst_ncs_preprocess_functions.py -text
 iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/pdb/atom_selection.cpp svneol=native#text/plain
 iotbx/pdb/atom_selection.py svneol=native#text/x-python
