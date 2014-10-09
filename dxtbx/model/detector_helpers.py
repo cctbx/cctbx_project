@@ -125,3 +125,26 @@ class detector_helper_sensors:
     return [detector_helper_sensors.SENSOR_CCD,
             detector_helper_sensors.SENSOR_PAD,
             detector_helper_sensors.SENSOR_IMAGE_PLATE]
+
+
+def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
+  """ detector and beam are dxtbx objects,
+      mosflm_beam_centre is a tuple of mm coordinates.
+  """
+  from scitbx import matrix
+  panel_id, old_beam_centre = detector.get_ray_intersection(beam.get_s0())
+  # XXX maybe not the safest way to do this?
+  new_beam_centre = matrix.col(tuple(reversed(mosflm_beam_centre)))
+  origin_shift = matrix.col(old_beam_centre) - new_beam_centre
+  for panel in detector:
+    old_origin = matrix.col(panel.get_origin())
+    new_origin = (old_origin +
+                  matrix.col(panel.get_fast_axis()) * origin_shift[0] +
+                  matrix.col(panel.get_slow_axis()) * origin_shift[1])
+    panel.set_local_frame(fast_axis=panel.get_fast_axis(),
+                          slow_axis=panel.get_slow_axis(),
+                          origin=new_origin)
+  # sanity check to make sure we have got the new beam centre correct
+  panel_id, new_beam_centre = detector.get_ray_intersection(beam.get_s0())
+  assert (matrix.col(new_beam_centre) -
+          matrix.col(tuple(reversed(mosflm_beam_centre)))).length() < 1e-6
