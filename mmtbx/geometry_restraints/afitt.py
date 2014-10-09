@@ -272,6 +272,7 @@ class afitt_object:
             int(cif_object['comp_list']['_chem_comp.number_atoms_all'][i]) )
       comp_rname='comp_%s' %res
       assert cif_object.has_key(comp_rname), "Residue %s not in cif file!" %res
+      # this is a bare exception, not the best idea
       try:
         self.partial_charges.append(
           [float(i) for i in cif_object[comp_rname]['_chem_comp_atom.partial_charge']]
@@ -405,9 +406,9 @@ class afitt_object:
       for i in range(cov_obj.n_atoms):
         f.write('%d\n' %(i+self.n_atoms[r_i]))
     ##
-    ofile=open('tmpfile','w')
-    ofile.write(f.getvalue())
-    ofile.close()
+    # ofile=open('tmpfile','w')
+    # ofile.write(f.getvalue())
+    # ofile.close()
     # sys.exit()
     # print f.getvalue()
     return f.getvalue()
@@ -1023,7 +1024,7 @@ def apply(result, afitt_o, sites_cart,phenix_gnorms=None):
                            instance_i,
                            afitt_allgradients,
                            afitt_alltargets,
-                           verbose=True,
+                           verbose=False,
                            phenix_gnorms=phenix_gnorms)
   result.geometry = apply_target_gradients(afitt_o, result.geometry,
                                            afitt_allgradients,
