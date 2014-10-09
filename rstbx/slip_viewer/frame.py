@@ -216,8 +216,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.update_statusbar() # XXX Not always working?
     self.Layout()
 
-    detector = self.pyslip.tiles.raw_image.get_detector()
-    beam     = self.pyslip.tiles.raw_image.get_beam()
+    detector = self.get_detector()
+    beam     = self.get_beam()
     # FIXME assumes all detector elements use the same millimeter-to-pixel convention
     if detector[0].get_distance() > 0:
       if len(detector) > 1:
@@ -272,6 +272,12 @@ class XrayFrame (AppFrame,XFBaseClass) :
     if (self._calibration_frame and
         not self.has_four_quadrants()):
       self.OnCalibration(None)
+
+  def get_detector(self):
+    return self.pyslip.tiles.raw_image.get_detector()
+
+  def get_beam(self):
+    return self.pyslip.tiles.raw_image.get_beam()
 
   def get_key (self, file_name_or_data) :
       """This overridden get_key() function returns the key of @p file_name_or_data
