@@ -128,9 +128,9 @@ def exercise_01():
     assert not show_diff(r1, r2)
   ####
   cntr = 0
-  xrs1 = iotbx.pdb.input(source_info = None, lines = flex.std_string(
+  xrs1 = iotbx.pdb.pdb_input(source_info = None, lines = flex.std_string(
     expected_result.splitlines())).xray_structure_simple()
-  xrs2 = iotbx.pdb.input(source_info = None, lines = flex.std_string(result)
+  xrs2 = iotbx.pdb.pdb_input(source_info = None, lines = flex.std_string(result)
     ).xray_structure_simple()
   for s1, s2 in zip(xrs1.scatterers(), xrs2.scatterers()):
     if(s1.element_symbol().strip() not in ['H','D']):
@@ -246,8 +246,10 @@ def exercise_02():
     tmp_f = open(file_name, "w")
     tmp_f.write(input_model)
     tmp_f.close()
-  xrs_exact = iotbx.pdb.input(file_name = "m_good.pdb").xray_structure_simple()
-  xrs_part = iotbx.pdb.input(file_name = "m_bad.pdb").xray_structure_simple()
+  xrs_exact = iotbx.pdb.pdb_input(
+    file_name = "m_good.pdb").xray_structure_simple()
+  xrs_part = iotbx.pdb.pdb_input(
+    file_name = "m_bad.pdb").xray_structure_simple()
   miller_set = miller.build_set(
     crystal_symmetry = xrs_exact.crystal_symmetry(),
     anomalous_flag   = False,

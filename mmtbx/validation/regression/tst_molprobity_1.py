@@ -137,7 +137,7 @@ REMARK   3    GEOSTD + MON.LIB. + CDL v1.2
   files = ["tst_molprobity_cdl_1.pdb","tst_molprobity_cdl_2.pdb"]
   rmsds = [1.0267, 0.8796]
   for file_name, rmsd, cdl_expected in zip(files, rmsds, [False, True]) :
-    result = molprobity.run(args=[file_name],
+    result = molprobity.run(args=[file_name, "flags.clashscore=False"],
       ignore_missing_modules=True,
       out=null_out()).validation
     assert approx_equal(result.rms_angles(), rmsd, eps=0.001)

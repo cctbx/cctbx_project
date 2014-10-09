@@ -830,7 +830,7 @@ or omission of reflections by data-processing software.""")
   def summarize_issues (self) :
     issues = []
     if self.d_min_directional.is_elliptically_truncated() :
-      issues.append((2,"The data appear to have been elliptically truncated.",
+      issues.append((1,"The data appear to have been elliptically truncated.",
         "Analysis of resolution limits"))
     else :
       issues.append((0,
