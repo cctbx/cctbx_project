@@ -87,6 +87,35 @@ def tst_get_names(detector):
   assert(names[0] == 'Panel')
   print 'OK'
 
+def tst_set_mosflm_beam_centre(detector):
+  from scitbx import matrix
+  from dxtbx.model import Beam
+  wavelength = 1
+  panel = detector[0]
+  origin = matrix.col(panel.get_origin())
+  fast_axis = matrix.col(panel.get_fast_axis())
+  slow_axis = matrix.col(panel.get_slow_axis())
+  image_size = panel.get_image_size_mm()
+
+  s0 = (1.0/wavelength) * (
+    origin + 0.5 * fast_axis * image_size[0] + 0.5 * slow_axis * image_size[1])
+  beam = Beam(-s0.normalize(), wavelength)
+
+  beam_centre = matrix.col(panel.get_beam_centre(beam.get_s0()))
+  origin_shift = matrix.col((1, 0.5))
+  new_beam_centre = beam_centre + origin_shift
+
+  new_mosflm_beam_centre = tuple(reversed(new_beam_centre))
+
+  from dxtbx.model.detector_helpers import set_mosflm_beam_centre
+  set_mosflm_beam_centre(detector, beam, new_mosflm_beam_centre)
+
+  assert (matrix.col(panel.get_beam_centre(beam.get_s0())) -
+          matrix.col(tuple(reversed(new_mosflm_beam_centre)))).length() < 1e-6
+
+  print 'OK'
+
+
 def tst_detector():
   from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
@@ -102,6 +131,7 @@ def tst_detector():
       (0, 1000)))         # Trusted range
 
   # Perform some tests
+  tst_set_mosflm_beam_centre(detector)
   tst_get_pixel_lab_coord(detector)
   tst_get_image_size_mm(detector)
   tst_is_value_in_trusted_range(detector)
