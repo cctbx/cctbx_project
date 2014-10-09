@@ -793,7 +793,7 @@ def select_data (file_name, data_labels, log=None,
   print >> log, "Format:", hkl_in.file_type()
   miller_arrays = hkl_in.as_miller_arrays(merge_equivalents=False,
     assume_shelx_observation_type_is=assume_shelx_observation_type_is)
-  if ((hkl_in.file_type() == "shelx_hklf") and (not "=" in file_name) 
+  if ((hkl_in.file_type() == "shelx_hklf") and (not "=" in file_name)
        and assume_shelx_observation_type_is is None) :
     print >> log, "WARNING: SHELX file is assumed to contain intensities"
   i_obs = None

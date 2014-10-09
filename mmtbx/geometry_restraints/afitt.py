@@ -272,12 +272,11 @@ class afitt_object:
             int(cif_object['comp_list']['_chem_comp.number_atoms_all'][i]) )
       comp_rname='comp_%s' %res
       assert cif_object.has_key(comp_rname), "Residue %s not in cif file!" %res
-      # this is a bare exception, not the best idea
       try:
         self.partial_charges.append(
           [float(i) for i in cif_object[comp_rname]['_chem_comp_atom.partial_charge']]
           )
-      except:
+      except Exception:
         self.partial_charges.append( [0]*self.n_atoms[-1] )
       self.atom_elements.append(
         [i for i in cif_object[comp_rname]['_chem_comp_atom.type_symbol']]

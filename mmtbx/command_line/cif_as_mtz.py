@@ -1,10 +1,8 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.cif_as_mtz
 
 from __future__ import division
-import mmtbx.utils
 from iotbx.option_parser import iotbx_option_parser
 from iotbx import crystal_symmetry_from_any
-from iotbx.pdb import crystal_symmetry_from_pdb
 import iotbx.phil
 import iotbx.mtz
 import iotbx.pdb
@@ -12,7 +10,6 @@ from cctbx.array_family import flex
 from cctbx import crystal
 from libtbx import runtime_utils
 from libtbx.utils import Sorry
-from libtbx import smart_open
 import libtbx.callbacks # import dependency
 import string
 import re

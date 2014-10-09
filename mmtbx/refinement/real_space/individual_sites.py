@@ -8,7 +8,6 @@ from mmtbx import utils
 import mmtbx.ncs.ncs_utils as ncs_utils
 from libtbx.test_utils import approx_equal
 from cctbx import crystal
-from libtbx import group_args
 import mmtbx.refinement.minimization_ncs_constraints
 
 

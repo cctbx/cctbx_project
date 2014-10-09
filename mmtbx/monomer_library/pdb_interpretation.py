@@ -2462,7 +2462,7 @@ class build_chain_proxies(object):
                     print "%5.2f %5.2f %5.2f" % ( diff_dist, max_dist, min_dist),
                     print " in additional check (skip_additional_check_on_dna_rna)"
                   return result
-                if (na_params.stacking.find_automatically 
+                if (na_params.stacking.find_automatically
                     and (na_params.stacking.skip_additional_distance_checking
                           or additional_check(prev_mm, mm))):
                   link_resolution = add_parallelity_proxies(
@@ -4638,7 +4638,6 @@ class build_all_chain_proxies(linking_mixins):
     al_params = self.params.automatic_linking
     na_params = self.params.nucleic_acid_restraints
     #========== Add user-defined parallelity restraints ==============
-    from iotbx.pdb import rna_dna_atom_names_backbone_reference_set
     user_parallelity_proxies = []
     selection_cache = self.pdb_hierarchy.atom_selection_cache()
     for sp in na_params.stacking_pair:

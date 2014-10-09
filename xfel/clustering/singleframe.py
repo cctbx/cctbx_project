@@ -280,5 +280,3 @@ class SingleFrame:
       e = 2 * uc[0] * uc[2] * math.cos(uc[4])
       f = 2 * uc[0] * uc[1] * math.cos(uc[5])
       return [a, b, c, d, e, f]
-
-

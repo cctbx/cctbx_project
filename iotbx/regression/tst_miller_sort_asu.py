@@ -1,16 +1,7 @@
+
 from __future__ import division
-import os
-import sys
-import libtbx.load_env
-from libtbx.utils import Sorry
-from iotbx import reflection_file_reader
 from cctbx import crystal
 from cctbx import miller
-from cctbx import xray
-
-from libtbx import easy_run
-from libtbx.test_utils import Exception_expected, open_tmp_file
-from iotbx.file_reader import any_file, sort_by_file_type, group_files
 
 def exercise_sort() :
   expected_unsorted_data="""    4 I 4
@@ -56,7 +47,7 @@ def exercise_sort() :
   from cctbx.array_family import flex
   xs = crystal.symmetry((113.949,113.949,32.474,90.000,90.000,90.000), "I4")
   mi = flex.miller_index((
-  (0,0,4), 
+  (0,0,4),
   (0,0,12),
   (0,0,-4),
   (0,0,-8),

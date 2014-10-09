@@ -6,7 +6,6 @@ from mmtbx import monomer_library
 from scitbx import matrix
 import scitbx.rigid_body
 from cctbx import xray
-import mmtbx.utils
 import random
 import math
 
