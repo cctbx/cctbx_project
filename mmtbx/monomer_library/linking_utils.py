@@ -536,7 +536,9 @@ def is_atom_pair_linked(atom1,
     if verbose:
       print "AMINO ACIDS",atom1.quote(), atom2.quote()
   #  assert 0
-  if "other" in lookup: return True
+  if "other" in lookup:
+    if verbose: print 'other returns True'
+    return True
   if verbose: print 'drop through '*5
   return False
 
@@ -869,3 +871,10 @@ class apply_cif_list(list):
     print 'APPEND'*10
     print item
     list.__append__(self, item)
+
+def check_valence(hierarchy, atom):
+  if atom.element.strip() not in linking_setup.simple_valence: return True
+  bonds = get_bonded(hierarchy, atom, bond_cutoff=1.8)
+  if len(bonds)==linking_setup.simple_valence[atom.element.strip()]:
+    return False
+  return True

@@ -42,6 +42,11 @@ skip_if_both = [
   ["common_water",      "other"],
   ]
 #
+# maximum valence allowed
+simple_valence = {
+  "O" : 2,
+}
+#
 def adjust_class(atom, atom_class):
   if atom_class in ["common_element"]:
     if(atom.element.strip().upper() in ad_hoc_single_metal_residue_element_types):
