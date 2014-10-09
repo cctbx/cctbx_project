@@ -2146,7 +2146,9 @@ refinement might provide an answer.
  The multivariate Z score is a quality measure of the given spread in
  intensities. Good to reasonable data are expected to have a Z score lower
  than 3.5.  Large values can indicate twinning, but small values do not
- necessarily exclude it.
+ necessarily exclude it.  Note that the expected values for perfect twinning
+ are for merohedrally twinned structures, and deviations from untwinned will
+ be larger for perfect higher-order twinning.
 """)
     if len(self.twin_laws)>0:
       out.show_sub_header("Statistics depending on twin laws")
