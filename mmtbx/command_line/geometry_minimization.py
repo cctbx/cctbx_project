@@ -105,7 +105,7 @@ minimization
   rmsd_angles_termination_cutoff = 0
     .type = float
     .help = stop after reaching specified cutoff value
-  grmsd_termination_cutoff = 0
+  grms_termination_cutoff = 0
     .type = float
     .help = stop after reaching specified cutoff value
   move
@@ -325,7 +325,8 @@ def run_minimization_amber (
       params,
       log,
       prmtop,
-      ambcrd):
+      ambcrd,
+      use_sander):
   import amber_adaptbx.amber_geometry_minimization
   o = amber_adaptbx.amber_geometry_minimization.run(
     restraints_manager             = restraints_manager,
@@ -341,11 +342,12 @@ def run_minimization_amber (
     planarity                      = params.move.planarity,
     parallelity                    = params.move.parallelity,
     generic_restraints             = False,
-    grmsd_termination_cutoff       = params.grmsd_termination_cutoff,
+    grms_termination_cutoff       = params.grms_termination_cutoff,
     alternate_nonbonded_off_on     = params.alternate_nonbonded_off_on,
     log                            = log,
     prmtop                         = prmtop,
-    ambcrd                         = ambcrd)
+    ambcrd                         = ambcrd,
+    use_sander                     = use_sander)
 
 class run(object):
   _pdb_suffix = "minimized"
@@ -524,7 +526,8 @@ class run(object):
         pdb_hierarchy = self.pdb_hierarchy,
         log = self.log,
         prmtop = self.params.amber.topology_file_name,
-        ambcrd = self.params.amber.coordinate_file_name)
+        ambcrd = self.params.amber.coordinate_file_name,
+        use_sander = self.params.amber.use_sander)
     else:
       run_minimization(
         selection            = self.selection,

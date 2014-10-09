@@ -26,7 +26,8 @@ class manager(object):
         torsion_ncs_groups=None,
         normalization=False,
         use_amber=False,
-        amber_mdgx_structs=None,
+        use_sander=False,
+        amber_structs=None,
         use_afitt=False, #afitt
         afitt_object=None) :
     self.geometry = geometry
@@ -34,7 +35,7 @@ class manager(object):
     self.torsion_ncs_groups = torsion_ncs_groups
     self.normalization = normalization
     self.use_amber = use_amber
-    self.amber_mdgx_structs = amber_mdgx_structs
+    self.amber_structs = amber_structs
     #afitt
     self.use_afitt = use_afitt
     self.afitt_object = afitt_object
@@ -65,7 +66,7 @@ class manager(object):
       torsion_ncs_groups=torsion_ncs_groups,
       normalization=self.normalization,
       use_amber=self.use_amber,
-      amber_mdgx_structs=self.amber_mdgx_structs,
+      amber_structs=self.amber_structs,
       )
 
   def energies_sites(self,
@@ -115,7 +116,7 @@ class manager(object):
           sites_cart=sites_cart,
           number_of_restraints=geometry_energy.number_of_restraints,
           gradients_factory=flex.vec3_double,
-          mdgx_structs=self.amber_mdgx_structs)
+          amber_structs=self.amber_structs)
         result.geometry = amber_geometry_manager.energies_sites(
           crystal_symmetry = self.geometry.crystal_symmetry,
           compute_gradients = compute_gradients)

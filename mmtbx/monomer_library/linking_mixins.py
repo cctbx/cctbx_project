@@ -685,8 +685,10 @@ Residue classes
         if verbose:
           print "is not linked", atom1.quote(),atom2.quote(),key
         continue
+      # check some valences...
+      if not linking_utils.check_valence(self.pdb_hierarchy, atom1): continue
+      if not linking_utils.check_valence(self.pdb_hierarchy, atom2): continue
       # got a link....
-
       if classes1.common_rna_dna and classes2.common_rna_dna:
         hbonds_in_bond_list.append(tuple(sorted([atom1.i_seq, atom2.i_seq])))
 

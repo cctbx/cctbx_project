@@ -1824,6 +1824,32 @@ ATOM   3331  CD  GLU P   7      17.202  14.901 -23.139  1.00 32.19           C
 ATOM   3332  OE1 GLU P   7      15.956  14.941 -23.401  1.00 29.65           O
 ATOM   3333  OXT GLU P   7      15.672  13.468 -17.541  1.00 45.81           O
 """,
+  "linking_test_over_valence.pdb" : """
+ATOM   3451  C27 SEI L   1      65.362  58.026  53.718  1.00 20.00           C
+ATOM   3463  O39 SEI L   1      65.091  58.948  52.663  1.00 20.00           O
+ATOM   3495  H39 SEI L   1      65.115  58.519  51.936  1.00 20.00           H
+ATOM   2595  N   GLY A 193      65.965  60.594  51.166  1.00  2.00           N
+ATOM   2596  CA  GLY A 193      64.824  61.465  50.949  1.00  2.00           C
+ATOM   2597  C   GLY A 193      63.671  60.712  50.330  1.00  3.58           C
+ATOM   2598  O   GLY A 193      62.604  61.282  50.115  1.00  6.18           O
+ATOM   2599  H   GLY A 193      65.893  60.083  51.841  1.00  2.00           H
+ATOM   2600  HA2 GLY A 193      64.531  61.829  51.799  1.00  2.00           H
+ATOM   2601  HA3 GLY A 193      65.062  62.202  50.366  1.00  2.00           H
+""",
+  "sei.cif" : """
+data_comp_SEI
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.charge
+SEI C27    C 'CH1 '  0.000 0
+SEI O39    O 'OH1 '  0.000 0
+SEI H39    H 'HCH1'  0.000 0
+"""
         }
 links = {
   "linking_test_ASN-NAG.pdb" : [21, 22],
@@ -1852,11 +1878,13 @@ links = {
   "linking_test_XYP_XYP.pdb" : [0,1],
   "linking_test_ALY_MCM.pdb" : [11,12], # links AA with quasi-AA
   "linking_test_cyclic.pdb" : [67,68],
+  "linking_test_over_valence.pdb" : [6,6],
   }
 
 def run(only_i=None):
   try: only_i=int(only_i)
   except ValueError: only_i=None
+  except TypeError: only_i=None
   cifs = ""
   for pdb in pdbs:
     f=file(pdb, "wb")
@@ -1869,7 +1897,7 @@ def run(only_i=None):
     if pdb in ["linking_test_CD_GHE_A_B.pdb",
                "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
                ]: continue
-    #if pdb.find("cyclic")==-1: continue
+    #if pdb.find("over")==-1: continue
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):

@@ -94,8 +94,6 @@ test_cdl_params = """\
     .type = bool
   cdl_interpolation = False
     .type = bool
-  rdl = False
-    .type = bool
 """
 
 altloc_weighting_params = """\
@@ -154,7 +152,7 @@ master_params_str = """\
       .short_caption = Distance cutoff for automatic linking of aminoacids
     link_residues = False
       .type = bool
-    inter_residue_bond_cutoff = 2.5
+    inter_residue_bond_cutoff = 2.2
       .type = float
       .short_caption = Distance cutoff for automatic linking of other residues
     buffer_for_second_row_elements = 0.5
