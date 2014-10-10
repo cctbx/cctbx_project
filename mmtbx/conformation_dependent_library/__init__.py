@@ -100,6 +100,12 @@ headers = [
   "",
   ]
 
+def distance2(a,b):
+  d2 = 0
+  for i in range(3):
+    d2 += (a.xyz[i]-b.xyz[i])**2
+  return d2
+  
 def restraints_show(restraints_values):
   outl = ""
   for i, item in enumerate(restraints_values):
@@ -136,7 +142,10 @@ class ThreeProteinResidues(list):
   def __init__(self, geometry): #restraints_manager):
     self.geometry = geometry
     #self.restraints_manager = restraints_manager
-    self.bond_params_table = geometry.bond_params_table
+    if geometry is None:
+      self.bond_params_table = None
+    else:
+      self.bond_params_table = geometry.bond_params_table
     #except: self.bond_params_table = restraints_manager.bond_params_table
     self.errors = []
 
@@ -147,6 +156,7 @@ class ThreeProteinResidues(list):
     outl = "ThreeProteinResidues"
     for residue in self:
       outl += " %s(%s)" % (residue.resname, residue.resseq)
+    outl += " %s" % self.are_linked(return_value=True)
     return outl
 
   def show_detailed(self):
@@ -178,7 +188,7 @@ class ThreeProteinResidues(list):
         print self
     return cis_peptide_bond
 
-  def are_linked(self):
+  def are_linked(self, return_value=False):
     for i, residue in enumerate(self):
       if i==0: continue
       ccn1, outl1 = get_c_ca_n(residue)
@@ -195,13 +205,19 @@ class ThreeProteinResidues(list):
         break
       n = ccn1[2]
       c = ccn2[0]
-      bond=self.bond_params_table.lookup(c.i_seq, n.i_seq)
+      if self.bond_params_table is None:
+        d2 = distance2(n,c)
+        if d2<4: bond=True
+        else: bond=False
+      else:
+        bond=self.bond_params_table.lookup(c.i_seq, n.i_seq)
       if not bond:
         #assert c.i_seq
         #assert n.i_seq
         break
     else:
       return True
+    if return_value: return d2
     return False
 
   def append(self, residue):
@@ -433,6 +449,7 @@ def get_restraint_values(threes, interpolate=False):
 
 def generate_protein_threes(hierarchy,
                             geometry, #restraints_manager,
+                            include_non_linked=False,
                             verbose=False,
                             ):
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -442,23 +459,29 @@ def generate_protein_threes(hierarchy,
     for chain in model.chains():
       if verbose: print 'chain: "%s"' % chain.id
       for conformer in chain.conformers():
-        if verbose: print '  conformer: altloc="%s" only_residue="%s"' % (
-          conformer.altloc, conformer.only_residue)
+        if verbose: print '  conformer: altloc="%s"' % (
+          conformer.altloc)
+        while threes: del threes[0]
         for residue in conformer.residues():
           if verbose:
             if residue.resname not in ["HOH"]:
               print '    residue: resname="%s" resid="%s"' % (
                 residue.resname, residue.resid())
-              for atom in residue.atoms():
-                if verbose: print '         atom: name="%s"' % (atom.name)
+              #for atom in residue.atoms():
+              #  if verbose: print '         atom: name="%s"' % (atom.name)
           if verbose:
             print 'residue class : %s' % get_class(residue.resname)
           if get_class(residue.resname) not in ["common_amino_acid"]:
             continue
-          threes.append(residue)
+          if include_non_linked:
+            list.append(threes, residue)
+            if len(threes)>3: del threes[0]
+          else:
+            threes.append(residue)
           if len(threes)!=3: continue
           assert len(threes)<=3
           yield threes
+      threes = ThreeProteinResidues(geometry)
 
 def setup_restraints(geometry, # restraints_manager
                      verbose=False,
