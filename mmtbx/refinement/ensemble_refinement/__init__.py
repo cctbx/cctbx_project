@@ -1830,7 +1830,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   xray_structure = xsfppf.xray_structures[0].deep_copy_scatterers()
 
   # TODO Amber hooks
-  amber_mdgx_structs = use_amber = None
+  amber_structs = use_amber = None
   if hasattr(params.ensemble_refinement, "amber") :
     use_amber = params.ensemble_refinement.amber.use_amber
     if (use_amber) :
@@ -1838,7 +1838,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       import amber_adaptbx
       make_header("Initializing AMBER", out=log)
       print >> log, "  topology: %s" % amber_params.topology_file_name
-      amber_mdgx_structs = amber_adaptbx.get_amber_structs(
+      amber_structs = amber_adaptbx.get_amber_structs(
         prmtop=amber_params.topology_file_name,
         ambcrd=amber_params.coordinate_file_name)
       if (params.hydrogens.refine.lower() == "auto") :
@@ -1866,7 +1866,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       geometry      = geometry,
       normalization = True,
       use_amber     = use_amber,
-      amber_mdgx_structs = amber_mdgx_structs)
+      amber_structs = amber_structs)
 
   # Refinement flags
   class rf:
