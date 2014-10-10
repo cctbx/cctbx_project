@@ -1,6 +1,14 @@
-from __future__ import division
 
+"""
+Embedded browser windows with a minimal frame.  This will use the native web
+browser library on Mac (WebKit) and Windows (IE); on Linux it will default to
+the simpler wx.html.HtmlWindow.  This is used in the Phenix GUI to display
+documentation.
+"""
+
+from __future__ import division
 import wxtbx.bitmaps
+import wx.html
 import wx
 
 class browser_frame (wx.Frame) :
@@ -8,8 +16,8 @@ class browser_frame (wx.Frame) :
     wx.Frame.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
-    self.SetupToolbar()
     self._was_shown = False
+    self._is_default_viewer = False
     self.viewer = None
     _import_error = None
     if (wx.Platform == '__WXMAC__') :
@@ -29,10 +37,11 @@ class browser_frame (wx.Frame) :
         _import_error = str(e)
       else :
         self.viewer = iewin.IEHtmlWindow(self, -1)
-    if (self.viewer is None) :
-      raise ImportError(("Sorry, this module is only supported on Macintosh "+
-        "and Windows at present.  (Original error: %s)") % _import_error)
+    if (self.viewer is None) : # fallback (default on Linux)
+      self.viewer = HtmlPanel(self)
+      self._is_default_viewer = True
     szr.Add(self.viewer, 1, wx.EXPAND)
+    self.SetupToolbar()
     self.statusbar = self.CreateStatusBar()
     if (wx.Platform != "__WXMSW__") :
       self.SetInitialSize((1024,640))
@@ -49,26 +58,28 @@ class browser_frame (wx.Frame) :
       ("filesystems", "folder_home", "OnHome", "Home"),
       ("actions", "back", "OnBack", "Back"),
       ("actions", "forward", "OnForward", "Forward"),
-      ("actions", "reload", "OnReload", "Reload"),
       ("actions", "stop", "OnStop", "Stop"),
     ]
+    if (not self._is_default_viewer) :
+      commands.append(("actions", "reload", "OnReload", "Reload"))
     for (icon_class, icon_name, fname, label) in commands :
       bmp = wxtbx.bitmaps.fetch_icon_bitmap(icon_class, icon_name, 32)
       tool_button = self.toolbar.AddLabelTool(-1, label, bmp,
         shortHelp=label, kind=wx.ITEM_NORMAL)
       self.Bind(wx.EVT_MENU, getattr(self, fname), tool_button)
     self.toolbar.AddSeparator()
-    phenix_bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("phenix.refine")
-    phenix_btn = self.toolbar.AddLabelTool(-1, "PHENIX homepage", phenix_bmp,
-      shortHelp="PHENIX homepage", kind=wx.ITEM_NORMAL)
-    self.Bind(wx.EVT_MENU, self.OnPhenixWeb, phenix_btn)
+    if (not self._is_default_viewer) :
+      phenix_bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("phenix.refine")
+      phenix_btn = self.toolbar.AddLabelTool(-1, "PHENIX homepage", phenix_bmp,
+        shortHelp="PHENIX homepage", kind=wx.ITEM_NORMAL)
+      self.Bind(wx.EVT_MENU, self.OnPhenixWeb, phenix_btn)
     self.toolbar.Realize()
 
   def LoadURL (self, url) :
-    if (wx.Platform == '__WXMAC__') :
-      self.viewer.LoadURL(url)
-    elif (wx.Platform == '__WXMSW__') :
+    if (wx.Platform == '__WXMSW__') :
       self.viewer.LoadUrl(url)
+    else :
+      self.viewer.LoadURL(url)
 
   def OnShow (self, event) :
     if (not self._was_shown) :
@@ -120,6 +131,28 @@ class browser_frame (wx.Frame) :
   def OnBeforeLoad (self, event) :
     pass
     #print event.GetNavigationType()
+
+class HtmlPanel (wx.html.HtmlWindow) :
+  """
+  Adapter class to provide an API equivalent to WebKit/IE
+  """
+  def Stop (self) :
+    pass
+
+  def CanGoForward (self) :
+    return self.HistoryCanForward()
+
+  def GoForward (self) :
+    return self.HistoryForward()
+
+  def CanGoBack (self) :
+    return self.HistoryCanBack()
+
+  def GoBack (self) :
+    return self.HistoryBack()
+
+  def LoadURL (self, url) :
+    return self.LoadPage(url)
 
 if __name__ == "__main__" :
   app = wx.App(0)
