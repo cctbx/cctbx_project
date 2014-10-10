@@ -572,10 +572,12 @@ class Cluster:
     errors = [i.wilson_err['Standard Error'] for i in self.members]
     axes_to_return[0].hist(errors, 50, range=[0, 200])
     axes_to_return[0].set_title("Standard Errors on Wilson fit")
+    axes_to_return[0].set_ylabel("Count")
 
     rs = [-1 * i.minus_2B / 2 for i in self.members]
     axes_to_return[1].hist(rs, 50, range=[-50, 200])
     axes_to_return[1].set_title("B values for Wilson plot")
+    axes_to_return[1].set_ylabel("Count")
 
     axes_to_return[2].plot([i.G for i in self.members],
              [-1 * i.minus_2B / 2 for i in self.members], 'x')
