@@ -7,9 +7,8 @@ on an existing cluster, e.g. to plot the unit cell distributions.
 
 **Author:**   Oliver Zeldin <zeldin@stanford.edu>
 """
-from __future__ import division
-__author__ = 'zeldin'
 
+from __future__ import division
 from cctbx.array_family import flex
 import os
 import math
@@ -673,9 +672,45 @@ class Cluster:
                                               observation[2])
     return miller_dict
 
-  def as_mtz(self, outname):
-    pass
-
   def __len__(self):
     """ Number of images in the cluster """
     return len(self.members)
+
+  def dump_as_mtz(self, mtz_name):
+    from cctbx.crystal import symmetry
+    from cctbx import miller
+
+
+    assert all((str(m.miller_array.space_group_info())  \
+                == str(self.members[0].miller_array.space_group_info())
+                for m in self.members)),  \
+                "All images must be in the same point group!"
+
+    final_sym = symmetry(unit_cell=self.medians,
+              space_group_info=self.members[0].miller_array.space_group_info())
+    # Find mean_Iobs
+    mil_dict = self.merge_dict()
+    single_millers = mil_dict.values()
+    indices = [md.index for md in single_millers]
+    iobs, sig_iobs = zip(*[md.weighted_mean_and_std() for md in single_millers])
+    all_obs = miller.array(miller_set=self.members[0] \
+                                          .miller_array \
+                                          .customized_copy(
+                                            crystal_symmetry=final_sym,
+                                            indices=flex.miller_index(indices),
+                                            unit_cell=self.medians),
+                                            data = flex.double(iobs),
+                                            sigmas = flex.double(sig_iobs))
+    all_obs = all_obs.set_observation_type_xray_intensity() \
+                     .average_bijvoet_mates()
+
+    all_obs = all_obs.select(all_obs.data() > 0)
+    mtz_out = all_obs.as_mtz_dataset(column_root_label="Iobs",
+                                         title=self.cname,
+                                                                          wavelength=np.median([m.wavelength for m in self.members]))
+    mtz_out.add_miller_array(miller_array=all_obs,
+                                 column_root_label="IMEAN")
+    mtz_obj = mtz_out.mtz_object()
+    mtz_obj.write(mtz_name)
+
+    logging.info("MTZ file written to {}".format(mtz_name))
