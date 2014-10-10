@@ -36,21 +36,27 @@ class find_matching_img(object):
       name = pickle.split("/")[-1][8:].split("_00000.pickle")[0]
       prefix = "idx-" + pickle.split("/")[-1][4:8]
       self.image = [img_location + prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + ".pickle"]
+      assert os.path.exists(self.image[0]), "Can't find images at the designated location."
 
 class construct_reflection_table_and_experiment_list(object):
   def __init__(self, pickle, img_location, pixel_size):
     # unpickle pickle file and keep track of image location
     self.pickle = pickle
-    self.data = easy_pickle.load(pickle)
-    self.length = len(self.data['observations'][0].data())
-    self.img_location = img_location
-    self.pixel_size = pixel_size
+    try:
+      self.data = easy_pickle.load(pickle)
+    except EOFError:
+      self.data = None
+    if self.data is not None:
+      self.length = len(self.data['observations'][0].data())
+      self.img_location = img_location
+      self.pixel_size = pixel_size
 
   # extract things from pickle file
   def unpack_pickle(self):
     """Extract all relevant information from an integration pickle file."""
 
     # crystal-dependent
+    self.ori = self.data['current_orientation'][0]
     self.ucell = self.data['current_orientation'][0].unit_cell()
 
     # experiment-dependent
@@ -69,13 +75,14 @@ class construct_reflection_table_and_experiment_list(object):
 
   def expt_crystal_maker(self):
     """Construct the crystal object for the experiments file."""
-    self.a, self.b, self.c = self.ucell.parameters()[0:3]
-    self.ortho_matrix = self.ucell.orthogonalization_matrix()
-    self.real_a = self.ortho_matrix[0], self.ortho_matrix[3], self.ortho_matrix[6]
-    self.real_b = self.ortho_matrix[1], self.ortho_matrix[4], self.ortho_matrix[7]
-    self.real_c = self.ortho_matrix[2], self.ortho_matrix[5], self.ortho_matrix[8]
-    self.lattice = self.ucell.lattice_symmetry_group()
-    self.crystal = crystal.crystal_model(self.real_a, self.real_b, self.real_c, space_group=self.lattice)
+    a, b, c = self.ucell.parameters()[0:3]
+    direct_matrix = self.ori.direct_matrix()
+    real_a = direct_matrix[0:3]
+    real_b = direct_matrix[3:6]
+    real_c = direct_matrix[6:9]
+    lattice = self.ucell.lattice_symmetry_group()
+    self.crystal = crystal.crystal_model(real_a, real_b, real_c, space_group=lattice)
+    self.crystal.set_mosaicity(self.data['mosaicity'])
 
   def expt_detector_maker(self):
     """Construct the detector object for the experiments file. This function generates a monolithic flattening of the
@@ -182,23 +189,23 @@ class construct_reflection_table_and_experiment_list(object):
     from scitbx.matrix import col
     self.reflections['s1'] = sciflex.vec3_double(self.length)
     for idx in xrange(self.length):
-      coords = col(self.detector[0].get_pixel_lab_coord((self.reflections['xyzobs.px.value'][idx][0],
-                                                         self.reflections['xyzobs.px.value'][idx][1]))).normalize()
+      coords = col(self.detector[0].get_pixel_lab_coord(self.reflections['xyzobs.px.value'][idx][0:2])).normalize()
       self.reflections['s1'][idx] = tuple(coords)
 
   def refl_xyzcal_maker(self):
-    self.reflections['xyzcal.px'] = sciflex.vec3_double([(self.predictions[i][0],
-                                                          self.predictions[i][1], 0.0) for i in range(len(self.predictions))])
+    self.reflections['xyzcal.px'] = sciflex.vec3_double([(self.predictions[i][0], self.predictions[i][1], 0.0) for i in xrange(len(self.predictions))])
+    for i in xrange(self.length):
+      for j in xrange(len(self.correction_vectors)):
+        if self.observations._indices[i] == self.correction_vectors[j]['hkl']:
+          self.reflections['xyzcal.px'][i] = (self.correction_vectors[j]['predspot'][0], self.correction_vectors[j]['predspot'][1], 0.0)
     self.reflections['xyzcal.mm'] = self.pixel_size * self.reflections['xyzcal.px']
 
   def refl_xyzobs_maker(self):
-    self.reflections['xyzobs.px.value'] = sciflex.vec3_double(self.length)
-    for idx in xrange(self.length):
-      self.reflections['xyzobs.px.value'][idx] = (self.predictions[idx][0], self.predictions[idx][1], 0.5)
-      for idx2 in xrange(len(self.correction_vectors)):
-        if self.observations._indices[idx] == self.correction_vectors[idx2]['hkl']:
-          self.reflections['xyzobs.px.value'][idx] = (self.correction_vectors[idx2]['obsspot'][0],
-                                                      self.correction_vectors[idx2]['obsspot'][1], 0.5)
+    self.reflections['xyzobs.px.value'] = sciflex.vec3_double([(self.predictions[idx][0], self.predictions[idx][1], 0.5) for idx in xrange(self.length)])
+    for i in xrange(self.length):
+      for j in xrange(len(self.correction_vectors)):
+        if self.observations._indices[i] == self.correction_vectors[j]['hkl']:
+          self.reflections['xyzobs.px.value'][i] = (self.correction_vectors[j]['obsspot'][0], self.correction_vectors[j]['obsspot'][0], 0.5)
     self.reflections['xyzobs.px.variance'] = sciflex.vec3_double(self.length, (0.0,0.0,0.0))
 
   def refl_zeta_maker(self):
@@ -259,11 +266,12 @@ if __name__ == "__main__":
   params, options = parser.parse_args(show_diff_phil=False)
   for pickle_file in os.listdir(params.pickle_location):
     pickle_path = params.pickle_location + pickle_file
-    result = construct_reflection_table_and_experiment_list(pickle_path,
-                                                            find_matching_img(pickle_path, params.img_location).image,
-                                                            params.pixel_size)
-    result.assemble_experiments()
-    result.assemble_reflections()
-    result.experiments_to_json(params.json_location)
-    result.reflections_to_pickle(params.refl_location)
+    result = construct_reflection_table_and_experiment_list(pickle_path, find_matching_img(pickle_path, params.img_location).image, params.pixel_size)
+    if result.data is not None:
+      result.assemble_experiments()
+      result.assemble_reflections()
+      result.experiments_to_json(params.json_location)
+      result.reflections_to_pickle(params.refl_location)
+    else:
+      print "Skipping unreadable pickle file at", pickle_path
   print 'Generated experiments.json and integrated.pickle files.'
