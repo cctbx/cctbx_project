@@ -786,7 +786,7 @@ class dataset_statistics (object) :
     print >> out, "for refinement."
 
 def select_data (file_name, data_labels, log=None,
-    assume_shelx_observation_type_is=None) :
+    assume_shelx_observation_type_is=None, allow_amplitudes=None) :
   if (log is None) : log = null_out()
   from iotbx import reflection_file_reader
   hkl_in = reflection_file_reader.any_reflection_file(file_name)
@@ -806,7 +806,7 @@ def select_data (file_name, data_labels, log=None,
     elif (array.is_xray_intensity_array()) :
       all_i_obs.append(array)
   # if no intensities...try again with amplitudes
-  if (hkl_in.file_type() == "shelx_hklf") :
+  if (hkl_in.file_type() == "shelx_hklf" or allow_amplitudes) :
     if (i_obs is None and len(all_i_obs)==0) :
       for array in miller_arrays :
         if (array.is_xray_amplitude_array()) :
