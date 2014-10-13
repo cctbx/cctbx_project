@@ -503,7 +503,7 @@ fi
 # Submit the analysis of all streams to the queuing system from
 # ${NODE}.
 ssh -S "${tmpdir}/control.socket" ${NODE} \
-    "cd \"${PWD}\" && \"${out}/submit.sh\""
+    "cd \"${PWD}\" && . \"${SIT_ROOT}\"/bin/sit_setup.sh && \"${out}/submit.sh\""
 
 echo "Output directory: ${out}"
 cleanup_and_exit 0
