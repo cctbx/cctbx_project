@@ -3205,14 +3205,25 @@ class array(set):
     return group_args(reflection_counts=rc, free_fractions=ff)
 
   def r1_factor(self, other, scale_factor=None, assume_index_matching=False,
-                use_binning=False):
+                use_binning=False, emulate_sftools=False):
     """Get the R1 factor according to this formula
 
     .. math::
        R1 = \dfrac{\sum{||F| - k|F'||}}{\sum{|F|}}
 
     where F is self.data() and F' is other.data() and
-    k is the factor to put F' on the same scale as F"""
+    k is the factor to put F' on the same scale as F
+
+    :param other: array object with the same observation type
+    :param scale_factor: optional scale factor to be applied to 'other'; if
+      Auto, will be determined automatically
+    :param assume_index_matching: skips calling self.common_sets(other)
+    :param use_binning: divide by resolution shells
+    :param emulate_sftools: copies behavior of SFTOOLS in CCP4: instead of
+      the denominator being sum(self.data()), it will be 0.5*sum(self.data()+
+      other.data())
+    :returns: a Python float (if use_binning=False), or a binned_data object
+    """
     assert not use_binning or self.binner() is not None
     assert (self.observation_type() is None
             or self.is_complex_array() or self.is_xray_amplitude_array())
@@ -3233,7 +3244,10 @@ class array(set):
           c *= (flex.sum(o * c) / den)
       elif (scale_factor is not None):
         c *= scale_factor
-      return flex.sum(flex.abs(o - c)) / flex.sum(o)
+      if (emulate_sftools) :
+        return 2 * flex.sum(flex.abs(o - c)) / flex.sum(o+c)
+      else :
+        return flex.sum(flex.abs(o - c)) / flex.sum(o)
     results = []
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
