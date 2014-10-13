@@ -157,13 +157,15 @@ class afitt_object:
       # Each ligand_type list holds a covalent_object for each instance of that
       # ligand in the model.
       self.covalent_data.append([])
-      lig_atoms = []
+      # lig_atoms = []
       #for each instance of the ligand type
       for instance_i, instance in enumerate(self.res_ids[resname_i]):
         #search for covalent bonds between ligand and other residues
-        lig_atoms = lig_atoms + self.sites_cart_ptrs[resname_i][instance_i]
+        # lig_atoms = lig_atoms + self.sites_cart_ptrs[resname_i][instance_i]
+        # nonlig_atoms = [atom for atom in self.pdb_hierarchy.atoms()
+        #                 if atom.i_seq not in lig_atoms ]
         nonlig_atoms = [atom for atom in self.pdb_hierarchy.atoms()
-                        if atom.i_seq not in lig_atoms ]
+                        if atom.parent().parent().resseq != instance[2]]
         bond = []
         for lig_atm_iseq in self.sites_cart_ptrs[resname_i][instance_i]:
           for atom in nonlig_atoms:
@@ -431,7 +433,7 @@ def get_afitt_command():
 def call_afitt(afitt_input, ff):
   exe = get_afitt_command()
   if exe is None:
-    raise Sorry("AFITT command not found. Add to path or correctly set OE_DIR")
+    raise Sorry("AFITT command not found. Add to path or correctly set OE_EXE")
   cmd = '%s -ff %s' % (exe, ff)
   ero = easy_run.fully_buffered(command=cmd,
                                 stdin_lines=afitt_input,
