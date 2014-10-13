@@ -87,6 +87,8 @@ class ncs_group_object(object):
     self.found_ncs_transforms = False
     # Collect messages, recommendation and errors
     self.messages = ''
+    self.write_messages = False
+    self.log = sys.stdout
 
   def preprocess_ncs_obj(self,
                          pdb_hierarchy_inp=None,
@@ -108,10 +110,11 @@ class ncs_group_object(object):
                          use_simple_ncs_from_pdb=True,
                          use_minimal_master_ncs=True,
                          rms_eps=0.02,
-                         error_msg_on=False,
-                         process_similar_chains=False,
+                         write_messages=False,
+                         process_similar_chains=True,
                          min_fraction_domain=0.2,
-                         min_contig_length=10):
+                         min_contig_length=10,
+                         log=sys.stdout):
     """
     Select method to build ncs_group_object
 
@@ -151,7 +154,7 @@ class ncs_group_object(object):
         in master ncs groups
       rms_eps (float): limit of rms difference between chains to be considered
         as copies
-      error_msg_on (bool): When True, raise error if chains that are
+      write_messages (bool): When True, right messages to log
         nearly the same length (but not exactly the same) and are NCS related.
         Raise error if NCS relations are not found
       process_similar_chains (bool): When True, process chains that are close
@@ -162,6 +165,8 @@ class ncs_group_object(object):
       min_contig_length (int): minimum length of matching chain segments
     """
     extension = ''
+    self.write_messages = write_messages
+    self.log = log
     if file_name: extension = os.path.splitext(file_name)[1]
     if pdb_hierarchy_inp:
       msg = 'pdb_hierarchy_inp is not iotbx.pdb.hierarchy.input object\n'
@@ -229,11 +234,11 @@ class ncs_group_object(object):
       raise Sorry('Please provide one of the supported input')
     # error handling
     self.found_ncs_transforms = (len(self.transform_to_be_used) > 0)
-    if error_msg_on:
+    if write_messages:
       if self.found_ncs_transforms == 0:
-        raise Sorry('No NCS relation were found !!!')
+        print >> log,'No NCS relation were found !!!\n'
       if self.messages != '':
-        raise Sorry(self.messages)
+        print >> log,self.messages
 
   def build_ncs_obj_from_pdb_ncs(self,
                                  pdb_hierarchy_inp,
@@ -299,6 +304,8 @@ class ncs_group_object(object):
       copy_selection = ''   (multiple)
     }
     """
+    if not process_similar_chains:
+      min_fraction_domain = 1.0
     # process params
     if ncs_selection_params:
       if isinstance(ncs_selection_params,str):
@@ -338,7 +345,7 @@ class ncs_group_object(object):
           ph=pdb_hierarchy_inp,selection_str=asu_select)
         r, t, rmsd, msg = get_rot_trans(
           master_ncs_ph=master_ncs_ph,ncs_copy_ph= ncs_copy_ph,
-          rms_eps=100,process_similar_chains=process_similar_chains,
+          rms_eps=100,
           min_fraction_domain=min_fraction_domain)
         self.messages += msg
         if r.is_zero():
@@ -386,7 +393,7 @@ class ncs_group_object(object):
                                  use_simple_ncs_from_pdb=True,
                                  use_minimal_master_ncs=True,
                                  rms_eps=0.5,
-                                 process_similar_chains=False,
+                                 process_similar_chains=True,
                                  min_contig_length=10,
                                  min_fraction_domain=0.2):
     """
@@ -409,13 +416,18 @@ class ncs_group_object(object):
         similarity define as:
         (number of matching res) / (number of res in longer chain)
     """
+    if not process_similar_chains:
+      min_fraction_domain = 1.0
+      min_contig_length = 100000
     if use_cctbx_find_ncs_tools:
       group_dict = ncs_search.find_ncs_in_hierarchy(
         ph=pdb_hierarchy_inp.hierarchy,
         min_contig_length=min_contig_length,
         min_fraction_domain=min_fraction_domain,
         use_minimal_master_ncs=use_minimal_master_ncs,
-        rmsd_eps=rms_eps)
+        rmsd_eps=rms_eps,
+        write=self.write_messages,
+        log=self.log)
 
       # process atom selections
       self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
@@ -1716,7 +1728,6 @@ def uniqueness_test(unique_selection_set,new_item):
 
 def get_rot_trans(master_ncs_ph=None,
                   ncs_copy_ph=None,
-                  process_similar_chains=False,
                   rms_eps=0.02,
                   min_fraction_domain = 0.75):
   """
@@ -1730,8 +1741,6 @@ def get_rot_trans(master_ncs_ph=None,
   Args:
     master_ncs_ph: pdb hierarchy input object
     ncs_copy_ph: pdb hierarchy input object
-    process_similar_chains (bool): When True, process chains that are close
-      in length without raising errors
     rms_eps (float): limit of rms difference between chains to be considered
       as copies
     min_fraction_domain (float): Threshold for similarity between chains
@@ -1761,8 +1770,9 @@ def get_rot_trans(master_ncs_ph=None,
     #
     m_chain = master_ncs_ph.models()[0].chains()[0]
     c_chain = ncs_copy_ph.models()[0].chains()[0]
-    sel_m, sel_c,res_sel_m,res_sel_c = ncs_search.get_matching_atoms(
+    sel_m, sel_c,res_sel_m,res_sel_c,msg1 = ncs_search.get_matching_atoms(
       master_ncs_ph,ncs_copy_ph,res_sel_m,res_sel_c,m_chain,c_chain)
+    msg += msg1
     #
     ref_sites = ncs_copy_ph.select(sel_m).atoms().extract_xyz()
     other_sites = master_ncs_ph.select(sel_m).atoms().extract_xyz()
@@ -1774,16 +1784,14 @@ def get_rot_trans(master_ncs_ph=None,
       t = lsq_fit_obj.t
       rmsd = ref_sites.rms_difference(lsq_fit_obj.other_sites_best_fit())
       if rmsd > rms_eps:
-        return r_zero,t_zero,0,''
+        return r_zero,t_zero,0,msg
     #
     if similarity < min_fraction_domain:
       msg='Chains {0} and {1} appear to be NCS related but are dis-similar..\n'
       msg = msg.format('master','copy')
-      if not process_similar_chains:
-          raise Sorry(msg)
     return r,t,round(rmsd,4),msg
   else:
-    return r_zero,t_zero,0,''
+    return r_zero,t_zero,0,msg
 
 def get_atoms(atoms,hierarchy):
   """

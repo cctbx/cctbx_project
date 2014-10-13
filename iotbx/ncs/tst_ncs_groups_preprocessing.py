@@ -1,6 +1,7 @@
 from __future__ import division
 from iotbx.ncs.ncs_preprocess import format_80
 from libtbx.utils import null_out
+from libtbx.utils import Sorry
 from scitbx import matrix
 from iotbx import pdb
 import iotbx.ncs
@@ -375,7 +376,10 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
         ['chain B',
          '(chain C and (resid 1 and (name N or name CA or name C or name O )))']}
     self.assertEqual(t,exp_t)
-
+    #
+    self.assertRaises(Sorry,iotbx.ncs.input,
+                      pdb_string=pdb_str,
+                      process_similar_chains=False)
 
   # def test_build_pdb(self):
   #   """ produce test pdb file """
@@ -726,7 +730,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_phil_param_read']
+  tests = ['test_finding_partial_ncs']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 
