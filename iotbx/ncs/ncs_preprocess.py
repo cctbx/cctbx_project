@@ -1065,7 +1065,7 @@ class ncs_group_object(object):
             msg = "Sequence may contain insertions and can't be "
             msg += "represented using residue ID. \n"
             self.messages += msg
-            if self.error_msg_on:
+            if self.write_messages:
               raise Sorry(msg)
         if res_id:
           range_list.append([min(res_id),max(res_id)])
