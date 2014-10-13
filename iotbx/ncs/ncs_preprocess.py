@@ -1063,10 +1063,10 @@ class ncs_group_object(object):
           else:
             # This representation does not handle insertions !!!
             msg = "Sequence may contain insertions and can't be "
-            msg += "represented using residue ID. \n"
+            msg += "represented using only residue ID. \n"
             self.messages += msg
             if self.write_messages:
-              print >> log,msg
+              print >> self.log,msg
         if res_id:
           range_list.append([min(res_id),max(res_id)])
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
