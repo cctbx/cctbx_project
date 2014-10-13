@@ -329,6 +329,54 @@ automatic behavior and user input (i.e. label strings), and the general-purpose
 input wrapper in :py:mod:`mmtbx.command_line` encapsulates nearly all of these 
 steps.
 
+----------------
+Comparing arrays
+----------------
+
+Here is a slightly more complex example of comparing data output by a
+refinement program.  The input arrays are assumed to already be merged and
+in the same ASU, but normally this would be taken care of by previous routines.
+
+::
+
+  def compute_r_factors (fobs, fmodel, flags) :
+    fmodel, fobs = fmodel.common_sets(other=fobs)
+    fmodel, flags = fmodel.common_sets(other=flags)
+    fc_work = fmodel.select(~(flags.data()))
+    fo_work = fobs.select(~(flags.data()))
+    fc_test = fmodel.select(flags.data())
+    fo_test = fobs.select(flags.data())
+    r_work = fo_work.r1_factor(fc_work)
+    r_free = fo_test.r1_factor(fc_test)
+    print "r_work = %.4f" % r_work
+    print "r_free = %.4f" % r_free
+    print ""
+    flags.setup_binner(n_bins=20)
+    fo_work.use_binning_of(flags)
+    fc_work.use_binner_of(fo_work)
+    fo_test.use_binning_of(fo_work)
+    fc_test.use_binning_of(fo_work)
+    for i_bin in fo_work.binner().range_all() :
+      sel_work = fo_work.binner().selection(i_bin)
+      sel_test = fo_test.binner().selection(i_bin)
+      fo_work_bin = fo_work.select(sel_work)
+      fc_work_bin = fc_work.select(sel_work)
+      fo_test_bin = fo_test.select(sel_test)
+      fc_test_bin = fc_test.select(sel_test)
+      if fc_test_bin.size() == 0 : continue
+      r_work_bin = fo_work_bin.r1_factor(other=fc_work_bin,
+        assume_index_matching=True)
+      r_free_bin = fo_test_bin.r1_factor(other=fc_test_bin,
+        assume_index_matching=True)
+      cc_work_bin = fo_work_bin.correlation(fc_work_bin).coefficient()
+      cc_free_bin = fo_test_bin.correlation(fc_test_bin).coefficient()
+      legend = flags.binner().bin_legend(i_bin, show_counts=False)
+      print "%s  %8d %8d  %.4f %.4f  %.3f %.3f" % (legend, fo_work_bin.size(),
+        fo_test_bin.size(), r_work_bin, r_free_bin, cc_work_bin, cc_free_bin)
+
+(The full source code is available in
+``iotbx/examples/recalculate_phenix_refine_r_factors.py``.)
+
 ------------------------------
 Working with experimental data
 ------------------------------
