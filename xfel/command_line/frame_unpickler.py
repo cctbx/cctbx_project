@@ -26,17 +26,21 @@ class find_matching_img(object):
     if img_location == 'auto':
       if os.path.exists(pickle.split(".pickle")[0] + ".cbf"):
         self.image = [pickle.split(".pickle")[0] + ".cbf"]
-      elif os.path.exists(pickle.split("integration")[0] + "out"):
-        name = pickle.split("/")[-1][8:].split("_00000.pickle")[0]
-        prefix = "idx-" + pickle.split("/")[-1][4:8]
-        self.image = [prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + ".pickle"]
+      elif os.path.exists(os.path.join(pickle.split("integration")[0], "out")):
+        loc = os.path.join(os.path.dirname(pickle).split("integration")[0], "out")
+        name = os.path.basename(pickle).split("_00000.pickle")[0][8:]
+        prefix = "idx-" + os.path.basename(pickle)[4:8]
+        imgname = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + ".pickle"
+        self.image = [os.path.join(loc, imgname)]
     elif img_location is None:
       self.image = [pickle]
     else:
-      name = pickle.split("/")[-1][8:].split("_00000.pickle")[0]
-      prefix = "idx-" + pickle.split("/")[-1][4:8]
-      self.image = [img_location + prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + ".pickle"]
-      assert os.path.exists(self.image[0]), "Can't find images at the designated location."
+      loc = os.path.join("", img_location)
+      name = os.path.basename(pickle).split("_00000.pickle")[0][8:]
+      prefix = "idx-" + os.path.basename(pickle)[4:8]
+      imgname = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + ".pickle"
+      self.image = [os.path.join(loc, imgname)]
+    assert os.path.exists(self.image[0]), "Can't find images at the designated location."
 
 class construct_reflection_table_and_experiment_list(object):
   def __init__(self, pickle, img_location, pixel_size):
@@ -130,15 +134,15 @@ class construct_reflection_table_and_experiment_list(object):
     if path_name is None:
       return
     elif path_name == "auto":
-      name = self.pickle.split("/")[-1][8:].split("_00000.pickle")[0]
-      prefix = "idx-" + self.pickle.split("/")[-1][4:8]
-      path_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_experiments.json"
+      loc = os.path.dirname(self.pickle)
     else:
-      name = self.pickle.split("/")[-1][8:].split("_00000.pickle")[0]
-      prefix = "idx-" + self.pickle.split("/")[-1][4:8]
-      path_name = path_name + prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_experiments.json"
+      loc = os.path.dirname(path_name)
+    name = os.path.basename(self.pickle).split("_00000.pickle")[0][8:]
+    prefix = "idx-" + os.path.basename(self.pickle)[4:8]
+    expt_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_experiments.json"
+    experiments = os.path.join(loc, expt_name)
     dumper = experiment_list.ExperimentListDumper(self.experiment_list)
-    dumper.as_json(path_name)
+    dumper.as_json(experiments)
 
   # construct the reflection table
   def refl_table_maker(self):
@@ -232,14 +236,14 @@ class construct_reflection_table_and_experiment_list(object):
     if path_name is None:
       return
     elif path_name == "auto":
-      name = self.pickle.split("/")[-1][8:].split("_00000.pickle")[0]
-      prefix = "idx-" + self.pickle.split("/")[-1][4:8]
-      path_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_integrated.pickle"
+      loc = os.path.dirname(self.pickle)
     else:
-      name = self.pickle.split("/")[-1][8:].split("_00000.pickle")[0]
-      prefix = "idx-" + self.pickle.split("/")[-1][4:8]
-      path_name = path_name + prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_integrated.pickle"
-    self.reflections.as_pickle(path_name)
+      loc = os.path.dirname(path_name)
+    name = os.path.basename(self.pickle).split("_00000.pickle")[0][8:]
+    prefix = "idx-" + os.path.basename(self.pickle)[4:8]
+    refl_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_integrated.pickle"
+    reflections = os.path.join(loc, refl_name)
+    self.reflections.as_pickle(reflections)
 
 if __name__ == "__main__":
   master_phil_scope = iotbx.phil.parse("""
@@ -265,7 +269,7 @@ if __name__ == "__main__":
   parser = OptionParser(phil=master_phil_scope)
   params, options = parser.parse_args(show_diff_phil=False)
   for pickle_file in os.listdir(params.pickle_location):
-    pickle_path = params.pickle_location + pickle_file
+    pickle_path = os.path.join(params.pickle_location, pickle_file)
     result = construct_reflection_table_and_experiment_list(pickle_path, find_matching_img(pickle_path, params.img_location).image, params.pixel_size)
     if result.data is not None:
       result.assemble_experiments()
