@@ -1274,6 +1274,8 @@ def exercise_r1_factor():
                      data=flex.complex_double([5+3j, 2-1j, 1+2j]))
   assert approx_equal(f_o.r1_factor(f_c, assume_index_matching=True),
                       0.440646)
+  assert approx_equal(f_o.r1_factor(f_c, assume_index_matching=True,
+                                    emulate_sftools=True), 0.507676)
   f1_o = f_o.select(flex.random_permutation(f_o.size()))
   f1_c = f_c.select(flex.random_permutation(f_c.size()))
   assert approx_equal(f1_o.r1_factor(f1_c), 0.440646)
