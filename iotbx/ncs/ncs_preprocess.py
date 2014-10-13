@@ -55,7 +55,7 @@ class ncs_group_object(object):
     self.ncs_copies_chains_names = {}
     self.tr_id_to_selection = {}
     # dictionary of transform names, same keys as ncs_to_asu_map
-    self.number_of_ncs_groups = 1
+    self.number_of_ncs_groups = 0
     self.ncs_group_map = {}
     # map transform name (s1,s2,...) to transform object
     self.ncs_transform = {}
@@ -922,7 +922,7 @@ class ncs_group_object(object):
     Build a MTRIX object from ncs_group_object
     Used for testing
     """
-    assert  self.number_of_ncs_groups == 1
+    assert  self.number_of_ncs_groups < 2
     result = iotbx.pdb._._mtrix_and_biomt_records_container()
     tr_dict = self.ncs_transform
     tr_sorted = sorted(tr_dict,key=lambda k:tr_dict[k].serial_num)
@@ -1242,6 +1242,11 @@ class ncs_group_object(object):
       spec_object
     """
     spec_object = ncs.ncs()
+
+    if [bool(xrs),bool(pdb_hierarchy_asu)].count(True) == 0:
+      if self.hierarchy and \
+              (self.hierarchy.atoms().size() == self.total_asu_length):
+        pdb_hierarchy_asu = self.hierarchy
     if fmodel:
       xrs = fmodel.xray_structure
     if xrs and (not pdb_hierarchy_asu):
@@ -1356,7 +1361,7 @@ class ncs_group_object(object):
     ASU hierarchy
     """
     # Build only for PDB when there is a single NCS group
-    assert self.number_of_ncs_groups == 1
+    assert self.number_of_ncs_groups < 2
     new_ph = pdb_hierarchy.deep_copy()
     ncs_restraints_group_list = self.get_ncs_restraints_group_list()
     new_sites = apply_transforms(
