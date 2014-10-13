@@ -1,5 +1,6 @@
 from __future__ import division
 import iotbx.ncs.ncs_preprocess
+import sys
 
 
 def input(pdb_hierarchy_inp=None,
@@ -21,8 +22,9 @@ def input(pdb_hierarchy_inp=None,
           use_simple_ncs_from_pdb=False,
           use_minimal_master_ncs=True,
           rms_eps=0.02,
-          error_msg_on=False,
-          process_similar_chains=False,
+          write_messages=False,
+          log=sys.stdout,
+          process_similar_chains=True,
           min_fraction_domain=0.2,
           min_contig_length=10):
     """
@@ -65,7 +67,7 @@ def input(pdb_hierarchy_inp=None,
         in master ncs groups
       rms_eps (float): limit of rms difference between chains to be considered
         as copies
-      error_msg_on (bool): When True, raise error if chains that are
+      write_messages (bool): When True, write messages to log
         nearly the same length (but not exactly the same) and are NCS related.
         Raise error if NCS relations are not found
       process_similar_chains (bool): When True, process chains that are close
@@ -96,7 +98,8 @@ def input(pdb_hierarchy_inp=None,
       use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
       use_minimal_master_ncs=use_minimal_master_ncs,
       rms_eps=rms_eps,
-      error_msg_on=error_msg_on,
+      write_messages=write_messages,
+      log=log,
       process_similar_chains=process_similar_chains,
       min_fraction_domain=min_fraction_domain,
       min_contig_length=min_contig_length)

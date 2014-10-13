@@ -5,6 +5,7 @@ from scitbx.math import superpose
 from libtbx.utils import Sorry
 from scitbx import matrix
 import math
+import sys
 
 class NCS_groups_container(object):
 
@@ -93,7 +94,9 @@ def find_ncs_in_hierarchy(ph,
                           min_contig_length=10,
                           min_fraction_domain=0.2,
                           use_minimal_master_ncs=True,
-                          rmsd_eps=5.0):
+                          rmsd_eps=5.0,
+                          write=False,
+                          log=sys.stdout):
   """
   Find NCS relation in hierarchy
 
@@ -106,6 +109,7 @@ def find_ncs_in_hierarchy(ph,
     use_minimal_master_ncs (bool): use maximal or minimal common chains
         in master ncs groups
     rmsd_eps (float): limit of rms difference chains when aligned together
+    write (bool): when true, write ncs search messages to log
 
   Return:
     groups_list (list of NCS_groups_container objects)
@@ -117,7 +121,9 @@ def find_ncs_in_hierarchy(ph,
   chain_match_list = search_ncs_relations(
     ph=ph,
     min_contig_length=min_contig_length,
-    min_fraction_domain=min_fraction_domain)
+    min_fraction_domain=min_fraction_domain,
+    write=write,
+    log=log)
   #
   match_dict = clean_chain_matching(chain_match_list,ph,rmsd_eps)
   #
@@ -658,7 +664,9 @@ def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
 
 def search_ncs_relations(ph,
                          min_contig_length=10,
-                         min_fraction_domain=0.2):
+                         min_fraction_domain=0.2,
+                         write=False,
+                         log=sys.stdout):
   """
   Search for NCS relations between chains or parts of chains, in a protein
   hierarchy
@@ -669,8 +677,10 @@ def search_ncs_relations(ph,
     min_fraction_domain (float): Threshold for similarity between chains.
       similarity define as:
       (number of matching res) / (number of res in longer chain)
+    write (bool): when true, write ncs search messages to log
 
   Returns:
+    msg (str): message regarding matching residues with different atom number
     chain_match_list (list): list of
       [chain_ID_1,chain_ID_2,sel_1,sel_2,res_sel_m, res_sel_c,similarity]
       chain_ID (str), sel_1 (flex.bool), sel_1 (flex.bool),
@@ -682,6 +692,7 @@ def search_ncs_relations(ph,
   # collect all chain IDs
   cache = ph.atom_selection_cache()
   chain_match_list = []
+  msg = ''
   model  = ph.models()[0]
   chain_ids = list({x.id for x in model.chains()})
   chain_ids = sorted(chain_ids)
@@ -708,7 +719,7 @@ def search_ncs_relations(ph,
         seq_a=seq_m,seq_b=seq_c,
         min_contig_length=min_contig_length,
         min_fraction_domain=min_fraction_domain)
-      sel_m, sel_c,res_sel_m,res_sel_c = get_matching_atoms(
+      sel_m, sel_c,res_sel_m,res_sel_c,msg = get_matching_atoms(
         m_ph,c_ph,res_sel_m,res_sel_c,m_chain,c_chain)
       if res_sel_m:
         # add only non empty matches
@@ -720,6 +731,11 @@ def search_ncs_relations(ph,
         rec = [master_ch_id,copy_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,
                similarity]
         chain_match_list.append(rec)
+  if write and msg:
+    print >> log,msg
+  if (min_fraction_domain == 1) and msg:
+    # must be identical
+    raise Sorry('NCS copies are not identical')
   return chain_match_list
 
 def res_alignment(seq_a, seq_b,
@@ -852,6 +868,7 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,chain_a,chain_b):
   Returns:
     sel_a, sel_b (flex.bool): matching atoms selection
     res_num_a/b (list of int): updated res_num_a/b
+    msg (str): message regarding matching residues with different atom number
   """
   atom_cache_a = ph_a.atom_selection_cache().selection
   atom_cache_b = ph_b.atom_selection_cache().selection
@@ -865,9 +882,16 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,chain_a,chain_b):
   #
   res_num_a_updated = []
   res_num_b_updated = []
+  residues_with_different_n_atoms = []
+  chain_a_id = ph_a.models()[0].chains()[0].id
+  chain_b_id = ph_b.models()[0].chains()[0].id
+  chain_IDs = '{}:{}'.format(chain_a_id,chain_b_id)
   for (resid_a,resid_b,na,nb) in zip(res_ids_a,res_ids_b,res_num_a,res_num_b):
     sa = atom_cache_a('resid ' + resid_a)
     sb = atom_cache_b('resid ' + resid_b)
+    if sa.size() != sb.size():
+      # collect residue IDs of matching residues with different number of atoms
+      residues_with_different_n_atoms.append(resid_a)
     res_a = ph_a.select(sa)
     res_b = ph_b.select(sb)
     # select only atoms that exist in both residues
@@ -886,7 +910,14 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,chain_a,chain_b):
     sb = flex.bool(l_b,sb)
     sel_a = sel_a | sa
     sel_b = sel_b | sb
-  return sel_a,sel_b,res_num_a_updated,res_num_b_updated
+  if residues_with_different_n_atoms:
+    problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
+    msg = "NCS related residues with different atom numbers, chains {}: \n["
+    msg = msg.format(chain_IDs)
+    msg += ','.join(problem_res_nums) + ']\n'
+  else:
+    msg = ''
+  return sel_a,sel_b,res_num_a_updated,res_num_b_updated,msg
 
 def get_residue_sequence(chain_ph):
   """
