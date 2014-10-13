@@ -1066,6 +1066,9 @@ def exercise_2():
   assert (len(y1) == 10)
 
 def exercise_3():
+  if (not libtbx.env.has_module("reduce")) :
+    print "Reduce not installed, skipping"
+    return
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/arg_h_hohh1_sh.pdb",
     test=os.path.isfile)
