@@ -32,6 +32,7 @@ class fully_buffered_base(object):
 
   def raise_if_errors(self, Error=RuntimeError):
     assert not self.join_stdout_stderr
+    assert self.return_code == 0, self.return_code
     msg = self.format_errors_if_any()
     if (msg is not None):
       raise Error(msg)

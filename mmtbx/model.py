@@ -369,6 +369,7 @@ class manager(object):
 
   def rebuild_bad_hydrogens_with_reduce(self, nuclear = False,
         deviation_threshold = 1.0):
+    assert libtbx.env.has_module("reduce")
     pdb_hierarchy = self._pdb_hierarchy
     hd_selection = self.xray_structure.hd_selection()
     fn = "%s"%str(random.randint(1,1000000))
@@ -377,7 +378,7 @@ class manager(object):
     fo.close()
     if(nuclear): cmd = "phenix.reduce -quiet -allalt -NUClear %s"%fn
     else:        cmd = "phenix.reduce -quiet -allalt %s"%fn
-    r = easy_run.fully_buffered(cmd)
+    r = easy_run.fully_buffered(cmd).raise_if_errors()
     os.remove(fn)
     ph = iotbx.pdb.input(source_info=None,
       lines=r.stdout_lines).construct_hierarchy()
