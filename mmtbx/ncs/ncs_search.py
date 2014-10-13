@@ -703,12 +703,10 @@ def search_ncs_relations(ph,
     master_ch_id = ph_chains[i].id
     m_selection = cache.selection('chain ' + master_ch_id)
     m_ph = ph.select(m_selection)
-    m_chain = ph_chains[i]
     for j in xrange(i+1,n_chains):
       copy_ch_id = ph_chains[j].id
       c_selection = cache.selection('chain ' + copy_ch_id)
       c_ph = ph.select(c_selection)
-      c_chain = ph_chains[j]
       # res_a/b are lists of (residue name, residue number)
       chain_id_m, res_m = get_residue_sequence(m_ph)
       chain_id_c, res_c = get_residue_sequence(c_ph)
@@ -720,7 +718,7 @@ def search_ncs_relations(ph,
         min_contig_length=min_contig_length,
         min_fraction_domain=min_fraction_domain)
       sel_m, sel_c,res_sel_m,res_sel_c,msg = get_matching_atoms(
-        m_ph,c_ph,res_sel_m,res_sel_c,m_chain,c_chain)
+        m_ph,c_ph,res_sel_m,res_sel_c)
       if res_sel_m:
         # add only non empty matches
         sel_m = sel_m.iselection()
@@ -854,7 +852,7 @@ def get_matching_res_indices(R,row,col,min_fraction_domain):
   return sel_a, sel_b, similarity
 
 
-def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,chain_a,chain_b):
+def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b):
   """
   Get selection of matching chains, match residues atoms
   We keep only residues with continuous matching atoms
@@ -862,8 +860,7 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,chain_a,chain_b):
   Args:
     ph_a (hierarchy): first chain
     ph_b (hierarchy): second chain
-    res_num_a/b (list of int): indices of matching residues numbers, ph_a/b
-    chain_a/b (chain hierarchy): chains hierarchies of chains a and b
+    res_num_a/b (list of int): indices of matching residues position
 
   Returns:
     sel_a, sel_b (flex.bool): matching atoms selection
@@ -876,9 +873,11 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,chain_a,chain_b):
   l_b = ph_b.atoms().size()
   sel_a = flex.bool([False,] * l_a)
   sel_b = flex.bool([False,] * l_b)
+  if l_a == 0:
+    pass
   # collect the residue IDs according to the res_num
-  res_ids_a = [x.resid() for x in chain_a.residues()]
-  res_ids_b = [x.resid() for x in chain_b.residues()]
+  res_ids_a = [x.resid() for x in ph_a.residue_groups()]
+  res_ids_b = [x.resid() for x in ph_b.residue_groups()]
   #
   res_num_a_updated = []
   res_num_b_updated = []
@@ -886,9 +885,13 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,chain_a,chain_b):
   chain_a_id = ph_a.models()[0].chains()[0].id
   chain_b_id = ph_b.models()[0].chains()[0].id
   chain_IDs = '{}:{}'.format(chain_a_id,chain_b_id)
-  for (resid_a,resid_b,na,nb) in zip(res_ids_a,res_ids_b,res_num_a,res_num_b):
-    sa = atom_cache_a('resid ' + resid_a)
-    sb = atom_cache_b('resid ' + resid_b)
+  for (na,nb) in zip(res_num_a,res_num_b):
+    resid_a = res_ids_a[na]
+    resid_b = res_ids_b[nb]
+    sa = atom_cache_a('resid {}'.format(resid_a))
+    sb = atom_cache_b('resid {}'.format(resid_b))
+    sa = sa.iselection()
+    sb = sb.iselection()
     if sa.size() != sb.size():
       # collect residue IDs of matching residues with different number of atoms
       residues_with_different_n_atoms.append(resid_a)
@@ -900,8 +903,8 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,chain_a,chain_b):
     atoms_a,atoms_b,similarity = res_alignment(
       seq_a=atoms_names_a, seq_b=atoms_names_b,
       min_contig_length=100)
-    sa = flex.size_t(atoms_a)+min(sa.iselection())
-    sb = flex.size_t(atoms_b)+min(sb.iselection())
+    sa = flex.size_t(atoms_a)+min(sa)
+    sb = flex.size_t(atoms_b)+min(sb)
     # keep only residues with continuous matching atoms
     if sa.size() != 0:
       res_num_a_updated.append(na)
@@ -912,7 +915,7 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,chain_a,chain_b):
     sel_b = sel_b | sb
   if residues_with_different_n_atoms:
     problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
-    msg = "NCS related residues with different atom numbers, chains {}: \n["
+    msg = "NCS related residues with different number of atoms, chains {}: \n["
     msg = msg.format(chain_IDs)
     msg += ','.join(problem_res_nums) + ']\n'
   else:

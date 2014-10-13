@@ -1447,7 +1447,7 @@ def selection_string_from_selection(pdb_hierarchy_inp,selection):
     complete_ch_not_present = (a_sel.intersection(selection_set) != a_sel)
     res_sel = []
     first_n = None
-    pre_res_n = -10
+    pre_res_n = -10000
     if complete_ch_not_present:
       for res in ch.residues():
         # collect continuous ranges of residues when possible
@@ -1461,11 +1461,11 @@ def selection_string_from_selection(pdb_hierarchy_inp,selection):
           res_num = int(res_id)
         except ValueError:
           # res_id is an insertion type residue
-          res_num = -1
+          res_num = -10000
         if all_atoms_present:
-          if res_num != -1:
+          if res_num != -10000:
             # normal case
-            if pre_res_n == -10:
+            if pre_res_n == -10000:
               # start new range
               first_n = res_num
               pre_res_n = res_num
@@ -1502,10 +1502,10 @@ def selection_string_from_selection(pdb_hierarchy_inp,selection):
 
 def update_res_sel(res_sel,first_res_n,pre_res_n):
   """ update the residue selection list and markers of continuous section """
-  if pre_res_n != -10:
+  if pre_res_n != -10000:
     res_seq = resseq_string(first_res_n,pre_res_n)
     first_res_n = None
-    pre_res_n = -10
+    pre_res_n = -10000
     res_sel.append(res_seq)
   return res_sel,first_res_n,pre_res_n
 
@@ -1773,10 +1773,8 @@ def get_rot_trans(master_ncs_ph=None,
       # similarity between chains is small, do not consider as same chains
       return r_zero,t_zero,0,''
     #
-    m_chain = master_ncs_ph.models()[0].chains()[0]
-    c_chain = ncs_copy_ph.models()[0].chains()[0]
     sel_m, sel_c,res_sel_m,res_sel_c,msg1 = ncs_search.get_matching_atoms(
-      master_ncs_ph,ncs_copy_ph,res_sel_m,res_sel_c,m_chain,c_chain)
+      master_ncs_ph,ncs_copy_ph,res_sel_m,res_sel_c)
     msg += msg1
     #
     ref_sites = ncs_copy_ph.select(sel_m).atoms().extract_xyz()
