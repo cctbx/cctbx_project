@@ -1066,7 +1066,7 @@ class ncs_group_object(object):
             msg += "represented using residue ID. \n"
             self.messages += msg
             if self.write_messages:
-              raise Sorry(msg)
+              print >> log,msg
         if res_id:
           range_list.append([min(res_id),max(res_id)])
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
