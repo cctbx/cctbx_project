@@ -373,7 +373,7 @@ slatec_dlngam(double x)
       "x is a negative integer", 3, 2);
     return 1.0;
   }
-  if (fabs((x-(long)(x-0.5))/x) < dxrel) {
+  if (fabs((x-round(x))/x) < dxrel) {
     xermsg("slatec", "dlngam",
       "answer lt half precision because x too near negative int", 1, 1);
   }
