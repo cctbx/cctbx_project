@@ -152,7 +152,16 @@ class HtmlPanel (wx.html.HtmlWindow) :
     return self.HistoryBack()
 
   def LoadURL (self, url) :
-    return self.LoadPage(url)
+    fields = url.split("#")
+    base_url = fields[0]
+    self.LoadPage(base_url)
+    if (len(fields) > 1) :
+      anchor = fields[1]
+      if (self.HasAnchor(anchor)) :
+        # XXX calling self.ScrollToAnchor() directly doesn't work!
+        wx.CallAfter(self.ScrollToAnchor, anchor)
+      else :
+        print "Missing anchor %s" % anchor
 
 if __name__ == "__main__" :
   app = wx.App(0)
