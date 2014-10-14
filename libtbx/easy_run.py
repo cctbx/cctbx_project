@@ -403,7 +403,7 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
     if (verbose): print e
     # Just check for RuntimeError; there are now additional
     # specific error messages.
-    pass 
+    pass
     # assert str(e).startswith("child process stderr output:\n")
   else: raise Exception_expected
   #

@@ -46,7 +46,7 @@ def run (args) :
     help="Include all recommended dependencies", default=False)
   parser.add_option("--dest", dest="dest", action="store",
     help="Destination folder", default=os.getcwd())
-  parser.add_option("--readme", dest="readme", action="store",
+  parser.add_option("--readme", dest="readme", action="append",
     help="Readme file", default=op.join(libtbx_path, "COPYRIGHT_2_0.txt"))
   parser.add_option("--license", dest="license", action="store",
     help="License file", default=op.join(libtbx_path, "LICENSE_2_0.txt"))
@@ -54,6 +54,8 @@ def run (args) :
     help="Final installation script", default=None)
   parser.add_option("--modules", dest="modules", action="store",
     help="Local modules to include", default=None)
+  parser.add_option("--base-modules", dest="base_modules", action="store",
+    help="Additional local modules placed in base/ directory", default=None)
   parser.add_option("--product_name", dest="product_name", action="store",
     help="Name of installed package", default=None)
   parser.add_option("--cctbx_bundle", dest="cctbx_bundle", action="store",
@@ -66,6 +68,8 @@ def run (args) :
   if (options.script is not None) :
     assert op.isfile(options.script)
     options.script = op.abspath(options.script)
+  module_list = options.modules
+  base_module_list = options.base_modules
   os.chdir(options.dest)
   # setup directory structure
   installer_dir = "%s-installer-%s" % (package_name, options.version)
@@ -83,8 +87,11 @@ def run (args) :
   find_and_delete_files(lib_dir, file_name=".svn")
   # write VERSION
   open("VERSION", "w").write(options.version)
-  if op.isfile(options.readme) :
-    open("README", "w").write(open(options.readme).read())
+  if options.readme :
+    for file_name in options.readme :
+      if op.isfile(file_name) :
+        base_name = op.basename(file_name)
+        open(base_name, "w").write(open(file_name).read())
   if op.isfile(options.license) :
     open("LICENSE", "w").write(open(options.license).read())
   if (not options.binary) :
@@ -112,26 +119,39 @@ def run (args) :
     else :
       assert op.isfile(options.cctbx_bundle)
       copy_file(options.cctbx_bundle, "cctbx_bundle.tar.gz")
-    if (options.modules is not None) :
+    have_modules = []
+    def get_module (module_name) :
+      for pkg_dir in options.pkg_dirs :
+        dist_dir = op.join(pkg_dir, module_name)
+        tarfile = op.join(pkg_dir, module_name + "_hot.tar.gz")
+        if op.exists(tarfile) :
+          print "using module '%s' from %s" % (module_name, tarfile)
+          copy_file(tarfile, module_name + ".tar.gz")
+          have_modules.append(module_name)
+          break
+        elif op.isdir(dist_dir) :
+          print "using module '%s' from %s" % (module_name, dist_dir)
+          archive_dist(dist_dir)
+          assert op.isfile(module_name + ".tar.gz")
+          have_modules.append(module_name)
+          break
+    if (module_list is not None) :
       print ""
       print "********** FETCHING MODULES **********"
       print ""
-      have_modules = []
-      for module_name in options.modules.split(",") :
-        for pkg_dir in options.pkg_dirs :
-          dist_dir = op.join(pkg_dir, module_name)
-          tarfile = op.join(pkg_dir, module_name + "_hot.tar.gz")
-          if op.exists(tarfile) :
-            print "using module '%s' from %s" % (module_name, tarfile)
-            copy_file(tarfile, module_name + ".tar.gz")
-            have_modules.append(module_name)
-            break
-          elif op.isdir(dist_dir) :
-            print "using module '%s' from %s" % (module_name, dist_dir)
-            archive_dist(dist_dir)
-            assert op.isfile(module_name + ".tar.gz")
-            have_modules.append(module_name)
-            break
+      module_list = re.sub(",", " ", module_list)
+      for module_name in module_list.split() :
+        get_module(module_name)
+    # Additional modules that are included in both the source and the binary
+    # installer - in Phenix this includes restraints, examples, documentation,
+    # and regression tests
+    if (base_module_list is not None) :
+      base_module_dir = op.join(options.dest, installer_dir, "base")
+      os.makedirs(base_module_dir)
+      os.chdir(base_module_dir)
+      base_module_list = re.sub(",", " ", module_list)
+      for module_name in base_module_list.split() :
+        get_module(module_name)
   os.chdir(op.join(options.dest, installer_dir))
   # actual Python installer script
   if (options.script is not None) :
