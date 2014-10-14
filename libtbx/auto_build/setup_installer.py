@@ -93,7 +93,7 @@ def run (args) :
         base_name = op.basename(file_name)
         open(base_name, "w").write(open(file_name).read())
   else : # fallback to CCTBX copyright
-    file_name = op.join(libtbx_path, "COPYRIGHT_2_0.txt"))
+    file_name = op.join(libtbx_path, "COPYRIGHT_2_0.txt")
     open("README", "w").write(open(file_name).read())
   if op.isfile(options.license) :
     open("LICENSE", "w").write(open(options.license).read())
