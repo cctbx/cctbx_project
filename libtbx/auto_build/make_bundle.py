@@ -44,8 +44,8 @@ def run (args, out=sys.stdout) :
     help="Version number or code", default=datestamp)
   parser.add_option("--mtype", dest="mtype", action="store",
     help="Architecture type", default=machine_type())
-  parser.add_option("--ignore", dest="ignore", action="store",
-    help="Subdirectories to ignore", default="")
+  parser.add_option("--ignore", dest="ignore", action="append",
+    help="Subdirectories to ignore", default=[])
   parser.add_option("--remove_src", dest="remove_src", action="store_true",
     help="Remove compiled source files (.h, .cpp, etc.)", default=False)
   parser.add_option("--keep_base", dest="keep_base", action="store_true",
@@ -90,9 +90,8 @@ def run (args, out=sys.stdout) :
   copy_tree(op.join(build_dir, "lib"), op.join(tmp_build_dir, "lib"))
   # copy over non-compiled files
   print >> out, "Copying base modules..."
-  ignore_dirs = options.ignore.split(",")
   for file_name in os.listdir(target_dir) :
-    if (file_name in ["build", "base"]) or (file_name in ignore_dirs) :
+    if (file_name in ["build", "base"]) or (file_name in options.ignore) :
       continue
     full_path = op.join(target_dir, file_name)
     if op.isdir(full_path) :
