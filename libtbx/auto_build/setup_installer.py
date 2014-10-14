@@ -152,7 +152,7 @@ def run (args) :
       base_module_dir = op.join(options.dest, installer_dir, "base")
       os.makedirs(base_module_dir)
       os.chdir(base_module_dir)
-      base_module_list = re.sub(",", " ", module_list)
+      base_module_list = re.sub(",", " ", base_module_list)
       for module_name in base_module_list.split() :
         get_module(module_name)
   os.chdir(op.join(options.dest, installer_dir))
