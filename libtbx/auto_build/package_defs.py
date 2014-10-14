@@ -59,6 +59,7 @@ WEBKIT_PKG = "wxwebkit.tar.gz"                        # not currently used
 MATPLOTLIB_PKG = "matplotlib-1.3.1.tar.gz"
 PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
+SEND2TRASH_PKG = "Send2Trash-1.3.0.tar.gz"
 
 # Various dependencies from external repositories, distributed as static
 # tarballs (since they are not under active development by us or our
@@ -158,7 +159,7 @@ def fetch_all_dependencies (dest_dir,
         FONTCONFIG_PKG, RENDER_PKG, XRENDER_PKG, XFT_PKG, PIXMAN_PKG,
         CAIRO_PKG, PANGO_PKG, ATK_PKG, TIFF_PKG, GTK_PKG,
         GTK_ENGINE_PKG, GTK_THEME_PKG, FONT_PKG, WXPYTHON_DEV_PKG, WXPYTHON_PKG,
-        MATPLOTLIB_PKG, PY2APP_PKG,
+        MATPLOTLIB_PKG, PY2APP_PKG, SEND2TRASH_PKG,
       ] :
       fetch_package(pkg_name)
   if (dials_packages) :

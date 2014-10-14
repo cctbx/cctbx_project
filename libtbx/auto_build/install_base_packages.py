@@ -390,9 +390,16 @@ class installer (object) :
     self.fetch_untar_and_chdir(pkg_name=HDF5_PKG, pkg_url=BASE_XIA_PKG_URL,
       log=pkg_log)
     print >> pkg_log, "Building base HDF5 library..."
+    make_args = []
+    # XXX the HDF5 library uses '//' for comments, which will break if the
+    # compiler doesn't support C99 by default.  for some bizarre reason this
+    # includes certain (relatively new) versions of gcc...
+    if sys.platform.startswith("linux") :
+      make_args.append("CFLAGS=\"--std=c99\"")
     self.configure_and_build(
       config_args=["--prefix=\"%s\"" % self.base_dir,],
-      log=pkg_log)
+      log=pkg_log,
+      make_args=make_args)
     print >> pkg_log, "Building h5py..."
     os.chdir(self.tmp_dir)
     self.fetch_untar_and_chdir(pkg_url=BASE_XIA_PKG_URL, pkg_name=H5PY_PKG,

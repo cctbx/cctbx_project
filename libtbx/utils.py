@@ -2203,8 +2203,32 @@ class download_target (object) :
     return op.abspath(self.file_name)
 
 def cmd_exists(cmd):
+  """
+  Test whether a command is available by checking the return code from
+  subprocess.call
+  """
   import subprocess
   return subprocess.call("type " + cmd,
                          shell=True,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE) == 0
+
+def try_send_to_trash (path_name, delete_if_not_available=False) :
+  """
+  Wrapper for deleting a path
+  """
+  try :
+    import send2trash
+  except ImportError :
+    if delete_if_not_available :
+      warnings.warn("send2trash not available; will delete path instead.",
+        ImportWarning)
+      if op.isdir(path_name) :
+        shutil.rmtree(path_name)
+      else :
+        os.remove(path_name)
+    else :
+      raise Sorry("This function not supported because the required module is "+
+        "not installed.")
+  else :
+    send2trash.send2trash(path_name)
