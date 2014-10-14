@@ -89,6 +89,11 @@ END
 """
 
 def exercise_01():
+  import libtbx.load_env
+  if (not libtbx.env.has_module("reduce")):
+    print "Reduce not installed, needed for model.add_hydrogens(). skipping"
+    return  
+  
   pdb_file_name = "add_h_to_hoh.pdb"
   tmp_f = open(pdb_file_name, "w")
   tmp_f.write(input_model)
@@ -283,10 +288,7 @@ def exercise_02():
   params.map_cutoff=6.5
   find_hydrogens.run(fmodel=fmodel, model=model, log=out, params=params)
 
-def exercise():
+if (__name__ == "__main__"):
   exercise_01()
   exercise_02()
   print format_cpu_times()
-
-if (__name__ == "__main__"):
-  exercise()

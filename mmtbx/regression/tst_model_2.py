@@ -1,4 +1,5 @@
 from __future__ import division
+import libtbx.load_env
 import mmtbx.model
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
@@ -65,6 +66,9 @@ END
 """
 
 def run(args):
+  if (not libtbx.env.has_module("reduce")) :
+    print "Reduce not installed, needed for model.idealize_h(). skipping"
+    return  
   for use_neutron_distances in [True, False]:
     print "use_neutron_distances:", use_neutron_distances, "*"*30
     params = monomer_library.pdb_interpretation.master_params.extract()

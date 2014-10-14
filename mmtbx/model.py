@@ -26,6 +26,7 @@ from mmtbx import model_statistics
 import iotbx.pdb
 from libtbx import group_args
 from libtbx import easy_run
+import libtbx.load_env
 import iotbx.pdb
 import random
 import os
