@@ -12,29 +12,9 @@ from scitbx.array_family import flex
 asic_dimension = (194,185)
 asic_gap = 3
 
-class cbf_wrapper(pycbf.cbf_handle_struct):
+from dxtbx.format.FormatCBFMultiTile import cbf_wrapper as dxtbx_cbf_wrapper
+class cbf_wrapper(dxtbx_cbf_wrapper):
   """ Wrapper class that provids convience functions for working with cbflib"""
-
-  def add_category(self, name, columns):
-    """ Create a new category and populate it with column names """
-    self.new_category(name)
-    for column in columns:
-      self.new_column(column)
-
-  def add_row(self, data):
-    """ Add a row to the current category.  If data contains more entries than
-      there are columns in this category, then the remainder is truncated
-      Use '.' for an empty value in a row. """
-    self.new_row()
-    self.rewind_column()
-    for item in data:
-      self.set_value(item)
-      if item == '.':
-        self.set_typeofvalue("null")
-      try:
-        self.next_column()
-      except Exception:
-        break
 
   def add_frame_shift(self, basis, axis_settings):
     """Add an axis representing a frame shift (a rotation axis with an offset)"""
@@ -51,17 +31,6 @@ class cbf_wrapper(pycbf.cbf_handle_struct):
                   basis.equipment_component])
 
     axis_settings.append([basis.axis_name, "FRAME1", str(angle), "0"])
-
-  def has_sections(self):
-    """True if the cbf has the array_structure_list_section table, which
-       changes how its data is stored in the binary sections
-    """
-    try:
-      self.find_category("array_structure_list_section")
-    except Exception, e:
-      if "CBF_NOTFOUND" not in str(e): raise e
-      return False
-    return True
 
 def angle_and_axis(basis):
   """Normalize a quarternion and return the angle and axis
