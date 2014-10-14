@@ -55,10 +55,10 @@ GTK_THEME_PKG = "gtk_themes.tar.gz"
 FONT_PKG = "fonts.tar.gz"
 WXPYTHON_DEV_PKG = "wxPython-src-3.0.1.0.tar.gz"  # Mac 64-bit
 WXPYTHON_PKG = "wxPython-src-2.8.12.1.tar.gz"         # Linux, Mac 32-bit
-WEBKIT_PKG = "wxwebkit.tar.gz"                        # not currently used
 MATPLOTLIB_PKG = "matplotlib-1.3.1.tar.gz"
 PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
+# https://pypi.python.org/pypi/Send2Trash
 SEND2TRASH_PKG = "Send2Trash-1.3.0.tar.gz"
 
 # Various dependencies from external repositories, distributed as static
