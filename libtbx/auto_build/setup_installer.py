@@ -47,7 +47,7 @@ def run (args) :
   parser.add_option("--dest", dest="dest", action="store",
     help="Destination folder", default=os.getcwd())
   parser.add_option("--readme", dest="readme", action="append",
-    help="Readme file", default=op.join(libtbx_path, "COPYRIGHT_2_0.txt"))
+    help="Readme file", default=[])
   parser.add_option("--license", dest="license", action="store",
     help="License file", default=op.join(libtbx_path, "LICENSE_2_0.txt"))
   parser.add_option("--script", dest="script", action="store",
@@ -92,6 +92,9 @@ def run (args) :
       if op.isfile(file_name) :
         base_name = op.basename(file_name)
         open(base_name, "w").write(open(file_name).read())
+  else : # fallback to CCTBX copyright
+    file_name = op.join(libtbx_path, "COPYRIGHT_2_0.txt"))
+    open("README", "w").write(open(file_name).read())
   if op.isfile(options.license) :
     open("LICENSE", "w").write(open(options.license).read())
   if (not options.binary) :
