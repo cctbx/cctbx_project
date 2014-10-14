@@ -14,6 +14,41 @@ import pycbf
 from dxtbx.format.FormatCBFFull import FormatCBFFull
 from dxtbx.model.detector import Detector
 
+class cbf_wrapper(pycbf.cbf_handle_struct):
+  """ Wrapper class that provids convience functions for working with cbflib"""
+
+  def add_category(self, name, columns):
+    """ Create a new category and populate it with column names """
+    self.new_category(name)
+    for column in columns:
+      self.new_column(column)
+
+  def add_row(self, data):
+    """ Add a row to the current category.  If data contains more entries than
+      there are columns in this category, then the remainder is truncated
+      Use '.' for an empty value in a row. """
+    self.new_row()
+    self.rewind_column()
+    for item in data:
+      self.set_value(item)
+      if item == '.':
+        self.set_typeofvalue("null")
+      try:
+        self.next_column()
+      except Exception:
+        break
+
+  def has_sections(self):
+    """True if the cbf has the array_structure_list_section table, which
+       changes how its data is stored in the binary sections
+    """
+    try:
+      self.find_category("array_structure_list_section")
+    except Exception, e:
+      if "CBF_NOTFOUND" not in str(e): raise e
+      return False
+    return True
+
 class FormatCBFMultiTile(FormatCBFFull):
   '''An image reading class multi-tile CBF files'''
 
@@ -45,11 +80,7 @@ class FormatCBFMultiTile(FormatCBFFull):
     from dxtbx.format.FormatCBF import FormatCBF
     FormatCBF._start(self) # Note, skip up an inhieritance level
 
-    try:
-      from xfel.cftbx.detector.cspad_cbf_tbx import cbf_wrapper
-      self._cbf_handle = cbf_wrapper()
-    except ImportError:
-      self._cbf_handle = pycbf.cbf_handle_struct()
+    self._cbf_handle = cbf_wrapper()
 
     self._cbf_handle.read_widefile(self._image_file, pycbf.MSG_DIGEST)
 
