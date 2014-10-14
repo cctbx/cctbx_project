@@ -19,7 +19,7 @@ def find_scons_engine_path():
     if result.isdir(): return abs(result)
     # More recent scons-local packages don't use 'engine' directory
     result = path / "scons"
-    if result.isdir(): return abs(result)    
+    if result.isdir(): return abs(result)
   return None
 
 def dummy_fetch_win32_parallel_msg():
