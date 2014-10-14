@@ -697,28 +697,25 @@ def search_ncs_relations(ph,
   chain_ids = list({x.id for x in model.chains()})
   chain_ids = sorted(chain_ids)
   n_chains = len(chain_ids)
-  ph_chains = model.chains()
   # loop over all chains
   for i in xrange(n_chains-1):
-    master_ch_id = ph_chains[i].id
+    master_ch_id = chain_ids[i]
     m_selection = cache.selection('chain ' + master_ch_id)
     m_ph = ph.select(m_selection)
+    # get residue lists for master
+    chain_id_m, seq_m,res_ids_m = get_residue_sequence(m_ph)
     for j in xrange(i+1,n_chains):
-      copy_ch_id = ph_chains[j].id
+      copy_ch_id = chain_ids[j]
       c_selection = cache.selection('chain ' + copy_ch_id)
       c_ph = ph.select(c_selection)
-      # res_a/b are lists of (residue name, residue number)
-      chain_id_m, res_m = get_residue_sequence(m_ph)
-      chain_id_c, res_c = get_residue_sequence(c_ph)
-      # get residue lists
-      seq_m = [x for (x,y) in res_m]
-      seq_c = [x for (x,y) in res_c]
+      chain_id_c, seq_c,res_ids_c = get_residue_sequence(c_ph)
+      # get residue lists for copy
       res_sel_m, res_sel_c, similarity = res_alignment(
         seq_a=seq_m,seq_b=seq_c,
         min_contig_length=min_contig_length,
         min_fraction_domain=min_fraction_domain)
       sel_m, sel_c,res_sel_m,res_sel_c,msg = get_matching_atoms(
-        m_ph,c_ph,res_sel_m,res_sel_c)
+        m_ph,c_ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c)
       if res_sel_m:
         # add only non empty matches
         sel_m = sel_m.iselection()
@@ -852,7 +849,7 @@ def get_matching_res_indices(R,row,col,min_fraction_domain):
   return sel_a, sel_b, similarity
 
 
-def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b):
+def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,res_ids_a,res_ids_b):
   """
   Get selection of matching chains, match residues atoms
   We keep only residues with continuous matching atoms
@@ -861,6 +858,7 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b):
     ph_a (hierarchy): first chain
     ph_b (hierarchy): second chain
     res_num_a/b (list of int): indices of matching residues position
+    res_ids_a/b (list if str): residues IDs
 
   Returns:
     sel_a, sel_b (flex.bool): matching atoms selection
@@ -873,18 +871,10 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b):
   l_b = ph_b.atoms().size()
   sel_a = flex.bool([False,] * l_a)
   sel_b = flex.bool([False,] * l_b)
-  if l_a == 0:
-    pass
-  # collect the residue IDs according to the res_num
-  res_ids_a = [x.resid() for x in ph_a.residue_groups()]
-  res_ids_b = [x.resid() for x in ph_b.residue_groups()]
   #
   res_num_a_updated = []
   res_num_b_updated = []
   residues_with_different_n_atoms = []
-  chain_a_id = ph_a.models()[0].chains()[0].id
-  chain_b_id = ph_b.models()[0].chains()[0].id
-  chain_IDs = '{}:{}'.format(chain_a_id,chain_b_id)
   for (na,nb) in zip(res_num_a,res_num_b):
     resid_a = res_ids_a[na]
     resid_b = res_ids_b[nb]
@@ -892,11 +882,11 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b):
     sb = atom_cache_b('resid {}'.format(resid_b))
     sa = sa.iselection()
     sb = sb.iselection()
+    res_a = ph_a.select(sa)
+    res_b = ph_b.select(sb)
     if sa.size() != sb.size():
       # collect residue IDs of matching residues with different number of atoms
       residues_with_different_n_atoms.append(resid_a)
-    res_a = ph_a.select(sa)
-    res_b = ph_b.select(sb)
     # select only atoms that exist in both residues
     atoms_names_a = list(res_a.atoms().extract_name())
     atoms_names_b = list(res_b.atoms().extract_name())
@@ -914,6 +904,9 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b):
     sel_a = sel_a | sa
     sel_b = sel_b | sb
   if residues_with_different_n_atoms:
+    chain_a_id = ph_a.models()[0].chains()[0].id
+    chain_b_id = ph_b.models()[0].chains()[0].id
+    chain_IDs = '{}:{}'.format(chain_a_id,chain_b_id)
     problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
     msg = "NCS related residues with different number of atoms, chains {}: \n["
     msg = msg.format(chain_IDs)
@@ -931,17 +924,22 @@ def get_residue_sequence(chain_ph):
     chain_ph (iotbx_pdb_hierarchy_ext): hierarchy of a single chain
 
   Returns:
-    chain_id (str)
-    res_seq (list)
+    chain_id (str): Chain ID
+    res_list_new (list of str): list of residues names
+    resid_list_new (list of str): list of residues number
   """
-  res_list = [x.resname for x in chain_ph.atom_groups()]
-  resid_list = [x.resseq for x in chain_ph.residue_groups()]
-  # Exclude water
-  res_seq = [(x,y) for (x,y) in zip(res_list, resid_list) if x.lower() != 'hoh']
+  res_list_new = []
+  resid_list_new = []
+  for res_info in chain_ph.atom_groups():
+    x = res_info.resname
+    if x.lower() != 'hoh':
+      # Exclude water
+      res_list_new.append(x)
+      resid_list_new.append(res_info.parent().resseq)
   #
   atoms = chain_ph.atoms()
   chain_id = atoms[0].chain().id
-  return chain_id, res_seq
+  return chain_id, res_list_new,resid_list_new
 
 def build_score_matrix(row, col,
                        max_score=1000,

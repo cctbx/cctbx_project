@@ -261,7 +261,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_master_build_from_two_related_chains']
+  tests = ['test_two_chain_master']
   suite = unittest.TestSuite(map(test_find_ncs_operators,tests))
   return suite
 
