@@ -147,6 +147,36 @@ namespace cctbx { namespace miller {
     af::shared<std::complex<FloatType> > data;
   };
 
+  /*! \brief Expands an array of Miller indices and associated miscellaneous values
+      to P1 symmetry, with no symmetry-operator dependent transformation.
+   */
+  /*! See also: expand_to_p1_indices
+   */
+
+  template <typename Type>
+  struct expand_to_p1
+  {
+    expand_to_p1() {}
+
+    expand_to_p1(
+      sgtbx::space_group const& space_group,
+      bool anomalous_flag,
+      af::const_ref<index<> > const& indices_,
+      af::const_ref<Type> const& data_)
+    {
+      CCTBX_ASSERT(data_.size() == indices_.size());
+      detail::expand_to_p1_generator generator(
+        space_group, anomalous_flag, indices_);
+      while (generator.incr()) {
+        indices.push_back(generator.p1_index->h());
+        data.push_back(data_[generator.i_index]);
+      }
+    }
+
+    af::shared<index<> > indices;
+    af::shared<Type> data;
+  };
+
   /*! \brief Expands an array of Miller indices and associated
       Hendrickson-Lattman coefficients to P1 symmetry.
    */
