@@ -22,6 +22,8 @@ class fully_buffered_base(object):
 
   def format_errors_if_any(self):
     assert not self.join_stdout_stderr
+    if (self.return_code != 0):
+      return "non-zero return code: %s"%(self.return_code)
     if (len(self.stderr_lines) != 0):
       msg = ["child process stderr output:"]
       msg.append("  command: " + repr(self.command))
@@ -32,7 +34,6 @@ class fully_buffered_base(object):
 
   def raise_if_errors(self, Error=RuntimeError):
     assert not self.join_stdout_stderr
-    assert self.return_code == 0, self.return_code
     msg = self.format_errors_if_any()
     if (msg is not None):
       raise Error(msg)
@@ -400,7 +401,10 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
   try: fb(command="C68649356116218352").raise_if_errors()
   except RuntimeError, e:
     if (verbose): print e
-    assert str(e).startswith("child process stderr output:\n")
+    # Just check for RuntimeError; there are now additional
+    # specific error messages.
+    pass 
+    # assert str(e).startswith("child process stderr output:\n")
   else: raise Exception_expected
   #
   for stdout_splitlines in [True, False]:
