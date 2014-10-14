@@ -321,10 +321,11 @@ class rec(object):
       2*(q1*q2+q0*q3),   2*(q0*q0+q2*q2)-1, 2*(q2*q3-q0*q1),
       2*(q1*q3-q0*q2),   2*(q2*q3+q0*q1),   2*(q0*q0+q3*q3)-1))
 
-  def r3_rotation_matrix_as_euler_angles(self, deg=False, alternate_solution=False):
+  def r3_rotation_matrix_as_x_y_z_angles(self, deg=False, alternate_solution=False):
     """
-    Get the rotation angles around the axis x,y,x for rotation r
+    Get the rotation angles around the axis x,y,z for rotation r
     Such that r = Rx*Ry*Rz
+    Those angles are the Tait-Bryan angles form of Euler angles
 
     Note that typically there are two solutions, and this function will return
     only one. In the case that cos(beta) == 0 there are infinite number of
@@ -366,32 +367,6 @@ class rec(object):
              180*gamma/math.pi
     else:
       return alpha, beta, gamma
-
-  def unit_quaternion_as_euler_angles(self, deg=False):
-    """ Get euler angles from a unit quaternion.  Only one solution is available
-        in contrast to r3_rotation_matrix_as_euler_angles.
-
-    Args:
-      deg : When False use radians, when True use degrees
-
-    Returns:
-      angles: containing rotation angles in the form
-        (rotx, roty, rotz)
-    """
-    assert self.n in [(1,4), (4,1)]
-    q0,q1,q2,q3 = self.elems
-
-    # http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Conversion
-    rotx = math.atan2(2*(q0*q1+q2*q3),1-2*(q1**2+q2**2))
-    roty = math.asin(2*(q0*q2-q3*q1))/math.pi
-    rotz = math.atan2(2*(q0*q3+q1*q2),1-2*(q2**2+q3**2))
-
-    if deg:
-      return 180*rotx/math.pi, \
-             180*roty/math.pi, \
-             180*rotz/math.pi
-    else:
-      return rotx, roty, rotz
 
   def r3_rotation_matrix_as_unit_quaternion(self):
     # Based on work by:

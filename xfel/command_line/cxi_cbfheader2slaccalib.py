@@ -96,7 +96,7 @@ class GeometryAccessFromCspadCBF(GeometryAccess):
     rot = sqr((x[0],y[0],z[0],
                x[1],y[1],z[1],
                x[2],y[2],z[2]))
-    rotx, roty, rotz = rot.r3_rotation_matrix_as_euler_angles(deg=True)
+    rotx, roty, rotz = rot.r3_rotation_matrix_as_x_y_z_angles(deg=True)
 
     # round to the nearest 90 degrees
     rrotx = round(rotx/90)*90
