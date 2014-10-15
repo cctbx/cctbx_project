@@ -219,36 +219,43 @@ class XrayFrame (AppFrame,XFBaseClass) :
     detector = self.get_detector()
     beam     = self.get_beam()
 
-    try:
-      # FIXME assumes all detector elements use the same millimeter-to-pixel convention
-      if detector[0].get_distance() > 0:
-        if len(detector) > 1:
-          h = detector.hierarchy()
-          if len(h) > 0:
-            beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
-              detector.hierarchy().get_beam_centre(beam.get_s0()))
-          else:
-            beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
-              detector[0].get_beam_centre(beam.get_s0()))
+    # FIXME assumes all detector elements use the same millimeter-to-pixel convention
+    if detector[0].get_distance() > 0:
+
+      def map_coords(x, y, p):
+        if len(self.pyslip.tiles.raw_image.get_detector()) > 1:
+          y, x = self.pyslip.tiles.flex_image.tile_readout_to_picture(
+            p, y - 0.5, x - 0.5)
+        return self.pyslip.tiles.picture_fast_slow_to_map_relative(
+          x, y)
+
+      if len(detector) == 24 and detector[0].get_image_size() == (2463,195):
+        panel_id, (x_mm,y_mm) = detector.get_ray_intersection(beam.get_s0())
+        beam_pixel_fast, beam_pixel_slow = detector[panel_id].millimeter_to_pixel(
+          (x_mm, y_mm))
+
+      elif len(detector) > 1:
+        panel_id = 0
+        h = detector.hierarchy()
+        if len(h) > 0:
+          beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
+            detector.hierarchy().get_beam_centre(beam.get_s0()))
         else:
           beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
             detector[0].get_beam_centre(beam.get_s0()))
+      else:
+        panel_id = 0
+        beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
+          detector[0].get_beam_centre(beam.get_s0()))
 
-        self.beam_center_cross_data = [
-          ((self.pyslip.tiles.picture_fast_slow_to_map_relative(
-              beam_pixel_fast + 3., beam_pixel_slow),
-            self.pyslip.tiles.picture_fast_slow_to_map_relative(
-              beam_pixel_fast - 3., beam_pixel_slow)),
-           {'width': 2, 'color': '#0000FFA0', 'closed': False}),
-          ((self.pyslip.tiles.picture_fast_slow_to_map_relative(
-              beam_pixel_fast, beam_pixel_slow + 3.),
-            self.pyslip.tiles.picture_fast_slow_to_map_relative(
-              beam_pixel_fast, beam_pixel_slow - 3.)),
-           {'width': 2, 'color': '#0000FFA0', 'closed': False})
+      self.beam_center_cross_data = [
+        ((map_coords(beam_pixel_fast + 3., beam_pixel_slow, panel_id),
+          map_coords(beam_pixel_fast - 3., beam_pixel_slow, panel_id)),
+         {'width': 2, 'color': '#0000FFA0', 'closed': False}),
+        ((map_coords(beam_pixel_fast, beam_pixel_slow + 3., panel_id),
+          map_coords(beam_pixel_fast, beam_pixel_slow - 3., panel_id)),
+         {'width': 2, 'color': '#0000FFA0', 'closed': False})
                                ]
-    except RuntimeError, e:
-      print e
-      self.beam_center_cross_data = []
 
     # Unconditionally delete extra layers--update_settings() will add
     # them back if appropriate.  This also creates the self.*_layer
