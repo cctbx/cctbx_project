@@ -397,10 +397,15 @@ class HKLViewFrame (wx.Frame) :
     self.settings_panel.get_control("expand_to_p1").Enable(False)
     self.settings_panel.get_control("expand_anomalous").SetValue(False)
     self.settings_panel.get_control("expand_anomalous").Enable(False)
+    self.settings_panel.get_control("scale_radii_multiplicity").Enable(False)
 
-  def update_settings_for_merged (self) :
+  def update_settings_for_merged (self, enable_multiplicity=False) :
     self.settings_panel.get_control("expand_to_p1").Enable(True)
     self.settings_panel.get_control("expand_anomalous").Enable(True)
+    if (enable_multiplicity) :
+      self.settings_panel.get_control("scale_radii_multiplicity").Enable(True)
+    else :
+      self.settings_panel.get_control("scale_radii_multiplicity").Enable(False)
 
   def process_miller_array (self, array) :
     if (array is None) : return
@@ -420,6 +425,7 @@ class HKLViewFrame (wx.Frame) :
         array = array.customized_copy(crystal_symmetry=symm).set_info(info)
       wx.CallAfter(dlg.Destroy)
     details = []
+    merge = None
     if (not array.is_unique_set_under_symmetry()) :
       merge = wx.MessageBox("The data in the selected array are not symmetry-"+
         "unique, which usually means they are unmerged (but could also be due "+
@@ -431,9 +437,10 @@ class HKLViewFrame (wx.Frame) :
         "than a full pseudo-precession view.)",
         style=wx.YES_NO)
       if (merge == wx.YES) :
-        array = array.merge_equivalents().array().set_info(info)
+        merge = True
+        #array = array.merge_equivalents().array().set_info(info)
         details.append("merged")
-        self.update_settings_for_merged()
+        self.update_settings_for_merged(True)
       else :
         details.append("unmerged data")
         self.update_settings_for_unmerged()
@@ -457,6 +464,7 @@ class HKLViewFrame (wx.Frame) :
     array_info = group_args(
       labels=labels,
       details_str=details_str,
+      merge=merge,
       sg=sg,
       uc=uc)
     return array, array_info
@@ -483,7 +491,7 @@ class HKLViewFrame (wx.Frame) :
             self.settings.spheres = False
             self.settings_panel.spheres_ctrl.SetValue(False)
     self.miller_array = array
-    self.viewer.set_miller_array(array, zoom=True)
+    self.viewer.set_miller_array(array, zoom=True, merge=array_info.merge)
     self.viewer.Refresh()
     if (self.view_2d is not None) :
       self.view_2d.set_miller_array(array)
@@ -502,6 +510,7 @@ class HKLViewFrame (wx.Frame) :
       unit_cell=self.miller_array.unit_cell())
     array = self.miller_array.expand_to_p1().customized_copy(
       crystal_symmetry=symm)
+    print "MERGING 2"
     array = array.merge_equivalents().array().set_info(self.miller_array.info())
     self.viewer.set_miller_array(array, zoom=False)
     self.viewer.Refresh()

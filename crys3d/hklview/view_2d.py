@@ -32,13 +32,14 @@ class hklview_2d (wx.PyPanel, cctbx.miller.display.render_2d) :
     return wx.PyPanel.GetSize(self)
 
   # XXX silent keyword 'zoom=False' is for compatibility with view_3d.py
-  def set_miller_array (self, array, zoom=False) :
+  def set_miller_array (self, array, zoom=False, merge=None) :
     self.miller_array = array
     if (array is not None) :
-      self.construct_reciprocal_space()
+      self.construct_reciprocal_space(merge=merge)
 
-  def construct_reciprocal_space (self) :
+  def construct_reciprocal_space (self, merge=None) :
     self.scene = hklview.scene(miller_array=self.miller_array,
+      merge=merge,
       settings=self.settings)
     self._clicked = None
     self.setup_colors()

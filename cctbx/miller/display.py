@@ -35,12 +35,14 @@ class scene (object) :
   easily extensible to any other graphics platform (e.g. a PNG embedded in
   a web page).
   """
-  def __init__ (self, miller_array, settings) :
+  def __init__ (self, miller_array, settings, merge=None) :
     self.miller_array = miller_array
     self.settings = settings
+    self.merge_equivalents = merge
     from cctbx import miller
     from cctbx import crystal
     from cctbx.array_family import flex
+    self.multiplicities = None
     self.process_input_array()
     array = self.work_array
     uc = array.unit_cell()
@@ -88,6 +90,11 @@ class scene (object) :
   def process_input_array (self) :
     from scitbx.array_family import flex
     array = self.miller_array.deep_copy()
+    multiplicities = None
+    if self.merge_equivalents :
+      merge = array.merge_equivalents()
+      array = merge.array()
+      multiplicities = merge.redundancies()
     settings = self.settings
     data = array.data()
     self.missing_set = oop.null()
@@ -95,11 +102,18 @@ class scene (object) :
       data.set_selected(data < 0, flex.double(data.size(), 0.))
     if (array.is_unique_set_under_symmetry()) and (settings.map_to_asu) :
       array = array.map_to_asu()
+      if (multiplicities is not None) :
+        multiplicities = multiplicities.map_to_asu()
     if (settings.d_min is not None) :
       array = array.resolution_filter(d_min=settings.d_min)
+      if (multiplicities is not None) :
+        multiplicities = multiplicities.resolution_filter(
+          d_min=settings.d_min)
     self.filtered_array = array.deep_copy()
     if (settings.expand_anomalous) :
       array = array.generate_bijvoet_mates()
+      if (multiplicities is not None) :
+        multiplicities = multiplicities.generate_bijvoet_mates()
     if (self.settings.show_missing) :
       self.missing_set = array.complete_set().lone_set(array)
     if (settings.expand_to_p1) :
@@ -110,6 +124,9 @@ class scene (object) :
       #self.missing_set = self.missing_set.niggli_cell().expand_to_p1()
       self.missing_set = self.missing_set.expand_to_p1().customized_copy(
         crystal_symmetry=original_symmetry)
+      if (multiplicities is not None) :
+        multiplicities = multiplicities.expand_to_p1().customized_copy(
+            crystal_symmetry=original_symmetry)
     data = array.data()
     self.r_free_mode = False
     if isinstance(data, flex.bool) :
@@ -131,23 +148,37 @@ class scene (object) :
         if (array.sigmas() is None) :
           raise Sorry("sigmas not defined.")
         sigmas = array.sigmas()
-        array = array.select(sigmas != 0)
+        non_zero_sel = sigmas != 0
+        array = array.select(non_zero_sel)
         array = array.customized_copy(data=array.data()/array.sigmas())
         self.data = array.data()
+        if (multiplicities is not None) :
+          multiplicities = multiplicities.select(non_zero_sel)
     self.work_array = array
+    self.multiplicities = multiplicities
 
   def generate_view_data (self) :
     from scitbx.array_family import flex
     from scitbx import graphics_utils
     settings = self.settings
+    data_for_colors = data_for_radii = None
     data = self.data #self.work_array.data()
     if (isinstance(data, flex.double) and data.all_eq(0)):
       data = flex.double(data.size(), 1)
-    if (settings.sqrt_scale_colors) and (isinstance(data, flex.double)) :
+    if ((self.multiplicities is not None) and
+        (settings.scale_colors_multiplicity)) :
+      data_for_colors = self.multiplicities.data().as_double()
+      assert data_for_colors.size() == data.size()
+    elif (settings.sqrt_scale_colors) and (isinstance(data, flex.double)) :
       data_for_colors = flex.sqrt(data)
     else :
       data_for_colors = data.deep_copy()
-    if (settings.sqrt_scale_radii) and (isinstance(data, flex.double)) :
+    if ((self.multiplicities is not None) and
+        (settings.scale_radii_multiplicity)) :
+      #data_for_radii = data.deep_copy()
+      data_for_radii = self.multiplicities.data().as_double()
+      assert data_for_radii.size() == data.size()
+    elif (settings.sqrt_scale_radii) and (isinstance(data, flex.double)) :
       data_for_radii = flex.sqrt(data)
     else :
       data_for_radii = data.deep_copy()
@@ -181,13 +212,15 @@ class scene (object) :
     min_dist = min(uc.reciprocal_space_vector((1,1,1)))
     min_radius = 0.20 * min_dist
     max_radius = 40 * min_dist
+    if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
+      data_for_radii = flex.sqrt(data_for_radii)
     max_value = flex.max(data_for_radii)
     scale = max_radius / max_value
-    if (settings.sqrt_scale_radii) :
-      data = flex.sqrt(data)
-    radii = data * scale
+    radii = data_for_radii * scale
     too_small = radii < min_radius
-    radii.set_selected(too_small, flex.double(radii.size(), min_radius))
+    if (too_small.count(True) > 0) :
+      radii.set_selected(too_small, flex.double(radii.size(), min_radius))
+    assert radii.size() == colors.size()
     self.radii = radii
     self.max_radius = max_radius
     self.colors = colors
@@ -452,6 +485,10 @@ master_phil = libtbx.phil.parse("""
   scale = 1
     .type = int
   map_to_asu = False
+    .type = bool
+  scale_radii_multiplicity = False
+    .type = bool
+  scale_colors_multiplicity = False
     .type = bool
 """)
 
