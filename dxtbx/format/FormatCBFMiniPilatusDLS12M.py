@@ -139,6 +139,12 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
     return self._raw_data[0]
 
+  def _goniometer(self):
+    '''Return a model for a simple single-axis goniometer. This should
+    probably be checked against the image header.'''
+
+    return self._goniometer_factory.single_axis_reverse()
+
 if __name__ == '__main__':
 
   import sys
