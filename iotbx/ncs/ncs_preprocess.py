@@ -114,7 +114,8 @@ class ncs_group_object(object):
                          process_similar_chains=True,
                          min_fraction_domain=0.2,
                          min_contig_length=10,
-                         log=sys.stdout):
+                         log=sys.stdout,
+                         always_check_atom_order=False):
     """
     Select method to build ncs_group_object
 
@@ -163,9 +164,12 @@ class ncs_group_object(object):
         similarity define as:
         (number of matching res) / (number of res in longer chain)
       min_contig_length (int): minimum length of matching chain segments
+      always_check_atom_order (bool): make sure atoms in matching residues
+        are in the same order
     """
     extension = ''
     self.write_messages = write_messages
+    self.always_check_atom_order = always_check_atom_order
     self.log = log
     if file_name: extension = os.path.splitext(file_name)[1]
     if pdb_hierarchy_inp:
@@ -431,7 +435,8 @@ class ncs_group_object(object):
         use_minimal_master_ncs=use_minimal_master_ncs,
         rmsd_eps=rms_eps,
         write=self.write_messages,
-        log=self.log)
+        log=self.log,
+        always_check_atom_order=self.always_check_atom_order)
 
       # process atom selections
       self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
