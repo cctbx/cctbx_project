@@ -96,7 +96,8 @@ def find_ncs_in_hierarchy(ph,
                           use_minimal_master_ncs=True,
                           rmsd_eps=5.0,
                           write=False,
-                          log=sys.stdout):
+                          log=sys.stdout,
+                          always_check_atom_order=False):
   """
   Find NCS relation in hierarchy
 
@@ -110,6 +111,8 @@ def find_ncs_in_hierarchy(ph,
         in master ncs groups
     rmsd_eps (float): limit of rms difference chains when aligned together
     write (bool): when true, write ncs search messages to log
+    always_check_atom_order (bool): make sure atoms in matching residues
+        are in the same order
 
   Return:
     groups_list (list of NCS_groups_container objects)
@@ -123,7 +126,8 @@ def find_ncs_in_hierarchy(ph,
     min_contig_length=min_contig_length,
     min_fraction_domain=min_fraction_domain,
     write=write,
-    log=log)
+    log=log,
+    always_check_atom_order=always_check_atom_order)
   #
   match_dict = clean_chain_matching(chain_match_list,ph,rmsd_eps)
   #
@@ -661,7 +665,8 @@ def search_ncs_relations(ph,
                          min_contig_length=10,
                          min_fraction_domain=0.2,
                          write=False,
-                         log=sys.stdout):
+                         log=sys.stdout,
+                         always_check_atom_order=False):
   """
   Search for NCS relations between chains or parts of chains, in a protein
   hierarchy
@@ -673,6 +678,8 @@ def search_ncs_relations(ph,
       similarity define as:
       (number of matching res) / (number of res in longer chain)
     write (bool): when true, write ncs search messages to log
+    always_check_atom_order (bool): make sure atoms in matching residues
+        are in the same order
 
   Returns:
     msg (str): message regarding matching residues with different atom number
@@ -722,7 +729,8 @@ def search_ncs_relations(ph,
         min_contig_length=min_contig_length,
         min_fraction_domain=min_fraction_domain)
       sel_m, sel_c,res_sel_m,res_sel_c,msg = get_matching_atoms(
-        ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c,m_str,c_str)
+        ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c,m_str,c_str,
+        always_check_atom_order=always_check_atom_order)
       if res_sel_m:
         # add only non empty matches
         sel_m = sel_m.iselection()
@@ -855,7 +863,8 @@ def get_matching_res_indices(R,row,col,min_fraction_domain):
 
 
 def get_matching_atoms(ph,res_num_a,res_num_b,res_ids_a,res_ids_b,
-                       master_selection,copy_selection):
+                       master_selection,copy_selection,
+                       always_check_atom_order=False):
   """
   Get selection of matching chains, match residues atoms
   We keep only residues with continuous matching atoms
@@ -865,6 +874,8 @@ def get_matching_atoms(ph,res_num_a,res_num_b,res_ids_a,res_ids_b,
     res_num_a/b (list of int): indices of matching residues position
     res_ids_a/b (list if str): residues IDs
     master/copy_selection (str): master and copy selection strings
+    always_check_atom_order (bool): make sure atoms in matching residues
+        are in the same order
 
   Returns:
     sel_a, sel_b (flex.bool): matching atoms selection
@@ -888,20 +899,21 @@ def get_matching_atoms(ph,res_num_a,res_num_b,res_ids_a,res_ids_b,
     sb = atom_cache('({}) and resid {}'.format(copy_selection,resid_b))
     sa = sa.iselection()
     sb = sb.iselection()
-    res_a = ph.select(sa)
-    res_b = ph.select(sb)
-    if sa.size() != sb.size():
-      # collect residue IDs of matching residues with different number of atoms
-      residues_with_different_n_atoms.append(resid_a)
-    # select only atoms that exist in both residues
-    atoms_names_a = list(res_a.atoms().extract_name())
-    atoms_names_b = list(res_b.atoms().extract_name())
-    atoms_a,atoms_b,similarity = res_alignment(
-      seq_a=atoms_names_a, seq_b=atoms_names_b,
-      min_contig_length=100)
-    # get the number of the atom in the chain
-    sa = flex.size_t(atoms_a) + min(sa)
-    sb = flex.size_t(atoms_b) + min(sb)
+    if always_check_atom_order or (sa.size() != sb.size()):
+      res_a = ph.select(sa)
+      res_b = ph.select(sb)
+      if sa.size() != sb.size():
+        # collect residue IDs of matching residues with different number of atoms
+        residues_with_different_n_atoms.append(resid_a)
+      # select only atoms that exist in both residues
+      atoms_names_a = list(res_a.atoms().extract_name())
+      atoms_names_b = list(res_b.atoms().extract_name())
+      atoms_a,atoms_b,similarity = res_alignment(
+        seq_a=atoms_names_a, seq_b=atoms_names_b,
+        min_contig_length=100)
+      # get the number of the atom in the chain
+      sa = flex.size_t(atoms_a) + min(sa)
+      sb = flex.size_t(atoms_b) + min(sb)
     # keep only residues with continuous matching atoms
     if sa.size() != 0:
       res_num_a_updated.append(na)
