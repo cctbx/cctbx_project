@@ -85,21 +85,29 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
     detector = HierarchicalDetector()
     root = detector.hierarchy()
-    root.set_local_frame(
+    root.set_frame(
       (1, 0, 0),
       (0, 1, 0),
       (0, 0, -250))
+
+    x = matrix.col((1, 0, 0))
+    y = matrix.col((0, 1, 0))
+    z = matrix.col((0, 0, 1))
 
     for j in range(24):
 
       angle = math.pi * (-12.2 + 0.5 * 7.903 + j * (7.903 + 0.441)) / 180.0
       fast = matrix.col((-1, 0, 0))
       slow = matrix.col((0, math.sin(angle), - math.cos(angle)))
-      z = matrix.col((0, 0, -1))
       normal = fast.cross(slow)
       # from observation of beam image on panel 12-down 3-across @ 1117,2587
-      origin = 250.0 * normal - 192.3 * fast - 7.4 * slow - 250 * z
+      # FIXME this should be determined from the drawings & then applied as
+      # a bulk shift after the detector is constructed
+      origin = 250.0 * normal - 192.3 * fast - 7.4 * slow + 250 * z
       p = detector.add_panel()
+
+      # OBS! you need to set the panel to a root before set local frame...
+      root.add_panel(p)
       p.set_name('row-%02d' % j)
       p.set_image_size((2463, 195))
       p.set_trusted_range((-1, 1000000))
@@ -108,7 +116,8 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         fast.elems,
         slow.elems,
         origin.elems)
-      root.add_panel(p)
+
+    # FIXME move the root frame a little to align the beam centre...
 
     return detector
 
