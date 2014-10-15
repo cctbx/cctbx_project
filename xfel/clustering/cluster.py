@@ -630,9 +630,8 @@ class Cluster:
     log_i, one_over_d_square = zip(*[i for i in plotting_data
                                      if i[0] >=0])
     minus_2B, G, r_val, _, std_err = linregress(one_over_d_square, log_i)
-    fit_info = "G: {0:.2f}, -2B: {0:.2f}, r: {0:.2f}, std_err: {0:.2f}".format(G, minus_2B,
+    fit_info = "G: {:.2f}, -2B: {:.2f}, r: {:.2f}, std_err: {:.2f}".format(G, minus_2B,
                                                             r_val, std_err)
-
     smooth = Sf._moving_average(log_i, n=smoothing_width)
     ax.plot(one_over_d_square, log_i, 'bo', ms=1)
     ax.plot(one_over_d_square[smoothing_width - 1:], smooth,'--r', lw=2)
