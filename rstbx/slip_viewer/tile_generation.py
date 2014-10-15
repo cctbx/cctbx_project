@@ -111,6 +111,8 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0, show_untrusted=
         block=data.as_double(),
         i_row=i * data_padded[0],
         i_column=0)
+      # XXX hardcoded panel height and row gap
+      my_flex_image.add_transformation_and_translation((1,0,0,1), (-i*(195+17),0))
 
       continue
 
