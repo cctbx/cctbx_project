@@ -74,6 +74,17 @@ def calc_partiality_anisotropy_set(my_uc, rotx, roty, miller_indices, ry, rz, r0
   partiality_set = flex.double()
   delta_xy_set = flex.double()
   rs_set = flex.double()
+  rs_vec = flex.sqrt( flex.pow(float(ry)*flex.cos(alpha_angle_set),2) +
+                      flex.pow(float(rz)*flex.sin(alpha_angle_set),2)) + \
+                      (r0 + ( float(re) * flex.tan(bragg_angle_set) ))
+
+  Astar_mat = flex.mat3_double(len(miller_indices), A_star)
+  h_vec = miller_indices.as_vec3_double()
+  x_vec = Astar_mat * h_vec
+  S0_vec = flex.vec3_double(len(x_vec), S0)
+  S_vec = x_vec + S0_vec
+  rh_vec = S_vec.norms() - (1./wavelength)
+
   for miller_index, bragg_angle, alpha_angle, spot_pred_x_mm, spot_pred_y_mm in \
       zip(miller_indices, bragg_angle_set, alpha_angle_set,
           spot_pred_x_mm_set, spot_pred_y_mm_set):
@@ -115,8 +126,40 @@ def calc_partiality_anisotropy_set(my_uc, rotx, roty, miller_indices, ry, rz, r0
     calc_xy = col((dx_mm, dy_mm))
     diff_xy = pred_xy - calc_xy
     delta_xy_set.append(diff_xy.length())
+  if partiality_model == "Lorentzian":
+    spot_partiality_vec = (rs_vec*rs_vec) / ( 2.*(rh_vec*rh_vec) + (rs_vec*rs_vec) )
+  elif partiality_model == "Disc":
+    selection = flex.abs(rs_vec) - flex.abs(rh_vec) > 0.
+    spot_partiality_vec = flex.double(len(rh_vec))
+    spot_partiality_vec.set_selected(selection, 1. - ( (rh_vec*rh_vec) / (rs_vec*rs_vec) ))
+    spot_partiality_vec.set_selected(~selection, 0.02)
+  elif partiality_model == "Kabsch":
+    t_vec = rh_vec / (math.sqrt(2) * rs_vec)
+    spot_partiality_vec = flex.exp( -(t_vec*t_vec) )
+  elif partiality_model == "Rossmann":
+    selection = flex.abs(rs_vec) - flex.abs(rh_vec) > 0.
+    spot_partiality_vec = flex.double(len(rh_vec))
+    q_vec = (rs_vec - rh_vec) / (2. * rs_vec)
+    q_vec_sq = q_vec * q_vec
+    spot_partiality_vec.set_selected(selection, 3.*q_vec_sq - 2.*q_vec_sq*q_vec)
+    spot_partiality_vec.set_selected(~selection, 0.02)
 
-  return partiality_set, delta_xy_set, rs_set
+  d_ratio_vec = -detector_distance_mm/ (S_vec.parts()[2])
+  dx_mm_vec = S_vec.parts()[0] * d_ratio_vec
+  dy_mm_vec = S_vec.parts()[1] * d_ratio_vec
+  deltax_vec = spot_pred_x_mm_set - dx_mm_vec
+  deltay_vec = spot_pred_y_mm_set - dy_mm_vec
+  delta_xy_vec = flex.sqrt(deltax_vec*deltax_vec + deltay_vec*deltay_vec)
+
+  for icnt in xrange(len(rs_set)):
+    assert rs_set[icnt] == rs_vec[icnt]
+    if partiality_model == "Rossmann":
+      from libtbx.test_utils import approx_equal
+      assert approx_equal(partiality_set[icnt], spot_partiality_vec[icnt])
+    else:
+      assert partiality_set[icnt] == spot_partiality_vec[icnt]
+    assert delta_xy_vec[icnt] == delta_xy_set[icnt]
+  return spot_partiality_vec, delta_xy_vec, rs_vec
 
 def prep_input(params, cs):
   #From crystal system cs, determine refined parameters
