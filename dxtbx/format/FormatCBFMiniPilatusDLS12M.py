@@ -116,7 +116,8 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       self._raw_data = []
 
       for j, panel in enumerate(self.get_detector()):
-        xmin, ymin, xmax, ymax = 0, j * (195 + 7), 2463, j * (195 + 7) + 195
+        shift_y = 195 + 17
+        xmin, ymin, xmax, ymax = 0, j * shift_y, 2463, j * shift_y + 195
         self._raw_data.append(data[ymin:ymax,xmin:xmax])
 
     if index is not None:
