@@ -88,7 +88,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     root.set_local_frame(
       (1, 0, 0),
       (0, 1, 0),
-      (0, 0, -250))
+      (0, 0, 1))
 
     for j in range(24):
 
@@ -96,7 +96,8 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       fast = matrix.col((-1, 0, 0))
       slow = matrix.col((0, math.sin(angle), - math.cos(angle)))
       normal = fast.cross(slow)
-      origin = 250.0 * normal - 192.3 * fast - 16.77 * slow
+      # from observation of beam image on panel 12-down 3-across @ 1117,2587
+      origin = 250.0 * normal - 192.3 * fast - 7.4 * slow
       p = detector.add_panel()
       p.set_name('row-%02d' % j)
       p.set_image_size((2463, 195))
