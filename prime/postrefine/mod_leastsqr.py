@@ -71,9 +71,6 @@ def calc_partiality_anisotropy_set(my_uc, rotx, roty, miller_indices, ry, rz, r0
   A_star = sqr(CO_rotate.reciprocal_matrix())
   S0 = -1*col((0,0,1./wavelength))
   r0 = 0
-  partiality_set = flex.double()
-  delta_xy_set = flex.double()
-  rs_set = flex.double()
   rs_vec = flex.sqrt( flex.pow(float(ry)*flex.cos(alpha_angle_set),2) +
                       flex.pow(float(rz)*flex.sin(alpha_angle_set),2)) + \
                       (r0 + ( float(re) * flex.tan(bragg_angle_set) ))
@@ -85,47 +82,6 @@ def calc_partiality_anisotropy_set(my_uc, rotx, roty, miller_indices, ry, rz, r0
   S_vec = x_vec + S0_vec
   rh_vec = S_vec.norms() - (1./wavelength)
 
-  for miller_index, bragg_angle, alpha_angle, spot_pred_x_mm, spot_pred_y_mm in \
-      zip(miller_indices, bragg_angle_set, alpha_angle_set,
-          spot_pred_x_mm_set, spot_pred_y_mm_set):
-    rs = math.sqrt((ry * math.cos(alpha_angle))**2 + (rz * math.sin(alpha_angle))**2) + \
-      (r0 + (re*math.tan(bragg_angle)))
-    h = col(miller_index)
-    x = A_star * h
-    S = x + S0
-    rh = S.length() - (1/wavelength)
-
-    if partiality_model == 'Lorentzian':
-      #Lorenzian
-      spot_partiality = ((rs**2)/((2*(rh**2))+(rs**2)))
-    elif partiality_model == 'Disc':
-      #Disc
-      if abs(rs) - abs(rh) > 0:
-        spot_partiality = 1-(rh**2/rs**2)
-      else:
-        spot_partiality = 0.02
-    elif partiality_model == 'Kabsch':
-      #Kabsch
-      t = rh/(math.sqrt(2)*rs)
-      spot_partiality = math.exp(-(t**2))
-    elif partiality_model == 'Rossmann':
-      if abs(rs) - abs(rh) > 0:
-        q=(rs-rh)/(2*rs);
-        spot_partiality = (3*(q**2)) - (2*(q**3));
-      else:
-        spot_partiality = 0.02
-
-    partiality_set.append(spot_partiality)
-    rs_set.append(rs)
-
-    #finding coordinate x,y on the detector
-    d_ratio = -detector_distance_mm/S[2]
-    dx_mm = S[0]*d_ratio
-    dy_mm = S[1]*d_ratio
-    pred_xy = col((spot_pred_x_mm, spot_pred_y_mm))
-    calc_xy = col((dx_mm, dy_mm))
-    diff_xy = pred_xy - calc_xy
-    delta_xy_set.append(diff_xy.length())
   if partiality_model == "Lorentzian":
     spot_partiality_vec = (rs_vec*rs_vec) / ( 2.*(rh_vec*rh_vec) + (rs_vec*rs_vec) )
   elif partiality_model == "Disc":
@@ -151,14 +107,6 @@ def calc_partiality_anisotropy_set(my_uc, rotx, roty, miller_indices, ry, rz, r0
   deltay_vec = spot_pred_y_mm_set - dy_mm_vec
   delta_xy_vec = flex.sqrt(deltax_vec*deltax_vec + deltay_vec*deltay_vec)
 
-  for icnt in xrange(len(rs_set)):
-    assert rs_set[icnt] == rs_vec[icnt]
-    if partiality_model == "Rossmann":
-      from libtbx.test_utils import approx_equal
-      assert approx_equal(partiality_set[icnt], spot_partiality_vec[icnt])
-    else:
-      assert partiality_set[icnt] == spot_partiality_vec[icnt]
-    assert delta_xy_vec[icnt] == delta_xy_set[icnt]
   return spot_partiality_vec, delta_xy_vec, rs_vec
 
 def prep_input(params, cs):
