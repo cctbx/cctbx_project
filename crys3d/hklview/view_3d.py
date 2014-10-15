@@ -52,18 +52,19 @@ class hklview_3d (wxGLWindow) :
     self.minimum_covering_sphere = mcs
     #self.Bind(wx.EVT_SHOW, self.OnPaint, self)
 
-  def set_miller_array (self, miller_array, zoom=False) :
+  def set_miller_array (self, miller_array, zoom=False, merge=None) :
     self.miller_array = miller_array
     self.d_min = miller_array.d_min()
-    self.construct_reciprocal_space()
+    self.construct_reciprocal_space(merge=merge)
     # XXX for some reason InitGL does not get called until well after the
     # window is shown on (at least) Windows 7, so we need to check whether
     # it's safe to make OpenGL calls before zooming
     if (zoom) and (not self.GL_uninitialised) :
       self.fit_into_viewport()
 
-  def construct_reciprocal_space (self) :
+  def construct_reciprocal_space (self, merge=None) :
     self.scene = hklview.scene(miller_array=self.miller_array,
+      merge=merge,
       settings=self.settings)
     from scitbx.math import minimum_covering_sphere
     mcs = minimum_covering_sphere(points=self.scene.points,

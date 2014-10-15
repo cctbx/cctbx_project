@@ -22,6 +22,7 @@ def run (args) :
     args=args,
     master_phil=master_phil,
     reflection_file_def="data",
+    pdb_file_def="symmetry_file",
     usage_string="phenix.data_viewer f_obs.mtz [options]")
   settings = pcl.work.extract()
   a = wxtbx.app.CCTBXApp(0)
