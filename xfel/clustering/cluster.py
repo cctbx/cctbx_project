@@ -573,16 +573,18 @@ class Cluster:
     axes_to_return[0].hist(errors, 50, range=[0, 200])
     axes_to_return[0].set_title("Standard Errors on Wilson fit")
     axes_to_return[0].set_ylabel("Count")
+    axes_to_return[0].set_xlabel("Standard Error [$\AA^2$]")
 
     rs = [-1 * i.minus_2B / 2 for i in self.members]
     axes_to_return[1].hist(rs, 50, range=[-50, 200])
     axes_to_return[1].set_title("B values for Wilson plot")
     axes_to_return[1].set_ylabel("Count")
+    axes_to_return[1].set_xlabel(r"B [$\AA^2$]")
 
     axes_to_return[2].plot([i.G for i in self.members],
              [-1 * i.minus_2B / 2 for i in self.members], 'x')
-    axes_to_return[2].set_xlabel("G")
-    axes_to_return[2].set_ylabel("B")
+    axes_to_return[2].set_xlabel("G [AU]")
+    axes_to_return[2].set_ylabel("B [$\AA^2$]")
     axes_to_return[2].set_title("G and B for all members")
 
     plt.tight_layout()
@@ -636,7 +638,7 @@ class Cluster:
     ax.plot(one_over_d_square[smoothing_width - 1:], smooth,'--r', lw=2)
     plt.xlim([0, max(one_over_d_square)])
     ax.plot([0, -1 * G / minus_2B], [G, 0], 'y-', lw=2)
-    plt.xlabel("(sin(theta)/lambda)^2")
+    plt.xlabel(r"$(sin(\theta)/\lambda)^2$")
     plt.ylabel("ln(I)")
     plt.title("Simple Wilson fit\n{}".format(fit_info))
     plt.tight_layout()
