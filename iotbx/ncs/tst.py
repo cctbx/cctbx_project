@@ -264,7 +264,8 @@ def exercise_03(prefix="iotbx_ncs_exercise_03"):
   assert approx_equal(sel_copy_3.iselection(), ng.copies[0].iselection)
 
 if (__name__ == "__main__"):
-  exercise_00()
-  exercise_01()
-  exercise_02()
-  exercise_03()
+  # exercise_00()
+  # exercise_01()
+  # exercise_02()
+  # exercise_03()
+  pass
