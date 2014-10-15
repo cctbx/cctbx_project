@@ -402,20 +402,15 @@ def build_group_dict(transform_to_group,match_dict):
   group_dict = {}
   group_id = 0
   tr_sn = 0
-  for _,v in transform_to_group.iteritems():
+  for k,v in transform_to_group.iteritems():
     [masters,copies,(r,t)] = v
-    # sort masters chain IDs
-    sorted_masters = sorted(masters)
-    # reorder the copies order to match the new master order
-    sort_map = [masters.index(x) for x in sorted_masters]
-    copies = [copies[i] for i in sort_map]
-    # use the chain IDs of the master as a key for group_dict
-    key = tuple(sorted_masters)
-    m_sel_list,c_sel_list = get_iselection(sorted_masters,copies,match_dict)
+    key = tuple(masters)
+    m_sel_list,c_sel_list = get_iselection(masters,copies,match_dict)
     if group_dict.has_key(key):
-      zipped_param = zip(m_sel_list,c_sel_list,group_dict[key].iselections[0])
-      for i,rec in enumerate(zipped_param):
-        (m_sel,c_sel,current_master) = rec
+      for i in xrange(len(m_sel_list)):
+        m_sel = m_sel_list[i]
+        c_sel = c_sel_list[i]
+        current_master = group_dict[key].iselections[0][i]
         # for each chain, check if the master have the same selection
         current_master_set = set(current_master - min(current_master))
         m_sel_set = set(m_sel - min(m_sel))
@@ -426,7 +421,7 @@ def build_group_dict(transform_to_group,match_dict):
           group_dict[key].iselections = updated_iselection
       #
       tr_sn += 1
-      [_,_,res_l_m,res_l_c,r,t,rmsd] = match_dict[sorted_masters[0],copies[0]]
+      [_,_,res_l_m,res_l_c,r,t,rmsd] = match_dict[masters[0],copies[0]]
       tr = Transform(
         rotation=r,
         translation=t,
@@ -441,7 +436,7 @@ def build_group_dict(transform_to_group,match_dict):
     else:
       tr_sn += 1
       group_id += 1
-      [_,_,res_l_m,res_l_c,r,t,rmsd] = match_dict[sorted_masters[0],copies[0]]
+      [_,_,res_l_m,res_l_c,r,t,rmsd] = match_dict[masters[0],copies[0]]
       # add master as first copy (identity transform)
       new_ncs_group = NCS_groups_container()
       #
@@ -454,7 +449,7 @@ def build_group_dict(transform_to_group,match_dict):
         rmsd=0)
       new_ncs_group.iselections.append(m_sel_list)
       new_ncs_group.residue_index_list.append(res_l_m)
-      new_ncs_group.copies.append(sorted_masters)
+      new_ncs_group.copies.append(masters)
       new_ncs_group.transforms.append(tr)
       # add the copy
       tr_sn += 1
@@ -700,13 +695,25 @@ def search_ncs_relations(ph,
   # loop over all chains
   for i in xrange(n_chains-1):
     master_ch_id = chain_ids[i]
-    m_selection = cache.selection('chain ' + master_ch_id)
+    m_str = 'chain %s'%master_ch_id
+    m_selection = cache.selection(m_str)
+    master_n_atoms = m_selection.count(True)
+    if master_n_atoms == 0: continue
     m_ph = ph.select(m_selection)
     # get residue lists for master
     chain_id_m, seq_m,res_ids_m = get_residue_sequence(m_ph)
     for j in xrange(i+1,n_chains):
       copy_ch_id = chain_ids[j]
-      c_selection = cache.selection('chain ' + copy_ch_id)
+      c_str = 'chain %s'%copy_ch_id
+      c_selection = cache.selection(c_str)
+      copy_n_atoms = c_selection.count(True)
+      frac_d = min(copy_n_atoms,master_n_atoms)/max(copy_n_atoms,master_n_atoms)
+      if frac_d < min_fraction_domain:
+        if (min_fraction_domain == 1):
+          msg = 'NCS copies are not identical'
+          break
+        else:
+          continue
       c_ph = ph.select(c_selection)
       chain_id_c, seq_c,res_ids_c = get_residue_sequence(c_ph)
       # get residue lists for copy
@@ -715,14 +722,11 @@ def search_ncs_relations(ph,
         min_contig_length=min_contig_length,
         min_fraction_domain=min_fraction_domain)
       sel_m, sel_c,res_sel_m,res_sel_c,msg = get_matching_atoms(
-        m_ph,c_ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c)
+        ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c,m_str,c_str)
       if res_sel_m:
         # add only non empty matches
         sel_m = sel_m.iselection()
         sel_c = sel_c.iselection()
-        # adjust the selection in the chain to the complete hierarchy
-        sel_m += min(m_selection.iselection())
-        sel_c += min(c_selection.iselection())
         rec = [master_ch_id,copy_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,
                similarity]
         chain_match_list.append(rec)
@@ -768,12 +772,13 @@ def res_alignment(seq_a, seq_b,
   # Starting score according to the required similarity
   score = max_mis_align
   # build score matrix
-  R = build_score_matrix(
+  R = initialize_score_matrix(
     row=a,col=b,max_score=score,
     gap_penalty=gap_penalty,min_contig_length=min_contig_length)
   # populate score matrix
   for j in xrange(1,b + 1):
     for i in xrange(1,a + 1):
+      # Todo: add halting of loop when matching is to bad
       not_aligned = (seq_a[i-1].lower() != seq_b[j-1].lower())
       s1 = R[i-1,j-1].score - misalign_penalty * not_aligned
       s2 = R[i-1,j].score - gap_penalty
@@ -849,41 +854,42 @@ def get_matching_res_indices(R,row,col,min_fraction_domain):
   return sel_a, sel_b, similarity
 
 
-def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,res_ids_a,res_ids_b):
+def get_matching_atoms(ph,res_num_a,res_num_b,res_ids_a,res_ids_b,
+                       master_selection,copy_selection):
   """
   Get selection of matching chains, match residues atoms
   We keep only residues with continuous matching atoms
 
   Args:
-    ph_a (hierarchy): first chain
-    ph_b (hierarchy): second chain
+    ph (hierarchy): all chains
     res_num_a/b (list of int): indices of matching residues position
     res_ids_a/b (list if str): residues IDs
+    master/copy_selection (str): master and copy selection strings
 
   Returns:
     sel_a, sel_b (flex.bool): matching atoms selection
     res_num_a/b (list of int): updated res_num_a/b
     msg (str): message regarding matching residues with different atom number
   """
-  atom_cache_a = ph_a.atom_selection_cache().selection
-  atom_cache_b = ph_b.atom_selection_cache().selection
-  l_a = ph_a.atoms().size()
-  l_b = ph_b.atoms().size()
-  sel_a = flex.bool([False,] * l_a)
-  sel_b = flex.bool([False,] * l_b)
+  atom_cache = ph.atom_selection_cache().selection
+  l = ph.atoms().size()
+  sel_a = flex.bool([False,] * l)
+  sel_b = flex.bool([False,] * l)
   #
   res_num_a_updated = []
   res_num_b_updated = []
   residues_with_different_n_atoms = []
-  for (na,nb) in zip(res_num_a,res_num_b):
+  for i in xrange(len(res_num_a)):
+    na = res_num_a[i]
+    nb = res_num_b[i]
     resid_a = res_ids_a[na]
     resid_b = res_ids_b[nb]
-    sa = atom_cache_a('resid {}'.format(resid_a))
-    sb = atom_cache_b('resid {}'.format(resid_b))
+    sa = atom_cache('({}) and resid {}'.format(master_selection,resid_a))
+    sb = atom_cache('({}) and resid {}'.format(copy_selection,resid_b))
     sa = sa.iselection()
     sb = sb.iselection()
-    res_a = ph_a.select(sa)
-    res_b = ph_b.select(sb)
+    res_a = ph.select(sa)
+    res_b = ph.select(sb)
     if sa.size() != sb.size():
       # collect residue IDs of matching residues with different number of atoms
       residues_with_different_n_atoms.append(resid_a)
@@ -893,23 +899,21 @@ def get_matching_atoms(ph_a,ph_b,res_num_a,res_num_b,res_ids_a,res_ids_b):
     atoms_a,atoms_b,similarity = res_alignment(
       seq_a=atoms_names_a, seq_b=atoms_names_b,
       min_contig_length=100)
-    sa = flex.size_t(atoms_a)+min(sa)
-    sb = flex.size_t(atoms_b)+min(sb)
+    # get the number of the atom in the chain
+    sa = flex.size_t(atoms_a) + min(sa)
+    sb = flex.size_t(atoms_b) + min(sb)
     # keep only residues with continuous matching atoms
     if sa.size() != 0:
       res_num_a_updated.append(na)
       res_num_b_updated.append(nb)
-    sa = flex.bool(l_a,sa)
-    sb = flex.bool(l_b,sb)
+    sa = flex.bool(l,sa)
+    sb = flex.bool(l,sb)
     sel_a = sel_a | sa
     sel_b = sel_b | sb
   if residues_with_different_n_atoms:
-    chain_a_id = ph_a.models()[0].chains()[0].id
-    chain_b_id = ph_b.models()[0].chains()[0].id
-    chain_IDs = '{}:{}'.format(chain_a_id,chain_b_id)
     problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
-    msg = "NCS related residues with different number of atoms, chains {}: \n["
-    msg = msg.format(chain_IDs)
+    msg = "NCS related residues with different number of atoms, selection"
+    msg += master_selection + ':' + copy_selection + '\n['
     msg += ','.join(problem_res_nums) + ']\n'
   else:
     msg = ''
@@ -941,12 +945,12 @@ def get_residue_sequence(chain_ph):
   chain_id = atoms[0].chain().id
   return chain_id, res_list_new,resid_list_new
 
-def build_score_matrix(row, col,
+def initialize_score_matrix(row, col,
                        max_score=1000,
                        gap_penalty=1,
                        min_contig_length=10):
   """
-  Build a matrix in a dictionary form
+  initialize a matrix in a dictionary form
   The matrix values are initialized according the the gap penalties.
 
   We only initializing the zero row and column, the rest of the items are

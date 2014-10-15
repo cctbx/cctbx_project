@@ -251,21 +251,20 @@ def exercise_03(prefix="iotbx_ncs_exercise_03"):
   ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   asc = ncs_inp.hierarchy.atom_selection_cache()
-  sel_master = asc.selection(string = "chain A")
-  sel_copy_1 = asc.selection(string = "chain B")
-  sel_copy_2 = asc.selection(string = "chain C")
-  sel_copy_3 = asc.selection(string = "chain 1")
+  sel_master = asc.selection(string = "chain 1")
+  sel_copy_1 = asc.selection(string = "chain A")
+  sel_copy_2 = asc.selection(string = "chain B")
+  sel_copy_3 = asc.selection(string = "chain C")
   assert len(ncs_groups)==1
   ng = ncs_groups[0]
   # chains are sorted by name (numbers first)
   assert approx_equal(sel_master.iselection(), ng.master_iselection)
-  assert approx_equal(sel_copy_1.iselection(), ng.copies[1].iselection)
-  assert approx_equal(sel_copy_2.iselection(), ng.copies[2].iselection)
-  assert approx_equal(sel_copy_3.iselection(), ng.copies[0].iselection)
+  assert approx_equal(sel_copy_1.iselection(), ng.copies[0].iselection)
+  assert approx_equal(sel_copy_2.iselection(), ng.copies[1].iselection)
+  assert approx_equal(sel_copy_3.iselection(), ng.copies[2].iselection)
 
 if (__name__ == "__main__"):
-  # exercise_00()
-  # exercise_01()
-  # exercise_02()
-  # exercise_03()
-  pass
+  exercise_00()
+  exercise_01()
+  exercise_02()
+  exercise_03()
