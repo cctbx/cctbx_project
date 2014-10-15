@@ -94,6 +94,10 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     y = matrix.col((0, 1, 0))
     z = matrix.col((0, 0, 1))
 
+    obs_beam_y = 2587
+    ideal_beam_y = 2594
+    beam_shift_y = 0.172 * (2594 - 2587)
+
     for j in range(24):
 
       angle = math.pi * (-12.2 + 0.5 * 7.903 + j * (7.903 + 0.441)) / 180.0
@@ -103,7 +107,8 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       # from observation of beam image on panel 12-down 3-across @ 1117,2587
       # FIXME this should be determined from the drawings & then applied as
       # a bulk shift after the detector is constructed
-      origin = 250.0 * normal - 192.3 * fast - 7.4 * slow + 250 * z
+      origin = 250.0 * normal - 192.3 * fast - 16.8 * slow + 250 * z + \
+          beam_shift_y * y
       p = detector.add_panel()
 
       # OBS! you need to set the panel to a root before set local frame...
@@ -116,8 +121,6 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         fast.elems,
         slow.elems,
         origin.elems)
-
-    # FIXME move the root frame a little to align the beam centre...
 
     return detector
 
