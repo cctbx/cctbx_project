@@ -88,7 +88,7 @@ class TestSimpleAlignment(unittest.TestCase):
   def test_search_ncs_relations(self):
     print sys._getframe().f_code.co_name
     chain_match_list = ncs_search.search_ncs_relations(
-      ph=self.ph,min_fraction_domain=0.75,min_contig_length=3)
+      ph=self.ph,min_fraction_domain=0.70,min_contig_length=3)
     [chain_a_id,chain_b_id,sel_a,sel_b,r1,r2,_] = chain_match_list[0]
     #
     self.assertEqual(chain_a_id,'A')

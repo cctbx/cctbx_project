@@ -331,7 +331,6 @@ class ncs_group_object(object):
       gns = group.master_selection
       self.ncs_chain_selection.append(gns)
       unique_selections = uniqueness_test(unique_selections,gns)
-      master_ncs_ph = get_pdb_selection(ph=pdb_hierarchy_inp,selection_str=gns)
       ncs_group_id += 1
       transform_sn += 1
       self.add_identity_transform(
@@ -346,10 +345,10 @@ class ncs_group_object(object):
       asu_locations = []
       for asu_select in group.copy_selection:
         unique_selections = uniqueness_test(unique_selections,asu_select)
-        ncs_copy_ph = get_pdb_selection(
-          ph=pdb_hierarchy_inp,selection_str=asu_select)
         r, t, rmsd, msg = get_rot_trans(
-          master_ncs_ph=master_ncs_ph,ncs_copy_ph= ncs_copy_ph,
+          ph=pdb_hierarchy_inp,
+          master_selection=gns,
+          copy_selection=asu_select,
           rms_eps=100,
           min_fraction_domain=min_fraction_domain)
         self.messages += msg
@@ -582,16 +581,16 @@ class ncs_group_object(object):
       ncs_group_id = 0
       for gr in spec_ncs_groups:
         # create selection
-        ncs_group_selection_list =get_ncs_group_selection(gr.chain_residue_id())
-        gs = ncs_group_selection_list[0]
+        spec_group_list =get_ncs_group_selection(gr.chain_residue_id())
+        gs = spec_group_list[0]
         if join_same_spec_groups:
           # leave groups with the same transforms separate
-          group_exist =self.look_and_combine_groups(gr,ncs_group_selection_list)
+          group_exist =self.look_and_combine_groups(gr,spec_group_list)
           if group_exist: continue
         ncs_group_id += 1
         self.ncs_chain_selection.append(gs)
         asu_locations = []
-        for i,ncs_copy_select in enumerate(ncs_group_selection_list):
+        for i,ncs_copy_select in enumerate(spec_group_list):
           # invert transform - the rotation in gr is from the copy to the master
           r = gr.rota_matrices()[i]
           t = gr.translations_orth()[i]
@@ -633,10 +632,10 @@ class ncs_group_object(object):
       self.transform_chain_assignment=get_transform_order(self.transform_to_ncs)
       self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
-  def look_and_combine_groups(self,gr_new,ncs_group_selection_list):
+  def look_and_combine_groups(self,gr_new,spec_group_list):
     """
     """
-    gs_new = ncs_group_selection_list[0]
+    gs_new = spec_group_list[0]
     found_same_group = False
     gr_r_list = gr_new.rota_matrices()
     gr_t_list = gr_new.translations_orth()
@@ -666,12 +665,13 @@ class ncs_group_object(object):
       asu_locations = []
       for i in same_transforms:
         transform_id = tr_list[i]
-        ncs_copy_select = ncs_group_selection_list[i]
+        ncs_copy_select = spec_group_list[i]
         key = gs_new + '_' + transform_id
         # look at self.ncs_copies_chains_names
         self.update_ncs_copies_chains_names(
           masters=gs_new, copies=ncs_copy_select, tr_id=transform_id)
         r,t = gr_new_list[i]
+        self.update_tr_id_to_selection(gs_new,ncs_copy_select,transform_id)
         if not is_identity(r,t):
           self.transform_to_ncs = add_to_dict(
             d=self.transform_to_ncs,k=transform_id,v=key)
@@ -726,7 +726,6 @@ class ncs_group_object(object):
         serial_num = tr_sn,
         coordinates_present = False,
         ncs_group_id = 1)
-      assert not self.ncs_transform.has_key(key)
       self.ncs_transform[key] = tr
       for select in self.ncs_chain_selection:
         self.build_transform_dict(
@@ -1074,8 +1073,6 @@ class ncs_group_object(object):
             msg = "Sequence may contain insertions and can't be "
             msg += "represented using only residue ID. \n"
             self.messages += msg
-            if self.write_messages:
-              print >> self.log,msg
         if (res_id[1] == j):
           # close the last segment
           range_list.append(res_id)
@@ -1742,8 +1739,9 @@ def uniqueness_test(unique_selection_set,new_item):
     unique_selection_set.add(new_item)
     return unique_selection_set
 
-def get_rot_trans(master_ncs_ph=None,
-                  ncs_copy_ph=None,
+def get_rot_trans(ph=None,
+                  master_selection=None,
+                  copy_selection=None,
                   rms_eps=0.02,
                   min_fraction_domain = 0.75):
   """
@@ -1755,8 +1753,8 @@ def get_rot_trans(master_ncs_ph=None,
   for similarity.
 
   Args:
-    master_ncs_ph: pdb hierarchy input object
-    ncs_copy_ph: pdb hierarchy input object
+    ph : pdb hierarchy input object
+    master/copy_selection (str): master and copy selection strings
     rms_eps (float): limit of rms difference between chains to be considered
       as copies
     min_fraction_domain (float): Threshold for similarity between chains
@@ -1772,7 +1770,12 @@ def get_rot_trans(master_ncs_ph=None,
   t_zero = matrix.col([0,0,0])
   rmsd = 0.0
   #
-  if (master_ncs_ph and ncs_copy_ph):
+  if hasattr(ph,'hierarchy'):
+    ph = ph.hierarchy
+  if ph:
+    cache = ph.atom_selection_cache().selection
+    master_ncs_ph = ph.select(cache(master_selection))
+    ncs_copy_ph = ph.select(cache(copy_selection))
     chain_id_m,seq_m,res_ids_m  = ncs_search.get_residue_sequence(master_ncs_ph)
     chain_id_c,seq_c,res_ids_c = ncs_search.get_residue_sequence(ncs_copy_ph)
     res_sel_m, res_sel_c, similarity = ncs_search.res_alignment(
@@ -1783,11 +1786,15 @@ def get_rot_trans(master_ncs_ph=None,
       return r_zero,t_zero,0,''
     #
     sel_m, sel_c,res_sel_m,res_sel_c,msg1 = ncs_search.get_matching_atoms(
-      master_ncs_ph,ncs_copy_ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c)
+      ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c,
+      master_selection,copy_selection)
     msg += msg1
-    #
-    ref_sites = ncs_copy_ph.select(sel_m).atoms().extract_xyz()
-    other_sites = master_ncs_ph.select(sel_m).atoms().extract_xyz()
+    sel_m = sel_m.iselection()
+    sel_c = sel_c.iselection()
+    # master
+    other_sites = ph.select(sel_m).atoms().extract_xyz()
+    # copy
+    ref_sites = ph.select(sel_c).atoms().extract_xyz()
     if ref_sites.size() > 0:
       lsq_fit_obj = superpose.least_squares_fit(
           reference_sites = ref_sites,
@@ -1842,6 +1849,7 @@ def get_pdb_selection(ph,selection_str):
   Returns:
     portion of the hierarchy according to the selection
   """
+  # Del: I think this is not needed
   if not (ph is None):
     temp = ph.hierarchy.atom_selection_cache()
     selection_str_list = selection_str.split(' or ')
