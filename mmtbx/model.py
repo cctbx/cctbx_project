@@ -379,7 +379,8 @@ class manager(object):
     fo.close()
     if(nuclear): cmd = "phenix.reduce -quiet -allalt -NUClear %s"%fn
     else:        cmd = "phenix.reduce -quiet -allalt %s"%fn
-    r = easy_run.fully_buffered(cmd).raise_if_errors()
+    r = easy_run.fully_buffered(cmd)
+    assert (r.return_code == 0), r.return_code
     os.remove(fn)
     ph = iotbx.pdb.input(source_info=None,
       lines=r.stdout_lines).construct_hierarchy()
