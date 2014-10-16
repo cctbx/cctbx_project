@@ -695,6 +695,25 @@ def exercise_array():
     assert tuple(sa.indices()) == ((1,2,3), (-2,-3,-4))
     assert approx_equal(tuple(sa.data()), (1,3))
     assert approx_equal(tuple(sa.sigmas()), (0.1,0.4))
+  # test corrupt sigmas and anomalous differences
+  mi2 = flex.miller_index([(-9,-2,0), (9,2,0), (-2,-9,0), (2,-11,0),
+    (9,-11,0), (2,9,0)])
+  data2 = flex.double([1229,1427,1687,1614,1802,1661])
+  sigmas2 = flex.double([-4.897,-5.665,-6.973,6.764,7.375,6.853])
+  cs2 = crystal.symmetry(
+    space_group_symbol="P 3 2 1",
+    unit_cell=(167.578, 167.578, 93.934, 90.000, 90.000,120.000))
+  ma2 = miller.set(crystal_symmetry=cs2,
+    anomalous_flag=True,
+    indices=mi2).array(data=data2,
+      sigmas=sigmas2).merge_equivalents().array()
+  ma3 = ma2.enforce_positive_sigmas()
+  assert ma3.size() == 1
+  dano = ma2.anomalous_differences()
+  assert dano.size() == 1
+  dano2 = ma2.anomalous_differences(enforce_positive_sigmas=True)
+  assert dano2.size() == 0
+  #
   ms = miller.build_set(xs, anomalous_flag=False, d_min=1)
   assert ms.is_unique_set_under_symmetry()
   assert ms.unique_under_symmetry() is ms

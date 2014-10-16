@@ -2214,6 +2214,12 @@ class array(set):
         result = False
     return result
 
+  def enforce_positive_sigmas (self) :
+    if (self.sigmas() is None) :
+      return self
+    else :
+      return self.select(self.sigmas() > 0)
+
   def enforce_positive_amplitudes(self,i_sig_level=-4.0):
     """
     Takes in an intensity array (including negatives) and spits out amplitudes.
@@ -2768,13 +2774,16 @@ class array(set):
       random_seed=random_seed)
     return self.customized_copy(data = new_data)
 
-  def anomalous_differences(self):
+  def anomalous_differences(self, enforce_positive_sigmas=False):
     """
     Returns an array object with DANO (i.e. F(+) - F(-)) as data, and
     optionally SIGDANO as sigmas.
     """
     assert self.data() is not None
-    asu, matches = self.match_bijvoet_mates()
+    tmp_array = self
+    if (enforce_positive_sigmas) :
+      tmp_array = tmp_array.enforce_positive_sigmas()
+    asu, matches = tmp_array.match_bijvoet_mates()
     i = matches.miller_indices_in_hemisphere("+")
     d = matches.minus(asu.data())
     s = None
