@@ -15,6 +15,11 @@
 #include <stdio.h>
 #include "lib_c.h"
 
+
+#ifdef _WIN32
+#define round(dbl) dbl >= 0.0 ? (int)(dbl + 0.5) : ((dbl - (double)(int)dbl) <= -0.5 ? (int)dbl : (int)(dbl - 0.5))
+#endif
+
 static const char* slatec_error_ptr = NULL;
 static char slatec_error_buf[1024] = {'\0'};
 
