@@ -223,7 +223,8 @@ class any_reflection_file(object):
         force_symmetry=False,
         merge_equivalents=True,
         base_array_info=None,
-        assume_shelx_observation_type_is=None):
+        assume_shelx_observation_type_is=None,
+        enforce_positive_sigmas=False):
     """
     Convert the contents of the reflection file into a list of
     :py:class:`cctbx.miller.array` objects, each of which may contain multiple
@@ -340,6 +341,14 @@ class any_reflection_file(object):
           "  it will be best to recover the original reflection data, such"
           " as SCALEPACK,\n"
           "  SCALA MTZ, XDS, or d*TREK files." % self._file_name)
+    # discard reflections where sigma <= 0
+    # XXX note that this will happen after data merging, so for unmerged data
+    # it is better to specify merge_equivalents=False!
+    if (enforce_positive_sigmas) :
+      result_ = []
+      for array in result :
+        result_.append(array.enforce_positive_sigmas())
+      result = result_
     return result
 
 def collect_arrays(
