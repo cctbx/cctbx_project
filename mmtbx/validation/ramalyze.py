@@ -89,7 +89,7 @@ class ramachandran (residue) :
   # GUI output
   def as_table_row_phenix (self) :
     return [ self.chain_id, "%s %s" % (self.resname, self.resid),
-             sefl.residue_type(), self.score, self.phi, self.psi ]
+             self.residue_type(), self.score, self.phi, self.psi ]
 
 class ramachandran_ensemble (residue) :
   """Container for results for an ensemble of residues"""
