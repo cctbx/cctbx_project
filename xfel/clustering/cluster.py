@@ -637,7 +637,7 @@ class Cluster:
     ax.plot(one_over_d_square[smoothing_width - 1:], smooth,'--r', lw=2)
     plt.xlim([0, max(one_over_d_square)])
     ax.plot([0, -1 * G / minus_2B], [G, 0], 'y-', lw=2)
-    plt.xlabel(r"$(sin(\theta)/\lambda)^2$")
+    plt.xlabel(r"$(sin(\theta)/\lambda)^2 [\AA^{-2}]$")
     plt.ylabel("ln(I)")
     plt.title("Simple Wilson fit\n{}".format(fit_info))
     plt.tight_layout()
