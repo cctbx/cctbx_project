@@ -9,6 +9,7 @@
 #include <scitbx/math/modulo.h>
 #include <scitbx/array_family/sort.h>
 #include <scitbx/random.h>
+#include <scitbx/math/linear_correlation.h>
 
 #include <cctbx/maptbx/eight_point_interpolation.h> //indirect import?
 
@@ -158,6 +159,44 @@ void hoppe_gassman_modification(af::ref<DataType, af::c_grid<3> > map_data,
   }
 }
 
+/*
+Acta Cryst. (2014). D70, 2593-2606
+Metrics for comparison of crystallographic maps
+A. Urzhumtsev, P. V. Afonine, V. Y. Lunin, T. C. Terwilliger and P. D. Adams
+*/
+template <typename DataType>
+DataType cc_peak(
+  af::const_ref<DataType, af::c_grid<3> > const& map_1,
+  af::const_ref<DataType, af::c_grid<3> > const& map_2,
+  DataType const& cutoff)
+{
+  af::c_grid<3> a1 = map_1.accessor();
+  af::c_grid<3> a2 = map_2.accessor();
+  for(int i = 0; i < 3; i++) CCTBX_ASSERT(a1[i]==a2[i]);
+  af::shared<DataType> m1;
+  af::shared<DataType> m2;
+  for(int i = 0; i < a1[0]; i++) {
+    for(int j = 0; j < a1[1]; j++) {
+      for(int k = 0; k < a1[2]; k++) {
+        DataType m1_ = map_1(i,j,k);
+        DataType m2_ = map_2(i,j,k);
+        if(m1_>=cutoff && m2_>=cutoff) {
+          m1.push_back(m1_);
+          m2.push_back(m2_);
+        }
+        else if(m1_<cutoff && m2_>=cutoff) {
+          m1.push_back(cutoff);
+          m2.push_back(m2_);
+        }
+        else if(m1_>=cutoff && m2_<cutoff) {
+          m1.push_back(m1_);
+          m2.push_back(cutoff);
+        }
+  }}}
+  return scitbx::math::linear_correlation<>(
+    m1.ref(), m2.ref()).coefficient();;
+}
+
 template <typename DataType>
 DataType map_sum_at_sites_frac(
   af::const_ref<DataType, af::c_grid<3> > const& map_data,
@@ -212,12 +251,8 @@ af::shared<ComplexType> fem_averaging_loop(
   CCTBX_ASSERT(n_cycles>0);
   CCTBX_ASSERT(r_factors.size()==sigma_over_f_obs.size());
   CCTBX_ASSERT(r_factors.size()==map_coefficients.size());
-  //af::shared<ComplexType> result(r_factors.size(),
-  //  af::init_functor_null<ComplexType>());
   af::shared<ComplexType> result(r_factors.size());
   for(int i = 0; i < result.size(); i++) result[i] = ComplexType(0,0);
-
-
   scitbx::random::mersenne_twister mt(random_seed);
   for(int j = 0; j < n_cycles; j++) {
     for(int i = 0; i < map_coefficients.size(); i++) {
@@ -783,10 +818,28 @@ map_box_average(
 
 template <typename DataType>
 void
+gamma_compression(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  DataType const& gamma)
+{
+  CCTBX_ASSERT(gamma>0 && gamma<1);
+  af::c_grid<3> a = map_data.accessor();
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+         DataType rho = map_data(i,j,k);
+         if(rho<0) map_data(i,j,k) = 0;
+         else map_data(i,j,k) = std::pow(map_data(i,j,k), gamma);
+  }}}
+}
+
+template <typename DataType>
+void
 sharpen(
   af::ref<DataType, af::c_grid<3> > map_data,
   int const& index_span,
-  int const& n_averages)
+  int const& n_averages,
+  bool allow_negatives)
 {
   af::c_grid<3> a = map_data.accessor();
   af::versa<double, af::c_grid<3> > result_map(a,
@@ -806,8 +859,12 @@ sharpen(
   for(int i = 0; i < a[0]; i++) {
     for(int j = 0; j < a[1]; j++) {
       for(int k = 0; k < a[2]; k++) {
-        map_data(i,j,k) = std::max(0., map_data(i,j,k)-result_map_ref(i,j,k));
-        //map_data(i,j,k) = map_data(i,j,k)-result_map_ref(i,j,k);
+        if(allow_negatives) {
+          map_data(i,j,k) = map_data(i,j,k)-result_map_ref(i,j,k);
+        }
+        else {
+          map_data(i,j,k) = std::max(0., map_data(i,j,k)-result_map_ref(i,j,k));
+        }
   }}}
 }
 

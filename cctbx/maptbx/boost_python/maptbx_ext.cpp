@@ -335,10 +335,19 @@ namespace {
       (void(*)
         (af::ref<double, af::c_grid<3> >,
          int const&,
-         int const&)) sharpen, (
+         int const&,
+         bool)) sharpen, (
       arg("map_data"),
       arg("index_span"),
-      arg("n_averages")));
+      arg("n_averages"),
+      arg("allow_negatives")));
+
+    def("gamma_compression",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         double const&)) gamma_compression, (
+      arg("map_data"),
+      arg("gamma")));
 
     def("map_box_average",
       (void(*)
@@ -597,6 +606,15 @@ namespace {
          af::const_ref<scitbx::vec3<double> > const&)) map_sum_at_sites_frac, (
       arg("map_data"),
       arg("sites_frac")));
+
+    def("cc_peak",
+      (double(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+         af::const_ref<double, af::c_grid<3> > const&,
+         double const&)) cc_peak, (
+      arg("map_1"),
+      arg("map_2"),
+      arg("cutoff")));
 
     def("set_box_copy",
       (af::versa<double, af::c_grid<3> >(*)
