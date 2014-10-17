@@ -149,7 +149,7 @@ END
       d.append(random.random() * factor)
     return d
   xrs_out = xrs_in.customized_copy()
-  xrs_out.shake_sites_in_place(0.2, random_double=random_double)
+  xrs_out.shake_sites_in_place(0.3, random_double=random_double)
   xrs_out.shake_adp()
   hierarchy_out = hierarchy_in.deep_copy()
   hierarchy_out.adopt_xray_structure(xrs_out)
@@ -177,7 +177,7 @@ END
     log=null_out())
   # result.show(verbose=True)
   assert (result.best_model_name == "tst_start_model_4.pdb"), result.best_model_name
-  # params.rigid_body_refine = True
+  params.rigid_body_refine = True
   result = select_best_starting_model.select_model(
     model_names=model_names,
     model_data=None,
