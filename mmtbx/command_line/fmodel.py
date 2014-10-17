@@ -139,7 +139,7 @@ add_random_error_to_amplitudes_percent = None
   .type = float
   .short_caption = Add random error (percent)
   .style = noauto
-scattering_table = wk1995  it1992  *n_gaussian  neutron
+scattering_table = wk1995  it1992  *n_gaussian  neutron electron
   .type = choice
   .help = Choices of scattering table for structure factors calculations.  \
     n_gaussian is the standard set of X-ray scattering factors.
