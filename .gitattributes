@@ -1633,6 +1633,7 @@ mmtbx/command_line/interpolate.py -text
 mmtbx/command_line/kinemage.py svneol=native#text/x-python
 mmtbx/command_line/lockit.py svneol=native#text/x-python
 mmtbx/command_line/map_box.py -text
+mmtbx/command_line/map_comparison.py -text
 mmtbx/command_line/map_to_model_histogram.py -text
 mmtbx/command_line/map_to_structure_factors.py -text
 mmtbx/command_line/map_value_at_point.py -text
