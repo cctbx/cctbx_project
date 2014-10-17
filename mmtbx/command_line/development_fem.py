@@ -25,12 +25,18 @@ omit = False
   .help = Use composite OMIT protocol
 sharp=True
   .type=bool
+use_unsharp_masking = True
+  .type = bool
+resolution_factor = 1./3
+  .type = float
 signal_threshold = 0.5
   .type = float
+use_resolve = Auto
+  .type = bool
 ignore_zero_occupancy_atoms = True
   .type=bool
 output {
-  file_name = fem.mtz
+  file_name_prefix = fem
     .type = path
     .style = hidden
   column_root_label = FEM
@@ -78,20 +84,23 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   mask_params = mmtbx.masks.mask_master_params.extract()
   mask_params.ignore_zero_occupancy_atoms = params.ignore_zero_occupancy_atoms
   #
-  pdb_inp = cmdline.pdb_inp
-  asc = cmdline.pdb_hierarchy.atom_selection_cache()
-  sol_sel = asc.selection(string="water")
   fem = mmtbx.maps.fem.run(
-    f_obs             = f_obs,
-    r_free_flags      = r_free_flags,
-    xray_structure    = xray_structure,
-    solvent_selection = sol_sel,
-    log               = log)
+    f_obs               = f_obs,
+    r_free_flags        = r_free_flags,
+    xray_structure      = xray_structure,
+    use_resolve         = params.use_resolve,
+    sharp               = params.sharp,
+    use_unsharp_masking = params.use_unsharp_masking,
+    resolution_factor   = params.resolution_factor,
+    log                 = log)
+  mtz_file_name = "%s.mtz"%params.output.file_name_prefix
+  ccp4_map_file_name = "%s.ccp4"%params.output.file_name_prefix
   fem.write_output_files(
-    file_name  = params.output.file_name,
-    fem_label  = params.output.column_root_label,
-    orig_label = "2mFo-DFc")
-  return os.path.abspath(params.output.file_name)
+    mtz_file_name      = mtz_file_name,
+    ccp4_map_file_name = ccp4_map_file_name,
+    fem_label          = params.output.column_root_label,
+    orig_label         = "2mFo-DFc")
+  return os.path.abspath(mtz_file_name)
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
