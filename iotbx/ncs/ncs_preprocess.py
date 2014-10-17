@@ -437,7 +437,6 @@ class ncs_group_object(object):
         write=self.write_messages,
         log=self.log,
         always_check_atom_order=self.always_check_atom_order)
-
       # process atom selections
       self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
       self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
@@ -462,8 +461,7 @@ class ncs_group_object(object):
         keys: tuple of master chain IDs
         values: NCS_groups_container objects with Attributes:
           iselections (list of lists of flex.size_t):
-            selection array for the
-          complete ASU
+            selection array for the complete ASU
           residue_index_list (list): list of list of matching residues indices
           copies (list of lists):List of lists of the ncs copies chain IDs
           transforms (list of transform objects):
@@ -499,7 +497,6 @@ class ncs_group_object(object):
           m_isel = ncs_gr.iselections[0][j]
           m_ch_id = ncs_gr.copies[0][j]
           m_select_str = selection_string_from_selection(ph,m_isel)
-          c_ch_id = ncs_gr.copies[i][j]
           c_isel = ncs_gr.iselections[i][j]
           c_select_str = selection_string_from_selection(ph,c_isel)
           transform_id.add(tr_id)
@@ -1061,6 +1058,7 @@ class ncs_group_object(object):
         for rs in chain.residue_groups():
           resid = rs.resid().strip()
           j = rs.resseq_as_int()
+          # check if we have insertions
           if str(j) == resid:
             if res_id:
               # step larger than one residue -> close segment
@@ -1241,6 +1239,9 @@ class ncs_group_object(object):
     Note that while ncs_groups can master ncs can be comprised from several
     chains, the spec groups can not. So groups with multiple chains in the
     master selection are splitted
+
+    Note that spec format does not support insertions notation
+    for example "resseq 49" will include "resid 49" and "resid 49A"
 
     Args:
       file_name: (str) output file name
@@ -1430,7 +1431,6 @@ def format_80(s):
       ss += ' \ \n'
   return ss
 
-
 def selection_string_from_selection(pdb_hierarchy_inp,selection):
   """
   Convert a selection array to a selection string
@@ -1443,35 +1443,42 @@ def selection_string_from_selection(pdb_hierarchy_inp,selection):
     sel_str (str): atom selection string
   """
   # create a hierarchy from the selection
-  if hasattr(pdb_hierarchy_inp,"select"):
-    # pdb_hierarchy_inp is a hierarchy
-    ph = pdb_hierarchy_inp.select(selection)
-    atom_cahce = pdb_hierarchy_inp.atom_selection_cache().selection
-  else:
-    ph = pdb_hierarchy_inp.hierarchy.select(selection)
-    atom_cahce = pdb_hierarchy_inp.hierarchy.atom_selection_cache().selection
+  if hasattr(pdb_hierarchy_inp,"hierarchy"):
+    pdb_hierarchy_inp = pdb_hierarchy_inp.hierarchy
+  # pdb_hierarchy_inp is a hierarchy
   if isinstance(selection,flex.bool): selection = selection.iselection()
   selection_set = set(selection)
-  chains = ph.models()[0].chains()
   sel_list = []
-  for ch in chains:
-    ch_sel = 'chain ' + ch.id
-    a_sel = set(atom_cahce(ch_sel).iselection().as_int())
-    complete_ch_not_present = (a_sel.intersection(selection_set) != a_sel)
+  chains_info = ncs_search.get_chains_info(pdb_hierarchy_inp)
+  chain_ids = sorted(chains_info)
+  for ch_id in chain_ids:
+    ch_sel = 'chain ' + ch_id
+    a_sel = {x for xi in chains_info[ch_id].atom_selection for x in xi}
+    test_set = a_sel.intersection(selection_set)
+    if not test_set: continue
+    complete_ch_not_present = (test_set != a_sel)
     res_sel = []
     first_n = None
     pre_res_n = -10000
     if complete_ch_not_present:
-      for res in ch.residues():
-        # collect continuous ranges of residues when possible
-        res_id = res.resid()
+      # collect continuous ranges of residues when possible
+      res_len = len(chains_info[ch_id].resid)
+      for i in xrange(res_len):
         # test that all atoms in residue are included in selection
-        test_sel_str = ch_sel + ' and resid ' + res_id
-        a_sel = set(atom_cahce(test_sel_str).iselection().as_int())
-        all_atoms_present = (a_sel.intersection(selection_set) == a_sel)
+        a_sel = set(chains_info[ch_id].atom_selection[i])
+        test_set = a_sel.intersection(selection_set)
+        if not test_set: continue
+        all_atoms_present = (test_set == a_sel)
+        res_id = chains_info[ch_id].resid[i]
+        # ensure that insertion are not included if shouldn't
+        next_res_id = '0'
+        if i < (res_len - 1):
+          next_res_id = chains_info[ch_id].resid[i+1]
         try:
           # check that res_id is a number and not insertion residue
           res_num = int(res_id)
+          # do not include residue in resseq if the next residue is insertion
+          next_res = int(next_res_id)
         except ValueError:
           # res_id is an insertion type residue
           res_num = -10000
@@ -1497,7 +1504,10 @@ def selection_string_from_selection(pdb_hierarchy_inp,selection):
           # not all residue's atoms are in selection
           res_sel,first_n,pre_res_n = update_res_sel(res_sel,first_n,pre_res_n)
           s = '(resid ' + res_id + ' and (name '
-          atom_name = [x for x in res.atoms().extract_name()]
+          # get present atoms
+          atom_name = chains_info[ch_id].atom_names[i]
+          dx = min(test_set)
+          atom_name = [atom_name[x-dx] for x in test_set]
           atom_str = ' or name '.join(atom_name)
           res_sel.append(s + atom_str + '))')
       res_sel,first_n,pre_res_n = update_res_sel(res_sel,first_n,pre_res_n)
@@ -1790,7 +1800,7 @@ def get_rot_trans(ph=None,
       # similarity between chains is small, do not consider as same chains
       return r_zero,t_zero,0,''
     #
-    sel_m, sel_c,res_sel_m,res_sel_c,msg1 = ncs_search.get_matching_atoms(
+    sel_m, sel_c,res_sel_m,res_sel_c,msg1 = get_matching_atoms(
       ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c,
       master_selection,copy_selection)
     msg += msg1
@@ -1923,7 +1933,73 @@ def update_ncs_group_map(
   return ncs_group_map
 
 def sort_dict_keys(dict):
+  """ sort dictionary by values """
   return sorted(dict,key=lambda k:dict[k])
+
+def get_matching_atoms(ph,res_num_a,res_num_b,res_ids_a,res_ids_b,
+                       master_selection,copy_selection):
+  """
+  Get selection of matching chains, match residues atoms
+  We keep only residues with continuous matching atoms
+
+  Args:
+    ph (hierarchy): all chains
+    res_num_a/b (list of int): indices of matching residues position
+    res_ids_a/b (list if str): residues IDs
+    master/copy_selection (str): master and copy selection strings
+
+  Returns:
+    sel_a, sel_b (flex.bool): matching atoms selection
+    res_num_a/b (list of int): updated res_num_a/b
+    msg (str): message regarding matching residues with different atom number
+  """
+  atom_cache = ph.atom_selection_cache().selection
+  l = ph.atoms().size()
+  sel_a = flex.bool([False,] * l)
+  sel_b = flex.bool([False,] * l)
+  #
+  res_num_a_updated = []
+  res_num_b_updated = []
+  residues_with_different_n_atoms = []
+  for i in xrange(len(res_num_a)):
+    na = res_num_a[i]
+    nb = res_num_b[i]
+    resid_a = res_ids_a[na]
+    resid_b = res_ids_b[nb]
+    sa = atom_cache('({}) and resid {}'.format(master_selection,resid_a))
+    sb = atom_cache('({}) and resid {}'.format(copy_selection,resid_b))
+    sa = sa.iselection()
+    sb = sb.iselection()
+    res_a = ph.select(sa)
+    res_b = ph.select(sb)
+    if sa.size() != sb.size():
+      # collect residue IDs of matching residues with different number of atoms
+      residues_with_different_n_atoms.append(resid_a)
+    # select only atoms that exist in both residues
+    atoms_names_a = list(res_a.atoms().extract_name())
+    atoms_names_b = list(res_b.atoms().extract_name())
+    atoms_a,atoms_b,similarity = ncs_search.res_alignment(
+      seq_a=atoms_names_a, seq_b=atoms_names_b,
+      min_contig_length=100)
+    # get the number of the atom in the chain
+    sa = flex.size_t(atoms_a) + min(sa)
+    sb = flex.size_t(atoms_b) + min(sb)
+    # keep only residues with continuous matching atoms
+    if sa.size() != 0:
+      res_num_a_updated.append(na)
+      res_num_b_updated.append(nb)
+    sa = flex.bool(l,sa)
+    sb = flex.bool(l,sb)
+    sel_a = sel_a | sa
+    sel_b = sel_b | sb
+  if residues_with_different_n_atoms:
+    problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
+    msg = "NCS related residues with different number of atoms, selection"
+    msg += master_selection + ':' + copy_selection + '\n['
+    msg += ','.join(problem_res_nums) + ']\n'
+  else:
+    msg = ''
+  return sel_a,sel_b,res_num_a_updated,res_num_b_updated,msg
 
 def resseq_string(first_res_num,previous_res_num):
   if previous_res_num > first_res_num:

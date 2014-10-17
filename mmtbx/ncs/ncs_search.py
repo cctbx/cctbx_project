@@ -54,9 +54,7 @@ class Transform(object):
 
 class Score_record(object):
 
-  def __init__(self,
-               min_contig_length=10,score=0,
-               gap_penalty=1,origin=(0,0)):
+  def __init__(self,score=0,gap_penalty=1,origin=(0,0)):
     """
     score object used when aligning sequences
 
@@ -64,7 +62,6 @@ class Score_record(object):
       score (int)
       consecutive_matches (int): num of consecutive matches in current segment
       match_count (int): number of matching residues
-      min_contig_length (int): segments < min_contig_length rejected
       gap_penalty (int): penalty for gaps
       origin (tuple): (row,col) of the matrix cell we from the previous
         alignment step. Used to trace back optimal alignment
@@ -72,19 +69,18 @@ class Score_record(object):
     self.score = score
     self.consecutive_matches = 0
     self.match_count = 0
-    self.min_contig_length = min_contig_length
     self.gap_penalty = gap_penalty
     self.origin = origin
 
-  def reset_match_counting(self,seq_length):
+  def reset_match_counting(self,min_matches):
     """
     Args:
+      min_matches (int): min(min_contig_length, seq_length)
       seq_length (int): length of shortest of the compared lists
 
     When there is a gap in the matching, reset the consecutive_matches and
     adjust the score if consecutive_matches < min_contig_length
     """
-    min_matches = min(self.min_contig_length,seq_length)
     if self.consecutive_matches < min_matches:
       self.score -= self.consecutive_matches * self.gap_penalty
       self.match_count -= self.consecutive_matches
@@ -661,7 +657,7 @@ def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
       return k, is_transpose
   return tr_num, is_transpose
 
-def search_ncs_relations(ph,
+def search_ncs_relations_old(ph,
                          min_contig_length=10,
                          min_fraction_domain=0.2,
                          write=False,
@@ -745,6 +741,82 @@ def search_ncs_relations(ph,
     raise Sorry('NCS copies are not identical')
   return chain_match_list
 
+def search_ncs_relations(ph,
+                         min_contig_length=10,
+                         min_fraction_domain=0.2,
+                         write=False,
+                         log=sys.stdout,
+                         always_check_atom_order=False):
+  """
+  Search for NCS relations between chains or parts of chains, in a protein
+  hierarchy
+
+  Args:
+    ph (object): hierarchy
+    min_contig_length (int): segments < min_contig_length rejected
+    min_fraction_domain (float): Threshold for similarity between chains.
+      similarity define as:
+      (number of matching res) / (number of res in longer chain)
+    write (bool): when true, write ncs search messages to log
+    always_check_atom_order (bool): make sure atoms in matching residues
+        are in the same order
+
+  Returns:
+    msg (str): message regarding matching residues with different atom number
+    chain_match_list (list): list of
+      [chain_ID_1,chain_ID_2,sel_1,sel_2,res_sel_m, res_sel_c,similarity]
+      chain_ID (str), sel_1 (flex.bool), sel_1 (flex.bool),
+      res_sel_m/c (lists): indices of the aligned components
+      similarity (float): similarity between chains
+    We use selection_1 and selection_2 because in some PDB records a residue
+    might contain side chain in one chain but not in another
+  """
+  chains_info = get_chains_info(ph)
+  # collect all chain IDs
+  chain_match_list = []
+  msg = ''
+  sorted_ch = sorted(chains_info)
+  n_chains = len(chains_info)
+  # loop over all chains
+  for i in xrange(n_chains-1):
+    m_ch_id = sorted_ch[i]
+    master_n_atoms = chains_info[m_ch_id].chains_atom_number
+    seq_m = chains_info[m_ch_id].res_names
+    if master_n_atoms == 0: continue
+    # get residue lists for master
+    for j in xrange(i+1,n_chains):
+      c_ch_id = sorted_ch[j]
+      copy_n_atoms = chains_info[c_ch_id].chains_atom_number
+      frac_d = min(copy_n_atoms,master_n_atoms)/max(copy_n_atoms,master_n_atoms)
+      if frac_d < min_fraction_domain:
+        if (min_fraction_domain == 1):
+          msg = 'NCS copies are not identical'
+          break
+        else:
+          continue
+      seq_c = chains_info[c_ch_id].res_names
+      # get residue lists for copy
+      res_sel_m, res_sel_c, similarity = res_alignment(
+        seq_a=seq_m,seq_b=seq_c,
+        min_contig_length=min_contig_length,
+        min_fraction_domain=min_fraction_domain)
+      sel_m, sel_c,res_sel_m,res_sel_c,msg = get_matching_atoms(
+        chains_info,m_ch_id,c_ch_id,res_sel_m,res_sel_c,
+        always_check_atom_order=always_check_atom_order)
+      if res_sel_m:
+        # add only non empty matches
+        sel_m = sel_m.iselection()
+        sel_c = sel_c.iselection()
+        rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,
+               similarity]
+        chain_match_list.append(rec)
+  if write and msg:
+    print >> log,msg
+  if (min_fraction_domain == 1) and msg:
+    # must be identical
+    raise Sorry('NCS copies are not identical')
+  return chain_match_list
+
 def res_alignment(seq_a, seq_b,
                   min_contig_length=10,
                   min_fraction_domain=0.2):
@@ -770,15 +842,18 @@ def res_alignment(seq_a, seq_b,
     aligned_sel_b (list): the indices of the aligned components of seq_b
     similarity (float): actual similarity between hierarchies
   """
+  # Todo: check condition for halting search
   a = len(seq_a)
   b = len(seq_b)
   if (a == 0) or (b == 0): return [],[],0
+  min_ab = min(a,b)
+  min_matches = min(min_contig_length,min_ab)
   gap_penalty = 1
   misalign_penalty = 2 * (a + b)
   # limit the number of mis-alignments
   max_mis_align = int((1 - min_fraction_domain) * (a + b))
   # Starting score according to the required similarity
-  score = max_mis_align
+  score = max_mis_align + 1
   # build score matrix
   R = initialize_score_matrix(
     row=a,col=b,max_score=score,
@@ -791,22 +866,24 @@ def res_alignment(seq_a, seq_b,
       s1 = R[i-1,j-1].score - misalign_penalty * not_aligned
       s2 = R[i-1,j].score - gap_penalty
       s3 = R[i,j-1].score - gap_penalty
-      s = max(s1,s2,s3)
-      R[i,j] = Score_record(min_contig_length=min_contig_length,score=s)
-      if s1 == s:
-        R[i,j].consecutive_matches = R[i-1,j-1].consecutive_matches + 1
-        R[i,j].origin = (i-1,j-1)
-        R[i,j].match_count = R[i-1,j-1].match_count + 1
+      c = 0
+      if (s1 >= s2) and (s1 >= s3):
+        s = s1
+        c = 1
+        i_temp,j_temp = i-1,j-1
+      elif (s2 >= s1) and (s2 >= s3):
+        i_temp,j_temp = i-1,j
+        s = s2
       else:
-        if s2 == s:
-          (i_temp,j_temp) = (i-1,j)
-        else:
-          (i_temp,j_temp) = (i,j-1)
-        R[i,j].origin = (i_temp,j_temp)
-        R[i,j].match_count = R[(i_temp,j_temp)].match_count
-        R[i,j].consecutive_matches = R[(i_temp,j_temp)].consecutive_matches
-        R[i,j].reset_match_counting(min(a,b))
-  R[i,j].reset_match_counting(min(a,b))
+        i_temp,j_temp = i,j-1
+        s = s3
+      R[i,j] = Score_record(score=s)
+      R[i,j].origin = (i_temp,j_temp)
+      R[i,j].match_count = R[(i_temp,j_temp)].match_count + c
+      R[i,j].consecutive_matches = R[(i_temp,j_temp)].consecutive_matches + c
+      if c == 0:
+        R[i,j].reset_match_counting(min_matches)
+  R[i,j].reset_match_counting(min_matches)
   #
   aligned_sel_a, aligned_sel_b, similarity = get_matching_res_indices(
     R=R,row=a,col=b,min_fraction_domain=min_fraction_domain)
@@ -861,19 +938,22 @@ def get_matching_res_indices(R,row,col,min_fraction_domain):
   assert len(sel_a) == len(sel_b)
   return sel_a, sel_b, similarity
 
-
-def get_matching_atoms(ph,res_num_a,res_num_b,res_ids_a,res_ids_b,
-                       master_selection,copy_selection,
-                       always_check_atom_order=False):
+def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
+                        always_check_atom_order=False):
   """
   Get selection of matching chains, match residues atoms
   We keep only residues with continuous matching atoms
 
   Args:
-    ph (hierarchy): all chains
+    chains_info (object): object containing
+      chains (str): chain IDs or selections string
+      res_name (list of str): list of residues names
+      resid (list of str): list of residues sequence number, resid
+      atom_names (list of list of str): list of atoms in residues
+      atom_selection (list of list of list of int): the location of atoms in ph
+      chains_atom_number (list of int): list of number of atoms in each chain
+    a_id,b_id (str): Chain IDs
     res_num_a/b (list of int): indices of matching residues position
-    res_ids_a/b (list if str): residues IDs
-    master/copy_selection (str): master and copy selection strings
     always_check_atom_order (bool): make sure atoms in matching residues
         are in the same order
 
@@ -882,50 +962,45 @@ def get_matching_atoms(ph,res_num_a,res_num_b,res_ids_a,res_ids_b,
     res_num_a/b (list of int): updated res_num_a/b
     msg (str): message regarding matching residues with different atom number
   """
-  atom_cache = ph.atom_selection_cache().selection
-  l = ph.atoms().size()
+  l = 0
+  for v in chains_info.itervalues(): l += v.chains_atom_number
+  #
   sel_a = flex.bool([False,] * l)
   sel_b = flex.bool([False,] * l)
   #
   res_num_a_updated = []
   res_num_b_updated = []
   residues_with_different_n_atoms = []
-  for i in xrange(len(res_num_a)):
-    na = res_num_a[i]
-    nb = res_num_b[i]
-    resid_a = res_ids_a[na]
-    resid_b = res_ids_b[nb]
-    sa = atom_cache('({}) and resid {}'.format(master_selection,resid_a))
-    sb = atom_cache('({}) and resid {}'.format(copy_selection,resid_b))
-    sa = sa.iselection()
-    sb = sb.iselection()
-    if always_check_atom_order or (sa.size() != sb.size()):
-      res_a = ph.select(sa)
-      res_b = ph.select(sb)
-      if sa.size() != sb.size():
+  for (i,j) in zip(res_num_a,res_num_b):
+    sa = chains_info[a_id].atom_selection[i]
+    sb = chains_info[b_id].atom_selection[j]
+    dif_res_size = (len(sa) != len(sb))
+    if always_check_atom_order or dif_res_size:
+      atoms_names_a = chains_info[a_id].atom_names[i]
+      atoms_names_b = chains_info[b_id].atom_names[j]
+      if dif_res_size:
         # collect residue IDs of matching residues with different number of atoms
+        resid_a = chains_info[a_id].resid[i]
         residues_with_different_n_atoms.append(resid_a)
       # select only atoms that exist in both residues
-      atoms_names_a = list(res_a.atoms().extract_name())
-      atoms_names_b = list(res_b.atoms().extract_name())
       atoms_a,atoms_b,similarity = res_alignment(
         seq_a=atoms_names_a, seq_b=atoms_names_b,
         min_contig_length=100)
       # get the number of the atom in the chain
-      sa = flex.size_t(atoms_a) + min(sa)
-      sb = flex.size_t(atoms_b) + min(sb)
+      sa = flex.size_t(atoms_a) + sa[0]
+      sb = flex.size_t(atoms_b) + sb[0]
     # keep only residues with continuous matching atoms
-    if sa.size() != 0:
-      res_num_a_updated.append(na)
-      res_num_b_updated.append(nb)
-    sa = flex.bool(l,sa)
-    sb = flex.bool(l,sb)
+    if len(sa) != 0:
+      res_num_a_updated.append(i)
+      res_num_b_updated.append(j)
+    sa = flex.bool(l,flex.size_t(sa))
+    sb = flex.bool(l,flex.size_t(sb))
     sel_a = sel_a | sa
     sel_b = sel_b | sb
   if residues_with_different_n_atoms:
     problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
     msg = "NCS related residues with different number of atoms, selection"
-    msg += master_selection + ':' + copy_selection + '\n['
+    msg += a_id + ':' + b_id + '\n['
     msg += ','.join(problem_res_nums) + ']\n'
   else:
     msg = ''
@@ -957,6 +1032,78 @@ def get_residue_sequence(chain_ph):
   chain_id = atoms[0].chain().id
   return chain_id, res_list_new,resid_list_new
 
+def get_chains_info(ph,selection_list=None):
+  """
+  Collect information about chains or segments of the hierarchy according to
+  selection strings
+  Exclude water atoms
+
+  Args:
+    ph : protein hierarchy
+    selection_list (list of str): specific selection of hierarchy segments
+
+
+  Returns:
+    chains_info : object containing
+      chains (str): chain IDs or selections string
+      res_name (list of str): list of residues names
+      resid (list of str): list of residues sequence number, resid
+      atom_names (list of list of str): list of atoms in residues
+      atom_selection (list of list of list of int): the location of atoms in ph
+      chains_atom_number (list of int): list of number of atoms in each chain
+  """
+  atom_cache = ph.atom_selection_cache().selection
+  use_chains = not bool(selection_list)
+  #
+  chains_info =  {}
+  if use_chains:
+    # build chains_info from hierarchy
+    model  = ph.models()[0]
+    for ch in model.chains():
+      if not chains_info.has_key(ch.id):
+        chains_info[ch.id] = Chains_info()
+      chains_info[ch.id].chains_atom_number += ch.atoms().size()
+      resids = chains_info[ch.id].resid
+      res_names = chains_info[ch.id].res_names
+      atom_names = chains_info[ch.id].atom_names
+      atom_selection = chains_info[ch.id].atom_selection
+      for res in ch.residue_groups():
+        for atoms in res.atom_groups():
+          x = atoms.resname
+          if x.lower() != 'hoh':
+            resids.append(res.resid())
+            res_names.append(x)
+            atom_names.append(list(atoms.atoms().extract_name()))
+            atom_selection.append(list(atoms.atoms().extract_i_seq()))
+      chains_info[ch.id].resid = resids
+      chains_info[ch.id].res_names = res_names
+      chains_info[ch.id].atom_names = atom_names
+      chains_info[ch.id].atom_selection = atom_selection
+  else:
+    # fixme: finish this part
+    # build chains_info from selection
+    chain_ids = sorted(selection_list)
+    atom_i = 0
+    for sel_str in chain_ids:
+      chains_info.chains.append(sel_str)
+      sel_ph = ph.select(atom_cache(sel_str))
+
+  # sorted_key = sorted(chains_info)
+  # chains_info_list = []
+  # for key in sorted_key:
+  #
+
+  return chains_info
+
+class Chains_info(object):
+  """ Container for hierarchy analysis """
+  def __init__(self):
+    self.res_names = []
+    self.resid = []
+    self.atom_names = []
+    self.atom_selection = []
+    self.chains_atom_number = 0
+
 def initialize_score_matrix(row, col,
                        max_score=1000,
                        gap_penalty=1,
@@ -982,12 +1129,10 @@ def initialize_score_matrix(row, col,
   # populate zero cases
   for i in xrange(row + 1):
     score = max_score - (i * gap_penalty)
-    R[i,0] = Score_record(
-      min_contig_length=min_contig_length,score=score,origin=(i-1,0))
+    R[i,0] = Score_record(score=score,origin=(i-1,0))
   for i in xrange(col + 1):
     score = max_score - (i * gap_penalty)
-    R[0,i] = Score_record(
-      min_contig_length=min_contig_length,score=score,origin=(0,i-1))
+    R[0,i] = Score_record(score=score,origin=(0,i-1))
   return R
 
 def inverse_transform(r,t):
