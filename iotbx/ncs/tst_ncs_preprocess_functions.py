@@ -68,7 +68,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
           26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42]
     isel1 = flex.size_t(l1)
     isel2 = flex.size_t(l2)
-
+    #
     sel_str1 = selection_string_from_selection(pdb_inp,isel1)
     sel_str2 = selection_string_from_selection(pdb_inp,isel2)
 
@@ -84,6 +84,30 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     #
     self.assertEqual(sel1,list(isel1))
     self.assertEqual(sel2,list(isel2))
+
+  def test_avoid_chain_selection(self):
+    print sys._getframe().f_code.co_name
+    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_2)
+    l1 = [0,1,2,3,4,5,6,7,8]
+    isel1 = flex.size_t(l1)
+    sel_str1 = selection_string_from_selection(pdb_inp,isel1)
+    s = '(chain A and resseq 151)'
+    self.assertEqual(sel_str1,s)
+
+  def test_avoid_chain_selection(self):
+    print sys._getframe().f_code.co_name
+    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_3)
+    l1 = range(6,46)
+    isel1 = flex.size_t(l1)
+    sel_str1 = selection_string_from_selection(pdb_inp,isel1)
+    s = '(chain H and (resseq 48 or resid 49 or resid 49A or resseq 50:52))'
+    self.assertEqual(sel_str1,s)
+    #
+    l1 = range(6,25) + range(29,46)
+    isel1 = flex.size_t(l1)
+    s = '(chain H and (resseq 48 or resid 49 or resseq 50:52))'
+    sel_str1 = selection_string_from_selection(pdb_inp,isel1)
+    self.assertEqual(sel_str1,s)
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
@@ -165,6 +189,61 @@ ATOM     43  CZ  TYR B 155      16.051   6.654 -38.804  1.00 41.97           C
 END
 '''
 
+test_pdb_3 = '''\
+CRYST1  203.106   83.279  178.234  90.00 106.67  90.00 C 1 2 1      12
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.004924  0.000000  0.001474        0.00000
+SCALE2      0.000000  0.012008  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.005857        0.00000
+ATOM    313  N   CYS H  47      85.603 -27.032   6.791  1.00 42.51           N
+ATOM    314  CA  CYS H  47      84.850 -28.275   6.785  1.00 44.04           C
+ATOM    315  C   CYS H  47      83.442 -28.089   6.261  1.00 42.34           C
+ATOM    316  O   CYS H  47      83.056 -26.989   5.881  1.00 42.28           O
+ATOM    317  CB  CYS H  47      84.827 -28.861   8.204  1.00 47.91           C
+ATOM    318  SG  CYS H  47      86.496 -29.154   8.879  1.00 51.94           S
+ATOM    319  N   ARG H  48      82.680 -29.174   6.224  1.00 40.63           N
+ATOM    320  CA  ARG H  48      81.318 -29.102   5.747  1.00 40.99           C
+ATOM    321  C   ARG H  48      80.335 -28.971   6.890  1.00 41.07           C
+ATOM    322  O   ARG H  48      80.596 -29.428   7.997  1.00 40.42           O
+ATOM    323  CB  ARG H  48      80.994 -30.328   4.884  1.00 42.65           C
+ATOM    324  CG  ARG H  48      81.469 -31.626   5.452  1.00 44.32           C
+ATOM    325  CD  ARG H  48      81.043 -32.849   4.627  1.00 44.70           C
+ATOM    326  NE  ARG H  48      81.529 -34.052   5.294  1.00 44.81           N
+ATOM    327  CZ  ARG H  48      82.738 -34.580   5.140  1.00 45.11           C
+ATOM    328  NH1 ARG H  48      83.614 -34.042   4.313  1.00 43.19           N
+ATOM    329  NH2 ARG H  48      83.095 -35.620   5.877  1.00 47.83           N
+ATOM    330  N   LEU H  49      79.221 -28.306   6.614  1.00 41.54           N
+ATOM    331  CA  LEU H  49      78.167 -28.103   7.596  1.00 42.36           C
+ATOM    332  C   LEU H  49      76.946 -28.837   7.064  1.00 41.91           C
+ATOM    333  O   LEU H  49      76.756 -28.928   5.852  1.00 43.00           O
+ATOM    334  CB  LEU H  49      77.839 -26.618   7.736  1.00 43.11           C
+ATOM    335  CG  LEU H  49      78.845 -25.691   8.414  1.00 45.90           C
+ATOM    336  CD1 LEU H  49      78.506 -24.251   8.063  1.00 46.63           C
+ATOM    337  CD2 LEU H  49      78.809 -25.892   9.919  1.00 47.40           C
+ATOM    338  N   GLY H  49A     76.120 -29.358   7.965  1.00 40.67           N
+ATOM    339  CA  GLY H  49A     74.938 -30.081   7.530  1.00 39.48           C
+ATOM    340  C   GLY H  49A     75.302 -31.190   6.558  1.00 39.18           C
+ATOM    341  O   GLY H  49A     74.504 -31.580   5.700  1.00 38.72           O
+ATOM    342  N   GLY H  50      76.527 -31.692   6.695  1.00 39.31           N
+ATOM    343  CA  GLY H  50      77.002 -32.764   5.839  1.00 38.66           C
+ATOM    344  C   GLY H  50      77.149 -32.388   4.377  1.00 38.02           C
+ATOM    345  O   GLY H  50      77.152 -33.261   3.507  1.00 38.89           O
+ATOM    346  N   ILE H  51      77.278 -31.095   4.097  1.00 36.09           N
+ATOM    347  CA  ILE H  51      77.421 -30.635   2.725  1.00 33.47           C
+ATOM    348  C   ILE H  51      78.689 -29.823   2.570  1.00 32.56           C
+ATOM    349  O   ILE H  51      78.976 -28.949   3.378  1.00 31.71           O
+ATOM    350  CB  ILE H  51      76.229 -29.776   2.323  1.00 32.60           C
+ATOM    351  CG1 ILE H  51      74.948 -30.588   2.503  1.00 33.26           C
+ATOM    352  CG2 ILE H  51      76.385 -29.303   0.880  1.00 31.47           C
+ATOM    353  CD1 ILE H  51      73.684 -29.786   2.351  1.00 33.83           C
+ATOM    354  N   ALA H  52      79.443 -30.112   1.520  1.00 31.45           N
+ATOM    355  CA  ALA H  52      80.688 -29.412   1.265  1.00 31.24           C
+ATOM    356  C   ALA H  52      80.477 -27.950   0.892  1.00 32.00           C
+ATOM    357  O   ALA H  52      79.410 -27.556   0.406  1.00 32.53           O
+ATOM    358  CB  ALA H  52      81.455 -30.109   0.148  1.00 27.90           C
+'''
 
 def run_selected_tests():
   """  Run selected tests
@@ -173,7 +252,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_processing_of_asu_2']
+  tests = ['test_temp']
   suite = unittest.TestSuite(map(TestNcsPreprocessingFunctions,tests))
   return suite
 
