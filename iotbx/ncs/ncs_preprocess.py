@@ -1076,7 +1076,7 @@ class ncs_group_object(object):
             msg = "Sequence may contain insertions and can't be "
             msg += "represented using only residue ID. \n"
             self.messages += msg
-        if (res_id[1] == j):
+        if res_id and (res_id[1] == j):
           # close the last segment
           range_list.append(res_id)
       range_list.sort()
