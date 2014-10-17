@@ -69,6 +69,7 @@ def get_cc(mc1, mc2, xrs):
 def run(args):
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   ph = pdb_inp.construct_hierarchy()
+  ph.write_pdb_file(file_name="m.pdb")
   xrs = pdb_inp.xray_structure_simple()
   sel = ph.atom_selection_cache().selection("resseq 1")
   xrs1 = xrs.select( sel)
@@ -87,13 +88,14 @@ def run(args):
   mtz_dataset = F.as_mtz_dataset(column_root_label="f")
   mtz_dataset.add_miller_array(miller_array=FB, column_root_label="FB")
   mtz_dataset.add_miller_array(miller_array=FC, column_root_label="FC")
+  mtz_dataset.add_miller_array(miller_array=abs(FB), column_root_label="FOBS")
   #
   fmodel = mmtbx.f_model.manager(f_obs = abs(FB), xray_structure = xrs)
   # mc is model biased: one should not see any density for resseq 2
   mc = fmodel.electron_density_map().map_coefficients(
-      map_type     = "Fo",
-      isotropize   = False,
-      fill_missing = False)
+    map_type     = "Fo",
+    isotropize   = False,
+    fill_missing = False)
   #
   print get_cc(mc1=mc, mc2=F,  xrs=xrs1), get_cc(mc1=mc, mc2=F,  xrs=xrs2)
   print get_cc(mc1=mc, mc2=FB, xrs=xrs1), get_cc(mc1=mc, mc2=FB, xrs=xrs2)
@@ -104,18 +106,14 @@ def run(args):
     d_min             = fmodel.f_obs().d_min(),
     symmetry_flags    = maptbx.use_space_group_symmetry,
     resolution_factor = 0.25)
-  for i in [2]:
-    if(i==0): i = 1
-    oo = mmtbx.maps.composite_omit_map.run(
-      map_type             ="Fo",
-      crystal_gridding     = crystal_gridding,
-      full_resolution_map  = False,
-      fmodel               = fmodel.deep_copy(),
-      n_debias_cycles      = i,
-      box_size_as_fraction = 0.01)
-    mco = oo.map_coefficients
-    print i, get_cc(mc1=mco, mc2=F, xrs=xrs1),\
-             get_cc(mc1=mco, mc2=F, xrs=xrs2)
+  #
+  oo = mmtbx.maps.composite_omit_map.run(
+    crystal_gridding     = crystal_gridding,
+    full_resolution_map  = False,
+    fmodel               = fmodel.deep_copy(),
+    box_size_as_fraction = 0.2)
+  mco = oo.map_coefficients(filter_noise=False)
+  print get_cc(mc1=mco, mc2=F, xrs=xrs1), get_cc(mc1=mco, mc2=F, xrs=xrs2)
   #
   mtz_dataset.add_miller_array(miller_array=mco, column_root_label="O")
   mtz_dataset.add_miller_array(miller_array=mc, column_root_label="mc")
