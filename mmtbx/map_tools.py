@@ -421,8 +421,6 @@ class model_missing_reflections(object):
       xray_structure = self.xray_structure_cut,
       force_update   = True)
     self.zero_data = flex.complex_double(self.f_calc_missing.data().size(), 0)
-    import mmtbx.maps.kick as kick_module
-    self.kick = kick_module
 
   def get_missing_fast(self):
     k_sol = random.choice([i/100. for i in range(20,41)])
@@ -714,8 +712,7 @@ class ncs_averager (object) :
         mask.set_selected(indices, 1)
         mask.reshape(real_map.accessor())
       else :
-        mask_map_coeffs = fmodel.electron_density_map(
-          update_f_part1=True).map_coefficients(
+        mask_map_coeffs = fmodel.electron_density_map().map_coefficients(
             map_type="2mFo-DFc")
         mask_fft_map = mask_map_coeffs.fft_map(
           symmetry_flags=maptbx.use_space_group_symmetry,
