@@ -1279,9 +1279,58 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
   #for i in xrange(Rs[0].size()):
   #  print " ".join(["%10.7f"%r[i] for r in Rs])
 
+def exercise_cc_peak():
+  def get_map():
+    av = [random.random() for i in xrange(10*20*30)]
+    m = flex.double(av)
+    m = m-flex.min(m)
+    m = m/flex.max(m)
+    m.resize(flex.grid((10,20,30)))
+    return m
+  m1 = get_map()
+  m2 = get_map()
+  for t in range(0,11):
+    t=t/10.
+    ccp=maptbx.cc_peak(map_1=m1, map_2=m2, cutoff=t)
+  #
+  sites_frac = flex.vec3_double([
+    (0.50,0.50,0.50)])
+  from cctbx import xray
+  xray_structure = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(5,5,5,90,90,90),
+      space_group_symbol="P1"),
+    scatterers=flex.xray_scatterer([
+      xray.scatterer(label=str(i), scattering_type="C", site=site_frac)
+        for i,site_frac in enumerate(sites_frac)]))
+  fc1 = xray_structure.structure_factors(d_min=1.6).f_calc()
+  fc2 = xray_structure.structure_factors(d_min=1.7).f_calc()
+  for t in range(0,11):
+    t=t/10.
+    ccp=maptbx.cc_peak(map_coeffs_1=fc1, map_coeffs_2=fc2, cutoff=t)
+  #
+  fc1 = xray_structure.structure_factors(d_min=2.2).f_calc()
+  fc2 = xray_structure.structure_factors(d_min=2.2).f_calc()
+  for t in range(0,10):
+    t=t/10.
+    ccp=maptbx.cc_peak(map_coeffs_1=fc1, map_coeffs_2=fc2, cutoff=t)
+    assert approx_equal(ccp, 1)
+
+def exercise_gamma_compression():
+  def get_map():
+    av = [random.random() for i in xrange(10*20*30)]
+    m = flex.double(av)
+    m = (m-flex.min(m))*10
+    m.resize(flex.grid((10,20,30)))
+    return m
+  m = get_map()
+  maptbx.gamma_compression(map_data=m, gamma=0.5)
+
 def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
+  exercise_gamma_compression()
+  exercise_cc_peak()
   exercise_map_accumulator()
   exercise_binarize()
   exercise_intersection()

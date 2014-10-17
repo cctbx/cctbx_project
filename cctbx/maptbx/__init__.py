@@ -27,6 +27,39 @@ flex.double.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.eight_point_interpolation = eight_point_interpolation
 flex.double.tricubic_interpolation = tricubic_interpolation
 
+def cc_peak(cutoff, map_1=None,map_2=None, map_coeffs_1=None,map_coeffs_2=None):
+  """
+  Compute CCpeak as described in
+    Acta Cryst. (2014). D70, 2593-2606
+    Metrics for comparison of crystallographic maps
+    A. Urzhumtsev, P. V. Afonine, V. Y. Lunin, T. C. Terwilliger and P. D. Adams
+  """
+  from cctbx import miller
+  assert [map_1,map_2].count(None) in [0,2]
+  assert [map_coeffs_1,map_coeffs_2].count(None) in [0,2]
+  if([map_1,map_2].count(None)==0):
+    # Maps are assumed to be quantile rank scaled (HE).
+    return ext.cc_peak(map_1=map_1, map_2=map_2, cutoff=cutoff)
+  elif([map_coeffs_1,map_coeffs_2].count(None)==0):
+    d_min = min(map_coeffs_1.d_min(), map_coeffs_2.d_min())
+    crystal_gridding = map_coeffs_1.crystal_gridding(
+      d_min             = d_min,
+      symmetry_flags    = use_space_group_symmetry,
+      resolution_factor = 0.25)
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = map_coeffs_1)
+    map_1 = fft_map.real_map_unpadded()
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = map_coeffs_2)
+    map_2 = fft_map.real_map_unpadded()
+    m1_he = volume_scale(map = map_1,  n_bins = 10000).map_data()
+    m2_he = volume_scale(map = map_2,  n_bins = 10000).map_data()
+    return ext.cc_peak(map_1=m1_he, map_2=m2_he, cutoff=cutoff)
+  else:
+    raise RuntimeError("Combination of inputs not supported.")
+
 def map_accumulator(n_real, smearing_b=5, max_peak_scale=2, smearing_span=10,
       use_exp_table=True):
   """
@@ -40,15 +73,17 @@ def map_accumulator(n_real, smearing_b=5, max_peak_scale=2, smearing_span=10,
 def peak_volume_estimate(map_data, sites_cart, crystal_symmetry, cutoff,
       atom_radius=1.5):
   v = flex.double()
-  for sc in sites_cart:
-    sel = grid_indices_around_sites(
-      unit_cell  = crystal_symmetry.unit_cell(),
-      fft_n_real = map_data.focus(),
-      fft_m_real = map_data.all(),
-      sites_cart = flex.vec3_double([sc]),
-      site_radii = flex.double([atom_radius]*1))
-    v.append((map_data.select(sel)>=cutoff).count(True))
-  r = flex.min(v)
+  sites_frac = crystal_symmetry.unit_cell().fractionalize(sites_cart)
+  for sc, sf in zip(sites_cart, sites_frac):
+    if(map_data.value_at_closest_grid_point(sf)>=cutoff):
+      sel = grid_indices_around_sites(
+        unit_cell  = crystal_symmetry.unit_cell(),
+        fft_n_real = map_data.focus(),
+        fft_m_real = map_data.all(),
+        sites_cart = flex.vec3_double([sc]),
+        site_radii = flex.double([atom_radius]*1))
+      v.append((map_data.select(sel)>=cutoff).count(True))
+  r = flex.min_default(v, None)
   if(r==0): return None
   return r
 
@@ -328,15 +363,29 @@ class boxes(object):
                n_real,
                fraction=None,
                log=None,
+               max_boxes=2000,
                prefix=""):
     self.n_real = n_real
-    f = fraction**(1./3)
-    ba,bb,bc = int(n_real[0]*f), int(n_real[1]*f), int(n_real[2]*f)
+    i=0
+    n_boxes = 1.e+9
+    n_boxes_ = []
+    while n_boxes>max_boxes:
+      ba,bb,bc = \
+        min(10+i,max(3,int(n_real[0]*fraction))), \
+        min(10+i,max(3,int(n_real[1]*fraction))), \
+        min(10+i,max(3,int(n_real[2]*fraction)))
+      n_boxes = self._generate_boxes(ba,bb,bc)
+      print n_boxes, n_boxes_
+      if(n_boxes_.count(n_boxes)>3): break
+      n_boxes_.append(n_boxes)
+      i += 1
+    assert n_boxes == len(self.starts)
     if(log):
       print >> log, prefix, "n1,n2,n3 (n_real)  :", n_real
       print >> log, prefix, "points per box edge:", ba,bb,bc
-      print >> log, prefix, "Vbox/Vall          :", \
-        n_real[0]*f*n_real[1]*f*n_real[2]*f/(n_real[0]*n_real[1]*n_real[2])
+      print >> log, prefix, "number of boxes    :", len(self.starts)
+
+  def _generate_boxes(self, ba,bb,bc):
     def regroup(be):
       maxe = be[len(be)-1][1]
       step = int(maxe/len(be))
@@ -346,7 +395,7 @@ class boxes(object):
           l = 0
           r = step
         elif(i==len(be)-1):
-          l=i*step
+          l = i*step
           r = maxe
         else:
           l = i*step
@@ -365,7 +414,7 @@ class boxes(object):
         for k in be[2]:
           self.starts.append([i[0],j[0],k[0]])
           self.ends.append([i[1],j[1],k[1]])
-    if(log): print >> log, prefix, "number of boxes    :", len(self.starts)
+    return len(self.starts)
 
   def _box_edges(self, n_real_1d, step):
     limits = []
