@@ -1251,7 +1251,7 @@ class manager(manager_mixin):
     crystal_gridding = S_E_L_F.f_obs().crystal_gridding(
       d_min              = S_E_L_F.f_obs().d_min(),
       symmetry_flags     = maptbx.use_space_group_symmetry,
-      resolution_factor  = 1./6)
+      resolution_factor  = 1./4)
     # bulk-solvent mask filter
     mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
       xray_structure = S_E_L_F.xray_structure.expand_to_p1(sites_mod_positive=True),
@@ -1284,9 +1284,20 @@ class manager(manager_mixin):
     co = maptbx.connectivity(map_data=map_data_asu/mc.unit_cell().volume(),
       threshold=0.2)
     conn = co.result()
+    z = zip(co.regions(),range(0,co.regions().size()))
+    #z = zip(co.maximum_values(),range(0,co.regions().size()))
+    sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
     good = []
     r_free = S_E_L_F.r_free()
-    for i, v in enumerate(co.regions()):
+    #
+    cntr = 0
+    for p in sorted_by_volume:
+      v, i = p
+    #
+    #for i, v in enumerate(co.regions()):
+    #
+      cntr += 1
+      if(cntr>50): break
       if(i==0): continue
       if(v>40):
         map_data_asu_ = maptbx.update_f_part1_helper(
