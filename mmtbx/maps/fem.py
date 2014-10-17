@@ -12,6 +12,7 @@ from libtbx import adopt_init_args
 from cctbx import adptbx
 from mmtbx import map_tools
 from cctbx import miller
+from libtbx import Auto
 
 class run(object):
 
@@ -20,22 +21,28 @@ class run(object):
         f_obs,
         r_free_flags,
         xray_structure,
-        solvent_selection,
+        use_resolve,
+        sharp,
+        use_unsharp_masking,
+        resolution_factor,
         n_inner_loop = 10,
         n_outer_loop = 10,
-        use_omit     = False,
         log          = None):
     adopt_init_args(self, locals())
     if(self.log is None): self.log = sys.stdout
+    print >> self.log, "Start FEM..."
     self.prepare_f_obs_and_flags()
     self.mc_orig = self.compute_original_map()
-    self.remove_common_isotropic_adp()
+    self.b_overall = None
+    if(self.sharp): self.remove_common_isotropic_adp()
+    print >> self.log, "Create fmodel..."
     self.fmodel = self.create_fmodel(show=True)
     self.crystal_gridding = self.f_obs.crystal_gridding(
       d_min             = self.fmodel.f_obs().d_min(),
       symmetry_flags    = maptbx.use_space_group_symmetry,
-      resolution_factor = 1./3)
+      resolution_factor = self.resolution_factor)
     # initial maps
+    print >> self.log, "Compute initial maps..."
     self.mc = map_tools.electron_density_map(
       fmodel=self.fmodel).map_coefficients(
         map_type     = "2mFo-DFc",
@@ -46,10 +53,15 @@ class run(object):
         map_type     = "2mFo-DFc",
         isotropize   = True,
         fill_missing = True)
-    self.selection = self.atom_selection_for_typical_volume_calc()
+    print >> self.log, "Finding typical atom volumes..."
+    self.selection = good_atoms_selection(
+      crystal_gridding = self.crystal_gridding,
+      map_coeffs       = self.mc_fill,
+      xray_structure   = self.fmodel.xray_structure)
     # main FEM loop
     m = self.outer_loop()
-    m = self.low_volume_density_elimination(m = m)
+    m = low_volume_density_elimination(m=m, fmodel=self.fmodel,
+      selection=self.selection)
     self.zero_below_threshold(m = m)
     # HE
     m = maptbx.volume_scale(map = m,  n_bins = 10000).map_data()
@@ -58,24 +70,50 @@ class run(object):
     msk = m.set_selected(sel, 0)
     sel = msk>=0.5
     msk = msk.set_selected(sel, 1)
+
+#XXX    maptbx.sharpen(map_data=m, index_span=2, n_averages=1,
+#XXX          allow_negatives=False)
+
+
+    # Use Resolve filter
+    m_resolve = self.resolve_filter_map()
+    if(m_resolve is not None): m = m * m_resolve
     #
-    mc_result = self.mc_fill.structure_factors_from_map(
+    self.mc_result = self.mc_fill.structure_factors_from_map(
       map            = m,
       use_scale      = True,
       anomalous_flag = False,
       use_sg         = False)
-    self.mc_result=mmtbx.maps.b_factor_sharpening_by_map_kurtosis_maximization(
-      map_coeffs=mc_result, show=True, b_only=False)
+    if(self.sharp):
+      self.mc_result=mmtbx.maps.b_factor_sharpening_by_map_kurtosis_maximization(
+        map_coeffs=self.mc_result, show=True, b_only=False)
     self.map_result = get_map(mc=self.mc_result, cg=self.crystal_gridding)*msk
 
-  def write_output_files(self, file_name, fem_label, orig_label):
+  def resolve_filter_map(self):
+    m_resolve = None
+    cmpl = self.fmodel.f_obs().resolution_filter(d_min=6).completeness()
+    if((self.use_resolve is Auto and
+       (self.fmodel.r_work()>0.2 or self.b_overall>30.) or cmpl<0.7) or
+       self.use_resolve is True):
+      print >> self.log, "Running Resolve density modificaiton"
+      mc_resolve = self.fmodel.resolve_dm_map_coefficients()
+      m_resolve = get_map(mc=mc_resolve, cg=self.crystal_gridding)
+      m_resolve = low_volume_density_elimination(m=m_resolve, fmodel=self.fmodel,
+        selection=self.selection)
+      m_resolve = m_resolve.set_selected(m_resolve < 0.25, 0)
+      m_resolve = m_resolve.set_selected(m_resolve >=0.25, 1)
+      print >> self.log, "Obtained Resolve filter"
+    return m_resolve
+
+  def write_output_files(self, mtz_file_name, ccp4_map_file_name, fem_label,
+                         orig_label):
     mtz_dataset = self.mc_result.as_mtz_dataset(column_root_label=fem_label)
     mtz_dataset.add_miller_array(
       miller_array      = self.mc_orig,
       column_root_label = orig_label)
     mtz_object = mtz_dataset.mtz_object()
-    mtz_object.write(file_name = file_name)
-    ccp4_map(cg=self.crystal_gridding, file_name=file_name[:-4]+".ccp4",
+    mtz_object.write(file_name = mtz_file_name)
+    ccp4_map(cg=self.crystal_gridding, file_name=ccp4_map_file_name,
       map_data=self.map_result)
 
   def compute_original_map(self):
@@ -103,19 +141,25 @@ class run(object):
         crystal_gridding = self.crystal_gridding,
         n                = self.n_inner_loop,
         progress_counter = progress_counter)
-      m = self.low_volume_density_elimination(m = m)
-      maptbx.sharpen(map_data=m, index_span=1, n_averages=2)
+      m = low_volume_density_elimination(m=m, fmodel=self.fmodel,
+        selection=self.selection)
+      if(self.sharp and self.use_unsharp_masking):
+        maptbx.sharpen(map_data=m, index_span=1, n_averages=2,
+          allow_negatives=False)
+        maptbx.gamma_compression(map_data=m, gamma=0.1)
       self.zero_below_threshold(m = m)
       m = m/flex.max(m)
       map_accumulator.add(map_data=m)
     m = map_accumulator.as_median_map()
     sd = m.sample_standard_deviation()
+    print >> self.log
     return m/sd
 
   def remove_common_isotropic_adp(self):
     xrs = self.xray_structure
     b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
-    print "Max B subtracted from atoms and used to sharpen map:", b_iso_min
+    self.b_overall = b_iso_min
+    print >> self.log, "Max B subtracted from atoms and used to sharpen map:", b_iso_min
     xrs.shift_us(b_shift=-b_iso_min)
     b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
     assert approx_equal(b_iso_min, 0, 1.e-3)
@@ -141,32 +185,6 @@ class run(object):
         fmodel.r_free())
     return fmodel
 
-  def atom_selection_for_typical_volume_calc(self):
-    selection_good = poor_atoms_selection(
-      crystal_gridding = self.crystal_gridding,
-      map_coeffs       = self.mc_fill,
-      xray_structure   = self.fmodel.xray_structure)
-    if(self.solvent_selection.count(True)>0):
-      selection = self.solvent_selection & selection_good
-    else:
-      selection = selection_good
-    selection = selection_good # XXX BUG ???
-    return selection
-
-  def low_volume_density_elimination(self, m):
-    rr = [i/10. for i in range(5,21)]
-    rr.reverse()
-    for c in rr:
-      zero_all_interblob_region = False
-      if(c<=0.5): zero_all_interblob_region=True
-      msk = truncate_with_roots(
-        m=m, fmodel=self.fmodel,c1=c,c2=c-0.25,cutoff=c, scale=1, as_int=False,
-        zero_all_interblob_region=zero_all_interblob_region,
-        selection = self.selection)
-      if(msk is not None):
-        m = m * msk
-    return m
-
   def zero_below_threshold(self, m):
     maptbx.reset(
       data                   = m,
@@ -174,6 +192,21 @@ class run(object):
       less_than_threshold    = 0.24,
       greater_than_threshold = -9999,
       use_and                = True)
+
+def low_volume_density_elimination(m, fmodel, selection, end=11):
+  rr = [i/10. for i in range(5,end)]#+[1.5, 1.75, 2.]
+  rr.reverse()
+  for c in rr:
+    sh=0.25
+    zero_all_interblob_region = False
+    if(c<=0.5): zero_all_interblob_region=True
+    msk = truncate_with_roots(
+      m=m, fmodel=fmodel, c1=c, c2=c-sh, cutoff=c, scale=1, as_int=False,
+      zero_all_interblob_region=zero_all_interblob_region,
+      selection = selection)
+    if(msk is not None):
+      m = m * msk
+  return m
 
 def truncate_with_roots(
       m, fmodel, c1, c2, cutoff, scale, zero_all_interblob_region=True,
@@ -200,7 +233,7 @@ def truncate_with_roots(
   if(as_int): return result
   else:       return result.as_double()
 
-def poor_atoms_selection(
+def good_atoms_selection(
       crystal_gridding,
       map_coeffs,
       xray_structure):
@@ -215,7 +248,7 @@ def poor_atoms_selection(
   for site_frac in xray_structure.sites_frac():
     rho_atoms.append(map_data.eight_point_interpolation(site_frac))
   #rho_mean = flex.mean_default(rho_atoms.select(rho_atoms>1.0), 1.0)
-  sel_exclude = rho_atoms < 1.0
+  sel_exclude = rho_atoms < 1.0 # XXX ??? TRY 0.5!
   sites_cart = xray_structure.sites_cart()
   #
   f_calc = map_coeffs.structure_factors_from_scatterers(
@@ -226,6 +259,7 @@ def poor_atoms_selection(
   fft_map.apply_sigma_scaling()
   map_data2 = fft_map.real_map_unpadded()
   #
+  hd_sel = xray_structure.hd_selection()
   for i_seq, site_cart in enumerate(sites_cart):
     selection = maptbx.grid_indices_around_sites(
       unit_cell  = map_coeffs.unit_cell(),
@@ -235,7 +269,7 @@ def poor_atoms_selection(
       site_radii = flex.double([1.5]))
     cc = flex.linear_correlation(x=map_data.select(selection),
       y=map_data2.select(selection)).coefficient()
-    if(cc<0.7): sel_exclude[i_seq] = True
+    if(cc<0.7 or hd_sel[i_seq]): sel_exclude[i_seq] = True
   return ~sel_exclude
 
 def inner_loop(fmodel, wam, missing, crystal_gridding, n, progress_counter):

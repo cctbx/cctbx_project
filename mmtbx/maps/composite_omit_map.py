@@ -18,6 +18,8 @@ from libtbx import slots_getstate_setstate, \
 from libtbx.utils import null_out
 import libtbx.phil
 import sys
+from libtbx import adopt_init_args
+import mmtbx.real_space
 
 omit_map_phil = libtbx.phil.parse("""
 n_debias_cycles = 2
@@ -30,128 +32,195 @@ full_resolution_map = True
 
 class run(object):
   """
-  Composite full-omit map: omit entire box in real-space corresponding to
-  Fmodel, which includs atomic model and non-atomic model (bulk-solvent and
-  scales).  This is much faster than the refinement-based method, and is used
-  by default in phenix.composite_omit_map.
+  Composite residual OMIT map. Details:
+    Afonine et al. (2014). FEM: Feature Enhanced Map
   """
   def __init__(
         self,
-        crystal_gridding,
         fmodel,
-        map_type,
-        box_size_as_fraction=0.03,
-        n_debias_cycles=2,
-        neutral_volume_box_cushion_width=1,
+        crystal_gridding,
+        box_size_as_fraction=0.1,
+        max_boxes=2000,
+        neutral_volume_box_cushion_width=2,
         full_resolution_map=True,
         log=sys.stdout):
-    self.crystal_gridding = crystal_gridding
-    # assert compatibility of symops with griding
-    assert self.crystal_gridding._symmetry_flags is not None
+    adopt_init_args(self, locals())
+    self.map_type="mFo-DFc" # using other map types is much worse
+    self.sd = self.get_p1_map_unscaled(fmodel = self.fmodel,
+      map_type=self.map_type).sample_standard_deviation()
+    xrs_p1 = fmodel.xray_structure.expand_to_p1(sites_mod_positive=True)
     self.sgt = fmodel.f_obs().space_group().type()
+    self.r = flex.double() # for tests only
+    self.acc_asu = None
+    # bulk-solvent
+    mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
+      xray_structure = xrs_p1,
+      n_real         = crystal_gridding.n_real())
+    self.bulk_solvent_mask = mmtbx_masks_asu_mask_obj.mask_data_whole_uc()
+    self.bulk_solvent_mask_asu=self.to_asu_map(map_data=self.bulk_solvent_mask)
+    # atom map
+    self.atom_map = mmtbx.real_space.sampled_model_density(
+      xray_structure = xrs_p1,
+      n_real         = crystal_gridding.n_real()).data()
+    self.n_real = self.atom_map.focus()
+    self.atom_map_asu=self.to_asu_map(map_data=self.atom_map)
+    # extras
     self.zero_cmpl_ma = fmodel.f_calc().customized_copy(
       data = flex.complex_double(fmodel.f_calc().size(), 0))
-    # embedded utility functions
-    def get_map(fmodel, map_type, crystal_gridding, asu=True):
-      f_map = fmodel.electron_density_map().map_coefficients(
-        map_type                   = map_type,
-        isotropize                 = True,
-        exclude_free_r_reflections = True,
-        fill_missing               = False)
-      fft_map = cctbx.miller.fft_map(
-        crystal_gridding     = crystal_gridding,
-        fourier_coefficients = f_map)
-      if(asu): return asu_map_ext.asymmetric_map(self.sgt,
-        fft_map.real_map_unpadded()).data()
-      else:
-        return fft_map.real_map_unpadded()
-    # f_model map
-    f_model_map_data = fmodel.f_model_scaled_with_k1().fft_map(
-      symmetry_flags   = maptbx.use_space_group_symmetry,
-      crystal_gridding = self.crystal_gridding).real_map_unpadded()
-    self.n_real = f_model_map_data.focus()
-    # extract asu map from full P1
-    f_model_map_data_asu=asu_map_ext.asymmetric_map(
-      self.sgt, f_model_map_data).data()
-    self.acc = f_model_map_data_asu.accessor()
-    f_model_map_data_asu = f_model_map_data_asu.shift_origin()
-    # set up boxes
+    self.r_factor_omit = flex.double() # for regression test only
+    # result map
+    self.map_result_asu = flex.double(flex.grid(self.atom_map_asu.focus()))
+    # iterate over boxes
+    self.box_iterator()
+
+  def map_coefficients(self, filter_noise=True):
+    map_coefficients = self.result_as_sf()
+    if(filter_noise):
+      return self.noise_filtered_map_coefficients(
+        map_coefficients=map_coefficients)
+    else:
+      return map_coefficients
+
+  def noise_filtered_map_coefficients(self, map_coefficients):
+    from mmtbx.maps import fem
+    f_map = self.fmodel.electron_density_map().map_coefficients(
+      map_type                   = "2mFo-DFc",
+      isotropize                 = True,
+      exclude_free_r_reflections = False,
+      fill_missing               = True)
+    selection = fem.good_atoms_selection(
+      crystal_gridding = self.crystal_gridding,
+      map_coeffs       = f_map,#map_coefficients,
+      xray_structure   = self.fmodel.xray_structure)
+    fft_map = cctbx.miller.fft_map(
+      crystal_gridding     = self.crystal_gridding,
+      fourier_coefficients = map_coefficients)
+    fft_map.apply_sigma_scaling()
+    m = fft_map.real_map_unpadded()
+    m = fem.low_volume_density_elimination(m=m, fmodel=self.fmodel,
+      selection=selection, end=11)
+    ### Filter by 2mFo-DFc filled map
+    fft_map = cctbx.miller.fft_map(
+      crystal_gridding     = self.crystal_gridding,
+      fourier_coefficients = f_map)
+    fft_map.apply_sigma_scaling()
+    filter_mask = fft_map.real_map_unpadded()
+    filter_mask = fem.low_volume_density_elimination(m=filter_mask,
+      fmodel=self.fmodel, selection=selection, end=6)#11)
+    sel = filter_mask<0.25
+    filter_mask = filter_mask.set_selected(sel, 0)
+    sel = filter_mask>=0.25
+    filter_mask = filter_mask.set_selected(sel, 1)
+    ###
+    return map_coefficients.structure_factors_from_map(
+      map            = m*filter_mask,
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+
+  def box_iterator(self):
     b = maptbx.boxes(
-      n_real   = f_model_map_data_asu.focus(),
-      fraction = box_size_as_fraction,
-      log      = log)
-    self.map_result_asu = flex.double(flex.grid(b.n_real))
-    assert f_model_map_data_asu.focus()==b.n_real
-    assert b.n_real==self.map_result_asu.focus()
+      n_real   = self.atom_map_asu.focus(),
+      fraction = self.box_size_as_fraction,
+      max_boxes= self.max_boxes,
+      log      = self.log)
+    def get_wide_box(s,e): # define wide box: neutral + phased volumes
+      if(self.neutral_volume_box_cushion_width>0):
+        sh = self.neutral_volume_box_cushion_width
+        ss = [max(s[i]-sh,0) for i in [0,1,2]]
+        ee = [min(e[i]+sh,n_real_asu[i]) for i in [0,1,2]]
+      else: ss,ee = s,e
+      return ss,ee
     n_real_asu = b.n_real
-    self.r = flex.double() # for regression test only
     n_boxes = len(b.starts)
     i_box = 0
     for s,e in zip(b.starts, b.ends):
       i_box+=1
-      # define wide box: neutral + phased volumes
-      if(neutral_volume_box_cushion_width>0):
-        sh = neutral_volume_box_cushion_width
-        ss = [max(s[i]-sh,0) for i in [0,1,2]]
-        ee = [min(e[i]+sh,n_real_asu[i]) for i in [0,1,2]]
-      else: ss,ee = s,e
-      # omit wide box from f_model map, repeat n_debias_cycles times
-      f_model_map_data_asu_ = f_model_map_data_asu.deep_copy()
-      for i in xrange(n_debias_cycles):
-        f_model_omit, f_model_map_data_asu_ = self.omit_box(s=ss, e=ee,
-          md_asu=f_model_map_data_asu_)
-      # get fmodel for omit map calculation
-      fmodel_ = mmtbx.f_model.manager(
-        f_obs        = fmodel.f_obs(),
-        r_free_flags = fmodel.r_free_flags(),
-        f_calc       = f_model_omit,
-        f_mask       = self.zero_cmpl_ma)
-      rw = fmodel_.r_work()
-      self.r.append(rw) # for regression test only
-      f_map_data_asu = get_map(fmodel=fmodel_, map_type=map_type,
-        crystal_gridding=self.crystal_gridding)
-      f_map_data_asu = f_map_data_asu.shift_origin()
-      if(log):
-        print >> log, "box %2d of %2d:"%(i_box, n_boxes), s, e, "%6.4f"%rw
-      assert f_map_data_asu.focus() == self.map_result_asu.focus()
+      sw,ew = get_wide_box(s=s,e=e)
+      fmodel_omit = self.omit_box(start=sw, end=ew)
+      r = fmodel_omit.r_work()
+      self.r.append(r) # for tests only
+      if(self.log):
+        print >> self.log, "r(curr,min,max,mean)=%6.4f %6.4f %6.4f %6.4f"%(r,
+          flex.min(self.r), flex.max(self.r), flex.mean(self.r)), i_box, n_boxes
+      omit_map_data = self.asu_map_from_fmodel(
+        fmodel=fmodel_omit, map_type=self.map_type)
       maptbx.copy_box(
-        map_data_from = f_map_data_asu,
+        map_data_from = omit_map_data,
         map_data_to   = self.map_result_asu,
         start         = s,
         end           = e)
-    # result
-    self.map_result_asu.reshape(self.acc)
-    self.asu_map_omit = asu_map_ext.asymmetric_map(
-      self.sgt, self.map_result_asu, self.n_real)
-    self.map_coefficients = self.zero_cmpl_ma.customized_copy(
-      indices = self.zero_cmpl_ma.indices(),
-      data    = self.asu_map_omit.structure_factors(self.zero_cmpl_ma.indices()))
-    # full resolution map (reflections in sphere, not in box!)
-    if(full_resolution_map):
-      cs = self.zero_cmpl_ma.complete_set(d_min=self.zero_cmpl_ma.d_min())
-      asu_map_omit = asu_map_ext.asymmetric_map(
-        self.sgt,self.map_result_asu,self.n_real)
-      fill = self.zero_cmpl_ma.customized_copy(
-        indices = cs.indices(),
-        data    = asu_map_omit.structure_factors(cs.indices()))
-      self.map_coefficients = self.map_coefficients.complete_with(
-        other=fill, scale=True)
+    self.map_result_asu.reshape(self.acc_asu)
 
-  def omit_box(self, s, e, md_asu):
-    md_asu_omit = maptbx.set_box_copy(value = 0, map_data_to = md_asu,
-      start = s, end = e)
-    md_asu_omit.reshape(self.acc)
-    asu_map_omit = asu_map_ext.asymmetric_map(self.sgt, md_asu_omit, self.n_real)
-    ma_omit = self.zero_cmpl_ma.customized_copy(
+  def result_as_sf(self):
+    asu_map_omit = asu_map_ext.asymmetric_map(
+      self.sgt, self.map_result_asu, self.n_real)
+    map_coefficients = self.zero_cmpl_ma.customized_copy(
       indices = self.zero_cmpl_ma.indices(),
       data    = asu_map_omit.structure_factors(self.zero_cmpl_ma.indices()))
+    # full resolution map (reflections in sphere, not in box!)
+    if(self.full_resolution_map):
+      full_set = self.zero_cmpl_ma.complete_set(d_min=self.zero_cmpl_ma.d_min())
+      fill = self.zero_cmpl_ma.customized_copy(
+        indices = full_set.indices(),
+        data    = asu_map_omit.structure_factors(full_set.indices()))
+      map_coefficients = map_coefficients.complete_with(
+        other=fill, scale=True)
+    return map_coefficients
+
+  def to_asu_map(self, map_data):
+    r = asu_map_ext.asymmetric_map(self.sgt, map_data).data()
+    if(self.acc_asu is None): self.acc_asu = r.accessor()
+    return r.shift_origin()
+
+  def omit_box(self, start, end):
+    def asu_omit_map_as_sf(m_asu, s, e):
+      m_asu_omit = maptbx.set_box_copy(value = 0, map_data_to = m_asu,
+        start = s, end = e)
+      m_asu_omit.reshape(self.acc_asu)
+      asu_m_omit = asu_map_ext.asymmetric_map(self.sgt, m_asu_omit, self.n_real)
+      return self.zero_cmpl_ma.customized_copy(
+        indices = self.zero_cmpl_ma.indices(),
+        data    = asu_m_omit.structure_factors(self.zero_cmpl_ma.indices()))
+    f_calc_omit = asu_omit_map_as_sf(m_asu=self.atom_map_asu, s=start, e=end)
+    f_mask_omit = asu_omit_map_as_sf(m_asu=self.bulk_solvent_mask_asu,
+      s=start, e=end)
+    fmodel_omit = mmtbx.f_model.manager(
+      f_obs        = self.fmodel.f_obs(),
+      r_free_flags = self.fmodel.r_free_flags(),
+      k_isotropic  = self.fmodel.k_isotropic(),
+      k_anisotropic= self.fmodel.k_anisotropic(),
+      k_mask       = self.fmodel.k_masks(),
+      f_calc       = f_calc_omit,
+      f_mask       = f_mask_omit)
+    return fmodel_omit
+
+  def as_p1_map(self, map_asu=None):
+    if(map_asu is None): map_asu = self.map_result_asu
+    asu_map_omit = asu_map_ext.asymmetric_map(self.sgt, map_asu, self.n_real)
+    p1_map = asu_map_omit.symmetry_expanded_map()
+    maptbx.unpad_in_place(map=p1_map)
+    sd = p1_map.sample_standard_deviation()
+    if(sd != 0):
+      p1_map = p1_map/sd
+    return p1_map
+
+  def get_p1_map_unscaled(self, fmodel, map_type):
+    f_map = fmodel.electron_density_map().map_coefficients(
+      map_type                   = map_type,
+      isotropize                 = True,
+      exclude_free_r_reflections = True,
+      fill_missing               = False)
     fft_map = cctbx.miller.fft_map(
-      crystal_gridding = self.crystal_gridding, fourier_coefficients = ma_omit)
-    md = fft_map.real_map_unpadded()
-    asu_map = asu_map_ext.asymmetric_map(self.sgt, md)
-    md_asu_omit = asu_map.data()
-    md_asu_omit = md_asu_omit.shift_origin()
-    return ma_omit, md_asu_omit
+      crystal_gridding     = self.crystal_gridding,
+      fourier_coefficients = f_map)
+    return fft_map.real_map_unpadded()
+
+  def asu_map_from_fmodel(self, fmodel, map_type):
+    map_data = self.get_p1_map_unscaled(fmodel=fmodel, map_type=map_type)
+    return asu_map_ext.asymmetric_map(self.sgt, map_data).data().shift_origin()
+
+################################################################################
 
 ########################################################################
 # XXX LEGACY IMPLEMENTATION

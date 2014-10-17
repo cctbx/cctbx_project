@@ -48,10 +48,12 @@ def run(space_group_info):
     space_group_info       = space_group_info,
     volume_per_atom        = 50,
     general_positions_only = False,
+    u_iso                  = 0.3,
     elements               = ('C', 'N', 'O', "S")*10,
     min_distance           = 1.5)
   xrs.scattering_type_registry(table="wk1995")
-  f_obs = abs(xrs.structure_factors(d_min=2).f_calc())
+  f_calc = xrs.structure_factors(d_min=2).f_calc()
+  f_obs = abs(f_calc)
   # create fmodel object
   fmodel = mmtbx.f_model.manager(
     xray_structure = xrs,
@@ -65,19 +67,19 @@ def run(space_group_info):
   crystal_gridding = fmodel.f_obs().crystal_gridding(
     d_min             = fmodel.f_obs().d_min(),
     symmetry_flags    = maptbx.use_space_group_symmetry,
-    resolution_factor = 0.25)
+    resolution_factor = 1./3)
   # compute OMIT map
   r = cfom.run(
-    crystal_gridding = crystal_gridding,
-    fmodel           = fmodel.deep_copy(),
-    map_type         = "Fo",
+    crystal_gridding    = crystal_gridding,
+    fmodel              = fmodel.deep_copy(),
     full_resolution_map = False,
-    n_debias_cycles  = 1,
+    max_boxes           = 70,
     neutral_volume_box_cushion_width = 0,
-    box_size_as_fraction=0.1,
+    box_size_as_fraction=0.3,
     log=False)
-  ccs = get_cc(mc1=mc1, mc2=r.map_coefficients, xrs=xrs)
-  assert (ccs>0.8).count(True) == ccs.size(), list(ccs)
+  ccs = get_cc(mc1=mc1, mc2=r.map_coefficients(filter_noise=False), xrs=xrs)
+  assert flex.mean(ccs) > 0.8
+  print "  CC(min/max,mean)",ccs.min_max_mean().as_tuple()
 
 def run_call_back(flags, space_group_info):
   run(space_group_info)

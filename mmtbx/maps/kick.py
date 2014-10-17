@@ -264,14 +264,12 @@ class run(object):
     if(omit):
     # Kick OMIT map
       com1 = mmtbx.maps.composite_omit_map.run(
-        map_type             = "mFo-DFc",
         crystal_gridding     = crystal_gridding,
-        n_debias_cycles      = 2,
         fmodel               = fmodel.deep_copy(), # XXX
         full_resolution_map  = True,
         box_size_as_fraction = 0.03)
       md_com1 = kick_map_coeffs(
-        map_coeffs        = com1.map_coefficients,
+        map_coeffs        = com1.map_coefficients(),
         crystal_gridding  = crystal_gridding,
         number_of_kicks   = number_of_kicks,
         macro_cycles      = macro_cycles,
@@ -281,14 +279,12 @@ class run(object):
       self.mc_com1 = self.map_coeffs_from_map(map_data=md_com1)
       # Kick OMIT map 2
       com2 = mmtbx.maps.composite_omit_map.run(
-        map_type             = "2mFo-DFc",
         crystal_gridding     = crystal_gridding,
-        n_debias_cycles      = 2,
         fmodel               = fmodel.deep_copy(), # XXX
         full_resolution_map  = True,
         box_size_as_fraction = 0.03)
       md_com2 = kick_map_coeffs(
-        map_coeffs        = com2.map_coefficients,
+        map_coeffs        = com2.map_coefficients(),
         crystal_gridding  = crystal_gridding,
         number_of_kicks   = number_of_kicks,
         macro_cycles      = macro_cycles,
