@@ -1016,7 +1016,7 @@ Residue classes
         simple_bonds,
         sym_bonds,
         )
-      for caption, bond_type in [("Nucleic acid basepair bonds",'h-dna'),
+      for caption, bond_type in [#("Nucleic acid basepair bonds",'h-dna'),
                                  ("Other bonds",'bond')]:
         print >> log, "  %s:" % caption
         for label1, label2, sym_op, bt in sorted(bond_data):

@@ -176,7 +176,8 @@ class angle_proxy_registry(proxy_registry_base):
       tab_i_seq_1[i_seqs_0_2] = self.proxies.size()
       self.proxies.append(proxy)
       self.counts.append(1)
-    return True
+      return True
+    return False
 
   def process(self, source_info, proxy, tolerance=1.e-6):
     result = proxy_registry_process_result()
@@ -231,7 +232,8 @@ class dihedral_proxy_registry(proxy_registry_base):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self.proxies.append(proxy)
       self.counts.append(1)
-    return True
+      return True
+    return False
 
   def process(self, source_info, proxy, tolerance=1.e-6):
     result = proxy_registry_process_result()
@@ -292,7 +294,8 @@ class chirality_proxy_registry(proxy_registry_base):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self.proxies.append(proxy)
       self.counts.append(1)
-    return True
+      return True
+    return False
 
 
   def process(self, source_info, proxy, tolerance=1.e-6):
@@ -339,7 +342,8 @@ class planarity_proxy_registry(proxy_registry_base):
       # saving proxy number in list
       self.proxies.append(proxy)
       self.counts.append(1)
-    return True
+      return True
+    return False
 
   def process(self, source_info, proxy, tolerance=1.e-6):
     assert proxy.i_seqs.size() > 0
@@ -386,8 +390,7 @@ class parallelity_proxy_registry(proxy_registry_base):
       self.proxies.append(proxy)
       self.counts.append(1)
       return True
-    else:
-      return True
+    return False
 
 
   def process(self, source_info, proxy, tolerance=1.e-6):
