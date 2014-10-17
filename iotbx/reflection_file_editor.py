@@ -1039,7 +1039,7 @@ def modify_array (
     print >> log, "Shuffling values for %s" % array_name
     combined_array = None
     tmp_array = miller_array.deep_copy()
-    tmp_array.setup_binner(n_bins=min(100, tmp_array.indices().size()))
+    tmp_array.setup_binner(n_bins=min(100, tmp_array.indices().size()//10))
     for i_bin in tmp_array.binner().range_used() :
       bin_sel = tmp_array.binner().selection(i_bin)
       bin_array = tmp_array.select(bin_sel)
