@@ -175,9 +175,9 @@ END
     params=params,
     skip_twin_detection=True,
     log=null_out())
-  #result.show(verbose=True)
-  assert (result.best_model_name == "tst_start_model_4.pdb")
-  params.rigid_body_refine = True
+  # result.show(verbose=True)
+  assert (result.best_model_name == "tst_start_model_4.pdb"), result.best_model_name
+  # params.rigid_body_refine = True
   result = select_best_starting_model.select_model(
     model_names=model_names,
     model_data=None,
@@ -186,8 +186,8 @@ END
     params=params,
     skip_twin_detection=True,
     log=null_out())
-  #result.show(verbose=True)
-  assert (result.best_model_name == "tst_start_model_1.pdb")
+  # result.show(verbose=True)
+  assert (result.best_model_name == "tst_start_model_1.pdb"), result.best_model_name
 
 def exercise_misc () :
   from mmtbx.refinement import select_best_starting_model
