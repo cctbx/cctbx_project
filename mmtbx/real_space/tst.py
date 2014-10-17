@@ -300,6 +300,71 @@ def run():
                  site_cart    = flex.vec3_double([site]),
                  buffer_layer = 3.)
 
+def exercise_sampled_model_density_1():
+  import iotbx.pdb
+  pdb_str1="""
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1
+ATOM      1  CB  PHE A   1       5.000   5.000   5.000  1.00 15.00           C
+ANISOU    1  CB  PHE A   1      900   2900    100      0      0      0       C
+TER
+END
+"""
+  pdb_str2="""
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1
+ATOM      1  CB  PHE A   1       5.000   5.000   5.000  1.00 15.00           C
+TER
+END
+"""
+  #
+  for pdb_str in [pdb_str1, pdb_str2]:
+    print
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+    xrs = pdb_inp.xray_structure_simple()
+    #
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell        = xrs.unit_cell(),
+      space_group_info = xrs.space_group_info(),
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      step             = 0.1)
+    m = mmtbx.real_space.sampled_model_density(
+      xray_structure = xrs,
+      n_real         = crystal_gridding.n_real()).data()
+    #
+    max_index = [(i-1)//2 for i in crystal_gridding.n_real()]
+    complete_set = miller.build_set(
+      crystal_symmetry = xrs.crystal_symmetry(),
+      anomalous_flag   = False,
+      max_index        = max_index)
+    indices = complete_set.indices()
+    indices.append((0,0,0))
+    #
+    complete_set = complete_set.customized_copy(indices = indices)
+    f_obs_cmpl = complete_set.structure_factors_from_map(
+      map            = m,
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+    fc = complete_set.structure_factors_from_scatterers(xray_structure=xrs).f_calc()
+    #
+    f1 = abs(fc).data()
+    f2 = abs(f_obs_cmpl).data()
+    r = 200*flex.sum(flex.abs(f1-f2))/flex.sum(f1+f2)
+    assert r<0.5
+    print r
+    #
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = f_obs_cmpl)
+    fft_map.apply_volume_scaling()
+    m_ = fft_map.real_map_unpadded()
+    print m.as_1d().min_max_mean().as_tuple()
+    print m_.as_1d().min_max_mean().as_tuple()
+    assert approx_equal(
+      m .as_1d().min_max_mean().as_tuple(),
+      m_.as_1d().min_max_mean().as_tuple(), 1.e-3) # Must be smaller!?
+    #
+
 if (__name__ == "__main__"):
     run()
+    exercise_sampled_model_density_1()
     print "OK: real_space: ",format_cpu_times()

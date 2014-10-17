@@ -17,7 +17,8 @@ class sampled_model_density(object):
               int(a_cell/grid_step),int(b_cell/grid_step),int(c_cell/grid_step)
     else:
        nx,ny,nz = n_real[0],n_real[1],n_real[2]
-    u_base = flex.min_default(xray_structure.extract_u_iso_or_u_equiv(),0)
+    #u_base = flex.min_default(xray_structure.extract_u_iso_or_u_equiv(),0)
+    u_base = xray_structure.min_u_cart_eigenvalue()
     self.sampled_model_density = ext.sampled_model_density(
        unit_cell                        = xray_structure.unit_cell(),
        scatterers                       = xray_structure.scatterers(),
@@ -25,7 +26,7 @@ class sampled_model_density(object):
        fft_n_real                       = (nx,ny,nz),
        fft_m_real                       = (nx,ny,nz),
        u_base                           = u_base,
-       wing_cutoff                      = 1.e-9,
+       wing_cutoff                      = 1.e-6,
        exp_table_one_over_step_size     = -1000,
        force_complex                    = False,
        sampled_density_must_be_positive = False,
