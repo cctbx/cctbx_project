@@ -29,16 +29,22 @@ class manager(object):
         use_sander=False,
         amber_structs=None,
         use_afitt=False, #afitt
-        afitt_object=None) :
+        afitt_object=None,
+        use_rosetta=False,
+        rosetta_manager=None) :
     self.geometry = geometry
     self.ncs_groups = ncs_groups
     self.torsion_ncs_groups = torsion_ncs_groups
     self.normalization = normalization
+    # amber
     self.use_amber = use_amber
     self.amber_structs = amber_structs
     #afitt
     self.use_afitt = use_afitt
     self.afitt_object = afitt_object
+    #rosetta
+    self.use_rosetta = use_rosetta
+    self.rosetta_manager = rosetta_manager
 
   def select(self, selection):
     if (self.geometry is None):
@@ -149,6 +155,35 @@ class manager(object):
           self.afitt_object,
         )
         result.target = result.residual_sum
+      elif (self.use_rosetta) :
+        ##################################################################
+        #                                                                #
+        # ROSETTA energy function - requires rosetta_adaptbx             #
+        #                                                                #
+        ##################################################################
+        assert (self.rosetta_manager is not None)
+        geometry_energy = self.geometry.energies_sites(
+          sites_cart=sites_cart,
+          flags=geometry_flags,
+          external_energy_function=external_energy_function,
+          custom_nonbonded_function=custom_nonbonded_function,
+          compute_gradients=False,
+          gradients=None,
+          disable_asu_cache=disable_asu_cache,
+          normalization=False)
+        gradients_rosetta = flex.vec3_double(sites_cart.size(), (0,0,0))
+        rosetta_energy = scitbx.restraints.energies(
+          compute_gradients=compute_gradients,
+          gradients=gradients_rosetta,
+          gradients_size=sites_cart.size(),
+          gradients_factory=flex.vec3_double,
+          normalization=False)
+        rosetta_energy.residual_sum = self.rosetta_manager.compute_target(
+          sites_cart=sites_cart,
+          gradients=gradients_rosetta)
+        rosetta_energy.number_of_restraints = \
+          geometry_energy.number_of_restraints
+        result.geometry = rosetta_energy
       # default restraints manager
       else :
         result.geometry = self.geometry.energies_sites(

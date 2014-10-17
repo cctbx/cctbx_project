@@ -1573,3 +1573,13 @@ class manager(object):
             group.iselection = isel
             modified = True
       return modified
+
+  def update_rosetta_energy_manager (self, params=None, log=sys.stdout) :
+    if (self.restraints_manager is not None) :
+      if (self.restraints_manager.use_rosetta) :
+        import rosetta_adaptbx
+        pdb_hierarchy = self.pdb_hierarchy(True)
+        self.restraints_manager.rosetta_manager = rosetta_adaptbx.manager(
+          pdb_hierarchy=pdb_hierarchy,
+          params=params,
+          log=log)

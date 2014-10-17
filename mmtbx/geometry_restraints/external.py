@@ -1,4 +1,10 @@
 
+"""
+Accessory module for interfacing phenix.refine (or similar programs) with
+various external third-party software such as Amber, AFITT, DivCon, or
+Rosetta.
+"""
+
 from __future__ import division
 import libtbx.load_env
 import os
@@ -44,5 +50,24 @@ if (afitt_installed) :
       .expert_level = 3
     {
       include scope mmtbx.geometry_restraints.afitt.master_phil_str
+    }
+"""
+
+#
+rosetta_installed = False
+if libtbx.env.has_module("rosetta_adaptbx") :
+  build_dir = libtbx.env.under_build("rosetta_adaptbx")
+  if (build_dir is not None) and (os.path.isdir(build_dir)) :
+    rosetta_installed = True
+
+if rosetta_installed :
+  external_energy_params_str += """
+    rosetta
+      .help = Rosetta force field extension
+      .expert_level = 3
+    {
+      use_rosetta_energy = False
+        .type = bool
+      include scope rosetta_adaptbx.master_phil
     }
 """
