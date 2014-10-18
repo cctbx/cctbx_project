@@ -1057,6 +1057,24 @@ class scaling_manager (intensity_data) :
       RS = Rs        # try this empirically determined approximate, monochrome, a-mosaic value
       current = flex.double([slope, BFACTOR, RS, 0., 0.])
 
+      class unpack(object):
+        def __init__(YY,values):
+          YY.reference = values # simply the flex double list of parameters
+        def __getattr__(YY,item):
+          if item=="thetax" : return YY.reference[3]
+          if item=="thetay" : return YY.reference[4]
+          if item=="G" :      return YY.reference[0]
+          if item=="BFACTOR": return YY.reference[1]
+          if item=="RS":      return YY.reference[2]
+          return getattr(YY,item)
+
+        def show(values):
+          print "%10.7f"%values.G,
+          print "%10.7f"%values.BFACTOR, \
+                "%10.7f"%values.RS, \
+                "%7.3f deg %7.3f deg"%(
+            180.*values.thetax/math.pi,180.*values.thetay/math.pi)
+
       def get_Rh_array(values):
         Rh = flex.double()
         eff_Astar = get_eff_Astar(values)
@@ -1067,14 +1085,14 @@ class scaling_manager (intensity_data) :
         return Rh
 
       def get_eff_Astar(values):
-        thetax = values[3]; thetay = values[4];
+        thetax = values.thetax; thetay = values.thetay;
         effective_orientation = ORI.rotate_thru((1,0,0),thetax
            ).rotate_thru((0,1,0),thetay
            )
         return matrix.sqr(effective_orientation.reciprocal_matrix())
 
       def get_partiality_array(values):
-        rs = values[2]
+        rs = values.RS
         Rh = get_Rh_array(values)
         rs_sq = rs*rs
         PB = rs_sq / ((2. * (Rh * Rh)) + rs_sq)
@@ -1082,21 +1100,21 @@ class scaling_manager (intensity_data) :
 
       def scaler_callable(values):
         PB = get_partiality_array(values)
-        EXP = flex.exp(-2.*values[1]*DSSQ)
-        terms = values[0] * EXP * PB
+        EXP = flex.exp(-2.*values.BFACTOR*DSSQ)
+        terms = values.G * EXP * PB
         return terms
       def lorentz_callable(values):
         return get_partiality_array(values)
       def fvec_callable(values):
         PB = get_partiality_array(values)
-        EXP = flex.exp(-2.*values[1]*DSSQ)
-        terms = (values[0] * EXP * PB * ICALCVEC - IOBSVEC)
+        EXP = flex.exp(-2.*values.BFACTOR*DSSQ)
+        terms = (values.G * EXP * PB * ICALCVEC - IOBSVEC)
         # Ideas for improvement
         #   straightforward to also include sigma weighting
         #   add extra terms representing rotational excursion: terms.concatenate(1.e7*Rh)
         return terms
 
-      func = fvec_callable(current)
+      func = fvec_callable(unpack(current))
       functional = flex.sum(func*func)
       print "functional",functional
 
@@ -1125,8 +1143,9 @@ class scaling_manager (intensity_data) :
             )
 
         def compute_functional_and_gradients(self):
-          func = fvec_callable(self.x)
-          functional = flex.sum(func*func)
+          values = unpack(self.x)
+          self.func = fvec_callable(values)
+          functional = flex.sum(self.func*self.func)
           self.f = functional
           DELTA = 1.E-7
           self.g = flex.double()
@@ -1135,22 +1154,24 @@ class scaling_manager (intensity_data) :
             templist[x]+=DELTA
             dvalues = flex.double(templist)
 
-            dfunc = fvec_callable(dvalues)
+            dfunc = fvec_callable(unpack(dvalues))
             dfunctional = flex.sum(dfunc*dfunc)
             #calculate by finite_difference
             self.g.append( ( dfunctional-functional )/DELTA )
           self.g[2]=0.
-          print "rms %10.3f"%math.sqrt(flex.mean(func*func)),
-          print "%10.7f"%self.x[0],
-          print "%10.7f"%self.x[1], \
-                "%10.7f"%self.x[2], \
-                "%7.3f deg %7.3f deg"%(
-            180.*self.x[3]/math.pi,180.*self.x[4]/math.pi)
+          print "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
+          values.show()
           return self.f, self.g
 
+        def __del__(self):
+          values = unpack(self.x)
+          print "FINALMODEL",
+          print "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
+          values.show()
+
       MINI = c_minimizer( current_x = current )
-      scaler = scaler_callable(MINI.x)
-      fat_selection = (lorentz_callable(MINI.x) > 0.2)
+      scaler = scaler_callable(unpack(MINI.x))
+      fat_selection = (lorentz_callable(unpack(MINI.x)) > 0.2)
       fat_count = fat_selection.count(True)
 
       #avoid empty database INSERT, if there are insufficient centrally-located Bragg spots:
