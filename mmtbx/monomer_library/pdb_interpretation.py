@@ -319,13 +319,11 @@ master_params_str = """\
         .type = bool
       sigma = 0.027
         .type = float
-      skip_additional_distance_checking = False
+      skip_spatial_verification = False
         .type = bool
-        .short_caption = Additional distance check
-        .help = Measure distances between 'C2', 'C4', 'C5', 'C6', 'C1*' atoms \
-          of both nucleobases (if exist). \
-          result = max(distances)-min(distances) < 2.5 and max(distances) < 8 \
-          Probably this function will be deleted soon.
+        .short_caption = Spatial verification
+        .help = During this verification spatial organization is verified \
+          as described in Gendron et. al. (2001). JMB, 308, p. 919-936.
     }
     base_pair
       .multiple = True
@@ -2518,7 +2516,7 @@ class build_chain_proxies(object):
                     angle_d_ni_degrees < 40)
                   return result
                 if (na_params.stacking.find_automatically
-                    and (na_params.stacking.skip_additional_distance_checking
+                    and (na_params.stacking.skip_spatial_verification
                           or additional_check_Gendron_2001(prev_mm, mm))):
                   if non_alternative_conformation_residues(prev_mm, mm):
                     link_resolution = add_parallelity_proxies(
@@ -4809,7 +4807,6 @@ pdb_interpretation {
     al_params = self.params.automatic_linking
     na_params = self.params.nucleic_acid_restraints
     #========== Add user-defined parallelity restraints ==============
-    from iotbx.pdb import rna_dna_atom_names_backbone_reference_set
     user_parallelity_proxies = []
     selection_cache = self.pdb_hierarchy.atom_selection_cache()
     for sp in na_params.stacking_pair:
