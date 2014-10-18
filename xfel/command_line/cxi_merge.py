@@ -179,6 +179,10 @@ postrefinement {
     .type = bool
     .help = enable the preliminary postrefinement algorithm (monochromatic)
     .expert_level = 3
+  algorithm = *rs eta_deff
+    .type = choice
+    .help = rs only, eta_deff protocol 7
+    .expert_level = 3
 }
 plot_single_index_histograms = False
   .type = bool
@@ -1045,22 +1049,23 @@ class scaling_manager (intensity_data) :
       BFACTOR = 0.
       DSSQ = ORI.unit_cell().d_star_sq(MILLER)
 
-      Rhall = flex.double()
-      for mill in MILLER:
-        H = matrix.col(mill)
-        Xhkl = Astar*H
-        Rh = ( Xhkl + BEAM ).length() - (1./WAVE)
-        Rhall.append(Rh)
-      Rs = math.sqrt(flex.mean(Rhall*Rhall))
+      if self.params.postrefinement.algorithm=="rs":
+        Rhall = flex.double()
+        for mill in MILLER:
+          H = matrix.col(mill)
+          Xhkl = Astar*H
+          Rh = ( Xhkl + BEAM ).length() - (1./WAVE)
+          Rhall.append(Rh)
+        Rs = math.sqrt(flex.mean(Rhall*Rhall))
 
-      RS = 1./10000. # reciprocal effective domain size of 1 micron
-      RS = Rs        # try this empirically determined approximate, monochrome, a-mosaic value
-      current = flex.double([slope, BFACTOR, RS, 0., 0.])
+        RS = 1./10000. # reciprocal effective domain size of 1 micron
+        RS = Rs        # try this empirically determined approximate, monochrome, a-mosaic value
+        current = flex.double([slope, BFACTOR, RS, 0., 0.])
 
-      class unpack(object):
-        def __init__(YY,values):
+        class unpack(object):
+         def __init__(YY,values):
           YY.reference = values # simply the flex double list of parameters
-        def __getattr__(YY,item):
+         def __getattr__(YY,item):
           if item=="thetax" : return YY.reference[3]
           if item=="thetay" : return YY.reference[4]
           if item=="G" :      return YY.reference[0]
@@ -1068,12 +1073,65 @@ class scaling_manager (intensity_data) :
           if item=="RS":      return YY.reference[2]
           return getattr(YY,item)
 
-        def show(values):
+         def show(values):
           print "%10.7f"%values.G,
           print "%10.7f"%values.BFACTOR, \
                 "%10.7f"%values.RS, \
                 "%7.3f deg %7.3f deg"%(
             180.*values.thetax/math.pi,180.*values.thetay/math.pi)
+
+        def lorentz_callable(values):
+          return get_partiality_array(values)
+
+        def get_partiality_array(values):
+          rs = values.RS
+          Rh = get_Rh_array(values)
+          rs_sq = rs*rs
+          PB = rs_sq / ((2. * (Rh * Rh)) + rs_sq)
+          return PB
+
+      elif self.params.postrefinement.algorithm=="eta_deff":
+        DVEC = ORI.unit_cell().d(MILLER)
+        eta_init = 2. * result["ML_half_mosaicity_deg"][0] * math.pi/180.
+        D_eff_init = 2.*result["ML_domain_size_ang"][0]
+        current = flex.double([slope, BFACTOR, eta_init, 0., 0.,D_eff_init,])
+
+        class unpack(object):
+         def __init__(YY,values):
+          YY.reference = values # simply the flex double list of parameters
+         def __getattr__(YY,item):
+          if item=="thetax" : return YY.reference[3]
+          if item=="thetay" : return YY.reference[4]
+          if item=="G" :      return YY.reference[0]
+          if item=="BFACTOR": return YY.reference[1]
+          if item=="ETA":      return YY.reference[2]
+          if item=="DEFF":      return YY.reference[5]
+          return getattr(YY,item)
+
+         def show(values):
+          print "%10.7f"%values.G,
+          print "%10.7f"%values.BFACTOR, \
+                "eta %10.7f"%values.ETA, \
+                "Deff %10.2f"%values.DEFF, \
+                "%7.3f deg %7.3f deg"%(
+            180.*values.thetax/math.pi,180.*values.thetay/math.pi)
+
+        def lorentz_callable(values):
+          Rh = get_Rh_array(values)
+          Rs = flex.double(len(MILLER),1./values.DEFF)+flex.double(len(MILLER),values.ETA/2.)/DVEC
+          ratio = Rh / Rs
+          ratio_abs = flex.abs(ratio)
+          return ratio_abs
+
+        def get_partiality_array(values):
+          Rh = get_Rh_array(values)
+          Rs = flex.double(len(MILLER),1./values.DEFF)+flex.double(len(MILLER),values.ETA/2.)/DVEC
+          Rs_sq = Rs * Rs
+          Rh_sq = Rh * Rh
+          numerator = Rs_sq - Rh_sq
+          denominator = values.DEFF * Rs * Rs_sq
+          partiality = numerator / denominator
+          return partiality
 
       def get_Rh_array(values):
         Rh = flex.double()
@@ -1091,20 +1149,12 @@ class scaling_manager (intensity_data) :
            )
         return matrix.sqr(effective_orientation.reciprocal_matrix())
 
-      def get_partiality_array(values):
-        rs = values.RS
-        Rh = get_Rh_array(values)
-        rs_sq = rs*rs
-        PB = rs_sq / ((2. * (Rh * Rh)) + rs_sq)
-        return PB
-
       def scaler_callable(values):
         PB = get_partiality_array(values)
         EXP = flex.exp(-2.*values.BFACTOR*DSSQ)
         terms = values.G * EXP * PB
         return terms
-      def lorentz_callable(values):
-        return get_partiality_array(values)
+
       def fvec_callable(values):
         PB = get_partiality_array(values)
         EXP = flex.exp(-2.*values.BFACTOR*DSSQ)
@@ -1144,6 +1194,7 @@ class scaling_manager (intensity_data) :
 
         def compute_functional_and_gradients(self):
           values = unpack(self.x)
+          assert -150. < values.BFACTOR < 150. # limits on the exponent, please
           self.func = fvec_callable(values)
           functional = flex.sum(self.func*self.func)
           self.f = functional
@@ -1169,9 +1220,16 @@ class scaling_manager (intensity_data) :
           print "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
           values.show()
 
-      MINI = c_minimizer( current_x = current )
+      try:
+        MINI = c_minimizer( current_x = current )
+      except AssertionError: # on exponential overflow
+        return null_data(
+               file_name=file_name, log_out=out.getvalue(), low_signal=True)
       scaler = scaler_callable(unpack(MINI.x))
-      fat_selection = (lorentz_callable(unpack(MINI.x)) > 0.2)
+      if self.params.postrefinement.algorithm=="rs":
+        fat_selection = (lorentz_callable(unpack(MINI.x)) > 0.2)
+      else:
+        fat_selection = (lorentz_callable(unpack(MINI.x)) < 0.9)
       fat_count = fat_selection.count(True)
 
       #avoid empty database INSERT, if there are insufficient centrally-located Bragg spots:
