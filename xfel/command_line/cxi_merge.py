@@ -1056,53 +1056,41 @@ class scaling_manager (intensity_data) :
       RS = 1./10000. # reciprocal effective domain size of 1 micron
       RS = Rs        # try this empirically determined approximate, monochrome, a-mosaic value
       current = flex.double([slope, BFACTOR, RS, 0., 0.])
-      def scaler_callable(values):
-        thetax = values[3]; thetay = values[4]; rs = values[2]
+
+      def get_Rh_array(values):
         Rh = flex.double()
-        effective_orientation = ORI.rotate_thru((1,0,0),thetax
-           ).rotate_thru((0,1,0),thetay
-           )
-        eff_Astar = matrix.sqr(effective_orientation.reciprocal_matrix())
+        eff_Astar = get_eff_Astar(values)
         for mill in MILLER:
           x = eff_Astar * matrix.col(mill)
           Svec = x + BEAM
           Rh.append(Svec.length() - (1./WAVE))
-        rs_sq = rs*rs
-        PB = rs_sq / ((2. * (Rh * Rh)) + rs_sq)
-        EXP = flex.exp(-2.*values[1]*DSSQ)
-        terms = values[0] * EXP * PB
-        return terms
-      def lorentz_callable(values):
-        thetax = values[3]; thetay = values[4]; rs = values[2]
-        Rh = flex.double()
+        return Rh
+
+      def get_eff_Astar(values):
+        thetax = values[3]; thetay = values[4];
         effective_orientation = ORI.rotate_thru((1,0,0),thetax
            ).rotate_thru((0,1,0),thetay
            )
-        eff_Astar = matrix.sqr(effective_orientation.reciprocal_matrix())
-        for mill in MILLER:
-          x = eff_Astar * matrix.col(mill)
-          Svec = x + BEAM
-          Rh.append(Svec.length() - (1./WAVE))
+        return matrix.sqr(effective_orientation.reciprocal_matrix())
+
+      def get_partiality_array(values):
+        rs = values[2]
+        Rh = get_Rh_array(values)
         rs_sq = rs*rs
         PB = rs_sq / ((2. * (Rh * Rh)) + rs_sq)
         return PB
 
+      def scaler_callable(values):
+        PB = get_partiality_array(values)
+        EXP = flex.exp(-2.*values[1]*DSSQ)
+        terms = values[0] * EXP * PB
+        return terms
+      def lorentz_callable(values):
+        return get_partiality_array(values)
       def fvec_callable(values):
-        thetax = values[3]; thetay = values[4]; rs = values[2]
-        Rh = flex.double()
-        effective_orientation = ORI.rotate_thru((1,0,0),thetax
-           ).rotate_thru((0,1,0),thetay
-           )
-        eff_Astar = matrix.sqr(effective_orientation.reciprocal_matrix())
-        for mill in MILLER:
-          x = eff_Astar * matrix.col(mill)
-          Svec = x + BEAM
-          Rh.append(Svec.length() - (1./WAVE))
-        rs_sq = rs*rs
-        PB = rs_sq / ((2. * (Rh * Rh)) + rs_sq)
+        PB = get_partiality_array(values)
         EXP = flex.exp(-2.*values[1]*DSSQ)
         terms = (values[0] * EXP * PB * ICALCVEC - IOBSVEC)
-
         # Ideas for improvement
         #   straightforward to also include sigma weighting
         #   add extra terms representing rotational excursion: terms.concatenate(1.e7*Rh)
@@ -1152,7 +1140,11 @@ class scaling_manager (intensity_data) :
             #calculate by finite_difference
             self.g.append( ( dfunctional-functional )/DELTA )
           self.g[2]=0.
-          print "rms", math.sqrt(flex.mean(func*func)), list(self.x)[0:3], "%7.3f deg %7.3f deg"%(
+          print "rms %10.3f"%math.sqrt(flex.mean(func*func)),
+          print "%10.7f"%self.x[0],
+          print "%10.7f"%self.x[1], \
+                "%10.7f"%self.x[2], \
+                "%7.3f deg %7.3f deg"%(
             180.*self.x[3]/math.pi,180.*self.x[4]/math.pi)
           return self.f, self.g
 
