@@ -191,7 +191,7 @@ class Compound(object):
       )
 
     atom_for = self.atom_for
-    
+
     return [ atom_for[ v ] for v in visitor.visited_vertices ]
 
 
