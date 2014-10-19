@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_comparison
 
 from cctbx import maptbx
@@ -30,14 +31,16 @@ def run(args):
   # map 1
   try:
     ccp4_map_1 = iotbx.ccp4_map.map_reader(file_name=args[0])
-  except: raise Sorry("Not a valid file (provide CCP4 formatted map file).")
+  except Exception: # XXX should probably be RuntimeError?
+    raise Sorry("Not a valid file (provide CCP4 formatted map file).")
   cs_1 = crystal.symmetry(ccp4_map_1.unit_cell().parameters(),
     ccp4_map_1.space_group_number)
   m1 = ccp4_map_1.data.as_double()
   # map 2
   try:
     ccp4_map_2 = iotbx.ccp4_map.map_reader(file_name=args[1])
-  except: raise Sorry("Not a valid file (provide CCP4 formatted map file).")
+  except Exception: # XXX see above
+    raise Sorry("Not a valid file (provide CCP4 formatted map file).")
   cs_2 = crystal.symmetry(ccp4_map_2.unit_cell().parameters(),
     ccp4_map_2.space_group_number)
   m2 = ccp4_map_2.data.as_double()

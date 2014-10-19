@@ -105,7 +105,7 @@ def distance2(a,b):
   for i in range(3):
     d2 += (a.xyz[i]-b.xyz[i])**2
   return d2
-  
+
 def restraints_show(restraints_values):
   outl = ""
   for i, item in enumerate(restraints_values):
