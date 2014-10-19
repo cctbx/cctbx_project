@@ -6,7 +6,7 @@ from __future__ import division
 from mmtbx.scaling import twin_analyses
 import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import null_out
 from cStringIO import StringIO
 import sys
@@ -99,6 +99,8 @@ END
   # we need to go through the wrapper class for a lot of these...
   out = StringIO()
   tw = twin_analyses.twin_analyses(miller_array=fc_twin, out=out)
+  tw2 = twin_analyses.twin_analyses(miller_array=fc_twin, out=out,
+    d_hkl_for_l_test=[3,2,3])
   # Wilson moments
   wm = tw.wilson_moments
   assert ([wm.centric_i_ratio, wm.centric_f_ratio, wm.centric_e_sq_minus_one]
@@ -123,6 +125,9 @@ END
   Mean |L|   :0.499  (untwinned: 0.500; perfect twin: 0.375)
   Mean  L^2  :0.372  (untwinned: 0.333; perfect twin: 0.200)
 """ in out2.getvalue()), out2.getvalue()
+  out3 = StringIO()
+  tw2.l_test.show(out=out3)
+  assert not show_diff(out2.getvalue(), out3.getvalue())
   if (verbose) :
     print out.getvalue()
   # twin_results_interpretation object via cctbx.miller.array API extension

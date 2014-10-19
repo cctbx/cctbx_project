@@ -125,6 +125,7 @@ END
     pdb_file,
     seq_file,
     "log=tst_xtriage_1.log",
+    "l_test_dhkl=2,2,2",
   ]
   result = xtriage.run(args=xtriage_args, out=null_out())
   test_pickle_consistency_and_size(result)

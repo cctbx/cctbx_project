@@ -13,7 +13,7 @@ from cctbx import sgtbx
 import cctbx.xray
 import scitbx.math
 from scitbx import matrix
-from libtbx import slots_getstate_setstate
+from libtbx import slots_getstate_setstate, Auto
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry, null_out
 from libtbx import table_utils
@@ -2242,10 +2242,9 @@ class twin_analyses (scaling.xtriage_analysis):
       d_star_sq_low_limit = flex.max(miller_array.d_spacings().data())
       d_star_sq_low_limit = d_star_sq_low_limit**2.0
       d_star_sq_low_limit = 1.0/d_star_sq_low_limit
-    if d_hkl_for_l_test is None:
-      d_hkl_for_l_test=[2.0,2.0,2.0]
     self.d_max = math.sqrt(1./d_star_sq_low_limit)
     self.d_min = math.sqrt(1./d_star_sq_high_limit)
+    self.d_hkl_for_l_test = d_hkl_for_l_test
 
     miller_array = miller_array.resolution_filter(
       math.sqrt(1.0/d_star_sq_low_limit),
@@ -2318,18 +2317,25 @@ class twin_analyses (scaling.xtriage_analysis):
       normalised_acentric=acentric_cut,
       normalised_centric=centric_cut)
     self.l_test=None
+    parity_h = parity_k = parity_l = 2
+    if (not d_hkl_for_l_test in [None, Auto]) :
+      parity_h, parity_k, parity_l = d_hkl_for_l_test
     if self.translational_pseudo_symmetry is not None:
+      if (d_hkl_for_l_test in [None, Auto]) :
+        parity_h = self.translational_pseudo_symmetry.mod_h
+        parity_k = self.translational_pseudo_symmetry.mod_k
+        parity_l = self.translational_pseudo_symmetry.mod_l
       self.l_test = l_test(
         miller_array=acentric_cut,
-        parity_h=self.translational_pseudo_symmetry.mod_h,
-        parity_k=self.translational_pseudo_symmetry.mod_k,
-        parity_l=self.translational_pseudo_symmetry.mod_l)
+        parity_h=parity_h,
+        parity_k=parity_k,
+        parity_l=parity_l)
     else:
       self.l_test = l_test(
         miller_array=acentric_cut,
-        parity_h=2,
-        parity_k=2,
-        parity_l=2)
+        parity_h=parity_h,
+        parity_k=parity_k,
+        parity_l=parity_l)
     ##--------------------------
     self.n_twin_laws = len(possible_twin_laws.operators)
     self.twin_law_dependent_analyses = []
