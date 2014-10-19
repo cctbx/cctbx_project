@@ -226,6 +226,10 @@ input {
             I/sigI greater than isigi_cut are more than
             completeness_cut complete'''
        }
+       l_test_dhkl = None
+          .type = ints(size=3)
+          .short_caption = Reciprocal-space vector for L-test
+          .expert_level = 2
        apply_basic_filters_prior_to_twin_analysis=True
          .type=bool
          .help="Keep data cutoffs from the basic_analyses module (I/sigma,Wilson scaling,Anisotropy) when twin stats are computed."
@@ -702,6 +706,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
         miller_array=miller_obs,
         d_star_sq_low_limit=d_star_sq_low_limit,
         d_star_sq_high_limit=d_star_sq_high_limit,
+        d_hkl_for_l_test=twin_params.l_test_dhkl,
         normalise=True,
         out=text_out,
         miller_calc=miller_calc,
