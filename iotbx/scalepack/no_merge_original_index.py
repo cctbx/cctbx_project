@@ -211,7 +211,12 @@ class reader(object):
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
       merge_equivalents=merge_equivalents,
-      base_array_info=base_array_info)]
+      base_array_info=base_array_info),
+            self.batch_as_miller_array(
+      crystal_symmetry=crystal_symmetry,
+      force_symmetry=force_symmetry,
+      base_array_info=base_array_info),
+            ]
 
   def batch_as_miller_array (self,
         crystal_symmetry=None,
