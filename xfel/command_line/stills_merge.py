@@ -27,11 +27,18 @@ def get_observations (data_dirs,data_subset):
       continue
     for file_name in os.listdir(dir_name):
       if file_name.endswith("_experiments.json"):
-        if os.path.exists(os.path.join(dir_name, file_name.split("_experiments.json")[0] + "_integrated.pickle")):
-          if data_subset==0 or \
-            (data_subset==1 and (int(os.path.basename(file_name).split("_experiments.json")[0][-1])%2==1)) or \
-            (data_subset==2 and (int(os.path.basename(file_name).split("_experiments.json")[0][-1])%2==0)):
-            file_names.append(os.path.join(dir_name, file_name))
+        if file_name.endswith("_refined_experiments.json"):
+          if os.path.exists(os.path.join(dir_name, file_name.split("_refined_experiments.json")[0] + "_integrated.pickle")):
+            if data_subset==0 or \
+              (data_subset==1 and (int(os.path.basename(file_name).split("_refined_experiments.json")[0][-1])%2==1)) or \
+              (data_subset==2 and (int(os.path.basename(file_name).split("_refined_experiments.json")[0][-1])%2==0)):
+              file_names.append(os.path.join(dir_name, file_name))
+        else:
+          if os.path.exists(os.path.join(dir_name, file_name.split("_experiments.json")[0] + "_integrated.pickle")):
+            if data_subset==0 or \
+              (data_subset==1 and (int(os.path.basename(file_name).split("_experiments.json")[0][-1])%2==1)) or \
+              (data_subset==2 and (int(os.path.basename(file_name).split("_experiments.json")[0][-1])%2==0)):
+              file_names.append(os.path.join(dir_name, file_name))
       elif file_name.endswith("experiments.json"):
         if os.path.exists(os.path.join(dir_name, file_name.split("experiments.json")[0] + "integrated.pickle")):
           if data_subset==0 or \
@@ -51,9 +58,8 @@ def load_result (file_name,
                  out) :
   # Pull relevant information from integrated.pickle and refined_experiments.json
   # files to construct the equivalent of a single integration pickle (frame).
-
   try:
-    frame = frame_extractor.construct_frame(file_name.split("_experiments.json")[0] + "_integrated.pickle", file_name).make_frame()
+    frame = frame_extractor.construct_frame(file_name.split("_experiments.json")[0] + "_integrated.pickle", file_name, params.pixel_size).make_frame()
   except Exception:
     return None
 
@@ -61,7 +67,6 @@ def load_result (file_name,
   # @c None.
 
   print "Step 2.  Load frame obj and filter on lattice & cell with",reindex_op
-  print frame
   """
   Take a frame with all expected contents of an integration pickle, confirm
   that it contains the appropriate data, and check the lattice type and unit
