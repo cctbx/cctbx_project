@@ -60,6 +60,10 @@ def exercise () :
   batches = reader.batch_as_miller_array(crystal_symmetry=symm)
   assert batches.indices().all_eq(i_obs.indices())
   assert (batches.data()[0] == 316)
+  mas = reader.as_miller_arrays()
+  assert len(mas) == 2
+  assert mas[0].info().labels == ["I(+)", "SIGI(+)", "I(-)", "SIGI(-)"]
+  assert mas[1].info().labels == ["BATCH"]
   # space group symbol and symops conflict (Scalepack bug?)
   sca_bad = """\
    24 f4132
