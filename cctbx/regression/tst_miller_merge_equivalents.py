@@ -131,6 +131,13 @@ def exercise_split_unmerged () :
   assert (split.data_1.size() == split.data_2.size() == 467)
   cc = miller.compute_cc_one_half(unmerged_array)
   assert approx_equal(cc, 0.861, eps=0.001)
+  unmerged_array.setup_binner(n_bins=10)
+  unmerged_array.set_observation_type_xray_intensity()
+  result = unmerged_array.cc_one_half(use_binning=True)
+  assert approx_equal(
+    result.data[1:-1],
+    [0.549, 0.789, 0.843, 0.835, 0.863, 0.860, 0.893, 0.847, 0.875, 0.859],
+    eps=0.001)
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True):
