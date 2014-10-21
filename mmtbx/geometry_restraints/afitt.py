@@ -415,12 +415,12 @@ class afitt_object:
     return f.getvalue()
 
 def get_afitt_command():
-  cmd = "buster_helper_mmff help" # used because buster_helper_mmff hangs on no input
+  cmd = "afitt_helper_mmff help" # used because afitt_helper_mmff hangs on no input
   ero = easy_run.fully_buffered(command=cmd,
                                )
   out = StringIO.StringIO()
   ero.show_stderr(out=out)
-  exe = "buster_helper_mmff"
+  exe = "afitt_helper_mmff"
   if out.getvalue().find("OpenEye")>-1:
     return exe
   if os.environ.get("OE_EXE", False):
