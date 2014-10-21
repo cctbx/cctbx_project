@@ -4580,10 +4580,20 @@ class array(set):
     function skips this method.
     """
     assert self.is_xray_intensity_array()
-    tmp_array = self.customized_copy(
-      anomalous_flag=anomalous_flag).map_to_asu()
-    tmp_array = tmp_array.sort("packed_indices")
-    return compute_cc_one_half(tmp_array, n_trials=n_trials)
+    if (not use_binning) :
+      tmp_array = self.customized_copy(
+        anomalous_flag=anomalous_flag).map_to_asu()
+      tmp_array = tmp_array.sort("packed_indices")
+      return compute_cc_one_half(tmp_array, n_trials=n_trials)
+    data = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      bin_array = self.select(sel)
+      if (bin_array.size() == 0) :
+        data.append(None)
+      else :
+        data.append(bin_array.cc_one_half())
+    return binned_data(binner=self.binner(), data=data, data_fmt="%6.3f")
 
   def half_dataset_anomalous_correlation (self, use_binning=False) :
     """
