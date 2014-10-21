@@ -396,7 +396,8 @@ class table_one (iotbx.table_one.table) :
       iterable=range(len(self.params.structure)),
       func=self.run_single_structure,
       processes=params.multiprocessing.nproc,
-      method=params.multiprocessing.technology)
+      method=params.multiprocessing.technology,
+      preserve_exception_message=True)
     for structure, result in zip(params.structure, results) :
       print >> out, ""
       print >> out, "Collecting stats for structure %s" % structure.name
