@@ -7,14 +7,17 @@ class FormatSMVADSCSN(FormatSMVADSC):
 
   @staticmethod
   def understand(image_file):
+    # The header must include a DATE and an integer-valued DETECTOR_SN
+    # for this format to apply.
 
     size, header = FormatSMVADSC.get_smv_header(image_file)
 
-    wanted_header_items = ['DETECTOR_SN', 'DATE']
-
-    for header_item in wanted_header_items:
-      if not header_item in header:
-        return 0
+    if 'DATE' not in header.keys():
+      return False
+    try:
+      int(header['DETECTOR_SN'])
+    except KeyError, ValueError:
+      return False
 
     return True
 
