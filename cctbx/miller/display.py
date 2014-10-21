@@ -207,6 +207,7 @@ class scene (object) :
       colors = flex.vec3_double(data_for_colors.size(), base_color)
     if (settings.slice_mode) and (settings.keep_constant_scale) :
       colors = colors.select(self.slice_selection)
+      data_for_radii = data_for_radii.select(self.slice_selection)
     uc = self.work_array.unit_cell()
     abc = uc.parameters()[0:3]
     min_dist = min(uc.reciprocal_space_vector((1,1,1)))
