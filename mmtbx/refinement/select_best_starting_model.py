@@ -192,7 +192,7 @@ class select_model (object) :
       if (not is_similar_cell) :
         print >> log, "Model %d has incompatible space group:" % (k+1)
         print >> log, "  source: %s" % file_name
-        print >> log, "  model:  %s" % ucf(model_unit_cell.parameters())
+        print >> log, "  model:  %s" % ucf(model_unit_cell)
         xray_structures.append(None)
         continue
       else :
