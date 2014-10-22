@@ -260,138 +260,138 @@ def check_for_peptide_links(atom1,
   return False
 
 class linking_mixins(object):
-  def process_intra_chain_links(self,
-                                model,
-                                mon_lib_srv,
-                                log,
-                                residue_group_cutoff2=400.,
-                                #bond_cutoff=2.75,
-                                amino_acid_bond_cutoff=1.9,
-                                rna_dna_bond_cutoff=3.5,
-                                intra_residue_bond_cutoff=1.99,
-                                verbose=False,
-                                ):
-    assert 0
-    t0 = time.time()
-    ########################################
-    # must be after process_apply_cif_link #
-    ########################################
-    import linking_utils
-    #
-    def generate_first_atom_of_residue_groups(model, chain_id, verbose=False):
-      assert 0
-      for i_chain, chain in enumerate(model.chains()):
-        if chain.id!=chain_id: continue
-        for i_residue_group, residue_group in enumerate(chain.residue_groups()):
-          if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
-            residue_group.resseq, residue_group.icode)
-          yield residue_group.atoms()[0]
-    #
-    chain_ids = []
-    outls = {}
-    for chain in model.chains():
-      if chain.id not in chain_ids: chain_ids.append(chain.id)
-    for chain_id in chain_ids:
-      for i_atom, atom1 in enumerate(
-        generate_first_atom_of_residue_groups(model, chain_id, verbose=verbose)
-        ):
-        classes1 = linking_utils.get_classes(atom1)
-        for j_atom, atom2 in enumerate(
-          generate_first_atom_of_residue_groups(model, chain_id, verbose=False)
-          ):
-          if i_atom>=j_atom: continue
-          classes2 = linking_utils.get_classes(atom2)
-          # what about gamma linking?
-          if classes1.common_water: continue
-          if classes2.common_water: continue
-          if classes1.common_amino_acid and classes2.common_amino_acid: continue
-          if classes1.common_rna_dna and classes2.common_rna_dna: continue
-          d2 = linking_utils.get_distance2(atom1, atom2)
-          if d2>residue_group_cutoff2: continue
-          if verbose:
-            print atom1.quote(), atom2.quote(), d2,residue_group_cutoff2
-          #
-          rc = linking_utils.process_atom_groups_for_linking(
-            self.pdb_hierarchy,
-            atom1,
-            atom2,
-            classes1,
-            classes2,
-            #bond_cutoff=bond_cutoff,
-            amino_acid_bond_cutoff=amino_acid_bond_cutoff,
-            rna_dna_bond_cutoff=rna_dna_bond_cutoff,
-            intra_residue_bond_cutoff=intra_residue_bond_cutoff,
-            verbose=verbose,
-            )
-          if rc is None: continue
-          pdbres_pairs, data_links, atomss = rc
-          for pdbres_pair, data_link, atoms in zip(pdbres_pairs,
-                                                   data_links,
-                                                   atomss,
-                                                   ):
-            if verbose:
-              print '-'*80
-              print pdbres_pairs
-              print "data_link",data_link
-              for atom in atoms:
-                print atom.quote()
-            outls.setdefault(data_link, "")
-            tmp = self.process_custom_links(mon_lib_srv,
-                                            pdbres_pair,
-                                            data_link,
-                                            atoms,
-                                            verbose=verbose,
-                                            )
-            if verbose:
-              print "rc :%s:" % tmp
-            outls[data_link] = tmp
-    # log output about detection
-    remove=[]
-    if self.apply_cif_links:
-      outl = ""
-      for i, apply in enumerate(self.apply_cif_links):
-        if(not getattr(apply, "automatic", False)): continue
-        if apply.data_link in mon_lib_srv.link_link_id_dict:
-          outl += "%sLinking %s to %s using %s\n" % (
-            " "*8,
-            apply.pdbres_pair[0][7:],
-            apply.pdbres_pair[1][7:],
-            apply.data_link,
-            )
-        else:
-          if getattr(apply, "possible_peptide_link", False):
-            if 1:
-              pass
-            else:
-              print >> log, "%sPossible peptide link %s to %s" % (
-                " "*8,
-                apply.pdbres_pair[0][7:],
-                apply.pdbres_pair[1][7:],
-                )
-          elif getattr(apply, "possible_rna_dna_link", False):
-            pass
-          else:
-            outl += "%sLinking %s to %s\n" % (
-              " "*8,
-              apply.pdbres_pair[0][7:],
-              apply.pdbres_pair[1][7:],
-              )
-            outl += '%sCreating link for "%s"\n' % (" "*10, apply.data_link)
-            mon_lib_srv.link_link_id_dict[apply.data_link] = None
-        if outls.get(apply.data_link, ""):
-          outl += outls[apply.data_link]
-      if outl:
-        print >> log, "%sAdding automatically detected intra-chain links" % (
-          " "*6,
-          )
-        print >> log, outl[:-1]
-    if remove:
-      remove.sort()
-      remove.reverse()
-      for r in remove: del self.apply_cif_links[r]
-    print >> log, "%sTime to detect intra-chain links : %0.1fs" % (
-      " "*6,
-      time.time()-t0)
+  # def process_intra_chain_links(self,
+  #                               model,
+  #                               mon_lib_srv,
+  #                               log,
+  #                               residue_group_cutoff2=400.,
+  #                               #bond_cutoff=2.75,
+  #                               amino_acid_bond_cutoff=1.9,
+  #                               rna_dna_bond_cutoff=3.5,
+  #                               intra_residue_bond_cutoff=1.99,
+  #                               verbose=False,
+  #                               ):
+  #   assert 0
+  #   t0 = time.time()
+  #   ########################################
+  #   # must be after process_apply_cif_link #
+  #   ########################################
+  #   import linking_utils
+  #   #
+  #   def generate_first_atom_of_residue_groups(model, chain_id, verbose=False):
+  #     assert 0
+  #     for i_chain, chain in enumerate(model.chains()):
+  #       if chain.id!=chain_id: continue
+  #       for i_residue_group, residue_group in enumerate(chain.residue_groups()):
+  #         if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
+  #           residue_group.resseq, residue_group.icode)
+  #         yield residue_group.atoms()[0]
+  #   #
+  #   chain_ids = []
+  #   outls = {}
+  #   for chain in model.chains():
+  #     if chain.id not in chain_ids: chain_ids.append(chain.id)
+  #   for chain_id in chain_ids:
+  #     for i_atom, atom1 in enumerate(
+  #       generate_first_atom_of_residue_groups(model, chain_id, verbose=verbose)
+  #       ):
+  #       classes1 = linking_utils.get_classes(atom1)
+  #       for j_atom, atom2 in enumerate(
+  #         generate_first_atom_of_residue_groups(model, chain_id, verbose=False)
+  #         ):
+  #         if i_atom>=j_atom: continue
+  #         classes2 = linking_utils.get_classes(atom2)
+  #         # what about gamma linking?
+  #         if classes1.common_water: continue
+  #         if classes2.common_water: continue
+  #         if classes1.common_amino_acid and classes2.common_amino_acid: continue
+  #         if classes1.common_rna_dna and classes2.common_rna_dna: continue
+  #         d2 = linking_utils.get_distance2(atom1, atom2)
+  #         if d2>residue_group_cutoff2: continue
+  #         if verbose:
+  #           print atom1.quote(), atom2.quote(), d2,residue_group_cutoff2
+  #         #
+  #         rc = linking_utils.process_atom_groups_for_linking(
+  #           self.pdb_hierarchy,
+  #           atom1,
+  #           atom2,
+  #           classes1,
+  #           classes2,
+  #           #bond_cutoff=bond_cutoff,
+  #           amino_acid_bond_cutoff=amino_acid_bond_cutoff,
+  #           rna_dna_bond_cutoff=rna_dna_bond_cutoff,
+  #           intra_residue_bond_cutoff=intra_residue_bond_cutoff,
+  #           verbose=verbose,
+  #           )
+  #         if rc is None: continue
+  #         pdbres_pairs, data_links, atomss = rc
+  #         for pdbres_pair, data_link, atoms in zip(pdbres_pairs,
+  #                                                  data_links,
+  #                                                  atomss,
+  #                                                  ):
+  #           if verbose:
+  #             print '-'*80
+  #             print pdbres_pairs
+  #             print "data_link",data_link
+  #             for atom in atoms:
+  #               print atom.quote()
+  #           outls.setdefault(data_link, "")
+  #           tmp = self.process_custom_links(mon_lib_srv,
+  #                                           pdbres_pair,
+  #                                           data_link,
+  #                                           atoms,
+  #                                           verbose=verbose,
+  #                                           )
+  #           if verbose:
+  #             print "rc :%s:" % tmp
+  #           outls[data_link] = tmp
+  #   # log output about detection
+  #   remove=[]
+  #   if self.apply_cif_links:
+  #     outl = ""
+  #     for i, apply in enumerate(self.apply_cif_links):
+  #       if(not getattr(apply, "automatic", False)): continue
+  #       if apply.data_link in mon_lib_srv.link_link_id_dict:
+  #         outl += "%sLinking %s to %s using %s\n" % (
+  #           " "*8,
+  #           apply.pdbres_pair[0][7:],
+  #           apply.pdbres_pair[1][7:],
+  #           apply.data_link,
+  #           )
+  #       else:
+  #         if getattr(apply, "possible_peptide_link", False):
+  #           if 1:
+  #             pass
+  #           else:
+  #             print >> log, "%sPossible peptide link %s to %s" % (
+  #               " "*8,
+  #               apply.pdbres_pair[0][7:],
+  #               apply.pdbres_pair[1][7:],
+  #               )
+  #         elif getattr(apply, "possible_rna_dna_link", False):
+  #           pass
+  #         else:
+  #           outl += "%sLinking %s to %s\n" % (
+  #             " "*8,
+  #             apply.pdbres_pair[0][7:],
+  #             apply.pdbres_pair[1][7:],
+  #             )
+  #           outl += '%sCreating link for "%s"\n' % (" "*10, apply.data_link)
+  #           mon_lib_srv.link_link_id_dict[apply.data_link] = None
+  #       if outls.get(apply.data_link, ""):
+  #         outl += outls[apply.data_link]
+  #     if outl:
+  #       print >> log, "%sAdding automatically detected intra-chain links" % (
+  #         " "*6,
+  #         )
+  #       print >> log, outl[:-1]
+  #   if remove:
+  #     remove.sort()
+  #     remove.reverse()
+  #     for r in remove: del self.apply_cif_links[r]
+  #   print >> log, "%sTime to detect intra-chain links : %0.1fs" % (
+  #     " "*6,
+  #     time.time()-t0)
 
   # def process_nonbonded_for_linking(pdb_inp,
   #                                   pdb_hierarchy,
@@ -692,6 +692,8 @@ Residue classes
       # got a link....
       if classes1.common_rna_dna and classes2.common_rna_dna:
         hbonds_in_bond_list.append(tuple(sorted([atom1.i_seq, atom2.i_seq])))
+        # we will create proxies elsewhere (pdb_interpretation:4900)
+        continue
 
       class1 = linking_utils.get_classes(atom1, #_group1.resname,
                                          important_only=True,

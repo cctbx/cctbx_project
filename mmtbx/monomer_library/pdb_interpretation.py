@@ -3898,12 +3898,54 @@ pdb_interpretation {
         print >> log
     return pair_sym_table, max_distance_model
 
+  def get_h_bonds_for_basepair(self, a1, a2, distance_cutoff=100):
+    # a1, a2.parent().atom_group_size have to  == 1
+    new_hbonds = []
+    r1 = a1.parent()
+    r2 = a2.parent()
+    r1n = r1.resname.strip()
+    r2n = r2.resname.strip()
+    # RNA
+    if r1n > r2n:
+      t = r1
+      r1 = r2
+      r2 = t
+      r1n = r1.resname.strip()
+      r2n = r2.resname.strip()
+    if len(r1n) > 1:
+      # Translate DNA resname to RNA for unification
+      # DNA
+      r1n = r1.resname.strip()[1]
+      r2n = r2.resname.strip()[1]
+    r1n = 'U' if r1n == "T" else r1n
+    r2n = 'U' if r2n == "T" else r2n
+    from mmtbx.monomer_library import bondlength_defaults
+    best_possible_link_list = []
+    best_score = 100.
+    for class_number, data in bondlength_defaults.basepairs_lengths.iteritems():
+      d1 = 0
+      if (r1n, r2n) == data[0]:
+        for l in data[1:]:
+          a1 = r1.get_atom(l[0])
+          a2 = r2.get_atom(l[1])
+          d1 += abs(a1.distance(a2)-2.89)
+        if best_score > d1:
+          best_possible_link_list = [(x[:2]) for x in data[1:]]
+          best_score = d1
+    for n1, n2 in best_possible_link_list:
+      a1 = r1.get_atom(n1)
+      a2 = r2.get_atom(n2)
+      if a1 is not None and a2 is not None and a1.distance(a2)<distance_cutoff:
+        new_hbonds.append(tuple(sorted([a1.i_seq, a2.i_seq])))
+    return new_hbonds
+
+
   def create_user_defined_NA_basepair_restraints(self, log):
     # user-defined
     na_params = self.params.nucleic_acid_restraints
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
-    new_hbonds = []
     new_hbond_proxies = []
+    new_hbonds = []
     max_distance = 0
     planarity_proxies = []
     weight = 1./na_params.basepair_planarity.sigma**2
@@ -3920,47 +3962,18 @@ pdb_interpretation {
           planarity_proxies.append(geometry_restraints.planarity_proxy(
             i_seqs=i_seqs+j_seqs,
             weights=[weight]*len(i_seqs+j_seqs)))
-          # hbonds
-          r1n = r1.resname.strip()
-          r2n = r2.resname.strip()
-          # RNA
-          if r1n > r2n:
-            t = r1
-            r1 = r2
-            r2 = t
-            r1n = r1.resname.strip()
-            r2n = r2.resname.strip()
-          if len(r1n) > 1:
-            # Translate DNA resname to RNA for unification
-            # DNA
-            r1n = r1.resname.strip()[1]
-            r2n = r2.resname.strip()[1]
-          r1n = 'U' if r1n == "T" else r1n
-          r2n = 'U' if r2n == "T" else r2n
-          from mmtbx.monomer_library import bondlength_defaults
-          best_possible_link_list = []
-          best_score = 100.
-          for class_number, data in bondlength_defaults.basepairs_lengths.iteritems():
-            d1 = 0
-            if (r1n, r2n) == data[0]:
-              for l in data[1:]:
-                a1 = r1.get_atom(l[0])
-                a2 = r2.get_atom(l[1])
-                d1 += abs(a1.distance(a2)-2.89)
-              if best_score > d1:
-                best_possible_link_list = [(x[:2]) for x in data[1:]]
-                best_score = d1
-          for n1, n2 in best_possible_link_list:
-            a1 = r1.get_atom(n1)
-            a2 = r2.get_atom(n2)
+          bonds = self.get_h_bonds_for_basepair(a1,a2)
+          for b in bonds:
+            a1 = self.pdb_atoms[b[0]]
+            a2 = self.pdb_atoms[b[1]]
             if a1 is not None and a2 is not None:
               dist = a1.distance(a2)
               if dist <= na_params.bonds.bond_distance_cutoff:
-                new_hbonds.append(tuple(sorted([a1.i_seq, a2.i_seq])))
-                max_distance = max(max_distance, a1.distance(a2))
+                new_hbonds.append(b)
+                max_distance = max(max_distance, dist)
               else:
                 print >> log, "    Bond between", a1.id_str(), "and", a2.id_str(),
-                print >> log, "length=", dist, "is rejected because of",
+                print >> log, "length=%4.2f" % dist, "is rejected because of",
                 print >> log, "nucleic_acid_restraints.bonds.bond_distance_cutoff=",
                 print >> log, na_params.bonds.bond_distance_cutoff
         else:
@@ -4867,48 +4880,55 @@ pdb_interpretation {
         )
     if na_params.save_as_param_file:
       self.na_restraints_out_file.write("\n")
-    if hbonds_in_bond_list > 0:
-      # automatic generation of planarity restraints
+    list_of_hbonds_for_proxies = new_hbonds
+    weight = 1./na_params.basepair_planarity.sigma**2
+    for bond in hbonds_in_bond_list:
+      bp_bonds = self.get_h_bonds_for_basepair(
+          self.pdb_atoms[bond[0]],
+          self.pdb_atoms[bond[1]],
+          distance_cutoff=na_params.bonds.bond_distance_cutoff)
       if (na_params.basepair_planarity.enabled and na_params.enabled
-          and na_params.basepair_planarity.find_automatically):
-        from iotbx.pdb import residue_name_plus_atom_names_interpreter
-        # Do planarity restraints for 'horizontal' basepairing
-        weight = 1./na_params.basepair_planarity.sigma**2
-        for bond_seqs in hbonds_in_bond_list:
-          r1 = self.pdb_atoms[bond_seqs[0]].parent()
-          r2 = self.pdb_atoms[bond_seqs[1]].parent()
-          # check for alternative conformations
-          if (r1.parent().atom_groups_size() == 1 and
-              r2.parent().atom_groups_size() == 1):
-            i_seqs = []
-            i_seqs += self.get_i_seqs_from_na_planes(r1)
-            i_seqs += self.get_i_seqs_from_na_planes(r2)
-            proxy = geometry_restraints.planarity_proxy(
-              i_seqs=i_seqs,
-              weights=[weight]*len(i_seqs))
-            if self.geometry_proxy_registries.planarity.add_if_not_duplicated(
-                proxy=proxy) and na_params.save_as_param_file:
-                      self.na_restraints_out_file.write("""\
-    base_pair {
-      base1 = chain %s and resid %s
-      base2 = chain %s and resid %s
-    }\n""" % (r1.parent().parent().id, r1.parent().resid(),
-                                r2.parent().parent().id, r2.parent().resid()))
-          else:
-            print >> log, "  Basepair planarity of residues ", r1.id_str(),
-            print >> log, "and", r2.id_str(), "\n    is cancelled",
-            print >> log, "because of presence of alternative conformations"
+          and na_params.basepair_planarity.find_automatically
+          and len(bp_bonds)>1):
+            r1 = self.pdb_atoms[bp_bonds[0][0]].parent()
+            r2 = self.pdb_atoms[bp_bonds[0][1]].parent()
+            # check for alternative conformations
+            if (r1.parent().atom_groups_size() == 1 and
+                r2.parent().atom_groups_size() == 1):
+              i_seqs = []
+              i_seqs += self.get_i_seqs_from_na_planes(r1)
+              i_seqs += self.get_i_seqs_from_na_planes(r2)
+              proxy = geometry_restraints.planarity_proxy(
+                i_seqs=i_seqs,
+                weights=[weight]*len(i_seqs))
+              if self.geometry_proxy_registries.planarity.add_if_not_duplicated(
+                  proxy=proxy) and na_params.save_as_param_file:
+                        self.na_restraints_out_file.write("""\
+      base_pair {
+        base1 = chain %s and resid %s
+        base2 = chain %s and resid %s
+      }\n""" % (r1.parent().parent().id, r1.parent().resid(),
+                                  r2.parent().parent().id, r2.parent().resid()))
+            else:
+              print >> log, "  Basepair planarity of residues ", r1.id_str(),
+              print >> log, "and", r2.id_str(), "\n    is cancelled",
+              print >> log, "because of presence of alternative conformations"
+
+      for bpb in bp_bonds:
+        if bpb not in list_of_hbonds_for_proxies:
+          list_of_hbonds_for_proxies.append(bpb)
+    hbonds_in_bond_list = []
 
     if na_params.save_as_param_file:
       self.na_restraints_out_file.write("  }\n}")
       self.na_restraints_out_file.close()
 
     #========== Add user-defined basepair restraints (planarity+hbonds) =======
-    if len(new_hbonds) > 0:
+    if len(list_of_hbonds_for_proxies) > 0:
       # make proxies, compare with hbonds_in_bond_list
       new_hbond_proxies = []
       bond_weight = 1.0/na_params.bonds.sigma**2
-      for new_hb in new_hbonds:
+      for new_hb in list_of_hbonds_for_proxies:
         if new_hb not in hbonds_in_bond_list:
           new_hbond_proxies.append(geometry_restraints.bond_simple_proxy(
             i_seqs=new_hb,

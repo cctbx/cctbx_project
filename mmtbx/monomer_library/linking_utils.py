@@ -1,6 +1,5 @@
 from __future__ import division
 import iotbx
-from libtbx.utils import Sorry
 from scitbx.array_family import flex
 from mmtbx.chemical_components import get_type
 
@@ -236,104 +235,104 @@ def get_classes(atom, important_only=False, verbose=False):
       setattr(classes, attr, True)
   return classes
 
-def get_closest_atoms(atom_group1,
-                      atom_group2,
-                      ignore_hydrogens=True,
-                      ignore_atom_names_in_atom_group1=None,
-                      ignore_atom_names_in_atom_group2=None,
-                      ignore_atom_name_pairs=None,
-                      ):
-  assert 0
-  if ignore_atom_names_in_atom_group1 is None:
-    ignore_atom_names_in_atom_group1 = []
-  if ignore_atom_names_in_atom_group2 is None:
-    ignore_atom_names_in_atom_group2 = []
-  if ignore_atom_name_pairs is None: ignore_atom_name_pairs=[]
-  min_d2 = 1e5
-  min_atom1 = None
-  min_atom2 = None
-  for i, atom1 in enumerate(atom_group1.atoms()):
-    if atom1.name in ignore_atom_names_in_atom_group1: continue
-    if ignore_hydrogens:
-      if atom1.element.strip() in ad_hoc_non_linking_elements: continue
-    else:
-      if atom1.element.strip() in ad_hoc_non_linking_elements[2:]: continue
-    altloc1 = atom1.parent().altloc.strip()
-    for j, atom2 in enumerate(atom_group2.atoms()):
-      if ignore_hydrogens:
-        if atom2.element.strip() in ad_hoc_non_linking_elements: continue
-      else:
-        if atom2.element.strip() in ad_hoc_non_linking_elements[2:]: continue
-      if atom2.name in ignore_atom_names_in_atom_group2: continue
-      pair = [atom1.name, atom2.name]
-      pair.sort()
-      if pair in ignore_atom_name_pairs: continue
-      altloc2 = atom2.parent().altloc.strip()
-      if altloc1 and altloc2:
-        if altloc1!=altloc2: continue
-      d2 = get_distance2(atom1, atom2)
-      if d2<min_d2:
-        min_atom1 = atom1
-        min_atom2 = atom2
-        min_d2 = d2
-  return min_atom1, min_atom2
+# def get_closest_atoms(atom_group1,
+#                       atom_group2,
+#                       ignore_hydrogens=True,
+#                       ignore_atom_names_in_atom_group1=None,
+#                       ignore_atom_names_in_atom_group2=None,
+#                       ignore_atom_name_pairs=None,
+#                       ):
+#   assert 0
+#   if ignore_atom_names_in_atom_group1 is None:
+#     ignore_atom_names_in_atom_group1 = []
+#   if ignore_atom_names_in_atom_group2 is None:
+#     ignore_atom_names_in_atom_group2 = []
+#   if ignore_atom_name_pairs is None: ignore_atom_name_pairs=[]
+#   min_d2 = 1e5
+#   min_atom1 = None
+#   min_atom2 = None
+#   for i, atom1 in enumerate(atom_group1.atoms()):
+#     if atom1.name in ignore_atom_names_in_atom_group1: continue
+#     if ignore_hydrogens:
+#       if atom1.element.strip() in ad_hoc_non_linking_elements: continue
+#     else:
+#       if atom1.element.strip() in ad_hoc_non_linking_elements[2:]: continue
+#     altloc1 = atom1.parent().altloc.strip()
+#     for j, atom2 in enumerate(atom_group2.atoms()):
+#       if ignore_hydrogens:
+#         if atom2.element.strip() in ad_hoc_non_linking_elements: continue
+#       else:
+#         if atom2.element.strip() in ad_hoc_non_linking_elements[2:]: continue
+#       if atom2.name in ignore_atom_names_in_atom_group2: continue
+#       pair = [atom1.name, atom2.name]
+#       pair.sort()
+#       if pair in ignore_atom_name_pairs: continue
+#       altloc2 = atom2.parent().altloc.strip()
+#       if altloc1 and altloc2:
+#         if altloc1!=altloc2: continue
+#       d2 = get_distance2(atom1, atom2)
+#       if d2<min_d2:
+#         min_atom1 = atom1
+#         min_atom2 = atom2
+#         min_d2 = d2
+#   return min_atom1, min_atom2
 
-def get_link_atoms(atom_group1,
-                   atom_group2,
-                   bond_cutoff=2.75,
-                   ignore_hydrogens=True,
-                   ):
-  assert 0
-  bond_cutoff *= bond_cutoff
-  link_atoms = []
-  for i, atom1 in enumerate(atom_group1.atoms()):
-    if ignore_hydrogens:
-      if atom1.element.strip() in ad_hoc_non_linking_elements: continue
-    for j, atom2 in enumerate(atom_group2.atoms()):
-      if ignore_hydrogens:
-        if atom2.element.strip() in ad_hoc_non_linking_elements: continue
-      #if i>=j: continue
-      d2 = get_distance2(atom1, atom2)
-      if d2<bond_cutoff:
-        link_atoms.append([atom1, atom2])
-  return link_atoms
+# def get_link_atoms(atom_group1,
+#                    atom_group2,
+#                    bond_cutoff=2.75,
+#                    ignore_hydrogens=True,
+#                    ):
+#   assert 0
+#   bond_cutoff *= bond_cutoff
+#   link_atoms = []
+#   for i, atom1 in enumerate(atom_group1.atoms()):
+#     if ignore_hydrogens:
+#       if atom1.element.strip() in ad_hoc_non_linking_elements: continue
+#     for j, atom2 in enumerate(atom_group2.atoms()):
+#       if ignore_hydrogens:
+#         if atom2.element.strip() in ad_hoc_non_linking_elements: continue
+#       #if i>=j: continue
+#       d2 = get_distance2(atom1, atom2)
+#       if d2<bond_cutoff:
+#         link_atoms.append([atom1, atom2])
+#   return link_atoms
 
-def get_nonbonded(pdb_inp,
-                  pdb_hierarchy,
-                  geometry_restraints_manager,
-                  ):
-  assert 0
-  site_labels = [atom.id_str()
-     for atom in pdb_hierarchy.atoms()]
-  pair_proxies = geometry_restraints_manager.pair_proxies(
-     sites_cart=pdb_inp.xray_structure_simple().sites_cart(),
-     site_labels=site_labels,
-     )
-  sites_cart = geometry_restraints_manager.sites_cart_used_for_pair_proxies()
-  #pair_proxies.nonbonded_proxies.show_sorted(
-  #  by_value="delta",
-  #  sites_cart=sites_cart,
-  #  )
-  site_labels = [atom.id_str()
-     for atom in pdb_hierarchy.atoms()]
-  sorted_nonbonded_proxies, not_shown = pair_proxies.nonbonded_proxies.get_sorted(
-    by_value="delta",
-    sites_cart=sites_cart,
-    site_labels=site_labels,
-    #f=sio,
-    #prefix="*",
-    #max_items=0,
-    )
-  if 0:
-    pair_proxies.nonbonded_proxies.show_sorted(
-      by_value="delta",
-      sites_cart=sites_cart,
-      site_labels=site_labels,
-      #f=sio,
-      #prefix="*",
-      #max_items=0,
-      )
-  return sorted_nonbonded_proxies
+# def get_nonbonded(pdb_inp,
+#                   pdb_hierarchy,
+#                   geometry_restraints_manager,
+#                   ):
+#   assert 0
+#   site_labels = [atom.id_str()
+#      for atom in pdb_hierarchy.atoms()]
+#   pair_proxies = geometry_restraints_manager.pair_proxies(
+#      sites_cart=pdb_inp.xray_structure_simple().sites_cart(),
+#      site_labels=site_labels,
+#      )
+#   sites_cart = geometry_restraints_manager.sites_cart_used_for_pair_proxies()
+#   #pair_proxies.nonbonded_proxies.show_sorted(
+#   #  by_value="delta",
+#   #  sites_cart=sites_cart,
+#   #  )
+#   site_labels = [atom.id_str()
+#      for atom in pdb_hierarchy.atoms()]
+#   sorted_nonbonded_proxies, not_shown = pair_proxies.nonbonded_proxies.get_sorted(
+#     by_value="delta",
+#     sites_cart=sites_cart,
+#     site_labels=site_labels,
+#     #f=sio,
+#     #prefix="*",
+#     #max_items=0,
+#     )
+#   if 0:
+#     pair_proxies.nonbonded_proxies.show_sorted(
+#       by_value="delta",
+#       sites_cart=sites_cart,
+#       site_labels=site_labels,
+#       #f=sio,
+#       #prefix="*",
+#       #max_items=0,
+#       )
+#   return sorted_nonbonded_proxies
 
 def is_atom_group_pair_linked(atom_group1,
                               atom_group2,
@@ -653,54 +652,54 @@ def get_angles_from_included_bonds(hierarchy,
       print get_distance2(angle[1], angle[2])
   return tmp
 
-def process_atom_groups_for_linking(pdb_hierarchy,
-                                    atom1,
-                                    atom2,
-                                    classes1,
-                                    classes2,
-                                    #bond_cutoff=2.75,
-                                    amino_acid_bond_cutoff=1.9,
-                                    rna_dna_bond_cutoff=3.4,
-                                    intra_residue_bond_cutoff=1.99,
-                                    verbose=False,
-                                    ):
-  assert 0
-  #bond_cutoff *= bond_cutoff
-  intra_residue_bond_cutoff *= intra_residue_bond_cutoff
-  atom_group1 = atom1.parent()
-  atom_group2 = atom2.parent()
-  residue_group1 = atom_group1.parent()
-  residue_group2 = atom_group2.parent()
-  if(atom1.element.upper().strip() in ad_hoc_single_metal_residue_element_types or
-     atom2.element.upper().strip() in ad_hoc_single_metal_residue_element_types):
-    if verbose: print "Returning None because of metal"
-    return None # if metal
-    link_atoms = get_link_atoms(residue_group1, residue_group2)
-    if link_atoms:
-      return process_atom_groups_for_linking_multiple_links(pdb_hierarchy,
-                                                            link_atoms,
-                                                            verbose=verbose,
-                                                            )
-    else: return None
-  else:
-    atom1, atom2 = get_closest_atoms(residue_group1, residue_group2)
-    #if get_distance2(atom1, atom2)>bond_cutoff:
-    if atom1 is None or atom2 is None: return None
-    if get_distance2(atom1, atom2)>intra_residue_bond_cutoff:
-      if verbose: print "atoms too far apart %s %s %0.1f %0.1f" % (
-        atom1.quote(),
-        atom2.quote(),
-        get_distance2(atom1, atom2),
-        intra_residue_bond_cutoff,
-        )
-      return None
-    return process_atom_groups_for_linking_single_link(
-      pdb_hierarchy,
-      atom1,
-      atom2,
-      intra_residue_bond_cutoff=intra_residue_bond_cutoff,
-      verbose=verbose,
-      )
+# def process_atom_groups_for_linking(pdb_hierarchy,
+#                                     atom1,
+#                                     atom2,
+#                                     classes1,
+#                                     classes2,
+#                                     #bond_cutoff=2.75,
+#                                     amino_acid_bond_cutoff=1.9,
+#                                     rna_dna_bond_cutoff=3.4,
+#                                     intra_residue_bond_cutoff=1.99,
+#                                     verbose=False,
+#                                     ):
+#   assert 0
+#   #bond_cutoff *= bond_cutoff
+#   intra_residue_bond_cutoff *= intra_residue_bond_cutoff
+#   atom_group1 = atom1.parent()
+#   atom_group2 = atom2.parent()
+#   residue_group1 = atom_group1.parent()
+#   residue_group2 = atom_group2.parent()
+#   if(atom1.element.upper().strip() in ad_hoc_single_metal_residue_element_types or
+#      atom2.element.upper().strip() in ad_hoc_single_metal_residue_element_types):
+#     if verbose: print "Returning None because of metal"
+#     return None # if metal
+#     link_atoms = get_link_atoms(residue_group1, residue_group2)
+#     if link_atoms:
+#       return process_atom_groups_for_linking_multiple_links(pdb_hierarchy,
+#                                                             link_atoms,
+#                                                             verbose=verbose,
+#                                                             )
+#     else: return None
+#   else:
+#     atom1, atom2 = get_closest_atoms(residue_group1, residue_group2)
+#     #if get_distance2(atom1, atom2)>bond_cutoff:
+#     if atom1 is None or atom2 is None: return None
+#     if get_distance2(atom1, atom2)>intra_residue_bond_cutoff:
+#       if verbose: print "atoms too far apart %s %s %0.1f %0.1f" % (
+#         atom1.quote(),
+#         atom2.quote(),
+#         get_distance2(atom1, atom2),
+#         intra_residue_bond_cutoff,
+#         )
+#       return None
+#     return process_atom_groups_for_linking_single_link(
+#       pdb_hierarchy,
+#       atom1,
+#       atom2,
+#       intra_residue_bond_cutoff=intra_residue_bond_cutoff,
+#       verbose=verbose,
+#       )
 
 def process_atom_groups_for_linking_single_link(pdb_hierarchy,
                                                 atom1,
@@ -807,43 +806,43 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
     print atom2.quote()
   return [pdbres_pair], [key], [(atom1, atom2)]
 
-def process_atom_groups_for_linking_multiple_links(pdb_hierarchy,
-                                                   link_atoms,
-                                                   verbose=False,
-                                                   ):
-  assert 0
-  def _quote(atom):
-    key = ""
-    for attr in ["name", "resname", "resseq", "altloc"]:
-      if getattr(atom, attr, None) is not None:
-        key += "%s_" % getattr(atom, attr).strip()
-      elif getattr(atom.parent(), attr, None) is not None:
-        key += "%s_" % getattr(atom.parent(), attr).strip()
-      elif getattr(atom.parent().parent(), attr, None) is not None:
-        key += "%s_" % getattr(atom.parent().parent(), attr).strip()
-      else:
-        assert 0
-    return key[:-1]
+# def process_atom_groups_for_linking_multiple_links(pdb_hierarchy,
+#                                                    link_atoms,
+#                                                    verbose=False,
+#                                                    ):
+#   assert 0
+#   def _quote(atom):
+#     key = ""
+#     for attr in ["name", "resname", "resseq", "altloc"]:
+#       if getattr(atom, attr, None) is not None:
+#         key += "%s_" % getattr(atom, attr).strip()
+#       elif getattr(atom.parent(), attr, None) is not None:
+#         key += "%s_" % getattr(atom.parent(), attr).strip()
+#       elif getattr(atom.parent().parent(), attr, None) is not None:
+#         key += "%s_" % getattr(atom.parent().parent(), attr).strip()
+#       else:
+#         assert 0
+#     return key[:-1]
 
-  pdbres_pairs = []
-  keys = []
-  atoms = []
-  for atom1, atom2 in link_atoms:
-    key = "%s-%s" % (_quote(atom1), _quote(atom2))
-    pdbres_pair = []
-    for atom in [atom1, atom2]:
-      pdbres_pair.append(atom.id_str(pdbres=True))
-    if verbose:
-      print atom1.quote()
-      print atom2.quote()
-      print key
-    pdbres_pairs.append(pdbres_pair)
-    keys.append(key)
-    atoms.append((atom1, atom2))
-  return pdbres_pairs, keys, atoms
+#   pdbres_pairs = []
+#   keys = []
+#   atoms = []
+#   for atom1, atom2 in link_atoms:
+#     key = "%s-%s" % (_quote(atom1), _quote(atom2))
+#     pdbres_pair = []
+#     for atom in [atom1, atom2]:
+#       pdbres_pair.append(atom.id_str(pdbres=True))
+#     if verbose:
+#       print atom1.quote()
+#       print atom2.quote()
+#       print key
+#     pdbres_pairs.append(pdbres_pair)
+#     keys.append(key)
+#     atoms.append((atom1, atom2))
+#   return pdbres_pairs, keys, atoms
 
 def print_apply(apply):
-  from libtbx.introspection import show_stack
+  # from libtbx.introspection import show_stack
   outl = ''
   outl += "%s" % apply.data_link
   try:
@@ -856,21 +855,21 @@ def print_apply(apply):
   #show_stack()
   return outl
 
-class apply_cif_list(list):
-  def __repr__(self):
-    assert 0
-    outl = "CIFs"
-    for ga in self:
-      outl += "\n%s" % print_apply(ga)
-    outl += "\n"
-    outl += '_'*80
-    return outl
+# class apply_cif_list(list):
+#   def __repr__(self):
+#     assert 0
+#     outl = "CIFs"
+#     for ga in self:
+#       outl += "\n%s" % print_apply(ga)
+#     outl += "\n"
+#     outl += '_'*80
+#     return outl
 
-  def __append__(self, item):
-    assert 0
-    print 'APPEND'*10
-    print item
-    list.__append__(self, item)
+#   def __append__(self, item):
+#     assert 0
+#     print 'APPEND'*10
+#     print item
+#     list.__append__(self, item)
 
 def check_valence(hierarchy, atom):
   if atom.element.strip() not in linking_setup.simple_valence: return True
