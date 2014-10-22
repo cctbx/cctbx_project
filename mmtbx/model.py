@@ -28,8 +28,6 @@ from libtbx import group_args
 from libtbx import easy_run
 import libtbx.load_env
 import iotbx.pdb
-import random
-import os
 
 time_model_show = 0.0
 
@@ -373,15 +371,12 @@ class manager(object):
     assert libtbx.env.has_module("reduce")
     pdb_hierarchy = self._pdb_hierarchy
     hd_selection = self.xray_structure.hd_selection()
-    fn = "%s"%str(random.randint(1,1000000))
-    fo = open(fn, "w")
-    fo.write(pdb_hierarchy.select(~hd_selection).as_pdb_string(append_end=True))
-    fo.close()
-    if(nuclear): cmd = "phenix.reduce -quiet -allalt -NUClear %s"%fn
-    else:        cmd = "phenix.reduce -quiet -allalt %s"%fn
-    r = easy_run.fully_buffered(cmd)
-    assert (r.return_code == 0), r.return_code
-    os.remove(fn)
+    if(nuclear): cmd = "phenix.reduce -quiet -allalt -NUClear -"
+    else:        cmd = "phenix.reduce -quiet -allalt -"
+    r = easy_run.fully_buffered(
+      command=cmd,
+      stdin_lines=pdb_hierarchy.select(~hd_selection).as_pdb_string(append_end=True)
+    )
     ph = iotbx.pdb.input(source_info=None,
       lines=r.stdout_lines).construct_hierarchy()
     get_class = iotbx.pdb.common_residue_names_get_class
@@ -1455,6 +1450,7 @@ class manager(object):
       restraints_manager = rm,
       molprobity_scores  = molprobity_scores,
       cdl_restraints     = cdl_restraints,
+      ignore_hydrogens   = ignore_hd    #amber use only
       )
 
   def show_geometry_statistics(self,
