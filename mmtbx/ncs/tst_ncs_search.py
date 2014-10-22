@@ -1,9 +1,9 @@
 from __future__ import division
 from mmtbx.ncs.ncs_search import res_alignment
 from mmtbx.ncs import ncs_search
+from libtbx.utils import Sorry
 from iotbx import pdb
 import unittest
-import time
 import sys
 
 
@@ -88,7 +88,10 @@ class TestSimpleAlignment(unittest.TestCase):
   def test_search_ncs_relations(self):
     print sys._getframe().f_code.co_name
     chain_match_list = ncs_search.search_ncs_relations(
-      ph=self.ph,min_fraction_domain=0.70,min_contig_length=3)
+      ph=self.ph,
+      min_fraction_domain=0.70,
+      min_contig_length=3,
+      check_atom_order=True)
     [chain_a_id,chain_b_id,sel_a,sel_b,r1,r2,_] = chain_match_list[0]
     #
     self.assertEqual(chain_a_id,'A')
@@ -116,6 +119,92 @@ class TestSimpleAlignment(unittest.TestCase):
     #
     self.assertEqual(r1,[0, 1, 2, 3])
     self.assertEqual(r2,[0, 1, 2, 3])
+
+  def test_get_chains_info(self):
+    print sys._getframe().f_code.co_name
+    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_1)
+    ph = pdb_inp.hierarchy
+    # test without selection
+    chains_info1 = ncs_search.get_chains_info(ph)
+    self.assertEqual(sorted(chains_info1),['A', 'D', 'X'])
+
+    # test with selection strings: compare to no selection
+    selection_list = ['chain A','chain x','chain D']
+    chains_info2 = ncs_search.get_chains_info(ph,selection_list)
+    self.assertEqual(sorted(chains_info2),['chain A', 'chain D', 'chain x'])
+
+    self.assertEqual(
+      chains_info1['A'].atom_names,chains_info2['chain A'].atom_names)
+    self.assertEqual(
+      chains_info1['A'].atom_selection,chains_info2['chain A'].atom_selection)
+    self.assertEqual(
+      chains_info1['A'].chains_atom_number,
+      chains_info2['chain A'].chains_atom_number)
+    self.assertEqual(
+      chains_info1['X'].res_names,chains_info2['chain x'].res_names)
+    self.assertEqual(
+      chains_info1['X'].resid,chains_info2['chain x'].resid)
+
+    # test with selection strings: multiple chain selection
+    selection_list = [
+      '(chain A and resseq 151:156) or (chain x and resname LEU)','chain D']
+    chains_info = ncs_search.get_chains_info(ph,selection_list)
+    self.assertEqual(
+      sorted(chains_info),
+      ['(chain A and resseq 151:156) or (chain x and resname LEU)', 'chain D'])
+
+    key = '(chain A and resseq 151:156) or (chain x and resname LEU)'
+    expected = [[' CA '],[' CA '],[' CA '],[' CA '],[' CA '],[' CA '],[' CA ']]
+    self.assertEqual(chains_info[key].atom_names,expected)
+    self.assertEqual(
+      chains_info[key].atom_selection,[[0],[1],[2],[3],[4],[5],[9]])
+    self.assertEqual(chains_info[key].chains_atom_number,7)
+    self.assertEqual(
+      chains_info[key].res_names,['LYS','LYS','LYS','LYS','LYS','LYS','LEU'])
+    self.assertEqual(
+      chains_info[key].resid,
+      [' 151 ',' 152 ',' 153 ',' 154 ',' 155 ',' 156 ','  40 '])
+
+    # test with selection strings: overlapping selection
+    selection_list = ['chain A and resseq 151:156','chain A or chain D']
+    self.assertRaises(Sorry,ncs_search.get_chains_info,
+                      ph=ph,
+                      selection_list=selection_list)
+
+    # test with selection strings: empty selection
+    selection_list = ['chain A and resseq 1:6']
+    self.assertRaises(Sorry,ncs_search.get_chains_info,
+                      ph=ph,
+                      selection_list=selection_list)
+
+test_pdb_1 = '''\
+CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
+SCALE1      0.001731  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.002229  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.002133        0.00000
+ATOM      1  CA  LYS A 151      10.766   9.333  12.905  1.00 44.22           C
+ATOM      2  CA  LYS A 152      10.117   9.159  11.610  1.00 49.42           C
+ATOM      3  CA  LYS A 153       9.099   8.000  11.562  1.00 46.15           C
+ATOM      4  CA  LYS A 154       8.000   8.202  11.065  1.00 52.97           C
+ATOM      5  CA  LYS A 155      11.146   9.065  10.474  1.00 41.68           C
+ATOM      6  CA  LYS A 156      10.547   9.007   9.084  1.00 55.55           C
+ATOM      7  CA  LYS A 157      11.545   9.413   8.000  1.00 72.27           C
+ATOM      8  CA  LYS A 158      12.277  10.718   8.343  1.00 75.78           C
+ATOM      9  CA  LYS A 159      11.349  11.791   8.809  1.00 75.88           C
+TER
+ATOM    222  CA  LEU X  40      94.618  -5.253  91.582  1.00 87.10           C
+ATOM    223  CA  ARG X  41      62.395  51.344  80.786  1.00107.25           C
+ATOM    224  CA  ARG X  42      62.395  41.344  80.786  1.00107.25           C
+TER
+ATOM      1  CA  THR D   1       8.111  11.080  10.645  1.00 20.00           C
+ATOM      2  CA  THR D   2       8.000   9.722  10.125  1.00 20.00           C
+ATOM      3  CA  THR D   3       8.075   8.694  11.249  1.00 20.00           C
+ATOM      4  CA  THR D   4       8.890   8.818  12.163  1.00 20.00           C
+ATOM      5  CA  THR D   5       9.101   9.421   9.092  1.00 20.00           C
+ATOM      6  CA  THR D   6       9.001  10.343   8.000  1.00 20.00           C
+ATOM      7  CA  THR D   7       8.964   8.000   8.565  1.00 20.00           C
+END
+'''
 
 pdb_str = '''\
 CRYST1   37.760   43.710  107.440  90.00 108.54  90.00 P 1 21 1      4
@@ -216,6 +305,4 @@ if __name__=='__main__':
   # unittest.TextTestRunner().run(run_selected_tests())
 
   # Use to run all tests
-  t0 = time.time()
   unittest.main()
-  print 'Test took {0:.3f} sec'.format(time.time()-t0)

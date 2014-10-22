@@ -115,7 +115,7 @@ class ncs_group_object(object):
                          min_fraction_domain=0.2,
                          min_contig_length=10,
                          log=sys.stdout,
-                         always_check_atom_order=False):
+                         check_atom_order=False):
     """
     Select method to build ncs_group_object
 
@@ -164,12 +164,13 @@ class ncs_group_object(object):
         similarity define as:
         (number of matching res) / (number of res in longer chain)
       min_contig_length (int): minimum length of matching chain segments
-      always_check_atom_order (bool): make sure atoms in matching residues
-        are in the same order
+      check_atom_order (bool): check atom order in matching residues.
+        When False, matching residues with different number of atoms will be
+        excluded from matching set
     """
     extension = ''
     self.write_messages = write_messages
-    self.always_check_atom_order = always_check_atom_order
+    self.check_atom_order = check_atom_order
     self.log = log
     if file_name: extension = os.path.splitext(file_name)[1]
     if pdb_hierarchy_inp:
@@ -313,6 +314,7 @@ class ncs_group_object(object):
       copy_selection = ''   (multiple)
     }
     """
+
     if not process_similar_chains:
       min_fraction_domain = 1.0
     # process params
@@ -436,7 +438,7 @@ class ncs_group_object(object):
         rmsd_eps=rms_eps,
         write=self.write_messages,
         log=self.log,
-        always_check_atom_order=self.always_check_atom_order)
+        check_atom_order=self.check_atom_order)
       # process atom selections
       self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
       self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
@@ -636,6 +638,17 @@ class ncs_group_object(object):
 
   def look_and_combine_groups(self,gr_new,spec_group_list):
     """
+    In spec files groups of different masters and copies listed separately,
+    even if they have the same rotation/translation and can be combined.
+    This function combines them, updates the relevant object attributes and
+    returns True/False to indicate if group found
+
+    Args:
+      spec_group_list (list): selection string for each ncs copy in the group
+      gr_new (object): ncs group object
+
+    Returns:
+      found_same_group (bool): indicate if group found
     """
     gs_new = spec_group_list[0]
     found_same_group = False
@@ -1431,6 +1444,32 @@ def format_80(s):
       ss += ' \ \n'
   return ss
 
+def get_residue_sequence(chain_ph):
+  """
+  Get a list of pairs (residue name, residue number) and the chain ID
+  Exclude water
+
+  Args:
+    chain_ph (iotbx_pdb_hierarchy_ext): hierarchy of a single chain
+
+  Returns:
+    chain_id (str): Chain ID
+    res_list_new (list of str): list of residues names
+    resid_list_new (list of str): list of residues number
+  """
+  res_list_new = []
+  resid_list_new = []
+  for res_info in chain_ph.atom_groups():
+    x = res_info.resname
+    if x.lower() != 'hoh':
+      # Exclude water
+      res_list_new.append(x)
+      resid_list_new.append(res_info.parent().resseq)
+  #
+  atoms = chain_ph.atoms()
+  chain_id = atoms[0].chain().id
+  return chain_id, res_list_new,resid_list_new
+
 def selection_string_from_selection(pdb_hierarchy_inp,selection):
   """
   Convert a selection array to a selection string
@@ -1791,8 +1830,8 @@ def get_rot_trans(ph=None,
     cache = ph.atom_selection_cache().selection
     master_ncs_ph = ph.select(cache(master_selection))
     ncs_copy_ph = ph.select(cache(copy_selection))
-    chain_id_m,seq_m,res_ids_m  = ncs_search.get_residue_sequence(master_ncs_ph)
-    chain_id_c,seq_c,res_ids_c = ncs_search.get_residue_sequence(ncs_copy_ph)
+    chain_id_m,seq_m,res_ids_m  = get_residue_sequence(master_ncs_ph)
+    chain_id_c,seq_c,res_ids_c = get_residue_sequence(ncs_copy_ph)
     res_sel_m, res_sel_c, similarity = ncs_search.res_alignment(
       seq_a=seq_m,seq_b=seq_c,
       min_contig_length=0,min_fraction_domain=0)

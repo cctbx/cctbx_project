@@ -54,7 +54,7 @@ class Transform(object):
 
 class Score_record(object):
 
-  def __init__(self,score=0,gap_penalty=1,origin=(0,0)):
+  def __init__(self,score=0,origin=(0,0)):
     """
     score object used when aligning sequences
 
@@ -62,29 +62,23 @@ class Score_record(object):
       score (int)
       consecutive_matches (int): num of consecutive matches in current segment
       match_count (int): number of matching residues
-      gap_penalty (int): penalty for gaps
       origin (tuple): (row,col) of the matrix cell we from the previous
         alignment step. Used to trace back optimal alignment
     """
     self.score = score
     self.consecutive_matches = 0
     self.match_count = 0
-    self.gap_penalty = gap_penalty
+    self.gap_penalty = 1
     self.origin = origin
 
-  def reset_match_counting(self,min_matches):
-    """
-    Args:
-      min_matches (int): min(min_contig_length, seq_length)
-      seq_length (int): length of shortest of the compared lists
-
-    When there is a gap in the matching, reset the consecutive_matches and
-    adjust the score if consecutive_matches < min_contig_length
-    """
-    if self.consecutive_matches < min_matches:
-      self.score -= self.consecutive_matches * self.gap_penalty
-      self.match_count -= self.consecutive_matches
-    self.consecutive_matches = 0
+class Chains_info(object):
+  """ Container for hierarchy analysis """
+  def __init__(self):
+    self.res_names = []
+    self.resid = []
+    self.atom_names = []
+    self.atom_selection = []
+    self.chains_atom_number = 0
 
 def find_ncs_in_hierarchy(ph,
                           min_contig_length=10,
@@ -93,7 +87,7 @@ def find_ncs_in_hierarchy(ph,
                           rmsd_eps=5.0,
                           write=False,
                           log=sys.stdout,
-                          always_check_atom_order=False):
+                          check_atom_order=False):
   """
   Find NCS relation in hierarchy
 
@@ -107,8 +101,9 @@ def find_ncs_in_hierarchy(ph,
         in master ncs groups
     rmsd_eps (float): limit of rms difference chains when aligned together
     write (bool): when true, write ncs search messages to log
-    always_check_atom_order (bool): make sure atoms in matching residues
-        are in the same order
+    check_atom_order (bool): check atom order in matching residues.
+        When False, matching residues with different number of atoms will be
+        excluded from matching set
 
   Return:
     groups_list (list of NCS_groups_container objects)
@@ -123,7 +118,7 @@ def find_ncs_in_hierarchy(ph,
     min_fraction_domain=min_fraction_domain,
     write=write,
     log=log,
-    always_check_atom_order=always_check_atom_order)
+    check_atom_order=check_atom_order)
   #
   match_dict = clean_chain_matching(chain_match_list,ph,rmsd_eps)
   #
@@ -151,7 +146,7 @@ def minimal_ncs_operators_grouping(match_dict):
       rmsd (float)
 
   Returns:
-    group_dict (dict):
+    transform_to_group (dict):
       keys: tuple of master chain IDs
       values: NCS_groups_container objects
     match_dict (dict): updated match_dict
@@ -220,71 +215,10 @@ def minimal_ncs_operators_grouping(match_dict):
         copy_to_transform[temp_copy].append(tr_sn)
       else:
         copy_to_transform[temp_copy] = [tr_sn]
-
-  # remove masters if appear in copies
-  for k,v in transform_to_group.iteritems():
-    masters = v[0]
-    copies = v[1]
-    common_ids = set(masters) & set(copies)
-    while common_ids:
-      ch_id = common_ids.pop()
-      i = masters.index(ch_id)
-      masters.pop(i)
-      copies.pop(i)
-      common_ids = set(masters) & set(copies)
-    transform_to_group[k][0] = masters
-    transform_to_group[k][1] = copies
-
-  #clean up singles
-  multiple_tr_num = [k for k,v in transform_to_group.iteritems() if
-                    (len(v[0]) > 1)]
-  singles_tr_num = [k for k,v in transform_to_group.iteritems() if
-                    (len(v[0]) == 1)]
-  for m_tr_num in multiple_tr_num:
-    m_m = transform_to_group[m_tr_num][0]
-    m_c = transform_to_group[m_tr_num][1]
-    for s_tr_num in singles_tr_num:
-      if transform_to_group.has_key(s_tr_num):
-        s_m = transform_to_group[s_tr_num][0][0]
-        s_c = transform_to_group[s_tr_num][1][0]
-        # test if the single transform is part of a larger one
-        t1 = (s_m in m_m) and (s_c in m_c)
-        t2 = (s_c in m_m) and (s_m in m_c)
-        t3 = (s_c in m_c) and (s_m in m_c)
-        t4 = (s_c in m_m) and (s_m in m_m)
-        t5 = (s_c in chains_in_groups) and (s_m in chains_in_groups)
-        if t1 or t2 or t3 or t4 or t5:
-          transform_to_group.pop(s_tr_num,None)
-
-  # remove overlapping selection, keep largest groups
-  master_size = [[len(v[0]),k] for k,v in transform_to_group.iteritems()]
-  master_size.sort()
-  chain_left_to_add = set(chain_ids)
-  transform_to_use = set()
-  chains_in_master = set()
-  chains_in_copies = set()
-  while bool(chain_left_to_add) and bool(master_size):
-    [n,k] = master_size.pop()
-    [masters,copies,(rot,trans)] = transform_to_group[k]
-    # check that all chains in copies still need to be added
-    test1 = len(set(copies) & chain_left_to_add) == len(copies)
-    # check that copies are not in masters
-    test2 = not bool(set(copies).intersection(chains_in_master))
-    # check that masters are not in copies
-    test3 = not bool(set(masters).intersection(chains_in_copies))
-    if test1 and test2 and test3:
-      transform_to_use.add(k)
-      chains_in_master.update(set(masters))
-      chains_in_copies.update(set(copies))
-      chain_left_to_add -= set(copies)
-      chain_left_to_add -= set(masters)
-
-  # delete all but transform_to_use
-  keys = transform_to_group.keys()
-  for key in keys:
-    if not key in transform_to_use:
-      transform_to_group.pop(key)
-
+  # Clean solution
+  transform_to_group = remove_masters_if_appear_in_copies(transform_to_group)
+  transform_to_group = clean_singles(transform_to_group,chains_in_groups)
+  transform_to_group = remove_overlapping_selection(transform_to_group,chain_ids)
   return transform_to_group,match_dict
 
 def minimal_master_ncs_grouping(match_dict):
@@ -367,14 +301,119 @@ def minimal_master_ncs_grouping(match_dict):
       transform_to_use.add(k)
       chain_left_to_add -= set(tr[1])
       chain_left_to_add -= set(tr[0])
-
   # delete all transforms that are not being used
   tr_sns = transform_to_group.keys()
   for tr_sn in tr_sns:
     if not tr_sn in transform_to_use:
       transform_to_group.pop(tr_sn)
-
   return transform_to_group,match_dict
+
+def remove_masters_if_appear_in_copies(transform_to_group):
+  """
+  remove masters if appear in copies
+
+  Args:
+    transform_to_group (dict):
+      keys: tuple of master chain IDs
+      values: NCS_groups_container objects
+    chain_ids (list): sorted list of chains IDs
+
+  Returns:
+    updated transform_to_group
+  """
+  for k,v in transform_to_group.iteritems():
+    masters = v[0]
+    copies = v[1]
+    common_ids = set(masters) & set(copies)
+    while common_ids:
+      ch_id = common_ids.pop()
+      i = masters.index(ch_id)
+      masters.pop(i)
+      copies.pop(i)
+      common_ids = set(masters) & set(copies)
+    transform_to_group[k][0] = masters
+    transform_to_group[k][1] = copies
+  return transform_to_group
+
+def remove_overlapping_selection(transform_to_group,chain_ids):
+  """
+  remove overlapping selection and keep largest groups
+
+  Args:
+    transform_to_group (dict):
+      keys: tuple of master chain IDs
+      values: NCS_groups_container objects
+    chain_ids (list): sorted list of chains IDs
+
+  Returns:
+    updated transform_to_group
+  """
+  # remove overlapping selection, keep largest groups
+  master_size = [[len(v[0]),k] for k,v in transform_to_group.iteritems()]
+  master_size.sort()
+  chain_left_to_add = set(chain_ids)
+  transform_to_use = set()
+  chains_in_master = set()
+  chains_in_copies = set()
+  while bool(chain_left_to_add) and bool(master_size):
+    [n,k] = master_size.pop()
+    [masters,copies,(rot,trans)] = transform_to_group[k]
+    # check that all chains in copies still need to be added
+    test1 = len(set(copies) & chain_left_to_add) == len(copies)
+    # check that copies are not in masters
+    test2 = not bool(set(copies).intersection(chains_in_master))
+    # check that masters are not in copies
+    test3 = not bool(set(masters).intersection(chains_in_copies))
+    if test1 and test2 and test3:
+      transform_to_use.add(k)
+      chains_in_master.update(set(masters))
+      chains_in_copies.update(set(copies))
+      chain_left_to_add -= set(copies)
+      chain_left_to_add -= set(masters)
+
+  # delete all but transform_to_use
+  keys = transform_to_group.keys()
+  for key in keys:
+    if not key in transform_to_use:
+      transform_to_group.pop(key)
+  return transform_to_group
+
+def clean_singles(transform_to_group,chains_in_groups):
+  """
+  When a NCS copy of a transform contains a single chains, but those chains are
+  also a part of a transform with several chains in the NCS group,
+  remove the single transform
+
+  Args:
+    transform_to_group (dict):
+      keys: tuple of master chain IDs
+      values: NCS_groups_container objects
+    chains_in_groups (set): Set of chain IDs that are in some NCS group
+
+  Returns:
+    updated transform_to_group
+  """
+  #clean up singles
+  multiple_tr_num = [k for k,v in transform_to_group.iteritems() if
+                    (len(v[0]) > 1)]
+  singles_tr_num = [k for k,v in transform_to_group.iteritems() if
+                    (len(v[0]) == 1)]
+  for m_tr_num in multiple_tr_num:
+    m_m = transform_to_group[m_tr_num][0]
+    m_c = transform_to_group[m_tr_num][1]
+    for s_tr_num in singles_tr_num:
+      if transform_to_group.has_key(s_tr_num):
+        s_m = transform_to_group[s_tr_num][0][0]
+        s_c = transform_to_group[s_tr_num][1][0]
+        # test if the single transform is part of a larger one
+        t1 = (s_m in m_m) and (s_c in m_c)
+        t2 = (s_c in m_m) and (s_m in m_c)
+        t3 = (s_c in m_c) and (s_m in m_c)
+        t4 = (s_c in m_m) and (s_m in m_m)
+        t5 = (s_c in chains_in_groups) and (s_m in chains_in_groups)
+        if t1 or t2 or t3 or t4 or t5:
+          transform_to_group.pop(s_tr_num,None)
+  return transform_to_group
 
 def build_group_dict(transform_to_group,match_dict):
   """
@@ -624,7 +663,6 @@ def update_best_matches_dict(best_matches,match_dict,ch_a_id,ch_b_id,similarity)
       match_dict.pop(key,None)
   return best_matches,match_dict
 
-
 def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
   """
   Check if the rotation r and translation t exist in the transform dictionary.
@@ -657,96 +695,12 @@ def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
       return k, is_transpose
   return tr_num, is_transpose
 
-def search_ncs_relations_old(ph,
-                         min_contig_length=10,
-                         min_fraction_domain=0.2,
-                         write=False,
-                         log=sys.stdout,
-                         always_check_atom_order=False):
-  """
-  Search for NCS relations between chains or parts of chains, in a protein
-  hierarchy
-
-  Args:
-    ph (object): hierarchy
-    min_contig_length (int): segments < min_contig_length rejected
-    min_fraction_domain (float): Threshold for similarity between chains.
-      similarity define as:
-      (number of matching res) / (number of res in longer chain)
-    write (bool): when true, write ncs search messages to log
-    always_check_atom_order (bool): make sure atoms in matching residues
-        are in the same order
-
-  Returns:
-    msg (str): message regarding matching residues with different atom number
-    chain_match_list (list): list of
-      [chain_ID_1,chain_ID_2,sel_1,sel_2,res_sel_m, res_sel_c,similarity]
-      chain_ID (str), sel_1 (flex.bool), sel_1 (flex.bool),
-      res_sel_m/c (lists): indices of the aligned components
-      similarity (float): similarity between chains
-    We use selection_1 and selection_2 because in some PDB records a residue
-    might contain side chain in one chain but not in another
-  """
-  # collect all chain IDs
-  cache = ph.atom_selection_cache()
-  chain_match_list = []
-  msg = ''
-  model  = ph.models()[0]
-  chain_ids = list({x.id for x in model.chains()})
-  chain_ids = sorted(chain_ids)
-  n_chains = len(chain_ids)
-  # loop over all chains
-  for i in xrange(n_chains-1):
-    master_ch_id = chain_ids[i]
-    m_str = 'chain %s'%master_ch_id
-    m_selection = cache.selection(m_str)
-    master_n_atoms = m_selection.count(True)
-    if master_n_atoms == 0: continue
-    m_ph = ph.select(m_selection)
-    # get residue lists for master
-    chain_id_m, seq_m,res_ids_m = get_residue_sequence(m_ph)
-    for j in xrange(i+1,n_chains):
-      copy_ch_id = chain_ids[j]
-      c_str = 'chain %s'%copy_ch_id
-      c_selection = cache.selection(c_str)
-      copy_n_atoms = c_selection.count(True)
-      frac_d = min(copy_n_atoms,master_n_atoms)/max(copy_n_atoms,master_n_atoms)
-      if frac_d < min_fraction_domain:
-        if (min_fraction_domain == 1):
-          msg = 'NCS copies are not identical'
-          break
-        else:
-          continue
-      c_ph = ph.select(c_selection)
-      chain_id_c, seq_c,res_ids_c = get_residue_sequence(c_ph)
-      # get residue lists for copy
-      res_sel_m, res_sel_c, similarity = res_alignment(
-        seq_a=seq_m,seq_b=seq_c,
-        min_contig_length=min_contig_length,
-        min_fraction_domain=min_fraction_domain)
-      sel_m, sel_c,res_sel_m,res_sel_c,msg = get_matching_atoms(
-        ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c,m_str,c_str,
-        always_check_atom_order=always_check_atom_order)
-      if res_sel_m:
-        # add only non empty matches
-        sel_m = sel_m.iselection()
-        sel_c = sel_c.iselection()
-        rec = [master_ch_id,copy_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,
-               similarity]
-        chain_match_list.append(rec)
-  if write and msg:
-    print >> log,msg
-  if (min_fraction_domain == 1) and msg:
-    # must be identical
-    raise Sorry('NCS copies are not identical')
-  return chain_match_list
-
 def search_ncs_relations(ph,
                          min_contig_length=10,
                          min_fraction_domain=0.2,
                          write=False,
                          log=sys.stdout,
-                         always_check_atom_order=False):
+                         check_atom_order=False):
   """
   Search for NCS relations between chains or parts of chains, in a protein
   hierarchy
@@ -758,8 +712,9 @@ def search_ncs_relations(ph,
       similarity define as:
       (number of matching res) / (number of res in longer chain)
     write (bool): when true, write ncs search messages to log
-    always_check_atom_order (bool): make sure atoms in matching residues
-        are in the same order
+    check_atom_order (bool): check atom order in matching residues.
+        When False, matching residues with different number of atoms will be
+        excluded from matching set
 
   Returns:
     msg (str): message regarding matching residues with different atom number
@@ -802,11 +757,9 @@ def search_ncs_relations(ph,
         min_fraction_domain=min_fraction_domain)
       sel_m, sel_c,res_sel_m,res_sel_c,msg = get_matching_atoms(
         chains_info,m_ch_id,c_ch_id,res_sel_m,res_sel_c,
-        always_check_atom_order=always_check_atom_order)
+        check_atom_order=check_atom_order)
       if res_sel_m:
         # add only non empty matches
-        sel_m = sel_m.iselection()
-        sel_c = sel_c.iselection()
         rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,
                similarity]
         chain_match_list.append(rec)
@@ -827,8 +780,6 @@ def res_alignment(seq_a, seq_b,
   than min_contig_length and when the
   Do not give any points for alignment. (score only change when "bad" things
   happens)
-  Stop if the alignment is less than the "similarity_threshold"
-  After alignment verify that aligned parts are >= similarity_threshold
 
   Args:
     seq_a, seq_b (lists of str): list of characters to compare
@@ -842,52 +793,72 @@ def res_alignment(seq_a, seq_b,
     aligned_sel_b (list): the indices of the aligned components of seq_b
     similarity (float): actual similarity between hierarchies
   """
-  # Todo: check condition for halting search
   a = len(seq_a)
   b = len(seq_b)
+  # Check for the basic cases
   if (a == 0) or (b == 0): return [],[],0
-  min_ab = min(a,b)
-  min_matches = min(min_contig_length,min_ab)
-  gap_penalty = 1
-  misalign_penalty = 2 * (a + b)
+  if seq_a == seq_b: return range(a),range(a),1.0
+  min_matches = min(min_contig_length,min(a,b))
+  misalign_penalty = 100000
   # limit the number of mis-alignments
-  max_mis_align = int((1 - min_fraction_domain) * (a + b))
+  max_mis_align = int((1 - min_fraction_domain) * max(a,b))
   # Starting score according to the required similarity
   score = max_mis_align + 1
   # build score matrix
-  R = initialize_score_matrix(
-    row=a,col=b,max_score=score,
-    gap_penalty=gap_penalty,min_contig_length=min_contig_length)
+  R = initialize_score_matrix(row=a,col=b,max_score=score)
   # populate score matrix
   for j in xrange(1,b + 1):
     for i in xrange(1,a + 1):
-      # Todo: add halting of loop when matching is to bad
+      # We want to halt when there is not way to get a good score
       not_aligned = (seq_a[i-1].lower() != seq_b[j-1].lower())
       s1 = R[i-1,j-1].score - misalign_penalty * not_aligned
-      s2 = R[i-1,j].score - gap_penalty
-      s3 = R[i,j-1].score - gap_penalty
-      c = 0
+      s2,mc2 = gap_score(R[i-1,j],min_matches)
+      s3,mc3 = gap_score(R[i,j-1],min_matches)
       if (s1 >= s2) and (s1 >= s3):
         s = s1
-        c = 1
         i_temp,j_temp = i-1,j-1
+        match_count = R[(i_temp,j_temp)].match_count + 1
+        consecutive_matches = R[(i_temp,j_temp)].consecutive_matches + 1
       elif (s2 >= s1) and (s2 >= s3):
         i_temp,j_temp = i-1,j
         s = s2
+        match_count = mc2
+        consecutive_matches = 0
       else:
         i_temp,j_temp = i,j-1
         s = s3
+        match_count = mc3
+        consecutive_matches = 0
       R[i,j] = Score_record(score=s)
       R[i,j].origin = (i_temp,j_temp)
-      R[i,j].match_count = R[(i_temp,j_temp)].match_count + c
-      R[i,j].consecutive_matches = R[(i_temp,j_temp)].consecutive_matches + c
-      if c == 0:
-        R[i,j].reset_match_counting(min_matches)
-  R[i,j].reset_match_counting(min_matches)
+      R[i,j].match_count = match_count
+      R[i,j].consecutive_matches = consecutive_matches
   #
   aligned_sel_a, aligned_sel_b, similarity = get_matching_res_indices(
     R=R,row=a,col=b,min_fraction_domain=min_fraction_domain)
   return aligned_sel_a, aligned_sel_b, similarity
+
+def gap_score(r,min_matches):
+  """
+  Calculate the score in case of a gap, taking into account consecutive matches
+  and the minimum matches required.
+  If we have a short matching section, we need to adjust the match_count,
+  so not to count it
+
+  Args:
+    r (Score_record object)
+    min_matches (int): minimum matches required between to sequences
+
+  Returns:
+    s (int): score
+    min_matches (int): adjusted match count
+  """
+  s = r.score - 1
+  match_count = r.match_count
+  if r.consecutive_matches < min_matches:
+    s -= r.consecutive_matches
+    match_count -= r.consecutive_matches
+  return s,match_count
 
 def get_matching_res_indices(R,row,col,min_fraction_domain):
   """
@@ -939,7 +910,7 @@ def get_matching_res_indices(R,row,col,min_fraction_domain):
   return sel_a, sel_b, similarity
 
 def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
-                        always_check_atom_order=False):
+                       check_atom_order=False):
   """
   Get selection of matching chains, match residues atoms
   We keep only residues with continuous matching atoms
@@ -954,19 +925,17 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
       chains_atom_number (list of int): list of number of atoms in each chain
     a_id,b_id (str): Chain IDs
     res_num_a/b (list of int): indices of matching residues position
-    always_check_atom_order (bool): make sure atoms in matching residues
-        are in the same order
+    check_atom_order (bool): check atom order in matching residues.
+        When False, matching residues with different number of atoms will be
+        excluded from matching set
 
   Returns:
     sel_a, sel_b (flex.bool): matching atoms selection
     res_num_a/b (list of int): updated res_num_a/b
     msg (str): message regarding matching residues with different atom number
   """
-  l = 0
-  for v in chains_info.itervalues(): l += v.chains_atom_number
-  #
-  sel_a = flex.bool([False,] * l)
-  sel_b = flex.bool([False,] * l)
+  sel_a = set()
+  sel_b = set()
   #
   res_num_a_updated = []
   res_num_b_updated = []
@@ -975,12 +944,11 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
     sa = chains_info[a_id].atom_selection[i]
     sb = chains_info[b_id].atom_selection[j]
     dif_res_size = (len(sa) != len(sb))
-    if always_check_atom_order or dif_res_size:
-      atoms_names_a = chains_info[a_id].atom_names[i]
-      atoms_names_b = chains_info[b_id].atom_names[j]
+    atoms_names_a = chains_info[a_id].atom_names[i]
+    atoms_names_b = chains_info[b_id].atom_names[j]
+    resid_a = chains_info[a_id].resid[i]
+    if check_atom_order:
       if dif_res_size:
-        # collect residue IDs of matching residues with different number of atoms
-        resid_a = chains_info[a_id].resid[i]
         residues_with_different_n_atoms.append(resid_a)
       # select only atoms that exist in both residues
       atoms_a,atoms_b,similarity = res_alignment(
@@ -989,14 +957,19 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
       # get the number of the atom in the chain
       sa = flex.size_t(atoms_a) + sa[0]
       sb = flex.size_t(atoms_b) + sb[0]
+    else:
+      if dif_res_size:
+        residues_with_different_n_atoms.append(resid_a)
+        sa = []
+        sb = []
     # keep only residues with continuous matching atoms
     if len(sa) != 0:
       res_num_a_updated.append(i)
       res_num_b_updated.append(j)
-    sa = flex.bool(l,flex.size_t(sa))
-    sb = flex.bool(l,flex.size_t(sb))
-    sel_a = sel_a | sa
-    sel_b = sel_b | sb
+    sa = set(sa)
+    sb = set(sb)
+    sel_a.update(sa)
+    sel_b.update(sb)
   if residues_with_different_n_atoms:
     problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
     msg = "NCS related residues with different number of atoms, selection"
@@ -1004,33 +977,9 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
     msg += ','.join(problem_res_nums) + ']\n'
   else:
     msg = ''
+  sel_a = flex.size_t(sorted(sel_a))
+  sel_b = flex.size_t(sorted(sel_b))
   return sel_a,sel_b,res_num_a_updated,res_num_b_updated,msg
-
-def get_residue_sequence(chain_ph):
-  """
-  Get a list of pairs (residue name, residue number) and the chain ID
-  Exclude water
-
-  Args:
-    chain_ph (iotbx_pdb_hierarchy_ext): hierarchy of a single chain
-
-  Returns:
-    chain_id (str): Chain ID
-    res_list_new (list of str): list of residues names
-    resid_list_new (list of str): list of residues number
-  """
-  res_list_new = []
-  resid_list_new = []
-  for res_info in chain_ph.atom_groups():
-    x = res_info.resname
-    if x.lower() != 'hoh':
-      # Exclude water
-      res_list_new.append(x)
-      resid_list_new.append(res_info.parent().resseq)
-  #
-  atoms = chain_ph.atoms()
-  chain_id = atoms[0].chain().id
-  return chain_id, res_list_new,resid_list_new
 
 def get_chains_info(ph,selection_list=None):
   """
@@ -1042,23 +991,21 @@ def get_chains_info(ph,selection_list=None):
     ph : protein hierarchy
     selection_list (list of str): specific selection of hierarchy segments
 
-
   Returns:
     chains_info : object containing
-      chains (str): chain IDs or selections string
+      chains (str): chain IDs OR selections string
       res_name (list of str): list of residues names
       resid (list of str): list of residues sequence number, resid
       atom_names (list of list of str): list of atoms in residues
       atom_selection (list of list of list of int): the location of atoms in ph
       chains_atom_number (list of int): list of number of atoms in each chain
   """
-  atom_cache = ph.atom_selection_cache().selection
   use_chains = not bool(selection_list)
   #
   chains_info =  {}
   if use_chains:
-    # build chains_info from hierarchy
     model  = ph.models()[0]
+    # build chains_info from hierarchy
     for ch in model.chains():
       if not chains_info.has_key(ch.id):
         chains_info[ch.id] = Chains_info()
@@ -1080,34 +1027,41 @@ def get_chains_info(ph,selection_list=None):
       chains_info[ch.id].atom_names = atom_names
       chains_info[ch.id].atom_selection = atom_selection
   else:
-    # fixme: finish this part
     # build chains_info from selection
+    l = ph.atoms().size()
+    selection_test = flex.bool([False,] * l)
     chain_ids = sorted(selection_list)
-    atom_i = 0
+    cache = ph.atom_selection_cache().selection
     for sel_str in chain_ids:
-      chains_info.chains.append(sel_str)
-      sel_ph = ph.select(atom_cache(sel_str))
-
-  # sorted_key = sorted(chains_info)
-  # chains_info_list = []
-  # for key in sorted_key:
-  #
-
+      ph_sel = ph.select(cache(sel_str))
+      model =  ph_sel.models()
+      if model:
+        # check that none-empty selection
+        model = model[0]
+        chains_info[sel_str] = Chains_info()
+        chains_info[sel_str].chains_atom_number = ph_sel.atoms().size()
+        for ch in model.chains():
+          for res in ch.residue_groups():
+            for atoms in res.atom_groups():
+              x = atoms.resname
+              if x.lower() != 'hoh':
+                chains_info[sel_str].resid.append(res.resid())
+                chains_info[sel_str].res_names.append(x)
+                atom_list = list(atoms.atoms().extract_name())
+                chains_info[sel_str].atom_names.append(atom_list)
+                i_seq_list = list(atoms.atoms().extract_i_seq())
+                chains_info[sel_str].atom_selection.append(i_seq_list)
+                # test that there are not overlapping selection
+                sel = flex.bool(l,flex.size_t(i_seq_list))
+                if (selection_test & sel).count(True) > 0:
+                  raise Sorry('Overlapping NCS group selections!')
+                else:
+                  selection_test = selection_test | sel
+      else:
+        raise Sorry('Empty NCS group selections!')
   return chains_info
 
-class Chains_info(object):
-  """ Container for hierarchy analysis """
-  def __init__(self):
-    self.res_names = []
-    self.resid = []
-    self.atom_names = []
-    self.atom_selection = []
-    self.chains_atom_number = 0
-
-def initialize_score_matrix(row, col,
-                       max_score=1000,
-                       gap_penalty=1,
-                       min_contig_length=10):
+def initialize_score_matrix(row, col,max_score=1000):
   """
   initialize a matrix in a dictionary form
   The matrix values are initialized according the the gap penalties.
@@ -1119,8 +1073,6 @@ def initialize_score_matrix(row, col,
     row (int): number of rows
     col (int): number of columns
     max_score (int): the score assigned for perfect alignment
-    gap_penalty (int): penalty for gaps
-    min_contig_length (int): segments < min_contig_length rejected
 
   Returns:
     R (dict): the score matrix in a form of a dictionary of Score_record objects
@@ -1128,10 +1080,10 @@ def initialize_score_matrix(row, col,
   R = {}
   # populate zero cases
   for i in xrange(row + 1):
-    score = max_score - (i * gap_penalty)
+    score = max_score - i
     R[i,0] = Score_record(score=score,origin=(i-1,0))
   for i in xrange(col + 1):
-    score = max_score - (i * gap_penalty)
+    score = max_score - i
     R[0,i] = Score_record(score=score,origin=(0,i-1))
   return R
 
