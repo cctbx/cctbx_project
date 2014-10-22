@@ -177,6 +177,22 @@ class TestSimpleAlignment(unittest.TestCase):
                       ph=ph,
                       selection_list=selection_list)
 
+  def test_remove_masters_if_appear_in_copies(self):
+    print sys._getframe().f_code.co_name
+    transform_to_group = {1:[['A','B','E'],['B','C','F']]}
+    tg = ncs_search.remove_masters_if_appear_in_copies(transform_to_group)
+    self.assertEqual(tg.values(),[[['A','E'],['B','F']]])
+    #
+    transform_to_group = {
+    1:[['A'],['B']],2:[['B'],['C']],3:[['A'],['D']],4:[['A'],['E']],
+    5:[['A'],['C']],6:[['B'],['D']],7:[['G'],['J']],8:[['C'],['H']],
+    9:[['A','1'],['X','2']]}
+    tg = ncs_search.remove_masters_if_appear_in_copies(transform_to_group)
+    expected = [
+      [['A'], ['B']], [['A'], ['C']], [['A'], ['D']], [['A'], ['E']],
+      [['A', '1'], ['X', '2']], [['G'], ['J']]]
+    self.assertEqual(sorted(tg.values()),expected)
+
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
 SCALE1      0.001731  0.000000  0.000000        0.00000
@@ -296,7 +312,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_search_ncs_relations']
+  tests = ['test_remove_masters_if_appear_in_copies']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 
