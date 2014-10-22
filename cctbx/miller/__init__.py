@@ -4592,7 +4592,7 @@ class array(set):
       if (bin_array.size() == 0) :
         data.append(None)
       else :
-        data.append(bin_array.cc_one_half())
+        data.append(bin_array.cc_one_half(n_trials=n_trials))
     return binned_data(binner=self.binner(), data=data, data_fmt="%6.3f")
 
   def half_dataset_anomalous_correlation (self, use_binning=False) :
