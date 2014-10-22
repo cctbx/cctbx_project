@@ -66,8 +66,8 @@ class ncs_group_object(object):
     self.ncs_atom_selection = None
     self.ncs_selection_str = ''
     # iselection of all part in ASU that are not related via NCS operators
-    self.non_ncs_region_selection = flex.size_t()
-    self.all_master_ncs_selections = flex.size_t()
+    self.non_ncs_region_selection = flex.size_t([])
+    self.all_master_ncs_selections = flex.size_t([])
     # list of selection strings of master NCS
     self.ncs_chain_selection = []
     # unique chains or selection identifiers
@@ -358,9 +358,8 @@ class ncs_group_object(object):
           min_fraction_domain=min_fraction_domain)
         self.messages += msg
         if r.is_zero():
-          err_m ='Master NCS and Copy are very poorly related, check selection.'
-          # Note: Consider how to add messages to user
-          # raise Sorry(err_m)
+          msg = 'Master NCS and Copy are very poorly related, check selection.'
+          self.messages += msg + '\n'
         asu_locations.append(asu_select)
         transform_sn += 1
         key = format_num_as_str(transform_sn)
@@ -520,8 +519,8 @@ class ncs_group_object(object):
           if i == 0:
             # master copy
             master_sel = flex.bool(self.total_asu_length,m_isel)
-            self.ncs_atom_selection = self.ncs_atom_selection | master_sel
-            ncs_related_atoms = ncs_related_atoms | master_sel
+            self.ncs_atom_selection |=  master_sel
+            ncs_related_atoms |=  master_sel
           else:
             # non-identity transforms
             self.transform_to_be_used.add(tr.serial_num)
@@ -529,7 +528,7 @@ class ncs_group_object(object):
             self.transform_to_ncs = add_to_dict(
               d=self.transform_to_ncs,k=tr_id,v=key2)
             copy_sel = flex.bool(self.total_asu_length,c_isel)
-            ncs_related_atoms = ncs_related_atoms | copy_sel
+            ncs_related_atoms |=  copy_sel
         # Get complete master and copies selections
         if i != 0:
           c_all_list = [x for ix in ncs_gr.iselections[i] for x in list(ix)]
@@ -546,7 +545,7 @@ class ncs_group_object(object):
     self.ncs_selection_str = ' or '.join(ncs_selection_str_list)
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
 
-    self.all_master_ncs_selections = self.ncs_atom_selection.iselection()
+    self.all_master_ncs_selections = self.ncs_atom_selection.iselection(True)
     # add the ncs_atom_selection all the regions that are not NCS related
     self.ncs_atom_selection = self.ncs_atom_selection | ~ncs_related_atoms
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
@@ -554,7 +553,7 @@ class ncs_group_object(object):
   def build_ncs_obj_from_spec_file(self,file_name=None,file_path='',
                                    file_str='',source_info="",quiet=True,
                                    pdb_hierarchy_inp=None,
-                                   spec_ncs_groups=[],
+                                   spec_ncs_groups=None,
                                    join_same_spec_groups = True):
     """
     read .spec files and build transforms object and NCS <-> ASU mapping
@@ -566,9 +565,10 @@ class ncs_group_object(object):
     spec_ncs_groups: ncs_groups object
     join_same_spec_groups: (bool) True: combine groups with similar transforms
     """
+    if not spec_ncs_groups: spec_ncs_groups = []
     if (not bool(spec_ncs_groups)) and (file_name or file_str):
       fn = ""
-      if (file_name is not None) :
+      if file_name:
         fn = os.path.join(file_path,file_name)
       lines = file_str.splitlines()
       assert lines != [] or os.path.isfile(fn)
@@ -655,44 +655,44 @@ class ncs_group_object(object):
     gr_t_list = gr_new.translations_orth()
     # in spec files transforms are inverted
     gr_new_list = [inverse_transform(r,t) for (r,t) in zip(gr_r_list,gr_t_list)]
-    for k,[gs, tr_set] in self.ncs_group_map.iteritems():
+    for k,[_, tr_set] in self.ncs_group_map.iteritems():
       # all transforms need to be the same to join
       if len(gr_r_list) != len(tr_set): continue
-      same_transforms = [None,]*len(tr_set)
+      same_transforms = [-1,]*len(tr_set)
       tr_list = list(tr_set)
       tr_list.sort()
       for tr_key1 in tr_list:
         r1 = self.ncs_transform[tr_key1].r
         t1 = self.ncs_transform[tr_key1].t
         for i,(r2,t2) in enumerate(gr_new_list):
-          if not (same_transforms[i] is None): continue
+          if same_transforms[i] != -1: continue
           same,transpose = ncs_search.is_same_transform(r1,t1,r2,t2)
           test = (same and (not transpose))
           if test:
             same_transforms[i] = i
             break
-      found_same_group = (same_transforms.count(None) == 0)
-      if found_same_group: break
-    # update dictionaries
-    if found_same_group:
-      self.selection_ids.add(gs_new)
-      asu_locations = []
-      for i in same_transforms:
-        transform_id = tr_list[i]
-        ncs_copy_select = spec_group_list[i]
-        key = gs_new + '_' + transform_id
-        # look at self.ncs_copies_chains_names
-        self.update_ncs_copies_chains_names(
-          masters=gs_new, copies=ncs_copy_select, tr_id=transform_id)
-        r,t = gr_new_list[i]
-        self.update_tr_id_to_selection(gs_new,ncs_copy_select,transform_id)
-        if not is_identity(r,t):
-          self.transform_to_ncs = add_to_dict(
-            d=self.transform_to_ncs,k=transform_id,v=key)
-          asu_locations.append(ncs_copy_select)
+      found_same_group = (same_transforms.count(-1) == 0)
+      # update dictionaries only if same group was found and then break
+      if found_same_group:
+        self.selection_ids.add(gs_new)
+        asu_locations = []
+        for i in same_transforms:
+          transform_id = tr_list[i]
+          ncs_copy_select = spec_group_list[i]
+          key = gs_new + '_' + transform_id
+          # look at self.ncs_copies_chains_names
+          self.update_ncs_copies_chains_names(
+            masters=gs_new, copies=ncs_copy_select, tr_id=transform_id)
+          r,t = gr_new_list[i]
+          self.update_tr_id_to_selection(gs_new,ncs_copy_select,transform_id)
+          if not is_identity(r,t):
+            self.transform_to_ncs = add_to_dict(
+              d=self.transform_to_ncs,k=transform_id,v=key)
+            asu_locations.append(ncs_copy_select)
 
-      self.ncs_to_asu_selection[gs_new] = asu_locations
-      self.ncs_group_map[k][0].add(gs_new)
+        self.ncs_to_asu_selection[gs_new] = asu_locations
+        self.ncs_group_map[k][0].add(gs_new)
+        break
     return found_same_group
 
   def update_ncs_copies_chains_names(self,masters, copies, tr_id):
@@ -808,18 +808,18 @@ class ncs_group_object(object):
           if not self.asu_to_ncs_map.has_key(key):
             copy_count[key] = 0
             selection_ref = (selection_ref | ncs_selection)
-            self.asu_to_ncs_map[key] = ncs_selection.iselection()
+            self.asu_to_ncs_map[key] = ncs_selection.iselection(True)
           else:
             copy_count[key] += 1
           # ncs_to_asu_selection is a list of all the copies of a master
           asu_copy_ref = self.ncs_to_asu_selection[key][copy_count[key]]
           asu_selection = temp.selection(asu_copy_ref)
           selection_ref = update_selection_ref(selection_ref,asu_selection)
-          self.ncs_to_asu_map[k] = asu_selection.iselection()
-        self.non_ncs_region_selection = (~selection_ref).iselection()
+          self.ncs_to_asu_map[k] = asu_selection.iselection(True)
+        self.non_ncs_region_selection = (~selection_ref).iselection(True)
         # add the non ncs regions to the master ncs copy
-        self.all_master_ncs_selections = self.ncs_atom_selection.iselection()
-        self.ncs_atom_selection = self.ncs_atom_selection | (~selection_ref)
+        self.all_master_ncs_selections = self.ncs_atom_selection.iselection(True)
+        self.ncs_atom_selection |= ~selection_ref
         assert set(self.non_ncs_region_selection).intersection(
           set(self.all_master_ncs_selections)) == set()
         # Check that all the NCS related copies have the same atom numbers
@@ -829,20 +829,19 @@ class ncs_group_object(object):
         self.total_asu_length = self.get_asu_length(temp)
         ns = [True]*pdb_length + [False]*(self.total_asu_length - pdb_length)
         self.ncs_atom_selection = flex.bool(ns)
-        self.all_master_ncs_selections=self.ncs_atom_selection.iselection()
+        self.all_master_ncs_selections=self.ncs_atom_selection.iselection(True)
         sorted_keys = sorted(self.transform_to_ncs)
         for i,k in enumerate(sorted_keys):
           v = self.transform_to_ncs[k]
           for transform_key in v:
             key =  transform_key.split('_')[0]
-            ncs_basic_selection = temp.selection(key)
             ncs_selection =flex.bool(self.total_asu_length,temp.iselection(key))
             if not self.asu_to_ncs_map.has_key(key):
-              self.asu_to_ncs_map[key] = ncs_selection.iselection()
+              self.asu_to_ncs_map[key] = ncs_selection.iselection(True)
             # make the selection at the proper location at the ASU
             temp_iselection = self.asu_to_ncs_map[key] + ((i + 1) * ncs_length)
             asu_selection = flex.bool(self.total_asu_length,temp_iselection)
-            self.ncs_to_asu_map[transform_key] = asu_selection.iselection()
+            self.ncs_to_asu_map[transform_key] = asu_selection.iselection(True)
 
   def add_identity_transform(self,ncs_selection,ncs_group_id=1,transform_sn=1):
     """    Add identity transform
@@ -947,7 +946,7 @@ class ncs_group_object(object):
     Used for testing
     """
     assert  self.number_of_ncs_groups < 2
-    result = iotbx.pdb._._mtrix_and_biomt_records_container()
+    result = iotbx.pdb.mtrix_and_biomt_records_container()
     tr_dict = self.ncs_transform
     tr_sorted = sorted(tr_dict,key=lambda k:tr_dict[k].serial_num)
     for key in tr_sorted:
@@ -1053,10 +1052,10 @@ class ncs_group_object(object):
       master_sel_str, ncs_sel_str = self.tr_id_to_selection[key]
       if only_master_ncs_in_hierarchy:
         # use master ncs for ncs copy residues indices
-        copy_selection_indices = sc.selection(master_sel_str).iselection()
+        copy_selection_indices = sc.selection(master_sel_str).iselection(True)
         rmsd = 0
       else:
-        copy_selection_indices = sc.selection(ncs_sel_str).iselection()
+        copy_selection_indices = sc.selection(ncs_sel_str).iselection(True)
         tr_num = key.split('_')[1]
         tr = self.ncs_transform[tr_num]
         rmsd = tr.rmsd
@@ -1099,7 +1098,7 @@ class ncs_group_object(object):
     group_id_list = sort_dict_keys(self.ncs_group_map)
     for k in group_id_list:
       v = self.ncs_group_map[k]
-      master_isel = flex.size_t()
+      master_isel = flex.size_t([])
       for key in sorted(list(v[0])):
         if self.asu_to_ncs_map.has_key(key):
           master_isel.extend(self.asu_to_ncs_map[key])
@@ -1109,7 +1108,7 @@ class ncs_group_object(object):
         if self.transform_to_ncs.has_key(tr):
           r = self.ncs_transform[tr].r
           t = self.ncs_transform[tr].t
-          ncs_isel = flex.size_t()
+          ncs_isel = flex.size_t([])
           for sel in self.transform_to_ncs[tr]:
             ncs_isel.extend(self.ncs_to_asu_map[sel])
           new_ncs_copy = NCS_copy(copy_iselection=ncs_isel, rot=r, tran=t)
@@ -1139,7 +1138,7 @@ class ncs_group_object(object):
           self.ncs_transform[tr].r = ncs_copy.r
           self.ncs_transform[tr].t = ncs_copy.t
           # Test that the correct transforms are updated
-          ncs_isel = flex.size_t()
+          ncs_isel = flex.size_t([])
           for sel in self.transform_to_ncs[tr]:
             ncs_isel.extend(self.ncs_to_asu_map[sel])
           assert ncs_copy.iselection == ncs_isel
@@ -1183,6 +1182,7 @@ class ncs_group_object(object):
     mtrix_object = self.build_MTRIX_object(ncs_only=ncs_only)
     pdb_header_str = ''
     new_ph_str = ''
+    transform_rec = ''
     #
     if fmodel:
       xrs = fmodel.xray_structure
@@ -1194,7 +1194,7 @@ class ncs_group_object(object):
       new_xyz = xrs.sites_cart()
       if new_xyz.size() > xyz.size():
         ncs_only = True
-        xrs = xrs.select(self.ncs_atom_selection.iselection())
+        xrs = xrs.select(self.ncs_atom_selection.iselection(True))
         new_xyz = xrs.sites_cart()
       assert new_xyz.size() == xyz.size()
       pdb_hierarchy.atoms().set_xyz(new_xyz)
@@ -1206,7 +1206,7 @@ class ncs_group_object(object):
       if not pdb_header_str:
        pdb_header_str = get_pdb_header(pdb_str)
       if ncs_only:
-        new_ph = ph.select(self.ncs_atom_selection.iselection())
+        new_ph = ph.select(self.ncs_atom_selection.iselection(True))
       else:
         msg = 'The complete ASU hierarchy need to be provided !!!\n'
         assert len(self.ncs_atom_selection) == len(ph.atoms()),msg
@@ -1482,7 +1482,7 @@ def selection_string_from_selection(pdb_hierarchy_inp,selection):
   if hasattr(pdb_hierarchy_inp,"hierarchy"):
     pdb_hierarchy_inp = pdb_hierarchy_inp.hierarchy
   # pdb_hierarchy_inp is a hierarchy
-  if isinstance(selection,flex.bool): selection = selection.iselection()
+  if isinstance(selection,flex.bool): selection = selection.iselection(True)
   selection_set = set(selection)
   sel_list = []
   chains_info = ncs_search.get_chains_info(pdb_hierarchy_inp)
@@ -1513,8 +1513,8 @@ def selection_string_from_selection(pdb_hierarchy_inp,selection):
         try:
           # check that res_id is a number and not insertion residue
           res_num = int(res_id)
-          # do not include residue in resseq if the next residue is insertion
-          next_res = int(next_res_id)
+          # int will fail if the next residue is insertion
+          int(next_res_id)
         except ValueError:
           # res_id is an insertion type residue
           res_num = -10000
@@ -1665,7 +1665,7 @@ def ncs_only(transform_info):
 
 def is_identity(r,t):
   """ test if r, rotation matrix is identity, and t, translation is zero """
-  return (r.is_r3_identity_matrix() and t.is_col_zero())
+  return r.is_r3_identity_matrix() and t.is_col_zero()
 
 def all_ncs_copies_present(transform_info):
   """
@@ -1734,7 +1734,6 @@ def get_rot_trans(ph=None,
   msg = ''
   r_zero = matrix.sqr([0]*9)
   t_zero = matrix.col([0,0,0])
-  rmsd = 0.0
   #
   if hasattr(ph,'hierarchy'):
     ph = ph.hierarchy
@@ -1755,8 +1754,8 @@ def get_rot_trans(ph=None,
       ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c,
       master_selection,copy_selection)
     msg += msg1
-    sel_m = sel_m.iselection()
-    sel_c = sel_c.iselection()
+    sel_m = sel_m.iselection(True)
+    sel_c = sel_c.iselection(True)
     # master
     other_sites = ph.select(sel_m).atoms().extract_xyz()
     # copy
@@ -1770,6 +1769,8 @@ def get_rot_trans(ph=None,
       rmsd = ref_sites.rms_difference(lsq_fit_obj.other_sites_best_fit())
       if rmsd > rms_eps:
         return r_zero,t_zero,0,msg
+    else:
+      return r_zero,t_zero,0,'No sites to compare.\n'
     #
     if similarity < min_fraction_domain:
       msg='Chains {0} and {1} appear to be NCS related but are dis-similar..\n'
@@ -1834,9 +1835,9 @@ def update_ncs_group_map(
     ncs_group_map[ncs_group_id] = [set(selection_ids),{transform_id}]
   return ncs_group_map
 
-def sort_dict_keys(dict):
-  """ sort dictionary by values """
-  return sorted(dict,key=lambda k:dict[k])
+def sort_dict_keys(d):
+  """ sort dictionary d by values """
+  return sorted(d,key=lambda k:d[k])
 
 def get_matching_atoms(ph,res_num_a,res_num_b,res_ids_a,res_ids_b,
                        master_selection,copy_selection):
@@ -1870,8 +1871,8 @@ def get_matching_atoms(ph,res_num_a,res_num_b,res_ids_a,res_ids_b,
     resid_b = res_ids_b[nb]
     sa = atom_cache('({}) and resid {}'.format(master_selection,resid_a))
     sb = atom_cache('({}) and resid {}'.format(copy_selection,resid_b))
-    sa = sa.iselection()
-    sb = sb.iselection()
+    sa = sa.iselection(True)
+    sb = sb.iselection(True)
     res_a = ph.select(sa)
     res_b = ph.select(sb)
     if sa.size() != sb.size():
@@ -1892,8 +1893,8 @@ def get_matching_atoms(ph,res_num_a,res_num_b,res_ids_a,res_ids_b,
       res_num_b_updated.append(nb)
     sa = flex.bool(l,sa)
     sb = flex.bool(l,sb)
-    sel_a = sel_a | sa
-    sel_b = sel_b | sb
+    sel_a |= sa
+    sel_b |=  sb
   if residues_with_different_n_atoms:
     problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
     msg = "NCS related residues with different number of atoms, selection"
@@ -2012,7 +2013,7 @@ class Transform(object):
                serial_num = None,
                coordinates_present = None,
                ncs_group_id = None,
-               rmsd = 0):
+               rmsd = 0.0):
     """
     Basic transformation properties
 
@@ -2039,10 +2040,10 @@ class selections(object):
   def __init__(self,
                master_chain_id='',
                copy_chain_id='',
-               master_sel=flex.size_t(),
-               copy_sel=flex.size_t(),
-               not_in_master=flex.size_t(),
-               not_in_copy=flex.size_t()):
+               master_sel=flex.size_t([]),
+               copy_sel=flex.size_t([]),
+               not_in_master=flex.size_t([]),
+               not_in_copy=flex.size_t([])):
     """
     Arg:
       master_chain_id (str)

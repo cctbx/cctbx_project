@@ -230,7 +230,7 @@ class overall_counts(object):
     n = self.n_chains_with_mix_of_proper_and_improper_alt_conf
     print >> out, \
       prefix+"chains with mix of proper and improper alt. conf.:", n
-    if (n != 0): prefix = prefix + "  "
+    if (n != 0): prefix += "  "
     self.show_improper_alt_conf(out=out, prefix=prefix)
 
   def raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary(self):

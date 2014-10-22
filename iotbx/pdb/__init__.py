@@ -1910,3 +1910,6 @@ def format_MTRIX_pdb_string(rotation_matrices, translation_vectors,
     lines.append(fmt2%(int(sn_), r_[3],r_[4],r_[5], t_[1], flag))
     lines.append(fmt3%(int(sn_), r_[6],r_[7],r_[8], t_[2], flag))
   return "\n".join(lines)
+
+def mtrix_and_biomt_records_container():
+  return  _._mtrix_and_biomt_records_container()

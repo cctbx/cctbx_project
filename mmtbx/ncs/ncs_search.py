@@ -190,7 +190,7 @@ def minimal_ncs_operators_grouping(match_dict):
       if not (temp_master in copies_ids):
         if copy_to_transform.has_key(temp_copy):
           # get the transforms that are leading to temp_copy
-          tr_list = copy_to_transform.pop(temp_copy,None)
+          tr_list = copy_to_transform.pop(temp_copy,[])
           for tr in tr_list:
             # since we increase the number of copies using the transform
             # we can remove the transform from its previous group
@@ -199,7 +199,7 @@ def minimal_ncs_operators_grouping(match_dict):
           copy_to_transform[temp_copy] = [tr_num]
         # remove transforms for which the new master was a copy,
         if copy_to_transform.has_key(temp_master):
-          tr_list = copy_to_transform.pop(temp_master,None)
+          tr_list = copy_to_transform.pop(temp_master,[])
           for tr in tr_list:
             transform_to_group.pop(tr,None)
         # update dictionaries with additions to master and copies
@@ -295,7 +295,7 @@ def minimal_master_ncs_grouping(match_dict):
   transform_to_use = set()
   # Collect the transforms, starting with the smallest master
   while bool(chain_left_to_add) and bool(master_size):
-    [n,k] = master_size.pop(0)
+    [_,k] = master_size.pop(0)
     tr = transform_to_group[k]
     if bool(set(tr[1]) & chain_left_to_add):
       transform_to_use.add(k)
@@ -368,7 +368,7 @@ def remove_overlapping_selection(transform_to_group,chain_ids):
   chains_in_master = set()
   chains_in_copies = set()
   while bool(chain_left_to_add) and bool(master_size):
-    [n,k] = master_size.pop()
+    [_,k] = master_size.pop()
     [masters,copies,_] = transform_to_group[k]
     # check that all chains in copies still need to be added
     test1 = len(set(copies).intersection(chain_left_to_add)) == len(copies)
@@ -454,7 +454,7 @@ def build_group_dict(transform_to_group,match_dict):
   group_id = 0
   tr_sn = 0
   for k,v in transform_to_group.iteritems():
-    [masters,copies,(r,t)] = v
+    [masters,copies,_] = v
     key = tuple(masters)
     m_sel_list,c_sel_list = get_iselection(masters,copies,match_dict)
     if group_dict.has_key(key):
@@ -472,7 +472,7 @@ def build_group_dict(transform_to_group,match_dict):
           group_dict[key].iselections = updated_iselection
       #
       tr_sn += 1
-      [_,_,res_l_m,res_l_c,r,t,rmsd] = match_dict[masters[0],copies[0]]
+      [_,_,_,res_l_c,r,t,rmsd] = match_dict[masters[0],copies[0]]
       tr = Transform(
         rotation=r,
         translation=t,
@@ -589,7 +589,7 @@ def get_iselection(sorted_masters,copies,match_dict):
   # Note: consider sorting the selections
   return m_sel,c_sel
 
-def clean_chain_matching(chain_match_list,ph,rmsd_eps=10):
+def clean_chain_matching(chain_match_list,ph,rmsd_eps=10.0):
   """
   Remove all bad matches from chain_match_list
 
@@ -1068,7 +1068,7 @@ def get_chains_info(ph,selection_list=None):
                 if (selection_test & sel).count(True) > 0:
                   raise Sorry('Overlapping NCS group selections!')
                 else:
-                  selection_test = selection_test | sel
+                  selection_test |= sel
       else:
         raise Sorry('Empty NCS group selections!')
   return chains_info
