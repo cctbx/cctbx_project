@@ -188,7 +188,8 @@ class ThreeProteinResidues(list):
         print self
     return cis_peptide_bond
 
-  def are_linked(self, return_value=False):
+  def are_linked(self, return_value=False, verbose=True):
+    d2 = None
     for i, residue in enumerate(self):
       if i==0: continue
       ccn1, outl1 = get_c_ca_n(residue)
@@ -217,6 +218,7 @@ class ThreeProteinResidues(list):
         break
     else:
       return True
+    #assert d2
     if return_value: return d2
     return False
 

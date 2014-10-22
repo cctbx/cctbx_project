@@ -22,6 +22,7 @@ class geometry(object):
         molprobity_scores=False,
         n_histogram_slots=10,
         cdl_restraints=False,
+        ignore_hydrogens=False,  #only used by amber
         ):
     self.cdl_restraints=cdl_restraints
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
@@ -61,11 +62,31 @@ class geometry(object):
     self.a = None
     self.b = None
     if not hasattr(esg, "angle_deviations"): return
+    if hasattr(esg, "amber"):
+      amber_parm = restraints_manager.amber_structs.parm
+      self.a, angle_deltas = esg.angle_deviations(sites_cart, amber_parm,
+                                        ignore_hd=ignore_hydrogens,
+                                        get_deltas=True)
+      self.b, bond_deltas = esg.bond_deviations(sites_cart, amber_parm,
+                                        ignore_hd=ignore_hydrogens,
+                                        get_deltas=True)
+      self.a_number = esg.n_angle_proxies(amber_parm,
+                                          ignore_hd=ignore_hydrogens)
+      self.b_number = esg.n_bond_proxies(amber_parm,
+                                         ignore_hd=ignore_hydrogens)
+      # self.c, self.p, self.ll, self.d, self.n = None, None, None, None, None
+      self.bond_deltas_histogram = \
+        flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
+      self.angle_deltas_histogram = \
+        flex.histogram(data = flex.abs(angle_deltas), n_slots = n_histogram_slots)
+      # nonbonded_distances = esg.nonbonded_distances()
+      # self.nonbonded_distances_histogram = flex.histogram(
+      #   data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
+      return
     self.a = esg.angle_deviations()
     self.b = esg.bond_deviations()
     self.a_number = esg.n_angle_proxies
     self.b_number = esg.get_filtered_n_bond_proxies()
-
     self.c = esg.chirality_deviations()
     self.d = esg.dihedral_deviations()
     self.p = esg.planarity_deviations()
