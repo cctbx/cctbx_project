@@ -345,7 +345,6 @@ def remove_masters_if_appear_in_copies(transform_to_group):
       all_copies.append(copy_id)
   for k in remove_items:
     transform_to_group.pop(k)
-
   return transform_to_group
 
 def remove_overlapping_selection(transform_to_group,chain_ids):
@@ -370,9 +369,9 @@ def remove_overlapping_selection(transform_to_group,chain_ids):
   chains_in_copies = set()
   while bool(chain_left_to_add) and bool(master_size):
     [n,k] = master_size.pop()
-    [masters,copies,(rot,trans)] = transform_to_group[k]
+    [masters,copies,_] = transform_to_group[k]
     # check that all chains in copies still need to be added
-    test1 = len(set(copies) & chain_left_to_add) == len(copies)
+    test1 = len(set(copies).intersection(chain_left_to_add)) == len(copies)
     # check that copies are not in masters
     test2 = not bool(set(copies).intersection(chains_in_master))
     # check that masters are not in copies
