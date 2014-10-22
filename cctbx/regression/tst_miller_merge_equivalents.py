@@ -95,6 +95,10 @@ def exercise_incompatible_flags_replacement():
   assert approx_equal(me.data(), (1,1,2))
 
 def exercise_split_unmerged () :
+  import random
+  random.seed(42)
+  flex.set_random_seed(42)
+
   from cctbx import crystal
   base_set = miller.build_set(
     crystal_symmetry=crystal.symmetry(
@@ -137,7 +141,7 @@ def exercise_split_unmerged () :
   assert approx_equal(
     result.data[1:-1],
     [0.549, 0.789, 0.843, 0.835, 0.863, 0.860, 0.893, 0.847, 0.875, 0.859],
-    eps=0.001)
+    eps=0.01)
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True):
