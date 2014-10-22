@@ -368,13 +368,24 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     ncs_inp = iotbx.ncs.input(
       pdb_string=pdb_str,
       use_simple_ncs_from_pdb=False,
-      use_cctbx_find_ncs_tools=True)
+      use_cctbx_find_ncs_tools=True,
+      check_atom_order=True)
 
     t = ncs_inp.ncs_to_asu_selection
     exp_t = {
       '(chain A and (resid 1 and (name N or name CA or name C or name O )))':
         ['chain B',
          '(chain C and (resid 1 and (name N or name CA or name C or name O )))']}
+    self.assertEqual(t,exp_t)
+    #
+    ncs_inp = iotbx.ncs.input(
+      pdb_string=pdb_str,
+      use_simple_ncs_from_pdb=False,
+      use_cctbx_find_ncs_tools=True,
+      check_atom_order=False)
+
+    t = ncs_inp.ncs_to_asu_selection
+    exp_t = {'chain A': ['chain C']}
     self.assertEqual(t,exp_t)
     #
     self.assertRaises(Sorry,iotbx.ncs.input,

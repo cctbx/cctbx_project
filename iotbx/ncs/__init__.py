@@ -27,7 +27,7 @@ def input(pdb_hierarchy_inp=None,
           process_similar_chains=True,
           min_fraction_domain=0.2,
           min_contig_length=10,
-          always_check_atom_order=False):
+          check_atom_order=False):
     """
     Select method to build ncs_group_object
 
@@ -77,8 +77,9 @@ def input(pdb_hierarchy_inp=None,
         similarity define as:
         (number of matching res) / (number of res in longer chain)
       min_contig_length (int): minimum length of matching chain segments
-      always_check_atom_order (bool): make sure atoms in matching residues
-        are in the same order
+      check_atom_order (bool): check atom order in matching residues.
+        When False, matching residues with different number of atoms will be
+        excluded from matching set
     """
     ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
     ncs_group_obj.preprocess_ncs_obj(
@@ -106,6 +107,6 @@ def input(pdb_hierarchy_inp=None,
       process_similar_chains=process_similar_chains,
       min_fraction_domain=min_fraction_domain,
       min_contig_length=min_contig_length,
-      always_check_atom_order=always_check_atom_order)
+      check_atom_order=check_atom_order)
     return ncs_group_obj
 
