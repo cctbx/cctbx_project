@@ -1,8 +1,8 @@
 from __future__ import division
-import mmtbx.maps.correlation
 from scitbx.array_family import flex
 import mmtbx.monomer_library.server
 from mmtbx import monomer_library
+import mmtbx.maps.correlation
 from scitbx import matrix
 import scitbx.rigid_body
 from cctbx import xray
@@ -659,6 +659,7 @@ def get_ncs_gorups_centers(xray_structure, ncs_restraints_group_list):
     master_xyz = asu_xyz.select(master_ncs_selection)
     mu_m = matrix.col(master_xyz.sum()) / len(master_ncs_selection)
     mu_m = flex.vec3_double([mu_m.elems])
+    # add a copy of the master coordinate center for each copy
     for ncs_copy in nrg.copies:
       shifts.append(mu_m)
   return shifts
@@ -673,13 +674,13 @@ def ncs_restraints_group_list_copy(ncs_restraints_group_list):
   Returns:
     new_list: a deep copy of ncs_restraints_group_list
   """
-  from iotbx.ncs.ncs_preprocess import ncs_restraint_group
-  from iotbx.ncs.ncs_preprocess import ncs_copy
+  from iotbx.ncs.ncs_preprocess import NCS_restraint_group
+  from iotbx.ncs.ncs_preprocess import NCS_copy
   new_list = []
   for nrg in ncs_restraints_group_list:
-    new_nrg = ncs_restraint_group(nrg.master_iselection)
+    new_nrg = NCS_restraint_group(nrg.master_iselection)
     for ncs in nrg.copies:
-      new_ncs_copy = ncs_copy(
+      new_ncs_copy = NCS_copy(
         copy_iselection=ncs.iselection,
         rot=ncs.r,
         tran=ncs.t)

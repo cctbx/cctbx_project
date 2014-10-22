@@ -534,7 +534,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_get_list_of_best_ncs_copy_map_correlation']
+  tests = ['test_center_of_coordinates_shift']
   suite = unittest.TestSuite(map(Test_ncs_utils,tests))
   return suite
 
