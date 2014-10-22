@@ -310,7 +310,8 @@ def minimal_master_ncs_grouping(match_dict):
 
 def remove_masters_if_appear_in_copies(transform_to_group):
   """
-  remove masters if appear in copies
+  remove masters if appear in copies of the same transform
+  and of another transform
 
   Args:
     transform_to_group (dict):
@@ -321,18 +322,30 @@ def remove_masters_if_appear_in_copies(transform_to_group):
   Returns:
     updated transform_to_group
   """
+  # clean transforms
   for k,v in transform_to_group.iteritems():
     masters = v[0]
     copies = v[1]
-    common_ids = set(masters) & set(copies)
-    while common_ids:
-      ch_id = common_ids.pop()
-      i = masters.index(ch_id)
-      masters.pop(i)
-      copies.pop(i)
-      common_ids = set(masters) & set(copies)
-    transform_to_group[k][0] = masters
-    transform_to_group[k][1] = copies
+    keep_items = []
+    for i,ch_id in enumerate(masters):
+      if not (ch_id in copies):
+        keep_items.append(i)
+    transform_to_group[k][0] = [masters[x] for x in keep_items]
+    transform_to_group[k][1] = [copies[x] for x in keep_items]
+  # clean other transforms once the transforms are clean
+  all_copies = []
+  remove_items = []
+  keys = sorted(transform_to_group,key=lambda k:transform_to_group[k][0])
+  for k in keys:
+    copy_id = transform_to_group[k][1]
+    master_id = transform_to_group[k][0]
+    if (copy_id in all_copies) or (master_id in all_copies):
+      remove_items.append(k)
+    else:
+      all_copies.append(copy_id)
+  for k in remove_items:
+    transform_to_group.pop(k)
+
   return transform_to_group
 
 def remove_overlapping_selection(transform_to_group,chain_ids):
@@ -577,7 +590,7 @@ def get_iselection(sorted_masters,copies,match_dict):
   # Note: consider sorting the selections
   return m_sel,c_sel
 
-def clean_chain_matching(chain_match_list,ph,rmsd_eps=5):
+def clean_chain_matching(chain_match_list,ph,rmsd_eps=10):
   """
   Remove all bad matches from chain_match_list
 
