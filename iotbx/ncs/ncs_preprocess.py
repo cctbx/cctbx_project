@@ -442,7 +442,7 @@ class ncs_group_object(object):
       self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
       self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
     elif use_simple_ncs_from_pdb:
-      # Fixme: Remove this after testing
+      # Fixme: Remove this after testing simple ncs from pdb
       ncs_object = get_ncs_object_from_pdb(
         pdb_inp=pdb_hierarchy_inp.input,
         hierarchy=pdb_hierarchy_inp.hierarchy)
@@ -883,7 +883,6 @@ class ncs_group_object(object):
     to the model, even if the chain ID already exist. so there model.
     chains() might contain several chains that have the same chain ID
     """
-    # Todo: Consider removing all the 's' from the transforms keys
     transform_info_available = bool(transform_info) and bool(transform_info.r)
     if transform_info_available:
       ti = transform_info
