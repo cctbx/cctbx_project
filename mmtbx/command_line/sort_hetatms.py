@@ -139,9 +139,14 @@ def sort_hetatms (
     ignore_selection = sel_cache.selection(params.ignore_selection)
   assert (len(pdb_hierarchy.models()) == 1)
   for chain in pdb_hierarchy.only_model().chains() :
-    if (chain.is_protein()) or (chain.is_na()) :
+    chain_atoms = chain.atoms()
+    het_sel = chain_atoms.extract_hetero()
+    if (het_sel.size() == chain_atoms.size()) :
+      hetatm_chains.append(chain)
+    elif ((chain.is_protein(ignore_water=False)) or
+          (chain.is_na(ignore_water=False))) :
       mm_chains.append(chain)
-      i_seqs = chain.atoms().extract_tmp_as_size_t()
+      i_seqs = chain_atoms.extract_tmp_as_size_t()
       mm_selection.set_selected(i_seqs, True)
     else :
       hetatm_chains.append(chain)
@@ -255,11 +260,16 @@ def sort_hetatms (
               closest_rt_mx = rt_mx.inverse() # XXX I hope this is right...
               closest_i_seq = j_seq
       if (closest_i_seq is None) :
+        # XXX possible bug: what about waters H-bonded to ligands, but still
+        # outside radius of macromolecule?
         if (is_water and params.remove_waters_outside_radius) :
           print >> log, "Water %s is not near any polymer chain, will delete" \
             % rg.id_str()
           n_deleted += len(rg.atoms())
           continue
+        # XXX not sure what to do here - if we have only one macromolecule
+        # chain, does it make more sense to keep all hetatms grouped together
+        # regardless of distance?  e.g. waters in 1BS2
         else :
           print >> log, \
             "Residue group %s %s is not near any macromolecule chain" % \

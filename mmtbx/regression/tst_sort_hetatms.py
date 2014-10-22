@@ -3,6 +3,7 @@ from __future__ import division
 from mmtbx.command_line import sort_hetatms
 from iotbx import file_reader
 from cStringIO import StringIO
+import os.path as op
 import os
 
 def exercise () :
@@ -80,7 +81,7 @@ END
 """
   pdb_file = "unsorted.pdb"
   open(pdb_file, "w").write(pdb_raw)
-  if (os.path.exists("unsorted_sorted.pdb")) :
+  if (op.exists("unsorted_sorted.pdb")) :
     os.remove("unsorted_sorted.pdb")
   out = StringIO()
   sort_hetatms.run(
@@ -136,7 +137,7 @@ END
 """
   pdb_file = "unsorted2.pdb"
   open(pdb_file, "w").write(pdb_raw2)
-  if (os.path.exists("unsorted2_sorted.pdb")) :
+  if (op.exists("unsorted2_sorted.pdb")) :
     os.remove("unsorted2_sorted.pdb")
   out = StringIO()
   sort_hetatms.run(
@@ -144,6 +145,150 @@ END
     out=out)
   assert ("Water     11  is not near any polymer chain, will delete" in
           out.getvalue())
+  out = StringIO()
+  sort_hetatms.run(
+    args=[pdb_file, "--verbose",],
+    out=out)
+  assert ("Residue group A   11  is not near any macromolecule chain" in
+          out.getvalue())
+  pdb_raw = """\
+HEADER    LIGASE                                  31-AUG-98   1BS2
+CRYST1  100.374  100.374  204.341  90.00  90.00  90.00 P 43 21 2     8
+ATOM   1094  N   LYS A 143      22.992  81.325 -18.373  1.00 63.31           N
+ATOM   1095  CA  LYS A 143      24.003  82.214 -18.922  1.00 53.83           C
+ATOM   1096  C   LYS A 143      24.725  81.433 -20.002  1.00 49.46           C
+ATOM   1097  O   LYS A 143      25.026  80.249 -19.833  1.00 48.59           O
+ATOM   1098  CB  LYS A 143      24.980  82.658 -17.835  1.00 58.17           C
+ATOM   1099  CG  LYS A 143      24.831  84.114 -17.432  1.00 65.92           C
+ATOM   1100  CD  LYS A 143      23.422  84.434 -16.967  1.00 69.21           C
+ATOM   1101  CE  LYS A 143      23.253  85.929 -16.742  1.00 67.51           C
+ATOM   1102  NZ  LYS A 143      21.905  86.254 -16.193  1.00 74.33           N
+ATOM   1103  N   LYS A 144      24.985  82.095 -21.120  1.00 46.52           N
+ATOM   1104  CA  LYS A 144      25.641  81.453 -22.246  1.00 48.43           C
+ATOM   1105  C   LYS A 144      26.946  82.162 -22.583  1.00 49.19           C
+ATOM   1106  O   LYS A 144      27.014  83.395 -22.623  1.00 47.13           O
+ATOM   1107  CB  LYS A 144      24.704  81.475 -23.458  1.00 55.29           C
+ATOM   1108  CG  LYS A 144      25.183  80.676 -24.659  1.00 63.36           C
+ATOM   1109  CD  LYS A 144      24.334  80.964 -25.899  1.00 61.42           C
+ATOM   1110  CE  LYS A 144      22.874  80.579 -25.705  1.00 58.72           C
+ATOM   1111  NZ  LYS A 144      22.078  80.793 -26.946  1.00 61.59           N
+ATOM   1112  N   VAL A 145      27.986  81.373 -22.819  1.00 42.70           N
+ATOM   1113  CA  VAL A 145      29.280  81.932 -23.158  1.00 38.93           C
+ATOM   1114  C   VAL A 145      29.869  81.233 -24.374  1.00 40.05           C
+ATOM   1115  O   VAL A 145      29.715  80.021 -24.553  1.00 45.68           O
+ATOM   1116  CB  VAL A 145      30.274  81.815 -21.972  1.00 30.33           C
+ATOM   1117  CG1 VAL A 145      30.431  80.356 -21.569  1.00 35.25           C
+ATOM   1118  CG2 VAL A 145      31.627  82.424 -22.351  1.00 15.32           C
+ATOM   1119  N   ILE A 146      30.519  82.013 -25.225  1.00 36.19           N
+ATOM   1120  CA  ILE A 146      31.157  81.457 -26.399  1.00 42.19           C
+ATOM   1121  C   ILE A 146      32.640  81.522 -26.106  1.00 46.89           C
+ATOM   1122  O   ILE A 146      33.161  82.577 -25.735  1.00 42.54           O
+ATOM   1123  CB  ILE A 146      30.886  82.283 -27.666  1.00 43.82           C
+ATOM   1124  CG1 ILE A 146      29.406  82.226 -28.030  1.00 46.47           C
+ATOM   1125  CG2 ILE A 146      31.723  81.741 -28.816  1.00 39.50           C
+ATOM   1126  CD1 ILE A 146      29.048  83.115 -29.197  1.00 46.73           C
+ATOM   1127  N   ILE A 147      33.311  80.387 -26.250  1.00 47.64           N
+ATOM   1128  CA  ILE A 147      34.740  80.323 -26.019  1.00 47.32           C
+ATOM   1129  C   ILE A 147      35.406  79.905 -27.326  1.00 49.89           C
+ATOM   1130  O   ILE A 147      35.276  78.766 -27.777  1.00 46.22           O
+ATOM   1131  CB  ILE A 147      35.078  79.325 -24.887  1.00 43.61           C
+ATOM   1132  CG1 ILE A 147      34.402  79.775 -23.586  1.00 40.57           C
+ATOM   1133  CG2 ILE A 147      36.585  79.257 -24.688  1.00 40.81           C
+ATOM   1134  CD1 ILE A 147      34.584  78.825 -22.424  1.00 34.81           C
+ATOM   1135  N   GLU A 148      36.102  80.855 -27.940  1.00 49.93           N
+ATOM   1136  CA  GLU A 148      36.788  80.613 -29.199  1.00 50.03           C
+ATOM   1137  C   GLU A 148      38.263  80.328 -28.913  1.00 44.28           C
+ATOM   1138  O   GLU A 148      38.943  81.145 -28.301  1.00 43.55           O
+ATOM   1139  CB  GLU A 148      36.646  81.846 -30.106  1.00 47.09           C
+ATOM   1140  CG  GLU A 148      37.243  81.679 -31.489  1.00 40.60           C
+ATOM   1141  CD  GLU A 148      37.982  82.916 -31.943  1.00 48.19           C
+ATOM   1142  OE1 GLU A 148      37.324  83.935 -32.246  1.00 52.87           O
+ATOM   1143  OE2 GLU A 148      39.228  82.873 -31.982  1.00 45.83           O
+ATOM   1144  N   PHE A 149      38.754  79.172 -29.347  1.00 37.67           N
+ATOM   1145  CA  PHE A 149      40.147  78.828 -29.106  1.00 39.79           C
+ATOM   1146  C   PHE A 149      40.775  77.925 -30.159  1.00 42.70           C
+ATOM   1147  O   PHE A 149      40.079  77.314 -30.966  1.00 45.66           O
+ATOM   1148  CB  PHE A 149      40.305  78.199 -27.718  1.00 37.53           C
+ATOM   1149  CG  PHE A 149      39.387  77.039 -27.461  1.00 33.29           C
+ATOM   1150  CD1 PHE A 149      38.009  77.226 -27.387  1.00 29.22           C
+ATOM   1151  CD2 PHE A 149      39.903  75.760 -27.270  1.00 28.26           C
+ATOM   1152  CE1 PHE A 149      37.156  76.154 -27.124  1.00 26.87           C
+ATOM   1153  CE2 PHE A 149      39.062  74.681 -27.006  1.00 29.29           C
+ATOM   1154  CZ  PHE A 149      37.683  74.879 -26.934  1.00 30.14           C
+ATOM   1155  N   SER A 150      42.106  77.852 -30.120  1.00 44.78           N
+ATOM   1156  CA  SER A 150      42.924  77.077 -31.057  1.00 38.94           C
+ATOM   1157  C   SER A 150      42.996  77.839 -32.378  1.00 35.66           C
+ATOM   1158  O   SER A 150      44.039  78.374 -32.718  1.00 38.02           O
+ATOM   1159  CB  SER A 150      42.353  75.676 -31.283  1.00 32.93           C
+ATOM   1160  OG  SER A 150      43.261  74.895 -32.047  1.00 31.61           O
+ATOM   1161  N   SER A 151      41.879  77.879 -33.104  1.00 36.86           N
+ATOM   1162  CA  SER A 151      41.745  78.598 -34.377  1.00 32.32           C
+ATOM   1163  C   SER A 151      42.958  78.629 -35.304  1.00 36.45           C
+ATOM   1164  O   SER A 151      43.531  79.692 -35.565  1.00 35.55           O
+ATOM   1165  CB  SER A 151      41.305  80.038 -34.107  1.00 27.79           C
+ATOM   1166  OG  SER A 151      40.065  80.069 -33.429  1.00 35.13           O
+ATOM   1167  N   PRO A 152      43.356  77.468 -35.836  1.00 40.61           N
+ATOM   1168  CA  PRO A 152      44.512  77.444 -36.736  1.00 42.49           C
+ATOM   1169  C   PRO A 152      44.150  77.973 -38.125  1.00 42.14           C
+ATOM   1170  O   PRO A 152      42.991  78.288 -38.397  1.00 40.80           O
+ATOM   1171  CB  PRO A 152      44.883  75.968 -36.760  1.00 42.76           C
+ATOM   1172  CG  PRO A 152      43.534  75.304 -36.693  1.00 42.42           C
+ATOM   1173  CD  PRO A 152      42.812  76.112 -35.631  1.00 39.19           C
+ATOM   1174  N   ASN A 153      45.148  78.086 -38.993  1.00 44.89           N
+ATOM   1175  CA  ASN A 153      44.921  78.542 -40.362  1.00 45.11           C
+ATOM   1176  C   ASN A 153      45.092  77.307 -41.232  1.00 46.15           C
+ATOM   1177  O   ASN A 153      45.996  76.502 -41.003  1.00 50.16           O
+ATOM   1178  CB  ASN A 153      45.951  79.592 -40.770  1.00 45.30           C
+ATOM   1179  CG  ASN A 153      46.044  80.729 -39.781  1.00 43.47           C
+ATOM   1180  OD1 ASN A 153      45.093  81.487 -39.590  1.00 46.50           O
+ATOM   1181  ND2 ASN A 153      47.196  80.853 -39.143  1.00 33.35           N
+TER    4875      MET A 607
+HETATM 4876  N   ARG X 900      43.972  82.052 -36.884  1.00 37.31           N
+HETATM 4877  CA  ARG X 900      44.639  83.205 -36.209  1.00 43.51           C
+HETATM 4878  C   ARG X 900      46.150  83.005 -36.147  1.00 44.70           C
+HETATM 4879  O   ARG X 900      46.842  83.928 -35.666  1.00 51.15           O
+HETATM 4880  CB  ARG X 900      44.080  83.392 -34.788  1.00 31.47           C
+HETATM 4881  CG  ARG X 900      42.619  83.803 -34.755  1.00 31.50           C
+HETATM 4882  CD  ARG X 900      42.116  83.982 -33.337  1.00 38.70           C
+HETATM 4883  NE  ARG X 900      40.700  84.343 -33.288  1.00 42.91           N
+HETATM 4884  CZ  ARG X 900      40.206  85.521 -33.660  1.00 48.35           C
+HETATM 4885  NH1 ARG X 900      41.014  86.471 -34.114  1.00 45.64           N
+HETATM 4886  NH2 ARG X 900      38.899  85.751 -33.584  1.00 46.85           N
+HETATM 4887  OXT ARG X 900      46.623  81.932 -36.581  1.00 42.67           O
+HETATM 4963  O   HOH X 976      48.036  82.421 -33.012  1.00 30.31           O
+HETATM 4964  O   HOH X 977      44.190  81.253 -31.435  1.00 48.82           O
+HETATM 4965  O   HOH X 978      41.198  81.209 -30.407  1.00 48.77           O
+"""
+  pdb_file = "unsorted3.pdb"
+  open(pdb_file, "w").write(pdb_raw)
+  if (op.exists("unsorted3_sorted.pdb")) :
+    os.remove("unsorted3_sorted.pdb")
+  out = StringIO()
+  sort_hetatms.run(
+    args=[pdb_file, "--verbose",],
+    out=out)
+  assert op.isfile("unsorted3_sorted.pdb")
+  pdb_in = file_reader.any_file("unsorted3_sorted.pdb")
+  for atom in pdb_in.file_object.hierarchy.atoms() :
+    assert atom.fetch_labels().chain_id == "A"
+  # now with ARG ligand minus waters, but still flagged as HETATM
+  pdb_in = file_reader.any_file("unsorted3.pdb")
+  sel_str = "not resname HOH"
+  sel_cache = pdb_in.file_object.hierarchy.atom_selection_cache()
+  sel = sel_cache.selection(sel_str)
+  hierarchy_new = pdb_in.file_object.hierarchy.select(sel)
+  open("unsorted4.pdb", "w").write(hierarchy_new.as_pdb_string(
+    crystal_symmetry=pdb_in.file_object.crystal_symmetry()))
+  if (op.exists("unsorted4_sorted.pdb")) :
+    os.remove("unsorted4_sorted.pdb")
+  out = StringIO()
+  sort_hetatms.run(
+    args=["unsorted4.pdb", "--verbose",],
+    out=out)
+  assert op.isfile("unsorted4_sorted.pdb")
+  pdb_in = file_reader.any_file("unsorted4_sorted.pdb")
+  for atom in pdb_in.file_object.hierarchy.atoms() :
+    assert atom.fetch_labels().chain_id == "A"
   print "OK"
 
 if (__name__ == "__main__") :
