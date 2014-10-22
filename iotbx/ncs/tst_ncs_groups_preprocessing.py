@@ -184,11 +184,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     d = map(abs,d)
     self.assertTrue(max(d)<0.01)
 
-  def test_mmcif_reading(self):
-    print sys._getframe().f_code.co_name
-    # Fixme: test_mmcif_reading
-    pass
-
   def test_processing_of_asu(self):
     """ processing complete ASU
     If MTRIX records are present, they are ignored """
@@ -333,17 +328,32 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     t2_exp = ('chain A and (resseq 151:159)', 'chain C and (resseq 151:159)')
     self.assertEqual(t2,t2_exp)
 
-  def test_insertion_processing(self):
-    """  Verify correct processing of PDBs that have insertions residues   """
-    print sys._getframe().f_code.co_name
-    # Fixme: Add test
-    pass
-
   def test_rotaion_translation_input(self):
     """ Verify correct processing    """
     print sys._getframe().f_code.co_name
-    # Fixme: Add test
-    pass
+    r1 = matrix.sqr([-0.955168,0.257340,-0.146391,
+                     0.248227,0.426599,-0.869711,
+                     -0.161362,-0.867058,-0.471352])
+    r2 = matrix.sqr([-0.994267,-0.046533,-0.096268,
+                     -0.065414,-0.447478,0.89189,
+                     -0.084580,0.893083,0.441869])
+    t1 = matrix.col([167.54320,-4.09250,41.98070])
+    t2 = matrix.col([176.73730,27.41760,-5.85930])
+    trans_obj = iotbx.ncs.input(
+      pdb_string=pdb_str2,
+      rotations=[r1,r2],
+      translations=[t1,t2])
+    nrg = trans_obj.get_ncs_restraints_group_list()[0]
+    self.assertEqual(list(nrg.master_iselection),[0, 1, 2, 3, 4, 5, 6, 7, 8])
+    c1 = nrg.copies[0]
+    self.assertEqual(list(c1.iselection),[9,10,11,12,13,14,15,16,17])
+    c2 = nrg.copies[1]
+    self.assertEqual(list(c2.iselection),[18,19,20,21,22,23,24,25,26])
+    #
+    self.assertEqual(r1,c1.r)
+    self.assertEqual(r2,c2.r)
+    self.assertEqual(t1,c1.t)
+    self.assertEqual(t2,c2.t)
 
   def test_print_ncs_phil_param(self):
     """ Verify correct printout of NCS phil parameters """
@@ -467,6 +477,23 @@ ATOM    750  N   UNK E  91     -27.678  74.103  93.921  1.00  0.00           N
 TER
 ATOM   1495  N   UNK F  67       7.362 108.699  49.412  1.00  0.00           N
 TER
+"""
+
+pdb_str2="""\
+CRYST1  106.820   62.340  114.190  90.00  90.00  90.00 P 21 21 21   16
+SCALE1      0.009361  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.016041  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.008757        0.00000
+ATOM      1  N   GLU A   1      63.453  38.635  25.703  1.00134.43           N
+ATOM      2  CA  GLU A   1      64.202  37.516  26.347  1.00134.43           C
+ATOM      3  C   GLU A   1      64.256  36.311  25.412  1.00134.43           C
+ATOM      4  O   GLU A   1      65.333  35.940  24.953  1.00134.43           O
+ATOM      5  CB  GLU A   1      63.542  37.121  27.675  1.00207.79           C
+ATOM      6  CG  GLU A   1      64.339  36.145  28.538  1.00207.79           C
+ATOM      7  CD  GLU A   1      63.462  35.340  29.490  1.00207.79           C
+ATOM      8  OE1 GLU A   1      62.232  35.542  29.493  1.00207.79           O
+ATOM      9  OE2 GLU A   1      63.997  34.492  30.232  1.00207.79           O
+END
 """
 
 pdb_test_data1_phil = '''\
@@ -741,7 +768,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_finding_partial_ncs']
+  tests = ['test_rotaion_translation_input']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 
