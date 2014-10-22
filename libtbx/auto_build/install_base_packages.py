@@ -112,7 +112,30 @@ class installer (object) :
       log=log,
       pkg_dirs=options.pkg_dirs,
       no_download=options.no_download)
-    self.build_cctbx_dependencies()
+    
+    # Build Python and HDF5 by default.
+    packages = ['python', 'hdf5']        
+    if not options.basic:
+      for env_var in ["BLAS","ATLAS","LAPACK"]:
+        os.environ[env_var] = "None"          
+      packages += ['numpy', 'BioPython']
+    if options.build_scipy:
+      packages += ['scipy']
+    if options.build_gui or options.build_all or options.labelit:
+      if sys.platform == "darwin":
+        packages += ['py2app']
+      packages += ['Imaging', 'reportlab']
+    if options.build_gui or options.build_all:
+      packages += ['gui']
+    if options.build_sphinx:
+      packages += ['sphinx']
+    if options.build_ipython:
+      packages += ['ipython']
+    if options.build_pyopengl:
+      packages += ['PyOpenGL']
+    # Or use specified packages if provided.
+    packages = set(args or packages)
+    self.build_dependencies(packages=packages)      
     # On Mac OS X all of the Python-related executables located in base/bin
     # are actually symlinks to absolute paths inside the Python.framework, so
     # we replace them with symlinks to relative paths.
@@ -120,57 +143,54 @@ class installer (object) :
       print >> log, "Regenerating symlinks with relative paths..."
       regenerate_relative_symlinks(op.join(self.base_dir, "bin"), log=log)
 
-  def build_cctbx_dependencies (self) :
-    print >> self.log, "*** Building dependencies first ***"
+  def build_dependencies(self, packages=None):
+    packages = packages or []
+    print >> self.log, "Building dependencies: %s"%(", ".join(packages))
     self.print_sep()
     os.chdir(self.tmp_dir)
-    options = self.options
-    if (True) : #not options.use_system_python) :
+    options = self.options    
+    if 'python' in packages:
       self.build_python()
-    else :
-      pass # TODO ???
-    assert op.exists(self.python_exe), self.python_exe
-    if (not options.basic) :
-      for env_var in ["BLAS","ATLAS","LAPACK"] :
-        os.environ[env_var] = "None"
+    if 'numpy' in packages:
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=NUMPY_PKG,
         pkg_name_label="numpy",
         confirm_import_module="numpy")
+    if 'BioPython' in packages:
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=BIOPYTHON_PKG,
         pkg_name_label="BioPython",
         confirm_import_module="Bio")
-      if (options.build_scipy) :
-        # XXX SciPy requires a Fortran compiler, so it's not built by default
-        self.build_python_module_simple(
-          pkg_url=BASE_CCI_PKG_URL,
-          pkg_name=SCIPY_PKG,
-          pkg_name_label="SciPy",
-          confirm_import_module="scipy")
-    if (options.labelit) or (options.build_gui) or (options.build_all) :
-      if (sys.platform == "darwin") :
-        self.build_python_module_simple(
-          pkg_url=BASE_CCI_PKG_URL,
-          pkg_name=PY2APP_PKG,
-          pkg_name_label="py2app",
-          confirm_import_module="py2app")
-      self.build_imaging()
+    if 'scipy' in packages:
+      # requires Fortran compiler.
+      self.build_python_module_simple(
+        pkg_url=BASE_CCI_PKG_URL,
+        pkg_name=SCIPY_PKG,
+        pkg_name_label="SciPy",
+        confirm_import_module="scipy")
+    if 'py2app' in packages:
+      self.build_python_module_simple(
+        pkg_url=BASE_CCI_PKG_URL,
+        pkg_name=PY2APP_PKG,
+        pkg_name_label="py2app",
+        confirm_import_module="py2app")      
+    if 'Imaging' in packages:
+      self.build_imaging()      
+    if 'reportlab' in packages:
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=REPORTLAB_PKG,
         pkg_name_label="reportlab",
-        confirm_import_module="reportlab")
-    if ((options.xia2) or (options.build_all) or (options.dials) or
-        (options.labelit)) :
+        confirm_import_module="reportlab")      
+    if 'hdf5' in packages:
       self.build_hdf5()
-    if (options.build_gui) or (options.build_all) :
+    if 'gui' in packages:
       self.build_wxpython_dependencies()
       self.build_wxpython()
       self.build_misc()
-    if (options.build_sphinx) :
+    if 'sphinx' in packages:
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=SPHINX_PKG,
@@ -181,13 +201,13 @@ class installer (object) :
         pkg_name=NUMPYDOC_PKG,
         pkg_name_label="numpydoc",
         confirm_import_module=None)
-    if (options.build_ipython) :
+    if 'ipython' in packages:
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=IPYTHON_PKG,
         pkg_name_label="IPython",
-        confirm_import_module="IPython")
-    if (options.build_pyopengl) :
+        confirm_import_module="IPython")      
+    if 'PyOpenGL' in packages:
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=PYOPENGL_PKG,
@@ -698,4 +718,4 @@ or use the --no-gui option to disable GUI compilation.
   return None
 
 if __name__ == "__main__":
-  installer(args=sys.argv, log=sys.stdout)
+  installer(args=sys.argv[1:], log=sys.stdout)
