@@ -261,7 +261,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_two_chain_master']
+  tests = ['test_group_chains_by_domains_minimal_NCS_operators']
   suite = unittest.TestSuite(map(test_find_ncs_operators,tests))
   return suite
 

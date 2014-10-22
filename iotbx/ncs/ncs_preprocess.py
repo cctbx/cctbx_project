@@ -1,7 +1,6 @@
 from __future__ import division
 from mmtbx.ncs.ncs_from_pdb import get_ncs_object_from_pdb
 from mmtbx.ncs.ncs_utils import apply_transforms
-from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
 from scitbx.math import superpose
 from mmtbx.ncs import ncs_search
@@ -366,7 +365,7 @@ class ncs_group_object(object):
         transform_sn += 1
         key = format_num_as_str(transform_sn)
         self.update_tr_id_to_selection(gns,asu_select,key)
-        tr = transform(
+        tr = Transform(
           rotation = r,
           translation = t,
           serial_num = transform_sn,
@@ -605,7 +604,7 @@ class ncs_group_object(object):
           self.update_tr_id_to_selection(gs,ncs_copy_select,key)
           if not is_identity(r,t):
             asu_locations.append(ncs_copy_select)
-          tr = transform(
+          tr = Transform(
             rotation = r,
             translation = t,
             serial_num = transform_sn,
@@ -667,7 +666,7 @@ class ncs_group_object(object):
         t1 = self.ncs_transform[tr_key1].t
         for i,(r2,t2) in enumerate(gr_new_list):
           if not (same_transforms[i] is None): continue
-          same,transpose = is_same_transform(r1,t1,r2,t2)
+          same,transpose = ncs_search.is_same_transform(r1,t1,r2,t2)
           test = (same and (not transpose))
           if test:
             same_transforms[i] = i
@@ -735,7 +734,7 @@ class ncs_group_object(object):
       else:
         tr_sn = 1
       key = format_num_as_str(tr_sn)
-      tr = transform(
+      tr = Transform(
         rotation = r,
         translation = t,
         serial_num = tr_sn,
@@ -853,7 +852,7 @@ class ncs_group_object(object):
     ncs_group_id: (int) the NCS group ID
     transform_sn: (int) Over all transform serial number
     """
-    transform_obj = transform(
+    transform_obj = Transform(
       rotation = matrix.sqr([1,0,0,0,1,0,0,0,1]),
       translation = matrix.col([0,0,0]),
       serial_num = transform_sn,
@@ -891,7 +890,7 @@ class ncs_group_object(object):
       for (r,t,n,cp) in zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present):
         n = int(n)
         key = format_num_as_str(n)
-        tr = transform(
+        tr = Transform(
           rotation = r,
           translation = t,
           serial_num = n,
@@ -1096,9 +1095,7 @@ class ncs_group_object(object):
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
 
   def get_ncs_restraints_group_list(self):
-    """
-    a list of ncs_restraint_group objects
-    """
+    """    a list of ncs_restraint_group objects    """
     ncs_restraints_group_list = []
     group_id_list = sort_dict_keys(self.ncs_group_map)
     for k in group_id_list:
@@ -1107,7 +1104,7 @@ class ncs_group_object(object):
       for key in sorted(list(v[0])):
         if self.asu_to_ncs_map.has_key(key):
           master_isel.extend(self.asu_to_ncs_map[key])
-      new_nrg = ncs_restraint_group(master_isel)
+      new_nrg = NCS_restraint_group(master_isel)
 
       for tr in sorted(list(v[1])):
         if self.transform_to_ncs.has_key(tr):
@@ -1116,7 +1113,7 @@ class ncs_group_object(object):
           ncs_isel = flex.size_t()
           for sel in self.transform_to_ncs[tr]:
             ncs_isel.extend(self.ncs_to_asu_map[sel])
-          new_ncs_copy = ncs_copy(copy_iselection=ncs_isel, rot=r, tran=t)
+          new_ncs_copy = NCS_copy(copy_iselection=ncs_isel, rot=r, tran=t)
           new_nrg.copies.append(new_ncs_copy)
       # compare master_isel_test and master_isel
       ncs_restraints_group_list.append(new_nrg)
@@ -1481,6 +1478,7 @@ def selection_string_from_selection(pdb_hierarchy_inp,selection):
   Returns:
     sel_str (str): atom selection string
   """
+  # Todo: consider moving to another location
   # create a hierarchy from the selection
   if hasattr(pdb_hierarchy_inp,"hierarchy"):
     pdb_hierarchy_inp = pdb_hierarchy_inp.hierarchy
@@ -1571,76 +1569,6 @@ def update_res_sel(res_sel,first_res_n,pre_res_n):
     res_sel.append(res_seq)
   return res_sel,first_res_n,pre_res_n
 
-
-def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
-  """
-  Check if the rotation r and translation t exist in the transform dictionary.
-
-  Comparing rotations and the result of applying rotation and translation on
-  a test vector
-
-  Args:
-    r (matrix.sqr): rotation
-    t (matrix.col): translation
-    transforms (dict): dictionary of all transforms
-    angle_eps (float): allowed difference in similar rotations
-    eps (float): allowed difference in the average distance between
-
-  Returns:
-    tr_num: (str) transform serial number
-    is_transpose: (bool) True if the matching transform is transpose
-  """
-  is_transpose = False
-  tr_num = None
-  for k,v in transforms.iteritems():
-    if hasattr(v,'r'):
-      rr = v.r
-      tt = v.t
-    else:
-      (rr,tt) = v[2]
-    is_the_same, is_transpose = is_same_transform(
-      r, t, rr, tt, eps=eps, angle_eps=angle_eps)
-    if is_the_same:
-      return k, is_transpose
-  return tr_num, is_transpose
-
-def is_same_transform(r1,t1,r2,t2,eps=0.1,angle_eps=5):
-  """
-  Args:
-    r1, r2: Rotation matrices
-    t1, t2: Translation vectors
-    eps, angle_eps: allowed numerical difference
-
-  Returns:
-    (bool,bool) (is_the_same, is_transpose)
-  """
-  # fixme: check if still needed
-  if (not r1.is_zero()) and (not r2.is_zero()):
-    assert r1.is_r3_rotation_matrix(rms_tolerance=0.001)
-    assert r2.is_r3_rotation_matrix(rms_tolerance=0.001)
-    # test vector
-    xyz = flex.vec3_double([(11,103,523),(-500.0,2.0,10.0),(0.0,523.0,-103.0)])
-    a_ref = (r1.elems * xyz + t1).as_double()
-    rt, tt = inverse_transform(r1,t1)
-    a_ref_transpose = (rt.elems * xyz + tt).as_double()
-    v1 = get_rotation_vec(r1)
-    v2 = get_rotation_vec(r2)
-    a = (r2.elems * xyz + t2).as_double()
-    d = (a_ref-a)
-    d = (d.dot(d))**.5/a.size()
-    dt = (a_ref_transpose-a)
-    dt = (dt.dot(dt))**.5/a.size()
-    ang = angle_between_rotations(v1,v2)
-    d_ang = min(ang, (180 - ang))
-    if (d_ang < angle_eps) and (d < eps):
-      return True, False
-    elif (d_ang < angle_eps) and (dt < eps):
-      return True, True
-    else:
-      return False, False
-  else:
-    return False, False
-
 def inverse_transform(r,t):
   r = r.transpose()
   t = - r*t
@@ -1677,21 +1605,6 @@ def separate_selection_string(s):
     if not sel_str in ['','(']:
       s_list.append('chain ' + sel_str)
   return s_list
-
-def get_rotation_vec(r):
-  # fixme: check if still needed
-  eigen = eigensystem.real_symmetric(r.as_sym_mat3())
-  eigenvectors = eigen.vectors()
-  eigenvalues = eigen.values()
-  i = list(eigenvalues.round(4)).index(1)
-  return eigenvectors[i:(i+3)]
-
-def angle_between_rotations(v1,v2):
-  # fixme: check if still needed
-  cos_angle = v1.dot(v2)
-  result = math.acos(min(1,cos_angle))
-  result *= 180/math.pi
-  return result
 
 def get_pdb_header(pdb_str):
   """
@@ -1865,55 +1778,6 @@ def get_rot_trans(ph=None,
     return r,t,round(rmsd,4),msg
   else:
     return r_zero,t_zero,0,msg
-
-def get_atoms(atoms,hierarchy):
-  """
-  Get the atoms to compare. Exclude water and alternative locations
-
-  Args:
-    hierarchy: pdb hierarchy input object
-    atoms: (flex.vec3_double) master atoms sites cart
-
-  Returns:
-     atoms (flex.vec3_double): coordinates of atoms in hierarchy
-       (Exclude water and alternative locations)
-     selection (flex.size_t): used atoms
-     not_selection (flex.size_t): unused atoms
-  """
-  selection = flex.size_t()
-  not_selection = flex.size_t()
-  if (not atoms) and bool(hierarchy):
-    atom_cache = hierarchy.atom_selection_cache().selection
-    selection = atom_cache('(not resname hoh) and altloc " "')
-    ph = hierarchy.select(selection)
-    not_selection = ~selection
-    atoms = ph.atoms()
-    selection = selection.iselection()
-    not_selection = not_selection.iselection()
-  elif atoms:
-    selection = flex.size_t(range(atoms.size()))
-  return atoms, selection, not_selection
-
-def get_pdb_selection(ph,selection_str):
-  """
-  Args:
-    ph: pdb hierarchy input object
-    selection_str (str): selection string
-
-  Returns:
-    portion of the hierarchy according to the selection
-  """
-  # Del: I think this is not needed
-  if not (ph is None):
-    temp = ph.hierarchy.atom_selection_cache()
-    selection_str_list = selection_str.split(' or ')
-    selection_indices = flex.size_t()
-    for sel_str in selection_str_list:
-      selection_indices.extend(temp.selection(sel_str).iselection())
-    selection = flex.size_t(sorted(selection_indices))
-    return ph.hierarchy.select(selection)
-  else:
-    return None
 
 def update_selection_ref(selection_ref,new_selection):
   """
@@ -2113,27 +1977,36 @@ def insure_identity_is_in_transform_info(transform_info):
   ti.coordinates_present = t_cp
   return ti
 
-class ncs_copy():
+class NCS_copy():
 
   def __init__(self,copy_iselection, rot, tran):
+    """
+    used for NCS groups list copies
+
+    Attributes:
+      iselection (flex.size_t): NCS copy selection
+      r (matrix obj): rotation matrix from master to this copy
+      t (matrix obj): translation vector from master to this copy
+    """
     self.iselection = copy_iselection
     self.r = rot
     self.t = tran
 
-class ncs_restraint_group(object):
+class NCS_restraint_group(object):
 
   def __init__(self,master_iselection):
+    """
+    used for NCS groups list
+
+    Attributes:
+      master_iselection (flex.size_t): NCS group master copy selection
+      copies (list): list of NCS_copy objects
+    """
     self.master_iselection = master_iselection
     self.copies = []
 
-class ncs_groups_container(object):
-
-  def __init__(self):
-    self.master_selection = ''
-    self.copy_selection = []
-
-class transform(object):
-
+class Transform(object):
+  """ Transformation object """
   def __init__(self,
                rotation = None,
                translation = None,
@@ -2160,8 +2033,9 @@ class transform(object):
     self.rmsd = rmsd
 
 class selections(object):
-  """ object for grouping multiple selection information for master ncs and
-  copy """
+  """
+  object for grouping multiple selection information for master ncs and copy
+  """
 
   def __init__(self,
                master_chain_id='',
