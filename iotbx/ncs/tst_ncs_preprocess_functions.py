@@ -58,7 +58,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     self.assertEqual(sel2,list(isel2))
     self.assertEqual(sel3,list(isel3))
 
-  def test_selection_string_from_selection(self):
+  def test_selection_string_from_selection2(self):
     """ Test selection_string_from_selection """
     print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_2)
@@ -88,17 +88,15 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
   def test_avoid_chain_selection(self):
     print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_2)
-    l1 = [0,1,2,3,4,5,6,7,8]
-    isel1 = flex.size_t(l1)
+    isel1 = flex.size_t([0,1,2,3,4,5,6,7,8])
     sel_str1 = selection_string_from_selection(pdb_inp,isel1)
     s = '(chain A and resseq 151)'
     self.assertEqual(sel_str1,s)
 
-  def test_avoid_chain_selection(self):
+  def test_avoid_chain_selection2(self):
     print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_3)
-    l1 = range(6,46)
-    isel1 = flex.size_t(l1)
+    isel1 = flex.size_t(range(6,46))
     sel_str1 = selection_string_from_selection(pdb_inp,isel1)
     s = '(chain H and (resseq 48 or resid 49 or resid 49A or resseq 50:52))'
     self.assertEqual(sel_str1,s)
@@ -252,13 +250,13 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_temp']
+  tests = ['test_avoid_chain_selection2']
   suite = unittest.TestSuite(map(TestNcsPreprocessingFunctions,tests))
   return suite
 
 if __name__=='__main__':
   # use for individual tests
-  # unittest.TextTestRunner().run(run_selected_tests())
+  unittest.TextTestRunner().run(run_selected_tests())
 
   # Use to run all tests
-  unittest.main()
+  # unittest.main()

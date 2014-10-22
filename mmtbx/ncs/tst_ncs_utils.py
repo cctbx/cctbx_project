@@ -207,7 +207,6 @@ class Test_ncs_utils(unittest.TestCase):
     # when sin(beta) = -1 the (alpha - gamma) is the solution
     expected_angles_sum = self.rot_angles2[0] - self.rot_angles2[2]
     r = self.rot3.as_double()
-    expected_angles = self.rot_angles3
     angles = nu.rotation_to_angles(rotation=r, deg=False)
     angles_sum = angles[0] - angles[2]
     assert approx_equal(expected_angles_sum,angles_sum,1e-3)
@@ -394,7 +393,7 @@ class Test_ncs_utils(unittest.TestCase):
     print sys._getframe().f_code.co_name
 
     a=flex.size_t([1,2,5,6,4])
-    pos=set([0,3,4])
+    pos={0,3,4}
     s, d = nu.selected_positions(a,pos)
     assert list(s) == [1,6,4]
     assert list(d) == [2,5]

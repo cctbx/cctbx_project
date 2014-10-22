@@ -138,6 +138,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     of = open("test_ncs_spec.pdb", "w")
     print >> of, self.ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
     of.close()
+    # create a spec file
     ncs_from_pdb=simple_ncs_from_pdb(
       pdb_file="test_ncs_spec.pdb",
       quiet=True,

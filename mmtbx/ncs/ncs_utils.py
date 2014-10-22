@@ -137,7 +137,7 @@ def rotation_to_angles(rotation, deg=False):
     angles (flex.double): (alpha, beta, gamma) rotation angles around the x,y,z
   """
   # make sure the rotation data type is flex.double
-  if not isinstance(rotation,type(flex.double())):
+  if not isinstance(rotation,type(flex.double([]))):
     rotation = flex.double(rotation)
   (Rxx,Rxy,Rxz,Ryx,Ryy,Ryz,Rzx,Rzy,Rzz) = rotation.round(8)
   if Rxz not in [1,-1]:
@@ -151,11 +151,11 @@ def rotation_to_angles(rotation, deg=False):
   elif Rxz == 1:
     beta = math.pi/2
     alpha = math.atan2(Ryx,Ryy)
-    gamma = 0
+    gamma = 0.0
   elif Rxz == -1:
     beta = -math.pi/2
     alpha = math.atan2(-Ryx,Ryy)
-    gamma = 0
+    gamma = 0.0
   else:
     raise ArithmeticError("Can't calculate rotation angles")
 
@@ -211,7 +211,7 @@ def shake_transformations(x,
   Return:
     new_x (flex.double): The shaken x
   """
-  new_x = flex.double()
+  new_x = flex.double([])
   for i in xrange(0,len(x),6):
     new_x.append(random.gauss(x[i+0],shake_angles_sigma))
     new_x.append(random.gauss(x[i+1],shake_angles_sigma))
@@ -372,12 +372,12 @@ def get_weight(fmodel=None,
     transformations = mo.transformations
     u_iso = mo.u_iso
     ncs_restraints_group_list = mo.ncs_restraints_group_list
-    if hasattr(mo,'extended_ncs_selection'):
-      extended_ncs_selection = mo.extended_ncs_selection
-  if not extended_ncs_selection:
-    extended_ncs_selection = get_extended_ncs_selection(
-      ncs_restraints_group_list=ncs_restraints_group_list,
-      refine_selection=refine_selection)
+  #   if hasattr(mo,'extended_ncs_selection'):
+  #     extended_ncs_selection = mo.extended_ncs_selection
+  # if not extended_ncs_selection:
+  #   extended_ncs_selection = get_extended_ncs_selection(
+  #     ncs_restraints_group_list=ncs_restraints_group_list,
+  #     refine_selection=refine_selection)
 
   # make sure sufficient input is provided
   assert bool(fmodel), 'F-model is not provided'
@@ -533,7 +533,7 @@ def apply_transforms(ncs_coordinates,
   else:
     return flex.vec3_double(asu_xyz)
 
-def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection=[]):
+def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection=None):
   """
   Args:
     ncs_restraints_group_list: list of ncs_restraint_group objects
@@ -544,6 +544,7 @@ def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection=[]):
     (flex.siz_t): selection of all ncs groups master ncs selection and
       non ncs related portions that are being refined
   """
+  if not refine_selection: refine_selection = []
   refine_selection = set(refine_selection)
   total_master_ncs_selection = set()
   total_ncs_related_selection = set()
@@ -601,6 +602,7 @@ def shift_translation_to_center(shifts, ncs_restraints_group_list):
   Returns:
     ncs_restraints_group_list (list):
   """
+  new_list = []
   if bool(shifts):
     new_list = ncs_restraints_group_list_copy(ncs_restraints_group_list)
     i = 0
@@ -704,7 +706,7 @@ def ncs_groups_selection(ncs_restraints_group_list,selection):
   Returns:
     new_nrg_list (list): list of modified ncs_restraints_group objects
   """
-  if isinstance(selection,flex.bool): selection = selection.iselection()
+  if isinstance(selection,flex.bool): selection = selection.iselection(True)
   sel_set = set(selection)
   new_nrg_list = ncs_restraints_group_list_copy(ncs_restraints_group_list)
   # check what are the selection that shows in both master and all copies
@@ -845,8 +847,7 @@ def get_list_of_best_ncs_copy_map_correlation(
     d_min          = d_min)
 
   for nrg in ncs_restraints_group_list:
-    selections = []
-    selections.append(nrg.master_iselection)
+    selections = [nrg.master_iselection]
     for ncs in nrg.copies:
       selections.append(ncs.iselection)
     cc = mp.cc(selections=selections)
@@ -877,12 +878,11 @@ def iselection_ncs_to_asu(iselection_ncs,ncs_chain_id,hierarchy_asu):
   asu_len = hierarchy_asu.atoms().size()
   atom_cache = hierarchy_asu.atom_selection_cache().selection
   sel = atom_cache('chain ' + ncs_chain_id)
-  hierarchy_ncs = hierarchy_asu.select(sel)
-  sel = sel.iselection()
+  sel = sel.iselection(True)
   offset = min(list(sel))
   iselection_ncs += offset
   selection_bool = flex.bool(asu_len,iselection_ncs)
-  return selection_bool.iselection()
+  return selection_bool.iselection(True)
 
 def iselection_asu_to_ncs(iselection_asu,ncs_chain_id,hierarchy_asu):
   """
@@ -898,5 +898,5 @@ def iselection_asu_to_ncs(iselection_asu,ncs_chain_id,hierarchy_asu):
   """
   atom_cache = hierarchy_asu.atom_selection_cache()
   ph_ncs_select = atom_cache.selection('chain ' + ncs_chain_id)
-  chain_start =  min(list(ph_ncs_select.iselection()))
+  chain_start =  min(list(ph_ncs_select.iselection(True)))
   return iselection_asu - chain_start

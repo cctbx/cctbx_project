@@ -579,7 +579,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     coordinates_present = [coordinates_present[i] for i in items_order]
     serial_number = [j for (j,_) in serial_number]
     # collect results
-    result = iotbx.pdb._._mtrix_and_biomt_records_container()
+    result = iotbx.pdb.mtrix_and_biomt_records_container()
     for sn,r,t,cp in zip(serial_number,rots,trans,coordinates_present):
       if not r.is_r3_rotation_matrix(rms_tolerance=eps):
         if error_handle:
