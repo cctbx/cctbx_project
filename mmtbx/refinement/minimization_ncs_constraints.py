@@ -138,13 +138,14 @@ class target_function_and_grads_real_space(object):
         xray_structure,
         ncs_restraints_group_list,
         real_space_gradients_delta,
-        refine_selection=[],
+        refine_selection=None,
         use_strict_ncs=True,
         restraints_manager=None,
         data_weight=None,
         refine_sites=False,
         refine_transformations=False):
     adopt_init_args(self, locals())
+    if not self.refine_selection: self.refine_selection = []
     self.refine_selection = nu.get_refine_selection(
       self.refine_selection,self.xray_structure)
     self.extended_ncs_selection = nu.get_extended_ncs_selection(
@@ -233,7 +234,7 @@ class target_function_and_grads_reciprocal_space(object):
         self,
         fmodel,
         ncs_restraints_group_list,
-        refine_selection=[],
+        refine_selection=None,
         use_strict_ncs=True,
         restraints_manager=None,
         data_weight=None,
@@ -243,6 +244,7 @@ class target_function_and_grads_reciprocal_space(object):
         iso_restraints = None,
         use_hd         = False):
     adopt_init_args(self, locals())
+    if not self.refine_selection: self.refine_selection = []
     self.refine_selection = nu.get_refine_selection(
       self.refine_selection,self.fmodel.xray_structure)
     self.extended_ncs_selection = nu.get_extended_ncs_selection(
@@ -331,7 +333,7 @@ class lbfgs(object):
         ncs_restraints_group_list,
         target_and_grads_object,
         xray_structure,
-        refine_selection             = [],
+        refine_selection             = None,
         finite_grad_differences_test = False,
         finite_grad_difference_val   = 0,
         max_iterations               = 35,
@@ -342,6 +344,7 @@ class lbfgs(object):
     NCS constrained ADP and coordinates refinement. Also refines NCS operators.
     """
     adopt_init_args(self, args=locals(),exclude=['ncs_restraints_group_list'])
+    if not self.refine_selection: self.refine_selection = []
     self.refine_selection = nu.get_refine_selection(
       self.refine_selection,self.xray_structure)
     self.use_strict_ncs = target_and_grads_object.use_strict_ncs
@@ -474,13 +477,13 @@ class lbfgs(object):
     # Set displacement for finite gradient calculation
     d = max(self.x[i_g_max]*1e-6,1e-6)
     # calc t(x+d)
-    self.x[i_g_max] = self.x[i_g_max] + d
+    self.x[i_g_max] += d
     t1,_ = self.compute_functional_and_gradients(compute_gradients=False)
     # calc t(x-d)
-    self.x[i_g_max] = self.x[i_g_max] - 2*d
+    self.x[i_g_max] -= 2*d
     t2,_ = self.compute_functional_and_gradients(compute_gradients=False)
     # Return fmodel to the correct coordinates values
-    self.x[i_g_max] = self.x[i_g_max] + d
+    self.x[i_g_max] += d
     self.update_xray_structure()
     finite_gard = (t1-t2)/(d*2)
     self.finite_grad_difference_val = abs(g[i_g_max] - finite_gard)

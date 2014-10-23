@@ -54,7 +54,7 @@ class Transform(object):
 
 class Score_record(object):
 
-  def __init__(self,score=0,origin=(0,0)):
+  def __init__(self,score=-10000,origin=(0,0)):
     """
     score object used when aligning sequences
 
@@ -821,7 +821,6 @@ def res_alignment(seq_a, seq_b,
   # populate score matrix
   for j in xrange(1,b + 1):
     for i in xrange(1,a + 1):
-      # We want to halt when there is not way to get a good score
       not_aligned = (seq_a[i-1].lower() != seq_b[j-1].lower())
       s1 = R[i-1,j-1].score - misalign_penalty * not_aligned
       s2,mc2 = gap_score(R[i-1,j],min_matches)
@@ -841,7 +840,7 @@ def res_alignment(seq_a, seq_b,
         s = s3
         match_count = mc3
         consecutive_matches = 0
-      R[i,j] = Score_record(score=s)
+      R[i,j].score = s
       R[i,j].origin = (i_temp,j_temp)
       R[i,j].match_count = match_count
       R[i,j].consecutive_matches = consecutive_matches
@@ -904,18 +903,13 @@ def get_matching_res_indices(R,row,col,min_fraction_domain):
     # chains are to different, return empty arrays
     return flex.size_t(sel_a), flex.size_t(sel_b), 0
   #
-  while (i_max > 0) and (j_max > 0):
+  stop_test = 1
+  while stop_test > 0:
     if R[i_max,j_max].origin == (i_max - 1, j_max - 1):
       sel_a.append(i_max - 1)
       sel_b.append(j_max - 1)
-      i_max -= 1
-      j_max -= 1
-    elif R[i_max,j_max].origin == (i_max - 1, j_max):
-      i_max -= 1
-    elif R[i_max,j_max].origin ==(i_max, j_max - 1):
-      j_max -= 1
-    else:
-      raise Sorry('Sequence alignment error')
+    i_max, j_max = R[i_max,j_max].origin
+    stop_test = i_max * j_max
   sel_a.reverse()
   sel_b.reverse()
   assert len(sel_a) == len(sel_b)
@@ -1090,13 +1084,15 @@ def initialize_score_matrix(row, col,max_score=1000):
     R (dict): the score matrix in a form of a dictionary of Score_record objects
   """
   R = {}
-  # populate zero cases
   for i in xrange(row + 1):
-    score = max_score - i
-    R[i,0] = Score_record(score=score,origin=(i-1,0))
-  for i in xrange(col + 1):
-    score = max_score - i
-    R[0,i] = Score_record(score=score,origin=(0,i-1))
+    score_row = max_score - i
+    R[i,0] = Score_record(score=score_row,origin=(i-1,0))
+    for j in xrange(1,col + 1):
+      if i == 0:
+        score_col = max_score - i
+        R[i,j] = Score_record(score=score_col,origin=(0,j-1))
+      else:
+        R[i,j] = Score_record()
   return R
 
 def inverse_transform(r,t):
