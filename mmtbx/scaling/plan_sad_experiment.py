@@ -147,7 +147,7 @@ def estimate_fpp_weak(nrefl,nsites,natoms,z,fpp,sigf,
 
   return fpp*best_scale
 
-def get_i_over_sigma(sigf):
+def get_i_over_sigma_from_sigf(sigf):
   # <I/sigI> = 0.88 * rms(F)/rms(sigF) r**2=0.82
   if sigf>0:
     return 0.88/sigf
@@ -155,13 +155,19 @@ def get_i_over_sigma(sigf):
     return 999.
 
 def get_sigf_from_i_over_sigma(i_over_sigma):
-  # just inverse of get_i_over_sigma
+  # just inverse of get_i_over_sigma_from_sigf
   #  ios=.88/sigf  -> sigf=0.88/ios
   if i_over_sigma > 0:
      sigf=0.88/i_over_sigma
   else:
      sigf=0.001
   return sigf
+
+def get_i_over_sigma(i_obs):
+  data=i_obs.data().select(i_obs.sigmas() > 0)
+  sigmas=i_obs.sigmas().select(i_obs.sigmas() > 0)
+  iover=data/sigmas
+  return iover.min_max_mean().mean
 
 def get_values_from_sigf(nrefl,nsites,natoms,z,fpp,sigf,
        fa2=None,fb2=None,disorder_parameter=None,
@@ -185,7 +191,7 @@ def get_values_from_sigf(nrefl,nsites,natoms,z,fpp,sigf,
         fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
       cc_half_weak=get_cc_half(cc_ano_weak,
           disorder_parameter=disorder_parameter)
-      i_over_sigma=get_i_over_sigma(sigf)
+      i_over_sigma=get_i_over_sigma_from_sigf(sigf)
       return s_ano,cc_ano,cc_half,fpp_weak,cc_ano_weak,cc_half_weak,i_over_sigma
     else:
        return s_ano,cc_ano,cc_half,fpp,cc_ano,cc_half,0.0
@@ -374,7 +380,6 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       intrinsic_scatterers_as_noise=None,
       ratio_for_failure=0.95,
       i_over_sigma=None,
-
       quiet=False) :
     self.chain_type = chain_type
     self.residues = residues
@@ -442,6 +447,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     self.representative_values = None
     self.skipped_resolutions = []
     self.missed_target_resolutions = []
+    self.input_i_over_sigma=i_over_sigma
     for dmin in self.dmin_ranges:
       # Guess reflections from residues, dmin, solvent fraction
 
@@ -580,10 +586,10 @@ Other anomalous scatterers in the structure:""")
         out.show_preformatted_text(
     '  Atom: %2s  f": %4.2f  n:%5.0f   rmsF:%7.1f' %tuple(row))
 
-    fa=100.*math.sqrt(self.fa2)
-    fb=100.*math.sqrt(self.fb2)
-    fab=math.sqrt(self.fa2/(self.fa2+self.fb2))
-    out.show_preformatted_text("""\
+      fa=100.*math.sqrt(self.fa2)
+      fb=100.*math.sqrt(self.fb2)
+      fab=math.sqrt(self.fa2/(self.fa2+self.fb2))
+      out.show_preformatted_text("""\
 
 Normalized anomalous scattering:
   From target anomalous atoms rms(x**2)/rms(F**2):  %7.2f
@@ -592,7 +598,7 @@ Normalized anomalous scattering:
 """ % (fa,fb,fab))
 
     out.show_sub_header(
-      "Dataset <I>/<sigI> needed to obtain anomalous signal of 15-30")
+      "Dataset <I>/<sigI> needed for anomalous signal of 15-30")
     out.show_sub_header("(Targets for entire dataset)")
     if (len(self.table_rows) == 0) :
       out.show_text("SAD solution unlikely with the given parameters.")
@@ -617,11 +623,13 @@ Normalized anomalous scattering:
 
     if self.missed_target_resolutions:
       self.missed_target_resolutions.sort()
+      extra_note=""
+      if not self.input_i_over_sigma:
+        extra_note="I/sigma shown achieves about %3.0f%% of maximum anomalous signal." %(self.ratio_for_failure*100.)
       out.show_text("""
-Note: Target anomalous signal not achievable even with very high I/sigma
-for  resolutions of %5.2f A and lower. I/sigma shown achieves about %3.0f%% of
-maximum anomalous signal.
-""" % (self.missed_target_resolutions[0],self.ratio_for_failure*100.))
+Note: Target anomalous signal not achievable with tested I/sigma for 
+resolutions of %5.2f A and lower. %s
+""" % (self.missed_target_resolutions[0],extra_note))
 
     if self.skipped_resolutions:
       self.skipped_resolutions.sort()

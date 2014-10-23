@@ -6,6 +6,7 @@ from mmtbx.scaling.plan_sad_experiment import get_fp_fdp, get_residues_and_ha
 import iotbx.phil
 from libtbx.utils import Sorry, null_out
 from libtbx import runtime_utils
+from libtbx import Auto
 import os.path
 import sys
 
@@ -125,7 +126,7 @@ crystal_info {
              occupancy or may be non-isotropic. A value of about 0.75 \
              is a reasonable guess.
 
-   include_weak_anomalous_scattering = True
+   include_weak_anomalous_scattering = Auto
      .type = bool
      .short_caption = Include weak anomalous scattering
      .help = At longer wavelengths the scattering of C, N, and O become \
@@ -136,7 +137,9 @@ crystal_info {
              as noise.  This weak anomalous scattering is effectively noise \
              and has the same effect as the ideal_cc_anom but it can be \
              calculated from the composition. Its effects are added to those \
-             modeled by the ideal_cc_anom parameter.
+             modeled by the ideal_cc_anom parameter. Default is to include \
+             weak anomalous scattering if a sequence file or the number of \
+             sulfurs is provided
 
    intrinsic_scatterers_as_noise = None
      .type = bool
@@ -202,9 +205,14 @@ def setup_params (params, out) :
       params.crystal_info.sites=sites
   else:
     if params.crystal_info.number_of_s is None and \
-         params.include_weak_anomalous_scattering:
+         params.include_weak_anomalous_scattering is True:
       raise Sorry("Sorry need a sequence file or number_of_s if "+
         "\ninclude_weak_anomalous_scattering=True")
+    elif params.crystal_info.number_of_s is None and \
+         params.include_weak_anomalous_scattering is Auto:
+      print >>out,"Note: not applying include_weak_anomalous_scattering as"+\
+        " no sequence \nfile or number_of_s are supplied"
+      params.include_weak_anomalous_scattering=False
 
   if not params.crystal_info.residues:
     raise Sorry("Please specify number of residues or a sequence file")
