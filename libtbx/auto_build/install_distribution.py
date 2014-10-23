@@ -614,7 +614,6 @@ class installer (object) :
     if ((sys.platform == "darwin") and (len(self.make_apps) > 0) and
         (not self.options.no_app)) :
       os.chdir(self.build_dir)
-      print >> out, "Generating Mac app launchers...",
       for app_name in self.make_apps :
         args = [
           "libtbx.create_mac_app",
@@ -625,6 +624,7 @@ class installer (object) :
         if (self.mtype == "mac-intel-osx-x86_64") :
           args.append("--alias_build")
           #args.append("--python_interpreter=/usr/bin/python")
+        print >> out, ("Generating Mac app launcher for %s..." % app_name),
         try :
           call(args=args, log=log)
         except RuntimeError, e :
@@ -642,11 +642,11 @@ class installer (object) :
             print >> out, "ok"
             if (not "SSH_CLIENT" in os.environ) :
               call(args=["open", self.dest_dir], log=log)
+    # run custom finalization
+    self.product_specific_finalize_install(log)
     # remove source files if desired
     if (self.options.compact) :
       self.reduce_installation_size(out)
-    # run custom finalization
-    self.product_specific_finalize_install(log)
     # reconfigure one last time (possibly unnecessary)
     self.display_final_message()
 

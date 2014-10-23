@@ -684,7 +684,7 @@ class installer (object) :
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=SEND2TRASH_PKG,
       pkg_name_label="send2trash",
-      confirm_import_module="send2trash")
+      )#confirm_import_module="send2trash")
 
   # TODO
   def write_dispatcher_include (self) :
