@@ -77,7 +77,7 @@ class test_find_ncs_operators(unittest.TestCase):
     chain_ids = sorted(chain_ids)
     n_chains = len(chain_ids)
     self.assertEqual(n_chains,9)
-    self.assertEqual(len(chain_match_list),36)
+    self.assertEqual(len(chain_match_list),8)
     #
     match_dict = ncs_search.clean_chain_matching(chain_match_list,ph)
     # Test minimal master NCS
@@ -108,7 +108,9 @@ class test_find_ncs_operators(unittest.TestCase):
     ph = pdb_inp.construct_hierarchy()
     #
     chain_match_list = ncs_search.search_ncs_relations(
-      ph=ph,min_contig_length=0,min_fraction_domain=0)
+      ph=ph,min_contig_length=0,
+      min_fraction_domain=0,
+      use_minimal_master_ncs=False)
     #
     match_dict = ncs_search.clean_chain_matching(chain_match_list,ph)
     #

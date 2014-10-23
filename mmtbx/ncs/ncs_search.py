@@ -118,7 +118,8 @@ def find_ncs_in_hierarchy(ph,
     min_fraction_domain=min_fraction_domain,
     write=write,
     log=log,
-    check_atom_order=check_atom_order)
+    check_atom_order=check_atom_order,
+    use_minimal_master_ncs=use_minimal_master_ncs)
   #
   match_dict = clean_chain_matching(chain_match_list,ph,rmsd_eps)
   #
@@ -712,7 +713,8 @@ def search_ncs_relations(ph,
                          min_fraction_domain=0.2,
                          write=False,
                          log=sys.stdout,
-                         check_atom_order=False):
+                         check_atom_order=False,
+                         use_minimal_master_ncs=True):
   """
   Search for NCS relations between chains or parts of chains, in a protein
   hierarchy
@@ -727,6 +729,9 @@ def search_ncs_relations(ph,
     check_atom_order (bool): check atom order in matching residues.
         When False, matching residues with different number of atoms will be
         excluded from matching set
+    use_minimal_master_ncs (bool): use maximal or minimal common chains
+        in master ncs groups (when True, search does not need to be done all
+        all chains -> can be significantly faster on large structures)
 
   Returns:
     msg (str): message regarding matching residues with different atom number
@@ -744,9 +749,11 @@ def search_ncs_relations(ph,
   msg = ''
   sorted_ch = sorted(chains_info)
   n_chains = len(chains_info)
+  chains_in_copies = set()
   # loop over all chains
   for i in xrange(n_chains-1):
     m_ch_id = sorted_ch[i]
+    if use_minimal_master_ncs and (m_ch_id in chains_in_copies): continue
     master_n_atoms = chains_info[m_ch_id].chains_atom_number
     seq_m = chains_info[m_ch_id].res_names
     if master_n_atoms == 0: continue
@@ -775,6 +782,8 @@ def search_ncs_relations(ph,
         rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,
                similarity]
         chain_match_list.append(rec)
+      # Collect only very good matches, to allow better similarity search
+      if similarity > 0.9: chains_in_copies.add(c_ch_id)
   if write and msg:
     print >> log,msg
   if (min_fraction_domain == 1) and msg:
