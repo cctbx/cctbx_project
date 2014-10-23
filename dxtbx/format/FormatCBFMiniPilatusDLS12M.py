@@ -11,12 +11,13 @@
 from __future__ import division
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
-from dxtbx.model import ParallaxCorrectedPxMmStrategy
-from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
+# from dxtbx.model import ParallaxCorrectedPxMmStrategy
+# from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
 def read_cbf_image(cbf_image):
-  from scitbx.array_family import flex
-  from cbflib_adaptbx import uncompress, compress
+  # from scitbx.array_family import flex
+  # from cbflib_adaptbx import uncompress, compress
+  from cbflib_adaptbx import uncompress
   import binascii
 
   start_tag = binascii.unhexlify('0c1a04d5')
