@@ -112,12 +112,12 @@ class installer (object) :
       log=log,
       pkg_dirs=options.pkg_dirs,
       no_download=options.no_download)
-    
+
     # Build Python and HDF5 by default.
-    packages = ['python', 'hdf5']        
+    packages = ['python', 'hdf5']
     if not options.basic:
       for env_var in ["BLAS","ATLAS","LAPACK"]:
-        os.environ[env_var] = "None"          
+        os.environ[env_var] = "None"
       packages += ['numpy', 'BioPython']
     if options.build_scipy:
       packages += ['scipy']
@@ -135,7 +135,7 @@ class installer (object) :
       packages += ['PyOpenGL']
     # Or use specified packages if provided.
     packages = set(args or packages)
-    self.build_dependencies(packages=packages)      
+    self.build_dependencies(packages=packages)
     # On Mac OS X all of the Python-related executables located in base/bin
     # are actually symlinks to absolute paths inside the Python.framework, so
     # we replace them with symlinks to relative paths.
@@ -148,7 +148,7 @@ class installer (object) :
     print >> self.log, "Building dependencies: %s"%(", ".join(packages))
     self.print_sep()
     os.chdir(self.tmp_dir)
-    options = self.options    
+    options = self.options
     if 'python' in packages:
       self.build_python()
     if 'numpy' in packages:
@@ -175,15 +175,15 @@ class installer (object) :
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=PY2APP_PKG,
         pkg_name_label="py2app",
-        confirm_import_module="py2app")      
+        confirm_import_module="py2app")
     if 'Imaging' in packages:
-      self.build_imaging()      
+      self.build_imaging()
     if 'reportlab' in packages:
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=REPORTLAB_PKG,
         pkg_name_label="reportlab",
-        confirm_import_module="reportlab")      
+        confirm_import_module="reportlab")
     if 'hdf5' in packages:
       self.build_hdf5()
     if 'gui' in packages:
@@ -206,7 +206,7 @@ class installer (object) :
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=IPYTHON_PKG,
         pkg_name_label="IPython",
-        confirm_import_module="IPython")      
+        confirm_import_module="IPython")
     if 'PyOpenGL' in packages:
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
