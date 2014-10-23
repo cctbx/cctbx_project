@@ -1,4 +1,3 @@
-
 .. _build_system:
 
 SCons - the backbone of the cctbx build system
