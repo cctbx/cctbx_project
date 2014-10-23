@@ -627,7 +627,7 @@ Normalized anomalous scattering:
       if not self.input_i_over_sigma:
         extra_note="I/sigma shown achieves about %3.0f%% of maximum anomalous signal." %(self.ratio_for_failure*100.)
       out.show_text("""
-Note: Target anomalous signal not achievable with tested I/sigma for 
+Note: Target anomalous signal not achievable with tested I/sigma for
 resolutions of %5.2f A and lower. %s
 """ % (self.missed_target_resolutions[0],extra_note))
 
