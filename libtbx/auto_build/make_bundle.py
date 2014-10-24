@@ -159,14 +159,18 @@ def run (args, out=sys.stdout) :
       base_tarfile = op.join(options.dest, op.basename(base_tarfile))
     print >> out, "  created base bundle %s" % base_tarfile
   # create the product bundle
-  pkg_tarfile = "../bundle-%(version)s-%(mtype)s.tar.gz" % \
+  build_tarfile = "../build-%(version)s-%(mtype)s.tar.gz" % \
     {"version":options.version, "mtype":options.mtype}
-  call("tar -czf %(tarfile)s ." % {"tarfile":pkg_tarfile}, log=out)
-  assert op.isfile(pkg_tarfile)
+  modules_tarfile = "../modules-%(version)s-%(mtype)s.tar.gz" % \
+    {"version":options.version, "mtype":options.mtype}
+  call("tar -czf %(tarfile)s build" % {"tarfile":build_tarfile}, log=out)
+  shutil.rmtree("build")
+  call("tar -czf %(tarfile)s ." % {"tarfile":modules_tarfile}, log=out)
+  assert op.isfile(build_tarfile)
   if (options.dest is not None) :
-    shutil.move(pkg_tarfile, options.dest)
-    pkg_tarfile = op.join(options.dest, op.basename(pkg_tarfile))
-  print >> out, "  created bundle %s" % pkg_tarfile
+    shutil.move(build_tarfile, options.dest)
+    build_tarfile = op.join(options.dest, op.basename(build_tarfile))
+  print >> out, "  created bundle %s" % build_tarfile
   shutil.rmtree(tmp_dir)
 
 if (__name__ == "__main__") :
