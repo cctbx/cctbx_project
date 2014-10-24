@@ -11,8 +11,7 @@
 from __future__ import division
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
-# from dxtbx.model import ParallaxCorrectedPxMmStrategy
-# from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
+from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
 def read_cbf_image(cbf_image):
   # from scitbx.array_family import flex
@@ -99,15 +98,29 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     ideal_beam_y = 2594
     beam_shift_y = 0.172 * (2594 - 2587)
 
+    distance = float(
+        self._cif_header_dictionary['Detector_distance'].split()[0])
+
+    # FIXME verify DISTANCE used sensibly...
+
+    wavelength = float(
+        self._cif_header_dictionary['Wavelength'].split()[0])
+
+    thickness = float(
+      self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
+
+    from cctbx.eltbx import attenuation_coefficient
+    table = attenuation_coefficient.get_table("Si")
+    mu = table.mu_at_angstrom(wavelength) / 10.0
+    t0 = thickness
+    px_mm = ParallaxCorrectedPxMmStrategy(mu, t0)
+
     for j in range(24):
 
       angle = math.pi * (-12.2 + 0.5 * 7.903 + j * (7.903 + 0.441)) / 180.0
       fast = matrix.col((-1, 0, 0))
       slow = matrix.col((0, math.sin(angle), - math.cos(angle)))
       normal = fast.cross(slow)
-      # from observation of beam image on panel 12-down 3-across @ 1117,2587
-      # FIXME this should be determined from the drawings & then applied as
-      # a bulk shift after the detector is constructed
       origin = 250.0 * normal - 192.3 * fast - 16.8 * slow + 250 * z + \
           beam_shift_y * y
       p = detector.add_panel()
@@ -122,6 +135,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         fast.elems,
         slow.elems,
         origin.elems)
+      p.set_px_mm_strategy(px_mm)
 
     return detector
 
