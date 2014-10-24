@@ -14,8 +14,6 @@ from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
 def read_cbf_image(cbf_image):
-  # from scitbx.array_family import flex
-  # from cbflib_adaptbx import uncompress, compress
   from cbflib_adaptbx import uncompress
   import binascii
 
