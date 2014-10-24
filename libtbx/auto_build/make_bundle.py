@@ -63,6 +63,12 @@ def run (args, out=sys.stdout) :
   pkg_dir = op.basename(target_dir)
   build_dir = op.join(target_dir, "build")
   base_dir = op.join(target_dir, "base")
+  # XXX a bit of a hack - if 'modules' subdirectory exists, it is assumed that
+  # all source/data packages residue there, otherwise they must be at the top
+  # level
+  modules_dir = op.join(target_dir, "modules")
+  if (not op.isdir(modules_dir)) :
+    modules_dir = target_dir
   stdout_old = sys.stdout
   if (not options.verbose) :
     f = open("rpath.log", "w")
@@ -90,10 +96,10 @@ def run (args, out=sys.stdout) :
   copy_tree(op.join(build_dir, "lib"), op.join(tmp_build_dir, "lib"))
   # copy over non-compiled files
   print >> out, "Copying base modules..."
-  for file_name in os.listdir(target_dir) :
+  for file_name in os.listdir(modules_dir) :
     if (file_name in ["build", "base"]) or (file_name in options.ignore) :
       continue
-    full_path = op.join(target_dir, file_name)
+    full_path = op.join(modules_dir, file_name)
     if op.isdir(full_path) :
       print >> out, "  copying %s..." % file_name
       copy_tree(full_path, op.join(tmp_dir, file_name))
