@@ -163,7 +163,7 @@ class installer (object) :
     parser.add_option("--top-level-sources", action="store_true",
       dest="top_level_sources",
       help="Keep modules at top-level directory instead of 'modules' "+
-           "subdirectory", default=False)
+           "subdirectory (source installer only)", default=False)
     if (self.remove_sources_default) :
       parser.add_option("--no-compact", dest="compact", action="store_false",
         help="Don't remove unnecessary files such as compiled sources")
@@ -251,14 +251,16 @@ class installer (object) :
     bundle_dir = op.join(self.installer_dir, "bundles")
     self.base_bundle = op.join(self.bundle_dir, "base-%s-%s.tar.gz" %
       (self.version, self.mtype))
-    self.bundle_file = op.join(self.bundle_dir, "bundle-%s-%s.tar.gz" %
+    self.build_bundle_file = op.join(self.bundle_dir, "build-%s-%s.tar.gz" %
+      (self.version, self.mtype))
+    self.modules_bundle_file = op.join(self.bundle_dir, "modules-%s-%s.tar.gz" %
       (self.version, self.mtype))
     self.alias_mtype = self.mtype
-    if (op.isfile(self.bundle_file)) :
+    if (op.isfile(self.build_bundle_file)) :
       binary_install = True
     elif (self.mtype.endswith("x86_64")) :
       mtype_32bit = re.sub("-x86_64", "", self.mtype)
-      bundle32 = op.join(bundle_dir, "bundle-%s-%s.tar.gz" % (self.version,
+      bundle32 = op.join(bundle_dir, "build-%s-%s.tar.gz" % (self.version,
         mtype_32bit))
       if (op.isfile(bundle32)) :
         print >> out, "This is the 32-bit build for your platform- "
@@ -266,7 +268,7 @@ class installer (object) :
           self.alias_mtype
         self.alias_mtype = mtype_32bit
         binary_install = True
-        self.bundle_file = bundle32
+        self.build_bundle_file = bundle32
     if (not binary_install) :
       print >> out, "No binary bundles found for %s" % self.mtype
       if (op.isdir(bundle_dir)) :
@@ -274,7 +276,7 @@ class installer (object) :
         for file_name in os.listdir(bundle_dir) :
           print >> out,"  %s" % file_name
         print >> out, "expected:"
-        print >> out, op.basename(self.bundle_file)
+        print >> out, op.basename(self.build_bundle_file)
       elif (source_install) :
         print "Okay, this must be the source-only installer."
     if (not binary_install) and (not source_install) :
@@ -508,12 +510,17 @@ class installer (object) :
     # is no longer necessary
     # unwrap the tarball
     print >> out, "Installing new binary package...",
-    os.chdir(self.modules_dir)
-    untar(self.bundle_file, log=log, verbose=True, change_ownership=False,
-      check_output_path=False)
+    os.chdir(self.dest_dir)
     if (self.base_binary_install) :
       untar(self.base_bundle, log=log, verbose=True,
         change_ownership=False, check_output_path=False)
+    untar(self.build_bundle_file, log=log, verbose=True,
+      change_ownership=False,
+      check_output_path=False)
+    os.chdir(self.modules_dir)
+    untar(self.modules_bundle_file, log=log, verbose=True,
+      change_ownership=False,
+      check_output_path=False)
     if (not op.isdir(lib_dir)) or (not op.isdir(self.base_dir)) :
       raise RuntimeError("One or more missing directories:\n  %s\n  %s" %
         (lib_dir, self.base_dir))
