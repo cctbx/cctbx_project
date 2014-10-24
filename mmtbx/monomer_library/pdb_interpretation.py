@@ -2528,12 +2528,19 @@ class build_chain_proxies(object):
                       broken_bond_i_seq_pairs=broken_bond_i_seq_pairs,
                       weight=1/(na_params.stacking.sigma**2))
                     if na_params.save_as_param_file:
-                      ag1 = prev_mm.expected_atoms.get("N1", None).parent()
-                      ag2 = mm.expected_atoms.get("N1", None).parent()
-                      self.info_for_na_restraints_out_file.append((
-                          ag1.parent().parent().id,
-                          ag1.parent().resid(), ag2.parent().parent().id,
-                          ag2.parent().resid()))
+                      a1 = prev_mm.expected_atoms.get(
+                          prev_mm.monomer.get_planes()[0].plane_atoms[0].atom_id, 
+                          None)
+                      a2 = mm.expected_atoms.get(
+                          mm.monomer.get_planes()[0].plane_atoms[0].atom_id, 
+                          None)
+                      if a1 is not None and a2 is not None:
+                        ag1 = a1.parent()
+                        ag2 = a2.parent()
+                        self.info_for_na_restraints_out_file.append((
+                            ag1.parent().parent().id,
+                            ag1.parent().resid(), ag2.parent().parent().id,
+                            ag2.parent().resid()))
                     n_unresolved_chain_link_parallelities \
                       += link_resolution.counters.unresolved_non_hydrogen
                   else:
@@ -3915,8 +3922,8 @@ pdb_interpretation {
     if len(r1n) > 1:
       # Translate DNA resname to RNA for unification
       # DNA
-      r1n = r1.resname.strip()[1]
-      r2n = r2.resname.strip()[1]
+      r1n = r1.resname.strip()[-1]
+      r2n = r2.resname.strip()[-1]
     r1n = 'U' if r1n == "T" else r1n
     r2n = 'U' if r2n == "T" else r2n
     from mmtbx.monomer_library import bondlength_defaults
