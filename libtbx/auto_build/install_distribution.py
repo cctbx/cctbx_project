@@ -160,6 +160,10 @@ class installer (object) :
       help="Disable generation of Mac app launcher(s)", default=False)
     parser.add_option("--debug", dest="debug", action="store_true",
       help="Turn on debugging during compilation", default=False)
+    parser.add_option("--top-level-sources", action="store_true",
+      dest="top_level_sources",
+      help="Keep modules at top-level directory instead of 'modules' "+
+           "subdirectory", default=False)
     if (self.remove_sources_default) :
       parser.add_option("--no-compact", dest="compact", action="store_false",
         help="Don't remove unnecessary files such as compiled sources")
@@ -329,6 +333,12 @@ class installer (object) :
       os.makedirs(self.build_dir)
     if (not op.exists(self.base_dir)) :
       os.makedirs(self.base_dir)
+    if (not self.options.top_level_sources) :
+      self.modules_dir = op.join(self.dest_dir, "modules")
+      if (not op.exists(self.modules_dir)) :
+        os.makedirs(self.modules_dir)
+    else :
+      self.modules_dir = op.join(self.dest_dir)
     # environment variables required by other scripts
     os.environ["%s_LOC" % self.product_name] = self.dest_dir
     os.environ["%s_BUILD" % self.product_name] = self.build_dir
@@ -408,23 +418,23 @@ class installer (object) :
       print >> out, "  unwrapping %s..." % op.basename(pkg_file)
       log_file = op.join(self.tmp_dir, "%s.log" % pkg_name)
       log = open(log_file, "w")
-      os.chdir(self.dest_dir)
+      os.chdir(self.modules_dir)
       untar(pkg_file, log=log, verbose=True, change_ownership=False,
         check_output_path=(not "cctbx_bundle" in pkg_file))
       log.close()
       if (pkg_file.startswith("cctbx_bundle")) :
         if (not op.isdir("cctbx_project")) :
           raise RuntimeError("Directory 'cctbx_project' not found!")
-    tag_file = op.join(self.dest_dir, "TAG")
+    tag_file = op.join(self.modules_dir, "TAG")
     if op.isfile(tag_file) :
-      os.rename(tag_file, op.join(self.dest_dir, "cctbx_bundle_TAG"))
+      os.rename(tag_file, op.join(self.modules_dir, "cctbx_bundle_TAG"))
     self.product_specific_setup_before_compile(log=out)
     log_file = op.join(self.tmp_dir, "compile_%s.log" % self.dest_dir_prefix)
     log = open(log_file, "w")
     os.chdir(self.build_dir)
     if op.isfile("libtbx_refresh_is_completed") :
       os.remove("libtbx_refresh_is_completed")
-    config_path = op.join(self.dest_dir, "cctbx_project", "libtbx",
+    config_path = op.join(self.modules_dir, "cctbx_project", "libtbx",
       "configure.py")
     config_args = [
       "--scan_boost",
@@ -498,7 +508,7 @@ class installer (object) :
     # is no longer necessary
     # unwrap the tarball
     print >> out, "Installing new binary package...",
-    os.chdir(self.dest_dir)
+    os.chdir(self.modules_dir)
     untar(self.bundle_file, log=log, verbose=True, change_ownership=False,
       check_output_path=False)
     if (self.base_binary_install) :
@@ -532,7 +542,7 @@ class installer (object) :
     os.chdir(self.build_dir)
     args = [
       "\"%s/bin/python\"" % self.base_dir,
-      "\"%s/cctbx_project/libtbx/configure.py\"" % self.dest_dir,
+      "\"%s/cctbx_project/libtbx/configure.py\"" % self.modules_dir,
       "--current_working_directory=%s" % self.build_dir,
     ] + self.configure_modules
     try :
@@ -553,7 +563,7 @@ class installer (object) :
     print >> out, "  log file is %s" % log_path
     log = open(log_path, "w")
     if (self.flag_build_gui) and (sys.platform != "darwin") :
-      os.environ["LD_LIBRARY_PATH"] = op.join(self.dest_dir, "base", "lib")
+      os.environ["LD_LIBRARY_PATH"] = op.join(self.base_dir, "lib")
       regenerate_module_files.run(args=["--build_dir=%s" % self.dest_dir],
         out=out)
     # write dispatcher_include file
@@ -601,7 +611,7 @@ class installer (object) :
     os.environ["PATH"] = "%s:%s" % (bin_dir, os.environ["PATH"])
     # compile .py files
     print >> out, "precompiling .py files...",
-    os.chdir(self.dest_dir)
+    os.chdir(self.modules_dir)
     call(args=["libtbx.py_compile_all"], log=log)
     print >> out, "ok"
     # copy README et al.
@@ -702,7 +712,7 @@ class installer (object) :
     # XXX should this include .o files?
     remove_extensions = [".cpp", ".cc", ".hpp", ".h", ".hh"]
     n_deleted = 0
-    for dirname, dirnames, filenames in os.walk(self.dest_dir) :
+    for dirname, dirnames, filenames in os.walk(self.modules_dir) :
       for file_name in filenames :
         for ext in remove_extensions :
           if file_name.endswith(ext) :
