@@ -2529,10 +2529,10 @@ class build_chain_proxies(object):
                       weight=1/(na_params.stacking.sigma**2))
                     if na_params.save_as_param_file:
                       a1 = prev_mm.expected_atoms.get(
-                          prev_mm.monomer.get_planes()[0].plane_atoms[0].atom_id, 
+                          prev_mm.monomer.get_planes()[0].plane_atoms[0].atom_id,
                           None)
                       a2 = mm.expected_atoms.get(
-                          mm.monomer.get_planes()[0].plane_atoms[0].atom_id, 
+                          mm.monomer.get_planes()[0].plane_atoms[0].atom_id,
                           None)
                       if a1 is not None and a2 is not None:
                         ag1 = a1.parent()
