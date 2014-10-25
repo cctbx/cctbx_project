@@ -130,10 +130,12 @@ def average(argv=None):
       if i%10==0: print 'Rank',rank,'processing event',rank*mylength+i,', ',i,'of',mylength
       evt = run.event(mytimes[i])
       #print "Event #",rank*mylength+i," has id:",evt.get(EventId)
-      data = evt.get(ndarray_float64_3, src, 'image0').astype(np.int32)
+      data = evt.get(ndarray_float64_3, src, 'image0')
       if data is None:
         print "No data"
         continue
+
+      data = data.astype(np.int32)
 
       d = cspad_tbx.env_distance(address, run.env(), command_line.options.detz_offset)
       if d is None:
