@@ -48,8 +48,6 @@ def run (args, out=sys.stdout) :
     help="Subdirectories to ignore", default=[])
   parser.add_option("--remove_src", dest="remove_src", action="store_true",
     help="Remove compiled source files (.h, .cpp, etc.)", default=False)
-  parser.add_option("--keep_base", dest="keep_base", action="store_true",
-    help="Keep base packages with main bundle", default=False)
   parser.add_option("--dest", dest="dest", action="store",
     help="Destination directory for bundle tarfiles", default=None)
   parser.add_option("--verbose", dest="verbose", action="store_true")
@@ -147,30 +145,33 @@ def run (args, out=sys.stdout) :
   # TODO strip objects?
   os.chdir(tmp_dir)
   # create base bundle
-  if (not options.keep_base) :
-    base_tarfile = "../base-%(version)s-%(mtype)s.tar.gz" % \
-      {"version":options.version, "mtype":options.mtype}
-    call("tar -czf %(tarfile)s base" %
-      {"tarfile":base_tarfile}, log=out)
-    shutil.rmtree("base")
-    assert op.isfile(base_tarfile)
-    if (options.dest is not None) :
-      shutil.move(base_tarfile, options.dest)
-      base_tarfile = op.join(options.dest, op.basename(base_tarfile))
-    print >> out, "  created base bundle %s" % base_tarfile
+  base_tarfile = "../base-%(version)s-%(mtype)s.tar.gz" % \
+    {"version":options.version, "mtype":options.mtype}
+  call("tar -czf %(tarfile)s base" %
+    {"tarfile":base_tarfile}, log=out)
+  shutil.rmtree("base")
+  assert op.isfile(base_tarfile)
+  if (options.dest is not None) :
+    shutil.move(base_tarfile, options.dest)
+    base_tarfile = op.join(options.dest, op.basename(base_tarfile))
+  print >> out, "  created base bundle %s" % base_tarfile
   # create the product bundle
   build_tarfile = "../build-%(version)s-%(mtype)s.tar.gz" % \
     {"version":options.version, "mtype":options.mtype}
   modules_tarfile = "../modules-%(version)s-%(mtype)s.tar.gz" % \
     {"version":options.version, "mtype":options.mtype}
   call("tar -czf %(tarfile)s build" % {"tarfile":build_tarfile}, log=out)
+  assert op.isfile(build_tarfile)
   shutil.rmtree("build")
   call("tar -czf %(tarfile)s ." % {"tarfile":modules_tarfile}, log=out)
-  assert op.isfile(build_tarfile)
+  assert op.isfile(modules_tarfile)
   if (options.dest is not None) :
     shutil.move(build_tarfile, options.dest)
     build_tarfile = op.join(options.dest, op.basename(build_tarfile))
+    shutil.move(modules_tarfile, options.dest)
+    modules_tarfile = op.join(options.dest, op.basename(modules_tarfile))
   print >> out, "  created bundle %s" % build_tarfile
+  print >> out, "  created bundle %s" % modules_tarfile
   shutil.rmtree(tmp_dir)
 
 if (__name__ == "__main__") :
