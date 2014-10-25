@@ -2458,28 +2458,6 @@ class build_chain_proxies(object):
                     n_conf2 = atom2.parent().parent().atom_groups_size()
                     return n_conf1 == 1 and n_conf2 == 1
                   return False
-                def additional_check(m_i, m_j):
-                  # not used now
-                  atom = m_j.expected_atoms.get('C2', None)
-                  distances = []
-                  for aname in ['C2', 'C4', 'C5', 'C6', 'C1*']:
-                    a1 = m_i.expected_atoms.get(aname, None)
-                    a2 = m_j.expected_atoms.get(aname, None)
-                    if a1 is not None and a2 is not None:
-                      distances.append(a1.distance(a2))
-                  max_dist = min_dist = diff_dist = 0
-                  if len(distances) > 0:
-                    max_dist = max(distances)
-                    min_dist = min(distances)
-                    diff_dist = max(distances)-min(distances)
-                    result = diff_dist < 2.5 and max_dist < 8
-                  else:
-                    result = False
-                  if not result:
-                    print "Rejecting parallelity for ", m_i.pdb_residue_id_str, m_j.pdb_residue_id_str,
-                    # print "%5.2f %5.2f %5.2f" % ( diff_dist, max_dist, min_dist),
-                    print " in additional check (skip_additional_check_on_dna_rna)"
-                  return result
                 def additional_check_Gendron_2001(m_i, m_j):
                   # distance between rings < 5.5A
                   ring_i = []
@@ -2494,13 +2472,13 @@ class build_chain_proxies(object):
                       if atom is not None:
                         center += flex.vec3_double([atom.xyz])
                         ring.append(flex.vec3_double([atom.xyz]))
-                    if len(ring) > 0:
+                    if len(ring) > 2:
                       center *= 1./float(len(ring))
                     else:
                       return False
                   d = center_j-center_i
                   dn = d.norm()
-                  # angle between 2 normals in < 30 degrees
+                  # angle between 2 normals is < 30 degrees
                   r_i1 = ring_i[0]-center_i
                   r_i2 = ring_i[1]-center_i
                   n_i = r_i1.cross(r_i2)
@@ -2515,10 +2493,9 @@ class build_chain_proxies(object):
                   result = (dn < 5.5 and angle_ni_nj_degrees < 30 and
                     angle_d_ni_degrees < 40)
                   return result
-                if (na_params.stacking.find_automatically
-                    and (na_params.stacking.skip_spatial_verification
-                          or additional_check_Gendron_2001(prev_mm, mm))):
-                  if non_alternative_conformation_residues(prev_mm, mm):
+                if na_params.stacking.find_automatically:
+                  if (na_params.stacking.skip_spatial_verification
+                          or additional_check_Gendron_2001(prev_mm, mm)):
                     link_resolution = add_parallelity_proxies(
                       counters=counters(label="link_parallelity"),
                       m_i=prev_mm,
@@ -2546,7 +2523,8 @@ class build_chain_proxies(object):
                   else:
                     print >> log, "  Stacking of residues ", prev_mm.pdb_residue_id_str,
                     print >> log, "and", mm.pdb_residue_id_str, "\n    is cancelled",
-                    print >> log, "because of presence of alternative conformations"
+                    print >> log, "because their spatial arrangement. To turn this check off"
+                    print >> log, "    use 'stacking.skip_spatial_verification=True'"
       if (mm.monomer is not None):
         if (mm.is_unusual()):
           unusual_residues[mm.residue_name] += 1
@@ -3953,7 +3931,7 @@ pdb_interpretation {
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
     new_hbond_proxies = []
     new_hbonds = []
-    max_distance = 0
+    max_distance = na_params.bonds.bond_distance_cutoff
     planarity_proxies = []
     weight = 1./na_params.basepair_planarity.sigma**2
     for bp in na_params.base_pair:
@@ -3962,31 +3940,25 @@ pdb_interpretation {
         a2 = self.pdb_atoms[sel_cache.iselection(bp.base2)[0]]
         r1 = a1.parent()
         r2 = a2.parent()
-        if (r1.parent().atom_groups_size() == 1 and
-            r2.parent().atom_groups_size() == 1):
-          i_seqs = self.get_i_seqs_from_na_planes(r1)
-          j_seqs = self.get_i_seqs_from_na_planes(r2)
+        seqs = self.get_i_seqs_from_na_planes(r1, r2)
+        for i_seqs, j_seqs in seqs:
           planarity_proxies.append(geometry_restraints.planarity_proxy(
             i_seqs=i_seqs+j_seqs,
             weights=[weight]*len(i_seqs+j_seqs)))
-          bonds = self.get_h_bonds_for_basepair(a1,a2)
-          for b in bonds:
-            a1 = self.pdb_atoms[b[0]]
-            a2 = self.pdb_atoms[b[1]]
-            if a1 is not None and a2 is not None:
-              dist = a1.distance(a2)
-              if dist <= na_params.bonds.bond_distance_cutoff:
-                new_hbonds.append(b)
-                max_distance = max(max_distance, dist)
-              else:
-                print >> log, "    Bond between", a1.id_str(), "and", a2.id_str(),
-                print >> log, "length=%4.2f" % dist, "is rejected because of",
-                print >> log, "nucleic_acid_restraints.bonds.bond_distance_cutoff=",
-                print >> log, na_params.bonds.bond_distance_cutoff
-        else:
-          print >> log, "  Basepairing (hbonds and planarity) of residues ", r1.id_str(),
-          print >> log, "and", r2.id_str(), "\n    is cancelled",
-          print >> log, "because of presence of alternative conformations"
+        bonds = self.get_h_bonds_for_basepair(a1,a2)
+        for b in bonds:
+          a1 = self.pdb_atoms[b[0]]
+          a2 = self.pdb_atoms[b[1]]
+          if a1 is not None and a2 is not None:
+            dist = a1.distance(a2)
+            if dist <= na_params.bonds.bond_distance_cutoff:
+              new_hbonds.append(b)
+              max_distance = max(max_distance, dist)
+            else:
+              print >> log, "    Bond between", a1.id_str(), "and", a2.id_str(),
+              print >> log, "length=%4.2f" % dist, "is rejected because of",
+              print >> log, "nucleic_acid_restraints.bonds.bond_distance_cutoff=",
+              print >> log, na_params.bonds.bond_distance_cutoff
     return new_hbonds, planarity_proxies, max_distance
 
 
@@ -4579,26 +4551,56 @@ pdb_interpretation {
     if (have_header):
       print >> log
 
-  def get_i_seqs_from_na_planes(self, r):
-    """ Return i_seqs of atoms in planar groups for given atom_group r. """
+  def get_i_seqs_from_na_planes(self, r1, r2):
+    # Return [([i_seqA],[j_seqA]),([i_seqB],[j_seqB])] of
+    # atoms in planar groups for given atom_group r.
     from iotbx.pdb import residue_name_plus_atom_names_interpreter
     i_seqs = []
-    rnpani = residue_name_plus_atom_names_interpreter(
-      r.resname, r.atoms().extract_name(),return_mon_lib_dna_name=True)
-    cif_object = self.mon_lib_srv.get_comp_comp_id_direct(
-      rnpani.work_residue_name)
-    planes = cif_object.get_planes()
-    plengths = [len(x.plane_atoms) for x in planes]
-    nmax = plengths.index(max(plengths))
-    for a in planes[nmax].plane_atoms:
-      aname = a.atom_id
-      aname = aname.replace("*","'")
-      if aname == "C5M":
-        aname = "C7"
-      a = r.get_atom(aname)
-      if a is not None:
-        i_seqs.append(a.i_seq)
-    return i_seqs
+    result = []
+    r1_i_seqs = {}
+    r2_i_seqs = {}
+    for r, r_i_seqs in [(r1, r1_i_seqs), (r2, r2_i_seqs)]:
+      rnpani = residue_name_plus_atom_names_interpreter(
+        r.resname, r.atoms().extract_name(),return_mon_lib_dna_name=True)
+      cif_object = self.mon_lib_srv.get_comp_comp_id_direct(
+        rnpani.work_residue_name)
+      planes = cif_object.get_planes()
+      plengths = [len(x.plane_atoms) for x in planes]
+      nmax = plengths.index(max(plengths))
+      anames = []
+      for a in planes[nmax].plane_atoms:
+        aname = a.atom_id
+        aname = aname.replace("*","'")
+        if aname == "C5M":
+          aname = "C7"
+        anames.append(aname)
+      # print "anames", anames
+      for conf in r.parent().conformers():
+        r_i_seqs[conf.altloc] = []
+        for a in conf.atoms():
+          # print "  aname '%s'" % a.name
+          if a.name.strip() in anames:
+            r_i_seqs[conf.altloc].append(a.i_seq)
+    if len(r1_i_seqs) > len(r2_i_seqs):
+      t = r1_i_seqs
+      r1_i_seqs = r2_i_seqs
+      r2_i_seqs = t
+    assert len(r1_i_seqs) > 0 and len(r1_i_seqs) > 0
+    if len(r1_i_seqs) == 1:
+      if len(r2_i_seqs) == 1:
+        if (('' in r1_i_seqs or '' in r2_i_seqs)
+            or (r1_i_seqs.keys()[0] == r2_i_seqs.keys()[0])):
+          result.append((r1_i_seqs[r1_i_seqs.keys()[0]],
+                         r2_i_seqs[r2_i_seqs.keys()[0]]))
+      else:
+        if ('' in r1_i_seqs):
+          for k,v in r2_i_seqs.iteritems():
+            result.append((r1_i_seqs[''], v))
+    else:
+      for k, v in r1_i_seqs.iteritems():
+        if k in r2_i_seqs:
+          result.append((v, r2_i_seqs[k]))
+    return result
 
   def output_hbonds_in_bond_list(self, hbonds_in_bond_list, log):
     if hbonds_in_bond_list is not None:
@@ -4835,20 +4837,14 @@ pdb_interpretation {
         a2 = self.pdb_atoms[selection_cache.iselection(sp.base2)[0]]
         r1 = a1.parent()
         r2 = a2.parent()
-        if (r1.parent().atom_groups_size() == 1 and
-            r2.parent().atom_groups_size() == 1):
-          i_seqs = self.get_i_seqs_from_na_planes(r1)
-          j_seqs = self.get_i_seqs_from_na_planes(r2)
-          weight = 1/(na_params.stacking.sigma**2)
+        seqs = self.get_i_seqs_from_na_planes(r1, r2)
+        weight = 1/(na_params.stacking.sigma**2)
+        for i_seqs, j_seqs in seqs:
           proxy=geometry_restraints.parallelity_proxy(
             i_seqs=flex.size_t(i_seqs),
             j_seqs=flex.size_t(j_seqs),
             weight=weight)
           user_parallelity_proxies.append(proxy)
-        else:
-          print >> log, "  Parallelity of residues ", r1.id_str(),
-          print >> log, "and", r2.id_str(), "\n    is cancelled",
-          print >> log, "because of presence of alternative conformations"
     for proxy in user_parallelity_proxies:
       self.geometry_proxy_registries.parallelity.add_if_not_duplicated(proxy=proxy)
     #========== End user-defined parallelity restraints ==============
@@ -4899,15 +4895,12 @@ pdb_interpretation {
           and len(bp_bonds)>1):
             r1 = self.pdb_atoms[bp_bonds[0][0]].parent()
             r2 = self.pdb_atoms[bp_bonds[0][1]].parent()
-            # check for alternative conformations
-            if (r1.parent().atom_groups_size() == 1 and
-                r2.parent().atom_groups_size() == 1):
-              i_seqs = []
-              i_seqs += self.get_i_seqs_from_na_planes(r1)
-              i_seqs += self.get_i_seqs_from_na_planes(r2)
+            i_seqs = []
+            seqs = self.get_i_seqs_from_na_planes(r1, r2)
+            for i_seqs, j_seqs in seqs:
               proxy = geometry_restraints.planarity_proxy(
-                i_seqs=i_seqs,
-                weights=[weight]*len(i_seqs))
+                i_seqs=i_seqs+j_seqs,
+                weights=[weight]*(len(i_seqs)+len(j_seqs)))
               if self.geometry_proxy_registries.planarity.add_if_not_duplicated(
                   proxy=proxy) and na_params.save_as_param_file:
                         self.na_restraints_out_file.write("""\
@@ -4916,11 +4909,6 @@ pdb_interpretation {
         base2 = chain %s and resid %s
       }\n""" % (r1.parent().parent().id, r1.parent().resid(),
                                   r2.parent().parent().id, r2.parent().resid()))
-            else:
-              print >> log, "  Basepair planarity of residues ", r1.id_str(),
-              print >> log, "and", r2.id_str(), "\n    is cancelled",
-              print >> log, "because of presence of alternative conformations"
-
       for bpb in bp_bonds:
         if bpb not in list_of_hbonds_for_proxies:
           list_of_hbonds_for_proxies.append(bpb)
