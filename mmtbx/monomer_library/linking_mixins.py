@@ -7,6 +7,7 @@ from mmtbx.monomer_library import linking_setup
 from mmtbx.monomer_library import linking_utils
 from mmtbx.monomer_library import glyco_utils
 import bondlength_defaults
+from libtbx.utils import Sorry
 
 class ResidueLinkClass(dict):
   def remove_link(self, residues, atom_names):
@@ -457,6 +458,12 @@ class linking_mixins(object):
                               carbohydrate_bond_cutoff,
                               inter_residue_bond_cutoff+second_row_buffer,
                               )
+    if max_bonded_cutoff > 15:
+      raise Sorry("One of the following parameters: \nmetal_coordination_"+
+          "cutoff, amino_acid_bond_cutoff,"+
+          "inter_residue_bond_cutoff, \ncarbohydrate_bond_cutoff,"
+          "bonds.bond_distance_cutoff \nis greater than 15A. Please check and"+
+          " correct these parameters.")
     hbonds_in_bond_list = []
     if verbose:
       print """
