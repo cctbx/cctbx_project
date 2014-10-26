@@ -741,6 +741,16 @@ class set(crystal.symmetry):
       indices=self.indices(),
       anomalous_flag=False)
 
+  def as_anomalous_set(self):
+    """
+    Return a copy of the set using the same indices but with the anomalous flag
+    set to true.
+    """
+    return set(
+      crystal_symmetry=self,
+      indices=self.indices(),
+      anomalous_flag=True)
+
   def auto_anomalous(self, min_n_bijvoet_pairs=None,
                            min_fraction_bijvoet_pairs=None):
     """
@@ -3644,8 +3654,22 @@ class array(set):
       use_internal_variance=use_internal_variance)
 
   def as_non_anomalous_array(self):
+    """
+    Return a copy of the array with identical contents (keeping original
+    flex arrays) but with the anomalous flag set to false.
+    """
     return array(
       miller_set=self.as_non_anomalous_set(),
+      data=self.data(),
+      sigmas=self.sigmas()).set_observation_type(self)
+
+  def as_anomalous_array(self):
+    """
+    Return a copy of the array with identical contents (keeping original
+    flex arrays) but with the anomalous flag set to true.
+    """
+    return array(
+      miller_set=self.as_anomalous_set(),
       data=self.data(),
       sigmas=self.sigmas()).set_observation_type(self)
 

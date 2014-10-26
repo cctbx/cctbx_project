@@ -30,6 +30,10 @@ def exercise_set():
   ms = miller.set(xs, mi, True)
   assert ms.indices() == mi
   assert ms.anomalous_flag() == True
+  ms2 = ms.as_non_anomalous_set()
+  assert ms2.anomalous_flag() == False
+  ms3 = ms2.as_anomalous_set()
+  assert ms3.anomalous_flag() == True
   mc = ms.copy()
   assert not mc is ms
   assert mc.unit_cell() is ms.unit_cell()
