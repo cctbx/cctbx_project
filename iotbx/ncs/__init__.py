@@ -25,9 +25,11 @@ def input(pdb_hierarchy_inp=None,
           write_messages=False,
           log=sys.stdout,
           process_similar_chains=True,
-          min_fraction_domain=0.2,
+          min_percent=0.95,
           min_contig_length=10,
-          check_atom_order=False):
+          check_atom_order=False,
+          exclude_misaligned_residues=False,
+          dist_eps=4.0):
     """
     Select method to build ncs_group_object
 
@@ -73,13 +75,17 @@ def input(pdb_hierarchy_inp=None,
         Raise error if NCS relations are not found
       process_similar_chains (bool): When True, process chains that are close
        in length without raising errors
-      min_fraction_domain (float): Threshold for similarity between chains
+      min_percent (float): Threshold for similarity between chains
         similarity define as:
         (number of matching res) / (number of res in longer chain)
       min_contig_length (int): minimum length of matching chain segments
       check_atom_order (bool): check atom order in matching residues.
         When False, matching residues with different number of atoms will be
         excluded from matching set
+      exclude_misaligned_residues (bool): check and exclude individual residues
+        alignment quality
+      dist_eps (float): max allow distance difference between pairs of matching
+        atoms of two residues
     """
     ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
     ncs_group_obj.preprocess_ncs_obj(
@@ -105,8 +111,10 @@ def input(pdb_hierarchy_inp=None,
       write_messages=write_messages,
       log=log,
       process_similar_chains=process_similar_chains,
-      min_fraction_domain=min_fraction_domain,
+      min_percent=min_percent,
       min_contig_length=min_contig_length,
-      check_atom_order=check_atom_order)
+      check_atom_order=check_atom_order,
+      exclude_misaligned_residues=exclude_misaligned_residues,
+      dist_eps=dist_eps)
     return ncs_group_obj
 

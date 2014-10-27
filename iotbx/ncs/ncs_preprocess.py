@@ -111,10 +111,12 @@ class ncs_group_object(object):
                          rms_eps=0.02,
                          write_messages=False,
                          process_similar_chains=True,
-                         min_fraction_domain=0.2,
+                         min_percent=0.95,
                          min_contig_length=10,
                          log=sys.stdout,
-                         check_atom_order=False):
+                         check_atom_order=False,
+                         exclude_misaligned_residues=False,
+                         dist_eps=4.0):
     """
     Select method to build ncs_group_object
 
@@ -159,13 +161,17 @@ class ncs_group_object(object):
         Raise error if NCS relations are not found
       process_similar_chains (bool): When True, process chains that are close
         in length without raising errors
-      min_fraction_domain (float): Threshold for similarity between chains
+      min_percent (float): Threshold for similarity between chains
         similarity define as:
         (number of matching res) / (number of res in longer chain)
       min_contig_length (int): minimum length of matching chain segments
       check_atom_order (bool): check atom order in matching residues.
         When False, matching residues with different number of atoms will be
         excluded from matching set
+      exclude_misaligned_residues (bool): check and exclude individual residues
+        alignment quality
+      dist_eps (float): max allow distance difference between pairs of matching
+        atoms of two residues
     """
     extension = ''
     self.write_messages = write_messages
@@ -205,15 +211,17 @@ class ncs_group_object(object):
             use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
             use_minimal_master_ncs=use_minimal_master_ncs,
             process_similar_chains=process_similar_chains,
-            min_fraction_domain=min_fraction_domain,
+            min_percent=min_percent,
             min_contig_length=min_contig_length,
-            rms_eps=rms_eps)
+            rms_eps=rms_eps,
+            exclude_misaligned_residues=exclude_misaligned_residues,
+            dist_eps=dist_eps)
     elif ncs_selection_params or ncs_phil_groups:
       self.build_ncs_obj_from_phil(
         ncs_selection_params=ncs_selection_params,
         ncs_phil_groups=ncs_phil_groups,
         pdb_hierarchy_inp=pdb_hierarchy_inp,
-        min_fraction_domain=min_fraction_domain)
+        min_percent=min_percent)
     elif extension.lower() == '.ncs_spec' or \
             spec_file_str or spec_source_info or spec_ncs_groups:
       self.build_ncs_obj_from_spec_file(
@@ -230,10 +238,12 @@ class ncs_group_object(object):
         use_cctbx_find_ncs_tools=use_cctbx_find_ncs_tools,
         use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
         use_minimal_master_ncs=use_minimal_master_ncs,
-        min_fraction_domain=min_fraction_domain,
+        min_percent=min_percent,
         min_contig_length=min_contig_length,
         process_similar_chains=process_similar_chains,
-        rms_eps=rms_eps)
+        rms_eps=rms_eps,
+        exclude_misaligned_residues=exclude_misaligned_residues,
+        dist_eps=dist_eps)
     else:
       raise Sorry('Please provide one of the supported input')
     # error handling
@@ -293,7 +303,7 @@ class ncs_group_object(object):
                               ncs_phil_groups = None,
                               pdb_hierarchy_inp = None,
                               process_similar_chains=True,
-                              min_fraction_domain=0.2):
+                              min_percent=0.95):
     """
     Build transforms objects and NCS <-> ASU mapping using phil selection
     strings and complete ASU
@@ -303,7 +313,7 @@ class ncs_group_object(object):
       pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
       process_similar_chains (bool): When True, process chains that are close
         in length without raising errors
-      min_fraction_domain (float): similarity between chains when looking for
+      min_percent (float): similarity between chains when looking for
         ncs relations
 
     Phil structure
@@ -315,7 +325,7 @@ class ncs_group_object(object):
     """
 
     if not process_similar_chains:
-      min_fraction_domain = 1.0
+      min_percent = 1.0
     # process params
     if ncs_selection_params:
       if isinstance(ncs_selection_params,str):
@@ -355,7 +365,7 @@ class ncs_group_object(object):
           master_selection=gns,
           copy_selection=asu_select,
           rms_eps=100,
-          min_fraction_domain=min_fraction_domain)
+          min_percent=min_percent)
         self.messages += msg
         if r.is_zero():
           msg = 'Master NCS and Copy are very poorly related, check selection.'
@@ -403,7 +413,9 @@ class ncs_group_object(object):
                                  rms_eps=0.5,
                                  process_similar_chains=True,
                                  min_contig_length=10,
-                                 min_fraction_domain=0.2):
+                                 min_percent=0.95,
+                                 exclude_misaligned_residues=False,
+                                 dist_eps=4.0):
     """
     Build transforms objects and NCS <-> ASU mapping from a complete ASU
     Note that the MTRIX record are ignored, they are produced in the
@@ -420,23 +432,29 @@ class ncs_group_object(object):
       process_similar_chains (bool): When True, process chains that are close
       in length without raising errors
       min_contig_length (int): minimum length of matching chain segments
-      min_fraction_domain (float): Threshold for similarity between chains
+      min_percent (float): Threshold for similarity between chains
         similarity define as:
         (number of matching res) / (number of res in longer chain)
+      exclude_misaligned_residues (bool): check and exclude individual residues
+      alignment quality
+      dist_eps (float): max allow distance difference between pairs of matching
+        atoms of two residues
     """
     if not process_similar_chains:
-      min_fraction_domain = 1.0
+      min_percent = 1.0
       min_contig_length = 100000
     if use_cctbx_find_ncs_tools:
       group_dict = ncs_search.find_ncs_in_hierarchy(
         ph=pdb_hierarchy_inp.hierarchy,
         min_contig_length=min_contig_length,
-        min_fraction_domain=min_fraction_domain,
+        min_percent=min_percent,
         use_minimal_master_ncs=use_minimal_master_ncs,
         rmsd_eps=rms_eps,
         write=self.write_messages,
         log=self.log,
-        check_atom_order=self.check_atom_order)
+        check_atom_order=self.check_atom_order,
+        exclude_misaligned_residues=exclude_misaligned_residues,
+        dist_eps=dist_eps)
       # process atom selections
       self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
       self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
@@ -473,8 +491,12 @@ class ncs_group_object(object):
               ncs_group_id (int): group ID of the group containing this transform
               rmsd (float): RMS distance between ncs copies
     """
-    ph = pdb_hierarchy_inp
+    if hasattr(pdb_hierarchy_inp,"hierarchy"):
+      ph = pdb_hierarchy_inp.hierarchy
+    else:
+      ph = pdb_hierarchy_inp
     self.ncs_atom_selection = flex.bool([False]*self.total_asu_length)
+    chains_info = ncs_search.get_chains_info(ph)
     ncs_related_atoms = flex.bool([False]*self.total_asu_length)
     sorted_group_keys = sorted(group_dict)
     for gr_n,key in enumerate(sorted_group_keys):
@@ -484,7 +506,8 @@ class ncs_group_object(object):
       m_all_list = [x for ix in ncs_gr.iselections[0] for x in list(ix)]
       m_all_list.sort()
       m_all_isel = flex.size_t(m_all_list)
-      all_m_select_str = selection_string_from_selection(ph,m_all_isel)
+      all_m_select_str = selection_string_from_selection(
+        ph,m_all_isel,chains_info=chains_info)
       self.ncs_to_asu_selection[all_m_select_str] = []
       #
       for i in xrange(len(ncs_gr.copies)):
@@ -496,9 +519,11 @@ class ncs_group_object(object):
           # iterate over chains in ncs copy
           m_isel = ncs_gr.iselections[0][j]
           m_ch_id = ncs_gr.copies[0][j]
-          m_select_str = selection_string_from_selection(ph,m_isel)
+          m_select_str = selection_string_from_selection(
+            ph,m_isel,chains_info=chains_info)
           c_isel = ncs_gr.iselections[i][j]
-          c_select_str = selection_string_from_selection(ph,c_isel)
+          c_select_str = selection_string_from_selection(
+            ph,c_isel,chains_info=chains_info)
           transform_id.add(tr_id)
           key0 = 'chain {}_{}'.format(m_ch_id,tr_id)
           key1 = m_select_str
@@ -534,7 +559,8 @@ class ncs_group_object(object):
           c_all_list = [x for ix in ncs_gr.iselections[i] for x in list(ix)]
           c_all_list.sort()
           c_all_isel = flex.size_t(c_all_list)
-          c_select_str = selection_string_from_selection(ph,c_all_isel)
+          c_select_str = selection_string_from_selection(
+            ph,c_all_isel,chains_info=chains_info)
           self.ncs_to_asu_selection[all_m_select_str].append(c_select_str)
     #
     self.number_of_ncs_groups = len(group_dict)
@@ -1466,13 +1492,21 @@ def get_residue_sequence(chain_ph):
   chain_id = atoms[0].chain().id
   return chain_id, res_list_new,resid_list_new
 
-def selection_string_from_selection(pdb_hierarchy_inp,selection):
+def selection_string_from_selection(pdb_hierarchy_inp,selection,
+                                    chains_info=None):
   """
   Convert a selection array to a selection string
 
   Args:
     pdb_hierarchy_inp : iotbx.pdb.hierarchy.input (or iotbx.pdb.hierarchy)
     selection (flex.bool or flex.size_t)
+    chains_info : object containing
+      chains (str): chain IDs OR selections string
+      res_name (list of str): list of residues names
+      resid (list of str): list of residues sequence number, resid
+      atom_names (list of list of str): list of atoms in residues
+      atom_selection (list of list of list of int): the location of atoms in ph
+      chains_atom_number (list of int): list of number of atoms in each chain
 
   Returns:
     sel_str (str): atom selection string
@@ -1485,7 +1519,8 @@ def selection_string_from_selection(pdb_hierarchy_inp,selection):
   if isinstance(selection,flex.bool): selection = selection.iselection(True)
   selection_set = set(selection)
   sel_list = []
-  chains_info = ncs_search.get_chains_info(pdb_hierarchy_inp)
+  if not chains_info:
+    chains_info = ncs_search.get_chains_info(pdb_hierarchy_inp)
   chain_ids = sorted(chains_info)
   for ch_id in chain_ids:
     ch_sel = 'chain ' + ch_id
@@ -1709,7 +1744,7 @@ def get_rot_trans(ph=None,
                   master_selection=None,
                   copy_selection=None,
                   rms_eps=0.02,
-                  min_fraction_domain = 0.75):
+                  min_percent = 0.95):
   """
   Get rotation and translation using superpose.
   Can raise "Sorry" if chains are not exactly the same length, but a large
@@ -1723,7 +1758,7 @@ def get_rot_trans(ph=None,
     master/copy_selection (str): master and copy selection strings
     rms_eps (float): limit of rms difference between chains to be considered
       as copies
-    min_fraction_domain (float): Threshold for similarity between chains
+    min_percent (float): Threshold for similarity between chains
 
   Returns:
     r: rotation matrix
@@ -1745,7 +1780,7 @@ def get_rot_trans(ph=None,
     chain_id_c,seq_c,res_ids_c = get_residue_sequence(ncs_copy_ph)
     res_sel_m, res_sel_c, similarity = ncs_search.res_alignment(
       seq_a=seq_m,seq_b=seq_c,
-      min_contig_length=0,min_fraction_domain=0)
+      min_contig_length=0,min_percent=0)
     if similarity == 0 :
       # similarity between chains is small, do not consider as same chains
       return r_zero,t_zero,0,''
@@ -1772,7 +1807,7 @@ def get_rot_trans(ph=None,
     else:
       return r_zero,t_zero,0,'No sites to compare.\n'
     #
-    if similarity < min_fraction_domain:
+    if similarity < min_percent:
       msg='Chains {0} and {1} appear to be NCS related but are dis-similar..\n'
       msg = msg.format('master','copy')
     return r,t,round(rmsd,4),msg

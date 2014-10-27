@@ -99,7 +99,8 @@ class ncs_from_pdb(object):
       required_chains (list):
       min_fraction_domain (float):domain must be this fraction of a chain
       initial_rms (float): Guess of RMS among chains
-      match_radius (float): Keep atoms that are within match_radius of NCS-related atoms
+      match_radius (float): Keep atoms that are within match_radius of
+        NCS-related atoms
       similarity_threshold (float): Threshold for similarity between segments
       min_contig_length (int): segments < min_contig_length rejected
       smooth_length (int): two segments separated by smooth_length or less get
