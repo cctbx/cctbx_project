@@ -121,7 +121,7 @@ def exercise(pdb_poor_str, d_min = 1.0, resolution_factor = 0.25):
             xray_structure  = xrs_poor,
             mon_lib_srv     = mon_lib_srv,
             rotamer_manager = rotamer_manager,
-            real_space_gradients_delta  = d_min/4,
+            real_space_gradients_delta  = d_min*resolution_factor,
             geometry_restraints_manager = grm)
           sites_final = residue.atoms().extract_xyz()
           t1 = time.time()-t0
@@ -131,6 +131,6 @@ def exercise(pdb_poor_str, d_min = 1.0, resolution_factor = 0.25):
   return dist, t1
 
 if(__name__ == "__main__"):
-  dist, t = exercise(pdb_poor_str = pdb_poor)
+  dist, t = exercise(pdb_poor_str = pdb_poor, resolution_factor=0.2)
   print dist, t
   assert dist < 0.125
