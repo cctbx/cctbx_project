@@ -7,7 +7,7 @@ import mmtbx.monomer_library.pdb_interpretation
 import sys
 import time
 
-pdb_str = """
+pdb_str_1 = """
 CRYST1   79.110   79.110   37.465  90.00  90.00  90.00 P 43 21 2
 ATOM      1  N   GLY A  67      11.351   9.426  29.699  1.00 16.57      A    N
 ATOM      2  CA  GLY A  67      12.344   8.654  30.419  1.00 16.65      A    C
@@ -65,48 +65,94 @@ TER
 END
 """
 
+pdb_str_2 = """
+CRYST1   34.238   35.096   43.858  90.00  90.00  90.00 P 21 21 21    0
+ATOM      1  N   LYS A  45       6.154   2.754   1.212  1.00 12.39           N
+ATOM      2  C   LYS A  45       7.533   2.537  -0.815  1.00  8.18           C
+ATOM      3  O   LYS A  45       8.546   2.217  -1.437  1.00  8.18           O
+ATOM      4  CA ALYS A  45       7.469   2.388   0.702  0.18  8.95           C
+ATOM      5  CB ALYS A  45       7.820   0.954   1.105  0.18 15.56           C
+ATOM      6  CG ALYS A  45       7.880   0.729   2.607  0.18  7.12           C
+ATOM      7  CD ALYS A  45       8.227  -0.714   2.935  0.18 22.74           C
+ATOM      8  CE ALYS A  45       8.402  -0.914   4.432  0.18 43.83           C
+ATOM      9  NZ ALYS A  45       7.134  -0.676   5.175  0.18 58.88           N
+ATOM     23  CA BLYS A  45       7.396   2.217   0.670  0.82  9.42           C
+ATOM     24  CB BLYS A  45       7.467   0.704   0.891  0.82 15.14           C
+ATOM     25  CG BLYS A  45       7.428   0.288   2.352  0.82  9.76           C
+ATOM     26  CD BLYS A  45       7.539  -1.221   2.500  0.82 22.13           C
+ATOM     27  CE BLYS A  45       6.396  -1.931   1.793  0.82 22.20           C
+ATOM     28  NZ BLYS A  45       6.495  -3.411   1.927  0.82 22.09           N
+ATOM      0  HA ALYS A  45       8.198   3.068   1.142  0.18  9.42           H   new
+ATOM      0  HA BLYS A  45       8.223   2.691   1.198  0.82  9.42           H   new
+ATOM      0  HB2ALYS A  45       7.082   0.276   0.676  0.18 15.14           H   new
+ATOM      0  HB2BLYS A  45       6.636   0.232   0.368  0.82 15.14           H   new
+ATOM      0  HB3ALYS A  45       8.784   0.691   0.670  0.18 15.14           H   new
+ATOM      0  HB3BLYS A  45       8.384   0.324   0.441  0.82 15.14           H   new
+ATOM      0  HG2ALYS A  45       8.624   1.393   3.047  0.18  9.76           H   new
+ATOM      0  HG2BLYS A  45       8.244   0.769   2.891  0.82  9.76           H   new
+ATOM      0  HG3ALYS A  45       6.919   0.985   3.054  0.18  9.76           H   new
+ATOM      0  HG3BLYS A  45       6.499   0.633   2.806  0.82  9.76           H   new
+ATOM      0  HD2ALYS A  45       7.439  -1.372   2.568  0.18 22.13           H   new
+ATOM      0  HD2BLYS A  45       8.490  -1.560   2.089  0.82 22.13           H   new
+ATOM      0  HD3ALYS A  45       9.145  -0.996   2.419  0.18 22.13           H   new
+ATOM      0  HD3BLYS A  45       7.536  -1.486   3.557  0.82 22.13           H   new
+ATOM      0  HE2ALYS A  45       8.751  -1.929   4.625  0.18 22.20           H   new
+ATOM      0  HE2BLYS A  45       5.446  -1.592   2.207  0.82 22.20           H   new
+ATOM      0  HE3ALYS A  45       9.172  -0.237   4.801  0.18 22.20           H   new
+ATOM      0  HE3BLYS A  45       6.398  -1.661   0.737  0.82 22.20           H   new
+ATOM      0  HZ1ALYS A  45       7.263  -0.936   6.174  0.18 22.09           H   new
+ATOM      0  HZ1BLYS A  45       5.698  -3.859   1.432  0.82 22.09           H   new
+ATOM      0  HZ2ALYS A  45       6.877   0.330   5.110  0.18 22.09           H   new
+ATOM      0  HZ2BLYS A  45       7.390  -3.738   1.510  0.82 22.09           H   new
+ATOM      0  HZ3ALYS A  45       6.375  -1.255   4.761  0.18 22.09           H   new
+ATOM      0  HZ3BLYS A  45       6.467  -3.671   2.934  0.82 22.09           H   new
+TER
+END
+"""
+
 def run(args):
   if (not libtbx.env.has_module("reduce")) :
     print "Reduce not installed, needed for model.idealize_h(). skipping"
     return
-  for use_neutron_distances in [True, False]:
-    print "use_neutron_distances:", use_neutron_distances, "*"*30
-    params = monomer_library.pdb_interpretation.master_params.extract()
-    params.use_neutron_distances = use_neutron_distances
-    processed_pdb_file = monomer_library.pdb_interpretation.process(
-      mon_lib_srv    = monomer_library.server.server(),
-      ener_lib       = monomer_library.server.ener_lib(
-        use_neutron_distances=use_neutron_distances),
-      raw_records    = pdb_str,
-      params         = params,
-      force_symmetry = True)
-    xray_structure = processed_pdb_file.xray_structure()
-    sctr_keys = \
-      xray_structure.scattering_type_registry().type_count_dict().keys()
-    has_hd = "H" in sctr_keys or "D" in sctr_keys
-    geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies      = False,
-      assume_hydrogens_all_missing = not has_hd,
-      plain_pairs_radius = 5.0)
-    restraints_manager = mmtbx.restraints.manager(
-      geometry = geometry, normalization = False)
-    hd_selection = xray_structure.hd_selection()
-    for i in xrange(10):
-      xrs = xray_structure.deep_copy_scatterers()
-      xrs.shake_sites_in_place(mean_distance=0.5, selection = hd_selection)
-      m = mmtbx.model.manager(
-        restraints_manager = restraints_manager,
-        xray_structure     = xrs,
-        pdb_hierarchy      = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-      #
-      r1 = m.geometry_statistics(ignore_hd = False)
-      m.idealize_h(show=False)
-      r2 = m.geometry_statistics(ignore_hd = False)
-      print "%6.3f %6.3f %6.3f %6.3f"%(r1.a_mean,r1.b_mean, r2.a_mean,r2.b_mean)
-      assert r1.a_mean > 15.0
-      assert r1.b_mean > 0.1
-      assert r2.a_mean < 1.0
-      assert r2.b_mean < 0.01
+  for pdb_str in [pdb_str_1, pdb_str_2]:
+    for use_neutron_distances in [True, False]:
+      print "use_neutron_distances:", use_neutron_distances, "*"*30
+      params = monomer_library.pdb_interpretation.master_params.extract()
+      params.use_neutron_distances = use_neutron_distances
+      processed_pdb_file = monomer_library.pdb_interpretation.process(
+        mon_lib_srv    = monomer_library.server.server(),
+        ener_lib       = monomer_library.server.ener_lib(
+          use_neutron_distances=use_neutron_distances),
+        raw_records    = pdb_str,
+        params         = params,
+        force_symmetry = True)
+      xray_structure = processed_pdb_file.xray_structure()
+      sctr_keys = \
+        xray_structure.scattering_type_registry().type_count_dict().keys()
+      has_hd = "H" in sctr_keys or "D" in sctr_keys
+      geometry = processed_pdb_file.geometry_restraints_manager(
+        show_energies      = False,
+        assume_hydrogens_all_missing = not has_hd,
+        plain_pairs_radius = 5.0)
+      restraints_manager = mmtbx.restraints.manager(
+        geometry = geometry, normalization = False)
+      hd_selection = xray_structure.hd_selection()
+      for i in xrange(10):
+        xrs = xray_structure.deep_copy_scatterers()
+        xrs.shake_sites_in_place(mean_distance=0.5, selection = hd_selection)
+        m = mmtbx.model.manager(
+          restraints_manager = restraints_manager,
+          xray_structure     = xrs,
+          pdb_hierarchy      = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+        #
+        r1 = m.geometry_statistics(ignore_hd = False)
+        m.idealize_h(show=False)
+        r2 = m.geometry_statistics(ignore_hd = False)
+        print "%6.3f %6.3f %6.3f %6.3f"%(r1.a_mean,r1.b_mean, r2.a_mean,r2.b_mean)
+        assert r1.a_mean > 10.0
+        assert r1.b_mean > 0.1
+        assert r2.a_mean < 1.0
+        assert r2.b_mean < 0.01
 
 if (__name__ == "__main__"):
   t0 = time.time()
