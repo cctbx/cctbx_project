@@ -78,6 +78,16 @@ def to_dict(crystal):
   # Get the mosaicity
   mosaicity = crystal.get_mosaicity()
 
+  # New parameters for maximum likelihood values
+  try:
+    ML_half_mosaicity_deg = crystal._ML_half_mosaicity_deg
+  except AttributeError:
+    pass
+  try:
+    ML_domain_size_ang = crystal._ML_domain_size_ang
+  except AttributeError:
+    pass
+
   # Collect the information as a python dictionary
   xl_dict = OrderedDict([
     ('__id__', 'crystal'),
@@ -85,7 +95,9 @@ def to_dict(crystal):
     ('real_space_b', real_space_b),
     ('real_space_c', real_space_c),
     ('space_group_hall_symbol', hall),
-    ('mosaicity', mosaicity)])
+    ('mosaicity', mosaicity),
+    ('ML_half_mosaicity_deg', ML_half_mosaicity_deg),
+    ('ML_domain_size_ang', ML_domain_size_ang)])
 
   # Add in scan points if present
   if crystal.num_scan_points > 0:
@@ -126,6 +138,15 @@ def from_dict(d):
   xl = crystal_model(real_space_a, real_space_b, real_space_c,
                      space_group_symbol=space_group,
                      mosaicity=mosaicity)
+  # New parameters for maximum likelihood values
+  try:
+    xl._ML_half_mosaicity_deg = d['ML_half_mosaicity_deg']
+  except AttributeError:
+    pass
+  try:
+    xl._ML_domain_size_ang = d['ML_domain_size_ang']
+  except AttributeError:
+    pass
 
   # Extract scan point setting matrices, if present
   try:
