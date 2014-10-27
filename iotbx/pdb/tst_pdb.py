@@ -690,8 +690,30 @@ ATOM  60  CA . VAL  C   26  ?  -12.16900  22.54800  -4.78000  1.000   8.45988  C
            "Wrong number of data items for loop containing _atom_site.group_PDB"
   else: raise Exception_expected
 
+def exercise_extract_authors():
+  pdb_in = """
+AUTHOR    R.B.SUTTON,J.A.ERNST,A.T.BRUNGER
+  """
+  assert iotbx.pdb.input(source_info=None, lines=pdb_in).extract_authors()==\
+  ['B.R.SUTTON', 'A.ERNST.J', 'A.BRUNGER.T']
+  #
+  pdb_in = """
+AUTHOR    A.V.FOKIN,P.V.AFONIN,I.I.MIKHAILOVA,I.N.TSYGANNIK,
+AUTHOR   2 T.I.MAREEVA
+  """
+  assert iotbx.pdb.input(source_info=None, lines=pdb_in).extract_authors()==\
+  ['A.FOKIN.V', 'AFONIN.P.V', 'I.I.MIKHAILOVA', 'I.N.TSYGANNIK', 'I.MAREEVA.T']
+  #
+  pdb_in = """
+AUTHOR    A. V. FOKIN, P.V. VAN AFONIN, I.I.MIKHAILOVA,I.N.TSYGANNIK
+AUTHOR   2 T.I.MAREEVA
+  """
+  assert iotbx.pdb.input(source_info=None, lines=pdb_in).extract_authors()==\
+  ['A.FOKIN.V', 'P.V.VANAFONIN', 'I.I.MIKHAILOVA', 'I.N.TSYGANNIK', 'I.MAREEVA.T']
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_extract_authors()
   exercise_pdb_input_error_handling()
   exercise_systematic_chain_ids()
   exercise_amino_acid_codes()

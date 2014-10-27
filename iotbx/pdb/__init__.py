@@ -982,6 +982,31 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         return header_year(line)
     return None
 
+  def extract_authors(self):
+    trigger = "AUTHOR"
+    result = []
+    def is_number(s):
+      try:
+        float(s)
+        return True
+      except ValueError: return False
+    for l in self.title_section():
+      if(l.startswith(trigger)):
+        l_=l.strip().replace(trigger,"").strip()
+        if(is_number(l_[0])): l_ = l_.replace(l_[0],"").strip()
+        if(not (l_.startswith(trigger) or is_number(l_))):
+          l_ = l_.split(",")
+          for l__ in l_:
+            l__ = "".join([x.strip() for x in l__])
+            if(len(l__)>0):
+              l__ = l__.split(".")
+              l__.sort()
+              l__ = [x.upper() for x in l__]
+              l__ = ".".join(l__)
+              if(l__[0].isalpha() and l__[len(l__)-1].isalpha()):
+                result.append(l__)
+    return result
+
   def extract_remark_iii_records(self, iii):
     result = []
     pattern = "REMARK %3d " % iii
