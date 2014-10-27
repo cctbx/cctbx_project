@@ -391,6 +391,8 @@ class installer (object) :
       wxpython_file = op.join(self.dependencies_dir, package_defs.WXPYTHON_PKG)
       if (self.flag_build_gui) and op.isfile(wxpython_file) :
         base_args.append("--gui")
+      elif ("--all" in base_args) :
+        base_args.remove("--all")
       if (self.options.debug) :
         base_args.append("--debug")
       if (not self.options.python_static) :
