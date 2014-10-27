@@ -59,18 +59,27 @@ def run(args):
   m2_he = maptbx.volume_scale(map = m2,  n_bins = 10000).map_data()
   print "CC, quantile rank-scaled (histogram equalized) maps: %6.4f" % \
     flex.linear_correlation(x = m1_he.as_1d(), y = m2_he.as_1d()).coefficient()
-  print "cutoff  CCpeak"
+  print "Peak correlation:"
+  print "  cutoff  CCpeak"
   for cutoff in [i/100. for i in range(0,100,5)]+[0.99, 1.0]:
-    print "%3.2f   %7.4f" % (cutoff,
+    print "  %3.2f   %7.4f" % (cutoff,
       maptbx.cc_peak(map_1=m1_he, map_2=m2_he, cutoff=cutoff))
-  # actual calcs
+  # compute discrepancy function (D-function)
+  cutoffs = flex.double([i/20. for i in range(1,20)])
+  df = maptbx.discrepancy_function(map_1=m1_he, map_2=m2_he, cutoffs=cutoffs)
+  print "Discrepancy function:"
+  print "  cutoff  D"
+  for c, d in zip(cutoffs, df):
+    print "  %3.2f   %7.4f" % (c,d)
+  # compute and output histograms
   h1 = maptbx.histogram(map=m1, n_bins=10000)
   h2 = maptbx.histogram(map=m2, n_bins=10000)
+  print "Map histograms:"
   print "Map 1 (%s)     Map 2 (%s)"%(args[0],args[1])
   print "(map_vale,cdf,frequency) <> (map_vale,cdf,frequency)"
   for a1,c1,v1, a2,c2,v2 in zip(h1.arguments(), h1.c_values(), h1.values(),
                                 h2.arguments(), h2.c_values(), h2.values()):
-    print "(%9.5f %9.5f %9.5f) (%9.5f %9.5f %9.5f)"%(a1,c1,v1, a2,c2,v2)
+    print "(%9.5f %9.5f %9.5f) <> (%9.5f %9.5f %9.5f)"%(a1,c1,v1, a2,c2,v2)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
