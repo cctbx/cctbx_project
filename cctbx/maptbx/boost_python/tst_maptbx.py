@@ -1309,6 +1309,11 @@ def exercise_cc_peak():
     t=t/10.
     ccp=maptbx.cc_peak(map_coeffs_1=fc1, map_coeffs_2=fc2, cutoff=t)
   #
+  m1_he = maptbx.volume_scale(map = m1,  n_bins = 10000).map_data()
+  m2_he = maptbx.volume_scale(map = m2,  n_bins = 10000).map_data()
+  cutoffs = flex.double([i/20. for i in range(1,20)])
+  df = maptbx.discrepancy_function(map_1=m1_he, map_2=m2_he, cutoffs=cutoffs)
+  #
   fc1 = xray_structure.structure_factors(d_min=2.2).f_calc()
   fc2 = xray_structure.structure_factors(d_min=2.2).f_calc()
   for t in range(0,10):
