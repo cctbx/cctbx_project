@@ -710,6 +710,29 @@ AUTHOR   2 T.I.MAREEVA
   """
   assert iotbx.pdb.input(source_info=None, lines=pdb_in).extract_authors()==\
   ['A.FOKIN.V', 'P.V.VANAFONIN', 'I.I.MIKHAILOVA', 'I.N.TSYGANNIK', 'I.MAREEVA.T']
+  #
+  pdb_in = """
+AUTHOR    N.M.KING,M.PRABU-JEYABALAN,E.A.NALIVAIKA,P.B.WIGERNICK,M.P.DE
+AUTHOR   2 BETHUNE,C.A.SCHIFFER
+  """
+  assert iotbx.pdb.input(source_info=None, lines=pdb_in).extract_authors()==\
+  ['KING.M.N', 'M.PRABU-JEYABALAN', 'A.E.NALIVAIKA', 'B.P.WIGERNICK',
+   'DEBETHUNE.M.P', 'A.C.SCHIFFER']
+  #
+  pdb_in = """
+AUTHOR    KING,PRABU-JEYABALAN,NALIVAIKA,WIGERNICK,
+AUTHOR   2 BETHUNE,SCHIFFER
+  """
+  assert iotbx.pdb.input(source_info=None, lines=pdb_in).extract_authors()==\
+  ['KING', 'PRABU-JEYABALAN', 'NALIVAIKA', 'WIGERNICK', 'BETHUNE', 'SCHIFFER']
+  #
+  pdb_in = """
+AUTHOR    KING,PRABU-JEYABALAN,NALIVAIKA,WIGERNICK
+AUTHOR   2 BETHUNE,SCHIFFER
+  """
+  assert iotbx.pdb.input(source_info=None, lines=pdb_in).extract_authors()==\
+  ['KING', 'PRABU-JEYABALAN', 'NALIVAIKA', 'WIGERNICK', 'BETHUNE', 'SCHIFFER']
+
 
 def run():
   verbose = "--verbose" in sys.argv[1:]

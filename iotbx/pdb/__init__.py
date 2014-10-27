@@ -990,21 +990,36 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         float(s)
         return True
       except ValueError: return False
+    # extract and put into one string...
+    lt = ""
+    cntr=0
     for l in self.title_section():
       if(l.startswith(trigger)):
         l_=l.strip().replace(trigger,"").strip()
         if(is_number(l_[0])): l_ = l_.replace(l_[0],"").strip()
-        if(not (l_.startswith(trigger) or is_number(l_))):
-          l_ = l_.split(",")
-          for l__ in l_:
-            l__ = "".join([x.strip() for x in l__])
-            if(len(l__)>0):
-              l__ = l__.split(".")
-              l__.sort()
-              l__ = [x.upper() for x in l__]
-              l__ = ".".join(l__)
-              if(l__[0].isalpha() and l__[len(l__)-1].isalpha()):
-                result.append(l__)
+        #
+        l1 = lt.split(",")
+        l1 = l1[len(l1)-1]
+        l2 = l_.split(",")[0]
+        if(l1.count(".")>0 and l2.count(".")==0): j=""
+        else: j = ","
+        #
+        lt = lt + j + l_
+        cntr+=1
+    # ...then analyze
+    l_=lt.strip().replace(trigger,"").strip()
+    if(is_number(l_[0])): l_ = l_.replace(l_[0],"").strip()
+    if(not (l_.startswith(trigger) or is_number(l_))):
+      l_ = l_.split(",")
+      for l__ in l_:
+        l__ = "".join([x.strip() for x in l__])
+        if(len(l__)>0):
+          l__ = l__.split(".")
+          l__.sort()
+          l__ = [x.upper() for x in l__]
+          l__ = ".".join(l__)
+          if(l__[0].isalpha() and l__[len(l__)-1].isalpha()):
+            result.append(l__)
     return result
 
   def extract_remark_iii_records(self, iii):
