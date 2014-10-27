@@ -90,7 +90,7 @@ def exercise (debug=False) :
   result = merging_statistics.run(args, out=out)
   if (debug) :
     print out.getvalue()
-  assert ("28.49   3.76  15737   1224   12.86  99.84   47967.0    27.7  0.482  0.500  0.135  0.972" in out.getvalue()), out.getvalue()
+  assert ("28.49   3.76  15737   1224   12.86  99.84   47967.0    27.7  0.482  0.500  0.135  0.97" in out.getvalue()), out.getvalue()
   # exercise 2: estimate resolution cutoffs (and symmetry_file argument)
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/harvesting/unmerged.sca",
