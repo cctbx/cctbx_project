@@ -391,6 +391,7 @@ class manager(object):
       return math.sqrt((r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2)
     def is_supported(residue):
       return get_class(name=residue.resname) in supported
+    counter = 0
     for model1 in ph.models():
       for chain1 in model1.chains():
         for conformer1 in chain1.conformers():
@@ -423,8 +424,10 @@ class manager(object):
                               if(a2.element_is_hydrogen() and n1 == n2):
                                 if(dist(a1.xyz, a2.xyz)>deviation_threshold):
                                   a2.set_xyz(a1.xyz)
+                                  counter += 1
     self.xray_structure.set_sites_cart(pdb_hierarchy.atoms().extract_xyz())
     self._pdb_hierarchy = pdb_hierarchy
+    return counter
 
   def idealize_h(self, selection=None, show=True, nuclear=False):
     """

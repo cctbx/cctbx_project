@@ -3086,10 +3086,11 @@ pdb_interpretation {
           exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
           cystein_sulphur_atoms_exclude = []
           for atom in self.pdb_atoms:
-            e = atom.element.strip().upper()
-            # PVA: undo Nigel's 'bug fix' until further clarification
-            # this breaks phenix_regression/mmtbx/geometry_minimization/tst_06.py
-            #if not e.strip(): continue
+            e_ = atom.element.strip().upper()
+            e = atom.determine_chemical_element_simple().strip().upper()
+            if(e_.strip() != ""):
+              if(e_!=e):
+                raise Sorry("Bad element type: '%s', '%s'."%(e,e_))
             if(not e in exclusion_list):
               for cs_i_seq in self.cystein_sulphur_i_seqs:
                 csa = self.pdb_atoms[cs_i_seq]
