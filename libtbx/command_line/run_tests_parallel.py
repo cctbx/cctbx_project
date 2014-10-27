@@ -14,6 +14,9 @@ directory = None
 module = None
   .type = str
   .multiple = True
+script = None
+  .type = path
+  .multiple = True
 nproc = 1
   .type=  int
 shuffle = False
@@ -71,6 +74,7 @@ def run (args) :
   if (len(params.directory) == 0) and (len(params.module) == 0) :
     raise Sorry("Please specify modules and/or directories to test.")
   all_tests = []
+  all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script))
   for dir_name in params.directory :
     if os.path.split(dir_name)[-1].find("cctbx_project")>-1:
       print 'DANGER '*10
