@@ -405,14 +405,24 @@ class manager(object):
                     cm2 = cm_from_residue_non_hd(residue=residue1)
                     if(residue1.id_str()==residue2.id_str() and
                        dist(cm1,cm2)<1.e-3):
-                      for a1 in residue1.atoms():
-                        if(a1.element_is_hydrogen()):
-                          n1 = a1.name.strip()[1:]
-                          for a2 in residue2.atoms():
-                            n2 = a2.name.strip()[1:]
-                            if(a2.element_is_hydrogen() and n1 == n2):
-                              if(dist(a1.xyz, a2.xyz)>deviation_threshold):
-                                a2.set_xyz(a1.xyz)
+                      # skip proper alternative confromations
+                      is_ac = False
+                      for a1, a2 in zip(residue1.atoms(), residue2.atoms()):
+                        if((a1.parent().altloc !=""
+                            and not a1.element_is_hydrogen()) or
+                           (a2.parent().altloc !=""
+                            and not a2.element_is_hydrogen())):
+                          is_ac=True
+                          break
+                      if(not is_ac):
+                        for a1 in residue1.atoms():
+                          if(a1.element_is_hydrogen()):
+                            n1 = a1.name.strip()[1:]
+                            for a2 in residue2.atoms():
+                              n2 = a2.name.strip()[1:]
+                              if(a2.element_is_hydrogen() and n1 == n2):
+                                if(dist(a1.xyz, a2.xyz)>deviation_threshold):
+                                  a2.set_xyz(a1.xyz)
     self.xray_structure.set_sites_cart(pdb_hierarchy.atoms().extract_xyz())
     self._pdb_hierarchy = pdb_hierarchy
 
