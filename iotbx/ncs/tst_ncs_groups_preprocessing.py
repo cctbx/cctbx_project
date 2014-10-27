@@ -380,7 +380,8 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       pdb_string=pdb_str,
       use_simple_ncs_from_pdb=False,
       use_cctbx_find_ncs_tools=True,
-      check_atom_order=True)
+      check_atom_order=True,
+      min_percent=0.2)
 
     t = ncs_inp.ncs_to_asu_selection
     exp_t = {

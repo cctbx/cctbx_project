@@ -70,7 +70,7 @@ class test_find_ncs_operators(unittest.TestCase):
     ph = pdb_inp.construct_hierarchy()
     #
     chain_match_list = ncs_search.search_ncs_relations(
-      ph=ph,min_contig_length=0,min_fraction_domain=0)
+      ph=ph,min_contig_length=0,min_percent=0)
     # make sure that all possible chains compared
     model  = ph.models()[0]
     chain_ids = list({x.id for x in model.chains()})
@@ -109,7 +109,7 @@ class test_find_ncs_operators(unittest.TestCase):
     #
     chain_match_list = ncs_search.search_ncs_relations(
       ph=ph,min_contig_length=0,
-      min_fraction_domain=0,
+      min_percent=0,
       use_minimal_master_ncs=False)
     #
     match_dict = ncs_search.clean_chain_matching(chain_match_list,ph)

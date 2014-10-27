@@ -250,7 +250,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_avoid_chain_selection2']
+  tests = ['test_remove_far_atoms']
   suite = unittest.TestSuite(map(TestNcsPreprocessingFunctions,tests))
   return suite
 

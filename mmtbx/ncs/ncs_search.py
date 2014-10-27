@@ -82,19 +82,21 @@ class Chains_info(object):
 
 def find_ncs_in_hierarchy(ph,
                           min_contig_length=10,
-                          min_fraction_domain=0.2,
+                          min_percent=0.95,
                           use_minimal_master_ncs=True,
                           rmsd_eps=5.0,
                           write=False,
                           log=sys.stdout,
-                          check_atom_order=False):
+                          check_atom_order=False,
+                          exclude_misaligned_residues=False,
+                          dist_eps=4.0):
   """
   Find NCS relation in hierarchy
 
   Args:
     ph (object): hierarchy
     min_contig_length (int): minimum length of matching chain segments
-    min_fraction_domain (float): Threshold for similarity between chains
+    min_percent (float): Threshold for similarity between chains
       similarity define as:
       (number of matching res) / (number of res in longer chain)
     use_minimal_master_ncs (bool): use maximal or minimal common chains
@@ -104,6 +106,10 @@ def find_ncs_in_hierarchy(ph,
     check_atom_order (bool): check atom order in matching residues.
         When False, matching residues with different number of atoms will be
         excluded from matching set
+    exclude_misaligned_residues (bool): check and exclude individual residues
+      alignment quality
+    dist_eps (float): max allow distance difference between pairs of matching
+      atoms of two residues
 
   Return:
     groups_list (list of NCS_groups_container objects)
@@ -111,17 +117,24 @@ def find_ncs_in_hierarchy(ph,
       keys: tuple of master chain IDs
       values: NCS_groups_container objects
   """
+  chains_info = get_chains_info(ph)
   # Get the list of matching chains
   chain_match_list = search_ncs_relations(
-    ph=ph,
+    chains_info=chains_info,
     min_contig_length=min_contig_length,
-    min_fraction_domain=min_fraction_domain,
+    min_percent=min_percent,
     write=write,
     log=log,
     check_atom_order=check_atom_order,
     use_minimal_master_ncs=use_minimal_master_ncs)
   #
-  match_dict = clean_chain_matching(chain_match_list,ph,rmsd_eps)
+  match_dict = clean_chain_matching(
+    chain_match_list=chain_match_list,
+    ph=ph,
+    chains_info=chains_info,
+    rmsd_eps=rmsd_eps,
+    exclude_misaligned_residues=exclude_misaligned_residues,
+    dist_eps=dist_eps)
   #
   if use_minimal_master_ncs:
     transform_to_group,match_dict = minimal_master_ncs_grouping(match_dict)
@@ -590,7 +603,10 @@ def get_iselection(sorted_masters,copies,match_dict):
   # Note: consider sorting the selections
   return m_sel,c_sel
 
-def clean_chain_matching(chain_match_list,ph,rmsd_eps=10.0):
+def clean_chain_matching(chain_match_list,ph,
+                         chains_info=None,rmsd_eps=10.0,
+                         exclude_misaligned_residues=False,
+                         dist_eps=4.0):
   """
   Remove all bad matches from chain_match_list
 
@@ -601,13 +617,27 @@ def clean_chain_matching(chain_match_list,ph,rmsd_eps=10.0):
       chain_ID (str), sel_1/2 (flex.bool)
       res_m/res_c (lists): indices of the aligned components
       similarity (float): similarity between chains
+    chains_info : object containing
+      chains (str): chain IDs OR selections string
+      res_name (list of str): list of residues names
+      resid (list of str): list of residues sequence number, resid
+      atom_names (list of list of str): list of atoms in residues
+      atom_selection (list of list of list of int): the location of atoms in ph
+      chains_atom_number (list of int): list of number of atoms in each chain
     rmsd_eps (float): limit of rms difference chains
+    exclude_misaligned_residues (bool): check and exclude individual residues
+      alignment quality
+    dist_eps (float): max allow distance difference between pairs of matching
+      atoms of two residues
 
   Returns:
-    match_dict(dict): key:(chains_id_1,chains_id_2)
-                      val:[selection_1,selection_2,
-                           res_list_1,res_list_2,rot,trans,rmsd]
+    match_dict(dict): key:(chains_id_a,chains_id_b)
+                      val:[selection_a,selection_b,
+                           res_list_a,res_list_b,rot,trans,rmsd]
   """
+  if not chains_info:
+    assert bool(ph)
+    chains_info = get_chains_info(ph)
   # remove all non-matching pairs, where similarity == 0
   match_list = [x for x in chain_match_list if x[4] > 0]
   # keep only best (or 95% of best) matches
@@ -615,7 +645,7 @@ def clean_chain_matching(chain_match_list,ph,rmsd_eps=10.0):
   # Get rmsd
   match_dict = {}
   for match in match_list:
-    [ch_a_id, ch_b_id, sel_a, sel_b,res_list_1,res_list_2,similarity] = match
+    [ch_a_id, ch_b_id, sel_a, sel_b,res_list_a,res_list_b,similarity] = match
     best_matches,match_dict = update_best_matches_dict(
       best_matches,match_dict,ch_a_id,ch_b_id,similarity)
     other_sites = ph.select(sel_a).atoms().extract_xyz()
@@ -625,12 +655,72 @@ def clean_chain_matching(chain_match_list,ph,rmsd_eps=10.0):
       other_sites     = other_sites)
     r = lsq_fit_obj.r
     t = lsq_fit_obj.t
-    rmsd = ref_sites.rms_difference(lsq_fit_obj.other_sites_best_fit())
-    rmsd = round(rmsd,4)
-    match_dict[ch_a_id, ch_b_id] = [sel_a,sel_b,res_list_1,res_list_2,r,t,rmsd]
-  # Clean using rmsd limit
-  match_dict = {k:v for (k,v) in match_dict.iteritems() if v[-1] <= rmsd_eps}
+    other_sites_best = lsq_fit_obj.other_sites_best_fit()
+    rmsd = round(ref_sites.rms_difference(other_sites_best),4)
+    if rmsd <= rmsd_eps:
+      if exclude_misaligned_residues:
+        sel_a,sel_b,res_list_a,res_list_b,ref_sites,other_sites_best = \
+          remove_far_atoms(
+            ch_a_id,ch_b_id,res_list_a,res_list_b,chains_info,
+            ref_sites,lsq_fit_obj.other_sites_best_fit(),dist_eps=dist_eps)
+      match_dict[ch_a_id, ch_b_id] = [sel_a,sel_b,res_list_a,res_list_b,r,t,rmsd]
   return match_dict
+
+def remove_far_atoms(ch_a_id, ch_b_id,
+                     res_list_a,res_list_b,
+                     chains_info,
+                     ref_sites,other_sites,
+                     dist_eps=4.0):
+  """
+  When comparing lists of matching atoms, remove residues where some atoms are
+  are grossly different in the model, for example when matching residues are
+  perpendicular to each other rather than being close to parallel.
+
+  The criteria used:
+  For each matching residues, the difference between distance of farthest
+  matching atoms pair and the distance of closest pair mast be < dist_eps
+
+  Args:
+    ch_a_id, ch_b_id (str): chain IDs
+    res_list_a,res_list_b (list): list of residues in chains
+    chains_info (dict): dictionary containing information on structure
+    ref_sites,other_sites (flex.vec3): atoms coordinates
+    dist_eps (float): max allow distance difference
+
+  Returns:
+    Updated arguments:
+      sel_a,sel_b,
+      res_list_a_new,res_list_b_new,
+      ref_sites_new,other_sites_new
+  """
+  ch_a = chains_info[ch_a_id]
+  ch_b = chains_info[ch_b_id]
+  # check every residue for consecutive distance
+  res_list_a_new = []
+  res_list_b_new = []
+  ref_sites_new = flex.vec3_double([])
+  other_sites_new = flex.vec3_double([])
+  sel_a = flex.size_t([])
+  sel_b = flex.size_t([])
+  sel_a_offset = ch_a.atom_selection[0][0]
+  sel_b_offset = ch_b.atom_selection[0][0]
+  for ia,ib in zip(res_list_a,res_list_b):
+    s = ch_a.atom_selection[ia][0] - sel_a_offset
+    e = ch_a.atom_selection[ia][-1] + 1 - sel_a_offset
+    res_ref_sites = ref_sites[s:e]
+    s = ch_b.atom_selection[ib][0] - sel_b_offset
+    e = ch_b.atom_selection[ib][-1] + 1 - sel_b_offset
+    res_other_sites = other_sites[s:e]
+    xyz_diff = abs(res_ref_sites.as_double() - res_other_sites.as_double())
+    (min_d,max_d,_) = xyz_diff.min_max_mean().as_tuple()
+    if (max_d - min_d) <= dist_eps:
+      ref_sites_new.extend(res_ref_sites)
+      other_sites_new.extend(res_other_sites)
+      sel_a.extend(flex.size_t(ch_a.atom_selection[ia]))
+      sel_b.extend(flex.size_t(ch_b.atom_selection[ib]))
+      res_list_a_new.append(ia)
+      res_list_b_new.append(ib)
+  return sel_a,sel_b,res_list_a_new,res_list_b_new,ref_sites_new,other_sites_new
 
 def update_best_matches_dict(best_matches,match_dict,ch_a_id,ch_b_id,similarity):
   """
@@ -708,9 +798,10 @@ def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
       return k, is_transpose
   return tr_num, is_transpose
 
-def search_ncs_relations(ph,
+def search_ncs_relations(ph=None,
+                         chains_info = None,
                          min_contig_length=10,
-                         min_fraction_domain=0.2,
+                         min_percent=0.95,
                          write=False,
                          log=sys.stdout,
                          check_atom_order=False,
@@ -721,8 +812,15 @@ def search_ncs_relations(ph,
 
   Args:
     ph (object): hierarchy
+    chains_info : object containing
+      chains (str): chain IDs OR selections string
+      res_name (list of str): list of residues names
+      resid (list of str): list of residues sequence number, resid
+      atom_names (list of list of str): list of atoms in residues
+      atom_selection (list of list of list of int): the location of atoms in ph
+      chains_atom_number (list of int): list of number of atoms in each chain
     min_contig_length (int): segments < min_contig_length rejected
-    min_fraction_domain (float): Threshold for similarity between chains.
+    min_percent (float): Threshold for similarity between chains.
       similarity define as:
       (number of matching res) / (number of res in longer chain)
     write (bool): when true, write ncs search messages to log
@@ -743,11 +841,15 @@ def search_ncs_relations(ph,
     We use selection_1 and selection_2 because in some PDB records a residue
     might contain side chain in one chain but not in another
   """
-  chains_info = get_chains_info(ph)
+  if not chains_info:
+    assert bool(ph)
+    chains_info = get_chains_info(ph)
   # collect all chain IDs
   chain_match_list = []
   msg = ''
-  sorted_ch = sorted(chains_info)
+  # improve performance by sorting by chain length
+  chains_list = [(len(v.res_names),k) for k,v in chains_info.iteritems()]
+  sorted_ch = [k for v,k in sorted(chains_list)]
   n_chains = len(chains_info)
   chains_in_copies = set()
   # loop over all chains
@@ -762,8 +864,8 @@ def search_ncs_relations(ph,
       c_ch_id = sorted_ch[j]
       copy_n_atoms = chains_info[c_ch_id].chains_atom_number
       frac_d = min(copy_n_atoms,master_n_atoms)/max(copy_n_atoms,master_n_atoms)
-      if frac_d < min_fraction_domain:
-        if (min_fraction_domain == 1):
+      if frac_d < min_percent:
+        if (min_percent == 1):
           msg = 'NCS copies are not identical'
           break
         else:
@@ -773,7 +875,7 @@ def search_ncs_relations(ph,
       res_sel_m, res_sel_c, similarity = res_alignment(
         seq_a=seq_m,seq_b=seq_c,
         min_contig_length=min_contig_length,
-        min_fraction_domain=min_fraction_domain)
+        min_percent=min_percent)
       sel_m, sel_c,res_sel_m,res_sel_c,msg = get_matching_atoms(
         chains_info,m_ch_id,c_ch_id,res_sel_m,res_sel_c,
         check_atom_order=check_atom_order)
@@ -786,16 +888,16 @@ def search_ncs_relations(ph,
       if similarity > 0.9: chains_in_copies.add(c_ch_id)
   if write and msg:
     print >> log,msg
-  if (min_fraction_domain == 1) and msg:
+  if (min_percent == 1) and msg:
     # must be identical
     raise Sorry('NCS copies are not identical')
   return chain_match_list
 
 def res_alignment(seq_a, seq_b,
                   min_contig_length=10,
-                  min_fraction_domain=0.2):
+                  min_percent=0.95):
   """
-  Align two chains hierarchies.
+  Align two lists of strings (All lower case characters).
 
   Penalize misalignment, gaps, when contiguous section is less
   than min_contig_length and when the
@@ -804,7 +906,7 @@ def res_alignment(seq_a, seq_b,
 
   Args:
     seq_a, seq_b (lists of str): list of characters to compare
-    min_fraction_domain (float): min percent of similarity between hierarchies
+    min_percent (float): min percent of similarity between hierarchies
       similarity define as:
       (number of matching res) / (number of res in longer chain)
     min_contig_length (int): domain < min_contig_length rejected
@@ -814,6 +916,7 @@ def res_alignment(seq_a, seq_b,
     aligned_sel_b (list): the indices of the aligned components of seq_b
     similarity (float): actual similarity between hierarchies
   """
+  # fixme: convert to c++ or parallelize
   a = len(seq_a)
   b = len(seq_b)
   # Check for the basic cases
@@ -822,7 +925,7 @@ def res_alignment(seq_a, seq_b,
   min_matches = min(min_contig_length,min(a,b))
   misalign_penalty = 100000
   # limit the number of mis-alignments
-  max_mis_align = int((1 - min_fraction_domain) * max(a,b))
+  max_mis_align = int((1 - min_percent) * max(a,b))
   # Starting score according to the required similarity
   score = max_mis_align + 1
   # build score matrix
@@ -855,7 +958,7 @@ def res_alignment(seq_a, seq_b,
       R[i,j].consecutive_matches = consecutive_matches
   #
   aligned_sel_a, aligned_sel_b, similarity = get_matching_res_indices(
-    R=R,row=a,col=b,min_fraction_domain=min_fraction_domain)
+    R=R,row=a,col=b,min_percent=min_percent)
   return aligned_sel_a, aligned_sel_b, similarity
 
 def gap_score(r,min_matches):
@@ -880,7 +983,7 @@ def gap_score(r,min_matches):
     match_count -= r.consecutive_matches
   return s,match_count
 
-def get_matching_res_indices(R,row,col,min_fraction_domain):
+def get_matching_res_indices(R,row,col,min_percent):
   """
   Trace back best solution and collect the indices of matching pairs
 
@@ -888,7 +991,7 @@ def get_matching_res_indices(R,row,col,min_fraction_domain):
     R (list of lists of int): the score matrix
     row (int): number of rows
     col (int): number of columns
-    min_fraction_domain (float): min percent of similarity between hierarchies
+    min_percent (float): min percent of similarity between hierarchies
       similarity define as:
       (number of matching res) / (number of res in longer chain)
 
@@ -908,7 +1011,7 @@ def get_matching_res_indices(R,row,col,min_fraction_domain):
     return flex.size_t(sel_a), flex.size_t(sel_b),0
   #
   similarity = R[i_max,j_max].match_count / max(i_max,j_max)
-  if similarity < min_fraction_domain:
+  if similarity < min_percent:
     # chains are to different, return empty arrays
     return flex.size_t(sel_a), flex.size_t(sel_b), 0
   #
@@ -968,7 +1071,7 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
       # select only atoms that exist in both residues
       atoms_a,atoms_b,similarity = res_alignment(
         seq_a=atoms_names_a, seq_b=atoms_names_b,
-        min_contig_length=100)
+        min_contig_length=100,min_percent=0.2)
       # get the number of the atom in the chain
       sa = flex.size_t(atoms_a) + sa[0]
       sb = flex.size_t(atoms_b) + sb[0]
