@@ -298,7 +298,8 @@ END""")
     site_1=sc[0].site,
     site_2=sc[1].site,
     unit_cell=xrs.unit_cell())
-  assert (delta12_aniso == delta12)
+  # XXX on certain platforms the floating-point precision fails us
+  assert approx_equal(delta12_aniso, delta12, eps=0.0000000000001)
   assert approx_equal(delta12, 0.2999, eps=0.0001)
   delta34 = adptbx.intersection(
     u_1=sc[2].u_star,
