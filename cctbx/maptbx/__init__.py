@@ -375,7 +375,6 @@ class boxes(object):
         min(10+i,max(3,int(n_real[1]*fraction))), \
         min(10+i,max(3,int(n_real[2]*fraction)))
       n_boxes = self._generate_boxes(ba,bb,bc)
-      print n_boxes, n_boxes_
       if(n_boxes_.count(n_boxes)>3): break
       n_boxes_.append(n_boxes)
       i += 1

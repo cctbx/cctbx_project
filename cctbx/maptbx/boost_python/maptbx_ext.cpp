@@ -607,6 +607,15 @@ namespace {
       arg("map_data"),
       arg("sites_frac")));
 
+    def("discrepancy_function",
+      (af::shared<double>(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+         af::const_ref<double, af::c_grid<3> > const&,
+         af::const_ref<double> const&)) discrepancy_function, (
+      arg("map_1"),
+      arg("map_2"),
+      arg("cutoffs")));
+
     def("cc_peak",
       (double(*)
         (af::const_ref<double, af::c_grid<3> > const&,

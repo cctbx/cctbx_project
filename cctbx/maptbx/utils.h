@@ -817,6 +817,43 @@ map_box_average(
 }
 
 template <typename DataType>
+af::shared<DataType> discrepancy_function(
+  af::const_ref<DataType, af::c_grid<3> > const& map_1,
+  af::const_ref<DataType, af::c_grid<3> > const& map_2,
+  af::const_ref<DataType> const& cutoffs)
+{
+  CCTBX_ASSERT(af::max(map_1)<=1.);
+  CCTBX_ASSERT(af::max(map_2)<=1.);
+  CCTBX_ASSERT(af::min(map_1)>=0.);
+  CCTBX_ASSERT(af::min(map_2)>=0.);
+  CCTBX_ASSERT(af::min(cutoffs)>0. && af::max(cutoffs)<1.);
+  af::c_grid<3> a1 = map_1.accessor();
+  af::c_grid<3> a2 = map_2.accessor();
+  for(int i = 0; i < 3; i++) CCTBX_ASSERT(a1[i]==a2[i]);
+  af::shared<DataType> result;
+  int n_all = a1[0]*a1[1]*a1[2];
+  int n_diff = 0;
+  for(int p = 0; p < cutoffs.size(); p++) {
+    DataType q = cutoffs[p];
+    for(int i = 0; i < a1[0]; i++) {
+      for(int j = 0; j < a1[1]; j++) {
+        for(int k = 0; k < a1[2]; k++) {
+          DataType rho1 = map_1(i,j,k);
+          DataType rho2 = map_2(i,j,k);
+          bool good = (rho1>=q&&rho2<q) || (rho1<q&&rho2>=q);
+          if(good) n_diff += 1;
+        }
+      }
+    }
+    if(std::abs(1-q)>1.e-6 && std::abs(q)>1.e-6) {
+      result.push_back(n_diff / (2*q*(1-q)*n_all));
+    }
+    n_diff = 0;
+  }
+  return result;
+}
+
+template <typename DataType>
 void
 gamma_compression(
   af::ref<DataType, af::c_grid<3> > map_data,
