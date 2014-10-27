@@ -81,26 +81,24 @@ already be on a common scale, but with individual observations unmerged.
     assume_shelx_observation_type_is=assume_shelx_observation_type_is)
   params.labels = i_obs.info().label_string()
   validate_params(params)
-  symm = None
+  symm = sg = uc = None
   if (params.symmetry_file is not None) :
     from iotbx import crystal_symmetry_from_any
     symm = crystal_symmetry_from_any.extract_from(
       file_name=params.symmetry_file)
     if (symm is None) :
       raise Sorry("No symmetry records found in %s." % params.symmetry_file)
-  if (symm is None) :
+  else :
     sg = i_obs.space_group()
-    if (sg is None) :
-      if (params.space_group is not None) :
-        sg = params.space_group.group()
-      else :
-        raise Sorry("Missing space group information.")
+    if (params.space_group is not None) :
+      sg = params.space_group.group()
+    elif (symm is None) :
+      raise Sorry("Missing space group information.")
     uc = i_obs.unit_cell()
-    if (uc is None) :
-      if (params.unit_cell is not None) :
-        uc = params.unit_cell
-      else :
-        raise Sorry("Missing unit cell information.")
+    if (params.unit_cell is not None) :
+      uc = params.unit_cell
+    elif (symm is None) :
+      raise Sorry("Missing unit cell information.")
     from cctbx import crystal
     symm = crystal.symmetry(
       space_group=sg,

@@ -31,7 +31,7 @@ def exercise (debug=False) :
     print out.getvalue()
   assert ("R-merge: 0.073" in out.getvalue())
   assert ("R-meas:  0.079" in out.getvalue())
-  assert ("""  1.81   1.74  12528   2073    6.04  97.10    1449.2     5.5  0.252  0.275  0.110  0.968""" in out.getvalue())
+  assert ("""  1.81   1.74  12528   2073    6.04  97.05    1449.2     5.5  0.252  0.275  0.110  0.968""" in out.getvalue()), out.getvalue()
   cif_block = result.as_cif_block()
   assert "_reflns_shell" in cif_block
   assert approx_equal(float(cif_block["_reflns.pdbx_Rpim_I_obs"]), result.overall.r_pim)
@@ -76,6 +76,21 @@ def exercise (debug=False) :
     pass
   else :
     raise Exception_expected
+  # change space group
+  args = [
+    hkl_file,
+    "space_group=I422",
+    "unit_cell=113.949,113.949,32.474,90,90,90",
+    "loggraph=True",
+  ]
+  if (debug) :
+    args.append("debug=True")
+    print " ".join(args)
+  out = StringIO()
+  result = merging_statistics.run(args, out=out)
+  if (debug) :
+    print out.getvalue()
+  assert ("28.49   3.76  15737   1224   12.86  99.84   47967.0    27.7  0.482  0.500  0.135  0.972" in out.getvalue()), out.getvalue()
   # exercise 2: estimate resolution cutoffs (and symmetry_file argument)
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/harvesting/unmerged.sca",
