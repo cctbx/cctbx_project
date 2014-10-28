@@ -108,7 +108,7 @@ class ncs_group_object(object):
                          use_cctbx_find_ncs_tools=True,
                          use_simple_ncs_from_pdb=True,
                          use_minimal_master_ncs=True,
-                         rms_eps=0.02,
+                         max_rmsd=0.02,
                          write_messages=False,
                          process_similar_chains=True,
                          min_percent=0.95,
@@ -116,7 +116,7 @@ class ncs_group_object(object):
                          log=sys.stdout,
                          check_atom_order=False,
                          exclude_misaligned_residues=False,
-                         dist_eps=4.0):
+                         max_dist_diff=4.0):
     """
     Select method to build ncs_group_object
 
@@ -154,7 +154,7 @@ class ncs_group_object(object):
       use_simple_ncs_from_pdb: (bool) Enable using use_simple_ncs_from_pdb
       use_minimal_master_ncs: (bool) use maximal or minimal common chains
         in master ncs groups
-      rms_eps (float): limit of rms difference between chains to be considered
+      max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       write_messages (bool): When True, right messages to log
         nearly the same length (but not exactly the same) and are NCS related.
@@ -170,7 +170,7 @@ class ncs_group_object(object):
         excluded from matching set
       exclude_misaligned_residues (bool): check and exclude individual residues
         alignment quality
-      dist_eps (float): max allow distance difference between pairs of matching
+      max_dist_diff (float): max allow distance difference between pairs of matching
         atoms of two residues
     """
     extension = ''
@@ -213,9 +213,9 @@ class ncs_group_object(object):
             process_similar_chains=process_similar_chains,
             min_percent=min_percent,
             min_contig_length=min_contig_length,
-            rms_eps=rms_eps,
+            max_rmsd=max_rmsd,
             exclude_misaligned_residues=exclude_misaligned_residues,
-            dist_eps=dist_eps)
+            max_dist_diff=max_dist_diff)
     elif ncs_selection_params or ncs_phil_groups:
       self.build_ncs_obj_from_phil(
         ncs_selection_params=ncs_selection_params,
@@ -241,9 +241,9 @@ class ncs_group_object(object):
         min_percent=min_percent,
         min_contig_length=min_contig_length,
         process_similar_chains=process_similar_chains,
-        rms_eps=rms_eps,
+        max_rmsd=max_rmsd,
         exclude_misaligned_residues=exclude_misaligned_residues,
-        dist_eps=dist_eps)
+        max_dist_diff=max_dist_diff)
     else:
       raise Sorry('Please provide one of the supported input')
     # error handling
@@ -364,7 +364,7 @@ class ncs_group_object(object):
           ph=pdb_hierarchy_inp,
           master_selection=gns,
           copy_selection=asu_select,
-          rms_eps=100,
+          max_rmsd=100,
           min_percent=min_percent)
         self.messages += msg
         if r.is_zero():
@@ -410,12 +410,12 @@ class ncs_group_object(object):
                                  use_cctbx_find_ncs_tools=True,
                                  use_simple_ncs_from_pdb=True,
                                  use_minimal_master_ncs=True,
-                                 rms_eps=0.5,
+                                 max_rmsd=0.5,
                                  process_similar_chains=True,
                                  min_contig_length=10,
                                  min_percent=0.95,
                                  exclude_misaligned_residues=False,
-                                 dist_eps=4.0):
+                                 max_dist_diff=4.0):
     """
     Build transforms objects and NCS <-> ASU mapping from a complete ASU
     Note that the MTRIX record are ignored, they are produced in the
@@ -427,7 +427,7 @@ class ncs_group_object(object):
       use_simple_ncs_from_pdb (bool): Enable using use_simple_ncs_from_pdb
       use_minimal_master_ncs (bool): indicate if using maximal or minimal NCS
         groups
-      rms_eps (float): limit of rms difference between chains to be considered
+      max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       process_similar_chains (bool): When True, process chains that are close
       in length without raising errors
@@ -437,7 +437,7 @@ class ncs_group_object(object):
         (number of matching res) / (number of res in longer chain)
       exclude_misaligned_residues (bool): check and exclude individual residues
       alignment quality
-      dist_eps (float): max allow distance difference between pairs of matching
+      max_dist_diff (float): max allow distance difference between pairs of matching
         atoms of two residues
     """
     if not process_similar_chains:
@@ -449,12 +449,12 @@ class ncs_group_object(object):
         min_contig_length=min_contig_length,
         min_percent=min_percent,
         use_minimal_master_ncs=use_minimal_master_ncs,
-        rmsd_eps=rms_eps,
+        rmsd_eps=max_rmsd,
         write=self.write_messages,
         log=self.log,
         check_atom_order=self.check_atom_order,
         exclude_misaligned_residues=exclude_misaligned_residues,
-        dist_eps=dist_eps)
+        max_dist_diff=max_dist_diff)
       # process atom selections
       self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
       self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
@@ -1743,7 +1743,7 @@ def uniqueness_test(unique_selection_set,new_item):
 def get_rot_trans(ph=None,
                   master_selection=None,
                   copy_selection=None,
-                  rms_eps=0.02,
+                  max_rmsd=0.02,
                   min_percent = 0.95):
   """
   Get rotation and translation using superpose.
@@ -1756,7 +1756,7 @@ def get_rot_trans(ph=None,
   Args:
     ph : pdb hierarchy input object
     master/copy_selection (str): master and copy selection strings
-    rms_eps (float): limit of rms difference between chains to be considered
+    max_rmsd (float): limit of rms difference between chains to be considered
       as copies
     min_percent (float): Threshold for similarity between chains
 
@@ -1802,7 +1802,7 @@ def get_rot_trans(ph=None,
       r = lsq_fit_obj.r
       t = lsq_fit_obj.t
       rmsd = ref_sites.rms_difference(lsq_fit_obj.other_sites_best_fit())
-      if rmsd > rms_eps:
+      if rmsd > max_rmsd:
         return r_zero,t_zero,0,msg
     else:
       return r_zero,t_zero,0,'No sites to compare.\n'

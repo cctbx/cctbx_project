@@ -201,15 +201,14 @@ class TestSimpleAlignment(unittest.TestCase):
     pdb_inp_b = pdb.hierarchy.input(pdb_string=B112_116_fitted)
     ph_b = pdb_inp_b.hierarchy
     info_ab =  ncs_search.get_chains_info(ph)
-    #
-    res_n_a = range(len(info_ab['A'].res_names))
-    res_n_b = range(len(info_ab['B'].res_names))
+    # matching residues
+    res_n_a = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    res_n_b = [1, 2, 3, 4, 5, 6, 7, 8, 9]
     sel_a = flex.size_t([x for xi in info_ab['A'].atom_selection for x in xi])
     other_sites = ph.select(sel_a).atoms().extract_xyz()
     ref_sites = ph_b.atoms().extract_xyz()
-    #
-    self.assertEqual(range(9),res_n_a)
-    self.assertEqual(range(9),res_n_b)
+    self.assertEqual(other_sites.size(),ref_sites.size())
+    self.assertEqual(other_sites.size(),56)
     #
     sel_a,sel_b,res_n_a,res_n_b,ref_sites,other_sites = \
       ncs_search.remove_far_atoms(
@@ -217,10 +216,10 @@ class TestSimpleAlignment(unittest.TestCase):
         res_n_a,res_n_b,
         info_ab,
         ref_sites,other_sites,
-        dist_eps=4.0)
+        max_dist_diff=4.0)
     #
     self.assertEqual([0, 1, 5, 7, 8],res_n_a)
-    self.assertEqual([0, 1, 5, 7, 8],res_n_b)
+    self.assertEqual([1, 2, 6, 8, 9],res_n_b)
 
     pass
 
@@ -398,6 +397,14 @@ ATOM    695  CB  PRO A 120     -71.961 -62.899  45.196  1.00122.11           C
 ATOM    696  CG  PRO A 120     -71.037 -63.146  46.333  1.00125.70           C
 ATOM    697  CD  PRO A 120     -69.662 -63.237  45.726  1.00124.48           C
 TER
+ATOM   4292  N   LEU B 111     -74.170 -53.490  32.745  1.00118.81           N
+ATOM   4293  CA  LEU B 111     -75.497 -54.028  33.028  1.00124.23           C
+ATOM   4294  C   LEU B 111     -75.744 -54.116  34.532  1.00120.20           C
+ATOM   4295  O   LEU B 111     -76.714 -53.552  35.020  1.00124.85           O
+ATOM   4296  CB  LEU B 111     -75.771 -55.355  32.297  1.00128.26           C
+ATOM   4297  CG  LEU B 111     -75.161 -56.698  32.702  1.00130.01           C
+ATOM   4298  CD1 LEU B 111     -75.848 -57.275  33.931  1.00135.24           C
+ATOM   4299  CD2 LEU B 111     -75.278 -57.670  31.533  1.00128.53           C
 ATOM   4300  N   GLY B 112    -111.059 -18.236  -2.457  1.00108.88           N
 ATOM   4301  CA  GLY B 112    -111.950 -17.386  -3.228  1.00103.58           C
 ATOM   4302  C   GLY B 112    -112.916 -16.511  -2.453  1.00100.28           C

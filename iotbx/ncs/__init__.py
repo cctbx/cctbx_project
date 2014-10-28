@@ -21,7 +21,7 @@ def input(pdb_hierarchy_inp=None,
           use_cctbx_find_ncs_tools=True,
           use_simple_ncs_from_pdb=False,
           use_minimal_master_ncs=True,
-          rms_eps=0.02,
+          max_rmsd=0.02,
           write_messages=False,
           log=sys.stdout,
           process_similar_chains=True,
@@ -29,7 +29,7 @@ def input(pdb_hierarchy_inp=None,
           min_contig_length=10,
           check_atom_order=False,
           exclude_misaligned_residues=False,
-          dist_eps=4.0):
+          max_dist_diff=4.0):
     """
     Select method to build ncs_group_object
 
@@ -68,7 +68,7 @@ def input(pdb_hierarchy_inp=None,
       use_simple_ncs_from_pdb: (bool) Enable using use_simple_ncs_from_pdb
       use_minimal_master_ncs: (bool) use maximal or minimal common chains
         in master ncs groups
-      rms_eps (float): limit of rms difference between chains to be considered
+      max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       write_messages (bool): When True, write messages to log
         nearly the same length (but not exactly the same) and are NCS related.
@@ -84,7 +84,7 @@ def input(pdb_hierarchy_inp=None,
         excluded from matching set
       exclude_misaligned_residues (bool): check and exclude individual residues
         alignment quality
-      dist_eps (float): max allow distance difference between pairs of matching
+      max_dist_diff (float): max allow distance difference between pairs of matching
         atoms of two residues
     """
     ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
@@ -107,7 +107,7 @@ def input(pdb_hierarchy_inp=None,
       use_cctbx_find_ncs_tools=use_cctbx_find_ncs_tools,
       use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
       use_minimal_master_ncs=use_minimal_master_ncs,
-      rms_eps=rms_eps,
+      max_rmsd=max_rmsd,
       write_messages=write_messages,
       log=log,
       process_similar_chains=process_similar_chains,
@@ -115,6 +115,6 @@ def input(pdb_hierarchy_inp=None,
       min_contig_length=min_contig_length,
       check_atom_order=check_atom_order,
       exclude_misaligned_residues=exclude_misaligned_residues,
-      dist_eps=dist_eps)
+      max_dist_diff=max_dist_diff)
     return ncs_group_obj
 
