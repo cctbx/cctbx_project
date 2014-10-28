@@ -4,6 +4,8 @@ from libtbx.math_utils import percentile_based_spread
 from libtbx import slots_getstate_setstate
 from libtbx.utils import Sorry
 from libtbx import str_utils
+import json
+import os.path
 import sys
 
 def extract_ligand_residue (hierarchy, ligand_code) :
@@ -271,7 +273,9 @@ def validate_ligands (
     fmodel,
     ligand_code,
     only_segid=None,
-    reference_structure=None) :
+    reference_structure=None,
+    export_for_web=False,
+    output_dir=None) :
   assert (0 < len(ligand_code) <= 3)
   two_fofc_map = fmodel.map_coefficients(map_type="2mFo-DFc",
     fill_missing=False,
@@ -290,6 +294,8 @@ def validate_ligands (
   if (len(ligands) == 0) :
     return None
     #raise Sorry("No residues named '%s' found." % ligand_code)
+  if (output_dir is None) : # for web export only
+    output_dir = os.getcwd()
   reference_ligands = None
   if (reference_structure is not None) :
     from iotbx import file_reader
@@ -301,7 +307,9 @@ def validate_ligands (
     # conformations, while the reference may or may not have these.
     reference_ligands = extract_ligand_residue(reference_hierarchy,
       ligand_code)
+  unit_cell = fmodel.xray_structure.unit_cell()
   validations = []
+  json_block = []
   for i_lig, ligand in enumerate(ligands) :
     v = ligand_validation(
       ligand=ligand,
@@ -312,6 +320,38 @@ def validate_ligands (
       fofc_map=fofc_map,
       fmodel_map=fmodel_map)
     validations.append(v)
+    if (export_for_web) :
+      import iotbx.map_tools
+      two_fofc_file_name = os.path.join(output_dir, "final_%d_2Fo-Fc.dsn6" %
+        (i_lig+1))
+      fofc_file_name = os.path.join(output_dir, "final_%d_Fo-Fc.dsn6" %
+        (i_lig+1))
+      sites_cart = ligand.atoms().extract_xyz()
+      iotbx.map_tools.write_dsn6_map(
+        sites_cart=sites_cart,
+        unit_cell=unit_cell,
+        map_data=two_fofc_map,
+        n_real=two_fofc_map,
+        file_name=two_fofc_file_name,
+        buffer=3)
+      iotbx.map_tools.write_dsn6_map(
+        sites_cart=sites_cart,
+        unit_cell=unit_cell,
+        map_data=fofc_map,
+        n_real=fofc_map,
+        file_name=fofc_file_name,
+        buffer=3)
+      ligand_dict = {
+        "id_str" : v.id_str,
+        "cc" : v.cc,
+        "xyz" : v.xyz_center,
+        "two_fofc" : os.path.basename(two_fofc_file_name),
+        "fofc" : os.path.basename(fofc_file_name),
+      }
+      json_block.append(ligand_dict)
+  if (export_for_web) :
+    json_file = os.path.join(output_dir, "final_ligands.json")
+    open(json_file, "w").write(json.dumps(json_block))
   return validations
 
 def show_validation_results (validations, out, verbose=True) :
