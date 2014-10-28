@@ -82,11 +82,11 @@ def to_dict(crystal):
   try:
     ML_half_mosaicity_deg = crystal._ML_half_mosaicity_deg
   except AttributeError:
-    pass
+    ML_half_mosaicity_deg = None
   try:
     ML_domain_size_ang = crystal._ML_domain_size_ang
   except AttributeError:
-    pass
+    ML_domain_size_ang = None
 
   # Collect the information as a python dictionary
   xl_dict = OrderedDict([
@@ -141,11 +141,11 @@ def from_dict(d):
   # New parameters for maximum likelihood values
   try:
     xl._ML_half_mosaicity_deg = d['ML_half_mosaicity_deg']
-  except AttributeError:
+  except KeyError:
     pass
   try:
     xl._ML_domain_size_ang = d['ML_domain_size_ang']
-  except AttributeError:
+  except KeyError:
     pass
 
   # Extract scan point setting matrices, if present
