@@ -92,12 +92,12 @@ already be on a common scale, but with individual observations unmerged.
     sg = i_obs.space_group()
     if (params.space_group is not None) :
       sg = params.space_group.group()
-    elif (symm is None) :
+    elif (sg is None) :
       raise Sorry("Missing space group information.")
     uc = i_obs.unit_cell()
     if (params.unit_cell is not None) :
       uc = params.unit_cell
-    elif (symm is None) :
+    elif (uc is None) :
       raise Sorry("Missing unit cell information.")
     from cctbx import crystal
     symm = crystal.symmetry(
