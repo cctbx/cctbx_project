@@ -162,10 +162,11 @@ class InMemScript(DialsProcessScript):
         id = evt.get(EventId)
         print "Event #",i," has id:",id
         # the data needs to have already been processed and put into the event by psana
-        data = evt.get(ndarray_float64_3, src, 'image0').astype(np.int32)
+        data = evt.get(ndarray_float64_3, src, 'image0')
         if data is None:
           print "No data"
           continue
+        data = data.astype(np.int32)
 
         distance = cspad_tbx.env_distance(params.input.address, run.env(), params.input.detz_offset)
         if distance is None:
