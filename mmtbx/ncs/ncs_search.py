@@ -89,7 +89,7 @@ def find_ncs_in_hierarchy(ph,
                           log=sys.stdout,
                           check_atom_order=False,
                           exclude_misaligned_residues=False,
-                          dist_eps=4.0):
+                          max_dist_diff=4.0):
   """
   Find NCS relation in hierarchy
 
@@ -108,7 +108,7 @@ def find_ncs_in_hierarchy(ph,
         excluded from matching set
     exclude_misaligned_residues (bool): check and exclude individual residues
       alignment quality
-    dist_eps (float): max allow distance difference between pairs of matching
+    max_dist_diff (float): max allow distance difference between pairs of matching
       atoms of two residues
 
   Return:
@@ -134,7 +134,7 @@ def find_ncs_in_hierarchy(ph,
     chains_info=chains_info,
     rmsd_eps=rmsd_eps,
     exclude_misaligned_residues=exclude_misaligned_residues,
-    dist_eps=dist_eps)
+    max_dist_diff=max_dist_diff)
   #
   if use_minimal_master_ncs:
     transform_to_group,match_dict = minimal_master_ncs_grouping(match_dict)
@@ -606,7 +606,7 @@ def get_iselection(sorted_masters,copies,match_dict):
 def clean_chain_matching(chain_match_list,ph,
                          chains_info=None,rmsd_eps=10.0,
                          exclude_misaligned_residues=False,
-                         dist_eps=4.0):
+                         max_dist_diff=4.0):
   """
   Remove all bad matches from chain_match_list
 
@@ -627,7 +627,7 @@ def clean_chain_matching(chain_match_list,ph,
     rmsd_eps (float): limit of rms difference chains
     exclude_misaligned_residues (bool): check and exclude individual residues
       alignment quality
-    dist_eps (float): max allow distance difference between pairs of matching
+    max_dist_diff (float): max allow distance difference between pairs of matching
       atoms of two residues
 
   Returns:
@@ -662,7 +662,7 @@ def clean_chain_matching(chain_match_list,ph,
         sel_a,sel_b,res_list_a,res_list_b,ref_sites,other_sites_best = \
           remove_far_atoms(
             ch_a_id,ch_b_id,res_list_a,res_list_b,chains_info,
-            ref_sites,lsq_fit_obj.other_sites_best_fit(),dist_eps=dist_eps)
+            ref_sites,lsq_fit_obj.other_sites_best_fit(),max_dist_diff=max_dist_diff)
       match_dict[ch_a_id, ch_b_id] = [sel_a,sel_b,res_list_a,res_list_b,r,t,rmsd]
   return match_dict
 
@@ -670,7 +670,7 @@ def remove_far_atoms(ch_a_id, ch_b_id,
                      res_list_a,res_list_b,
                      chains_info,
                      ref_sites,other_sites,
-                     dist_eps=4.0):
+                     max_dist_diff=4.0):
   """
   When comparing lists of matching atoms, remove residues where some atoms are
   are grossly different in the model, for example when matching residues are
@@ -678,14 +678,14 @@ def remove_far_atoms(ch_a_id, ch_b_id,
 
   The criteria used:
   For each matching residues, the difference between distance of farthest
-  matching atoms pair and the distance of closest pair mast be < dist_eps
+  matching atoms pair and the distance of closest pair mast be < max_dist_diff
 
   Args:
     ch_a_id, ch_b_id (str): chain IDs
     res_list_a,res_list_b (list): list of residues in chains
     chains_info (dict): dictionary containing information on structure
     ref_sites,other_sites (flex.vec3): atoms coordinates
-    dist_eps (float): max allow distance difference
+    max_dist_diff (float): max allow distance difference
 
   Returns:
     Updated arguments:
@@ -702,18 +702,15 @@ def remove_far_atoms(ch_a_id, ch_b_id,
   other_sites_new = flex.vec3_double([])
   sel_a = flex.size_t([])
   sel_b = flex.size_t([])
-  sel_a_offset = ch_a.atom_selection[0][0]
-  sel_b_offset = ch_b.atom_selection[0][0]
+  sel_start = 0
   for ia,ib in zip(res_list_a,res_list_b):
-    s = ch_a.atom_selection[ia][0] - sel_a_offset
-    e = ch_a.atom_selection[ia][-1] + 1 - sel_a_offset
-    res_ref_sites = ref_sites[s:e]
-    s = ch_b.atom_selection[ib][0] - sel_b_offset
-    e = ch_b.atom_selection[ib][-1] + 1 - sel_b_offset
-    res_other_sites = other_sites[s:e]
+    sel_length = ch_a.atom_selection[ia][-1] - ch_a.atom_selection[ia][0] + 1
+    res_ref_sites = ref_sites[sel_start:sel_start+sel_length]
+    res_other_sites = other_sites[sel_start:sel_start+sel_length]
+    sel_start += sel_length
     xyz_diff = abs(res_ref_sites.as_double() - res_other_sites.as_double())
     (min_d,max_d,_) = xyz_diff.min_max_mean().as_tuple()
-    if (max_d - min_d) <= dist_eps:
+    if (max_d - min_d) <= max_dist_diff:
       ref_sites_new.extend(res_ref_sites)
       other_sites_new.extend(res_other_sites)
       sel_a.extend(flex.size_t(ch_a.atom_selection[ia]))
