@@ -4943,7 +4943,7 @@ pdb_interpretation {
     if len(hbonds_in_bond_list) == 0:
       hbonds_in_bond_list = None
     # ouputting auto-generated bonds for debugging purposes
-    if True:
+    if False:
       if hbonds_in_bond_list is not None:
         dashes = open('dashes.pml', 'w')
         for pair in hbonds_in_bond_list:
