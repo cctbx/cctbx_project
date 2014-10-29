@@ -26,7 +26,7 @@ class installer (object) :
   build_labelit_dependencies = False
   build_dials_dependencies = False
 
-  def __init__ (self, args, log=sys.stdout) :
+  def __init__ (self, args=None, packages=None, log=sys.stdout) :
     check_python_version()
     self.log = log
     print >> log, """
@@ -134,6 +134,8 @@ class installer (object) :
     if options.build_pyopengl:
       packages += ['PyOpenGL']
     # Or use specified packages if provided.
+    if args:
+      args = args[1:]
     packages = set(args or packages)
     self.build_dependencies(packages=packages)
     # On Mac OS X all of the Python-related executables located in base/bin
@@ -718,4 +720,4 @@ or use the --no-gui option to disable GUI compilation.
   return None
 
 if __name__ == "__main__":
-  installer(args=sys.argv[1:], log=sys.stdout)
+  installer(args=sys.argv, log=sys.stdout)
