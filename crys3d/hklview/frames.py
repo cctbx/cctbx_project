@@ -442,6 +442,7 @@ class HKLViewFrame (wx.Frame) :
         details.append("merged")
         self.update_settings_for_merged(True)
       else :
+        merge = False
         details.append("unmerged data")
         self.update_settings_for_unmerged()
     else :
@@ -646,9 +647,13 @@ class HKLViewFrame2D (HKLViewFrame) :
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnShow3D, btn)
 
-  def update_settings_for_merged (self) :
+  def update_settings_for_merged (self, enable_multiplicity=False) :
     self.settings.expand_to_p1 = True
     self.settings.expand_anomalous = True
+    if (enable_multiplicity) :
+      self.settings_panel.get_control("scale_radii_multiplicity").Enable(True)
+    else :
+      self.settings_panel.get_control("scale_radii_multiplicity").Enable(False)
 
   def OnClose (self, evt) :
     self.Destroy()

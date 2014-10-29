@@ -234,8 +234,11 @@ class model_data (object) :
     if color_mode == self.color_mode and not self.is_changed :
       pass
     else :
-      if (self.visibility.atoms_visible.count(True) == 0) :
+      n_visible = self.visibility.atoms_visible.count(True)
+      if (n_visible == 0) :
         return
+      elif (n_visible == 1) :
+        color_mode = "mono"
       self.color_mode = color_mode
       if color_mode == "mono" :
         self.color_mono()
@@ -265,6 +268,10 @@ class model_data (object) :
       self.atom_colors = cached
     else :
       from scitbx import graphics_utils
+      if (self.visibility.atoms_visible.count(True) == 1) :
+        from scitbx.array_family import flex
+        self.atom_colors = flex.vec3_double([(0,0,1)])
+        return
       self.atom_colors = graphics_utils.color_rainbow(
         selection=self.visibility.atoms_visible)
       self._color_cache["rainbow"] = self.atom_colors
