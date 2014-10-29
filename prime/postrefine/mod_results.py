@@ -15,10 +15,12 @@ class postref_results(object):
     '''
 
   def set_params(self, observations=None,
+      observations_original=None,
       refined_params=None,
       stats=None,
       partiality=None,
       rs_set=None,
+      rh_set=None,
       frame_no=None,
       pickle_filename=None,
       wavelength=None,
@@ -26,9 +28,11 @@ class postref_results(object):
       spot_radius=None):
 
     self.observations = observations
+    self.observations_original = observations_original
     self.refined_params = refined_params
     self.partiality = partiality
     self.rs_set = rs_set
+    self.rh_set = rh_set
     self.frame_no = frame_no
     self.pickle_filename = pickle_filename
     self.wavelength = wavelength

@@ -39,22 +39,30 @@ def postrefine_by_frame_mproc(frame_no, frame_files, iparams, miller_array_ref, 
   pres = prh.postrefine_by_frame(frame_no, frame_files[frame_no], iparams, miller_array_ref, pres_in)
   return pres
 
-def calc_average_I_mproc(group_no, group_id_list, miller_indices_all, I_all, sigI_all, G_all, B_all,
-                     p_all, rs_all, sin_theta_over_lambda_sq_all, SE_all, avg_mode, iparams):
+def calc_average_I_mproc(group_no, group_id_list, miller_indices_all, miller_indices_ori_all,
+                     I_all, sigI_all, G_all, B_all, p_all, rs_all, wavelength_all,
+                     sin_theta_over_lambda_sq_all, SE_all, avg_mode,
+                     iparams, pickle_filename_all):
   #select only this group
   i_sel = (group_id_list == group_no)
+
+  i_seq = flex.int([i for i in range(len(I_all))])
+  i_seq_sel = i_seq.select(i_sel)
   miller_indices = miller_indices_all.select(i_sel)
+  miller_indices_ori = miller_indices_ori_all.select(i_sel)
   I = I_all.select(i_sel)
   sigI = sigI_all.select(i_sel)
   G = G_all.select(i_sel)
   B = B_all.select(i_sel)
   p_set = p_all.select(i_sel)
   rs_set = rs_all.select(i_sel)
+  wavelength_set = wavelength_all.select(i_sel)
   sin_theta_over_lambda_sq = sin_theta_over_lambda_sq_all.select(i_sel)
   SE = SE_all.select(i_sel)
+  pickle_filename_set = [pickle_filename_all[i] for i in i_seq_sel]
 
   from prime.postrefine import calc_avg_I
-  result = calc_avg_I(group_no, miller_indices[0], I, sigI, G, B, p_set, rs_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams)
+  result = calc_avg_I(group_no, miller_indices[0], miller_indices_ori, I, sigI, G, B, p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams, pickle_filename_set)
   return result
 
 def read_pickles(data):
@@ -74,6 +82,7 @@ def read_pickles(data):
 
 if (__name__ == "__main__"):
   logging.info("Starting process.")
+
   #capture starting time
   time_global_start=datetime.now()
 
@@ -81,11 +90,17 @@ if (__name__ == "__main__"):
   from prime.postrefine import read_input
   iparams, txt_out_input = read_input(sys.argv[:1])
   print txt_out_input
+  txt_out_verbose = 'Log verbose\n'+txt_out_input
 
   frame_files = read_pickles(iparams.data)
   frames = range(len(frame_files))
 
+  if len(frames) > iparams.n_min_frames:
+    iparams.flag_volume_correction = False
+
   #1. prepare reference miller array
+  print 'Generating a reference set (will not be used if hklrefin is set)'
+  print 'Frame#  Res (A) N_refl N_refl_used Sum_I           Mean_I       Median(I)    G     B    File name'
   txt_merge_mean = ''
   miller_array_ref = None
   #Always generate the mean-intensity scaled set.
@@ -125,15 +140,15 @@ if (__name__ == "__main__"):
     prep_output = prepare_output(observations_merge_mean_set, iparams, avg_mode)
 
     if prep_output is not None:
-      cn_group, group_id_list, miller_indices_all_sort, I_obs_all_sort, \
-      sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, \
-      sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, txt_prep_out = prep_output
+      cn_group, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort,  I_obs_all_sort, \
+      sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort, \
+      sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, pickle_filename_all_sort, txt_prep_out = prep_output
 
       def calc_average_I_mproc_wrapper(arg):
-        return calc_average_I_mproc(arg, group_id_list, miller_indices_all_sort, \
+        return calc_average_I_mproc(arg, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort, \
                                     I_obs_all_sort, sigI_obs_all_sort, \
-                                    G_all_sort, B_all_sort, p_all_sort, rs_all_sort, \
-                                    sin_sq_all_sort, SE_all_sort, avg_mode, iparams)
+                                    G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort,\
+                                    sin_sq_all_sort, SE_all_sort, avg_mode, iparams, pickle_filename_all_sort)
 
       calc_average_I_result = pool_map(
             args=range(cn_group),
@@ -146,9 +161,13 @@ if (__name__ == "__main__"):
       stat_all = []
       I_even = flex.double()
       I_odd = flex.double()
+      txt_out_verbose += 'Mean-scaled partiality-corrected set\n'
+      txt_out_rejection = ''
       for results in calc_average_I_result:
         if results is not None:
-          miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd, txt_obs_out = results
+          miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd, txt_obs_out, txt_reject_out = results
+          txt_out_verbose += txt_obs_out
+          txt_out_rejection += txt_reject_out
           if iparams.flag_output_verbose:
             print txt_obs_out
           if math.isnan(stat[0]) or math.isinf(stat[0]) or math.isnan(stat[1]) or math.isinf(stat[1]):
@@ -161,13 +180,18 @@ if (__name__ == "__main__"):
             I_even.append(I_avg_even)
             I_odd.append(I_avg_odd)
 
+      f = open(iparams.run_no+'/rejections.txt', 'w')
+      f.write(txt_out_rejection)
+      f.close()
+
       from prime.postrefine import write_output
       miller_array_ref, txt_merge_mean, csv_merge_mean = write_output(miller_indices_merge,
                                                                       I_merge, sigI_merge,
                                                                       stat_all, I_even, I_odd,
                                                                       iparams, uc_mean,
                                                                       wavelength_mean,
-                                                                      iparams.run_no+'/mean_scaled')
+                                                                      iparams.run_no+'/mean_scaled',
+                                                                      avg_mode)
 
       txt_merge_mean =  txt_merge_mean + txt_prep_out
       print txt_merge_mean
@@ -220,7 +244,7 @@ if (__name__ == "__main__"):
     _txt_merge_postref += 'Average mode: '+avg_mode+'\n'
     txt_merge_postref += _txt_merge_postref
     print _txt_merge_postref
-    print 'Frame# Res.(A) N_refl N_refl_used  R_init R_final R_xy_init R_xy_final CC_init CC_final CCiso_init CCiso_final  Basis'
+    print 'Frame# Res.(A) N_refl N_refl_used  R_init R_final R_xy_init R_xy_final CC_init CC_final CCiso_init CCiso_final   File name'
     print '------------------------------------------------------------------------------------------------------------------------'
     def postrefine_by_frame_mproc_wrapper(arg):
       return postrefine_by_frame_mproc(arg, frame_files, iparams,
@@ -242,15 +266,15 @@ if (__name__ == "__main__"):
       prep_output = prepare_output(postrefine_by_frame_good, iparams, avg_mode)
 
       if prep_output is not None:
-        cn_group, group_id_list, miller_indices_all_sort, I_obs_all_sort, \
-        sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, sin_sq_all_sort, \
-        SE_all_sort, uc_mean, wavelength_mean, txt_prep_out = prep_output
+        cn_group, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort, I_obs_all_sort, \
+        sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort, \
+        sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, pickle_filename_all_sort, txt_prep_out = prep_output
 
         def calc_average_I_mproc_wrapper(arg):
-          return calc_average_I_mproc(arg, group_id_list, miller_indices_all_sort, \
+          return calc_average_I_mproc(arg, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort, \
                                       I_obs_all_sort, sigI_obs_all_sort, \
-                                      G_all_sort, B_all_sort, p_all_sort, rs_all_sort, \
-                                      sin_sq_all_sort, SE_all_sort, avg_mode, iparams)
+                                      G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort, \
+                                      sin_sq_all_sort, SE_all_sort, avg_mode, iparams, pickle_filename_all_sort)
 
         calc_average_I_result = pool_map(
               args=range(cn_group),
@@ -263,9 +287,13 @@ if (__name__ == "__main__"):
         stat_all = []
         I_even = flex.double()
         I_odd = flex.double()
+        txt_out_verbose += 'Post-refined merged set (cycle '+str(i+1)+')\n'
+        txt_out_rejection = ''
         for results in calc_average_I_result:
           if results is not None:
-            miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd, txt_obs_out = results
+            miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd, txt_obs_out, txt_reject_out = results
+            txt_out_verbose += txt_obs_out
+            txt_out_rejection += txt_reject_out
             if iparams.flag_output_verbose:
               print txt_obs_out
             if math.isnan(stat[0]) or math.isinf(stat[0]) or math.isnan(stat[1]) or math.isinf(stat[1]):
@@ -278,12 +306,16 @@ if (__name__ == "__main__"):
               I_even.append(I_avg_even)
               I_odd.append(I_avg_odd)
 
+        f = open(iparams.run_no+'/rejections.txt', 'a')
+        f.write(txt_out_rejection)
+        f.close()
+
         from prime.postrefine import write_output
         miller_array_pr, txt_merge_out, csv_out = write_output(miller_indices_merge,
                                                                I_merge, sigI_merge, stat_all,
                                                                I_even, I_odd, iparams, uc_mean,
                                                                wavelength_mean,
-                                                               iparams.run_no+'/postref_cycle_'+str(i+1))
+                                                               iparams.run_no+'/postref_cycle_'+str(i+1), avg_mode)
 
         miller_array_ref = miller_array_pr.deep_copy()
 
@@ -303,4 +335,8 @@ if (__name__ == "__main__"):
   txt_out = txt_out_input + txt_merge_mean + txt_merge_postref + txt_out_time_spent
   f = open(iparams.run_no+'/log.txt', 'w')
   f.write(txt_out)
+  f.close()
+
+  f = open(iparams.run_no+'/log_verbose.txt', 'w')
+  f.write(txt_out_verbose)
   f.close()

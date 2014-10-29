@@ -199,6 +199,15 @@ n_postref_cycle = 3
 n_postref_sub_cycle = 3
   .type = int
   .help = No. of cycles for the least-squares minimization in post-refinement.
+n_rejection_cycle = 1
+  .type = int
+  .help = No. of cycles for the outlier rejection.
+n_min_frames = 1000
+  .type = int
+  .help = No. of minimum frames.
+sigma_rejection = 99
+  .type = float
+  .help = Sigma level for outlier rejection.
 n_bins = 20
   .type = int
   .help = No. of bins used to report statistics.
@@ -225,14 +234,17 @@ b_refine_d_min = 99
 partiality_model = Lorentzian
   .type = str
   .help = Your choice of partiality model: Lorentzian (default), Disc, Kabsch, or Rossmann.
-flag_LP_correction = False
+flag_LP_correction = True
   .type = bool
   .help = Do Lorentz-factor and polarization correction.
+flag_volume_correction = True
+  .type = bool
+  .help = Do volume correction.
 n_processors = 32
   .type = int
   .help = No. of processing units
   .optional = True
-gamma_e = 0.002
+gamma_e = 0.001
   .type = float
   .help = Initial spread of the energy spectrum (1/Angstrom).
 polarization_horizontal_fraction = 1.0
@@ -268,8 +280,12 @@ def process_input(argv=None):
     raise Usage("No data")
 
   #generate run_no folder
-  if not os.path.exists(params.run_no):
-    os.makedirs(params.run_no)
+  if os.path.exists(params.run_no):
+    import shutil
+    shutil.rmtree(params.run_no)
+    print 'Folder :', params.run_no, ' exists. This folder will be removed'
+
+  os.makedirs(params.run_no)
 
   #capture input read out by phil
   from cStringIO import StringIO
