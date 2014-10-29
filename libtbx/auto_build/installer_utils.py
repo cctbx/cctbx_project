@@ -22,7 +22,7 @@ def check_python_version () :
       DeprecationWarning)
     time.sleep(2)
 
-def call (args, log) :
+def call (args, log, shell=True, cwd=None) :
   rc = None
   if (sys.version_info[1] >= 7) :
     import subprocess
@@ -32,11 +32,12 @@ def call (args, log) :
     if (not libtbx_path in sys.path) :
       sys.path.append(libtbx_path)
     import subprocess_with_fixes as subprocess
-  if isinstance(args, list) :
-    args = " ".join(args)
+  # if isinstance(args, list) :
+  #  args = " ".join(args)
   p = subprocess.Popen(
     args=args,
-    shell=True,
+    shell=shell,
+    cwd=cwd,
     bufsize=-1,
     stdin=None,
     stdout=log, #subprocess.PIPE,
