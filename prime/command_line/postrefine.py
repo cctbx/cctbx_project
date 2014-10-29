@@ -337,6 +337,7 @@ if (__name__ == "__main__"):
   f.write(txt_out)
   f.close()
 
-  f = open(iparams.run_no+'/log_verbose.txt', 'w')
-  f.write(txt_out_verbose)
-  f.close()
+  if iparams.flag_output_verbose:
+    f = open(iparams.run_no+'/log_verbose.txt', 'w')
+    f.write(txt_out_verbose)
+    f.close()

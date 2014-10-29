@@ -16,7 +16,6 @@ file_a = open(sys.argv[1],'r')
 data_a=file_a.read().split("\n")
 search_word = 'refinement and merging'
 line_no_now = 0
-qw_all=np.array([0.0]*10)
 cc12_all=np.array([0.0]*10)
 cciso_all=np.array([0.0]*10)
 fpr_all=np.array([0.0]*10)
@@ -60,49 +59,48 @@ fxy_std_init = 0
 for line in data_a:
   if line.find(search_word) > 0:
     data_col = data_a[line_no_now-2].split()
-    qw_all[i_row] = float(data_col[7])
-    cc12_all[i_row] = float(data_col[8])
-    cciso_all[i_row] = float(data_col[10])
+    cc12_all[i_row] = float(data_col[6])
+    cciso_all[i_row] = float(data_col[8])
 
     if i_row == 1:
       #collect post-refinement target before
-      data_col = data_a[line_no_now+8].split()
+      data_col = data_a[line_no_now+9].split()
       fpr_init = float(data_col[2])
       fpr_std_init = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-      data_col = data_a[line_no_now+9].split()
+      data_col = data_a[line_no_now+10].split()
       fxy_init = float(data_col[3])
       fxy_std_init = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+11].split()
+    data_col = data_a[line_no_now+12].split()
     fpr_all[i_row] = float(data_col[2])
     fpr_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+12].split()
+    data_col = data_a[line_no_now+13].split()
     fxy_all[i_row] = float(data_col[3])
     fxy_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+13].split()
+    data_col = data_a[line_no_now+14].split()
     G_all[i_row] = float(data_col[1])
     G_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+14].split()
+    data_col = data_a[line_no_now+15].split()
     B_all[i_row] = float(data_col[1])
     B_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+15].split()
+    data_col = data_a[line_no_now+16].split()
     rotx_all[i_row] = float(data_col[1])
     rotx_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+16].split()
+    data_col = data_a[line_no_now+17].split()
     roty_all[i_row] = float(data_col[1])
     roty_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+17].split()
+    data_col = data_a[line_no_now+18].split()
     ry_all[i_row] = float(data_col[1])
     ry_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+18].split()
+    data_col = data_a[line_no_now+19].split()
     rx_all[i_row] = float(data_col[1])
     rx_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
@@ -110,7 +108,7 @@ for line in data_a:
     re_all[i_row] = float(data_col[1])
     re_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+21].split()
+    data_col = data_a[line_no_now+22].split()
     a_all[i_row] = float(data_col[1])
     a_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
@@ -122,15 +120,15 @@ for line in data_a:
     c_all[i_row] = float(data_col[1])
     c_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+24].split()
+    data_col = data_a[line_no_now+25].split()
     alpha_all[i_row] = float(data_col[1])
     alpha_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+25].split()
+    data_col = data_a[line_no_now+26].split()
     beta_all[i_row] = float(data_col[1])
     beta_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
-    data_col = data_a[line_no_now+26].split()
+    data_col = data_a[line_no_now+27].split()
     gamma_all[i_row] = float(data_col[1])
     gamma_std[i_row] = float(data_col[len(data_col)-1].strip('(').strip(')'))
 
@@ -148,15 +146,15 @@ fxy_std[0] = fxy_std_init
 n_cycle = 0
 for G, G_s, B, B_s, rotx, rotx_s, roty, roty_s, ry, ry_s, rx, rx_s, \
     re, re_s, a, a_s, b, b_s, c, c_s, alpha, alpha_s, beta, beta_s, gamma, gamma_s, \
-    fpr, fpr_s, fxy, fxy_s, qw, cc12, cciso in \
+    fpr, fpr_s, fxy, fxy_s, cc12, cciso in \
     zip(G_all, G_std, B_all, B_std, rotx_all, rotx_std, roty_all, roty_std, \
         ry_all, ry_std, rx_all, rx_std, re_all, re_std, \
         a_all, a_std, b_all, b_std, c_all, c_std, \
         alpha_all, alpha_std, beta_all, beta_std, gamma_all, gamma_std, \
-        fpr_all, fpr_std, fxy_all, fxy_std, qw_all, cc12_all, cciso_all):
-  print n_cycle, G, G_s, B, B_s, rotx, rotx_s, roty, roty_s, ry, ry_s, rx, rx_s, \
+        fpr_all, fpr_std, fxy_all, fxy_std, cc12_all, cciso_all):
+  print '%2.0f %6.2f %6.2f %6.2f %6.2f %6.4f %6.4f %6.4f %6.4f %6.5f %6.5f %6.5f %6.5f %6.5f %6.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f'%(n_cycle, G, G_s, B, B_s, rotx, rotx_s, roty, roty_s, ry, ry_s, rx, rx_s, \
     re, re_s, a, a_s, b, b_s, c, c_s, alpha, alpha_s, beta, beta_s, gamma, gamma_s, \
-    fpr, fpr_s, fxy, fxy_s, qw, cc12, cciso
+    fpr, fpr_s, fxy, fxy_s, cc12, cciso)
   n_cycle += 1
 
   if n_cycle == i_row:
@@ -247,7 +245,6 @@ for i in range(i_row):
     gamma_std_delta[i] = np.absolute(gamma_std[i] - gamma_std[i-1])
 
 
-
 #prepare data for plotting
 n_data = 200
 G_series = []
@@ -310,6 +307,7 @@ for i in range(1,i_row):
     narr = np.random.normal(re_all_delta[i], re_std_delta[i], n_data)
   re_series.append(narr)
 
+  print a_all_delta[i], a_std_delta[i], c_all_delta[i], c_std_delta[i]
   if a_std_delta[i] < 0.0000001:
     narr = np.zeros(n_data)
   else:
