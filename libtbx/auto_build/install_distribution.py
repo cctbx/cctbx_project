@@ -116,6 +116,7 @@ class installer (object) :
   def __init__ (self, args, out=sys.stdout) :
     self.args = args
     self.out = out
+    self.apps_built = False # flag for Mac OS
     check_python_version()
     self.parse_options()
     self.basic_setup()
@@ -631,7 +632,7 @@ class installer (object) :
         copy_file(src_file, op.join(self.dest_dir, file_name))
     # generate .app (Mac only)
     if ((sys.platform == "darwin") and (len(self.make_apps) > 0) and
-        (not self.options.no_app)) :
+        (not self.options.no_app) and self.flag_build_gui) :
       os.chdir(self.build_dir)
       for app_name in self.make_apps :
         args = [
@@ -659,6 +660,7 @@ class installer (object) :
             app_file = None
           else :
             print >> out, "ok"
+            self.apps_built = True
             if (not "SSH_CLIENT" in os.environ) :
               call(args=["open", self.dest_dir], log=log)
     # run custom finalization
@@ -733,7 +735,7 @@ class installer (object) :
               print >> out, str(e)
             else :
               n_deleted += 1
-    n_deleted_other = self.produce_specific_reduce_installation_size(out)
+    n_deleted_other = self.product_specific_reduce_installation_size(out)
     if (n_deleted_other is not None) :
       n_deleted += n_deleted_other
     print >> out, "%d files deleted" % n_deleted
@@ -783,7 +785,7 @@ class installer (object) :
     """
     pass
 
-  def produce_specific_reduce_installation_size (self, log) :
+  def product_specific_reduce_installation_size (self, log) :
     """
     Remove unused files specific to this product, and return the number deleted.
     """
