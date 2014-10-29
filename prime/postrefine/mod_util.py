@@ -25,37 +25,76 @@ class intensities_scaler(object):
     self.CONST_SE_MIN_WEIGHT = 0.17
     self.CONST_SE_MAX_WEIGHT = 1.0
 
-  def calc_avg_I(self, group_no, miller_index, I, sigI, G, B,
-                     p_set, rs_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams):
+  def calc_avg_I(self, group_no, miller_index, miller_indices_ori, I, sigI, G, B,
+                     p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
+                     iparams, pickle_filename_set):
 
-    #only apply volume correction in the last cycle of the refinement
-    flag_volume_correction = False
-    if avg_mode == 'final':
-      flag_volume_correction = True
 
     from mod_leastsqr import calc_full_refl
     I_full = calc_full_refl(I, sin_theta_over_lambda_sq,
-                            G, B, p_set, rs_set, flag_volume_correction=flag_volume_correction)
-    sigI_full = calc_full_refl(sigI, sin_theta_over_lambda_sq,
-                               G, B, p_set, rs_set, flag_volume_correction=flag_volume_correction)
+                            G, B, p_set, rs_set, iparams.flag_volume_correction)
+
+    txt_obs_out = 'Reflection: '+str(miller_index[0])+','+str(miller_index[1])+','+str(miller_index[2])+'\n'
+    txt_obs_out += 'meanI    medI  sigI_est sigI_true delta_sigI   n_refl\n'
+
+    median_I = np.median(I_full)
+    mean_I = np.mean(I_full)
+    try:
+      std_I_est = math.sqrt(median_I)
+    except Exception:
+      print 'Error <I>:', median_I
+      return None
+    std_I = np.std(I_full)
+
+    txt_obs_out += '%6.2f %6.2f %8.2f %8.2f %8.2f %8.0f\n'%(mean_I, median_I, std_I_est, std_I, abs(std_I_est - std_I), len(I))
 
     #filter out outliers
-    sigma_max = 3.0
     if avg_mode == 'average':
-      sigma_max = 99.0
-    if len(I_full) > 4:
-      I_full_as_sigma = (I_full - np.median(I_full))/ np.std(I_full)
-      i_sel = (flex.abs(I_full_as_sigma) <= sigma_max)
-      I_full = I_full.select(i_sel)
-      sigI_full = sigI_full.select(i_sel)
-      SE = SE.select(i_sel)
-      p_set = p_set.select(i_sel)
-      rs_set = rs_set.select(i_sel)
-      G = G.select(i_sel)
-      B = B.select(i_sel)
-      I = I.select(i_sel)
-      sigI = sigI.select(i_sel)
+      sigma_max = 99
+    else:
+      sigma_max = iparams.sigma_rejection
 
+    txt_reject_out = ''
+    if len(I_full) > 2:
+      for i_rejection in range(iparams.n_rejection_cycle):
+        median_I = np.median(I_full)
+        mean_I = np.mean(I_full)
+        try:
+          std_I_est = math.sqrt(median_I)
+        except Exception:
+          print 'Error <I>:', median_I
+          return None
+
+        std_I = np.std(I_full)
+
+        I_full_as_sigma = (I_full - median_I)/ std_I
+
+        i_seq = flex.int([i for i in range(len(I_full))])
+        i_sel_inv = (flex.abs(I_full_as_sigma) > sigma_max)
+        i_seq_sel_inv = i_seq.select(i_sel_inv)
+        for _i in i_seq_sel_inv:
+          txt_reject_out += pickle_filename_set[_i] + '%3.0f %3.0f %3.0f %10.2f %10.2f\n'%(\
+            miller_indices_ori[_i][0], miller_indices_ori[_i][1], miller_indices_ori[_i][2], I[_i], sigI[_i])
+
+        i_sel = (flex.abs(I_full_as_sigma) <= sigma_max)
+        I_full = I_full.select(i_sel)
+        SE = SE.select(i_sel)
+        p_set = p_set.select(i_sel)
+        rs_set = rs_set.select(i_sel)
+        wavelength_set = wavelength_set.select(i_sel)
+        G = G.select(i_sel)
+        B = B.select(i_sel)
+        I = I.select(i_sel)
+        sigI = sigI.select(i_sel)
+        miller_indices_ori = miller_indices_ori.select(i_sel)
+
+        txt_obs_out += '%6.2f %6.2f %8.2f %8.2f %8.2f %8.0f\n'%(mean_I, median_I, std_I_est, std_I, abs(std_I_est - std_I), len(I))
+
+        if (len(I) <=3) or (std_I < std_I_est):
+         break
+
+    if len(I_full) == 0:
+      return None
     #normalize the SE
     max_w = self.CONST_SE_MAX_WEIGHT
     min_w = math.sqrt(self.CONST_SE_MIN_WEIGHT)
@@ -69,8 +108,13 @@ class intensities_scaler(object):
     if avg_mode == 'average':
       SE_norm = flex.double([1]*len(I_full))
 
+    #calculate sigI_full from weighting term
+    sigI_full = flex.sqrt(I_full)/SE_norm
+
     I_avg = flex.sum(SE_norm * I_full)/flex.sum(SE_norm)
-    sigI_avg = flex.sum(SE_norm * sigI_full)/flex.sum(SE_norm)
+    sigI_avg = np.mean(sigI_full)
+    if math.isnan(sigI_avg) == False or sigI_avg <= 0:
+      sigI_avg = math.sqrt(I_avg)
 
     #Rmeas, Rmeas_w, multiplicity
     multiplicity = len(I_full)
@@ -113,16 +157,22 @@ class intensities_scaler(object):
         I_avg_even = np.mean(I_even)
         I_avg_odd = np.mean(I_odd)
 
-    txt_obs_out = 'Reflection: '+str(miller_index[0])+','+str(miller_index[1])+','+str(miller_index[2])+'\n'
-    txt_obs_out += '    I_o        sigI_o    G      B     Eoc     rs      W      I_full     sigI_full\n'
-    for i_o, sigi_o, g, b, eoc, rs, se_norm, i_full, sigi_full  in \
-      zip(I, sigI, G, B, p_set, rs_set, SE_norm, I_full, sigI_full):
-      txt_obs_out += '%10.2f %10.2f %6.2f %6.2f %6.2f %7.5f %6.2f %10.2f %10.2f\n'%(\
-        i_o, sigi_o, 1/g, b, eoc, rs, se_norm, i_full, sigi_full)
+
+    #calculate mosaic spread
+    mosaic_radian_set = 2 * (rs_set) * (wavelength_set)
+
+    txt_obs_out += '    I_o        sigI_o    G      B     Eoc      rs    lambda rocking(deg) W      I_full     sigI_full\n'
+    for i_o, sigi_o, g, b, eoc, rs, wavelength, mosaic_radian, se_norm, i_full, sigi_full  in \
+      zip(I, sigI, G, B, p_set, rs_set, wavelength_set, mosaic_radian_set, SE_norm, I_full, sigI_full):
+      txt_obs_out += '%10.2f %10.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %6.2f %10.2f %10.2f\n'%(\
+        i_o, sigi_o, 1/g, b, eoc, rs, wavelength, mosaic_radian*180/math.pi, se_norm, i_full, sigi_full)
     txt_obs_out += 'Merged I, sigI: %6.2f, %6.2f\n'%(I_avg, sigI_avg)
     txt_obs_out += 'Rmeas: %6.2f Qw: %6.2f\n'%(r_meas, r_meas_w)
+    txt_obs_out += 'No. total observed: %4.0f No. after rejection: %4.0f\n'%(len(sin_theta_over_lambda_sq), len(I_full))
+    txt_obs_out += 'List of rejected observations:\n'
+    txt_obs_out += txt_reject_out
 
-    return miller_index, I_avg, sigI_avg, (r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, multiplicity), I_avg_even, I_avg_odd, txt_obs_out
+    return miller_index, I_avg, sigI_avg, (r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, multiplicity), I_avg_even, I_avg_odd, txt_obs_out, txt_reject_out
 
   def calc_mean_unit_cell(self, results):
     a_all = flex.double()
@@ -179,8 +229,10 @@ class intensities_scaler(object):
   def prepare_output(self, results, iparams, avg_mode):
     if avg_mode == 'average':
       cc_thres = 0
+      std_G_filter = 99
     else:
       cc_thres = iparams.frame_accept_min_cc
+      std_G_filter = iparams.sigma_rejection
 
     #calculate distribution of R (target post-refinement and x,y restraints).
     R_final_all = flex.double()
@@ -192,9 +244,20 @@ class intensities_scaler(object):
     mean_R_final = np.median(R_final_all)
     mean_R_xy_final = np.median(R_xy_final_all)
 
+    #calculate mean G for filtering
+    G_stats = flex.double()
+    for pres in results:
+      if pres is not None:
+        if pres.R_final <= (mean_R_final * 6):
+          if pres.R_xy_final <= (mean_R_xy_final * 6):
+            if pres.CC_final >= cc_thres:
+              G_stats.extend(flex.double([pres.G]*len(pres.observations.data())))
+    mean_G_stats = np.median(G_stats)
+    std_G_stats = math.sqrt(mean_G_stats)
 
     #prepare data for merging
     miller_indices_all = flex.miller_index()
+    miller_indices_ori_all = flex.miller_index()
     I_all = flex.double()
     sigI_all = flex.double()
     G_all = flex.double()
@@ -202,6 +265,7 @@ class intensities_scaler(object):
     k_all = flex.double()
     p_all = flex.double()
     rs_all = flex.double()
+    rh_all = flex.double()
     SE_all = flex.double()
     sin_sq_all = flex.double()
     wavelength_all = flex.double()
@@ -210,14 +274,18 @@ class intensities_scaler(object):
     cn_bad_frame_cc = 0
     cn_bad_R = 0
     cn_bad_R_xy = 0
+    cn_bad_frame_G = 0
     R_init_all = flex.double()
     R_final_all = flex.double()
     R_xy_init_all = flex.double()
     R_xy_final_all = flex.double()
+    pickle_filename_all = []
     filtered_results = []
+    i_seq = flex.int()
     for pres in results:
       if pres is not None:
-        img_filename = pres.pickle_filename
+        pickle_filepath = pres.pickle_filename.split('/')
+        img_filename = pickle_filepath[len(pickle_filepath)-1]
         if pres.R_final <= (mean_R_final * 6):
           if pres.R_xy_final <= (mean_R_xy_final * 6):
             if pres.CC_final >= cc_thres:
@@ -229,26 +297,33 @@ class intensities_scaler(object):
                   and abs(pres.uc_params[4]-iparams.target_unit_cell.parameters()[4]) <= (iparams.merge.uc_tolerance*iparams.target_unit_cell.parameters()[4]/100) \
                   and abs(pres.uc_params[5]-iparams.target_unit_cell.parameters()[5]) <= (iparams.merge.uc_tolerance*iparams.target_unit_cell.parameters()[5]/100)):
 
-                cn_good_frame += 1
-                sin_theta_over_lambda_sq = pres.observations.two_theta(wavelength=pres.wavelength).sin_theta_over_lambda_sq().data()
-                filtered_results.append(pres)
-                R_init_all.append(pres.R_init)
-                R_final_all.append(pres.R_final)
-                R_xy_init_all.append(pres.R_xy_init)
-                R_xy_final_all.append(pres.R_xy_final)
+                if abs((pres.G - mean_G_stats)/std_G_stats) < std_G_filter:
+                  cn_good_frame += 1
+                  sin_theta_over_lambda_sq = pres.observations.two_theta(wavelength=pres.wavelength).sin_theta_over_lambda_sq().data()
+                  filtered_results.append(pres)
+                  R_init_all.append(pres.R_init)
+                  R_final_all.append(pres.R_final)
+                  R_xy_init_all.append(pres.R_xy_init)
+                  R_xy_final_all.append(pres.R_xy_final)
 
-                miller_indices_all.extend(pres.observations.indices())
-                I_all.extend(pres.observations.data())
-                sigI_all.extend(pres.observations.sigmas())
-                G_all.extend(flex.double([pres.G]*len(pres.observations.data())))
-                B_all.extend(flex.double([pres.B]*len(pres.observations.data())))
-                p_all.extend(pres.partiality)
-                rs_all.extend(pres.rs_set)
-                sin_sq_all.extend(sin_theta_over_lambda_sq)
-                SE_all.extend(flex.double([pres.SE]*len(pres.observations.data())))
-                wavelength_all.extend(flex.double([pres.wavelength]*len(pres.observations.data())))
-
-                print pres.frame_no, img_filename, ' merged'
+                  miller_indices_all.extend(pres.observations.indices())
+                  miller_indices_ori_all.extend(pres.observations_original.indices())
+                  I_all.extend(pres.observations.data())
+                  sigI_all.extend(pres.observations.sigmas())
+                  G_all.extend(flex.double([pres.G]*len(pres.observations.data())))
+                  B_all.extend(flex.double([pres.B]*len(pres.observations.data())))
+                  p_all.extend(pres.partiality)
+                  rs_all.extend(pres.rs_set)
+                  rh_all.extend(pres.rh_set)
+                  sin_sq_all.extend(sin_theta_over_lambda_sq)
+                  SE_all.extend(flex.double([pres.SE]*len(pres.observations.data())))
+                  wavelength_all.extend(flex.double([pres.wavelength]*len(pres.observations.data())))
+                  pickle_filename_all += [pres.pickle_filename for i in range(len(pres.observations.data()))]
+                  i_seq.extend(flex.int([i for i in range(len(i_seq), len(i_seq)+len(pres.observations.data()))]))
+                  print pres.frame_no, img_filename, ' merged'
+                else:
+                  print pres.frame_no, img_filename, ' discarded - G too high/low (G=%5.2f%%)'%(pres.G)
+                  cn_bad_frame_G += 1
               else:
                 print pres.frame_no, img_filename, ' discarded - unit-cell exceeds the limits (%6.2f %6.2f %6.2f %5.2f %5.2f %5.2f)'%(pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], pres.uc_params[4], pres.uc_params[5])
                 cn_bad_frame_uc += 1
@@ -265,6 +340,7 @@ class intensities_scaler(object):
 
     #plot stats
     self.plot_stats(filtered_results, iparams)
+
 
     #calculate average unit cell
     uc_mean, uc_std = self.calc_mean_unit_cell(filtered_results)
@@ -287,14 +363,18 @@ class intensities_scaler(object):
     #sort reflections according to asymmetric-unit symmetry hkl
     perm = miller_array_all.sort_permutation(by_value="packed_indices")
     miller_indices_all_sort = miller_array_all.indices().select(perm)
+    miller_indices_ori_all_sort = miller_indices_ori_all.select(perm)
     I_obs_all_sort = miller_array_all.data().select(perm)
     sigI_obs_all_sort = miller_array_all.sigmas().select(perm)
     G_all_sort = G_all.select(perm)
     B_all_sort = B_all.select(perm)
     p_all_sort = p_all.select(perm)
     rs_all_sort = rs_all.select(perm)
+    wavelength_all_sort = wavelength_all.select(perm)
     sin_sq_all_sort = sin_sq_all.select(perm)
     SE_all_sort = SE_all.select(perm)
+    i_seq_sort = i_seq.select(perm)
+    pickle_filename_all_sort = [pickle_filename_all[i] for i in i_seq_sort]
 
     miller_array_uniq = miller_array_all.merge_equivalents().array().complete_array(d_min=iparams.merge.d_min, d_max=iparams.merge.d_max)
     matches_uniq = miller.match_multi_indices(
@@ -314,6 +394,7 @@ class intensities_scaler(object):
     txt_out = 'Summary of refinement and merging\n'
     txt_out += ' No. good frames:          %12.0f\n'%(cn_good_frame)
     txt_out += ' No. bad cc frames:        %12.0f\n'%(cn_bad_frame_cc)
+    txt_out += ' No. bad G frames) :       %12.0f (median=%6.2f std.=%6.2f)\n'%(cn_bad_frame_G, mean_G_stats, std_G_stats)
     txt_out += ' No. bad unit cell frames: %12.0f\n'%(cn_bad_frame_uc)
     txt_out += ' No. bad target R:         %12.0f\n'%(cn_bad_R)
     txt_out += ' No. bad target R(x,y) :   %12.0f\n'%(cn_bad_R_xy)
@@ -340,14 +421,15 @@ class intensities_scaler(object):
     txt_out += '   gamma:                    %12.5f (%7.5f)\n'%(uc_mean[5], uc_std[5])
     txt_out += '* (standard deviation)\n'
 
-    return cn_group, group_id_list, miller_indices_all_sort, \
+    return cn_group, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort, \
            I_obs_all_sort, sigI_obs_all_sort,G_all_sort, B_all_sort, \
-           p_all_sort, rs_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, \
-           np.median(wavelength_all), txt_out
+           p_all_sort, rs_all_sort, wavelength_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, \
+           np.median(wavelength_all), pickle_filename_all_sort, txt_out
 
 
   def write_output(self, miller_indices_merge, I_merge, sigI_merge, stat_all,
-                   I_even, I_odd, iparams, uc_mean, wavelength_mean, output_mtz_file_prefix):
+                   I_even, I_odd, iparams, uc_mean, wavelength_mean,
+                   output_mtz_file_prefix, avg_mode):
 
     #output mtz file and report binning stat
     crystal_symmetry = crystal.symmetry(
@@ -385,7 +467,10 @@ class intensities_scaler(object):
 
 
     #remove outliers
-    sigma_filter = 8.0
+    if avg_mode == 'average':
+      sigma_filter = 99
+    else:
+      sigma_filter = iparams.sigma_rejection
     binner_merge = miller_array_merge.setup_binner(n_bins=iparams.n_bins)
     binner_merge_indices = binner_merge.bin_indices()
     miller_indices_merge_filter = flex.miller_index()
@@ -451,8 +536,8 @@ class intensities_scaler(object):
     csv_out +='Bin, Low, High, Completeness, <N_obs>, Rmeas, Qw, CC1/2, N_ind, CCiso, N_ind, <I/sigI>\n'
     txt_out = '\n'
     txt_out += 'Summary for '+output_mtz_file_prefix+'_merge.mtz\n'
-    txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |Rmeas    Qw     CC1/2   N_ind |CCiso   N_ind| <I/sigI>   <I>\n'
-    txt_out += '--------------------------------------------------------------------------------------------------------------------\n'
+    txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |CC1/2   N_ind |CCiso   N_ind| <I/sigI>   <I>\n'
+    txt_out += '---------------------------------------------------------------------------------------------------\n'
     sum_r_meas_w_top = 0
     sum_r_meas_w_btm = 0
     sum_r_meas_top = 0
@@ -552,10 +637,10 @@ class intensities_scaler(object):
             flex.sum((I_merge_match_iso/sigI_merge_match_iso)**2)
 
 
-      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f' \
+      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f' \
           %(i, binner_template_asu.bin_d_range(i)[0], binner_template_asu.bin_d_range(i)[1], completeness*100, \
           len(miller_indices_obs_bin), len(miller_indices_bin),\
-          multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12_bin*100, n_refl_cc12_bin, cc_iso_bin*100, n_refl_cciso_bin, mean_i_over_sigi_bin, np.mean(I_bin))
+          multiplicity_bin, cc12_bin*100, n_refl_cc12_bin, cc_iso_bin*100, n_refl_cciso_bin, mean_i_over_sigi_bin, np.mean(I_bin))
       txt_out += '\n'
 
 
@@ -608,13 +693,13 @@ class intensities_scaler(object):
     else:
       r_meas = float('Inf')
 
-    txt_out += '--------------------------------------------------------------------------------------------------------------------\n'
-    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f\n' \
+    txt_out += '---------------------------------------------------------------------------------------------------\n'
+    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f\n' \
     %((sum_refl_obs/sum_refl_complete)*100, sum_refl_obs, \
      sum_refl_complete, n_refl_obs_total/sum_refl_obs, \
-     r_meas*100, r_meas_w*100, cc12*100, len(I_even.select(i_even_filter_sel)), cc_iso*100, \
+     cc12*100, len(I_even.select(i_even_filter_sel)), cc_iso*100, \
      n_refl_iso, np.mean(miller_array_merge.data()/miller_array_merge.sigmas()), np.mean(miller_array_merge.data()))
-    txt_out += '--------------------------------------------------------------------------------------------------------------------\n'
+    txt_out += '---------------------------------------------------------------------------------------------------\n'
 
     return miller_array_merge, txt_out, csv_out
 
