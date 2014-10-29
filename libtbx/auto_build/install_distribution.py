@@ -584,11 +584,12 @@ class installer (object) :
       self.dest_dir_prefix)
     if (op.isfile(dispatcher)) :
       os.remove(dispatcher)
+    env_prefix = self.product_name.upper() # e.g. "Phenix" -> "PHENIX"
     prologue = "\n".join([
-      "export %s=\"%s\"" % (self.product_name, self.dest_dir),
-      "export %s_VERSION=%s" % (self.product_name, self.version),
-      "export %s_ENVIRONMENT=1" % self.product_name,
-      "export %s_MTYPE=%s" % (self.product_name, self.mtype),
+      "export %s=\"%s\"" % (env_prefix, self.dest_dir),
+      "export %s_VERSION=%s" % (env_prefix, self.version),
+      "export %s_ENVIRONMENT=1" % env_prefix
+      "export %s_MTYPE=%s" % (env_prefix, self.mtype),
     ] + self.product_specific_dispatcher_prologue())
     epilogue = "\n".join(self.product_specific_dispatcher_epilogue())
     dispatcher_opts = [
@@ -683,12 +684,13 @@ class installer (object) :
       self.product_name
     csh_file = op.join(self.dest_dir, "%s_env.csh" % self.dest_dir_prefix)
     print >> out, "  csh: %s/%s_env.csh" % (self.dest_dir, self.dest_dir_prefix)
+    env_prefix = self.product_name.upper() # e.g. "Phenix" -> "PHENIX"
     env_csh = open(csh_file, "w")
     env_csh.write("#!/bin/csh -f\n")
     env_csh.write("#\n")
-    env_csh.write("setenv %s \"%s\"\n" % (self.product_name, self.dest_dir))
-    env_csh.write("setenv %s_VERSION %s\n" % (self.product_name, self.version))
-    env_csh.write("source $%s/build/setpaths.csh\n" % (self.product_name))
+    env_csh.write("setenv %s \"%s\"\n" % (env_prefix, self.dest_dir))
+    env_csh.write("setenv %s_VERSION %s\n" % (env_prefix, self.version))
+    env_csh.write("source $%s/build/setpaths.csh\n" % (env_prefix))
     env_csh.close()
     # phenix_env.sh
     sh_file = op.join(self.dest_dir, "%s_env.sh" % self.dest_dir_prefix)
@@ -696,9 +698,9 @@ class installer (object) :
     env_sh = open(sh_file, "w")
     env_sh.write("#!/bin/sh\n")
     env_sh.write("#\n")
-    env_sh.write("export %s=\"%s\"\n" % (self.product_name, self.dest_dir))
-    env_sh.write("export %s_VERSION=%s\n" % (self.product_name, self.version))
-    env_sh.write(". $%s/build/setpaths.sh\n" % (self.product_name))
+    env_sh.write("export %s=\"%s\"\n" % (env_prefix, self.dest_dir))
+    env_sh.write("export %s_VERSION=%s\n" % (env_prefix, self.version))
+    env_sh.write(". $%s/build/setpaths.sh\n" % (env_prefix))
     env_sh.close()
 
   def get_version (self) :
