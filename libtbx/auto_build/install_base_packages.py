@@ -217,9 +217,9 @@ class installer (object) :
         confirm_import_module="OpenGL")
     print >> self.log, "Dependencies finished building."
 
-  def call (self, args, log=None) :
+  def call (self, args, log=None, **kwargs) :
     if (log is None) : log = self.log
-    return call(args, log=log)
+    return call(args, log=log, **kwargs)
 
   def configure_and_build (self, config_args=(), log=None, make_args=()) :
     self.call("./configure %s" % " ".join(list(config_args)), log=log)
@@ -299,10 +299,20 @@ class installer (object) :
         frameworkinstallunixtools FRAMEWORKUNIXTOOLSPREFIX=\"%s\"" %
         self.base_dir, log=log)
     else :
-      configure_args = ["--prefix=\"%s\"" % self.base_dir,]
-      if (self.options.python_shared) :
+      # Linux
+      # Ian: Setup build to use rpath $ORIGIN to find libpython.so.
+      # Also note that I'm using shell=False and passing args as list
+      #   ... to minimize opportunities for mucking up the "\$$"
+      configure_args = ["--prefix", self.base_dir]
+      if (self.options.python_shared):
         configure_args.append("--enable-shared")
-      self.configure_and_build(config_args=configure_args, log=log)
+        configure_args.append("LDFLAGS=-Wl,-rpath=\$$ORIGIN/../lib")
+      self.call([os.path.join(python_dir, 'configure')] + configure_args,
+        log=log,
+        cwd=python_dir,
+        shell=False)
+      self.call('make -j %s install'%(self.nproc), log=log, cwd=python_dir)
+      self.call('make install', log=log, cwd=python_dir)
     log.close()
     self.python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
     self.update_paths()
