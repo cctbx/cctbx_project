@@ -3924,6 +3924,7 @@ pdb_interpretation {
           a1 = r1.get_atom(l[0])
           a2 = r2.get_atom(l[1])
           d1 += abs(a1.distance(a2)-2.89)
+        d1 /=len(data[1:])
         if best_score > d1:
           best_possible_link_list = [(x[:2]) for x in data[1:]]
           best_score = d1
@@ -3933,7 +3934,6 @@ pdb_interpretation {
       if a1 is not None and a2 is not None and a1.distance(a2)<distance_cutoff:
         new_hbonds.append(tuple(sorted([a1.i_seq, a2.i_seq])))
     return new_hbonds
-
 
   def create_user_defined_NA_basepair_restraints(self, log):
     # user-defined
@@ -4574,7 +4574,7 @@ pdb_interpretation {
         r_i_seqs[conf.altloc] = []
         conf_iseqs = set(conf.atoms().extract_i_seq())
         for p in self.geometry_proxy_registries.planarity.proxies:
-          if (conf_iseqs.issuperset(p.i_seqs)
+          if (conf_iseqs.issuperset(p.i_seqs) 
               and len(p.i_seqs) > len(r_i_seqs[conf.altloc])):
             r_i_seqs[conf.altloc] = list(p.i_seqs)
     if len(r1_i_seqs) > len(r2_i_seqs):
@@ -4943,7 +4943,7 @@ pdb_interpretation {
     if len(hbonds_in_bond_list) == 0:
       hbonds_in_bond_list = None
     # ouputting auto-generated bonds for debugging purposes
-    if False:
+    if True:
       if hbonds_in_bond_list is not None:
         dashes = open('dashes.pml', 'w')
         for pair in hbonds_in_bond_list:
