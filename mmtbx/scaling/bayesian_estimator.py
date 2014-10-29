@@ -528,34 +528,39 @@ class bayesian_estimator:
    print "CC: ",c.coefficient()
 #
 
-def get_table_as_list(lines=None,text=None,file_name=None,
+def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
+   data_items=None,target_variable=None,
    select_only_complete=False, minus_one_as_none=True, out=sys.stdout):
-  n=None
-  record_list=[]
-  data_items=[]
-  first=True
-  if file_name:
-    text=open(file_name).read()
-  if not lines:
-    lines=text.splitlines()
-  for line in lines:
-    if line.lstrip().startswith("Total"): continue # clean up file format
-    spl=line.split()
-    if first and not spl[0].lstrip().startswith('0'):
-      print >>out,"Input data file columns:%s" %(line)
-      data_items=line.split()[1:]
-      target_variable=line.split()[0]
-      first=False
-      continue
-    xx=[]
-    for x in spl:
-      if x.lower() in ["-1","-1.000","None","none"]:
-        xx.append(None)
-      else:
-        xx.append(float(x))
-    if n is None: n=len(xx)
-    assert len(xx)==n
-    record_list.append(xx)
+
+  if not record_list: record_list=[]
+  if not data_items: data_items=[]
+  if not record_list:
+    n=None
+    first=True
+    if file_name:
+      text=open(file_name).read()
+    if not lines:
+      lines=text.splitlines()
+    for line in lines:
+      if line.lstrip().startswith("Total"): continue # clean up file format
+      spl=line.split()
+      if first and not spl[0].lstrip().startswith('0'):
+        print >>out,"Input data file columns:%s" %(line)
+        if not data_items:
+          data_items=line.split()[1:]
+        if not target_variable:
+          target_variable=line.split()[0]
+        first=False
+        continue
+      xx=[]
+      for x in spl:
+        if x.lower() in ["-1","-1.000","None","none"]:
+          xx.append(None)
+        else:
+          xx.append(float(x))
+      if n is None: n=len(xx)
+      assert len(xx)==n
+      record_list.append(xx)
 
   if select_only_complete:
     new_list=[]
@@ -583,32 +588,64 @@ class estimator_group:
     self.min_in_bin=min_in_bin
     self.smooth_bins=smooth_bins
     self.out=out
+    self.training_records=[]
+    self.training_file_name='None'
+
+  def show_summary(self):  
+    # show summary of this estimator
+    print >>self.out,"\nSummary of Bayesian estimator:"
+    print >>self.out,"\nVariable names:",
+    for x in self.variable_names: print >>self.out,x,
+    print >>self.out
+    print >>self.out,"\nCombination groups:",
+    for x in self.keys: print >>self.out,x,
+    print >>self.out
+    print >>self.out,"Bins: %d   Smoothing bins: %d  Minimum in bins: %d " %(
+        self.n_bin,self.smooth_bins,self.min_in_bin)
+    print >>self.out,"Data records used in training estimator: %d\n" %(
+      len(self.training_records))
+    print >>self.out,"Data file source of training data: %s\n" %(
+      self.training_file_name)
 
   def add_estimator(self,estimator,key=None):
     self.estimator_dict[key]=estimator
     self.keys.append(key)
 
   def set_up_estimators(self,
-      record_list=[],
-      data_items=[],
+      record_list=None,
+      data_items=None,
       file_name=None,
       text=None,
-      select_only_complete=False):
+      select_only_complete=False,
+      skip_covariance=False):
 
     if record_list:
       n=len(record_list[0])
       assert data_items is not None
     else:
+      record_list=[]
+      data_items=[]
       if text:
         print >>self.out,\
           "Setting up Bayesian estimator using supplied data"
         lines=text.splitlines()
       else:
+        if not file_name:
+          import libtbx.load_env
+          file_name=libtbx.env.find_in_repositories(
+            relative_path=os.path.join("mmtbx","scaling","cc_ano_data.dat"),
+            test=os.path.isfile)
+        if not file_name:
+          raise Sorry("Need file with training data")
+
         print >>self.out,\
-          "Setting up Bayesian estimator using data in %s" %(file_name)
+          "\nSetting up Bayesian estimator using data in %s\n" %(file_name)
         lines=open(file_name).readlines()
+        self.training_file_name=file_name
       record_list,target_variable,data_items=get_table_as_list(lines=lines,
          select_only_complete=select_only_complete,out=self.out)
+
+    self.training_records=record_list
 
     assert data_items
     self.variable_names=data_items
@@ -617,7 +654,7 @@ class estimator_group:
     n=len(record_list[0])
     # now split in all possible ways and get estimators for each combination
     n_predictors=n-1
-    print >>self.out,"Predictor variables: %d" %(n_predictors)
+    print >>self.out,"\nPredictor variables: %d" %(n_predictors)
     for pv in data_items:
       print >>self.out,"%s" %(pv),
     print >>self.out
@@ -630,7 +667,8 @@ class estimator_group:
     combinations=self.get_combinations(list(xrange(n_predictors)))
     for combination in combinations:
      estimator=self.get_estimator(
-        record_list=record_list,columns=combination)
+        record_list=record_list,columns=combination,
+        skip_covariance=skip_covariance)
      key=str(combination)
      self.add_estimator(estimator,key=key)
 
@@ -638,7 +676,8 @@ class estimator_group:
     return self.variable_names
 
   def get_estimator(self,record_list=[],
-      columns=[]):
+      columns=[],
+      skip_covariance=False):
 
     from mmtbx.scaling.bayesian_estimator import bayesian_estimator
     from cctbx.array_family import flex
@@ -666,7 +705,8 @@ class estimator_group:
       if have_all:
         selected_list.append(new_x)
 
-    estimator=bayesian_estimator(out=self.out)
+    estimator=bayesian_estimator(out=self.out,
+         skip_covariance=skip_covariance)
     estimator.create_estimator(
           record_list=selected_list,
          n_bin=self.n_bin,
@@ -704,7 +744,6 @@ class estimator_group:
     if not key in self.keys:
       return None,None
     estimator=self.estimator_dict[key]
-
     return estimator.apply_estimator(values,single_value=True)
       
 prediction_values="""cc_perfect	cc	skew	e
@@ -947,16 +986,16 @@ target_values=[0.476,0.672,0.47,0.317,0.046,0.635,0.684,0.684,0.057]
 
 def exercise_group():
 
-
   print "\nTESTING exercise_group(): group of predictors with same "
   print "data but some missing entries.\n"
 
   estimators=estimator_group()
-  estimators.set_up_estimators(
-     text=prediction_values,select_only_complete=True)
+  estimators.set_up_estimators()
+  estimators.show_summary()
 
-  prediction_values_as_list,target_variable,data_items=get_table_as_list(
-     text=prediction_values,select_only_complete=False)
+  prediction_values_as_list,dummy_target_variable,dummy_data_items=\
+    get_table_as_list( 
+      record_list=estimators.training_records,select_only_complete=False)
 
   # run through all prediction_values data
   from cctbx.array_family import flex
@@ -964,12 +1003,23 @@ def exercise_group():
   result_list=flex.double()
   for target_and_value in prediction_values_as_list:
     y,sd=estimators.apply_estimators(value_list=target_and_value[1:],
-      data_items=data_items)
+      data_items=estimators.variable_names)
     target_list.append(target_and_value[0])
     result_list.append(y)
-  print "CC: %7.3f " %(flex.linear_correlation(
+  print "Prediction CC: %7.3f " %(flex.linear_correlation(
     target_list,result_list).coefficient())
     
+
+  # and using another dataset included here
+  print 
+  prediction_values_as_list,target_variable,data_items=get_table_as_list(
+     text=prediction_values,select_only_complete=False)
+
+  estimators=estimator_group()
+  estimators.set_up_estimators(
+    text=prediction_values,select_only_complete=True,
+    data_items=data_items)
+  estimators.show_summary()
 
   all_value_list,target_variable,data_items=get_table_as_list(text=pred_data)
   for value_list,target in zip(all_value_list,target_values):
@@ -980,6 +1030,7 @@ def exercise_group():
         y,sd,target,y-target)
     else:
       print "No data:  %7.3f " %(target)
+
 
 # cross-validation of estimates of cc* from skew, cc_half, esqr
 # 2014-10-28 tt
@@ -1002,6 +1053,7 @@ def get_suitable_target_and_values(target_and_values_list,test_values):
   return suitable_test_values,suitable_target_and_values_list
   
 def jacknife(target_and_values_list,i,
+    skip_covariance=False,
     skip_jacknife=False,out=sys.stdout):
   # take out entry i and get predictor and then predict value for entry i
 
@@ -1019,7 +1071,9 @@ def jacknife(target_and_values_list,i,
   if not suitable_test_values: return None,None
 
   target=target_and_values_list[i][0]
-  estimator=bayesian_estimator(out=null_out())
+  estimator=bayesian_estimator(
+    skip_covariance=skip_covariance,
+    out=null_out())
   estimator.create_estimator(
         record_list=suitable_target_and_values_list,
         n_bin=100,
@@ -1034,24 +1088,25 @@ def run_jacknife(args,out=sys.stdout):
   verbose=('verbose' in args)
   if 'testing' in args:
     print >>out,"\nTESTING jacknife run of bayesian estimator.\n"
+  skip_covariance=('skip_covariance' in args)
 
   if args and os.path.isfile(args[0]):
     file_name=args[0]
   else:
     import libtbx.load_env
     file_name=libtbx.env.find_in_repositories(
-      relative_path=os.path.join("phenix","phenix","autosol","cc_ano_data.dat"),
+      relative_path=os.path.join("mmtbx","scaling","cc_ano_data.dat"),
       test=os.path.isfile)
   if not file_name or not os.path.isfile(file_name):
     raise Sorry("Unable to find the file '%s' " %(str(file_name)))
-  print >>out,"Setting up Bayesian predictor with data from %s" %(file_name)
+  print >>out,"Setting up jacknife Bayesian predictor with data from %s" %(
+      file_name)
 
-  from mmtbx.scaling.bayesian_estimator import get_table_as_list
   record_list,target_variable,data_items=get_table_as_list(
      file_name=file_name,
      select_only_complete=False,
      out=out)
-  
+   
   print "Size of data list: %d" %(len(record_list))
 
   # Set up estimator using all but one entry and predict it from the others
@@ -1060,7 +1115,8 @@ def run_jacknife(args,out=sys.stdout):
   target_list=flex.double()
   result_list=flex.double()
   for i in xrange(len(record_list)):
-    target,value=jacknife(record_list,i,out=out)
+    target,value=jacknife(record_list,i,skip_covariance=skip_covariance,
+        out=out)
     target_list.append(target)
     result_list.append(value)
     if verbose: print >>out,"%7.3f  %7.3f " %(target,value)
@@ -1071,7 +1127,8 @@ if __name__=="__main__":
   args=sys.argv[1:]
   if not 'testing' in args: args.append('testing')
   run_jacknife(args)
-  exercise_group()
-  run=bayesian_estimator()
-  run.exercise()
-  run.exercise_2()
+  if not 'run_jacknife' in args: 
+    exercise_group()
+    run=bayesian_estimator()
+    run.exercise()
+    run.exercise_2()
