@@ -1262,10 +1262,6 @@ class ncs_group_object(object):
           pdb_hierarchy_asu=None,
           xrs=None,
           fmodel=None,
-          file_name=None,
-          log = sys.stdout,
-          format_for_resolve=False,
-          format_for_phenix_refine=False,
           write=False):
     """
     Returns ncs spec object and can prints ncs info in a ncs_spec,
@@ -1284,8 +1280,6 @@ class ncs_group_object(object):
       xrs: (xray structure) for crystal symmetry
       fmodel: (fmodel object)
       write: (bool) when False, will not write to file or print
-      format_for_resolve (bool): Select output format when writing
-      format_for_phenix_refine (bool): Select output format when writing
 
     Return:
       spec_object
@@ -1347,14 +1341,18 @@ class ncs_group_object(object):
           chain_residue_id = [chain_residue_id_list,chain_residue_range_list],
           residues_in_common_list = residues_in_common_list,
           ncs_domain_pdb = None)
+
     if write:
-      if format_for_resolve:
-        spec_object.format_all_for_resolve(log=log)
-      elif format_for_phenix_refine:
-        spec_object.format_all_for_phenix_refine(log=log)
-      else:
-        spec_object.format_all_for_group_specification(
-          file_name=file_name,log=log)
+      spec_object.display_all(log=self.log)
+      f=open("simple_ncs_from_pdb.resolve",'w')
+      spec_object.format_all_for_resolve(log=self.log,out=f)
+      f.close()
+      f=open("simple_ncs_from_pdb.ncs",'w')
+      spec_object.format_all_for_phenix_refine(log=self.log,out=f)
+      f.close()
+      f=open("simple_ncs_from_pdb.ncs_spec",'w')
+      spec_object.format_all_for_group_specification(log=self.log,out=f)
+      f.close()
     return spec_object
 
   def print_ncs_phil_param(self,write=False,log=sys.stdout):
@@ -1523,8 +1521,12 @@ def selection_string_from_selection(pdb_hierarchy_inp,selection,
     chains_info = ncs_search.get_chains_info(pdb_hierarchy_inp)
   chain_ids = sorted(chains_info)
   for ch_id in chain_ids:
-    ch_sel = 'chain ' + ch_id
+
     a_sel = {x for xi in chains_info[ch_id].atom_selection for x in xi}
+    if len(a_sel) != chains_info[ch_id].chains_atom_number:
+      s = ' and (not resname hoh)'
+    else: s = ''
+    ch_sel = 'chain {}{}'.format(ch_id,s)
     test_set = a_sel.intersection(selection_set)
     if not test_set: continue
     complete_ch_not_present = (test_set != a_sel)
