@@ -107,6 +107,18 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     sel_str1 = selection_string_from_selection(pdb_inp,isel1)
     self.assertEqual(sel_str1,s)
 
+  def test_avoid_hoh(self):
+    print sys._getframe().f_code.co_name
+    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
+    isel1 = flex.size_t(range(7))
+    sel_str1 = selection_string_from_selection(pdb_inp,isel1)
+    s = '(chain A and (not resname hoh))'
+    self.assertEqual(sel_str1,s)
+    #
+    cache = pdb_inp.hierarchy.atom_selection_cache().selection
+    sel = cache(s).iselection()
+    self.assertEqual(sel.size(),7)
+
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
 SCALE1      0.001731  0.000000  0.000000        0.00000
@@ -241,6 +253,26 @@ ATOM    355  CA  ALA H  52      80.688 -29.412   1.265  1.00 31.24           C
 ATOM    356  C   ALA H  52      80.477 -27.950   0.892  1.00 32.00           C
 ATOM    357  O   ALA H  52      79.410 -27.556   0.406  1.00 32.53           O
 ATOM    358  CB  ALA H  52      81.455 -30.109   0.148  1.00 27.90           C
+'''
+
+test_pdb_4 = '''\
+CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
+SCALE1      0.001731  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.002229  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.002133        0.00000
+ATOM      1  CA  LYS A 151      10.766   9.333  12.905  1.00 44.22           C
+ATOM      2  CA  LYS A 152      10.117   9.159  11.610  1.00 49.42           C
+ATOM      3  CA  LYS A 153       9.099   8.000  11.562  1.00 46.15           C
+ATOM      4  CA  LYS A 154       8.000   8.202  11.065  1.00 52.97           C
+ATOM      5  CA  LYS A 155      11.146   9.065  10.474  1.00 41.68           C
+ATOM      6  CA  LYS A 156      10.547   9.007   9.084  1.00 55.55           C
+ATOM      7  CA  LYS A 157      11.545   9.413   8.000  1.00 72.27           C
+HETATM 3512  O   HOH A2001     -85.460  23.570 -79.414  1.00 34.05           O
+HETATM 3513  O   HOH A2002     -81.492  18.186 -35.869  1.00 13.88           O
+HETATM 3514  O   HOH A2003     -73.597  30.740 -72.170  1.00 33.13           O
+HETATM 3515  O   HOH A2004     -74.933  23.929 -66.597  1.00 26.66           O
+HETATM 3516  O   HOH A2005     -73.036  25.921 -66.605  1.00 23.41
+END
 '''
 
 def run_selected_tests():
