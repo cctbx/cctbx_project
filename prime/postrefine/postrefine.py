@@ -29,6 +29,11 @@ class postref_handler(object):
     """
     observations = observations_pickle["observations"][0]
 
+    #check pointgroup
+    crystal_pointgroup = observations_pickle["pointgroup"]
+    if iparams.target_pointgroup is not None and crystal_pointgroup != iparams.target_pointgroup:
+      return None, 'Mismatch pointgroup ('+crystal_pointgroup+'). '
+
     detector_distance_mm = observations_pickle['distance']
     mm_predictions = iparams.pixel_size_mm*(observations_pickle['mapped_predictions'][0])
     xbeam = observations_pickle["xbeam"]
@@ -37,7 +42,6 @@ class postref_handler(object):
                                    for pred in mm_predictions])
     spot_pred_x_mm = flex.double([pred[0]-xbeam for pred in mm_predictions])
     spot_pred_y_mm = flex.double([pred[1]-ybeam for pred in mm_predictions])
-    assert len(alpha_angle_obs)==len(observations.indices()), 'Size of alpha angles and observations are not equal %6.0f, %6.0f'%(len(alpha_angle_obs),len(observations.indices()))
 
     #Lorentz-polarization correction
     wavelength = observations_pickle["wavelength"]
@@ -61,15 +65,19 @@ class postref_handler(object):
 
     #set observations with target space group - !!! required for correct
     #merging due to map_to_asu command.
-    miller_set = symmetry(
-        unit_cell=observations.unit_cell().parameters(),
-        space_group_symbol=iparams.target_space_group
-      ).build_miller_set(
-        anomalous_flag=iparams.target_anomalous_flag,
-        d_min=iparams.merge.d_min)
+    try:
+      miller_set = symmetry(
+          unit_cell=observations.unit_cell().parameters(),
+          space_group_symbol=iparams.target_space_group
+        ).build_miller_set(
+          anomalous_flag=iparams.target_anomalous_flag,
+          d_min=iparams.merge.d_min)
 
-    observations = observations.customized_copy(anomalous_flag=iparams.target_anomalous_flag,
-                    crystal_symmetry=miller_set.crystal_symmetry())
+      observations = observations.customized_copy(anomalous_flag=iparams.target_anomalous_flag,
+                      crystal_symmetry=miller_set.crystal_symmetry())
+    except Exception:
+      a,b,c,alpha,beta,gamma = observations.unit_cell().parameters()
+      return None, 'Mismatch spacegroup (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)
 
     import os.path
     if os.path.isfile(iparams.run_no+'/rejections.txt'):
@@ -104,8 +112,7 @@ class postref_handler(object):
         spot_pred_y_mm = spot_pred_y_mm.select(i_sel_flag)
         txt_out += 'N_after_rejection: ' + str(len(observations.data())) + '\n'
 
-      if iparams.flag_output_verbose:
-        print txt_out
+
     #filter resolution
     i_sel_res = observations.resolution_filter_selection(d_max=iparams.merge.d_max, d_min=iparams.merge.d_min)
     observations = observations.customized_copy(indices=observations.indices().select(i_sel_res),
@@ -126,49 +133,8 @@ class postref_handler(object):
     spot_pred_x_mm = spot_pred_x_mm.select(i_sel)
     spot_pred_y_mm = spot_pred_y_mm.select(i_sel)
 
-    #calculate Wilson scale and B-factor only when data extend to high reslution
-    wilson_b = 0
-
-    observations_as_f = observations.as_amplitude_array()
-    observations_as_f.setup_binner(auto_binning=True)
-    from cctbx import statistics
-
-    pdb_asu_contents = {'C':iparams.n_residues*5,'H':0,'N':iparams.n_residues*2,'O':int(round(iparams.n_residues*1.5)),'S':0}
-    wilson_plot = statistics.wilson_plot(observations_as_f, pdb_asu_contents)
-    wilson_k_b = (wilson_plot.wilson_intensity_scale_factor, wilson_plot.wilson_b)
-    wilson_b = wilson_k_b[1]
-    if iparams.flag_plot_expert:
-      binner = observations.setup_binner(n_bins=iparams.n_bins)
-      binner_indices = binner.bin_indices()
-      avg_I_by_bin = flex.double()
-      one_dsqr_by_bin = flex.double()
-      for i in range(1,iparams.n_bins+1):
-        i_binner = (binner_indices == i)
-        if len(observations.data().select(i_binner)) > 0:
-          avg_I_by_bin.append(np.mean(observations.data().select(i_binner)))
-          one_dsqr_by_bin.append(1/binner.bin_d_range(i)[1]**2)
-
-      import matplotlib.pyplot as plt
-      x_axis = one_dsqr_by_bin
-      plt.plot(x_axis, avg_I_by_bin, linestyle='-', linewidth=2.0, c='b', label='<I>')
-      plt.title('Intensity plot by resolutions (B-factor=%6.2f)'%(wilson_k_b[1]))
-      plt.xlabel('1/d^2')
-      plt.ylabel('<I>')
-      plt.show()
-
-    if wilson_k_b[1] > iparams.wilson_b_max:
-      print pickle_filename, ' - discarded (high B-factor: %6.2f)'%wilson_k_b[1]
-      return None, 0, 0
-
-
-    if iparams.flag_apply_b_by_frame:
-      #apply Wilson B-factor to the intensity
-      sin_theta_over_lambda_sq = observations.two_theta(wavelength=wavelength).sin_theta_over_lambda_sq().data()
-      I_b = flex.exp(-2*wilson_b*sin_theta_over_lambda_sq) * observations.data()
-      sigI_b = flex.exp(-2*wilson_b*sin_theta_over_lambda_sq) * observations.sigmas()
-      observations = observations.customized_copy(data=I_b, sigmas=sigI_b)
-
-    return observations, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, wilson_b, detector_distance_mm
+    inputs = observations, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm
+    return inputs, 'OK'
 
 
   def determine_polar(self, observations_original, iparams, pickle_filename):
@@ -219,18 +185,13 @@ class postref_handler(object):
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
     crystal_init_orientation = observations_pickle["current_orientation"][0]
     wavelength = observations_pickle["wavelength"]
+    pickle_filepaths = pickle_filename.split('/')
 
-    #grab img. name
-    imgname = pickle_filename
-
-    try:
-      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm,  wilson_b, detector_distance_mm = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
-    except Exception:
-      observations_original = None
-
-    if observations_original is None:
-      print frame_no, '-fail obs is none'
-      return None
+    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
+    if inputs is not None:
+      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
+    else:
+      return None, txt_organize_input+pickle_filepaths[len(pickle_filepaths)-1]
 
     #2. Determine polarity - always do this even if flag_polar = False
     #the function will take care of it.
@@ -274,13 +235,13 @@ class postref_handler(object):
                                                                  observations_non_polar_sel,
                                                                  detector_distance_mm)
     except Exception:
-      return None
+      return None, 'Optimization failed. '+pickle_filepaths[len(pickle_filepaths)-1]
 
     #caculate partiality for output (with target_anomalous check)
     G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, re_fin, \
         a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = refined_params
-    observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm,  wilson_b, detector_distance_mm = \
-        self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
+    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
+    observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
 
     from cctbx.uctbx import unit_cell
@@ -334,26 +295,25 @@ class postref_handler(object):
             crystal_orientation=crystal_fin_orientation,
             spot_radius=spot_radius)
 
-    _tmp_pickle_filename = pickle_filename.split('/')
-    print '%6.0f %5.2f %8.0f %8.0f %8.2f %8.2f %8.2f %8.2f %9.2f %7.2f %10.2f %10.2f   '%( \
+    txt_postref = '%6.0f %5.2f %6.0f %9.0f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %8.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f '%( \
       pres.frame_no, observations_non_polar.d_min(), len(observations_non_polar.indices()), \
       n_refl_postrefined, pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, \
-      pres.CC_init*100, pres.CC_final*100,pres.CC_iso_init*100, pres.CC_iso_final*100), \
-      _tmp_pickle_filename[len(_tmp_pickle_filename)-1]
+      pres.CC_init*100, pres.CC_final*100,pres.CC_iso_init*100, pres.CC_iso_final*100, \
+      a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin)+ \
+      pickle_filepaths[len(pickle_filepaths)-1]
 
-    return pres
+    return pres, txt_postref
 
   def calc_mean_intensity(self, pickle_filename, iparams):
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
     wavelength = observations_pickle["wavelength"]
+    pickle_filepaths = pickle_filename.split('/')
 
-    try:
-      observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, wilson_b, detector_distance_mm = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
-    except Exception:
-      observations_original = None
-
-    if observations_original is None:
-      return None
+    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
+    if inputs is not None:
+      observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
+    else:
+      return None, txt_organize_input+pickle_filepaths[len(pickle_filepaths)-1]
 
     #filter resolution
     observations_sel = observations_original.resolution_filter(d_min=iparams.scale.d_min, d_max=iparams.scale.d_max)
@@ -364,27 +324,23 @@ class postref_handler(object):
       return None
     mean_I = np.median(observations_sel.data().select(i_sel))
 
-    return mean_I
+    return mean_I, pickle_filepaths[len(pickle_filepaths)-1]
 
 
   def scale_frame_by_mean_I(self, frame_no, pickle_filename, iparams, mean_of_mean_I):
 
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
 
-    try:
-      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, wilson_b, detector_distance_mm = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
-    except Exception:
-      observations_original = None
+    pickle_filepaths = pickle_filename.split('/')
 
-    if observations_original is None:
-      return None
+    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
+    if inputs is not None:
+      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
+    else:
+      return None, txt_organize_input+pickle_filepaths[len(pickle_filepaths)-1]
+
     wavelength = observations_pickle["wavelength"]
     crystal_init_orientation = observations_pickle["current_orientation"][0]
-    crystal_pointgroup = observations_pickle["pointgroup"]
-
-    if iparams.target_pointgroup is not None and crystal_pointgroup != iparams.target_pointgroup:
-      print 'frame %6.0f'%frame_no, ' - wrong pointgroup', crystal_pointgroup
-      return None
 
     #select only reflections matched with scale input params.
     #filter by resolution
@@ -447,13 +403,13 @@ class postref_handler(object):
             wavelength=wavelength,
             spot_radius=spot_radius)
 
-    _tmp_pickle_filename = pickle_filename.split('/')
-    print '%6.0f %6.2f %6.0f %6.0f %14.2f %14.2f %14.2f %6.2f %6.2f'%(frame_no,
+    txt_scale_frame_by_mean_I = '%6.0f %6.2f %6.0f %6.0f %14.2f %14.2f %14.2f %6.2f %6.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f '%(frame_no,
       observations_original.d_min(), len(observations_original.data()), len(observations_original_sel.data()),
       np.sum(observations_original_sel.data()), np.mean(observations_original_sel.data()),
-      np.median(observations_original_sel.data()), G, B), _tmp_pickle_filename[len(_tmp_pickle_filename)-1]
+      np.median(observations_original_sel.data()), G, B,
+      uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5])+pickle_filepaths[len(pickle_filepaths)-1]
 
-    return pres
+    return pres, txt_scale_frame_by_mean_I
 
 
 def prepare_output(results,

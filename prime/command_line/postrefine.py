@@ -100,7 +100,7 @@ if (__name__ == "__main__"):
 
   #1. prepare reference miller array
   print 'Generating a reference set (will not be used if hklrefin is set)'
-  print 'Frame#  Res (A) N_refl N_refl_used Sum_I           Mean_I       Median(I)    G     B    File name'
+  print 'Frame#  Res (A)  Nrefl  Nrefl_used Sum_I           Mean_I       Median(I)    G     B                   Unit cell                File name'
   txt_merge_mean = ''
   miller_array_ref = None
   #Always generate the mean-intensity scaled set.
@@ -116,7 +116,8 @@ if (__name__ == "__main__"):
   frames_mean_I = flex.double()
   for result in determine_mean_I_result:
     if result is not None:
-      frames_mean_I.append(result)
+      mean_I, txt_out_result = result
+      frames_mean_I.append(mean_I)
 
   mean_of_mean_I = np.median(frames_mean_I)
 
@@ -130,9 +131,11 @@ if (__name__ == "__main__"):
           processes=iparams.n_processors)
 
   observations_merge_mean_set = []
-  for pres in scale_frame_by_mean_I_result:
-    if pres is not None:
+  for result in scale_frame_by_mean_I_result:
+    if result is not None:
+      pres, txt_out_result = result
       observations_merge_mean_set.append(pres)
+      print txt_out_result
 
   if len(observations_merge_mean_set) > 0:
     avg_mode = 'average'
@@ -168,10 +171,9 @@ if (__name__ == "__main__"):
           miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd, txt_obs_out, txt_reject_out = results
           txt_out_verbose += txt_obs_out
           txt_out_rejection += txt_reject_out
-          if iparams.flag_output_verbose:
-            print txt_obs_out
+
           if math.isnan(stat[0]) or math.isinf(stat[0]) or math.isnan(stat[1]) or math.isinf(stat[1]):
-            print miller_index, ' not merged (Qw=%.4g/%.4g)'%(stat[0],stat[1])
+            dummy = 0
           else:
             miller_indices_merge.append(miller_index)
             I_merge.append(I_avg)
@@ -244,8 +246,7 @@ if (__name__ == "__main__"):
     _txt_merge_postref += 'Average mode: '+avg_mode+'\n'
     txt_merge_postref += _txt_merge_postref
     print _txt_merge_postref
-    print 'Frame# Res.(A) N_refl N_refl_used  R_init R_final R_xy_init R_xy_final CC_init CC_final CCiso_init CCiso_final   File name'
-    print '------------------------------------------------------------------------------------------------------------------------'
+    print 'Frame# Res.(A) Nrefl Nreflused  Rini  Rfin  Rxyini  Rxyfin CCini CCfin CCisoini CCisofin             Unit cell                   File name'
     def postrefine_by_frame_mproc_wrapper(arg):
       return postrefine_by_frame_mproc(arg, frame_files, iparams,
                                        miller_array_ref, postrefine_by_frame_result)
@@ -256,9 +257,11 @@ if (__name__ == "__main__"):
             processes=iparams.n_processors)
 
     postrefine_by_frame_good = []
-    for pres in postrefine_by_frame_result:
-      if pres is not None:
+    for results in postrefine_by_frame_result:
+      if results is not None:
+        pres, txt_out_result = results
         postrefine_by_frame_good.append(pres)
+        print txt_out_result
 
     if len(postrefine_by_frame_good) > 0:
 
@@ -297,7 +300,7 @@ if (__name__ == "__main__"):
             if iparams.flag_output_verbose:
               print txt_obs_out
             if math.isnan(stat[0]) or math.isinf(stat[0]) or math.isnan(stat[1]) or math.isinf(stat[1]):
-              print miller_index, ' not merged (Qw=%.4g/%.4g)'%(stat[0],stat[1])
+              dummy = 0
             else:
               miller_indices_merge.append(miller_index)
               I_merge.append(I_avg)
