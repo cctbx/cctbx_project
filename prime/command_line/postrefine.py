@@ -117,7 +117,8 @@ if (__name__ == "__main__"):
   for result in determine_mean_I_result:
     if result is not None:
       mean_I, txt_out_result = result
-      frames_mean_I.append(mean_I)
+      if mean_I is not None:
+        frames_mean_I.append(mean_I)
 
   mean_of_mean_I = np.median(frames_mean_I)
 
@@ -134,7 +135,8 @@ if (__name__ == "__main__"):
   for result in scale_frame_by_mean_I_result:
     if result is not None:
       pres, txt_out_result = result
-      observations_merge_mean_set.append(pres)
+      if pres is not None:
+        observations_merge_mean_set.append(pres)
       print txt_out_result
 
   if len(observations_merge_mean_set) > 0:
@@ -260,7 +262,8 @@ if (__name__ == "__main__"):
     for results in postrefine_by_frame_result:
       if results is not None:
         pres, txt_out_result = results
-        postrefine_by_frame_good.append(pres)
+        if pres is not None:
+          postrefine_by_frame_good.append(pres)
         print txt_out_result
 
     if len(postrefine_by_frame_good) > 0:
