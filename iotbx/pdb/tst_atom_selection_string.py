@@ -1,6 +1,7 @@
 from __future__ import division
-from iotbx.ncs.ncs_preprocess import selection_string_from_selection
-from iotbx.ncs.ncs_preprocess import get_clean_selection_string
+from iotbx.pdb.atom_selection import selection_string_from_selection
+from iotbx.pdb.atom_selection import get_clean_selection_string
+from mmtbx.ncs.ncs_search import get_chains_info
 from scitbx.array_family import flex
 from iotbx import pdb
 import unittest
@@ -112,7 +113,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
     isel1 = flex.size_t(range(7))
     sel_str1 = selection_string_from_selection(pdb_inp,isel1)
-    s = '(chain A and (not resname hoh))'
+    s = '(chain A and resseq 151:157)'
     self.assertEqual(sel_str1,s)
     #
     cache = pdb_inp.hierarchy.atom_selection_cache().selection
@@ -122,9 +123,10 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
   def test_include_hoh(self):
     print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
+    chains_info = get_chains_info(pdb_inp.hierarchy,exclude_water=True)
     isel1 = flex.size_t(range(7))
     sel_str1 = selection_string_from_selection(
-      pdb_inp,isel1,exclude_water=False)
+      pdb_inp,isel1,chains_info=chains_info)
     s = '(chain A and resseq 151:157)'
     self.assertEqual(sel_str1,s)
     #
@@ -132,9 +134,10 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     sel = cache(s).iselection()
     self.assertEqual(sel.size(),7)
     #
+    chains_info = get_chains_info(pdb_inp.hierarchy,exclude_water=False)
     isel1 = flex.size_t(range(12))
     sel_str1 = selection_string_from_selection(
-      pdb_inp,isel1,exclude_water=False)
+      pdb_inp,isel1,chains_info=chains_info)
     s = 'chain A'
     self.assertEqual(sel_str1,s)
 
