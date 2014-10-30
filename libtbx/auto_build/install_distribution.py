@@ -460,7 +460,7 @@ class installer (object) :
       print >> out, ("configuring %s components with optimization..." % \
         self.product_name),
       config_args.insert(0, "--build=release")
-    call([python_bin, config_path] + config_args, log=log)
+    call(" ".join([python_bin, config_path] + config_args), log=log)
     print >> out, "ok"
     # XXX in the original shell script, I had to run 'libtbx.configure reel'
     # to get REEL actually configured - need to double-check this
@@ -472,7 +472,7 @@ class installer (object) :
       self.product_name),
     scons_bin = op.join(self.build_dir, "bin", "libtbx.scons")
     assert op.isfile(scons_bin)
-    call([scons_bin] + scons_args, log=log)
+    call(" ".join([scons_bin] + scons_args), log=log)
     print >> out, "done"
     self.product_specific_source_install(log=log)
     print >> out, ""
@@ -556,7 +556,7 @@ class installer (object) :
       "--current_working_directory=%s" % self.build_dir,
     ] + self.configure_modules
     try :
-      call(args=args, log=log)
+      call(args=" ".join(args), log=log)
     except RuntimeError :
       raise InstallerError("configuration step incomplete!  See the log file "+
         "for detailed error messages.")
@@ -623,7 +623,7 @@ class installer (object) :
     # compile .py files
     print >> out, "precompiling .py files...",
     os.chdir(self.modules_dir)
-    call(args=["libtbx.py_compile_all"], log=log)
+    call(args="libtbx.py_compile_all", log=log)
     print >> out, "ok"
     # copy README et al.
     for file_name in ["CHANGES","LICENSE","README","README-DEV","SOURCES"] :
@@ -647,7 +647,7 @@ class installer (object) :
           #args.append("--python_interpreter=/usr/bin/python")
         print >> out, ("Generating Mac app launcher for %s..." % app_name),
         try :
-          call(args=args, log=log)
+          call(args=" ".join(args), log=log)
         except RuntimeError, e :
           print ""
           print "  ERROR:"
