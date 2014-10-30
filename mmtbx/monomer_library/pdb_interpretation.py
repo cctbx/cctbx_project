@@ -3924,7 +3924,10 @@ pdb_interpretation {
           a1 = r1.get_atom(l[0])
           a2 = r2.get_atom(l[1])
           d1 += abs(a1.distance(a2)-2.89)
-        d1 /=len(data[1:])
+        n_links_in_data = len(data[1:])
+        if n_links_in_data < 1:
+          raise Sorry("Corrupted dictionary in bondlength_defaults.py")
+        d1 /=n_links_in_data
         if best_score > d1:
           best_possible_link_list = [(x[:2]) for x in data[1:]]
           best_score = d1
@@ -4564,7 +4567,6 @@ pdb_interpretation {
   def get_i_seqs_from_na_planes(self, r1, r2):
     # Return [([i_seqA],[j_seqA]),([i_seqB],[j_seqB])] of
     # atoms in planar groups for given atom_group r.
-    # from iotbx.pdb import residue_name_plus_atom_names_interpreter
     i_seqs = []
     result = []
     r1_i_seqs = {}
