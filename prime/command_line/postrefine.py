@@ -234,6 +234,7 @@ if (__name__ == "__main__"):
   n_iters = iparams.n_postref_cycle
   txt_merge_postref = ''
   postrefine_by_frame_result = None
+  postrefine_by_frame_pres_list = None
   for i in range(n_iters):
     if i == (n_iters-1):
       avg_mode = 'final'
@@ -251,12 +252,14 @@ if (__name__ == "__main__"):
     print 'Frame# Res.(A) Nrefl Nreflused  Rini  Rfin  Rxyini  Rxyfin CCini CCfin CCisoini CCisofin             Unit cell                   File name'
     def postrefine_by_frame_mproc_wrapper(arg):
       return postrefine_by_frame_mproc(arg, frame_files, iparams,
-                                       miller_array_ref, postrefine_by_frame_result)
+                                       miller_array_ref, postrefine_by_frame_pres_list)
 
     postrefine_by_frame_result = pool_map(
             args=frames,
             func=postrefine_by_frame_mproc_wrapper,
             processes=iparams.n_processors)
+            
+    postrefine_by_frame_pres_list = [postrefine_by_frame_tuple[0] for postrefine_by_frame_tuple in postrefine_by_frame_result]
 
     postrefine_by_frame_good = []
     for results in postrefine_by_frame_result:
