@@ -236,10 +236,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
     # Verify that spec object are produced properly
     spec_output = trans_obj.get_ncs_info_as_spec(
-      pdb_hierarchy_asu=self.pdb_obj.hierarchy,
-      write=False,
-      format_for_resolve=False,
-      format_for_phenix_refine=False)
+      pdb_hierarchy_asu=self.pdb_obj.hierarchy,write=False)
     trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
 
     t1 = trans_obj.ncs_transform['002'].r
@@ -304,9 +301,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # Verify that spec object are produced properly
     spec_output = trans_obj.get_ncs_info_as_spec(
       pdb_hierarchy_asu=self.pdb_obj.hierarchy,
-      write=False,
-      format_for_resolve=False,
-      format_for_phenix_refine=False)
+      write=False)
     trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
 
     t1 = trans_obj.ncs_transform['002'].r
@@ -770,7 +765,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_rotaion_translation_input']
+  tests = ['test_finding_partial_ncs']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 
@@ -779,5 +774,4 @@ if __name__=='__main__':
   # unittest.TextTestRunner().run(run_selected_tests())
 
   # Use to run all tests
-  # unittest.main()
-  pass
+  unittest.main()
