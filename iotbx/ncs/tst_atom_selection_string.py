@@ -1,6 +1,6 @@
 from __future__ import division
-from iotbx.pdb.atom_selection import selection_string_from_selection
-from iotbx.pdb.atom_selection import get_clean_selection_string
+from iotbx.ncs.ncs_preprocess import selection_string_from_selection
+from iotbx.ncs.ncs_preprocess import get_clean_selection_string
 from scitbx.array_family import flex
 from iotbx import pdb
 import unittest
@@ -118,6 +118,25 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     cache = pdb_inp.hierarchy.atom_selection_cache().selection
     sel = cache(s).iselection()
     self.assertEqual(sel.size(),7)
+
+  def test_include_hoh(self):
+    print sys._getframe().f_code.co_name
+    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
+    isel1 = flex.size_t(range(7))
+    sel_str1 = selection_string_from_selection(
+      pdb_inp,isel1,exclude_water=False)
+    s = '(chain A and resseq 151:157)'
+    self.assertEqual(sel_str1,s)
+    #
+    cache = pdb_inp.hierarchy.atom_selection_cache().selection
+    sel = cache(s).iselection()
+    self.assertEqual(sel.size(),7)
+    #
+    isel1 = flex.size_t(range(12))
+    sel_str1 = selection_string_from_selection(
+      pdb_inp,isel1,exclude_water=False)
+    s = 'chain A'
+    self.assertEqual(sel_str1,s)
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
@@ -282,7 +301,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_remove_far_atoms']
+  tests = ['test_selection_string_from_selection2']
   suite = unittest.TestSuite(map(TestNcsPreprocessingFunctions,tests))
   return suite
 

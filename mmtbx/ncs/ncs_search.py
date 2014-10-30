@@ -1095,7 +1095,7 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
   sel_b = flex.size_t(sorted(sel_b))
   return sel_a,sel_b,res_num_a_updated,res_num_b_updated,msg
 
-def get_chains_info(ph,selection_list=None):
+def get_chains_info(ph,selection_list=None,exclude_water=True):
   """
   Collect information about chains or segments of the hierarchy according to
   selection strings
@@ -1113,6 +1113,7 @@ def get_chains_info(ph,selection_list=None):
       atom_names (list of list of str): list of atoms in residues
       atom_selection (list of list of list of int): the location of atoms in ph
       chains_atom_number (list of int): list of number of atoms in each chain
+    exclude_water (bool): exclude water
   """
   use_chains = not bool(selection_list)
   #
@@ -1131,11 +1132,11 @@ def get_chains_info(ph,selection_list=None):
       for res in ch.residue_groups():
         for atoms in res.atom_groups():
           x = atoms.resname
-          if x.lower() != 'hoh':
-            resids.append(res.resid())
-            res_names.append(x)
-            atom_names.append(list(atoms.atoms().extract_name()))
-            atom_selection.append(list(atoms.atoms().extract_i_seq()))
+          if exclude_water and (x.lower() == 'hoh'): continue
+          resids.append(res.resid())
+          res_names.append(x)
+          atom_names.append(list(atoms.atoms().extract_name()))
+          atom_selection.append(list(atoms.atoms().extract_i_seq()))
       chains_info[ch.id].resid = resids
       chains_info[ch.id].res_names = res_names
       chains_info[ch.id].atom_names = atom_names
@@ -1158,19 +1159,19 @@ def get_chains_info(ph,selection_list=None):
           for res in ch.residue_groups():
             for atoms in res.atom_groups():
               x = atoms.resname
-              if x.lower() != 'hoh':
-                chains_info[sel_str].resid.append(res.resid())
-                chains_info[sel_str].res_names.append(x)
-                atom_list = list(atoms.atoms().extract_name())
-                chains_info[sel_str].atom_names.append(atom_list)
-                i_seq_list = list(atoms.atoms().extract_i_seq())
-                chains_info[sel_str].atom_selection.append(i_seq_list)
-                # test that there are not overlapping selection
-                sel = flex.bool(l,flex.size_t(i_seq_list))
-                if (selection_test & sel).count(True) > 0:
-                  raise Sorry('Overlapping NCS group selections!')
-                else:
-                  selection_test |= sel
+              if exclude_water and (x.lower() == 'hoh'): continue
+              chains_info[sel_str].resid.append(res.resid())
+              chains_info[sel_str].res_names.append(x)
+              atom_list = list(atoms.atoms().extract_name())
+              chains_info[sel_str].atom_names.append(atom_list)
+              i_seq_list = list(atoms.atoms().extract_i_seq())
+              chains_info[sel_str].atom_selection.append(i_seq_list)
+              # test that there are not overlapping selection
+              sel = flex.bool(l,flex.size_t(i_seq_list))
+              if (selection_test & sel).count(True) > 0:
+                raise Sorry('Overlapping NCS group selections!')
+              else:
+                selection_test |= sel
       else:
         raise Sorry('Empty NCS group selections!')
   return chains_info
