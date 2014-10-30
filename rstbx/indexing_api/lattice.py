@@ -18,6 +18,9 @@ class _(boost.python.injector, dps_extended):
     if len(self.detector) > 1:
       assert len(raw_spot_input) == len(panel_addresses)
 
+    # some hard protection against floating point error
+    assert len(raw_spot_input) > 7 # no chance of 1DFFT indexing with 7 or fewer spots
+
     self.panelID = panel_addresses
     reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
       self.raw_spot_input, self.detector, self.inv_wave, self.S0_vector, self.axis,
