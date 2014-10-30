@@ -588,7 +588,7 @@ class installer (object) :
     prologue = "\n".join([
       "export %s=\"%s\"" % (env_prefix, self.dest_dir),
       "export %s_VERSION=%s" % (env_prefix, self.version),
-      "export %s_ENVIRONMENT=1" % env_prefix
+      "export %s_ENVIRONMENT=1" % env_prefix,
       "export %s_MTYPE=%s" % (env_prefix, self.mtype),
     ] + self.product_specific_dispatcher_prologue())
     epilogue = "\n".join(self.product_specific_dispatcher_epilogue())
