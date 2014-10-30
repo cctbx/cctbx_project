@@ -1,6 +1,6 @@
 from __future__ import division
-from iotbx.ncs.ncs_preprocess import selection_string_from_selection
-from iotbx.ncs.ncs_preprocess import get_clean_selection_string
+from iotbx.pdb.atom_selection import selection_string_from_selection
+from iotbx.pdb.atom_selection import get_clean_selection_string
 from scitbx.array_family import flex
 from iotbx import pdb
 import unittest
