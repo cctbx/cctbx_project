@@ -443,6 +443,7 @@ class ncs_group_object(object):
     if not process_similar_chains:
       min_percent = 1.0
       min_contig_length = 100000
+      self.check_atom_order = True
     if use_cctbx_find_ncs_tools:
       group_dict = ncs_search.find_ncs_in_hierarchy(
         ph=pdb_hierarchy_inp.hierarchy,

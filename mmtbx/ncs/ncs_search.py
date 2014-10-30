@@ -871,9 +871,10 @@ def search_ncs_relations(ph=None,
         seq_a=seq_m,seq_b=seq_c,
         min_contig_length=min_contig_length,
         min_percent=min_percent)
-      sel_m, sel_c,res_sel_m,res_sel_c,msg = get_matching_atoms(
+      sel_m, sel_c,res_sel_m,res_sel_c,new_msg = get_matching_atoms(
         chains_info,m_ch_id,c_ch_id,res_sel_m,res_sel_c,
         check_atom_order=check_atom_order)
+      msg += new_msg
       if res_sel_m:
         # add only non empty matches
         rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,
