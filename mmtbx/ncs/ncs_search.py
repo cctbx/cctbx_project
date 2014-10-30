@@ -844,23 +844,21 @@ def search_ncs_relations(ph=None,
   # collect all chain IDs
   chain_match_list = []
   msg = ''
-  # improve performance by sorting by chain length
-  chains_list = [(len(v.res_names),k) for k,v in chains_info.iteritems()]
-  sorted_ch = [k for v,k in sorted(chains_list)]
-  n_chains = len(chains_info)
+  sorted_ch = sorted(chains_info)
+  n_chains = len(sorted_ch)
   chains_in_copies = set()
   # loop over all chains
   for i in xrange(n_chains-1):
     m_ch_id = sorted_ch[i]
     if use_minimal_master_ncs and (m_ch_id in chains_in_copies): continue
-    master_n_atoms = chains_info[m_ch_id].chains_atom_number
+    master_n_res = len(chains_info[m_ch_id].res_names)
     seq_m = chains_info[m_ch_id].res_names
-    if master_n_atoms == 0: continue
+    if master_n_res == 0: continue
     # get residue lists for master
     for j in xrange(i+1,n_chains):
       c_ch_id = sorted_ch[j]
-      copy_n_atoms = chains_info[c_ch_id].chains_atom_number
-      frac_d = min(copy_n_atoms,master_n_atoms)/max(copy_n_atoms,master_n_atoms)
+      copy_n_res = len(chains_info[c_ch_id].res_names)
+      frac_d = min(copy_n_res,master_n_res)/max(copy_n_res,master_n_res)
       if frac_d < min_percent:
         if (min_percent == 1):
           msg = 'NCS copies are not identical'
