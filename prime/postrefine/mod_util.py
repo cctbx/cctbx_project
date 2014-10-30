@@ -91,7 +91,7 @@ class intensities_scaler(object):
         txt_obs_out += '%6.2f %6.2f %8.2f %8.2f %8.2f %8.0f\n'%(mean_I, median_I, std_I_est, std_I, abs(std_I_est - std_I), len(I))
 
         if (len(I) <=3) or (std_I < std_I_est):
-         break
+          break
 
     if len(I_full) == 0:
       return None
