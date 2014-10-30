@@ -54,6 +54,7 @@ class hklview_3d (wxGLWindow) :
 
   def set_miller_array (self, miller_array, zoom=False, merge=None) :
     self.miller_array = miller_array
+    self.merge = merge
     self.d_min = miller_array.d_min()
     self.construct_reciprocal_space(merge=merge)
     # XXX for some reason InitGL does not get called until well after the
@@ -245,7 +246,7 @@ class hklview_3d (wxGLWindow) :
 
   #--- user input and settings
   def update_settings (self) :
-    self.construct_reciprocal_space()
+    self.construct_reciprocal_space(merge=self.merge)
     if (self.settings.black_background) :
       glClearColor(0.,0.,0.,0.)
     else :

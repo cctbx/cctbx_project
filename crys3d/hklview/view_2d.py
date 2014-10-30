@@ -34,6 +34,7 @@ class hklview_2d (wx.PyPanel, cctbx.miller.display.render_2d) :
   # XXX silent keyword 'zoom=False' is for compatibility with view_3d.py
   def set_miller_array (self, array, zoom=False, merge=None) :
     self.miller_array = array
+    self.merge = merge
     if (array is not None) :
       self.construct_reciprocal_space(merge=merge)
 
@@ -45,7 +46,7 @@ class hklview_2d (wx.PyPanel, cctbx.miller.display.render_2d) :
     self.setup_colors()
 
   def update_settings (self) :
-    self.construct_reciprocal_space()
+    self.construct_reciprocal_space(merge=self.merge)
     self.Refresh()
 
   def get_color (self, c) :
