@@ -4564,7 +4564,7 @@ pdb_interpretation {
   def get_i_seqs_from_na_planes(self, r1, r2):
     # Return [([i_seqA],[j_seqA]),([i_seqB],[j_seqB])] of
     # atoms in planar groups for given atom_group r.
-    from iotbx.pdb import residue_name_plus_atom_names_interpreter
+    # from iotbx.pdb import residue_name_plus_atom_names_interpreter
     i_seqs = []
     result = []
     r1_i_seqs = {}
@@ -4574,7 +4574,7 @@ pdb_interpretation {
         r_i_seqs[conf.altloc] = []
         conf_iseqs = set(conf.atoms().extract_i_seq())
         for p in self.geometry_proxy_registries.planarity.proxies:
-          if (conf_iseqs.issuperset(p.i_seqs) 
+          if (conf_iseqs.issuperset(p.i_seqs)
               and len(p.i_seqs) > len(r_i_seqs[conf.altloc])):
             r_i_seqs[conf.altloc] = list(p.i_seqs)
     if len(r1_i_seqs) > len(r2_i_seqs):
