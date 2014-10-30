@@ -32,8 +32,9 @@ def call (args, log, shell=True, cwd=None) :
     if (not libtbx_path in sys.path) :
       sys.path.append(libtbx_path)
     import subprocess_with_fixes as subprocess
-  # if isinstance(args, list) :
-  #  args = " ".join(args)
+  # shell=True requires string as args.
+  if shell and isinstance(args, list) :
+    args = " ".join(args)
   p = subprocess.Popen(
     args=args,
     shell=shell,
