@@ -309,8 +309,7 @@ class installer (object) :
   def setup_directories (self) :
     out = self.out
     hostname = os.uname()[1].split(".")[0]
-    self.tmp_dir = op.join(self.installer_dir, "install_tmp", self.mtype,
-      hostname)
+    self.tmp_dir = op.join(self.installer_dir, "tmp", self.mtype, hostname)
     if (not op.isdir(self.tmp_dir)) :
       os.makedirs(self.tmp_dir)
     self.dest_dir = op.join(self.options.prefix, "%s-%s" %
