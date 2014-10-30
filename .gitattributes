@@ -2006,6 +2006,8 @@ mmtbx/scaling/absence_likelihood.py -text
 mmtbx/scaling/absences.py -text
 mmtbx/scaling/bayesian_estimator.py -text
 mmtbx/scaling/cc_ano_data.dat -text
+mmtbx/scaling/cc_exptl_data.dat -text
+mmtbx/scaling/ha_data.dat -text
 mmtbx/scaling/plan_sad_experiment.py -text
 mmtbx/scaling/relative_wilson.py -text
 mmtbx/scaling/ta_alpha_beta_calc.py svneol=native#text/x-python

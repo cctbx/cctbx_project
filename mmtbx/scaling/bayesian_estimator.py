@@ -529,14 +529,20 @@ class bayesian_estimator:
 #
 
 def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
+   info_list=None,info_items=None,
    data_items=None,target_variable=None,
    select_only_complete=False, minus_one_as_none=True, out=sys.stdout):
 
-  if not record_list: record_list=[]
-  if not data_items: data_items=[]
+  if not record_list: 
+     record_list=[]  # data records: [target,predictor1,predictor2...]
+     info_list=[]    # info records [key, resolution]
+  if not data_items: 
+     data_items=[]
+     info_items=[]
   if not record_list:
     n=None
     first=True
+    n_info=0
     if file_name:
       text=open(file_name).read()
     if not lines:
@@ -546,29 +552,48 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
       spl=line.split()
       if first and not spl[0].lstrip().startswith('0'):
         print >>out,"Input data file columns:%s" %(line)
+        # figure out if some of the columns are "key" and "d_min"
+        all_info_items=[]
+        all_items=line.split()
+        if all_items[0].lower()=='key':
+          all_info_items.append(all_items[0])
+          all_items=all_items[1:]
+        if all_items[0].lower() in  ['d_min','dmin','res','resolution']:
+          all_info_items.append(all_items[0])
+          all_items=all_items[1:]
+        target=all_items[0]
+        all_items=all_items[1:]
+        n_info=len(all_info_items)
         if not data_items:
-          data_items=line.split()[1:]
+          data_items=all_items
+          info_items=all_info_items
         if not target_variable:
           target_variable=line.split()[0]
         first=False
         continue
       xx=[]
-      for x in spl:
+      info=spl[:n_info]
+      for x in spl[n_info:]:
         if x.lower() in ["-1","-1.000","None","none"]:
           xx.append(None)
         else:
           xx.append(float(x))
       if n is None: n=len(xx)
       assert len(xx)==n
-      record_list.append(xx)
+      if xx[0] is not None:
+        record_list.append(xx)
+        info_list.append(info)
 
   if select_only_complete:
     new_list=[]
-    for x in record_list:
+    new_info_list=[]
+    for x,y in zip(record_list,info_list):
       if not None in x:
         new_list.append(x)
+        new_info_list.append(y)
     record_list=new_list
-  return record_list,target_variable,data_items
+    info_list=new_info_list
+  return record_list,info_list,target_variable,data_items
 
 class estimator_group:
   # holder for a group of estimators based on the same data but using different
@@ -583,6 +608,7 @@ class estimator_group:
 
     self.estimator_dict={}
     self.keys=[]
+    self.combinations=[]
     self.variable_names=[]
     self.n_bin=n_bin
     self.min_in_bin=min_in_bin
@@ -598,7 +624,11 @@ class estimator_group:
     for x in self.variable_names: print >>self.out,x,
     print >>self.out
     print >>self.out,"\nCombination groups:",
-    for x in self.keys: print >>self.out,x,
+    for x in self.combinations: 
+      print >>self.out,"(",
+      for id in x:
+        print >>self.out,"%s" %(self.variable_names[id]),
+      print >>self.out,")  ",
     print >>self.out
     print >>self.out,"Bins: %d   Smoothing bins: %d  Minimum in bins: %d " %(
         self.n_bin,self.smooth_bins,self.min_in_bin)
@@ -607,9 +637,10 @@ class estimator_group:
     print >>self.out,"Data file source of training data: %s\n" %(
       self.training_file_name)
 
-  def add_estimator(self,estimator,key=None):
+  def add_estimator(self,estimator,key=None,combination=None):
     self.estimator_dict[key]=estimator
     self.keys.append(key)
+    self.combinations.append(combination)
 
   def set_up_estimators(self,
       record_list=None,
@@ -642,7 +673,8 @@ class estimator_group:
           "\nSetting up Bayesian estimator using data in %s\n" %(file_name)
         lines=open(file_name).readlines()
         self.training_file_name=file_name
-      record_list,target_variable,data_items=get_table_as_list(lines=lines,
+      record_list,info_list,target_variable,data_items=get_table_as_list(
+         lines=lines,
          select_only_complete=select_only_complete,out=self.out)
 
     self.training_records=record_list
@@ -670,7 +702,7 @@ class estimator_group:
         record_list=record_list,columns=combination,
         skip_covariance=skip_covariance)
      key=str(combination)
-     self.add_estimator(estimator,key=key)
+     self.add_estimator(estimator,key=key,combination=combination)
 
   def variable_names(self):
     return self.variable_names
@@ -721,7 +753,9 @@ class estimator_group:
     else:  # return all sub_combinations
       combinations=[all_together]
       for n in xrange(len(all_together)):
-        combinations+=self.get_combinations(all_together[:n]+all_together[n+1:])
+        for x in self.get_combinations(all_together[:n]+all_together[n+1:]):
+          if not x in combinations:
+            combinations.append(x)
       return combinations
 
   def apply_estimators(self,value_list=None,data_items=None):
@@ -993,7 +1027,8 @@ def exercise_group():
   estimators.set_up_estimators()
   estimators.show_summary()
 
-  prediction_values_as_list,dummy_target_variable,dummy_data_items=\
+  prediction_values_as_list,info_values_as_list,\
+     dummy_target_variable,dummy_data_items=\
     get_table_as_list(
       record_list=estimators.training_records,select_only_complete=False)
 
@@ -1012,7 +1047,8 @@ def exercise_group():
 
   # and using another dataset included here
   print
-  prediction_values_as_list,target_variable,data_items=get_table_as_list(
+  prediction_values_as_list,info_values_as_list,target_variable,data_items=\
+     get_table_as_list(
      text=prediction_values,select_only_complete=False)
 
   estimators=estimator_group()
@@ -1021,7 +1057,8 @@ def exercise_group():
     data_items=data_items)
   estimators.show_summary()
 
-  all_value_list,target_variable,data_items=get_table_as_list(text=pred_data)
+  all_value_list,all_info_list,target_variable,data_items=\
+      get_table_as_list(text=pred_data)
   for value_list,target in zip(all_value_list,target_values):
     y,sd=estimators.apply_estimators(
      value_list=value_list,data_items=data_items)
@@ -1102,7 +1139,7 @@ def run_jacknife(args,out=sys.stdout):
   print >>out,"Setting up jacknife Bayesian predictor with data from %s" %(
       file_name)
 
-  record_list,target_variable,data_items=get_table_as_list(
+  record_list,info_list,target_variable,data_items=get_table_as_list(
      file_name=file_name,
      select_only_complete=False,
      out=out)
@@ -1119,7 +1156,11 @@ def run_jacknife(args,out=sys.stdout):
         out=out)
     target_list.append(target)
     result_list.append(value)
-    if verbose: print >>out,"%7.3f  %7.3f " %(target,value)
+    info=info_list[i]
+    if verbose:
+      for x in info:
+        print x,
+      print>>out,"%7.3f  %7.3f " %(target,value)
   print "CC: %7.3f " %(flex.linear_correlation(
     target_list,result_list).coefficient())
 
