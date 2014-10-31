@@ -13,7 +13,7 @@ from cctbx.crystal_orientation import crystal_orientation
 import iotbx.phil
 import cctbx
 
-class construct_frame(object):
+class ConstructFrame(object):
   def __init__(self, pickle_name, json_name, pixel_size):
     # assemble template and unpack files
     template_pickle = {'correction_vectors':[[]],
@@ -44,6 +44,11 @@ class construct_frame(object):
 
     # load the integration.pickle file (reflection table) into memory
     self.reflections = flatten_reflections(importer.reflections)[0]
+    if self.reflections.has_key('intensity.prf.value'):
+      self.method = 'prf' # integration by profile fitting
+    elif self.reflections.has_key('intensity.sum.value'):
+      self.method = 'sum' # integration by simple summation
+    self.reflections = self.reflections.select(self.reflections['intensity.' + self.method + '.variance'] > 0) # keep only spots with sigmas above zero
 
     # load the experiments.json file (json) into memory, piecewise
     experiments = flatten_experiments(importer.experiments)[0]
@@ -121,12 +126,8 @@ class construct_frame(object):
 
   # generate a miller array containing the Miller indices, intensities and variances for one frame
   def populate_observations(self):
-    if self.reflections.has_key('intensity.prf.value'):
-      intensities = self.reflections['intensity.prf.value']
-      variances = self.reflections['intensity.prf.variance']
-    elif self.reflections.has_key('intensity.sum.value'):
-      intensities = self.reflections['intensity.sum.value']
-      variances = self.reflections['intensity.sum.variance']
+    intensities = self.reflections['intensity.' + self.method + '.value']
+    variances = self.reflections['intensity.' + self.method + '.variance']
     space_group = crystal.symmetry(self.xtal.get_unit_cell(), str(self.xtal.get_space_group().info()))
     miller_set = miller.set(space_group, self.reflections['miller_index'])
     self.frame['observations'][0] = cctbx.miller.array(miller_set, intensities, variances).set_observation_type_xray_intensity()
@@ -135,7 +136,7 @@ class construct_frame(object):
   def populate_pixel_positions(self):
     assert self.reflections.has_key('xyzcal.px'), "no calculated spot positions"
     self.frame['mapped_predictions'][0] = flex.vec2_double()
-    for i in range(len(self.reflections['xyzcal.px'])):
+    for i in xrange(len(self.reflections['xyzcal.px'])):
       self.frame['mapped_predictions'][0].append(tuple(self.reflections['xyzcal.px'][i][0:2]))
 
   # generate a list of dictionaries containing a series of corrections for each predicted reflection
@@ -194,4 +195,4 @@ if __name__ == "__main__":
       """)
   parser = OptionParser(phil=master_phil_scope)
   params, options = parser.parse_args(show_diff_phil=True)
-  frame = construct_frame(params.pickle_name, params.json_name).make_frame()
+  frame = ConstructFrame(params.pickle_name, params.json_name).make_frame()
