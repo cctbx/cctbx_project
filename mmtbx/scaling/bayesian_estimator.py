@@ -444,19 +444,21 @@ class bayesian_estimator:
       avg.append(flex.mean(v))
     return avg
 
-  def exercise(self):
+  def exercise(self,iseed=39771):
 
-    print "\nTESTING runs of Bayesian estimator with and without missing "
-    print "data and with and without use of covariance.\n"
+    print >>self.out,"\nTESTING runs of Bayesian estimator with and without missing "
+    print >>self.out,"data and with and without use of covariance.\n"
     # set up our arrays
     # our model is a and b are related to p, with correlated error s1 and
     #   independent errors s2 and s3
     # a=p+s1+s2
     # b=p+s1+s3
-
+    import random
+    random.seed(iseed)
+    result_list=[]
     for missing,non_linear in zip([True,False],[False,True]):
      for skip_covar in [False,True]:
-      print "Missing data: ",missing,"   Non-linear: ",non_linear," Skip-covariance: ",skip_covar
+      print >>self.out,"Missing data: ",missing,"   Non-linear: ",non_linear," Skip-covariance: ",skip_covar
       record_list=[]
       sig_list=[.50,0.2,0.8]
       perfect_data,records,record_list=\
@@ -482,21 +484,24 @@ class bayesian_estimator:
       cc_avg=c.coefficient()
       print >>self.out," CC: ",cc," just averaging: ",cc_avg
       print >>self.out
-
-      f=open('test'+str(non_linear)+'.out','w')
-      for perf,pred,sd,values in zip(
+      result_list.append(cc_avg)
+      if 0:
+        f=open('test'+str(non_linear)+'.out','w')
+        for perf,pred,sd,values in zip(
           more_perfect_data,predicted_data,predicted_sd_data,more_records):
-        print >>f, perf,pred,sd,
-      for value in values: print >>f,value,
-      print >>f
+          print >>f, perf,pred,sd,
+        for value in values: print >>f,value,
+        print >>f
+        f.close()
+    return result_list 
 
 
-  def exercise_2(self,iseed=712771):
+  def exercise_2(self,iseed=712771,out=sys.stdout):
 
    # You can just cut and paste this into a new python script and run it
    # Then edit it for your purpose.
 
-   print "\nTESTING Bayesian estimator on sample randomized data\n"
+   print >>self.out,"\nTESTING Bayesian estimator on sample randomized data\n"
    import math,random
    from mmtbx.scaling.bayesian_estimator import bayesian_estimator
    from cctbx.array_family import flex
@@ -510,7 +515,7 @@ class bayesian_estimator:
     x2=y+random.gauss(-2.,.8)
     record_list.append([y,x1,x2])
 
-   run=bayesian_estimator()
+   run=bayesian_estimator(out=out)
    run.create_estimator(
          record_list=record_list,
          n_bin=100,
@@ -533,14 +538,17 @@ class bayesian_estimator:
        run.apply_estimator(obs_record_list)
 
 
-   f=open("out.dat","w")
-   for observed_record,predicted_value,y in zip (
+   if 0:
+     f=open("out.dat","w")
+     for observed_record,predicted_value,y in zip (
          obs_record_list,predicted_data,target_y_list):
-      print >>f,observed_record,predicted_value,y
-   print "Data, predicted y, actual y written to out.dat"
+        print >>f,observed_record,predicted_value,y
+     print >>out,"Data, predicted y, actual y written to out.dat"
+     f.close()
 
-   c=flex.linear_correlation(flex.double(target_y_list),flex.double(predicted_data))
-   print "CC: ",c.coefficient()
+   cc=flex.linear_correlation(flex.double(target_y_list),flex.double(predicted_data)).coefficient()
+   print >>self.out,"CC: ",cc
+   return cc
 #
 
 def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
@@ -620,6 +628,8 @@ class estimator_group:
   # Also useful for using only data to a certain resolution cutoff in the 
   # prediction. This is turned on if resolution_cutoffs is supplied and a 
   #   resolution is supplied for apply_estimator()
+  # if a resolution is requested that is outside the range of resolution_cutoffs
+  #  then a predictor based on the nearest resolution is used.
 
   def __init__(self,
         n_bin=100,
@@ -894,6 +904,7 @@ class estimator_group:
 
   def apply_estimators(self,value_list=None,data_items=None,
     resolution=None):
+
     assert len(value_list)==len(self.variable_names)
     if data_items != self.variable_names:
       print >>self.out,"WARNING: data items do not match working variables:"
@@ -903,12 +914,14 @@ class estimator_group:
       raise Sorry("data items do not match working variables")
     if len(self.resolution_cutoffs)>1 and resolution is None:
       raise Sorry("Must supply resolution if resolution_cutoffs is set")
+
     # choose which resolution cutoff to use
-    rc=self.resolution_cutoffs[-1] # take highest-res if higher than that
+    rc=self.resolution_cutoffs[-1] # take highest-res  no matching resolution
     for resolution_cutoff in self.resolution_cutoffs:
       if resolution >= resolution_cutoff:
         rc=resolution_cutoff
         break 
+
     # figure out which data are present and select the appropriate estimator
     columns=[]
     values=[]
@@ -1160,25 +1173,25 @@ None  None  None
 
 target_values=[0.476,0.672,0.47,0.317,0.046,0.635,0.684,0.684,0.057]
 
-def exercise_group():
+def exercise_group(out=sys.stdout):
 
-  print "\nTESTING exercise_group(): group of predictors with same "
-  print "data but some missing entries.\n"
+  print >>out,"\nTESTING exercise_group(): group of predictors with same "
+  print >>out,"data but some missing entries.\n"
 
   import libtbx.load_env
   file_name=libtbx.env.find_in_repositories(
       relative_path=os.path.join("mmtbx","scaling","cc_ano_data.dat"),
       test=os.path.isfile)
 
-  estimators=estimator_group(resolution_cutoffs=[0.,1.,2.,3.,4.,5.])
+  estimators=estimator_group(resolution_cutoffs=[0.,1.,2.,3.,4.,5.],
+     out=out)
   estimators.set_up_estimators(file_name=file_name)
   estimators.show_summary()
 
-  print "Running estimator now"
-
+  print >>out,"Running estimator now"
   prediction_values_as_list,info_values_as_list,\
      dummy_target_variable,dummy_data_items,dummy_info_items=\
-    get_table_as_list(file_name=file_name, select_only_complete=False)
+    get_table_as_list(file_name=file_name, select_only_complete=False,out=out)
 
   # run through all prediction_values data
   from cctbx.array_family import flex
@@ -1194,31 +1207,40 @@ def exercise_group():
     else: 
       target_list.append(target_and_value[0])
       result_list.append(y)
-  print "Prediction CC: %7.3f " %(flex.linear_correlation(
-    target_list,result_list).coefficient())
+  cc1=flex.linear_correlation(target_list,result_list).coefficient()
+  print >>out,"Prediction CC: %7.3f " %(cc1)
 
   # and using another dataset included here
-  print
+  print >>out
   prediction_values_as_list,info_values_as_list,target_variable,\
      data_items,info_items=get_table_as_list(
-     text=prediction_values,select_only_complete=False)
+     text=prediction_values,select_only_complete=False,out=out)
 
-  estimators=estimator_group()
+  estimators=estimator_group(out=out)
   estimators.set_up_estimators(
     text=prediction_values,select_only_complete=True,
     data_items=data_items)
   estimators.show_summary()
 
   all_value_list,all_info_list,target_variable,data_items,info_items=\
-      get_table_as_list(text=pred_data)
+      get_table_as_list(text=pred_data,out=out)
+
+  target_list=flex.double()
+  result_list=flex.double()
+  
   for value_list,target in zip(all_value_list,target_values):
     y,sd=estimators.apply_estimators(
      value_list=value_list,data_items=data_items)
     if y is not None:
-      print "Y SD Target diff : %7.3f  %7.3f   %7.3f  %7.3f" %(
+      print >>out,"Y SD Target diff : %7.3f  %7.3f   %7.3f  %7.3f" %(
         y,sd,target,y-target)
+      target_list.append(target)
+      result_list.append(y)
     else:
-      print "No data:  %7.3f " %(target)
+      print >>out,"No data:  %7.3f " %(target)
+  cc2=flex.linear_correlation(target_list,result_list).coefficient()
+  print>>out,"Correlation: %6.3f" %(cc2)
+  return cc1,cc2
 
 
 # cross-validation of estimates of cc* from skew, cc_half, esqr
@@ -1296,7 +1318,7 @@ def run_jacknife(args,out=sys.stdout):
      select_only_complete=False,
      out=out)
 
-  print "Size of data list: %d" %(len(record_list))
+  print >>out,"Size of data list: %d" %(len(record_list))
 
   # Set up estimator using all but one entry and predict it from the others
 
@@ -1316,8 +1338,10 @@ def run_jacknife(args,out=sys.stdout):
       for x in info:
         print >>out,x,
       print>>out,"%7.3f  %7.3f " %(target,value)
-  print "CC: %7.3f " %(flex.linear_correlation(
-    target_list,result_list).coefficient())
+  cc=flex.linear_correlation(
+    target_list,result_list).coefficient()
+  print >>out,"CC: %7.3f " %(cc)
+  return cc
 
 if __name__=="__main__":
   args=sys.argv[1:]
