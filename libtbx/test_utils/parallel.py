@@ -145,7 +145,7 @@ class run_command_list (object) :
         pool.terminate()
       finally:
         pool.join()
-    else:      
+    else:
       # Run tests serially.
       for command in self.cmd_list:
         rc = run_command(command, verbosity=verbosity, out=out)
@@ -156,7 +156,7 @@ class run_command_list (object) :
     print >> self.out, "="*80
     print >> self.out, ""
     print >> self.out, "Tests finished. Elapsed time: %.2fs" %(t_end-t_start)
-    print >> self.out, ""    
+    print >> self.out, ""
     extra_stderr = 0
     test_cases = []
     # Process results for errors and warnings.
@@ -185,7 +185,7 @@ class run_command_list (object) :
       ts = TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
       with open('output.xml', 'wb') as f:
         print >> f, TestSuite.to_xml_string([ts], prettyprint=True)
-    
+
     # Run time distribution.
     if (libtbx.env.has_module("scitbx")) :
       from scitbx.array_family import flex
@@ -214,7 +214,7 @@ class run_command_list (object) :
       print >> self.out, ""
       print >> self.out, "Please verify these tests manually."
       print >> self.out, ""
-    
+
     # Summary
     print >> self.out, "Summary:"
     print >> self.out, "  Tests run                    :",self.finished
@@ -231,7 +231,7 @@ class run_command_list (object) :
     if result.error_lines:
       alert = 1
     if result.return_code != 0:
-      alert = 2    
+      alert = 2
     return alert
 
   def save_result (self, result) :
@@ -239,31 +239,32 @@ class run_command_list (object) :
       print >> self.out, "ERROR: job returned None"
       return
     self.results.append(result)
-    if self.quiet:
-      return
     kw = {}
+    kw['out'] = self.out
     kw['log_return'] = self.log
     kw['log_stderr'] = self.log
     kw['log_stdout'] = self.log
     alert = self.check_alert(result)
-    if alert:
-      kw['log_return'] = self.out
-      kw['log_stderr'] = self.out
-    if self.verbosity == EXTRA_VERBOSE:
+    if self.quiet:
+      kw['out'] = self.log
+    elif self.verbosity == EXTRA_VERBOSE:
       kw['log_return'] = self.out
       kw['log_stderr'] = self.out
       kw['log_stdout'] = self.out
+    elif alert:
+      kw['log_return'] = self.out
+      kw['log_stderr'] = self.out
     self.display_result(
       result,
-      alert=alert, 
-      out=self.out,
+      alert=alert,
       **kw
     )
 
-  def display_result (self, result, alert, out, log_return=True, log_stderr=True, log_stdout=False) :
+  def display_result (self, result, alert, out=None, log_return=True, log_stderr=True, log_stdout=False) :
     status = ['OK', 'WARNING', 'FAIL']
-    print >> out, "%s [%s]"%(result.command, status[alert])
-    out.flush()
+    if out:
+      print >> out, "%s [%s]"%(result.command, status[alert])
+      out.flush()
     if log_return:
       print >> log_return, "  Time: %5.2f"%result.wall_time
       print >> log_return, "  Return code: %s"%result.return_code
@@ -277,7 +278,7 @@ class run_command_list (object) :
       print >> log_stderr, "  Standard error:"
       print >> log_stderr, "    "+"\n    ".join(result.stderr_lines)
       log_stderr.flush()
-    
+
 def make_commands (files) :
   commands = []
   non_executable = []
