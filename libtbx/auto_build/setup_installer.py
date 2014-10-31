@@ -60,6 +60,8 @@ def run (args) :
     help="Name of installed package", default=None)
   parser.add_option("--cctbx_bundle", dest="cctbx_bundle", action="store",
     help="Path to CCTBX installer bundle (if not downloaded)", default=None)
+  parser.add_option("--bin-dir", dest="bin_dir", action="store",
+    help="Directory containing additional binaries/scripts", default=None)
   options, args = parser.parse_args(args)
   assert len(args) == 1
   package_name = args[-1]
@@ -80,6 +82,12 @@ def run (args) :
   if (not options.binary) :
     os.mkdir("source")
     os.mkdir("dependencies")
+  # copy 'binary' programs if defined
+  if options.bin_dir :
+    assert op.isdir(options.bin_dir)
+    for file_name in os.listdir(options.bin_dir) :
+      full_path = op.join(options.bin_dir, file_name)
+      copy_file(full_path, op.join("bin", file_name))
   # copy over libtbx
   lib_dir = op.join(os.getcwd(), "lib")
   shutil.copytree(libtbx_path, op.join(lib_dir, "libtbx"))
