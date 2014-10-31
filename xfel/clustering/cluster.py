@@ -81,7 +81,7 @@ class Cluster:
       >>> prime.postrefine params.phil $(cat cluster.lst)
   """
 
-  def __init__(self, data, cname, info):
+  def __init__(self, data, cname="cluster", info=""):
     """
     Builds a cluster from a list of SingleFrame objects, as well as information
     about these as a cluster (e.g. mean unit cell).
@@ -260,7 +260,6 @@ class Cluster:
                                   "\nRes={}\ncompleteness_threshold={}").format(
                                    res,
                                    completeness_threshold))
-
 
   def ab_cluster(self, threshold=10000, method='distance',
                  linkage_method='single', log=False,
@@ -545,7 +544,6 @@ class Cluster:
 
     return axes_to_return
 
-
   def intensity_statistics(self, ax=None):
     """
     Uses the per-frame B and G fits (gradient and intercept of the ln(i) vs
@@ -710,10 +708,25 @@ class Cluster:
     all_obs = all_obs.select(all_obs.data() > 0)
     mtz_out = all_obs.as_mtz_dataset(column_root_label="Iobs",
                                          title=self.cname,
-                                                                          wavelength=np.median([m.wavelength for m in self.members]))
+                                         wavelength=np.median(
+                                           [m.wavelength for m in self.members]))
     mtz_out.add_miller_array(miller_array=all_obs,
                                  column_root_label="IMEAN")
     mtz_obj = mtz_out.mtz_object()
     mtz_obj.write(mtz_name)
 
     logging.info("MTZ file written to {}".format(mtz_name))
+
+  def to_pandas(self):
+    import pandas as pd
+    return pd.DataFrame({s['name']: s
+                         for s
+                         in [m.to_panda() for m in self.members]}).T
+
+  def uc_feature_vector(self):
+    """ Return a len(cluster) * 6 numpy array of features for use in ML algos"""
+    ucs = [c.uc for c in self.members]
+    return  np.array(zip(*ucs))
+
+
+
