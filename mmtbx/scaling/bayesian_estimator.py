@@ -65,13 +65,16 @@ from libtbx.utils import Sorry,null_out
 pi=2.*math.atan2(1.,0.)
 
 class bayesian_estimator:
-  def __init__(self,out=None,verbose=False,skip_covariance=True):
+  def __init__(self,out=None,verbose=False,skip_covariance=True,
+     minimum_records=20):
     if out is None:
       self.out=sys.stdout
     else:
       self.out=out
     self.verbose=verbose
     self.skip_covariance=skip_covariance
+    self.minimum_records=minimum_records
+    self.ok=True
 
   def create_estimator(self,record_list=None,
     n_bin=None,range_low=None,range_high=None,
@@ -90,7 +93,11 @@ class bayesian_estimator:
     self.range_high=range_high  # range_high of y
 
     # get set up:
-    self.check_estimator_inputs() # check and print out what we are doing..
+    ok=self.check_estimator_inputs() # check and print out what we are doing..
+    if not ok:
+      self.ok=False 
+      return  # give up
+
     self.record_list.sort()  # sort on y (first variable in each record)
                              # so it is easy to bin
     # Split by bins of y
@@ -109,6 +116,8 @@ class bayesian_estimator:
     #  y_bar,sd=self.get_y_bar_sd_given_x({x_i})
 
   def apply_estimator(self,record_list_or_values,single_value=False):
+    if not self.ok: return None,None
+
     if single_value:
       return self.get_y_bar_sd_given_x(record_list_or_values)
 
@@ -290,6 +299,8 @@ class bayesian_estimator:
     print >>self.out,"and one vector of perfect values"
     assert self.n>0 # need at least one meas and one obs
     print >>self.out,"Total of ",len(self.record_list)," values of each"
+    if len(self.record_list)<self.minimum_records:
+      return False
     for v in self.record_list:
        assert len(v)==len(self.record_list[0])
        assert type(v)==type([1,2,3])
@@ -299,6 +310,7 @@ class bayesian_estimator:
       if self.n_bin < 2: self.n_bin=2
     print >>self.out,"Number of bins: ",self.n_bin
     assert self.n_bin>0
+    return True
 
   def get_range(self):
     if self.range_low is None or self.range_high is None:
@@ -606,8 +618,8 @@ class estimator_group:
   # missing some of the predictor variables.
 
   # Also useful for using only data to a certain resolution cutoff in the 
-  # prediction. This is turned on if resolution_cutoffs is supplied and a d_min
-  #   is supplied for apply_estimator()
+  # prediction. This is turned on if resolution_cutoffs is supplied and a 
+  #   resolution is supplied for apply_estimator()
 
   def __init__(self,
         n_bin=100,
@@ -615,6 +627,8 @@ class estimator_group:
         smooth_bins=5,
         resolution_cutoffs=None,
         skip_covariance=True,
+        minimum_records=20,
+        verbose=False,
         out=sys.stdout):
 
     self.estimator_dict={}
@@ -626,9 +640,15 @@ class estimator_group:
     self.min_in_bin=min_in_bin
     self.smooth_bins=smooth_bins
     self.out=out
+    self.verbose=verbose
+    if self.verbose:
+      self.verbose_out=out
+    else:
+      self.verbose_out=null_out()
     self.training_records=[]
     self.training_file_name='None'
     self.skip_covariance=skip_covariance
+    self.minimum_records=minimum_records
 
     if resolution_cutoffs: 
        resolution_cutoffs.sort()
@@ -643,18 +663,25 @@ class estimator_group:
     print >>self.out,"\nVariable names:",
     for x in self.variable_names: print >>self.out,x,
     print >>self.out
- 
-    print >>self.out,"\nCombination groups:"
+    print >>self.out,"Resolution cutoffs:",
     for resolution_cutoff in self.resolution_cutoffs:
-      print >>self.out,"Resolution cutoff: %5.2f A" %(resolution_cutoff),
+       print >>self.out,"%5.2f" %(resolution_cutoff),
+    print >>self.out
+ 
+    print >>self.verbose_out,"\nCombination groups:"
+    for resolution_cutoff in self.resolution_cutoffs:
+      print >>self.verbose_out,\
+          "Resolution cutoff: %5.2f A" %(resolution_cutoff),
       for x in self.combinations[resolution_cutoff]: 
-        print >>self.out,"(",
+        print >>self.verbose_out,"(",
         for id in x:
-          print >>self.out,"%s" %(self.variable_names[id]),
-        print >>self.out,")  ",
-      print >>self.out
-    print >>self.out,"Bins: %d   Smoothing bins: %d  Minimum in bins: %d " %(
+          print >>self.verbose_out,"%s" %(self.variable_names[id]),
+        print >>self.verbose_out,")  ",
+      print >>self.verbose_out
+    print >>self.verbose_out,\
+         "Bins: %d   Smoothing bins: %d  Minimum in bins: %d " %(
         self.n_bin,self.smooth_bins,self.min_in_bin)
+
     print >>self.out,"Data records used in training estimator: %d\n" %(
       len(self.training_records))
     print >>self.out,"Data file source of training data: %s\n" %(
@@ -676,33 +703,16 @@ class estimator_group:
       text=None,
       select_only_complete=False):
 
-    if record_list:
-      n=len(record_list[0])
-      assert data_items is not None
-    else:
-      record_list=[]
-      data_items=[]
-      if text:
-        print >>self.out,\
-          "Setting up Bayesian estimator using supplied data"
-        lines=text.splitlines()
-      else:
-        if not file_name:
-          import libtbx.load_env
-          file_name=libtbx.env.find_in_repositories(
-            relative_path=os.path.join("mmtbx","scaling","cc_ano_data.dat"),
-            test=os.path.isfile)
-        if not file_name:
-          raise Sorry("Need file with training data")
-
-        print >>self.out,\
-          "\nSetting up Bayesian estimator using data in %s\n" %(file_name)
-        lines=open(file_name).readlines()
-        self.training_file_name=file_name
+    if not record_list:
       record_list,info_list,target_variable,data_items,info_items=\
-       get_table_as_list(
-         lines=lines,
-         select_only_complete=select_only_complete,out=self.out)
+       self.get_record_list(
+        file_name=file_name,
+        text=text,
+        select_only_complete=select_only_complete)
+
+    n=len(record_list[0])
+    assert data_items is not None
+
 
     self.training_records=record_list
 
@@ -717,22 +727,25 @@ class estimator_group:
     # now split in all possible ways and get estimators for each combination
     # if self.resolution_cutoffs is set, do it with each resolution cutoff
     for resolution_cutoff in self.resolution_cutoffs:
-      print >>self.out,"\nResolution cutoff of %5.2f A" %(resolution_cutoff)
+      print >>self.verbose_out,\
+         "\nResolution cutoff of %5.2f A" %(resolution_cutoff)
       local_record_list,local_info_list=self.select_records(
         record_list=record_list, 
         info_list=info_list,resolution_cutoff=resolution_cutoff)
       if len(local_record_list)<1:
-        print >>self.out,"No records selected for this resolution cutoff"
+        print >>self.verbose_out,\
+           "No records selected for this resolution cutoff"
         self.delete_resolution_cutoff(resolution_cutoff)
         continue
 
-      print >>self.out,"%d records selected for this resolution cutoff" %(
+      print >>self.verbose_out,\
+         "%d records selected for this resolution cutoff" %(
        len(local_record_list))
       n_predictors=n-1
-      print >>self.out,"\nPredictor variables: %d" %(n_predictors)
+      print >>self.verbose_out,"\nPredictor variables: %d" %(n_predictors)
       for pv in data_items:
-        print >>self.out,"%s" %(pv),
-      print >>self.out
+        print >>self.verbose_out,"%s" %(pv),
+      print >>self.verbose_out
       if len(data_items)!=n_predictors:
         raise Sorry("Number of predictor variables (%d) must be the same as " %(
             len(data_items)) +
@@ -749,6 +762,32 @@ class estimator_group:
          self.add_estimator(estimator,resolution_cutoff=resolution_cutoff,
            combination=combination)
 
+  def get_record_list(self,
+     file_name=None,
+     text=None,
+     select_only_complete=None):
+      record_list=[]
+      data_items=[]
+      if text:
+        print >>self.out,\
+          "Setting up Bayesian estimator using supplied data"
+        lines=text.splitlines()
+      else:
+        if not file_name:
+          import libtbx.load_env
+          file_name=libtbx.env.find_in_repositories(
+            relative_path=os.path.join("mmtbx","scaling","cc_ano_data.dat"),
+            test=os.path.isfile)
+        if not file_name:
+          raise Sorry("Need file with training data")
+        print >>self.out,\
+          "\nSetting up Bayesian estimator using data in %s\n" %(file_name)
+        lines=open(file_name).readlines()
+        self.training_file_name=file_name
+      return get_table_as_list(
+         lines=lines,
+         select_only_complete=select_only_complete,out=self.out)
+
   def delete_resolution_cutoff(self,resolution_cutoff):
     new_cutoffs=[]
     for rc in self.resolution_cutoffs:
@@ -759,6 +798,7 @@ class estimator_group:
   def select_records(self,
       record_list=None,
       info_list=None,
+      next_cutoff=None,
       resolution_cutoff=None):
     # select those records that are >= resolution_cutoff and not >= the
     # next-highest cutoff in the list (if any)
@@ -768,10 +808,10 @@ class estimator_group:
     if self.info_names[-1]!='d_min' and len(self.resolution_cutoffs)>1:
       raise Sorry("Cannot select records on resolution unless the database"+
         "(%s) has resolution information" %(str(self.training_file_name)))
-    next_cutoff=None
-    for rc in self.resolution_cutoffs:
-      if (next_cutoff is None or rc <next_cutoff) and rc > resolution_cutoff:
-        next_cutoff=rc
+    if next_cutoff is None:
+      for rc in self.resolution_cutoffs:
+        if (next_cutoff is None or rc <next_cutoff) and rc > resolution_cutoff:
+          next_cutoff=rc
 
     new_records=[]
     new_info=[]
@@ -780,6 +820,15 @@ class estimator_group:
         (next_cutoff is None or info[-1]<next_cutoff):
          new_records.append(record)
          new_info.append(info)
+    if len(new_records)<self.minimum_records and next_cutoff<info_list[-1][-1]:
+      # try again with bigger range
+      next_next_cutoff=None
+      for rc in self.resolution_cutoffs:
+        if (next_next_cutoff is None or rc <next_next_cutoff) \
+          and rc > next_cutoff:
+          next_next_cutoff=rc
+      return self.select_records(record_list=record_list,info_list=info_list,
+        next_cutoff=next_next_cutoff,resolution_cutoff=resolution_cutoff)
     return new_records,new_info
 
   def get_key(self,combination=None,resolution_cutoff=None):
@@ -821,13 +870,14 @@ class estimator_group:
     if not selected_list:
       return None
 
-    estimator=bayesian_estimator(out=self.out,
+    estimator=bayesian_estimator(out=null_out(),
          skip_covariance=self.skip_covariance)
     estimator.create_estimator(
           record_list=selected_list,
          n_bin=self.n_bin,
          min_in_bin=self.min_in_bin,
          smooth_bins=self.smooth_bins)
+    if not estimator.ok: return None
 
     return estimator
 
@@ -1250,10 +1300,13 @@ def run_jacknife(args,out=sys.stdout):
 
   # Set up estimator using all but one entry and predict it from the others
 
+  n_jump=20
+  print >>out,"Testing every %d'th entry in jacknife" %(n_jump)
   from cctbx.array_family import flex
   target_list=flex.double()
   result_list=flex.double()
   for i in xrange(len(record_list)):
+    if n_jump*(i//n_jump)!=i: continue
     target,value=jacknife(record_list,i,skip_covariance=skip_covariance,
         out=out)
     target_list.append(target)
@@ -1261,7 +1314,7 @@ def run_jacknife(args,out=sys.stdout):
     info=info_list[i]
     if verbose:
       for x in info:
-        print x,
+        print >>out,x,
       print>>out,"%7.3f  %7.3f " %(target,value)
   print "CC: %7.3f " %(flex.linear_correlation(
     target_list,result_list).coefficient())
