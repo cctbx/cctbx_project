@@ -22,7 +22,7 @@ def check_python_version () :
       DeprecationWarning)
     time.sleep(2)
 
-def call (args, log, shell=True, cwd=None) :
+def call (args, log=sys.stdout, shell=True, cwd=None) :
   rc = None
   if (sys.version_info[1] >= 7) :
     import subprocess
