@@ -102,7 +102,7 @@ class installer_builder (object) :
     setup_args = [
       "--version=%s" % options.version,
       "--binary",
-      "--script=%s" % full_path(options.installer_script),
+      "--script=%s" % full_path(self.installer_script),
       "--product_name=%s" % self.product_name,
       "--pkg_dir=%s" % modules_dir,
     ]
@@ -113,22 +113,24 @@ class installer_builder (object) :
       setup_args.append("--base-modules=%s" % ",".join(self.base_modules))
     if (self.license) :
       setup_args.append("--license=%s" % full_path(self.license))
-    setup_installer.run(args=setup_args + [ self.pkg_name ])
-    installer_dir = self.pkg_name + "-installer-" + options.version
-    assert op.isdir(installer_dir)
+    setup_installer.run(args=setup_args + [ self.pkg_prefix ])
+    installer_dir = self.pkg_prefix + "-installer-" + options.version
+    os.chdir(options.tmp_dir)
+    assert op.isdir(installer_dir), installer_dir
+    bundle_dir = op.join(options.tmp_dir, installer_dir, "bundles")
+    os.mkdir(bundle_dir)
     # create bundles of base, build, and module directories
-    os.chdir(installer_dir)
     bundle_args = [
-      "--dest=%s" % os.getcwd(),
+      "--dest=%s" % bundle_dir,
       "--version=%s" % options.version,
       "--verbose",
     ]
     if (len(self.exclude_build_modules) > 0) :
       for module in self.exclude_build_modules :
         bundle_args.append("--ignore=%s" % module)
-    make_bundle.run(args=bundle_args + [ self.builder_dir ])
+    make_bundle.run(args=bundle_args + [ builder_dir ])
     # package the entire mess into the complete installer
-    find_and_delete_files(os.getcwd(), file_ext=".pyc")
+    find_and_delete_files(installer_dir, file_ext=".pyc")
     os.chdir(options.tmp_dir)
     tar_prefix = installer_dir
     if (options.host_tag is not None) :
