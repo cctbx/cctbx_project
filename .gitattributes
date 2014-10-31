@@ -2014,6 +2014,7 @@ mmtbx/scaling/plan_sad_experiment.py -text
 mmtbx/scaling/relative_wilson.py -text
 mmtbx/scaling/ta_alpha_beta_calc.py svneol=native#text/x-python
 mmtbx/scaling/tst_absences.py svneol=native#text/x-python
+mmtbx/scaling/tst_bayesian_estimator.py -text
 mmtbx/scaling/tst_massage_data.py -text
 mmtbx/scaling/tst_plan_sad_experiment.py -text
 mmtbx/scaling/tst_xtriage.py svneol=native#text/x-python
