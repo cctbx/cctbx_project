@@ -262,6 +262,27 @@ class SingleFrame:
     other_g6 = self.make_g6(other_uc)
     return NCDist(self_g6, other_g6)
 
+  def to_panda(self):
+    """ Returns the object attributes as a pandas series """
+    import pandas as pd
+    return pd.Series({'path': self.path,
+                      'name': self.name,
+                      'crystal_system': self.crystal_system,
+                      'point group': self.pg,
+                      'a': self.uc[0],
+                      'b': self.uc[1],
+                      'c': self.uc[2],
+                      'alpha': self.uc[3],
+                      'beta': self.uc[4],
+                      'gamma': self.uc[5],
+                      'total_i': self.total_i,
+                      'wavelength': self.wavelength,
+                      'spot_offset': self.spot_offset,
+                      'minus_2B': self.minus_2B,
+                      'G': self.G,
+                      'willson_err': self.wilson_err})
+
+
   @staticmethod
   def _moving_average(array, n=50):
     """ quick method for moving average, needed for smoothing plots. Implements
