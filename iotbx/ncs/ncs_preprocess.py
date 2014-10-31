@@ -850,8 +850,6 @@ class ncs_group_object(object):
         self.ncs_atom_selection |= ~selection_ref
         assert set(self.non_ncs_region_selection).intersection(
           set(self.all_master_ncs_selections)) == set()
-        # Check that all the NCS related copies have the same atom numbers
-
       elif pdb_length == ncs_length:
         # this case is when the pdb hierarchy contain only the master NCS copy
         self.total_asu_length = self.get_asu_length(temp)
@@ -1287,16 +1285,24 @@ class ncs_group_object(object):
       spec_object
     """
     spec_object = ncs.ncs()
-
-    if [bool(xrs),bool(pdb_hierarchy_asu)].count(True) == 0:
-      if self.hierarchy and \
-              (self.hierarchy.atoms().size() == self.total_asu_length):
-        pdb_hierarchy_asu = self.hierarchy
-    if fmodel:
+    if [bool(xrs),bool(pdb_hierarchy_asu),bool(fmodel)].count(True) == 0:
+      # if not input containing coordinates is given
+      if self.hierarchy:
+        if (self.hierarchy.atoms().size() == self.total_asu_length):
+          xyz = self.hierarchy.atoms().extract_xyz()
+        else:
+          # get the ASU coordinates
+          nrg = self.get_ncs_restraints_group_list()
+          xyz = apply_transforms(
+            ncs_coordinates = self.hierarchy.atoms().extract_xyz(),
+            ncs_restraints_group_list = nrg,
+            total_asu_length =  self.total_asu_length,
+            extended_ncs_selection = self.ncs_atom_selection)
+    elif fmodel:
       xrs = fmodel.xray_structure
     if xrs and (not pdb_hierarchy_asu):
       xyz = xrs.sites_cart()
-    else:
+    elif pdb_hierarchy_asu:
       xyz = pdb_hierarchy_asu.atoms().extract_xyz()
 
     for gn,gr in self.ncs_group_map.iteritems():
@@ -1343,7 +1349,6 @@ class ncs_group_object(object):
           chain_residue_id = [chain_residue_id_list,chain_residue_range_list],
           residues_in_common_list = residues_in_common_list,
           ncs_domain_pdb = None)
-
     if write:
       spec_object.display_all(log=self.log)
       f=open("simple_ncs_from_pdb.resolve",'w')
@@ -1425,10 +1430,8 @@ class ncs_group_object(object):
       for (ch_id, (sel_start,sel_end)) in self.model_order_chain_ids:
         key = 'chain ' + ch_id
         tr_key  =  key + '_' + tr
-
         ncs_selection = self.asu_to_ncs_map[key][sel_start:sel_end]
         tr_assignment_order.append([tr_key,ncs_selection])
-
     for tr,ncs_selection in tr_assignment_order:
       new_part = pdb_hierarchy.select(ncs_selection).deep_copy()
       new_chain = iotbx.pdb.hierarchy.ext.chain()
@@ -1548,15 +1551,22 @@ def get_pdb_header(pdb_str):
 
 def get_center_orth(xyz,selection):
   """
+  Compute the center of coordinates of selected coordinates
+
   Args:
-    xyz:(flex.vec3_double) the complete asu sites cart (atoms coordinates)
-    selection:
+    xyz (flex.vec3_double): Atoms coordinates
+    selection (flex.bool): Atom selection array
 
   Returns:
-    (flex.vec3_double) center of coordinates for the selected coordinates
+    (tuple) center of coordinates for the selected coordinates
+    Returns (-100,-100,-100) when selection is bad
   """
-  new_xyz = xyz.select(selection)
-  return new_xyz.mean()
+  try:
+    new_xyz = xyz.select(selection)
+    mean = new_xyz.mean()
+  except RuntimeError:
+    mean = (-100,-100,-100)
+  return mean
 
 def format_num_as_str(n):
   """  return a 3 digit string of n  """
