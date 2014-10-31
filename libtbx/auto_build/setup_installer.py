@@ -105,6 +105,22 @@ def run (args) :
     open("README", "w").write(open(file_name).read())
   if op.isfile(options.license) :
     open("LICENSE", "w").write(open(options.license).read())
+  have_modules = []
+  def get_module (module_name) :
+    for pkg_dir in options.pkg_dirs :
+      dist_dir = op.join(pkg_dir, module_name)
+      tarfile = op.join(pkg_dir, module_name + "_hot.tar.gz")
+      if op.exists(tarfile) :
+        print "using module '%s' from %s" % (module_name, tarfile)
+        copy_file(tarfile, module_name + ".tar.gz")
+        have_modules.append(module_name)
+        break
+      elif op.isdir(dist_dir) :
+        print "using module '%s' from %s" % (module_name, dist_dir)
+        archive_dist(dist_dir)
+        assert op.isfile(module_name + ".tar.gz")
+        have_modules.append(module_name)
+        break
   if (not options.binary) :
     print ""
     print "********** FETCHING DEPENDENCIES **********"
@@ -130,22 +146,6 @@ def run (args) :
     else :
       assert op.isfile(options.cctbx_bundle)
       copy_file(options.cctbx_bundle, "cctbx_bundle.tar.gz")
-    have_modules = []
-    def get_module (module_name) :
-      for pkg_dir in options.pkg_dirs :
-        dist_dir = op.join(pkg_dir, module_name)
-        tarfile = op.join(pkg_dir, module_name + "_hot.tar.gz")
-        if op.exists(tarfile) :
-          print "using module '%s' from %s" % (module_name, tarfile)
-          copy_file(tarfile, module_name + ".tar.gz")
-          have_modules.append(module_name)
-          break
-        elif op.isdir(dist_dir) :
-          print "using module '%s' from %s" % (module_name, dist_dir)
-          archive_dist(dist_dir)
-          assert op.isfile(module_name + ".tar.gz")
-          have_modules.append(module_name)
-          break
     if (module_list is not None) :
       print ""
       print "********** FETCHING MODULES **********"
@@ -153,16 +153,16 @@ def run (args) :
       module_list = re.sub(",", " ", module_list)
       for module_name in module_list.split() :
         get_module(module_name)
-    # Additional modules that are included in both the source and the binary
-    # installer - in Phenix this includes restraints, examples, documentation,
-    # and regression tests
-    if (base_module_list is not None) :
-      base_module_dir = op.join(options.dest, installer_dir, "base")
-      os.makedirs(base_module_dir)
-      os.chdir(base_module_dir)
-      base_module_list = re.sub(",", " ", base_module_list)
-      for module_name in base_module_list.split() :
-        get_module(module_name)
+  # Additional modules that are included in both the source and the binary
+  # installer - in Phenix this includes restraints, examples, documentation,
+  # and regression tests
+  if (base_module_list is not None) :
+    base_module_dir = op.join(options.dest, installer_dir, "base")
+    os.makedirs(base_module_dir)
+    os.chdir(base_module_dir)
+    base_module_list = re.sub(",", " ", base_module_list)
+    for module_name in base_module_list.split() :
+      get_module(module_name)
   os.chdir(op.join(options.dest, installer_dir))
   # actual Python installer script
   if (options.script is not None) :
