@@ -19,6 +19,23 @@ import math
 import sys
 op = os.path
 
+def eval_ending (file_name):
+  endings_mapping = {"experiments.json"          : "integrated.pickle",
+                     "_experiments.json"         : "_integrated.pickle",
+                     "_refined_experiments.json" : "_integrated.pickle"}
+  dir_name = os.path.dirname(file_name)
+  basename = os.path.basename(file_name)
+  for ending in endings_mapping:
+    try:
+      final_digit = int(basename.split(ending)[0][-1])
+      num_part = basename.split(ending)[0]
+      expt_name = os.path.join(dir_name, basename)
+      refl_name = os.path.join(dir_name, num_part + endings_mapping[ending])
+      return (num_part, expt_name, refl_name)
+    except Exception:
+      continue
+  return None
+
 def get_observations (data_dirs,data_subset):
   print "Step 1.  Get a list of all files"
   file_names = []
@@ -26,25 +43,11 @@ def get_observations (data_dirs,data_subset):
     if not os.path.isdir(dir_name):
       continue
     for file_name in os.listdir(dir_name):
-      if file_name.endswith("_experiments.json"):
-        if file_name.endswith("_refined_experiments.json"):
-          if os.path.exists(os.path.join(dir_name, file_name.split("_refined_experiments.json")[0] + "_integrated.pickle")):
-            if data_subset==0 or \
-              (data_subset==1 and (int(os.path.basename(file_name).split("_refined_experiments.json")[0][-1])%2==1)) or \
-              (data_subset==2 and (int(os.path.basename(file_name).split("_refined_experiments.json")[0][-1])%2==0)):
-              file_names.append(os.path.join(dir_name, file_name))
-        else:
-          if os.path.exists(os.path.join(dir_name, file_name.split("_experiments.json")[0] + "_integrated.pickle")):
-            if data_subset==0 or \
-              (data_subset==1 and (int(os.path.basename(file_name).split("_experiments.json")[0][-1])%2==1)) or \
-              (data_subset==2 and (int(os.path.basename(file_name).split("_experiments.json")[0][-1])%2==0)):
-              file_names.append(os.path.join(dir_name, file_name))
-      elif file_name.endswith("experiments.json"):
-        if os.path.exists(os.path.join(dir_name, file_name.split("experiments.json")[0] + "integrated.pickle")):
-          if data_subset==0 or \
-            (data_subset==1 and (int(os.path.basename(file_name).split("experiments.json")[0][-1])%2==1)) or \
-            (data_subset==2 and (int(os.path.basename(file_name).split("experiments.json")[0][-1])%2==0)):
-            file_names.append(os.path.join(dir_name, file_name))
+      if eval_ending(file_name) is not None: # only accept jsons
+        if data_subset == 0 or \
+          (data_subset == 1 and int(eval_ending(file_name)[0][-1]) % 2 == 1 or \
+          (data_subset == 2 and int(eval_ending(file_name)[0][-1]) % 2 == 0)):
+          file_names.append(os.path.join(dir_name, file_name))
   print "Number of frames found:", len(file_names)
   return file_names
 
@@ -59,7 +62,7 @@ def load_result (file_name,
   # Pull relevant information from integrated.pickle and refined_experiments.json
   # files to construct the equivalent of a single integration pickle (frame).
   try:
-    frame = frame_extractor.construct_frame(file_name.split("_experiments.json")[0] + "_integrated.pickle", file_name, params.pixel_size).make_frame()
+    frame = frame_extractor.ConstructFrame(eval_ending(file_name)[2], eval_ending(file_name)[1], params.pixel_size).make_frame()
   except Exception:
     return None
 
