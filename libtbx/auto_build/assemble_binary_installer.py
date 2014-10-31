@@ -128,6 +128,9 @@ class installer_builder (object) :
     if (len(self.exclude_build_modules) > 0) :
       for module in self.exclude_build_modules :
         bundle_args.append("--ignore=%s" % module)
+    if (len(self.base_modules) > 0) :
+      for module in self.base_modules :
+        bundle_args.append("--ignore=%s" % module)
     make_bundle.run(args=bundle_args + [ builder_dir ])
     # package the entire mess into the complete installer
     find_and_delete_files(installer_dir, file_ext=".pyc")
