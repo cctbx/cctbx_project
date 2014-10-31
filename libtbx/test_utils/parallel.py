@@ -246,9 +246,10 @@ class run_command_list (object) :
     kw['log_stderr'] = self.log
     kw['log_stdout'] = self.log
     alert = self.check_alert(result)
-    if alert or self.verbosity == EXTRA_VERBOSE:
+    if alert:
       kw['log_stderr'] = self.out
-    if alert and self.verbosity == EXTRA_VERBOSE:
+    if self.verbosity == EXTRA_VERBOSE:
+      kw['log_stderr'] = self.out
       kw['log_stdout'] = self.out
     self.display_result(
       result,
