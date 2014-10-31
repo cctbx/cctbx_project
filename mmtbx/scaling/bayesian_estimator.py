@@ -65,7 +65,7 @@ from libtbx.utils import Sorry,null_out
 pi=2.*math.atan2(1.,0.)
 
 class bayesian_estimator:
-  def __init__(self,out=None,verbose=False,skip_covariance=False):
+  def __init__(self,out=None,verbose=False,skip_covariance=True):
     if out is None:
       self.out=sys.stdout
     else:
@@ -138,6 +138,8 @@ class bayesian_estimator:
   def get_p_xx(self,x_list,bin):
     x_vector=flex.double(x_list)
     means_vector,cov_matrix_inv,determinant=self.get_mean_cov_inv_determinant(bin)
+    if means_vector is None or cov_matrix_inv is None or determinant is None:
+      return 0.0 # 
     delta_vect=x_vector-means_vector
     delta_row_matrix=matrix.rec(delta_vect,[len(x_list),1])
     delta_col_matrix=delta_row_matrix.transpose()
@@ -189,8 +191,9 @@ class bayesian_estimator:
        try:
          self.bin_cov_inv_list.append(cov_matrix.inverse())
          self.bin_determinant_list.append(cov_matrix.determinant())
-       except Exception:
-         print "no inverse: ",cov_matrix
+       except Exception, e:  # sets result to zero later if we do this...
+         self.bin_cov_inv_list.append(None)
+         self.bin_determinant_list.append(None)
 
   def smooth_cov_and_means(self): # smooth with window of smooth_bins
                                   # only smooth symmetrically, so ends not done
@@ -275,7 +278,7 @@ class bayesian_estimator:
     return flex.double(list_of_means),mx
 
   def get_mean_cov_inv_determinant(self,bin):
-    if bin<0 or bin>self.n_bin: return None,None
+    if bin<0 or bin>self.n_bin-1: return None,None
     return self.bin_means_list[bin],self.bin_cov_inv_list[bin], \
       self.bin_determinant_list[bin]
 
@@ -559,7 +562,7 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
           all_info_items.append(all_items[0])
           all_items=all_items[1:]
         if all_items[0].lower() in  ['d_min','dmin','res','resolution']:
-          all_info_items.append(all_items[0])
+          all_info_items.append('d_min') # standardize
           all_items=all_items[1:]
         target=all_items[0]
         all_items=all_items[1:]
@@ -573,6 +576,8 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
         continue
       xx=[]
       info=spl[:n_info]
+      for i in xrange(1,n_info):
+        info[i]=float(info[i])
       for x in spl[n_info:]:
         if x.lower() in ["-1","-1.000","None","none"]:
           xx.append(None)
@@ -593,29 +598,44 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
         new_info_list.append(y)
     record_list=new_list
     info_list=new_info_list
-  return record_list,info_list,target_variable,data_items
+  return record_list,info_list,target_variable,data_items,info_items
 
 class estimator_group:
   # holder for a group of estimators based on the same data but using different
   # subsets for prediction.  Useful in case the request for estimation is
   # missing some of the predictor variables.
 
+  # Also useful for using only data to a certain resolution cutoff in the 
+  # prediction. This is turned on if resolution_cutoffs is supplied and a d_min
+  #   is supplied for apply_estimator()
+
   def __init__(self,
         n_bin=100,
         min_in_bin=5,
         smooth_bins=5,
+        resolution_cutoffs=None,
+        skip_covariance=True,
         out=sys.stdout):
 
     self.estimator_dict={}
     self.keys=[]
-    self.combinations=[]
+    self.combinations={} # keyed on resolution
     self.variable_names=[]
+    self.info_names=[]
     self.n_bin=n_bin
     self.min_in_bin=min_in_bin
     self.smooth_bins=smooth_bins
     self.out=out
     self.training_records=[]
     self.training_file_name='None'
+    self.skip_covariance=skip_covariance
+
+    if resolution_cutoffs: 
+       resolution_cutoffs.sort()
+       resolution_cutoffs.reverse() # highest first
+    else:
+       resolution_cutoffs=[0]
+    self.resolution_cutoffs=resolution_cutoffs
 
   def show_summary(self):
     # show summary of this estimator
@@ -623,13 +643,16 @@ class estimator_group:
     print >>self.out,"\nVariable names:",
     for x in self.variable_names: print >>self.out,x,
     print >>self.out
-    print >>self.out,"\nCombination groups:",
-    for x in self.combinations: 
-      print >>self.out,"(",
-      for id in x:
-        print >>self.out,"%s" %(self.variable_names[id]),
-      print >>self.out,")  ",
-    print >>self.out
+ 
+    print >>self.out,"\nCombination groups:"
+    for resolution_cutoff in self.resolution_cutoffs:
+      print >>self.out,"Resolution cutoff: %5.2f A" %(resolution_cutoff),
+      for x in self.combinations[resolution_cutoff]: 
+        print >>self.out,"(",
+        for id in x:
+          print >>self.out,"%s" %(self.variable_names[id]),
+        print >>self.out,")  ",
+      print >>self.out
     print >>self.out,"Bins: %d   Smoothing bins: %d  Minimum in bins: %d " %(
         self.n_bin,self.smooth_bins,self.min_in_bin)
     print >>self.out,"Data records used in training estimator: %d\n" %(
@@ -637,18 +660,21 @@ class estimator_group:
     print >>self.out,"Data file source of training data: %s\n" %(
       self.training_file_name)
 
-  def add_estimator(self,estimator,key=None,combination=None):
+  def add_estimator(self,estimator,resolution_cutoff=None,combination=None):
+    key=self.get_key(combination=combination,
+        resolution_cutoff=resolution_cutoff)
     self.estimator_dict[key]=estimator
     self.keys.append(key)
-    self.combinations.append(combination)
+    if not resolution_cutoff in self.combinations.keys():
+      self.combinations[resolution_cutoff]=[]
+    self.combinations[resolution_cutoff].append(combination)
 
   def set_up_estimators(self,
       record_list=None,
       data_items=None,
       file_name=None,
       text=None,
-      select_only_complete=False,
-      skip_covariance=False):
+      select_only_complete=False):
 
     if record_list:
       n=len(record_list[0])
@@ -673,7 +699,8 @@ class estimator_group:
           "\nSetting up Bayesian estimator using data in %s\n" %(file_name)
         lines=open(file_name).readlines()
         self.training_file_name=file_name
-      record_list,info_list,target_variable,data_items=get_table_as_list(
+      record_list,info_list,target_variable,data_items,info_items=\
+       get_table_as_list(
          lines=lines,
          select_only_complete=select_only_complete,out=self.out)
 
@@ -681,35 +708,89 @@ class estimator_group:
 
     assert data_items
     self.variable_names=data_items
+    self.info_names=info_items
     print >>self.out,"Total of %d records in data file" %(len(record_list))
     if len(record_list)<1: return
     n=len(record_list[0])
-    # now split in all possible ways and get estimators for each combination
-    n_predictors=n-1
-    print >>self.out,"\nPredictor variables: %d" %(n_predictors)
-    for pv in data_items:
-      print >>self.out,"%s" %(pv),
-    print >>self.out
-    if len(data_items)!=n_predictors:
-      raise Sorry("Number of predictor variables (%d) must be the same as " %(
-          len(data_items)) +
-        "the number \nof predictor variables in data records(%d)" %(
-          n_predictors))
 
-    combinations=self.get_combinations(list(xrange(n_predictors)))
-    for combination in combinations:
-     estimator=self.get_estimator(
-        record_list=record_list,columns=combination,
-        skip_covariance=skip_covariance)
-     key=str(combination)
-     self.add_estimator(estimator,key=key,combination=combination)
+
+    # now split in all possible ways and get estimators for each combination
+    # if self.resolution_cutoffs is set, do it with each resolution cutoff
+    for resolution_cutoff in self.resolution_cutoffs:
+      print >>self.out,"\nResolution cutoff of %5.2f A" %(resolution_cutoff)
+      local_record_list,local_info_list=self.select_records(
+        record_list=record_list, 
+        info_list=info_list,resolution_cutoff=resolution_cutoff)
+      if len(local_record_list)<1:
+        print >>self.out,"No records selected for this resolution cutoff"
+        self.delete_resolution_cutoff(resolution_cutoff)
+        continue
+
+      print >>self.out,"%d records selected for this resolution cutoff" %(
+       len(local_record_list))
+      n_predictors=n-1
+      print >>self.out,"\nPredictor variables: %d" %(n_predictors)
+      for pv in data_items:
+        print >>self.out,"%s" %(pv),
+      print >>self.out
+      if len(data_items)!=n_predictors:
+        raise Sorry("Number of predictor variables (%d) must be the same as " %(
+            len(data_items)) +
+          "the number \nof predictor variables in data records(%d)" %(
+            n_predictors))
+
+      combinations=self.get_combinations(list(xrange(n_predictors)))
+      for combination in combinations:
+       estimator=self.get_estimator(
+          record_list=local_record_list,columns=combination)
+       if estimator is not None:
+         key=self.get_key(combination=combination,
+           resolution_cutoff=resolution_cutoff)
+         self.add_estimator(estimator,resolution_cutoff=resolution_cutoff,
+           combination=combination)
+
+  def delete_resolution_cutoff(self,resolution_cutoff):
+    new_cutoffs=[]
+    for rc in self.resolution_cutoffs:
+      if not rc==resolution_cutoff:
+        new_cutoffs.append(rc)
+    self.resolution_cutoffs=new_cutoffs
+
+  def select_records(self,
+      record_list=None,
+      info_list=None,
+      resolution_cutoff=None):
+    # select those records that are >= resolution_cutoff and not >= the
+    # next-highest cutoff in the list (if any)
+    if not self.info_names:
+      return record_list,info_list
+
+    if self.info_names[-1]!='d_min' and len(self.resolution_cutoffs)>1:
+      raise Sorry("Cannot select records on resolution unless the database"+
+        "(%s) has resolution information" %(str(self.training_file_name)))
+    next_cutoff=None
+    for rc in self.resolution_cutoffs:
+      if (next_cutoff is None or rc <next_cutoff) and rc > resolution_cutoff:
+        next_cutoff=rc
+
+    new_records=[]
+    new_info=[]
+    for record,info in zip(record_list,info_list):
+      if info[-1]>=resolution_cutoff and \
+        (next_cutoff is None or info[-1]<next_cutoff):
+         new_records.append(record)
+         new_info.append(info)
+    return new_records,new_info
+
+  def get_key(self,combination=None,resolution_cutoff=None):
+    if resolution_cutoff is None: resolution_cutoff=0
+    return str(combination)+"_"+str(resolution_cutoff)
 
   def variable_names(self):
     return self.variable_names
 
   def get_estimator(self,record_list=[],
-      columns=[],
-      skip_covariance=False):
+      columns=[]):
 
     from mmtbx.scaling.bayesian_estimator import bayesian_estimator
     from cctbx.array_family import flex
@@ -737,8 +818,11 @@ class estimator_group:
       if have_all:
         selected_list.append(new_x)
 
+    if not selected_list:
+      return None
+
     estimator=bayesian_estimator(out=self.out,
-         skip_covariance=skip_covariance)
+         skip_covariance=self.skip_covariance)
     estimator.create_estimator(
           record_list=selected_list,
          n_bin=self.n_bin,
@@ -758,7 +842,8 @@ class estimator_group:
             combinations.append(x)
       return combinations
 
-  def apply_estimators(self,value_list=None,data_items=None):
+  def apply_estimators(self,value_list=None,data_items=None,
+    resolution=None):
     assert len(value_list)==len(self.variable_names)
     if data_items != self.variable_names:
       print >>self.out,"WARNING: data items do not match working variables:"
@@ -766,7 +851,14 @@ class estimator_group:
       for data_item,variable in zip(data_items,self.variable_names):
          print>>self.out,"%s: %s " %(data_item,variable)
       raise Sorry("data items do not match working variables")
-
+    if len(self.resolution_cutoffs)>1 and resolution is None:
+      raise Sorry("Must supply resolution if resolution_cutoffs is set")
+    # choose which resolution cutoff to use
+    rc=self.resolution_cutoffs[-1] # take highest-res if higher than that
+    for resolution_cutoff in self.resolution_cutoffs:
+      if resolution >= resolution_cutoff:
+        rc=resolution_cutoff
+        break 
     # figure out which data are present and select the appropriate estimator
     columns=[]
     values=[]
@@ -774,7 +866,7 @@ class estimator_group:
       if x is not None:
         columns.append(n)
         values.append(x)
-    key=str(columns)
+    key=self.get_key(combination=columns,resolution_cutoff=rc)
     if not key in self.keys:
       return None,None
     estimator=self.estimator_dict[key]
@@ -1023,32 +1115,42 @@ def exercise_group():
   print "\nTESTING exercise_group(): group of predictors with same "
   print "data but some missing entries.\n"
 
-  estimators=estimator_group()
-  estimators.set_up_estimators()
+  import libtbx.load_env
+  file_name=libtbx.env.find_in_repositories(
+      relative_path=os.path.join("mmtbx","scaling","cc_ano_data.dat"),
+      test=os.path.isfile)
+
+  estimators=estimator_group(resolution_cutoffs=[0.,1.,2.,3.,4.,5.])
+  estimators.set_up_estimators(file_name=file_name)
   estimators.show_summary()
 
+  print "Running estimator now"
+
   prediction_values_as_list,info_values_as_list,\
-     dummy_target_variable,dummy_data_items=\
-    get_table_as_list(
-      record_list=estimators.training_records,select_only_complete=False)
+     dummy_target_variable,dummy_data_items,dummy_info_items=\
+    get_table_as_list(file_name=file_name, select_only_complete=False)
 
   # run through all prediction_values data
   from cctbx.array_family import flex
   target_list=flex.double()
   result_list=flex.double()
-  for target_and_value in prediction_values_as_list:
+  for target_and_value,info in zip(
+      prediction_values_as_list,info_values_as_list):
+    resolution=info[-1]
     y,sd=estimators.apply_estimators(value_list=target_and_value[1:],
-      data_items=estimators.variable_names)
-    target_list.append(target_and_value[0])
-    result_list.append(y)
+      data_items=estimators.variable_names,resolution=resolution)
+    if y is None:
+      raise Sorry("Estimator failed")
+    else: 
+      target_list.append(target_and_value[0])
+      result_list.append(y)
   print "Prediction CC: %7.3f " %(flex.linear_correlation(
     target_list,result_list).coefficient())
 
-
   # and using another dataset included here
   print
-  prediction_values_as_list,info_values_as_list,target_variable,data_items=\
-     get_table_as_list(
+  prediction_values_as_list,info_values_as_list,target_variable,\
+     data_items,info_items=get_table_as_list(
      text=prediction_values,select_only_complete=False)
 
   estimators=estimator_group()
@@ -1057,7 +1159,7 @@ def exercise_group():
     data_items=data_items)
   estimators.show_summary()
 
-  all_value_list,all_info_list,target_variable,data_items=\
+  all_value_list,all_info_list,target_variable,data_items,info_items=\
       get_table_as_list(text=pred_data)
   for value_list,target in zip(all_value_list,target_values):
     y,sd=estimators.apply_estimators(
@@ -1090,7 +1192,7 @@ def get_suitable_target_and_values(target_and_values_list,test_values):
   return suitable_test_values,suitable_target_and_values_list
 
 def jacknife(target_and_values_list,i,
-    skip_covariance=False,
+    skip_covariance=True,
     skip_jacknife=False,out=sys.stdout):
   # take out entry i and get predictor and then predict value for entry i
 
@@ -1125,7 +1227,7 @@ def run_jacknife(args,out=sys.stdout):
   verbose=('verbose' in args)
   if 'testing' in args:
     print >>out,"\nTESTING jacknife run of bayesian estimator.\n"
-  skip_covariance=('skip_covariance' in args)
+  skip_covariance=(not 'include_covariance' in args)
 
   if args and os.path.isfile(args[0]):
     file_name=args[0]
@@ -1139,7 +1241,7 @@ def run_jacknife(args,out=sys.stdout):
   print >>out,"Setting up jacknife Bayesian predictor with data from %s" %(
       file_name)
 
-  record_list,info_list,target_variable,data_items=get_table_as_list(
+  record_list,info_list,target_variable,data_items,info_items=get_table_as_list(
      file_name=file_name,
      select_only_complete=False,
      out=out)
@@ -1167,8 +1269,12 @@ def run_jacknife(args,out=sys.stdout):
 if __name__=="__main__":
   args=sys.argv[1:]
   if not 'testing' in args: args.append('testing')
-  run_jacknife(args)
-  if not 'run_jacknife' in args:
+  if 'run_jacknife' in args:
+    run_jacknife(args)
+  elif 'exercise_group' in args:
+    exercise_group()
+  else:
+    run_jacknife(args)
     exercise_group()
     run=bayesian_estimator()
     run.exercise()
