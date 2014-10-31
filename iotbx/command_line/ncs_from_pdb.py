@@ -11,17 +11,17 @@ def ncs_from_pdb(args):
   Search for NCS relations in a pdb file
 
   Arguments and Options:
-    file_name (str): xxxx.pdb (must be first parameter)
-    write_messages (True): Print results and save results files
-    max_rmsd (10.0): max allowed rmsd between matching chains
+    file_name (str): xxxx.pdb (must be the first parameter)
+    write_messages (True): Print messages produced while searching for NCS
+    max_rmsd (10.0): Max allowed rmsd between matching chains
     check_atom_order (False): Ensure that atoms of matching residues are in
       the same order
-    exclude_misaligned_residues (True): Exclude matching but spatially
-      misaligned residues
-    max_dist_diff (5.0): max allowed spatially misaligned distance difference
-    min_percent (0.80): min percent of
+    exclude_misaligned_residues (True): Exclude matching residues if they are
+      spatially misaligned
+    max_dist_diff (5.0): Max allowed spatially misaligned distance difference
+    min_percent (0.80): Min percent of
       (number of matching residues / number of residues in longer chain)
-    min_contig_length (10): minimum length of matching chain segments
+    min_contig_length (10): Minimum length of matching chain segments
 
   Example:
   >>> phenix.pdb.ncs_from_pdb 4c5q.pdb min_percent=0.9
@@ -29,7 +29,7 @@ def ncs_from_pdb(args):
   """
   t0 = time.time()
   if (args == []) or ('-h' in args) or ('--help' in args):
-    help(ncs_from_pdb)
+    print ncs_from_pdb.__doc__
   else:
     # set parameters
     # clean and remove '=' signs
