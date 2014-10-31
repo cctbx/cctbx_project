@@ -70,7 +70,6 @@ class construct_reflection_table_and_experiment_list(object):
     # observation-dependent
     self.observations = self.data['observations'][0]
     self.predictions = self.data['mapped_predictions'][0]
-    self.correction_vectors = self.data['correction_vectors'][0]
 
   # construct the experiments and experiment_list objects
   def expt_beam_maker(self):
@@ -87,6 +86,8 @@ class construct_reflection_table_and_experiment_list(object):
     lattice = self.ucell.lattice_symmetry_group()
     self.crystal = crystal.crystal_model(real_a, real_b, real_c, space_group=lattice)
     self.crystal.set_mosaicity(self.data['mosaicity'])
+    self.crystal._ML_half_mosaicity_deg = self.data['ML_half_mosaicity_deg'][0]
+    self.crystal._ML_domain_size_ang = self.data['ML_domain_size_ang'][0]
 
   def expt_detector_maker(self):
     """Construct the detector object for the experiments file. This function generates a monolithic flattening of the
@@ -136,7 +137,7 @@ class construct_reflection_table_and_experiment_list(object):
     elif path_name == "auto":
       loc = os.path.dirname(self.pickle)
     else:
-      loc = os.path.dirname(path_name)
+      loc = path_name
     name = os.path.basename(self.pickle).split("_00000.pickle")[0][8:]
     prefix = "idx-" + os.path.basename(self.pickle)[4:8]
     expt_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_experiments.json"
@@ -197,19 +198,11 @@ class construct_reflection_table_and_experiment_list(object):
       self.reflections['s1'][idx] = tuple(coords)
 
   def refl_xyzcal_maker(self):
-    self.reflections['xyzcal.px'] = sciflex.vec3_double([(self.predictions[i][0], self.predictions[i][1], 0.0) for i in xrange(len(self.predictions))])
-    for i in xrange(self.length):
-      for j in xrange(len(self.correction_vectors)):
-        if self.observations._indices[i] == self.correction_vectors[j]['hkl']:
-          self.reflections['xyzcal.px'][i] = (self.correction_vectors[j]['predspot'][0], self.correction_vectors[j]['predspot'][1], 0.0)
+    self.reflections['xyzcal.px'] = sciflex.vec3_double(self.predictions.parts()[0], self.predictions.parts()[1], sciflex.double(self.length, 0.0))
     self.reflections['xyzcal.mm'] = self.pixel_size * self.reflections['xyzcal.px']
 
   def refl_xyzobs_maker(self):
-    self.reflections['xyzobs.px.value'] = sciflex.vec3_double([(self.predictions[idx][0], self.predictions[idx][1], 0.5) for idx in xrange(self.length)])
-    for i in xrange(self.length):
-      for j in xrange(len(self.correction_vectors)):
-        if self.observations._indices[i] == self.correction_vectors[j]['hkl']:
-          self.reflections['xyzobs.px.value'][i] = (self.correction_vectors[j]['obsspot'][0], self.correction_vectors[j]['obsspot'][0], 0.5)
+    self.reflections['xyzobs.px.value'] = sciflex.vec3_double(self.predictions.parts()[0], self.predictions.parts()[1], sciflex.double(self.length, 0.5))
     self.reflections['xyzobs.px.variance'] = sciflex.vec3_double(self.length, (0.0,0.0,0.0))
 
   def refl_zeta_maker(self):
@@ -238,7 +231,7 @@ class construct_reflection_table_and_experiment_list(object):
     elif path_name == "auto":
       loc = os.path.dirname(self.pickle)
     else:
-      loc = os.path.dirname(path_name)
+      loc = path_name
     name = os.path.basename(self.pickle).split("_00000.pickle")[0][8:]
     prefix = "idx-" + os.path.basename(self.pickle)[4:8]
     refl_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_integrated.pickle"
