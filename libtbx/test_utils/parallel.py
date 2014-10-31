@@ -15,8 +15,7 @@ import sys
 QUIET = 0
 DEFAULT_VERBOSITY = 1
 EXTRA_VERBOSE = 2 # for nightly builds
-
-max_time = 200 # XXX the lower the better
+MAX_TIME = 180 # XXX the lower the better
 
 def get_module_tests (module_name, valgrind=False) :
   dist_path = libtbx.env.dist_path(module_name)
@@ -108,72 +107,71 @@ class run_command_list (object) :
     self.out.register("log", log)
     self.verbosity = verbosity
     self.quiet = (verbosity == 0)
+    self.results = []
+
+    # Filter cmd list for duplicates.
     self.cmd_list = []
     for cmd in cmd_list :
       if (not cmd in self.cmd_list) :
         self.cmd_list.append(cmd)
       else :
-        print >> self.out, "  test %s repeated, skipping" % cmd
+        print >> self.out, "Test %s repeated, skipping"%cmd
+
+    # Set number of processors.
     if (nprocs is Auto) :
       nprocs = cpu_count()
     nprocs = min(nprocs, len(self.cmd_list))
-    print >> self.out, "\n  Starting command list"
-    print >> self.out, "    NProcs :",nprocs
-    print >> self.out, "    Cmds   :",len(self.cmd_list)
+
+    # Starting summary.
+    if (self.verbosity > 0) :
+      print >> self.out, "Running %d tests on %s processors:"%(len(self.cmd_list), nprocs)
+      for cmd in self.cmd_list:
+        print >> self.out, "  %s"%cmd
+      print >> self.out, ""
+
     t_start = time.time()
-    if nprocs>1:
+    if nprocs > 1:
+      # Run the tests with multiprocessing pool.
       pool = Pool(processes=nprocs)
-    self.results = []
-    for command in self.cmd_list:
-      if nprocs>1:
+      for command in self.cmd_list:
         pool.apply_async(
           run_command,
           [command, verbosity, out],
           callback=self.save_result)
-      else:
+      try:
+        pool.close()
+      except KeyboardInterrupt:
+        print >> self.out, "Caught KeyboardInterrupt, terminating"
+        pool.terminate()
+      finally:
+        pool.join()
+    else:      
+      # Run tests serially.
+      for command in self.cmd_list:
         rc = run_command(command, verbosity=verbosity, out=out)
         self.save_result(rc)
-    if nprocs>1:
-      try :
-        try :
-          pool.close()
-        except KeyboardInterrupt :
-          print >> self.out, "Caught KeyboardInterrupt, terminating"
-          pool.terminate()
-      finally :
-        pool.join()
-      print >> self.out, '\nProcesses have joined : %d\n' % len(self.results)
+
+    # Print ending summary.
     t_end = time.time()
+    print >> self.out, "="*80
     print >> self.out, ""
-    print >> self.out, "Elapsed time: %.2fs" %(t_end-t_start)
-    print >> self.out, ""
-    self.finished = 0
-    self.warning = 0
+    print >> self.out, "Tests finished. Elapsed time: %.2fs" %(t_end-t_start)
+    print >> self.out, ""    
     extra_stderr = 0
-    self.failure = 0
-    failures = []
-    long_jobs = []
-    long_runtimes = []
-    runtimes = []
+    test_cases = []
+    # Process results for errors and warnings.
+    extra_stderr = len([result for result in self.results if result.stderr_lines])
+    longjobs = [result for result in self.results if result.wall_time > MAX_TIME]
+    warnings = [result for result in self.results if self.check_alert(result) == 1]
+    failures = [result for result in self.results if self.check_alert(result) == 2]
+    self.finished = len(self.results)
+    self.failure = len(failures)
+    self.warning = len(warnings)
+
+    # Output JUnit XML
     if output_junit_xml:
       from junit_xml import TestSuite, TestCase
-      test_cases = []
-    for result in self.results :
-      self.finished += 1
-      runtimes.append(result.wall_time)
-      if (result.return_code != 0) :
-        self.failure += 1
-        failures.append(result)
-      else :
-        if (len(result.error_lines) != 0) :
-          self.warning += 1
-          failures.append(result)
-        if (len(result.stderr_lines) != 0):
-          extra_stderr += 1
-      if (result.wall_time > max_time) :
-        long_jobs.append(result.command)
-        long_runtimes.append(result.wall_time)
-      if output_junit_xml:
+      for result in self.results:
         tc = TestCase(name=result.command,
                       classname=result.command,
                       elapsed_sec=result.wall_time,
@@ -184,40 +182,40 @@ class run_command_list (object) :
         #if len(result.stderr_lines):
           #tc.add_error_info(output='\n'.join(result.stderr_lines))
         test_cases.append(tc)
-
-    if output_junit_xml:
       ts = TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
       with open('output.xml', 'wb') as f:
         print >> f, TestSuite.to_xml_string([ts], prettyprint=True)
-
+    
+    # Run time distribution.
     if (libtbx.env.has_module("scitbx")) :
       from scitbx.array_family import flex
       print >> self.out, "Distribution of test runtimes:"
-      hist = flex.histogram(flex.double(runtimes), n_slots=20)
+      hist = flex.histogram(flex.double([result.wall_time for result in self.results]), n_slots=10)
       hist.show(f=self.out, prefix="  ", format_cutoffs="%.1fs")
       print >> self.out, ""
-    if (len(long_jobs) > 0) :
+
+    # Long job warning.
+    if longjobs:
       print >> self.out, ""
-      print >> self.out, "WARNING: the following jobs took at least %d seconds:" % \
-        max_time
-      jobs_and_timings = list(zip(long_jobs, long_runtimes))
-      jobs_and_timings.sort(lambda x,y: cmp(x[1], y[1]))
-      for cmd, runtime in jobs_and_timings :
-        print >> self.out, "  " + cmd + " : %.1fs" % runtime
+      print >> self.out, "Warning: the following jobs took at least %d seconds:"%MAX_TIME
+      for result in sorted(longjobs, key=lambda result:result.wall_time):
+        print >> self.out, "  %s: %.1fs"%(result.command, result.wall_time)
       print >> self.out, "Please try to reduce overall runtime - consider splitting up these tests."
-    if (len(failures) > 0) :
+
+    # Failures.
+    if failures:
       print >> self.out, ""
-      print >> self.out, "ERROR: the following jobs returned non-zero exit codes or suspicious stderr output:"
-      for result in failures :
-        print >> self.out, ""
-        print >> self.out, result.command + "(exit code %d):" % result.return_code
-        for line in result.stderr_lines :
-          print >> self.out, "  " + line
-        for line in result.error_lines :
-          print >> self.out, "  " + line
-        print >> self.out, ""
+      print >> self.out, "Error: the following jobs returned non-zero exit codes or suspicious stderr output:"
+      print >> self.out, ""
+      for result in warnings:
+        self.display_result(result, alert=1, out=self.out, log_return=self.out, log_stderr=self.out)
+      for result in failures:
+        self.display_result(result, alert=2, out=self.out, log_return=self.out, log_stderr=self.out)
+      print >> self.out, ""
       print >> self.out, "Please verify these tests manually."
       print >> self.out, ""
+    
+    # Summary
     print >> self.out, "Summary:"
     print >> self.out, "  Tests run                    :",self.finished
     print >> self.out, "  Failures                     :",self.failure
@@ -228,70 +226,72 @@ class run_command_list (object) :
       print >> self.out, "  WARNING: NOT ALL TESTS FINISHED!"
       print >> self.out, "*" * 80
 
+  def check_alert(self, result):
+    alert = 0
+    if result.error_lines:
+      alert = 1
+    if result.return_code != 0:
+      alert = 2    
+    return alert
 
   def save_result (self, result) :
     if (result is None ):
       print >> self.out, "ERROR: job returned None"
       return
     self.results.append(result)
-    self.display_result(result)
+    if self.quiet:
+      return
+    kw = {}
+    kw['log_return'] = self.log
+    kw['log_stderr'] = self.log
+    kw['log_stdout'] = self.log
+    alert = self.check_alert(result)
+    if alert or self.verbosity == EXTRA_VERBOSE:
+      kw['log_stderr'] = self.out
+    if alert and self.verbosity == EXTRA_VERBOSE:
+      kw['log_stdout'] = self.out
+    self.display_result(
+      result,
+      alert=alert, 
+      out=self.out,
+      **kw
+    )
 
-  def display_result (self, result) :
-    alert = False
-    if (result.return_code != 0) or (len(result.error_lines) > 0) :
-      alert = True
-    if (not self.quiet) and (len(result.error_lines) > 0) :
-      alert = True
-    if (alert) or (self.verbosity == EXTRA_VERBOSE) :
-      out = self.out
-    else :
-      out = self.log
-    print >> out, ""
-    print >> out, '\n#command : "%s"' % result.command
-    print >> out, '#return_code : %s' % result.return_code
-    if (self.verbosity == EXTRA_VERBOSE) :
-      print >> out, "\n".join(result.stdout_lines)
-    oks = 0
-    for line in result.stdout_lines:
-      if line.find("OK")>-1:
-        oks += 1
-    print >> out, 'Found %d "OK"' % oks
-    if (len(result.stderr_lines) != 0):
-      print >> out, '#stderr-'*10
-      print >> out, "\n".join(result.stderr_lines)
-      if (self.verbosity > QUIET) :
-        print >> sys.stderr, "#", result.command
-        print >> sys.stderr, "\n".join(result.stderr_lines)
-        print >> sys.stderr, ""
-        sys.stderr.flush()
-    if (len(result.error_lines) > 0) :
-      print >> out, "possible errors:"
-      print >> out, "\n".join(result.error_lines)
-    print >> out, "time : %5.2fs" % result.wall_time
-    if result.wall_time>60:
-      print >> out, '!'*78
-      print >> out, "!!","WARNING "*9,"!!"
-      print >> out, "!!  %-71s !!" %"TEST TAKES MORE THAN A MINUTE"
-      print >> out, "!!","WARNING "*9,"!!"
-      print >> out, '!'*78
+  def display_result (self, result, alert, out, log_return=True, log_stderr=True, log_stdout=False) :
+    status = ['OK', 'WARNING', 'FAIL']
+    print >> out, "%s [%s]"%(result.command, status[alert])
     out.flush()
-
+    if log_return:
+      print >> log_return, "  Time: %5.2f"%result.wall_time
+      print >> log_return, "  Return code: %s"%result.return_code
+      print >> log_return, "  OKs:", len(filter(lambda x:'OK' in x, result.stdout_lines))
+      log_return.flush()
+    if log_stdout:
+      print >> log_stdout, "  Standard out:"
+      print >> log_stdout, "    "+"\n    ".join(result.stdout_lines)
+      log_stdout.flush()
+    if log_stderr:
+      print >> log_stderr, "  Standard error:"
+      print >> log_stderr, "    "+"\n    ".join(result.stderr_lines)
+      log_stderr.flush()
+    
 def make_commands (files) :
   commands = []
   non_executable = []
   unrecognized = []
   for file_name in files :
-    if (file_name.endswith(".py")) :
-      cmd = "libtbx.python \"%s\"" % file_name
-      if (not cmd in commands) :
-        commands.append(cmd)
-    elif (file_name.endswith(".sh")) or (file_name.endswith(".csh")) :
-      if (not os.access(file_name, os.X_OK)) :
-        non_executable.append(file_name)
-      elif (not file_name in commands) :
-        commands.append(file_name)
-    else :
+    if file_name.endswith('.py'):
+      interpreter = 'libtbx.python'
+    elif file_name.endswith('.sh'):
+      interpreter = 'libtbx.bash'
+    elif file_name.endswith('.csh'):
+      interpreter = 'libtbx.csh'
+    else:
       unrecognized.append(file_name)
+      continue
+    cmd = '%s "%s"'%(interpreter, file_name)
+    if cmd not in commands:
+      commands.append(cmd)
   if (len(unrecognized) > 0) :
     raise RuntimeError("""\
 The following files could not be recognized as programs:

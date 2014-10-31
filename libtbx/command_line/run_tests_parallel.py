@@ -91,11 +91,6 @@ def run (args) :
     random.shuffle(all_tests)
   if (params.quiet) :
     params.verbosity = 0
-  if (params.verbosity > 0) :
-    print "Running the following %d tests on %s processors:" % (len(all_tests),
-      params.nproc)
-    for test in all_tests :
-      print "  " + test
   log = open("run_tests_parallel_zlog", "wb")
   result = libtbx.test_utils.parallel.run_command_list(
     cmd_list=all_tests,
@@ -104,14 +99,7 @@ def run (args) :
     verbosity=params.verbosity,
     output_junit_xml=params.output_junit_xml)
   log.close()
-  print """
-See run_tests_parallel_zlog for full output.
-
-============================================================================
-Reminder: Please do not forget: libtbx.find_clutter
-          See also: cctbx_project/libtbx/development/dev_guidelines.txt
-============================================================================
-"""
+  print """\nSee run_tests_parallel_zlog for full output.\n"""
   return result.failure
 
 if (__name__ == "__main__") :
