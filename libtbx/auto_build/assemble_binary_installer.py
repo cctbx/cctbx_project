@@ -1,7 +1,26 @@
 #!/usr/bin/python
-#
-# MASTER SCRIPT FOR BINARY UNIX INSTALLER ASSEMBLY
-#
+
+"""
+Master script for binary unix installer assembly
+------------------------------------------------
+
+This script is used to create binary CCTBX-based installers on each of the
+various Mac and Linux build hosts.  It is run like this:
+
+python $SRC/cctbx_project/libtbx/auto_build/assemble_binary_installer.py \\
+  --version=VERSION_STRING --host_tag=HOST_TAG /path/to/build/results
+
+The version and host tag are optional but strongly recommended.  The build
+results are assumed to contain directories named 'base', 'build', and
+'modules', although the contents of the latter may alternately be located in
+the base directory.  The script will then set up the installer directory,
+package the build results, and create a final tarball for distribution.
+
+The base script generates "cctbx-plus" installers with the various open-source
+third-party packages and Python dependencies.  Any other derived products
+should subclass installer_builder and instantiate the subclass as part of
+__main__.
+"""
 
 from __future__ import division
 from optparse import OptionParser
@@ -19,6 +38,7 @@ from libtbx.auto_build.installer_utils import *
 
 class installer_builder (object) :
   #---------------------------------------------------------------------
+  # OVERRIDE CLASS ATTRIBUTES IN SUBCLASSES
   #
   # Label for the overall package
   product_name = "CCTBX"
