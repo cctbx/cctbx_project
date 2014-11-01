@@ -28,7 +28,9 @@ class postref_handler(object):
     the alpha angle (meridional to equatorial).
     """
     observations = observations_pickle["observations"][0]
-
+    if iparams.flag_replace_sigI:
+      observations = observations.customized_copy(data=observations.data(),
+                                                  sigmas=flex.sqrt(observations.data()))
     #check pointgroup
     crystal_pointgroup = observations_pickle["pointgroup"]
     if iparams.target_pointgroup is not None and crystal_pointgroup != iparams.target_pointgroup:

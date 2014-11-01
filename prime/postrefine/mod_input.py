@@ -253,6 +253,9 @@ polarization_horizontal_fraction = 1.0
 flag_output_verbose = False
   .type = bool
   .help = Output full detail of the refinement results.
+flag_replace_sigI = False
+  .type = bool
+  .help = Replace to experimental errors I with sqrt(I).
 """)
 
 
