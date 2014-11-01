@@ -89,6 +89,7 @@ if (__name__ == "__main__"):
   #0 .read input parameters and frames (pickle files)
   from prime.postrefine import read_input
   iparams, txt_out_input = read_input(sys.argv[:1])
+  iparams.n_min_frames = 100
   print txt_out_input
   txt_out_verbose = 'Log verbose\n'+txt_out_input
 
@@ -258,7 +259,7 @@ if (__name__ == "__main__"):
             args=frames,
             func=postrefine_by_frame_mproc_wrapper,
             processes=iparams.n_processors)
-            
+
     postrefine_by_frame_pres_list = [postrefine_by_frame_tuple[0] for postrefine_by_frame_tuple in postrefine_by_frame_result]
 
     postrefine_by_frame_good = []
