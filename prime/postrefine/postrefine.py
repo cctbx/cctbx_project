@@ -28,9 +28,7 @@ class postref_handler(object):
     the alpha angle (meridional to equatorial).
     """
     observations = observations_pickle["observations"][0]
-    if iparams.flag_replace_sigI:
-      observations = observations.customized_copy(data=observations.data(),
-                                                  sigmas=flex.sqrt(observations.data()))
+
     detector_distance_mm = observations_pickle['distance']
     mm_predictions = iparams.pixel_size_mm*(observations_pickle['mapped_predictions'][0])
     xbeam = observations_pickle["xbeam"]
@@ -131,6 +129,9 @@ class postref_handler(object):
     alpha_angle_obs = alpha_angle_obs.select(i_sel)
     spot_pred_x_mm = spot_pred_x_mm.select(i_sel)
     spot_pred_y_mm = spot_pred_y_mm.select(i_sel)
+
+    if iparams.flag_replace_sigI:
+      observations = observations.customized_copy(sigmas=flex.sqrt(observations.data()))
 
     inputs = observations, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm
 
