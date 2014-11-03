@@ -138,7 +138,6 @@ if (__name__ == "__main__"):
       pres, txt_out_result = result
       if pres is not None:
         observations_merge_mean_set.append(pres)
-      print txt_out_result
 
   if len(observations_merge_mean_set) > 0:
     avg_mode = 'average'
@@ -268,7 +267,6 @@ if (__name__ == "__main__"):
         pres, txt_out_result = results
         if pres is not None:
           postrefine_by_frame_good.append(pres)
-        print txt_out_result
 
     if len(postrefine_by_frame_good) > 0:
 

@@ -31,11 +31,6 @@ class postref_handler(object):
     if iparams.flag_replace_sigI:
       observations = observations.customized_copy(data=observations.data(),
                                                   sigmas=flex.sqrt(observations.data()))
-    #check pointgroup
-    crystal_pointgroup = observations_pickle["pointgroup"]
-    if iparams.target_pointgroup is not None and crystal_pointgroup != iparams.target_pointgroup:
-      return None, 'Mismatch pointgroup ('+crystal_pointgroup+'). '
-
     detector_distance_mm = observations_pickle['distance']
     mm_predictions = iparams.pixel_size_mm*(observations_pickle['mapped_predictions'][0])
     xbeam = observations_pickle["xbeam"]
@@ -79,7 +74,9 @@ class postref_handler(object):
                       crystal_symmetry=miller_set.crystal_symmetry())
     except Exception:
       a,b,c,alpha,beta,gamma = observations.unit_cell().parameters()
-      return None, 'Mismatch spacegroup (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)
+      txt_exception = 'Mismatch spacegroup (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)+pickle_filename
+      print txt_exception
+      return None, txt_exception
 
     import os.path
     if os.path.isfile(iparams.run_no+'/rejections.txt'):
@@ -136,6 +133,7 @@ class postref_handler(object):
     spot_pred_y_mm = spot_pred_y_mm.select(i_sel)
 
     inputs = observations, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm
+
     return inputs, 'OK'
 
 
@@ -304,6 +302,7 @@ class postref_handler(object):
       a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin)+ \
       pickle_filepaths[len(pickle_filepaths)-1]
 
+    print txt_postref
     return pres, txt_postref
 
   def calc_mean_intensity(self, pickle_filename, iparams):
@@ -325,6 +324,33 @@ class postref_handler(object):
     if len(observations_sel.data().select(i_sel)) == 0:
       return None
     mean_I = np.median(observations_sel.data().select(i_sel))
+
+    if iparams.flag_plot_expert:
+      binner = observations_original.setup_binner(n_bins=iparams.n_bins)
+      binner_indices = binner.bin_indices()
+      avg_I_sigI_bin = flex.double()
+      avg_I_bin = flex.double()
+      one_dsqr_bin = flex.double()
+      for i in range(1,iparams.n_bins+1):
+        i_binner = (binner_indices == i)
+        I_sel = observations_original.data().select(i_binner)
+        sigI_sel = observations_original.sigmas().select(i_binner)
+        avg_I_sigI_bin.append(np.mean(I_sel/sigI_sel))
+        avg_I_bin.append(np.mean(I_sel))
+        one_dsqr_bin.append(1/binner.bin_d_range(i)[1]**2)
+
+      x_axis = one_dsqr_bin
+      import matplotlib.pyplot as plt
+      fig, ax1 = plt.subplots()
+      ln1 = ax1.plot(x_axis, avg_I_bin, linestyle='-', linewidth=2.0, c='b')
+      ax1.set_xlabel('1/d^2')
+      ax1.set_ylabel('<I>', color='b')
+
+      ax2 = ax1.twinx()
+      ln2 = ax2.plot(x_axis, avg_I_sigI_bin, linestyle='-', linewidth=2.0, c='r')
+      ax2.set_ylabel('<I/sigI>', color='r')
+      plt.grid()
+      plt.show()
 
     return mean_I, pickle_filepaths[len(pickle_filepaths)-1]
 
@@ -411,6 +437,7 @@ class postref_handler(object):
       np.median(observations_original_sel.data()), G, B,
       uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5])+pickle_filepaths[len(pickle_filepaths)-1]
 
+    print txt_scale_frame_by_mean_I
     return pres, txt_scale_frame_by_mean_I
 
 

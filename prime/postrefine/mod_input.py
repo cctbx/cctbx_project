@@ -159,9 +159,6 @@ target_space_group = None
   .type = str
   .help = Target space group.
   .optional = False
-target_pointgroup = None
-  .type = str
-  .help = Target point group.
 target_anomalous_flag = False
   .type = bool
   .help = Target anomalous flag (False = Not anomalous data)

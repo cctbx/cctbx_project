@@ -201,7 +201,10 @@ def func(params, *args):
     a, b, c, alpha, beta, gamma = prep_output(params[7:], cs)
     G, B, rotx, roty, ry, rz, re = params[0:7]
 
-  uc = unit_cell((a,b,c,alpha,beta,gamma))
+  try:
+    uc = unit_cell((a,b,c,alpha,beta,gamma))
+  except Exception:
+    return None
 
   p_calc_flex, delta_xy_flex, rs_set, dummy = calc_partiality_anisotropy_set(\
     uc, rotx, roty, miller_indices_original, ry, rz, r0, re, two_theta_flex,
