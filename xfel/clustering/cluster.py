@@ -727,6 +727,3 @@ class Cluster:
     """ Return a len(cluster) * 6 numpy array of features for use in ML algos"""
     ucs = [c.uc for c in self.members]
     return  np.array(zip(*ucs))
-
-
-

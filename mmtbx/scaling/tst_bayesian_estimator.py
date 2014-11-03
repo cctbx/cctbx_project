@@ -1,9 +1,8 @@
 
 from __future__ import division
 import sys
-from mmtbx.command_line import plan_sad_experiment
-from libtbx.test_utils import approx_equal, Exception_expected
-from libtbx.utils import null_out, Sorry
+from libtbx.test_utils import approx_equal
+from libtbx.utils import null_out
 
 def exercise (args) :
   if 'verbose' in args:
@@ -36,7 +35,7 @@ def exercise (args) :
   assert approx_equal(cc2,-0.186,eps=1.e-3)
   print "OK"
 
-  
+
 
 if (__name__ == "__main__") :
   exercise(sys.argv[1:])
