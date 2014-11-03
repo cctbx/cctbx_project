@@ -9,8 +9,7 @@ if (not env_etc.no_boost_python):
   env.SharedLibrary(
     target="#lib/mmtbx_secondary_structure_ext",
     source=["ext.cpp"])
-  if (os.name == "nt") : # XXX why is this unnecessary on Linux/OSX?
-    env.Prepend(LIBS=["iotbx_pdb"])
+  env.Prepend(LIBS=["iotbx_pdb"])
   env.SharedLibrary(
     target="#lib/mmtbx_dssp_ext",
     source=["dssp_ext.cpp"])
