@@ -95,7 +95,7 @@ class bayesian_estimator:
     # get set up:
     ok=self.check_estimator_inputs() # check and print out what we are doing..
     if not ok:
-      self.ok=False 
+      self.ok=False
       return  # give up
 
     self.record_list.sort()  # sort on y (first variable in each record)
@@ -148,7 +148,7 @@ class bayesian_estimator:
     x_vector=flex.double(x_list)
     means_vector,cov_matrix_inv,determinant=self.get_mean_cov_inv_determinant(bin)
     if means_vector is None or cov_matrix_inv is None or determinant is None:
-      return 0.0 # 
+      return 0.0 #
     delta_vect=x_vector-means_vector
     delta_row_matrix=matrix.rec(delta_vect,[len(x_list),1])
     delta_col_matrix=delta_row_matrix.transpose()
@@ -493,7 +493,7 @@ class bayesian_estimator:
         for value in values: print >>f,value,
         print >>f
         f.close()
-    return result_list 
+    return result_list
 
 
   def exercise_2(self,iseed=712771,out=sys.stdout):
@@ -556,10 +556,10 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
    data_items=None,target_variable=None,
    select_only_complete=False, minus_one_as_none=True, out=sys.stdout):
 
-  if not record_list: 
+  if not record_list:
      record_list=[]  # data records: [target,predictor1,predictor2...]
      info_list=[]    # info records [key, resolution]
-  if not data_items: 
+  if not data_items:
      data_items=[]
      info_items=[]
   if not record_list:
@@ -625,8 +625,8 @@ class estimator_group:
   # subsets for prediction.  Useful in case the request for estimation is
   # missing some of the predictor variables.
 
-  # Also useful for using only data to a certain resolution cutoff in the 
-  # prediction. This is turned on if resolution_cutoffs is supplied and a 
+  # Also useful for using only data to a certain resolution cutoff in the
+  # prediction. This is turned on if resolution_cutoffs is supplied and a
   #   resolution is supplied for apply_estimator()
   # if a resolution is requested that is outside the range of resolution_cutoffs
   #  then a predictor based on the nearest resolution is used.
@@ -660,7 +660,7 @@ class estimator_group:
     self.skip_covariance=skip_covariance
     self.minimum_records=minimum_records
 
-    if resolution_cutoffs: 
+    if resolution_cutoffs:
        resolution_cutoffs.sort()
        resolution_cutoffs.reverse() # highest first
     else:
@@ -677,12 +677,12 @@ class estimator_group:
     for resolution_cutoff in self.resolution_cutoffs:
        print >>self.out,"%5.2f" %(resolution_cutoff),
     print >>self.out
- 
+
     print >>self.verbose_out,"\nCombination groups:"
     for resolution_cutoff in self.resolution_cutoffs:
       print >>self.verbose_out,\
           "Resolution cutoff: %5.2f A" %(resolution_cutoff),
-      for x in self.combinations[resolution_cutoff]: 
+      for x in self.combinations[resolution_cutoff]:
         print >>self.verbose_out,"(",
         for id in x:
           print >>self.verbose_out,"%s" %(self.variable_names[id]),
@@ -740,7 +740,7 @@ class estimator_group:
       print >>self.verbose_out,\
          "\nResolution cutoff of %5.2f A" %(resolution_cutoff)
       local_record_list,local_info_list=self.select_records(
-        record_list=record_list, 
+        record_list=record_list,
         info_list=info_list,resolution_cutoff=resolution_cutoff)
       if len(local_record_list)<1:
         print >>self.verbose_out,\
@@ -920,7 +920,7 @@ class estimator_group:
     for resolution_cutoff in self.resolution_cutoffs:
       if resolution >= resolution_cutoff:
         rc=resolution_cutoff
-        break 
+        break
 
     # figure out which data are present and select the appropriate estimator
     columns=[]
@@ -1204,7 +1204,7 @@ def exercise_group(out=sys.stdout):
       data_items=estimators.variable_names,resolution=resolution)
     if y is None:
       raise Sorry("Estimator failed")
-    else: 
+    else:
       target_list.append(target_and_value[0])
       result_list.append(y)
   cc1=flex.linear_correlation(target_list,result_list).coefficient()
@@ -1227,7 +1227,7 @@ def exercise_group(out=sys.stdout):
 
   target_list=flex.double()
   result_list=flex.double()
-  
+
   for value_list,target in zip(all_value_list,target_values):
     y,sd=estimators.apply_estimators(
      value_list=value_list,data_items=data_items)
