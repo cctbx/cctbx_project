@@ -43,8 +43,12 @@ def run(args):
     vmi = introspection.virtual_memory_info()
     vms = vmi.get_bytes('VmSize:')
     rss = vmi.get_bytes('VmRSS:')
-    print "%.2f %3.0f %3.0f %s" % (
-      time.time()-t0, (vms-prev_vms)/mb, (rss-prev_rss)/mb, so)
+    if (vms is not None) : # won't work on Mac
+      print "%.2f %3.0f %3.0f %s" % (
+        time.time()-t0, (vms-prev_vms)/mb, (rss-prev_rss)/mb, so)
+    else :
+      assert (sys.platform in ["darwin", "win32"])
+      print "%.2f %s" % (time.time()-t0, so)
     prev_vms = vms
     prev_rss = rss
   print
