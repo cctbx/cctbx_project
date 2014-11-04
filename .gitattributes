@@ -2118,6 +2118,7 @@ omptbx/stubs.cpp svneol=native#text/plain
 omptbx/stubs.h svneol=native#text/plain
 omptbx/tst.py svneol=native#text/x-python
 prime/__init__.py -text
+prime/api.py -text
 prime/command_line/__init__.py -text
 prime/command_line/postrefine.py -text
 prime/command_line/viewstats.py -text
