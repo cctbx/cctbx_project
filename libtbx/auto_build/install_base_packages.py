@@ -343,11 +343,11 @@ class installer (object) :
       check_output([self.python_exe, '-c', 'import sys; assert sys.version_info[0] == 2; assert sys.version_info[1] >= 5'])
     except Exception, e:
       print >> self.log, """
-Error: Python 2.5 or higher required. Python 3 is not supported. 
+Error: Python 2.5 or higher required. Python 3 is not supported.
 Found Python version:
   %s
 """%python_version
-      raise e      
+      raise e
 
     # Check that we have write access to site-packages dir
     # by creating a temporary file with write permissions.
