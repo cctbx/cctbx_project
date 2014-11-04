@@ -65,7 +65,7 @@ def check_output (*popenargs, **kwargs) :
   output, unused_err = process.communicate()
   retcode = process.poll()
   if retcode:
-    raise RuntimeError("Call to '%s' failed with exit code %d" % (args, retcode))
+    raise RuntimeError("Call to '%s' failed with exit code %d" % (popenargs, retcode))
   return output
 
 def untar (pkg_name, log=sys.stdout, verbose=False, change_ownership=False,

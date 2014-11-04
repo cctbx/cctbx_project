@@ -335,8 +335,20 @@ class installer (object) :
     self.python_exe = python_exe
     # Just an arbitrary import (with .so)
     self.verify_python_module("Python", "socket")
+
     # Check python version >= 2.5.
-    # version = check_output...
+    python_version = check_output([self.python_exe, '-c', 'import sys; print "%s.%s.%s"%(sys.version_info[0], sys.version_info[1], sys.version_info[2])'])
+    python_version = python_version.strip()
+    try:
+      check_output([self.python_exe, '-c', 'import sys; assert sys.version_info[0] == 2; assert sys.version_info[1] >= 5'])
+    except Exception, e:
+      print >> self.log, """
+Error: Python 2.5 or higher required. Python 3 is not supported. 
+Found Python version:
+  %s
+"""%python_version
+      raise e      
+
     # Check that we have write access to site-packages dir
     # by creating a temporary file with write permissions.
     # Open with tempfile to auto-handle unlinking.
