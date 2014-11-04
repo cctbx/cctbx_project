@@ -9,8 +9,9 @@ import math
 import logging
 from cctbx.array_family import flex
 import cPickle
+from prime.api import InputFrame
 
-class SingleFrame:
+class SingleFrame(InputFrame):
   """ Class that creates single-image agregate metrics/scoring that can then be
   used in downstream clustering or filtering procedures.
   """
@@ -55,6 +56,7 @@ class SingleFrame:
         - `log_i`: list of log_i intensities
         - `sinsqtheta_over_lambda_sq`: list of sinsqtheta_over_lambda_sq
         - `wilson_err`: standard error on the fit of ln(i) vs. sinsqtheta_over_lambda_sq
+        - `miller_fullies`: a cctbx.miller array of fully recorded intensites.
     """
     if dicti is not None:
       d = dicti
@@ -75,7 +77,7 @@ class SingleFrame:
       self.is_polarization_corrected = False
       # Miller arrays
       self.miller_array = d['observations'][crystal_num]
-      self.mapped_predictions = d['mapped_predictions'][0]
+      self.mapped_predictions = d['mapped_predictions'][crystal_num]
       # Image pickle info
       self.path = path
       self.name = filename
@@ -118,6 +120,8 @@ class SingleFrame:
       logging.debug("Extracted image {}".format(filename))
     except KeyError:
       logging.warning("Could not extract point group and unit cell from %s" % path)
+
+    self.miller_fullies = None
 
   def trim_res_limit(self, d_min=None, d_max=None):
     """
