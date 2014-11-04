@@ -92,7 +92,7 @@ def load_result (file_name,
   sg_info = result_array.space_group_info()
   print >> out, ""
   print >> out, "-" * 80
-  print >> out, frame
+  print >> out, file_name
   print >> out, sg_info
   print >> out, unit_cell
 
