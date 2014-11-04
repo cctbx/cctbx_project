@@ -22,8 +22,7 @@ def check_python_version () :
       DeprecationWarning)
     time.sleep(2)
 
-def call (args, log=sys.stdout, shell=True, cwd=None) :
-  rc = None
+def import_subprocess () :
   if (sys.version_info[1] >= 7) :
     import subprocess
   else :
@@ -32,6 +31,11 @@ def call (args, log=sys.stdout, shell=True, cwd=None) :
     if (not libtbx_path in sys.path) :
       sys.path.append(libtbx_path)
     import subprocess_with_fixes as subprocess
+  return subprocess
+
+def call (args, log=sys.stdout, shell=True, cwd=None) :
+  subprocess = import_subprocess()
+  rc = None
   # shell=True requires string as args.
   if shell and isinstance(args, list) :
     args = " ".join(args)
@@ -53,6 +57,16 @@ def call (args, log=sys.stdout, shell=True, cwd=None) :
   rc = p.returncode
   if (rc != 0) :
     raise RuntimeError("Call to '%s' failed with exit code %d" % (args, rc))
+
+def check_output (*popenargs, **kwargs) :
+  # Back-port of Python 2.7 subprocess.check_output.
+  subprocess = import_subprocess()
+  process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+  output, unused_err = process.communicate()
+  retcode = process.poll()
+  if retcode:
+    raise RuntimeError("Call to '%s' failed with exit code %d" % (args, retcode))
+  return output
 
 def untar (pkg_name, log=sys.stdout, verbose=False, change_ownership=False,
     check_output_path=True) :
