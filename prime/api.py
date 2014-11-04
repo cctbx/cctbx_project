@@ -1,12 +1,13 @@
 from __future__ import division
 from abc import ABCMeta, abstractmethod
+import cctbx
+import scitbx_array_family_flex_ext
+import cctbx_orientation_ext
 
 class InputFrame():
   """ Wrapper class for describing single images to be refined, created from an input dictionary of schema:
         - `miller_array`: the cctbx.miller miller array of spot intensities.
         - `mapped_predictions`: the mapped_predictions locations
-        - `name`: file-name, used as an identifier
-        - `pg`: point group of pickle
         - `orientation`: cctbx crystal_orientation object
         - `xbeam`: x-location of beam centre
         - `ybeam`: y-location of beam centre
@@ -14,8 +15,19 @@ class InputFrame():
 
   Child classes must simply have these attributes, and will be modified in place. See xfel.cluster.singleframe.SingleFrame for example.
   """
-  def __init__(self, **frame_dict):
+  def __init__(self, frame_dict):
     self.__dict__.update(frame_dict)
+
+  def check_prime_input(self):
+    """ Check attribute names and types to ensure that the object is valid. """
+    required = {'miller_array': cctbx.miller.array,
+                'mapped_predictions': scitbx_array_family_flex_ext.vec2_double,
+                'orientation': cctbx_orientation_ext.crystal_orientationa,
+                'xbeam': float,
+                'ybeam': float,
+                'wavelength': float}
+    for key in required:
+      assert isinstance(getattr(self, key), required[key])
 
 
 def refine_many(frame_lst, input_file):
@@ -28,6 +40,9 @@ def refine_many(frame_lst, input_file):
   .. note::
      This will also update the InputFrame objects in place.
   """
+  for frame in frame_lst:
+    frame.check_prime_input()
+
   pass
 
 class CustomMicrocycle():
@@ -43,6 +58,7 @@ class CustomMicrocycle():
     .. note::
        This will also update the InputFrame objects in place.
     """
+    frame.check_prime_input()
     pass  # Maybe create internal prime input class here?
 
   def __call__(self):
