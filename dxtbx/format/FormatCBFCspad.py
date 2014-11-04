@@ -10,6 +10,7 @@ from __future__ import division
 
 from dxtbx.format.FormatCBFMultiTileHierarchy import FormatCBFMultiTileHierarchy
 from dxtbx.format.FormatStill import FormatStill
+from dxtbx.model import ParallaxCorrectedPxMmStrategy
 from scitbx.matrix import col, sqr
 import pycbf
 
@@ -31,6 +32,29 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
     cbf_handle.find_column("type")
 
     return cbf_handle.get_value() == "CS PAD"
+
+  def _detector(self):
+    d = FormatCBFMultiTileHierarchy._detector(self)
+
+    try:
+      # a header only CBF file will not have a beam object
+      beam = self._beam()
+    except Exception, e:
+      if "CBF_NOTFOUND" not in str(e): raise e
+      return d
+
+    # take into consideration here the thickness of the sensor also the
+    # wavelength of the radiation (which we have in the same file...)
+    wavelength = beam.get_wavelength()
+    thickness = 0.5
+    from cctbx.eltbx import attenuation_coefficient
+    table = attenuation_coefficient.get_table("Si")
+    mu = table.mu_at_angstrom(wavelength) / 10.0
+    t0 = thickness
+
+    for panel in d:
+      panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, t0))
+    return d
 
   def sync_detector_to_cbf(self, detector = None):
     ''' If the dectector object has been changed, due to refinment or manual repositioning
