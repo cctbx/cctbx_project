@@ -646,14 +646,23 @@ class Cluster:
 
     return ax
 
-  def merge_dict(self):
+  def merge_dict(self, use_fullies=False):
     """ Make a dict of Miller indices with  ([list of intensities], resolution)
     value tuples for each miller index.
     """
 
     miller_dict = {}
     for m in self.members:
-      miller_array = m.miller_array
+      # Use fullies if requested
+      if use_fullies:
+        if m.miller_fullies:
+          miller_array = m.miller_fullies
+        else:
+          logging.warning("Fully recoreded array has not been calculated")
+      else:
+        miller_array = m.miller_array
+
+      # Create a dictionairy if SingleMiller observations
       d_spacings = list(miller_array.d_spacings().data())
       miller_indeces = list(miller_array.indices())
       miller_intensities = list(miller_array.data())
@@ -677,10 +686,10 @@ class Cluster:
     """ Number of images in the cluster """
     return len(self.members)
 
-  def dump_as_mtz(self, mtz_name):
+  def dump_as_mtz(self, mtz_name, use_fullies=False):
+    """ Merge using weighted mean and standard deviation if all miller arrays """
     from cctbx.crystal import symmetry
     from cctbx import miller
-
 
     assert all((str(m.miller_array.space_group_info())  \
                 == str(self.members[0].miller_array.space_group_info())
@@ -690,7 +699,7 @@ class Cluster:
     final_sym = symmetry(unit_cell=self.medians,
               space_group_info=self.members[0].miller_array.space_group_info())
     # Find mean_Iobs
-    mil_dict = self.merge_dict()
+    mil_dict = self.merge_dict(use_fullies=use_fullies)
     single_millers = mil_dict.values()
     indices = [md.index for md in single_millers]
     iobs, sig_iobs = zip(*[md.weighted_mean_and_std() for md in single_millers])
@@ -727,3 +736,14 @@ class Cluster:
     """ Return a len(cluster) * 6 numpy array of features for use in ML algos"""
     ucs = [c.uc for c in self.members]
     return  np.array(zip(*ucs))
+
+
+  def prime_postrefine(self, inputfile):
+    """ Run postrefinement from Prime on a cluster. Implements the prime API, and updates the SingleFrame objects with the attribute `miller_fullies`.
+    :param cluster: a cluster object.
+    :param inputfile: a Prime .inp file.
+    """
+    from prime.api import refine_many
+    miller_fullies = refine_many(self.members, inputfile)
+    for mil, sf in zip(miller_fullies, self.members):
+      sf.miller_fullies = mil
