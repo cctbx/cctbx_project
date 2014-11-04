@@ -1,6 +1,5 @@
 from __future__ import division
 
-import mmtbx.geometry.primitive # import dependency
 import mmtbx.geometry.shared_types # import dependency
 
 import boost.python
@@ -10,12 +9,12 @@ from mmtbx_geometry_asa_ext import *
 from mmtbx.geometry import altloc
 
 # Indexing with altloc support
-def create_description(index, atom, radius_for, probe):
+def create_description(index, atom, radius):
 
   return altloc.Description(
     data = sphere(
       centre = atom.xyz,
-      radius = radius_for[ atom.element.strip().capitalize() ] + probe,
+      radius = radius,
       index = index,
       ),
     coordinates = atom.xyz,
@@ -267,7 +266,11 @@ def calculate(
   radius_for = van_der_waals_radii.vdw.table
 
   descriptions = [
-    create_description( index = i, atom = a, radius_for = radius_for, probe = probe )
+    create_description(
+      index = i,
+      atom = a,
+      radius = radius_for[ a.element.strip().capitalize() ] + probe,
+      )
     for ( i, a ) in enumerate( atoms )
     ]
 

@@ -4,6 +4,7 @@
 #include <boost/python/scope.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
+#include <boost/python/import.hpp>
 
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/adaptor/filtered.hpp>
@@ -204,6 +205,9 @@ struct python_export_traits
 
 BOOST_PYTHON_MODULE(mmtbx_geometry_asa_ext)
 {
+  // Dependency
+  boost::python::object primitives = boost::python::import( "mmtbx_geometry_primitive_ext" );
+
   mmtbx::geometry::asa::python_exports<
     mmtbx::geometry::asa::python_export_traits< scitbx::vec3< double > >
     >::wrap();
