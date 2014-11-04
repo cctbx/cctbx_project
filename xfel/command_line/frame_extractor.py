@@ -176,7 +176,7 @@ class ConstructFrame(object):
     self.populate_ML_values()
     self.populate_observations()
     self.populate_pixel_positions()
-    self.populate_corrections()
+    # self.populate_corrections() # works, but unnecessary
     self.populate_partialities()
     self.populate_residuals()
     return self.frame
