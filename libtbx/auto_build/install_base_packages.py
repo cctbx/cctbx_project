@@ -59,8 +59,10 @@ class installer (object) :
       help="Build DIALS dependencies", default=self.build_dials_dependencies)
     parser.add_option("--gui", dest="build_gui", action="store_true",
       help="Build GUI dependencies", default=self.build_gui_dependencies)
-    #parser.add_option("--use_system_python", dest="use_system_python",
-    #  action="store_true", default=False)
+    parser.add_option("--with-python", dest="with_python",
+      help="Use specified Python interpreter")
+    parser.add_option("--with-system-python", dest="with_system_python",
+      help="Use the system Python interpreter", action="store_true")
     parser.add_option("-a", "--all", dest="build_all", action="store_true",
       help="Build all recommended dependencies", default=False)
     parser.add_option("--scipy", dest="build_scipy", action="store_true",
@@ -99,13 +101,16 @@ class installer (object) :
     self.verbose = options.verbose
     self.options = options
     self.have_freetype = False
-    self.python_exe = None
     self.include_dirs = []
     self.lib_dirs = []
     self.flag_is_linux = sys.platform.startswith("linux")
     self.flag_is_mac = (sys.platform == "darwin")
     self.cppflags_start = os.environ.get("CPPFLAGS", "")
     self.ldflags_start = os.environ.get("LDFLAGS", "")
+    # Which Python interpreter:
+    self.python_exe = options.with_python or None
+    if options.with_system_python:
+      self.python_exe = sys.executable
     # configure package download
     self.fetch_package = fetch_packages(
       dest_dir=self.tmp_dir,
@@ -113,8 +118,15 @@ class installer (object) :
       pkg_dirs=options.pkg_dirs,
       no_download=options.no_download)
 
-    # Build Python and HDF5 by default.
-    packages = ['python', 'hdf5']
+    # Use a specific Python interpreter if provided.
+    packages = []
+    if self.python_exe:
+      self.set_python(self.python_exe)
+    else:
+      packages += ['python']
+    # Always build hdf5.
+    packages += ['hdf5']
+    # Add specified packages.
     if not options.basic:
       for env_var in ["BLAS","ATLAS","LAPACK"]:
         os.environ[env_var] = "None"
@@ -313,14 +325,40 @@ class installer (object) :
         shell=False)
       self.call('make -j %s install'%(self.nproc), log=log, cwd=python_dir)
       self.call('make install', log=log, cwd=python_dir)
-    log.close()
-    self.python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
-    self.update_paths()
-    # just an arbitrary import (with .so)
-    self.verify_python_module("Python", "socket")
+    python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
+    self.set_python(op.abspath(python_exe))
     self.print_sep()
-
-  def update_paths (self) :
+    log.close()
+    
+  def set_python(self, python_exe):
+    print >> self.log, "Using Python: %s"%python_exe
+    self.python_exe = python_exe
+    # Just an arbitrary import (with .so)
+    self.verify_python_module("Python", "socket")
+    # Check python version >= 2.5.
+    # version = check_output...
+    # Check that we have write access to site-packages dir
+    # by creating a temporary file with write permissions.
+    # Open with tempfile to auto-handle unlinking.
+    import tempfile
+    site_packages = check_output([self.python_exe, '-c', 'from distutils.sysconfig import get_python_lib; print(get_python_lib())'])
+    site_packages = site_packages.strip()
+    # print >> self.log,  "Checking for write permissions:", site_packages
+    try:
+      with tempfile.TemporaryFile(dir=site_packages) as f:
+        pass
+    except OSError, e:
+      print >> self.log, """
+Error: You don't appear to have write access to
+the Python site-packages directory:
+  %s
+Installation of Python packages may fail.
+      """%site_packages
+      raise e
+    # Update paths.
+    self.update_paths()
+      
+  def update_paths(self):
     os.environ["PATH"] = ("%s/bin:" % self.base_dir) + os.environ['PATH']
     lib_paths = [ op.join(self.base_dir, "lib") ]
     if (sys.platform == "darwin") :
