@@ -1,7 +1,6 @@
 from __future__ import division
 
 from cctbx import sgtbx # import dependency
-import mmtbx.geometry.primitive # import dependency
 import mmtbx.geometry.shared_types # import dependency
 
 import boost.python
