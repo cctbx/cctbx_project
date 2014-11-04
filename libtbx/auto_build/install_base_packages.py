@@ -329,7 +329,7 @@ class installer (object) :
     self.set_python(op.abspath(python_exe))
     self.print_sep()
     log.close()
-    
+
   def set_python(self, python_exe):
     print >> self.log, "Using Python: %s"%python_exe
     self.python_exe = python_exe
@@ -357,7 +357,7 @@ Installation of Python packages may fail.
       raise e
     # Update paths.
     self.update_paths()
-      
+
   def update_paths(self):
     os.environ["PATH"] = ("%s/bin:" % self.base_dir) + os.environ['PATH']
     lib_paths = [ op.join(self.base_dir, "lib") ]
