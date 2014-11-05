@@ -116,6 +116,7 @@ class ncs_group_object(object):
                          min_contig_length=10,
                          log=sys.stdout,
                          check_atom_order=False,
+                         allow_different_size_res=True,
                          exclude_misaligned_residues=False,
                          max_dist_diff=4.0):
     """
@@ -169,6 +170,8 @@ class ncs_group_object(object):
       check_atom_order (bool): check atom order in matching residues.
         When False, matching residues with different number of atoms will be
         excluded from matching set
+      allow_different_size_res (bool): keep matching residue with different
+        number of atoms
       exclude_misaligned_residues (bool): check and exclude individual residues
         alignment quality
       max_dist_diff (float): max allow distance difference between pairs of matching
@@ -177,6 +180,7 @@ class ncs_group_object(object):
     extension = ''
     self.write_messages = write_messages
     self.check_atom_order = check_atom_order
+    self.allow_different_size_res = allow_different_size_res
     self.log = log
     if file_name: extension = os.path.splitext(file_name)[1]
     if pdb_hierarchy_inp:
@@ -451,17 +455,18 @@ class ncs_group_object(object):
         min_contig_length=min_contig_length,
         min_percent=min_percent,
         use_minimal_master_ncs=use_minimal_master_ncs,
-        rmsd_eps=max_rmsd,
+        max_rmsd=max_rmsd,
         write=self.write_messages,
         log=self.log,
         check_atom_order=self.check_atom_order,
+        allow_different_size_res=self.allow_different_size_res,
         exclude_misaligned_residues=exclude_misaligned_residues,
         max_dist_diff=max_dist_diff)
       # process atom selections
       self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
       self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
     elif use_simple_ncs_from_pdb:
-      # Fixme: Remove this after testing simple ncs from pdb
+      # Del: Remove this after testing simple ncs from pdb
       ncs_object = get_ncs_object_from_pdb(
         pdb_inp=pdb_hierarchy_inp.input,
         hierarchy=pdb_hierarchy_inp.hierarchy)
@@ -1684,7 +1689,7 @@ def get_rot_trans(ph=None,
       # similarity between chains is small, do not consider as same chains
       return r_zero,t_zero,0,''
     #
-    sel_m, sel_c,res_sel_m,res_sel_c,msg1 = get_matching_atoms(
+    sel_m,sel_c,res_sel_m,res_sel_c,msg1 = get_matching_atoms(
       ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c,
       master_selection,copy_selection)
     msg += msg1

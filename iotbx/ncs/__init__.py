@@ -28,6 +28,7 @@ def input(pdb_hierarchy_inp=None,
           min_percent=0.95,
           min_contig_length=10,
           check_atom_order=False,
+          allow_different_size_res=True,
           exclude_misaligned_residues=False,
           max_dist_diff=4.0):
     """
@@ -82,6 +83,8 @@ def input(pdb_hierarchy_inp=None,
       check_atom_order (bool): check atom order in matching residues.
         When False, matching residues with different number of atoms will be
         excluded from matching set
+      allow_different_size_res (bool): keep matching residue with different
+        number of atoms
       exclude_misaligned_residues (bool): check and exclude individual residues
         alignment quality
       max_dist_diff (float): max allow distance difference between pairs of matching
@@ -114,6 +117,7 @@ def input(pdb_hierarchy_inp=None,
       min_percent=min_percent,
       min_contig_length=min_contig_length,
       check_atom_order=check_atom_order,
+      allow_different_size_res=allow_different_size_res,
       exclude_misaligned_residues=exclude_misaligned_residues,
       max_dist_diff=max_dist_diff)
     return ncs_group_obj

@@ -78,7 +78,7 @@ def ncs_from_pdb(args):
             exclude_misaligned_residues=params.exclude_misaligned_residues,
             max_dist_diff=params.max_dist_diff,
             min_percent=params.min_percent)
-        print 'File name: {}'.format(params.file_name)
+        print '\n\nFile name: {}'.format(params.file_name)
         print 'Search parameters values'
         print '-'*40
         for k,v in params.__dict__.iteritems():
