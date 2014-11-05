@@ -1,7 +1,7 @@
 from __future__ import division
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
-# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.mpi_index
+# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.xtc_process
 #
 from psana import *
 import numpy as np
