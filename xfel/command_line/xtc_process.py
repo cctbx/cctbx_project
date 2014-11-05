@@ -11,7 +11,7 @@ import pycbf, os, sys
 from libtbx.utils import Sorry
 from dials.util.options import OptionParser
 from libtbx.phil import parse
-from dxtbx.imageset import MemImageSet, ImageSetFactory
+from dxtbx.imageset import MemImageSet
 from dxtbx.datablock import DataBlockFactory
 
 phil_scope = parse('''
@@ -30,6 +30,12 @@ phil_scope = parse('''
     integrate = True
       .type = bool
       .help = "Integrated indexed images. Ignored if index=False"
+    dump_strong = False
+      .type = bool
+      .help = "Save strongly diffracting images to cbf format"
+    dump_indexed = True
+      .type = bool
+      .help = "Save indexed images to cbf format"
     dump_all = False
       .type = bool
       .help = "All frames will be saved to cbf format if set to True"
@@ -85,9 +91,15 @@ phil_scope = parse('''
   }
   include scope dials.algorithms.refinement.refiner.phil_scope
   include scope dials.algorithms.profile_model.factory.phil_scope
-  include scope dials.algorithms.integration.interface.phil_scope
+  include scope dials.algorithms.integration.integrator.phil_scope
   include scope dials.algorithms.spot_prediction.reflection_predictor.phil_scope
 ''', process_includes=True)
+
+# work around for copying dxtbx FormatCBFCspad objects
+from xfel.cftbx.detector.cspad_cbf_tbx import cbf_wrapper
+def __stupid_but_swig_safe__deepcopy__(self, memo):
+  pass
+cbf_wrapper.__deepcopy__ = __stupid_but_swig_safe__deepcopy__
 
 from dials.command_line.process import Script as DialsProcessScript
 class InMemScript(DialsProcessScript):
@@ -187,8 +199,6 @@ class InMemScript(DialsProcessScript):
         s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
         print "Processing shot", s
 
-        base_name = "hit-" + s
-
         # stitch together the header, data and metadata into the final dxtbx format object
         cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)
 
@@ -203,11 +213,11 @@ class InMemScript(DialsProcessScript):
 
         # before calling DIALS for processing, set output paths according to the templates
         if "%s" in indexed_filename_template:
-          self.params.output.indexed_filename = os.path.join(params.output.output_dir, indexed_filename_template%base_name)
+          self.params.output.indexed_filename = os.path.join(params.output.output_dir, indexed_filename_template%("idx-" + s))
         if "%s" in refined_experiments_filename_template:
-          self.params.output.refined_experiments_filename = os.path.join(params.output.output_dir, refined_experiments_filename_template%base_name)
+          self.params.output.refined_experiments_filename = os.path.join(params.output.output_dir, refined_experiments_filename_template%("idx-" + s))
         if "%s" in integrated_filename_template:
-          self.params.output.integrated_filename = os.path.join(params.output.output_dir, integrated_filename_template%base_name)
+          self.params.output.integrated_filename = os.path.join(params.output.output_dir, integrated_filename_template%("idx-" + s))
 
         # if border is requested, generate a border only mask
         if params.border_mask.border > 0:
@@ -228,50 +238,29 @@ class InMemScript(DialsProcessScript):
           continue
 
         # save cbf file
-        dest_path = os.path.join(params.output.output_dir, base_name + ".cbf")
-        try:
-          cspad_img._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
-            pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
-        except Exception:
-          print "Warning, couldn't save cbf:", dest_path
-          continue
-
-        # save strong reflections.  self.find_spots() would have done this, but we only
-        # want to save data if it is enough to try and index it
-        if strong_filename_template:
-          if "%s" in strong_filename_template:
-            strong_filename = strong_filename_template%base_name
-          else:
-            strong_filename = strong_filename_template
-          strong_filename = os.path.join(params.output.output_dir, strong_filename)
-
-          from dials.util.command_line import Command
-          Command.start('Saving {0} reflections to {1}'.format(
-              len(observed), os.path.basename(strong_filename)))
-          observed.as_pickle(strong_filename)
-          Command.end('Saved {0} observed to {1}'.format(
-              len(observed), os.path.basename(strong_filename)))
-
-        # reload the ImageSet. Workaround until MemImageSet is ready.
-        try:
-          imgset = ImageSetFactory.new([dest_path])
-        except Exception, e:
-          print "Warning, skipping corrupt cbf:", dest_path
-          continue
-        datablock = DataBlockFactory.from_imageset(imgset)[0]
-
-        if params.output.datablock_filename:
-          if "%s" in params.output.datablock_filename:
-            datablock_filename = os.path.join(params.output.output_dir, params.output.datablock_filename%base_name)
-          else:
-            datablock_filename = os.path.join(params.output.output_dir, params.output.datablock_filename)
-          from dxtbx.datablock import DataBlockDumper
-          dump = DataBlockDumper(datablock)
+        if params.dispatch.dump_strong:
+          dest_path = os.path.join(params.output.output_dir, "hit-" + s + ".cbf")
           try:
-            dump.as_json(datablock_filename)
+            cspad_img._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
+              pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
           except Exception:
-            print "Warning, couldn't save datablock", datablock_filename
-            continue
+            print "Warning, couldn't save cbf:", dest_path
+
+          # save strong reflections.  self.find_spots() would have done this, but we only
+          # want to save data if it is enough to try and index it
+          if strong_filename_template:
+            if "%s" in strong_filename_template:
+              strong_filename = strong_filename_template%("hit-" + s)
+            else:
+              strong_filename = strong_filename_template
+            strong_filename = os.path.join(params.output.output_dir, strong_filename)
+
+            from dials.util.command_line import Command
+            Command.start('Saving {0} reflections to {1}'.format(
+                len(observed), os.path.basename(strong_filename)))
+            observed.as_pickle(strong_filename)
+            Command.end('Saved {0} observed to {1}'.format(
+                len(observed), os.path.basename(strong_filename)))
 
         if not params.dispatch.index:
           continue
@@ -279,6 +268,19 @@ class InMemScript(DialsProcessScript):
         # index and refine
         try:
           experiments, indexed = self.index(datablock, observed)
+        except Exception, e:
+          print str(e)
+          continue
+
+        if params.dispatch.dump_indexed:
+          dest_path = os.path.join(params.output.output_dir, "idx-" + s + ".cbf")
+          try:
+            cspad_img._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
+              pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
+          except Exception:
+            print "Warning, couldn't save cbf:", dest_path
+
+        try:
           experiments = self.refine(experiments, indexed)
         except Exception, e:
           print str(e)
