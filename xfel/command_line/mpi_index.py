@@ -249,7 +249,11 @@ class InMemScript(DialsProcessScript):
               len(observed), os.path.basename(strong_filename)))
 
         # reload the ImageSet. Workaround until MemImageSet is ready.
-        imgset = ImageSetFactory.new([dest_path])
+        try:
+          imgset = ImageSetFactory.new([dest_path])
+        except Exception, e:
+          print "Warning, skipping corrupt cbf:", dest_path
+          continue
         datablock = DataBlockFactory.from_imageset(imgset)[0]
 
         if params.output.datablock_filename:
