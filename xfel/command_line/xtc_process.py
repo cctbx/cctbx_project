@@ -229,8 +229,12 @@ class InMemScript(DialsProcessScript):
 
         # save cbf file
         dest_path = os.path.join(params.output.output_dir, base_name + ".cbf")
-        cspad_img._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
-          pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
+        try:
+          cspad_img._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
+            pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
+        except Exception:
+          print "Warning, couldn't save cbf:", dest_path
+          continue
 
         # save strong reflections.  self.find_spots() would have done this, but we only
         # want to save data if it is enough to try and index it
@@ -263,7 +267,11 @@ class InMemScript(DialsProcessScript):
             datablock_filename = os.path.join(params.output.output_dir, params.output.datablock_filename)
           from dxtbx.datablock import DataBlockDumper
           dump = DataBlockDumper(datablock)
-          dump.as_json(datablock_filename)
+          try:
+            dump.as_json(datablock_filename)
+          except Exception:
+            print "Warning, couldn't save datablock", datablock_filename
+            continue
 
         if not params.dispatch.index:
           continue
