@@ -80,11 +80,12 @@ class test_find_ncs_operators(unittest.TestCase):
     self.assertEqual(len(chain_match_list),8)
     #
     match_dict = ncs_search.clean_chain_matching(chain_match_list,ph)
+    chains_info = ncs_search.get_chains_info(ph)
     # Test minimal master NCS
     transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
     match_dict=match_dict)
     group_dict = ncs_search.build_group_dict(
-      transform_to_group,match_dict)
+      transform_to_group,match_dict,chains_info)
     self.assertEqual(len(group_dict),1)
     gr_obj = group_dict[('A',)]
     self.assertEqual(len(gr_obj.transforms),len(gr_obj.copies))
@@ -113,11 +114,12 @@ class test_find_ncs_operators(unittest.TestCase):
       use_minimal_master_ncs=False)
     #
     match_dict = ncs_search.clean_chain_matching(chain_match_list,ph)
+    chains_info = ncs_search.get_chains_info(ph)
     #
     transform_to_group,match_dict = ncs_search.minimal_ncs_operators_grouping(
     match_dict=match_dict)
     group_dict = ncs_search.build_group_dict(
-      transform_to_group,match_dict)
+      transform_to_group,match_dict,chains_info)
     self.assertEqual(len(group_dict),1)
     gr_obj = group_dict[('A', 'B', 'C')]
     self.assertEqual(len(gr_obj.transforms),len(gr_obj.copies))
