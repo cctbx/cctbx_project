@@ -1436,6 +1436,7 @@ libtbx/command_line/find_old_style_classes.py -text
 libtbx/command_line/find_unused_imports_crude.py svneol=native#text/x-python
 libtbx/command_line/gdb.sh svneol=native#text/x-sh
 libtbx/command_line/import_all_ext.py svneol=native#text/x-python
+libtbx/command_line/import_all_python.py -text
 libtbx/command_line/latex.sh -text
 libtbx/command_line/list_files.py -text
 libtbx/command_line/list_modules.py -text
