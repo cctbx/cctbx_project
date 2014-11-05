@@ -106,13 +106,8 @@ END
   params = mmtbx.msa.master_phil.fetch().extract()
   params.muscle.seq_file.extend(["tmp1.pdb", "tmp2.fa", "tmp3.fa", "tmp4.dat"])
   (aln_file, alignment) = mmtbx.msa.run(params=params, out=StringIO())
-  assert (alignment ==
-    "MUSCLE (3.8) multiple sequence alignment\n\n\n"+
-    "tmp4            AV-NNQ--QNF\n"
-    "tmp1_A          XXGNNQAGQNY\n"
-    "tmp2            AVGNNQ--QNY\n"
-    "tmp3            ---NNQ--QNY\n"
-    "                   ***  **:")
+  # XXX not checking the full alignment because it is host-dependent
+  assert ("tmp4            AV-NNQ--QNF" in alignment)
   print "OK"
 
 if __name__ == "__main__" :
