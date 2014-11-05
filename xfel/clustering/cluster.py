@@ -172,6 +172,20 @@ class Cluster:
                      self.info, '#' * 30, '#' * 30, new_info,
                      len(new_members), len(self.members)))
 
+  def best_by_CC(self, other, assert_is_similar_symmetry=False):
+    """ Return the SingleFrame object with the highest CC to a reference miller array.
+    :param other: miller array object to be correlated against
+    :return: a SingleFrame object.
+    """
+    max = 0
+    for sf in self.members:
+      corr =  sf.miller_array.correlation(other,
+                      assert_is_similar_symmetry=assert_is_similar_symmetry)
+      if corr > max:
+        best = sf
+    return best
+
+
   def print_ucs(self):
     """ Prints a list of all the unit cells in the cluster to CSV."""
     outfile = "{}_niggli_ucs".format(self.cname)
