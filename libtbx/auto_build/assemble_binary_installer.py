@@ -122,7 +122,7 @@ class installer_builder (object) :
     setup_args = [
       "--version=%s" % options.version,
       "--binary",
-      "--script=%s" % full_path(self.installer_script),
+      "--script=%s"%full_path(self.installer_script),
       "--product_name=%s" % self.product_name,
       "--pkg_dir=%s" % modules_dir,
     ]
@@ -133,6 +133,9 @@ class installer_builder (object) :
       setup_args.append("--base-modules=%s" % ",".join(self.base_modules))
     if (self.license) :
       setup_args.append("--license=%s" % full_path(self.license))
+    print "Arguments for setup_installer.py:"
+    for arg_ in setup_args :
+      print "  %s" % arg_
     setup_installer.run(args=setup_args + [ self.pkg_prefix ])
     installer_dir = self.pkg_prefix + "-installer-" + options.version
     os.chdir(options.tmp_dir)
@@ -143,7 +146,7 @@ class installer_builder (object) :
     bundle_args = [
       "--dest=%s" % bundle_dir,
       "--version=%s" % options.version,
-      "--verbose",
+      #"--verbose",
     ]
     if (len(self.exclude_build_modules) > 0) :
       for module in self.exclude_build_modules :
@@ -151,6 +154,9 @@ class installer_builder (object) :
     if (len(self.base_modules) > 0) :
       for module in self.base_modules :
         bundle_args.append("--ignore=%s" % module)
+    print "Arguments for make_bundle.py:"
+    for arg_ in bundle_args :
+      print "  %s" % arg_
     make_bundle.run(args=bundle_args + [ builder_dir ])
     # package the entire mess into the complete installer
     find_and_delete_files(installer_dir, file_ext=".pyc")
