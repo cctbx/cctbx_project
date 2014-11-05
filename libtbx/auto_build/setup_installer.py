@@ -30,7 +30,7 @@ def run (args) :
   parser = OptionParser()
   parser.add_option("--version", dest="version", action="store",
     help="Package version", default=time.strftime("%Y_%m_%d",time.localtime()))
-  parser.add_option("--binary", dest="binary", action="store",
+  parser.add_option("--binary", dest="binary", action="store_true",
     help="Setup for binary installer only (no source packages)", default=False)
   parser.add_option("--pkg_dir", dest="pkg_dirs", action="append",
     help="Directory with source packages", default=None)
@@ -50,8 +50,8 @@ def run (args) :
     help="Readme file", default=[])
   parser.add_option("--license", dest="license", action="store",
     help="License file", default=op.join(libtbx_path, "LICENSE_2_0.txt"))
-  parser.add_option("--script", dest="script", action="store",
-    help="Final installation script", default=None)
+  parser.add_option("--script", dest="install_script",
+    help="Final installation script", default=None, metavar="FILE")
   parser.add_option("--modules", dest="modules", action="store",
     help="Local modules to include", default=None)
   parser.add_option("--base-modules", dest="base_modules", action="store",
@@ -62,14 +62,14 @@ def run (args) :
     help="Path to CCTBX installer bundle (if not downloaded)", default=None)
   parser.add_option("--bin-dir", dest="bin_dir", action="store",
     help="Directory containing additional binaries/scripts", default=None)
-  options, args = parser.parse_args(args)
-  assert len(args) == 1
-  package_name = args[-1]
+  options, args_ = parser.parse_args(args=args)
+  assert len(args_) == 1
+  package_name = args_[-1]
   if (options.product_name is None) :
     options.product_name = package_name
-  if (options.script is not None) :
-    assert op.isfile(options.script)
-    options.script = op.abspath(options.script)
+  if (options.install_script is not None) :
+    assert op.isfile(options.install_script)
+    options.install_script = op.abspath(options.install_script)
   module_list = options.modules
   base_module_list = options.base_modules
   os.chdir(options.dest)
@@ -99,76 +99,20 @@ def run (args) :
     for file_name in options.readme :
       if op.isfile(file_name) :
         base_name = op.basename(file_name)
+        print "copying %s" % base_name
         open(base_name, "w").write(open(file_name).read())
   else : # fallback to CCTBX copyright
     file_name = op.join(libtbx_path, "COPYRIGHT_2_0.txt")
     open("README", "w").write(open(file_name).read())
   if op.isfile(options.license) :
     open("LICENSE", "w").write(open(options.license).read())
-  have_modules = []
-  def get_module (module_name) :
-    for pkg_dir in options.pkg_dirs :
-      dist_dir = op.join(pkg_dir, module_name)
-      tarfile = op.join(pkg_dir, module_name + "_hot.tar.gz")
-      if op.exists(tarfile) :
-        print "using module '%s' from %s" % (module_name, tarfile)
-        copy_file(tarfile, module_name + ".tar.gz")
-        have_modules.append(module_name)
-        break
-      elif op.isdir(dist_dir) :
-        print "using module '%s' from %s" % (module_name, dist_dir)
-        archive_dist(dist_dir)
-        assert op.isfile(module_name + ".tar.gz")
-        have_modules.append(module_name)
-        break
-  if (not options.binary) :
-    print ""
-    print "********** FETCHING DEPENDENCIES **********"
-    print ""
-    fetch_all_dependencies(
-      dest_dir=op.join(options.dest, installer_dir, "dependencies"),
-      log=sys.stdout,
-      pkg_dirs=options.pkg_dirs,
-      gui_packages=(options.dials or options.gui or options.all),
-      dials_packages=(options.dials or options.xia2 or options.all))
-    # local packages
-    fetch_package = fetch_packages(
-      dest_dir=op.join(options.dest, installer_dir, "source"),
-      log=sys.stdout,
-      pkg_dirs=options.pkg_dirs,
-      copy_files=True)
-    os.chdir(op.join(options.dest, installer_dir, "source"))
-    if (options.cctbx_bundle is None) :
-      fetch_package(
-        pkg_name="cctbx_bundle_for_installer.tar.gz",
-        pkg_url="http://cci.lbl.gov/build/results/current")
-      os.rename("cctbx_bundle_for_installer.tar.gz", "cctbx_bundle.tar.gz")
-    else :
-      assert op.isfile(options.cctbx_bundle)
-      copy_file(options.cctbx_bundle, "cctbx_bundle.tar.gz")
-    if (module_list is not None) :
-      print ""
-      print "********** FETCHING MODULES **********"
-      print ""
-      module_list = re.sub(",", " ", module_list)
-      for module_name in module_list.split() :
-        get_module(module_name)
-  # Additional modules that are included in both the source and the binary
-  # installer - in Phenix this includes restraints, examples, documentation,
-  # and regression tests
-  if (base_module_list is not None) :
-    base_module_dir = op.join(options.dest, installer_dir, "base")
-    os.makedirs(base_module_dir)
-    os.chdir(base_module_dir)
-    base_module_list = re.sub(",", " ", base_module_list)
-    for module_name in base_module_list.split() :
-      get_module(module_name)
   os.chdir(op.join(options.dest, installer_dir))
   # actual Python installer script
-  if (options.script is not None) :
-    assert op.isfile(options.script)
-    open("bin/install.py", "w").write(open(options.script).read())
+  if (options.install_script is not None) :
+    assert op.isfile(options.install_script)
+    open("bin/install.py", "w").write(open(options.install_script).read())
   else :
+    print "WARNING: using default installation script"
     # default stub.  this is pretty minimal but it will work for simple
     # packages.
     modules_list = []
@@ -232,6 +176,65 @@ $PYTHON_EXE ./bin/install.py $@
   f.close()
   st = os.stat("install")
   os.chmod("install", st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+  #
+  have_modules = []
+  def get_module (module_name) :
+    for pkg_dir in options.pkg_dirs :
+      dist_dir = op.join(pkg_dir, module_name)
+      tarfile = op.join(pkg_dir, module_name + "_hot.tar.gz")
+      if op.exists(tarfile) :
+        print "using module '%s' from %s" % (module_name, tarfile)
+        copy_file(tarfile, module_name + ".tar.gz")
+        have_modules.append(module_name)
+        break
+      elif op.isdir(dist_dir) :
+        print "using module '%s' from %s" % (module_name, dist_dir)
+        archive_dist(dist_dir)
+        assert op.isfile(module_name + ".tar.gz")
+        have_modules.append(module_name)
+        break
+  if (not options.binary) :
+    print ""
+    print "********** FETCHING DEPENDENCIES **********"
+    print ""
+    fetch_all_dependencies(
+      dest_dir=op.join(options.dest, installer_dir, "dependencies"),
+      log=sys.stdout,
+      pkg_dirs=options.pkg_dirs,
+      gui_packages=(options.dials or options.gui or options.all),
+      dials_packages=(options.dials or options.xia2 or options.all))
+    # local packages
+    fetch_package = fetch_packages(
+      dest_dir=op.join(options.dest, installer_dir, "source"),
+      log=sys.stdout,
+      pkg_dirs=options.pkg_dirs,
+      copy_files=True)
+    os.chdir(op.join(options.dest, installer_dir, "source"))
+    if (options.cctbx_bundle is None) :
+      fetch_package(
+        pkg_name="cctbx_bundle_for_installer.tar.gz",
+        pkg_url="http://cci.lbl.gov/build/results/current")
+      os.rename("cctbx_bundle_for_installer.tar.gz", "cctbx_bundle.tar.gz")
+    else :
+      assert op.isfile(options.cctbx_bundle)
+      copy_file(options.cctbx_bundle, "cctbx_bundle.tar.gz")
+    if (module_list is not None) :
+      print ""
+      print "********** FETCHING MODULES **********"
+      print ""
+      module_list = re.sub(",", " ", module_list)
+      for module_name in module_list.split() :
+        get_module(module_name)
+  # Additional modules that are included in both the source and the binary
+  # installer - in Phenix this includes restraints, examples, documentation,
+  # and regression tests
+  if (base_module_list is not None) :
+    base_module_dir = op.join(options.dest, installer_dir, "base")
+    os.makedirs(base_module_dir)
+    os.chdir(base_module_dir)
+    base_module_list = re.sub(",", " ", base_module_list)
+    for module_name in base_module_list.split() :
+      get_module(module_name)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

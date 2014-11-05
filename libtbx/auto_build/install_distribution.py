@@ -270,6 +270,10 @@ class installer (object) :
         self.alias_mtype = mtype_32bit
         binary_install = True
         self.build_bundle_file = bundle32
+        self.modules_bundle_file = op.join(self.bundle_dir,
+          "modules-%s-%s.tar.gz" % (self.version, self.alias_mtype))
+        self.base_bundle = op.join(self.bundle_dir, "base-%s-%s.tar.gz" %
+          (self.version, self.alias_mtype))
     if (not binary_install) :
       print >> out, "No binary bundles found for %s" % self.mtype
       if (op.isdir(bundle_dir)) :
@@ -337,7 +341,7 @@ class installer (object) :
       os.makedirs(self.base_dir)
     if (not self.options.top_level_sources) :
       self.modules_dir = op.join(self.dest_dir, "modules")
-      if (self.source_install) and (not op.exists(self.modules_dir)) :
+      if (not op.exists(self.modules_dir)) :
         os.makedirs(self.modules_dir)
     else :
       self.modules_dir = op.join(self.dest_dir)
@@ -519,7 +523,7 @@ class installer (object) :
     untar(self.build_bundle_file, log=log, verbose=True,
       change_ownership=False,
       check_output_path=False)
-    os.chdir(self.dest_dir)
+    os.chdir(self.modules_dir)
     untar(self.modules_bundle_file, log=log, verbose=True,
       change_ownership=False,
       check_output_path=False)
