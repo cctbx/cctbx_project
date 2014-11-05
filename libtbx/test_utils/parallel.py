@@ -242,11 +242,12 @@ class run_command_list (object) :
     kw = {}
     kw['out'] = self.out
     kw['log_return'] = self.log
-    kw['log_stderr'] = self.log
+    kw['log_stderr'] = self.out
     kw['log_stdout'] = self.log
     alert = self.check_alert(result)
     if self.quiet:
       kw['out'] = self.log
+      kw['log_stderr'] = self.log
     elif self.verbosity == EXTRA_VERBOSE:
       kw['log_return'] = self.out
       kw['log_stderr'] = self.out
