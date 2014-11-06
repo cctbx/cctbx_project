@@ -818,9 +818,9 @@ def update_best_matches_dict(best_matches,match_dict,
     ch_a_id,ch_b_id (str): chain IDs
     similarity (float): similarity between chains
     chain_similarity_limit (float): min similarity between matching chains
+      Note that smaller value cause more chains to be included and can lower
+      the number of common residues
   """
-  # Todo: add parameter that splits the results for 4c5q
-  # Todo: adjust  chain_similarity_limit is needed to achieve that
   records_to_remove = set()
   for ch_id in [ch_a_id,ch_b_id]:
     if best_matches.has_key(ch_id):
