@@ -271,11 +271,11 @@ class run_command_list (object) :
       print >> log_return, "  Return code: %s"%result.return_code
       print >> log_return, "  OKs:", len(filter(lambda x:'OK' in x, result.stdout_lines))
       log_return.flush()
-    if log_stdout:
+    if log_stdout and (len(result.stdout_lines) > 0) :
       print >> log_stdout, "  Standard out:"
       print >> log_stdout, "    "+"\n    ".join(result.stdout_lines)
       log_stdout.flush()
-    if log_stderr:
+    if log_stderr and (len(result.stderr_lines) > 0) :
       print >> log_stderr, "  Standard error:"
       print >> log_stderr, "    "+"\n    ".join(result.stderr_lines)
       log_stderr.flush()
