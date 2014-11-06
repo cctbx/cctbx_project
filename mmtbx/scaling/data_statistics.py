@@ -829,13 +829,14 @@ or omission of reflections by data-processing software.""")
 
   def summarize_issues (self) :
     issues = []
-    if self.d_min_directional.is_elliptically_truncated() :
-      issues.append((1,"The data appear to have been elliptically truncated.",
-        "Analysis of resolution limits"))
-    else :
-      issues.append((0,
-        "The resolution cutoff appears to be similar in all directions.",
-        "Analysis of resolution limits"))
+    if (self.d_min_directional is not None) :
+      if self.d_min_directional.is_elliptically_truncated() :
+        issues.append((1,"The data appear to have been elliptically truncated.",
+          "Analysis of resolution limits"))
+      else :
+        issues.append((0,
+          "The resolution cutoff appears to be similar in all directions.",
+          "Analysis of resolution limits"))
     if (0 < self.low_resolution_completeness_overall < 0.75) :
       issues.append((2, "The overall completeness in low-resolution shells "+
         "is less than 90%.", "Low resolution completeness analyses"))
