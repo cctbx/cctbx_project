@@ -2,6 +2,7 @@
 from __future__ import division
 import libtbx.load_env
 from libtbx.utils import multi_out
+from optparse import OptionParser
 from cStringIO import StringIO
 import os.path as op
 import os
@@ -21,6 +22,8 @@ ignore_modules = set([
   # non-CCTBX modules
   "PyQuante.ThomasFermi",       # uses reserved keyword 'with'
   "elbow.example_script",
+  "phenix_regression.wizards",
+  "phenix.autosol.bayes_5",     # too much executed code
 ])
 
 def has_init_py (path_name) :
@@ -43,9 +46,12 @@ def split_all (path_name) :
 
 def run (args) :
   verbose = False
-  if ("--verbose" in args) :
-    verbose = True
-    args.remove("--verbose")
+  parser = OptionParser()
+  parser.add_option("-v", "--verbose", dest="verbose", action="store_true",
+    help="Turn on verbose output")
+  parser.add_option("--skip-tests", dest="skip_tests", action="store_true",
+    help="Don't import modules beginning with 'tst'")
+  options, args = parser.parse_args(args)
   module_list = []
   if (len(args) == 0) :
     module_list.extend([ m.name for m in libtbx.env.module_list ])
@@ -72,16 +78,22 @@ def run (args) :
         if file_name.endswith(".py") and (file_name != "libtbx_refresh.py") :
           py_mod_name, ext = op.splitext(file_name)
           if (ext != '.py') or ("." in py_mod_name) :
-            if (verbose) :
+            if (options.verbose) :
               print >> sys.stderr, "skipping %s" % file_name
             continue
           py_path = split_all(dirname)[n_leading_dirs:]
           import_name = ".".join(py_path)
+          if (not has_init_py(dirname)) or (import_name in ignore_modules) :
+            continue
+          top_level_module = py_path[0]
           if (file_name != "__init__.py") :
             import_name += "." + file_name[:-3]
           if (import_name in ignore_modules) :
             continue
-          if (verbose) :
+          elif ((file_name.startswith("tst_") or file_name.startswith("test_"))
+                and options.skip_tests) :
+            continue
+          if (options.verbose) :
             print import_name
           try :
             sys.stdout = multi_out()
@@ -91,12 +103,17 @@ def run (args) :
             submodule = __import__(import_name)
             if (out.getvalue() != '') :
               has_stdout.append(import_name)
-              if (verbose) :
+              if (options.verbose) :
                 print >> sys.stderr, out.getvalue()
           except ImportError, e :
             print >> sys.stderr, e
           finally :
             sys.stdout = stdout_old
+  print ""
+  print "*" * 80
+  print "ALL MODULES IMPORTED SUCCESSFULLY"
+  print "*" * 80
+  print ""
   if (len(has_stdout) > 0) :
     print >> sys.stderr, "Warning: %d modules print to stdout on import" % \
       len(has_stdout)

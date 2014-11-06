@@ -5,12 +5,6 @@ import traceback
 import os
 op = os.path
 
-pdb_v3_mirror_dir = os.environ.get("PDB_MIRROR_PDB")
-assert pdb_v3_mirror_dir is None or op.isdir(pdb_v3_mirror_dir)
-
-cci_pdbmtz_path = os.environ.get("CCI_PDBMTZ")
-assert cci_pdbmtz_path is None or op.isdir(cci_pdbmtz_path)
-
 def process(params, mtz_pdb_pair):
   fn_mtz, fn_pdb = mtz_pdb_pair
   #
@@ -94,6 +88,10 @@ def run(args):
   #
   mtz_pdb_pairs = []
   arg_iter = iter(remaining_args)
+  pdb_v3_mirror_dir = os.environ.get("PDB_MIRROR_PDB")
+  assert pdb_v3_mirror_dir is None or op.isdir(pdb_v3_mirror_dir)
+  cci_pdbmtz_path = os.environ.get("CCI_PDBMTZ")
+  assert cci_pdbmtz_path is None or op.isdir(cci_pdbmtz_path)
   for arg in arg_iter:
     def get_next(expected_exts):
       def raise_bad_file(what, fn=None):

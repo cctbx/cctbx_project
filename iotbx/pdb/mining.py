@@ -3,15 +3,12 @@ import traceback
 import sys, os
 op = os.path
 
-cci_pdbmtz_path = os.environ.get("CCI_PDBMTZ")
-pdb_mirror_pdb = os.environ.get("PDB_MIRROR_PDB")
-
-assert cci_pdbmtz_path is None or op.isdir(cci_pdbmtz_path)
-assert pdb_mirror_pdb is None or op.isdir(pdb_mirror_pdb)
 
 __pdbmtz_codes = None
 def pdbmtz_codes():
   global __pdbmtz_codes
+  cci_pdbmtz_path = os.environ.get("CCI_PDBMTZ")
+  assert cci_pdbmtz_path is None or op.isdir(cci_pdbmtz_path)
   if (__pdbmtz_codes is None):
     __pdbmtz_codes = set()
     for node in os.listdir(cci_pdbmtz_path):
@@ -117,6 +114,8 @@ def null_generator():
   for never in []: yield never
 
 def run(args, command_call, command_line_add_options=None):
+  pdb_mirror_pdb = os.environ.get("PDB_MIRROR_PDB")
+  assert pdb_mirror_pdb is None or op.isdir(pdb_mirror_pdb)
   from iotbx.option_parser import option_parser as iotbx_option_parser
   import libtbx.utils
   show_times = libtbx.utils.show_times(time_start="now")

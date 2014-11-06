@@ -184,7 +184,8 @@ class KClusterSFBugs(unittest.TestCase):
             expected ),
             "Elements differ!\n%s\n%s" % (clusters, expected))
 
-unittest.TextTestRunner(stream=sys.stdout, verbosity=0).run(
+if (__name__ == "__main__") :
+  unittest.TextTestRunner(stream=sys.stdout, verbosity=0).run(
       unittest.TestSuite((
             unittest.makeSuite(HClusterSmallListTestCase),
             unittest.makeSuite(HClusterIntegerTestCase),
