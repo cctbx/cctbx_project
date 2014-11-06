@@ -278,7 +278,7 @@ class TestSimpleAlignment(unittest.TestCase):
       min_contig_length=1,check_atom_order=True)
     match_dict = ncs_search.clean_chain_matching(
       chain_match_list=chain_match_list,ph=ph,
-      chains_info=chains_info,best_match_limit=0.1)
+      chains_info=chains_info,chain_similarity_limit=0.1)
     transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
       match_dict)
     group_dict = ncs_search.build_group_dict(

@@ -90,6 +90,7 @@ def find_ncs_in_hierarchy(ph,
                           check_atom_order=False,
                           allow_different_size_res=True,
                           exclude_misaligned_residues=False,
+                          chain_similarity_limit=0.95,
                           max_dist_diff=4.0):
   """
   Find NCS relation in hierarchy
@@ -113,6 +114,7 @@ def find_ncs_in_hierarchy(ph,
       atoms of two residues
     allow_different_size_res (bool): keep matching residue with different
       number of atoms
+    chain_similarity_limit (float): min similarity between matching chains
 
   Return:
     groups_list (list of NCS_groups_container objects)
@@ -139,7 +141,7 @@ def find_ncs_in_hierarchy(ph,
     max_rmsd=max_rmsd,
     exclude_misaligned_residues=exclude_misaligned_residues,
     max_dist_diff=max_dist_diff,
-    best_match_limit=0.95)
+    chain_similarity_limit=chain_similarity_limit)
   #
   if use_minimal_master_ncs:
     transform_to_group,match_dict = minimal_master_ncs_grouping(match_dict)
@@ -684,7 +686,7 @@ def get_selection(sorted_masters,copies,match_dict):
 def clean_chain_matching(chain_match_list,ph,
                          chains_info=None,max_rmsd=10.0,
                          exclude_misaligned_residues=False,
-                         max_dist_diff=4.0,best_match_limit=0.95):
+                         max_dist_diff=4.0,chain_similarity_limit=0.95):
   """
   Remove all bad matches from chain_match_list
 
@@ -707,7 +709,7 @@ def clean_chain_matching(chain_match_list,ph,
       alignment quality
     max_dist_diff (float): max allow distance difference between pairs of matching
       atoms of two residues
-    best_match_limit (float): limit what matches are being kept
+    chain_similarity_limit (float): min similarity between matching chains
 
   Returns:
     match_dict(dict): key:(chains_id_a,chains_id_b)
@@ -726,7 +728,7 @@ def clean_chain_matching(chain_match_list,ph,
   for match in match_list:
     [ch_a_id, ch_b_id, sel_a, sel_b,res_list_a,res_list_b,similarity] = match
     update_best_matches_dict(
-      best_matches,match_dict,ch_a_id,ch_b_id,similarity,best_match_limit)
+      best_matches,match_dict,ch_a_id,ch_b_id,similarity,chain_similarity_limit)
     other_sites = ph.select(sel_a).atoms().extract_xyz()
     ref_sites = ph.select(sel_b).atoms().extract_xyz()
     lsq_fit_obj = superpose.least_squares_fit(
@@ -801,10 +803,10 @@ def remove_far_atoms(ch_a_id, ch_b_id,
 
 def update_best_matches_dict(best_matches,match_dict,
                              ch_a_id,ch_b_id,similarity,
-                             best_match_limit=0.95):
+                             chain_similarity_limit=0.95):
   """
   Updates the best_matches dictionaries best_matches,match_dict to keep only
-  matches that are at least 95% of best match
+  matches that are at least 95% of best match and
 
   Args:
     best_matches (dict):
@@ -815,8 +817,10 @@ def update_best_matches_dict(best_matches,match_dict,
       val: [selection_1,selection_2,res_list_1,res_list_2,rot,trans,rmsd]
     ch_a_id,ch_b_id (str): chain IDs
     similarity (float): similarity between chains
-    best_match_limit (float): limit what matches are being kept
+    chain_similarity_limit (float): min similarity between matching chains
   """
+  # Todo: add parameter that splits the results for 4c5q
+  # Todo: adjust  chain_similarity_limit is needed to achieve that
   records_to_remove = set()
   for ch_id in [ch_a_id,ch_b_id]:
     if best_matches.has_key(ch_id):
@@ -825,7 +829,7 @@ def update_best_matches_dict(best_matches,match_dict,
       max_sim = best_matches[ch_id][-1][0]
       if similarity > max_sim:
         for s,(a,b) in best_matches[ch_id]:
-          if s/similarity >= best_match_limit:
+          if s/similarity >= chain_similarity_limit:
             temp_rec.append([s,(a,b)])
           else:
             records_to_remove.add((a,b))

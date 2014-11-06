@@ -113,6 +113,7 @@ class ncs_group_object(object):
                          write_messages=False,
                          process_similar_chains=True,
                          min_percent=0.95,
+                         chain_similarity_limit=0.95,
                          min_contig_length=10,
                          log=sys.stdout,
                          check_atom_order=False,
@@ -166,6 +167,7 @@ class ncs_group_object(object):
       min_percent (float): Threshold for similarity between chains
         similarity define as:
         (number of matching res) / (number of res in longer chain)
+      chain_similarity_limit (float): min similarity between matching chains
       min_contig_length (int): minimum length of matching chain segments
       check_atom_order (bool): check atom order in matching residues.
         When False, matching residues with different number of atoms will be
@@ -217,6 +219,7 @@ class ncs_group_object(object):
             use_minimal_master_ncs=use_minimal_master_ncs,
             process_similar_chains=process_similar_chains,
             min_percent=min_percent,
+            chain_similarity_limit=chain_similarity_limit,
             min_contig_length=min_contig_length,
             max_rmsd=max_rmsd,
             exclude_misaligned_residues=exclude_misaligned_residues,
@@ -244,6 +247,7 @@ class ncs_group_object(object):
         use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
         use_minimal_master_ncs=use_minimal_master_ncs,
         min_percent=min_percent,
+        chain_similarity_limit=chain_similarity_limit,
         min_contig_length=min_contig_length,
         process_similar_chains=process_similar_chains,
         max_rmsd=max_rmsd,
@@ -419,6 +423,7 @@ class ncs_group_object(object):
                                  process_similar_chains=True,
                                  min_contig_length=10,
                                  min_percent=0.95,
+                                 chain_similarity_limit=0.95,
                                  exclude_misaligned_residues=False,
                                  max_dist_diff=4.0):
     """
@@ -454,6 +459,7 @@ class ncs_group_object(object):
         ph=pdb_hierarchy_inp.hierarchy,
         min_contig_length=min_contig_length,
         min_percent=min_percent,
+        chain_similarity_limit=chain_similarity_limit,
         use_minimal_master_ncs=use_minimal_master_ncs,
         max_rmsd=max_rmsd,
         write=self.write_messages,
