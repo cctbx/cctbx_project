@@ -135,7 +135,12 @@ master_params_str = """\
     .short_caption = Correct the hydrogen positions trapped in chirals etc
   automatic_linking
     .style = box auto_align
-    .caption = Automatic covalent linking
+    .short_caption = Automatic covalent linking
+    .caption = Please note that if the "Automatic ligand linking" option is \
+      selected in the main window, this will also enable the separate options \
+      for linking metals, carbohydrates, and amino acid residues.  You may \
+      alternately leave the global setting off and enable individual link \
+      types separately.
   {
     link_all = False
       .type = bool
@@ -143,8 +148,12 @@ master_params_str = """\
       .help = If True, bond restraints will be generated for any appropriate \
         ligand-protein or ligand-nucleic acid covalent bonds. This includes \
         sugars, amino acid modifications, and other prosthetic groups.
-      .style = bold renderer:draw_automatic_linking_control
+      .style = bold renderer:draw_automatic_linking_control noauto
     link_metals = False
+      .type = bool
+    link_residues = False
+      .type = bool
+    link_carbohydrates = False
       .type = bool
     metal_coordination_cutoff = 3.5
       .type = float
@@ -152,8 +161,6 @@ master_params_str = """\
     amino_acid_bond_cutoff = 1.9
       .type = float
       .short_caption = Distance cutoff for automatic linking of aminoacids
-    link_residues = False
-      .type = bool
     inter_residue_bond_cutoff = 2.2
       .type = float
       .short_caption = Distance cutoff for automatic linking of other residues
@@ -161,8 +168,6 @@ master_params_str = """\
       .type = float
       .short_caption = Distance to add to intra_residue_bond_cutoff if one \
         or more element is in the second (or more) row
-    link_carbohydrates = False
-      .type = bool
     carbohydrate_bond_cutoff = 1.99
       .type = float
   }
