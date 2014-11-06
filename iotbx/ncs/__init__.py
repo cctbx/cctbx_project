@@ -26,6 +26,7 @@ def input(pdb_hierarchy_inp=None,
           log=sys.stdout,
           process_similar_chains=True,
           min_percent=0.95,
+          chain_similarity_limit=0.95,
           min_contig_length=10,
           check_atom_order=False,
           allow_different_size_res=True,
@@ -79,6 +80,7 @@ def input(pdb_hierarchy_inp=None,
       min_percent (float): Threshold for similarity between chains
         similarity define as:
         (number of matching res) / (number of res in longer chain)
+      chain_similarity_limit (float): min similarity between matching chains
       min_contig_length (int): minimum length of matching chain segments
       check_atom_order (bool): check atom order in matching residues.
         When False, matching residues with different number of atoms will be
@@ -119,6 +121,7 @@ def input(pdb_hierarchy_inp=None,
       check_atom_order=check_atom_order,
       allow_different_size_res=allow_different_size_res,
       exclude_misaligned_residues=exclude_misaligned_residues,
-      max_dist_diff=max_dist_diff)
+      max_dist_diff=max_dist_diff,
+      chain_similarity_limit=chain_similarity_limit)
     return ncs_group_obj
 

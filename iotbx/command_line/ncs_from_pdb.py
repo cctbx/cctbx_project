@@ -21,6 +21,7 @@ def ncs_from_pdb(args):
     max_dist_diff (5.0): Max allowed spatially misaligned distance difference
     min_percent (0.80): Min percent of
       (number of matching residues / number of residues in longer chain)
+    chain_similarity_limit (float): min similarity between matching chains
     min_contig_length (10): Minimum length of matching chain segments
 
   Example:
@@ -44,7 +45,8 @@ def ncs_from_pdb(args):
     else:
       bool_param = [
         'write_messages','check_atom_order','exclude_misaligned_residues']
-      float_param =['max_rmsd','max_dist_diff','min_percent']
+      float_param =[
+        'max_rmsd','max_dist_diff','min_percent','chain_similarity_limit']
       int_param = ['min_contig_length']
       input_is_ok = True
       while args:
@@ -77,7 +79,8 @@ def ncs_from_pdb(args):
             check_atom_order=params.check_atom_order,
             exclude_misaligned_residues=params.exclude_misaligned_residues,
             max_dist_diff=params.max_dist_diff,
-            min_percent=params.min_percent)
+            min_percent=params.min_percent,
+            chain_similarity_limit=params.chain_similarity_limit)
         print '\n\nFile name: {}'.format(params.file_name)
         print 'Search parameters values'
         print '-'*40
@@ -101,6 +104,7 @@ class ncs_search_params(object):
     self.max_dist_diff = 5.0
     self.min_percent = 0.80
     self.min_contig_length = 10
+    self.chain_similarity_limit = 0.95
 
 
 if __name__ == '__main__':
