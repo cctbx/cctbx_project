@@ -1519,6 +1519,8 @@ libtbx/queuing_system_utils/tst.py svneol=native#text/x-python
 libtbx/runtime_utils.py -text
 libtbx/simplexml.py -text
 libtbx/smart_open.py svneol=native#text/x-python
+libtbx/sphinx/__init__.py -text
+libtbx/sphinx/phil.py -text
 libtbx/subprocess_with_fixes.py svneol=native#text/x-python
 libtbx/subversion.py -text
 libtbx/test_utils/__init__.py -text
