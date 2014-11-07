@@ -137,7 +137,6 @@ def find_ncs_in_hierarchy(ph,
   match_dict = clean_chain_matching(
     chain_match_list=chain_match_list,
     ph=ph,
-    chains_info=chains_info,
     max_rmsd=max_rmsd,
     exclude_misaligned_residues=exclude_misaligned_residues,
     max_dist_diff=max_dist_diff,
@@ -684,7 +683,7 @@ def get_selection(sorted_masters,copies,match_dict):
   return m_sel,c_sel
 
 def clean_chain_matching(chain_match_list,ph,
-                         chains_info=None,max_rmsd=10.0,
+                         max_rmsd=10.0,
                          exclude_misaligned_residues=False,
                          max_dist_diff=4.0,chain_similarity_limit=0.95):
   """
@@ -694,16 +693,9 @@ def clean_chain_matching(chain_match_list,ph,
     ph (object): hierarchy
     chain_match_list (list): list of
       [chain_ID_1, chain_ID_2, sel_1, sel_2,res_m/res_c similarity]
-      chain_ID (str), sel_1/2 (flex.size_t)
+      chain_ID (str), sel_1/2 (list of lists)
       res_m/res_c (lists): indices of the aligned components
       similarity (float): similarity between chains
-    chains_info : object containing
-      chains (str): chain IDs OR selections string
-      res_name (list of str): list of residues names
-      resid (list of str): list of residues sequence number, resid
-      atom_names (list of list of str): list of atoms in residues
-      atom_selection (list of list of list of int): the location of atoms in ph
-      chains_atom_number (list of int): list of number of atoms in each chain
     max_rmsd (float): limit of rms difference chains
     exclude_misaligned_residues (bool): check and exclude individual residues
       alignment quality
@@ -716,9 +708,6 @@ def clean_chain_matching(chain_match_list,ph,
                       val:[selection_a,selection_b,
                            res_list_a,res_list_b,rot,trans,rmsd]
   """
-  if not chains_info:
-    assert bool(ph)
-    chains_info = get_chains_info(ph)
   # remove all non-matching pairs, where similarity == 0
   match_list = [x for x in chain_match_list if x[4] > 0]
   # keep only best (or 95% of best) matches
@@ -726,9 +715,11 @@ def clean_chain_matching(chain_match_list,ph,
   # Get rmsd
   match_dict = {}
   for match in match_list:
-    [ch_a_id, ch_b_id, sel_a, sel_b,res_list_a,res_list_b,similarity] = match
-    update_best_matches_dict(
+    [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
+    update_match_dicts(
       best_matches,match_dict,ch_a_id,ch_b_id,similarity,chain_similarity_limit)
+    sel_a = make_selection_from_lists(list_a)
+    sel_b = make_selection_from_lists(list_b)
     other_sites = ph.select(sel_a).atoms().extract_xyz()
     ref_sites = ph.select(sel_b).atoms().extract_xyz()
     lsq_fit_obj = superpose.least_squares_fit(
@@ -740,22 +731,23 @@ def clean_chain_matching(chain_match_list,ph,
     rmsd = round(ref_sites.rms_difference(other_sites_best),4)
     if rmsd <= max_rmsd:
       if exclude_misaligned_residues:
+        # get the chains atoms and convert selection to flex bool
         sel_a,sel_b,res_list_a,res_list_b,ref_sites,other_sites_best = \
           remove_far_atoms(
-            ch_a_id,ch_b_id,res_list_a,res_list_b,chains_info,
+            list_a, list_b,
+            res_list_a,res_list_b,
             ref_sites,lsq_fit_obj.other_sites_best_fit(),
             max_dist_diff=max_dist_diff)
       match_dict[ch_a_id, ch_b_id] = [sel_a,sel_b,res_list_a,res_list_b,r,t,rmsd]
   return match_dict
 
-def remove_far_atoms(ch_a_id, ch_b_id,
+def remove_far_atoms(list_a, list_b,
                      res_list_a,res_list_b,
-                     chains_info,
                      ref_sites,other_sites,
                      max_dist_diff=4.0):
   """
   When comparing lists of matching atoms, remove residues where some atoms are
-  are grossly different in the model, for example when matching residues are
+  are locally misaligned, for example when matching residues are
   perpendicular to each other rather than being close to parallel.
 
   The criteria used:
@@ -763,9 +755,8 @@ def remove_far_atoms(ch_a_id, ch_b_id,
   matching atoms pair and the distance of closest pair mast be < max_dist_diff
 
   Args:
-    ch_a_id, ch_b_id (str): chain IDs
+    list_a, list_a (list of list): list of residues atoms
     res_list_a,res_list_b (list): list of residues in chains
-    chains_info (dict): dictionary containing information on structure
     ref_sites,other_sites (flex.vec3): atoms coordinates
     max_dist_diff (float): max allow distance difference
 
@@ -775,8 +766,6 @@ def remove_far_atoms(ch_a_id, ch_b_id,
       res_list_a_new,res_list_b_new,
       ref_sites_new,other_sites_new
   """
-  ch_a = chains_info[ch_a_id]
-  ch_b = chains_info[ch_b_id]
   # check every residue for consecutive distance
   res_list_a_new = []
   res_list_b_new = []
@@ -784,26 +773,28 @@ def remove_far_atoms(ch_a_id, ch_b_id,
   other_sites_new = flex.vec3_double([])
   sel_a = flex.size_t([])
   sel_b = flex.size_t([])
-  sel_start = 0
-  for ia,ib in zip(res_list_a,res_list_b):
-    sel_length = ch_a.atom_selection[ia][-1] - ch_a.atom_selection[ia][0] + 1
-    res_ref_sites = ref_sites[sel_start:sel_start+sel_length]
-    res_other_sites = other_sites[sel_start:sel_start+sel_length]
-    sel_start += sel_length
+  current_pos = 0
+  # for ia,ib in zip(res_list_a,res_list_b):
+  for i in xrange(len(res_list_a)):
+    # find the matching atoms form each residue (work on small sections)
+    res_len = list_a[i].size()
+    res_ref_sites = ref_sites[current_pos:current_pos+res_len]
+    res_other_sites = other_sites[current_pos:current_pos+res_len]
+    current_pos += res_len
     xyz_diff = abs(res_ref_sites.as_double() - res_other_sites.as_double())
     (min_d,max_d,_) = xyz_diff.min_max_mean().as_tuple()
     if (max_d - min_d) <= max_dist_diff:
       ref_sites_new.extend(res_ref_sites)
       other_sites_new.extend(res_other_sites)
-      sel_a.extend(flex.size_t(ch_a.atom_selection[ia]))
-      sel_b.extend(flex.size_t(ch_b.atom_selection[ib]))
-      res_list_a_new.append(ia)
-      res_list_b_new.append(ib)
+      sel_a.extend(list_a[i])
+      sel_b.extend(list_b[i])
+      res_list_a_new.append(res_list_a[i])
+      res_list_b_new.append(res_list_b[i])
   return sel_a,sel_b,res_list_a_new,res_list_b_new,ref_sites_new,other_sites_new
 
-def update_best_matches_dict(best_matches,match_dict,
-                             ch_a_id,ch_b_id,similarity,
-                             chain_similarity_limit=0.95):
+def update_match_dicts(best_matches,match_dict,
+                       ch_a_id,ch_b_id,similarity,
+                       chain_similarity_limit=0.95):
   """
   Updates the best_matches dictionaries best_matches,match_dict to keep only
   matches that are at least 95% of best match and
@@ -919,7 +910,7 @@ def search_ncs_relations(ph=None,
     chain_match_list (list): list of
       [chain_ID_1,chain_ID_2,sel_1,sel_2,res_sel_m, res_sel_c,similarity]
       chain_ID (str), sel_1/2 (flex.size_t),
-      res_sel_m/c (lists): indices of the aligned components
+      res_sel_m/c (lists of lists): indices of the aligned components
       similarity (float): similarity between chains
     We use sel_2 to avoid problems when residues have different number of atoms
   """
@@ -1133,21 +1124,21 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
       number of atoms
 
   Returns:
-    sel_a/b (flex.size_t): matching atoms selection
+    sel_a/b (list of lists): matching atoms selection
     res_num_a/b (list of int): updated res_num_a/b
     msg (str): message regarding matching residues with different atom number
   """
-  sel_a = set()
-  sel_b = set()
+  sel_a = []
+  sel_b = []
   #
   res_num_a_updated = []
   res_num_b_updated = []
   residues_with_different_n_atoms = []
   for (i,j) in zip(res_num_a,res_num_b):
     # iterate over atoms in residues
-    sa = chains_info[a_id].atom_selection[i]
-    sb = chains_info[b_id].atom_selection[j]
-    dif_res_size = (len(sa) != len(sb))
+    sa = flex.size_t(chains_info[a_id].atom_selection[i])
+    sb = flex.size_t(chains_info[b_id].atom_selection[j])
+    dif_res_size = sa.size() != sb.size()
     atoms_names_a = chains_info[a_id].atom_names[i]
     atoms_names_b = chains_info[b_id].atom_names[j]
     resid_a = chains_info[a_id].resid[i]
@@ -1165,16 +1156,14 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
     if dif_res_size:
       residues_with_different_n_atoms.append(resid_a)
       if not allow_different_size_res:
-        sa = []
-        sb = []
+        sa = flex.size_t([])
+        sb = flex.size_t([])
     # keep only residues with continuous matching atoms
-    if len(sa) != 0:
+    if sa.size() != 0:
       res_num_a_updated.append(i)
       res_num_b_updated.append(j)
-    sa = set(sa)
-    sb = set(sb)
-    sel_a.update(sa)
-    sel_b.update(sb)
+    sel_a.append(sa)
+    sel_b.append(sb)
   if residues_with_different_n_atoms:
     problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
     msg = "NCS related residues with different number of atoms, selection"
@@ -1182,9 +1171,15 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
     msg += ','.join(problem_res_nums) + ']\n'
   else:
     msg = ''
-  sel_a = flex.size_t(sorted(sel_a))
-  sel_b = flex.size_t(sorted(sel_b))
   return sel_a,sel_b,res_num_a_updated,res_num_b_updated,msg
+
+def make_selection_from_lists(sel_list):
+  """ Convert a list of lists to flex.size_t selection array  """
+  sel_list_extended = [x for y in sel_list for x in y]
+  sel_set = set(sel_list_extended)
+  assert len(sel_list_extended) == len(sel_set)
+  sel_list_extended.sort()
+  return flex.size_t(sel_list_extended)
 
 def get_chains_info(ph,selection_list=None,exclude_water=True):
   """
