@@ -104,6 +104,8 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(32,atoms_in_A)
     self.assertEqual(44,atoms_in_B)
     #
+    sel_a = ncs_search.make_selection_from_lists(sel_a)
+    sel_b = ncs_search.make_selection_from_lists(sel_b)
     self.assertEqual(sel_a.size(),25)
     self.assertEqual(sel_b.size(),25)
     # atom count including  water
@@ -204,7 +206,9 @@ class TestSimpleAlignment(unittest.TestCase):
     # matching residues
     res_n_a = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     res_n_b = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-    sel_a = flex.size_t([x for xi in info_ab['A'].atom_selection for x in xi])
+    list_a = [flex.size_t(x) for x in info_ab['A'].atom_selection]
+    list_b = [flex.size_t(x) for x in info_ab['B'].atom_selection]
+    sel_a = ncs_search.make_selection_from_lists(list_a)
     other_sites = ph.select(sel_a).atoms().extract_xyz()
     ref_sites = ph_b.atoms().extract_xyz()
     self.assertEqual(other_sites.size(),ref_sites.size())
@@ -212,9 +216,8 @@ class TestSimpleAlignment(unittest.TestCase):
     #
     sel_a,sel_b,res_n_a,res_n_b,ref_sites,other_sites = \
       ncs_search.remove_far_atoms(
-        'A','B',
+        list_a, list_b,
         res_n_a,res_n_b,
-        info_ab,
         ref_sites,other_sites,
         max_dist_diff=4.0)
     #
@@ -229,7 +232,7 @@ class TestSimpleAlignment(unittest.TestCase):
     chain_match_list = ncs_search.search_ncs_relations(
       chains_info=chains_info,min_percent=0.20,min_contig_length=1)
     match_dict = ncs_search.clean_chain_matching(
-      chain_match_list=chain_match_list,ph=ph,chains_info=chains_info)
+      chain_match_list=chain_match_list,ph=ph)
     transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
       match_dict)
     group_dict = ncs_search.build_group_dict(
@@ -278,7 +281,7 @@ class TestSimpleAlignment(unittest.TestCase):
       min_contig_length=1,check_atom_order=True)
     match_dict = ncs_search.clean_chain_matching(
       chain_match_list=chain_match_list,ph=ph,
-      chains_info=chains_info,chain_similarity_limit=0.1)
+      chain_similarity_limit=0.1)
     transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
       match_dict)
     group_dict = ncs_search.build_group_dict(
