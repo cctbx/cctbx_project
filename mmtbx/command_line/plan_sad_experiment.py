@@ -101,6 +101,13 @@ crystal_info {
         the expected values of half-dataset correlation and cc*_ano based \
         on this I/sigI and resolution will be calculated.
 
+   max_i_over_sigma = 100
+     .type = float
+     .short_caption = Maximum I/sigI 
+     .help = Limit search of necessary I/sigI to less than this value.  \
+             You might increase this if you plan to do a very careful or very \
+             high-multiplicity experiment.
+
    target_signal = 30.
        .type = float
        .short_caption = Target anomalous signal
@@ -154,6 +161,15 @@ crystal_info {
              calculation and are assumed to be included in the \
              number of sites you specify.
 
+   bayesian_estimates = True
+     .type = bool
+     .short_caption = Bayesian estimates
+     .help = Use Bayesian estimates of half-dataset CC and signal. First \
+             predict these values using standard approach, then use empirical \
+             half-dataset CC and signal for a training set of datasets to \
+             re-estimate these values.  This helps correct for typical errors \
+             in measurement and typical resolution resolution-dependent effects.
+             
    control {
       show_summary = False
         .type = bool
@@ -238,10 +254,12 @@ def run(args,params=None,return_plan=False,out=sys.stdout):
     fpp=params.crystal_info.f_double_prime,
     target_s_ano=params.target_signal,
     i_over_sigma=params.i_over_sigma,
+    max_i_over_sigma=params.max_i_over_sigma,
     min_cc_ano=params.min_cc_ano,
     dmin=params.crystal_info.resolution,
     occupancy=params.crystal_info.occupancy,
     ideal_cc_anom=params.ideal_cc_anom,
+    bayesian_estimates=params.bayesian_estimates,
     include_weak_anomalous_scattering=params.include_weak_anomalous_scattering,
     intrinsic_scatterers_as_noise=params.intrinsic_scatterers_as_noise,)
   if params.control.show_summary:

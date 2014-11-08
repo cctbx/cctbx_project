@@ -16,7 +16,7 @@ def exercise () :
   ]
   result = plan_sad_experiment.run(args=args, out=null_out()).show(null_out())
   assert approx_equal(result.representative_values,
-    [2.2, 12, 15965.98877863636, 3.8438000679016113, 48.88888888888889, 0.018, 0.13822719640837502, 0.8162837273888279, 0.36962261211160397, 0.7110579307898078, 23.19835900304733])
+    [2.2, 12, 15965.98877863636, 3.8438000679016113, 97.77777777777779, 0.009, 0.509350278282598, 0.9984109196893711, 0.6167901411727102, 0.773986949826497, 31.302603127909315, 100.0])
   # Insulin S-SAD
   open("tst_plan_sad_experiment.fa", "w").write("""
 >1ZNI:A|PDBID|CHAIN|SEQUENCE
@@ -37,7 +37,7 @@ FVNQHLCGSHLVEALYLVCGERGFFYTPKA
   result = plan_sad_experiment.run(args=args, out=null_out())
   assert (not result.missed_target_resolutions)
   assert approx_equal(result.representative_values,
-  [1.2, 12, 33450.22482353751, 0.5562999844551086, 110.0, 0.008, 0.10385468154330518, 0.5628743280404539, 0.3253369182269369, 0.6365315774157887, 30.058952646358016])
+  [1.2, 12, 33450.22482353751, 0.5562999844551086, 97.77777777777779, 0.009, 0.3934803301841369, 0.9226465286316012, 0.5905199826316186, 0.7458895500696913, 36.939372641397206, 100.0])
   # now with worse resolution
   args = [
     "seq_file=tst_plan_sad_experiment.fa",
