@@ -11,6 +11,7 @@ from scitbx.array_family import flex
 # need to define these here since it not defined in SLAC's metrology definitions
 asic_dimension = (194,185)
 asic_gap = 3
+pixel_size = 0.10992
 
 from dxtbx.format.FormatCBFMultiTile import cbf_wrapper as dxtbx_cbf_wrapper
 class cbf_wrapper(dxtbx_cbf_wrapper):
@@ -726,12 +727,9 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
   # set up the metrology dictionary to include axis names, pixel sizes, and so forth
   try:
     from xfel.cxi.cspad_ana.cspad_tbx import dynamic_range as dr
-    from xfel.cxi.cspad_ana.cspad_tbx import pixel_size as ps
     dynamic_range = dr
-    pixel_size = ps
   except ImportError:
     dynamic_range = 2**14 - 1
-    pixel_size = 110e-3
 
   dserial = None
   dname = None
