@@ -554,6 +554,7 @@ class bayesian_estimator:
 def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
    info_list=None,info_items=None,
    data_items=None,target_variable=None,
+   start_column_header=None,
    select_only_complete=False, minus_one_as_none=True, out=sys.stdout):
 
   if not record_list:
@@ -562,6 +563,7 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
   if not data_items:
      data_items=[]
      info_items=[]
+  skip_columns=[]
   if not record_list:
     n=None
     first=True
@@ -571,6 +573,8 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
     if not lines:
       lines=text.splitlines()
     for line in lines:
+      if line.startswith("#"): continue # skip comments 
+      if not line.replace(" ",""): continue # skip empty lines
       if line.lstrip().startswith("Total"): continue # clean up file format
       spl=line.split()
       if first and not spl[0].lstrip().startswith('0'):
@@ -578,6 +582,26 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
         # figure out if some of the columns are "key" and "d_min"
         all_info_items=[]
         all_items=line.split()
+        if start_column_header:
+           new_all_items=[]
+           started=False
+           i=0
+           for item in all_items:
+             if not started and item==start_column_header:
+               started=True
+             if started: 
+                new_all_items.append(item)
+             else:
+                skip_columns.append(i)
+             i+=1
+           all_items=new_all_items
+           print >>out, "Skipped columns: %s" %(str(skip_columns))
+           print >>out,"Columns to read: %s" %(str(all_items))
+           if not started:
+             raise Sorry("Sorry the header %s "% (start_column_header) +
+               "was not found in the line %s" %(line))
+
+       
         if all_items[0].lower()=='key':
           all_info_items.append(all_items[0])
           all_items=all_items[1:]
@@ -594,6 +618,8 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
           target_variable=line.split()[0]
         first=False
         continue
+      if skip_columns:
+        spl=spl[len(skip_columns):]
       xx=[]
       info=spl[:n_info]
       for i in xrange(1,n_info):
@@ -678,16 +704,18 @@ class estimator_group:
        print >>self.out,"%5.2f" %(resolution_cutoff),
     print >>self.out
 
-    print >>self.verbose_out,"\nCombination groups:"
-    for resolution_cutoff in self.resolution_cutoffs:
-      print >>self.verbose_out,\
-          "Resolution cutoff: %5.2f A" %(resolution_cutoff),
-      for x in self.combinations[resolution_cutoff]:
-        print >>self.verbose_out,"(",
-        for id in x:
-          print >>self.verbose_out,"%s" %(self.variable_names[id]),
-        print >>self.verbose_out,")  ",
-      print >>self.verbose_out
+    if self.combinations:
+      print >>self.verbose_out,"\nCombination groups:"
+      for resolution_cutoff in self.resolution_cutoffs:
+        print >>self.verbose_out,\
+            "Resolution cutoff: %5.2f A" %(resolution_cutoff),
+        for x in self.combinations[resolution_cutoff]:
+          print >>self.verbose_out,"(",
+          for id in x:
+            print >>self.verbose_out,"%s" %(self.variable_names[id]),
+          print >>self.verbose_out,")  ",
+        print >>self.verbose_out
+
     print >>self.verbose_out,\
          "Bins: %d   Smoothing bins: %d  Minimum in bins: %d " %(
         self.n_bin,self.smooth_bins,self.min_in_bin)
@@ -812,7 +840,8 @@ class estimator_group:
       resolution_cutoff=None):
     # select those records that are >= resolution_cutoff and not >= the
     # next-highest cutoff in the list (if any)
-    if not self.info_names:
+    if not self.info_names or not resolution_cutoff or \
+         not self.resolution_cutoffs or len(self.resolution_cutoffs)==1:
       return record_list,info_list
 
     if self.info_names[-1]!='d_min' and len(self.resolution_cutoffs)>1:
@@ -933,6 +962,7 @@ class estimator_group:
     if not key in self.keys:
       return None,None
     estimator=self.estimator_dict[key]
+
     return estimator.apply_estimator(values,single_value=True)
 
 prediction_values="""cc_perfect cc      skew    e
@@ -1284,6 +1314,7 @@ def jacknife(target_and_values_list,i,
   target=target_and_values_list[i][0]
   estimator=bayesian_estimator(
     skip_covariance=skip_covariance,
+    minimum_records=1,
     out=null_out())
   estimator.create_estimator(
         record_list=suitable_target_and_values_list,
@@ -1322,7 +1353,10 @@ def run_jacknife(args,out=sys.stdout):
 
   # Set up estimator using all but one entry and predict it from the others
 
-  n_jump=20
+  if 'no_jump' in args: 
+    n_jump=1
+  else:
+    n_jump=20
   print >>out,"Testing every %d'th entry in jacknife" %(n_jump)
   from cctbx.array_family import flex
   target_list=flex.double()
@@ -1331,6 +1365,8 @@ def run_jacknife(args,out=sys.stdout):
     if n_jump*(i//n_jump)!=i: continue
     target,value=jacknife(record_list,i,skip_covariance=skip_covariance,
         out=out)
+    if target is None or value is None:
+       raise Sorry("estimator failed to return a result")
     target_list.append(target)
     result_list.append(value)
     info=info_list[i]

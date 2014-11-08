@@ -30,18 +30,28 @@ def get_sigf(nrefl,nsites,natoms,z,fpp,target_s_ano=15.,ntries=1000,
      min_cc_ano=None,
      fa2=None,fb2=None,disorder_parameter=None,
      fo_list=None,fo_number_list=None,occupancy=None,include_zero=True,
-     ratio_for_failure=0.95):
+     ratio_for_failure=0.95,
+     resolution=None,
+     cc_ano_estimators=None,
+     signal_estimators=None,
+     max_i_over_sigma=None):
   closest_sigf=None
   closest_dist2=None
   start_value=1
   if include_zero: start_value=0
   for i in xrange(start_value,ntries):
     sigf=i*1./float(ntries)
-    s_ano,cc_ano,cc_half,fpp_weak,cc_ano_weak,cc_half_weak,i_over_sigma=\
+    if max_i_over_sigma and get_i_over_sigma_from_sigf(sigf)>max_i_over_sigma:
+      continue
+    s_ano,s_ano_sig,cc_ano,cc_ano_sig,cc_half,cc_half_sig,fpp_weak,\
+        cc_ano_weak,cc_half_weak,i_over_sigma=\
       get_values_from_sigf(nrefl,nsites,natoms,z,fpp,sigf,
           fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
           fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
-          get_fpp_weak=False)
+          get_fpp_weak=False,resolution=resolution,
+          cc_ano_estimators=cc_ano_estimators,
+          signal_estimators=signal_estimators)
+
     if min_cc_ano is not None and cc_ano_weak < min_cc_ano:
       continue
 
@@ -50,18 +60,25 @@ def get_sigf(nrefl,nsites,natoms,z,fpp,target_s_ano=15.,ntries=1000,
      closest_dist2=dist2
      closest_sigf=sigf
   if closest_sigf==0:  # try with target of 90% of maximum available
-    s_ano,cc_ano,cc_half,fpp_weak,cc_ano_weak,cc_half_weak,i_over_sigma=\
+    s_ano,s_ano_sig,cc_ano,cc_ano_sig,cc_half,cc_half_sig,\
+       fpp_weak,cc_ano_weak,\
+       cc_half_weak,i_over_sigma=\
        get_values_from_sigf(nrefl,nsites,natoms,z,fpp,closest_sigf,
           fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
           fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
-          get_fpp_weak=False)
+          get_fpp_weak=False,resolution=resolution,
+          cc_ano_estimators=cc_ano_estimators,
+          signal_estimators=signal_estimators)
     closest_sigf=get_sigf(
      nrefl,nsites,natoms,z,fpp,target_s_ano=s_ano*ratio_for_failure,
      ntries=ntries,
      min_cc_ano=min_cc_ano,
      fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
      fo_list=fo_list,fo_number_list=fo_number_list,
-     occupancy=occupancy,include_zero=False)
+     occupancy=occupancy,include_zero=False,resolution=resolution,
+     cc_ano_estimators=cc_ano_estimators,
+     signal_estimators=signal_estimators,
+     max_i_over_sigma=max_i_over_sigma)
   return closest_sigf
 
 def get_sano(nrefl,nsites,natoms,z,fpp,sigf,
@@ -172,29 +189,63 @@ def get_i_over_sigma(i_obs):
 def get_values_from_sigf(nrefl,nsites,natoms,z,fpp,sigf,
        fa2=None,fb2=None,disorder_parameter=None,
        fo_list=None,fo_number_list=None,occupancy=None,
-       get_fpp_weak=True):
+       get_fpp_weak=True,resolution=None,
+       cc_ano_estimators=None,signal_estimators=None):
+    # 2014-11-04 add capability for Bayesian estimation (update) of
+    #   signal and cc_ano 
     s_ano=get_sano(nrefl,nsites,natoms,z,fpp,sigf,
       fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
       fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
     cc_ano=get_cc_ano(nrefl,nsites,natoms,z,fpp,sigf,
       fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
       fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
+
+    if cc_ano_estimators:
+      cc_ano,cc_ano_sig=cc_ano_estimators.apply_estimators(
+         value_list=[cc_ano],data_items=['pred_cc_perfect'],
+         resolution=resolution)
+    else:
+      cc_ano_sig=None
+    if signal_estimators:
+      s_ano,s_ano_sig=signal_estimators.apply_estimators(
+         value_list=[s_ano],data_items=['pred_signal'],
+         resolution=resolution)
+    else:
+      s_ano_sig=None
+
     cc_half=get_cc_half(cc_ano,disorder_parameter=disorder_parameter)
+
+    if cc_ano_estimators: 
+      cc_half_high=get_cc_half(cc_ano+cc_ano_sig,
+         disorder_parameter=disorder_parameter)
+      cc_half_low=get_cc_half(max(0,cc_ano-cc_ano_sig),
+         disorder_parameter=disorder_parameter)
+      cc_half_sig=0.5*(cc_half_high-cc_half_low)
+    else:
+      cc_half_sig=None
 
     if get_fpp_weak:
       fpp_weak=estimate_fpp_weak(nrefl,nsites,natoms,z,fpp,sigf,
         fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
         fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
-
       cc_ano_weak=get_cc_ano(nrefl,nsites,natoms,z,fpp_weak,sigf,
         fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
         fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
+
+      if cc_ano_estimators:
+        cc_ano_weak,cc_ano_weak_sig=cc_ano_estimators.apply_estimators(
+           value_list=[cc_ano_weak],data_items=['pred_cc_perfect'],
+           resolution=resolution)
+
       cc_half_weak=get_cc_half(cc_ano_weak,
           disorder_parameter=disorder_parameter)
+
       i_over_sigma=get_i_over_sigma_from_sigf(sigf)
-      return s_ano,cc_ano,cc_half,fpp_weak,cc_ano_weak,cc_half_weak,i_over_sigma
+      return s_ano,s_ano_sig,cc_ano,cc_ano_sig,cc_half,cc_half_sig,fpp_weak,\
+          cc_ano_weak,cc_half_weak,i_over_sigma
     else:
-       return s_ano,cc_ano,cc_half,fpp,cc_ano,cc_half,0.0
+       return s_ano,s_ano_sig,cc_ano,cc_ano_sig,cc_half,cc_half_sig,\
+         fpp,cc_ano,cc_half,0.0
 
 def get_fp_fdp(atom_type=None,wavelength=None,out=sys.stdout):
   if not atom_type or not wavelength:
@@ -360,6 +411,110 @@ def get_normalized_scattering(
 
   return sum_anom/sum_real
 
+def get_local_file_name(estimator_type):
+  if estimator_type=='cc_star':
+    local_file_name='cc_ano_data.dat'
+  elif estimator_type=='signal':
+    local_file_name='signal_from_est_signal.dat'
+  elif estimator_type=='cc_ano':
+    local_file_name='cc_anom_from_cc_anom_star.dat'
+  elif estimator_type=='solved':
+    local_file_name='percent_solved_vs_signal.dat'
+  else:
+    raise Sorry("No estimator type %s" %(estimator_type))
+  return local_file_name
+
+class interpolator:
+  # basic interpolator. Call with list of pairs of (predictor,target)
+  # list can have extra data (ignored)
+  # then apply with (predictor) and get an estimate of target
+  # If off the end in either direction, use last available value (do not
+  #   extrapolate)
+  def __init__(self,target_predictor_list,extrapolate=False):
+    assert not extrapolate # (not programmed)
+    # make a dict
+    self.target_dict={}
+    self.keys=[]
+    for values in target_predictor_list:
+       predictor=values[0]
+       target=values[1]
+       self.target_dict[predictor]=target
+       self.keys.append(predictor)
+    self.keys.sort()
+    from copy import deepcopy
+    self.reverse_keys=deepcopy(self.keys)
+    self.reverse_keys.reverse()  # so we can go down too
+     
+  def interpolate(self,predictor):
+    lower_pred=None
+    dist_from_lower=None
+    higher_pred=None
+    dist_from_higher=None
+    if predictor <= self.keys[0]:
+      return self.target_dict[self.keys[0]]
+    elif predictor >= self.keys[-1]:
+      return self.target_dict[self.keys[-1]]
+    else:  # between two keys. Find highest key < predictor and lowest > pred
+      for key in self.reverse_keys: # high to low values of keys
+        if predictor > key:
+          lower_pred=self.target_dict[key]
+          dist_from_lower=predictor-key
+          break
+      for key in self.keys: # low to high values of keys
+        if predictor < key:
+          higher_pred=self.target_dict[key]
+          dist_from_higher=key-predictor
+          break
+      if lower_pred is None or higher_pred is None:
+        raise Sorry("Unable to interpolate...")
+      dist=(dist_from_lower+dist_from_higher)
+      value=lower_pred+(higher_pred-lower_pred)*dist_from_lower/dist
+      return value
+      
+ 
+def get_interpolator(estimator_type='solved',predictor_variable='PredSignal',
+       out=sys.stdout):
+  local_file_name=get_local_file_name(estimator_type)
+  print >>out,"\nSetting up interpolator for %s" %(estimator_type)
+  import libtbx.load_env
+  file_name=libtbx.env.find_in_repositories(
+    relative_path=os.path.join("mmtbx","scaling",local_file_name),
+      test=os.path.isfile)
+  # data looks like:
+  """
+Signal  %Solved   N  PredSignal  %Solved  N   BayesEstSignal  %Solved  N
+   1.0       2    44        1.0       1    69        1.0       0     6 
+   3.0       0   123        3.0       0    95        3.0       9   104 
+  """
+  # Pick up 2 columns starting with predictor variable
+ 
+  from mmtbx.scaling.bayesian_estimator import get_table_as_list
+  prediction_values_as_list,info_values_as_list,\
+     dummy_target_variable,dummy_data_items,dummy_info_items=\
+    get_table_as_list(file_name=file_name, select_only_complete=False,
+    start_column_header=predictor_variable,out=out)
+  return interpolator(prediction_values_as_list)
+
+
+def get_estimators(estimator_type='signal',
+    resolution_cutoffs=None,out=sys.stdout):
+  # get estimators for signal from est_signal or cc_ano from cc*_ano
+  local_file_name=get_local_file_name(estimator_type)
+
+  import libtbx.load_env
+
+  print >>out,"\nSetting up estimator for %s" %(estimator_type)
+  file_name=libtbx.env.find_in_repositories(
+    relative_path=os.path.join("mmtbx","scaling",local_file_name),
+      test=os.path.isfile)
+
+  from mmtbx.scaling.bayesian_estimator import estimator_group
+  estimators=estimator_group(
+    resolution_cutoffs=resolution_cutoffs,out=out)
+  estimators.set_up_estimators(
+    file_name=file_name,select_only_complete=False)
+  estimators.show_summary()  
+  return estimators
 
 class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
   def __init__ (self,
@@ -376,10 +531,12 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       dmin=None,
       occupancy=1.,
       ideal_cc_anom=0.76,
+      bayesian_estimates=True,
       include_weak_anomalous_scattering=True,
       intrinsic_scatterers_as_noise=None,
       ratio_for_failure=0.95,
       i_over_sigma=None,
+      max_i_over_sigma=None,
       quiet=False) :
     self.chain_type = chain_type
     self.residues = residues
@@ -389,6 +546,8 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     self.target_s_ano = target_s_ano
     self.min_cc_ano = min_cc_ano
     self.wavelength = wavelength
+    self.max_i_over_sigma = max_i_over_sigma
+    self.bayesian_estimates = bayesian_estimates
     if atom_type is None:
       self.atom_type='-'
     else:
@@ -438,7 +597,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       fo_number_list=fo_number_list)
 
 
-    z=7
+    z=7 # try 5.6 here ZZZ
     if dmin:
       self.dmin_ranges=[dmin]
     else:
@@ -448,6 +607,22 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     self.skipped_resolutions = []
     self.missed_target_resolutions = []
     self.input_i_over_sigma=i_over_sigma
+
+    if self.bayesian_estimates:  
+       
+       # set up estimators of cc_ano from cc_*_ano and signal from est_signal
+       self.cc_ano_estimators=get_estimators(estimator_type='cc_ano',
+         resolution_cutoffs=self.dmin_ranges,out=null_out())
+       self.signal_estimators=get_estimators(estimator_type='signal',
+         resolution_cutoffs=self.dmin_ranges,out=null_out())
+       # solved (probability of hyss finding >=50% of sites) is just a table
+       #  so interpolate the probability.
+       self.solved_interpolator=get_interpolator(estimator_type='solved',
+          predictor_variable='PredSignal',out=null_out())
+    else:
+      self.cc_ano_estimators=None
+      self.signal_estimators=None
+     
     for dmin in self.dmin_ranges:
       # Guess reflections from residues, dmin, solvent fraction
 
@@ -462,18 +637,27 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
           min_cc_ano=min_cc_ano,
           fa2=self.fa2,fb2=self.fb2,disorder_parameter=self.disorder_parameter,
           fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
-          ratio_for_failure=self.ratio_for_failure)
+          ratio_for_failure=self.ratio_for_failure,resolution=dmin,
+          cc_ano_estimators=None,
+          signal_estimators=None,
+          max_i_over_sigma=self.max_i_over_sigma)
       else:  # input i_over_sigma...estimate sigf
         sigf=get_sigf_from_i_over_sigma(i_over_sigma)
       if sigf is None: continue  # hopeless
       # what are expected signal, useful cc_ano, cc_half-dataset, <I>/<sigI>
 
-      s_ano,cc_ano,cc_half,fpp_weak,cc_ano_weak,cc_half_weak,\
-         local_i_over_sigma=\
+     
+      s_ano,s_ano_sig,cc_ano,cc_ano_sig,cc_half,cc_half_sig,\
+          fpp_weak,cc_ano_weak,\
+          cc_half_weak,local_i_over_sigma=\
         get_values_from_sigf(nrefl,nsites,self.natoms,z,fpp,sigf,
           fa2=self.fa2,fb2=self.fb2,disorder_parameter=self.disorder_parameter,
           fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
-          get_fpp_weak=True)
+          get_fpp_weak=True,
+          resolution=dmin,
+          cc_ano_estimators=self.cc_ano_estimators,
+          signal_estimators=self.signal_estimators)
+
 
       if local_i_over_sigma>=999:
         self.skipped_resolutions.append(dmin)
@@ -481,20 +665,34 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       if s_ano<0.95*target_s_ano:  # must not be able to get target s_ano
         self.missed_target_resolutions.append(dmin)
 
+      if self.bayesian_estimates:  # use range from s_ano+/-s_ano_sig etc
+        solved=self.solved_interpolator.interpolate(s_ano)
+        if solved is None: solved=0.0
+        s_ano_weak=max(0,s_ano-s_ano_sig)
+        s_ano=s_ano+s_ano_sig
+        cc_half_weak=max(0,cc_half-cc_half_sig)
+        cc_half=min(1.,cc_half+cc_half_sig)
+        cc_ano_weak=max(0.,cc_ano-cc_ano_sig)
+        cc_ano=min(1,cc_ano+cc_ano_sig)
+      else:
+        s_ano_weak=s_ano/2
+
       self.table_rows.append([
         "%5.2f" % dmin,
         "%7d" % nrefl,
         "%6.0f" % local_i_over_sigma,
         "%7.1f" % (100.*sigf),
-        "%5.2f - %5.2f" % (cc_half_weak, cc_half),
-        "%5.2f - %5.2f" % (cc_ano_weak, cc_ano),
-        "%3.0f - %3.0f" % (s_ano/2, s_ano),
+        "%5.2f" % (cc_half),
+        "%5.2f" % ( cc_ano),
+        "%3.0f" % ( s_ano),
+        "%3.0f" % (solved),
       ])
       if ((self.representative_values is None) or
           len(self.dmin_ranges) < 2 or dmin == self.dmin_ranges[-2]) :
         self.representative_values = [dmin,nsites,nrefl,fpp,local_i_over_sigma,
-           sigf,cc_half_weak,cc_half,cc_ano_weak,cc_ano,s_ano]
+           sigf,cc_half_weak,cc_half,cc_ano_weak,cc_ano,s_ano,solved]
 
+ 
   def representative_dmin(self):
     return self.representative_values[0]
 
@@ -528,14 +726,18 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
   def representative_s_ano(self):
     return self.representative_values[10]
 
+  def representative_solved(self):
+    return self.representative_values[11]
+
   def show_summary(self):
     if self.is_solvable():
       print """
-I/sigI:  %7.1f
-Dmin:     %5.2f
-cc_half:  %5.2f - %5.2f
-cc*_anom: %5.2f - %5.2f
+I/sigI: %7.1f
+Dmin:      %5.2f
+cc_half:   %5.2f - %5.2f
+cc*_anom:  %5.2f - %5.2f
 Signal:   %5.1f - %5.1f
+p(Substr):%3d %%
 """ %(
  self.representative_i_over_sigma(),
  self.representative_dmin(),
@@ -544,7 +746,8 @@ Signal:   %5.1f - %5.1f
  self.representative_cc_ano_weak(),
  self.representative_cc_ano(),
  self.representative_s_ano()/2,
- self.representative_s_ano())
+ self.representative_s_ano(),
+ int(self.representative_solved()))
 
   def is_solvable (self) :
     return (self.representative_values is not None)
@@ -605,12 +808,14 @@ Normalized anomalous scattering:
       return
     if (not out.gui_output) :
       out.show_preformatted_text("""
-                                         Anomalous      Useful        Useful
-                                        Half-dataset    Anom CC      Anomalous
- Dmin   Nrefl   I/sigI rms(sigF)/           CC         (cc*_anom)     Signal
-                         rms(F) (%) """)
+                                   Anomalous    Useful     Useful    Likely
+                                  Half-dataset  Anom CC   Anomalous  Outcome
+ Dmin   Nrefl   I/sigI rms(sigF)/     CC       (cc*_anom)  Signal   P(Substr)
+                       rms(F)(%)                                       (%)
+""")
       for row in self.table_rows :
-        out.show_preformatted_text("%s %s %s   %s        %s  %s   %s" %
+        out.show_preformatted_text(
+        "%s %s %s  %s       %s       %s       %s        %s" %
           tuple(row))
     else :
       table = table_utils.simple_table(
@@ -619,17 +824,17 @@ Normalized anomalous scattering:
           "Half-dataset CC_ano", "CC*_ano", "Anom. signal"])
       out.show_table(table)
     (dmin,nsites,nrefl,fpp,i_over_sigma,sigf,cc_half_weak,cc_half,cc_ano_weak,
-      cc_ano,s_ano) = tuple(self.representative_values)
+      cc_ano,s_ano,solved) = tuple(self.representative_values)
 
     if self.missed_target_resolutions:
       self.missed_target_resolutions.sort()
       extra_note=""
       if not self.input_i_over_sigma:
-        extra_note="I/sigma shown achieves about %3.0f%% of maximum anomalous signal." %(self.ratio_for_failure*100.)
+        extra_note="I/sigma shown achieves about %3.0f%% of \nmaximum anomalous signal." %(self.ratio_for_failure*100.)
       out.show_text("""
-Note: Target anomalous signal not achievable with tested I/sigma for
-resolutions of %5.2f A and lower. %s
-""" % (self.missed_target_resolutions[0],extra_note))
+Note: Target anomalous signal not achievable with tested I/sigma (up to %d )
+for resolutions of %5.2f A and lower. %s
+""" % (int(self.max_i_over_sigma),self.missed_target_resolutions[0],extra_note))
 
     if self.skipped_resolutions:
       self.skipped_resolutions.sort()
@@ -642,14 +847,14 @@ and lower.
     out.show_text("""
 This table says that if you collect your data to a resolution of %5.1f A with
 an overall <I>/<sigma> of about %3.0f then the half-dataset anomalous
-correlation should be in the range of %5.2f - %5.2f.  This should lead to a
-correlation of your anomalous data to the useful anomalous differences
-(CC*_ano) in the range of %5.2f - %5.2f and a useful anomalous signal around
-%3.0f - %3.0f, where an anomalous correlation of about %5.2f and an
-anomalous signal of 10-15 should be sufficient to find the substructure and
-calculate phases.
-""" % (dmin, i_over_sigma, cc_half_weak, cc_half, cc_ano_weak, cc_ano,
-       s_ano/2., s_ano, self.min_cc_ano))
+correlation should be about %5.2f (typically within a factor of 2).  This 
+should lead to a correlation of your anomalous data to true anomalous 
+differences (CC*_ano) of about %5.2f, and a useful anomalous signal around
+%3.0f (again within a factor of about two). With this value of estimated 
+anomalous signal the probability of finding the anomalous substructure is 
+about %3d%% (based on estimated anomalous signal and actual outcomes for
+real structures.)  """ % (dmin, i_over_sigma,  cc_half,  cc_ano,
+        s_ano, int(solved)))
     out.show_text("""
 The value of rms(sigF)/rms(F) is approximately the inverse of I/sigma. The
 calculations are based on rms(sigF)/rms(F).
@@ -671,12 +876,17 @@ contribute to 5 A, you should only consider data to 5 A in this analysis.
 1. Collect your data, trying to obtain a value of I/sigma for the whole dataset
    at least as high as your target.""")
     out.show_text("""\
-2. Scale and analyze your unmerged data with phenix.scale_and_merge to get an
-   accurate estimate of your half-dataset anomalous correlation and your
-   estimated useful anomalous correlation cc*_anom.""")
+2. Scale and analyze your unmerged data with phenix.scale_and_merge to get
+   accurate scaled and merged data as well as two half-dataset data files
+   that can be used to estimate the quality of your data.""")
     out.show_text("""\
-3. Compare the half-dataset anomalous correlation and cc*_anom with the
+3. Analyze your anomalous data (the scaled merged data and the two half-datdaset
+   data files) with phenix.anomalous_signal to estimate the anomalous signal
+   in your data. This tool will again guess the fraction of the substructure 
+   that can be obtained with your data, this time with knowledge of the
+   actual anomalous signal.  It will also estimate the figure of merit of 
+   phasing that you can obtain once you solve the substruture. """)
+    out.show_text("""\
+4. Compare the anomalous signal in your measured data with the 
    estimated values in the table above. If they are lower than expected
-   you may need to collect more data to obtain the target half-dataset
-   correlation and target anomalous signal.
-""")
+   you may need to collect more data to obtain the target anomalous signal.""")
