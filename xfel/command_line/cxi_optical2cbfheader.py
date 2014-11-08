@@ -54,7 +54,7 @@ if (__name__ == "__main__") :
 
   print params.metrology_file, params.detector
 
-  from xfel.cxi.cspad_ana.cspad_tbx import pixel_size
+  from xfel.cftbx.detector.cspad_cbf_tbx import pixel_size
 
   metro = read_optical_metrology_from_flat_file(params.metrology_file, params.detector,
                                                 pixel_size,asic_dimension,asic_gap,
