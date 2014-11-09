@@ -3285,6 +3285,7 @@ xfel/command_line/overlay_spectra.py -text
 xfel/command_line/plot_to_subpixel.py -text
 xfel/command_line/postrefine.py -text
 xfel/command_line/quadrants.py -text
+xfel/command_line/quadrants_cbf.py -text
 xfel/command_line/radial_average.py -text
 xfel/command_line/smooth_spectrum.py -text
 xfel/command_line/stills_merge.py -text
