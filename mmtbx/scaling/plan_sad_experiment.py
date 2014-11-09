@@ -632,7 +632,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       # identify rms(sigF)/rms(F) necessary to get target_s_ano with this
       # many reflections, sites, atoms, f" value
 
-      if i_over_sigma is None:
+      if not i_over_sigma:
         sigf=get_sigf(nrefl,nsites,self.natoms,z,fpp,target_s_ano=target_s_ano,
           min_cc_ano=min_cc_ano,
           fa2=self.fa2,fb2=self.fb2,disorder_parameter=self.disorder_parameter,
