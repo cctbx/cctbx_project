@@ -21,8 +21,10 @@ def get_module_tests (module_name, valgrind=False) :
   dist_path = libtbx.env.dist_path(module_name)
   if (dist_path is None) :
     raise Sorry("'%s' is not a valid CCTBX module." % module_name)
-  elif (not os.path.isfile(os.path.join(dist_path, "run_tests.py"))) :
-    raise Sorry("%s/run_tests.py does not exist." % module_name)
+  # XXX don't check for file name, because import conventions differ among
+  # derived modules - dist_path can be either the sys.path entry or the actual
+  # module contents.  If the file is missing the import below will fail, which
+  # is okay for testing purposes.
   tst_list = import_python_object(
     import_path="%s.run_tests.tst_list" % module_name,
     error_prefix="",
