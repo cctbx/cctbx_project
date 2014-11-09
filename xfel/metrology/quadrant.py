@@ -89,3 +89,65 @@ class one_sensor(object):
     #from matplotlib import pyplot as plt
     #plt.imshow(npy,cmap="hot")
     #plt.show()
+
+class one_panel(object):
+  def __init__(self,image,panel,i_quad,quad):
+    self.image = image
+    self.panel = panel
+    self.i_quad = i_quad
+    self.quad = quad
+
+    grid_radius = 20
+    mapp = flex.double(flex.grid(2*grid_radius+1, 2*grid_radius+1))
+    print mapp.focus()
+
+    beam = image.get_beam()
+    beam_center = col(panel.get_beam_centre_lab(beam.get_s0())[0:2])
+    gmax = 0.0
+    coordmax = (0,0)
+    for xi in range(-grid_radius, grid_radius+1):
+      for yi in range(-grid_radius, grid_radius+1):
+        delta = col((xi,yi))
+        VV = self.CC(beam_center + delta)
+        if VV>gmax:
+          gmax = VV
+          coordmax = delta
+        mapp[(xi+grid_radius,yi+grid_radius)]=VV
+
+    print "max cc %7.4F is at "%gmax,
+    if False:
+      npy = mapp.as_numpy_array()
+      from matplotlib import pyplot as plt
+      plt.imshow(npy, cmap="hot")
+      plt.plot([coordmax[1]+grid_radius],[coordmax[0]+grid_radius],"k.")
+      plt.show()
+
+    self.coordmax = coordmax
+
+  def CC(self, beam_center):
+    detector = self.image.get_detector()
+    angle = [0,3,2,1][self.i_quad] #
+
+    asic = self.image.get_raw_data(list(detector.get_names()).index(self.panel.get_name())).matrix_rot90(angle)
+
+    p_w, p_h = self.panel.get_image_size()
+    b = [self.panel.get_pixel_lab_coord((0    ,0    )),
+         self.panel.get_pixel_lab_coord((p_w-1,0    )),
+         self.panel.get_pixel_lab_coord((p_w-1,p_h-1)),
+         self.panel.get_pixel_lab_coord((0    ,p_h-1))]
+    asic_origin = col(self.panel.millimeter_to_pixel((min([p[0] for p in b]),
+                                                      min([p[1] for p in b]))))
+
+
+    rot45 = sqr((sin(pi/4.),-cos(pi/4.),cos(pi/4.),sin(pi/4.)))
+
+    from xfel.metrology.legacy_scale import quadrant_self_correlation
+    REF,ROT = quadrant_self_correlation(asic.as_double(),asic_origin,beam_center,rot45)
+    CCRR = flex.linear_correlation(REF,ROT)
+
+    return CCRR.coefficient()
+
+    #npy = rot_asic.as_numpy_array()
+    #from matplotlib import pyplot as plt
+    #plt.imshow(npy,cmap="hot")
+    #plt.show()
