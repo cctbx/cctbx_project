@@ -192,7 +192,7 @@ def get_values_from_sigf(nrefl,nsites,natoms,z,fpp,sigf,
        get_fpp_weak=True,resolution=None,
        cc_ano_estimators=None,signal_estimators=None):
     # 2014-11-04 add capability for Bayesian estimation (update) of
-    #   signal and cc_ano 
+    #   signal and cc_ano
     s_ano=get_sano(nrefl,nsites,natoms,z,fpp,sigf,
       fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
       fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
@@ -215,7 +215,7 @@ def get_values_from_sigf(nrefl,nsites,natoms,z,fpp,sigf,
 
     cc_half=get_cc_half(cc_ano,disorder_parameter=disorder_parameter)
 
-    if cc_ano_estimators: 
+    if cc_ano_estimators:
       cc_half_high=get_cc_half(cc_ano+cc_ano_sig,
          disorder_parameter=disorder_parameter)
       cc_half_low=get_cc_half(max(0,cc_ano-cc_ano_sig),
@@ -444,7 +444,7 @@ class interpolator:
     from copy import deepcopy
     self.reverse_keys=deepcopy(self.keys)
     self.reverse_keys.reverse()  # so we can go down too
-     
+
   def interpolate(self,predictor):
     lower_pred=None
     dist_from_lower=None
@@ -470,8 +470,8 @@ class interpolator:
       dist=(dist_from_lower+dist_from_higher)
       value=lower_pred+(higher_pred-lower_pred)*dist_from_lower/dist
       return value
-      
- 
+
+
 def get_interpolator(estimator_type='solved',predictor_variable='PredSignal',
        out=sys.stdout):
   local_file_name=get_local_file_name(estimator_type)
@@ -483,11 +483,11 @@ def get_interpolator(estimator_type='solved',predictor_variable='PredSignal',
   # data looks like:
   """
 Signal  %Solved   N  PredSignal  %Solved  N   BayesEstSignal  %Solved  N
-   1.0       2    44        1.0       1    69        1.0       0     6 
-   3.0       0   123        3.0       0    95        3.0       9   104 
+   1.0       2    44        1.0       1    69        1.0       0     6
+   3.0       0   123        3.0       0    95        3.0       9   104
   """
   # Pick up 2 columns starting with predictor variable
- 
+
   from mmtbx.scaling.bayesian_estimator import get_table_as_list
   prediction_values_as_list,info_values_as_list,\
      dummy_target_variable,dummy_data_items,dummy_info_items=\
@@ -513,7 +513,7 @@ def get_estimators(estimator_type='signal',
     resolution_cutoffs=resolution_cutoffs,out=out)
   estimators.set_up_estimators(
     file_name=file_name,select_only_complete=False)
-  estimators.show_summary()  
+  estimators.show_summary()
   return estimators
 
 class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
@@ -608,8 +608,8 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     self.missed_target_resolutions = []
     self.input_i_over_sigma=i_over_sigma
 
-    if self.bayesian_estimates:  
-       
+    if self.bayesian_estimates:
+
        # set up estimators of cc_ano from cc_*_ano and signal from est_signal
        self.cc_ano_estimators=get_estimators(estimator_type='cc_ano',
          resolution_cutoffs=self.dmin_ranges,out=null_out())
@@ -622,7 +622,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     else:
       self.cc_ano_estimators=None
       self.signal_estimators=None
-     
+
     for dmin in self.dmin_ranges:
       # Guess reflections from residues, dmin, solvent fraction
 
@@ -646,7 +646,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       if sigf is None: continue  # hopeless
       # what are expected signal, useful cc_ano, cc_half-dataset, <I>/<sigI>
 
-     
+
       s_ano,s_ano_sig,cc_ano,cc_ano_sig,cc_half,cc_half_sig,\
           fpp_weak,cc_ano_weak,\
           cc_half_weak,local_i_over_sigma=\
@@ -692,7 +692,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
         self.representative_values = [dmin,nsites,nrefl,fpp,local_i_over_sigma,
            sigf,cc_half_weak,cc_half,cc_ano_weak,cc_ano,s_ano,solved]
 
- 
+
   def representative_dmin(self):
     return self.representative_values[0]
 
@@ -847,11 +847,11 @@ and lower.
     out.show_text("""
 This table says that if you collect your data to a resolution of %5.1f A with
 an overall <I>/<sigma> of about %3.0f then the half-dataset anomalous
-correlation should be about %5.2f (typically within a factor of 2).  This 
-should lead to a correlation of your anomalous data to true anomalous 
+correlation should be about %5.2f (typically within a factor of 2).  This
+should lead to a correlation of your anomalous data to true anomalous
 differences (CC*_ano) of about %5.2f, and a useful anomalous signal around
-%3.0f (again within a factor of about two). With this value of estimated 
-anomalous signal the probability of finding the anomalous substructure is 
+%3.0f (again within a factor of about two). With this value of estimated
+anomalous signal the probability of finding the anomalous substructure is
 about %3d%% (based on estimated anomalous signal and actual outcomes for
 real structures.)  """ % (dmin, i_over_sigma,  cc_half,  cc_ano,
         s_ano, int(solved)))
@@ -882,11 +882,11 @@ contribute to 5 A, you should only consider data to 5 A in this analysis.
     out.show_text("""\
 3. Analyze your anomalous data (the scaled merged data and the two half-datdaset
    data files) with phenix.anomalous_signal to estimate the anomalous signal
-   in your data. This tool will again guess the fraction of the substructure 
+   in your data. This tool will again guess the fraction of the substructure
    that can be obtained with your data, this time with knowledge of the
-   actual anomalous signal.  It will also estimate the figure of merit of 
+   actual anomalous signal.  It will also estimate the figure of merit of
    phasing that you can obtain once you solve the substruture. """)
     out.show_text("""\
-4. Compare the anomalous signal in your measured data with the 
+4. Compare the anomalous signal in your measured data with the
    estimated values in the table above. If they are lower than expected
    you may need to collect more data to obtain the target anomalous signal.""")

@@ -5,11 +5,11 @@ from iotbx import mtz
 if (__name__ == "__main__") :
   m = mtz.object(file_name=os.path.join(os.environ["CEXAM"],"data",
                            "insulin_unmerged.mtz"))
-  
+
   miller_dict = m.as_miller_arrays_dict()
-  
+
   keys = sorted(miller_dict.keys())
-  
+
   assert keys == [('HKL_base', 'HKL_base', 'BATCH'),
                   ('HKL_base', 'HKL_base', 'BGPKRATIOS'),
                   ('HKL_base', 'HKL_base', 'FLAG'),
