@@ -355,7 +355,11 @@ class refinement(refinement_base):
         tan_phi_rad_ML = helper.last_set_orientation.unit_cell().d(OO.reserve_indices) / (2. / M.x[0])
         tan_phi_deg_ML = tan_phi_rad_ML * 180./math.pi
         tan_outer_deg_ML = tan_phi_deg_ML + M.x[1]*180./math.pi
-      print "MEAN excursion ",flex.mean(final), "mosaicity deg FW=",M.x[1]*180./math.pi
+      print "MEAN excursion",flex.mean(final),
+      if OO.mosaic_refinement_target=="ML":
+        print "mosaicity deg FW=",M.x[1]*180./math.pi
+      else:
+        print
       if False: # Excursion vs resolution fit
         from matplotlib import pyplot as plt
         plt.plot(two_thetas, final, "g*")
