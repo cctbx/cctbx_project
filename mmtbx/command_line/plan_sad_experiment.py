@@ -103,7 +103,7 @@ crystal_info {
 
    max_i_over_sigma = 100
      .type = float
-     .short_caption = Maximum I/sigI 
+     .short_caption = Maximum I/sigI
      .help = Limit search of necessary I/sigI to less than this value.  \
              You might increase this if you plan to do a very careful or very \
              high-multiplicity experiment.
@@ -169,7 +169,7 @@ crystal_info {
              half-dataset CC and signal for a training set of datasets to \
              re-estimate these values.  This helps correct for typical errors \
              in measurement and typical resolution resolution-dependent effects.
-             
+
    control {
       show_summary = False
         .type = bool

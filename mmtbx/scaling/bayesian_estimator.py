@@ -573,7 +573,7 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
     if not lines:
       lines=text.splitlines()
     for line in lines:
-      if line.startswith("#"): continue # skip comments 
+      if line.startswith("#"): continue # skip comments
       if not line.replace(" ",""): continue # skip empty lines
       if line.lstrip().startswith("Total"): continue # clean up file format
       spl=line.split()
@@ -589,7 +589,7 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
            for item in all_items:
              if not started and item==start_column_header:
                started=True
-             if started: 
+             if started:
                 new_all_items.append(item)
              else:
                 skip_columns.append(i)
@@ -601,7 +601,7 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
              raise Sorry("Sorry the header %s "% (start_column_header) +
                "was not found in the line %s" %(line))
 
-       
+
         if all_items[0].lower()=='key':
           all_info_items.append(all_items[0])
           all_items=all_items[1:]
@@ -1353,7 +1353,7 @@ def run_jacknife(args,out=sys.stdout):
 
   # Set up estimator using all but one entry and predict it from the others
 
-  if 'no_jump' in args: 
+  if 'no_jump' in args:
     n_jump=1
   else:
     n_jump=20

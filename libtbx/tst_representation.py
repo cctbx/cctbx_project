@@ -4,20 +4,20 @@ if (__name__ == "__main__") :
   for x in xrange(30):
     J = 7205759403792790 + x
     print J * 10**30 // 2**56
-  
+
   T = 0.1 # Target
   # T ~= J / (2**N)
   # where J has exactly R bits
   # J ~= T * (2**N)
   print "BEst",T*(2**52)
   print "    ",T*(2**53)
-  
+
   import math
-  
-  
+
+
   print 52 - math.log(T,2)
   print 53 - math.log(T,2)
-  
+
   def precision_approx_equal(self,other,precision=24):
     # Use concepts from IEEE-754 to determine if the difference between
     # two numbers is within floating point error.  Not within scope to
