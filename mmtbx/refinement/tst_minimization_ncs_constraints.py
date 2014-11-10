@@ -10,6 +10,7 @@ import mmtbx.f_model
 import mmtbx.utils
 import iotbx.ncs
 import iotbx.pdb
+import random
 import sys
 import os
 
@@ -301,6 +302,8 @@ def exercise_transformation_refinement():
   t.clean_up_temp_test_files()
 
 if __name__ == "__main__":
+  flex.set_random_seed(12345)
+  random.seed(12345)
   exercise_without_geometry_restaints()
   exercise_site_refinement()
   exercise_u_iso_refinement()
