@@ -6,6 +6,7 @@ import sys
 from mmtbx.refinement.real_space import individual_sites
 import mmtbx
 from libtbx.test_utils import approx_equal
+import random
 
 pdb_str_1 = """\
 CRYST1   44.034   76.843   61.259  90.00  90.00  90.00 P 1
@@ -1768,6 +1769,8 @@ def exercise():
   ero.pdb_hierarchy.write_pdb_file(file_name="refined.pdb")
 
 if(__name__ == "__main__"):
+  flex.set_random_seed(10000)
+  random.seed(10000)
   timer = user_plus_sys_time()
   exercise()
   print "Time: %6.2f" % timer.elapsed()
