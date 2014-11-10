@@ -1907,6 +1907,7 @@ mmtbx/refinement/orca.py svneol=native#text/x-python
 mmtbx/refinement/real_space/__init__.py -text
 mmtbx/refinement/real_space/fit_residue.py -text
 mmtbx/refinement/real_space/fit_residues.py -text
+mmtbx/refinement/real_space/fit_small_molecule.py -text
 mmtbx/refinement/real_space/fit_water.py -text
 mmtbx/refinement/real_space/flipbase.py -text
 mmtbx/refinement/real_space/individual_sites.py -text
