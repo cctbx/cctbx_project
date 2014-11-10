@@ -34,8 +34,8 @@ def exercise () :
   assert approx_equal(flex.max(anom_diffs.data()), 5.72, eps=0.01)
   # mmtbx.fmodel_simple
   result = easy_run.fully_buffered(
-    "mmtbx.fmodel_simple \"%s\" tst_fmodel_anomalous.mtz" % pdb_file
-    ).raise_if_errors()
+    "mmtbx.fmodel_simple \"%s\" tst_fmodel_anomalous.mtz high_resolution=2.0"
+      % pdb_file).raise_if_errors()
   assert (result.return_code == 0)
   print "OK"
 
