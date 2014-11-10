@@ -22,14 +22,14 @@ class fully_buffered_base(object):
 
   def format_errors_if_any(self):
     assert not self.join_stdout_stderr
-    if (self.return_code != 0):
-      return "non-zero return code: %s"%(self.return_code)
     if (len(self.stderr_lines) != 0):
       msg = ["child process stderr output:"]
       msg.append("  command: " + repr(self.command))
       for line in self.stderr_lines:
         msg.append("  " + line)
       return "\n".join(msg)
+    if (self.return_code != 0):
+      return "non-zero return code: %s"%(self.return_code)
     return None
 
   def raise_if_errors(self, Error=RuntimeError):
