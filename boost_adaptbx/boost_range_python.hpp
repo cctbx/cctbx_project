@@ -20,7 +20,7 @@ struct generic_range_wrapper
   {
     using namespace boost::python;
 
-    type_info info = type_id< Range >();
+    boost::python::type_info info = boost::python::type_id< Range >();
     const converter::registration* reg = converter::registry::query( info );
 
     if ( reg == NULL || reg->m_to_python == NULL )
