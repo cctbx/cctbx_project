@@ -51,7 +51,7 @@ if os.path.isfile( os.path.join(env_etc.cbflib_dist,"src","cbf_ws.c") ):
 
 env.StaticLibrary(target='#lib/cbf',
   source = [prefix+"/"+s for s in [
-    "examples/img.c",
+    "src/img.c",
     "src/cbf.c",
     "src/cbf_alloc.c",
     "src/cbf_ascii.c",

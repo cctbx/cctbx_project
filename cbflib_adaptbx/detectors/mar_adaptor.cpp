@@ -8,7 +8,7 @@
 #include <iostream>
 #include <exception>
 #include <scitbx/array_family/flex_types.h>
-#include <examples/img.h>
+#include <include/img.h>
 #include <cbflib_adaptbx/detectors/basic.h>
 #include <cbflib_adaptbx/detectors/mar_adaptor.h>
 
