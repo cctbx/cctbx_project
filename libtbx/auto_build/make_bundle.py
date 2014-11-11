@@ -101,6 +101,7 @@ def run (args, out=sys.stdout) :
     if op.isdir(full_path) :
       print >> out, "  copying %s..." % file_name
       copy_tree(full_path, op.join(tmp_dir, file_name))
+      call("chmod 755 %s" % op.join(tmp_dir, file_name))
   # remove unnecessary base directories/files
   for dir_name in [
       "base/bin/gtk-demo",
@@ -122,6 +123,7 @@ def run (args, out=sys.stdout) :
   # copy over build executable directories
   print >> out, "Copying standalone executables..."
   for file_name in os.listdir(build_dir) :
+    if file_name.startswith(".") : continue
     full_path = op.join(build_dir)
     if op.isdir(full_path) :
       module_name = file_name
@@ -129,7 +131,6 @@ def run (args, out=sys.stdout) :
         if (file_name == "exe") :
           copy_tree(op.join(full_path, file_name),
                     op.join(tmp_build_dir, module_name, file_name))
-      call("chmod 755 %s" % op.join(tmp_build_dir, module_name))
   # delete unnecessary files
   find_and_delete_files(tmp_dir, file_ext=".pyc")
   find_and_delete_files(tmp_dir, file_ext=".o")

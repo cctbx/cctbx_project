@@ -75,6 +75,7 @@ def run (args) :
   os.chdir(options.dest)
   # setup directory structure
   installer_dir = "%s-installer-%s" % (package_name, options.version)
+  print "Installer will be %s" % installer_dir
   os.mkdir(installer_dir)
   os.chdir(installer_dir)
   os.mkdir("bin")
