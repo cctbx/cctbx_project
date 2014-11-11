@@ -23,7 +23,7 @@ else:
 
 for path in sys.argv[1:]:
   if not os.path.isfile(path):
-    print "Not a file", + path
+    print "Not a file:", path
     continue
 
   data = easy_pickle.load(path)
