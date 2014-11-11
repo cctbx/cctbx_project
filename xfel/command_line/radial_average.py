@@ -205,8 +205,6 @@ def run (args, source_data = None) :
 
   logger.write("Maximum 2theta for %s, TS %s: %f, value: %f\n"%(params.file_path, source_data['TIMESTAMP'], max_twotheta, max_result))
 
-  return xvals, results
-
   if params.verbose:
     from pylab import scatter, show, xlabel, ylabel
     scatter(xvals,results)
@@ -214,6 +212,7 @@ def run (args, source_data = None) :
     ylabel("Avg ADUs")
     show()
 
+  return xvals, results
 
 def get_tile_id(tiles, x, y):
     for tile in xrange(len(tiles)//4):
