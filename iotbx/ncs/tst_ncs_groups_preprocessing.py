@@ -185,72 +185,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     d = map(abs,d)
     self.assertTrue(max(d)<0.01)
 
-  def test_processing_of_asu(self):
-    """ processing complete ASU
-    If MTRIX records are present, they are ignored """
-    if not have_phenix:
-      print "Skipping test_processing_of_asu(): phenix not available"
-      return
-    print sys._getframe().f_code.co_name
-
-    # reading and processing the spec file
-    trans_obj = iotbx.ncs.input(
-      pdb_hierarchy_inp = self.pdb_obj,
-      use_cctbx_find_ncs_tools=False,
-      use_simple_ncs_from_pdb=True)
-
-    # test created object
-    self.assertEqual(len(trans_obj.transform_chain_assignment),3)
-    expected = '(chain A and (resseq 151:159)) or (chain D and (resseq 1:7))'
-    self.assertEqual(trans_obj.ncs_selection_str,expected)
-    # check that static parts are included in NCS and ASU
-    self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
-    self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
-    #
-    expected = {
-      'chain A and (resseq 151:159)':
-        ['chain B and (resseq 151:159)','chain C and (resseq 151:159)'],
-      'chain D and (resseq 1:7)':
-        ['chain E and (resseq 1:7)']}
-    self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
-
-    # check ncs_transform
-    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
-    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
-    group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-    r1 = trans_obj.ncs_transform['004'].r
-    r2 = trans_obj.ncs_transform['002'].r
-    #
-    self.assertEqual(len(group_ids),5)
-    self.assertEqual(set(group_ids),{1,2})
-    self.assertEqual(tran_sn,{1,2,3,4,5})
-    self.assertEqual(group_keys,{'001', '002', '003', '004', '005'})
-    #
-    self.assertTrue(r1.is_r3_identity_matrix())
-    expected_r = matrix.sqr(
-      [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
-    # the transformation in the spec files are from the copy to the master
-    d = r2 - expected_r.transpose()
-    d = map(abs,d)
-    self.assertTrue(max(d)<0.01)
-
-    # Verify that spec object are produced properly
-    spec_output = trans_obj.get_ncs_info_as_spec(
-      pdb_hierarchy_asu=self.pdb_obj.hierarchy,write=False)
-    trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
-
-    t1 = trans_obj.ncs_transform['002'].r
-    t2 = trans_obj2.ncs_transform['002'].r
-    self.assertEqual(t1,t2)
-
-    t1 = trans_obj.ncs_to_asu_selection
-    t2 = trans_obj2.ncs_to_asu_selection
-    self.assertEqual(t1,t2)
-
-    t1 = trans_obj.tr_id_to_selection['chain A_003']
-    t2 = trans_obj2.tr_id_to_selection['chain A_003']
-    self.assertEqual(t1,t2)
-
   def test_processing_of_asu_2(self):
     """ processing complete ASU
     If MTRIX records are present, they are ignored """
@@ -260,10 +194,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     print sys._getframe().f_code.co_name
 
     # reading and processing the spec file
-    trans_obj = iotbx.ncs.input(
-      pdb_hierarchy_inp = self.pdb_obj,
-      use_cctbx_find_ncs_tools=True,
-      use_simple_ncs_from_pdb=False)
+    trans_obj = iotbx.ncs.input(pdb_hierarchy_inp = self.pdb_obj)
 
     # test created object
     self.assertEqual(len(trans_obj.transform_chain_assignment),3)
@@ -373,8 +304,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     print sys._getframe().f_code.co_name
     ncs_inp = iotbx.ncs.input(
       pdb_string=pdb_str,
-      use_simple_ncs_from_pdb=False,
-      use_cctbx_find_ncs_tools=True,
       check_atom_order=True,
       min_percent=0.2)
     t = ncs_inp.ncs_to_asu_selection
@@ -386,8 +315,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     #
     ncs_inp = iotbx.ncs.input(
       pdb_string=pdb_str,
-      use_simple_ncs_from_pdb=False,
-      use_cctbx_find_ncs_tools=True,
       check_atom_order=False,
       allow_different_size_res=False)
     t = ncs_inp.ncs_to_asu_selection
@@ -396,8 +323,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     #
     ncs_inp = iotbx.ncs.input(
       pdb_string=pdb_str,
-      use_simple_ncs_from_pdb=False,
-      use_cctbx_find_ncs_tools=True,
       check_atom_order=False,
       allow_different_size_res=True)
     t = ncs_inp.ncs_to_asu_selection

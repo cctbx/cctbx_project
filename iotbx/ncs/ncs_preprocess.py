@@ -1,6 +1,5 @@
 from __future__ import division
 from iotbx.pdb.atom_selection import selection_string_from_selection
-from mmtbx.ncs.ncs_from_pdb import get_ncs_object_from_pdb
 from mmtbx.ncs.ncs_utils import apply_transforms
 from scitbx.array_family import flex
 from scitbx.math import superpose
@@ -106,8 +105,6 @@ class ncs_group_object(object):
                          quiet=True,
                          spec_ncs_groups=None,
                          pdb_string=None,
-                         use_cctbx_find_ncs_tools=True,
-                         use_simple_ncs_from_pdb=True,
                          use_minimal_master_ncs=True,
                          max_rmsd=0.02,
                          write_messages=False,
@@ -153,10 +150,6 @@ class ncs_group_object(object):
       quiet: (bool) When True -> quiet output when processing files
       spec_ncs_groups: ncs_groups object as produced by simple_ncs_from_pdb
       cif_string: (str) string of cif type data
-      use_cctbx_find_ncs_tools: (bool) Enable using of chain base NCS search
-      use_simple_ncs_from_pdb: (bool) Enable using use_simple_ncs_from_pdb
-      use_minimal_master_ncs: (bool) use maximal or minimal common chains
-        in master ncs groups
       max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       write_messages (bool): When True, right messages to log
@@ -211,11 +204,8 @@ class ncs_group_object(object):
           transform_info=transform_info)
       else:
         # in the case that all ncs copies are in pdb
-        assert [use_cctbx_find_ncs_tools,use_simple_ncs_from_pdb].count(True)>0
         self.build_ncs_obj_from_pdb_asu(
             pdb_hierarchy_inp=pdb_hierarchy_inp,
-            use_cctbx_find_ncs_tools=use_cctbx_find_ncs_tools,
-            use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
             use_minimal_master_ncs=use_minimal_master_ncs,
             process_similar_chains=process_similar_chains,
             min_percent=min_percent,
@@ -243,8 +233,6 @@ class ncs_group_object(object):
     elif pdb_hierarchy_inp:
       self.build_ncs_obj_from_pdb_asu(
         pdb_hierarchy_inp=pdb_hierarchy_inp,
-        use_cctbx_find_ncs_tools=use_cctbx_find_ncs_tools,
-        use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
         use_minimal_master_ncs=use_minimal_master_ncs,
         min_percent=min_percent,
         chain_similarity_limit=chain_similarity_limit,
@@ -416,8 +404,6 @@ class ncs_group_object(object):
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
   def build_ncs_obj_from_pdb_asu(self,pdb_hierarchy_inp,
-                                 use_cctbx_find_ncs_tools=True,
-                                 use_simple_ncs_from_pdb=True,
                                  use_minimal_master_ncs=True,
                                  max_rmsd=0.5,
                                  process_similar_chains=True,
@@ -433,10 +419,6 @@ class ncs_group_object(object):
 
     Args::
       pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
-      use_cctbx_find_ncs_tools (bool): Enable using of chain base NCS search
-      use_simple_ncs_from_pdb (bool): Enable using use_simple_ncs_from_pdb
-      use_minimal_master_ncs (bool): indicate if using maximal or minimal NCS
-        groups
       max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       process_similar_chains (bool): When True, process chains that are close
@@ -454,33 +436,22 @@ class ncs_group_object(object):
       min_percent = 1.0
       min_contig_length = 100000
       self.check_atom_order = True
-    if use_cctbx_find_ncs_tools:
-      group_dict = ncs_search.find_ncs_in_hierarchy(
-        ph=pdb_hierarchy_inp.hierarchy,
-        min_contig_length=min_contig_length,
-        min_percent=min_percent,
-        chain_similarity_limit=chain_similarity_limit,
-        use_minimal_master_ncs=use_minimal_master_ncs,
-        max_rmsd=max_rmsd,
-        write=self.write_messages,
-        log=self.log,
-        check_atom_order=self.check_atom_order,
-        allow_different_size_res=self.allow_different_size_res,
-        exclude_misaligned_residues=exclude_misaligned_residues,
-        max_dist_diff=max_dist_diff)
-      # process atom selections
-      self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
-      self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
-    elif use_simple_ncs_from_pdb:
-      # Del: Remove this after testing simple ncs from pdb
-      ncs_object = get_ncs_object_from_pdb(
-        pdb_inp=pdb_hierarchy_inp.input,
-        hierarchy=pdb_hierarchy_inp.hierarchy)
-      if ncs_object:
-        spec_ncs_groups = ncs_object.ncs_groups()
-        self.build_ncs_obj_from_spec_file(
-          pdb_hierarchy_inp=pdb_hierarchy_inp,
-          spec_ncs_groups=spec_ncs_groups)
+    group_dict = ncs_search.find_ncs_in_hierarchy(
+      ph=pdb_hierarchy_inp.hierarchy,
+      min_contig_length=min_contig_length,
+      min_percent=min_percent,
+      chain_similarity_limit=chain_similarity_limit,
+      use_minimal_master_ncs=use_minimal_master_ncs,
+      max_rmsd=max_rmsd,
+      write=self.write_messages,
+      log=self.log,
+      check_atom_order=self.check_atom_order,
+      allow_different_size_res=self.allow_different_size_res,
+      exclude_misaligned_residues=exclude_misaligned_residues,
+      max_dist_diff=max_dist_diff)
+    # process atom selections
+    self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
+    self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
 
   def build_ncs_obj_from_group_dict(self,group_dict,pdb_hierarchy_inp):
     """

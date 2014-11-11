@@ -71,7 +71,6 @@ def ncs_from_pdb(args):
         # call function
         ncs_obj = iotbx.ncs.input(
             file_name=params.file_name,
-            use_cctbx_find_ncs_tools=True,
             use_minimal_master_ncs=True,
             min_contig_length=params.min_contig_length,
             write_messages=params.write_messages,

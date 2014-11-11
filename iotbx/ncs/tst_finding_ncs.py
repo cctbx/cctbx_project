@@ -54,7 +54,6 @@ class test_find_ncs_operators(unittest.TestCase):
     print sys._getframe().f_code.co_name
     trans_obj = iotbx.ncs.input(
       pdb_string=test_pdb3,
-      use_simple_ncs_from_pdb=False,
       use_minimal_master_ncs=False)
     t = trans_obj.ncs_to_asu_selection
     self.assertEqual(t.keys(),['chain A or chain B or chain C'])
