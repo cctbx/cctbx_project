@@ -109,7 +109,10 @@ class mod_radial_average(common_mode.common_mode_correction):
       args.append("output_file=%s"%dest_path)
 
     self.logger.info("Calculating radial average for image %s"%s)
-    run(args, d)
+    xvals, results = run(args, d)
+
+    evt.put(xvals, "cctbx.xfel.radial_average.xvals")
+    evt.put(results, "cctbx.xfel.radial_average.results")
 
   def endjob(self, env):
     """The endjob() function logs the number of processed shots.
