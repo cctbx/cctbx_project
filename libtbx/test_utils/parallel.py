@@ -288,15 +288,17 @@ def make_commands (files) :
   unrecognized = []
   for file_name in files :
     if file_name.endswith('.py'):
-      interpreter = 'libtbx.python'
+      cmd = 'libtbx.python "%s"'%(file_name)
     elif file_name.endswith('.sh'):
-      interpreter = 'libtbx.bash'
+      # interpreter = 'libtbx.bash'
+      cmd = file_name   
     elif file_name.endswith('.csh'):
-      interpreter = 'libtbx.csh'
+      # interpreter = 'libtbx.csh'
+      cmd = file_name
     else:
       unrecognized.append(file_name)
       continue
-    cmd = '%s "%s"'%(interpreter, file_name)
+    # cmd = '%s "%s"'%(interpreter, file_name)
     if cmd not in commands:
       commands.append(cmd)
   if (len(unrecognized) > 0) :
