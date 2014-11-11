@@ -35,3 +35,11 @@ Module contents
     :members:
     :undoc-members:
     :show-inheritance:
+
+mmtbx.ncs.ncs_search module
+---------------------------
+
+.. automodule:: mmtbx.ncs.ncs_search
+    :members:
+    :undoc-members:
+    :show-inheritance:
