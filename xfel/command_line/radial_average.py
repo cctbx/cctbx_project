@@ -187,7 +187,7 @@ def run (args, source_data = None) :
   std_devs = [math.sqrt((sums_sq[i]-sums[i]*results[i])/counts[i])
               if counts[i] > 0 else 0 for i in xrange(len(sums))]
 
-  xvals = np.ndarray((len(results),),float)
+  xvals = flex.double(len(results))
   max_twotheta = float('-inf')
   max_result   = float('-inf')
 
@@ -205,6 +205,7 @@ def run (args, source_data = None) :
 
   logger.write("Maximum 2theta for %s, TS %s: %f, value: %f\n"%(params.file_path, source_data['TIMESTAMP'], max_twotheta, max_result))
 
+  return xvals, results
 
   if params.verbose:
     from pylab import scatter, show, xlabel, ylabel
