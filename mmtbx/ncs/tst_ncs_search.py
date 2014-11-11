@@ -330,6 +330,13 @@ class TestSimpleAlignment(unittest.TestCase):
     #
     self.assertEqual(group_dict[('A',)].copies,[['A'], ['B'], ['C'], ['D']])
 
+  def test_split_chain_with_altloc(self):
+    print sys._getframe().f_code.co_name
+    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
+    chains_info = ncs_search.get_chains_info(pdb_inp.hierarchy)
+    ch_A = chains_info['A']
+    self.assertEqual(len(ch_A.res_names),len(ch_A.no_altloc))
+
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
 SCALE1      0.001731  0.000000  0.000000        0.00000
@@ -1059,6 +1066,38 @@ ATOM   6938  OE2 GLU D 216     -10.525  25.929 -60.342  1.00 49.35           O
 END
 '''
 
+test_pdb_4 = '''\
+CRYST1  129.340  136.710  168.120  90.00  90.00  90.00 I 2 2 2      32
+SCALE1      0.007732  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.007315  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.005948        0.00000
+ATOM      1  N   GLY A   0      20.178   9.597  30.380  1.00 32.39           N
+ATOM      2  CA  GLY A   0      19.786   9.406  31.801  1.00 38.52           C
+ATOM      3  C   GLY A   0      20.415  10.525  32.584  1.00 38.95           C
+ATOM      4  O   GLY A   0      20.229  10.681  33.787  1.00 44.05           O
+ATOM    345  N  AASP A  43      43.208  62.734  38.734  0.50 21.83           N
+ATOM    346  N  BASP A  43      43.214  62.729  38.785  0.50 22.10           N
+ATOM    347  CA AASP A  43      44.141  61.954  37.935  0.50 23.37           C
+ATOM    348  CA BASP A  43      44.182  62.012  37.961  0.50 23.35           C
+ATOM    349  C  AASP A  43      44.271  60.570  38.560  0.50 22.51           C
+ATOM    350  C  BASP A  43      44.528  60.667  38.595  0.50 23.04           C
+ATOM    351  O  AASP A  43      44.292  59.538  37.875  0.50 20.85           O
+ATOM    352  O  BASP A  43      45.032  59.760  37.945  0.50 22.31           O
+ATOM    353  CB AASP A  43      45.503  62.651  37.781  0.50 22.81           C
+ATOM    354  CB BASP A  43      45.450  62.838  37.738  0.50 23.04           C
+ATOM    355  CG AASP A  43      46.251  62.823  39.095  0.50 27.19           C
+ATOM    356  CG BASP A  43      45.207  64.072  36.867  0.50 23.04           C
+ATOM    357  OD1AASP A  43      45.629  63.099  40.150  0.50 31.88           O
+ATOM    358  OD1BASP A  43      44.045  64.332  36.464  0.50 31.20           O
+ATOM    359  OD2AASP A  43      47.496  62.695  39.064  0.50 36.29           O
+ATOM    360  OD2BASP A  43      46.189  64.797  36.603  0.50 28.48           O
+
+TER    8500      GLU D 264
+HETATM 8501 NA    NA A 265      38.174  35.784  51.193  1.00 18.09          NA
+HETATM 8502 NA    NA A 266      37.726  40.289  60.423  1.00 22.78          NA
+HETATM 8503 NA    NA A 267      13.212  41.425  36.424  1.00 30.14          NA
+HETATM 8504 CL    CL A 268      44.904  37.770  59.641  1.00 29.60          CL
+'''
 
 def run_selected_tests():
   """  Run selected tests
