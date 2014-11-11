@@ -64,10 +64,10 @@ def run (args, out=sys.stdout) :
     app_name = options.app_name
   py2app_bin_dir = "py2app_tmp"
   if (options.alias_build) :
-    py2app_bin_dir = "py2app_bin"
+    py2app_bin_dir = os.path.join("py2app_bin", app_name)
   if (os.path.isdir(py2app_bin_dir)) :
     shutil.rmtree(py2app_bin_dir)
-  os.mkdir(py2app_bin_dir)
+  os.makedirs(py2app_bin_dir)
   os.chdir(py2app_bin_dir)
   f = open("%s.py" % app_name, "w")
   f.write("""

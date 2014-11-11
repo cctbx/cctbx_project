@@ -244,19 +244,19 @@ class run_command_list (object) :
     kw = {}
     kw['out'] = self.out
     kw['log_return'] = self.log
-    kw['log_stderr'] = self.out
+    kw['log_stderr'] = True
     kw['log_stdout'] = self.log
     alert = self.check_alert(result)
     if self.quiet:
       kw['out'] = self.log
-      kw['log_stderr'] = self.log
+      kw['log_stderr'] = False
     elif self.verbosity == EXTRA_VERBOSE:
       kw['log_return'] = self.out
-      kw['log_stderr'] = self.out
+      kw['log_stderr'] = True
       kw['log_stdout'] = self.out
     elif alert:
       kw['log_return'] = self.out
-      kw['log_stderr'] = self.out
+      kw['log_stderr'] = True
     self.display_result(
       result,
       alert=alert,
@@ -278,9 +278,9 @@ class run_command_list (object) :
       print >> log_stdout, "    "+"\n    ".join(result.stdout_lines)
       log_stdout.flush()
     if log_stderr and (len(result.stderr_lines) > 0) :
-      print >> log_stderr, "  Standard error:"
-      print >> log_stderr, "    "+"\n    ".join(result.stderr_lines)
-      log_stderr.flush()
+      print >> sys.stderr, "  Standard error:"
+      print >> sys.stderr, "    "+"\n    ".join(result.stderr_lines)
+      sys.stderr.flush()
 
 def make_commands (files) :
   commands = []

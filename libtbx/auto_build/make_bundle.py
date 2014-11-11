@@ -129,6 +129,7 @@ def run (args, out=sys.stdout) :
         if (file_name == "exe") :
           copy_tree(op.join(full_path, file_name),
                     op.join(tmp_build_dir, module_name, file_name))
+      call("chmod 755 %s" % op.join(tmp_build_dir, module_name))
   # delete unnecessary files
   find_and_delete_files(tmp_dir, file_ext=".pyc")
   find_and_delete_files(tmp_dir, file_ext=".o")
