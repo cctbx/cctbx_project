@@ -31,7 +31,7 @@ def exercise (debug=False) :
     print out.getvalue()
   assert ("R-merge: 0.073" in out.getvalue())
   assert ("R-meas:  0.079" in out.getvalue())
-  assert ("""  1.81   1.74  12528   2073    6.04  97.05    1449.2     5.5  0.252  0.275  0.110  0.968""" in out.getvalue()), out.getvalue()
+  assert ("""  1.81   1.74  12528   2073    6.04  97.05    1449.2     5.5  0.252  0.275  0.110  0.9""" in out.getvalue()), out.getvalue()
   cif_block = result.as_cif_block()
   assert "_reflns_shell" in cif_block
   assert approx_equal(float(cif_block["_reflns.pdbx_Rpim_I_obs"]), result.overall.r_pim)
