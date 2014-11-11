@@ -141,6 +141,30 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     s = 'chain A'
     self.assertEqual(sel_str1,s)
 
+  def test_selection_with_alternative_conformers(self):
+    print sys._getframe().f_code.co_name
+    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_5)
+    cache = pdb_inp.hierarchy.atom_selection_cache().selection
+    chains_info = get_chains_info(pdb_inp.hierarchy)
+    ch_D = chains_info['D']
+    # test conditions verification
+    self.assertEqual(ch_D.no_altloc, [True, True, True, False, True, True])
+    select_all = sorted([x for xi in ch_D.atom_selection for x in xi])
+    test_list = range(23) + range(27,42)
+    self.assertEqual(select_all,test_list)
+    # exclude selection of residue with altloc, even if in selection
+    selection = flex.size_t(test_list)
+    sel_str = selection_string_from_selection(pdb_inp.hierarchy,selection)
+    expected = '(chain D and (resseq 25:27 or resseq 29:30))'
+    self.assertEqual(sel_str,expected)
+    # test that the selection strings gives back the same atom selection
+    test_list = range(19) + range(31,42)
+    selection = flex.size_t(test_list)
+    sel_str = selection_string_from_selection(pdb_inp.hierarchy,selection)
+    self.assertEqual(sel_str,expected)
+    sel = cache(sel_str).iselection()
+    self.assertEqual(set(sel),set(test_list))
+
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
 SCALE1      0.001731  0.000000  0.000000        0.00000
@@ -297,6 +321,55 @@ HETATM 3516  O   HOH A2005     -73.036  25.921 -66.605  1.00 23.41
 END
 '''
 
+test_pdb_5 = '''\
+CRYST1   42.558  113.820  137.132  90.00  90.00  90.00 P 21 21 21   24
+SCALE1      0.023497  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.008786  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.007292        0.00000
+ATOM   2905  N   ILE D  25     -21.903  62.095  51.650  1.00 19.95           N
+ATOM   2906  CA  ILE D  25     -20.570  61.733  52.122  1.00 20.06           C
+ATOM   2907  C   ILE D  25     -19.631  62.938  52.275  1.00 22.71           C
+ATOM   2908  O   ILE D  25     -19.519  63.807  51.393  1.00 21.72           O
+ATOM   2909  CB  ILE D  25     -19.887  60.655  51.241  1.00 15.34           C
+ATOM   2910  CG1 ILE D  25     -20.768  59.411  51.256  1.00 12.56           C
+ATOM   2911  CG2 ILE D  25     -18.438  60.365  51.831  1.00 14.73           C
+ATOM   2912  CD1 ILE D  25     -20.661  58.435  50.096  1.00 15.09           C
+ATOM   2913  N   GLY D  26     -18.968  62.975  53.429  1.00 20.40           N
+ATOM   2914  CA  GLY D  26     -17.920  63.914  53.711  1.00 22.40           C
+ATOM   2915  C   GLY D  26     -18.420  65.290  54.086  1.00 23.10           C
+ATOM   2916  O   GLY D  26     -18.155  65.781  55.197  1.00 24.70           O
+ATOM   2917  N   VAL D  27     -19.117  65.935  53.151  1.00 23.71           N
+ATOM   2918  CA  VAL D  27     -19.595  67.307  53.388  1.00 23.17           C
+ATOM   2919  C   VAL D  27     -20.597  67.344  54.568  1.00 24.78           C
+ATOM   2920  O   VAL D  27     -20.745  68.387  55.199  1.00 26.51           O
+ATOM   2921  CB  VAL D  27     -20.183  67.930  52.109  1.00 25.99           C
+ATOM   2922  CG1 VAL D  27     -19.069  68.049  51.032  1.00 23.04           C
+ATOM   2923  CG2 VAL D  27     -21.399  67.121  51.609  1.00 21.43           C
+ATOM   2924  N  AASP D  28     -21.219  66.203  54.890  0.50 22.16           N
+ATOM   2925  N  BASP D  28     -21.261  66.213  54.799  0.50 23.07           N
+ATOM   2926  CA AASP D  28     -22.200  66.120  55.994  0.50 24.54           C
+ATOM   2927  CA BASP D  28     -22.155  66.024  55.923  0.50 25.72           C
+ATOM   2928  C  AASP D  28     -21.780  65.239  57.184  0.50 21.81           C
+ATOM   2929  C  BASP D  28     -21.575  64.885  56.777  0.50 24.87           C
+ATOM   2930  O  AASP D  28     -22.627  64.713  57.901  0.50 22.07           O
+ATOM   2931  O  BASP D  28     -21.997  63.731  56.681  0.50 28.18           O
+ATOM   2932  CB  ASP D  28     -23.555  65.658  55.450  1.00 25.04           C
+ATOM   2933  CG  ASP D  28     -24.173  66.689  54.514  1.00 28.36           C
+ATOM   2934  OD1 ASP D  28     -23.934  67.903  54.695  1.00 27.71           O
+ATOM   2935  OD2 ASP D  28     -24.948  66.267  53.632  1.00 24.68           O
+ATOM   2936  N   SER D  29     -20.479  65.193  57.444  1.00 26.01           N
+ATOM   2937  CA  SER D  29     -19.892  64.371  58.495  1.00 24.17           C
+ATOM   2938  C   SER D  29     -19.715  65.264  59.716  1.00 23.31           C
+ATOM   2939  O   SER D  29     -19.972  66.479  59.622  1.00 23.57           O
+ATOM   2940  CB  SER D  29     -18.538  63.871  58.037  1.00 21.39           C
+ATOM   2941  OG  SER D  29     -17.658  64.927  57.738  1.00 20.49           O
+ATOM   2942  N   ALA D  30     -19.259  64.708  60.836  1.00 19.54           N
+ATOM   2943  CA  ALA D  30     -18.937  65.524  61.993  1.00 21.15           C
+ATOM   2944  C   ALA D  30     -17.875  66.586  61.555  1.00 20.92           C
+ATOM   2945  O   ALA D  30     -18.026  67.767  61.866  1.00 18.58           O
+ATOM   2946  CB  ALA D  30     -18.461  64.657  63.163  1.00 17.17           C
+'''
+
 def run_selected_tests():
   """  Run selected tests
 
@@ -304,7 +377,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_selection_string_from_selection2']
+  tests = ['test_selection_with_alternative_conformers']
   suite = unittest.TestSuite(map(TestNcsPreprocessingFunctions,tests))
   return suite
 

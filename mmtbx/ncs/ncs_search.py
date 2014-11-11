@@ -64,6 +64,7 @@ class Score_record(object):
       match_count (int): number of matching residues
       origin (tuple): (row,col) of the matrix cell we from the previous
         alignment step. Used to trace back optimal alignment
+      no_altloc (list of bool): False when residue has alternate location
     """
     self.score = score
     self.consecutive_matches = 0
@@ -79,6 +80,7 @@ class Chains_info(object):
     self.atom_names = []
     self.atom_selection = []
     self.chains_atom_number = 0
+    self.no_altloc = []
 
 def find_ncs_in_hierarchy(ph,
                           min_contig_length=10,
@@ -1216,6 +1218,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True):
       res_names = chains_info[ch.id].res_names
       atom_names = chains_info[ch.id].atom_names
       atom_selection = chains_info[ch.id].atom_selection
+      no_altloc = chains_info[ch.id].no_altloc
       #
       if hasattr(ch,'conformers') and (len(ch.conformers()) > 1):
         # process cases with alternative locations
@@ -1228,6 +1231,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True):
           atoms = res.atoms()
           atom_names.append(list(atoms.extract_name()))
           atom_selection.append(list(atoms.extract_i_seq()))
+          no_altloc.append(res.is_pure_main_conf)
       else:
         for res in ch.residue_groups():
           for atoms in res.atom_groups():
@@ -1242,6 +1246,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True):
       chains_info[ch.id].res_names = res_names
       chains_info[ch.id].atom_names = atom_names
       chains_info[ch.id].atom_selection = atom_selection
+      chains_info[ch.id].no_altloc = no_altloc
   else:
     # build chains_info from selection
     l = ph.atoms().size()

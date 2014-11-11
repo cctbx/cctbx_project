@@ -739,6 +739,10 @@ def selection_string_from_selection(pdb_hierarchy_inp,
   using chain names, resseq ranges and when there is not other option
   residues IDs
 
+  Limitations:
+    When pdb_hierarchy_inp contains multiple confirmations, selection must
+    not include residues with alternate locations.
+
   Args:
     pdb_hierarchy_inp : iotbx.pdb.hierarchy.input (or iotbx.pdb.hierarchy)
     selection (flex.bool or flex.size_t)
@@ -775,6 +779,10 @@ def selection_string_from_selection(pdb_hierarchy_inp,
     res_sel = []
     first_n = None
     pre_res_n = -10000
+    no_altloc = chains_info[ch_id].no_altloc
+    no_altloc_present = bool(no_altloc)
+    # exclude residues with alternative locations
+    complete_ch_not_present |= no_altloc_present
     if complete_ch_not_present:
       # collect continuous ranges of residues when possible
       res_len = len(chains_info[ch_id].resid)
@@ -783,6 +791,7 @@ def selection_string_from_selection(pdb_hierarchy_inp,
         a_sel = set(chains_info[ch_id].atom_selection[i])
         test_set = a_sel.intersection(selection_set)
         if not test_set: continue
+        if no_altloc_present and not no_altloc[i]: continue
         all_atoms_present = (test_set == a_sel)
         res_id = chains_info[ch_id].resid[i]
         # ensure that insertion are not included if shouldn't
@@ -817,13 +826,14 @@ def selection_string_from_selection(pdb_hierarchy_inp,
             res_sel.append('resid ' + res_id )
         else:
           # not all residue's atoms are in selection
-          res_sel,first_n,pre_res_n = update_res_sel(res_sel,first_n,pre_res_n)
           s = '(resid ' + res_id + ' and (name '
+          res_sel,first_n,pre_res_n = update_res_sel(res_sel,first_n,pre_res_n)
           # get present atoms
-          atom_name = chains_info[ch_id].atom_names[i]
-          dx = min(test_set)
-          atom_name = [atom_name[x-dx] for x in test_set]
-          atom_str = ' or name '.join(atom_name)
+          atom_names = chains_info[ch_id].atom_names[i]
+          test_set = sorted(test_set)
+          dx = test_set[0]
+          selected_atoms = [atom_names[x-dx] for x in test_set]
+          atom_str = ' or name '.join(selected_atoms)
           res_sel.append(s + atom_str + '))')
       res_sel,first_n,pre_res_n = update_res_sel(res_sel,first_n,pre_res_n)
     s = get_clean_selection_string(ch_sel,res_sel)
