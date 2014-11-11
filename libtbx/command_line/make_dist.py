@@ -6,6 +6,7 @@ Master script for making distributable installers on Linux and Mac.
 from __future__ import division
 from libtbx.auto_build.installer_utils import *
 from libtbx.auto_build import setup_installer
+from libtbx.auto_build import create_mac_pkg
 from libtbx.auto_build import make_bundle
 import libtbx.phil.command_line
 import libtbx.load_env
@@ -40,7 +41,7 @@ source_module = None
 base_module = None
   .type = str
   .multiple = True
-exclude_build_module = None
+exclude_module = None
   .type = str
   .multiple = True
 organization = gov.lbl.cci
@@ -70,9 +71,9 @@ def run (args) :
       "source_module=cbflib",
       "source_module=annlib",
       "source_module=cbflib_adaptbx",
-      "exclude_build_module=phenix_regression",
-      "exclude_build_module=phenix_dev",
-      "exclude_build_module=chem_data",
+      "exclude_module=phenix_regression",
+      "exclude_module=phenix_dev",
+      "exclude_module=chem_data",
     ]
   phil_cmdline = libtbx.phil.command_line.process(
     args=args,
@@ -144,8 +145,8 @@ def run (args) :
     "--version=%s" % options.version,
     #"--verbose",
   ]
-  if (len(params.exclude_build_module) > 0) :
-    for module in params.exclude_build_module :
+  if (len(params.exclude_module) > 0) :
+    for module in params.exclude_module :
       bundle_args.append("--ignore=%s" % module)
   if (len(params.base_module) > 0) :
     for module in params.base_module :
@@ -176,7 +177,7 @@ def run (args) :
       "--package_name=%s" % params.package_name,
       "--version=%s" % options.version,
       "--license=%s" % full_path(params.license),
-      "--organization=%s "% params.organization,
+      "--organization=%s" % params.organization,
       "--machine_type=%s" % suffix,
       app_root_dir,
     ])
