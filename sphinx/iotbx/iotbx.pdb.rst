@@ -776,3 +776,8 @@ Accessory classes and functions
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. autoclass:: iotbx.pdb.atom_selection.selection_string_from_selection
+    :members:
+    :undoc-members:
+    :show-inheritance:
