@@ -18,8 +18,6 @@ def input(pdb_hierarchy_inp=None,
           quiet=True,
           spec_ncs_groups=None,
           pdb_string=None,
-          use_cctbx_find_ncs_tools=True,
-          use_simple_ncs_from_pdb=False,
           use_minimal_master_ncs=True,
           max_rmsd=0.02,
           write_messages=False,
@@ -66,10 +64,6 @@ def input(pdb_hierarchy_inp=None,
       quiet: (bool) When True -> quiet output when processing files
       spec_ncs_groups: ncs_groups object as produced by simple_ncs_from_pdb
       cif_string: (str) string of cif type data
-      use_cctbx_find_ncs_tools: (bool) Enable using of chain base NCS search
-      use_simple_ncs_from_pdb: (bool) Enable using use_simple_ncs_from_pdb
-      use_minimal_master_ncs: (bool) use maximal or minimal common chains
-        in master ncs groups
       max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       write_messages (bool): When True, write messages to log
@@ -109,8 +103,6 @@ def input(pdb_hierarchy_inp=None,
       quiet=quiet,
       spec_ncs_groups=spec_ncs_groups,
       pdb_string=pdb_string,
-      use_cctbx_find_ncs_tools=use_cctbx_find_ncs_tools,
-      use_simple_ncs_from_pdb=use_simple_ncs_from_pdb,
       use_minimal_master_ncs=use_minimal_master_ncs,
       max_rmsd=max_rmsd,
       write_messages=write_messages,
