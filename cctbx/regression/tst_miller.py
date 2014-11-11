@@ -2385,4 +2385,5 @@ def run(args):
   print "OK"
 
 if (__name__ == "__main__"):
+  flex.set_random_seed(1)
   run(args=sys.argv[1:])
