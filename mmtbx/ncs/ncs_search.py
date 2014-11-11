@@ -776,7 +776,6 @@ def remove_far_atoms(list_a, list_b,
   sel_a = flex.size_t([])
   sel_b = flex.size_t([])
   current_pos = 0
-  # for ia,ib in zip(res_list_a,res_list_b):
   for i in xrange(len(res_list_a)):
     # find the matching atoms form each residue (work on small sections)
     res_len = list_a[i].size()
@@ -1109,6 +1108,8 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
   Get selection of matching chains, match residues atoms
   We keep only residues with continuous matching atoms
 
+  Residues with alternative locations and of different size are excluded
+
   Args:
     chains_info (object): object containing
       chains (str): chain IDs or selections string
@@ -1132,6 +1133,10 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
   """
   sel_a = []
   sel_b = []
+  # check if any of the residues has alternate locations
+  a_altloc = bool(chains_info[a_id].no_altloc)
+  b_altloc = bool(chains_info[b_id].no_altloc)
+  test_altloc = a_altloc or b_altloc
   #
   res_num_a_updated = []
   res_num_b_updated = []
@@ -1145,9 +1150,13 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
     atoms_names_b = chains_info[b_id].atom_names[j]
     resid_a = chains_info[a_id].resid[i]
     force_check_atom_order = dif_res_size and allow_different_size_res
+    altloc = False
+    if test_altloc:
+      if a_altloc:
+        altloc |= (not chains_info[a_id].no_altloc[i])
+      if b_altloc:
+        altloc |= (not chains_info[b_id].no_altloc[j])
     if check_atom_order or force_check_atom_order:
-      if dif_res_size:
-        residues_with_different_n_atoms.append(resid_a)
       # select only atoms that exist in both residues
       atoms_a,atoms_b,similarity = res_alignment(
         seq_a=atoms_names_a, seq_b=atoms_names_b,
@@ -1157,15 +1166,15 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
       sb = flex.size_t(atoms_b) + sb[0]
     if dif_res_size:
       residues_with_different_n_atoms.append(resid_a)
-      if not allow_different_size_res:
+      if (not allow_different_size_res) or altloc:
         sa = flex.size_t([])
         sb = flex.size_t([])
     # keep only residues with continuous matching atoms
     if sa.size() != 0:
       res_num_a_updated.append(i)
       res_num_b_updated.append(j)
-    sel_a.append(sa)
-    sel_b.append(sb)
+      sel_a.append(sa)
+      sel_b.append(sb)
   if residues_with_different_n_atoms:
     problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
     msg = "NCS related residues with different number of atoms, selection"
@@ -1219,8 +1228,11 @@ def get_chains_info(ph,selection_list=None,exclude_water=True):
       atom_names = chains_info[ch.id].atom_names
       atom_selection = chains_info[ch.id].atom_selection
       no_altloc = chains_info[ch.id].no_altloc
+      # check for alternative conformers (also when chains are split)
+      t1 = hasattr(ch,'conformers')
+      t2 = bool(no_altloc)
       #
-      if hasattr(ch,'conformers') and (len(ch.conformers()) > 1):
+      if t2 or (t1 and (len(ch.conformers()) > 1)):
         # process cases with alternative locations
         conf = ch.conformers()[0]
         for res in conf.residues():
