@@ -1,6 +1,10 @@
+
+# FIXME will not work on Windows due to '>' redirect
+
 from __future__ import division
 from libtbx import easy_run
 from libtbx.test_utils import approx_equal
+import sys
 
 pdb_str_1 = """
 CRYST1   50.273   31.111   38.194  90.00  90.00  90.00 P 1
@@ -508,7 +512,7 @@ END
 def run_cmd(fn, log, s1, s2):
   cmd = " ".join([
     "phenix.angle",
-    "%s"%fn,
+    "\"%s\""%fn,
     "'%s'"%s1,
     "'%s'"%s2,
     ">%s"%log])
@@ -546,5 +550,7 @@ def exercise_01(prefix="tst_phenix_angle_cmd_01"):
   assert approx_equal(r, 60, 0.001)
 
 if (__name__ == "__main__"):
-  exercise_00()
-  exercise_01()
+  warnings.warn("Test incompatible with Windows")
+  if (sys.platform != "win32") :
+    exercise_00()
+    exercise_01()
