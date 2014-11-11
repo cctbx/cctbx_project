@@ -21,6 +21,8 @@ struct python_exports
 {
   static void wrap()
   {
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wmultichar"
     python::indexer_exports indexer_exporter;
     indexer_exporter(
       boost::mpl::identity<
@@ -38,6 +40,7 @@ struct python_exports
           >
         >()
       );
+    #pragma clang diagnostic pop
   }
 };
 
