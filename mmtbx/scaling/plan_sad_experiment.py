@@ -430,7 +430,8 @@ class interpolator:
   # then apply with (predictor) and get an estimate of target
   # If off the end in either direction, use last available value (do not
   #   extrapolate)
-  def __init__(self,target_predictor_list,extrapolate=False):
+  def __init__(self,target_predictor_list,extrapolate=False,
+      require_monotonic_increase=False):
     assert not extrapolate # (not programmed)
     # make a dict
     self.target_dict={}
@@ -441,9 +442,61 @@ class interpolator:
        self.target_dict[predictor]=target
        self.keys.append(predictor)
     self.keys.sort()
+    if require_monotonic_increase:
+      self.set_monotonic_increase()
     from copy import deepcopy
     self.reverse_keys=deepcopy(self.keys)
     self.reverse_keys.reverse()  # so we can go down too
+
+  def set_monotonic_increase(self):  
+    # require never to decrease value with increasing key
+    # start at middle and make sure that value never goes above 
+    #  mean of remaining or below previous
+    # verify that overall means for each end do not change
+    n=len(self.keys)
+    if n<2: return
+    i_middle=n//2
+    from copy import deepcopy
+    value_list=[]
+    for key in self.keys:
+      value_list.append(self.target_dict[key])
+    new_values=deepcopy(value_list)
+    for i in xrange(i_middle+1,n):
+      prev_value=new_values[i-1]
+      remainder=value_list[i:]
+      value=value_list[i]
+      mean_remainder=self.get_mean(remainder)
+      new_values[i]=max(prev_value,min(mean_remainder,value))
+    for i in xrange(i_middle-1,-1,-1):
+      prev_value=new_values[i+1]
+      remainder=value_list[:i+1]
+      value=value_list[i]
+      mean_remainder=self.get_mean(remainder)
+      new_values[i]=min(prev_value,max(mean_remainder,value))
+    from cctbx.array_family import flex
+    a=flex.double()
+    b=flex.double()
+    delta_list=[]
+    for key,value in zip(self.keys,new_values): 
+      delta_list.append(value-self.target_dict[key])
+    # adjust delta mean to zero in each region
+    offset_low=self.get_mean(delta_list[:i_middle])
+    offset_high=self.get_mean(delta_list[i_middle+1:])
+    for i in xrange(i_middle+1,n):
+      new_values[i]=new_values[i]-offset_high
+    for i in xrange(i_middle-1,-1,-1):
+      new_values[i]=new_values[i]-offset_low
+    for key,value in zip(self.keys,new_values):  
+      self.target_dict[key]=value
+    
+  def get_mean(self,remainder):
+    n=len(remainder)
+    if n<1: return 0
+    a=0.
+    for x in remainder: a+=x
+    return a/n
+    
+
 
   def interpolate(self,predictor):
     lower_pred=None
@@ -473,7 +526,7 @@ class interpolator:
 
 
 def get_interpolator(estimator_type='solved',predictor_variable='PredSignal',
-       out=sys.stdout):
+       require_monotonic_increase=None,out=sys.stdout):
   local_file_name=get_local_file_name(estimator_type)
   print >>out,"\nSetting up interpolator for %s" %(estimator_type)
   import libtbx.load_env
@@ -493,7 +546,8 @@ Signal  %Solved   N  PredSignal  %Solved  N   BayesEstSignal  %Solved  N
      dummy_target_variable,dummy_data_items,dummy_info_items=\
     get_table_as_list(file_name=file_name, select_only_complete=False,
     start_column_header=predictor_variable,out=out)
-  return interpolator(prediction_values_as_list)
+  return interpolator(prediction_values_as_list,
+       require_monotonic_increase=require_monotonic_increase)
 
 
 def get_estimators(estimator_type='signal',
@@ -618,6 +672,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
        # solved (probability of hyss finding >=50% of sites) is just a table
        #  so interpolate the probability.
        self.solved_interpolator=get_interpolator(estimator_type='solved',
+          require_monotonic_increase=True,
           predictor_variable='PredSignal',out=null_out())
     else:
       self.cc_ano_estimators=None
@@ -747,7 +802,7 @@ p(Substr):%3d %%
  self.representative_cc_ano(),
  self.representative_s_ano()/2,
  self.representative_s_ano(),
- int(self.representative_solved()))
+ int(0.5+self.representative_solved()))
 
   def is_solvable (self) :
     return (self.representative_values is not None)
