@@ -337,8 +337,6 @@ class installer (object) :
     self.base_dir = op.join(self.dest_dir, "base")
     if (not op.exists(self.build_dir)) :
       os.makedirs(self.build_dir)
-    if (not op.exists(self.base_dir)) :
-      os.makedirs(self.base_dir)
     if (not self.options.top_level_sources) :
       self.modules_dir = op.join(self.dest_dir, "modules")
       if (not op.exists(self.modules_dir)) :
@@ -374,6 +372,8 @@ class installer (object) :
     self.show_installation_paths()
     # PART 1: dependencies
     # install Python 2.7 and other dependencies (wxPython, etc.)
+    if (not op.exists(self.base_dir)) :
+      os.makedirs(self.base_dir)
     if (self.base_binary_install) :
       os.chdir(self.dest_dir)
       print >> out, "Using precompiled base bundle..."
@@ -665,8 +665,6 @@ class installer (object) :
           else :
             print >> out, "ok"
             self.apps_built = True
-            if (not "SSH_CLIENT" in os.environ) :
-              call(args=["open", self.dest_dir], log=log)
     # run custom finalization
     self.product_specific_finalize_install(log)
     # remove source files if desired
@@ -674,6 +672,8 @@ class installer (object) :
       self.reduce_installation_size(out)
     # reconfigure one last time (possibly unnecessary)
     self.display_final_message()
+    if self.apps_built and (not "SSH_CLIENT" in os.environ) :
+      call(args=["open", self.dest_dir], log=out)
 
   def write_environment_files (self, out) :
     """
