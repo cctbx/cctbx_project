@@ -5,6 +5,7 @@ from __future__ import division
 from libtbx import easy_run
 from libtbx.test_utils import approx_equal
 import sys
+import warnings
 
 pdb_str_1 = """
 CRYST1   50.273   31.111   38.194  90.00  90.00  90.00 P 1
