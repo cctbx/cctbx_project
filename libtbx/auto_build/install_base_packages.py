@@ -656,6 +656,15 @@ Installation of Python packages may fail.
     pkg = self.fetch_package(pkg_name)
     pkg_dir = untar(pkg, log=pkg_log)
     os.chdir(pkg_dir)
+    if (self.flag_is_mac and get_os_version() == "10.10") :
+      # Workaround wxwidgets 3.0.2 compilation error on Yosemite
+      # See:
+      #   http://trac.wxwidgets.org/ticket/16329
+      #   http://goharsha.com/blog/compiling-wxwidgets-3-0-2-mac-os-x-yosemite/
+      print >> self.log, "  patching src/osx/webview_webkit.mm"
+      self.patch_src(src_file="src/osx/webview_webkit.mm)",
+                     target=("#include <WebKit/WebKit.h>",),
+                     replace_with=("#include <WebKit/WebKitLegacy.h>",))
     # Stage 1: build wxWidgets libraries
     config_opts = [
       "--disable-mediactrl",
