@@ -2,7 +2,7 @@ from __future__ import division
 from libtbx import test_utils
 import libtbx.load_env
 
-tst_list = ["$D/tst_cxi_index.py"]
+tst_list = ["$D/test/command_line/tst_cxi_index.py"]
 
 def run():
   build_dir = libtbx.env.under_build("xfel")
