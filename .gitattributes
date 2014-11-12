@@ -3310,6 +3310,7 @@ xfel/cxi/cspad_ana/__init__.py -text
 xfel/cxi/cspad_ana/histogram_finalise.py -text
 xfel/cxi/cspad_ana/hitfinder_tbx.py -text
 xfel/cxi/cspad_ana/mod_dump_bitmap.py -text
+xfel/cxi/cspad_ana/mod_image_dict.py -text
 xfel/cxi/cspad_ana/mod_radial_average.py -text
 xfel/cxi/cspad_ana/mod_spectra.py -text
 xfel/cxi/cspad_ana/mod_spectra_view.py -text
