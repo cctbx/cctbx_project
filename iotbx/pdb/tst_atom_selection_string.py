@@ -164,6 +164,12 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     self.assertEqual(sel_str,expected)
     sel = cache(sel_str).iselection()
     self.assertEqual(set(sel),set(test_list))
+    #
+    test_list = range(42)
+    selection = flex.size_t(test_list)
+    sel_str = selection_string_from_selection(pdb_inp.hierarchy,selection)
+    expected = '(chain D and (resseq 25:27 or resseq 29:30))'
+    self.assertEqual(sel_str,expected)
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1

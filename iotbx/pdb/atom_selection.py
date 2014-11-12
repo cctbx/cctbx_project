@@ -741,7 +741,7 @@ def selection_string_from_selection(pdb_hierarchy_inp,
 
   Limitations:
     When pdb_hierarchy_inp contains multiple confirmations, selection must
-    not include residues with alternate locations.
+    not include residues with alternate locations
 
   Args:
     pdb_hierarchy_inp : iotbx.pdb.hierarchy.input (or iotbx.pdb.hierarchy)
@@ -776,13 +776,16 @@ def selection_string_from_selection(pdb_hierarchy_inp,
     # if there is water in chain, specify residues numbers
     water_present = (len(a_sel) != chains_info[ch_id].chains_atom_number)
     complete_ch_not_present = (test_set != a_sel) or water_present
+    if bool(chains_info[ch_id].no_altloc):
+      no_altloc = chains_info[ch_id].no_altloc
+      no_altloc_present = no_altloc.count(False) > 0
+    else:
+      no_altloc_present = False
+    # exclude residues with alternative locations
+    complete_ch_not_present |= no_altloc_present
     res_sel = []
     first_n = None
     pre_res_n = -10000
-    no_altloc = chains_info[ch_id].no_altloc
-    no_altloc_present = bool(no_altloc)
-    # exclude residues with alternative locations
-    complete_ch_not_present |= no_altloc_present
     if complete_ch_not_present:
       # collect continuous ranges of residues when possible
       res_len = len(chains_info[ch_id].resid)
@@ -790,7 +793,7 @@ def selection_string_from_selection(pdb_hierarchy_inp,
         # test that all atoms in residue are included in selection
         a_sel = set(chains_info[ch_id].atom_selection[i])
         test_set = a_sel.intersection(selection_set)
-        if not test_set: continue
+        if not bool(test_set): continue
         if no_altloc_present and not no_altloc[i]: continue
         all_atoms_present = (test_set == a_sel)
         res_id = chains_info[ch_id].resid[i]
