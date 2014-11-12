@@ -662,7 +662,7 @@ Installation of Python packages may fail.
       #   http://trac.wxwidgets.org/ticket/16329
       #   http://goharsha.com/blog/compiling-wxwidgets-3-0-2-mac-os-x-yosemite/
       print >> self.log, "  patching src/osx/webview_webkit.mm"
-      self.patch_src(src_file="src/osx/webview_webkit.mm)",
+      self.patch_src(src_file="src/osx/webview_webkit.mm",
                      target=("#include <WebKit/WebKit.h>",),
                      replace_with=("#include <WebKit/WebKitLegacy.h>",))
     # Stage 1: build wxWidgets libraries
