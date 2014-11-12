@@ -10,7 +10,6 @@ import logging
 from cctbx.array_family import flex
 import cPickle
 from prime.api import InputFrame
-
 logger = logging.getLogger('sf')
 
 class SingleFrame(InputFrame):
@@ -67,7 +66,7 @@ class SingleFrame(InputFrame):
         d = easy_pickle.load(path)
       except (cPickle.UnpicklingError, ValueError, EOFError, IOError):
         d = {}
-        logger.warning("Could not read %s. It may not be a pickle file." % path)
+        logger.warning("Could not read %s. It may not be a pickle file." % path) 
     try:
       if pixel_size:
         self.pixel_size = pixel_size
