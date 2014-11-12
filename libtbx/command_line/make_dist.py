@@ -189,9 +189,10 @@ def run (args) :
         for app_name in options.make_apps :
           app_args = [
             exe_path,
-            "--app_name=%s-%s" % (params.package_name, options.version),
+            "--app_name=%s-%s" % (app_name, options.version),
             "--python_interpreter=/usr/bin/python",
             "--dest=%s" % app_root_dir,
+            app_name,
           ]
           call(" ".join(app_args), log=apps_log)
       # Copy env.* files to top-level directory
