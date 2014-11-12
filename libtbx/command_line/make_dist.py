@@ -63,6 +63,9 @@ def run (args) :
     help="Package version",
     default=time.strftime("%Y_%m_%d", time.localtime()))
   parser.add_option("--remove_src", dest="remove_src")
+  if (sys.platform == "darwin") :
+    parser.add_option("--no-pkg", dest="no_pkg", action="store_true",
+      help="Disable Mac graphical (.pkg) installer")
   # TODO installer background?
   options, args = parser.parse_args(args)
   if (len(args) == 0) :
@@ -162,29 +165,32 @@ def run (args) :
   print "Wrote %s" % installer_tar
   # 
   # Mac .pkg creation
-  if (sys.platform == "darwin") :
-    os.chdir(installer_dir)
-    pkg_prefix = "/Applications"
-    app_root_dir = pkg_prefix + "/" + "%s-%s" % (params.pkg_prefix,
-      options.version)
-    if params.hide_mac_package_contents :
-      app_root_dir = "/Applications/%s-%s" %(params.package_name,
+  if (sys.platform == "darwin") and (not getattr(options, "no_pkg", False)) :
+    if (not os.access("/Applications", os.W_OK|os.X_OK)) :
+      print "Can't access /Applications - skipping .pkg build"
+    else :
+      os.chdir(installer_dir)
+      pkg_prefix = "/Applications"
+      app_root_dir = pkg_prefix + "/" + "%s-%s" % (params.pkg_prefix,
         options.version)
-      pkg_prefix = app_root_dir + "/Contents"
-      os.makedirs(pkg_prefix)
-    call("./install --prefix=%s --compact --no-app" % pkg_prefix)
-    create_mac_pkg.run(args=[
-      "--package_name=%s" % params.package_name,
-      "--version=%s" % options.version,
-      "--license=%s" % full_path(params.license),
-      "--organization=%s" % params.organization,
-      "--machine_type=%s" % suffix,
-      app_root_dir,
-    ])
-    installer_pkg = "%s-%s-%s.pkg.zip" % (params.package_name.lower(),
-      options.version,suffix)
-    if (options.destination is not None) :
-      call("rsync -avz %s %s" % (installer_pkg, options.destination))
+      if params.hide_mac_package_contents :
+        app_root_dir = "/Applications/%s-%s" %(params.package_name,
+          options.version)
+        pkg_prefix = app_root_dir + "/Contents"
+        os.makedirs(pkg_prefix)
+      call("./install --prefix=%s --compact --no-app" % pkg_prefix)
+      create_mac_pkg.run(args=[
+        "--package_name=%s" % params.package_name,
+        "--version=%s" % options.version,
+        "--license=%s" % full_path(params.license),
+        "--organization=%s" % params.organization,
+        "--machine_type=%s" % suffix,
+        app_root_dir,
+      ])
+      installer_pkg = "%s-%s-%s.pkg.zip" % (params.package_name.lower(),
+        options.version,suffix)
+      if (options.destination is not None) :
+        call("rsync -avz %s %s" % (installer_pkg, options.destination))
   # rsync and cleanup
   remove_installer = False
   if (options.destination is not None) :
