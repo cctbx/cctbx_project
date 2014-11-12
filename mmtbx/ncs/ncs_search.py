@@ -955,8 +955,7 @@ def search_ncs_relations(ph=None,
       msg += new_msg
       if res_sel_m:
         # add only non empty matches
-        rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,
-               similarity]
+        rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,similarity]
         chain_match_list.append(rec)
       # Collect only very good matches, to allow better similarity search
       if similarity > 0.9: chains_in_copies.add(c_ch_id)
