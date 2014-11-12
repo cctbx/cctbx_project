@@ -27,6 +27,7 @@ class installer (object) :
   build_dials_dependencies = False
 
   def __init__ (self, args=None, packages=None, log=sys.stdout) :
+    assert (sys.platform in ["linux2", "linux3", "darwin"])
     check_python_version()
     self.log = log
     print >> log, """

@@ -66,6 +66,8 @@ def run (args) :
   if (sys.platform == "darwin") :
     parser.add_option("--no-pkg", dest="no_pkg", action="store_true",
       help="Disable Mac graphical (.pkg) installer")
+    parser.add_option("--make-app", dest="make_apps", action="append",
+      help="App bundle to create")
   # TODO installer background?
   options, args = parser.parse_args(args)
   if (len(args) == 0) :
@@ -179,6 +181,25 @@ def run (args) :
         pkg_prefix = app_root_dir + "/Contents"
         os.makedirs(pkg_prefix)
       call("./install --prefix=%s --compact --no-app" % pkg_prefix)
+      install_dir = "%s/%s-%s" % (pkg_prefix,params.pkg_prefix,options.version)
+      # generate .app launchers
+      if (options.make_apps) :
+        exe_path = "%s/build/bin/libtbx.create_mac_app" % install_dir
+        apps_log = open("py2app.log", "w")
+        for app_name in options.make_apps :
+          app_args = [
+            exe_path,
+            "--app_name=%s-%s" % (params.package_name, options.version),
+            "--python_interpreter=/usr/bin/python",
+            "--dest=%s" % app_root_dir,
+          ]
+          call(" ".join(app_args), log=apps_log)
+      # Copy env.* files to top-level directory
+      if params.hide_mac_package_contents :
+        for file_name in os.listdir(install_dir) :
+          if file_name.endswith("_env.csh") or file_name.endswith("_env.sh") :
+            copy_file(op.join(install_dir, file_name),
+                      op.join(app_root_dir, file_name))
       create_mac_pkg.run(args=[
         "--package_name=%s" % params.package_name,
         "--version=%s" % options.version,
