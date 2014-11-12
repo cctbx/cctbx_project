@@ -1135,9 +1135,11 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
   sel_b = []
   # check if any of the residues has alternate locations
   a_altloc = bool(chains_info[a_id].no_altloc)
-  if a_altloc: a_altloc = chains_info[a_id].no_altloc.count(False) > 0
+  if a_altloc:
+    a_altloc = chains_info[a_id].no_altloc.count(False) > 0
   b_altloc = bool(chains_info[b_id].no_altloc)
-  if b_altloc: b_altloc = chains_info[a_id].no_altloc.count(False) > 0
+  if b_altloc:
+    b_altloc = chains_info[a_id].no_altloc.count(False) > 0
   test_altloc = a_altloc or b_altloc
   #
   res_num_a_updated = []
@@ -1168,7 +1170,7 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
       sb = flex.size_t(atoms_b) + sb[0]
     if dif_res_size or altloc:
       residues_with_different_n_atoms.append(resid_a)
-      if (not allow_different_size_res):
+      if (not allow_different_size_res) or altloc:
         sa = flex.size_t([])
         sb = flex.size_t([])
     # keep only residues with continuous matching atoms
