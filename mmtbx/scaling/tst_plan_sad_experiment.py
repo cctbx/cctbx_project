@@ -15,8 +15,10 @@ def exercise () :
     "sites=12",
   ]
   result = plan_sad_experiment.run(args=args, out=null_out()).show(null_out())
-  assert approx_equal(result.representative_values,
-    [2.2, 12, 15965.98877863636, 3.8438000679016113, 97.77777777777779, 0.009, 0.5093502782825977, 0.9984109196893715, 0.6167901411727099, 0.7739869498264973, 31.302603127909315, 96.42159916150003])
+  assert approx_equal(result.representative_values[:-1],
+    [2.2, 12, 15965.989, 3.844, 97.778, 0.009, 0.509, 0.998, 0.617,
+     0.774, 31.303,], eps=0.01)
+  assert (95 < result.representative_values[-1] < 97)
   # Insulin S-SAD
   open("tst_plan_sad_experiment.fa", "w").write("""
 >1ZNI:A|PDBID|CHAIN|SEQUENCE
@@ -36,8 +38,10 @@ FVNQHLCGSHLVEALYLVCGERGFFYTPKA
   ]
   result = plan_sad_experiment.run(args=args, out=null_out())
   assert (not result.missed_target_resolutions)
-  assert approx_equal(result.representative_values,
- [1.2, 12, 33450.22482353751, 0.5562999844551086, 97.77777777777779, 0.009, 0.39348033018413137, 0.9226465286316055, 0.590519982631617, 0.7458895500696925, 36.939372641397206, 97.326278659612])
+  assert approx_equal(result.representative_values[:-1],
+    [1.2, 12, 33450.225, 0.556, 97.778, 0.009, 0.393, 0.923, 0.591, 0.746,
+     36.939,], eps=0.01)
+  assert (96 < result.representative_values[-1] < 98)
   # now with worse resolution
   args = [
     "seq_file=tst_plan_sad_experiment.fa",
