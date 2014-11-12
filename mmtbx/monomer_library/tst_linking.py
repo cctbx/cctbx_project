@@ -915,7 +915,7 @@ HETATM   32  O   ALA A   3      -1.633  -0.418  -4.488  1.00 20.00      A    O
 HETATM   33  OXT ALA A   3      -0.293   1.123  -3.725  1.00 20.00      A    O-1
 """,
   "linking_test_3g2j-LLP.pdb" : """
-ATOM   5294  N   MET A 680      23.170  19.173  20.583  1.00 27.07           N
+ATOM   5294  N   MET A 679      23.170  19.173  20.583  1.00 27.07           N
 ATOM   5295  CA  MET A 679      22.542  17.860  20.608  1.00 27.59           C
 ATOM   5296  C   MET A 679      21.147  17.931  21.225  1.00 27.78           C
 ATOM   5297  O   MET A 679      20.213  17.315  20.716  1.00 28.06           O
@@ -1866,7 +1866,7 @@ links = {
   'linking_test_LYS-ABA-GLU.pdb' : [23,23],
   "linking_test_ALA-ALA-ALA.pdb" : [32,32],
   "linking_test_MAN-SER.pdb" : [17, 17],
-  "linking_test_3g2j-LLP.pdb" : [43, 43],
+  "linking_test_3g2j-LLP.pdb" : [44, 44],
   "linking_test_ASN_A-NAG_B.pdb" : [21, 22],
   "linking_test_nstd_rna_dna_h_bond.pdb" : [0,0],
   "linking_test_nstd_rna_dna.pdb" : [0,1],

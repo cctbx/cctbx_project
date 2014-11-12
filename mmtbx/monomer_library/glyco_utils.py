@@ -85,6 +85,7 @@ class glyco_link_class:
                link_oxygen=None,
                link_carbon=None,
                anomeric_hydrogen=None,
+               link_phi_carbon=None,
                ):
     self.anomeric_carbon=anomeric_carbon
     self.ring_oxygen=ring_oxygen
@@ -93,6 +94,7 @@ class glyco_link_class:
     self.link_carbon=link_carbon
     self.anomeric_hydrogen=anomeric_hydrogen
     self.anomeric_carbon_linking=None
+    self.link_phi_carbon=link_phi_carbon
 
   def __repr__(self):
     outl = "\nGlycosidic atoms\n"
@@ -264,7 +266,9 @@ def get_anomeric_carbon(atom_group1, atom_group2, bonds, verbose=False):
       if residues[0].id_str() != residues[1].id_str():
         return atom, True
       else:
-        return atom, False
+        # Eli changed this but not sure why
+        continue
+        #return atom, False
 ##         raise Sorry("""
 ##         Trying to find the anomeric carbon but found a carbon
 ##         linked to two oxygens.
@@ -284,7 +288,8 @@ def get_C1_carbon(atom_group1, atom_group2):
   for i, atom in enumerate(generate_atoms_from_atom_groups(atom_group1,
                                                            atom_group2)
                                                            ):
-    if atom.name.strip()=="C1": c1s.append(atom)
+    if atom.name.strip()[:2] =="C1": c1s.append(atom)
+    #Fix for atoms with A or B at end of name
   if not c1s:
     assert 0
     return None
@@ -364,13 +369,13 @@ def get_link_oxygen_on_distance(anomeric_carbon, atom_group1, atom_group2):
   if link_group is None:
     for atom in atom_group1.atoms():
       if atom.quote()==anomeric_carbon.quote():
-        link_group = atom_group1
+        link_group = atom_group2
         break
   if link_group is None: assert 0
   for atom in link_group.atoms():
     if atom.element.strip()!="O": continue
     d2 = get_distance2(atom, anomeric_carbon)
-    if d2<4.:
+    if d2<5.:
       return atom
   return None
 
@@ -381,8 +386,37 @@ def get_link_carbon(anomeric_carbon, link_oxygen, bonds):
     if ba.parent().id_str() != anomeric_carbon.parent().id_str():
       return ba
 
+def get_link_carbon_on_distance(anomeric_carbon, atom_group1, atom_group2):
+  link_group = None
+  for atom in atom_group2.atoms():
+    if atom.quote()==anomeric_carbon.quote():
+      link_group = atom_group1
+      break
+  if link_group is None:
+    for atom in atom_group1.atoms():
+      if atom.quote()==anomeric_carbon.quote():
+        link_group = atom_group2
+        break
+  if link_group is None: assert 0
+  for atom in link_group.atoms():
+    if atom.element.strip()!="O": continue
+    d2 = get_distance2(atom, anomeric_carbon)
+    if d2<5.:
+      return atom
+  return None
+
+def get_link_phi_carbon(link_carbon, bonds):
+  phi_carbon = None
+  if not link_carbon: return None
+  for ba in bonds.get(link_carbon.i_seq, []):
+    if ba.element.strip() not in ["C"]: continue
+    if ba.i_seq==link_carbon.i_seq: continue
+    phi_carbon = ba
+  return phi_carbon
+
 def get_glyco_link_atoms(atom_group1,
                          atom_group2,
+                         link_carbon_dist=False,
                          verbose=False,
                          ):
   # maybe should be restraints based?
@@ -417,15 +451,26 @@ def get_glyco_link_atoms(atom_group1,
     return None
   if verbose: print 'link_oxygen',link_oxygen.quote()
   link_carbon = get_link_carbon(anomeric_carbon, link_oxygen, bonds)
+  if link_carbon is None and link_carbon_dist:
+    link_carbon = get_link_carbon_on_distance(anomeric_carbon,
+                                                      atom_group1,
+                                                      atom_group2)
   if verbose:
     try: print 'link_carbon',link_carbon.quote()
     except Exception: print
+
+  link_phi_carbon = get_link_phi_carbon(link_carbon, bonds)
+  if verbose:
+    try: print 'link_phi_carbon',link_phi_carbon.quote(), link_phi_carbon.name, ba.element.strip()
+    except Exception: print
+
   gla = glyco_link_class(anomeric_carbon,
                          ring_oxygen,
                          ring_carbon,
                          link_oxygen,
                          link_carbon,
                          anomeric_hydrogen,
+                         link_phi_carbon,
                          )
   gla.anomeric_carbon_linking = linking_carbon
   return gla
