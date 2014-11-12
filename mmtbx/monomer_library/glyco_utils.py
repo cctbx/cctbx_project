@@ -148,21 +148,15 @@ class glyco_link_class:
       if atom is None: continue
       names.append(atom.name)
       resnames.append(atom.parent().resname)
-    print names
-    print resnames
     return "%s_%s" % (resnames[0], resnames[3])
     #if names == [' C1 ', ' O5 ', ' C2 ', ' O4 ', ' C4 ']: return ""
 
   def as_cif(self):
     import iotbx.cif
-    print self
     isomer = self.get_isomer()
-    print isomer
     code = self.get_code()
-    print code
     code = "%s-%s" % (isomer, code)
     code = isomer
-    print code
     cif_block = iotbx.cif.model.block()
     loop = iotbx.cif.model.loop(header=(
       "_chem_link_bond.link_id",

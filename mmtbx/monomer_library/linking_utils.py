@@ -90,8 +90,10 @@ def is_glyco_bond(atom1, atom2, verbose=False):
     print get_type(atom2.parent().resname).upper()
   if get_type(atom1.parent().resname) is None: return False
   if get_type(atom2.parent().resname) is None: return False
-  if not get_type(atom1.parent().resname).upper() in sugar_types: return False
-  if not get_type(atom2.parent().resname).upper() in sugar_types: return False
+  if not get_type(atom1.parent().resname).upper() in sugar_types:
+    return False
+  if not get_type(atom2.parent().resname).upper() in sugar_types:
+    return False
   #
   #if atom2.parent().resname in not_correct_sugars: return False
   return True
@@ -106,7 +108,8 @@ def is_glyco_amino_bond(atom1, atom2, verbose=False):
     print sugar_types
     print get_type(atom1.parent().resname).upper()
     print get_type(atom2.parent().resname).upper()
-  if get_type(atom1.parent().resname) is None: return False
+  if get_type(atom1.parent().resname) is None:
+    return False
   if get_type(atom2.parent().resname) is None: return False
   sugars = 0
   aminos = 0
@@ -207,10 +210,12 @@ def get_classes(atom, important_only=False, verbose=False):
     "common_element",
     "common_small_molecule",
     "common_amino_acid",
+    "uncommon_amino_acid",
     "common_rna_dna",
     "other",
     "unknown",
     ]
+#  elif get_type(atom1.parent().resname).upper() in amino_types:
   atom_group = atom.parent()
   classes = empty()
   for attr in attrs:
@@ -227,9 +232,11 @@ def get_classes(atom, important_only=False, verbose=False):
     if i:
       rc = gc
     else:
-      if(get_type(atom_group.resname) is not None and
-         get_type(atom_group.resname).upper() in sugar_types):
-        rc = attr
+      if get_type(atom_group.resname) is not None:
+        if get_type(atom_group.resname).upper() in sugar_types:
+          rc = attr
+        elif get_type(atom_group.resname).upper() in amino_types:
+          rc = attr
     if rc==attr:
       if important_only: return _filter_for_metal(atom, rc)
       setattr(classes, attr, True)
@@ -470,6 +477,7 @@ def is_atom_pair_linked(atom1,
     if verbose: print 'limit < d2',limit,d2
     return False
   if use_only_bond_cutoff:
+    if verbose: print 'use_only_bond_cutoff',use_only_bond_cutoff
     return True
   #
   if "common_rna_dna" in lookup and "common_amino_acid" in lookup:
@@ -492,7 +500,6 @@ def is_atom_pair_linked(atom1,
     if link_class is not None:
       #print "DO LINKING, class = ", link_class, atom1.id_str(), atom2.id_str()
       return True
-
   #
   # sulfur bridge
   #
@@ -502,11 +509,13 @@ def is_atom_pair_linked(atom1,
   #
   # saccharides
   #
+  if verbose: print 'checking common_saccharide',lookup
   if "common_saccharide" in lookup:
     limit = saccharide_bond_cutoff*saccharide_bond_cutoff
     if "metal" in lookup:
       limit = metal_coordination_cutoff*metal_coordination_cutoff
-    if d2>limit: return False
+    if d2>limit:
+      return False
     return True
   #
   # metals
@@ -707,14 +716,14 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
                                                 intra_residue_bond_cutoff=1.99,
                                                 verbose=False,
                                                 ):
-  if is_glyco_bond(atom1, atom2):
+  if is_glyco_bond(atom1, atom2, verbose=verbose):
     # glyco bonds need to be in certain order
     if atom1.name.find("C")>-1:
       tmp_atom = atom1
       atom1 = atom2
       atom2 = tmp_atom
 
-  elif is_glyco_amino_bond(atom1, atom2):
+  elif is_glyco_amino_bond(atom1, atom2, verbose=verbose):
     # needs to be better using get_class???
     if atom2.name.find("C")>-1:
       tmp_atom = atom1
@@ -747,7 +756,7 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
     if tmp_key in standard_o_links:
       data_links = ""
     key = tmp_key
-  elif is_glyco_bond(atom1, atom2):
+  elif is_glyco_bond(atom1, atom2, verbose=verbose):
     data_links = ""
     c_atom = None
     o_atom = None

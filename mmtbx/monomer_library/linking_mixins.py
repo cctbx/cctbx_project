@@ -212,12 +212,15 @@ def _apply_link_using_proxies(link,
 
 def possible_cyclic_peptide(atom1,
                             atom2,
+                            verbose=False,
                             ):
-  if 0:
+  if verbose:
     print atom1.quote(),atom2.quote()
   chain1 = atom1.parent().parent().parent()
   chain2 = atom1.parent().parent().parent()
-  if not chain1.id == chain2.id: return False
+  if not chain1.id == chain2.id:
+    if verbose: print 'chain id differs', chain1.id, chain2.id
+    return False
   fl = {}
   rgs = chain1.residue_groups()
   for i in range(0,-2,-1):
@@ -694,8 +697,12 @@ Residue classes
         continue
       # check some valences...
       if not (classes1.common_element or classes2.common_element):
-        if not linking_utils.check_valence(self.pdb_hierarchy, atom1): continue
-        if not linking_utils.check_valence(self.pdb_hierarchy, atom2): continue
+        if not linking_utils.check_valence(self.pdb_hierarchy, atom1):
+          print >> log, "  Atom %s rejected from bonding due to valence issues." % atom1.quote()
+          continue
+        if not linking_utils.check_valence(self.pdb_hierarchy, atom2):
+          print >> log, "  Atom %s rejected from bonding due to valence issues." % atom2.quote()
+          continue
       # got a link....
       if classes1.common_rna_dna and classes2.common_rna_dna:
         hbonds_in_bond_list.append(tuple(sorted([atom1.i_seq, atom2.i_seq])))
