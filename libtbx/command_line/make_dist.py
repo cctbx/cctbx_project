@@ -192,6 +192,7 @@ def run (args) :
       if (options.destination is not None) :
         call("rsync -avz %s %s" % (installer_pkg, options.destination))
   # rsync and cleanup
+  os.chdir(options.tmp_dir)
   remove_installer = False
   if (options.destination is not None) :
     call("rsync -avz %s %s" % (installer_tar, options.destination))
