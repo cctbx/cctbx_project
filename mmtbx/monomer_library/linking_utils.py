@@ -210,9 +210,9 @@ def get_classes(atom, important_only=False, verbose=False):
     "common_element",
     "common_small_molecule",
     "common_amino_acid",
-    "uncommon_amino_acid",
     "common_rna_dna",
     "other",
+    "uncommon_amino_acid",
     "unknown",
     ]
 #  elif get_type(atom1.parent().resname).upper() in amino_types:
@@ -235,8 +235,8 @@ def get_classes(atom, important_only=False, verbose=False):
       if get_type(atom_group.resname) is not None:
         if get_type(atom_group.resname).upper() in sugar_types:
           rc = attr
-        elif get_type(atom_group.resname).upper() in amino_types:
-          rc = attr
+        #elif get_type(atom_group.resname).upper() in amino_types:
+        #  rc = attr
     if rc==attr:
       if important_only: return _filter_for_metal(atom, rc)
       setattr(classes, attr, True)
@@ -503,6 +503,9 @@ def is_atom_pair_linked(atom1,
   #
   # sulfur bridge
   #
+  if verbose:
+    print atom1.quote(),linking_setup.sulfur_class(atom1, class1)
+    print atom2.quote(),linking_setup.sulfur_class(atom2, class2)
   if ( linking_setup.sulfur_class(atom1, class1)=="sulfur" and
        linking_setup.sulfur_class(atom2, class2)=="sulfur" ) :
     return True
