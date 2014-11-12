@@ -1135,7 +1135,9 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
   sel_b = []
   # check if any of the residues has alternate locations
   a_altloc = bool(chains_info[a_id].no_altloc)
+  if a_altloc: a_altloc = chains_info[a_id].no_altloc.count(False) > 0
   b_altloc = bool(chains_info[b_id].no_altloc)
+  if b_altloc: b_altloc = chains_info[a_id].no_altloc.count(False) > 0
   test_altloc = a_altloc or b_altloc
   #
   res_num_a_updated = []
@@ -1164,9 +1166,9 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
       # get the number of the atom in the chain
       sa = flex.size_t(atoms_a) + sa[0]
       sb = flex.size_t(atoms_b) + sb[0]
-    if dif_res_size:
+    if dif_res_size or altloc:
       residues_with_different_n_atoms.append(resid_a)
-      if (not allow_different_size_res) or altloc:
+      if (not allow_different_size_res):
         sa = flex.size_t([])
         sb = flex.size_t([])
     # keep only residues with continuous matching atoms
@@ -1229,10 +1231,9 @@ def get_chains_info(ph,selection_list=None,exclude_water=True):
       atom_selection = chains_info[ch.id].atom_selection
       no_altloc = chains_info[ch.id].no_altloc
       # check for alternative conformers (also when chains are split)
-      t1 = hasattr(ch,'conformers')
-      t2 = bool(no_altloc)
+      has_altloc = hasattr(ch,'conformers')
       #
-      if t2 or (t1 and (len(ch.conformers()) > 1)):
+      if has_altloc and (len(ch.conformers()) > 1):
         # process cases with alternative locations
         conf = ch.conformers()[0]
         for res in conf.residues():
@@ -1253,6 +1254,8 @@ def get_chains_info(ph,selection_list=None,exclude_water=True):
             res_names.append(x)
             atom_names.append(list(atoms.atoms().extract_name()))
             atom_selection.append(list(atoms.atoms().extract_i_seq()))
+            if has_altloc:
+              no_altloc.append(True)
       #
       chains_info[ch.id].resid = resids
       chains_info[ch.id].res_names = res_names
