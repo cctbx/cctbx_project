@@ -16,7 +16,7 @@ BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
 
 # from CCI
-PYTHON_PKG = "Python-2.7.6_cci.tar.gz"
+PYTHON_PKG = "Python-2.7.8_cci.tar.gz"
 NUMPY_PKG = "numpy-1.8.1.tar.gz"         # used many places
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
 REPORTLAB_PKG = "reportlab-2.6.tar.gz"   # for labelit
@@ -36,6 +36,7 @@ H5PY_PKG = "h5py-2.0.1-edit.tar.gz"  # dxtbx
 LIBPNG_PKG = "libpng-1.2.32.tar.gz"
 FREETYPE_PKG = "freetype-2.4.2.tar.gz"
 # Linux-only
+# FIXME some of these are getting pretty ancient, time to update?
 GETTEXT_PKG = "gettext-0.18.2.tar.gz"
 GLIB_PKG = "glib-2.12.11.tar.gz"
 EXPAT_PKG = "expat-1.95.8.tar.gz"
@@ -53,6 +54,7 @@ GTK_ENGINE_PKG = "clearlooks-0.5.tar.gz"
 GTK_THEME_PKG = "gtk_themes.tar.gz"
 # end Linux-only
 FONT_PKG = "fonts.tar.gz"
+# FIXME at some point we should switch to using 3.x for all platforms
 WXPYTHON_DEV_PKG = "wxPython-src-3.0.1.0.tar.gz"  # Mac 64-bit
 WXPYTHON_PKG = "wxPython-src-2.8.12.1.tar.gz"         # Linux, Mac 32-bit
 MATPLOTLIB_PKG = "matplotlib-1.3.1.tar.gz"
