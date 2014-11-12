@@ -11,6 +11,8 @@ from cctbx.array_family import flex
 import cPickle
 from prime.api import InputFrame
 
+logger = logging.getLogger('sf')
+
 class SingleFrame(InputFrame):
   """ Class that creates single-image agregate metrics/scoring that can then be
   used in downstream clustering or filtering procedures.
@@ -65,12 +67,12 @@ class SingleFrame(InputFrame):
         d = easy_pickle.load(path)
       except (cPickle.UnpicklingError, ValueError, EOFError, IOError):
         d = {}
-        logging.warning("Could not read %s. It may not be a pickle file." % path)
+        logger.warning("Could not read %s. It may not be a pickle file." % path)
     try:
       if pixel_size:
         self.pixel_size = pixel_size
       else:
-        logging.debug("No pixel size specified, defaulting to MAR (0.079346). "
+        logger.debug("No pixel size specified, defaulting to MAR (0.079346). "
                         "Bad times if this is not the correct detector!")
         self.pixel_size = 0.079346
       # Warn on error, but continue directory traversal.
@@ -115,11 +117,11 @@ class SingleFrame(InputFrame):
       if not scale:
         self.minus_2B = 0
         self.G = 1
-      if logging.Logger.root.level < logging.DEBUG:  # Extreme debug!
+      if logger.root.level < logging.DEBUG:  # Extreme debug!
         self.plot_wilson()
-      logging.debug("Extracted image {}".format(filename))
+      logger.debug("Extracted image {}".format(filename))
     except KeyError:
-      logging.warning("Could not extract point group and unit cell from %s" % path)
+      logger.warning("Could not extract point group and unit cell from %s" % path)
 
     self.miller_fullies = None
 
@@ -185,7 +187,7 @@ class SingleFrame(InputFrame):
       minus_2B, G, r_val, std_err = 0, np.mean(inten), 0, sem(inten)
 
     # ignore p_val since this will be insanely small
-    logging.debug("G: {}, -2B: {}, r: {}, std_err: {}".
+    logger.debug("G: {}, -2B: {}, r: {}, std_err: {}".
       format(G, minus_2B, r_val, std_err))
     return minus_2B, G, np.log(inten), sinsqtheta_over_labmdasq, {"R": r_val,
                                                    "Standard Error": std_err}
@@ -232,7 +234,7 @@ class SingleFrame(InputFrame):
     """ idiomatic CCTBX method removed because I want more fine-grained detail
      _d_star_p = 1.618034  # Golden ratio distribution for d-spacings
      binner = self.miller_array.setup_binner(n_bins=nbins)
-     #logging.debug(str("{}".format(binner.show_summary())))
+     #logger.debug(str("{}".format(binner.show_summary())))
      bin_selections = [binner.selection(i) for i in binner.range_used()]
      means = [self.miller_array.select(sel).mean() for sel in bin_selections]
      log_means = [math.log(mil) if mil > 0 else 0 for mil in means]
