@@ -3905,18 +3905,19 @@ pdb_interpretation {
     r2 = a2.parent()
     r1n = r1.resname.strip()
     r2n = r2.resname.strip()
+    # Translate DNA resname to RNA for unification
+    if len(r1n) > 1:
+      r1n = r1.resname.strip()[-1]
+    if len(r2n) > 1:
+      r2n = r2.resname.strip()[-1]
     # RNA
     if r1n > r2n:
       t = r1
       r1 = r2
       r2 = t
-      r1n = r1.resname.strip()
-      r2n = r2.resname.strip()
-    if len(r1n) > 1:
-      # Translate DNA resname to RNA for unification
-      # DNA
-      r1n = r1.resname.strip()[-1]
-      r2n = r2.resname.strip()[-1]
+      t = r1n
+      r1n = r2n
+      r2n = t
     r1n = 'U' if r1n == "T" else r1n
     r2n = 'U' if r2n == "T" else r2n
     from mmtbx.monomer_library import bondlength_defaults
@@ -4832,7 +4833,6 @@ pdb_interpretation {
     al_params = self.params.automatic_linking
     na_params = self.params.nucleic_acid_restraints
     #========== Add user-defined parallelity restraints ==============
-    user_parallelity_proxies = []
     selection_cache = self.pdb_hierarchy.atom_selection_cache()
     for sp in na_params.stacking_pair:
       if sp.base1 is not None and sp.base2 is not None:
@@ -4843,12 +4843,12 @@ pdb_interpretation {
         seqs = self.get_i_seqs_from_na_planes(r1, r2)
         weight = 1/(na_params.stacking.sigma**2)
         for i_seqs, j_seqs in seqs:
-          proxy=geometry_restraints.parallelity_proxy(
-            i_seqs=flex.size_t(i_seqs),
-            j_seqs=flex.size_t(j_seqs),
-            weight=weight)
-          user_parallelity_proxies.append(proxy)
-          self.geometry_proxy_registries.parallelity.add_if_not_duplicated(proxy=proxy)
+          if len(i_seqs) > 2 and len(j_seqs) > 2:
+            proxy=geometry_restraints.parallelity_proxy(
+              i_seqs=flex.size_t(i_seqs),
+              j_seqs=flex.size_t(j_seqs),
+              weight=weight)
+            self.geometry_proxy_registries.parallelity.add_if_not_duplicated(proxy=proxy)
     #========== End user-defined parallelity restraints ==============
     hbonds_in_bond_list = []
     any_links = False
