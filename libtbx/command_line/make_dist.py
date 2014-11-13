@@ -165,7 +165,7 @@ def run (args) :
   os.chdir(options.tmp_dir)
   call("tar czf %s %s" % (installer_tar, installer_dir))
   print "Wrote %s" % installer_tar
-  # 
+  #
   # Mac .pkg creation
   if (sys.platform == "darwin") and (not getattr(options, "no_pkg", False)) :
     if (not os.access("/Applications", os.W_OK|os.X_OK)) :
@@ -225,7 +225,7 @@ def run (args) :
   if (not options.debug) :
     shutil.rmtree(installer_dir)
     if remove_installer :
-      shutil.rmtree(installer_tar)
+      os.remove(installer_tar)
   return 0
 
 if (__name__ == "__main__") :
