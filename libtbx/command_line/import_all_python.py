@@ -22,7 +22,8 @@ ignore_modules = set([
   # non-CCTBX modules
   "PyQuante.ThomasFermi",       # uses reserved keyword 'with'
   "elbow.example_script",
-  "phenix_regression.wizards",
+  "phenix_regression",
+  "phenix_dev",
   "phenix.autosol.bayes_5",     # too much executed code
 ])
 

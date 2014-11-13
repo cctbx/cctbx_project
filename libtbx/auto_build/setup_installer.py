@@ -87,6 +87,7 @@ def run (args) :
   if options.bin_dir :
     assert op.isdir(options.bin_dir)
     for file_name in os.listdir(options.bin_dir) :
+      if (file_name == ".svn") : continue
       full_path = op.join(options.bin_dir, file_name)
       copy_file(full_path, op.join("bin", file_name))
   # copy over libtbx
