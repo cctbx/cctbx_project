@@ -557,6 +557,7 @@ class installer (object) :
       "\"%s/bin/python\"" % self.base_dir,
       "\"%s/cctbx_project/libtbx/configure.py\"" % self.modules_dir,
       "--current_working_directory=%s" % self.build_dir,
+      "--command_version_suffix=%s" % self.version,
     ] + self.configure_modules
     try :
       call(args=" ".join(args), log=log)

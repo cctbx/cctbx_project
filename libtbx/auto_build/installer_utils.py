@@ -114,26 +114,29 @@ def copy_file (src_path, dest_path, executable=None) :
 # this is not a general solution, but it is good enough for the installer
 # process (at least on Unix).
 def copy_tree (src_path, dest_path, verbose=False, log=sys.stdout) :
-  assert os.path.isdir(src_path), src_path
-  assert not os.path.exists(dest_path), dest_path
-  if (verbose) :
-    print >> log, "creating %s" % dest_path
-  os.makedirs(dest_path)
-  for path_name in os.listdir(src_path) :
-    node_src_path = os.path.join(src_path, path_name)
-    node_dest_path = os.path.join(dest_path, path_name)
-    if os.path.islink(node_src_path) :
-      target_path = os.readlink(node_src_path)
-      os.symlink(target_path, node_dest_path)
-    elif os.path.isfile(node_src_path) :
-      if (verbose) :
-        print >> log, "  copy %s -> %s" % (node_src_path, node_dest_path)
-      copy_file(node_src_path, node_dest_path)
-    elif os.path.isdir(node_src_path) :
-      copy_tree(node_src_path, node_dest_path)
-    else :
-      if (verbose) :
-        print >> log, "  skipping %s" % node_src_path
+  if (sys.version_info > (2,7,4)) :
+    shutil.copytree(src_path, dest_path, symlinks=True)
+  else :
+    assert os.path.isdir(src_path), src_path
+    assert not os.path.exists(dest_path), dest_path
+    if (verbose) :
+      print >> log, "creating %s" % dest_path
+    os.makedirs(dest_path)
+    for path_name in os.listdir(src_path) :
+      node_src_path = os.path.join(src_path, path_name)
+      node_dest_path = os.path.join(dest_path, path_name)
+      if os.path.islink(node_src_path) :
+        target_path = os.readlink(node_src_path)
+        os.symlink(target_path, node_dest_path)
+      elif os.path.isfile(node_src_path) :
+        if (verbose) :
+          print >> log, "  copy %s -> %s" % (node_src_path, node_dest_path)
+        copy_file(node_src_path, node_dest_path)
+      elif os.path.isdir(node_src_path) :
+        copy_tree(node_src_path, node_dest_path)
+      else :
+        if (verbose) :
+          print >> log, "  skipping %s" % node_src_path
 
 def get_os_version () :
   uname = os.uname()
