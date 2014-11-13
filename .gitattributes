@@ -3344,6 +3344,7 @@ xfel/cxi/postrefine/test_rs.py -text
 xfel/cxi/strong_zulu.py -text
 xfel/cxi/util.py -text
 xfel/libtbx_config -text
+xfel/libtbx_refresh.py -text
 xfel/metrology/__init__.py -text
 xfel/metrology/legacy_scale/__init__.py -text
 xfel/metrology/legacy_scale/a_g_conversion.h -text
