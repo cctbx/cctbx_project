@@ -100,6 +100,13 @@ def run (args) :
     output_junit_xml=params.output_junit_xml)
   log.close()
   print """\nSee run_tests_parallel_zlog for full output.\n"""
+  if (result.failure > 0) :
+    print ""
+    print "*" * 80
+    print "ERROR: %d TEST FAILURES.  PLEASE FIX BEFORE COMMITTING CODE." % \
+      result.failure
+    print "*" * 80
+    print ""
   return result.failure
 
 if (__name__ == "__main__") :
