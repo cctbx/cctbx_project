@@ -101,7 +101,7 @@ def run (args, out=sys.stdout) :
     if op.isdir(full_path) :
       print >> out, "  copying %s..." % file_name
       copy_tree(full_path, op.join(tmp_dir, file_name))
-      call("chmod 755 %s" % op.join(tmp_dir, file_name))
+      call("chmod -R a+rX %s" % op.join(tmp_dir, file_name))
   # remove unnecessary base directories/files
   for dir_name in [
       "base/bin/gtk-demo",
@@ -146,6 +146,8 @@ def run (args, out=sys.stdout) :
     find_and_delete_files(tmp_dir, file_ext=".h")
   # TODO strip objects?
   os.chdir(tmp_dir)
+  call("chmod -R a+rX %s" % op.join(tmp_dir, "base"))
+  call("chmod -R a+rX %s" % op.join(tmp_dir, "build"))
   # create base bundle
   base_tarfile = "../base-%(version)s-%(mtype)s.tar.gz" % \
     {"version":options.version, "mtype":options.mtype}

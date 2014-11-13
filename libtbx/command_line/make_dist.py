@@ -203,7 +203,7 @@ def run (args) :
                       op.join(app_root_dir, file_name))
         docs_dir = op.join(install_dir, "doc")
         if op.isdir(docs_dir) :
-          shutil.copytree(docs_dir, app_root_dir)
+          shutil.copytree(docs_dir, op.join(app_root_dir, "doc"))
       create_mac_pkg.run(args=[
         "--package_name=%s" % params.package_name,
         "--version=%s" % options.version,
