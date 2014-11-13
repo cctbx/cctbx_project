@@ -201,6 +201,9 @@ def run (args) :
           if file_name.endswith("_env.csh") or file_name.endswith("_env.sh") :
             copy_file(op.join(install_dir, file_name),
                       op.join(app_root_dir, file_name))
+        docs_dir = op.join(install_dir, "doc")
+        if op.isdir(docs_dir) :
+          shutil.copytree(docs_dir, app_root_dir)
       create_mac_pkg.run(args=[
         "--package_name=%s" % params.package_name,
         "--version=%s" % options.version,
