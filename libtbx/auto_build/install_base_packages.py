@@ -150,6 +150,7 @@ class installer (object) :
     if args:
       args = args[1:]
     packages = set(args or packages)
+    self.check_dependencies(packages=packages)
     self.build_dependencies(packages=packages)
     # On Mac OS X all of the Python-related executables located in base/bin
     # are actually symlinks to absolute paths inside the Python.framework, so
@@ -157,6 +158,23 @@ class installer (object) :
     if (sys.platform == "darwin") :
       print >> log, "Regenerating symlinks with relative paths..."
       regenerate_relative_symlinks(op.join(self.base_dir, "bin"), log=log)
+
+  def check_dependencies(self, packages=None):
+    packages = packages or []
+    if 'scipy' in packages:
+      compilers = ['gfortran', 'g77', 'g95', 'f77', 'f95']
+      found = []
+      for compiler in compilers:
+        try:
+          check_output(compiler)
+          found.append(compiler)
+        except:
+          pass
+      if not found:
+        raise Exception("No Fortran compiler found for Scipy. Requires one of: %s"%(", ".join(compilers)))
+    if 'gui' in packages:
+      # TODO: Check for X11 headers.
+      pass
 
   def build_dependencies(self, packages=None):
     packages = packages or []
