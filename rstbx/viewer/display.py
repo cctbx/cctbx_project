@@ -182,8 +182,13 @@ class XrayView (wx.Panel) :
       if (x < 0) or (x > img_w) or (y < 0) or (y > img_h) :
         self.GetParent().update_statusbar()
       else :
-        info = self._img.get_point_info(x, y)
-        self.GetParent().update_statusbar(info)
+        try :
+          info = self._img.get_point_info(x, y)
+        except IndexError, e :
+          # FIXME this really shouldn't happen
+          print e
+        else :
+          self.GetParent().update_statusbar(info)
 
   def OnMiddleDown (self, event) :
     self.was_dragged = False
