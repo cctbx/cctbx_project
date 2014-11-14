@@ -88,7 +88,7 @@ def find_ncs_in_hierarchy(ph,
                           use_minimal_master_ncs=True,
                           max_rmsd=5.0,
                           write=False,
-                          log=sys.stdout,
+                          log=None,
                           check_atom_order=False,
                           allow_different_size_res=True,
                           exclude_misaligned_residues=False,
@@ -124,6 +124,7 @@ def find_ncs_in_hierarchy(ph,
       keys: tuple of master chain IDs
       values: NCS_groups_container objects
   """
+  if not log: log = sys.stdout
   chains_info = get_chains_info(ph)
   # Get the list of matching chains
   chain_match_list = search_ncs_relations(
@@ -890,7 +891,7 @@ def search_ncs_relations(ph=None,
                          min_contig_length=10,
                          min_percent=0.95,
                          write=False,
-                         log=sys.stdout,
+                         log=None,
                          check_atom_order=False,
                          allow_different_size_res=True,
                          use_minimal_master_ncs=True):
@@ -930,6 +931,7 @@ def search_ncs_relations(ph=None,
       similarity (float): similarity between chains
     We use sel_2 to avoid problems when residues have different number of atoms
   """
+  if not log: log = sys.stdout
   if not chains_info:
     assert bool(ph)
     chains_info = get_chains_info(ph)

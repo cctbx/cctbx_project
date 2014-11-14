@@ -21,7 +21,7 @@ def input(pdb_hierarchy_inp=None,
           use_minimal_master_ncs=True,
           max_rmsd=0.02,
           write_messages=False,
-          log=sys.stdout,
+          log=None,
           process_similar_chains=True,
           min_percent=0.85,
           chain_similarity_limit=0.95,
@@ -86,6 +86,7 @@ def input(pdb_hierarchy_inp=None,
       max_dist_diff (float): max allow distance difference between pairs of matching
         atoms of two residues
     """
+    if not log: log = sys.stdout
     ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
     ncs_group_obj.preprocess_ncs_obj(
       pdb_hierarchy_inp=pdb_hierarchy_inp,
