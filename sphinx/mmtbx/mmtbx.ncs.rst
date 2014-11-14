@@ -28,6 +28,14 @@ mmtbx.ncs.restraints module
     :undoc-members:
     :show-inheritance:
 
+mmtbx.ncs.ncs_search module
+---------------------------
+
+.. automodule:: mmtbx.ncs.ncs_search
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Module contents
 ---------------
 
@@ -36,10 +44,3 @@ Module contents
     :undoc-members:
     :show-inheritance:
 
-mmtbx.ncs.ncs_search module
----------------------------
-
-.. automodule:: mmtbx.ncs.ncs_search
-    :members:
-    :undoc-members:
-    :show-inheritance:
