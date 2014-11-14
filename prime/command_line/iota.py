@@ -72,9 +72,9 @@ if __name__ == "__main__":
       gs_logger.info('Found image files in the following folder(s):')
       for folder in input_dir_list:
         gs_logger.info(str(os.path.abspath(folder)))
-      gs_logger.info('\nSpot-finding parameter grid search: \
-                    {0} input files, spot height: {1} - {2}, \
-                    spot area: {3} - {4} \n'.format(len(input_list),
+      gs_logger.info('\nSpot-finding parameter grid search: ' \
+                    '{0} input files, spot height: {1} - {2}, '\
+                    'spot area: {3} - {4} \n'.format(len(input_list),
                     gs_params.grid_search.h_min, gs_params.grid_search.h_max,
                     gs_params.grid_search.a_min, gs_params.grid_search.a_max))
       gs_logger.info('{:-^100} \n\n'.format(' STARTING GRID SEARCH '))
@@ -112,19 +112,19 @@ if __name__ == "__main__":
     ps_logger.info('\n\n{:-^100} \n'.format(' PICKLE SELECTION '))
 
     for output_dir in output_dir_list:
-      ps_logger.info('Found integrated pickles \
-                                                                under {0}'.format(os.path.abspath(output_dir)))
+      ps_logger.info('Found integrated pickles ' \
+                      'under {0}'.format(os.path.abspath(output_dir)))
 
-    ps_logger.info('Selected by most reflections \
-                                                                with I / sigI > {0}'.format(gs_params.min_sigma))
+    ps_logger.info('Selected by most reflections ' \
+                   'with I / sigI > {0}'.format(gs_params.min_sigma))
 
     if gs_params.flag_prefilter == True:
       prefilter = "ON"
     else:
       prefilter = "OFF"
 
-    ps_logger.info('Space group / unit cell prefilter \
-                                                                turned {0} \n\n'.format(prefilter))
+    ps_logger.info('Space group / unit cell prefilter '\
+                   'turned {0} \n\n'.format(prefilter))
     ps_logger.info('{:-^100} \n'.format(' STARTING SELECTION '))
 
     for output_dir in output_dir_list:
