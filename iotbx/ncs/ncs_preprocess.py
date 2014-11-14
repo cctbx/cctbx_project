@@ -112,7 +112,7 @@ class ncs_group_object(object):
                          min_percent=0.95,
                          chain_similarity_limit=0.95,
                          min_contig_length=10,
-                         log=sys.stdout,
+                         log=None,
                          check_atom_order=False,
                          allow_different_size_res=True,
                          exclude_misaligned_residues=False,
@@ -176,6 +176,7 @@ class ncs_group_object(object):
     self.write_messages = write_messages
     self.check_atom_order = check_atom_order
     self.allow_different_size_res = allow_different_size_res
+    if not log: log = sys.stdout
     self.log = log
     if file_name: extension = os.path.splitext(file_name)[1]
     if pdb_hierarchy_inp:
@@ -1160,7 +1161,7 @@ class ncs_group_object(object):
                           mtrix=None,
                           biomt=None,
                           write=False,
-                          log = sys.stdout):
+                          log = None):
     """
     Write to a file or prints transformation records.
     with or without PDB atoms and Cryst records.
@@ -1182,6 +1183,7 @@ class ncs_group_object(object):
     Return:
       PDB string
     """
+    if not log: log = sys.stdout
     if (not mtrix) and (not biomt):
       mtrix = True
       biomt = False
@@ -1344,7 +1346,7 @@ class ncs_group_object(object):
       f.close()
     return spec_object
 
-  def print_ncs_phil_param(self,write=False,log=sys.stdout):
+  def print_ncs_phil_param(self,write=False,log=None):
     """
     Prints NCS information in the phil parameters format
     lines longer that 80 characters are folded
@@ -1368,6 +1370,7 @@ class ncs_group_object(object):
     Returns:
       (str): NCS phil parameter string
     """
+    if not log: log = sys.stdout
     groups = []
     for master, copies in self.ncs_to_asu_selection.iteritems():
       master = format_80(master)
