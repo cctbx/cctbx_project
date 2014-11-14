@@ -85,7 +85,7 @@ class SingleFrame(InputFrame):
       # Unit cell info
       self.crystal_system = self.miller_array.crystal_symmetry()\
         .space_group().crystal_system()
-      self.pg = d['pointgroup']
+      self.pg = d['pointgroup'].replace(' ', '')  # enforce consistency
       self.uc = d['current_orientation'][crystal_num].unit_cell() \
         .niggli_cell() \
         .parameters()
@@ -95,6 +95,7 @@ class SingleFrame(InputFrame):
       self.xbeam = d['xbeam']
       self.ybeam = d['ybeam']
       self.wavelength = d['wavelength']
+      self.distance = d['distance']
       if 'correction_vectors' in d:
         all_corrections = []
         for spot in d['correction_vectors'][crystal_num]:
