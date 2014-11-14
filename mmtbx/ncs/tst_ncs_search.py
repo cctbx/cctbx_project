@@ -240,8 +240,8 @@ class TestSimpleAlignment(unittest.TestCase):
     #
     m_res_list = group_dict[('A',)].residue_index_list[0]
     c_res_list = group_dict[('A',)].residue_index_list[1]
-    self.assertEqual(m_res_list,[0, 1, 2, 3, 4, 5, 6, 7, 8])
-    self.assertEqual(c_res_list,[4, 5, 6, 7, 8, 9, 10, 11, 12])
+    self.assertEqual(m_res_list,[[0, 1, 2, 3, 4, 5, 6, 7, 8]])
+    self.assertEqual(c_res_list,[[4, 5, 6, 7, 8, 9, 10, 11, 12]])
     adjust_residue_lists = {('A',)}
     s = 109 # start of chain B
     # change selection -> not include part of a residue
@@ -255,8 +255,8 @@ class TestSimpleAlignment(unittest.TestCase):
     ncs_search.update_res_list(group_dict,chains_info,adjust_residue_lists)
     m_res_list = group_dict[('A',)].residue_index_list[0]
     c_res_list = group_dict[('A',)].residue_index_list[1]
-    self.assertEqual(m_res_list,[0, 1, 2, 3, 5, 6, 7, 8])
-    self.assertEqual(c_res_list,[4, 5, 6, 7, 9, 10, 11, 12])
+    self.assertEqual(m_res_list,[[0, 1, 2, 3, 5, 6, 7, 8]])
+    self.assertEqual(c_res_list,[[4, 5, 6, 7, 9, 10, 11, 12]])
     # change selection -> not include a residue
     m_sel = range(29) + range(37,66)
     c_sel = range(29+s) + range(37+s,66+s)
@@ -268,8 +268,8 @@ class TestSimpleAlignment(unittest.TestCase):
     ncs_search.update_res_list(group_dict,chains_info,adjust_residue_lists)
     m_res_list = group_dict[('A',)].residue_index_list[0]
     c_res_list = group_dict[('A',)].residue_index_list[1]
-    self.assertEqual(m_res_list,[0, 1, 2, 3, 5, 6, 7, 8])
-    self.assertEqual(c_res_list,[4, 5, 6, 7, 9, 10, 11, 12])
+    self.assertEqual(m_res_list,[[0, 1, 2, 3, 5, 6, 7, 8]])
+    self.assertEqual(c_res_list,[[4, 5, 6, 7, 9, 10, 11, 12]])
 
   def test_update_atom_selections(self):
     print sys._getframe().f_code.co_name
@@ -292,16 +292,16 @@ class TestSimpleAlignment(unittest.TestCase):
     c_res_list = group_dict[('A',)].residue_index_list[2]
     d_res_list = group_dict[('A',)].residue_index_list[3]
     #
-    self.assertEqual(a_res_list,[1, 2, 3, 4, 5])
-    self.assertEqual(b_res_list,[0, 1, 2, 3, 4])
-    self.assertEqual(c_res_list,[0, 1, 2, 3, 4])
-    self.assertEqual(d_res_list,[0, 1, 2, 4, 5])
+    self.assertEqual(a_res_list,[[1, 2, 3, 4, 5]])
+    self.assertEqual(b_res_list,[[0, 1, 2, 3, 4]])
+    self.assertEqual(c_res_list,[[0, 1, 2, 3, 4]])
+    self.assertEqual(d_res_list,[[0, 1, 2, 4, 5]])
     #
 
-    ar = [chains_info['A'].res_names[x] for x in a_res_list]
-    br = [chains_info['B'].res_names[x] for x in b_res_list]
-    cr = [chains_info['C'].res_names[x] for x in c_res_list]
-    dr = [chains_info['D'].res_names[x] for x in d_res_list]
+    ar = [chains_info['A'].res_names[x] for x in a_res_list[0]]
+    br = [chains_info['B'].res_names[x] for x in b_res_list[0]]
+    cr = [chains_info['C'].res_names[x] for x in c_res_list[0]]
+    dr = [chains_info['D'].res_names[x] for x in d_res_list[0]]
     #
     self.assertEqual(ar,br)
     self.assertEqual(ar,cr)
@@ -345,6 +345,17 @@ class TestSimpleAlignment(unittest.TestCase):
     chains_info = ncs_search.get_chains_info(pdb_inp.hierarchy)
     ch_A = chains_info['A']
     self.assertEqual(len(ch_A.res_names),len(ch_A.no_altloc))
+
+  def test_groups_with_chains_of_different_size(self):
+    print sys._getframe().f_code.co_name
+    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_6)
+    ncs_results = ncs_search.find_ncs_in_hierarchy(ph=pdb_inp.hierarchy)
+    answer = ncs_results[('H','I')].residue_index_list
+    residue_index_list = [[[0, 1, 2], [0]], [[0, 1, 2], [0]], [[0, 1, 2], [0]]]
+    self.assertEqual(answer,residue_index_list)
+    answer = ncs_results[('H','I')].copies
+    self.assertEqual(answer,[['H', 'I'], ['J', 'K'], ['L', 'M']])
+
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
@@ -1095,6 +1106,55 @@ HETATM 8503 NA    NA A 267      13.212  41.425  36.424  1.00 30.14          NA
 HETATM 8504 CL    CL A 268      44.904  37.770  59.641  1.00 29.60          CL
 '''
 
+test_pdb_6 = '''\
+CRYST1  203.106   83.279  178.234  90.00 106.67  90.00 C 1 2 1      12
+SCALE1      0.004924  0.000000  0.001474        0.00000
+SCALE2      0.000000  0.012008  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.005857        0.00000
+ATOM      1  N   ASP H   5      91.286 -31.834  73.572  1.00 77.83           N
+ATOM      2  CA  ASP H   5      90.511 -32.072  72.317  1.00 78.04           C
+ATOM      3  C   ASP H   5      90.136 -30.762  71.617  1.00 77.70           C
+ATOM      4  O   ASP H   5      89.553 -29.857  72.225  1.00 77.56           O
+ATOM      9  N   THR H   6      91.286 -31.834  73.572  1.00 77.83           N
+ATOM     10  CA  THR H   6      90.511 -32.072  72.317  1.00 78.04           C
+TER
+ATOM   2517  N   GLY I 501      91.286 -31.834  73.572  1.00 77.83           N
+ATOM   2518  CA  GLY I 501      90.511 -32.072  72.317  1.00 78.04           C
+ATOM   2519  C   GLY I 501      90.136 -30.762  71.617  1.00 77.70           C
+ATOM   2520  O   GLY I 501      89.553 -29.857  72.225  1.00 77.56           O
+TER
+ATOM   3802  N   ASP J   5      92.487   3.543  81.144  1.00 70.91           N
+ATOM   3803  CA  ASP J   5      93.100   3.556  79.781  1.00 70.52           C
+ATOM   3804  C   ASP J   5      92.161   2.961  78.728  1.00 70.38           C
+ATOM   3805  O   ASP J   5      91.661   1.839  78.880  1.00 69.56           O
+ATOM   3810  N   THR J   6      92.487   3.543  81.144  1.00 70.91           N
+ATOM   3811  CA  THR J   6      93.100   3.556  79.781  1.00 70.52           C
+TER
+ATOM   6318  N   GLY K 501      92.487   3.543  81.144  1.00 70.91           N
+ATOM   6319  CA  GLY K 501      93.100   3.556  79.781  1.00 70.52           C
+ATOM   6320  C   GLY K 501      92.161   2.961  78.728  1.00 70.38           C
+ATOM   6321  O   GLY K 501      91.661   1.839  78.880  1.00 69.56           O
+TER
+ATOM   7603  N   ASP L   5      61.028 -14.273  81.262  1.00 69.80           N
+ATOM   7604  CA  ASP L   5      60.761 -13.218  80.242  1.00 70.31           C
+ATOM   7605  C   ASP L   5      61.755 -13.281  79.080  1.00 70.96           C
+ATOM   7606  O   ASP L   5      62.973 -13.267  79.280  1.00 70.38           O
+ATOM   7611  N   THR L   6      61.028 -14.273  81.262  1.00 69.80           N
+ATOM   7612  CA  THR L   6      60.761 -13.218  80.242  1.00 70.31           C
+TER
+ATOM  10119  N   GLY M 501      61.028 -14.273  81.262  1.00 69.80           N
+ATOM  10120  CA  GLY M 501      60.761 -13.218  80.242  1.00 70.31           C
+ATOM  10121  C   GLY M 501      61.755 -13.281  79.080  1.00 70.96           C
+ATOM  10122  O   GLY M 501      62.973 -13.267  79.280  1.00 70.38           O
+TER
+HETATM11404  C1  NDG H 640      91.286 -31.834  73.572  1.00 77.83           C
+HETATM11405  C2  NDG H 640      91.286 -31.834  73.572  1.00 77.83           C
+HETATM11449  C1  NDG J 643      92.487   3.543  81.144  1.00 70.91           C
+HETATM11494  C1  NDG L 646      61.028 -14.273  81.262  1.00 69.80           C
+HETATM11495  C2  NDG L 646      61.028 -14.273  81.262  1.00 69.80           C
+END
+'''
+
 def run_selected_tests():
   """  Run selected tests
 
@@ -1102,7 +1162,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_update_atom_selections']
+  tests = ['test_update_res_list']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 

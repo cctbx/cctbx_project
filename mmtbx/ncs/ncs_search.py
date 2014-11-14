@@ -486,13 +486,13 @@ def build_group_dict(transform_to_group,match_dict,chains_info):
   for k,v in transform_to_group.iteritems():
     [masters,copies,_] = v
     key = tuple(masters)
-    m_isel_list,c_isel_list = get_selection(masters,copies,match_dict)
+    m_isel_list,c_isel_list,res_l_m,res_l_c,rmsd,r,t = \
+      collect_info(masters,copies,match_dict)
     if group_dict.has_key(key):
       # update existing group master with minimal NCS selection
       c_isel_list = update_group_dict(
         group_dict,key,adjust_key_lists,m_isel_list,c_isel_list)
       tr_sn += 1
-      [_,_,_,res_l_c,r,t,rmsd] = match_dict[masters[0],copies[0]]
       tr = Transform(
         rotation=r,
         translation=t,
@@ -508,7 +508,7 @@ def build_group_dict(transform_to_group,match_dict,chains_info):
       # create a new group
       tr_sn += 1
       group_id += 1
-      [_,_,res_l_m,res_l_c,r,t,rmsd] = match_dict[masters[0],copies[0]]
+      _,_,res_l_m,res_l_c,rmsd,r,t = collect_info(masters,copies,match_dict)
       # add master as first copy (identity transform)
       new_ncs_group = NCS_groups_container()
       #
@@ -616,7 +616,7 @@ def selection_to_keep(m_sel,remove_selection):
   sel_to_keep.sort()
   return flex.size_t(sel_to_keep)
 
-def update_res_list(group_dict,chains_info,adjust_key_lists):
+def update_res_list(group_dict,chains_info,group_key_lists):
   """
   Remove residues from residues list according the the atom selection
   (Atom selection might have changed to reflect the smallest common set of
@@ -633,29 +633,36 @@ def update_res_list(group_dict,chains_info,adjust_key_lists):
       atom_names (list of list of str): list of atoms in residues
       atom_selection (list of list of list of int): the location of atoms in ph
       chains_atom_number (list of int): list of number of atoms in each chain
-    adjust_key_lists (list): set of group_dict keys (to update)
+    group_key_lists (list): set of group_dict keys to update
   """
   res_list = []
-  for key in adjust_key_lists:
+  # process all groups
+  for key in group_key_lists:
     gr = group_dict[key]
+    # iterate over the NCS copies in the group
     for i,ch_keys in enumerate(gr.copies):
       c_res_list = []
       atoms_in_copy = set()
       {atoms_in_copy.update(x) for x in gr.iselections[i]}
-      copy_res_list = gr.residue_index_list[i]
-      for ch_key in ch_keys:
-        # copy can be from several chains. iterate over chains
+      copy_res_lists = gr.residue_index_list[i]
+      # iterate over the chains in each NCS group
+      n_ch = len(ch_keys)
+      for i_ch in range(n_ch):
+        ch_key = ch_keys[i_ch]
+        ch_res_list = copy_res_lists[i_ch]
         ch_info = chains_info[ch_key]
-        for res_num in copy_res_list:
+        c_res = []
+        for res_num in ch_res_list:
           # iterate over residues and add them if they are in atoms_in_copy
           atoms_in_rs = set(ch_info.atom_selection[res_num])
           if bool(atoms_in_rs.intersection(atoms_in_copy)):
             # if some atoms in the residue present, include residue
-            c_res_list.append(res_num)
+            c_res.append(res_num)
+        c_res_list.append(c_res)
       res_list.append(c_res_list)
     group_dict[key].residue_index_list = res_list
 
-def get_selection(sorted_masters,copies,match_dict):
+def collect_info(sorted_masters,copies,match_dict):
   """
   Combine iselection of all chains in NCS master and NCS copy to a single
   iselelction
@@ -675,14 +682,25 @@ def get_selection(sorted_masters,copies,match_dict):
 
   Returns:
     m_sel,c_sel (list of flex.size_t): list of selected atoms per chain
+    m_res,c_res (list of lists): list of residue number per chain
+    worst_rmsd (float): worst rmsd of the matching chains pairs
+    r (3x3 matrix): rotation matrix
+    t (3x1 matrix): translation vector
   """
   m_sel = []
   c_sel = []
+  c_res = []
+  m_res = []
+  worst_rmsd = 0.0
   for key in zip(sorted_masters,copies):
-    [sel_1,sel_2,_,_,_,_,_] = match_dict[key]
+    [sel_1,sel_2,res_1,res_2,_,_,rmsd] = match_dict[key]
     m_sel.append(sel_1)
     c_sel.append(sel_2)
-  return m_sel,c_sel
+    m_res.append(res_1)
+    c_res.append(res_2)
+    worst_rmsd = max(worst_rmsd,rmsd)
+  [_,_,_,_,r,t,_] = match_dict[sorted_masters[0],copies[0]]
+  return m_sel,c_sel,m_res,c_res,worst_rmsd,r,t
 
 def clean_chain_matching(chain_match_list,ph,
                          max_rmsd=10.0,
@@ -838,7 +856,7 @@ def update_match_dicts(best_matches,match_dict,
     for key in records_to_remove:
       match_dict.pop(key,None)
 
-def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
+def find_same_transform(r,t,transforms):
   """
   Check if the rotation r and translation t exist in the transform dictionary.
 
@@ -849,8 +867,6 @@ def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
     r (matrix.sqr): rotation
     t (matrix.col): translation
     transforms (dict): dictionary of all transforms
-    angle_eps (float): allowed difference in similar rotations
-    eps (float): allowed difference in the average distance between
 
   Returns:
     tr_num: (str) transform serial number
@@ -864,8 +880,7 @@ def find_same_transform(r,t,transforms,eps=0.1,angle_eps=5):
       tt = v.t
     else:
       (rr,tt) = v[2]
-    is_the_same, is_transpose = is_same_transform(
-      r, t, rr, tt, eps=eps, angle_eps=angle_eps)
+    is_the_same, is_transpose = is_same_transform(r, t, rr, tt)
     if is_the_same:
       return k, is_transpose
   return tr_num, is_transpose
@@ -1347,16 +1362,18 @@ def get_rotation_vec(r):
   i = list(eigenvalues.round(4)).index(1)
   return eigenvectors[i:(i+3)]
 
-def is_same_transform(r1,t1,r2,t2,eps=0.1,angle_eps=5):
+def is_same_transform(r1,t1,r2,t2):
   """
   Args:
     r1, r2: Rotation matrices
     t1, t2: Translation vectors
-    eps, angle_eps: allowed numerical difference
 
   Returns:
     (bool,bool) (is_the_same, is_transpose)
   """
+  # Allowed deviation for values and angle
+  eps=0.1
+  angle_eps=5.0
   if (not r1.is_zero()) and (not r2.is_zero()):
     assert r1.is_r3_rotation_matrix(rms_tolerance=0.001)
     assert r2.is_r3_rotation_matrix(rms_tolerance=0.001)
