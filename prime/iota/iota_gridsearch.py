@@ -83,8 +83,8 @@ def index_integrate(current_img, log_dir, gs_params):
                       wsg = len(str(pg)))
       else:
         int_status = "not integrated"
-        grid_search_output = '{:^{width}}: h = {:<3}, ' \
+      grid_search_output = '{:^{width}}: h = {:<3}, ' \
                               'a = {:<3} ---> {}'.format(current_img,
                               sig_height, spot_area, int_status,
                               width = len(current_img) + 2)
-        gs_logger.info(grid_search_output)
+      gs_logger.info(grid_search_output)
