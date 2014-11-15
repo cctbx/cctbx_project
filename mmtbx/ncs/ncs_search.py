@@ -1006,7 +1006,6 @@ def res_alignment(seq_a, seq_b,
     aligned_sel_b (list): the indices of the aligned components of seq_b
     similarity (float): actual similarity between hierarchies
   """
-  # fixme: convert to c++ or parallelize
   a = len(seq_a)
   b = len(seq_b)
   # Check for the basic cases
