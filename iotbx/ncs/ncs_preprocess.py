@@ -92,6 +92,7 @@ class ncs_group_object(object):
   def preprocess_ncs_obj(self,
                          pdb_hierarchy_inp=None,
                          pdb_inp=None,
+                         hierarchy=None,
                          transform_info=None,
                          rotations = None,
                          translations = None,
@@ -172,6 +173,7 @@ class ncs_group_object(object):
       max_dist_diff (float): max allow distance difference between pairs of matching
         atoms of two residues
     """
+    if min_percent > 1: min_percent /= 100
     extension = ''
     self.write_messages = write_messages
     self.check_atom_order = check_atom_order
@@ -185,6 +187,10 @@ class ncs_group_object(object):
     elif pdb_inp:
       ph = pdb_inp.construct_hierarchy()
       pdb_hierarchy_inp = iotbx.pdb.hierarchy.input_hierarchy_pair(pdb_inp,ph)
+    elif hierarchy:
+      pdb_inp = hierarchy.as_pdb_input()
+      pdb_hierarchy_inp = iotbx.pdb.hierarchy.input_hierarchy_pair(
+        pdb_inp,hierarchy)
     if extension.lower() in ['.pdb','.cif', '.mmcif', '.gz']:
       pdb_hierarchy_inp = pdb.hierarchy.input(file_name=file_name)
     elif (not pdb_hierarchy_inp) and (pdb_string or cif_string):
