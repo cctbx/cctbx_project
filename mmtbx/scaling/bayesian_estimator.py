@@ -66,12 +66,13 @@ pi=2.*math.atan2(1.,0.)
 
 class bayesian_estimator:
   def __init__(self,out=None,verbose=False,skip_covariance=True,
-     minimum_records=20):
+     minimum_records=20,trim_predictor_values=True):
     if out is None:
       self.out=sys.stdout
     else:
       self.out=out
     self.verbose=verbose
+    self.trim_predictor_values=trim_predictor_values # limit to range of training set
     self.skip_covariance=skip_covariance
     self.minimum_records=minimum_records
     self.ok=True
@@ -84,14 +85,15 @@ class bayesian_estimator:
     if not n_bin:
        raise Sorry(
      "Please set values for n_bin,eg., n_bin=100, min_in_bin=5, smooth_bins=5")
-    self.record_list=record_list# vectors with measurements. Last one is y
+    self.record_list=record_list# vectors with measurements. First one is y
     self.n_bin=n_bin # bins of y
     self.smooth_bins=smooth_bins # smoothing the bins
     self.use_flat_y_dist=use_flat_y_dist # allow user to ignore dist of y
     self.min_in_bin=min_in_bin # minimum records in a bin
     self.range_low=range_low  # range_low of y
     self.range_high=range_high  # range_high of y
-
+    self.record_list_range_low=None
+    self.record_list_range_high=None
     # get set up:
     ok=self.check_estimator_inputs() # check and print out what we are doing..
     if not ok:
@@ -145,7 +147,14 @@ class bayesian_estimator:
     return weighted_bin,sd
 
   def get_p_xx(self,x_list,bin):
-    x_vector=flex.double(x_list)
+    if self.trim_predictor_values:
+      x_vector=flex.double()
+      for lower,higher,value in zip(self.record_list_range_low,
+         self.record_list_range_high,x_list):
+        x_vector.append(max(lower,min(higher,value)))
+    else:
+      x_vector=flex.double(x_list)
+
     means_vector,cov_matrix_inv,determinant=self.get_mean_cov_inv_determinant(bin)
     if means_vector is None or cov_matrix_inv is None or determinant is None:
       return 0.0 #
@@ -322,6 +331,24 @@ class bayesian_estimator:
     self.delta_range=self.full_range/self.n_bin
     print >>self.out,"Delta range: ",self.delta_range
     self.bins=xrange(self.n_bin)
+
+    # 2014-11-13 also get range for x-values
+    n=len(self.record_list[0])-1
+    self.record_list_range_low=n*[None]
+    self.record_list_range_high=n*[None]
+    for record in self.record_list:
+      for i in xrange(n):
+        ii=i+1
+        if self.record_list_range_low[i] is None or \
+             record[ii]<self.record_list_range_low[i]:
+             self.record_list_range_low[i]=record[ii]
+        if self.record_list_range_high[i] is None or \
+             record[ii]>self.record_list_range_high[i]:
+             self.record_list_range_high[i]=record[ii]
+    print >>self.out,"Range for predictor variables:"
+    for i in xrange(n):
+      print >>self.out,"%d:  %7.2f - %7.2f " %(
+          i,self.record_list_range_low[i],self.record_list_range_high[i])
 
   def split_into_bins(self):
     self.bin_start_list=self.n_bin*[None]  # first record in this bin
