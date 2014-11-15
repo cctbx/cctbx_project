@@ -376,8 +376,7 @@ Found Python version:
     site_packages = site_packages.strip()
     # print >> self.log,  "Checking for write permissions:", site_packages
     try:
-      with tempfile.TemporaryFile(dir=site_packages) as f:
-        pass
+      f = tempfile.TemporaryFile(dir=site_packages)
     except OSError, e:
       print >> self.log, """
 Error: You don't appear to have write access to
