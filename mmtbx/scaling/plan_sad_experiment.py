@@ -723,14 +723,13 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       if self.bayesian_estimates:  # use range from s_ano+/-s_ano_sig etc
         solved=self.solved_interpolator.interpolate(s_ano)
         if solved is None: solved=0.0
+        if s_ano_sig is None: s_ano_sig=0.0
         s_ano_weak=max(0,s_ano-s_ano_sig)
-        s_ano=s_ano+s_ano_sig
         cc_half_weak=max(0,cc_half-cc_half_sig)
-        cc_half=min(1.,cc_half+cc_half_sig)
         cc_ano_weak=max(0.,cc_ano-cc_ano_sig)
-        cc_ano=min(1,cc_ano+cc_ano_sig)
       else:
         s_ano_weak=s_ano/2
+        solved=0.0
 
       self.table_rows.append([
         "%5.2f" % dmin,

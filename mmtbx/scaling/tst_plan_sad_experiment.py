@@ -16,8 +16,7 @@ def exercise () :
   ]
   result = plan_sad_experiment.run(args=args, out=null_out()).show(null_out())
   assert approx_equal(result.representative_values[:-1],
-    [2.2, 12, 15965.989, 3.844, 97.778, 0.009, 0.509, 0.998, 0.617,
-     0.774, 31.303,], eps=0.01)
+    [2.2, 12, 15965.98877863636, 3.8438000679016113, 97.77777777777779, 0.009, 0.5100617798791034, 0.7518386993367471, 0.6189781091393403, 0.6948507672766133, 24.625648952368238], eps=0.01)
   assert (95 < result.representative_values[-1] < 97)
   # Insulin S-SAD
   open("tst_plan_sad_experiment.fa", "w").write("""
@@ -39,8 +38,7 @@ FVNQHLCGSHLVEALYLVCGERGFFYTPKA
   result = plan_sad_experiment.run(args=args, out=null_out())
   assert (not result.missed_target_resolutions)
   assert approx_equal(result.representative_values[:-1],
-    [1.2, 12, 33450.225, 0.556, 97.778, 0.009, 0.393, 0.923, 0.591, 0.746,
-     36.939,], eps=0.01)
+    [1.2, 12, 33450.22482353751, 0.5562999844551086, 97.77777777777779, 0.009, 0.39348033018413137, 0.6580634294078684, 0.590519982631617, 0.6682047663506547, 29.637428705275138], eps=0.01)
   assert (96 < result.representative_values[-1] < 98)
   # now with worse resolution
   args = [
