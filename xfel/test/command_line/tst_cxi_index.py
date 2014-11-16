@@ -35,7 +35,6 @@ class test_cxi_index(object):
       return
 
     from libtbx.test_utils import open_tmp_directory
-    cwd = os.path.abspath(os.curdir)
     tmp_dir = open_tmp_directory(suffix="test_cxi_index")
 
     int_pickle_path = os.path.join(tmp_dir, "tmp_int.pickle")
@@ -66,8 +65,9 @@ class test_cxi_index(object):
     print "Expected unit cell parameters", expected_parameters
     print "Derived unit cell parameters", derived_parameters
 
+    epsilon = 1e-2
     for p_expected, p_derived in zip(expected_parameters, derived_parameters):
-      assert approx_equal(p_expected, p_derived)
+      assert approx_equal(p_expected, p_derived, epsilon)
 
     print "OK"
 
