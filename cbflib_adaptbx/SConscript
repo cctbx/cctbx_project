@@ -9,7 +9,7 @@ env_etc.cbflib_include = [env_etc.norm_join(env_etc.cbflib_dist,"examples"),
 env_etc.cbflib_adaptbx_dist = libtbx.env.dist_path("cbflib_adaptbx")
 
 env_etc.cbflib_common_includes = [
-  env_etc.base_include, # ian todo: test for hdf5, include if necessary
+  env_etc.base_include,
   env_etc.libtbx_include,
   env_etc.scitbx_include,
   env_etc.boost_adaptbx_include,
@@ -28,10 +28,18 @@ if 'Python.framework' in include_root:
 if os.path.exists(os.path.join(include_root, 'hdf5.h')):
   env_etc.cbflib_common_includes.append(include_root)
 else:
-  # if you have CBFlib from bleeding edge this will not work, but an old version
-  # may be fine...
-  # raise RuntimeError, 'cannot build CBFlib without hdf5.h'
-  pass
+  # check for PSDM installation. Example:
+  # /reg/g/psdm/sw/external/hdf5/1.8.6/x86_64-rhel5-gcc41-opt/include
+  psdm_hdf5_path = os.path.join(os.environ.get('SIT_ROOT',""),
+                                'sw', 'external', 'hdf5', '1.8.6',
+                                os.environ.get('SIT_ARCH',""), 'include')
+  if os.path.exists(psdm_hdf5_path):
+    env_etc.cbflib_common_includes.append(psdm_hdf5_path)
+  else:
+    # if you have CBFlib from bleeding edge this will not work, but an old version
+    # may be fine...
+    # raise RuntimeError, 'cannot build CBFlib without hdf5.h'
+    pass
 
 env = env_base.Clone(
   SHLINKFLAGS=env_etc.shlinkflags)
