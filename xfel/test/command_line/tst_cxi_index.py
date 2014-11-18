@@ -65,7 +65,7 @@ class test_cxi_index(object):
     print "Expected unit cell parameters", expected_parameters
     print "Derived unit cell parameters", derived_parameters
 
-    epsilon = 1e-2
+    epsilon = 1.5
     for p_expected, p_derived in zip(expected_parameters, derived_parameters):
       assert approx_equal(p_expected, p_derived, epsilon)
 
