@@ -3372,8 +3372,4 @@ xfel/mono_simulation/mono_treatment.py -text
 xfel/mono_simulation/parameters.h -text
 xfel/mono_simulation/vector_collection.h -text
 xfel/project.cpp -text
-xfel/run_tests.py -text
-xfel/test/command_line/tst_cxi_index.py -text
-xfel/test/command_line/tst_cxi_merge.py -text
-xfel/test/command_line/tst_frame_unpickler.py -text
 xfel/util/cctbx_xfel_installer.py svneol=native#text/x-python
