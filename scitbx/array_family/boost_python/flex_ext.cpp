@@ -87,6 +87,7 @@ namespace {
     tuple_mapping_fixed_capacity<small<unsigned, 6> >();
     tuple_mapping_fixed_capacity<small<std::size_t, 5> >();
     tuple_mapping_fixed_capacity<small<double, 3> >();
+    tuple_mapping_fixed_capacity<small<double, 5> >();
     tuple_mapping_fixed_capacity<small<double, 6> >();
     // scitbx/math/gaussian/sum.h SCITBX_MATH_GAUSSIAN_SUM_MAX_N_TERMS
     tuple_mapping_fixed_capacity<small<double, 10> >();
@@ -138,6 +139,7 @@ namespace {
     tuple_mapping_fixed_capacity<small<vec2<double>, 6> >();
     tuple_mapping_fixed_capacity<small<vec2<double>, 7> >();
     tuple_mapping_fixed_capacity<small<vec2<double>, 8> >();
+    tuple_mapping_fixed_capacity<small<vec3<double>, 8> >();
   }
 
   af::shared<std::size_t>
