@@ -459,6 +459,10 @@ class ncs_group_object(object):
     # process atom selections
     self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
     self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
+    if not self.model_unique_chains_ids:
+      model = pdb_hierarchy_inp.hierarchy.models()[0]
+      chain_ids = {x.id for x in model.chains()}
+      self.model_unique_chains_ids = tuple(sorted(chain_ids))
 
   def build_ncs_obj_from_group_dict(self,group_dict,pdb_hierarchy_inp):
     """

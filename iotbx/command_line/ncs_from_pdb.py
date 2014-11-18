@@ -86,8 +86,11 @@ def ncs_from_pdb(args):
         for k,v in params.__dict__.iteritems():
           print '{0:<30}: {1:<20}'.format(k,str(v))
 
+        # print info about the chains:
+        print '\nChains in model:'
+        print ncs_obj.model_unique_chains_ids
         if len(ncs_obj.ncs_transform) == 0:
-          print 'No NCS relations found'
+          print '\nNo NCS relations found'
         ncs_obj.get_ncs_info_as_spec(write=True)
         print '\nTime to process: {0:.2f} sec'.format(time.time()-t0)
 
