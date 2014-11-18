@@ -357,9 +357,14 @@ class common_mode_correction(mod_event_info):
         self.cspad_img = evt.get(xtc.TypeId.Type.Id_Cspad2x2Element,self.address).data()
         self.cspad_img=np.reshape(self.cspad_img,(370, 388))
     else:
-      self.cspad_img = cspad_tbx.image(
-        self.address, cspad_tbx.getConfig(self.address, env),
-        evt, env, self.sections)
+      try:
+        self.cspad_img = cspad_tbx.image(
+          self.address, cspad_tbx.getConfig(self.address, env),
+          evt, env, self.sections)
+      except Exception, e:
+        self.logger.error("Error reading image data: " + str(e))
+        evt.put(True, "skip_event")
+        return
 
     if self.cspad_img is None:
       if cspad_tbx.address_split(self.address)[2] != 'Andor':
