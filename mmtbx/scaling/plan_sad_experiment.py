@@ -661,14 +661,24 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     self.skipped_resolutions = []
     self.missed_target_resolutions = []
     self.input_i_over_sigma=i_over_sigma
+    self.used_max_i_over_sigma=True
 
     if self.bayesian_estimates:
 
        # set up estimators of cc_ano from cc_*_ano and signal from est_signal
+
+       # estimate cc_ano from cc_star_ano
        self.cc_ano_estimators=get_estimators(estimator_type='cc_ano',
          resolution_cutoffs=self.dmin_ranges,out=null_out())
+
+       # estimate true signal from estimated signal
        self.signal_estimators=get_estimators(estimator_type='signal',
          resolution_cutoffs=self.dmin_ranges,out=null_out())
+
+       # estimate fom of phasing from cc_ano
+       self.fom_estimators=get_estimators(estimator_type='cc_star',
+         resolution_cutoffs=self.dmin_ranges,out=null_out())
+
        # solved (probability of hyss finding >=50% of sites) is just a table
        #  so interpolate the probability.
        self.solved_interpolator=get_interpolator(estimator_type='solved',
@@ -677,6 +687,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     else:
       self.cc_ano_estimators=None
       self.signal_estimators=None
+      self.fom_estimators=None
 
     for dmin in self.dmin_ranges:
       # Guess reflections from residues, dmin, solvent fraction
@@ -696,9 +707,11 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
           cc_ano_estimators=None,
           signal_estimators=None,
           max_i_over_sigma=self.max_i_over_sigma)
+        if sigf is None: # failed so far... 
+          self.used_max_i_over_sigma=True
+          sigf=get_sigf_from_i_over_sigma(self.max_i_over_sigma)
       else:  # input i_over_sigma...estimate sigf
         sigf=get_sigf_from_i_over_sigma(i_over_sigma)
-      if sigf is None: continue  # hopeless
       # what are expected signal, useful cc_ano, cc_half-dataset, <I>/<sigI>
 
 
@@ -727,9 +740,15 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
         s_ano_weak=max(0,s_ano-s_ano_sig)
         cc_half_weak=max(0,cc_half-cc_half_sig)
         cc_ano_weak=max(0.,cc_ano-cc_ano_sig)
+        cc_st_square=0.04 #cc_ano**2
+        fom,s_fom=self.fom_estimators.apply_estimators(
+         value_list=[cc_st_square,None,None],
+         data_items=['cc_st_square','skew','e'],
+         resolution=dmin)
       else:
         s_ano_weak=s_ano/2
         solved=0.0
+        fom=0.
 
       self.table_rows.append([
         "%5.2f" % dmin,
@@ -740,11 +759,12 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
         "%5.2f" % ( cc_ano),
         "%3.0f" % ( s_ano),
         "%3.0f" % (solved),
+        "%3.2f" % (fom),
       ])
       if ((self.representative_values is None) or
           len(self.dmin_ranges) < 2 or dmin == self.dmin_ranges[-2]) :
         self.representative_values = [dmin,nsites,nrefl,fpp,local_i_over_sigma,
-           sigf,cc_half_weak,cc_half,cc_ano_weak,cc_ano,s_ano,solved]
+           sigf,cc_half_weak,cc_half,cc_ano_weak,cc_ano,s_ano,solved,fom]
 
 
   def representative_dmin(self):
@@ -783,6 +803,9 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
   def representative_solved(self):
     return self.representative_values[11]
 
+  def representative_fom(self):
+    return self.representative_values[12]
+
   def show_summary(self):
     if self.is_solvable():
       print """
@@ -792,6 +815,7 @@ cc_half:   %5.2f - %5.2f
 cc*_anom:  %5.2f - %5.2f
 Signal:   %5.1f - %5.1f
 p(Substr):%3d %%
+FOM:      %3.2f
 """ %(
  self.representative_i_over_sigma(),
  self.representative_dmin(),
@@ -801,7 +825,9 @@ p(Substr):%3d %%
  self.representative_cc_ano(),
  self.representative_s_ano()/2,
  self.representative_s_ano(),
- int(0.5+self.representative_solved()))
+ int(0.5+self.representative_solved()),
+ self.representative_fom(),
+ )
 
   def is_solvable (self) :
     return (self.representative_values is not None)
@@ -856,34 +882,38 @@ Normalized anomalous scattering:
 
     out.show_sub_header(
       "Dataset <I>/<sigI> needed for anomalous signal of 15-30")
-    out.show_sub_header("(Targets for entire dataset)")
+    out.show_preformatted_text("""
+-------Targets for entire dataset-------  ----------Likely outcome-----------""")
+
     if (len(self.table_rows) == 0) :
       out.show_text("SAD solution unlikely with the given parameters.")
       return
     if (not out.gui_output) :
       out.show_preformatted_text("""
-                                   Anomalous    Useful     Useful    Likely
-                                  Half-dataset  Anom CC   Anomalous  Outcome
- Dmin   Nrefl   I/sigI rms(sigF)/     CC       (cc*_anom)  Signal   P(Substr)
-                       rms(F)(%)                                       (%)
+                              Anomalous    Useful    Useful 
+                            Half-dataset  Anom CC   Anomalous 
+ Dmin   N     I/sigI sigF/F     CC       (cc*_anom)  Signal   P(Substr)   FOM
+                      (%)                                        (%)
 """)
       for row in self.table_rows :
         out.show_preformatted_text(
-        "%s %s %s  %s       %s       %s       %s        %s" %
+        "%s%s%s%s     %s       %s      %s        %s       %s" %
           tuple(row))
     else :
       table = table_utils.simple_table(
         table_rows=self.table_rows,
-        column_headers=["d_min", "Nrefl", "I/sigI", "rms(sigF)/rms(F) (%)",
-          "Half-dataset CC_ano", "CC*_ano", "Anom. signal"])
+        column_headers=["d_min", "N", "I/sigI", "sigF/F (%)",
+          "Half-dataset CC_ano", "CC*_ano", "Anom. signal","P(Substr)","FOM"])
       out.show_table(table)
     (dmin,nsites,nrefl,fpp,i_over_sigma,sigf,cc_half_weak,cc_half,cc_ano_weak,
-      cc_ano,s_ano,solved) = tuple(self.representative_values)
+      cc_ano,s_ano,solved,fom) = tuple(self.representative_values)
 
     if self.missed_target_resolutions:
       self.missed_target_resolutions.sort()
       extra_note=""
-      if not self.input_i_over_sigma:
+      if self.used_max_i_over_sigma:
+        extra_note="I/sigma shown is value \nof max_i_over_sigma."
+      elif not self.input_i_over_sigma:
         extra_note="I/sigma shown achieves about %3.0f%% of \nmaximum anomalous signal." %(self.ratio_for_failure*100.)
       out.show_text("""
 Note: Target anomalous signal not achievable with tested I/sigma (up to %d )
