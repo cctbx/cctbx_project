@@ -448,9 +448,9 @@ class interpolator:
     self.reverse_keys=deepcopy(self.keys)
     self.reverse_keys.reverse()  # so we can go down too
 
-  def set_monotonic_increase(self):  
+  def set_monotonic_increase(self):
     # require never to decrease value with increasing key
-    # start at middle and make sure that value never goes above 
+    # start at middle and make sure that value never goes above
     #  mean of remaining or below previous
     # verify that overall means for each end do not change
     n=len(self.keys)
@@ -477,7 +477,7 @@ class interpolator:
     a=flex.double()
     b=flex.double()
     delta_list=[]
-    for key,value in zip(self.keys,new_values): 
+    for key,value in zip(self.keys,new_values):
       delta_list.append(value-self.target_dict[key])
     # adjust delta mean to zero in each region
     offset_low=self.get_mean(delta_list[:i_middle])
@@ -486,16 +486,16 @@ class interpolator:
       new_values[i]=new_values[i]-offset_high
     for i in xrange(i_middle-1,-1,-1):
       new_values[i]=new_values[i]-offset_low
-    for key,value in zip(self.keys,new_values):  
+    for key,value in zip(self.keys,new_values):
       self.target_dict[key]=value
-    
+
   def get_mean(self,remainder):
     n=len(remainder)
     if n<1: return 0
     a=0.
     for x in remainder: a+=x
     return a/n
-    
+
 
 
   def interpolate(self,predictor):
@@ -707,7 +707,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
           cc_ano_estimators=None,
           signal_estimators=None,
           max_i_over_sigma=self.max_i_over_sigma)
-        if sigf is None: # failed so far... 
+        if sigf is None: # failed so far...
           self.used_max_i_over_sigma=True
           sigf=get_sigf_from_i_over_sigma(self.max_i_over_sigma)
       else:  # input i_over_sigma...estimate sigf
@@ -890,8 +890,8 @@ Normalized anomalous scattering:
       return
     if (not out.gui_output) :
       out.show_preformatted_text("""
-                              Anomalous    Useful    Useful 
-                            Half-dataset  Anom CC   Anomalous 
+                              Anomalous    Useful    Useful
+                            Half-dataset  Anom CC   Anomalous
  Dmin   N     I/sigI sigF/F     CC       (cc*_anom)  Signal   P(Substr)   FOM
                       (%)                                        (%)
 """)

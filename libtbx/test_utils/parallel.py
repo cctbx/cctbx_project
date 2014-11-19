@@ -291,7 +291,7 @@ def make_commands (files) :
       cmd = 'libtbx.python "%s"'%(file_name)
     elif file_name.endswith('.sh'):
       # interpreter = 'libtbx.bash'
-      cmd = file_name   
+      cmd = file_name
     elif file_name.endswith('.csh'):
       # interpreter = 'libtbx.csh'
       cmd = file_name
