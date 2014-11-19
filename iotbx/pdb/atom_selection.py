@@ -757,6 +757,7 @@ def selection_string_from_selection(pdb_hierarchy_inp,
   Returns:
     sel_str (str): atom selection string
   """
+  if selection.size() == 0: raise Sorry('Empty atom selection')
   # create a hierarchy from the selection
   if hasattr(pdb_hierarchy_inp,"hierarchy"):
     pdb_hierarchy_inp = pdb_hierarchy_inp.hierarchy

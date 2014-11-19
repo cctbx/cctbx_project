@@ -616,10 +616,10 @@ class ncs:
      list_length=None
      for list in [trans_orth,ncs_rota_matr,center_orth]:
        if not list or len(list)<1:
-          raise Sorry("The NCS operators in this file appear incomplete?")
+         raise Sorry("The NCS operators in this file appear incomplete?")
        if not list_length: list_length=len(list)
        if list_length!=len(list):
-          raise Sorry("The NCS operators in this file appear incomplete?")
+         raise Sorry("The NCS operators in this file appear incomplete?")
      ncs_group_object=ncs_group(
        ncs_rota_matr=ncs_rota_matr,
        center_orth=center_orth,
