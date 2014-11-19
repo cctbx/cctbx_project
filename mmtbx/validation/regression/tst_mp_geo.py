@@ -150,7 +150,7 @@ def exercise_mp_geo():
           'bonds_and_angles=True']
   mp_geo.run(args)
   f = file('mp_geo.out', 'rb')
-  # Strip out newline and carriage return chars to 
+  # Strip out newline and carriage return chars to
   # prevent platform-specific errors.
   lines = [i.rstrip('\n\r') for i in f.readlines()]
   assert 'mp_geo.pdb: A:  10: :B:ASP:CG--OD1:1.839:31.054:PROTEIN' in lines

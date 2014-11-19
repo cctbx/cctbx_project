@@ -168,7 +168,7 @@ class installer (object) :
         try:
           check_output(compiler)
           found.append(compiler)
-        except:
+        except (OSError, RuntimeError), e:
           pass
       if not found:
         raise Exception("No Fortran compiler found for Scipy. Requires one of: %s"%(", ".join(compilers)))
@@ -360,7 +360,7 @@ class installer (object) :
     python_version = python_version.strip()
     try:
       check_output([self.python_exe, '-c', 'import sys; assert sys.version_info[0] == 2; assert sys.version_info[1] >= 5'])
-    except Exception, e:
+    except (OSError, RuntimeError), e:
       print >> self.log, """
 Error: Python 2.5 or higher required. Python 3 is not supported.
 Found Python version:
@@ -377,7 +377,7 @@ Found Python version:
     # print >> self.log,  "Checking for write permissions:", site_packages
     try:
       f = tempfile.TemporaryFile(dir=site_packages)
-    except OSError, e:
+    except (OSError, RuntimeError), e:
       print >> self.log, """
 Error: You don't appear to have write access to
 the Python site-packages directory:

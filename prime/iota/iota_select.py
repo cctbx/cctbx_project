@@ -42,12 +42,12 @@ def prefilter(gs_params, total_tmp_pickles):
 
     # Determine if pickle satisfies sg / uc parameters within given
     # tolerance and low resolution cutoff
-    if str(p_pg) == gs_params.target_pointgroup:  
-      if  (delta_a <= user_uc[0] * uc_tol and 
+    if str(p_pg) == gs_params.target_pointgroup:
+      if  (delta_a <= user_uc[0] * uc_tol and
             delta_b <= user_uc[1] * uc_tol and
-            delta_c <= user_uc[2] * uc_tol and 
-            delta_alpha <= user_uc[3] * uc_tol and 
-            delta_beta <= user_uc[4] * uc_tol and 
+            delta_c <= user_uc[2] * uc_tol and
+            delta_alpha <= user_uc[3] * uc_tol and
+            delta_beta <= user_uc[4] * uc_tol and
             delta_gamma <= user_uc[5] * uc_tol):
         acceptable_pickles.append(tmp_pickle)
 
