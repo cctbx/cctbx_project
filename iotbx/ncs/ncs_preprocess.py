@@ -935,18 +935,18 @@ class ncs_group_object(object):
     """
     Apply all non-identity transforms
     Build transform_to_ncs dictionary, which provides the location of the
-    particular chains or selections in the NCS (example key: "s002")
+    particular chains or selections in the NCS (example key: "002")
     and updates transform_to_be_used set
 
     Args:
-      transform_id (str): s001,s002...
+      transform_id (str): 001,002...
       transform : transform object, containing information on transformation
       selection_id (str): NCS selection string
     """
     if not is_identity(transform.r,transform.t):
       self.transform_to_be_used.add(transform.serial_num)
       key = selection_id + '_' + format_num_as_str(transform.serial_num)
-      # example key: "chain A_s002"
+      # example key: "chain A_002"
       self.transform_to_ncs = add_to_dict(
         d=self.transform_to_ncs,k=transform_id,v=key)
 
@@ -1298,7 +1298,6 @@ class ncs_group_object(object):
       xyz = xrs.sites_cart()
     elif pdb_hierarchy_asu:
       xyz = pdb_hierarchy_asu.atoms().extract_xyz()
-
     for gn,gr in self.ncs_group_map.iteritems():
       for gr_chains in gr[0]:
         gr_dict = {}

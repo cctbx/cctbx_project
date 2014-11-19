@@ -641,10 +641,19 @@ def update_res_list(group_dict,chains_info,group_key_lists):
   for key in group_key_lists:
     gr = group_dict[key]
     # iterate over the NCS copies in the group
+    copies = []
+    iselections = []
+    transforms = []
     for i,ch_keys in enumerate(gr.copies):
       c_res_list = []
       atoms_in_copy = set()
       {atoms_in_copy.update(x) for x in gr.iselections[i]}
+      # keep only none-zero copies
+      if len(atoms_in_copy) > 0:
+        copies.append(gr.copies[i])
+        iselections.append(gr.iselections[i])
+        transforms.append(gr.transforms[i])
+      else: continue
       copy_res_lists = gr.residue_index_list[i]
       # iterate over the chains in each NCS group
       n_ch = len(ch_keys)
@@ -661,7 +670,13 @@ def update_res_list(group_dict,chains_info,group_key_lists):
             c_res.append(res_num)
         c_res_list.append(c_res)
       res_list.append(c_res_list)
-    group_dict[key].residue_index_list = res_list
+    if len(res_list) > 0:
+      group_dict[key].residue_index_list = res_list
+      group_dict[key].copies = copies
+      group_dict[key].iselections = iselections
+      group_dict[key].transforms = transforms
+    else:
+      group_dict.pop(key,None)
 
 def collect_info(sorted_masters,copies,match_dict):
   """
@@ -759,7 +774,8 @@ def clean_chain_matching(chain_match_list,ph,
             res_list_a,res_list_b,
             ref_sites,lsq_fit_obj.other_sites_best_fit(),
             max_dist_diff=max_dist_diff)
-      match_dict[ch_a_id, ch_b_id] = [sel_a,sel_b,res_list_a,res_list_b,r,t,rmsd]
+      if sel_a.size() > 0:
+        match_dict[ch_a_id,ch_b_id]=[sel_a,sel_b,res_list_a,res_list_b,r,t,rmsd]
   return match_dict
 
 def remove_far_atoms(list_a, list_b,
