@@ -25,13 +25,13 @@ def exercise (args) :
   print "Running jacknifed estimators...",
   from mmtbx.scaling.bayesian_estimator import run_jacknife
   cc=run_jacknife(args=[],out=out)
-  assert approx_equal(cc,0.889,eps=1.e-3)
+  assert approx_equal(cc,0.896,eps=1.e-2)
   print "OK"
 
   print "Running group of estimators...",
   from mmtbx.scaling.bayesian_estimator import exercise_group
   cc1,cc2=exercise_group(out=out)
-  assert approx_equal(cc1,0.861,eps=1.e-3)
+  assert approx_equal(cc1,0.867,eps=1.e-2)
   assert approx_equal(cc2,-0.186,eps=1.e-3)
   print "OK"
 
