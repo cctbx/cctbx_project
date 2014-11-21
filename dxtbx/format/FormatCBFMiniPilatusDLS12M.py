@@ -81,13 +81,6 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     from scitbx import matrix
     import math
 
-    detector = HierarchicalDetector()
-    root = detector.hierarchy()
-    root.set_frame(
-      (1, 0, 0),
-      (0, 1, 0),
-      (0, 0, -250))
-
     x = matrix.col((1, 0, 0))
     y = matrix.col((0, 1, 0))
     z = matrix.col((0, 0, 1))
@@ -97,15 +90,20 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     beam_shift_y = 0.172 * (2594 - 2587)
 
     distance = float(
-        self._cif_header_dictionary['Detector_distance'].split()[0])
-
-    # FIXME verify DISTANCE used sensibly...
+        self._cif_header_dictionary['Detector_distance'].split()[0]) * 1000.0
 
     wavelength = float(
         self._cif_header_dictionary['Wavelength'].split()[0])
 
     thickness = float(
       self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
+
+    detector = HierarchicalDetector()
+    root = detector.hierarchy()
+    root.set_frame(
+      (1, 0, 0),
+      (0, 1, 0),
+      (0, 0, - (250 + distance)))
 
     from cctbx.eltbx import attenuation_coefficient
     table = attenuation_coefficient.get_table("Si")
