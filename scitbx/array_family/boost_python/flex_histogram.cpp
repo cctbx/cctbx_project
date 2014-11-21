@@ -13,7 +13,6 @@ namespace scitbx { namespace af { namespace boost_python { namespace {
   struct histogram_wrappers
   {
     typedef histogram<> w_t;
-
     static void
     wrap()
     {
@@ -56,6 +55,11 @@ namespace scitbx { namespace af { namespace boost_python { namespace {
         .def("update",
           (void(w_t::*)(w_t const&)) &w_t::update, (
           arg("other")))
+
+        .def("update",
+          (void(w_t::*)(af::shared<int> const&)) &w_t::update, (
+          arg("from_ar")))
+
         .def("data_min", &w_t::data_min)
         .def("data_max", &w_t::data_max)
         .def("slot_width", &w_t::slot_width)
