@@ -29,7 +29,7 @@ namespace parameter {
     vec3 part_position_part_wavelength;
   };
 
-  bool safer_aaf(rstbx::bandpass::active_area_filter & aaf, vec3 const& pt, int const& tolerance){
+  static bool safer_aaf(rstbx::bandpass::active_area_filter & aaf, vec3 const& pt, int const& tolerance){
     bool is_active_area = aaf(pt);
     if (!is_active_area) {
       SCITBX_ASSERT(aaf(pt,tolerance));
