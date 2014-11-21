@@ -1,9 +1,8 @@
 #ifndef SCITBX_HISTOGRAM_H
 #define SCITBX_HISTOGRAM_H
-
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/ref_reductions.h>
-
+#include <iostream>
 namespace scitbx {
 
   //! Histogram of an array of scalar values.
@@ -146,7 +145,14 @@ namespace scitbx {
           slots_[i] += other.slots_[i];
         n_out_of_slot_range_ += other.n_out_of_slot_range_;
       }
-
+///////////////Muhamed Amin: Code to create histogram object from numpy array///////////////////////////
+      void update(af::shared<int> const& from_ar)
+      {
+        SCITBX_ASSERT(slots_.size() == from_ar.size());
+        for (std::size_t i=0; i<from_ar.size(); i++)
+          slots_[i] = from_ar[i];
+      }
+/////////////////////////////////////////////////////////////////////////////////
       std::size_t
       get_i_slot(ValueType const& d_)
       {
