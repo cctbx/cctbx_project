@@ -37,14 +37,13 @@ class FormatSMVADSCSN920(FormatSMVADSCSN):
     assert(self.understand(image_file))
 
     FormatSMVADSCSN.__init__(self, image_file)
-    self._image_pedestal = int(self._header_dictionary['IMAGE_PEDESTAL'])
 
     return
 
   def _detector(self):
     '''Return a model for a simple detector, presuming no one has
     one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame.'''
+    provided in the Mosflm coordinate frame. Apply image pedestal.'''
 
     distance = float(self._header_dictionary['DISTANCE'])
     beam_x = float(self._header_dictionary['BEAM_CENTER_X'])
@@ -52,9 +51,10 @@ class FormatSMVADSCSN920(FormatSMVADSCSN):
     pixel_size = float(self._header_dictionary['PIXEL_SIZE'])
     image_size = (float(self._header_dictionary['SIZE1']),
                   float(self._header_dictionary['SIZE2']))
+    image_pedestal = int(self._header_dictionary['IMAGE_PEDESTAL'])
 
-    overload = 65535 - self._image_pedestal
-    underload = 1 - - self._image_pedestal
+    overload = 65535 - image_pedestal
+    underload = 1 - image_pedestal
 
     return self._detector_factory.simple(
         'CCD', distance, (beam_y, beam_x), '+x', '-y',
@@ -68,9 +68,10 @@ class FormatSMVADSCSN920(FormatSMVADSCSN):
     from dxtbx import read_uint16, read_uint16_bs, is_big_endian
     from scitbx.array_family import flex
     assert(len(self.get_detector()) == 1)
+    image_pedestal = int(self._header_dictionary['IMAGE_PEDESTAL'])
     panel = self.get_detector()[0]
     size = panel.get_image_size()
-    f = FormatSMVADSC.open_file(self._image_file, 'rb')
+    f = FormatSMVADSCSN.open_file(self._image_file, 'rb')
     f.read(self._header_size)
 
     if self._header_dictionary['BYTE_ORDER'] == 'big_endian':
@@ -85,7 +86,7 @@ class FormatSMVADSCSN920(FormatSMVADSCSN):
 
     # apply image pedestal, will result in *negative pixel values*
 
-    raw_data -= self._image_pedestal
+    raw_data -= image_pedestal
 
     image_size = panel.get_image_size()
     raw_data.reshape(flex.grid(image_size[1], image_size[0]))
