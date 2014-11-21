@@ -130,6 +130,10 @@ class FormatTIFFRayonix(FormatTIFF):
         self._i, self._tiff_header_bytes[1128:1132])[0]
     underload = 0
 
+    bias = int(round(self._get_rayonix_bias()))
+    underload -= bias
+    overload -= bias
+
     beam = beam_x * pixel_size[0], beam_y * pixel_size[1]
 
     return self._detector_factory.simple(
@@ -272,6 +276,14 @@ class FormatTIFFRayonix(FormatTIFF):
 
     return rot_degrees
 
+  def _get_rayonix_bias(self):
+    '''Get the image bias.'''
+
+    bias = struct.unpack(
+        self._i, self._tiff_header_bytes[1804:1808])[0]
+
+    return bias * 1.0e-3
+
   def get_raw_data(self):
     '''Get the pixel intensities (i.e. read the image and return as a
        flex array of integers.)'''
@@ -280,6 +292,8 @@ class FormatTIFFRayonix(FormatTIFF):
 
     assert(self._tiff_byte_order == FormatTIFF.LITTLE_ENDIAN)
 
+    bias = int(round(self._get_rayonix_bias()))
+
     from boost.python import streambuf
     from dxtbx import read_uint16
     from scitbx.array_family import flex
@@ -287,7 +301,7 @@ class FormatTIFFRayonix(FormatTIFF):
     size = self.get_detector()[0].get_image_size()
     f = FormatTIFF.open_file(self._image_file)
     f.read(self._header_size)
-    raw_data = read_uint16(streambuf(f), int(size[0] * size[1]))
+    raw_data = read_uint16(streambuf(f), int(size[0] * size[1])) - bias
     image_size = self.get_detector()[0].get_image_size()
     raw_data.reshape(flex.grid(image_size[1], image_size[0]))
 
