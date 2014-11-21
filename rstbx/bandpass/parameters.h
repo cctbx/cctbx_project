@@ -103,7 +103,7 @@ namespace rstbx { namespace bandpass {
       adapt = annlib_adaptbx::AnnAdaptor(reference,2,NEAR);
     }
     inline
-    bool operator()(vec3 prediction){
+    bool operator()(vec3 prediction, int const& TOLERANCE=0){
       // if no tiles are set, assume all pixels are active
       if (tiles.size() == 0)
         return true;
@@ -125,8 +125,8 @@ namespace rstbx { namespace bandpass {
       bool is_in_active_area = false;
       for (int n = 0; n< NEAR;++n){
         int itile = nearest_neighbours[n];
-        if (tiles[4*itile] <= prediction[0] && prediction[0] <= tiles[4*itile+2] &&
-            tiles[4*itile+1] <= prediction[1] &&prediction[1] <= tiles[4*itile+3]){
+        if (tiles[4*itile]-TOLERANCE <= prediction[0] && prediction[0] <= TOLERANCE + tiles[4*itile+2] &&
+            tiles[4*itile+1]-TOLERANCE <= prediction[1] &&prediction[1] <= TOLERANCE + tiles[4*itile+3]){
           is_in_active_area = true;tile_id=itile;break;
           }
       }
