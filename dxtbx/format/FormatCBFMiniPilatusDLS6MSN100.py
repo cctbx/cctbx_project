@@ -35,14 +35,14 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     '''Initialise the image structure from the given file, including a
     proper model of the experiment.'''
 
-    # assert(self.understand(image_file))
+    assert(self.understand(image_file))
 
     FormatCBFMiniPilatus.__init__(self, image_file)
 
     return
 
-  # FIXME this beamline has a kappa goniometer so should really be supporting this
-  # in here...
+  # FIXME this beamline has a kappa goniometer so should really be supporting
+  # this in here...
 
   def _detector(self):
     '''Detector model, allowing for small offsets in the positions of 60
