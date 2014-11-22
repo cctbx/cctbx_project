@@ -67,6 +67,7 @@ class ncs_group_object(object):
     self.ncs_selection_str = ''
     # iselection of all part in ASU that are not related via NCS operators
     self.non_ncs_region_selection = flex.size_t([])
+    # All master ncs atoms selection
     self.all_master_ncs_selections = flex.size_t([])
     # list of selection strings of master NCS
     self.ncs_chain_selection = []
@@ -568,7 +569,7 @@ class ncs_group_object(object):
 
     self.all_master_ncs_selections = self.ncs_atom_selection.iselection(True)
     # add the ncs_atom_selection all the regions that are not NCS related
-    self.ncs_atom_selection = self.ncs_atom_selection | ~ncs_related_atoms
+    self.ncs_atom_selection = self.ncs_atom_selection | (~ncs_related_atoms)
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
   def build_ncs_obj_from_spec_file(self,file_name=None,file_path='',
