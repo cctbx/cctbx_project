@@ -2,6 +2,7 @@ from __future__ import division
 from scitbx.array_family import flex
 import mmtbx.monomer_library.server
 from mmtbx import monomer_library
+from libtbx.utils import Sorry
 import mmtbx.maps.correlation
 from scitbx import matrix
 import scitbx.rigid_body
@@ -372,6 +373,7 @@ def get_weight(fmodel=None,
     transformations = mo.transformations
     u_iso = mo.u_iso
     ncs_restraints_group_list = mo.ncs_restraints_group_list
+  # del: consider deleting the code below
   #   if hasattr(mo,'extended_ncs_selection'):
   #     extended_ncs_selection = mo.extended_ncs_selection
   # if not extended_ncs_selection:
@@ -533,18 +535,26 @@ def apply_transforms(ncs_coordinates,
   else:
     return flex.vec3_double(asu_xyz)
 
-def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection=None):
+def get_extended_ncs_selection(ncs_restraints_group_list,
+                               refine_selection=None,
+                               assume_strick_ncs =False):
   """
   Args:
     ncs_restraints_group_list: list of ncs_restraint_group objects
     refine_selection (flex.siz_t): of all ncs related copies and
       non ncs related parts to be included in selection (to be refined)
+    assume_strick_ncs (bool): assume that all atoms are NCS related
+      (applicable only if refine selection is not given)
 
   Returns:
     (flex.siz_t): selection of all ncs groups master ncs selection and
-      non ncs related portions that are being refined
+      non ncs related portions that are being refined (exclude NCS copies)
   """
-  if not refine_selection: refine_selection = []
+  if not refine_selection:
+    refine_selection = []
+    if not assume_strick_ncs:
+      msg = 'Please provide refine_selection when not all atoms are NCS related'
+      raise Sorry(msg)
   refine_selection = set(refine_selection)
   total_master_ncs_selection = set()
   total_ncs_related_selection = set()
@@ -557,8 +567,10 @@ def get_extended_ncs_selection(ncs_restraints_group_list,refine_selection=None):
   if refine_selection:
     # make sure all ncs related parts are in refine_selection
     all_ncs = total_master_ncs_selection | total_ncs_related_selection
-    msg = 'refine_selection does not contain all ncs related atoms'
-    assert not bool(all_ncs - refine_selection), msg
+    not_all_ncs_related_atoms_selected = bool(all_ncs - refine_selection)
+    if not_all_ncs_related_atoms_selected:
+      msg = 'refine_selection does not contain all ncs related atoms'
+      raise Sorry(msg)
     #
     extended_ncs_selection = refine_selection - total_ncs_related_selection
     return flex.size_t(list(extended_ncs_selection))
