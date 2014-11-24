@@ -320,7 +320,6 @@ def minimal_master_ncs_grouping(match_dict):
     [_,k] = master_size.pop(0)
     tr = transform_to_group[k]
     # make sure ALL copies from transform need to be added
-    # fixme: add test
     if not bool(set(tr[1]) - chain_left_to_add):
       transform_to_use.add(k)
       chain_left_to_add -= set(tr[1])

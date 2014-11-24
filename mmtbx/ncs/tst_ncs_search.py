@@ -363,7 +363,38 @@ class TestSimpleAlignment(unittest.TestCase):
     but the transform from B to G is the same as the inverse of A to D,
     make sure the non-transform match is selected
     """
-    pass
+    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_7)
+    ph = pdb_inp.hierarchy
+    chains_info = ncs_search.get_chains_info(ph)
+    chain_match_list = ncs_search.search_ncs_relations(
+      chains_info=chains_info,min_percent=0.10,
+      min_contig_length=1,check_atom_order=True)
+    match_dict = ncs_search.clean_chain_matching(
+      chain_match_list=chain_match_list,ph=ph,
+      chain_similarity_limit=0.1)
+    transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
+      match_dict)
+
+    r = transform_to_group[1][2][0]
+    t = transform_to_group[1][2][1]
+    #
+    rt = r.transpose()
+    tt = - rt*t
+    #
+    xyz_A = ph.select(flex.size_t_range(0,6)).atoms().extract_xyz()
+    xyz_B = ph.select(flex.size_t_range(6,10)).atoms().extract_xyz()
+    xyz_F = ph.select(flex.size_t_range(20,26)).atoms().extract_xyz()
+    xyz_G = ph.select(flex.size_t_range(26,30)).atoms().extract_xyz()
+    #
+    xyz_F_expected = (rt.elems * xyz_A + tt)
+    xyz_G_expected = (rt.elems * xyz_B + tt)
+    #
+    self.assertEqual(list(xyz_F.round(3)),list(xyz_F_expected.round(3)))
+    self.assertEqual(list(xyz_G.round(3)),list(xyz_G_expected.round(3)))
+    #
+    group_dict = ncs_search.build_group_dict(
+      transform_to_group,match_dict,chains_info)
+    self.assertEqual(group_dict.keys(),[('A','B')])
 
 
 test_pdb_1 = '''\
@@ -1164,6 +1195,44 @@ HETATM11495  C2  NDG L 646      61.028 -14.273  81.262  1.00 69.80           C
 END
 '''
 
+test_pdb_7 = '''\
+ATOM      1  N   ASP A   5      91.286 -31.834  73.572  1.00 77.83           N
+ATOM      2  CA  ASP A   5      90.511 -32.072  72.317  1.00 78.04           C
+ATOM      3  C   ASP A   5      90.136 -30.762  71.617  1.00 77.70           C
+ATOM      4  O   ASP A   5      89.553 -29.857  72.225  1.00 77.56           O
+ATOM      9  N   THR A   6      91.286 -31.834  73.572  1.00 77.83           N
+ATOM     10  CA  THR A   6      90.511 -32.072  72.317  1.00 78.04           C
+TER
+ATOM   2517  N   GLY B 501      91.286 -31.834  73.572  1.00 77.83           N
+ATOM   2518  CA  GLY B 501      90.511 -32.072  72.317  1.00 78.04           C
+ATOM   2519  C   GLY B 501      90.136 -30.762  71.617  1.00 77.70           C
+ATOM   2520  O   GLY B 501      89.553 -29.857  72.225  1.00 77.56           O
+TER
+ATOM   3802  N   ASP D   5      92.487   3.543  81.144  1.00 70.91           N
+ATOM   3803  CA  ASP D   5      93.100   3.556  79.781  1.00 70.52           C
+ATOM   3804  C   ASP D   5      92.161   2.961  78.728  1.00 70.38           C
+ATOM   3805  O   ASP D   5      91.661   1.839  78.880  1.00 69.56           O
+ATOM   3810  N   THR D   6      92.487   3.543  81.144  1.00 70.91           N
+ATOM   3811  CA  THR D   6      93.100   3.556  79.781  1.00 70.52           C
+TER
+ATOM   6318  N   GLY E 501      92.487   3.543  81.144  1.00 70.91           N
+ATOM   6319  CA  GLY E 501      93.100   3.556  79.781  1.00 70.52           C
+ATOM   6320  C   GLY E 501      92.161   2.961  78.728  1.00 70.38           C
+ATOM   6321  O   GLY E 501      91.661   1.839  78.880  1.00 69.56           O
+TER
+ATOM   7603  N   ASP F   5      61.217 -13.228  81.321  1.00 69.80           N
+ATOM   7604  CA  ASP F   5      60.975 -12.176  80.288  1.00 70.31           C
+ATOM   7605  C   ASP F   5      61.953 -12.288  79.115  1.00 70.96           C
+ATOM   7606  O   ASP F   5      63.174 -12.323  79.302  1.00 70.38           O
+ATOM   7611  N   THR F   6      61.217 -13.228  81.321  1.00 69.80           N
+ATOM   7612  CA  THR F   6      60.975 -12.176  80.288  1.00 70.31           C
+TER
+ATOM  10119  N   GLY G 501      61.217 -13.228  81.321  1.00 69.80           N
+ATOM  10120  CA  GLY G 501      60.975 -12.176  80.288  1.00 70.31           C
+ATOM  10121  C   GLY G 501      61.953 -12.288  79.115  1.00 70.96           C
+ATOM  10122  O   GLY G 501      63.174 -12.323  79.302  1.00 70.38           O
+'''
+
 def run_selected_tests():
   """  Run selected tests
 
@@ -1171,7 +1240,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_update_res_list']
+  tests = ['test_correct_transform_selection']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 
