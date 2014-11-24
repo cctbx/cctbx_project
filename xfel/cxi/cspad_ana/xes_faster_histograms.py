@@ -227,6 +227,7 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
     helper.restart()
     iterations = normal_eqns_solving.levenberg_marquardt_iterations(
           non_linear_ls = helper,
+          n_max_iterations = 40,
           gradient_threshold = 1.E-5)
     #print "current values after iterations", list(helper.x),
 
@@ -307,7 +308,8 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
 
           udiff = free_x - z_mean
           Afactor = udiff/(z_sigm * z_sigm)
-          Sfactor = (udiff*udiff)*math.pow(z_sigm, -3.)
+          #Sfactor = (udiff*udiff)*math.pow(z_sigm, -3.)
+          Sfactor = Afactor * udiff/z_sigm
 
           # leaving out small cross terms where one-photon peak influences
           # derivatives with respect to z_mean and z_sigm.
