@@ -277,7 +277,7 @@ def minimal_master_ncs_grouping(match_dict):
   #
   for (master_id, copy_id) in sorted_chain_groups_keys:
     [sel_1,sel_2,res_1,res_2,r,t,rmsd] = match_dict[master_id,copy_id]
-    # check if master is not a copy in another group
+    # check that master and copy are not a copies in another group
     if (master_id in chains_in_groups) or (copy_id in chains_in_groups):
       match_dict.pop((master_id, copy_id),None)
       continue
@@ -878,9 +878,8 @@ def update_match_dicts(best_matches,match_dict,
 def find_same_transform(r,t,transforms):
   """
   Check if the rotation r and translation t exist in the transform dictionary.
-
-  Comparing rotations and the result of applying rotation and translation on
-  a test vector
+  Note that there can be both inverse and regular match. Return the
+  non-transpose if exist.
 
   Args:
     r (matrix.sqr): rotation
@@ -899,9 +898,15 @@ def find_same_transform(r,t,transforms):
       tt = v.t
     else:
       (rr,tt) = v[2]
-    is_the_same, is_transpose = is_same_transform(r, t, rr, tt)
+    is_the_same, is_transpose_flag = is_same_transform(r, t, rr, tt)
     if is_the_same:
-      return k, is_transpose
+      if is_transpose_flag:
+        # when transpose is found, keep it but continue the search
+        tr_num = k
+        is_transpose  = True
+      else:
+        # found non-transform match
+        return k, False
   return tr_num, is_transpose
 
 def search_ncs_relations(ph=None,
@@ -1383,6 +1388,10 @@ def get_rotation_vec(r):
 
 def is_same_transform(r1,t1,r2,t2):
   """
+  Check if transform is the same by comparing rotations and the result of
+  applying rotation and translation on
+  a test vector
+
   Args:
     r1, r2: Rotation matrices
     t1, t2: Translation vectors
