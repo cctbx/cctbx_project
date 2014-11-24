@@ -356,6 +356,15 @@ class TestSimpleAlignment(unittest.TestCase):
     answer = ncs_results[('H','I')].copies
     self.assertEqual(answer,[['H', 'I'], ['J', 'K'], ['L', 'M']])
 
+  def test_correct_transform_selection(self):
+    print sys._getframe().f_code.co_name
+    """
+    When [A,B] can be the master for [D,E], [F,G]
+    but the transform from B to G is the same as the inverse of A to D,
+    make sure the non-transform match is selected
+    """
+    pass
+
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
