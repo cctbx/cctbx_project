@@ -1,5 +1,5 @@
 from __future__ import division
-import iotbx.ncs.ncs_preprocess
+import ncs_preprocess
 import sys
 
 
@@ -88,7 +88,7 @@ def input(pdb_hierarchy_inp=None,
         atoms of two residues
     """
     if not log: log = sys.stdout
-    ncs_group_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
+    ncs_group_obj = ncs_preprocess.ncs_group_object()
     ncs_group_obj.preprocess_ncs_obj(
       pdb_hierarchy_inp=pdb_hierarchy_inp,
       pdb_inp=pdb_inp,
