@@ -218,9 +218,11 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
     annot = None
     if len(params.secondary_structure.helix) +\
        len(params.secondary_structure.sheet) >0:
-      annot = iotbx.pdb.secondary_structure.annotation(
-          helices=params.secondary_structure.helix,
-          sheets=params.secondary_structure.sheet)
+      annot = iotbx.pdb_secondary_structure.annotation.from_phil(
+        phil_helices=params.secondary_structure.helix,
+        phil_sheets=params.secondary_structure.sheet,
+        pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+        log=log)
     else:
       annot = processed_pdb_file.all_chain_proxies.pdb_inp.\
           extract_secondary_structure()

@@ -633,7 +633,7 @@ SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
                         (pdb_par_input, s_par_records11),
                         (pdb_par_input, s_par_records12),
                         ]:
-    ioss_annotation = ioss.annotation(records = recs.split('\n'))
+    ioss_annotation = ioss.annotation.from_records(records = recs.split('\n'))
     ann = ioss_annotation.as_restraint_groups()
     custom_pars = defpars.fetch(source = iotbx.phil.parse(ann))
     ss_manager = manager(

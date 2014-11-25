@@ -876,7 +876,7 @@ HELIX    1   1 ALA A    1  ALA A   20  1                                  20
   h = ssb.secondary_structure_from_sequence(ssb.alpha_helix_str,"A"*20)
   #h.write_pdb_file(file_name=prefix+'h0.pdb')
   d1 = get_distances(h)
-  ann = ioss.annotation(records=h_records.split('\n'))
+  ann = ioss.annotation.from_records(records=h_records.split('\n'))
   pdb_inp = iotbx.pdb.input(source_info=None,
         lines=h.as_pdb_string())
   test_h = pdb_inp.construct_hierarchy()
@@ -904,7 +904,7 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
 """
   pdb_inp = iotbx.pdb.input(source_info=None,
     lines=tst_00_start_lines)
-  ann = ioss.annotation(records=h_records.split('\n'))
+  ann = ioss.annotation.from_records(records=h_records.split('\n'))
   h = pdb_inp.construct_hierarchy()
   d1 = get_distances(h)
   #h.write_pdb_file(file_name=prefix+'_initial.pdb')
@@ -932,7 +932,7 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
 """
   pdb_inp = iotbx.pdb.input(source_info=None,
       lines=tst_01_start_lines)
-  ann = ioss.annotation(records=h_records.split('\n'))
+  ann = ioss.annotation.from_records(records=h_records.split('\n'))
   h = pdb_inp.construct_hierarchy()
   d1 = get_distances(h, n_neighbours=20)
   #h.write_pdb_file(file_name=prefix+'_initial.pdb')
@@ -961,7 +961,7 @@ SHEET    2  AA 2 CYS A  52  GLY A  57 -1  O  LYS A  53   N  TYR A  46
 """
   pdb_inp = iotbx.pdb.input(source_info=None,
       lines=tst_02_start_lines)
-  ann = ioss.annotation(records=h_records.split('\n'))
+  ann = ioss.annotation.from_records(records=h_records.split('\n'))
   h = pdb_inp.construct_hierarchy()
   d1 = get_distances(h, n_neighbours=20)
   #h.write_pdb_file(file_name=prefix+'_initial.pdb')
