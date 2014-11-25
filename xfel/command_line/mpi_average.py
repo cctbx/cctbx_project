@@ -12,6 +12,7 @@ from libtbx import easy_pickle
 import libtbx.option_parser
 from scitbx.array_family import flex
 import sys
+from libtbx.utils import Sorry
 
 def average(argv=None):
   if argv == None:
@@ -20,7 +21,6 @@ def average(argv=None):
   try:
     from mpi4py import MPI
   except ImportError:
-    from libtbx.utils import Sorry
     raise Sorry("MPI not found")
 
   command_line = (libtbx.option_parser.option_parser(
