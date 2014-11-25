@@ -611,7 +611,7 @@ scitbx::vec2<int> const& lower_right) {
       double val = data(x,y);
 
       if(val < intensity_extent[0]) val = intensity_extent[0];
-      else if(val > intensity_extent[1]) val = intensity_extent[1];
+      else if(val > intensity_extent[1]-1) val = intensity_extent[1]-1;
 
       // find the intensity bin
       std::size_t valbin = (std::size_t)std::floor(
@@ -623,7 +623,9 @@ scitbx::vec2<int> const& lower_right) {
       double twotheta = std::atan(d_in_mm/distance)*180/scitbx::constants::pi;
       std::size_t bin = (std::size_t)std::floor(twotheta*num_radial_bins/extent_two_theta);
 
-      histogram[valbin*num_radial_bins+bin]++;
+      std::size_t hg_index = valbin*num_radial_bins+bin;
+      SCITBX_ASSERT(hg_index >= 0 && hg_index < histogram.size());
+      histogram[hg_index]++;
     }
   }
 }
