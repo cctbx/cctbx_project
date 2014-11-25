@@ -1436,7 +1436,15 @@ def image_xpp(address, evt, env, aa):
   for quad in quads:
     q_data = quad.data()
     q_idx = quad.quad()
-    q_mask = config.sections(q_idx)
+    try:
+      # pyana
+      # example: if the third sensor (2x1) is disabled, q_mask = [0,1,3,4,5,6,7]
+      q_mask = config.sections(q_idx)
+    except AttributeError:
+      # psana
+      # as above, using config.roiMask, a bitstring where the ith bit is true if the ith sensor is active. x << y means bitwise shift
+      # x, y times, and & is the bitwise AND operator
+      q_mask = [i for i in xrange(config.numSect()//config.numQuads()) if 1 << i & config.roiMask(q_idx)]
 
     # For consistency, one could/should verify that len(q_data) is
     # equal to len(sections[q_idx]).
