@@ -1299,50 +1299,66 @@ class ncs_group_object(object):
       xyz = xrs.sites_cart()
     elif pdb_hierarchy_asu:
       xyz = pdb_hierarchy_asu.atoms().extract_xyz()
-    for gn,gr in self.ncs_group_map.iteritems():
+    # break groups with more than one chain in master
+    ncs_groups_by_chains = {}
+    for gr in self.ncs_group_map.itervalues():
       for gr_chains in gr[0]:
-        gr_dict = {}
+        # the same chain be be part of the master NCS in several groups
+        if ncs_groups_by_chains.has_key(gr_chains):
+          gr_dict = ncs_groups_by_chains[gr_chains]
+        else:
+          gr_dict = {}
+          ncs_groups_by_chains[gr_chains] = gr_dict
+        # keep track of copies to avoid multiple identinew_chain_idty matrices
+        chains_in_copies = set(gr_dict.values())
         # gr -> [master selection str, set of transforms]
         # Process one chain, in the master ncs, at a time
         for gr_chain in get_list_of_chains_selection(gr_chains):
           for s_str in gr[1]:
             # get ncs copy chain name, that corresponds to master and transform
             gr_key = gr_chain + '_' + s_str
-            gr_dict[gr_key] = self.ncs_copies_chains_names[gr_key]
-        sorted_keys = sort_dict_keys(gr_dict)
-        center_orth = []
-        rotations = []
-        translations = []
-        chain_residue_id_list = []
-        chain_residue_range_list = []
-        rmsd_list = []
-        residues_in_common_list = []
-        for k in sorted_keys:
-          chain_id = gr_dict[k]
-          chain_residue_id_list.append(chain_id)
-          [range_list,ncs_sel],rmsd = self.common_res_dict[k]
-          chain_residue_range_list.append(range_list)
-          center_orth.append(get_center_orth(xyz,ncs_sel))
-          transform_key = k.split('_')[1]
-          tr = self.ncs_transform[transform_key]
-          # use the rmsd of the ncs related atoms rather than the transform
-          # rmsd_list.append(tr.rmsd)
-          rmsd_list.append(rmsd)
-          # in spec files transform is copy -> master, not master -> copy
-          r,t = inverse_transform(tr.r,tr.t)
-          rotations.append(r)
-          translations.append(t)
-          res_num = sum([y-x+1 for [x,y] in range_list])
-          residues_in_common_list.append(res_num)
-        # build group
-        spec_object.import_ncs_group(
-          center_orth = center_orth,
-          ncs_rota_matr = rotations,
-          trans_orth = translations,
-          rmsd_list = rmsd_list,
-          chain_residue_id = [chain_residue_id_list,chain_residue_range_list],
-          residues_in_common_list = residues_in_common_list,
-          ncs_domain_pdb = None)
+            new_chain_id = self.ncs_copies_chains_names[gr_key]
+            if not (new_chain_id in chains_in_copies):
+              gr_dict[gr_key] = new_chain_id
+              chains_in_copies.add(new_chain_id)
+    #
+    sorted_group_keys = sorted(ncs_groups_by_chains)
+    for gr_dict_key in sorted_group_keys:
+      gr_dict = ncs_groups_by_chains[gr_dict_key]
+      sorted_keys = sort_dict_keys(gr_dict)
+      center_orth = []
+      rotations = []
+      translations = []
+      chain_residue_id_list = []
+      chain_residue_range_list = []
+      rmsd_list = []
+      residues_in_common_list = []
+      for k in sorted_keys:
+        chain_id = gr_dict[k]
+        chain_residue_id_list.append(chain_id)
+        [range_list,ncs_sel],rmsd = self.common_res_dict[k]
+        chain_residue_range_list.append(range_list)
+        center_orth.append(get_center_orth(xyz,ncs_sel))
+        transform_key = k.split('_')[1]
+        tr = self.ncs_transform[transform_key]
+        # use the rmsd of the ncs related atoms rather than the transform
+        # rmsd_list.append(tr.rmsd)
+        rmsd_list.append(rmsd)
+        # in spec files transform is copy -> master, not master -> copy
+        r,t = inverse_transform(tr.r,tr.t)
+        rotations.append(r)
+        translations.append(t)
+        res_num = sum([y-x+1 for [x,y] in range_list])
+        residues_in_common_list.append(res_num)
+      # build group
+      spec_object.import_ncs_group(
+        center_orth = center_orth,
+        ncs_rota_matr = rotations,
+        trans_orth = translations,
+        rmsd_list = rmsd_list,
+        chain_residue_id = [chain_residue_id_list,chain_residue_range_list],
+        residues_in_common_list = residues_in_common_list,
+        ncs_domain_pdb = None)
     if write:
       spec_object.display_all(log=self.log)
       f=open("simple_ncs_from_pdb.resolve",'w')

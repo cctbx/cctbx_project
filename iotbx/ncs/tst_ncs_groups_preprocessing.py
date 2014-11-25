@@ -698,7 +698,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_finding_partial_ncs']
+  tests = ['test_spec_reading']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 

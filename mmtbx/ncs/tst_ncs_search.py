@@ -4,6 +4,7 @@ from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
 from libtbx.utils import Sorry
 from iotbx import pdb
+import iotbx.ncs
 import unittest
 import sys
 
@@ -374,10 +375,9 @@ class TestSimpleAlignment(unittest.TestCase):
       chain_similarity_limit=0.1)
     transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
       match_dict)
-
+    #
     r = transform_to_group[1][2][0]
     t = transform_to_group[1][2][1]
-    #
     rt = r.transpose()
     tt = - rt*t
     #
@@ -395,6 +395,16 @@ class TestSimpleAlignment(unittest.TestCase):
     group_dict = ncs_search.build_group_dict(
       transform_to_group,match_dict,chains_info)
     self.assertEqual(group_dict.keys(),[('A','B')])
+
+  def test_split_groups_to_spec(self):
+    print sys._getframe().f_code.co_name
+    pdb_str = test_pdb_7 + test_pdb_7_addition
+    ncs_obj = iotbx.ncs.input(pdb_string=pdb_str)
+    spec = ncs_obj.get_ncs_info_as_spec(write=False)
+    gr = spec.ncs_groups()
+    self.assertEqual(len(gr),2)
+    self.assertEqual(gr[0].chain_residue_id()[0],['A', 'D', 'F'])
+    self.assertEqual(gr[1].chain_residue_id()[0],['B', 'E', 'G', 'X'])
 
 
 test_pdb_1 = '''\
@@ -1233,6 +1243,14 @@ ATOM  10121  C   GLY G 501      61.953 -12.288  79.115  1.00 70.96           C
 ATOM  10122  O   GLY G 501      63.174 -12.323  79.302  1.00 70.38           O
 '''
 
+test_pdb_7_addition = '''\
+TER
+ATOM  10119  N   GLY X 501     -44.932 -80.765  78.851  1.00 69.80           N
+ATOM  10120  CA  GLY X 501     -45.174 -79.714  77.818  1.00 70.31           C
+ATOM  10121  C   GLY X 501     -44.196 -79.826  76.644  1.00 70.96           C
+ATOM  10122  O   GLY X 501     -42.975 -79.861  76.832  1.00 70.38           O
+'''
+
 def run_selected_tests():
   """  Run selected tests
 
@@ -1240,7 +1258,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_correct_transform_selection']
+  tests = ['test_split_groups_to_spec']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 
