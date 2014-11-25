@@ -581,6 +581,53 @@ scitbx::vec2<int> const& lower_right) {
   }
 }
 
+void radial_histogram(scitbx::af::versa<double, scitbx::af::flex_grid<> > & data,
+scitbx::af::versa<double, scitbx::af::flex_grid<> > & histogram,
+scitbx::vec2<int> const& intensity_extent,
+scitbx::vec2<int> const& beam_center,
+double pixel_size, double distance,
+scitbx::vec2<int> const& upper_left,
+scitbx::vec2<int> const& lower_right) {
+  /* Create a raidal histogram plot for online analysis
+   * @param data Image data (pixels)
+   * @param histogram Radial histogram plot to be worked on
+   * @param intensity_extent Pixel intensities in this range will be binned on the
+   * y axis of the histogram.
+   * @param beam_center Beam center in pixels
+   * @param pixel_size Pixel size in mm
+   * @param distance Detector distance in mm
+   * @param upper_left Upper left corner of data to histogram (pixels)
+   * @param lower_right Lower right corner of data to histogram (pixels)
+   */
+  std::size_t num_radial_bins = histogram.accessor().focus()[1];
+  std::size_t num_intensity_bins = histogram.accessor().focus()[0];
+
+  double extent_in_mm = num_radial_bins * pixel_size;
+  double extent_two_theta = std::atan(extent_in_mm/distance)*180/scitbx::constants::pi;
+
+  // iterate over every pixel in data within the given bounds
+  for(std::size_t y = upper_left[1]; y < lower_right[1]; y++) {
+    for(std::size_t x = upper_left[0]; x < lower_right[0]; x++) {
+      double val = data(x,y);
+
+      if(val < intensity_extent[0]) val = intensity_extent[0];
+      else if(val > intensity_extent[1]) val = intensity_extent[1];
+
+      // find the intensity bin
+      std::size_t valbin = (std::size_t)std::floor(
+        num_intensity_bins * (val - intensity_extent[0]) / (intensity_extent[1] - intensity_extent[0]));
+
+      // find the radial bin
+      scitbx::vec2<int> point((int)x,(int)y);
+      double d_in_mm = distance_between_points(point,beam_center) * pixel_size;
+      double twotheta = std::atan(d_in_mm/distance)*180/scitbx::constants::pi;
+      std::size_t bin = (std::size_t)std::floor(twotheta*num_radial_bins/extent_two_theta);
+
+      histogram[valbin*num_radial_bins+bin]++;
+    }
+  }
+}
+
 
 /* Included here, because it depends on structures declared only in
  * this file.
@@ -678,6 +725,12 @@ namespace boost_python { namespace {
 
     def("radial_average", &radial_average,
       (arg("data"), arg("beam_center"), arg("sums"), arg("sums_sq"), arg("counts"),
+       arg("pixel_size"), arg("distance"),
+       arg("upper_left"), arg("lower_right")))
+    ;
+
+    def("radial_histogram", &radial_histogram,
+      (arg("data"), arg("histogram"), arg("intensity_extent"), arg("beam_center"),
        arg("pixel_size"), arg("distance"),
        arg("upper_left"), arg("lower_right")))
     ;
