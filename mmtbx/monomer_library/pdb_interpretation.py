@@ -2970,7 +2970,7 @@ class build_all_chain_proxies(linking_mixins):
     if params.nucleic_acid_restraints.save_as_param_file:
       self.na_restraints_out_file = open("na_restraints.param",'w')
       self.na_restraints_out_file.write("""
-pdb_interpretation {
+refinement.pdb_interpretation {
   nucleic_acid_restraints {\n""")
     self.process_apply_cif_modification(mon_lib_srv=mon_lib_srv, log=log)
     self.process_apply_cif_link(mon_lib_srv=mon_lib_srv, log=log)
