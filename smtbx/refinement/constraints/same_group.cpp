@@ -140,7 +140,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     for (int i=0; i < scatterers_.size(); i++) {
       // update site of i-th atoms
       co_s[i] -= rot_cnt;
-      fx_s[i] = unit_cell.fractionalize(co_s[i]*rm + shift + rot_cnt);
+      fx_s[i] = unit_cell.fractionalize(rm*co_s[i] + shift + rot_cnt);
       // derivatives
       if (jacobian_transpose != NULL) {
         sparse_matrix_type &jt = *jacobian_transpose;
@@ -155,13 +155,13 @@ namespace smtbx { namespace refinement { namespace constraints {
           cart_t t;
           for (int k=0; k<3; k++)
             t[k] = jt(j, argument(i+1)->index()+k);
-          cart_t x = t*jtm;
+          cart_t x = jtm*t;
           for (int k=0; k<3; k++)
             jt(j, j_s+k) = x[k];
         }
         // rotation
         for (int j=3; j<6; j++ )  {
-          frac_t grad_f = unit_cell.fractionalize(co_s[i]*rmd[j-3]);
+          frac_t grad_f = unit_cell.fractionalize(rmd[j-3]*co_s[i]);
           for (int k=0; k<3; k++)
             jt(values->index()+j, j_s+k) = grad_f[k];
         }

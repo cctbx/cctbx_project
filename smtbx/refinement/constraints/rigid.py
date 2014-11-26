@@ -296,7 +296,6 @@ class same_group(object):
         d_inv += matrix.col(matrix.col(c)-matrix.col(crds[i])).length_sq()
       if d_inv < d:
         rm = -lsf.r
-      rm = rm.transpose()
       if self.fix_xyz:
         shifts_and_angles =\
           reparametrisation.add(_.independent_small_6_vector_parameter,
