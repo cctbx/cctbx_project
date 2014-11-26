@@ -44,6 +44,9 @@ def tst_pdb_file():
   print "OK"
 
 def tst_parsing_phil():
+  if not libtbx.env.has_module("phenix_regression"):
+    print "Skipping tst_pdb_file(): phenix_regression not available"
+    return
   phil_str = """\
 secondary_structure {
   helix {
