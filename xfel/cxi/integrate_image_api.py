@@ -42,7 +42,6 @@ def integrate_one_image(data, **kwargs):
 
   detector_format_version = detector_format_function(
     data['DETECTOR_ADDRESS'], reverse_timestamp(data['TIMESTAMP'])[0])
-  assert detector_format_version is not None
   args += ["distl.detector_format_version=%s" % detector_format_version]
 
   from xfel.phil_preferences import load_cxi_phil

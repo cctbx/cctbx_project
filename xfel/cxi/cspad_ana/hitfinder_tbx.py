@@ -37,7 +37,6 @@ class distl_hitfinder(object):
 
     detector_format_version = detector_format_function(
       address, reverse_timestamp(timestamp)[0])
-    assert detector_format_version is not None
     args += ["distl.detector_format_version=%s" % detector_format_version]
 
     from xfel.phil_preferences import load_cxi_phil
