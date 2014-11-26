@@ -80,7 +80,7 @@ def run(args):
                           action="store",
                           type="string",
                           help="Detector format version to use for generating active areas and laying out tiles",
-                          default="CXI 8.2")
+                          default=None)
                   .option("-d", "--distance",
                           action="store",
                           type="int",
@@ -94,13 +94,19 @@ def run(args):
                      ).process(args=args)
   output_filename = command_line.options.output_filename
   detector_format_version = command_line.options.detector_format_version
-  if 'XPP' in detector_format_version:
-    beam_center_x = 1765 // 2 * 0.11
-    beam_center_y = 1765 // 2 * 0.11
-  else:
+  if detector_format_version is None or 'XPP' not in detector_format_version:
     beam_center_x = None
     beam_center_y = None
+  else:
+    beam_center_x = 1765 // 2 * 0.11
+    beam_center_y = 1765 // 2 * 0.11
   address, timestamp = address_and_timestamp_from_detector_format_version(detector_format_version)
+
+  # if no detector format version is provided, make sure to write no address to the image pickle
+  # but CsPadDetector (called later), needs an address, so give it a fake one
+  save_address = address is not None
+  if not save_address:
+    address = "CxiDs1-0|Cspad-0" # time stamp will still be None
   timestamp = evt_timestamp((timestamp,0))
   args = command_line.args
   assert len(args) == 1
@@ -116,6 +122,9 @@ def run(args):
   gain_map = flex.double(img_diff.accessor(), 0)
   gain_map.as_1d().set_selected(img_sel.iselection(), 1/img_diff.as_1d().select(img_sel))
   gain_map /= flex.mean(gain_map.as_1d().select(img_sel))
+
+  if not save_address:
+    address = None
   d = cspad_tbx.dpack(data=gain_map, address=address, active_areas=active_areas, timestamp=timestamp,
     distance=command_line.options.distance,wavelength=command_line.options.wavelength,
     beam_center_x = beam_center_x, beam_center_y = beam_center_y)
@@ -147,7 +156,7 @@ def convert_detector(raw_data, detector_format_version, address):
     return flex.double(cspad_tbx.CsPadDetector(address, evt, env, sections).astype(numpy.float64)), None
   else:
     asic_start = 0
-    if 'XPP' in detector_format_version:
+    if detector_format_version is not None and 'XPP' in detector_format_version:
       from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
       rotations = xpp_active_areas[detector_format_version]['rotations']
       active_areas = xpp_active_areas[detector_format_version]['active_areas']

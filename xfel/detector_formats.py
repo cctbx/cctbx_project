@@ -166,4 +166,4 @@ def address_and_timestamp_from_detector_format_version(format_name):
   if _detector_format_version_dict.has_key(format_name):
     return (_detector_format_version_dict[format_name]['address'],
             _detector_format_version_dict[format_name]['end_time'])
-  return None
+  return None, None
