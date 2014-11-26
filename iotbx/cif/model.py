@@ -403,12 +403,15 @@ class block(block_base):
         print >> out, indent + "save_"
         print >> out
       else:
+        lp = self.loops[k]
+        if lp.n_rows() == 0:
+          continue
         if loop_format_strings is not None and k in loop_format_strings:
-          self.loops[k].show(
+          lp.show(
             out=out, indent=indent, indent_row=indent_row,
             fmt_str=loop_format_strings[k])
         else:
-          self.loops[k].show(out=out, indent=indent, indent_row=indent_row)
+          lp.show(out=out, indent=indent, indent_row=indent_row)
         print >> out
 
   def sort(self, recursive=False, key=None, reverse=False):
