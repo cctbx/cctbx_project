@@ -44,7 +44,7 @@ def exercise_basics():
   sc_params[1].site = c1_site_param
   move_param = r.add(
     constraints.independent_small_6_vector_parameter,
-    (0,0,0, 0, 0, -math.pi/2))
+    (0,0,0, 0, 0, math.pi/2))
   c0a_c1a_site_param = r.add(
     constraints.same_group_xyz,
     scatterers=(c0a, c1a),
