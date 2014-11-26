@@ -14,6 +14,8 @@ import random
 import sys
 import os
 
+__author__ = 'Youval'
+
 
 ncs_1_copy="""\
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1

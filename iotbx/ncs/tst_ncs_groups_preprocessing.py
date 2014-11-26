@@ -11,6 +11,8 @@ import shutil
 import os
 import sys
 
+__author__ = 'Youval'
+
 import libtbx.load_env
 have_phenix = False
 if libtbx.env.has_module(name="phenix"):

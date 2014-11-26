@@ -10,6 +10,7 @@ from cctbx import xray
 import random
 import math
 
+__author__ = 'Youval'
 
 def concatenate_rot_tran(transforms_obj=None,
                          ncs_restraints_group_list=None):
@@ -866,11 +867,12 @@ def get_list_of_best_ncs_copy_map_correlation(
     best_list.append(cc.index(max(cc)))
   return best_list
 
-def get_refine_selection(refine_selection,xray_structure):
+def get_refine_selection(refine_selection=None,number_of_atoms=None):
   """ populate refine_selection with all atoms if no selection is given  """
   if not bool(refine_selection):
       # select to refine all atoms
-      selection_list = range(xray_structure.sites_cart().size())
+      assert bool(number_of_atoms)
+      selection_list = range(number_of_atoms)
       refine_selection = flex.size_t(selection_list)
   return refine_selection
 

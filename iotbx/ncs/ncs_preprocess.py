@@ -176,9 +176,20 @@ class ncs_group_object(object):
     """
     if min_percent > 1: min_percent /= 100
     extension = ''
+    # todo: clean up code, use global parameters when possible
+    # set search parameters
     self.write_messages = write_messages
     self.check_atom_order = check_atom_order
     self.allow_different_size_res = allow_different_size_res
+    self.use_minimal_master_ncs = use_minimal_master_ncs
+    self.min_contig_length = min_contig_length
+    self.max_rmsd = max_rmsd
+    self.exclude_misaligned_residues = exclude_misaligned_residues
+    self.max_dist_diff = max_dist_diff
+    self.min_percent = min_percent
+    self.chain_similarity_limit = chain_similarity_limit
+
+    #
     if not log: log = sys.stdout
     self.log = log
     if file_name: extension = os.path.splitext(file_name)[1]
@@ -1113,18 +1124,19 @@ class ncs_group_object(object):
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
 
   def get_ncs_restraints_group_list(self):
-    """    a list of ncs_restraint_group objects    """
+    """    create a list of ncs_restraint_group objects    """
     ncs_restraints_group_list = []
     group_id_list = sort_dict_keys(self.ncs_group_map)
     for k in group_id_list:
       v = self.ncs_group_map[k]
       master_isel = flex.size_t([])
-      for key in sorted(list(v[0])):
+      # Iterate over sorted master selection strings, collect master selection
+      for key in sorted(v[0]):
         if self.asu_to_ncs_map.has_key(key):
           master_isel.extend(self.asu_to_ncs_map[key])
       new_nrg = NCS_restraint_group(master_isel)
-
-      for tr in sorted(list(v[1])):
+      # iterate over transform numbers in the group, collect copies selections
+      for tr in sorted(v[1]):
         if self.transform_to_ncs.has_key(tr):
           r = self.ncs_transform[tr].r
           t = self.ncs_transform[tr].t
@@ -1452,6 +1464,140 @@ class ncs_group_object(object):
       model.append_chain(new_chain)
     new_ph.atoms().set_xyz(new_sites)
     return new_ph
+
+  def show(self,
+           format=None,
+           prefix='',
+           log=None):
+
+    """
+    Display NCS object
+
+    Args:
+      format (str): "phil" : phil file representation
+                    "spec" : spec representation out of NCS groups
+                    "cctbx": cctbx representation out of NCS groups
+      prefix (str): a string to be added, padding the output, at the left of
+        each line
+      log: where to log the output, by default set to sys.stdout
+    """
+    if not log: log = self.log
+    if (not format) or (format.lower() == 'cctbx'):
+       print >> log, self.__repr__(prefix)
+    elif format.lower() == 'phil':
+      print >> log, self.show_phil_format(prefix)
+    elif format.lower() == 'spec':
+      # Does not add prefix in SPEC format
+      print >> log, self.show_search_parameters_values(prefix)
+      print >> log, self.show_chains_info(prefix)
+      print >> log, self.show_ncs_headers(prefix)
+      print >> log, '\n' + prefix + 'NCS object "display_all"'
+      spec_obj = self.get_ncs_info_as_spec(write=False)
+      spec_obj.display_all(log=log)
+
+  def show_phil_format(self,prefix=''):
+    """
+    Returns a string of NCS groups phil parameters
+
+    Args:
+      prefix (str): a string to be added, padding the output, at the left of
+        each line
+    """
+    str_out = ['\n{}NCS phil parameters:'.format(prefix),'-'*51]
+    str_line = prefix + '  {:<18s} = {}'
+    str_ncs_group =  prefix + 'ncs_group {\n%s' + prefix + '\n}'
+    master_sel_str = sorted(self.ncs_to_asu_selection)
+    for m_str in master_sel_str:
+      gr = self.ncs_to_asu_selection[m_str]
+      str_gr = [str_line.format('master_selection',m_str)]
+      for c_str in gr:
+        str_gr.append(str_line.format('copy_selection',c_str))
+      str_gr = '\n'.join(str_gr)
+      str_out.append(str_ncs_group%str_gr)
+    str_out = '\n'.join(str_out)
+    return str_out
+
+  def show_search_parameters_values(self,prefix=''):
+    """
+    Returns a string of search parameters values
+
+    Args:
+      prefix (str): a string to be added, padding the output, at the left of
+        each line
+    """
+    list_of_values = [
+      'use_minimal_master_ncs','min_contig_length','max_rmsd',
+      'check_atom_order','exclude_misaligned_residues','max_dist_diff',
+      'min_percent','chain_similarity_limit']
+    str_out = ['\n{}NCS search parameters:'.format(prefix),'-'*51]
+    str_line = prefix + '{:<35s}:   {}'
+    for val in list_of_values:
+      s = str_line.format(val, self.__getattribute__(val))
+      str_out.append(s)
+    str_out.append('. '*26)
+    str_out = '\n'.join(str_out)
+    return str_out
+
+  def show_chains_info(self,prefix=''):
+    """
+    Returns formatted string for print out, string containing chains IDs in a
+    table format, padded from the left with "prefix"
+
+    Args:
+      prefix (str): a string to be added, padding the output, at the left of
+        each line
+    """
+    ids = sorted(self.model_unique_chains_ids)
+    str_out = ['\n{}Chains in model:'.format(prefix),'-'*51]
+    n = len(ids)
+    item_in_row = 10
+    n_rows = n // item_in_row
+    last_row = n % item_in_row
+    str_ids = [prefix + '{:5s}' * item_in_row] * n_rows
+    str_ids_last = prefix + '{:5s}' * last_row
+    # connect all output stings
+    str_out.extend(str_ids)
+    str_out.append(str_ids_last)
+    str_out.append('. '*26)
+    str_out = '\n'.join(str_out)
+    str_out = str_out.format(*ids)
+    return str_out
+
+  def show_ncs_headers(self,prefix,show_copies_selection=True):
+    """
+    Returns a string of general info about NCS groups
+
+    Args:
+     prefix (str): a string to be added, padding the output, at the left of
+       each line
+     show_copies_selection (bool) when True will show selection string of all
+       copies, when False, will show only master's selection string
+    """
+    str_out = ['\n{}NCS summery:'.format(prefix),'-'*51]
+    str_line = prefix + '{:<25s}:   {}'
+    s = str_line.format('Number of NCS groups', self.number_of_ncs_groups)
+    str_out.append(s)
+    master_sel_str = sorted(self.ncs_to_asu_selection)
+    for i,m_str in enumerate(master_sel_str):
+      gr = self.ncs_to_asu_selection[m_str]
+      str_out.append(str_line.format('Group #', i+1))
+      str_out.append(str_line.format('Number of copies', len(gr) + 1))
+      str_out.append(str_line.format('Master selection string',m_str))
+      if show_copies_selection:
+        for c_str in gr:
+          str_out.append(str_line.format('Copy selection string',c_str))
+    str_out.append('. '*26)
+    str_out = '\n'.join(str_out)
+    return str_out
+
+  def __repr__(self,prefix=''):
+    """ print NCS object info, padded with "prefix" on the left """
+    # Todo: finish function
+    str_out = [self.show_search_parameters_values(prefix)]
+    str_out.append(self.show_chains_info(prefix))
+    str_out.append(self.show_ncs_headers(prefix))
+    str_out = '\n'.join(str_out)
+    return str_out
 
 def add_to_dict(d,k,v):
   if d.has_key(k):

@@ -42,31 +42,35 @@ def grads_asu_to_one_ncs(
 def grads_one_ncs_to_asu(ncs_restraints_group_list,
                          total_asu_length,
                          extended_ncs_selection,
-                         ncs_grad):
+                         master_grad):
   """
   Expand average gradient of a single NCS to all ASU
   (only for u_iso refinement)
 
   Args:
     ncs_restraints_group_list: list of ncs_restraint_group objects
-    ncs_grad: gradient of ta single ncs
+    total_asu_length (int): length of the complete ASU
+    extended_ncs_selection (flex.size_t): selection of all ncs groups master ncs
+      selection and non ncs related portions that are being refined (exclude
+      NCS copies)
+    master_grad: gradient of a single ncs copy (the master copy)
   """
   g_length = total_asu_length
-  if isinstance(ncs_grad,flex.vec3_double):
+  if isinstance(master_grad,flex.vec3_double):
     g = flex.vec3_double([(0.0,0.0,0.0)]*g_length)
-  elif isinstance(ncs_grad,flex.double):
+  elif isinstance(master_grad,flex.double):
     g = flex.double([0.0]*g_length)
   else:
     raise TypeError('Non supported grad type')
   # update newly created flex.vec3 with master NCS info
-  g.set_selected(extended_ncs_selection ,ncs_grad)
+  g.set_selected(extended_ncs_selection ,master_grad)
   # update newly created flex.vec3 with NCS copies
   for nrg in ncs_restraints_group_list:
-    ncs_selection = nrg.master_iselection
+    master_selection = nrg.master_iselection
     for ncs_copy in nrg.copies:
-      asu_selection = ncs_copy.iselection
-      ncs_grad_portion = ncs_grad.select(ncs_selection)
-      g.set_selected(asu_selection,ncs_grad_portion)
+      copy_selection = ncs_copy.iselection
+      master_grad_portion = master_grad.select(master_selection)
+      g.set_selected(copy_selection,master_grad_portion)
   return g.as_double()
 
 def restraints_target_and_grads(
@@ -148,9 +152,9 @@ class target_function_and_grads_real_space(object):
         refine_sites=False,
         refine_transformations=False):
     adopt_init_args(self, locals())
-    if not self.refine_selection: self.refine_selection = []
     self.refine_selection = nu.get_refine_selection(
-      self.refine_selection,self.xray_structure)
+      refine_selection=self.refine_selection,
+      number_of_atoms=self.xray_structure.sites_cart().size())
     self.extended_ncs_selection = nu.get_extended_ncs_selection(
       ncs_restraints_group_list=ncs_restraints_group_list,
       refine_selection=refine_selection)
@@ -247,9 +251,10 @@ class target_function_and_grads_reciprocal_space(object):
         iso_restraints = None,
         use_hd         = False):
     adopt_init_args(self, locals())
-    if not self.refine_selection: self.refine_selection = []
+    asu_size = self.fmodel.xray_structure.sites_cart().size()
     self.refine_selection = nu.get_refine_selection(
-      self.refine_selection,self.fmodel.xray_structure)
+      refine_selection=self.refine_selection,
+      number_of_atoms=asu_size)
     self.extended_ncs_selection = nu.get_extended_ncs_selection(
       ncs_restraints_group_list=ncs_restraints_group_list,
       refine_selection=self.refine_selection)
@@ -347,9 +352,9 @@ class lbfgs(object):
     NCS constrained ADP and coordinates refinement. Also refines NCS operators.
     """
     adopt_init_args(self, args=locals(),exclude=['ncs_restraints_group_list'])
-    if not self.refine_selection: self.refine_selection = []
     self.refine_selection = nu.get_refine_selection(
-      self.refine_selection,self.xray_structure)
+      refine_selection=self.refine_selection,
+      number_of_atoms=self.xray_structure.sites_cart().size())
     self.use_ncs_constraints = target_and_grads_object.use_ncs_constraints
     self.ncs_restraints_group_list = nu.ncs_restraints_group_list_copy(
       ncs_restraints_group_list)
@@ -464,7 +469,7 @@ class lbfgs(object):
           ncs_restraints_group_list = self.ncs_restraints_group_list,
           extended_ncs_selection = self.extended_ncs_selection,
           total_asu_length = x_old.size(),
-          ncs_grad = x)
+          master_grad = x)
       else:
         return flex.double(list(x))
 

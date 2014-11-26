@@ -7,6 +7,8 @@ import iotbx.pdb
 import iotbx.ncs
 import time
 
+__author__ = 'Youval'
+
 pdb_answer_0 = """\
 CRYST1   18.415   14.419   12.493  90.00  90.00  90.00 P 1
 ATOM      5  O   HOH S   3       5.648   5.054   4.347  1.00 10.00           O

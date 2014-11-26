@@ -5,6 +5,8 @@ import iotbx.pdb
 import unittest
 import sys
 
+__author__ = 'Youval'
+
 class test_find_ncs_operators(unittest.TestCase):
 
   def test_two_chain_master(self):

@@ -11,6 +11,8 @@ import unittest
 import math
 import sys
 
+__author__ = 'Youval'
+
 test_pdb_str = '''\
 ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
 ATOM      2  CA  THR A   1       9.559   8.931  10.615  1.00 20.00           C
