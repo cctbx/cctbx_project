@@ -8,6 +8,7 @@ import iotbx.ncs
 import unittest
 import sys
 
+__author__ = 'Youval'
 
 class TestSimpleAlignment(unittest.TestCase):
   """ Test alignment of closely similar sequences  """

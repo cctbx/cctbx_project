@@ -7,6 +7,8 @@ from scitbx import matrix
 import math
 import sys
 
+__author__ = 'Youval'
+
 class NCS_groups_container(object):
 
   def __init__(self):
