@@ -31,6 +31,7 @@ HELIX    9   9 PROa1  124  HISa1  133  1                                  10"""
 def tst_pdb_file():
   if not libtbx.env.has_module("phenix_regression"):
     print "Skipping tst_pdb_file(): phenix_regression not available"
+    return
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
     test=os.path.isfile)
