@@ -185,6 +185,7 @@ class crystal_symmetry_as_cif_block(object):
           cell_covariance_matrix.matrix_packed_u_as_symmetric())
         var_v = (d_v_d_params * vcv).dot(d_v_d_params)
         volume = format_float_with_su(volume, math.sqrt(var_v))
+        numeric_format = "%s"
       a,b,c,alpha,beta,gamma = params
       self.cif_block[cell_prefix+'length_a'] = numeric_format % a
       self.cif_block[cell_prefix+'length_b'] = numeric_format % b
