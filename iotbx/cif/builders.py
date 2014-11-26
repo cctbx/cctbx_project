@@ -227,6 +227,8 @@ class crystal_structure_builder(crystal_symmetry_builder):
       atom_sites_frac = flex.vec3_double(*atom_sites_frac)
     labels = cif_block.get('_atom_site_label')
     type_symbol = cif_block.get('_atom_site_type_symbol')
+    type_symbol = flex.std_string(
+      s.replace('0+', '').replace('0-', '') for s in type_symbol)
     U_iso_or_equiv = flex_double_else_none(
       cif_block.get('_atom_site_U_iso_or_equiv',
       cif_block.get('_atom_site_U_equiv_geom_mean')))
