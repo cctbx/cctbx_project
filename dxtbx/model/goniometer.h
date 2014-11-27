@@ -41,10 +41,12 @@ namespace dxtbx { namespace model {
    *
    * The fixed rotation matrix, F, represents the additional fixed rotation of
    * the sample attached to the rotating axis - for example the effects of
-   * kappa and phi for an omega scan on a kappa goniometer. The fixed rotation
-   * matrix which should be applied as:
+   * kappa and phi for an omega scan on a kappa goniometer. A second rotation
+   * matrix, S, may be applied which is used to align the rotation axis,
+   * for example the omega & kappa axes for a phi scan. These rotation matrices
+   * should be applied as:
    *
-   *  A = [R][F][U][B]
+   *  A = [S][R][F][U][B]
    *
    * in a standard orientation matrix.
    *
@@ -66,6 +68,10 @@ namespace dxtbx { namespace model {
         fixed_rotation_(
           1.0, 0.0, 0.0,
           0.0, 1.0, 0.0,
+          0.0, 0.0, 1.0),
+        setting_rotation_(
+          1.0, 0.0, 0.0,
+          0.0, 1.0, 0.0,
           0.0, 0.0, 1.0) {}
 
     /**
@@ -75,6 +81,10 @@ namespace dxtbx { namespace model {
      */
     Goniometer(vec3 <double> rotation_axis)
       : fixed_rotation_(
+          1.0, 0.0, 0.0,
+          0.0, 1.0, 0.0,
+          0.0, 0.0, 1.0),
+        setting_rotation_(
           1.0, 0.0, 0.0,
           0.0, 1.0, 0.0,
           0.0, 0.0, 1.0) {
@@ -89,7 +99,26 @@ namespace dxtbx { namespace model {
      */
     Goniometer(vec3 <double> rotation_axis,
                mat3 <double> fixed_rotation)
-      : fixed_rotation_(fixed_rotation) {
+      : fixed_rotation_(fixed_rotation),
+        setting_rotation_(
+          1.0, 0.0, 0.0,
+          0.0, 1.0, 0.0,
+          0.0, 0.0, 1.0) {
+      DXTBX_ASSERT(rotation_axis.length() > 0);
+      rotation_axis_ = rotation_axis.normalize();
+    }
+
+    /**
+     * Initialise the goniometer.
+     * @param rotation_axis The goniometer rotation axis
+     * @param fixed_rotation The additional fixed rotation of the sample
+     * @param setting_rotation The additional setting rotation of the axis
+     */
+    Goniometer(vec3 <double> rotation_axis,
+               mat3 <double> fixed_rotation,
+               mat3 <double> setting_rotation)
+      : fixed_rotation_(fixed_rotation),
+        setting_rotation_(setting_rotation) {
       DXTBX_ASSERT(rotation_axis.length() > 0);
       rotation_axis_ = rotation_axis.normalize();
     }
@@ -107,6 +136,11 @@ namespace dxtbx { namespace model {
       return fixed_rotation_;
     }
 
+    /** Get the setting matrix */
+    mat3 <double> get_setting_rotation() const {
+      return setting_rotation_;
+    }
+
     /** Set the rotation axis */
     void set_rotation_axis(vec3 <double> rotation_axis) {
       DXTBX_ASSERT(rotation_axis.length() > 0);
@@ -118,11 +152,21 @@ namespace dxtbx { namespace model {
       fixed_rotation_ = fixed_rotation;
     }
 
+    /** Set the setting rotation matrix */
+    void set_setting_rotation(mat3 <double> setting_rotation) {
+      setting_rotation_ = setting_rotation;
+    }
+
     /** Check rotation axes are (almost) the same */
     bool operator==(const Goniometer &b) {
       double eps = 1.0e-6;
+
+      std::cout << setting_rotation_.const_ref() << std::endl;
+      std::cout << b.setting_rotation_.const_ref() << std::endl;
+
       return std::abs(angle_safe(rotation_axis_, b.rotation_axis_)) <= eps
-          && fixed_rotation_.const_ref().all_approx_equal(b.fixed_rotation_.const_ref(), eps);
+      && fixed_rotation_.const_ref().all_approx_equal(b.fixed_rotation_.const_ref(), eps)
+      && setting_rotation_.const_ref().all_approx_equal(b.setting_rotation_.const_ref(), eps);
     }
 
     /** Check rotation axes are not (almost) the same */
@@ -136,14 +180,16 @@ namespace dxtbx { namespace model {
 
     vec3 <double> rotation_axis_;
     mat3 <double> fixed_rotation_;
+    mat3 <double> setting_rotation_;
   };
 
   /** Print goniometer data */
   inline
   std::ostream& operator<<(std::ostream& os, const Goniometer &g) {
     os << "Goniometer:\n";
-    os << "    Rotation axis:  " << g.get_rotation_axis().const_ref() << "\n";
-    os << "    Fixed rotation: " << g.get_fixed_rotation().const_ref() << "\n";
+    os << "    Rotation axis:   " << g.get_rotation_axis().const_ref() << "\n";
+    os << "    Fixed rotation:  " << g.get_fixed_rotation().const_ref() << "\n";
+    os << "    Setting rotation:" << g.get_setting_rotation().const_ref() << "\n";
     return os;
   }
 

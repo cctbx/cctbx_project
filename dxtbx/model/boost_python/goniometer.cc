@@ -33,7 +33,8 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::tuple getinitargs(const Goniometer &obj) {
       return boost::python::make_tuple(
         obj.get_rotation_axis(),
-        obj.get_fixed_rotation());
+        obj.get_fixed_rotation(),
+        obj.get_setting_rotation());
     }
   };
 
@@ -42,6 +43,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::dict result;
     result["rotation_axis"] = obj.get_rotation_axis();
     result["fixed_rotation"] = obj.get_fixed_rotation();
+    result["setting_rotation"] = obj.get_setting_rotation();
     return result;
   }
 
@@ -50,6 +52,8 @@ namespace dxtbx { namespace model { namespace boost_python {
     return new Goniometer(
       boost::python::extract< vec3<double> >(obj["rotation_axis"]),
       boost::python::extract< mat3<double> >(obj.get("fixed_rotation",
+        mat3<double>(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0))),
+      boost::python::extract< mat3<double> >(obj.get("setting_rotation",
         mat3<double>(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0))));
   }
 
@@ -65,6 +69,12 @@ namespace dxtbx { namespace model { namespace boost_python {
                  mat3 <double> > ((
           arg("rotation_axis"),
           arg("fixed_rotation_matrix"))))
+      .def(init <vec3 <double>,
+                 mat3 <double>,
+                 mat3 <double> > ((
+          arg("rotation_axis"),
+          arg("fixed_rotation_matrix"),
+          arg("setting_rotation_matrix"))))
       .def("get_rotation_axis",
         &Goniometer::get_rotation_axis)
       .def("set_rotation_axis",
@@ -73,6 +83,10 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Goniometer::get_fixed_rotation)
       .def("set_fixed_rotation",
         &Goniometer::set_fixed_rotation)
+      .def("get_setting_rotation",
+        &Goniometer::get_setting_rotation)
+      .def("set_setting_rotation",
+        &Goniometer::set_setting_rotation)
       .def("__eq__", &Goniometer::operator==)
       .def("__ne__", &Goniometer::operator!=)
       .def("__str__", &goniometer_to_string)
