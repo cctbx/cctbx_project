@@ -92,13 +92,13 @@ def tst_set_mosflm_beam_centre(detector):
   from dxtbx.model import Beam
   wavelength = 1
   panel = detector[0]
+  detector_normal = matrix.col(panel.get_normal())
   origin = matrix.col(panel.get_origin())
   fast_axis = matrix.col(panel.get_fast_axis())
   slow_axis = matrix.col(panel.get_slow_axis())
   image_size = panel.get_image_size_mm()
 
-  s0 = (1.0/wavelength) * (
-    origin + 0.5 * fast_axis * image_size[0] + 0.5 * slow_axis * image_size[1])
+  s0 = (1.0/wavelength) * detector_normal
   beam = Beam(-s0.normalize(), wavelength)
 
   beam_centre = matrix.col(panel.get_beam_centre(beam.get_s0()))
