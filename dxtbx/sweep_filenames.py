@@ -8,38 +8,50 @@ def template_regex(filename):
 
   # filename template code stolen from xia2...
 
-  # N.B. these are reversed patterns...
+  if not hasattr(template_regex, "pattern"):
+    # Compile regular expressions once and store compiled version
 
-  patterns = [r'([0-9]+)\.(.*)',
-              r'(.*)\.([0-9]+)_(.*)',
-              r'(.*)\.([0-9]+)(.*)']
+    # The filename is reversed for pattern evaluation.
+    # These are reversed patterns.
 
-  joiners = ['.', '_', '']
+    patterns = ['()([0-9]+)(\..*)',
+                   # filename ends with numbers
+                   #  img.0815
+                '([a-zA-Z-]+\.)([0-9]+)(\..*)',
+                   # filename ends with numbers followed by simple extension
+                   #  img.0815.cbf
+                '(.*?\.)([0-9]+)(_.*)',
+                   # last number in the filename standing between _ and .
+                   #  NO2_0100.sweep.18keV
+                '(.*?\.)([0-9]+)(.*)']
+                   # last number in the filename before a .
+                   #  NO2.00100.sweep.18keV or image-00001.cbf
 
-  compiled_patterns = [re.compile(pattern) for pattern in patterns]
+    # patterns are evaluated in order, the first to match will be used
+    # each pattern needs to describe the entire filename with three braces:
+    #  (suffix)(imagenumber)(prefix)
+    # if more braces are used in a pattern they MUST start with (?:...) so that
+    # they do not interfere with the matching
+    template_regex.pattern = [re.compile(pattern) for pattern in patterns]
 
   rfilename = filename[::-1]
 
   template = None
   digits = 0
-  for j, cp in enumerate(compiled_patterns):
+  for j, cp in enumerate(template_regex.pattern):
     match = cp.match(rfilename)
     if not match:
       continue
     groups = match.groups()
 
-    if len(groups) == 3:
-      exten = '.' + groups[0][::-1]
-      digits = groups[1][::-1]
-      prefix = groups[2][::-1] + joiners[j]
-    else:
-      exten = ''
-      digits = groups[0][::-1]
-      prefix = groups[1][::-1] + joiners[j]
+    exten = groups[0][::-1]
+    digits = groups[1][::-1]
+    prefix = groups[2][::-1]
 
-    template = prefix + ''.join(['#' for d in digits]) + exten
+    template = prefix + ('#' * len(digits)) + exten
     break
 
+# print "File name template:\n    %s\n -> %s (%d)" % (filename, template, int(digits))
   return template, int(digits)
 
 
