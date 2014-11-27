@@ -132,11 +132,16 @@ def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
       mosflm_beam_centre is a tuple of mm coordinates.
   """
   from scitbx import matrix
+  s0 = matrix.col(beam.get_s0())
   panel_id, old_beam_centre = detector.get_ray_intersection(beam.get_s0())
   # XXX maybe not the safest way to do this?
   new_beam_centre = matrix.col(tuple(reversed(mosflm_beam_centre)))
   origin_shift = matrix.col(old_beam_centre) - new_beam_centre
   for panel in detector:
+    n = matrix.col(panel.get_normal())
+    angle_s0_n = s0.angle(n, deg=True)
+    assert angle_s0_n < 5, \
+           "Detector normal not parallel to beam: %.1f deg" %angle_s0_n
     old_origin = matrix.col(panel.get_origin())
     new_origin = (old_origin +
                   matrix.col(panel.get_fast_axis()) * origin_shift[0] +
@@ -147,4 +152,4 @@ def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
   # sanity check to make sure we have got the new beam centre correct
   panel_id, new_beam_centre = detector.get_ray_intersection(beam.get_s0())
   assert (matrix.col(new_beam_centre) -
-          matrix.col(tuple(reversed(mosflm_beam_centre)))).length() < 1e-6
+          matrix.col(tuple(reversed(mosflm_beam_centre)))).length() < 1e-4
