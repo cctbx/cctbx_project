@@ -3269,6 +3269,7 @@ xfel/command_line/cxi_detector_format_versions.py -text
 xfel/command_line/cxi_diff.py -text
 xfel/command_line/cxi_image2pickle.py -text
 xfel/command_line/cxi_index.py -text
+xfel/command_line/cxi_mpi_submit.py -text
 xfel/command_line/cxi_parameters.py -text
 xfel/command_line/cxi_plotcv.py -text
 xfel/command_line/cxi_psana.py -text

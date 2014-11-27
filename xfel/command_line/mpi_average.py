@@ -180,6 +180,8 @@ def average(argv=None):
       nevent += 1
 
   #sum the images across mpi cores
+  if size > 1:
+    print "Synchronizing rank", rank
   totevent = np.empty_like(nevent)
   comm.Reduce(nevent,totevent)
 
@@ -202,6 +204,9 @@ def average(argv=None):
   comm.Reduce(timestamp,timeall)
 
   if rank==0:
+    if size > 1:
+      print "Synchronized"
+
     # Accumulating floating-point numbers introduces errors,
     # which may cause negative variances.  Since a two-pass
     # approach is unacceptable, the standard deviation is
@@ -263,6 +268,8 @@ def average(argv=None):
       old_style_address = split_address[0] + "-" + split_address[1] + "|" + split_address[2] + "-" + split_address[3]
 
       for data, path in zip([mean, stddev, maxall], dest_paths):
+        print "Saving", path
+
         d = cspad_tbx.dpack(
           active_areas=active_areas,
           address=old_style_address,
@@ -285,6 +292,8 @@ def average(argv=None):
         raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
       for data, path in zip([mean, stddev, maxall], dest_paths):
+        print "Saving", path
+
         cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, address)
         cspad_img._cbf_handle.write_widefile(path, pycbf.CBF,\
           pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
