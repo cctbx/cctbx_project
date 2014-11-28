@@ -18,7 +18,7 @@ from wxtbx import bitmaps
 class chooser_wrapper:
   def __init__(self, image_set, index):
     self.image_set = image_set
-    self.path = os.path.basename(image_set.paths()[index])
+    self.path = os.path.basename(image_set.get_path(index))
     self.index = index
 
   def __str__(self):
