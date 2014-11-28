@@ -161,9 +161,6 @@ namespace dxtbx { namespace model {
     bool operator==(const Goniometer &b) {
       double eps = 1.0e-6;
 
-      std::cout << setting_rotation_.const_ref() << std::endl;
-      std::cout << b.setting_rotation_.const_ref() << std::endl;
-
       return std::abs(angle_safe(rotation_axis_, b.rotation_axis_)) <= eps
       && fixed_rotation_.const_ref().all_approx_equal(b.fixed_rotation_.const_ref(), eps)
       && setting_rotation_.const_ref().all_approx_equal(b.setting_rotation_.const_ref(), eps);
