@@ -617,6 +617,8 @@ scitbx::vec2<int> const& lower_right) {
       std::size_t valbin = (std::size_t)std::floor(
         num_intensity_bins * (val - intensity_extent[0]) / (intensity_extent[1] - intensity_extent[0]));
 
+      if (valbin == 0) continue;
+
       // find the radial bin
       scitbx::vec2<int> point((int)x,(int)y);
       double d_in_mm = distance_between_points(point,beam_center) * pixel_size;
