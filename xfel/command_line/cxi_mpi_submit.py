@@ -139,6 +139,8 @@ class Script(object):
     for line in open(params.input.cfg).readlines():
       if "[pyana]" in line:
         raise Sorry("Pyana not supported. Check your config file.")
+      if "RUN_NO" in line:
+        line = line.replace("RUN_NO", str(params.input.run_num))
       if "trial_id" in line:
         key, val = line.split("=")
         line = "%s= %d\n"%(key,params.input.trial)
