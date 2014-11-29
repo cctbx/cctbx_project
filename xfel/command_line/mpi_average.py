@@ -185,6 +185,9 @@ def average(argv=None):
   totevent = np.empty_like(nevent)
   comm.Reduce(nevent,totevent)
 
+  if totevent[0] == 0:
+    raise Sorry("No events found in the run")
+
   sumall = np.empty_like(sum)
   comm.Reduce(sum,sumall)
 
