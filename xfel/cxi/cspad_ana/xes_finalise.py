@@ -205,14 +205,16 @@ def plot_energy(plot_x):
     E=[1.2398e+004/(2*0.9601*sin(atan(500/(z+50)))) for z in plot_E1]
     return E
 
-def output_spectrum(spectrum_focus, mask_focus=None, output_dirname="."):
+def output_spectrum(spectrum_focus, mask_focus=None, output_dirname=".", run=None):
   plot_x, plot_y = get_spectrum(spectrum_focus, mask_focus=mask_focus)
+  if run is not None:  runstr = "_%04d"%run
+  else: runstr=""
   spec_plot(plot_x,plot_y,spectrum_focus,
-            os.path.join(output_dirname, "spectrum")+ ".png")
+            os.path.join(output_dirname, "spectrum%s"%runstr)+ ".png")
   plot_E=plot_energy(plot_x)
   spec_plot(plot_E,plot_y,spectrum_focus,
-            os.path.join(output_dirname, "spectrum_E")+ ".png")
-  f = open(os.path.join(output_dirname, "spectrum.txt"), "wb")
+            os.path.join(output_dirname, "spectrum_E%s"%runstr)+ ".png")
+  f = open(os.path.join(output_dirname, "spectrum%s.txt"%runstr), "wb")
   print >> f, "\n".join(["%i %f" %(x, y) for x, y in zip(plot_x, plot_y)])
   f.close()
 
@@ -288,12 +290,35 @@ class finalise_one_run(object):
     print "Number of images used: %i" %self.nmemb
     assert self.nmemb > 0
 
+class first_moment_analysis:
+  def __init__(self, x, y):
+    self.x = flex.double(list(x)) # sometimes integer array must be coerced to double
+    self.y = y
+    self.calculate()
+
+  def calculate(self):
+    N = len(self.x)
+    maxidx = flex.max_index(self.y)
+    n_half_interval = int(0.05 * N) # take 5% of points on either side of max
+    #calc_range = xrange(maxidx - n_half_interval, maxidx + n_half_interval +1)
+    y_interval = self.y[maxidx - n_half_interval: maxidx + n_half_interval +1]
+    x_interval = self.x[maxidx - n_half_interval: maxidx + n_half_interval +1]
+    numer = flex.sum(y_interval * x_interval)
+    denom = flex.sum(y_interval)
+    self.first_moment = numer/denom
+
+  def as_trace(self):
+    return (self.first_moment,self.first_moment), (flex.min(self.y), flex.max(self.y))
+
 def spec_plot(x, y, img, file_name, figure_size=(10,5), transparent=False):
   import matplotlib
   import matplotlib.figure
   import matplotlib.cm
   from matplotlib.backends.backend_agg import FigureCanvasAgg
   figure_size = None
+
+  F = first_moment_analysis(x,y)
+
   fig = matplotlib.figure.Figure(figure_size, 144, linewidth=0,
       facecolor="white")
   if transparent :
@@ -302,16 +327,19 @@ def spec_plot(x, y, img, file_name, figure_size=(10,5), transparent=False):
   p = fig.add_subplot(211)
   p.set_position([0.1,0.3,0.8,0.6])
   p.plot(x, y, '-')
+  fm = F.as_trace()
+  p.plot(fm[0],fm[1],"r-")
   p.set_xlim(x[0],x[-1])
   p.set_xlabel("position")
   p.set_ylabel("intensity")
-  p.set_title("X-ray emission spectrum")
+  p.set_title("X-ray emission spectrum, first moment=%.2f"%(F.first_moment))
   p2 = fig.add_subplot(212)
   p2.set_position([0.1, 0.05, 0.8, 0.2])
   im=p2.imshow(img.as_numpy_array(), cmap='spectral')
-  position=fig.add_axes([0.93,0.1,0.02,0.35])
+  im.set_interpolation("none")
+  position=fig.add_axes([0.91,0.1,0.015,0.35])
 #  p2.imshow(img.as_numpy_array(), cmap=matplotlib.cm.gist_yarg)
-  p3=fig.colorbar(im, ticks=[-1, 0, 1], orientation='vertical', cax=position)
+  p3=fig.colorbar(im, orientation='vertical', cax=position)
 #  p2.set_position([0.1, 0.05, 0.8, 0.2])
   canvas.draw()
   fig.savefig(file_name, dpi=200, format="png")
