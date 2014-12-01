@@ -1461,7 +1461,6 @@ class ncs_group_object(object):
       # Does not add prefix in SPEC format
       print >> log, self.show_search_parameters_values(prefix)
       print >> log, self.show_chains_info(prefix)
-      print >> log, self.show_ncs_headers(prefix)
       print >> log, '\n' + prefix + 'NCS object "display_all"'
       spec_obj = self.get_ncs_info_as_spec(write=False)
       spec_obj.display_all(log=log)
