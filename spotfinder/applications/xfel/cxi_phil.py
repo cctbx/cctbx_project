@@ -65,6 +65,8 @@ def cxi_versioned_extract_detail(args):
   cxi_version = working_phil.phil_scope.get("distl.detector_format_version"
                 ).extract().detector_format_version
 
+  print "cxi_versioned_extract()::cxi_version:", cxi_version
+
   if cxi_version in ["CXI 3.1","CXI 3.2"]:
     working_extract = working_phil.command_extractor
 
@@ -351,7 +353,8 @@ def cxi_versioned_extract_detail(args):
     #                                           6, -1,
     #                                           4, -1,
     #                                           4, -5]
-    # account for a change in beam center.  offset 7 pixels in the x direction
+    # account for a change in beam center.  offset 7 pixels in the x direction.
+    # valid for runs 124, 126
     working_extract.distl.quad_translations = [3,  6,
                                                6,  6,
                                                4,  6,
@@ -613,6 +616,24 @@ def cxi_versioned_extract_detail(args):
     print len(working_extract.distl.tile_translations)
 
     return working_extract
+
+  elif cxi_version in ["CXI 10.1"]:
+    working_extract = working_phil.command_extractor
+
+    from scitbx.array_family import flex
+
+    corrected_auxiliary_translations = flex.int([0]*128)
+
+    working_extract.distl.tile_translations = list(corrected_auxiliary_translations)
+
+    # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.
+    # Determined for LG36 run 82. Optimized for 118 mm
+    working_extract.distl.quad_translations = [8, 3,
+                                               5, 3,
+                                               7, 11,
+                                               3, 12]
+    return working_extract
+
 
   elif cxi_version in ["Sacla.MPCCD"]:
     working_extract = working_phil.command_extractor
