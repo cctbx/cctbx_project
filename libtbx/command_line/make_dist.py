@@ -236,6 +236,11 @@ def run (args) :
   os.chdir(options.tmp_dir)
   remove_installer = False
   if (options.destination is not None) :
+    # Create directory...
+    try:
+      call("ssh %s mkdir %s"%(options.destination.split(":")[0], options.destination.split(":")[1]))
+    except Exception, e:
+      pass
     call("rsync -avz %s %s" % (installer_tar, options.destination))
     remove_installer = True
   if (not options.debug) :
