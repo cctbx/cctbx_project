@@ -25,7 +25,7 @@ def exercise_1 () :
   assert len(rv.bonds.results) == 2
   assert len(rv.angles.results) == 14
   assert len(rv.suites.results) == 4
-  assert approx_equal(rv.suites.average_suiteness, 0.564246, eps=0.0001)
+  assert approx_equal(rv.suites.average_suiteness, 0.56, eps=0.01)
   pickle_unpickle(rv)
   pdb_in = file_reader.any_file(regression_pdb)
   result = mmtbx.validation.rna_validate.rna_validation(
