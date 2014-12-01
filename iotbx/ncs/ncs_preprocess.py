@@ -176,7 +176,6 @@ class ncs_group_object(object):
     """
     if min_percent > 1: min_percent /= 100
     extension = ''
-    # todo: clean up code, use global parameters when possible
     # set search parameters
     self.write_messages = write_messages
     self.check_atom_order = check_atom_order
@@ -188,7 +187,7 @@ class ncs_group_object(object):
     self.max_dist_diff = max_dist_diff
     self.min_percent = min_percent
     self.chain_similarity_limit = chain_similarity_limit
-
+    self.process_similar_chains = process_similar_chains
     #
     if not log: log = sys.stdout
     self.log = log
@@ -223,22 +222,12 @@ class ncs_group_object(object):
           transform_info=transform_info)
       else:
         # in the case that all ncs copies are in pdb
-        self.build_ncs_obj_from_pdb_asu(
-            pdb_hierarchy_inp=pdb_hierarchy_inp,
-            use_minimal_master_ncs=use_minimal_master_ncs,
-            process_similar_chains=process_similar_chains,
-            min_percent=min_percent,
-            chain_similarity_limit=chain_similarity_limit,
-            min_contig_length=min_contig_length,
-            max_rmsd=max_rmsd,
-            exclude_misaligned_residues=exclude_misaligned_residues,
-            max_dist_diff=max_dist_diff)
+        self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
     elif ncs_selection_params or ncs_phil_groups:
       self.build_ncs_obj_from_phil(
         ncs_selection_params=ncs_selection_params,
         ncs_phil_groups=ncs_phil_groups,
-        pdb_hierarchy_inp=pdb_hierarchy_inp,
-        min_percent=min_percent)
+        pdb_hierarchy_inp=pdb_hierarchy_inp)
     elif extension.lower() == '.ncs_spec' or \
             spec_file_str or spec_source_info or spec_ncs_groups:
       self.build_ncs_obj_from_spec_file(
@@ -250,21 +239,12 @@ class ncs_group_object(object):
         spec_ncs_groups=spec_ncs_groups,
         quiet=quiet)
     elif pdb_hierarchy_inp:
-      self.build_ncs_obj_from_pdb_asu(
-        pdb_hierarchy_inp=pdb_hierarchy_inp,
-        use_minimal_master_ncs=use_minimal_master_ncs,
-        min_percent=min_percent,
-        chain_similarity_limit=chain_similarity_limit,
-        min_contig_length=min_contig_length,
-        process_similar_chains=process_similar_chains,
-        max_rmsd=max_rmsd,
-        exclude_misaligned_residues=exclude_misaligned_residues,
-        max_dist_diff=max_dist_diff)
+      self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
     else:
       raise Sorry('Please provide one of the supported input')
     # error handling
     self.found_ncs_transforms = (len(self.transform_to_be_used) > 0)
-    if write_messages:
+    if self.write_messages:
       if self.found_ncs_transforms == 0:
         print >> log,'No NCS relation were found !!!\n'
       if self.messages != '':
@@ -317,20 +297,15 @@ class ncs_group_object(object):
   def build_ncs_obj_from_phil(self,
                               ncs_selection_params = None,
                               ncs_phil_groups = None,
-                              pdb_hierarchy_inp = None,
-                              process_similar_chains=True,
-                              min_percent=0.95):
+                              pdb_hierarchy_inp = None):
     """
     Build transforms objects and NCS <-> ASU mapping using phil selection
     strings and complete ASU
 
     Args:
       ncs_selection_params : Phil parameters
+      ncs_phil_groups :
       pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
-      process_similar_chains (bool): When True, process chains that are close
-        in length without raising errors
-      min_percent (float): similarity between chains when looking for
-        ncs relations
 
     Phil structure
     ncs_group (multiple)
@@ -339,8 +314,8 @@ class ncs_group_object(object):
       copy_selection = ''   (multiple)
     }
     """
-
-    if not process_similar_chains:
+    min_percent = self.min_percent
+    if not self.process_similar_chains:
       min_percent = 1.0
     # process params
     if ncs_selection_params:
@@ -422,15 +397,7 @@ class ncs_group_object(object):
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
-  def build_ncs_obj_from_pdb_asu(self,pdb_hierarchy_inp,
-                                 use_minimal_master_ncs=True,
-                                 max_rmsd=0.5,
-                                 process_similar_chains=True,
-                                 min_contig_length=10,
-                                 min_percent=0.95,
-                                 chain_similarity_limit=0.95,
-                                 exclude_misaligned_residues=False,
-                                 max_dist_diff=4.0):
+  def build_ncs_obj_from_pdb_asu(self,pdb_hierarchy_inp):
     """
     Build transforms objects and NCS <-> ASU mapping from a complete ASU
     Note that the MTRIX record are ignored, they are produced in the
@@ -438,20 +405,10 @@ class ncs_group_object(object):
 
     Args::
       pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
-      max_rmsd (float): limit of rms difference between chains to be considered
-        as copies
-      process_similar_chains (bool): When True, process chains that are close
-      in length without raising errors
-      min_contig_length (int): minimum length of matching chain segments
-      min_percent (float): Threshold for similarity between chains
-        similarity define as:
-        (number of matching res) / (number of res in longer chain)
-      exclude_misaligned_residues (bool): check and exclude individual residues
-      alignment quality
-      max_dist_diff (float): max allow distance difference between pairs of matching
-        atoms of two residues
     """
-    if not process_similar_chains:
+    min_contig_length = self.min_contig_length
+    min_percent = self.min_percent
+    if not self.process_similar_chains:
       min_percent = 1.0
       min_contig_length = 100000
       self.check_atom_order = True
@@ -459,15 +416,15 @@ class ncs_group_object(object):
       ph=pdb_hierarchy_inp.hierarchy,
       min_contig_length=min_contig_length,
       min_percent=min_percent,
-      chain_similarity_limit=chain_similarity_limit,
-      use_minimal_master_ncs=use_minimal_master_ncs,
-      max_rmsd=max_rmsd,
+      chain_similarity_limit=self.chain_similarity_limit,
+      use_minimal_master_ncs=self.use_minimal_master_ncs,
+      max_rmsd=self.max_rmsd,
       write=self.write_messages,
       log=self.log,
       check_atom_order=self.check_atom_order,
       allow_different_size_res=self.allow_different_size_res,
-      exclude_misaligned_residues=exclude_misaligned_residues,
-      max_dist_diff=max_dist_diff)
+      exclude_misaligned_residues=self.exclude_misaligned_residues,
+      max_dist_diff=self.max_dist_diff)
     # process atom selections
     self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
     self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
@@ -1064,6 +1021,15 @@ class ncs_group_object(object):
       # keep hierarchy for writing
       self.hierarchy = pdb_hierarchy_inp.hierarchy
       self.set_common_res_dict()
+    # add group selection to ncs_group_map
+    for gr_num in self.ncs_group_map.iterkeys():
+      gr = self.ncs_group_map[gr_num]
+      chains_in_master = chains_in_string(gr[0])
+      for sel_str in self.ncs_to_asu_selection.iterkeys():
+        chains_in_sel_str = chains_in_string(sel_str)
+        if chains_in_master == chains_in_sel_str:
+          gr.append(sel_str)
+          break
     self.transform_order = sort_dict_keys(self.transform_to_ncs)
 
   def set_common_res_dict(self):
@@ -1467,6 +1433,7 @@ class ncs_group_object(object):
 
   def show(self,
            format=None,
+           verbose=False,
            prefix='',
            log=None):
 
@@ -1477,6 +1444,8 @@ class ncs_group_object(object):
       format (str): "phil" : phil file representation
                     "spec" : spec representation out of NCS groups
                     "cctbx": cctbx representation out of NCS groups
+      verbose (bool): when True, will print selection strings, rotation and
+        translation info
       prefix (str): a string to be added, padding the output, at the left of
         each line
       log: where to log the output, by default set to sys.stdout
@@ -1484,6 +1453,8 @@ class ncs_group_object(object):
     if not log: log = self.log
     if (not format) or (format.lower() == 'cctbx'):
        print >> log, self.__repr__(prefix)
+       if verbose:
+          print >> log, self.show_ncs_selections(prefix)
     elif format.lower() == 'phil':
       print >> log, self.show_phil_format(prefix)
     elif format.lower() == 'spec':
@@ -1504,7 +1475,7 @@ class ncs_group_object(object):
         each line
     """
     str_out = ['\n{}NCS phil parameters:'.format(prefix),'-'*51]
-    str_line = prefix + '  {:<18s} = {}'
+    str_line = prefix + '  {:<16s} = {}'
     str_ncs_group =  prefix + 'ncs_group {\n%s' + prefix + '\n}'
     master_sel_str = sorted(self.ncs_to_asu_selection)
     for m_str in master_sel_str:
@@ -1563,41 +1534,116 @@ class ncs_group_object(object):
     str_out = str_out.format(*ids)
     return str_out
 
-  def show_ncs_headers(self,prefix,show_copies_selection=True):
+  def show_transform_info(self,prefix=''):
+    """
+    Returns formatted string for print out, string containing chains IDs in a
+    table format, padded from the left with "prefix"
+
+    Args:
+      prefix (str): a string to be added, padding the output, at the left of
+        each line
+    """
+    str_out = ['\n{}Transforms:'.format(prefix),'-'*51]
+    str_line = prefix + '{:<25s}:   {}'
+    str_r = prefix + 'ROTA  {:2}{:10.4f}{:10.4f}{:10.4f}'
+    str_t = prefix + 'TRANS   {:10.4f}{:10.4f}{:10.4f}'
+    ncs_group_n = sorted(self.ncs_group_map)
+    for i in ncs_group_n:
+      str_out.append(str_line.format('Group #',i))
+      gr = self.ncs_group_map[i]
+      transform_numbers = sorted(gr[1])
+      for j,tr_n in enumerate(transform_numbers):
+        tr = self.ncs_transform[tr_n]
+        str_out.append(str_line.format('Transform #',j + 1))
+        str_out.append(str_line.format('RMSD',tr.rmsd))
+        rot = [str_r.format(k,*x) for k,x in enumerate(tr.r.as_list_of_lists())]
+        str_out.extend(rot)
+        tran = str_t.format(*[x for xi in tr.t.as_list_of_lists() for x in xi])
+        str_out.append(tran)
+        str_out.append('~ '*20)
+    str_out.pop()
+    str_out = '\n'.join(str_out)
+    return str_out
+
+  def show_ncs_selections(self,prefix=''):
+    """
+    Return NCS selection strings as a string, for printing
+
+    Args:
+     prefix (str): a string to be added, padding the output, at the left of
+       each line
+    """
+    str_out = ['\n{}NCS selections:'.format(prefix),'-'*51]
+    str_line = prefix + '{:<25s}:   {}'
+    ncs_group_n = sorted(self.ncs_group_map)
+    for i in ncs_group_n:
+      gr = self.ncs_group_map[i]
+      if len(gr) == 3:
+        m_str = gr[2]
+        gr_copies = self.ncs_to_asu_selection[m_str]
+        str_out.append(str_line.format('Group #',i))
+        str_out.append(str_line.format('Master selection string',m_str))
+        for c_str in gr_copies:
+          str_out.append(str_line.format('Copy selection string',c_str))
+    transforms_info = self.show_transform_info(prefix)
+    str_out.append(transforms_info)
+    str_out.append('. '*26)
+    str_out = '\n'.join(str_out)
+    return str_out
+
+  def show_ncs_headers(self,prefix):
     """
     Returns a string of general info about NCS groups
 
     Args:
      prefix (str): a string to be added, padding the output, at the left of
        each line
-     show_copies_selection (bool) when True will show selection string of all
-       copies, when False, will show only master's selection string
     """
     str_out = ['\n{}NCS summery:'.format(prefix),'-'*51]
     str_line = prefix + '{:<25s}:   {}'
     s = str_line.format('Number of NCS groups', self.number_of_ncs_groups)
     str_out.append(s)
-    master_sel_str = sorted(self.ncs_to_asu_selection)
-    for i,m_str in enumerate(master_sel_str):
-      gr = self.ncs_to_asu_selection[m_str]
-      str_out.append(str_line.format('Group #', i+1))
-      str_out.append(str_line.format('Number of copies', len(gr) + 1))
-      str_out.append(str_line.format('Master selection string',m_str))
-      if show_copies_selection:
-        for c_str in gr:
-          str_out.append(str_line.format('Copy selection string',c_str))
+    ncs_group_n = sorted(self.ncs_group_map)
+    for i in ncs_group_n:
+      gr = self.ncs_group_map[i]
+      str_out.append(str_line.format('Group #', i))
+      str_out.append(str_line.format('Number of copies', len(gr[1])))
+      if len(gr) == 3:
+        m_str = gr[2]
+        cim = ', '.join(chains_in_string(m_str))
+        cic = ', '.join(chains_in_string(self.ncs_to_asu_selection[m_str]))
+        str_out.append(str_line.format('Chains in master',cim))
+        str_out.append(str_line.format('Chains in copies',cic))
     str_out.append('. '*26)
     str_out = '\n'.join(str_out)
     return str_out
 
   def __repr__(self,prefix=''):
     """ print NCS object info, padded with "prefix" on the left """
-    # Todo: finish function
     str_out = [self.show_search_parameters_values(prefix)]
     str_out.append(self.show_chains_info(prefix))
     str_out.append(self.show_ncs_headers(prefix))
+    # print transforms
     str_out = '\n'.join(str_out)
     return str_out
+
+def chains_in_string(s):
+  """
+  Returns a string of chain IDs from a selection string or a selection
+  string list
+
+  >>> chains_in_string('chain D or (chain F and (resseq 2:10))')
+  ['D', 'F']
+
+  >>> chains_in_string(['chain D','(chain F and (resseq 2:10))'])
+  ['D', 'F']
+  """
+  if isinstance(s,set): s = list(s)
+  if isinstance(s,list): s = ' '.join(s)
+  chain_list = get_list_of_chains_selection(s)
+  chain_set = {x.split()[1] for x in chain_list}
+  chain_set = [x.strip() for x in chain_set]
+  return sorted(chain_set)
 
 def add_to_dict(d,k,v):
   if d.has_key(k):
