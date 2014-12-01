@@ -183,7 +183,7 @@ class geometry(object):
     result="%s" % prefix
     if(self.ramachandran_outliers is not None):
       result = """%sMOLPROBITY STATISTICS.
-%s ALL-ATOM CLASHSCORE : %-6.2f
+%s ALL-ATOM CLASHSCORE : %s
 %s RAMACHANDRAN PLOT:
 %s   OUTLIERS : %-5.2f %s
 %s   ALLOWED  : %-5.2f %s
@@ -191,7 +191,7 @@ class geometry(object):
 %s ROTAMER OUTLIERS : %s %s
 %s CBETA DEVIATIONS : %-d"""%(
         prefix,
-        prefix, self.clashscore,
+        prefix, format_value("%-6.2f", self.clashscore, replace_none_with="NONE").strip(),
         prefix,
         prefix, self.ramachandran_outliers, "%",
         prefix, self.ramachandran_allowed, "%",

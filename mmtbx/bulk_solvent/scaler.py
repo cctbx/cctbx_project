@@ -490,23 +490,32 @@ class run(object):
         r.append(r0)
         k.append(x0)
         #
-        obj1 = bulk_solvent.overall_and_bulk_solvent_scale_coefficients_analytical(
-          f_obs     = f_obs,
-          f_calc    = f_calc,
-          f_mask    = f_mask,
-          selection = selection_use)
-        k_mask.set_selected(selection, obj1.x_best)
+        fmv = flex.min(flex.abs(f_mask).select(selection_use))
+        if(abs(fmv)>1.e-9):
+          obj1 = bulk_solvent.overall_and_bulk_solvent_scale_coefficients_analytical(
+            f_obs     = f_obs,
+            f_calc    = f_calc,
+            f_mask    = f_mask,
+            selection = selection_use)
+          k_mask.set_selected(selection, obj1.x_best)
+          k.append(obj1.x_best)
+        else:
+          k_mask.set_selected(selection, 0)
+          k.append(0)
         r.append(self.try_scale(k_mask = k_mask, selection=selection))
-        k.append(obj1.x_best)
         #
-        obj2 = bulk_solvent.bulk_solvent_scale_coefficients_analytical(
-          f_obs     = f_obs,
-          f_calc    = f_calc,
-          f_mask    = f_mask,
-          selection = selection_use)
-        k_mask.set_selected(selection, obj2.x_best)
+        if(abs(fmv)>1.e-9):
+          obj2 = bulk_solvent.bulk_solvent_scale_coefficients_analytical(
+            f_obs     = f_obs,
+            f_calc    = f_calc,
+            f_mask    = f_mask,
+            selection = selection_use)
+          k_mask.set_selected(selection, obj2.x_best)
+          k.append(obj2.x_best)
+        else:
+          k_mask.set_selected(selection, 0)
+          k.append(0)
         r.append(self.try_scale(k_mask = k_mask, selection=selection))
-        k.append(obj2.x_best)
         s = flex.sort_permutation(r)
         x = k.select(s)[0]
         # fine-sample k_mask around minimum of LS to fall into minimum of R

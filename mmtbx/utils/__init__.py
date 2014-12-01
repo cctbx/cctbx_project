@@ -2613,7 +2613,7 @@ class shift_origin(object):
           sx,sy,sz = a/N_[0]*O_[0], b/N_[1]*O_[1], c/N_[2]*O_[2]
           sites_cart_shifted = sites_cart+\
             flex.vec3_double(sites_cart.size(), [-sx,-sy,-sz])
-          sites_frac_shifted = fm*sites_cart
+          sites_frac_shifted = fm*sites_cart_shifted
           t = maptbx.map_sum_at_sites_frac(map_data=self.map_data,
             sites_frac=sites_frac_shifted)
           print inc1, inc2, t
@@ -2908,14 +2908,14 @@ class states(object):
   def write(self, file_name):
     self.root.write_pdb_file(file_name = file_name)
 
-def d_min_from_map(map_data, unit_cell, resolution_factor=0.25):
+def d_min_from_map(map_data, unit_cell, resolution_factor=1./2.):
   a,b,c = unit_cell.parameters()[:3]
   nx,ny,nz = map_data.all()
   d1,d2,d3 = \
     a/nx/resolution_factor,\
     b/ny/resolution_factor,\
     c/nz/resolution_factor
-  return min(d1,d2,d3)
+  return max(d1,d2,d3)
 
 def structure_factors_from_map(map_data, unit_cell_lengths, n_real,
                                crystal_symmetry, resolution_factor=1/4.):
