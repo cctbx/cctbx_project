@@ -236,6 +236,7 @@ def run (args) :
   os.chdir(options.tmp_dir)
   remove_installer = False
   if (options.destination is not None) :
+    print "Uploading %s -> %s"%(installer_tar, options.destination)
     # Create directory...
     try:
       call("ssh %s mkdir %s"%(options.destination.split(":")[0], options.destination.split(":")[1]))
