@@ -85,7 +85,6 @@ def prepare_maps(fofc, two_fofc, fem, fofc_cutoff=2, two_fofc_cutoff=0.5,
       if(v>v_max):
         v_max=v
         i_max=i
-  print i_max, v_max
   mask2 = co.result()
   selection = mask2==i_max
   mask2 = mask2.set_selected(selection, 1)
@@ -107,7 +106,8 @@ def shift_to_center_of_mass(xray_structure, target_map, cutoff=0.5):
     cm=cm, x=-x,y=-y,z=-z, the=0, psi=0, phi=0)
   return xray_structure.replace_sites_cart(new_sites=sites_cart_new)
 
-def run_refine(rsr_simple_refiner, xray_structure, scorer, log):
+def run_refine(rsr_simple_refiner, xray_structure, scorer, log, weight):
+  weight_best = None
   try:
     refined = individual_sites.refinery(
       refiner                  = rsr_simple_refiner,
@@ -116,15 +116,17 @@ def run_refine(rsr_simple_refiner, xray_structure, scorer, log):
       rms_bonds_limit          = 0.02,
       rms_angles_limit         = 2.0)
     scorer.update(sites_cart=refined.sites_cart_result)
+    weight_best = refined.weight_final
   except KeyboardInterrupt: raise
   except:
     if(log): print >> log, "A trial failed: keep going..."
+  return weight_best
 
 def macro_cycle(
       xray_structure,
       target_map,
       geometry_restraints,
-      max_iterations = 25,
+      max_iterations = 50,
       expload        = False,
       n_expload      = 1,
       log            = None):
@@ -133,7 +135,6 @@ def macro_cycle(
   d_min = mmtbx.utils.d_min_from_map(
       map_data  = target_map,
       unit_cell = xray_structure.unit_cell())
-  print d_min
   all_selection = flex.bool(xray_structure.scatterers().size(),True)
   rsr_simple_refiner = individual_sites.simple(
     target_map                  = target_map,
@@ -150,6 +151,7 @@ def macro_cycle(
     sites_frac = xray_structure.sites_frac(),
     target_map = target_map,
     log        = log)
+  weights = flex.double()
   sampling_range = [0, 90, 180, 270]
   for the in sampling_range:
     for psi in sampling_range:
@@ -159,11 +161,13 @@ def macro_cycle(
           cm=cm, x=0,y=0,z=0, the=the, psi=psi, phi=phi)
         xray_structure = xray_structure.replace_sites_cart(
           new_sites=sites_cart_new)
-        run_refine(
+        w = run_refine(
           rsr_simple_refiner = rsr_simple_refiner,
           xray_structure     = xray_structure,
           scorer             = sc,
-          log                = log)
+          log                = log,
+          weight             = flex.mean_default(weights, 1.0))
+        weights.append(w)
         if(expload):
           for i in xrange(n_expload):
             xray_structure_ = xray_structure.deep_copy_scatterers()

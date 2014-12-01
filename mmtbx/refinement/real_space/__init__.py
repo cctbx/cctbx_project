@@ -46,7 +46,7 @@ class structure_monitor(object):
                pdb_hierarchy,
                xray_structure,
                target_map_object,
-               geometry_restraints_manager,
+               geometry_restraints_manager=None,
                clash_threshold=1.0):
     adopt_init_args(self, locals())
     self.unit_cell = self.xray_structure.unit_cell()
@@ -138,9 +138,10 @@ class structure_monitor(object):
       sites_cart = sites_cart)
     self.map_cc_per_atom = self.map_cc(other_map = current_map,
       sites_cart = sites_cart, per_atom = True)
-    es = self.geometry_restraints_manager.energies_sites(sites_cart=sites_cart)
-    self.rmsd_a = es.angle_deviations()[2]
-    self.rmsd_b = es.bond_deviations()[2]
+    if(self.geometry_restraints_manager is not None):
+      es = self.geometry_restraints_manager.energies_sites(sites_cart=sites_cart)
+      self.rmsd_a = es.angle_deviations()[2]
+      self.rmsd_b = es.bond_deviations()[2]
     self.dist_from_start = flex.mean(self.xray_structure_start.distances(
       other = self.xray_structure))
     #assert self.dist_from_start < 1.e-6
@@ -202,8 +203,8 @@ class structure_monitor(object):
     if(log is None): log = sys.stdout
     fmt = """%s Map CC (whole unit cell):  %-6.3f
 %s Map CC (around atoms):     %-6.3f
-%s rmsd (bonds):              %-6.4f
-%s rmsd (angles):             %-5.2f
+%s rmsd (bonds):              %-s
+%s rmsd (angles):             %-s
 %s Dist. moved from start:    %-6.3f
 %s Dist. moved from previous: %-6.3f
 %s All-atom clashscore        %-s
@@ -214,24 +215,40 @@ class structure_monitor(object):
 %s Rotamer outliers:          %-s %%
 %s C-beta deviations:         %-s
 """
-    mso = model_statistics.geometry(
-      pdb_hierarchy      = self.pdb_hierarchy,
-      molprobity_scores  = libtbx.env.has_module("probe"),
-      restraints_manager = self.geometry_restraints_manager)
-    print >> log, fmt%(
-      prefix, self.map_cc_whole_unit_cell,
-      prefix, self.map_cc_around_atoms,
-      prefix, self.rmsd_b,
-      prefix, self.rmsd_a,
-      prefix, self.dist_from_start,
-      prefix, self.dist_from_previous,
-      prefix, format_value("%-6.2f", mso.clashscore),
-      prefix,
-      prefix, format_value("%-5.2f", mso.ramachandran_outliers),
-      prefix, format_value("%-5.2f", mso.ramachandran_allowed),
-      prefix, format_value("%-5.2f", mso.ramachandran_favored),
-      prefix, format_value("%6.2f", mso.rotamer_outliers).strip(),
-      prefix, format_value("%-3d", mso.c_beta_dev))
+    if(self.geometry_restraints_manager is not None):
+      mso = model_statistics.geometry(
+        pdb_hierarchy      = self.pdb_hierarchy,
+        molprobity_scores  = libtbx.env.has_module("probe"),
+        restraints_manager = self.geometry_restraints_manager)
+      print >> log, fmt%(
+        prefix, self.map_cc_whole_unit_cell,
+        prefix, self.map_cc_around_atoms,
+        prefix, format_value("%-6.2f", self.rmsd_b).strip(),
+        prefix, format_value("%-6.2f", self.rmsd_a).strip(),
+        prefix, self.dist_from_start,
+        prefix, self.dist_from_previous,
+        prefix, format_value("%-6.2f", mso.clashscore),
+        prefix,
+        prefix, format_value("%-5.2f", mso.ramachandran_outliers),
+        prefix, format_value("%-5.2f", mso.ramachandran_allowed),
+        prefix, format_value("%-5.2f", mso.ramachandran_favored),
+        prefix, format_value("%6.2f", mso.rotamer_outliers).strip(),
+        prefix, format_value("%-3d", mso.c_beta_dev))
+    else:
+      print >> log, fmt%(
+        prefix, self.map_cc_whole_unit_cell,
+        prefix, self.map_cc_around_atoms,
+        prefix, "None",
+        prefix, "None",
+        prefix, self.dist_from_start,
+        prefix, self.dist_from_previous,
+        prefix, "None",
+        prefix,
+        prefix, "None",
+        prefix, "None",
+        prefix, "None",
+        prefix, "None",
+        prefix, "None")
 
   def show_residues(self, map_cc_all=0.8, map_cc_sidechain=0.8, log=None):
     if(log is None): log = sys.stdout
@@ -278,6 +295,7 @@ class structure_monitor(object):
 
   def find_sidechain_clashes(self):
     result = flex.size_t()
+    if(self.geometry_restraints_manager is None): return result
     get_class = iotbx.pdb.common_residue_names_get_class
     # find nonbonded clashing pairs of atoms
     bond_proxies_simple = self.geometry_restraints_manager.pair_proxies(
