@@ -1001,7 +1001,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         l1 = lt.split(",")
         l1 = l1[len(l1)-1]
         l2 = l_.split(",")[0]
-        if(l1.count(".")>0 and l2.count(".")==0): j=""
+        if((l1.count(".")>0 and l2.count(".")==0) or l1.endswith("-")): j=""
         else: j = ","
         #
         lt = lt + j + l_

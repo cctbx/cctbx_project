@@ -10,7 +10,7 @@ def format_none(format, null_value=0, replace_with="None"):
 
 def format_value(format, value, null_value=0, replace_none_with="None"):
   if (format is None): return str(value)
-  if (value is None):
+  if (value is None or str(value).upper()=="NONE"):
     return format_none(format=format, null_value=null_value,
       replace_with=replace_none_with)
   return format % value
