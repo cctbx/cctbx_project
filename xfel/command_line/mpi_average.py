@@ -24,7 +24,7 @@ def average(argv=None):
     raise Sorry("MPI not found")
 
   command_line = (libtbx.option_parser.option_parser(
-    usage="%s [-p] -c config -x experiment -a address -r run -d detz_offset [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-v]" % libtbx.env.dispatcher_name)
+    usage="%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-v]" % libtbx.env.dispatcher_name)
                 .option(None, "--as_pickle", "-p",
                         action="store_true",
                         default=False,
@@ -56,6 +56,12 @@ def average(argv=None):
                         default=None,
                         dest="detz_offset",
                         help="offset (in mm) from sample interaction region to back of CSPAD detector rail (CXI), or detector distance (XPP)")
+                .option(None, "--outputdir", "-o",
+                        type="string",
+                        default=".",
+                        dest="outputdir",
+                        metavar="PATH",
+                        help="Optional path to output directory for output files")
                 .option(None, "--averagebase", "-A",
                         type="string",
                         default="{experiment!l}_avg-r{run:04d}",
@@ -235,6 +241,7 @@ def average(argv=None):
     dest_paths = [cspad_tbx.pathsubst(command_line.options.averagepath + extension, evt, ds.env()),
                   cspad_tbx.pathsubst(command_line.options.stddevpath  + extension, evt, ds.env()),
                   cspad_tbx.pathsubst(command_line.options.maxpath     + extension, evt, ds.env())]
+    dest_paths = [os.path.join(command_line.options.outputdir, path) for path in dest_paths]
 
     if command_line.options.as_pickle:
       sections = parse_calib.calib2sections(libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0"))
