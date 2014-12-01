@@ -55,13 +55,18 @@ if (__name__ == "__main__"):
     #print image.horizons_phil_cache.distl.quad_translations
     #print image.horizons_phil_cache.distl.tile_translations
 
-    if image.horizons_phil_cache.distl.detector_format_version.find("CXI")>=0:
+    dfv = image.horizons_phil_cache.distl.detector_format_version
+    if dfv is None or dfv.find("CXI")>=0:
       key_sensors =[(2,3),(18,19),(50,51),(34,35)] # UL, UR, LL, LR
-    elif image.horizons_phil_cache.distl.detector_format_version.find("XPP")>=0:
+    elif dfv.find("XPP")>=0:
       key_sensors =[(34,35),(50,51),(18,19),(2,3)] # UL, UR, LL, LR
 
-    old_quad_trans = flex.int(image.horizons_phil_cache.distl.quad_translations)
-    new_quad_trans = old_quad_trans + flex.int(len(old_quad_trans)) #initialize
+    if dfv is None:
+      old_quad_trans = flex.int(8)
+      new_quad_trans = flex.int(8) #initialize
+    else:
+      old_quad_trans = flex.int(image.horizons_phil_cache.distl.quad_translations)
+      new_quad_trans = old_quad_trans + flex.int(len(old_quad_trans)) #initialize
 
     from xfel.metrology.quadrant import one_sensor
     for isensor,sensor in enumerate(key_sensors):
