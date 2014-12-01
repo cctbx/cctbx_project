@@ -732,6 +732,22 @@ AUTHOR   2 BETHUNE,SCHIFFER
   """
   assert iotbx.pdb.input(source_info=None, lines=pdb_in).extract_authors()==\
   ['KING', 'PRABU-JEYABALAN', 'NALIVAIKA', 'WIGERNICK', 'BETHUNE', 'SCHIFFER']
+  #
+  pdb_in = """
+AUTHOR    N.M.KING,E.A.NALIVAIKA,P.B.WIGERNICK,M.PRABU-
+AUTHOR   2 JEYABALAN,C.A.SCHIFFER
+  """
+  assert iotbx.pdb.input(source_info=None, lines=pdb_in).extract_authors()==\
+  ['KING.M.N', 'A.E.NALIVAIKA', 'B.P.WIGERNICK', 'M.PRABU-JEYABALAN',
+   'A.C.SCHIFFER']
+  #
+  pdb_in = """
+AUTHOR    N.M.KING,E.A.NALIVAIKA,P.B.WIGERNICK,PRABU-
+AUTHOR   2 JEYABALAN,C.A.SCHIFFER
+  """
+  assert iotbx.pdb.input(source_info=None, lines=pdb_in).extract_authors()==\
+  ['KING.M.N', 'A.E.NALIVAIKA', 'B.P.WIGERNICK', 'PRABU-JEYABALAN',
+   'A.C.SCHIFFER']
 
 
 def run():
