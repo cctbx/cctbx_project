@@ -48,6 +48,17 @@ organization = gov.lbl.cci
   .type = str
 """
 
+def full_path (path_name) :
+  if op.isabs(path_name) :
+    return path_name
+  else :
+    path_name_ = libtbx.env.find_in_repositories(
+      relative_path=path_name,
+      test=op.isfile)
+    if (path_name_ is None) :
+      raise RuntimeError("Can't find path %s" % path_name)
+    return path_name_
+
 def run (args) :
   parser = OptionParser()
   parser.add_option("--tmp-dir", dest="tmp_dir", action="store",
@@ -63,11 +74,10 @@ def run (args) :
     help="Package version",
     default=time.strftime("%Y_%m_%d", time.localtime()))
   parser.add_option("--remove_src", dest="remove_src")
-  if (sys.platform == "darwin") :
-    parser.add_option("--no-pkg", dest="no_pkg", action="store_true",
-      help="Disable Mac graphical (.pkg) installer")
-    parser.add_option("--make-app", dest="make_apps", action="append",
-      help="App bundle to create")
+  parser.add_option("--no-pkg", dest="no_pkg", action="store_true",
+    help="Disable Mac graphical (.pkg) installer")
+  parser.add_option("--make-app", dest="make_apps", action="append",
+    help="App bundle to create")
   # TODO installer background?
   options, args = parser.parse_args(args)
   if (len(args) == 0) :
@@ -112,17 +122,9 @@ def run (args) :
   else :
     suffix = options.mtype
   installer_tar = installer_dir + "-" + suffix + ".tar.gz"
-  def full_path (path_name) :
-    if op.isabs(path_name) :
-      return path_name
-    else :
-      path_name_ = libtbx.env.find_in_repositories(
-        relative_path=path_name,
-        test=op.isfile)
-      if (path_name_ is None) :
-        raise RuntimeError("Can't find path %s" % path_name)
-      return path_name_
-  # setup basic installer directory
+      
+  #############################
+  # Run setup_installer.py
   setup_args = [
     "--version=%s" % options.version,
     "--binary",
@@ -140,6 +142,10 @@ def run (args) :
   for arg_ in setup_args :
     print "  %s" % arg_
   setup_installer.run(args=setup_args + [ params.pkg_prefix ])
+  print "setup_installer.py done."
+  
+  #############################
+  # Bundle
   os.chdir(options.tmp_dir)
   assert op.isdir(installer_dir), installer_dir
   bundle_dir = op.join(options.tmp_dir, installer_dir, "bundles")
@@ -160,12 +166,16 @@ def run (args) :
   for arg_ in bundle_args :
     print "  %s" % arg_
   make_bundle.run(args=bundle_args + [ root_dir ])
+  print "make_bundle.py done."
+    
+  #############################
   # package the entire mess into the complete installer
   find_and_delete_files(installer_dir, file_ext=".pyc")
   os.chdir(options.tmp_dir)
   call("tar czf %s %s" % (installer_tar, installer_dir))
   print "Wrote %s" % installer_tar
-  #
+
+  #############################
   # Mac .pkg creation
   if (sys.platform == "darwin") and (not getattr(options, "no_pkg", False)) :
     if (not os.access("/Applications", os.W_OK|os.X_OK)) :
@@ -175,6 +185,7 @@ def run (args) :
       pkg_prefix = "/Applications"
       app_root_dir = pkg_prefix + "/" + "%s-%s" % (params.pkg_prefix,
         options.version)
+
       if params.hide_mac_package_contents :
         app_root_dir = "/Applications/%s-%s" %(params.package_name,
           options.version)
@@ -182,6 +193,7 @@ def run (args) :
         os.makedirs(pkg_prefix)
       call("./install --prefix=%s --compact --no-app" % pkg_prefix)
       install_dir = "%s/%s-%s" % (pkg_prefix,params.pkg_prefix,options.version)
+
       # generate .app launchers
       if (options.make_apps) :
         exe_path = "%s/build/bin/libtbx.create_mac_app" % install_dir
@@ -195,6 +207,7 @@ def run (args) :
             app_name,
           ]
           call(" ".join(app_args), log=apps_log)
+          
       # Copy env.* files to top-level directory
       if params.hide_mac_package_contents :
         for file_name in os.listdir(install_dir) :
@@ -204,6 +217,7 @@ def run (args) :
         docs_dir = op.join(install_dir, "doc")
         if op.isdir(docs_dir) :
           shutil.copytree(docs_dir, op.join(app_root_dir, "doc"))
+          
       create_mac_pkg.run(args=[
         "--package_name=%s" % params.package_name,
         "--version=%s" % options.version,
@@ -216,6 +230,8 @@ def run (args) :
         options.version,suffix)
       if (options.destination is not None) :
         call("rsync -avz %s %s" % (installer_pkg, options.destination))
+
+  #############################
   # rsync and cleanup
   os.chdir(options.tmp_dir)
   remove_installer = False
