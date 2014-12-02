@@ -1941,6 +1941,7 @@ mmtbx/refinement/tst_group.py -text
 mmtbx/refinement/tst_group_2.py -text
 mmtbx/refinement/tst_minimization_ncs_constraints.py -text
 mmtbx/refinement/tst_minimization_ncs_constraints2.py -text
+mmtbx/refinement/tst_minimization_ncs_constraints3.py -text
 mmtbx/refinement/tst_misc.py -text
 mmtbx/refinement/tst_occupancy_selections.py svneol=native#text/x-python
 mmtbx/refinement/tst_real_space_simple.py -text
