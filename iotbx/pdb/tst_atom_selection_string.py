@@ -5,8 +5,8 @@ from mmtbx.ncs.ncs_search import get_chains_info
 from scitbx.array_family import flex
 from iotbx import pdb
 import unittest
-import sys
 
+__author__ = 'Youval'
 
 class TestNcsPreprocessingFunctions(unittest.TestCase):
   """ Test utility functions in ncs_preprocess.py"""
@@ -14,7 +14,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
 
   def test_get_clean_selection_string(self):
     """ Check get_clean_selection_string  """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     ch_sel = 'chain A'
     res_selection1 = ['resseq 1:10']
 
@@ -36,7 +36,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
 
   def test_selection_string_from_selection(self):
     """ Test selection_string_from_selection """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_1)
     isel1 = flex.size_t([12, 13, 14, 15, 16, 17, 18])
     isel2 = flex.size_t([12, 13, 14, 16, 17, 18])
@@ -61,7 +61,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
 
   def test_selection_string_from_selection2(self):
     """ Test selection_string_from_selection """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_2)
     l1 = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,
           26,27,28,29,30,31]
@@ -87,7 +87,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     self.assertEqual(sel2,list(isel2))
 
   def test_avoid_chain_selection(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_2)
     isel1 = flex.size_t([0,1,2,3,4,5,6,7,8])
     sel_str1 = selection_string_from_selection(pdb_inp,isel1)
@@ -95,7 +95,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     self.assertEqual(sel_str1,s)
 
   def test_avoid_chain_selection2(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_3)
     isel1 = flex.size_t(range(6,46))
     sel_str1 = selection_string_from_selection(pdb_inp,isel1)
@@ -109,7 +109,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     self.assertEqual(sel_str1,s)
 
   def test_avoid_hoh(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
     isel1 = flex.size_t(range(7))
     sel_str1 = selection_string_from_selection(pdb_inp,isel1)
@@ -121,7 +121,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     self.assertEqual(sel.size(),7)
 
   def test_include_hoh(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
     chains_info = get_chains_info(pdb_inp.hierarchy,exclude_water=True)
     isel1 = flex.size_t(range(7))
@@ -142,7 +142,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     self.assertEqual(sel_str1,s)
 
   def test_selection_with_alternative_conformers(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_5)
     cache = pdb_inp.hierarchy.atom_selection_cache().selection
     chains_info = get_chains_info(pdb_inp.hierarchy)

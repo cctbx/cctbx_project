@@ -9,7 +9,6 @@ import unittest
 import tempfile
 import shutil
 import os
-import sys
 
 __author__ = 'Youval'
 
@@ -33,7 +32,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_phil_param_read(self):
     """ Verify that phil parameters are properly read   """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     # check correctness
     expected_ncs_selection =['(chain A)','(chain A) or (chain B)']
     expected_ncs_to_asu = [
@@ -53,7 +52,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_phil_processing(self):
     """ Verify that phil parameters are properly processed   """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     trans_obj = iotbx.ncs.input(
@@ -80,7 +79,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_superpos_pdb(self):
     """  verify creation of transformations using superpose_pdb   """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data1)
     trans_obj = iotbx.ncs.input(
@@ -129,7 +128,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       return
     from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
     from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     # creating a spec file
     params = ncs_master_params.extract()
     params.simple_ncs_from_pdb.min_length = 1
@@ -193,7 +192,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     if not have_phenix:
       print "Skipping test_processing_of_asu(): phenix not available"
       return
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
 
     # reading and processing the spec file
     trans_obj = iotbx.ncs.input(pdb_hierarchy_inp = self.pdb_obj)
@@ -259,7 +258,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_rotaion_translation_input(self):
     """ Verify correct processing    """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     r1 = matrix.sqr([-0.955168,0.257340,-0.146391,
                      0.248227,0.426599,-0.869711,
                      -0.161362,-0.867058,-0.471352])
@@ -286,7 +285,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_print_ncs_phil_param(self):
     """ Verify correct printout of NCS phil parameters """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     trans_obj = iotbx.ncs.input(
       ncs_selection_params = pdb_test_data2_phil,
@@ -303,7 +302,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(result,test_phil_3)
 
   def test_finding_partial_ncs(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     ncs_inp = iotbx.ncs.input(
       pdb_string=pdb_str,
       check_atom_order=True,
@@ -351,7 +350,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_format_string_longer_than_80(self):
     """ Check that strings longer that 80 characters are split correctly """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     s = [str (x) for x in range(50)]
     s = ''.join(s)
     result = format_80(s)
