@@ -697,7 +697,7 @@ class DataBlockFactory(object):
         if verbose:
           print "Could not import %s: not a valid file or directory name" % f
         if unhandled is not None:
-          unhandled.extend(f)
+          unhandled.append(f)
 
     importer = DataBlockFilenameImporter(filelist, verbose)
     if unhandled is not None:
