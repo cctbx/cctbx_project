@@ -679,8 +679,26 @@ class DataBlockFactory(object):
 
   @staticmethod
   def from_filenames(filenames, verbose=False, unhandled=None):
-    ''' Create a list of data blocks from a list of filenames. '''
-    importer = DataBlockFilenameImporter(filenames, verbose)
+    ''' Create a list of data blocks from a list of directory or file names. '''
+
+    from os import listdir
+    from os.path import isdir, isfile, join
+    filelist = []
+    for f in filenames:
+      if isfile(f):
+        filelist.extend(f)
+      elif isdir(f):
+        subdir = [ join(f, sf) for sf in listdir(f) if isfile(join(f, sf)) ]
+        filelist.extend(subdir)
+        if verbose:
+          print "Added %d files from %s" % (len(subdir), f)
+      else:
+        if verbose:
+          print "Could not import %s: not a valid file or directory name" % f
+        if unhandled is not None:
+          unhandled.extend(f)
+
+    importer = DataBlockFilenameImporter(filelist, verbose)
     if unhandled is not None:
       unhandled.extend(importer.unhandled)
     return importer.datablocks
