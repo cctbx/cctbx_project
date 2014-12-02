@@ -14,7 +14,7 @@ class test_find_ncs_operators(unittest.TestCase):
     Testing one ncs group and master ncs with two chains of different length
     and chains are not in order
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     trans_obj = iotbx.ncs.input(pdb_string=test_pdb1)
     t = trans_obj.ncs_to_asu_selection
     self.assertEqual(t.keys(),['chain A or chain B'])
@@ -26,7 +26,7 @@ class test_find_ncs_operators(unittest.TestCase):
     Two groups, different number of chain in each group.
     two chains that are NOT ncs related
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     trans_obj = iotbx.ncs.input(pdb_string=test_pdb2)
     t = trans_obj.ncs_to_asu_selection
     self.assertEqual(t.keys(),['chain D', 'chain A'])
@@ -40,7 +40,7 @@ class test_find_ncs_operators(unittest.TestCase):
     Test that minimal number of chains in master ncs are selected (not the
     minimal number of transformations)
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     trans_obj = iotbx.ncs.input(pdb_string=test_pdb3)
     t = trans_obj.ncs_to_asu_selection
     self.assertEqual(t.keys(),['chain A'])
@@ -53,7 +53,7 @@ class test_find_ncs_operators(unittest.TestCase):
     Test that minimal number of transformations in
     master ncs are selected (not the minimal number of chains)
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     trans_obj = iotbx.ncs.input(
       pdb_string=test_pdb3,
       use_minimal_master_ncs=False)
@@ -65,7 +65,7 @@ class test_find_ncs_operators(unittest.TestCase):
 
   def test_group_chains_by_domains_minimal_master_ncs_grouping(self):
     """ """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     #
     pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb3)
     ph = pdb_inp.construct_hierarchy()
@@ -104,7 +104,7 @@ class test_find_ncs_operators(unittest.TestCase):
 
   def test_group_chains_by_domains_minimal_NCS_operators(self):
     """ Test minimal NCS operators """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
 
     pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb3)
     ph = pdb_inp.construct_hierarchy()

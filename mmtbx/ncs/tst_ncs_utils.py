@@ -9,7 +9,6 @@ from iotbx import pdb
 import iotbx.ncs
 import unittest
 import math
-import sys
 
 __author__ = 'Youval'
 
@@ -133,7 +132,7 @@ class Test_ncs_utils(unittest.TestCase):
 
   def test_concatenate_rot_tran(self):
     """ Verify correct concatenation of rotation and translations """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     results = nu.concatenate_rot_tran(self.tr_obj1)
     expected = flex.double([
       -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
@@ -144,7 +143,7 @@ class Test_ncs_utils(unittest.TestCase):
     """
     Verify correct conversion from angles and translation
     to rotation matrices and translations """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     x = flex.double([
       -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
       2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
@@ -163,7 +162,7 @@ class Test_ncs_utils(unittest.TestCase):
     from alpha:
     rotation around x, beta: rotation around y, gamma: around z
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     angles = self.rot_angles1
     expected = self.rot1.as_double()
     result = nu.angles_to_rotation(angles_xyz=angles,deg=False)
@@ -189,7 +188,7 @@ class Test_ncs_utils(unittest.TestCase):
     Also note that for the cases where cos(beta)=0, there is no unique
     answer
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     r = self.rot1.as_double()
     expected_angles = self.rot_angles1
     angles = nu.rotation_to_angles(rotation=r, deg=False)
@@ -217,7 +216,7 @@ class Test_ncs_utils(unittest.TestCase):
     """
     Make sure that our rotation matrices are good
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     for rm in [self.rot1,self.rot2,self.rot3]:
       r = matrix.sqr(rm.as_double())
       assert r.is_r3_rotation_matrix(rms_tolerance=1e-3)
@@ -230,7 +229,7 @@ class Test_ncs_utils(unittest.TestCase):
 
     Verify that we process tuple well
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     r = tuple(self.rot1.as_double())
     expected_angles = self.rot_angles1
     angles = nu.rotation_to_angles(rotation=r, deg=False)
@@ -239,7 +238,7 @@ class Test_ncs_utils(unittest.TestCase):
 
   def test_update_x(self):
     """    Verify that transforms are getting updated    """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     x1 = nu.concatenate_rot_tran(self.tr_obj1)
     x2 = nu.shake_transformations(
       x = x1,
@@ -281,7 +280,7 @@ class Test_ncs_utils(unittest.TestCase):
     verify that extended_ncs_selection, which include the master ncs copy and
     the portion of the protein we want to refine.
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     refine_selection = flex.size_t(range(30))
     result = nu.get_extended_ncs_selection(
       ncs_restraints_group_list=self.ncs_restraints_group_list,
@@ -290,7 +289,7 @@ class Test_ncs_utils(unittest.TestCase):
     assert list(result) == expected
 
   def test_ncs_related_selection(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     result = nu.get_ncs_related_selection(
       ncs_restraints_group_list=self.ncs_restraints_group_list,
       asu_size=25)
@@ -306,7 +305,7 @@ class Test_ncs_utils(unittest.TestCase):
     test shifting translation to and from the center of coordinates of the
     master ncs copy
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
 
     xrs = self.pdb_obj.xray_structure_simple()
     nrg = self.ncs_restraints_group_list
@@ -342,7 +341,7 @@ class Test_ncs_utils(unittest.TestCase):
     """
     test that a atom selection propagates correctly to ncs_restraints_group_list
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
 
     nrg = self.ncs_restraints_group_list
     m1 = list(nrg[0].master_iselection)
@@ -392,7 +391,7 @@ class Test_ncs_utils(unittest.TestCase):
     assert c2t == [14, 15, 19]
 
   def test_selected_positions(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
 
     a=flex.size_t([1,2,5,6,4])
     pos={0,3,4}
@@ -401,7 +400,7 @@ class Test_ncs_utils(unittest.TestCase):
     assert list(d) == [2,5]
 
   def test_remove_items_from_selection(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     a=flex.size_t([1,2,5,6,4])
     r = flex.size_t([2,5])
     s = nu.remove_items_from_selection(a,r)
@@ -412,7 +411,7 @@ class Test_ncs_utils(unittest.TestCase):
     Testing switching of master ncs copy and a copy (turning the copy to master)
     and then switching to the original configuration
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     nrg = self.tr_obj2.get_ncs_restraints_group_list()
     master = nrg[0].master_iselection
     copy_1 = nrg[0].copies[0].iselection
@@ -470,7 +469,7 @@ class Test_ncs_utils(unittest.TestCase):
     Verifying that we get a list of chain index for the chain with the best
     map correlation
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
 
     d_min = 1.0
     ncs_inp = iotbx.ncs.input(pdb_string=pdb_poor_0)
@@ -511,7 +510,7 @@ class Test_ncs_utils(unittest.TestCase):
     assert best_list == [1]
 
   def test_iselection_ncs_to_asu(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.input(lines=pdb_answer_0,source_info=None)
     ph = pdb_inp.construct_hierarchy()
     isel_asu = flex.size_t([8,9,13])
@@ -520,7 +519,7 @@ class Test_ncs_utils(unittest.TestCase):
     self.assertEqual(list(isel_asu),list(results))
 
   def test_iselection_asu_to_ncs(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.input(lines=pdb_answer_0,source_info=None)
     ph = pdb_inp.construct_hierarchy()
     isel_asu = flex.size_t([8,9,13])

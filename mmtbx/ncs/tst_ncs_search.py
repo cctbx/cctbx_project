@@ -6,7 +6,6 @@ from libtbx.utils import Sorry
 from iotbx import pdb
 import iotbx.ncs
 import unittest
-import sys
 
 __author__ = 'Youval'
 
@@ -33,7 +32,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.hierarchy_b = self.ph.select(cache.selection('chain B'))
 
   def test_1(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     a = 'abcfadx'
     b = 'cabfa'
     seq_a = list(a)
@@ -52,7 +51,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual([1,2,3,4],list(sel_b))
 
   def test_2(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     sel_a, sel_b, similarity = res_alignment(
       self.seq_a, self.seq_b, min_percent=0.9,min_contig_length=0)
     expected_1 = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 19,
@@ -79,7 +78,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(expected_2,list(sel_b))
 
   def test_3(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     sel_a, sel_b, similarity = res_alignment(
       self.seq_a,self.seq_b,min_percent=0.95,min_contig_length=0)
     # difference is to large
@@ -89,7 +88,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(expected_2,list(sel_b))
 
   def test_search_ncs_relations(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     chain_match_list = ncs_search.search_ncs_relations(
       ph=self.ph,
       min_percent=0.70,
@@ -126,7 +125,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(r2,[0, 1, 2, 3])
 
   def test_get_chains_info(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_1)
     ph = pdb_inp.hierarchy
     # test without selection
@@ -183,7 +182,7 @@ class TestSimpleAlignment(unittest.TestCase):
                       selection_list=selection_list)
 
   def test_remove_masters_if_appear_in_copies(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     transform_to_group = {1:[['A','B','E'],['B','C','F']]}
     tg = ncs_search.remove_masters_if_appear_in_copies(transform_to_group)
     self.assertEqual(tg.values(),[[['A','E'],['B','F']]])
@@ -199,7 +198,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(sorted(tg.values()),expected)
 
   def test_remove_far_atoms(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=AB112_116)
     ph = pdb_inp.hierarchy
     pdb_inp_b = pdb.hierarchy.input(pdb_string=B112_116_fitted)
@@ -227,7 +226,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual([1, 2, 6, 8, 9],res_n_b)
 
   def test_update_res_list(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=pdb_str_2)
     ph = pdb_inp.hierarchy
     chains_info = ncs_search.get_chains_info(ph)
@@ -274,7 +273,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(c_res_list,[[4, 5, 6, 7, 9, 10, 11, 12]])
 
   def test_update_atom_selections(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=pdb_str_3)
     ph = pdb_inp.hierarchy
     chains_info = ncs_search.get_chains_info(ph)
@@ -337,7 +336,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(group_dict[('A',)].copies,[['A'], ['B'], ['C'], ['D']])
 
   def test_split_chain_with_altloc(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
     chains_info = ncs_search.get_chains_info(pdb_inp.hierarchy)
     ch_A = chains_info['A']
@@ -349,7 +348,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(len(ch_A.res_names),len(ch_A.no_altloc))
 
   def test_groups_with_chains_of_different_size(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_6)
     ncs_results = ncs_search.find_ncs_in_hierarchy(ph=pdb_inp.hierarchy)
     answer = ncs_results[('H','I')].residue_index_list
@@ -359,12 +358,12 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(answer,[['H', 'I'], ['J', 'K'], ['L', 'M']])
 
   def test_correct_transform_selection(self):
-    print sys._getframe().f_code.co_name
     """
     When [A,B] can be the master for [D,E], [F,G]
     but the transform from B to G is the same as the inverse of A to D,
     make sure the non-transform match is selected
     """
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_7)
     ph = pdb_inp.hierarchy
     chains_info = ncs_search.get_chains_info(ph)
@@ -398,7 +397,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(group_dict.keys(),[('A','B')])
 
   def test_split_groups_to_spec(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_str = test_pdb_7 + test_pdb_7_addition
     ncs_obj = iotbx.ncs.input(pdb_string=pdb_str)
     spec = ncs_obj.get_ncs_info_as_spec(write=False)

@@ -12,7 +12,6 @@ import unittest
 import tempfile
 import shutil
 import os
-import sys
 
 
 class TestMultimerReconstruction(unittest.TestCase):
@@ -32,7 +31,7 @@ class TestMultimerReconstruction(unittest.TestCase):
   # @unittest.SkipTest
   def test_MTRIX(self):
     '''Test MTRIX record processing'''
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     cau_expected_results  = [
     [1.0, 1.0, 1.0], [1.0, -1.0, 1.0], [-0.366025, 1.366025, 1.0], [-1.366025, 0.366025, 1.0],
     [1.0, 1.5, 1.0], [94.618, -5.253, 91.582],
@@ -81,7 +80,7 @@ class TestMultimerReconstruction(unittest.TestCase):
   # @unittest.SkipTest
   def test_BIOMT(self):
     '''Test MTRIX record processing'''
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     ba_expected_results  = [
     [1.0, 1.0, 1.0], [1.0, -1.0, 1.0], [1.0, 1.0, -1.0], [-1.0, 1.0, 1.0], [1.0, 1.0, -1.0],
     [-1.0, 1.0, -1.0], [-0.366025, 1.366025, 1.0], [-1.366025, 0.366025, 1.0], [1.0, 1.5, 1.0],
@@ -112,7 +111,7 @@ class TestMultimerReconstruction(unittest.TestCase):
 
   # @unittest.SkipTest
   def test_ncs_copies_naming(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     transforms_obj = ncs_group_object()
     result =  transforms_obj.make_chains_names(
       ['chain A_001','chain B_001','chain A_002','chain B_002'],('A','B'))
@@ -125,7 +124,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     Verify that insertion and reordering of the identity transform is done
     properly
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     for pdb_str in [pdb_test_data5,pdb_test_data6]:
       ncs_inp = iotbx.ncs.input(pdb_string=pdb_test_data5)
       transform_info = ncs_inp.build_MTRIX_object()
@@ -141,7 +140,7 @@ class TestMultimerReconstruction(unittest.TestCase):
   def test_adding_transforms_directly(self):
     """
     Verify that processing of transforms provided manually is done properly """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data4)
     r = [matrix.sqr([0.1,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9])]
     r.append(matrix.sqr([1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.4]))
@@ -187,7 +186,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     """
     Verify that transform order is kept even when chain selection is complex
     """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transform_info = pdb_inp.process_mtrix_records()
@@ -224,14 +223,14 @@ class TestMultimerReconstruction(unittest.TestCase):
 
   # @unittest.SkipTest
   def test_num_to_str(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     self.assertEqual(format_num_as_str(946),'946')
     self.assertEqual(format_num_as_str(46),'046')
     self.assertEqual(format_num_as_str(6),'006')
     self.assertEqual(format_num_as_str(0),'000')
 
   def test_pdb_writing(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     """
     Verify that there are no errors processing the write command
     No inception of the output is done.
@@ -284,7 +283,7 @@ class TestMultimerReconstruction(unittest.TestCase):
 
   def test_spec_file_format(self):
     """ Verify that spec object are produced properly """
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
 
     multimer_data = multimer(
       pdb_str=pdb_test_data2,
@@ -328,7 +327,7 @@ class TestMultimerReconstruction(unittest.TestCase):
 
   # @unittest.SkipTest
   def test_writing_spec_file(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     """
     Verify that there are no errors processing the write command
     No inception of the output is done. Just making sure it does not break

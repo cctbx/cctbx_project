@@ -5,8 +5,6 @@ import mmtbx.ncs.ncs_utils as nu
 import iotbx.ncs
 import iotbx.pdb
 import unittest
-import sys
-import os
 
 __author__ = 'Youval'
 
@@ -14,7 +12,7 @@ class TestMinimizationFunctions(unittest.TestCase):
   """ Test NCS constraints minimization function  """
 
   def test_grads_one_ncs_to_asu(self):
-    print sys._getframe().f_code.co_name
+    # print sys._getframe().f_code.co_name
     ncs_inp = iotbx.ncs.input(pdb_string=test_pdb_1)
     pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_1)
     ph = pdb_inp.construct_hierarchy()
