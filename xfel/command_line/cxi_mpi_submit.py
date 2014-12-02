@@ -12,6 +12,53 @@ from libtbx.utils import Sorry
 from libtbx.phil import parse
 from libtbx import easy_run
 
+help_str = """
+Use cxi.mpi_submit to submit a cxi.xtc_process job to the cluster for analyzing
+diffraction data in XTC streams.  cxi.mpi_submit will create a directory for
+you in the location specified by output.output_dir using the run and trial
+numbers specified.  If no trial number is specified, one will be chosen auto-
+matically by examining the output directory.  The output directory will be
+created if it doesn't exist.
+
+Examples:
+
+cxi.mpi_submit input.cfg=cxi49812/thermo.cfg input.experiment=cxi49812 \\
+  input.run_num=25 output.output_dir=\\
+  /reg/d/psdm/cxi/cxi49812/ftc/username/results mp.nproc=100 mp.queue=psanaq
+
+This will submit run 25 of experiment cxi49812 to the psana queue for
+processing using the modules specified by cxi49812/thermo.cfg.
+
+cxi.mpi_submit submit.phil
+
+Use the phil parameters in submit.phil to control job submission.
+
+Before the job is submitted, the following occurs:
+
+Directory /reg/d/psdm/cxi/cxi49812/ftc/username/results is created if it
+doesn't exist.
+
+Directory /reg/d/psdm/cxi/cxi49812/ftc/username/results/r0025 is created if it
+doesn't exist.
+
+The run directory is searched for the next available trial ID, say 003.  That
+directory is created.
+
+Under /reg/d/psdm/cxi/cxi49812/ftc/username/results/r0025/003, the following is
+created:
+
+Directory stdout.  The log for the experiment will go here.
+File psana_orig.cfg.  This is a verbatim copy of the input config file.
+File psana.cfg.  This is a copy of the input config file, re-written to respect
+the new paths for this trial.  Any parameters with _dirname are re-written
+to include this trial directory and the associated directories are created. Any
+phil files found are copied to the trial directory, renamed, and updated.  This
+includes phil files included by copied phil files.
+
+The final bsub command is saved in submit.sh for future use.
+"""
+
+
 phil_scope = parse('''
   input {
     cfg = None
@@ -73,6 +120,12 @@ class Script(object):
 
   def run(self):
     """ Set up run folder and submit the job. """
+    if len(sys.argv) == 1 or "-h" in sys.argv or "--help" in sys.argv or "-c" in sys.argv:
+      print help_str
+      print "Showing phil parameters:"
+      print phil_scope.as_str(attributes_level = 2)
+      return
+
     user_phil = []
     for arg in sys.argv[1:]:
       if (os.path.isfile(arg)):

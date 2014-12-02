@@ -9,6 +9,36 @@ from libtbx.utils import Sorry
 from libtbx.phil import parse
 from xfel.cxi.cspad_ana import cspad_tbx
 
+help_str = """
+Use cxi.xtc_process to analyze XTC streams from LCLS using psana modules
+specified in a config file.
+
+You will likely find cxi.mpi_submit more useful generally, but use this prog-
+ram to test your config files for a few events.
+
+Should be ran from your myrelease directory. Be sure to run sit_setup first.
+
+Example usages:
+
+cxi.xtc_process input.cfg=cxi49812/thermo.cfg input.experiment=cxi49812 \\
+  input.run_num=25
+
+This will use one process on the current node to analyze every event from run
+25 of experiment cxi49812 using the modules specfied in cxi49812/thermo.cfg.
+
+mpirun -n 16 cxi.xtc_process input.cfg=cxi49812/thermo.cfg \\
+  input.experiment=cxi49812 input.run_num=25 dispatch.max_events=1000
+
+As above, but use 16 processes on the current node and only process 1000 events.
+
+bsub -a mympi -n 100 -o out.log -q psanaq cxi.xtc_process \\
+  input.cfg=cxi49812/thermo.cfg input.experiment=cxi49812 input.run_num=25
+
+Submit a processing job to the psana queue using 100 cores and put the
+resultant log in out.log.
+
+"""
+
 phil_scope = parse('''
   dispatch {
     max_events = None
@@ -53,6 +83,12 @@ class Script(object):
 
   def run(self):
     """ Process all images assigned to this thread """
+    if len(sys.argv) == 1 or "-h" in sys.argv or "--help" in sys.argv or "-c" in sys.argv:
+      print help_str
+      print "Showing phil parameters:"
+      print phil_scope.as_str(attributes_level = 2)
+      return
+
     user_phil = []
     for arg in sys.argv[1:]:
       if (os.path.isfile(arg)):

@@ -24,7 +24,27 @@ def average(argv=None):
     raise Sorry("MPI not found")
 
   command_line = (libtbx.option_parser.option_parser(
-    usage="%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-v]" % libtbx.env.dispatcher_name)
+    usage="""
+%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-v]
+
+To write image pickles use -p, otherwise the program writes CSPAD CBFs.
+Writing CBFs requires the geometry to be already deployed.
+
+Examples:
+cxi.mpi_average -c cxi49812/average.cfg -x cxi49812 -a CxiDs1.0:Cspad.0 -r 25 -d 571
+
+Use one process on the current node to process all the events from run 25 of
+experiment cxi49812, using a detz_offset of 571.
+
+mpirun -n 16 cxi.mpi_average -c cxi49812/average.cfg -x cxi49812 -a CxiDs1.0:Cspad.0 -r 25 -d 571
+
+As above, using 16 cores on the current node.
+
+bsub -a mympi -n 100 -o average.out -q psanaq cxi.mpi_average -c cxi49812/average.cfg -x cxi49812 -a CxiDs1.0:Cspad.0 -r 25 -d 571 -o cxi49812
+
+As above, using the psanaq and 100 cores, putting the log in average.out and
+the output images in the folder cxi49812.
+""" % libtbx.env.dispatcher_name)
                 .option(None, "--as_pickle", "-p",
                         action="store_true",
                         default=False,
