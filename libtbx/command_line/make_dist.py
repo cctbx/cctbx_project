@@ -122,7 +122,7 @@ def run (args) :
   else :
     suffix = options.mtype
   installer_tar = installer_dir + "-" + suffix + ".tar.gz"
-      
+
   #############################
   # Run setup_installer.py
   setup_args = [
@@ -143,7 +143,7 @@ def run (args) :
     print "  %s" % arg_
   setup_installer.run(args=setup_args + [ params.pkg_prefix ])
   print "setup_installer.py done."
-  
+
   #############################
   # Bundle
   os.chdir(options.tmp_dir)
@@ -167,7 +167,7 @@ def run (args) :
     print "  %s" % arg_
   make_bundle.run(args=bundle_args + [ root_dir ])
   print "make_bundle.py done."
-    
+
   #############################
   # package the entire mess into the complete installer
   find_and_delete_files(installer_dir, file_ext=".pyc")
@@ -228,7 +228,7 @@ def run (args) :
             app_name,
           ]
           call(" ".join(app_args), log=apps_log)
-          
+
       # Copy env.* files to top-level directory
       if params.hide_mac_package_contents :
         for file_name in os.listdir(install_dir) :
@@ -238,7 +238,7 @@ def run (args) :
         docs_dir = op.join(install_dir, "doc")
         if op.isdir(docs_dir) :
           shutil.copytree(docs_dir, op.join(app_root_dir, "doc"))
-          
+
       create_mac_pkg.run(args=[
         "--package_name=%s" % params.package_name,
         "--version=%s" % options.version,
