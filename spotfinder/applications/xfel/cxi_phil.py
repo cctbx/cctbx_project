@@ -359,6 +359,7 @@ def cxi_versioned_extract_detail(args):
                                                6,  6,
                                                4,  6,
                                                4,  1]
+
     return working_extract
 
 
@@ -622,7 +623,27 @@ def cxi_versioned_extract_detail(args):
 
     from scitbx.array_family import flex
 
-    corrected_auxiliary_translations = flex.int([0]*128)
+    corrected_auxiliary_translations =flex.int([
+       2,  6,  2,  6,  0,  0,  0,  0,
+       6,  2,  6,  2,  1,  2,  1,  2,
+       0,  0,  0,  0,  6, -4,  6, -4,
+       4, -3,  4, -3,  0,  2,  0,  2,
+
+       4,  0,  4,  0,  0,  0,  0,  0,
+       2, -7,  2, -7,  2, -2,  2, -2,
+      -3, -7, -3, -7,  0,  0,  0,  0,
+       1, -9,  1, -9,  0, -2,  0, -2,
+
+       0, -6,  0, -6,  0,  0,  0,  0,
+     -12, -1,-12, -1, -1, -3, -1, -3,
+       4,  0,  4,  0,  0,  0,  0,  0,
+      -7, -1, -7, -1,  1, -1,  1, -1,
+
+      -6,  0, -6,  0,  0,  0,  0,  0,
+      -5,  6, -5,  6, -5, -5, -5, -5,
+       0,  4,  0,  4,  0,  0,  0,  0,
+      -3,  5, -3,  5, -1,  1, -1,  1])
+
 
     working_extract.distl.tile_translations = list(corrected_auxiliary_translations)
 
@@ -632,6 +653,8 @@ def cxi_versioned_extract_detail(args):
                                                5, 3,
                                                7, 11,
                                                3, 12]
+
+
     return working_extract
 
 
