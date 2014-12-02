@@ -176,6 +176,18 @@ def run (args) :
   print "Wrote %s" % installer_tar
 
   #############################
+  # rsync
+  os.chdir(options.tmp_dir)
+  if (options.destination is not None) :
+    print "Uploading %s -> %s"%(installer_tar, options.destination)
+    # Create directory...
+    try:
+      call("ssh %s mkdir %s"%(options.destination.split(":")[0], options.destination.split(":")[1]))
+    except Exception, e:
+      pass
+    call("rsync -avz %s %s" % (installer_tar, options.destination))
+
+  #############################
   # Mac .pkg creation
   if (sys.platform == "darwin") and (not getattr(options, "no_pkg", False)) :
     if (not os.access("/Applications", os.W_OK|os.X_OK)) :
@@ -186,11 +198,20 @@ def run (args) :
       app_root_dir = pkg_prefix + "/" + "%s-%s" % (params.pkg_prefix,
         options.version)
 
+      print "Removing existing Applications directory:", app_root_dir
+      try:
+        shutil.rmtree(app_root_dir)
+      except Exception, e:
+        print e
+
+      print "hide_mac_package_contents?", params.hide_mac_package_contents
       if params.hide_mac_package_contents :
-        app_root_dir = "/Applications/%s-%s" %(params.package_name,
+        app_root_dir = "/Applications/%s-%s"%(params.package_name,
           options.version)
         pkg_prefix = app_root_dir + "/Contents"
-        os.makedirs(pkg_prefix)
+        try: os.makedirs(pkg_prefix)
+        except Exception, e: pass
+
       call("./install --prefix=%s --compact --no-app" % pkg_prefix)
       install_dir = "%s/%s-%s" % (pkg_prefix,params.pkg_prefix,options.version)
 
@@ -229,25 +250,9 @@ def run (args) :
       installer_pkg = "%s-%s-%s.pkg.zip" % (params.package_name.lower(),
         options.version,suffix)
       if (options.destination is not None) :
+        print "Uploading %s -> %s"%(installer_pkg, options.destination)
         call("rsync -avz %s %s" % (installer_pkg, options.destination))
 
-  #############################
-  # rsync and cleanup
-  os.chdir(options.tmp_dir)
-  remove_installer = False
-  if (options.destination is not None) :
-    print "Uploading %s -> %s"%(installer_tar, options.destination)
-    # Create directory...
-    try:
-      call("ssh %s mkdir %s"%(options.destination.split(":")[0], options.destination.split(":")[1]))
-    except Exception, e:
-      pass
-    call("rsync -avz %s %s" % (installer_tar, options.destination))
-    remove_installer = True
-  if (not options.debug) :
-    shutil.rmtree(installer_dir)
-    if remove_installer :
-      os.remove(installer_tar)
   return 0
 
 if (__name__ == "__main__") :
