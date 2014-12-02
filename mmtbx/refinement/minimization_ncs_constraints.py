@@ -67,9 +67,9 @@ def grads_one_ncs_to_asu(ncs_restraints_group_list,
   # update newly created flex.vec3 with NCS copies
   for nrg in ncs_restraints_group_list:
     master_selection = nrg.master_iselection
+    master_grad_portion = g.select(master_selection)
     for ncs_copy in nrg.copies:
       copy_selection = ncs_copy.iselection
-      master_grad_portion = master_grad.select(master_selection)
       g.set_selected(copy_selection,master_grad_portion)
   return g.as_double()
 
