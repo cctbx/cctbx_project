@@ -118,7 +118,12 @@ def read_slac_metrology(path, plot=False):
   null_ori = matrix.col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
 
   root = geometry.get_top_geo()
-  metro[(0,)] = basis_from_geo(root)
+  while len(root.get_list_of_children()) != 4:
+    assert len(root.get_list_of_children()) == 1
+    root = root.get_list_of_children()[0]
+
+  #metro[(0,)] = basis_from_geo(root) # don't use any offsets or orientations from root, as we provide our own
+  metro[(0,)] = basis(orientation = null_ori, translation = matrix.col((0,0,0)))
 
   for quad_id, quad in enumerate(root.get_list_of_children()):
     metro[(0,quad_id)] = basis_from_geo(quad)

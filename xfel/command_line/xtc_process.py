@@ -8,7 +8,8 @@ import numpy as np
 from xfel.cftbx.detector import cspad_cbf_tbx
 from xfel.cxi.cspad_ana import cspad_tbx
 import pycbf, os, sys
-from libtbx.utils import Sorry
+import libtbx.load_env
+from libtbx.utils import Sorry, Usage
 from dials.util.options import OptionParser
 from libtbx.phil import parse
 from dxtbx.imageset import MemImageSet
@@ -86,9 +87,7 @@ phil_scope = parse('''
     include scope dials.command_line.generate_mask.phil_scope
   }
   include scope dials.algorithms.peak_finding.spotfinder_factory.phil_scope
-  indexing {
-    include scope dials.algorithms.indexing.indexer.master_phil_scope
-  }
+  include scope dials.algorithms.indexing.indexer.master_phil_scope
   include scope dials.algorithms.refinement.refiner.phil_scope
   include scope dials.algorithms.profile_model.factory.phil_scope
   include scope dials.algorithms.integration.integrator.phil_scope
@@ -106,18 +105,27 @@ class InMemScript(DialsProcessScript):
   """ Script to process XFEL data at LCLS """
   def __init__(self):
     """ Set up the option parser. Arguments come from the command line or a phil file """
+    self.usage = \
+    """ %s input.cfg=filename.cfg input.experiment=experimentname
+    input.run_num=N input.address=address input.detz_offset=N
+    """%libtbx.env.dispatcher_name
+
     self.parser = OptionParser(
+      usage = self.usage,
       phil = phil_scope)
 
   def run(self):
     """ Process all images assigned to this thread """
-    params, options = self.parser.parse_args(show_diff_phil=True)
 
-    assert params.input.cfg is not None
-    assert params.input.experiment is not None
-    assert params.input.run_num is not None
-    assert params.input.address is not None
-    assert params.input.detz_offset is not None
+    params, options = self.parser.parse_args(
+      show_diff_phil=True)
+
+    if params.input.cfg is None or \
+        params.input.experiment is None or \
+        params.input.run_num is None or \
+        params.input.address is None or \
+        params.input.detz_offset is None:
+      raise Usage(self.usage)
 
     if not os.path.exists(params.output.output_dir):
       raise Sorry("Output path not found:" + params.output.output_dir)

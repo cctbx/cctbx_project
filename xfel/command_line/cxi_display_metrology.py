@@ -62,9 +62,19 @@ if (__name__ == "__main__") :
       # get pixel mappings to real space.
       x, y, z = geometry.get_pixel_coords()
       assert x.shape == y.shape == z.shape
-      assert len(x.shape) == 4
+      if len(x.shape) == 6:
+        x = x.reshape(x.shape[2:6])
+        y = y.reshape(y.shape[2:6])
+        z = z.reshape(z.shape[2:6])
+      else:
+        assert len(x.shape) == 4
       sensor_slow = x.shape[2]
       sensor_fast = x.shape[3]
+      while True:
+        if len(root.get_list_of_children()) == 4:
+          break
+        assert len(root.get_list_of_children()) == 1
+        root = root.get_list_of_children()[0]
       for quad_id, quad in enumerate(root.get_list_of_children()):
         ax.arrow(0, 0, quad.x0/1000, quad.y0/1000, head_width=0.05, head_length=0.1, fc='k', ec='k')
         for sensor_id, sensor in enumerate(quad.get_list_of_children()):

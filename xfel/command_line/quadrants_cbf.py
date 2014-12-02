@@ -7,9 +7,14 @@ import sys,os
 from scitbx.matrix import col
 from xfel.cftbx.detector.cspad_cbf_tbx import center
 import dxtbx
+import libtbx.load_env
+from libtbx.utils import Usage
 
 
 if (__name__ == "__main__"):
+  if len(sys.argv) == 1 or '-h' in sys.argv or '--help' in sys.argv or '-c' in sys.argv:
+    raise Usage("%s files"%libtbx.env.dispatcher_name)
+
   files = [arg for arg in sys.argv[1:] if os.path.isfile(arg)]
   arguments = [arg for arg in sys.argv[1:] if not os.path.isfile(arg)]
 
