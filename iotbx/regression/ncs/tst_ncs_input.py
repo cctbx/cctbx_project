@@ -248,6 +248,154 @@ ATOM      4  O   THR B   1      10.727  14.426  12.727  1.00 20.00           O
 TER
 """
 
+pdb_str_9 = """\
+ATOM     45  N   PHEAa   6     221.693 146.930 114.416  1.00 50.00           N
+ATOM     46  CA  PHEAa   6     220.871 148.020 114.886  1.00 50.00           C
+ATOM     47  C   PHEAa   6     219.413 147.628 114.926  1.00 50.00           C
+ATOM     48  O   PHEAa   6     218.730 147.905 115.908  1.00 50.00           O
+ATOM     49  CB  PHEAa   6     221.058 149.265 113.976  1.00 50.00           C
+ATOM     50  CG  PHEAa   6     220.338 150.481 114.498  1.00 50.00           C
+ATOM     51  CD1 PHEAa   6     220.740 151.082 115.702  1.00 50.00           C
+ATOM     52  CD2 PHEAa   6     219.240 151.016 113.801  1.00 50.00           C
+ATOM     53  CE1 PHEAa   6     220.059 152.198 116.204  1.00 50.00           C
+ATOM     54  CE2 PHEAa   6     218.557 152.133 114.299  1.00 50.00           C
+ATOM     55  CZ  PHEAa   6     218.965 152.723 115.500  1.00 50.00           C
+ATOM     56  N   ASNAa   7     218.926 146.940 113.868  1.00 50.00           N
+ATOM     57  CA  ASNAa   7     217.565 146.462 113.741  1.00 50.00           C
+ATOM     58  C   ASNAa   7     217.229 145.425 114.782  1.00 50.00           C
+ATOM     59  O   ASNAa   7     216.113 145.412 115.283  1.00 50.00           O
+ATOM     60  CB  ASNAa   7     217.235 145.875 112.347  1.00 50.00           C
+ATOM     61  CG  ASNAa   7     217.277 146.970 111.271  1.00 50.00           C
+ATOM     62  OD1 ASNAa   7     217.061 148.155 111.550  1.00 50.00           O
+ATOM     63  ND2 ASNAa   7     217.551 146.541 110.002  1.00 50.00           N
+ATOM     64  N   LEUAa   8     218.185 144.528 115.129  1.00 50.00           N
+ATOM     65  CA  LEUAa   8     217.998 143.485 116.117  1.00 50.00           C
+ATOM     66  C   LEUAa   8     217.846 144.051 117.505  1.00 50.00           C
+ATOM     67  O   LEUAa   8     217.002 143.585 118.265  1.00 50.00           O
+ATOM     68  CB  LEUAa   8     219.168 142.476 116.143  1.00 50.00           C
+ATOM     69  CG  LEUAa   8     219.217 141.553 114.906  1.00 50.00           C
+ATOM     70  CD1 LEUAa   8     220.600 140.889 114.770  1.00 50.00           C
+ATOM     71  CD2 LEUAa   8     218.098 140.493 114.925  1.00 50.00           C
+ATOM     72  N   LYSAa   9     218.665 145.069 117.866  1.00 50.00           N
+ATOM     73  CA  LYSAa   9     218.573 145.769 119.133  1.00 50.00           C
+ATOM     74  C   LYSAa   9     217.287 146.554 119.234  1.00 50.00           C
+ATOM     75  O   LYSAa   9     216.682 146.606 120.301  1.00 50.00           O
+ATOM     76  CB  LYSAa   9     219.751 146.744 119.364  1.00 50.00           C
+ATOM     77  CG  LYSAa   9     221.113 146.057 119.558  1.00 50.00           C
+ATOM     78  CD  LYSAa   9     221.257 145.305 120.891  1.00 50.00           C
+ATOM     79  CE  LYSAa   9     222.646 144.673 121.065  1.00 50.00           C
+ATOM     80  NZ  LYSAa   9     222.723 143.882 122.315  1.00 50.00           N
+TER
+ATOM   1244  N   PHEAb   1     305.367 162.705 105.239  1.00 50.00           N
+ATOM   1245  CA  PHEAb   1     304.396 162.991 106.331  1.00 50.00           C
+ATOM   1246  C   PHEAb   1     304.285 164.473 106.586  1.00 50.00           C
+ATOM   1247  O   PHEAb   1     304.837 165.292 105.851  1.00 50.00           O
+ATOM   1248  CB  PHEAb   1     304.743 162.176 107.627  1.00 50.00           C
+ATOM   1249  CG  PHEAb   1     305.801 162.775 108.540  1.00 50.00           C
+ATOM   1250  CD1 PHEAb   1     307.055 163.195 108.061  1.00 50.00           C
+ATOM   1251  CD2 PHEAb   1     305.501 162.973 109.900  1.00 50.00           C
+ATOM   1252  CE1 PHEAb   1     307.967 163.838 108.909  1.00 50.00           C
+ATOM   1253  CE2 PHEAb   1     306.412 163.612 110.751  1.00 50.00           C
+ATOM   1254  CZ  PHEAb   1     307.642 164.054 110.251  1.00 50.00           C
+ATOM   1255  N   LYSAb   2     303.607 164.838 107.696  1.00 50.00           N
+ATOM   1256  CA  LYSAb   2     303.542 166.190 108.180  1.00 50.00           C
+ATOM   1257  C   LYSAb   2     303.642 166.054 109.667  1.00 50.00           C
+ATOM   1258  O   LYSAb   2     302.934 165.255 110.277  1.00 50.00           O
+ATOM   1259  CB  LYSAb   2     302.234 166.947 107.855  1.00 50.00           C
+ATOM   1260  CG  LYSAb   2     302.035 167.201 106.352  1.00 50.00           C
+ATOM   1261  CD  LYSAb   2     300.842 168.117 106.023  1.00 50.00           C
+ATOM   1262  CE  LYSAb   2     301.067 169.582 106.424  1.00 50.00           C
+ATOM   1263  NZ  LYSAb   2     299.910 170.421 106.031  1.00 50.00           N
+ATOM   1264  N   ALAAb   3     304.533 166.867 110.282  1.00 50.00           N
+ATOM   1265  CA  ALAAb   3     304.840 166.840 111.692  1.00 50.00           C
+ATOM   1266  C   ALAAb   3     303.670 167.320 112.503  1.00 50.00           C
+ATOM   1267  O   ALAAb   3     303.399 166.803 113.583  1.00 50.00           O
+ATOM   1268  CB  ALAAb   3     306.055 167.711 112.038  1.00 50.00           C
+ATOM   1269  N   GLUAb   4     302.961 168.344 111.975  1.00 50.00           N
+ATOM   1270  CA  GLUAb   4     301.784 168.942 112.560  1.00 50.00           C
+ATOM   1271  C   GLUAb   4     300.678 167.941 112.768  1.00 50.00           C
+ATOM   1272  O   GLUAb   4     300.094 167.886 113.848  1.00 50.00           O
+ATOM   1273  CB  GLUAb   4     301.233 170.108 111.709  1.00 50.00           C
+ATOM   1274  CG  GLUAb   4     302.268 171.215 111.421  1.00 50.00           C
+ATOM   1275  CD  GLUAb   4     302.808 171.795 112.727  1.00 50.00           C
+ATOM   1276  OE1 GLUAb   4     304.040 171.677 112.965  1.00 50.00           O
+ATOM   1277  OE2 GLUAb   4     301.994 172.363 113.504  1.00 50.00           O
+TER
+ATOM   2754  N   PHEAc   6     244.472 153.067 117.352  1.00 50.00           N
+ATOM   2755  CA  PHEAc   6     243.314 153.789 117.823  1.00 50.00           C
+ATOM   2756  C   PHEAc   6     242.094 152.900 117.864  1.00 50.00           C
+ATOM   2757  O   PHEAc   6     241.358 152.912 118.847  1.00 50.00           O
+ATOM   2758  CB  PHEAc   6     243.040 155.017 116.913  1.00 50.00           C
+ATOM   2759  CG  PHEAc   6     241.932 155.894 117.436  1.00 50.00           C
+ATOM   2760  CD1 PHEAc   6     242.091 156.600 118.639  1.00 50.00           C
+ATOM   2761  CD2 PHEAc   6     240.715 155.999 116.739  1.00 50.00           C
+ATOM   2762  CE1 PHEAc   6     241.055 157.396 119.141  1.00 50.00           C
+ATOM   2763  CE2 PHEAc   6     239.676 156.795 117.237  1.00 50.00           C
+ATOM   2764  CZ  PHEAc   6     239.846 157.493 118.439  1.00 50.00           C
+ATOM   2765  N   ASNAc   7     241.886 152.082 116.806  1.00 50.00           N
+ATOM   2766  CA  ASNAc   7     240.788 151.148 116.680  1.00 50.00           C
+ATOM   2767  C   ASNAc   7     240.847 150.058 117.721  1.00 50.00           C
+ATOM   2768  O   ASNAc   7     239.810 149.645 118.224  1.00 50.00           O
+ATOM   2769  CB  ASNAc   7     240.690 150.481 115.286  1.00 50.00           C
+ATOM   2770  CG  ASNAc   7     240.334 151.517 114.210  1.00 50.00           C
+ATOM   2771  OD1 ASNAc   7     239.707 152.544 114.490  1.00 50.00           O
+ATOM   2772  ND2 ASNAc   7     240.743 151.215 112.941  1.00 50.00           N
+ATOM   2773  N   LEUAc   8     242.062 149.565 118.068  1.00 50.00           N
+ATOM   2774  CA  LEUAc   8     242.264 148.525 119.056  1.00 50.00           C
+ATOM   2775  C   LEUAc   8     241.919 148.999 120.443  1.00 50.00           C
+ATOM   2776  O   LEUAc   8     241.299 148.260 121.204  1.00 50.00           O
+ATOM   2777  CB  LEUAc   8     243.717 148.003 119.082  1.00 50.00           C
+ATOM   2778  CG  LEUAc   8     244.094 147.160 117.844  1.00 50.00           C
+ATOM   2779  CD1 LEUAc   8     245.623 147.037 117.707  1.00 50.00           C
+ATOM   2780  CD2 LEUAc   8     243.430 145.768 117.864  1.00 50.00           C
+ATOM   2781  N   LYSAc   9     242.317 150.242 120.804  1.00 50.00           N
+ATOM   2782  CA  LYSAc   9     241.981 150.863 122.071  1.00 50.00           C
+ATOM   2783  C   LYSAc   9     240.499 151.134 122.173  1.00 50.00           C
+ATOM   2784  O   LYSAc   9     239.916 150.965 123.241  1.00 50.00           O
+ATOM   2785  CB  LYSAc   9     242.729 152.197 122.302  1.00 50.00           C
+ATOM   2786  CG  LYSAc   9     244.248 152.045 122.495  1.00 50.00           C
+ATOM   2787  CD  LYSAc   9     244.653 151.394 123.828  1.00 50.00           C
+ATOM   2788  CE  LYSAc   9     246.177 151.304 124.001  1.00 50.00           C
+ATOM   2789  NZ  LYSAc   9     246.534 150.594 125.250  1.00 50.00           N
+TER
+ATOM   3953  N   PHEAd   1     316.882 197.854 108.123  1.00 50.00           N
+ATOM   3954  CA  PHEAd   1     315.875 197.773 109.215  1.00 50.00           C
+ATOM   3955  C   PHEAd   1     315.239 199.116 109.471  1.00 50.00           C
+ATOM   3956  O   PHEAd   1     315.460 200.078 108.736  1.00 50.00           O
+ATOM   3957  CB  PHEAd   1     316.493 197.136 110.512  1.00 50.00           C
+ATOM   3958  CG  PHEAd   1     317.265 198.076 111.424  1.00 50.00           C
+ATOM   3959  CD1 PHEAd   1     318.283 198.919 110.944  1.00 50.00           C
+ATOM   3960  CD2 PHEAd   1     316.915 198.154 112.784  1.00 50.00           C
+ATOM   3961  CE1 PHEAd   1     318.905 199.846 111.792  1.00 50.00           C
+ATOM   3962  CE2 PHEAd   1     317.536 199.077 113.635  1.00 50.00           C
+ATOM   3963  CZ  PHEAd   1     318.525 199.932 113.135  1.00 50.00           C
+ATOM   3964  N   LYSAd   2     314.475 199.212 110.581  1.00 50.00           N
+ATOM   3965  CA  LYSAd   2     313.929 200.450 111.066  1.00 50.00           C
+ATOM   3966  C   LYSAd   2     314.073 200.360 112.553  1.00 50.00           C
+ATOM   3967  O   LYSAd   2     313.699 199.360 113.163  1.00 50.00           O
+ATOM   3968  CB  LYSAd   2     312.437 200.687 110.742  1.00 50.00           C
+ATOM   3969  CG  LYSAd   2     312.159 200.852 109.239  1.00 50.00           C
+ATOM   3970  CD  LYSAd   2     310.717 201.278 108.910  1.00 50.00           C
+ATOM   3971  CE  LYSAd   2     310.400 202.726 109.311  1.00 50.00           C
+ATOM   3972  NZ  LYSAd   2     309.019 203.094 108.919  1.00 50.00           N
+ATOM   3973  N   ALAAd   3     314.612 201.440 113.166  1.00 50.00           N
+ATOM   3974  CA  ALAAd   3     314.909 201.525 114.577  1.00 50.00           C
+ATOM   3975  C   ALAAd   3     313.646 201.552 115.389  1.00 50.00           C
+ATOM   3976  O   ALAAd   3     313.579 200.972 116.469  1.00 50.00           O
+ATOM   3977  CB  ALAAd   3     315.731 202.774 114.922  1.00 50.00           C
+ATOM   3978  N   GLUAd   4     312.615 202.253 114.862  1.00 50.00           N
+ATOM   3979  CA  GLUAd   4     311.303 202.387 115.448  1.00 50.00           C
+ATOM   3980  C   GLUAd   4     310.630 201.057 115.656  1.00 50.00           C
+ATOM   3981  O   GLUAd   4     310.105 200.796 116.737  1.00 50.00           O
+ATOM   3982  CB  GLUAd   4     310.369 203.279 114.597  1.00 50.00           C
+ATOM   3983  CG  GLUAd   4     310.938 204.683 114.308  1.00 50.00           C
+ATOM   3984  CD  GLUAd   4     311.233 205.418 115.614  1.00 50.00           C
+ATOM   3985  OE1 GLUAd   4     312.425 205.752 115.850  1.00 50.00           O
+ATOM   3986  OE2 GLUAd   4     310.271 205.657 116.392  1.00 50.00           O
+TER
+END
+"""
+
 
 def exercise_00(prefix="iotbx_ncs_exercise_00"):
   pdb_file_name = "%s.pdb"%prefix
@@ -525,6 +673,29 @@ def exercise_10(prefix="iotbx_ncs_exercise_10"):
   assert not tr.r.is_r3_identity_matrix()
   assert not tr.t.is_col_zero()
 
+def exercise_11(prefix="iotbx_ncs_exercise_11"):
+  """
+  Make sure user-provided NCS groups are preserved. Also make sure two-letter
+  chain ID are handled correctly
+  """
+  phil_str="""
+ncs_group {
+  master_selection = chain 'Aa' and (resseq 6:9 )
+  copy_selection = chain 'Ac' and (resseq 6:9 )
+}
+ncs_group {
+  master_selection = chain 'Ab' and (resseq 1:4 )
+  copy_selection = chain 'Ad' and (resseq 1:4 )
+}
+"""
+  ncs_inp = iotbx.ncs.input(pdb_string = pdb_str_9)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  assert len(ncs_groups)==1
+  #
+  ncs_inp = iotbx.ncs.input(pdb_string = pdb_str_9, ncs_phil_string = phil_str)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  assert len(ncs_groups)==2
+
 if (__name__ == "__main__"):
   exercise_00()
   exercise_01()
@@ -537,3 +708,4 @@ if (__name__ == "__main__"):
   exercise_08()
   exercise_09()
   exercise_10()
+  exercise_11()
