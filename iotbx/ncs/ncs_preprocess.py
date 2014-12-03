@@ -355,8 +355,7 @@ class ncs_group_object(object):
           ph=pdb_hierarchy_inp,
           master_selection=gns,
           copy_selection=asu_select,
-          max_rmsd=100,
-          min_percent=min_percent)
+          max_rmsd=100)
         self.messages += msg
         if r.is_zero():
           msg = 'Master NCS and Copy are very poorly related, check selection.'
@@ -1671,31 +1670,27 @@ def format_80(s):
       ss += ' \ \n'
   return ss
 
-def get_residue_sequence(chain_ph):
+def get_residue_sequence(ph):
   """
-  Get a list of pairs (residue name, residue number) and the chain ID
-  Exclude water
+  Get a list of residues numbers and names from hierarchy "ph", excluding
+  water molecules
 
   Args:
-    chain_ph (iotbx_pdb_hierarchy_ext): hierarchy of a single chain
+    ph (hierarchy): hierarchy of a single chain
 
   Returns:
-    chain_id (str): Chain ID
     res_list_new (list of str): list of residues names
     resid_list_new (list of str): list of residues number
   """
   res_list_new = []
   resid_list_new = []
-  for res_info in chain_ph.atom_groups():
+  for res_info in ph.atom_groups():
     x = res_info.resname
     if x.lower() != 'hoh':
       # Exclude water
       res_list_new.append(x)
       resid_list_new.append(res_info.parent().resseq)
-  #
-  atoms = chain_ph.atoms()
-  chain_id = atoms[0].chain().id
-  return chain_id, res_list_new,resid_list_new
+  return res_list_new,resid_list_new
 
 def inverse_transform(r,t):
   r = r.transpose()
@@ -1844,22 +1839,23 @@ def uniqueness_test(unique_selection_set,new_item):
 def get_rot_trans(ph=None,
                   master_selection=None,
                   copy_selection=None,
-                  max_rmsd=0.02,
-                  min_percent = 0.95):
+                  max_rmsd=0.02):
   """
   Get rotation and translation using superpose.
-  Can raise "Sorry" if chains are not exactly the same length, but a large
-  subset of them is NCS related. Return the subset of atoms indices used in
-  such a case.
-  Note that if the master and copy have the same length it will not check
-  for similarity.
+
+  This function is used only when phil parameters are provided. In this case
+  we require the selection of NCS master and copies to be correct.
+  Correct means:
+    1) residue sequence in master and copies is exactly the same
+    2) the number of atoms in master and copies is exactly the same
+
+  One can get exact selection strings by ncs_object.show(verbose=True)
 
   Args:
     ph : pdb hierarchy input object
     master/copy_selection (str): master and copy selection strings
     max_rmsd (float): limit of rms difference between chains to be considered
       as copies
-    min_percent (float): Threshold for similarity between chains
 
   Returns:
     r: rotation matrix
@@ -1877,25 +1873,21 @@ def get_rot_trans(ph=None,
     cache = ph.atom_selection_cache().selection
     master_ncs_ph = ph.select(cache(master_selection))
     ncs_copy_ph = ph.select(cache(copy_selection))
-    chain_id_m,seq_m,res_ids_m  = get_residue_sequence(master_ncs_ph)
-    chain_id_c,seq_c,res_ids_c = get_residue_sequence(ncs_copy_ph)
+    seq_m,res_ids_m  = get_residue_sequence(master_ncs_ph)
+    seq_c,res_ids_c = get_residue_sequence(ncs_copy_ph)
     res_sel_m, res_sel_c, similarity = ncs_search.res_alignment(
       seq_a=seq_m,seq_b=seq_c,
       min_contig_length=0,min_percent=0)
-    if similarity == 0 :
-      # similarity between chains is small, do not consider as same chains
-      return r_zero,t_zero,0,''
     #
-    sel_m,sel_c,res_sel_m,res_sel_c,msg1 = get_matching_atoms(
-      ph,res_sel_m,res_sel_c,res_ids_m,res_ids_c,
-      master_selection,copy_selection)
-    msg += msg1
-    sel_m = sel_m.iselection(True)
-    sel_c = sel_c.iselection(True)
+    m_atoms = master_ncs_ph.atoms()
+    c_atoms = ncs_copy_ph.atoms()
+    # Check that master and copy are identical
+    if (similarity != 1) or (m_atoms.size() != c_atoms.size()) :
+      return r_zero,t_zero,0,'Master and Copy selection do not exactly match'
     # master
-    other_sites = ph.select(sel_m).atoms().extract_xyz()
+    other_sites = m_atoms.extract_xyz()
     # copy
-    ref_sites = ph.select(sel_c).atoms().extract_xyz()
+    ref_sites = c_atoms.extract_xyz()
     if ref_sites.size() > 0:
       lsq_fit_obj = superpose.least_squares_fit(
           reference_sites = ref_sites,
@@ -1907,10 +1899,6 @@ def get_rot_trans(ph=None,
         return r_zero,t_zero,0,msg
     else:
       return r_zero,t_zero,0,'No sites to compare.\n'
-    #
-    if similarity < min_percent:
-      msg='Chains {0} and {1} appear to be NCS related but are dis-similar..\n'
-      msg = msg.format('master','copy')
     return r,t,round(rmsd,4),msg
   else:
     return r_zero,t_zero,0,msg
@@ -1974,71 +1962,6 @@ def update_ncs_group_map(
 def sort_dict_keys(d):
   """ sort dictionary d by values """
   return sorted(d,key=lambda k:d[k])
-
-def get_matching_atoms(ph,res_num_a,res_num_b,res_ids_a,res_ids_b,
-                       master_selection,copy_selection):
-  """
-  Get selection of matching chains, match residues atoms
-  We keep only residues with continuous matching atoms
-
-  Args:
-    ph (hierarchy): all chains
-    res_num_a/b (list of int): indices of matching residues position
-    res_ids_a/b (list if str): residues IDs
-    master/copy_selection (str): master and copy selection strings
-
-  Returns:
-    sel_a, sel_b (flex.bool): matching atoms selection
-    res_num_a/b (list of int): updated res_num_a/b
-    msg (str): message regarding matching residues with different atom number
-  """
-  atom_cache = ph.atom_selection_cache().selection
-  l = ph.atoms().size()
-  sel_a = flex.bool([False,] * l)
-  sel_b = flex.bool([False,] * l)
-  #
-  res_num_a_updated = []
-  res_num_b_updated = []
-  residues_with_different_n_atoms = []
-  for i in xrange(len(res_num_a)):
-    na = res_num_a[i]
-    nb = res_num_b[i]
-    resid_a = res_ids_a[na]
-    resid_b = res_ids_b[nb]
-    sa = atom_cache('({}) and resid {}'.format(master_selection,resid_a))
-    sb = atom_cache('({}) and resid {}'.format(copy_selection,resid_b))
-    sa = sa.iselection(True)
-    sb = sb.iselection(True)
-    res_a = ph.select(sa)
-    res_b = ph.select(sb)
-    if sa.size() != sb.size():
-      # collect residue IDs of matching residues with different number of atoms
-      residues_with_different_n_atoms.append(resid_a)
-    # select only atoms that exist in both residues
-    atoms_names_a = list(res_a.atoms().extract_name())
-    atoms_names_b = list(res_b.atoms().extract_name())
-    atoms_a,atoms_b,similarity = ncs_search.res_alignment(
-      seq_a=atoms_names_a, seq_b=atoms_names_b,
-      min_contig_length=100)
-    # get the number of the atom in the chain
-    sa = flex.size_t(atoms_a) + min(sa)
-    sb = flex.size_t(atoms_b) + min(sb)
-    # keep only residues with continuous matching atoms
-    if sa.size() != 0:
-      res_num_a_updated.append(na)
-      res_num_b_updated.append(nb)
-    sa = flex.bool(l,sa)
-    sb = flex.bool(l,sb)
-    sel_a |= sa
-    sel_b |=  sb
-  if residues_with_different_n_atoms:
-    problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
-    msg = "NCS related residues with different number of atoms, selection"
-    msg += master_selection + ':' + copy_selection + '\n['
-    msg += ','.join(problem_res_nums) + ']\n'
-  else:
-    msg = ''
-  return sel_a,sel_b,res_num_a_updated,res_num_b_updated,msg
 
 def insure_identity_is_in_transform_info(transform_info):
   """

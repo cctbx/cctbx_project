@@ -87,4 +87,3 @@ BOOST_PYTHON_MODULE(mmtbx_den_restraints_ext)
 {
   mmtbx::den::boost_python::wrap_den();
 }
-

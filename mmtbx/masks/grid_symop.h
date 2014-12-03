@@ -108,4 +108,3 @@ namespace cctbx { namespace sgtbx {
 }} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_GRID_SYMOP_H
-
