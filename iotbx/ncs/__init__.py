@@ -1,6 +1,6 @@
 from __future__ import division
 import sys
-from iotbx import ncs_preprocess
+import ncs_preprocess
 
 
 def input(pdb_hierarchy_inp=None,
