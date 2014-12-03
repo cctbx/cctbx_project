@@ -1260,7 +1260,7 @@ iotbx/mtz/tst_extract_from_symmetry_lib.py svneol=native#text/x-python
 iotbx/mtz/tst_miller_dict.py -text
 iotbx/mtz/tst_unmerged.py -text
 iotbx/ncs/__init__.py -text
-iotbx/ncs_preprocess.py -text
+iotbx/ncs/ncs_preprocess.py -text
 iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/pdb/atom_selection.cpp svneol=native#text/plain
 iotbx/pdb/atom_selection.py svneol=native#text/x-python
