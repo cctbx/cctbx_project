@@ -179,11 +179,13 @@ our website).""" % { "package" : options.package_name,
   # Run packaging commands
   pkg_args = [
     "pkgbuild",
+    "--ownership", "recommended",
     "--root", "pkg_root",
     "--identifier", pkg_id,
     "--component-plist", plist_file,
     base_pkg,
   ]
+  print >> out, "Calling pkgbuild:", pkg_args
   call(pkg_args, out)
   product_args = [
     "productbuild",
@@ -193,6 +195,7 @@ our website).""" % { "package" : options.package_name,
     "--version", options.version,
     pkg_name,
   ]
+  print >> out, "Calling productbuild:", product_args
   call(product_args, out)
   assert op.exists(pkg_name)
   if (not options.no_compression) :
