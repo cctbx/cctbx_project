@@ -166,19 +166,6 @@ def make_dirs (output_dir_list, log_dir):
     else:
       os.makedirs(output_dir)
 
-    # make output directory for selected pickles
-    best_output_dirs = [output_dir + '/best_by_total',
-                        output_dir + '/best_by_strong',
-                        output_dir + '/best_by_uc',
-                        output_dir + '/best_by_offset'
-                        ]
-    for best_output_dir in best_output_dirs:
-      if os.path.exists(best_output_dir):
-        shutil.rmtree(best_output_dir)
-        os.makedirs(best_output_dir)
-      else:
-        os.makedirs(best_output_dir)
-
     # make log folder for cxi.index logs (one per integration attempt)
     index_log_dir = output_dir + '/logs'
     if os.path.exists(index_log_dir):
@@ -194,18 +181,3 @@ def make_dirs (output_dir_list, log_dir):
     os.makedirs(log_dir)
   else:
     os.makedirs(log_dir)
-
-# Make output directories preserving the tree structure
-def make_selected_dirs (output_dir_list, log_dir):
-
-  # Make output directory structure
-  for output_dir in output_dir_list:
-    # make output directory for selected pickles
-    best_output_dirs = [output_dir + '/best_by_total',
-                        output_dir + '/best_by_strong',
-                        output_dir + '/best_by_uc',
-                        output_dir + '/best_by_offset'
-                        ]
-    for best_output_dir in best_output_dirs:
-      if not os.path.exists(best_output_dir):
-        os.makedirs(best_output_dir)
