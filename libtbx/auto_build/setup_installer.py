@@ -73,6 +73,7 @@ def run (args) :
   module_list = options.modules
   base_module_list = options.base_modules
   os.chdir(options.dest)
+
   # setup directory structure
   installer_dir = "%s-installer-%s" % (package_name, options.version)
   print "Installer will be %s" % installer_dir
@@ -83,6 +84,7 @@ def run (args) :
   if (not options.binary) :
     os.mkdir("source")
     os.mkdir("dependencies")
+    
   # copy 'binary' programs if defined
   if options.bin_dir :
     assert op.isdir(options.bin_dir)
@@ -90,11 +92,13 @@ def run (args) :
       if (file_name == ".svn") : continue
       full_path = op.join(options.bin_dir, file_name)
       copy_file(full_path, op.join("bin", file_name))
+
   # copy over libtbx
   lib_dir = op.join(os.getcwd(), "lib")
   shutil.copytree(libtbx_path, op.join(lib_dir, "libtbx"))
   find_and_delete_files(lib_dir, file_ext=".pyc")
   find_and_delete_files(lib_dir, file_name=".svn")
+
   # write VERSION
   open("VERSION", "w").write(options.version)
   if options.readme :
@@ -109,6 +113,7 @@ def run (args) :
   if op.isfile(options.license) :
     open("LICENSE", "w").write(open(options.license).read())
   os.chdir(op.join(options.dest, installer_dir))
+
   # actual Python installer script
   if (options.install_script is not None) :
     assert op.isfile(options.install_script)
@@ -153,6 +158,7 @@ if (__name__ == "__main__") :
         "modules" : modules_list, "baseopts" : base_package_options,
         "gui" : (options.gui or options.all) })
     f.close()
+
   # write executable Bash script wrapping Python script
   f = open("install", "w")
   f.write("""\
@@ -178,6 +184,7 @@ $PYTHON_EXE ./bin/install.py $@
   f.close()
   st = os.stat("install")
   os.chmod("install", st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
   #
   have_modules = []
   def get_module (module_name) :
@@ -195,6 +202,7 @@ $PYTHON_EXE ./bin/install.py $@
         assert op.isfile(module_name + ".tar.gz")
         have_modules.append(module_name)
         break
+
   if (not options.binary) :
     print ""
     print "********** FETCHING DEPENDENCIES **********"
@@ -227,6 +235,7 @@ $PYTHON_EXE ./bin/install.py $@
       module_list = re.sub(",", " ", module_list)
       for module_name in module_list.split() :
         get_module(module_name)
+
   # Additional modules that are included in both the source and the binary
   # installer - in Phenix this includes restraints, examples, documentation,
   # and regression tests
