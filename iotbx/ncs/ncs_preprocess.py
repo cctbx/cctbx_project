@@ -97,7 +97,7 @@ class ncs_group_object(object):
                          transform_info=None,
                          rotations = None,
                          translations = None,
-                         ncs_selection_params = None,
+                         ncs_phil_string = None,
                          ncs_phil_groups = None,
                          file_name=None,
                          file_path='',
@@ -125,7 +125,7 @@ class ncs_group_object(object):
     order of implementation:
     1) rotations,translations
     2) transform_info
-    3) ncs_selection_params
+    3) ncs_phil_string
     4) ncs_phil_groups
     5) spec file
     6) iotbx.pdb.hierarchy.input object
@@ -136,7 +136,7 @@ class ncs_group_object(object):
       transform_info: object containing MTRIX or BIOMT transformation info
       rotations: matrix.sqr 3x3 object
       translations: matrix.col 3x1 object
-      ncs_selection_params: Phil parameters
+      ncs_phil_string: Phil parameters
         Phil structure
            ncs_group (multiple)
            {
@@ -223,9 +223,9 @@ class ncs_group_object(object):
       else:
         # in the case that all ncs copies are in pdb
         self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
-    elif ncs_selection_params or ncs_phil_groups:
+    elif ncs_phil_string or ncs_phil_groups:
       self.build_ncs_obj_from_phil(
-        ncs_selection_params=ncs_selection_params,
+        ncs_phil_string=ncs_phil_string,
         ncs_phil_groups=ncs_phil_groups,
         pdb_hierarchy_inp=pdb_hierarchy_inp)
     elif extension.lower() == '.ncs_spec' or \
@@ -295,7 +295,7 @@ class ncs_group_object(object):
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
   def build_ncs_obj_from_phil(self,
-                              ncs_selection_params = None,
+                              ncs_phil_string = None,
                               ncs_phil_groups = None,
                               pdb_hierarchy_inp = None):
     """
@@ -303,7 +303,7 @@ class ncs_group_object(object):
     strings and complete ASU
 
     Args:
-      ncs_selection_params : Phil parameters
+      ncs_phil_string : Phil parameters
       ncs_phil_groups :
       pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
 
@@ -318,11 +318,11 @@ class ncs_group_object(object):
     if not self.process_similar_chains:
       min_percent = 1.0
     # process params
-    if ncs_selection_params:
-      if isinstance(ncs_selection_params,str):
-        ncs_selection_params = parse(ncs_selection_params)
+    if ncs_phil_string:
+      if isinstance(ncs_phil_string,str):
+        ncs_phil_string = parse(ncs_phil_string)
       phil_param =  master_phil.fetch(
-        source=ncs_selection_params,track_unused_definitions=True)
+        source=ncs_phil_string,track_unused_definitions=True)
       working_phil = phil_param[0].extract()
       assert  phil_param[1] == [],'Check phil parameters...\n'
       ncs_phil_groups = working_phil.ncs_group

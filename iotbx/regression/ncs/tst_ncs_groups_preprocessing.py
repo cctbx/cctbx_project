@@ -41,14 +41,14 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     expected_ncs_chains = [['chain A'],['chain A', 'chain B']]
     for i,phil_case in enumerate([user_phil1,user_phil2]):
       trans_obj = iotbx.ncs.input(
-        ncs_selection_params = phil_case)
+        ncs_phil_string = phil_case)
       self.assertEqual(trans_obj.ncs_selection_str,expected_ncs_selection[i])
       self.assertEqual(trans_obj.ncs_to_asu_selection,expected_ncs_to_asu[i])
       self.assertEqual(trans_obj.ncs_chain_selection,expected_ncs_chains[i])
     # error reporting
     for pc in [user_phil3,user_phil4,user_phil5]:
       self.assertRaises(
-        IOError,iotbx.ncs.input,ncs_selection_params=pc)
+        IOError,iotbx.ncs.input,ncs_phil_string=pc)
 
   def test_phil_processing(self):
     """ Verify that phil parameters are properly processed   """
@@ -56,7 +56,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     trans_obj = iotbx.ncs.input(
-        ncs_selection_params = pdb_test_data2_phil,
+        ncs_phil_string = pdb_test_data2_phil,
         pdb_hierarchy_inp=pdb_obj)
 
     expected = '(chain A) or (chain B or chain C)'
@@ -83,7 +83,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data1)
     trans_obj = iotbx.ncs.input(
-        ncs_selection_params = pdb_test_data1_phil,
+        ncs_phil_string = pdb_test_data1_phil,
         pdb_hierarchy_inp=pdb_obj)
 
     self.assertEqual(trans_obj.ncs_selection_str,'(chain A) or (chain B)')
@@ -288,7 +288,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # print sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     trans_obj = iotbx.ncs.input(
-      ncs_selection_params = pdb_test_data2_phil,
+      ncs_phil_string = pdb_test_data2_phil,
       pdb_hierarchy_inp=pdb_obj)
     result = trans_obj.print_ncs_phil_param(write=False)
     test = (pdb_test_data2_phil == result)
