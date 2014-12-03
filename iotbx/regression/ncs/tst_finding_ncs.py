@@ -20,6 +20,26 @@ class test_find_ncs_operators(unittest.TestCase):
     self.assertEqual(t.keys(),['chain A or chain B'])
     self.assertEqual(t.values(),[['chain C or chain D', 'chain E or chain F']])
 
+  def test_phil_selection(self):
+    """ make sure that phil selection overrides ncs grouping """
+
+    phil_str = '''\
+ncs_group {
+  master_selection = chain A
+  copy_selection = chain C
+}
+ncs_group {
+  master_selection = chain B
+  copy_selection = chain D
+}
+'''
+    trans_obj = iotbx.ncs.input(
+      pdb_string=test_pdb1,
+      ncs_phil_string=phil_str)
+    expected = {'chain A': ['chain C'], 'chain B': ['chain D']}
+    self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
+    pass
+
   def test_three_chain_master(self):
     """
     Test case of:
@@ -266,7 +286,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_group_chains_by_domains_minimal_NCS_operators']
+  tests = ['test_phil_selection']
   suite = unittest.TestSuite(map(test_find_ncs_operators,tests))
   return suite
 
