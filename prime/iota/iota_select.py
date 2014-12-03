@@ -42,12 +42,12 @@ def prefilter(gs_params, total_tmp_pickles):
 
     # Determine if pickle satisfies sg / uc parameters within given
     # tolerance and low resolution cutoff
-    if str(p_pg) == gs_params.target_pointgroup:
-      if  (delta_a <= user_uc[0] * uc_tol and
+    if str(p_pg) == gs_params.target_pointgroup:  
+      if  (delta_a <= user_uc[0] * uc_tol and 
             delta_b <= user_uc[1] * uc_tol and
-            delta_c <= user_uc[2] * uc_tol and
-            delta_alpha <= user_uc[3] * uc_tol and
-            delta_beta <= user_uc[4] * uc_tol and
+            delta_c <= user_uc[2] * uc_tol and 
+            delta_alpha <= user_uc[3] * uc_tol and 
+            delta_beta <= user_uc[4] * uc_tol and 
             delta_gamma <= user_uc[5] * uc_tol):
         acceptable_pickles.append(tmp_pickle)
 
@@ -66,9 +66,8 @@ def best_by_strong(gs_params, acceptable_pickles, dest_dir):
     sel_pickle_list.append(num_strong_obs)
 
   best_file = acceptable_pickles[sel_pickle_list.index(max(sel_pickle_list))]
-  destination_file = '{0}/{1}'.format(dest_dir, os.path.split(best_file)[1])
 
-  return best_file, destination_file
+  return best_file
 
 
 # Select integrated pickle with the most reflections within a set resolution limit
@@ -81,9 +80,8 @@ def best_by_reflections(gs_params, acceptable_pickles, dest_dir):
     sel_pickle_list.append(len(rl_observations.data()))
 
   best_file = acceptable_pickles[sel_pickle_list.index(max(sel_pickle_list))]
-  destination_file = '{0}/{1}'.format(dest_dir, os.path.split(best_file)[1])
 
-  return best_file, destination_file
+  return best_file
 
 # Select integrated pickle with the closest unit cell to target
 def best_by_uc(gs_params, acceptable_pickles, dest_dir):
@@ -108,19 +106,17 @@ def best_by_uc(gs_params, acceptable_pickles, dest_dir):
     sel_pickle_list.append(uc_distance)
 
   best_file = acceptable_pickles[sel_pickle_list.index(min(sel_pickle_list))]
-  destination_file = '{0}/{1}'.format(dest_dir, os.path.split(best_file)[1])
 
-  return best_file, destination_file
+  return best_file
 
 
 # Select integrated pickle with the lowest x,y offset
-def best_by_offset(gs_params, acceptable_pickles, dest_dir):
+def best_by_offset(acceptable_pickles, offset_filename):
 
   pickle_cluster = Cluster.from_files(acceptable_pickles)
   best_file = min(pickle_cluster.members, key=lambda im: im.spot_offset).path
-  destination_file = '{0}/{1}'.format(dest_dir, os.path.split(best_file)[1])
 
-  return best_file, destination_file
+  return best_file
 
 # Main selection module. Looks through integrated pickles in a specified folder and
 # copies the best ones to a file. Outputs a list to log file and marks the selected
@@ -188,31 +184,34 @@ def best_file_selection(gs_params, output_dir, log_dir):
       selected_info = []
 
       # Total reflections
-      sel_pickle, dest_pickle = best_by_reflections(gs_params,
-                                acceptable_pickles,
-                                output_dir + '/best_by_total')
-      shutil.copyfile(sel_pickle, dest_pickle)
+      sel_pickle = best_by_reflections(gs_params,
+                                        acceptable_pickles,
+                                        output_dir + '/best_by_total')
+      with open('{}/best_by_total.lst'.format(output_dir), 'a') as best_file:
+        best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['T', sel_pickle, os.path.split(sel_pickle)[1]])
 
       # Strong reflections
-      sel_pickle, dest_pickle = best_by_strong(gs_params,
-                                acceptable_pickles,
-                                output_dir + '/best_by_strong')
-      shutil.copyfile(sel_pickle, dest_pickle)
+      sel_pickle = best_by_strong(gs_params,
+                                  acceptable_pickles,
+                                  output_dir + '/best_by_strong')
+      with open('{}/best_by_strong.lst'.format(output_dir), 'a') as best_file:
+        best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['S', sel_pickle, os.path.split(sel_pickle)[1]])
 
       # Unit cell
-      sel_pickle, dest_pickle = best_by_uc(gs_params,
-                                acceptable_pickles,
-                                output_dir + '/best_by_uc')
-      shutil.copyfile(sel_pickle, dest_pickle)
+      sel_pickle = best_by_uc(gs_params,
+                              acceptable_pickles,
+                              output_dir + '/best_by_uc')
+      with open('{}/best_by_uc.lst'.format(output_dir), 'a') as best_file:
+        best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['U', sel_pickle, os.path.split(sel_pickle)[1]])
 
       # x,y offset
-      sel_pickle, dest_pickle = best_by_offset(gs_params,
-                                acceptable_pickles,
-                                output_dir + '/best_by_offset')
-      shutil.copyfile(sel_pickle, dest_pickle)
+      sel_pickle = best_by_offset(acceptable_pickles,
+                                  output_dir + '/best_by_offset')
+      with open('{}/best_by_offset.lst'.format(output_dir), 'a') as best_file:
+        best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['O', sel_pickle, os.path.split(sel_pickle)[1]])
 
 

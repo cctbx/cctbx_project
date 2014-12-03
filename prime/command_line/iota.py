@@ -51,8 +51,7 @@ if __name__ == "__main__":
       # Setup grid search logger
       gs_logger = logging.getLogger('gs_log')
       gs_formatter = logging.Formatter('%(message)s')
-      gs_fileHandler = logging.FileHandler(log_dir + '/grid_search.log',
-                                                                                                                                                                mode='w')
+      gs_fileHandler = logging.FileHandler(log_dir + '/grid_search.log', mode='w')
       gs_fileHandler.setFormatter(gs_formatter)
       gs_streamHandler = logging.StreamHandler()
       gs_streamHandler.setFormatter(gs_formatter)
@@ -89,17 +88,13 @@ if __name__ == "__main__":
 
       gs_logger.info('\n\nIOTA grid search version {0}'.format(gs_version))
 
-    else:
-      inp.make_selected_dirs(output_dir_list, log_dir)
-
 
     # ------------------ Pickle Selection ------------------
 
     # Setup pickle selection logger
     ps_logger = logging.getLogger('ps_log')
     ps_formatter = logging.Formatter('%(message)s')
-    ps_fileHandler = logging.FileHandler(log_dir + '/pickle_select.log',
-                                                                                                                                                        mode='w')
+    ps_fileHandler = logging.FileHandler(log_dir + '/pickle_select.log', mode='w')
     ps_fileHandler.setFormatter(ps_formatter)
     ps_streamHandler = logging.StreamHandler()
     ps_streamHandler.setFormatter(ps_formatter)
