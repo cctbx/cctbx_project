@@ -46,18 +46,20 @@ def run(args):
     output_dirname = os.path.join(os.path.dirname(args[0]), "finalise")
     print output_dirname
   hist_d = easy_pickle.load(args[0])
+  if len(hist_d.keys())==2:
+    hist_d = hist_d['histogram']
   pixel_histograms = faster_methods_for_pixel_histograms(
     hist_d, estimated_gain=estimated_gain)
 
   result = xes_from_histograms(
     pixel_histograms, output_dirname=output_dirname,
     gain_map_path=gain_map_path, estimated_gain=estimated_gain,
-    roi=roi)
+    roi=roi, run=work_params.run)
 
 class xes_from_histograms(object):
 
   def __init__(self, pixel_histograms, output_dirname=".", gain_map_path=None,
-               gain_map=None, estimated_gain=30,roi=None):
+               gain_map=None, estimated_gain=30,roi=None,run=None):
 
     self.sum_img = flex.double(flex.grid(370,391), 0) # XXX define the image size some other way?
     gain_img = flex.double(self.sum_img.accessor(), 0)
@@ -154,16 +156,18 @@ class xes_from_histograms(object):
       distance=1,
       ccd_image_saturation=2e8, # XXX
     )
-    cspad_tbx.dwritef(d, output_dirname, 'sum_')
+    if run is not None: runstr="_%04d"%run
+    else: runstr=""
+    cspad_tbx.dwritef(d, output_dirname, 'sum%s_'%runstr)
 
 
     plot_x, plot_y = xes_finalise.output_spectrum(
       spectrum_focus.iround(), mask_focus=mask_focus,
-      output_dirname=output_dirname)
+      output_dirname=output_dirname, run=run)
     self.spectrum = (plot_x, plot_y)
     self.spectrum_focus = spectrum_focus
 
-    xes_finalise.output_matlab_form(spectrum_focus, "%s/sum.m" %output_dirname)
+    xes_finalise.output_matlab_form(spectrum_focus, "%s/sum%s.m" %(output_dirname,runstr))
     print output_dirname
 
 class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms):
