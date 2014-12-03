@@ -43,6 +43,9 @@ xes {
     .help = "Method for summing up the individual images to obtain the final 2D"
             "spectrum. Either attempt to count individual photons, or sum up the"
             "ADU values for each pixel."
+  run = None
+    .type = int
+    .help = The run number, used for output file names.
 }
 """
 
@@ -77,7 +80,7 @@ def run(args):
     pixel_histograms, output_dirname=output_dirname,
     gain_map_path=gain_map_path, estimated_gain=estimated_gain,
     method=method, nproc=nproc,
-    photon_threshold=photon_threshold, roi=roi)
+    photon_threshold=photon_threshold, roi=roi, run=work_params.run)
 
   if bg_roi is not None:
     bg_outdir = os.path.normpath(output_dirname)+"_bg"
@@ -112,7 +115,7 @@ class xes_from_histograms(object):
 
   def __init__(self, pixel_histograms, output_dirname=".", gain_map_path=None,
                gain_map=None, method="photon_counting", estimated_gain=30,
-               nproc=None, photon_threshold=2/3, roi=None):
+               nproc=None, photon_threshold=2/3, roi=None,roi=None):
     assert method in ("sum_adu", "photon_counting")
     self.sum_img = flex.double(flex.grid(370,391), 0) # XXX define the image size some other way?
     gain_img = flex.double(self.sum_img.accessor(), 0)
@@ -272,7 +275,9 @@ class xes_from_histograms(object):
       distance=1,
       ccd_image_saturation=2e8, # XXX
     )
-    cspad_tbx.dwritef(d, output_dirname, 'sum_')
+    if run is not None: runstr="_%04d"%run
+    else: runstr=""
+    cspad_tbx.dwritef(d, output_dirname, 'sum%s_'%runstr)
 
     if gain_map is None:
       gain_map = flex.double(gain_img.accessor(), 0)
@@ -294,11 +299,11 @@ class xes_from_histograms(object):
 
     plot_x, plot_y = xes_finalise.output_spectrum(
       spectrum_focus.iround(), mask_focus=mask_focus,
-      output_dirname=output_dirname)
+      output_dirname=output_dirname, run=run)
     self.spectrum = (plot_x, plot_y)
     self.spectrum_focus = spectrum_focus
 
-    xes_finalise.output_matlab_form(spectrum_focus, "%s/sum.m" %output_dirname)
+    xes_finalise.output_matlab_form(spectrum_focus, "%s/sum%s.m" %(output_dirname,runstr))
     print output_dirname
 
 if __name__ == '__main__':
