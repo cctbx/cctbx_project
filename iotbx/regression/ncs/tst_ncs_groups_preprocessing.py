@@ -1,5 +1,5 @@
 from __future__ import division
-from iotbx.ncs.ncs_preprocess import format_80
+from iotbx.ncs_preprocess import format_80
 from libtbx.utils import null_out
 from libtbx.utils import Sorry
 from scitbx import matrix

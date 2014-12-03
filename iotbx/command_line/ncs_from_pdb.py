@@ -81,17 +81,14 @@ def ncs_from_pdb(args):
             min_percent=params.min_percent,
             chain_similarity_limit=params.chain_similarity_limit)
         print '\n\nFile name: {}'.format(params.file_name)
-        print 'Search parameters values'
-        print '-'*40
-        for k,v in params.__dict__.iteritems():
-          print '{0:<30}: {1:<20}'.format(k,str(v))
+        print "\n*** Show in SPEC format ***"
+        ncs_obj.show(format='spec')
+        print "*** Show cctbx summery ***"
+        ncs_obj.show()
+        print "*** Show format_all_for_resolve ***"
+        x = ncs_obj.get_ncs_info_as_spec()
+        print x.format_all_for_resolve()
 
-        # print info about the chains:
-        print '\nChains in model:'
-        print ncs_obj.model_unique_chains_ids
-        if len(ncs_obj.ncs_transform) == 0:
-          print '\nNo NCS relations found'
-        ncs_obj.get_ncs_info_as_spec(write=True)
         print '\nTime to process: {0:.2f} sec'.format(time.time()-t0)
 
 class ncs_search_params(object):
