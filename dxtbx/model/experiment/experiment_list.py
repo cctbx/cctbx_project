@@ -444,7 +444,7 @@ class ExperimentListDict(object):
 
   def _extract_experiments(self):
     ''' Helper function. Extract the experiments. '''
-    from dxtbx.imageset import ImageSweep
+    from dxtbx.imageset import ImageSweep, ImageSet
 
     # Map of imageset/scan pairs
     imagesets = {}
@@ -478,14 +478,15 @@ class ExperimentListDict(object):
             raise RuntimeError('Unknown imageset type')
 
           # Fill in any models if they aren't already there
-          if beam is None:
-            beam = imageset.get_beam()
-          if detector is None:
-            detector = imageset.get_detector()
-          if goniometer is None:
-            goniometer = imageset.get_goniometer()
-          if scan is None:
-            scan = imageset.get_scan()
+          if imageset is not None:
+            if beam is None:
+              beam = imageset.get_beam()
+            if detector is None:
+              detector = imageset.get_detector()
+            if goniometer is None:
+              goniometer = imageset.get_goniometer()
+            if scan is None:
+              scan = imageset.get_scan()
 
           # Update the imageset models
           if isinstance(imageset, ImageSweep):
@@ -493,12 +494,14 @@ class ExperimentListDict(object):
             imageset.set_detector(detector)
             imageset.set_goniometer(goniometer)
             imageset.set_scan(scan)
-          else:
+          elif isinstance(imageset, ImageSet):
             for i in range(len(imageset)):
               imageset.set_beam(beam, i)
               imageset.set_detector(detector, i)
               imageset.set_goniometer(goniometer, i)
               imageset.set_scan(scan, i)
+          else:
+            pass
 
         # Add the imageset to the dict
         imagesets[key] = imageset
