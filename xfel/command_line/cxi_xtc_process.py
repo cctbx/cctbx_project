@@ -127,10 +127,11 @@ class Script(object):
       # list of all events
       times = run.times()
       nevents = min(len(times),max_events)
-      mylength = nevents//size # easy but sloppy. lose few events at end of run.
-      # chop the list into pieces, depending on rank
-      mytimes= times[rank*mylength:(rank+1)*mylength]
-      for i in range(mylength):
+      # chop the list into pieces, depending on rank.  This assigns each process
+      # events such that the get every Nth event where N is the number of processes
+      mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
+
+      for i in xrange(len(mytimes)):
         ts = cspad_tbx.evt_timestamp((mytimes[i].seconds(),mytimes[i].nanoseconds()/1e6))
         if params.debug.event_timestamp is not None and params.debug.event_timestamp != ts:
           continue
