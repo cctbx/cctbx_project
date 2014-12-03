@@ -81,7 +81,7 @@ tst_list = (
   "$D/regression/tst_export_scalepack_unmerged.py",
   ["$D/dsn6/tst.py", "P31"],
   "$D/regression/ncs/tst_ncs_groups_preprocessing.py",
-  "$D/regression/ncs/tst.py",
+  "$D/regression/ncs/tst_ncs_input.py",
   "$D/pdb/tst_read_mtrix_records_from_cif.py",
   "$D/regression/tst_show_systematic_absences.py",
   "$D/regression/tst_miller_sort_asu.py",
