@@ -1259,11 +1259,7 @@ iotbx/mtz/tst_dano.py svneol=native#text/x-python
 iotbx/mtz/tst_extract_from_symmetry_lib.py svneol=native#text/x-python
 iotbx/mtz/tst_miller_dict.py -text
 iotbx/mtz/tst_unmerged.py -text
-iotbx/ncs/__init__.py -text
-iotbx/ncs/ncs_preprocess.py -text
-iotbx/ncs/tst.py -text
-iotbx/ncs/tst_finding_ncs.py -text
-iotbx/ncs/tst_ncs_groups_preprocessing.py -text
+iotbx/ncs_preprocess.py -text
 iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/pdb/atom_selection.cpp svneol=native#text/plain
 iotbx/pdb/atom_selection.py svneol=native#text/x-python
@@ -1317,6 +1313,10 @@ iotbx/pdb/write_utils_bpl.h svneol=native#text/plain
 iotbx/poscar.py svneol=native#text/x-python
 iotbx/ranges.py -text
 iotbx/reflection_file_editor.py -text
+iotbx/regression/ncs/__init__.py -text
+iotbx/regression/ncs/tst.py -text
+iotbx/regression/ncs/tst_finding_ncs.py -text
+iotbx/regression/ncs/tst_ncs_groups_preprocessing.py -text
 iotbx/regression/tst_add_conformations.py -text
 iotbx/regression/tst_bioinformatics.py svneol=native#text/x-python
 iotbx/regression/tst_crystal_symmetry_from_any.py svneol=native#text/x-python
