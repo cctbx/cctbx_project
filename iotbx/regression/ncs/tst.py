@@ -162,15 +162,15 @@ ncs_group {
       check_result(ncs_inp,test_i)
     # using combination of pdb_inp and Phil parameter string
     ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
-      ncs_selection_params = ncs_params_str)
+      ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
     # using combination of pdb file name and Phil parameter string
     ncs_inp = iotbx.ncs.input(file_name = pdb_file_name,
-      ncs_selection_params = ncs_params_str)
+      ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
     # using combination of pdb string and Phil parameter string
     ncs_inp = iotbx.ncs.input(pdb_string = pdb_str,
-      ncs_selection_params = ncs_params_str)
+      ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
 
 def exercise_01(prefix="iotbx_ncs_exercise_01"):
@@ -203,15 +203,15 @@ ncs_group {
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
     # using combination of pdb_inp and Phil parameter string
     ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
-      ncs_selection_params = ncs_params_str)
+      ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
     # using combination of pdb file name and Phil parameter string
     ncs_inp = iotbx.ncs.input(file_name = pdb_file_name,
-      ncs_selection_params = ncs_params_str)
+      ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
     # using combination of pdb string and Phil parameter string
     ncs_inp = iotbx.ncs.input(pdb_string = pdb_str,
-      ncs_selection_params = ncs_params_str)
+      ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
 
 def exercise_02(prefix="iotbx_ncs_exercise_02"):
@@ -232,15 +232,15 @@ ncs_group {
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
     # using combination of pdb_inp and Phil parameter string
     ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
-      ncs_selection_params = ncs_params_str)
+      ncs_phil_string = ncs_params_str)
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
     # using combination of pdb file name and Phil parameter string
     ncs_inp = iotbx.ncs.input(file_name = pdb_file_name,
-      ncs_selection_params = ncs_params_str)
+      ncs_phil_string = ncs_params_str)
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
     # using combination of pdb string and Phil parameter string
     ncs_inp = iotbx.ncs.input(pdb_string = pdb_str,
-      ncs_selection_params = ncs_params_str)
+      ncs_phil_string = ncs_params_str)
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
 
 def exercise_03(prefix="iotbx_ncs_exercise_03"):

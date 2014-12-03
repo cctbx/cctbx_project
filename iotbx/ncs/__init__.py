@@ -9,7 +9,7 @@ def input(pdb_hierarchy_inp=None,
           transform_info=None,
           rotations = None,
           translations = None,
-          ncs_selection_params = None,
+          ncs_phil_string = None,
           ncs_phil_groups = None,
           file_name=None,
           file_path='',
@@ -37,7 +37,7 @@ def input(pdb_hierarchy_inp=None,
     order of implementation:
     1) rotations,translations
     2) transform_info
-    3) ncs_selection_params
+    3) ncs_phil_string
     4) ncs_phil_groups
     5) spec file
     6) mmcif file
@@ -49,7 +49,7 @@ def input(pdb_hierarchy_inp=None,
       transform_info: object containing MTRIX or BIOMT transformation info
       rotations: matrix.sqr 3x3 object
       translations: matrix.col 3x1 object
-      ncs_selection_params: Phil parameters
+      ncs_phil_string: Phil parameters
         Phil structure
            ncs_group (multiple)
            {
@@ -96,7 +96,7 @@ def input(pdb_hierarchy_inp=None,
       transform_info=transform_info,
       rotations=rotations,
       translations=translations,
-      ncs_selection_params=ncs_selection_params,
+      ncs_phil_string=ncs_phil_string,
       ncs_phil_groups=ncs_phil_groups,
       file_name=file_name,
       file_path=file_path,

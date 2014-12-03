@@ -237,7 +237,7 @@ def get_inputs(prefix, pdb_answer, pdb_poor, ncs_params_str, real_space, d_min):
     normalization = True)
   #
   ncs_inp = iotbx.ncs.input(
-    pdb_string=pdb_poor, ncs_selection_params=ncs_params_str)
+    pdb_string=pdb_poor, ncs_phil_string=ncs_params_str)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   #
   set_scattering_dictionary(xray_structure = xrs_answer, d_min = d_min)
