@@ -1887,9 +1887,6 @@ mmtbx/ncs/ligands.py -text
 mmtbx/ncs/ncs_from_pdb.py -text
 mmtbx/ncs/ncs_search.py -text
 mmtbx/ncs/ncs_utils.py -text
-mmtbx/ncs/tst_asu_as_one_ncs_copy.py -text
-mmtbx/ncs/tst_ncs_search.py -text
-mmtbx/ncs/tst_ncs_utils.py -text
 mmtbx/pdb_distances.py -text
 mmtbx/pdb_symmetry.py -text
 mmtbx/pdbtools.py -text
@@ -1928,7 +1925,6 @@ mmtbx/refinement/real_space/tst_flipbase.py -text
 mmtbx/refinement/real_space/tst_individual_sites_1.py -text
 mmtbx/refinement/real_space/tst_individual_sites_2.py -text
 mmtbx/refinement/real_space/tst_individual_sites_3.py -text
-mmtbx/refinement/real_space/tst_minimization_ncs_constraints.py -text
 mmtbx/refinement/real_space/tst_monitor.py -text
 mmtbx/refinement/real_space/tst_rigid_body.py -text
 mmtbx/refinement/real_space/tst_weight.py -text
@@ -1940,9 +1936,6 @@ mmtbx/refinement/targets.py -text
 mmtbx/refinement/tst_fit_rotamers.py svneol=native#text/x-python
 mmtbx/refinement/tst_group.py -text
 mmtbx/refinement/tst_group_2.py -text
-mmtbx/refinement/tst_minimization_ncs_constraints.py -text
-mmtbx/refinement/tst_minimization_ncs_constraints2.py -text
-mmtbx/refinement/tst_minimization_ncs_constraints3.py -text
 mmtbx/refinement/tst_misc.py -text
 mmtbx/refinement/tst_occupancy_selections.py svneol=native#text/x-python
 mmtbx/refinement/tst_real_space_simple.py -text
@@ -1956,6 +1949,14 @@ mmtbx/refinement/weights_params.py -text
 mmtbx/refinement/wx_tardy_pdb.py svneol=native#text/x-python
 mmtbx/regression/__init__.py -text
 mmtbx/regression/make_fake_anomalous_data.py -text
+mmtbx/regression/ncs/__init__.py -text
+mmtbx/regression/ncs/tst_asu_as_one_ncs_copy.py -text
+mmtbx/regression/ncs/tst_minimization_ncs_constraints.py -text
+mmtbx/regression/ncs/tst_minimization_ncs_constraints2.py -text
+mmtbx/regression/ncs/tst_minimization_ncs_constraints3.py -text
+mmtbx/regression/ncs/tst_minimization_ncs_constraints_real_space.py -text
+mmtbx/regression/ncs/tst_ncs_search.py -text
+mmtbx/regression/ncs/tst_ncs_utils.py -text
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_alignment.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
