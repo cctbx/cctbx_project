@@ -8,6 +8,9 @@ import getpass
 # To download this file:
 # svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
 
+# Note: to relocate an SVN repo:
+# svn relocate svn+ssh://ianrees@svn.code.sf.net/p/cctbx/code/trunk
+
 # Mock commands to run standalone, without buildbot.
 class ShellCommand(object):
   def __init__(self, **kwargs):
