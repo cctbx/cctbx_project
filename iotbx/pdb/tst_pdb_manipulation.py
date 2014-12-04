@@ -1,13 +1,13 @@
 from __future__ import division
 from  iotbx.pdb.multimer_reconstruction import multimer
-from iotbx.ncs.ncs_preprocess import format_num_as_str
-from iotbx.ncs.ncs_preprocess import ncs_group_object
+from iotbx.ncs_tmp.ncs_preprocess import format_num_as_str
+from iotbx.ncs_tmp.ncs_preprocess import ncs_group_object
 from mmtbx.ncs.ncs_utils import apply_transforms
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from scitbx import matrix
+import iotbx.ncs_tmp as ncs
 from iotbx import pdb
-import iotbx.ncs
 import unittest
 import tempfile
 import shutil
@@ -126,7 +126,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     """
     # print sys._getframe().f_code.co_name
     for pdb_str in [pdb_test_data5,pdb_test_data6]:
-      ncs_inp = iotbx.ncs.input(pdb_string=pdb_test_data5)
+      ncs_inp = ncs.input(pdb_string=pdb_test_data5)
       transform_info = ncs_inp.build_MTRIX_object()
       self.assertEqual(len(transform_info.r),3)
       self.assertEqual(len(transform_info.t),3)
@@ -146,7 +146,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     r.append(matrix.sqr([1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.4]))
     t = [matrix.col([0,2,1])]
     t.append(matrix.col([-1,3,-2]))
-    transforms_obj = iotbx.ncs.input(
+    transforms_obj = ncs.input(
       pdb_hierarchy_inp = pdb_obj,
       rotations=r,
       translations=t)
@@ -160,7 +160,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     self.assertEqual(result,expected)
     # check that if transforms are provided MTRIX record ignored
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-    transforms_obj = iotbx.ncs.input(
+    transforms_obj = ncs.input(
       pdb_hierarchy_inp = pdb_obj,
       rotations=r,
       translations=t)
@@ -190,7 +190,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transform_info = pdb_inp.process_mtrix_records()
-    transforms_obj = iotbx.ncs.input(
+    transforms_obj = ncs.input(
       transform_info=transform_info,
       pdb_hierarchy_inp=pdb_obj)
 
@@ -289,13 +289,13 @@ class TestMultimerReconstruction(unittest.TestCase):
       pdb_str=pdb_test_data2,
       reconstruction_type='cau')
 
-    trans_obj = iotbx.ncs.input(pdb_string=pdb_test_data2)
+    trans_obj = ncs.input(pdb_string=pdb_test_data2)
 
     pdb_hierarchy_asu = multimer_data.assembled_multimer
     spec_output = trans_obj.get_ncs_info_as_spec(
       pdb_hierarchy_asu=pdb_hierarchy_asu,write=False)
 
-    trans_obj2 = iotbx.ncs.input(spec_ncs_groups=spec_output)
+    trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
 
     t1 = trans_obj.ncs_transform['002'].r
     t2 = trans_obj2.ncs_transform['002'].r

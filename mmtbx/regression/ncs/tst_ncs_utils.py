@@ -6,7 +6,7 @@ import mmtbx.maps.correlation
 from scitbx import matrix
 import scitbx.rigid_body
 from iotbx import pdb
-import iotbx.ncs
+import iotbx.ncs_tmp as ncs
 import unittest
 import math
 
@@ -119,11 +119,11 @@ class Test_ncs_utils(unittest.TestCase):
                 [self.rotation3, self.translation3]]
 
     self.pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
-    self.tr_obj1 = iotbx.ncs.input(
+    self.tr_obj1 = ncs.input(
       pdb_hierarchy_inp=self.pdb_obj,
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])
-    self.tr_obj2 = iotbx.ncs.input(
+    self.tr_obj2 = ncs.input(
       pdb_hierarchy_inp=self.pdb_obj,
       rotations=[self.rotation1,self.rotation2,self.rotation3],
       translations=[self.translation1,self.translation2,self.translation3])
@@ -472,7 +472,7 @@ class Test_ncs_utils(unittest.TestCase):
     # print sys._getframe().f_code.co_name
 
     d_min = 1.0
-    ncs_inp = iotbx.ncs.input(pdb_string=pdb_poor_0)
+    ncs_inp = ncs.input(pdb_string=pdb_poor_0)
     ncs_restraints_group_list = ncs_inp.get_ncs_restraints_group_list()
 
     pdb_inp_poor = pdb.input(lines=pdb_poor_0,source_info=None)

@@ -1,7 +1,7 @@
 from __future__ import division
-from iotbx import pdb
 import mmtbx.ncs.ncs_utils as nu
-import iotbx.ncs
+import iotbx.ncs_tmp as ncs
+from iotbx import pdb
 import unittest
 import sys
 
@@ -12,8 +12,8 @@ class TestMtrixRecFromCif(unittest.TestCase):
   # @unittest.SkipTest
   def test_compare_rotation_and_translation(self):
     print 'Running ',sys._getframe().f_code.co_name
-    trans_obj1 = iotbx.ncs.input(pdb_string=test_pdb)
-    trans_obj2 = iotbx.ncs.input(cif_string=test_cif)
+    trans_obj1 = ncs.input(pdb_string=test_pdb)
+    trans_obj2 = ncs.input(cif_string=test_cif)
     #
     nrg1 = trans_obj1.get_ncs_restraints_group_list()
     nrg2 = trans_obj2.get_ncs_restraints_group_list()

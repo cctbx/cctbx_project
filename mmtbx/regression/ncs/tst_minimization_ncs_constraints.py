@@ -6,9 +6,9 @@ import mmtbx.refinement.adp_refinement
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 import mmtbx.ncs.ncs_utils as nu
+import iotbx.ncs_tmp as ncs
 import mmtbx.f_model
 import mmtbx.utils
-import iotbx.ncs
 import iotbx.pdb
 import random
 import sys
@@ -96,7 +96,7 @@ class ncs_minimization_test(object):
       u_random = flex.random_double(xrs_shaken.scatterers().size())
       xrs_shaken = xrs_shaken.set_u_iso(values=u_random)
     if self.transformations:
-      transforms_obj = iotbx.ncs.input(
+      transforms_obj = ncs.input(
       transform_info = mtrix_object,
       pdb_hierarchy_inp = pdb_obj)
       x = nu.concatenate_rot_tran(transforms_obj=transforms_obj)

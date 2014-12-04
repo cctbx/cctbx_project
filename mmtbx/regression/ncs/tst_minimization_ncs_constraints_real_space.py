@@ -5,8 +5,8 @@ import mmtbx.refinement.minimization_ncs_constraints
 import mmtbx.refinement.real_space.weight
 from scitbx.array_family import flex
 import mmtbx.ncs.ncs_utils as nu
+import iotbx.ncs_tmp as ncs
 import mmtbx.utils
-import iotbx.ncs
 import iotbx.pdb
 import mmtbx.ncs
 import math
@@ -130,7 +130,7 @@ def run(prefix="tst", d_min=1.0):
   ir = [rm[0]]
   it = [tv[0]]
   # create transformation object
-  transforms_obj = iotbx.ncs.input(
+  transforms_obj = ncs.input(
     pdb_hierarchy_inp = ph_poor_obj,
     rotations=rm,
     translations=tv)

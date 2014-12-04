@@ -4,7 +4,7 @@ from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
 from libtbx.utils import Sorry
 from iotbx import pdb
-import iotbx.ncs
+import iotbx.ncs_tmp as ncs
 import unittest
 
 __author__ = 'Youval'
@@ -399,7 +399,7 @@ class TestSimpleAlignment(unittest.TestCase):
   def test_split_groups_to_spec(self):
     # print sys._getframe().f_code.co_name
     pdb_str = test_pdb_7 + test_pdb_7_addition
-    ncs_obj = iotbx.ncs.input(pdb_string=pdb_str)
+    ncs_obj = ncs.input(pdb_string=pdb_str)
     spec = ncs_obj.get_ncs_info_as_spec(write=False)
     gr = spec.ncs_groups()
     self.assertEqual(len(gr),2)

@@ -689,8 +689,8 @@ def ncs_restraints_group_list_copy(ncs_restraints_group_list):
   Returns:
     new_list: a deep copy of ncs_restraints_group_list
   """
-  from iotbx.ncs.ncs_preprocess import NCS_restraint_group
-  from iotbx.ncs.ncs_preprocess import NCS_copy
+  from iotbx.ncs_tmp.ncs_preprocess import NCS_restraint_group
+  from iotbx.ncs_tmp.ncs_preprocess import NCS_copy
   new_list = []
   for nrg in ncs_restraints_group_list:
     new_nrg = NCS_restraint_group(nrg.master_iselection)
