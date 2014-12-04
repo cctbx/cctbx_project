@@ -2133,6 +2133,7 @@ prime/__init__.py -text
 prime/api.py -text
 prime/command_line/__init__.py -text
 prime/command_line/iota.py -text
+prime/command_line/iotacc.py -text
 prime/command_line/postrefine.py -text
 prime/command_line/viewstats.py -text
 prime/iota/__init__.py -text

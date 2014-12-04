@@ -202,7 +202,7 @@ n_rejection_cycle = 1
 n_min_frames = 1000
   .type = int
   .help = No. of minimum frames.
-sigma_rejection = 99
+sigma_rejection = 5
   .type = float
   .help = Sigma level for outlier rejection.
 n_bins = 20
@@ -253,6 +253,33 @@ flag_output_verbose = False
 flag_replace_sigI = False
   .type = bool
   .help = Replace to experimental errors I with sqrt(I).
+iotacc
+  .help = "Parameters used in iotacc selection."
+{
+  set_id = None
+    .type = str
+    .help = Crystal set id. Set to None for one single set.
+  n_shots = 99
+    .type = int
+    .help = Maximum no. of shots per crystal.
+    .optional = True
+  d_min = 0.1
+    .type = float
+    .help = Minimum resolution.
+  d_max = 99
+    .type = float
+    .help = Maximum resolution.
+  uc_tolerance = 3
+    .type = float
+    .help = Unit-cell tolerance in percent.
+  LEN_SHOT_SEQ = 5
+    .type = int
+    .help = No. of digits used to format shot no.
+    .optional = True
+  sigma_min = 1.5
+    .type = float
+    .help = Minimum I/sigI cutoff.
+}
 """)
 
 
@@ -275,7 +302,7 @@ def process_input(argv=None):
   working_phil = master_phil.fetch(sources=user_phil)
   params = working_phil.extract()
 
-  if (len(params.data) == 0) or False in [os.path.isdir(p) for p in params.data]:
+  if (len(params.data) == 0):
     master_phil.show()
     raise Usage("No data")
 

@@ -22,11 +22,16 @@ class postref_handler(object):
     Constructor
     '''
 
-  def organize_input(self, observations_pickle, iparams, pickle_filename=None):
+  def organize_input(self, observations_pickle, iparams, avg_mode, pickle_filename=None):
 
     """Given the pickle file, extract and prepare observations object and
     the alpha angle (meridional to equatorial).
     """
+    if avg_mode == 'final':
+      target_anomalous_flag = iparams.target_anomalous_flag
+    else:
+      target_anomalous_flag = False
+
     observations = observations_pickle["observations"][0]
 
     detector_distance_mm = observations_pickle['distance']
@@ -65,10 +70,10 @@ class postref_handler(object):
           unit_cell=observations.unit_cell().parameters(),
           space_group_symbol=iparams.target_space_group
         ).build_miller_set(
-          anomalous_flag=iparams.target_anomalous_flag,
+          anomalous_flag=target_anomalous_flag,
           d_min=iparams.merge.d_min)
 
-      observations = observations.customized_copy(anomalous_flag=iparams.target_anomalous_flag,
+      observations = observations.customized_copy(anomalous_flag=target_anomalous_flag,
                       crystal_symmetry=miller_set.crystal_symmetry())
     except Exception:
       a,b,c,alpha,beta,gamma = observations.unit_cell().parameters()
@@ -180,7 +185,7 @@ class postref_handler(object):
       assert len(observations_original.indices())==len(observations_rev.indices()), 'No. of original and inversed asymmetric-unit indices are not equal %6.0f, %6.0f'%(len(observations_original.indices()), len(observations_rev.indices()))
       return observations_rev
 
-  def postrefine_by_frame(self, frame_no, pickle_filename, iparams, miller_array_ref, pres_in):
+  def postrefine_by_frame(self, frame_no, pickle_filename, iparams, miller_array_ref, pres_in, avg_mode):
 
     #1. Prepare data
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
@@ -188,7 +193,7 @@ class postref_handler(object):
     wavelength = observations_pickle["wavelength"]
     pickle_filepaths = pickle_filename.split('/')
 
-    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
+    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     if inputs is not None:
       observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
     else:
@@ -241,7 +246,7 @@ class postref_handler(object):
     #caculate partiality for output (with target_anomalous check)
     G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, re_fin, \
         a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = refined_params
-    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
+    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
 
@@ -296,7 +301,7 @@ class postref_handler(object):
             crystal_orientation=crystal_fin_orientation,
             spot_radius=spot_radius)
 
-    txt_postref = '%6.0f %5.2f %6.0f %9.0f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %8.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f '%( \
+    txt_postref = '%6.0f %5.2f %6.0f %9.0f %8.2f %8.2f %6.2f %6.2f %6.2f %6.2f %6.2f %8.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f '%( \
       pres.frame_no, observations_non_polar.d_min(), len(observations_non_polar.indices()), \
       n_refl_postrefined, pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, \
       pres.CC_init*100, pres.CC_final*100,pres.CC_iso_init*100, pres.CC_iso_final*100, \
@@ -306,12 +311,12 @@ class postref_handler(object):
     print txt_postref
     return pres, txt_postref
 
-  def calc_mean_intensity(self, pickle_filename, iparams):
+  def calc_mean_intensity(self, pickle_filename, iparams, avg_mode):
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
     wavelength = observations_pickle["wavelength"]
     pickle_filepaths = pickle_filename.split('/')
 
-    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
+    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     if inputs is not None:
       observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
     else:
@@ -356,13 +361,13 @@ class postref_handler(object):
     return mean_I, pickle_filepaths[len(pickle_filepaths)-1]
 
 
-  def scale_frame_by_mean_I(self, frame_no, pickle_filename, iparams, mean_of_mean_I):
+  def scale_frame_by_mean_I(self, frame_no, pickle_filename, iparams, mean_of_mean_I, avg_mode):
 
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
 
     pickle_filepaths = pickle_filename.split('/')
 
-    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, pickle_filename=pickle_filename)
+    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     if inputs is not None:
       observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
     else:
