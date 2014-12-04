@@ -1,9 +1,9 @@
 from __future__ import division
-from iotbx.ncs.ncs_preprocess import insure_identity_is_in_transform_info
+from iotbx.ncs_tmp.ncs_preprocess import insure_identity_is_in_transform_info
+from  iotbx.ncs_tmp.ncs_preprocess import ncs_group_object
 from iotbx import crystal_symmetry_from_any
-import iotbx.ncs.ncs_preprocess
-import iotbx.pdb.hierarchy
 from libtbx.utils import Sorry
+import iotbx.pdb.hierarchy
 from iotbx import pdb
 import os
 
@@ -91,7 +91,7 @@ class multimer(object):
       raise Sorry('Sorry, this feature currently supports on single models ' +
                   'hierarchies')
 
-    self.transforms_obj = iotbx.ncs.ncs_preprocess.ncs_group_object()
+    self.transforms_obj = ncs_group_object()
     # Read the relevant transformation matrices
     self.transforms_obj.build_ncs_obj_from_pdb_ncs(
       transform_info=transform_info,

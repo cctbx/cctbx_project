@@ -2,9 +2,9 @@ from __future__ import division
 import mmtbx.refinement.minimization_ncs_constraints
 from scitbx.array_family import flex
 from libtbx import group_args
+import iotbx.ncs_tmp as ncs
 import mmtbx.utils
 import iotbx.pdb
-import iotbx.ncs
 import time
 
 pdb_answer_0 = """\
@@ -236,7 +236,7 @@ def get_inputs(prefix, pdb_answer, pdb_poor, ncs_params_str, real_space, d_min):
     geometry      = ppf.geometry_restraints_manager(show_energies = False),
     normalization = True)
   #
-  ncs_inp = iotbx.ncs.input(
+  ncs_inp = ncs.input(
     pdb_string=pdb_poor, ncs_phil_string=ncs_params_str)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   #

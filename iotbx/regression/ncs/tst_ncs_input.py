@@ -1,7 +1,9 @@
 from __future__ import division
 from libtbx.test_utils import approx_equal
-import iotbx.ncs
+import iotbx.ncs_tmp as ncs
 import iotbx.pdb
+import sys
+import os
 
 pdb_str_1 = """
 CRYST1  399.000  399.000  399.000  90.00  90.00  90.00 P 1
@@ -397,7 +399,7 @@ END
 """
 
 
-def exercise_00(prefix="iotbx_ncs_exercise_00"):
+def exercise_00(prefix="iotbx_ncs_exercise_00",debug=False):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
 ncs_group {
@@ -419,35 +421,40 @@ ncs_group {
     assert len(ncs_group.copies) == 2
     assert approx_equal(ncs_group.copies[0].iselection, l2)
     assert approx_equal(ncs_group.copies[1].iselection, l3)
+  files_to_delete = []
   for test_i, pdb_str in enumerate([pdb_str_1, pdb_str_2]):
     of = open(pdb_file_name, "w")
+    files_to_delete.append(pdb_file_name)
     print >> of, pdb_str
     of.close()
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
     if test_i == 0: # XXX Not implemented. Fix later.
       # using pdb_inp
-      ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp)
+      ncs_inp = ncs.input(pdb_inp = pdb_inp)
       check_result(ncs_inp,test_i)
       # using file_name
-      ncs_inp = iotbx.ncs.input(file_name = pdb_file_name)
+      ncs_inp = ncs.input(file_name = pdb_file_name)
       check_result(ncs_inp,test_i)
       # using pdb string
-      ncs_inp = iotbx.ncs.input(pdb_string = pdb_str)
+      ncs_inp = ncs.input(pdb_string = pdb_str)
       check_result(ncs_inp,test_i)
     # using combination of pdb_inp and Phil parameter string
-    ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
+    ncs_inp = ncs.input(pdb_inp = pdb_inp,
       ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
     # using combination of pdb file name and Phil parameter string
-    ncs_inp = iotbx.ncs.input(file_name = pdb_file_name,
+    ncs_inp = ncs.input(file_name = pdb_file_name,
       ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
     # using combination of pdb string and Phil parameter string
-    ncs_inp = iotbx.ncs.input(pdb_string = pdb_str,
+    ncs_inp = ncs.input(pdb_string = pdb_str,
       ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
+  # cleanup
+  if not debug:
+    clean_temp_files(files_to_delete)
 
-def exercise_01(prefix="iotbx_ncs_exercise_01"):
+def exercise_01(prefix="iotbx_ncs_exercise_01", debug=False):
   """
   Make sure provided selections take precedence and are correctly respected.
   """
@@ -470,25 +477,29 @@ ncs_group {
     assert approx_equal(ncs_group.master_iselection, l1)
     assert len(ncs_group.copies) == 1
     assert approx_equal(ncs_group.copies[0].iselection, l2)
+  files_to_delete = []
   for test_i, pdb_str in enumerate([pdb_str_1, pdb_str_2]):
+    files_to_delete.append(pdb_file_name)
     of = open(pdb_file_name, "w")
     print >> of, pdb_str
     of.close()
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
     # using combination of pdb_inp and Phil parameter string
-    ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
+    ncs_inp = ncs.input(pdb_inp = pdb_inp,
       ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
     # using combination of pdb file name and Phil parameter string
-    ncs_inp = iotbx.ncs.input(file_name = pdb_file_name,
+    ncs_inp = ncs.input(file_name = pdb_file_name,
       ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
     # using combination of pdb string and Phil parameter string
-    ncs_inp = iotbx.ncs.input(pdb_string = pdb_str,
+    ncs_inp = ncs.input(pdb_string = pdb_str,
       ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
+  if not debug:
+    clean_temp_files(files_to_delete)
 
-def exercise_02(prefix="iotbx_ncs_exercise_02"):
+def exercise_02(prefix="iotbx_ncs_exercise_02", debug=False):
   """
   This is expected to fail as requested chains cannot be matched.
   """
@@ -499,30 +510,34 @@ ncs_group {
   copy_selection = chain A
 }
   """
+  files_to_delete = []
   for test_i, pdb_str in enumerate([pdb_str_3, pdb_str_4]):
+    files_to_delete.append(pdb_file_name)
     of = open(pdb_file_name, "w")
     print >> of, pdb_str
     of.close()
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
     # using combination of pdb_inp and Phil parameter string
-    ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
+    ncs_inp = ncs.input(pdb_inp = pdb_inp,
       ncs_phil_string = ncs_params_str)
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
     # using combination of pdb file name and Phil parameter string
-    ncs_inp = iotbx.ncs.input(file_name = pdb_file_name,
+    ncs_inp = ncs.input(file_name = pdb_file_name,
       ncs_phil_string = ncs_params_str)
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
     # using combination of pdb string and Phil parameter string
-    ncs_inp = iotbx.ncs.input(pdb_string = pdb_str,
+    ncs_inp = ncs.input(pdb_string = pdb_str,
       ncs_phil_string = ncs_params_str)
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  if not debug:
+    clean_temp_files(files_to_delete)
 
 def exercise_03(prefix="iotbx_ncs_exercise_03"):
   """
   Expect one master and 3 copies.
   """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_5)
-  ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp)
+  ncs_inp = ncs.input(pdb_inp = pdb_inp)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   asc = ncs_inp.hierarchy.atom_selection_cache()
   sel_master = asc.selection(string = "chain 1")
@@ -542,7 +557,7 @@ def exercise_04(prefix="iotbx_ncs_exercise_04"):
   Testing one ncs group and master ncs with two chains of different length
   and chains are not in order
   """
-  ncs_inp = iotbx.ncs.input(pdb_string=pdb_str_6)
+  ncs_inp = ncs.input(pdb_string=pdb_str_6)
   t = ncs_inp.ncs_to_asu_selection
   assert t.keys() == ['chain A or chain B']
   assert t.values() == [['chain C or chain D', 'chain E or chain F']]
@@ -561,7 +576,7 @@ ncs_group {
   copy_selection = chain D
 }
 """
-  ncs_inp = iotbx.ncs.input(
+  ncs_inp = ncs.input(
     pdb_string=pdb_str_6,
     ncs_phil_string=phil_str)
   expected = {'chain A': ['chain C'], 'chain B': ['chain D']}
@@ -573,7 +588,7 @@ def exercise_06(prefix="iotbx_ncs_exercise_06"):
   Two groups, different number of chain in each group.
   Two chains that are NOT ncs related
   """
-  ncs_inp = iotbx.ncs.input(pdb_string=pdb_str_7)
+  ncs_inp = ncs.input(pdb_string=pdb_str_7)
   t = ncs_inp.ncs_to_asu_selection
   assert t.keys() == ['chain D', 'chain A']
   assert t.values() == [['chain E'], ['chain B', 'chain C']]
@@ -585,7 +600,7 @@ def exercise_07(prefix="iotbx_ncs_exercise_07"):
   Test that minimal number of chains in master ncs are selected (not the
   minimal number of transformations)
   """
-  ncs_inp = iotbx.ncs.input(pdb_string=pdb_str_8)
+  ncs_inp = ncs.input(pdb_string=pdb_str_8)
   t = ncs_inp.ncs_to_asu_selection
   assert t.keys() == ['chain A']
   assert t.values() == \
@@ -597,7 +612,7 @@ def exercise_08(prefix="iotbx_ncs_exercise_08"):
   Test that minimal number of transformations in master ncs are selected
   (not the minimal number of chains)
   """
-  ncs_inp = iotbx.ncs.input(
+  ncs_inp = ncs.input(
     pdb_string=pdb_str_8,
     use_minimal_master_ncs=False)
   t = ncs_inp.ncs_to_asu_selection
@@ -607,7 +622,11 @@ def exercise_08(prefix="iotbx_ncs_exercise_08"):
       'chain G or chain H or chain I']]
 
 def exercise_09(prefix="iotbx_ncs_exercise_09"):
-  """ ??? """
+  """
+  Test minimal master NCS grouping
+  make sure it does not group together similar chains that can be grouped and
+  that NCS group and transforms created properly
+  """
   from mmtbx.ncs import ncs_search
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_8)
   ph = pdb_inp.construct_hierarchy()
@@ -635,6 +654,7 @@ def exercise_09(prefix="iotbx_ncs_exercise_09"):
   assert len(gr_obj.iselections)==len(gr_obj.copies)
   expected = [['A'], ['B'], ['C'], ['D'], ['E'], ['F'], ['G'], ['H'], ['I']]
   assert gr_obj.copies == expected
+  # make sure identity transform was entered as the first transform
   tr = gr_obj.transforms[0]
   assert tr.r.is_r3_identity_matrix()
   assert tr.t.is_col_zero()
@@ -688,18 +708,24 @@ ncs_group {
   copy_selection = chain 'Ad' and (resseq 1:4 )
 }
 """
-  ncs_inp = iotbx.ncs.input(pdb_string = pdb_str_9)
+  ncs_inp = ncs.input(pdb_string = pdb_str_9)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups)==1
   #
-  ncs_inp = iotbx.ncs.input(pdb_string = pdb_str_9, ncs_phil_string = phil_str)
+  ncs_inp = ncs.input(pdb_string = pdb_str_9, ncs_phil_string = phil_str)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups)==2
 
+def clean_temp_files(file_list):
+  """ delete files in the file_list """
+  for fn in file_list:
+    if os.path.isfile(fn): os.remove(fn)
+
 if (__name__ == "__main__"):
-  exercise_00()
-  exercise_01()
-  exercise_02()
+  debug = ('debug' in sys.argv[1:])
+  exercise_00(debug=debug)
+  exercise_01(debug=debug)
+  exercise_02(debug=debug)
   exercise_03()
   exercise_04()
   exercise_05()

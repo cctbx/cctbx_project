@@ -2,7 +2,7 @@ from __future__ import division
 from mmtbx.refinement.minimization_ncs_constraints import grads_one_ncs_to_asu
 from scitbx.array_family import flex
 import mmtbx.ncs.ncs_utils as nu
-import iotbx.ncs
+import iotbx.ncs_tmp as ncs
 import iotbx.pdb
 import unittest
 
@@ -13,7 +13,7 @@ class TestMinimizationFunctions(unittest.TestCase):
 
   def test_grads_one_ncs_to_asu(self):
     # print sys._getframe().f_code.co_name
-    ncs_inp = iotbx.ncs.input(pdb_string=test_pdb_1)
+    ncs_inp = ncs.input(pdb_string=test_pdb_1)
     pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_1)
     ph = pdb_inp.construct_hierarchy()
     xrs =  pdb_inp.xray_structure_simple()
