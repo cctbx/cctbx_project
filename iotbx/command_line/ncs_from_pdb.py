@@ -84,10 +84,10 @@ def ncs_from_pdb(args):
         print "\n*** Show in SPEC format ***"
         ncs_obj.show(format='spec')
         print "*** Show cctbx summery ***"
-        ncs_obj.show()
-        print "*** Show format_all_for_resolve ***"
-        x = ncs_obj.get_ncs_info_as_spec()
-        print x.format_all_for_resolve()
+        ncs_obj.show(verbose=True)
+        # print "*** Show format_all_for_resolve ***"
+        # x = ncs_obj.get_ncs_info_as_spec()
+        # print x.format_all_for_resolve()
 
         print '\nTime to process: {0:.2f} sec'.format(time.time()-t0)
 
