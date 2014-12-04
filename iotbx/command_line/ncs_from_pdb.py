@@ -82,9 +82,13 @@ def ncs_from_pdb(args):
             chain_similarity_limit=params.chain_similarity_limit)
         print '\n\nFile name: {}'.format(params.file_name)
         print "\n*** Show in SPEC format ***"
-        ncs_obj.show(format='spec')
-        print "*** Show cctbx summery ***"
-        ncs_obj.show(verbose=True)
+        # ncs_obj.show(format='spec')
+        # print "*** Show cctbx summery ***"
+        # ncs_obj.show(verbose=True)
+        ncs_obj.show()
+        #
+        print "\n*** Show in SPEC format ***"
+        ncs_obj.get_ncs_info_as_spec(write=True)
         # print "*** Show format_all_for_resolve ***"
         # x = ncs_obj.get_ncs_info_as_spec()
         # print x.format_all_for_resolve()
