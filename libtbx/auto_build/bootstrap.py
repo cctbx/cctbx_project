@@ -5,6 +5,9 @@ import subprocess
 import optparse
 import getpass
 
+# To download this file:
+# svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
+
 # Mock commands to run standalone, without buildbot.
 class ShellCommand(object):
   def __init__(self, **kwargs):
@@ -107,6 +110,7 @@ CODEBASES = {
   # Dev, debugging
   'phenix_dev':         'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_dev/trunk',
   'cxi_xdr_xes':        'svn+ssh://%(cciuser)s@cci.lbl.gov/cxi_xdr_xes/trunk',
+  'buildbot':           'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk',
   # Duke
   'reduce':            'https://quiddity.biochem.duke.edu/svn/reduce/trunk',
   'probe':             'https://quiddity.biochem.duke.edu/svn/probe/trunk',
@@ -338,7 +342,6 @@ class CCIBuilder(object):
         self.python_system,
         self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build', 'install_base_packages.py'),
         '--python-shared',
-        '--sphinx',
         '--skip-if-exists',
         '--%s'%self.BASE_PACKAGES
       ], 
@@ -477,7 +480,19 @@ class PHENIXBuilder(CCTBXBaseBuilder):
     'suitename'
   ]
   HOT_EXTRA = ['phaser', 'phaser_regression']
-  LIBTBX_EXTRA = ['phenix', 'phenix_regression', 'phenix_examples', 'solve_resolve', 'reel', 'phaser', 'phaser_regression', 'labelit']  
+  LIBTBX_EXTRA = [
+    'phenix', 
+    'phenix_regression', 
+    'phenix_examples', 
+    'solve_resolve', 
+    'reel', 
+    'phaser', 
+    'phaser_regression', 
+    'labelit', 
+    'elbow', 
+    'reduce', 
+    'probe'
+  ]  
   def add_tests(self):
     # Windows convenience hack.
     if 'windows' in self.platform:
