@@ -25,6 +25,7 @@ import shutil
 import time
 import os
 import sys
+import glob
 # local imports
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(op.dirname(__file__))))
@@ -61,6 +62,7 @@ def run (args, out=sys.stdout) :
   pkg_dir = op.basename(target_dir)
   build_dir = op.join(target_dir, "build")
   base_dir = op.join(target_dir, "base")
+
   # XXX a bit of a hack - if 'modules' subdirectory exists, it is assumed that
   # all source/data packages residue there, otherwise they must be at the top
   # level
@@ -76,6 +78,7 @@ def run (args, out=sys.stdout) :
   print >> out, "Setting rpath in shared libraries..."
   rpath.run([build_dir])
   sys.stdout = stdout_old
+
   # create temp dir
   tmp_dir = op.join(options.tmp_dir, "%s_tmp" % pkg_dir)
   assert op.isdir(build_dir), build_dir
@@ -83,15 +86,19 @@ def run (args, out=sys.stdout) :
     shutil.rmtree(tmp_dir)
   os.mkdir(tmp_dir)
   os.chdir(tmp_dir)
+  
   # base and build/lib directories
   print >> out, "Copying dependencies..."
   copy_tree(op.join(target_dir, "base"), op.join(tmp_dir, "base"))
+
   print >> out, "Copying shared libraries..."
   tmp_build_dir = op.join(tmp_dir, "build")
   os.makedirs(tmp_build_dir)
+
   # save mtype information (for hypothetical future update mechanism)
   open(op.join(tmp_build_dir, "MTYPE"), "w").write(options.mtype)
   copy_tree(op.join(build_dir, "lib"), op.join(tmp_build_dir, "lib"))
+
   # copy over non-compiled files
   print >> out, "Copying base modules..."
   for file_name in os.listdir(modules_dir) :
@@ -102,6 +109,7 @@ def run (args, out=sys.stdout) :
       print >> out, "  copying %s..." % file_name
       copy_tree(full_path, op.join(tmp_dir, file_name))
       call("chmod -R a+rX %s" % op.join(tmp_dir, file_name))
+
   # remove unnecessary base directories/files
   for dir_name in [
       "base/bin/gtk-demo",
@@ -115,23 +123,23 @@ def run (args, out=sys.stdout) :
     full_path = op.join(tmp_dir, dir_name)
     if op.exists(full_path) :
       shutil.rmtree(full_path)
+
   site_pkg_dir = op.join(tmp_dir, "base/lib/python2.7/site-packages")
   find_and_delete_files(tmp_dir, file_name="tests")
   if sys.platform.startswith("linux") :
     strip_libs(op.join(tmp_dir, "base", "lib"), log=out)
+
   # XXX what about base/include?
+
   # copy over build executable directories
   print >> out, "Copying standalone executables..."
-  for file_name in os.listdir(build_dir) :
-    if file_name.startswith(".") : continue
-    full_path = op.join(build_dir)
-    if op.isdir(full_path) :
-      module_name = file_name
-      for file_name in os.listdir(full_path) :
-        if (file_name == "exe") :
-          copy_tree(op.join(full_path, file_name),
-                    op.join(tmp_build_dir, module_name, file_name))
+  # for j in [i for i in os.listdir(build_dir) if os.path.isdir(os.path.join(build_dir,i,"exe"))]:
+  for j in [i for i in os.listdir(build_dir) if os.path.isdir(os.path.join(build_dir, i, "exe"))]:
+    print >> out, "->", op.join(build_dir, j, "exe")
+    copy_tree(op.join(build_dir, j, "exe"), op.join(tmp_build_dir, j, "exe"))
+
   # delete unnecessary files
+  print >> out, "Deleting unnecessary files."
   find_and_delete_files(tmp_dir, file_ext=".pyc")
   find_and_delete_files(tmp_dir, file_ext=".o")
   find_and_delete_files(tmp_dir, file_ext=".pyo")
@@ -144,6 +152,7 @@ def run (args, out=sys.stdout) :
     find_and_delete_files(tmp_dir, file_ext=".cc")
     find_and_delete_files(tmp_dir, file_ext=".c")
     find_and_delete_files(tmp_dir, file_ext=".h")
+    
   # TODO strip objects?
   os.chdir(tmp_dir)
   call("chmod -R a+rX %s" % op.join(tmp_dir, "base"))
@@ -154,20 +163,25 @@ def run (args, out=sys.stdout) :
   call("tar -czf %(tarfile)s base" %
     {"tarfile":base_tarfile}, log=out)
   shutil.rmtree("base")
+
   assert op.isfile(base_tarfile)
   if (options.dest is not None) :
     shutil.move(base_tarfile, options.dest)
     base_tarfile = op.join(options.dest, op.basename(base_tarfile))
   print >> out, "  created base bundle %s" % base_tarfile
+
   # create the product bundle
   build_tarfile = "../build-%(version)s-%(mtype)s.tar.gz" % \
     {"version":options.version, "mtype":options.mtype}
+
   modules_tarfile = "../modules-%(version)s-%(mtype)s.tar.gz" % \
     {"version":options.version, "mtype":options.mtype}
+
   call("tar -czf %(tarfile)s build" % {"tarfile":build_tarfile}, log=out)
-  assert op.isfile(build_tarfile)
   shutil.rmtree("build")
   call("tar -czf %(tarfile)s ." % {"tarfile":modules_tarfile}, log=out)
+
+  assert op.isfile(build_tarfile)
   assert op.isfile(modules_tarfile)
   if (options.dest is not None) :
     shutil.move(build_tarfile, options.dest)
