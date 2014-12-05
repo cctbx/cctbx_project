@@ -24,16 +24,24 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs_type const& i_seqs_,
       i_seqs_type const& j_seqs_,
       double weight_,
-      double target_angle_deg_ = 0)
+      double target_angle_deg_ = 0,
+      double slack_ = 0,
+      double limit_ = -1,
+      bool top_out_ = false)
     :
       i_seqs(i_seqs_),
       j_seqs(j_seqs_),
       weight(weight_),
-      target_angle_deg(target_angle_deg_)
+      target_angle_deg(target_angle_deg_),
+      slack(slack_),
+      limit(limit_),
+      top_out(top_out_)
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
       CCTBX_ASSERT(weight > 0);
+      CCTBX_ASSERT(slack >= 0);
+      CCTBX_ASSERT(slack <= 90);
     }
 
     //! Constructor.
@@ -42,17 +50,25 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs_type const& j_seqs_,
       optional_container<af::shared<sgtbx::rt_mx> > const& sym_ops_,
       double weight_,
-      double target_angle_deg_ = 0)
+      double target_angle_deg_ = 0,
+      double slack_ = 0,
+      double limit_ = -1,
+      bool top_out_ = false)
     :
       i_seqs(i_seqs_),
       j_seqs(j_seqs_),
       sym_ops(sym_ops_),
       weight(weight_),
-      target_angle_deg(target_angle_deg_)
+      target_angle_deg(target_angle_deg_),
+      slack(slack_),
+      limit(limit_),
+      top_out(top_out_)
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
       CCTBX_ASSERT(weight > 0);
+      CCTBX_ASSERT(slack >= 0);
+      CCTBX_ASSERT(slack <= 90);
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
       }
@@ -62,17 +78,25 @@ namespace cctbx { namespace geometry_restraints {
     parallelity_proxy(
       i_seqs_type const& i_seqs_,
       i_seqs_type const& j_seqs_,
-      parallelity_proxy const& proxy)
+      parallelity_proxy const& proxy,
+      double slack_ = 0,
+      double limit_ = -1,
+      bool top_out_ = false)
     :
       i_seqs(i_seqs_),
       j_seqs(j_seqs_),
       sym_ops(proxy.sym_ops),
       weight(proxy.weight),
-      target_angle_deg(proxy.target_angle_deg)
+      target_angle_deg(proxy.target_angle_deg),
+      slack(slack_),
+      limit(limit_),
+      top_out(top_out_)
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
       CCTBX_ASSERT(weight > 0);
+      CCTBX_ASSERT(slack >= 0);
+      CCTBX_ASSERT(slack <= 90);
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
       }
@@ -83,7 +107,7 @@ namespace cctbx { namespace geometry_restraints {
     scale_weight(double factor) const
     {
       return parallelity_proxy(
-        i_seqs, j_seqs, sym_ops, weight*factor, target_angle_deg);
+        i_seqs, j_seqs, sym_ops, weight*factor, target_angle_deg, slack, limit,top_out);
     }
 
     //! Sorts i_seqs and j_seqs such that, e.g. i_seq[0] < i_seq[2].
@@ -120,11 +144,14 @@ namespace cctbx { namespace geometry_restraints {
           j_seqs_result,
           optional_container<af::shared<sgtbx::rt_mx> >(sym_ops_result),
           weight,
-          target_angle_deg);
+          target_angle_deg,
+          slack,
+          limit,
+          top_out);
       }
       else {
         return parallelity_proxy(
-          i_seqs_result,j_seqs_result, weight, target_angle_deg);
+          i_seqs_result,j_seqs_result, weight, target_angle_deg, slack, limit, top_out);
       }
     }
 
@@ -137,6 +164,11 @@ namespace cctbx { namespace geometry_restraints {
     double weight;
     //! Target angle in degrees
     double target_angle_deg;
+    double slack;
+    //! Parameter l in top-out potential
+    double limit;
+    //! Use top-out potential instead of harmonic
+    bool top_out;
   };
 
 
@@ -482,71 +514,101 @@ namespace cctbx { namespace geometry_restraints {
         i_n = i_N.normalize();
         j_n = j_N.normalize();
 
-        //delta = 1 - i_n * j_n;
         double n1n2 = i_n * j_n;
         double cos_alpha_0 = cos(scitbx::deg_as_rad(target_angle_deg));
-        delta = pow((cos_alpha_0 - n1n2),2);
-
-        //==================================
-        // gradients
-        //==================================
-        scitbx::vec3<double> dFparallelity__dn_1 = -j_n*2.0*(cos_alpha_0-n1n2)/weight/weight;
-        scitbx::vec3<double> dFparallelity__dn_2 = -i_n*2.0*(cos_alpha_0-n1n2)/weight/weight;
-        scitbx::vec3<double> dF__dN_1, dF__dN_2;
-        dF__dN_1 = derive_dFparallelity__dN(dFparallelity__dn_1, i_N);
-        dF__dN_2 = derive_dFparallelity__dN(dFparallelity__dn_2, j_N);
-        scitbx::vec3<double> i_dF__dt_1, i_dF__dt_2, j_dF__dt_1, j_dF__dt_2;
-        derive_dFparallelity__dt(
-            i_dF__dt_1, i_dF__dt_2, dF__dN_1, i_t_1, i_t_2);
-        derive_dFparallelity__dt(
-            j_dF__dt_1, j_dF__dt_2, dF__dN_2, j_t_1, j_t_2);
-        scitbx::mat3<double> i_dF__dS, j_dF__dS;
-        double i_dF__dlambda_plus, j_dF__dlambda_plus;
-        i_dF__dlambda_plus = derive_dF__dS__dlambda_plus(
-                                  i_dF__dS, i_dF__dt_1, i_dF__dt_2, i_variant);
-        j_dF__dlambda_plus = derive_dF__dS__dlambda_plus(
-                                  j_dF__dS, j_dF__dt_1, j_dF__dt_2, j_variant);
-        double i_dF__da_S = -i_dF__dlambda_plus/3.0;
-        double j_dF__da_S = -j_dF__dlambda_plus/3.0;
-        double i_dF__dg_S = i_dF__dlambda_plus*pow(3*i_g_S,-0.5)*i_tau_S;
-        double j_dF__dg_S = j_dF__dlambda_plus*pow(3*j_g_S,-0.5)*j_tau_S;
-        double i_dF__dtau_S = i_dF__dlambda_plus*2*pow(i_g_S/3.0,0.5);
-        double j_dF__dtau_S = j_dF__dlambda_plus*2*pow(j_g_S/3.0,0.5);
-        double i_dF_dksi_S = i_dF__dtau_S/(12.0*i_tau_S*i_tau_S-3.0);
-        double j_dF_dksi_S = j_dF__dtau_S/(12.0*j_tau_S*j_tau_S-3.0);
-        //p.21
-        double i_DF__Dg_S = i_dF_dksi_S*i_h_S/4.0*pow(i_g_S/3.0,-2.5)+
-                            i_dF__dg_S;
-        double j_DF__Dg_S = j_dF_dksi_S*j_h_S/4.0*pow(j_g_S/3.0,-2.5)+
-                            j_dF__dg_S;
-        double i_dF__dh_S = -i_dF_dksi_S/2.0*pow(i_g_S/3.0, -1.5);
-        double j_dF__dh_S = -j_dF_dksi_S/2.0*pow(j_g_S/3.0, -1.5);
-        //p.22
-        double i_DF__Dc_S =  i_dF__dh_S;
-        double j_DF__Dc_S =  j_dF__dh_S;
-        double i_DF__Db_S = -i_dF__dh_S/3.0*i_a_S - i_DF__Dg_S;
-        double j_DF__Db_S = -j_dF__dh_S/3.0*j_a_S - j_DF__Dg_S;
-        double i_DF__Da_S = i_dF__dh_S*(2.0/9.0*i_a_S*i_a_S-i_b_S/3.0) +
-                                2.0/3.0*i_a_S*i_DF__Dg_S + i_dF__da_S;
-        double j_DF__Da_S = j_dF__dh_S*(2.0/9.0*j_a_S*j_a_S-j_b_S/3.0) +
-                                2.0/3.0*j_a_S*j_DF__Dg_S + j_dF__da_S;
-        //p.23
-        scitbx::mat3<double> i_DF__DS, j_DF__DS;
-        i_DF__DS = derive_DF__DS(
-            i_DF__Da_S, i_DF__Db_S, i_DF__Dc_S, i_dF__dS, i_S_);
-        j_DF__DS = derive_DF__DS(
-            j_DF__Da_S, j_DF__Db_S, j_DF__Dc_S, j_dF__dS, j_S_);
-        af::shared<scitbx::vec3<double> > i_dF__dcentered, j_dF__dcentered;
-        i_dF__dcentered.reserve(i_sites_ref.size());
-        j_dF__dcentered.reserve(j_sites_ref.size());
-        derive_dF__dcentered(
-            i_dF__dcentered, i_DF__DS, i_sites_ref, i_center_of_mass_);
-        derive_dF__dcentered(
-            j_dF__dcentered, j_DF__DS, j_sites_ref, j_center_of_mass_);
+        delta = cos_alpha_0 - n1n2;
+        double pr_slack = 1 - cos(scitbx::deg_as_rad(slack));
+        if (fabs(delta) <= pr_slack) {
+          delta_slack = 0;
+        }
+        else if (delta > pr_slack) {
+          delta_slack = delta - pr_slack;
+        }
+        else if (delta < pr_slack) {
+          delta_slack = delta+pr_slack;
+        }
         i_dF__doriginal.reserve(i_sites_ref.size());
         j_dF__doriginal.reserve(j_sites_ref.size());
-        derive_dF__doriginal(i_dF__doriginal, i_dF__dcentered);
-        derive_dF__doriginal(j_dF__doriginal, j_dF__dcentered);
+        if (fabs(delta_slack) < 1.e-100) {
+          // No need to calculate gradients
+          scitbx::vec3<double> zero_vector(0,0,0);
+          for(std::size_t i_site=0; i_site<i_sites_ref.size();i_site++) {
+            i_dF__doriginal.push_back(zero_vector);
+          }
+          for(std::size_t i_site=0; i_site<j_sites_ref.size();i_site++) {
+            j_dF__doriginal.push_back(zero_vector);
+          }
+        }
+        else {
+
+          //==================================
+          // gradients
+          //==================================
+          scitbx::vec3<double> dFparallelity__dn_1, dFparallelity__dn_2;
+          double w = 1/weight/weight;
+          if (top_out) {
+            double l2 = limit * limit;
+            dFparallelity__dn_1 = -j_n*2.0*w*delta_slack*std::exp(-delta_slack*delta_slack/l2);
+            dFparallelity__dn_2 = -i_n*2.0*w*delta_slack*std::exp(-delta_slack*delta_slack/l2);
+          }
+          else {
+            dFparallelity__dn_1 = -j_n*2.0*delta_slack/weight/weight;
+            dFparallelity__dn_2 = -i_n*2.0*delta_slack/weight/weight;
+          }
+          scitbx::vec3<double> dF__dN_1, dF__dN_2;
+          dF__dN_1 = derive_dFparallelity__dN(dFparallelity__dn_1, i_N);
+          dF__dN_2 = derive_dFparallelity__dN(dFparallelity__dn_2, j_N);
+          scitbx::vec3<double> i_dF__dt_1, i_dF__dt_2, j_dF__dt_1, j_dF__dt_2;
+          derive_dFparallelity__dt(
+              i_dF__dt_1, i_dF__dt_2, dF__dN_1, i_t_1, i_t_2);
+          derive_dFparallelity__dt(
+              j_dF__dt_1, j_dF__dt_2, dF__dN_2, j_t_1, j_t_2);
+          scitbx::mat3<double> i_dF__dS, j_dF__dS;
+          double i_dF__dlambda_plus, j_dF__dlambda_plus;
+          i_dF__dlambda_plus = derive_dF__dS__dlambda_plus(
+                                    i_dF__dS, i_dF__dt_1, i_dF__dt_2, i_variant);
+          j_dF__dlambda_plus = derive_dF__dS__dlambda_plus(
+                                    j_dF__dS, j_dF__dt_1, j_dF__dt_2, j_variant);
+          double i_dF__da_S = -i_dF__dlambda_plus/3.0;
+          double j_dF__da_S = -j_dF__dlambda_plus/3.0;
+          double i_dF__dg_S = i_dF__dlambda_plus*pow(3*i_g_S,-0.5)*i_tau_S;
+          double j_dF__dg_S = j_dF__dlambda_plus*pow(3*j_g_S,-0.5)*j_tau_S;
+          double i_dF__dtau_S = i_dF__dlambda_plus*2*pow(i_g_S/3.0,0.5);
+          double j_dF__dtau_S = j_dF__dlambda_plus*2*pow(j_g_S/3.0,0.5);
+          double i_dF_dksi_S = i_dF__dtau_S/(12.0*i_tau_S*i_tau_S-3.0);
+          double j_dF_dksi_S = j_dF__dtau_S/(12.0*j_tau_S*j_tau_S-3.0);
+          //p.21
+          double i_DF__Dg_S = i_dF_dksi_S*i_h_S/4.0*pow(i_g_S/3.0,-2.5)+
+                              i_dF__dg_S;
+          double j_DF__Dg_S = j_dF_dksi_S*j_h_S/4.0*pow(j_g_S/3.0,-2.5)+
+                              j_dF__dg_S;
+          double i_dF__dh_S = -i_dF_dksi_S/2.0*pow(i_g_S/3.0, -1.5);
+          double j_dF__dh_S = -j_dF_dksi_S/2.0*pow(j_g_S/3.0, -1.5);
+          //p.22
+          double i_DF__Dc_S =  i_dF__dh_S;
+          double j_DF__Dc_S =  j_dF__dh_S;
+          double i_DF__Db_S = -i_dF__dh_S/3.0*i_a_S - i_DF__Dg_S;
+          double j_DF__Db_S = -j_dF__dh_S/3.0*j_a_S - j_DF__Dg_S;
+          double i_DF__Da_S = i_dF__dh_S*(2.0/9.0*i_a_S*i_a_S-i_b_S/3.0) +
+                                  2.0/3.0*i_a_S*i_DF__Dg_S + i_dF__da_S;
+          double j_DF__Da_S = j_dF__dh_S*(2.0/9.0*j_a_S*j_a_S-j_b_S/3.0) +
+                                  2.0/3.0*j_a_S*j_DF__Dg_S + j_dF__da_S;
+          //p.23
+          scitbx::mat3<double> i_DF__DS, j_DF__DS;
+          i_DF__DS = derive_DF__DS(
+              i_DF__Da_S, i_DF__Db_S, i_DF__Dc_S, i_dF__dS, i_S_);
+          j_DF__DS = derive_DF__DS(
+              j_DF__Da_S, j_DF__Db_S, j_DF__Dc_S, j_dF__dS, j_S_);
+          af::shared<scitbx::vec3<double> > i_dF__dcentered, j_dF__dcentered;
+          i_dF__dcentered.reserve(i_sites_ref.size());
+          j_dF__dcentered.reserve(j_sites_ref.size());
+          derive_dF__dcentered(
+              i_dF__dcentered, i_DF__DS, i_sites_ref, i_center_of_mass_);
+          derive_dF__dcentered(
+              j_dF__dcentered, j_DF__DS, j_sites_ref, j_center_of_mass_);
+          derive_dF__doriginal(i_dF__doriginal, i_dF__dcentered);
+          derive_dF__doriginal(j_dF__doriginal, j_dF__dcentered);
+        }
       }
 
     public:
@@ -557,8 +619,13 @@ namespace cctbx { namespace geometry_restraints {
       double weight;
       //! Target angle in degrees
       double target_angle_deg;
-      //! Delta.
+      //! Difference target_angle - model_angle
       double delta;
+      //! sign(delta) * max(0, (abs(delta) - slack))
+      double delta_slack;
+      double slack;
+      double limit;
+      bool top_out;
 
       //! Default constructor. Some data members are not initialized!
       parallelity() {}
@@ -568,12 +635,18 @@ namespace cctbx { namespace geometry_restraints {
         af::shared<scitbx::vec3<double> > const& i_sites_,
         af::shared<scitbx::vec3<double> > const& j_sites_,
         double weight_,
-        double target_angle_deg_)
+        double target_angle_deg_,
+        double slack_ = 0,
+        double limit_ = -1,
+        bool top_out_ = false)
       :
         i_sites(i_sites_),
         j_sites(j_sites_),
         weight(weight_),
-        target_angle_deg(target_angle_deg_)
+        target_angle_deg(target_angle_deg_),
+        slack(slack_),
+        limit(limit_),
+        top_out(top_out_)
       {
         CCTBX_ASSERT(i_sites.size() > 2);
         CCTBX_ASSERT(j_sites.size() > 2);
@@ -588,7 +661,10 @@ namespace cctbx { namespace geometry_restraints {
         parallelity_proxy const& proxy)
       :
         weight(proxy.weight),
-        target_angle_deg(proxy.target_angle_deg)
+        target_angle_deg(proxy.target_angle_deg),
+        slack(proxy.slack),
+        limit(proxy.limit),
+        top_out(proxy.top_out)
       {
         af::const_ref<std::size_t> i_seqs_ref = proxy.i_seqs.const_ref();
         af::const_ref<std::size_t> j_seqs_ref = proxy.j_seqs.const_ref();
@@ -617,7 +693,10 @@ namespace cctbx { namespace geometry_restraints {
         parallelity_proxy const& proxy)
       :
         weight(proxy.weight),
-        target_angle_deg(proxy.target_angle_deg)
+        target_angle_deg(proxy.target_angle_deg),
+        slack(proxy.slack),
+        limit(proxy.limit),
+        top_out(proxy.top_out)
       {
         af::const_ref<std::size_t> i_seqs_ref = proxy.i_seqs.const_ref();
         af::const_ref<std::size_t> j_seqs_ref = proxy.j_seqs.const_ref();
@@ -655,7 +734,12 @@ namespace cctbx { namespace geometry_restraints {
       double
       residual() const
       {
-        return pow((cos(scitbx::deg_as_rad(target_angle_deg)) - i_n * j_n),2)/weight/weight;
+        if (top_out) {
+          double l2 = limit * limit;
+          return l2/weight/weight*(1-std::exp(-delta_slack*delta_slack/l2));
+        }
+        else return pow(delta_slack,2)/weight/weight;
+          // return pow((cos(scitbx::deg_as_rad(target_angle_deg)) - i_n * j_n),2)/weight/weight;
       }
 
       //! Gradients with respect to the sites.
