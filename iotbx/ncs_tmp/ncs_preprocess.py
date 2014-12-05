@@ -239,6 +239,8 @@ class ncs_group_object(object):
         spec_ncs_groups=spec_ncs_groups,
         quiet=quiet)
     elif pdb_hierarchy_inp:
+      # check and rename chain with the blank name
+      rename_blank_chain_name(pdb_hierarchy_inp)
       self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
     else:
       raise Sorry('Please provide one of the supported input')
@@ -974,11 +976,7 @@ class ncs_group_object(object):
     # total_chains_number = len(i_transforms)*len(unique_chain_names)
     total_chains_number = len(transform_assignment)
     # start naming chains with a single letter
-    chr_list1 = list(set(string.ascii_uppercase) - set(unique_chain_names))
-    chr_list2 = list(set(string.ascii_lowercase) - set(unique_chain_names))
-    chr_list1.sort()
-    chr_list2.sort()
-    new_names_list = chr_list1 + chr_list2
+    new_names_list = make_chain_names_list(unique_chain_names)
     # check if we need more chain names
     if len(new_names_list) < total_chains_number:
       n_names =  total_chains_number - len(new_names_list)
@@ -2007,6 +2005,43 @@ def insure_identity_is_in_transform_info(transform_info):
   ti.serial_number = t_sn
   ti.coordinates_present = t_cp
   return ti
+
+def make_chain_names_list(unique_chain_names):
+  """ make new chain names
+
+  Args:
+    unique_chain_names (list of str): a list of existing chain names
+
+  Returns:
+    (list of str): a list of potential new names
+    """
+  chr_list1 = list(set(string.ascii_uppercase) - set(unique_chain_names))
+  chr_list2 = list(set(string.ascii_lowercase) - set(unique_chain_names))
+  chr_list1.sort()
+  chr_list2.sort()
+  return chr_list1 + chr_list2
+
+def rename_blank_chain_name(pdb_hierarchy_inp):
+  """
+  when there is a blank chain name, rename it and mutate the
+  pdb_hierarchy_inp object
+  """
+  if hasattr(pdb_hierarchy_inp,'hierarchy'):
+    ph = pdb_hierarchy_inp.hierarchy
+  else:
+    ph = pdb_hierarchy_inp
+  model  = ph.models()[0]
+  existing_ch_ids = set()
+  for ch in model.chains():
+      existing_ch_ids.add(ch.id)
+  has_blank_name = ('' in existing_ch_ids)
+  has_blank_name |= (' ' in existing_ch_ids)
+  if has_blank_name:
+    new_names_list = make_chain_names_list(existing_ch_ids)
+    new_ch_id = new_names_list[0]
+    for ch in model.chains():
+      if ch.id in ['', ' ']:
+        ch.id = new_ch_id
 
 class NCS_copy():
 
