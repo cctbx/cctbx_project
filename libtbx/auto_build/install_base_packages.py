@@ -153,7 +153,7 @@ class installer (object) :
         ]
     # Additional recommended dependencies.
     if options.build_all:
-      packages += ['sphinx', 'biopython', 'pyopengl', 'misc']    
+      packages += ['biopython', 'pyopengl', 'misc'] # 'sphinx', 
     # LABELIT
     if options.build_all or options.labelit:
       packages += ['imaging', 'reportlab']
@@ -384,13 +384,13 @@ Installation of Python packages may fail.
       'gtk',
       'fonts',
       'wxpython',
-      'sphinx',
       'ipython',
       'pyopengl',
       'imaging',
       'reportlab',
       'py2app',
       'misc',
+      'sphinx',
     ]
     packages_order = []
     for i in order:
