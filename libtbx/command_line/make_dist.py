@@ -182,10 +182,10 @@ def run (args) :
     print "Uploading %s -> %s"%(installer_tar, options.destination)
     # Create directory...
     try:
-      call("ssh %s mkdir %s"%(options.destination.split(":")[0], options.destination.split(":")[1]))
+      call("ssh %s mkdir --mode=0755 %s"%(options.destination.split(":")[0], options.destination.split(":")[1]))
     except Exception, e:
       pass
-    call("rsync -avz %s %s" % (installer_tar, options.destination))
+    call("rsync --chmod=a+rx -avz %s %s" % (installer_tar, options.destination))
 
   #############################
   # Mac .pkg creation
@@ -251,7 +251,7 @@ def run (args) :
         options.version,suffix)
       if (options.destination is not None) :
         print "Uploading %s -> %s"%(installer_pkg, options.destination)
-        call("rsync -avz %s %s" % (installer_pkg, options.destination))
+        call("rsync --chmod=a+rx -avz %s %s" % (installer_pkg, options.destination))
 
   return 0
 
