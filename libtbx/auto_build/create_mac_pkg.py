@@ -176,6 +176,10 @@ our website).""" % { "package" : options.package_name,
         "org"      : options.organization,
         "misc_files" : "\n".join(misc_files) })
   distfile.close()
+  
+  print >> out, "Fixing package permissions:", pkg_root
+  call(['chmod','-R','0755',pkg_root])
+
   # Run packaging commands
   pkg_args = [
     "pkgbuild",
