@@ -69,10 +69,10 @@ HOT = {
   'clipper':            '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/clipper',
   'docutils':           '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/docutils',
   # Duke
-  # 'reduce':             '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/reduce',
-  # 'probe':              '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/probe',
-  # 'king':               '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/king',
-  # 'suitename':          '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/suitename',
+  'reduce':             '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/reduce',
+  'probe':              '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/probe',
+  'king':               '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/king',
+  'suitename':          '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/suitename',
   # tar.gz
   'scons':              '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/hot_test/scons',
   'boost':              '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/hot_test/boost',
@@ -477,12 +477,15 @@ class PHENIXBuilder(CCTBXBaseBuilder):
     'opt_resources', 
     'muscle', 
     'labelit',
+  ]
+  HOT_EXTRA = [
+    'phaser', 
+    'phaser_regression',
     'reduce', 
     'probe', 
     'king', 
     'suitename'
   ]
-  HOT_EXTRA = ['phaser', 'phaser_regression']
   LIBTBX_EXTRA = [
     'phenix', 
     'phenix_regression', 
