@@ -28,11 +28,17 @@ namespace {
           af::shared<std::size_t> const&,
           af::shared<std::size_t> const&,
           double,
-          double >((
+          double,
+          double,
+          double,
+          bool >((
             arg("i_seqs"),
             arg("j_seqs"),
             arg("weight"),
-            arg("target_angle_deg")=0)))
+            arg("target_angle_deg")=0,
+            arg("slack")=0,
+            arg("limit")=-1,
+            arg("top_out")=false)))
         .def("scale_weight", &w_t::scale_weight, (arg("factor")))
         .def("sort_ij_seqs", &w_t::sort_ij_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
@@ -40,6 +46,9 @@ namespace {
         .add_property("weight", make_getter(&w_t::weight, rbv()))
         .add_property("target_angle_deg",
             make_getter(&w_t::target_angle_deg, rbv()))
+        .add_property("slack", make_getter(&w_t::slack, rbv()))
+        .add_property("limit", make_getter(&w_t::limit, rbv()))
+        .add_property("top_out", make_getter(&w_t::top_out, rbv()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
       ;
       {
@@ -79,11 +88,17 @@ namespace {
           af::shared<scitbx::vec3<double> > const&,
           af::shared<scitbx::vec3<double> > const&,
           double,
-          double >((
+          double,
+          double,
+          double,
+          bool >((
               arg("i_sites"),
               arg("j_sites"),
               arg("weight"),
-              arg("target_angle_deg")=0)))
+              arg("target_angle_deg")=0,
+              arg("slack")=0,
+              arg("limit")=-1,
+              arg("top_out")=false)))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   parallelity_proxy const&>(
           (arg("sites_cart"), arg("proxy"))))
@@ -96,6 +111,9 @@ namespace {
         .add_property("weight", make_getter(&w_t::weight, rbv()))
         .add_property("target_angle_deg",
             make_getter(&w_t::target_angle_deg, rbv()))
+        .add_property("slack", make_getter(&w_t::slack, rbv()))
+        .add_property("limit", make_getter(&w_t::limit, rbv()))
+        .add_property("top_out", make_getter(&w_t::top_out, rbv()))
         .add_property("delta", make_getter(&w_t::delta, rbv()))
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
