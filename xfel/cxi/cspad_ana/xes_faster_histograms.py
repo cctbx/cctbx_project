@@ -233,10 +233,13 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
     #print list(free_x)
     slots = histogram.slots().as_double()
     free_y = slots[low_idx:high_idx]
-    #print list(free_y)
-    #print "self.estimated_gain", self.estimated_gain
-    zero_mean = 0.
+
+    # zero_mean = 0. # originally intended mean=0
+    maxidx = flex.max_index(free_y) # but if dark subtraction (pedstal correction) is off
+    zero_mean = free_x[maxidx] # use this non-zero maximum instead
+
     zero_amplitude = flex.max(free_y)
+    assert 1./zero_amplitude #guard against division by zero
     total_population = flex.sum(free_y)
     zero_sigma = self.estimated_gain / GAIN_TO_SIGMA
     one_amplitude = 0.001
