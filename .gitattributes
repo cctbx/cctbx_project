@@ -2021,6 +2021,7 @@ mmtbx/scaling/cc_ano_data.dat -text
 mmtbx/scaling/cc_anom_from_cc_anom_star.dat -text
 mmtbx/scaling/cc_exptl_data.dat -text
 mmtbx/scaling/ha_data.dat -text
+mmtbx/scaling/mean_f_rms_f.py -text
 mmtbx/scaling/percent_solved_vs_signal.dat -text
 mmtbx/scaling/plan_sad_experiment.py -text
 mmtbx/scaling/relative_wilson.py -text
@@ -2029,6 +2030,7 @@ mmtbx/scaling/ta_alpha_beta_calc.py svneol=native#text/x-python
 mmtbx/scaling/tst_absences.py svneol=native#text/x-python
 mmtbx/scaling/tst_bayesian_estimator.py -text
 mmtbx/scaling/tst_massage_data.py -text
+mmtbx/scaling/tst_mean_f_rms_f.py -text
 mmtbx/scaling/tst_plan_sad_experiment.py -text
 mmtbx/scaling/tst_xtriage.py svneol=native#text/x-python
 mmtbx/scaling/tst_xtriage_twin_analyses.py -text
