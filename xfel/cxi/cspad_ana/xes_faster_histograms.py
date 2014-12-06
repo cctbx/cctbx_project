@@ -28,6 +28,18 @@ from scitbx.math import curve_fitting
 
 from xfel.cxi.cspad_ana.xes_histograms import master_phil_str
 
+master_phil_str = master_phil_str + """
+xes {
+  fudge_factor {
+    gain_to_sigma = 6.75
+      .type = float
+      .help = On the assumption that one-mean is zero_mean + zero_sigma * gain_to_sigma
+      .help = with gain_to_sigma being a constant for the pixel array detector.
+      .help = approx 6.75 for LB67 r0100, 6.00 for LG36 r0025
+  }
+}
+"""
+
 def run(args):
   processed = iotbx.phil.process_command_line(
     args=args, master_string=master_phil_str)
@@ -49,7 +61,7 @@ def run(args):
   if len(hist_d.keys())==2:
     hist_d = hist_d['histogram']
   pixel_histograms = faster_methods_for_pixel_histograms(
-    hist_d, estimated_gain=estimated_gain)
+    hist_d, work_params)
 
   result = xes_from_histograms(
     pixel_histograms, output_dirname=output_dirname,
@@ -166,17 +178,22 @@ class xes_from_histograms(object):
       output_dirname=output_dirname, run=run)
     self.spectrum = (plot_x, plot_y)
     self.spectrum_focus = spectrum_focus
-
     xes_finalise.output_matlab_form(spectrum_focus, "%s/sum%s.m" %(output_dirname,runstr))
     print output_dirname
 
 class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms):
+
+  def __init__(self,hist_dict,work_params):
+    self.work_params = work_params
+    super(faster_methods_for_pixel_histograms,self
+      ).__init__(hist_dict,work_params.estimated_gain)
 
   def plot_combo(self, pixel, gaussians,
                          window_title=None, title=None,
                          log_scale=False, normalise=False, save_image=False):
     histogram = self.histograms[pixel]
     from matplotlib import pyplot
+    from xfel.command_line.view_pixel_histograms import hist_outline
     slots = histogram.slots().as_double()
     if normalise:
       normalisation = (flex.sum(slots) + histogram.n_out_of_slot_range()) / 1e5
@@ -207,7 +224,7 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
   def fit_one_histogram_two_gaussians(self,pixel):
     histogram = self.histograms[pixel]
     fitted_gaussians = []
-    GAIN_TO_SIGMA = 6.75
+    GAIN_TO_SIGMA = self.work_params.fudge_factor.gain_to_sigma
     low_idx = 20
     high_idx = 100 # hardcoded fit limits within the histogram array
 
