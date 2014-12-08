@@ -502,7 +502,7 @@ dxtbx/format/FormatTIFF.py -text
 dxtbx/format/FormatTIFFHelpers.py -text
 dxtbx/format/FormatTIFFRayonix.py -text
 dxtbx/format/FormatTIFFRayonixESRF.py -text
-dxtbx/format/FormatTIFFRayonixSPring8BL32XU.py -text
+dxtbx/format/FormatTIFFRayonixSPring8.py -text
 dxtbx/format/FormatTIFFRayonixXPP.py -text
 dxtbx/format/FormatXPARM.py -text
 dxtbx/format/Registry.py -text
