@@ -1,9 +1,12 @@
 #!/usr/bin/env python
-# FormatTIFFRayonixSPring8BL32XU.py
-#   Copyright (C) 2013 Diamond Light Source, Graeme Winter
+# FormatTIFFRayonixSPring8BL26B2.py
 #
-#   This code is distributed under the BSD license, a copy of which is
-#   included in the root directory of this package.
+#  Copyright (C) (2014) STFC Rutherford Appleton Laboratory, UK.
+#
+#  Author: David Waterman.
+#
+#  This code is distributed under the BSD license, a copy of which is
+#  included in the root directory of this package.
 #
 
 from __future__ import division
@@ -12,10 +15,10 @@ import struct
 
 from dxtbx.format.FormatTIFFRayonix import FormatTIFFRayonix
 
-class FormatTIFFRayonixSPring8BL32XU(FormatTIFFRayonix):
+class FormatTIFFRayonixSPring8(FormatTIFFRayonix):
   '''A class for reading TIFF format Rayonix images, and correctly
-  constructing a model for the experiment from this, for beamline
-  SPring8/BL32XU with a reversed phi axis.'''
+  constructing a model for the experiment from this, for SPring-8 beamlines
+  with a reversed phi axis.'''
 
   @staticmethod
   def understand(image_file):
@@ -33,7 +36,32 @@ class FormatTIFFRayonixSPring8BL32XU(FormatTIFFRayonix):
       if 'detector serial number' in record.lower():
         serial_number = int(record.split()[-1])
 
-    if serial_number == 31:
+    # only understand a square image
+    if width != height: return
+
+    # BL26B2 MX225 with 1X1, 2X2, 3X3 or 4X4 binning
+    if serial_number == 24 and width in [6144, 3072, 2046, 1536]:
+      return True
+
+    # BL32XU MX225-HE with 1X1, 2X2, 3X3 or 4X4 binning
+    if serial_number == 31 and width in [6144, 3072, 2046, 1536]:
+      return True
+
+    # BL44XU MX225-HE with 1X1, 2X2, 3X3 or 4X4 binning
+    if serial_number == 38 and width in [6144, 3072, 2046, 1536]:
+      return True
+
+    # BL44XU MX300-HE with 1X1, 2X2, 3X3 or 4X4 binning
+    if serial_number == 42 and width in [8192, 4096, 2728, 2048]:
+      return True
+
+    # BL41XU MX225-HE with 1X1, 2X2, 3X3 or 4X4 binning
+    if serial_number == 40 and width in [6144, 3072, 2046, 1536]:
+      return True
+
+    # BL32XU MX225-HS 1X1, 2X2, 3X3, 4X4, 5X5, 6X6, 8X8 or 10X10 binning
+    if serial_number == 106 and width in [5760, 2880, 1920, 1440, 1152, 960,
+                                          720, 576]:
       return True
 
   def __init__(self, image_file):
@@ -92,4 +120,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatTIFFRayonixSPring8BL32XU.understand(arg)
+    print FormatTIFFRayonixSPring8BL26B2.understand(arg)
