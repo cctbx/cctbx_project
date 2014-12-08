@@ -2016,10 +2016,12 @@ mmtbx/rsr/rsr_ext.cpp -text
 mmtbx/rsr/tst.py -text
 mmtbx/scaling/absence_likelihood.py -text
 mmtbx/scaling/absences.py -text
+mmtbx/scaling/b_from_dmin.dat -text
 mmtbx/scaling/bayesian_estimator.py -text
 mmtbx/scaling/cc_ano_data.dat -text
 mmtbx/scaling/cc_anom_from_cc_anom_star.dat -text
 mmtbx/scaling/cc_exptl_data.dat -text
+mmtbx/scaling/dmin_from_b.dat -text
 mmtbx/scaling/ha_data.dat -text
 mmtbx/scaling/mean_f_rms_f.py -text
 mmtbx/scaling/percent_solved_vs_signal.dat -text
