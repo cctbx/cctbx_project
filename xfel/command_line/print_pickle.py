@@ -62,7 +62,7 @@ for path in sys.argv[1:]:
       print key, data[key][0][0], "(only first shown)"
     elif key == "DATA":
       from cctbx.array_family import flex
-      print key,"len=%d max=%f min=%f"%(data[key].size(),flex.max(data[key]),flex.min(data[key]))
+      print key,"len=%d max=%f min=%f dimensions=%s"%(data[key].size(),flex.max(data[key]),flex.min(data[key]),str(data[key].focus()))
     else:
       print key, data[key]
 

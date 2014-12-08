@@ -25,7 +25,7 @@ def average(argv=None):
 
   command_line = (libtbx.option_parser.option_parser(
     usage="""
-%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-v]
+%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-s skipnevents] [-v]
 
 To write image pickles use -p, otherwise the program writes CSPAD CBFs.
 Writing CBFs requires the geometry to be already deployed.
@@ -105,6 +105,11 @@ the output images in the folder cxi49812.
                         default=None,
                         dest="numevents",
                         help="Maximum number of events to process. Default: all")
+                .option(None, "--skipevents", "-s",
+                        type="int",
+                        default=0,
+                        dest="skipevents",
+                        help="Number of events in the beginning of the run to skip. Default: 0")
                 .option(None, "--verbose", "-v",
                         action="store_true",
                         default=False,
@@ -147,21 +152,22 @@ the output images in the folder cxi49812.
   for run in ds.runs():
     runnumber = run.run()
     # list of all events
-    times = run.times()
+    if command_line.options.skipevents > 0:
+      print "Skipping first %d events"%command_line.options.skipevents
+
+    times = run.times()[command_line.options.skipevents:]
     nevents = min(len(times),maxevents)
-    mylength = nevents//size # easy but sloppy. lose few events at end of run.
-    # chop the list into pieces, depending on rank
-    mytimes= times[rank*mylength:(rank+1)*mylength]
-    for i in range(mylength):
-      if i%10==0: print 'Rank',rank,'processing event',rank*mylength+i,', ',i,'of',mylength
+    # chop the list into pieces, depending on rank.  This assigns each process
+    # events such that the get every Nth event where N is the number of processes
+    mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
+    for i in xrange(len(mytimes)):
+      if i%10==0: print 'Rank',rank,'processing event',rank*len(mytimes)+i,', ',i,'of',len(mytimes)
       evt = run.event(mytimes[i])
       #print "Event #",rank*mylength+i," has id:",evt.get(EventId)
       data = evt.get(ndarray_float64_3, src, 'image0')
       if data is None:
         print "No data"
         continue
-
-      data = data.astype(np.int32)
 
       d = cspad_tbx.env_distance(address, run.env(), command_line.options.detz_offset)
       if d is None:
@@ -193,7 +199,7 @@ the output images in the folder cxi49812.
       if 'sum' in locals():
         sum+=data
       else:
-        sum=data
+        sum=np.array(data, copy=True)
       if 'sumsq' in locals():
         sumsq+=data*data
       else:
@@ -201,7 +207,7 @@ the output images in the folder cxi49812.
       if 'maximum' in locals():
         maximum=np.maximum(maximum,data)
       else:
-        maximum=data
+        maximum=np.array(data, copy=True)
 
       nevent += 1
 
