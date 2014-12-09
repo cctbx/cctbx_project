@@ -487,6 +487,7 @@ dxtbx/format/FormatSMVADSCDBG.py -text
 dxtbx/format/FormatSMVADSCNoDateStamp.py -text
 dxtbx/format/FormatSMVADSCSN445.py -text
 dxtbx/format/FormatSMVADSCSN457.py -text
+dxtbx/format/FormatSMVADSCSN915.py -text
 dxtbx/format/FormatSMVADSCSN920.py -text
 dxtbx/format/FormatSMVADSCSN926.py -text
 dxtbx/format/FormatSMVADSCmlfsom.py -text
