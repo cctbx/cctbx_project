@@ -1,8 +1,8 @@
 from __future__ import division
-from iotbx.ncs_tmp.ncs_preprocess import format_80
+from iotbx.ncs.ncs_preprocess import format_80
 from libtbx.utils import null_out
 from libtbx.utils import Sorry
-import iotbx.ncs_tmp as ncs
+import iotbx.ncs as ncs
 from scitbx import matrix
 from iotbx import pdb
 import unittest

@@ -6,7 +6,7 @@ import mmtbx.maps.correlation
 from scitbx import matrix
 import scitbx.rigid_body
 from iotbx import pdb
-import iotbx.ncs_tmp as ncs
+import iotbx.ncs as ncs
 import unittest
 import math
 

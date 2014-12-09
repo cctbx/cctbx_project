@@ -1,6 +1,6 @@
 from __future__ import division
 import mmtbx.ncs.ncs_utils as nu
-import iotbx.ncs_tmp as ncs
+import iotbx.ncs as ncs
 from iotbx import pdb
 import unittest
 import sys

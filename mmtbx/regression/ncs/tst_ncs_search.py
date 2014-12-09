@@ -4,7 +4,7 @@ from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
 from libtbx.utils import Sorry
 from iotbx import pdb
-import iotbx.ncs_tmp as ncs
+import iotbx.ncs as ncs
 import unittest
 
 __author__ = 'Youval'

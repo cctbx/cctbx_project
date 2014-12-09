@@ -2,7 +2,7 @@ from __future__ import division
 import mmtbx.refinement.minimization_ncs_constraints
 from scitbx.array_family import flex
 from libtbx import group_args
-import iotbx.ncs_tmp as ncs
+import iotbx.ncs as ncs
 import mmtbx.utils
 import iotbx.pdb
 import time
