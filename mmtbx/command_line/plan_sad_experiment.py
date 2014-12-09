@@ -42,6 +42,12 @@ crystal_info {
     .help = Estimated Wilson B-value for the dataset. \
        Either a high-resolution limit or a \
        (Wilson) b_value or both is required
+
+  b_value_anomalous = None
+    .type = float
+    .help = Estimated Wilson B-value for the anomalously-scattering atoms. \
+       Normally leave as None and it will be estimated from b_value.
+
   seq_file = None
     .type = path
     .help = "Optional sequence file (1-letter code)."
@@ -287,6 +293,7 @@ def run(args,params=None,return_plan=False,out=sys.stdout):
     data_labels=params.input_files.data_labels,
     resolution=params.crystal_info.resolution,
     b_value=params.crystal_info.b_value,
+    b_value_anomalous=params.crystal_info.b_value_anomalous,
     fixed_resolution=params.control.fixed_resolution,
     occupancy=params.crystal_info.occupancy,
     ideal_cc_anom=params.ideal_cc_anom,
