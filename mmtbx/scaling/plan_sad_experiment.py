@@ -434,6 +434,9 @@ def get_local_file_name(estimator_type):
   elif estimator_type=='dmin_from_b':
     local_file_name='dmin_from_b.dat'
     no_resolution=True
+  elif estimator_type=='ha_b_from_wilson':
+    local_file_name='ha_b_from_wilson.dat'
+    no_resolution=True
   else:
     raise Sorry("No estimator type %s" %(estimator_type))
   return local_file_name,no_resolution
@@ -608,7 +611,8 @@ def get_b_value_and_resolution_from_file(data,data_labels=None):
     b_aniso_mean+=b_cart[k]
   return b_aniso_mean/3.0,d_min
 
-def get_b_value_and_resolution(b_value,resolution,data,data_labels):
+def get_b_value_and_resolution(b_value,resolution,data,data_labels,
+     b_value_anomalous=None):
   # use bayesian estimator to get b_value from resolution or vice_versa
   # (need one or the other)
   if data:  # get b_value and resolution from file if not given
@@ -622,14 +626,21 @@ def get_b_value_and_resolution(b_value,resolution,data,data_labels):
     pass # do nothing
   elif b_value is None:
      b_value_estimators=get_estimators(
-       estimator_type='b_from_dmin',out=sys.stdout)
+       estimator_type='b_from_dmin',out=null_out())
      b_value,sig_b_value=b_value_estimators.apply_estimators(
          value_list=[resolution],data_items=['dmin_resol'])
   else:
      dmin_estimators=get_estimators(estimator_type='dmin_from_b',out=sys.stdout)
      resolution,sig_resolution=dmin_estimators.apply_estimators(
          value_list=[b_value],data_items=['B'])
-  return b_value,resolution
+
+  if b_value_anomalous is None:  # estimate it from b_value
+     b_value_anomalous_estimators=get_estimators(
+       estimator_type='ha_b_from_wilson',out=null_out())
+     b_value_anomalous,sig_b_value_anomalous=\
+         b_value_anomalous_estimators.apply_estimators(
+         value_list=[b_value],data_items=['B-overall'])
+  return b_value_anomalous,resolution
 
 
 def get_dmin_ranges(resolution=None,target_list=[6,5,3,2.5,2,1.5]):
@@ -662,6 +673,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       min_cc_ano=0.15,
       resolution=None,  # estimated overall resolution of data
       b_value=None,     # estimated Wilson B of dataset
+      b_value_anomalous=None,     # estimated B for anomalous atoms
       fixed_resolution=None,
       occupancy=1.,
       ideal_cc_anom=0.76,
@@ -691,10 +703,10 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     self.occupancy=occupancy
     self.ratio_for_failure=ratio_for_failure
 
-    b_value,resolution=get_b_value_and_resolution(b_value,resolution,
-     data,data_labels)
+    b_value_anomalous,resolution=get_b_value_and_resolution(b_value,resolution,
+     data,data_labels,b_value_anomalous=b_value_anomalous)
     self.resolution=resolution
-    self.b_value=b_value
+    self.b_value_anomalous=b_value_anomalous
 
     vol_per_residue = get_vol_per_residue(chain_type=chain_type)
 
@@ -758,7 +770,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       fo_number_list=fo_number_list,
       return_total=True)
 
-    z=7 # try 5.6 here ZZZ
+    z=6.7 # Hendrickson, W.A. (2014) Quarterly Rev. Biophys. 47, 49-93.
     if self.resolution and fixed_resolution:
       self.dmin_ranges=[self.resolution]
     else:
@@ -801,7 +813,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
 
       # get f_ratio:
       from mmtbx.scaling.mean_f_rms_f import ratio_mean_f_to_rms_f
-      f_ratio=ratio_mean_f_to_rms_f(dmin,b_value)
+      f_ratio=ratio_mean_f_to_rms_f(dmin,b_value_anomalous)
 
       nrefl=get_nrefl(
          residues=residues,dmin=dmin,solvent_fraction=solvent_fraction)
@@ -964,7 +976,7 @@ FOM:      %3.2f
   Sites: %(nsites)d
   f-double-prime: %(fpp)7.2f
   Resolution: %(resolution)5.1f A
-  Wilson B-value: %(b_value)4.0f
+  B-value for anomalously-scattering atoms: %(b_value_anomalous)4.0f
 """ % self.__dict__)
 
     if self.atom_type:
