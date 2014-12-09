@@ -11,15 +11,37 @@ import os.path
 import sys
 
 master_phil = iotbx.phil.parse("""
+input_files {
+    data = None
+      .type = path
+      .help = Data file (I or I+ and I- or F or F+ and F-).  \
+         Any standard format is fine. 
+      .short_caption = Data file 
+      .style = bold file_type:hkl input_file process_hkl child:fobs:data_labels\
+        child:space_group:space_group child:unit_cell:unit_cell anom
+    data_labels = None
+      .type = str
+      .input_size = 160
+      .help = Optional label specifying which columns of anomalous data to use.\
+        Not necessary if your input file has only one set of anomalous data.
+      .short_caption = Data label
+      .style = bold renderer:draw_fobs_label_widget
+}
 crystal_info {
   resolution = None
     .type = float
-    .help = Optional high-resolution limit. If specified, the calculation \
-            is only carried out at this resolution
+    .help = High-resolution limit.  \
+       Either a high-resolution limit or a \
+       (Wilson) b_value or both is required
     .short_caption = High-resolution limit
     .style = resolution
    .input_size = 64
 
+  b_value = None
+    .type = float
+    .help = Estimated Wilson B-value for the dataset. \
+       Either a high-resolution limit or a \
+       (Wilson) b_value or both is required
   seq_file = None
     .type = path
     .help = "Optional sequence file (1-letter code)."
@@ -97,9 +119,9 @@ crystal_info {
    i_over_sigma = None
      .type = float
      .short_caption = I/sigI
-     .help = Optional I/sigI.  If supplied and resolution is supplied,  \
+     .help = Optional I/sigI.  If supplied, \
         the expected values of half-dataset correlation and cc*_ano based \
-        on this I/sigI and resolution will be calculated.
+        on this I/sigI be calculated.
 
    max_i_over_sigma = 100
      .type = float
@@ -171,6 +193,11 @@ crystal_info {
              in measurement and typical resolution resolution-dependent effects.
 
    control {
+      fixed_resolution = False
+        .type = bool
+        .help = Only run calculation at high_resolution limit
+        .short_caption = Run at high_resolution only
+
       show_summary = False
         .type = bool
         .help = Show summary only
@@ -256,7 +283,11 @@ def run(args,params=None,return_plan=False,out=sys.stdout):
     i_over_sigma=params.i_over_sigma,
     max_i_over_sigma=params.max_i_over_sigma,
     min_cc_ano=params.min_cc_ano,
-    dmin=params.crystal_info.resolution,
+    data=params.input_files.data,
+    data_labels=params.input_files.data_labels,
+    resolution=params.crystal_info.resolution,
+    b_value=params.crystal_info.b_value,
+    fixed_resolution=params.control.fixed_resolution,
     occupancy=params.crystal_info.occupancy,
     ideal_cc_anom=params.ideal_cc_anom,
     bayesian_estimates=params.bayesian_estimates,

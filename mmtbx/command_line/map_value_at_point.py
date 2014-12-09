@@ -49,6 +49,10 @@ resolution_factor = 0.25
   .type = float
 scale = *sigma volume
   .type = choice(multi=False)
+resolution = None
+  .type = float
+low_resolution = None
+  .type = float
 """
 
 def defaults(log):
@@ -111,6 +115,11 @@ def run(args, log = sys.stdout):
   if(len(params.point)==0 and atoms_with_labels is None):
     raise Sorry("No points given to compute map value at.")
   else:
+    if params.resolution is not None or params.low_resolution is not None:
+      ma=ma.resolution_filter(d_min=params.resolution,
+         d_max=params.low_resolution) 
+      print "Applying resolution filter from ",params.resolution,"to",params.low_resolution," NREFL: ",ma.data().size()
+      
     fft_map = ma.fft_map(resolution_factor=params.resolution_factor)
     if(params.scale == "sigma"):
       fft_map.apply_sigma_scaling()

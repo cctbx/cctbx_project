@@ -582,7 +582,8 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
    info_list=None,info_items=None,
    data_items=None,target_variable=None,
    start_column_header=None,
-   select_only_complete=False, minus_one_as_none=True, out=sys.stdout):
+   select_only_complete=False, minus_one_as_none=True,
+   d_min_as_data=False,out=sys.stdout):
 
   if not record_list:
      record_list=[]  # data records: [target,predictor1,predictor2...]
@@ -632,7 +633,8 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
         if all_items[0].lower()=='key':
           all_info_items.append(all_items[0])
           all_items=all_items[1:]
-        if all_items[0].lower() in  ['d_min','dmin','res','resolution']:
+        if not d_min_as_data and \
+          all_items[0].lower() in  ['d_min','dmin','res','resolution']:
           all_info_items.append('d_min') # standardize
           all_items=all_items[1:]
         target=all_items[0]
