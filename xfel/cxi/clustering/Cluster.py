@@ -119,7 +119,7 @@ class Cluster:
       if current_completeness <= completeness_threshold:
         temp_miller_indicies.concatenate(image, assert_is_similar_symmetry=False)
         if idx + 1 == len(sorted_cluster[1:]):
-          logging.warning("Desired completeness could not be acheived, sorry.")
+          logging.warning("Desired completeness could not be achieved, sorry.")
           file_threshold = idx
           break
       else:
