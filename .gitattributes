@@ -2022,6 +2022,7 @@ mmtbx/scaling/cc_ano_data.dat -text
 mmtbx/scaling/cc_anom_from_cc_anom_star.dat -text
 mmtbx/scaling/cc_exptl_data.dat -text
 mmtbx/scaling/dmin_from_b.dat -text
+mmtbx/scaling/ha_b_from_wilson.dat -text
 mmtbx/scaling/ha_data.dat -text
 mmtbx/scaling/mean_f_rms_f.py -text
 mmtbx/scaling/percent_solved_vs_signal.dat -text
