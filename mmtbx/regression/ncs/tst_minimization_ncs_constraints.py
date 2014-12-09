@@ -6,7 +6,7 @@ import mmtbx.refinement.adp_refinement
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 import mmtbx.ncs.ncs_utils as nu
-import iotbx.ncs_tmp as ncs
+import iotbx.ncs as ncs
 import mmtbx.f_model
 import mmtbx.utils
 import iotbx.pdb

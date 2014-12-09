@@ -1,5 +1,5 @@
 from __future__ import division
-import iotbx.ncs_tmp
+import iotbx.ncs
 import time
 import sys
 import os
@@ -69,7 +69,7 @@ def ncs_from_pdb(args):
         if params.min_percent > 1:
           params.min_percent /= 100
         # call function
-        ncs_obj = iotbx.ncs_tmp.input(
+        ncs_obj = iotbx.ncs.input(
             file_name=params.file_name,
             use_minimal_master_ncs=True,
             min_contig_length=params.min_contig_length,

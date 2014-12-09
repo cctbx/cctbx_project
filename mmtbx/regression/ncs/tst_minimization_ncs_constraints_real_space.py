@@ -5,7 +5,7 @@ import mmtbx.refinement.minimization_ncs_constraints
 import mmtbx.refinement.real_space.weight
 from scitbx.array_family import flex
 import mmtbx.ncs.ncs_utils as nu
-import iotbx.ncs_tmp as ncs
+import iotbx.ncs as ncs
 import mmtbx.utils
 import iotbx.pdb
 import mmtbx.ncs

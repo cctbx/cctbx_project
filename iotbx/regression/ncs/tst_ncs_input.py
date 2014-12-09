@@ -1,6 +1,6 @@
 from __future__ import division
 from libtbx.test_utils import approx_equal
-import iotbx.ncs_tmp as ncs
+import iotbx.ncs as ncs
 import iotbx.pdb
 import sys
 import os
