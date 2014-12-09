@@ -34,7 +34,8 @@ def get_sigf(nrefl,nsites,natoms,z,fpp,target_s_ano=15.,ntries=1000,
      resolution=None,
      cc_ano_estimators=None,
      signal_estimators=None,
-     max_i_over_sigma=None):
+     max_i_over_sigma=None,
+     f_ratio=None):
   closest_sigf=None
   closest_dist2=None
   start_value=1
@@ -50,7 +51,8 @@ def get_sigf(nrefl,nsites,natoms,z,fpp,target_s_ano=15.,ntries=1000,
           fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
           get_fpp_weak=False,resolution=resolution,
           cc_ano_estimators=cc_ano_estimators,
-          signal_estimators=signal_estimators)
+          signal_estimators=signal_estimators,
+          f_ratio=f_ratio)
 
     if min_cc_ano is not None and cc_ano_weak < min_cc_ano:
       continue
@@ -68,7 +70,8 @@ def get_sigf(nrefl,nsites,natoms,z,fpp,target_s_ano=15.,ntries=1000,
           fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
           get_fpp_weak=False,resolution=resolution,
           cc_ano_estimators=cc_ano_estimators,
-          signal_estimators=signal_estimators)
+          signal_estimators=signal_estimators,
+          f_ratio=f_ratio)
     closest_sigf=get_sigf(
      nrefl,nsites,natoms,z,fpp,target_s_ano=s_ano*ratio_for_failure,
      ntries=ntries,
@@ -78,12 +81,14 @@ def get_sigf(nrefl,nsites,natoms,z,fpp,target_s_ano=15.,ntries=1000,
      occupancy=occupancy,include_zero=False,resolution=resolution,
      cc_ano_estimators=cc_ano_estimators,
      signal_estimators=signal_estimators,
-     max_i_over_sigma=max_i_over_sigma)
+     max_i_over_sigma=max_i_over_sigma,
+     f_ratio=f_ratio)
   return closest_sigf
 
 def get_sano(nrefl,nsites,natoms,z,fpp,sigf,
        fa2=None,fb2=None,disorder_parameter=None,
-       fo_list=None,fo_number_list=None,occupancy=None):
+       fo_list=None,fo_number_list=None,occupancy=None,
+       f_ratio=None):
 
   # nrefl = number of anomalous data
   # nsites = number of anomalously scattering atoms in asymmetric unit
@@ -91,22 +96,15 @@ def get_sano(nrefl,nsites,natoms,z,fpp,sigf,
   # z = typical Z of non-anomalously scattering atoms
   # sigf = rms(sigF)/rms(F) overall
   # delta_b_ano=B for anom atoms minus B for rest of structure.
-  #  Ignoring this effect here
-  #sano2=(4./5.)*(nrefl/nsites)/(1.+(natoms/nsites)*(z*sigf/fpp)**2)
+  #  Ignoring this effect here but including f_ratio 2014-12-08
+  #sano2=f_ratio*(nrefl/nsites)/(1.+(natoms/nsites)*(z*sigf/fpp)**2)
 
   # more detailed calculation with fa2 and fb2 and disorder_parameter:
-  # sano=cc_ano*sqrt((4/5)*nrefl/nsites)
+  # sano=cc_ano*f_ratio*nrefl/nsites)
   cc_ano=get_cc_ano(nrefl,nsites,natoms,z,fpp,sigf,
       fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
       fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
-  sano_new=cc_ano*math.sqrt((4./5.)*nrefl/nsites)
-
-  # note this is very close to:
-  #  sano2=(4./5.)*nrefl*fpp**2/(natoms*z**2*sigf**2)
-  #  sano ~ sqrt(4./5.)*(fpp/z*sigf)*sqrt(nrefl/natoms)
-  #     which is proportional to fpp and 1/sigf
-  #sano=math.sqrt(sano2)
-
+  sano_new=cc_ano*f_ratio*math.sqrt(nrefl/nsites)
   return sano_new
 
 def get_cc_ano(nrefl,nsites,natoms,z,fpp,sigf,
@@ -144,11 +142,13 @@ def get_cc_half(cc_ano,disorder_parameter=None):
 
 def estimate_fpp_weak(nrefl,nsites,natoms,z,fpp,sigf,
       fa2=None,fb2=None,disorder_parameter=None,
-      fo_list=None,fo_number_list=None,occupancy=None):
+      fo_list=None,fo_number_list=None,occupancy=None,
+      f_ratio=None):
   # estimate fpp that would give half the sano value
   sano=get_sano(nrefl,nsites,natoms,z,fpp,sigf,
       fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
-      fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
+      fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
+      f_ratio=f_ratio)
 
   target=sano/2.
   best_scale=1.0
@@ -156,7 +156,8 @@ def estimate_fpp_weak(nrefl,nsites,natoms,z,fpp,sigf,
     scale=float(i)*0.01
     ss=get_sano(nrefl,nsites,natoms,z,fpp*scale,sigf,
       fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
-      fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
+      fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
+      f_ratio=f_ratio)
     if ss >=target and scale<best_scale:
       best_scale=scale
       break
@@ -190,12 +191,14 @@ def get_values_from_sigf(nrefl,nsites,natoms,z,fpp,sigf,
        fa2=None,fb2=None,disorder_parameter=None,
        fo_list=None,fo_number_list=None,occupancy=None,
        get_fpp_weak=True,resolution=None,
-       cc_ano_estimators=None,signal_estimators=None):
+       cc_ano_estimators=None,signal_estimators=None,
+       f_ratio=None):
     # 2014-11-04 add capability for Bayesian estimation (update) of
     #   signal and cc_ano
     s_ano=get_sano(nrefl,nsites,natoms,z,fpp,sigf,
       fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
-      fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
+      fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
+      f_ratio=f_ratio)
     cc_ano=get_cc_ano(nrefl,nsites,natoms,z,fpp,sigf,
       fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
       fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
@@ -227,7 +230,8 @@ def get_values_from_sigf(nrefl,nsites,natoms,z,fpp,sigf,
     if get_fpp_weak:
       fpp_weak=estimate_fpp_weak(nrefl,nsites,natoms,z,fpp,sigf,
         fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
-        fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
+        fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy,
+        f_ratio=f_ratio)
       cc_ano_weak=get_cc_ano(nrefl,nsites,natoms,z,fpp_weak,sigf,
         fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
         fo_list=fo_list,fo_number_list=fo_number_list,occupancy=occupancy)
@@ -397,7 +401,8 @@ def get_normalized_scattering(
       fpp_number_list=[],
       fo_list=[],
       fo_number_list=[],
-      occupancy=1.):
+      occupancy=1.,
+      return_total=False):
   # estimate ratio of anomalous to real scattering for these atoms
   # sum(Z_b_i**2 N_b_i)/sum(Z_i**2 N_i)
   sum_real=0.
@@ -408,10 +413,13 @@ def get_normalized_scattering(
     sum_anom+=(occupancy*fpp)**2*fpp_n
   if sum_real <=0:
     sum_real=1.
-
-  return sum_anom/sum_real
+  if return_total:
+    return sum_real
+  else:
+    return sum_anom/sum_real
 
 def get_local_file_name(estimator_type):
+  no_resolution=False
   if estimator_type=='cc_star':
     local_file_name='cc_ano_data.dat'
   elif estimator_type=='signal':
@@ -420,9 +428,15 @@ def get_local_file_name(estimator_type):
     local_file_name='cc_anom_from_cc_anom_star.dat'
   elif estimator_type=='solved':
     local_file_name='percent_solved_vs_signal.dat'
+  elif estimator_type=='b_from_dmin':
+    local_file_name='b_from_dmin.dat'
+    no_resolution=True
+  elif estimator_type=='dmin_from_b':
+    local_file_name='dmin_from_b.dat'
+    no_resolution=True
   else:
     raise Sorry("No estimator type %s" %(estimator_type))
-  return local_file_name
+  return local_file_name,no_resolution
 
 class interpolator:
   # basic interpolator. Call with list of pairs of (predictor,target)
@@ -527,7 +541,7 @@ class interpolator:
 
 def get_interpolator(estimator_type='solved',predictor_variable='PredSignal',
        require_monotonic_increase=None,out=sys.stdout):
-  local_file_name=get_local_file_name(estimator_type)
+  local_file_name,no_resolution=get_local_file_name(estimator_type)
   print >>out,"\nSetting up interpolator for %s" %(estimator_type)
   import libtbx.load_env
   file_name=libtbx.env.find_in_repositories(
@@ -553,7 +567,7 @@ Signal  %Solved   N  PredSignal  %Solved  N   BayesEstSignal  %Solved  N
 def get_estimators(estimator_type='signal',
     resolution_cutoffs=None,out=sys.stdout):
   # get estimators for signal from est_signal or cc_ano from cc*_ano
-  local_file_name=get_local_file_name(estimator_type)
+  local_file_name,no_resolution=get_local_file_name(estimator_type)
 
   import libtbx.load_env
 
@@ -563,12 +577,76 @@ def get_estimators(estimator_type='signal',
       test=os.path.isfile)
 
   from mmtbx.scaling.bayesian_estimator import estimator_group
+  if no_resolution: resolution_cutoffs=None
   estimators=estimator_group(
     resolution_cutoffs=resolution_cutoffs,out=out)
   estimators.set_up_estimators(
     file_name=file_name,select_only_complete=False)
   estimators.show_summary()
   return estimators
+
+def get_b_value_and_resolution_from_file(data,data_labels=None):
+  import iotbx.merging_statistics
+  i_obs=iotbx.merging_statistics.select_data( allow_amplitudes=True,
+           file_name=data,
+           data_labels=data_labels,
+           log=null_out())
+  i_obs=i_obs.merge_equivalents().array()
+  d_max,d_min=i_obs.d_max_min()
+  assert i_obs.is_xray_intensity_array()
+  from mmtbx.scaling import absolute_scaling
+  aniso_scale_and_b = absolute_scaling.ml_aniso_absolute_scaling(
+        miller_array = i_obs,
+        n_residues = 200,
+        n_bases = 0)
+  try: b_cart=aniso_scale_and_b.b_cart
+  except AttributeError, e:
+        raise Sorry("\nCannot correct the column %s for anisotropy\n"%(
+          best_label))
+  b_aniso_mean=0.
+  for k in [0,1,2]:
+    b_aniso_mean+=b_cart[k]
+  return b_aniso_mean/3.0,d_min
+
+def get_b_value_and_resolution(b_value,resolution,data,data_labels):
+  # use bayesian estimator to get b_value from resolution or vice_versa
+  # (need one or the other)
+  if data:  # get b_value and resolution from file if not given
+     b_value_from_file,resolution_from_file=\
+       get_b_value_and_resolution_from_file(data,data_labels)
+     if b_value is None: b_value=b_value_from_file
+     if resolution is None: resolution=resolution_from_file
+  if b_value is None and resolution is None:
+    raise Sorry("Sorry need either Wilson B value or resolution")
+  elif b_value is not None and resolution is not None:
+    pass # do nothing
+  elif b_value is None:
+     b_value_estimators=get_estimators(
+       estimator_type='b_from_dmin',out=sys.stdout)
+     b_value,sig_b_value=b_value_estimators.apply_estimators(
+         value_list=[resolution],data_items=['dmin_resol'])
+  else:
+     dmin_estimators=get_estimators(estimator_type='dmin_from_b',out=sys.stdout)
+     resolution,sig_resolution=dmin_estimators.apply_estimators(
+         value_list=[b_value],data_items=['B'])
+  return b_value,resolution
+
+
+def get_dmin_ranges(resolution=None,target_list=[6,5,3,2.5,2,1.5]):
+  # get ranges from target_list starting with something near resolution:
+  best_match=None
+  best_dist=None
+  for x in target_list:
+    dist=abs(x-resolution)
+    if best_match is None or dist<best_dist:
+      best_dist=dist
+      best_match=x
+  new_list=[]
+  for x in target_list:
+    new_list.append(x)
+    if best_match==x: break
+  return new_list
+  
 
 class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
   def __init__ (self,
@@ -582,7 +660,9 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       fpp=3.8,
       target_s_ano=30,
       min_cc_ano=0.15,
-      dmin=None,
+      resolution=None,  # estimated overall resolution of data
+      b_value=None,     # estimated Wilson B of dataset
+      fixed_resolution=None,
       occupancy=1.,
       ideal_cc_anom=0.76,
       bayesian_estimates=True,
@@ -591,6 +671,8 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       ratio_for_failure=0.95,
       i_over_sigma=None,
       max_i_over_sigma=None,
+      data=None,
+      data_labels=None,
       quiet=False) :
     self.chain_type = chain_type
     self.residues = residues
@@ -608,6 +690,11 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       self.atom_type=atom_type
     self.occupancy=occupancy
     self.ratio_for_failure=ratio_for_failure
+
+    b_value,resolution=get_b_value_and_resolution(b_value,resolution,
+     data,data_labels)
+    self.resolution=resolution
+    self.b_value=b_value
 
     vol_per_residue = get_vol_per_residue(chain_type=chain_type)
 
@@ -651,11 +738,31 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       fo_number_list=fo_number_list)
 
 
-    z=7 # try 5.6 here ZZZ
-    if dmin:
-      self.dmin_ranges=[dmin]
+    # get real scattering from anomalous substructure
+    if not self.atom_type:
+     fo=0.
     else:
-      self.dmin_ranges=[6,5,3,2.5,2,1.5]
+      fo=get_fo(atom_type=self.atom_type,wavelength=self.wavelength)
+      if self.occupancy: fo=fo*self.occupancy
+    self.fc2=get_normalized_scattering(
+      fpp_list=[],
+      fpp_number_list=[],
+      fo_list=[fo],
+      fo_number_list=[self.nsites],
+      return_total=True)
+    # and real scattering from entire molecule including substructure
+    self.fd2=get_normalized_scattering(
+      fpp_list=[],
+      fpp_number_list=[],
+      fo_list=fo_list,
+      fo_number_list=fo_number_list,
+      return_total=True)
+
+    z=7 # try 5.6 here ZZZ
+    if self.resolution and fixed_resolution:
+      self.dmin_ranges=[self.resolution]
+    else:
+      self.dmin_ranges=get_dmin_ranges(resolution=self.resolution)
     self.table_rows = []
     self.representative_values = None
     self.skipped_resolutions = []
@@ -692,6 +799,10 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     for dmin in self.dmin_ranges:
       # Guess reflections from residues, dmin, solvent fraction
 
+      # get f_ratio:
+      from mmtbx.scaling.mean_f_rms_f import ratio_mean_f_to_rms_f
+      f_ratio=ratio_mean_f_to_rms_f(dmin,b_value)
+
       nrefl=get_nrefl(
          residues=residues,dmin=dmin,solvent_fraction=solvent_fraction)
 
@@ -706,7 +817,8 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
           ratio_for_failure=self.ratio_for_failure,resolution=dmin,
           cc_ano_estimators=None,
           signal_estimators=None,
-          max_i_over_sigma=self.max_i_over_sigma)
+          max_i_over_sigma=self.max_i_over_sigma,
+          f_ratio=f_ratio)
         if sigf is None: # failed so far...
           self.used_max_i_over_sigma=True
           sigf=get_sigf_from_i_over_sigma(self.max_i_over_sigma)
@@ -724,7 +836,8 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
           get_fpp_weak=True,
           resolution=dmin,
           cc_ano_estimators=self.cc_ano_estimators,
-          signal_estimators=self.signal_estimators)
+          signal_estimators=self.signal_estimators,
+          f_ratio=f_ratio)
 
 
       if local_i_over_sigma>=999:
@@ -850,6 +963,8 @@ FOM:      %3.2f
   Wavelength: %(wavelength)7.4f A
   Sites: %(nsites)d
   f-double-prime: %(fpp)7.2f
+  Resolution: %(resolution)5.1f A
+  Wilson B-value: %(b_value)4.0f
 """ % self.__dict__)
 
     if self.atom_type:
@@ -937,11 +1052,11 @@ differences (CC*_ano) of about %5.2f, and a useful anomalous signal around
 %3.0f (again within a factor of about two). With this value of estimated
 anomalous signal the probability of finding the anomalous substructure is
 about %3d%% (based on estimated anomalous signal and actual outcomes for
-real structures.)  """ % (dmin, i_over_sigma,  cc_half,  cc_ano,
-        s_ano, int(solved)))
+real structures.), and the estimated figure of merit of phasing is %3.2f.""" % (dmin, i_over_sigma,  cc_half,  cc_ano,
+        s_ano, int(solved), fom))
     out.show_text("""
-The value of rms(sigF)/rms(F) is approximately the inverse of I/sigma. The
-calculations are based on rms(sigF)/rms(F).
+The value of sigF/F (actually rms(sigF)/rms(F)) is approximately the inverse 
+of I/sigma. The calculations are based on rms(sigF)/rms(F).
 
 Note that these values assume data measured with little radiation damage or at
 least with anomalous pairs measured close in time. The values also assume that

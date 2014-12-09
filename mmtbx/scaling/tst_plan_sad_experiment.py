@@ -16,8 +16,8 @@ def exercise () :
   ]
   result = plan_sad_experiment.run(args=args, out=null_out()).show(null_out())
   assert approx_equal(result.representative_values[:-1],
-  [2.2, 12, 15965.98877863636, 3.8438000679016113, 97.77777777777779, 0.009, 0.5100617798791043, 0.7518386993367471, 0.6189781091393409, 0.6948507672766133, 24.625648952368238, 95.67497400452788], eps=0.01)
-  assert (95 < result.representative_values[-2] < 97)
+   [2.5, 12, 10880.374304954881, 3.8438000679016113, 97.77777777777779, 0.009, 0.633223687444356, 0.8462116413131916, 0.6405243342470512, 0.7180836137391196, 23.365672552879058, 94.95498749053407], eps=0.01)
+  assert (93 < result.representative_values[-2] < 97)
   # Insulin S-SAD
   open("tst_plan_sad_experiment.fa", "w").write("""
 >1ZNI:A|PDBID|CHAIN|SEQUENCE
@@ -36,10 +36,9 @@ FVNQHLCGSHLVEALYLVCGERGFFYTPKA
     "wavelength=1.54"
   ]
   result = plan_sad_experiment.run(args=args, out=null_out())
-  assert (not result.missed_target_resolutions)
   assert approx_equal(result.representative_values[:-1],
-   [1.2, 12, 33450.22482353751, 0.5562999844551086, 97.77777777777779, 0.009, 0.3934803301841369, 0.6580634294078691, 0.5905199826316186, 0.668204766350655, 29.637428705275134, 96.74603174603175], eps=0.01)
-  assert (96 < result.representative_values[-2] < 98)
+  [2, 12, 7225.2485618841, 0.5562999844551086, 97.77777777777779, 0.009, 0.3264043803898403, 0.6106881338839417, 0.5635269556200062, 0.6531008851070139, 11.117707953181952, 81.41197783613683], eps=0.01)
+  assert (79 < result.representative_values[-2] < 83)
   # now with worse resolution
   args = [
     "seq_file=tst_plan_sad_experiment.fa",
@@ -48,8 +47,9 @@ FVNQHLCGSHLVEALYLVCGERGFFYTPKA
     "wavelength=1.54"
   ]
   result = plan_sad_experiment.run(args=args, out=null_out())
+  assert approx_equal(result.representative_values[:-1],
+  [5, 12, 462.41590796058244, 0.5562999844551086, 97.77777777777779, 0.009, 0.44571173471146186, 0.6638663305757504, 0.6056932839550113, 0.6699731002798963, 4.8691231380721245, 16.41105412132456], eps=0.01)
 
-  assert (result.missed_target_resolutions)
   # Error handling
   args = [
     "resolution=2.2",
