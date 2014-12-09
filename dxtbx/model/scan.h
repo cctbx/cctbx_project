@@ -42,7 +42,8 @@ namespace dxtbx { namespace model {
      * Initialise the class
      * @param image_range The range of images covered by the scan
      * @param starting_angle The starting rotation angle
-     * @param oscillation_range The oscillation range of each frame
+     * @param oscillation_range A tuple containing the start angle of the first
+     *                          image and the oscillation range of each frame
      */
     Scan(vec2 <int> image_range,
          vec2 <double> oscillation)
@@ -242,7 +243,7 @@ namespace dxtbx { namespace model {
     }
 
     /**
-     * Return a new sweep which cosists of the contents of this sweep and
+     * Return a new sweep which consists of the contents of this sweep and
      * the contents of the other sweep, provided that they are consistent -
      * if they are not consistent then an AssertionError will result.
      */
