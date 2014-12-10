@@ -66,7 +66,9 @@ class mod_mar(object):
         path_d[pv.name()] = pv.value()
 
     if path_d['filename'] != "":
-      path_d['directory_part1'] = os.path.basename(path_d['directory_part1'])
+      # directory_part1 contains two parts, including where it came from and a user specific part.
+      # Example: /data/blctl/G78/test/A1. We need only 'test/A1' from that string, but 'G78' varies.
+      path_d['directory_part1'] = os.sep.join(path_d['directory_part1'].split(os.sep)[4:])
       self._path = join(self._directory,
                         path_d['directory_part1'],
                         path_d['directory_part2'],
