@@ -1992,6 +1992,7 @@ def test_ewald_sphere_model():
             test_results[ptr][1],RA.get_intersection_angles(),eps = 1.E-10, multiplier=1.e-10)
           ptr+=1
           #print "(%s,%s),"%(str((h,k,l)),RA.get_intersection_angles())
+  assert(ptr == len(test_results))
 
 if __name__=="__main__":
 
