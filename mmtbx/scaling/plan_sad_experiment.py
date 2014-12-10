@@ -420,23 +420,31 @@ def get_normalized_scattering(
 
 def get_local_file_name(estimator_type):
   no_resolution=False
-  if estimator_type=='cc_star':
+
+  # Estimators from experimental data
+
+  if estimator_type=='cc_star':  # cc_perfect from cc_st_square skew e
     local_file_name='cc_ano_data.dat'
-  elif estimator_type=='signal':
+  elif estimator_type=='cc_exptl':  # cc_exptl from cc_perfect
+    local_file_name='cc_exptl_data.dat'
+  elif estimator_type=='b_from_dmin':  # Wilson B estimated from dmin
+    local_file_name='b_from_dmin.dat'
+    no_resolution=True
+  elif estimator_type=='dmin_from_b':  # dmin estimated from Wilson B
+    local_file_name='dmin_from_b.dat'
+    no_resolution=True
+  elif estimator_type=='ha_b_from_wilson': # B of anom atom est from Wilson B
+    local_file_name='ha_b_from_wilson.dat'
+    no_resolution=True
+
+  # Estimators of targets from theoretical estimates
+
+  elif estimator_type=='signal':  # signal from pred_signal
     local_file_name='signal_from_est_signal.dat'
-  elif estimator_type=='cc_ano':
+  elif estimator_type=='cc_ano': # cc_perfect from pred_cc_perfect
     local_file_name='cc_anom_from_cc_anom_star.dat'
   elif estimator_type=='solved':
     local_file_name='percent_solved_vs_signal.dat'
-  elif estimator_type=='b_from_dmin':
-    local_file_name='b_from_dmin.dat'
-    no_resolution=True
-  elif estimator_type=='dmin_from_b':
-    local_file_name='dmin_from_b.dat'
-    no_resolution=True
-  elif estimator_type=='ha_b_from_wilson':
-    local_file_name='ha_b_from_wilson.dat'
-    no_resolution=True
   else:
     raise Sorry("No estimator type %s" %(estimator_type))
   return local_file_name,no_resolution
@@ -786,7 +794,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
 
        # set up estimators of cc_ano from cc_*_ano and signal from est_signal
 
-       # estimate cc_ano from cc_star_ano
+       # estimate cc_perfect from pred_cc_perfect
        self.cc_ano_estimators=get_estimators(estimator_type='cc_ano',
          resolution_cutoffs=self.dmin_ranges,out=null_out())
 
@@ -794,8 +802,9 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
        self.signal_estimators=get_estimators(estimator_type='signal',
          resolution_cutoffs=self.dmin_ranges,out=null_out())
 
-       # estimate fom of phasing from cc_ano
-       self.fom_estimators=get_estimators(estimator_type='cc_star',
+       # estimate fom of phasing from cc_perfect
+       # key    d_min cc_exptl cc_perfect
+       self.fom_estimators=get_estimators(estimator_type='cc_exptl',
          resolution_cutoffs=self.dmin_ranges,out=null_out())
 
        # solved (probability of hyss finding >=50% of sites) is just a table
@@ -865,10 +874,9 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
         s_ano_weak=max(0,s_ano-s_ano_sig)
         cc_half_weak=max(0,cc_half-cc_half_sig)
         cc_ano_weak=max(0.,cc_ano-cc_ano_sig)
-        cc_st_square=0.04 #cc_ano**2
         fom,s_fom=self.fom_estimators.apply_estimators(
-         value_list=[cc_st_square,None,None],
-         data_items=['cc_st_square','skew','e'],
+         value_list=[cc_ano],
+         data_items=['cc_perfect'],
          resolution=dmin)
       else:
         s_ano_weak=s_ano/2
