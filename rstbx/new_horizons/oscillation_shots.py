@@ -241,7 +241,13 @@ class IntegrateCharacters:
       if float(self.triclinic['integration']['resolution'])==0.0:
         raise Sorry("No signal detected in triclinic integration trial")
 
-      index['integration'] = self.integrate_one_character(
+      if self.horizons_phil.known_setting == index['counter'] and \
+         self.horizons_phil.integration.montecarlo_integration_limit is not None:
+        index['integration'] = self.integrate_one_character(
+        setting=index,
+        integration_limit=self.horizons_phil.integration.montecarlo_integration_limit)
+      else:
+        index['integration'] = self.integrate_one_character(
         setting=index,
         integration_limit=float(self.triclinic['integration']['resolution']))
 

@@ -100,6 +100,10 @@ integration {
       .type = bool
       .help = simplex_optimization
   }
+  montecarlo_integration_limit = None
+    .type = float
+    .help = use None to limit the integration resolution based on Wilson plot
+    .help = alternatively set integration limit to a fixed value given in Angstroms.
 }
 """
 indexing_defs = """
