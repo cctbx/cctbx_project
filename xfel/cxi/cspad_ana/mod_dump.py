@@ -62,9 +62,11 @@ class mod_dump(common_mode.common_mode_correction):
       saturated_value = cspad_tbx.dynamic_range
       output_filename = self._basename
     elif device == 'marccd':
+      if distance == 0:
+        distance = evt.get('marccd_distance')
       pixel_size = 0.079346
       saturated_value = 2**16 - 1
-      output_filename = self._basename + evt.get('mccd_name') + "_"
+      output_filename = self._basename + evt.get(str, 'mccd_name') + "_"
 
     d = cspad_tbx.dpack(
       active_areas=self.active_areas,

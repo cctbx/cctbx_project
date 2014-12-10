@@ -4,7 +4,7 @@
 
 from __future__ import division
 
-import logging
+import logging, os
 
 from xfel.cxi.cspad_ana import cspad_tbx
 from scitbx.array_family import flex
@@ -48,13 +48,30 @@ class mod_mar(object):
     if ctrl_config is None:
       return
 
-    # This is for the L650 experiment.
-    for i in range(ctrl_config.npvLabels() + 1):
-      pv = ctrl_config.pvLabel(i)
-      if pv is None or pv.name() != 'filename':
-        continue
-      self._path = join(self._directory, pv.value() + '.mccd')
-      self._mccd_name  = pv.value()
+    # This is for the L650 experiment and beyond
+    path_d = {
+      'filename':"",
+      'directory_part1':"",
+      'directory_part2':""
+    }
+
+    for i in range(ctrl_config.npvLabels()): # interface change for psana: used to add 1 to the return value of npvLabels()
+      try:
+        pv = ctrl_config.pvLabel(i)
+      except AttributeError:
+        # interface change for psana
+        pv = ctrl_config.pvLabels()[i]
+
+      if pv.name() in path_d:
+        path_d[pv.name()] = pv.value()
+
+    if path_d['filename'] != "":
+      path_d['directory_part1'] = os.path.basename(path_d['directory_part1'])
+      self._path = join(self._directory,
+                        path_d['directory_part1'],
+                        path_d['directory_part2'],
+                        path_d['filename'] + '.mccd')
+      self._mccd_name  = path_d['filename']
       return
 
     # The value of this control must be of integer type.  If that is
@@ -106,7 +123,7 @@ class mod_mar(object):
     while not exists(self._path):
       if t_tot > 1:
         self._logger.info("Timeout waiting for path %s"%self._path)
-        evt.setStatus(Event.Skip)
+        evt.put(True, "skip_event")
         self._logger.info("Image not found:  %s"%self._path)
         return
       sleep(t)
@@ -152,6 +169,7 @@ class mod_mar(object):
     pixel_size = ps[0]
     evt.put(ps[0],"marccd_pixel_size")
     evt.put(detector.get_trusted_range()[1],"marccd_saturated_value")
+    evt.put(detector.get_distance(),"marccd_distance")
 
     # If the beam center isn't provided in the config file, get it from the
     # image.  It will probably be wrong.

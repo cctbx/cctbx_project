@@ -74,6 +74,8 @@ class mod_image_dict(common_mode.common_mode_correction):
     elif device == 'marccd':
       pixel_size = evt.get("marccd_pixel_size")
       saturated_value = evt.get("marccd_saturated_value")
+      if distance == 0:
+        distance = evt.get("marccd_distance")
 
     d = cspad_tbx.dpack(
       active_areas=self.active_areas,
@@ -122,4 +124,3 @@ class mod_image_dict(common_mode.common_mode_correction):
                        (env.subprocess(), self.nshots))
     else:
       self.logger.info("Processed %d shots" % self.nshots)
-
