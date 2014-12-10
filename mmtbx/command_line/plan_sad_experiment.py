@@ -189,14 +189,16 @@ crystal_info {
              calculation and are assumed to be included in the \
              number of sites you specify.
 
-   bayesian_estimates = True
+   bayesian_updates = True
      .type = bool
-     .short_caption = Bayesian estimates
-     .help = Use Bayesian estimates of half-dataset CC and signal. First \
+     .short_caption = Bayesian updates
+     .help = Use Bayesian updates of half-dataset CC and signal. First \
              predict these values using standard approach, then use empirical \
              half-dataset CC and signal for a training set of datasets to \
              re-estimate these values.  This helps correct for typical errors \
-             in measurement and typical resolution resolution-dependent effects.
+             in measurement and typical resolution-dependent effects.\
+             Note that if you use bayesian_updates=True then the predictions \
+             may not vary smoothly with resolution or changes in parameters.
 
    control {
       fixed_resolution = False
@@ -297,7 +299,7 @@ def run(args,params=None,return_plan=False,out=sys.stdout):
     fixed_resolution=params.control.fixed_resolution,
     occupancy=params.crystal_info.occupancy,
     ideal_cc_anom=params.ideal_cc_anom,
-    bayesian_estimates=params.bayesian_estimates,
+    bayesian_updates=params.bayesian_updates,
     include_weak_anomalous_scattering=params.include_weak_anomalous_scattering,
     intrinsic_scatterers_as_noise=params.intrinsic_scatterers_as_noise,)
   if params.control.show_summary:

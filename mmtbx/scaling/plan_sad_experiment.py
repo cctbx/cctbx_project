@@ -685,7 +685,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       fixed_resolution=None,
       occupancy=1.,
       ideal_cc_anom=0.76,
-      bayesian_estimates=True,
+      bayesian_updates=True,
       include_weak_anomalous_scattering=True,
       intrinsic_scatterers_as_noise=None,
       ratio_for_failure=0.95,
@@ -703,7 +703,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     self.min_cc_ano = min_cc_ano
     self.wavelength = wavelength
     self.max_i_over_sigma = max_i_over_sigma
-    self.bayesian_estimates = bayesian_estimates
+    self.bayesian_updates = bayesian_updates
     if atom_type is None:
       self.atom_type='-'
     else:
@@ -790,7 +790,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     self.input_i_over_sigma=i_over_sigma
     self.used_max_i_over_sigma=True
 
-    if self.bayesian_estimates:
+    if self.bayesian_updates:
 
        # set up estimators of cc_ano from cc_*_ano and signal from est_signal
 
@@ -802,20 +802,20 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
        self.signal_estimators=get_estimators(estimator_type='signal',
          resolution_cutoffs=self.dmin_ranges,out=null_out())
 
-       # estimate fom of phasing from cc_perfect
-       # key    d_min cc_exptl cc_perfect
-       self.fom_estimators=get_estimators(estimator_type='cc_exptl',
-         resolution_cutoffs=self.dmin_ranges,out=null_out())
-
-       # solved (probability of hyss finding >=50% of sites) is just a table
-       #  so interpolate the probability.
-       self.solved_interpolator=get_interpolator(estimator_type='solved',
-          require_monotonic_increase=True,
-          predictor_variable='PredSignal',out=null_out())
     else:
       self.cc_ano_estimators=None
       self.signal_estimators=None
-      self.fom_estimators=None
+
+    # estimate fom of phasing from cc_perfect
+    # key    d_min cc_exptl cc_perfect
+    self.fom_estimators=get_estimators(estimator_type='cc_exptl',
+      resolution_cutoffs=self.dmin_ranges,out=null_out())
+
+    # solved (probability of hyss finding >=50% of sites) is just a table
+    #  so interpolate the probability.
+    self.solved_interpolator=get_interpolator(estimator_type='solved',
+       require_monotonic_increase=True,
+       predictor_variable='PredSignal',out=null_out())
 
     for dmin in self.dmin_ranges:
       # Guess reflections from residues, dmin, solvent fraction
@@ -867,21 +867,18 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       if s_ano<0.95*target_s_ano:  # must not be able to get target s_ano
         self.missed_target_resolutions.append(dmin)
 
-      if self.bayesian_estimates:  # use range from s_ano+/-s_ano_sig etc
-        solved=self.solved_interpolator.interpolate(s_ano)
-        if solved is None: solved=0.0
-        if s_ano_sig is None: s_ano_sig=0.0
-        s_ano_weak=max(0,s_ano-s_ano_sig)
-        cc_half_weak=max(0,cc_half-cc_half_sig)
-        cc_ano_weak=max(0.,cc_ano-cc_ano_sig)
-        fom,s_fom=self.fom_estimators.apply_estimators(
-         value_list=[cc_ano],
-         data_items=['cc_perfect'],
+      solved=self.solved_interpolator.interpolate(s_ano)
+      if solved is None: solved=0.0
+      if s_ano_sig is None: s_ano_sig=0.0
+      if cc_half_sig is None: cc_half_sig=0.0
+      if cc_ano_sig is None: cc_ano_sig=0.0
+      s_ano_weak=max(0,s_ano-s_ano_sig)
+      cc_half_weak=max(0,cc_half-cc_half_sig)
+      cc_ano_weak=max(0.,cc_ano-cc_ano_sig)
+      fom,s_fom=self.fom_estimators.apply_estimators(
+       value_list=[cc_ano],
+       data_items=['cc_perfect'],
          resolution=dmin)
-      else:
-        s_ano_weak=s_ano/2
-        solved=0.0
-        fom=0.
 
       self.table_rows.append([
         "%5.2f" % dmin,
