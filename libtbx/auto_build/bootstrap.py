@@ -61,22 +61,18 @@ except ImportError:
 # rsync'd packages.
 HOT = {
   'phaser_regression':  '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser_regression',
-  'phaser':             '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/phaser',
-  'ccp4io_adaptbx':     '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/ccp4io_adaptbx',
-  'annlib_adaptbx':     '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/annlib_adaptbx',
-  'tntbx':              '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/tntbx',
-  'ccp4io':             '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/ccp4io',
-  'clipper':            '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/clipper',
-  'docutils':           '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/docutils',
-  # Duke
-  'reduce':             '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/reduce',
-  'probe':              '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/probe',
-  'king':               '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/king',
-  'suitename':          '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/suitename',
+  'phaser':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser',
+  'ccp4io':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io',
+  'docutils':           '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/docutils',
   # tar.gz
-  'scons':              '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/hot_test/scons',
-  'boost':              '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/hot_test/boost',
-  'annlib':             '%(cciuser)s@cci.lbl.gov:/net/boa/scratch1/auto_build/repositories/hot_test/annlib',
+  'annlib':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib',
+  'scons':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons',
+  'boost':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot',
+  # Duke
+  'reduce':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/reduce',
+  'probe':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/probe',
+  'king':               '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/king',
+  'suitename':          '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/suitename',
 }
 
 # SVN packages.
@@ -85,6 +81,10 @@ CODEBASES = {
   'cctbx_project':      'svn://svn.code.sf.net/p/cctbx/code/trunk',
   'cbflib':             'svn://svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge',
   # PHENIX:
+  'ccp4io_adaptbx':     'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io_adaptbx/trunk',
+  'annlib_adaptbx':     'svn+ssh://%(cciuser)s@cci.lbl.gov/annlib_adaptbx/trunk',
+  'tntbx':              'svn+ssh://%(cciuser)s@cci.lbl.gov/tntbx/trunk',
+  'clipper':            'svn+ssh://%(cciuser)s@cci.lbl.gov/clipper/trunk',
   'Plex':               'svn+ssh://%(cciuser)s@cci.lbl.gov/Plex/trunk',
   'PyQuante':           'svn+ssh://%(cciuser)s@cci.lbl.gov/PyQuante/trunk',
   'chem_data':          'svn+ssh://%(cciuser)s@cci.lbl.gov/chem_data/trunk',
@@ -157,7 +157,8 @@ class CCIBuilder(object):
     python_system=None, 
     python_base=None, 
     cleanup=False,
-    checkout=True,
+    hot=True,
+    update=True,
     base=True, 
     build=True, 
     install=True, 
@@ -190,9 +191,12 @@ class CCIBuilder(object):
     else:
       self.cleanup(['tests', 'docs', 'tmp'])
 
-    # Add sources
-    if checkout:
+    # Add 'hot' sources
+    if hot:
       map(self.add_hot, self.get_hot())
+
+    # Add svn sources.
+    if update:
       map(self.add_codebase, self.get_codebases())
 
     # Build base packages
@@ -380,10 +384,10 @@ class CCTBXBaseBuilder(CCIBuilder):
   # Base packages
   BASE_PACKAGES = 'all'
   # Checkout these codebases
-  CODEBASES = ['cbflib', 'cctbx_project', 'phenix_dev', 'gui_resources', 'chem_data']
+  CODEBASES = ['cbflib', 'cctbx_project', 'phenix_dev', 'gui_resources', 'chem_data', 'ccp4io_adaptbx', 'annlib_adaptbx', 'tntbx', 'clipper']
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
-  HOT = ['annlib', 'boost', 'scons', 'ccp4io', 'ccp4io_adaptbx', 'annlib_adaptbx', 'tntbx', 'clipper', 'docutils']
+  HOT = ['annlib', 'boost', 'scons', 'ccp4io', 'docutils']
   HOT_EXTRA = []
   # Configure for these cctbx packages
   LIBTBX = ['cctbx', 'cbflib', 'scitbx', 'libtbx', 'iotbx', 'mmtbx', 'smtbx', 'dxtbx', 'gltbx', 'wxtbx', 'phenix_dev', 'chem_data']
@@ -523,8 +527,20 @@ if __name__ == "__main__":
   parser.add_option("--builder", help="Builder: cctbx, phenix, xfel, dials, labelit", default="cctbx")
   parser.add_option("--cciuser", help="CCI SVN username.")
   options, args = parser.parse_args()
-  args = args or ['checkout', 'base', 'build', 'install', 'tests']
-  print "Performing actions:", " ".join(args)
+
+  # Check actions
+  allowedargs = ['cleanup', 'hot', 'update', 'base', 'build', 'install', 'tests']
+  args = args or ['hot', 'update', 'base', 'build', 'install']
+  actions = []
+  for arg in args:
+    if arg not in allowedargs:
+      raise ValueError("Unknown action: %s"%arg)
+  for arg in allowedargs:
+    if arg in args:
+      actions.append(arg)  
+  print "Performing actions:", " ".join(actions)
+
+  # Check builder
   builders = {
     'cctbx': CCTBXBuilder,
     'phenix': PHENIXBuilder,
@@ -532,17 +548,22 @@ if __name__ == "__main__":
     'labelit': LABELITBuilder,
     'dials': DIALSBuilder
   }
+  if options.builder not in builders:
+    raise ValueError("Unknown builder: %s"%options.builder)
+
+  # Build
   builder = builders[options.builder]
   builder(
     category='cctbx', 
     platform='debug',
     buildbot=False, 
     cciuser=options.cciuser,
-    checkout=('checkout' in args),
-    base=('base' in args),
-    build=('build' in args),
-    install=('install' in args),
-    tests=('tests' in args)
+    hot=('hot' in actions),
+    update=('update' in actions),
+    base=('base' in actions),
+    build=('build' in actions),
+    install=('install' in actions),
+    tests=('tests' in actions)
   ).run()
   
   
