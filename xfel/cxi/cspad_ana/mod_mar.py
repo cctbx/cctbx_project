@@ -78,6 +78,7 @@ class mod_mar(object):
     # not the case, the error will be caught during access.  This is
     # for the L748 experiment.
     for i in range(ctrl_config.npvControls() + 1):
+      if not hasattr(ctrl_config, 'pvControl'): continue
       pv = ctrl_config.pvControl(i)
       if pv is None or pv.name() != 'marccd_filenumber':
         continue
@@ -93,23 +94,22 @@ class mod_mar(object):
   def event(self, evt, env):
     from dxtbx.format.Registry import Registry
     from os.path import exists
-    from pyana.event import Event
     from time import sleep
 
     # Nop if there is no image.  For experiments configured to have
     # exactly one event per calibration cycle, this should never
     # happen.
     if self._path is None:
-      evt.setStatus(Event.Skip)
+      evt.put(True, "skip_event")
       return
 
     # Skip this event if the template isn't in the path
     if self._template is not None and not True in [t in self._path for t in self._template.split(',')]:
-      evt.setStatus(Event.Skip)
+      evt.put(True, "skip_event")
       return
 
     if "phi" in self._path:
-      evt.setStatus(Event.Skip)
+      evt.put(True, "skip_event")
       return
 
     # Wait for the image to appear in the file system, probing for it
@@ -137,18 +137,18 @@ class mod_mar(object):
     if self._fmt is None:
       self._fmt = Registry.find(self._path)
       if self._fmt is None:
-        evt.setStatus(Event.Skip)
+        evt.put(True, "skip_event")
         return
 
     img = self._fmt(self._path)
     if img is None:
       self._fmt = Registry.find(self._path)
       if self._fmt is None:
-        evt.setStatus(Event.Skip)
+        evt.put(True, "skip_event")
         return
       img = self._fmt(self._path)
       if img is None:
-        evt.setStatus(Event.Skip)
+        evt.put(True, "skip_event")
         return
 
     self._logger.info(
