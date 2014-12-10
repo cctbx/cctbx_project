@@ -13,6 +13,7 @@ import sys, os
 from xfel.detector_formats import detector_format_version as detector_format_function
 from xfel.detector_formats import reverse_timestamp
 from cctbx import sgtbx # import dependency
+from cctbx.array_family import flex
 
 args = sys.argv[1:]
 if "--break" in args:
@@ -54,14 +55,17 @@ for path in sys.argv[1:]:
     elif key == 'observations':
       print key, data[key], "Showing unit cell/spacegroup:"
       obs = data[key][0]
-      obs.unit_cell().show_parameters()
+      uc = obs.unit_cell()
+      uc.show_parameters()
       obs.space_group().info().show_summary()
+      d = uc.d(obs.indices())
+      print "Max resolution: %f"%flex.min(d)
+
     elif key == 'mapped_predictions':
       print key, data[key][0][0], "(only first shown)"
     elif key == 'correction_vectors':
       print key, data[key][0][0], "(only first shown)"
     elif key == "DATA":
-      from cctbx.array_family import flex
       print key,"len=%d max=%f min=%f dimensions=%s"%(data[key].size(),flex.max(data[key]),flex.min(data[key]),str(data[key].focus()))
     else:
       print key, data[key]
