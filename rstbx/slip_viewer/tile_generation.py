@@ -250,13 +250,14 @@ class _Tiles(object):
       # in frame.py.
 
       detector = self.raw_image.get_detector()
+      if len(detector) == 1 and len(raw_image_data) == 1:
+        raw_image_data = raw_image_data[0]
 
       if len(detector) > 1:
         self.flex_image = _get_flex_image_multipanel(
           brightness=self.current_brightness / 100,
           panels=detector,
-          raw_data=[self.raw_image.get_raw_data(i)
-                    for i in range(len(self.raw_image.get_detector()))])
+          raw_data=raw_image_data)
       else:
         self.flex_image = _get_flex_image(
           brightness=self.current_brightness / 100,
