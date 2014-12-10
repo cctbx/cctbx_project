@@ -969,7 +969,7 @@ class estimator_group:
       print >>self.out,"Item: variable name"
       for data_item,variable in zip(data_items,self.variable_names):
          print>>self.out,"%s: %s " %(data_item,variable)
-      raise Sorry("data items do not match working variables")
+      raise Sorry("Data items do not match working variables. Use verbose to see more info.")
     if len(self.resolution_cutoffs)>1 and resolution is None:
       raise Sorry("Must supply resolution if resolution_cutoffs is set")
 
