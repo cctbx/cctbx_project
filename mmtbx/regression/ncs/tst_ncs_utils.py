@@ -78,6 +78,53 @@ ATOM     21  CG2 THR C   1       7.842   4.986   8.114  1.00 10.00           C
 END
 """
 
+test_pdb_str_2 = '''\
+ATOM     45  N   PHEAa   6     219.693 144.930 112.416  1.00 50.00           N
+ATOM     46  CA  PHEAa   6     218.871 146.020 112.886  1.00 50.00           C
+ATOM     47  C   PHEAa   6     217.413 145.628 112.926  1.00 50.00           C
+ATOM     48  O   PHEAa   6     216.730 145.905 113.908  1.00 50.00           O
+TER
+ATOM   1244  N   ARGAb   6     303.367 160.705 103.239  1.00 50.00           N
+ATOM   1245  CA  ARGAb   6     302.396 160.991 104.331  1.00 50.00           C
+ATOM   1246  C   ARGAb   6     302.285 162.473 104.586  1.00 50.00           C
+ATOM   1247  O   ARGAb   6     302.837 163.292 103.851  1.00 50.00           O
+TER
+ATOM   2754  N   PHEAc   6     242.472 151.067 115.352  1.00 50.00           N
+ATOM   2755  CA  PHEAc   6     241.314 151.789 115.823  1.00 50.00           C
+ATOM   2756  C   PHEAc   6     240.094 150.900 115.864  1.00 50.00           C
+ATOM   2757  O   PHEAc   6     239.358 150.912 116.847  1.00 50.00           O
+TER
+ATOM   3953  N   ARGAd   6     314.882 195.854 106.123  1.00 50.00           N
+ATOM   3954  CA  ARGAd   6     313.875 195.773 107.215  1.00 50.00           C
+ATOM   3955  C   ARGAd   6     313.239 197.116 107.471  1.00 50.00           C
+ATOM   3956  O   ARGAd   6     313.460 198.078 106.736  1.00 50.00           O
+TER
+ATOM   5463  N   PHEAe   6     261.525 165.024 118.275  1.00 50.00           N
+ATOM   5464  CA  PHEAe   6     260.185 165.283 118.746  1.00 50.00           C
+ATOM   5465  C   PHEAe   6     259.365 164.014 118.787  1.00 50.00           C
+ATOM   5466  O   PHEAe   6     258.673 163.762 119.769  1.00 50.00           O
+TER
+ATOM   6662  N   ARGAf   6     313.035 232.818 109.051  1.00 50.00           N
+ATOM   6663  CA  ARGAf   6     312.124 232.379 110.143  1.00 50.00           C
+ATOM   6664  C   ARGAf   6     311.048 233.405 110.399  1.00 50.00           C
+ATOM   6665  O   ARGAf   6     310.909 234.383 109.665  1.00 50.00           O
+END
+'''
+
+phil_str = '''\
+ncs_group {
+  master_selection = chain 'Aa'
+  copy_selection = chain 'Ac'
+  copy_selection = chain 'Ae'
+}
+
+ncs_group {
+  master_selection = chain 'Ab'
+  copy_selection = chain 'Ad'
+  copy_selection = chain 'Af'
+}
+'''
+
 class Test_ncs_utils(unittest.TestCase):
   """
   Consider R = Rx(alpha)Ry(beta)Rz(gamma)
@@ -527,6 +574,51 @@ class Test_ncs_utils(unittest.TestCase):
     results = nu.iselection_asu_to_ncs(isel_asu,'B',ph)
     self.assertEqual(list(isel_ncs),list(results))
 
+  def test_change_ncs_groups_master(self):
+    """ test change_ncs_groups_master when we have more than one group """
+    ncs_obj_phil = ncs.input(
+      pdb_string=test_pdb_str_2,
+      ncs_phil_string=phil_str)
+    nrgl = ncs_obj_phil.get_ncs_restraints_group_list()
+    self.assertAlmostEqual(len(nrgl),2)
+    # check that the masters coordinates are the same after several flips
+    # select masters and some copies as references
+    master_1 = nrgl[0].master_iselection
+    master_2 = nrgl[1].master_iselection
+    copy_1_1 = nrgl[0].copies[0].iselection
+    copy_2_1 = nrgl[1].copies[0].iselection
+    copy_2_2 = nrgl[1].copies[1].iselection
+    # Test rotation and translations
+    pdb_inp = pdb.input(lines=test_pdb_str_2,source_info=None)
+    ph = pdb_inp.construct_hierarchy()
+    verify_transforms(nrgl,ph)
+    # change only the second master
+    nrgl_new = nu.change_ncs_groups_master(
+      ncs_restraints_group_list=nrgl,
+      new_masters=[0,2])
+    self.assertEqual(list(master_1),list(nrgl_new[0].master_iselection))
+    self.assertEqual(list(copy_1_1),list(nrgl_new[0].copies[0].iselection))
+    self.assertEqual(list(master_2),list(nrgl_new[1].copies[1].iselection))
+    self.assertEqual(list(copy_2_1),list(nrgl_new[1].copies[0].iselection))
+    self.assertEqual(list(copy_2_2),list(nrgl_new[1].master_iselection))
+    verify_transforms(nrgl_new,ph)
+
+def verify_transforms(nrgl,ph):
+  """
+  Check that all copies relate correctly to master via the transforms
+  Will raise an error if necessary
+
+  Args:
+    nrgl: ncs_restraints_group_list
+    ph: Hierarchy object
+  """
+  for gr in nrgl:
+    m_xyz = ph.select(gr.master_iselection).atoms().extract_xyz()
+    for cp in gr.copies:
+      c_xyz = ph.select(cp.iselection).atoms().extract_xyz()
+      xyz = cp.r.elems * m_xyz + cp.t
+      assert approx_equal(c_xyz,xyz,1)
+
 def run_selected_tests():
   """  Run selected tests
 
@@ -534,7 +626,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_center_of_coordinates_shift']
+  tests = ['test_change_ncs_groups_master']
   suite = unittest.TestSuite(map(Test_ncs_utils,tests))
   return suite
 
