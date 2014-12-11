@@ -78,10 +78,12 @@ tst_list = (
   "$D/max_lik/tst_max_lik.py",
   "$D/dynamics/tst_cartesian_dynamics.py",
   "$D/dynamics/tst_sa.py",
-  "$D/tls/tst_tls.py",
-  "$D/tls/tst_tls_as_xyz.py",
-  "$D/tls/tst_get_t_scheme.py",
-  "$D/tls/tst_tls_refinement_fft.py",
+  # TLS
+  "$D/regression/tls/tst_tls.py",
+  "$D/regression/tls/tst_tls_analysis.py",
+  "$D/regression/tls/tst_get_t_scheme.py",
+  "$D/regression/tls/tst_tls_refinement_fft.py",
+  #
   "$D/examples/f_model_manager.py",
   "$D/bulk_solvent/tst_bulk_solvent_and_scaling.py",
   "$D/bulk_solvent/tst_fit_kexpb_to_ktotal.py",
