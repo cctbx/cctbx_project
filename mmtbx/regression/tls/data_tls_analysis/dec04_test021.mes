@@ -1,0 +1,222 @@
+**** GENERATION OF THE TLS MATRICES ****
+  ** input control information **
+
+Libration rms around L-axes
+dx ,dy ,dz =   0.2000000   0.3000000   0.1000000
+
+vectors defining two first Libration axes
+     1.00000     0.00000     0.00000
+     0.00000     1.00000     1.00000
+
+rotation axes pass through the points in the M(main) base
+ parallel to lx : (wix,wiy,wiz)=      0.11000     0.31000     0.21000
+ parallel to ly : (wjx,wjy,wjz)=     -0.22000     0.32000     0.42000
+ parallel to lz : (wkx,wky,wkz)=      0.43000     0.33000     0.23000
+
+correlation shifts sx,sy,sz for libration
+               0.240000    0.130000    0.150000
+
+Vibration rms along V-axes
+tx ,ty ,tz =   0.0000000   0.0000000   0.0000000
+
+vectors defining two first Vibration axes
+     1.00000     0.00000     0.00000
+     0.00000     1.00000     0.00000
+
+center of reaction will not be used for decomposition
+
+====================================================
+*** ORIGINAL ELEMENTS OF THE TLS MATRICES ***
+  ** after correction of the axes order  **
+
+Libration rms around L-axes
+dx ,dy ,dz =   0.1000000   0.2000000   0.3000000
+
+unit vectors defining three Libration axes
+     0.00000    -0.70711     0.70711
+     1.00000     0.00000     0.00000
+     0.00000     0.70711     0.70711
+
+rotation axes pass through the points in the M base
+ axis 1         : (w1x,w1y,w1z)=      0.43000     0.33000     0.23000
+ axis 2         : (w2x,w2y,w2z)=      0.11000     0.31000     0.21000
+ axis 3         : (w3x,w3y,w3z)=     -0.22000     0.32000     0.42000
+
+rotation axes pass through the points in the L base
+ parallel to lx : (wix,wiy,wiz)=     -0.07071     0.43000     0.39598
+ parallel to ly : (wjx,wjy,wjz)=     -0.07071     0.11000     0.36770
+ parallel to lz : (wkx,wky,wkz)=      0.07071    -0.22000     0.52326
+
+correlation shifts sx,sy,sz for libration
+               0.150000    0.240000    0.130000
+
+Vibration rms along V-axes
+tx ,ty ,tz =   0.0000000   0.0000000   0.0000000
+
+vectors defining three Vibration axes
+     1.00000     0.00000     0.00000
+     0.00000     1.00000     0.00000
+     0.00000     0.00000     1.00000
+
+=================== TLS BUILT FROM THE BASE ELEMENTS ==================
+       matrices T L S in the original M-base  
+
+matrix T
+    0.00432200031355   -0.00219400017522   -0.00021399976686
+   -0.00219400017522    0.00573949981481   -0.00320949964225
+   -0.00021399991238   -0.00320949987508    0.00781949982047
+
+matrix L
+    0.03999999910593    0.00000000000000    0.00000000000000
+    0.00000000000000    0.05000000074506    0.03999999910593
+    0.00000000000000    0.03999999910593    0.05000000074506
+
+matrix S
+    0.00960000045598    0.00840000063181   -0.01239999942482
+   -0.00730000063777    0.01865000091493   -0.00265000062063
+   -0.00170000083745    0.01284999959171   -0.00544999912381
+
+
+================ TLS DECOMPOSITION ================
+
+***** STEP A : from M-base to P-base
+ P-shift :    0.000000    0.000000    0.000000
+ transition P-matrix and its transposal
+  0.000000  0.000000  0.000000    0.000000  0.000000  0.000000
+  0.000000  0.000000  0.000000    0.000000  0.000000  0.000000
+  0.000000  0.000000  0.000000    0.000000  0.000000  0.000000
+
+ resulted matrices T[P] L[P] S[P] in the P-base
+
+  0.004322 -0.002194 -0.000214    0.040000  0.000000  0.000000    0.009600  0.008400 -0.012400
+ -0.002194  0.005739 -0.003209    0.000000  0.050000  0.040000   -0.007300  0.018650 -0.002650
+ -0.000214 -0.003209  0.007819    0.000000  0.040000  0.050000   -0.001700  0.012850 -0.005450
+
+***** STEP B : libration amplitudes and axes 
+ three eigenvalues and corresponding eigenvectors:
+    0.010000       0.000000   -0.707107    0.707107
+    0.040000       1.000000    0.000000    0.000000
+    0.090000       0.000000    0.707107    0.707107
+
+ rotation matrix P->L and its transposal:
+  0.000000  1.000000  0.000000    0.000000 -0.707107  0.707107
+ -0.707107  0.000000  0.707107    1.000000  0.000000  0.000000
+  0.707107  0.000000  0.707107    0.000000  0.707107  0.707107
+
+ resulted matrices T[L] L[L] S[L] in the L-base
+
+  0.009989  0.001400  0.001040    0.010000  0.000000  0.000000    0.001500  0.003960 -0.004300
+  0.001400  0.004322 -0.001703    0.000000  0.040000  0.000000   -0.014708  0.009600 -0.002828
+  0.001040 -0.001703  0.003570    0.000000  0.000000  0.090000   -0.019800 -0.006364  0.011700
+
+ libration amplitudes around the L axes:    0.100000    0.200000    0.300000
+
+***** STEP C : W points in the L-base
+ axis Lx crosses the point        0.000000       0.430000       0.395980
+ axis Ly crosses the point       -0.070711       0.000000       0.367696
+ axis Lz crosses the point        0.070711      -0.220000       0.000000
+
+***** STEP D : optimal screw parameters 
+ D[L] matrix to be removed from the T matrix  :
+   -0.009764   -0.001400   -0.001040
+   -0.001400   -0.002018    0.001703
+   -0.001040    0.001703   -0.002049
+
+ resulted matrices TC[L] L[L] S[L] in the L-base
+
+  0.000225  0.000000  0.000000    0.010000  0.000000  0.000000    0.001500  0.003960 -0.004300
+  0.000000  0.002304  0.000000    0.000000  0.040000  0.000000   -0.014708  0.009600 -0.002828
+  0.000000  0.000000  0.001521    0.000000  0.000000  0.090000   -0.019800 -0.006364  0.011700
+
+diagonal shift for the unconstrained min[tr(S)]     0.007600
+checking Cauchy enequality 
+ general case : three librations 
+ ts limits : tminc,tmaxc     0.000000    0.003000
+checking positive definition of the residual matrix
+ eigenvalues of T[lambda]                            0.00000   0.00009   0.00014
+ ts limits : tmint,tmaxt     0.000000    0.013200
+ ts limits : tmina,tmaxa     0.000000    0.013200
+final limits : tmin,tmax     0.000000    0.003000
+
+constrained ts to be removed from the S diagonal    0.003000
+
+screw parameters sx,sy,sz      -0.14997   0.16501   0.09667
+C[L] matrix diagonal elements   0.00022   0.00109   0.00084
+
+***** STEP E : vibration parameters
+ matrix V[L]:
+  0.000000  0.000000  0.000000
+  0.000000  0.001215  0.000000
+  0.000000  0.000000  0.000680
+
+ eigenvalues and eigenvectors in base [L]:
+    0.000000     -1.000000    0.000000    0.000001
+    0.000680      0.000001    0.000000    1.000000
+    0.001215      0.000000    1.000000    0.000000
+
+ rotation matrix [P] -> [L]:
+  0.000000  1.000000  0.000000
+ -0.707107  0.000000  0.707107
+  0.707107  0.000000  0.707107
+
+ vibration tx,ty,tz along V axes & axes in base [M]:
+    0.000300      0.000000    0.707107   -0.707106
+    0.026076      0.000000    0.707106    0.707107
+    0.034855      1.000000    0.000000    0.000000
+
+ W points recalculated in the P and M bases
+    0.430000    0.280000    0.280000              0.430000    0.280000    0.280000
+    0.000000    0.310000    0.210000              0.000000    0.310000    0.210000
+   -0.220000   -0.050000    0.050000             -0.220000   -0.050000    0.050000
+
+====================================================
+***  TLS DECOMPOSED : BASIC ELEMENTS  ***
+Libration rms around L-axes
+dx ,dy ,dz =   0.1000000   0.2000000   0.3000000
+
+unit vectors defining three Libration axes
+     0.00000    -0.70711     0.70711
+     1.00000     0.00000     0.00000
+     0.00000     0.70711     0.70711
+
+rotation axes pass through the points in the M base
+ parallel to lx : (wix,wiy,wiz)=      0.43000     0.28000     0.28000
+ parallel to ly : (wjx,wjy,wjz)=      0.00000     0.31000     0.21000
+ parallel to lz : (wkx,wky,wkz)=     -0.22000    -0.05000     0.05000
+
+rotation axes pass through the points in the L base
+ parallel to lx : (wix,wiy,wiz)=      0.00000     0.43000     0.39598
+ parallel to ly : (wjx,wjy,wjz)=     -0.07071     0.00000     0.36770
+ parallel to lz : (wkx,wky,wkz)=      0.07071    -0.22000     0.00000
+
+correlation shifts sx,sy,sz for libration
+              -0.149970    0.165008    0.096670
+
+Vibration rms along V-axes
+tx ,ty ,tz =   0.0002999   0.0260757   0.0348554
+
+vectors defining three Vibration axes
+     0.00000     0.70711    -0.70711
+     0.00000     0.70711     0.70711
+     1.00000     0.00000     0.00000
+
+=================== TLS BUILT FROM THE BASE ELEMENTS ==================
+       matrices T L S in the original M-base  
+
+  0.004322 -0.002194 -0.000214    0.040000  0.000000  0.000000    0.006600  0.008400 -0.012400
+ -0.002194  0.005739 -0.003209    0.000000  0.050000  0.040000   -0.007300  0.015650 -0.002650
+ -0.000214 -0.003209  0.007819    0.000000  0.040000  0.050000   -0.001700  0.012850 -0.008450
+
+=================== REMINDER OF THE INPUT MATRICES ===================
+       matrices T L S in the original M-base  
+
+  0.004322 -0.002194 -0.000214    0.040000  0.000000  0.000000    0.009600  0.008400 -0.012400
+ -0.002194  0.005739 -0.003209    0.000000  0.050000  0.040000   -0.007300  0.018650 -0.002650
+ -0.000214 -0.003209  0.007819    0.000000  0.040000  0.050000   -0.001700  0.012850 -0.005450
+
+=============== MATRICES DIFFERENCE ===============
+       matrices T L S : new - inital  
+
+  0.000000  0.000000  0.000000    0.000000  0.000000  0.000000   -0.003000  0.000000  0.000000
+  0.000000  0.000000  0.000000    0.000000  0.000000  0.000000    0.000000 -0.003000  0.000000
+  0.000000  0.000000  0.000000    0.000000  0.000000  0.000000    0.000000  0.000000 -0.003000
