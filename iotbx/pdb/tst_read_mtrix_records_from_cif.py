@@ -165,4 +165,4 @@ ATOM 16   O OD2 . ASP A 1 2   ? 11.821 44.453 18.866  1.00 70.41  ? ? ? ? ? ? 2 
 """
 
 if __name__ == "__main__":
-  unittest.main()
+  unittest.main(verbosity=0)
