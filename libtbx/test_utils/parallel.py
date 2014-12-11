@@ -159,7 +159,6 @@ class run_command_list (object) :
     print >> self.out, ""
     print >> self.out, "Tests finished. Elapsed time: %.2fs" %(t_end-t_start)
     print >> self.out, ""
-    extra_stderr = 0
     test_cases = []
     # Process results for errors and warnings.
     extra_stderr = len([result for result in self.results if result.stderr_lines])
@@ -240,13 +239,18 @@ class run_command_list (object) :
     if (result is None ):
       print >> self.out, "ERROR: job returned None"
       return
+    alert = self.check_alert(result)
+    # Clear stderr when python unittest framework is used and test passes
+    if alert == 0 and result.stderr_lines:
+      test_ok = (result.stderr_lines[-1].strip() == 'OK')
+      if test_ok:
+        result.stderr_lines = []
     self.results.append(result)
     kw = {}
     kw['out'] = self.out
     kw['log_return'] = self.log
     kw['log_stderr'] = True
     kw['log_stdout'] = self.log
-    alert = self.check_alert(result)
     if self.quiet:
       kw['out'] = self.log
       kw['log_stderr'] = False
