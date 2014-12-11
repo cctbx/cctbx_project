@@ -674,4 +674,4 @@ if (__name__ == "__main__"):
   if (chem_data is None) :
     print "chem_data not present, skipping"
   else :
-    unittest.main()
+    unittest.main(verbosity=0)

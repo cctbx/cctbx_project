@@ -1267,4 +1267,4 @@ if __name__=='__main__':
   # unittest.TextTestRunner().run(run_selected_tests())
 
   # Use to run all tests
-  unittest.main()
+  unittest.main(verbosity=0)

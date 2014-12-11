@@ -169,4 +169,4 @@ class TestLog(unittest.TestCase):
     print "... and back again"
 
 if __name__ == "__main__":
-  unittest.main()
+  unittest.main(verbosity=0)
