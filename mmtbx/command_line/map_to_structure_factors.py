@@ -87,7 +87,7 @@ def run(args, log=None):
   #
   d_min = params.d_min
   if(d_min is None and not params.box):
-    d_min = mmtbx.utils.d_min_from_map(
+    d_min = maptbx.d_min_from_map(
       map_data  = m.data,
       unit_cell = cs.unit_cell())
   if(d_min is None):

@@ -1,7 +1,6 @@
 from __future__ import division
 from scitbx.array_family import flex
 from mmtbx.refinement.real_space import individual_sites
-import mmtbx
 from libtbx.test_utils import approx_equal
 from cctbx import maptbx
 from libtbx import adopt_init_args
@@ -132,7 +131,7 @@ def macro_cycle(
       log            = None):
   if(not log):
     if(log is None): log = sys.stdout
-  d_min = mmtbx.utils.d_min_from_map(
+  d_min = maptbx.d_min_from_map(
       map_data  = target_map,
       unit_cell = xray_structure.unit_cell())
   all_selection = flex.bool(xray_structure.scatterers().size(),True)

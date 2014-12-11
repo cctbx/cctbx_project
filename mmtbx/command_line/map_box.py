@@ -8,6 +8,7 @@ import libtbx.phil
 from libtbx.utils import Sorry
 import os, sys
 from iotbx import reflection_file_utils
+from cctbx import maptbx
 
 master_phil = libtbx.phil.parse("""
   pdb_file = None
@@ -128,7 +129,7 @@ Parameters:"""%h
     print >> log, "writing map coefficients to MTZ file: %s"%file_name
     if(map_coeff is not None): d_min = map_coeff.d_min()
     else:
-      d_min = mmtbx.utils.d_min_from_map(map_data=box.map_box,
+      d_min = maptbx.d_min_from_map(map_data=box.map_box,
         unit_cell=box.xray_structure_box.unit_cell())
     box.map_coefficients(d_min=d_min,
       resolution_factor=params.resolution_factor, file_name=file_name)

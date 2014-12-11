@@ -1045,3 +1045,61 @@ class positivity_constrained_density_modification(object):
     x = abs(x).data()
     y = abs(y).data()
     assert approx_equal(x, y)
+
+def d_min_from_map(map_data, unit_cell, resolution_factor=1./2.):
+  a,b,c = unit_cell.parameters()[:3]
+  nx,ny,nz = map_data.all()
+  d1,d2,d3 = \
+    a/nx/resolution_factor,\
+    b/ny/resolution_factor,\
+    c/nz/resolution_factor
+  return max(d1,d2,d3)
+
+def resolution_from_map_and_model(map_data, xray_structure):
+  """
+  Given map and model estimate resolution by maximizing map CC(map, model-map).
+  """
+  from cctbx import miller
+  xrs = xray_structure
+  sel = grid_indices_around_sites(
+    unit_cell  = xrs.unit_cell(),
+    fft_n_real = map_data.focus(),
+    fft_m_real = map_data.all(),
+    sites_cart = xrs.sites_cart(),
+    site_radii = flex.double(xrs.scatterers().size(),5))
+  map_data_selected_as_1d = map_data.select(sel).as_1d()
+  cg = crystal_gridding(
+    unit_cell             = xrs.unit_cell(),
+    space_group_info      = xrs.space_group_info(),
+    pre_determined_n_real = map_data.accessor().all())
+  def optimize(d_min_min, d_min_max, step):
+    d_min = d_min_min
+    d_min_result = None
+    cc_best=-1.e6
+    while d_min < d_min_max+1.e-6:
+      f_calc = xrs.structure_factors(d_min=d_min).f_calc()
+      fft_map = miller.fft_map(
+        crystal_gridding     = cg,
+        fourier_coefficients = f_calc)
+      map_data_ = fft_map.real_map_unpadded()
+      cc = flex.linear_correlation(
+        x=map_data_selected_as_1d,
+        y=map_data_.select(sel).as_1d()).coefficient()
+      if(cc > cc_best):
+        cc_best = cc
+        d_min_result = d_min
+      d_min += step
+    return d_min_result
+  # coarse estimate
+  d_min_max = d_min_from_map(
+    map_data=map_data, unit_cell=xrs.unit_cell(), resolution_factor=0.2)
+  d_min_min = d_min_from_map(
+    map_data=map_data, unit_cell=xrs.unit_cell(), resolution_factor=0.5)
+  step = (d_min_max-d_min_min)/5
+  d_min_result = optimize(d_min_min=d_min_min, d_min_max=d_min_max, step=step)
+  # fine estimate
+  d_min_min=d_min_result-step
+  d_min_max=d_min_result+step
+  step = (d_min_max-d_min_min)/10
+  d_min_result = optimize(d_min_min=d_min_min, d_min_max=d_min_max, step=step)
+  return d_min_result
