@@ -2908,18 +2908,9 @@ class states(object):
   def write(self, file_name):
     self.root.write_pdb_file(file_name = file_name)
 
-def d_min_from_map(map_data, unit_cell, resolution_factor=1./2.):
-  a,b,c = unit_cell.parameters()[:3]
-  nx,ny,nz = map_data.all()
-  d1,d2,d3 = \
-    a/nx/resolution_factor,\
-    b/ny/resolution_factor,\
-    c/nz/resolution_factor
-  return max(d1,d2,d3)
-
 def structure_factors_from_map(map_data, unit_cell_lengths, n_real,
                                crystal_symmetry, resolution_factor=1/4.):
-  d_min_guess_from_map = d_min_from_map(map_data=map_data,
+  d_min_guess_from_map = maptbx.d_min_from_map(map_data=map_data,
     unit_cell=crystal_symmetry.unit_cell(), resolution_factor=resolution_factor)
   complete_set = miller.build_set(
     crystal_symmetry = crystal_symmetry,
