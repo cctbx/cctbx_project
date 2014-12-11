@@ -1659,6 +1659,7 @@ mmtbx/command_line/mon_lib_cif_triage.py svneol=native#text/x-python
 mmtbx/command_line/mp_geo.py -text
 mmtbx/command_line/mtz2map.py -text
 mmtbx/command_line/nqh_minimize.py -text
+mmtbx/command_line/omegalyze.py -text
 mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
 mmtbx/command_line/pdb_view_ad_hoc.py svneol=native#text/x-python
 mmtbx/command_line/pdbtools.py -text
