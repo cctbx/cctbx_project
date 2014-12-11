@@ -644,7 +644,7 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
           data_items=all_items
           info_items=all_info_items
         if not target_variable:
-          target_variable=line.split()[0]
+          target_variable=target
         first=False
         continue
       if skip_columns:
@@ -1354,39 +1354,51 @@ def jacknife(target_and_values_list,i,
   est,sd=estimator.apply_estimator(suitable_test_values,single_value=True)
   return target,est
 
-def run_jacknife(args,out=sys.stdout):
+def run_jacknife(args=None,no_jump=True,
+     file_name=None,record_list=None,info_list=None,out=sys.stdout):
 
+  if args is None: args=[]
   verbose=('verbose' in args)
   if 'testing' in args:
     print >>out,"\nTESTING jacknife run of bayesian estimator.\n"
   skip_covariance=(not 'include_covariance' in args)
 
-  if args and os.path.isfile(args[0]):
+  if file_name is not None or record_list is not None:
+    # already have it
+    pass
+  elif args and os.path.isfile(args[0]):
     file_name=args[0]
+    print >>out,"Setting up jacknife Bayesian predictor with data from %s" %(
+      file_name)
   else:
     import libtbx.load_env
     file_name=libtbx.env.find_in_repositories(
       relative_path=os.path.join("mmtbx","scaling","cc_ano_data.dat"),
       test=os.path.isfile)
-  if not file_name or not os.path.isfile(file_name):
-    raise Sorry("Unable to find the file '%s' " %(str(file_name)))
-  print >>out,"Setting up jacknife Bayesian predictor with data from %s" %(
+    print >>out,"Setting up jacknife Bayesian predictor with data from %s" %(
       file_name)
+  if not record_list and (not file_name or not os.path.isfile(file_name)):
+    raise Sorry("Unable to find the file '%s' " %(str(file_name)))
 
-  record_list,info_list,target_variable,data_items,info_items=get_table_as_list(
-     file_name=file_name,
-     select_only_complete=False,
-     out=out)
-
-  print >>out,"Size of data list: %d" %(len(record_list))
-
+  if record_list is None:
+    record_list,info_list,target_variable,data_items,info_items=\
+       get_table_as_list(
+         file_name=file_name,
+         select_only_complete=False,
+         out=out)
+    print >>out,"Size of data list: %d" %(len(record_list))
+  if info_list is None:
+    info_list=len(record_list)*["None"]
+ 
   # Set up estimator using all but one entry and predict it from the others
 
-  if 'no_jump' in args:
+  if no_jump:
+    n_jump=1
+  elif no_jump is None and 'no_jump' in args:
     n_jump=1
   else:
     n_jump=20
-  print >>out,"Testing every %d'th entry in jacknife" %(n_jump)
+    print >>out,"Testing every %d'th entry in jacknife" %(n_jump)
   from cctbx.array_family import flex
   target_list=flex.double()
   result_list=flex.double()
@@ -1406,17 +1418,17 @@ def run_jacknife(args,out=sys.stdout):
   cc=flex.linear_correlation(
     target_list,result_list).coefficient()
   print >>out,"CC: %7.3f " %(cc)
-  return cc
+  return cc,target_list,result_list
 
 if __name__=="__main__":
   args=sys.argv[1:]
   if not 'testing' in args: args.append('testing')
   if 'run_jacknife' in args:
-    run_jacknife(args)
+    run_jacknife(args=args,no_jump=None)
   elif 'exercise_group' in args:
     exercise_group()
   else:
-    run_jacknife(args)
+    run_jacknife(args=args,no_jump=None)
     exercise_group()
     run=bayesian_estimator()
     run.exercise()
