@@ -2066,7 +2066,6 @@ mmtbx/tls/perm13.py -text
 mmtbx/tls/perm14.py -text
 mmtbx/tls/perm15.py -text
 mmtbx/tls/tls_as_xyz.py -text
-mmtbx/tls/tst_tls_as_xyz.py -text
 mmtbx/torsion_restraints/__init__.py svneol=native#text/x-python
 mmtbx/torsion_restraints/reference_model.py svneol=native#text/x-python
 mmtbx/torsion_restraints/rotamer_search.py -text
