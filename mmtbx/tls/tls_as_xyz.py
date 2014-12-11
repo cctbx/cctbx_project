@@ -10,6 +10,7 @@ from scitbx.array_family import flex
 import iotbx.pdb
 from libtbx.utils import Sorry
 from cctbx import adptbx
+import sys
 
 random.seed(2679941)
 
@@ -89,14 +90,14 @@ def step_i__get_dxdydz(L_L, R_PL, log, eps=1.e-7):
   """
   Generation of shifts from screw rotations.
   """
-  print_step("step_i__get_dxdydz:", log)
+#XXX  print_step("step_i__get_dxdydz:", log)
   L_ = L_L.as_sym_mat3()
   Lxx, Lyy, Lzz = L_[0], L_[1], L_[2]
   dx0, dy0, dz0 = 0, 0, 0
   if(abs(Lxx)>eps): dx0 = random.normalvariate(0,Lxx)
   if(abs(Lyy)>eps): dy0 = random.normalvariate(0,Lyy)
   if(abs(Lzz)>eps): dz0 = random.normalvariate(0,Lzz)
-  print >> log, "  dx0, dy0, dz0:", dx0, dy0, dz0
+#XXX  print >> log, "  dx0, dy0, dz0:", dx0, dy0, dz0
   return dx0, dy0, dz0
 
 def step_i__compute_delta_L_r_dp(r_L, c_o, e_o, dx0, dy0, dz0, R_PL):
@@ -126,13 +127,13 @@ def step_j(h_o, log):
   """
   Generate shifts from group translation.
   """
-  print_step("step_j:", log)
+#XXX  print_step("step_j:", log)
   V_V_ = h_o.V_V.as_sym_mat3()
   tx0, ty0, tz0 = 0, 0, 0
   if(V_V_[0] != 0): tx0 = random.normalvariate(0,V_V_[0])
   if(V_V_[1] != 0): ty0 = random.normalvariate(0,V_V_[1])
   if(V_V_[2] != 0): tz0 = random.normalvariate(0,V_V_[2])
-  print >> log, "  u0, v0, w0:", tx0, ty0, tz0
+#XXX  print >> log, "  u0, v0, w0:", tx0, ty0, tz0
   d_r_V = tx0*h_o.v_x + ty0*h_o.v_y + tz0*h_o.v_z
   d_r_M = h_o.R_MV * d_r_V
   return d_r_M
@@ -143,29 +144,362 @@ def step_k(d_r_M_L, d_r_M_V):
   """
   return d_r_M_L + d_r_M_V
 
+def truncate(m, eps_string="%.6f"):
+  if(type(m) is float):
+    return float(eps_string%m)
+  elif(type(m) is flex.double):
+    return flex.double([float(eps_string%i) for i in m])
+  else:
+    assert type(m) is matrix.sqr
+    x = [m[0],m[1],m[2], m[3],m[4],m[5], m[6],m[7],m[8]]
+    x_ = []
+    for xi in x: x_.append(float(eps_string%xi))
+    return matrix.sqr(
+      [x_[0], x_[1], x_[2],
+       x_[3], x_[4], x_[5],
+       x_[6], x_[7], x_[8]])
+
 class decompose_tls(object):
-  def __init__(self, T, L, S, log):
+  def __init__(self, T, L, S, log=sys.stdout):
     """
-    Decompose TLS matrices into components necessary to compute ensemble:
-    steps a) - h).
+    Decompose TLS matrices into physically iterpretable components.
     """
     self.log = log
     self.ff = "%12.9f"
     self.eps = 1.e-9
+    self.is_pd = adptbx.is_positive_definite
     print >> self.log, "Small is defined as:", self.eps
-    self.T, self.L, self.S = T, L, S
+    self.T_M, self.L_M, self.S_M = T, L, S
     print_step("Input TLS matrices:", self.log)
-    self.show_matrix(x=self.T, prefix="  ", title="T_M")
-    self.show_matrix(x=self.L, prefix="  ", title="L_M")
-    self.show_matrix(x=self.S, prefix="  ", title="S_M")
-    self.a_o  = self.step_a(T  =self.T, L=self.L, S=self.S)
-    self.b_o  = self.step_b(T_p=self.a_o.T_p, L_p=self.a_o.L_p, S_p=self.a_o.S_p)
-    self.c_o  = self.step_c(T_L=self.b_o.T_L, L_L=self.b_o.L_L, S_L=self.b_o.S_L)
-    self.S_C  = self.step_d(S_L=self.b_o.S_L, L_L=self.b_o.L_L, T_L=self.b_o.T_L)
-    self.e_o  = self.step_e(S_C=self.S_C, L_L = self.b_o.L_L)
-    self.C_LW = self.step_f(c_o=self.c_o, T_L = self.b_o.T_L, L_L=self.b_o.L_L)
-    self.g_o  = self.step_g(T_L=self.b_o.T_L, C_LW=self.C_LW, e_o=self.e_o, S_C=self.S_C)
-    self.h_o  = self.step_h(V_L=self.g_o.V_L, b_o=self.b_o)
+    self.show_matrix(x=self.T_M, prefix="  ", title="T_M")
+    self.show_matrix(x=self.L_M, prefix="  ", title="L_M")
+    self.show_matrix(x=self.S_M, prefix="  ", title="S_M")
+    # set at step A
+    self.T_L, self.L_L, self.S_L = None, None, None
+    self.l_x, self.l_y, self.l_z = None, None, None
+    self.R_ML = None
+    self.Lxx, self.Lyy, self.Lzz = None, None, None
+    self.Sxx, self.Syy, self.Szz = None, None, None
+    # set at step B
+    self.w = None
+    self.T_CL = None
+    self.D_WL = None
+    # set at step C
+    self.t_S = None
+    self.sx_bar = 0
+    self.sy_bar = 0
+    self.sz_bar = 0
+    self.C_L_t_S = None
+    self.V_L = None
+    self.S_C = None
+    # D
+    self.V_V = None
+    self.R_MV = None
+    self.v_x, self.v_y, self.v_z = None, None, None
+    self.tx, self.ty, self.tz = None, None, None
+    # all steps
+    self.step_A()
+    self.step_B()
+    self.step_C()
+    self.step_D()
+    # compose result-object
+    self.result = self.finalize()
+    self.show_summary()
+    # consistency check: restore input T_M, L_M, S_M from base elements
+    self.self_check()
+
+  def step_A(self):
+    """
+    Diagonalization of L matrix.
+    """
+    # check input matrices T_M>=0 and L_M>=0:
+    if(not self.is_pd(self.T_M.as_sym_mat3(), self.eps)):
+      raise Sorry("T must be positive definite.")
+    if(not self.is_pd(self.L_M.as_sym_mat3(), self.eps)):
+      raise Sorry("L must be positive definite.")
+    print_step("Step A:", self.log)
+    es = self.eigen_system_default_handler(m=self.L_M, suffix="L_M")
+    self.l_x, self.l_y, self.l_z = es.x, es.y, es.z
+    self.show_vector(x=self.l_x, title="l_x")
+    self.show_vector(x=self.l_y, title="l_y")
+    self.show_vector(x=self.l_z, title="l_z")
+    self.R_ML = matrix.sqr(
+      [self.l_x[0], self.l_y[0], self.l_z[0],
+       self.l_x[1], self.l_y[1], self.l_z[1],
+       self.l_x[2], self.l_y[2], self.l_z[2]])
+    self.show_matrix(x=self.R_ML, title="Matrix R_ML, (12)")
+    R_ML_transpose = self.R_ML.transpose()
+    assert approx_equal(R_ML_transpose, self.R_ML.inverse(), 1.e-5)
+    self.T_L = truncate(m=R_ML_transpose*self.T_M*self.R_ML)
+    self.L_L = truncate(m=R_ML_transpose*self.L_M*self.R_ML)
+    self.S_L = truncate(m=R_ML_transpose*self.S_M*self.R_ML)
+    self.show_matrix(x=self.T_L, title="T_L, (13)")
+    self.show_matrix(x=self.L_L, title="L_L, (13)")
+    self.show_matrix(x=self.S_L, title="S_L, (13)")
+    L_ = self.L_L.as_sym_mat3()
+    self.Lxx, self.Lyy, self.Lzz = L_[0], L_[1], L_[2]
+    self.Sxx, self.Syy, self.Szz = self.S_L[0], self.S_L[4], self.S_L[8]
+
+  def step_B(self):
+    """
+    Position of the libration axes in the L-basis.
+    """
+    print_step("Step B:", self.log)
+    wy_lx=0
+    wz_lx=0
+    wx_ly=0
+    wz_ly=0
+    wx_lz=0
+    wy_lz=0
+    if(self.is_zero(self.Lxx)):
+      if(not self.is_zero(self.S_L[2]) and not self.is_zero(self.S_L[1])):
+        raise Sorry("Step B: incompatible L and S matrices.")
+    else:
+      wy_lx =-self.S_L[2]/self.Lxx
+      wz_lx = self.S_L[1]/self.Lxx
+    if(self.is_zero(self.Lyy)):
+      if(not self.is_zero(self.S_L[5]) and not self.is_zero(self.S_L[3])):
+        raise Sorry("Step B: incompatible L and S matrices.")
+    else:
+      wx_ly = self.S_L[5]/self.Lyy
+      wz_ly =-self.S_L[3]/self.Lyy
+    if(self.is_zero(self.Lzz)):
+      if(not self.is_zero(self.S_L[7]) and not self.is_zero(self.S_L[6])):
+        raise Sorry("Step B: incompatible L and S matrices.")
+    else:
+      wx_lz =-self.S_L[7]/self.Lzz
+      wy_lz = self.S_L[6]/self.Lzz
+    w_lx = matrix.col((0,     wy_lx, wz_lx))
+    w_ly = matrix.col((wx_ly,     0, wz_ly))
+    w_lz = matrix.col((wx_lz, wy_lz,     0))
+    self.w = group_args(
+      wy_lx = wy_lx,
+      wz_lx = wz_lx,
+      wx_ly = wx_ly,
+      wz_ly = wz_ly,
+      wx_lz = wx_lz,
+      wy_lz = wy_lz,
+      w_lx = w_lx,
+      w_ly = w_ly,
+      w_lz = w_lz)
+    self.show_vector(x=w_lx, title="w_lx, (15)")
+    self.show_vector(x=w_ly, title="w_ly, (15)")
+    self.show_vector(x=w_lz, title="w_lz, (15)")
+    d11 = wz_ly**2*self.Lyy + wy_lz**2*self.Lzz
+    d22 = wz_lx**2*self.Lxx + wx_lz**2*self.Lzz
+    d33 = wy_lx**2*self.Lxx + wx_ly**2*self.Lyy
+    d12 = -wx_lz*wy_lz*self.Lzz
+    d13 = -wx_ly*wz_ly*self.Lyy
+    d23 = -wy_lx*wz_lx*self.Lxx
+    self.D_WL = matrix.sqr(
+      [d11, d12, d13,
+       d12, d22, d23,
+       d13, d23, d33])
+    self.show_matrix(x=self.D_WL, title="D_WL, (17)")
+    self.T_CL = self.T_L - self.D_WL
+    self.T_CL = truncate(m=matrix.sqr(self.T_CL), eps_string="%.5f")
+    self.show_matrix(x=self.T_CL, title="T_CL")
+    if(not self.is_pd(self.T_CL.as_sym_mat3(), self.eps)):
+      raise Sorry("T_CL must be positive definite.")
+
+  def step_C(self):
+    """
+    Determination of screw components.
+    """
+    print_step("Step C:", self.log)
+    T_ = self.T_CL.as_sym_mat3()
+    self.T_CLxx, self.T_CLyy, self.T_CLzz = T_[0], T_[1], T_[2]
+    tlxx = self.T_CLxx*self.Lxx
+    tlyy = self.T_CLyy*self.Lyy
+    tlzz = self.T_CLzz*self.Lzz
+    if(tlxx < 0 or tlyy < 0 or tlzz < 0): raise Sorry("Cannot evaluate (25).")
+    t_min_C = truncate(m=max(
+      self.Sxx-math.sqrt(tlxx),
+      self.Syy-math.sqrt(tlyy),
+      self.Szz-math.sqrt(tlzz)))
+    t_max_C = truncate(m=min(
+      self.Sxx+math.sqrt(tlxx),
+      self.Syy+math.sqrt(tlyy),
+      self.Szz+math.sqrt(tlzz)))
+    self.show_number(x=[t_min_C, t_max_C], title="t_min_C, t_max_C (25):")
+    t11, t22, t33 = tlxx, tlyy, tlzz
+    t12 = self.T_CL[1] * math.sqrt(self.Lxx*self.Lyy)
+    t13 = self.T_CL[2] * math.sqrt(self.Lxx*self.Lzz)
+    t23 = self.T_CL[5] * math.sqrt(self.Lyy*self.Lzz)
+    #
+    # Left branch
+    #
+    if(not self.is_zero(self.Lxx*self.Lyy*self.Lzz)):
+      t_0 = self.S_L.trace()/3.
+      self.show_number(x=t_0, title="t_0 (21):")
+      # compose T_lambda and find tau_max (30)
+      T_lambda = truncate( m=matrix.sqr(
+        [t11, t12, t13,
+         t12, t22, t23,
+         t13, t23, t33]) )
+      self.show_matrix(x=T_lambda, title="T_lambda")
+      es = eigensystem.real_symmetric(T_lambda.as_sym_mat3())
+      vals = es.values()
+      assert vals[0]>=vals[1]>=vals[2]
+      tau_max = vals[0]
+      # (32)
+      if(tau_max < 0): raise Sorry("Cannot evaluate (32): tau_max<0.")
+      t_min_tau = max(self.Sxx,self.Syy,self.Szz)-math.sqrt(tau_max)
+      t_max_tau = min(self.Sxx,self.Syy,self.Szz)+math.sqrt(tau_max)
+      self.show_number(x=[t_min_tau, t_max_tau], title="t_min_tau, t_max_tau (32):")
+      # (40-41):
+      arg = t_0**2 + (t11+t22+t33)/3. - (self.Sxx**2+self.Syy**2+self.Szz**2)/3.
+      if(arg < 0): raise Sorry("Cannot evaluate (41): arg<0.")
+      t_a = math.sqrt(arg)
+      self.show_number(x=t_a, title="t_a (41):")
+      t_min_a = t_0-t_a
+      t_max_a = t_0+t_a
+      self.show_number(x=[t_min_a, t_max_a], title="t_min_a, t_max_a (40):")
+      # compute t_min, t_max - this is step b)
+      t_min = truncate(m=max(t_min_C, t_min_tau, t_min_a))
+      t_max = truncate(m=min(t_max_C, t_max_tau, t_max_a))
+      if  (t_min > t_max): raise Sorry("No solution: t_min > t_max.")
+      elif(self.is_zero(t_min-t_max)):
+        _, b_s, c_s = self.as_bs_cs(t=t_min, txx=t11,tyy=t22,tzz=t33,
+          txy=t12,tyz=t23,tzx=t13)
+        if(b_s >= 0 and c_s <= 0): self.t_S = t_min
+        else: raise Sorry("No solution at step c).")
+      elif(t_min < t_max):
+        step = (t_max-t_min)/100000.
+        target = 1.e+9
+        t_S_best = t_min
+        while t_S_best <= t_max:
+          _, b_s, c_s = self.as_bs_cs(t=t_S_best, txx=t11,tyy=t22,tzz=t33,
+            txy=t12,tyz=t23,tzx=t13)
+          if(b_s >= 0 and c_s <= 0):
+            target_ = abs(t_0-t_S_best)
+            if(target_ < target):
+              target = target_
+              self.t_S = t_S_best
+          t_S_best += step
+        assert self.t_S <= t_max
+        self.t_S = truncate(self.t_S)
+    #
+    # Right branch, Section 4.4
+    #
+    else:
+      # helper-function to check Cauchy conditions
+      def cauchy_conditions(i,j,k, tSs): # diagonals: 0,4,8; 4,0,8; 8,0,4
+        if(self.is_zero(self.L_L[i])):
+          t_S = self.S_L[i]
+          cp1 = (self.S_L[j] - t_S)**2 - self.T_CL[j]*self.L_L[j]
+          cp2 = (self.S_L[k] - t_S)**2 - self.T_CL[k]*self.L_L[k]
+          if( not ((cp1 < 0 or self.is_zero(cp1)) and
+                   (cp2 < 0 or self.is_zero(cp2))) ):
+            raise Sorry("Cauchy condition failed, (23).")
+          a_s, b_s, c_s = self.as_bs_cs(t=t_S, txx=t11,tyy=t22,tzz=t33,
+            txy=t12,tyz=t23,tzx=t13)
+          self.check_37_38_39(a_s=a_s, b_s=b_s, c_s=c_s)
+          tSs.append(t_S)
+      #
+      tSs = []
+      cauchy_conditions(i=0,j=4,k=8, tSs=tSs)
+      cauchy_conditions(i=4,j=0,k=8, tSs=tSs)
+      cauchy_conditions(i=8,j=0,k=4, tSs=tSs)
+      if(len(tSs)==1): self.t_S = tSs[0]
+      else:
+        self.t_S = tSs[0]
+        for tSs_ in tSs[1:]:
+          if(not self.is_zero(x = self.t_S-tSs_)):
+            assert 0
+    # end-of-procedure check, then truncate
+    if(self.t_S is None):
+      raise Sorry("Step C did not yield a solution.")
+    self.t_S = truncate(m=self.t_S)
+    #
+    # At this point t_S is found or procedure terminated earlier.
+    #
+    self.show_number(x=self.t_S, title="t_S:")
+    # compute S_C(t_S_), (19)
+    self.S_C = self.S_L - matrix.sqr(
+      [self.t_S,        0,        0,
+              0, self.t_S,        0,
+              0,        0, self.t_S])
+    self.S_C = truncate(m=matrix.sqr(self.S_C))
+    self.show_matrix(x=self.S_C, title="S_C, (26)")
+    # find sx_bar, sy_bar, sz_bar
+    if(self.is_zero(self.Lxx)):
+      if(not self.is_zero(self.S_C[0])): raise Sorry("L_L_xx=0: S_C_xx != 0")
+    else:
+      self.sx_bar = truncate(m=self.S_C[0]/self.Lxx)
+    if(self.is_zero(self.Lyy)):
+      if(not self.is_zero(self.S_C[4])): raise Sorry("L_L_yy=0: S_C_yy != 0")
+    else:
+      self.sy_bar = truncate(m=self.S_C[4]/self.Lyy)
+    if(self.is_zero(self.Lzz)):
+      if(not self.is_zero(self.S_C[8])): raise Sorry("L_L_zz=0: S_C_zz != 0")
+    else:
+      self.sz_bar = truncate(m=self.S_C[8]/self.Lzz)
+    self.show_number(x=[self.sx_bar,self.sy_bar,self.sz_bar],
+      title="Screw parameters (section 4.5): sx_bar,sy_bar,sz_bar:")
+    # compose C_L_t_S (26), and V_L (27)
+    self.C_L_t_S = matrix.sqr(
+      [self.sx_bar*self.S_C[0],                       0,                       0,
+                             0, self.sy_bar*self.S_C[4],                       0,
+                             0,                       0, self.sz_bar*self.S_C[8]])
+    self.C_L_t_S = truncate(m=self.C_L_t_S)
+    self.show_matrix(x=self.C_L_t_S, title="C_L(t_S), (26)")
+    self.V_L = truncate(m=matrix.sqr(self.T_CL - self.C_L_t_S))
+    self.show_matrix(x=self.V_L, title="V_L, (26-27)")
+
+  def step_D(self):
+    """
+    Determination of vibration components (Step D).
+    """
+    print_step("Step D:", self.log)
+    es = self.eigen_system_default_handler(m=self.V_L, suffix="V_L")
+    self.v_x, self.v_y, self.v_z = es.x, es.y, es.z
+    self.tx, self.ty, self.tz = es.vals[0]**0.5,es.vals[1]**0.5,es.vals[2]**0.5
+    self.show_vector(x=self.v_x, title="v_x")
+    self.show_vector(x=self.v_y, title="v_y")
+    self.show_vector(x=self.v_z, title="v_z")
+    if(min(es.vals)<0):
+      raise Sorry("Step D: all eigenvalues of V must be nonnegative.")
+    R = matrix.sqr(
+      [self.v_x[0], self.v_y[0], self.v_z[0],
+       self.v_x[1], self.v_y[1], self.v_z[1],
+       self.v_x[2], self.v_y[2], self.v_z[2]])
+    self.V_V = truncate(m=R.transpose()*self.V_L*R)
+    self.show_matrix(x=self.V_V, title="V_V")
+    v_x_M = self.R_ML*self.v_x
+    v_y_M = self.R_ML*self.v_y
+    v_z_M = self.R_ML*self.v_z
+    self.R_MV = matrix.sqr(
+      [v_x_M[0], v_y_M[0], v_z_M[0],
+       v_x_M[1], v_y_M[1], v_z_M[1],
+       v_x_M[2], v_y_M[2], v_z_M[2]])
+
+  def check_37_38_39(self, a_s, b_s, c_s):
+    if(not ((a_s<0 or self.is_zero(a_s)) and
+            (b_s>0 or self.is_zero(a_s)) and
+            (c_s<0 or self.is_zero(c_s)))):
+      raise Sorry("Conditions 37-39 failed.")
+
+  def as_bs_cs(self, t, txx,tyy,tzz, txy,tyz,tzx):
+    xx = (t-self.Sxx)**2-txx
+    yy = (t-self.Syy)**2-tyy
+    zz = (t-self.Szz)**2-tzz
+    a_s = xx + yy + zz
+    b_s = xx*yy + yy*zz + zz*xx - (txy**2+tyz**2+tzx**2)
+    c_s = xx*yy*zz - tyz**2*xx - tzx**2*yy - txy**2*zz - 2*txy*tyz*tzx
+    return a_s, b_s, c_s
+
+  def is_zero(self, x):
+    if(abs(x)<self.eps): return True
+    else: return False
+
+  def show_number(self, x, title, prefix="  "):
+    print >> self.log, prefix, title
+    if(type(x) in [float, int]):
+      print >> self.log, "   ", ("%s"%self.ff)%x
+    else:
+      print >> self.log, "   ", " ".join([str(("%s"%self.ff)%i) for i in x])
+    print >> self.log
 
   def show_matrix(self, x, title, prefix="  "):
     print >> self.log, prefix, title
@@ -182,30 +516,45 @@ class decompose_tls(object):
     print >> self.log, prefix, self.ff%x[2]
     print >> self.log
 
-  def eigen_system_default_handler(self, m):
+  def eigen_system_default_handler(self, m, suffix):
     es = eigensystem.real_symmetric(m.as_sym_mat3())
-    vals, vecs = es.values(), es.vectors()
-    print >> self.log, "  eigen values :", " ".join([self.ff%i for i in vals])
-    print >> self.log, "  eigen vectors:", " ".join([self.ff%i for i in vecs])
+    vals, vecs = truncate(m=es.values()), truncate(m=es.vectors())
+    print >> self.log, "  eigen values  (%s):"%suffix, " ".join([self.ff%i for i in vals])
+    print >> self.log, "  eigen vectors (%s):"%suffix, " ".join([self.ff%i for i in vecs])
     assert vals[0]>=vals[1]>=vals[2]
+    ###
+    def zero(x, e):
+      for i in xrange(len(x)):
+        if(abs(x[i])<e): x[i]=0
+      return x
+    vals = zero(vals, self.eps)
+    vecs = zero(vecs, self.eps)
+    ###
     # case 1: all different
     if(abs(vals[0]-vals[1])>=self.eps and
        abs(vals[1]-vals[2])>=self.eps and
        abs(vals[0]-vals[2])>=self.eps):
-      l_1 = matrix.col((vecs[0], vecs[1], vecs[2]))
-      l_2 = matrix.col((vecs[3], vecs[4], vecs[5]))
-      l_3 = matrix.col((vecs[6], vecs[7], vecs[8]))
-      l_x, l_y, l_z = l_3, l_2, l_1
+      #l_1 = matrix.col((vecs[0], vecs[1], vecs[2]))
+      #l_2 = matrix.col((vecs[3], vecs[4], vecs[5]))
+      #l_3 = matrix.col((vecs[6], vecs[7], vecs[8]))
+      #l_x, l_y, l_z = l_3, l_2, l_1
+      #vals = [vals[2], vals[1], vals[0]]
+      l_z = matrix.col((vecs[0], vecs[1], vecs[2]))
+      l_y = matrix.col((vecs[3], vecs[4], vecs[5]))
+      l_x = l_y.cross(l_z)
+      #l_x, l_y, l_z = l_z, l_y, l_x
       vals = [vals[2], vals[1], vals[0]]
-      print >> self.log, "  re-assign: x, y, z = 3, 2, 1"
-      tmp = l_x.cross(l_y) - l_z
-      if(abs(tmp[0])>self.eps or abs(tmp[1])>self.eps or abs(tmp[2])>self.eps):
-        print >> self.log, "  convert to right-handed"
-        l_z = -1. * l_z
+
+
+      #print >> self.log, "  re-assign: x, y, z = 3, 2, 1"
+      #tmp = l_x.cross(l_y) - l_z
+      #if(abs(tmp[0])>self.eps or abs(tmp[1])>self.eps or abs(tmp[2])>self.eps):
+      #  print >> self.log, "  convert to right-handed"
+      #  l_z = -1. * l_z
     # case 2: all three coincide
-    elif(abs(vals[0]-vals[1])<self.eps and
+    elif((abs(vals[0]-vals[1])<self.eps and
          abs(vals[1]-vals[2])<self.eps and
-         abs(vals[0]-vals[2])<self.eps):
+         abs(vals[0]-vals[2])<self.eps)):
       print >> self.log, "  three eigenvalues are equal: make eigenvectors unit."
       l_x = matrix.col((1, 0, 0))
       l_y = matrix.col((0, 1, 0))
@@ -214,313 +563,159 @@ class decompose_tls(object):
           abs(vals[1]-vals[2])<self.eps,
           abs(vals[0]-vals[2])<self.eps].count(True)==1):
       print >> self.log, "  two eigenvalues are equal."
-      #def normalize_double(v):
-      #  i_small = None
-      #  v_small = v[0]
-      #  for i, vi in enumerate(v):
-      #    if(abs(vi)<=v_small):
-      #      v_small = abs(vi)
-      #      i_small = i
-      #  #
-      #  v[i_small]=0
-      #  ind = [0,1,2]
-      #  ind.remove(i_small)
-      #  v0 = v[ind[0]]
-      #  v1 = v[ind[1]]
-      #  v[ind[0]]=v1
-      #  v[ind[1]]=v0
-      #  #
-      #  i_small = None
-      #  v_small = v[0]
-      #  for i, vi in enumerate(v):
-      #    if(vi<=v_small):
-      #      v_small = vi
-      #      i_small = i
-      #  v[i_small] = -1.*v[i_small]
-      #  #
-      #  n = math.sqrt(v[0]**2+v[1]**2+v[2]**2)
-      #  v = [v[0]/n, v[1]/n, v[2]/n]
-      #  return v
-      #if(abs(vals[1]-vals[2])<self.eps):
-      #  l_x = matrix.col((vecs[0], vecs[1], vecs[2]))
-      #  ly = normalize_double(v=[l_x[0], l_x[1], l_x[2]])
-      #  l_y = matrix.col((ly[0], ly[1], ly[2]))
-      #  l_z = l_y.cross(l_x)
-      #elif(abs(vals[0]-vals[1])<self.eps):
-      #  l_z = matrix.col((vecs[6], vecs[7], vecs[8]))
-      #  ly = normalize_double(v=[l_z[0], l_z[1], l_z[2]])
-      #  l_y = matrix.col((ly[0], ly[1], ly[2]))
-      #  l_x = l_y.cross(l_z)
-      #else: assert 0
       #
-      l_x = matrix.col((vecs[0], vecs[1], vecs[2]))
+      #l_x = matrix.col((vecs[0], vecs[1], vecs[2]))
+      #l_y = matrix.col((vecs[3], vecs[4], vecs[5]))
+      #l_z = matrix.col((vecs[6], vecs[7], vecs[8]))
+
+      l_z = matrix.col((vecs[0], vecs[1], vecs[2]))
       l_y = matrix.col((vecs[3], vecs[4], vecs[5]))
-      l_z = matrix.col((vecs[6], vecs[7], vecs[8]))
-      tmp = l_x.cross(l_y) - l_z
-      if(abs(tmp[0])>self.eps or abs(tmp[1])>self.eps or abs(tmp[2])>self.eps):
-        print >> self.log, "  convert to right-handed"
-        l_z = -1. * l_z
+      l_x = l_y.cross(l_z)
+      #l_x, l_y, l_z = l_z, l_y, l_x
+      vals = [vals[2], vals[1], vals[0]]
+
+      #tmp = l_x.cross(l_y) - l_z
+      #if(abs(tmp[0])>self.eps or abs(tmp[1])>self.eps or abs(tmp[2])>self.eps):
+      #  print >> self.log, "  convert to right-handed"
+      #  l_z = -1. * l_z
     #
-    print >> self.log, "  eigen values :", " ".join([self.ff%i for i in vals])
-    print >> self.log, "  eigen vectors:"
-    self.show_vector(x=l_x, title="vector x")
-    self.show_vector(x=l_y, title="vector y")
-    self.show_vector(x=l_z, title="vector z")
+    #print >> self.log, "  eigen values :", " ".join([self.ff%i for i in vals])
+    #print >> self.log, "  eigen vectors:"
+    #self.show_vector(x=l_x, title="vector x")
+    #self.show_vector(x=l_y, title="vector y")
+    #self.show_vector(x=l_z, title="vector z")
     return group_args(x=l_x, y=l_y, z=l_z, vals=vals)
 
-  def step_a(self, T, L, S):
-    """
-    Shift origin into reaction center. New S' must be symmetric as result of
-    origin shift.
-    """
-    print_step("Step a:", self.log)
-    print >> self.log, "  system of equations: m * p = b, p = m_inverse * b"
-    L_ = L.as_sym_mat3()
-    m = matrix.sqr((
-               L_[4],          L_[5], -(L_[0]+L_[1]),
-               L_[3], -(L_[0]+L_[2]),         L_[5],
-      -(L_[1]+L_[2]),          L_[3],         L_[4]))
-    self.show_matrix(x=m, title="m")
-    if(abs(m.determinant())<self.eps):
-      print >> self.log, "  det(m)<", self.eps
-      T_p = T
-      L_p = L
-      S_p = S
-      p   = matrix.col((0, 0, 0))
-      P = matrix.sqr((
-            0, p[2], -p[1],
-        -p[2],    0,  p[0],
-         p[1], -p[0],    0))
-    else:
-      b = matrix.col((S[3]-S[1], S[2]-S[6], S[7]-S[5]))
-      self.show_vector(x=b, title="b")
-      m_inv = m.inverse()
-      self.show_matrix(x=m_inv, title="m_inverse")
-      p = m_inv * b
-      P = matrix.sqr((
-            0, p[2], -p[1],
-        -p[2],    0,  p[0],
-         p[1], -p[0],    0))
-      T_p = T #XXX+ (P*L*P.transpose() + P*S + S.transpose()*P.transpose())
-      L_p = L #XXX
-      S_p = S #XXX- L*P
-    #XXX   assert approx_equal(S-L*P, S+L*P.transpose())
-    #XXX   # check S_p is symmetric
-    #XXX   assert approx_equal(S_p[1], S_p[3])
-    #XXX   assert approx_equal(S_p[2], S_p[6])
-    #XXX   assert approx_equal(S_p[5], S_p[7])
-    #XXX   ###### check system (3)
-    #XXX   assert approx_equal(p[1]*L_[3] + p[2]*L_[4] - p[0]*(L_[1]+L_[2]), S[7]-S[5])
-    #XXX   assert approx_equal(p[2]*L_[5] + p[0]*L_[3] - p[1]*(L_[2]+L_[0]), S[2]-S[6])
-    #XXX   assert approx_equal(p[0]*L_[4] + p[1]*L_[5] - p[2]*(L_[0]+L_[1]), S[3]-S[1])
-    self.show_vector(x=p,   title="p")
-    self.show_matrix(x=P,   title="P")
-    self.show_matrix(x=T_p, title="T_P")
-    self.show_matrix(x=L_p, title="L_P")
-    self.show_matrix(x=S_p, title="S_P")
+  def finalize(self):
     return group_args(
-      T_p = T_p,
-      L_p = L_p,
-      S_p = S_p,
-      p   = p)
+      # Libration rms around L-axes
+      dx = math.sqrt(self.Lxx),
+      dy = math.sqrt(self.Lyy),
+      dz = math.sqrt(self.Lzz),
+      # Unit vectors defining three Libration axes
+      l_x = self.l_x,
+      l_y = self.l_y,
+      l_z = self.l_z,
+      # Rotation axes pass through the points in the L base
+      w_L_lx = self.w.w_lx,
+      w_L_ly = self.w.w_ly,
+      w_L_lz = self.w.w_lz,
+      # Rotation axes pass through the points in the M base
+      w_M_lx = self.R_ML*self.w.w_lx,
+      w_M_ly = self.R_ML*self.w.w_ly,
+      w_M_lz = self.R_ML*self.w.w_lz,
+      # Correlation shifts sx,sy,sz for libration
+      sx = self.sx_bar,
+      sy = self.sy_bar,
+      sz = self.sz_bar,
+      # Vectors defining three Vibration axes
+      v_x = self.v_x,
+      v_y = self.v_y,
+      v_z = self.v_z,
+      # Vibration rms along V-axes
+      tx = self.tx,
+      ty = self.ty,
+      tz = self.tz)
 
-  def step_b(self, T_p, L_p, S_p):
-    """
-    Principal libration axes and transition to L-base.
-    """
-    print_step("Step b:", self.log)
-    es = self.eigen_system_default_handler(m=L_p)
-    l_x, l_y, l_z = es.x, es.y, es.z
-    self.show_vector(x=l_x, title="l_x")
-    self.show_vector(x=l_y, title="l_y")
-    self.show_vector(x=l_z, title="l_z")
-    R_PL = matrix.sqr(
-      [l_x[0], l_y[0], l_z[0],
-       l_x[1], l_y[1], l_z[1],
-       l_x[2], l_y[2], l_z[2]])
-    self.show_matrix(x=R_PL, title="rotation matrix R_PL")
-    assert approx_equal(R_PL.transpose(), R_PL.inverse())
-    T_L = R_PL.transpose()*T_p*R_PL
-    L_L = R_PL.transpose()*L_p*R_PL
-    S_L = R_PL.transpose()*S_p*R_PL
-    self.show_matrix(x=T_L, title="T_L")
-    self.show_matrix(x=L_L, title="L_L")
-    self.show_matrix(x=S_L, title="S_L")
-    return group_args(
-      l_x  = l_x,
-      l_y  = l_y,
-      l_z  = l_z,
-      T_L  = T_L,
-      L_L  = L_L,
-      S_L  = S_L,
-      R_PL = R_PL)
+  def show_summary(self):
+    print_step("SUMMARY:", self.log)
+    r = self.result
+    self.show_number(x=r.l_x, title="Libration rms around L-axes")
+    #
+    self.show_vector(x=r.l_y, title="Unit vectors defining three Libration axes")
+    self.show_vector(x=r.l_z, title="Unit vectors defining three Libration axes")
+    self.show_vector(x=r.l_x, title="Unit vectors defining three Libration axes")
+    #
+    self.show_vector(x=r.w_L_lx, title="Rotation axes pass through the points in the L base")
+    self.show_vector(x=r.w_L_ly, title="Rotation axes pass through the points in the L base")
+    self.show_vector(x=r.w_L_lz, title="Rotation axes pass through the points in the L base")
+    #
+    self.show_vector(x=r.w_M_lx, title="Rotation axes pass through the points in the M base")
+    self.show_vector(x=r.w_M_ly, title="Rotation axes pass through the points in the M base")
+    self.show_vector(x=r.w_M_lz, title="Rotation axes pass through the points in the M base")
+    #
+    self.show_number(x=[r.sx, r.sy, r.sz], title="Correlation shifts sx,sy,sz for libration")
+    #
+    self.show_vector(x=r.w_M_lx, title="Vectors defining three Vibration axes")
+    self.show_vector(x=r.w_M_ly, title="Vectors defining three Vibration axes")
+    self.show_vector(x=r.w_M_lz, title="Vectors defining three Vibration axes")
+    #
+    self.show_number(x=[r.tx, r.ty, r.tz], title="Vibration rms along V-axes")
 
-  def step_c(self, T_L, L_L, S_L):
-    """
-    Position of rotation axes.
-    """
-    print_step("Step c:", self.log)
-    L_ = L_L.as_sym_mat3()
-    Lxx, Lyy, Lzz = L_[0], L_[1], L_[2]
-    wy_lx=0
-    wz_lx=0
-    wx_ly=0
-    wz_ly=0
-    wx_lz=0
-    wy_lz=0
-    if(abs(Lxx)>self.eps):
-      if(abs(S_L[2])>self.eps): wy_lx =-S_L[2]/Lxx
-      if(abs(S_L[1])>self.eps): wz_lx = S_L[1]/Lxx
-    if(abs(Lyy)>self.eps):
-      if(abs(S_L[5])>self.eps): wx_ly = S_L[5]/Lyy
-      if(abs(S_L[3])>self.eps): wz_ly =-S_L[3]/Lyy
-    if(abs(Lzz)>self.eps):
-      if(abs(S_L[7])>self.eps): wx_lz =-S_L[7]/Lzz
-      if(abs(S_L[6])>self.eps): wy_lz = S_L[6]/Lzz
-    w_lx = matrix.col((0,wy_lx,wz_lx))
-    w_ly = matrix.col((wx_ly,0,wz_ly))
-    w_lz = matrix.col((wx_lz,wy_lz,0))
-    result = group_args(
-      wy_lx = wy_lx,
-      wz_lx = wz_lx,
-      wx_ly = wx_ly,
-      wz_ly = wz_ly,
-      wx_lz = wx_lz,
-      wy_lz = wy_lz,
-      w_lx = w_lx,
-      w_ly = w_ly,
-      w_lz = w_lz)
-    self.show_vector(x=w_lx, title="w_lx")
-    self.show_vector(x=w_ly, title="w_ly")
-    self.show_vector(x=w_lz, title="w_lz")
-    return result
-
-  def step_d(self, S_L, L_L, T_L):
-    """
-    Minimization of correlation between translation and rotation.
-    """
-    print_step("Step d:", self.log)
-    tS=0
-    L_ = L_L.as_sym_mat3()
-    Lxx, Lyy, Lzz = L_[0], L_[1], L_[2]
-    T_ = T_L.as_sym_mat3()
-    Txx, Tyy, Tzz = T_[0], T_[1], T_[2]
-    Sxx, Syy, Szz = S_L[0], S_L[4], S_L[8]
-    if(abs(Lxx)<self.eps): Lxx=0
-    if(abs(Lyy)<self.eps): Lyy=0
-    if(abs(Lzz)<self.eps): Lzz=0
-    sqrt = math.sqrt
-    TxxLxx = Txx*Lxx
-    TyyLyy = Tyy*Lyy
-    TzzLzz = Tzz*Lzz
-    if(TxxLxx >= 0 and TyyLyy >= 0 and TzzLzz >= 0):
-      tmin = max(Sxx-sqrt(TxxLxx), Syy-sqrt(TyyLyy), Szz-sqrt(TzzLzz))
-      tmax = min(Sxx+sqrt(TxxLxx), Syy+sqrt(TyyLyy), Szz+sqrt(TzzLzz))
-      print >> self.log, "  tmin, tmax:", tmin,tmax
-      if(abs(tmin)<self.eps): tmin=0
-      if(abs(tmax)<self.eps): tmax=0
-      # tmin>tmax must never happen, otherwise S is wrong. Assertion is not in
-      # place because this actually happens due to numerical roundings
-      if(abs(tmin-tmax)<self.eps): tS=0
-      if(tmin<tmax):
-        trS_L_over3 = S_L.trace()/3.
-        if(tmin<=trS_L_over3 and tmax>=trS_L_over3):
-          tS = trS_L_over3
-        else:
-          tmp1 = abs(trS_L_over3-tmin)
-          tmp2 = abs(trS_L_over3-tmax)
-          if(tmp1<tmp2): tS = tmin
-          else:          tS = tmax
-    else:
-      print >> self.log, "  tmin, tmax:", None, None
-    S_C = S_L - matrix.sqr((tS,0,0, 0,tS,0, 0,0,tS))
-    print >> self.log, "  tS:", tS
-    self.show_matrix(x=S_C, title="S_C")
-    return S_C
-
-  def step_e(self, S_C, L_L):
-    """
-    Find screw components of libration.
-    """
-    print_step("Step e:", self.log)
-    L_ = L_L.as_sym_mat3()
-    Lxx, Lyy, Lzz = L_[0], L_[1], L_[2]
-    sx_bar,sy_bar,sz_bar=0,0,0
-    if(abs(Lxx)>self.eps): sx_bar = S_C[0]/Lxx
-    if(abs(Lyy)>self.eps): sy_bar = S_C[4]/Lyy
-    if(abs(Lzz)>self.eps): sz_bar = S_C[8]/Lzz
-    result = group_args(sx_bar = sx_bar, sy_bar = sy_bar, sz_bar = sz_bar)
-    print >> self.log, "  sx_bar:", result.sx_bar
-    print >> self.log, "  sy_bar:", result.sy_bar
-    print >> self.log, "  sz_bar:", result.sz_bar
-    return result
-
-  def step_f(self, c_o, T_L, L_L):
-    """
-    Calculate translational contribution C_LW of rotations due to axes dispalcement
-    """
-    print_step("Step f:", self.log)
-    L_ = L_L.as_sym_mat3()
-    Lxx, Lyy, Lzz = L_[0], L_[1], L_[2]
-    wy_lx = c_o.wy_lx
-    wz_lx = c_o.wz_lx
-    wx_ly = c_o.wx_ly
-    wz_ly = c_o.wz_ly
-    wx_lz = c_o.wx_lz
-    wy_lz = c_o.wy_lz
-    C_LW = [
-      wz_ly**2*Lyy+wy_lz**2*Lzz, wz_lx**2*Lxx+wx_lz**2*Lzz, wy_lx**2*Lxx+wx_ly**2*Lyy,
-               -wx_lz*wy_lz*Lzz,          -wx_ly*wz_ly*Lyy,          -wy_lx*wz_lx*Lxx]
-    C_LW = matrix.sym(sym_mat3=C_LW)
-    self.show_matrix(x=C_LW, title="C_LW")
-    return C_LW
-
-  def step_g(self, T_L, C_LW, e_o, S_C):
-    """
-    Calculate translation contribution C_LS of rotation due to screw components
-    and resulting V_L matrix.
-    """
-    print_step("Step g:", self.log)
-    C_LS = matrix.sym(sym_mat3=[
-      e_o.sx_bar*S_C[0], e_o.sy_bar*S_C[4], e_o.sz_bar*S_C[8], 0,0,0])
-    C_L = C_LW + C_LS
-    V_L = T_L - C_L
-    self.show_matrix(x=C_LS, title="C_LS")
-    self.show_matrix(x=C_L , title="C_L ")
-    self.show_matrix(x=V_L , title="V_L ")
-    return group_args(
-      V_L  = V_L,
-      C_L  = C_L,
-      C_LS = C_LS)
-
-  def step_h(self, V_L, b_o):
-    """
-    Three uncorrelated translations.
-    """
-    print_step("Step h:", self.log)
-    V_M = b_o.R_PL * V_L * b_o.R_PL.transpose()
-    self.show_matrix(x=V_M, title="V_M ")
-    es = self.eigen_system_default_handler(m=V_M)
-    v_x, v_y, v_z = es.x, es.y, es.z
-    lam_u,lam_v,lam_w = es.vals
-    self.show_vector(x=v_x, title="v_x")
-    self.show_vector(x=v_y, title="v_y")
-    self.show_vector(x=v_z, title="v_z")
-    assert approx_equal(v_x.dot(v_y), 0)
-    assert approx_equal(v_y.dot(v_z), 0)
-    assert approx_equal(v_z.dot(v_x), 0)
-    R_MV = matrix.sqr([
-      v_x[0], v_y[0], v_z[0],
-      v_x[1], v_y[1], v_z[1],
-      v_x[2], v_y[2], v_z[2]])
-    self.show_matrix(x=R_MV, title="R_MV")
-    V_V = matrix.sym(sym_mat3=[lam_u, lam_v, lam_w, 0,0,0])
-    self.show_matrix(x=V_V, title="V_V")
-    assert approx_equal(V_V, R_MV.transpose() * V_M * R_MV) # formula (20)
-    return group_args(
-      v_x   = v_x,
-      v_y   = v_y,
-      v_z   = v_z,
-      V_M   = V_M,
-      V_V   = V_V,
-      R_MV  = R_MV)
+  def self_check(self):
+    print_step("Recover T_M, L_M,S_M from base elements):", self.log)
+    r = self.result
+    R_ML = matrix.sqr(
+      [r.l_x[0], r.l_y[0], r.l_z[0],
+       r.l_x[1], r.l_y[1], r.l_z[1],
+       r.l_x[2], r.l_y[2], r.l_z[2]])
+    # T_M
+    C_S = matrix.sqr(
+      [(r.sx*r.dx)**2,              0,              0,
+                    0, (r.sy*r.dy)**2,              0,
+                    0,              0, (r.sz*r.dz)**2])
+    v_x_M = R_ML*r.v_x
+    v_y_M = R_ML*r.v_y
+    v_z_M = R_ML*r.v_z
+    R_MV = matrix.sqr(
+      [v_x_M[0], v_y_M[0], v_z_M[0],
+       v_x_M[1], v_y_M[1], v_z_M[1],
+       v_x_M[2], v_y_M[2], v_z_M[2]])
+    V_V = matrix.sqr(
+      [r.tx**2,       0,       0,
+             0, r.ty**2,       0,
+             0,       0, r.tz**2])
+    # D_WL
+    wy_lx = r.w_L_lx[1]
+    wz_lx = r.w_L_lx[2]
+    wx_ly = r.w_L_ly[0]
+    wz_ly = r.w_L_ly[2]
+    wx_lz = r.w_L_lz[0]
+    wy_lz = r.w_L_lz[1]
+    d11 = wz_ly**2*r.dy**2 + wy_lz**2*r.dz**2
+    d22 = wz_lx**2*r.dx**2 + wx_lz**2*r.dz**2
+    d33 = wy_lx**2*r.dx**2 + wx_ly**2*r.dy**2
+    d12 = -wx_lz*wy_lz*r.dz**2
+    d13 = -wx_ly*wz_ly*r.dy**2
+    d23 = -wy_lx*wz_lx*r.dx**2
+    D_WL = matrix.sqr(
+      [d11, d12, d13,
+       d12, d22, d23,
+       d13, d23, d33])
+    #
+    T_M = R_ML * (C_S + D_WL) * R_ML.transpose() + R_MV * V_V * R_MV.transpose()
+    self.show_matrix(x=self.T_M, title="Input T_M:")
+    self.show_matrix(x=T_M, title="Recoverd T_M:")
+    assert approx_equal(T_M, self.T_M, 1.e-5)
+    # L_M
+    L_L = matrix.sqr(
+      [r.dx**2,       0,       0,
+             0, r.dy**2,       0,
+             0,       0, r.dz**2])
+    L_M = R_ML * L_L * R_ML.transpose()
+    self.show_matrix(x=self.L_M, title="Input L_M:")
+    self.show_matrix(x=L_M, title="Recoverd L_M:")
+    assert approx_equal(L_M, self.L_M, 1.e-5)
+    # S_M
+    S = matrix.sqr(
+      [r.sx*r.dx**2,            0,            0,
+                  0, r.sy*r.dy**2,            0,
+                  0,            0, r.sz*r.dz**2])
+    matrix_9 = matrix.sqr(
+      [             0,  wz_lx*r.dx**2, -wy_lx*r.dx**2,
+       -wz_ly*r.dy**2,              0,  wx_ly*r.dy**2,
+        wy_lz*r.dz**2, -wx_lz*r.dz**2,              0])
+    S_M = R_ML * (S + matrix_9) * R_ML.transpose()
+    self.show_matrix(x=self.S_M, title="Input S_M:")
+    self.show_matrix(x=S_M, title="Recoverd S_M:")
+    diff = truncate(m=matrix.sqr(self.S_M-S_M))
+    # remark: diagonal does not have to match, can be different by a constant
+    assert approx_equal(diff[1],0)
+    assert approx_equal(diff[2],0)
+    assert approx_equal(diff[3],0)
+    assert approx_equal(diff[5],0)
+    assert approx_equal(diff[6],0)
+    assert approx_equal(diff[7],0)
+    # diagonal
+    assert approx_equal(diff[0], diff[4])
+    assert approx_equal(diff[0], diff[8])
