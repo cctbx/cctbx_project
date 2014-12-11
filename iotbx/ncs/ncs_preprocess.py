@@ -294,6 +294,7 @@ class ncs_group_object(object):
       if not self.tr_id_to_selection.has_key(key):
         sel = key.split('_')[0]
         self.tr_id_to_selection[key] = (sel,sel)
+    self.number_of_ncs_groups = 1
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
   def build_ncs_obj_from_phil(self,
