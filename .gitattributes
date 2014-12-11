@@ -2095,6 +2095,7 @@ mmtbx/validation/model_properties.py svneol=native#text/x-python
 mmtbx/validation/molprobity/__init__.py -text
 mmtbx/validation/molprobity/mp_geo.py -text
 mmtbx/validation/molprobity/nqh_minimize.py -text
+mmtbx/validation/omegalyze.py -text
 mmtbx/validation/ramalyze.py svneol=native#text/x-python
 mmtbx/validation/regression/__init__.py svneol=native#text/x-python
 mmtbx/validation/regression/run_restraints.py svneol=native#text/x-python
