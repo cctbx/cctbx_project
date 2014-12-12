@@ -139,7 +139,8 @@ def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
   origin_shift = matrix.col(old_beam_centre) - new_beam_centre
   for panel in detector:
     n = matrix.col(panel.get_normal())
-    angle_s0_n = s0.angle(n, deg=True)
+    # sometimes detector normal might be pointing the other way
+    angle_s0_n = min(s0.angle(n, deg=True), s0.angle(-n, deg=True))
     assert angle_s0_n < 5, \
            "Detector normal not parallel to beam: %.1f deg" %angle_s0_n
     old_origin = matrix.col(panel.get_origin())
