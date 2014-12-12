@@ -173,6 +173,7 @@ def select_best_by_cc_mproc(shot_no, cryst_id, iparams):
   cryst_id_shot_no = cryst_id+'_0_'+str(shot_no).zfill(iparams.iotacc.LEN_SHOT_SEQ)
   #cryst_id_shot_no = cryst_id+str(shot_no).zfill(LEN_SHOT_SEQ)
   cc_list = flex.double()
+  n_refl_list = flex.int()
   pickle_filename_list = []
   flag_success = False
   d_min, d_max = (iparams.iotacc.d_min, iparams.iotacc.d_max)
@@ -241,6 +242,7 @@ def select_best_by_cc_mproc(shot_no, cryst_id, iparams):
           if cc_eoc > 0:
             pickle_filename_list.append(pickle_filename)
             cc_list.append(cc_eoc)
+            n_refl_list.append(n_refl_eoc)
 
           txt_out += cryst_id + '  ' + str(shot_no).zfill(iparams.iotacc.LEN_SHOT_SEQ) + \
                  ' %6.2f %6.0f %6.2f %6.2f %6.0f %6.2f %6.2f %6.0f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f'%(\
@@ -249,18 +251,29 @@ def select_best_by_cc_mproc(shot_no, cryst_id, iparams):
 
   #select and copy best_by_cc shot
   if len(pickle_filename_list) > 0:
-    i_sel = cc_list == flex.max(cc_list)
-    i_seq = flex.int(range(len(cc_list)))
-    i_seq_sel = i_seq.select(i_sel)[0]
-    cc_sel = cc_list[i_seq_sel]
-    pickle_filename_sel = pickle_filename_list[i_seq_sel]
+    #sort by cc and select best n results
+    cc_thres = flex.max(cc_list) - (flex.max(cc_list)*iparams.iotacc.percent_top_cc/100)
+    i_sel = cc_list > cc_thres
+
+    cc_list_sel = cc_list.select(i_sel)
+    n_refl_list_sel = n_refl_list.select(i_sel)
+    i_seq_sel = flex.int(range(len(cc_list))).select(i_sel)
+    pickle_filename_list_sel = [pickle_filename_list[ii_sel] for ii_sel in i_seq_sel]
+
+    #sort by n_refl and select the first
+    i_sorted = flex.sort_permutation(n_refl_list_sel, reverse=True)
+    n_refl_sel = n_refl_list_sel[i_sorted[0]]
+    cc_sel = cc_list_sel[i_sorted[0]]
+    pickle_filename_sel = pickle_filename_list_sel[i_sorted[0]]
+
     pickle_filename_sel_split = pickle_filename_sel.split('/')
     pickle_filename_sel_only = pickle_filename_sel_split[len(pickle_filename_sel_split)-1]
     pickle_filename_out = iparams.run_no + '/' + iparams.iotacc.set_id + '_' + pickle_filename_sel_only
 
     #shutil.copyfile(pickle_filename_sel, pickle_filename_out)
-    txt_out += 'Select --> CC=%6.2f '%(cc_sel) + pickle_filename_out + '\n'
+    txt_out += 'Select --> CC_thres=%6.2f Best CC=%6.2f N_refl=%4.0f '%(cc_thres, cc_sel, n_refl_sel) + pickle_filename_out + '\n'
     flag_success = True
+
   else:
     txt_out += 'No image with CC > 0\n'
 
@@ -288,7 +301,7 @@ if __name__=="__main__":
 
   if os.path.exists(run_no):
     shutil.rmtree(run_no)
-    print 'Folder :', run_no, ' exists. This folder will be removed'
+
   os.makedirs(run_no)
 
   txt_out_log = 'iotacc\n'

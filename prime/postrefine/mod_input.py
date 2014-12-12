@@ -202,7 +202,7 @@ n_rejection_cycle = 1
 n_min_frames = 1000
   .type = int
   .help = No. of minimum frames.
-sigma_rejection = 5
+sigma_rejection = 99
   .type = float
   .help = Sigma level for outlier rejection.
 n_bins = 20
@@ -279,6 +279,10 @@ iotacc
   sigma_min = 1.5
     .type = float
     .help = Minimum I/sigI cutoff.
+  percent_top_cc = 10
+    .type = float
+    .help = Percent of best cc.
+    .optional = True
 }
 """)
 
