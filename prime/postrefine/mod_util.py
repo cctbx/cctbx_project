@@ -426,7 +426,7 @@ class intensities_scaler(object):
     txt_out += ' No. bad G frames) :       %12.0f\n'%(cn_bad_frame_G)
     txt_out += ' No. bad unit cell frames: %12.0f\n'%(cn_bad_frame_uc)
     txt_out += ' No. bad gamma_e frames:   %12.0f\n'%(cn_bad_frame_re)
-    txt_out += ' No. bad SE:         %12.0f\n'%(cn_bad_frame_SE)
+    txt_out += ' No. bad SE:               %12.0f\n'%(cn_bad_frame_SE)
     txt_out += ' No. observations:         %12.0f\n'%(len(I_obs_all_sort))
     txt_out += 'Mean target value (BEFORE: Mean Median (Std.))\n'
     txt_out += ' post-refinement:          %12.2f %12.2f (%9.2f)\n'%(np.mean(R_init_all), np.median(R_init_all), np.std(R_init_all))
@@ -503,8 +503,8 @@ class intensities_scaler(object):
 
 
     #remove outliers
-    I_bin_sigma_filter = iparams.sigma_rejection
-    for i in range(iparams.n_rejection_cycle):
+    I_bin_sigma_filter = 99
+    for i in range(1):
       binner_merge = miller_array_merge.setup_binner(n_bins=iparams.n_bins)
       binner_merge_indices = binner_merge.bin_indices()
       miller_indices_merge_filter = flex.miller_index()
