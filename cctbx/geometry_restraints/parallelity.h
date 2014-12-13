@@ -78,19 +78,16 @@ namespace cctbx { namespace geometry_restraints {
     parallelity_proxy(
       i_seqs_type const& i_seqs_,
       i_seqs_type const& j_seqs_,
-      parallelity_proxy const& proxy,
-      double slack_ = 0,
-      double limit_ = -1,
-      bool top_out_ = false)
+      parallelity_proxy const& proxy)
     :
       i_seqs(i_seqs_),
       j_seqs(j_seqs_),
       sym_ops(proxy.sym_ops),
       weight(proxy.weight),
       target_angle_deg(proxy.target_angle_deg),
-      slack(slack_),
-      limit(limit_),
-      top_out(top_out_)
+      slack(proxy.slack),
+      limit(proxy.limit),
+      top_out(proxy.top_out)
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
@@ -548,12 +545,12 @@ namespace cctbx { namespace geometry_restraints {
           double w = 1/weight/weight;
           if (top_out) {
             double l2 = limit * limit;
-            dFparallelity__dn_1 = -j_n*2.0*w*delta_slack*std::exp(-delta_slack*delta_slack/l2);
-            dFparallelity__dn_2 = -i_n*2.0*w*delta_slack*std::exp(-delta_slack*delta_slack/l2);
+            dFparallelity__dn_1 = -j_n*(2.0*w*delta_slack*std::exp(-delta_slack*delta_slack/l2));
+            dFparallelity__dn_2 = -i_n*(2.0*w*delta_slack*std::exp(-delta_slack*delta_slack/l2));
           }
           else {
-            dFparallelity__dn_1 = -j_n*2.0*delta_slack/weight/weight;
-            dFparallelity__dn_2 = -i_n*2.0*delta_slack/weight/weight;
+            dFparallelity__dn_1 = -j_n*(2.0*delta_slack/weight/weight);
+            dFparallelity__dn_2 = -i_n*(2.0*delta_slack/weight/weight);
           }
           scitbx::vec3<double> dF__dN_1, dF__dN_2;
           dF__dN_1 = derive_dFparallelity__dN(dFparallelity__dn_1, i_N);

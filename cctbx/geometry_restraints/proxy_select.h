@@ -117,7 +117,7 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
       if (new_i_seqs.size() > 2 && new_j_seqs.size() > 2) {
-        result.push_back(ProxyType(new_i_seqs, new_j_seqs, p.weight));
+        result.push_back(ProxyType(new_i_seqs, new_j_seqs, p));
       }
     }
     return result;
