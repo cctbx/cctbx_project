@@ -39,6 +39,13 @@ namespace {
             arg("slack")=0,
             arg("limit")=-1,
             arg("top_out")=false)))
+        .def(init<
+          af::shared<std::size_t> const&,
+          af::shared<std::size_t> const&,
+          w_t const&>((
+            arg("i_seqs"),
+            arg("j_seqs"),
+            arg("proxy"))))
         .def("scale_weight", &w_t::scale_weight, (arg("factor")))
         .def("sort_ij_seqs", &w_t::sort_ij_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
