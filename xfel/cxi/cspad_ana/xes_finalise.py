@@ -297,15 +297,9 @@ class first_moment_analysis:
     self.calculate()
 
   def calculate(self):
-    N = len(self.x)
-    maxidx = flex.max_index(self.y)
-    n_half_interval = int(0.05 * N) # take 5% of points on either side of max
-    #calc_range = xrange(maxidx - n_half_interval, maxidx + n_half_interval +1)
-    y_interval = self.y[maxidx - n_half_interval: maxidx + n_half_interval +1]
-    x_interval = self.x[maxidx - n_half_interval: maxidx + n_half_interval +1]
-    numer = flex.sum(y_interval * x_interval)
-    denom = flex.sum(y_interval)
-    self.first_moment = numer/denom
+    self.first_moment=self.x[0]
+    pass
+    return
 
   def as_trace(self):
     return (self.first_moment,self.first_moment), (flex.min(self.y), flex.max(self.y))
