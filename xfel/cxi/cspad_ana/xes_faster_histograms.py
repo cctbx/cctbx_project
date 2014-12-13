@@ -40,6 +40,7 @@ xes {
   fit_limits = (20,150)
     .type = ints(size=2)
     .help = x-Limits for histogram fitting, relative to the presumably -50 ADU histogram origin
+    .help = 20,150 used for LG36
 }
 """
 
@@ -134,7 +135,15 @@ class xes_from_histograms(object):
         fit_photons = gs[0] * gs[2] * math.sqrt(2.*math.pi)
         n_photons = int(round(fit_photons,0))
         if n_photons< 0:
-          print "altrn %d photons from curvefitting"%( n_photons )
+          print "\naltrn %d photons from curvefitting"%( n_photons )
+          pixel_histograms.plot_combo(pixel, alt_gaussians)
+          mask[pixel]=1
+          continue
+        fit_interpretation=pixel_histograms.multiphoton_and_fit_residual(
+                     pixel_histograms.histograms[pixel], alt_gaussians)
+        if fit_interpretation.quality_factor < 30:
+          #seems to be a bug here.  Calling this code gives divide by zero in first moment code
+          print "\nBad quality 0/1-photon fit",fit_interpretation.quality_factor
           pixel_histograms.plot_combo(pixel, alt_gaussians)
           mask[pixel]=1
           continue
@@ -223,7 +232,57 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
       y_calc += y
       pyplot.plot(x, y, linewidth=2)
 
+    #OK let's figure stuff out about the multiphoton residual.
+    # only count the residual for x larger than one_mean + 2*zero_sigma
+    xfloor = gaussians[1].params[1] + 3.*gaussians[0].params[2]
+    selection = (histogram.slot_centers()>xfloor)
+    xresid = histogram.slot_centers().select(selection)
+    yresid = histogram.slots().as_double().select(selection) - y_calc.select(selection)
+    xweight = (xresid - gaussians[0].params[1])/(gaussians[1].params[1] - gaussians[0].params[1])
+    additional_photons = flex.sum( xweight * yresid )
+    print "counted %.0f multiphoton photons on this pixel"%additional_photons
+    pyplot.plot(xresid, 10*xweight, "b.")
+    pyplot.plot(xresid,yresid,"r.")
+
+    #Now the other half of the data; the part supposedly fit by the 0- and 1-photon gaussians
+    xresid = histogram.slot_centers().select(~selection)
+    ysignal = histogram.slots().as_double().select(~selection)
+    yresid = ysignal - y_calc.select(~selection)
+    pyplot.plot(xresid,yresid/10.,"m.")
+
+    sumsq_signal = flex.sum(ysignal * ysignal)
+    sumsq_residual = flex.sum(yresid * yresid)
+    print sumsq_signal,sumsq_residual, sumsq_signal/sumsq_residual, math.sqrt(sumsq_signal)
+
     pyplot.show()
+
+  @staticmethod
+  def multiphoton_and_fit_residual(histogram,gaussians):
+
+    #OK let's figure stuff out about the multiphoton residual, after fitting with 0 + 1 photons
+    # only count the residual for x larger than one_mean + 3*zero_sigma
+    x = histogram.slot_centers()
+    y_calc = flex.double(x.size(), 0)
+    for g in gaussians:
+      y_calc += g(x)
+    xfloor = gaussians[1].params[1] + 3.*gaussians[0].params[2]
+    selection = (histogram.slot_centers()>xfloor)
+    xresid = histogram.slot_centers().select(selection)
+    yresid = histogram.slots().as_double().select(selection) - y_calc.select(selection)
+    xweight = (xresid - gaussians[0].params[1])/(gaussians[1].params[1] - gaussians[0].params[1])
+    additional_photons = flex.sum( xweight * yresid )
+    #Now the other half of the data; the part supposedly fit by the 0- and 1-photon gaussians
+    xresid = histogram.slot_centers().select(~selection)
+    ysignal = histogram.slots().as_double().select(~selection)
+    yresid = ysignal - y_calc.select(~selection)
+    sumsq_signal = flex.sum(ysignal * ysignal)
+    sumsq_residual = flex.sum(yresid * yresid)
+    #return sumsq_signal,sumsq_residual, sumsq_signal/sumsq_residual, math.sqrt(sumsq_signal)
+    class Empty: pass
+    E = Empty()
+    E.quality_factor = sumsq_signal/sumsq_residual
+    return E
+
 
   def fit_one_histogram_two_gaussians(self,pixel):
     histogram = self.histograms[pixel]
