@@ -37,6 +37,9 @@ xes {
       .help = with gain_to_sigma being a constant for the pixel array detector.
       .help = approx 6.75 for LB67 r0100, 6.00 for LG36 r0025
   }
+  fit_limits = (20,150)
+    .type = ints(size=2)
+    .help = x-Limits for histogram fitting, relative to the presumably -50 ADU histogram origin
 }
 """
 
@@ -132,6 +135,7 @@ class xes_from_histograms(object):
         n_photons = int(round(fit_photons,0))
         if n_photons< 0:
           print "altrn %d photons from curvefitting"%( n_photons )
+          pixel_histograms.plot_combo(pixel, alt_gaussians)
           mask[pixel]=1
           continue
         if False:# or two_photon_flag:
@@ -225,8 +229,8 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
     histogram = self.histograms[pixel]
     fitted_gaussians = []
     GAIN_TO_SIGMA = self.work_params.fudge_factor.gain_to_sigma
-    low_idx = 20
-    high_idx = 100 # hardcoded fit limits within the histogram array
+    low_idx = self.work_params.fit_limits[0]
+    high_idx = self.work_params.fit_limits[1]
 
     slot_centers = histogram.slot_centers()
     free_x = slot_centers[low_idx:high_idx]
