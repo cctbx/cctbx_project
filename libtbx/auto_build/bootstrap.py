@@ -297,7 +297,8 @@ class CCIBuilder(object):
       name='hot %s'%package, 
       command=[
         'rsync', 
-        '-aL', 
+        '-aL',
+        '--delete', 
         HOT[package]%{'cciuser':self.cciuser},
         package,
       ], 
