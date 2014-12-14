@@ -20,7 +20,7 @@ def index_integrate(current_img, log_dir, gs_params):
 
   # generate filenames, etc.
   path = os.path.dirname(current_img)
-  img_filename = os.path.split(current_img)[1]
+  img_filename = os.path.basename(current_img)
 
   if os.path.relpath(path, os.path.abspath(gs_params.input)) == '.':
     input_dir = os.path.abspath(gs_params.input)
