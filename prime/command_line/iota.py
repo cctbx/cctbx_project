@@ -27,8 +27,8 @@ def index_mproc_wrapper(current_img):
 
 if __name__ == "__main__":
 
-  gs_version = '0.2'
-  ps_version = '0.2'
+  gs_version = '0.5'
+  ps_version = '0.5'
 
   print '\n{}'.format(datetime.now())
   print 'Starting IOTA ... \n\n'
@@ -40,6 +40,31 @@ if __name__ == "__main__":
     print txt_out
   else:
     input_list, input_dir_list, output_dir_list, log_dir = inp.make_lists(gs_params.input, gs_params.output)
+
+
+  # Check for list of files and extract a) list of files, b) input paths, 
+  # and c) output paths that will override earlier lists
+  if gs_params.input_list != None:
+    input_dir_list = []
+    output_dir_list = []
+    input_list = []
+    with open(gs_params.input_list, 'r') as listfile:
+      listfile_contents = listfile.read()
+      input_list = listfile_contents.splitlines()
+
+      for source_file in input_list:
+        if os.path.relpath(os.path.dirname(source_file), os.path.abspath(gs_params.input)) == '.':
+          input_dir = os.path.abspath(gs_params.input)
+          output_dir = os.path.abspath(gs_params.output)
+        else:
+          input_dir = os.path.dirname(source_file)
+          output_dir = os.path.join(os.path.abspath(gs_params.output), os.path.relpath(input_dir, os.path.abspath(gs_params.input)))
+
+        if input_dir not in input_dir_list: 
+          input_dir_list.append(input_dir)
+        if output_dir not in output_dir_list: 
+          output_dir_list.append(output_dir)
+
 
     # ------------------ Grid Search ------------------
 

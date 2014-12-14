@@ -31,8 +31,13 @@ def prefilter(gs_params, total_tmp_pickles):
       user_uc.append(prm)
 
     # read pickle info and determine uc differences
-    p_pg = SingleFrame(tmp_pickle, tmp_pickle_name).pg
-    p_uc = SingleFrame(tmp_pickle, tmp_pickle_name).miller_array.unit_cell().parameters()
+    observations = SingleFrame(pickle,
+                               os.path.split(pickle)[1]).miller_array
+    p_pg = observations.space_group_info()
+    p_uc = observations.unit_cell().parameters()
+    
+    #p_pg = SingleFrame(tmp_pickle, tmp_pickle_name).pg
+    #p_uc = SingleFrame(tmp_pickle, tmp_pickle_name).miller_array.unit_cell().parameters()
     delta_a = abs(p_uc[0] - user_uc[0])
     delta_b = abs(p_uc[1] - user_uc[1])
     delta_c = abs(p_uc[2] - user_uc[2])
@@ -187,7 +192,7 @@ def best_file_selection(gs_params, output_dir, log_dir):
       sel_pickle = best_by_reflections(gs_params,
                                         acceptable_pickles,
                                         output_dir + '/best_by_total')
-      with open('{}/best_by_total.lst'.format(output_dir), 'a') as best_file:
+      with open('{}/best_by_total.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
         best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['T', sel_pickle, os.path.split(sel_pickle)[1]])
 
@@ -195,7 +200,7 @@ def best_file_selection(gs_params, output_dir, log_dir):
       sel_pickle = best_by_strong(gs_params,
                                   acceptable_pickles,
                                   output_dir + '/best_by_strong')
-      with open('{}/best_by_strong.lst'.format(output_dir), 'a') as best_file:
+      with open('{}/best_by_strong.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
         best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['S', sel_pickle, os.path.split(sel_pickle)[1]])
 
@@ -203,14 +208,14 @@ def best_file_selection(gs_params, output_dir, log_dir):
       sel_pickle = best_by_uc(gs_params,
                               acceptable_pickles,
                               output_dir + '/best_by_uc')
-      with open('{}/best_by_uc.lst'.format(output_dir), 'a') as best_file:
+      with open('{}/best_by_uc.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
         best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['U', sel_pickle, os.path.split(sel_pickle)[1]])
 
       # x,y offset
       sel_pickle = best_by_offset(acceptable_pickles,
                                   output_dir + '/best_by_offset')
-      with open('{}/best_by_offset.lst'.format(output_dir), 'a') as best_file:
+      with open('{}/best_by_offset.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
         best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['O', sel_pickle, os.path.split(sel_pickle)[1]])
 
