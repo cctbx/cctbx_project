@@ -59,20 +59,21 @@ except ImportError:
 
 ##### Codebases #####
 # rsync'd packages.
+# The trailing slashes ARE significant.
 HOT = {
-  'phaser_regression':  '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser_regression',
-  'phaser':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser',
-  'ccp4io':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io',
-  'docutils':           '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/docutils',
+  'phaser_regression':  '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser_regression/',
+  'phaser':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser/',
+  'ccp4io':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/',
+  'docutils':           '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/docutils/',
   # tar.gz
-  'annlib':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib',
-  'scons':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons',
-  'boost':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot',
+  'annlib':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/',
+  'scons':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/',
+  'boost':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/',
   # Duke
-  'reduce':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/reduce',
-  'probe':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/probe',
-  'king':               '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/king',
-  'suitename':          '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/suitename',
+  'reduce':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/reduce/',
+  'probe':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/probe/',
+  'king':               '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/king/',
+  'suitename':          '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/suitename/',
 }
 
 # SVN packages.
@@ -298,7 +299,7 @@ class CCIBuilder(object):
         'rsync', 
         '-aL', 
         HOT[package]%{'cciuser':self.cciuser},
-        '.'
+        package,
       ], 
       workdir='modules'
     ))
