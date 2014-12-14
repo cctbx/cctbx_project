@@ -35,7 +35,8 @@ xes {
       .type = float
       .help = On the assumption that one-mean is zero_mean + zero_sigma * gain_to_sigma
       .help = with gain_to_sigma being a constant for the pixel array detector.
-      .help = approx 6.75 for LB67 r0100, 6.00 for LG36 r0025
+      .help = approx 6.75 for LB67 r0100
+      .help = manually optimized for LG36: r0025,6.0 / r0080,5.8 (MnCl2) / r0137,5.9 (PSII solution)
   }
   fit_limits = (20,150)
     .type = ints(size=2)
@@ -107,6 +108,8 @@ class xes_from_histograms(object):
       def fixed_func(pixel):
         return pixel_histograms.fit_one_histogram(pixel, n_gaussians=1)
 
+    chi_squared_list=flex.double()
+
     for i, pixel in enumerate(pixels):
       #print i,pixel
       LEG = False
@@ -134,25 +137,46 @@ class xes_from_histograms(object):
         gs = alt_gaussians[1].params
         fit_photons = gs[0] * gs[2] * math.sqrt(2.*math.pi)
         n_photons = int(round(fit_photons,0))
-        if n_photons< 0:
-          print "\naltrn %d photons from curvefitting"%( n_photons )
-          pixel_histograms.plot_combo(pixel, alt_gaussians)
-          mask[pixel]=1
-          continue
         fit_interpretation=pixel_histograms.multiphoton_and_fit_residual(
                      pixel_histograms.histograms[pixel], alt_gaussians)
-        if fit_interpretation.quality_factor < 30:
-          #seems to be a bug here.  Calling this code gives divide by zero in first moment code
-          print "\nBad quality 0/1-photon fit",fit_interpretation.quality_factor
-          pixel_histograms.plot_combo(pixel, alt_gaussians)
+        multi_photons = fit_interpretation.get_multiphoton_count()
+        total_photons = n_photons + multi_photons
+
+        if False and n_photons< 0: # Generally, do not mask negative values; if fit is still OK
+          print "\n%d pixel %s altrn %d photons from curvefitting"%( i,pixel,n_photons )
+          pixel_histograms.plot_combo(pixel, alt_gaussians,
+                                      interpretation=fit_interpretation)
+          mask[pixel]=1 # do not mask out negative pixels if the Gaussian fit is good
+          continue
+
+        chi_squared_list.append(fit_interpretation.chi_squared())
+        suspect = False # don't know the optimal statistical test.  Histograms vary primarily by total count & # photons
+        if total_photons <= 3:
+          if fit_interpretation.chi_squared() > 2.5 or fit_interpretation.quality_factor < 5: suspect=True
+        elif 3 < total_photons <= 10:
+          if fit_interpretation.chi_squared() > 5 or fit_interpretation.quality_factor < 10: suspect=True
+        elif 10 < total_photons <= 33:
+          if fit_interpretation.chi_squared() > 10 or fit_interpretation.quality_factor < 20: suspect=True
+        elif 33 < total_photons <= 100:
+          if fit_interpretation.chi_squared() > 20 or fit_interpretation.quality_factor < 20: suspect=True
+        elif 100 < total_photons <= 330:
+          if fit_interpretation.chi_squared() > 30 or fit_interpretation.quality_factor < 25: suspect=True
+        elif 330 < total_photons <= 1000:
+          if fit_interpretation.chi_squared() > 40 or fit_interpretation.quality_factor < 30: suspect=True
+        elif 1000 < total_photons:
+          if fit_interpretation.chi_squared() > 50 or fit_interpretation.quality_factor < 30: suspect=True
+
+        if suspect:
+          print "\n%d pixel %s Bad quality 0/1-photon fit"%(i,pixel),fit_interpretation.quality_factor
+          print "   with chi-squared %10.5f"%fit_interpretation.chi_squared()
+          print "   Suspect",suspect
+          print "%d fit photons, %d total photons"%(n_photons,total_photons)
+          #pixel_histograms.plot_combo(pixel, alt_gaussians,
+          #                            interpretation=fit_interpretation)
           mask[pixel]=1
           continue
-        if False:# or two_photon_flag:
-          #pixel_histograms.plot_combo(pixel, gaussians)
-          pixel_histograms.plot_combo(pixel, alt_gaussians)
-        #pixel_histograms.plot_one_histogram(pixel_histograms.histograms[pixel])
-        #pixel_histograms.plot_gaussians(pixel)
-        self.sum_img[pixel] = n_photons
+
+        self.sum_img[pixel] = n_photons + multi_photons
 
     mask.set_selected(self.sum_img == 0, 1)
     unbound_pixel_mask = xes_finalise.cspad_unbound_pixel_mask()
@@ -193,6 +217,7 @@ class xes_from_histograms(object):
     self.spectrum_focus = spectrum_focus
     xes_finalise.output_matlab_form(spectrum_focus, "%s/sum%s.m" %(output_dirname,runstr))
     print output_dirname
+    print "Average chi squared is",flex.mean(chi_squared_list),"on %d shots"%flex.sum(hist.slots())
 
 class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms):
 
@@ -203,7 +228,7 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
 
   def plot_combo(self, pixel, gaussians,
                          window_title=None, title=None,
-                         log_scale=False, normalise=False, save_image=False):
+                         log_scale=False, normalise=False, save_image=False, interpretation=None):
     histogram = self.histograms[pixel]
     from matplotlib import pyplot
     from xfel.command_line.view_pixel_histograms import hist_outline
@@ -223,64 +248,68 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
     data_max = max([slot.low_cutoff for slot in histogram.slot_infos() if slot.n > 0])
     pyplot.xlim(data_min, data_max+histogram.slot_width())
     pyplot.xlim(-50, 100)
-    pyplot.ylim(-10,40)
+    pyplot.ylim(-10, 40)
     x = histogram.slot_centers()
-    y_calc = flex.double(x.size(), 0)
     for g in gaussians:
       print "Height %7.2f mean %4.1f sigma %3.1f"%(g.params)
-      y = g(x)
-      y_calc += y
-      pyplot.plot(x, y, linewidth=2)
+      pyplot.plot(x, g(x), linewidth=2)
 
-    #OK let's figure stuff out about the multiphoton residual.
-    # only count the residual for x larger than one_mean + 2*zero_sigma
-    xfloor = gaussians[1].params[1] + 3.*gaussians[0].params[2]
-    selection = (histogram.slot_centers()>xfloor)
-    xresid = histogram.slot_centers().select(selection)
-    yresid = histogram.slots().as_double().select(selection) - y_calc.select(selection)
-    xweight = (xresid - gaussians[0].params[1])/(gaussians[1].params[1] - gaussians[0].params[1])
-    additional_photons = flex.sum( xweight * yresid )
-    print "counted %.0f multiphoton photons on this pixel"%additional_photons
-    pyplot.plot(xresid, 10*xweight, "b.")
-    pyplot.plot(xresid,yresid,"r.")
-
-    #Now the other half of the data; the part supposedly fit by the 0- and 1-photon gaussians
-    xresid = histogram.slot_centers().select(~selection)
-    ysignal = histogram.slots().as_double().select(~selection)
-    yresid = ysignal - y_calc.select(~selection)
-    pyplot.plot(xresid,yresid/10.,"m.")
-
-    sumsq_signal = flex.sum(ysignal * ysignal)
-    sumsq_residual = flex.sum(yresid * yresid)
-    print sumsq_signal,sumsq_residual, sumsq_signal/sumsq_residual, math.sqrt(sumsq_signal)
-
+    if interpretation is not None:
+      interpretation.plot_multiphoton_fit(pyplot)
+      interpretation.plot_quality(pyplot)
     pyplot.show()
 
   @staticmethod
   def multiphoton_and_fit_residual(histogram,gaussians):
 
-    #OK let's figure stuff out about the multiphoton residual, after fitting with 0 + 1 photons
-    # only count the residual for x larger than one_mean + 3*zero_sigma
-    x = histogram.slot_centers()
-    y_calc = flex.double(x.size(), 0)
-    for g in gaussians:
-      y_calc += g(x)
-    xfloor = gaussians[1].params[1] + 3.*gaussians[0].params[2]
-    selection = (histogram.slot_centers()>xfloor)
-    xresid = histogram.slot_centers().select(selection)
-    yresid = histogram.slots().as_double().select(selection) - y_calc.select(selection)
-    xweight = (xresid - gaussians[0].params[1])/(gaussians[1].params[1] - gaussians[0].params[1])
-    additional_photons = flex.sum( xweight * yresid )
-    #Now the other half of the data; the part supposedly fit by the 0- and 1-photon gaussians
-    xresid = histogram.slot_centers().select(~selection)
-    ysignal = histogram.slots().as_double().select(~selection)
-    yresid = ysignal - y_calc.select(~selection)
-    sumsq_signal = flex.sum(ysignal * ysignal)
-    sumsq_residual = flex.sum(yresid * yresid)
-    #return sumsq_signal,sumsq_residual, sumsq_signal/sumsq_residual, math.sqrt(sumsq_signal)
-    class Empty: pass
-    E = Empty()
-    E.quality_factor = sumsq_signal/sumsq_residual
+    class per_pixel_analysis:
+
+      def __init__(OO):
+
+        #OK let's figure stuff out about the multiphoton residual, after fitting with 0 + 1 photons
+        # only count the residual for x larger than one_mean + 3*zero_sigma
+        x = histogram.slot_centers()
+        y_calc = flex.double(x.size(), 0)
+        for g in gaussians:
+          y_calc += g(x)
+        xfloor = gaussians[1].params[1] + 3.*gaussians[0].params[2]
+        selection = (histogram.slot_centers()>xfloor)
+        OO.fit_xresid = histogram.slot_centers().select(selection)
+        OO.fit_yresid = histogram.slots().as_double().select(selection) - y_calc.select(selection)
+        OO.xweight = (OO.fit_xresid - gaussians[0].params[1])/(gaussians[1].params[1] - gaussians[0].params[1])
+        OO.additional_photons = flex.sum( OO.xweight * OO.fit_yresid )
+
+        #Now the other half of the data; the part supposedly fit by the 0- and 1-photon gaussians
+        OO.qual_xresid = histogram.slot_centers().select(~selection)
+        ysignal = histogram.slots().as_double().select(~selection)
+        OO.qual_yresid = ysignal - y_calc.select(~selection)
+        # Not sure how to treat weights for channels with zero observations; default to 1
+        _variance = ysignal.deep_copy().set_selected(ysignal==0., 1.)
+        OO.weight = 1./_variance
+        OO.weighted_numerator = OO.weight * (OO.qual_yresid * OO.qual_yresid)
+        OO.sumsq_signal = flex.sum(ysignal * ysignal)
+        OO.sumsq_residual = flex.sum(OO.qual_yresid * OO.qual_yresid)
+
+      def get_multiphoton_count(OO):
+        # XXX insert a test here as to whether the analysis has been carried out
+        #   far enough along x-axis to capture all the high multi-photon signal
+        #   if not, raise an exception
+        return int(round(OO.additional_photons,0))
+
+      def plot_multiphoton_fit(OO,plotter):
+        print "counted %.0f multiphoton photons on this pixel"%OO.additional_photons
+        plotter.plot(OO.fit_xresid, 10*OO.xweight, "b.")
+        plotter.plot(OO.fit_xresid,OO.fit_yresid,"r.")
+
+      def plot_quality(OO,plotter):
+        plotter.plot(OO.qual_xresid,OO.qual_yresid/10.,"m.")
+        print OO.sumsq_signal,OO.sumsq_residual, OO.quality_factor, math.sqrt(OO.sumsq_signal)
+
+      def chi_squared(OO):
+        return flex.sum(OO.weighted_numerator)/len(OO.weighted_numerator)
+
+    E = per_pixel_analysis()
+    E.quality_factor = E.sumsq_signal/E.sumsq_residual
     return E
 
 
