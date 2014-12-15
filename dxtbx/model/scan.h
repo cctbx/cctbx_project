@@ -136,6 +136,7 @@ namespace dxtbx { namespace model {
       image_range_ = image_range;
       num_images_ = 1 + image_range_[1] - image_range_[0];
       epochs_.resize(num_images_);
+      exposure_times_.resize(num_images_);
       DXTBX_ASSERT(num_images_ > 0);
     }
 
