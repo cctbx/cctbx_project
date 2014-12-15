@@ -9,7 +9,7 @@ import getpass
 # svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
 
 # Note: to relocate an SVN repo:
-# svn relocate svn+ssh://ianrees@svn.code.sf.net/p/cctbx/code/trunk
+# svn relocate svn+ssh://<username>@svn.code.sf.net/p/cctbx/code/trunk
 
 # Mock commands to run standalone, without buildbot.
 class ShellCommand(object):
@@ -47,15 +47,6 @@ class SVN(ShellCommand):
     
   def get_workdir(self):
     return 'modules'
-
-# Import Buildbot if available.
-try:
-  import buildbot.steps.shell
-  import buildbot.steps.source.svn
-  import buildbot.process.factory
-  import buildbot.config
-except ImportError:
-  pass
 
 ##### Codebases #####
 # rsync'd packages.
@@ -165,11 +156,9 @@ class CCIBuilder(object):
     install=True, 
     tests=True, 
     distribute=False,
-    buildbot=True,
     cciuser=None
       ):
     """Create and add all the steps."""
-    self.buildbot = buildbot
     self.cciuser = cciuser or getpass.getuser()
     self.steps = []
     self.category = category
@@ -226,16 +215,10 @@ class CCIBuilder(object):
     kwargs['haltOnFailure'] = kwargs.pop('haltOnFailure', True)
     kwargs['description'] = kwargs.get('description') or kwargs.get('name')
     kwargs['timeout'] = 60*60*2 # 2 hours
-    if self.buildbot:
-      return buildbot.steps.shell.ShellCommand(**kwargs)
-    else:
-      return ShellCommand(**kwargs)  
+    return ShellCommand(**kwargs)  
   
   def svn(self, **kwargs):
-    if self.buildbot:
-      return buildbot.steps.source.svn.SVN(**kwargs)
-    else:
-      return SVN(**kwargs)
+    return SVN(**kwargs)
   
   def run(self):
     for i in self.steps:
@@ -259,17 +242,6 @@ class CCIBuilder(object):
       for k in self.get_codebases()
       )
     
-  def get_buildconfig(self):
-    # The BuildConfig factory
-    factory = buildbot.process.factory.BuildFactory(self.steps)
-    # Name is category-platform
-    return buildbot.config.BuilderConfig(
-      category=self.category, 
-      name=self.name, 
-      slavenames=[self.platform], 
-      factory=factory
-    )
-  
   def cleanup(self, dirs=None):
     dirs = dirs or []  
     self.add_step(self.cmd(
@@ -366,6 +338,7 @@ class CCIBuilder(object):
     ))
   
   def add_make(self):
+    # Todo: nproc=auto
     self.add_step(self.cmd(command=[self.opjoin('..', 'build', 'bin', 'libtbx.scons'), '-j', '4']))
 
   def add_install(self):
@@ -386,13 +359,42 @@ class CCTBXBaseBuilder(CCIBuilder):
   # Base packages
   BASE_PACKAGES = 'all'
   # Checkout these codebases
-  CODEBASES = ['cbflib', 'cctbx_project', 'phenix_dev', 'gui_resources', 'chem_data', 'ccp4io_adaptbx', 'annlib_adaptbx', 'tntbx', 'clipper']
+  CODEBASES = [
+    'cbflib', 
+    'cctbx_project', 
+    'phenix_dev', 
+    'gui_resources', 
+    'chem_data', 
+    'ccp4io_adaptbx', 
+    'annlib_adaptbx', 
+    'tntbx', 
+    'clipper'
+  ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
-  HOT = ['annlib', 'boost', 'scons', 'ccp4io', 'docutils']
+  HOT = [
+    'annlib', 
+    'boost', 
+    'scons', 
+    'ccp4io', 
+    'docutils'
+  ]
   HOT_EXTRA = []
   # Configure for these cctbx packages
-  LIBTBX = ['cctbx', 'cbflib', 'scitbx', 'libtbx', 'iotbx', 'mmtbx', 'smtbx', 'dxtbx', 'gltbx', 'wxtbx', 'phenix_dev', 'chem_data']
+  LIBTBX = [
+    'cctbx', 
+    'cbflib', 
+    'scitbx', 
+    'libtbx', 
+    'iotbx', 
+    'mmtbx', 
+    'smtbx', 
+    'dxtbx', 
+    'gltbx', 
+    'wxtbx', 
+    'phenix_dev', 
+    'chem_data'
+  ]
   LIBTBX_EXTRA = []
   def add_install(self):
     self.add_command('mmtbx.rebuild_rotarama_cache')
@@ -400,6 +402,7 @@ class CCTBXBaseBuilder(CCIBuilder):
 ##### CCTBX-derived packages #####
 
 class CCTBXBuilder(CCTBXBaseBuilder):
+  BASE_PACKAGES = 'cctbx'
   CODEBASES_EXTRA = [ 'phenix_regression']
   LIBTBX_EXTRA = ['phenix_regression']
   def add_tests(self):
@@ -407,44 +410,6 @@ class CCTBXBuilder(CCTBXBaseBuilder):
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')    
   
-class CCTBXCIBuilder(CCTBXBaseBuilder):
-  def add_tests(self):
-    self.add_test_command('libtbx.import_all_ext')
-    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
-    self.add_test_command('libtbx.find_clutter', workdir=['modules', 'cctbx_project'], args=['--verbose'], flunkOnFailure=False, warnOnFailure=True)
-
-class CCTBXDocsBuilder(CCTBXBaseBuilder):
-  CODEBASES_EXTRA = ['dials', 'labelit']
-  LIBTBX_EXTRA = ['sphinx', 'dials', 'labelit', 'xfel', 'rstbx']  
-  def add_install(self):
-    # Sphinx and numpydoc must be installed.
-    self.add_step(self.cmd(
-      name='sphinx build', 
-      command=[
-        self.opjoin('..', 'build', 'bin', 'sphinx.build'),
-        '-b', 
-        'html', 
-        self.opjoin('..', 'modules', 'cctbx_project', 'sphinx'),
-        '.'
-      ], 
-      workdir='docs'
-    ))
-    
-  def add_distribute(self):  
-    # Copy the docs to the server.
-    self.add_step(self.cmd(
-      name='sphinx upload',
-      command=[
-        'rsync', 
-        '--delete', 
-        '--chmod=a+rx', 
-        '-r', 
-        '.', 
-        '%(cciuser)s@cci.lbl.gov:/net/boa/srv/html/cci/cctbx_docs'%{'cciuser':self.cciuser}
-      ],
-      workdir='docs'
-    ))
-
 class DIALSBuilder(CCTBXBaseBuilder):
   CODEBASES_EXTRA = ['dials', 'dials_regression']
   LIBTBX_EXTRA = ['dials', 'dials_regression']
@@ -459,8 +424,23 @@ class LABELITBuilder(CCTBXBaseBuilder):
     pass
     
 class XFELBuilder(CCTBXBaseBuilder):
- CODEBASES_EXTRA = ['dials', 'labelit', 'labelit_regression', 'dials_regression', 'xfel_regression', 'cxi_xdr_xes']
- LIBTBX_EXTRA = ['dials', 'labelit', 'labelit_regression', 'dials_regression', 'xfel', 'xfel_regression', 'cxi_xdr_xes']
+ CODEBASES_EXTRA = [
+   'dials', 
+   'labelit', 
+   'labelit_regression', 
+   'dials_regression', 
+   'xfel_regression', 
+   'cxi_xdr_xes'
+ ]
+ LIBTBX_EXTRA = [
+   'dials', 
+   'labelit', 
+   'labelit_regression', 
+   'dials_regression', 
+   'xfel', 
+   'xfel_regression', 
+   'cxi_xdr_xes'
+ ]
  def add_tests(self):
    self.add_test_parallel('xfel_regression')
 
@@ -513,16 +493,9 @@ class PHENIXBuilder(CCTBXBaseBuilder):
       self.add_test_command('phenix_regression.test_nightly')
     # Other Phenix tests.
     self.add_test_parallel(module='elbow')
-    # self.add_test_command('phaser_regression.regression', args='cci')
     self.add_test_command('phenix_html.rebuild_docs')
     self.add_test_command('phenix_regression.run_p9_sad_benchmark')
     self.add_test_command('phenix_regression.run_hipip_refine_benchmark')
-    
-  def add_distribute(self):
-    if 'windows' in self.platform:
-      pass
-    else:
-      self.add_command('phenix.make_dist', args=['dev', self.platform])
 
 if __name__ == "__main__":
   parser = optparse.OptionParser()
@@ -558,7 +531,6 @@ if __name__ == "__main__":
   builder(
     category='cctbx', 
     platform='debug',
-    buildbot=False, 
     cciuser=options.cciuser,
     hot=('hot' in actions),
     update=('update' in actions),
@@ -567,6 +539,3 @@ if __name__ == "__main__":
     install=('install' in actions),
     tests=('tests' in actions)
   ).run()
-  
-  
-    
