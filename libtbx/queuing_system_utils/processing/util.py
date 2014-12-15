@@ -14,6 +14,4 @@ def get_lazy_initialized_regex(pattern, flags = []):
 
   from libtbx.object_oriented_patterns import lazy_initialization
 
-  return lazy_initialization(
-    calculation = lambda: get_regex( pattern = pattern, flags = flags ),
-    )
+  return lazy_initialization( func = get_regex, pattern = pattern, flags = flags )

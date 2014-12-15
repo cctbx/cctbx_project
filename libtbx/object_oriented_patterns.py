@@ -156,7 +156,7 @@ class journal_mixin(object):
 
 def calculate_state(holder):
 
-  holder.data = holder.data()
+  holder.data = holder.calculation()
   holder.state = retrieve_state
   return holder.data
 
@@ -171,9 +171,11 @@ class lazy_initialization(object):
   Defers initialization until the value is accessed (state pattern)
   """
 
-  def __init__(self, calculation):
+  def __init__(self, func, *args, **kwargs):
 
-    self.data = calculation
+    import functools
+    self.calculation = functools.partial( func, *args, **kwargs )
+    self.data = None
     self.state = calculate_state
 
 
