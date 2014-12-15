@@ -57,6 +57,10 @@ class installer (object) :
     parser.add_option("-g", "--debug", dest="debug", action="store_true",
       help="Build in debugging mode", default=False)
     # Package set options.
+    parser.add_option("--cctbx", dest="cctbx", action="store_true",
+      help="Build CCTBX dependencies")
+    parser.add_option("--phenix", dest="phenix", action="store_true",
+      help="Build PHENIX dependencies")      
     parser.add_option("--labelit", dest="labelit", action="store_true",
       help="Build LABELIT dependencies")
     parser.add_option("--xia2", dest="xia2", action="store_true",
@@ -122,17 +126,48 @@ class installer (object) :
     # Set BLAS/ATLAS/LAPACK
     for env_var in ["BLAS","ATLAS","LAPACK"]:
       os.environ[env_var] = "None"
+      
+    # Select packages to build.
+    packages = self.configure_packages(options)  
+    # Override and specified packages if provided.
+    if len(args) > 1:
+      packages = args[1:]
+            
+    # Do the work!
+    self.check_dependencies(packages=packages)
+    self.build_dependencies(packages=packages)
+    
+    # On Mac OS X all of the Python-related executables located in base/bin
+    # are actually symlinks to absolute paths inside the Python.framework, so
+    # we replace them with symlinks to relative paths.
+    if self.flag_is_mac:
+      print >> log, "Regenerating symlinks with relative paths..."
+      regenerate_relative_symlinks(op.join(self.base_dir, "bin"), log=log)
+
+  def configure_packages(self, options):
+    packages = []
+    # Package groups.
+    if options.phenix:
+      options.build_gui = True
+    if options.dials:
+      options.build_gui = True
+    if options.labelit:
+      options.build_gui = True
+      packages += ['imaging', 'reportlab']
+    if options.build_all:
+      options.build_gui = True
 
     # Use a specific Python interpreter if provided.
-    packages = []
     if self.python_exe:
       self.set_python(self.python_exe)
     else:
-      packages += ['python']    
+      packages += ['python']
+
     # Always build hdf5 and numpy.
     packages += ['hdf5', 'numpy']
+    
     # GUI packages.
-    if options.build_all or options.build_gui:
+    if options.build_gui:
       packages += ['png']
       if self.flag_is_mac:
         packages += ['py2app']
@@ -149,38 +184,29 @@ class installer (object) :
           'cairo',
           'gtk',
           'fonts',
-          'wxpython'
+          'wxpython',
+          'pyopengl',
+          'matplotlib'
         ]
+
     # Additional recommended dependencies.
     if options.build_all:
-      packages += ['biopython', 'pyopengl', 'misc'] # 'sphinx', 
-    # LABELIT
-    if options.build_all or options.labelit:
-      packages += ['imaging', 'reportlab']
+      packages += ['biopython', 'misc'] # 'sphinx', 
+      
+    # Non-all packages.
     # Scipy
     if options.build_scipy:
       packages += ['scipy']
+      
     # IPython
     if options.build_ipython:
       packages += ['ipython']
-    # Imaging dependencies:
+
+    # Package dependencies.
     if 'imaging' in packages:
       packages += ['freetype']
-    # Or use specified packages if provided.
-    if args:
-      args = args[1:]
       
-    # Do the work!
-    packages = set(args or packages)
-    self.check_dependencies(packages=packages)
-    self.build_dependencies(packages=packages)
-    
-    # On Mac OS X all of the Python-related executables located in base/bin
-    # are actually symlinks to absolute paths inside the Python.framework, so
-    # we replace them with symlinks to relative paths.
-    if self.flag_is_mac:
-      print >> log, "Regenerating symlinks with relative paths..."
-      regenerate_relative_symlinks(op.join(self.base_dir, "bin"), log=log)
+    return set(packages)
 
   def call (self, args, log=None, **kwargs) :
     if (log is None) : log = self.log
@@ -364,6 +390,7 @@ Installation of Python packages may fail.
         raise Exception("No Fortran compiler found for Scipy. Requires one of: %s"%(", ".join(compilers)))
 
   def build_dependencies(self, packages=None):
+    # Build in the correct dependency order.
     packages = packages or []
     order = [
       'python',
@@ -384,6 +411,7 @@ Installation of Python packages may fail.
       'gtk',
       'fonts',
       'wxpython',
+      'matplotlib',
       'ipython',
       'pyopengl',
       'imaging',
@@ -768,14 +796,7 @@ Installation of Python packages may fail.
       " ".join(wxpy_build_opts)), log=pkg_log)
     self.verify_python_module("wxPython", "wx")
 
-  def build_misc (self) :
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=PYRTF_PKG,
-      pkg_name_label="PyRTF",
-      confirm_import_module="PyRTF")
-    # TODO we are patching the source to force it to use the correct backend.
-    # I'm not sure if this is truly necessary or if there's a cleaner way...
+  def build_matplotlib(self):
     def patch_matplotlib_src (out) :
       print >> out, "  patching setup.cfg"
       self.patch_src(src_file="setup.cfg.template",
@@ -790,6 +811,15 @@ Installation of Python packages may fail.
       pkg_name_label="Matplotlib",
       callback_before_build=patch_matplotlib_src,
       confirm_import_module="matplotlib")
+
+  def build_misc (self) :
+    self.build_python_module_simple(
+      pkg_url=BASE_CCI_PKG_URL,
+      pkg_name=PYRTF_PKG,
+      pkg_name_label="PyRTF",
+      confirm_import_module="PyRTF")
+    # TODO we are patching the source to force it to use the correct backend.
+    # I'm not sure if this is truly necessary or if there's a cleaner way...
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=SEND2TRASH_PKG,
