@@ -326,7 +326,7 @@ source %s
 EOF
 """
 
-  def __init__(self, jobid, poller, outfile, errfile, logfile, additional):
+  def __init__(self, jobid, poller, outfile, errfile, logfile, additional, qdel):
 
     self.logfile = logfile
     super( LogfileStrategy, self ).__init__(
@@ -335,6 +335,7 @@ EOF
       outfile = outfile,
       errfile = errfile,
       additional = additional + [ self.logfile ],
+      qdel = qdel,
       )
 
 

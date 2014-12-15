@@ -344,7 +344,7 @@ class RemoteFactory(object):
   def __init__(self, calculation, method):
 
     from libtbx.object_oriented_patterns import lazy_initialization
-    self.instance = lazy_initialization( calculation = calculation )
+    self.instance = lazy_initialization( func = calculation )
     self.method = method
 
 
