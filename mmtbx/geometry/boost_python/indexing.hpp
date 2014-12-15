@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/with_custodian_and_ward.hpp>
 

@@ -14,6 +14,7 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/iterator/transform_iterator.hpp>
+#include <boost/graph/bron_kerbosch_all_cliques.hpp>
 
 #include <boost/mpl/if.hpp>
 #include <boost/type_traits.hpp>
@@ -104,6 +105,35 @@ public:
 
     return boost::python::extract< vertices_size_type >( m_callable( graph, py_partition ) );
   }
+};
+
+
+class bron_kerbosch_python_callback_visitor
+{
+public:
+  bron_kerbosch_python_callback_visitor(boost::python::object callable)
+    : m_callable(callable)
+  {}
+
+  template <typename Clique, typename Graph>
+  void clique(const Clique& c, const Graph& g)
+  {
+    typedef boost::graph_traits< Graph > graph_traits;
+    typedef typename graph_traits::vertex_descriptor vertex_descriptor;
+    typedef graph_export_adaptor::vertex_descriptor_converter< vertex_descriptor > converter;
+
+    boost::python::list result;
+
+    for (typename Clique::const_iterator i = c.begin(); i != c.end(); ++i)
+    {
+      result.append( converter::forward( *i ) );
+    }
+
+    m_callable( result );
+  }
+
+private:
+  boost::python::object m_callable;
 };
 
 template< typename Graph >
@@ -211,6 +241,17 @@ struct maximum_clique_rascal_export
       );
   }
 
+  static void bron_kerbosch_all_cliques(
+    Graph const& graph,
+    boost::python::object callable
+    )
+  {
+    boost::bron_kerbosch_all_cliques(
+      graph,
+      bron_kerbosch_python_callback_visitor( callable )
+      );
+  }
+
   static void process()
   {
     using namespace boost::python;
@@ -230,6 +271,11 @@ struct maximum_clique_rascal_export
       "selected_subgraph",
       selected_subgraph,
       ( arg( "graph" ), arg( "subgraph" ), arg( "iterable" ) )
+      );
+    def(
+      "bron_kerbosch_all_cliques",
+      bron_kerbosch_all_cliques,
+      ( arg( "graph" ), arg( "callable" ) )
       );
   }
 
@@ -260,8 +306,7 @@ struct maximum_clique_exporter
 
 BOOST_PYTHON_MODULE(boost_adaptbx_graph_maximum_clique_ext)
 {
-  boost_adaptbx::exporting::class_list<
-    boost_adaptbx::graph_type::exports,
-    boost_adaptbx::maximum_clique_exporter
-    >::process();
+  boost_adaptbx::exporting::class_list< boost_adaptbx::graph_type::exports >::process(
+    boost_adaptbx::maximum_clique_exporter()
+    );
 }

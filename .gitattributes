@@ -1735,7 +1735,6 @@ mmtbx/geometry/asa.py -text
 mmtbx/geometry/boost_python/asa_ext.cpp -text
 mmtbx/geometry/boost_python/clash_ext.cpp -text
 mmtbx/geometry/boost_python/containment.hpp -text
-mmtbx/geometry/boost_python/exporting.hpp -text
 mmtbx/geometry/boost_python/indexing.hpp -text
 mmtbx/geometry/boost_python/indexing_ext.cpp -text
 mmtbx/geometry/boost_python/primitive_ext.cpp -text

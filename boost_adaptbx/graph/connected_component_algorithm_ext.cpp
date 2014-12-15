@@ -137,8 +137,7 @@ struct connected_component_algorithm_exporter
 
 BOOST_PYTHON_MODULE(boost_adaptbx_graph_connected_component_algorithm_ext)
 {
-  boost_adaptbx::exporting::class_list<
-    boost_adaptbx::graph_type::exports,
-    boost_adaptbx::connected_component_algorithm_exporter
-    >::process();
+  boost_adaptbx::exporting::class_list< boost_adaptbx::graph_type::exports >::process(
+    boost_adaptbx::connected_component_algorithm_exporter()
+    );
 }
