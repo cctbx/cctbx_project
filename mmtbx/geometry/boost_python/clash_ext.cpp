@@ -15,12 +15,12 @@
 #include <cctbx/sgtbx/rt_mx.h>
 #include <scitbx/vec3.h>
 #include <iotbx/pdb/small_str.h>
+#include <boost_adaptbx/exporting.hpp>
 
 #include <mmtbx/geometry/clash.hpp>
 #include <mmtbx/geometry/indexing.hpp>
 #include <mmtbx/geometry/overlap.hpp>
 
-#include <mmtbx/geometry/boost_python/exporting.hpp>
 #include <mmtbx/geometry/boost_python/indexing.hpp>
 
 
@@ -165,10 +165,9 @@ struct python_exports
     { // enter indexing namespace
       scope indexing_scope = indexing_module;
 
-      exporting::class_list<
-        typename Traits::indexers,
-        indexing::python::indexer_exports
-        >::process();
+      boost_adaptbx::exporting::class_list< typename Traits::indexers >::process(
+        indexing::python::indexer_exports()
+        );
     } // exit indexing namespace
 
     typedef OverlapInteractionFilter<
@@ -184,14 +183,11 @@ struct python_exports
       .def( "__call__", &predicate_type::operator (), arg( "other" ) )
       ;
 
-    exporting::class_list<
-      typename Traits::indexers,
-      indexing::python::filter_and_range_export< predicate_type >
-      >::process(
-          indexing::python::filter_and_range_export< predicate_type >(
-            "overlap_interaction_filtered_"
-            )
-        );
+    boost_adaptbx::exporting::class_list< typename Traits::indexers >::process(
+      indexing::python::filter_and_range_export< predicate_type >(
+        "overlap_interaction_filtered_"
+        )
+      );
   }
 };
 

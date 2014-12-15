@@ -245,10 +245,9 @@ struct python_not_builtin_type_exporter
       or_< boost::is_class< placeholders::_1 >, boost::is_union< placeholders::_1 > >,
       back_inserter< vector<> >
       >::type filtered_unique_types;
-    boost_adaptbx::exporting::class_list<
-      filtered_unique_types,
-      undefined_type_export< Prefix >
-      >::process();
+    boost_adaptbx::exporting::class_list< filtered_unique_types >::process(
+      undefined_type_export< Prefix >()
+      );
   }
 
 };
@@ -278,10 +277,9 @@ struct get_graph_edge_descriptor_type
 
 BOOST_PYTHON_MODULE(boost_adaptbx_graph_ext)
 {
-  boost_adaptbx::exporting::class_list<
-    boost_adaptbx::graph_type::exports,
-    boost_adaptbx::graph_exporter
-    >::process();
+  boost_adaptbx::exporting::class_list< boost_adaptbx::graph_type::exports >::process(
+    boost_adaptbx::graph_exporter()
+    );
   #pragma clang diagnostic push
   #pragma clang diagnostic ignored "-Wmultichar"
   boost_adaptbx::python_not_builtin_type_exporter<

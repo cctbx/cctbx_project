@@ -276,8 +276,7 @@ struct graph_structure_comparison_exporter
 
 BOOST_PYTHON_MODULE(boost_adaptbx_graph_graph_structure_comparison_ext)
 {
-  boost_adaptbx::exporting::class_list<
-    boost_adaptbx::graph_type::exports,
-    boost_adaptbx::graph_structure_comparison_exporter
-    >::process();
+  boost_adaptbx::exporting::class_list< boost_adaptbx::graph_type::exports >::process(
+    boost_adaptbx::graph_structure_comparison_exporter()
+    );
 }

@@ -9,9 +9,9 @@
 #include <boost/python/stl_iterator.hpp>
 
 #include <boost_adaptbx/boost_range_python.hpp>
+#include <boost_adaptbx/exporting.hpp>
 
 #include <mmtbx/geometry/containment.hpp>
-#include <mmtbx/geometry/boost_python/exporting.hpp>
 
 namespace mmtbx
 {
@@ -25,13 +25,11 @@ namespace containment
 namespace python
 {
 
-template< typename Checker >
 struct add_neighbours_from_range_export
 {
-  typedef boost::python::class_< Checker > export_class_type;
   typedef void result_type;
 
-  template< typename Range >
+  template< typename Checker, typename Range >
   void operator ()(
     boost::python::class_< Checker >& myclass,
     boost::mpl::identity< Range > myexport
@@ -39,12 +37,12 @@ struct add_neighbours_from_range_export
   {
     myclass.def(
       "add",
-      &process< Range >,
+      &process< Checker, Range >,
       boost::python::arg( "neighbours" )
       );
   }
 
-  template< typename Range >
+  template< typename Checker, typename Range >
   static void process(Checker& checker, const Range& neighbours)
   {
     checker.add( neighbours.begin(), neighbours.end() );
@@ -87,10 +85,10 @@ struct checker_export
         )
       ;
 
-    exporting::method_list<
-      InputRangeList,
-      add_neighbours_from_range_export< checker_type >
-      >::process( myclass );
+    boost_adaptbx::exporting::method_list< InputRangeList >::process(
+      myclass,
+      add_neighbours_from_range_export()
+      );
 
     typedef boost::filtered_range< checker_type, transformed_points_range >
       filtered_transformed_points_range;

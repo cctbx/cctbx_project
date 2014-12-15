@@ -13,10 +13,11 @@ namespace boost_adaptbx
 namespace exporting
 {
 
-template< typename ExportList, typename ExportSpec >
+template< typename ExportList >
 struct class_list
 {
-  static void process(ExportSpec const& export_spec = ExportSpec())
+  template< typename ExportSpec >
+  static void process(ExportSpec const& export_spec)
   {
     boost::mpl::for_each<
       ExportList,
@@ -25,13 +26,11 @@ struct class_list
   }
 };
 
-template< typename ExportList, typename ExportSpec >
+template< typename ExportList >
 struct method_list
 {
-  static void process(
-    typename ExportSpec::export_class_type& myclass,
-    ExportSpec const& export_spec = ExportSpec()
-    )
+  template< typename ClassType, typename ExportSpec >
+  static void process(ClassType& myclass, ExportSpec const& export_spec)
   {
     boost::mpl::for_each<
       ExportList,

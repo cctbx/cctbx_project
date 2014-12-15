@@ -6,6 +6,7 @@ import operator
 
 rascal = ext.rascal
 greedy = ext.greedy
+bron_kerbosch_all_cliques = ext.bron_kerbosch_all_cliques
 
 def compatibility_graph(
   first,

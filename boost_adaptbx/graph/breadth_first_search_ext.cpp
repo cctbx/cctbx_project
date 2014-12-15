@@ -183,8 +183,7 @@ struct bfs_exporter
 
 BOOST_PYTHON_MODULE(boost_adaptbx_graph_breadth_first_search_ext)
 {
-  boost_adaptbx::exporting::class_list<
-    boost_adaptbx::graph_type::exports,
-    boost_adaptbx::bfs_exporter
-    >::process();
+  boost_adaptbx::exporting::class_list< boost_adaptbx::graph_type::exports >::process(
+    boost_adaptbx::bfs_exporter()
+    );
 }
