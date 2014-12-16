@@ -34,7 +34,7 @@ def finite_difference_gradients(restraint_type, sites_cart, proxy, unit_cell=Non
       qp = residual(restraint_type,sites_cart,proxy,unit_cell)
       sites_cart[i]=matrix.col(sites_cart[i]) - 2*h
       qm = residual(restraint_type,sites_cart,proxy,unit_cell)
-      dq = (qp-qm)/2
+      dq = (qp-qm)/2.0
       result_i.append(dq/(eps))
     result.append(result_i)
   return result
@@ -2181,6 +2181,60 @@ def exercise_planarity():
     gradient_array=None)
   assert approx_equal(residual_sum, restraint_sym.residual() + restraint_no_sym.residual())
 
+def exercise_planarity_top_out():
+  # exercise finite-difference for top-out potential
+  i_seqs = [0,1,2,3]
+  sites_cart = flex.vec3_double(
+    [(1,1,0),(1,2,0),(2,1,0),(1,1,2)])
+    # [(12,54,23),(234,235,345),(234,433,287),(1541,3452,7677)])
+  weights = flex.double([1]*4)
+  p = geometry_restraints.planarity_proxy(
+    i_seqs=i_seqs,
+    weights=weights,
+    limit=1,
+    top_out=True)
+  planarity = geometry_restraints.planarity(
+    sites_cart=sites_cart,
+    proxy=p)
+  # manual_gradient(planarity)
+  print "Normal:", planarity.normal()
+  # print dir(planarity)
+  print "deltas:", list(planarity.deltas())
+  # res = planarity.residual()
+  # print "residual:",res
+  sc1 = sites_cart.deep_copy()
+  sc2 = sites_cart.deep_copy()
+  h=1.e-5
+  sc1[0] = (1+h,1,0)
+  sc2[0] = (1-h,1,0)
+  pl1 = geometry_restraints.planarity(
+    sites_cart=sc1,
+    proxy=p)
+  pl2 = geometry_restraints.planarity(
+    sites_cart=sc2,
+    proxy=p)
+  pl1_residual = pl1.residual()
+  pl2_residual = pl2.residual()
+  gr = (pl1_residual - pl2_residual) / (2*h)
+  # print list(sc1)
+  # print list(sc2)
+  # print pl1_residual, pl2_residual
+  # print "GRADIENT:",gr
+  # STOP()
+  gradient_array = flex.vec3_double(sites_cart.size())
+  residual_sum = geometry_restraints.planarity_residual_sum(
+    sites_cart=sites_cart,
+    proxies=geometry_restraints.shared_planarity_proxy([p]),
+    gradient_array=gradient_array)
+  fd_grads = finite_difference_gradients(
+    restraint_type=geometry_restraints.planarity,
+    sites_cart=sites_cart,
+    proxy=p, eps=1.e-5)
+  for g,e in zip(gradient_array, fd_grads):
+    print "grads from proxy:", g
+    print "grads from finit:", e
+    # assert approx_equal(g, e)
+
 def exercise_proxy_show():
   if sys.platform.startswith("win") and sys.version_info[:2] < (2,6):
     # This appears to be a windows-specific bug with string formatting
@@ -2885,7 +2939,6 @@ def exercise_parallelity():
                (1,0,0), (2,0,0), (1,0,1)]
   test_sites_1d = [1,0,0, 2,0,0, 1,1.732050807568877,-1,
                    1,0,0, 2,0,0, 1,0,1]
-
   # for target_angle_deg in [0,10]:
   for target_angle_deg in range(0,360,2):
     for slack in range(0,90,2):
@@ -2895,7 +2948,7 @@ def exercise_parallelity():
                                  weight=1,
                                  target_angle_deg=target_angle_deg,
                                  slack=slack,
-                                 limit=10,
+                                 limit=0.001,
                                  top_out=top_out)
         grad = list(p_original.gradients())
         fin_dif_grad = []
@@ -2907,7 +2960,7 @@ def exercise_parallelity():
                            weight=1,
                            target_angle_deg=target_angle_deg,
                            slack=slack,
-                           limit=10,
+                           limit=0.001,
                            top_out=top_out)
           test_sites_1d[i]-=2*h
           points = make_points(test_sites_1d)
@@ -2916,24 +2969,33 @@ def exercise_parallelity():
                            weight=1,
                            target_angle_deg=target_angle_deg,
                            slack=slack,
-                           limit=10,
+                           limit=0.001,
                            top_out=top_out)
           test_sites_1d[i]+=h
           fin_dif_grad.append((p1.residual()-p2.residual())/(2.0*h))
         sites_fdg = make_points(fin_dif_grad)
         assert approx_equal(grad, sites_fdg, 1.e-7)
-
   # Proxy selections
-  def make_proxy(i_seqs, j_seqs, weight):
+  def make_proxy(i_seqs,
+                 j_seqs,
+                 weight,
+                 target_angle_deg=0,
+                 slack=0,
+                 limit=-1,
+                 top_out=False):
     return geometry_restraints.parallelity_proxy(
       flex.size_t(i_seqs),
       flex.size_t(j_seqs),
-      weight)
+      weight,
+      target_angle_deg,
+      slack,
+      limit,
+      top_out)
   proxies = geometry_restraints.shared_parallelity_proxy([
-    make_proxy([0,1,2,3],  [2,3,4,5],    1),
-    make_proxy([1,2,3,4],  [3,4,5,6],    2),
-    make_proxy([2,3,10,11], [4,5,12,13], 3),
-    make_proxy([3,1,12,14], [5,6,14,15], 4)])
+    make_proxy([0,1,2,3],   [2,3,4,5],   1, 11, 1, 1, True),
+    make_proxy([1,2,3,4],   [3,4,5,6],   2, 12, 2, 2, True),
+    make_proxy([2,3,10,11], [4,5,12,13], 3, 13, 3, 3, True),
+    make_proxy([3,1,12,14], [5,6,14,15], 4, 14, 4, 4, True)])
   selected = proxies.proxy_select(n_seq=16, iselection=flex.size_t([0,2,4]))
   assert selected.size() == 0
   selected = proxies.proxy_select(n_seq=16,
@@ -2941,6 +3003,15 @@ def exercise_parallelity():
   assert selected.size() == 2
   assert list(selected[0].i_seqs) == [0, 1, 2]
   assert list(selected[0].j_seqs) == [1, 2, 3]
+  assert selected[0].weight == 1
+  assert selected[1].weight == 2
+  assert selected[0].target_angle_deg == 11
+  assert selected[1].target_angle_deg == 12
+  assert selected[0].slack == 1
+  assert selected[1].slack == 2
+  assert selected[0].limit == 1
+  assert selected[1].limit == 2
+  assert selected[0].top_out == selected[1].top_out == True
   assert list(selected[1].i_seqs) == [0, 1, 2, 3]
   assert list(selected[1].j_seqs) == [2, 3, 4]
   assert approx_equal(selected[0].weight, 1)
@@ -2955,6 +3026,15 @@ def exercise_parallelity():
   assert list(rest[0].j_seqs) == [4, 5, 12, 13]
   assert list(rest[1].i_seqs) == [3, 1, 12, 14]
   assert list(rest[1].j_seqs) == [5, 6, 14, 15]
+  assert rest[0].weight == 3
+  assert rest[1].weight == 4
+  assert rest[0].target_angle_deg == 13
+  assert rest[1].target_angle_deg == 14
+  assert rest[0].slack == 3
+  assert rest[1].slack == 4
+  assert rest[0].limit == 3
+  assert rest[1].limit == 4
+  assert rest[0].top_out == selected[1].top_out == True
 
 def exercise():
   exercise_bond_similarity()
@@ -2966,6 +3046,7 @@ def exercise():
   exercise_dihedral()
   exercise_chirality()
   exercise_planarity()
+  # exercise_planarity_top_out()
   exercise_proxy_show()
   exercise_parallelity()
   print "OK"
