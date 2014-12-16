@@ -174,12 +174,24 @@ class label_decorator(__builtins__["object"]):
         hendrickson_lattman_suffix_list=["A","B","C","D"]):
     assert len(hendrickson_lattman_suffix_list) == 4
     adopt_init_args(self, locals())
+    self.maximum_characters=30
+
+  def check_character_length(self,label):
+    if len(label)>self.maximum_characters:
+      raise Sorry(
+        "The label %s would be more than the maximum of %d characters" %(
+         label,self.maximum_characters))
 
   def anomalous(self, root_label, sign=None):
     assert sign in (None, "+", "-")
-    if (sign is None): return root_label
-    if (sign == "+"): return root_label + self.anomalous_plus_suffix
-    return root_label + self.anomalous_minus_suffix
+    if (sign is None): 
+      label = root_label
+    elif (sign == "+"): 
+      label = root_label + self.anomalous_plus_suffix
+    else:
+      label = root_label + self.anomalous_minus_suffix
+    self.check_character_length(label)
+    return label
 
   def sigmas(self, root_label, anomalous_sign=None):
     return self.anomalous(
@@ -187,15 +199,19 @@ class label_decorator(__builtins__["object"]):
       anomalous_sign)
 
   def delta_anomalous(self, root_label):
-    return self.delta_anomalous_prefix + root_label \
+    label = self.delta_anomalous_prefix + root_label \
          + self.delta_anomalous_suffix
+    self.check_character_length(label)
+    return label
 
   def delta_anomalous_sigmas(self, root_label):
     return self.sigmas(self.delta_anomalous(root_label))
 
   def delta_anomalous_isym(self, root_label):
-    return self.delta_anomalous_isym_prefix + root_label \
+    label = self.delta_anomalous_isym_prefix + root_label \
          + self.delta_anomalous_isym_suffix
+    self.check_character_length(label)
+    return label
 
   def phases(self, root_label, anomalous_sign=None):
     return self.anomalous(
