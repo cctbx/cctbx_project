@@ -28,6 +28,8 @@ def run (args, out=sys.stdout) :
   parser = OptionParser()
   parser.add_option("--tmp_dir", dest="tmp_dir", action="store",
     help="Temporary (staging) directory", default=os.getcwd())
+  parser.add_option("--dist-dir", dest="dist_dir", action="store",
+    help="Distribution directory", default="dist")
   parser.add_option("--package_name", dest="package_name", action="store",
     help="Package name", default="CCTBX")
   parser.add_option("--version", dest="version", action="store",
@@ -70,9 +72,10 @@ def run (args, out=sys.stdout) :
       return False
     shutil.rmtree(pkg_root)
   os.mkdir(pkg_root)
+
   base_name = "%s-%s" % (options.package_name.lower(), options.version)
-  pkg_name = base_name + "-%s.pkg" % options.machine_type
-  base_pkg = base_name + ".pkg"
+  base_pkg = "%s.pkg"%base_name
+  pkg_name = os.path.join(options.dist_dir, "%s-%s.pkg" %(base_name, options.machine_type))
   pkg_id = "%s.%s" % (options.organization, base_name)
   os.mkdir("resources")
   welcome = open("resources/welcome.txt", "w")
@@ -207,6 +210,8 @@ our website).""" % { "package" : options.package_name,
     zip_args = [ "ditto", "-c", "-k", "-rsrc", pkg_name, pkg_name + ".zip" ]
     call(zip_args, out)
     assert op.isfile(pkg_name + ".zip")
+    # Remove uncompressed .pkg.
+    os.unlink(pkg_name) 
   return True
 
 if (__name__ == "__main__") :
