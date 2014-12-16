@@ -63,9 +63,9 @@ def run (args) :
   parser = OptionParser()
   parser.add_option("--tmp-dir", dest="tmp_dir", action="store",
     help="Temporary directory for assembling packages", default=None)
+  parser.add_option("--dist-dir", dest="dist_dir", action="store",
+    help="Distribution directory", default=None)
   parser.add_option("--debug", dest="debug", action="store_true")
-  parser.add_option("--destination", dest="destination", action="store",
-    help="Destination directory for rsync", default=None)
   parser.add_option("--mtype", dest="mtype", action="store",
     help="Architecture type", default=machine_type())
   parser.add_option("--host-tag", dest="host_tag", action="store",
@@ -106,11 +106,19 @@ def run (args) :
            op.isdir(base_dir))) :
     raise RuntimeError(
       "Expected 'modules', 'build', and 'base' in root directory")
+
+  if (options.dist_dir is None) :
+    options.dist_dir = op.join(root_dir, "dist")
+  if (not op.isdir(options.dist_dir)) :
+    os.makedirs(options.dist_dir)
+  print "Distribution directory is %s" % options.dist_dir
+
   if (options.tmp_dir is None) :
     options.tmp_dir = op.join(root_dir, "tmp")
   if (not op.isdir(options.tmp_dir)) :
     os.makedirs(options.tmp_dir)
-  print "temporary directory is %s" % options.tmp_dir
+  print "Temporary directory is %s" % options.tmp_dir
+
   os.chdir(options.tmp_dir)
   installer_dir = "%s-installer-%s" % (params.pkg_prefix, options.version)
   if op.exists(installer_dir) :
@@ -121,7 +129,6 @@ def run (args) :
     suffix = options.host_tag
   else :
     suffix = options.mtype
-  installer_tar = installer_dir + "-" + suffix + ".tar.gz"
 
   #############################
   # Run setup_installer.py
@@ -172,23 +179,13 @@ def run (args) :
   # package the entire mess into the complete installer
   find_and_delete_files(installer_dir, file_ext=".pyc")
   os.chdir(options.tmp_dir)
+  installer_tar = os.path.join(options.dist_dir, '%s-%s.tar.gz'%(installer_dir, suffix))
   call("tar czf %s %s" % (installer_tar, installer_dir))
   print "Wrote %s" % installer_tar
 
   #############################
-  # rsync
-  os.chdir(options.tmp_dir)
-  if (options.destination is not None) :
-    print "Uploading %s -> %s"%(installer_tar, options.destination)
-    # Create directory...
-    try:
-      call("ssh %s mkdir --mode=0755 %s"%(options.destination.split(":")[0], options.destination.split(":")[1]))
-    except Exception, e:
-      pass
-    call("rsync --chmod=a+rx -avz %s %s" % (installer_tar, options.destination))
-
-  #############################
   # Mac .pkg creation
+  os.chdir(options.tmp_dir)
   if (sys.platform == "darwin") and (not getattr(options, "no_pkg", False)) :
     if (not os.access("/Applications", os.W_OK|os.X_OK)) :
       print "Can't access /Applications - skipping .pkg build"
@@ -245,13 +242,9 @@ def run (args) :
         "--license=%s" % full_path(params.license),
         "--organization=%s" % params.organization,
         "--machine_type=%s" % suffix,
+        "--dist-dir=%s"%options.dist_dir,
         app_root_dir,
       ])
-      installer_pkg = "%s-%s-%s.pkg.zip" % (params.package_name.lower(),
-        options.version,suffix)
-      if (options.destination is not None) :
-        print "Uploading %s -> %s"%(installer_pkg, options.destination)
-        call("rsync --chmod=a+rx -avz %s %s" % (installer_pkg, options.destination))
 
   return 0
 
