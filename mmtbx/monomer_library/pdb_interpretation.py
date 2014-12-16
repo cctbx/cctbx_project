@@ -324,6 +324,14 @@ master_params_str = """\
         .type = bool
       sigma = 0.027
         .type = float
+      target_angle_deg = 0
+        .type = float
+      slack = 0
+        .type = float
+      top_out = False
+        .type = bool
+      limit = -1
+        .type = float
       skip_spatial_verification = False
         .type = bool
         .short_caption = Spatial verification
@@ -3086,7 +3094,11 @@ refinement.pdb_interpretation {
           proxy=geometry_restraints.parallelity_proxy(
             i_seqs=flex.size_t(i_seqs),
             j_seqs=flex.size_t(j_seqs),
-            weight=weight)
+            weight=weight,
+            target_angle_deg=self.params.nucleic_acid_restraints.stacking.target_angle_deg,
+            slack=self.params.nucleic_acid_restraints.stacking.slack,
+            top_out=self.params.nucleic_acid_restraints.stacking.top_out,
+            limit=self.params.nucleic_acid_restraints.stacking.limit)
           self.geometry_proxy_registries.parallelity.add_if_not_duplicated(
               proxy=proxy)
 
@@ -4850,7 +4862,11 @@ refinement.pdb_interpretation {
               proxy=geometry_restraints.parallelity_proxy(
                 i_seqs=flex.size_t(i_seqs),
                 j_seqs=flex.size_t(j_seqs),
-                weight=weight)
+                weight=weight,
+                target_angle_deg=na_params.stacking.target_angle_deg,
+                slack=na_params.stacking.slack,
+                top_out=na_params.stacking.top_out,
+                limit=na_params.stacking.limit)
               self.geometry_proxy_registries.parallelity.add_if_not_duplicated(proxy=proxy)
     #========== End user-defined parallelity restraints ==============
     hbonds_in_bond_list = []
