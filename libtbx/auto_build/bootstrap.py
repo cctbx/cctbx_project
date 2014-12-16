@@ -175,6 +175,8 @@ class CCIBuilder(object):
     self.python_system = self.opjoin(*(python_system or ['python']))
     self.python_base = self.opjoin(*(python_base or ['..', 'base', 'bin', 'python']))
     
+    self.add_init()
+    
     # Cleanup
     if cleanup:      
       self.cleanup(['tests', 'docs', 'tmp', 'build'])
@@ -241,7 +243,10 @@ class CCIBuilder(object):
       (k, dict(repository=CODEBASES[k]%{'cciuser':self.cciuser}, branch='default', revision=None)) 
       for k in self.get_codebases()
       )
-    
+  
+  def add_init(self):
+    pass
+  
   def cleanup(self, dirs=None):
     dirs = dirs or []  
     self.add_step(self.cmd(
