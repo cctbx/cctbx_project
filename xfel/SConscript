@@ -49,6 +49,8 @@ if (not env_etc.no_boost_python):
                  target="#lib/xfel_ext", source="ext.cpp")
   env_xfel_boost_python_ext.SharedLibrary(
                  target="#lib/xfel_metrology_ext", source="metrology_ext.cpp")
+  env_xfel_boost_python_ext.SharedLibrary(
+                 target="#lib/xes_ext", source="vonHamos/xes_ext.cpp")
 
   env_legacy_boost_python_ext = env_boost_python_ext.Clone()
   env_legacy_boost_python_ext.Prepend(

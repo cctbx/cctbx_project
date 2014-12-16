@@ -44,8 +44,13 @@ xes {
     .help = 20,150 used for LG36
 }
 """
+Usage = """cctbx.python xes_faster_histograms.py output_dirname=[outdir] \
+   roi=0:388,99:126 [datadir]/hist_r0[run_no].pickle run=[run_no] fudge_factor.gain_to_sigma=5.9
+   ...converts histogram.pickle file (described elsewhere) into spectrum by fitting
+      0- and 1-photon Gaussians to histograms representing each pixel on the XES spectrometer."""
 
 def run(args):
+  if len(args)==0: print Usage; exit()
   processed = iotbx.phil.process_command_line(
     args=args, master_string=master_phil_str)
   args = processed.remaining_args
@@ -219,6 +224,7 @@ class xes_from_histograms(object):
     print output_dirname
     print "Average chi squared is",flex.mean(chi_squared_list),"on %d shots"%flex.sum(hist.slots())
 
+SIGMAFAC = 1.15
 class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms):
 
   def __init__(self,hist_dict,work_params):
@@ -312,7 +318,6 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
     E.quality_factor = E.sumsq_signal/E.sumsq_residual
     return E
 
-
   def fit_one_histogram_two_gaussians(self,pixel):
     histogram = self.histograms[pixel]
     fitted_gaussians = []
@@ -335,7 +340,7 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
     total_population = flex.sum(free_y)
     zero_sigma = self.estimated_gain / GAIN_TO_SIGMA
     one_amplitude = 0.001
-    helper = self.per_frame_helper_factory(initial_estimates =
+    helper = self.per_pixel_helper_factory(initial_estimates =
       (zero_mean, 1.0, zero_sigma, one_amplitude),
       GAIN_TO_SIGMA=GAIN_TO_SIGMA,
       free_x = free_x,
@@ -343,8 +348,8 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
     helper.restart()
     iterations = normal_eqns_solving.levenberg_marquardt_iterations(
           non_linear_ls = helper,
-          n_max_iterations = 40,
-          gradient_threshold = 1.E-5)
+          n_max_iterations = 7,
+          gradient_threshold = 1.E-3)
     #print "current values after iterations", list(helper.x),
 
     fitted_gaussians = helper.as_gaussians()
@@ -353,14 +358,16 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
     return fitted_gaussians
 
   @staticmethod
-  def per_frame_helper_factory(initial_estimates,GAIN_TO_SIGMA,free_x,free_y):
-      SIGMAFAC = 1.15
+  def per_pixel_helper_factory(initial_estimates,GAIN_TO_SIGMA,free_x,free_y):
 
-      class per_frame_helper(normal_eqns.non_linear_ls, normal_eqns.non_linear_ls_mixin):
+      from xfel.vonHamos import gaussian_fit_inheriting_from_non_linear_ls
+
+      class per_pixel_helper(gaussian_fit_inheriting_from_non_linear_ls, normal_eqns.non_linear_ls_mixin):
         def __init__(pfh):
-          super(per_frame_helper, pfh).__init__(n_parameters=4)
+          super(per_pixel_helper, pfh).__init__(n_parameters=4)
           pfh.x_0 = flex.double(initial_estimates)
           pfh.restart()
+          pfh.set_cpp_data(free_x,free_y,gain_to_sigma=GAIN_TO_SIGMA,sigmafac=SIGMAFAC)
 
         def restart(pfh):
           pfh.x = pfh.x_0.deep_copy()
@@ -378,69 +385,16 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
           return pfh.x.norm()
 
         def build_up(pfh, objective_only=False):
-          residuals = pfh.fvec_callable(pfh.x)
-
           pfh.reset()
-          if objective_only:
-            pfh.add_residuals(residuals, weights=None)
-          else:
-            grad_r = pfh.jacobian_callable(pfh.x)
-            jacobian = flex.double(
-              flex.grid(len(grad_r[0]), pfh.n_parameters))
-            for j, der_r in enumerate(grad_r):
-              jacobian.matrix_paste_column_in_place(der_r,j)
-            pfh.add_equations(residuals, jacobian, weights=None)
-
-        def fvec_callable(pfh,current_values):
-          z_mean = current_values[0]
-          z_ampl = current_values[1]
-          z_sigm = current_values[2]
-          o_ampl = current_values[3]
-          o_mean = z_mean + z_sigm * GAIN_TO_SIGMA
-          o_sigm = z_sigm * SIGMAFAC
-
-          # model minus obs
-          # sqrt2pi_inv = 1./math.sqrt(2.*math.pi)
-          # the gaussian function is sqrt2pi_inv * exp( - (x-mean)**2 / (2.*(sigma**2)))/sigma
-          # take off the coefficient sqrt2pi_inv / sigma, use ampl
-
-          terms = [
-
-          ampl * flex.exp(-flex.pow2(free_x - mean) / (2.*sigm*sigm))
-
-          for mean,ampl,sigm in [(z_mean,z_ampl,z_sigm),(o_mean,o_ampl,o_sigm)]]
-
-          model = terms[0]+terms[1]
-          pfh.terms = terms
-          return model - free_y
-
-        def jacobian_callable(pfh,current_values):
-          z_mean = current_values[0]
-          z_ampl = current_values[1]
-          z_sigm = current_values[2]
-          o_ampl = current_values[3]
-          o_mean = z_mean + z_sigm * GAIN_TO_SIGMA
-          o_sigm = z_sigm * SIGMAFAC
-
-          udiff = free_x - z_mean
-          Afactor = udiff/(z_sigm * z_sigm)
-          #Sfactor = (udiff*udiff)*math.pow(z_sigm, -3.)
-          Sfactor = Afactor * udiff/z_sigm
-
-          # leaving out small cross terms where one-photon peak influences
-          # derivatives with respect to z_mean and z_sigm.
-
-          return (pfh.terms[0]*Afactor,
-                  pfh.terms[0]/z_ampl,
-                  pfh.terms[0]*Sfactor,
-                  pfh.terms[1]/o_ampl)
+          #rely on C++ and go directly for add_equation singular
+          pfh.access_cpp_build_up_directly(objective_only, current_values = pfh.x)
 
         def as_gaussians(pfh):
           return [curve_fitting.gaussian( a = pfh.x[1], b = pfh.x[0], c = pfh.x[2] ),
                   curve_fitting.gaussian( a = pfh.x[3], b = pfh.x[0] + pfh.x[2] * GAIN_TO_SIGMA,
                                           c = pfh.x[2] * SIGMAFAC )]
 
-      value = per_frame_helper()
+      value = per_pixel_helper()
       return value
 
 

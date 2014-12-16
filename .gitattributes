@@ -3424,3 +3424,5 @@ xfel/mono_simulation/parameters.h -text
 xfel/mono_simulation/vector_collection.h -text
 xfel/project.cpp -text
 xfel/util/cctbx_xfel_installer.py svneol=native#text/x-python
+xfel/vonHamos/__init__.py -text
+xfel/vonHamos/xes_ext.cpp -text
