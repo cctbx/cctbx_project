@@ -672,8 +672,7 @@ def get_ncs_gorups_centers(xray_structure, ncs_restraints_group_list):
   for nrg in ncs_restraints_group_list:
     master_ncs_selection = nrg.master_iselection
     master_xyz = asu_xyz.select(master_ncs_selection)
-    mu_m = matrix.col(master_xyz.sum()) / len(master_ncs_selection)
-    mu_m = flex.vec3_double([mu_m.elems])
+    mu_m = flex.vec3_double([master_xyz.mean()])
     # add a copy of the master coordinate center for each copy
     for ncs_copy in nrg.copies:
       shifts.append(mu_m)
@@ -820,15 +819,15 @@ def change_ncs_groups_master(ncs_restraints_group_list,new_masters):
     # switch master and copy selection
     nrg.master_iselection, nrg.copies[c_i].iselection = \
       nrg.copies[c_i].iselection, nrg.master_iselection
-    # Adjust rotation ans translation
+    # Adjust rotation and translation for the new master
     r = nrg.copies[c_i].r = (nrg.copies[c_i].r.transpose())
-    t = nrg.copies[c_i].t = (- nrg.copies[c_i].r * nrg.copies[c_i].t)
-    # change selected copy
+    t = nrg.copies[c_i].t = -(nrg.copies[c_i].r * nrg.copies[c_i].t)
+    # change all other rotations and translations to the new master
     for i,ncs in enumerate(nrg.copies):
-      if i != c_i:
-        # change translation before rotation
-        nrg.copies[i].t = (nrg.copies[i].r * t + nrg.copies[i].t)
-        nrg.copies[i].r = (nrg.copies[i].r * r)
+      if i == c_i: continue
+      # change translation before rotation
+      nrg.copies[i].t = (nrg.copies[i].r * t + nrg.copies[i].t)
+      nrg.copies[i].r = (nrg.copies[i].r * r)
   return ncs_restraints_group_list
 
 
@@ -914,3 +913,30 @@ def iselection_asu_to_ncs(iselection_asu,ncs_chain_id,hierarchy_asu):
   ph_ncs_select = atom_cache.selection('chain ' + ncs_chain_id)
   chain_start =  min(list(ph_ncs_select.iselection(True)))
   return iselection_asu - chain_start
+
+def check_ncs_group_list(ncs_restraints_group_list,ph,max_delta = 10.0):
+  """
+  Check that all copies relate correctly to master via the transforms
+
+  Args:
+    ncs_restraints_group_list : list of ncs restraints group objects
+    ph: Hierarchy object
+    max_delta (float): maximum allowed deviation between copies coordinates
+
+  Returns:
+    nrgl_ok (bool): True when ncs_restraints_group_list is OK
+  """
+  nrgl_ok = True
+  for i,gr in enumerate(ncs_restraints_group_list):
+    master_xyz = ph.select(gr.master_iselection).atoms().extract_xyz()
+    for j,cp in enumerate(gr.copies):
+      copy_xyz = ph.select(cp.iselection).atoms().extract_xyz()
+      xyz = cp.r.elems * master_xyz + cp.t
+      temp = copy_xyz.as_double() - xyz.as_double()
+      max_val = abs(temp.min_max_mean().max)
+      nrgl_ok &= (max_val <= max_delta)
+      if (max_val > max_delta):
+        print 'max_val: ',max_val
+  return nrgl_ok
+
+
