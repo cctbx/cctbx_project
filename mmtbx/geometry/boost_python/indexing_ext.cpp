@@ -18,18 +18,19 @@ namespace geometry
 {
 namespace indexing
 {
-namespace
+namespace python
 {
 
-struct python_code_predicate
+struct code_predicate
 {
-  python_code_predicate(boost::python::object callable) : m_callable( callable )
+public:
+  code_predicate(boost::python::object callable) : m_callable( callable )
   {}
 
-  ~python_code_predicate()
+  ~code_predicate()
   {}
 
-  bool operator ()(boost::python::object const& object)
+  bool operator ()(boost::python::object object) const
   {
     return boost::python::extract< bool >( m_callable( object ) );
   }
@@ -37,6 +38,11 @@ struct python_code_predicate
 private:
   boost::python::object m_callable;
 };
+
+} // namespace python
+
+namespace 
+{
 
 template< typename Vector, typename Discrete >
 struct python_exports
@@ -61,15 +67,15 @@ struct python_exports
       indexing::python::indexer_exports()
       );
     boost_adaptbx::exporting::class_list< indexers >::process(
-      indexing::python::filter_and_range_export< python_code_predicate >(
+      indexing::python::filter_and_range_export< python::code_predicate >(
         "predicate_filtered_"
         )
       );
 
     using namespace boost::python;
-    class_< python_code_predicate >( "predicate", no_init )
-      .def( init< boost::python::object >( arg( "callable" ) ) )
-      .def( "__call__", &python_code_predicate::operator (), arg( "object" ) )
+    class_< python::code_predicate >( "predicate", no_init )
+      .def( init< object >( arg( "callable" ) ) )
+      .def( "__call__", &python::code_predicate::operator (), arg( "object" ) )
       ;
   }
 };
@@ -83,3 +89,4 @@ BOOST_PYTHON_MODULE(mmtbx_geometry_indexing_ext)
 {
   mmtbx::geometry::indexing::python_exports< scitbx::vec3< double >, int>::wrap();
 }
+
