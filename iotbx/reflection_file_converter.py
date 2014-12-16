@@ -521,7 +521,11 @@ def run(
     column_root_label = co.mtz_root_label
     if (column_root_label is None):
       # XXX 2013-03-29: preserve original root label by default
+      # XXX 2014-12-16: skip trailing "(+)" in root_label if anomalous
       column_root_label = selected_array.info().labels[0]
+      if column_root_label.endswith("(+)") and \
+          mtz_output_array.anomalous_flag():
+        column_root_label=column_root_label[:-3]
     mtz_dataset = mtz_output_array.as_mtz_dataset(
       column_root_label=column_root_label)
     del mtz_output_array
