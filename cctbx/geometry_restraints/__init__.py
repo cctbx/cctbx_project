@@ -1398,9 +1398,10 @@ class _(boost.python.injector, shared_parallelity_proxy):
       delta = info[3]
       delta_deg = math.degrees(math.acos(1-delta))
       weight = info[2]
+      sigma = math.sqrt(1./weight)
       print >> f, "    plane 1                plane 2  "+\
           "              residual  delta(deg) sigma"
-      r_info = "  %.2e %8.4f  %8.4f" % (residual, delta_deg, weight)
+      r_info = "  %.2e %8.4f  %8.4f" % (residual, delta_deg, sigma)
       i_labels = info[0][0]
       j_labels = info[0][1]
       i = 0
