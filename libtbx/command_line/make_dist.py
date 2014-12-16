@@ -108,7 +108,7 @@ def run (args) :
       "Expected 'modules', 'build', and 'base' in root directory")
 
   if (options.dist_dir is None) :
-    options.dist_dir = op.join(root_dir, "dist")
+    options.dist_dir = op.join(root_dir, "dist", options.version)
   if (not op.isdir(options.dist_dir)) :
     os.makedirs(options.dist_dir)
   print "Distribution directory is %s" % options.dist_dir
