@@ -215,7 +215,7 @@ class CCIBuilder(object):
   
   def svn(self, **kwargs):
     return self.shell(
-        command=['svn', 'co', self.kwargs['repourl'], self.kwargs['codebase']],
+        command=['svn', 'co', kwargs['repourl'], kwargs['codebase']],
         workdir=['modules']
     )
   
