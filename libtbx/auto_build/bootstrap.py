@@ -103,7 +103,6 @@ CODEBASES = {
   'opt_resources':      'svn+ssh://%(cciuser)s@cci.lbl.gov/opt_resources/trunk',
   'muscle':             'svn+ssh://%(cciuser)s@cci.lbl.gov/muscle/trunk',
   # Dev, debugging
-  'phenix_dev':         'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_dev/trunk',
   'cxi_xdr_xes':        'svn+ssh://%(cciuser)s@cci.lbl.gov/cxi_xdr_xes/trunk',
   'buildbot':           'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk',
   # Duke
@@ -367,7 +366,6 @@ class CCTBXBaseBuilder(CCIBuilder):
   CODEBASES = [
     'cbflib', 
     'cctbx_project', 
-    'phenix_dev', 
     'gui_resources', 
     'chem_data', 
     'ccp4io_adaptbx', 
@@ -397,7 +395,6 @@ class CCTBXBaseBuilder(CCIBuilder):
     'dxtbx', 
     'gltbx', 
     'wxtbx', 
-    'phenix_dev', 
     'chem_data'
   ]
   LIBTBX_EXTRA = []
