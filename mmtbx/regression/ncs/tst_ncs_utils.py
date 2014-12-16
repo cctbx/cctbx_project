@@ -591,7 +591,7 @@ class Test_ncs_utils(unittest.TestCase):
     # Test rotation and translations
     pdb_inp = pdb.input(lines=test_pdb_str_2,source_info=None)
     ph = pdb_inp.construct_hierarchy()
-    verify_transforms(nrgl,ph)
+    nu.check_ncs_group_list(nrgl,ph,max_delta=1.0)
     # change only the second master
     nrgl_new = nu.change_ncs_groups_master(
       ncs_restraints_group_list=nrgl,
@@ -601,23 +601,39 @@ class Test_ncs_utils(unittest.TestCase):
     self.assertEqual(list(master_2),list(nrgl_new[1].copies[1].iselection))
     self.assertEqual(list(copy_2_1),list(nrgl_new[1].copies[0].iselection))
     self.assertEqual(list(copy_2_2),list(nrgl_new[1].master_iselection))
-    verify_transforms(nrgl_new,ph)
+    nu.check_ncs_group_list(nrgl_new,ph,max_delta=1)
+    # change back
+    nrgl_new = nu.change_ncs_groups_master(
+      ncs_restraints_group_list=nrgl_new,
+      new_masters=[1,0])
+    nu.check_ncs_group_list(nrgl_new,ph,max_delta=1)
 
-def verify_transforms(nrgl,ph):
-  """
-  Check that all copies relate correctly to master via the transforms
-  Will raise an error if necessary
+    # Change only first group
+    nu.check_ncs_group_list(nrgl,ph,max_delta=1)
+    nrgl_new = nu.change_ncs_groups_master(
+      ncs_restraints_group_list=nrgl,
+      new_masters=[1,0])
+    nu.check_ncs_group_list(nrgl_new,ph,max_delta=1)
+    # change both
+    nu.check_ncs_group_list(nrgl,ph,max_delta=1)
+    nrgl_new = nu.change_ncs_groups_master(
+      ncs_restraints_group_list=nrgl,
+      new_masters=[2,1])
+    nu.check_ncs_group_list(nrgl_new,ph,max_delta=1)
 
-  Args:
-    nrgl: ncs_restraints_group_list
-    ph: Hierarchy object
-  """
-  for gr in nrgl:
-    m_xyz = ph.select(gr.master_iselection).atoms().extract_xyz()
-    for cp in gr.copies:
-      c_xyz = ph.select(cp.iselection).atoms().extract_xyz()
-      xyz = cp.r.elems * m_xyz + cp.t
-      assert approx_equal(c_xyz,xyz,1)
+  def test_check_ncs_group_list(self):
+    """ Test that ncs_restraints_group_list test is working properly """
+    ncs_obj_phil = ncs.input(
+        pdb_string=test_pdb_str_2,
+        ncs_phil_string=phil_str)
+    nrgl = ncs_obj_phil.get_ncs_restraints_group_list()
+    pdb_inp = pdb.input(lines=test_pdb_str_2,source_info=None)
+    ph = pdb_inp.construct_hierarchy()
+    # passing test
+    self.assertTrue(nu.check_ncs_group_list(nrgl,ph,max_delta=1))
+    # make sure test fails when it suppose to
+    nrgl[0].copies[1].t = matrix.col([100, -89.7668, 5.8996])
+    self.assertFalse(nu.check_ncs_group_list(nrgl,ph,max_delta=1))
 
 def run_selected_tests():
   """  Run selected tests

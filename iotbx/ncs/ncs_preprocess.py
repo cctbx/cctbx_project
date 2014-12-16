@@ -1087,8 +1087,16 @@ class ncs_group_object(object):
       range_list.sort()
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
 
-  def get_ncs_restraints_group_list(self):
-    """    create a list of ncs_restraint_group objects    """
+  def get_ncs_restraints_group_list(self,max_delta=10.0):
+    """
+    Create a list of ncs_restraint_group objects
+
+    When using phil parameters or badly related copies, consider increasing
+    "max_delta" value
+
+    Args:
+      max_delta (float): maximum allowed deviation between copies coordinates
+    """
     ncs_restraints_group_list = []
     group_id_list = sort_dict_keys(self.ncs_group_map)
     for k in group_id_list:
@@ -1111,6 +1119,17 @@ class ncs_group_object(object):
           new_nrg.copies.append(new_ncs_copy)
       # compare master_isel_test and master_isel
       ncs_restraints_group_list.append(new_nrg)
+    # When hierarchy available, test ncs_restraints_group_list
+    if self.hierarchy:
+      # check that hierarchy is for the complete ASU
+      if self.hierarchy.atoms().size() == self.total_asu_length:
+        import mmtbx.ncs.ncs_utils as nu
+        nrgl_ok = nu.check_ncs_group_list(
+          ncs_restraints_group_list,
+          self.hierarchy,
+          max_delta=max_delta)
+        if not nrgl_ok:
+          raise Sorry('NCS copies do not match well')
     return ncs_restraints_group_list
 
   def update_using_ncs_restraints_group_list(self,ncs_restraints_group_list):
@@ -1813,10 +1832,6 @@ def all_ncs_copies_present(transform_info):
     test = test and cp
   return test
 
-def order_transforms(transform_to_ncs):
-  """ set transformation application order  """
-  return sorted(transform_to_ncs,key=lambda key: int(key[1:]))
-
 def uniqueness_test(unique_selection_set,new_item):
   """
   When processing phil parameters. Insert new item to set, if not there,
@@ -1936,7 +1951,7 @@ def get_ncs_group_selection(chain_residue_id):
 
 def get_transform_order(transform_to_ncs):
   """ order transforms mainly for proper chain naming """
-  transform_order = order_transforms(transform_to_ncs)
+  transform_order = sorted(transform_to_ncs)
   transform_chain_assignment = []
   for tr_id in transform_order:
     for tr_selection in transform_to_ncs[tr_id]:
