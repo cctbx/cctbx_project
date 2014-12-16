@@ -41,13 +41,6 @@ class ShellCommand(object):
     if p.returncode != 0 and self.kwargs.get('haltOnFailure'):
       raise RuntimeError, "Process failed with return code %s"%(p.returncode)
   
-class SVN(ShellCommand):
-  def get_command(self):
-    return ['svn', 'co', self.kwargs['repourl'], self.kwargs['codebase']]
-    
-  def get_workdir(self):
-    return 'modules'
-
 ##### Codebases #####
 # rsync'd packages.
 # The trailing slashes ARE significant.
@@ -211,15 +204,20 @@ class CCIBuilder(object):
     if distribute:
       self.add_distribute()
 
-  def cmd(self, **kwargs):
+  def shell(self, **kwargs):
     # Convenience for ShellCommand
     kwargs['haltOnFailure'] = kwargs.pop('haltOnFailure', True)
     kwargs['description'] = kwargs.get('description') or kwargs.get('name')
     kwargs['timeout'] = 60*60*2 # 2 hours
+    if 'workdir' in kwargs:
+      kwargs['workdir'] = self.opjoin(*kwargs['workdir'])
     return ShellCommand(**kwargs)  
   
   def svn(self, **kwargs):
-    return SVN(**kwargs)
+    return self.shell(
+        command=['svn', 'co', self.kwargs['repourl'], self.kwargs['codebase']],
+        workdir=['modules']
+    )
   
   def run(self):
     for i in self.steps:
@@ -248,10 +246,10 @@ class CCIBuilder(object):
   
   def cleanup(self, dirs=None):
     dirs = dirs or []  
-    self.add_step(self.cmd(
+    self.add_step(self.shell(
       name='cleanup',
       command=['rm', '-rf'] + dirs,
-      workdir='.'
+      workdir=['.']
     ))
 
   def add_step(self, step):
@@ -263,13 +261,13 @@ class CCIBuilder(object):
         repourl=CODEBASES[codebase]%{'cciuser':self.cciuser},
         codebase=codebase,
         mode='incremental',
-        workdir=self.opjoin('modules', codebase)
+        workdir=['modules', codebase]
     ))
 
   def add_hot(self, package):
     """Add packages not in source control."""
     # rsync the hot packages.
-    self.add_step(self.cmd(
+    self.add_step(self.shell(
       name='hot %s'%package, 
       command=[
         'rsync', 
@@ -278,14 +276,14 @@ class CCIBuilder(object):
         HOT[package]%{'cciuser':self.cciuser},
         package,
       ], 
-      workdir='modules'
+      workdir=['modules']
     ))
     # If it's a tarball, unzip it.
     if package.endswith('.gz'):
-      self.add_step(self.cmd(
+      self.add_step(self.shell(
         name='hot %s untar'%package, 
         command=['tar', '-xvzf', package], 
-        workdir='modules'
+        workdir=['modules']
       ))
     
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
@@ -293,10 +291,10 @@ class CCIBuilder(object):
     workdir = workdir or ['build']
     dots = [".."]*len(workdir)
     dots.extend(['build', 'bin', command])    
-    self.add_step(self.cmd(
+    self.add_step(self.shell(
       name=name or command, 
       command=[self.opjoin(*dots)] + (args or []),
-      workdir=self.opjoin(*workdir),
+      workdir=workdir,
       **kwargs
     ))
     
@@ -321,7 +319,7 @@ class CCIBuilder(object):
   # Override these methods.
   def add_build_base(self):
     """Build the base dependencies, e.g. Python, HDF5, etc."""
-    self.add_step(self.cmd(
+    self.add_step(self.shell(
       name='base',
       command=[
         self.python_system,
@@ -330,20 +328,20 @@ class CCIBuilder(object):
         '--skip-if-exists',
         '--%s'%self.BASE_PACKAGES
       ], 
-      workdir='.'
+      workdir=['.']
     ))
   
   def add_configure(self):
-    self.add_step(self.cmd(command=[
+    self.add_step(self.shell(command=[
         self.python_base, 
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
         ] + self.get_libtbx_configure(),
-      workdir='build'
+      workdir=['build']
     ))
   
   def add_make(self):
     # Todo: nproc=auto
-    self.add_step(self.cmd(command=[self.opjoin('..', 'build', 'bin', 'libtbx.scons'), '-j', '4']))
+    self.add_command('libtbx.scons', args=['-j','4'])
 
   def add_install(self):
     """Run after compile, before tests."""
