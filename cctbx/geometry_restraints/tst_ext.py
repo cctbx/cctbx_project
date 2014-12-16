@@ -2918,12 +2918,12 @@ def exercise_parallelity():
   assert approx_equal(p.residual(), 1, 0.00001)
   p = geometry_restraints.parallelity(i_sites=test_sites_2[0],
                   j_sites=test_sites_2[1],
-                  weight=0.02)
-  assert approx_equal(p.residual(), 2500, 0.00001)
+                  weight=1300)
+  assert approx_equal(p.residual(), 1300, 0.00001)
   p = geometry_restraints.parallelity(i_sites=test_sites_21[0],
                   j_sites=test_sites_21[1],
-                  weight=1)
-  assert approx_equal(p.residual(), 0.25, 0.00001)
+                  weight=1000)
+  assert approx_equal(p.residual(), 250, 0.00001)
   p = geometry_restraints.parallelity(i_sites=test_sites_3[0],
                   j_sites=test_sites_3[1],
                   weight=1)
