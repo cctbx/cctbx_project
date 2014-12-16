@@ -178,9 +178,9 @@ class CCIBuilder(object):
     
     # Cleanup
     if cleanup:      
-      self.cleanup(['tests', 'docs', 'tmp', 'build'])
+      self.cleanup(['dist', 'tests', 'docs', 'tmp', 'build'])
     else:
-      self.cleanup(['tests', 'docs', 'tmp'])
+      self.cleanup(['dist', 'tests', 'docs', 'tmp'])
 
     # Add 'hot' sources
     if hot:
