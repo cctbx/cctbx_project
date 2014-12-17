@@ -596,7 +596,7 @@ def get_estimators(estimator_type='signal',
   estimators.show_summary()
   return estimators
 
-def get_b_value_and_resolution_from_file(data,data_labels=None):
+def get_b_value_anomalous_and_resolution_from_file(data=None,data_labels=None):
   import iotbx.merging_statistics
   i_obs=iotbx.merging_statistics.select_data( allow_amplitudes=True,
            file_name=data,
@@ -605,6 +605,10 @@ def get_b_value_and_resolution_from_file(data,data_labels=None):
   i_obs=i_obs.merge_equivalents().array()
   d_max,d_min=i_obs.d_max_min()
   assert i_obs.is_xray_intensity_array()
+  b_aniso_mean=get_b_aniso_mean(i_obs)
+  return b_aniso_mean,d_min
+
+def get_b_aniso_mean(i_obs):
   from mmtbx.scaling import absolute_scaling
   aniso_scale_and_b = absolute_scaling.ml_aniso_absolute_scaling(
         miller_array = i_obs,
@@ -617,22 +621,27 @@ def get_b_value_and_resolution_from_file(data,data_labels=None):
   b_aniso_mean=0.
   for k in [0,1,2]:
     b_aniso_mean+=b_cart[k]
-  return b_aniso_mean/3.0,d_min
+  return b_aniso_mean/3.0
 
-def get_b_value_and_resolution(b_value,resolution,data,data_labels,
+def get_b_value_anomalous_and_resolution(
+     b_value=None,
+     resolution=None,
+     data=None,
+     data_labels=None,
      b_value_anomalous=None):
   # use bayesian estimator to get b_value from resolution or vice_versa
   # (need one or the other)
-  if data:  # get b_value and resolution from file if not given
+  if data:  # get b_value and resolution from file if provided
      b_value_from_file,resolution_from_file=\
-       get_b_value_and_resolution_from_file(data,data_labels)
+       get_b_value_anomalous_and_resolution_from_file(data=data,
+       data_labels=data_labels)
      if b_value is None: b_value=b_value_from_file
      if resolution is None: resolution=resolution_from_file
   if b_value is None and resolution is None:
     raise Sorry("Sorry need either Wilson B value or resolution")
   elif b_value is not None and resolution is not None:
     pass # do nothing
-  elif b_value is None:
+  elif b_value is None and resolution is not None:
      b_value_estimators=get_estimators(
        estimator_type='b_from_dmin',out=null_out())
      b_value,sig_b_value=b_value_estimators.apply_estimators(
@@ -711,8 +720,12 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     self.occupancy=occupancy
     self.ratio_for_failure=ratio_for_failure
 
-    b_value_anomalous,resolution=get_b_value_and_resolution(b_value,resolution,
-     data,data_labels,b_value_anomalous=b_value_anomalous)
+    b_value_anomalous,resolution=get_b_value_anomalous_and_resolution(
+     b_value=b_value,
+     resolution=resolution,
+     data=data,
+     data_labels=data_labels,
+     b_value_anomalous=b_value_anomalous)
     self.resolution=resolution
     self.b_value_anomalous=b_value_anomalous
 
