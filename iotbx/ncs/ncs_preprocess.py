@@ -2052,13 +2052,16 @@ def rename_blank_chain_name(pdb_hierarchy_inp):
       existing_ch_ids.add(ch.id)
   has_blank_name = ('' in existing_ch_ids)
   has_blank_name |= (' ' in existing_ch_ids)
-  has_blank_name |= ('**' in existing_ch_ids)
-  if has_blank_name:
+  has_stars_name = ('**' in existing_ch_ids)
+  if has_blank_name or has_stars_name:
     new_names_list = make_chain_names_list(existing_ch_ids)
-    new_ch_id = new_names_list[0]
+    new_ch_spc_id = new_names_list[0]
+    new_ch_str_id = new_names_list[1]
     for ch in model.chains():
-      if ch.id in ['', ' ','**']:
-        ch.id = new_ch_id
+      if ch.id in ['', ' ']:
+        ch.id = new_ch_spc_id
+      elif ch.id == '**':
+        ch.id = new_ch_str_id
 
 class NCS_copy():
 

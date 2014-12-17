@@ -458,6 +458,26 @@ ATOM      7  N   MET A   1      -1.968  19.642   1.989  1.00 38.36           N
 ATOM      8  CA  MET A   1      -0.810  19.133   2.704  1.00 36.79           C
 '''
 
+pdb_stars_and_spaces = '''\
+ATOM      1  CB  MET**   1      52.886   1.976   9.011  1.00 41.44           C
+ATOM      2  CG  MET**   1      53.271   0.996  10.102  1.00 47.36           C
+ATOM      3  SD  MET**   1      55.066   1.105  10.320  1.00 54.87           S
+ATOM      4  CE  MET**   1      55.198   1.758  11.963  1.00 52.95           C
+ATOM      5  C   MET**   1      51.257   3.002   7.473  1.00 32.90           C
+ATOM      6  O   MET**   1      51.643   3.028   6.297  1.00 33.11           O
+ATOM      7  N   MET**   1      51.320   0.535   7.805  1.00 38.36           N
+ATOM      8  CA  MET**   1      51.486   1.834   8.434  1.00 36.79           C
+TER
+ATOM      1  CB  MET     1       0.115  20.271   3.107  1.00 41.44           C
+ATOM      2  CG  MET     1       0.717  21.085   1.978  1.00 47.36           C
+ATOM      3  SD  MET     1       1.424  22.584   2.709  1.00 54.87           S
+ATOM      4  CE  MET     1       3.156  22.361   2.406  1.00 52.95           C
+ATOM      5  C   MET     1      -1.177  18.359   3.971  1.00 32.90           C
+ATOM      6  O   MET     1      -2.072  18.689   4.760  1.00 33.11           O
+ATOM      7  N   MET     1      -1.968  19.642   1.989  1.00 38.36           N
+ATOM      8  CA  MET     1      -0.810  19.133   2.704  1.00 36.79           C
+'''
+
 def exercise_00(prefix="iotbx_ncs_exercise_00",debug=False):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
@@ -780,14 +800,14 @@ def exercise_12():
   ncs_obj_AB = ncs.input(pdb_string=pdb_AB)
   ncs_obj_space = ncs.input(pdb_string=pdb_space)
   ncs_obj_stars = ncs.input(pdb_string=pdb_stars)
+  ncs_obj_str_and_spc = ncs.input(pdb_string=pdb_stars_and_spaces)
   #
-  for ncs_obj in [ncs_obj_AB,ncs_obj_space,ncs_obj_stars]:
+  for ncs_obj in [ncs_obj_AB,ncs_obj_space,ncs_obj_stars,ncs_obj_str_and_spc]:
     keys = ncs_obj.common_res_dict.keys()
+    assert len(keys) == 2
     for key in keys:
       ncs_sel = ncs_obj.common_res_dict[key][0][1]
       assert ncs_sel.size() == 8
-  print 'Done'
-
 
 def clean_temp_files(file_list):
   """ delete files in the file_list """
