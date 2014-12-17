@@ -29,13 +29,6 @@ namespace parameter {
     vec3 part_position_part_wavelength;
   };
 
-  static bool safer_aaf(rstbx::bandpass::active_area_filter & aaf, vec3 const& pt, int const& tolerance){
-    bool is_active_area = aaf(pt);
-    if (!is_active_area) {
-      SCITBX_ASSERT(aaf(pt,tolerance));
-    }
-    return true;
-  }
   struct bandpass_gaussian {
     rstbx::bandpass::parameters_bp3 P;
     rstbx::bandpass::pad_sensor_model sensor;
@@ -222,7 +215,7 @@ namespace parameter {
               // implement the subpixel joint model.
               // The code is actually called but is believed to have no effect on the integration
               //"WARNING: xfel::parameter::bandpass_gaussian code should not be called: contact authors"
-              safer_aaf(aaf,vec3(mean_position[idx][1],mean_position[idx][0],0.),1);   // sets the aaf.tile_id
+              aaf(vec3(mean_position[idx][1],mean_position[idx][0],0.));   // sets the aaf.tile_id
               mean_position[idx] = sjm.laboratory_to_fictitious(mean_position[idx],aaf.tile_id, aaf.centers[aaf.tile_id]);
             }
             part_distance[idx] = mean_position_part_r_part_distance;
@@ -271,7 +264,7 @@ namespace parameter {
       result.position = scitbx::vec3<double> ((x/P.pixel_size[0])+P.pixel_offset[0],
                                               (y/P.pixel_size[1])+P.pixel_offset[1],0. );
       if (subpixel_translations_set) {
-        safer_aaf(aaf, vec3(result.position[1],result.position[0],0.), 1);
+        aaf(vec3(result.position[1],result.position[0],0.));
         result.position_to_fictitious =
           sjm.laboratory_to_fictitious(result.position,aaf.tile_id, aaf.centers[aaf.tile_id]);
       }
