@@ -1998,6 +1998,7 @@ mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_alignment.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/regression/tst_altloc_remediate.py -text
+mmtbx/regression/tst_angle.py -text
 mmtbx/regression/tst_anneal_real_space.py -text
 mmtbx/regression/tst_anomalous_substructure.py -text
 mmtbx/regression/tst_b_factor_statistics.py -text

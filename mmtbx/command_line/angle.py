@@ -4,8 +4,6 @@ from __future__ import division
 import sys, os
 import iotbx.pdb
 from libtbx.utils import Sorry
-from cctbx import maptbx
-from cctbx import adptbx
 from scitbx.linalg import eigensystem
 import math
 from scitbx import matrix
@@ -27,32 +25,11 @@ Feedback:
   phenixbb@phenix-online.org"""
 
 def compute(xrs):
-  xrs = xrs.set_occupancies(value=1).set_b_iso(value=20)
-  fft_map=xrs.structure_factors(d_min=4).f_calc().fft_map(resolution_factor=0.25)
-  fft_map.apply_sigma_scaling()
-  map_data = fft_map.real_map_unpadded()
-  map_data = map_data.set_selected(map_data<1, 0)
-  center_of_mass_frac = xrs.unit_cell().fractionalize(xrs.center_of_mass())
-  sites_frac = xrs.sites_frac()
-  diameter = -1
-  for i, sfi in enumerate(sites_frac):
-    for j, sfj in enumerate(sites_frac):
-      if(i<j):
-        dist = xrs.unit_cell().distance(sfi, sfj)
-        if(diameter<dist):
-          diameter = dist
-  radius = diameter/2. + 1
-  st = maptbx.sphericity_tensor(
-    map_data  = map_data,
-    unit_cell = xrs.unit_cell(),
-    radius    = radius,
-    site_frac = center_of_mass_frac)
-  es = adptbx.eigensystem(st)
-  l1,l2,l3 = es.values()
-  if(not l1>=l2>=l3>0):
-    raise Sorry(
-      "Eigen-values: broken condition e1>=e2>=e3>0. Try different axes.")
-  axis = es.vectors(0)
+  import scitbx.math
+  sites_cart_moving = xrs.sites_cart()-xrs.center_of_mass()
+  es = scitbx.math.principal_axes_of_inertia(points=sites_cart_moving).eigensystem()
+  vecs = es.vectors()
+  axis = vecs[6], vecs[7], vecs[8]
   return matrix.col((axis[0], axis[1], axis[2]))
 
 def process_args(args):
