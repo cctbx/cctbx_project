@@ -3,6 +3,7 @@ from libtbx import test_utils
 import libtbx.load_env
 
 tst_list = (
+  "$D/regression/tst_angle.py",
   "$D/rotamer/tst_rotamer_eval.py",
   "$D/monomer_library/tst_idealized_aa.py",
   "$D/regression/tst_ml_estimate.py",
