@@ -84,12 +84,17 @@ namespace rstbx { namespace bandpass {
     int NEAR;
     scitbx::af::shared<int> tiles;
     annlib_adaptbx::AnnAdaptor adapt;
-    int tile_id;
+    int tile_id; /*looks like an unsafe practice. Could be accessed before being
+                   set.  Temporary workaround by setting it to zero first,
+                   however this doesn't really fix the problem; tile_id could contain
+                   a stale value but still be accessed. XXX A better fix might involve
+                   the active_area_filter() function returning a struct containing
+                   a bool is_active_area and a tile tile_id. */
     scitbx::af::shared<vec2> centers;
     inline
     active_area_filter(){}
     inline
-    active_area_filter(scitbx::af::shared<int> IT): NEAR(2),tiles(IT){
+    active_area_filter(scitbx::af::shared<int> IT): NEAR(2),tiles(IT),tile_id(0){
 
       af::shared<ANNcoord> reference;
       for (int i=0; i < tiles.size()/4; ++i){
