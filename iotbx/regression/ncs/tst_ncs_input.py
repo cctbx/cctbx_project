@@ -398,6 +398,65 @@ TER
 END
 """
 
+pdb_AB = '''\
+ATOM      1  CB  MET B   1      52.886   1.976   9.011  1.00 41.44           C
+ATOM      2  CG  MET B   1      53.271   0.996  10.102  1.00 47.36           C
+ATOM      3  SD  MET B   1      55.066   1.105  10.320  1.00 54.87           S
+ATOM      4  CE  MET B   1      55.198   1.758  11.963  1.00 52.95           C
+ATOM      5  C   MET B   1      51.257   3.002   7.473  1.00 32.90           C
+ATOM      6  O   MET B   1      51.643   3.028   6.297  1.00 33.11           O
+ATOM      7  N   MET B   1      51.320   0.535   7.805  1.00 38.36           N
+ATOM      8  CA  MET B   1      51.486   1.834   8.434  1.00 36.79           C
+TER
+ATOM      1  CB  MET A   1       0.115  20.271   3.107  1.00 41.44           C
+ATOM      2  CG  MET A   1       0.717  21.085   1.978  1.00 47.36           C
+ATOM      3  SD  MET A   1       1.424  22.584   2.709  1.00 54.87           S
+ATOM      4  CE  MET A   1       3.156  22.361   2.406  1.00 52.95           C
+ATOM      5  C   MET A   1      -1.177  18.359   3.971  1.00 32.90           C
+ATOM      6  O   MET A   1      -2.072  18.689   4.760  1.00 33.11           O
+ATOM      7  N   MET A   1      -1.968  19.642   1.989  1.00 38.36           N
+ATOM      8  CA  MET A   1      -0.810  19.133   2.704  1.00 36.79           C
+'''
+
+pdb_space = '''\
+ATOM      1  CB  MET     1      52.886   1.976   9.011  1.00 41.44           C
+ATOM      2  CG  MET     1      53.271   0.996  10.102  1.00 47.36           C
+ATOM      3  SD  MET     1      55.066   1.105  10.320  1.00 54.87           S
+ATOM      4  CE  MET     1      55.198   1.758  11.963  1.00 52.95           C
+ATOM      5  C   MET     1      51.257   3.002   7.473  1.00 32.90           C
+ATOM      6  O   MET     1      51.643   3.028   6.297  1.00 33.11           O
+ATOM      7  N   MET     1      51.320   0.535   7.805  1.00 38.36           N
+ATOM      8  CA  MET     1      51.486   1.834   8.434  1.00 36.79           C
+TER
+ATOM      1  CB  MET A   1       0.115  20.271   3.107  1.00 41.44           C
+ATOM      2  CG  MET A   1       0.717  21.085   1.978  1.00 47.36           C
+ATOM      3  SD  MET A   1       1.424  22.584   2.709  1.00 54.87           S
+ATOM      4  CE  MET A   1       3.156  22.361   2.406  1.00 52.95           C
+ATOM      5  C   MET A   1      -1.177  18.359   3.971  1.00 32.90           C
+ATOM      6  O   MET A   1      -2.072  18.689   4.760  1.00 33.11           O
+ATOM      7  N   MET A   1      -1.968  19.642   1.989  1.00 38.36           N
+ATOM      8  CA  MET A   1      -0.810  19.133   2.704  1.00 36.79           C
+'''
+
+pdb_stars = '''\
+ATOM      1  CB  MET**   1      52.886   1.976   9.011  1.00 41.44           C
+ATOM      2  CG  MET**   1      53.271   0.996  10.102  1.00 47.36           C
+ATOM      3  SD  MET**   1      55.066   1.105  10.320  1.00 54.87           S
+ATOM      4  CE  MET**   1      55.198   1.758  11.963  1.00 52.95           C
+ATOM      5  C   MET**   1      51.257   3.002   7.473  1.00 32.90           C
+ATOM      6  O   MET**   1      51.643   3.028   6.297  1.00 33.11           O
+ATOM      7  N   MET**   1      51.320   0.535   7.805  1.00 38.36           N
+ATOM      8  CA  MET**   1      51.486   1.834   8.434  1.00 36.79           C
+TER
+ATOM      1  CB  MET A   1       0.115  20.271   3.107  1.00 41.44           C
+ATOM      2  CG  MET A   1       0.717  21.085   1.978  1.00 47.36           C
+ATOM      3  SD  MET A   1       1.424  22.584   2.709  1.00 54.87           S
+ATOM      4  CE  MET A   1       3.156  22.361   2.406  1.00 52.95           C
+ATOM      5  C   MET A   1      -1.177  18.359   3.971  1.00 32.90           C
+ATOM      6  O   MET A   1      -2.072  18.689   4.760  1.00 33.11           O
+ATOM      7  N   MET A   1      -1.968  19.642   1.989  1.00 38.36           N
+ATOM      8  CA  MET A   1      -0.810  19.133   2.704  1.00 36.79           C
+'''
 
 def exercise_00(prefix="iotbx_ncs_exercise_00",debug=False):
   pdb_file_name = "%s.pdb"%prefix
@@ -532,7 +591,7 @@ ncs_group {
   if not debug:
     clean_temp_files(files_to_delete)
 
-def exercise_03(prefix="iotbx_ncs_exercise_03"):
+def exercise_03():
   """
   Expect one master and 3 copies.
   """
@@ -552,7 +611,7 @@ def exercise_03(prefix="iotbx_ncs_exercise_03"):
   assert approx_equal(sel_copy_2.iselection(), ng.copies[1].iselection)
   assert approx_equal(sel_copy_3.iselection(), ng.copies[2].iselection)
 
-def exercise_04(prefix="iotbx_ncs_exercise_04"):
+def exercise_04():
   """
   Testing one ncs group and master ncs with two chains of different length
   and chains are not in order
@@ -562,7 +621,7 @@ def exercise_04(prefix="iotbx_ncs_exercise_04"):
   assert t.keys() == ['chain A or chain B']
   assert t.values() == [['chain C or chain D', 'chain E or chain F']]
 
-def exercise_05(prefix="iotbx_ncs_exercise_05"):
+def exercise_05():
   """
   Make sure that phil selection overrides ncs grouping
   """
@@ -583,7 +642,7 @@ ncs_group {
   assert ncs_inp.ncs_to_asu_selection.keys(), expected.keys()
   assert ncs_inp.ncs_to_asu_selection.values(), expected.values()
 
-def exercise_06(prefix="iotbx_ncs_exercise_06"):
+def exercise_06():
   """
   Two groups, different number of chain in each group.
   Two chains that are NOT ncs related
@@ -595,7 +654,7 @@ def exercise_06(prefix="iotbx_ncs_exercise_06"):
   assert ncs_inp.ncs_group_map[1][0] == {'chain A'}
   assert ncs_inp.ncs_group_map[2][0] == {'chain D'}
 
-def exercise_07(prefix="iotbx_ncs_exercise_07"):
+def exercise_07():
   """
   Test that minimal number of chains in master ncs are selected (not the
   minimal number of transformations)
@@ -607,7 +666,7 @@ def exercise_07(prefix="iotbx_ncs_exercise_07"):
     [['chain B', 'chain C', 'chain D', 'chain E',
       'chain F', 'chain G', 'chain H', 'chain I']]
 
-def exercise_08(prefix="iotbx_ncs_exercise_08"):
+def exercise_08():
   """
   Test that minimal number of transformations in master ncs are selected
   (not the minimal number of chains)
@@ -621,7 +680,7 @@ def exercise_08(prefix="iotbx_ncs_exercise_08"):
     [['chain D or chain E or chain F',
       'chain G or chain H or chain I']]
 
-def exercise_09(prefix="iotbx_ncs_exercise_09"):
+def exercise_09():
   """
   Test minimal master NCS grouping
   make sure it does not group together similar chains that can be grouped and
@@ -662,7 +721,7 @@ def exercise_09(prefix="iotbx_ncs_exercise_09"):
   assert not tr.r.is_r3_identity_matrix()
   assert not tr.t.is_col_zero()
 
-def exercise_10(prefix="iotbx_ncs_exercise_10"):
+def exercise_10():
   """ Test minimal NCS operators """
   from mmtbx.ncs import ncs_search
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_8)
@@ -693,7 +752,7 @@ def exercise_10(prefix="iotbx_ncs_exercise_10"):
   assert not tr.r.is_r3_identity_matrix()
   assert not tr.t.is_col_zero()
 
-def exercise_11(prefix="iotbx_ncs_exercise_11"):
+def exercise_11():
   """
   Make sure user-provided NCS groups are preserved. Also make sure two-letter
   chain ID are handled correctly
@@ -716,6 +775,20 @@ ncs_group {
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups)==2
 
+def exercise_12():
+  """ Test dealing with chains names that are space or **"""
+  ncs_obj_AB = ncs.input(pdb_string=pdb_AB)
+  ncs_obj_space = ncs.input(pdb_string=pdb_space)
+  ncs_obj_stars = ncs.input(pdb_string=pdb_stars)
+  #
+  for ncs_obj in [ncs_obj_AB,ncs_obj_space,ncs_obj_stars]:
+    keys = ncs_obj.common_res_dict.keys()
+    for key in keys:
+      ncs_sel = ncs_obj.common_res_dict[key][0][1]
+      assert ncs_sel.size() == 8
+  print 'Done'
+
+
 def clean_temp_files(file_list):
   """ delete files in the file_list """
   for fn in file_list:
@@ -735,3 +808,4 @@ if (__name__ == "__main__"):
   exercise_09()
   exercise_10()
   exercise_11()
+  exercise_12()

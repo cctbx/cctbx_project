@@ -239,7 +239,7 @@ class ncs_group_object(object):
         spec_ncs_groups=spec_ncs_groups,
         quiet=quiet)
     elif pdb_hierarchy_inp:
-      # check and rename chain with the blank name
+      # check and rename chain with the blank or ** name
       rename_blank_chain_name(pdb_hierarchy_inp)
       self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
     else:
@@ -2052,11 +2052,12 @@ def rename_blank_chain_name(pdb_hierarchy_inp):
       existing_ch_ids.add(ch.id)
   has_blank_name = ('' in existing_ch_ids)
   has_blank_name |= (' ' in existing_ch_ids)
+  has_blank_name |= ('**' in existing_ch_ids)
   if has_blank_name:
     new_names_list = make_chain_names_list(existing_ch_ids)
     new_ch_id = new_names_list[0]
     for ch in model.chains():
-      if ch.id in ['', ' ']:
+      if ch.id in ['', ' ','**']:
         ch.id = new_ch_id
 
 class NCS_copy():
