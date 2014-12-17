@@ -255,7 +255,7 @@ namespace dxtbx { namespace model {
     }
 
     /**
-     * Check if the angle is the range of angles coverd by the scan.
+     * Check if the angle is in the range of angles covered by the scan.
      */
     bool is_angle_valid(double angle) const {
       return is_angle_in_range(get_oscillation_range(), angle);
