@@ -13,6 +13,15 @@ from cStringIO import StringIO
 import random
 import os
 
+def remove_anomalous_suffix_if_necessary(
+   miller_array=None,
+   column_root_label=None):
+  # if the miller array is anomalous and the suffix is "(+)", remove it
+  if column_root_label and column_root_label.endswith("(+)") and \
+       miller_array.anomalous_flag():
+    column_root_label=column_root_label[:-3]
+  return column_root_label
+
 def run(
       args,
       command_name="phenix.reflection_file_converter",
@@ -523,9 +532,9 @@ def run(
       # XXX 2013-03-29: preserve original root label by default
       # XXX 2014-12-16: skip trailing "(+)" in root_label if anomalous
       column_root_label = selected_array.info().labels[0]
-      if column_root_label.endswith("(+)") and \
-          mtz_output_array.anomalous_flag():
-        column_root_label=column_root_label[:-3]
+    column_root_label=remove_anomalous_suffix_if_necessary(
+      miller_array=selected_array,
+      column_root_label=column_root_label)
     mtz_dataset = mtz_output_array.as_mtz_dataset(
       column_root_label=column_root_label)
     del mtz_output_array
