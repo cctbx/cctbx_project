@@ -55,9 +55,12 @@ class FormatCBFMiniPilatus(FormatCBFMini):
 
   def _start(self):
     FormatCBFMini._start(self)
-    from iotbx.detectors.pilatus_minicbf import PilatusImage
-    self.detectorbase = PilatusImage(self._image_file)
-    self.detectorbase.readHeader()
+    try:
+      from iotbx.detectors.pilatus_minicbf import PilatusImage
+      self.detectorbase = PilatusImage(self._image_file)
+      self.detectorbase.readHeader()
+    except KeyError, e:
+      pass
 
   def _goniometer(self):
     '''Return a model for a simple single-axis goniometer. This should
