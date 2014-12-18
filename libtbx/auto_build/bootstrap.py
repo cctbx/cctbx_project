@@ -411,11 +411,10 @@ class CCTBXBuilder(CCTBXBaseBuilder):
     self.add_test_command('cctbx_regression.test_nightly')    
   
 class DIALSBuilder(CCTBXBaseBuilder):
-  CODEBASES_EXTRA = ['dials', 'dials_regression']
-  LIBTBX_EXTRA = ['dials', 'dials_regression']
+  CODEBASES_EXTRA = ['dials',]
+  LIBTBX_EXTRA = ['dials',]
   def add_tests(self):
     self.add_test_parallel('dials')
-    self.add_test_parallel('dials_regression')
 
 class LABELITBuilder(CCTBXBaseBuilder):
   CODEBASES_EXTRA = ['labelit', 'labelit_regression']
@@ -428,15 +427,13 @@ class XFELBuilder(CCTBXBaseBuilder):
    'dials', 
    'labelit', 
    'labelit_regression', 
-   'dials_regression', 
    'xfel_regression', 
    'cxi_xdr_xes'
  ]
  LIBTBX_EXTRA = [
    'dials', 
    'labelit', 
-   'labelit_regression', 
-   'dials_regression', 
+   'labelit_regression',
    'xfel', 
    'xfel_regression', 
    'cxi_xdr_xes'
