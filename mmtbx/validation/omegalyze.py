@@ -346,9 +346,9 @@ class omegalyze(validation):
     twisthead = [
       "@subgroup {Twisted peptides} dominant master= {Twisted peptides}\n",
       "@trianglelist {twisted omega triangles} color= lime\n"]
-    cisvectorhead = ["@vectorlist {cis omega vectors} color= sea width=4\n"]
+    cisvectorhead = ["@vectorlist {cis omega vectors} color= sea width=3\n"]
     twistvectorhead=[
-    "@vectorlist {twisted omega vectors} color= lime width=4\n"]
+    "@vectorlist {twisted omega vectors} color= lime width=3\n"]
     for result in self.results:
       if result.omega_type == OMEGALYZE_CIS:
         cislist.append(result.as_kinemage(triangles=True))
