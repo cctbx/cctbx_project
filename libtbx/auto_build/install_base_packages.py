@@ -167,12 +167,17 @@ class installer (object) :
     
     # GUI packages.
     if options.build_gui:
-      packages += ['png']
+      packages += [
+        'png',
+        'matplotlib',
+        'pyopengl', 
+        'wxpython', 
+        'freetype'
+      ]
       if self.flag_is_mac:
         packages += ['py2app']
       if self.flag_is_linux:
         packages += [
-          'freetype',
           'gettext',
           'glib',
           'expat',
@@ -183,9 +188,6 @@ class installer (object) :
           'cairo',
           'gtk',
           'fonts',
-          'wxpython',
-          'pyopengl',
-          'matplotlib'
         ]
 
     # Additional recommended dependencies.
