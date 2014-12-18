@@ -151,11 +151,9 @@ class installer (object) :
       options.build_gui = True
     if options.dials:
       options.build_gui = True
-    if options.labelit:
+    if options.build_all or options.labelit:
       options.build_gui = True
       packages += ['imaging', 'reportlab']
-    if options.build_all:
-      options.build_gui = True
 
     # Use a specific Python interpreter if provided.
     if self.python_exe:
