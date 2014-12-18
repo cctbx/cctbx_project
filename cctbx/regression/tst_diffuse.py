@@ -102,7 +102,7 @@ TER
 ENDMDL
 END
 """
-
+#phenix.diffuse pdb=m.pdb probabilities=0.5,0.5 resolution=4.0 prefix=tst
 def exercise():
   fo = open("tst_diffuse.pdb","w")
   print >> fo, pdb_str
@@ -111,7 +111,6 @@ def exercise():
     "phenix.diffuse",
     "pdb=tst_diffuse.pdb",
     "probabilities=0.5,0.5",
-    "sampling=1",
     "resolution=4.0",
     "prefix=tst_diffuse"])
   if 0: print cmd
@@ -121,7 +120,7 @@ def exercise():
   ma = mas[0]
   assert ma.data().size() == 937, ma.data().size()
   assert approx_equal(ma.d_max_min(), (32.728, 4.0), 1.e-3)
-  assert approx_equal(ma.data().min_max_mean().as_tuple(),
+  assert approx_equal((ma.data()/1000.).min_max_mean().as_tuple(),
     (0.001, 6.118, 0.35456), 1.e-3)
   assert ma.info().labels == ['I', 'SIGI']
   assert approx_equal(ma.unit_cell().parameters(),

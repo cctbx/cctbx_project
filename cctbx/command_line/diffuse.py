@@ -11,14 +11,13 @@ from libtbx import adopt_init_args
 
 def run(arg):
   args = get_input_dict(arg)
-  if(len(args)!=5):
+  if(len(args)!=4):
     msg="""Bad inputs.
 Usage example:
-  phenix.diffuse pdb=m.pdb probabilities=0.5,0.5 sampling=1 resolution=4.0 prefix=tst"""
+  phenix.diffuse pdb=m.pdb probabilities=0.5,0.5 resolution=4.0 prefix=tst"""
     raise Sorry(msg)
   data = ensemble(
     pdb_file_name = args['pdb'],
-    sampling = int(args['sampling']),
     probabilities = args['probabilities'])
   data.get_models()
   for model in data.models:
@@ -26,12 +25,11 @@ Usage example:
   diffuse(
     models           = data.models,
     crystal_symmetry = data.symmetry,
-    sampling         = int(args['sampling']),
-    scale_factor     = 1000).write_mtz_file(prefix = args['prefix'])
+    scale_factor     = 1).write_mtz_file(prefix = args['prefix'])
 
 class ensemble(object):
 
-  def __init__(self, pdb_file_name, sampling, probabilities):
+  def __init__(self, pdb_file_name, probabilities):
     adopt_init_args(self, locals())
     pdb_inp = iotbx.pdb.input(file_name=pdb_file_name)
     self.hierarchy = pdb_inp.construct_hierarchy()
@@ -77,7 +75,8 @@ class model(object):
 class diffuse(object):
   "Class for all diffuse maps produced in reciprocal space"
 
-  def __init__(self, models, crystal_symmetry, sampling, scale_factor):
+  #REMOVE SAMPLING
+  def __init__(self, models, crystal_symmetry, scale_factor):
     adopt_init_args(self, locals())
     self.lattice = {}
     self.calculate_map()
@@ -98,15 +97,12 @@ class diffuse(object):
     self.write_squared_amplitudes(miller_array = self.diffuse_signal)
 
   def write_squared_amplitudes(self, miller_array):
-    #Re-sizes reciprocal space lattice
-    correction_factor = int(self.sampling)**3
     eps = 1.e-9
-    def convert(x, s, eps=1.e-9): return int(round(float(x)/float(s)+eps))
     for hkl, intensity in miller_array:
-      h_int = convert(x=hkl[0], s=self.sampling)
-      k_int = convert(x=hkl[1], s=self.sampling)
-      l_int = convert(x=hkl[2], s=self.sampling)
-      intensity_new = intensity/correction_factor
+      h_int = hkl[0]
+      k_int = hkl[1]
+      l_int = hkl[2]
+      intensity_new = intensity/self.scale_factor
       if h_int not in self.lattice:
         self.lattice[h_int] = {}
       if k_int not in self.lattice[h_int]:
