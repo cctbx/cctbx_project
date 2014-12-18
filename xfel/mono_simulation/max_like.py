@@ -89,7 +89,8 @@ class minimizer:
             <code>n</code>-long vector with the values of the
             gradients at the current position
     """
-
+    if self.x[0] > self.safelog or self.x[1] > self.safelog:
+      raise ValueError("max likelihood current parameters outside of math domain %f %f"%(self.x))
     alpha = exp(self.x[0])
     eta = exp(self.x[1])
     #print "alpha",alpha, "eta",eta
