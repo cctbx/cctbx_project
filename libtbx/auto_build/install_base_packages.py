@@ -151,6 +151,7 @@ class installer (object) :
       options.build_gui = True
     if options.dials:
       options.build_gui = True
+      options.build_all = True
     if options.build_all or options.labelit:
       options.build_gui = True
       packages += ['imaging', 'reportlab']
