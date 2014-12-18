@@ -9,6 +9,36 @@ from cctbx import miller
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 
+msg="""
+Description
+-----------
+This program calculates reciprocal space diffuse scattering maps from
+multi-model PDB ensembles.
+
+Output
+------
+MTZ file containing diffuse scattering intensity values (I) at each Bragg peak.
+
+Command line Usage
+------------------
+phenix.diffuse pdb=test.pdb probabilities=0.3,0.3,0.3,0.1 resolution=4.0 prefix=tst
+
+pdb: input PDB file. CRYST1 symmetry description is required.
+
+probabilities: the weighted probability for each model in the corresponding PDB
+file. The values listed in this option will be assigned to the PDB models
+starting with MODEL 0. Alternatively, leaving out the probabilities option will
+lead to equal weights for each model in the PDB file.
+
+resolution: the desired d_min for the output MTZ data set
+
+prefix: the desired MTZ file name
+
+Author
+------
+Andrew Van Benschoten (andrew.vanbenschoten@ucsf.edu)
+"""
+
 def run(arg):
   args = get_input_dict(arg)
   if(len(args)!=4):
