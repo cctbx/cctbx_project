@@ -168,23 +168,24 @@ class installer (object) :
     # GUI packages.
     if options.build_gui:
       packages += [
-        'png',
         'matplotlib',
         'pyopengl', 
         'wxpython', 
         'freetype'
       ]
       if self.flag_is_mac:
+        # Use system libpng.
         packages += ['py2app']
       if self.flag_is_linux:
         packages += [
+          'png',
+          'tiff',
           'gettext',
           'glib',
           'expat',
           'fontconfig',
           'render',
           'pixman',
-          'tiff',
           'cairo',
           'gtk',
           'fonts',
@@ -679,8 +680,7 @@ Installation of Python packages may fail.
     self.fetch_untar_and_chdir(pkg_name=TIFF_PKG, log=tiff_log)
     os.environ['MANSCHEME'] = "bsd-source-cat"
     os.environ['DIR_MAN'] = op.join(self.base_dir, "man")
-    config_args = [self.prefix, "--noninteractive", 
-      "--with-LIBGL=no", "--with-LIBIMAGE=no" ]
+    config_args = [self.prefix, "--noninteractive", "--with-LIBGL=no", "--with-LIBIMAGE=no" ]
     self.configure_and_build(
       config_args=config_args,
       log=tiff_log)
@@ -719,17 +719,18 @@ Installation of Python packages may fail.
     pkg_name = WXPYTHON_PKG
     # XXX we don't entirely trust wxPython-2.9, but it would be preferrable for
     # the future to use a single version instead
-    cocoa = False
+    # cocoa = False
     if (self.flag_is_mac) :
-      if (detect_osx_version() >= 10) :
-        print >> self.log, "  running OS 10.6 or later, switching to wx 3.0"
-        pkg_name = WXPYTHON_DEV_PKG
-        cocoa = True
+      # if (detect_osx_version() >= 10) :
+      #   print >> self.log, "  running OS 10.6 or later, switching to wx 3.0"
+      pkg_name = WXPYTHON_DEV_PKG
+      # cocoa = True
     pkg = self.fetch_package(pkg_name)
     pkg_dir = untar(pkg, log=pkg_log)
     os.chdir(pkg_dir)
     if (self.flag_is_mac and get_os_version() == "10.10") :
       # Workaround wxwidgets 3.0.2 compilation error on Yosemite
+      # This will be fixed in 3.0.3.
       # See:
       #   http://trac.wxwidgets.org/ticket/16329
       #   http://goharsha.com/blog/compiling-wxwidgets-3-0-2-mac-os-x-yosemite/
@@ -737,11 +738,12 @@ Installation of Python packages may fail.
       self.patch_src(src_file="src/osx/webview_webkit.mm",
                      target=("#include <WebKit/WebKit.h>",),
                      replace_with=("#include <WebKit/WebKitLegacy.h>",))
+
     # Stage 1: build wxWidgets libraries
     config_opts = [
+      self.prefix,
       "--disable-mediactrl",
       "--with-opengl",
-      self.prefix,
     ]
     if (self.options.debug) :
       config_opts.extend(["--disable-optimize", "--enable-debug"])
@@ -749,13 +751,17 @@ Installation of Python packages may fail.
         config_opts.append("--disable-debug_gdb")
     else :
       config_opts.extend(["--enable-optimize", "--disable-debugreport"])
-    if (cocoa) :
-      config_opts.extend(["--with-osx_cocoa", "--enable-monolithic",
-        "--with-macosx-version-min=10.6", "--enable-unicode",])
-      os.environ["CXXFLAGS"] = \
-        "-DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_6"
-    elif (self.flag_is_mac) :
-      config_opts.extend(["--with-mac", "--enable-monolithic"])
+
+    # if (cocoa) :
+    if (self.flag_is_mac) :
+      config_opts.extend([
+        "--with-osx_cocoa", 
+        "--enable-monolithic",
+        "--with-macosx-version-min=10.6", 
+        "--enable-unicode"
+        "--with-mac", 
+        "--enable-monolithic"
+      ])
     elif (self.flag_is_linux) :
       config_opts.extend([
         "--with-gtk",
@@ -769,9 +775,10 @@ Installation of Python packages may fail.
       print >> self.log, "    %s" % opt
     self.call("./configure %s" % " ".join(config_opts), log=pkg_log)
     self.call("make -j %d" % self.nproc, log=pkg_log)
-    if (not cocoa) : # XXX ???
+    if (not self.flag_is_mac) : # XXX ???
       self.call("make -j %d -C contrib/src/stc" % self.nproc, log=pkg_log)
     self.call("make install", log=pkg_log)
+
     # Stage 2: build wxPython itself
     wxpy_build_opts = [
       "BUILD_GLCANVAS=1",
@@ -779,7 +786,7 @@ Installation of Python packages may fail.
       "BUILD_GIZMOS=0",
       "BUILD_DLLWIDGET=0",
     ]
-    if (cocoa) :
+    if self.flag_is_mac:
       os.environ['CFLAGS'] = "-arch x86_64"
       wxpy_build_opts.extend(["WXPORT=osx_cocoa", "UNICODE=1",])
     else :
