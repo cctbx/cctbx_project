@@ -8,6 +8,7 @@ import scitbx.rigid_body
 from iotbx import pdb
 import iotbx.ncs as ncs
 import unittest
+import string
 import math
 
 __author__ = 'Youval'
@@ -635,6 +636,19 @@ class Test_ncs_utils(unittest.TestCase):
     nrgl[0].copies[1].t = matrix.col([100, -89.7668, 5.8996])
     self.assertFalse(nu.check_ncs_group_list(nrgl,ph,max_delta=1))
 
+  def test_make_unique_chain_names(self):
+    """ Test that new chain names are produced properly """
+    # check single letter names
+    unique_chain_names = {'A','B','AA','+'}
+    new_names = nu.make_unique_chain_names(unique_chain_names,3)
+    self.assertEqual(new_names,['C', 'D', 'E'])
+    # Test double letter names
+    unique_chain_names = set(string.ascii_uppercase)
+    unique_chain_names.update(set(string.ascii_lowercase))
+    new_names = nu.make_unique_chain_names(unique_chain_names,5)
+    self.assertEqual(new_names,['AA', 'AB', 'AC', 'BA', 'BB'])
+
+
 def run_selected_tests():
   """  Run selected tests
 
@@ -642,13 +656,13 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_change_ncs_groups_master']
+  tests = ['test_make_unique_chain_names']
   suite = unittest.TestSuite(map(Test_ncs_utils,tests))
   return suite
 
 if __name__=='__main__':
   # use for individual tests
-  # unittest.TextTestRunner().run(run_selected_tests())
+  unittest.TextTestRunner().run(run_selected_tests())
 
   # Use to run all tests
-  unittest.main(verbosity=0)
+  # unittest.main(verbosity=0)

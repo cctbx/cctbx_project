@@ -939,4 +939,40 @@ def check_ncs_group_list(ncs_restraints_group_list,ph,max_delta = 10.0):
         print 'max_val: ',max_val
   return nrgl_ok
 
+def make_unique_chain_names(unique_chain_names,number_of_names=1):
+  """
+  Produce a sorted list of new unique chain names.
+  Chain names are strings of one or two characters long.
+
+  Args:
+    unique_chain_names (set): Current names
+    number_of_names (int): number of new names
+
+  Returns:
+    new_names_list (list): sorted list on new names
+  """
+  # check availability of one letter chain names
+  import string
+  chr_list1 = list(set(string.ascii_uppercase) - set(unique_chain_names))
+  chr_list2 = list(set(string.ascii_lowercase) - set(unique_chain_names))
+  chr_list1.sort()
+  chr_list2.sort()
+  new_names_list = chr_list1 + chr_list2
+  if len(new_names_list) < number_of_names:
+    # calc how many more chain names we need
+    n_names =  number_of_names - len(new_names_list)
+    # the number of character needed to produce new names
+    chr_number = int(math.sqrt(n_names)) + 1
+    # build character list
+    chr_list = list(string.ascii_uppercase) + \
+               list(string.ascii_lowercase) + \
+               list(string.digits)
+    # take only as many characters as needed
+    chr_list = chr_list[:chr_number]
+    extra_names = set([ x+y for x in chr_list for y in chr_list])
+    # make sure not using existing names
+    extra_names = list(extra_names - set(unique_chain_names))
+    extra_names.sort()
+    new_names_list.extend(extra_names)
+  return new_names_list[:number_of_names]
 
