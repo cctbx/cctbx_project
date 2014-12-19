@@ -3,6 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
+Last Changed: 12/15/2014
 Description : IOTA I/O module. Reads PHIL input, creates output directories, etc.
 '''
 
@@ -119,7 +120,7 @@ def process_input(input_file_list):
   with Capturing() as output:
     working_phil.show()
 
-  txt_out = '{:-^100}\n\n'.format('IOTA Dry Run')
+  txt_out = ''
   for one_output in output:
     txt_out += one_output + '\n'
 
