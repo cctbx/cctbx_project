@@ -55,8 +55,8 @@ GTK_THEME_PKG = "gtk_themes.tar.gz"
 # end Linux-only
 FONT_PKG = "fonts.tar.gz"
 # FIXME at some point we should switch to using 3.x for all platforms
-WXPYTHON_DEV_PKG = "wxPython-src-3.0.1.0.tar.gz"  # Mac 64-bit
-WXPYTHON_PKG = "wxPython-src-2.8.12.1.tar.gz"         # Linux, Mac 32-bit
+WXPYTHON_DEV_PKG = "wxPython-src-3.0.2.0.tar.bz2"  # Mac 
+WXPYTHON_PKG = "wxPython-src-2.8.12.1.tar.gz"      # Linux
 MATPLOTLIB_PKG = "matplotlib-1.3.1.tar.gz"
 PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
