@@ -168,6 +168,7 @@ class installer (object) :
     # GUI packages.
     if options.build_gui:
       packages += [
+        'png',
         'matplotlib',
         'pyopengl', 
         'wxpython', 
@@ -178,7 +179,6 @@ class installer (object) :
         packages += ['py2app']
       if self.flag_is_linux:
         packages += [
-          'png',
           'tiff',
           'gettext',
           'glib',
@@ -306,13 +306,7 @@ Installation of Python packages may fail.
   def update_paths(self):
     os.environ["PATH"] = ("%s/bin:" % self.base_dir) + os.environ['PATH']
     lib_paths = [ op.join(self.base_dir, "lib") ]
-    if self.flag_is_mac:
-      lib_paths.append("%s/base/Python.framework/Versions/Current/lib" %
-        self.base_dir)
-      if ("DYLD_LIBRARY_PATH" in os.environ) :
-        lib_paths.append(os.environ["DYLD_LIBRARY_PATH"])
-      os.environ['DYLD_LIBRARY_PATH'] = ":".join(lib_paths)
-    else :
+    if self.flag_is_linux:
       if ("LD_LIBRARY_PATH" in os.environ) :
         lib_paths.append(os.environ["LD_LIBRARY_PATH"])
       os.environ['LD_LIBRARY_PATH'] = ":".join(lib_paths)
@@ -782,7 +776,7 @@ Installation of Python packages may fail.
     # Stage 2: build wxPython itself
     wxpy_build_opts = [
       "BUILD_GLCANVAS=1",
-      "BUILD_STC=0",
+      "BUILD_STC=1",
       "BUILD_GIZMOS=0",
       "BUILD_DLLWIDGET=0",
     ]
