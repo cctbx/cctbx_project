@@ -33,7 +33,7 @@ HDF5_PKG = "hdf5-1.8.8.tar.bz2"      # dxtbx
 H5PY_PKG = "h5py-2.0.1-edit.tar.gz"  # dxtbx
 
 # GUI dependencies
-LIBPNG_PKG = "libpng-1.2.32.tar.gz"
+LIBPNG_PKG = "libpng-1.6.15.tar.gz" # "libpng-1.2.32.tar.gz"
 FREETYPE_PKG = "freetype-2.4.2.tar.gz"
 # Linux-only
 # FIXME some of these are getting pretty ancient, time to update?
