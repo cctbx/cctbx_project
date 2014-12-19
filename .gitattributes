@@ -1393,6 +1393,7 @@ libtbx/assert_utils.py -text
 libtbx/auto_build/README -text
 libtbx/auto_build/__init__.py -text
 libtbx/auto_build/bootstrap.py -text
+libtbx/auto_build/bootstrap_public.py -text
 libtbx/auto_build/create_cctbx_bundle_for_installer.py svneol=native#text/x-python
 libtbx/auto_build/create_mac_app.py -text
 libtbx/auto_build/create_mac_pkg.py -text
