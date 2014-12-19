@@ -1,5 +1,6 @@
 from __future__ import division
 from iotbx.pdb.atom_selection import selection_string_from_selection
+from mmtbx.ncs.ncs_utils import make_unique_chain_names
 from mmtbx.ncs.ncs_utils import apply_transforms
 from scitbx.array_family import flex
 from scitbx.math import superpose
@@ -976,26 +977,8 @@ class ncs_group_object(object):
     # create list of character from which to assemble the list of names
     # total_chains_number = len(i_transforms)*len(unique_chain_names)
     total_chains_number = len(transform_assignment)
-    # start naming chains with a single letter
-    new_names_list = make_chain_names_list(unique_chain_names)
-    # check if we need more chain names
-    if len(new_names_list) < total_chains_number:
-      n_names =  total_chains_number - len(new_names_list)
-      # the number of character needed to produce new names
-      chr_number = int(math.sqrt(n_names)) + 1
-      # build character list
-      chr_list = list(string.ascii_uppercase) + \
-                 list(string.ascii_lowercase) + \
-                 list(string.digits)
-      # take only as many characters as needed
-      chr_list = chr_list[:chr_number]
-      extra_names = set([ x+y for x in chr_list for y in chr_list])
-      # make sure not using existing names
-      extra_names = list(extra_names - set(unique_chain_names))
-      extra_names.sort()
-      new_names_list.extend(extra_names)
-    assert len(new_names_list) >= total_chains_number
-    dictionary_values = new_names_list[:total_chains_number]
+    dictionary_values = make_unique_chain_names(
+      unique_chain_names,total_chains_number)
     # create the dictionary
     zippedlists = zip(transform_assignment,dictionary_values)
     new_names_dictionary = {x:y for (x,y) in zippedlists}
