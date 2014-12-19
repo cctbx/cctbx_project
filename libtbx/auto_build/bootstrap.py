@@ -14,16 +14,18 @@ import getpass
 # Mock commands to run standalone, without buildbot.
 class ShellCommand(object):
   def __init__(self, **kwargs):
-    self.kwargs = kwargs    
+    self.kwargs = kwargs
 
   def get_command(self):
     return self.kwargs['command']
-  
+
   def get_workdir(self):
     return self.kwargs.get('workdir', 'build')
 
   def run(self):
     command = self.get_command()
+    if type(command)==type("") and command.find("curl")>=0:
+      return self.run_curl_command()
     workdir = self.get_workdir()
     print "===== Running in %s:"%workdir, " ".join(command)
     if workdir:
@@ -40,7 +42,26 @@ class ShellCommand(object):
     p.wait()
     if p.returncode != 0 and self.kwargs.get('haltOnFailure'):
       raise RuntimeError, "Process failed with return code %s"%(p.returncode)
-  
+
+  def run_curl_command(self): #special case; install *.gz from curl download
+    command = self.get_command()
+    workdir = self.get_workdir()
+    print "===== Running curl command in %s:"%workdir, command
+    if workdir:
+      try:
+        os.makedirs(workdir)
+      except Exception, e:
+        pass
+    p = subprocess.Popen(
+      args=command.split()[0:2],
+      cwd=workdir,
+      stdout=open(os.path.join(workdir,command.split()[3]),"wb"),
+      stderr=sys.stderr
+    )
+    p.wait()
+    if p.returncode != 0 and self.kwargs.get('haltOnFailure'):
+      raise RuntimeError, "Process failed with return code %s"%(p.returncode)
+
 ##### Codebases #####
 # rsync'd packages.
 # The trailing slashes ARE significant.
@@ -104,7 +125,7 @@ CODEBASES = {
   'king':              'https://quiddity.biochem.duke.edu/svn/phenix/king',
   'suitename':         'https://quiddity.biochem.duke.edu/svn/suitename',
 }
-  
+
 class ModuleManager(object):
   def get_hot(self, codebase, cciuser=None):
     cciuser = cciuser or getpass.getuser()
@@ -133,20 +154,20 @@ class CCIBuilder(object):
   # Configure for these cctbx packages
   LIBTBX = ['cctbx']
   LIBTBX_EXTRA = []
-  
-  def __init__(self, 
-    category=None, 
-    platform=None, 
-    sep=None, 
-    python_system=None, 
-    python_base=None, 
+
+  def __init__(self,
+    category=None,
+    platform=None,
+    sep=None,
+    python_system=None,
+    python_base=None,
     cleanup=False,
     hot=True,
     update=True,
-    base=True, 
-    build=True, 
-    install=True, 
-    tests=True, 
+    base=True,
+    build=True,
+    install=True,
+    tests=True,
     distribute=False,
     cciuser=None
       ):
@@ -161,16 +182,16 @@ class CCIBuilder(object):
       base = False
       sep = sep or '\\'
       python_system = python_system or ['python']
-      python_base = python_base or ['..', 'base', 'Python', 'python.exe']    
+      python_base = python_base or ['..', 'base', 'Python', 'python.exe']
     # Platform configuration.
     self.sep = sep or os.sep
     self.python_system = self.opjoin(*(python_system or ['python']))
     self.python_base = self.opjoin(*(python_base or ['..', 'base', 'bin', 'python']))
-    
+
     self.add_init()
-    
+
     # Cleanup
-    if cleanup:      
+    if cleanup:
       self.cleanup(['dist', 'tests', 'docs', 'tmp', 'build'])
     else:
       self.cleanup(['dist', 'tests', 'docs', 'tmp'])
@@ -191,7 +212,7 @@ class CCIBuilder(object):
     if build:
       self.add_configure()
       self.add_make()
-    
+
     # Install
     if install:
       self.add_install()
@@ -199,7 +220,7 @@ class CCIBuilder(object):
     # Tests, tests
     if tests:
       self.add_tests()
-  
+
     # Distribute
     if distribute:
       self.add_distribute()
@@ -211,41 +232,41 @@ class CCIBuilder(object):
     kwargs['timeout'] = 60*60*2 # 2 hours
     if 'workdir' in kwargs:
       kwargs['workdir'] = self.opjoin(*kwargs['workdir'])
-    return ShellCommand(**kwargs)  
-  
+    return ShellCommand(**kwargs)
+
   def svn(self, **kwargs):
     return self.shell(
         command=['svn', 'co', kwargs['repourl'], kwargs['codebase']],
         workdir=['modules']
     )
-  
+
   def run(self):
     for i in self.steps:
       i.run()
 
   def opjoin(self, *args):
     return self.sep.join(args)
-  
+
   def get_codebases(self):
     return self.CODEBASES + self.CODEBASES_EXTRA
-    
+
   def get_hot(self):
     return self.HOT + self.HOT_EXTRA
-    
+
   def get_libtbx_configure(self):
     return self.LIBTBX + self.LIBTBX_EXTRA
-  
+
   def get_changesources(self):
     return dict(
-      (k, dict(repository=CODEBASES[k]%{'cciuser':self.cciuser}, branch='default', revision=None)) 
+      (k, dict(repository=CODEBASES[k]%{'cciuser':self.cciuser}, branch='default', revision=None))
       for k in self.get_codebases()
       )
-  
+
   def add_init(self):
     pass
-  
+
   def cleanup(self, dirs=None):
-    dirs = dirs or []  
+    dirs = dirs or []
     self.add_step(self.shell(
       name='cleanup',
       command=['rm', '-rf'] + dirs,
@@ -255,7 +276,7 @@ class CCIBuilder(object):
   def add_step(self, step):
     """Add a step."""
     self.steps.append(step)
-    
+
   def add_codebase(self, codebase):
     self.add_step(self.svn(
         repourl=CODEBASES[codebase]%{'cciuser':self.cciuser},
@@ -268,45 +289,45 @@ class CCIBuilder(object):
     """Add packages not in source control."""
     # rsync the hot packages.
     self.add_step(self.shell(
-      name='hot %s'%package, 
+      name='hot %s'%package,
       command=[
-        'rsync', 
+        'rsync',
         '-aL',
-        '--delete', 
+        '--delete',
         HOT[package]%{'cciuser':self.cciuser},
         package,
-      ], 
+      ],
       workdir=['modules']
     ))
     # If it's a tarball, unzip it.
     if package.endswith('.gz'):
       self.add_step(self.shell(
-        name='hot %s untar'%package, 
-        command=['tar', '-xvzf', package], 
+        name='hot %s untar'%package,
+        command=['tar', '-xvzf', package],
         workdir=['modules']
       ))
-    
+
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
     # Relative path to workdir.
     workdir = workdir or ['build']
     dots = [".."]*len(workdir)
-    dots.extend(['build', 'bin', command])    
+    dots.extend(['build', 'bin', command])
     self.add_step(self.shell(
-      name=name or command, 
+      name=name or command,
       command=[self.opjoin(*dots)] + (args or []),
       workdir=workdir,
       **kwargs
     ))
-    
+
   def add_test_command(self, command, name=None, workdir=None, args=None, **kwargs):
     self.add_command(
-      command, 
-      name='test %s'%command, 
+      command,
+      name='test %s'%command,
       workdir=(workdir or ['tests', command]),
       haltOnFailure=False,
       **kwargs
     )
-  
+
   def add_test_parallel(self, module=None):
     self.add_command(
       'libtbx.run_tests_parallel',
@@ -327,18 +348,18 @@ class CCIBuilder(object):
         '--python-shared',
         '--skip-if-exists',
         '--%s'%self.BASE_PACKAGES
-      ], 
+      ],
       workdir=['.']
     ))
-  
+
   def add_configure(self):
     self.add_step(self.shell(command=[
-        self.python_base, 
+        self.python_base,
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
         ] + self.get_libtbx_configure(),
       workdir=['build']
     ))
-  
+
   def add_make(self):
     # Todo: nproc=auto
     self.add_command('libtbx.scons', args=['-j','4'])
@@ -346,14 +367,14 @@ class CCIBuilder(object):
   def add_install(self):
     """Run after compile, before tests."""
     pass
-    
+
   def add_tests(self):
     """Run the unit tests."""
     pass
-    
+
   def add_distribute(self):
     pass
-  
+
 ##### Specific Configurations ######
 
 class CCTBXBaseBuilder(CCIBuilder):
@@ -362,43 +383,43 @@ class CCTBXBaseBuilder(CCIBuilder):
   BASE_PACKAGES = 'all'
   # Checkout these codebases
   CODEBASES = [
-    'cbflib', 
-    'cctbx_project', 
-    'gui_resources', 
-    'chem_data', 
-    'ccp4io_adaptbx', 
-    'annlib_adaptbx', 
-    'tntbx', 
+    'cbflib',
+    'cctbx_project',
+    'gui_resources',
+    'chem_data',
+    'ccp4io_adaptbx',
+    'annlib_adaptbx',
+    'tntbx',
     'clipper'
   ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
   HOT = [
-    'annlib', 
-    'boost', 
-    'scons', 
-    'ccp4io', 
+    'annlib',
+    'boost',
+    'scons',
+    'ccp4io',
     'docutils'
   ]
   HOT_EXTRA = []
   # Configure for these cctbx packages
   LIBTBX = [
-    'cctbx', 
-    'cbflib', 
-    'scitbx', 
-    'libtbx', 
-    'iotbx', 
-    'mmtbx', 
-    'smtbx', 
-    'dxtbx', 
-    'gltbx', 
-    'wxtbx', 
+    'cctbx',
+    'cbflib',
+    'scitbx',
+    'libtbx',
+    'iotbx',
+    'mmtbx',
+    'smtbx',
+    'dxtbx',
+    'gltbx',
+    'wxtbx',
     'chem_data'
   ]
   LIBTBX_EXTRA = []
   def add_install(self):
     self.add_command('mmtbx.rebuild_rotarama_cache')
-  
+
 ##### CCTBX-derived packages #####
 
 class CCTBXBuilder(CCTBXBaseBuilder):
@@ -408,8 +429,8 @@ class CCTBXBuilder(CCTBXBaseBuilder):
   def add_tests(self):
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
-    self.add_test_command('cctbx_regression.test_nightly')    
-  
+    self.add_test_command('cctbx_regression.test_nightly')
+
 class DIALSBuilder(CCTBXBaseBuilder):
   CODEBASES_EXTRA = ['dials',]
   LIBTBX_EXTRA = ['dials',]
@@ -421,21 +442,21 @@ class LABELITBuilder(CCTBXBaseBuilder):
   LIBTBX_EXTRA = ['labelit', 'labelit_regression']
   def add_tests(self):
     pass
-    
+
 class XFELBuilder(CCTBXBaseBuilder):
  CODEBASES_EXTRA = [
-   'dials', 
-   'labelit', 
-   'labelit_regression', 
-   'xfel_regression', 
+   'dials',
+   'labelit',
+   'labelit_regression',
+   'xfel_regression',
    'cxi_xdr_xes'
  ]
  LIBTBX_EXTRA = [
-   'dials', 
-   'labelit', 
+   'dials',
+   'labelit',
    'labelit_regression',
-   'xfel', 
-   'xfel_regression', 
+   'xfel',
+   'xfel_regression',
    'cxi_xdr_xes'
  ]
  def add_tests(self):
@@ -443,49 +464,49 @@ class XFELBuilder(CCTBXBaseBuilder):
 
 class PHENIXBuilder(CCTBXBaseBuilder):
   CODEBASES_EXTRA = [
-    'phenix', 
-    'phenix_regression', 
+    'phenix',
+    'phenix_regression',
     'phenix_html',
     'phenix_examples',
     'labelit',
-    'Plex', 
-    'PyQuante', 
-    'elbow', 
-    'ksdssp', 
-    'pex', 
-    'pulchra', 
+    'Plex',
+    'PyQuante',
+    'elbow',
+    'ksdssp',
+    'pex',
+    'pulchra',
     'solve_resolve',
-    'reel', 
-    'gui_resources', 
-    'opt_resources', 
-    'muscle', 
+    'reel',
+    'gui_resources',
+    'opt_resources',
+    'muscle',
     'labelit',
   ]
   HOT_EXTRA = [
-    'phaser', 
+    'phaser',
     'phaser_regression',
-    'reduce', 
-    'probe', 
-    'king', 
+    'reduce',
+    'probe',
+    'king',
     'suitename'
   ]
   LIBTBX_EXTRA = [
-    'phenix', 
-    'phenix_regression', 
-    'phenix_examples', 
-    'solve_resolve', 
-    'reel', 
-    'phaser', 
-    'phaser_regression', 
-    'labelit', 
-    'elbow', 
-    'reduce', 
+    'phenix',
+    'phenix_regression',
+    'phenix_examples',
+    'solve_resolve',
+    'reel',
+    'phaser',
+    'phaser_regression',
+    'labelit',
+    'elbow',
+    'reduce',
     'probe'
-  ]  
+  ]
   def add_tests(self):
     # Windows convenience hack.
     if 'windows' in self.platform:
-      self.add_test_command('phenix_regression.test_nightly_windows')      
+      self.add_test_command('phenix_regression.test_nightly_windows')
     else:
       self.add_test_command('phenix_regression.test_nightly')
     # Other Phenix tests.
@@ -509,7 +530,7 @@ if __name__ == "__main__":
       raise ValueError("Unknown action: %s"%arg)
   for arg in allowedargs:
     if arg in args:
-      actions.append(arg)  
+      actions.append(arg)
   print "Performing actions:", " ".join(actions)
 
   # Check builder
@@ -526,7 +547,7 @@ if __name__ == "__main__":
   # Build
   builder = builders[options.builder]
   builder(
-    category='cctbx', 
+    category='cctbx',
     platform='debug',
     cciuser=options.cciuser,
     hot=('hot' in actions),
