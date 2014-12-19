@@ -776,15 +776,14 @@ Installation of Python packages may fail.
     # Stage 2: build wxPython itself
     wxpy_build_opts = [
       "BUILD_GLCANVAS=1",
-      "BUILD_STC=1",
       "BUILD_GIZMOS=0",
       "BUILD_DLLWIDGET=0",
     ]
     if self.flag_is_mac:
       os.environ['CFLAGS'] = "-arch x86_64"
-      wxpy_build_opts.extend(["WXPORT=osx_cocoa", "UNICODE=1",])
+      wxpy_build_opts.extend(["UNICODE=1", "BUILD_STC=0", "WXPORT=osx_cocoa"])
     else :
-      wxpy_build_opts.extend(["BUILD_OGL=0", "UNICODE=0"])
+      wxpy_build_opts.extend(["UNICODE=0", "BUILD_STC=0", "BUILD_OGL=0", ])
     self.chdir("wxPython", log=pkg_log)
     debug_flag = ""
     if (self.options.debug) :
