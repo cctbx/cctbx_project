@@ -1196,7 +1196,9 @@ class manager(object):
           site_labels=site_labels)
 
     if pair_proxies.nonbonded_proxies.n_unknown_nonbonded_type_pairs != 0:
-      raise Sorry("nonbonded clashscore can't be calculated. PDB file contains unknown type pairs. Please provide cif file.")
+      msg = "nonbonded clashscore can't be calculated."
+      msg += " PDB file contains unknown type pairs. Please provide cif file."
+      raise Sorry(msg)
 
     proxies_info_nonbonded = pair_proxies.nonbonded_proxies.get_sorted(
       by_value="delta",

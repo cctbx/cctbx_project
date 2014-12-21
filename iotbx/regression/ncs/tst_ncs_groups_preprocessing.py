@@ -699,7 +699,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_spec_reading']
+  tests = ['test_min_contig_length']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 

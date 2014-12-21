@@ -406,6 +406,32 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(gr[0].chain_residue_id()[0],['A', 'D', 'F'])
     self.assertEqual(gr[1].chain_residue_id()[0],['B', 'E', 'G', 'X'])
 
+  def test_min_contig_length(self):
+    """ Test correct handling of min_contig_length and min_percent """
+    ncs_obj = ncs.input(
+        pdb_string=test_pdb_8,
+        max_rmsd=10,
+        min_percent=0.50,
+        min_contig_length=10)
+    self.assertEqual(ncs_obj.number_of_ncs_groups,1)
+    n_atoms_in_copy = ncs_obj.common_res_dict.values()[0][0][1].size()
+    self.assertEqual(n_atoms_in_copy,15)
+
+    ncs_obj = ncs.input(
+        pdb_string=test_pdb_8,
+        max_rmsd=10,
+        min_percent=0.80,
+        min_contig_length=10)
+    self.assertEqual(ncs_obj.number_of_ncs_groups,0)
+
+    ncs_obj = ncs.input(
+        pdb_string=test_pdb_8,
+        max_rmsd=10,
+        min_percent=0.50,
+        min_contig_length=1)
+    self.assertEqual(ncs_obj.number_of_ncs_groups,1)
+    n_atoms_in_copy = ncs_obj.common_res_dict.values()[0][0][1].size()
+    self.assertEqual(n_atoms_in_copy,31)
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
@@ -1251,6 +1277,94 @@ ATOM  10121  C   GLY X 501     -44.196 -79.826  76.644  1.00 70.96           C
 ATOM  10122  O   GLY X 501     -42.975 -79.861  76.832  1.00 70.38           O
 '''
 
+test_pdb_8 = '''\
+CRYST1  115.986  115.986   44.151  90.00  90.00 120.00 P 6
+ATOM      2  CA  ALA A   2      64.128 -67.160 -16.901  1.00  2.19           C
+ATOM      7  CA  ALA A   3      63.524 -68.826 -13.574  1.00  2.00           C
+ATOM     12  CA  LYS A   4      59.889 -68.274 -12.586  1.00  2.00           C
+ATOM     21  CA  ASP A   5      58.199 -67.416  -9.309  1.00  2.22           C
+ATOM     29  CA  VAL A   6      55.099 -69.499  -8.580  1.00  2.00           C
+ATOM     36  CA  LYS A   7      52.462 -68.681  -5.994  1.00  2.00           C
+ATOM     45  CA  PHE A   8      49.510 -70.712  -4.872  1.00  2.00           C
+ATOM     56  CA  GLY A   9      46.007 -70.315  -3.583  1.00  2.00           C
+ATOM    139  CA  VAL A  20      43.283 -55.029  -9.675  1.00  2.35           C
+ATOM    146  CA  ASN A  21      42.676 -52.469  -6.956  1.00  2.36           C
+ATOM    154  CA  VAL A  22      45.554 -50.168  -7.937  1.00  2.29           C
+ATOM    161  CA  LEU A  23      44.244 -50.043 -11.502  1.00  2.00           C
+ATOM    169  CA  ALA A  24      40.561 -49.956 -10.406  1.00  2.35           C
+ATOM    174  CA  ASP A  25      41.229 -47.208  -7.865  1.00  3.03           C
+ATOM    182  CA  ALA A  26      43.030 -45.028 -10.390  1.00  2.69           C
+ATOM    187  CA  VAL A  27      40.208 -45.442 -12.860  1.00  3.02           C
+ATOM    194  CA  LYS A  28      37.331 -45.055 -10.390  1.00  2.71           C
+ATOM    203  CA  VAL A  29      38.172 -41.474  -9.488  1.00  2.13           C
+ATOM    210  CA  THR A  30      36.904 -40.296 -12.812  1.00  2.00           C
+ATOM    566  CA  VAL A  77      37.819 -55.002 -19.732  1.00  2.05           C
+ATOM    573  CA  ALA A  78      38.383 -51.225 -19.995  1.00  2.13           C
+ATOM    578  CA  SER A  79      40.244 -51.871 -23.171  1.00  2.00           C
+ATOM    584  CA  LYS A  80      37.585 -54.070 -24.767  1.00  2.49           C
+ATOM    593  CA  ALA A  81      34.690 -51.803 -23.726  1.00  2.00           C
+ATOM    598  CA  ASN A  82      36.487 -49.018 -25.568  1.00  2.00           C
+ATOM    606  CA  ASP A  83      36.910 -50.949 -28.863  1.00  3.88           C
+ATOM    614  CA  ALA A  84      33.274 -51.972 -29.032  1.00  3.99           C
+ATOM    619  CA  ALA A  85      31.290 -49.213 -27.336  1.00  4.20           C
+ATOM    624  CA  GLY A  86      33.537 -46.101 -27.308  1.00  3.15           C
+ATOM    628  CA  ASP A  87      32.467 -45.237 -23.735  1.00  2.42           C
+ATOM    636  CA  GLY A  88      31.652 -46.933 -20.435  1.00  2.00           C
+ATOM    640  CA  THR A  89      35.290 -48.038 -19.921  1.00  2.00           C
+ATOM    647  CA  THR A  90      35.265 -46.726 -16.371  1.00  2.06           C
+ATOM    654  CA  THR A  91      31.920 -48.406 -15.620  1.00  2.56           C
+ATOM    661  CA  ALA A  92      33.225 -51.616 -17.116  1.00  2.54           C
+ATOM    666  CA  THR A  93      36.291 -51.335 -14.856  1.00  2.42           C
+ATOM    673  CA  VAL A  94      34.269 -50.635 -11.747  1.00  3.40           C
+ATOM    680  CA  LEU A  95      31.961 -53.605 -12.305  1.00  3.15           C
+ATOM    688  CA  ALA A  96      34.947 -55.852 -12.956  1.00  2.38           C
+ATOM    693  CA  GLN A  97      36.596 -54.839  -9.731  1.00  2.11           C
+ATOM    702  CA  ALA A  98      33.351 -55.531  -7.927  1.00  2.78           C
+ATOM    707  CA  ILE A  99      32.667 -58.960  -9.253  1.00  2.08           C
+ATOM   3858  CA  ALA B   2      81.555 -73.470 -17.124  1.00  2.07           C
+ATOM   3863  CA  ALA B   3      82.510 -74.911 -13.782  1.00  2.00           C
+ATOM   3868  CA  LYS B   4      79.826 -77.479 -12.785  1.00  2.00           C
+ATOM   3877  CA  ASP B   5      78.102 -78.275  -9.522  1.00  2.22           C
+ATOM   3885  CA  VAL B   6      77.738 -81.976  -8.764  1.00  2.03           C
+ATOM   3892  CA  LYS B   7      75.488 -83.519  -6.170  1.00  2.00           C
+ATOM   3901  CA  PHE B   8      75.245 -87.087  -5.013  1.00  2.00           C
+ATOM   3912  CA  GLY B   9      72.723 -89.591  -3.785  1.00  2.00           C
+ATOM   3916  CA  ASN B  10      70.099 -88.361  -1.408  1.00  2.52           C
+ATOM   3924  CA  ASP B  11      70.962 -84.672  -1.863  1.00  3.75           C
+ATOM   3932  CA  ALA B  12      70.712 -84.850  -5.605  1.00  2.57           C
+ATOM   3937  CA  ARG B  13      67.366 -86.601  -5.201  1.00  2.33           C
+ATOM   3948  CA  VAL B  14      65.695 -84.360  -2.631  1.00  2.00           C
+ATOM   3955  CA  LYS B  15      66.474 -81.440  -4.956  1.00  2.05           C
+ATOM   3964  CA  MET B  16      65.273 -83.306  -8.068  1.00  2.49           C
+ATOM   3972  CA  LEU B  17      62.014 -84.040  -6.264  1.00  2.32           C
+ATOM   3980  CA  ARG B  18      61.348 -80.533  -5.048  1.00  2.45           C
+ATOM   3991  CA  GLY B  19      61.641 -79.632  -8.714  1.00  2.12           C
+ATOM   3995  CA  VAL B  20      59.091 -82.211  -9.831  1.00  2.22           C
+ATOM   4002  CA  ASN B  21      56.721 -81.085  -7.152  1.00  2.44           C
+ATOM   4010  CA  VAL B  22      56.739 -77.364  -8.133  1.00  2.42           C
+ATOM   4017  CA  LEU B  23      55.793 -78.315 -11.709  1.00  2.00           C
+ATOM   4025  CA  ALA B  24      53.474 -81.149 -10.626  1.00  2.36           C
+ATOM   4030  CA  ASP B  25      51.680 -78.946  -8.069  1.00  2.96           C
+ATOM   4038  CA  ALA B  26      51.101 -76.134 -10.576  1.00  2.68           C
+ATOM   4043  CA  VAL B  27      49.693 -78.571 -13.084  1.00  2.94           C
+ATOM   4050  CA  LYS B  28      47.585 -80.601 -10.605  1.00  2.85           C
+ATOM   4059  CA  VAL B  29      45.313 -77.718  -9.655  1.00  2.15           C
+ATOM   4066  CA  THR B  30      43.588 -77.953 -13.009  1.00  2.15           C
+ATOM   4422  CA  VAL B  77      55.643 -86.411 -19.883  1.00  2.06           C
+ATOM   4429  CA  ALA B  78      53.071 -83.639 -20.174  1.00  2.02           C
+ATOM   4434  CA  SER B  79      54.722 -82.603 -23.360  1.00  2.04           C
+ATOM   4510  CA  THR B  91      46.796 -86.923 -15.766  1.00  2.45           C
+ATOM   4517  CA  ALA B  92      50.129 -87.956 -17.268  1.00  2.48           C
+ATOM   4522  CA  THR B  93      51.827 -85.331 -15.045  1.00  2.35           C
+ATOM   4529  CA  VAL B  94      50.007 -86.467 -11.913  1.00  3.42           C
+ATOM   4536  CA  LEU B  95      50.897 -90.094 -12.505  1.00  3.16           C
+ATOM   4544  CA  ALA B  96      54.531 -89.280 -13.126  1.00  2.34           C
+ATOM   4549  CA  GLN B  97      54.795 -87.269  -9.909  1.00  2.02           C
+ATOM   4558  CA  ALA B  98      53.272 -90.229  -8.089  1.00  2.64           C
+ATOM   4563  CA  ILE B  99      55.515 -92.921  -9.376  1.00  2.00           C
+'''
+
+
 def run_selected_tests():
   """  Run selected tests
 
@@ -1258,7 +1372,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_split_groups_to_spec']
+  tests = ['test_update_atom_selections']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 

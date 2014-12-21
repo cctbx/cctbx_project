@@ -1071,7 +1071,7 @@ def res_alignment(seq_a, seq_b,
       R[i,j].consecutive_matches = consecutive_matches
   #
   aligned_sel_a, aligned_sel_b, similarity = get_matching_res_indices(
-    R=R,row=a,col=b,min_percent=min_percent)
+    R=R,row=a,col=b,min_percent=min_percent,min_contig_length=min_matches)
   return aligned_sel_a, aligned_sel_b, similarity
 
 def gap_score(r,min_matches):
@@ -1096,7 +1096,7 @@ def gap_score(r,min_matches):
     match_count -= r.consecutive_matches
   return s,match_count
 
-def get_matching_res_indices(R,row,col,min_percent):
+def get_matching_res_indices(R,row,col,min_percent,min_contig_length):
   """
   Trace back best solution and collect the indices of matching pairs
 
@@ -1107,6 +1107,7 @@ def get_matching_res_indices(R,row,col,min_percent):
     min_percent (float): min percent of similarity between hierarchies
       similarity define as:
       (number of matching res) / (number of res in longer chain)
+    min_contig_length (int): domain < min_contig_length rejected
 
   Returns:
     sel_a (list): matching indices sequence a
@@ -1121,20 +1122,38 @@ def get_matching_res_indices(R,row,col,min_percent):
   # test alignment quality
   if not R.has_key((i_max,j_max)):
     # alignment process was halted, return empty arrays
-    return flex.size_t(sel_a), flex.size_t(sel_b),0
+    return flex.size_t([]), flex.size_t([]),0
   #
   similarity = R[i_max,j_max].match_count / max(i_max,j_max)
   if similarity < min_percent:
     # chains are to different, return empty arrays
-    return flex.size_t(sel_a), flex.size_t(sel_b), 0
-  #
+    return flex.size_t([]), flex.size_t([]), 0
+  # retrieve the matching sequences from the score matrix
   stop_test = 1
+  domain_length = 0
+  temp_sel_a = []
+  temp_sel_b = []
   while stop_test > 0:
     if R[i_max,j_max].origin == (i_max - 1, j_max - 1):
-      sel_a.append(i_max - 1)
-      sel_b.append(j_max - 1)
+      temp_sel_a.append(i_max - 1)
+      temp_sel_b.append(j_max - 1)
+      domain_length +=1
+    else:
+      # domain ended, if it is long enough keep it
+      if domain_length >= min_contig_length:
+        sel_a.extend(temp_sel_a)
+        sel_b.extend(temp_sel_b)
+      # restart domain length counting
+      domain_length = 0
+      temp_sel_a = []
+      temp_sel_b = []
     i_max, j_max = R[i_max,j_max].origin
+    # i_max or j_max reach to zero -> stop
     stop_test = i_max * j_max
+  # check if the last domain is long enough to keep
+  if domain_length >= min_contig_length:
+    sel_a.extend(temp_sel_a)
+    sel_b.extend(temp_sel_b)
   sel_a.reverse()
   sel_b.reverse()
   assert len(sel_a) == len(sel_b)
@@ -1203,7 +1222,7 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
       # select only atoms that exist in both residues
       atoms_a,atoms_b,similarity = res_alignment(
         seq_a=atoms_names_a, seq_b=atoms_names_b,
-        min_contig_length=100,min_percent=0.2)
+        min_contig_length=1,min_percent=0.2)
       # get the number of the atom in the chain
       sa = flex.size_t(atoms_a) + sa[0]
       sb = flex.size_t(atoms_b) + sb[0]
