@@ -662,7 +662,7 @@ def run_selected_tests():
 
 if __name__=='__main__':
   # use for individual tests
-  unittest.TextTestRunner().run(run_selected_tests())
+  # unittest.TextTestRunner().run(run_selected_tests())
 
   # Use to run all tests
-  # unittest.main(verbosity=0)
+  unittest.main(verbosity=0)
