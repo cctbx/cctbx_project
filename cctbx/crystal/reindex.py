@@ -57,7 +57,7 @@ class reindexing_operators(object):
       for s in lat_sym_2.build_derived_acentric_group().change_basis(
         self.similarity_cb_op ):
         try: common_lattice_group.expand_smx(s)
-        except RunTimeError:
+        except RuntimeError:
           common_lattice_group=None
       if  common_lattice_group is not None:
         common_lattice_group.make_tidy()
