@@ -150,6 +150,10 @@ class InMemScript(DialsProcessScript):
     rank = comm.Get_rank() # each process in MPI has a unique id, 0-indexed
     size = comm.Get_size() # size: number of processes running in this job
 
+    #log_path = os.path.join(params.output.output_dir, "log_rank%04d.out"%rank)
+    #print "Redirecting stdout to %s"%log_path
+    #sys.stdout = open(log_path,'w')
+
     # set up psana
     setConfigFile(params.input.cfg)
     dataset_name = "exp=%s:run=%s:idx"%(params.input.experiment,params.input.run_num)
@@ -174,13 +178,18 @@ class InMemScript(DialsProcessScript):
       # list of all events
       times = run.times()
       nevents = min(len(times),max_events)
-      mylength = nevents//size # easy but sloppy. lose few events at end of run.
-      # chop the list into pieces, depending on rank
-      mytimes= times[rank*mylength:(rank+1)*mylength]
-      for i in range(mylength):
+      # chop the list into pieces, depending on rank.  This assigns each process
+      # events such that the get every Nth event where N is the number of processes
+      mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
+
+      for i in xrange(len(mytimes)):
         evt = run.event(mytimes[i])
         id = evt.get(EventId)
         print "Event #",i," has id:",id
+        if evt.get("skip_event"):
+          print "Skipping event",id
+          continue
+
         # the data needs to have already been processed and put into the event by psana
         data = evt.get(ndarray_float64_3, src, 'image0')
         if data is None:
