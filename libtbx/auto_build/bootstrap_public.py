@@ -51,13 +51,30 @@ def get_codebases(self):
     'cbflib',
   ]
 def add_make(self):
-  self.add_command('make')
+  self.add_step(self.shell(command=['make'],
+    workdir=['build']
+  ))
+
+def get_libtbx_configure(self):
+  return [
+    'cctbx',
+    'cbflib',
+    'scitbx',
+    'libtbx',
+    'iotbx',
+    'mmtbx',
+    'smtbx',
+    'dxtbx',
+    'gltbx',
+    'wxtbx',
+    'dials'
+    ]
 
 CCIBuilder.add_hot = add_hot
 CCIBuilder.get_hot = get_hot
 CCIBuilder.get_codebases = get_codebases
 CCIBuilder.add_make = add_make
-
+CCIBuilder.get_libtbx_configure = get_libtbx_configure
 if __name__ == "__main__":
   parser = optparse.OptionParser()
   parser.add_option("--builder", help="Builder: cctbx, phenix, xfel, dials, labelit", default="cctbx")
