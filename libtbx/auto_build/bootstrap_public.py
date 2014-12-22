@@ -2,17 +2,17 @@ from bootstrap import optparse,os
 from bootstrap import ShellCommand, HOT, CODEBASES, ModuleManager
 from bootstrap import DIALSBuilder, PHENIXBuilder, XFELBuilder, LABELITBuilder, CCTBXBuilder, CCIBuilder
 
-HOT['annlib']='curl http://dials.lbl.gov/repositories/annlib.gz > annlib.gz'
-HOT['scons']='curl http://dials.lbl.gov/repositories/scons.gz > scons.gz'
-HOT['boost']='curl http://dials.lbl.gov/repositories/boost.gz > boost.gz'
-HOT['ccp4io']='curl http://dials.lbl.gov/repositories/ccp4io.gz > ccp4io.gz'
-HOT['docutils']='curl http://dials.lbl.gov/repositories/docutils.gz > docutils.gz'
-HOT['annlib_adaptbx']='curl http://dials.lbl.gov/repositories/annlib_adaptbx.gz > annlib_adaptbx.gz'
-HOT['ccp4io_adaptbx']='curl http://dials.lbl.gov/repositories/ccp4io_adaptbx.gz > ccp4io_adaptbx.gz'
-HOT['clipper']='curl http://dials.lbl.gov/repositories/clipper.gz > clipper.gz'
-HOT['opt_resources']='curl http://dials.lbl.gov/repositories/opt_resources.gz > opt_resources.gz'
-HOT['gui_resources']='curl http://dials.lbl.gov/repositories/gui_resources.gz > gui_resources.gz'
-HOT['tntbx']='curl http://dials.lbl.gov/repositories/tntbx.gz > tntbx.gz'
+HOT['annlib']='curl http://cci.lbl.gov/repositories/annlib.gz > annlib.gz'
+HOT['scons']='curl http://cci.lbl.gov/repositories/scons.gz > scons.gz'
+HOT['boost']='curl http://cci.lbl.gov/repositories/boost.gz > boost.gz'
+HOT['ccp4io']='curl http://cci.lbl.gov/repositories/ccp4io.gz > ccp4io.gz'
+HOT['docutils']='curl http://cci.lbl.gov/repositories/docutils.gz > docutils.gz'
+HOT['annlib_adaptbx']='curl http://cci.lbl.gov/repositories/annlib_adaptbx.gz > annlib_adaptbx.gz'
+HOT['ccp4io_adaptbx']='curl http://cci.lbl.gov/repositories/ccp4io_adaptbx.gz > ccp4io_adaptbx.gz'
+HOT['clipper']='curl http://cci.lbl.gov/repositories/clipper.gz > clipper.gz'
+HOT['opt_resources']='curl http://cci.lbl.gov/repositories/opt_resources.gz > opt_resources.gz'
+HOT['gui_resources']='curl http://cci.lbl.gov/repositories/gui_resources.gz > gui_resources.gz'
+HOT['tntbx']='curl http://cci.lbl.gov/repositories/tntbx.gz > tntbx.gz'
 
 
 def add_hot(self, package):
