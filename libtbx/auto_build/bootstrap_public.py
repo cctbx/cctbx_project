@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
   # Check actions
   allowedargs = ['cleanup', 'hot', 'update', 'base', 'build', 'install', 'tests']
-  args = args or ['hot', 'update', 'base', 'build', 'install']
+  args = args or ['hot', 'update', 'base', 'build']
   actions = []
   for arg in args:
     if arg not in allowedargs:
