@@ -118,7 +118,11 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       slow = matrix.col((0, math.sin(angle), - math.cos(angle)))
       normal = fast.cross(slow)
       # for longer wavelength data sets move 192.3 below to 184.9
-      origin = 250.0 * normal - 192.3 * fast - 16.8 * slow + 250 * z + \
+      if math.fabs(wavelength - 0.953730) - 0.00001:
+        off_x = 191.9
+      else:
+        off_x = 184.9
+      origin = 250.0 * normal - off_x * fast - 16.8 * slow + 250 * z + \
           beam_shift_y * y
       p = detector.add_panel()
 
