@@ -108,7 +108,7 @@ CODEBASES = {
   'labelit':            'svn+ssh://%(cciuser)s@cci.lbl.gov/labelit/trunk',
   'labelit_regression': 'svn+ssh://%(cciuser)s@cci.lbl.gov/labelit_regression/trunk',
   # DIALS
-  'dials':              'https://svn.code.sf.net/p/dials/code/trunk',
+  'dials':              'svn://svn.code.sf.net/p/dials/code/trunk',
   'dials_regression':   'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk',
   # XFEL
   'xfel_regression':    'svn+ssh://%(cciuser)s@cci.lbl.gov/xfel_regression/trunk',
