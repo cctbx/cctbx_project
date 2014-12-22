@@ -62,7 +62,6 @@ from mmtbx.cablam import cablam_math #contains geometric measure calculators
 from mmtbx.rotamer.n_dim_table import NDimTable #handles contours
 from libtbx import easy_pickle #NDimTables are stored as pickle files
 from libtbx import easy_run
-from iotbx import file_reader
 import libtbx.load_env
 
 #{{{ phil
@@ -703,18 +702,18 @@ def check_prolines(hierarchy,pdbid='pdbid'):
         translevel = pro_contour['trans'].valueAt(cablam_point)
         if (omega >= -60) and (omega <= 60): #modeled as cis
           if cislevel < cis_cutoff:
-            print "bad CIS at ", pdbid, residue.id_with_resname(), "value:", cislevel
+            print "bad CIS at ", pdbid, residue.id_with_resname(), "value:%.3f" %cislevel
             if translevel >= 0.1:#trans_cutoff:
-              print "  try TRANS. value:", translevel
+              print "  try TRANS. value:%.3f" %translevel
             else:
-              print "  no suggestion. trans value:", translevel
+              print "  no suggestion. trans value:%.3f" %translevel
         elif (omega >=120) or (omega <= -120): #modeled as trans
           if translevel < trans_cutoff:
-            print "bad TRANS at ", pdbid, residue.id_with_resname(), "value:", translevel
+            print "bad TRANS at ", pdbid, residue.id_with_resname(), "value:%.3f" %translevel
             if cislevel >= 0.1:#cis_cutoff:
-              print "  try CIS. value:", cislevel
+              print "  try CIS. value:%.3f" %cislevel
             else:
-              print "  no suggestion. cis value:", cislevel
+              print "  no suggestion. cis value:%.3f" %cislevel
 #}}}
 
 #{{{ print_helix_sheet_records function
