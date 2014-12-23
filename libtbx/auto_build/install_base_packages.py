@@ -169,7 +169,7 @@ class installer (object) :
     if options.build_gui:
       packages += [
         'png',
-        'freetype'
+        'freetype',
         'matplotlib',
         'pyopengl', 
         'wxpython', 
