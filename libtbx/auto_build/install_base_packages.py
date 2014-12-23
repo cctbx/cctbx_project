@@ -169,10 +169,10 @@ class installer (object) :
     if options.build_gui:
       packages += [
         'png',
+        'freetype'
         'matplotlib',
         'pyopengl', 
         'wxpython', 
-        'freetype'
       ]
       if self.flag_is_mac:
         # Use system libpng.
@@ -319,11 +319,12 @@ Installation of Python packages may fail.
   def set_cppflags_ldflags(self):
     # XXX ideally we would like to quote the paths to allow for spaces, but
     # the compiler doesn't like this
-    inc_paths = [ "-I%s" % p for p in self.include_dirs ]
-    lib_paths = [ "-L%s" % p for p in self.lib_dirs ]
-    os.environ['CPPFLAGS'] = "%s %s" % (" ".join(inc_paths),
-      self.cppflags_start)
-    os.environ['LDFLAGS'] = "%s %s" % (" ".join(lib_paths), self.ldflags_start)
+    inc_paths = ["-I%s" % p for p in self.include_dirs]
+    lib_paths = ["-L%s" % p for p in self.lib_dirs]
+    os.environ['CPPFLAGS'] = "%s %s"%(" ".join(inc_paths), self.cppflags_start)
+    if self.flag_is_mac:
+      os.environ['CPPFLAGS'] += ' -mmacosx-version-min=10.6'
+    os.environ['LDFLAGS'] = "%s %s"%(" ".join(lib_paths), self.ldflags_start)
 
   def verify_python_module (self, pkg_name_label, module_name) :
     os.chdir(self.tmp_dir) # very important for import to work!
@@ -713,12 +714,8 @@ Installation of Python packages may fail.
     pkg_name = WXPYTHON_PKG
     # XXX we don't entirely trust wxPython-2.9, but it would be preferrable for
     # the future to use a single version instead
-    # cocoa = False
     if (self.flag_is_mac) :
-      # if (detect_osx_version() >= 10) :
-      #   print >> self.log, "  running OS 10.6 or later, switching to wx 3.0"
       pkg_name = WXPYTHON_DEV_PKG
-      # cocoa = True
     pkg = self.fetch_package(pkg_name)
     pkg_dir = untar(pkg, log=pkg_log)
     os.chdir(pkg_dir)
@@ -781,7 +778,7 @@ Installation of Python packages may fail.
     ]
     if self.flag_is_mac:
       os.environ['CFLAGS'] = "-arch x86_64"
-      wxpy_build_opts.extend(["UNICODE=1", "BUILD_STC=0", "WXPORT=osx_cocoa"])
+      wxpy_build_opts.extend(["UNICODE=1", "BUILD_STC=1", "WXPORT=osx_cocoa"])
     else :
       wxpy_build_opts.extend(["UNICODE=0", "BUILD_STC=0", "BUILD_OGL=0", ])
     self.chdir("wxPython", log=pkg_log)
