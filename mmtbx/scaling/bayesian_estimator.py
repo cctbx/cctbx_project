@@ -768,7 +768,8 @@ class estimator_group:
       data_items=None,
       file_name=None,
       text=None,
-      select_only_complete=False):
+      select_only_complete=False,
+      minimum_complete=True):
 
     if not record_list:
       record_list,info_list,target_variable,data_items,info_items=\
@@ -793,12 +794,15 @@ class estimator_group:
 
     # now split in all possible ways and get estimators for each combination
     # if self.resolution_cutoffs is set, do it with each resolution cutoff
+    # 2014-12-18 if minimum_complete=True, require that there are 
+    #  self.minimum_records complete ones
     for resolution_cutoff in self.resolution_cutoffs:
       print >>self.verbose_out,\
          "\nResolution cutoff of %5.2f A" %(resolution_cutoff)
       local_record_list,local_info_list=self.select_records(
         record_list=record_list,
-        info_list=info_list,resolution_cutoff=resolution_cutoff)
+        info_list=info_list,resolution_cutoff=resolution_cutoff,
+        minimum_complete=minimum_complete)
       if len(local_record_list)<1:
         print >>self.verbose_out,\
            "No records selected for this resolution cutoff"
@@ -828,6 +832,9 @@ class estimator_group:
            resolution_cutoff=resolution_cutoff)
          self.add_estimator(estimator,resolution_cutoff=resolution_cutoff,
            combination=combination)
+    for resolution_cutoff in self.resolution_cutoffs: # make sure there is an estimator
+      if not resolution_cutoff in self.combinations.keys():
+        self.delete_resolution_cutoff(resolution_cutoff)
 
   def get_record_list(self,
      file_name=None,
@@ -866,7 +873,9 @@ class estimator_group:
       record_list=None,
       info_list=None,
       next_cutoff=None,
-      resolution_cutoff=None):
+      minimum_complete=None,
+      resolution_cutoff=None,
+      first=True):
     # select those records that are >= resolution_cutoff and not >= the
     # next-highest cutoff in the list (if any)
     if not self.info_names or not resolution_cutoff or \
@@ -876,27 +885,35 @@ class estimator_group:
     if self.info_names[-1]!='d_min' and len(self.resolution_cutoffs)>1:
       raise Sorry("Cannot select records on resolution unless the database"+
         "(%s) has resolution information" %(str(self.training_file_name)))
-    if next_cutoff is None:
+    if first and next_cutoff is None:
       for rc in self.resolution_cutoffs:
         if (next_cutoff is None or rc <next_cutoff) and rc > resolution_cutoff:
           next_cutoff=rc
 
     new_records=[]
     new_info=[]
+    count=0
     for record,info in zip(record_list,info_list):
       if info[-1]>=resolution_cutoff and \
         (next_cutoff is None or info[-1]<next_cutoff):
          new_records.append(record)
          new_info.append(info)
-    if len(new_records)<self.minimum_records and next_cutoff<info_list[-1][-1]:
+         if minimum_complete:
+            if not (None in record):
+              count+=1
+    if next_cutoff is not None and next_cutoff<info_list[-1][-1] and ( 
+       len(new_records)<self.minimum_records or
+       minimum_complete and count < self.minimum_records):
       # try again with bigger range
       next_next_cutoff=None
       for rc in self.resolution_cutoffs:
         if (next_next_cutoff is None or rc <next_next_cutoff) \
           and rc > next_cutoff:
           next_next_cutoff=rc
-      return self.select_records(record_list=record_list,info_list=info_list,
-        next_cutoff=next_next_cutoff,resolution_cutoff=resolution_cutoff)
+      new_records,new_info=self.select_records(
+          record_list=record_list,info_list=info_list,
+          next_cutoff=next_next_cutoff,resolution_cutoff=resolution_cutoff,
+          minimum_complete=minimum_complete,first=False)
     return new_records,new_info
 
   def get_key(self,combination=None,resolution_cutoff=None):
