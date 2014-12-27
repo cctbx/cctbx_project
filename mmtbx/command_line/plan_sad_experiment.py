@@ -61,7 +61,14 @@ crystal_info {
     .help = Chain type (PROTEIN RNA DNA). This is used to estimate the \
             number of atoms from the number of residues
 
-  solvent_fraction = 0.5
+  ncs_copies = None
+    .type = int
+    .short_caption = NCS copies
+    .help = Optional estimate of NCS copies in your crystals (only used if \
+            a data file is supplied). 
+   .input_size = 64
+
+  solvent_fraction = None
     .type = float
     .short_caption = Solvent fraction
     .help = Optional estimate of solvent fraction in your crystals
@@ -189,7 +196,7 @@ crystal_info {
              calculation and are assumed to be included in the \
              number of sites you specify.
 
-   bayesian_updates = True
+   bayesian_updates = False
      .type = bool
      .short_caption = Bayesian updates
      .help = Use Bayesian updates of half-dataset CC and signal. First \
@@ -223,6 +230,7 @@ def get_params(args,out=sys.stdout):
   command_line = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=master_phil,
+    reflection_file_def="input_files.data",
     seq_file_def="crystal_info.seq_file")
   params = command_line.work.extract()
   print >>out,"\nPlan a SAD experiment\n"
@@ -237,10 +245,14 @@ def setup_params (params, out) :
 
   if params.crystal_info.seq_file and \
        os.path.isfile(params.crystal_info.seq_file):
-    residues,sites,number_of_s=get_residues_and_ha(
-      params.crystal_info.seq_file,
-      params.crystal_info.atom_type,
-      params.crystal_info.chain_type,out=out)
+    residues,sites,number_of_s,solvent_fraction,ncs_copies=get_residues_and_ha(
+      seq_file=params.crystal_info.seq_file,
+      atom_type=params.crystal_info.atom_type,
+      chain_type=params.crystal_info.chain_type,
+      solvent_fraction=params.crystal_info.solvent_fraction,
+      data=params.input_files.data,
+      ncs_copies=params.crystal_info.ncs_copies,
+      out=out)
     if not params.crystal_info.residues:
       print >>out,"Number of residues based on sequence file: %d" %(
         residues)
@@ -254,6 +266,17 @@ def setup_params (params, out) :
       print >>out,"Number of sites for anomalously-scattering atom "+\
         "based on sequence file: %d" %( sites)
       params.crystal_info.sites=sites
+
+    if ncs_copies and not params.crystal_info.ncs_copies:
+      print >>out,"NCS copies "+\
+        "based on sequence file and data : %d" %( ncs_copies)
+      params.crystal_info.ncs_copies=ncs_copies
+
+    if solvent_fraction and not params.crystal_info.solvent_fraction:
+      print >>out,"Solvent fraction "+\
+        "based on sequence file and data : %5.2f" %( solvent_fraction)
+      params.crystal_info.solvent_fraction=solvent_fraction
+
   else:
     if params.crystal_info.number_of_s is None and \
          params.include_weak_anomalous_scattering is True:
@@ -264,6 +287,9 @@ def setup_params (params, out) :
       print >>out,"Note: not applying include_weak_anomalous_scattering as"+\
         " no sequence \nfile or number_of_s are supplied"
       params.include_weak_anomalous_scattering=False
+
+  if params.crystal_info.solvent_fraction is None:
+    params.crystal_info.solvent_fraction=0.50  # just guess
 
   if not params.crystal_info.residues:
     raise Sorry("Please specify number of residues or a sequence file")
