@@ -21,9 +21,16 @@ def get_atoms_per_residue(chain_type='PROTEIN'):
     atoms_per_residue=26
   return atoms_per_residue
 
-def get_nrefl(residues=200,dmin=2.5,solvent_fraction=0.5,chain_type='PROTEIN'):
-  nrefl=2.*3.14159*0.3333*residues*get_vol_per_residue(chain_type=chain_type)/ \
+def get_nrefl(i_obs=None,
+   residues=200,dmin=2.5,solvent_fraction=0.5,chain_type='PROTEIN'):
+  if i_obs:  # use actual number of reflections:
+    i_obs=i_obs.resolution_filter(d_min=dmin)
+    nrefl=i_obs.data().size()
+  else:
+    nrefl=2.*3.14159*0.3333*residues*\
+        get_vol_per_residue(chain_type=chain_type)/ \
         (1.-solvent_fraction)*(1./dmin**3)
+
   return nrefl
 
 def get_sigf(nrefl,nsites,natoms,z,fpp,target_s_ano=15.,ntries=1000,
@@ -304,8 +311,10 @@ def get_number_of_sites(atom_type=None,n_met=0,n_cys=0,
     if number_of_sites_lowres is None: number_of_sites_lowres=number_of_sites
     return number_of_sites,number_of_sites_lowres
 
-def get_residues_and_ha(seq_file,atom_type=None,
-      chain_type=None,out=sys.stdout):
+def get_residues_and_ha(seq_file=None,atom_type=None,
+      chain_type=None,data=None,solvent_fraction=None,
+      ncs_copies=None,out=sys.stdout):
+
   if not seq_file or not os.path.isfile(seq_file):
     raise Sorry("Please supply number of residues or a sequence file")
   objects, non_compliant = any_sequence_format(seq_file)
@@ -321,7 +330,23 @@ def get_residues_and_ha(seq_file,atom_type=None,
   number_of_sites,number_of_sites_lowres=get_number_of_sites(
       atom_type=atom_type,n_met=n_met,n_cys=n_cys,
       n_aa=n_aa,ncs_copies=1,out=null_out())
-  return n_aa,number_of_sites,number_of_s
+
+  # if data file is specified, use it to get crystal_symmetry and then estimate
+  # residues and ha using that information and seq_file. Otherwise guess 
+  if data and os.path.isfile(data):
+    from phenix.command_line.ncs_and_number_of_ha import ncs_and_number_of_ha
+    args=["data=%s" %(data)]
+    if seq_file: args.append("seq_file=%s" %(seq_file))
+    if atom_type: args.append("atom_type=%s" %(atom_type))
+    if chain_type: args.append("chain_type=%s" %(chain_type))
+    if ncs_copies: args.append("ncs_copies=%s" %(ncs_copies))
+    args.append("log=None")
+    args.append("params_out=None")
+    na=ncs_and_number_of_ha(args=args,out=null_out())
+    return na.ncs_copies*n_aa,na.number_of_sites,na.ncs_copies*number_of_s,\
+      na.solvent_fraction,na.ncs_copies
+  else:
+    return n_aa,number_of_sites,number_of_s,solvent_fraction,ncs_copies
 
 def get_disorder_parameter(ideal_cc_anom=None):
   if not ideal_cc_anom:
@@ -606,7 +631,7 @@ def get_b_value_anomalous_and_resolution_from_file(data=None,data_labels=None):
   d_max,d_min=i_obs.d_max_min()
   assert i_obs.is_xray_intensity_array()
   b_aniso_mean=get_b_aniso_mean(i_obs)
-  return b_aniso_mean,d_min
+  return b_aniso_mean,d_min,i_obs
 
 def get_b_aniso_mean(i_obs):
   from mmtbx.scaling import absolute_scaling
@@ -628,11 +653,12 @@ def get_b_value_anomalous_and_resolution(
      resolution=None,
      data=None,
      data_labels=None,
-     b_value_anomalous=None):
+     b_value_anomalous=None,
+     i_obs=None):
   # use bayesian estimator to get b_value from resolution or vice_versa
   # (need one or the other)
   if data:  # get b_value and resolution from file if provided
-     b_value_from_file,resolution_from_file=\
+     b_value_from_file,resolution_from_file,i_obs=\
        get_b_value_anomalous_and_resolution_from_file(data=data,
        data_labels=data_labels)
      if b_value is None: b_value=b_value_from_file
@@ -657,7 +683,7 @@ def get_b_value_anomalous_and_resolution(
      b_value_anomalous,sig_b_value_anomalous=\
          b_value_anomalous_estimators.apply_estimators(
          value_list=[b_value],data_items=['B-overall'])
-  return b_value_anomalous,resolution
+  return b_value_anomalous,resolution,i_obs
 
 
 def get_dmin_ranges(resolution=None,target_list=[6,5,3,2.5,2,1.5]):
@@ -720,7 +746,8 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     self.occupancy=occupancy
     self.ratio_for_failure=ratio_for_failure
 
-    b_value_anomalous,resolution=get_b_value_anomalous_and_resolution(
+    b_value_anomalous,resolution,i_obs=\
+         get_b_value_anomalous_and_resolution(
      b_value=b_value,
      resolution=resolution,
      data=data,
@@ -792,10 +819,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       return_total=True)
 
     z=6.7 # Hendrickson, W.A. (2014) Quarterly Rev. Biophys. 47, 49-93.
-    if self.resolution and fixed_resolution:
-      self.dmin_ranges=[self.resolution]
-    else:
-      self.dmin_ranges=get_dmin_ranges(resolution=self.resolution)
+    self.dmin_ranges=get_dmin_ranges(resolution=self.resolution) # changed 2014-12-26 to always get it
     self.table_rows = []
     self.representative_values = None
     self.skipped_resolutions = []
@@ -830,14 +854,18 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
        require_monotonic_increase=True,
        predictor_variable='PredSignal',out=null_out())
 
-    for dmin in self.dmin_ranges:
+    if fixed_resolution:
+      dmin_ranges=self.dmin_ranges[-1:]
+    else:
+      dmin_ranges=self.dmin_ranges
+    for dmin in dmin_ranges:
       # Guess reflections from residues, dmin, solvent fraction
 
       # get f_ratio:
       from mmtbx.scaling.mean_f_rms_f import ratio_mean_f_to_rms_f
       f_ratio=ratio_mean_f_to_rms_f(dmin,b_value_anomalous)
 
-      nrefl=get_nrefl(
+      nrefl=get_nrefl(i_obs=i_obs,
          residues=residues,dmin=dmin,solvent_fraction=solvent_fraction)
 
       # identify rms(sigF)/rms(F) necessary to get target_s_ano with this
@@ -1025,8 +1053,6 @@ Normalized anomalous scattering:
   Correlation of useful to total anomalous scattering: %4.2f
 """ % (fa,fb,fab))
 
-    out.show_sub_header(
-      "Dataset <I>/<sigI> needed for anomalous signal of 15-30")
     out.show_preformatted_text("""
 -------Targets for entire dataset-------  ----------Likely outcome-----------""")
 
@@ -1057,7 +1083,7 @@ Normalized anomalous scattering:
       self.missed_target_resolutions.sort()
       extra_note=""
       if self.used_max_i_over_sigma:
-        extra_note="I/sigma shown is value \nof max_i_over_sigma."
+        extra_note="I/sigma shown is value of max_i_over_sigma."
       elif not self.input_i_over_sigma:
         extra_note="I/sigma shown achieves about %3.0f%% of \nmaximum anomalous signal." %(self.ratio_for_failure*100.)
       out.show_text("""

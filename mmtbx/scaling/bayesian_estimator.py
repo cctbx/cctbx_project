@@ -979,7 +979,6 @@ class estimator_group:
 
   def apply_estimators(self,value_list=None,data_items=None,
     resolution=None):
-
     assert len(value_list)==len(self.variable_names)
     if data_items != self.variable_names:
       print >>self.out,"WARNING: data items do not match working variables:"
