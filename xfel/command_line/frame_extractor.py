@@ -11,7 +11,8 @@ from dials.util.options import Importer, flatten_reflections, flatten_experiment
 from cctbx import crystal, miller
 from cctbx.crystal_orientation import crystal_orientation
 import iotbx.phil
-import cctbx
+import cctbx, os
+from libtbx import easy_pickle
 
 class ConstructFrame(object):
   def __init__(self, pickle_name, json_name, pixel_size):
@@ -192,7 +193,15 @@ if __name__ == "__main__":
     pixel_size = 0.11
       .type = float
       .help = detector-specific parameter for pixel size in mm
+    output_dir = None
+      .type = path
+      .help = if set, path to directory to save the new pickle file
       """)
   parser = OptionParser(phil=master_phil_scope)
   params, options = parser.parse_args(show_diff_phil=True)
-  frame = ConstructFrame(params.pickle_name, params.json_name).make_frame()
+  frame = ConstructFrame(params.pickle_name, params.json_name, params.pixel_size).make_frame()
+  if not params.output_dir is None:
+    assert os.path.isdir(params.output_dir)
+    dest_path = os.path.splitext(params.pickle_name)[0] + "_extracted.pickle"
+    assert not os.path.isfile(dest_path)
+    easy_pickle.dump(dest_path, frame)
