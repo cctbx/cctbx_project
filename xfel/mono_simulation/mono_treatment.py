@@ -337,7 +337,7 @@ class refinement(refinement_base):
       tan_phi_rad = helper.last_set_orientation.unit_cell().d(OO.reserve_indices) / (2. * s_ang)
       tan_phi_deg = tan_phi_rad * 180./math.pi
       k_degrees = solution[1]* 180./math.pi
-      print "The LSQ full mosaicity is %8.3f deg; half-mosaicity %9.3f"%(2*k_degrees, k_degrees)
+      print "The LSQ full mosaicity is %8.5f deg; half-mosaicity %9.5f"%(2*k_degrees, k_degrees)
       tan_outer_deg = tan_phi_deg + k_degrees
 
       if OO.mosaic_refinement_target=="ML":
@@ -354,27 +354,35 @@ class refinement(refinement_base):
         print "output",1./M.x[0], M.x[1]*180./math.pi
         tan_phi_rad_ML = helper.last_set_orientation.unit_cell().d(OO.reserve_indices) / (2. / M.x[0])
         tan_phi_deg_ML = tan_phi_rad_ML * 180./math.pi
+        # XXX My personal copy had this:  WHY??? tan_outer_deg_ML = tan_phi_deg_ML + 0.5*M.x[1]*180./math.pi
         tan_outer_deg_ML = tan_phi_deg_ML + M.x[1]*180./math.pi
       print "MEAN excursion",flex.mean(final),
       if OO.mosaic_refinement_target=="ML":
         print "mosaicity deg FW=",M.x[1]*180./math.pi
       else:
         print
-      if False: # Excursion vs resolution fit
+      if OO.parent.horizons_phil.integration.mosaic.enable_AD14F7B: # Excursion vs resolution fit
         from matplotlib import pyplot as plt
-        plt.plot(two_thetas, final, "g*")
+        plt.plot(two_thetas, final, "bo")
+        print helper.last_set_orientation.unit_cell()
+        #for sdp,tw in zip (dspacings,two_thetas):
+          #print sdp,tw
         if OO.mosaic_refinement_target=="ML":
           plt.plot(two_thetas, tan_phi_deg_ML, "r.")
           plt.plot(two_thetas, -tan_phi_deg_ML, "r.")
           plt.plot(two_thetas, tan_outer_deg_ML, "g.")
           plt.plot(two_thetas, -tan_outer_deg_ML, "g.")
         else:
+          plt.plot(two_thetas_env, excursion_rads_env *180./math.pi, "r|")
+          plt.plot(two_thetas_env, -excursion_rads_env *180./math.pi, "r|")
           plt.plot(two_thetas_env, excursion_rads_env *180./math.pi, "r-")
           plt.plot(two_thetas_env, -excursion_rads_env *180./math.pi, "r-")
           plt.plot(two_thetas, tan_phi_deg, "r.")
           plt.plot(two_thetas, -tan_phi_deg, "r.")
-          plt.plot(two_thetas, tan_outer_deg, "r.")
-          plt.plot(two_thetas, -tan_outer_deg, "r.")
+          plt.plot(two_thetas, tan_outer_deg, "g.")
+          plt.plot(two_thetas, -tan_outer_deg, "g.")
+        plt.xlim([0,30])
+        plt.ylim([-1.,1.])
         plt.show()
 
       if OO.mosaic_refinement_target=="ML":
