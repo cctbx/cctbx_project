@@ -67,7 +67,4 @@ mmtbx/wwpdb/*.pyc
 scitbx/array_family/detail/operator_functors.h
 scitbx/array_family/detail/std_imports.h
 sphinx/build
-xfel/Toy_Network/*.dat
-xfel/Toy_Network/*.pdf
-xfel/Toy_Network/generate_toy_data.py
 xfel/clustering/test_cluster.py
