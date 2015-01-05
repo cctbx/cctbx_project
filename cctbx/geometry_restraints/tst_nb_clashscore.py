@@ -1,26 +1,16 @@
 from __future__ import division
 from cctbx.geometry_restraints.manager import nonbonded_clashscore as nb
-from cStringIO import StringIO
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from cctbx.array_family import flex
-from cctbx import xray
+import mmtbx.monomer_library.server
+from mmtbx import monomer_library
+from cStringIO import StringIO
 from libtbx.utils import Sorry
+from cctbx import xray
 import libtbx.load_env
 import mmtbx.model
 import unittest
-import os.path
-
-#from cctbx.array_family import flex
-#from cctbx import geometry_restraints
-
-#from scitbx import matrix
-#from libtbx.test_utils import approx_equal, not_approx_equal, eps_eq, show_diff
-#from libtbx.utils import null_out
-#
-#import math
-#import sys
+import os
 
 '''
 Test non-bonded clashscore
@@ -329,14 +319,10 @@ HETATM  413  z!# A44 B  17      24.403   5.690   7.395  1.00 32.76           C
 """.splitlines()
 
 
-
 class test_nb_clashscore(unittest.TestCase):
 
-  #def setUp(self):
-    #'''
-    #Called to perform set-up steps prior to running any of the testing methods
-    #'''
-
+  def setUp(self):
+    self.file_to_delete = []
 
   def test_inline_angle(self):
     '''
@@ -669,6 +655,52 @@ class test_nb_clashscore(unittest.TestCase):
     full_connectivty_table = table_bonds.full_simple_connectivity()
     return sites_cart,site_labels,hd_sel,full_connectivty_table
 
+  def test_print(self):
+    """ test proper clashscore printout """
+    import mmtbx.monomer_library.pdb_interpretation as pdb_inter
+    from libtbx.utils import null_out
+    from iotbx.pdb import fetch
+    fn = '1a18'
+    # fetch pdb file
+    fn = fetch.get_pdb (fn,'pdb',mirror='rcsb',log=null_out())
+    self.file_to_delete.append(fn)
+    pdb_processed_file = pdb_inter.run(
+      args=[fn],
+      assume_hydrogens_all_missing=False,
+      hard_minimum_nonbonded_distance=0.0,
+      nonbonded_distance_threshold=None,
+      substitute_non_crystallographic_unit_cell_if_necessary=True,
+      log=null_out())
+
+    grm = pdb_processed_file.geometry_restraints_manager()
+    xrs = pdb_processed_file.xray_structure()
+
+    sites_cart = xrs.sites_cart()
+    site_labels = xrs.scatterers().extract_labels()
+    hd_sel = xrs.hd_selection()
+
+    results_str = grm.show_nonbonded_clashscore(
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      hd_sel=hd_sel,
+      log=null_out())
+
+    # inspect at output
+    results = results_str.split('\n')
+    # check number of lines in output
+    self.assertEqual(len(results),12)
+    # check general table structure
+    self.assertTrue(results[5].startswith('========'))
+    self.assertTrue(results[7].startswith('--------'))
+    self.assertTrue('sym_op_j' in results[6])
+    # print results_str
+
+
+  def tearDown(self):
+    """ delete files created in during testing"""
+    if self.file_to_delete:
+      for fn in self.file_to_delete:
+        if os.path.isfile(fn): os.remove(fn)
 
 if (__name__ == "__main__"):
   if (chem_data is None) :
