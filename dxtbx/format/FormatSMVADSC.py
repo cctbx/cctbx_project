@@ -96,6 +96,7 @@ class FormatSMVADSC(FormatSMV):
 
   def _scan(self):
     '''Return the scan information for this image.'''
+    import calendar
 
     format = self._scan_factory.format('SMV')
     exposure_time = float(self._header_dictionary['TIME'])
@@ -111,7 +112,7 @@ class FormatSMVADSC(FormatSMV):
       date_str = ''
     for format_string in ['%a %b %d %H:%M:%S %Y', '%a %b %d %H:%M:%S %Z %Y']:
       try:
-        epoch = time.mktime(time.strptime(date_str, format_string))
+        epoch = calendar.timegm(time.strptime(date_str, format_string))
         break
       except ValueError, e:
         pass
