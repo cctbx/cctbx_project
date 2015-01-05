@@ -248,6 +248,8 @@ class merging_stats (object) :
         unmerged=array)
       if (self.cc_one_half == 0) :
         self.cc_star = 0
+      elif (self.cc_one_half < -0.999) :
+        self.cc_star = float("-inf")
       else :
         mult = 1.
         if (self.cc_one_half < 0) :
