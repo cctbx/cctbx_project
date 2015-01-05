@@ -152,6 +152,7 @@ class FormatHDF5Nexus(FormatHDF5):
   def _scan(self):
     ''' Get the scan. '''
     import time
+    import calendar
     entry = self._h5_handle['entry']
     sample = entry['sample']
     pose = sample[self._pose_name]
@@ -167,7 +168,7 @@ class FormatHDF5Nexus(FormatHDF5):
     start_time = entry['start_time']
     time_ssec = start_time.value.split('.')
     time_struct = time.strptime(time_ssec[0], "%Y-%m-%dT%H:%M:%S")
-    start_time = time.mktime(time_struct) + float('0.%s' % time_ssec[1])
+    start_time = calendar.timegm(time_struct) + float('0.%s' % time_ssec[1])
     epochs = {0 : start_time}
     for i, t in enumerate(frame_time[:-1]):
       epochs[i+1] = epochs[i] + t

@@ -205,7 +205,7 @@ class FormatRAXIS(Format):
 
   def _scan(self):
     '''Return the scan information for this image.'''
-
+    import calendar
     i = self._i
     f = self._f
     header = self._header_bytes
@@ -215,7 +215,7 @@ class FormatRAXIS(Format):
 
     y, m, d = map(int, header[256:268].strip().split('-'))
 
-    epoch = time.mktime(datetime.datetime(y, m, d, 0, 0, 0).timetuple())
+    epoch = calendar.timegm(datetime.datetime(y, m, d, 0, 0, 0).timetuple())
 
     s = struct.unpack(i, header[980:984])[0]
 
