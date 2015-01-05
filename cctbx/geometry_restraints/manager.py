@@ -1218,6 +1218,56 @@ class manager(object):
       sites_cart=sites_cart)
     return nonbonded_clash_info
 
+  def show_nonbonded_clashscore(
+    self,
+    sites_cart,
+    hd_sel,
+    site_labels=None,
+    log=None):
+    """
+    Show (prints to log) CCTBX nonbonded_clash_info on clashing atoms
+
+    Args:
+      sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
+      site_labels: a list of lables such as " HA  LEU A  38 ", for each atom
+      hd_sel: hd_sel[i] retruns True of False, indicating whether an
+        atom i is a Hydrogen or not
+      log : when no log is given function will print to sys.stdout
+
+    Returns:
+      out_string (str): the output string that is printed to log
+    """
+    nb_clash = self.get_nonbonded_clashscore(
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      hd_sel=hd_sel)
+
+    if not log:
+      log = sys.stdout
+    out_list = []
+    all_clashes = round(nb_clash.nb_clashscore_all_clashes,2)
+    out_list.append('Total non-bonded CCTBX clashscore: {}'.format(all_clashes))
+    simple = round(nb_clash.nb_clashscore_simple,2)
+    out_list.append(
+      'Clashscore without symmetry or solvent clashes: {}'.format(simple))
+    due_to_sym_op = round(nb_clash.nb_clashscore_due_to_sym_op,2)
+    out_list.append('Clashscore due to symmetry: '.format(due_to_sym_op))
+    solvent = round(nb_clash.nb_clashscore_solvent_solvent,2)
+    out_list.append('Clashscore solvent - solvent clashes: '.format(solvent))
+    title = 'All clashing atoms info table'
+    title += ' based on pair_proxies.nonbonded_proxies data'
+    out_list.append(title)
+    out_list.append('='*len(title))
+    labels =  ["pdb labels","i_seq","j_seq","model","vdw","sym_op_j","rt_mx"]
+    out_str = '{:^50} | {:<5} | {:<5} | {:<6.4} | {:<6.4} | {:<10} | {:<8}'
+    out_list.append(out_str.format(*labels))
+    out_list.append('-'*108)
+    for data in nb_clash.nb_clash_proxies_all_clashes:
+      out_list.append(out_str.format(*data))
+    out_string = '\n'.join(out_list)
+    print >> log,out_string
+    return out_string
+
 def construct_non_crystallographic_conserving_bonds_and_angles(
       sites_cart,
       edge_list_bonds,
