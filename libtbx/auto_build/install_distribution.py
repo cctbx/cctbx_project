@@ -502,7 +502,7 @@ class installer (object) :
       print >> out, "ok"
     os.makedirs(tmp_bin_dir)
     # check for existing installations
-    print >> out, "finding existing installations..."
+    print >> out, "Finding existing installations..."
     lib_dir = op.join(self.build_dir, "lib")
     if (op.exists(lib_dir)) :
       print >> out, "Removing out-of-date lib directory...",
@@ -523,7 +523,7 @@ class installer (object) :
     untar(self.build_bundle_file, log=log, verbose=True,
       change_ownership=False,
       check_output_path=False)
-    os.chdir(self.modules_dir)
+    # os.chdir(self.modules_dir)
     untar(self.modules_bundle_file, log=log, verbose=True,
       change_ownership=False,
       check_output_path=False)
