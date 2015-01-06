@@ -59,7 +59,7 @@ Important Facts:
 
   - A map is defined by specifying a map type using 'map_type' keyword available
     within each scope of parameters: 'map_coefficients' or 'map'. The general
-    supported format for 'map_type' is: [p][m]Fo+[q][D]Fc[_kick][_filled]. For
+    supported format for 'map_type' is: [p][m]Fo+[q][D]Fc[_filled]. For
     example: 2Fo-Fc, 2mFobs-DFcalc, 3Fobs-2Fmodel, Fo-Fc, mfobs-Dfcalc, anom,
     llg.  The 'map_type' parser will automatically recognize which map is
     requested.
@@ -70,9 +70,6 @@ Important Facts:
 
   - The CCP4 or X-plor formatted maps can be computed in the entire unit cell
     or around selected atoms only.
-
-  - Kick maps and missing Fobs filling is done (if requested) as described in
-    Adams et al. (2010). Acta Cryst. D66, 213-221.
 
   - Twinning (if detected) will be accounted for automatically. This can be
     disabled by using "skip_twin_detection=True" keyword.
@@ -85,7 +82,7 @@ Important Facts:
 
   - For some map types certain 'map_coefficients' or 'map' scope parameters may
     not be applicable. For example, for "map_type=anomalous" the keywords
-    "kicked", "fill_missing_f_obs" and some other are not applicable.
+    "fill_missing_f_obs" and some other are not applicable.
 
   - For LLG map calculation, if you specify the wavelength any existing heavy
     atoms (P or heavier) will be modeled as anomalous scatterers using the
@@ -139,7 +136,6 @@ def analyze_input_params(params):
       del mcp[i]
       continue
     if(mmtbx.map_names(mcp_.map_type).anomalous):
-      mcp_.kicked = False
       mcp_.fill_missing_f_obs = False
       mcp_.acentrics_scale = 2.0
       mcp_.centrics_pre_scale = 1.0
@@ -155,7 +151,6 @@ def analyze_input_params(params):
       del mp[i]
       continue
     if(mmtbx.map_names(mp_.map_type).anomalous):
-      mp_.kicked = False
       mp_.fill_missing_f_obs = False
       mp_.acentrics_scale = 2.0
       mp_.centrics_pre_scale = 1.0
