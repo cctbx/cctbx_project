@@ -141,7 +141,7 @@ class ModuleManager(object):
 ##### Base Configuration      #####
 ###################################
 
-class CCIBuilder(object):
+class Builder(object):
   """Create buildbot configurations for CCI and CCTBX-like software."""
   # Base packages
   BASE_PACKAGES = 'all'
@@ -377,7 +377,7 @@ class CCIBuilder(object):
 
 ##### Specific Configurations ######
 
-class CCTBXBaseBuilder(CCIBuilder):
+class CCIBuilder(Builder):
   """Base class for packages that include CCTBX as a dependency."""
   # Base packages
   BASE_PACKAGES = 'all'
@@ -386,7 +386,6 @@ class CCTBXBaseBuilder(CCIBuilder):
     'cbflib',
     'cctbx_project',
     'gui_resources',
-    'chem_data',
     'ccp4io_adaptbx',
     'annlib_adaptbx',
     'tntbx',
@@ -414,36 +413,33 @@ class CCTBXBaseBuilder(CCIBuilder):
     'dxtbx',
     'gltbx',
     'wxtbx',
-    'chem_data'
   ]
   LIBTBX_EXTRA = []
-  def add_install(self):
-    self.add_command('mmtbx.rebuild_rotarama_cache')
 
 ##### CCTBX-derived packages #####
 
-class CCTBXBuilder(CCTBXBaseBuilder):
+class CCTBXBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
-  CODEBASES_EXTRA = [ 'phenix_regression']
+  CODEBASES_EXTRA = ['phenix_regression']
   LIBTBX_EXTRA = ['phenix_regression']
   def add_tests(self):
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')
 
-class DIALSBuilder(CCTBXBaseBuilder):
+class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials',]
   LIBTBX_EXTRA = ['dials',]
   def add_tests(self):
     self.add_test_parallel('dials')
 
-class LABELITBuilder(CCTBXBaseBuilder):
+class LABELITBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['labelit', 'labelit_regression']
   LIBTBX_EXTRA = ['labelit', 'labelit_regression']
   def add_tests(self):
     pass
 
-class XFELBuilder(CCTBXBaseBuilder):
+class XFELBuilder(CCIBuilder):
  CODEBASES_EXTRA = [
    'dials',
    'labelit',
@@ -462,8 +458,9 @@ class XFELBuilder(CCTBXBaseBuilder):
  def add_tests(self):
    self.add_test_parallel('xfel_regression')
 
-class PHENIXBuilder(CCTBXBaseBuilder):
+class PHENIXBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
+    'chem_data',
     'phenix',
     'phenix_regression',
     'phenix_html',
@@ -488,9 +485,10 @@ class PHENIXBuilder(CCTBXBaseBuilder):
     'reduce',
     'probe',
     'king',
-    'suitename'
+    'suitename',
   ]
   LIBTBX_EXTRA = [
+    'chem_data',
     'phenix',
     'phenix_regression',
     'phenix_examples',
@@ -501,8 +499,10 @@ class PHENIXBuilder(CCTBXBaseBuilder):
     'labelit',
     'elbow',
     'reduce',
-    'probe'
+    'probe',
   ]
+  def add_install(self):
+    self.add_command('mmtbx.rebuild_rotarama_cache')  
   def add_tests(self):
     # Windows convenience hack.
     if 'windows' in self.platform:
