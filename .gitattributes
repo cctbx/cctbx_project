@@ -133,10 +133,12 @@ cctbx/examples/unit_cell_minimizers.py svneol=native#text/x-python
 cctbx/french_wilson.h -text
 cctbx/french_wilson.py svneol=native#text/x-python
 cctbx/geometry_restraints/bond_misc.h svneol=native#text/plain
+cctbx/geometry_restraints/clash_score.py -text
 cctbx/geometry_restraints/gradients.tex -text
 cctbx/geometry_restraints/parallelity.h -text
 cctbx/geometry_restraints/parallelity_bpl.cpp -text
 cctbx/geometry_restraints/tst_angle_derivs.py svneol=native#text/x-python
+cctbx/geometry_restraints/tst_clash_score.py -text
 cctbx/geometry_restraints/tst_nb_clashscore.py -text
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
 cctbx/maptbx/SConscript -text
