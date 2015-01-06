@@ -5444,7 +5444,7 @@ class process(object):
           xrs = self.xray_structure()
           sites_cart = xrs.sites_cart()
           hd_sel = xrs.hd_selection()
-          nb_clash_info = grm.get_nonbonded_clashscore(
+          nb_clash_info = grm.nonbonded_clashscore_info(
             sites_cart=sites_cart,
             site_labels=site_labels,
             hd_sel=hd_sel)
