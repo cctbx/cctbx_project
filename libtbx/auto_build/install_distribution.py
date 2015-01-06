@@ -96,8 +96,9 @@ class installer (object) :
   remove_sources_default = False
   # options passed to install_base_packages.py
   base_package_options = []
-  source_packages = [
-    "cctbx_bundle",
+  base_modules = []
+  modules = [
+    "cctbx_project",
   ]
   # modules that need to be configured for use in the final installation.
   # this will automatically include dependencies.
@@ -113,9 +114,11 @@ class installer (object) :
     "mac-intel-osx-x86_64",
   ]
 
-  def __init__ (self, args, out=sys.stdout) :
-    self.args = args
+  def __init__ (self, args=None, out=sys.stdout) :
+    self.args = args or []
     self.out = out
+    
+  def install(self):
     self.apps_built = False # flag for Mac OS
     check_python_version()
     self.parse_options()
@@ -419,7 +422,7 @@ class installer (object) :
       print >> out, "--base-only was specified, so skipping %s libraries" % \
         self.product_name
       return
-    for pkg_name in self.source_packages :
+    for pkg_name in self.modules :
       pkg_file = op.join(self.src_dir, pkg_name + ".tar.gz")
       if (not op.isfile(pkg_file)) :
         raise RuntimeError("Can't find %s" % pkg_file)
