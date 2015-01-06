@@ -344,7 +344,7 @@ class info(object):
        assume_hydrogens_all_missing=False,
        hard_minimum_nonbonded_distance=0.0
 
-    The defult values of these are True and 0.001, which will alter
+    The default values of these are True and 0.001, which will alter
     the size of the vdw bonds and the clashes that being counted
 
     As of Dec. 2013 manipulation of scatterers can produce scatteres whish
@@ -363,15 +363,16 @@ class info(object):
       by_value="delta",
       sites_cart=sites_cart,
       site_labels=site_labels)
+
     if proxies_info_nonbonded != None:
       nonbonded_list = proxies_info_nonbonded[0]
     else:
       nonbonded_list = []
-    import cctbx.geometry_restraints.clash_score as clash_score
+
     grm=geometry_restraints_manager
     fsc0=grm.shell_sym_tables[0].full_simple_connectivity()
     fsc2=grm.shell_sym_tables[2].full_simple_connectivity()
-    self.result = clash_score.compute(
+    self.result = compute(
       nonbonded_list=nonbonded_list,
       hd_sel=hd_sel,
       full_connectivty_table=fsc0,

@@ -4,8 +4,10 @@ import mmtbx.monomer_library.pdb_interpretation
 from cctbx.array_family import flex
 import mmtbx.monomer_library.server
 from mmtbx import monomer_library
+from libtbx.utils import null_out
 from cStringIO import StringIO
 from libtbx.utils import Sorry
+from iotbx.pdb import fetch
 from cctbx import xray
 import libtbx.load_env
 import mmtbx.model
@@ -323,6 +325,11 @@ class test_nb_clashscore(unittest.TestCase):
 
   def setUp(self):
     self.file_to_delete = []
+    # import files used in tests
+    fn = '1a18'
+    # fetch pdb file
+    fn = fetch.get_pdb (fn,'pdb',mirror='rcsb',log=null_out())
+    self.file_to_delete.append(fn)
 
   def test_inline_angle(self):
     '''
@@ -453,7 +460,8 @@ class test_nb_clashscore(unittest.TestCase):
       show_energies      = False,
       plain_pairs_radius = 5.0)
     xrs = processed_pdb_file.xray_structure()
-    sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(xrs,grm)
+    sites_cart,site_labels,hd_sel,full_connectivty_table = \
+      self.get_clashscore_param(xrs,grm)
     nb_clashscore = grm.nonbonded_clashscore_info(
       sites_cart=sites_cart,
       site_labels=site_labels,
@@ -466,7 +474,8 @@ class test_nb_clashscore(unittest.TestCase):
     sel = flex.bool([True, True, False])
     grm = grm.select(selection=sel)
     xrs = xrs.select(selection=sel)
-    sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(xrs,grm)
+    sites_cart,site_labels,hd_sel,full_connectivty_table = \
+      self.get_clashscore_param(xrs,grm)
     nb_clashscore = grm.nonbonded_clashscore_info(
       sites_cart=sites_cart,
       site_labels=site_labels,
@@ -624,10 +633,11 @@ class test_nb_clashscore(unittest.TestCase):
       nonbonded_distance_threshold=nonbonded_distance_threshold)
 
     xrs = pdb_processed_file.xray_structure()
-    sites_cart,site_labels,hd_sel,full_connectivty_table = self.get_clashscore_param(
-      xrs,
-      grm,
-      use_site_labels=use_site_labels)
+    sites_cart,site_labels,hd_sel,full_connectivty_table = \
+      self.get_clashscore_param(
+        xrs,
+        grm,
+        use_site_labels=use_site_labels)
 
     return grm.nonbonded_clashscore_info(sites_cart=sites_cart,
                                         site_labels=site_labels,
@@ -658,14 +668,9 @@ class test_nb_clashscore(unittest.TestCase):
   def test_print(self):
     """ test proper clashscore printout """
     import mmtbx.monomer_library.pdb_interpretation as pdb_inter
-    from libtbx.utils import null_out
-    from iotbx.pdb import fetch
-    fn = '1a18'
-    # fetch pdb file
-    fn = fetch.get_pdb (fn,'pdb',mirror='rcsb',log=null_out())
-    self.file_to_delete.append(fn)
+    import cctbx.geometry_restraints.clash_score as clash_score
     pdb_processed_file = pdb_inter.run(
-      args=[fn],
+      args=['1a18.pdb'],
       assume_hydrogens_all_missing=False,
       hard_minimum_nonbonded_distance=0.0,
       nonbonded_distance_threshold=None,
@@ -678,7 +683,7 @@ class test_nb_clashscore(unittest.TestCase):
     sites_cart = xrs.sites_cart()
     site_labels = xrs.scatterers().extract_labels()
     hd_sel = xrs.hd_selection()
-    import cctbx.geometry_restraints.clash_score as clash_score
+
     results_str = clash_score.info(
       geometry_restraints_manager=grm,
       sites_cart=sites_cart,
@@ -695,6 +700,14 @@ class test_nb_clashscore(unittest.TestCase):
     self.assertTrue('sym_op_j' in results[6])
     # print results_str
 
+  def test_pdb_interpretation_from_command_line(self):
+    """
+    make sure pdb_interpretation can run without errors when showing
+    clashscore info """
+    from libtbx import easy_run
+    cmd = 'phenix.pdb_interpretation 1a18.pdb nonbonded_clashscore=true'
+    r = easy_run.go(cmd,join_stdout_stderr=False)
+    self.assertFalse(bool(r.stderr_lines))
 
   def tearDown(self):
     """ delete files created in during testing"""
