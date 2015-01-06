@@ -71,14 +71,12 @@ class SetupInstaller(object):
     self.install_script = kwargs.get('install_script')
     self.version = kwargs.get('version')    
     self.host_tag = kwargs.get('host_tag')
-    self.pkg_dir = kwargs.get('pkg_dir')
     self.readme = kwargs.get('readme')
     self.license = kwargs.get('license')
     self.script = kwargs.get('script')
     self.modules = set(kwargs.get('modules') or [])
     self.base_modules = set(kwargs.get('base_modules') or [])
     # 
-    self.root = '/Users/irees/phenix'
     self.dest = os.path.abspath(kwargs.get('dest'))
     self.readme = self.readme or [os.path.join(libtbx_path, 'COPYRIGHT_2_0.txt')]
     # Load the installer class, get the list of modules.
@@ -165,7 +163,7 @@ class SetupInstaller(object):
     # Source modules #
     for module in self.modules:
       archive(
-        os.path.join(self.pkg_dir, module),
+        os.path.join(self.root, 'modules', module),
         os.path.join(self.dest, 'modules', module)
       )
     tar(
@@ -181,7 +179,7 @@ class SetupInstaller(object):
     # and regression tests
     # for module in self.base_modules:
     #   archive(
-    #     os.path.join(self.pkg_dir, module),
+    #     os.path.join(self.root, 'modules', module),
     #     os.path.join(self.dest, 'bundles', module),
     #   )
     #   tar(
@@ -199,8 +197,8 @@ def run (args) :
     help="Host tag (OS/distribution label)", default=None)    
   parser.add_option("--binary", dest="binary", action="store_true",
     help="Setup for binary installer only (no source packages)", default=False)
-  parser.add_option("--pkg_dir", dest="pkg_dir", action="store",
-    help="Directory with source packages", default=None)
+  parser.add_option("--root", dest="root", action="store",
+    help="Directory with source packages", default=os.getcwd())
   parser.add_option("--dest", dest="dest", action="store",
     help="Destination folder", default=os.getcwd())
   parser.add_option("--readme", dest="readme", action="append",
@@ -217,7 +215,7 @@ def run (args) :
   setup = SetupInstaller(
     version=options.version,
     host_tag=options.host_tag,
-    pkg_dir=options.pkg_dir,
+    root=options.root,
     dest=options.dest,
     readme=options.readme,
     license=options.license,
