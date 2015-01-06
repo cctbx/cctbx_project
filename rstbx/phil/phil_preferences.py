@@ -99,6 +99,12 @@ integration {
     enable_simplex = False
       .type = bool
       .help = simplex_optimization
+    enable_AD14F7B = False
+      .type = bool
+      .help = enable Sauter et al. Acta D (2014) 70:3299-3309, Fig. 7(b) plot, angular excursion vs two theta
+    enable_polychromatic = False
+      .type = bool
+      .help = followup top hat wavelength dispersion
   }
   montecarlo_integration_limit = None
     .type = float
