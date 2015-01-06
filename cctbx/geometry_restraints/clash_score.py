@@ -396,25 +396,31 @@ class info(object):
     nb_clash = self.result
     if not log: log = sys.stdout
     out_list = []
-    all_clashes = round(nb_clash.nb_clashscore_all_clashes,2)
-    out_list.append('Total non-bonded CCTBX clashscore: {}'.format(all_clashes))
-    simple = round(nb_clash.nb_clashscore_simple,2)
-    out_list.append(
-      'Clashscore without symmetry or solvent clashes: {}'.format(simple))
-    due_to_sym_op = round(nb_clash.nb_clashscore_due_to_sym_op,2)
-    out_list.append('Clashscore due to symmetry: '.format(due_to_sym_op))
-    solvent = round(nb_clash.nb_clashscore_solvent_solvent,2)
-    out_list.append('Clashscore solvent - solvent clashes: '.format(solvent))
+    result_str = '{:<50} :{:5.2f}'
+    names = ['Total non-bonded CCTBX clashscore',
+             'Clashscore without symmetry or solvent clashes',
+             'Clashscore due to symmetry',
+             'Clashscore solvent - solvent clashes']
+    scores = [nb_clash.nb_clashscore_all_clashes,
+              nb_clash.nb_clashscore_simple,
+              nb_clash.nb_clashscore_due_to_sym_op,
+              nb_clash.nb_clashscore_solvent_solvent]
+    for name,score in zip(names,scores):
+      out_list.append(result_str.format(name,round(score,2)))
     title = 'All clashing atoms info table'
     title += ' based on pair_proxies.nonbonded_proxies data'
     out_list.append(title)
     out_list.append('='*len(title))
     labels =  ["pdb labels","i_seq","j_seq","model","vdw","sym_op_j","rt_mx"]
-    out_str = '{:^50} | {:<5} | {:<5} | {:<6.4} | {:<6.4} | {:<10} | {:<8}'
+    out_str = '{:^35} | {:<5} | {:<5} | {:<6.4} | {:<6.4} | {:<10} | {:<8}'
     out_list.append(out_str.format(*labels))
-    out_list.append('-'*108)
+    out_list.append('-'*93)
     for data in nb_clash.nb_clash_proxies_all_clashes:
-      out_list.append(out_str.format(*data))
+      d = list(data)
+      d[0] = ','.join(data[0])
+      d[0] = d[0].replace('"','')
+      d[0] = d[0].replace('pdb=','')
+      out_list.append(out_str.format(*d))
     out_string = '\n'.join(out_list)
     print >> log,out_string
     return out_string
