@@ -82,7 +82,8 @@ def has_tls(remark_3_records):
     if(line.count("S13") or line.count("S 13")): n_s += 1
     if(line.count("S23") or line.count("S 23")): n_s += 1
     if(line.count("S33") or line.count("S 33")): n_s += 1
-  if(n_t > 3 and n_l > 3 and n_s > 3): result = True
+  if(n_t>0 and n_t%6==0 and n_l>0 and n_l%6==0 and n_t==n_l and n_s%9==0):
+    return True
   return result
 
 def prepocess_line(line):
