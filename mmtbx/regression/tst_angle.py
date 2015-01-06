@@ -796,16 +796,12 @@ def run(prefix, target, pdb_strs, eps=1.e-3):
     of = open("%s.pdb"%prefix, "w")
     print >> of, pdb_str
     of.close()
-    cmd1="phenix.angle %s.pdb 'chain X' 'chain Y'>%s.zlog"%(prefix,prefix)
-    cmd2="phenix.angle %s.pdb 'chain Y' 'chain X'>%s.zlog"%(prefix,prefix)
+    cmd1="phenix.angle %s.pdb 'chain X' 'chain Y' "%(prefix)
+    cmd2="phenix.angle %s.pdb 'chain Y' 'chain X' "%(prefix)
     for cmd in [cmd1,cmd2]:
-      easy_run.call(cmd)
-      of=open("%s.zlog"%prefix,"r")
-      for l in of.readlines():
-        if(l.startswith("Angle :")):
-          a = float(l.split()[2])
-          assert approx_equal(a, target, eps)
-          cntr += 1
+      r = float(easy_run.go(cmd).stdout_lines[2].split()[2])
+      assert approx_equal(r, target, eps)
+      cntr += 1
   assert cntr == len(pdb_strs)*2, cntr
 
 if (__name__ == "__main__"):
