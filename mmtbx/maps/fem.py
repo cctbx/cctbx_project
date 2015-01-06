@@ -168,9 +168,13 @@ class run(object):
     sel = self.f_obs.data()>0
     self.f_obs = self.f_obs.select(sel)
     self.r_free_flags = self.r_free_flags.select(sel)
-    for ma in [self.f_obs, self.r_free_flags]:
-      merged = ma.as_non_anomalous_array().merge_equivalents()
-      ma = merged.array().set_observation_type(ma)
+    #
+    merged = self.f_obs.as_non_anomalous_array().merge_equivalents()
+    self.f_obs = merged.array().set_observation_type(self.f_obs)
+    #
+    merged = self.r_free_flags.as_non_anomalous_array().merge_equivalents()
+    self.r_free_flags = merged.array().set_observation_type(self.r_free_flags)
+    #
     self.f_obs, self.r_free_flags = self.f_obs.common_sets(self.r_free_flags)
 
   def create_fmodel(self, update_f_part1=True, show=False):

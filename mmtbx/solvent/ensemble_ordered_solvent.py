@@ -218,16 +218,14 @@ class manager(object):
     self.fpp.map_next_to_model.max_model_peak_dist = self.params.preserved_solvent_minimum_distance
     peaks = self.find_peaks(
       map_type     = self.params.primary_map_type,
-      map_cutoff   = self.params.primary_map_cutoff,
-      use_kick_map = False).peaks_mapped()
+      map_cutoff   = self.params.primary_map_cutoff).peaks_mapped()
     if(peaks is not None):
       self.sites, self.heights = peaks.sites, peaks.heights
     #Solvent Pick from 2nd Map (optional)
     if self.params.secondary_map_type is not None:
       peaks = self.find_peaks(
         map_type     = self.params.secondary_map_type,
-        map_cutoff   = self.params.secondary_map_cutoff_keep,
-        use_kick_map = False).peaks_mapped()
+        map_cutoff   = self.params.secondary_map_cutoff_keep).peaks_mapped()
       if(peaks is not None and self.sites is not None):
         self.sites.extend(peaks.sites)
         self.heights.extend(peaks.heights)
@@ -259,8 +257,7 @@ class manager(object):
     self.fpp.map_next_to_model.max_model_peak_dist = store_max_peak_dist
     peaks_fo_fc = self.find_peaks(
       map_type     = self.params.primary_map_type,
-      map_cutoff   = self.params.primary_map_cutoff,
-      use_kick_map = False).peaks_mapped()
+      map_cutoff   = self.params.primary_map_cutoff).peaks_mapped()
     if (peaks_fo_fc is not None) and (peaks_fo_fc.sites is not None) :
       new_scatterers = flex.xray_scatterer(
         peaks_fo_fc.sites.size(),
@@ -275,8 +272,7 @@ class manager(object):
 
       peaks_2fo_fc = self.find_peaks(
           map_type     = self.params.secondary_map_type,
-          map_cutoff   = self.params.secondary_map_cutoff_find,
-          use_kick_map = False).peaks_mapped()
+          map_cutoff   = self.params.secondary_map_cutoff_find).peaks_mapped()
 
       atom_nearest_to_peak = new_solvent_xray_structure.closest_distances(
                                 sites_frac      = peaks_2fo_fc.sites,
@@ -375,7 +371,7 @@ class manager(object):
         result = False
     return result
 
-  def find_peaks(self, map_type, map_cutoff, use_kick_map=False):
+  def find_peaks(self, map_type, map_cutoff):
     self.fmodel.update_xray_structure(
       xray_structure = self.model.xray_structure,
       update_f_calc  = False)
@@ -387,8 +383,6 @@ class manager(object):
                               map_type        = map_type,
                               map_cutoff      = map_cutoff,
                               params          = self.fpp,
-                              use_kick_map    = False,
-                              kick_map_params = None,
                               use_all_data    = False,
                               silent          = silent,
                               log             = self.log)

@@ -165,7 +165,6 @@ tst_list = (
   "$D/regression/tst_build_alt_confs.py",
   "$D/refinement/tst_group.py",
   "$D/refinement/tst_group_2.py",
-  "$D/regression/tst_phenix_angle.py",
   "$D/secondary_structure/build/tst_1.py",
   "$D/secondary_structure/build/tst_2.py",
   "$D/utils/tst_switch_rotamers.py",
