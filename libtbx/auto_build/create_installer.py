@@ -19,6 +19,7 @@ import stat
 import os
 import sys
 import subprocess
+import imp
 
 import libtbx.auto_build.rpath
 
@@ -74,12 +75,18 @@ class SetupInstaller(object):
     self.readme = kwargs.get('readme')
     self.license = kwargs.get('license')
     self.script = kwargs.get('script')
-    self.modules = kwargs.get('modules')
-    self.base_modules = kwargs.get('base_modules')
+    self.modules = set(kwargs.get('modules') or [])
+    self.base_modules = set(kwargs.get('base_modules') or [])
     # 
-    self.dest = os.path.abspath(kwargs.get('dest'))
     self.root = '/Users/irees/phenix'
+    self.dest = os.path.abspath(kwargs.get('dest'))
     self.readme = self.readme or [os.path.join(libtbx_path, 'COPYRIGHT_2_0.txt')]
+    # Load the installer class, get the list of modules.
+    assert os.path.isfile(self.install_script)
+    installer_module = imp.load_source('install_script', self.install_script)
+    installer = installer_module.installer()
+    self.modules |= set(installer.modules)
+    self.base_modules |= set(installer.base_modules)
 
   def run(self):
     # Setup directory structure
@@ -107,7 +114,6 @@ class SetupInstaller(object):
     if os.path.isfile(self.license):
       shutil.copyfile(self.license, os.path.join(self.dest, 'LICENSE'))
     # Actual Python installer script
-    assert os.path.isfile(self.install_script)
     shutil.copyfile(self.install_script, os.path.join(self.dest, 'bin', 'install.py'))
     # Write executable Bash script wrapping Python script
     with open(os.path.join(self.dest, 'install'), 'w') as f:
