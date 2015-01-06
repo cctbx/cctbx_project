@@ -3,8 +3,8 @@ import math
 
 class compute(object):
   """
-  Object processing information on non-bonded steric clashes. When the
-  distance between atoms is smaller than the Van Der Waals distance.
+  Compute clashscore using cctbx geometry restraints manager. Similar but not
+  identical to MolProbity clashscore. Symmetry interactions are included.
 
   @author: Youval Dar (LBL 2013)
   """
@@ -57,7 +57,7 @@ class compute(object):
       self.nb_clash_proxies_solvent_solvent = clashlist[1]
       self.nb_clash_proxies_simple = clashlist[2]
       self.nb_clash_proxies_all_clashes = clashlist[0] + clashlist[1] + clashlist[2]
-      # clashscore is the number of serious steric overlaps (>0.4A) per 1000 atoms
+      # clashscore is the number of steric overlaps (>0.4A) per 1000 atoms
       n_atoms = len(self.sites_cart)
       clashscore_due_to_sym_op = len(clashlist[0])*1000/n_atoms
       clashscore_solvent_solvent = len(clashlist[1])*1000/n_atoms
@@ -327,8 +327,7 @@ class info(object):
     sites_cart,
     hd_sel,
     site_labels=None):
-    '''(multiple arguments) -> nonbonded_clashscore obj
-
+    '''
     Construct nonbonded_clash_info, the non-bonded clashss lists and scores
 
     Arguments:
@@ -340,9 +339,6 @@ class info(object):
     As of Dec. 2013 manipulation of scatterers can produce scatteres which
     have no lables. In that case, water interaction score will not be accurate
 
-    Return:
-       self.nonbonded_clash_info
-
     NOTE:
     Be aware to the parameters:
        assume_hydrogens_all_missing=False,
@@ -353,33 +349,6 @@ class info(object):
 
     As of Dec. 2013 manipulation of scatterers can produce scatteres whish
     have no lables. In that case, water interaction score will not be accurate
-
-
-    Usage example:
-    mon_lib_srv = mmtbx.monomer_library.server.server()
-    ener_lib = mmtbx.monomer_library.server.ener_lib()
-
-    pdb = monomer_library.pdb_interpretation.process(
-      file_name=None,
-      raw_records=records,
-      substitute_non_crystallographic_unit_cell_if_necessary=True,
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib)
-
-    grm = pdb.geometry_restraints_manager(
-      assume_hydrogens_all_missing=False,
-      hard_minimum_nonbonded_distance=0.0))
-
-    xrs = pdb.xray_structure()
-    sites_cart = xrs.sites_cart()
-    site_labels = xrs.scatterers().extract_labels()
-    hd_sel = xrs.hd_selection()
-
-    nb_clash_info = grm.get_nonbonded_clashscore(
-      sites_cart=sites_cart,
-      site_labels=site_labels,
-      hd_sel=hd_sel)
-
 
     @author: Youval Dar, LBL 12-2013
     '''
