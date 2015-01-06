@@ -12,7 +12,6 @@ import sys
 from mmtbx import map_tools
 from cctbx import miller
 from cctbx import maptbx
-import mmtbx.maps.kick
 
 map_coeff_params_base_str = """\
   map_coefficients
@@ -33,9 +32,6 @@ map_coeff_params_base_str = """\
       .type = str
       .short_caption = MTZ label for phases
       .style = bold
-    kicked = False
-      .type = bool
-      .short_caption = Kicked map
     fill_missing_f_obs = False
       .type = bool
       .short_caption = Fill missing F(obs) with F(calc)
@@ -107,9 +103,6 @@ map_params_base_str ="""\
     file_name = None
       .type = path
       .style = bold new_file
-    kicked = False
-      .type = bool
-      .expert_level=0
     fill_missing_f_obs = False
       .type = bool
       .expert_level=0
@@ -260,11 +253,10 @@ def cast_map_coeff_params(map_type_obj):
       mtz_label_amplitudes = %s
       mtz_label_phases = P%s
       map_type = %s
-      kicked = %s
       fill_missing_f_obs = %s
     }
 """%(map_type_obj.format(), map_type_obj.format(), map_type_obj.format(),
-     map_type_obj.kicked, map_type_obj.f_obs_filled)
+     map_type_obj.f_obs_filled)
   return iotbx.phil.parse(map_coeff_params_str, process_includes=False)
 
 class map_coeffs_mtz_label_manager:
@@ -412,42 +404,29 @@ def map_coefficients_from_fmodel(
     e_map_obj = map_calculation_server
     xrs = map_calculation_server.fmodel.xray_structure
   coeffs = None
-  if(not params.kicked):
-    coeffs = e_map_obj.map_coefficients(
-      map_type           = params.map_type,
-      acentrics_scale    = params.acentrics_scale,
-      centrics_pre_scale = params.centrics_pre_scale,
-      fill_missing       = params.fill_missing_f_obs,
-      isotropize         = params.isotropize,
-      exclude_free_r_reflections=params.exclude_free_r_reflections,
-      ncs_average=getattr(params, "ncs_average", False),
-      post_processing_callback=post_processing_callback,
-      pdb_hierarchy=pdb_hierarchy,
-      merge_anomalous=True)
-    if (coeffs is None) : return None
-    if(params.sharpening):
-      from mmtbx import map_tools
-      coeffs, b_sharp = map_tools.sharp_map(
-        sites_frac = xrs.sites_frac(),
-        map_coeffs = coeffs,
-        b_sharp    = params.sharpening_b_factor)
-  else:
-    if(params.map_type.count("anom")==0):
-      if(fmodel is None):
-        fmodel = map_calculation_server.fmodel
-      crystal_gridding = fmodel.f_obs().crystal_gridding(
-        d_min              = fmodel.f_obs().d_min(),
-        symmetry_flags     = maptbx.use_space_group_symmetry,
-        resolution_factor  = 0.25)
-      coeffs = mmtbx.maps.kick.run(
-        fmodel   = e_map_obj.fmodel,
-        crystal_gridding=crystal_gridding,
-        map_type = params.map_type).mc_result
+  coeffs = e_map_obj.map_coefficients(
+    map_type           = params.map_type,
+    acentrics_scale    = params.acentrics_scale,
+    centrics_pre_scale = params.centrics_pre_scale,
+    fill_missing       = params.fill_missing_f_obs,
+    isotropize         = params.isotropize,
+    exclude_free_r_reflections=params.exclude_free_r_reflections,
+    ncs_average=getattr(params, "ncs_average", False),
+    post_processing_callback=post_processing_callback,
+    pdb_hierarchy=pdb_hierarchy,
+    merge_anomalous=True)
+  if (coeffs is None) : return None
+  if(params.sharpening):
+    from mmtbx import map_tools
+    coeffs, b_sharp = map_tools.sharp_map(
+      sites_frac = xrs.sites_frac(),
+      map_coeffs = coeffs,
+      b_sharp    = params.sharpening_b_factor)
   # XXX need to figure out why this happens
   if (coeffs is None) :
     raise RuntimeError(("Map coefficient generation failed (map_type=%s, "
-      "kicked=%s, sharpening=%s, isotropize=%s, anomalous=%s.") %
-        (params.map_type, params.kicked, params.sharpening, params.isotropize,
+      "sharpening=%s, isotropize=%s, anomalous=%s.") %
+        (params.map_type, params.sharpening, params.isotropize,
          fmodel.f_obs().anomalous_flag()))
   if(coeffs.anomalous_flag()) :
     coeffs = coeffs.average_bijvoet_mates()
@@ -509,11 +488,6 @@ class compute_map_coefficients(object):
     self.map_coeffs = []
     for mcp in params:
       if(mcp.map_type is not None):
-        if(fmodel.is_twin_fmodel_manager() and mcp.kicked) :
-          raise Sorry("Kicked maps are not supported when twinning is present.  "+
-            "You can disable the automatic twin law detection by setting the "+
-            "parameter maps.skip_twin_detection to True (or check the "+
-            "corresponding box in the Phenix GUI).")
         if(fmodel.is_twin_fmodel_manager()) and (mcp.isotropize) :
           mcp.isotropize = False
         coeffs = map_coefficients_from_fmodel(

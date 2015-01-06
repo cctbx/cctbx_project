@@ -36,6 +36,8 @@ update_grads_shift = 0.3
   .type = float
   .short_caption = Update gradient shifts
   .expert_level=2
+random_seed = None
+  .type = int
 """
 
 master_params_str = """\
@@ -155,6 +157,7 @@ class run(object):
         n_steps              = self.params.number_of_steps,
         time_step            = self.params.time_step,
         n_print              = self.params.n_print,
+        random_seed          = self.params.random_seed,
         stop_cm_motion       = cmremove,
         reset_velocities     = reset_velocities,
         log                  = self.log,

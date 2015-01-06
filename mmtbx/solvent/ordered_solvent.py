@@ -390,13 +390,11 @@ class manager(object):
       xray_structure = self.model.xray_structure,
       update_f_calc  = True)
     return find_peaks.manager(
-      fmodel          = self.fmodel,
-      map_type        = map_type,
-      map_cutoff      = map_cutoff,
-      params          = self.find_peaks_params,
-      use_kick_map    = False,
-      kick_map_params = None,
-      log             = self.log)
+      fmodel     = self.fmodel,
+      map_type   = map_type,
+      map_cutoff = map_cutoff,
+      params     = self.find_peaks_params,
+      log        = self.log)
 
   def correct_drifted_waters(self, map_cutoff):
     self.fmodel.update_xray_structure(
