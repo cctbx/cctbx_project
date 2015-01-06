@@ -64,7 +64,6 @@ if [ "$LIBTBX_DISPATCHER_NAME" != "libtbx.scons" ] && \
    [ -z "$PHENIX_TRUST_OTHER_ENV" ]; then
   # work around broken library environments
   LD_LIBRARY_PATH=""
-  DYLD_LIBRARY_PATH=""
   PYTHONPATH=""
 fi
 # include before command
@@ -77,14 +76,8 @@ if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
     export BOOST_ADAPTBX_FPE_DEFAULT=1
     export BOOST_ADAPTBX_SIGNALS_DEFAULT=1
   fi
-  if [ "$LIBTBX_OS_NAME" = "Darwin" ]; then
-    if [ -z "$DYLD_LIBRARY_PATH" ]; then
-      DYLD_LIBRARY_PATH=%s
-    else
-      DYLD_LIBRARY_PATH=%s:$DYLD_LIBRARY_PATH
-    fi
-    export DYLD_LIBRARY_PATH
-  else
+  echo $LIBTBX_OS_NAME
+  if [ "$LIBTBX_OS_NAME" == "Linux" ]; then
     export OLD_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
     export OLD_XDG_DATA_DIRS=$XDG_DATA_DIRS
     if [ -z "$LD_LIBRARY_PATH" ]; then
@@ -121,9 +114,7 @@ if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
     export PATH
   fi
 fi
-""" % (base_path, ":".join(dyld_library_paths), ":".join(dyld_library_paths),
-       ":".join(ld_library_paths), ":".join(ld_library_paths),
-       options.gtk_version)
+""" % (base_path, ":".join(ld_library_paths), ":".join(ld_library_paths), options.gtk_version)
   if (epilogue is not None) :
     f.write(epilogue + "\n")
   if (options.epilogue is not None) :
