@@ -77,6 +77,7 @@ class SetupInstaller(object):
     self.modules = set(kwargs.get('modules') or [])
     self.base_modules = set(kwargs.get('base_modules') or [])
     # 
+    self.root = os.path.abspath(kwargs.get('root'))
     self.dest = os.path.abspath(kwargs.get('dest'))
     self.readme = self.readme or [os.path.join(libtbx_path, 'COPYRIGHT_2_0.txt')]
     # Load the installer class, get the list of modules.
