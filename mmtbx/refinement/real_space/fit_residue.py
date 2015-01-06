@@ -188,6 +188,7 @@ class manager(object):
                torsion_search_local_stop  = 50,
                torsion_search_local_step  = 5,
                allow_modified_residues =  False,
+               backbone_sample=True,
                log                        = None):
     adopt_init_args(self, locals())
     if(self.log is None): self.log = sys.stdout
@@ -208,18 +209,19 @@ class manager(object):
     backrub_atoms_to_rotate = []
     backrub_atoms_to_evaluate = []
     counter = 0 # XXX DOES THIS RELY ON ORDER
-    for atom in self.residue.atoms():
-      if(atom.name.strip().upper() in ["N", "C"]):
-        backrub_axis.append(counter)
-      else:
-        backrub_atoms_to_rotate.append(counter)
-      if(atom.name.strip().upper() in ["CA", "O", "CB"]):
-        backrub_atoms_to_evaluate.append(counter)
-      counter += 1
-    result.append(cluster(
-      axis=backrub_axis,
-      atoms_to_rotate=backrub_atoms_to_rotate,
-      selection=backrub_atoms_to_evaluate))
+    if(self.backbone_sample):
+      for atom in self.residue.atoms():
+        if(atom.name.strip().upper() in ["N", "C"]):
+          backrub_axis.append(counter)
+        else:
+          backrub_atoms_to_rotate.append(counter)
+        if(atom.name.strip().upper() in ["CA", "O", "CB"]):
+          backrub_atoms_to_evaluate.append(counter)
+        counter += 1
+      result.append(cluster(
+        axis=backrub_axis,
+        atoms_to_rotate=backrub_atoms_to_rotate,
+        selection=backrub_atoms_to_evaluate))
     self.axes_and_atoms_aa_specific = \
       rotatable_bonds.axes_and_atoms_aa_specific(
         residue     = self.residue,
