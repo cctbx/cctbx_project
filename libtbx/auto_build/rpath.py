@@ -30,7 +30,10 @@ def find_exec(root='.'):
   # Filter by real execuable...
   found_exec = []
   for f in found:
-    p = check_output(['file', f])
+    try:
+      p = check_output(['file', f])
+    except subprocess.CalledProcessError:
+      p = ''
     if "Mach-O" in p:
       found_exec.append(f)
   return found_exec
@@ -194,7 +197,7 @@ def run (args) :
     DRY_RUN = True
 
   # Setup args.
-  root = args[-1]
+  root = os.path.abspath(args[-1]) # needs absolute path
   replace = {}
   replace['^lib'] = '@rpath/lib'
   if options.otherroot:
