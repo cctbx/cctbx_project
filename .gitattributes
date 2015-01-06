@@ -139,7 +139,6 @@ cctbx/geometry_restraints/parallelity.h -text
 cctbx/geometry_restraints/parallelity_bpl.cpp -text
 cctbx/geometry_restraints/tst_angle_derivs.py svneol=native#text/x-python
 cctbx/geometry_restraints/tst_clash_score.py -text
-cctbx/geometry_restraints/tst_nb_clashscore.py -text
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
 cctbx/maptbx/SConscript -text
 cctbx/maptbx/asymmetric_map.cpp svneol=native#text/plain
