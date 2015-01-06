@@ -53,10 +53,10 @@ master_phil_str = """
   substitute_non_crystallographic_unit_cell_if_necessary = True
     .type = bool
 
-  assume_hydrogens_all_missing = False
+  assume_hydrogens_all_missing = True
     .type = bool
-    .help = '''If hydrogen atoms are missing, add them using phenix.reduce or
-    phenix.ready_set'''
+    .help = '''geometry restraints manager assume that model does not
+    contains hydrogens.'''
 """
 
 usage_string = """\
@@ -73,9 +73,9 @@ Option for molprobity clashscore:
   b_factor_cutoff=40        B factor cutoff for clash analysis
 Option for cctbx clashscore:
   cif=input_file            optional cif file
-  assume_hydrogens_all_missing=False
+  assume_hydrogens_all_missing=True
                             geometry restraints manager assume that model
-                            contains hydrogens.
+                            does not contains hydrogens.
 
 Example:
 
