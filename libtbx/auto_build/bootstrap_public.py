@@ -1,6 +1,6 @@
 from bootstrap import optparse,os
 from bootstrap import ShellCommand, HOT, CODEBASES, ModuleManager
-from bootstrap import DIALSBuilder, PHENIXBuilder, XFELBuilder, LABELITBuilder, CCTBXBuilder, CCIBuilder
+from bootstrap import DIALSBuilder, PHENIXBuilder, XFELBuilder, LABELITBuilder, CCTBXBuilder, Builder as CCIBuilder
 
 HOT['annlib']='curl http://cci.lbl.gov/repositories/annlib.gz > annlib.gz'
 HOT['scons']='curl http://cci.lbl.gov/repositories/scons.gz > scons.gz'
