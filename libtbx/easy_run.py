@@ -173,11 +173,11 @@ class fully_buffered_subprocess(fully_buffered_base):
 
 fully_buffered = fully_buffered_subprocess
 
-def go(command, stdin_lines=None):
+def go(command, stdin_lines=None,join_stdout_stderr=True):
   return fully_buffered(
     command=command,
     stdin_lines=stdin_lines,
-    join_stdout_stderr=True)
+    join_stdout_stderr=join_stdout_stderr)
 
 def call(command):
   """
