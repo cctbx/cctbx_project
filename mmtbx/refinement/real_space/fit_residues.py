@@ -23,6 +23,7 @@ class manager(object):
                torsion_search_local_start = -50,
                torsion_search_local_stop  = 50,
                torsion_search_local_step  = 5,
+               backbone_sample            = True,
                log                        = None):
     adopt_init_args(self, locals())
     if(self.log is None): self.log = sys.stdout
@@ -139,6 +140,7 @@ class manager(object):
           torsion_search_local_start = self.torsion_search_local_start,
           torsion_search_local_stop  = self.torsion_search_local_stop,
           torsion_search_local_step  = self.torsion_search_local_step,
+          backbone_sample            = self.backbone_sample,
           log                        = self.log)
         sites_cart = sites_cart.set_selected(r.residue.atoms().extract_i_seq(),
           r.residue.atoms().extract_xyz())
