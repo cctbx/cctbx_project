@@ -428,39 +428,6 @@ void set_box(
   }
 }
 
-template <typename DataType>
-void cut_by(
-       af::ref<DataType, af::c_grid<3> > kick,
-       af::ref<DataType, af::c_grid<3> > fem,
-       DataType cut_by_threshold)
-{
-  af::tiny<int, 3> a1 = kick.accessor();
-  af::tiny<int, 3> a2 = fem.accessor();
-  for(int i = 0; i < 3; i++) CCTBX_ASSERT(a1[i]==a2[i]);
-  for(int i = 0; i < a1[0]; i++) {
-    for(int j = 0; j < a1[1]; j++) {
-      for(int k = 0; k < a1[2]; k++) {
-         if(kick(i,j,k)<cut_by_threshold) {
-           kick(i,j,k)=0;
-  }}}}
-  for(int i = 0; i < a1[0]; i++) {
-    for(int j = 0; j < a1[1]; j++) {
-      for(int k = 0; k < a1[2]; k++) {
-         if(fem(i,j,k)<1) {
-           fem(i,j,k)=0;
-  }}}}
-
-  for(int i = 0; i < a1[0]; i++) {
-    for(int j = 0; j < a1[1]; j++) {
-      for(int k = 0; k < a1[2]; k++) {
-         double rk = kick(i,j,k);
-         double rf = fem(i,j,k);
-         if(rk==0 || rf==0) {
-           kick(i,j,k)=0;
-           fem(i,j,k)=0;
-  }}}}
-}
-
 template <typename DataType1, typename DataType2>
 void truncate_special(
        af::ref<DataType2, af::c_grid<3> > mask,
