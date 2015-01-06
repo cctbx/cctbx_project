@@ -99,9 +99,15 @@ class peaks_holder(object):
     self.iseqs_of_closest_atoms = iseqs_sorted
 
 class manager(object):
-  def __init__(self, fmodel, map_type, map_cutoff, params = None, log = None,
-                     use_kick_map = False, kick_map_params = None,
-                     use_all_data = True, silent = False, map_coeffs=None):
+  def __init__(self,
+               fmodel,
+               map_type,
+               map_cutoff,
+               params = None,
+               log = None,
+               use_all_data = True,
+               silent = False,
+               map_coeffs=None):
     adopt_init_args(self, locals())
     assert (map_type is not None) or (map_coeffs is not None)
     self.mapped = False
@@ -119,17 +125,6 @@ class manager(object):
         fft_map.apply_volume_scaling()
         map_units = "e/A**3"
       fft_map_data = fft_map.real_map_unpadded()
-    elif(use_kick_map):
-      import mmtbx.maps
-      km = mmtbx.maps.kick(
-        fmodel            = self.fmodel,
-        map_type          = map_type)
-      fft_map = km.map_coefficients.fft_map(
-        resolution_factor=self.params.resolution_factor,
-        symmetry_flags=maptbx.use_space_group_symmetry)
-      fft_map.apply_sigma_scaling()
-      fft_map_data = fft_map.real_map_unpadded()
-      map_units = "sigma"
     else:
       fft_map = self.fmodel.electron_density_map().\
           fft_map(resolution_factor = self.params.resolution_factor,

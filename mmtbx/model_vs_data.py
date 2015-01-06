@@ -560,8 +560,8 @@ Usage examples:
   4. phenix.model_vs_data model.pdb data.hkl map="2mFo-DFc"
   5. phenix.model_vs_data model.pdb data.hkl map="3Fo-2Fc" map="mFo-DFc"
 
-  Note: Map type string: [p][m]Fo+[q][D]Fc[kick][filled]. Examples: 2mFo-DFc,
-  3.2Fo-2.3Fc, Fc, anom, fo-fc_kick, etc.
+  Note: Map type string: [p][m]Fo+[q][D]Fc[filled]. Examples: 2mFo-DFc,
+  3.2Fo-2.3Fc, Fc, anom, fo-fc, etc.
 """
 
 master_params_str="""\

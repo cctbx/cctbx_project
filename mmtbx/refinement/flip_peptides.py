@@ -381,15 +381,13 @@ def run(fmodel,
   for macro_cycle in range(1,n_mac+1) :
     target_map_data, fft_map_1 = fit_rotamers.get_map_data(
       fmodel=fmodel,
-      map_type=params.target_map,
-      kick=False)
+      map_type=params.target_map)
     model_map_data,fft_map_2 = fit_rotamers.get_map_data(
       fmodel=fmodel,
       map_type=params.model_map)
     residual_map_data,fft_map_3 = fit_rotamers.get_map_data(
       fmodel=fmodel,
-      map_type=params.residual_map,
-      kick=False)
+      map_type=params.residual_map)
     if(params.filter_residual_map_value is not None): #XXX use filtering....
       map_sel = flex.abs(residual_map_data) < params.filter_residual_map_value
       residual_map_data = residual_map_data.set_selected(map_sel, 0)

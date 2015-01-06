@@ -360,7 +360,6 @@ class map_names(object):
   anomalous : bool
   anomalous_residual : bool
   phaser_sad_llg : bool
-  kicked : bool
   f_obs_filled : bool
   """
 
@@ -368,7 +367,6 @@ class map_names(object):
   DFC = ['dfcalc','dfcal','dfc', 'dfmodel','dfmod','dfm']
   FO = ['fobs','fob','fo']
   MFO = ['mfobs','mfob','mfo']
-  KICK = ["-kicked","+kicked","kicked","-kick","+kick","kick"]
   FILLED = ['+filled','-filled','filled','+fill','-fill','fill']
 
   def __init__(self, map_name_string):
@@ -379,15 +377,10 @@ class map_names(object):
     self.anomalous = False
     self.anomalous_residual = False
     self.phaser_sad_llg = False
-    self.kicked = False
     self.f_obs_filled = False
     for sym in ["~","!","@","#","$","%","^","&","*","(",")","=","<",">","?","/",
                 ":",";","|","[","]","{","}",",","_"," "]:
       s = s.replace(sym,"")
-    for tmp in self.KICK:
-      if tmp in s:
-        s = s.replace(tmp,"")
-        self.kicked = True
     for tmp in self.FILLED:
       if tmp in s:
         s = s.replace(tmp,"")
@@ -493,12 +486,11 @@ Wrong map type requested: %s
     where [p] and [q] are any numbers (optional),
           [m] and [D] indicate if the requested map is sigmaa (optional),
           Fo and Fc are Fobs and Fcalc,
-          [kick] is for Average Kick Map (optional),
           [filled] is for missing Fobs filled map.
-  Examples: 2mFo-DFc, 3.2Fo-2.3Fc, mFobs-DFcalc_kick, 2mFobs-DFcalc_filled, Fc,
-            2mFobs-DFcalc_kick_fill, anom, anom_diff, anomalous_difference, Fo
+  Examples: 2mFo-DFc, 3.2Fo-2.3Fc, mFobs-DFcalc, 2mFobs-DFcalc_filled, Fc,
+            2mFobs-DFcalc_fill, anom, anom_diff, anomalous_difference, Fo
 """
-    format = "[p][m]Fo+[q][D]Fc[kick][filled]"
+    format = "[p][m]Fo+[q][D]Fc[filled]"
     raise Sorry(msg%(s,format))
 
   def format(self):
@@ -528,12 +520,11 @@ Wrong map type requested: %s
         result = k+"mFobs"+n+"DFmodel"
       else:
         result = k+"Fobs"+n+"Fmodel"
-      if(self.kicked): result += "_kick"
       if(self.f_obs_filled): result += "_filled"
       return result
     else:
       assert [self.k,self.n,self.ml_map].count(None) == 3
-      assert [self.kicked,self.f_obs_filled].count(False)==2
+      assert [self.f_obs_filled].count(False)==1
       if (self.phaser_sad_llg) :
         return "phaser_sad_llg"
       return "anomalous_difference"
