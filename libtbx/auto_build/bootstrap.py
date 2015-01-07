@@ -69,7 +69,6 @@ HOT = {
   'phaser_regression':  '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser_regression/',
   'phaser':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser/',
   'ccp4io':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/',
-  'docutils':           '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/docutils/',
   # tar.gz
   'annlib':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/',
   'scons':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/',
@@ -400,7 +399,6 @@ class CCIBuilder(Builder):
     'boost',
     'scons',
     'ccp4io',
-    'docutils'
   ]
   HOT_EXTRA = []
   # Configure for these cctbx packages

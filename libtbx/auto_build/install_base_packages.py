@@ -149,6 +149,7 @@ class installer (object) :
     # Package groups.
     if options.phenix:
       options.build_gui = True
+      packages += ['docutils']
     if options.dials:
       options.build_gui = True
       options.build_all = True
@@ -416,6 +417,7 @@ Installation of Python packages may fail.
       'py2app',
       'misc',
       'sphinx',
+      'docutils',
     ]
     packages_order = []
     for i in order:
@@ -481,6 +483,13 @@ Installation of Python packages may fail.
       pkg_name=NUMPY_PKG,
       pkg_name_label="numpy",
       confirm_import_module="numpy")
+
+  def build_docutils(self):
+    self.build_python_module_simple(
+      pkg_url=BASE_CCI_PKG_URL,
+      pkg_name=DOCUTILS_PKG,
+      pkg_name_label="docutils",
+      confirm_import_module="docutils")    
 
   def build_biopython(self):
     self.build_python_module_simple(

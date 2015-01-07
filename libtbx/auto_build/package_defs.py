@@ -27,6 +27,7 @@ BIOPYTHON_PKG = "biopython-1.64.tar.gz"  # used in iotbx
 SPHINX_PKG = "Sphinx-1.2.2.tar.gz"       # for documentation
 NUMPYDOC_PKG = "numpydoc-0.5.tar.gz"     # for documentation
 IPYTHON_PKG = "ipython-2.1.0.tar.gz"     # IPython
+DOCUTILS_PKG = "docutils-0.12.tar.gz"    # docutils
 
 # from xia2 page
 HDF5_PKG = "hdf5-1.8.8.tar.bz2"      # dxtbx
