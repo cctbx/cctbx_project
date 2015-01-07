@@ -79,34 +79,33 @@ from libtbx.auto_build import create_mac_app
 from libtbx.auto_build import package_defs
 from libtbx.auto_build.installer_utils import *
 
-class InstallerError (Exception) :
+class InstallerError(Exception):
   pass
 
-class installer (object) :
+class installer(object):
   """
-  Base class for installers.  Some methods and class attributes must be
+  Base class for installers. Some methods and class attributes must be
   re-implemented in subclasses!
   """
-  # some basic configuration variables - override in subclasses
+  # Basic configuration variables - override in subclasses
   product_name = "CCTBX"
   destination = "/usr/local"
   dest_dir_prefix = "cctbx"
   installer_dir = os.environ.get(product_name + "_INSTALLER", None)
   include_gui_packages = True
-  remove_sources_default = False
-  # options passed to install_base_packages.py
+  # Options passed to install_base_packages.py
   base_package_options = []
   base_modules = []
   modules = [
     "cctbx_project",
   ]
-  # modules that need to be configured for use in the final installation.
-  # this will automatically include dependencies.
+  # Modules that need to be configured for use in the final installation.
+  #   this will automatically include dependencies.
   configure_modules = ["mmtbx", "smtbx"]
-  # programs to make graphical .app launchers for (Mac only)
+  # Programs to make graphical .app launchers for (Mac only)
   make_apps = []
-  # architectures supported for a particular distribution.  those listed here
-  # will be detected automatically.
+  # Architectures supported for a particular distribution. Those listed here
+  #   will be detected automatically.
   supported_mtypes = [
     "intel-linux-2.6",
     "intel-linux-2.6-x86_64",
@@ -116,22 +115,9 @@ class installer (object) :
 
   def __init__ (self, args=None, out=sys.stdout) :
     self.args = args or []
-    self.out = out
+    self.out = out    
     
-  def install(self):
-    self.apps_built = False # flag for Mac OS
-    check_python_version()
-    self.parse_options()
-    self.basic_setup()
-    self.determine_installation_type()
-    self.setup_directories()
-    if (self.binary_install) :
-      self.install_from_binary()
-    else :
-      self.install_from_source()
-    self.install_finalize()
-
-  def parse_options (self) :
+  def parse_options (self):
     """
     Process command-line options.  These may be supplemented by subclasses that
     override the method add_product_specific_options.
@@ -146,78 +132,62 @@ class installer (object) :
       default=self.destination)
     parser.add_option("--nproc", dest="nproc", action="store", type="int",
       help="Number of processors for source install", default=NPROC_DEFAULT)
-    if (self.include_gui_packages) :
-      parser.add_option("--no-gui", dest="no_gui", action="store_true",
-        help="Disable building of GUI dependencies (source install only)",
-        default=False)
+    parser.add_option("--no-app", dest="no_app", action="store_true",
+      help="Disable generation of Mac app launcher(s)", default=False)
+    parser.add_option("--compact", dest="compact", action="store_true",
+      help="Remove unnecessary files such as compiled sources to save space")
+    parser.add_option("--try-unsupported", dest="try_unsupported",
+      action="store_true", default=False,
+      help="Attempt source install on unsupported platform")
+    # Source only options
+    parser.add_option("--no-gui", dest="no_gui", action="store_true",
+      help="Disable building of GUI dependencies (source install only)",
+      default=False)
     parser.add_option("--base-only", dest="base_only", action="store_true",
       help="Only install base libraries and files", default=False)
-    parser.add_option("--binary", dest="binary", action="store_true",
-      help="Use pre-compiled binary install", default=None)
     parser.add_option("--source", dest="source", action="store_true",
       help="Force source installation", default=None)
     parser.add_option("--openmp", dest="openmp", action="store_true",
       help="Enable OpenMP compilation if possible", default=False)
     parser.add_option("--no-opt", dest="no_opt", action="store_true",
       help="Disable optimization during compilation", default=False)
-    parser.add_option("--no-app", dest="no_app", action="store_true",
-      help="Disable generation of Mac app launcher(s)", default=False)
     parser.add_option("--debug", dest="debug", action="store_true",
       help="Turn on debugging during compilation", default=False)
-    parser.add_option("--top-level-sources", action="store_true",
-      dest="top_level_sources",
-      help="Keep modules at top-level directory instead of 'modules' "+
-           "subdirectory (source installer only)", default=False)
-    if (self.remove_sources_default) :
-      parser.add_option("--no-compact", dest="compact", action="store_false",
-        help="Don't remove unnecessary files such as compiled sources")
-    else :
-      parser.add_option("--compact", dest="compact", action="store_true",
-        help="Remove unnecessary files such as compiled sources to save space")
-    parser.add_option("--try-unsupported", dest="try_unsupported",
-      action="store_true", default=False,
-      help="Attempt source install on unsupported platform")
     parser.add_option("--python_static", default=False, action="store_true",
       help="Compile Python as static executable and library (Linux only)")
+    # Deprecated
     parser.add_option("--makedirs", default=False, action="store_true",
       help="Create installation path prefix if not already present")
+    parser.add_option("--binary", dest="binary", action="store_true",
+      help="Use pre-compiled binary install", default=None)
     self.add_product_specific_options(parser)
     self.options, args = parser.parse_args(self.args)
-
-  def machine_type (self) :
-    """
-    Determine the mtype string.  The four pre-defined mtypes will be detected
-    automatically (with Linux kernel 3.x treated as 2.6), but additional mtypes
-    can be used if this method is re-implemented.
-    """
-    return machine_type()
+        
+  def install(self):
+    check_python_version()
+    self.parse_options()   
+    self.basic_setup()
+    self.check_directories()
+    self.print_banner()
+    if self.options.source:
+      self.install_from_source()
+    else:
+      self.install_from_binary()
+    self.install_finalize()
+    self.print_header('Installation complete!')
 
   def basic_setup (self) :
-    out = self.out
-    self.mtype = self.machine_type()
+    # Check version
     self.version = self.get_version()
     assert (self.version is not None)
-    self.src_dir = op.join(self.installer_dir, "source")
-    self.bundle_dir = op.join(self.installer_dir, "bundles")
-    self.dependencies_dir = op.join(self.installer_dir, "dependencies")
-    print >> out, """
-  ==========================================================================
-                        %(product)s Installation
 
-                        version: %(version)s
-                   machine type: %(mtype)s
-                     OS version: %(os)s
-                     user shell: %(shell)s
-                    destination: %(dest)s
-                # of processors: %(nproc)s
-  =========================================================================
-  """ % { "product" : self.product_name,
-          "version" : self.version,
-          "mtype"   : self.mtype,
-          "os"      : get_os_version(),
-          "shell"   : os.environ['SHELL'],
-          "dest"    : self.options.prefix,
-          "nproc"   : self.options.nproc, }
+    # GUI Flag
+    self.flag_build_gui = False
+    if (self.include_gui_packages) :
+      self.flag_build_gui = not self.options.no_gui
+
+    # Check this is a supported architecture.
+    self.mtype = self.machine_type()
     if (self.mtype is None) :
       raise InstallerError("Machine type not recognized")
     elif ((not self.mtype in self.supported_mtypes) and
@@ -226,133 +196,201 @@ class installer (object) :
   %(mtype)s is not a supported platform, installation aborted
     use the --try-unsupported option to attempt installation on this platform
     use the --no-gui option for a core %(product)s installation
-  """ % { "mtype" : self.mtype, "product" : self.product_name})
-    if (not op.isdir(self.options.prefix)) :
-      if (self.options.makedirs) :
-        pass
-      else :
-        raise InstallerError(
-          "Destination directory does not exist:\n" +
-          ("  %s" % self.options.prefix) +
-          "If you are sure you want to install here, re-run with the extra\n"+
-          "argument --makedirs.")
-    self.flag_build_gui = False
-    if (self.include_gui_packages) :
-      self.flag_build_gui = not self.options.no_gui
-    # environment variables required by other scripts
-    os.environ["%s_MTYPE" % self.product_name] = self.mtype
-    os.environ["%s_INSTALLER" % self.product_name] = self.installer_dir
+  """%{ "mtype" : self.mtype, "product" : self.product_name})
 
-  def determine_installation_type (self) :
-    """
-    Inspect the installer contents to determine whether this is a binary
-    distribution or source packages.  If both are present, binary is preferred.
-    """
-    out = self.out
-    source_install = binary_install = None
-    if (op.isdir(self.src_dir)) :
-      source_install = True
-    bundle_dir = op.join(self.installer_dir, "bundles")
-    self.base_bundle = op.join(self.bundle_dir, "base-%s-%s.tar.gz" %
-      (self.version, self.mtype))
-    self.build_bundle_file = op.join(self.bundle_dir, "build-%s-%s.tar.gz" %
-      (self.version, self.mtype))
-    self.modules_bundle_file = op.join(self.bundle_dir, "modules-%s-%s.tar.gz" %
-      (self.version, self.mtype))
-    self.alias_mtype = self.mtype
-    if (op.isfile(self.build_bundle_file)) :
-      binary_install = True
-    elif (self.mtype.endswith("x86_64")) :
-      mtype_32bit = re.sub("-x86_64", "", self.mtype)
-      bundle32 = op.join(bundle_dir, "build-%s-%s.tar.gz" % (self.version,
-        mtype_32bit))
-      if (op.isfile(bundle32)) :
-        print >> out, "This is the 32-bit build for your platform- "
-        print >> out, "automatically switching machine type to %s." % \
-          self.alias_mtype
-        self.alias_mtype = mtype_32bit
-        binary_install = True
-        self.build_bundle_file = bundle32
-        self.modules_bundle_file = op.join(self.bundle_dir,
-          "modules-%s-%s.tar.gz" % (self.version, self.alias_mtype))
-        self.base_bundle = op.join(self.bundle_dir, "base-%s-%s.tar.gz" %
-          (self.version, self.alias_mtype))
-    if (not binary_install) :
-      print >> out, "No binary bundles found for %s" % self.mtype
-      if (op.isdir(bundle_dir)) :
-        print >> out, "bundles directory contents:"
-        for file_name in os.listdir(bundle_dir) :
-          print >> out,"  %s" % file_name
-        print >> out, "expected:"
-        print >> out, op.basename(self.build_bundle_file)
-      elif (source_install) :
-        print "Okay, this must be the source-only installer."
-    if (not binary_install) and (not source_install) :
-      raise InstallerError("no binary installer found for %s, aborting." %
-        self.mtype)
-    elif (source_install and binary_install) :
-      if (self.options.source) :
-        print >> out, "performing source installation"
-        binary_install = False
-      else :
-        print >> out, "source and binary both available, defaulting to "+\
-                      "binary install\n"
-        source_install = False
-    # check for wxPython compilation dependencies on Linux
-    if ((source_install) and (self.flag_build_gui) and
-        (sys.platform != "darwin")) :
-      tmp_log = open("/dev/null", "w")
-      error = install_base_packages.check_wxpython_build_dependencies(
-        log=tmp_log)
-      if (error is not None) :
-        raise InstallerError(error)
-    self.source_install = source_install
-    self.binary_install = binary_install
-    self.base_bundle = op.join(self.bundle_dir, "base-%s-%s.tar.gz" %
-      (self.version, self.alias_mtype))
-    self.base_binary_install = op.isfile(self.base_bundle)
-    return True
+  def check_directories(self):
+    # The default behavior for nearly all program's --prefix options
+    # is to create the directory, so I don't think the --makedirs option
+    # is necessary.
+    
+    # Do not overwrite an existing installation.
+    self.dest_dir = op.join(self.options.prefix, "%s-%s"%(self.dest_dir_prefix, self.version))
+    if os.path.exists(self.dest_dir):
+      raise InstallerError("""
+  Installation directory already exists:
+    %s
+  Please remove this directory and try again.
+    """%self.dest_dir)
 
-  def setup_directories (self) :
-    out = self.out
-    hostname = os.uname()[1].split(".")[0]
-    self.tmp_dir = op.join(self.installer_dir, "tmp", self.mtype, hostname)
-    if (not op.isdir(self.tmp_dir)) :
-      os.makedirs(self.tmp_dir)
-    self.dest_dir = op.join(self.options.prefix, "%s-%s" %
-      (self.dest_dir_prefix, self.version))
-    if (not op.isdir(self.dest_dir)) :
-      try :
-        os.makedirs(self.dest_dir)
-      except OSError, e :
-        if (e.errno == 13) :
-          raise InstallerError("you do not have write permissions to %s" %
-            self.options.prefix)
-        else :
-          raise InstallerError("can't create '%s': %s" % (self.dest_dir, e))
-    else :
-      print >> out, "Warning: %s already exists, will be overwritten" % \
-        self.dest_dir
-      if (not os.access(self.dest_dir, os.W_OK)) :
-        raise InstallerError("you do not have write permissions to %s" %
-          self.dest_dir)
+    # Other useful directories.
+    self.tmp_dir = op.join(self.installer_dir, "tmp")
     self.build_dir = op.join(self.dest_dir, "build")
     self.base_dir = op.join(self.dest_dir, "base")
-    if (not op.exists(self.build_dir)) :
-      os.makedirs(self.build_dir)
-    if (not self.options.top_level_sources) :
-      self.modules_dir = op.join(self.dest_dir, "modules")
-      if (not op.exists(self.modules_dir)) :
-        os.makedirs(self.modules_dir)
-    else :
-      self.modules_dir = op.join(self.dest_dir)
-    # environment variables required by other scripts
+    self.modules_dir = op.join(self.dest_dir, "modules")
+    for i in [self.dest_dir, self.tmp_dir]:
+      if not os.path.exists(i):
+        os.makedirs(i)
+
+    # Environment variables required by other scripts
+    os.environ["%s_MTYPE" % self.product_name] = self.mtype
+    os.environ["%s_INSTALLER" % self.product_name] = self.installer_dir
     os.environ["%s_LOC" % self.product_name] = self.dest_dir
     os.environ["%s_BUILD" % self.product_name] = self.build_dir
 
+  def print_banner(self):
+    print >> self.out, """
+    ==========================================================================
+                          %(product)s Installation
+
+                          version: %(version)s
+                     machine type: %(mtype)s
+                       OS version: %(os)s
+                       user shell: %(shell)s
+                      destination: %(dest)s
+                  # of processors: %(nproc)s
+    =========================================================================
+    """ % { "product" : self.product_name,
+            "version" : self.version,
+            "mtype"   : self.mtype,
+            "os"      : get_os_version(),
+            "shell"   : os.environ['SHELL'],
+            "dest"    : self.dest_dir,
+            "nproc"   : self.options.nproc, 
+      }    
+    
+  def machine_type(self):
+    """
+    Determine the mtype string.  The four pre-defined mtypes will be detected
+    automatically (with Linux kernel 3.x treated as 2.6), but additional mtypes
+    can be used if this method is re-implemented.
+    """
+    return machine_type()
+
+  #---------------------------------------------------------------------
+  # BINARY INSTALL
+  #
+  def install_from_binary (self) :
+    """
+    Unpackage the binary bundle in the destination directory.
+    """
+    # Copy base, build, and modules
+    print >> self.out, "Installing new binary package..."
+    copy_tree(os.path.join(self.installer_dir, 'base'), os.path.join(self.dest_dir, 'base'))
+    copy_tree(os.path.join(self.installer_dir, 'build'), os.path.join(self.dest_dir, 'build'))
+    copy_tree(os.path.join(self.installer_dir, 'modules'), os.path.join(self.dest_dir, 'modules'))
+
+    # Reconfigure
+    log = open(os.path.join(self.tmp_dir, "binary.log"), "w")
+    if (sys.platform != "darwin") :
+      os.environ["LD_LIBRARY_PATH"] = op.join(self.base_dir, "lib")
+    self.product_specific_binary_install(log=log)
+
+    os.chdir(self.build_dir)
+    print >> self.out, "Configuring %s components..."%(self.product_name)
+    self.reconfigure(log=log)
+
+  #---------------------------------------------------------------------
+  # SOURCE INSTALL
+  #
+  def install_from_source(self):
+    raise NotImplementedError("Source installer returning soon.")
+    # self.show_installation_paths()
+    #
+    # dependencies_dir = op.join(self.installer_dir, "dependencies")    
+    # bundle_dir = op.join(self.installer_dir, "bundles")
+    # base_bundle = op.join(bundle_dir, "base.tar.gz")
+    # build_bundle_file = op.join(bundle_dir, "build.tar.gz")
+    # modules_bundle_file = op.join(bundle_dir, "modules.tar.gz")
+    #
+    # # PART 1: dependencies
+    # # install Python 2.7 and other dependencies (wxPython, etc.)
+    # if os.path.isfile(base_bundle):
+    #   os.chdir(self.dest_dir)
+    #   print >> self.out, "Using precompiled base bundle..."
+    #   untar(base_bundle, log=self.out, verbose=True, change_ownership=False, check_output_path=False)
+    # else :
+    #   base_args = [
+    #     # XXX will this allow spaces in path names?
+    #     "--build_dir=%s" % self.dest_dir,
+    #     "--tmp_dir=%s" % tmp_dir,
+    #     "--pkg_dir=%s" % src_dir,
+    #     "--pkg_dir=%s" % dependencies_dir,
+    #     "--nproc=%s" % self.options.nproc,
+    #     "--no-download",
+    #   ] + self.base_package_options
+    #   if (self.flag_build_gui):
+    #     base_args.append("--gui")
+    #   if (self.options.debug):
+    #     base_args.append("--debug")
+    #   if (not self.options.python_static):
+    #     base_args.append("--python-shared")
+    #   install_base_packages.installer(args=base_args, log=self.out)
+    #
+    # python_bin = op.join(self.base_dir, "bin", "python")
+    # assert op.isfile(python_bin)
+    # self.print_header('Base installation complete')
+    #
+    # # PART 2: product packages
+    # os.chdir(self.installer_dir)
+    # print >> self.out, "Building core %s components" % self.product_name
+    # if (self.options.base_only) :
+    #   print >> self.out, "--base-only was specified, so skipping %s libraries" % \
+    #     self.product_name
+    #   return
+    #
+    # for pkg_name in self.modules :
+    #   pkg_file = op.join(self.src_dir, pkg_name + ".tar.gz")
+    #   if (not op.isfile(pkg_file)) :
+    #     raise RuntimeError("Can't find %s" % pkg_file)
+    #   print >> self.out, "  unwrapping %s..." % op.basename(pkg_file)
+    #   log_file = op.join(self.tmp_dir, "%s.log" % pkg_name)
+    #   log = open(log_file, "w")
+    #   os.chdir(self.modules_dir)
+    #   untar(pkg_file, log=log, verbose=True, change_ownership=False,
+    #     check_output_path=(not "cctbx_bundle" in pkg_file))
+    #   log.close()
+    #   if (pkg_file.startswith("cctbx_bundle")) :
+    #     if (not op.isdir("cctbx_project")) :
+    #       raise RuntimeError("Directory 'cctbx_project' not found!")
+    #
+    # tag_file = op.join(self.modules_dir, "TAG")
+    # if op.isfile(tag_file) :
+    #   os.rename(tag_file, op.join(self.modules_dir, "cctbx_bundle_TAG"))
+    # self.product_specific_setup_before_compile(log=self.out)
+    # log_file = op.join(self.tmp_dir, "compile_%s.log" % self.dest_dir_prefix)
+    # log = open(log_file, "w")
+    # os.chdir(self.build_dir)
+    # if op.isfile("libtbx_refresh_is_completed") :
+    #   os.remove("libtbx_refresh_is_completed")
+    # config_path = op.join(self.modules_dir, "cctbx_project", "libtbx",
+    #   "configure.py")
+    # config_args = [
+    #   "--scan_boost",
+    #   "--command_version_suffix=%s" % self.version,
+    #   "--current_working_directory=\"%s\"" % self.build_dir,
+    # ] + self.configure_modules
+    # if self.options.openmp :
+    #   config_args.append("--enable-openmp-if-possible=True")
+    # if (self.options.debug) :
+    #   print >> self.out, ("configuring %s components with debugging..." % \
+    #     self.product_name),
+    #   config_args.insert(0, "--build=debug")
+    # elif (self.options.no_opt) :
+    #   print >> self.out, ("configuring %s components with no optimization..." % \
+    #     self.product_name),
+    #   config_args.insert(0, "--build=quick")
+    # else :
+    #   print >> self.out, ("configuring %s components with optimization..." % \
+    #     self.product_name),
+    #   config_args.insert(0, "--build=release")
+    # call(" ".join([python_bin, config_path] + config_args), log=log)
+    # print >> self.out, "ok"
+    # # XXX in the original shell script, I had to run 'libtbx.configure reel'
+    # # to get REEL actually configured - need to double-check this
+    # scons_args = ["."]
+    # if (not os.environ.get("LIBTBX_FULL_TESTING") in [None, ""]) :
+    #   scons_args.append("-k")
+    # scons_args.extend(["-j", str(self.options.nproc)])
+    # print >> self.out, ("compiling %s components - this might take an hour..." % \
+    #   self.product_name),
+    # scons_bin = op.join(self.build_dir, "bin", "libtbx.scons")
+    # assert op.isfile(scons_bin)
+    # call(" ".join([scons_bin] + scons_args), log=log)
+    # print >> self.out, "done"
+    # self.product_specific_source_install(log=log)
+
   def show_installation_paths (self) :
-    out = self.out
-    print >> out, """
+    print >> self.out, """
 %(product)s installation target directory <%(product)s_LOC> set to:
    %(dest_dir)s
 %(product)s installation source directory set to:
@@ -368,187 +406,6 @@ class installer (object) :
         "tmp_dir" : self.tmp_dir, }
 
   #---------------------------------------------------------------------
-  # SOURCE INSTALL
-  #
-  def install_from_source (self) :
-    out = self.out
-    self.show_installation_paths()
-    # PART 1: dependencies
-    # install Python 2.7 and other dependencies (wxPython, etc.)
-    if (not op.exists(self.base_dir)) :
-      os.makedirs(self.base_dir)
-    if (self.base_binary_install) :
-      os.chdir(self.dest_dir)
-      print >> out, "Using precompiled base bundle..."
-      untar(self.base_bundle, log=out, verbose=True,
-        change_ownership=False, check_output_path=False)
-      os.chdir(self.installer_dir)
-    else :
-      base_args = [
-        # XXX will this allow spaces in path names?
-        "--build_dir=%s" % self.dest_dir,
-        "--tmp_dir=%s" % self.tmp_dir,
-        "--pkg_dir=%s" % self.src_dir,
-        "--pkg_dir=%s" % self.dependencies_dir,
-        "--nproc=%s" % self.options.nproc,
-        "--no-download",
-      ] + self.base_package_options
-      # XXX wxPython (et al.) installation is optional depending on the
-      # tarfile actually being present
-      wxpython_file = op.join(self.dependencies_dir, package_defs.WXPYTHON_PKG)
-      if (self.flag_build_gui) and op.isfile(wxpython_file) :
-        base_args.append("--gui")
-      elif ("--all" in base_args) :
-        base_args.remove("--all")
-      if (self.options.debug) :
-        base_args.append("--debug")
-      if (not self.options.python_static) :
-        base_args.append("--python-shared")
-      install_base_packages.installer(
-        args=base_args,
-        log=out)
-    python_bin = op.join(self.base_dir, "bin", "python")
-    assert op.isfile(python_bin)
-    print >> out, ""
-    print >> out, "******************************"
-    print >> out, "* BASE INSTALLATION COMPLETE *"
-    print >> out, "******************************"
-    print >> out, ""
-    print >> out, "-" * 80
-    print >> out, ""
-    # PART 2: product packages
-    print >> out, "Building core %s components" % self.product_name
-    if (self.options.base_only) :
-      print >> out, "--base-only was specified, so skipping %s libraries" % \
-        self.product_name
-      return
-    for pkg_name in self.modules :
-      pkg_file = op.join(self.src_dir, pkg_name + ".tar.gz")
-      if (not op.isfile(pkg_file)) :
-        raise RuntimeError("Can't find %s" % pkg_file)
-      print >> out, "  unwrapping %s..." % op.basename(pkg_file)
-      log_file = op.join(self.tmp_dir, "%s.log" % pkg_name)
-      log = open(log_file, "w")
-      os.chdir(self.modules_dir)
-      untar(pkg_file, log=log, verbose=True, change_ownership=False,
-        check_output_path=(not "cctbx_bundle" in pkg_file))
-      log.close()
-      if (pkg_file.startswith("cctbx_bundle")) :
-        if (not op.isdir("cctbx_project")) :
-          raise RuntimeError("Directory 'cctbx_project' not found!")
-    tag_file = op.join(self.modules_dir, "TAG")
-    if op.isfile(tag_file) :
-      os.rename(tag_file, op.join(self.modules_dir, "cctbx_bundle_TAG"))
-    self.product_specific_setup_before_compile(log=out)
-    log_file = op.join(self.tmp_dir, "compile_%s.log" % self.dest_dir_prefix)
-    log = open(log_file, "w")
-    os.chdir(self.build_dir)
-    if op.isfile("libtbx_refresh_is_completed") :
-      os.remove("libtbx_refresh_is_completed")
-    config_path = op.join(self.modules_dir, "cctbx_project", "libtbx",
-      "configure.py")
-    config_args = [
-      "--scan_boost",
-      "--command_version_suffix=%s" % self.version,
-      "--current_working_directory=\"%s\"" % self.build_dir,
-    ] + self.configure_modules
-    if self.options.openmp :
-      config_args.append("--enable-openmp-if-possible=True")
-    if (self.options.debug) :
-      print >> out, ("configuring %s components with debugging..." % \
-        self.product_name),
-      config_args.insert(0, "--build=debug")
-    elif (self.options.no_opt) :
-      print >> out, ("configuring %s components with no optimization..." % \
-        self.product_name),
-      config_args.insert(0, "--build=quick")
-    else :
-      print >> out, ("configuring %s components with optimization..." % \
-        self.product_name),
-      config_args.insert(0, "--build=release")
-    call(" ".join([python_bin, config_path] + config_args), log=log)
-    print >> out, "ok"
-    # XXX in the original shell script, I had to run 'libtbx.configure reel'
-    # to get REEL actually configured - need to double-check this
-    scons_args = ["."]
-    if (not os.environ.get("LIBTBX_FULL_TESTING") in [None, ""]) :
-      scons_args.append("-k")
-    scons_args.extend(["-j", str(self.options.nproc)])
-    print >> out, ("compiling %s components - this might take an hour..." % \
-      self.product_name),
-    scons_bin = op.join(self.build_dir, "bin", "libtbx.scons")
-    assert op.isfile(scons_bin)
-    call(" ".join([scons_bin] + scons_args), log=log)
-    print >> out, "done"
-    self.product_specific_source_install(log=log)
-    print >> out, ""
-    msg = "%s INSTALLATION COMPLETE" % self.product_name
-    print >> out, "*" * (len(msg) + 4)
-    print >> out, "* " + msg + " *"
-    print >> out, "*" * (len(msg) + 4)
-    print >> out, ""
-
-  #---------------------------------------------------------------------
-  # BINARY INSTALL
-  #
-  def install_from_binary (self) :
-    """
-    Unpackage the binary bundle in the destination directory.
-    """
-    out = self.out
-    tmp_bin_dir = op.join(self.tmp_dir, "binary")
-    log_file = op.join(self.tmp_dir, "binary.log")
-    log = open(log_file, "w")
-    if (op.exists(tmp_bin_dir)) :
-      print >> out, "removing existing temporary directory...",
-      shutil.rmtree(tmp_bin_dir)
-      print >> out, "ok"
-    os.makedirs(tmp_bin_dir)
-    # check for existing installations
-    print >> out, "Finding existing installations..."
-    lib_dir = op.join(self.build_dir, "lib")
-    if (op.exists(lib_dir)) :
-      print >> out, "Removing out-of-date lib directory...",
-      shutil.rmtree(lib_dir)
-      print >> out, "ok"
-    if (op.exists(self.base_dir)) :
-      print >> out, "Removing out-of-date base software directory...",
-      shutil.rmtree(self.base_dir)
-      print >> out, "ok"
-    # XXX there used to be a bunch of version check stuff in here, but this
-    # is no longer necessary
-    # unwrap the tarball
-    print >> out, "Installing new binary package...",
-    os.chdir(self.dest_dir)
-    if (self.base_binary_install) :
-      untar(self.base_bundle, log=log, verbose=True,
-        change_ownership=False, check_output_path=False)
-    untar(self.build_bundle_file, log=log, verbose=True,
-      change_ownership=False,
-      check_output_path=False)
-    # os.chdir(self.modules_dir)
-    untar(self.modules_bundle_file, log=log, verbose=True,
-      change_ownership=False,
-      check_output_path=False)
-    if (not op.isdir(lib_dir)) or (not op.isdir(self.base_dir)) :
-      raise RuntimeError("One or more missing directories:\n  %s\n  %s" %
-        (lib_dir, self.base_dir))
-    if (sys.platform != "darwin") :
-      os.environ["LD_LIBRARY_PATH"] = op.join(self.base_dir, "lib")
-    print >> out, "ok"
-    self.product_specific_binary_install(log=log)
-    os.chdir(self.build_dir)
-    print >> out, "Configuring %s components..." % (self.product_name),
-    self.reconfigure(log=log)
-    print >> out, "ok"
-    print >> out, ""
-    msg = "%s BINARY INSTALLATION COMPLETE" % self.product_name
-    print >> out, "*" * (len(msg) + 4)
-    print >> out, "* " + msg + " *"
-    print >> out, "*" * (len(msg) + 4)
-    print >> out, ""
-
-  #---------------------------------------------------------------------
   # NON-COMPILED COMPONENTS AND FINAL SETUP
   #
   def reconfigure (self, log) :
@@ -557,36 +414,33 @@ class installer (object) :
     """
     os.chdir(self.build_dir)
     args = [
-      "\"%s/bin/python\"" % self.base_dir,
-      "\"%s/cctbx_project/libtbx/configure.py\"" % self.modules_dir,
-      "--current_working_directory=%s" % self.build_dir,
-      "--command_version_suffix=%s" % self.version,
+      os.path.join(self.base_dir, 'bin', 'python'),
+      os.path.join(self.modules_dir, 'cctbx_project', 'libtbx', 'configure.py'),
+      "--current_working_directory", self.build_dir,
+      "--command_version_suffix", self.version,
     ] + self.configure_modules
     try :
-      call(args=" ".join(args), log=log)
+      call(args=args, log=log)
     except RuntimeError :
-      raise InstallerError("configuration step incomplete!  See the log file "+
-        "for detailed error messages.")
+      raise InstallerError("Configuration step incomplete!  See the log file for detailed error messages.")
 
   def install_finalize (self) :
     """
     Set up dispatchers and assorted shell scripts, create app bundles, etc.
     """
-    out = self.out
-    print >> out, ""
-    print >> out, "*" * 72
-    print >> out, "FINALIZING %s INSTALLATION" % self.product_name
+    self.print_header('Finalizing %s installation'%self.product_name)
     log_path = op.join(self.tmp_dir, "install_finalize.log")
-    print >> out, "  log file is %s" % log_path
+    print >> self.out, "Log file: %s"%log_path
     log = open(log_path, "w")
     if (self.flag_build_gui) and (sys.platform != "darwin") :
       os.environ["LD_LIBRARY_PATH"] = op.join(self.base_dir, "lib")
-      regenerate_module_files.run(args=["--build_dir=%s" % self.dest_dir],
-        out=out)
+      regenerate_module_files.run(
+        args=["--build_dir=%s" % self.dest_dir],
+        out=self.out)
+        
     # write dispatcher_include file
-    print >> out, "generating %s environment additions for dispatchers" % \
+    print >> self.out, "Generating %s environment additions for dispatchers..." % \
       self.product_name
-    print >> out, ""
     dispatcher = op.join(self.build_dir, "dispatcher_include_%s.sh" %
       self.dest_dir_prefix)
     if (op.isfile(dispatcher)) :
@@ -614,31 +468,35 @@ class installer (object) :
       args=dispatcher_opts,
       prologue=prologue,
       epilogue=epilogue,
-      out=out)
+      out=self.out)
     assert op.isfile(dispatcher)
-    self.write_environment_files(out)
-    # run configure.py to generate dispatchers
-    print >> out, "configuring %s components..." % self.product_name
+    
+    # Write environment files.
+    self.write_environment_files()
+
+    # Run configure.py to generate dispatchers
+    print >> self.out, "Configuring %s components..." % self.product_name
     os.chdir(self.build_dir)
     if (op.exists("libtbx_refresh_is_completed")) :
       os.remove("libtbx_refresh_is_completed")
     self.reconfigure(log=log)
     os.chdir(self.build_dir)
     assert op.isfile("setpaths.sh")
-    bin_dir = op.join(self.build_dir, "bin")
-    os.environ["PATH"] = "%s:%s" % (bin_dir, os.environ["PATH"])
+    os.environ["PATH"] = "%s:%s" % (op.join(self.build_dir, "bin"), os.environ["PATH"])
     # compile .py files
-    print >> out, "precompiling .py files...",
+    print >> self.out, "Precompiling .py files..."
     os.chdir(self.modules_dir)
     call(args="libtbx.py_compile_all", log=log)
-    print >> out, "ok"
-    # copy README et al.
-    for file_name in ["CHANGES","LICENSE","README","README-DEV","SOURCES"] :
+
+    # Copy README et al.
+    for file_name in ["CHANGES", "LICENSE", "README", "README-DEV", "SOURCES"] :
       src_file = op.join(self.installer_dir, file_name)
       if op.exists(src_file) :
         # XXX use our own implementation instead of shutil.copyfile
         copy_file(src_file, op.join(self.dest_dir, file_name))
+
     # generate .app (Mac only)
+    apps_built = False
     if ((sys.platform == "darwin") and (len(self.make_apps) > 0) and
         (not self.options.no_app) and self.flag_build_gui) :
       os.chdir(self.build_dir)
@@ -648,15 +506,12 @@ class installer (object) :
           app_name,
           "--app_name=%s-%s" % (app_name, self.version),
           "--dest=%s" % self.dest_dir,
+          "--alias_build"
         ]
-        if (self.mtype == "mac-intel-osx-x86_64") :
-          args.append("--alias_build")
-          #args.append("--python_interpreter=/usr/bin/python")
-        print >> out, ("Generating Mac app launcher for %s..." % app_name),
+        print >> self.out, "Generating Mac app launcher for %s..."%app_name
         try :
           call(args=" ".join(args), log=log)
         except RuntimeError, e :
-          print ""
           print "  ERROR:"
           print "  " + str(e)
           print "  installation will continue anyway."
@@ -664,22 +519,27 @@ class installer (object) :
           app_file = op.join(self.dest_dir, "%s-%s.app" %
             (app_name, self.version))
           if (not op.exists(app_file)) :
-            print >> out, " failed."
+            print >> self.out, " failed."
             app_file = None
           else :
-            print >> out, "ok"
-            self.apps_built = True
+            apps_built = True
+
     # run custom finalization
     self.product_specific_finalize_install(log)
+
     # remove source files if desired
-    if (self.options.compact) :
-      self.reduce_installation_size(out)
+    if (self.options.compact):
+      self.reduce_installation_size()
+
     # reconfigure one last time (possibly unnecessary)
     self.display_final_message()
-    if self.apps_built and (not "SSH_CLIENT" in os.environ) :
-      call(args=["open", self.dest_dir], log=out)
+    if apps_built and (not "SSH_CLIENT" in os.environ) :
+      call(args=["open", self.dest_dir], log=self.out)
 
-  def write_environment_files (self, out) :
+  #---------------------------------------------------------------------
+  # STUBS FOR SUBCLASSABLE METHODS
+
+  def write_environment_files (self) :
     """
     Generate shell scripts in the top-level installation directory that can
     be used to set up the user environment to run the software.  This is
@@ -687,29 +547,21 @@ class installer (object) :
     have their own needs.
     """
     # csh/tcsh environment setup file
-    print >> out, "generating %s environment setup scripts:" % \
-      self.product_name
-    csh_file = op.join(self.dest_dir, "%s_env.csh" % self.dest_dir_prefix)
-    print >> out, "  csh: %s/%s_env.csh" % (self.dest_dir, self.dest_dir_prefix)
+    print >> self.out, "Generating %s environment setup scripts..."%self.product_name
     env_prefix = self.product_name.upper() # e.g. "Phenix" -> "PHENIX"
-    env_csh = open(csh_file, "w")
-    env_csh.write("#!/bin/csh -f\n")
-    env_csh.write("#\n")
-    env_csh.write("setenv %s \"%s\"\n" % (env_prefix, self.dest_dir))
-    env_csh.write("setenv %s_VERSION %s\n" % (env_prefix, self.version))
-    env_csh.write("source $%s/build/setpaths.csh\n" % (env_prefix))
-    env_csh.close()
-    # phenix_env.sh
-    sh_file = op.join(self.dest_dir, "%s_env.sh" % self.dest_dir_prefix)
-    print >> out, "  sh:  %s" % sh_file
-    env_sh = open(sh_file, "w")
-    env_sh.write("#!/bin/sh\n")
-    env_sh.write("#\n")
-    env_sh.write("export %s=\"%s\"\n" % (env_prefix, self.dest_dir))
-    env_sh.write("export %s_VERSION=%s\n" % (env_prefix, self.version))
-    env_sh.write(". $%s/build/setpaths.sh\n" % (env_prefix))
-    env_sh.close()
+    with open(os.path.join(self.dest_dir, '%s_env.csh'%self.dest_dir_prefix), 'w') as f:
+      f.write("#!/bin/csh -f\n")
+      f.write("setenv %s \"%s\"\n" % (env_prefix, self.dest_dir))
+      f.write("setenv %s_VERSION %s\n" % (env_prefix, self.version))
+      f.write("source $%s/build/setpaths.csh\n" % (env_prefix))
 
+    with open(os.path.join(self.dest_dir, '%s_env.sh'%self.dest_dir_prefix), 'w') as f:
+      f.write("#!/bin/sh\n")
+      f.write("#\n")
+      f.write("export %s=\"%s\"\n" % (env_prefix, self.dest_dir))
+      f.write("export %s_VERSION=%s\n" % (env_prefix, self.version))
+      f.write(". $%s/build/setpaths.sh\n" % (env_prefix))
+      
   def get_version (self) :
     """
     Determine the version suffix (if any) for the destination directory.  This
@@ -721,14 +573,14 @@ class installer (object) :
       return open(version_file).read().strip()
     return NotImplementedError()
 
-  def reduce_installation_size (self, out) :
+  def reduce_installation_size (self) :
     """
     Remove all files not required for program execution to save disk space,
     such as any C++ sources.  This can potentially save well over 100MB and is
     recommended for purely user-facing packages, but may make it more difficult
     to use packages for development purposes.
     """
-    print >> out, "Removing unnecessary files to reduce disk usage...",
+    print >> self.out, "Removing unnecessary files to reduce disk usage...",
     # XXX should this include .o files?
     remove_extensions = [".cpp", ".cc", ".hpp", ".h", ".hh"]
     n_deleted = 0
@@ -740,17 +592,15 @@ class installer (object) :
             try :
               os.remove(full_path)
             except Exception, e :
-              print >> out, "  WARNING: error removing %s" % full_path
-              print >> out, str(e)
+              print >> self.out, "  WARNING: error removing %s" % full_path
+              print >> self.out, str(e)
             else :
               n_deleted += 1
-    n_deleted_other = self.product_specific_reduce_installation_size(out)
+    n_deleted_other = self.product_specific_reduce_installation_size()
     if (n_deleted_other is not None) :
       n_deleted += n_deleted_other
-    print >> out, "%d files deleted" % n_deleted
+    print >> self.out, "%d files deleted" % n_deleted
 
-  #---------------------------------------------------------------------
-  # STUBS FOR SUBCLASSABLE METHODS
   def add_product_specific_options (self, parser) :
     """
     Add command-line options specific to the distributed package.
@@ -805,3 +655,10 @@ class installer (object) :
     Final instructions for user, etc.
     """
     pass
+    
+  def print_header(self, msg):
+    print >> self.out, ""    
+    print >> self.out, "*"*(len(msg) + 4)
+    print >> self.out, "* %s *"%msg
+    print >> self.out, "*"*(len(msg) + 4)
+    print >> self.out, ""    
