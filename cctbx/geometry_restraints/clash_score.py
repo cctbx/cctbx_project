@@ -480,8 +480,10 @@ def check_and_add_hydrogen(pdb_hierarchy=None,
       if verbose:
         print >> log,"\nNo H/D atoms detected - forcing hydrogen addition!\n"
       keep_hydrogens = False
+  import libtbx.load_env
+  has_reduce = libtbx.env.has_module(name="reduce")
   # add hydrogen if needed
-  if not keep_hydrogens:
+  if has_reduce and (not keep_hydrogens):
     # set reduce running parameters
     build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -limit{}"
     if nuclear:
@@ -501,4 +503,8 @@ def check_and_add_hydrogen(pdb_hierarchy=None,
     reduce_str = string.join(build_out.stdout_lines, '\n')
     return reduce_str,True
   else:
+    if not has_reduce:
+      msg = 'phenix.reduce could not be detected on your system.\n'
+      msg += 'Cannot add hydrogen to PDB file'
+      print >> log,msg
     return r.as_pdb_string(),False
