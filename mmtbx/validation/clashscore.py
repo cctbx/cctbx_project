@@ -4,6 +4,7 @@ All-atom contact analysis.  Requires Reduce and Probe (installed separately).
 """
 
 from __future__ import division
+from cctbx.geometry_restraints.clash_score import check_and_add_hydrogen
 from mmtbx.validation import validation, atoms, atom_info, residue
 from libtbx import easy_run
 import libtbx.load_env
@@ -98,42 +99,18 @@ class clashscore(validation):
     use_segids = utils.use_segids_in_place_of_chainids(
                    hierarchy=pdb_hierarchy)
     for i_mod, model in enumerate(pdb_hierarchy.models()):
+      input_str,_ = check_and_add_hydrogen(
+        pdb_hierarchy=pdb_hierarchy,
+        model_number=i_mod,
+        nuclear=nuclear,
+        verbose=verbose,
+        time_limit=time_limit,
+        keep_hydrogens=keep_hydrogens,
+        log=out)
       r = iotbx.pdb.hierarchy.root()
       mdc = model.detached_copy()
       r.append_model(mdc)
-      tmp_r = r
-      # removed old style SEGID handling for compatibility with Probe
-      # 130622 - JJH
-      #from mmtbx import utils
-      #bare_chains = \
-      #  utils.find_bare_chains_with_segids(pdb_hierarchy=r)
-      #if bare_chains:
-      #  tmp_r = r.deep_copy()
-      #  tmp_r.atoms().reset_i_seq()
-      #  seg_dict = utils.seg_id_to_chain_id(pdb_hierarchy=tmp_r)
-      #  rename_txt = utils.assign_chain_ids(pdb_hierarchy=tmp_r,
-      #                                      seg_dict=seg_dict)
-      #else:
-      #  tmp_r = r
-      #duplicate_chain_ids = \
-      #  utils.check_for_duplicate_chain_ids(pdb_hierarchy=tmp_r)
-      #if duplicate_chain_ids:
-      #  utils.force_unique_chain_ids(pdb_hierarchy=tmp_r)
-      if keep_hydrogens:
-        elements = tmp_r.atoms().extract_element()
-        h_count = elements.count(' H') + elements.count(' D')
-        if h_count > 0:
-          has_hd = True
-        else:
-          has_hd = False
-        # if no hydrogens present, force addition for clashscore
-        # calculation
-        if not has_hd:
-          if verbose:
-            print "\nNo H/D atoms detected - forcing hydrogen addition!\n"
-          keep_hydrogens = False
-      input_str = tmp_r.as_pdb_string()
-      occ_max = flex.max(tmp_r.atoms().extract_occ())
+      occ_max = flex.max(r.atoms().extract_occ())
       pcm = probe_clashscore_manager(
         pdb_string=input_str,
         keep_hydrogens=keep_hydrogens,
@@ -144,8 +121,8 @@ class clashscore(validation):
         use_segids=use_segids,
         verbose=verbose)
       if (save_modified_hierarchy) :
-        self.pdb_hierarchy = pdb.hierarchy.\
-          input(pdb_string=pcm.h_pdb_string).hierarchy
+        self.pdb_hierarchy = iotbx.pdb.hierarchy.input(
+          pdb_string=pcm.h_pdb_string).hierarchy
       self.clash_dict[model.id] = pcm.clashscore
       self.clash_dict_b_cutoff[model.id] = pcm.clashscore_b_cutoff
       self.list_dict[model.id] = pcm.bad_clashes

@@ -1,5 +1,9 @@
 from libtbx.utils import Sorry
+from libtbx import easy_run
+import iotbx.pdb
+import string
 import math
+import sys
 
 class compute(object):
   """
@@ -322,6 +326,7 @@ class compute(object):
     return clashing_atoms_list
 
 class info(object):
+
   def __init__(self,
     geometry_restraints_manager,
     sites_cart,
@@ -412,9 +417,10 @@ class info(object):
     out_list.append(title)
     out_list.append('='*len(title))
     labels =  ["pdb labels","i_seq","j_seq","model","vdw","sym_op_j","rt_mx"]
-    out_str = '{:^35} | {:<5} | {:<5} | {:<6.4} | {:<6.4} | {:<10} | {:<8}'
-    out_list.append(out_str.format(*labels))
-    out_list.append('-'*93)
+    lbl_str = '{:^35} | {:<5} | {:<5} | {:^7} | {:^7} | {:<10} | {:<8}'
+    out_str = '{:^35} | {:<5} | {:<5} | {:<7.4} | {:<7.4} | {:<10} | {:<8}'
+    out_list.append(lbl_str.format(*labels))
+    out_list.append('-'*95)
     for data in nb_clash.nb_clash_proxies_all_clashes:
       d = list(data)
       d[0] = ','.join(data[0])
@@ -424,3 +430,75 @@ class info(object):
     out_string = '\n'.join(out_list)
     print >> log,out_string
     return out_string
+
+def check_and_add_hydrogen(pdb_hierarchy=None,
+                           file_name=None,
+                           nuclear=False,
+                           keep_hydrogens=True,
+                           verbose=False,
+                           model_number=0,
+                           n_hydrogen_cut_off = 0,
+                           time_limit=120,
+                           log=None):
+  """
+  If no hydrogens present, force addition for clashscore calculation.
+
+  Args:
+    pdb_hierarchy : pdb hierarchy
+    file_name (str): pdb file name
+    nuclear (bool): When True use nuclear cloud x-H distances and vdW radii,
+      otherwise use electron cloud x-H distances and vdW radii
+    keep_hydrogens (bool): when True, if there are hydrogen atoms, keep them
+    verbose (bool): verbosity of printout
+    model_number (int): the number of model to use
+    time_limit (int): limit the time it takes to add hydrogen atoms
+    n_hydrogen_cut_off (int): when number of hydrogen atoms < n_hydrogen_cut_off
+      force keep_hydrogens tp True
+
+  Returns:
+    (str): PDB string
+    (bool): True when PDB string was updated
+  """
+  if file_name:
+    pdb_inp = iotbx.pdb.input(file_name=file_name)
+    pdb_hierarchy = pdb_inp.construct_hierarchy()
+  assert pdb_hierarchy
+  assert model_number < len(pdb_hierarchy.models())
+  if not log: log = sys.stdout
+  model = pdb_hierarchy.models()[model_number]
+  r = iotbx.pdb.hierarchy.root()
+  mdc = model.detached_copy()
+  r.append_model(mdc)
+  if keep_hydrogens:
+    elements = r.atoms().extract_element()
+    h_count = elements.count(' H') + elements.count(' D')
+    if h_count > n_hydrogen_cut_off:
+      has_hd = True
+    else:
+      has_hd = False
+    if not has_hd:
+      if verbose:
+        print >> log,"\nNo H/D atoms detected - forcing hydrogen addition!\n"
+      keep_hydrogens = False
+  # add hydrogen if needed
+  if not keep_hydrogens:
+    # set reduce running parameters
+    build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -limit{}"
+    if nuclear:
+      build += " -nuc -"
+    else:
+      build += " -"
+    build = build.format(time_limit)
+    trim = "phenix.reduce -quiet -trim -"
+    clean_out = easy_run.fully_buffered(trim,stdin_lines=r.as_pdb_string())
+    if (clean_out.return_code != 0) :
+      msg_str = "Reduce crashed with command '%s' - dumping stderr:\n%s"
+      raise RuntimeError(msg_str % (trim, "\n".join(clean_out.stderr_lines)))
+    build_out = easy_run.fully_buffered(build,stdin_lines=clean_out.stdout_lines)
+    if (build_out.return_code != 0) :
+      msg_str = "Reduce crashed with command '%s' - dumping stderr:\n%s"
+      raise RuntimeError(msg_str % (build, "\n".join(build_out.stderr_lines)))
+    reduce_str = string.join(build_out.stdout_lines, '\n')
+    return reduce_str,True
+  else:
+    return r.as_pdb_string(),False
