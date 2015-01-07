@@ -6,7 +6,6 @@ HOT['annlib']='curl http://cci.lbl.gov/repositories/annlib.gz > annlib.gz'
 HOT['scons']='curl http://cci.lbl.gov/repositories/scons.gz > scons.gz'
 HOT['boost']='curl http://cci.lbl.gov/repositories/boost.gz > boost.gz'
 HOT['ccp4io']='curl http://cci.lbl.gov/repositories/ccp4io.gz > ccp4io.gz'
-HOT['docutils']='curl http://cci.lbl.gov/repositories/docutils.gz > docutils.gz'
 HOT['annlib_adaptbx']='curl http://cci.lbl.gov/repositories/annlib_adaptbx.gz > annlib_adaptbx.gz'
 HOT['ccp4io_adaptbx']='curl http://cci.lbl.gov/repositories/ccp4io_adaptbx.gz > ccp4io_adaptbx.gz'
 HOT['clipper']='curl http://cci.lbl.gov/repositories/clipper.gz > clipper.gz'
@@ -37,7 +36,6 @@ def get_hot(self):
     'boost',
     'scons',
     'ccp4io',
-    'docutils',
     'gui_resources',
     'ccp4io_adaptbx',
     'annlib_adaptbx',
