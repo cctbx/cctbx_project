@@ -104,7 +104,7 @@ class SetupInstaller(object):
     
   def make_dist(self):
     try:
-      os.makedirs(os.path.join(self.root, 'dist'))
+      os.makedirs(os.path.dirname(self.dest_tar))
     except Exception, e:
       print "Warning: %s"%e
     tar(
