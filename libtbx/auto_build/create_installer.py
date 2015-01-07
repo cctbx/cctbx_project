@@ -48,6 +48,9 @@ $PYTHON_EXE ./bin/install.py $@
 def archive(source, destination, tarfile=None):
   assert not os.path.exists(destination), "File exists: %s"%destination
   print "Copying: %s -> %s"%(source, destination)
+  if not os.path.exists(source):
+    print "Warning: source does not exist! Skipping: %s"%source
+    return
   shutil.copytree(
     source,
     destination,
@@ -100,6 +103,7 @@ class SetupInstaller(object):
     self.copy_dependencies()
     self.copy_build()
     self.copy_modules()
+    self.copy_doc()
     self.make_dist()
     
   def make_dist(self):
@@ -131,7 +135,7 @@ class SetupInstaller(object):
       f.write(INSTALL_SH)
     st = os.stat(os.path.join(self.dest, "install"))
     os.chmod(os.path.join(self.dest, "install"), st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-    
+  
   def copy_libtbx(self):
     # Copy over libtbx for setup.
     archive(
@@ -169,6 +173,13 @@ class SetupInstaller(object):
         os.path.join(self.root, 'modules', module),
         os.path.join(self.dest, 'modules', module)
       )
+      
+  def copy_doc(self):
+    # Copy doc
+    archive(
+      os.path.join(self.root, 'doc'),
+      os.path.join(self.dest, 'doc')
+    )
     
 def run (args) :
   parser = OptionParser()

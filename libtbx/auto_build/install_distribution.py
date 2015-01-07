@@ -116,6 +116,7 @@ class installer(object):
   def __init__ (self, args=None, out=sys.stdout) :
     self.args = args or []
     self.out = out    
+    self.parse_options()
     
   def parse_options (self):
     """
@@ -213,7 +214,7 @@ class installer(object):
     """%self.dest_dir)
 
     # Other useful directories.
-    self.tmp_dir = op.join(self.installer_dir, "tmp")
+    self.tmp_dir = op.join(self.installer_dir, "tmp")          
     self.build_dir = op.join(self.dest_dir, "build")
     self.base_dir = op.join(self.dest_dir, "base")
     self.modules_dir = op.join(self.dest_dir, "modules")
@@ -265,9 +266,8 @@ class installer(object):
     """
     # Copy base, build, and modules
     print >> self.out, "Installing new binary package..."
-    copy_tree(os.path.join(self.installer_dir, 'base'), os.path.join(self.dest_dir, 'base'))
-    copy_tree(os.path.join(self.installer_dir, 'build'), os.path.join(self.dest_dir, 'build'))
-    copy_tree(os.path.join(self.installer_dir, 'modules'), os.path.join(self.dest_dir, 'modules'))
+    for i in ['base', 'build', 'modules', 'doc']:      
+      copy_tree(os.path.join(self.installer_dir, i), os.path.join(self.dest_dir, i))
 
     # Reconfigure
     log = open(os.path.join(self.tmp_dir, "binary.log"), "w")
@@ -524,12 +524,14 @@ class installer(object):
           else :
             apps_built = True
 
+
     # run custom finalization
     self.product_specific_finalize_install(log)
 
     # remove source files if desired
     if (self.options.compact):
       self.reduce_installation_size()
+
 
     # reconfigure one last time (possibly unnecessary)
     self.display_final_message()
