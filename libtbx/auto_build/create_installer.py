@@ -101,10 +101,13 @@ class SetupInstaller(object):
     self.make_dist()
     
   def make_dist(self):
-    print self.dest
+    try:
+      os.makedirs(os.path.join(self.root, 'dist'))
+    except Exception, e:
+      print "Warning: %s"%e
     tar(
       os.path.basename(self.dest),
-      '%s.tar.gz'%os.path.basename(self.dest),
+      os.path.join(self.root, 'dist', '%s.tar.gz'%os.path.basename(self.dest)),
       cwd=os.path.join(self.dest, '..')
     )
 
@@ -199,4 +202,4 @@ def run (args) :
   setup.run()
 
 if (__name__ == "__main__") :
-  run(sys.argv[1:])
+  sys.exit(run(sys.argv[1:]))
