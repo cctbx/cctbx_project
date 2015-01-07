@@ -1430,6 +1430,7 @@ libtbx/command_line/configure.bat -text
 libtbx/command_line/configure.sh svneol=native#text/x-sh
 libtbx/command_line/create_cctbx_bundle_for_installer.py svneol=native#text/x-python
 libtbx/command_line/create_install_script_bat.py svneol=native#text/x-python
+libtbx/command_line/create_installer.py -text
 libtbx/command_line/create_mac_app.py -text
 libtbx/command_line/create_windows_exe.py -text
 libtbx/command_line/csh.sh -text
