@@ -8,7 +8,6 @@ from cctbx.geometry_restraints.clash_score import check_and_add_hydrogen
 from mmtbx.validation import validation, atoms, atom_info, residue
 from libtbx import easy_run
 import libtbx.load_env
-import string
 import re
 import sys
 
@@ -112,10 +111,8 @@ class clashscore(validation):
       r.append_model(mdc)
       occ_max = flex.max(r.atoms().extract_occ())
       pcm = probe_clashscore_manager(
-        pdb_string=input_str,
-        keep_hydrogens=keep_hydrogens,
+        h_pdb_string=input_str,
         nuclear=nuclear,
-        time_limit=time_limit,
         largest_occupancy=occ_max,
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
@@ -191,16 +188,25 @@ class clashscore(validation):
 
 class probe_clashscore_manager(object):
   def __init__(self,
-               pdb_string,
-               keep_hydrogens=True,
+               h_pdb_string,
                nuclear=False,
-               time_limit=120,
                largest_occupancy=10,
                b_factor_cutoff=None,
                use_segids=False,
                verbose=False):
-    assert (libtbx.env.has_module(name="reduce") and
-            libtbx.env.has_module(name="probe"))
+    """
+    Calculate probe (MolProbity) clashscore
+
+    Args:
+      h_pdb_string (str): PDB string that contains hydrogen atoms
+      nuclear (bool): When True use nuclear cloud x-H distances and vdW radii,
+        otherwise use electron cloud x-H distances and vdW radii
+      largest_occupancy (int)
+      b_factor_cutoff (float)
+      use_segids (bool)
+      verbose (bool): verbosity of printout
+    """
+    assert libtbx.env.has_module(name="probe")
 
     self.b_factor_cutoff = b_factor_cutoff
     self.use_segids=use_segids
@@ -209,11 +215,8 @@ class probe_clashscore_manager(object):
     if largest_occupancy < ogt:
       ogt = largest_occupancy
 
-    self.trim = "phenix.reduce -quiet -trim -"
     self.probe_atom_b_factor = None
     if not nuclear:
-      self.build = "phenix.reduce -oh -his -flip -pen9999" +\
-                   " -keep -allalt -limit%d -" % time_limit
       self.probe_txt = \
         'phenix.probe -u -q -mc -het -once "ogt%d not water" "ogt%d" -' % \
           (ogt, ogt)
@@ -224,8 +227,6 @@ class probe_clashscore_manager(object):
           'phenix.probe -q -mc -het -dumpatominfo "blt%d ogt%d not water" -' % \
             (blt, ogt)
     else: #use nuclear distances
-      self.build = "phenix.reduce -oh -his -flip -pen9999" +\
-                   " -keep -allalt -limit%d -nuc -" % time_limit
       self.probe_txt = \
         'phenix.probe -u -q -mc -het -once -nuclear' +\
           ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
@@ -237,36 +238,14 @@ class probe_clashscore_manager(object):
           'phenix.probe -q -mc -het -dumpatominfo -nuclear' +\
             ' "blt%d ogt%d not water" -' % (blt, ogt)
 
-    if not keep_hydrogens:
-      h_pdb_string = self.run_reduce(pdb_string)
-    else:
-      if verbose:
-        print "\nUsing input model H/D atoms...\n"
-      h_pdb_string = pdb_string
+    if verbose:
+      print "\nUsing input model H/D atoms...\n"
     self.h_pdb_string = h_pdb_string
     self.run_probe_clashscore(self.h_pdb_string)
-
-  def run_reduce(self, pdb_string):
-    clean_out = easy_run.fully_buffered(self.trim,
-                  stdin_lines=pdb_string)
-    if (clean_out.return_code != 0) :
-      raise RuntimeError("Reduce crashed with command '%s' - dumping stderr:\n%s"
-        % (self.trim, "\n".join(clean_out.stderr_lines)))
-    build_out = easy_run.fully_buffered(self.build,
-                  stdin_lines=clean_out.stdout_lines)
-    if (build_out.return_code != 0) :
-      raise RuntimeError("Reduce crashed with command '%s' - dumping stderr:\n%s"
-        % (self.build, "\n".join(build_out.stderr_lines)))
-    reduce_str = string.join(build_out.stdout_lines, '\n')
-    return reduce_str
-
-  #def update_clashscore(self, pdb_string):
-  #  self.run_probe_clashscore(pdb_string)
 
   def run_probe_clashscore(self, pdb_string):
     clash_hash = {}
     hbond_hash = {}
-    clashscore = None
     probe_out = easy_run.fully_buffered(self.probe_txt,
       stdin_lines=pdb_string)
     if (probe_out.return_code != 0) :
@@ -393,6 +372,7 @@ class nqh_flips (validation) :
   """
   N/Q/H sidechain flips identified by Reduce.
   """
+  assert libtbx.env.has_module(name="reduce")
   gui_list_headers = ["Chain", "Residue"]
   gui_formats = ["%s", "%s"]
   wx_column_widths = [100,220]
