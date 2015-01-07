@@ -311,6 +311,8 @@ class Builder(object):
     # Relative path to workdir.
     workdir = workdir or ['build']
     dots = [".."]*len(workdir)
+    if workdir[0] == '.':
+      dots = []
     dots.extend(['build', 'bin', command])
     self.add_step(self.shell(
       name=name or command,
