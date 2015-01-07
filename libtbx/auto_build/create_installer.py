@@ -70,15 +70,17 @@ class SetupInstaller(object):
   def __init__(self, **kwargs):
     self.install_script = kwargs.get('install_script')
     self.version = kwargs.get('version')    
-    self.readme = kwargs.get('readme')
-    self.license = kwargs.get('license')
     self.script = kwargs.get('script')
     self.modules = set(kwargs.get('modules') or [])
     self.base_modules = set(kwargs.get('base_modules') or [])
     # 
     self.root = os.path.abspath(kwargs.get('root'))
     self.dest = os.path.abspath(kwargs.get('dest'))
-    self.readme = self.readme or [os.path.join(libtbx_path, 'COPYRIGHT_2_0.txt')]
+    dest_tar = kwargs.get('dest_tar') or '%s.tar.gz'%os.path.basename(self.dest)
+    self.dest_tar = os.path.abspath(dest_tar)
+
+    self.license = kwargs.get('license')
+    self.readme = kwargs.get('readme') or [os.path.join(libtbx_path, 'COPYRIGHT_2_0.txt')]
     # Load the installer class, get the list of modules.
     assert os.path.isfile(self.install_script)
     installer_module = imp.load_source('install_script', self.install_script)
@@ -107,7 +109,7 @@ class SetupInstaller(object):
       print "Warning: %s"%e
     tar(
       os.path.basename(self.dest),
-      os.path.join(self.root, 'dist', '%s.tar.gz'%os.path.basename(self.dest)),
+      self.dest_tar,
       cwd=os.path.join(self.dest, '..')
     )
 
@@ -175,9 +177,11 @@ def run (args) :
   parser.add_option("--binary", dest="binary", action="store_true",
     help="Setup for binary installer only (no source packages)", default=False)
   parser.add_option("--root", dest="root", action="store",
-    help="Directory with source packages", default=os.getcwd())
+    help="Environment root", default=os.getcwd())
   parser.add_option("--dest", dest="dest", action="store",
     help="Destination folder", default=os.getcwd())
+  parser.add_option("--dest_tar", dest="dest_tar", action="store",
+    help="Tar archive filename")
   parser.add_option("--readme", dest="readme", action="append",
     help="Readme file", default=[])
   parser.add_option("--license", dest="license", action="store",
@@ -197,7 +201,8 @@ def run (args) :
     license=options.license,
     install_script=options.install_script,
     modules=options.modules,
-    base_modules=options.base_modules
+    base_modules=options.base_modules,
+    dest_tar=options.dest_tar
   )
   setup.run()
 
