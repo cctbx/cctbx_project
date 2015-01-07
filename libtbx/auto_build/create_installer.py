@@ -70,7 +70,6 @@ class SetupInstaller(object):
   def __init__(self, **kwargs):
     self.install_script = kwargs.get('install_script')
     self.version = kwargs.get('version')    
-    self.host_tag = kwargs.get('host_tag')
     self.readme = kwargs.get('readme')
     self.license = kwargs.get('license')
     self.script = kwargs.get('script')
@@ -92,14 +91,22 @@ class SetupInstaller(object):
     print "Installer will be %s"%self.dest
     assert not os.path.exists(self.dest), "Installer dir exists: %s"%self.dest
     os.makedirs(self.dest)
-    for i in ['bin', 'bundles', 'lib']:
+    for i in ['bin', 'lib']:
       os.makedirs(os.path.join(self.dest, i))
     self.copy_info()
     self.copy_libtbx()
     self.copy_dependencies()
     self.copy_build()
     self.copy_modules()
-    self.copy_base_modules()
+    self.make_dist()
+    
+  def make_dist(self):
+    print self.dest
+    tar(
+      os.path.basename(self.dest),
+      '%s.tar.gz'%os.path.basename(self.dest),
+      cwd=os.path.join(self.dest, '..')
+    )
 
   def copy_info(self):
     # Basic setup #
@@ -134,11 +141,6 @@ class SetupInstaller(object):
       os.path.join(self.dest, 'base')
     )
     libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root, 'base'), os.path.join(self.dest, 'base')])
-    tar(
-      'base',
-      os.path.join(self.dest, 'bundles', 'base-%s-%s.tar.gz'%(self.version, self.host_tag)),
-      cwd=self.dest
-    )
 
   def copy_build(self):
     # Compiled modules
@@ -154,11 +156,6 @@ class SetupInstaller(object):
         os.path.join(self.dest, 'build', j, 'exe')
       )
     libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root, 'base'), os.path.join(self.dest, 'build')])
-    tar(
-      'build',
-      os.path.join(self.dest, 'bundles', 'build-%s-%s.tar.gz'%(self.version, self.host_tag)),
-      cwd=self.dest
-    )
 
   def copy_modules(self):
     # Source modules #
@@ -167,35 +164,11 @@ class SetupInstaller(object):
         os.path.join(self.root, 'modules', module),
         os.path.join(self.dest, 'modules', module)
       )
-    tar(
-      'modules',
-      os.path.join(self.dest, 'bundles', 'modules-%s-%s.tar.gz'%(self.version, self.host_tag)),
-      cwd=self.dest
-    )
     
-  def copy_base_modules(self):
-    pass
-    # Additional modules that are included in both the source and the binary
-    # installer - in Phenix this includes restraints, examples, documentation,
-    # and regression tests
-    # for module in self.base_modules:
-    #   archive(
-    #     os.path.join(self.root, 'modules', module),
-    #     os.path.join(self.dest, 'bundles', module),
-    #   )
-    #   tar(
-    #     os.path.join(self.dest, 'bundles', module),
-    #     os.path.join(self.dest, 'bundles', '%s.tar.gz'%module),
-    #     cwd=os.path.join(self.dest)
-    #   )
-    
-
 def run (args) :
   parser = OptionParser()
   parser.add_option("--version", dest="version", action="store",
     help="Package version", default=time.strftime("%Y_%m_%d",time.localtime()))
-  parser.add_option("--host-tag", dest="host_tag", action="store",
-    help="Host tag (OS/distribution label)", default=None)    
   parser.add_option("--binary", dest="binary", action="store_true",
     help="Setup for binary installer only (no source packages)", default=False)
   parser.add_option("--root", dest="root", action="store",
@@ -215,7 +188,6 @@ def run (args) :
   options, args_ = parser.parse_args(args=args)
   setup = SetupInstaller(
     version=options.version,
-    host_tag=options.host_tag,
     root=options.root,
     dest=options.dest,
     readme=options.readme,
