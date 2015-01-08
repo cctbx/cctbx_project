@@ -684,7 +684,7 @@ class DataBlockFactory(object):
     from os import listdir
     from os.path import isdir, isfile, join
     filelist = []
-    for f in filenames:
+    for f in sorted(filenames):
       if isfile(f):
         filelist.append(f)
       elif isdir(f):
