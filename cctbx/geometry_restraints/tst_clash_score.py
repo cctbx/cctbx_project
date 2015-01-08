@@ -1,13 +1,14 @@
 from __future__ import division
 from cctbx.geometry_restraints.clash_score import compute as nb
-import mmtbx.monomer_library.pdb_interpretation
+import mmtbx.monomer_library.pdb_interpretation as pdb_inter
+import cctbx.geometry_restraints.clash_score as clash_score
 from cctbx.array_family import flex
 import mmtbx.monomer_library.server
 from mmtbx import monomer_library
 from libtbx.utils import null_out
 from cStringIO import StringIO
 from libtbx.utils import Sorry
-from iotbx.pdb import fetch
+from libtbx import easy_run
 from cctbx import xray
 import libtbx.load_env
 import mmtbx.model
@@ -84,7 +85,7 @@ ATOM   1319  HG1 THR A  85      31.049   3.564 -51.211  1.00 19.63           H
 ATOM   1320 HG21 THR A  85      32.000   0.780 -50.908  1.00 14.50           H
 ATOM   1321 HG22 THR A  85      33.420   1.251 -50.402  1.00 14.50           H
 ATOM   1322 HG23 THR A  85      32.116   1.932 -49.835  1.00 14.50           H
-""".splitlines()
+"""
 
 raw_records1 = """\
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
@@ -227,7 +228,7 @@ ATOM   1954  HA  SER A 124      20.410  19.588 -50.567  1.00 25.34           H
 ATOM   1955  HB2 SER A 124      20.793  19.168 -48.338  1.00 24.00           H
 ATOM   1956  HB3 SER A 124      22.034  18.250 -48.682  1.00 24.00           H
 ATOM   1957  HG  SER A 124      21.984  20.856 -49.068  1.00 27.42           H
-""".splitlines()
+"""
 
 raw_records2 = '''\
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
@@ -278,7 +279,7 @@ ATOM   1954  HA  SER B 124      20.306  18.795 -50.781  1.00 25.34           H
 ATOM   1955  HB2 SER B 124      20.592  18.968 -48.505  1.00 24.00           H
 ATOM   1956  HB3 SER B 124      22.084  18.454 -48.612  1.00 24.00           H
 ATOM   1957  HG  SER B 124      21.258  20.773 -49.552  1.00 27.42           H
-'''.splitlines()
+'''
 
 raw_records3="""\n
 CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
@@ -310,7 +311,7 @@ ATOM      1  N   LYS     1       5.000   5.000   5.000  1.00 20.00           N
 ATOM      1  N   LYS     2       6.000   5.000   5.000  1.00 20.00           N
 ATOM      1  N   LYS     3       5.000   5.500   5.500  1.00 20.00           N
 ATOM      1  N   LYS     4       5.000   5.500   5.500  1.00 20.00           N
-""".splitlines()
+"""
 
 raw_records6="""\n
 CRYST1   44.060   35.400   48.340  90.00  95.00  90.00 C 1 2 1       8
@@ -318,7 +319,7 @@ HETATM  410  O3' A44 B  17      21.829   8.287   7.189  1.00 36.66           O
 HETATM  411  C2' A44 B  17      23.214   6.318   6.661  1.00 33.97           C
 HETATM  412  O2' A44 B  17      23.644   7.009   5.493  1.00 33.08           O
 HETATM  413  z!# A44 B  17      24.403   5.690   7.395  1.00 32.76           C
-""".splitlines()
+"""
 
 
 class test_nb_clashscore(unittest.TestCase):
@@ -326,10 +327,9 @@ class test_nb_clashscore(unittest.TestCase):
   def setUp(self):
     self.file_to_delete = []
     # import files used in tests
-    fn = '1a18'
-    # fetch pdb file
-    fn = fetch.get_pdb (fn,'pdb',mirror='rcsb',log=null_out())
-    self.file_to_delete.append(fn)
+    self.file_name = 'test_pdb_file.pdb'
+    open(self.file_name,'w').write(raw_records1)
+    self.file_to_delete.append(self.file_name)
 
   def test_inline_angle(self):
     '''
@@ -361,12 +361,14 @@ class test_nb_clashscore(unittest.TestCase):
 
       nb_clash_sym = grm.nb_clashscore_due_to_sym_op
       expected = [38.46,0][i]
-      msg = outstring.format('symmetry related clashscore', expected, nb_clash_sym)
+      msg = outstring.format(
+        'symmetry related clashscore', expected, nb_clash_sym)
       self.assertAlmostEqual(nb_clash_sym, expected, delta=0.01,msg=msg)
       #
       nb_clash_no_sym = grm.nb_clashscore_simple
       expected = [0,28.77][i]
-      msg = outstring.format('non-symmetry related clashscore', expected, nb_clash_no_sym)
+      msg = outstring.format(
+        'non-symmetry related clashscore', expected, nb_clash_no_sym)
       self.assertAlmostEqual(nb_clash_no_sym, expected, delta=0.01,msg=msg)
       #
       nb_clash_total = grm.nb_clashscore_all_clashes
@@ -376,12 +378,14 @@ class test_nb_clashscore(unittest.TestCase):
       #
       nb_list_sym = len(grm.nb_clash_proxies_due_to_sym_op)
       expected = [2,0][i]
-      msg = outstring.format('Number of clashes, symmetry related', expected, nb_list_sym)
+      msg = outstring.format(
+        'Number of clashes, symmetry related', expected, nb_list_sym)
       self.assertEqual(nb_list_sym, expected,msg=msg)
       #
       nb_list_no_sym = len(grm.nb_clash_proxies_simple)
       expected = [0,4][i]
-      msg = outstring.format('Number of clashes, not symmetry related', expected, nb_list_no_sym)
+      msg = outstring.format(
+        'Number of clashes, not symmetry related', expected, nb_list_no_sym)
       self.assertEqual(nb_list_no_sym, expected, msg=msg)
       #
       nb_list_all = len(grm.nb_clash_proxies_all_clashes)
@@ -451,7 +455,7 @@ class test_nb_clashscore(unittest.TestCase):
     Test that working correctly when atom is removed
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
-    processed_pdb_file = monomer_library.pdb_interpretation.process(
+    processed_pdb_file = pdb_inter.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,
       raw_records    = raw_records3,
@@ -492,7 +496,7 @@ class test_nb_clashscore(unittest.TestCase):
     Consider solvent as (O, O-H, H-O-H, O-D, D-O-D) or any
     other single, double and triple atoms molecules
     '''
-    processed_pdb_file = monomer_library.pdb_interpretation.process(
+    processed_pdb_file = pdb_inter.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,
       raw_records    = raw_records4,
@@ -522,7 +526,7 @@ class test_nb_clashscore(unittest.TestCase):
     Test water scatterers with and without labels
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
-    processed_pdb_file = monomer_library.pdb_interpretation.process(
+    processed_pdb_file = pdb_inter.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,
       raw_records    = raw_records3,
@@ -568,7 +572,7 @@ class test_nb_clashscore(unittest.TestCase):
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
     # Test the modified pdb data with scatterers lables
-    processed_pdb_file = monomer_library.pdb_interpretation.process(
+    processed_pdb_file = pdb_inter.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,
       raw_records    = raw_records4,
@@ -608,16 +612,16 @@ class test_nb_clashscore(unittest.TestCase):
     '''
     records = []
     if raw_record_number == 0: records = raw_records0
-    elif raw_record_number == 1: records = raw_records1
-    elif raw_record_number == 2: records = raw_records2
-    elif raw_record_number == 4: records = raw_records4
-    elif raw_record_number == 5: records = raw_records5
-    elif raw_record_number == 6: records = raw_records6
+    elif raw_record_number == 1: records = raw_records1.splitlines()
+    elif raw_record_number == 2: records = raw_records2.splitlines()
+    elif raw_record_number == 4: records = raw_records4.splitlines()
+    elif raw_record_number == 5: records = raw_records5.splitlines()
+    elif raw_record_number == 6: records = raw_records6.splitlines()
     else: print ('Wrong raw_records number')
     # create a geometry_restraints_manager (grm)
     log = StringIO()
     # process pdb data
-    pdb_processed_file = monomer_library.pdb_interpretation.process(
+    pdb_processed_file = pdb_inter.process(
       file_name=None,
       raw_records=records,
       substitute_non_crystallographic_unit_cell_if_necessary=True,
@@ -667,10 +671,8 @@ class test_nb_clashscore(unittest.TestCase):
 
   def test_print(self):
     """ test proper clashscore printout """
-    import mmtbx.monomer_library.pdb_interpretation as pdb_inter
-    import cctbx.geometry_restraints.clash_score as clash_score
     pdb_processed_file = pdb_inter.run(
-      args=['1a18.pdb'],
+      args=[self.file_name],
       assume_hydrogens_all_missing=False,
       hard_minimum_nonbonded_distance=0.0,
       nonbonded_distance_threshold=None,
@@ -704,8 +706,8 @@ class test_nb_clashscore(unittest.TestCase):
     """
     make sure pdb_interpretation can run without errors when showing
     clashscore info """
-    from libtbx import easy_run
-    cmd = 'phenix.pdb_interpretation 1a18.pdb nonbonded_clashscore=true'
+    cmd = 'phenix.pdb_interpretation {} nonbonded_clashscore=true'
+    cmd = cmd.format(self.file_name)
     r = easy_run.go(cmd,join_stdout_stderr=False)
     self.assertFalse(bool(r.stderr_lines))
 
@@ -715,7 +717,21 @@ class test_nb_clashscore(unittest.TestCase):
       for fn in self.file_to_delete:
         if os.path.isfile(fn): os.remove(fn)
 
+def run_selected_tests():
+  """  Run selected tests
+
+  1) List in "tests" the names of the particular test you want to run
+  2) Comment out unittest.main()
+  3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
+  """
+  tests = ['test_print']
+  suite = unittest.TestSuite(map(test_nb_clashscore, tests))
+  return suite
+
 if (__name__ == "__main__"):
+  # use for individual tests
+  # unittest.TextTestRunner().run(run_selected_tests())
+
   if (chem_data is None) :
     print "chem_data not present, skipping"
   else :
