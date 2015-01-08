@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 12/15/2014
+Last Changed: 01/05/2015
 Description : IOTA pickle selection module. Selects the best integration results from a
               set of pickles derived from a single image.
 '''
@@ -23,37 +23,37 @@ def prefilter(gs_params, total_tmp_pickles):
 
   acceptable_pickles = []
   if gs_params.flag_prefilter == True:
-		for tmp_pickle in total_tmp_pickles:
+    for tmp_pickle in total_tmp_pickles:
 
-			tmp_pickle_name = os.path.basename(tmp_pickle)
-			uc_tol = gs_params.target_uc_tolerance
-			user_uc = []
+      tmp_pickle_name = os.path.basename(tmp_pickle)
+      uc_tol = gs_params.target_uc_tolerance
+      user_uc = []
 
-			for prm in gs_params.target_unit_cell.parameters():
-				user_uc.append(prm)
+      for prm in gs_params.target_unit_cell.parameters():
+        user_uc.append(prm)
 
-			# read pickle info and determine uc differences
-			observations = SingleFrame(tmp_pickle, tmp_pickle_name).miller_array
-			p_pg = observations.space_group_info()
-			p_uc = observations.unit_cell().parameters()
+      # read pickle info and determine uc differences
+      observations = SingleFrame(tmp_pickle, tmp_pickle_name).miller_array
+      p_pg = observations.space_group_info()
+      p_uc = observations.unit_cell().parameters()
 
-			delta_a = abs(p_uc[0] - user_uc[0])
-			delta_b = abs(p_uc[1] - user_uc[1])
-			delta_c = abs(p_uc[2] - user_uc[2])
-			delta_alpha = abs(p_uc[3] - user_uc[3])
-			delta_beta = abs(p_uc[4] - user_uc[4])
-			delta_gamma = abs(p_uc[5] - user_uc[5])
+      delta_a = abs(p_uc[0] - user_uc[0])
+      delta_b = abs(p_uc[1] - user_uc[1])
+      delta_c = abs(p_uc[2] - user_uc[2])
+      delta_alpha = abs(p_uc[3] - user_uc[3])
+      delta_beta = abs(p_uc[4] - user_uc[4])
+      delta_gamma = abs(p_uc[5] - user_uc[5])
 
-			# Determine if pickle satisfies sg / uc parameters within given
-			# tolerance and low resolution cutoff
-			if str(p_pg) == gs_params.target_pointgroup:  
-				if  (delta_a <= user_uc[0] * uc_tol and 
-							delta_b <= user_uc[1] * uc_tol and
-							delta_c <= user_uc[2] * uc_tol and 
-							delta_alpha <= user_uc[3] * uc_tol and 
-							delta_beta <= user_uc[4] * uc_tol and 
-							delta_gamma <= user_uc[5] * uc_tol):
-					acceptable_pickles.append(tmp_pickle)
+      # Determine if pickle satisfies sg / uc parameters within given
+      # tolerance and low resolution cutoff
+      if str(p_pg) == gs_params.target_pointgroup:  
+        if  (delta_a <= user_uc[0] * uc_tol and 
+              delta_b <= user_uc[1] * uc_tol and
+              delta_c <= user_uc[2] * uc_tol and 
+              delta_alpha <= user_uc[3] * uc_tol and 
+              delta_beta <= user_uc[4] * uc_tol and 
+              delta_gamma <= user_uc[5] * uc_tol):
+          acceptable_pickles.append(tmp_pickle)
 
   return acceptable_pickles
 
