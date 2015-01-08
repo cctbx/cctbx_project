@@ -267,7 +267,8 @@ class installer(object):
     # Copy base, build, and modules
     print >> self.out, "Installing new binary package..."
     for i in ['base', 'build', 'modules', 'doc']:      
-      copy_tree(os.path.join(self.installer_dir, i), os.path.join(self.dest_dir, i))
+      if os.path.exists(os.path.join(self.installer_dir, i)):
+        copy_tree(os.path.join(self.installer_dir, i), os.path.join(self.dest_dir, i))
 
     # Reconfigure
     log = open(os.path.join(self.tmp_dir, "binary.log"), "w")
