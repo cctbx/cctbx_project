@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 12/15/2014
+Last Changed: 01/05/2015
 Description : Runs cxi.index with signal/spot height and area grid search
 '''
 

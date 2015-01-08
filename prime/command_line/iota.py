@@ -3,8 +3,8 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 12/15/2014
-Description : IOTA command-line module. Version 0.6
+Last Changed: 01/05/2015
+Description : IOTA command-line module. Version 0.7
 '''
 
 import os
@@ -28,8 +28,8 @@ def index_mproc_wrapper(current_img):
 
 if __name__ == "__main__":
 
-  gs_version = '0.6'
-  ps_version = '0.6'
+  gs_version = '0.7'
+  ps_version = '0.7'
 
   print '\n{}'.format(datetime.now())
   print 'Starting IOTA ... \n\n'
@@ -156,19 +156,17 @@ if __name__ == "__main__":
          ps_logger.info('Processing integrated pickles in {0}\n'.format(output_dir))
          best_file_selection(gs_params, output_dir, log_dir)
 
-    with open('{0}/best_by_strong.lst'.format(os.path.abspath(gs_params.output)), 
-              'r') as output_list:
-      output_list_contents = output_list.read()
-      final_count = len(output_list_contents.splitlines())
-    
-    with open('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output)), 
-              'r') as int_fail_list:
-      int_fail_list_contents = int_fail_list.read()
-      int_fail_count = len(int_fail_list_contents.splitlines())
- 
-  
+
+    # This section checks for output and summarizes file integration and
+    # selection results
     ps_logger.info('raw images processed:         {}'.format(len(input_list)))
-    ps_logger.info('raw images not integrated:    {}'.format(int_fail_count))
+    
+    if os.path.isfile('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output))):
+      with open('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output)), 
+                'r') as int_fail_list:
+        int_fail_list_contents = int_fail_list.read()
+        int_fail_count = len(int_fail_list_contents.splitlines())
+        ps_logger.info('raw images not integrated:    {}'.format(int_fail_count))    
     
     if os.path.isfile('{0}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output))):
       with open('{0}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)), 
@@ -176,6 +174,14 @@ if __name__ == "__main__":
         bad_int_list_contents = bad_int_list.read()
         bad_int_count = len(bad_int_list_contents.splitlines())
         ps_logger.info('images failed prefilter:      {}'.format(bad_int_count))
-    
+
+    if os.path.isfile('{0}/best_by_strong.lst'.format(os.path.abspath(gs_params.output))):
+      with open('{0}/best_by_strong.lst'.format(os.path.abspath(gs_params.output)), 
+                'r') as output_list:
+        output_list_contents = output_list.read()
+        final_count = len(output_list_contents.splitlines())    
+    else:
+      final_count = 0
     ps_logger.info('pickles in final selection:   {}'.format(final_count))
+      
     ps_logger.info('\n\nIOTA pickle select version {0}'.format(ps_version))
