@@ -372,7 +372,6 @@ class nqh_flips (validation) :
   """
   N/Q/H sidechain flips identified by Reduce.
   """
-  assert libtbx.env.has_module(name="reduce")
   gui_list_headers = ["Chain", "Residue"]
   gui_formats = ["%s", "%s"]
   wx_column_widths = [100,220]
