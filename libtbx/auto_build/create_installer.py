@@ -104,6 +104,7 @@ class SetupInstaller(object):
     self.copy_build()
     self.copy_modules()
     self.copy_doc()
+    self.fix_permissions()
     self.make_dist()
     
   def make_dist(self):
@@ -181,6 +182,14 @@ class SetupInstaller(object):
       os.path.join(self.dest, 'doc')
     )
     
+  def fix_permissions(self):
+    subprocess.check_call([
+      'chmod',
+      '-R',
+      'u=rw,a+rX',
+      self.dest
+      ])
+    
 def run (args) :
   parser = OptionParser()
   parser.add_option("--version", dest="version", action="store",
@@ -189,8 +198,6 @@ def run (args) :
     help="Setup for binary installer only (no source packages)", default=False)
   parser.add_option("--root", dest="root", action="store",
     help="Environment root", default=os.getcwd())
-  parser.add_option("--dest", dest="dest", action="store",
-    help="Destination folder", default=os.getcwd())
   parser.add_option("--dest_tar", dest="dest_tar", action="store",
     help="Tar archive filename")
   parser.add_option("--readme", dest="readme", action="append",
@@ -204,10 +211,11 @@ def run (args) :
   parser.add_option("--base-module", dest="base_modules", action="append",
     help="Additional local modules placed in base/ directory")
   options, args_ = parser.parse_args(args=args)
+  assert len(args_) == 1, "Destination directory required argument."
   setup = SetupInstaller(
+    dest=args_[0],
     version=options.version,
     root=options.root,
-    dest=options.dest,
     readme=options.readme,
     license=options.license,
     install_script=options.install_script,

@@ -532,9 +532,18 @@ class installer(object):
     if (self.options.compact):
       self.reduce_installation_size()
 
-
     # reconfigure one last time (possibly unnecessary)
     self.display_final_message()
+
+    # Fix permissions
+    call([
+      'chmod',
+      '-R',
+      'u=rw,a+rX',
+      self.dest_dir
+      ])
+      
+    # Show the app.
     if apps_built and (not "SSH_CLIENT" in os.environ) :
       call(args=["open", self.dest_dir], log=self.out)
 
