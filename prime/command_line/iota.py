@@ -135,13 +135,13 @@ if __name__ == "__main__":
 
 
     ps_logger.info('\n\n{:-^100} \n'.format(' PICKLE SELECTION '))
+    
+    print output_dir_list
+    
 
     for output_dir in output_dir_list:
       ps_logger.info('Found integrated pickles ' \
                       'under {0}'.format(os.path.abspath(output_dir)))
-
-    ps_logger.info('Selected by most reflections ' \
-                   'with I / sigI > {0}'.format(gs_params.min_sigma))
 
     if gs_params.flag_prefilter == True:
       prefilter = "ON"
@@ -156,4 +156,26 @@ if __name__ == "__main__":
          ps_logger.info('Processing integrated pickles in {0}\n'.format(output_dir))
          best_file_selection(gs_params, output_dir, log_dir)
 
+    with open('{0}/best_by_strong.lst'.format(os.path.abspath(gs_params.output)), 
+              'r') as output_list:
+      output_list_contents = output_list.read()
+      final_count = len(output_list_contents.splitlines())
+    
+    with open('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output)), 
+              'r') as int_fail_list:
+      int_fail_list_contents = int_fail_list.read()
+      int_fail_count = len(int_fail_list_contents.splitlines())
+ 
+  
+    ps_logger.info('raw images processed:         {}'.format(len(input_list)))
+    ps_logger.info('raw images not integrated:    {}'.format(int_fail_count))
+    
+    if os.path.isfile('{0}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output))):
+      with open('{0}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)), 
+              'r') as bad_int_list:
+        bad_int_list_contents = bad_int_list.read()
+        bad_int_count = len(bad_int_list_contents.splitlines())
+        ps_logger.info('images failed prefilter:      {}'.format(bad_int_count))
+    
+    ps_logger.info('pickles in final selection:   {}'.format(final_count))
     ps_logger.info('\n\nIOTA pickle select version {0}'.format(ps_version))
