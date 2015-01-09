@@ -415,7 +415,6 @@ def substitute_ss(real_h,
   hbond_params = build_proxies.proxies
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
-    show_nonbonded_clashscore    = False,
     params_edits                 = custom_pars.geometry_restraints.edits,
     plain_pairs_radius           = 5,
     hydrogen_bond_proxies        = hbond_params,

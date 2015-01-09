@@ -62,7 +62,6 @@ def get_restraints_manager (processed_pdb_file, xray_structure,
     has_hd = "H" in sctr_keys or "D" in sctr_keys
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
-    show_nonbonded_clashscore    = False,
     params_edits                 = None,
     plain_pairs_radius           = 5,
     hydrogen_bond_proxies        = None,

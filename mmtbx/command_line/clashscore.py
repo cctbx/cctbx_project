@@ -2,6 +2,7 @@
 
 from __future__ import division
 from cctbx.geometry_restraints.clash_score import check_and_add_hydrogen
+from cctbx.geometry_restraints.clash_score import get_macro_mol_sel
 import mmtbx.monomer_library.pdb_interpretation as pdb_inter
 import cctbx.geometry_restraints.clash_score as clash_score
 import mmtbx.validation.clashscore
@@ -83,10 +84,9 @@ def run (args, out=sys.stdout, quiet=None) :
     When verbose=False it will print:
       for molprobity (float): clashscore
       for cctbx (list of floats):
-        [simple_cctbx_clashscore (without symmetry and solvent),
-         symmetry_cctbx_clashscore,
-         solvent_cctbx_clashscore,
-         total_cctbx_clashscore]
+        [cctbx_clashscore_macro_molecule,
+         cctbx_clashscore_due_to_sym_op,
+         cctbx_clashscore_all]
   """
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
@@ -147,20 +147,20 @@ def run (args, out=sys.stdout, quiet=None) :
     sites_cart = xrs.sites_cart()
     site_labels = xrs.scatterers().extract_labels()
     hd_sel = xrs.hd_selection()
-
+    macro_mol_sel = get_macro_mol_sel(pdb_processed_file)
     cctbx_clashscore = clash_score.info(
       geometry_restraints_manager=grm,
+      macro_molecule_selection=macro_mol_sel,
       sites_cart=sites_cart,
       site_labels=site_labels,
       hd_sel=hd_sel)
     if params.verbose:
       cctbx_clashscore.show(log=out)
     else:
-      all = cctbx_clashscore.result.nb_clashscore_all_clashes
-      simple = cctbx_clashscore.result.nb_clashscore_simple
-      sym = cctbx_clashscore.result.nb_clashscore_due_to_sym_op
-      solv = cctbx_clashscore.result.nb_clashscore_solvent_solvent
-      out_list = [simple,sym,solv,all]
+      all = cctbx_clashscore.result.cctbx_clashscore_all
+      macro_molecule = cctbx_clashscore.result.cctbx_clashscore_macro_molecule
+      sym = cctbx_clashscore.result.cctbx_clashscore_due_to_sym_op
+      out_list = [macro_molecule,sym,all]
       print >> out,map(lambda x: round(x,2),out_list)
 
 if (__name__ == "__main__") :

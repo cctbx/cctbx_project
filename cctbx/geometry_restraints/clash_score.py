@@ -1,9 +1,40 @@
 from libtbx.utils import Sorry
+from scitbx.array_family import flex
 from libtbx import easy_run
 import iotbx.pdb
 import string
 import math
 import sys
+
+class cctbx_clashscore_results(object):
+  """ Container for cctbx clashscore results """
+
+  def __init__(self):
+    """
+    - Clashscore is number of clashes per 1000 atoms
+    - Clashscore is always evaluated relative to the total number of atoms
+    - Clash proxies is a list containing the information on the clashing atoms
+      in the format:([pdb labels],i_seq,j_seq,model,vdw_distance,sym_op_j,rt_mx)
+
+    The following clash scores are calculated:
+      cctbx_clashscore_due_to_sym_op: (calculated with the complete model)
+      cctbx_clashscore_macro_molecule: (protein, DNA and RNA)
+        excluding symmetry related clashes
+      cctbx_clashscore_all: (calculated with the complete model)
+
+    For each of the clashscores a list of clashing proxies (atoms) is provided:
+      cctbx_clash_proxies_due_to_sym_op
+      cctbx_clash_proxies_macro_molecule
+      cctbx_clash_proxies_all
+
+    """
+    self.cctbx_clashscore_due_to_sym_op = 0
+    self.cctbx_clashscore_macro_molecule = 0
+    self.cctbx_clashscore_all = 0
+    #
+    self.cctbx_clash_proxies_due_to_sym_op = []
+    self.cctbx_clash_proxies_macro_molecule = []
+    self.cctbx_clash_proxies_all = []
 
 class compute(object):
   """
@@ -23,17 +54,19 @@ class compute(object):
     """
     Arguments:
     nonbonded_list: a list with items in the following format
-                    ([pdb labels], i_seq, j_seq, model, vdw_distance, sym_op_j, rt_mx)
+                    ([pdb labels],i_seq,j_seq,model,vdw_distance,sym_op_j,rt_mx)
                     i_seq,j_seq: position of residues in the pdb file
                     model: The pdb or other model distance
                     vdw_distance: Van Der Waals distance
-                    sym_op_j: is this a product of a symmetry opeation
+                    sym_op_j: is this a product of a symmetry operation
                     rt_mx: Rotation matrix for symmetry operation
-    hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is a Hydrogen or not
-    full_connectivty_table: full_connectivty_table[i] is a dictinary constaining a
-                            list of all atoms connected to atom i
-    connectivty_table_2: connectivty_table[i] is a dictinary constaining a
-                         list of all atoms connected to atom i
+    hd_sel: hd_sel[i] returns True of False, indicating whether an atom i
+            is a Hydrogen or not
+    full_connectivty_table: full_connectivty_table[i] is a dictionary containing
+                            a list of all atoms connected to atom i
+    connectivty_table_2: connectivty_table[i] is a dictionary containing a
+                         list of all atoms separated by three bonds from atom i
+                         (1 - 4 interaction)
     sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
     """
     self.nonbonded_list = nonbonded_list
@@ -49,40 +82,34 @@ class compute(object):
         if e == "vec3_double' object is not callable":
           raise Sorry(e)
         else:
-          clashlist = [[],[],[]]
+          clashlist = [[],[]]
           print e
       except Sorry as e:
         raise Sorry(e)
       except Exception as e:
         m='Failed processing proxies_info_nonbonded in clashscore_clash_list()'
         raise Sorry(m)
-      # Collect, seperatly, clashes due to symmetry operation and those that are not
-      self.nb_clash_proxies_due_to_sym_op = clashlist[0]
-      self.nb_clash_proxies_solvent_solvent = clashlist[1]
-      self.nb_clash_proxies_simple = clashlist[2]
-      self.nb_clash_proxies_all_clashes = clashlist[0] + clashlist[1] + clashlist[2]
+      # Collect clashes information
+      self.cctbx_clash_proxies_due_to_sym_op = clashlist[0]
+      self.cctbx_non_sym_clashes = clashlist[1]
+      self.cctbx_clash_proxies_all = clashlist[0] + clashlist[1]
       # clashscore is the number of steric overlaps (>0.4A) per 1000 atoms
-      n_atoms = len(self.sites_cart)
-      clashscore_due_to_sym_op = len(clashlist[0])*1000/n_atoms
-      clashscore_solvent_solvent = len(clashlist[1])*1000/n_atoms
-      clashscore_simple = len(clashlist[2])*1000/n_atoms
-      clashscore_all_clashes = clashscore_due_to_sym_op + \
-        clashscore_solvent_solvent + clashscore_simple
+      self.n_atoms = len(self.sites_cart)
+      clashscore_sym = len(clashlist[0])*1000/self.n_atoms
+      clashscore_non_sym = len(clashlist[1])*1000/self.n_atoms
+      clashscore_all_clashes = clashscore_sym + + clashscore_non_sym
       #
-      self.nb_clashscore_due_to_sym_op = clashscore_due_to_sym_op
-      self.nb_clashscore_solvent_solvent = clashscore_solvent_solvent
-      self.nb_clashscore_simple = clashscore_simple
-      self.nb_clashscore_all_clashes = clashscore_all_clashes
+      self.cctbx_clashscore_due_to_sym_op = clashscore_sym
+      self.cctbx_clashscore_non_sym = clashscore_non_sym
+      self.cctbx_clashscore_all = clashscore_all_clashes
     else:
-      self.nb_clashscore_due_to_sym_op = 0
-      self.nb_clashscore_solvent_solvent = 0
-      self.nb_clashscore_simple = 0
-      self.nb_clashscore_all_clashes = 0
+      self.cctbx_clashscore_due_to_sym_op = 0
+      self.cctbx_clashscore_non_sym = 0
+      self.cctbx_clashscore_all = 0
       #
-      self.nb_clash_proxies_due_to_sym_op = []
-      self.nb_clash_proxies_solvent_solvent = []
-      self.nb_clash_proxies_simple = []
-      self.nb_clash_proxies_all_clashes = []
+      self.cctbx_clash_proxies_due_to_sym_op = []
+      self.cctbx_non_sym_clashes = []
+      self.cctbx_clash_proxies_all = []
 
   @staticmethod
   def is_1_5_interaction(i_seq,j_seq,hd_sel,full_connectivty_table):
@@ -205,49 +232,31 @@ class compute(object):
       cos_angle = 1
     return cos_angle
 
-  @staticmethod
-  def are_both_solvent(key,connectivty_table_2):
-    '''(str,dict) -> bool
-    retrun true if the two atoms, which number is specified in "key" are single, double or tripple atom molecule
-
-    Arguments:
-    connectivty_table_2: connectivty_table[i] is a dictinary constaining a
-                         list of all atoms connected to atom i
-    key: a list "atom1 lable::atom1 number::sym.op.::atom2 label::atom2 number::sym.op."
-
-    Return True is both atoms have no connection to atoms two bonds apart
-    '''
-    key = key.split('::')
-    i = int(key[1])
-    j = int(key[4])
-    i_is_solvent = list(connectivty_table_2[i])==[]
-    j_is_solvent = list(connectivty_table_2[j])==[]
-    return i_is_solvent and j_is_solvent
-
   def clashscore_clash_list(self):
-    '''(self) -> [list,list,list]
-    Collect inforamtion of clashing nonbonded proxies (neighboring atoms) for clash
-    score calculation.
-    - proxies considered to clash when model_distance - van_der_waals_distance < -0.41
+    '''(self) -> [list,list]
+    Collect information of clashing nonbonded proxies (neighboring atoms)
+    for clash score calculation.
+    - proxies (atoms) considered to clash when:
+        model_distance - van_der_waals_distance < -0.41
     - For every atom consider only worst clash
     - Do not double count in-line clashes.
        for example, C-H1  H2-...
        if both C and H1 are clashing with H2 count only the worst of them
     - Exclude 1-5 interaction of Hydrogen and heavy atom
 
-    Retruns:
+    Returns:
     clashing_atoms_list: [[list of clashes due to sym operation],
-      [list of solvent-solvent clashes],[list of all other clashes]]
+                          [list of all other clashes]]
     '''
-    clashing_atoms_list = [[],[],[]]
+    clashing_atoms_list = [[],[]]
     clashing_atoms_dict = {}
     # clashing_atoms_dict[atom_key] = [all clashes information for this atom]
-    # clashing_atoms_dict[' HA  ASP A  44 '] = [[atom1,vec1, i_seq, j_seq1,model)],
-    #                                           [atom2, vec2,i_seq, j_seq2,model]...]
-    # vec = [delta_x,delta_y,delta_z] , the difference between the atoms coordinates
+    # clashing_atoms_dict[' HA  ASP A  44 '] =
+    #   [ [atom1,vec1,i_seq,j_seq1,model)],[atom2, vec2,i_seq, j_seq2,model]...]
+    # vec = [delta_x,delta_y,delta_z] , difference between the atoms coordinates
     clashes_dict = {}
-    # clashes_dict[vec] = [atom1, atom2, clash_record]
-    # vec uniquly define a clash, regardless of atoms order
+    # clashes_dict[vec] = [atom1, atom2, nonbonded_list clash_record]
+    # vec uniquely define a clash, regardless of atoms order
     for rec in self.nonbonded_list:
       i_seq = rec[1]
       j_seq = rec[2]
@@ -258,9 +267,10 @@ class compute(object):
       # check for clash
       if (delta < -0.41):
         # Check of 1-5 interaction
-        if not self.is_1_5_interaction(i_seq, j_seq,self.hd_sel,self.full_connectivty_table):
+        if not self.is_1_5_interaction(
+                i_seq, j_seq,self.hd_sel,self.full_connectivty_table):
           clash_vec,key1,key2 = self.get_clash_keys(rec)
-          # clash_key is a string a string that uniquly identify each clash
+          # clash_key is a string a string that uniquely identify each clash
           if key1>key2:
             clash_key = '::'.join([key2,key1])
           else:
@@ -277,7 +287,7 @@ class compute(object):
       if len(clashing_atoms_dict[key]) > 1:
         temp_clash_list = []
         n_clashes = len(clashing_atoms_dict[key])
-        # itereate over all clash combination
+        # iterate over all clash combination
         for i in range(n_clashes-1):
           for j in range(i+1,n_clashes):
             vec_i = clashing_atoms_dict[key][i][1]
@@ -295,7 +305,8 @@ class compute(object):
                 if clashing_atoms_dict[key][i][3] == '':
                   # ignore clashes that are cause by symmetry operation
                   cos_angle = self.cos_vec(u,v)
-            # atoms consider to be inline if cosine of the angle between vectors > 0.866
+            # atoms consider to be inline if cosine of
+            # the angle between vectors > 0.866
             if cos_angle > 0.867 and (vec_i != vec_j):
               # for inline clashes keep the closer two(compare models)
               if clashing_atoms_dict[key][i][4] < clashing_atoms_dict[key][j][4]:
@@ -317,28 +328,30 @@ class compute(object):
       if key.split('::')[2] != '':
         # not to symmetry operation
         clashing_atoms_list[0].append(val[2])
-      elif self.are_both_solvent(key,self.connectivty_table_2):
-        # solvent-solvent clashes
-        clashing_atoms_list[1].append(val[2])
       else:
-        # not due to symmetry operation or solvent-solvent, simple clashes
-        clashing_atoms_list[2].append(val[2])
+        # not due to symmetry operation
+        clashing_atoms_list[1].append(val[2])
     return clashing_atoms_list
 
 class info(object):
 
   def __init__(self,
     geometry_restraints_manager,
+    macro_molecule_selection,
     sites_cart,
     hd_sel,
     site_labels=None):
     '''
     Construct nonbonded_clash_info, the non-bonded clashss lists and scores
 
-    Arguments:
-    sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
-    site_labels: a list of lables such as " HA  LEU A  38 ", for each atom
-    hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is a Hydrogen or not
+    Args:
+      geometry_restraints_manager:
+      macro_molecule_selection : selection array typically of corresponding to a
+        selection string of "protein of dna or rna"
+      sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
+      site_labels: a list of lables such as " HA  LEU A  38 ", for each atom
+      hd_sel: hd_sel[i] retruns True of False, indicating whether an atom i is
+            a Hydrogen or not
 
     NOTE:
     As of Dec. 2013 manipulation of scatterers can produce scatteres which
@@ -352,37 +365,75 @@ class info(object):
     The default values of these are True and 0.001, which will alter
     the size of the vdw bonds and the clashes that being counted
 
-    As of Dec. 2013 manipulation of scatterers can produce scatteres whish
-    have no lables. In that case, water interaction score will not be accurate
+    As of Dec. 2013 manipulation of scatterers can produce scatterers which
+    have no labels. In that case, water interaction score will not be accurate
 
     @author: Youval Dar, LBL 12-2013
     '''
-    pair_proxies = geometry_restraints_manager.pair_proxies(
-          sites_cart=sites_cart,
-          site_labels=site_labels)
-    if pair_proxies.nonbonded_proxies.n_unknown_nonbonded_type_pairs != 0:
-      msg = "nonbonded clashscore can't be calculated."
-      msg += " PDB file contains unknown type pairs. Please provide cif file."
-      raise Sorry(msg)
-    proxies_info_nonbonded = pair_proxies.nonbonded_proxies.get_sorted(
-      by_value="delta",
-      sites_cart=sites_cart,
-      site_labels=site_labels)
+    selection_list = [flex.bool([True]*sites_cart.size())]
+    results = []
+    second_grm_selection = macro_molecule_selection.count(False) > 0
+    if second_grm_selection:
+      selection_list.append(macro_molecule_selection)
 
-    if proxies_info_nonbonded != None:
-      nonbonded_list = proxies_info_nonbonded[0]
+    for sel in selection_list:
+      grm = geometry_restraints_manager.select(sel)
+      cart = sites_cart.select(sel)
+      if site_labels:
+        site_label = site_labels.select(sel)
+      else:
+        site_label = site_labels
+      pair_proxies = grm.pair_proxies(
+            sites_cart=cart,
+            site_labels=site_label)
+      if pair_proxies.nonbonded_proxies.n_unknown_nonbonded_type_pairs != 0:
+        msg = "nonbonded clashscore can't be calculated."
+        msg += " PDB file contains unknown type pairs. Please provide cif file."
+        raise Sorry(msg)
+      proxies_info_nonbonded = pair_proxies.nonbonded_proxies.get_sorted(
+        by_value="delta",
+        sites_cart=cart,
+        site_labels=site_label)
+
+      if proxies_info_nonbonded != None:
+        nonbonded_list = proxies_info_nonbonded[0]
+      else:
+        nonbonded_list = []
+
+      fsc0=grm.shell_sym_tables[0].full_simple_connectivity()
+      fsc2=grm.shell_sym_tables[2].full_simple_connectivity()
+
+      results.append(compute(
+        nonbonded_list=nonbonded_list,
+        hd_sel=hd_sel.select(sel),
+        full_connectivty_table=fsc0,
+        connectivty_table_2=fsc2,
+        sites_cart=cart))
+
+    self.result = cctbx_clashscore_results()
+    r_complete = results[0]
+    # all
+    self.result.cctbx_clashscore_all = r_complete.cctbx_clashscore_all
+    self.result.cctbx_clash_proxies_all = r_complete.cctbx_clash_proxies_all
+    # Symmetry
+    self.result.cctbx_clashscore_due_to_sym_op = \
+      r_complete.cctbx_clashscore_due_to_sym_op
+    self.result.cctbx_clash_proxies_due_to_sym_op = \
+      r_complete.cctbx_clash_proxies_due_to_sym_op
+    # macro molecule
+    if second_grm_selection:
+      r_macro_mol = results[1]
+      score_ratio =  r_macro_mol.n_atoms / r_complete.n_atoms
+      clashscore = r_macro_mol.cctbx_clashscore_non_sym * score_ratio
+      self.result.cctbx_clashscore_macro_molecule = clashscore
+      self.result.cctbx_clash_proxies_macro_molecule = \
+        r_macro_mol.cctbx_non_sym_clashes
     else:
-      nonbonded_list = []
+      self.result.cctbx_clashscore_macro_molecule = \
+        r_complete.cctbx_clashscore_non_sym
+      self.result.cctbx_clash_proxies_macro_molecule = \
+        r_complete.cctbx_non_sym_clashes
 
-    grm=geometry_restraints_manager
-    fsc0=grm.shell_sym_tables[0].full_simple_connectivity()
-    fsc2=grm.shell_sym_tables[2].full_simple_connectivity()
-    self.result = compute(
-      nonbonded_list=nonbonded_list,
-      hd_sel=hd_sel,
-      full_connectivty_table=fsc0,
-      connectivty_table_2=fsc2,
-      sites_cart=sites_cart)
 
   def show(self, log=None):
     """
@@ -398,21 +449,19 @@ class info(object):
     Returns:
       out_string (str): the output string that is printed to log
     """
-    nb_clash = self.result
+    cctbx_clash = self.result
     if not log: log = sys.stdout
     out_list = []
     result_str = '{:<50} :{:5.2f}'
     names = ['Total non-bonded CCTBX clashscore',
-             'Clashscore without symmetry or solvent clashes',
-             'Clashscore due to symmetry',
-             'Clashscore solvent - solvent clashes']
-    scores = [nb_clash.nb_clashscore_all_clashes,
-              nb_clash.nb_clashscore_simple,
-              nb_clash.nb_clashscore_due_to_sym_op,
-              nb_clash.nb_clashscore_solvent_solvent]
+             'Clashscore macro molecule (Protein, RNA, DNA)',
+             'Clashscore due to symmetry']
+    scores = [cctbx_clash.cctbx_clashscore_all,
+              cctbx_clash.cctbx_clashscore_macro_molecule,
+              cctbx_clash.cctbx_clashscore_due_to_sym_op]
     for name,score in zip(names,scores):
       out_list.append(result_str.format(name,round(score,2)))
-    title = 'All clashing atoms info table'
+    title = 'Clashing atoms of complete model,'
     title += ' based on pair_proxies.nonbonded_proxies data'
     out_list.append(title)
     out_list.append('='*len(title))
@@ -421,7 +470,7 @@ class info(object):
     out_str = '{:^35} | {:<5} | {:<5} | {:<7.4} | {:<7.4} | {:<10} | {:<8}'
     out_list.append(lbl_str.format(*labels))
     out_list.append('-'*95)
-    for data in nb_clash.nb_clash_proxies_all_clashes:
+    for data in cctbx_clash.cctbx_clash_proxies_all:
       d = list(data)
       d[0] = ','.join(data[0])
       d[0] = d[0].replace('"','')
@@ -508,3 +557,22 @@ def check_and_add_hydrogen(pdb_hierarchy=None,
       msg += 'Cannot add hydrogen to PDB file'
       print >> log,msg
     return r.as_pdb_string(),False
+
+def get_macro_mol_sel(pdb_processed_file):
+  """
+  A central place to get macro molecule selection for CCTBX clashscore
+  calculation
+
+  Args:
+    pdb_processed_file : Object result from pdb_interpretation of a file
+
+  Return:
+    macro_mol_sel (flex.bool): selection array
+  """
+  macro_molecule_selection_str = 'protein or dna or rna'
+  proxies = pdb_processed_file.all_chain_proxies
+  cache = proxies.pdb_hierarchy.atom_selection_cache()
+  macro_mol_sel = proxies.selection(
+    cache=cache,
+    string=macro_molecule_selection_str )
+  return macro_mol_sel

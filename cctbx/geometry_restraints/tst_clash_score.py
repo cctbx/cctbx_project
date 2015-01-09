@@ -1,7 +1,9 @@
 from __future__ import division
-from cctbx.geometry_restraints.clash_score import compute as nb
+from cctbx.geometry_restraints.clash_score import get_macro_mol_sel
 import mmtbx.monomer_library.pdb_interpretation as pdb_inter
 import cctbx.geometry_restraints.clash_score as clash_score
+from cctbx.geometry_restraints.clash_score import compute
+from cctbx.geometry_restraints.clash_score import info
 from cctbx.array_family import flex
 import mmtbx.monomer_library.server
 from mmtbx import monomer_library
@@ -321,8 +323,64 @@ HETATM  412  O2' A44 B  17      23.644   7.009   5.493  1.00 33.08           O
 HETATM  413  z!# A44 B  17      24.403   5.690   7.395  1.00 32.76           C
 """
 
+raw_records7="""\
+CRYST1   44.060   35.400   48.340  90.00  95.00  90.00 C 1 2 1       8
+ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
+ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
+ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O
+ATOM      5  N   ASN A   2      -7.656   2.923   3.155  1.00 15.02           N
+ATOM      6  CA  ASN A   2      -6.522   2.038   2.831  1.00 14.10           C
+ATOM      7  C   ASN A   2      -5.241   2.537   3.427  1.00 13.13           C
+ATOM      8  O   ASN A   2      -4.978   3.742   3.426  1.00 11.91           O
+ATOM      9  CB  ASN A   2      -6.346   1.881   1.341  1.00 15.38           C
+ATOM     10  CG  ASN A   2      -7.584   1.342   0.692  1.00 14.08           C
+ATOM     11  OD1 ASN A   2      -8.025   0.227   1.016  1.00 17.46           O
+ATOM     12  ND2 ASN A   2      -8.204   2.155  -0.169  1.00 11.72           N
+ATOM     13  N   ASN A   3      -4.438   1.590   3.905  1.00 12.26           N
+ATOM     14  CA  ASN A   3      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     15  C   ASN A   3      -1.955   1.332   3.895  1.00 11.10           C
+ATOM     16  O   ASN A   3      -1.872   0.119   3.648  1.00 10.42           O
+ATOM     17  CB  ASN A   3      -3.259   1.378   6.042  1.00 12.15           C
+ATOM     18  CG  ASN A   3      -2.006   1.739   6.861  1.00 12.82           C
+ATOM     19  OD1 ASN A   3      -1.702   2.925   7.072  1.00 15.05           O
+ATOM     20  ND2 ASN A   3      -1.271   0.715   7.306  1.00 13.48           N
+TER
+ATOM     57  O   HOH C  34     189.583 273.076 175.423  1.00  0.00           O
+ATOM     58  O   HOH C  35     188.804 273.006 174.173  1.00  0.00           O
+ATOM     59  O   HOH C  36     188.920 271.622 173.510  1.00  0.00           O
+ATOM     60  O   HOH C  37     189.986 271.004 173.508  1.00  0.00           O
+TER
+HETATM   61  O   HOH A   8      -6.471   5.227   7.124  1.00 22.62           O
+HETATM   62  O   HOH A   9      10.431   1.858   3.216  1.00 19.71           O
+HETATM   63  O   HOH A  10     -11.286   1.756  -1.468  1.00 17.08           O
+HETATM   64  O   HOH A  11      11.808   4.179   9.970  1.00 23.99           O
+HETATM   65  O   HOH A  12      13.605   1.327   9.198  1.00 26.17           O
+HETATM   66  O   HOH A  13      -2.749   3.429  10.024  1.00 39.15           O
+HETATM   67  O   HOH A  14      -1.500   0.682  10.967  1.00 43.49
+TER
+HETATM 1223  S   SO4 A 157      30.746  18.706  28.896  1.00 47.98           S
+HETATM 1224  O1  SO4 A 157      30.697  20.077  28.620  1.00 48.06           O
+HETATM 1225  O2  SO4 A 157      31.104  18.021  27.725  1.00 47.52           O
+HETATM 1226  O3  SO4 A 157      29.468  18.179  29.331  1.00 47.79           O
+HETATM 1227  O4  SO4 A 157      31.722  18.578  29.881  1.00 47.85           O
+TER
+HETATM 1819  N   NPH A 117      23.870  15.268 -50.490  1.00 25.06           N
+HETATM 1820  CA  NPH A 117      23.515  14.664 -49.210  1.00 22.94           C
+HETATM 1821  CB  NPH A 117      23.658  15.702 -48.113  1.00 21.44           C
+HETATM 1822  SG  NPH A 117      25.281  16.410 -47.839  1.00 31.29           S
+HETATM 1823  CD  NPH A 117      25.498  16.310 -46.059  0.50 33.70           C
+HETATM 1824  CE  NPH A 117      26.971  16.492 -45.820  0.50 39.92           C
+HETATM 1825  OZ  NPH A 117      27.815  15.348 -45.806  0.50 43.26           O
+HETATM 1826  NZ  NPH A 117      27.411  17.709 -45.649  0.50 43.87           N
+HETATM 1827  C6  NPH A 117      28.830  18.015 -45.436  0.50 51.14           C
+HETATM 1828  C5  NPH A 117      29.800  17.009 -45.411  0.50 51.26           C
+HETATM 1829  C6A NPH A 117      29.195  19.344 -45.262  0.50 52.54           C
+END
+"""
 
-class test_nb_clashscore(unittest.TestCase):
+
+class test_cctbx_clashscore(unittest.TestCase):
 
   def setUp(self):
     self.file_to_delete = []
@@ -330,6 +388,9 @@ class test_nb_clashscore(unittest.TestCase):
     self.file_name = 'test_pdb_file.pdb'
     open(self.file_name,'w').write(raw_records1)
     self.file_to_delete.append(self.file_name)
+    self.file_name2 = 'test_pdb_file2.pdb'
+    open(self.file_name2,'w').write(raw_records7)
+    self.file_to_delete.append(self.file_name2)
 
   def test_inline_angle(self):
     '''
@@ -337,11 +398,10 @@ class test_nb_clashscore(unittest.TestCase):
     '''
     u = (37.407,5.077,-51.025,40.196,3.261,-48.474)
     v = (39.466,4.279,-52.202,37.407,5.077,-51.025)
-    result = nb.cos_vec(u, v)
+    result = compute.cos_vec(u, v)
     expected = 0.5072
     msg = 'The difference is: {}'.format(result - expected)
     self.assertAlmostEqual(result,expected, delta=0.001, msg =msg)
-
 
   def test_vdw_dist(self):
     '''
@@ -357,42 +417,41 @@ class test_nb_clashscore(unittest.TestCase):
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
     for i in [0,1]:
-      grm = self.process_raw_records(raw_record_number=i)
+      grm = process_raw_records(raw_record_number=i)
 
-      nb_clash_sym = grm.nb_clashscore_due_to_sym_op
+      cctbx_clash_sym = grm.cctbx_clashscore_due_to_sym_op
       expected = [38.46,0][i]
       msg = outstring.format(
-        'symmetry related clashscore', expected, nb_clash_sym)
-      self.assertAlmostEqual(nb_clash_sym, expected, delta=0.01,msg=msg)
+        'symmetry related clashscore', expected, cctbx_clash_sym)
+      self.assertAlmostEqual(cctbx_clash_sym, expected, delta=0.01,msg=msg)
       #
-      nb_clash_no_sym = grm.nb_clashscore_simple
+      cctbx_clash_no_sym = grm.cctbx_clashscore_macro_molecule
       expected = [0,28.77][i]
       msg = outstring.format(
-        'non-symmetry related clashscore', expected, nb_clash_no_sym)
-      self.assertAlmostEqual(nb_clash_no_sym, expected, delta=0.01,msg=msg)
+        'non-symmetry related clashscore', expected, cctbx_clash_no_sym)
+      self.assertAlmostEqual(cctbx_clash_no_sym, expected, delta=0.01,msg=msg)
       #
-      nb_clash_total = grm.nb_clashscore_all_clashes
+      cctbx_clash_total = grm.cctbx_clashscore_all
       expected = [38.46,28.77][i]
-      msg = outstring.format('total clashscore', expected, nb_clash_total)
-      self.assertAlmostEqual(nb_clash_total, expected, delta=0.01,msg=msg)
+      msg = outstring.format('total clashscore', expected, cctbx_clash_total)
+      self.assertAlmostEqual(cctbx_clash_total, expected, delta=0.01,msg=msg)
       #
-      nb_list_sym = len(grm.nb_clash_proxies_due_to_sym_op)
+      cctbx_list_sym = len(grm.cctbx_clash_proxies_due_to_sym_op)
       expected = [2,0][i]
       msg = outstring.format(
-        'Number of clashes, symmetry related', expected, nb_list_sym)
-      self.assertEqual(nb_list_sym, expected,msg=msg)
+        'Number of clashes, symmetry related', expected, cctbx_list_sym)
+      self.assertEqual(cctbx_list_sym, expected,msg=msg)
       #
-      nb_list_no_sym = len(grm.nb_clash_proxies_simple)
+      cctbx_list_no_sym = len(grm.cctbx_clash_proxies_macro_molecule)
       expected = [0,4][i]
       msg = outstring.format(
-        'Number of clashes, not symmetry related', expected, nb_list_no_sym)
-      self.assertEqual(nb_list_no_sym, expected, msg=msg)
+        'Number of clashes, not symmetry related', expected, cctbx_list_no_sym)
+      self.assertEqual(cctbx_list_no_sym, expected, msg=msg)
       #
-      nb_list_all = len(grm.nb_clash_proxies_all_clashes)
+      cctbx_list_all = len(grm.cctbx_clash_proxies_all)
       expected = [2,4][i]
-      msg = outstring.format('Total number of clashes', expected, nb_list_all)
-      self.assertEqual(nb_list_all, expected, msg=msg)
-
+      msg = outstring.format('Total number of clashes', expected, cctbx_list_all)
+      self.assertEqual(cctbx_list_all, expected, msg=msg)
 
   def test_inline_clash(self):
     '''
@@ -404,40 +463,59 @@ class test_nb_clashscore(unittest.TestCase):
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
     for use_site_labels in [True,False]:
-      grm = self.process_raw_records(raw_record_number=2,
-                                     use_site_labels=use_site_labels)
-      nb_clashscore_total = grm.nb_clashscore_all_clashes
+      grm = process_raw_records(
+        raw_record_number=2,
+        use_site_labels=use_site_labels)
+      cctbx_clashscore_total = grm.cctbx_clashscore_all
       expected = 127.66
-      msg = outstring.format('Total clashscore', expected, nb_clashscore_total)
-      self.assertAlmostEqual(nb_clashscore_total, expected, delta=0.1,msg=msg)
-
+      msg = outstring.format('Total clashscore', expected, cctbx_clashscore_total)
+      self.assertAlmostEqual(cctbx_clashscore_total, expected, delta=0.1,msg=msg)
 
   def test_1_5_clash(self):
     '''
     Test that 1-5 clashes are not being counted
     '''
+    nb = compute
+    # process pdb data
+    pdb_processed_file = pdb_inter.process(
+      file_name=None,
+      raw_records=raw_records0.splitlines(),
+      substitute_non_crystallographic_unit_cell_if_necessary=True,
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      log= StringIO())
+    # get geometry restraints object
+    grm = pdb_processed_file.geometry_restraints_manager(
+      assume_hydrogens_all_missing=False,
+      hard_minimum_nonbonded_distance=0,
+      nonbonded_distance_threshold=0.5)
+    xrs = pdb_processed_file.xray_structure()
+    params = get_clashscore_param(
+        xrs=xrs,grm=grm,
+        use_site_labels=True)
+    sites_cart,site_labels,hd_sel,full_connectivty_table = params
+
     outstring = '1-5 Interaction test error. {}'
-    grm = self.process_raw_records(raw_record_number=0)
     # check that direction of function calling does not matter
-    tst = nb.is_1_5_interaction(21, 33,grm.hd_sel,grm.full_connectivty_table)
-    msg = outstring.format('Test results depand on atoms order')
+    tst = nb.is_1_5_interaction(21, 33,hd_sel,full_connectivty_table)
+    msg = outstring.format('Test results depend on atoms order')
     self.assertTrue(tst,msg=msg)
-    tst = nb.is_1_5_interaction(33, 21,grm.hd_sel,grm.full_connectivty_table)
+    tst = nb.is_1_5_interaction(33, 21,hd_sel,full_connectivty_table)
     self.assertTrue(tst,msg=msg)
     # check 1-4 interaction
-    tst = nb.is_1_5_interaction(33, 20,grm.hd_sel,grm.full_connectivty_table)
+    tst = nb.is_1_5_interaction(33, 20,hd_sel,full_connectivty_table)
     msg = outstring.format('Test fails on 1-4 interaction')
     self.assertFalse(tst,msg=msg)
     # check 1-6 interaction
-    tst = nb.is_1_5_interaction(33, 38,grm.hd_sel,grm.full_connectivty_table)
+    tst = nb.is_1_5_interaction(33, 38,hd_sel,full_connectivty_table)
     msg = outstring.format('Test fails on 1-6 interaction')
     self.assertFalse(tst,msg=msg)
     # test 1-5 interaction of atoms other then hydrogen
-    tst = nb.is_1_5_interaction(38, 25,grm.hd_sel,grm.full_connectivty_table)
+    tst = nb.is_1_5_interaction(38, 25,hd_sel,full_connectivty_table)
     msg = outstring.format('Test fails on 1-5 non hydrogen interaction')
     self.assertFalse(tst,msg=msg)
     # test 1-5 interaction of two hydrogens
-    tst = nb.is_1_5_interaction(33, 31,grm.hd_sel,grm.full_connectivty_table)
+    tst = nb.is_1_5_interaction(33, 31,hd_sel,full_connectivty_table)
     msg = outstring.format('Test fails on 1-5 two hydrogen interaction')
     self.assertFalse(tst,msg=msg)
 
@@ -446,9 +524,10 @@ class test_nb_clashscore(unittest.TestCase):
     Test that overlapping atoms are being counted
     '''
     msg = 'Overlapping atoms are not counted properly.'
-    grm = self.process_raw_records(raw_record_number=5,
-                                    nonbonded_distance_threshold=None)
-    self.assertEqual(grm.nb_clashscore_all_clashes, 1500,msg)
+    grm = process_raw_records(
+      raw_record_number=5,
+      nonbonded_distance_threshold=None)
+    self.assertEqual(grm.cctbx_clashscore_all, 1500,msg)
 
   def test_atom_selection(self):
     '''
@@ -464,61 +543,33 @@ class test_nb_clashscore(unittest.TestCase):
       show_energies      = False,
       plain_pairs_radius = 5.0)
     xrs = processed_pdb_file.xray_structure()
-    sites_cart,site_labels,hd_sel,full_connectivty_table = \
-      self.get_clashscore_param(xrs,grm)
-    nb_clashscore = grm.nonbonded_clashscore_info(
+    params = get_clashscore_param(xrs,grm)
+    sites_cart,site_labels,hd_sel,full_connectivty_table = params
+    macro_mol_sel = get_macro_mol_sel(processed_pdb_file)
+    cctbx_clashscore = grm.cctbx_clashscore_info(
       sites_cart=sites_cart,
+      macro_mol_sel=macro_mol_sel,
       site_labels=site_labels,
       hd_sel=hd_sel)
     expected = 1000
-    result = nb_clashscore.nb_clashscore_all_clashes
+    result = cctbx_clashscore.cctbx_clashscore_all
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
     # Select
     sel = flex.bool([True, True, False])
     grm = grm.select(selection=sel)
     xrs = xrs.select(selection=sel)
-    sites_cart,site_labels,hd_sel,full_connectivty_table = \
-      self.get_clashscore_param(xrs,grm)
-    nb_clashscore = grm.nonbonded_clashscore_info(
+    params = get_clashscore_param(xrs,grm)
+    sites_cart,site_labels,hd_sel,full_connectivty_table = params
+    cctbx_clashscore = grm.cctbx_clashscore_info(
       sites_cart=sites_cart,
+      macro_mol_sel=flex.bool([True, True]),
       site_labels=site_labels,
       hd_sel=hd_sel)
     expected = 500
-    result = nb_clashscore.nb_clashscore_all_clashes
+    result = cctbx_clashscore.cctbx_clashscore_all
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
-
-  def test_solvent(self):
-    '''
-    Test if solvent is counted properly
-
-    Consider solvent as (O, O-H, H-O-H, O-D, D-O-D) or any
-    other single, double and triple atoms molecules
-    '''
-    processed_pdb_file = pdb_inter.process(
-      mon_lib_srv    = mon_lib_srv,
-      ener_lib       = ener_lib,
-      raw_records    = raw_records4,
-      force_symmetry = True)
-    geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies      = False,
-      plain_pairs_radius = 5.0)
-    xrs = processed_pdb_file.xray_structure()
-    grm = geometry.nonbonded_clashscore_info(
-      sites_cart  = xrs.sites_cart(),
-      site_labels = xrs.scatterers().extract_labels(),
-      hd_sel      = xrs.hd_selection())
-
-    clashscore_total = grm.nb_clashscore_all_clashes
-    clashscore_due_to_sym_op = grm.nb_clashscore_due_to_sym_op
-    clashscore_solvent_solvent = grm.nb_clashscore_solvent_solvent
-    clashscore_simple = grm.nb_clashscore_simple
-
-    outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
-    expected = 2500
-    msg = outstring.format('Total clashscore', expected, clashscore_solvent_solvent)
-    self.assertEqual(clashscore_solvent_solvent, expected,msg=msg)
 
   def test_labels_and_addition_scatterers(self):
     '''
@@ -535,16 +586,19 @@ class test_nb_clashscore(unittest.TestCase):
       show_energies      = False,
       plain_pairs_radius = 5.0)
     xrs = processed_pdb_file.xray_structure()
-    nb_clashscore = geometry.nonbonded_clashscore_info(
+    macro_mol_sel = get_macro_mol_sel(processed_pdb_file)
+    cctbx_clashscore = geometry.cctbx_clashscore_info(
       sites_cart  = xrs.sites_cart(),
+      macro_mol_sel=macro_mol_sel,
       site_labels = xrs.scatterers().extract_labels(),
       hd_sel      = xrs.hd_selection())
     expected = 1000
-    result = nb_clashscore.nb_clashscore_all_clashes
+    result = cctbx_clashscore.cctbx_clashscore_all
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
     # Add water scatterers
-    restraints_manager = mmtbx.restraints.manager(geometry = geometry,
+    restraints_manager = mmtbx.restraints.manager(
+      geometry = geometry,
       normalization = False)
     mol = mmtbx.model.manager(
       restraints_manager = restraints_manager,
@@ -563,12 +617,20 @@ class test_nb_clashscore(unittest.TestCase):
       solvent_xray_structure = new_xrs,
       refine_occupancies     = False,
       refine_adp             = "isotropic")
-    nb_clashscore = mol.restraints_manager.geometry.nonbonded_clashscore_info(
+    pdb_str = mol.write_pdb_file(return_pdb_string=True)
+    processed_pdb_file = pdb_inter.process(
+      mon_lib_srv    = mon_lib_srv,
+      ener_lib       = ener_lib,
+      raw_records    = pdb_str,
+      force_symmetry = True)
+    macro_mol_sel = get_macro_mol_sel(processed_pdb_file)
+    cctbx_clashscore = mol.restraints_manager.geometry.cctbx_clashscore_info(
       sites_cart  = mol.xray_structure.sites_cart(),
+      macro_mol_sel=macro_mol_sel,
       site_labels = mol.xray_structure.scatterers().extract_labels(),
       hd_sel      = mol.xray_structure.hd_selection())
     expected = 2500
-    result = nb_clashscore.nb_clashscore_all_clashes
+    result = cctbx_clashscore.cctbx_clashscore_all
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
     # Test the modified pdb data with scatterers lables
@@ -581,93 +643,20 @@ class test_nb_clashscore(unittest.TestCase):
       show_energies      = False,
       plain_pairs_radius = 5.0)
     xrs = processed_pdb_file.xray_structure()
-    nb_clashscore = geometry.nonbonded_clashscore_info(
+    macro_mol_sel = get_macro_mol_sel(processed_pdb_file)
+    cctbx_clashscore = geometry.cctbx_clashscore_info(
       sites_cart  = xrs.sites_cart(),
+      macro_mol_sel=macro_mol_sel,
       site_labels = xrs.scatterers().extract_labels(),
       hd_sel      = xrs.hd_selection())
     expected = 2500
-    result = nb_clashscore.nb_clashscore_all_clashes
+    result = cctbx_clashscore.cctbx_clashscore_all
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
 
   def test_unknown_pair_type(self):
     '''Make sure unknown pair types are not processed'''
-    self.assertRaises(Sorry,self.process_raw_records,raw_record_number=6)
-
-  def process_raw_records(
-    self,
-    raw_record_number,
-    use_site_labels=True,
-    hard_minimum_nonbonded_distance=0,
-    nonbonded_distance_threshold=0.5):
-    '''(int,bool,int,int) -> geomerty_restraints object
-    hard_minimum_nonbonded_distance: by defult this value is 0.01 which will prevent testing
-                                     closer nonbonded interaction
-    nonbonded_distance_threshold: 0.5 is the default, it does not allow overlapping atoms
-                                  to test overlapping atoms use "None"
-
-    Argument:
-    raw_record_number: select whcih raw records to use
-    use_site_labels: use site_labels (atom description) or leave as None
-    '''
-    records = []
-    if raw_record_number == 0: records = raw_records0
-    elif raw_record_number == 1: records = raw_records1.splitlines()
-    elif raw_record_number == 2: records = raw_records2.splitlines()
-    elif raw_record_number == 4: records = raw_records4.splitlines()
-    elif raw_record_number == 5: records = raw_records5.splitlines()
-    elif raw_record_number == 6: records = raw_records6.splitlines()
-    else: print ('Wrong raw_records number')
-    # create a geometry_restraints_manager (grm)
-    log = StringIO()
-    # process pdb data
-    pdb_processed_file = pdb_inter.process(
-      file_name=None,
-      raw_records=records,
-      substitute_non_crystallographic_unit_cell_if_necessary=True,
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      log=log,
-      )
-    # get geometry restraints object
-    #grm = pdb.geometry_restraints_manager()
-    grm = pdb_processed_file.geometry_restraints_manager(
-      assume_hydrogens_all_missing=False,
-      hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
-      nonbonded_distance_threshold=nonbonded_distance_threshold)
-
-    xrs = pdb_processed_file.xray_structure()
-    sites_cart,site_labels,hd_sel,full_connectivty_table = \
-      self.get_clashscore_param(
-        xrs,
-        grm,
-        use_site_labels=use_site_labels)
-
-    return grm.nonbonded_clashscore_info(sites_cart=sites_cart,
-                                        site_labels=site_labels,
-                                        hd_sel=hd_sel)
-
-  def get_clashscore_param(self,xrs,grm,use_site_labels=True):
-    '''
-    Process input parameters for non_bonded_clashscore
-
-    Arguments:
-    xrs: xray_structure object
-    grm: geometry restraints manager object
-
-    Returns:
-    sites_cart,site_labels,hd_sel,full_connectivty_table
-    '''
-    hd_sel = xrs.hd_selection()
-    sites_cart = xrs.sites_cart()
-    if use_site_labels:
-      site_labels = xrs.scatterers().extract_labels()
-    else:
-      site_labels = None
-
-    table_bonds = grm.shell_sym_tables[0]
-    full_connectivty_table = table_bonds.full_simple_connectivity()
-    return sites_cart,site_labels,hd_sel,full_connectivty_table
+    self.assertRaises(Sorry,process_raw_records,raw_record_number=6)
 
   def test_print(self):
     """ test proper clashscore printout """
@@ -685,9 +674,11 @@ class test_nb_clashscore(unittest.TestCase):
     sites_cart = xrs.sites_cart()
     site_labels = xrs.scatterers().extract_labels()
     hd_sel = xrs.hd_selection()
+    macro_mol_sel = get_macro_mol_sel(pdb_processed_file)
 
     results_str = clash_score.info(
       geometry_restraints_manager=grm,
+      macro_molecule_selection=macro_mol_sel,
       sites_cart=sites_cart,
       site_labels=site_labels,
       hd_sel=hd_sel).show(log=null_out())
@@ -695,27 +686,177 @@ class test_nb_clashscore(unittest.TestCase):
     # inspect at output
     results = results_str.split('\n')
     # check number of lines in output
-    self.assertEqual(len(results),12)
+    self.assertEqual(len(results),11)
     # check general table structure
-    self.assertTrue(results[5].startswith('========'))
-    self.assertTrue(results[7].startswith('--------'))
-    self.assertTrue('sym_op_j' in results[6])
+    self.assertTrue(results[4].startswith('========'))
+    self.assertTrue(results[6].startswith('--------'))
+    self.assertTrue('sym_op_j' in results[5])
     # print results_str
 
-  def test_pdb_interpretation_from_command_line(self):
+  def test_running_from_command_line(self):
     """
-    make sure pdb_interpretation can run without errors when showing
+    make sure phenix.clashscore can run without errors when showing
     clashscore info """
-    cmd = 'phenix.pdb_interpretation {} nonbonded_clashscore=true'
+    cmd = 'phenix.clashscore {} method=cctbx'
     cmd = cmd.format(self.file_name)
     r = easy_run.go(cmd,join_stdout_stderr=False)
     self.assertFalse(bool(r.stderr_lines))
+
+  def test_compute(self):
+    """ Test that there are no error when computing cctbx clashscore """
+    pdb_processed_file = pdb_inter.run(
+      args=[self.file_name],
+      assume_hydrogens_all_missing=False,
+      hard_minimum_nonbonded_distance=0.0,
+      nonbonded_distance_threshold=None,
+      substitute_non_crystallographic_unit_cell_if_necessary=True,
+      log=null_out())
+    grm = pdb_processed_file.geometry_restraints_manager()
+    # grm = pdb_processed_file._geometry_restraints_manager
+    xrs = pdb_processed_file.xray_structure()
+    sites_cart = xrs.sites_cart()
+    site_labels = xrs.scatterers().extract_labels()
+    pair_proxies=grm.pair_proxies(sites_cart=sites_cart,site_labels=site_labels)
+    proxies_info_nonbonded = pair_proxies.nonbonded_proxies.get_sorted(
+        by_value="delta",
+        sites_cart=sites_cart,
+        site_labels=site_labels)
+    hd_sel = xrs.hd_selection()
+    nonbonded_list = proxies_info_nonbonded[0]
+    fsc0=grm.shell_sym_tables[0].full_simple_connectivity()
+    fsc2=grm.shell_sym_tables[2].full_simple_connectivity()
+
+    result = compute(
+      nonbonded_list=nonbonded_list,
+      hd_sel=hd_sel,
+      full_connectivty_table=fsc0,
+      connectivty_table_2=fsc2,
+      sites_cart=sites_cart)
+    self.assertEqual(result.n_atoms,139)
+
+  def test_info(self):
+    """ Test that there are no error when collecting cctbx clashscore info"""
+    pdb_processed_file = pdb_inter.run(
+      args=[self.file_name2],
+      assume_hydrogens_all_missing=False,
+      hard_minimum_nonbonded_distance=0.0,
+      nonbonded_distance_threshold=None,
+      substitute_non_crystallographic_unit_cell_if_necessary=True,
+      log=null_out())
+
+    grm = pdb_processed_file.geometry_restraints_manager()
+    xrs = pdb_processed_file.xray_structure()
+    sites_cart = xrs.sites_cart()
+    site_labels = xrs.scatterers().extract_labels()
+    hd_sel = xrs.hd_selection()
+
+    macro_mol_sel = get_macro_mol_sel(pdb_processed_file)
+    # Make sure we don't have only macro molecule
+    self.assertTrue(macro_mol_sel.size() > macro_mol_sel.count(True))
+
+    # Run with site labels
+    result = info(geometry_restraints_manager=grm,
+      macro_molecule_selection=macro_mol_sel,
+      sites_cart=sites_cart,
+      hd_sel=hd_sel,
+      site_labels=site_labels)
+    sym_clashscore = result.result.cctbx_clashscore_due_to_sym_op
+    all_clashscore = result.result.cctbx_clashscore_all
+    macro_mol_clashscore = result.result.cctbx_clashscore_macro_molecule
+    self.assertTrue(sym_clashscore < all_clashscore)
+    self.assertTrue(macro_mol_clashscore > 0)
+
+    # Run without site labels
+    result = info(geometry_restraints_manager=grm,
+      macro_molecule_selection=macro_mol_sel,
+      sites_cart=sites_cart,
+      hd_sel=hd_sel)
+    self.assertTrue(bool(result.result.cctbx_clash_proxies_macro_molecule))
+    self.assertTrue(bool(result.result.cctbx_clash_proxies_due_to_sym_op))
 
   def tearDown(self):
     """ delete files created in during testing"""
     if self.file_to_delete:
       for fn in self.file_to_delete:
         if os.path.isfile(fn): os.remove(fn)
+
+def process_raw_records(
+  raw_record_number,
+  use_site_labels=True,
+  hard_minimum_nonbonded_distance=0,
+  nonbonded_distance_threshold=0.5):
+  '''(int,bool,int,int) -> geomerty_restraints object
+  hard_minimum_nonbonded_distance: by defult this value is 0.01 which will prevent testing
+                                   closer nonbonded interaction
+  nonbonded_distance_threshold: 0.5 is the default, it does not allow overlapping atoms
+                                to test overlapping atoms use "None"
+
+  Argument:
+  raw_record_number: select whcih raw records to use
+  use_site_labels: use site_labels (atom description) or leave as None
+  '''
+  records = []
+  if raw_record_number == 0: records = raw_records0.splitlines()
+  elif raw_record_number == 1: records = raw_records1.splitlines()
+  elif raw_record_number == 2: records = raw_records2.splitlines()
+  elif raw_record_number == 4: records = raw_records4.splitlines()
+  elif raw_record_number == 5: records = raw_records5.splitlines()
+  elif raw_record_number == 6: records = raw_records6.splitlines()
+  else: print ('Wrong raw_records number')
+  # create a geometry_restraints_manager (grm)
+  log = StringIO()
+  # process pdb data
+  pdb_processed_file = pdb_inter.process(
+    file_name=None,
+    raw_records=records,
+    substitute_non_crystallographic_unit_cell_if_necessary=True,
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    log=log,
+    )
+  # get geometry restraints object
+  grm = pdb_processed_file.geometry_restraints_manager(
+    assume_hydrogens_all_missing=False,
+    hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
+    nonbonded_distance_threshold=nonbonded_distance_threshold)
+
+  xrs = pdb_processed_file.xray_structure()
+  params = get_clashscore_param(
+      xrs=xrs,
+      grm=grm,
+      use_site_labels=use_site_labels)
+  sites_cart,site_labels,hd_sel,full_connectivty_table = params
+  macro_mol_sel = get_macro_mol_sel(pdb_processed_file)
+
+  result = grm.cctbx_clashscore_info(
+    sites_cart=sites_cart,
+    macro_mol_sel=macro_mol_sel,
+    site_labels=site_labels,
+    hd_sel=hd_sel)
+  return result
+
+def get_clashscore_param(xrs,grm,use_site_labels=True):
+  '''
+  Process input parameters for non_bonded_clashscore
+
+  Arguments:
+  xrs: xray_structure object
+  grm: geometry restraints manager object
+
+  Returns:
+  sites_cart,site_labels,hd_sel,full_connectivty_table
+  '''
+  hd_sel = xrs.hd_selection()
+  sites_cart = xrs.sites_cart()
+  if use_site_labels:
+    site_labels = xrs.scatterers().extract_labels()
+  else:
+    site_labels = None
+
+  table_bonds = grm.shell_sym_tables[0]
+  full_connectivty_table = table_bonds.full_simple_connectivity()
+  return sites_cart,site_labels,hd_sel,full_connectivty_table
+
 
 def run_selected_tests():
   """  Run selected tests
@@ -724,8 +865,9 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_print']
-  suite = unittest.TestSuite(map(test_nb_clashscore, tests))
+  # tests = ['test_running_from_command_line','test_compute','test_info']
+  tests = ['test_inline_angle']
+  suite = unittest.TestSuite(map(test_cctbx_clashscore, tests))
   return suite
 
 if (__name__ == "__main__"):
