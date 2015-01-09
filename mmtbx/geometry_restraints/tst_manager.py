@@ -88,7 +88,6 @@ def exercise_geo_out():
   custom_nb_excl = proxies_for_grm.exclude_nb_list
   grm = processed_pdb_file.geometry_restraints_manager(
       show_energies                = False,
-      show_nonbonded_clashscore    = False,
       hydrogen_bond_proxies=proxies_for_grm.proxies,
       custom_nonbonded_exclusions = custom_nb_excl,
       assume_hydrogens_all_missing = True)

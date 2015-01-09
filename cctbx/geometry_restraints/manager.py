@@ -1130,14 +1130,20 @@ class manager(object):
         sites_cart=sites_cart, site_labels=site_labels, f=f)
       print >> f
 
-  def nonbonded_clashscore_info(
+  def cctbx_clashscore_info(
     self,
     sites_cart,
     hd_sel,
+    macro_mol_sel=None,
     site_labels=None):
-    import cctbx.geometry_restraints.clash_score as clash_score
-    return clash_score.info(
+    from cctbx.geometry_restraints.clash_score import info
+    if not macro_mol_sel:
+      from cctbx.geometry_restraints.clash_score import get_macro_mol_sel
+      macro_mol_sel = get_macro_mol_sel(pdb_processed_file=self)
+
+    return info(
       geometry_restraints_manager=self,
+      macro_molecule_selection=macro_mol_sel,
       sites_cart=sites_cart,
       hd_sel=hd_sel,
       site_labels=site_labels).result

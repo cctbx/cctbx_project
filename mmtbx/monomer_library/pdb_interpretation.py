@@ -386,10 +386,6 @@ master_params_str = """\
     .help = Weighting of nonbonded restraints term.  By default, this will be \
       set to 16 if explicit hydrogens are used (this was the defaault in \
       earlier versions of Phenix), or 100 if hydrogens are missing.
-  nonbonded_clashscore = False
-    .type = bool
-    .short_caption = Display the clashscore determined from nonbonded \
-      interactions
   const_shrink_donor_acceptor = 0.6
     .type=float
     .optional=False
@@ -5281,7 +5277,6 @@ class process(object):
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
-        show_nonbonded_clashscore=False,
         hard_minimum_bond_distance_model=0.001,
         hard_minimum_nonbonded_distance=0.001,
         nonbonded_distance_threshold=0.5,
@@ -5438,32 +5433,6 @@ class process(object):
         if not self.for_dihedral_reference:
           self.clash_guard(hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
                            nonbonded_distance_threshold=nonbonded_distance_threshold)
-        # Display nonbonded clashscore
-        if show_nonbonded_clashscore:
-          grm = self._geometry_restraints_manager
-          xrs = self.xray_structure()
-          sites_cart = xrs.sites_cart()
-          hd_sel = xrs.hd_selection()
-          nb_clash_info = grm.nonbonded_clashscore_info(
-            sites_cart=sites_cart,
-            site_labels=site_labels,
-            hd_sel=hd_sel)
-
-          clashscore_simple = nb_clash_info.nb_clashscore_simple
-          clashscore_due_to_sym_op = nb_clash_info.nb_clashscore_due_to_sym_op
-          clashscore_solvent_solvent = nb_clash_info.nb_clashscore_solvent_solvent
-          clashscore_all_clashes = nb_clash_info.nb_clashscore_all_clashes
-          #
-          print >> self.log, '\n  Nonbonded clashscore'
-          s='    Without symmetry operation and solvent-solvent clashes:   {0:.2f}'
-          print >> self.log, s.format(clashscore_simple)
-          s='    Due to symmetry operation:                                {0:.2f}'
-          print >> self.log, s.format(clashscore_due_to_sym_op)
-          s='    Solvent-solvent:                                          {0:.2f}'
-          print >> self.log, s.format(clashscore_solvent_solvent)
-          s='    Total:                                                    {0:.2f}\n'
-          print >> self.log, s.format(clashscore_all_clashes)
-
     return self._geometry_restraints_manager
 
 

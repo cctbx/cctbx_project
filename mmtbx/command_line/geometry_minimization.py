@@ -263,7 +263,6 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
     hbond_params = build_proxies.proxies
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
-    show_nonbonded_clashscore    = False,
     params_edits                 = params.geometry_restraints.edits,
     plain_pairs_radius           = 5,
     hydrogen_bond_proxies        = hbond_params,
