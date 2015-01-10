@@ -18,7 +18,7 @@ import unittest
 import os
 
 '''
-Test non-bonded clashscore
+Test cctbx clashscore
 
 @author Youval Dar (LBL 2013)
 '''
@@ -324,58 +324,55 @@ HETATM  413  z!# A44 B  17      24.403   5.690   7.395  1.00 32.76           C
 """
 
 raw_records7="""\
-CRYST1   44.060   35.400   48.340  90.00  95.00  90.00 C 1 2 1       8
-ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
-ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
-ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
-ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O
-ATOM      5  N   ASN A   2      -7.656   2.923   3.155  1.00 15.02           N
-ATOM      6  CA  ASN A   2      -6.522   2.038   2.831  1.00 14.10           C
-ATOM      7  C   ASN A   2      -5.241   2.537   3.427  1.00 13.13           C
-ATOM      8  O   ASN A   2      -4.978   3.742   3.426  1.00 11.91           O
-ATOM      9  CB  ASN A   2      -6.346   1.881   1.341  1.00 15.38           C
-ATOM     10  CG  ASN A   2      -7.584   1.342   0.692  1.00 14.08           C
-ATOM     11  OD1 ASN A   2      -8.025   0.227   1.016  1.00 17.46           O
-ATOM     12  ND2 ASN A   2      -8.204   2.155  -0.169  1.00 11.72           N
-ATOM     13  N   ASN A   3      -4.438   1.590   3.905  1.00 12.26           N
-ATOM     14  CA  ASN A   3      -3.193   1.904   4.589  1.00 11.74           C
-ATOM     15  C   ASN A   3      -1.955   1.332   3.895  1.00 11.10           C
-ATOM     16  O   ASN A   3      -1.872   0.119   3.648  1.00 10.42           O
-ATOM     17  CB  ASN A   3      -3.259   1.378   6.042  1.00 12.15           C
-ATOM     18  CG  ASN A   3      -2.006   1.739   6.861  1.00 12.82           C
-ATOM     19  OD1 ASN A   3      -1.702   2.925   7.072  1.00 15.05           O
-ATOM     20  ND2 ASN A   3      -1.271   0.715   7.306  1.00 13.48           N
+CRYST1   44.060   35.400   48.340  90.00  95.00  90.00 C 1 2 1       4
+ATOM      1  N   GLY A   1      -6.724   4.519  10.133  1.00 16.77           N
+ATOM      2  CA  GLY A   1      -7.194   4.166   8.745  1.00 16.57           C
+ATOM      3  C   GLY A   1      -6.271   3.120   8.177  1.00 16.16           C
+ATOM      4  O   GLY A   1      -5.516   2.473   8.927  1.00 16.78           O
+ATOM      5  N   ASN A   2      -6.301   2.953   6.856  1.00 15.02           N
+ATOM      6  CA  ASN A   2      -5.313   2.093   6.179  1.00 14.10           C
+ATOM      7  C   ASN A   2      -3.913   2.586   6.388  1.00 13.13           C
+ATOM      8  O   ASN A   2      -3.663   3.793   6.355  1.00 11.91           O
+ATOM      9  CB  ASN A   2      -5.585   1.992   4.699  1.00 15.38           C
+ATOM     10  CG  ASN A   2      -6.959   1.462   4.424  1.00 14.08           C
+ATOM     11  OD1 ASN A   2      -7.284   0.331   4.822  1.00 17.46           O
+ATOM     12  ND2 ASN A   2      -7.807   2.298   3.816  1.00 11.72           N
+ATOM     13  N   ASN A   3      -3.004   1.632   6.572  1.00 12.26           N
+ATOM     14  CA  ASN A   3      -1.613   1.936   6.869  1.00 11.74           C
+ATOM     15  C   ASN A   3      -0.635   1.404   5.819  1.00 11.10           C
+ATOM     16  O   ASN A   3      -0.628   0.202   5.513  1.00 10.42           O
+ATOM     17  CB  ASN A   3      -1.246   1.358   8.256  1.00 12.15           C
+ATOM     18  CG  ASN A   3       0.193   1.704   8.681  1.00 12.82           C
+ATOM     19  OD1 ASN A   3       0.544   2.886   8.837  1.00 15.05           O
+ATOM     20  ND2 ASN A   3       1.027   0.674   8.850  1.00 13.48           N
+ATOM     21  N   GLN A   4       0.718   2.275   5.803  1.00 10.29           N
+ATOM     22  CA  GLN A   4       1.399   2.012   4.510  1.00 10.53           C
+ATOM     23  C   GLN A   4       2.797   2.684   4.444  1.00 10.24           C
+ATOM     24  O   GLN A   4       2.943   3.917   4.484  1.00  8.86           O
+ATOM     25  CB  GLN A   4       0.545   2.406   3.297  1.00  9.80           C
+ATOM     26  CG  GLN A   4       1.072   1.800   1.978  1.00 10.25           C
+ATOM     27  CD  GLN A   4       0.565   2.510   0.717  1.00 12.43           C
+ATOM     28  OE1 GLN A   4       0.710   3.745   0.575  1.00 14.62           O
+ATOM     29  NE2 GLN A   4      -0.007   1.723  -0.230  1.00  9.05           N
+ATOM     30  N   GLN A   5       3.828   1.858   4.418  1.00 10.38           N
+ATOM     31  CA  GLN A   5       4.819   1.038   5.107  1.00 11.39           C
+ATOM     32  C   GLN A   5       5.215  -0.166   4.260  1.00 11.52           C
+ATOM     33  O   GLN A   5       4.376  -0.926   3.752  1.00 12.05           O
+ATOM     34  CB  GLN A   5       4.342   0.629   6.505  1.00 11.96           C
+ATOM     35  CG  GLN A   5       4.135   1.841   7.417  1.00 10.81           C
+ATOM     36  CD  GLN A   5       3.241   1.514   8.568  1.00 13.10           C
+ATOM     37  OE1 GLN A   5       2.035   1.354   8.386  1.00 10.65           O
+ATOM     38  NE2 GLN A   5       3.822   1.429   9.781  1.00 12.30           N
 TER
-ATOM     57  O   HOH C  34     189.583 273.076 175.423  1.00  0.00           O
-ATOM     58  O   HOH C  35     188.804 273.006 174.173  1.00  0.00           O
-ATOM     59  O   HOH C  36     188.920 271.622 173.510  1.00  0.00           O
-ATOM     60  O   HOH C  37     189.986 271.004 173.508  1.00  0.00           O
+HETATM   61  O   HOH A   8      -0.511   4.797  12.393  1.00 22.62           O
+HETATM   62  O   HOH A   9      -0.513   4.516  12.150  1.00 19.71           O
 TER
-HETATM   61  O   HOH A   8      -6.471   5.227   7.124  1.00 22.62           O
-HETATM   62  O   HOH A   9      10.431   1.858   3.216  1.00 19.71           O
-HETATM   63  O   HOH A  10     -11.286   1.756  -1.468  1.00 17.08           O
-HETATM   64  O   HOH A  11      11.808   4.179   9.970  1.00 23.99           O
-HETATM   65  O   HOH A  12      13.605   1.327   9.198  1.00 26.17           O
-HETATM   66  O   HOH A  13      -2.749   3.429  10.024  1.00 39.15           O
-HETATM   67  O   HOH A  14      -1.500   0.682  10.967  1.00 43.49
-TER
-HETATM 1223  S   SO4 A 157      30.746  18.706  28.896  1.00 47.98           S
-HETATM 1224  O1  SO4 A 157      30.697  20.077  28.620  1.00 48.06           O
-HETATM 1225  O2  SO4 A 157      31.104  18.021  27.725  1.00 47.52           O
-HETATM 1226  O3  SO4 A 157      29.468  18.179  29.331  1.00 47.79           O
-HETATM 1227  O4  SO4 A 157      31.722  18.578  29.881  1.00 47.85           O
-TER
-HETATM 1819  N   NPH A 117      23.870  15.268 -50.490  1.00 25.06           N
-HETATM 1820  CA  NPH A 117      23.515  14.664 -49.210  1.00 22.94           C
-HETATM 1821  CB  NPH A 117      23.658  15.702 -48.113  1.00 21.44           C
-HETATM 1822  SG  NPH A 117      25.281  16.410 -47.839  1.00 31.29           S
-HETATM 1823  CD  NPH A 117      25.498  16.310 -46.059  0.50 33.70           C
-HETATM 1824  CE  NPH A 117      26.971  16.492 -45.820  0.50 39.92           C
-HETATM 1825  OZ  NPH A 117      27.815  15.348 -45.806  0.50 43.26           O
-HETATM 1826  NZ  NPH A 117      27.411  17.709 -45.649  0.50 43.87           N
-HETATM 1827  C6  NPH A 117      28.830  18.015 -45.436  0.50 51.14           C
-HETATM 1828  C5  NPH A 117      29.800  17.009 -45.411  0.50 51.26           C
-HETATM 1829  C6A NPH A 117      29.195  19.344 -45.262  0.50 52.54           C
+HETATM 2800  S   SO4 A 701      -3.889   1.786  10.440  1.00 55.67           S
+HETATM 2801  O1  SO4 A 701      -3.645   1.548   9.055  1.00 57.05           O
+HETATM 2802  O2  SO4 A 701      -4.464   3.089  10.608  1.00 55.53           O
+HETATM 2803  O3  SO4 A 701      -4.744   0.755  10.958  1.00 56.44           O
+HETATM 2804  O4  SO4 A 701      -2.664   1.753  11.146  1.00 56.08           O
+ATOM     60  O   HOH C  37      -0.639  -0.486   5.076  1.00  0.00           O
 END
 """
 
@@ -660,28 +657,8 @@ class test_cctbx_clashscore(unittest.TestCase):
 
   def test_print(self):
     """ test proper clashscore printout """
-    pdb_processed_file = pdb_inter.run(
-      args=[self.file_name],
-      assume_hydrogens_all_missing=False,
-      hard_minimum_nonbonded_distance=0.0,
-      nonbonded_distance_threshold=None,
-      substitute_non_crystallographic_unit_cell_if_necessary=True,
-      log=null_out())
-
-    grm = pdb_processed_file.geometry_restraints_manager()
-    xrs = pdb_processed_file.xray_structure()
-
-    sites_cart = xrs.sites_cart()
-    site_labels = xrs.scatterers().extract_labels()
-    hd_sel = xrs.hd_selection()
-    macro_mol_sel = get_macro_mol_sel(pdb_processed_file)
-
-    results_str = clash_score.info(
-      geometry_restraints_manager=grm,
-      macro_molecule_selection=macro_mol_sel,
-      sites_cart=sites_cart,
-      site_labels=site_labels,
-      hd_sel=hd_sel).show(log=null_out())
+    clash_score_info = process_clash_score(self.file_name)
+    results_str = clash_score_info.show(log=null_out())
 
     # inspect at output
     results = results_str.split('\n')
@@ -774,11 +751,59 @@ class test_cctbx_clashscore(unittest.TestCase):
     self.assertTrue(bool(result.result.cctbx_clash_proxies_macro_molecule))
     self.assertTrue(bool(result.result.cctbx_clash_proxies_due_to_sym_op))
 
+  def test_clashes(self):
+    clash_score_info,n_atoms,n_atoms_macro_mol = process_clash_score(
+      self.file_name2,return_n_atoms=True)
+    results = clash_score_info.result
+    self.assertEqual(len(results.cctbx_clash_proxies_due_to_sym_op),1)
+    self.assertEqual(len(results.cctbx_clash_proxies_macro_molecule),3)
+    self.assertEqual(len(results.cctbx_clash_proxies_all),10)
+    #
+    clashscor_all = round(1000*10/n_atoms,2)
+    clashscor_sym = round(1000*1/n_atoms,2)
+    clashscor_macro_mol = round(1000*3/n_atoms_macro_mol,2)
+    # results
+    r_clashscor_all = round(results.cctbx_clashscore_all,2)
+    r_clashscor_sym = round(results.cctbx_clashscore_due_to_sym_op,2)
+    r_clashscor_macro_mol = round(results.cctbx_clashscore_macro_molecule,2)
+    # test
+    self.assertEqual(r_clashscor_all,clashscor_all)
+    self.assertEqual(r_clashscor_sym,clashscor_sym)
+    self.assertEqual(r_clashscor_macro_mol,clashscor_macro_mol)
+
   def tearDown(self):
     """ delete files created in during testing"""
     if self.file_to_delete:
       for fn in self.file_to_delete:
         if os.path.isfile(fn): os.remove(fn)
+
+def process_clash_score(file_name,return_n_atoms=False):
+  pdb_processed_file = pdb_inter.run(
+      args=[file_name],
+      assume_hydrogens_all_missing=False,
+      hard_minimum_nonbonded_distance=0.0,
+      nonbonded_distance_threshold=None,
+      substitute_non_crystallographic_unit_cell_if_necessary=True,
+      log=null_out())
+
+  grm = pdb_processed_file.geometry_restraints_manager()
+  xrs = pdb_processed_file.xray_structure()
+
+  sites_cart = xrs.sites_cart()
+  site_labels = xrs.scatterers().extract_labels()
+  hd_sel = xrs.hd_selection()
+  macro_mol_sel = get_macro_mol_sel(pdb_processed_file)
+
+  clash_score_info = clash_score.info(
+      geometry_restraints_manager=grm,
+      macro_molecule_selection=macro_mol_sel,
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      hd_sel=hd_sel)
+  if return_n_atoms:
+    return clash_score_info,sites_cart.size(),macro_mol_sel.count(True)
+  else:
+    return clash_score_info
 
 def process_raw_records(
   raw_record_number,
@@ -866,7 +891,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   # tests = ['test_running_from_command_line','test_compute','test_info']
-  tests = ['test_inline_angle']
+  tests = ['test_clashes']
   suite = unittest.TestSuite(map(test_cctbx_clashscore, tests))
   return suite
 
