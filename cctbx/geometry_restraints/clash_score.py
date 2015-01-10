@@ -12,7 +12,10 @@ class cctbx_clashscore_results(object):
   def __init__(self):
     """
     - Clashscore is number of clashes per 1000 atoms
-    - Clashscore is always evaluated relative to the total number of atoms
+    - Clashscore for All and symmetry related clashes are evaluated
+      relative to the total number of atoms. Clashscore for macro molecule
+      does not include symmetry related clashes and use the number of atoms
+      in the macro molecule.
     - Clash proxies is a list containing the information on the clashing atoms
       in the format:([pdb labels],i_seq,j_seq,model,vdw_distance,sym_op_j,rt_mx)
 
@@ -97,7 +100,7 @@ class compute(object):
       self.n_atoms = len(self.sites_cart)
       clashscore_sym = len(clashlist[0])*1000/self.n_atoms
       clashscore_non_sym = len(clashlist[1])*1000/self.n_atoms
-      clashscore_all_clashes = clashscore_sym + + clashscore_non_sym
+      clashscore_all_clashes = clashscore_sym + clashscore_non_sym
       #
       self.cctbx_clashscore_due_to_sym_op = clashscore_sym
       self.cctbx_clashscore_non_sym = clashscore_non_sym
@@ -423,8 +426,7 @@ class info(object):
     # macro molecule
     if second_grm_selection:
       r_macro_mol = results[1]
-      score_ratio =  r_macro_mol.n_atoms / r_complete.n_atoms
-      clashscore = r_macro_mol.cctbx_clashscore_non_sym * score_ratio
+      clashscore = r_macro_mol.cctbx_clashscore_non_sym
       self.result.cctbx_clashscore_macro_molecule = clashscore
       self.result.cctbx_clash_proxies_macro_molecule = \
         r_macro_mol.cctbx_non_sym_clashes
@@ -434,8 +436,7 @@ class info(object):
       self.result.cctbx_clash_proxies_macro_molecule = \
         r_complete.cctbx_non_sym_clashes
 
-
-  def show(self, log=None):
+  def show(self, log=None, clash_type='all'):
     """
     Show (prints to log) CCTBX nonbonded_clash_info on clashing atoms
 
@@ -445,6 +446,11 @@ class info(object):
       hd_sel: hd_sel[i] retruns True of False, indicating whether an
         atom i is a Hydrogen or not
       log : when no log is given function will print to sys.stdout
+      clash_type (str): The type of clashes to show
+        'all': Show all clashing atoms
+        'sym': Show symmetry related clashes
+        'macro': Show macro molecule clashes (not including sym related clashes)
+
 
     Returns:
       out_string (str): the output string that is printed to log
@@ -461,7 +467,15 @@ class info(object):
               cctbx_clash.cctbx_clashscore_due_to_sym_op]
     for name,score in zip(names,scores):
       out_list.append(result_str.format(name,round(score,2)))
-    title = 'Clashing atoms of complete model,'
+    if clash_type == 'sym':
+      clash_proxies = cctbx_clash.cctbx_clash_proxies_due_to_sym_op
+      title = 'Clashes due to symmetry operation,'
+    elif clash_type == 'macro':
+      clash_proxies = cctbx_clash.cctbx_clash_proxies_macro_molecule
+      title = 'Clashes in macro molecule (not including sym. related clashes),'
+    else:
+      clash_proxies = cctbx_clash.cctbx_clash_proxies_all
+      title = 'Clashing atoms of complete model,'
     title += ' based on pair_proxies.nonbonded_proxies data'
     out_list.append(title)
     out_list.append('='*len(title))
@@ -470,7 +484,7 @@ class info(object):
     out_str = '{:^35} | {:<5} | {:<5} | {:<7.4} | {:<7.4} | {:<10} | {:<8}'
     out_list.append(lbl_str.format(*labels))
     out_list.append('-'*95)
-    for data in cctbx_clash.cctbx_clash_proxies_all:
+    for data in clash_proxies:
       d = list(data)
       d[0] = ','.join(data[0])
       d[0] = d[0].replace('"','')
