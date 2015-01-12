@@ -3109,16 +3109,18 @@ refinement.pdb_interpretation {
           cystein_sulphur_atoms_exclude = []
           for atom in self.pdb_atoms:
             e_ = atom.element.strip().upper()
-            e = atom.determine_chemical_element_simple().strip().upper()
-            if(e_.strip() != ""):
-              if(e_!=e):
-                raise Sorry("Bad element type: '%s', '%s'."%(e,e_))
-            if(not e in exclusion_list):
-              for cs_i_seq in self.cystein_sulphur_i_seqs:
-                csa = self.pdb_atoms[cs_i_seq]
-                if(csa.distance(atom) < params.exclusion_distance_cutoff):
-                  cystein_sulphur_atoms_exclude.append(csa)
-                  self.disulfide_bond_exclusions_selection.append(csa.i_seq)
+            e = atom.determine_chemical_element_simple()
+            if(e is not None):
+              e = e.strip().upper()
+              if(e_.strip() != ""):
+                if(e_!=e):
+                  raise Sorry("Bad element type: '%s', '%s'."%(e,e_))
+              if(not e in exclusion_list):
+                for cs_i_seq in self.cystein_sulphur_i_seqs:
+                  csa = self.pdb_atoms[cs_i_seq]
+                  if(csa.distance(atom) < params.exclusion_distance_cutoff):
+                    cystein_sulphur_atoms_exclude.append(csa)
+                    self.disulfide_bond_exclusions_selection.append(csa.i_seq)
       if(self.disulfide_bond_exclusions_selection.size()>0):
         print >>log
         print >>log, "List of CYS excluded from plausible disulfide bonds:"
