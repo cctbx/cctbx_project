@@ -1952,12 +1952,35 @@ _refine.pdbx_stereochemistry_target_values 'GeoStd + Monomer Library + CDL v1.2'
     assert ppf_2.all_chain_proxies.use_cdl is None
     sys.stdout = stdout_save
 
+def exercise_unk_and_cys(mon_lib_srv, ener_lib):
+  raw_records = """\
+CRYST1  182.247  207.944  177.997  90.00  90.00  90.00 P 21 21 21    8
+ATOM  27637  N   CYS X  25     162.023 328.719 193.119  1.00 48.83           N
+ATOM  27638  CA  CYS X  25     160.744 328.717 192.370  1.00 48.38           C
+ATOM  27639  C   CYS X  25     160.840 329.477 191.030  1.00 48.55           C
+ATOM  27640  O   CYS X  25     160.447 328.960 189.978  1.00 47.05           O
+ATOM  27641  CB  CYS X  25     159.647 329.420 193.185  1.00 49.20           C
+ATOM  27642  SG  CYS X  25     158.050 329.117 192.457  1.00 48.43           S
+TER
+HETATM28972 UNK  UNX C 262      92.003 325.919 218.014  1.00 80.36           X
+END
+""".splitlines()
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    log=log)
+
+
 def run(args):
   assert len(args) == 0
-  exercise_cdl_automatic()
-  exercise_flattened_cif_loop()
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
+  exercise_unk_and_cys(mon_lib_srv, ener_lib)
+  exercise_cdl_automatic()
+  exercise_flattened_cif_loop()
   exercise_bogus_crystal_symmetry(mon_lib_srv, ener_lib)
   exercise_do_not_link(mon_lib_srv, ener_lib)
   exercise_geostd_cif_links(mon_lib_srv, ener_lib)

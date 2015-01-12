@@ -309,8 +309,7 @@ def get_C1_carbon(atom_group1, atom_group2):
     outl = ""
     for atom in c1s:
       outl += "\n\t\t%s" % atom.quote()
-    raise Sorry("""
-        Trying to find the anomeric carbons but could not find
+    raise Sorry("""Trying to find the anomeric carbons but could not find
         a suitable candidate.
 %s
         Check carbohydrate geometry.
@@ -536,8 +535,7 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
     gla = glyco_utils.get_glyco_link_atoms(atom_group2,
                                             atom_group1)
   if gla and not gla.is_correct():
-    raise Sorry("""
-    Failed to get all the atoms needed for glycosidic bond between
+    raise Sorry("""Failed to get all the atoms needed for glycosidic bond between
       group 1
 %s
       group 2
@@ -546,9 +544,8 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
     )
     )
   if gla is None:
-    raise Sorry("""
-  Unspecified problem with carbohydrate groups. Could be that the linking oxygen
-  is on the linking residue instead of the docking residue.
+    raise Sorry("""Unspecified problem with carbohydrate groups. Could be that
+      the linking oxygen is on the linking residue instead of the docking residue.
     group 1
 %s
     group 2
@@ -557,8 +554,8 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
            )
            )
   if not gla.anomeric_carbon_linking:
-    raise Sorry("""
-  The linking carbohydrate unit has the oxygen attached to the anomeric carbon.
+    raise Sorry("""The linking carbohydrate unit has the oxygen attached to the
+      anomeric carbon.
   Consider replacing oxygen %s
   with an oxygen linked to  %s in the same residue
     %s""" % (gla.link_oxygen.quote(),
@@ -581,8 +578,7 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
   # chiral
   i_seqs = gla.get_chiral_i_seqs()
   if i_seqs is None:
-    raise Sorry("""
-    Unable to determine the linking chiral atoms for atom groups
+    raise Sorry("""Unable to determine the linking chiral atoms for atom groups
     group 1
 %s
     group 2
@@ -596,4 +592,3 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
     _add_chiral(i_seqs, geometry_proxy_registries, value, esd)
 
   return gla.get_isomer(), gla.as_cif()
-
