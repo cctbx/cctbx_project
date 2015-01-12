@@ -588,7 +588,17 @@ class MemImageSet(ImageSet):
       return MemImageSet(self._images, indices)
     else:
       img = self._images[self._indices[item]]
-      return tuple([img.get_raw_data(i) for i in xrange(len(self.get_detector()))])
+
+      # Get the number of panels
+      npanels = len(img.get_detector())
+
+      # Return a flex array for single panels and a tuple of flex arrays
+      # for multiple panels
+      assert(npanels > 0)
+      if npanels == 1:
+        return img.get_raw_data()
+      else:
+        return tuple([img.get_raw_data(i) for i in xrange(npanels)])
 
   def __len__(self):
     ''' Return the number of images in this image set. '''
@@ -602,7 +612,16 @@ class MemImageSet(ImageSet):
     ''' Iterate over the array indices and read each image in turn. '''
     for j in self._indices:
       img = self._images[j]
-      yield tuple([img.get_raw_data(i) for i in xrange(len(self.get_detector()))])
+      # Get the number of panels
+      npanels = len(img.get_detector())
+
+      # Yield a flex array for single panels and a tuple of flex arrays
+      # for multiple panels
+      assert(npanels > 0)
+      if npanels == 1:
+        yield img.get_raw_data()
+      else:
+        yield tuple([img.get_raw_data(i) for i in xrange(npanels)])
 
   def __cmp__(self, other):
     ''' Compare this image set to another. '''
