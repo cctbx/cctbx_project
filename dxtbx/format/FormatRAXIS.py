@@ -59,7 +59,7 @@
 #  long  drxz;    /* front/back scanning code: 0=front, 1=back */
 #
 # 2 useless floats
-# 2 long - a magic number (useless) and number of gonio axies
+# 2 long - a magic number to show validity of this section, and number of axes
 # 15 floats - up to 5 goniometer axis vectors
 # 5 floats - up to 5 start angles
 # 5 floats - up to 5 end angles
@@ -84,10 +84,10 @@ class FormatRAXIS(Format):
 
   @staticmethod
   def understand(image_file):
-    '''See if this looks like an RAXIS format image - clue is first
-    5 letters of file should be RAXIS.'''
+    '''See if this looks like an RAXIS format image - files we have seen have
+    first 5 letters of file either RAXIS or R-AXI'''
 
-    if Format.open_file(image_file).read(5) == 'RAXIS':
+    if Format.open_file(image_file).read(5) in ['RAXIS', 'R-AXI']:
       return True
 
     return False
@@ -102,7 +102,7 @@ class FormatRAXIS(Format):
   def _start(self):
     self._header_bytes = Format.open_file(self._image_file).read(1024)
 
-    if self._header_bytes[812:822].strip() == 'SGI':
+    if self._header_bytes[812:822].strip() in ['SGI', 'IRIS']:
       self._f = '>f'
       self._i = '>i'
     else:
@@ -130,7 +130,11 @@ class FormatRAXIS(Format):
     f = self._f
     header = self._header_bytes
 
-    n_axes = struct.unpack(i, header[856:860])[0]
+    # check magic number to see if this section is valid
+    if struct.unpack(i, header[852:856]) == 1:
+      n_axes = struct.unpack(i, header[856:860])[0]
+    else:
+      n_axes = 0
     scan_axis = struct.unpack(i, header[980:984])[0]
 
     for j in range(n_axes):
