@@ -64,7 +64,7 @@ def get_chiral_sign(code):
 def get_alpha_beta(code):
   # fake alpha/beta
   cs = get_chiral_sign(code)
-  if cs is None: assert 0
+  if cs is None: return None
   elif cs < 0: return "ALPHA"
   else: return "BETA"
 
@@ -132,6 +132,7 @@ class glyco_link_class:
 
   def get_isomer(self):
     isomer = get_alpha_beta(self.anomeric_carbon.parent().resname)
+    if isomer is None: isomer = "?"
     if self.anomeric_carbon.name.strip()[-1] in digits:
       isomer += self.anomeric_carbon.name.strip()[-1]
     else:
