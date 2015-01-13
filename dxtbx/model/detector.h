@@ -155,15 +155,15 @@ namespace dxtbx { namespace model {
       double w_max = 0;
 
       // Loop through all detectors. If the w component of the (u, v, w)
-      // vector points in the correct direction, then calculate the coordinate.
-      // If the coordinate is valid and the w component is greater than that of
-      // the current closest valid coordinate, then set this coordinate as the
-      // current best bet.
+      // vector points in the correct direction, and is greater than that of
+      // the current closest valid coordinate, then calculate the coordinate.
+      // If the coordinate is valid, then set this coordinate as the current
+      // best bet.
       for (std::size_t i = 0; i < panel_list_->size(); ++i) {
         vec3 <double> v = (*panel_list_)[i].get_D_matrix() * s1;
-        if (v[2] > 0) {
+        if (v[2] > w_max) {
           vec2<double> xy_temp(v[0] / v[2], v[1] / v[2]);
-          if ((*panel_list_)[i].is_coord_valid_mm(xy_temp) && v[2] > w_max) {
+          if ((*panel_list_)[i].is_coord_valid_mm(xy_temp)) {
             pxy = coord_type(i, xy_temp);
             w_max = v[2];
           }
