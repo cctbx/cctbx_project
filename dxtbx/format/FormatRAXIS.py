@@ -84,10 +84,10 @@ class FormatRAXIS(Format):
 
   @staticmethod
   def understand(image_file):
-    '''See if this looks like an RAXIS format image - files we have seen have
-    first 5 letters of file either RAXIS or R-AXI'''
+    '''See if this looks like an RAXIS format image - clue is first
+    5 letters of file should be RAXIS.'''
 
-    if Format.open_file(image_file).read(5) in ['RAXIS', 'R-AXI']:
+    if Format.open_file(image_file).read(5) == 'RAXIS':
       return True
 
     return False
