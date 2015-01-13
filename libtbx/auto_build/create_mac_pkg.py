@@ -179,7 +179,7 @@ our website).""" % { "package" : options.package_name,
         "org"      : options.organization,
         "misc_files" : "\n".join(misc_files) })
   distfile.close()
-  
+
   print >> out, "Fixing package permissions:", pkg_root
   call(['chmod','-R','0755',pkg_root])
 
@@ -211,7 +211,7 @@ our website).""" % { "package" : options.package_name,
     call(zip_args, out)
     assert op.isfile(pkg_name + ".zip")
     # Remove uncompressed .pkg.
-    os.unlink(pkg_name) 
+    os.unlink(pkg_name)
   return True
 
 if (__name__ == "__main__") :
