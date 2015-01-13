@@ -34,7 +34,7 @@ HDF5_PKG = "hdf5-1.8.8.tar.bz2"      # dxtbx
 H5PY_PKG = "h5py-2.0.1-edit.tar.gz"  # dxtbx
 
 # GUI dependencies
-LIBPNG_PKG = "libpng-1.2.52.tar.gz" 
+LIBPNG_PKG = "libpng-1.2.52.tar.gz"
 FREETYPE_PKG = "freetype-2.4.2.tar.gz"
 # Linux-only
 # FIXME some of these are getting pretty ancient, time to update?
@@ -56,7 +56,7 @@ GTK_THEME_PKG = "gtk_themes.tar.gz"
 # end Linux-only
 FONT_PKG = "fonts.tar.gz"
 # FIXME at some point we should switch to using 3.x for all platforms
-WXPYTHON_DEV_PKG = "wxPython-src-3.0.1.0.tar.gz"  # Mac 
+WXPYTHON_DEV_PKG = "wxPython-src-3.0.1.0.tar.gz"  # Mac
 WXPYTHON_PKG = "wxPython-src-2.8.12.1.tar.gz"      # Linux
 MATPLOTLIB_PKG = "matplotlib-1.3.1.tar.gz"
 PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
