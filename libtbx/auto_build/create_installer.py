@@ -54,32 +54,30 @@ def archive(source, destination, tarfile=None):
   shutil.copytree(
     source,
     destination,
-    ignore=shutil.ignore_patterns('*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign'),
+    ignore=shutil.ignore_patterns('*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o'),
     symlinks=True
     )
 
 def tar(source, tarfile, cwd=None):
-  assert not os.path.exists(tarfile), "File exists: %s"%tarfile  
+  assert not os.path.exists(tarfile), "File exists: %s"%tarfile
   print "Archiving: %s -> %s"%(source, tarfile)
   subprocess.check_call([
       'tar',
       '-cz',
       '-f', tarfile,
       source
-    ], 
+    ],
     cwd=cwd)
 
 class SetupInstaller(object):
   def __init__(self, **kwargs):
     self.install_script = kwargs.get('install_script')
-    self.version = kwargs.get('version')    
+    self.version = kwargs.get('version')
     self.script = kwargs.get('script')
-    self.modules = set(kwargs.get('modules') or [])
-    self.base_modules = set(kwargs.get('base_modules') or [])
-    # 
-    self.root = os.path.abspath(kwargs.get('root'))
-    self.dest = os.path.abspath(kwargs.get('dest'))
-    dest_tar = kwargs.get('dest_tar') or '%s.tar.gz'%os.path.basename(self.dest)
+    #
+    self.root_dir = os.path.abspath(kwargs.get('root_dir'))
+    self.dest_dir = os.path.abspath(kwargs.get('dest_dir'))
+    dest_tar = kwargs.get('dest_tar') or '%s.tar.gz'%os.path.basename(self.dest_dir)
     self.dest_tar = os.path.abspath(dest_tar)
 
     self.license = kwargs.get('license')
@@ -87,116 +85,142 @@ class SetupInstaller(object):
     # Load the installer class, get the list of modules.
     assert os.path.isfile(self.install_script)
     installer_module = imp.load_source('install_script', self.install_script)
-    installer = installer_module.installer()
-    self.modules |= set(installer.modules)
-    self.base_modules |= set(installer.base_modules)
+    self.installer = installer_module.installer()
 
   def run(self):
     # Setup directory structure
-    print "Installer will be %s"%self.dest
-    assert not os.path.exists(self.dest), "Installer dir exists: %s"%self.dest
-    os.makedirs(self.dest)
+    print "Installer will be %s"%self.dest_dir
+    assert not os.path.exists(self.dest_dir), "Installer dir exists: %s"%self.dest_dir
+    os.makedirs(self.dest_dir)
     for i in ['bin', 'lib']:
-      os.makedirs(os.path.join(self.dest, i))
+      os.makedirs(os.path.join(self.dest_dir, i))
     self.copy_info()
     self.copy_libtbx()
     self.copy_dependencies()
     self.copy_build()
     self.copy_modules()
     self.copy_doc()
+    self.write_environment_files()
     self.fix_permissions()
     self.make_dist()
-    
+
   def make_dist(self):
     try:
       os.makedirs(os.path.dirname(self.dest_tar))
     except Exception, e:
       print "Warning: %s"%e
     tar(
-      os.path.basename(self.dest),
+      os.path.basename(self.dest_dir),
       self.dest_tar,
-      cwd=os.path.join(self.dest, '..')
+      cwd=os.path.join(self.dest_dir, '..')
     )
 
   def copy_info(self):
     # Basic setup #
     # Write VERSION
-    with open(os.path.join(self.dest, 'VERSION'), 'w') as f:
+    with open(os.path.join(self.dest_dir, 'VERSION'), 'w') as f:
       f.write(self.version)
     # Write README
     for i in self.readme:
-      shutil.copyfile(i, os.path.join(self.dest, os.path.basename(i)))
+      shutil.copyfile(i, os.path.join(self.dest_dir, os.path.basename(i)))
     # Write LICENSE
     if os.path.isfile(self.license):
-      shutil.copyfile(self.license, os.path.join(self.dest, 'LICENSE'))
+      shutil.copyfile(self.license, os.path.join(self.dest_dir, 'LICENSE'))
     # Actual Python installer script
-    shutil.copyfile(self.install_script, os.path.join(self.dest, 'bin', 'install.py'))
+    shutil.copyfile(self.install_script, os.path.join(self.dest_dir, 'bin', 'install.py'))
     # Write executable Bash script wrapping Python script
-    with open(os.path.join(self.dest, 'install'), 'w') as f:
+    with open(os.path.join(self.dest_dir, 'install'), 'w') as f:
       f.write(INSTALL_SH)
-    st = os.stat(os.path.join(self.dest, "install"))
-    os.chmod(os.path.join(self.dest, "install"), st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-  
+    st = os.stat(os.path.join(self.dest_dir, "install"))
+    os.chmod(os.path.join(self.dest_dir, "install"), st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
   def copy_libtbx(self):
     # Copy over libtbx for setup.
     archive(
-      os.path.join(libtbx_path), 
-      os.path.join(self.dest, 'lib', 'libtbx')
+      os.path.join(libtbx_path),
+      os.path.join(self.dest_dir, 'lib', 'libtbx')
     )
 
   def copy_dependencies(self):
     # Copy dependencies
     archive(
-      os.path.join(self.root, 'base'),
-      os.path.join(self.dest, 'base')
+      os.path.join(self.root_dir, 'base'),
+      os.path.join(self.dest_dir, 'base')
     )
-    libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root, 'base'), os.path.join(self.dest, 'base')])
+    libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root_dir, 'base'), os.path.join(self.dest_dir, 'base')])
 
   def copy_build(self):
-    # Compiled modules
+    # Copy the entire build directory, minus .o files.
     archive(
-      os.path.join(self.root, 'build', 'lib'),
-      os.path.join(self.dest, 'build', 'lib')
+      os.path.join(self.root_dir, 'build'),
+      os.path.join(self.dest_dir, 'build')
     )
-    # executables
-    build_dir = os.path.join(self.root, 'build')
-    for j in [i for i in os.listdir(build_dir) if os.path.isdir(os.path.join(build_dir, i, "exe"))]:
-      archive(
-        os.path.join(self.root, 'build', j, 'exe'),
-        os.path.join(self.dest, 'build', j, 'exe')
-      )
-    libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root, 'base'), os.path.join(self.dest, 'build')])
+    # Previously, we found and copied executables. Now, just copy everything above.
+    # build_dir = os.path.join(self.root_dir, 'build')
+    # for j in [i for i in os.listdir(build_dir) if os.path.isdir(os.path.join(build_dir, i, "exe"))]:
+    #   ...
+    libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root_dir, 'base'), os.path.join(self.dest_dir, 'build')])
 
   def copy_modules(self):
     # Source modules #
-    for module in self.modules:
+    for module in  self.installer.modules:
       archive(
-        os.path.join(self.root, 'modules', module),
-        os.path.join(self.dest, 'modules', module)
+        os.path.join(self.root_dir, 'modules', module),
+        os.path.join(self.dest_dir, 'modules', module)
       )
-      
+
   def copy_doc(self):
     # Copy doc
     archive(
-      os.path.join(self.root, 'doc'),
-      os.path.join(self.dest, 'doc')
+      os.path.join(self.root_dir, 'doc'),
+      os.path.join(self.dest_dir, 'doc')
     )
-    
+
   def fix_permissions(self):
     subprocess.check_call([
       'chmod',
       '-R',
       'u=rw,a+rX',
-      self.dest
+      self.dest_dir
       ])
-    
+
+  def write_environment_files(self):
+    """Generate shell scripts in the top-level installation directory."""
+    print "Generating %s environment setup scripts..."%self.installer.product_name
+    fmt = {'env_prefix':self.installer.product_name.upper(), 'version':self.version}
+    # bash
+    with open(os.path.join(self.dest_dir, '%s_env.sh'%self.installer.product_name.lower()), 'w') as f:
+      f.write("""\
+#!/bin/sh
+export %(env_prefix)s=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+export %(env_prefix)s_VERSION=%(version)s
+source $%(env_prefix)s/build/setpaths.sh
+"""%fmt)
+    # tcsh
+    with open(os.path.join(self.dest_dir, '%s_env.csh'%self.installer.product_name.lower()), 'w') as f:
+      f.write("""\
+#!/bin/csh -f
+set testpath=($_)
+if ("$testpath" != "") then
+    set testpath=$testpath[2]
+else
+    set testpath=$0
+endif
+set rootdir=`dirname $testpath`
+set fullpath=`cd $rootdir && pwd -P`
+setenv LIBTBX_BUILD_RELOCATION_HINT $fullpath
+setenv %(env_prefix)s $fullpath
+setenv %(env_prefix)s_VERSION %(version)s
+source $%(env_prefix)s/build/setpaths.csh
+"""%fmt)
+
 def run (args) :
   parser = OptionParser()
   parser.add_option("--version", dest="version", action="store",
     help="Package version", default=time.strftime("%Y_%m_%d",time.localtime()))
   parser.add_option("--binary", dest="binary", action="store_true",
     help="Setup for binary installer only (no source packages)", default=False)
-  parser.add_option("--root", dest="root", action="store",
+  parser.add_option("--root_dir", dest="root_dir", action="store",
     help="Environment root", default=os.getcwd())
   parser.add_option("--dest_tar", dest="dest_tar", action="store",
     help="Tar archive filename")
@@ -206,21 +230,15 @@ def run (args) :
     help="License file", default=os.path.join(libtbx_path, "LICENSE_2_0.txt"))
   parser.add_option("--install_script", dest="install_script",
     help="Final installation script", default=None, metavar="FILE")
-  parser.add_option("--module", dest="modules", action="append",
-    help="Local modules to include")
-  parser.add_option("--base-module", dest="base_modules", action="append",
-    help="Additional local modules placed in base/ directory")
   options, args_ = parser.parse_args(args=args)
   assert len(args_) == 1, "Destination directory required argument."
   setup = SetupInstaller(
-    dest=args_[0],
+    dest_dir=args_[0],
     version=options.version,
-    root=options.root,
+    root_dir=options.root_dir,
     readme=options.readme,
     license=options.license,
     install_script=options.install_script,
-    modules=options.modules,
-    base_modules=options.base_modules,
     dest_tar=options.dest_tar
   )
   setup.run()
