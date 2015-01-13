@@ -1,10 +1,8 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.clashscore
 
 from __future__ import division
-from cctbx.geometry_restraints.clash_score import check_and_add_hydrogen
-from cctbx.geometry_restraints.clash_score import get_macro_mol_sel
 import mmtbx.monomer_library.pdb_interpretation as pdb_inter
-import cctbx.geometry_restraints.clash_score as clash_score
+import cctbx.geometry_restraints.clash_score as cs
 import mmtbx.validation.clashscore
 from libtbx.utils import null_out
 from libtbx.utils import Usage
@@ -54,6 +52,12 @@ master_phil_str = """
 
   substitute_non_crystallographic_unit_cell_if_necessary = True
     .type = bool
+
+  show_cctbx_clash_type = *all sym macro
+  .type = choice(multi=False)
+  .help = '''When using cctbx method, this parameter allows selecting to show
+  all clashes 'all', clashes dues to symmetry operation 'sym' or clashes in
+  the macro molecule 'macro'.'''
 """
 
 usage_string = """\
@@ -118,13 +122,14 @@ def run (args, out=sys.stdout, quiet=None) :
     cif_file_name = [x for x in args if x.endswith('.cif')]
     assert pdb_file_name
     pdb_file_name = pdb_file_name[0]
-    pdb_with_h, h_were_added = check_and_add_hydrogen(
+    pdb_with_h, h_were_added = cs.check_and_add_hydrogen(
         file_name=pdb_file_name,
         model_number=0,
         nuclear=params.nuclear,
         verbose=params.verbose,
         time_limit=params.time_limit,
         keep_hydrogens=params.keep_hydrogens,
+        allow_multiple_models=False,
         log=out)
     if h_were_added:
       pdb_file_name = pdb_file_name.replace('.pdb','_with_h.pdb')
@@ -133,35 +138,51 @@ def run (args, out=sys.stdout, quiet=None) :
     if cif_file_name:
         files.append(cif_file_name[0])
 
-    pdb_processed_file = pdb_inter.run(
-      args=files,
-      assume_hydrogens_all_missing=False,
-      hard_minimum_nonbonded_distance=params.hard_minimum_nonbonded_distance,
-      nonbonded_distance_threshold=params.nonbonded_distance_threshold,
-      substitute_non_crystallographic_unit_cell_if_necessary
-      =params.substitute_non_crystallographic_unit_cell_if_necessary,
-      log=null_out())
+    interpretation_inp = {
+      'args':files,
+      'assume_hydrogens_all_missing':False,
+      'hard_minimum_nonbonded_distance':params.hard_minimum_nonbonded_distance,
+      'nonbonded_distance_threshold':params.nonbonded_distance_threshold,
+      'substitute_non_crystallographic_unit_cell_if_necessary'
+      :params.substitute_non_crystallographic_unit_cell_if_necessary,
+      'log':null_out()}
 
+    pdb_processed_file = pdb_inter.run(**interpretation_inp)
     grm = pdb_processed_file.geometry_restraints_manager()
     xrs = pdb_processed_file.xray_structure()
     sites_cart = xrs.sites_cart()
     site_labels = xrs.scatterers().extract_labels()
+    # when we have unknown pair, try to run phenix.ready_set
+    if cs.unknown_pairs_present(grm,sites_cart,site_labels):
+      if params.verbose:
+        print >> out,"PDB file contains unknown type pairs."
+        print >> out,"Processing file using phenix.ready_set"
+      [fn_cif,fn_pdb] = cs.create_cif_file_using_ready_set(
+        file_name=pdb_file_name,
+        log=null_out())
+      if fn_cif:
+        interpretation_inp['args'] = [fn_cif,fn_pdb]
+        pdb_processed_file = pdb_inter.run(**interpretation_inp)
+        grm = pdb_processed_file.geometry_restraints_manager()
+        xrs = pdb_processed_file.xray_structure()
+        sites_cart = xrs.sites_cart()
+        site_labels = xrs.scatterers().extract_labels()
     hd_sel = xrs.hd_selection()
-    macro_mol_sel = get_macro_mol_sel(pdb_processed_file)
-    cctbx_clashscore = clash_score.info(
+    macro_mol_sel = cs.get_macro_mol_sel(pdb_processed_file)
+    cctbx_clashscore = cs.info(
       geometry_restraints_manager=grm,
       macro_molecule_selection=macro_mol_sel,
       sites_cart=sites_cart,
       site_labels=site_labels,
       hd_sel=hd_sel)
     if params.verbose:
-      cctbx_clashscore.show(log=out)
+      cctbx_clashscore.show(log=out,clash_type=params.show_cctbx_clash_type)
     else:
       all = cctbx_clashscore.result.cctbx_clashscore_all
       macro_molecule = cctbx_clashscore.result.cctbx_clashscore_macro_molecule
       sym = cctbx_clashscore.result.cctbx_clashscore_due_to_sym_op
-      out_list = [macro_molecule,sym,all]
-      print >> out,map(lambda x: round(x,2),out_list)
+      out_list = map(lambda x: str(round(x,2)),[macro_molecule,sym,all])
+      print >> out,', '.join(out_list)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

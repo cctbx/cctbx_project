@@ -1,9 +1,8 @@
 from __future__ import division
-from cctbx.geometry_restraints.clash_score import get_macro_mol_sel
 import mmtbx.monomer_library.pdb_interpretation as pdb_inter
-import cctbx.geometry_restraints.clash_score as clash_score
 from cctbx.geometry_restraints.clash_score import compute
 from cctbx.geometry_restraints.clash_score import info
+import cctbx.geometry_restraints.clash_score as cs
 from cctbx.array_family import flex
 import mmtbx.monomer_library.server
 from mmtbx import monomer_library
@@ -14,6 +13,7 @@ from libtbx import easy_run
 from cctbx import xray
 import libtbx.load_env
 import mmtbx.model
+import iotbx.pdb
 import unittest
 import os
 
@@ -376,6 +376,87 @@ ATOM     60  O   HOH C  37      -0.639  -0.486   5.076  1.00  0.00           O
 END
 """
 
+two_models_pdb_str = '''\
+NUMMDL    2
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1
+SCALE1      1.000000  0.000000  0.000000        0.00000
+SCALE2      0.000000  1.000000  0.000000        0.00000
+SCALE3      0.000000  0.000000  1.000000        0.00000
+MODEL        1
+ATOM      1  O5'  DT A   1       5.731   9.490   3.143  1.00  0.30           O
+ATOM      2  C5'  DT A   1       7.086   9.894   3.358  1.00  0.23           C
+ATOM      3  C4'  DT A   1       7.582   9.548   4.765  1.00  0.19           C
+ATOM      4  O4'  DT A   1       6.740  10.157   5.764  1.00  0.24           O
+ATOM      5  C3'  DT A   1       7.507   8.040   5.042  1.00  0.16           C
+ATOM      6  O3'  DT A   1       8.635   7.306   4.552  1.00  0.21           O
+ATOM      7  C2'  DT A   1       7.421   8.030   6.566  1.00  0.25           C
+ATOM      8  C1'  DT A   1       6.453   9.201   6.806  1.00  0.30           C
+ATOM      9  N1   DT A   1       5.036   8.749   6.860  1.00  0.35           N
+ENDMDL
+MODEL        2
+ATOM      1  O5'  DT A   1       6.264   8.945   2.832  1.00  1.22           O
+ATOM      2  C5'  DT A   1       7.298   9.697   3.472  1.00  1.31           C
+ATOM      3  C4'  DT A   1       7.725   9.081   4.808  1.00  1.08           C
+ATOM      4  O4'  DT A   1       6.626   9.025   5.730  1.00  0.90           O
+ATOM      5  C3'  DT A   1       8.306   7.667   4.715  1.00  0.97           C
+ATOM      6  O3'  DT A   1       9.616   7.544   5.299  1.00  1.07           O
+ATOM      7  C2'  DT A   1       7.219   6.806   5.307  1.00  0.73           C
+ATOM      8  C1'  DT A   1       6.583   7.725   6.331  1.00  0.65           C
+ATOM      9  N1   DT A   1       5.152   7.401   6.573  1.00  0.49           N
+ENDMDL
+END
+'''
+
+unknown_pairs_pdb_str = '''\
+CRYST1  117.569   80.626   62.614  90.00 121.09  90.00 C 1 2 1       4
+SCALE1      0.008506  0.000000  0.005128        0.00000
+SCALE2      0.000000  0.012403  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.018649        0.00000
+HETATM 1816  N   CAS A 380      12.871  17.119   3.514  1.00 50.96           N
+HETATM 1817  CA  CAS A 380      11.787  16.447   4.266  1.00 53.12           C
+HETATM 1818  CB  CAS A 380      11.217  15.255   3.530  1.00 54.75           C
+HETATM 1819  C   CAS A 380      12.248  15.763   5.514  1.00 51.35           C
+HETATM 1820  O   CAS A 380      11.648  15.861   6.584  1.00 50.96           O
+HETATM 1821  SG  CAS A 380      10.161  15.814   2.259  1.00 63.65           S
+HETATM 1822 AS   CAS A 380       9.628  14.063   0.831  1.00 79.64          AS
+HETATM 1823  CE1 CAS A 380       7.742  13.464   1.110  1.00 74.47           C
+HETATM 1824  CE2 CAS A 380       9.928  14.352  -1.138  1.00 75.18           C
+ATOM   2021  N   VAL A 404      24.522  15.315  13.625  1.00 53.07           N
+ATOM   2022  CA  VAL A 404      24.335  15.650  12.189  1.00 55.02           C
+ATOM   2023  C   VAL A 404      23.047  16.466  11.861  1.00 56.25           C
+ATOM   2024  O   VAL A 404      23.079  17.480  11.116  1.00 55.31           O
+ATOM   2025  CB  VAL A 404      24.462  14.424  11.288  1.00 54.08           C
+ATOM   2026  CG1AVAL A 404      24.258  14.838   9.847  1.00 56.77           C
+ATOM   2027  CG2AVAL A 404      25.822  13.869  11.450  1.00 54.99           C
+TER
+HETATM 2049  C1   T3 A   1      21.311   4.072   5.543  1.00 52.81           C
+HETATM 2050  C2   T3 A   1      17.344   6.064   8.054  1.00 43.91           C
+HETATM 2051  C3   T3 A   1      20.783   3.905   6.673  1.00 53.50           C
+HETATM 2052  C4   T3 A   1      16.533   6.250   8.959  1.00 40.96           C
+HETATM 2053  C5   T3 A   1      19.781   4.009   7.424  1.00 52.40           C
+HETATM 2054  C6   T3 A   1      16.098   7.066   9.816  1.00 46.33           C
+HETATM 2055  C7   T3 A   1      18.736   4.583   6.685  1.00 51.52           C
+HETATM 2056  C8   T3 A   1      16.706   8.313   9.621  1.00 49.35           C
+HETATM 2057  C9   T3 A   1      18.988   4.926   5.307  1.00 53.87           C
+HETATM 2058  C10  T3 A   1      17.561   8.051   8.696  1.00 46.75           C
+HETATM 2059  C11  T3 A   1      20.306   4.642   4.770  1.00 52.69           C
+HETATM 2060  C12  T3 A   1      18.054   7.225   7.882  1.00 44.35           C
+HETATM 2061  C13  T3 A   1      22.687   3.698   5.078  1.00 48.08           C
+HETATM 2062  C15  T3 A   1      22.757   3.421   3.584  1.00 44.34           C
+HETATM 2063  C17  T3 A   1      24.163   3.014   3.224  1.00 43.53           C
+HETATM 2064  I1   T3 A   1      19.604   3.521   9.441  1.00 48.60           I
+HETATM 2065  I2   T3 A   1      14.653   6.812  11.273  1.00 48.77           I
+HETATM 2066  I3   T3 A   1      17.518   5.847   3.966  1.00 58.43           I
+HETATM 2067  N1   T3 A   1      21.771   2.499   3.028  1.00 41.57           N
+HETATM 2068  O1   T3 A   1      16.352   9.490  10.263  1.00 43.23           O
+HETATM 2069  O2   T3 A   1      17.531   4.821   7.328  1.00 50.96           O
+HETATM 2070  O3   T3 A   1      24.437   2.050   2.495  1.00 43.66           O
+HETATM 2071  O4   T3 A   1      25.057   3.683   3.704  1.00 44.34           O
+HETATM 2072  O   HOH A 411       5.940  15.281  10.898  1.00 20.25           O
+HETATM 2073  O   HOH A 412      20.790   1.172  -9.857  1.00 30.79           O
+END
+'''
+
 
 class test_cctbx_clashscore(unittest.TestCase):
 
@@ -542,7 +623,7 @@ class test_cctbx_clashscore(unittest.TestCase):
     xrs = processed_pdb_file.xray_structure()
     params = get_clashscore_param(xrs,grm)
     sites_cart,site_labels,hd_sel,full_connectivty_table = params
-    macro_mol_sel = get_macro_mol_sel(processed_pdb_file)
+    macro_mol_sel = cs.get_macro_mol_sel(processed_pdb_file)
     cctbx_clashscore = grm.cctbx_clashscore_info(
       sites_cart=sites_cart,
       macro_mol_sel=macro_mol_sel,
@@ -583,7 +664,7 @@ class test_cctbx_clashscore(unittest.TestCase):
       show_energies      = False,
       plain_pairs_radius = 5.0)
     xrs = processed_pdb_file.xray_structure()
-    macro_mol_sel = get_macro_mol_sel(processed_pdb_file)
+    macro_mol_sel = cs.get_macro_mol_sel(processed_pdb_file)
     cctbx_clashscore = geometry.cctbx_clashscore_info(
       sites_cart  = xrs.sites_cart(),
       macro_mol_sel=macro_mol_sel,
@@ -620,7 +701,7 @@ class test_cctbx_clashscore(unittest.TestCase):
       ener_lib       = ener_lib,
       raw_records    = pdb_str,
       force_symmetry = True)
-    macro_mol_sel = get_macro_mol_sel(processed_pdb_file)
+    macro_mol_sel = cs.get_macro_mol_sel(processed_pdb_file)
     cctbx_clashscore = mol.restraints_manager.geometry.cctbx_clashscore_info(
       sites_cart  = mol.xray_structure.sites_cart(),
       macro_mol_sel=macro_mol_sel,
@@ -640,7 +721,7 @@ class test_cctbx_clashscore(unittest.TestCase):
       show_energies      = False,
       plain_pairs_radius = 5.0)
     xrs = processed_pdb_file.xray_structure()
-    macro_mol_sel = get_macro_mol_sel(processed_pdb_file)
+    macro_mol_sel = cs.get_macro_mol_sel(processed_pdb_file)
     cctbx_clashscore = geometry.cctbx_clashscore_info(
       sites_cart  = xrs.sites_cart(),
       macro_mol_sel=macro_mol_sel,
@@ -727,7 +808,7 @@ class test_cctbx_clashscore(unittest.TestCase):
     site_labels = xrs.scatterers().extract_labels()
     hd_sel = xrs.hd_selection()
 
-    macro_mol_sel = get_macro_mol_sel(pdb_processed_file)
+    macro_mol_sel = cs.get_macro_mol_sel(pdb_processed_file)
     # Make sure we don't have only macro molecule
     self.assertTrue(macro_mol_sel.size() > macro_mol_sel.count(True))
 
@@ -771,15 +852,70 @@ class test_cctbx_clashscore(unittest.TestCase):
     self.assertEqual(r_clashscor_sym,clashscor_sym)
     self.assertEqual(r_clashscor_macro_mol,clashscor_macro_mol)
 
+  def test_aborting_pdb_with_multiple_modeles(self):
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=two_models_pdb_str)
+    ph = pdb_inp.construct_hierarchy()
+    # check that Sorry is raised
+    self.assertRaises(
+      Sorry,
+      cs.check_and_add_hydrogen,
+      **{'pdb_hierarchy':ph,
+       'allow_multiple_models':False})
+    # Check that does run, when allowed to, on multiple models
+    r = cs.check_and_add_hydrogen(pdb_hierarchy=ph,allow_multiple_models=True)
+    self.assertTrue(len(r),2)
+
+  def test_file_with_unknown_pair_type(self):
+    fn = 'test_unknown_pairs_in_pdb.pdb'
+    self.file_to_delete.append(fn)
+    open(fn,'w').write(unknown_pairs_pdb_str)
+    print 'current _dir',os.getcwd()
+    pdb_with_h, h_were_added = cs.check_and_add_hydrogen(
+        file_name=fn,
+        allow_multiple_models=False,
+        log=null_out())
+    # add hydrogen atoms
+    fn_with_h = fn.replace('.pdb','_with_h.pdb')
+    self.file_to_delete.append(fn_with_h)
+    open(fn_with_h,'w').write(pdb_with_h)
+    # set input parameters for pdb_interpretation
+    interpretation_inp = {
+      'args':[fn_with_h],
+      'assume_hydrogens_all_missing':False,
+      'hard_minimum_nonbonded_distance':0.0,
+      'nonbonded_distance_threshold':None,
+      'substitute_non_crystallographic_unit_cell_if_necessary':True,
+      'log':null_out()}
+    pdb_processed_file = pdb_inter.run(**interpretation_inp)
+    grm = pdb_processed_file.geometry_restraints_manager()
+    xrs = pdb_processed_file.xray_structure()
+    sites = xrs.sites_cart()
+    labels = xrs.scatterers().extract_labels()
+    test = cs.unknown_pairs_present(grm=grm,sites_cart=sites,site_labels=labels)
+    # make sure we have unknown pairs
+    self.assertTrue(test)
+    pdb_ready_set_file_names = cs.create_cif_file_using_ready_set(
+      file_name=fn_with_h,
+      log=null_out())
+    [fn_cif,fn_pdb] = pdb_ready_set_file_names
+    # check that we can run clashscore
+    if fn_cif:
+      self.file_to_delete.extend(pdb_ready_set_file_names)
+      clash_score_info = process_clash_score(
+        file_name=fn_pdb,
+        cif_file_name=fn_cif)
+
   def tearDown(self):
     """ delete files created in during testing"""
     if self.file_to_delete:
       for fn in self.file_to_delete:
         if os.path.isfile(fn): os.remove(fn)
 
-def process_clash_score(file_name,return_n_atoms=False):
+def process_clash_score(file_name,return_n_atoms=False,cif_file_name=None):
+  files = [file_name]
+  if cif_file_name: files.append(cif_file_name)
   pdb_processed_file = pdb_inter.run(
-      args=[file_name],
+      args=files,
       assume_hydrogens_all_missing=False,
       hard_minimum_nonbonded_distance=0.0,
       nonbonded_distance_threshold=None,
@@ -792,9 +928,9 @@ def process_clash_score(file_name,return_n_atoms=False):
   sites_cart = xrs.sites_cart()
   site_labels = xrs.scatterers().extract_labels()
   hd_sel = xrs.hd_selection()
-  macro_mol_sel = get_macro_mol_sel(pdb_processed_file)
+  macro_mol_sel = cs.get_macro_mol_sel(pdb_processed_file)
 
-  clash_score_info = clash_score.info(
+  clash_score_info = cs.info(
       geometry_restraints_manager=grm,
       macro_molecule_selection=macro_mol_sel,
       sites_cart=sites_cart,
@@ -851,7 +987,7 @@ def process_raw_records(
       grm=grm,
       use_site_labels=use_site_labels)
   sites_cart,site_labels,hd_sel,full_connectivty_table = params
-  macro_mol_sel = get_macro_mol_sel(pdb_processed_file)
+  macro_mol_sel = cs.get_macro_mol_sel(pdb_processed_file)
 
   result = grm.cctbx_clashscore_info(
     sites_cart=sites_cart,
@@ -891,7 +1027,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   # tests = ['test_running_from_command_line','test_compute','test_info']
-  tests = ['test_clashes']
+  tests = ['test_file_with_unknown_pair_type']
   suite = unittest.TestSuite(map(test_cctbx_clashscore, tests))
   return suite
 

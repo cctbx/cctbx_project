@@ -191,7 +191,7 @@ class compute(object):
     '''(tuple,tuple) -> float
 
     Calculate the cosine used to evaluate wheather the atoms
-    coliding are inline or not
+    colliding are inline or not
 
     Arguments:
     u,v: lists containing x1,y1,z1,x2,y2,z2 coordinates
@@ -386,13 +386,11 @@ class info(object):
         site_label = site_labels.select(sel)
       else:
         site_label = site_labels
-      pair_proxies = grm.pair_proxies(
-            sites_cart=cart,
-            site_labels=site_label)
-      if pair_proxies.nonbonded_proxies.n_unknown_nonbonded_type_pairs != 0:
+      if unknown_pairs_present(grm=grm,sites_cart=cart,site_labels=site_label):
         msg = "nonbonded clashscore can't be calculated."
         msg += " PDB file contains unknown type pairs. Please provide cif file."
         raise Sorry(msg)
+      pair_proxies = grm.pair_proxies(sites_cart=cart,site_labels=site_label)
       proxies_info_nonbonded = pair_proxies.nonbonded_proxies.get_sorted(
         by_value="delta",
         sites_cart=cart,
@@ -502,9 +500,11 @@ def check_and_add_hydrogen(pdb_hierarchy=None,
                            model_number=0,
                            n_hydrogen_cut_off = 0,
                            time_limit=120,
+                           allow_multiple_models=True,
                            log=None):
   """
   If no hydrogens present, force addition for clashscore calculation.
+  Use REDUCE to add the hydrogen atoms.
 
   Args:
     pdb_hierarchy : pdb hierarchy
@@ -517,6 +517,7 @@ def check_and_add_hydrogen(pdb_hierarchy=None,
     time_limit (int): limit the time it takes to add hydrogen atoms
     n_hydrogen_cut_off (int): when number of hydrogen atoms < n_hydrogen_cut_off
       force keep_hydrogens tp True
+    allow_multiple_models (bool): Allow models that contain more than one model
 
   Returns:
     (str): PDB string
@@ -528,7 +529,10 @@ def check_and_add_hydrogen(pdb_hierarchy=None,
   assert pdb_hierarchy
   assert model_number < len(pdb_hierarchy.models())
   if not log: log = sys.stdout
-  model = pdb_hierarchy.models()[model_number]
+  models = pdb_hierarchy.models()
+  if (len(models) > 1) and (not allow_multiple_models):
+    raise Sorry("When using CCTBX clashscore, provide only a single model.")
+  model = models[model_number]
   r = iotbx.pdb.hierarchy.root()
   mdc = model.detached_copy()
   r.append_model(mdc)
@@ -590,3 +594,61 @@ def get_macro_mol_sel(pdb_processed_file):
     cache=cache,
     string=macro_molecule_selection_str )
   return macro_mol_sel
+
+def create_cif_file_using_ready_set(
+        pdb_hierarchy=None,
+        file_name=None,
+        log=None):
+  """
+  When model contains unknown pairs, create a cif file for clashscore
+  calculation using READY_SET.
+
+  Args:
+    pdb_hierarchy : pdb hierarchy
+    file_name (str): pdb file name
+    log : output location
+
+  Returns:
+    (str): the cif file name that was created
+  """
+  import libtbx.load_env
+  has_ready_set = libtbx.env.has_module(name="phenix")
+  if file_name:
+    pdb_inp = iotbx.pdb.input(file_name=file_name)
+    pdb_hierarchy = pdb_inp.construct_hierarchy()
+  assert pdb_hierarchy
+  if not log: log = sys.stdout
+  models = pdb_hierarchy.models()
+  assert len(models) == 1
+  if not has_ready_set:
+    msg = 'phenix.ready_set could not be detected on your system.\n'
+    msg += 'Cannot process PDB file'
+    print >> log,msg
+    return [False,False]
+  if not file_name:
+    file_name = 'input_pdb_file_for_ready_set.pdb'
+    open(file_name,'w').write(pdb_hierarchy.as_pdb_string())
+  cmd = "phenix.ready_set {} --silent".format(file_name)
+  out = easy_run.fully_buffered(cmd)
+  if (out.return_code != 0) :
+    msg_str = "ready_set crashed - dumping stderr:\n%s"
+    raise RuntimeError(msg_str % ( "\n".join(out.stderr_lines)))
+  fn_pdb = file_name.replace('.pdb','.updated.pdb')
+  fn_cif = file_name.replace('.pdb','.ligands.cif')
+  return [fn_cif,fn_pdb]
+
+def unknown_pairs_present(grm,sites_cart,site_labels):
+  """
+  Test if PDB file contains unknown type pairs
+
+  Args:
+    grm (obj): geometry restraints manager
+    sites_cart (flex.vec3): atoms sites cart (coordinates)
+    site_labels: a list of lables such as " HA  LEU A  38 ", for each atom
+
+
+  Return:
+    (bool): True if PDB file contains unknown type pairs
+  """
+  pp= grm.pair_proxies(sites_cart=sites_cart,site_labels=site_labels)
+  return (pp.nonbonded_proxies.n_unknown_nonbonded_type_pairs != 0)
