@@ -191,9 +191,9 @@ class Builder(object):
 
     # Cleanup
     if cleanup:
-      self.cleanup(['dist', 'tests', 'docs', 'tmp', 'build'])
+      self.cleanup(['dist', 'tests', 'doc', 'tmp', 'build'])
     else:
-      self.cleanup(['dist', 'tests', 'docs', 'tmp'])
+      self.cleanup(['dist', 'tests', 'doc', 'tmp'])
 
     # Add 'hot' sources
     if hot:
@@ -502,7 +502,7 @@ class PHENIXBuilder(CCIBuilder):
     'probe',
   ]
   def add_install(self):
-    self.add_command('mmtbx.rebuild_rotarama_cache')  
+    self.add_command('mmtbx.rebuild_rotarama_cache')
   def add_tests(self):
     # Windows convenience hack.
     if 'windows' in self.platform:
