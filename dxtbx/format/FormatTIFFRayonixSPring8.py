@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# FormatTIFFRayonixSPring8BL26B2.py
+# FormatTIFFRayonixSPring8.py
 #
 #  Copyright (C) (2014) STFC Rutherford Appleton Laboratory, UK.
 #
