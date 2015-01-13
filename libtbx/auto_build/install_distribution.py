@@ -115,9 +115,9 @@ class installer(object):
 
   def __init__ (self, args=None, out=sys.stdout) :
     self.args = args or []
-    self.out = out    
+    self.out = out
     self.parse_options()
-    
+
   def parse_options (self):
     """
     Process command-line options.  These may be supplemented by subclasses that
@@ -163,10 +163,10 @@ class installer(object):
       help="Use pre-compiled binary install", default=None)
     self.add_product_specific_options(parser)
     self.options, args = parser.parse_args(self.args)
-        
+
   def install(self):
     check_python_version()
-    self.parse_options()   
+    self.parse_options()
     self.basic_setup()
     self.check_directories()
     self.print_banner()
@@ -203,7 +203,7 @@ class installer(object):
     # The default behavior for nearly all program's --prefix options
     # is to create the directory, so I don't think the --makedirs option
     # is necessary.
-    
+
     # Do not overwrite an existing installation.
     self.dest_dir = op.join(self.options.prefix, "%s-%s"%(self.dest_dir_prefix, self.version))
     if os.path.exists(self.dest_dir):
@@ -214,7 +214,7 @@ class installer(object):
     """%self.dest_dir)
 
     # Other useful directories.
-    self.tmp_dir = op.join(self.installer_dir, "tmp")          
+    self.tmp_dir = op.join(self.installer_dir, "tmp")
     self.build_dir = op.join(self.dest_dir, "build")
     self.base_dir = op.join(self.dest_dir, "base")
     self.modules_dir = op.join(self.dest_dir, "modules")
@@ -246,9 +246,9 @@ class installer(object):
             "os"      : get_os_version(),
             "shell"   : os.environ['SHELL'],
             "dest"    : self.dest_dir,
-            "nproc"   : self.options.nproc, 
-      }    
-    
+            "nproc"   : self.options.nproc,
+      }
+
   def machine_type(self):
     """
     Determine the mtype string.  The four pre-defined mtypes will be detected
@@ -266,7 +266,7 @@ class installer(object):
     """
     # Copy base, build, and modules
     print >> self.out, "Installing new binary package..."
-    for i in ['base', 'build', 'modules', 'doc']:      
+    for i in ['base', 'build', 'modules', 'doc']:
       if os.path.exists(os.path.join(self.installer_dir, i)):
         copy_tree(os.path.join(self.installer_dir, i), os.path.join(self.dest_dir, i))
 
@@ -287,7 +287,7 @@ class installer(object):
     raise NotImplementedError("Source installer returning soon.")
     # self.show_installation_paths()
     #
-    # dependencies_dir = op.join(self.installer_dir, "dependencies")    
+    # dependencies_dir = op.join(self.installer_dir, "dependencies")
     # bundle_dir = op.join(self.installer_dir, "bundles")
     # base_bundle = op.join(bundle_dir, "base.tar.gz")
     # build_bundle_file = op.join(bundle_dir, "build.tar.gz")
@@ -438,7 +438,7 @@ class installer(object):
       regenerate_module_files.run(
         args=["--build_dir=%s" % self.dest_dir],
         out=self.out)
-        
+
     # write dispatcher_include file
     print >> self.out, "Generating %s environment additions for dispatchers..." % \
       self.product_name
@@ -471,9 +471,6 @@ class installer(object):
       epilogue=epilogue,
       out=self.out)
     assert op.isfile(dispatcher)
-    
-    # Write environment files.
-    self.write_environment_files()
 
     # Run configure.py to generate dispatchers
     print >> self.out, "Configuring %s components..." % self.product_name
@@ -543,7 +540,7 @@ class installer(object):
       'u=rw,a+rX',
       self.dest_dir
       ])
-      
+
     # Show the app.
     if apps_built and (not "SSH_CLIENT" in os.environ) :
       call(args=["open", self.dest_dir], log=self.out)
@@ -551,29 +548,6 @@ class installer(object):
   #---------------------------------------------------------------------
   # STUBS FOR SUBCLASSABLE METHODS
 
-  def write_environment_files (self) :
-    """
-    Generate shell scripts in the top-level installation directory that can
-    be used to set up the user environment to run the software.  This is
-    implemented as a separate method because some products (e.g. Phenix) may
-    have their own needs.
-    """
-    # csh/tcsh environment setup file
-    print >> self.out, "Generating %s environment setup scripts..."%self.product_name
-    env_prefix = self.product_name.upper() # e.g. "Phenix" -> "PHENIX"
-    with open(os.path.join(self.dest_dir, '%s_env.csh'%self.dest_dir_prefix), 'w') as f:
-      f.write("#!/bin/csh -f\n")
-      f.write("setenv %s \"%s\"\n" % (env_prefix, self.dest_dir))
-      f.write("setenv %s_VERSION %s\n" % (env_prefix, self.version))
-      f.write("source $%s/build/setpaths.csh\n" % (env_prefix))
-
-    with open(os.path.join(self.dest_dir, '%s_env.sh'%self.dest_dir_prefix), 'w') as f:
-      f.write("#!/bin/sh\n")
-      f.write("#\n")
-      f.write("export %s=\"%s\"\n" % (env_prefix, self.dest_dir))
-      f.write("export %s_VERSION=%s\n" % (env_prefix, self.version))
-      f.write(". $%s/build/setpaths.sh\n" % (env_prefix))
-      
   def get_version (self) :
     """
     Determine the version suffix (if any) for the destination directory.  This
@@ -667,10 +641,10 @@ class installer(object):
     Final instructions for user, etc.
     """
     pass
-    
+
   def print_header(self, msg):
-    print >> self.out, ""    
+    print >> self.out, ""
     print >> self.out, "*"*(len(msg) + 4)
     print >> self.out, "* %s *"%msg
     print >> self.out, "*"*(len(msg) + 4)
-    print >> self.out, ""    
+    print >> self.out, ""
