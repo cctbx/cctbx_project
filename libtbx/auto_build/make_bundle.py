@@ -86,7 +86,7 @@ def run (args, out=sys.stdout) :
     shutil.rmtree(tmp_dir)
   os.mkdir(tmp_dir)
   os.chdir(tmp_dir)
-  
+
   # base and build/lib directories
   print >> out, "Copying dependencies..."
   copy_tree(op.join(target_dir, "base"), op.join(tmp_dir, "base"))
@@ -152,7 +152,7 @@ def run (args, out=sys.stdout) :
     find_and_delete_files(tmp_dir, file_ext=".cc")
     find_and_delete_files(tmp_dir, file_ext=".c")
     find_and_delete_files(tmp_dir, file_ext=".h")
-    
+
   # TODO strip objects?
   os.chdir(tmp_dir)
   call("chmod -R a+rX %s" % op.join(tmp_dir, "base"))
