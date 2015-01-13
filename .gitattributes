@@ -482,6 +482,7 @@ dxtbx/format/FormatPY.py -text
 dxtbx/format/FormatPilatusHelpers.py -text
 dxtbx/format/FormatRAXIS.py -text
 dxtbx/format/FormatRAXISII.py -text
+dxtbx/format/FormatRAXISIVSpring8.py -text
 dxtbx/format/FormatSMV.py -text
 dxtbx/format/FormatSMVADSC.py -text
 dxtbx/format/FormatSMVADSCDBG.py -text
