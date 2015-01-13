@@ -60,7 +60,7 @@ class installer (object) :
     parser.add_option("--cctbx", dest="cctbx", action="store_true",
       help="Build CCTBX dependencies")
     parser.add_option("--phenix", dest="phenix", action="store_true",
-      help="Build PHENIX dependencies")      
+      help="Build PHENIX dependencies")
     parser.add_option("--labelit", dest="labelit", action="store_true",
       help="Build LABELIT dependencies")
     parser.add_option("--xia2", dest="xia2", action="store_true",
@@ -76,7 +76,7 @@ class installer (object) :
       help="Build SciPy (requires Fortran compiler)", default=False)
     parser.add_option("--ipython", dest="build_ipython", action="store_true",
       help="Build IPython", default=False)
-      
+
     # Basic setup.
     options, args = parser.parse_args(args)
     self.nproc = options.nproc
@@ -126,17 +126,17 @@ class installer (object) :
     # Set BLAS/ATLAS/LAPACK
     for env_var in ["BLAS","ATLAS","LAPACK"]:
       os.environ[env_var] = "None"
-      
+
     # Select packages to build.
-    packages = self.configure_packages(options)  
+    packages = self.configure_packages(options)
     # Override and specified packages if provided.
     if len(args) > 1:
       packages = args[1:]
-            
+
     # Do the work!
     self.check_dependencies(packages=packages)
     self.build_dependencies(packages=packages)
-    
+
     # On Mac OS X all of the Python-related executables located in base/bin
     # are actually symlinks to absolute paths inside the Python.framework, so
     # we replace them with symlinks to relative paths.
@@ -165,15 +165,15 @@ class installer (object) :
 
     # Always build hdf5 and numpy.
     packages += ['hdf5', 'numpy']
-    
+
     # GUI packages.
     if options.build_gui:
       packages += [
         'png',
         'freetype',
         'matplotlib',
-        'pyopengl', 
-        'wxpython', 
+        'pyopengl',
+        'wxpython',
       ]
       if self.flag_is_mac:
         # Use system libpng.
@@ -194,13 +194,13 @@ class installer (object) :
 
     # Additional recommended dependencies.
     if options.build_all:
-      packages += ['biopython', 'misc'] # 'sphinx', 
-      
+      packages += ['biopython', 'misc'] # 'sphinx',
+
     # Non-all packages.
     # Scipy
     if options.build_scipy:
       packages += ['scipy']
-      
+
     # IPython
     if options.build_ipython:
       packages += ['ipython']
@@ -208,7 +208,7 @@ class installer (object) :
     # Package dependencies.
     if 'imaging' in packages:
       packages += ['freetype']
-      
+
     return set(packages)
 
   def call (self, args, log=None, **kwargs) :
@@ -424,7 +424,7 @@ Installation of Python packages may fail.
       if i in packages:
         packages_order.append(i)
 
-    print >> self.log, "Building dependencies: %s"%(" ".join(packages_order))    
+    print >> self.log, "Building dependencies: %s"%(" ".join(packages_order))
     os.chdir(self.tmp_dir)
     for i in packages_order:
       self.set_cppflags_ldflags() # up-to-date LDFLAGS/CPPFLAGS
@@ -489,14 +489,14 @@ Installation of Python packages may fail.
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=DOCUTILS_PKG,
       pkg_name_label="docutils",
-      confirm_import_module="docutils")    
+      confirm_import_module="docutils")
 
   def build_biopython(self):
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=BIOPYTHON_PKG,
       pkg_name_label="biopython",
-      confirm_import_module="Bio")    
+      confirm_import_module="Bio")
 
   def build_imaging (self, patch_src=True) :
     def patch_imaging_src (out) :
@@ -525,7 +525,7 @@ Installation of Python packages may fail.
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=SCIPY_PKG,
       pkg_name_label="SciPy",
-      confirm_import_module="scipy")    
+      confirm_import_module="scipy")
 
   def build_py2app(self):
     self.build_python_module_simple(
@@ -539,7 +539,7 @@ Installation of Python packages may fail.
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=REPORTLAB_PKG,
       pkg_name_label="reportlab",
-      confirm_import_module="reportlab")    
+      confirm_import_module="reportlab")
 
   def build_sphinx(self):
     self.build_python_module_simple(
@@ -599,7 +599,7 @@ Installation of Python packages may fail.
       pkg_name=FREETYPE_PKG,
       pkg_name_label="Freetype")
     self.include_dirs.append(op.join(self.base_dir, "include", "freetype2"))
-    
+
   def build_png(self):
     self.build_compiled_package_simple(
       pkg_url=BASE_CCI_PKG_URL,
@@ -614,7 +614,7 @@ Installation of Python packages may fail.
     gettext_conf_args = [self.prefix, "--disable-java", "--disable-csharp",
       "--disable-intl-java", "--disable-gcj"]
     self.configure_and_build(config_args=gettext_conf_args, log=pkg_log)
-  
+
   def build_glib(self):
     # glib
     # Mock executables.
@@ -755,11 +755,11 @@ Installation of Python packages may fail.
     # if (cocoa) :
     if (self.flag_is_mac) :
       config_opts.extend([
-        "--with-osx_cocoa", 
+        "--with-osx_cocoa",
         "--enable-monolithic",
-        "--with-macosx-version-min=10.6", 
+        "--with-macosx-version-min=10.6",
         "--enable-unicode"
-        "--with-mac", 
+        "--with-mac",
         "--enable-monolithic"
       ])
     elif (self.flag_is_linux) :
