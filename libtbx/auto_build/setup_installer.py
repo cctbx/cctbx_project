@@ -84,7 +84,7 @@ def run (args) :
   if (not options.binary) :
     os.mkdir("source")
     os.mkdir("dependencies")
-    
+
   # copy 'binary' programs if defined
   if options.bin_dir :
     assert op.isdir(options.bin_dir)
