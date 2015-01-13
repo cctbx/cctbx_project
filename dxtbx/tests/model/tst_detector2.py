@@ -150,10 +150,12 @@ class TestPanelTreeNode(object):
     local_origin = self.node.get_local_origin()
 
     eps = 1e-7
-    assert(all(abs(a-b) < eps for a, b in zip(local_fast, local_fast)))
-    assert(all(abs(a-b) < eps for a, b in zip(local_slow, local_slow)))
-    assert(all(abs(a-b) < eps for a, b in zip(local_origin, local_origin)))
-    print 'OK'
+    # assert(all(abs(a-b) < eps for a, b in zip(local_fast, local_fast)))
+    # assert(all(abs(a-b) < eps for a, b in zip(local_slow, local_slow)))
+    # assert(all(abs(a-b) < eps for a, b in zip(local_origin, local_origin)))
+    # print 'OK'
+    # FIXME: This test checks that the values are identical to themselves.
+    # Probably not what was intended.
 
     ex_fast = matrix.col((-1, -1, 0)).normalize()
     ex_slow = matrix.col((-1, 1, 0)).normalize()
