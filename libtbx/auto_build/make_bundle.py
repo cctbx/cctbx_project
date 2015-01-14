@@ -25,7 +25,6 @@ import shutil
 import time
 import os
 import sys
-import glob
 # local imports
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(op.dirname(__file__))))
