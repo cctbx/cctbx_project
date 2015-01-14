@@ -1,7 +1,6 @@
 from __future__ import division
 import mmtbx.monomer_library.pdb_interpretation as pdb_inter
 from cctbx.geometry_restraints.clash_score import compute
-from cctbx.geometry_restraints.clash_score import info
 import cctbx.geometry_restraints.clash_score as cs
 from cctbx.array_family import flex
 import mmtbx.monomer_library.server
@@ -813,7 +812,7 @@ class test_cctbx_clashscore(unittest.TestCase):
     self.assertTrue(macro_mol_sel.size() > macro_mol_sel.count(True))
 
     # Run with site labels
-    result = info(geometry_restraints_manager=grm,
+    result = cs.info(geometry_restraints_manager=grm,
       macro_molecule_selection=macro_mol_sel,
       sites_cart=sites_cart,
       hd_sel=hd_sel,
@@ -825,7 +824,7 @@ class test_cctbx_clashscore(unittest.TestCase):
     self.assertTrue(macro_mol_clashscore > 0)
 
     # Run without site labels
-    result = info(geometry_restraints_manager=grm,
+    result = cs.info(geometry_restraints_manager=grm,
       macro_molecule_selection=macro_mol_sel,
       sites_cart=sites_cart,
       hd_sel=hd_sel)
