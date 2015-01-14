@@ -41,7 +41,7 @@ private:
 
 } // namespace python
 
-namespace 
+namespace
 {
 
 template< typename Vector, typename Discrete >
@@ -73,7 +73,7 @@ struct python_exports
       );
 
     using namespace boost::python;
-    class_< python::code_predicate >( "predicate", no_init )
+    class_< python::code_predicate >( "code_predicate", no_init )
       .def( init< object >( arg( "callable" ) ) )
       .def( "__call__", &python::code_predicate::operator (), arg( "object" ) )
       ;
