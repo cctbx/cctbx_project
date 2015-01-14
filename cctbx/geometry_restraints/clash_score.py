@@ -492,16 +492,18 @@ class info(object):
     print >> log,out_string
     return out_string
 
-def check_and_add_hydrogen(pdb_hierarchy=None,
-                           file_name=None,
-                           nuclear=False,
-                           keep_hydrogens=True,
-                           verbose=False,
-                           model_number=0,
-                           n_hydrogen_cut_off = 0,
-                           time_limit=120,
-                           allow_multiple_models=True,
-                           log=None):
+def check_and_add_hydrogen(
+        pdb_hierarchy=None,
+        file_name=None,
+        nuclear=False,
+        keep_hydrogens=True,
+        verbose=False,
+        model_number=0,
+        n_hydrogen_cut_off=0,
+        time_limit=120,
+        allow_multiple_models=True,
+        crystal_symmetry=None,
+        log=None):
   """
   If no hydrogens present, force addition for clashscore calculation.
   Use REDUCE to add the hydrogen atoms.
@@ -518,6 +520,7 @@ def check_and_add_hydrogen(pdb_hierarchy=None,
     n_hydrogen_cut_off (int): when number of hydrogen atoms < n_hydrogen_cut_off
       force keep_hydrogens tp True
     allow_multiple_models (bool): Allow models that contain more than one model
+    crystal_symmetry : must provide crystal symmetry when using pdb_hierarchy
 
   Returns:
     (str): PDB string
@@ -525,10 +528,13 @@ def check_and_add_hydrogen(pdb_hierarchy=None,
   """
   if file_name:
     pdb_inp = iotbx.pdb.input(file_name=file_name)
+    cryst_sym = pdb_inp.crystal_symmetry()
     pdb_hierarchy = pdb_inp.construct_hierarchy()
+  else:
+    assert crystal_symmetry
+    cryst_sym = crystal_symmetry
   assert pdb_hierarchy
   assert model_number < len(pdb_hierarchy.models())
-  cryst_sym = pdb_hierarchy.extract_xray_structure().crystal_symmetry()
   if not log: log = sys.stdout
   models = pdb_hierarchy.models()
   if (len(models) > 1) and (not allow_multiple_models):
@@ -599,6 +605,7 @@ def get_macro_mol_sel(pdb_processed_file):
 
 def create_cif_file_using_ready_set(
         pdb_hierarchy=None,
+        crystal_symmetry=None,
         file_name=None,
         log=None):
   """
@@ -609,6 +616,7 @@ def create_cif_file_using_ready_set(
     pdb_hierarchy : pdb hierarchy
     file_name (str): pdb file name
     log : output location
+    crystal_symmetry : must provide crystal symmetry when using pdb_hierarchy
 
   Returns:
     (str): the cif file name that was created
@@ -618,6 +626,10 @@ def create_cif_file_using_ready_set(
   if file_name:
     pdb_inp = iotbx.pdb.input(file_name=file_name)
     pdb_hierarchy = pdb_inp.construct_hierarchy()
+    cryst_sym = pdb_inp.crystal_symmetry()
+  else:
+    assert crystal_symmetry
+    cryst_sym = crystal_symmetry
   assert pdb_hierarchy
   if not log: log = sys.stdout
   models = pdb_hierarchy.models()
@@ -629,7 +641,7 @@ def create_cif_file_using_ready_set(
     return [False,False]
   if not file_name:
     file_name = 'input_pdb_file_for_ready_set.pdb'
-    open(file_name,'w').write(pdb_hierarchy.as_pdb_string())
+    open(file_name,'w').write(pdb_hierarchy.as_pdb_string(cryst_sym))
   cmd = "phenix.ready_set {} --silent".format(file_name)
   out = easy_run.fully_buffered(cmd)
   if (out.return_code != 0) :
