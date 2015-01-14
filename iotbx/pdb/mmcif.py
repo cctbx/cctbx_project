@@ -826,7 +826,8 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
               if atom.uij_is_defined():
                 u11, u22, u33, u12, u13, u23 = [
                   u_aniso_fmt_str %i for i in atom.uij]
-                atom_site_anisotrop_id.append(atom.serial.strip())
+                atom_site_anisotrop_id.append(
+                  str(hy36decode(width=5, s=atom.serial)))
                 atom_site_anisotrop_pdbx_auth_atom_id.append(atom.name.strip())
                 atom_site_anisotrop_pdbx_label_alt_id.append(alt_id)
                 atom_site_anisotrop_pdbx_auth_comp_id.append(comp_id)

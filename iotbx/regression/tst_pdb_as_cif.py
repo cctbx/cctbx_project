@@ -1,10 +1,9 @@
-
 from __future__ import division
 from libtbx.utils import null_out
 from cStringIO import StringIO
 import os.path
 
-def exercise () :
+def exercise_01():
   from iotbx.command_line import pdb_as_cif
   from iotbx.file_reader import any_file
   if (os.path.isfile("tst_pdb_as_cif_1.cif")) :
@@ -59,6 +58,31 @@ Error converting tst_pdb_as_cif_2.pdb to mmCIF format:
 """)
   assert not os.path.isfile("tst_pdb_as_cif_2.cif")
 
-if (__name__ == "__main__") :
-  exercise()
+def exercise_02():
+  from iotbx.command_line import pdb_as_cif
+  from iotbx.file_reader import any_file
+  if (os.path.isfile("tst_pdb_as_cif_2.cif")) :
+    os.remove("tst_pdb_as_cif_2.cif")
+  open("tst_pdb_as_cif_2.pdb", "w").write("""\
+CRYST1  209.050  447.220  608.960  90.00  90.00  90.00 P 21 21 21
+ATOM  99999  N3    U   367     -23.562  29.366 106.688  1.00135.52      A16S N
+ANISOU99999  N3    U   367    20423  14326  16741  -1922  -2828  -1650  A16S N
+ATOM  A0000  C4    U   367     -23.357  30.626 106.161  1.00133.22      A16S C
+ANISOUA0000  C4    U   367    20015  14160  16442  -1873  -2801  -1645  A16S C
+""")
+  pdb_as_cif.run(["tst_pdb_as_cif_2.pdb"], out=null_out())
+  assert os.path.isfile("tst_pdb_as_cif_2.cif")
+  inp = open("tst_pdb_as_cif_2.cif", "r")
+  cntr = 0
+  for l in inp.readlines():
+    l = l.strip()
+    if(l.startswith("ATOM   99999  N3  .  U  .  367  ?")): cntr+=1
+    if(l.startswith("ATOM  100000  C4  .  U  .  367  ?")): cntr+=1
+    if(l.startswith("99999  N3  .  U  .  367  ?")): cntr+=1
+    if(l.startswith("100000  C4  .  U  .  367  ?")): cntr+=1
+  assert cntr == 4
+
+if (__name__ == "__main__"):
+  exercise_01()
+  exercise_02()
   print "OK"
