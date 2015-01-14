@@ -57,8 +57,6 @@ able to correctly detect the base installer directory.
 from __future__ import division
 from optparse import OptionParser
 import os.path as op
-import shutil
-import time
 import os
 import sys
 # set nproc automatically if possible
@@ -76,7 +74,6 @@ from libtbx.auto_build import write_gui_dispatcher_include
 from libtbx.auto_build import regenerate_module_files
 from libtbx.auto_build import install_base_packages
 from libtbx.auto_build import create_mac_app
-from libtbx.auto_build import package_defs
 from libtbx.auto_build.installer_utils import *
 
 class InstallerError(Exception):
@@ -547,6 +544,29 @@ class installer(object):
 
   #---------------------------------------------------------------------
   # STUBS FOR SUBCLASSABLE METHODS
+
+  def write_environment_files (self) :
+    """
+    Generate shell scripts in the top-level installation directory that can
+    be used to set up the user environment to run the software.  This is
+    implemented as a separate method because some products (e.g. Phenix) may
+    have their own needs.
+    """
+    # csh/tcsh environment setup file
+    print >> self.out, "Generating %s environment setup scripts..."%self.product_name
+    env_prefix = self.product_name.upper() # e.g. "Phenix" -> "PHENIX"
+    with open(os.path.join(self.dest_dir, '%s_env.csh'%self.dest_dir_prefix), 'w') as f:
+      f.write("#!/bin/csh -f\n")
+      f.write("setenv %s \"%s\"\n" % (env_prefix, self.dest_dir))
+      f.write("setenv %s_VERSION %s\n" % (env_prefix, self.version))
+      f.write("source $%s/build/setpaths.csh\n" % (env_prefix))
+
+    with open(os.path.join(self.dest_dir, '%s_env.sh'%self.dest_dir_prefix), 'w') as f:
+      f.write("#!/bin/sh\n")
+      f.write("#\n")
+      f.write("export %s=\"%s\"\n" % (env_prefix, self.dest_dir))
+      f.write("export %s_VERSION=%s\n" % (env_prefix, self.version))
+      f.write(". $%s/build/setpaths.sh\n" % (env_prefix))
 
   def get_version (self) :
     """
