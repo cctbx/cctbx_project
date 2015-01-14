@@ -152,21 +152,6 @@ def run (args, out=sys.stdout, quiet=None) :
     xrs = pdb_processed_file.xray_structure()
     sites_cart = xrs.sites_cart()
     site_labels = xrs.scatterers().extract_labels()
-    # when we have unknown pair, try to run phenix.ready_set
-    if cs.unknown_pairs_present(grm,sites_cart,site_labels):
-      if params.verbose:
-        print >> out,"PDB file contains unknown type pairs."
-        print >> out,"Processing file using phenix.ready_set"
-      [fn_cif,fn_pdb] = cs.create_cif_file_using_ready_set(
-        file_name=pdb_file_name,
-        log=null_out())
-      if fn_cif:
-        interpretation_inp['args'] = [fn_cif,fn_pdb]
-        pdb_processed_file = pdb_inter.run(**interpretation_inp)
-        grm = pdb_processed_file.geometry_restraints_manager()
-        xrs = pdb_processed_file.xray_structure()
-        sites_cart = xrs.sites_cart()
-        site_labels = xrs.scatterers().extract_labels()
     hd_sel = xrs.hd_selection()
     macro_mol_sel = cs.get_macro_mol_sel(pdb_processed_file)
     cctbx_clashscore = cs.info(

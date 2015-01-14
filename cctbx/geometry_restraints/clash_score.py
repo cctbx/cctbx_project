@@ -528,6 +528,7 @@ def check_and_add_hydrogen(pdb_hierarchy=None,
     pdb_hierarchy = pdb_inp.construct_hierarchy()
   assert pdb_hierarchy
   assert model_number < len(pdb_hierarchy.models())
+  cryst_sym = pdb_hierarchy.extract_xray_structure().crystal_symmetry()
   if not log: log = sys.stdout
   models = pdb_hierarchy.models()
   if (len(models) > 1) and (not allow_multiple_models):
@@ -559,7 +560,8 @@ def check_and_add_hydrogen(pdb_hierarchy=None,
       build += " -"
     build = build.format(time_limit)
     trim = "phenix.reduce -quiet -trim -"
-    clean_out = easy_run.fully_buffered(trim,stdin_lines=r.as_pdb_string())
+    stdin_lines = r.as_pdb_string(cryst_sym)
+    clean_out = easy_run.fully_buffered(trim,stdin_lines=stdin_lines)
     if (clean_out.return_code != 0) :
       msg_str = "Reduce crashed with command '%s' - dumping stderr:\n%s"
       raise RuntimeError(msg_str % (trim, "\n".join(clean_out.stderr_lines)))
@@ -574,7 +576,7 @@ def check_and_add_hydrogen(pdb_hierarchy=None,
       msg = 'phenix.reduce could not be detected on your system.\n'
       msg += 'Cannot add hydrogen to PDB file'
       print >> log,msg
-    return r.as_pdb_string(),False
+    return r.as_pdb_string(cryst_sym),False
 
 def get_macro_mol_sel(pdb_processed_file):
   """
@@ -645,7 +647,6 @@ def unknown_pairs_present(grm,sites_cart,site_labels):
     grm (obj): geometry restraints manager
     sites_cart (flex.vec3): atoms sites cart (coordinates)
     site_labels: a list of lables such as " HA  LEU A  38 ", for each atom
-
 
   Return:
     (bool): True if PDB file contains unknown type pairs
