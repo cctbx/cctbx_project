@@ -530,9 +530,11 @@ def check_and_add_hydrogen(
     pdb_inp = iotbx.pdb.input(file_name=file_name)
     cryst_sym = pdb_inp.crystal_symmetry()
     pdb_hierarchy = pdb_inp.construct_hierarchy()
-  else:
+  elif not allow_multiple_models:
     assert crystal_symmetry
     cryst_sym = crystal_symmetry
+  else:
+    cryst_sym = None
   assert pdb_hierarchy
   assert model_number < len(pdb_hierarchy.models())
   if not log: log = sys.stdout
