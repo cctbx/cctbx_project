@@ -16,7 +16,7 @@ def run(_args):
   if not _args.noplot:
     clusters, _ = ucs.ab_cluster(_args.t, log=_args.log,
                                write_file_lists=_args.nofiles,
-                               schnell=_args.fast,
+                               schnell=_args.schnell,
                                doplot=_args.noplot)
   else:
     plt.figure("Andrews-Bernstein distance dendogram", figsize=(12, 8))
