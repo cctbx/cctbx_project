@@ -74,11 +74,6 @@ HOT = {
   'annlib':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/',
   'scons':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/',
   'boost':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/',
-  # Duke
-  'reduce':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/reduce/',
-  'probe':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/probe/',
-  'king':               '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/king/',
-  'suitename':          '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/suitename/',
 }
 
 # SVN packages.
@@ -479,14 +474,14 @@ class PHENIXBuilder(CCIBuilder):
     'opt_resources',
     'muscle',
     'labelit',
-  ]
-  HOT_EXTRA = [
-    'phaser',
-    'phaser_regression',
     'reduce',
     'probe',
     'king',
     'suitename',
+  ]
+  HOT_EXTRA = [
+    'phaser',
+    'phaser_regression',
   ]
   LIBTBX_EXTRA = [
     'chem_data',
