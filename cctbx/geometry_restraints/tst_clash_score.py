@@ -545,9 +545,8 @@ class test_cctbx_clashscore(unittest.TestCase):
         use_site_labels=use_site_labels)
       cctbx_clashscore_total = grm.cctbx_clashscore_all
       expected = 85.11
-      # fixme: check this test
       msg = outstring.format('Total clashscore', expected, cctbx_clashscore_total)
-      # self.assertAlmostEqual(cctbx_clashscore_total, expected, delta=0.1,msg=msg)
+      self.assertAlmostEqual(cctbx_clashscore_total, expected, delta=0.1,msg=msg)
 
   def test_1_5_clash(self):
     '''
@@ -1065,9 +1064,9 @@ def run_selected_tests():
 
 if (__name__ == "__main__"):
   # use for individual tests
-  unittest.TextTestRunner().run(run_selected_tests())
+  # unittest.TextTestRunner().run(run_selected_tests())
 
-  # if (chem_data is None) :
-  #   print "chem_data not present, skipping"
-  # else :
-  #   unittest.main(verbosity=0)
+  if (chem_data is None) :
+    print "chem_data not present, skipping"
+  else :
+    unittest.main(verbosity=0)
