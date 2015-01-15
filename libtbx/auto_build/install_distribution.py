@@ -545,8 +545,12 @@ class installer(object):
       ])
 
     # Show the app.
-    if apps_built and (not "SSH_CLIENT" in os.environ) :
-      call(args=["open", self.dest_dir], log=self.out)
+    if apps_built and (not "SSH_CLIENT" in os.environ):
+      try:
+        call(args=["open", self.dest_dir], log=self.out)
+      except Exception, e:
+        # Will fail in non-interactive environments.
+        pass
 
   #---------------------------------------------------------------------
   # STUBS FOR SUBCLASSABLE METHODS
