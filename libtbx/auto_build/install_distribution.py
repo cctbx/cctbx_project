@@ -85,6 +85,7 @@ class installer(object):
   re-implemented in subclasses!
   """
   # Basic configuration variables - override in subclasses
+  organization = "gov.lbl.cci"
   product_name = "CCTBX"
   destination = "/usr/local"
   dest_dir_prefix = "cctbx"
@@ -430,13 +431,18 @@ class installer(object):
     log_path = op.join(self.tmp_dir, "install_finalize.log")
     print >> self.out, "Log file: %s"%log_path
     log = open(log_path, "w")
+
+    # Write environment files.
+    self.write_environment_files()
+
+    # Regenerate module files.
     if (self.flag_build_gui) and (sys.platform != "darwin") :
       os.environ["LD_LIBRARY_PATH"] = op.join(self.base_dir, "lib")
       regenerate_module_files.run(
         args=["--build_dir=%s" % self.dest_dir],
         out=self.out)
 
-    # write dispatcher_include file
+    # Write dispatcher_include file.
     print >> self.out, "Generating %s environment additions for dispatchers..." % \
       self.product_name
     dispatcher = op.join(self.build_dir, "dispatcher_include_%s.sh" %
@@ -472,13 +478,15 @@ class installer(object):
     # Run configure.py to generate dispatchers
     print >> self.out, "Configuring %s components..." % self.product_name
     os.chdir(self.build_dir)
+    # ???
     if (op.exists("libtbx_refresh_is_completed")) :
       os.remove("libtbx_refresh_is_completed")
     self.reconfigure(log=log)
     os.chdir(self.build_dir)
     assert op.isfile("setpaths.sh")
     os.environ["PATH"] = "%s:%s" % (op.join(self.build_dir, "bin"), os.environ["PATH"])
-    # compile .py files
+
+    # Compile .py files
     print >> self.out, "Precompiling .py files..."
     os.chdir(self.modules_dir)
     call(args="libtbx.py_compile_all", log=log)
@@ -519,7 +527,6 @@ class installer(object):
           else :
             apps_built = True
 
-
     # run custom finalization
     self.product_specific_finalize_install(log)
 
@@ -527,7 +534,6 @@ class installer(object):
     if (self.options.compact):
       self.reduce_installation_size()
 
-    # reconfigure one last time (possibly unnecessary)
     self.display_final_message()
 
     # Fix permissions
