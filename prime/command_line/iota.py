@@ -21,15 +21,18 @@ from prime.iota.iota_select import best_file_selection
 
 # Multiprocessor wrapper for grid search module
 def index_mproc_wrapper(current_img):
-        return gs.index_integrate(current_img, log_dir, gs_params)
-
+  return gs.index_integrate(current_img, log_dir, gs_params)
+        
+def sel_mproc_wrapper(output_entry):
+  return best_file_selection(gs_params, output_entry, log_dir)
+        
 
 # ---------------------------------------------------------------------------- #
 
 if __name__ == "__main__":
 
-  gs_version = '0.7'
-  ps_version = '0.7'
+  gs_version = '0.8'
+  ps_version = '0.8'
 
   print '\n{}'.format(datetime.now())
   print 'Starting IOTA ... \n\n'
@@ -42,33 +45,29 @@ if __name__ == "__main__":
     with open('iota_default.phil', 'w') as default_settings_file:
       default_settings_file.write(txt_out)
   else:
-    input_list, input_dir_list, output_dir_list, log_dir = inp.make_lists(gs_params.input, gs_params.output)
-
+      
     # Check for list of files and extract a) list of files, b) input paths, 
     # and c) output paths that will override earlier lists
-    if gs_params.input_list != None:
-      input_dir_list = []
-      output_dir_list = []
-      input_list = []
+    if gs_params.input_list == None:
+      input_list = inp.make_input_list(gs_params.input)
+    else:
       with open(gs_params.input_list, 'r') as listfile:
         listfile_contents = listfile.read()
         input_list = listfile_contents.splitlines()
+        
+    input_dir_list, output_dir_list, log_dir = inp.make_dir_lists(input_list, gs_params.input, gs_params.output)
+    mp_input_list, mp_output_list = inp.make_mp_input(input_list, log_dir, gs_params)
 
-        for source_file in input_list:
-          if os.path.relpath(os.path.dirname(source_file), 
-                             os.path.abspath(gs_params.input)) == '.':
-            input_dir = os.path.abspath(gs_params.input)
-            output_dir = os.path.abspath(gs_params.output)
-          else:
-            input_dir = os.path.dirname(source_file)
-            output_dir = os.path.join(os.path.abspath(gs_params.output), 
-                                      os.path.relpath(input_dir, 
-                                      os.path.abspath(gs_params.input)))
-
-          if input_dir not in input_dir_list: 
-            input_dir_list.append(input_dir)
-          if output_dir not in output_dir_list: 
-            output_dir_list.append(output_dir)
+    if gs_params.flag_inp_test == True:
+    
+      mp_input_list = inp.make_mp_input(input_list, gs_params)
+      for item in mp_input_list: print item
+      
+      #with open('{}/input_files.lst'.format(os.path.abspath(gs_params.output)), 'r') as inp_list_file:
+      #    inp_list_contents = inp_list_file.read()
+      #    inp_list = inp_list_contents.splitlines()
+      #    for item in inp_list: print item              
+      sys.exit()
 
 
     # ------------------ Grid Search ------------------
@@ -109,12 +108,8 @@ if __name__ == "__main__":
       gs_logger.info('{:-^100} \n\n'.format(' STARTING GRID SEARCH '))
 
       # run grid search on multiple processes
-      if len(input_list) <= gs_params.n_processors:
-        num_procs = len(input_list)
-      else:
-        num_procs = gs_params.n_processors
 
-      pool_map(args=input_list, func=index_mproc_wrapper, processes=num_procs)
+      pool_map(args=mp_input_list, func=index_mproc_wrapper, processes=gs_params.n_processors)
 
       gs_logger.info('\n\nIOTA grid search version {0}'.format(gs_version))
 
@@ -135,9 +130,6 @@ if __name__ == "__main__":
 
 
     ps_logger.info('\n\n{:-^100} \n'.format(' PICKLE SELECTION '))
-    
-    print output_dir_list
-    
 
     for output_dir in output_dir_list:
       ps_logger.info('Found integrated pickles ' \
@@ -152,9 +144,10 @@ if __name__ == "__main__":
                    'turned {0} \n\n'.format(prefilter))
     ps_logger.info('{:-^100} \n'.format(' STARTING SELECTION '))
 
-    for output_dir in output_dir_list:
-         ps_logger.info('Processing integrated pickles in {0}\n'.format(output_dir))
-         best_file_selection(gs_params, output_dir, log_dir)
+    #for output_entry in mp_output_list:
+    #     best_file_selection(gs_params, output_entry, log_dir)
+
+    pool_map(args=mp_output_list, func=sel_mproc_wrapper, processes=gs_params.n_processors)
 
 
     # This section checks for output and summarizes file integration and
