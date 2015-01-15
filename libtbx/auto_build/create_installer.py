@@ -45,7 +45,48 @@ fi
 $PYTHON_EXE ./bin/install.py $@
 """
 
+BASHRC = """\
+#!/bin/csh -f
+set testpath=($_)
+if ("$testpath" != "") then
+    set testpath=$testpath[2]
+else
+    set testpath=$0
+endif
+set rootdir=`dirname $testpath`
+set fullpath=`cd $rootdir && pwd -P`
+setenv LIBTBX_BUILD_RELOCATION_HINT $fullpath
+setenv %(env_prefix)s $fullpath
+setenv %(env_prefix)s_VERSION %(version)s
+source $%(env_prefix)s/build/setpaths.csh
+"""
+
+CSHRC = """\
+#!/bin/csh -f
+set testpath=($_)
+if ("$testpath" != "") then
+    set testpath=$testpath[2]
+else
+    set testpath=$0
+endif
+set rootdir=`dirname $testpath`
+set fullpath=`cd $rootdir && pwd -P`
+setenv LIBTBX_BUILD_RELOCATION_HINT $fullpath
+setenv %(env_prefix)s $fullpath
+setenv %(env_prefix)s_VERSION %(version)s
+source $%(env_prefix)s/build/setpaths.csh
+"""
+
+def makedirs(path):
+  try:
+    os.makedirs(path)
+  except Exception, e:
+    print "Directory already exists: %s"%path
+
 def archive(source, destination, tarfile=None):
+  if source == destination:
+    print "Source and destination are the same, skipping: %s"%source
+    return
   assert not os.path.exists(destination), "File exists: %s"%destination
   print "Copying: %s -> %s"%(source, destination)
   if not os.path.exists(source):
@@ -75,13 +116,17 @@ class SetupInstaller(object):
     self.version = kwargs.get('version')
     self.script = kwargs.get('script')
     #
-    self.root_dir = os.path.abspath(kwargs.get('root_dir'))
     self.dest_dir = os.path.abspath(kwargs.get('dest_dir'))
-    dest_tar = kwargs.get('dest_tar') or '%s.tar.gz'%os.path.basename(self.dest_dir)
-    self.dest_tar = os.path.abspath(dest_tar)
+    self.root_dir = os.path.abspath(kwargs.get('root_dir') or os.getcwd())
+    self.dist_dir = os.path.abspath(kwargs.get('dist_dir') or os.path.join(self.root_dir, 'dist'))
 
     self.license = kwargs.get('license')
+    if self.license:
+      self.license = os.path.abspath(self.license)
     self.readme = kwargs.get('readme') or [os.path.join(libtbx_path, 'COPYRIGHT_2_0.txt')]
+    if self.readme:
+      self.readme = [os.path.abspath(i) for i in self.readme]
+      
     # Load the installer class, get the list of modules.
     assert os.path.isfile(self.install_script)
     installer_module = imp.load_source('install_script', self.install_script)
@@ -91,9 +136,9 @@ class SetupInstaller(object):
     # Setup directory structure
     print "Installer will be %s"%self.dest_dir
     assert not os.path.exists(self.dest_dir), "Installer dir exists: %s"%self.dest_dir
-    os.makedirs(self.dest_dir)
+    makedirs(self.dest_dir)
     for i in ['bin', 'lib']:
-      os.makedirs(os.path.join(self.dest_dir, i))
+      makedirs(os.path.join(self.dest_dir, i))
     self.copy_info()
     self.copy_libtbx()
     self.copy_dependencies()
@@ -103,17 +148,8 @@ class SetupInstaller(object):
     self.write_environment_files()
     self.fix_permissions()
     self.make_dist()
-
-  def make_dist(self):
-    try:
-      os.makedirs(os.path.dirname(self.dest_tar))
-    except Exception, e:
-      print "Warning: %s"%e
-    tar(
-      os.path.basename(self.dest_dir),
-      self.dest_tar,
-      cwd=os.path.join(self.dest_dir, '..')
-    )
+    if sys.platform == "darwin":
+      self.make_dist_pkg()
 
   def copy_info(self):
     # Basic setup #
@@ -155,15 +191,11 @@ class SetupInstaller(object):
       os.path.join(self.root_dir, 'build'),
       os.path.join(self.dest_dir, 'build')
     )
-    # Previously, we found and copied executables. Now, just copy everything above.
-    # build_dir = os.path.join(self.root_dir, 'build')
-    # for j in [i for i in os.listdir(build_dir) if os.path.isdir(os.path.join(build_dir, i, "exe"))]:
-    #   ...
     libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root_dir, 'base'), os.path.join(self.dest_dir, 'build')])
 
   def copy_modules(self):
     # Source modules #
-    for module in  self.installer.modules:
+    for module in set(self.installer.modules):
       archive(
         os.path.join(self.root_dir, 'modules', module),
         os.path.join(self.dest_dir, 'modules', module)
@@ -190,40 +222,58 @@ class SetupInstaller(object):
     fmt = {'env_prefix':self.installer.product_name.upper(), 'version':self.version}
     # bash
     with open(os.path.join(self.dest_dir, '%s_env.sh'%self.installer.product_name.lower()), 'w') as f:
-      f.write("""\
-#!/bin/sh
-export %(env_prefix)s=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-export %(env_prefix)s_VERSION=%(version)s
-source $%(env_prefix)s/build/setpaths.sh
-"""%fmt)
+      f.write(BASHRC%fmt)
     # tcsh
     with open(os.path.join(self.dest_dir, '%s_env.csh'%self.installer.product_name.lower()), 'w') as f:
-      f.write("""\
-#!/bin/csh -f
-set testpath=($_)
-if ("$testpath" != "") then
-    set testpath=$testpath[2]
-else
-    set testpath=$0
-endif
-set rootdir=`dirname $testpath`
-set fullpath=`cd $rootdir && pwd -P`
-setenv LIBTBX_BUILD_RELOCATION_HINT $fullpath
-setenv %(env_prefix)s $fullpath
-setenv %(env_prefix)s_VERSION %(version)s
-source $%(env_prefix)s/build/setpaths.csh
-"""%fmt)
+      f.write(CSHRC%fmt)
+      
+  def make_dist(self):
+    makedirs(self.dist_dir)
+    tar(
+      os.path.basename(self.dest_dir),
+      os.path.join(self.dist_dir, '%s.tar.gz'%os.path.basename(self.dest_dir)),
+      cwd=os.path.join(self.dest_dir, '..')
+    )
+    
+  def make_dist_pkg(self):
+    if (not os.access("/Applications", os.W_OK|os.X_OK)) :
+      print "Can't access /Applications - skipping .pkg build"
+      return
 
-def run (args) :
+    # This has to match other convetions...
+    pkg_prefix = "/Applications"
+    app_root_dir = os.path.join(pkg_prefix, '%s-%s'%(self.installer.dest_dir_prefix, self.version))
+
+    subprocess.check_call([
+      os.path.join(self.dest_dir, 'install'),
+      '--prefix', pkg_prefix,
+    ], cwd=self.dest_dir)
+
+    tmp = os.path.join(self.root_dir, 'tmp')
+    makedirs(tmp)
+    makedirs(self.dist_dir)
+    os.chdir(tmp) # UGH X 1000.
+    from libtbx.auto_build import create_mac_pkg
+    create_mac_pkg.run(args=[
+        "--package_name", self.installer.product_name,
+        "--organization", self.installer.organization,
+        "--no_compression",
+        "--version", self.version,
+        "--license", self.license,
+        "--dist-dir", self.dist_dir,
+        app_root_dir
+    ])
+
+def run(args):
   parser = OptionParser()
   parser.add_option("--version", dest="version", action="store",
     help="Package version", default=time.strftime("%Y_%m_%d",time.localtime()))
   parser.add_option("--binary", dest="binary", action="store_true",
     help="Setup for binary installer only (no source packages)", default=False)
   parser.add_option("--root_dir", dest="root_dir", action="store",
-    help="Environment root", default=os.getcwd())
-  parser.add_option("--dest_tar", dest="dest_tar", action="store",
-    help="Tar archive filename")
+    help="Environment root")
+  parser.add_option("--dist_dir", dest="dist_dir", action="store",
+    help="Archive output directory")
   parser.add_option("--readme", dest="readme", action="append",
     help="Readme file", default=[])
   parser.add_option("--license", dest="license", action="store",
@@ -234,12 +284,12 @@ def run (args) :
   assert len(args_) == 1, "Destination directory required argument."
   setup = SetupInstaller(
     dest_dir=args_[0],
-    version=options.version,
     root_dir=options.root_dir,
+    dist_dir=options.dist_dir,
+    version=options.version,
     readme=options.readme,
     license=options.license,
     install_script=options.install_script,
-    dest_tar=options.dest_tar
   )
   setup.run()
 
