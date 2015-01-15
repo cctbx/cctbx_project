@@ -115,22 +115,13 @@ CODEBASES = {
   'cxi_xdr_xes':        'svn+ssh://%(cciuser)s@cci.lbl.gov/cxi_xdr_xes/trunk',
   'buildbot':           'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk',
   # Duke
-  'reduce':            'https://quiddity.biochem.duke.edu/svn/reduce/trunk',
+  # 'probe':             'https://github.com/rlabduke/probe/trunk',
+  # 'suitename':         'https://github.com/rlabduke/suitename/trunk',
   'probe':             'https://quiddity.biochem.duke.edu/svn/probe/trunk',
-  'king':              'https://quiddity.biochem.duke.edu/svn/phenix/king',
   'suitename':         'https://quiddity.biochem.duke.edu/svn/suitename',
+  'reduce':            'https://quiddity.biochem.duke.edu/svn/reduce/trunk',
+  'king':              'https://quiddity.biochem.duke.edu/svn/phenix/king',
 }
-
-class ModuleManager(object):
-  def get_hot(self, codebase, cciuser=None):
-    cciuser = cciuser or getpass.getuser()
-    return self.HOT[codebase]%{'cciuser':cciuser}
-
-  def get_codebase(self, codebase, cciuser=None):
-    return self.CODEBASES[codebase]%{'cciuser':cciuser}
-
-  def get_codebases(self, cciuser=None):
-    return dict((k,v%{'cciuser':cciuser}) for k,v in self.CODEBASES.items())
 
 ###################################
 ##### Base Configuration      #####
