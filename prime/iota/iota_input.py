@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/05/2015
+Last Changed: 01/15/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories, etc.
 '''
 
@@ -39,9 +39,9 @@ target = target.phil
   .multiple = False
   .help = Target (.phil) file with integration parameters
   .optional = False
-flag_random = False
+flag_inp_test = False
   .type = bool
-  .help = Activate grid search / selection of random sample & analysis of parameters
+  .help = Test of input list use for selection
 grid_search
   .help = "Parameters for the grid search."
 {
@@ -128,21 +128,27 @@ def process_input(input_file_list):
 
 # Read input directory tree (if any) and make lists of input folder, output folder and
 # input files for use in everything
-def make_lists (input_dir, output_dir):
+def make_input_list (input_dir):
   input_list = []
-  input_dir_list = []
-  output_dir_list = []
-
   abs_inp_path = os.path.abspath(input_dir)
-  abs_out_path = os.path.abspath(output_dir)
 
   # search for *.pickle files within the tree and record in a list w/
   # full absolute path and filanames
   for root, dirs, files in os.walk(abs_inp_path):
     for filename in files:
       if filename.endswith("pickle"):
-        pickle_file = root + '/' + filename
+        pickle_file = os.path.join(root, filename)
         input_list.append(pickle_file)
+
+  return input_list
+
+def make_dir_lists(input_list, input_dir, output_dir):
+
+  input_dir_list = []
+  output_dir_list = []
+  
+  abs_inp_path = os.path.abspath(input_dir)
+  abs_out_path = os.path.abspath(output_dir)
 
   # make lists of input and output directories and files
   for input_entry in input_list:
@@ -158,8 +164,58 @@ def make_lists (input_dir, output_dir):
 
     if input_dir not in input_dir_list: input_dir_list.append(input_dir)
     if output_dir not in output_dir_list: output_dir_list.append(output_dir)
+    
+    #with open('{}/input_files.lst'.format(abs_out_path), 'a') as inp_list_file:
+    #  inp_list_file.write('{0}, {1}\n'.format(input_entry, output_dir))
 
-  return input_list, input_dir_list, output_dir_list, abs_out_path + '/logs'
+  return input_dir_list, output_dir_list, abs_out_path + '/logs'
+
+# Generates input list for MP grid seach
+def make_mp_input(input_list, log_dir, gs_params):
+
+  mp_item = []
+  mp_input = []
+  mp_output = []
+  
+  for current_img in input_list:
+    # generate filenames, etc.
+    path = os.path.dirname(current_img)
+    img_filename = os.path.basename(current_img)
+
+    if os.path.relpath(path, os.path.abspath(gs_params.input)) == '.':
+      input_dir = os.path.abspath(gs_params.input)
+      output_dir = os.path.abspath(gs_params.output)
+    else:
+      input_dir = '{0}/{1}'.format(os.path.abspath(gs_params.input),
+                                    os.path.relpath(path,
+                                    os.path.abspath(gs_params.input)))
+      output_dir = '{0}/{1}'.format(os.path.abspath(gs_params.output),
+                                    os.path.relpath(path,
+                                    os.path.abspath(gs_params.input)))
+
+    current_output_dir = "{0}/tmp_{1}".format(output_dir,
+                                              img_filename.split('.')[0])
+    index_log_dir = "{0}/tmp_{1}".format(log_dir, img_filename.split('.')[0])
+    mp_output_entry = [current_img, current_output_dir]
+    mp_output.append(mp_output_entry)
+
+    # Make directories for output / log file for the image being integrated
+    if not os.path.exists(current_output_dir): 
+      os.makedirs(current_output_dir)
+    if not os.path.exists(index_log_dir): 
+      os.makedirs(index_log_dir)
+
+
+    for sig_height in range(gs_params.grid_search.h_min,
+                          gs_params.grid_search.h_max + 1):
+      for spot_area in range (gs_params.grid_search.a_min,
+                              gs_params.grid_search.a_max + 1):
+        mp_item = [current_img, sig_height, sig_height, spot_area]
+        mp_input.append(mp_item)
+  
+  
+  return mp_input, mp_output
+
 
 # Make output directories preserving the tree structure
 def make_dirs (output_dir_list, log_dir):
