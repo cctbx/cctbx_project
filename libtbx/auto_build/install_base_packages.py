@@ -47,6 +47,8 @@ class installer (object) :
       help="Exit if build_dir/base exists; used with automated builds.")
     parser.add_option("--no-download", dest="no_download", action="store_true",
       help="Use only local packages (no downloads)", default=False)
+    parser.add_option("--download-only", dest="download_only", action="store_true",
+      help="Only download missing packages, do not compile", default=False)
     parser.add_option("--python-shared", dest="python_shared",
       action="store_true", default=False,
       help="Compile Python as shared library (Linux only)")
@@ -118,7 +120,7 @@ class installer (object) :
 
     # Set package config.
     pkg_config_dir = op.join(self.base_dir, "lib", "pkgconfig")
-    if (not op.isdir(pkg_config_dir)):
+    if (not op.isdir(pkg_config_dir) and not options.download_only):
       os.makedirs(pkg_config_dir)
     pkg_config_paths = [pkg_config_dir] + os.environ.get("PKG_CONFIG_PATH", "").split(":")
     os.environ['PKG_CONFIG_PATH'] = ":".join(pkg_config_paths)
@@ -238,6 +240,14 @@ class installer (object) :
     print >> self.log, "  log file is %s" % install_log
     return open(install_log, "w")
 
+  def check_download_only (self, pkg_name) :
+    if self.options.download_only:
+      print >> self.log, "  skipping installation of %s (--download-only)" % pkg_name
+      return True
+    else:
+      print >> self.log, "  installing %s..." % pkg_name
+      return False
+
   def patch_src (self, src_file, target, replace_with, output_file=None) :
     if isinstance(target, str) :
       assert isinstance(replace_with, str)
@@ -259,9 +269,8 @@ class installer (object) :
     src_in.close()
     src_out.close()
 
-  def fetch_untar_and_chdir (self, pkg_name, pkg_url=None, log=None) :
+  def untar_and_chdir (self, pkg, log=None) :
     if (log is None) : log = self.log
-    pkg = self.fetch_package(pkg_name=pkg_name, pkg_url=pkg_url)
     pkg_dir = untar(pkg, log=log)
     os.chdir(pkg_dir)
 
@@ -343,8 +352,9 @@ Installation of Python packages may fail.
       pkg_name_label,
       pkg_url=None) :
     pkg_log = self.start_building_package(pkg_name_label)
-    pkg = self.fetch_untar_and_chdir(pkg_name=pkg_name, pkg_url=pkg_url,
-      log=pkg_log)
+    pkg = self.fetch_package(pkg_name=pkg_name, pkg_url=pkg_url)
+    if self.check_download_only(pkg_name): return
+    self.untar_and_chdir(pkg=pkg, log=pkg_log)
     self.configure_and_build(
       config_args=[self.prefix],
       log=pkg_log)
@@ -357,8 +367,9 @@ Installation of Python packages may fail.
       callback_after_build=None,
       confirm_import_module=None) :
     pkg_log = self.start_building_package(pkg_name_label)
-    pkg = self.fetch_untar_and_chdir(pkg_name=pkg_name, pkg_url=pkg_url,
-      log=pkg_log)
+    pkg = self.fetch_package(pkg_name=pkg_name, pkg_url=pkg_url)
+    if self.check_download_only(PYTHON_PKG): return
+    self.untar_and_chdir(pkg=pkg, log=pkg_log)
     if (callback_before_build is not None) :
       assert callback_before_build(pkg_log), pkg_name
     debug_flag = ""
@@ -424,13 +435,21 @@ Installation of Python packages may fail.
       if i in packages:
         packages_order.append(i)
 
-    print >> self.log, "Building dependencies: %s"%(" ".join(packages_order))
+    if self.options.download_only:
+      print >> self.log, "Downloading dependencies: %s"%(" ".join(packages_order))
+    else:
+      print >> self.log, "Building dependencies: %s"%(" ".join(packages_order))
+
     os.chdir(self.tmp_dir)
     for i in packages_order:
       self.set_cppflags_ldflags() # up-to-date LDFLAGS/CPPFLAGS
       self.print_sep()
       getattr(self, 'build_%s'%i)()
-    print >> self.log, "Dependencies finished building."
+
+    if self.options.download_only:
+      print >> self.log, "Dependencies finished downloading."
+    else:
+      print >> self.log, "Dependencies finished building."
 
   #######################################################
   ##### Build Individual Packages #######################
@@ -440,6 +459,7 @@ Installation of Python packages may fail.
     log = self.start_building_package("Python")
     os.chdir(self.tmp_dir)
     python_tarball = self.fetch_package(PYTHON_PKG)
+    if self.check_download_only(PYTHON_PKG): return
     python_dir = untar(python_tarball)
     self.chdir(python_dir, log=log)
     if self.flag_is_mac:
@@ -458,7 +478,7 @@ Installation of Python packages may fail.
       self.call("make frameworkinstallstructure frameworkinstallmaclib \
         frameworkinstallunixtools FRAMEWORKUNIXTOOLSPREFIX=\"%s\"" %
         self.base_dir, log=log)
-    else :
+    else:
       # Linux
       # Ian: Setup build to use rpath $ORIGIN to find libpython.so.
       # Also note that I'm using shell=False and passing args as list
@@ -569,8 +589,12 @@ Installation of Python packages may fail.
 
   def build_hdf5 (self):
     pkg_log = self.start_building_package("HDF5")
-    self.fetch_untar_and_chdir(pkg_name=HDF5_PKG, pkg_url=BASE_XIA_PKG_URL,
-      log=pkg_log)
+    hdf5pkg = self.fetch_package(pkg_name=HDF5_PKG, pkg_url=BASE_XIA_PKG_URL)
+    h5pypkg = self.fetch_package(pkg_name=H5PY_PKG, pkg_url=BASE_XIA_PKG_URL)
+    if self.check_download_only(HDF5_PKG) and self.check_download_only(H5PY_PKG):
+      return
+
+    self.untar_and_chdir(pkg=hdf5pkg, log=pkg_log)
     print >> pkg_log, "Building base HDF5 library..."
     make_args = []
     # XXX the HDF5 library uses '//' for comments, which will break if the
@@ -582,10 +606,12 @@ Installation of Python packages may fail.
       config_args=[self.prefix],
       log=pkg_log,
       make_args=make_args)
-    print >> pkg_log, "Building h5py..."
+
+    # not strictly necessary, but prints 'installing' message
+    if self.check_download_only(H5PY_PKG): return
     os.chdir(self.tmp_dir)
-    self.fetch_untar_and_chdir(pkg_url=BASE_XIA_PKG_URL, pkg_name=H5PY_PKG,
-      log=pkg_log)
+
+    self.untar_and_chdir(pkg=h5pypkg, log=pkg_log)
     self.call("%s setup.py build --hdf5=\"%s\"" % (self.python_exe,
       self.base_dir), log=pkg_log)
     self.call("%s setup.py install" % (self.python_exe), log=pkg_log)
@@ -609,7 +635,9 @@ Installation of Python packages may fail.
   def build_gettext(self):
     # gettext
     pkg_log = self.start_building_package("gettext")
-    self.fetch_untar_and_chdir(pkg_name=GETTEXT_PKG, log=pkg_log)
+    pkg = self.fetch_package(pkg_name=GETTEXT_PKG)
+    if self.check_download_only(GETTEXT_PKG): return
+    self.untar_and_chdir(pkg=pkg, log=pkg_log)
     os.chdir("gettext-runtime")
     gettext_conf_args = [self.prefix, "--disable-java", "--disable-csharp",
       "--disable-intl-java", "--disable-gcj"]
@@ -617,7 +645,13 @@ Installation of Python packages may fail.
 
   def build_glib(self):
     # glib
+    pkg_log = self.start_building_package("glib")
+    pkg = self.fetch_package(pkg_name=GLIB_PKG)
+    if self.check_download_only(GLIB_PKG): return
+
     # Mock executables.
+    if (not op.isdir(op.join(self.base_dir, "bin"))) :
+      os.makedirs(op.join(self.base_dir, "bin"))
     msgfmt_bin = op.join(self.base_dir, "bin", "msgfmt")
     gettext_bin = op.join(self.base_dir, "bin", "xgettext")
     self.touch_file(msgfmt_bin)
@@ -625,26 +659,29 @@ Installation of Python packages may fail.
     self.call("chmod 744 \"%s\""%msgfmt_bin)
     self.call("chmod 744 \"%s\""%gettext_bin)
     # glib
-    glib_log = self.start_building_package("glib")
-    self.fetch_untar_and_chdir(pkg_name=GLIB_PKG, log=glib_log)
+    self.untar_and_chdir(pkg=pkg, log=pkg_log)
     self.configure_and_build(
       config_args=[self.prefix],
-      log=glib_log)
+      log=pkg_log)
 
   def build_expat(self):
     # expat
-    expat_log = self.start_building_package("expat")
-    self.fetch_untar_and_chdir(pkg_name=EXPAT_PKG, log=expat_log)
-    self.configure_and_build(config_args=[self.prefix], log=expat_log)
+    pkg_log = self.start_building_package("expat")
+    pkg = self.fetch_package(pkg_name=EXPAT_PKG)
+    if self.check_download_only(EXPAT_PKG): return
+    self.untar_and_chdir(pkg=pkg, log=pkg_log)
+    self.configure_and_build(config_args=[self.prefix], log=pkg_log)
     header_files = ["./lib/expat_external.h", "./lib/expat.h"]
     for header in header_files :
       self.call("./conftools/install-sh -c -m 644 %s \"%s\"" % (header,
-        op.join(self.base_dir, "include")), log=expat_log)
+        op.join(self.base_dir, "include")), log=pkg_log)
 
   def build_fontconfig(self):
     # fontconfig
-    fc_log = self.start_building_package("fontconfig")
-    self.fetch_untar_and_chdir(pkg_name=FONTCONFIG_PKG, log=fc_log)
+    pkg_log = self.start_building_package("fontconfig")
+    pkg = self.fetch_package(pkg_name=FONTCONFIG_PKG)
+    if self.check_download_only(FONTCONFIG_PKG): return
+    self.untar_and_chdir(pkg=pkg, log=pkg_log)
     # Create font directories.
     if (not op.isdir(op.join(self.base_dir, "share", "fonts"))) :
       os.makedirs(op.join(self.base_dir, "share", "fonts"))
@@ -658,7 +695,7 @@ Installation of Python packages may fail.
       "--with-confdir=\"%s\"" % op.join(self.base_dir,"etc","fonts"),
       "--with-docdir=\"%s\"" % op.join(self.base_dir, "doc"),
       "--with-freetype-config=freetype-config", ]
-    self.configure_and_build(config_args=fc_config_args, log=fc_log)
+    self.configure_and_build(config_args=fc_config_args, log=pkg_log)
 
   def build_render(self):
     # render, xrender, xft
@@ -667,11 +704,13 @@ Installation of Python packages may fail.
 
   def build_pixman(self):
     # pixman
-    pix_log = self.start_building_package("pixman")
-    self.fetch_untar_and_chdir(pkg_name=PIXMAN_PKG, log=pix_log)
+    pkg_log = self.start_building_package("pixman")
+    pkg = self.fetch_package(pkg_name=PIXMAN_PKG)
+    if self.check_download_only(PIXMAN_PKG): return
+    self.untar_and_chdir(pkg=pkg, log=pkg_log)
     self.configure_and_build(
       config_args=[self.prefix, "--disable-gtk" ],
-      log=pix_log)
+      log=pkg_log)
 
   def build_cairo(self):
     # cairo, pango, atk
@@ -680,29 +719,38 @@ Installation of Python packages may fail.
 
   def build_tiff(self):
     # tiff
-    tiff_log = self.start_building_package("tiff")
-    self.fetch_untar_and_chdir(pkg_name=TIFF_PKG, log=tiff_log)
+    pkg_log = self.start_building_package("tiff")
+    pkg = self.fetch_package(pkg_name=TIFF_PKG)
+    if self.check_download_only(TIFF_PKG): return
+    self.untar_and_chdir(pkg=pkg, log=pkg_log)
     os.environ['MANSCHEME'] = "bsd-source-cat"
     os.environ['DIR_MAN'] = op.join(self.base_dir, "man")
     config_args = [self.prefix, "--noninteractive", "--with-LIBGL=no", "--with-LIBIMAGE=no" ]
     self.configure_and_build(
       config_args=config_args,
-      log=tiff_log)
+      log=pkg_log)
 
   def build_gtk(self):
     # gtk+
-    gtk_log = self.start_building_package("gtk+")
-    self.fetch_untar_and_chdir(pkg_name=GTK_PKG, log=gtk_log)
+    pkg_log = self.start_building_package("gtk+")
+    pkg = self.fetch_package(pkg_name=GTK_PKG)
+    self.fetch_package(pkg_name=GTK_ENGINE_PKG)
+    if self.check_download_only(GTK_PKG) and self.check_download_only(GTK_ENGINE_PKG):
+      return
+    self.untar_and_chdir(pkg=pkg, log=pkg_log)
     gtk_config_args = [
       self.prefix,
       "--disable-cups",
       "--without-libjpeg",
     ]
-    self.call("./configure %s" % " ".join(gtk_config_args), log=gtk_log)
+    self.call("./configure %s" % " ".join(gtk_config_args), log=pkg_log)
     self.call("make -j %d SRC_SUBDIRS='gdk-pixbuf gdk gtk modules'" %
-      self.nproc, log=gtk_log)
+      self.nproc, log=pkg_log)
     self.call("make install SRC_SUBDIRS='gdk-pixbuf gdk gtk modules'",
-      log=gtk_log)
+      log=pkg_log)
+
+    # not strictly necessary, but prints 'installing' message
+    if self.check_download_only(GTK_ENGINE_PKG): return
     # gtk-engine
     self.build_compiled_package_simple(pkg_name=GTK_ENGINE_PKG,
       pkg_name_label="gtk-engine")
@@ -710,10 +758,12 @@ Installation of Python packages may fail.
   def build_fonts(self):
     # fonts
     fonts_log = self.start_building_package("fonts")
+    pkg = self.fetch_package(pkg_name=FONT_PKG)
+    if self.check_download_only("fonts"): return
+
     share_dir = op.join(self.base_dir, "share")
     if (not op.isdir(share_dir)) :
       os.makedirs(share_dir)
-    pkg = self.fetch_package(pkg_name=FONT_PKG)
     os.chdir(share_dir)
     untar(pkg, log=fonts_log, verbose=True)
     os.chdir(self.tmp_dir)
@@ -726,6 +776,8 @@ Installation of Python packages may fail.
     if (self.flag_is_mac) :
       pkg_name = WXPYTHON_DEV_PKG
     pkg = self.fetch_package(pkg_name)
+    if self.check_download_only(pkg_name): return
+
     pkg_dir = untar(pkg, log=pkg_log)
     os.chdir(pkg_dir)
     if (self.flag_is_mac and get_os_version() == "10.10") :
