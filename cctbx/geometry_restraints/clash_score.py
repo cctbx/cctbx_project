@@ -309,8 +309,8 @@ class compute(object):
                   # ignore clashes that are cause by symmetry operation
                   cos_angle = self.cos_vec(u,v)
             # atoms consider to be inline if cosine of
-            # the angle between vectors > 0.866
-            if cos_angle > 0.867 and (vec_i != vec_j):
+            # the angle between vectors > 0.707
+            if cos_angle > 0.707 and (vec_i != vec_j):
               # for inline clashes keep the closer two(compare models)
               if clashing_atoms_dict[key][i][4] < clashing_atoms_dict[key][j][4]:
                 temp_clash_list.append(clashing_atoms_dict[key][i])
