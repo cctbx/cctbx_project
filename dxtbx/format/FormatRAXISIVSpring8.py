@@ -11,6 +11,7 @@
 
 from __future__ import division
 import struct
+import datetime
 
 from dxtbx.format.Format import Format
 
@@ -25,11 +26,20 @@ class FormatRAXISIVSPring8(Format):
   @staticmethod
   def understand(image_file):
     try:
-      tag = Format.open_file(image_file, 'rb').read(7)
+      header = Format.open_file(image_file, 'rb').read(1024)
     except IOError,e:
       return False
 
-    return tag == "R-AXIS4"
+    # A few items expected to be the same from image to image that we can use
+    # as a fingerprint for this instrument
+    if header[0:7] != "R-AXIS4": return False
+
+    # We expect an invalid goniometer section, indicated by wrong magic number
+    if struct.unpack(">i", header[852:856]) == 1: return False
+
+    if header[812:822].strip() != "IRIS": return False
+
+    return True
 
   def __init__(self, image_file):
     assert(self.understand(image_file))
@@ -112,10 +122,12 @@ class FormatRAXISIVSPring8(Format):
 
     epoch = calendar.timegm(datetime.datetime(y, m, d, 0, 0, 0).timetuple())
 
-    s = struct.unpack(i, header[980:984])[0]
-
-    osc_start = struct.unpack(f, header[920 + s * 4:924 + s * 4])[0]
-    osc_end = struct.unpack(f, header[940 + s * 4:944 + s * 4])[0]
+    # For this instrument, the header goniometer section is invalid. 3 floats
+    # starting at byte 520 specify phi0, phis and phie.
+    # (http://www.rigaku.com/downloads/software/readimage.html)
+    osc_dat = struct.unpack(f, header[520:524])[0]
+    osc_start = osc_dat + struct.unpack(f, header[524:528])[0]
+    osc_end = osc_dat + struct.unpack(f, header[528:532])[0]
 
     osc_range = osc_end - osc_start
 
