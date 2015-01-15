@@ -126,7 +126,7 @@ class SetupInstaller(object):
     self.readme = kwargs.get('readme') or [os.path.join(libtbx_path, 'COPYRIGHT_2_0.txt')]
     if self.readme:
       self.readme = [os.path.abspath(i) for i in self.readme]
-      
+
     # Load the installer class, get the list of modules.
     assert os.path.isfile(self.install_script)
     installer_module = imp.load_source('install_script', self.install_script)
@@ -226,7 +226,7 @@ class SetupInstaller(object):
     # tcsh
     with open(os.path.join(self.dest_dir, '%s_env.csh'%self.installer.product_name.lower()), 'w') as f:
       f.write(CSHRC%fmt)
-      
+
   def make_dist(self):
     makedirs(self.dist_dir)
     tar(
@@ -234,7 +234,7 @@ class SetupInstaller(object):
       os.path.join(self.dist_dir, '%s.tar.gz'%os.path.basename(self.dest_dir)),
       cwd=os.path.join(self.dest_dir, '..')
     )
-    
+
   def make_dist_pkg(self):
     if (not os.access("/Applications", os.W_OK|os.X_OK)) :
       print "Can't access /Applications - skipping .pkg build"
