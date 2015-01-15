@@ -108,7 +108,7 @@ class FormatTIFFRayonixSPring8(FormatTIFFRayonix):
   def _goniometer(self):
     '''Return a model for goniometer corresponding to the values stored
     in the image header. In the first instance assume this is a single
-    axis annd raise exception otherwise.'''
+    axis and raise exception otherwise.'''
 
     starts, ends, offset, width = self._get_rayonix_scan_angles()
 
