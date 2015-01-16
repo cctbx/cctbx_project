@@ -368,7 +368,7 @@ Installation of Python packages may fail.
       confirm_import_module=None) :
     pkg_log = self.start_building_package(pkg_name_label)
     pkg = self.fetch_package(pkg_name=pkg_name, pkg_url=pkg_url)
-    if self.check_download_only(PYTHON_PKG): return
+    if self.check_download_only(pkg_name): return
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
     if (callback_before_build is not None) :
       assert callback_before_build(pkg_log), pkg_name
