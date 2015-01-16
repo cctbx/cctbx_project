@@ -184,9 +184,9 @@ class label_decorator(__builtins__["object"]):
 
   def anomalous(self, root_label, sign=None):
     assert sign in (None, "+", "-")
-    if (sign is None): 
+    if (sign is None):
       label = root_label
-    elif (sign == "+"): 
+    elif (sign == "+"):
       label = root_label + self.anomalous_plus_suffix
     else:
       label = root_label + self.anomalous_minus_suffix

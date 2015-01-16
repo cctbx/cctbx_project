@@ -15,8 +15,8 @@ input_files {
     data = None
       .type = path
       .help = Data file (I or I+ and I- or F or F+ and F-).  \
-         Any standard format is fine. 
-      .short_caption = Data file 
+         Any standard format is fine.
+      .short_caption = Data file
       .style = bold file_type:hkl input_file process_hkl child:fobs:data_labels\
         child:space_group:space_group child:unit_cell:unit_cell anom
     data_labels = None
@@ -65,7 +65,7 @@ crystal_info {
     .type = int
     .short_caption = NCS copies
     .help = Optional estimate of NCS copies in your crystals (only used if \
-            a data file is supplied). 
+            a data file is supplied).
    .input_size = 64
 
   solvent_fraction = None

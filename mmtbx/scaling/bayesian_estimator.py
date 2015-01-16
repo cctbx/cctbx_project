@@ -794,7 +794,7 @@ class estimator_group:
 
     # now split in all possible ways and get estimators for each combination
     # if self.resolution_cutoffs is set, do it with each resolution cutoff
-    # 2014-12-18 if minimum_complete=True, require that there are 
+    # 2014-12-18 if minimum_complete=True, require that there are
     #  self.minimum_records complete ones
     for resolution_cutoff in self.resolution_cutoffs:
       print >>self.verbose_out,\
@@ -901,7 +901,7 @@ class estimator_group:
          if minimum_complete:
             if not (None in record):
               count+=1
-    if next_cutoff is not None and next_cutoff<info_list[-1][-1] and ( 
+    if next_cutoff is not None and next_cutoff<info_list[-1][-1] and (
        len(new_records)<self.minimum_records or
        minimum_complete and count < self.minimum_records):
       # try again with bigger range
@@ -1405,7 +1405,7 @@ def run_jacknife(args=None,no_jump=True,
     print >>out,"Size of data list: %d" %(len(record_list))
   if info_list is None:
     info_list=len(record_list)*["None"]
- 
+
   # Set up estimator using all but one entry and predict it from the others
 
   if no_jump:

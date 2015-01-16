@@ -117,9 +117,9 @@ def run(args, log = sys.stdout):
   else:
     if params.resolution is not None or params.low_resolution is not None:
       ma=ma.resolution_filter(d_min=params.resolution,
-         d_max=params.low_resolution) 
+         d_max=params.low_resolution)
       print "Applying resolution filter from ",params.resolution,"to",params.low_resolution," NREFL: ",ma.data().size()
-      
+
     fft_map = ma.fft_map(resolution_factor=params.resolution_factor)
     if(params.scale == "sigma"):
       fft_map.apply_sigma_scaling()
