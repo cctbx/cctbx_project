@@ -119,8 +119,8 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0, show_untrusted=
     elif len(panels) == 120 and panels[0].get_image_size() == (487,195):
       i_row = i // 5
       i_col = i % 5
-      print i_row, i_col
-      print data_padded
+      #print i_row, i_col
+      #print data_padded
       #print "DLS I23 12M"
       rawdata.matrix_paste_block_in_place(
         block=data.as_double(),
