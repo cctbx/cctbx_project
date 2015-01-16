@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/15/2015
+Last Changed: 01/16/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories, etc.
 '''
 
@@ -205,7 +205,7 @@ def make_mp_input(input_list, log_dir, gs_params):
     if not os.path.exists(index_log_dir): 
       os.makedirs(index_log_dir)
 
-
+    # Create input list w/ filename and spot-finding params
     for sig_height in range(gs_params.grid_search.h_min,
                           gs_params.grid_search.h_max + 1):
       for spot_area in range (gs_params.grid_search.a_min,
@@ -235,7 +235,6 @@ def make_dirs (output_dir_list, log_dir):
       os.makedirs(index_log_dir)
     else:
       os.makedirs(index_log_dir)
-
 
   # make log folder (under main output folder regardless of tree structure)
   if os.path.exists(log_dir):
