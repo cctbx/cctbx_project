@@ -20,6 +20,9 @@ __mask = None
 # elif group_rows == False, then interpret data as 120 panels, 24 rows * 5 columns
 group_rows = True
 
+# FIXME make mask more compact i.e. store the sel() below & just apply this...
+# will be more efficient too...
+
 def read_mask():
   global __mask
   if not __mask:
