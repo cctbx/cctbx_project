@@ -41,8 +41,7 @@ if __name__ == "__main__":
     print txt_out
     with open('iota_default.phil', 'w') as default_settings_file:
       default_settings_file.write(txt_out)
-  else:
-      
+  else:     
     # Check for list of files and extract a) list of files, b) input paths, 
     # and c) output paths that will override earlier lists
     if gs_params.input_list == None:
@@ -85,11 +84,15 @@ if __name__ == "__main__":
       gs_logger.addHandler(gs_fileHandler)
       gs_logger.addHandler(gs_streamHandler)
 
-      # Starting info
-      f = open(gs_params.target, 'r')
-      phil_file_contents = f.read()
-      f.closed
+      # Starting info 
+      
       gs_logger.info('{:-^100} \n'.format(' GRID SEARCH AND PICKLE SELECTION '))
+      
+      gs_logger.info('\nSettings for this run:\n')
+      gs_logger.info(txt_out)
+      
+      with open(gs_params.target, 'r') as phil_file:
+        phil_file_contents = phil_file.read()      
       gs_logger.info("\nTarget file {0} contents:\n".format(gs_params.target))
       gs_logger.info(phil_file_contents)
 
@@ -108,6 +111,10 @@ if __name__ == "__main__":
 
 
       gs_logger.info('\n\nIOTA grid search version {0}'.format(gs_version))
+      
+    else:
+      ps_logger.info('\nSettings for this run:\n')
+      ps_logger.info(txt_out)
 
 
     # ------------------ Pickle Selection ------------------
