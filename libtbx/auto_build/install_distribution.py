@@ -540,7 +540,7 @@ class installer(object):
     call([
       'chmod',
       '-R',
-      'u=rw,a+rX',
+      'u+rw,a+rX',
       self.dest_dir
       ])
 
