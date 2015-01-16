@@ -146,7 +146,7 @@ def make_dir_lists(input_list, input_dir, output_dir):
 
   input_dir_list = []
   output_dir_list = []
-  
+
   abs_inp_path = os.path.abspath(input_dir)
   abs_out_path = os.path.abspath(output_dir)
 
@@ -164,7 +164,7 @@ def make_dir_lists(input_list, input_dir, output_dir):
 
     if input_dir not in input_dir_list: input_dir_list.append(input_dir)
     if output_dir not in output_dir_list: output_dir_list.append(output_dir)
-    
+
     #with open('{}/input_files.lst'.format(abs_out_path), 'a') as inp_list_file:
     #  inp_list_file.write('{0}, {1}\n'.format(input_entry, output_dir))
 
@@ -176,7 +176,7 @@ def make_mp_input(input_list, log_dir, gs_params):
   mp_item = []
   mp_input = []
   mp_output = []
-  
+
   for current_img in input_list:
     # generate filenames, etc.
     path = os.path.dirname(current_img)
@@ -200,9 +200,9 @@ def make_mp_input(input_list, log_dir, gs_params):
     mp_output.append(mp_output_entry)
 
     # Make directories for output / log file for the image being integrated
-    if not os.path.exists(current_output_dir): 
+    if not os.path.exists(current_output_dir):
       os.makedirs(current_output_dir)
-    if not os.path.exists(index_log_dir): 
+    if not os.path.exists(index_log_dir):
       os.makedirs(index_log_dir)
 
     # Create input list w/ filename and spot-finding params
@@ -212,8 +212,8 @@ def make_mp_input(input_list, log_dir, gs_params):
                               gs_params.grid_search.a_max + 1):
         mp_item = [current_img, sig_height, sig_height, spot_area]
         mp_input.append(mp_item)
-  
-  
+
+
   return mp_input, mp_output
 
 
