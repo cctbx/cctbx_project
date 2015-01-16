@@ -1,6 +1,6 @@
 from __future__ import division
 from bootstrap import optparse,os
-from bootstrap import ShellCommand, HOT, CODEBASES, ModuleManager
+from bootstrap import ShellCommand, HOT, CODEBASES
 from bootstrap import DIALSBuilder, PHENIXBuilder, XFELBuilder, LABELITBuilder, CCTBXBuilder, Builder as CCIBuilder
 
 HOT['annlib']='curl http://cci.lbl.gov/repositories/annlib.gz > annlib.gz'
