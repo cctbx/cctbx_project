@@ -4,7 +4,7 @@ from __future__ import division
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
 Last Changed: 01/16/2015
-Description : IOTA command-line module. Version 0.81
+Description : IOTA command-line module. Version 0.82
 '''
 
 import os
@@ -28,8 +28,8 @@ def index_mproc_wrapper(current_img):
 
 if __name__ == "__main__":
 
-  gs_version = '0.81'
-  ps_version = '0.81'
+  gs_version = '0.82'
+  ps_version = '0.82'
 
   print '\n{}'.format(datetime.now())
   print 'Starting IOTA ... \n\n'
@@ -41,8 +41,8 @@ if __name__ == "__main__":
     print txt_out
     with open('iota_default.phil', 'w') as default_settings_file:
       default_settings_file.write(txt_out)
-  else:     
-    # Check for list of files and extract a) list of files, b) input paths, 
+  else:
+    # Check for list of files and extract a) list of files, b) input paths,
     # and c) output paths that will override earlier lists
     if gs_params.input_list == None:
       input_list = inp.make_input_list(gs_params.input)
@@ -50,20 +50,20 @@ if __name__ == "__main__":
       with open(gs_params.input_list, 'r') as listfile:
         listfile_contents = listfile.read()
         input_list = listfile_contents.splitlines()
-        
+
     input_dir_list, output_dir_list, log_dir = inp.make_dir_lists(input_list, gs_params.input, gs_params.output)
     inp.make_dirs(output_dir_list, log_dir)
     mp_input_list, mp_output_list = inp.make_mp_input(input_list, log_dir, gs_params)
 
     if gs_params.flag_inp_test == True:
-    
+
       mp_input_list = inp.make_mp_input(input_list, gs_params)
       for item in mp_input_list: print item
-      
+
       #with open('{}/input_files.lst'.format(os.path.abspath(gs_params.output)), 'r') as inp_list_file:
       #    inp_list_contents = inp_list_file.read()
       #    inp_list = inp_list_contents.splitlines()
-      #    for item in inp_list: print item              
+      #    for item in inp_list: print item
       sys.exit()
 
 
@@ -84,16 +84,16 @@ if __name__ == "__main__":
       gs_logger.addHandler(gs_fileHandler)
       gs_logger.addHandler(gs_streamHandler)
 
-      # Starting info 
-      
+      # Starting info
+
       gs_logger.info('{:-^100} \n'.format(' GRID SEARCH AND PICKLE SELECTION '))
-      
+
       gs_logger.info('\nSettings for this run:\n')
       gs_logger.info(txt_out)
-      
+
       with open(gs_params.target, 'r') as phil_file:
-        phil_file_contents = phil_file.read()      
-      gs_logger.info("\nTarget file {0} contents:\n".format(gs_params.target))
+        phil_file_contents = phil_file.read()
+      gs_logger.info("\nTarget file ({0}) contents:\n".format(gs_params.target))
       gs_logger.info(phil_file_contents)
 
       gs_logger.info('Found image files in the following folder(s):')
@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
 
       gs_logger.info('\n\nIOTA grid search version {0}'.format(gs_version))
-      
+
     else:
       ps_logger.info('\nSettings for this run:\n')
       ps_logger.info(txt_out)
@@ -154,28 +154,28 @@ if __name__ == "__main__":
     # This section checks for output and summarizes file integration and
     # selection results
     ps_logger.info('raw images processed:         {}'.format(len(input_list)))
-    
+
     if os.path.isfile('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output))):
-      with open('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output)), 
+      with open('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output)),
                 'r') as int_fail_list:
         int_fail_list_contents = int_fail_list.read()
         int_fail_count = len(int_fail_list_contents.splitlines())
-        ps_logger.info('raw images not integrated:    {}'.format(int_fail_count))    
-    
+        ps_logger.info('raw images not integrated:    {}'.format(int_fail_count))
+
     if os.path.isfile('{0}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output))):
-      with open('{0}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)), 
+      with open('{0}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)),
               'r') as bad_int_list:
         bad_int_list_contents = bad_int_list.read()
         bad_int_count = len(bad_int_list_contents.splitlines())
         ps_logger.info('images failed prefilter:      {}'.format(bad_int_count))
 
     if os.path.isfile('{0}/best_by_strong.lst'.format(os.path.abspath(gs_params.output))):
-      with open('{0}/best_by_strong.lst'.format(os.path.abspath(gs_params.output)), 
+      with open('{0}/best_by_strong.lst'.format(os.path.abspath(gs_params.output)),
                 'r') as output_list:
         output_list_contents = output_list.read()
-        final_count = len(output_list_contents.splitlines())    
+        final_count = len(output_list_contents.splitlines())
     else:
       final_count = 0
     ps_logger.info('pickles in final selection:   {}'.format(final_count))
-      
+
     ps_logger.info('\n\nIOTA pickle select version {0}'.format(ps_version))

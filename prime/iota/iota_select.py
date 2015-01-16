@@ -9,7 +9,6 @@ Description : IOTA pickle selection module. Selects the best integration results
 '''
 
 import os
-import shutil
 import numpy as np
 import logging
 
@@ -46,12 +45,12 @@ def prefilter(gs_params, total_tmp_pickles):
 
       # Determine if pickle satisfies sg / uc parameters within given
       # tolerance and low resolution cutoff
-      if str(p_pg) == gs_params.target_pointgroup:  
-        if  (delta_a <= user_uc[0] * uc_tol and 
+      if str(p_pg) == gs_params.target_pointgroup:
+        if  (delta_a <= user_uc[0] * uc_tol and
               delta_b <= user_uc[1] * uc_tol and
-              delta_c <= user_uc[2] * uc_tol and 
-              delta_alpha <= user_uc[3] * uc_tol and 
-              delta_beta <= user_uc[4] * uc_tol and 
+              delta_c <= user_uc[2] * uc_tol and
+              delta_alpha <= user_uc[3] * uc_tol and
+              delta_beta <= user_uc[4] * uc_tol and
               delta_gamma <= user_uc[5] * uc_tol):
           acceptable_pickles.append(tmp_pickle)
 
@@ -147,7 +146,7 @@ def best_file_selection(gs_params, output_entry, log_dir):
     if len(acceptable_pickles) == 0:
       ps_logger.info('Discarded all {0} integrated pickles ' \
                       'in {1}:\n'.format(len(total_tmp_pickles), abs_tmp_dir))
-      
+
       with open('{}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)), 'a') as bad_int:
         bad_int.write('{}\n'.format(input_file))
 
