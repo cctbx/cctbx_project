@@ -30,6 +30,10 @@ class chooser_wrapper:
 from rstbx.slip_viewer.slip_display import AppFrame
 class XrayFrame (AppFrame,XFBaseClass) :
   def __init__ (self, *args, **kwds) :
+    self.params = kwds.get("params", None)
+    if "params" in kwds:
+      del kwds["params"] #otherwise wx complains
+
     wx.Frame.__init__(self,*args,**kwds)
     self.settings = rv_settings()
 
@@ -49,7 +53,6 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.plot_frame = None
 
     self.metrology_matrices = None
-    self.params = None
 
     # Currently displayed image.  XXX Can this be zapped?
     self._img = None
