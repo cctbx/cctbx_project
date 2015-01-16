@@ -310,7 +310,7 @@ class compute(object):
                   cos_angle = self.cos_vec(u,v)
             # atoms consider to be inline if cosine of
             # the angle between vectors > 0.707
-            if cos_angle > 0.707 and (vec_i != vec_j):
+            if abs(cos_angle) > 0.707 and (vec_i != vec_j):
               # for inline clashes keep the closer two(compare models)
               if clashing_atoms_dict[key][i][4] < clashing_atoms_dict[key][j][4]:
                 temp_clash_list.append(clashing_atoms_dict[key][i])
@@ -473,21 +473,32 @@ class info(object):
       title = 'Clashes in macro molecule (not including sym. related clashes),'
     else:
       clash_proxies = cctbx_clash.cctbx_clash_proxies_all
-      title = 'Clashing atoms of complete model,'
-    title += ' based on pair_proxies.nonbonded_proxies data'
+      title = 'Clashing atoms, complete model,'
+    title += ' based on pair_proxies.nonbonded_proxies'
     out_list.append(title)
     out_list.append('='*len(title))
-    labels =  ["pdb labels","i_seq","j_seq","model","vdw","sym_op_j","rt_mx"]
-    lbl_str = '{:^35} | {:<5} | {:<5} | {:^7} | {:^7} | {:<10} | {:<8}'
-    out_str = '{:^35} | {:<5} | {:<5} | {:<7.4} | {:<7.4} | {:<10} | {:<8}'
+    # labels =  ["pdb labels","i_seq","j_seq","model","vdw","sym_op_j","rt_mx"]
+    labels =  ["Clashing residues info","i_seq","j_seq","model-vdw","sym clash"]
+    # lbl_str = '{:^35} | {:<5} | {:<5} | {:^7} | {:^7} | {:<10} | {:<8}'
+    lbl_str = '{:^35}|{:^7}|{:^7}|{:^11}|{:<10}'
+    # out_str = '{:^35} | {:<5} | {:<5} | {:<7.4} | {:<7.4} | {:<10} | {:<8}'
+    out_str = '{:>2}{:>4}{:>5}{:>5} |{:>2}{:>4}{:>5}{:>5} |'
+    out_str += '{:^7}|{:^7}|  {:>6.3f}   |{:^6}|'
     out_list.append(lbl_str.format(*labels))
-    out_list.append('-'*95)
+    out_list.append('-'*74)
     for data in clash_proxies:
       d = list(data)
       d[0] = ','.join(data[0])
       d[0] = d[0].replace('"','')
       d[0] = d[0].replace('pdb=','')
-      out_list.append(out_str.format(*d))
+      d[0] = d[0].replace(',',' ')
+      # split and reorder pdb info
+      rec_list = d[0].split()
+      rec_list = [rec_list[i] for i in [2,3,1,0,6,7,5,4]]
+      rec_list.extend(d[1:3])
+      rec_list.append(d[3]-d[4])
+      rec_list.append('1'*bool(d[5]) + ' '*(not bool(d[5])))
+      out_list.append(out_str.format(*rec_list))
     out_string = '\n'.join(out_list)
     print >> log,out_string
     return out_string
