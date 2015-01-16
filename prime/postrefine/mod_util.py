@@ -55,7 +55,7 @@ class intensities_scaler(object):
         mean_I = np.mean(I_full)
         std_I = np.std(I_full)
 
-        I_full_as_sigma = (I_full -mean_I)/ std_I
+        I_full_as_sigma = (I_full -median_I)/ std_I
 
         i_seq = flex.int([i for i in range(len(I_full))])
         i_sel_inv = (flex.abs(I_full_as_sigma) > sigma_max)
@@ -527,7 +527,8 @@ class intensities_scaler(object):
           I_even_bin = I_even.select(i_binner)
           I_odd_bin = I_odd.select(i_binner)
 
-          i_filter = flex.abs((I_obs_bin - np.mean(I_obs_bin))/np.std(I_obs_bin)) < I_bin_sigma_filter
+          i_filter = flex.abs((I_obs_bin - np.median(I_obs_bin))/np.median(I_obs_bin)) < I_bin_sigma_filter
+          #i_filter = flex.abs((I_obs_bin - np.mean(I_obs_bin))/np.std(I_obs_bin)) < I_bin_sigma_filter
           I_obs_bin_filter = I_obs_bin.select(i_filter)
           sigI_obs_bin_filter = sigI_obs_bin.select(i_filter)
           miller_indices_bin_filter = miller_indices_bin.select(i_filter)
