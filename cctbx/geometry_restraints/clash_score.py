@@ -477,24 +477,20 @@ class info(object):
     title += ' based on pair_proxies.nonbonded_proxies'
     out_list.append(title)
     out_list.append('='*len(title))
-    # labels =  ["pdb labels","i_seq","j_seq","model","vdw","sym_op_j","rt_mx"]
     labels =  ["Clashing residues info","i_seq","j_seq","model-vdw","sym clash"]
-    # lbl_str = '{:^35} | {:<5} | {:<5} | {:^7} | {:^7} | {:<10} | {:<8}'
-    lbl_str = '{:^35}|{:^7}|{:^7}|{:^11}|{:<10}'
-    # out_str = '{:^35} | {:<5} | {:<5} | {:<7.4} | {:<7.4} | {:<10} | {:<8}'
-    out_str = '{:>2}{:>4}{:>5}{:>5} |{:>2}{:>4}{:>5}{:>5} |'
-    out_str += '{:^7}|{:^7}|  {:>6.3f}   |{:^6}|'
+    lbl_str = '{:^33}|{:^7}|{:^7}|{:^11}|{:<10}'
+    out_str = '{:>5}{:>4}{:>2}{:>4} |{:>5} {:>3}{:>2}{:>4} |'
+    out_str += '{:^7}|{:^7}|  {:>6.3f}   |{:^8}|'
     out_list.append(lbl_str.format(*labels))
-    out_list.append('-'*74)
+    out_list.append('-'*71)
     for data in clash_proxies:
+      # clean and order info for output string
       d = list(data)
       d[0] = ','.join(data[0])
       d[0] = d[0].replace('"','')
       d[0] = d[0].replace('pdb=','')
       d[0] = d[0].replace(',',' ')
-      # split and reorder pdb info
       rec_list = d[0].split()
-      rec_list = [rec_list[i] for i in [2,3,1,0,6,7,5,4]]
       rec_list.extend(d[1:3])
       rec_list.append(d[3]-d[4])
       rec_list.append('1'*bool(d[5]) + ' '*(not bool(d[5])))
