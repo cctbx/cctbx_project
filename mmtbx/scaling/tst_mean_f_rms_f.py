@@ -11,7 +11,7 @@ def exercise (args) :
     out=null_out()
 
   print "Testing mean_f_rms_f....",
-  from mmtbx.scaling.mean_f_rms_f import test 
+  from mmtbx.scaling.mean_f_rms_f import test
   test(out=out)
 
 if (__name__ == "__main__") :

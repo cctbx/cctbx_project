@@ -332,7 +332,7 @@ def get_residues_and_ha(seq_file=None,atom_type=None,
       n_aa=n_aa,ncs_copies=1,out=null_out())
 
   # if data file is specified, use it to get crystal_symmetry and then estimate
-  # residues and ha using that information and seq_file. Otherwise guess 
+  # residues and ha using that information and seq_file. Otherwise guess
   if data and os.path.isfile(data):
     from phenix.command_line.ncs_and_number_of_ha import ncs_and_number_of_ha
     args=["data=%s" %(data)]
@@ -700,7 +700,7 @@ def get_dmin_ranges(resolution=None,target_list=[6,5,3,2.5,2,1.5]):
     new_list.append(x)
     if best_match==x: break
   return new_list
-  
+
 
 class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
   def __init__ (self,
@@ -1111,7 +1111,7 @@ about %3d%% (based on estimated anomalous signal and actual outcomes for
 real structures.), and the estimated figure of merit of phasing is %3.2f.""" % (dmin, i_over_sigma,  cc_half,  cc_ano,
         s_ano, int(solved), fom))
     out.show_text("""
-The value of sigF/F (actually rms(sigF)/rms(F)) is approximately the inverse 
+The value of sigF/F (actually rms(sigF)/rms(F)) is approximately the inverse
 of I/sigma. The calculations are based on rms(sigF)/rms(F).
 
 Note that these values assume data measured with little radiation damage or at

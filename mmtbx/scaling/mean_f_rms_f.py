@@ -20,7 +20,7 @@ def test(out=sys.stdout):
   b=90
   d_min=3.5
   ratio=ratio_mean_f_to_rms_f(d_min,b)
-  text= "B: %7.2f   D_min: %7.2f  <f>/<f**2>**0.5: %7.3f" %( b,d_min,ratio) 
+  text= "B: %7.2f   D_min: %7.2f  <f>/<f**2>**0.5: %7.3f" %( b,d_min,ratio)
   print >>out,text
   expected_text="B:   90.00   D_min:    3.50  <f>/<f**2>**0.5:   0.889"
   o=float(text.split()[-1])
@@ -36,17 +36,17 @@ def exercise_mean_fh():
        i+=1
        ratio=ratio_mean_f_to_rms_f(d_min,b)
        print "B: %7.2f   D_min: %7.2f  <f>/<f**2>**0.5: %7.3f" %(
-         b,d_min,ratio) 
- 
-if __name__=="__main__": 
+         b,d_min,ratio)
+
+if __name__=="__main__":
   if 'exercise' in sys.argv:
-    exercise_mean_fh() 
+    exercise_mean_fh()
     sys.exit(0)
-  
+
   if 'tst' in sys.argv:
-    test() 
+    test()
     sys.exit(0)
-  
+
   sum_n=0.
   sum_f=0.
   sum_f2=0.
@@ -55,9 +55,9 @@ if __name__=="__main__":
   fh=mean_fh(d_min,b)
   fh2=mean_fh_square(d_min,b)
   ratio=fh/math.sqrt(fh2)
-  
+
   import math
-  
+
   for line in open(sys.argv[1]).readlines():
     spl=line.lstrip().rstrip().split()
     if len(spl) != 5: continue
