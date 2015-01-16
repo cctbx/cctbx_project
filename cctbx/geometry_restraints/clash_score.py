@@ -479,18 +479,14 @@ class info(object):
     out_list.append('='*len(title))
     labels =  ["Clashing residues info","i_seq","j_seq","model-vdw","sym clash"]
     lbl_str = '{:^33}|{:^7}|{:^7}|{:^11}|{:<10}'
-    out_str = '{:>5}{:>4}{:>2}{:>4} |{:>5} {:>3}{:>2}{:>4} |'
-    out_str += '{:^7}|{:^7}|  {:>6.3f}   |{:^8}|'
+    out_str = '{:>16}|{:>16}|{:^7}|{:^7}|  {:>6.3f}   |{:^8}|'
     out_list.append(lbl_str.format(*labels))
     out_list.append('-'*71)
     for data in clash_proxies:
       # clean and order info for output string
       d = list(data)
-      d[0] = ','.join(data[0])
-      d[0] = d[0].replace('"','')
-      d[0] = d[0].replace('pdb=','')
-      d[0] = d[0].replace(',',' ')
-      rec_list = d[0].split()
+      rec_list = [x.replace('pdb=','') for x in d[0]]
+      rec_list = [x.replace('"','') for x in rec_list]
       rec_list.extend(d[1:3])
       rec_list.append(d[3]-d[4])
       rec_list.append('1'*bool(d[5]) + ' '*(not bool(d[5])))
