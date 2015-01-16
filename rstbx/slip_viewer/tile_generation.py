@@ -116,6 +116,22 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0, show_untrusted=
 
       continue
 
+    elif len(panels) == 120 and panels[0].get_image_size() == (487,195):
+      i_row = i // 5
+      i_col = i % 5
+      print i_row, i_col
+      print data_padded
+      #print "DLS I23 12M"
+      rawdata.matrix_paste_block_in_place(
+        block=data.as_double(),
+        i_row=i * data_padded[0],
+        i_column=0)
+      # XXX hardcoded panel height and row gap
+      my_flex_image.add_transformation_and_translation(
+        (1,0,0,1), (-i_row*(195+17),-i_col*(487+7)))
+
+      continue
+
     # Get unit vectors in the fast and slow directions, as well as the
     # the locations of the origin and the center of the panel, in
     # meters.

@@ -15,6 +15,11 @@ from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
 __mask = None
 
+# if group_rows == True, then interpret data as 24 panels, where each row
+# of 5 panels is grouped as one "panel"
+# elif group_rows == False, then interpret data as 120 panels, 24 rows * 5 columns
+group_rows = True
+
 def read_mask():
   global __mask
   if not __mask:
@@ -144,21 +149,43 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         off_x = 191.9
       else:
         off_x = 184.9
-      origin = 250.0 * normal - off_x * fast - 16.8 * slow + 250 * z + \
-          beam_shift_y * y
-      p = detector.add_panel()
 
-      # OBS! you need to set the panel to a root before set local frame...
-      root.add_panel(p)
-      p.set_name('row-%02d' % j)
-      p.set_image_size((2463, 195))
-      p.set_trusted_range((-1, 1000000))
-      p.set_pixel_size((0.172, 0.172))
-      p.set_local_frame(
-        fast.elems,
-        slow.elems,
-        origin.elems)
-      p.set_px_mm_strategy(px_mm)
+      if group_rows:
+        origin = 250.0 * normal - off_x * fast - 16.8 * slow + 250 * z + \
+            beam_shift_y * y
+        p = detector.add_panel()
+
+        # OBS! you need to set the panel to a root before set local frame...
+        root.add_panel(p)
+        p.set_name('row-%02d' % j)
+        p.set_image_size((2463, 195))
+        p.set_trusted_range((-1, 1000000))
+        p.set_pixel_size((0.172, 0.172))
+        p.set_local_frame(
+          fast.elems,
+          slow.elems,
+          origin.elems)
+        p.set_px_mm_strategy(px_mm)
+
+      else:
+        row_origin = 250.0 * normal - off_x * fast - 16.8 * slow + 250 * z + \
+            beam_shift_y * y
+
+        for i in range(5):
+          p = detector.add_panel()
+          origin = row_origin + i * (487+7) * fast
+
+          # OBS! you need to set the panel to a root before set local frame...
+          root.add_panel(p)
+          p.set_name('row-%02d' % j)
+          p.set_image_size((487, 195))
+          p.set_trusted_range((-1, 1000000))
+          p.set_pixel_size((0.172, 0.172))
+          p.set_local_frame(
+            fast.elems,
+            slow.elems,
+            origin.elems)
+          p.set_px_mm_strategy(px_mm)
 
     return detector
 
@@ -167,10 +194,19 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       data = read_cbf_image(self._image_file)
       self._raw_data = []
 
-      for j, panel in enumerate(self.get_detector()):
-        shift_y = 195 + 17
-        xmin, ymin, xmax, ymax = 0, j * shift_y, 2463, j * shift_y + 195
-        self._raw_data.append(data[ymin:ymax,xmin:xmax])
+      if group_rows:
+        for j, panel in enumerate(self.get_detector()):
+          shift_y = 195 + 17
+          xmin, ymin, xmax, ymax = 0, j * shift_y, 2463, j * shift_y + 195
+          self._raw_data.append(data[ymin:ymax,xmin:xmax])
+      else:
+        for j in range(24):
+          for i in range(5):
+            shift_y = 195 + 17
+            shift_x = 487 + 7
+            xmin, ymin, xmax, ymax \
+              = i * shift_x, j * shift_y, i * shift_x + 487, j * shift_y + 195
+            self._raw_data.append(data[ymin:ymax,xmin:xmax])
 
     if index is not None:
       return self._raw_data[index]
