@@ -174,7 +174,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         for i in range(5):
           p = detector.add_panel()
           origin = row_origin + i * (487+7) * 0.172 * fast
-          print i, origin
+          #print i, origin
 
           # OBS! you need to set the panel to a root before set local frame...
           root.add_panel(p)
