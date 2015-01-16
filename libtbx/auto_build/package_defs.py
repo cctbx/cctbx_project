@@ -100,6 +100,50 @@ class fetch_packages (object) :
     self.no_download = no_download
     self.copy_files = copy_files
 
+  def download_to_file(self, url, file, status=True):
+    """Downloads a URL to file. Returns the file size.
+       Returns -1 if the file size does not match the expected file size.
+       Returns -2 if the download is skipped due to the file at the URL
+       not being newer than the local copy (with matching file sizes).
+    """
+    # TODO: -2 case not implemented yet
+    socket = urllib2.urlopen(url)
+    file_size = int(socket.info().getheader('Content-Length'))
+    hr_size = (file_size, "B")
+    if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "kB")
+    if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "MB")
+
+    self.log.write("%.1f %s\n    [0%%" % hr_size)
+    self.log.flush()
+
+    received = 0
+    block_size = 8192
+    progress = 1
+    data = ""
+    while 1:
+      block = socket.read(block_size)
+      received += len(block)
+      data += block
+      if file_size > 0:
+        while (100 * received / file_size) > progress:
+          progress += 1
+          if (progress % 20) == 0:
+            self.log.write("%d%%" % progress)
+            self.log.flush()
+          elif (progress % 2) == 0:
+            self.log.write(".")
+            self.log.flush()
+
+      if not block: break
+    self.log.write("]\n")
+    self.log.flush()
+    f = open(file, "wb")
+    f.write(data)
+    f.close()
+    if (file_size > 0) and (file_size != received):
+      return -1
+    return received
+
   def __call__ (self, pkg_name, pkg_url=None, output_file=None) :
     if (pkg_url is None) :
       pkg_url = BASE_CCI_PKG_URL
@@ -126,13 +170,8 @@ class fetch_packages (object) :
           pkg_name)
       full_url = "%s/%s" % (pkg_url, pkg_name)
       self.log.write("    downloading from %s : " % pkg_url)
-      f = open(output_file, "wb")
-      data = urllib2.urlopen(full_url).read()
-      assert (len(data) > 0), pkg_name
-      self.log.write("%d KB\n" % (len(data) / 1024))
-      self.log.flush()
-      f.write(data)
-      f.close()
+      size = self.download_to_file(full_url, output_file)
+      assert (size > 0), pkg_name
       return op.join(self.dest_dir, output_file)
 
 def fetch_all_dependencies (dest_dir,
