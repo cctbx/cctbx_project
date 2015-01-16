@@ -737,17 +737,17 @@ class test_cctbx_clashscore(unittest.TestCase):
 
   def test_print(self):
     """ test proper clashscore printout """
-    clash_score_info = process_clash_score(self.file_name)
+    clash_score_info = process_clash_score(self.file_name2)
     results_str = clash_score_info.show(log=null_out())
 
     # inspect at output
     results = results_str.split('\n')
     # check number of lines in output
-    self.assertEqual(len(results),11)
+    self.assertEqual(len(results),17)
     # check general table structure
     self.assertTrue(results[4].startswith('========'))
     self.assertTrue(results[6].startswith('--------'))
-    self.assertTrue('sym_op_j' in results[5])
+    self.assertTrue('1' in results[7])
     # print results_str
 
   def test_running_from_command_line(self):
@@ -1058,7 +1058,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   # tests = ['test_running_from_command_line','test_compute','test_info']
-  tests = ['test_inline_clash']
+  tests = ['test_print']
   suite = unittest.TestSuite(map(test_cctbx_clashscore, tests))
   return suite
 
