@@ -183,12 +183,8 @@ def make_mp_input(input_list, log_dir, gs_params):
     img_filename = os.path.basename(current_img)
 
     if os.path.relpath(path, os.path.abspath(gs_params.input)) == '.':
-      input_dir = os.path.abspath(gs_params.input)
       output_dir = os.path.abspath(gs_params.output)
     else:
-      input_dir = '{0}/{1}'.format(os.path.abspath(gs_params.input),
-                                    os.path.relpath(path,
-                                    os.path.abspath(gs_params.input)))
       output_dir = '{0}/{1}'.format(os.path.abspath(gs_params.output),
                                     os.path.relpath(path,
                                     os.path.abspath(gs_params.input)))
@@ -198,12 +194,6 @@ def make_mp_input(input_list, log_dir, gs_params):
     index_log_dir = "{0}/tmp_{1}".format(log_dir, img_filename.split('.')[0])
     mp_output_entry = [current_img, current_output_dir]
     mp_output.append(mp_output_entry)
-
-    # Make directories for output / log file for the image being integrated
-    if not os.path.exists(current_output_dir):
-      os.makedirs(current_output_dir)
-    if not os.path.exists(index_log_dir):
-      os.makedirs(index_log_dir)
 
     # Create input list w/ filename and spot-finding params
     for sig_height in range(gs_params.grid_search.h_min,
@@ -216,9 +206,12 @@ def make_mp_input(input_list, log_dir, gs_params):
 
   return mp_input, mp_output
 
-
 # Make output directories preserving the tree structure
-def make_dirs (output_dir_list, log_dir):
+def make_dirs (input_list, output_dir_list, log_dir, gs_params):
+
+  mp_item = []
+  mp_input = []
+  mp_output = []
 
   # Make output directory structure
   for output_dir in output_dir_list:
@@ -228,17 +221,31 @@ def make_dirs (output_dir_list, log_dir):
     else:
       os.makedirs(output_dir)
 
-    # make log folder for cxi.index logs (one per integration attempt)
-    index_log_dir = output_dir + '/logs'
-    if os.path.exists(index_log_dir):
-      shutil.rmtree(index_log_dir)
-      os.makedirs(index_log_dir)
-    else:
-      os.makedirs(index_log_dir)
-
   # make log folder (under main output folder regardless of tree structure)
   if os.path.exists(log_dir):
     shutil.rmtree(log_dir)
     os.makedirs(log_dir)
   else:
     os.makedirs(log_dir)
+
+  for current_img in input_list:
+    # generate filenames, etc.
+    path = os.path.dirname(current_img)
+    img_filename = os.path.basename(current_img)
+
+    if os.path.relpath(path, os.path.abspath(gs_params.input)) == '.':
+      output_dir = os.path.abspath(gs_params.output)
+    else:
+      output_dir = '{0}/{1}'.format(os.path.abspath(gs_params.output),
+                                    os.path.relpath(path,
+                                    os.path.abspath(gs_params.input)))
+
+    current_output_dir = "{0}/tmp_{1}".format(output_dir,
+                                              img_filename.split('.')[0])
+    index_log_dir = "{0}/tmp_{1}".format(log_dir, img_filename.split('.')[0])
+
+    # Make directories for output / log file for the image being integrated
+    if not os.path.exists(current_output_dir):
+      os.makedirs(current_output_dir)
+    if not os.path.exists(index_log_dir):
+      os.makedirs(index_log_dir)
