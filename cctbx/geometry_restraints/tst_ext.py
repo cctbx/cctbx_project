@@ -2923,7 +2923,7 @@ def exercise_parallelity():
   p = geometry_restraints.parallelity(i_sites=test_sites_21[0],
                   j_sites=test_sites_21[1],
                   weight=1000)
-  assert approx_equal(p.residual(), 250, 0.00001)
+  assert approx_equal(p.residual(), 500, 0.00001)
   p = geometry_restraints.parallelity(i_sites=test_sites_3[0],
                   j_sites=test_sites_3[1],
                   weight=1)
@@ -2940,15 +2940,18 @@ def exercise_parallelity():
   test_sites_1d = [1,0,0, 2,0,0, 1,1.732050807568877,-1,
                    1,0,0, 2,0,0, 1,0,1]
   # for target_angle_deg in [0,10]:
-  for target_angle_deg in range(0,360,2):
-    for slack in range(0,90,2):
+  for target_angle_deg in range(0,360,4):
+    for slack in range(0,90,4):
       for top_out in [False, True]:
+        limit = 10
+        weight = 10
+        # print target_angle_deg, slack
         p_original = geometry_restraints.parallelity(i_sites=test_sites[:3],
                                  j_sites=test_sites[3:],
                                  weight=1,
                                  target_angle_deg=target_angle_deg,
                                  slack=slack,
-                                 limit=0.001,
+                                 limit=limit,
                                  top_out=top_out)
         grad = list(p_original.gradients())
         fin_dif_grad = []
@@ -2960,7 +2963,7 @@ def exercise_parallelity():
                            weight=1,
                            target_angle_deg=target_angle_deg,
                            slack=slack,
-                           limit=0.001,
+                           limit=limit,
                            top_out=top_out)
           test_sites_1d[i]-=2*h
           points = make_points(test_sites_1d)
@@ -2969,12 +2972,13 @@ def exercise_parallelity():
                            weight=1,
                            target_angle_deg=target_angle_deg,
                            slack=slack,
-                           limit=0.001,
+                           limit=limit,
                            top_out=top_out)
           test_sites_1d[i]+=h
+          # print p1.residual(), p2.residual()
           fin_dif_grad.append((p1.residual()-p2.residual())/(2.0*h))
-        sites_fdg = make_points(fin_dif_grad)
-        assert approx_equal(grad, sites_fdg, 1.e-7)
+      sites_fdg = make_points(fin_dif_grad)
+      assert approx_equal(grad, sites_fdg, 1.e-6)
   # Proxy selections
   def make_proxy(i_seqs,
                  j_seqs,

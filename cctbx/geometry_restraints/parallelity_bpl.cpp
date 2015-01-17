@@ -37,7 +37,7 @@ namespace {
             arg("weight"),
             arg("target_angle_deg")=0,
             arg("slack")=0,
-            arg("limit")=-1,
+            arg("limit")=1,
             arg("top_out")=false)))
         .def(init<
           af::shared<std::size_t> const&,
@@ -104,7 +104,7 @@ namespace {
               arg("weight"),
               arg("target_angle_deg")=0,
               arg("slack")=0,
-              arg("limit")=-1,
+              arg("limit")=1,
               arg("top_out")=false)))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   parallelity_proxy const&>(
