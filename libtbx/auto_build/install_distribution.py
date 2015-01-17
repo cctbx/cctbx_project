@@ -565,18 +565,20 @@ class installer(object):
     # csh/tcsh environment setup file
     print >> self.out, "Generating %s environment setup scripts..."%self.product_name
     env_prefix = self.product_name.upper() # e.g. "Phenix" -> "PHENIX"
-    with open(os.path.join(self.dest_dir, '%s_env.csh'%self.dest_dir_prefix), 'w') as f:
-      f.write("#!/bin/csh -f\n")
-      f.write("setenv %s \"%s\"\n" % (env_prefix, self.dest_dir))
-      f.write("setenv %s_VERSION %s\n" % (env_prefix, self.version))
-      f.write("source $%s/build/setpaths.csh\n" % (env_prefix))
+    f = open(os.path.join(self.dest_dir, '%s_env.csh'%self.dest_dir_prefix), 'w')
+    f.write("#!/bin/csh -f\n")
+    f.write("setenv %s \"%s\"\n" % (env_prefix, self.dest_dir))
+    f.write("setenv %s_VERSION %s\n" % (env_prefix, self.version))
+    f.write("source $%s/build/setpaths.csh\n" % (env_prefix))
+    f.close()
 
-    with open(os.path.join(self.dest_dir, '%s_env.sh'%self.dest_dir_prefix), 'w') as f:
-      f.write("#!/bin/sh\n")
-      f.write("#\n")
-      f.write("export %s=\"%s\"\n" % (env_prefix, self.dest_dir))
-      f.write("export %s_VERSION=%s\n" % (env_prefix, self.version))
-      f.write(". $%s/build/setpaths.sh\n" % (env_prefix))
+    f = open(os.path.join(self.dest_dir, '%s_env.sh'%self.dest_dir_prefix), 'w')
+    f.write("#!/bin/sh\n")
+    f.write("#\n")
+    f.write("export %s=\"%s\"\n" % (env_prefix, self.dest_dir))
+    f.write("export %s_VERSION=%s\n" % (env_prefix, self.version))
+    f.write(". $%s/build/setpaths.sh\n" % (env_prefix))
+    f.close()
 
   def get_version (self) :
     """
