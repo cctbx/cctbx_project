@@ -575,11 +575,11 @@ def check_and_add_hydrogen(
     clean_out = easy_run.fully_buffered(trim,stdin_lines=stdin_lines)
     if (clean_out.return_code != 0) :
       msg_str = "Reduce crashed with command '%s' - dumping stderr:\n%s"
-      raise RuntimeError(msg_str % (trim, "\n".join(clean_out.stderr_lines)))
+      raise Sorry(msg_str % (trim, "\n".join(clean_out.stderr_lines)))
     build_out = easy_run.fully_buffered(build,stdin_lines=clean_out.stdout_lines)
     if (build_out.return_code != 0) :
       msg_str = "Reduce crashed with command '%s' - dumping stderr:\n%s"
-      raise RuntimeError(msg_str % (build, "\n".join(build_out.stderr_lines)))
+      raise Sorry(msg_str % (build, "\n".join(build_out.stderr_lines)))
     reduce_str = string.join(build_out.stdout_lines, '\n')
     return reduce_str,True
   else:
