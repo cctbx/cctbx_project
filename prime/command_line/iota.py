@@ -4,7 +4,7 @@ from __future__ import division
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
 Last Changed: 01/16/2015
-Description : IOTA command-line module. Version 0.82
+Description : IOTA command-line module. Version 0.83
 '''
 
 import os
@@ -28,8 +28,8 @@ def index_mproc_wrapper(current_img):
 
 if __name__ == "__main__":
 
-  gs_version = '0.82'
-  ps_version = '0.82'
+  gs_version = '0.83'
+  ps_version = '0.83'
 
   print '\n{}'.format(datetime.now())
   print 'Starting IOTA ... \n\n'
@@ -52,7 +52,6 @@ if __name__ == "__main__":
         input_list = listfile_contents.splitlines()
 
     input_dir_list, output_dir_list, log_dir = inp.make_dir_lists(input_list, gs_params.input, gs_params.output)
-    inp.make_dirs(output_dir_list, log_dir)
     mp_input_list, mp_output_list = inp.make_mp_input(input_list, log_dir, gs_params)
 
     if gs_params.flag_inp_test == True:
@@ -71,6 +70,8 @@ if __name__ == "__main__":
 
     # Check for grid search toggle, only do it turned on
     if gs_params.grid_search.flag_on == True:
+
+      inp.make_dirs(input_list, output_dir_list, log_dir, gs_params)
 
       # Setup grid search logger
       gs_logger = logging.getLogger('gs_log')
@@ -112,10 +113,6 @@ if __name__ == "__main__":
 
       gs_logger.info('\n\nIOTA grid search version {0}'.format(gs_version))
 
-    else:
-      ps_logger.info('\nSettings for this run:\n')
-      ps_logger.info(txt_out)
-
 
     # ------------------ Pickle Selection ------------------
 
@@ -131,8 +128,19 @@ if __name__ == "__main__":
     ps_logger.addHandler(ps_fileHandler)
     ps_logger.addHandler(ps_streamHandler)
 
-
     ps_logger.info('\n\n{:-^100} \n'.format(' PICKLE SELECTION '))
+
+    if not gs_params.grid_search.flag_on:
+      # clear list files from previous selection run
+      os.remove("{}/best_by_strong.lst".format(gs_params.output))
+      os.remove("{}/best_by_offset.lst".format(gs_params.output))
+      os.remove("{}/best_by_uc.lst".format(gs_params.output))
+      os.remove("{}/best_by_total.lst".format(gs_params.output))
+      os.remove("{}/not_integrated.lst".format(gs_params.output))
+      os.remove("{}/prefilter_fail.lst".format(gs_params.output))
+
+      ps_logger.info('\nSettings for this run:\n')
+      ps_logger.info(txt_out)
 
     for output_dir in output_dir_list:
       ps_logger.info('Found integrated pickles ' \
