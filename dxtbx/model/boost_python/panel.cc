@@ -374,12 +374,12 @@ namespace dxtbx { namespace model { namespace boost_python {
     class_<PanelData, bases<VirtualPanel> >("Panel")
       .def(init<std::string,
                 std::string,
-                vec3 <double>,
-                vec3 <double>,
-                vec3 <double>,
-                vec2 <double>,
+                tiny<double,3>,
+                tiny<double,3>,
+                tiny<double,3>,
+                tiny<double,2>,
                 tiny<std::size_t,2>,
-                vec2 <double> >((
+                tiny<double,2> >((
         arg("type"),
         arg("name"),
         arg("fast_axis"),
@@ -404,12 +404,12 @@ namespace dxtbx { namespace model { namespace boost_python {
     class_<Panel, bases<PanelData> >("Panel")
       .def(init<std::string,
                 std::string,
-                vec3 <double>,
-                vec3 <double>,
-                vec3 <double>,
-                vec2 <double>,
-                vec2 <std::size_t>,
-                vec2 <double> >((
+                tiny<double,3>,
+                tiny<double,3>,
+                tiny<double,3>,
+                tiny<double,2>,
+                tiny<std::size_t,2>,
+                tiny<double,2> >((
         arg("type"),
         arg("name"),
         arg("fast_axis"),
@@ -420,12 +420,12 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("trusted_range"))))
       .def(init<std::string,
                 std::string,
-                vec3 <double>,
-                vec3 <double>,
-                vec3 <double>,
-                vec2 <double>,
-                vec2 <std::size_t>,
-                vec2 <double>,
+                tiny<double,3>,
+                tiny<double,3>,
+                tiny<double,3>,
+                tiny<double,2>,
+                tiny<std::size_t,2>,
+                tiny<double,2>,
                 shared_ptr<PxMmStrategy> >((
         arg("type"),
         arg("name"),
