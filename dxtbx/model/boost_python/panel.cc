@@ -158,9 +158,9 @@ namespace dxtbx { namespace model { namespace boost_python {
         extract< vec3<double> >(state[7]),
         extract< vec3<double> >(state[8]),
         extract< vec3<double> >(state[9]));
-      p.set_pixel_size(extract< vec2<double> >(state[10]));
-      p.set_image_size(extract< vec2<std::size_t> >(state[11]));
-      p.set_trusted_range(extract< vec2<double> >(state[12]));
+      p.set_pixel_size(extract< tiny<double,2> >(state[10]));
+      p.set_image_size(extract< tiny<std::size_t,2> >(state[11]));
+      p.set_trusted_range(extract< tiny<double,2> >(state[12]));
       p.set_px_mm_strategy(extract< shared_ptr<PxMmStrategy> >(state[13]));
     }
 
@@ -276,11 +276,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       }
     }
     result->set_image_size(
-      boost::python::extract< vec2<std::size_t> >(obj["image_size"]));
+      boost::python::extract< tiny<std::size_t,2> >(obj["image_size"]));
     result->set_pixel_size(
-      boost::python::extract< vec2<double> >(obj["pixel_size"]));
+      boost::python::extract< tiny<double,2> >(obj["pixel_size"]));
     result->set_trusted_range(
-      boost::python::extract< vec2<double> >(obj["trusted_range"]));
+      boost::python::extract< tiny<double,2> >(obj["trusted_range"]));
 
     return result;
   }
@@ -378,7 +378,7 @@ namespace dxtbx { namespace model { namespace boost_python {
                 vec3 <double>,
                 vec3 <double>,
                 vec2 <double>,
-                vec2 <std::size_t>,
+                tiny<std::size_t,2>,
                 vec2 <double> >((
         arg("type"),
         arg("name"),
