@@ -177,6 +177,20 @@ struct graph_export
   }
 
   static
+  std::size_t
+  num_vertices(Graph &graph)
+  {
+        return boost::num_vertices(graph);
+  }
+
+  static
+  std::size_t
+  num_edges(Graph &graph)
+  {
+        return boost::num_edges(graph);
+  }
+
+  static
   void
   process(std::string const& name)
   {
@@ -198,6 +212,8 @@ struct graph_export
         ( arg( "vertex1" ), arg( "vertex2" ), arg( "weight" ) = object() )
         )
       .def( "remove_vertex", remove_vertex, arg( "vertex" ) )
+          .def("num_vertices", num_vertices)
+          .def("num_edges", num_edges)
       ;
   }
 };
