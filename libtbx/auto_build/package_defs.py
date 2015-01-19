@@ -109,12 +109,13 @@ class fetch_packages (object) :
     # TODO: -2 case not implemented yet
     socket = urllib2.urlopen(url)
     file_size = int(socket.info().getheader('Content-Length'))
-    hr_size = (file_size, "B")
-    if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "kB")
-    if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "MB")
-
-    self.log.write("%.1f %s\n    [0%%" % hr_size)
-    self.log.flush()
+    if file_size > 0:
+      # There is no guarantee that the content-length header is set
+      hr_size = (file_size, "B")
+      if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "kB")
+      if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "MB")
+      self.log.write("%.1f %s\n    [0%%" % hr_size)
+      self.log.flush()
 
     received = 0
     block_size = 8192
@@ -135,8 +136,12 @@ class fetch_packages (object) :
             self.log.flush()
 
       if not block: break
-    self.log.write("]\n")
-    self.log.flush()
+    if file_size > 0:
+      self.log.write("]\n")
+      self.log.flush()
+    else:
+      self.log.write("%d kB\n" % (received / 1024))
+      self.log.flush()
     f = open(file, "wb")
     f.write(data)
     f.close()
