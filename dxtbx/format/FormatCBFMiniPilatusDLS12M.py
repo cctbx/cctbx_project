@@ -17,11 +17,14 @@ __mask = None
 
 # if group_rows == True, then interpret data as 24 panels, where each row
 # of 5 panels is grouped as one "panel"
-# elif group_rows == False, then interpret data as 120 panels, 24 rows * 5 columns
-group_rows = True
+# elif group_rows == False, then interpret data as 120 panels,
+# 24 rows * 5 columns - bodge through ENV variable in 1st cut...
 
-# FIXME make mask more compact i.e. store the sel() below & just apply this...
-# will be more efficient too...
+import os
+if 'P12M_120_PANEL' in os.environ:
+  group_rows = False
+else:
+  group_rows = True
 
 def read_mask():
   global __mask
