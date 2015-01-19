@@ -102,15 +102,37 @@ class fetch_packages (object) :
 
   def download_to_file(self, url, file, status=True):
     """Downloads a URL to file. Returns the file size.
-       Returns -1 if the file size does not match the expected file size.
-       Returns -2 if the download is skipped due to the file at the URL
-       not being newer than the local copy (with matching file sizes).
+       Returns -1 if the downloaded file size does not match the expected file
+       size
+       Returns -2 if the download is skipped due to the file at the URL not
+       being newer than the local copy (with matching file sizes).
     """
-    # TODO: -2 case not implemented yet
+
+    import os, time
     socket = urllib2.urlopen(url)
+
     file_size = int(socket.info().getheader('Content-Length'))
-    if file_size > 0:
-      # There is no guarantee that the content-length header is set
+    # There is no guarantee that the content-length header is set
+
+    remote_mtime = 0
+    try:
+      remote_mtime = time.mktime(socket.info().getdate('last-modified'))
+    except:
+      pass
+
+    if (file_size > 0):
+      if (remote_mtime > 0):
+        # check if existing file matches remote size and timestamp
+        try:
+          (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(file)
+          if (size == file_size) and (remote_mtime == mtime):
+            self.log.write("local copy is current\n")
+            socket.close()
+            return -2
+        except:
+          # proceed with download if timestamp/size check fails for any reason
+          pass
+
       hr_size = (file_size, "B")
       if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "kB")
       if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "MB")
@@ -130,23 +152,32 @@ class fetch_packages (object) :
           progress += 1
           if (progress % 20) == 0:
             self.log.write("%d%%" % progress)
-            self.log.flush()
           elif (progress % 2) == 0:
             self.log.write(".")
-            self.log.flush()
+          self.log.flush()
 
       if not block: break
     if file_size > 0:
       self.log.write("]\n")
-      self.log.flush()
     else:
       self.log.write("%d kB\n" % (received / 1024))
-      self.log.flush()
+    self.log.flush()
+
+    socket.close()
     f = open(file, "wb")
     f.write(data)
     f.close()
+
     if (file_size > 0) and (file_size != received):
       return -1
+
+    if remote_mtime > 0:
+      # set file timestamp if timestamp information is available
+      from stat import ST_ATIME
+      st = os.stat(file)
+      atime = st[ST_ATIME] # current access time
+      os.utime(file,(atime,remote_mtime))
+
     return received
 
   def __call__ (self, pkg_name, pkg_url=None, output_file=None) :
@@ -166,18 +197,30 @@ class fetch_packages (object) :
             return op.join(self.dest_dir, output_file)
           else :
             return static_file
-    if (op.exists(pkg_name)) :
-      print >> self.log, "    using ./%s" % pkg_name
-      return op.join(self.dest_dir, pkg_name)
-    else :
-      if (self.no_download) :
+    if (self.no_download) :
+      if (op.exists(pkg_name)) :
+        print >> self.log, "    using ./%s" % pkg_name
+        return op.join(self.dest_dir, pkg_name)
+      else :
         raise RuntimeError(("Package '%s' not found on local filesystems.  ") %
           pkg_name)
-      full_url = "%s/%s" % (pkg_url, pkg_name)
-      self.log.write("    downloading from %s : " % pkg_url)
+    full_url = "%s/%s" % (pkg_url, pkg_name)
+    self.log.write("    downloading from %s : " % pkg_url)
+    try:
       size = self.download_to_file(full_url, output_file)
-      assert (size > 0), pkg_name
+    except urllib2.HTTPError, err:
+      print >> self.log, err
+      if (op.exists(pkg_name)) :
+        print >> self.log, "    using ./%s" % pkg_name
+        return op.join(self.dest_dir, pkg_name)
+      else:
+        raise
+
+    if (size == -2):
+      print >> self.log, "    using ./%s (cached)" % pkg_name
       return op.join(self.dest_dir, output_file)
+    assert (size > 0), pkg_name
+    return op.join(self.dest_dir, output_file)
 
 def fetch_all_dependencies (dest_dir,
     log,
