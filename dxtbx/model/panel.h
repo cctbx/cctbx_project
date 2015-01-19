@@ -28,6 +28,7 @@ namespace dxtbx { namespace model {
 
   using scitbx::af::double4;
   using boost::shared_ptr;
+  using scitbx::af::tiny;
 
   /**
    * A panel class.
@@ -42,12 +43,12 @@ namespace dxtbx { namespace model {
     /** Construct with data but no px/mm strategy */
     Panel(std::string type,
           std::string name,
-          vec3 <double> fast_axis,
-          vec3 <double> slow_axis,
-          vec3 <double> origin,
-          vec2 <double> pixel_size,
-          vec2 <std::size_t> image_size,
-          vec2 <double> trusted_range)
+          tiny<double,3> fast_axis,
+          tiny<double,3> slow_axis,
+          tiny<double,3> origin,
+          tiny<double,2> pixel_size,
+          tiny<std::size_t,2> image_size,
+          tiny<double,2> trusted_range)
       : PanelData(type, name,
           fast_axis, slow_axis, origin,
           pixel_size, image_size,
@@ -57,12 +58,12 @@ namespace dxtbx { namespace model {
     /** Construct with data with px/mm strategy */
     Panel(std::string type,
           std::string name,
-          vec3 <double> fast_axis,
-          vec3 <double> slow_axis,
-          vec3 <double> origin,
-          vec2 <double> pixel_size,
-          vec2 <std::size_t> image_size,
-          vec2 <double> trusted_range,
+          tiny<double,3> fast_axis,
+          tiny<double,3> slow_axis,
+          tiny<double,3> origin,
+          tiny<double,2> pixel_size,
+          tiny<std::size_t,2> image_size,
+          tiny<double,2> trusted_range,
           shared_ptr<PxMmStrategy> convert_coord)
       : PanelData(type, name,
           fast_axis, slow_axis, origin,
@@ -83,8 +84,8 @@ namespace dxtbx { namespace model {
     }
 
     /** Get the image size in millimeters */
-    vec2<double> get_image_size_mm() const {
-      return pixel_to_millimeter(vec2<double>(image_size_[0], image_size_[1]));
+    tiny<double,2> get_image_size_mm() const {
+      return pixel_to_millimeter(tiny<double,2>(image_size_[0], image_size_[1]));
     }
 
     /** Check the value is valid */
@@ -100,7 +101,7 @@ namespace dxtbx { namespace model {
 
     /** Check the coordinate is valid */
     bool is_coord_valid_mm(vec2<double> xy) const {
-      vec2<double> size = get_image_size_mm();
+      tiny<double,2> size = get_image_size_mm();
       return (0 <= xy[0] && xy[0] < size[0])
           && (0 <= xy[1] && xy[1] < size[1]);
     }
@@ -115,8 +116,8 @@ namespace dxtbx { namespace model {
     }
 
     /** Get the detector point (in mm) in lab coordinates */
-    vec3<double> get_pixel_lab_coord(vec2<double> xy) const {
-      vec2<double> xy_mm = pixel_to_millimeter(xy);
+    vec3<double> get_pixel_lab_coord(tiny<double,2> xy) const {
+      tiny<double,2> xy_mm = pixel_to_millimeter(xy);
       return get_lab_coord(xy_mm);
     }
 
