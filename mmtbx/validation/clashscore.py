@@ -281,7 +281,6 @@ class probe_clashscore_manager(object):
               clash_hash[key] = clash_obj
           else :
             clash_hash[key] = clash_obj
-            print key
       elif (type == "hb"):
         if (key in hbond_hash) :
           if (gap < hbond_hash[key].overlap):
@@ -327,7 +326,6 @@ class probe_clashscore_manager(object):
       clashscore = 0.0
     else:
       clashscore = (self.n_clashes * 1000) / self.n_atoms
-      print 'probe n , n_atoms',self.n_clashes,self.n_atoms
     self.clashscore = clashscore
     clashscore_b_cutoff = None
     if self.natoms_b_cutoff is not None and self.natoms_b_cutoff == 0:
