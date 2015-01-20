@@ -65,7 +65,8 @@ class waters (validation) :
     self.n_bad = 0
     self.n_heavy = 0
     pdb_atoms = pdb_hierarchy.atoms()
-    assert (not pdb_atoms.extract_i_seq().all_eq(0))
+    if(len(pdb_atoms)>1):
+      assert (not pdb_atoms.extract_i_seq().all_eq(0))
     unit_cell = xray_structure.unit_cell()
     pair_asu_table = xray_structure.pair_asu_table(
       distance_cutoff = distance_cutoff)

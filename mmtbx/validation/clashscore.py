@@ -6,7 +6,6 @@ All-atom contact analysis.  Requires Reduce and Probe (installed separately).
 from __future__ import division
 from cctbx.geometry_restraints.clash_score import check_and_add_hydrogen
 from mmtbx.validation import validation, atoms, atom_info, residue
-from libtbx.utils import Sorry
 from libtbx import easy_run
 import libtbx.load_env
 import re
@@ -83,7 +82,7 @@ class clashscore(validation):
     self.list_dict = {}
     self.probe_file = None
     if (not libtbx.env.has_module(name="probe")):
-      raise Sorry(
+      raise RuntimeError(
         "Probe could not be detected on your system.  Please make sure "+
         "Probe is in your path.\nProbe is available at "+
         "http://kinemage.biochem.duke.edu/")
@@ -250,44 +249,50 @@ class probe_clashscore_manager(object):
     probe_out = easy_run.fully_buffered(self.probe_txt,
       stdin_lines=pdb_string)
     if (probe_out.return_code != 0) :
-      raise Sorry("Probe crashed - dumping stderr:\n%s" %
+      raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
         "\n".join(probe_out.stderr_lines))
     probe_unformatted = probe_out.stdout_lines
     self.probe_unformatted = "\n".join(probe_unformatted)
     for line in probe_unformatted:
-      name, pat, type, srcAtom, targAtom, min_gap, gap, \
-      kissEdge2BullsEye, dot2BE, dot2SC, spike, score, stype, \
-      ttype, x, y, z, sBval, tBval = line.split(":")
-      atom1 = decode_atom_string(srcAtom, self.use_segids)
-      atom2 = decode_atom_string(targAtom, self.use_segids)
-      if (cmp(srcAtom,targAtom) < 0):
-        atoms = [ atom1, atom2 ]
-      else:
-        atoms = [ atom2, atom1 ]
-      gap = float(gap)
-      x, y, z = float(x), float(y), float(z)
-      clash_obj = clash(
-        atoms_info=atoms,
-        overlap=gap,
-        probe_type=type,
-        outlier=abs(gap) > 0.4,
-        max_b_factor=max(float(sBval), float(tBval)),
-        xyz=(x,y,z))
-      key = clash_obj
-      if (type == "so" or type == "bo"):
-        if (gap <= -0.4):
-          if (key in clash_hash) :
-            if (gap < clash_hash[key].overlap):
+      processed=False
+      try:
+        name, pat, type, srcAtom, targAtom, min_gap, gap, \
+        kissEdge2BullsEye, dot2BE, dot2SC, spike, score, stype, \
+        ttype, x, y, z, sBval, tBval = line.split(":")
+        processed=True
+      except KeyboardInterrupt: raise
+      except ValueError:
+        pass # something else (different from expected) got into output
+      if(processed):
+        atom1 = decode_atom_string(srcAtom, self.use_segids)
+        atom2 = decode_atom_string(targAtom, self.use_segids)
+        if (cmp(srcAtom,targAtom) < 0):
+          atoms = [ atom1, atom2 ]
+        else:
+          atoms = [ atom2, atom1 ]
+        gap = float(gap)
+        x, y, z = float(x), float(y), float(z)
+        clash_obj = clash(
+          atoms_info=atoms,
+          overlap=gap,
+          probe_type=type,
+          outlier=abs(gap) > 0.4,
+          max_b_factor=max(float(sBval), float(tBval)),
+          xyz=(x,y,z))
+        key = clash_obj
+        if (type == "so" or type == "bo"):
+          if (gap <= -0.4):
+            if (key in clash_hash) :
+              if (gap < clash_hash[key].overlap):
+                clash_hash[key] = clash_obj
+            else :
               clash_hash[key] = clash_obj
+        elif (type == "hb"):
+          if (key in hbond_hash) :
+            if (gap < hbond_hash[key].overlap):
+              hbond_hash[key] = clash_obj
           else :
-            clash_hash[key] = clash_obj
-      elif (type == "hb"):
-        if (key in hbond_hash) :
-          if (gap < hbond_hash[key].overlap):
             hbond_hash[key] = clash_obj
-        else :
-          hbond_hash[key] = clash_obj
-
     #sort the output
     temp = []
     for k in clash_hash.keys():
@@ -310,10 +315,15 @@ class probe_clashscore_manager(object):
     probe_info = easy_run.fully_buffered(self.probe_atom_txt,
       stdin_lines=pdb_string).raise_if_errors().stdout_lines
     if (len(probe_info) == 0) :
-      raise Sorry("Empty PROBE output.")
+      raise RuntimeError("Empty PROBE output.")
     self.n_atoms = 0
-    for line in probe_info :
-      dump, n_atoms = line.split(":")
+    for line in probe_info:
+      processed=False
+      try:
+        dump, n_atoms = line.split(":")
+      except KeyboardInterrupt: raise
+      except ValueError:
+        pass # something else (different from expected) got into output
     self.n_atoms = int(n_atoms)
     self.natoms_b_cutoff = None
     if self.probe_atom_b_factor is not None:
