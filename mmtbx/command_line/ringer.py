@@ -159,7 +159,7 @@ def sample_angle (
       angle=params.sampling_angle,
       deg=True)
     point_frac = unit_cell.fractionalize(site_cart=point)
-    rho = rho_fofs = None
+    rho = rho_fofc = None
     if (params.sampling_method == "spline") and (map_coeffs is not None) :
       rho = real_map.tricubic_interpolation(point_frac)
       if (difference_map is not None) :
@@ -225,13 +225,7 @@ class iterate_over_residues (object) :
       self.sigma = 1 #ccp4_map.statistics().sigma()
       # XXX the unit cell that we need for the non-crystallographic
       # interpolation is not what comes out of the map - it's the
-      from cctbx import uctbx
-      unit_cell = ccp4_map.unit_cell()
-      a = unit_cell.parameters()[0] / ccp4_map.unit_cell_grid[0]
-      b = unit_cell.parameters()[1] / ccp4_map.unit_cell_grid[1]
-      c = unit_cell.parameters()[2] / ccp4_map.unit_cell_grid[2]
-      alpha,beta,gamma = unit_cell.parameters()[3:6]
-      self.unit_cell = uctbx.unit_cell((a,b,c,alpha,beta,gamma))
+      self.unit_cell = ccp4_map.grid_unit_cell()
       # FIXME should use this instead (once it's available)
       #self.unit_cell = ccp4_map.grid_unit_cell()
     if (difference_map_coeffs is not None) :
