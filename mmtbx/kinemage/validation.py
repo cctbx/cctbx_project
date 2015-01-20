@@ -1042,7 +1042,7 @@ def export_molprobity_result_as_kinemage (
       kin_out += pperp_outliers(hierarchy=pdb_hierarchy,
                                 chain=chain)
       counter += 1
-  kin_out += omegalyze.omegalyze(pdb_hierarchy=hierarchy,nontrans_only=True,
+  kin_out += omegalyze.omegalyze(pdb_hierarchy=pdb_hierarchy,nontrans_only=True,
     out=None,quiet=False).as_kinemage()
   kin_out += make_probe_dots(hierarchy=pdb_hierarchy,
     keep_hydrogens=keep_hydrogens)
