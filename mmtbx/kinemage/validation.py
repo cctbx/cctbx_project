@@ -7,6 +7,7 @@ from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.cbetadev import cbetadev
 from mmtbx.validation import rna_validate
+from mmtbx.validation import omegalyze
 from mmtbx.kinemage import kin_vec
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import easy_run
@@ -899,6 +900,8 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
       kin_out += pperp_outliers(hierarchy=hierarchy,
                                 chain=chain)
       counter += 1
+  kin_out += omegalyze.omegalyze(pdb_hierarchy=hierarchy,nontrans_only=True,
+    out=None,quiet=False).as_kinemage()
   kin_out += make_probe_dots(hierarchy=hierarchy, keep_hydrogens=keep_hydrogens)
   kin_out += get_footer()
 
@@ -1039,6 +1042,8 @@ def export_molprobity_result_as_kinemage (
       kin_out += pperp_outliers(hierarchy=pdb_hierarchy,
                                 chain=chain)
       counter += 1
+  kin_out += omegalyze.omegalyze(pdb_hierarchy=hierarchy,nontrans_only=True,
+    out=None,quiet=False).as_kinemage()
   kin_out += make_probe_dots(hierarchy=pdb_hierarchy,
     keep_hydrogens=keep_hydrogens)
   kin_out += get_footer()
