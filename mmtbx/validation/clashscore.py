@@ -6,6 +6,7 @@ All-atom contact analysis.  Requires Reduce and Probe (installed separately).
 from __future__ import division
 from cctbx.geometry_restraints.clash_score import check_and_add_hydrogen
 from mmtbx.validation import validation, atoms, atom_info, residue
+from libtbx.utils import Sorry
 from libtbx import easy_run
 import libtbx.load_env
 import re
@@ -82,7 +83,7 @@ class clashscore(validation):
     self.list_dict = {}
     self.probe_file = None
     if (not libtbx.env.has_module(name="probe")):
-      raise RuntimeError(
+      raise Sorry(
         "Probe could not be detected on your system.  Please make sure "+
         "Probe is in your path.\nProbe is available at "+
         "http://kinemage.biochem.duke.edu/")
@@ -249,7 +250,7 @@ class probe_clashscore_manager(object):
     probe_out = easy_run.fully_buffered(self.probe_txt,
       stdin_lines=pdb_string)
     if (probe_out.return_code != 0) :
-      raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
+      raise Sorry("Probe crashed - dumping stderr:\n%s" %
         "\n".join(probe_out.stderr_lines))
     probe_unformatted = probe_out.stdout_lines
     self.probe_unformatted = "\n".join(probe_unformatted)
@@ -280,6 +281,7 @@ class probe_clashscore_manager(object):
               clash_hash[key] = clash_obj
           else :
             clash_hash[key] = clash_obj
+            print key
       elif (type == "hb"):
         if (key in hbond_hash) :
           if (gap < hbond_hash[key].overlap):
@@ -309,7 +311,7 @@ class probe_clashscore_manager(object):
     probe_info = easy_run.fully_buffered(self.probe_atom_txt,
       stdin_lines=pdb_string).raise_if_errors().stdout_lines
     if (len(probe_info) == 0) :
-      raise RuntimeError("Empty PROBE output.")
+      raise Sorry("Empty PROBE output.")
     self.n_atoms = 0
     for line in probe_info :
       dump, n_atoms = line.split(":")
@@ -325,6 +327,7 @@ class probe_clashscore_manager(object):
       clashscore = 0.0
     else:
       clashscore = (self.n_clashes * 1000) / self.n_atoms
+      print 'probe n , n_atoms',self.n_clashes,self.n_atoms
     self.clashscore = clashscore
     clashscore_b_cutoff = None
     if self.natoms_b_cutoff is not None and self.natoms_b_cutoff == 0:
