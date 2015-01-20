@@ -32,6 +32,31 @@ HETATM21659  O   HOH E   7      31.927 -44.110 -81.232  1.00 24.49           O
 END
 """
 
+pdb_str_3 = """\
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1
+ATOM      1  N   LEU B 111     -22.437  63.276  48.231  1.00 38.59           N
+ATOM      2  CA  LEU B 111     -22.866  63.139  46.796  1.00 38.96           C
+ATOM      3  C   LEU B 111     -22.155  62.012  46.022  1.00 39.03           C
+ATOM      4  O   LEU B 111     -21.022  61.639  46.348  1.00 38.95           O
+ATOM      5  CB  LEU B 111     -22.696  64.458  46.041  1.00 38.99           C
+ATOM      6  CG  LEU B 111     -23.630  65.621  46.381  1.00 39.42           C
+ATOM      7  CD1 LEU B 111     -23.034  66.475  47.484  1.00 39.12           C
+ATOM      8  CD2 LEU B 111     -23.909  66.475  45.146  1.00 39.58           C
+ATOM      9  N   TYR B 112     -22.844  61.491  44.997  1.00 39.14           N
+ATOM     10  CA  TYR B 112     -22.380  60.363  44.173  1.00 39.10           C
+ATOM     11  C   TYR B 112     -22.735  60.561  42.692  1.00 39.27           C
+ATOM     12  O   TYR B 112     -23.901  60.786  42.361  1.00 39.37           O
+ATOM     13  CB  TYR B 112     -23.002  59.035  44.649  1.00 38.91           C
+ATOM     14  CG  TYR B 112     -22.527  58.549  46.004  1.00 38.64           C
+ATOM     15  CD1 TYR B 112     -23.191  58.926  47.170  1.00 39.16           C
+ATOM     16  CD2 TYR B 112     -21.417  57.712  46.121  1.00 38.27           C
+ATOM     17  CE1 TYR B 112     -22.756  58.502  48.424  1.00 39.01           C
+ATOM     18  CE2 TYR B 112     -20.978  57.269  47.370  1.00 38.32           C
+ATOM     19  CZ  TYR B 112     -21.655  57.667  48.518  1.00 38.85           C
+ATOM     20  OH  TYR B 112     -21.238  57.244  49.764  1.00 38.58           O
+END
+"""
+
 def exercise_00(prefix="tst_molprobity_3_exercise_00"):
   for pdb_str in [pdb_str_1, pdb_str_2]:
     of = open("%s.pdb"%prefix, "w")
@@ -39,7 +64,7 @@ def exercise_00(prefix="tst_molprobity_3_exercise_00"):
     of.close()
     cmd = " ".join([
       "phenix.fmodel",
-      "%s_in.pdb"%prefix,
+      "%s.pdb"%prefix,
       "high_res=10",
       "type=real r_free=0.1 label=F-obs",
       "output.file_name=%s.mtz"%prefix,
@@ -48,6 +73,15 @@ def exercise_00(prefix="tst_molprobity_3_exercise_00"):
     cmd = "phenix.molprobity %s.pdb %s.mtz > %s.zlog"%(prefix,prefix,prefix)
     easy_run.call(cmd)
 
+def exercise_01(prefix="tst_molprobity_3_exercise_01"):
+  of = open("%s.pdb"%prefix, "w")
+  print >> of, pdb_str_3
+  of.close()
+  cmd = "phenix.molprobity %s.pdb > %s.zlog"%(prefix,prefix)
+  r = easy_run.fully_buffered(cmd)
+  assert r.stderr_lines[0]=="Sorry: Crystal symmetry is missing or cannot be extracted."
+
 if (__name__ == "__main__") :
   exercise_00()
+  exercise_01()
   print "OK"
