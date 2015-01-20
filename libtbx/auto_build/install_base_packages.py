@@ -393,7 +393,11 @@ Installation of Python packages may fail.
         try:
           check_output(compiler)
           found.append(compiler)
-        except (OSError, RuntimeError), e:
+        except RuntimeError, e:
+          # Found compiler, but error like "no input files"
+          found.append(compiler)
+        except OSError, e:
+          # Command not found
           pass
       if not found:
         raise Exception("No Fortran compiler found for Scipy. Requires one of: %s"%(", ".join(compilers)))
