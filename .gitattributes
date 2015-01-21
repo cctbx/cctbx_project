@@ -3406,6 +3406,11 @@ xfel/cxi/postrefine/test_energy_model.py -text
 xfel/cxi/postrefine/test_rs.py -text
 xfel/cxi/strong_zulu.py -text
 xfel/cxi/util.py -text
+xfel/graph_proc/__init__.py -text
+xfel/graph_proc/components.py -text
+xfel/graph_proc/graph.py -text
+xfel/graph_proc/multiproc_temp_parame_opt.py -text
+xfel/graph_proc/parameter_optimizer.py -text
 xfel/libtbx_config -text
 xfel/libtbx_refresh.py -text
 xfel/metrology/__init__.py -text
