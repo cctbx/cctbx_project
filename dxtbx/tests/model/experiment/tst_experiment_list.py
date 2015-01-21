@@ -681,11 +681,11 @@ class Test(object):
   def __init__(self):
     import libtbx
 
-    dials_regression = libtbx.env.dist_path('dials_regression')
-    if not dials_regression:
+    if not libtbx.env.has_module("dials_regression"):
       print 'Skipping: dials_regresson not configured'
       exit(0)
 
+    dials_regression = libtbx.env.dist_path('dials_regression')
     self.tst_experiment = TestExperiment(dials_regression)
     self.tst_list = TestExperimentList(dials_regression)
     self.tst_factory = TestExperimentListFactory(dials_regression)
