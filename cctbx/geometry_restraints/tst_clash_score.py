@@ -375,6 +375,19 @@ ATOM     60  O   HOH C  37      -0.639  -0.486   5.076  1.00  0.00           O
 END
 """
 
+raw_records8 = """\
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
+ATOM      1  N   GLY A   1      -6.724   4.519  10.133  1.00 16.77           N
+ATOM      2  CA  GLY A   1      -7.194   4.166   8.745  1.00 16.57           C
+ATOM      3  C   GLY A   1      -6.271   3.120   8.177  1.00 16.16           C
+ATOM      4  O   GLY A   1      -5.516   2.473   8.927  1.00 16.78           O
+ATOM      5  H1  GLY A   1      -7.327   4.247  10.729  1.00 16.77           H
+ATOM      6  H2  GLY A   1      -5.946   4.118  10.294  1.00 16.77           H
+ATOM      7  H3  GLY A   1      -6.621   5.401  10.197  1.00 16.77           H
+ATOM      8  HA2 GLY A   1      -8.104   3.833   8.772  1.00 16.57           H
+ATOM      9  HA3 GLY A   1      -7.198   4.954   8.180  1.00 16.57           H
+"""
+
 two_models_pdb_str = '''\
 NUMMDL    2
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1
@@ -935,6 +948,28 @@ class test_cctbx_clashscore(unittest.TestCase):
     cryst1_2 = [x for x in pdb_with_h if 'CRYST1' in x]
     self.assertEqual(cryst1_1,cryst1_2)
 
+  def test_abort_when_bad_cryst_records(self):
+    """
+    Make sure phenix.clashscore xxxx.pdb will halt if CRYST1 records are bad
+    """
+    fn = 'bad_cryst1_test.pdb'
+    open(fn,'w').write(raw_records8)
+    self.file_to_delete.append(fn)
+    #
+    pdb_processed_file = pdb_inter.process(
+      file_name=fn,
+      substitute_non_crystallographic_unit_cell_if_necessary=False,
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      log= StringIO())
+    #
+    s = pdb_processed_file.all_chain_proxies.special_position_settings
+    self.assertFalse(bool(s))
+    option = 'substitute_non_crystallographic_unit_cell_if_necessary=false'
+    cmd = 'phenix.clashscore {} method=cctbx {}'
+    cmd = cmd.format(fn,option)
+    r = easy_run.go(cmd,join_stdout_stderr=False)
+    self.assertTrue( r.stderr_lines[0].startswith('Sorry'))
 
   def tearDown(self):
     """ delete files created in during testing"""
@@ -1058,7 +1093,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   # tests = ['test_running_from_command_line','test_compute','test_info']
-  tests = ['test_print']
+  tests = ['test_abort_when_bad_cryst_records']
   suite = unittest.TestSuite(map(test_cctbx_clashscore, tests))
   return suite
 

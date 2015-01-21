@@ -5,6 +5,7 @@ import mmtbx.monomer_library.pdb_interpretation as pdb_inter
 import cctbx.geometry_restraints.clash_score as cs
 import mmtbx.validation.clashscore
 from libtbx.utils import null_out
+from libtbx.utils import Sorry
 from libtbx.utils import Usage
 import iotbx.phil
 import sys
@@ -148,6 +149,13 @@ def run (args, out=sys.stdout, quiet=None) :
       'log':null_out()}
 
     pdb_processed_file = pdb_inter.run(**interpretation_inp)
+    # test that CRYST1 records are ok
+    sps = pdb_processed_file.all_chain_proxies.special_position_settings
+    if not sps:
+      msg = 'None valid CRSYT1 records.\n'
+      msg += 'Consider running phenix.clashscore with the option:\n'
+      msg += 'substitute_non_crystallographic_unit_cell_if_necessary=true'
+      raise Sorry(msg)
     grm = pdb_processed_file.geometry_restraints_manager()
     xrs = pdb_processed_file.xray_structure()
     sites_cart = xrs.sites_cart()
