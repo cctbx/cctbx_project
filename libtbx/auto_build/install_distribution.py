@@ -234,7 +234,6 @@ class installer(object):
                           version: %(version)s
                      machine type: %(mtype)s
                        OS version: %(os)s
-                       user shell: %(shell)s
                       destination: %(dest)s
                   # of processors: %(nproc)s
     =========================================================================
@@ -242,7 +241,6 @@ class installer(object):
             "version" : self.version,
             "mtype"   : self.mtype,
             "os"      : get_os_version(),
-            "shell"   : os.environ['SHELL'],
             "dest"    : self.dest_dir,
             "nproc"   : self.options.nproc,
       }
