@@ -19,6 +19,7 @@ class chooser_wrapper:
   def __init__(self, image_set, index):
     self.image_set = image_set
     self.path = os.path.basename(image_set.get_path(index))
+    self.full_path = image_set.get_path(index)
     self.index = index
 
   def __str__(self):
@@ -197,7 +198,11 @@ class XrayFrame (AppFrame,XFBaseClass) :
     except AttributeError:
       img = rv_image(os.path.abspath(file_name_or_data))
 
-    self.SetTitle(str(file_name_or_data))
+    try:
+      title = file_name_or_data.full_path
+    except AttributeError, e:
+      title = str(file_name_or_data)
+    self.SetTitle(title)
 
     # Update the selection in the chooser.
     i = self.add_file_name_or_data(file_name_or_data)
