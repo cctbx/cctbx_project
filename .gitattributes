@@ -3352,6 +3352,7 @@ xfel/command_line/postrefine.py -text
 xfel/command_line/quadrants.py -text
 xfel/command_line/quadrants_cbf.py -text
 xfel/command_line/radial_average.py -text
+xfel/command_line/small_cell_index.py -text
 xfel/command_line/smooth_spectrum.py -text
 xfel/command_line/stills_merge.py -text
 xfel/command_line/subtract_background.py -text
@@ -3440,6 +3441,9 @@ xfel/mono_simulation/mono_treatment.py -text
 xfel/mono_simulation/parameters.h -text
 xfel/mono_simulation/vector_collection.h -text
 xfel/project.cpp -text
+xfel/small_cell/__init__.py -text
+xfel/small_cell/small_cell.py -text
+xfel/small_cell/solve_orientation.py -text
 xfel/util/cctbx_xfel_installer.py svneol=native#text/x-python
 xfel/vonHamos/__init__.py -text
 xfel/vonHamos/xes_ext.cpp -text
