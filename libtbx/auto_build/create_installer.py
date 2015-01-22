@@ -257,7 +257,6 @@ class SetupInstaller(object):
     create_mac_pkg.run(args=[
         "--package_name", self.installer.product_name,
         "--organization", self.installer.organization,
-        "--no_compression",
         "--version", self.version,
         "--license", self.license,
         "--dist-dir", self.dist_dir,
