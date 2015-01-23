@@ -169,7 +169,7 @@ def machine_type () :
     version_fields = uname[2].split(".")
     major_version = int(version_fields[0])
     if (major_version >= 10) :
-      platform += "-x86_64"
+      platform += "-x86_64-10.9"
   return platform
 
 def regenerate_relative_symlinks (dir_name, log=sys.stdout) :
