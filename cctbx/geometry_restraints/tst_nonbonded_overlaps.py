@@ -1,7 +1,8 @@
 from __future__ import division
 import mmtbx.monomer_library.pdb_interpretation as pdb_inter
-from cctbx.geometry_restraints.clash_score import compute
-import cctbx.geometry_restraints.clash_score as cs
+from cctbx.geometry_restraints.nonbonded_overlaps import compute
+import cctbx.geometry_restraints.nonbonded_overlaps as nbo
+import mmtbx.validation.clashscore as mvc
 from cctbx.array_family import flex
 import mmtbx.monomer_library.server
 from mmtbx import monomer_library
@@ -17,7 +18,7 @@ import unittest
 import os
 
 '''
-Test cctbx clashscore
+Test non-bonded overlaps
 
 @author Youval Dar (LBL 2013)
 '''
@@ -470,7 +471,7 @@ END
 '''
 
 
-class test_cctbx_clashscore(unittest.TestCase):
+class test_nonbonded_overlaps(unittest.TestCase):
 
   def setUp(self):
     self.file_to_delete = []
@@ -495,58 +496,73 @@ class test_cctbx_clashscore(unittest.TestCase):
 
   def test_vdw_dist(self):
     '''
-    Test that clashes are identified properly
+    Test that overlaps are identified properly
 
-    Test clashes that are set to be on the limit of the
-    clash distance 0.41
+    Test overlaps that are set to be on the limit of the
+    overlap distance 0.40
 
     Test evaluation of vdw distances. if the parameters
     1)  assume_hydrogens_all_missing=False
     2)  hard_minimum_nonbonded_distance=0.0
-    are not set properly, the number of clashes will change
+    are not set properly, the number of overlaps will change
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
     for i in [0,1]:
       grm = process_raw_records(raw_record_number=i)
 
-      cctbx_clash_sym = grm.cctbx_clashscore_due_to_sym_op
+      clashscore_sym = grm.cctbx_clashscore_due_to_sym_op
       expected = [38.46,0][i]
       msg = outstring.format(
-        'symmetry related clashscore', expected, cctbx_clash_sym)
-      self.assertAlmostEqual(cctbx_clash_sym, expected, delta=0.01,msg=msg)
-      #
-      cctbx_clash_no_sym = grm.cctbx_clashscore_macro_molecule
-      expected = [0,28.77][i]
-      msg = outstring.format(
-        'non-symmetry related clashscore', expected, cctbx_clash_no_sym)
-      self.assertAlmostEqual(cctbx_clash_no_sym, expected, delta=0.01,msg=msg)
-      #
-      cctbx_clash_total = grm.cctbx_clashscore_all
-      expected = [38.46,28.77][i]
-      msg = outstring.format('total clashscore', expected, cctbx_clash_total)
-      self.assertAlmostEqual(cctbx_clash_total, expected, delta=0.01,msg=msg)
-      #
-      cctbx_list_sym = len(grm.cctbx_clash_proxies_due_to_sym_op)
+        'symmetry clashscore', expected, clashscore_sym)
+      self.assertAlmostEqual(clashscore_sym, expected, delta=0.01,msg=msg)
+      nb_overlaps_sym = grm.nb_overlaps_due_to_sym_op
       expected = [2,0][i]
       msg = outstring.format(
-        'Number of clashes, symmetry related', expected, cctbx_list_sym)
-      self.assertEqual(cctbx_list_sym, expected,msg=msg)
+        'symmetry related overlaps', expected, nb_overlaps_sym)
+      self.assertAlmostEqual(nb_overlaps_sym, expected, delta=0.01,msg=msg)
       #
-      cctbx_list_no_sym = len(grm.cctbx_clash_proxies_macro_molecule)
+      clashscore_m_c = grm.cctbx_clashscore_macro_molecule
+      expected = [0,28.77][i]
+      msg = outstring.format(
+        'macro_molecule related clashscore', expected, clashscore_m_c)
+      self.assertAlmostEqual(clashscore_m_c, expected, delta=0.01,msg=msg)
+      nb_overlaps_m_c = grm.nb_overlaps_macro_molecule
       expected = [0,4][i]
       msg = outstring.format(
-        'Number of clashes, not symmetry related', expected, cctbx_list_no_sym)
+        'macro_molecule related overlaps', expected, nb_overlaps_m_c)
+      self.assertAlmostEqual(nb_overlaps_m_c, expected, delta=0.01,msg=msg)
+      #
+      overlaps_total = grm.nb_overlaps_all
+      expected = [2,4][i]
+      msg = outstring.format('total overlaps', expected, overlaps_total)
+      self.assertAlmostEqual(overlaps_total, expected, delta=0.01,msg=msg)
+      clashscore_total = grm.cctbx_clashscore_all
+      expected = [38.46,28.77][i]
+      msg = outstring.format('total clashscore', expected, overlaps_total)
+      self.assertAlmostEqual(clashscore_total, expected, delta=0.01,msg=msg)
+      #
+      cctbx_list_sym = len(grm.nb_overlaps_proxies_due_to_sym_op)
+      expected = [2,0][i]
+      msg = outstring.format(
+        'Number of overlaps, symmetry related', expected, cctbx_list_sym)
+      self.assertEqual(cctbx_list_sym, expected,msg=msg)
+      #
+      cctbx_list_no_sym = len(grm.nb_overlaps_proxies_macro_molecule)
+      expected = [0,4][i]
+      msg = outstring.format(
+        'Number of overlaps, not symmetry related', expected, cctbx_list_no_sym)
       self.assertEqual(cctbx_list_no_sym, expected, msg=msg)
       #
-      cctbx_list_all = len(grm.cctbx_clash_proxies_all)
+      cctbx_list_all = len(grm.nb_overlaps_proxies_all)
       expected = [2,4][i]
-      msg = outstring.format('Total number of clashes', expected, cctbx_list_all)
+      msg = outstring.format('Total number of overlaps', expected,
+                             cctbx_list_all)
       self.assertEqual(cctbx_list_all, expected, msg=msg)
 
-  def test_inline_clash(self):
+  def test_inline_overlaps(self):
     '''
-    Test clashes of C with H-C.
-    Check when valid clash and when it's considered to be inline
+    Test non-bonded overlaps of C with H-C.
+    Check when valid overlaps and when it's considered to be inline
 
     - test when all are in the same residue
     - test when C and H-C are in different residues
@@ -556,14 +572,15 @@ class test_cctbx_clashscore(unittest.TestCase):
       grm = process_raw_records(
         raw_record_number=2,
         use_site_labels=use_site_labels)
-      cctbx_clashscore_total = grm.cctbx_clashscore_all
-      expected = 85.11
-      msg = outstring.format('Total clashscore', expected, cctbx_clashscore_total)
-      self.assertAlmostEqual(cctbx_clashscore_total, expected, delta=0.1,msg=msg)
+      nb_overlaps_total = grm.nb_overlaps_all
+      msg=outstring.format('Total nonbonded overlaps',4,nb_overlaps_total)
+      self.assertAlmostEqual(grm.nb_overlaps_all, 4, delta=0.1,msg=msg)
+      msg=outstring.format('Total clashscore',85.11,nb_overlaps_total)
+      self.assertAlmostEqual(grm.cctbx_clashscore_all, 85.11, delta=0.1,msg=msg)
 
-  def test_1_5_clash(self):
+  def test_1_5_overlaps(self):
     '''
-    Test that 1-5 clashes are not being counted
+    Test that 1-5 overlaps are not being counted
     '''
     nb = compute
     # process pdb data
@@ -580,32 +597,32 @@ class test_cctbx_clashscore(unittest.TestCase):
       hard_minimum_nonbonded_distance=0,
       nonbonded_distance_threshold=0.5)
     xrs = pdb_processed_file.xray_structure()
-    params = get_clashscore_param(
+    params = get_nb_overlaps_param(
         xrs=xrs,grm=grm,
         use_site_labels=True)
-    sites_cart,site_labels,hd_sel,full_connectivty_table = params
+    sites_cart,site_labels,hd_sel,full_connectivity_table = params
 
     outstring = '1-5 Interaction test error. {}'
     # check that direction of function calling does not matter
-    tst = nb.is_1_5_interaction(21, 33,hd_sel,full_connectivty_table)
+    tst = nb.is_1_5_interaction(21, 33,hd_sel,full_connectivity_table)
     msg = outstring.format('Test results depend on atoms order')
     self.assertTrue(tst,msg=msg)
-    tst = nb.is_1_5_interaction(33, 21,hd_sel,full_connectivty_table)
+    tst = nb.is_1_5_interaction(33, 21,hd_sel,full_connectivity_table)
     self.assertTrue(tst,msg=msg)
     # check 1-4 interaction
-    tst = nb.is_1_5_interaction(33, 20,hd_sel,full_connectivty_table)
+    tst = nb.is_1_5_interaction(33, 20,hd_sel,full_connectivity_table)
     msg = outstring.format('Test fails on 1-4 interaction')
     self.assertFalse(tst,msg=msg)
     # check 1-6 interaction
-    tst = nb.is_1_5_interaction(33, 38,hd_sel,full_connectivty_table)
+    tst = nb.is_1_5_interaction(33, 38,hd_sel,full_connectivity_table)
     msg = outstring.format('Test fails on 1-6 interaction')
     self.assertFalse(tst,msg=msg)
     # test 1-5 interaction of atoms other then hydrogen
-    tst = nb.is_1_5_interaction(38, 25,hd_sel,full_connectivty_table)
+    tst = nb.is_1_5_interaction(38, 25,hd_sel,full_connectivity_table)
     msg = outstring.format('Test fails on 1-5 non hydrogen interaction')
     self.assertFalse(tst,msg=msg)
     # test 1-5 interaction of two hydrogens
-    tst = nb.is_1_5_interaction(33, 31,hd_sel,full_connectivty_table)
+    tst = nb.is_1_5_interaction(33, 31,hd_sel,full_connectivity_table)
     msg = outstring.format('Test fails on 1-5 two hydrogen interaction')
     self.assertFalse(tst,msg=msg)
 
@@ -617,6 +634,7 @@ class test_cctbx_clashscore(unittest.TestCase):
     grm = process_raw_records(
       raw_record_number=5,
       nonbonded_distance_threshold=None)
+    self.assertEqual(grm.nb_overlaps_all, 6,msg)
     self.assertEqual(grm.cctbx_clashscore_all, 1500,msg)
 
   def test_atom_selection(self):
@@ -633,37 +651,45 @@ class test_cctbx_clashscore(unittest.TestCase):
       show_energies      = False,
       plain_pairs_radius = 5.0)
     xrs = processed_pdb_file.xray_structure()
-    params = get_clashscore_param(xrs,grm)
-    sites_cart,site_labels,hd_sel,full_connectivty_table = params
-    macro_mol_sel = cs.get_macro_mol_sel(processed_pdb_file)
-    cctbx_clashscore = grm.cctbx_clashscore_info(
+    params = get_nb_overlaps_param(xrs,grm)
+    sites_cart,site_labels,hd_sel,full_connectivity_table = params
+    macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
+    nb_overlaps = grm.nb_overlaps_info(
       sites_cart=sites_cart,
       macro_mol_sel=macro_mol_sel,
       site_labels=site_labels,
       hd_sel=hd_sel)
     expected = 1000
-    result = cctbx_clashscore.cctbx_clashscore_all
+    result = nb_overlaps.cctbx_clashscore_all
     msg = outstring.format('Selection related clashscore', expected, result)
+    self.assertEqual(result, expected, msg=msg)
+    expected = 3
+    result = nb_overlaps.nb_overlaps_all
+    msg = outstring.format('Selection related overlaps', expected, result)
     self.assertEqual(result, expected, msg=msg)
     # Select
     sel = flex.bool([True, True, False])
     grm = grm.select(selection=sel)
     xrs = xrs.select(selection=sel)
-    params = get_clashscore_param(xrs,grm)
-    sites_cart,site_labels,hd_sel,full_connectivty_table = params
-    cctbx_clashscore = grm.cctbx_clashscore_info(
+    params = get_nb_overlaps_param(xrs,grm)
+    sites_cart,site_labels,hd_sel,full_connectivity_table = params
+    nb_overlaps = grm.nb_overlaps_info(
       sites_cart=sites_cart,
       macro_mol_sel=flex.bool([True, True]),
       site_labels=site_labels,
       hd_sel=hd_sel)
     expected = 500
-    result = cctbx_clashscore.cctbx_clashscore_all
+    result = nb_overlaps.cctbx_clashscore_all
     msg = outstring.format('Selection related clashscore', expected, result)
+    self.assertEqual(result, expected, msg=msg)
+    expected = 1
+    result = nb_overlaps.nb_overlaps_all
+    msg = outstring.format('Selection related overlaps', expected, result)
     self.assertEqual(result, expected, msg=msg)
 
   def test_labels_and_addition_scatterers(self):
     '''
-    Test clashes when adding and movning scatterers
+    Test overlaps when adding and moving scatterers
     Test water scatterers with and without labels
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
@@ -676,16 +702,18 @@ class test_cctbx_clashscore(unittest.TestCase):
       show_energies      = False,
       plain_pairs_radius = 5.0)
     xrs = processed_pdb_file.xray_structure()
-    macro_mol_sel = cs.get_macro_mol_sel(processed_pdb_file)
-    cctbx_clashscore = geometry.cctbx_clashscore_info(
+    macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
+    nb_overlaps = geometry.nb_overlaps_info(
       sites_cart  = xrs.sites_cart(),
       macro_mol_sel=macro_mol_sel,
       site_labels = xrs.scatterers().extract_labels(),
       hd_sel      = xrs.hd_selection())
-    expected = 1000
-    result = cctbx_clashscore.cctbx_clashscore_all
-    msg = outstring.format('Selection related clashscore', expected, result)
-    self.assertEqual(result, expected, msg=msg)
+    result = nb_overlaps.nb_overlaps_all
+    msg = outstring.format('Selection related overlaps', 3, result)
+    self.assertEqual(result, 3, msg=msg)
+    result = nb_overlaps.cctbx_clashscore_all
+    msg = outstring.format('Selection related clashscore', 1000, result)
+    self.assertEqual(result, 1000, msg=msg)
     # Add water scatterers
     restraints_manager = mmtbx.restraints.manager(
       geometry = geometry,
@@ -713,15 +741,19 @@ class test_cctbx_clashscore(unittest.TestCase):
       ener_lib       = ener_lib,
       raw_records    = pdb_str,
       force_symmetry = True)
-    macro_mol_sel = cs.get_macro_mol_sel(processed_pdb_file)
-    cctbx_clashscore = mol.restraints_manager.geometry.cctbx_clashscore_info(
+    macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
+    nb_overlaps = mol.restraints_manager.geometry.nb_overlaps_info(
       sites_cart  = mol.xray_structure.sites_cart(),
       macro_mol_sel=macro_mol_sel,
       site_labels = mol.xray_structure.scatterers().extract_labels(),
       hd_sel      = mol.xray_structure.hd_selection())
     expected = 2500
-    result = cctbx_clashscore.cctbx_clashscore_all
+    result = nb_overlaps.cctbx_clashscore_all
     msg = outstring.format('Selection related clashscore', expected, result)
+    self.assertEqual(result, expected, msg=msg)
+    expected = 15
+    result = nb_overlaps.nb_overlaps_all
+    msg = outstring.format('Selection related overlaps', expected, result)
     self.assertEqual(result, expected, msg=msg)
     # Test the modified pdb data with scatterers lables
     processed_pdb_file = pdb_inter.process(
@@ -733,15 +765,19 @@ class test_cctbx_clashscore(unittest.TestCase):
       show_energies      = False,
       plain_pairs_radius = 5.0)
     xrs = processed_pdb_file.xray_structure()
-    macro_mol_sel = cs.get_macro_mol_sel(processed_pdb_file)
-    cctbx_clashscore = geometry.cctbx_clashscore_info(
+    macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
+    nb_overlaps = geometry.nb_overlaps_info(
       sites_cart  = xrs.sites_cart(),
       macro_mol_sel=macro_mol_sel,
       site_labels = xrs.scatterers().extract_labels(),
       hd_sel      = xrs.hd_selection())
     expected = 2500
-    result = cctbx_clashscore.cctbx_clashscore_all
+    result = nb_overlaps.cctbx_clashscore_all
     msg = outstring.format('Selection related clashscore', expected, result)
+    self.assertEqual(result, expected, msg=msg)
+    expected = 15
+    result = nb_overlaps.nb_overlaps_all
+    msg = outstring.format('Selection related overlaps', expected, result)
     self.assertEqual(result, expected, msg=msg)
 
   def test_unknown_pair_type(self):
@@ -749,9 +785,9 @@ class test_cctbx_clashscore(unittest.TestCase):
     self.assertRaises(Sorry,process_raw_records,raw_record_number=6)
 
   def test_print(self):
-    """ test proper clashscore printout """
-    clash_score_info = process_clash_score(self.file_name2)
-    results_str = clash_score_info.show(log=null_out())
+    """ test proper overlaps printout """
+    overlaps_count_info = process_overlaps_count(self.file_name2)
+    results_str = overlaps_count_info.show(log=null_out())
 
     # inspect at output
     results = results_str.split('\n')
@@ -765,15 +801,15 @@ class test_cctbx_clashscore(unittest.TestCase):
 
   def test_running_from_command_line(self):
     """
-    make sure phenix.clashscore can run without errors when showing
-    clashscore info """
-    cmd = 'phenix.clashscore {} method=cctbx'
+    make sure mmtbx.nonbonded_overlaps can run without errors when showing
+    overlaps info """
+    cmd = 'mmtbx.nonbonded_overlaps {}'
     cmd = cmd.format(self.file_name)
     r = easy_run.go(cmd,join_stdout_stderr=False)
     self.assertFalse(bool(r.stderr_lines))
 
   def test_compute(self):
-    """ Test that there are no error when computing cctbx clashscore """
+    """ Test that there are no error when computing cctbx overlaps """
     pdb_processed_file = pdb_inter.run(
       args=[self.file_name],
       assume_hydrogens_all_missing=False,
@@ -799,13 +835,13 @@ class test_cctbx_clashscore(unittest.TestCase):
     result = compute(
       nonbonded_list=nonbonded_list,
       hd_sel=hd_sel,
-      full_connectivty_table=fsc0,
-      connectivty_table_2=fsc2,
+      full_connectivity_table=fsc0,
+      connectivity_table_2=fsc2,
       sites_cart=sites_cart)
     self.assertEqual(result.n_atoms,139)
 
   def test_info(self):
-    """ Test that there are no error when collecting cctbx clashscore info"""
+    """ Test that there are no error when collecting non-bonded overlaps info"""
     pdb_processed_file = pdb_inter.run(
       args=[self.file_name2],
       assume_hydrogens_all_missing=False,
@@ -820,49 +856,58 @@ class test_cctbx_clashscore(unittest.TestCase):
     site_labels = xrs.scatterers().extract_labels()
     hd_sel = xrs.hd_selection()
 
-    macro_mol_sel = cs.get_macro_mol_sel(pdb_processed_file)
+    macro_mol_sel = nbo.get_macro_mol_sel(pdb_processed_file)
     # Make sure we don't have only macro molecule
     self.assertTrue(macro_mol_sel.size() > macro_mol_sel.count(True))
 
     # Run with site labels
-    result = cs.info(geometry_restraints_manager=grm,
+    result = nbo.info(geometry_restraints_manager=grm,
       macro_molecule_selection=macro_mol_sel,
       sites_cart=sites_cart,
       hd_sel=hd_sel,
       site_labels=site_labels)
-    sym_clashscore = result.result.cctbx_clashscore_due_to_sym_op
-    all_clashscore = result.result.cctbx_clashscore_all
-    macro_mol_clashscore = result.result.cctbx_clashscore_macro_molecule
-    self.assertTrue(sym_clashscore < all_clashscore)
-    self.assertTrue(macro_mol_clashscore > 0)
+    sym_overlaps = result.result.nb_overlaps_due_to_sym_op
+    all_overlaps = result.result.nb_overlaps_all
+    macro_mol_overlaps = result.result.nb_overlaps_macro_molecule
+    self.assertTrue(sym_overlaps < all_overlaps)
+    self.assertTrue(macro_mol_overlaps > 0)
 
     # Run without site labels
-    result = cs.info(geometry_restraints_manager=grm,
+    result = nbo.info(geometry_restraints_manager=grm,
       macro_molecule_selection=macro_mol_sel,
       sites_cart=sites_cart,
       hd_sel=hd_sel)
-    self.assertTrue(bool(result.result.cctbx_clash_proxies_macro_molecule))
-    self.assertTrue(bool(result.result.cctbx_clash_proxies_due_to_sym_op))
+    self.assertTrue(bool(result.result.nb_overlaps_proxies_macro_molecule))
+    self.assertTrue(bool(result.result.nb_overlaps_proxies_due_to_sym_op))
 
-  def test_clashes(self):
-    clash_score_info,n_atoms,n_atoms_macro_mol = process_clash_score(
+  def test_overlaps(self):
+    overlaps_count_info,n_atoms,n_atoms_macro_mol = process_overlaps_count(
       self.file_name2,return_n_atoms=True)
-    results = clash_score_info.result
-    self.assertEqual(len(results.cctbx_clash_proxies_due_to_sym_op),1)
-    self.assertEqual(len(results.cctbx_clash_proxies_macro_molecule),3)
-    self.assertEqual(len(results.cctbx_clash_proxies_all),10)
-    #
-    clashscor_all = round(1000*10/n_atoms,2)
-    clashscor_sym = round(1000*1/n_atoms,2)
-    clashscor_macro_mol = round(1000*3/n_atoms_macro_mol,2)
+    results = overlaps_count_info.result
+    self.assertEqual(len(results.nb_overlaps_proxies_due_to_sym_op),1)
+    self.assertEqual(len(results.nb_overlaps_proxies_macro_molecule),3)
+    self.assertEqual(len(results.nb_overlaps_proxies_all),10)
     # results
-    r_clashscor_all = round(results.cctbx_clashscore_all,2)
-    r_clashscor_sym = round(results.cctbx_clashscore_due_to_sym_op,2)
-    r_clashscor_macro_mol = round(results.cctbx_clashscore_macro_molecule,2)
+    r_overlaps_all = round(results.nb_overlaps_all,2)
+    r_overlaps_sym = round(results.nb_overlaps_due_to_sym_op,2)
+    r_overlaps_macro_mol = round(results.nb_overlaps_macro_molecule,2)
     # test
-    self.assertEqual(r_clashscor_all,clashscor_all)
-    self.assertEqual(r_clashscor_sym,clashscor_sym)
-    self.assertEqual(r_clashscor_macro_mol,clashscor_macro_mol)
+    self.assertEqual(r_overlaps_all,10)
+    self.assertEqual(r_overlaps_sym,1)
+    self.assertEqual(r_overlaps_macro_mol,3)
+    # results
+    r_overlaps_all = round(results.cctbx_clashscore_all,2)
+    r_overlaps_sym = round(results.cctbx_clashscore_due_to_sym_op,2)
+    r_overlaps_macro_mol = round(results.cctbx_clashscore_macro_molecule,2)
+    #
+    overlaps_all = round(1000*10/n_atoms,2)
+    overlaps_sym = round(1000*1/n_atoms,2)
+    overlaps_macro_mol = round(1000*3/n_atoms_macro_mol,2)
+    # test
+    self.assertEqual(r_overlaps_all,overlaps_all)
+    self.assertEqual(r_overlaps_sym,overlaps_sym)
+    self.assertEqual(r_overlaps_macro_mol,overlaps_macro_mol)
+
 
   def test_aborting_pdb_with_multiple_modeles(self):
     pdb_inp = iotbx.pdb.input(source_info=None, lines=two_models_pdb_str)
@@ -871,11 +916,11 @@ class test_cctbx_clashscore(unittest.TestCase):
     # check that Sorry is raised
     self.assertRaises(
       Sorry,
-      cs.check_and_add_hydrogen,
+      mvc.check_and_add_hydrogen,
       **{'pdb_hierarchy':ph,'crystal_symmetry':crystal_symmetry,
        'allow_multiple_models':False})
     # Check that does run, when allowed to, on multiple models
-    r = cs.check_and_add_hydrogen(
+    r = mvc.check_and_add_hydrogen(
       pdb_hierarchy=ph,
       crystal_symmetry=crystal_symmetry,
       allow_multiple_models=True)
@@ -888,7 +933,7 @@ class test_cctbx_clashscore(unittest.TestCase):
     self.file_to_delete.append(fn)
     open(fn,'w').write(unknown_pairs_pdb_str)
     print 'current _dir',os.getcwd()
-    pdb_with_h, h_were_added = cs.check_and_add_hydrogen(
+    pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
         file_name=fn,
         allow_multiple_models=False,
         log=null_out())
@@ -911,24 +956,24 @@ class test_cctbx_clashscore(unittest.TestCase):
     xrs = pdb_processed_file.xray_structure()
     sites = xrs.sites_cart()
     labels = xrs.scatterers().extract_labels()
-    test = cs.unknown_pairs_present(grm=grm,sites_cart=sites,site_labels=labels)
+    test = nbo.unknown_pairs_present(grm=grm,sites_cart=sites,site_labels=labels)
     # make sure we have unknown pairs
     self.assertTrue(test)
-    pdb_ready_set_file_names = cs.create_cif_file_using_ready_set(
+    pdb_ready_set_file_names = nbo.create_cif_file_using_ready_set(
       file_name=fn_with_h,
       log=null_out())
     [fn_cif,fn_pdb] = pdb_ready_set_file_names
-    # check that we can run clashscore
+    # check that we can run overlaps
     if fn_cif:
       self.file_to_delete.extend(pdb_ready_set_file_names)
-      clash_score_info = process_clash_score(
+      overlaps_count_info = process_overlaps_count(
         file_name=fn_pdb,
         cif_file_name=fn_cif)
 
   def test_cryst1_records_maintained(self):
     """ make sure CRYST1 records are not changed when adding H"""
     # test when using a file
-    pdb_with_h, h_were_added = cs.check_and_add_hydrogen(
+    pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
         file_name=self.file_name2,
         allow_multiple_models=False,
         log=null_out())
@@ -939,7 +984,7 @@ class test_cctbx_clashscore(unittest.TestCase):
     # test when using hierarchy
     pdb_inp = iotbx.pdb.input(file_name=self.file_name2)
     ph = pdb_inp.construct_hierarchy()
-    pdb_with_h, h_were_added = cs.check_and_add_hydrogen(
+    pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
         pdb_hierarchy=ph,
         crystal_symmetry=pdb_inp.crystal_symmetry(),
         allow_multiple_models=False,
@@ -950,7 +995,8 @@ class test_cctbx_clashscore(unittest.TestCase):
 
   def test_abort_when_bad_cryst_records(self):
     """
-    Make sure phenix.clashscore xxxx.pdb will halt if CRYST1 records are bad
+    Make sure mmtbx.nonbonded_overlaps xxxx.pdb will halt
+    if CRYST1 records are bad
     """
     fn = 'bad_cryst1_test.pdb'
     open(fn,'w').write(raw_records8)
@@ -966,7 +1012,7 @@ class test_cctbx_clashscore(unittest.TestCase):
     s = pdb_processed_file.all_chain_proxies.special_position_settings
     self.assertFalse(bool(s))
     option = 'substitute_non_crystallographic_unit_cell_if_necessary=false'
-    cmd = 'phenix.clashscore {} method=cctbx {}'
+    cmd = 'mmtbx.nonbonded_overlaps {} {}'
     cmd = cmd.format(fn,option)
     r = easy_run.go(cmd,join_stdout_stderr=False)
     self.assertTrue( r.stderr_lines[0].startswith('Sorry'))
@@ -977,7 +1023,7 @@ class test_cctbx_clashscore(unittest.TestCase):
       for fn in self.file_to_delete:
         if os.path.isfile(fn): os.remove(fn)
 
-def process_clash_score(file_name,return_n_atoms=False,cif_file_name=None):
+def process_overlaps_count(file_name,return_n_atoms=False,cif_file_name=None):
   files = [file_name]
   if cif_file_name: files.append(cif_file_name)
   pdb_processed_file = pdb_inter.run(
@@ -994,18 +1040,18 @@ def process_clash_score(file_name,return_n_atoms=False,cif_file_name=None):
   sites_cart = xrs.sites_cart()
   site_labels = xrs.scatterers().extract_labels()
   hd_sel = xrs.hd_selection()
-  macro_mol_sel = cs.get_macro_mol_sel(pdb_processed_file)
+  macro_mol_sel = nbo.get_macro_mol_sel(pdb_processed_file)
 
-  clash_score_info = cs.info(
+  overlaps_count_info = nbo.info(
       geometry_restraints_manager=grm,
       macro_molecule_selection=macro_mol_sel,
       sites_cart=sites_cart,
       site_labels=site_labels,
       hd_sel=hd_sel)
   if return_n_atoms:
-    return clash_score_info,sites_cart.size(),macro_mol_sel.count(True)
+    return overlaps_count_info,sites_cart.size(),macro_mol_sel.count(True)
   else:
-    return clash_score_info
+    return overlaps_count_info
 
 def process_raw_records(
   raw_record_number,
@@ -1048,30 +1094,30 @@ def process_raw_records(
     nonbonded_distance_threshold=nonbonded_distance_threshold)
 
   xrs = pdb_processed_file.xray_structure()
-  params = get_clashscore_param(
+  params = get_nb_overlaps_param(
       xrs=xrs,
       grm=grm,
       use_site_labels=use_site_labels)
-  sites_cart,site_labels,hd_sel,full_connectivty_table = params
-  macro_mol_sel = cs.get_macro_mol_sel(pdb_processed_file)
+  sites_cart,site_labels,hd_sel,full_connectivity_table = params
+  macro_mol_sel = nbo.get_macro_mol_sel(pdb_processed_file)
 
-  result = grm.cctbx_clashscore_info(
+  result = grm.nb_overlaps_info(
     sites_cart=sites_cart,
     macro_mol_sel=macro_mol_sel,
     site_labels=site_labels,
     hd_sel=hd_sel)
   return result
 
-def get_clashscore_param(xrs,grm,use_site_labels=True):
+def get_nb_overlaps_param(xrs,grm,use_site_labels=True):
   '''
-  Process input parameters for non_bonded_clashscore
+  Process input parameters for nb_overlaps
 
   Arguments:
   xrs: xray_structure object
   grm: geometry restraints manager object
 
   Returns:
-  sites_cart,site_labels,hd_sel,full_connectivty_table
+  sites_cart,site_labels,hd_sel,full_connectivity_table
   '''
   hd_sel = xrs.hd_selection()
   sites_cart = xrs.sites_cart()
@@ -1081,8 +1127,8 @@ def get_clashscore_param(xrs,grm,use_site_labels=True):
     site_labels = None
 
   table_bonds = grm.shell_sym_tables[0]
-  full_connectivty_table = table_bonds.full_simple_connectivity()
-  return sites_cart,site_labels,hd_sel,full_connectivty_table
+  full_connectivity_table = table_bonds.full_simple_connectivity()
+  return sites_cart,site_labels,hd_sel,full_connectivity_table
 
 
 def run_selected_tests():
@@ -1092,9 +1138,9 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  # tests = ['test_running_from_command_line','test_compute','test_info']
+  # tests = ['test_abort_when_bad_cryst_records']
   tests = ['test_abort_when_bad_cryst_records']
-  suite = unittest.TestSuite(map(test_cctbx_clashscore, tests))
+  suite = unittest.TestSuite(map(test_nonbonded_overlaps, tests))
   return suite
 
 if (__name__ == "__main__"):

@@ -1130,15 +1130,16 @@ class manager(object):
         sites_cart=sites_cart, site_labels=site_labels, f=f)
       print >> f
 
-  def cctbx_clashscore_info(
+  def nb_overlaps_info(
     self,
     sites_cart,
     hd_sel,
     macro_mol_sel=None,
     site_labels=None):
-    from cctbx.geometry_restraints.clash_score import info
+    """ non-bonded overlaps information """
+    from cctbx.geometry_restraints.nonbonded_overlaps import info
     if not macro_mol_sel:
-      from cctbx.geometry_restraints.clash_score import get_macro_mol_sel
+      from cctbx.geometry_restraints.nonbonded_overlaps import get_macro_mol_sel
       macro_mol_sel = get_macro_mol_sel(pdb_processed_file=self)
 
     return info(

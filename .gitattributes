@@ -133,12 +133,12 @@ cctbx/examples/unit_cell_minimizers.py svneol=native#text/x-python
 cctbx/french_wilson.h -text
 cctbx/french_wilson.py svneol=native#text/x-python
 cctbx/geometry_restraints/bond_misc.h svneol=native#text/plain
-cctbx/geometry_restraints/clash_score.py -text
 cctbx/geometry_restraints/gradients.tex -text
+cctbx/geometry_restraints/nonbonded_overlaps.py -text
 cctbx/geometry_restraints/parallelity.h -text
 cctbx/geometry_restraints/parallelity_bpl.cpp -text
 cctbx/geometry_restraints/tst_angle_derivs.py svneol=native#text/x-python
-cctbx/geometry_restraints/tst_clash_score.py -text
+cctbx/geometry_restraints/tst_nonbonded_overlaps.py -text
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
 cctbx/maptbx/SConscript -text
 cctbx/maptbx/asymmetric_map.cpp svneol=native#text/plain
@@ -1668,6 +1668,7 @@ mmtbx/command_line/molprobity.py svneol=native#text/x-python
 mmtbx/command_line/mon_lib_cif_triage.py svneol=native#text/x-python
 mmtbx/command_line/mp_geo.py -text
 mmtbx/command_line/mtz2map.py -text
+mmtbx/command_line/nonbonded_overlaps.py -text
 mmtbx/command_line/nqh_minimize.py -text
 mmtbx/command_line/omegalyze.py -text
 mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python

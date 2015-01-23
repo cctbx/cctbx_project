@@ -1,7 +1,6 @@
 
 from __future__ import division
 from mmtbx.command_line import molprobity
-import mmtbx.validation.molprobity
 import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
