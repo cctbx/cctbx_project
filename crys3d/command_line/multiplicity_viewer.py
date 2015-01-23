@@ -61,6 +61,13 @@ def run (args) :
 
 
 class MultiplicityViewFrame(HKLViewFrame):
+  def __init__ (self, *args, **kwds) :
+    HKLViewFrame.__init__(self, *args, **kwds)
+    self.create_colour_bar_panel()
+    self.sizer.Add(self.colour_bar, 0, wx.EXPAND)
+    self.SetSizer(self.sizer)
+    self.sizer.SetSizeHints(self)
+    self.viewer.SetFocus()
 
   def create_settings_panel(self):
     self.settings_panel = multiplicity_settings_window(self, -1, style=wx.RAISED_BORDER)
@@ -85,6 +92,7 @@ class MultiplicityViewFrame(HKLViewFrame):
     self.miller_array = array
     self.viewer.set_miller_array(array, zoom=True, merge=array_info.merge)
     self.viewer.Refresh()
+    self.colour_bar.Refresh()
     if (self.view_2d is not None) :
       self.view_2d.set_miller_array(array)
 
@@ -183,6 +191,21 @@ class MultiplicityViewFrame(HKLViewFrame):
       if (wxtbx.MAC_OS_X_MAVERICKS) :
         wx.GetApp().SafeYield(self.view_2d, True)
     self.view_2d.Raise()
+
+  def create_colour_bar_panel(self):
+    self.colour_bar = ColourBar(parent=self, size=(100,640))
+    self.colour_bar.SetMinSize((100,640))
+    self.colour_bar.viewer = self.viewer
+
+  def OnActive (self, event) :
+    HKLViewFrame.OnActive(self, event)
+
+
+  def update_settings (self, *args, **kwds) :
+    if (self.miller_array is None) :
+      return False
+    self.viewer.update_settings(*args, **kwds)
+    self.colour_bar.update_settings(*args, **kwds)
 
 
 class multiplicity_settings_window(settings_window):
@@ -283,6 +306,9 @@ class multiplicity_settings_window(settings_window):
       self.Bind(wx.EVT_CHOICE, self.OnSetSlice, self.hkl_choice)
       self.Bind(wx.EVT_SPINCTRL, self.OnSetSlice, self.slice_index)
 
+  def update_reflection_info (self, hkl, d_min, value) :
+    return
+
 
 class multiplicity_settings_window_2d (multiplicity_settings_window) :
   is_3d_view = False
@@ -307,6 +333,158 @@ class MultiplicityViewFrame2D(MultiplicityViewFrame, HKLViewFrame2D):
         self.view_3d.set_miller_array(self.viewer.miller_array)
     self.view_3d.Raise()
 
+
+class ColourBar (wx.PyPanel):
+  def __init__ (self, *args, **kwds) :
+    wx.PyPanel.__init__(self, *args, **kwds)
+    font = wx.Font(14, wx.MODERN, wx.NORMAL, wx.NORMAL)
+    self.SetFont(font)
+    self.Bind(wx.EVT_PAINT, self.OnPaint)
+    #self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftClick, self)
+    #self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp, self)
+    #self.Bind(wx.EVT_MOTION, self.OnMouseMotion, self)
+    self.viewer = None
+    self.parent = self.GetParent()
+    self.settings = self.parent.settings
+    self.setup_colors()
+
+  @property
+  def scene(self):
+    if self.viewer is not None:
+      return self.viewer.scene
+
+  def paint(self, gc):
+    font = self.GetFont()
+    font.SetFamily(wx.FONTFAMILY_MODERN)
+    if (self.settings.black_background) :
+      gc.SetFont(gc.CreateFont(font, (255,255,255)))
+    else :
+      gc.SetFont(gc.CreateFont(font, (0,0,0)))
+    self.render(gc)
+
+  def render (self, canvas) :
+    from scitbx.array_family import flex
+    from libtbx.utils import frange
+    import math
+    size = self.GetSize()
+    border = 10
+    i_rows = flex.double_range(border, size[1]-border)
+    scene = self.scene
+    if self.scene.settings.scale_colors_multiplicity:
+      data = self.scene.multiplicities.data()
+    else:
+      data = self.scene.data
+      if self.settings.sqrt_scale_colors:
+        data = flex.sqrt(data)
+    min_data = flex.min(data)
+    max_data = flex.max(data)
+    data_for_colors = flex.double(frange(
+      max_data, min_data, -(max_data-min_data)/len(i_rows)))
+    tick_step = int(math.ceil((max_data-min_data)/10))
+    i_row_ticks = []
+    tick_text = []
+    start_tick = math.floor(max_data)
+    i_tick = 0
+    for i in range(len(data_for_colors)-1):
+      tick_d = start_tick - tick_step * i_tick
+      if abs(data_for_colors[i]-tick_d) < abs(data_for_colors[i+1]-tick_d):
+        i_row_ticks.append(i_rows[i])
+        tick_text.append(str(int(tick_d)))
+        i_tick += 1
+    tick_d = start_tick - tick_step * i_tick
+    if tick_d == min_data:
+      i_row_ticks.append(i_rows[-1])
+      tick_text.append(str(int(tick_d)))
+
+    from scitbx import graphics_utils
+    if (self.settings.color_scheme in ["rainbow", "heatmap", "redblue"]) :
+      colors = graphics_utils.color_by_property(
+        properties=data_for_colors,
+        selection=flex.bool(data_for_colors.size(), True),
+        color_all=False,
+        gradient_type=self.settings.color_scheme)
+    elif (self.settings.color_scheme == "grayscale") :
+      colors = graphics_utils.grayscale_by_property(
+        properties=data_for_colors,
+        selection=flex.bool(data_for_colors.size(), True),
+        shade_all=False,
+        invert=self.settings.black_background)
+    else :
+      if (self.settings.black_background) :
+        base_color = (1.0,1.0,1.0)
+      else :
+        base_color = (0.0,0.0,0.0)
+      colors = flex.vec3_double(data_for_colors.size(), base_color)
+
+    l_padding = border
+    r_padding = 4 * border
+
+    for i_row, color in zip(i_rows, colors):
+      self.draw_line(canvas, l_padding, i_row, size[0]-r_padding, i_row, color=color)
+
+    for i_row, text in zip(i_row_ticks, tick_text):
+      self.draw_text(canvas, text, size[0]-0.8*r_padding, i_row-5)
+      self.draw_line(canvas, size[0]-r_padding-10, i_row, size[0]-r_padding, i_row)
+
+  def setup_colors (self) :
+    if (self.settings.black_background) :
+      self._background = (0.,0.,0.)
+      self._foreground = (0.95,0.95,0.95)
+      if (self.settings.color_scheme == "heatmap") :
+        self._missing = (0.,1.,0.)
+      elif (not self.settings.color_scheme in ["rainbow", "redblue"]) :
+        self._missing = (1.,0.,0.)
+      else :
+        self._missing = (1.,1.,1.)
+    else :
+      self._background = (1.,1.,1.)
+      self._foreground = (0.,0.,0.)
+      if (self.settings.color_scheme == "heatmap") :
+        self._missing = (0.,1.,0.)
+      elif (not self.settings.color_scheme in ["rainbow", "redblue"]) :
+        self._missing = (1.,0.,0.)
+      else :
+        self._missing = (0.,0.,0.)
+
+  def get_color (self, c) :
+    return (int(c[0]*255), int(c[1]*255), int(c[2]*255))
+
+  def draw_line (self, canvas, x1, y1, x2, y2, color=None) :
+    gc = canvas
+    x_axis = gc.CreatePath()
+    x_axis.MoveToPoint(x1, y1)
+    x_axis.AddLineToPoint(x2, y2)
+    x_axis.CloseSubpath()
+    if (color is None) :
+      color = self._foreground
+    gc.SetPen(wx.Pen(self.get_color(color)))
+    gc.PushState()
+    gc.StrokePath(x_axis)
+    gc.PopState()
+
+  def draw_text (self, canvas, text, x, y) :
+    gc = canvas
+    gc.SetPen(wx.Pen(self.get_color(self._foreground)))
+    gc.DrawText(text, x, y)
+
+  def OnPaint (self, event) :
+    if (self.scene is None) :
+      return
+    if (self.settings.black_background) :
+      self.SetBackgroundColour((0,0,0))
+    else :
+      self.SetBackgroundColour((255,255,255))
+    dc = wx.AutoBufferedPaintDCFactory(self)
+    if (self.settings.black_background) :
+      dc.SetBackground(wx.BLACK_BRUSH)
+    else :
+      dc.SetBackground(wx.WHITE_BRUSH)
+    dc.Clear()
+    gc = wx.GraphicsContext.Create(dc)
+    self.paint(gc)
+
+  def update_settings (self) :
+    self.Refresh()
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
