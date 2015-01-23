@@ -358,6 +358,7 @@ crys3d/command_line/__init__.py -text
 crys3d/command_line/compare_datasets.py -text
 crys3d/command_line/hklview.py -text
 crys3d/command_line/model_viewer.py -text
+crys3d/command_line/multiplicity_viewer.py -text
 crys3d/command_line/visualize_r_factors.py -text
 crys3d/hklview/__init__.py -text
 crys3d/hklview/comparison.py -text
