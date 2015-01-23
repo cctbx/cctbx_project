@@ -107,7 +107,11 @@ class installer (object) :
         os.makedirs(dir_name)
 
     # Which Python interpreter:
-    self.python_exe = options.with_python or None
+    self.python_exe = None
+    if os.path.exists(os.path.join(self.build_dir, 'base', 'bin', 'python')):
+      self.python_exe = os.path.join(self.build_dir, 'base', 'bin', 'python')
+    if options.with_python:
+      self.python_exe = options.with_python
     if options.with_system_python:
       self.python_exe = sys.executable
 
@@ -857,6 +861,63 @@ Installation of Python packages may fail.
       " ".join(wxpy_build_opts), debug_flag), log=pkg_log)
     self.call("%s setup.py %s install" % (self.python_exe,
       " ".join(wxpy_build_opts)), log=pkg_log)
+    self.verify_python_module("wxPython", "wx")
+
+  def build_wxpython3(self):
+    pkg_log = self.start_building_package("wxPython")
+    pkg_name = WXPYTHON_DEV_PKG
+    pkg = self.fetch_package(pkg_name)
+    if self.check_download_only(pkg_name):
+      return
+      
+    pkg_dir = untar(pkg, log=pkg_log)
+    os.chdir(pkg_dir)
+    if (self.flag_is_mac and get_os_version() == "10.10") :
+      # Workaround wxwidgets 3.0.2 compilation error on Yosemite
+      print >> self.log, "  patching src/osx/webview_webkit.mm"
+      self.patch_src(src_file="src/osx/webview_webkit.mm",
+                     target=("#include <WebKit/WebKit.h>",),
+                     replace_with=("#include <WebKit/WebKitLegacy.h>",))
+
+    # Stage 1: build wxWidgets libraries
+    config_opts = [
+      self.prefix,
+      "--disable-mediactrl",
+      "--with-opengl",
+    ]
+    if (self.flag_is_mac) :
+      config_opts.extend([
+        "--with-mac",
+        "--with-osx_cocoa",
+        "--with-macosx-version-min=10.6",
+        "--enable-monolithic",
+        "--enable-unicode"
+        "--enable-monolithic"
+      ])
+    elif (self.flag_is_linux) :
+      config_opts.extend([
+        "--with-gtk",
+        "--with-gtk-prefix=\"%s\"" % self.base_dir,
+        "--with-gtk-exec-prefix=\"%s\"" % op.join(self.base_dir, "lib"),
+        "--enable-graphics_ctx",
+      ])
+
+    print >> self.log, "  configure wxWidgets with options:"
+    for opt in config_opts :
+      print >> self.log, "    %s" % opt
+    self.call("./configure %s" % " ".join(config_opts), log=pkg_log)
+    self.call("make -j %d" % self.nproc, log=pkg_log)
+    self.call("make install", log=pkg_log)
+
+    os.chdir(os.path.join(pkg_dir, 'wxPython'))
+    self.call([
+      self.python_exe,
+      'build-wxpython.py',
+      '--no_wxbuild',
+      '--osx_cocoa',
+      '--prefix', self.base_dir,
+      '--install'
+      ], log=pkg_log)
     self.verify_python_module("wxPython", "wx")
 
   def build_matplotlib(self):
