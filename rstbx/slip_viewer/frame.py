@@ -237,24 +237,31 @@ class XrayFrame (AppFrame,XFBaseClass) :
         return self.pyslip.tiles.picture_fast_slow_to_map_relative(
           x, y)
 
-      if len(detector) == 24 and detector[0].get_image_size() == (2463,195):
+      try:
+        # determine if the beam intersects one of the panels
         panel_id, (x_mm,y_mm) = detector.get_ray_intersection(beam.get_s0())
-        beam_pixel_fast, beam_pixel_slow = detector[panel_id].millimeter_to_pixel(
-          (x_mm, y_mm))
+      except RuntimeError, e:
+        if not "DXTBX_ASSERT(w_max > 0) failure" in str(e):
+          # unknown exception from dxtbx
+          raise e
+        if len(detector) > 1:
+          # find the panel whose center is closest to the beam.
+          panel_id = 0
+          lowest_res = 0
+          for p_id, panel in enumerate(detector):
+            w, h = panel.get_image_size()
+            res = panel.get_resolution_at_pixel(beam.get_s0(), (w//2,h//2))
+            if res > lowest_res:
+              panel_id = p_id
+              lowest_res = res
+          x_mm,y_mm = detector[panel_id].get_beam_centre(beam.get_s0())
 
-      elif len(detector) > 1:
-        panel_id = 0
-        h = detector.hierarchy()
-        if len(h) > 0:
-          beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
-            detector.hierarchy().get_beam_centre(beam.get_s0()))
         else:
-          beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
-            detector[0].get_beam_centre(beam.get_s0()))
-      else:
-        panel_id = 0
-        beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
-          detector[0].get_beam_centre(beam.get_s0()))
+          panel_id = 0
+          x_mm,y_mm = detector[0].get_beam_centre(beam.get_s0())
+
+      beam_pixel_fast, beam_pixel_slow = detector[panel_id].millimeter_to_pixel(
+        (x_mm, y_mm))
 
       self.beam_center_cross_data = [
         ((map_coords(beam_pixel_fast + 3., beam_pixel_slow, panel_id),
