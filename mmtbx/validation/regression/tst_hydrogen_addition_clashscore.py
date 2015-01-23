@@ -1,6 +1,5 @@
 from __future__ import division
-from cctbx.geometry_restraints.clash_score import check_and_add_hydrogen
-from libtbx.utils import null_out
+from mmtbx.validation.clashscore import check_and_add_hydrogen
 import iotbx.pdb
 import unittest
 import os

@@ -4,10 +4,11 @@ All-atom contact analysis.  Requires Reduce and Probe (installed separately).
 """
 
 from __future__ import division
-from cctbx.geometry_restraints.clash_score import check_and_add_hydrogen
 from mmtbx.validation import validation, atoms, atom_info, residue
+from libtbx.utils import Sorry
 from libtbx import easy_run
 import libtbx.load_env
+import iotbx.pdb
 import re
 import sys
 
@@ -364,6 +365,100 @@ def decode_atom_string (atom_str, use_segids=False) :
       resname=atom_str[9:12],
       altloc=atom_str[17],
       name=atom_str[13:17])
+
+def check_and_add_hydrogen(
+        pdb_hierarchy=None,
+        file_name=None,
+        nuclear=False,
+        keep_hydrogens=True,
+        verbose=False,
+        model_number=0,
+        n_hydrogen_cut_off=0,
+        time_limit=120,
+        allow_multiple_models=True,
+        crystal_symmetry=None,
+        log=None):
+  """
+  If no hydrogens present, force addition for clashscore calculation.
+  Use REDUCE to add the hydrogen atoms.
+
+  Args:
+    pdb_hierarchy : pdb hierarchy
+    file_name (str): pdb file name
+    nuclear (bool): When True use nuclear cloud x-H distances and vdW radii,
+      otherwise use electron cloud x-H distances and vdW radii
+    keep_hydrogens (bool): when True, if there are hydrogen atoms, keep them
+    verbose (bool): verbosity of printout
+    model_number (int): the number of model to use
+    time_limit (int): limit the time it takes to add hydrogen atoms
+    n_hydrogen_cut_off (int): when number of hydrogen atoms < n_hydrogen_cut_off
+      force keep_hydrogens tp True
+    allow_multiple_models (bool): Allow models that contain more than one model
+    crystal_symmetry : must provide crystal symmetry when using pdb_hierarchy
+
+  Returns:
+    (str): PDB string
+    (bool): True when PDB string was updated
+  """
+  if file_name:
+    pdb_inp = iotbx.pdb.input(file_name=file_name)
+    cryst_sym = pdb_inp.crystal_symmetry()
+    pdb_hierarchy = pdb_inp.construct_hierarchy()
+  elif not allow_multiple_models:
+    assert crystal_symmetry
+    cryst_sym = crystal_symmetry
+  else:
+    cryst_sym = None
+  assert pdb_hierarchy
+  assert model_number < len(pdb_hierarchy.models())
+  if not log: log = sys.stdout
+  models = pdb_hierarchy.models()
+  if (len(models) > 1) and (not allow_multiple_models):
+    raise Sorry("When using CCTBX clashscore, provide only a single model.")
+  model = models[model_number]
+  r = iotbx.pdb.hierarchy.root()
+  mdc = model.detached_copy()
+  r.append_model(mdc)
+  if keep_hydrogens:
+    elements = r.atoms().extract_element()
+    h_count = elements.count(' H') + elements.count(' D')
+    if h_count > n_hydrogen_cut_off:
+      has_hd = True
+    else:
+      has_hd = False
+    if not has_hd:
+      if verbose:
+        print >> log,"\nNo H/D atoms detected - forcing hydrogen addition!\n"
+      keep_hydrogens = False
+  import libtbx.load_env
+  has_reduce = libtbx.env.has_module(name="reduce")
+  # add hydrogen if needed
+  if has_reduce and (not keep_hydrogens):
+    # set reduce running parameters
+    build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -limit{}"
+    if nuclear:
+      build += " -nuc -"
+    else:
+      build += " -"
+    build = build.format(time_limit)
+    trim = "phenix.reduce -quiet -trim -"
+    stdin_lines = r.as_pdb_string(cryst_sym)
+    clean_out = easy_run.fully_buffered(trim,stdin_lines=stdin_lines)
+    if (clean_out.return_code != 0) :
+      msg_str = "Reduce crashed with command '%s' - dumping stderr:\n%s"
+      raise Sorry(msg_str % (trim, "\n".join(clean_out.stderr_lines)))
+    build_out = easy_run.fully_buffered(build,stdin_lines=clean_out.stdout_lines)
+    if (build_out.return_code != 0) :
+      msg_str = "Reduce crashed with command '%s' - dumping stderr:\n%s"
+      raise Sorry(msg_str % (build, "\n".join(build_out.stderr_lines)))
+    reduce_str = '\n'.join(build_out.stdout_lines)
+    return reduce_str,True
+  else:
+    if not has_reduce:
+      msg = 'phenix.reduce could not be detected on your system.\n'
+      msg += 'Cannot add hydrogen to PDB file'
+      print >> log,msg
+    return r.as_pdb_string(cryst_sym),False
 
 #-----------------------------------------------------------------------
 # this isn't really enough code to justify a separate module...
