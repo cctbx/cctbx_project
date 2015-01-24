@@ -203,7 +203,7 @@ class ncs_minimization_test(object):
       assert approx_equal(self.fmodel.r_work(), 0, 1.e-5)
     elif(self.sites):
       if(self.use_geometry_restraints):
-        assert approx_equal(self.fmodel.r_work(), 0, 0.0001)
+        assert approx_equal(self.fmodel.r_work(), 0, 0.00015)
       else:
         assert approx_equal(self.fmodel.r_work(), 0, 1.e-5)
     elif self.transformations:
