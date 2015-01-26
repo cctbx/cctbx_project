@@ -400,10 +400,11 @@ def check_and_add_hydrogen(
     (str): PDB string
     (bool): True when PDB string was updated
   """
+  if not log: log = sys.stdout
   if file_name:
     pdb_inp = iotbx.pdb.input(file_name=file_name)
-    cryst_sym = pdb_inp.crystal_symmetry()
     pdb_hierarchy = pdb_inp.construct_hierarchy()
+    cryst_sym = pdb_inp.crystal_symmetry()
   elif not allow_multiple_models:
     assert crystal_symmetry
     cryst_sym = crystal_symmetry
@@ -411,7 +412,6 @@ def check_and_add_hydrogen(
     cryst_sym = None
   assert pdb_hierarchy
   assert model_number < len(pdb_hierarchy.models())
-  if not log: log = sys.stdout
   models = pdb_hierarchy.models()
   if (len(models) > 1) and (not allow_multiple_models):
     raise Sorry("When using CCTBX clashscore, provide only a single model.")
