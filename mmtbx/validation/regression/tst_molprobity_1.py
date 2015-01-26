@@ -134,12 +134,12 @@ REMARK   3    GEOSTD + MON.LIB. + CDL v1.2
   open("tst_molprobity_cdl_1.pdb", "w").write(pdb_raw)
   open("tst_molprobity_cdl_2.pdb", "w").write(pdb_raw_2)
   files = ["tst_molprobity_cdl_1.pdb","tst_molprobity_cdl_2.pdb"]
-  rmsds = [1.0267, 0.8796]
+  rmsds = [0.9019, 0.8769]
   for file_name, rmsd, cdl_expected in zip(files, rmsds, [False, True]) :
     result = molprobity.run(args=[file_name, "flags.clashscore=False"],
       ignore_missing_modules=True,
       out=null_out()).validation
-    assert approx_equal(result.rms_angles(), rmsd, eps=0.001)
+    assert approx_equal(result.rms_angles(), rmsd, eps=0.001), rmsd
     if cdl_expected :
       out = StringIO()
       result.show(out=out)

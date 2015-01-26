@@ -77,7 +77,7 @@ atoms                   ideal    model    delta   sigma  residual   deviation
  A   1  LYS  CA
  A   1  LYS  N
  A   1  LYS  C
- A   1  LYS  CB          2.56     1.12     1.44  2.00e-01  5.19e+01   7.2*sigma
+ A   1  LYS  CB          2.57     1.12     1.45  2.00e-01  5.25e+01   7.2*sigma
 """ in "\n".join([ l.rstrip() for l in out1.getvalue().splitlines() ]))
   s = easy_pickle.dumps(v1)
   v1p = easy_pickle.loads(s)

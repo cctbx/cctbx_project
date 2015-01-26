@@ -67,7 +67,7 @@ def exercise(args):
 
   assert len(target_values) == 6
   assert target_values[0] > 100
-  assert target_values[5] < 6
+  assert target_values[5] < 7
   print "OK"
 
 if (__name__ == "__main__"):

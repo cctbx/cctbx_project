@@ -236,8 +236,8 @@ def run():
     mon_lib_srv=mon_lib_srv, ener_lib=ener_lib, verbose=verbose)
   exercise_00(inputs=inputs, verbose=verbose)
   exercise_01(inputs=inputs, verbose=verbose)
-  exercise_02(inputs=inputs, verbose=verbose)
   exercise_03(mon_lib_srv=mon_lib_srv, ener_lib=ener_lib, verbose=verbose)
+  exercise_02(inputs=inputs, verbose=verbose)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
