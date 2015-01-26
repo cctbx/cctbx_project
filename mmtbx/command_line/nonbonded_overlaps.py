@@ -67,20 +67,40 @@ Options:
 
 Example:
 
-  phenix.clashscore xxxx.pdb keep_hydrogens=True
+>>> mmtbx.nonbonded_overlaps xxxx.pdb keep_hydrogens=True
+
+>>> mmtbx.nonbonded_overlaps xxxx.pdb verbose=false
 """
 
-def run (args, out=sys.stdout) :
+def run (args, out=None) :
   """
   Calculates number of non-bonded atoms overlaps in a model
 
-  Returns:
+  prints to log:
     When verbose=True the function print detailed results to log
     When verbose=False it will print:
         nb_overlaps_macro_molecule,
         nb_overlaps_due_to_sym_op,
         nb_overlaps_all
+
+  Args:
+    args (list): list of options.
+      model=input_file          input PDB file
+      cif=input_file            input CIF file for additional model information
+      keep_hydrogens=True       keep input hydrogen files (otherwise regenerate)
+      nuclear=False             use nuclear x-H distances and vdW radii
+      verbose=True              verbose text output
+      time_limit=120            Time limit (sec) for Reduce optimization
+      show_overlap_type=all     what type of overlaps to show
+      substitute_non_crystallographic_unit_cell_if_necessary=false
+                                fix CRYST1 records if needed
+    out : where to wrote the output to.
+
+  Returns:
+    nb_overlaps (obj): Object containing overlap and overlap per thousand
+    atoms information
   """
+  if not out: out = sys.stdout
   if not args:
     print >> out,usage_string
     return None
@@ -149,6 +169,7 @@ def run (args, out=sys.stdout) :
     sym = nb_overlaps.result.nb_overlaps_due_to_sym_op
     out_list = map(lambda x: str(round(x,2)),[macro_molecule,sym,all])
     print >> out,', '.join(out_list)
+  return nb_overlaps
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
