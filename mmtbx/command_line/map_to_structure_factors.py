@@ -136,6 +136,9 @@ def run(args, log=None):
   mtz_dataset.add_miller_array(
     miller_array      = abs(f_obs_cmpl),
     column_root_label = "F_ampl")
+  mtz_dataset.add_miller_array(
+    miller_array      = f_obs_cmpl.customized_copy(data=flex.double(f_obs_cmpl.data().size(),1)),
+    column_root_label = "SIGF_ampl")
   # convert phases into HL coefficeints
   broadcast(m="Convert phases into HL coefficeints:", log=log)
   hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=params.b_blur)
