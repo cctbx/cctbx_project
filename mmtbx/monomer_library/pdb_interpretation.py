@@ -316,6 +316,19 @@ master_params_str = """\
       sigma = 0.176
         .type = float
     }
+    basepair_parallelity {
+      enabled = False
+      .type = bool
+      .short_caption = Enable parallelity restraint for basepairing \
+        nucleobases
+      find_automatically = True
+      target_angle_deg = 0
+      sigma = 0.027
+      .type = float
+      slack = 0
+      top_out = False
+      limit = 1
+    }
     stacking {
       enabled = True
         .type = bool
@@ -3962,6 +3975,7 @@ refinement.pdb_interpretation {
     new_hbonds = []
     max_distance = na_params.bonds.bond_distance_cutoff
     planarity_proxies = []
+    parallelity_proxies = []
     weight = 1./na_params.basepair_planarity.sigma**2
     for bp in na_params.base_pair:
       if bp.base1 is not None and bp.base2 is not None:
@@ -3975,6 +3989,13 @@ refinement.pdb_interpretation {
             planarity_proxies.append(geometry_restraints.planarity_proxy(
               i_seqs=i_seqs+j_seqs,
               weights=[weight]*len(i_seqs+j_seqs)))
+        if na_params.basepair_parallelity.enabled:
+          seqs = self.get_i_seqs_from_na_planes(r1, r2)
+          for i_seqs, j_seqs in seqs:
+            parallelity_proxies.append(geometry_restraints.parallelity_proxy(
+              i_seq=i_seqs,
+              j_seq=j_seqs,
+              weights=1./na_params.basepair_parallelity.sigma**2))
         if na_params.bonds.enabled:
           bonds = self.get_h_bonds_for_basepair(a1,a2)
           for b in bonds:
@@ -3990,7 +4011,7 @@ refinement.pdb_interpretation {
                 print >> log, "length=%4.2f" % dist, "is rejected because of",
                 print >> log, "nucleic_acid_restraints.bonds.bond_distance_cutoff=",
                 print >> log, na_params.bonds.bond_distance_cutoff
-    return new_hbonds, planarity_proxies, max_distance
+    return new_hbonds, planarity_proxies, parallelity_proxies, max_distance
 
 
 
@@ -4703,7 +4724,7 @@ refinement.pdb_interpretation {
       #  "_phenix.sym_op",
       #))
     #
-    new_hbonds, na_basepairs_planarities, max_na_hbond_lenght = \
+    new_hbonds, na_basepairs_planarities, na_basepairs_parallelities, max_na_hbond_lenght = \
         self.create_user_defined_NA_basepair_restraints(log)
     max_bond_distance = max(max_disulfide_bond_distance, max_na_hbond_lenght)
     if (bond_distances_model.size() > 0):
@@ -4844,7 +4865,7 @@ refinement.pdb_interpretation {
     #
     al_params = self.params.automatic_linking
     na_params = self.params.nucleic_acid_restraints
-    #========== Add user-defined parallelity restraints ==============
+    #========== Add user-defined stacking restraints ==============
     selection_cache = self.pdb_hierarchy.atom_selection_cache()
     if na_params.stacking.enabled:
       for sp in na_params.stacking_pair:
@@ -4866,7 +4887,7 @@ refinement.pdb_interpretation {
                 top_out=na_params.stacking.top_out,
                 limit=na_params.stacking.limit)
               self.geometry_proxy_registries.parallelity.add_if_not_duplicated(proxy=proxy)
-    #========== End user-defined parallelity restraints ==============
+    #========== End user-defined stacking restraints ==============
     hbonds_in_bond_list = []
     any_links = False
     link_attrs = ["link_metals",
@@ -4910,19 +4931,33 @@ refinement.pdb_interpretation {
           self.pdb_atoms[bond[0]],
           self.pdb_atoms[bond[1]],
           distance_cutoff=na_params.bonds.bond_distance_cutoff)
-      if (na_params.basepair_planarity.enabled and na_params.enabled
-          and na_params.basepair_planarity.find_automatically
-          and len(bp_bonds)>1):
+      if (na_params.enabled and len(bp_bonds)>1 and
+            ((na_params.basepair_planarity.enabled and
+              na_params.basepair_planarity.find_automatically)
+          or ( na_params.basepair_parallelity.enabled and
+              na_params.basepair_parallelity.find_automatically ) )):
+        # if (na_params.basepair_planarity.enabled and na_params.enabled
+        #     and na_params.basepair_planarity.find_automatically
+        #     and len(bp_bonds)>1):
         r1 = self.pdb_atoms[bp_bonds[0][0]].parent()
         r2 = self.pdb_atoms[bp_bonds[0][1]].parent()
         i_seqs = []
         seqs = self.get_i_seqs_from_na_planes(r1, r2)
         for i_seqs, j_seqs in seqs:
-          proxy = geometry_restraints.planarity_proxy(
-            i_seqs=i_seqs+j_seqs,
-            weights=[weight]*(len(i_seqs)+len(j_seqs)))
-          self.geometry_proxy_registries.planarity.\
-                              add_if_not_duplicated(proxy=proxy)
+          if na_params.basepair_planarity.enabled:
+            proxy = geometry_restraints.planarity_proxy(
+              i_seqs=i_seqs+j_seqs,
+              weights=[weight]*(len(i_seqs)+len(j_seqs)))
+            self.geometry_proxy_registries.planarity.\
+                                add_if_not_duplicated(proxy=proxy)
+          if na_params.basepair_parallelity.enabled:
+            proxy = geometry_restraints.parallelity_proxy(
+              i_seqs=i_seqs,
+              j_seqs=j_seqs,
+              weight=1./na_params.basepair_parallelity.sigma**2)
+            self.geometry_proxy_registries.parallelity.\
+                                add_if_not_duplicated(proxy=proxy)
+
           info_element = (r1.parent().parent().id, r1.parent().resid(),
                           r2.parent().parent().id, r2.parent().resid())
           if info_element not in info_for_na_restraints_out_file_bp:
@@ -4964,6 +4999,8 @@ refinement.pdb_interpretation {
           bond_asu_table.add_pair((new_hb[0], new_hb[1]))
     for p in na_basepairs_planarities:
       self.geometry_proxy_registries.planarity.add_if_not_duplicated(p)
+    for p in na_basepairs_parallelities:
+      self.geometry_proxy_registries.parallelity.add_if_not_duplicated(p)
     if len(hbonds_in_bond_list) == 0:
       hbonds_in_bond_list = None
     # ouputting auto-generated bonds for debugging purposes
