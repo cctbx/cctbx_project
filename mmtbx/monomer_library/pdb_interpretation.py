@@ -322,12 +322,17 @@ master_params_str = """\
       .short_caption = Enable parallelity restraint for basepairing \
         nucleobases
       find_automatically = True
+        .type = bool
       target_angle_deg = 0
+        .type = float
       sigma = 0.027
-      .type = float
+        .type = float
       slack = 0
+        .type = float
       top_out = False
+        .type = bool
       limit = 1
+        .type = float
     }
     stacking {
       enabled = True

@@ -1453,7 +1453,6 @@ class rewrite_normalized(object):
 #   don't exist)
 # Updated 2009-04-07, based on 56751 PDB files, using SPLIT records.
 pdb_codes_fragment_files = """\
-1bgl 1bgm
 1crp 1crr
 1f49 1gho
 1gix 1giy
