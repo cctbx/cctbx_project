@@ -1109,6 +1109,8 @@ class process_pdb_file_srv(object):
     try :
       pdb_inp = iotbx.pdb.input(source_info = None,
                                 lines       = flex.std_string(raw_records))
+      if(self.crystal_symmetry is None):
+        self.crystal_symmetry = pdb_inp.crystal_symmetry()
     except ValueError, e :
       raise Sorry("PDB format error:\n%s" % str(e))
     if(pdb_inp.atoms().size() == 0):
