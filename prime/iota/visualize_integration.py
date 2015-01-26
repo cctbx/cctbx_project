@@ -8,13 +8,13 @@ def make_png(image_pickle, integration_pickle, file_name=None, res=300):
   :param image_pickle: path to image pickle file.
   :param integration_pickle: path to integration pickle file.
   :param res: resolution of output file in dpi (6x6 image size).
-  :file_name: desired output file name. Defaults to the image_pickle name.
+  :file_name: desired output file name. Defaults to the integration_pickle name.
   """
 
   if file_name is None:
     import os
     # Change extension of `image_pickle` to .png
-    file_name = os.path.splitext(image_pickle)[0] + ".png"
+    file_name = os.path.splitext(integration_pickle)[0] + ".png"
 
   # Load image pickle, and convert to image
   img_dict = ep.load(image_pickle)
