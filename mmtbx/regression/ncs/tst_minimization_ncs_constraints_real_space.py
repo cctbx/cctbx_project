@@ -153,21 +153,8 @@ def run(prefix="tst", d_min=1.0):
   transforms_obj = nu.update_transforms(transforms_obj,rm,tv)
   ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
   refine_selection = flex.size_t(xrange(transforms_obj.total_asu_length))
-  # extended_ncs_selection = nu.get_extended_ncs_selection(
-  #     ncs_restraints_group_list=ncs_restraints_group_list,
-  #     refine_selection=refine_selection)
-  #
   for i in xrange(5):
     data_weight = 1
-    # XXX figure out why oscillates
-    #data_weight = mmtbx.refinement.real_space.weight.run(
-    #  map_data                    = map_data,
-    #  xray_structure              = xrs_poor,
-    #  pdb_hierarchy               = ph_poor,
-    #  geometry_restraints_manager = restraints_manager,
-    #  rms_bonds_limit             = 0.01,
-    #  rms_angles_limit            = 0.5).weight
-    #print data_weight
     for action in [[False, True], [True, False]]:
       refine_sites, refine_transformations = action
       tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
@@ -197,8 +184,6 @@ def run(prefix="tst", d_min=1.0):
         add_identity=False)
       rm,tv = nu.get_rotation_translation_as_list(
         ncs_restraints_group_list= ncs_restraints_group_list)
-      # rm = ncs_obj_poor.back_rotation_matrices
-      # tv = ncs_obj_poor.back_translation_vectors
   #
   ph_poor.write_pdb_file(file_name="refined.pdb")
 

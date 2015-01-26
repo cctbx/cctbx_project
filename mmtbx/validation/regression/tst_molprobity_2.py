@@ -52,7 +52,7 @@ def exercise_protein () :
   assert approx_equal(result.d_min(), 2.03)   # from PDB header
   assert (result.d_max_min() is None)
   assert approx_equal(result.rms_bonds(), 0.02585)
-  assert approx_equal(result.rms_angles(), 2.372306)
+  assert approx_equal(result.rms_angles(), 2.356740)
   assert approx_equal(result.rama_favored(), 96.47059)
   assert (result.cbeta_outliers() == 10)
   assert approx_equal(result.molprobity_score(), 3.3725, eps=0.0001)
@@ -96,7 +96,7 @@ def exercise_protein () :
   assert approx_equal(result.d_min(), 2.0302, eps=0.0001)
   assert approx_equal(result.d_max_min(), [34.546125, 2.0302], eps=0.0001)
   assert approx_equal(result.rms_bonds(), 0.02585)
-  assert approx_equal(result.rms_angles(), 2.372306)
+  assert approx_equal(result.rms_angles(), 2.356740)
   assert approx_equal(result.rama_favored(), 96.47059)
   assert (result.cbeta_outliers() == 10)
   assert approx_equal(result.unit_cell().parameters(),
