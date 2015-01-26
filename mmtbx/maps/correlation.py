@@ -56,8 +56,12 @@ class from_map_and_xray_structure_or_fmodel(object):
       self.map_model = fft_map.real_map_unpadded()
     if(self.fmodel is not None):
       self.sites_cart = self.fmodel.xray_structure.sites_cart()
+      self.sites_frac = self.fmodel.xray_structure.sites_frac()
+      self.weights    = self.fmodel.xray_structure.atomic_weights()
     else:
       self.sites_cart = self.xray_structure.sites_cart()
+      self.sites_frac = self.xray_structure.sites_frac()
+      self.weights    = self.xray_structure.atomic_weights()
 
   def cc(self, selections=None, selection=None, atom_radius=2.0):
     assert [selections, selection].count(None) == 1
@@ -79,3 +83,19 @@ class from_map_and_xray_structure_or_fmodel(object):
     else:
       return compute(sites_cart=self.sites_cart.select(selection))
 
+  def map_value(self, selections=None, selection=None):
+    assert [selections, selection].count(None) == 1
+    def compute(sites_frac, weights):
+      result = 0
+      for sf, w in zip(sites_frac, weights):
+        result += self.map_data.eight_point_interpolation(sf)*w
+      return result/flex.sum(weights)
+    if(selections is not None):
+      result = []
+      for s in selections:
+        result.append(compute(sites_frac=self.sites_frac.select(s),
+          weights = self.weights.select(s)))
+      return result
+    else:
+      return compute(sites_frac=self.sites_frac.select(selection),
+        weights = self.weights.select(selection))
