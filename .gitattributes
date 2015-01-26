@@ -150,6 +150,7 @@ cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x
 cctbx/maptbx/connectivity.h -text
 cctbx/maptbx/dijkstra.cpp svneol=native#text/plain
 cctbx/maptbx/fft.h -text
+cctbx/maptbx/ft_analytical_1d_point_scatterer_at_origin.h -text
 cctbx/maptbx/grid_indices_around_sites.h svneol=native#text/plain
 cctbx/maptbx/histogram.h -text
 cctbx/maptbx/map_accumulator.h -text

@@ -16,6 +16,7 @@
 #include <cctbx/maptbx/utils.h>
 #include <cctbx/maptbx/connectivity.h>
 #include <cctbx/maptbx/map_accumulator.h>
+#include <cctbx/maptbx/ft_analytical_1d_point_scatterer_at_origin.h>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -56,6 +57,24 @@ namespace cctbx { namespace maptbx { namespace boost_python {
     }
   };
 
+  template <typename FloatType>
+  struct ft_analytical_1d_point_scatterer_at_origin_wrapper
+  {
+    typedef ft_analytical_1d_point_scatterer_at_origin<FloatType> w_t;
+    static void wrap() {
+      using namespace boost::python;
+      class_<w_t>("ft_analytical_1d_point_scatterer_at_origin", no_init)
+        .def(init<int const& >(
+                    (arg("N"))))
+        .def("distances", &w_t::distances)
+        .def("rho", &w_t::rho)
+        .def("compute", &w_t::compute,
+          (arg("miller_indices"),arg("step"),arg("left"),
+            arg("right"),arg("u_frac")))
+      ;
+    }
+  };
+
 namespace {
 
   void init_module()
@@ -63,6 +82,7 @@ namespace {
     using namespace boost::python;
 
     map_accumulator_wrapper<double, af::c_grid<3> >::wrap();
+    ft_analytical_1d_point_scatterer_at_origin_wrapper<double>::wrap();
     wrap_grid_indices_around_sites();
     wrap_grid_tags();
     wrap_gridding();
