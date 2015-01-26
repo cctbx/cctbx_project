@@ -430,7 +430,7 @@ dihedral: (2, 0, 1, 11)
 ...
 chirality: (0, 1, 8, 11)
   volume_model: -2.50215
-  volume_ideal: -2.50318
+  volume_ideal: -2.5104
   both_signs: 0
   weight: 25
 ...
@@ -485,7 +485,7 @@ chirality: (0, 1, 8, 11)
   pdb=" C   TYR A   1 "
   pdb=" N   TYR A   1 "
   volume_model: -2.50215
-  volume_ideal: -2.50318
+  volume_ideal: -2.5104
   both_signs: 0
   weight: 25
 ...
@@ -518,7 +518,7 @@ dihedral: (2, 0, 1, 11)
   periodicity: 3
 ...
 chirality: (0, 1, 8, 11)
-  volume_ideal: -2.50318
+  volume_ideal: -2.5104
   both_signs: 0
   weight: 25
 ...
@@ -564,7 +564,7 @@ chirality: (0, 1, 8, 11)
   pdb=" CB  TYR A   1 "
   pdb=" C   TYR A   1 "
   pdb=" N   TYR A   1 "
-  volume_ideal: -2.50318
+  volume_ideal: -2.5104
   both_signs: 0
   weight: 25
 ...
