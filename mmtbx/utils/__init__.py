@@ -1129,7 +1129,11 @@ class process_pdb_file_srv(object):
         self.pdb_interpretation_params)
     if self.use_neutron_distances:
       restraints_loading_flags["use_neutron_distances"] = self.use_neutron_distances
-    #
+    if(not allow_missing_symmetry):
+      if(self.crystal_symmetry is None or
+         [self.crystal_symmetry.unit_cell(),
+          self.crystal_symmetry.space_group()].count(None)>0):
+        raise Sorry("Crystal symmetry is missing or cannot be extracted.")
     processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv              = self.mon_lib_srv,
       ener_lib                 = self.ener_lib,
