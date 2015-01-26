@@ -64,7 +64,6 @@ public:
   }
 
   af::shared<FloatType> rho() { return rho_; }
-  //}
 
   af::shared<FloatType> distances() { return distances_; }
 
