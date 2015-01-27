@@ -305,6 +305,27 @@ def substitute_ss(real_h,
   n_atoms_in_real_h = real_h.atoms().size()
   cumm_bsel = flex.bool(n_atoms_in_real_h, False)
   selection_cache = real_h.atom_selection_cache()
+  # check the annotation for correctness (atoms are actually in hierarchy)
+  error_msg = "The following secondary structure annotations result in \n"
+  error_msg +="empty atom selections. They don't match the structre: \n"
+  error_flg = False
+  for h in ann.helices:
+    selstring = h.as_atom_selections()
+    isel = selection_cache.iselection(selstring[0])
+    if len(isel) == 0:
+      error_flg = True
+      error_msg += "  %s\n" % h
+  for sh in ann.sheets:
+    for st in sh.strands:
+      selstring = st.as_atom_selections()
+      isel = selection_cache.iselection(selstring)
+      if len(isel) == 0:
+        error_flg = True
+        error_msg += "  %s\n" % sh.particular_strand_as_pdb_str(
+                                      strand_id=st.strand_id)
+  if error_flg:
+    raise Sorry(error_msg)
+
   for h in ann.helices:
     selstring = h.as_atom_selections()
     isel = selection_cache.iselection(selstring[0])
@@ -353,7 +374,7 @@ def substitute_ss(real_h,
   if verbose:
     log.write("Replacing ss-elements with ideal ones:\n")
   for h in ann.helices:
-    log.write("%s\n" % h.as_pdb_str())
+    log.write("  %s\n" % h.as_pdb_str())
     ss_sels = h.as_atom_selections()[0]
     selstring = main_chain_selection_prefix % ss_sels
     isel = selection_cache.iselection(selstring)
@@ -364,7 +385,7 @@ def substitute_ss(real_h,
     nonss_for_tors_selection.set_selected(isel, False)
 
   for sheet in ann.sheets:
-    log.write("%s\n" % sheet.as_pdb_str())
+    log.write("  %s\n" % sheet.as_pdb_str())
     for ss_sels in sheet.as_atom_selections():
       selstring = main_chain_selection_prefix % ss_sels
       isel = selection_cache.iselection(selstring)

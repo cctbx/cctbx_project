@@ -636,6 +636,26 @@ class pdb_sheet(structure_base):
       lines.append(line.strip())
     return "\n".join(lines)
 
+  def particular_strand_as_pdb_str(self, strand_id=None):
+    if strand_id is None:
+      return ""
+    line = ""
+    for strand, reg in zip(self.strands, self.registrations):
+      if strand.strand_id == strand_id:
+        format1 = "SHEET  %3d %3s%2d %3s%2s%4d%1s %3s%2s%4d%1s%2d"
+        format2 = "%4s%3s%2s%4d%1s %4s%3s%2s%4d%1s"
+        # print "STRAND, REG", strand, reg
+        line = format1 % (strand.strand_id, self.sheet_id, self.n_strands,
+          strand.start_resname, strand.start_chain_id, strand.start_resseq,
+          strand.start_icode, strand.end_resname, strand.end_chain_id,
+          strand.end_resseq, strand.end_icode, strand.sense)
+        if reg is not None :
+          line += " "
+          line += format2 % (reg.cur_atom, reg.cur_resname, reg.cur_chain_id,
+            reg.cur_resseq, reg.cur_icode, reg.prev_atom, reg.prev_resname,
+            reg.prev_chain_id, reg.prev_resseq, reg.prev_icode)
+    return line
+
   def as_restraint_group (self, log=sys.stdout, prefix_scope="",
       add_segid=None) :
     if len(self.strands) == 0 :
