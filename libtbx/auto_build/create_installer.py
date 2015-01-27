@@ -46,19 +46,10 @@ $PYTHON_EXE ./bin/install.py $@
 """
 
 BASHRC = """\
-#!/bin/csh -f
-set testpath=($_)
-if ("$testpath" != "") then
-    set testpath=$testpath[2]
-else
-    set testpath=$0
-endif
-set rootdir=`dirname $testpath`
-set fullpath=`cd $rootdir && pwd -P`
-setenv LIBTBX_BUILD_RELOCATION_HINT $fullpath
-setenv %(env_prefix)s $fullpath
-setenv %(env_prefix)s_VERSION %(version)s
-source $%(env_prefix)s/build/setpaths.csh
+#!/bin/bash
+export %(env_prefix)s=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+export %(env_prefix)s_VERSION=%(version)s
+source $%(env_prefix)s/build/setpaths.sh
 """
 
 CSHRC = """\
@@ -127,6 +118,9 @@ class SetupInstaller(object):
     if self.readme:
       self.readme = [os.path.abspath(i) for i in self.readme]
 
+    # Is this a source or binary installer?
+    self.binary = kwargs.get('binary')
+
     # Load the installer class, get the list of modules.
     assert os.path.isfile(self.install_script)
     installer_module = imp.load_source('install_script', self.install_script)
@@ -140,15 +134,16 @@ class SetupInstaller(object):
     for i in ['bin', 'lib']:
       makedirs(os.path.join(self.dest_dir, i))
     self.copy_info()
-    self.copy_libtbx()
-    self.copy_dependencies()
-    self.copy_build()
-    self.copy_modules()
-    self.copy_doc()
     self.write_environment_files()
+    self.copy_libtbx()
+    self.copy_doc()
+    self.copy_modules()
+    if self.binary:
+      self.copy_dependencies()
+      self.copy_build()
     self.fix_permissions()
     self.make_dist()
-    if sys.platform == "darwin":
+    if self.binary and sys.platform == "darwin":
       self.make_dist_pkg()
 
   def copy_info(self):
@@ -268,7 +263,7 @@ def run(args):
   parser.add_option("--version", dest="version", action="store",
     help="Package version", default=time.strftime("%Y_%m_%d",time.localtime()))
   parser.add_option("--binary", dest="binary", action="store_true",
-    help="Setup for binary installer only (no source packages)", default=False)
+    help="Include base and build directories", default=False)
   parser.add_option("--root_dir", dest="root_dir", action="store",
     help="Environment root")
   parser.add_option("--dist_dir", dest="dist_dir", action="store",
@@ -289,6 +284,7 @@ def run(args):
     readme=options.readme,
     license=options.license,
     install_script=options.install_script,
+    binary=options.binary,
   )
   setup.run()
 
