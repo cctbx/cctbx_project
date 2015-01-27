@@ -155,13 +155,13 @@ class installer (object) :
     # Package groups.
     if options.phenix:
       options.build_gui = True
-      packages += ['docutils']
+      # packages += ['docutils']
     if options.dials:
       options.build_gui = True
       options.build_all = True
     if options.build_all or options.labelit:
       options.build_gui = True
-      packages += ['imaging', 'reportlab']
+      packages += ['docutils', 'imaging', 'reportlab']
 
     # Use a specific Python interpreter if provided.
     if self.python_exe:
