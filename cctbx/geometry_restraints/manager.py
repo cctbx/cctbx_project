@@ -503,6 +503,174 @@ class manager(object):
   def set_external_energy_function (self, energy_function) :
     self.external_energy_function = energy_function
 
+  def add_new_bond_restraint_in_place2(self, proxy):
+    """ Do not use, under development!"""
+    proxy = proxy.sort_i_seqs()
+    self.bond_params_table.update(
+      i_seq=proxy.i_seqs[0],
+      j_seq=proxy.i_seqs[1],
+      params=geometry_restraints.bond_params(
+        distance_ideal=proxy.distance_ideal,
+        weight=proxy.weight))
+
+
+
+  def add_new_bond_restraint_in_place(self, proxy):
+    """ Do not use, under development!"""
+    print "HERE!"
+    print dir(self.pair_proxies().nonbonded_proxies)
+    # STOP()
+    self.pair_proxies()
+    print self.pair_proxies().nonbonded_proxies.simple
+    nonbonded_proxies = self.pair_proxies().nonbonded_proxies
+    print "N nonb prox", len(nonbonded_proxies.simple)
+    nb_asu_mappings = nonbonded_proxies.asu_mappings()
+    print dir(nb_asu_mappings)
+    print "N nonb asu", len(nonbonded_proxies.asu)
+    asu_mappings = nonbonded_proxies.asu_mappings()
+    print "nonb asu mappings", dir(asu_mappings)
+    print "len asu_mappings.mappings", len(asu_mappings.mappings())
+    # mapping = asu_mappings.mappings()[1][10]
+    for mappings in asu_mappings.mappings():
+      pass
+      # print len(mappings)
+    STOP()
+    # print nonbonded_proxies.asu[0]
+    # print dir(nonbonded_proxies.asu[0])
+    # for asu in nonbonded_proxies.asu:
+    #   print asu.i_seq, asu.j_seq, asu.j_sym
+    # STOP()
+    for sp in nonbonded_proxies.simple:
+      asu_mappings.get_rt_mx(sp.i_seqs)
+      print  sp.i_seqs, sp.rt_mx_ji, nb_asu_mappings.get_rt_mx_ji(pair=sp.i_seqs)
+      # STOP()
+    STOP()
+    # print type(self.nonbonded_params), dir(self.nonbonded_params)
+    self.pair_proxies()
+    print type(self.nonbonded_params.distance_table), dir(self.nonbonded_params.distance_table)
+    print self.nonbonded_params.distance_table.size()
+    for i, bpt_elem in enumerate(self.nonbonded_params.distance_table.items()):
+      print "bpt elem", bpt_elem, type(bpt_elem), dir(bpt_elem)
+      print i
+      for k, v in bpt_elem.items():
+        print "  ", k #, dir(v)
+        # STOP()
+    STOP()
+    # print dir(proxy)
+    # print proxy.rt_mx_ji
+    # print proxy.i_seqs
+    proxy = proxy.sort_i_seqs()
+    print proxy.i_seqs
+    # print "site_symmetry_table",type(self.site_symmetry_table), dir(self.site_symmetry_table)
+    # print self.site_symmetry_table
+    # print dir(self.site_symmetry_table.table())
+    # print self.site_symmetry_table.indices().size()
+
+    # print "bond_params_table:", type(self.bond_params_table),dir(self.bond_params_table)
+    print "len bond_params_talbe",len(self.bond_params_table)
+    for i, bpt_elem in enumerate(self.bond_params_table):
+      # print bpt_elem, type(bpt_elem), dir(bpt_elem)
+      print i
+      for k, v in bpt_elem.items():
+        print "  ", k #, dir(v)
+        # STOP()
+    # STOP()
+    self.bond_params_table.update(
+      i_seq=proxy.i_seqs[0],
+      j_seq=proxy.i_seqs[1],
+      params=geometry_restraints.bond_params(
+        distance_ideal=proxy.distance_ideal,
+        weight=proxy.weight))
+
+    print "="*20, "after", "="*20
+    print "len bond_params_talbe",len(self.bond_params_table)
+    for i, bpt_elem in enumerate(self.bond_params_table):
+      # print bpt_elem, type(bpt_elem), dir(bpt_elem)
+      print i
+      for k, v in bpt_elem.items():
+        print "  ", k #, dir(v)
+    STOP()
+
+
+    # print type(self.shell_sym_tables), dir(self.shell_sym_tables)
+    # print type(self.shell_sym_tables[0]), dir(self.shell_sym_tables[0])
+    from cctbx import sgtbx
+    identity_rt_mx_ji = sgtbx.rt_mx(symbol="x,y,z")
+    # STOP()
+    # self.shell_sym_tables[0].insert((proxy.i_seqs[0], proxy.i_seqs[1]),rt_mx_ji)
+
+    # make sure that arrays of proper length
+    max_i_seq = proxy.i_seqs[1]
+    for shell_sym_table in self.shell_sym_tables:
+      # print dir(shell_sym_table)
+      # print shell_sym_table.size()
+      if shell_sym_table.size() < max_i_seq+1:
+        shell_sym_table.extend(crystal.pair_sym_table(max_i_seq+1-len(shell_sym_table)))
+        # print "new_len", len(shell_sym_table)
+    # STOP()
+
+
+    # find corresponding 1-3 interactions to shell_sym_tables[1]
+    # first find them in shell_sym_tables[0] for i_seq and j_seq
+    pairs_1_3 = []
+    for n_seq in [0,1]:
+      # print "proxy.i_seqs[n_seq]",proxy.i_seqs[n_seq]
+      for i in range(proxy.i_seqs[n_seq]):
+        # print "i", i
+        # for sym_dict in self.shell_sym_tables[1]:
+        sym_dict = self.shell_sym_tables[0][i]
+        # print "sym_dict", type(sym_dict), dir(sym_dict)
+        # STOP()
+        if sym_dict.has_key(proxy.i_seqs[n_seq]):
+          pairs_1_3.append(tuple(sorted((proxy.i_seqs[abs(n_seq-1)],i))))
+      sym_dict = self.shell_sym_tables[0][proxy.i_seqs[n_seq]]
+      for v in sym_dict.items():
+        # print "sym_dict item:", type(v), dir(v)
+        # STOP()
+        pairs_1_3.append(tuple(sorted((proxy.i_seqs[abs(n_seq-1)],v[0]))))
+    # print "pairs_1_3", pairs_1_3
+    # STOP()
+
+    # Then we want to find 1-4 interactions
+    pairs_1_4 = []
+    for n_seq in [0,1]:
+      # print "proxy.i_seqs[n_seq]",proxy.i_seqs[n_seq]
+      for i in range(proxy.i_seqs[n_seq]):
+        # print "i", i
+        # for sym_dict in self.shell_sym_tables[1]:
+        sym_dict = self.shell_sym_tables[1][i]
+        # print "sym_dict", type(sym_dict), dir(sym_dict)
+        # STOP()
+        if sym_dict.has_key(proxy.i_seqs[n_seq]):
+          pairs_1_4.append(tuple(sorted((proxy.i_seqs[abs(n_seq-1)],i))))
+      sym_dict = self.shell_sym_tables[1][proxy.i_seqs[n_seq]]
+      for v in sym_dict.items():
+        # print "sym_dict item:", type(v), dir(v)
+        # STOP()
+        pairs_1_4.append(tuple(sorted((proxy.i_seqs[abs(n_seq-1)],v[0]))))
+    # print "pairs_1_4", pairs_1_4
+
+    # only here we probably want to add them. Not earlier, to keep tables in
+    # in their original state
+    # adding 1-2 interaction
+    self.shell_sym_tables[0][proxy.i_seqs[0]][proxy.i_seqs[1]] = [proxy.rt_mx_ji]
+    # adding 1-3 interactions:
+    for pair in pairs_1_3:
+      # identity symmetry for testing
+      self.shell_sym_tables[1][pair[0]][pair[1]] = [identity_rt_mx_ji]
+    # adding 1-4 interactions:
+    for pair in pairs_1_4:
+      # identity symmetry for testing
+      self.shell_sym_tables[2][pair[0]][pair[1]] = [identity_rt_mx_ji]
+
+
+    # for
+    # self.shell_sym_tables[0].add_pair_sym_table_in_place(
+    #   [None, {proxy.i_seqs[1]:[rt_mx_ji]}])
+    # print self.shell_sym_tables[0].show()
+    # STOP()
+    # self.shell_sym_tables.add_pair((proxy.i_seqs[0], proxy.i_seqs[1]))
+
   def pair_proxies(self,
         sites_cart=None,
         flags=None,
@@ -1127,7 +1295,8 @@ class manager(object):
     if (pair_proxies.nonbonded_proxies is not None):
       pair_proxies.nonbonded_proxies.show_sorted(
         by_value="delta",
-        sites_cart=sites_cart, site_labels=site_labels, f=f)
+        sites_cart=sites_cart, site_labels=site_labels, f=f,
+        suppress_model_minus_vdw_greater_than=None)
       print >> f
 
   def nb_overlaps_info(
