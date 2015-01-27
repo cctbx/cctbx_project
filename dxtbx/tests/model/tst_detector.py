@@ -87,6 +87,16 @@ def tst_get_names(detector):
   assert(names[0] == 'Panel')
   print 'OK'
 
+def tst_get_thickness(detector):
+  for panel in detector:
+    assert(panel.get_thickness() == 0.1)
+  print 'OK'
+
+def tst_get_material(detector):
+  for panel in detector:
+    assert(panel.get_material() == 'Si')
+  print 'OK'
+
 def tst_set_mosflm_beam_centre(detector):
   from scitbx import matrix
   from dxtbx.model import Beam
@@ -129,8 +139,8 @@ def tst_detector():
       (0.172, 0.172),     # Pixel size
       (512, 512),         # Image size
       (0, 1000),          # Trusted range
-      0.0,                # Thickness
-      ""))                # Material
+      0.1,                # Thickness
+      "Si"))              # Material
 
   # Perform some tests
   tst_set_mosflm_beam_centre(detector)
@@ -140,6 +150,8 @@ def tst_detector():
   tst_is_coord_valid(detector)
   tst_pixel_to_millimeter_to_pixel(detector)
   tst_get_names(detector)
+  tst_get_thickness(detector)
+  tst_get_material(detector)
 
   # Attenuation length
   from cctbx.eltbx import attenuation_coefficient
