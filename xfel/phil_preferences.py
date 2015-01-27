@@ -56,7 +56,7 @@ def load_cxi_phil(path, args=[]):
   if params.distl.quad_translations is None:
     params.distl.quad_translations = versioned_extract.distl.quad_translations
 
-  if params.distl.quad_translations is None:
-    params.distl.quad_translations = versioned_extract.distl.tile_translations
+  if params.distl.tile_translations is None:
+    params.distl.tile_translations = versioned_extract.distl.tile_translations
 
   return params
