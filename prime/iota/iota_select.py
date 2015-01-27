@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/16/2015
+Last Changed: 01/26/2015
 Description : IOTA pickle selection module. Selects the best integration results from a
               set of pickles derived from a single image.
 '''
@@ -15,6 +15,7 @@ import logging
 import os,cPickle as pickle
 from xfel.clustering.cluster import Cluster
 from xfel.clustering.singleframe import SingleFrame
+from visualize_integration import make_png
 
 # Selects only integrated pickles that fit sg / uc parameters specified in the .phil
 # file. Also checks that the low-res cutoff is beyond 10A.
@@ -189,6 +190,8 @@ def best_file_selection(gs_params, output_entry, log_dir):
                      ref, sref, pwidth=len(filename)+5)
         ps_logger.info(info_line)
 
+        if gs_params.pred_img == "all":
+              make_png(input_file, pickle)
 
       # Make selections & copy files
       selected_info = []
@@ -198,24 +201,40 @@ def best_file_selection(gs_params, output_entry, log_dir):
       with open('{}/best_by_total.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
         best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['T', sel_pickle, os.path.split(sel_pickle)[1]])
+      if gs_params.pred_img == "best":
+        output_png = '{0}/t_{1}.png'.format(os.path.dirname(sel_pickle),
+                            os.path.basename(sel_pickle).split('.')[0])
+        make_png(input_file, sel_pickle, output_png)
 
       # Strong reflections
       sel_pickle = best_by_strong(gs_params, acceptable_pickles)
       with open('{}/best_by_strong.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
         best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['S', sel_pickle, os.path.split(sel_pickle)[1]])
+      if gs_params.pred_img == "best":
+        output_png = '{0}/s_{1}.png'.format(os.path.dirname(sel_pickle),
+                            os.path.basename(sel_pickle).split('.')[0])
+        make_png(input_file, sel_pickle, output_png)
 
       # Unit cell
       sel_pickle = best_by_uc(gs_params, acceptable_pickles)
       with open('{}/best_by_uc.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
         best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['U', sel_pickle, os.path.split(sel_pickle)[1]])
+      if gs_params.pred_img == "best":
+        output_png = '{0}/u_{1}.png'.format(os.path.dirname(sel_pickle),
+                            os.path.basename(sel_pickle).split('.')[0])
+        make_png(input_file, sel_pickle, output_png)
 
       # x,y offset
       sel_pickle = best_by_offset(acceptable_pickles)
       with open('{}/best_by_offset.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
         best_file.write('{}\n'.format(sel_pickle))
       selected_info.append(['O', sel_pickle, os.path.split(sel_pickle)[1]])
+      if gs_params.pred_img == "best":
+        output_png = '{0}/o_{1}.png'.format(os.path.dirname(sel_pickle),
+                            os.path.basename(sel_pickle).split('.')[0])
+        make_png(input_file, sel_pickle, output_png)
 
 
       # Output selected file information

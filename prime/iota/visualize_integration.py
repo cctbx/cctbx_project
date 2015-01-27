@@ -4,7 +4,7 @@ import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
 
-def make_png(image_pickle, integration_pickle, file_name=None, res=300,
+def make_png(image_pickle, integration_pickle, file_name=None, res=600,
              show_spots=True):
   """ Write a png file visualizing integration results.
   :param image_pickle: path to image pickle file.
@@ -51,7 +51,7 @@ def make_png(image_pickle, integration_pickle, file_name=None, res=300,
   ax.set_xlim(0, len(img_data[1]))
   ax.set_ylim(0, len(img_data[0]))
   ax.set_aspect('equal')
-  ax.imshow(image, origin=None, cap='Greys')
+  ax.imshow(image, origin=None, cmap='Greys')
 
   # 2nd set of axes for the predictions
   ax2 = fig.add_axes(ax.get_position(), frameon=False)  # superimposed axes
@@ -72,7 +72,3 @@ def make_png(image_pickle, integration_pickle, file_name=None, res=300,
   plt.title("Unit cell: {} ({}) \nNominal mosaicity: {}" \
             .format(point_group, unit_cell, mosaicity))
   plt.savefig(file_name, dpi=res, format='png')
-
-
-
-

@@ -3,8 +3,8 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 01/16/2015
-Description : IOTA command-line module. Version 0.83
+Last Changed: 01/26/2015
+Description : IOTA command-line module. Version 0.84
 '''
 
 import os
@@ -28,8 +28,8 @@ def index_mproc_wrapper(current_img):
 
 if __name__ == "__main__":
 
-  gs_version = '0.83'
-  ps_version = '0.83'
+  gs_version = '0.84'
+  ps_version = '0.84'
 
   print '\n{}'.format(datetime.now())
   print 'Starting IOTA ... \n\n'
@@ -54,15 +54,12 @@ if __name__ == "__main__":
     input_dir_list, output_dir_list, log_dir = inp.make_dir_lists(input_list, gs_params.input, gs_params.output)
     mp_input_list, mp_output_list = inp.make_mp_input(input_list, log_dir, gs_params)
 
+    #if gs_params.random_sample.flag_on == True:
+    #  for item in mp_input_list: print item
+    #  sys.exit()
+
     if gs_params.flag_inp_test == True:
 
-      mp_input_list = inp.make_mp_input(input_list, gs_params)
-      for item in mp_input_list: print item
-
-      #with open('{}/input_files.lst'.format(os.path.abspath(gs_params.output)), 'r') as inp_list_file:
-      #    inp_list_contents = inp_list_file.read()
-      #    inp_list = inp_list_contents.splitlines()
-      #    for item in inp_list: print item
       sys.exit()
 
 
@@ -132,12 +129,18 @@ if __name__ == "__main__":
 
     if not gs_params.grid_search.flag_on:
       # clear list files from previous selection run
-      os.remove("{}/best_by_strong.lst".format(gs_params.output))
-      os.remove("{}/best_by_offset.lst".format(gs_params.output))
-      os.remove("{}/best_by_uc.lst".format(gs_params.output))
-      os.remove("{}/best_by_total.lst".format(gs_params.output))
-      os.remove("{}/not_integrated.lst".format(gs_params.output))
-      os.remove("{}/prefilter_fail.lst".format(gs_params.output))
+      if os.path.isfile("{}/best_by_strong.lst".format(gs_params.output)):
+        os.remove("{}/best_by_strong.lst".format(gs_params.output))
+      if os.path.isfile("{}/best_by_offset.lst".format(gs_params.output)):
+        os.remove("{}/best_by_offset.lst".format(gs_params.output))
+      if os.path.isfile("{}/best_by_uc.lst".format(gs_params.output)):
+        os.remove("{}/best_by_uc.lst".format(gs_params.output))
+      if os.path.isfile("{}/best_by_total.lst".format(gs_params.output)):
+        os.remove("{}/best_by_total.lst".format(gs_params.output))
+      if os.path.isfile("{}/not_integrated.lst".format(gs_params.output)):
+        os.remove("{}/not_integrated.lst".format(gs_params.output))
+      if os.path.isfile("{}/prefilter_fail.lst".format(gs_params.output)):
+        os.remove("{}/prefilter_fail.lst".format(gs_params.output))
 
       ps_logger.info('\nSettings for this run:\n')
       ps_logger.info(txt_out)
@@ -161,7 +164,10 @@ if __name__ == "__main__":
 
     # This section checks for output and summarizes file integration and
     # selection results
-    ps_logger.info('raw images processed:         {}'.format(len(input_list)))
+    if gs_params.random_sample.flag_on == True:
+      ps_logger.info('raw images processed:         {}'.format(gs_params_random_sample.number))
+    else:
+      ps_logger.info('raw images processed:         {}'.format(len(input_list)))
 
     if os.path.isfile('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output))):
       with open('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output)),

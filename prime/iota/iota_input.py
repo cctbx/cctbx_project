@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/16/2015
+Last Changed: 01/26/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories, etc.
 '''
 
@@ -11,6 +11,7 @@ Description : IOTA I/O module. Reads PHIL input, creates output directories, etc
 import sys
 import os
 import shutil
+import random
 
 import iotbx.phil
 
@@ -42,6 +43,19 @@ target = target.phil
 flag_inp_test = False
   .type = bool
   .help = Test of input list use for selection
+pred_img = None
+  .type = str
+  .help = Output a PNG image of integration predictions overlayed on the raw image
+random_sample
+  .help = "Random grid search."
+{
+  flag_on = False
+    .type = bool
+    .help = Set to run grid search on a random set of images.
+  number = 5
+    .type = int
+    .help = Number of random samples.
+}
 grid_search
   .help = "Parameters for the grid search."
 {
@@ -177,7 +191,26 @@ def make_mp_input(input_list, log_dir, gs_params):
   mp_input = []
   mp_output = []
 
-  for current_img in input_list:
+  if gs_params.random_sample.flag_on == True:
+    print "Selecting {0} samples from {1} images in {2}:".format(gs_params.random_sample.number, len(input_list), gs_params.input)
+    random_inp_list = []
+    for i in range(gs_params.random_sample.number):
+      random_number = random.randrange(0, len(input_list))
+      print input_list[random_number]
+      random_inp_list.append(input_list[random_number])
+
+    gs_params.grid_search.flag_on = True
+    gs_params.grid_search.h_min = 1
+    gs_params.grid_search.h_max = 10
+    gs_params.grid_search.a_min = 1
+    gs_params.grid_search.a_max = 10
+
+    inp_list = random_inp_list
+  else:
+    inp_list = input_list
+
+
+  for current_img in inp_list:
     # generate filenames, etc.
     path = os.path.dirname(current_img)
     img_filename = os.path.basename(current_img)
@@ -202,7 +235,6 @@ def make_mp_input(input_list, log_dir, gs_params):
                               gs_params.grid_search.a_max + 1):
         mp_item = [current_img, sig_height, sig_height, spot_area]
         mp_input.append(mp_item)
-
 
   return mp_input, mp_output
 
