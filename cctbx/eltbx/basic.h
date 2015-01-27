@@ -9,7 +9,7 @@ namespace cctbx {
       neutron scattering factors, element names, atomic numbers,
       atomic weights, ionic radii, and characteristic x-ray
       wavelengths. Associated with each table are procedures for
-      accessing the tabluated data, e.g. by using interpolation.
+      accessing the tabulated data, e.g. by using interpolation.
    */
   namespace eltbx {
   namespace basic {
