@@ -1395,8 +1395,8 @@ class _(boost.python.injector, shared_parallelity_proxy):
     print >> f, "%sSorted by %s:" % (prefix, by_value)
     for info in sorted_table:
       residual = info[1]
-      delta = info[3]
-      delta_deg = math.degrees(math.acos(1-delta))
+      delta_deg = delta = info[3]
+      # delta_deg = math.degrees(math.acos(1-delta))
       weight = info[2]
       sigma = math.sqrt(1./weight)
       print >> f, "    plane 1                plane 2  "+\

@@ -2524,20 +2524,20 @@ class build_chain_proxies(object):
                 if na_params.stacking.find_automatically:
                   if (na_params.stacking.skip_spatial_verification
                       or additional_check_Gendron_2001(prev_mm, mm)):
-                    if na_params.save_as_param_file:
-                      a1 = prev_mm.expected_atoms.get(
-                          prev_mm.monomer.get_planes()[0].plane_atoms[0].atom_id,
-                          None)
-                      a2 = mm.expected_atoms.get(
-                          mm.monomer.get_planes()[0].plane_atoms[0].atom_id,
-                          None)
-                      if a1 is not None and a2 is not None:
-                        ag1 = a1.parent()
-                        ag2 = a2.parent()
-                        self.info_for_na_restraints_out_file.append((
-                            ag1.parent().parent().id,
-                            ag1.parent().resid(), ag2.parent().parent().id,
-                            ag2.parent().resid()))
+                    # if na_params.save_as_param_file:
+                    a1 = prev_mm.expected_atoms.get(
+                        prev_mm.monomer.get_planes()[0].plane_atoms[0].atom_id,
+                        None)
+                    a2 = mm.expected_atoms.get(
+                        mm.monomer.get_planes()[0].plane_atoms[0].atom_id,
+                        None)
+                    if a1 is not None and a2 is not None:
+                      ag1 = a1.parent()
+                      ag2 = a2.parent()
+                      self.info_for_na_restraints_out_file.append((
+                          ag1.parent().parent().id,
+                          ag1.parent().resid(), ag2.parent().parent().id,
+                          ag2.parent().resid()))
                     n_unresolved_chain_link_parallelities \
                       += link_resolution.counters.unresolved_non_hydrogen
                   else:
@@ -3091,7 +3091,8 @@ refinement.pdb_interpretation {
       #
       # Identify disulfide bond exclusions BEGIN
       for chid1, resid1, chid2, resid2 in info_for_na_restraints_out_file:
-        self.na_restraints_out_file.write("""\
+        if params.nucleic_acid_restraints.save_as_param_file:
+          self.na_restraints_out_file.write("""\
     stacking_pair {
       base1 = chain %s and resid %s
       base2 = chain %s and resid %s
