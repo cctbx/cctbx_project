@@ -13,7 +13,7 @@
 #define CCTBX_ELTBX_ATTENUATION_COEFFICIENT_H
 
 /** The maximum number of table items */
-#define XRAY_MASS_COEFF_TABLE_SIZE 93
+#define XRAY_MASS_COEFF_TABLE_SIZE 94
 #define XRAY_MASS_COEFF_TABLE_MAX_SIZE 66
 
 #include <cmath>

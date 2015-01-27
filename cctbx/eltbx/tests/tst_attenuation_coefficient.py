@@ -15,7 +15,7 @@ def tst_for_z(z):
 
   # Check values at measured energies match
   for i in range(len(energy)):
-    e = energy[i]
+    e = energy[i] + 1e-16 # move beyond edges
     mr = mu_rho[i]
     mer = mu_en_rho[i]
 
@@ -25,6 +25,7 @@ def tst_for_z(z):
 
     mr2 = table.mu_rho_at_ev(e * 1000000.0)
     mer2 = table.mu_en_rho_at_ev(e * 1000000.0)
+#   print "%3d, %3d, %15f MeV -- %15f %15f %15f %15f -- %15.9f %15.9f" % (z, i, e, mr, mr2, mer, mer2, abs(mr - mr2), abs(mer - mer2))
     assert(abs(mr - mr2) <= eps)
     assert(abs(mer - mer2) <= eps)
 

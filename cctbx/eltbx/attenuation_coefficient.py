@@ -6,7 +6,8 @@ from cctbx_eltbx_attenuation_coefficient_ext import *
 
 
 class nist_elements(object):
-  ''' A table of nist elements. '''
+  ''' A table of nist elements and composite materials.
+      Note that elements are only defined up to uranium. '''
 
   def __init__(self):
     ''' Initialise the table. '''
@@ -19,7 +20,8 @@ class nist_elements(object):
       'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb',
       'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', 'Hf', 'Ta',  'W', 'Re', 'Os',
       'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr',
-      'Ra', 'Ac', 'Th', 'Pa', 'U']
+      'Ra', 'Ac', 'Th', 'Pa', 'U',
+      'CdTe']
 
   def __len__(self):
     ''' Return the number of elemets '''
@@ -106,7 +108,7 @@ def chemlex(formula):
 
 
 def get_table(index):
-    ''' Get the table for a given element
+    ''' Get the table for a given element or composite
 
     Params:
         index Either an atomic number of symbol
