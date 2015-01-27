@@ -284,7 +284,32 @@ def get_anomeric_carbon(atom_group1, atom_group2, bonds, verbose=False):
 ##                )
   return None
 
-def get_C1_carbon(atom_group1, atom_group2):
+def get_any_linking_carbon(atom_group1, atom_group2, bonds, verbose=False):
+  for i, atom in enumerate(generate_atoms_from_atom_groups(atom_group1,
+                                                           atom_group2)
+                                                           ):
+    if atom.element.strip() not in ["C"]: continue
+    oxygens = []
+    residues = []
+    linking = False
+    for ba in bonds.get(atom.i_seq, []):
+      if ba.element.strip() in ["O"]:
+        if atom.parent().id_str() != ba.parent().id_str():
+          linking=True
+        oxygens.append(ba)
+        residues.append(ba.parent())
+    if len(oxygens)==2:
+      assert 0
+    if linking:
+      return atom, True
+
+  return None
+
+def get_C1_carbon(atom_group1,
+                  atom_group2,
+                  distance_cutoff=2.,
+                  ):
+  distance_cutoff *= distance_cutoff
   c1s = []
   for i, atom in enumerate(generate_atoms_from_atom_groups(atom_group1,
                                                            atom_group2)
@@ -301,7 +326,7 @@ def get_C1_carbon(atom_group1, atom_group2):
                                                              ):
       if atom.element.strip() in ["O"]:
         d2 = get_distance2(c1, atom)
-        if d2<4.: # need from outside
+        if d2<distance_cutoff: # need from outside
           oxygens.append(atom)
     if len(oxygens)==2:
       break
@@ -309,7 +334,7 @@ def get_C1_carbon(atom_group1, atom_group2):
     outl = ""
     for atom in c1s:
       outl += "\n\t\t%s" % atom.quote()
-    raise Sorry("""Trying to find the anomeric carbons but could not find
+    raise Sorry("""Trying to find the linking carbons but could not find
         a suitable candidate.
 %s
         Check carbohydrate geometry.
@@ -416,21 +441,30 @@ def get_link_phi_carbon(link_carbon, bonds):
 
 def get_glyco_link_atoms(atom_group1,
                          atom_group2,
-                         link_carbon_dist=False,
+                         link_carbon_dist=2.0,
                          verbose=False,
                          ):
   # maybe should be restraints based?
   bonds = linking_utils.get_bonded_from_atom_groups(atom_group1,
                                                     atom_group2,
-                                                    1.9, # XXX
+                                                    link_carbon_dist,
     )
   rc = get_anomeric_carbon(atom_group1,
                            atom_group2,
                            bonds,
                            verbose=verbose)
   if rc is None:
-    rc = get_C1_carbon(atom_group1, atom_group2)
+    rc = get_any_linking_carbon(atom_group1,
+                                atom_group2,
+                                bonds,
+                                verbose=verbose)
+  if rc is None:
+    rc = get_C1_carbon(atom_group1,
+                       atom_group2,
+                       distance_cutoff=link_carbon_dist,
+      )
   if rc is None: return None
+
   anomeric_carbon, linking_carbon = rc
   if anomeric_carbon is None:
     assert 0
@@ -453,8 +487,9 @@ def get_glyco_link_atoms(atom_group1,
   link_carbon = get_link_carbon(anomeric_carbon, link_oxygen, bonds)
   if link_carbon is None and link_carbon_dist:
     link_carbon = get_link_carbon_on_distance(anomeric_carbon,
-                                                      atom_group1,
-                                                      atom_group2)
+                                              atom_group1,
+                                              atom_group2,
+      )
   if verbose:
     try: print 'link_carbon',link_carbon.quote()
     except Exception: print
@@ -481,6 +516,7 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
                                              bond_asu_table,
                                              geometry_proxy_registries,
                                              rt_mx_ji,
+                                             link_carbon_dist=2.0,
                                              ):
   def _add_bond(i_seqs,
                 bond_params_table,
@@ -529,11 +565,15 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
 #  anomeric_carbon, link_oxygen, ring_oxygen, ring_carbon, link_carbon, anomeric_hydrogen = \
 #      glyco_utils.get_glyco_link_atoms(atom_group1, atom_group2)
   gla = glyco_utils.get_glyco_link_atoms(atom_group1,
-                                         atom_group2)
+                                         atom_group2,
+                                         link_carbon_dist=link_carbon_dist,
+    )
   # checks
   if gla and not gla.is_correct():
     gla = glyco_utils.get_glyco_link_atoms(atom_group2,
-                                            atom_group1)
+                                           atom_group1,
+                                           link_carbon_dist=link_carbon_dist,
+      )
   if gla and not gla.is_correct():
     raise Sorry("""Failed to get all the atoms needed for glycosidic bond between
       group 1

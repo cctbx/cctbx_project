@@ -1,3 +1,4 @@
+from __future__ import division
 import sys,math
 
 def mean_fh(d_min,b):
