@@ -63,65 +63,219 @@ class ShellCommand(object):
     if p.returncode != 0 and self.kwargs.get('haltOnFailure'):
       raise RuntimeError, "Process failed with return code %s"%(p.returncode)
 
-##### Codebases #####
-# rsync'd packages.
-# The trailing slashes ARE significant.
-HOT = {
-  'phaser_regression':  '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser_regression/',
-  'phaser':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser/',
-  'ccp4io':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/',
-  # tar.gz
-  'annlib':             '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/',
-  'scons':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/',
-  'boost':              '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/',
-}
+##### Modules #####
 
-# SVN packages.
-CODEBASES = {
-  # CCTBX
-  'cctbx_project':      'svn://svn.code.sf.net/p/cctbx/code/trunk',
-  'cbflib':             'svn://svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge',
-  # PHENIX:
-  'ccp4io_adaptbx':     'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io_adaptbx/trunk',
-  'annlib_adaptbx':     'svn+ssh://%(cciuser)s@cci.lbl.gov/annlib_adaptbx/trunk',
-  'tntbx':              'svn+ssh://%(cciuser)s@cci.lbl.gov/tntbx/trunk',
-  'clipper':            'svn+ssh://%(cciuser)s@cci.lbl.gov/clipper/trunk',
-  'Plex':               'svn+ssh://%(cciuser)s@cci.lbl.gov/Plex/trunk',
-  'PyQuante':           'svn+ssh://%(cciuser)s@cci.lbl.gov/PyQuante/trunk',
-  'chem_data':          'svn+ssh://%(cciuser)s@cci.lbl.gov/chem_data/trunk',
-  'elbow':              'svn+ssh://%(cciuser)s@cci.lbl.gov/elbow/trunk',
-  'ksdssp':             'svn+ssh://%(cciuser)s@cci.lbl.gov/ksdssp/trunk',
-  'pex':                'svn+ssh://%(cciuser)s@cci.lbl.gov/pex/trunk',
-  'phenix':             'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix/trunk',
-  'phenix_html':        'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_html/trunk',
-  'phenix_examples':    'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_examples/trunk',
-  'phenix_regression':  'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_regression/trunk',
-  'pulchra':            'svn+ssh://%(cciuser)s@cci.lbl.gov/pulchra/trunk',
-  'solve_resolve':      'svn+ssh://%(cciuser)s@cci.lbl.gov/solve_resolve/trunk',
-  'reel':               'svn+ssh://%(cciuser)s@cci.lbl.gov/reel/trunk',
-  # LABELIT
-  'labelit':            'svn+ssh://%(cciuser)s@cci.lbl.gov/labelit/trunk',
-  'labelit_regression': 'svn+ssh://%(cciuser)s@cci.lbl.gov/labelit_regression/trunk',
-  # DIALS
-  'dials':              'svn://svn.code.sf.net/p/dials/code/trunk',
-  'dials_regression':   'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk',
-  # XFEL
-  'xfel_regression':    'svn+ssh://%(cciuser)s@cci.lbl.gov/xfel_regression/trunk',
-  # Not sure about these:
-  'gui_resources':      'svn+ssh://%(cciuser)s@cci.lbl.gov/gui_resources/trunk',
-  'opt_resources':      'svn+ssh://%(cciuser)s@cci.lbl.gov/opt_resources/trunk',
-  'muscle':             'svn+ssh://%(cciuser)s@cci.lbl.gov/muscle/trunk',
-  # Dev, debugging
-  'cxi_xdr_xes':        'svn+ssh://%(cciuser)s@cci.lbl.gov/cxi_xdr_xes/trunk',
-  'buildbot':           'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk',
-  # Duke
-  # 'probe':             'https://github.com/rlabduke/probe/trunk',
-  # 'suitename':         'https://github.com/rlabduke/suitename/trunk',
-  'probe':             'https://quiddity.biochem.duke.edu/svn/probe/trunk',
-  'suitename':         'https://quiddity.biochem.duke.edu/svn/suitename',
-  'reduce':            'https://quiddity.biochem.duke.edu/svn/reduce/trunk',
-  'king':              'https://quiddity.biochem.duke.edu/svn/phenix/king',
-}
+class SourceModule(object):
+  _modules = {}
+  module = None
+  authenticated = None
+  anonymous = None
+  def __init__(self):
+    if not self._modules:
+      self.update_subclasses()
+
+  def items(self):
+    return self._modules.items()
+
+  @classmethod
+  def update_subclasses(cls):
+    for i in cls.__subclasses__():
+      cls._modules[i.module] = i
+
+  def get_module(self, module):
+    if module in self._modules:
+      return self._modules[module]
+    raise KeyError, "Unknown module: %s"%module
+
+  def get_url(self, auth=None):
+    repo = None
+    try:
+      repo = self.get_authenticated(auth=auth)
+    except KeyError, e:    
+      repo = self.get_anonymous()
+      if not repo:
+        raise Exception('No anonymous access method defined for module: %s. Try with --%s'%(self.module, e.args[0]))
+    repo = repo or self.get_anonymous()
+    if not repo:
+      raise Exception('No access method defined for module: %s'%self.module)
+    return repo
+    
+  def get_authenticated(self, auth=None):
+    auth = auth or {}
+    if not self.authenticated:
+      return None
+    return [self.authenticated[0], self.authenticated[1]%auth]
+
+  def get_anonymous(self):
+    return self.anonymous
+
+# External repositories
+# The trailing slashes ARE significant.
+class ccp4io_module(SourceModule):
+  module = 'ccp4io'
+  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
+
+class annlib_module(SourceModule):
+  module = 'annlib'
+  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
+
+class scons_module(SourceModule):
+  module = 'scons'
+  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
+
+class boost_module(SourceModule):
+  module = 'boost'
+  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/']
+
+# Core CCTBX repositories
+class cctbx_module(SourceModule):
+  module = 'cctbx_project'
+  anonymous = ['svn','svn://svn.code.sf.net/p/cctbx/code/trunk']
+  authenticated = ['svn', 'svn+ssh://%(sfuser)s@svn.code.sf.net/p/cctbx/code/trunk']
+
+class cbflib_module(SourceModule):
+  module = 'cbflib'
+  anonymous = ['svn', 'svn://svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge']
+  authenticated = ['svn', 'svn+ssh://%(sfuser)s@svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge']
+
+class ccp4io_adaptbx(SourceModule):
+  module = 'ccp4io_adaptbx'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io_adaptbx/trunk']
+
+class annlib_adaptbx(SourceModule):
+  module = 'annlib_adaptbx'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/annlib_adaptbx/trunk']
+
+class tntbx_module(SourceModule):
+  module = 'tntbx'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/tntbx/trunk']
+
+class clipper_module(SourceModule):
+  module = 'clipper'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/clipper/trunk']
+
+# Phenix repositories
+class phenix_module(SourceModule):
+  module = 'phenix'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix/trunk']
+
+class phenix_html(SourceModule):
+  module = 'phenix_html'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_html/trunk']
+
+class phenix_examples(SourceModule):
+  module = 'phenix_examples'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_examples/trunk']
+
+class phenix_regression(SourceModule):
+  module = 'phenix_regression'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_regression/trunk']
+
+class plex_module(SourceModule):
+  module = 'Plex'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/Plex/trunk']
+
+class pyquante_module(SourceModule):
+  module = 'PyQuante'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/PyQuante/trunk']
+
+class chem_data_module(SourceModule):
+  module = 'chem_data'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/chem_data/trunk']
+
+class elbow_module(SourceModule):
+  module = 'elbow'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/elbow/trunk']
+
+class ksdssp_module(SourceModule):
+  module = 'ksdssp'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ksdssp/trunk']
+
+class pex_module(SourceModule):
+  module = 'pex'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/pex/trunk']
+
+class pulchra_module(SourceModule):
+  module = 'pulchra'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/pulchra/trunk']
+
+class solve_resolve_module(SourceModule):
+  module = 'solve_resolve'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/solve_resolve/trunk']
+
+class reel_module(SourceModule):
+  module = 'reel'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/reel/trunk']
+
+class gui_resources_module(SourceModule):
+  module = 'gui_resources'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/gui_resources/trunk']
+
+class opt_resources_module(SourceModule):
+  module = 'opt_resources'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/opt_resources/trunk']
+
+class muscle_module(SourceModule):
+  module = 'muscle'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/muscle/trunk']
+
+class cxi_xdr_xes_module(SourceModule):
+  module = 'cxi_xdr_xes'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/cxi_xdr_xes/trunk']
+
+class buildbot_module(SourceModule):
+  module = 'buildbot'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk']
+
+# Phaser repositories
+class phaser_module(SourceModule):
+  module = 'phaser'
+  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser/']
+
+class phaser_regression_module(SourceModule):
+  module = 'phaser_regression'
+  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser_regression/']
+
+# DIALS repositories
+class labelit_module(SourceModule):
+  module = 'labelit'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/labelit/trunk']
+
+class labelit_regression_module(SourceModule):
+  module = 'labelit_regression'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/labelit_regression/trunk']
+
+class dials_module(SourceModule):
+  module = 'dials'
+  anonymous = ['svn', 'svn://svn.code.sf.net/p/dials/code/trunk']
+  authenticated = ['svn', 'svn+ssh://%(sfuser)s@svn.code.sf.net/p/dials/code/trunk']
+
+class dials_regression_module(SourceModule):
+  module = 'dials_regression'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk']
+  
+class xfel_regression_module(SourceModule):
+  module = 'xfel_regression'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/xfel_regression/trunk']
+
+# Duke repositories
+class probe_module(SourceModule):
+  module = 'probe'
+  anonymous = ['svn', 'https://github.com/rlabduke/probe/trunk']
+
+class suitename_module(SourceModule):
+  module = 'suitename'
+  anonymous = ['svn', 'https://github.com/rlabduke/suitename/trunk']
+
+class reduce_module(SourceModule):
+  module = 'reduce'
+  anonymous = ['svn', 'https://quiddity.biochem.duke.edu/svn/reduce/trunk']
+
+class king_module(SourceModule):
+  module = 'king'
+  anonymous = ['svn', 'https://quiddity.biochem.duke.edu/svn/phenix/king']
+
+MODULES = SourceModule()
 
 ###################################
 ##### Base Configuration      #####
@@ -141,24 +295,26 @@ class Builder(object):
   LIBTBX = ['cctbx']
   LIBTBX_EXTRA = []
 
-  def __init__(self,
-    category=None,
-    platform=None,
-    sep=None,
-    python_system=None,
-    python_base=None,
-    cleanup=False,
-    hot=True,
-    update=True,
-    base=True,
-    build=True,
-    install=True,
-    tests=True,
-    distribute=False,
-    cciuser=None
-      ):
+  def __init__(
+      self,
+      category=None,
+      platform=None,
+      sep=None,
+      python_system=None,
+      python_base=None,
+      cleanup=False,
+      hot=True,
+      update=True,
+      base=True,
+      build=True,
+      install=True,
+      tests=True,
+      distribute=False,
+      auth=None
+    ):
     """Create and add all the steps."""
-    self.cciuser = cciuser or getpass.getuser()
+    # self.cciuser = cciuser or getpass.getuser()
+    self.set_auth(auth)
     self.steps = []
     self.category = category
     self.platform = platform
@@ -184,15 +340,15 @@ class Builder(object):
 
     # Add 'hot' sources
     if hot:
-      map(self.add_hot, self.get_hot())
+      map(self.add_module, self.get_hot())
 
     # Add svn sources.
     if update:
-      map(self.add_codebase, self.get_codebases())
+      map(self.add_module, self.get_codebases())
 
     # Build base packages
     if base:
-      self.add_build_base()
+      self.add_base()
 
     # Configure, make
     if build:
@@ -211,6 +367,15 @@ class Builder(object):
     if distribute:
       self.add_distribute()
 
+  def add_auth(self, account, username):
+    self.auth[account] = username
+
+  def set_auth(self, auth):
+    self.auth = auth or {}
+
+  def get_auth(self):
+    return self.auth
+
   def shell(self, **kwargs):
     # Convenience for ShellCommand
     kwargs['haltOnFailure'] = kwargs.pop('haltOnFailure', True)
@@ -219,12 +384,6 @@ class Builder(object):
     if 'workdir' in kwargs:
       kwargs['workdir'] = self.opjoin(*kwargs['workdir'])
     return ShellCommand(**kwargs)
-
-  def svn(self, **kwargs):
-    return self.shell(
-        command=['svn', 'co', kwargs['repourl'], kwargs['codebase']],
-        workdir=['modules']
-    )
 
   def run(self):
     for i in self.steps:
@@ -242,12 +401,6 @@ class Builder(object):
   def get_libtbx_configure(self):
     return self.LIBTBX + self.LIBTBX_EXTRA
 
-  def get_changesources(self):
-    return dict(
-      (k, dict(repository=CODEBASES[k]%{'cciuser':self.cciuser}, branch='default', revision=None))
-      for k in self.get_codebases()
-      )
-
   def add_init(self):
     pass
 
@@ -263,35 +416,52 @@ class Builder(object):
     """Add a step."""
     self.steps.append(step)
 
-  def add_codebase(self, codebase):
-    self.add_step(self.svn(
-        repourl=CODEBASES[codebase]%{'cciuser':self.cciuser},
-        codebase=codebase,
-        mode='incremental',
-        workdir=['modules', codebase]
-    ))
+  def add_module(self, module):
+    method, url = MODULES.get_module(module)().get_url(auth=self.get_auth())
+    if method == 'rsync':
+      self._add_rsync(module, url)
+    elif method == 'wget':
+      self._add_wget(module, url)
+    elif method == 'svn':
+      self._add_svn(module, url)
+    elif method == 'git':
+      self._add_git(module, url)
+    else:
+      raise Exception('Unknown access method: %s %s'%(method, url))
 
-  def add_hot(self, package):
+  def _add_rsync(self, module, url):
     """Add packages not in source control."""
     # rsync the hot packages.
     self.add_step(self.shell(
-      name='hot %s'%package,
+      name='hot %s'%module,
       command=[
         'rsync',
         '-aL',
         '--delete',
-        HOT[package]%{'cciuser':self.cciuser},
-        package,
+        url,
+        module,
       ],
       workdir=['modules']
     ))
     # If it's a tarball, unzip it.
-    if package.endswith('.gz'):
+    if module.endswith('.gz'):
       self.add_step(self.shell(
-        name='hot %s untar'%package,
-        command=['tar', '-xvzf', package],
+        name='hot %s untar'%module,
+        command=['tar', '-xvzf', module],
         workdir=['modules']
       ))
+
+  def _add_wget(self, module, url):
+    pass
+
+  def _add_svn(self, module, url):
+    self.add_step(self.shell(
+        command=['svn', 'co', url, module],
+        workdir=['modules']
+    ))
+
+  def _add_git(self, module, url):
+    pass
 
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
     # Relative path to workdir.
@@ -326,7 +496,7 @@ class Builder(object):
     )
 
   # Override these methods.
-  def add_build_base(self):
+  def add_base(self):
     """Build the base dependencies, e.g. Python, HDF5, etc."""
     self.add_step(self.shell(
       name='base',
@@ -445,7 +615,7 @@ class XFELBuilder(CCIBuilder):
  def add_tests(self):
    self.add_test_parallel('xfel_regression')
 
-class PHENIXBuilder(CCIBuilder):
+class PhenixBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'chem_data',
     'phenix',
@@ -490,6 +660,8 @@ class PHENIXBuilder(CCIBuilder):
   ]
   def add_install(self):
     self.add_command('mmtbx.rebuild_rotarama_cache')
+    self.add_command('phenix_html.rebuild_docs')
+    
   def add_tests(self):
     # Windows convenience hack.
     if 'windows' in self.platform:
@@ -506,6 +678,7 @@ if __name__ == "__main__":
   parser = optparse.OptionParser()
   parser.add_option("--builder", help="Builder: cctbx, phenix, xfel, dials, labelit", default="cctbx")
   parser.add_option("--cciuser", help="CCI SVN username.")
+  parser.add_option("--sfuser", help="SourceForge SVN username.")
   options, args = parser.parse_args()
 
   # Check actions
@@ -518,12 +691,13 @@ if __name__ == "__main__":
   for arg in allowedargs:
     if arg in args:
       actions.append(arg)
+  actions = ['update']
   print "Performing actions:", " ".join(actions)
 
   # Check builder
   builders = {
     'cctbx': CCTBXBuilder,
-    'phenix': PHENIXBuilder,
+    'phenix': PhenixBuilder,
     'xfel': XFELBuilder,
     'labelit': LABELITBuilder,
     'dials': DIALSBuilder
@@ -531,12 +705,18 @@ if __name__ == "__main__":
   if options.builder not in builders:
     raise ValueError("Unknown builder: %s"%options.builder)
 
+  auth = {}
+  if options.cciuser:
+    auth['cciuser'] = options.cciuser
+  if options.sfuser:
+    auth['sfuser'] = options.sfuser
+
   # Build
   builder = builders[options.builder]
   builder(
     category='cctbx',
     platform='debug',
-    cciuser=options.cciuser,
+    auth=auth,
     hot=('hot' in actions),
     update=('update' in actions),
     base=('base' in actions),
