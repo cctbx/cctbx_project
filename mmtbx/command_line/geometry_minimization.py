@@ -214,7 +214,7 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
   id_params = params.secondary_structure.idealization
   reference_torsion_proxies = None
   if id_params.enabled:
-    print >> log, "Substituting secondary structure elements with ideal ones."
+    print >> log, "Substituting secondary structure elements with ideal ones:"
     annot = None
     if len(params.secondary_structure.helix) +\
        len(params.secondary_structure.sheet) >0:
@@ -245,6 +245,7 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
       xray_structure.set_sites_cart(
           processed_pdb_file.all_chain_proxies.pdb_hierarchy.\
               atoms().extract_xyz())
+      print >> log, "Substituting secondary structure elements is done"
     else:
       print >> log, "No secondary structure definition found in phil"+\
           "or HELIX/SHEET records. No substitution done."
