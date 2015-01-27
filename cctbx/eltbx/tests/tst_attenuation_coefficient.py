@@ -6,7 +6,7 @@ def tst_for_z(z):
   eps = 1e-7
 
   # Get the table
-  table = attenuation_coefficient.get_table('Si')
+  table = attenuation_coefficient.get_table(z)
 
   # Get list of energies and coefficients
   energy = table.energy()[1:-1]
