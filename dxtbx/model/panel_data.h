@@ -32,7 +32,8 @@ namespace dxtbx { namespace model {
     PanelData()
       : pixel_size_(0.0, 0.0),
         image_size_(0, 0),
-        trusted_range_(0.0, 0.0) {}
+        trusted_range_(0.0, 0.0),
+        thickness_(0.0) {}
 
     /** Construct with data */
     PanelData(std::string type,
