@@ -9,6 +9,7 @@ from mmtbx.monomer_library.linking_setup import ad_hoc_non_linking_elements
 from mmtbx.monomer_library.linking_setup import ad_hoc_first_row
 
 get_class = iotbx.pdb.common_residue_names_get_class
+from iotbx.pdb import get_one_letter_rna_dna_name
 
 sugar_types = ["SACCHARIDE",
                "D-SACCHARIDE",
@@ -211,6 +212,7 @@ def get_classes(atom, important_only=False, verbose=False):
     "common_small_molecule",
     "common_amino_acid",
     "common_rna_dna",
+    "ccp4_mon_lib_rna_dna",
     "other",
     "uncommon_amino_acid",
     "unknown",
@@ -224,9 +226,9 @@ def get_classes(atom, important_only=False, verbose=False):
     print '    atom_group1: altloc="%s" resname="%s" class="%s"' % (
       atom_group.altloc,
       atom_group.resname,
-      get_class(atom_group.resname),
+      get_class(atom_group.resname, consider_ccp4_mon_lib_rna_dna=True),
       )
-  gc = get_class(atom_group.resname)
+  gc = get_class(atom_group.resname, consider_ccp4_mon_lib_rna_dna=True)
   for i, attr in enumerate(attrs):
     rc = None
     if i:
@@ -391,8 +393,8 @@ def is_linked_basepairs(
     t = atom1
     atom1 = atom2
     atom2 = t
-  rn1 = atom1.parent().resname.strip()[-1]
-  rn2 = atom2.parent().resname.strip()[-1]
+  rn1 = get_one_letter_rna_dna_name(atom1.parent().resname)
+  rn2 = get_one_letter_rna_dna_name(atom2.parent().resname)
   atom1_idstr = atom1.id_str()
   atom2_idstr = atom2.id_str()
   # Don't link two consecutive residues in the same chain
@@ -491,14 +493,14 @@ def is_atom_pair_linked(atom1,
   #
   # DNA base-pairs
   #
-  if lookup.count("common_rna_dna") == 2:
+  if lookup.count("common_rna_dna")+lookup.count("ccp4_mon_lib_rna_dna") == 2:
     link_class = is_linked_basepairs(
         atom1,
         atom2,
         rna_dna_bond_cutoff=rna_dna_bond_cutoff,
         rna_dna_angle_cutoff=rna_dna_angle_cutoff)
     if link_class is not None:
-      #print "DO LINKING, class = ", link_class, atom1.id_str(), atom2.id_str()
+      # print "DO LINKING, class = ", link_class, atom1.id_str(), atom2.id_str()
       return True
   #
   # sulfur bridge
