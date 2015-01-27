@@ -64,13 +64,37 @@ class FormatCBFFullPilatus(FormatCBFFull):
       detector[0].add_mask(f0, s0, f1, s1)
 
     import re
-    material = re.search('^#\s*(\S+)\ssensor, thickness\s*([0-9.]+)\s*m\s*$', \
-               self._cif_header, re.MULTILINE)
-    if material:
+    m = re.search('^#\s*(\S+)\ssensor, thickness\s*([0-9.]+)\s*m\s*$', \
+                  self._cif_header, re.MULTILINE)
+    if m:
+      # header gives thickness in metres, we store mm
+      thickness = float(m.group(2)) * 1000
+      material = m.group(1)
+
       for panel in detector:
-        panel.set_thickness(float(material.group(2)) * 1000)
-        # header gives thickness in m, dxtbx stores thickness in mm
-        panel.set_material(material.group(1))
+        panel.set_thickness(thickness)
+        panel.set_material(material)
+
+      try:
+        # a header only CBF file will not have a beam object
+        beam = self._beam()
+
+      except:
+        pass
+
+      if beam:
+        # attenuation coefficient depends on the beam wavelength
+        wavelength = beam.get_wavelength()
+
+        from cctbx.eltbx import attenuation_coefficient
+        from dxtbx.model import ParallaxCorrectedPxMmStrategy
+        # this will fail for undefined composite materials (ie all except CdTe)
+        table = attenuation_coefficient.get_table(material)
+        # mu_at_angstrom returns cm^-1, but need mu in mm^-1
+        mu = table.mu_at_angstrom(wavelength) / 10.0
+
+        for panel in detector:
+          panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, thickness))
 
     return detector
 

@@ -112,7 +112,7 @@ namespace dxtbx { namespace model {
       return "ParallaxCorrectedPxMmStrategy";
     }
 
-    /** @returns the linear attenutation coefficient (mm^-1) */
+    /** @returns the linear attenuation coefficient (mm^-1) */
     double mu() const {
       return mu_;
     }
