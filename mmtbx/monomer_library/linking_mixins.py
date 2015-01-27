@@ -811,7 +811,7 @@ Residue classes
       assert len(link_key)==1
       key = link_key[0]
       link = self.mon_lib_srv.link_link_id_dict.get(key, None)
-      if key.find("ALPHA")>-1 or key.find("BETA")>-1:
+      if key.find("ALPHA1")>-1 or key.find("BETA1")>-1: # is handled in elif
         key, cif = glyco_utils.apply_glyco_link_using_proxies_and_atoms(
           atom_group2,
           atom_group1,
@@ -819,6 +819,7 @@ Residue classes
           bond_asu_table,
           geometry_proxy_registries,
           rt_mx_ji=link_rt_mx_ji,
+          link_carbon_dist=carbohydrate_bond_cutoff,
           )
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])

@@ -1849,8 +1849,32 @@ _chem_comp_atom.charge
 SEI C27    C 'CH1 '  0.000 0
 SEI O39    O 'OH1 '  0.000 0
 SEI H39    H 'HCH1'  0.000 0
-"""
+""",
+  "linking_test_c2_c6.pdb" : """
+HETATM15124  C1  BMA B1954      12.904 -11.942 -55.687  1.00 47.00           C
+HETATM15125  C2  BMA B1954      12.394 -13.167 -54.934  1.00 46.45           C
+HETATM15126  C3  BMA B1954      13.532 -14.149 -54.722  1.00 47.94           C
+HETATM15127  C4  BMA B1954      14.248 -14.423 -56.039  1.00 48.98           C
+HETATM15128  C5  BMA B1954      14.607 -13.131 -56.783  1.00 50.00           C
+HETATM15129  C6  BMA B1954      15.208 -13.371 -58.158  1.00 49.36           C
+HETATM15130  O2  BMA B1954      11.341 -13.818 -55.637  1.00 43.37           O
+HETATM15131  O3  BMA B1954      12.997 -15.377 -54.260  1.00 50.40           O
+HETATM15132  O4  BMA B1954      15.420 -15.170 -55.759  1.00 49.22           O
+HETATM15133  O5  BMA B1954      13.436 -12.314 -56.945  1.00 47.68           O
+HETATM15134  O6  BMA B1954      14.350 -14.201 -58.934  1.00 50.59           O
+HETATM15157  C1  MAN B1957      13.587 -14.646 -60.954  1.00 26.90           C
+HETATM15158  C2  MAN B1957      14.671 -14.846 -59.882  1.00 25.95           C
+HETATM15159  C3  MAN B1957      15.018 -16.290 -60.094  1.00 25.04           C
+HETATM15160  C4  MAN B1957      13.866 -17.159 -59.640  1.00 24.45           C
+HETATM15161  C5  MAN B1957      12.714 -16.962 -60.596  1.00 24.51           C
+HETATM15162  C6  MAN B1957      11.427 -17.605 -60.044  1.00 26.73           C
+HETATM15163  O3  MAN B1957      16.232 -16.635 -59.360  1.00 26.05           O
+HETATM15164  O4  MAN B1957      14.341 -18.518 -59.750  1.00 26.46           O
+HETATM15165  O5  MAN B1957      12.440 -15.560 -60.696  1.00 26.50           O
+HETATM15166  O6  MAN B1957      10.269 -17.445 -60.950  1.00 27.70           O
+""",
         }
+
 links = {
   "linking_test_ASN-NAG.pdb" : [21, 22],
   "linking_test_ASN-NAG-altloc1.pdb" : [35, 37],
@@ -1879,6 +1903,7 @@ links = {
   "linking_test_ALY_MCM.pdb" : [11,12], # links AA with quasi-AA
   "linking_test_cyclic.pdb" : [67,68],
   "linking_test_over_valence.pdb" : [6,6],
+  "linking_test_c2_c6.pdb" : [21,22],
   }
 
 def run(only_i=None):
@@ -1897,7 +1922,7 @@ def run(only_i=None):
     if pdb in ["linking_test_CD_GHE_A_B.pdb",
                "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
                ]: continue
-    #if pdb.find("over")==-1: continue
+    #if pdb.find("c2_c6")==-1: continue
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):

@@ -181,6 +181,8 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
         cmd_args = " " + " ".join(["--Verbose"] + tst[1:])
       elif (co is not None) and (co.quick):
         cmd_args = " " + " ".join(tst[1:])
+      elif (co is not None):
+        cmd_args = " " + " ".join(tst[1:])
       tst = tst[0]
     elif (co is not None) and (co.verbose):
       continue
