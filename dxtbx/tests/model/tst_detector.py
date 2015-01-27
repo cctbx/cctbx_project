@@ -128,7 +128,9 @@ def tst_detector():
       (0, 0, 200),        # Origin
       (0.172, 0.172),     # Pixel size
       (512, 512),         # Image size
-      (0, 1000)))         # Trusted range
+      (0, 1000),          # Trusted range
+      0.0,                # Thickness
+      ""))                # Material
 
   # Perform some tests
   tst_set_mosflm_beam_centre(detector)
@@ -155,6 +157,8 @@ def tst_detector():
       (0.172, 0.172),     # Pixel size
       (512, 512),         # Image size
       (0, 1000),          # Trusted range
+      0.0,                # Thickness
+      "",                 # Material
       ParallaxCorrectedPxMmStrategy(mu, t0)))
 
   tst_parallax_correction(detector)

@@ -477,7 +477,7 @@ class detector_factory:
   @staticmethod
   def make_detector(stype, fast_axis, slow_axis, origin,
                     pixel_size, image_size, trusted_range = (0.0, 0.0),
-                    px_mm=None, name="Panel"):
+                    px_mm=None, name="Panel", thickness=0.0, material=''):
     """Ensure all types are correct before creating c++ detector class."""
 
     if px_mm is None:
@@ -494,6 +494,8 @@ class detector_factory:
       p.set_pixel_size(tuple(map(float, pixel_size)))
       p.set_image_size(tuple(map(int, image_size)))
       p.set_trusted_range(tuple(map(float, trusted_range)))
+      p.set_thickness(thickness)
+      p.set_material(material)
       p.set_px_mm_strategy(px_mm)
     except Exception, e:
       print e

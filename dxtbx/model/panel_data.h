@@ -42,10 +42,14 @@ namespace dxtbx { namespace model {
           tiny<double,3> origin,
           tiny<double,2> pixel_size,
           tiny<std::size_t,2> image_size,
-          tiny<double,2> trusted_range)
+          tiny<double,2> trusted_range,
+          double thickness,
+          std::string material)
       : pixel_size_(pixel_size),
         image_size_(image_size),
-        trusted_range_(trusted_range) {
+        trusted_range_(trusted_range),
+        thickness_(thickness),
+        material_(material) {
       set_type(type);
       set_name(name);
       set_local_frame(fast_axis, slow_axis, origin);
@@ -81,6 +85,26 @@ namespace dxtbx { namespace model {
     /** Set the trusted range */
     void set_trusted_range(tiny<double,2> trusted_range) {
       trusted_range_ = trusted_range;
+    }
+
+    /** Get the thickness */
+    double get_thickness() const {
+      return thickness_;
+    }
+
+    /** Set the thickness */
+    void set_thickness(double thickness) {
+      thickness_ = thickness;
+    }
+
+    /** Get the material */
+    std::string get_material() const {
+      return material_;
+    }
+
+    /** Set the material */
+    void set_material(const std::string &material) {
+      material_ = material;
     }
 
     /** Get the mask array */
@@ -128,6 +152,8 @@ namespace dxtbx { namespace model {
     tiny<double,2> pixel_size_;
     tiny<std::size_t,2> image_size_;
     tiny<double,2> trusted_range_;
+    double thickness_;
+    std::string material_;
     scitbx::af::shared<int4> mask_;
   };
 

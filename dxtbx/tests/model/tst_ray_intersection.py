@@ -91,7 +91,7 @@ def tst_beam_plane_intersection():
 
   # Create a detector object
   panel = Panel("", "", fast_axis, slow_axis, origin, pixel_size,
-                image_size, (0, 0))
+                image_size, (0, 0), 0.0, "")
 
   # Create the intersection object
   intersection = lambda x: panel.get_ray_intersection(x)
@@ -170,7 +170,7 @@ def tst_plane_to_lab_transform():
 
   # Create a detector object
   panel = Panel("", "", fast_axis, slow_axis, origin, pixel_size,
-               image_size, (0, 0))
+               image_size, (0, 0), 0.0, "")
 
   # Create the intersection object
   transform = lambda x: panel.get_lab_coord(x)
@@ -230,7 +230,7 @@ def tst_forward_and_reverse_transform():
 
   # Create a detector object
   panel = Panel("", "", fast_axis, slow_axis, origin, pixel_size,
-               image_size, (0, 0))
+               image_size, (0, 0), 0.0, "")
 
   # Create the intersection object and transform object
   intersection = lambda x: panel.get_ray_intersection(x)
