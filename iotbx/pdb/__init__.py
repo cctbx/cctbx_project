@@ -118,6 +118,21 @@ rna_dna_reference_residue_names = {
   "TD": "DT"
 }
 
+def get_one_letter_rna_dna_name(resname):
+  """ Truncate the residue name to one letter. Return the letter or None."""
+  if resname is None:
+    return None
+  assert isinstance(resname, str)
+  result = resname.strip()
+  result = result.strip("r").strip("R")
+  result = result.strip("d").strip("D")
+  result = result.strip("+")
+  if len(result) == 1:
+    return result.upper()
+  else:
+    result = cns_dna_rna_residue_names.get(result, None)
+    return result
+
 def rna_dna_reference_residue_name(common_name):
   return rna_dna_reference_residue_names.get(common_name.strip().upper())
 

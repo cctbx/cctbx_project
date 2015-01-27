@@ -24,6 +24,7 @@ import string
 import sys, os
 import time
 import math
+from iotbx.pdb import get_one_letter_rna_dna_name
 
 # see iotbx/pdb/common_residue_names.h; additionally here only: U I
 ad_hoc_single_atom_residue_element_types = """\
@@ -3791,7 +3792,8 @@ refinement.pdb_interpretation {
         possible_peptide_link=True
     # so are nucleotide links
     possible_rna_dna_link = False
-    if classes1.common_rna_dna or classes2.common_rna_dna:
+    if ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna)
+          or (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
       if(atoms[0].name.strip() in ["O3'", "O3*"] and
          atoms[1].name.strip() in ["P"]
          ):
@@ -3932,13 +3934,11 @@ refinement.pdb_interpretation {
     new_hbonds = []
     r1 = a1.parent()
     r2 = a2.parent()
-    r1n = r1.resname.strip()
-    r2n = r2.resname.strip()
+    r1n = get_one_letter_rna_dna_name(r1.resname)
+    r2n = get_one_letter_rna_dna_name(r2.resname)
+    assert r1n is not None
+    assert r2n is not None
     # Translate DNA resname to RNA for unification
-    if len(r1n) > 1:
-      r1n = r1.resname.strip()[-1]
-    if len(r2n) > 1:
-      r2n = r2.resname.strip()[-1]
     # RNA
     if r1n > r2n:
       t = r1
