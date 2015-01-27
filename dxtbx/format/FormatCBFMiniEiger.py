@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# FormatCBFMiniPilatus.py
+# FormatCBFMiniEiger.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
 #
 #   This code is distributed under the BSD license, a copy of which is
 #   included in the root directory of this package.
 #
-# An implementation of the CBF image reader for Pilatus images. Inherits from
+# An implementation of the CBF image reader for Eiger images. Inherits from
 # FormatCBFMini.
 
 from __future__ import division
@@ -16,13 +16,13 @@ from dxtbx.format.FormatCBFMiniPilatusHelpers import \
 from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
-class FormatCBFMiniPilatus(FormatCBFMini):
-  '''A class for reading mini CBF format Pilatus images, and correctly
+class FormatCBFMiniEiger(FormatCBFMini):
+  '''A class for reading mini CBF format Eiger images, and correctly
   constructing a model for the experiment from this.'''
 
   @staticmethod
   def understand(image_file):
-    '''Check to see if this looks like an Pilatus mini CBF format image,
+    '''Check to see if this looks like an Eiger mini CBF format image,
     i.e. we can make sense of it.'''
 
     header = FormatCBFMini.get_cbf_header(image_file)
@@ -30,20 +30,6 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     for record in header.split('\n'):
       if '# Detector' in record and \
              'EIGER' in record:
-        return False
-
-    for record in header.split('\n'):
-      if '_array_data.header_convention' in record and \
-             'PILATUS' in record:
-        return True
-      if '_array_data.header_convention' in record and \
-             'SLS' in record:
-        return True
-      if '_array_data.header_convention' in record and \
-             '?' in record:
-        return True
-      if '# Detector' in record and \
-             'PILATUS' in record:  #CBFlib v0.8.0 allowed
         return True
 
     return False
@@ -68,22 +54,9 @@ class FormatCBFMiniPilatus(FormatCBFMini):
       pass
 
   def _goniometer(self):
-    '''Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header, though for miniCBF
-    there are limited options for this.'''
-
-    if 'Phi' in self._cif_header_dictionary:
-      phi_value = float(self._cif_header_dictionary['Phi'].split()[0])
-      # NKS remove assertion that phi == 0 so those data can be processed
-      # assert( phi_value == 0.0)
-
-    return self._goniometer_factory.single_axis()
+    return self._goniometer_factory.single_axis_reverse()
 
   def _detector(self):
-    '''Return a model for a simple detector, presuming no one has
-    one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame.'''
-
     distance = float(
         self._cif_header_dictionary['Detector_distance'].split()[0])
 
@@ -101,7 +74,7 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     pixel_x, pixel_y = map(float, pixel_xy)
 
     thickness = float(
-      self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
+      self._cif_header_dictionary['Silicon'].split()[-2]) * 1000.0
 
     nx = int(
         self._cif_header_dictionary['X-Binary-Size-Fastest-Dimension'])
@@ -112,15 +85,10 @@ class FormatCBFMiniPilatus(FormatCBFMini):
         self._cif_header_dictionary['Count_cutoff'].split()[0])
     underload = -1
 
-    # take into consideration here the thickness of the sensor also the
-    # wavelength of the radiation (which we have in the same file...)
     from cctbx.eltbx import attenuation_coefficient
     table = attenuation_coefficient.get_table("Si")
     mu = table.mu_at_angstrom(wavelength) / 10.0
     t0 = thickness
-
-    # FIXME would also be very nice to be able to take into account the
-    # misalignment of the individual modules given the calibration information...
 
     detector = self._detector_factory.simple(
         'PAD', distance * 1000.0, (beam_x * pixel_x * 1000.0,
@@ -129,27 +97,22 @@ class FormatCBFMiniPilatus(FormatCBFMini):
         (nx, ny), (underload, overload), [],
         ParallaxCorrectedPxMmStrategy(mu, t0))
 
-    for f0, s0, f1, s1 in determine_pilatus_mask(detector):
+    for f0, s0, f1, s1 in [(0, 513, 1030, 550)]:
       detector[0].add_mask(f0, s0, f1, s1)
 
     return detector
 
   def _beam(self):
-    '''Return a simple model for the beam.'''
-
     wavelength = float(
         self._cif_header_dictionary['Wavelength'].split()[0])
 
     return self._beam_factory.simple(wavelength)
 
   def _scan(self):
-    '''Return the scan information for this image.'''
-
     format = self._scan_factory.format('CBF')
 
     exposure_time = float(
         self._cif_header_dictionary['Exposure_period'].split()[0])
-
     osc_start = float(
         self._cif_header_dictionary['Start_angle'].split()[0])
     osc_range = float(
@@ -167,4 +130,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniPilatus.understand(arg)
+    print FormatCBFMiniEiger.understand(arg)
