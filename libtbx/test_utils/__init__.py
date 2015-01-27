@@ -404,8 +404,9 @@ def show_diff(a, b, selections=None, expected_number_of_lines=None, strip_traili
       a.append("...\n")
     a = "".join(a[:-1])
   if strip_trailing_whitespace:
-    a = a.rstrip()
-    b = b.rstrip()
+    import re
+    a = re.sub(r'[ \t]*\n', '\n', a, 0, re.MULTILINE)
+    b = re.sub(r'[ \t]*\n', '\n', b, 0, re.MULTILINE)
   if (a != b):
     if (not a.endswith("\n") or not b.endswith("\n")):
       a += "\n"
