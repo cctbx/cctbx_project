@@ -19,7 +19,7 @@ def extract(file_name):
       start=True
     if(start):
       if(l.startswith("matrix T")):
-        start_T=True 
+        start_T=True
       if(l.startswith("matrix L")):
         start_L=True
       if(l.startswith("matrix S")):
@@ -52,7 +52,7 @@ files = [
   "dec04_test003.mes",
   "dec04_test004.mes",
   "dec04_test005.mes",
-  "dec04_test012.mes", 
+  "dec04_test012.mes",
   "dec04_test013.mes",
   "dec04_test014.mes",
   "dec04_test015.mes",
