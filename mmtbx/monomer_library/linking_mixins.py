@@ -646,9 +646,9 @@ Residue classes
         #  - beta, delta ???
         if possible_cyclic_peptide(atom1, atom2): # first & last peptide
           use_only_bond_cutoff = True
-      if ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna) 
+      if ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna)
           and (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
-        if not na_params.enabled:
+        if not na_params.enabled or not na_params.bonds.find_automatically:
           continue
       #else:
       #  continue # Hard hookup to disable all but DNA/RNA basepair linking
@@ -705,7 +705,7 @@ Residue classes
           print >> log, "  Atom %s rejected from bonding due to valence issues." % atom2.quote()
           continue
       # got a link....
-      if ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna) 
+      if ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna)
           and (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
         hbonds_in_bond_list.append(tuple(sorted([atom1.i_seq, atom2.i_seq])))
         # we will create proxies elsewhere (pdb_interpretation:4900)
@@ -723,7 +723,7 @@ Residue classes
       #
       if not link_metals and "metal" in class_key: continue
       if (not na_params.enabled and na_params.bonds.enabled
-          and ("common_rna_dna" in class_key 
+          and ("common_rna_dna" in class_key
           or "ccp4_mon_lib_rna_dna" in class_key)): continue
       if not link_residues and "common_amino_acid" in class_key: continue
       if not link_carbohydrates and "common_saccharide" in class_key: continue
@@ -762,7 +762,7 @@ Residue classes
       # !!! For every possible link we are looping over _all_ bond proxies?
       # Impossible for DNA/RNA links due to enormous runtime (hundreds links).
       link_found = False
-      if not ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna) 
+      if not ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna)
           and (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
         for bond_simple_proxy in geometry_proxy_registries.bond_simple.proxies:
           if bond_simple_proxy.i_seqs in ij_seqs:
@@ -895,7 +895,7 @@ Residue classes
       custom_links.setdefault(ii, [])
       custom_links[ii].append([atom_group1, atom_group2, atom1, atom2])
       # simple
-      bond_name = "h-dna" if ((classes1.common_rna_dna or 
+      bond_name = "h-dna" if ((classes1.common_rna_dna or
         classes1.ccp4_mon_lib_rna_dna) and
        (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)) else "bond"
       if sym_op:
