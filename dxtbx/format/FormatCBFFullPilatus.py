@@ -63,6 +63,15 @@ class FormatCBFFullPilatus(FormatCBFFull):
     for f0, s0, f1, s1 in determine_pilatus_mask(detector):
       detector[0].add_mask(f0, s0, f1, s1)
 
+    import re
+    material = re.search('^#\s*(\S+)\ssensor, thickness\s*([0-9.]+)\s*m\s*$', \
+               self._cif_header, re.MULTILINE)
+    if material:
+      for panel in detector:
+        panel.set_thickness(float(material.group(2)) * 1000)
+        # header gives thickness in m, dxtbx stores thickness in mm
+        panel.set_material(material.group(1))
+
     return detector
 
 if __name__ == '__main__':
