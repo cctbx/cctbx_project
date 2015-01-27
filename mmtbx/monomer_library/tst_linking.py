@@ -1928,7 +1928,7 @@ def run(only_i=None):
     for i in range(2):
       log_filename = "%s_%d.log" % (pdb, i)
       cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
-      cmd += " link_all=%d %s" % (i, cifs)
+      cmd += " link_all=%d link_carbohydrate=%d %s" % (i, i, cifs)
       print cmd
       result = easy_run.fully_buffered(cmd).raise_if_errors()
       assert (result.return_code == 0)

@@ -54,7 +54,7 @@ class empty:
     return outl
 
 def _write_warning_line(s):
-  print " !!! %-76s !!!" % s
+  print " !!! %-78s !!!" % s
 
 def get_distance2(atom1, atom2):
   d2 = (atom1.xyz[0]-atom2.xyz[0])**2
@@ -793,7 +793,7 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
         #cif_links = cif_links.replace(tmp_key, data_link_key)
         key = data_link_key
     else:
-      print " %s" % ("!"*84)
+      print " %s" % ("!"*86)
       _write_warning_line("  Possible link ignored")
       _write_warning_line(atom1.format_atom_record())
       _write_warning_line(atom2.format_atom_record())
@@ -802,7 +802,7 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
       _write_warning_line("  Glycan-glycan   : %s" % (is_glyco_bond(atom1, atom2)))
       if c_atom is None: _write_warning_line("  No carbon atom found")
       if o_atom is None: _write_warning_line("  No oxygen atom found")
-      print " %s" % ("!"*84)
+      print " %s" % ("!"*86)
       #print " Distance", get_distance2(atom1, atom2)
       #assert 0
       #raise Sorry("Check input geometry")

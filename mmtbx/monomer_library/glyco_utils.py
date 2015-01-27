@@ -575,7 +575,9 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
                                            link_carbon_dist=link_carbon_dist,
       )
   if gla and not gla.is_correct():
-    raise Sorry("""Failed to get all the atoms needed for glycosidic bond between
+    raise Sorry("""Failed to get all the atoms needed for glycosidic bond
+between
+
       group 1
 %s
       group 2
@@ -585,7 +587,8 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
     )
   if gla is None:
     raise Sorry("""Unspecified problem with carbohydrate groups. Could be that
-      the linking oxygen is on the linking residue instead of the docking residue.
+the linking oxygen is on the linking residue instead of the docking residue.
+
     group 1
 %s
     group 2
@@ -595,7 +598,8 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
            )
   if not gla.anomeric_carbon_linking:
     raise Sorry("""The linking carbohydrate unit has the oxygen attached to the
-      anomeric carbon.
+anomeric carbon.
+
   Consider replacing oxygen %s
   with an oxygen linked to  %s in the same residue
     %s""" % (gla.link_oxygen.quote(),
