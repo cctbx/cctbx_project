@@ -9,6 +9,7 @@ import scitbx.rigid_body
 from cctbx import xray
 import random
 import math
+import sys
 
 __author__ = 'Youval'
 
@@ -914,18 +915,19 @@ def iselection_asu_to_ncs(iselection_asu,ncs_chain_id,hierarchy_asu):
   chain_start =  min(list(ph_ncs_select.iselection(True)))
   return iselection_asu - chain_start
 
-def check_ncs_group_list(ncs_restraints_group_list,ph,max_delta = 10.0):
+def check_ncs_group_list(ncs_restraints_group_list,ph,max_delta=10.0,log=None):
   """
   Check that all copies relate correctly to master via the transforms
 
   Args:
     ncs_restraints_group_list : list of ncs restraints group objects
     ph: Hierarchy object
-    max_delta (float): maximum allowed deviation between copies coordinates
+    max_delta (float): maximum allowed deviation between coordinates copies
 
   Returns:
     nrgl_ok (bool): True when ncs_restraints_group_list is OK
   """
+  if not log: log = sys.stdout
   nrgl_ok = True
   for i,gr in enumerate(ncs_restraints_group_list):
     master_xyz = ph.select(gr.master_iselection).atoms().extract_xyz()
@@ -936,7 +938,7 @@ def check_ncs_group_list(ncs_restraints_group_list,ph,max_delta = 10.0):
       max_val = abs(temp.min_max_mean().max)
       nrgl_ok &= (max_val <= max_delta)
       if (max_val > max_delta):
-        print 'max_val: ',max_val
+        print >>log,'max_val: ',max_val
   return nrgl_ok
 
 def make_unique_chain_names(unique_chain_names,number_of_names=1):
