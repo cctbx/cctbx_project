@@ -56,7 +56,7 @@ class goniometer_factory:
     '''Construct a single axis goniometer which is canonical in the
     CBF reference frame, but reversed in rotation.'''
 
-    axis = (-11, 0, 0)
+    axis = (-1, 0, 0)
     fixed = (1, 0, 0, 0, 1, 0, 0, 0, 1)
 
     return goniometer_factory.make_goniometer(axis, fixed)
