@@ -2193,8 +2193,10 @@ prime/command_line/__init__.py -text
 prime/command_line/iota.py -text
 prime/command_line/iotacc.py -text
 prime/command_line/postrefine.py -text
+prime/command_line/spot_param_visualizer.py -text
 prime/command_line/viewstats.py -text
 prime/iota/__init__.py -text
+prime/iota/double_gauss.py -text
 prime/iota/iota_gridsearch.py -text
 prime/iota/iota_input.py -text
 prime/iota/iota_select.py -text
