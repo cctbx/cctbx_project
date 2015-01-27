@@ -14,7 +14,7 @@ class mod_event_info(object):
   """
 
 
-  def __init__(self, address, detz_offset=575, check_beam_status=True, verbose=False, delta_k=0.0, **kwds):
+  def __init__(self, address, detz_offset=575, check_beam_status=True, verbose=False, delta_k=0.0, override_energy=None, **kwds):
     """The mod_event_info class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
@@ -27,6 +27,8 @@ class mod_event_info(object):
                              parameters
     @param delta_k           Correction to the K value used when calculating
                              wavelength
+    @param override_energy   Use this energy instead of what is in the
+                             XTC stream
     """
     logging.basicConfig()
     self.logger = logging.getLogger(self.__class__.__name__)
@@ -49,6 +51,7 @@ class mod_event_info(object):
 
     self._detz_offset = cspad_tbx.getOptFloat(detz_offset)
     self.delta_k = cspad_tbx.getOptFloat(delta_k)
+    self.override_energy = cspad_tbx.getOptFloat(override_energy)
 
     self.address = cspad_tbx.getOptString(address)
     self.verbose = cspad_tbx.getOptBool(verbose)
@@ -115,15 +118,18 @@ class mod_event_info(object):
       return
     if self.verbose: self.logger.info(self.timestamp)
 
-    self.wavelength = cspad_tbx.evt_wavelength(evt, self.delta_k)
-    if self.wavelength is None:
-      if self.check_beam_status:
-        self.nfail += 1
-        self.logger.warning("event(): no wavelength, shot skipped")
-        evt.put(True, "skip_event")
-        return
-      else:
-        self.wavelength = 0
+    if self.override_energy is None:
+      self.wavelength = cspad_tbx.evt_wavelength(evt, self.delta_k)
+      if self.wavelength is None:
+        if self.check_beam_status:
+          self.nfail += 1
+          self.logger.warning("event(): no wavelength, shot skipped")
+          evt.put(True, "skip_event")
+          return
+        else:
+          self.wavelength = 0
+    else:
+      self.wavelength = 12398.4187/self.override_energy
     if self.verbose: self.logger.info("Wavelength: %.4f" %self.wavelength)
 
     self.pulse_length = cspad_tbx.evt_pulse_length(evt)
