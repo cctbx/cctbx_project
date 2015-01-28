@@ -5,6 +5,8 @@ import sys
 import subprocess
 import optparse
 import getpass
+import urllib
+import urlparse
 
 # To download this file:
 # svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
@@ -109,25 +111,31 @@ class SourceModule(object):
   def get_anonymous(self):
     return self.anonymous
 
-# External repositories
+# Core external repositories
 # The trailing slashes ARE significant.
+# These must all provide anonymous access.
 class ccp4io_module(SourceModule):
   module = 'ccp4io'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io.gz']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
 
 class annlib_module(SourceModule):
   module = 'annlib'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/annlib.gz']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
 
 class scons_module(SourceModule):
   module = 'scons'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/scons.gz']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
 
 class boost_module(SourceModule):
   module = 'boost'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/boost.gz']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/']
 
 # Core CCTBX repositories
+# These must all provide anonymous access.
 class cctbx_module(SourceModule):
   module = 'cctbx_project'
   anonymous = ['svn','svn://svn.code.sf.net/p/cctbx/code/trunk']
@@ -140,19 +148,32 @@ class cbflib_module(SourceModule):
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io_adaptbx.gz']
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io_adaptbx/trunk']
 
 class annlib_adaptbx(SourceModule):
   module = 'annlib_adaptbx'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/annlib_adaptbx.gz']
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/annlib_adaptbx/trunk']
 
 class tntbx_module(SourceModule):
   module = 'tntbx'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/tntbx.gz']
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/tntbx/trunk']
 
 class clipper_module(SourceModule):
   module = 'clipper'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/clipper.gz']
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/clipper/trunk']
+
+class gui_resources_module(SourceModule):
+  module = 'gui_resources'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/gui_resources.gz']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/gui_resources/trunk']
+
+class opt_resources_module(SourceModule):
+  module = 'opt_resources'
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/opt_resources/trunk']
 
 # Phenix repositories
 class phenix_module(SourceModule):
@@ -206,14 +227,6 @@ class solve_resolve_module(SourceModule):
 class reel_module(SourceModule):
   module = 'reel'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/reel/trunk']
-
-class gui_resources_module(SourceModule):
-  module = 'gui_resources'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/gui_resources/trunk']
-
-class opt_resources_module(SourceModule):
-  module = 'opt_resources'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/opt_resources/trunk']
 
 class muscle_module(SourceModule):
   module = 'muscle'
@@ -420,8 +433,8 @@ class Builder(object):
     method, url = MODULES.get_module(module)().get_url(auth=self.get_auth())
     if method == 'rsync':
       self._add_rsync(module, url)
-    elif method == 'wget':
-      self._add_wget(module, url)
+    elif method == 'curl':
+      self._add_curl(module, url)
     elif method == 'svn':
       self._add_svn(module, url)
     elif method == 'git':
@@ -443,16 +456,17 @@ class Builder(object):
       ],
       workdir=['modules']
     ))
-    # If it's a tarball, unzip it.
-    if module.endswith('.gz'):
-      self.add_step(self.shell(
-        name='hot %s untar'%module,
-        command=['tar', '-xvzf', module],
-        workdir=['modules']
-      ))
 
-  def _add_wget(self, module, url):
-    pass
+  def _add_curl(self, module, url):
+    filename = urlparse.urlparse(url).path.split('/')[-1]
+    self.add_step(self.shell(
+      command=['curl', url, '-o', filename],
+      workdir=['modules'],
+    ))
+    self.add_step(self.shell(
+      command=['tar', '-xvz', '-f', filename],
+      workdir=['modules']
+    ))
 
   def _add_svn(self, module, url):
     self.add_step(self.shell(
@@ -691,7 +705,6 @@ if __name__ == "__main__":
   for arg in allowedargs:
     if arg in args:
       actions.append(arg)
-  actions = ['update']
   print "Performing actions:", " ".join(actions)
 
   # Check builder
