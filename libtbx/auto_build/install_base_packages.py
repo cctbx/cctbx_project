@@ -869,7 +869,7 @@ Installation of Python packages may fail.
     pkg = self.fetch_package(pkg_name)
     if self.check_download_only(pkg_name):
       return
-      
+
     pkg_dir = untar(pkg, log=pkg_log)
     os.chdir(pkg_dir)
     if (self.flag_is_mac and get_os_version() == "10.10") :

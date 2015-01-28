@@ -91,7 +91,7 @@ class SourceModule(object):
     repo = None
     try:
       repo = self.get_authenticated(auth=auth)
-    except KeyError, e:    
+    except KeyError, e:
       repo = self.get_anonymous()
       if not repo:
         raise Exception('No anonymous access method defined for module: %s. Try with --%s'%(self.module, e.args[0]))
@@ -99,7 +99,7 @@ class SourceModule(object):
     if not repo:
       raise Exception('No access method defined for module: %s'%self.module)
     return repo
-    
+
   def get_authenticated(self, auth=None):
     auth = auth or {}
     if not self.authenticated:
@@ -253,7 +253,7 @@ class dials_module(SourceModule):
 class dials_regression_module(SourceModule):
   module = 'dials_regression'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk']
-  
+
 class xfel_regression_module(SourceModule):
   module = 'xfel_regression'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/xfel_regression/trunk']
@@ -661,7 +661,7 @@ class PhenixBuilder(CCIBuilder):
   def add_install(self):
     self.add_command('mmtbx.rebuild_rotarama_cache')
     self.add_command('phenix_html.rebuild_docs')
-    
+
   def add_tests(self):
     # Windows convenience hack.
     if 'windows' in self.platform:
