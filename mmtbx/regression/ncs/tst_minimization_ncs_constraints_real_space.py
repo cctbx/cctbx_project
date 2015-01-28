@@ -2,7 +2,7 @@ from __future__ import division
 import time
 
 import mmtbx.refinement.minimization_ncs_constraints
-import mmtbx.refinement.real_space.weight
+#import mmtbx.refinement.real_space.weight
 from scitbx.array_family import flex
 import mmtbx.ncs.ncs_utils as nu
 import iotbx.ncs as ncs

@@ -1,7 +1,7 @@
 
 from __future__ import division
 import sys
-from libtbx.test_utils import approx_equal
+#from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 
 def exercise (args) :

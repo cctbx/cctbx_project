@@ -1,7 +1,7 @@
 from __future__ import division
 
 from docutils.parsers.rst import Directive
-from docutils.parsers.rst import directives
+#from docutils.parsers.rst import directives
 from docutils import nodes
 
 
