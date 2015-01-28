@@ -76,7 +76,7 @@ if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
     export BOOST_ADAPTBX_FPE_DEFAULT=1
     export BOOST_ADAPTBX_SIGNALS_DEFAULT=1
   fi
-  echo $LIBTBX_OS_NAME
+  # echo $LIBTBX_OS_NAME
   if [ "$LIBTBX_OS_NAME" = "Linux" ]; then
     export OLD_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
     export OLD_XDG_DATA_DIRS=$XDG_DATA_DIRS
