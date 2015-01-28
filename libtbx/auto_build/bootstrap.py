@@ -673,8 +673,7 @@ if __name__ == "__main__":
     build - Build
     tests - Run tests
     
-  By default, all actions (hot, update, base, build, tests)
-  will be run.  
+  The default action is to run: hot, update, base, build
     
   You can specify which package will be downloaded, configured,
   and built with "--builder". Current builders:
@@ -699,7 +698,7 @@ if __name__ == "__main__":
 
   # Check actions
   allowedargs = ['cleanup', 'hot', 'update', 'base', 'build', 'tests']
-  args = args or ['hot', 'update', 'base', 'build', 'tests']
+  args = args or ['hot', 'update', 'base', 'build']
   actions = []
   for arg in args:
     if arg not in allowedargs:
