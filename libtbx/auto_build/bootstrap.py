@@ -292,7 +292,6 @@ class Builder(object):
       category=None,
       platform=None,
       sep=None,
-      python_system=None,
       python_base=None,
       cleanup=False,
       hot=True,
@@ -301,7 +300,8 @@ class Builder(object):
       build=True,
       tests=True,
       distribute=False,
-      auth=None
+      auth=None,
+      with_python=None,
     ):
     """Create and add all the steps."""
     # self.cciuser = cciuser or getpass.getuser()
@@ -314,12 +314,13 @@ class Builder(object):
     if 'windows' in self.platform:
       base = False
       sep = sep or '\\'
-      python_system = python_system or ['python']
-      python_base = python_base or ['..', 'base', 'Python', 'python.exe']
+      python_base = python_base or self.opjoin(*['..', 'base', 'Python', 'python.exe'])
     # Platform configuration.
     self.sep = sep or os.sep
-    self.python_system = self.opjoin(*(python_system or ['python']))
-    self.python_base = self.opjoin(*(python_base or ['..', 'base', 'bin', 'python']))
+    self.python_base = self.opjoin(*['..', 'base', 'bin', 'python'])
+    self.with_python = with_python
+    if self.with_python:
+      self.python_base = with_python
 
     self.add_init()
 
@@ -487,15 +488,18 @@ class Builder(object):
   # Override these methods.
   def add_base(self):
     """Build the base dependencies, e.g. Python, HDF5, etc."""
+    with_python = []
+    if self.with_python:
+      with_python = ['--with-python',self.with_python]
     self.add_step(self.shell(
       name='base',
       command=[
-        self.python_system,
+        sys.executable,
         self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build', 'install_base_packages.py'),
         '--python-shared',
         '--skip-if-exists',
         '--%s'%self.BASE_PACKAGES
-      ],
+      ] + with_python,
       workdir=['.']
     ))
 
@@ -566,8 +570,6 @@ class CCIBuilder(Builder):
 
 class CCTBXBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
-  CODEBASES_EXTRA = ['phenix_regression']
-  LIBTBX_EXTRA = ['phenix_regression']
   def add_tests(self):
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
@@ -685,6 +687,9 @@ if __name__ == "__main__":
   like phenix, require this argument for access to certain
   repositories.
   
+  Finally, you may specify a specific Python interpreter 
+  using "--with-python".
+  
   Example:
   
     python bootstrap.py --builder=cctbx --sfuser=ianrees hot update build tests
@@ -694,6 +699,7 @@ if __name__ == "__main__":
   parser.add_option("--builder", help="Builder: cctbx, phenix, xfel, dials, labelit", default="cctbx")
   parser.add_option("--cciuser", help="CCI SVN username.")
   parser.add_option("--sfuser", help="SourceForge SVN username.")
+  parser.add_option("--with-python", dest="with_python", help="Use specified Python interpreter")
   options, args = parser.parse_args()
 
   # Check actions
@@ -728,8 +734,9 @@ if __name__ == "__main__":
   # Build
   builder = builders[options.builder]
   builder(
-    category='cctbx',
-    platform='debug',
+    category=options.builder,
+    platform='dev',
+    with_python=options.with_python,
     auth=auth,
     hot=('hot' in actions),
     update=('update' in actions),
