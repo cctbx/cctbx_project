@@ -27,8 +27,6 @@ class ShellCommand(object):
 
   def run(self):
     command = self.get_command()
-    if type(command)==type("") and command.find("curl")>=0:
-      return self.run_curl_command()
     workdir = self.get_workdir()
     print "===== Running in %s:"%workdir, " ".join(command)
     if workdir:
@@ -40,25 +38,6 @@ class ShellCommand(object):
       args=command,
       cwd=workdir,
       stdout=sys.stdout,
-      stderr=sys.stderr
-    )
-    p.wait()
-    if p.returncode != 0 and self.kwargs.get('haltOnFailure'):
-      raise RuntimeError, "Process failed with return code %s"%(p.returncode)
-
-  def run_curl_command(self): #special case; install *.gz from curl download
-    command = self.get_command()
-    workdir = self.get_workdir()
-    print "===== Running curl command in %s:"%workdir, command
-    if workdir:
-      try:
-        os.makedirs(workdir)
-      except Exception, e:
-        pass
-    p = subprocess.Popen(
-      args=command.split()[0:2],
-      cwd=workdir,
-      stdout=open(os.path.join(workdir,command.split()[3]),"wb"),
       stderr=sys.stderr
     )
     p.wait()
@@ -320,7 +299,6 @@ class Builder(object):
       update=True,
       base=True,
       build=True,
-      install=True,
       tests=True,
       distribute=False,
       auth=None
@@ -367,9 +345,6 @@ class Builder(object):
     if build:
       self.add_configure()
       self.add_make()
-
-    # Install
-    if install:
       self.add_install()
 
     # Tests, tests
@@ -689,15 +664,42 @@ class PhenixBuilder(CCIBuilder):
     self.add_test_command('phenix_regression.run_hipip_refine_benchmark')
 
 if __name__ == "__main__":
-  parser = optparse.OptionParser()
+  usage = """Usage: %prog [options] [actions]
+  
+  You may specify one or more actions:
+    hot - Update static sources (boost, scons, etc.)
+    update - Update source repositories (cctbx, cbflib, etc.)
+    base - Build base dependencies (python, hdf5, wxWidgets, etc.)
+    build - Build
+    tests - Run tests
+    
+  By default, all actions (hot, update, base, build, tests)
+  will be run.  
+    
+  You can specify which package will be downloaded, configured,
+  and built with "--builder". Current builders:
+    cctbx, phenix, xfel, dials, labelit
+    
+  You can provide your SourceForge username with "--sfuser", and 
+  your CCI SVN username with "--cciuser". These will checkout
+  and update repositories with your credentials. Some builders,
+  like phenix, require this argument for access to certain
+  repositories.
+  
+  Example:
+  
+    python bootstrap.py --builder=cctbx --sfuser=ianrees hot update build tests
+
+  """
+  parser = optparse.OptionParser(usage=usage)
   parser.add_option("--builder", help="Builder: cctbx, phenix, xfel, dials, labelit", default="cctbx")
   parser.add_option("--cciuser", help="CCI SVN username.")
   parser.add_option("--sfuser", help="SourceForge SVN username.")
   options, args = parser.parse_args()
 
   # Check actions
-  allowedargs = ['cleanup', 'hot', 'update', 'base', 'build', 'install', 'tests']
-  args = args or ['hot', 'update', 'base', 'build', 'install']
+  allowedargs = ['cleanup', 'hot', 'update', 'base', 'build', 'tests']
+  args = args or ['hot', 'update', 'base', 'build', 'tests']
   actions = []
   for arg in args:
     if arg not in allowedargs:
@@ -734,6 +736,5 @@ if __name__ == "__main__":
     update=('update' in actions),
     base=('base' in actions),
     build=('build' in actions),
-    install=('install' in actions),
     tests=('tests' in actions)
   ).run()
