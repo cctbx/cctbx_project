@@ -12,7 +12,6 @@ from mmtbx.ncs import ncs
 from scitbx import matrix
 from iotbx import pdb
 import string
-import math
 import re
 import os
 import sys
