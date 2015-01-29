@@ -3999,9 +3999,9 @@ refinement.pdb_interpretation {
           seqs = self.get_i_seqs_from_na_planes(r1, r2)
           for i_seqs, j_seqs in seqs:
             parallelity_proxies.append(geometry_restraints.parallelity_proxy(
-              i_seq=i_seqs,
-              j_seq=j_seqs,
-              weights=1./na_params.basepair_parallelity.sigma**2))
+              i_seqs=i_seqs,
+              j_seqs=j_seqs,
+              weight=1./na_params.basepair_parallelity.sigma**2))
         if na_params.bonds.enabled:
           bonds = self.get_h_bonds_for_basepair(a1,a2)
           for b in bonds:
