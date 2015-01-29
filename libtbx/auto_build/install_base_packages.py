@@ -155,7 +155,7 @@ class installer (object) :
     # Package groups.
     if options.phenix:
       options.build_gui = True
-      # packages += ['docutils']
+      options.build_all = True
     if options.dials:
       options.build_gui = True
       options.build_all = True
@@ -415,6 +415,15 @@ Installation of Python packages may fail.
       'hdf5',
       'biopython',
       'scipy',
+      'imaging',
+      'reportlab',
+      'py2app',
+      'misc',
+      'sphinx',
+      'docutils',
+      'ipython',
+      'pyopengl',
+      # START GUI PACKAGES
       'freetype',
       'gettext',
       'glib',
@@ -429,14 +438,6 @@ Installation of Python packages may fail.
       'fonts',
       'wxpython',
       'matplotlib',
-      'ipython',
-      'pyopengl',
-      'imaging',
-      'reportlab',
-      'py2app',
-      'misc',
-      'sphinx',
-      'docutils',
     ]
     packages_order = []
     for i in order:
