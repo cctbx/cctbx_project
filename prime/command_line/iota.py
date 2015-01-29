@@ -3,8 +3,8 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 01/26/2015
-Description : IOTA command-line module. Version 0.84
+Last Changed: 01/28/2015
+Description : IOTA command-line module. Version 0.85
 '''
 
 import os
@@ -28,8 +28,8 @@ def index_mproc_wrapper(current_img):
 
 if __name__ == "__main__":
 
-  gs_version = '0.84'
-  ps_version = '0.84'
+  gs_version = '0.85'
+  ps_version = '0.85'
 
   print '\n{}'.format(datetime.now())
   print 'Starting IOTA ... \n\n'
