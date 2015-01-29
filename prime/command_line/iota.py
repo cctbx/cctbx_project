@@ -165,7 +165,7 @@ if __name__ == "__main__":
 
     #for output_entry in mp_output_list:
     #     best_file_selection(gs_params, output_entry, log_dir)
-    
+
     # run pickle selection on multiple processes
     parallel_map(iterable=mp_output_list, func=selection_mproc_wrapper, processes=gs_params.n_processors)
 
