@@ -590,8 +590,8 @@ namespace cctbx { namespace geometry_restraints {
 
           if (top_out) {
             double l2 = limit * limit;
-            double dF__dCDtheta = weight*std::exp(
-                (1-cos(scitbx::deg_as_rad(theta_deg - theta1)))/l2);
+            double dF__dCDtheta = -weight*std::exp(
+                (cos(scitbx::deg_as_rad(theta_deg - theta1))-1)/l2);
             dF__dCtheta = dF__dCDtheta*cos(scitbx::deg_as_rad(theta1));
             dF__dStheta = dF__dCDtheta*sin(scitbx::deg_as_rad(theta1));
           }
@@ -787,7 +787,7 @@ namespace cctbx { namespace geometry_restraints {
           if (top_out) {
             double l2 = limit * limit;
             return weight*l2*(1-std::exp(
-                (1-cos(scitbx::deg_as_rad(theta_deg - theta1)))/l2));
+                (cos(scitbx::deg_as_rad(theta_deg - theta1))-1)/l2));
           }
           else
             return weight*(1-cos(scitbx::deg_as_rad(theta_deg - theta1)));
