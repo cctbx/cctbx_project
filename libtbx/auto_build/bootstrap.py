@@ -580,7 +580,6 @@ class DIALSBuilder(CCIBuilder):
   LIBTBX_EXTRA = ['dials',]
   def add_tests(self):
     self.add_test_command('libtbx.import_all_ext')
-    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('dials')
 
@@ -608,7 +607,6 @@ class XFELBuilder(CCIBuilder):
  ]
  def add_tests(self):
     self.add_test_command('libtbx.import_all_ext')
-    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('xfel_regression')
 
@@ -662,7 +660,6 @@ class PhenixBuilder(CCIBuilder):
   def add_tests(self):
     # Include cctbx tests.
     self.add_test_command('libtbx.import_all_ext')
-    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')
     # Windows convenience hack.
     if 'windows' in self.platform:
