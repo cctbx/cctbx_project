@@ -632,7 +632,7 @@ class PhenixBuilder(CCIBuilder):
     'labelit',
     'reduce',
     'probe',
-    'king',
+    # 'king',
     'suitename',
   ]
   HOT_EXTRA = [
