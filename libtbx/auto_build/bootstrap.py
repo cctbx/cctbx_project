@@ -673,6 +673,9 @@ class PhenixBuilder(CCIBuilder):
     self.add_test_command('phenix_regression.run_hipip_refine_benchmark')
 
 if __name__ == "__main__":
+  run()
+  
+def run(root=None):
   usage = """Usage: %prog [options] [actions]
   
   You may specify one or more actions:
@@ -703,11 +706,15 @@ if __name__ == "__main__":
 
   """
   parser = optparse.OptionParser(usage=usage)
+  # parser.add_option("--root", help="Root directory; this will contain base, modules, build, etc.")
   parser.add_option("--builder", help="Builder: cctbx, phenix, xfel, dials, labelit", default="cctbx")
   parser.add_option("--cciuser", help="CCI SVN username.")
   parser.add_option("--sfuser", help="SourceForge SVN username.")
   parser.add_option("--with-python", dest="with_python", help="Use specified Python interpreter")
   options, args = parser.parse_args()
+  
+  # Root dir
+  # options.root = options.root or root
 
   # Check actions
   allowedargs = ['cleanup', 'hot', 'update', 'base', 'build', 'tests']
@@ -749,5 +756,5 @@ if __name__ == "__main__":
     update=('update' in actions),
     base=('base' in actions),
     build=('build' in actions),
-    tests=('tests' in actions)
+    tests=('tests' in actions),
   ).run()
