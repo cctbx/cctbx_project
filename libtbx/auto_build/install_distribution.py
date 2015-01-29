@@ -168,6 +168,9 @@ class installer(object):
     self.basic_setup()
     self.check_directories()
     self.print_banner()
+    if not os.path.exists('build'):
+      print >> self.out, "No build directory; switching to source installation."
+      self.options.source = True      
     if self.options.source:
       self.install_from_source()
     else:
@@ -280,7 +283,19 @@ class installer(object):
   # SOURCE INSTALL
   #
   def install_from_source(self):
-    raise NotImplementedError("Source installer returning soon.")
+    print >> self.out, "Installing new source package..."
+    log = self.out # open(os.path.join(self.tmp_dir, "source.log"), "w")
+    call([
+      'python', 
+      os.path.join('modules', 'cctbx_project', 'libtbx', 'auto_build', 'bootstrap.py'),
+      '--builder', 'phenix',
+      'base',
+      'build'
+    ], log=log)
+    self.product_specific_source_install(log=log)    
+    self.install_from_binary()
+    
+    # raise NotImplementedError("Source installer returning soon.")
     # self.show_installation_paths()
     #
     # dependencies_dir = op.join(self.installer_dir, "dependencies")
