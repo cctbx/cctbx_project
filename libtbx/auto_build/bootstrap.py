@@ -494,7 +494,7 @@ class Builder(object):
     self.add_step(self.shell(
       name='base',
       command=[
-        sys.executable,
+        'python',
         self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build', 'install_base_packages.py'),
         '--python-shared',
         '--skip-if-exists',
@@ -579,6 +579,9 @@ class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials',]
   LIBTBX_EXTRA = ['dials',]
   def add_tests(self):
+    self.add_test_command('libtbx.import_all_ext')
+    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
+    self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('dials')
 
 class LABELITBuilder(CCIBuilder):
@@ -604,7 +607,10 @@ class XFELBuilder(CCIBuilder):
    'cxi_xdr_xes'
  ]
  def add_tests(self):
-   self.add_test_parallel('xfel_regression')
+    self.add_test_command('libtbx.import_all_ext')
+    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
+    self.add_test_command('cctbx_regression.test_nightly')
+    self.add_test_parallel('xfel_regression')
 
 class PhenixBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
@@ -654,6 +660,10 @@ class PhenixBuilder(CCIBuilder):
     self.add_command('phenix_html.rebuild_docs')
 
   def add_tests(self):
+    # Include cctbx tests.
+    self.add_test_command('libtbx.import_all_ext')
+    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
+    self.add_test_command('cctbx_regression.test_nightly')
     # Windows convenience hack.
     if 'windows' in self.platform:
       self.add_test_command('phenix_regression.test_nightly_windows')
