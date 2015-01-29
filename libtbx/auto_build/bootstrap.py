@@ -261,7 +261,7 @@ class suitename_module(SourceModule):
 
 class reduce_module(SourceModule):
   module = 'reduce'
-  anonymous = ['svn', 'https://quiddity.biochem.duke.edu/svn/reduce/trunk']
+  anonymous = ['svn', 'https://github.com/rlabduke/reduce/trunk']
 
 class king_module(SourceModule):
   module = 'king'
