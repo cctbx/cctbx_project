@@ -1433,6 +1433,7 @@ libtbx/command_line/assert_stdin_contains_strings.py svneol=native#text/x-python
 libtbx/command_line/assert_stdin_ends_with.py svneol=native#text/x-python
 libtbx/command_line/bash.sh -text
 libtbx/command_line/bibtex.sh -text
+libtbx/command_line/bootstrap.py -text
 libtbx/command_line/chunk.py svneol=native#text/x-python
 libtbx/command_line/clear_paths.py svneol=native#text/x-python
 libtbx/command_line/configure.bat -text
