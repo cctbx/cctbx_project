@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/28/2015
+Last Changed: 01/29/2015
 Description : IOTA pickle selection module. Selects the best integration results from a
               set of pickles derived from a single image.
 '''
@@ -132,13 +132,16 @@ def best_file_selection(gs_params, output_entry, log_dir):
 
   input_file = output_entry[0]
   abs_tmp_dir = output_entry[1]
+  ps_log_output = []
 
   total_tmp_pickles = [os.path.join(abs_tmp_dir, tmp_pickle) for tmp_pickle in os.listdir(abs_tmp_dir) if ".pickle" in tmp_pickle]
 
   # apply prefilter if specified and make a list of acceptable pickles
   if len(total_tmp_pickles) == 0:
-    ps_logger.info('No integrated images found ' \
+    ps_log_output.append('No integrated images found ' \
                     'in {}:\n'.format(abs_tmp_dir))
+    #ps_logger.info('No integrated images found ' \
+    #                'in {}:\n'.format(abs_tmp_dir))
     with open('{}/not_integrated.lst'.format(os.path.abspath(gs_params.output)), 'a') as no_int:
       no_int.write('{}\n'.format(input_file))
     acceptable_pickles = []
@@ -146,8 +149,10 @@ def best_file_selection(gs_params, output_entry, log_dir):
   else:
     acceptable_pickles = prefilter(gs_params, total_tmp_pickles)
     if len(acceptable_pickles) == 0:
-      ps_logger.info('Discarded all {0} integrated pickles ' \
+      ps_log_output.append('Discarded all {0} integrated pickles ' \
                       'in {1}:\n'.format(len(total_tmp_pickles), abs_tmp_dir))
+      #ps_logger.info('Discarded all {0} integrated pickles ' \
+      #                'in {1}:\n'.format(len(total_tmp_pickles), abs_tmp_dir))
 
       with open('{}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)), 'a') as bad_int:
         bad_int.write('{}\n'.format(input_file))
@@ -155,10 +160,14 @@ def best_file_selection(gs_params, output_entry, log_dir):
 
     else:
       # Selection and copying of pickles, output of stats to log file
-      ps_logger.info('Selecting from {0} out '\
+      ps_log_output.append('Selecting from {0} out '\
                       'of {1} integrated pickles ' \
                       'in {2}:\n'.format(len(acceptable_pickles),
                       len(total_tmp_pickles), abs_tmp_dir))
+      #ps_logger.info('Selecting from {0} out '\
+      #                'of {1} integrated pickles ' \
+      #                'in {2}:\n'.format(len(acceptable_pickles),
+      #                len(total_tmp_pickles), abs_tmp_dir))
       filename = str(os.path.split(acceptable_pickles[0])[1])
       categories = ' {:^{pwidth}}{:^16}{:^15}{:^45}' \
                     '{:^12}{:^10}'.format('Filename',
@@ -167,8 +176,10 @@ def best_file_selection(gs_params, output_entry, log_dir):
       line = ' {:-^{pwidth}}{:-^16}{:-^15}{:-^45}' \
               '{:-^12}{:-^10}'.format('', '', '', '',
                '', '', pwidth=len(filename)+5)
-      ps_logger.info(categories)
-      ps_logger.info(line)
+      ps_log_output.append(categories)
+      ps_log_output.append(line)
+      #ps_logger.info(categories)
+      #ps_logger.info(line)
 
       # Report pickle stats. Mark selected pickle with asterisk for posterity
       for pickle in acceptable_pickles:
@@ -189,7 +200,8 @@ def best_file_selection(gs_params, output_entry, log_dir):
                      '{:>6.2f}{:^12}{:^10}'.format(pickle_name, res[0],
                      res[1], pg, uc[0], uc[1], uc[2], uc[3], uc[4], uc[5],
                      ref, sref, pwidth=len(filename)+5)
-        ps_logger.info(info_line)
+        ps_log_output.append(info_line)
+        #ps_logger.info(info_line)
 
         if gs_params.pred_img.type == "all":
           viz.make_png(input_file, pickle)
@@ -257,7 +269,8 @@ def best_file_selection(gs_params, output_entry, log_dir):
 
 
       # Output selected file information
-      ps_logger.info('\nSelected:')
+      ps_log_output.append('\nSelected:')
+      #ps_logger.info('\nSelected:')
       for sel in selected_info:
         observations = SingleFrame(sel[1], sel[2]).miller_array
         res = observations.d_max_min()
@@ -274,6 +287,9 @@ def best_file_selection(gs_params, output_entry, log_dir):
                     '{:>6.2f}{:^12}{:^10}'.format(sel[0], sel[2], res[0],
                     res[1], pg, uc[0], uc[1], uc[2], uc[3], uc[4], uc[5],
                     ref, sref, pwidth=len(filename)+5)
-        ps_logger.info(info_line)
-
-    ps_logger.info('\n')
+        ps_log_output.append(info_line)
+        #ps_logger.info(info_line)
+        
+    ps_log_output.append('\n')
+    
+    ps_logger.info('\n'.join(ps_log_output))

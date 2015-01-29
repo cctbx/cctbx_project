@@ -3,8 +3,8 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 01/28/2015
-Description : IOTA command-line module. Version 0.85
+Last Changed: 01/29/2015
+Description : IOTA command-line module. Version 0.86
 '''
 
 import os
@@ -16,6 +16,7 @@ from libtbx.easy_mp import parallel_map
 
 import prime.iota.iota_input as inp
 import prime.iota.iota_gridsearch as gs
+import prime.iota.iota_select as ps
 from prime.iota.iota_select import best_file_selection
 
 
@@ -23,13 +24,17 @@ from prime.iota.iota_select import best_file_selection
 def index_mproc_wrapper(current_img):
   return gs.index_integrate(current_img, log_dir, gs_params)
 
+# Multiprocessor wrapper for selection module
+def selection_mproc_wrapper(output_entry):
+  return ps.best_file_selection(gs_params, output_entry, log_dir)
+
 
 # ---------------------------------------------------------------------------- #
 
 if __name__ == "__main__":
 
-  gs_version = '0.85'
-  ps_version = '0.85'
+  gs_version = '0.86'
+  ps_version = '0.86'
 
   print '\n{}'.format(datetime.now())
   print 'Starting IOTA ... \n\n'
@@ -158,9 +163,11 @@ if __name__ == "__main__":
                    'turned {0} \n\n'.format(prefilter))
     ps_logger.info('{:-^100} \n'.format(' STARTING SELECTION '))
 
-    for output_entry in mp_output_list:
-         best_file_selection(gs_params, output_entry, log_dir)
-
+    #for output_entry in mp_output_list:
+    #     best_file_selection(gs_params, output_entry, log_dir)
+    
+    # run pickle selection on multiple processes
+    parallel_map(iterable=mp_output_list, func=selection_mproc_wrapper, processes=gs_params.n_processors)
 
     # This section checks for output and summarizes file integration and
     # selection results
