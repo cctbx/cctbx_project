@@ -169,9 +169,10 @@ class installer(object):
     self.check_directories()
     self.print_banner()
     if not os.path.exists('build'):
-      print >> self.out, "No build directory; switching to source installation."
+      print >> self.out, "No build directory exists; trying source installation."
       self.options.source = True      
     if self.options.source:
+      print >> self.out, "Source installation specified."
       self.install_from_source()
     else:
       self.install_from_binary()
@@ -264,7 +265,6 @@ class installer(object):
     Unpackage the binary bundle in the destination directory.
     """
     # Copy base, build, and modules
-    print >> self.out, "Installing new binary package..."
     for i in ['base', 'build', 'modules', 'doc']:
       if os.path.exists(os.path.join(self.installer_dir, i)):
         copy_tree(os.path.join(self.installer_dir, i), os.path.join(self.dest_dir, i))
@@ -283,12 +283,11 @@ class installer(object):
   # SOURCE INSTALL
   #
   def install_from_source(self):
-    print >> self.out, "Installing new source package..."
     log = self.out # open(os.path.join(self.tmp_dir, "source.log"), "w")
     call([
       'python', 
       os.path.join('modules', 'cctbx_project', 'libtbx', 'auto_build', 'bootstrap.py'),
-      '--builder', 'phenix',
+      '--builder', self.dest_dir_prefix,
       'base',
       'build'
     ], log=log)
