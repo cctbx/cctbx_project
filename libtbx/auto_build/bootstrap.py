@@ -445,10 +445,20 @@ class Builder(object):
     ))
 
   def _add_svn(self, module, url):
-    self.add_step(self.shell(
-        command=['svn', 'co', url, module],
-        workdir=['modules']
-    ))
+    if os.path.exists(self.opjoin(*['modules', module, '.svn'])):
+      # print "using update..."
+      self.add_step(self.shell(
+          command=['svn', 'update', module],
+          workdir=['modules']
+      ))
+    elif os.path.exists(self.opjoin(*['modules', module])):
+      print "Existing non-svn directory -- dont know what to do. skipping: %s"%module
+    else:
+      # print "fresh checkout..."
+      self.add_step(self.shell(
+          command=['svn', 'co', url, module],
+          workdir=['modules']
+      ))
 
   def _add_git(self, module, url):
     pass
@@ -672,9 +682,6 @@ class PhenixBuilder(CCIBuilder):
     self.add_test_command('phenix_regression.run_p9_sad_benchmark')
     self.add_test_command('phenix_regression.run_hipip_refine_benchmark')
 
-if __name__ == "__main__":
-  run()
-  
 def run(root=None):
   usage = """Usage: %prog [options] [actions]
   
@@ -758,3 +765,6 @@ def run(root=None):
     build=('build' in actions),
     tests=('tests' in actions),
   ).run()
+
+if __name__ == "__main__":
+  run()
