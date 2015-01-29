@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/26/2015
+Last Changed: 01/28/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories, etc.
 '''
 
@@ -43,9 +43,16 @@ target = target.phil
 flag_inp_test = False
   .type = bool
   .help = Test of input list use for selection
-pred_img = None
-  .type = str
-  .help = Output a PNG image of integration predictions overlayed on the raw image
+pred_img
+  .help = "Visualize spotfinding / integration results."
+{
+  type = None
+    .type = str
+    .help = Visualize all (all) or chosen (best) integration results, "None" = don't visualize
+  cv_vectors = True
+    .type = bool
+    .help = Include x,y offset information
+}
 random_sample
   .help = "Random grid search."
 {
