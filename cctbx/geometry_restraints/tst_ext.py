@@ -2896,6 +2896,16 @@ x,y,z
   assert approx_equal(grads_ana, grads_fin)
 
 def exercise_parallelity():
+  def test_exact_values(test_sites, weight, top_out, limit, residual,
+                        delta, eps=1e-6):
+    p = geometry_restraints.parallelity(i_sites=test_sites[0],
+                    j_sites=test_sites[1],
+                    weight=weight,
+                    top_out=top_out,
+                    limit=limit)
+    assert approx_equal(p.residual(), residual, eps)
+    assert approx_equal(p.delta, delta, eps)
+
   # values
   test_sites_1 = ([(1,1,0), (2,3,0), (1,2,0)],
                   [(1,1,1), (2,2,1), (1,2,1)])
@@ -2908,30 +2918,25 @@ def exercise_parallelity():
                   [(1,0,0), (2,0,0), (1,0,1)])
   test_sites_4 = ([(1,0,0), (2,0,0) ],
                   [(1,0,0), (2,0,0), (1,0,1)])
-  p = geometry_restraints.parallelity(i_sites=test_sites_1[0],
-                  j_sites=test_sites_1[1],
-                  weight=1)
-  assert approx_equal(p.residual(), 0, 0.00001)
-  assert approx_equal(p.delta, 0, 0.00001)
-  p = geometry_restraints.parallelity(i_sites=test_sites_2[0],
-                  j_sites=test_sites_2[1],
-                  weight=1)
-  assert approx_equal(p.residual(), 1, 0.00001)
-  assert approx_equal(p.delta, 90, 0.00001)
-  p = geometry_restraints.parallelity(i_sites=test_sites_2[0],
-                  j_sites=test_sites_2[1],
-                  weight=1300)
-  assert approx_equal(p.residual(), 1300, 0.00001)
-  assert approx_equal(p.delta, 90, 0.00001)
-  p = geometry_restraints.parallelity(i_sites=test_sites_21[0],
-                  j_sites=test_sites_21[1],
-                  weight=1000)
-  assert approx_equal(p.residual(), 500, 0.00001)
-  assert approx_equal(p.delta, 60, 0.00001)
-  p = geometry_restraints.parallelity(i_sites=test_sites_3[0],
-                  j_sites=test_sites_3[1],
-                  weight=1)
-  assert approx_equal(p.residual(), 1.0, 0.00001)
+  # test_data=[(test_sites, weight, top_out, limit, residual, delta)]
+  test_data = [(test_sites_1, 1, False, 1, 0, 0),
+               (test_sites_1, 1, True, 1, 0, 0),
+               (test_sites_1, 1, True, 1000, 0, 0),
+               (test_sites_2, 1, False, 1, 1, 90),
+               (test_sites_2, 1, True, 1, 0.632120558829, 90),
+               (test_sites_2, 1, True, 1000, 0.999999499984, 90),
+               (test_sites_2, 1300, False, 1, 1300, 90),
+               (test_sites_2, 1300, True, 1, 821.756726477, 90),
+               (test_sites_2, 1300, True, 1000, 1299.99934998, 90),
+               (test_sites_21, 1000, False, 1, 500, 60),
+               (test_sites_21, 1000, True, 1, 393.469340287, 60),
+               (test_sites_21, 1000, True, 1000, 499.999874948, 60),
+               (test_sites_3, 1, False, 1, 1, 90),
+               (test_sites_3, 1, True, 1, 0.632120558829, 90),
+               (test_sites_3, 1, True, 1000, 0.999999499984, 90)]
+  for (test_sites, weight, top_out, limit, residual, delta) in test_data:
+    test_exact_values(test_sites, weight, top_out, limit, residual, delta)
+
   # gradients
   def make_points(one_d):
     result = []
