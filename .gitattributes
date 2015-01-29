@@ -86,6 +86,7 @@ cctbx/adp_restraints/gradients.tex -text
 cctbx/boost_python/french_wilson_ext.cpp -text
 cctbx/boost_python/orientation_ext.cpp -text
 cctbx/command_line/brehm_diederichs.py -text
+cctbx/command_line/cctbx_test_nightly.py -text
 cctbx/command_line/cod_select_and_pickle.py svneol=native#text/x-python
 cctbx/command_line/diffuse.py -text
 cctbx/command_line/find_reticular_twin_laws.py -text
