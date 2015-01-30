@@ -3909,6 +3909,7 @@ refinement.pdb_interpretation {
     frac = asu_mappings.unit_cell().fractionalize
     orth = asu_mappings.unit_cell().orthogonalize
     for sym_pair in pair_sym_table.iterator():
+      # Symmetry-aware distance calculation between 2 atoms
       distance_model = geometry_restraints.bond(
         [sulphur_sites_cart[sym_pair.i_seq],
          orth(sym_pair.rt_mx_ji*frac(sulphur_sites_cart[sym_pair.j_seq]))],
@@ -4763,11 +4764,32 @@ refinement.pdb_interpretation {
       bond_asu_table, self.geometry_proxy_registries.bond_simple.proxies)
     #
     disulfide_bond = disulfide_link.bond_list[0]
-    #
+    disulfide_angle = disulfide_link.angle_list[0]
+    disulfide_torsion = disulfide_link.tor_list[0]
+    alt_value_angle = None
+    if "alt_value_angle" in disulfide_torsion._cif_keywords:
+      try:
+        alt_value_angle = map(float,disulfide_torsion.alt_value_angle.split(","))
+      except ValueError:
+        raise Sorry("Wrong format of alt_value_angle in SS bond in cif file")
+
     assert disulfide_bond.value_dist is not None
     assert disulfide_bond.value_dist > 0
     assert disulfide_bond.value_dist_esd is not None
     assert disulfide_bond.value_dist_esd > 0
+
+    assert disulfide_angle.value_angle is not None
+    assert disulfide_angle.value_angle > 0
+    assert disulfide_angle.value_angle_esd is not None
+    assert disulfide_angle.value_angle_esd > 0
+
+    assert disulfide_torsion.value_angle is not None
+    assert disulfide_torsion.value_angle > 0
+    assert disulfide_torsion.value_angle_esd is not None
+    assert disulfide_torsion.value_angle_esd > 0
+    assert disulfide_torsion.period is not None
+    assert disulfide_torsion.period > 0
+
     added = False
     # FIXME this does not work in some situations
     for sym_pair in disulfide_sym_table.iterator():
@@ -4806,11 +4828,11 @@ refinement.pdb_interpretation {
         # SS       1 SG      2 SG      2 CB      103.800    1.800
         # SS       ss       1 CB     1 SG     2 SG     2 CB       90.00  10.0 2
         # make  angle proxy
-        angle_weight = 1/1.8**2
+        angle_weight = 1/disulfide_angle.value_angle_esd**2
         if cb_atoms[0] is not None:
           proxy = geometry_restraints.angle_proxy(
             i_seqs=[cb_atoms[0].i_seq,i_seq,j_seq],
-            angle_ideal=103.8,
+            angle_ideal=disulfide_angle.value_angle,
             weight=angle_weight)
           self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
         if cb_atoms[1] is not None:
@@ -4820,12 +4842,11 @@ refinement.pdb_interpretation {
             weight=angle_weight)
           self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
         if cb_atoms[0] is not None and cb_atoms[1] is not None:
-          alt_value_angle = map(float,"93.,-86.".split(","))
           proxy = geometry_restraints.dihedral_proxy(
             i_seqs=[cb_atoms[0].i_seq,i_seq,j_seq, cb_atoms[1].i_seq],
-            angle_ideal=93.0,
-            weight=0.01,
-            periodicity=1,
+            angle_ideal=disulfide_torsion.value_angle,
+            weight=1/disulfide_torsion.value_angle_esd**2,
+            periodicity=disulfide_torsion.period,
             alt_angle_ideals=alt_value_angle)
           self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
       if disulfide_cif_loop is not None:

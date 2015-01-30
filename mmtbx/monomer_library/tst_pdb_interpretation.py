@@ -4,13 +4,14 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from libtbx.utils import Sorry, search_for, format_cpu_times, null_out
-from libtbx.test_utils import Exception_expected, block_show_diff
+from libtbx.test_utils import Exception_expected, block_show_diff, approx_equal
 import libtbx.load_env
 import iotbx.phil
 from libtbx import Auto
 from cStringIO import StringIO
 import os
 import sys
+from cctbx.array_family import flex
 
 def exercise_handle_case_insensitive(mon_lib_srv, ener_lib):
   def check(a, r, e):
@@ -2002,6 +2003,17 @@ END
   grm = processed_pdb_file.geometry_restraints_manager()
   assert grm.angle_proxies.size() == 15
   assert grm.dihedral_proxies.size() == 5
+  selected_dihedrals = grm.dihedral_proxies.proxy_select(
+    n_seq=13, iselection=flex.size_t([4,5,10,11,12]))
+  # select SS dihedrals, 2 in this case because of alternative SG atom
+  assert selected_dihedrals.size() == 2
+  # assert exact values from cif library...
+  assert approx_equal(selected_dihedrals[0].angle_ideal, 93.0)
+  assert approx_equal(selected_dihedrals[0].alt_angle_ideals[0], -86.0)
+  deltas = grm.dihedral_proxies.deltas(
+                  processed_pdb_file.xray_structure().sites_cart())
+  assert approx_equal(deltas[3], -19.6324864704) # --> -86 degrees
+  assert approx_equal(deltas[4], 23.2807269272) # --> 93 degrees
 
 def run(args):
   assert len(args) == 0
