@@ -174,7 +174,7 @@ class installer (object) :
     packages += ['hdf5', 'numpy', 'docutils']
 
     # GUI packages.
-    if options.build_gui:
+    if options.build_gui or options.build_all:
       packages += [
         'png',
         'freetype',
