@@ -552,7 +552,7 @@ class ncs_group_object(object):
 
     Arguments:
     spec file information using a file, file_str (str) of a source_info (str)
-    quite: (bool) quite output when True
+    quiet: (bool) quite output when True
     pdb_hierarchy_inp: pdb hierarchy input
     spec_ncs_groups: ncs_groups object
     join_same_spec_groups: (bool) True: combine groups with similar transforms
@@ -1069,7 +1069,7 @@ class ncs_group_object(object):
       range_list.sort()
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
 
-  def get_ncs_restraints_group_list(self,max_delta=10.0):
+  def get_ncs_restraints_group_list(self,max_delta=10.0,quiet=False):
     """
     Create a list of ncs_restraint_group objects
 
@@ -1078,6 +1078,7 @@ class ncs_group_object(object):
 
     Args:
       max_delta (float): maximum allowed deviation between copies coordinates
+      quiet (bool): When True, do not raise Sorry if NCS copies don't match
     """
     ncs_restraints_group_list = []
     group_id_list = sort_dict_keys(self.ncs_group_map)
@@ -1102,14 +1103,15 @@ class ncs_group_object(object):
       # compare master_isel_test and master_isel
       ncs_restraints_group_list.append(new_nrg)
     # When hierarchy available, test ncs_restraints_group_list
-    if self.hierarchy:
+    if self.hierarchy and (not quiet):
       # check that hierarchy is for the complete ASU
       if self.hierarchy.atoms().size() == self.total_asu_length:
         import mmtbx.ncs.ncs_utils as nu
         nrgl_ok = nu.check_ncs_group_list(
           ncs_restraints_group_list,
           self.hierarchy,
-          max_delta=max_delta)
+          max_delta=max_delta,
+          log=self.log)
         if not nrgl_ok:
           raise Sorry('NCS copies do not match well')
     return ncs_restraints_group_list

@@ -922,7 +922,7 @@ def check_ncs_group_list(ncs_restraints_group_list,ph,max_delta=10.0,log=None):
   Args:
     ncs_restraints_group_list : list of ncs restraints group objects
     ph: Hierarchy object
-    max_delta (float): maximum allowed deviation between coordinates copies
+    max_delta (float): maximum allowed rmsd between coordinates copies
 
   Returns:
     nrgl_ok (bool): True when ncs_restraints_group_list is OK
@@ -934,11 +934,10 @@ def check_ncs_group_list(ncs_restraints_group_list,ph,max_delta=10.0,log=None):
     for j,cp in enumerate(gr.copies):
       copy_xyz = ph.select(cp.iselection).atoms().extract_xyz()
       xyz = cp.r.elems * master_xyz + cp.t
-      temp = copy_xyz.as_double() - xyz.as_double()
-      max_val = abs(temp.min_max_mean().max)
-      nrgl_ok &= (max_val <= max_delta)
-      if (max_val > max_delta):
-        print >>log,'max_val: ',max_val
+      rmsd = copy_xyz.rms_difference(xyz)
+      nrgl_ok &= (rmsd <= max_delta)
+      if (rmsd > max_delta):
+        print >>log,'Allowed rmsd : {}, rmsd: {}'.format(max_delta,rmsd)
   return nrgl_ok
 
 def make_unique_chain_names(unique_chain_names,number_of_names=1):
