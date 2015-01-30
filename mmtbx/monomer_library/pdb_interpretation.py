@@ -3105,6 +3105,8 @@ refinement.pdb_interpretation {
         r1 = a1.parent()
         r2 = a2.parent()
         seqs = self.get_i_seqs_from_na_planes(r1, r2)
+        if self.params.nucleic_acid_restraints.stacking.sigma < 1e-5:
+          raise Sorry("Sigma for stacking restraint should be > 1e-5")
         weight = 1/(self.params.nucleic_acid_restraints.stacking.sigma**2)
         for i_seqs, j_seqs in seqs:
           proxy=geometry_restraints.parallelity_proxy(
@@ -3983,6 +3985,10 @@ refinement.pdb_interpretation {
     max_distance = na_params.bonds.bond_distance_cutoff
     planarity_proxies = []
     parallelity_proxies = []
+    if na_params.basepair_planarity.sigma < 1e-5:
+      raise Sorry("Sigma for basepair planarity should be > 1e-5")
+    if na_params.basepair_parallelity.sigma < 1e-5:
+      raise Sorry("Sigma for basepair parallelity should be > 1e-5")
     weight = 1./na_params.basepair_planarity.sigma**2
     for bp in na_params.base_pair:
       if bp.base1 is not None and bp.base2 is not None:
@@ -4776,17 +4782,17 @@ refinement.pdb_interpretation {
     assert disulfide_bond.value_dist is not None
     assert disulfide_bond.value_dist > 0
     assert disulfide_bond.value_dist_esd is not None
-    assert disulfide_bond.value_dist_esd > 0
+    assert disulfide_bond.value_dist_esd > 1e-5
 
     assert disulfide_angle.value_angle is not None
     assert disulfide_angle.value_angle > 0
     assert disulfide_angle.value_angle_esd is not None
-    assert disulfide_angle.value_angle_esd > 0
+    assert disulfide_angle.value_angle_esd > 1e-5
 
     assert disulfide_torsion.value_angle is not None
     assert disulfide_torsion.value_angle > 0
     assert disulfide_torsion.value_angle_esd is not None
-    assert disulfide_torsion.value_angle_esd > 0
+    assert disulfide_torsion.value_angle_esd > 1e-5
     assert disulfide_torsion.period is not None
     assert disulfide_torsion.period > 0
 
@@ -4901,6 +4907,8 @@ refinement.pdb_interpretation {
     al_params = self.params.automatic_linking
     na_params = self.params.nucleic_acid_restraints
     #========== Add user-defined stacking restraints ==============
+    if na_params.stacking.sigma < 1e-5:
+      raise Sorry("Sigma for staking restraints should be > 1e-5")
     selection_cache = self.pdb_hierarchy.atom_selection_cache()
     if na_params.stacking.enabled:
       for sp in na_params.stacking_pair:
@@ -4921,7 +4929,8 @@ refinement.pdb_interpretation {
                 slack=na_params.stacking.slack,
                 top_out=na_params.stacking.top_out,
                 limit=na_params.stacking.limit)
-              self.geometry_proxy_registries.parallelity.add_if_not_duplicated(proxy=proxy)
+              self.geometry_proxy_registries.parallelity.add_if_not_duplicated(
+                  proxy=proxy)
     #========== End user-defined stacking restraints ==============
     hbonds_in_bond_list = []
     any_links = False
@@ -4959,6 +4968,10 @@ refinement.pdb_interpretation {
     if na_params.save_as_param_file:
       self.na_restraints_out_file.write("\n")
     list_of_hbonds_for_proxies = new_hbonds
+    if na_params.basepair_planarity.sigma < 1e-5:
+      raise Sorry("Sigma for basepair planarity restraint should be > 1e-5")
+    if na_params.basepair_parallelity.sigma < 1e-5:
+      raise Sorry("Sigma for basepair parallelity restraint should be > 1e-5")
     weight = 1./na_params.basepair_planarity.sigma**2
     info_for_na_restraints_out_file_bp = []
     for bond in hbonds_in_bond_list:
@@ -5016,6 +5029,9 @@ refinement.pdb_interpretation {
     if len(list_of_hbonds_for_proxies) > 0:
       # make proxies, compare with hbonds_in_bond_list
       new_hbond_proxies = []
+      if na_params.bonds.sigma < 1e-5:
+        raise Sorry(
+            "Sigma for nucleic_acid_restraints.bonds.sigma shoudl be > 1e-5")
       bond_weight = 1.0/na_params.bonds.sigma**2
       for new_hb in list_of_hbonds_for_proxies:
         if new_hb not in hbonds_in_bond_list:
