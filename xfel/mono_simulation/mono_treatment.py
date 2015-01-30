@@ -356,6 +356,80 @@ class refinement(refinement_base):
         tan_phi_deg_ML = tan_phi_rad_ML * 180./math.pi
         # XXX My personal copy had this:  WHY??? tan_outer_deg_ML = tan_phi_deg_ML + 0.5*M.x[1]*180./math.pi
         tan_outer_deg_ML = tan_phi_deg_ML + M.x[1]*180./math.pi
+
+      if OO.parent.horizons_phil.integration.mosaic.enable_polychromatic:
+        # add code here to perform polychromatic modeling.
+        """
+        get miller indices DONE
+        get model-predicted mono-wavelength centroid S1 vectors
+        back-convert S1vec, with mono-wavelength, to detector-plane position, factoring in subpixel correction
+        compare with spot centroid measured position
+        compare with locus of bodypixels
+        """
+        print list(OO.reserve_indices)
+        print len(OO.reserve_indices), len(two_thetas)
+        positions = [
+              OO.ucbp3.simple_forward_calculation_spot_position(
+              wavelength = OO.central_wavelength_ang,
+              observation_no = obsno).position
+              for obsno in xrange(len(OO.parent.indexed_pairs))]
+        print len(positions)
+        print positions # model-predicted positions
+        print len(OO.parent.spots)
+        print OO.parent.indexed_pairs
+        print OO.parent.spots
+        print len(OO.parent.spots)
+        meas_spots = [OO.parent.spots[pair["spot"]] for pair in OO.parent.indexed_pairs]
+  #      for xspot in meas_spots:
+  #        xspot.ctr_mass_x(),xspot.ctr_mass_y()
+  #        xspot.max_pxl_x()
+  #        xspot.bodypixels
+  #        xspot.ctr_mass_x()
+
+        # Do some work to calculate an rmsd
+        diff_vecs = flex.vec3_double()
+        for p,xspot in zip(positions, meas_spots):
+          diff_vecs.append((p[0]-xspot.ctr_mass_y(), p[1]-xspot.ctr_mass_x(), 0.0))
+        # could use diff_vecs.rms_length()
+        diff_vecs_sq = diff_vecs.dot(diff_vecs)
+        mean_diff_vec_sq = flex.mean(diff_vecs_sq)
+        rmsd = math.sqrt(mean_diff_vec_sq)
+        print "mean obs-pred diff vec on %d spots is %6.2f pixels"%(len(positions),rmsd)
+
+        positions_to_fictitious = [
+              OO.ucbp3.simple_forward_calculation_spot_position(
+              wavelength = OO.central_wavelength_ang,
+              observation_no = obsno).position_to_fictitious
+              for obsno in xrange(len(OO.parent.indexed_pairs))]
+        # Do some work to calculate an rmsd
+        diff_vecs = flex.vec3_double()
+        for p,xspot in zip(positions_to_fictitious, meas_spots):
+          diff_vecs.append((p[0]-xspot.ctr_mass_y(), p[1]-xspot.ctr_mass_x(), 0.0))
+        rmsd = diff_vecs.rms_length()
+        print "mean obs-pred_to_fictitious diff vec on %d spots is %6.2f pixels"%(len(positions),rmsd)
+
+        """
+        actually, it might be better if the entire set of experimental observations
+        is transformed into the ideal detector plane, for the purposes of poly_treatment.
+
+
+        start here.  Now it would be good to actually implement probability of observing a body pixel given the model.
+        We have everything needed right here.
+        """
+        if OO.parent.horizons_phil.integration.mosaic.enable_AD14F7B:
+          # Image plot: obs and predicted positions + bodypixels
+          from matplotlib import pyplot as plt
+          plt.plot( [p[0] for p in positions_to_fictitious], [p[1] for p in positions_to_fictitious], "r.")
+          plt.plot( [xspot.ctr_mass_y() for xspot in meas_spots],
+                    [xspot.ctr_mass_x() for xspot in meas_spots], "g.")
+          bodypx = []
+          for xspot in meas_spots:
+            for body in xspot.bodypixels:
+              bodypx.append(body)
+          plt.plot( [b.y for b in bodypx], [b.x for b in bodypx], "b.")
+          plt.axes().set_aspect("equal")
+          plt.show()
+
       print "MEAN excursion",flex.mean(final),
       if OO.mosaic_refinement_target=="ML":
         print "mosaicity deg FW=",M.x[1]*180./math.pi
