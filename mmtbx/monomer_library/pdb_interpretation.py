@@ -4820,11 +4820,13 @@ refinement.pdb_interpretation {
             weight=angle_weight)
           self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
         if cb_atoms[0] is not None and cb_atoms[1] is not None:
+          alt_value_angle = map(float,"93.,-86.".split(","))
           proxy = geometry_restraints.dihedral_proxy(
             i_seqs=[cb_atoms[0].i_seq,i_seq,j_seq, cb_atoms[1].i_seq],
-            angle_ideal=90.0,
+            angle_ideal=93.0,
             weight=0.01,
-            periodicity=2)
+            periodicity=1,
+            alt_angle_ideals=alt_value_angle)
           self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
       if disulfide_cif_loop is not None:
         disulfide_cif_loop.add_row(("SS",
