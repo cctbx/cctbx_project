@@ -613,7 +613,8 @@ class XFELBuilder(CCIBuilder):
    'labelit_regression',
    'xfel',
    'xfel_regression',
-   'cxi_xdr_xes'
+   'cxi_xdr_xes',
+   'prime'
  ]
  def add_tests(self):
     self.add_test_command('libtbx.import_all_ext')
