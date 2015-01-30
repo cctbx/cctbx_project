@@ -4791,35 +4791,41 @@ refinement.pdb_interpretation {
         # Here we will add angles and torsions for disulfides because here
         # we do know i_seq, j_seq of linked atoms, and we do know that there
         # is no symmetry operation for this link
-        a1 = self.pdb_atoms[i_seq]
-        a2 = self.pdb_atoms[j_seq]
-        r1 = a1.parent()
-        r2 = a2.parent()
-        cb1_atom = r1.get_atom("CB")
-        cb2_atom = r2.get_atom("CB")
-        assert cb1_atom is not None
-        assert cb2_atom is not None
+        cb_atoms = [None, None]
+        for i, seq in enumerate([i_seq, j_seq]):
+          a = self.pdb_atoms[seq]
+          ag = a.parent()
+          rg = ag.parent()
+          cb_atoms[i] = ag.get_atom("CB")
+          if cb_atoms[i] is None:
+            for ag_t in rg.atom_groups():
+              if ag_t.altloc == "":
+                cb_atoms[i] = ag_t.get_atom("CB")
+                break
         # SS       1 CB      1 SG      2 SG      103.800    1.800
         # SS       1 SG      2 SG      2 CB      103.800    1.800
         # SS       ss       1 CB     1 SG     2 SG     2 CB       90.00  10.0 2
         # make  angle proxy
         angle_weight = 1/1.8**2
-        proxy = geometry_restraints.angle_proxy(
-          i_seqs=[cb1_atom.i_seq,i_seq,j_seq],
-          angle_ideal=103.8,
-          weight=angle_weight)
-        self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
-        proxy = geometry_restraints.angle_proxy(
-          i_seqs=[i_seq,j_seq,cb2_atom.i_seq],
-          angle_ideal=103.8,
-          weight=angle_weight)
-        self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
-        proxy = geometry_restraints.dihedral_proxy(
-          i_seqs=[cb1_atom.i_seq,i_seq,j_seq, cb2_atom.i_seq],
-          angle_ideal=90.0,
-          weight=0.01,
-          periodicity=2)
-        self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
+        if cb_atoms[0] is not None:
+          proxy = geometry_restraints.angle_proxy(
+            i_seqs=[cb_atoms[0].i_seq,i_seq,j_seq],
+            angle_ideal=103.8,
+            weight=angle_weight)
+          self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
+        if cb_atoms[1] is not None:
+          proxy = geometry_restraints.angle_proxy(
+            i_seqs=[i_seq,j_seq,cb_atoms[1].i_seq],
+            angle_ideal=103.8,
+            weight=angle_weight)
+          self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
+        if cb_atoms[0] is not None and cb_atoms[1] is not None:
+          proxy = geometry_restraints.dihedral_proxy(
+            i_seqs=[cb_atoms[0].i_seq,i_seq,j_seq, cb_atoms[1].i_seq],
+            angle_ideal=90.0,
+            weight=0.01,
+            periodicity=2)
+          self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
       if disulfide_cif_loop is not None:
         disulfide_cif_loop.add_row(("SS",
                                     self.pdb_atoms[i_seq].pdb_label_columns(),
