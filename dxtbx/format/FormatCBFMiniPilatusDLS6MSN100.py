@@ -14,6 +14,44 @@ from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
+import os
+if 'P6M_60_PANEL' in os.environ:
+  single_panel = False
+else:
+  single_panel = True
+
+def read_cbf_image(cbf_image):
+  from cbflib_adaptbx import uncompress
+  import binascii
+  from scitbx.array_family import flex
+
+  start_tag = binascii.unhexlify('0c1a04d5')
+
+  data = open(cbf_image, 'rb').read()
+  data_offset = data.find(start_tag) + 4
+  cbf_header = data[:data_offset - 4]
+
+  fast = 0
+  slow = 0
+  length = 0
+
+  for record in cbf_header.split('\n'):
+    if 'X-Binary-Size-Fastest-Dimension' in record:
+      fast = int(record.split()[-1])
+    elif 'X-Binary-Size-Second-Dimension' in record:
+      slow = int(record.split()[-1])
+    elif 'X-Binary-Number-of-Elements' in record:
+      length = int(record.split()[-1])
+    elif 'X-Binary-Size:' in record:
+      size = int(record.split()[-1])
+
+  assert(length == fast * slow)
+
+  pixel_values = uncompress(packed = data[data_offset:data_offset + size],
+                            fast = fast, slow = slow)
+
+  return pixel_values
+
 class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
   '''A class for reading mini CBF format Pilatus images for 6M SN 100 @ DLS.'''
 
@@ -38,6 +76,8 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     assert(self.understand(image_file))
 
     FormatCBFMiniPilatus.__init__(self, image_file)
+
+    self._raw_data = None
 
     return
 
@@ -129,25 +169,106 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
     # take into consideration here the thickness of the sensor also the
     # wavelength of the radiation (which we have in the same file...)
+
     from cctbx.eltbx import attenuation_coefficient
     table = attenuation_coefficient.get_table("Si")
     mu = table.mu_at_angstrom(wavelength) / 10.0
     t0 = thickness
 
     # FIXME would also be very nice to be able to take into account the
-    # misalignment of the individual modules given the calibration information...
+    # misalignment of the individual modules given the calibration...
 
-    detector = self._detector_factory.simple(
+    # single detector or multi-module detector
+
+    if single_panel:
+      detector = self._detector_factory.simple(
         'PAD', distance * 1000.0, (beam_x * pixel_x * 1000.0,
                                    beam_y * pixel_y * 1000.0), '+x', '-y',
         (1000 * pixel_x, 1000 * pixel_y),
         (nx, ny), (underload, overload), [],
         ParallaxCorrectedPxMmStrategy(mu, t0))
 
-    for f0, s0, f1, s1 in determine_pilatus_mask(detector):
-      detector[0].add_mask(f0, s0, f1, s1)
+      for f0, s0, f1, s1 in determine_pilatus_mask(detector):
+        detector[0].add_mask(f0, s0, f1, s1)
 
-    return detector
+      return detector
+
+    # got to here means 60-panel version
+
+    from dxtbx.model.detector import HierarchicalDetector
+    from scitbx import matrix
+
+    d = HierarchicalDetector()
+
+    beam_centre = matrix.col((beam_x * pixel_x, beam_y * pixel_y,0))
+
+    fast = matrix.col((1.0, 0.0, 0.0))
+    slow = matrix.col((0.0,-1.0, 0.0))
+    s0 = matrix.col((0, 0, -1))
+    origin = (distance * s0) - (fast * beam_centre[0]) - \
+      (slow * beam_centre[1])
+
+    root = d.hierarchy()
+    root.set_local_frame(
+      fast.elems,
+      slow.elems,
+      origin.elems)
+
+    xmins  = [0, 494, 988, 1482, 1976]
+    xmaxes = [487, 981, 1475, 1969, 2463]
+    ymins  = [0, 212, 424, 636, 848, 1060, 1272,
+              1484, 1696, 1908, 2120, 2332]
+    ymaxes = [195, 407, 619, 831, 1043, 1255, 1467,
+              1679, 1891, 2103, 2315, 2527]
+
+    self.coords = {}
+
+    fast = matrix.col((1.0, 0.0, 0.0))
+    slow = matrix.col((0.0, 1.0, 0.0))
+    panel_idx = 0
+    for ymin, ymax in zip(ymins, ymaxes):
+      for xmin, xmax in zip(xmins, xmaxes):
+        xmin_mm = xmin * pixel_x
+        ymin_mm = ymin * pixel_y
+
+        origin_panel = fast * xmin_mm + slow * ymin_mm
+
+        panel_name = "Panel%d" % panel_idx
+        panel_idx += 1
+
+        p = d.add_panel()
+        p.set_name(panel_name)
+        p.set_image_size((xmax-xmin, ymax-ymin))
+        p.set_trusted_range((underload, overload))
+        p.set_pixel_size((pixel_x,pixel_y))
+
+        p.set_local_frame(
+          fast.elems,
+          slow.elems,
+          origin_panel.elems)
+        self.coords[panel_name] = (xmin,ymin,xmax,ymax)
+
+        root.add_panel(p)
+
+    return d
+
+  if not single_panel:
+
+    def get_raw_data(self, index=None):
+      if self._raw_data is None:
+        raw_data = read_cbf_image(self._image_file)
+
+        self._raw_data = []
+
+        d = self.get_detector()
+
+        for panel in d:
+          xmin, ymin, xmax, ymax = self.coords[panel.get_name()]
+          self._raw_data.append(raw_data[ymin:ymax,xmin:xmax])
+
+      if index is not None:
+        return self._raw_data[index]
+      return self._raw_data[0]
 
 if __name__ == '__main__':
 
