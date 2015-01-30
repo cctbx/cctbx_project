@@ -180,12 +180,13 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
     # single detector or multi-module detector
 
+    pixel_x *= 1000.0
+    pixel_y *= 1000.0
+
     if single_panel:
       detector = self._detector_factory.simple(
-        'PAD', distance * 1000.0, (beam_x * pixel_x * 1000.0,
-                                   beam_y * pixel_y * 1000.0), '+x', '-y',
-        (1000 * pixel_x, 1000 * pixel_y),
-        (nx, ny), (underload, overload), [],
+        'PAD', distance * 1000.0, (beam_x * pixel_x, beam_y * pixel_y),
+        '+x', '-y', (pixel_x, pixel_y), (nx, ny), (underload, overload), [],
         ParallaxCorrectedPxMmStrategy(mu, t0))
 
       for f0, s0, f1, s1 in determine_pilatus_mask(detector):
@@ -200,7 +201,8 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
     d = HierarchicalDetector()
 
-    beam_centre = matrix.col((beam_x * pixel_x, beam_y * pixel_y,0))
+    beam_centre = matrix.col((beam_x * pixel_x,
+                              beam_y * pixel_y, 0))
 
     fast = matrix.col((1.0, 0.0, 0.0))
     slow = matrix.col((0.0,-1.0, 0.0))
