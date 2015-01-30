@@ -599,15 +599,15 @@ ncs_group {
     # using combination of pdb_inp and Phil parameter string
     ncs_inp = ncs.input(pdb_inp = pdb_inp,
       ncs_phil_string = ncs_params_str)
-    ncs_groups = ncs_inp.get_ncs_restraints_group_list(max_delta=250)
+    ncs_groups = ncs_inp.get_ncs_restraints_group_list(max_delta=310)
     # using combination of pdb file name and Phil parameter string
     ncs_inp = ncs.input(file_name = pdb_file_name,
       ncs_phil_string = ncs_params_str)
-    ncs_groups = ncs_inp.get_ncs_restraints_group_list(max_delta=250)
+    ncs_groups = ncs_inp.get_ncs_restraints_group_list(max_delta=310)
     # using combination of pdb string and Phil parameter string
     ncs_inp = ncs.input(pdb_string = pdb_str,
       ncs_phil_string = ncs_params_str)
-    ncs_groups = ncs_inp.get_ncs_restraints_group_list(max_delta=250)
+    ncs_groups = ncs_inp.get_ncs_restraints_group_list(max_delta=310)
   if not debug:
     clean_temp_files(files_to_delete)
 
