@@ -931,6 +931,7 @@ _chem_link_tor.atom_id_3
 _chem_link_tor.atom_4_comp_id:int
 _chem_link_tor.atom_id_4
 _chem_link_tor.value_angle:float
+_chem_link_tor.alt_value_angle
 _chem_link_tor.value_angle_esd:float
 _chem_link_tor.period:int
   """
