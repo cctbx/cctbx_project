@@ -150,7 +150,7 @@ def correct_hydrogen_geometries(hierarchy,
                                 ):
   assert xray_structure or sites_cart
   bad_hydrogen_count=0
-  corrected_hydrogen_count=0
+  corrected_hydrogen_count=[]
   if len(hierarchy.models())>1:
     print "  \nModel files with more than one model are ignored\n"
     return bad_hydrogen_count, corrected_hydrogen_count
