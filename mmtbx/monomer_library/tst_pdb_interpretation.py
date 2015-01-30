@@ -1973,6 +1973,35 @@ END
     raw_records=raw_records,
     log=log)
 
+def exercise_ss_bond_angles(mon_lib_srv, ener_lib):
+  raw_records = """\
+HEADER    HYDROLASE/IMMUNE SYSTEM                 11-MAR-07   2P45
+CRYST1   73.447   73.070   42.539  90.00  90.00  90.00 P 21 21 21    4
+ATOM   1119  N   CYS B  22      48.085  17.330  19.679  1.00 11.80           N
+ATOM   1120  CA  CYS B  22      47.337  16.587  18.675  1.00 11.61           C
+ATOM   1121  C   CYS B  22      46.034  17.288  18.406  1.00 11.47           C
+ATOM   1122  O   CYS B  22      45.392  17.844  19.314  1.00 12.66           O
+ATOM   1123  CB  CYS B  22      47.077  15.179  19.161  1.00 13.15           C
+ATOM   1124  SG  CYS B  22      45.959  14.196  18.149  1.00 14.55           S
+ATOM   1687  N   CYS B  96      48.918   9.850  18.634  1.00 12.25           N
+ATOM   1688  CA  CYS B  96      47.641  10.223  19.169  1.00 11.51           C
+ATOM   1689  C   CYS B  96      46.539   9.414  18.528  1.00 10.27           C
+ATOM   1690  O   CYS B  96      46.654   8.958  17.371  1.00 12.04           O
+ATOM   1691  CB  CYS B  96      47.460  11.706  19.105  1.00 16.73           C
+ATOM   1692  SG ACYS B  96      45.815  12.414  19.205  0.50 12.31           S
+ATOM   1693  SG BCYS B  96      47.259  12.563  17.544  0.50 18.06           S
+END
+  """.splitlines()
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    log=log)
+  grm = processed_pdb_file.geometry_restraints_manager()
+  assert grm.angle_proxies.size() == 15
+  assert grm.dihedral_proxies.size() == 5
 
 def run(args):
   assert len(args) == 0
@@ -2000,6 +2029,7 @@ def run(args):
   exercise_scale_restraints()
   exercise_asp_glu_acid()
   exercise_rna_dna_synonyms()
+  exercise_ss_bond_angles(mon_lib_srv, ener_lib)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
