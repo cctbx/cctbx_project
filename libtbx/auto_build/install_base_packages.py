@@ -159,9 +159,10 @@ class installer (object) :
     if options.dials:
       options.build_gui = True
       options.build_all = True
-    if options.build_all or options.labelit:
+    if options.labelit:
       options.build_gui = True
-      packages += ['docutils', 'imaging', 'reportlab']
+      options.build_all = True
+      packages += ['imaging', 'reportlab']
 
     # Use a specific Python interpreter if provided.
     if self.python_exe:
@@ -170,7 +171,7 @@ class installer (object) :
       packages += ['python']
 
     # Always build hdf5 and numpy.
-    packages += ['hdf5', 'numpy']
+    packages += ['hdf5', 'numpy', 'docutils']
 
     # GUI packages.
     if options.build_gui:
@@ -200,7 +201,7 @@ class installer (object) :
 
     # Additional recommended dependencies.
     if options.build_all:
-      packages += ['biopython', 'misc'] # 'sphinx',
+      packages += ['biopython', 'misc', 'sphinx']
 
     # Non-all packages.
     # Scipy
@@ -415,6 +416,7 @@ Installation of Python packages may fail.
       'hdf5',
       'biopython',
       'scipy',
+      'freetype',
       'imaging',
       'reportlab',
       'py2app',
@@ -424,7 +426,6 @@ Installation of Python packages may fail.
       'ipython',
       'pyopengl',
       # START GUI PACKAGES
-      'freetype',
       'gettext',
       'glib',
       'expat',
