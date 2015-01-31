@@ -146,4 +146,4 @@ class manager(object):
           r.residue.atoms().extract_xyz())
         xrs.set_sites_cart(sites_cart)
         #print "ref: %6.4f"%(time.time()-t0)
-    sm.update(xray_structure = xrs, accept_as_is=False)
+    sm.update(xray_structure = xrs, accept_as_is=True)

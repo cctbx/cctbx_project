@@ -125,10 +125,6 @@ def _apply_link_using_proxies(link,
                                      bond,
         )
       if i_seqs is None: continue
-
-    # what what what
-    # print i_seqs
-
     value = "value_dist"
     proxy = geometry_restraints.bond_simple_proxy(
       i_seqs=i_seqs,
@@ -468,8 +464,8 @@ class linking_mixins(object):
           "bonds.bond_distance_cutoff \nis greater than 15A. Please check and"+
           " correct these parameters.")
     hbonds_in_bond_list = []
-    if verbose:
-      print """
+    if verbose and log is not None:
+      print >> log,"""
       metal_coordination_cutoff %s
       amino_acid_bond_cutoff    %s
       rna_dna_bond_cutoff       %s
@@ -563,7 +559,8 @@ class linking_mixins(object):
     #   for item in rc:
     #     yield item
     #
-    print >> log, """
+    if(log is not None):
+      print >> log, """
   Automatic linking
     Parameters for automatic linking
       Linking & cutoffs
@@ -999,8 +996,9 @@ Residue classes
                                                                     label2,
                                                                     sym_op,
             )
-    print >> log,"  Number of custom bonds: simple=%d, symmetry=%d" % (
-      n_simple, n_symmetry)
+    if(log is not None):
+      print >> log,"  Number of custom bonds: simple=%d, symmetry=%d" % (
+        n_simple, n_symmetry)
     if (n_symmetry == 0):
       blanks = ""
     else:
@@ -1051,5 +1049,7 @@ Residue classes
                                                                       label2,
                                                                       sym_op,
             )
-    print >> log, '  Time building additional restraints: %0.2f' % (time.time()-t0)
+    if(log is not None):
+      print >> log, '  Time building additional restraints: %0.2f' % (
+        time.time()-t0)
     return hbonds_in_bond_list
