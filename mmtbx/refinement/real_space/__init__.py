@@ -480,13 +480,7 @@ class score(object):
       selection = selection)
     self.sites_cart = sites_cart
 
-def torsion_search(
-      clusters,
-      scorer,
-      sites_cart,
-      start = -20, # XXX make resolution-dependent, and find limits
-      stop  = 20,
-      step  = 5):
+def torsion_search(clusters, scorer, sites_cart):
   def generate_range(start, stop, step):
     assert abs(start) <= abs(stop)
     inc = start
@@ -503,7 +497,7 @@ def torsion_search(
       scorer.reset_with(sites_cart=scorer.sites_cart.deep_copy(),
         selection=cl.selection)
     sites_cart_ = scorer.sites_cart.deep_copy()
-    for angle_deg in generate_range(start = start, stop = stop, step = step):
+    for angle_deg in generate_range(start=cl.start, stop=cl.stop, step=cl.step):
       xyz_moved = sites_cart_.deep_copy()
       for atom in cl.atoms_to_rotate:
         new_xyz = rotate_point_around_axis(
