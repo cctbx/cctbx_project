@@ -2716,6 +2716,17 @@ scitbx/wigner/ext.cpp -text
 scitbx/wigner/tst_wigner3j.py -text
 scitbx/wigner/wigner3j.h -text
 setup/unix_integrate_cctbx.sh -text
+sisa/__init__.py -text
+sisa/command_line/__init__.py -text
+sisa/command_line/main.py -text
+sisa/libtbx_config -text
+sisa/optimize/__init__.py -text
+sisa/optimize/mod_ga.py -text
+sisa/optimize/mod_input.py -text
+sisa/optimize/mod_masks.py -text
+sisa/optimize/mod_mtz.py -text
+sisa/optimize/mod_optimize.py -text
+sisa/optimize/mod_util.py -text
 smtbx/refinement/constraints/__init__.py -text
 smtbx/refinement/constraints/boost_python/SConscript -text
 smtbx/refinement/constraints/boost_python/constraints_ext.cpp -text
