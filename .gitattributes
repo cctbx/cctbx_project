@@ -3361,6 +3361,7 @@ xfel/command_line/frame_unpickler.py -text
 xfel/command_line/get_next_trial_id.py -text
 xfel/command_line/histogram_finalise.py -text
 xfel/command_line/list_db_metadata.py -text
+xfel/command_line/make_mar_mask.py -text
 xfel/command_line/make_mask.py -text
 xfel/command_line/metrology.py -text
 xfel/command_line/monitor_detectors.py -text
