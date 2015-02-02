@@ -417,6 +417,8 @@ Installation of Python packages may fail.
       'biopython',
       'scipy',
       'freetype',
+      'png',
+      'matplotlib',
       'imaging',
       'reportlab',
       'py2app',
@@ -432,13 +434,11 @@ Installation of Python packages may fail.
       'fontconfig',
       'render',
       'pixman',
-      'png',
       'tiff',
       'cairo',
       'gtk',
       'fonts',
       'wxpython',
-      'matplotlib',
     ]
     packages_order = []
     for i in order:
