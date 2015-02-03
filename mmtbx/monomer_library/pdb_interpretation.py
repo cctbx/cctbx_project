@@ -4791,11 +4791,10 @@ refinement.pdb_interpretation {
     assert disulfide_angle.value_angle_esd > 1e-5
 
     assert disulfide_torsion.value_angle is not None
-    assert disulfide_torsion.value_angle > 0
     assert disulfide_torsion.value_angle_esd is not None
     assert disulfide_torsion.value_angle_esd > 1e-5
     assert disulfide_torsion.period is not None
-    assert disulfide_torsion.period > 0
+    assert disulfide_torsion.period >= 0
 
     added = False
     # FIXME this does not work in some situations
