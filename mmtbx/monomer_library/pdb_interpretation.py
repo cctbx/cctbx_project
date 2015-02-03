@@ -4737,7 +4737,8 @@ refinement.pdb_interpretation {
       #  "_phenix.sym_op",
       #))
     #
-    new_hbonds, na_basepairs_planarities, na_basepairs_parallelities, max_na_hbond_lenght = \
+    (new_hbonds, na_basepairs_planarities, na_basepairs_parallelities,
+        max_na_hbond_lenght) = \
         self.create_user_defined_NA_basepair_restraints(log)
     max_bond_distance = max(max_disulfide_bond_distance, max_na_hbond_lenght)
     if (bond_distances_model.size() > 0):
@@ -4844,7 +4845,7 @@ refinement.pdb_interpretation {
         if cb_atoms[1] is not None:
           proxy = geometry_restraints.angle_proxy(
             i_seqs=[i_seq,j_seq,cb_atoms[1].i_seq],
-            angle_ideal=103.8,
+            angle_ideal=disulfide_angle.value_angle,
             weight=angle_weight)
           self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
         if cb_atoms[0] is not None and cb_atoms[1] is not None:
