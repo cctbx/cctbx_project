@@ -4774,10 +4774,11 @@ refinement.pdb_interpretation {
     disulfide_angle = disulfide_link.angle_list[0]
     disulfide_torsion = disulfide_link.tor_list[0]
     alt_value_angle = None
-    if "alt_value_angle" in disulfide_torsion._cif_keywords:
+    if (disulfide_torsion.alt_value_angle is not None and
+        disulfide_torsion.alt_value_angle != ''):
       try:
         alt_value_angle = map(float,disulfide_torsion.alt_value_angle.split(","))
-      except ValueError:
+      except ValueError, AttributeError:
         raise Sorry("Wrong format of alt_value_angle in SS bond in cif file")
 
     assert disulfide_bond.value_dist is not None
