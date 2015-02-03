@@ -94,6 +94,21 @@ def evaluate_output (cmd_result) :
         bad_lines.append(line)
   return bad_lines
 
+def reconstruct_test_name (command) :
+  pattern = '^[^"]*"([^"]*)"[^"]*$'
+  import re
+  m = re.search(pattern, command)
+  if m:
+    pattern2  = '^/?(.*?/(modules/(cctbx\_project/|xia2/Test/)?))?(.*)/([^/&]*?)(.py)?$'
+    m2 = re.search(pattern2, m.group(1))
+    if m2:
+#     print "M (%s) (%s) (%s) (%s) (%s) (%s)" % (m2.group(1,2,3,4,5,6))
+      import string
+      dashtodot = string.maketrans('/', '.')
+      return (m2.group(4).translate(dashtodot), m2.group(5).translate(dashtodot))
+    return (m.group(1), m.group(1))
+  return (command, command)
+
 class run_command_list (object) :
   def __init__ (self,
                 cmd_list,
@@ -172,16 +187,30 @@ class run_command_list (object) :
     # Output JUnit XML
     if output_junit_xml:
       from junit_xml import TestSuite, TestCase
+      import re
       for result in self.results:
-        tc = TestCase(name=result.command,
-                      classname=result.command,
+        test_name = reconstruct_test_name(result.command)
+        output = '\n'.join(result.stdout_lines + result.stderr_lines)
+        tc = TestCase(classname=test_name[0],
+                      name=test_name[1],
                       elapsed_sec=result.wall_time,
                       stdout='\n'.join(result.stdout_lines),
                       stderr='\n'.join(result.stderr_lines))
-        if result.return_code != 0:
-          tc.add_failure_info(message='exit code %d' %result.return_code)
-        #if len(result.stderr_lines):
-          #tc.add_error_info(output='\n'.join(result.stderr_lines))
+        if result.return_code == 0:
+          # Identify skipped tests
+          if re.search('skip', output, re.IGNORECASE):
+            # find first line including word 'skip' and use it as message
+            skipline = re.search('^((.*)skip(.*))$', output, re.IGNORECASE | re.MULTILINE).group(1)
+            tc.add_skipped_info(skipline)
+        else:
+          # Test failed. Extract error message and stack trace if possible
+          error_message = 'exit code %d' % result.return_code
+          error_output = '\n'.join(result.stderr_lines)
+          if len(result.stderr_lines):
+            error_message = result.stderr_lines[-1]
+          if len(result.stderr_lines) > 20:
+            error_output = '\n'.join(result.stderr_lines[-20:])
+          tc.add_failure_info(message=error_message, output=error_output)
         test_cases.append(tc)
       ts = TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
       with open('output.xml', 'wb') as f:
