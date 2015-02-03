@@ -270,7 +270,9 @@ class ExperimentList(object):
       if e.crystal is not None:
         obj['crystal'] = find_index(clist, e.crystal)
       if e.imageset is not None:
-        obj['imageset'] = ilist.index(e.imageset)
+        same = [e.imageset is imset for imset in ilist]
+        assert(same.count(True) == 1)
+        obj['imageset'] = same.index(True)
         if e.scan is None and not isinstance(e.imageset, ImageSweep):
           if len(e.imageset) != len(e.imageset.complete_set()):
             obj['imageset'] = (obj['imageset'], e.imageset.indices())
