@@ -171,7 +171,7 @@ class installer (object) :
       packages += ['python']
 
     # Always build hdf5 and numpy.
-    packages += ['hdf5', 'numpy', 'docutils']
+    packages += ['hdf5', 'numpy', 'setuptools', 'pip', 'docutils']
 
     # GUI packages.
     if options.build_gui or options.build_all:
@@ -414,19 +414,22 @@ Installation of Python packages may fail.
       'python',
       'numpy',
       'hdf5',
+      'setuptools',
+      'pip',
       'biopython',
-      'scipy',
-      'freetype',
-      'png',
-      'matplotlib',
-      'imaging',
       'reportlab',
-      'py2app',
-      'misc',
       'sphinx',
       'docutils',
       'ipython',
       'pyopengl',
+      'scipy',
+      'py2app',
+      'misc',
+      # ...
+      'png',
+      'freetype',
+      'matplotlib',
+      'imaging',
       # START GUI PACKAGES
       'gettext',
       'glib',
@@ -506,6 +509,18 @@ Installation of Python packages may fail.
     python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
     self.set_python(op.abspath(python_exe))
     log.close()
+
+  def build_setuptools(self):
+    self.build_python_module_simple(
+      pkg_url=BASE_CCI_PKG_URL,
+      pkg_name=SETUPTOOLS_PKG,
+      pkg_name_label="setuptools")
+
+  def build_pip(self):
+    self.build_python_module_simple(
+      pkg_url=BASE_CCI_PKG_URL,
+      pkg_name=PIP_PKG,
+      pkg_name_label="pip")
 
   def build_numpy(self):
     self.build_python_module_simple(
