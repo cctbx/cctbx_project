@@ -76,19 +76,20 @@ def make_png(image_pickle, integration_pickle, file_name=None, res=600,
 
 
 def cv_png(image_pickle, integration_pickle, file_name=None, res=600,
-             show_spots=True):
+             show_integration=True):
   """ Write a png file visualizing the correction vectors.
   :param image_pickle: path to image pickle file.
   :param integration_pickle: path to integration pickle file.
   :param res: resolution of output file in dpi (6x6 image size).
+  :param show_integration: Boolean flag toggling overlay of all integration boxes.
   :file_name: desired output file name. Defaults to the integration_pickle name.
   """
 
-  cmap = mpl.cm.jet
+  cmap = "Greys"
 
   if file_name is None:
     import os
-    # Change extension of `image_pickle` to .png
+    # Change extension of `image_pickle` to .png for output
     file_name = os.path.splitext(integration_pickle)[0] + ".png"
 
   # Load image pickle, and convert to image
@@ -98,17 +99,22 @@ def cv_png(image_pickle, integration_pickle, file_name=None, res=600,
 
   # Load integration pickle, and get coordinates of predictions
   int_d = ep.load(integration_pickle)
+
+  # Get spotfinder coordinates
   spot_coords = [x['obsspot'] for x in int_d['correction_vectors'][0]]
-  spot_coords = np.array(spot_coords).transpose()
-  pred_coords = [x['predspot'] for x in int_d['correction_vectors'][0]]
-  pred_coords = np.array(pred_coords).transpose()
-  corr_vecs = pred_coords - spot_coords
-  corr_factors = np.sqrt(abs(corr_vecs[0]**2 - corr_vecs[1]**2))
+
+  # predicted cooredinates from correction_vectors
+  pred_coords = [tuple(x['predspot']) for x in int_d['correction_vectors'][0]]
+
+  # All predictions (only to a single pixel)
+  predictions = int_d["mapped_predictions"][0]
+  pred_coords_all = predictions.as_double().as_numpy_array() \
+                           .reshape((2, len(predictions)), order='F' )
 
   # Get some other useful info from integration pickle
-  point_group = int_d['pointgroup']
   unit_cell = int_d['current_orientation'][0].unit_cell().parameters()
   unit_cell = ', '.join("{:.1f}".format(u) for u in unit_cell)
+  point_group = int_d['pointgroup']
   mosaicity = int_d['mosaicity']
 
   # Create the figure
@@ -120,7 +126,7 @@ def cv_png(image_pickle, integration_pickle, file_name=None, res=600,
   ax.set_xlim(0, len(img_data[1]))
   ax.set_ylim(0, len(img_data[0]))
   ax.set_aspect('equal')
-  ax.imshow(image, origin=None, cmap='Greys')
+  ax.imshow(image, cmap=cmap)
 
   # 2nd set of axes for the predictions
   ax2 = fig.add_axes(ax.get_position(), frameon=False)  # superimposed axes
@@ -128,14 +134,22 @@ def cv_png(image_pickle, integration_pickle, file_name=None, res=600,
   ax2.set_ylim(0, len(img_data[0]))
   ax2.set_aspect('equal')
 
+  # Show all integration results.
+  for pred, spot  in zip(pred_coords, spot_coords):
+    pred = ax2.plot(pred[1],  pred[0], 'rs', ms=1.5, alpha=0.3, markeredgewidth=0)
+    spot = ax2.plot(spot[1], spot[0], 'bo', ms=1.5, alpha=0.3, markeredgewidth=0)
 
-  norm = mpl.colors.Normalize(vmin=0, vmax=round(max(corr_factors)))
-  ax2.scatter(spot_coords[1], spot_coords[0], c=norm(corr_factors),
-              cmap=cmap, alpha=0.5, s=5, linewidths=0)
+  # only use last point to grab the plotting graphic
+  ax.legend((pred[0], spot[0]), ('Predictions', 'Spotfinder'), numpoints=1,
+            markerscale=5, fontsize=8)
 
-  cax = plt.axes([0.85, 0.15, 0.05, 0.69])
-  cbar = mpl.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
-  cbar.set_label('Spot-prediction distance [px]')
+  if show_integration:
+    ax2.plot(pred_coords_all[1], pred_coords_all[0], ms=2, linestyle='.',
+             marker='s', alpha=0.3, markeredgecolor='r',
+             markerfacecolor='none', markeredgewidth=0.3)
 
-  ax.set_title("Prediction-offset values\nfor spotfinder results")
+  plt.title("Unit cell: {} ({}) \nNominal mosaicity: {}" \
+            .format(point_group, unit_cell, mosaicity))
   plt.savefig(file_name, dpi=res, format='png')
+
+
