@@ -168,13 +168,17 @@ def exercise_multiple_atoms(mon_lib_srv, ener_lib):
   assert new_geometry.pair_proxies().nonbonded_proxies.asu.size() == 4
 
 def exercise():
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-
-  exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib)
-  exercise_single_atom(mon_lib_srv, ener_lib)
-  exercise_multiple_atoms(mon_lib_srv, ener_lib)
-
+  mon_lib_srv = None
+  ener_lib = None
+  try:
+    mon_lib_srv = monomer_library.server.server()
+    ener_lib = monomer_library.server.ener_lib()
+  except:
+    print "Can not initialize monomer_library, skipping test."
+  if mon_lib_srv is not None and ener_lib is not None:
+    exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib)
+    exercise_single_atom(mon_lib_srv, ener_lib)
+    exercise_multiple_atoms(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()
