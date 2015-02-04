@@ -140,19 +140,24 @@ def use_segids_in_place_of_chainids(hierarchy, strict=False):
       if chain.id in [' ', '  ']:
         cur_segid = None
         for atom in chain.atoms():
-          if cur_segid is None:
-            cur_segid = atom.segid
+          # new as of 20150203
           if atom.segid not in ['    ', '']:
-            if atom.segid != cur_segid:
-              if strict:
-                raise Sorry("Chains with blank chainID may not have multiple"+
-                            " segID values")
-              else:
-                return False
-        if len(cur_segid.strip()) > 0:
-          use_segids = True
-        else:
-          return False
+            return True
+          # It makes no sense to require indentical segID for 
+          # Chains with blank chainID. This was commented out by BJH on 20150203
+          #if cur_segid is None:
+          #  cur_segid = atom.segid
+          #if atom.segid not in ['    ', '']:
+          #  if atom.segid != cur_segid:
+          #    if strict:
+          #      raise Sorry("Chains with blank chainID may not have multiple"+
+          #                  " segID values")
+          #    else:
+          #      return False
+        #if len(cur_segid.strip()) > 0:
+        #  use_segids = True
+        #else:
+        #  return False
   return use_segids
 
 #this function assumes that use_segids_in_place_of_chainids() is True

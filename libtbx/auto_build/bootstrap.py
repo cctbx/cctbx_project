@@ -253,19 +253,19 @@ class xfel_regression_module(SourceModule):
 # Duke repositories
 class probe_module(SourceModule):
   module = 'probe'
-  anonymous = ['svn', 'https://github.com/rlabduke/probe/trunk']
+  anonymous = ['svn', 'https://github.com/rlabduke/probe.git']
 
 class suitename_module(SourceModule):
   module = 'suitename'
-  anonymous = ['svn', 'https://github.com/rlabduke/suitename/trunk']
+  anonymous = ['svn', 'https://github.com/rlabduke/suitename.git']
 
 class reduce_module(SourceModule):
   module = 'reduce'
-  anonymous = ['svn', 'https://github.com/rlabduke/reduce/trunk']
+  anonymous = ['svn', 'https://github.com/rlabduke/reduce.git']
 
 class king_module(SourceModule):
   module = 'king'
-  anonymous = ['svn', 'https://quiddity.biochem.duke.edu/svn/phenix/king']
+  anonymous = ['svn', 'https://github.com/rlabduke/phenix_king_binaries.git']
 
 MODULES = SourceModule()
 
