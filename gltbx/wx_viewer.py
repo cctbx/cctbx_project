@@ -470,11 +470,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.yspin, self.xspin, 0, 0)
     self.OnRedraw()
 
-  def rotate_view (self, x1, y1, x2, y2, shift_down=False) :
+  def rotate_view (self, x1, y1, x2, y2, shift_down=False, scale=0.5) :
     rc = self.rotation_center
     if (not shift_down) :
       gltbx.util.rotate_object_about_eye_x_and_y(
-        0.5, rc[0], rc[1], rc[2],
+        scale, rc[0], rc[1], rc[2],
         x2, y2, x1, y1)
     else:
       sz = self.GetClientSizeTuple()
