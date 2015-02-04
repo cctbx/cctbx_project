@@ -1291,6 +1291,7 @@ class manager(object):
       segids=None,
       i_seq_start=0,
       reset_labels=False) :
+    """ Add atoms from new_xray_structure to the model in place."""
     assert (len(atom_names) == len(residue_names) ==
             len(new_xray_structure.scatterers()))
     assert (segids is None) or (len(segids) == len(atom_names))
