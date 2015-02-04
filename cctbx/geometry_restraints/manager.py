@@ -503,173 +503,164 @@ class manager(object):
   def set_external_energy_function (self, energy_function) :
     self.external_energy_function = energy_function
 
-  def add_new_bond_restraint_in_place2(self, proxy):
-    """ Do not use, under development!"""
-    proxy = proxy.sort_i_seqs()
-    self.bond_params_table.update(
-      i_seq=proxy.i_seqs[0],
-      j_seq=proxy.i_seqs[1],
-      params=geometry_restraints.bond_params(
-        distance_ideal=proxy.distance_ideal,
-        weight=proxy.weight))
+  def new_included_bonded_atoms(self, proxies, sites_cart,
+      site_symmetry_table, nonbonded_types, nonbonded_charges):
+    """ Produce new geometry_restraints_manager object that will
+    include new atoms each with exactly one bond to the existing atom.
+    proxies - list of bond_proxy objects. Symmetry operation will be determined
+    automatically, so proxy.rt_mx_ji is ignored.
+    Essentially this function wraps self.new_including_isolated_sites() and
+    self.add_new_bond_restraints_in_place().
+    sites_cart should contain all coordinates, for old and new atoms. new
+      coordinates should follow old ones and the order should be consistent
+      with i_seqs mentioned in proxy objects.
+    site_symmetry_table - table only for new atoms
+    nonbonded_types - only for new atoms
+    nonbonded_charges - only for new atoms."""
 
+    number_of_new_atoms = len(proxies)
 
+    assert site_symmetry_table.indices().size() == number_of_new_atoms
+    assert len(nonbonded_types) == number_of_new_atoms
+    assert len(nonbonded_charges) == number_of_new_atoms
 
-  def add_new_bond_restraint_in_place(self, proxy):
-    """ Do not use, under development!"""
-    print "HERE!"
-    print dir(self.pair_proxies().nonbonded_proxies)
-    # STOP()
-    self.pair_proxies()
-    print self.pair_proxies().nonbonded_proxies.simple
-    nonbonded_proxies = self.pair_proxies().nonbonded_proxies
-    print "N nonb prox", len(nonbonded_proxies.simple)
-    nb_asu_mappings = nonbonded_proxies.asu_mappings()
-    print dir(nb_asu_mappings)
-    print "N nonb asu", len(nonbonded_proxies.asu)
-    asu_mappings = nonbonded_proxies.asu_mappings()
-    print "nonb asu mappings", dir(asu_mappings)
-    print "len asu_mappings.mappings", len(asu_mappings.mappings())
-    # mapping = asu_mappings.mappings()[1][10]
-    for mappings in asu_mappings.mappings():
-      pass
-      # print len(mappings)
-    STOP()
-    # print nonbonded_proxies.asu[0]
-    # print dir(nonbonded_proxies.asu[0])
-    # for asu in nonbonded_proxies.asu:
-    #   print asu.i_seq, asu.j_seq, asu.j_sym
-    # STOP()
-    for sp in nonbonded_proxies.simple:
-      asu_mappings.get_rt_mx(sp.i_seqs)
-      print  sp.i_seqs, sp.rt_mx_ji, nb_asu_mappings.get_rt_mx_ji(pair=sp.i_seqs)
-      # STOP()
-    STOP()
-    # print type(self.nonbonded_params), dir(self.nonbonded_params)
-    self.pair_proxies()
-    print type(self.nonbonded_params.distance_table), dir(self.nonbonded_params.distance_table)
-    print self.nonbonded_params.distance_table.size()
-    for i, bpt_elem in enumerate(self.nonbonded_params.distance_table.items()):
-      print "bpt elem", bpt_elem, type(bpt_elem), dir(bpt_elem)
-      print i
-      for k, v in bpt_elem.items():
-        print "  ", k #, dir(v)
-        # STOP()
-    STOP()
-    # print dir(proxy)
-    # print proxy.rt_mx_ji
-    # print proxy.i_seqs
-    proxy = proxy.sort_i_seqs()
-    print proxy.i_seqs
-    # print "site_symmetry_table",type(self.site_symmetry_table), dir(self.site_symmetry_table)
-    # print self.site_symmetry_table
-    # print dir(self.site_symmetry_table.table())
-    # print self.site_symmetry_table.indices().size()
+    if (self.model_indices is None):
+      model_indices = None
+    else:
+      model_indices = flex.size_t(number_of_new_atoms, 0)
+    if (self.conformer_indices is None):
+      conformer_indices = None
+    else:
+      conformer_indices = flex.size_t(number_of_new_atoms, 0)
+    if (self.sym_excl_indices is None):
+      sym_excl_indices = None
+    else:
+      sym_excl_indices = flex.size_t(number_of_new_atoms, 0)
+    if (self.donor_acceptor_excl_groups is None):
+      donor_acceptor_excl_groups = None
+    else:
+      donor_acceptor_excl_groups = flex.size_t(number_of_new_atoms, 0)
+    new_grm = self.new_including_isolated_sites(
+        n_additional_sites =number_of_new_atoms,
+        model_indices=model_indices,
+        conformer_indices=conformer_indices,
+        sym_excl_indices=sym_excl_indices,
+        donor_acceptor_excl_groups=donor_acceptor_excl_groups,
+        site_symmetry_table=site_symmetry_table,
+        nonbonded_types=nonbonded_types,
+        nonbonded_charges=nonbonded_charges)
+    sites_frac = self.crystal_symmetry.unit_cell().\
+        fractionalize(sites_cart=sites_cart)
+    new_grm.update_plain_pair_sym_table(sites_frac)
+    new_grm.add_new_bond_restraints_in_place(proxies, sites_cart)
+    return new_grm
 
-    # print "bond_params_table:", type(self.bond_params_table),dir(self.bond_params_table)
-    print "len bond_params_talbe",len(self.bond_params_table)
-    for i, bpt_elem in enumerate(self.bond_params_table):
-      # print bpt_elem, type(bpt_elem), dir(bpt_elem)
-      print i
-      for k, v in bpt_elem.items():
-        print "  ", k #, dir(v)
-        # STOP()
-    # STOP()
-    self.bond_params_table.update(
-      i_seq=proxy.i_seqs[0],
-      j_seq=proxy.i_seqs[1],
-      params=geometry_restraints.bond_params(
-        distance_ideal=proxy.distance_ideal,
-        weight=proxy.weight))
+  def add_new_bond_restraints_in_place(self, proxies, sites_cart,
+      max_distance_between_connecting_atoms=5):
+    """ Add new bond restraints for list of proxies to this
+    geometry restraints manager, _in_place_! Returns nothing.
+    proxies - list of bond_proxy objects. The symmetry operation for the
+    paired atoms is determined here, therefore the proxy.rt_mx_ji may be
+    anything."""
 
-    print "="*20, "after", "="*20
-    print "len bond_params_talbe",len(self.bond_params_table)
-    for i, bpt_elem in enumerate(self.bond_params_table):
-      # print bpt_elem, type(bpt_elem), dir(bpt_elem)
-      print i
-      for k, v in bpt_elem.items():
-        print "  ", k #, dir(v)
-    STOP()
-
-
-    # print type(self.shell_sym_tables), dir(self.shell_sym_tables)
-    # print type(self.shell_sym_tables[0]), dir(self.shell_sym_tables[0])
-    from cctbx import sgtbx
-    identity_rt_mx_ji = sgtbx.rt_mx(symbol="x,y,z")
-    # STOP()
-    # self.shell_sym_tables[0].insert((proxy.i_seqs[0], proxy.i_seqs[1]),rt_mx_ji)
-
-    # make sure that arrays of proper length
-    max_i_seq = proxy.i_seqs[1]
+    # Get current max bond distance, copied from pair_proxies()
+    bonded_distance_cutoff = 0
+    sites_frac = self.crystal_symmetry.unit_cell().\
+        fractionalize(sites_cart=sites_cart)
     for shell_sym_table in self.shell_sym_tables:
-      # print dir(shell_sym_table)
-      # print shell_sym_table.size()
-      if shell_sym_table.size() < max_i_seq+1:
-        shell_sym_table.extend(crystal.pair_sym_table(max_i_seq+1-len(shell_sym_table)))
-        # print "new_len", len(shell_sym_table)
-    # STOP()
+      bonded_distance_cutoff = max(bonded_distance_cutoff,
+          flex.max_default(
+              values=crystal.get_distances(
+                  pair_sym_table=shell_sym_table,
+                  orthogonalization_matrix=self.crystal_symmetry.unit_cell() \
+                      .orthogonalization_matrix(),
+                  sites_frac=sites_frac),
+              default=0)
+          )
+    # make asu mappings
+    all_asu_mappings = self.crystal_symmetry.special_position_settings().\
+        asu_mappings(buffer_thickness=bonded_distance_cutoff)
+    all_asu_mappings.process_sites_cart(
+      original_sites=sites_cart,
+      site_symmetry_table=self.site_symmetry_table)
+    # Add all previously defined bonds
+    all_bonds_asu_table = crystal.pair_asu_table(asu_mappings=all_asu_mappings)
+    all_bonds_asu_table.add_pair_sym_table(self.shell_sym_tables[0])
 
+    proxies_i_seqs = []
+    proxies_iselection = []
+    for p in proxies:
+      proxies_i_seqs.append(p.i_seqs)
+      for i in list(p.i_seqs):
+        if i not in proxies_iselection:
+          proxies_iselection.append(i)
+    # Not sure whether we want to sort it...
+    # proxies_iselection = flex.size_t(sorted(proxies_iselection))
+    proxies_iselection = flex.size_t(proxies_iselection)
 
-    # find corresponding 1-3 interactions to shell_sym_tables[1]
-    # first find them in shell_sym_tables[0] for i_seq and j_seq
-    pairs_1_3 = []
-    for n_seq in [0,1]:
-      # print "proxy.i_seqs[n_seq]",proxy.i_seqs[n_seq]
-      for i in range(proxy.i_seqs[n_seq]):
-        # print "i", i
-        # for sym_dict in self.shell_sym_tables[1]:
-        sym_dict = self.shell_sym_tables[0][i]
-        # print "sym_dict", type(sym_dict), dir(sym_dict)
-        # STOP()
-        if sym_dict.has_key(proxy.i_seqs[n_seq]):
-          pairs_1_3.append(tuple(sorted((proxy.i_seqs[abs(n_seq-1)],i))))
-      sym_dict = self.shell_sym_tables[0][proxy.i_seqs[n_seq]]
-      for v in sym_dict.items():
-        # print "sym_dict item:", type(v), dir(v)
-        # STOP()
-        pairs_1_3.append(tuple(sorted((proxy.i_seqs[abs(n_seq-1)],v[0]))))
-    # print "pairs_1_3", pairs_1_3
-    # STOP()
+    # Generate pairs for connecting atoms only - should be much faster then
+    # doing the same for all atoms in geometry_restraints_manager.
+    # Note, that this will generate not only useful pairs but all pairs
+    # within max_distance_between_connecting_atoms cutoff. Therefore
+    # later we will filter them.
+    conn_asu_mappings = self.crystal_symmetry.special_position_settings().\
+      asu_mappings(buffer_thickness=max_distance_between_connecting_atoms)
+    connecting_sites_cart = sites_cart.select(proxies_iselection)
+    conn_site_symmetry_table = self.site_symmetry_table.select(
+        proxies_iselection)
+    conn_asu_mappings.process_sites_cart(
+        original_sites=connecting_sites_cart,
+        site_symmetry_table=conn_site_symmetry_table)
+    conn_pair_asu_table = crystal.pair_asu_table(
+        asu_mappings=conn_asu_mappings)
+    conn_pair_asu_table.add_all_pairs(
+        distance_cutoff=max_distance_between_connecting_atoms)
+    pair_generator = crystal.neighbors_fast_pair_generator(
+        conn_asu_mappings,
+        distance_cutoff=max_distance_between_connecting_atoms)
 
-    # Then we want to find 1-4 interactions
-    pairs_1_4 = []
-    for n_seq in [0,1]:
-      # print "proxy.i_seqs[n_seq]",proxy.i_seqs[n_seq]
-      for i in range(proxy.i_seqs[n_seq]):
-        # print "i", i
-        # for sym_dict in self.shell_sym_tables[1]:
-        sym_dict = self.shell_sym_tables[1][i]
-        # print "sym_dict", type(sym_dict), dir(sym_dict)
-        # STOP()
-        if sym_dict.has_key(proxy.i_seqs[n_seq]):
-          pairs_1_4.append(tuple(sorted((proxy.i_seqs[abs(n_seq-1)],i))))
-      sym_dict = self.shell_sym_tables[1][proxy.i_seqs[n_seq]]
-      for v in sym_dict.items():
-        # print "sym_dict item:", type(v), dir(v)
-        # STOP()
-        pairs_1_4.append(tuple(sorted((proxy.i_seqs[abs(n_seq-1)],v[0]))))
-    # print "pairs_1_4", pairs_1_4
-
-    # only here we probably want to add them. Not earlier, to keep tables in
-    # in their original state
-    # adding 1-2 interaction
-    self.shell_sym_tables[0][proxy.i_seqs[0]][proxy.i_seqs[1]] = [proxy.rt_mx_ji]
-    # adding 1-3 interactions:
-    for pair in pairs_1_3:
-      # identity symmetry for testing
-      self.shell_sym_tables[1][pair[0]][pair[1]] = [identity_rt_mx_ji]
-    # adding 1-4 interactions:
-    for pair in pairs_1_4:
-      # identity symmetry for testing
-      self.shell_sym_tables[2][pair[0]][pair[1]] = [identity_rt_mx_ji]
-
-
-    # for
-    # self.shell_sym_tables[0].add_pair_sym_table_in_place(
-    #   [None, {proxy.i_seqs[1]:[rt_mx_ji]}])
-    # print self.shell_sym_tables[0].show()
-    # STOP()
-    # self.shell_sym_tables.add_pair((proxy.i_seqs[0], proxy.i_seqs[1]))
+    # r_a connects i_seqs in pair_generator with original i_seqs
+    r_a = list(reindexing_array(len(sites_cart), proxies_iselection.as_int()))
+    for pair in pair_generator:
+      pair_in_origninal_indeces = (r_a.index(pair.i_seq), r_a.index(pair.j_seq))
+      n_proxy = None
+      # Is this pair should be restrained?
+      try:
+        n_proxy = proxies_i_seqs.index(pair_in_origninal_indeces)
+      except ValueError:
+        # there is no proxy for this pair, so we will not make a bond for it
+        continue
+      # Sanity check (not necessary because of 'continue' in previous line)
+      if n_proxy is not None:
+        #Trying to find rt_mx_ji for connecting atoms
+        rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
+        rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
+        rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
+        # Add new defined bond
+        all_bonds_asu_table.add_pair(
+          i_seq=proxies[n_proxy].i_seqs[0],
+          j_seq=proxies[n_proxy].i_seqs[1],
+          rt_mx_ji=rt_mx_ji)
+        # Update with new bond
+        self.bond_params_table.update(
+            i_seq=proxies[n_proxy].i_seqs[0],
+            j_seq=proxies[n_proxy].i_seqs[1],
+            params=geometry_restraints.bond_params(
+                distance_ideal=proxies[n_proxy].distance_ideal,
+                weight=proxies[n_proxy].weight,
+                slack=proxies[n_proxy].slack,
+                limit=proxies[n_proxy].limit,
+                top_out=proxies[n_proxy].top_out)
+            )
+    # update self.shell_sym_tables with new bonds
+    shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
+      pair_asu_table=all_bonds_asu_table,
+      max_shell=3)
+    self.shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
+      for shell_asu_table in shell_asu_tables]
+    self.reset_internals()
+    # Run this function so that new pair_proxies are ready to go
+    self.pair_proxies(sites_cart=sites_cart)
 
   def pair_proxies(self,
         sites_cart=None,

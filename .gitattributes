@@ -222,6 +222,7 @@ cctbx/regression/tst_diffuse.py -text
 cctbx/regression/tst_direct_scaling.py -text
 cctbx/regression/tst_fourier_transform_real_part_at_x.py -text
 cctbx/regression/tst_french_wilson.py -text
+cctbx/regression/tst_grm_modifications.py -text
 cctbx/regression/tst_grouped_data.py -text
 cctbx/regression/tst_map_weights_for_symmetry_summation.py svneol=native#text/x-python
 cctbx/regression/tst_math_module.py -text

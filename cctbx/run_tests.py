@@ -130,6 +130,7 @@ tst_list = (
    "$D/multipolar/regression/tst_multipolar.py",
    "$D/regression/tst_connectivity.py",
    "$D/regression/tst_diffuse.py",
+   "$D/regression/tst_grm_modifications.py",
   )
 
 def run():
