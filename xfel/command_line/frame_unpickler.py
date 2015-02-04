@@ -169,10 +169,8 @@ class construct_reflection_table_and_experiment_list(object):
     self.reflections['id'] = sciflex.size_t(self.length)
 
   def refl_intensities_maker(self):
-    self.reflections['intensity.prf.value'] = self.observations.data()
-    self.reflections['intensity.prf.variance'] = self.observations.sigmas()
-    self.reflections['intensity.sum.value'] = sciflex.double(self.length)
-    self.reflections['intensity.sum.variance'] = sciflex.double(self.length)
+    self.reflections['intensity.sum.value'] = self.observations.data()
+    self.reflections['intensity.sum.variance'] = self.observations.sigmas()**2
 
   def refl_lp_maker(self):
     self.reflections['lp'] = sciflex.double(self.length)
