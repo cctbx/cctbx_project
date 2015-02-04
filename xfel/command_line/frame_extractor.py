@@ -17,8 +17,7 @@ from libtbx import easy_pickle
 class ConstructFrame(object):
   def __init__(self, pickle_name, json_name, pixel_size):
     # assemble template and unpack files
-    template_pickle = {'correction_vectors':[[]],
-                       'current_cb_op_to_primitive': 0,
+    template_pickle = {'current_cb_op_to_primitive': 0,
                        'current_orientation':0,
                        'distance':0,
                        'effective_tiling':0,
@@ -131,7 +130,7 @@ class ConstructFrame(object):
     variances = self.reflections['intensity.' + self.method + '.variance']
     space_group = crystal.symmetry(self.xtal.get_unit_cell(), str(self.xtal.get_space_group().info()))
     miller_set = miller.set(space_group, self.reflections['miller_index'])
-    self.frame['observations'][0] = cctbx.miller.array(miller_set, intensities, variances).set_observation_type_xray_intensity()
+    self.frame['observations'][0] = cctbx.miller.array(miller_set, intensities, flex.sqrt(variances)).set_observation_type_xray_intensity()
 
   # collect predicted spot positions
   def populate_pixel_positions(self):
@@ -144,6 +143,7 @@ class ConstructFrame(object):
   def populate_corrections(self):
     assert self.reflections.has_key('xyzobs.px.value') and self.reflections.has_key('xyzcal.px'), "no calculated or observed spot positions"
     assert self.frame['xbeam'] is not 0 and self.frame['ybeam'] is not 0, "invalid beam center"
+    self.frame['correction_vectors'] = [[]]
     for idx in xrange(len(self.reflections['xyzobs.px.value'])):
       if self.reflections['xyzcal.px'][idx][0:2] != self.reflections['xyzobs.px.value'][idx][0:2]:
         theoret_center = 1765/2, 1765/2
