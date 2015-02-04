@@ -33,7 +33,11 @@ def ccp4_symbol(space_group_info, lib_name, require_at_least_one_lib=True):
     lib_paths = []
     if (ccp4io_lib_data is not None):
       lib_paths.append(op.join(ccp4io_lib_data, lib_name))
-    lib_paths.append(op.expandvars("$CCP4_LIB/data/"+lib_name))
+    import os
+    if 'CCP4_LIB' in os.environ:
+      lib_paths.append(op.expandvars("$CCP4_LIB/data/"+lib_name))
+    if 'CLIBD' in os.environ:
+      lib_paths.append(op.expandvars("$CLIBD/"+lib_name))
     found_at_least_one_lib = False
     for lib_path in lib_paths:
       if (op.isfile(lib_path)):
