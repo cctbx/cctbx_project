@@ -58,6 +58,10 @@ phil_scope = parse('''
       .type = int
       .help = "Distance from back of detector rail to sample interaction region (CXI)"
       .help = "or actual detector distance (XPP)"
+    override_energy = None
+      .type = float
+      .help = "If not None, use the input energy for every event instead of the energy"
+      .help = "from the XTC stream"
   }
   output {
     output_dir = .
@@ -82,6 +86,9 @@ phil_scope = parse('''
       .type = str
       .help = "The filename for output reflection profile parameters"
   }
+  verbosity = 1
+   .type = int(value_min=0)
+   .help = "The verbosity level"
 
   border_mask {
     include scope dials.command_line.generate_mask.phil_scope
@@ -119,6 +126,10 @@ class InMemScript(DialsProcessScript):
 
     params, options = self.parser.parse_args(
       show_diff_phil=True)
+
+    # Configure the logging
+    from dials.util import log
+    log.config(params.verbosity)
 
     if params.input.cfg is None or \
         params.input.experiment is None or \
@@ -202,10 +213,13 @@ class InMemScript(DialsProcessScript):
           print "No distance, skipping shot"
           continue
 
-        wavelength = cspad_tbx.evt_wavelength(evt)
-        if wavelength is None:
-          print "No wavelength, skipping shot"
-          continue
+        if params.input.override_energy is None:
+          wavelength = cspad_tbx.evt_wavelength(evt)
+          if wavelength is None:
+            print "No wavelength, skipping shot"
+            continue
+        else:
+          wavelength = 12398.4187/params.input.override_energy
 
         timestamp = cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)) # human readable format
         if timestamp is None:
