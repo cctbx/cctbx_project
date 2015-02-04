@@ -214,6 +214,9 @@ class FormatRAXIS(Format):
     f = self._f
     header = self._header_bytes
 
+    # We expect an invalid goniometer section, indicated by wrong magic number
+    magic_no = struct.unpack(">i", header[852:856])
+
     format = self._scan_factory.format('RAXIS')
     exposure_time = struct.unpack(f, header[536:540])[0]
 
@@ -221,10 +224,15 @@ class FormatRAXIS(Format):
 
     epoch = calendar.timegm(datetime.datetime(y, m, d, 0, 0, 0).timetuple())
 
-    s = struct.unpack(i, header[980:984])[0]
+    if magic_no == 1:
+      s = struct.unpack(i, header[980:984])[0]
+      osc_start = struct.unpack(f, header[920 + s * 4:924 + s * 4])[0]
+      osc_end = struct.unpack(f, header[940 + s * 4:944 + s * 4])[0]
 
-    osc_start = struct.unpack(f, header[920 + s * 4:924 + s * 4])[0]
-    osc_end = struct.unpack(f, header[940 + s * 4:944 + s * 4])[0]
+    else:
+      osc_dat = struct.unpack(f, header[520:524])[0]
+      osc_start = osc_dat + struct.unpack(f, header[524:528])[0]
+      osc_end = osc_dat + struct.unpack(f, header[528:532])[0]
 
     osc_range = osc_end - osc_start
 

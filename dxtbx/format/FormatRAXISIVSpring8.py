@@ -124,6 +124,7 @@ class FormatRAXISIVSPring8(Format):
     # For this instrument, the header goniometer section is invalid. 3 floats
     # starting at byte 520 specify phi0, phis and phie.
     # (http://www.rigaku.com/downloads/software/readimage.html)
+
     osc_dat = struct.unpack(f, header[520:524])[0]
     osc_start = osc_dat + struct.unpack(f, header[524:528])[0]
     osc_end = osc_dat + struct.unpack(f, header[528:532])[0]
