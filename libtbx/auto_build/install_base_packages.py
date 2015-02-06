@@ -337,8 +337,6 @@ Installation of Python packages may fail.
     inc_paths = ["-I%s" % p for p in self.include_dirs]
     lib_paths = ["-L%s" % p for p in self.lib_dirs]
     os.environ['CPPFLAGS'] = "%s %s"%(" ".join(inc_paths), self.cppflags_start)
-    if self.flag_is_mac:
-      os.environ['CPPFLAGS'] += ' -mmacosx-version-min=10.6'
     os.environ['LDFLAGS'] = "%s %s"%(" ".join(lib_paths), self.ldflags_start)
 
   def verify_python_module (self, pkg_name_label, module_name) :
@@ -821,6 +819,7 @@ Installation of Python packages may fail.
       self.prefix,
       "--disable-mediactrl",
       "--with-opengl",
+      "--without-liblzma",
     ]
     if (self.options.debug) :
       config_opts.extend(["--disable-optimize", "--enable-debug"])
@@ -863,7 +862,7 @@ Installation of Python packages may fail.
       "BUILD_DLLWIDGET=0",
     ]
     if self.flag_is_mac:
-      os.environ['CFLAGS'] = "-arch x86_64"
+      os.environ['CFLAGS'] = os.environ.get('CFLAGS', '') + " -arch x86_64"
       wxpy_build_opts.extend(["UNICODE=1", "BUILD_STC=1", "WXPORT=osx_cocoa"])
     else :
       wxpy_build_opts.extend(["UNICODE=0", "BUILD_STC=0", "BUILD_OGL=0", ])
