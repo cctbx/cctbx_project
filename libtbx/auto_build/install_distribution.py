@@ -270,7 +270,8 @@ class installer(object):
         copy_tree(os.path.join(self.installer_dir, i), os.path.join(self.dest_dir, i))
 
     # Reconfigure
-    log = open(os.path.join(self.tmp_dir, "binary.log"), "w")
+    if not os.path.exists(self.tmp_dir):
+      os.makedirs(self.tmp_dir)
     if (sys.platform != "darwin") :
       os.environ["LD_LIBRARY_PATH"] = op.join(self.base_dir, "lib")
     self.product_specific_binary_install(log=log)
