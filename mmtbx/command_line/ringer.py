@@ -9,12 +9,11 @@
 # 20499387
 
 from __future__ import division
+from mmtbx.ringer import * # this is deliberate!
 import libtbx.phil
 from libtbx import easy_pickle
-from libtbx import easy_mp
 from libtbx.str_utils import make_header
 from libtbx.utils import Sorry, Usage
-from libtbx import adopt_init_args, Auto
 from libtbx import runtime_utils
 from cStringIO import StringIO
 import time
@@ -46,22 +45,11 @@ difference_map_label = FOFCWT,PHFOFCWT
   .style = bold renderer:draw_map_arrays_widget noauto
 map_file = None
   .type = path
+include scope mmtbx.ringer.ringer_phil_str
 sampling_method = linear *spline direct
   .type = choice(multi=False)
-sampling_angle = 5
-  .type = int
-  .input_size = 80
 grid_spacing = 1./5
   .type = float
-scaling = *sigma volume
-  .type = choice(multi=False)
-skip_alt_confs = True
-  .type = bool
-  .short_caption = Skip existing alternate conformations
-nproc = 1
-  .type = int
-  .short_caption = Processors
-  .style = renderer:draw_nproc_widget
 gui = False
   .type = bool
   .style = hidden
@@ -73,264 +61,6 @@ output_dir = None
 include scope libtbx.phil.interface.tracking_params
 """, process_includes=True)
 master_params = master_phil
-
-class ringer_chi (object) :
-  def __init__ (self, id, angle_current, densities, fofc_densities, sampling) :
-    adopt_init_args(self, locals())
-    if (angle_current < 0) :
-      self.angle_current = 360 + angle_current
-
-  def format_csv (self, fofc=False) :
-    densities = [ "%.3f" % x for x in self.densities ]
-    if (fofc) and (self.fofc_densities is not None) :
-      densities = [ "%.3f" % x for x in self.fofc_densities ]
-    return "chi%d,%.1f,%s" % (self.id, self.angle_current, ",".join(densities))
-
-  def find_peaks (self, threshold=0) :
-    peaks = []
-    # TODO
-
-class ringer_residue (object) :
-  def __init__ (self, resname, chain_id, resid, altloc, n_chi, xyz) :
-    adopt_init_args(self, locals())
-    self._angles = {}
-
-  def format (self) :
-    if (self.altloc == "") :
-      return "%s%2s%s" % (self.resname, self.chain_id, self.resid)
-    else :
-      return "%s%2s%s (conformer %s)" % (self.resname, self.chain_id,
-        self.resid, self.altloc)
-
-  def format_csv (self) :
-    if (self.altloc == "") :
-      prefix = "%s%2s%s," % (self.resname, self.chain_id, self.resid)
-    else :
-      prefix = "%s%2s%s %s," % (self.resname, self.chain_id, self.resid,
-        self.altloc)
-    lines = []
-    for i in range(1, self.n_chi+1) :
-      chi = self.get_angle(i)
-      if (chi is not None) :
-        lines.append(prefix + "2mFo-DFc," + chi.format_csv())
-        if (chi.fofc_densities is not None) :
-          lines.append(prefix + "mFo-DFc," + chi.format_csv(fofc=True))
-    return "\n".join(lines)
-
-  def add_angle (self, **kwds) :
-    chi = ringer_chi(**kwds)
-    self._angles[chi.id] = chi
-
-  def get_angle (self, id) :
-    return self._angles.get(id, None)
-
-def sample_angle (
-    i_seqs,
-    sites_cart,
-    map_coeffs,
-    real_map,
-    difference_map,
-    sigma,
-    angle_start,
-    params,
-    unit_cell=None) :
-  frac_matrix = None
-  if (unit_cell is None) :
-    assert (map_coeffs is not None)
-    unit_cell = map_coeffs.unit_cell()
-  frac_matrix = unit_cell.fractionalization_matrix()
-  assert (params.sampling_method != "direct") or (map_coeffs is not None)
-  from cctbx import maptbx
-  from scitbx.matrix import rotate_point_around_axis
-  point = rotate_point_around_axis(
-    axis_point_1=sites_cart[1],
-    axis_point_2=sites_cart[2],
-    point=sites_cart[3],
-    angle=-angle_start,
-    deg=True)
-  n_degrees = 0
-  densities = []
-  difference_densities = []
-  while (n_degrees < 360) :
-    point = rotate_point_around_axis(
-      axis_point_1=sites_cart[1],
-      axis_point_2=sites_cart[2],
-      point=point,
-      angle=params.sampling_angle,
-      deg=True)
-    point_frac = unit_cell.fractionalize(site_cart=point)
-    rho = rho_fofc = None
-    if (params.sampling_method == "spline") and (map_coeffs is not None) :
-      rho = real_map.tricubic_interpolation(point_frac)
-      if (difference_map is not None) :
-        rho_fofc = difference_map.tricubic_interpolation(point_frac)
-    elif (params.sampling_method == "linear") or (map_coeffs is None) :
-      if (map_coeffs is None) :
-        rho = maptbx.non_crystallographic_eight_point_interpolation(
-          map=real_map,
-          gridding_matrix=frac_matrix,
-          site_cart=point)
-          #allow_out_of_bounds=True)
-      else :
-        rho = real_map.eight_point_interpolation(point_frac)
-        if (difference_map is not None) :
-          rho_fofc = difference_map.eight_point_interpolation(point_frac)
-    else :
-      rho = map_coeffs.direct_summation_at_point(
-        site_frac=point_frac,
-        sigma=sigma).real
-    densities.append(rho)
-    if (rho_fofc is not None) :
-      difference_densities.append(rho_fofc)
-    n_degrees += params.sampling_angle
-  #print densities
-  return densities, difference_densities
-
-class iterate_over_residues (object) :
-  def __init__ (self,
-                pdb_hierarchy,
-                params,
-                map_coeffs=None,
-                difference_map_coeffs=None,
-                ccp4_map=None,
-                unit_cell=None,
-                log=None) :
-    if (log is None) : log = sys.stdout
-    adopt_init_args(self, locals())
-    models = pdb_hierarchy.models()
-    if (len(models) > 1) :
-      raise Sorry("Multi-model PDB files not supported.")
-    self.sigma = self.real_map = self.difference_map = None
-    if (map_coeffs is not None) :
-      self.unit_cell = map_coeffs.unit_cell()
-      if (params.sampling_method == "direct") :
-        self.map_coeffs = self.map_coeffs.expand_to_p1()
-        if (not map_coeffs.anomalous_flag()) :
-          self.map_coeffs = self.map_coeffs.generate_bijvoet_mates()
-      if (params.sampling_method != "direct") or (params.scaling == "sigma") :
-        fft_map = self.map_coeffs.fft_map(resolution_factor=params.grid_spacing)
-        if (params.scaling == "sigma") :
-          self.sigma = fft_map.statistics().sigma()
-          fft_map.apply_sigma_scaling()
-        else :
-          fft_map.apply_volume_scaling()
-        self.real_map = fft_map.real_map_unpadded()
-    else :
-      assert (ccp4_map is not None)
-      print >> self.log, "CCP4 map statistics:"
-      ccp4_map.show_summary(out=self.log, prefix="  ")
-      self.real_map = ccp4_map.data.as_double()
-      # XXX assume that the map is already scaled properly (in the original
-      # unit cell)
-      self.sigma = 1 #ccp4_map.statistics().sigma()
-      # XXX the unit cell that we need for the non-crystallographic
-      # interpolation is not what comes out of the map - it's the
-      self.unit_cell = ccp4_map.grid_unit_cell()
-      # FIXME should use this instead (once it's available)
-      #self.unit_cell = ccp4_map.grid_unit_cell()
-    if (difference_map_coeffs is not None) :
-      if (params.sampling_method == "direct") :
-        self.difference_map_coeffs = self.difference_map_coeffs.expand_to_p1()
-        if (not difference_map_coeffs.anomalous_flag()) :
-          self.difference_map_coeffs = \
-            self.difference_map_coeffs.generate_bijvoet_mates()
-      if (params.sampling_method != "direct") or (params.scaling == "sigma") :
-        fft_map = self.difference_map_coeffs.fft_map(
-          resolution_factor=params.grid_spacing)
-        if (params.scaling == "sigma") :
-          fft_map.apply_sigma_scaling()
-        else :
-          fft_map.apply_volume_scaling()
-        self.difference_map = fft_map.real_map_unpadded()
-    results = []
-    from mmtbx.rotamer import sidechain_angles
-    self.angle_lookup = sidechain_angles.SidechainAngles(False)
-    self.sites_cart = pdb_hierarchy.atoms().extract_xyz()
-    self.residue_groups = []
-    for chain in models[0].chains() :
-      self.residue_groups.extend(chain.residue_groups())
-    if (params.nproc in [None,Auto]) or (params.nproc > 1) :
-      # this will be a list of lists
-      results_ = easy_mp.pool_map(
-        processes=params.nproc,
-        fixed_func=self.sample_density,
-        args=range(len(self.residue_groups)))
-      # now flatten it out
-      self.results = []
-      for result_list in results_ : self.results.extend(result_list)
-    else :
-      self.results = []
-      for i_res in range(len(self.residue_groups)) :
-        self.results.extend(self.sample_density(i_res, verbose=True))
-
-  def sample_density (self, i_res, verbose=False) :
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
-    residue_group = self.residue_groups[i_res]
-    conformers = residue_group.conformers()
-    results = []
-    for i_conf, conformer in enumerate(residue_group.conformers()) :
-      if (i_conf > 0) and (self.params.skip_alt_confs) :
-        continue
-      residue = conformer.only_residue()
-      if (get_class(residue.resname) == "common_amino_acid") :
-        n_chi = int(self.angle_lookup.chisPerAA.get(residue.resname.lower(),0))
-        if (n_chi == 0) : continue
-        xyz = None
-        for atom in residue.atoms() :
-          if (atom.name.strip() == "CA") :
-            xyz = atom.xyz
-            break
-        res_out = ringer_residue(
-          #residue_id_str=residue.id_str(),
-          resname=residue.resname,
-          chain_id=residue_group.parent().id,
-          resid=residue.resid(),
-          altloc=conformer.altloc,
-          n_chi=n_chi,
-          xyz=xyz)
-        if (verbose) :
-          print >> self.log, "  %s:" % residue.id_str()
-        for i in range(1, n_chi+1) :
-          try :
-            atoms = self.angle_lookup.extract_chi_atoms("chi%d" % i, residue)
-          except AttributeError :
-            pass
-          else :
-            if (atoms is None) :
-              break
-            i_seqs = [ atom.i_seq for atom in atoms ]
-            sites_chi = [ self.sites_cart[i_seq] for i_seq in i_seqs ]
-            from cctbx.geometry_restraints import dihedral
-            chi = dihedral(
-              sites=sites_chi,
-              angle_ideal=0,
-              weight=0)
-            if (verbose) :
-              print >> self.log, "    chi%d = %.1f" % (i, chi.angle_model)
-            densities, fofc_densities = sample_angle(
-              i_seqs=i_seqs,
-              sites_cart=sites_chi,
-              map_coeffs=self.map_coeffs,
-              real_map=self.real_map,
-              difference_map=self.difference_map,
-              unit_cell=self.unit_cell,
-              angle_start=chi.angle_model,
-              sigma=self.sigma,
-              params=self.params)
-            if (len(fofc_densities) == 0) :
-              fofc_densities = None
-            else :
-              assert (len(fofc_densities) == len(densities))
-            if (verbose) : pass
-            res_out.add_angle(
-              id=i,
-              angle_current=chi.angle_model,
-              densities=densities,
-              fofc_densities=fofc_densities,
-              sampling=self.params.sampling_angle)
-        results.append(res_out)
-    return results
 
 def run (args, out=None, verbose=True) :
   t0 = time.time()
