@@ -3939,8 +3939,14 @@ refinement.pdb_interpretation {
     r2 = a2.parent()
     r1n = get_one_letter_rna_dna_name(r1.resname)
     r2n = get_one_letter_rna_dna_name(r2.resname)
-    assert r1n is not None
-    assert r2n is not None
+
+    message_template = "Residue with name '%s' cannot be processed "
+    message_template += "automatically \nfor nucleic acid basepair restraints "
+    message_template += "because of non-standard residue name."
+    if r1n is None:
+      raise Sorry(message_template % r1.resname)
+    if r2n is None:
+      raise Sorry(message_template % r2.resname)
     # Translate DNA resname to RNA for unification
     # RNA
     if r1n > r2n:
