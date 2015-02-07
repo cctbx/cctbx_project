@@ -32,7 +32,7 @@ maximum_inter_residue_links = {
   ("common_saccharide", "metal") : 3,
   #("common_element",    "common_saccharide") : 3,
   ("common_rna_dna",    "metal") : 2,
-  ("common_rna_dna","common_rna_dna") : 5  # for basepairing
+  ("common_rna_dna",    "common_rna_dna") : 5  # for basepairing
   }
 #
 skip_if_both = [
@@ -77,9 +77,10 @@ def update_skip_if_longer(amino_acid_bond_cutoff,
     ("common_amino_acid", "common_amino_acid") : amino_acid_bond_cutoff**2,
     ("common_amino_acid", "other")             : intra_residue_bond_cutoff**2,
     #
-    ("common_rna_dna", "common_rna_dna") : rna_dna_bond_cutoff**2,
-    ("common_rna_dna", "metal")          : metal_coordination_cutoff**2,
-    ("common_rna_dna", "other")          : other_bond_cutoff**2,
+    ("common_rna_dna",       "common_rna_dna") : rna_dna_bond_cutoff**2,
+    ("common_rna_dna",       "metal")          : metal_coordination_cutoff**2,
+    ("common_rna_dna",       "other")          : other_bond_cutoff**2,
+    ("ccp4_mon_lib_rna_dna", "other")          : other_bond_cutoff**2,
     #
     ("common_amino_acid", "common_saccharide") : saccharide_bond_cutoff**2,
     ("common_saccharide", "common_saccharide") : saccharide_bond_cutoff**2,
@@ -92,9 +93,9 @@ def update_skip_if_longer(amino_acid_bond_cutoff,
     #
     #
     ("common_amino_acid", "common_rna_dna") : amino_acid_bond_cutoff**2,
-    ("common_rna_dna", "common_small_molecule") : other_bond_cutoff**2,
+    ("common_rna_dna",    "common_small_molecule") : other_bond_cutoff**2,
     ("common_amino_acid", "common_small_molecule") : amino_acid_bond_cutoff*other_bond_cutoff,
-    ("other", "common_small_molecule") : amino_acid_bond_cutoff*other_bond_cutoff,
+    ("other",             "common_small_molecule") : amino_acid_bond_cutoff*other_bond_cutoff,
     #
     ("metal", "metal") : metal_coordination_cutoff**2,
     }
