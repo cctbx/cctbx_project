@@ -83,10 +83,10 @@ integration {
       .help = function call is placed in the correct principle value region.
       .help = choice of "False" preserves the ability to roll back program behavior
       .help = as promised to the Nature Methods editor.
-    domain_size_lower_limit = 0
+    domain_size_lower_limit = 10
       .type = float
-      .help = Mosaic blocks must be at least this many unit cells on edge.
-      .help = Default 0, same as assuming infinite crystal, domain size not modeled upon entering algorithm.
+      .help = Mosaic blocks must be at least this many unit cells on edge (refers to cube-root of cell volume)
+      .help = used in simple_integration.py as an initial value
       .help = too-small value predicts too many spots, leading to misindexing.
       .help = too-large value doesn't predict enough spots
       .help = choose lowest value physically reasonable, 10 unit cells.
