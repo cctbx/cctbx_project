@@ -354,8 +354,8 @@ class refinement(refinement_base):
         print "output",1./M.x[0], M.x[1]*180./math.pi
         tan_phi_rad_ML = helper.last_set_orientation.unit_cell().d(OO.reserve_indices) / (2. / M.x[0])
         tan_phi_deg_ML = tan_phi_rad_ML * 180./math.pi
-        # XXX My personal copy had this:  WHY??? tan_outer_deg_ML = tan_phi_deg_ML + 0.5*M.x[1]*180./math.pi
-        tan_outer_deg_ML = tan_phi_deg_ML + M.x[1]*180./math.pi
+        # bugfix: Need factor of 0.5 because the plot shows half mosaicity (displacement from the center point defined as zero)
+        tan_outer_deg_ML = tan_phi_deg_ML + 0.5*M.x[1]*180./math.pi
 
       if OO.parent.horizons_phil.integration.mosaic.enable_polychromatic:
         # add code here to perform polychromatic modeling.
@@ -436,12 +436,22 @@ class refinement(refinement_base):
       else:
         print
       if OO.parent.horizons_phil.integration.mosaic.enable_AD14F7B: # Excursion vs resolution fit
+        AD1TF7B_MAX2T = 30.
+        AD1TF7B_MAXDP = 1.
         from matplotlib import pyplot as plt
         plt.plot(two_thetas, final, "bo")
+        mean = flex.mean(final)
+        minplot = flex.min(two_thetas)
+        plt.plot([0,minplot],[mean,mean],"k-")
+        LR = flex.linear_regression(two_thetas, final)
+        #LR.show_summary()
+        model_y = LR.slope()*two_thetas + LR.y_intercept()
+        plt.plot(two_thetas, model_y, "k-")
         print helper.last_set_orientation.unit_cell()
         #for sdp,tw in zip (dspacings,two_thetas):
           #print sdp,tw
         if OO.mosaic_refinement_target=="ML":
+          plt.title("ML: mosaicity FW=%4.2f deg, Dsize=%5.0fA on %d spots"%(M.x[1]*180./math.pi, 2./M.x[0], len(two_thetas)))
           plt.plot(two_thetas, tan_phi_deg_ML, "r.")
           plt.plot(two_thetas, -tan_phi_deg_ML, "r.")
           plt.plot(two_thetas, tan_outer_deg_ML, "g.")
@@ -455,8 +465,8 @@ class refinement(refinement_base):
           plt.plot(two_thetas, -tan_phi_deg, "r.")
           plt.plot(two_thetas, tan_outer_deg, "g.")
           plt.plot(two_thetas, -tan_outer_deg, "g.")
-        plt.xlim([0,30])
-        plt.ylim([-1.,1.])
+        plt.xlim([0,AD1TF7B_MAX2T])
+        plt.ylim([-AD1TF7B_MAXDP,AD1TF7B_MAXDP])
         plt.show()
 
       if OO.mosaic_refinement_target=="ML":
