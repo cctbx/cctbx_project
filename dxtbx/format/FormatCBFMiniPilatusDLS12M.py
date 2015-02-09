@@ -147,7 +147,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       slow = matrix.col((0, math.sin(angle), - math.cos(angle)))
       normal = fast.cross(slow)
       # for longer wavelength data sets move 192.3 below to 184.9
-      if math.fabs(wavelength - 0.953730) - 0.00001:
+      if wavelength < 1.128:
         off_x = 191.9
       else:
         off_x = 184.9
@@ -176,7 +176,6 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         for i in range(5):
           p = detector.add_panel()
           origin = row_origin + i * (487+7) * 0.172 * fast
-          #print i, origin
 
           # OBS! you need to set the panel to a root before set local frame...
           root.add_panel(p)
