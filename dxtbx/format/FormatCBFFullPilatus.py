@@ -71,6 +71,9 @@ class FormatCBFFullPilatus(FormatCBFFull):
       thickness = float(m.group(2)) * 1000
       material = m.group(1)
 
+      if material == 'Silicon':
+        material = 'Si'
+
       for panel in detector:
         panel.set_thickness(thickness)
         panel.set_material(material)
