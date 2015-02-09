@@ -4,8 +4,7 @@ import os
 import sys
 import subprocess
 import optparse
-import getpass
-import urllib
+#import getpass
 import urlparse
 
 # To download this file:
@@ -253,19 +252,19 @@ class xfel_regression_module(SourceModule):
 # Duke repositories
 class probe_module(SourceModule):
   module = 'probe'
-  anonymous = ['svn', 'https://github.com/rlabduke/probe.git']
+  anonymous = ['svn', 'https://github.com/rlabduke/probe.git/trunk']
 
 class suitename_module(SourceModule):
   module = 'suitename'
-  anonymous = ['svn', 'https://github.com/rlabduke/suitename.git']
+  anonymous = ['svn', 'https://github.com/rlabduke/suitename.git/trunk']
 
 class reduce_module(SourceModule):
   module = 'reduce'
-  anonymous = ['svn', 'https://github.com/rlabduke/reduce.git']
+  anonymous = ['svn', 'https://github.com/rlabduke/reduce.git/trunk']
 
 class king_module(SourceModule):
   module = 'king'
-  anonymous = ['svn', 'https://github.com/rlabduke/phenix_king_binaries.git']
+  anonymous = ['svn', 'https://github.com/rlabduke/phenix_king_binaries.git/trunk']
 
 MODULES = SourceModule()
 
@@ -302,7 +301,9 @@ class Builder(object):
       distribute=False,
       auth=None,
       with_python=None,
+      nproc=4,
     ):
+    if nproc is None: nproc=4
     """Create and add all the steps."""
     # self.cciuser = cciuser or getpass.getuser()
     self.set_auth(auth)
@@ -345,7 +346,7 @@ class Builder(object):
     # Configure, make
     if build:
       self.add_configure()
-      self.add_make()
+      self.add_make(nproc=nproc)
       self.add_install()
 
     # Tests, tests
@@ -404,6 +405,11 @@ class Builder(object):
   def add_step(self, step):
     """Add a step."""
     self.steps.append(step)
+    if 0:
+      print "commands "*8
+      for step in self.steps:
+        print " ".join(step.get_command())
+      print "commands "*8
 
   def add_module(self, module):
     method, url = MODULES.get_module(module)().get_url(auth=self.get_auth())
@@ -521,9 +527,10 @@ class Builder(object):
       workdir=['build']
     ))
 
-  def add_make(self):
+  def add_make(self, nproc=4):
     # Todo: nproc=auto
-    self.add_command('libtbx.scons', args=['-j','4'])
+    assert nproc
+    self.add_command('libtbx.scons', args=['-j', str(nproc)])
 
   def add_install(self):
     """Run after compile, before tests."""
@@ -685,31 +692,34 @@ class PhenixBuilder(CCIBuilder):
 
 def run(root=None):
   usage = """Usage: %prog [options] [actions]
-  
+
   You may specify one or more actions:
     hot - Update static sources (boost, scons, etc.)
     update - Update source repositories (cctbx, cbflib, etc.)
     base - Build base dependencies (python, hdf5, wxWidgets, etc.)
     build - Build
     tests - Run tests
-    
+
   The default action is to run: hot, update, base, build
-    
+
   You can specify which package will be downloaded, configured,
   and built with "--builder". Current builders:
     cctbx, phenix, xfel, dials, labelit
-    
-  You can provide your SourceForge username with "--sfuser", and 
+
+  You can provide your SourceForge username with "--sfuser", and
   your CCI SVN username with "--cciuser". These will checkout
   and update repositories with your credentials. Some builders,
   like phenix, require this argument for access to certain
   repositories.
-  
-  Finally, you may specify a specific Python interpreter 
+
+  You can provide the number of processes to use in compilation
+  using "--nproc".
+
+  Finally, you may specify a specific Python interpreter
   using "--with-python".
-  
+
   Example:
-  
+
     python bootstrap.py --builder=cctbx --sfuser=ianrees hot update build tests
 
   """
@@ -719,8 +729,9 @@ def run(root=None):
   parser.add_option("--cciuser", help="CCI SVN username.")
   parser.add_option("--sfuser", help="SourceForge SVN username.")
   parser.add_option("--with-python", dest="with_python", help="Use specified Python interpreter")
+  parser.add_option("--nproc", help="# processes in compile step.")
   options, args = parser.parse_args()
-  
+
   # Root dir
   # options.root = options.root or root
 
@@ -765,6 +776,7 @@ def run(root=None):
     base=('base' in actions),
     build=('build' in actions),
     tests=('tests' in actions),
+    nproc=options.nproc,
   ).run()
 
 if __name__ == "__main__":
