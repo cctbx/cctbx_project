@@ -972,26 +972,28 @@ class test_nonbonded_overlaps(unittest.TestCase):
 
   def test_cryst1_records_maintained(self):
     """ make sure CRYST1 records are not changed when adding H"""
-    # test when using a file
-    pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
-        file_name=self.file_name2,
-        allow_multiple_models=False,
-        log=null_out())
-    cryst1_1 = [x for x in raw_records7 if 'CRYST1' in x]
-    cryst1_2 = [x for x in pdb_with_h if 'CRYST1' in x]
-    self.assertEqual(cryst1_1,cryst1_2)
+    if libtbx.env.has_module(name="reduce") :
+      pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
+          file_name=self.file_name2,
+          allow_multiple_models=False,
+          log=null_out())
+      cryst1_1 = [x for x in raw_records7 if 'CRYST1' in x]
+      cryst1_2 = [x for x in pdb_with_h if 'CRYST1' in x]
+      self.assertEqual(cryst1_1,cryst1_2)
 
-    # test when using hierarchy
-    pdb_inp = iotbx.pdb.input(file_name=self.file_name2)
-    ph = pdb_inp.construct_hierarchy()
-    pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
-        pdb_hierarchy=ph,
-        crystal_symmetry=pdb_inp.crystal_symmetry(),
-        allow_multiple_models=False,
-        log=null_out())
-    cryst1_1 = [x for x in raw_records7 if 'CRYST1' in x]
-    cryst1_2 = [x for x in pdb_with_h if 'CRYST1' in x]
-    self.assertEqual(cryst1_1,cryst1_2)
+      # test when using hierarchy
+      pdb_inp = iotbx.pdb.input(file_name=self.file_name2)
+      ph = pdb_inp.construct_hierarchy()
+      pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
+          pdb_hierarchy=ph,
+          crystal_symmetry=pdb_inp.crystal_symmetry(),
+          allow_multiple_models=False,
+          log=null_out())
+      cryst1_1 = [x for x in raw_records7 if 'CRYST1' in x]
+      cryst1_2 = [x for x in pdb_with_h if 'CRYST1' in x]
+      self.assertEqual(cryst1_1,cryst1_2)
+    else:
+      pass
 
   def test_abort_when_bad_cryst_records(self):
     """
