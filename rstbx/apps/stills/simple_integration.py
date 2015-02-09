@@ -85,7 +85,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
      lower_limit_domain_size = math.pow(
        self.inputai.getOrientation().unit_cell().volume(),
-       1./3.)*10 # 10-unit cell block size minimum reasonable domain
+       1./3.)*self.horizons_phil.integration.mosaic.domain_size_lower_limit # default 10-unit cell block size minimum reasonable domain
      actual_used_domain_size = kwargs.get("domain_size_ang",lower_limit_domain_size)
      if cb_op_to_primitive==None:
 
@@ -202,6 +202,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     for pred in self.predicted: # predicted spot coord in pixels
       query.append(pred[0]/pxlsz)
       query.append(pred[1]/pxlsz)
+    self.reserve_hkllist_for_signal_search = self.hkllist
 
     reference = flex.double()
     spots = self.get_observations_with_outlier_removal()
