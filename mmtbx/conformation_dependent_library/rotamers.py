@@ -260,7 +260,11 @@ def update_restraints(hierarchy,
                   i_seqs.append(atom.i_seq)
                   break
             i_seqs_restraints[tuple(i_seqs)] = values
+            i_seqs.reverse()
+            i_seqs_restraints[tuple(i_seqs)] = values
             if names in defaults:
+              i_seqs_restraints_reverse[tuple(i_seqs)] = defaults[names]
+              i_seqs.reverse()
               i_seqs_restraints_reverse[tuple(i_seqs)] = defaults[names]
   #
   count = _set_or_reset_dihedral_restraints(geometry,
