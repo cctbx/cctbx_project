@@ -2,7 +2,6 @@ from __future__ import division
 from cctbx.array_family import flex
 import scitbx.rigid_body
 import scitbx.lbfgs
-from mmtbx.utils import rotatable_bonds
 from libtbx import adopt_init_args
 import iotbx.pdb
 import mmtbx.refinement.real_space
@@ -99,10 +98,13 @@ class run(object):
         if(atom.name.strip() in self.backbone_atom_names):
           use_in_target_selection.append(counter)
         counter += 1
-      return mmtbx.refinement.real_space.fit_residue.cluster(
+      return mmtbx.refinement.real_space.cluster(
         axis            = axis,
         atoms_to_rotate = atoms_to_rotate,
-        selection       = use_in_target_selection)
+        selection       = use_in_target_selection,
+        start = 0,
+        stop = 360,
+        step=1)
     cl = get_cluster(self)
     residue_sites_cart = self.residue.atoms().extract_xyz()
     scorer.reset_with(
@@ -117,10 +119,7 @@ class run(object):
     mmtbx.refinement.real_space.torsion_search(
       clusters   = [cl],
       sites_cart = residue_sites_cart,
-      scorer     = scorer,
-      start      = angle_start,
-      stop       = angle_end,
-      step       = 1)
+      scorer     = scorer)
     self.residue.atoms().set_xyz(new_xyz=scorer.sites_cart)
     selection = self.residue.atoms().extract_i_seq()
     sites_cart_poor = self.xray_structure.sites_cart()
@@ -160,17 +159,6 @@ def get_rotamer_iterator(mon_lib_srv, residue):
     return None
   return rotamer_iterator
 
-class cluster(object):
-  def __init__(self,
-               axis,
-               atoms_to_rotate,
-               vector=None,
-               selection=None,
-               start=None,
-               stop=None,
-               step=None):
-    adopt_init_args(self, locals())
-
 class manager(object):
   def __init__(self,
                target_map,
@@ -198,44 +186,9 @@ class manager(object):
                log                        = None):
     adopt_init_args(self, locals())
     if(self.log is None): self.log = sys.stdout
-    if (not allow_modified_residues) :
+    if(not allow_modified_residues):
       get_class = iotbx.pdb.common_residue_names_get_class
       assert get_class(residue.resname) == "common_amino_acid", residue.resname
-    self.vector_selections = None
-    self.clusters = None
-    self.axes_and_atoms_aa_specific = None
-    if(use_torsion_search): self.clusters = self.define_clusters()
-    if(use_slope): self.get_vector()
-    self.fit(debug=debug)
-
-  def define_clusters(self):
-    # XXX could be a place to exclude H
-    result = []
-    backrub_axis  = []
-    backrub_atoms_to_rotate = []
-    backrub_atoms_to_evaluate = []
-    counter = 0 # XXX DOES THIS RELY ON ORDER?
-    if(self.backbone_sample):
-      for atom in self.residue.atoms():
-        if(atom.name.strip().upper() in ["N", "C"]):
-          backrub_axis.append(counter)
-        else:
-          backrub_atoms_to_rotate.append(counter)
-        if(atom.name.strip().upper() in ["CA", "O", "CB"]):
-          backrub_atoms_to_evaluate.append(counter)
-        counter += 1
-      result.append(cluster(
-        axis            = backrub_axis,
-        atoms_to_rotate = backrub_atoms_to_rotate,
-        selection       = backrub_atoms_to_evaluate,
-        start           = self.torsion_search_backrub_start,
-        stop            = self.torsion_search_backrub_stop,
-        step            = self.torsion_search_backrub_step))
-    self.axes_and_atoms_aa_specific = \
-      rotatable_bonds.axes_and_atoms_aa_specific(
-        residue     = self.residue,
-        mon_lib_srv = self.mon_lib_srv,
-        log         = self.log)
     if(self.use_torsion_search):
       start = self.torsion_search_all_start
       stop  = self.torsion_search_all_stop
@@ -244,37 +197,18 @@ class manager(object):
       start = self.torsion_search_local_start
       stop  = self.torsion_search_local_stop
       step  = self.torsion_search_local_step
-    if(self.axes_and_atoms_aa_specific is not None):
-      for i_aa, aa in enumerate(self.axes_and_atoms_aa_specific):
-        if(i_aa == len(self.axes_and_atoms_aa_specific)-1):
-          result.append(cluster(
-            axis            = aa[0],
-            atoms_to_rotate = aa[1],
-            selection       = flex.size_t(aa[1]),
-            start           = start,
-            stop            = stop,
-            step            = step))
-        else:
-          result.append(cluster(
-            axis            = aa[0],
-            atoms_to_rotate = aa[1],
-            selection       = flex.size_t([aa[1][0]]),
-            start           = start,
-            stop            = stop,
-            step            = step))
-    return result
-
-  def get_vector(self):
-    self.vector_selections = []
-    if(self.axes_and_atoms_aa_specific is not None and self.clusters is not None):
-      for i_aa, aa in enumerate(self.axes_and_atoms_aa_specific):
-        for aa_ in aa[0]:
-          if(not aa_ in self.vector_selections):
-            self.vector_selections.append(aa_)
-      self.vector_selections.append(
-        self.clusters[len(self.clusters)-1].atoms_to_rotate)
-      for cl in self.clusters:
-        cl.vector = self.vector_selections
+    self.clusters = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
+      residue         = self.residue,
+      mon_lib_srv     = self.mon_lib_srv,
+      backbone_sample = self.backbone_sample,
+      torsion_search_backbone_start  = torsion_search_backrub_start,
+      torsion_search_backbone_stop   = torsion_search_backrub_stop,
+      torsion_search_backbone_step   = torsion_search_backrub_step,
+      torsion_search_sidechain_start = start,
+      torsion_search_sidechain_stop  = stop,
+      torsion_search_sidechain_step  = step).clusters
+    self.vector_selections = self.clusters[0].vector
+    self.fit(debug=debug)
 
   def get_scorer(self, vector=None, use_binary=False, use_clash_filter=False):
     return mmtbx.refinement.real_space.score(
