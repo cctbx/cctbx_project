@@ -11,6 +11,7 @@ import iotbx.pdb
 from libtbx.utils import Sorry
 from cctbx import adptbx
 import sys
+from copy import deepcopy
 
 random.seed(2679941)
 
@@ -150,7 +151,8 @@ def truncate(m, eps_string="%.6f"):
   elif(type(m) is flex.double):
     return flex.double([float(eps_string%i) for i in m])
   else:
-    assert type(m) is matrix.sqr
+    if(not type(m) is matrix.sqr):
+      raise Sorry("truncate: arg must be matrix.sqr")
     x = [m[0],m[1],m[2], m[3],m[4],m[5], m[6],m[7],m[8]]
     x_ = []
     for xi in x: x_.append(float(eps_string%xi))
@@ -160,14 +162,16 @@ def truncate(m, eps_string="%.6f"):
        x_[6], x_[7], x_[8]])
 
 class decompose_tls(object):
-  def __init__(self, T, L, S, log=sys.stdout):
+  def __init__(self, T, L, S, log=sys.stdout, eps=1.e-6, self_check_eps=1.e-5,
+               force_t_S=None):
     """
     Decompose TLS matrices into physically iterpretable components.
     """
     self.log = log
     self.ff = "%12.9f"
-    self.eps = 1.e-9
-    self.is_pd = adptbx.is_positive_definite
+    self.eps = eps
+    self.self_check_eps = self_check_eps
+    self.force_t_S = force_t_S
     print >> self.log, "Small is defined as:", self.eps
     self.T_M, self.L_M, self.S_M = T, L, S
     print_step("Input TLS matrices:", self.log)
@@ -213,10 +217,10 @@ class decompose_tls(object):
     Diagonalization of L matrix.
     """
     # check input matrices T_M>=0 and L_M>=0:
-    if(not self.is_pd(self.T_M.as_sym_mat3(), self.eps)):
-      raise Sorry("T must be positive definite.")
-    if(not self.is_pd(self.L_M.as_sym_mat3(), self.eps)):
-      raise Sorry("L must be positive definite.")
+    if(not self.is_pd(self.T_M.as_sym_mat3())):
+      raise Sorry("Step A: Input T_M must be positive definite.")
+    if(not self.is_pd(self.L_M.as_sym_mat3())):
+      raise Sorry("Step A: Input L_M must be positive definite.")
     print_step("Step A:", self.log)
     es = self.eigen_system_default_handler(m=self.L_M, suffix="L_M")
     self.l_x, self.l_y, self.l_z = es.x, es.y, es.z
@@ -252,20 +256,20 @@ class decompose_tls(object):
     wx_lz=0
     wy_lz=0
     if(self.is_zero(self.Lxx)):
-      if(not self.is_zero(self.S_L[2]) and not self.is_zero(self.S_L[1])):
-        raise Sorry("Step B: incompatible L and S matrices.")
+      if(not (self.is_zero(self.S_L[2]) and self.is_zero(self.S_L[1]))):
+        raise Sorry("Step B: incompatible L_L and S_L matrices.")
     else:
       wy_lx =-self.S_L[2]/self.Lxx
       wz_lx = self.S_L[1]/self.Lxx
     if(self.is_zero(self.Lyy)):
-      if(not self.is_zero(self.S_L[5]) and not self.is_zero(self.S_L[3])):
-        raise Sorry("Step B: incompatible L and S matrices.")
+      if(not (self.is_zero(self.S_L[5]) and self.is_zero(self.S_L[3]))):
+        raise Sorry("Step B: incompatible L_L and S_L matrices.")
     else:
       wx_ly = self.S_L[5]/self.Lyy
       wz_ly =-self.S_L[3]/self.Lyy
     if(self.is_zero(self.Lzz)):
-      if(not self.is_zero(self.S_L[7]) and not self.is_zero(self.S_L[6])):
-        raise Sorry("Step B: incompatible L and S matrices.")
+      if(not (self.is_zero(self.S_L[7]) and self.is_zero(self.S_L[6]))):
+        raise Sorry("Step B: incompatible L_L and S_L matrices.")
     else:
       wx_lz =-self.S_L[7]/self.Lzz
       wy_lz = self.S_L[6]/self.Lzz
@@ -299,8 +303,8 @@ class decompose_tls(object):
     self.T_CL = self.T_L - self.D_WL
     self.T_CL = truncate(m=matrix.sqr(self.T_CL), eps_string="%.5f")
     self.show_matrix(x=self.T_CL, title="T_CL")
-    if(not self.is_pd(self.T_CL.as_sym_mat3(), self.eps)):
-      raise Sorry("T_CL must be positive definite.")
+    if(not self.is_pd(self.T_CL.as_sym_mat3())):
+      raise Sorry("Step B: T_CL must be positive definite.")
 
   def step_C(self):
     """
@@ -312,7 +316,18 @@ class decompose_tls(object):
     tlxx = self.T_CLxx*self.Lxx
     tlyy = self.T_CLyy*self.Lyy
     tlzz = self.T_CLzz*self.Lzz
-    if(tlxx < 0 or tlyy < 0 or tlzz < 0): raise Sorry("Cannot evaluate (25).")
+    #
+    c1 = tlxx-self.Sxx**2
+    c2 = tlyy-self.Syy**2
+    c3 = tlzz-self.Szz**2
+    if(self.force_t_S is not None):
+      if(not ((c1 > 0 or self.is_zero(c1)) and
+              (c2 > 0 or self.is_zero(c2)) and
+              (c3 > 0 or self.is_zero(c3)))):
+        raise Sorry("Step C: Cauchy conditions broken (23).")
+    #
+    if(tlxx < 0 or tlyy < 0 or tlzz < 0):
+      raise Sorry("Step C: Cannot evaluate (25).")
     t_min_C = truncate(m=max(
       self.Sxx-math.sqrt(tlxx),
       self.Syy-math.sqrt(tlyy),
@@ -329,7 +344,9 @@ class decompose_tls(object):
     #
     # Left branch
     #
-    if(not self.is_zero(self.Lxx*self.Lyy*self.Lzz)):
+    if(not (self.is_zero(self.Lxx) or
+            self.is_zero(self.Lyy) or
+            self.is_zero(self.Lzz))):
       t_0 = self.S_L.trace()/3.
       self.show_number(x=t_0, title="t_0 (21):")
       # compose T_lambda and find tau_max (30)
@@ -343,13 +360,15 @@ class decompose_tls(object):
       assert vals[0]>=vals[1]>=vals[2]
       tau_max = vals[0]
       # (32)
-      if(tau_max < 0): raise Sorry("Cannot evaluate (32): tau_max<0.")
+      if(tau_max < 0):
+        raise Sorry("Step C (left branch): Cannot evaluate (32): tau_max<0.")
       t_min_tau = max(self.Sxx,self.Syy,self.Szz)-math.sqrt(tau_max)
       t_max_tau = min(self.Sxx,self.Syy,self.Szz)+math.sqrt(tau_max)
       self.show_number(x=[t_min_tau, t_max_tau], title="t_min_tau, t_max_tau (32):")
       # (40-41):
       arg = t_0**2 + (t11+t22+t33)/3. - (self.Sxx**2+self.Syy**2+self.Szz**2)/3.
-      if(arg < 0): raise Sorry("Cannot evaluate (41): arg<0.")
+      if(arg < 0):
+        raise Sorry("Step C (left branch): Cannot evaluate (41): arg<0.")
       t_a = math.sqrt(arg)
       self.show_number(x=t_a, title="t_a (41):")
       t_min_a = t_0-t_a
@@ -358,12 +377,13 @@ class decompose_tls(object):
       # compute t_min, t_max - this is step b)
       t_min = truncate(m=max(t_min_C, t_min_tau, t_min_a))
       t_max = truncate(m=min(t_max_C, t_max_tau, t_max_a))
-      if  (t_min > t_max): raise Sorry("No solution: t_min > t_max.")
+      if  (t_min > t_max):
+        raise Sorry("Step C (left branch): No solution at step b.")
       elif(self.is_zero(t_min-t_max)):
         _, b_s, c_s = self.as_bs_cs(t=t_min, txx=t11,tyy=t22,tzz=t33,
           txy=t12,tyz=t23,tzx=t13)
         if(b_s >= 0 and c_s <= 0): self.t_S = t_min
-        else: raise Sorry("No solution at step c).")
+        else: raise Sorry("Step C (left branch): No solution at step c.")
       elif(t_min < t_max):
         step = (t_max-t_min)/100000.
         target = 1.e+9
@@ -378,6 +398,8 @@ class decompose_tls(object):
               self.t_S = t_S_best
           t_S_best += step
         assert self.t_S <= t_max
+        if(self.t_S is None):
+          raise Sorry("Step C (left branch): No solution at step d.")
         self.t_S = truncate(self.t_S)
     #
     # Right branch, Section 4.4
@@ -391,7 +413,7 @@ class decompose_tls(object):
           cp2 = (self.S_L[k] - t_S)**2 - self.T_CL[k]*self.L_L[k]
           if( not ((cp1 < 0 or self.is_zero(cp1)) and
                    (cp2 < 0 or self.is_zero(cp2))) ):
-            raise Sorry("Cauchy condition failed, (23).")
+            raise Sorry("Step C (right branch): Cauchy condition failed (23).")
           a_s, b_s, c_s = self.as_bs_cs(t=t_S, txx=t11,tyy=t22,tzz=t33,
             txy=t12,tyz=t23,tzx=t13)
           self.check_37_38_39(a_s=a_s, b_s=b_s, c_s=c_s)
@@ -402,6 +424,7 @@ class decompose_tls(object):
       cauchy_conditions(i=4,j=0,k=8, tSs=tSs)
       cauchy_conditions(i=8,j=0,k=4, tSs=tSs)
       if(len(tSs)==1): self.t_S = tSs[0]
+      elif(len(tSs)==0): raise Sorry("Step C (right branch): no solution.")
       else:
         self.t_S = tSs[0]
         for tSs_ in tSs[1:]:
@@ -409,8 +432,11 @@ class decompose_tls(object):
             assert 0
     # end-of-procedure check, then truncate
     if(self.t_S is None):
-      raise Sorry("Step C did not yield a solution.")
+      raise Sorry("Step C (overall): no solution.")
     self.t_S = truncate(m=self.t_S)
+    # override with provided value
+    if(self.force_t_S is not None):
+      self.t_S = self.force_t_S
     #
     # At this point t_S is found or procedure terminated earlier.
     #
@@ -424,15 +450,18 @@ class decompose_tls(object):
     self.show_matrix(x=self.S_C, title="S_C, (26)")
     # find sx_bar, sy_bar, sz_bar
     if(self.is_zero(self.Lxx)):
-      if(not self.is_zero(self.S_C[0])): raise Sorry("L_L_xx=0: S_C_xx != 0")
+      if(not self.is_zero(self.S_C[0])):
+        raise Sorry("Step C: incompatible L_L and S_C matrices.")
     else:
       self.sx_bar = truncate(m=self.S_C[0]/self.Lxx)
     if(self.is_zero(self.Lyy)):
-      if(not self.is_zero(self.S_C[4])): raise Sorry("L_L_yy=0: S_C_yy != 0")
+      if(not self.is_zero(self.S_C[4])):
+        raise Sorry("Step C: incompatible L_L and S_C matrices.")
     else:
       self.sy_bar = truncate(m=self.S_C[4]/self.Lyy)
     if(self.is_zero(self.Lzz)):
-      if(not self.is_zero(self.S_C[8])): raise Sorry("L_L_zz=0: S_C_zz != 0")
+      if(not self.is_zero(self.S_C[8])):
+        raise Sorry("Step C: incompatible L_L and S_C matrices.")
     else:
       self.sz_bar = truncate(m=self.S_C[8]/self.Lzz)
     self.show_number(x=[self.sx_bar,self.sy_bar,self.sz_bar],
@@ -443,9 +472,11 @@ class decompose_tls(object):
                              0, self.sy_bar*self.S_C[4],                       0,
                              0,                       0, self.sz_bar*self.S_C[8]])
     self.C_L_t_S = truncate(m=self.C_L_t_S)
-    self.show_matrix(x=self.C_L_t_S, title="C_L(t_S), (26)")
+    self.show_matrix(x=self.C_L_t_S, title="C_L(t_S) (26)")
     self.V_L = truncate(m=matrix.sqr(self.T_CL - self.C_L_t_S))
-    self.show_matrix(x=self.V_L, title="V_L, (26-27)")
+    self.show_matrix(x=self.V_L, title="V_L (26-27)")
+    if(not self.is_pd(self.V_L.as_sym_mat3())):
+      raise Sorry("Step C: V_L (26-27) must be positive.")
 
   def step_D(self):
     """
@@ -459,7 +490,7 @@ class decompose_tls(object):
     self.show_vector(x=self.v_y, title="v_y")
     self.show_vector(x=self.v_z, title="v_z")
     if(min(es.vals)<0):
-      raise Sorry("Step D: all eigenvalues of V must be nonnegative.")
+      raise Sorry("Step D: all eigenvalues of V_L must be nonnegative.")
     R = matrix.sqr(
       [self.v_x[0], self.v_y[0], self.v_z[0],
        self.v_x[1], self.v_y[1], self.v_z[1],
@@ -478,7 +509,7 @@ class decompose_tls(object):
     if(not ((a_s<0 or self.is_zero(a_s)) and
             (b_s>0 or self.is_zero(a_s)) and
             (c_s<0 or self.is_zero(c_s)))):
-      raise Sorry("Conditions 37-39 failed.")
+      raise Sorry("Step C (right branch): Conditions 37-39 failed.")
 
   def as_bs_cs(self, t, txx,tyy,tzz, txy,tyz,tzx):
     xx = (t-self.Sxx)**2-txx
@@ -488,6 +519,12 @@ class decompose_tls(object):
     b_s = xx*yy + yy*zz + zz*xx - (txy**2+tyz**2+tzx**2)
     c_s = xx*yy*zz - tyz**2*xx - tzx**2*yy - txy**2*zz - 2*txy*tyz*tzx
     return a_s, b_s, c_s
+
+  def is_pd(self, m):
+    es = eigensystem.real_symmetric(deepcopy(m))
+    r = flex.min(truncate(m=es.values()))
+    if(r > 0 or self.is_zero(r)): return True
+    else:                         return False
 
   def is_zero(self, x):
     if(abs(x)<self.eps): return True
@@ -534,23 +571,10 @@ class decompose_tls(object):
     if(abs(vals[0]-vals[1])>=self.eps and
        abs(vals[1]-vals[2])>=self.eps and
        abs(vals[0]-vals[2])>=self.eps):
-      #l_1 = matrix.col((vecs[0], vecs[1], vecs[2]))
-      #l_2 = matrix.col((vecs[3], vecs[4], vecs[5]))
-      #l_3 = matrix.col((vecs[6], vecs[7], vecs[8]))
-      #l_x, l_y, l_z = l_3, l_2, l_1
-      #vals = [vals[2], vals[1], vals[0]]
       l_z = matrix.col((vecs[0], vecs[1], vecs[2]))
       l_y = matrix.col((vecs[3], vecs[4], vecs[5]))
       l_x = l_y.cross(l_z)
-      #l_x, l_y, l_z = l_z, l_y, l_x
       vals = [vals[2], vals[1], vals[0]]
-
-
-      #print >> self.log, "  re-assign: x, y, z = 3, 2, 1"
-      #tmp = l_x.cross(l_y) - l_z
-      #if(abs(tmp[0])>self.eps or abs(tmp[1])>self.eps or abs(tmp[2])>self.eps):
-      #  print >> self.log, "  convert to right-handed"
-      #  l_z = -1. * l_z
     # case 2: all three coincide
     elif((abs(vals[0]-vals[1])<self.eps and
          abs(vals[1]-vals[2])<self.eps and
@@ -564,26 +588,10 @@ class decompose_tls(object):
           abs(vals[0]-vals[2])<self.eps].count(True)==1):
       print >> self.log, "  two eigenvalues are equal."
       #
-      #l_x = matrix.col((vecs[0], vecs[1], vecs[2]))
-      #l_y = matrix.col((vecs[3], vecs[4], vecs[5]))
-      #l_z = matrix.col((vecs[6], vecs[7], vecs[8]))
-
       l_z = matrix.col((vecs[0], vecs[1], vecs[2]))
       l_y = matrix.col((vecs[3], vecs[4], vecs[5]))
       l_x = l_y.cross(l_z)
-      #l_x, l_y, l_z = l_z, l_y, l_x
       vals = [vals[2], vals[1], vals[0]]
-
-      #tmp = l_x.cross(l_y) - l_z
-      #if(abs(tmp[0])>self.eps or abs(tmp[1])>self.eps or abs(tmp[2])>self.eps):
-      #  print >> self.log, "  convert to right-handed"
-      #  l_z = -1. * l_z
-    #
-    #print >> self.log, "  eigen values :", " ".join([self.ff%i for i in vals])
-    #print >> self.log, "  eigen vectors:"
-    #self.show_vector(x=l_x, title="vector x")
-    #self.show_vector(x=l_y, title="vector y")
-    #self.show_vector(x=l_z, title="vector z")
     return group_args(x=l_x, y=l_y, z=l_z, vals=vals)
 
   def finalize(self):
@@ -686,7 +694,8 @@ class decompose_tls(object):
     T_M = R_ML * (C_S + D_WL) * R_ML.transpose() + R_MV * V_V * R_MV.transpose()
     self.show_matrix(x=self.T_M, title="Input T_M:")
     self.show_matrix(x=T_M, title="Recoverd T_M:")
-    assert approx_equal(T_M, self.T_M, 1.e-5)
+    if(flex.max(flex.abs(flex.double(T_M - self.T_M))) > self.self_check_eps):
+      raise Sorry("Cannot reconstruct T_M")
     # L_M
     L_L = matrix.sqr(
       [r.dx**2,       0,       0,
@@ -695,7 +704,8 @@ class decompose_tls(object):
     L_M = R_ML * L_L * R_ML.transpose()
     self.show_matrix(x=self.L_M, title="Input L_M:")
     self.show_matrix(x=L_M, title="Recoverd L_M:")
-    assert approx_equal(L_M, self.L_M, 1.e-5)
+    if(flex.max(flex.abs(flex.double(L_M - self.L_M))) > self.self_check_eps):
+      raise Sorry("Cannot reconstruct L_M")
     # S_M
     S = matrix.sqr(
       [r.sx*r.dx**2,            0,            0,
@@ -708,14 +718,9 @@ class decompose_tls(object):
     S_M = R_ML * (S + matrix_9) * R_ML.transpose()
     self.show_matrix(x=self.S_M, title="Input S_M:")
     self.show_matrix(x=S_M, title="Recoverd S_M:")
-    diff = truncate(m=matrix.sqr(self.S_M-S_M))
+    d = truncate(m=matrix.sqr(self.S_M-S_M))
     # remark: diagonal does not have to match, can be different by a constant
-    assert approx_equal(diff[1],0)
-    assert approx_equal(diff[2],0)
-    assert approx_equal(diff[3],0)
-    assert approx_equal(diff[5],0)
-    assert approx_equal(diff[6],0)
-    assert approx_equal(diff[7],0)
-    # diagonal
-    assert approx_equal(diff[0], diff[4])
-    assert approx_equal(diff[0], diff[8])
+    max_diff = flex.max(flex.abs(
+      flex.double([d[1],d[2],d[3],d[5],d[6],d[7],d[0]-d[4],d[0]-d[8]])))
+    if(max_diff > self.self_check_eps):
+      raise Sorry("Cannot reconstruct S_M")
