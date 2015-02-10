@@ -143,7 +143,7 @@ def use_segids_in_place_of_chainids(hierarchy, strict=False):
           # new as of 20150203
           if atom.segid not in ['    ', '']:
             return True
-          # It makes no sense to require indentical segID for 
+          # It makes no sense to require indentical segID for
           # Chains with blank chainID. This was commented out by BJH on 20150203
           #if cur_segid is None:
           #  cur_segid = atom.segid

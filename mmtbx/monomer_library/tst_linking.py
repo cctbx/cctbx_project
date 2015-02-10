@@ -1992,7 +1992,7 @@ def run(only_i=None):
     if pdb in ["linking_test_CD_GHE_A_B.pdb",
                "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
                ]: continue
-    if pdb.find("ccp4")==-1: continue
+    #if pdb.find("ccp4")==-1: continue
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):

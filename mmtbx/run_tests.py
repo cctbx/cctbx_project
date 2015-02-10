@@ -206,6 +206,7 @@ tst_list = (
   ["$D/monomer_library/tst_linking.py", "24"],
   ["$D/monomer_library/tst_linking.py", "25"],
   ["$D/monomer_library/tst_linking.py", "26"],
+  ["$D/monomer_library/tst_linking.py", "27"],
   #
   "$D/regression/tst_anneal_real_space.py",
   "$D/regression/tst_generate_disorder.py",
