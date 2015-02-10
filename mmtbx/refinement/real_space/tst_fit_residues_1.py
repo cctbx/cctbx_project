@@ -1540,6 +1540,7 @@ def exercise(pdb_str_answer, pdb_str_poor, d_min, prefix, cntr,
   ####
   target_map_object = group_args(
     data             = target_map,
+    f_map_diff       = None,
     miller_array     = f_calc,
     crystal_gridding = fft_map)
   grm = mmtbx.restraints.manager(
@@ -1565,8 +1566,8 @@ def exercise(pdb_str_answer, pdb_str_poor, d_min, prefix, cntr,
   sm.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%prefix)
   dist = xrs_answer.mean_distance(other = sm.xray_structure)
   print "final:", dist
-  if(cntr==0): assert dist < 0.08, dist
-  else: assert dist < 0.008, dist
+  if(cntr==0): assert dist < 0.085, dist
+  else: assert dist < 0.0085, dist
   assert list(sm.find_sidechain_clashes()) == []
 
 if(__name__ == "__main__"):

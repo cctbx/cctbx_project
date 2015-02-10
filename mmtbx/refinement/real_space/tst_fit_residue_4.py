@@ -120,11 +120,7 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator, cntr,
   pdb_hierarchy_poor.adopt_xray_structure(xrs_poor)
   pdb_hierarchy_poor.write_pdb_file(file_name = "refined.pdb")
   dist = xrs_answer.max_distance(other = xrs_poor)
-  if(cntr in [0,2]):
-    assert dist < 0.003, dist
-  else:
-    assert dist < 0.24, dist
-  print dist
+  assert dist < 0.24, dist
 
 if(__name__ == "__main__"):
   t0 = time.time()

@@ -13,6 +13,198 @@ from libtbx.str_utils import format_value
 from cctbx import crystal
 from mmtbx import model_statistics
 import libtbx.load_env
+from mmtbx.utils import rotatable_bonds
+from cctbx.eltbx import tiny_pse
+from cctbx import eltbx
+
+
+def need_sidechain_fit(
+      residue,
+      mon_lib_srv,
+      unit_cell,
+      f_map,
+      fdiff_map=None,
+      small_f_map=0.9):
+  """
+  Important: maps assumed to be sigma-scaled!
+  """
+  get_class = iotbx.pdb.common_residue_names_get_class
+  assert get_class(residue.resname) == "common_amino_acid"
+  cl = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
+    residue         = residue,
+    mon_lib_srv     = mon_lib_srv,
+    backbone_sample = False).clusters
+  if(len(cl)==0): return False
+  # service functions
+  def anal(x):
+    #print "x",x
+    for i,e in enumerate(x):
+      if(e<0): return True
+      r=None
+      if(i+1<len(x)):
+        e1=abs(x[i])
+        e2=abs(x[i+1])
+        if(e1>e2):
+          if(e2!=0):
+            r = e1/e2
+        else:
+          if(e1!=0):
+            r = e2/e1
+        #print e1, e2, r
+      if(r is not None and r>3): return True
+    return False
+  def anal2(x):
+    for i,e in enumerate(x):
+      if(e<-3.0): return True
+    return False
+  def anal3(x): return (flex.double(x)>=small_f_map).count(True)==len(x)
+  def flatten(l):
+           return sum(([x] if not isinstance(x, list) else flatten(x) for x in l), [])
+  #
+  last = cl[0].vector[len(cl[0].vector)-1]
+  vector = flatten(cl[0].vector)
+  bs = residue.atoms().extract_b()
+  #
+  weights = []
+  for el in residue.atoms().extract_element():
+    std_lbl = eltbx.xray_scattering.get_standard_label(
+      label=el, exact=True, optional=True)
+    weights.append(tiny_pse.table(std_lbl).weight())
+  #
+  side_chain_sel = flex.size_t()
+  main_chain_sel = flex.size_t()
+  for i_seq, a in enumerate(list(residue.atoms())):
+    if(a.name.strip().upper() not in ["N","CA","C","O","CB"]):
+      side_chain_sel.append(i_seq)
+    elif(a.name.strip().upper() in ["N","CA","C"]):
+      main_chain_sel.append(i_seq)
+  #
+  sites_frac = unit_cell.fractionalize(residue.atoms().extract_xyz())
+  mv = []
+  mv_orig = []
+  if(fdiff_map is not None): diff_mv = []
+  mv2 = flex.double()
+  for v_ in vector:
+    sf = sites_frac[v_]
+    f_map_epi = f_map.eight_point_interpolation(sf)
+    mv.append(     f_map_epi/weights[v_]*bs[v_])
+    mv2.append(    f_map_epi/weights[v_])
+    mv_orig.append(f_map_epi)
+    if(fdiff_map is not None):
+      diff_mv.append(fdiff_map.value_at_closest_grid_point(sf))
+  f  = anal(mv)
+  #anal(list(mv2))
+  #anal(list(mv_orig))
+  if(fdiff_map is not None): f2 = anal2(diff_mv)
+  f3 = anal3(mv_orig)
+  # main vs side chain
+  mvbb = flex.double()
+  mvbb_orig = flex.double()
+  for mcs in main_chain_sel:
+    #print list(residue.atoms())[mcs].name
+    sf = sites_frac[mcs]
+    f_map_epi = f_map.eight_point_interpolation(sf)
+    mvbb.append(     f_map_epi/weights[mcs])
+    mvbb_orig.append(f_map_epi)
+  f4 = flex.min(mvbb_orig)<small_f_map or flex.mean(mvbb)<flex.mean(mv2)
+  #print ["%3.2f"%mv for mv in mv_orig]
+  #print residue.resid(),residue.resname, f, f2, f3, f4, ["%3.2f"%mv for mv in mv_orig]
+  # last ??? Do we need it? see L7 in 1f8t
+  #mv_last = flex.double()
+  #if(len(last)==2):
+  #  for l in last:
+  #    mv_last.append(f_map.eight_point_interpolation(sites_frac[l]))
+  #  print "   ", residue.resname, residue.resid()
+  #  print dir(residue.parent().parent())
+  #
+  #  print residue.parent().parent().id
+  #  STOP()
+  c_id = "none"
+  if(residue.parent() is not None):
+    c_id = residue.parent().parent().id.strip()
+  id_str = "%s_%s_%s"%(c_id, residue.resname.strip(), residue.resid().strip())
+  #
+  result = False
+  if(fdiff_map is not None):
+    if((f or f2 and not f3) and not f4): result = True
+    else: result = False
+  else:
+    if((f       and not f3) and not f4): result = True
+    else: result = False
+  #if(result):
+  #  print id_str, ["%3.2f"%mv for mv in mv_orig]
+  return result
+
+class cluster(object):
+  def __init__(self,
+               axis,
+               atoms_to_rotate,
+               vector=None,
+               selection=None,
+               start=None,
+               stop=None,
+               step=None):
+    adopt_init_args(self, locals())
+
+class aa_residue_axes_and_clusters(object):
+  def __init__(self,
+               residue,
+               mon_lib_srv,
+               backbone_sample,
+               torsion_search_backbone_start=None,
+               torsion_search_backbone_stop=None,
+               torsion_search_backbone_step=None,
+               torsion_search_sidechain_start=None,
+               torsion_search_sidechain_stop=None,
+               torsion_search_sidechain_step=None):
+    self.clusters = []
+    if(backbone_sample):
+      backrub_axis  = []
+      backrub_atoms_to_rotate = []
+      backrub_atoms_to_evaluate = []
+      counter = 0 # XXX DOES THIS RELY ON ORDER?
+      for atom in residue.atoms():
+        if(atom.name.strip().upper() in ["N", "C"]):
+          backrub_axis.append(counter)
+        else:
+          backrub_atoms_to_rotate.append(counter)
+        if(atom.name.strip().upper() in ["CA", "O", "CB"]):
+          backrub_atoms_to_evaluate.append(counter)
+        counter += 1
+      if(len(backrub_axis)==2 and len(backrub_atoms_to_evaluate)>0):
+        self.clusters.append(cluster(
+          axis            = backrub_axis,
+          atoms_to_rotate = backrub_atoms_to_rotate,
+          selection       = backrub_atoms_to_evaluate,
+          start           = torsion_search_backbone_start,
+          stop            = torsion_search_backbone_stop,
+          step            = torsion_search_backbone_step))
+    self.axes_and_atoms_aa_specific = \
+      rotatable_bonds.axes_and_atoms_aa_specific(
+        residue = residue, mon_lib_srv = mon_lib_srv)
+    if(self.axes_and_atoms_aa_specific is not None):
+      for i_aa, aa in enumerate(self.axes_and_atoms_aa_specific):
+        if(i_aa == len(self.axes_and_atoms_aa_specific)-1):
+          selection = flex.size_t(aa[1])
+        else:
+          selection = flex.size_t([aa[1][0]])
+        self.clusters.append(cluster(
+          axis            = aa[0],
+          atoms_to_rotate = aa[1],
+          selection       = selection,
+          start           = torsion_search_sidechain_start,
+          stop            = torsion_search_sidechain_stop,
+          step            = torsion_search_sidechain_step))
+      vector_selections = []
+      if(len(self.clusters)>0):
+        for i_aa, aa in enumerate(self.axes_and_atoms_aa_specific):
+          for aa_ in aa[0]:
+            if(not aa_ in vector_selections):
+              vector_selections.append(aa_)
+        vector_selections.append(
+          self.clusters[len(self.clusters)-1].atoms_to_rotate)
+        for cl in self.clusters:
+          cl.vector = vector_selections
 
 class residue_monitor(object):
   def __init__(self,
@@ -296,7 +488,6 @@ class structure_monitor(object):
   def find_sidechain_clashes(self):
     result = flex.size_t()
     if(self.geometry_restraints_manager is None): return result
-    get_class = iotbx.pdb.common_residue_names_get_class
     # find nonbonded clashing pairs of atoms
     bond_proxies_simple = self.geometry_restraints_manager.pair_proxies(
       sites_cart = self.xray_structure.sites_cart()).bond_proxies.simple

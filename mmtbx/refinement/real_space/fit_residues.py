@@ -77,13 +77,28 @@ class manager(object):
     xrs = sm.xray_structure.deep_copy_scatterers()
     sites_cart = sm.xray_structure.sites_cart()
     get_class = iotbx.pdb.common_residue_names_get_class
+    # Blend maps if applicable
+    target_map = sm.target_map_object.data.deep_copy()
+    if(sm.target_map_object.f_map_diff is not None):
+      diff_map = sm.target_map_object.f_map_diff.deep_copy()
+      sel = diff_map < 2.
+      diff_map = diff_map.set_selected(sel, 0)
+      sel = diff_map > 3.
+      diff_map = diff_map.set_selected(sel, 3)
+      diff_map = diff_map/3.
+      target_map = target_map+diff_map
+    #
     for i_res, r in enumerate(sm.residue_monitors):
       if(iselection is not None and not i_res in iselection): continue
       if(get_class(r.residue.resname) != "common_amino_acid"): continue
-      go = r.rotamer_status=="OUTLIER" or \
-           r.map_cc_all < self.map_cc_all_threshold or \
-           r.map_cc_sidechain < self.map_cc_sidechain_threshold or \
-           use_clash_filter
+      fl = mmtbx.refinement.real_space.need_sidechain_fit(
+        residue     = r.residue,
+        mon_lib_srv = self.mon_lib_srv,
+        unit_cell   = self.structure_monitor.xray_structure.unit_cell(),
+        f_map       = sm.target_map_object.data,
+        fdiff_map   = sm.target_map_object.f_map_diff)
+      #go = r.rotamer_status=="OUTLIER" or fl or use_clash_filter
+      go = fl or use_clash_filter # XXX only at high resolution!
       if(go):
         if(self.on_special_position(sm_residue=r)): continue
         iselection_n_external=None
@@ -96,7 +111,7 @@ class manager(object):
         elif(i_res==len(sm.residue_monitors)-1 and len(sm.residue_monitors)>1):
           iselection_c_external = sm.residue_monitors[i_res-1].selection_c
         #print r.residue.resname, r.residue.resseq
-        #t0=time.time()
+        t0=time.time()
         negate_selection = mmtbx.refinement.real_space.selection_around_to_negate(
           xray_structure          = xrs,
           selection_within_radius = 5, # XXX make residue dependent !!!!
@@ -109,7 +124,7 @@ class manager(object):
         target_map_ = mmtbx.refinement.real_space.\
           negate_map_around_selected_atoms_except_selected_atoms(
             xray_structure          = xrs,
-            map_data                = sm.target_map_object.data.deep_copy(),
+            map_data                = target_map,
             negate_selection        = negate_selection,
             atom_radius             = self.atom_radius_to_negate_map_within)
         #print "neg: %6.4f"%(time.time()-t0)

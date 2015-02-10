@@ -133,4 +133,4 @@ def exercise(pdb_poor_str, d_min = 1.0, resolution_factor = 0.25):
 if(__name__ == "__main__"):
   dist, t = exercise(pdb_poor_str = pdb_poor, resolution_factor=0.2)
   print dist, t
-  assert dist < 0.125
+  assert dist < 0.128, dist
