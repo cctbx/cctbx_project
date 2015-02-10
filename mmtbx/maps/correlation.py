@@ -43,6 +43,7 @@ class from_map_and_xray_structure_or_fmodel(object):
       fft_map = miller.fft_map(
         crystal_gridding     = crystal_gridding,
         fourier_coefficients = f_model)
+      fft_map.apply_sigma_scaling()
       self.map_model = fft_map.real_map_unpadded()
     else:
       crystal_gridding = maptbx.crystal_gridding(
@@ -53,6 +54,7 @@ class from_map_and_xray_structure_or_fmodel(object):
       fft_map = miller.fft_map(
         crystal_gridding     = crystal_gridding,
         fourier_coefficients = f_model)
+      fft_map.apply_sigma_scaling()
       self.map_model = fft_map.real_map_unpadded()
     if(self.fmodel is not None):
       self.sites_cart = self.fmodel.xray_structure.sites_cart()
@@ -62,6 +64,7 @@ class from_map_and_xray_structure_or_fmodel(object):
       self.sites_cart = self.xray_structure.sites_cart()
       self.sites_frac = self.xray_structure.sites_frac()
       self.weights    = self.xray_structure.atomic_weights()
+    #
 
   def cc(self, selections=None, selection=None, atom_radius=2.0):
     assert [selections, selection].count(None) == 1
