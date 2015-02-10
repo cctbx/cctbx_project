@@ -66,7 +66,7 @@ class FormatCBFMiniPilatusDLS6MSN119(FormatCBFMiniPilatus):
 
     for record in header.split('\n'):
       if '# 20' in record:
-        year = int(record.replace('-', ' ').split()[1])
+        year = int(record.replace('-', ' ').replace('/', ' ').split()[1])
         break
 
     assert (year > 0)
