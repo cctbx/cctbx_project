@@ -4778,14 +4778,7 @@ refinement.pdb_interpretation {
     #
     disulfide_bond = disulfide_link.bond_list[0]
     disulfide_angle = disulfide_link.angle_list[0]
-    disulfide_torsion = disulfide_link.tor_list[0]
-    alt_value_angle = None
-    if (disulfide_torsion.alt_value_angle is not None and
-        disulfide_torsion.alt_value_angle != ''):
-      try:
-        alt_value_angle = map(float,disulfide_torsion.alt_value_angle.split(","))
-      except ValueError, AttributeError:
-        raise Sorry("Wrong format of alt_value_angle in SS bond in cif file")
+    disulfide_torsions = disulfide_link.tor_list
 
     assert disulfide_bond.value_dist is not None
     assert disulfide_bond.value_dist > 0
@@ -4796,12 +4789,6 @@ refinement.pdb_interpretation {
     assert disulfide_angle.value_angle > 0
     assert disulfide_angle.value_angle_esd is not None
     assert disulfide_angle.value_angle_esd > 1e-5
-
-    assert disulfide_torsion.value_angle is not None
-    assert disulfide_torsion.value_angle_esd is not None
-    assert disulfide_torsion.value_angle_esd > 1e-5
-    assert disulfide_torsion.period is not None
-    assert disulfide_torsion.period >= 0
 
     added = False
     # FIXME this does not work in some situations
@@ -4826,21 +4813,29 @@ refinement.pdb_interpretation {
         # Here we will add angles and torsions for disulfides because here
         # we do know i_seq, j_seq of linked atoms, and we do know that there
         # is no symmetry operation for this link
-        cb_atoms = [None, None]
-        for i, seq in enumerate([i_seq, j_seq]):
-          a = self.pdb_atoms[seq]
-          ag = a.parent()
-          rg = ag.parent()
-          cb_atoms[i] = ag.get_atom("CB")
-          if cb_atoms[i] is None:
-            for ag_t in rg.atom_groups():
-              if ag_t.altloc == "":
-                cb_atoms[i] = ag_t.get_atom("CB")
-                break
-        # SS       1 CB      1 SG      2 SG      103.800    1.800
-        # SS       1 SG      2 SG      2 CB      103.800    1.800
-        # SS       ss       1 CB     1 SG     2 SG     2 CB       90.00  10.0 2
-        # make  angle proxy
+        def _get_ss_atom_pairs(atom_name):
+          ss_atoms = [None, None]
+          for i, seq in enumerate([i_seq, j_seq]):
+            a = self.pdb_atoms[seq]
+            ag = a.parent()
+            rg = ag.parent()
+            ss_atoms[i] = ag.get_atom(atom_name)
+            if ss_atoms[i] is None:
+              for ag_t in rg.atom_groups():
+                if ag_t.altloc == "":
+                  ss_atoms[i] = ag_t.get_atom(atom_name)
+                  break
+          return ss_atoms
+        cb_atoms = _get_ss_atom_pairs("CB")
+        ca_atoms = _get_ss_atom_pairs("CA")
+        lookup = {
+          "1CA" : ca_atoms[0].i_seq,
+          "2CA" : ca_atoms[1].i_seq,
+          "1CB" : cb_atoms[0].i_seq,
+          "2CB" : cb_atoms[1].i_seq,
+          "1SG" : i_seq,
+          "2SG" : j_seq,
+          }
         angle_weight = 1/disulfide_angle.value_angle_esd**2
         if cb_atoms[0] is not None:
           proxy = geometry_restraints.angle_proxy(
@@ -4854,14 +4849,35 @@ refinement.pdb_interpretation {
             angle_ideal=disulfide_angle.value_angle,
             weight=angle_weight)
           self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
-        if cb_atoms[0] is not None and cb_atoms[1] is not None:
-          proxy = geometry_restraints.dihedral_proxy(
-            i_seqs=[cb_atoms[0].i_seq,i_seq,j_seq, cb_atoms[1].i_seq],
-            angle_ideal=disulfide_torsion.value_angle,
-            weight=1/disulfide_torsion.value_angle_esd**2,
-            periodicity=disulfide_torsion.period,
-            alt_angle_ideals=alt_value_angle)
-          self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
+
+        if len(filter(None,cb_atoms))==2 and len(filter(None,ca_atoms))==2:
+          for disulfide_torsion in disulfide_torsions:
+            assert disulfide_torsion.value_angle is not None
+            assert disulfide_torsion.value_angle_esd is not None
+            assert disulfide_torsion.value_angle_esd > 1e-5
+            assert disulfide_torsion.period is not None
+            assert disulfide_torsion.period >= 0
+            alt_value_angle = None
+            if (disulfide_torsion.alt_value_angle is not None and
+                disulfide_torsion.alt_value_angle != ''):
+              try:
+                alt_value_angle = map(float,
+                                      disulfide_torsion.alt_value_angle.split(","))
+              except ValueError, AttributeError:
+                raise Sorry("Wrong format of alt_value_angle in SS bond in cif file")
+            i_seqs = []
+            for nwm in range(1,5):
+              key = "%s%s" % (getattr(disulfide_torsion, "atom_%d_comp_id" % nwm),
+                             getattr(disulfide_torsion, "atom_id_%s" % nwm),
+                )
+              i_seqs.append(lookup[key])
+            proxy = geometry_restraints.dihedral_proxy(
+              i_seqs=i_seqs, #[cb_atoms[0].i_seq,i_seq,j_seq, cb_atoms[1].i_seq],
+              angle_ideal=disulfide_torsion.value_angle,
+              weight=1/disulfide_torsion.value_angle_esd**2,
+              periodicity=disulfide_torsion.period,
+              alt_angle_ideals=alt_value_angle)
+            self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
       if disulfide_cif_loop is not None:
         disulfide_cif_loop.add_row(("SS",
                                     self.pdb_atoms[i_seq].pdb_label_columns(),

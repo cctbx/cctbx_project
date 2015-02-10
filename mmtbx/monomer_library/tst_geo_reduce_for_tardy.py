@@ -48,7 +48,7 @@ def exercise_geo_reduce_for_tardy(
     if (not proxy_i_seqs_red.has_key(proxy.i_seqs)):
       sigma = 1/proxy.weight**0.5
       if (sigma > 10):
-        assert awl[proxy.i_seqs[0]].resname == "PRO"
+        assert awl[proxy.i_seqs[0]].resname in [ "PRO", "CYS" ]
 
 def run(args):
   assert len(args) == 0
@@ -59,7 +59,7 @@ def run(args):
         ("lys_pro_trp_box.pdb", (33,0), (12, 7)),
         ("pro_lys_trp_box.pdb", (33,0), (12, 7)),
         ("1yjp_box.pdb", (59,0), (22, 15)),
-        ("disulfides_box.pdb", (198,3), (59, 28))]:
+        ("disulfides_box.pdb", (198,3), (65, 28))]:
     exercise_geo_reduce_for_tardy(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,

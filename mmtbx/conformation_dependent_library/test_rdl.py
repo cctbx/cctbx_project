@@ -2,6 +2,7 @@ from __future__ import division
 import sys
 import time
 
+from mmtbx.conformation_dependent_library.rdl_database import rdl_database
 from mmtbx.conformation_dependent_library import rotamers as rdl
 
 from iotbx import pdb
@@ -30,11 +31,15 @@ def get_geometry_restraints_manager(pdb_filename,
 
 def run(filename):
   print filename
-  if 0:
+  if 1:
+    print "RDL"
     for aa in sorted(rdl_database):
-      print aa
+      print "  %s" % aa
       for key, value in rdl_database[aa].items():
-        print key, value
+        print "    %s" % key
+        for names, values in rdl_database[aa][key].items():
+          print "      %s : %s" % (names, values)
+    assert 0
   #
   pdb_inp = pdb.input(filename)
   pdb_hierarchy = pdb_inp.construct_hierarchy()

@@ -1064,14 +1064,15 @@ class _(boost.python.injector, shared_angle_proxy):
         get_restraints_only=False)
 
 class _(boost.python.injector, dihedral):
-
   def _show_sorted_item(O, f, prefix):
     print >> f, "%s    ideal   model   delta" \
       " %        s    sigma   weight residual" % (
         prefix, {False: "sinusoidal", True: " harmonic "}[O.periodicity <= 0])
+    angle_ideal = O.angle_model+O.delta
+    if angle_ideal<-180: angle_ideal+=360
     print >> f, "%s  %7.2f %7.2f %7.2f %5d      %6.2e %6.2e %6.2e" % (
       prefix,
-      O.angle_ideal, O.angle_model, O.delta, O.periodicity,
+      angle_ideal, O.angle_model, O.delta, O.periodicity,
       weight_as_sigma(weight=O.weight), O.weight, O.residual())
 
   def _get_sorted_item (O) :

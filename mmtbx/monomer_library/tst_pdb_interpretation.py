@@ -1169,19 +1169,19 @@ Simple disulfide: pdb=" SG  DCY A   4 " - pdb=" SG  DCY A  19 " distance=2.03
         pdb=" SG  DCY A  19 "
         pdb=" CB  DCY A  19 "
       ideal   model   delta    sigma   weight residual
-     103.80   80.00   23.80 1.80e+00 3.09e-01 1.75e+02
+     104.20   80.00   24.20 2.10e+00 2.27e-01 1.33e+02
 """)
   assert not block_show_diff(lv, """\
-  Dihedral angle restraints: 48
-    sinusoidal: 32
+  Dihedral angle restraints: 50
+    sinusoidal: 34
       harmonic: 16
   Sorted by residual:
-  dihedral pdb=" N   DPR A   7 "
-           pdb=" CG  DPR A   7 "
-           pdb=" CD  DPR A   7 "
-           pdb=" CB  DPR A   7 "
+  dihedral pdb=" CA  DCY A   4 "
+           pdb=" CB  DCY A   4 "
+           pdb=" SG  DCY A   4 "
+           pdb=" SG  DCY A  19 "
       ideal   model   delta sinusoidal    sigma   weight residual
-      30.00   25.28    4.72     1      1.50e+01 4.44e-03 1.45e-01
+      79.00   18.71   60.29     1      2.00e+01 2.50e-03 1.21e+01
 """)
   assert processed_pdb_file.all_chain_proxies.fatal_problems_message() is None
   log = StringIO()
@@ -2002,7 +2002,7 @@ END
     log=log)
   grm = processed_pdb_file.geometry_restraints_manager()
   assert grm.angle_proxies.size() == 15
-  assert grm.dihedral_proxies.size() == 5
+  assert grm.dihedral_proxies.size() == 9
   selected_dihedrals = grm.dihedral_proxies.proxy_select(
     n_seq=13, iselection=flex.size_t([4,5,10,11,12]))
   # select SS dihedrals, 2 in this case because of alternative SG atom
@@ -2013,7 +2013,7 @@ END
   deltas = grm.dihedral_proxies.deltas(
                   processed_pdb_file.xray_structure().sites_cart())
   assert approx_equal(deltas[3], -19.6324864704) # --> -86 degrees
-  assert approx_equal(deltas[4], 23.2807269272) # --> 93 degrees
+  assert approx_equal(deltas[6], 23.2807269272) # --> 93 degrees
 
 def run(args):
   assert len(args) == 0
