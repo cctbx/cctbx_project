@@ -167,10 +167,7 @@ def extend_residue (residue,
     mmtbx.refinement.real_space.torsion_search(
       scorer=scorer,
       clusters=clusters,
-      sites_cart=new_residue.atoms().extract_xyz(),
-      start=0,
-      stop=355,
-      step=5)
+      sites_cart=new_residue.atoms().extract_xyz())
     scorer.apply_final()
   return new_residue
 

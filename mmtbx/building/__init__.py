@@ -2,6 +2,7 @@
 from __future__ import division
 from libtbx import group_args, adopt_init_args
 import sys
+import mmtbx.refinement.real_space
 
 #-----------------------------------------------------------------------
 # MODEL UTILITIES
@@ -789,15 +790,21 @@ def generate_sidechain_clusters (residue, mon_lib_srv) :
           n_heavy += 1
       if (n_heavy == 0) : continue
       if(i_aa == len(axes_and_atoms_aa_specific)-1):
-        result.append(fit_residue.cluster(
+        result.append(mmtbx.refinement.real_space.cluster(
           axis=aa[0],
           atoms_to_rotate=aa[1],
           selection=flex.size_t(aa[1]),
+          start=0,
+          stop=355,
+          step=5,
           vector=None)) # XXX
       else:
-        result.append(fit_residue.cluster(
+        result.append(mmtbx.refinement.real_space.cluster(
           axis=aa[0],
           atoms_to_rotate=aa[1],
           selection=flex.size_t([aa[1][0]]),
+          start=0,
+          stop=355,
+          step=5,
           vector=None)) # XXX
   return result
