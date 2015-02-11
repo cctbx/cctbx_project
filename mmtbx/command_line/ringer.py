@@ -1,21 +1,23 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
-# Implementation of the Ringer method, with plots
-# Reference:
-# Lang PT, Ng HL, Fraser JS, Corn JE, Echols N, Sales M, Holton JM, Alber T.
-# Automated electron-density sampling reveals widespread conformational
-# polymorphism in proteins. Protein Sci. 2010 Jul;19(7):1420-31. PubMed PMID:
-# 20499387
+"""
+Implementation of the Ringer method, with plots
+
+Reference:
+  Lang PT, Ng HL, Fraser JS, Corn JE, Echols N, Sales M, Holton JM, Alber T.
+  Automated electron-density sampling reveals widespread conformational
+  polymorphism in proteins. Protein Sci. 2010 Jul;19(7):1420-31. PubMed PMID:
+  20499387
+"""
 
 from __future__ import division
 from mmtbx.ringer import * # this is deliberate!
 import libtbx.phil
 from libtbx import easy_pickle
 from libtbx.str_utils import make_header
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import Sorry
 from libtbx import runtime_utils
-from cStringIO import StringIO
 import time
 import os
 import sys
@@ -65,16 +67,6 @@ master_params = master_phil
 def run (args, out=None, verbose=True) :
   t0 = time.time()
   if (out is None) : out = sys.stdout
-  if (len(args) == 0) :
-    phil_out = StringIO()
-    master_phil.show(out=phil_out, prefix="    ")
-    raise Usage("ringer.py [model.pdb] [map.mtz] [cif_file ...] [options]\n"+
-      "  Reference:\n"+
-      "    Lang PT, Ng HL, Fraser JS, Corn JE, Echols N, Sales M, Holton\n"+
-      "    JM, Alber T.  Automated electron-density sampling reveals\n"+
-      "    widespread conformational polymorphism in proteins. Protein Sci.\n"+
-      "    2010 Jul;19(7):1420-31. PubMed PMID: 20499387\n"+
-      "  Full parameters:\n%s" % phil_out.getvalue())
   from iotbx import file_reader
   import iotbx.phil
   cmdline = iotbx.phil.process_command_line_with_files(
@@ -83,7 +75,12 @@ def run (args, out=None, verbose=True) :
     pdb_file_def="model",
     reflection_file_def="map_coeffs",
     map_file_def="map_file",
-    cif_file_def="cif_file")
+    cif_file_def="cif_file",
+    usage_string="""\
+mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
+
+%s
+""" % __doc__)
   cmdline.work.show()
   params = cmdline.work.extract()
   validate_params(params)
