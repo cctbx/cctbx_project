@@ -25,7 +25,6 @@ class PubMedDirective(Directive):
     reprint_url = self.options.get('reprint-url', None)
 
     from Bio import Entrez
-    Entrez.email="NKSauter@lbl.gov"
 
     handle = Entrez.efetch(
       db="pubmed",id=PMID, # must be a quoted string of comma-separated PMIDs
@@ -73,7 +72,7 @@ class PubMedDirective(Directive):
         journal_text += " `(Reprint) <%s>`_" %(reprint_url)
       text.append(journal_text)
 
-    print "\n".join(text)
+    #print "\n".join(text)
 
     # insert rst
     source = self.state_machine.input_lines.source(
