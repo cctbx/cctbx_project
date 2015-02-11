@@ -95,7 +95,8 @@ def find_ncs_in_hierarchy(ph,
                           allow_different_size_res=True,
                           exclude_misaligned_residues=False,
                           chain_similarity_limit=0.95,
-                          max_dist_diff=4.0):
+                          max_dist_diff=4.0,
+                          ignore_chains=None):
   """
   Find NCS relation in hierarchy
 
@@ -119,6 +120,7 @@ def find_ncs_in_hierarchy(ph,
     allow_different_size_res (bool): keep matching residue with different
       number of atoms
     chain_similarity_limit (float): min similarity between matching chains
+    ignore_chains (set of str): set of chain IDs to exclude
 
   Return:
     groups_list (list of NCS_groups_container objects)
@@ -127,7 +129,7 @@ def find_ncs_in_hierarchy(ph,
       values: NCS_groups_container objects
   """
   if not log: log = sys.stdout
-  chains_info = get_chains_info(ph)
+  chains_info = get_chains_info(ph,ignore_chains=ignore_chains)
   # Get the list of matching chains
   chain_match_list = search_ncs_relations(
     chains_info=chains_info,
@@ -137,7 +139,8 @@ def find_ncs_in_hierarchy(ph,
     log=log,
     check_atom_order=check_atom_order,
     use_minimal_master_ncs=use_minimal_master_ncs,
-    allow_different_size_res=allow_different_size_res)
+    allow_different_size_res=allow_different_size_res,
+    ignore_chains=ignore_chains)
   #
   match_dict = clean_chain_matching(
     chain_match_list=chain_match_list,
@@ -848,14 +851,14 @@ def update_match_dicts(best_matches,match_dict,
     ch_a_id,ch_b_id (str): chain IDs
     similarity (float): similarity between chains
     chain_similarity_limit (float): min similarity between matching chains
-      Note that smaller value cause more chains to be included and can lower
-      the number of common residues
+      Note that smaller value cause more chains to be grouped together and
+      can lower the number of common residues
   """
   records_to_remove = set()
   for ch_id in [ch_a_id,ch_b_id]:
     if best_matches.has_key(ch_id):
       temp_rec = []
-      # records with largest similarity is last
+      # records with largest similarity are last
       max_sim = best_matches[ch_id][-1][0]
       if similarity > max_sim:
         for s,(a,b) in best_matches[ch_id]:
@@ -918,7 +921,8 @@ def search_ncs_relations(ph=None,
                          log=None,
                          check_atom_order=False,
                          allow_different_size_res=True,
-                         use_minimal_master_ncs=True):
+                         use_minimal_master_ncs=True,
+                         ignore_chains=None):
   """
   Search for NCS relations between chains or parts of chains, in a protein
   hierarchy
@@ -945,6 +949,7 @@ def search_ncs_relations(ph=None,
         all chains -> can be significantly faster on large structures)
     allow_different_size_res (bool): keep matching residue with different
       number of atoms
+    ignore_chains (set of str): set of chain IDs to exclude
 
   Returns:
     msg (str): message regarding matching residues with different atom number
@@ -958,7 +963,7 @@ def search_ncs_relations(ph=None,
   if not log: log = sys.stdout
   if not chains_info:
     assert bool(ph)
-    chains_info = get_chains_info(ph)
+    chains_info = get_chains_info(ph,ignore_chains=ignore_chains)
   # collect all chain IDs
   chain_match_list = []
   msg = ''
@@ -1254,7 +1259,8 @@ def make_selection_from_lists(sel_list):
   sel_list_extended.sort()
   return flex.size_t(sel_list_extended)
 
-def get_chains_info(ph,selection_list=None,exclude_water=True):
+def get_chains_info(ph,selection_list=None,exclude_water=True,
+                    ignore_chains=None):
   """
   Collect information about chains or segments of the hierarchy according to
   selection strings
@@ -1264,6 +1270,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True):
   Args:
     ph : protein hierarchy
     selection_list (list of str): specific selection of hierarchy segments
+    ignore_chains (set of str): set of chain IDs to exclude
 
   Returns:
     chains_info : object containing
@@ -1276,12 +1283,14 @@ def get_chains_info(ph,selection_list=None,exclude_water=True):
     exclude_water (bool): exclude water
   """
   use_chains = not bool(selection_list)
+  if not ignore_chains: ignore_chains = set()
   #
   chains_info =  {}
   if use_chains:
     model  = ph.models()[0]
     # build chains_info from hierarchy
     for ch in model.chains():
+      if ch.id in ignore_chains: continue
       if not chains_info.has_key(ch.id):
         chains_info[ch.id] = Chains_info()
       chains_info[ch.id].chains_atom_number += ch.atoms().size()

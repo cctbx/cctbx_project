@@ -1,6 +1,7 @@
 from __future__ import division
 from iotbx.pdb.atom_selection import selection_string_from_selection
 from mmtbx.ncs.ncs_utils import make_unique_chain_names
+from mmtbx.ncs.ncs_utils import ncs_group_iselection
 from mmtbx.ncs.ncs_utils import apply_transforms
 from scitbx.array_family import flex
 from scitbx.math import superpose
@@ -12,6 +13,7 @@ from mmtbx.ncs import ncs
 from scitbx import matrix
 from iotbx import pdb
 import string
+import math
 import re
 import os
 import sys
@@ -108,17 +110,18 @@ class ncs_group_object(object):
                          spec_ncs_groups=None,
                          pdb_string=None,
                          use_minimal_master_ncs=True,
-                         max_rmsd=0.02,
+                         max_rmsd=2.0,
                          write_messages=False,
                          process_similar_chains=True,
-                         min_percent=0.95,
+                         min_percent=0.85,
                          chain_similarity_limit=0.95,
                          min_contig_length=10,
                          log=None,
                          check_atom_order=False,
                          allow_different_size_res=True,
                          exclude_misaligned_residues=False,
-                         max_dist_diff=4.0):
+                         max_dist_diff=4.0,
+                         ignore_chains=None):
     """
     Select method to build ncs_group_object
 
@@ -133,6 +136,7 @@ class ncs_group_object(object):
     Args:
     -----
       pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
+      hierarchy : pdb hierarchy object
       transform_info: object containing MTRIX or BIOMT transformation info
       rotations: matrix.sqr 3x3 object
       translations: matrix.col 3x1 object
@@ -152,6 +156,8 @@ class ncs_group_object(object):
       quiet: (bool) When True -> quiet output when processing files
       spec_ncs_groups: ncs_groups object as produced by simple_ncs_from_pdb
       cif_string: (str) string of cif type data
+      use_minimal_master_ncs (bool): use maximal or minimal common chains
+        in master ncs groups
       max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       write_messages (bool): When True, right messages to log
@@ -173,6 +179,7 @@ class ncs_group_object(object):
         alignment quality
       max_dist_diff (float): max allow distance difference between pairs of matching
         atoms of two residues
+      ignore_chains (set of str): set of chain IDs to exclude
     """
     if min_percent > 1: min_percent /= 100
     extension = ''
@@ -188,10 +195,21 @@ class ncs_group_object(object):
     self.min_percent = min_percent
     self.chain_similarity_limit = chain_similarity_limit
     self.process_similar_chains = process_similar_chains
+    self.ignore_chains = ignore_chains
     #
     if not log: log = sys.stdout
     self.log = log
     if file_name: extension = os.path.splitext(file_name)[1]
+    if (pdb_string or cif_string):
+      if pdb_string: input_str = pdb_string
+      else: input_str = cif_string
+      pdb_hierarchy_inp = pdb.hierarchy.input(pdb_string=input_str)
+    if pdb_inp:
+      self.crystal_symmetry = pdb_inp.crystal_symmetry()
+    elif pdb_hierarchy_inp:
+      self.crystal_symmetry = pdb_hierarchy_inp.input.crystal_symmetry()
+    else:
+      self.crystal_symmetry = None
     if pdb_hierarchy_inp:
       msg = 'pdb_hierarchy_inp is not iotbx.pdb.hierarchy.input object\n'
       assert isinstance(pdb_hierarchy_inp,iotbx.pdb.hierarchy.input),msg
@@ -204,10 +222,6 @@ class ncs_group_object(object):
         pdb_inp,hierarchy)
     if extension.lower() in ['.pdb','.cif', '.mmcif', '.gz']:
       pdb_hierarchy_inp = pdb.hierarchy.input(file_name=file_name)
-    elif (not pdb_hierarchy_inp) and (pdb_string or cif_string):
-      if pdb_string: input_str = pdb_string
-      else: input_str = cif_string
-      pdb_hierarchy_inp = pdb.hierarchy.input(pdb_string=input_str)
     if pdb_hierarchy_inp and (not transform_info):
       transform_info = pdb_hierarchy_inp.input.process_mtrix_records(eps=0.01)
       if transform_info.as_pdb_string() == '': transform_info = None
@@ -215,6 +229,8 @@ class ncs_group_object(object):
         transform_info = insure_identity_is_in_transform_info(transform_info)
     if transform_info or rotations:
       if ncs_only(transform_info) or rotations:
+        if not sensible_unit_cell_volume():
+          raise Sorry('Unit cell is to small to contain all NCS copies')
         self.build_ncs_obj_from_pdb_ncs(
           pdb_hierarchy_inp = pdb_hierarchy_inp,
           rotations=rotations,
@@ -426,7 +442,8 @@ class ncs_group_object(object):
       check_atom_order=self.check_atom_order,
       allow_different_size_res=self.allow_different_size_res,
       exclude_misaligned_residues=self.exclude_misaligned_residues,
-      max_dist_diff=self.max_dist_diff)
+      max_dist_diff=self.max_dist_diff,
+      ignore_chains=self.ignore_chains)
     # process atom selections
     self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
     self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
@@ -1069,7 +1086,7 @@ class ncs_group_object(object):
       range_list.sort()
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
 
-  def get_ncs_restraints_group_list(self,max_delta=10.0,quiet=False):
+  def get_ncs_restraints_group_list(self,max_delta=10.0,raise_sorry=True):
     """
     Create a list of ncs_restraint_group objects
 
@@ -1078,7 +1095,7 @@ class ncs_group_object(object):
 
     Args:
       max_delta (float): maximum allowed deviation between copies coordinates
-      quiet (bool): When True, do not raise Sorry if NCS copies don't match
+      raise_sorry (bool): When True, raise Sorry if NCS copies don't match
     """
     ncs_restraints_group_list = []
     group_id_list = sort_dict_keys(self.ncs_group_map)
@@ -1089,7 +1106,7 @@ class ncs_group_object(object):
       for key in sorted(v[0]):
         if self.asu_to_ncs_map.has_key(key):
           master_isel.extend(self.asu_to_ncs_map[key])
-      new_nrg = NCS_restraint_group(master_isel)
+      new_nrg = NCS_restraint_group(flex.sorted(master_isel))
       # iterate over transform numbers in the group, collect copies selections
       for tr in sorted(v[1]):
         if self.transform_to_ncs.has_key(tr):
@@ -1098,12 +1115,13 @@ class ncs_group_object(object):
           ncs_isel = flex.size_t([])
           for sel in self.transform_to_ncs[tr]:
             ncs_isel.extend(self.ncs_to_asu_map[sel])
+          ncs_isel = flex.sorted(ncs_isel)
           new_ncs_copy = NCS_copy(copy_iselection=ncs_isel, rot=r, tran=t)
           new_nrg.copies.append(new_ncs_copy)
       # compare master_isel_test and master_isel
       ncs_restraints_group_list.append(new_nrg)
     # When hierarchy available, test ncs_restraints_group_list
-    if self.hierarchy and (not quiet):
+    if self.hierarchy and raise_sorry:
       # check that hierarchy is for the complete ASU
       if self.hierarchy.atoms().size() == self.total_asu_length:
         import mmtbx.ncs.ncs_utils as nu
@@ -1200,8 +1218,10 @@ class ncs_group_object(object):
       pdb_hierarchy.atoms().set_xyz(new_xyz)
     if pdb_hierarchy:
       ph = pdb_hierarchy
-      if xrs:
-        crystal_symmetry = xrs.crystal_symmetry()
+      if not crystal_symmetry:
+        if self.crystal_symmetry: crystal_symmetry = self.crystal_symmetry
+        elif xrs:
+          crystal_symmetry = xrs.crystal_symmetry()
       pdb_str = ph.as_pdb_string(crystal_symmetry=crystal_symmetry)
       if not pdb_header_str:
        pdb_header_str = get_pdb_header(pdb_str)
@@ -1236,7 +1256,12 @@ class ncs_group_object(object):
           pdb_hierarchy_asu=None,
           xrs=None,
           fmodel=None,
-          write=False):
+          write=False,
+          exclude_h=None,
+          exclude_d=None,
+          restraint=True,
+          log = None,
+          show_ncs_phil=False):
     """
     Returns ncs spec object and can prints ncs info in a ncs_spec,
     format_all_for_resolve or format_all_for_phenix_refine format
@@ -1254,11 +1279,16 @@ class ncs_group_object(object):
       xrs: (xray structure) for crystal symmetry
       fmodel: (fmodel object)
       write: (bool) when False, will not write to file or print
-
+      exclude_h,exclude_d : parameters of the ncs object
+      restraint (bool): control the file format for phenix.refine
+                        when True, "refinement.ncs.restraint_group"
+                        when False,"refinement.ncs.constraint_group"
+      show_ncs_phil (bool): add NCS groups phil info to printout
     Return:
       spec_object
     """
-    spec_object = ncs.ncs()
+    log = log or self.log
+    spec_object = ncs.ncs(exclude_h=exclude_h,exclude_d=exclude_d)
     if [bool(xrs),bool(pdb_hierarchy_asu),bool(fmodel)].count(True) == 0:
       # if not input containing coordinates is given
       if self.hierarchy:
@@ -1339,16 +1369,20 @@ class ncs_group_object(object):
         residues_in_common_list = residues_in_common_list,
         ncs_domain_pdb = None)
     if write:
-      spec_object.display_all(log=self.log)
+      spec_object.display_all(log=log)
       f=open("simple_ncs_from_pdb.resolve",'w')
-      spec_object.format_all_for_resolve(log=self.log,out=f)
+      spec_object.format_all_for_resolve(log=log,out=f)
       f.close()
       f=open("simple_ncs_from_pdb.ncs",'w')
-      spec_object.format_all_for_phenix_refine(log=self.log,out=f)
+      spec_object.format_all_for_phenix_refine(
+        log=log,out=f,restraint=restraint)
       f.close()
       f=open("simple_ncs_from_pdb.ncs_spec",'w')
-      spec_object.format_all_for_group_specification(log=self.log,out=f)
+      spec_object.format_all_for_group_specification(log=log,out=f)
       f.close()
+      if show_ncs_phil:
+        self.show(format='phil',log=log)
+      print >>log,''
     return spec_object
 
   def print_ncs_phil_param(self,write=False,log=None):
@@ -1390,6 +1424,47 @@ class ncs_group_object(object):
     if write:
       print >> log,gr
     return gr
+
+  def create_ncs_domain_pdb_files(
+          self,
+          stem,
+          hierarchy=None,
+          exclude_chains=None,
+          temp_dir=''):
+    """
+    Create a PDB file for each NCS group, that contains only the
+    group NCS related atoms
+
+    Args:
+      hierarchy: PDB hierarchy object
+      stem (str): NCS domains will be written to
+                  ncs_domain_pdb_stem + "group_" + nn
+      exclude_chains (list): list of chain IDs to ignore when writing NCS to pdb
+      temp_dir (str): temp directory path
+    """
+    if not hierarchy: hierarchy = self.hierarchy
+    if not hierarchy: return None
+    if self.number_of_ncs_groups == 0: return None
+    if not stem : stem =''
+    else: stem += '_'
+    nrgl = self.get_ncs_restraints_group_list()
+    for group_number in range(len(nrgl)):
+      group_isel = ncs_group_iselection(nrgl,group_number)
+      file_name = stem+'group_'+str(group_number)+'.pdb'
+      full_file_name=os.path.join(temp_dir,file_name)
+      f=open(full_file_name,'w')
+      ph = hierarchy.select(group_isel)
+      if self.crystal_symmetry:
+        print >> f, iotbx.pdb.format_cryst1_record(
+          crystal_symmetry=self.crystal_symmetry)
+      for model in ph.models():
+        for chain in model.chains():
+          if chain.id in exclude_chains: continue
+          for conformer in chain.conformers():
+            for residue in conformer.residues():
+               for atom in residue.atoms():
+                  print >>f, atom.format_atom_record()
+      f.close()
 
   def build_asu_hierarchy(self,
                           pdb_hierarchy,
@@ -1815,6 +1890,43 @@ def all_ncs_copies_present(transform_info):
   for cp in transform_info.coordinates_present:
     test = test and cp
   return test
+
+def sensible_unit_cell_volume(
+        crystal_symmetry=None,
+        pdb_hierarchy_inp=None,
+        transform_info=None,
+        rotations=None):
+  """
+  Rough evaluation if the number of atoms of all NCS copies can fit in
+  the unit cell
+
+  Args:
+    crystal_symmetry
+
+  """
+  # fixme : finish function and add test
+  n_atoms = 0
+  n_transforms = 0
+  unit_cell_volume = None
+  if pdb_hierarchy_inp:
+    n_atoms = pdb_hierarchy_inp.hierarchy.atoms().size()
+  if crystal_symmetry:
+    # todo:  check units of unit_cell().volume()
+    unit_cell_volume = crystal_symmetry.unit_cell().volume()
+  if transform_info:
+    for r,cp in zip(transform_info.r,transform_info.coordinates_present):
+      if (not r.is_r3_identity_matrix()) and (not cp):
+        n_transforms +=1
+  elif rotations:
+    for r in rotations:
+      if not r.is_r3_identity_matrix():
+        n_transforms += 1
+  # Evaluate the volume of an atom as 4*pi(1.5A)^3/3
+  v_atom = 4*math.pi*(1.5)**3/3
+  all_atoms_volume_estimate = v_atom * n_atoms * n_transforms
+  if unit_cell_volume:
+    test = all_atoms_volume_estimate < unit_cell_volume
+  return True
 
 def uniqueness_test(unique_selection_set,new_item):
   """

@@ -151,8 +151,9 @@ class multimer(object):
     self.assembled_multimer.write_pdb_file(file_name=self.pdb_output_file_name,
       crystal_symmetry=crystal_symmetry)
 
-  def get_ncs_restraints_group_list(self):
-    return self.transforms_obj.get_ncs_restraints_group_list()
+  def get_ncs_restraints_group_list(self,raise_sorry=True):
+    get_nrgl = self.transforms_obj.get_ncs_restraints_group_list
+    return get_nrgl(raise_sorry=raise_sorry)
 
   def total_asu_length(self):
     return self.transforms_obj.total_asu_length

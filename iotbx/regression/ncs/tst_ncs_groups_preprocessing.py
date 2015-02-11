@@ -1,12 +1,13 @@
 from __future__ import division
+from phenix.command_line import simple_ncs_from_pdb as sn
 from iotbx.ncs.ncs_preprocess import format_80
 from libtbx.utils import null_out
 from libtbx.utils import Sorry
-import iotbx.ncs as ncs
+from datetime import datetime
 from scitbx import matrix
+import iotbx.ncs as ncs
 from iotbx import pdb
 import unittest
-import tempfile
 import shutil
 import os
 
@@ -24,11 +25,35 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
   def setUp(self):
     """ Create temporary folder for temp files produced during test """
     self.currnet_dir = os.getcwd()
-    self.tempdir = tempfile.mkdtemp('tempdir')
+    now = datetime.now().strftime("%I%p_%m_%d_%Y")
+    self.tempdir = 'TestNcsGroupPreprocessing_{}'.format(now)
+    os.mkdir(self.tempdir)
     os.chdir(self.tempdir)
     self.pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
     self.pdb_inp = pdb.input(source_info=None, lines=test_pdb_ncs_spec)
     self.ph = self.pdb_inp.construct_hierarchy()
+
+  def test_create_ncs_domain_pdb_files(self):
+    """ check that files are created for each NCS group as expected """
+    fn = 'SimpleNCSFromPDB_test.pdb'
+    open(fn,'w').write(pdb_str_3)
+    prefix = 'test_create_ncs_domain_pdb_files'
+    obj = sn.simple_ncs_from_pdb(
+      pdb_file=fn,
+      quiet=True,
+      exclude_chains=['D','E'],
+      suppress_print=True,
+      write_ncs_domain_pdb=True,
+      ncs_domain_pdb_stem=prefix)
+
+    fn_gr0 = prefix + '_group_0.pdb'
+    fn_gr1 = prefix + '_group_1.pdb'
+
+    self.assertEqual(obj.ncs_obj.number_of_ncs_groups,2)
+    pdb_inp_0 = pdb.input(file_name=fn_gr0)
+    pdb_inp_1 = pdb.input(file_name=fn_gr1)
+    self.assertEqual(pdb_inp_0.atoms().size(),10)
+    self.assertEqual(pdb_inp_1.atoms().size(),8)
 
   def test_phil_param_read(self):
     """ Verify that phil parameters are properly read   """
@@ -131,7 +156,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # print sys._getframe().f_code.co_name
     # creating a spec file
     params = ncs_master_params.extract()
-    params.simple_ncs_from_pdb.min_length = 1
     xrs = self.pdb_inp.xray_structure_simple()
     xrs_unit_cell = xrs.orthorhombic_unit_cell_around_centered_scatterers(
       buffer_size=8)
@@ -357,6 +381,19 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     expected = '0123456789101112131415161718192021222324252627282930313233' \
                '3435363738394041424344 \\ \n4546474849'
     self.assertEqual(result,expected)
+
+  def test_phenix_refine_ncs_file(self):
+    """ Check that we get file with "refinement.ncs.constraint_group"
+    for phenix refine"""
+    ncs_obj = ncs.input(pdb_string=pdb_str)
+    self.assertTrue(ncs_obj.number_of_ncs_groups>0)
+    ncs_obj.get_ncs_info_as_spec(
+      restraint=False,
+      write=True,
+      log=null_out())
+    file_data = open('simple_ncs_from_pdb.ncs','r').read().splitlines()
+    test = ['ncs.constraint_group' in x for x in file_data]
+    self.assertTrue(test.count(True)==1)
 
   def tearDown(self):
     """ remove temp files and folder """
@@ -691,6 +728,47 @@ MATCHING 7
 
 '''
 
+pdb_str_3 = '''\
+CRYST1  203.106   83.279  178.234  90.00 106.67  90.00 C 1 2 1      12
+ATOM      1  N   ASP A   5      91.286 -31.834  73.572  1.00 77.83           N
+ATOM      2  CA  ASP A   5      90.511 -32.072  72.317  1.00 78.04           C
+ATOM      3  C   ASP A   5      90.136 -30.762  71.617  1.00 77.70           C
+ATOM      4  O   ASP A   5      89.553 -29.857  72.225  1.00 77.56           O
+ATOM      9  N   THR A   6      91.286 -31.834  73.572  1.00 77.83           N
+ATOM     10  CA  THR A   6      90.511 -32.072  72.317  1.00 78.04           C
+TER
+ATOM   2517  N   GLY B 501      91.286 -31.834  73.572  1.00 77.83           N
+ATOM   2518  CA  GLY B 501      90.511 -32.072  72.317  1.00 78.04           C
+ATOM   2519  C   GLY B 501      90.136 -30.762  71.617  1.00 77.70           C
+ATOM   2520  O   GLY B 501      89.553 -29.857  72.225  1.00 77.56           O
+TER
+ATOM   3802  N   ASP D   5      92.487   3.543  81.144  1.00 70.91           N
+ATOM   3803  CA  ASP D   5      93.100   3.556  79.781  1.00 70.52           C
+ATOM   3804  C   ASP D   5      92.161   2.961  78.728  1.00 70.38           C
+ATOM   3805  O   ASP D   5      91.661   1.839  78.880  1.00 69.56           O
+ATOM   3810  N   THR D   6      92.487   3.543  81.144  1.00 70.91           N
+ATOM   3811  CA  THR D   6      93.100   3.556  79.781  1.00 70.52           C
+TER
+ATOM   6318  N   GLY E 501      92.487   3.543  81.144  1.00 70.91           N
+ATOM   6319  CA  GLY E 501      93.100   3.556  79.781  1.00 70.52           C
+ATOM   6320  C   GLY E 501      92.161   2.961  78.728  1.00 70.38           C
+ATOM   6321  O   GLY E 501      91.661   1.839  78.880  1.00 69.56           O
+TER
+ATOM   3953  N   ARGAd   6     314.882 195.854 106.123  1.00 50.00           N
+ATOM   3954  CA  ARGAd   6     313.875 195.773 107.215  1.00 50.00           C
+ATOM   3955  C   ARGAd   6     313.239 197.116 107.471  1.00 50.00           C
+ATOM   3956  O   ARGAd   6     313.460 198.078 106.736  1.00 50.00           O
+TER
+ATOM   5463  N   PHEAe   6     261.525 165.024 118.275  1.00 50.00           N
+ATOM   5464  CA  PHEAe   6     260.185 165.283 118.746  1.00 50.00           C
+ATOM   5465  C   PHEAe   6     259.365 164.014 118.787  1.00 50.00           C
+ATOM   5466  O   PHEAe   6     258.673 163.762 119.769  1.00 50.00           O
+TER
+ATOM   6662  N   ARGAf   6     313.035 232.818 109.051  1.00 50.00           N
+ATOM   6663  CA  ARGAf   6     312.124 232.379 110.143  1.00 50.00           C
+ATOM   6664  C   ARGAf   6     311.048 233.405 110.399  1.00 50.00           C
+ATOM   6665  O   ARGAf   6     310.909 234.383 109.665  1.00 50.00           O
+'''
 
 def run_selected_tests():
   """  Run selected tests
@@ -699,7 +777,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_min_contig_length']
+  tests = ['test_phenix_refine_ncs_file']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 

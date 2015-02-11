@@ -61,7 +61,7 @@ Options:
   nuclear=False             use nuclear x-H distances and vdW radii
   verbose=True              verbose text output
   time_limit=120            Time limit (sec) for Reduce optimization
-  show_overlap_type=all     what type of overlaps to show
+  show_overlap_type=all     what type of overlaps to show (all,sym or macro)
   substitute_non_crystallographic_unit_cell_if_necessary=false
                             fix CRYST1 records if needed
 

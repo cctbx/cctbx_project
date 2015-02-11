@@ -977,3 +977,24 @@ def make_unique_chain_names(unique_chain_names,number_of_names=1):
     new_names_list.extend(extra_names)
   return new_names_list[:number_of_names]
 
+def ncs_group_iselection(ncs_restraints_group_list,group_num):
+  """
+  Collects and returns iselection of all related atoms in NCS group
+
+  Args:
+    ncs_restraints_group_list : list of ncs restraints group objects
+    group_num (int): the group number in the list (first group is 0)
+
+  Returns:
+    isel (flex.size_t): complete NCS group selection
+  """
+  # check that the number of the NCS group is valid
+  if group_num >= len(ncs_restraints_group_list): return flex.size_t()
+  gr = ncs_restraints_group_list[group_num]
+  isel = gr.master_iselection
+  for cp in gr.copies:
+    isel.extend(cp.iselection)
+  # make sure sequential order of selection indices
+  return flex.sorted(isel)
+
+
