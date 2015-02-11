@@ -30,7 +30,8 @@ def input(pdb_hierarchy_inp=None,
           check_atom_order=False,
           allow_different_size_res=True,
           exclude_misaligned_residues=False,
-          max_dist_diff=4.0):
+          max_dist_diff=4.0,
+          ignore_chains=None):
     """
     Select method to build ncs_group_object
 
@@ -65,6 +66,8 @@ def input(pdb_hierarchy_inp=None,
       quiet: (bool) When True -> quiet output when processing files
       spec_ncs_groups: ncs_groups object as produced by simple_ncs_from_pdb
       cif_string: (str) string of cif type data
+      use_minimal_master_ncs (bool): use maximal or minimal common chains
+        in master ncs groups
       max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       write_messages (bool): When True, write messages to log
@@ -86,6 +89,7 @@ def input(pdb_hierarchy_inp=None,
         alignment quality
       max_dist_diff (float): max allow distance difference between pairs of matching
         atoms of two residues
+      ignore_chains (set of str): set of chain IDs to exclude
     """
     if not log: log = sys.stdout
     ncs_group_obj = ncs_preprocess.ncs_group_object()
@@ -117,6 +121,7 @@ def input(pdb_hierarchy_inp=None,
       allow_different_size_res=allow_different_size_res,
       exclude_misaligned_residues=exclude_misaligned_residues,
       max_dist_diff=max_dist_diff,
-      chain_similarity_limit=chain_similarity_limit)
+      chain_similarity_limit=chain_similarity_limit,
+      ignore_chains=ignore_chains)
     return ncs_group_obj
 

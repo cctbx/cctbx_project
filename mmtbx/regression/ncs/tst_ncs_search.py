@@ -3,8 +3,8 @@ from mmtbx.ncs.ncs_search import res_alignment
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
 from libtbx.utils import Sorry
-from iotbx import pdb
 import iotbx.ncs as ncs
+from iotbx import pdb
 import unittest
 
 __author__ = 'Youval'
@@ -357,6 +357,14 @@ class TestSimpleAlignment(unittest.TestCase):
     answer = ncs_results[('H','I')].copies
     self.assertEqual(answer,[['H', 'I'], ['J', 'K'], ['L', 'M']])
 
+  def test_iselection_is_in_correct_odered(self):
+    """ Make sure can calling get_ncs_restraints_group_list does not raise
+    error when atom selection in NCS group are out of order"""
+    ncs_obj = ncs.input(pdb_string=test_pdb_6)
+    ncs_obj.get_ncs_restraints_group_list()
+    pass
+
+
   def test_correct_transform_selection(self):
     """
     When [A,B] can be the master for [D,E], [F,G]
@@ -405,6 +413,20 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(len(gr),2)
     self.assertEqual(gr[0].chain_residue_id()[0],['A', 'D', 'F'])
     self.assertEqual(gr[1].chain_residue_id()[0],['B', 'E', 'G', 'X'])
+
+  def test_chain_exclusion(self):
+    """ Test that chain are being excluded when asked for """
+    exclude = {'L', 'M'}
+    ncs_obj = ncs.input(pdb_string=test_pdb_6,ignore_chains=exclude)
+    self.assertEqual(len(ncs_obj.ncs_copies_chains_names),4)
+    ncs_obj = ncs.input(pdb_string=test_pdb_6)
+    self.assertEqual(len(ncs_obj.ncs_copies_chains_names),6)
+
+  def test_processing_ncs_with_hierarchy_input(self):
+    pdb_inp = pdb.input(lines=test_pdb_6,source_info=None)
+    ph = pdb_inp.construct_hierarchy()
+    ncs_obj = ncs.input(hierarchy=ph)
+    self.assertEqual(len(ncs_obj.ncs_copies_chains_names),6)
 
   def test_min_contig_length(self):
     """ Test correct handling of min_contig_length and min_percent """
@@ -1364,7 +1386,6 @@ ATOM   4558  CA  ALA B  98      53.272 -90.229  -8.089  1.00  2.64           C
 ATOM   4563  CA  ILE B  99      55.515 -92.921  -9.376  1.00  2.00           C
 '''
 
-
 def run_selected_tests():
   """  Run selected tests
 
@@ -1372,7 +1393,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_update_atom_selections']
+  tests = ['test_processing_ncs_with_hierarchy_input']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 

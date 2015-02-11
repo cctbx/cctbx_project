@@ -781,3 +781,14 @@ Accessory classes and functions
     :members:
     :undoc-members:
     :show-inheritance:
+
+Submodules
+----------
+
+iotbx.pdb.multimer_reconstruction module
+----------------------------------------
+
+.. automodule:: iotbx.pdb.multimer_reconstruction
+    :members:
+    :undoc-members:
+    :show-inheritance:

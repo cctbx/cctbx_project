@@ -254,7 +254,14 @@ class ncs_group:  # one group of NCS operators and center and where it applies
        text+="\n"
     return text
 
-  def format_for_phenix_refine(self):
+  def format_for_phenix_refine(self,restraint=True):
+    """
+    Args:
+      restraint (bool): control the file format for phenix.refine
+                        when True, "refinement.ncs.restraint_group"
+                        when False,"refinement.ncs.constraint_group"
+    """
+    rec_str = 'restraint'*restraint + 'constraint'*(not restraint)
     if not self._chain_residue_id or len(self._chain_residue_id)<2:
       return ""
     exclude=""
@@ -265,7 +272,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     for id,residue_ranges in zip (group,residue_range_list):
       count+=1
       if count==1:
-        text="refinement.ncs.restraint_group { \n"
+        text="refinement.ncs.%s_group { \n"%rec_str
         text+="reference = chain '"+str(id)+"'"
       else:
         text+="selection = chain '"+str(id)+"'"
@@ -719,7 +726,8 @@ class ncs:
       all_text+="\n"+text
     return all_text
 
-  def format_all_for_phenix_refine(self,log=None,quiet=False,out=None):
+  def format_all_for_phenix_refine(
+          self,log=None,quiet=False,out=None,restraint=True):
     if out==None:
       out=sys.stdout
     if log==None:
@@ -729,7 +737,7 @@ class ncs:
        "NCS operators written in format for phenix.refine to:",out.name
     all_text=""
     for ncs_group in self._ncs_groups:
-      text= ncs_group.format_for_phenix_refine()
+      text= ncs_group.format_for_phenix_refine(restraint=restraint)
       if text:
         if not quiet: out.write("\n"+text+"\n\n")
         all_text+="\n"+text

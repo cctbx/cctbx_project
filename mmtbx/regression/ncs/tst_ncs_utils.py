@@ -397,9 +397,9 @@ class Test_ncs_utils(unittest.TestCase):
     c2 = list(nrg[0].copies[1].iselection)
 
     assert len(m1) == len(c1)
-    assert m1 == [0,   1,  2,  5,  6,  3,  4]
-    assert c1 == [7,   8,  9, 12, 13, 10, 11]
-    assert c2 == [14, 15, 16, 19, 20, 17, 18]
+    assert m1 == [0,   1,  2,  3,  4,  5,  6]
+    assert c1 == [7,   8,  9, 10, 11, 12, 13]
+    assert c2 == [14, 15, 16, 17, 18, 19, 20]
 
     selection1 = flex.size_t([0,1,5,3,100,101])
     selection2 = flex.size_t([0,1,5,3,7,8,9,12,100,101])
@@ -648,6 +648,17 @@ class Test_ncs_utils(unittest.TestCase):
     new_names = nu.make_unique_chain_names(unique_chain_names,5)
     self.assertEqual(new_names,['AA', 'AB', 'AC', 'BA', 'BB'])
 
+  def test_ncs_group_iselection(self):
+    """ selection of a complete NCS group """
+    ncs_obj = ncs.input(pdb_string=test_pdb_str_2,ncs_phil_string=phil_str)
+    nrgl = ncs_obj.get_ncs_restraints_group_list()
+    self.assertEqual(len(nrgl),2)
+    isel = nu.ncs_group_iselection(nrgl,1)
+    expected = [4, 5, 6, 7, 12, 13, 14, 15, 20, 21, 22, 23]
+    self.assertEqual(list(isel),expected)
+    isel = nu.ncs_group_iselection(nrgl,0)
+    expected = [0, 1, 2, 3, 8, 9, 10, 11, 16, 17, 18, 19]
+    self.assertEqual(list(isel),expected)
 
 def run_selected_tests():
   """  Run selected tests
@@ -656,7 +667,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_make_unique_chain_names']
+  tests = ['test_ncs_group_iselection']
   suite = unittest.TestSuite(map(Test_ncs_utils,tests))
   return suite
 

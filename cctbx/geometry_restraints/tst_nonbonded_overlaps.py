@@ -482,6 +482,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.file_name2 = 'test_pdb_file2.pdb'
     open(self.file_name2,'w').write(raw_records7)
     self.file_to_delete.append(self.file_name2)
+    self.reduce_present = libtbx.env.has_module(name="reduce")
 
   def test_inline_angle(self):
     '''
@@ -972,7 +973,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
 
   def test_cryst1_records_maintained(self):
     """ make sure CRYST1 records are not changed when adding H"""
-    if libtbx.env.has_module(name="reduce") :
+    if self.reduce_present:
       pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
           file_name=self.file_name2,
           allow_multiple_models=False,

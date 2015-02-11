@@ -1174,7 +1174,6 @@ iotbx/command_line/isomorphous_difference_patterson.py -text
 iotbx/command_line/merging_statistics.py -text
 iotbx/command_line/mtrix_reconstruction.py -text
 iotbx/command_line/mtz_as_cif.py -text
-iotbx/command_line/ncs_from_pdb.py -text
 iotbx/command_line/patterson_map.py -text
 iotbx/command_line/pdb.b_factor_stats.py svneol=native#text/x-python
 iotbx/command_line/pdb.box_around_molecule.py svneol=native#text/x-python
@@ -1905,7 +1904,6 @@ mmtbx/monomer_library/tst_rna_sugar_pucker_analysis.py svneol=native#text/x-pyth
 mmtbx/monomer_library/tst_rotamer_utils.py svneol=native#text/x-python
 mmtbx/msa.py -text
 mmtbx/ncs/ligands.py -text
-mmtbx/ncs/ncs_from_pdb.py -text
 mmtbx/ncs/ncs_search.py -text
 mmtbx/ncs/ncs_utils.py -text
 mmtbx/pdb_distances.py -text
