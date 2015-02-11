@@ -15,6 +15,8 @@ __author__ = 'Youval'
 import libtbx.load_env
 have_phenix = False
 if libtbx.env.has_module(name="phenix"):
+  from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
+  from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
   have_phenix = True
 
 
@@ -34,29 +36,29 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_create_ncs_domain_pdb_files(self):
     """ check that files are created for each NCS group as expected """
-    if not have_phenix:
-      print "Skipping test_spec_reading(): phenix not available"
-      return
-    from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
-    fn = 'SimpleNCSFromPDB_test.pdb'
-    open(fn,'w').write(pdb_str_3)
-    prefix = 'test_create_ncs_domain_pdb_files'
-    obj = simple_ncs_from_pdb(
-      pdb_file=fn,
-      quiet=True,
-      exclude_chains=['D','E'],
-      suppress_print=True,
-      write_ncs_domain_pdb=True,
-      ncs_domain_pdb_stem=prefix)
+    if have_phenix:
+      fn = 'SimpleNCSFromPDB_test.pdb'
+      open(fn,'w').write(pdb_str_3)
+      prefix = 'test_create_ncs_domain_pdb_files'
+      obj = simple_ncs_from_pdb(
+        pdb_file=fn,
+        quiet=True,
+        exclude_chains=['D','E'],
+        suppress_print=True,
+        write_ncs_domain_pdb=True,
+        ncs_domain_pdb_stem=prefix)
 
-    fn_gr0 = prefix + '_group_0.pdb'
-    fn_gr1 = prefix + '_group_1.pdb'
+      fn_gr0 = prefix + '_group_0.pdb'
+      fn_gr1 = prefix + '_group_1.pdb'
 
-    self.assertEqual(obj.ncs_obj.number_of_ncs_groups,2)
-    pdb_inp_0 = pdb.input(file_name=fn_gr0)
-    pdb_inp_1 = pdb.input(file_name=fn_gr1)
-    self.assertEqual(pdb_inp_0.atoms().size(),10)
-    self.assertEqual(pdb_inp_1.atoms().size(),8)
+      self.assertEqual(obj.ncs_obj.number_of_ncs_groups,2)
+      pdb_inp_0 = pdb.input(file_name=fn_gr0)
+      pdb_inp_1 = pdb.input(file_name=fn_gr1)
+      self.assertEqual(pdb_inp_0.atoms().size(),10)
+      self.assertEqual(pdb_inp_1.atoms().size(),8)
+    else:
+      print "phenix not available, skipping test_create_ncs_domain_pdb_files()"
+      pass
 
   def test_phil_param_read(self):
     """ Verify that phil parameters are properly read   """
@@ -151,76 +153,71 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_spec_reading(self):
     """ verify creating and processing spec """
-    if not have_phenix:
-      print "Skipping test_spec_reading(): phenix not available"
-      return
-    from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
-    from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
-    # print sys._getframe().f_code.co_name
-    # creating a spec file
-    params = ncs_master_params.extract()
-    xrs = self.pdb_inp.xray_structure_simple()
-    xrs_unit_cell = xrs.orthorhombic_unit_cell_around_centered_scatterers(
-      buffer_size=8)
-    self.ph.adopt_xray_structure(xrs_unit_cell)
-    of = open("test_ncs_spec.pdb", "w")
-    print >> of, self.ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
-    of.close()
-    # create a spec file
-    ncs_from_pdb=simple_ncs_from_pdb(
-      pdb_file="test_ncs_spec.pdb",
-      quiet=True,
-      log=null_out(),
-      params=params)
+    if have_phenix:
+      # print sys._getframe().f_code.co_name
+      # creating a spec file
+      params = ncs_master_params.extract()
+      xrs = self.pdb_inp.xray_structure_simple()
+      xrs_unit_cell = xrs.orthorhombic_unit_cell_around_centered_scatterers(
+        buffer_size=8)
+      self.ph.adopt_xray_structure(xrs_unit_cell)
+      of = open("test_ncs_spec.pdb", "w")
+      print >> of, self.ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
+      of.close()
+      # create a spec file
+      ncs_from_pdb=simple_ncs_from_pdb(
+        pdb_file="test_ncs_spec.pdb",
+        quiet=True,
+        log=null_out(),
+        params=params)
 
-    # reading and processing the spec file
-    trans_obj = ncs.input(
-      file_name="simple_ncs_from_pdb.ncs_spec",
-      # spec_file_str=test_ncs_spec,  # use output string directly
-      pdb_hierarchy_inp = self.pdb_obj)
+      # reading and processing the spec file
+      trans_obj = ncs.input(
+        file_name="simple_ncs_from_pdb.ncs_spec",
+        # spec_file_str=test_ncs_spec,  # use output string directly
+        pdb_hierarchy_inp = self.pdb_obj)
 
-    # test created object
-    self.assertEqual(len(trans_obj.transform_chain_assignment),3)
-    expected = '(chain A and (resseq 151:159)) or (chain D and (resseq 1:7))'
-    self.assertEqual(trans_obj.ncs_selection_str,expected)
-    # check that static parts are included in NCS and ASU
-    self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
-    self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
-    #
-    expected = {
-      'chain A and (resseq 151:159)':
-        ['chain B and (resseq 151:159)','chain C and (resseq 151:159)'],
-      'chain D and (resseq 1:7)':
-        ['chain E and (resseq 1:7)']}
-    self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
+      # test created object
+      self.assertEqual(len(trans_obj.transform_chain_assignment),3)
+      expected = '(chain A and (resseq 151:159)) or (chain D and (resseq 1:7))'
+      self.assertEqual(trans_obj.ncs_selection_str,expected)
+      # check that static parts are included in NCS and ASU
+      self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
+      self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
+      #
+      expected = {
+        'chain A and (resseq 151:159)':
+          ['chain B and (resseq 151:159)','chain C and (resseq 151:159)'],
+        'chain D and (resseq 1:7)':
+          ['chain E and (resseq 1:7)']}
+      self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
 
-    # check ncs_transform
-    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
-    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
-    group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-    r1 = trans_obj.ncs_transform['004'].r
-    r2 = trans_obj.ncs_transform['002'].r
-    #
-    self.assertEqual(len(group_ids),5)
-    self.assertEqual(set(group_ids),{1,2})
-    self.assertEqual(tran_sn,{1,2,3,4,5})
-    self.assertEqual(group_keys,{'001', '002', '003', '004', '005'})
-    #
-    self.assertTrue(r1.is_r3_identity_matrix())
-    expected_r = matrix.sqr(
-      [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
-    d = r2 - expected_r.transpose()
-    d = map(abs,d)
-    self.assertTrue(max(d)<0.01)
+      # check ncs_transform
+      group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
+      tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
+      group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
+      r1 = trans_obj.ncs_transform['004'].r
+      r2 = trans_obj.ncs_transform['002'].r
+      #
+      self.assertEqual(len(group_ids),5)
+      self.assertEqual(set(group_ids),{1,2})
+      self.assertEqual(tran_sn,{1,2,3,4,5})
+      self.assertEqual(group_keys,{'001', '002', '003', '004', '005'})
+      #
+      self.assertTrue(r1.is_r3_identity_matrix())
+      expected_r = matrix.sqr(
+        [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
+      d = r2 - expected_r.transpose()
+      d = map(abs,d)
+      self.assertTrue(max(d)<0.01)
+    else:
+      print "phenix not available, skipping test_spec_reading()"
+      pass
 
   def test_processing_of_asu_2(self):
     """ processing complete ASU
     If MTRIX records are present, they are ignored """
-    if not have_phenix:
-      print "Skipping test_processing_of_asu(): phenix not available"
-      return
     # print sys._getframe().f_code.co_name
-
     # reading and processing the spec file
     trans_obj = ncs.input(pdb_hierarchy_inp = self.pdb_obj)
 
