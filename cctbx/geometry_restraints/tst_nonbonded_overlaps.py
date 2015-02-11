@@ -511,7 +511,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     for i in [0,1]:
       grm = process_raw_records(raw_record_number=i)
 
-      clashscore_sym = grm.cctbx_clashscore_due_to_sym_op
+      clashscore_sym = grm.normalized_nbo_sym
       expected = [38.46,0][i]
       msg = outstring.format(
         'symmetry clashscore', expected, clashscore_sym)
@@ -522,7 +522,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
         'symmetry related overlaps', expected, nb_overlaps_sym)
       self.assertAlmostEqual(nb_overlaps_sym, expected, delta=0.01,msg=msg)
       #
-      clashscore_m_c = grm.cctbx_clashscore_macro_molecule
+      clashscore_m_c = grm.normalized_nbo_macro_molecule
       expected = [0,28.77][i]
       msg = outstring.format(
         'macro_molecule related clashscore', expected, clashscore_m_c)
@@ -537,7 +537,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       expected = [2,4][i]
       msg = outstring.format('total overlaps', expected, overlaps_total)
       self.assertAlmostEqual(overlaps_total, expected, delta=0.01,msg=msg)
-      clashscore_total = grm.cctbx_clashscore_all
+      clashscore_total = grm.normalized_nbo_all
       expected = [38.46,28.77][i]
       msg = outstring.format('total clashscore', expected, overlaps_total)
       self.assertAlmostEqual(clashscore_total, expected, delta=0.01,msg=msg)
@@ -577,7 +577,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       msg=outstring.format('Total nonbonded overlaps',4,nb_overlaps_total)
       self.assertAlmostEqual(grm.nb_overlaps_all, 4, delta=0.1,msg=msg)
       msg=outstring.format('Total clashscore',85.11,nb_overlaps_total)
-      self.assertAlmostEqual(grm.cctbx_clashscore_all, 85.11, delta=0.1,msg=msg)
+      self.assertAlmostEqual(grm.normalized_nbo_all, 85.11, delta=0.1,msg=msg)
 
   def test_1_5_overlaps(self):
     '''
@@ -636,7 +636,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       raw_record_number=5,
       nonbonded_distance_threshold=None)
     self.assertEqual(grm.nb_overlaps_all, 6,msg)
-    self.assertEqual(grm.cctbx_clashscore_all, 1500,msg)
+    self.assertEqual(grm.normalized_nbo_all, 1500,msg)
 
   def test_atom_selection(self):
     '''
@@ -661,7 +661,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       site_labels=site_labels,
       hd_sel=hd_sel)
     expected = 1000
-    result = nb_overlaps.cctbx_clashscore_all
+    result = nb_overlaps.normalized_nbo_all
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
     expected = 3
@@ -680,7 +680,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       site_labels=site_labels,
       hd_sel=hd_sel)
     expected = 500
-    result = nb_overlaps.cctbx_clashscore_all
+    result = nb_overlaps.normalized_nbo_all
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
     expected = 1
@@ -712,7 +712,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     result = nb_overlaps.nb_overlaps_all
     msg = outstring.format('Selection related overlaps', 3, result)
     self.assertEqual(result, 3, msg=msg)
-    result = nb_overlaps.cctbx_clashscore_all
+    result = nb_overlaps.normalized_nbo_all
     msg = outstring.format('Selection related clashscore', 1000, result)
     self.assertEqual(result, 1000, msg=msg)
     # Add water scatterers
@@ -749,7 +749,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       site_labels = mol.xray_structure.scatterers().extract_labels(),
       hd_sel      = mol.xray_structure.hd_selection())
     expected = 2500
-    result = nb_overlaps.cctbx_clashscore_all
+    result = nb_overlaps.normalized_nbo_all
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
     expected = 15
@@ -773,7 +773,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       site_labels = xrs.scatterers().extract_labels(),
       hd_sel      = xrs.hd_selection())
     expected = 2500
-    result = nb_overlaps.cctbx_clashscore_all
+    result = nb_overlaps.normalized_nbo_all
     msg = outstring.format('Selection related clashscore', expected, result)
     self.assertEqual(result, expected, msg=msg)
     expected = 15
@@ -897,9 +897,9 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.assertEqual(r_overlaps_sym,1)
     self.assertEqual(r_overlaps_macro_mol,3)
     # results
-    r_overlaps_all = round(results.cctbx_clashscore_all,2)
-    r_overlaps_sym = round(results.cctbx_clashscore_due_to_sym_op,2)
-    r_overlaps_macro_mol = round(results.cctbx_clashscore_macro_molecule,2)
+    r_overlaps_all = round(results.normalized_nbo_all,2)
+    r_overlaps_sym = round(results.normalized_nbo_sym,2)
+    r_overlaps_macro_mol = round(results.normalized_nbo_macro_molecule,2)
     #
     overlaps_all = round(1000*10/n_atoms,2)
     overlaps_sym = round(1000*1/n_atoms,2)
