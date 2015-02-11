@@ -28,6 +28,12 @@ class nonbonded_overlaps_results(object):
       nb_overlaps_proxies_macro_molecule
       nb_overlaps_proxies_all
 
+    The following non-bonded overlaps are calculated:
+      normalized_nbo_sym: (calculated with the complete model)
+      normalized_nbo_macro_molecule: (protein, DNA and RNA)
+        excluding symmetry related overlaps
+      normalized_nbo_all: (calculated with the complete model)
+
     """
     self.nb_overlaps_due_to_sym_op = 0
     self.nb_overlaps_macro_molecule = 0
@@ -37,9 +43,9 @@ class nonbonded_overlaps_results(object):
     self.nb_overlaps_proxies_macro_molecule = []
     self.nb_overlaps_proxies_all = []
     #
-    self.cctbx_clashscore_due_to_sym_op = 0
-    self.cctbx_clashscore_macro_molecule = 0
-    self.cctbx_clashscore_all = 0
+    self.normalized_nbo_sym = 0
+    self.normalized_nbo_macro_molecule = 0
+    self.normalized_nbo_all = 0
 
 class compute(object):
   """
@@ -111,16 +117,16 @@ class compute(object):
       clashscore_sym = nbo_sym*1000/self.n_atoms
       clashscore_non_sym = nbo_non_sym*1000/self.n_atoms
       clashscore_all_clashes = clashscore_sym + clashscore_non_sym
-      self.cctbx_clashscore_due_to_sym_op = clashscore_sym
+      self.normalized_nbo_sym = clashscore_sym
       self.cctbx_clashscore_non_sym = clashscore_non_sym
-      self.cctbx_clashscore_all = clashscore_all_clashes
+      self.normalized_nbo_all = clashscore_all_clashes
     else:
       self.nb_overlaps_due_to_sym_op = 0
       self.nb_overlaps_non_sym = 0
       self.nb_overlaps_all = 0
-      self.cctbx_clashscore_due_to_sym_op = 0
+      self.normalized_nbo_sym = 0
       self.cctbx_clashscore_non_sym = 0
-      self.cctbx_clashscore_all = 0
+      self.normalized_nbo_all = 0
       #
       self.nb_overlaps_proxies_due_to_sym_op = []
       self.nb_overlaps_non_sym_overlaps = []
@@ -436,9 +442,9 @@ class info(object):
     self.result.nb_overlaps_proxies_due_to_sym_op = \
       r_complete.nb_overlaps_proxies_due_to_sym_op
     # CCTBX clashscore
-    self.result.cctbx_clashscore_all = r_complete.cctbx_clashscore_all
-    self.result.cctbx_clashscore_due_to_sym_op = \
-      r_complete.cctbx_clashscore_due_to_sym_op
+    self.result.normalized_nbo_all = r_complete.normalized_nbo_all
+    self.result.normalized_nbo_sym = \
+      r_complete.normalized_nbo_sym
     # macro molecule
     if second_grm_selection:
       r_macro_mol = results[1]
@@ -447,30 +453,26 @@ class info(object):
       self.result.nb_overlaps_proxies_macro_molecule = \
         r_macro_mol.nb_overlaps_non_sym_overlaps
       clashscore = r_macro_mol.cctbx_clashscore_non_sym
-      self.result.cctbx_clashscore_macro_molecule = clashscore
+      self.result.normalized_nbo_macro_molecule = clashscore
     else:
       self.result.nb_overlaps_macro_molecule = \
         r_complete.nb_overlaps_non_sym
       self.result.nb_overlaps_proxies_macro_molecule = \
         r_complete.nb_overlaps_non_sym_overlaps
-      self.result.cctbx_clashscore_macro_molecule = \
+      self.result.normalized_nbo_macro_molecule = \
         r_complete.cctbx_clashscore_non_sym
 
-  def show(self, log=None, nbo_type='all'):
+  def show(self, log=None, nbo_type='all',normalized_nbo=False):
     """
     Show (prints to log) nonbonded_overlaps_info on overlapping atoms
 
     Args:
-      sites_cart: sites_cart[i] tuple containing the x,y,z coordinates of atom i
-      site_labels: a list of lables such as " HA  LEU A  38 ", for each atom
-      hd_sel: hd_sel[i] retruns True of False, indicating whether an
-        atom i is a Hydrogen or not
+      show_normalized_nbo=False Show non-bonded overlaps per 1000 atoms
       log : when no log is given function will print to sys.stdout
       nbo_type (str): The type of overlaps to show
         'all': Show all overlapping atoms
         'sym': Show symmetry related overlaps
         'macro': Show macro molecule overlaps (not including sym related overlaps)
-
 
     Returns:
       out_string (str): the output string that is printed to log
@@ -479,12 +481,20 @@ class info(object):
     if not log: log = sys.stdout
     out_list = []
     result_str = '{:<54} :{:5.2f}'
-    names = ['Total non-bonded overlaps',
-             'non-bonded overlaps macro molecule (Protein, RNA, DNA)',
-             'non-bonded overlaps due to symmetry']
-    scores = [nb_overlaps.nb_overlaps_all,
-              nb_overlaps.nb_overlaps_macro_molecule,
-              nb_overlaps.nb_overlaps_due_to_sym_op]
+    if normalized_nbo:
+      names = ['Total normalized NBO',
+             'normalized NBO macro molecule (Protein, RNA, DNA)',
+             'normalized NBO due to symmetry']
+      scores = [nb_overlaps.normalized_nbo_all,
+              nb_overlaps.normalized_nbo_macro_molecule,
+              nb_overlaps.normalized_nbo_sym]
+    else:
+      names = ['Total non-bonded overlaps',
+               'non-bonded overlaps macro molecule (Protein, RNA, DNA)',
+               'non-bonded overlaps due to symmetry']
+      scores = [nb_overlaps.nb_overlaps_all,
+                nb_overlaps.nb_overlaps_macro_molecule,
+                nb_overlaps.nb_overlaps_due_to_sym_op]
     for name,score in zip(names,scores):
       out_list.append(result_str.format(name,round(score,2)))
     if nbo_type == 'sym':

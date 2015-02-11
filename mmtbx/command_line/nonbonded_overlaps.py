@@ -46,8 +46,11 @@ master_phil_str = """
     .type = bool
     .help = '''\
     Will replace the crystallographic unit cell when the model
-    crystallographic information is bad
-    '''
+    crystallographic information is bad'''
+
+  show_normalized_nbo = False
+    .type = bool
+    .help = When True, will show non-bonded overlaps per 1000 atoms
 """
 
 usage_string = """\
@@ -62,6 +65,7 @@ Options:
   verbose=True              verbose text output
   time_limit=120            Time limit (sec) for Reduce optimization
   show_overlap_type=all     what type of overlaps to show (all,sym or macro)
+  show_normalized_nbo=False Show non-bonded overlaps per 1000 atoms
   substitute_non_crystallographic_unit_cell_if_necessary=false
                             fix CRYST1 records if needed
 
@@ -92,6 +96,7 @@ def run (args, out=None) :
       verbose=True              verbose text output
       time_limit=120            Time limit (sec) for Reduce optimization
       show_overlap_type=all     what type of overlaps to show
+      show_normalized_nbo=False Show non-bonded overlaps per 1000 atoms
       substitute_non_crystallographic_unit_cell_if_necessary=false
                                 fix CRYST1 records if needed
     out : where to wrote the output to.
@@ -162,7 +167,10 @@ def run (args, out=None) :
     site_labels=site_labels,
     hd_sel=hd_sel)
   if params.verbose:
-    nb_overlaps.show(log=out,nbo_type=params.show_overlap_type)
+    nb_overlaps.show(
+      log=out,
+      nbo_type=params.show_overlap_type,
+      normalized_nbo=params.show_normalized_nbo)
   else:
     all = nb_overlaps.result.nb_overlaps_all
     macro_molecule = nb_overlaps.result.nb_overlaps_macro_molecule
