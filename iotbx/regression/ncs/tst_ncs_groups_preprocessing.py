@@ -1,5 +1,4 @@
 from __future__ import division
-from phenix.command_line import simple_ncs_from_pdb as sn
 from iotbx.ncs.ncs_preprocess import format_80
 from libtbx.utils import null_out
 from libtbx.utils import Sorry
@@ -35,10 +34,14 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_create_ncs_domain_pdb_files(self):
     """ check that files are created for each NCS group as expected """
+    if not have_phenix:
+      print "Skipping test_spec_reading(): phenix not available"
+      return
+    from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
     fn = 'SimpleNCSFromPDB_test.pdb'
     open(fn,'w').write(pdb_str_3)
     prefix = 'test_create_ncs_domain_pdb_files'
-    obj = sn.simple_ncs_from_pdb(
+    obj = simple_ncs_from_pdb(
       pdb_file=fn,
       quiet=True,
       exclude_chains=['D','E'],
