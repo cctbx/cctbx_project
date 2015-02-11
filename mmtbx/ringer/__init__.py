@@ -123,6 +123,13 @@ def sample_angle (
     params,
     sampling_method="linear",
     unit_cell=None) :
+  """
+  Given a set of four sites defining a rotatable dihedral angle, sample the
+  density at the fourth site in small angular increments.
+
+  returns: a tuple of lists containing the sampled density values (floats) for
+           the primary map and optional difference map.
+  """
   frac_matrix = None
   if (unit_cell is None) :
     assert (map_coeffs is not None)
@@ -178,6 +185,13 @@ def sample_angle (
   return densities, difference_densities
 
 class iterate_over_residues (object) :
+  """
+  Given a PDB hierarchy and electron density, run Ringer analysis for all
+  applicable amino acid residues in the model.  Defaults to examining all chi
+  angles but this can be overriden.  Implemented as a class to facilitate
+  parallelization, but the instantiated object can be discarded after the
+  'results' attribute is retrieved.
+  """
   def __init__ (self,
                 pdb_hierarchy,
                 params,
@@ -187,6 +201,7 @@ class iterate_over_residues (object) :
                 unit_cell=None,
                 grid_spacing=0.2,
                 sampling_method="linear",
+                n_chi_max=4,
                 log=None) :
     if (log is None) : log = sys.stdout
     adopt_init_args(self, locals())
@@ -219,8 +234,6 @@ class iterate_over_residues (object) :
       # XXX the unit cell that we need for the non-crystallographic
       # interpolation is not what comes out of the map - it's the
       self.unit_cell = ccp4_map.grid_unit_cell()
-      # FIXME should use this instead (once it's available)
-      #self.unit_cell = ccp4_map.grid_unit_cell()
     if (difference_map_coeffs is not None) :
       if (sampling_method == "direct") :
         self.difference_map_coeffs = self.difference_map_coeffs.expand_to_p1()
@@ -246,7 +259,7 @@ class iterate_over_residues (object) :
       # this will be a list of lists
       results_ = easy_mp.pool_map(
         processes=params.nproc,
-        fixed_func=self.sample_density,
+        fixed_func=self.__sample_density,
         args=range(len(self.residue_groups)))
       # now flatten it out
       self.results = []
@@ -254,9 +267,9 @@ class iterate_over_residues (object) :
     else :
       self.results = []
       for i_res in range(len(self.residue_groups)) :
-        self.results.extend(self.sample_density(i_res, verbose=True))
+        self.results.extend(self.__sample_density(i_res, verbose=True))
 
-  def sample_density (self, i_res, verbose=False) :
+  def __sample_density (self, i_res, verbose=False) :
     import iotbx.pdb
     get_class = iotbx.pdb.common_residue_names_get_class
     residue_group = self.residue_groups[i_res]
@@ -283,7 +296,7 @@ class iterate_over_residues (object) :
           xyz=xyz)
         if (verbose) :
           print >> self.log, "  %s:" % residue.id_str()
-        for i in range(1, n_chi+1) :
+        for i in range(1, min(self.n_chi_max+1, n_chi+1)) :
           try :
             atoms = self.angle_lookup.extract_chi_atoms("chi%d" % i, residue)
           except AttributeError as e :
@@ -327,3 +340,40 @@ class iterate_over_residues (object) :
               pass
         results.append(res_out)
     return results
+
+class Peak (object) :
+  """
+  Container for information about the sampling angle where density is at the
+  global maximum for the given Chi angle.  Used for EMRinger.
+  """
+  # The peak object, should eventually get moved into ringer I suspect.
+  def __init__(self, resname, resid, chain_id, n_chi, chi_value, rho_value):
+    adopt_init_args(self, locals())
+    self.chi_value=chi_value%360
+
+  def __repr__(self):
+    return "\n%s\t%s\t%s\t%s\t%d\t%f" % (self.resname,self.resid,self.chain_id,self.n_chi,self.chi_value*5,self.rho_value)
+
+class Peaklist (object) :
+  # Right now this is just a slightly specialized list. I may add functionality
+  # later, however.
+  def __init__(self):
+    self.peaks=[]
+
+  def sorted(self, *key):
+    return sorted(self.peaks,*key)
+
+  def append_lists(self,other_peaklist):
+    self.peaks = self.peaks+ other_peaklist.peaks
+
+  def add_new(self,resname, resid, chain_id, n_chi, chi_value, rho_value):
+    self.peaks.append(Peak(resname, resid, chain_id, n_chi, chi_value, rho_value))
+
+  def get_peaks(self):
+    return self.peaks
+
+  def __len__(self):
+    return len(self.peaks)
+
+  def __repr__(self):
+    return str(sorted(self.peaks,key=lambda peak: peak.chi_value))
