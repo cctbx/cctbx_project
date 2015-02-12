@@ -12,7 +12,11 @@ import time
 
 def get_pilatus_timestamp(timestamp_string):
   import calendar
-  timestamp, milliseconds = timestamp_string.split('.')
+  if '.' in timestamp_string:
+    timestamp, milliseconds = timestamp_string.split('.')
+  else:
+    timestamp = timestamp_string
+    milliseconds = '000'
 
   for format in ['%Y-%b-%dT%H:%M:%S',
                  '%Y-%m-%dT%H:%M:%S',
