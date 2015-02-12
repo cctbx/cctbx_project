@@ -42,13 +42,13 @@ class PubMedDirective(Directive):
       get_title = get_title.strip(".")
       if len(possible_doi) > 0:
         text.append("| `%s <http://dx.doi.org/%s>`_" %(
-          get_title.encode("ascii","xmlcharrefreplace"), possible_doi[0]))
+          get_title, possible_doi[0]))
 
       # Author list
       authors = [ " ".join([elem["LastName"],elem["Initials"]])
                   for elem in article["AuthorList"] ]
       text.append(
-        "| %s." %(", ".join(authors).encode("ascii","xmlcharrefreplace")))
+        "| %s." %(", ".join(authors)))
 
       # Journal reference
       journal = article["Journal"]
