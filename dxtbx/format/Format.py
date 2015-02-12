@@ -138,6 +138,8 @@ class Format(object):
 
     except exceptions.Exception, e:
       # FIXME ideally should not squash the errors here...
+      import traceback
+      traceback.print_exc()
       pass
     finally:
       self._end()
