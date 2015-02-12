@@ -468,6 +468,7 @@ dxtbx/format/FormatCBF.py -text
 dxtbx/format/FormatCBFFull.py -text
 dxtbx/format/FormatCBFFullPilatus.py -text
 dxtbx/format/FormatCBFMini.py -text
+dxtbx/format/FormatCBFMiniADSCHF4M.py -text
 dxtbx/format/FormatCBFMiniEiger.py -text
 dxtbx/format/FormatCBFMiniPilatus.py -text
 dxtbx/format/FormatCBFMiniPilatusDLS12M.pickle -text
