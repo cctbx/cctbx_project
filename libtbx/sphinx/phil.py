@@ -30,6 +30,7 @@ class PhilDirective(Directive):
       s, expert_level=expert_level, attributes_level=attributes_level)
 
     text = s.getvalue()
+    text = text.replace('*', '\*')
     text_nodes, messages = self.state.inline_text(text, 0)
     node = nodes.literal_block(text, '', *text_nodes)
     self.add_name(node)
