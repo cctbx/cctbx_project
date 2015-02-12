@@ -517,6 +517,7 @@ def is_atom_pair_linked(atom1,
   if verbose: print 'checking common_saccharide',lookup
   if "common_saccharide" in lookup:
     limit = saccharide_bond_cutoff*saccharide_bond_cutoff
+    if verbose: print 'd2,limit',d2,limit
     if "metal" in lookup:
       limit = metal_coordination_cutoff*metal_coordination_cutoff
     if d2>limit:
