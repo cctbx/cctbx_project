@@ -841,9 +841,15 @@ def env_detz(address, env):
         # According to Sébastien Boutet, this particular motor has not
         # caused any problem in the past.
         pv = env.epicsStore().value('CXI:DS1:MMS:06')
+      if pv is None:
+        # Try the other detector. These are sometimes inconsistent
+        pv = env.epicsStore().value('CXI:DS2:MMS:06.RBV')
     elif detector == 'CxiDsd' or detector == 'CxiDs2':
       # XXX Note inconsistency in naming: Dsd vs Ds2!
       pv = env.epicsStore().value('CXI:DS2:MMS:06.RBV')
+      if pv is None:
+        # Try the other detector. These are sometimes inconsistent
+        pv = env.epicsStore().value('CXI:DS1:MMS:06.RBV')
     elif detector == 'XppGon':
       # There is no distance recorded for the XPP's CSPAD on the robot
       # arm.  Always return zero to allow the distance to be set using
