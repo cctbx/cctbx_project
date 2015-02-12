@@ -270,6 +270,10 @@ def beam_center_convention_from_image_object(imageobject,phil_params):
       beam_center_convention = 0
       set_convention(0,phil_params)
 
+    elif imageobject.vendortype == "ADSC-HF4M":
+       beam_center_convention = 0
+       set_convention(0,phil_params)
+
     else: beam_center_convention = None
 
     if imageobject.vendortype == "CBF" and \

@@ -1198,6 +1198,7 @@ iotbx/command_line/show_systematic_absences.py -text
 iotbx/command_line/simple_map_coefficients.py -text
 iotbx/command_line/symmetry_search.py svneol=native#text/x-python
 iotbx/detectors/active_area_filter.py -text
+iotbx/detectors/adsc_minicbf.py -text
 iotbx/detectors/adsc_module.py -text
 iotbx/detectors/beam_center_convention.py -text
 iotbx/detectors/cbf.py -text
