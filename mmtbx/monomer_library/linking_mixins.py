@@ -714,23 +714,44 @@ Residue classes
       class2 = linking_utils.get_classes(atom2, #_group2.resname,
                                          important_only=True,
         )
+      atom1_key = None
+      atom2_key = None
+      if class1 in linking_setup.maximum_per_atom_links: # is one
+        atom1_key = atom1.id_str()
+      if class2 in linking_setup.maximum_per_atom_links: # is one
+        atom2_key = atom2.id_str()
       class_key = [class1, class2]
       class_key.sort()
       class_key = tuple(class_key)
+      if verbose: print 'class_key',class_key
       #
       if not link_metals and "metal" in class_key: continue
       if (not na_params.enabled and na_params.bonds.enabled
           and ("common_rna_dna" in class_key
           or "ccp4_mon_lib_rna_dna" in class_key)): continue
-      if not link_residues and "common_amino_acid" in class_key: continue
+      if ( not link_residues and 
+           class_key == ("common_amino_acid", "common_amino_acid")
+           ): continue
       if not link_carbohydrates and "common_saccharide" in class_key: continue
       #
       names = [atom1.name, atom2.name]
+      if verbose: print 'names',names
       names.sort()
+      if verbose:
+        print '-'*80
+        print class_key
+        print done
+        print key
+        print atom1_key, atom2_key
       # exclude duplicate symmetry op.
       if key in done:
-        if names in done[key]:
-          continue
+        if names in done[key]: continue
+      if atom1_key:
+        if atom1_key in done: continue
+        done[atom1_key] = key
+      if atom2_key:
+        if atom2_key in done: continue
+        done[atom2_key] = key
       #
       current_number_of_links = len(done.setdefault(key, []))
       if(current_number_of_links >=

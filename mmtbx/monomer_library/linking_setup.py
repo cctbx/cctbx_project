@@ -34,6 +34,11 @@ maximum_inter_residue_links = {
   ("common_rna_dna",    "metal") : 2,
   ("common_rna_dna",    "common_rna_dna") : 5  # for basepairing
   }
+maximum_per_atom_links = {
+  "common_saccharide" : 1,
+  "common_rna_dna"    : 1,
+  "common_amino_acid" : 1,
+  }
 #
 skip_if_both = [
   ["common_water",      "common_water"],
