@@ -25,6 +25,7 @@ PAD           487 407   172  172 pilatus-200K
 PAD          1475 1679  172  172 pilatus-2M
 PAD          2463 2527  172  172 pilatus-6M
 PAD          2463 5071  172  172 pilatus-12M
+PAD          2100 2290  150  150 adsc-HF4M
 IMAGE_PLATE  3000 3000  100  100 raxis-IV
 CCD          2084 2084   35   35 rigaku-saturn-724
 CCD          1042 1042   70   70 rigaku-saturn-724-2x2-binned
