@@ -728,10 +728,10 @@ Residue classes
       if (not na_params.enabled and na_params.bonds.enabled
           and ("common_rna_dna" in class_key
           or "ccp4_mon_lib_rna_dna" in class_key)): continue
-      if not link_residues: 
+      if not link_residues:
         if class_key in [
             ("common_amino_acid", "common_amino_acid"),
-            #("common_amino_acid", "other"),
+            ("common_amino_acid", "other"),
            ]: continue
       if not link_carbohydrates and "common_saccharide" in class_key: continue
       #
