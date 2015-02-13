@@ -732,7 +732,11 @@ class fit_translation4(mark5_iteration,fit_translation2):
 #          self.mosaicity_factor.x[iframe] = current_values[4]
           for iparam in xrange(self.bandpass_models["n_independent"]):
             self.g_factor.x[iparam+6*iframe] = current_values[2+iparam]
-          self.parameter_based_model_one_frame_detail(frame_id,iframe,all_model)
+          try:
+            self.parameter_based_model_one_frame_detail(frame_id,iframe,all_model)
+          except Exception, e:
+            print "Failed on", iframe, self.FRAMES["unique_file_name"][iframe]
+            raise e
 
           #print "  HATTNE marker #0", frame_id, type(self.bandpass_models), self.bandpass_models.keys(), type(self.bandpass_models[frame_id])
 
