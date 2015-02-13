@@ -147,7 +147,7 @@ the output images in the folder cxi49812.
   address = command_line.options.address
   src = Source('DetInfo(%s)'%address)
 
-  nevent = np.array([0])
+  nevent = np.array([0.])
 
   for run in ds.runs():
     runnumber = run.run()
@@ -214,28 +214,28 @@ the output images in the folder cxi49812.
   #sum the images across mpi cores
   if size > 1:
     print "Synchronizing rank", rank
-  totevent = np.empty_like(nevent)
+  totevent = np.zeros(nevent.shape)
   comm.Reduce(nevent,totevent)
 
-  if totevent[0] == 0:
+  if rank == 0 and totevent[0] == 0:
     raise Sorry("No events found in the run")
 
-  sumall = np.empty_like(sum)
+  sumall = np.zeros(sum.shape)
   comm.Reduce(sum,sumall)
 
-  sumsqall = np.empty_like(sumsq)
+  sumsqall = np.zeros(sumsq.shape)
   comm.Reduce(sumsq,sumsqall)
 
-  maxall = np.empty_like(maximum)
+  maxall = np.zeros(maximum.shape)
   comm.Reduce(maximum,maxall, op=MPI.MAX)
 
-  waveall = np.empty_like(wavelength)
+  waveall = np.zeros(wavelength.shape)
   comm.Reduce(wavelength,waveall)
 
-  distall = np.empty_like(distance)
+  distall = np.zeros(distance.shape)
   comm.Reduce(distance,distall)
 
-  timeall = np.empty_like(timestamp)
+  timeall = np.zeros(timestamp.shape)
   comm.Reduce(timestamp,timeall)
 
   if rank==0:
