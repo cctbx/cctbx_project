@@ -36,7 +36,9 @@ class reader(object):
     with open(filename, 'r') as file_handle:
       tokens = []
       version = 1
-      for count, line in enumerate(file_handle):
+      lines = file_handle.readlines()
+      assert len(lines)
+      for count, line in enumerate(lines):
         line_tokens = line.split()
         if count == 0:
           if len(line_tokens) > 0 and line_tokens[0] == 'XPARM.XDS':
