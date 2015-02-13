@@ -4,6 +4,7 @@ from mmtbx.ncs.ncs_utils import make_unique_chain_names
 from mmtbx.ncs.ncs_utils import ncs_group_iselection
 from mmtbx.ncs.ncs_utils import apply_transforms
 from scitbx.array_family import flex
+from libtbx.utils import null_out
 from scitbx.math import superpose
 from mmtbx.ncs import ncs_search
 from libtbx.utils import Sorry
@@ -1380,8 +1381,14 @@ class ncs_group_object(object):
       f=open("simple_ncs_from_pdb.ncs_spec",'w')
       spec_object.format_all_for_group_specification(log=log,out=f)
       f.close()
+      phil_str = self.show(format='phil',log=null_out())
       if show_ncs_phil:
-        self.show(format='phil',log=log)
+        print >> log,phil_str
+      # remove title line
+      phil_str = phil_str.splitlines()
+      i = phil_str.index('ncs_group {')
+      phil_str = '\n'.join(phil_str[i:])
+      open('ncs_from_pbd.phil','w').write(phil_str)
       print >>log,''
     return spec_object
 
@@ -1528,18 +1535,24 @@ class ncs_group_object(object):
     """
     if not log: log = self.log
     if (not format) or (format.lower() == 'cctbx'):
-       print >> log, self.__repr__(prefix)
-       if verbose:
-          print >> log, self.show_ncs_selections(prefix)
+      out_str = self.__repr__(prefix)
+      print >> log, out_str
+      if verbose:
+        print >> log, self.show_ncs_selections(prefix)
+      return out_str
     elif format.lower() == 'phil':
-      print >> log, self.show_phil_format(prefix)
+      out_str = self.show_phil_format(prefix)
+      print >> log, out_str
+      return out_str
     elif format.lower() == 'spec':
       # Does not add prefix in SPEC format
-      print >> log, self.show_search_parameters_values(prefix)
-      print >> log, self.show_chains_info(prefix)
-      print >> log, '\n' + prefix + 'NCS object "display_all"'
+      out_str = self.show_search_parameters_values(prefix) + '/n'
+      out_str += self.show_chains_info(prefix) + '\n'
+      out_str += '\n' + prefix + 'NCS object "display_all"'
+      print >> log, out_str
       spec_obj = self.get_ncs_info_as_spec(write=False)
-      spec_obj.display_all(log=log)
+      out_str += spec_obj.display_all(log=log)
+      return out_str
 
   def show_phil_format(self,prefix=''):
     """

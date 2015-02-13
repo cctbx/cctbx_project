@@ -357,7 +357,7 @@ class TestSimpleAlignment(unittest.TestCase):
     answer = ncs_results[('H','I')].copies
     self.assertEqual(answer,[['H', 'I'], ['J', 'K'], ['L', 'M']])
 
-  def test_iselection_is_in_correct_odered(self):
+  def test_iselection_is_in_correct_order(self):
     """ Make sure can calling get_ncs_restraints_group_list does not raise
     error when atom selection in NCS group are out of order"""
     ncs_obj = ncs.input(pdb_string=test_pdb_6)
@@ -454,6 +454,30 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(ncs_obj.number_of_ncs_groups,1)
     n_atoms_in_copy = ncs_obj.common_res_dict.values()[0][0][1].size()
     self.assertEqual(n_atoms_in_copy,31)
+
+  def test_file_formats(self):
+    """ Make sure .ncs file format is as needed """
+    # fixme: finish test when we decide how to change .ncs files
+    # create a pdb string for the test and flip to atoms order
+    pdb_str = test_pdb_7 + test_pdb_7_addition
+    pdb_lines = pdb_str.splitlines()
+    pdb_lines[2:4] = [
+      'ATOM      3  O   ASP A   5      89.553 -29.857  72.225  1.00 77.56           O',
+      'ATOM      4  C   ASP A   5      90.136 -30.762  71.617  1.00 77.70           C'
+    ]
+    ncs_obj = ncs.input(
+        pdb_string='\n'.join(pdb_lines),
+        check_atom_order=True,
+        max_rmsd=10,
+        min_percent=0.20,
+        min_contig_length=1)
+    # x = ncs_obj.get_ncs_info_as_spec(write=True,show_ncs_phil=True)
+    # x = ncs_obj.show(format('spec'))
+    # check another pdb string
+    ncs_obj = ncs.input(pdb_string=test_pdb_6)
+    ncs_obj.get_ncs_restraints_group_list()
+    # x = ncs_obj.get_ncs_info_as_spec(write=True,show_ncs_phil=True)
+    pass
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
@@ -1393,7 +1417,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_processing_ncs_with_hierarchy_input']
+  tests = ['test_file_formats','test_iselection_is_in_correct_order']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 
