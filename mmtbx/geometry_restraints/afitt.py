@@ -19,6 +19,16 @@ master_phil_str = """
     .type = str
 """
 
+energy_options = [
+  "mmff-stretch",
+  "mmff-bend",
+  "mmff-torsion",
+  "mmff-outofplane",
+  "mmff-stretchbend",
+  "mmff-vdw",
+  "mmff-coulomb", # False
+]
+
 class covalent_object:
   def __init__(self):
     self.n_atoms = None
@@ -157,15 +167,13 @@ class afitt_object:
       # Each ligand_type list holds a covalent_object for each instance of that
       # ligand in the model.
       self.covalent_data.append([])
-      # lig_atoms = []
+      lig_atoms = []
       #for each instance of the ligand type
       for instance_i, instance in enumerate(self.res_ids[resname_i]):
         #search for covalent bonds between ligand and other residues
-        # lig_atoms = lig_atoms + self.sites_cart_ptrs[resname_i][instance_i]
-        # nonlig_atoms = [atom for atom in self.pdb_hierarchy.atoms()
-        #                 if atom.i_seq not in lig_atoms ]
+        lig_atoms = lig_atoms + self.sites_cart_ptrs[resname_i][instance_i]
         nonlig_atoms = [atom for atom in self.pdb_hierarchy.atoms()
-                        if atom.parent().parent().resseq != instance[2]]
+                        if atom.i_seq not in lig_atoms ]
         bond = []
         for lig_atm_iseq in self.sites_cart_ptrs[resname_i][instance_i]:
           for atom in nonlig_atoms:
@@ -202,25 +210,25 @@ class afitt_object:
         else:
           ml=mon_lib_srv.get_comp_comp_id_direct(comp_id=cov_obj.resname)
         cif_object = ml.cif_object
-
         # atom id's in the CBR
-        cif_atom_ids = [i for i in cif_object['_chem_comp_atom.atom_id']]
+        atom_ids = [i for i in cif_object['_chem_comp_atom.atom_id']]
+
+        #MISSING ATOMS
+        # find atoms in the CBR cif that are misssing in the
+        # model (covalent bond deletes a hydrogen)
         model_atom_ids = [atom.name.strip() for atom in cov_res.atoms()]
+        missing_atoms = [i for i in atom_ids if i not in model_atom_ids]
 
-        # because order of atoms in pdb can be different from cif, this
-        # array points from the pdb atom to location of that atom in the cif array
-        # this also takes care of the missings atoms because which, not
-        # bein in the model_atom_ids, won't be in the cif_object_ptrs either
-        cif_object_ptrs = [cif_atom_ids.index(atom) for atom in model_atom_ids]
-
-        # get charges, elements, formal charges
+        # get charges, elements, formal charges but exclude missing atom
         partial_charges = [float(i) for i in cif_object['_chem_comp_atom.partial_charge']]
-        cov_obj.partial_charges = [partial_charges[ptr] for ptr in cif_object_ptrs]
         atom_elements = [i for i in cif_object['_chem_comp_atom.type_symbol']]
-        cov_obj.atom_elements = [atom_elements[ptr] for ptr in cif_object_ptrs]
+        chem_comp_atoms = zip(atom_ids, partial_charges, atom_elements)
+        cov_obj.partial_charges = [i[1] for i in chem_comp_atoms if i[0] not in missing_atoms]
+        cov_obj.atom_elements = [i[2] for i in chem_comp_atoms if i[0] not in missing_atoms]
         if cif_object.has_key('_chem_comp_atom.charge'):
           formal_charges = [float(i) for i in cif_object['_chem_comp_atom.charge']]
-          cov_obj.formal_charges = [formal_charges[ptr] for ptr in cif_object_ptrs]
+          chem_comp_atoms = zip(atom_ids, formal_charges)
+          cov_obj.formal_charges = [i[1] for i in chem_comp_atoms if i[0] not in missing_atoms]
 
         # get bonds but exclude missing atom bonds and adjust atom indexes
         bond_atom_1 = [i for i in cif_object['_chem_comp_bond.atom_id_1']]
@@ -229,29 +237,21 @@ class afitt_object:
                  'deloc':4}
         bond_type = [bond_dict[i] for i in cif_object['_chem_comp_bond.type']]
         bonds = zip(bond_atom_1, bond_atom_2, bond_type)
+        atom_ids_filt = [i for i in atom_ids if i not in missing_atoms]
         for b in bonds:
-          if b[0] in model_atom_ids and b[1] in model_atom_ids:
-            cov_obj.bonds.append((model_atom_ids.index(b[0]), model_atom_ids.index(b[1]), b[2]))
-
-
-
-
-
-        # import code; code.interact(local=dict(globals(), **locals())); sys.exit()
-        # atom_ids_filt = [i for i in cif_atom_ids if i not in missing_atoms]
+          if b[0] not in missing_atoms and b[1] not in missing_atoms:
+            cov_obj.bonds.append((atom_ids_filt.index(b[0]), atom_ids_filt.index(b[1]), b[2]))
 
         # add the bond between ligand and CBR
         lig_atom_i = self.sites_cart_ptrs[resname_i][instance_i].index(bond[0][1])
-        cov_atom_i = model_atom_ids.index(bond[0][0].name.strip())
+        cov_atom_i = atom_ids_filt.index(bond[0][0].name.strip())
         cov_obj.res_bond = [lig_atom_i, self.n_atoms[resname_i]+cov_atom_i, 1]
 
-        #MISSING ATOMS
-        # find atoms in the CBR cif that are misssing in the
-        # model (covalent bond deletes a hydrogen)
-        missing_atoms = [i for i in cif_atom_ids if i not in model_atom_ids]
         # assert that all missing atoms would've been bound to the CBR atom
         # linked to the ligand. Other atoms should not be missing!
         for missing_atom in missing_atoms:
+          # missing_atom_i = atom_ids.index(missing_atom)
+          # cov_atom_i = atom_ids.index(bond[0][0].name.strip())
           miss_atm_bound_to_cov_atm=False
           for b in bonds:
             if (b[0] == missing_atom and b[1] == bond[0][0].name.strip()) \
@@ -437,11 +437,22 @@ def get_afitt_command():
       return exe
   return None
 
-def call_afitt(afitt_input, ff):
+def call_afitt(afitt_input, ff, energies=None):
   exe = get_afitt_command()
   if exe is None:
     raise Sorry("AFITT command not found. Add to path or correctly set OE_EXE")
   cmd = '%s -ff %s' % (exe, ff)
+  #energies = [0,0,0,0,0,1,0]
+  if energies is None:
+    for eo in energy_options:
+      v = "true"
+      if eo=="mmff-coulomb": v="false"
+      cmd += " -%s %s" % (eo, v)
+  else:
+    for eo, ee in zip(energy_options, energies):
+      v = "true"
+      if not ee: v="false"
+      cmd += " -%s %s" % (eo, v)
   ero = easy_run.fully_buffered(command=cmd,
                                 stdin_lines=afitt_input,
                                )
@@ -532,7 +543,6 @@ def process_afitt_output(afitt_output,
         print "(%10.4f %10.4f %10.4f) (%4.4f %4.4f %4.4f)" \
             %(geometry.gradients[ptr][0], geometry.gradients[ptr][1], geometry.gradients[ptr][2],
             afitt_gradient[0], afitt_gradient[1], afitt_gradient[2])
-      sys.exit()
     ### end_debug
     if gr_scale:
       scaled_gradients = []
@@ -606,11 +616,23 @@ def get_afitt_energy(cif_file,
                                              resname_i,
                                              instance_i,
                                              )
+      f=file("afitt.inp", "wb")
+      f.write(afitt_input)
+      f.close()
       lines = call_afitt(afitt_input, ff)
       for line in lines.getvalue().splitlines():
         if line.startswith('ENERGYTAG'):
           energy=float(line.split()[1])
       energies.append([resname, int(instance[2]), instance[1].strip(), energy] )
+      if 1:
+        for i in range(7):
+          e = [0]*7
+          e[i]=1
+          lines = call_afitt(afitt_input, ff, energies=e)
+          for line in lines.getvalue().splitlines():
+            if line.startswith('ENERGYTAG'):
+              energy=float(line.split()[1])
+              print "  %-16s : %15.7f" % (energy_options[i], energy)
   return energies
 
 def validate_afitt_params(params):

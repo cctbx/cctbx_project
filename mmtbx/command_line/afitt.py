@@ -7,7 +7,7 @@ from mmtbx.geometry_restraints import afitt
 if __name__ == "__main__":
   if len(sys.argv[1:])<3:
     print '''
-usage: afitt.py [-h] [-ff FF] pdb_file cif_file ligand_names
+usage: mmtbx.afitt [-h] [-ff FF] pdb_file cif_file ligand_names
 
 positional arguments:
   pdb_file      pdb file

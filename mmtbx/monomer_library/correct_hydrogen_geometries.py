@@ -173,4 +173,7 @@ def correct_hydrogen_geometries(hierarchy,
     for i, atom in enumerate(hierarchy.atoms()):
       atom.xyz = sites_cart[i]
   corrected_hydrogen_count = i_seqs
+  atoms = hierarchy.atoms()
+  for i, i_seq in enumerate(corrected_hydrogen_count):
+    corrected_hydrogen_count[i] = atoms[i_seq].id_str()
   return bad_hydrogen_count, corrected_hydrogen_count
