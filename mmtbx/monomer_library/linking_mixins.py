@@ -673,6 +673,11 @@ Residue classes
       if sym_op:
         key.append(str(rt_mx_ji))
       key = tuple(key)
+      # hydrogens
+      if atom1.element in ["H", "D", "T"]:
+        done[atom2.id_str()] = atom1.id_str()
+      if atom2.element in ["H", "D", "T"]:
+        done[atom1.id_str()] = atom2.id_str()
       # bond length cutoff & some logic
       if not linking_utils.is_atom_pair_linked(
           atom1,
@@ -714,12 +719,6 @@ Residue classes
       class2 = linking_utils.get_classes(atom2, #_group2.resname,
                                          important_only=True,
         )
-      atom1_key = None
-      atom2_key = None
-      if class1 in linking_setup.maximum_per_atom_links: # is one
-        atom1_key = atom1.id_str()
-      if class2 in linking_setup.maximum_per_atom_links: # is one
-        atom2_key = atom2.id_str()
       class_key = [class1, class2]
       class_key.sort()
       class_key = tuple(class_key)
@@ -729,29 +728,40 @@ Residue classes
       if (not na_params.enabled and na_params.bonds.enabled
           and ("common_rna_dna" in class_key
           or "ccp4_mon_lib_rna_dna" in class_key)): continue
-      if ( not link_residues and 
-           class_key == ("common_amino_acid", "common_amino_acid")
-           ): continue
+      if not link_residues: 
+        if class_key in [
+            ("common_amino_acid", "common_amino_acid"),
+            #("common_amino_acid", "other"),
+           ]: continue
       if not link_carbohydrates and "common_saccharide" in class_key: continue
       #
       names = [atom1.name, atom2.name]
       if verbose: print 'names',names
       names.sort()
+      atom1_key = None
+      atom2_key = None
+      if class1 in linking_setup.maximum_per_atom_links: # is one
+        atom1_key = atom1.id_str()
+      if class2 in linking_setup.maximum_per_atom_links: # is one
+        atom2_key = atom2.id_str()
       if verbose:
         print '-'*80
-        print class_key
-        print done
-        print key
-        print atom1_key, atom2_key
+        print 'class_key',class_key
+        print 'done'
+        for k, item in done.items():
+          print "> %s : %s" % (k, item)
+        print 'key',key
+        print 'atom keys',atom1_key, atom2_key
       # exclude duplicate symmetry op.
       if key in done:
         if names in done[key]: continue
-      if atom1_key:
-        if atom1_key in done: continue
-        done[atom1_key] = key
-      if atom2_key:
-        if atom2_key in done: continue
-        done[atom2_key] = key
+      if atom1.parent().altloc==atom2.parent().altloc:
+        if atom1_key:
+          if atom1_key in done: continue
+          done[atom1_key] = key
+        if atom2_key:
+          if atom2_key in done: continue
+          done[atom2_key] = key
       #
       current_number_of_links = len(done.setdefault(key, []))
       if(current_number_of_links >=

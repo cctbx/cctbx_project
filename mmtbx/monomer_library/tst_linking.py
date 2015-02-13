@@ -1942,6 +1942,38 @@ ATOM    265  C6   Gd D   5      21.637 -18.715 -33.939  1.00 33.17           C
 ATOM    266  O6   Gd D   5      22.276 -18.200 -33.026  1.00 33.11           O
 ATOM    267  N2   Gd D   5      19.447 -21.579 -34.104  1.00 37.54           N
 """,
+  "linking_test_two_ASN-NAG.pdb" : """
+ATOM  10643  N   ASN C 281     -19.478  10.820  35.398  1.00 81.69      UNK  N  
+ATOM  10644  CA  ASN C 281     -19.872  11.829  34.423  1.00 81.69      UNK  C  
+ATOM  10645  C   ASN C 281     -18.678  12.767  34.352  1.00 81.69      UNK  C  
+ATOM  10646  O   ASN C 281     -17.651  12.498  34.967  1.00 81.69      UNK  O  
+ATOM  10647  CB  ASN C 281     -21.101  12.584  34.900  1.00 20.00      UNK  C  
+ATOM  10648  CG  ASN C 281     -20.973  12.990  36.338  1.00 20.00      UNK  C  
+ATOM  10649  OD1 ASN C 281     -19.993  13.641  36.709  1.00 20.00      UNK  O  
+ATOM  10650  ND2 ASN C 281     -21.942  12.609  37.167  1.00 20.00      UNK  N  
+ATOM  10662  N   ASN C 284     -17.638  14.353  38.268  1.00  1.00           N  
+ATOM  10663  CA  ASN C 284     -17.098  13.672  39.449  1.00  1.00           C  
+ATOM  10664  C   ASN C 284     -15.831  12.857  39.226  1.00  1.00           C  
+ATOM  10665  O   ASN C 284     -15.399  12.126  40.112  1.00  1.00           O  
+ATOM  10666  CB  ASN C 284     -18.176  12.838  40.159  1.00 20.00           C  
+ATOM  10667  CG  ASN C 284     -19.570  13.376  39.919  1.00 20.00           C  
+ATOM  10668  OD1 ASN C 284     -19.960  14.412  40.455  1.00 20.00           O  
+ATOM  10669  ND2 ASN C 284     -20.321  12.672  39.100  1.00 20.00           N  
+HETATM  135  C1  NAG C 751     -21.757  12.993  38.644  1.00 88.86           C
+HETATM  136  C2  NAG C 751     -22.945  12.574  39.656  1.00 88.86           C
+HETATM  137  C3  NAG C 751     -23.602  13.737  40.389  1.00 88.86           C
+HETATM  138  C4  NAG C 751     -24.038  14.792  39.375  1.00 88.86           C
+HETATM  139  C5  NAG C 751     -23.012  15.048  38.266  1.00 88.86           C
+HETATM  140  C6  NAG C 751     -22.855  16.548  38.038  1.00 88.86           C
+HETATM  141  C7  NAG C 751     -23.929  10.591  38.674  1.00 88.86           C
+HETATM  142  C8  NAG C 751     -22.762  10.103  37.868  1.00 88.86           C
+HETATM  143  N2  NAG C 751     -23.970  11.898  38.896  1.00 88.86           N
+HETATM  144  O3  NAG C 751     -22.675  14.320  41.308  1.00 88.86           O
+HETATM  145  O4  NAG C 751     -25.267  14.372  38.772  1.00 88.86           O
+HETATM  146  O5  NAG C 751     -21.747  14.436  38.578  1.00 88.86           O
+HETATM  147  O6  NAG C 751     -22.602  16.781  36.649  1.00 88.86           O
+HETATM  148  O7  NAG C 751     -24.791   9.842  39.102  1.00 88.86           O
+""",
         }
 
 links = {
@@ -1974,12 +2006,41 @@ links = {
   "linking_test_over_valence.pdb" : [6,6],
   "linking_test_c2_c6.pdb" : [21,22],
   "linking_test_ccp4_other.pdb" : [71,71],
+  #
+  "linking_test_two_ASN-NAG.pdb" : [28,29,29,29],
   }
+
+def run_and_test(cmd, pdb, i):
+  result = easy_run.fully_buffered(cmd).raise_if_errors()
+  assert (result.return_code == 0)
+  for line in result.stdout_lines :
+    if ("Write PDB file" in line) :
+      break
+  else :
+    raise RuntimeError("Missing expected log output")
+  print "OK"
+  f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
+  lines = f.readlines()
+  f.close()
+  for line in lines:
+    if line.find("Bond restraints:")>-1:
+      bonds = int(line.split()[2])
+      break
+  print bonds
+  assert bonds == links[pdb][i]
+  new_geo = pdb.replace(".pdb", "_minimized_%d.geo" % i)
+  if (os.path.isfile(new_geo)) :
+    os.remove(new_geo)
+  os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
+  print "OK"
 
 def run(only_i=None):
   try: only_i=int(only_i)
   except ValueError: only_i=None
   except TypeError: only_i=None
+  longer_tests = [
+    "linking_test_two_ASN-NAG.pdb",
+    ]
   cifs = ""
   for pdb in pdbs:
     f=file(pdb, "wb")
@@ -1988,10 +2049,13 @@ def run(only_i=None):
     if pdb.endswith(".cif"): cifs += " %s" % pdb
   j=0
   for pdb in sorted(pdbs):
+    #break
     if pdb.endswith(".cif"): continue
-    if pdb in ["linking_test_CD_GHE_A_B.pdb",
-               "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
-               ]: continue
+    if pdb in longer_tests: continue
+    if pdb in [
+        "linking_test_CD_GHE_A_B.pdb",
+        "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
+        ]: continue
     #if pdb.find("ccp4")==-1: continue
     j+=1
     if only_i is not None and only_i!=j: continue
@@ -2005,28 +2069,23 @@ def run(only_i=None):
         if i:
           cmd += " nucleic_acid_restraints.enabled=1"
       print cmd
-      result = easy_run.fully_buffered(cmd).raise_if_errors()
-      assert (result.return_code == 0)
-      for line in result.stdout_lines :
-        if ("Write PDB file" in line) :
-          break
-      else :
-        raise RuntimeError("Missing expected log output")
-      print "OK"
-      f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
-      lines = f.readlines()
-      f.close()
-      for line in lines:
-        if line.find("Bond restraints:")>-1:
-          bonds = int(line.split()[2])
-          break
-      print bonds
-      assert bonds == links[pdb][i]
-      new_geo = pdb.replace(".pdb", "_minimized_%d.geo" % i)
-      if (os.path.isfile(new_geo)) :
-        os.remove(new_geo)
-      os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
-      print "OK"
+      run_and_test(cmd, pdb,i)
+
+  for pdb in sorted(pdbs):
+    if pdb not in longer_tests: continue
+    j+=1
+    #print j, pdb
+    if only_i is not None and only_i!=j: continue
+    k=0
+    for i in range(2):
+      for ii in range(2):
+        log_filename = "%s_%d_%d.log" % (pdb, i, ii)
+        cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
+        cmd += " link_all=%d link_carbohydrate=%d" % (i, ii)
+        print cmd
+        run_and_test(cmd, pdb,k)
+        k+=1
+
 
 if __name__=="__main__":
   import sys

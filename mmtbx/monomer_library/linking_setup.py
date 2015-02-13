@@ -38,6 +38,7 @@ maximum_per_atom_links = {
   "common_saccharide" : 1,
   "common_rna_dna"    : 1,
   "common_amino_acid" : 1,
+  "other"             : 1,
   }
 #
 skip_if_both = [
