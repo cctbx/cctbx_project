@@ -257,7 +257,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def format_for_phenix_refine(self,restraint=True):
     """
     Args:
-      restraint (bool): control the file format for phenix.refine
+      restraint (bool): control the .ncs file format
                         when True, "refinement.ncs.restraint_group"
                         when False,"refinement.ncs.constraint_group"
     """
@@ -269,26 +269,27 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     if self._exclude_d: exclude+=" and (not element D) "
     [group,residue_range_list] = self._chain_residue_id
     count=0
+    text = []
     for id,residue_ranges in zip (group,residue_range_list):
       count+=1
       if count==1:
-        text="refinement.ncs.%s_group { \n"%rec_str
-        text+="reference = chain '"+str(id)+"'"
+        text.append("refinement.ncs.%s_group {"%rec_str)
+        l = "  reference = chain '{}'".format(id)
       else:
-        text+="selection = chain '"+str(id)+"'"
+        l = "  selection = chain '{}'".format(id)
       if residue_ranges:
         first=True
         for residue_range in residue_ranges:
           if first:
             first=False
-            text+=" and (resseq "
+            l += " and (resseq "
           else:
-            text+=" or resseq  "
-          text+=str(residue_range[0])+":"+str(residue_range[1])
-        text+=" ) "+exclude+"\n"
-      else :
-        text += "\n"
-    text+= "} \n"
+            l += " or resseq  "
+          l += str(residue_range[0])+":"+str(residue_range[1])
+        l += " ) " + exclude
+      text.append(l)
+    text.append("}")
+    text = '\n'.join(text)
     return text
 
   def format_for_resolve(self,crystal_number=None,skip_identity=False,
@@ -739,7 +740,7 @@ class ncs:
     for ncs_group in self._ncs_groups:
       text= ncs_group.format_for_phenix_refine(restraint=restraint)
       if text:
-        if not quiet: out.write("\n"+text+"\n\n")
+        if not quiet: out.write(text+'\n')
         all_text+="\n"+text
     return all_text
 
