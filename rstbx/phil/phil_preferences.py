@@ -115,6 +115,13 @@ integration {
     .help = governs the resolution limits used for higher Bravais settings
     .help = if true, use the expanded limiting_resolution used for the last triclinic round
     .help = if false, attempt to analyze triclinic integrated spots for limits (default until Feb 2015, not so reliable)
+  combine_sym_constraints_and_3D_target = False
+    .type = bool
+    .help = enable redesigned refinement protocol from Acta D 2014 Sauter paper
+    .help = if false (default as of Feb 2015) symmetry constraints are applied after eqn (1) positional refinement
+    .help =   but before indexing of high-Bravais symmetry spots, possibly leading to misindexing of high-angle spots
+    .help = if true, spots are indexed once only, in triclinic setting.  After application of high-symmetry constraints
+    .help =   dials is used to refine positions (eqn 1) and deltapsi angle (eqn 2).
 }
 """
 indexing_defs = """

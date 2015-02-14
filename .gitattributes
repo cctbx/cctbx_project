@@ -2233,6 +2233,8 @@ rstbx/apps/integration_ext.cpp -text
 rstbx/apps/slip_helpers.py -text
 rstbx/apps/spot_markup.py -text
 rstbx/apps/stills/__init__.py -text
+rstbx/apps/stills/deltapsi_refinement_preceding_integration.py -text
+rstbx/apps/stills/dials_refinement_preceding_integration.py -text
 rstbx/apps/stills/ersatz_nexus.cpp -text
 rstbx/apps/stills/ersatz_nexus.h -text
 rstbx/apps/stills/simple_integration.h -text
