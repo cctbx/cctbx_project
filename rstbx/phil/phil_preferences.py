@@ -110,6 +110,11 @@ integration {
     .type = float
     .help = use None to limit the integration resolution based on Wilson plot
     .help = alternatively set integration limit to a fixed value given in Angstroms.
+  greedy_integration_limit = False
+    .type = bool
+    .help = governs the resolution limits used for higher Bravais settings
+    .help = if true, use the expanded limiting_resolution used for the last triclinic round
+    .help = if false, attempt to analyze triclinic integrated spots for limits (default until Feb 2015, not so reliable)
 }
 """
 indexing_defs = """

@@ -133,7 +133,8 @@ class IntegrateCharacters:
       integrate_worker.integration_concept(image_number = i,
         cb_op_to_primitive = setting["cb_op_inp_best"].inverse(),
         verbose_cv = self.horizons_phil.indexing.verbose_cv,
-        background_factor = self.horizons_phil.integration.background_factor)
+        background_factor = self.horizons_phil.integration.background_factor,
+        )
       #P = Profiler("proper")
       integrate_worker.integration_proper()
       local["results"].append(integrate_worker)
@@ -246,6 +247,10 @@ class IntegrateCharacters:
         index['integration'] = self.integrate_one_character(
         setting=index,
         integration_limit=self.horizons_phil.integration.montecarlo_integration_limit)
+      elif self.horizons_phil.integration.greedy_integration_limit:
+        index['integration'] = self.integrate_one_character(
+        setting=index,
+        integration_limit=float(self.triclinic['integration']['results'][0].limiting_resolution))
       else:
         index['integration'] = self.integrate_one_character(
         setting=index,
