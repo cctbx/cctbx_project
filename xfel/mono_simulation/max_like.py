@@ -47,7 +47,7 @@ class minimizer:
 
   def functional_only(self,alpha,eta):
 
-    print "Deff_ang",1./alpha,"FWmos_deg",eta*180./pi
+    #print "Deff_ang",1./alpha,"FWmos_deg",eta*180./pi
     allobs = xrange(self.Nobs)
     f = 0.
     if False:
@@ -144,7 +144,7 @@ class minimizer:
       partf_partP1 -= (1./prob) * part_prob_partP1
 
 
-    print f, [partf_partP0,partf_partP1],"analytical"
+    #print f, [partf_partP0,partf_partP1],"analytical"
     #self.fd_compute_functional_and_gradients()
 
 
