@@ -39,6 +39,13 @@ namespace rstbx { namespace integration { namespace ext {
            arg_("IS_adapt"),
            arg_("spots")
             ))
+        .def("null_correction_mapping",
+             &simple_integration::null_correction_mapping,(
+           arg_("predicted"),
+           arg_("correction_vectors"),
+           arg_("IS_adapt"),
+           arg_("spots")
+            ))
         .def("safe_background",
            (scitbx::af::shared<scitbx::vec2<double> >(simple_integration::*)
            (scitbx::af::flex_int const& rawdata,
