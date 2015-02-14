@@ -1,16 +1,9 @@
 from __future__ import division
 import math,os, cPickle as pickle,cStringIO as StringIO
 from labelit.dptbx.status import cellstr
-from rstbx.apps.stills.simple_integration import IntegrationMetaProcedure
-from rstbx.apps import simple_integration
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
 from rstbx.dials_core.integration_core import show_observations
-
-class integrate_one_frame(IntegrationMetaProcedure):
-  def __init__(self):
-    simple_integration.__init__(self)
-    IntegrationMetaProcedure.__init__(self)
 
 class IntegrateCharacters:
   def __init__(self,Characters,process_dictionary,horizons_phil,files,spotfinder_results):
@@ -100,7 +93,12 @@ class IntegrateCharacters:
       print "---------BEGIN Integrate one frame %d %s" % \
           (frames[i], os.path.split(self.files.filenames()[i])[-1])
       #P = Profiler("worker")
-      integrate_worker = integrate_one_frame()
+      if self.horizons_phil.integration.combine_sym_constraints_and_3D_target and setting["counter"]>1:
+        from rstbx.apps.stills.dials_refinement_preceding_integration import integrate_one_frame
+        integrate_worker = integrate_one_frame(self.triclinic["integration"]["results"][0].triclinic_pairs)
+      else:
+        from rstbx.apps.stills.deltapsi_refinement_preceding_integration import integrate_one_frame
+        integrate_worker = integrate_one_frame()
       integrate_worker.inputai = ai
 
       integrate_worker.inputpd = dict(masks=local["masks"],
