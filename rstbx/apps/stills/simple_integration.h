@@ -296,6 +296,39 @@ namespace rstbx { namespace integration {
       }
     }
 
+    void
+    null_correction_mapping(
+      scitbx::af::shared<scitbx::vec3<double> > predicted,
+      scitbx::af::shared<scitbx::vec2<double> > correction_vectors,
+      annlib_adaptbx::AnnAdaptor const& IS_adapt,
+      scitbx::af::shared<spotfinder::distltbx::w_spot> spots
+      ){
+      ISmasks.clear();
+      corrections.clear();
+      for (int i=0; i<predicted.size(); ++i){
+        // do not make a positional correction
+        scitbx::vec2<double>correction(0.0,0.0);
+
+        mask_t I_S_mask;
+
+        scitbx::vec3<double> pred = predicted[i]/pixel_size;
+        for (int n=0; n<NEAR; ++n){ // loop over near spotfinder spots
+          int spot_match = IS_adapt.nn[i*NEAR+n];
+          spotfinder::distltbx::w_spot spot = spots[spot_match];
+          for (int p=0; p<spot.bodypixels.size(); ++p){
+            double deltaX = spot.bodypixels[p].x - spot.ctr_mass_x();
+            double deltaY = spot.bodypixels[p].y - spot.ctr_mass_y();
+            I_S_mask[scitbx::vec2<int>(
+                round(pred[0] + deltaX + correction[0]),
+                round(pred[1] + deltaY + correction[1])
+              )] = true;
+          }
+        }
+        ISmasks.push_back(I_S_mask);
+        corrections.push_back(correction);
+      }
+    }
+
     scitbx::af::shared<int > tiling_boundaries_m, tile_locations_m;
     bool check_tiles;
 
