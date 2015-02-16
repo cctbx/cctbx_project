@@ -25,7 +25,7 @@ typedef Distl::spot w_spot;
 class SpotError : public std::exception {
 private:
   std::string s;
-  const char* file;
+  /*const char* file;*/
 public:
   inline SpotError(std::string s):s(s){}
   virtual const char* what() const throw();

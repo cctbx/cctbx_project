@@ -56,7 +56,7 @@ struct corrected_backplane: public backplane {
   std::vector<int> p_cache;
   std::vector<int> q_cache;
   double rmsd;
-  double p,q; //temporary values
+  /*double p,q; //temporary values*/
  public:
   corrected_backplane(const int& xst, const int& yst):
     xstart(xst),ystart(yst) {
