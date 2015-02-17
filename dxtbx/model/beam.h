@@ -63,10 +63,10 @@ namespace dxtbx { namespace model {
       : wavelength_(wavelength),
         divergence_(0.0),
         sigma_divergence_(0.0),
+        polarization_normal_(0.0, 1.0, 0.0),
         polarization_fraction_(0.999) {
       DXTBX_ASSERT(direction.length() > 0);
       direction_ = direction.normalize();
-      polarization_normal_ = direction_ * vec3<double>(1, 0, 0);
     }
 
     /**
@@ -76,11 +76,11 @@ namespace dxtbx { namespace model {
     Beam(vec3 <double> s0, double divergence, double sigma_divergence)
       : divergence_(divergence),
         sigma_divergence_(sigma_divergence),
+        polarization_normal_(0.0, 1.0, 0.0),
         polarization_fraction_(0.999) {
       DXTBX_ASSERT(s0.length() > 0);
       wavelength_ = 1.0 / s0.length();
       direction_ = -s0.normalize();
-      polarization_normal_ = direction_ * vec3<double>(1, 0, 0);
     }
 
     /**
@@ -94,10 +94,10 @@ namespace dxtbx { namespace model {
       : wavelength_(wavelength),
         divergence_(divergence),
         sigma_divergence_(sigma_divergence),
+        polarization_normal_(0.0, 1.0, 0.0),
         polarization_fraction_(0.999)  {
       DXTBX_ASSERT(direction.length() > 0);
       direction_ = direction.normalize();
-      polarization_normal_ = direction_ * vec3<double>(1, 0, 0);
     }
 
     Beam(vec3 <double> direction, double wavelength,
@@ -110,9 +110,6 @@ namespace dxtbx { namespace model {
         polarization_normal_(polarization_normal),
         polarization_fraction_(polarization_fraction)  {
       direction_ = direction.normalize();
-      const double EPS = 1e-7;
-      DXTBX_ASSERT(std::abs(direction_ * polarization_normal_) < EPS);
-      DXTBX_ASSERT(direction.length() > 0);
     }
 
     /** Virtual destructor */
