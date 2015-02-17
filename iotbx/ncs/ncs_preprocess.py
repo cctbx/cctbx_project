@@ -1387,7 +1387,7 @@ class ncs_group_object(object):
       # remove title line
       if phil_str:
         phil_str = phil_str.splitlines()
-        indx = [i for i in len(phil_str) if 'ncs_group {' in phil_str[i]]
+        indx = [i for i in range(len(phil_str)) if 'ncs_group {' in phil_str[i]]
         if indx:
           i = indx[0]
           phil_str = '\n'.join(phil_str[i:])
