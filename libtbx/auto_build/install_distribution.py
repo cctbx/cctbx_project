@@ -216,7 +216,7 @@ class installer(object):
     """%self.dest_dir)
 
     # Other useful directories.
-    self.tmp_dir = op.join(self.installer_dir, "tmp")
+    self.tmp_dir = op.join(self.installer_dir, "base_tmp")
     self.build_dir = op.join(self.dest_dir, "build")
     self.base_dir = op.join(self.dest_dir, "base")
     self.modules_dir = op.join(self.dest_dir, "modules")
