@@ -1391,7 +1391,7 @@ class ncs_group_object(object):
         if indx:
           i = indx[0]
           phil_str = '\n'.join(phil_str[i:])
-          open('ncs_from_pbd.phil','w').write(phil_str)
+          open('simple_ncs_from_pdb.phil','w').write(phil_str)
       print >>log,''
     return spec_object
 
