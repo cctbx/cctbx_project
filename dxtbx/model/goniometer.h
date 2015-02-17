@@ -171,6 +171,14 @@ namespace dxtbx { namespace model {
       return !(*this == goniometer);
     }
 
+    /** Rotate the goniometer about an axis */
+    void rotate_around_origin(vec3<double> axis, double angle) {
+      mat3<double> R = axis_and_angle_as_matrix(axis, angle);
+      rotation_axis_ = rotation_axis_.rotate_around_origin(axis, angle);
+      fixed_rotation_ = R * fixed_rotation_;
+      setting_rotation_ = R * setting_rotation_;
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const Goniometer &gonio);
 
   protected:

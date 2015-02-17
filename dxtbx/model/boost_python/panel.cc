@@ -15,10 +15,13 @@
 #include <sstream>
 #include <boost_adaptbx/std_pair_conversion.h>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
+#include <scitbx/constants.h>
 #include <dxtbx/model/panel.h>
 #include <dxtbx/model/boost_python/to_from_dict.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
+
+  using scitbx::deg_as_rad;
 
   std::string panel_to_string(const Panel &panel) {
     std::stringstream ss;
@@ -67,6 +70,12 @@ namespace dxtbx { namespace model { namespace boost_python {
   static
   bool panel_is(const Panel *lhs, const Panel *rhs) {
     return lhs == rhs;
+  }
+
+  static
+  void rotate_around_origin(Panel &panel, vec3<double> axis, double angle, bool deg) {
+    double angle_rad = deg ? deg_as_rad(angle) : angle;
+    panel.rotate_around_origin(axis, angle_rad);
   }
 
   struct VirtualPanelPickleSuite : boost::python::pickle_suite {
@@ -495,6 +504,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__deepcopy__", &panel_deepcopy)
       .def("__copy__", &panel_deepcopy)
       .def("__str__", &panel_to_string)
+      .def("rotate_around_origin",
+          &rotate_around_origin, (
+            arg("axis"),
+            arg("angle"),
+            arg("deg")=true))
       .def("to_dict", &to_dict<Panel>)
       .def("from_dict", &from_dict<Panel>,
         return_value_policy<manage_new_object>())

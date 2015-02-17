@@ -17,10 +17,13 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/simple_tiny_io.h>
+#include <scitbx/constants.h>
 #include <dxtbx/model/detector.h>
 #include <dxtbx/model/boost_python/to_from_dict.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
+
+  using scitbx::deg_as_rad;
 
   std::string detector_to_string(const Detector &detector) {
     std::stringstream ss;
@@ -45,6 +48,12 @@ namespace dxtbx { namespace model { namespace boost_python {
       result[i] = d[i].get_name();
     }
     return result;
+  }
+
+  static
+  void rotate_around_origin(Detector &detector, vec3<double> axis, double angle, bool deg) {
+    double angle_rad = deg ? deg_as_rad(angle) : angle;
+    detector.rotate_around_origin(axis, angle_rad);
   }
 
   template <>
@@ -107,6 +116,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       //.def("do_panels_intersect",
       //  &Detector::do_panels_intersect)
       .def("get_names", &get_names)
+      .def("rotate_around_origin",
+          &rotate_around_origin, (
+            arg("axis"),
+            arg("angle"),
+            arg("deg")=true))
       .def("__str__", &detector_to_string)
       .def("to_dict", &to_dict<Detector>)
       .def("from_dict", &from_dict<Detector>,

@@ -194,6 +194,14 @@ namespace dxtbx { namespace model {
         get_resolution_at_pixel(s0, vec2<double>(c[0], slow))));
     }
 
+    /** Rotate the panel about an axis */
+    void rotate_around_origin(vec3<double> axis, double angle) {
+      vec3<double> f = get_fast_axis().rotate_around_origin(axis, angle);
+      vec3<double> s = get_slow_axis().rotate_around_origin(axis, angle);
+      vec3<double> o = get_origin().rotate_around_origin(axis, angle);
+      set_frame(f, s, o);
+    }
+
     friend std::ostream& operator<<(std::ostream &os, const Panel &p);
 
   protected:

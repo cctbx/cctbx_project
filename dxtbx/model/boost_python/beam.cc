@@ -138,6 +138,12 @@ namespace dxtbx { namespace model { namespace boost_python {
       deg ? deg_as_rad(sigma_divergence) : sigma_divergence);
   }
 
+  static
+  void rotate_around_origin(Beam &beam, vec3<double> axis, double angle, bool deg) {
+    double angle_rad = deg ? deg_as_rad(angle) : angle;
+    beam.rotate_around_origin(axis, angle_rad);
+  }
+
   void export_beam()
   {
     // Export BeamBase
@@ -218,6 +224,11 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Beam::get_polarization_fraction)
       .def("set_polarization_fraction",
         &Beam::set_polarization_fraction)
+      .def("rotate_around_origin",
+          &rotate_around_origin, (
+            arg("axis"),
+            arg("angle"),
+            arg("deg")=true))
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
       .def("__str__", &beam_to_string)
