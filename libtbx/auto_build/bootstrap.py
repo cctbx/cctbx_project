@@ -302,6 +302,7 @@ class Builder(object):
       auth=None,
       with_python=None,
       nproc=4,
+      verbose=False,
     ):
     if nproc is None: nproc=4
     """Create and add all the steps."""
@@ -322,6 +323,7 @@ class Builder(object):
     self.with_python = with_python
     if self.with_python:
       self.python_base = with_python
+    self.verbose = verbose
 
     self.add_init()
 
@@ -504,9 +506,11 @@ class Builder(object):
   # Override these methods.
   def add_base(self):
     """Build the base dependencies, e.g. Python, HDF5, etc."""
-    with_python = []
+    extra_opts = []
     if self.with_python:
-      with_python = ['--with-python',self.with_python]
+      extra_opts = ['--with-python',self.with_python]
+    if self.verbose:
+      extra_opts.append('-v')
     self.add_step(self.shell(
       name='base',
       command=[
@@ -515,7 +519,7 @@ class Builder(object):
         '--python-shared',
         '--skip-if-exists',
         '--%s'%self.BASE_PACKAGES
-      ] + with_python,
+      ] + extra_opts,
       workdir=['.']
     ))
 
@@ -714,6 +718,7 @@ def run(root=None):
 
   You can provide the number of processes to use in compilation
   using "--nproc".
+  Complete build output is shown with "-v" or "--verbose".
 
   Finally, you may specify a specific Python interpreter
   using "--with-python".
@@ -730,6 +735,7 @@ def run(root=None):
   parser.add_option("--sfuser", help="SourceForge SVN username.")
   parser.add_option("--with-python", dest="with_python", help="Use specified Python interpreter")
   parser.add_option("--nproc", help="# processes in compile step.")
+  parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output", default=False)
   options, args = parser.parse_args()
 
   # Root dir
@@ -777,6 +783,7 @@ def run(root=None):
     build=('build' in actions),
     tests=('tests' in actions),
     nproc=options.nproc,
+    verbose=options.verbose,
   ).run()
 
 if __name__ == "__main__":
