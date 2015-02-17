@@ -33,22 +33,34 @@ def import_subprocess () :
     import subprocess_with_fixes as subprocess
   return subprocess
 
-def call (args, log=sys.stdout, shell=True, cwd=None) :
+def call (args, log=sys.stdout, shell=True, cwd=None, verbose=False) :
   subprocess = import_subprocess()
   rc = None
   # shell=True requires string as args.
   if shell and isinstance(args, list) :
     args = " ".join(args)
+  if verbose:
+    stdout = subprocess.PIPE
+  else:
+    stdout = log
   p = subprocess.Popen(
     args=args,
     shell=shell,
     cwd=cwd,
     bufsize=-1,
     stdin=None,
-    stdout=log, #subprocess.PIPE,
+    stdout=stdout,
     stderr=subprocess.STDOUT,
     universal_newlines=True,
     close_fds=False)
+  if verbose:
+    while p.poll() is None:
+      line = p.stdout.readline()
+      # this will cause a deadlock if process is writing to stderr
+      # stderr is redirected to stdout, so this cannot happen
+      if line:
+        print ": " + line.strip()
+        log.write(line)
   #o, e = p.communicate()
   #log.write(o)
   log.flush()
