@@ -14,6 +14,7 @@
 #include <boost/shared_ptr.hpp>
 #include <string>
 #include <sstream>
+#include <scitbx/constants.h>
 #include <dxtbx/model/goniometer.h>
 #include <dxtbx/model/kappa_goniometer.h>
 #include <dxtbx/model/boost_python/to_from_dict.h>
@@ -21,6 +22,13 @@
 namespace dxtbx { namespace model { namespace boost_python {
 
   using namespace boost::python;
+  using scitbx::deg_as_rad;
+
+  static
+  void rotate_around_origin(Goniometer &goniometer, vec3<double> axis, double angle, bool deg) {
+    double angle_rad = deg ? deg_as_rad(angle) : angle;
+    goniometer.rotate_around_origin(axis, angle_rad);
+  }
 
   std::string goniometer_to_string(const Goniometer &goniometer) {
     std::stringstream ss;
@@ -87,6 +95,11 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Goniometer::get_setting_rotation)
       .def("set_setting_rotation",
         &Goniometer::set_setting_rotation)
+      .def("rotate_around_origin",
+          &rotate_around_origin, (
+            arg("axis"),
+            arg("angle"),
+            arg("deg")=true))
       .def("__eq__", &Goniometer::operator==)
       .def("__ne__", &Goniometer::operator!=)
       .def("__str__", &goniometer_to_string)

@@ -202,6 +202,14 @@ namespace dxtbx { namespace model {
 //      return false;
 //    }
 
+    /** Rotate the detector about an axis */
+    void rotate_around_origin(vec3<double> axis, double angle) {
+      for (std::size_t i = 0; i < panel_list_->size(); ++i) {
+        (*panel_list_)[i].rotate_around_origin(axis, angle);
+      }
+    }
+
+
   protected:
 
     /**

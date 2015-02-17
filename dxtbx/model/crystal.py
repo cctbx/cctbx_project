@@ -473,6 +473,35 @@ class crystal_model(object):
     self._uc = other._uc
     self._mosaicity = other._mosaicity
 
+  def rotate_around_origin(self, axis, angle, deg=True):
+    '''
+    Rotate the model around an axis and angle
+
+    :param axis: The axis to rotate around
+    :param angle: The angle to rotate around
+    :param deg: Degrees or radians
+
+    '''
+    from scitbx import matrix
+
+    # Compute the matrix
+    R = matrix.col(axis).axis_and_angle_as_r3_rotation_matrix(angle, deg=deg)
+
+    # Update U
+    self._U = R * self._U
+
+    # Update A at scan points
+    if self._A_at_scan_points is not None:
+      for i in range(len(self._A_at_scan_points)):
+        At = self._A_at_scan_points[i]
+        uc = unit_cell(orthogonalization_matrix=At.transpose().inverse())
+        Bt = matrix.sqr(uc.fractionalization_matrix()).transpose()
+        Ut = At * Bt.inverse()
+        Ut = R * Ut
+        At = Ut * Bt
+        self._A_at_scan_points[i] = At
+
+
 def crystal_model_from_mosflm_matrix(mosflm_A_matrix,
                                      unit_cell=None,
                                      wavelength=None,
