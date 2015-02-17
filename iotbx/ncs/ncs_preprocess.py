@@ -1385,10 +1385,13 @@ class ncs_group_object(object):
       if show_ncs_phil:
         print >> log,phil_str
       # remove title line
-      phil_str = phil_str.splitlines()
-      i = phil_str.index('ncs_group {')
-      phil_str = '\n'.join(phil_str[i:])
-      open('ncs_from_pbd.phil','w').write(phil_str)
+      if phil_str:
+        phil_str = phil_str.splitlines()
+        indx = [i for i in len(phil_str) if 'ncs_group {' in phil_str[i]]
+        if indx:
+          i = indx[0]
+          phil_str = '\n'.join(phil_str[i:])
+          open('ncs_from_pbd.phil','w').write(phil_str)
       print >>log,''
     return spec_object
 
