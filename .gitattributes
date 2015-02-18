@@ -2627,6 +2627,7 @@ scitbx/misc/positive_getitem_index.h svneol=native#text/plain
 scitbx/r3_utils.hpp svneol=native#text/plain
 scitbx/r3_utils.py svneol=native#text/x-python
 scitbx/r3_utils_ext.cpp svneol=native#text/plain
+scitbx/regular_grid_on_unit_sphere.py -text
 scitbx/rigid_body/SConscript -text
 scitbx/rigid_body/__init__.py svneol=native#text/x-python
 scitbx/rigid_body/array_packing.h svneol=native#text/plain
@@ -2718,6 +2719,7 @@ scitbx/suffixtree/word.hpp -text
 scitbx/suffixtree/word.hxx -text
 scitbx/tst_cubicle_neighbors.py svneol=native#text/x-python
 scitbx/tst_r3_utils.py svneol=native#text/x-python
+scitbx/tst_regular_grid_on_unit_sphere.py -text
 scitbx/tst_smoothing.py -text
 scitbx/util/cpu_timer.h svneol=native#text/plain
 scitbx/wigner/SConscript -text
