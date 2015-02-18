@@ -44,6 +44,7 @@ tst_list = (
   "$D/array_family/boost_python/tst_cost_of_m_handle_in_af_shared.py",
   "$D/tst_cubicle_neighbors.py",
   "$D/tst_r3_utils.py",
+  "$D/tst_regular_grid_on_unit_sphere.py",
   "$D/matrix/__init__.py",
   "$D/python_utils/tst_random_transform.py",
   "$D/python_utils/tst_graph.py",
