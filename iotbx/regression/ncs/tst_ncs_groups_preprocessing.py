@@ -28,7 +28,8 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.currnet_dir = os.getcwd()
     now = datetime.now().strftime("%I%p_%m_%d_%Y")
     self.tempdir = 'TestNcsGroupPreprocessing_{}'.format(now)
-    os.mkdir(self.tempdir)
+    if not os.path.isdir(self.tempdir):
+      os.mkdir(self.tempdir)
     os.chdir(self.tempdir)
     self.pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
     self.pdb_inp = pdb.input(source_info=None, lines=test_pdb_ncs_spec)
@@ -777,7 +778,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_phenix_refine_ncs_file']
+  tests = ['test_spec_reading']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 
