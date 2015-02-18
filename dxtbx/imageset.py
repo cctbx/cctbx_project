@@ -421,6 +421,36 @@ class ImageSet(object):
     else:
       return self.reader().read(self._indices[item])
 
+  def get_image(self, index):
+    '''
+    Get the image at the given index
+
+    '''
+    image = self.reader().read(self._indices[index])
+    if not isinstance(image, tuple):
+      image = (image,)
+    return image
+
+  def get_mask(self, index):
+    '''
+    Get the mask at the given index.
+
+    FIXME placeholder for actual functionality.
+    Currently uses image and trusted range
+
+    '''
+    # Get the image and detector
+    image = self.get_image(index)
+    detector = self.get_detector(index)
+    assert(len(image) == len(detector))
+
+    # Threshold the image with the trusted range
+    mask = []
+    for im, panel in zip(image, detector):
+      tr = panel.get_trusted_range()
+      mask.append((im > int(tr[0])) & (im < int(tr[1])))
+    return tuple(mask)
+
   def __len__(self):
     ''' Return the number of images in this image set. '''
     return len(self._indices)
