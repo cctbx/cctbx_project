@@ -1369,6 +1369,7 @@ class ncs_group_object(object):
         chain_residue_id = [chain_residue_id_list,chain_residue_range_list],
         residues_in_common_list = residues_in_common_list,
         ncs_domain_pdb = None)
+    spec_object._ncs_obj = self
     if write:
       if file_name_prefix: file_name_prefix += '_'
       spec_object.display_all(log=log)
@@ -1378,21 +1379,20 @@ class ncs_group_object(object):
       f=open(file_name_prefix + "simple_ncs_from_pdb.ncs_spec",'w')
       spec_object.format_all_for_group_specification(log=log,out=f)
       f.close()
-
-      # Write complete Phil selection
-      phil_str = self.show(format='phil',log=null_out(),header=False)
-      if restraint: to_type = 'restraints'
-      else: to_type = 'constraints'
-      ncs_str = nu.convert_phil_format(phil_str,to_type=to_type)
       fn  = file_name_prefix + "simple_ncs_from_pdb.ncs"
-      print>>log,"NCS operators written in format for phenix.refine to:",fn
-      open(fn,'w').write(ncs_str)
-      if show_ncs_phil and bool(phil_str):
-        fn  = file_name_prefix + 'simple_ncs_from_pdb.phil'
-        msg = "NCS phil selection written in ncs selection format to:"
-        print>>log, msg,fn,'\n\nNCS selection\n','-'*14
-        print >> log,phil_str + '\n'
-        open(fn,'w').write(phil_str)
+      f=open(fn,'w')
+      spec_object.format_phil_for_phenix_refine(
+        log=log,out=f,restraint=restraint)
+      f.close()
+      if show_ncs_phil:
+        fn = file_name_prefix + 'simple_ncs_from_pdb.phil'
+        f=open(fn,'w')
+        phil_str = spec_object.format_phil_for_ncs(log=log,out=f)
+        f.close()
+        if phil_str:
+          print>>log,'\n\nNCS selection\n','-'*14
+          print >> log,phil_str + '\n'
+          open(fn,'w').write(phil_str)
       print >>log,''
     return spec_object
 
@@ -1567,6 +1567,12 @@ class ncs_group_object(object):
       print >> log, out_str
       spec_obj = self.get_ncs_info_as_spec(write=False)
       out_str += spec_obj.display_all(log=log)
+    elif format.lower() == 'summery':
+      out_str = [self.show_chains_info(prefix)]
+      out_str.append(self.show_ncs_headers(prefix))
+      out_str.append(self.show_transform_info(prefix))
+      out_str = '\n'.join(out_str)
+      print >> log, out_str
     return out_str
 
   def show_phil_format(self,prefix='',header=True):
@@ -1580,7 +1586,8 @@ class ncs_group_object(object):
     """
     str_out = []
     if header:
-      str_out = ['\n{}NCS phil parameters:'.format(prefix),'-'*51]
+      msg = '\n{}NCS phil parameters:'
+      str_out = [msg.format(prefix),'-'*len(msg)]
     str_line = prefix + '  {:<16s} = {}'
     str_ncs_group =  prefix + 'ncs_group {\n%s' + prefix + '\n}'
     master_sel_str = sorted(self.ncs_to_asu_selection)

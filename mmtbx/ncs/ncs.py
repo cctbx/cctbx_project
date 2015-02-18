@@ -1,7 +1,9 @@
 from __future__ import division
 #! /usr/bin/env python
+from mmtbx.ncs.ncs_utils import convert_phil_format
 import sys, os, string
 from libtbx.utils import Sorry
+from libtbx.utils import null_out
 import scitbx.rigid_body
  # hierarchy:  there can be any number of ncs groups.
  #   each group has a set of NCS operators and centers and may apply
@@ -400,6 +402,7 @@ class ncs:
     self._ncs_read=False
     self._exclude_h=exclude_h
     self._exclude_d=exclude_d
+    self._ncs_obj = None
 
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
       new_unit_cell=None):  # make a copy
@@ -743,6 +746,36 @@ class ncs:
         if not quiet: out.write(text+'\n')
         all_text+="\n"+text
     return all_text
+
+  def format_phil_for_phenix_refine(
+          self,log=None,quiet=False,out=None,restraint=True):
+    """ Writes NCS phil selection in phenix_refine format """
+    if out==None: out=sys.stdout
+    if log==None:
+      log=sys.stdout
+    else:
+      msg = "NCS operators written in format for phenix.refine to:"
+      print>>log,msg,out.name
+    phil_str = self._ncs_obj.show(format='phil',log=null_out(),header=False)
+    if restraint: to_type = 'restraints'
+    else: to_type = 'constraints'
+    ncs_str = convert_phil_format(phil_str,to_type=to_type)
+    if ncs_str:
+      if not quiet: out.write(ncs_str + '\n')
+    return ncs_str
+
+  def format_phil_for_ncs(self,log=None,quiet=False,out=None):
+    """ Writes NCS phil selection in NCS format """
+    if out==None: out=sys.stdout
+    if log==None:
+      log=sys.stdout
+    else:
+      msg  = "NCS phil selection written in ncs selection format to:"
+      print>>log,msg,out.name
+    phil_str = self._ncs_obj.show(format='phil',log=null_out(),header=False)
+    if phil_str:
+      if not quiet: out.write(phil_str + '\n')
+    return phil_str
 
   def add_source_info(self,source_info):
     if self.source_info is None:
