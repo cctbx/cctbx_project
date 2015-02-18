@@ -2,11 +2,12 @@ from __future__ import division
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 import mmtbx.ncs.ncs_utils as nu
+from libtbx.utils import Sorry
 import mmtbx.maps.correlation
 from scitbx import matrix
 import scitbx.rigid_body
-from iotbx import pdb
 import iotbx.ncs as ncs
+from iotbx import pdb
 import unittest
 import string
 import math
@@ -123,6 +124,30 @@ ncs_group {
   master_selection = chain 'Ab'
   copy_selection = chain 'Ad'
   copy_selection = chain 'Af'
+}
+'''
+
+ncs_phil = '''\
+ncs_group {
+  master_selection = chain I
+  copy_selection   = chain K
+  copy_selection   = chain M
+}
+'''
+
+restraints_phil = '''\
+refinement.ncs.restraint_group {
+  reference = chain I
+  selection   = chain K
+  selection   = chain M
+}
+'''
+
+constraints_phil = '''\
+refinement.ncs.constraint_group {
+  reference = chain I
+  selection   = chain K
+  selection   = chain M
 }
 '''
 
@@ -660,6 +685,29 @@ class Test_ncs_utils(unittest.TestCase):
     expected = [0, 1, 2, 3, 8, 9, 10, 11, 16, 17, 18, 19]
     self.assertEqual(list(isel),expected)
 
+  def test_convert_phil_format(self):
+    """ test Phil format conversion """
+    self.assertRaises(Sorry,nu.convert_phil_format,
+                      phil_str=ncs_phil,
+                      to_type='xxx')
+    out_str = nu.convert_phil_format(ncs_phil,to_type='ncs')
+    self.assertEqual(out_str,ncs_phil)
+    #
+    out_str = nu.convert_phil_format(ncs_phil,to_type='restraints')
+    self.assertEqual(out_str,restraints_phil)
+    #
+    out_str = nu.convert_phil_format(ncs_phil,to_type='constraints')
+    self.assertEqual(out_str,constraints_phil)
+    #
+    out_str = nu.convert_phil_format(constraints_phil,to_type='restraints')
+    self.assertEqual(out_str,restraints_phil)
+    #
+    out_str = nu.convert_phil_format(constraints_phil,to_type='ncs')
+    self.assertEqual(out_str,ncs_phil)
+    #
+    out_str = nu.convert_phil_format(restraints_phil,to_type='ncs')
+    self.assertEqual(out_str,ncs_phil)
+
 def run_selected_tests():
   """  Run selected tests
 
@@ -667,7 +715,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_ncs_group_iselection']
+  tests = ['test_convert_phil_format']
   suite = unittest.TestSuite(map(Test_ncs_utils,tests))
   return suite
 

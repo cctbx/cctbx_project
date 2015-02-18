@@ -13,6 +13,32 @@ import sys
 
 __author__ = 'Youval'
 
+class Phil_NCS(object):
+  """ ncs Phil strings  """
+
+  def __init__(self):
+    self.group = 'ncs_group'
+    self.master = 'master_selection'
+    self.copy = 'copy_selection'
+
+class Phil_restraints(object):
+  """ restraints Phil strings """
+
+  def __init__(self):
+    self.group = 'refinement.ncs.restraint_group'
+    self.master = 'reference'
+    self.copy = 'selection'
+
+
+class Phil_constraints(object):
+  """ constraints Phil strings """
+
+  def __init__(self):
+    self.group = 'refinement.ncs.constraint_group'
+    self.master = 'reference'
+    self.copy = 'selection'
+
+
 def concatenate_rot_tran(transforms_obj=None,
                          ncs_restraints_group_list=None):
   """
@@ -997,4 +1023,71 @@ def ncs_group_iselection(ncs_restraints_group_list,group_num):
   # make sure sequential order of selection indices
   return flex.sorted(isel)
 
+def convert_phil_format(phil_str,to_type='ncs'):
+  """
+  Convert ncs Phil format between
+  the formats 'ncs', 'restraints' and 'constraints'
 
+  ncs
+  ---
+  ncs_group {
+    master_selection = chain I
+    copy_selection   = chain K
+    copy_selection   = chain M
+  }
+
+  restraints
+  ----------
+  refinement.ncs.restraint_group {
+    reference = chain I
+    selection   = chain K
+    selection   = chain M
+  }
+
+  constraints
+  -----------
+  refinement.ncs.constraint_group {
+    reference = chain I
+    selection   = chain K
+    selection   = chain M
+  }
+
+  Args:
+    to_type (str): what format will the return string will have
+    phil_str (str): Phil selection string
+
+  Return:
+    out_phil_str (str): Phil selection string
+  """
+  allowed_phil_types = ['ncs','restraints','constraints']
+  type_ok = to_type in allowed_phil_types
+  msg = "Phil type should be one of '{}', '{}' or '{}'\n".format(*allowed_phil_types)
+  if not type_ok: raise Sorry('Wrong Phil type, ' + msg)
+  phil_list = phil_str.splitlines()
+  phil_list = [x for x in phil_list if x]
+  # find current phil type
+  current_phil_type = None
+  for l in phil_list:
+    if 'ncs_group' in l: current_phil_type = 'ncs'
+    elif 'restraint' in l: current_phil_type = 'restraints'
+    elif 'constraint' in l: current_phil_type = 'constraints'
+    if current_phil_type: break
+  if not current_phil_type:
+    # input phil string is not in a known format
+    return ''
+  type_dict = {
+    'ncs':Phil_NCS(),
+    'restraints':Phil_restraints(),
+    'constraints':Phil_constraints()}
+  from_group_str = type_dict[current_phil_type].group
+  from_master_str = type_dict[current_phil_type].master
+  from_copy_str = type_dict[current_phil_type].copy
+  to_group_str = type_dict[to_type].group
+  to_master_str = type_dict[to_type].master
+  to_copy_str = type_dict[to_type].copy
+  #
+  out_phil_str = phil_str
+  out_phil_str = out_phil_str.replace(from_group_str,to_group_str)
+  out_phil_str = out_phil_str.replace(from_copy_str,to_copy_str)
+  out_phil_str = out_phil_str.replace(from_master_str,to_master_str)
+  return out_phil_str
