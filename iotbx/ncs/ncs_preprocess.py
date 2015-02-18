@@ -1254,6 +1254,7 @@ class ncs_group_object(object):
 
   def get_ncs_info_as_spec(
           self,
+          file_name_prefix = '',
           pdb_hierarchy_asu=None,
           xrs=None,
           fmodel=None,
@@ -1275,7 +1276,7 @@ class ncs_group_object(object):
     for example "resseq 49" will include "resid 49" and "resid 49A"
 
     Args:
-      file_name: (str) output file name
+      file_name_prefix: (str) output file names prefix
       pdb_hierarchy: (pdb_hierarchy object)
       xrs: (xray structure) for crystal symmetry
       fmodel: (fmodel object)
@@ -1370,28 +1371,30 @@ class ncs_group_object(object):
         residues_in_common_list = residues_in_common_list,
         ncs_domain_pdb = None)
     if write:
+      if file_name_prefix: file_name_prefix += '_'
       spec_object.display_all(log=log)
-      f=open("simple_ncs_from_pdb.resolve",'w')
+      f=open(file_name_prefix + "simple_ncs_from_pdb.resolve",'w')
       spec_object.format_all_for_resolve(log=log,out=f)
       f.close()
-      f=open("simple_ncs_from_pdb.ncs",'w')
+      f=open(file_name_prefix + "simple_ncs_from_pdb.ncs",'w')
       spec_object.format_all_for_phenix_refine(
         log=log,out=f,restraint=restraint)
       f.close()
-      f=open("simple_ncs_from_pdb.ncs_spec",'w')
+      f=open(file_name_prefix + "simple_ncs_from_pdb.ncs_spec",'w')
       spec_object.format_all_for_group_specification(log=log,out=f)
       f.close()
       phil_str = self.show(format='phil',log=null_out())
       if show_ncs_phil:
-        print >> log,phil_str
+        print >> log,phil_str + '\n'
       # remove title line
       if phil_str:
         phil_str = phil_str.splitlines()
         indx = [i for i in range(len(phil_str)) if 'ncs_group {' in phil_str[i]]
         if indx:
           i = indx[0]
-          phil_str = '\n'.join(phil_str[i:])
-          open('simple_ncs_from_pdb.phil','w').write(phil_str)
+          phil_str = '\n'.join(phil_str[i:]) + '\n'
+          fn  = file_name_prefix + 'simple_ncs_from_pdb.phil'
+          open(fn,'w').write(phil_str)
       print >>log,''
     return spec_object
 
