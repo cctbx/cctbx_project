@@ -1167,6 +1167,7 @@ iotbx/command_line/cif_as_pdb.py -text
 iotbx/command_line/csv_as_mtz.py -text
 iotbx/command_line/dano_as_amplitudes.py -text
 iotbx/command_line/detector_image_as_png.py -text
+iotbx/command_line/effective_resolution.py -text
 iotbx/command_line/export_scalepack_unmerged.py svneol=native#text/x-python
 iotbx/command_line/file_reader.py -text
 iotbx/command_line/french_wilson.py svneol=native#text/x-python
