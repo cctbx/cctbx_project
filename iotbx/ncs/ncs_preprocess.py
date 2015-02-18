@@ -1,12 +1,10 @@
 from __future__ import division
 from iotbx.pdb.atom_selection import selection_string_from_selection
-from mmtbx.ncs.ncs_utils import make_unique_chain_names
-from mmtbx.ncs.ncs_utils import ncs_group_iselection
-from mmtbx.ncs.ncs_utils import apply_transforms
 from scitbx.array_family import flex
 from libtbx.utils import null_out
 from scitbx.math import superpose
 from mmtbx.ncs import ncs_search
+import mmtbx.ncs.ncs_utils as nu
 from libtbx.utils import Sorry
 from libtbx.phil import parse
 import iotbx.pdb.hierarchy
@@ -334,6 +332,7 @@ class ncs_group_object(object):
       copy_selection = ''   (multiple)
     }
     """
+    ncs_phil_string = nu.convert_phil_format(ncs_phil_string)
     min_percent = self.min_percent
     if not self.process_similar_chains:
       min_percent = 1.0
@@ -994,7 +993,7 @@ class ncs_group_object(object):
     # create list of character from which to assemble the list of names
     # total_chains_number = len(i_transforms)*len(unique_chain_names)
     total_chains_number = len(transform_assignment)
-    dictionary_values = make_unique_chain_names(
+    dictionary_values = nu.make_unique_chain_names(
       unique_chain_names,total_chains_number)
     # create the dictionary
     zippedlists = zip(transform_assignment,dictionary_values)
@@ -1299,7 +1298,7 @@ class ncs_group_object(object):
         else:
           # get the ASU coordinates
           nrg = self.get_ncs_restraints_group_list()
-          xyz = apply_transforms(
+          xyz = nu.apply_transforms(
             ncs_coordinates = self.hierarchy.atoms().extract_xyz(),
             ncs_restraints_group_list = nrg,
             total_asu_length =  self.total_asu_length,
@@ -1376,25 +1375,24 @@ class ncs_group_object(object):
       f=open(file_name_prefix + "simple_ncs_from_pdb.resolve",'w')
       spec_object.format_all_for_resolve(log=log,out=f)
       f.close()
-      f=open(file_name_prefix + "simple_ncs_from_pdb.ncs",'w')
-      spec_object.format_all_for_phenix_refine(
-        log=log,out=f,restraint=restraint)
-      f.close()
       f=open(file_name_prefix + "simple_ncs_from_pdb.ncs_spec",'w')
       spec_object.format_all_for_group_specification(log=log,out=f)
       f.close()
-      phil_str = self.show(format='phil',log=null_out())
-      if show_ncs_phil:
+
+      # Write complete Phil selection
+      phil_str = self.show(format='phil',log=null_out(),header=False)
+      if restraint: to_type = 'restraints'
+      else: to_type = 'constraints'
+      ncs_str = nu.convert_phil_format(phil_str,to_type=to_type)
+      fn  = file_name_prefix + "simple_ncs_from_pdb.ncs"
+      print>>log,"NCS operators written in format for phenix.refine to:",fn
+      open(fn,'w').write(ncs_str)
+      if show_ncs_phil and bool(phil_str):
+        fn  = file_name_prefix + 'simple_ncs_from_pdb.phil'
+        msg = "NCS phil selection written in ncs selection format to:"
+        print>>log, msg,fn,'\n\nNCS selection\n','-'*14
         print >> log,phil_str + '\n'
-      # remove title line
-      if phil_str:
-        phil_str = phil_str.splitlines()
-        indx = [i for i in range(len(phil_str)) if 'ncs_group {' in phil_str[i]]
-        if indx:
-          i = indx[0]
-          phil_str = '\n'.join(phil_str[i:]) + '\n'
-          fn  = file_name_prefix + 'simple_ncs_from_pdb.phil'
-          open(fn,'w').write(phil_str)
+        open(fn,'w').write(phil_str)
       print >>log,''
     return spec_object
 
@@ -1462,7 +1460,7 @@ class ncs_group_object(object):
     else: stem += '_'
     nrgl = self.get_ncs_restraints_group_list()
     for group_number in range(len(nrgl)):
-      group_isel = ncs_group_iselection(nrgl,group_number)
+      group_isel = nu.ncs_group_iselection(nrgl,group_number)
       file_name = stem+'group_'+str(group_number)+'.pdb'
       full_file_name=os.path.join(temp_dir,file_name)
       f=open(full_file_name,'w')
@@ -1496,7 +1494,7 @@ class ncs_group_object(object):
     assert self.number_of_ncs_groups < 2
     new_ph = pdb_hierarchy.deep_copy()
     ncs_restraints_group_list = self.get_ncs_restraints_group_list()
-    new_sites = apply_transforms(
+    new_sites = nu.apply_transforms(
       ncs_coordinates = pdb_hierarchy.atoms().extract_xyz(),
       ncs_restraints_group_list = ncs_restraints_group_list,
       total_asu_length =  self.total_asu_length,
@@ -1524,6 +1522,7 @@ class ncs_group_object(object):
            format=None,
            verbose=False,
            prefix='',
+           header=True,
            log=None):
 
     """
@@ -1533,23 +1532,33 @@ class ncs_group_object(object):
       format (str): "phil" : phil file representation
                     "spec" : spec representation out of NCS groups
                     "cctbx": cctbx representation out of NCS groups
+                    "restraints"  : .ncs (phenix refine) format
+                    "constraints" : .ncs (phenix refine) format
       verbose (bool): when True, will print selection strings, rotation and
         translation info
       prefix (str): a string to be added, padding the output, at the left of
         each line
+      header (bool): When True, include header
       log: where to log the output, by default set to sys.stdout
     """
     if not log: log = self.log
+    out_str = ''
     if (not format) or (format.lower() == 'cctbx'):
       out_str = self.__repr__(prefix)
       print >> log, out_str
       if verbose:
         print >> log, self.show_ncs_selections(prefix)
-      return out_str
     elif format.lower() == 'phil':
-      out_str = self.show_phil_format(prefix)
+      out_str = self.show_phil_format(prefix=prefix,header=header)
       print >> log, out_str
-      return out_str
+    elif format.lower() == 'restraints':
+      out_str = self.show_phil_format(prefix=prefix,header=header)
+      out_str = nu.convert_phil_format(out_str,to_type='restraints')
+      print >> log, out_str
+    elif format.lower() == 'constraints':
+      out_str = self.show_phil_format(prefix=prefix,header=header)
+      out_str = nu.convert_phil_format(out_str,to_type='constraints')
+      print >> log, out_str
     elif format.lower() == 'spec':
       # Does not add prefix in SPEC format
       out_str = self.show_search_parameters_values(prefix) + '/n'
@@ -1558,17 +1567,20 @@ class ncs_group_object(object):
       print >> log, out_str
       spec_obj = self.get_ncs_info_as_spec(write=False)
       out_str += spec_obj.display_all(log=log)
-      return out_str
+    return out_str
 
-  def show_phil_format(self,prefix=''):
+  def show_phil_format(self,prefix='',header=True):
     """
     Returns a string of NCS groups phil parameters
 
     Args:
       prefix (str): a string to be added, padding the output, at the left of
         each line
+      header (bool): When True, include header
     """
-    str_out = ['\n{}NCS phil parameters:'.format(prefix),'-'*51]
+    str_out = []
+    if header:
+      str_out = ['\n{}NCS phil parameters:'.format(prefix),'-'*51]
     str_line = prefix + '  {:<16s} = {}'
     str_ncs_group =  prefix + 'ncs_group {\n%s' + prefix + '\n}'
     master_sel_str = sorted(self.ncs_to_asu_selection)
