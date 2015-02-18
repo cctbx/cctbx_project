@@ -95,7 +95,7 @@ class IntegrateCharacters:
       #P = Profiler("worker")
       if self.horizons_phil.integration.combine_sym_constraints_and_3D_target and setting["counter"]>1:
         from rstbx.apps.stills.dials_refinement_preceding_integration import integrate_one_frame
-        integrate_worker = integrate_one_frame(self.triclinic["integration"]["results"][0].triclinic_pairs)
+        integrate_worker = integrate_one_frame(self.triclinic["integration"]["results"][0])
       else:
         from rstbx.apps.stills.deltapsi_refinement_preceding_integration import integrate_one_frame
         integrate_worker = integrate_one_frame()
