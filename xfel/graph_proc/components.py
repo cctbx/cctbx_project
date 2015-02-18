@@ -227,5 +227,3 @@ class Edge:
     return Edge._calc_residuals(self.vertex_a, self.vertex_b,
                            partialities_a, partialities_b,
                            scales_a, scales_b)
-
-
