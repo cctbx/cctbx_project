@@ -323,6 +323,11 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
     self.inputpd["symmetry"].show_summary(prefix="SETTING ")
 
+    is_triclinic = (self.setting_id==1)
+    if is_triclinic:
+      self.triclinic_pairs = [ dict(pred=self.hkllist[a["pred"]],spot=a["spot"])
+        for a in indexed_pairs ]
+
     if self.horizons_phil.integration.model == "user_supplied":
       if kwargs.get("user-reentrant",None)==None:
         from cxi_user import post_outlier_rejection
