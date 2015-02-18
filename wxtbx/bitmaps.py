@@ -20,7 +20,13 @@ image_cache = {}
 def load_png_as_bitmap (icon_path, scale=None) :
   bmp = image_cache.get(icon_path, None)
   if bmp is None :
-    img = wx.Image(icon_path, type=wx.BITMAP_TYPE_PNG, index=-1)
+    if (wx.Platform == '__WXMSW__') and (wx.VERSION >= (2,9)):
+# libpng purists have now broken backwards compatibility when loading old images.
+# This leads to unhelpful error message boxes. Suppress these temporarily with LogNull
+      noLog = wx.LogNull()
+      img = wx.Image(icon_path, type=wx.BITMAP_TYPE_PNG, index=-1)
+    else:
+      img = wx.Image(icon_path, type=wx.BITMAP_TYPE_PNG, index=-1)
     if (scale is not None) :
       assert isinstance(scale, tuple)
       w, h = scale
