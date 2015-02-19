@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/29/2015
+Last Changed: 02/11/2015
 Description : IOTA pickle selection module. Selects the best integration results from a
               set of pickles derived from a single image.
 '''
@@ -55,6 +55,8 @@ def prefilter(gs_params, total_tmp_pickles):
               delta_beta <= user_uc[4] * uc_tol and
               delta_gamma <= user_uc[5] * uc_tol):
           acceptable_pickles.append(tmp_pickle)
+  else:
+    acceptable_pickles = total_tmp_pickles
 
   return acceptable_pickles
 
