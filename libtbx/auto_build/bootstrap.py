@@ -1,4 +1,4 @@
-# -*- python -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 from __future__ import division
 import os
 import sys
@@ -33,6 +33,18 @@ class ShellCommand(object):
         os.makedirs(workdir)
       except Exception, e:
         pass
+
+    if command[0] == 'curl':
+      # XXX Ugly hack: intercept attemps to spawn external curl.
+      # There is no need to depend on curl since Python has urllib2.
+      from urllib2 import urlopen
+
+      with open(os.path.join(workdir, command[3]), 'wb') as stream_out:
+        stream_in = urlopen(command[1])
+        stream_out.write(stream_in.read())
+        stream_in.close()
+      return
+
     p = subprocess.Popen(
       args=command,
       cwd=workdir,
@@ -504,9 +516,8 @@ class Builder(object):
     )
 
   # Override these methods.
-  def add_base(self):
+  def add_base(self, extra_opts=[]):
     """Build the base dependencies, e.g. Python, HDF5, etc."""
-    extra_opts = []
     if self.with_python:
       extra_opts = ['--with-python',self.with_python]
     if self.verbose:
@@ -603,6 +614,9 @@ class DIALSBuilder(CCIBuilder):
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('dials')
+
+  def add_base(self):
+    super(DIALSBuilder, self).add_base(extra_opts=['--dials'])
 
 class LABELITBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['labelit', 'labelit_regression']
