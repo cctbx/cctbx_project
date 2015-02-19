@@ -257,6 +257,7 @@ class installer (object) :
       return False
 
   def patch_src (self, src_file, target, replace_with, output_file=None) :
+    from shutil import copymode
     if isinstance(target, str) :
       assert isinstance(replace_with, str)
       target = [ target ]
@@ -276,6 +277,7 @@ class installer (object) :
       src_out.write(line)
     src_in.close()
     src_out.close()
+    copymode(in_file, output_file)
 
   def untar_and_chdir (self, pkg, log=None) :
     if (log is None) : log = self.log
@@ -806,6 +808,17 @@ Installation of Python packages may fail.
 
     pkg_dir = untar(pkg, log=pkg_log)
     os.chdir(pkg_dir)
+
+    # Unconditionally append Debian i386/x86_64 multilib directories
+    # to wxPython's list of library search paths.
+    line = "SEARCH_LIB=\"`echo \"$SEARCH_INCLUDE\" | " \
+           "sed s@include@$wx_cv_std_libpath@g` /usr/$wx_cv_std_libpath"
+    self.patch_src(src_file="configure",
+                   target=(line, ),
+                   replace_with=(line +
+                                 " /usr/lib/i386-linux-gnu" +
+                                 " /usr/lib/x86_64-linux-gnu", ))
+
     if (self.flag_is_mac and get_os_version() == "10.10") :
       # Workaround wxwidgets 3.0.2 compilation error on Yosemite
       # This will be fixed in 3.0.3.
