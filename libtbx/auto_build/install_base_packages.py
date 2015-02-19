@@ -159,6 +159,7 @@ class installer (object) :
     if options.dials:
       options.build_gui = True
       options.build_all = True
+      packages += ['imaging']
     if options.labelit:
       options.build_gui = True
       options.build_all = True
