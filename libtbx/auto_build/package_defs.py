@@ -97,91 +97,13 @@ class fetch_packages (object) :
   """
   def __init__ (self, dest_dir, log, pkg_dirs=None, no_download=False,
       copy_files=False) :
+    from bootstrap import Downloader
     self.dest_dir = dest_dir
     self.log = log
     self.pkg_dirs = pkg_dirs
     self.no_download = no_download
     self.copy_files = copy_files
-
-  def download_to_file(self, url, file, status=True):
-    """Downloads a URL to file. Returns the file size.
-       Returns -1 if the downloaded file size does not match the expected file
-       size
-       Returns -2 if the download is skipped due to the file at the URL not
-       being newer than the local copy (with matching file sizes).
-    """
-
-    import os, time
-    socket = urllib2.urlopen(url)
-
-    file_size = int(socket.info().getheader('Content-Length'))
-    # There is no guarantee that the content-length header is set
-
-    remote_mtime = 0
-    try:
-      remote_mtime = time.mktime(socket.info().getdate('last-modified'))
-    except:
-      pass
-
-    if (file_size > 0):
-      if (remote_mtime > 0):
-        # check if existing file matches remote size and timestamp
-        try:
-          (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(file)
-          if (size == file_size) and (remote_mtime == mtime):
-            self.log.write("local copy is current\n")
-            socket.close()
-            return -2
-        except:
-          # proceed with download if timestamp/size check fails for any reason
-          pass
-
-      hr_size = (file_size, "B")
-      if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "kB")
-      if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "MB")
-      self.log.write("%.1f %s\n    [0%%" % hr_size)
-      self.log.flush()
-
-    received = 0
-    block_size = 8192
-    progress = 1
-    data = ""
-    while 1:
-      block = socket.read(block_size)
-      received += len(block)
-      data += block
-      if file_size > 0:
-        while (100 * received / file_size) > progress:
-          progress += 1
-          if (progress % 20) == 0:
-            self.log.write("%d%%" % progress)
-          elif (progress % 2) == 0:
-            self.log.write(".")
-          self.log.flush()
-
-      if not block: break
-    if file_size > 0:
-      self.log.write("]\n")
-    else:
-      self.log.write("%d kB\n" % (received / 1024))
-    self.log.flush()
-
-    socket.close()
-    f = open(file, "wb")
-    f.write(data)
-    f.close()
-
-    if (file_size > 0) and (file_size != received):
-      return -1
-
-    if remote_mtime > 0:
-      # set file timestamp if timestamp information is available
-      from stat import ST_ATIME
-      st = os.stat(file)
-      atime = st[ST_ATIME] # current access time
-      os.utime(file,(atime,remote_mtime))
-
-    return received
+    self.downloader = Downloader()
 
   def __call__ (self, pkg_name, pkg_url=None, output_file=None) :
     if (pkg_url is None) :
@@ -210,7 +132,7 @@ class fetch_packages (object) :
     full_url = "%s/%s" % (pkg_url, pkg_name)
     self.log.write("    downloading from %s : " % pkg_url)
     try:
-      size = self.download_to_file(full_url, output_file)
+      size = self.downloader.download_to_file(full_url, output_file, log=self.log)
     except urllib2.HTTPError, err:
       print >> self.log, err
       if (op.exists(pkg_name)) :
