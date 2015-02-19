@@ -92,6 +92,28 @@ class integrate_one_frame(IntegrationMetaProcedure):
     print "... %d provisional matches"%len(correction_vectors_provisional),
     print "r.m.s.d. in pixels: %5.2f"%(math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex))))
 
+    if self.horizons_phil.integration.enable_residual_scatter:
+      from matplotlib import pyplot as plt
+      for cv in correction_vectors_provisional:
+        plt.plot([cv[1]],[-cv[0]],"r.")
+      plt.title(" %d matches, r.m.s.d. %5.2f pixels"%(len(correction_vectors_provisional),math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))))
+      plt.axes().set_aspect("equal")
+      plt.show()
+
+    if self.horizons_phil.integration.enable_residual_map:
+      from matplotlib import pyplot as plt
+      PX = reflections["xyzobs.px.value"]
+      for match,cv in zip(indexed_pairs_provisional,correction_vectors_provisional):
+        plt.plot([PX[match["spot"]][1]],[-PX[match["spot"]][0]],"r.")
+        plt.plot([self.predicted[match["pred"]][1]/pxlsz[1]],[-self.predicted[match["pred"]][0]/pxlsz[0]],"g.")
+        plt.plot([PX[match["spot"]][1], PX[match["spot"]][1] + 10.*cv[1]],
+                 [-PX[match["spot"]][0], -PX[match["spot"]][0] - 10.*cv[0]],'r-')
+      plt.xlim([0,detector[0].get_image_size()[1]])
+      plt.ylim([-detector[0].get_image_size()[0],0])
+      plt.title(" %d matches, r.m.s.d. %5.2f pixels"%(len(correction_vectors_provisional),math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))))
+      plt.axes().set_aspect("equal")
+      plt.show()
+
     indexed_pairs = indexed_pairs_provisional
     correction_vectors = correction_vectors_provisional
     ########### skip outlier rejection for this derived class
@@ -218,9 +240,6 @@ class integrate_one_frame(IntegrationMetaProcedure):
                         distance = -detector[0].get_distance(), twotheta = 0.0)
       self.inputai.setBase(base)
 
-      #print matrix.col(detector[0].get_slow_axis()).dot(matrix.col((0.,1.,0.)))
-      #print matrix.col(detector[0].get_fast_axis()).dot(matrix.col((1.,0.,0.)))
-
       self.bp3_wrapper = pre_get_predictions(self.inputai, self.horizons_phil,
         raw_image = self.imagefiles.images[self.image_number],
         imageindex = self.frame_numbers[self.image_number],
@@ -233,10 +252,28 @@ class integrate_one_frame(IntegrationMetaProcedure):
       BPhkllist = self.bp3_wrapper.ucbp3.selected_hkls()
 
       self.actual = actual_used_domain_size
-      self.predicted = BPpredicted
       primitive_hkllist = BPhkllist
       #not sure if matrix needs to be transposed first for outputting HKL's???:
       self.hkllist = cb_op_to_primitive.inverse().apply(primitive_hkllist)
+
+      if self.horizons_phil.integration.spot_prediction == "dials":
+        Rcalc = flex.reflection_table.empty_standard(len(self.hkllist))
+        Rcalc['miller_index'] = self.hkllist
+
+        s0vec = flex.vec3_double(len(self.hkllist), experiments[0].beam.get_s0())
+        Amat_vec = flex.mat3_double(len(self.hkllist), crystal.get_A())
+        x_vec = Amat_vec * self.hkllist.as_vec3_double()
+        s1vec = s0vec + x_vec
+        for idx, s1 in enumerate(s1vec):
+          position = detector[0].get_ray_intersection(s1)
+          Rcalc['xyzobs.mm.value'][idx] = (position[0], position[1], 0)
+
+
+        self.predicted = Rcalc['xyzobs.mm.value']
+
+      elif self.horizons_phil.integration.spot_prediction == "ucbp3":
+        self.predicted = BPpredicted
+
       self.inputai.setOrientation(centered_orientation)
       if self.inputai.active_areas != None:
         self.predicted,self.hkllist = self.inputai.active_areas(
@@ -256,6 +293,11 @@ class integrate_one_frame(IntegrationMetaProcedure):
     params.refinement.parameterisation.detector.fix_list=3, # fix detector rotz, allow distance to refine
     params.refinement.reflections.weighting_strategy.delpsi_constant=100000.
     params.refinement.reflections.weighting_strategy.override="stills"
+    #params.refinement.reflections.do_outlier_rejection=True
+    #params.refinement.reflections.iqr_multiplier=0.5
+    #params.refinement.reflections.minimum_sample_size=50
+    #params.refinement.reflections.maximum_sample_size=50
+    #params.refinement.reflections.random_seed=1
 
     from dials.algorithms.refinement.refiner import RefinerFactory
     refiner = RefinerFactory.from_parameters_data_experiments(params,
