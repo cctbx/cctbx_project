@@ -95,7 +95,7 @@ class Downloader(object):
       if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "MB")
       log.write("%.1f %s\n" % hr_size)
       if status:
-        log.write("    [0%%")
+        log.write("    [0%")
         log.flush()
 
     received = 0
@@ -123,6 +123,8 @@ class Downloader(object):
     log.flush()
 
     socket.close()
+    # Do not write out file during the download. If a download temporarily fails we
+    # may still have a clean, working (yet older) copy of the file.
     f = open(file, "wb")
     f.write(data)
     f.close()
