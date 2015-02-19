@@ -65,9 +65,18 @@ class postref_handler(object):
 
     #set observations with target space group - !!! required for correct
     #merging due to map_to_asu command.
+    if iparams.target_crystal_system is not None:
+      target_crystal_system = iparams.target_crystal_system
+    else:
+      target_crystal_system = observations.crystal_symmetry().space_group().crystal_system()
+
     try:
+      #apply constrain using the crystal system
+      from mod_leastsqr import prep_input, prep_output
+      uc_constrained_inp = prep_input(observations.unit_cell().parameters(), target_crystal_system)
+      uc_constrained = prep_output(uc_constrained_inp, target_crystal_system)
       miller_set = symmetry(
-          unit_cell=observations.unit_cell().parameters(),
+          unit_cell=uc_constrained,
           space_group_symbol=iparams.target_space_group
         ).build_miller_set(
           anomalous_flag=target_anomalous_flag,
@@ -80,6 +89,7 @@ class postref_handler(object):
       txt_exception = 'Mismatch spacegroup (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)+pickle_filename
       print txt_exception
       return None, txt_exception
+
 
     import os.path
     if os.path.isfile(iparams.run_no+'/rejections.txt'):
@@ -159,16 +169,51 @@ class postref_handler(object):
     else:
       pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
 
-    #use basis in the given input file
-    polar_hkl = 'h,k,l'
-    basis_pickle = pickle.load(open(iparams.indexing_ambiguity.index_basis_in,"rb"))
-    keys = basis_pickle.viewkeys()
-    for key in keys:
-      if key.find(pickle_filename_only) > 0:
-        polar_hkl = basis_pickle[key]
-        break
+    cc_asu = 0
+    cc_rev = 0
+    if iparams.indexing_ambiguity.index_basis_in.endswith('mtz'):
+      #use reference mtz file to determine polarity
+      from iotbx import reflection_file_reader
+      reflection_file_polar = reflection_file_reader.any_reflection_file(iparams.indexing_ambiguity.index_basis_in)
+      miller_arrays_polar=reflection_file_polar.as_miller_arrays()
+      miller_array_polar = miller_arrays_polar[0]
 
-    return polar_hkl, 0, 0
+      observations_asu = observations_original.map_to_asu()
+      observations_rev = self.get_observations_non_polar(observations_original, 'k,h,-l')
+
+      matches = miller.match_multi_indices(
+                  miller_indices_unique=miller_array_polar.indices(),
+                  miller_indices=observations_asu.indices())
+      I_ref_match = flex.double([miller_array_polar.data()[pair[0]] for pair in matches.pairs()])
+      I_obs_match = flex.double([observations_asu.data()[pair[1]] for pair in matches.pairs()])
+      cc_asu = np.corrcoef(I_ref_match, I_obs_match)[0,1]
+      n_refl_asu = len(matches.pairs())
+
+
+
+      matches = miller.match_multi_indices(
+                  miller_indices_unique=miller_array_polar.indices(),
+                  miller_indices=observations_rev.indices())
+      I_ref_match = flex.double([miller_array_polar.data()[pair[0]] for pair in matches.pairs()])
+      I_obs_match = flex.double([observations_rev.data()[pair[1]] for pair in matches.pairs()])
+      cc_rev = np.corrcoef(I_ref_match, I_obs_match)[0,1]
+      n_refl_rev = len(matches.pairs())
+
+      polar_hkl = 'h,k,l'
+      if cc_rev > cc_asu:
+        polar_hkl = 'k,h,-l'
+
+    else:
+      #use basis in the given input file
+      polar_hkl = 'h,k,l'
+      basis_pickle = pickle.load(open(iparams.indexing_ambiguity.index_basis_in,"rb"))
+      keys = basis_pickle.viewkeys()
+      for key in keys:
+        if key.find(pickle_filename_only) > 0:
+          polar_hkl = basis_pickle[key]
+          break
+
+    return polar_hkl, cc_asu, cc_rev
 
 
   def get_observations_non_polar(self, observations_original, polar_hkl):
@@ -233,13 +278,13 @@ class postref_handler(object):
     lsqrh = leastsqr_handler()
     try:
       refined_params, stats, n_refl_postrefined, spot_radius = lsqrh.optimize(I_ref_match,
-                                                                 observations_original_sel, wavelength,
-                                                                 crystal_init_orientation, alpha_angle_set,
-                                                                 spot_pred_x_mm_set, spot_pred_y_mm_set,
-                                                                 iparams,
-                                                                 pres_in,
-                                                                 observations_non_polar_sel,
-                                                                 detector_distance_mm)
+                                                                   observations_original_sel, wavelength,
+                                                                   crystal_init_orientation, alpha_angle_set,
+                                                                   spot_pred_x_mm_set, spot_pred_y_mm_set,
+                                                                   iparams,
+                                                                   pres_in,
+                                                                   observations_non_polar_sel,
+                                                                   detector_distance_mm)
     except Exception:
       return None, 'Optimization failed. '+pickle_filepaths[len(pickle_filepaths)-1]
 
@@ -301,11 +346,11 @@ class postref_handler(object):
             crystal_orientation=crystal_fin_orientation,
             spot_radius=spot_radius)
 
-    txt_postref = '%6.0f %5.2f %6.0f %9.0f %8.2f %8.2f %6.2f %6.2f %6.2f %6.2f %6.2f %8.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f '%( \
+    txt_postref = '%6.0f %5.2f %6.0f %9.0f %8.2f %8.2f %6.2f %6.2f %6.2f %6.2f %6.2f %8.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f %6.2f '%( \
       pres.frame_no, observations_non_polar.d_min(), len(observations_non_polar.indices()), \
       n_refl_postrefined, pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, \
       pres.CC_init*100, pres.CC_final*100,pres.CC_iso_init*100, pres.CC_iso_final*100, \
-      a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin)+ \
+      a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin, detector_distance_mm)+ \
       pickle_filepaths[len(pickle_filepaths)-1]
 
     print txt_postref
