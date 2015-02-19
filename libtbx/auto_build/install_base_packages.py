@@ -617,8 +617,8 @@ Installation of Python packages may fail.
 
   def build_hdf5 (self):
     pkg_log = self.start_building_package("HDF5")
-    hdf5pkg = self.fetch_package(pkg_name=HDF5_PKG, pkg_url=BASE_XIA_PKG_URL)
-    h5pypkg = self.fetch_package(pkg_name=H5PY_PKG, pkg_url=BASE_XIA_PKG_URL)
+    hdf5pkg = self.fetch_package(pkg_name=HDF5_PKG, pkg_url=BASE_HDF5_PKG_URL)
+    h5pypkg = self.fetch_package(pkg_name=H5PY_PKG, pkg_url=BASE_PYPI_PKG_URL)
     if self.check_download_only(HDF5_PKG) and self.check_download_only(H5PY_PKG):
       return
 
