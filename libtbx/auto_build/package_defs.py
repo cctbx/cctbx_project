@@ -14,7 +14,7 @@ import sys
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
-BASE_PYPI_PKG_URL = "https://pypi.python.org/packages/source/h/h5py"
+BASE_H5PY_PKG_URL = "https://pypi.python.org/packages/source/h/h5py"
 BASE_HDF5_PKG_URL = "http://www.hdfgroup.org/ftp/HDF5/current/src"
 
 # from CCI
