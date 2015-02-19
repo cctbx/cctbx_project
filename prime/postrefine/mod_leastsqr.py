@@ -83,9 +83,8 @@ def calc_partiality_anisotropy_set(my_uc, rotx, roty, miller_indices, ry, rz, r0
   for miller_index, bragg_angle, alpha_angle, spot_pred_x_mm, spot_pred_y_mm in \
       zip(miller_indices, bragg_angle_set, alpha_angle_set,
           spot_pred_x_mm_set, spot_pred_y_mm_set):
-    #rs = math.sqrt((ry * math.cos(alpha_angle))**2 + (rz * math.sin(alpha_angle))**2) + \
-    #  (r0 + (abs(re)*math.tan(bragg_angle)))
-    rs = r0 + (abs(re)*math.tan(bragg_angle))
+    rs = math.sqrt((ry * math.cos(alpha_angle))**2 + (rz * math.sin(alpha_angle))**2) + \
+      (r0 + (abs(re)*math.tan(bragg_angle)))
     h = col(miller_index)
     x = A_star * h
     S = x + S0
