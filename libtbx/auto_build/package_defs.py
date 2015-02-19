@@ -14,7 +14,7 @@ import sys
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
-BASE_PYPI_PKG_URL = "https://pypi.python.org/packages/source"
+BASE_H5PY_PKG_URL = "https://pypi.python.org/packages/sourceh/h5py/"
 BASE_HDF5_PKG_URL = "http://www.hdfgroup.org/ftp/HDF5/current/src"
 
 # from CCI
@@ -38,7 +38,7 @@ VIRTUALENV_PKG = "virtualenv-12.0.6.tar.gz" # virtualenv
 #HDF5_PKG = "hdf5-1.8.8.tar.bz2"      # dxtbx
 #H5PY_PKG = "h5py-2.0.1-edit.tar.gz"  # dxtbx
 
-H5PY_PKG = "h/h5py/h5py-2.4.0.tar.gz" # dxtbx
+H5PY_PKG = "h5py-2.4.0.tar.gz" # dxtbx
 HDF5_PKG = "hdf5-1.8.14.tar" # dxtbx
 
 # GUI dependencies
