@@ -104,7 +104,10 @@ def untar (pkg_name, log=sys.stdout, verbose=False, change_ownership=False,
     if (not os.path.isdir(dir_name)) :
       time.sleep(1)
       if (not os.path.isdir(dir_name)) :
-        raise RuntimeError("Expected directory '%s' not found!" % dir_name)
+        if (os.path.isdir(dir_name.capitalize())):
+          dir_name = dir_name.capitalize()
+        else:
+          raise RuntimeError("Expected directory '%s' not found!" % dir_name)
     return os.path.abspath(dir_name)
   return None
 

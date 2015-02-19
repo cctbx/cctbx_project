@@ -172,7 +172,7 @@ class installer (object) :
       packages += ['python']
 
     # Always build hdf5 and numpy.
-    packages += ['hdf5', 'numpy', 'setuptools', 'pip', 'docutils']
+    packages += ['cython', 'hdf5', 'numpy', 'setuptools', 'pip', 'docutils']
 
     # GUI packages.
     if options.build_gui or options.build_all:
@@ -416,6 +416,7 @@ Installation of Python packages may fail.
     order = [
       'python',
       'numpy',
+      'cython',
       'hdf5',
       'setuptools',
       'pip',
@@ -614,6 +615,13 @@ Installation of Python packages may fail.
         pkg_name=PYOPENGL_PKG,
         pkg_name_label="pyopengl",
         confirm_import_module="OpenGL")
+
+  def build_cython(self):
+    self.build_python_module_simple(
+      pkg_url=BASE_CYTHON_PKG_URL,
+      pkg_name=CYTHON_PKG,
+      pkg_name_label="cython",
+      confirm_import_module="Cython")
 
   def build_hdf5 (self):
     pkg_log = self.start_building_package("HDF5")
