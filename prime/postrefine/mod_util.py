@@ -185,9 +185,10 @@ class intensities_scaler(object):
         gamma_all.append(pres.uc_params[5])
 
     uc_mean = flex.double([np.mean(a_all), np.mean(b_all), np.mean(c_all), np.mean(alpha_all), np.mean(beta_all), np.mean(gamma_all)])
+    uc_med = flex.double([np.median(a_all), np.median(b_all), np.median(c_all), np.median(alpha_all), np.median(beta_all), np.median(gamma_all)])
     uc_std = flex.double([np.std(a_all), np.std(b_all), np.std(c_all), np.std(alpha_all), np.std(beta_all), np.std(gamma_all)])
 
-    return uc_mean, uc_std
+    return uc_mean, uc_med, uc_std
 
   def calc_mean_postref_parameters(self, results):
     G_all = flex.double()
@@ -367,7 +368,7 @@ class intensities_scaler(object):
 
 
     #calculate average unit cell
-    uc_mean, uc_std = self.calc_mean_unit_cell(filtered_results)
+    uc_mean, uc_med, uc_std = self.calc_mean_unit_cell(filtered_results)
     unit_cell_mean = unit_cell((uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]))
 
     #recalculate stats for pr parameters
@@ -444,12 +445,12 @@ class intensities_scaler(object):
     txt_out += ' gamma_0:                  %12.5f %12.5f (%9.5f)\n'%(r0_mean, r0_med, r0_std)
     txt_out += ' gamma_e:                  %12.5f %12.5f (%9.5f)\n'%(re_mean, re_med, re_std)
     txt_out += ' unit cell\n'
-    txt_out += '   a:                        %12.5f (%7.5f)\n'%(uc_mean[0], uc_std[0])
-    txt_out += '   b:                        %12.5f (%7.5f)\n'%(uc_mean[1], uc_std[1])
-    txt_out += '   c:                        %12.5f (%7.5f)\n'%(uc_mean[2], uc_std[2])
-    txt_out += '   alpha:                    %12.5f (%7.5f)\n'%(uc_mean[3], uc_std[3])
-    txt_out += '   beta:                     %12.5f (%7.5f)\n'%(uc_mean[4], uc_std[4])
-    txt_out += '   gamma:                    %12.5f (%7.5f)\n'%(uc_mean[5], uc_std[5])
+    txt_out += '   a:                      %12.2f %12.2f (%9.2f)\n'%(uc_mean[0], uc_med[0], uc_std[0])
+    txt_out += '   b:                      %12.2f %12.2f (%9.2f)\n'%(uc_mean[1], uc_med[1], uc_std[1])
+    txt_out += '   c:                      %12.2f %12.2f (%9.2f)\n'%(uc_mean[2], uc_med[2], uc_std[2])
+    txt_out += '   alpha:                  %12.2f %12.2f (%9.2f)\n'%(uc_mean[3], uc_med[3], uc_std[3])
+    txt_out += '   beta:                   %12.2f %12.2f (%9.2f)\n'%(uc_mean[4], uc_med[4], uc_std[4])
+    txt_out += '   gamma:                  %12.2f %12.2f (%9.2f)\n'%(uc_mean[5], uc_med[5], uc_std[5])
     txt_out += '* (standard deviation)\n'
 
     return cn_group, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort, \
@@ -554,6 +555,40 @@ class intensities_scaler(object):
       I_even = I_even_filter
       I_odd = I_odd_filter
 
+      #calculate total cc_anom for two halves
+      cc_anom_acentric, cc_anom_centric, nrefl_anom_acentric, nrefl_anom_centric = (0,0,0,0)
+      if miller_array_merge.anomalous_flag():
+        miller_array_merge_even = miller_array_merge.customized_copy(indices=miller_indices_merge_filter,
+                                                                data=I_even_filter,
+                                                                sigmas=sigI_merge_filter)
+        miller_array_merge_odd = miller_array_merge.customized_copy(indices=miller_indices_merge_filter,
+                                                                data=I_odd_filter,
+                                                                sigmas=sigI_merge_filter)
+        ma_anom_dif_even = miller_array_merge_even.anomalous_differences()
+        ma_anom_dif_odd = miller_array_merge_odd.anomalous_differences()
+        ma_anom_centric_flags = ma_anom_dif_even.centric_flags()
+        anom_dif_even = ma_anom_dif_even.data()
+        anom_dif_odd = ma_anom_dif_odd.data()
+        anom_dif_centric_flags = ma_anom_centric_flags.data()
+        i_acentric = (anom_dif_centric_flags == False)
+        i_centric = (anom_dif_centric_flags == True)
+
+        anom_dif_even_acentric = anom_dif_even.select(i_acentric)
+        anom_dif_even_centric = anom_dif_even.select(i_centric)
+        anom_dif_odd_acentric = anom_dif_odd.select(i_acentric)
+        anom_dif_odd_centric = anom_dif_odd.select(i_centric)
+
+        mat_anom_acentric = np.corrcoef(anom_dif_even_acentric, anom_dif_odd_acentric)
+        mat_anom_centric = np.corrcoef(anom_dif_even_centric, anom_dif_odd_centric)
+        if len(mat_anom_acentric) > 0:
+          cc_anom_acentric = mat_anom_acentric[0,1]
+        if len(mat_anom_centric) > 0:
+          cc_anom_centric = mat_anom_centric[0,1]
+        nrefl_anom_acentric = len(anom_dif_even_acentric)
+        nrefl_anom_centric = len(anom_dif_even_centric)
+
+
+
       print 'N_refl after filter', len(miller_array_merge.indices())
 
     if output_mtz_file_prefix != '':
@@ -565,6 +600,7 @@ class intensities_scaler(object):
       miller_array_merge.export_as_cns_hkl(file_object=f_cns)
       f_cns.close()
 
+    #calculate anomalous differences
     #report binning stats
     miller_array_template_asu = miller_array_merge.complete_set().resolution_filter(
       d_min=iparams.merge.d_min, d_max=iparams.merge.d_max)
@@ -574,11 +610,11 @@ class intensities_scaler(object):
     one_dsqr_by_bin = flex.double()
 
     csv_out = ""
-    csv_out +='Bin, Low, High, Completeness, <N_obs>, Rmeas, Qw, CC1/2, N_ind, CCiso, N_ind, <I/sigI>\n'
+    csv_out +='Bin, Low, High, Completeness, <N_obs>, Rmeas, Qw, CC1/2, N_ind, CCiso, N_ind, CCanoma, N_ind, CCanomc, N_ind, <I/sigI>\n'
     txt_out = '\n'
     txt_out += 'Summary for '+output_mtz_file_prefix+'_merge.mtz\n'
-    txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |CC1/2   N_ind |CCiso   N_ind| <I/sigI>   <I>\n'
-    txt_out += '---------------------------------------------------------------------------------------------------\n'
+    txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind CCanomc  N_ind| <I/sigI>   <I>\n'
+    txt_out += '-----------------------------------------------------------------------------------------------------------------------------------\n'
     sum_r_meas_w_top = 0
     sum_r_meas_w_btm = 0
     sum_r_meas_top = 0
@@ -598,6 +634,36 @@ class intensities_scaler(object):
       I_bin = flex.double([miller_array_merge.data()[pair[1]] for pair in matches_template.pairs()])
       sigI_bin = flex.double([miller_array_merge.sigmas()[pair[1]] for pair in matches_template.pairs()])
       miller_indices_obs_bin = flex.miller_index([miller_array_merge.indices()[pair[1]] for pair in matches_template.pairs()])
+
+      #caculate CCanom for the two halves.
+      cc_anom_bin_acentric, cc_anom_bin_centric, nrefl_anom_bin_acentric, nrefl_anom_bin_centric = (0,0,0,0)
+      if miller_array_merge.anomalous_flag():
+        matches_anom_dif_even = miller.match_multi_indices(
+                    miller_indices_unique=miller_indices_bin,
+                    miller_indices=ma_anom_dif_even.indices())
+        anom_dif_even = flex.double([ma_anom_dif_even.data()[pair[1]] for pair in matches_anom_dif_even.pairs()])
+        anom_dif_centric_flags = flex.bool([ma_anom_centric_flags.data()[pair[1]] for pair in matches_anom_dif_even.pairs()])
+
+        matches_anom_dif_odd = miller.match_multi_indices(
+                    miller_indices_unique=miller_indices_bin,
+                    miller_indices=ma_anom_dif_odd.indices())
+        anom_dif_odd = flex.double([ma_anom_dif_odd.data()[pair[1]] for pair in matches_anom_dif_odd.pairs()])
+        i_acentric = (anom_dif_centric_flags == False)
+        i_centric = (anom_dif_centric_flags == True)
+
+        anom_dif_even_acentric = anom_dif_even.select(i_acentric)
+        anom_dif_even_centric = anom_dif_even.select(i_centric)
+        anom_dif_odd_acentric = anom_dif_odd.select(i_acentric)
+        anom_dif_odd_centric = anom_dif_odd.select(i_centric)
+
+        mat_anom_acentric = np.corrcoef(anom_dif_even_acentric, anom_dif_odd_acentric)
+        mat_anom_centric = np.corrcoef(anom_dif_even_centric, anom_dif_odd_centric)
+        if len(mat_anom_acentric) > 0:
+          cc_anom_bin_acentric = mat_anom_acentric[0,1]
+        if len(mat_anom_centric) > 0:
+          cc_anom_bin_centric = mat_anom_centric[0,1]
+        nrefl_anom_bin_acentric = len(anom_dif_even_acentric)
+        nrefl_anom_bin_centric = len(anom_dif_even_centric)
 
       avg_I_by_bin.append(np.mean(I_bin))
       one_dsqr_by_bin.append(1/binner_template_asu.bin_d_range(i)[1]**2)
@@ -678,10 +744,13 @@ class intensities_scaler(object):
             flex.sum((I_merge_match_iso/sigI_merge_match_iso)**2)
 
 
-      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f' \
+      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f' \
           %(i, binner_template_asu.bin_d_range(i)[0], binner_template_asu.bin_d_range(i)[1], completeness*100, \
           len(miller_indices_obs_bin), len(miller_indices_bin),\
-          multiplicity_bin, cc12_bin*100, n_refl_cc12_bin, cc_iso_bin*100, n_refl_cciso_bin, mean_i_over_sigi_bin, np.mean(I_bin))
+          multiplicity_bin, cc12_bin*100, n_refl_cc12_bin, cc_iso_bin*100, n_refl_cciso_bin, \
+          cc_anom_bin_acentric, nrefl_anom_bin_acentric, \
+          cc_anom_bin_centric, nrefl_anom_bin_acentric, \
+          mean_i_over_sigi_bin, np.mean(I_bin))
       txt_out += '\n'
 
 
@@ -737,13 +806,16 @@ class intensities_scaler(object):
     else:
       r_meas = float('Inf')
 
-    txt_out += '---------------------------------------------------------------------------------------------------\n'
-    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f\n' \
+    txt_out += '-----------------------------------------------------------------------------------------------------------------------------------\n'
+    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f\n' \
     %((sum_refl_obs/sum_refl_complete)*100, sum_refl_obs, \
      sum_refl_complete, n_refl_obs_total/sum_refl_obs, \
-     cc12*100, len(I_even.select(i_even_filter_sel)), cc_iso*100, \
-     n_refl_iso, np.mean(miller_array_merge.data()/miller_array_merge.sigmas()), np.mean(miller_array_merge.data()))
-    txt_out += '---------------------------------------------------------------------------------------------------\n'
+     cc12*100, len(I_even.select(i_even_filter_sel)), \
+     cc_iso*100, n_refl_iso, \
+     cc_anom_acentric, nrefl_anom_acentric, \
+     cc_anom_centric, nrefl_anom_centric, \
+     np.mean(miller_array_merge.data()/miller_array_merge.sigmas()), np.mean(miller_array_merge.data()))
+    txt_out += '-----------------------------------------------------------------------------------------------------------------------------------\n'
 
     return miller_array_merge, txt_out, csv_out
 
