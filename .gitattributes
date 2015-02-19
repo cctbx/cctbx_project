@@ -488,6 +488,7 @@ dxtbx/format/FormatMAR.py -text
 dxtbx/format/FormatMarIP.py -text
 dxtbx/format/FormatMultiImage.py -text
 dxtbx/format/FormatPY.py -text
+dxtbx/format/FormatPYunspecifiedStill.py -text
 dxtbx/format/FormatPilatusHelpers.py -text
 dxtbx/format/FormatRAXIS.py -text
 dxtbx/format/FormatRAXISII.py -text
