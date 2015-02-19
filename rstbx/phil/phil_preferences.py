@@ -106,6 +106,12 @@ integration {
       .type = bool
       .help = followup top hat wavelength dispersion
   }
+  enable_residual_map = False
+      .type = bool
+      .help = x,y model vs. spotfinder residuals plotted vs. image position
+  enable_residual_scatter = False
+      .type = bool
+      .help = x,y model vs. spotfinder residuals scatter plot
   montecarlo_integration_limit = None
     .type = float
     .help = use None to limit the integration resolution based on Wilson plot
@@ -122,6 +128,9 @@ integration {
     .help =   but before indexing of high-Bravais symmetry spots, possibly leading to misindexing of high-angle spots
     .help = if true, spots are indexed once only, in triclinic setting.  After application of high-symmetry constraints
     .help =   dials is used to refine positions (eqn 1) and deltapsi angle (eqn 2).
+  spot_prediction = *ucbp3 dials
+      .type = choice
+      .help = in high-symmetry integration protocol, predict with ucbp3 (CSPAD subpixel corrections) or dials (detector tilt, but unit translations)
 }
 """
 indexing_defs = """

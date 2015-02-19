@@ -217,6 +217,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     print "Calculate correction vectors for %d observations & %d predictions"%(len(spots),len(self.predicted))
     indexed_pairs_provisional = []
     correction_vectors_provisional = []
+    c_v_p_flex = flex.vec3_double()
     idx_cutoff = float(min(self.mask_focus[image_number]))
     if verbose:
       print "idx_cutoff distance in pixels",idx_cutoff
@@ -231,7 +232,30 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
             [spots[Match["spot"]].ctr_mass_x() - self.predicted[Match["pred"]][0]/pxlsz,
              spots[Match["spot"]].ctr_mass_y() - self.predicted[Match["pred"]][1]/pxlsz])
           correction_vectors_provisional.append(vector)
-    print "... %d provisional matches"%len(correction_vectors_provisional)
+          c_v_p_flex.append((vector[0],vector[1],0.))
+    print "... %d provisional matches"%len(correction_vectors_provisional),
+    print "r.m.s.d. in pixels: %5.2f"%(math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex))))
+
+    if self.horizons_phil.integration.enable_residual_scatter:
+      from matplotlib import pyplot as plt
+      for cv in correction_vectors_provisional:
+        plt.plot([cv[1]],[-cv[0]],"b.")
+      plt.title(" %d matches, r.m.s.d. %5.2f pixels"%(len(correction_vectors_provisional),math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))))
+      plt.axes().set_aspect("equal")
+      plt.show()
+
+    if self.horizons_phil.integration.enable_residual_map:
+      from matplotlib import pyplot as plt
+      for match,cv in zip(indexed_pairs_provisional,correction_vectors_provisional):
+        plt.plot([spots[match["spot"]].ctr_mass_y()],[-spots[match["spot"]].ctr_mass_x()],"r.")
+        plt.plot([self.predicted[match["pred"]][1]/pxlsz],[-self.predicted[match["pred"]][0]/pxlsz],"g.")
+        plt.plot([spots[match["spot"]].ctr_mass_y(), spots[match["spot"]].ctr_mass_y() + 10.*cv[1]],
+                 [-spots[match["spot"]].ctr_mass_x(), -spots[match["spot"]].ctr_mass_x() - 10.*cv[0]],'b-')
+      plt.xlim([0,float(self.inputpd["size2"])])
+      plt.ylim([-float(self.inputpd["size1"]),0])
+      plt.title(" %d matches, r.m.s.d. %5.2f pixels"%(len(correction_vectors_provisional),math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))))
+      plt.axes().set_aspect("equal")
+      plt.show()
     # insert code here to remove correction length outliers...
     # they are causing terrible
     # problems for finding legitimate correction vectors (print out the list)
@@ -375,6 +399,10 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     PS_adapt.query(query)
 
     self.BSmasks = []
+    #self.null_correction_mapping( predicted=self.predicted,
+    #                                    correction_vectors = correction_vectors,
+    #                                    IS_adapt = IS_adapt,
+    #                                    spots = spots)
     self.positional_correction_mapping( predicted=self.predicted,
                                         correction_vectors = correction_vectors,
                                         PS_adapt = PS_adapt,
