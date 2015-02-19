@@ -95,10 +95,11 @@ def untar (pkg_name, log=sys.stdout, verbose=False, change_ownership=False,
     cmd = ["tar", "jx%s%sf" % (owner_flag, verbose_flag) ]
   args = cmd + [pkg_name]
   call(" ".join(args), log)
-  dir_name = re.sub(".tgz", "",
-               re.sub(".tar.gz", "",
-                 re.sub(".tar.bz2", "",
-                   os.path.basename(pkg_name))))
+  dir_name = re.sub(".tar", "",
+               re.sub(".tgz", "",
+                 re.sub(".tar.gz", "",
+                   re.sub(".tar.bz2", "",
+                     os.path.basename(pkg_name)))))
   if (check_output_path) :
     if (not os.path.isdir(dir_name)) :
       time.sleep(1)
