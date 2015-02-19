@@ -253,7 +253,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
     params = phil_scope.fetch(source=parse('')).extract()
     params.refinement.parameterisation.beam.fix="all"
     #params.refinement.parameterisation.detector.fix="orientation"
-    params.refinement.parameterisation.detector.fix_list=0,3
+    params.refinement.parameterisation.detector.fix_list=3, # fix detector rotz, allow distance to refine
     params.refinement.reflections.weighting_strategy.delpsi_constant=100000.
     params.refinement.reflections.weighting_strategy.override="stills"
 
