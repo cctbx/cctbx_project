@@ -16,6 +16,7 @@ BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
 BASE_H5PY_PKG_URL = "https://pypi.python.org/packages/source/h/h5py"
 BASE_HDF5_PKG_URL = "http://www.hdfgroup.org/ftp/HDF5/current/src"
+BASE_CYTHON_PKG_URL = "https://pypi.python.org/packages/source/C/Cython"
 
 # from CCI
 PYTHON_PKG = "Python-2.7.8_cci.tar.gz"
@@ -40,6 +41,7 @@ VIRTUALENV_PKG = "virtualenv-12.0.6.tar.gz" # virtualenv
 
 H5PY_PKG = "h5py-2.4.0.tar.gz" # dxtbx
 HDF5_PKG = "hdf5-1.8.14.tar" # dxtbx
+CYTHON_PKG = "cython-0.22.tar.gz"
 
 # GUI dependencies
 LIBPNG_PKG = "libpng-1.2.52.tar.gz"
