@@ -165,7 +165,7 @@ def make_input_list (gs_params):
         if filename.endswith("pickle"):
           pickle_file = os.path.join(root, filename)
           input_list.append(pickle_file)
-  
+
   if gs_params.random_sample.flag_on == True:
     random_inp_list = []
     for i in range(gs_params.random_sample.number):
@@ -197,9 +197,9 @@ def make_dir_lists(input_list, input_dir, output_dir):
       input_dir = abs_inp_path + '/' + os.path.relpath(path, abs_inp_path)
       output_dir = abs_out_path + '/' + os.path.relpath(path, abs_inp_path)
 
-    if input_dir not in input_dir_list: 
+    if input_dir not in input_dir_list:
       input_dir_list.append(os.path.normpath(input_dir))
-    if output_dir not in output_dir_list: 
+    if output_dir not in output_dir_list:
       output_dir_list.append(os.path.normpath(output_dir))
 
     #with open('{}/input_files.lst'.format(abs_out_path), 'a') as inp_list_file:

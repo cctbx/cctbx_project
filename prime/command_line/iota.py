@@ -24,7 +24,6 @@ import cProfile, pstats, StringIO
 # Multiprocessor wrapper for grid search module
 def index_mproc_wrapper(current_img):
   return gs.integrate_one_image(current_img, log_dir, gs_params)
-  #return gs.index_integrate(current_img, log_dir, gs_params)
 
 # Multiprocessor wrapper for selection module
 def selection_mproc_wrapper(output_entry):
