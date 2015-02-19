@@ -107,9 +107,9 @@ target_pointgroup = P 4
 target_uc_tolerance = 0.05
   .type = float
   .help = Maximum allowed unit cell deviation from target
-select_by = strong
-        .type = str
-  .help = Pickle selection method
+bragg_tol = 0.1
+  .type = float
+  .help = Bragg vs. total spots tolerance (default 10%)
 min_sigma = 5.0
   .type = float
   .help = Minimum sigma for "strong" reflections
@@ -149,19 +149,34 @@ def process_input(input_file_list):
 
 # Read input directory tree (if any) and make lists of input folder, output folder and
 # input files for use in everything
-def make_input_list (input_dir):
+def make_input_list (gs_params):
   input_list = []
-  abs_inp_path = os.path.abspath(input_dir)
+  abs_inp_path = os.path.abspath(gs_params.input)
 
+  if gs_params.input_list != None:
+    with open(gs_params.input_list, 'r') as listfile:
+      listfile_contents = listfile.read()
+      input_list = listfile_contents.splitlines()
+  else:
   # search for *.pickle files within the tree and record in a list w/
   # full absolute path and filanames
-  for root, dirs, files in os.walk(abs_inp_path):
-    for filename in files:
-      if filename.endswith("pickle"):
-        pickle_file = os.path.join(root, filename)
-        input_list.append(pickle_file)
+    for root, dirs, files in os.walk(abs_inp_path):
+      for filename in files:
+        if filename.endswith("pickle"):
+          pickle_file = os.path.join(root, filename)
+          input_list.append(pickle_file)
+  
+  if gs_params.random_sample.flag_on == True:
+    random_inp_list = []
+    for i in range(gs_params.random_sample.number):
+      random_number = random.randrange(0, len(input_list))
+      random_inp_list.append(input_list[random_number])
 
-  return input_list
+    inp_list = random_inp_list
+  else:
+    inp_list = input_list
+
+  return inp_list
 
 def make_dir_lists(input_list, input_dir, output_dir):
 
@@ -177,14 +192,15 @@ def make_dir_lists(input_list, input_dir, output_dir):
 
     if os.path.relpath(path, abs_inp_path) == '.':  # in case of input in one dir
       input_dir = abs_inp_path
-      if input_dir not in input_dir_list: input_dir_list.append(input_dir)
       output_dir = abs_out_path
     else:                                           # in case of input in tree
       input_dir = abs_inp_path + '/' + os.path.relpath(path, abs_inp_path)
       output_dir = abs_out_path + '/' + os.path.relpath(path, abs_inp_path)
 
-    if input_dir not in input_dir_list: input_dir_list.append(input_dir)
-    if output_dir not in output_dir_list: output_dir_list.append(output_dir)
+    if input_dir not in input_dir_list: 
+      input_dir_list.append(os.path.normpath(input_dir))
+    if output_dir not in output_dir_list: 
+      output_dir_list.append(os.path.normpath(output_dir))
 
     #with open('{}/input_files.lst'.format(abs_out_path), 'a') as inp_list_file:
     #  inp_list_file.write('{0}, {1}\n'.format(input_entry, output_dir))
@@ -283,8 +299,8 @@ def make_dirs (input_list, output_dir_list, log_dir, gs_params):
                                               img_filename.split('.')[0])
     index_log_dir = "{0}/tmp_{1}".format(log_dir, img_filename.split('.')[0])
 
-    # Make directories for output / log file for the image being integrated
+#     # Make directories for output / log file for the image being integrated
     if not os.path.exists(current_output_dir):
       os.makedirs(current_output_dir)
-    if not os.path.exists(index_log_dir):
-      os.makedirs(index_log_dir)
+#     if not os.path.exists(index_log_dir):
+#       os.makedirs(index_log_dir)
