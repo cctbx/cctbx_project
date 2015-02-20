@@ -215,12 +215,12 @@ class boost_module(SourceModule):
 class cctbx_module(SourceModule):
   module = 'cctbx_project'
   anonymous = ['svn','svn://svn.code.sf.net/p/cctbx/code/trunk']
-  authenticated = ['svn', 'svn+ssh://%(sfuser)s@svn.code.sf.net/p/cctbx/code/trunk']
+  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/cctbx/code/trunk']
 
 class cbflib_module(SourceModule):
   module = 'cbflib'
   anonymous = ['svn', 'svn://svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge']
-  authenticated = ['svn', 'svn+ssh://%(sfuser)s@svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge']
+  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge']
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
@@ -337,7 +337,7 @@ class labelit_regression_module(SourceModule):
 class dials_module(SourceModule):
   module = 'dials'
   anonymous = ['svn', 'svn://svn.code.sf.net/p/dials/code/trunk']
-  authenticated = ['svn', 'svn+ssh://%(sfuser)s@svn.code.sf.net/p/dials/code/trunk']
+  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/dials/code/trunk']
 
 class dials_regression_module(SourceModule):
   module = 'dials_regression'
@@ -833,6 +833,7 @@ def run(root=None):
   parser.add_option("--builder", help="Builder: cctbx, phenix, xfel, dials, labelit", default="cctbx")
   parser.add_option("--cciuser", help="CCI SVN username.")
   parser.add_option("--sfuser", help="SourceForge SVN username.")
+  parser.add_option("--sfmethod", help="SourceForge SVN checkout method.", default="svn+ssh")
   parser.add_option("--with-python", dest="with_python", help="Use specified Python interpreter")
   parser.add_option("--nproc", help="# processes in compile step.")
   parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output", default=False)
@@ -869,6 +870,8 @@ def run(root=None):
     auth['cciuser'] = options.cciuser
   if options.sfuser:
     auth['sfuser'] = options.sfuser
+  if options.sfmethod:
+    auth['sfmethod'] = options.sfmethod
 
   # Build
   builder = builders[options.builder]
