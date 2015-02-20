@@ -1282,6 +1282,7 @@ iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/pdb/atom_selection.cpp svneol=native#text/plain
 iotbx/pdb/atom_selection.py svneol=native#text/x-python
 iotbx/pdb/construct_hierarchy.cpp svneol=native#text/plain
+iotbx/pdb/download.py -text
 iotbx/pdb/extract_rfactors_resolutions_sigma.py -text
 iotbx/pdb/fetch.py -text
 iotbx/pdb/hierarchy.cpp svneol=native#text/plain
@@ -1304,6 +1305,7 @@ iotbx/pdb/mmcif.py -text
 iotbx/pdb/multimer_reconstruction.py -text
 iotbx/pdb/namespace.h svneol=native#text/plain
 iotbx/pdb/overall_counts.cpp svneol=native#text/plain
+iotbx/pdb/pdbe.py -text
 iotbx/pdb/records.py svneol=native#text/x-python
 iotbx/pdb/remediation/__init__.py svneol=native#text/x-python
 iotbx/pdb/remediation/remediation.dict -text
