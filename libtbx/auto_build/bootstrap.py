@@ -347,6 +347,16 @@ class xfel_regression_module(SourceModule):
   module = 'xfel_regression'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/xfel_regression/trunk']
 
+class xia2_module(SourceModule):
+  module = 'xia2'
+  anonymous = ['svn', 'svn://svn.code.sf.net/p/xia2/code/trunk/xia2']
+  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/dials/code/trunk/xia2']
+
+class xia2_regression_module(SourceModule):
+  module = 'xia2_regression'
+  anonymous = ['svn', 'svn://svn.code.sf.net/p/xia2/code/trunk/xia2_regression']
+  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/dials/code/trunk/xia2_regression']
+
 # Duke repositories
 class probe_module(SourceModule):
   module = 'probe'
@@ -694,8 +704,8 @@ class CCTBXBuilder(CCIBuilder):
     self.add_test_command('cctbx_regression.test_nightly')
 
 class DIALSBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['dials',]
-  LIBTBX_EXTRA = ['dials',]
+  CODEBASES_EXTRA = ['dials', 'xia2']
+  LIBTBX_EXTRA = ['dials', 'xia2']
   def add_tests(self):
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('cctbx_regression.test_nightly')
