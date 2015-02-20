@@ -463,6 +463,8 @@ Installation of Python packages may fail.
     for i in packages_order:
       self.set_cppflags_ldflags() # up-to-date LDFLAGS/CPPFLAGS
       self.print_sep()
+      if (i == 'wxpython' and self.options.use_wxpython3):
+        i = 'wxpython3'
       getattr(self, 'build_%s'%i)()
 
     if self.options.download_only:
