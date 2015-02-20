@@ -147,9 +147,14 @@ class integrate_one_frame(IntegrationMetaProcedure):
       reference.append(spots[item["spot"]].ctr_mass_x())
       reference.append(spots[item["spot"]].ctr_mass_y())
 
+    PS_adapt = AnnAdaptor(data=reference,dim=2,k=NEAR)
+    PS_adapt.query(query)
+
     self.BSmasks = []
-    self.null_correction_mapping( predicted=self.predicted,
+    # do not use null: self.null_correction_mapping( predicted=self.predicted,
+    self.positional_correction_mapping( predicted=self.predicted,
                                         correction_vectors = correction_vectors,
+                                        PS_adapt = PS_adapt,
                                         IS_adapt = IS_adapt,
                                         spots = spots)
 
