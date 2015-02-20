@@ -78,6 +78,8 @@ class installer (object) :
       help="Build SciPy (requires Fortran compiler)", default=False)
     parser.add_option("--ipython", dest="build_ipython", action="store_true",
       help="Build IPython", default=False)
+    parser.add_option("--wxpython3", dest="use_wxpython3", action="store_true",
+      help="Use wxPython3", default=False)
 
     # Basic setup.
     options, args = parser.parse_args(args)
@@ -810,7 +812,7 @@ Installation of Python packages may fail.
     pkg_name = WXPYTHON_PKG
     # XXX we don't entirely trust wxPython-2.9, but it would be preferrable for
     # the future to use a single version instead
-    if (self.flag_is_mac) :
+    if (self.flag_is_mac or self.options.use_wxpython3) :
       pkg_name = WXPYTHON_DEV_PKG
     pkg = self.fetch_package(pkg_name)
     if self.check_download_only(pkg_name): return

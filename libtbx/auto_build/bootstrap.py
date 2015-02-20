@@ -702,7 +702,8 @@ class DIALSBuilder(CCIBuilder):
     self.add_test_parallel('dials')
 
   def add_base(self):
-    super(DIALSBuilder, self).add_base(extra_opts=['--dials'])
+    super(DIALSBuilder, self).add_base(
+      extra_opts=['--dials', '--wxpython3'])
 
 class LABELITBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['labelit', 'labelit_regression']
