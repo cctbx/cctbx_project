@@ -713,7 +713,9 @@ class DIALSBuilder(CCIBuilder):
 
   def add_base(self):
     super(DIALSBuilder, self).add_base(
-      extra_opts=['--dials', '--wxpython3'])
+      extra_opts=['--dials',
+                  #'--wxpython3'
+                 ])
 
 class LABELITBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['labelit', 'labelit_regression']
