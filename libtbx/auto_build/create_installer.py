@@ -255,6 +255,7 @@ class SetupInstaller(object):
         "--version", self.version,
         "--license", self.license,
         "--dist-dir", self.dist_dir,
+        "--no_compress",
         app_root_dir
     ])
 
