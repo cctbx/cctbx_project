@@ -112,10 +112,16 @@ class minimizer:
       if psi_model > 1e100 or part_psi_model_partP0 > 1e100:
         from libtbx.utils import Sorry
         raise Sorry("Model has diverged, cannot continue")
+
       partB_partP0 = (-self.escalate/(psi_model*psi_model))*part_psi_model_partP0
       partB_partP1 = (-self.escalate/(psi_model*psi_model))*part_psi_model_partP1
       expB = exp( B * (psi_i + psi_model) )
       expBneg = exp( -B * (psi_i - psi_model) )
+
+      if expB > 1e100 or expBneg < -1e100:
+        from libtbx.utils import Sorry
+        raise Sorry("Model has diverged, cannot continue")
+
       partSpos_partP0 = expB * ((psi_i+psi_model)*partB_partP0 + B*part_psi_model_partP0)
       partSpos_partP1 = expB * ((psi_i+psi_model)*partB_partP1 + B*part_psi_model_partP1)
 
