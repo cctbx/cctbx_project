@@ -237,7 +237,9 @@ class SetupInstaller(object):
 
     # This has to match other convetions...
     pkg_prefix = "/Applications"
-    app_root_dir = os.path.join(pkg_prefix, '%s-%s'%(self.installer.dest_dir_prefix, self.version))
+    app_root_dir = os.path.join(pkg_prefix,
+                                '%s-%s'%(self.installer.dest_dir_prefix,
+                                         self.version))
 
     subprocess.check_call([
       os.path.join(self.dest_dir, 'install'),
@@ -255,7 +257,7 @@ class SetupInstaller(object):
         "--version", self.version,
         "--license", self.license,
         "--dist-dir", self.dist_dir,
-        "--no_compress",
+        #"--no_compress",
         app_root_dir
     ])
 
