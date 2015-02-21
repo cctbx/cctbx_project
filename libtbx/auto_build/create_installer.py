@@ -240,7 +240,8 @@ class SetupInstaller(object):
     app_root_dir = os.path.join(pkg_prefix,
                                 '%s-%s'%(self.installer.dest_dir_prefix,
                                          self.version))
-
+    print self.dest_dir
+    print os.path.exists(os.path.join(self.dest_dir, "install"))
     subprocess.check_call([
       os.path.join(self.dest_dir, 'install'),
       '--prefix', pkg_prefix,
