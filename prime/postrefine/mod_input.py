@@ -322,9 +322,7 @@ def process_input(argv=None):
 
   #generate run_no folder
   if os.path.exists(params.run_no):
-    import shutil
-    shutil.rmtree(params.run_no)
-    print 'Folder :', params.run_no, ' exists. This folder will be removed'
+    raise Sorry("The run number %s already exists."%params.run_no)
 
   os.makedirs(params.run_no)
 
