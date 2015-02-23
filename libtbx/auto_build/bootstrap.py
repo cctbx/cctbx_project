@@ -350,12 +350,12 @@ class xfel_regression_module(SourceModule):
 class xia2_module(SourceModule):
   module = 'xia2'
   anonymous = ['svn', 'svn://svn.code.sf.net/p/xia2/code/trunk/xia2']
-  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/dials/code/trunk/xia2']
+  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/xia2/code/trunk/xia2']
 
 class xia2_regression_module(SourceModule):
   module = 'xia2_regression'
   anonymous = ['svn', 'svn://svn.code.sf.net/p/xia2/code/trunk/xia2_regression']
-  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/dials/code/trunk/xia2_regression']
+  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/xia2/code/trunk/xia2_regression']
 
 # Duke repositories
 class probe_module(SourceModule):
