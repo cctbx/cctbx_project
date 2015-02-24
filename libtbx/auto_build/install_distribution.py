@@ -432,9 +432,12 @@ class installer(object):
       "--current_working_directory", self.build_dir,
       "--command_version_suffix", self.version,
     ] + self.configure_modules
-    try :
+    print self.build_dir
+    print args
+
+    if 1: #try :
       call(args=args, log=log)
-    except RuntimeError :
+    else: #except RuntimeError :
       raise InstallerError("Configuration step incomplete!  See the log file for detailed error messages.")
 
   def install_finalize (self) :
