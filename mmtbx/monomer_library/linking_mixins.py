@@ -710,7 +710,7 @@ Residue classes
       if ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna)
           and (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
         hbonds_in_bond_list.append(tuple(sorted([atom1.i_seq, atom2.i_seq])))
-        # we will create proxies elsewhere (pdb_interpretation:4900)
+        # we will create proxies elsewhere (pdb_interpretation:5000)
         continue
 
       class1 = linking_utils.get_classes(atom1, #_group1.resname,
