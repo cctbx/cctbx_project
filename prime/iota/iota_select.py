@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 02/11/2015
+Last Changed: 01/29/2015
 Description : IOTA pickle selection module. Selects the best integration results from a
               set of pickles derived from a single image.
 '''
@@ -13,6 +13,7 @@ import numpy as np
 import logging
 
 import os,cPickle as pickle
+import dials.util.command_line as cmd
 from xfel.clustering.cluster import Cluster
 from xfel.clustering.singleframe import SingleFrame
 import visualize_integration as viz
@@ -128,9 +129,9 @@ def best_by_offset(acceptable_pickles):
 # Main selection module. Looks through integrated pickles in a specified folder and
 # copies the best ones to a file. Outputs a list to log file and marks the selected
 # pickle file.
-def best_file_selection(gs_params, output_entry, log_dir):
+def best_file_selection(gs_params, output_entry, log_dir, n_int):
 
-  ps_logger = logging.getLogger('ps_log')
+  #logging = logging.getLogger('ps_log')
 
   input_file = output_entry[0]
   abs_tmp_dir = output_entry[1]
@@ -145,6 +146,7 @@ def best_file_selection(gs_params, output_entry, log_dir):
     with open('{}/not_integrated.lst'.format(os.path.abspath(gs_params.output)), 'a') as no_int:
       no_int.write('{}\n'.format(input_file))
     acceptable_pickles = []
+    int_summary ='{} -- not integrated'.format(input_file)
 
   else:
     acceptable_pickles = prefilter(gs_params, total_tmp_pickles)
@@ -153,6 +155,8 @@ def best_file_selection(gs_params, output_entry, log_dir):
                       'in {1}:\n'.format(len(total_tmp_pickles), abs_tmp_dir))
       with open('{}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)), 'a') as bad_int:
         bad_int.write('{}\n'.format(input_file))
+
+      int_summary ='{} -- failed prefilter'.format(input_file)
 
 
     else:
@@ -172,6 +176,8 @@ def best_file_selection(gs_params, output_entry, log_dir):
       ps_log_output.append(categories)
       ps_log_output.append(line)
 
+      int_summary = '{0} -- {1} successful integration '\
+                         'results'.format(input_file, len(acceptable_pickles))
 
       # Report pickle stats. Mark selected pickle with asterisk for posterity
       for pickle in acceptable_pickles:
@@ -261,7 +267,7 @@ def best_file_selection(gs_params, output_entry, log_dir):
 
       # Output selected file information
       ps_log_output.append('\nSelected:')
-      #ps_logger.info('\nSelected:')
+      #logging.info('\nSelected:')
       for sel in selected_info:
         observations = SingleFrame(sel[1], sel[2]).miller_array
         res = observations.d_max_min()
@@ -281,4 +287,19 @@ def best_file_selection(gs_params, output_entry, log_dir):
         ps_log_output.append(info_line)
 
     ps_log_output.append('\n')
-    ps_logger.info('\n'.join(ps_log_output))
+    logging.info('\n'.join(ps_log_output))
+
+    # Progress bar for selection
+    with (open ('{0}/logs/progress.log'.format(gs_params.output), 'a')) as prog_log:
+      prog_log.write("{}\n".format(int_summary))
+
+    with (open ('{0}/logs/progress.log'.format(gs_params.output), 'r')) as prog_log:
+      prog_content = prog_log.read()
+      prog_count = len(prog_content.splitlines())
+
+    gs_prog = cmd.ProgressBar(title='PICKLE SELECTION', estimate_time=False, spinner=False)
+    if prog_count >= n_int:
+      gs_prog.finished()
+    else:
+      prog_step = 100 / n_int
+      gs_prog.update(prog_count * prog_step)
