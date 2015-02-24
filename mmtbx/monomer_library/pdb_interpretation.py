@@ -288,6 +288,9 @@ master_params_str = """\
       enabled = True
         .type = bool
         .short_caption = Enable hydrogen bonds between basepairing nucleobases
+      restrain_angles = False
+        .type = bool
+        .short_caption = Use angle restraints along with bond length restraints
       find_automatically = True
         .type = bool
       bond_distance_cutoff = 3.4
@@ -5049,6 +5052,61 @@ refinement.pdb_interpretation {
       self.na_restraints_out_file.close()
 
     #========== Add user-defined basepair restraints (planarity+hbonds) =======
+    def get_angle_proxies(i_seqs):
+      angle_values = {'O6 N4': [(122.8, 3.00), (117.3, 2.86)],
+                      'N4 O6': [(117.3, 2.86), (122.8, 3.00)],
+
+                      'N2 O2': [(122.2, 2.88), (120.7, 2.20)],
+                      'O2 N2': [(120.7, 2.20), (122.2, 2.88)],
+
+                      'N6 O4': [(115.6, 8.34), (121.2, 4.22)],
+                      'O4 N6': [(121.2, 4.22), (115.6, 8.34)]}
+      proxies = []
+      anames = [self.pdb_atoms[i_seqs[0]].name.strip(),
+                self.pdb_atoms[i_seqs[1]].name.strip()]
+      rnames = [self.pdb_atoms[i_seqs[0]].id_str().split()[1],
+                self.pdb_atoms[i_seqs[1]].id_str().split()[1]]
+      if sorted(anames) == ['N1', 'N3']:
+        if get_one_letter_rna_dna_name(rnames[0]) in ['G', 'C']:
+          if anames[0] == 'N1':
+            vals = [(119.1, 2.59), (116.3, 2.66)]
+          else:
+            vals = [(116.3, 2.66), (119.1, 2.59)]
+        else:
+          if anames[0] == 'N1':
+            vals = [(116.2, 3.46), (115.8, 2.88)]
+          else:
+            vals = [(115.8, 2.88), (116.2, 3.46)]
+      else:
+        key = "%s %s" % (anames[0], anames[1])
+        vals = angle_values.get(key, None)
+      if vals is not None:
+        for i in range(2):
+          i_seqs_for_angle = [0,0,0]
+          aname = anames[i]
+          if (aname == 'N1' or aname == 'N2' or aname == 'N3' or aname == 'O2'):
+            i_seqs_for_angle[0] = self.pdb_atoms[i_seqs[i]].parent().\
+                get_atom('C2').i_seq
+          elif (aname == 'N4' or aname == 'O4'):
+            i_seqs_for_angle[0] = self.pdb_atoms[i_seqs[i]].parent().\
+                get_atom('C4').i_seq
+          elif (aname == 'N6' or aname == 'O6'):
+            i_seqs_for_angle[0] = self.pdb_atoms[i_seqs[i]].parent().\
+                get_atom('C6').i_seq
+          if i_seqs_for_angle[0] != 0:
+            i_seqs_for_angle[1] = i_seqs[i]
+            i_seqs_for_angle[2] = i_seqs[1-i]
+          p = geometry_restraints.angle_proxy(
+            i_seqs=i_seqs_for_angle,
+            angle_ideal=vals[i][0],
+            weight=1./vals[i][1]**2)
+          for i_s in i_seqs_for_angle:
+            print self.pdb_atoms[i_s].id_str(),
+          print vals[i]
+          proxies.append(p)
+      return proxies
+
+
     if len(list_of_hbonds_for_proxies) > 0:
       # make proxies, compare with hbonds_in_bond_list
       new_hbond_proxies = []
@@ -5056,6 +5114,7 @@ refinement.pdb_interpretation {
         raise Sorry(
             "Sigma for nucleic_acid_restraints.bonds.sigma shoudl be > 1e-5")
       bond_weight = 1.0/na_params.bonds.sigma**2
+      n_angle_proxies = 0
       for new_hb in list_of_hbonds_for_proxies:
         if new_hb not in hbonds_in_bond_list:
           new_hbond_proxies.append(geometry_restraints.bond_simple_proxy(
@@ -5071,6 +5130,13 @@ refinement.pdb_interpretation {
               distance_ideal=na_params.bonds.target_value,
               weight=bond_weight))
           bond_asu_table.add_pair((new_hb[0], new_hb[1]))
+        if na_params.bonds.restrain_angles:
+          proxies = get_angle_proxies(new_hb)
+          for p in proxies:
+            self.geometry_proxy_registries.angle.add_if_not_duplicated(p)
+            n_angle_proxies += 1
+      if na_params.bonds.restrain_angles:
+        print "H-bond angle restraints:", n_angle_proxies
     for p in na_basepairs_planarities:
       self.geometry_proxy_registries.planarity.add_if_not_duplicated(p)
     for p in na_basepairs_parallelities:
