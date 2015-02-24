@@ -235,13 +235,17 @@ class SetupInstaller(object):
       print "Can't access /Applications - skipping .pkg build"
       return
 
-    # This has to match other convetions...
+    # This has to match other conventions...
     pkg_prefix = "/Applications"
     app_root_dir = os.path.join(pkg_prefix,
                                 '%s-%s'%(self.installer.dest_dir_prefix,
                                          self.version))
     print self.dest_dir
     print os.path.exists(os.path.join(self.dest_dir, "install"))
+    print os.path.exists(self.dest_dir)
+    print pkg_prefix
+    print self.version
+    print app_root_dir
     subprocess.check_call([
       os.path.join(self.dest_dir, 'install'),
       '--prefix', pkg_prefix,
