@@ -10,7 +10,6 @@ Description : IOTA I/O module. Reads PHIL input, creates output directories, etc
 
 import sys
 import os
-import shutil
 import random
 
 import iotbx.phil
@@ -40,9 +39,16 @@ target = target.phil
   .multiple = False
   .help = Target (.phil) file with integration parameters
   .optional = False
-flag_inp_test = False
-  .type = bool
-  .help = Test of input list use for selection
+advanced
+  .help = "Advanced options, mostly for debugging."
+{
+  single_img = False
+    .type = bool
+    .help = If True, runs one image. If False, runs the whole set.
+  debug = False
+    .type = bool
+    .help = If True, activates the iPython command wherever it is.
+}
 pred_img
   .help = "Visualize spotfinding / integration results."
 {
@@ -178,13 +184,13 @@ def make_input_list (gs_params):
 
   return inp_list
 
-def make_dir_lists(input_list, input_dir, output_dir):
+def make_dir_lists(input_list, gs_params):
 
   input_dir_list = []
   output_dir_list = []
 
-  abs_inp_path = os.path.abspath(input_dir)
-  abs_out_path = os.path.abspath(output_dir)
+  abs_inp_path = os.path.abspath(gs_params.input)
+  abs_out_path = os.path.abspath(gs_params.output)
 
   # make lists of input and output directories and files
   for input_entry in input_list:
@@ -205,17 +211,19 @@ def make_dir_lists(input_list, input_dir, output_dir):
     #with open('{}/input_files.lst'.format(abs_out_path), 'a') as inp_list_file:
     #  inp_list_file.write('{0}, {1}\n'.format(input_entry, output_dir))
 
-  return input_dir_list, output_dir_list, abs_out_path + '/logs'
+  return input_dir_list, output_dir_list
 
 # Generates input list for MP grid seach
-def make_mp_input(input_list, log_dir, gs_params):
+def make_mp_input(input_list, gs_params):
 
   mp_item = []
   mp_input = []
   mp_output = []
 
   if gs_params.random_sample.flag_on == True:
-    print "Selecting {0} samples from {1} images in {2}:".format(gs_params.random_sample.number, len(input_list), gs_params.input)
+    print "Selecting {0} samples from {1} images in {2}:"\
+          "".format(gs_params.random_sample.number, len(input_list),
+                    gs_params.input)
     random_inp_list = []
     for i in range(gs_params.random_sample.number):
       random_number = random.randrange(0, len(input_list))
@@ -247,7 +255,6 @@ def make_mp_input(input_list, log_dir, gs_params):
 
     current_output_dir = "{0}/tmp_{1}".format(output_dir,
                                               img_filename.split('.')[0])
-    index_log_dir = "{0}/tmp_{1}".format(log_dir, img_filename.split('.')[0])
     mp_output_entry = [current_img, current_output_dir]
     mp_output.append(mp_output_entry)
 
@@ -262,26 +269,7 @@ def make_mp_input(input_list, log_dir, gs_params):
   return mp_input, mp_output
 
 # Make output directories preserving the tree structure
-def make_dirs (input_list, output_dir_list, log_dir, gs_params):
-
-  mp_item = []
-  mp_input = []
-  mp_output = []
-
-  # Make output directory structure
-  for output_dir in output_dir_list:
-    if os.path.exists(output_dir):
-      shutil.rmtree(output_dir)
-      os.makedirs(output_dir)
-    else:
-      os.makedirs(output_dir)
-
-  # make log folder (under main output folder regardless of tree structure)
-  if os.path.exists(log_dir):
-    shutil.rmtree(log_dir)
-    os.makedirs(log_dir)
-  else:
-    os.makedirs(log_dir)
+def make_dirs (input_list, gs_params):
 
   for current_img in input_list:
     # generate filenames, etc.
@@ -297,10 +285,9 @@ def make_dirs (input_list, output_dir_list, log_dir, gs_params):
 
     current_output_dir = "{0}/tmp_{1}".format(output_dir,
                                               img_filename.split('.')[0])
-    index_log_dir = "{0}/tmp_{1}".format(log_dir, img_filename.split('.')[0])
+
 
 #     # Make directories for output / log file for the image being integrated
     if not os.path.exists(current_output_dir):
       os.makedirs(current_output_dir)
-#     if not os.path.exists(index_log_dir):
-#       os.makedirs(index_log_dir)
+
