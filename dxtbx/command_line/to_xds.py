@@ -14,7 +14,6 @@ from __future__ import division
 import sys
 from dxtbx.serialize import xds
 
-
 def run(file_names):
   if len(file_names) == 1 and file_names[0].endswith('json'):
     from dxtbx.serialize import load

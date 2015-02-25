@@ -193,6 +193,9 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
       for f0, s0, f1, s1 in determine_pilatus_mask(detector):
         detector[0].add_mask(f0, s0, f1, s1)
 
+      detector[0].set_thickness(thickness)
+      detector[0].set_material('Si')
+
       return detector
 
     # got to here means 60-panel version
@@ -244,7 +247,8 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
         p.set_image_size((xmax-xmin, ymax-ymin))
         p.set_trusted_range((underload, overload))
         p.set_pixel_size((pixel_x,pixel_y))
-
+        p.set_thickness(thickness)
+        p.set_material('Si')
         p.set_local_frame(
           fast.elems,
           slow.elems,
