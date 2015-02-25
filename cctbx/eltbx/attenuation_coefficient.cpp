@@ -339,7 +339,7 @@ namespace cctbx { namespace eltbx { namespace attenuation_coefficient {
     },
 
 
-    // Z = 14
+    // Z = 14 Si
     {
       38, {
         0.001, 0.0015, 0.0018389, 0.0018389, 0.002, 0.003, 0.004, 0.005,
