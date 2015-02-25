@@ -141,6 +141,15 @@ class IntegrateCharacters:
       local["r_distance"]=setting["refined distance"]
       local["r_residual"]=integrate_worker.r_residual
       local["r_mosaicity"]=setting["mosaicity"]
+      try:
+        local["AD14_parameters"]=dict(fw_mos_deg=integrate_worker.inputai.getMosaicity(),
+                                      domain_sz_ang=integrate_worker.DOMAIN_SZ_ANG,
+                                      N_correction_vectors=integrate_worker.N_correction_vectors,
+                                      rmsd_px=integrate_worker.rmsd_px
+                                    )
+      except Exception:
+        local["AD14_parameters"]=None
+
       if (self.horizons_phil.indexing.open_wx_viewer) :
        if True: #use updated slip viewer
         try:

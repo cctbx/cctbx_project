@@ -46,9 +46,9 @@ class integrate_one_frame(IntegrationMetaProcedure):
     Predicted = self.get_predictions_accounting_for_centering(experiments,reflections,cb_op_to_primitive,**kwargs)
 
     FWMOSAICITY = self.inputai.getMosaicity()
-    DOMAIN_SZ_ANG = kwargs.get("domain_size_ang",  self.__dict__.get("actual",0)  )
+    self.DOMAIN_SZ_ANG = kwargs.get("domain_size_ang",  self.__dict__.get("actual",0)  )
     refineflag = {True:0,False:1}[kwargs.get("domain_size_ang",0)==0]
-    c_symmetry.show_summary(prefix="EXCURSION%1d REPORT FWMOS= %6.4f DOMAIN= %6.1f "%(refineflag,FWMOSAICITY,DOMAIN_SZ_ANG))
+    c_symmetry.show_summary(prefix="EXCURSION%1d REPORT FWMOS= %6.4f DOMAIN= %6.1f "%(refineflag,FWMOSAICITY,self.DOMAIN_SZ_ANG))
     from annlib_ext import AnnAdaptor
     self.cell = c_symmetry.unit_cell()
 
@@ -89,8 +89,10 @@ class integrate_one_frame(IntegrationMetaProcedure):
              reflections["xyzobs.px.value"][j][1] - self.predicted[Match["pred"]][1]/pxlsz[1]])
         correction_vectors_provisional.append(vector)
         c_v_p_flex.append((vector[0],vector[1],0.))
-    print "... %d provisional matches"%len(correction_vectors_provisional),
-    print "r.m.s.d. in pixels: %5.2f"%(math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex))))
+    self.N_correction_vectors = len(correction_vectors_provisional)
+    self.rmsd_px = math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))
+    print "... %d provisional matches"%self.N_correction_vectors,
+    print "r.m.s.d. in pixels: %5.2f"%(self.rmsd_px)
 
     if self.horizons_phil.integration.enable_residual_scatter:
       from matplotlib import pyplot as plt
@@ -115,7 +117,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
           reflections = self.dials_spot_prediction,
           matches = indexed_pairs_provisional, experiments=experiments,
           hkllist = self.hkllist,
-          predicted = self.predicted, plot=plt, eta_deg=FWMOSAICITY, deff=DOMAIN_SZ_ANG
+          predicted = self.predicted, plot=plt, eta_deg=FWMOSAICITY, deff=self.DOMAIN_SZ_ANG
           )
       plt.xlim([0,detector[0].get_image_size()[1]])
       plt.ylim([-detector[0].get_image_size()[0],0])
