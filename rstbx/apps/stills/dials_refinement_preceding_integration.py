@@ -108,6 +108,15 @@ class integrate_one_frame(IntegrationMetaProcedure):
         plt.plot([self.predicted[match["pred"]][1]/pxlsz[1]],[-self.predicted[match["pred"]][0]/pxlsz[0]],"g.")
         plt.plot([PX[match["spot"]][1], PX[match["spot"]][1] + 10.*cv[1]],
                  [-PX[match["spot"]][0], -PX[match["spot"]][0] - 10.*cv[0]],'r-')
+      if kwargs.get("user-reentrant") != None and self.horizons_phil.integration.spot_prediction == "dials" \
+             and self.horizons_phil.integration.enable_residual_map_deltapsi:
+        from rstbx.apps.stills.util import residual_map_special_deltapsi_add_on
+        residual_map_special_deltapsi_add_on(
+          reflections = self.dials_spot_prediction,
+          matches = indexed_pairs_provisional, experiments=experiments,
+          hkllist = self.hkllist,
+          predicted = self.predicted, plot=plt, eta_deg=FWMOSAICITY, deff=DOMAIN_SZ_ANG
+          )
       plt.xlim([0,detector[0].get_image_size()[1]])
       plt.ylim([-detector[0].get_image_size()[0],0])
       plt.title(" %d matches, r.m.s.d. %5.2f pixels"%(len(correction_vectors_provisional),math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))))
@@ -262,17 +271,34 @@ class integrate_one_frame(IntegrationMetaProcedure):
       self.hkllist = cb_op_to_primitive.inverse().apply(primitive_hkllist)
 
       if self.horizons_phil.integration.spot_prediction == "dials":
+        wavelength = experiments[0].beam.get_wavelength()
         Rcalc = flex.reflection_table.empty_standard(len(self.hkllist))
         Rcalc['miller_index'] = self.hkllist
 
         s0vec = flex.vec3_double(len(self.hkllist), experiments[0].beam.get_s0())
         Amat_vec = flex.mat3_double(len(self.hkllist), crystal.get_A())
         x_vec = Amat_vec * self.hkllist.as_vec3_double()
-        s1vec = s0vec + x_vec
+
+        s0hat_vec = s0vec.each_normalize()
+        q0hat_vec = x_vec.each_normalize()     # AD14, equation (5)
+        e1hat_vec = q0hat_vec.cross(s0hat_vec) # AD14, equation (6)
+        c0hat_vec = s0hat_vec.cross(e1hat_vec) # AD14, equation (7)
+        q_sq = x_vec.dot(x_vec)
+        a_vec = q_sq*(wavelength/2.)
+        b_vec = flex.sqrt(q_sq - a_vec*a_vec)
+        r_vec = -a_vec * s0hat_vec + b_vec * c0hat_vec # AD14, equation (8)
+
+        s1vec = s0vec + x_vec  ### Why is this x_vec and not r_vec (r_vec gives poor results)
+                               ### this may expose a deeper problem in DIALS stills refinement XXX Fixme
         for idx, s1 in enumerate(s1vec):
           position = detector[0].get_ray_intersection(s1)
           Rcalc['xyzobs.mm.value'][idx] = (position[0], position[1], 0)
 
+        q1hat_vec = q0hat_vec.cross(e1hat_vec)
+        num = r_vec.dot(q1hat_vec)
+        den = r_vec.dot(q0hat_vec)
+        Rcalc["deltapsi_vec"] = -flex.atan2(num,den)
+        self.dials_spot_prediction = Rcalc
 
         self.predicted = Rcalc['xyzobs.mm.value']
 

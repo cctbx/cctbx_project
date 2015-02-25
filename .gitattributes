@@ -2244,6 +2244,7 @@ rstbx/apps/stills/ersatz_nexus.cpp -text
 rstbx/apps/stills/ersatz_nexus.h -text
 rstbx/apps/stills/simple_integration.h -text
 rstbx/apps/stills/stills_integration.py -text
+rstbx/apps/stills/util.py -text
 rstbx/array_family/__init__.py -text
 rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
