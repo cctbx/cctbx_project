@@ -5055,10 +5055,8 @@ refinement.pdb_interpretation {
     def get_angle_proxies(i_seqs):
       angle_values = {'O6 N4': [(122.8, 3.00), (117.3, 2.86)],
                       'N4 O6': [(117.3, 2.86), (122.8, 3.00)],
-
                       'N2 O2': [(122.2, 2.88), (120.7, 2.20)],
                       'O2 N2': [(120.7, 2.20), (122.2, 2.88)],
-
                       'N6 O4': [(115.6, 8.34), (121.2, 4.22)],
                       'O4 N6': [(121.2, 4.22), (115.6, 8.34)]}
       proxies = []
@@ -5106,6 +5104,32 @@ refinement.pdb_interpretation {
           proxies.append(p)
       return proxies
 
+    def get_hb_lenght_targets(i_seqs):
+      restraint_values = { 'N6 O4' : (3.00, 0.11),
+                           'O6 N4' : (2.93, 0.10),
+                           'N2 O2' : (2.78, 0.10)
+      }
+      anames = [self.pdb_atoms[i_seqs[0]].name.strip(),
+                self.pdb_atoms[i_seqs[1]].name.strip()]
+      rnames = [self.pdb_atoms[i_seqs[0]].id_str().split()[1],
+                self.pdb_atoms[i_seqs[1]].id_str().split()[1]]
+      if sorted(anames) == ['N1', 'N3']:
+        if get_one_letter_rna_dna_name(rnames[0]) in ['G', 'C']:
+          return (2.88, 0.07) # G-C
+        else:
+          return (2.82, 0.08) # A-T
+      else:
+        key1 = "%s %s" % (anames[0], anames[1])
+        key2 = "%s %s" % (anames[1], anames[0])
+        vals = restraint_values.get(key1, None)
+        if vals is not None:
+          return vals
+        vals = restraint_values.get(key2, None)
+        if vals is not None:
+          return vals
+      return (2.91, 0.15) # values for all other bonds
+
+
 
     if len(list_of_hbonds_for_proxies) > 0:
       # make proxies, compare with hbonds_in_bond_list
@@ -5113,13 +5137,17 @@ refinement.pdb_interpretation {
       if na_params.bonds.sigma < 1e-5:
         raise Sorry(
             "Sigma for nucleic_acid_restraints.bonds.sigma shoudl be > 1e-5")
-      bond_weight = 1.0/na_params.bonds.sigma**2
+      # bond_weight = 1.0/na_params.bonds.sigma**2
       n_angle_proxies = 0
       for new_hb in list_of_hbonds_for_proxies:
         if new_hb not in hbonds_in_bond_list:
+          # print get_hb_lenght_targets(new_hb)
+          hb_target, hb_sigma = get_hb_lenght_targets(new_hb)
+          # STOP()
+          bond_weight = 1.0/hb_sigma**2
           new_hbond_proxies.append(geometry_restraints.bond_simple_proxy(
             i_seqs=new_hb,
-            distance_ideal=na_params.bonds.target_value,
+            distance_ideal=hb_target,
             weight=bond_weight,
             slack=na_params.bonds.slack))
           hbonds_in_bond_list.append(new_hb)
@@ -5127,7 +5155,7 @@ refinement.pdb_interpretation {
             i_seq=new_hb[0],
             j_seq=new_hb[1],
             params=geometry_restraints.bond_params(
-              distance_ideal=na_params.bonds.target_value,
+              distance_ideal=hb_target,
               weight=bond_weight))
           bond_asu_table.add_pair((new_hb[0], new_hb[1]))
         if na_params.bonds.restrain_angles:
