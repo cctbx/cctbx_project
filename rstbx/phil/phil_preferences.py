@@ -109,6 +109,11 @@ integration {
   enable_residual_map = False
       .type = bool
       .help = x,y model vs. spotfinder residuals plotted vs. image position
+  enable_residual_map_deltapsi = False
+      .type = bool
+      .help = if residual map is enabled, colorcode the Bragg spots by Delta-Psi
+      .help = blue, negative delta psi, outside Ewald sphere. red, positive delta psi, inside Ewald sphere.
+      .help = requires also setting enable_residual_map to True and spot_prediction to dials
   enable_residual_scatter = False
       .type = bool
       .help = x,y model vs. spotfinder residuals scatter plot
