@@ -506,7 +506,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       fname = os.path.splitext(os.path.basename(G))[0]
       sgi = str(self.inputpd["symmetry"].space_group_info())
       sgi = sgi.replace(" ","")
-      sgi = sii.replace("/","")
+      sgi = sgi.replace("/","")
       outfile = os.path.join(self.horizons_phil.integration.pdf_output_dir,
         "%s_%02d_%s_%s.pdf"%(fname, self.setting_id, sgi, tag)
       )
