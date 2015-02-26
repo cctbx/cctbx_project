@@ -279,6 +279,10 @@ class multiplicity_settings_window(settings_window):
       setting="show_systematic_absences",
       label="Show systematic absences")
     self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    ctrls = self.create_controls(
+      setting="show_anomalous_pairs",
+      label="Show anomalous pairs")
+    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     if (self.is_3d_view) :
       ctrls = self.create_controls(
         setting="sphere_detail",
