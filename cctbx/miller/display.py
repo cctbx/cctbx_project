@@ -93,37 +93,20 @@ class scene (object) :
     multiplicities = None
     if self.merge_equivalents :
       if self.settings.show_anomalous_pairs:
-        # inefficient Python implementation: move to C++!
-        from collections import defaultdict
-        asu = array.map_to_asu()
-        asu_indices = asu.indices()
-        merged_non_anom = array.as_non_anomalous_array().merge_equivalents().array()
-        unique_indices = merged_non_anom.indices()
-        h_plus_counter = defaultdict(int)
-        h_minus_counter = defaultdict(int)
-        from cctbx import sgtbx
-        t = asu.space_group().type()
-        a = sgtbx.reciprocal_space_asu(t)
-        for h in asu_indices:
-          if a.which(h) > 0:
-            h_plus_counter[h] += 1
-          else:
-            h_minus_counter[h] += 1
-
-        anom_pair_indices = flex.miller_index()
-        anom_mult = flex.int()
-        for h_plus, count_plus in h_plus_counter.iteritems():
-          count_minus = h_minus_counter[tuple(-h for h in h_plus)]
-          mult = min(count_plus, count_minus)
-          if mult > 0:
-            anom_pair_indices.append(h_plus)
-            anom_mult.append(mult)
-
         from cctbx import miller
+        merge = array.merge_equivalents()
+        multiplicities = merge.redundancies()
+        asu, matches = multiplicities.match_bijvoet_mates()
+        mult_plus, mult_minus = multiplicities.hemispheres_acentrics()
+        anom_mult = flex.int(
+          min(p, m) for (p, m) in zip(mult_plus.data(), mult_minus.data()))
+        #flex.min_max_mean_double(anom_mult.as_double()).show()
         anomalous_multiplicities = miller.array(
           miller.set(asu.crystal_symmetry(),
-                     anom_pair_indices,
+                     mult_plus.indices(),
                      anomalous_flag=False), anom_mult)
+        anomalous_multiplicities = anomalous_multiplicities.select(
+          anomalous_multiplicities.data() > 0)
 
         array = anomalous_multiplicities
         multiplicities = anomalous_multiplicities
