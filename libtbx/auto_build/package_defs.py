@@ -14,9 +14,9 @@ import sys
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
-BASE_H5PY_PKG_URL = "https://pypi.python.org/packages/source/h/h5py"
+BASE_H5PY_PKG_URL = "http://pypi.python.org/packages/source/h/h5py"
 BASE_HDF5_PKG_URL = "http://www.hdfgroup.org/ftp/HDF5/current/src"
-BASE_CYTHON_PKG_URL = "https://pypi.python.org/packages/source/C/Cython"
+BASE_CYTHON_PKG_URL = "http://pypi.python.org/packages/source/C/Cython"
 
 # from CCI
 PYTHON_PKG = "Python-2.7.8_cci.tar.gz"
