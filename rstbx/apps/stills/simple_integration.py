@@ -238,14 +238,17 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
     if self.horizons_phil.integration.enable_residual_scatter:
       from matplotlib import pyplot as plt
+      fig = plt.figure()
       for cv in correction_vectors_provisional:
         plt.plot([cv[1]],[-cv[0]],"b.")
       plt.title(" %d matches, r.m.s.d. %5.2f pixels"%(len(correction_vectors_provisional),math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))))
       plt.axes().set_aspect("equal")
-      plt.show()
+      self.show_figure(plt,fig,"res")
+      plt.close()
 
     if self.horizons_phil.integration.enable_residual_map:
       from matplotlib import pyplot as plt
+      fig = plt.figure()
       for match,cv in zip(indexed_pairs_provisional,correction_vectors_provisional):
         plt.plot([spots[match["spot"]].ctr_mass_y()],[-spots[match["spot"]].ctr_mass_x()],"r.")
         plt.plot([self.predicted[match["pred"]][1]/pxlsz],[-self.predicted[match["pred"]][0]/pxlsz],"g.")
@@ -255,7 +258,8 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       plt.ylim([-float(self.inputpd["size1"]),0])
       plt.title(" %d matches, r.m.s.d. %5.2f pixels"%(len(correction_vectors_provisional),math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))))
       plt.axes().set_aspect("equal")
-      plt.show()
+      self.show_figure(plt,fig,"map")
+      plt.close()
     # insert code here to remove correction length outliers...
     # they are causing terrible
     # problems for finding legitimate correction vectors (print out the list)
@@ -492,3 +496,23 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     miller_array.set_observation_type_xray_intensity()
     miller_array.set_info("Raw partials from rstbx, not in ASU, no polarization correction")
     return miller_array
+
+  def show_figure(self,plt,fig,tag):
+    if self.horizons_phil.integration.graphics_backend=="pdf":
+
+      F=self.imagefiles.frames()
+      G=self.imagefiles.imagepath(F[0])
+      import os
+      fname = os.path.splitext(os.path.basename(G))[0]
+      sgi = str(self.inputpd["symmetry"].space_group_info())
+      sgi = sgi.replace(" ","")
+      outfile = os.path.join(self.horizons_phil.integration.pdf_output_dir,
+        "%s_%02d_%s_%s.pdf"%(fname, self.setting_id, sgi, tag)
+      )
+
+      from matplotlib.backends.backend_pdf import PdfPages
+      with PdfPages(outfile) as pdf:
+        pdf.savefig(fig)
+        pdf.savefig()
+    else:
+        plt.show()

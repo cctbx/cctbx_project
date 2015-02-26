@@ -96,15 +96,18 @@ class integrate_one_frame(IntegrationMetaProcedure):
 
     if self.horizons_phil.integration.enable_residual_scatter:
       from matplotlib import pyplot as plt
+      fig = plt.figure()
       for cv in correction_vectors_provisional:
         plt.plot([cv[1]],[-cv[0]],"r.")
       plt.title(" %d matches, r.m.s.d. %5.2f pixels"%(len(correction_vectors_provisional),math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))))
       plt.axes().set_aspect("equal")
-      plt.show()
+      self.show_figure(plt,fig,"res")
+      plt.close()
 
     if self.horizons_phil.integration.enable_residual_map:
       from matplotlib import pyplot as plt
       PX = reflections["xyzobs.px.value"]
+      fig = plt.figure()
       for match,cv in zip(indexed_pairs_provisional,correction_vectors_provisional):
         plt.plot([PX[match["spot"]][1]],[-PX[match["spot"]][0]],"r.")
         plt.plot([self.predicted[match["pred"]][1]/pxlsz[1]],[-self.predicted[match["pred"]][0]/pxlsz[0]],"g.")
@@ -123,7 +126,8 @@ class integrate_one_frame(IntegrationMetaProcedure):
       plt.ylim([-detector[0].get_image_size()[0],0])
       plt.title(" %d matches, r.m.s.d. %5.2f pixels"%(len(correction_vectors_provisional),math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))))
       plt.axes().set_aspect("equal")
-      plt.show()
+      self.show_figure(plt,fig,"map")
+      plt.close()
 
     indexed_pairs = indexed_pairs_provisional
     correction_vectors = correction_vectors_provisional

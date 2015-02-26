@@ -117,6 +117,12 @@ integration {
   enable_residual_scatter = False
       .type = bool
       .help = x,y model vs. spotfinder residuals scatter plot
+  graphics_backend = *screen pdf
+      .type = choice
+      .help = data plots are written to the terminal screen, or to pdf files
+  pdf_output_dir = "."
+      .type = str
+      .help = plots are written to this directory
   montecarlo_integration_limit = None
     .type = float
     .help = use None to limit the integration resolution based on Wilson plot

@@ -439,6 +439,7 @@ class refinement(refinement_base):
         AD1TF7B_MAX2T = 30.
         AD1TF7B_MAXDP = 1.
         from matplotlib import pyplot as plt
+        fig = plt.figure()
         plt.plot(two_thetas, final, "bo")
         mean = flex.mean(final)
         minplot = flex.min(two_thetas)
@@ -467,7 +468,8 @@ class refinement(refinement_base):
           plt.plot(two_thetas, -tan_outer_deg, "g.")
         plt.xlim([0,AD1TF7B_MAX2T])
         plt.ylim([-AD1TF7B_MAXDP,AD1TF7B_MAXDP])
-        plt.show()
+        OO.parent.show_figure(plt,fig,"psi")
+        plt.close()
 
       if OO.mosaic_refinement_target=="ML":
         OO.parent.inputai.setMosaicity(M.x[1]*180./math.pi) # full width, degrees
