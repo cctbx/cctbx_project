@@ -55,8 +55,8 @@ class scene (object) :
         indices=array.indices(),
         slice_axis=self.axis_index,
         slice_index=settings.slice_index)
-      if (self.slice_selection.count(True) == 0) :
-        raise ValueError("No data selected!")
+      #if (self.slice_selection.count(True) == 0) :
+        #raise ValueError("No data selected!")
     index_span = array.index_span()
     self.d_min = array.d_min()
     self.hkl_range = index_span.abs_range()
@@ -88,13 +88,50 @@ class scene (object) :
     self.clear_labels()
 
   def process_input_array (self) :
-    from scitbx.array_family import flex
+    from cctbx.array_family import flex
     array = self.miller_array.deep_copy()
     multiplicities = None
     if self.merge_equivalents :
-      merge = array.merge_equivalents()
-      array = merge.array()
-      multiplicities = merge.redundancies()
+      if self.settings.show_anomalous_pairs:
+        # inefficient Python implementation: move to C++!
+        from collections import defaultdict
+        asu = array.map_to_asu()
+        asu_indices = asu.indices()
+        merged_non_anom = array.as_non_anomalous_array().merge_equivalents().array()
+        unique_indices = merged_non_anom.indices()
+        h_plus_counter = defaultdict(int)
+        h_minus_counter = defaultdict(int)
+        from cctbx import sgtbx
+        t = asu.space_group().type()
+        a = sgtbx.reciprocal_space_asu(t)
+        for h in asu_indices:
+          if a.which(h) > 0:
+            h_plus_counter[h] += 1
+          else:
+            h_minus_counter[h] += 1
+
+        anom_pair_indices = flex.miller_index()
+        anom_mult = flex.int()
+        for h_plus, count_plus in h_plus_counter.iteritems():
+          count_minus = h_minus_counter[tuple(-h for h in h_plus)]
+          mult = min(count_plus, count_minus)
+          if mult > 0:
+            anom_pair_indices.append(h_plus)
+            anom_mult.append(mult)
+
+        from cctbx import miller
+        anomalous_multiplicities = miller.array(
+          miller.set(asu.crystal_symmetry(),
+                     anom_pair_indices,
+                     anomalous_flag=False), anom_mult)
+
+        array = anomalous_multiplicities
+        multiplicities = anomalous_multiplicities
+
+      else:
+        merge = array.merge_equivalents()
+        array = merge.array()
+        multiplicities = merge.redundancies()
     settings = self.settings
     data = array.data()
     self.missing_set = oop.null()
@@ -116,6 +153,9 @@ class scene (object) :
         multiplicities = multiplicities.generate_bijvoet_mates()
     if (self.settings.show_missing) :
       self.missing_set = array.complete_set().lone_set(array)
+      if self.settings.show_anomalous_pairs:
+        self.missing_set = self.missing_set.select(
+          self.missing_set.centric_flags().data(), negate=True)
     if (settings.expand_to_p1) :
       original_symmetry = array.crystal_symmetry()
       array = array.expand_to_p1().customized_copy(
@@ -215,13 +255,17 @@ class scene (object) :
     max_radius = 40 * min_dist
     if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
       data_for_radii = flex.sqrt(data_for_radii)
-    max_value = flex.max(data_for_radii)
-    scale = max_radius / max_value
-    radii = data_for_radii * scale
-    too_small = radii < min_radius
-    if (too_small.count(True) > 0) :
-      radii.set_selected(too_small, flex.double(radii.size(), min_radius))
-    assert radii.size() == colors.size()
+    if len(data_for_radii):
+      max_value = flex.max(data_for_radii)
+      scale = max_radius / max_value
+      radii = data_for_radii * scale
+      too_small = radii < min_radius
+      if (too_small.count(True) > 0) :
+        radii.set_selected(too_small, flex.double(radii.size(), min_radius))
+      assert radii.size() == colors.size()
+    else:
+      radii = flex.double()
+      max_radius = 0
     self.radii = radii
     self.max_radius = max_radius
     self.colors = colors
@@ -490,6 +534,8 @@ master_phil = libtbx.phil.parse("""
   scale_radii_multiplicity = False
     .type = bool
   scale_colors_multiplicity = False
+    .type = bool
+  show_anomalous_pairs = False
     .type = bool
 """)
 
