@@ -58,10 +58,11 @@ DATA_RANGE= 1 9
 JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
 """ %(template.replace("*", "????"))
 
-
   cmd = " ".join(["dxtbx.to_xds"] + file_names)
   result = easy_run.fully_buffered(cmd)
-  assert not show_diff("\n".join(result.stdout_lines), expected_output)
+  # allow extra lines to have been added (these may be comments)
+  for record in expected_output.split('\n'):
+    assert(record.strip() in "\n".join(result.stdout_lines))
 
   # now test reading from a json file
   sweep = ImageSetFactory.new(file_names)[0]
@@ -70,7 +71,11 @@ JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
   f.close()
   cmd = " ".join(["dxtbx.to_xds", f.name])
   result = easy_run.fully_buffered(cmd)
-  assert not show_diff("\n".join(result.stdout_lines), expected_output)
+
+  # allow extra lines to have been added (these may be comments)
+  for record in expected_output.split('\n'):
+    assert(record.strip() in "\n".join(result.stdout_lines))
+
 
 def run():
   exercise_to_xds()
