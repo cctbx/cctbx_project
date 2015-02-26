@@ -46,33 +46,37 @@ def get_cc(f, hl):
   map_coeffs = abs(f).phase_transfer(phase_source = hl)
   return map_coeffs.map_correlation(other=f)
 
-def run(args, log=None):
+def run(args, log=None, ccp4_map=None, return_as_miller_arrays=False, nohl=False, 
+    out=sys.stdout):
+  if log is None: log=out
+
   inputs = mmtbx.utils.process_command_line_args(args = args,
     master_params = master_params())
   got_map = False
+  if ccp4_map: got_map=True
   broadcast(m="Parameters:", log=log)
-  inputs.params.show(prefix="  ")
+  inputs.params.show(prefix="  ",out=out)
   params = inputs.params.extract()
-  if(inputs.ccp4_map is not None):
+  if(ccp4_map is None and inputs.ccp4_map is not None):
     broadcast(m="Processing input CCP4 map file: %s"%inputs.ccp4_map_file_name,
       log=log)
     ccp4_map = inputs.ccp4_map
-    ccp4_map.show_summary(prefix="  ")
+    ccp4_map.show_summary(prefix="  ",out=out)
     got_map = True
   if(not got_map):
     raise Sorry("Map file is needed.")
   #
   m = ccp4_map
   broadcast(m="Input map information:", log=log)
-  print "m.all()   :", m.data.all()
-  print "m.focus() :", m.data.focus()
-  print "m.origin():", m.data.origin()
-  print "m.nd()    :", m.data.nd()
-  print "m.size()  :", m.data.size()
-  print "m.focus_size_1d():", m.data.focus_size_1d()
-  print "m.is_0_based()   :", m.data.is_0_based()
-  print "map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data)
-  print "unit cell:", m.unit_cell_parameters
+  print >>out,"m.all()   :", m.data.all()
+  print >>out,"m.focus() :", m.data.focus()
+  print >>out,"m.origin():", m.data.origin()
+  print >>out,"m.nd()    :", m.data.nd()
+  print >>out,"m.size()  :", m.data.size()
+  print >>out,"m.focus_size_1d():", m.data.focus_size_1d()
+  print >>out,"m.is_0_based()   :", m.data.is_0_based()
+  print >>out,"map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data)
+  print >>out,"unit cell:", m.unit_cell_parameters
   #
   if(not m.data.is_0_based()):
     raise Sorry("Map must have origin at (0,0,0): recenter the map and try again.")
@@ -93,7 +97,7 @@ def run(args, log=None):
   if(d_min is None):
     # box of reflections in |h|<N1/2, |k|<N2/2, 0<=|l|<N3/2
     max_index = [(i-1)//2 for i in n_real]
-    print "max_index:", max_index
+    print >>out,"max_index:", max_index
     complete_set = miller.build_set(
       crystal_symmetry = cs,
       anomalous_flag   = False,
@@ -107,7 +111,7 @@ def run(args, log=None):
     #  d1 = uc.d([0,0,max_index[2]])
     #  d2 = uc.d([0,max_index[1],0])
     #  d3 = uc.d([max_index[0],1,0])
-    #  print d1,d2,d3
+    #  print >>out, d1,d2,d3
     #  complete_set_sp = miller.build_set(
     #    crystal_symmetry = cs,
     #    anomalous_flag   = False,
@@ -119,7 +123,7 @@ def run(args, log=None):
       anomalous_flag   = False,
       d_min            = d_min)
   broadcast(m="Complete set information:", log=log)
-  complete_set.show_comprehensive_summary(prefix="  ")
+  complete_set.show_comprehensive_summary(prefix="  ",f=out)
   try:
     f_obs_cmpl = complete_set.structure_factors_from_map(
       map            = m.data.as_double(),
@@ -132,6 +136,10 @@ def run(args, log=None):
       raise Sorry(msg)
     else:
       raise Sorry(str(e))
+
+  if nohl and return_as_miller_arrays:
+    return f_obs_cmpl
+
   mtz_dataset = f_obs_cmpl.as_mtz_dataset(column_root_label="F")
   mtz_dataset.add_miller_array(
     miller_array      = abs(f_obs_cmpl),
@@ -143,9 +151,9 @@ def run(args, log=None):
   broadcast(m="Convert phases into HL coefficeints:", log=log)
   hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=params.b_blur)
   cc = get_cc(f = f_obs_cmpl, hl = hl)
-  print "cc:", cc
+  print >>out, "cc:", cc
   if(abs(1.-cc)>1.e-3):
-    print "Supplied b_blur is not good. Attempting to find optimal b_blur."
+    print >>out, "Supplied b_blur is not good. Attempting to find optimal b_blur."
     cc_best = 999.
     b_blur_best = params.b_blur
     for b_blur in range(1, 100):
@@ -158,16 +166,20 @@ def run(args, log=None):
         b_blur_best = b_blur
         break
     hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=b_blur_best)
-    print "cc:", get_cc(f = f_obs_cmpl, hl = hl)
-    print "b_blur_best:", b_blur_best
+    print >>out,"cc:", get_cc(f = f_obs_cmpl, hl = hl)
+    print >>out,"b_blur_best:", b_blur_best
   mtz_dataset.add_miller_array(
     miller_array      = hl,
     column_root_label = "HL")
-  # write output MTZ file with all the data
-  broadcast(m="Writing output MTZ file:", log=log)
-  print >> log, "  file name:", params.output_file_name
-  mtz_object = mtz_dataset.mtz_object()
-  mtz_object.write(file_name = params.output_file_name)
+
+  if return_as_miller_arrays:
+    return f_obs_cmpl,hl
+  else:
+    # write output MTZ file with all the data
+    broadcast(m="Writing output MTZ file:", log=log)
+    print >> log, "  file name:", params.output_file_name
+    mtz_object = mtz_dataset.mtz_object()
+    mtz_object.write(file_name = params.output_file_name)
 
 if(__name__ == "__main__"):
   run(sys.argv[1:])

@@ -1108,7 +1108,7 @@ differences (CC*_ano) of about %5.2f, and a useful anomalous signal around
 %3.0f (again within a factor of about two). With this value of estimated
 anomalous signal the probability of finding the anomalous substructure is
 about %3d%% (based on estimated anomalous signal and actual outcomes for
-real structures.), and the estimated figure of merit of phasing is %3.2f.""" % (dmin, i_over_sigma,  cc_half,  cc_ano,
+real structures), and the estimated figure of merit of phasing is %3.2f.""" % (dmin, i_over_sigma,  cc_half,  cc_ano,
         s_ano, int(solved), fom))
     out.show_text("""
 The value of sigF/F (actually rms(sigF)/rms(F)) is approximately the inverse

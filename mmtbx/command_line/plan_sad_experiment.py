@@ -292,7 +292,7 @@ def setup_params (params, out) :
     params.crystal_info.solvent_fraction=0.50  # just guess
 
   if not params.crystal_info.residues:
-    raise Sorry("Please specify number of residues or a sequence file")
+    raise Sorry("Please specify number of residues (residues=500) or a sequence file")
   if not params.crystal_info.sites:
     raise Sorry(
       "Please specify number of sites or a sequence file and atom_type")
