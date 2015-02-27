@@ -26,7 +26,12 @@ master_phil_str = """
 
   keep_hydrogens = True
     .type = bool
-    .help = '''Keep hydrogens in input file'''
+    .help = '''Keep hydrogens in input file
+    (if there are no hydrogens in input file they will be added)'''
+
+  skip_hydrogen_test = False
+    .type = bool
+    .help = '''Ignore hydrogen considerations, check NBO on PDB file as-is '''
 
   nuclear = False
     .type = bool
@@ -61,6 +66,8 @@ Options:
   model=input_file          input PDB file
   cif=input_file            input CIF file for additional model information
   keep_hydrogens=True       keep input hydrogen files (otherwise regenerate)
+  skip_hydrogen_test=False  Ignore hydrogen considerations,
+                            check NBO on PDB file as-is
   nuclear=False             use nuclear x-H distances and vdW radii
   verbose=True              verbose text output
   time_limit=120            Time limit (sec) for Reduce optimization
@@ -123,18 +130,19 @@ def run (args, out=None) :
   cif_file_name = [x for x in args if x.endswith('.cif')]
   assert pdb_file_name
   pdb_file_name = pdb_file_name[0]
-  pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
-      file_name=pdb_file_name,
-      model_number=0,
-      nuclear=params.nuclear,
-      verbose=params.verbose,
-      time_limit=params.time_limit,
-      keep_hydrogens=params.keep_hydrogens,
-      allow_multiple_models=False,
-      log=out)
-  if h_were_added:
-    pdb_file_name = pdb_file_name.replace('.pdb','_with_h.pdb')
-    open(pdb_file_name,'w').write(pdb_with_h)
+  if not params.skip_hydrogen_test:
+    pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
+        file_name=pdb_file_name,
+        model_number=0,
+        nuclear=params.nuclear,
+        verbose=params.verbose,
+        time_limit=params.time_limit,
+        keep_hydrogens=params.keep_hydrogens,
+        allow_multiple_models=False,
+        log=out)
+    if h_were_added:
+      pdb_file_name = pdb_file_name.replace('.pdb','_with_h.pdb')
+      open(pdb_file_name,'w').write(pdb_with_h)
   files = [pdb_file_name]
   if cif_file_name:
       files.append(cif_file_name[0])
