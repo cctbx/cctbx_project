@@ -1,7 +1,6 @@
 from __future__ import division
 from iotbx.pdb.atom_selection import selection_string_from_selection
 from scitbx.array_family import flex
-from libtbx.utils import null_out
 from scitbx.math import superpose
 from mmtbx.ncs import ncs_search
 import mmtbx.ncs.ncs_utils as nu
@@ -228,7 +227,9 @@ class ncs_group_object(object):
         transform_info = insure_identity_is_in_transform_info(transform_info)
     if transform_info or rotations:
       if ncs_only(transform_info) or rotations:
-        if not sensible_unit_cell_volume():
+        if not sensible_unit_cell_volume(
+                pdb_hierarchy_inp=pdb_hierarchy_inp,
+                crystal_symmetry=self.crystal_symmetry):
           raise Sorry('Unit cell is to small to contain all NCS copies')
         self.build_ncs_obj_from_pdb_ncs(
           pdb_hierarchy_inp = pdb_hierarchy_inp,
@@ -283,33 +284,36 @@ class ncs_group_object(object):
       translations : matrix.col 3x1 object
     """
     self.collect_basic_info_from_pdb(pdb_hierarchy_inp=pdb_hierarchy_inp)
-    msg = 'No NCS transform information\n'
-    assert bool(transform_info or (rotations and translations)), msg
-    if rotations:
-      # add rotations,translations to ncs_refinement_groups
-      self.add_transforms_to_ncs_refinement_groups(
-        rotations=rotations,
-        translations=translations)
+    if bool(transform_info or (rotations and translations)):
+      if rotations:
+        # add rotations,translations to ncs_refinement_groups
+        self.add_transforms_to_ncs_refinement_groups(
+          rotations=rotations,
+          translations=translations)
+      else:
+        # use only MTRIX/BIOMT records from PDB
+        self.process_pdb(transform_info=transform_info)
+      self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
+      self.ncs_copies_chains_names = self.make_chains_names(
+        transform_assignment=self.transform_chain_assignment,
+        unique_chain_names = self.model_unique_chains_ids)
+      # build self.ncs_to_asu_selection
+      for k in self.transform_chain_assignment:
+        selection_str = 'chain ' + self.ncs_copies_chains_names[k]
+        key =  k.split('_')[0]
+        self.tr_id_to_selection[k] = (key,selection_str)
+        self.ncs_to_asu_selection = add_to_dict(
+          d=self.ncs_to_asu_selection,k=key,v=selection_str)
+      # add the identity case to tr_id_to_selection
+      for key in  self.ncs_copies_chains_names.iterkeys():
+        if not self.tr_id_to_selection.has_key(key):
+          sel = key.split('_')[0]
+          self.tr_id_to_selection[key] = (sel,sel)
+      self.number_of_ncs_groups = 1
+      # self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
     else:
-      # use only MTRIX/BIOMT records from PDB
-      self.process_pdb(transform_info=transform_info)
-    self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
-    self.ncs_copies_chains_names = self.make_chains_names(
-      transform_assignment=self.transform_chain_assignment,
-      unique_chain_names = self.model_unique_chains_ids)
-    # build self.ncs_to_asu_selection
-    for k in self.transform_chain_assignment:
-      selection_str = 'chain ' + self.ncs_copies_chains_names[k]
-      key =  k.split('_')[0]
-      self.tr_id_to_selection[k] = (key,selection_str)
-      self.ncs_to_asu_selection = add_to_dict(
-        d=self.ncs_to_asu_selection,k=key,v=selection_str)
-    # add the identity case to tr_id_to_selection
-    for key in  self.ncs_copies_chains_names.iterkeys():
-      if not self.tr_id_to_selection.has_key(key):
-        sel = key.split('_')[0]
-        self.tr_id_to_selection[key] = (sel,sel)
-    self.number_of_ncs_groups = 1
+      # No NCS transform information
+      pass
     self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
 
   def build_ncs_obj_from_phil(self,
@@ -1930,40 +1934,60 @@ def all_ncs_copies_present(transform_info):
   return test
 
 def sensible_unit_cell_volume(
-        crystal_symmetry=None,
         pdb_hierarchy_inp=None,
+        pdb_inp=None,
+        crystal_symmetry=None,
         transform_info=None,
         rotations=None):
   """
   Rough evaluation if the number of atoms of all NCS copies can fit in
-  the unit cell
+  the unit cell.
+
+  Use this only when the pdb_hierarchy contains a single NCS copy
 
   Args:
     crystal_symmetry
+    pdb_hierarchy_inp
+    transform_info
+    rotations
+
+  Returns:
+    (bool): False indicates that the complete ASU does not fit in the unit cell
+
 
   """
   # fixme : finish function and add test
-  n_atoms = 0
+  if  [bool(pdb_hierarchy_inp),bool(pdb_inp)].count(True) == 0:
+    raise Sorry('Need to provide pdb_hierarchy_inp or pdb_inp object')
   n_transforms = 0
-  unit_cell_volume = None
-  if pdb_hierarchy_inp:
-    n_atoms = pdb_hierarchy_inp.hierarchy.atoms().size()
+  if pdb_inp:
+    n_atoms_in_ncs = pdb_inp.atoms().size()
+    inp_obj = pdb_inp
+  else:
+    n_atoms_in_ncs = pdb_hierarchy_inp.hierarchy.atoms().size()
+    inp_obj = pdb_hierarchy_inp
+  if not crystal_symmetry:
+    crystal_symmetry = inp_obj.crystal_symmetry()
+  # todo:  check units of unit_cell().volume()
   if crystal_symmetry:
-    # todo:  check units of unit_cell().volume()
     unit_cell_volume = crystal_symmetry.unit_cell().volume()
-  if transform_info:
-    for r,cp in zip(transform_info.r,transform_info.coordinates_present):
-      if (not r.is_r3_identity_matrix()) and (not cp):
-        n_transforms +=1
-  elif rotations:
-    for r in rotations:
-      if not r.is_r3_identity_matrix():
-        n_transforms += 1
-  # Evaluate the volume of an atom as 4*pi(1.5A)^3/3
-  v_atom = 4*math.pi*(1.5)**3/3
-  all_atoms_volume_estimate = v_atom * n_atoms * n_transforms
-  if unit_cell_volume:
-    test = all_atoms_volume_estimate < unit_cell_volume
+    # get z, the number of ASU in the cell unit
+    space_group = crystal_symmetry.space_group_info()
+    z = space_group.type().number()
+    if transform_info:
+      for r,cp in zip(transform_info.r,transform_info.coordinates_present):
+        if (not r.is_r3_identity_matrix()) and (not cp):
+          n_transforms +=1
+    elif rotations:
+      for r in rotations:
+        if not r.is_r3_identity_matrix():
+          n_transforms += 1
+    # Approximate the volume of an atom as 4*pi(1.5A)^3/3
+    atom_r = 1.5
+    v_atom = 4*math.pi*(atom_r**3)/3
+    all_atoms_volume_estimate = (v_atom * n_atoms_in_ncs * z) * n_transforms
+    if unit_cell_volume:
+      test = (all_atoms_volume_estimate < unit_cell_volume)
   return True
 
 def uniqueness_test(unique_selection_set,new_item):
