@@ -472,7 +472,7 @@ class TestSimpleAlignment(unittest.TestCase):
         min_percent=0.20,
         min_contig_length=1)
     # x = ncs_obj.get_ncs_info_as_spec(write=True,show_ncs_phil=True)
-    # x = ncs_obj.show(format('spec'))
+    # x = ncs_obj.show(format='spec')
     # check another pdb string
     ncs_obj = ncs.input(pdb_string=test_pdb_6)
     ncs_obj.get_ncs_restraints_group_list()
