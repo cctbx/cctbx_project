@@ -2,17 +2,18 @@ from __future__ import division
 import cctbx.geometry_restraints
 from cctbx.array_family import flex
 from iotbx.pdb.amino_acid_codes import three_letter_l_given_three_letter_d
+from libtbx.utils import Sorry
 
 def get_c_beta_torsion_proxies(pdb_hierarchy,
                                selection=None,
                                sigma=2.5):
   if (selection is not None):
     if (isinstance(selection, flex.bool)):
-      selection = selection.iselection()
-  if selection is None:
-    selection = flex.bool(
-      len(pdb_hierarchy.atoms()),
-      True).iselection()
+      actual_iselection = selection.iselection()
+    elif (isinstance(selection, flex.size_t)):
+      actual_iselection = selection
+    else:
+      raise Sorry("Bad selection supplied for c_beta restraints")
   c_beta_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
   for model in pdb_hierarchy.models():
@@ -40,11 +41,12 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                    (CA_atom is not None) and
                    (C_atom is not None) and
                    (CB_atom is not None) ):
-                if ( (N_atom.i_seq not in selection) or
-                     (CA_atom.i_seq not in selection) or
-                     (C_atom.i_seq not in selection) or
-                     (CB_atom.i_seq not in selection) ):
-                  continue
+                if selection is not None:
+                  if ( (N_atom.i_seq not in actual_iselection) or
+                       (CA_atom.i_seq not in actual_iselection) or
+                       (C_atom.i_seq not in actual_iselection) or
+                       (CB_atom.i_seq not in actual_iselection) ):
+                    continue
                 dihedralNCAB, dihedralCNAB = get_cb_target_angle_pair(
                                                resname=residue.resname)
                 #NCAB
@@ -89,21 +91,13 @@ def target_and_gradients(
   return target
 
 def get_cb_target_angle_pair(resname):
-  if(resname == "ALA"):
-    dihedralNCAB = 122.9
-    dihedralCNAB = -122.6
-  elif(resname == "PRO"):
-    dihedralNCAB = 115.1
-    dihedralCNAB = -120.7
-  elif( (resname == "VAL") or
-        (resname == "THR") or
-        (resname == "ILE") ):
-    dihedralNCAB = 123.4
-    dihedralCNAB = -122.0
-  elif(resname == "GLY"):
-    dihedralNCAB = 121.6
-    dihedralCNAB = -121.6
-  else:
-    dihedralNCAB = 122.8
-    dihedralCNAB = -122.6
+  target_angle_dict = {
+    "ALA" : (122.9, -122.6),
+    "PRO" : (115.1, -120.7),
+    "VAL" : (123.4, -122.0),
+    "THR" : (123.4, -122.0),
+    "ILE" : (123.4, -122.0),
+    "GLY" : (121.6, -121.6)
+  }
+  dihedralNCAB, dihedralCNAB = target_angle_dict.get(resname, (122.8, -122.6))
   return dihedralNCAB, dihedralCNAB
