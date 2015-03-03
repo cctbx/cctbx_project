@@ -1,5 +1,8 @@
-mmtbx.ncs package
-=================
+=========
+mmtbx.ncs
+=========
+
+.. contents:: Table of Contents
 
 Submodules
 ----------
