@@ -74,7 +74,7 @@ def exercise(flags, space_group_info, n_sampled):
   if not flags.include_high_symmetry:
     if space_group_info.group().order_p() > 8:
       if len(symbol) > 15: print
-      print "  [ Skipped (rerun with --include_high_symmetry to override) ]"
+      print "  [ Omitted, rerun with --include_high_symmetry to override ]"
       return
   print
   n = int(flags.repeats)
