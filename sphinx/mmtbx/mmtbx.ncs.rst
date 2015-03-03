@@ -37,9 +37,9 @@ mmtbx.ncs.ncs_search module
     :show-inheritance:
 
 mmtbx.ncs.ncs_utils module
----------------------------
+--------------------------
 
-.. automodule:: mmtbx.ncs.ncs_search
+.. automodule:: mmtbx.ncs.ncs_utils
     :members:
     :undoc-members:
     :show-inheritance:
