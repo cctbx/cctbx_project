@@ -1571,7 +1571,7 @@ class ncs_group_object(object):
       print >> log, out_str
       spec_obj = self.get_ncs_info_as_spec(write=False)
       out_str += spec_obj.display_all(log=log)
-    elif format.lower() == 'summery':
+    elif format.lower() == 'summary':
       out_str = [self.show_chains_info(prefix)]
       out_str.append(self.show_ncs_headers(prefix))
       out_str.append(self.show_transform_info(prefix))
@@ -1716,7 +1716,7 @@ class ncs_group_object(object):
      prefix (str): a string to be added, padding the output, at the left of
        each line
     """
-    str_out = ['\n{}NCS summery:'.format(prefix),'-'*51]
+    str_out = ['\n{}NCS summary:'.format(prefix),'-'*51]
     str_line = prefix + '{:<25s}:   {}'
     s = str_line.format('Number of NCS groups', self.number_of_ncs_groups)
     str_out.append(s)
