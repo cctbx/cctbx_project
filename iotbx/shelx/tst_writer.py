@@ -42,7 +42,7 @@ def exercise(flags, space_group_info):
       sort_scatterers=False))
   except AssertionError:
     if (not_origin_centric):
-      print ("Skipped %s\n  because it is centric but not origin centric"
+      print ("Omitted %s\n  because it is centric but not origin centric"
              % xs.space_group().type().hall_symbol())
       return
     raise
