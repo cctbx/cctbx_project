@@ -37,12 +37,7 @@ class ShellCommand(object):
     if command[0] == 'curl':
       # XXX Ugly hack: intercept attemps to spawn external curl.
       # There is no need to depend on curl since Python has urllib2.
-      from urllib2 import urlopen
-
-      with open(os.path.join(workdir, command[3]), 'wb') as stream_out:
-        stream_in = urlopen(command[1])
-        stream_out.write(stream_in.read())
-        stream_in.close()
+      Downloader().download_to_file(command[1], command[3])
       return
 
     p = subprocess.Popen(
