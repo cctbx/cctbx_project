@@ -411,6 +411,7 @@ class Builder(object):
       with_python=None,
       nproc=4,
       verbose=False,
+      download_only=False,
     ):
     if nproc is None: nproc=4
     """Create and add all the steps."""
@@ -432,6 +433,7 @@ class Builder(object):
     if self.with_python:
       self.python_base = with_python
     self.verbose = verbose
+    self.download_only = download_only
 
     self.add_init()
 
@@ -454,17 +456,17 @@ class Builder(object):
       self.add_base()
 
     # Configure, make
-    if build:
+    if build and not self.download_only:
       self.add_configure()
       self.add_make(nproc=nproc)
       self.add_install()
 
     # Tests, tests
-    if tests:
+    if tests and not self.download_only:
       self.add_tests()
 
     # Distribute
-    if distribute:
+    if distribute and not self.download_only:
       self.add_distribute()
 
   def add_auth(self, account, username):
@@ -618,6 +620,8 @@ class Builder(object):
       extra_opts = ['--with-python',self.with_python]
     if self.verbose:
       extra_opts.append('-v')
+    if self.download_only:
+      extra_opts.append('--download-only')
     self.add_step(self.shell(
       name='base',
       command=[
@@ -849,6 +853,7 @@ def run(root=None):
   parser.add_option("--sfmethod", help="SourceForge SVN checkout method.", default="svn+ssh")
   parser.add_option("--with-python", dest="with_python", help="Use specified Python interpreter")
   parser.add_option("--nproc", help="# processes in compile step.")
+  parser.add_option("--download-only", dest="download_only", action="store_true", help="Do not build, only download prerequisites", default=False)
   parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output", default=False)
   options, args = parser.parse_args()
 
@@ -900,6 +905,7 @@ def run(root=None):
     tests=('tests' in actions),
     nproc=options.nproc,
     verbose=options.verbose,
+    download_only=options.download_only,
   ).run()
 
 if __name__ == "__main__":
