@@ -17,7 +17,9 @@ from dxtbx.serialize import xds
 def run(file_names):
   if len(file_names) == 1 and file_names[0].endswith('json'):
     from dxtbx.serialize import load
-    sweep = load.imageset(file_names[0])
+    datablock = load.datablock(file_names[0])
+    assert(len(datablock) == 1)
+    sweep = datablock[0].extract_sweeps()[0]
   else:
     from dxtbx.imageset import ImageSetFactory
     sweep = ImageSetFactory.new(file_names)[0]
