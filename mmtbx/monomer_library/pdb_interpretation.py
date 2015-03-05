@@ -273,6 +273,7 @@ master_params_str = """\
   }
   nucleic_acid_restraints
     .short_caption = Nucleic Acid restraints settings
+    .style = box auto_align
   {
     enabled = False
       .type = bool
