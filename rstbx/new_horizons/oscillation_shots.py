@@ -145,8 +145,9 @@ class IntegrateCharacters:
         local["AD14_parameters"]=dict(fw_mos_deg=integrate_worker.inputai.getMosaicity(),
                                       domain_sz_ang=integrate_worker.DOMAIN_SZ_ANG,
                                       N_correction_vectors=integrate_worker.N_correction_vectors,
-                                      rmsd_px=integrate_worker.rmsd_px
-                                    )
+                                      rmsd_px=integrate_worker.rmsd_px,
+                    mosaic_model_area_under_green_curve_sampled=integrate_worker.green_curve_area
+                                  )
       except Exception:
         local["AD14_parameters"]=None
 
