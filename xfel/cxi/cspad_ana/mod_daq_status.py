@@ -169,7 +169,24 @@ class mod_daq_status (object) :
       self._si_foil, self._wavelength)
     wx.PostEvent(self.window, event)
 
-  def endjob (self, env) :
+  #signature for pyana:
+  #def endjob(self, env):
+
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
+    """
+    @param evt Event object (psana only)
+    @param env Environment object
+    """
+
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
+
     # Make sure any remaining shots are taken into account.  XXX
     # Hardcoded update frequency.
     if (self.nshots % 120 != 0) :

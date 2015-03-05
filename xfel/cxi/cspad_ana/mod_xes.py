@@ -85,12 +85,25 @@ class mod_xes(average_tbx.average_mixin):
     #if self._nmemb % 1000 == 0 or math.log(self._nmemb, 2) % 1 == 0:
       #self.endjob(env)
 
-  def endjob(self, env):
+  #signature for pyana:
+  #def endjob(self, env):
+
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
     """The endjob() function finalises the mean and standard deviation
     images and writes them to disk.
 
+    @param evt Event object (psana only)
     @param env Environment object
     """
+
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
 
     stats = super(mod_xes, self).endjob(env)
     if stats is None:

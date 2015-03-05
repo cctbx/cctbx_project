@@ -141,13 +141,25 @@ class mod_param(object):
       self.m_wavelength_sumsq += (wavelength - self.m_wavelength_shift)**2
       self.m_nmemb            += 1
 
+  #signature for pyana:
+  #def endjob(self, env):
 
-  def endjob(self, env):
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
     """The endjob() function finalises the mean and standard deviation
     calculations, and reports on the total number of skipped shots.
 
+    @param evt Event object (psana only)
     @param env Environment object
     """
+
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
 
     if (self.m_nmemb > 0):
       # The shift has to be added back to the average wavelength, but

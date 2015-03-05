@@ -203,6 +203,22 @@ class mod_mar(object):
     # one event per calibration cycle.
     self._path = None
 
+  #signature for pyana:
+  #def endjob(self, env):
 
-  def endjob(self, env):
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
+    """
+    @param evt Event object (psana only)
+    @param env Environment object
+    """
+
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
+
     pass

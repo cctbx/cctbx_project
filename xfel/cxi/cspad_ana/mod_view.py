@@ -483,13 +483,25 @@ class mod_view(common_mode.common_mode_correction):
       if (self.ncollate > 0):
         self.nvalid = 0
 
+  #signature for pyana:
+  #def endjob(self, env):
 
-  def endjob(self, env):
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
     """The endjob() function terminates the viewer process by sending
     it a @c None object, and waiting for it to finish.
 
+    @param evt Event object (psana only)
     @param env Environment object
     """
+
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
 
     super(mod_view, self).endjob(env)
     try:

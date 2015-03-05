@@ -137,11 +137,23 @@ class mod_pulnix_dump(object):
 
     self._logger.info("event(): archived %s" % arcname)
 
+  #signature for pyana:
+  #def endjob(self, env):
 
-  def endjob(self, env):
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
     """The endjob() function closes the tar file opened in beginjob().
 
+    @param evt Event object (psana only)
     @param env Environment object
     """
+
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
 
     self._tar.close()

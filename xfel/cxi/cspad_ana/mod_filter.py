@@ -201,8 +201,24 @@ class mod_filter(object):
 
     self.naccepted += 1
 
+  #signature for pyana:
+  #def endjob(self, env):
 
-  def endjob(self, env):
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
+    """
+    @param evt Event object (psana only)
+    @param env Environment object
+    """
+
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
+
     self.logger.info(
       "Saw %d shots, accepted %d, skipped %d" %
       (self.nshots, self.naccepted, self.nshots - self.naccepted))
