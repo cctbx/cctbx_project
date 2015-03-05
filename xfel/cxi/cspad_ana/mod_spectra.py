@@ -221,12 +221,27 @@ class mod_spectra(common_mode.common_mode_correction):
 #         gas=evt.getFeeGasDet()
 #         if gas is not None:
 #           self.all.append((np.average(gas),oneD))
-  def endjob(self, env):
+
+  #signature for pyana:
+  #def endjob(self, env):
+
+  #signature for psana:
+  #def endjob(self, evt, env):
+
+  def endjob(self, obj1, obj2=None):
     """The endjob() function terminates the viewer process by sending
     it a @c None object, and waiting for it to finish.
 
+    @param evt Event object (psana only)
     @param env Environment object
     """
+
+    if obj2 is None:
+      env = obj1
+    else:
+      evt = obj1
+      env = obj2
+
     import pickle
     output = open('dark_fee.pkl', 'wb')
     pickle.dump(self.dark_img, output)
