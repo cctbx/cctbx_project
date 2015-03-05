@@ -9,35 +9,31 @@ Description : IOTA pickle selection module. Selects the best integration results
 '''
 
 import os
-import numpy as np
-import logging
+from prime.iota.iota_input import main_log
 
 import os,cPickle as pickle
 import dials.util.command_line as cmd
-from xfel.clustering.cluster import Cluster
-from xfel.clustering.singleframe import SingleFrame
-import visualize_integration as viz
 
 
 # Selects only integrated pickles that fit sg / uc parameters specified in the .phil
 # file. Also checks that the low-res cutoff is beyond 10A.
-def prefilter(gs_params, total_tmp_pickles):
+def prefilter(gs_params, int_list):
 
-  acceptable_pickles = []
+  acceptable_results = []
   if gs_params.flag_prefilter == True:
-    for tmp_pickle in total_tmp_pickles:
+    for int_entry in int_list:
 
-      tmp_pickle_name = os.path.basename(tmp_pickle)
+      tmp_pickle_name = os.path.basename(int_entry[0])
       uc_tol = gs_params.target_uc_tolerance
       user_uc = []
 
       for prm in gs_params.target_unit_cell.parameters():
         user_uc.append(prm)
 
-      # read pickle info and determine uc differences
-      observations = SingleFrame(tmp_pickle, tmp_pickle_name).miller_array
-      p_pg = observations.space_group_info()
-      p_uc = observations.unit_cell().parameters()
+      # read integration info and determine uc differences
+      p_pg = int_entry[3].replace(" ","")
+      p_uc = int_entry[4], int_entry[5], int_entry[6],\
+             int_entry[7], int_entry[8], int_entry[9]
 
       delta_a = abs(p_uc[0] - user_uc[0])
       delta_b = abs(p_uc[1] - user_uc[1])
@@ -48,258 +44,134 @@ def prefilter(gs_params, total_tmp_pickles):
 
       # Determine if pickle satisfies sg / uc parameters within given
       # tolerance and low resolution cutoff
-      if str(p_pg) == gs_params.target_pointgroup:
+      if p_pg == gs_params.target_pointgroup.replace(" ",""):
         if  (delta_a <= user_uc[0] * uc_tol and
               delta_b <= user_uc[1] * uc_tol and
               delta_c <= user_uc[2] * uc_tol and
               delta_alpha <= user_uc[3] * uc_tol and
               delta_beta <= user_uc[4] * uc_tol and
               delta_gamma <= user_uc[5] * uc_tol):
-          acceptable_pickles.append(tmp_pickle)
+          acceptable_results.append(int_entry)
   else:
-    acceptable_pickles = total_tmp_pickles
+    acceptable_results = total_tmp_pickles
 
-  return acceptable_pickles
+  return acceptable_results
 
-
-# Select integrated pickle with the most reflections with I / sigI over a specified limit
-def best_by_strong(gs_params, acceptable_pickles):
-
-  sel_pickle_list = []
-  for pickle in acceptable_pickles:
-    observations = SingleFrame(pickle, os.path.split(pickle)[1]).miller_array
-    rl_observations = observations.resolution_filter(gs_params.selection_res_limit.d_max, gs_params.selection_res_limit.d_min)
-    I_over_sigI = rl_observations.data() / rl_observations.sigmas()
-    num_strong_obs = len([val for val in I_over_sigI if val >= gs_params.min_sigma])
-    sel_pickle_list.append(num_strong_obs)
-
-  best_file = acceptable_pickles[sel_pickle_list.index(max(sel_pickle_list))]
-
-  return best_file
-
-
-# Select integrated pickle with the most reflections within a set resolution limit
-def best_by_reflections(gs_params, acceptable_pickles):
-
-  sel_pickle_list = []
-  for pickle in acceptable_pickles:
-    observations = SingleFrame(pickle, os.path.split(pickle)[1]).miller_array
-    rl_observations = observations.resolution_filter(gs_params.selection_res_limit.d_max, gs_params.selection_res_limit.d_min)
-    sel_pickle_list.append(len(rl_observations.data()))
-
-  best_file = acceptable_pickles[sel_pickle_list.index(max(sel_pickle_list))]
-
-  return best_file
-
-# Select integrated pickle with the closest unit cell to target
-def best_by_uc(gs_params, acceptable_pickles):
-
-  sel_pickle_list = []
-  uc_tol = gs_params.target_uc_tolerance
-  user_uc = []
-
-  for prm in gs_params.target_unit_cell.parameters():
-    user_uc.append(prm)
-
-  for pickle in acceptable_pickles:
-    p_uc = SingleFrame(pickle, os.path.split(pickle)[1]).miller_array.unit_cell().parameters()
-    delta_a = abs(p_uc[0] - user_uc[0]) / user_uc[0]
-    delta_b = abs(p_uc[1] - user_uc[1]) / user_uc[1]
-    delta_c = abs(p_uc[2] - user_uc[2]) / user_uc[2]
-    delta_alpha = abs(p_uc[3] - user_uc[3]) / user_uc[3]
-    delta_beta = abs(p_uc[4] - user_uc[4]) / user_uc[4]
-    delta_gamma = abs(p_uc[5] - user_uc[5]) / user_uc[5]
-    uc_distance = np.mean([delta_a, delta_b, delta_c, delta_alpha, delta_beta, delta_gamma])
-
-    sel_pickle_list.append(uc_distance)
-
-  best_file = acceptable_pickles[sel_pickle_list.index(min(sel_pickle_list))]
-
-  return best_file
-
-
-# Select integrated pickle with the lowest x,y offset
-def best_by_offset(acceptable_pickles):
-
-  pickle_cluster = Cluster.from_files(acceptable_pickles)
-  best_file = min(pickle_cluster.members, key=lambda im: im.spot_offset).path
-
-  return best_file
 
 # Main selection module. Looks through integrated pickles in a specified folder and
 # copies the best ones to a file. Outputs a list to log file and marks the selected
 # pickle file.
 def best_file_selection(gs_params, output_entry, log_dir, n_int):
 
-  #logging = logging.getLogger('ps_log')
+  logfile = '{}/iota.log'.format(log_dir)
 
-  input_file = output_entry[0]
-  abs_tmp_dir = output_entry[1]
+  abs_tmp_dir = output_entry[0]
+  input_file = output_entry[1]
+  result_file = os.path.join(abs_tmp_dir, output_entry[2])
   ps_log_output = []
+  selection_result = []
 
-  total_tmp_pickles = [os.path.join(abs_tmp_dir, tmp_pickle) for tmp_pickle in os.listdir(abs_tmp_dir) if ".pickle" in tmp_pickle]
+  if not os.path.isfile(result_file):
+    return
 
-  # apply prefilter if specified and make a list of acceptable pickles
-  if len(total_tmp_pickles) == 0:
+# Read integration record file and convert to list
+  with open(result_file, 'r') as int_results:
+    int_content = int_results.read()
+
+  prelim_int_list = [int_res.split(',') for int_res in int_content.splitlines()]
+  int_list = []
+  for item in prelim_int_list:
+    result_line = [item[0], int(item[1]), int(item[2]), item[3],
+                   float(item[4]), float(item[5]), float(item[6]),
+                   float(item[7]), float(item[8]), float(item[9]),
+                   int(item[10]), float(item[11]), float(item[12])]
+    int_list.append(result_line)
+
+
+# apply prefilter if specified and make a list of acceptable pickles
+  if not os.path.isfile(result_file):
     ps_log_output.append('No integrated images found ' \
                     'in {}:\n'.format(abs_tmp_dir))
+    acceptable_results = []
+    int_summary ='{} --     not integrated'.format(input_file)
+
     with open('{}/not_integrated.lst'.format(os.path.abspath(gs_params.output)), 'a') as no_int:
       no_int.write('{}\n'.format(input_file))
-    acceptable_pickles = []
-    int_summary ='{} -- not integrated'.format(input_file)
 
   else:
-    acceptable_pickles = prefilter(gs_params, total_tmp_pickles)
-    if len(acceptable_pickles) == 0:
+    acceptable_results = prefilter(gs_params, int_list)
+    if len(acceptable_results) == 0:
       ps_log_output.append('Discarded all {0} integrated pickles ' \
-                      'in {1}:\n'.format(len(total_tmp_pickles), abs_tmp_dir))
+                      'in {1}:\n'.format(len(int_list), abs_tmp_dir))
       with open('{}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)), 'a') as bad_int:
         bad_int.write('{}\n'.format(input_file))
 
-      int_summary ='{} -- failed prefilter'.format(input_file)
+      int_summary ='{} --     failed prefilter'.format(input_file)
 
 
     else:
       # Selection and copying of pickles, output of stats to log file
       ps_log_output.append('Selecting from {0} out '\
-                      'of {1} integrated pickles ' \
-                      'in {2}:\n'.format(len(acceptable_pickles),
-                      len(total_tmp_pickles), abs_tmp_dir))
-      filename = str(os.path.split(acceptable_pickles[0])[1])
-      categories = ' {:^{pwidth}}{:^16}{:^15}{:^45}' \
-                    '{:^12}{:^10}'.format('Filename',
-                    'resolution', 's.g.', 'unit cell',
-                    'spots', 'strong', pwidth=len(filename)+5)
-      line = ' {:-^{pwidth}}{:-^16}{:-^15}{:-^45}' \
-              '{:-^12}{:-^10}'.format('', '', '', '',
-               '', '', pwidth=len(filename)+5)
+                      'of {1} integration results for ' \
+                      '{2}:\n'.format(len(acceptable_results),
+                      len(int_list), input_file))
+      categories = '{:^4}{:^4}{:^9}{:^8}{:^55}{:^12}{:^12}'\
+                   ''.format('h', 'a', 'res', 's.g.',
+                   'unit cell', 'int. spots', 'mos. qual.')
+      line = '{:-^4}{:-^4}{:-^9}{:-^8}{:-^55}{:-^12}{:-^12}'\
+             ''.format('', '', '', '', '','', '')
       ps_log_output.append(categories)
       ps_log_output.append(line)
 
-      int_summary = '{0} -- {1} successful integration '\
-                         'results'.format(input_file, len(acceptable_pickles))
+      int_summary = '{} -- {:>3} successful integration '\
+                         'results'.format(input_file, len(acceptable_results))
 
-      # Report pickle stats. Mark selected pickle with asterisk for posterity
-      for pickle in acceptable_pickles:
-        pickle_name = os.path.split(pickle)[1]
 
-        observations = SingleFrame(pickle,
-                        os.path.split(pickle)[1]).miller_array
-        res = observations.d_max_min()
-        pg = observations.space_group_info()
-        uc = observations.unit_cell().parameters()
-        rl_observations = observations.resolution_filter(gs_params.selection_res_limit.d_max, gs_params.selection_res_limit.d_min)
-        I_over_sigI = rl_observations.data() / rl_observations.sigmas()
-        ref = len(rl_observations.data())
-        sref = len([val for val in I_over_sigI if val >= gs_params.min_sigma])
-
-        info_line = '  {:<{pwidth}}{:>7.2f} - {:<5.2f}{:^15}{:>6.2f}, ' \
-                     '{:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, ' \
-                     '{:>6.2f}{:^12}{:^10}'.format(pickle_name, res[0],
-                     res[1], pg, uc[0], uc[1], uc[2], uc[3], uc[4], uc[5],
-                     ref, sref, pwidth=len(filename)+5)
+      mosaicities = []
+      for acc in acceptable_results:
+        pickle_name = acc[0]
+        cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
+               ''.format(acc[4], acc[5], acc[6], acc[7], acc[8], acc[9])
+        info_line = '{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^12.2f}'\
+                    ''.format(acc[1], acc[2], acc[11], acc[3], cell,
+                              acc[10], acc[12])
         ps_log_output.append(info_line)
+        mosaicities.append(float(acc[12]))
 
-        if gs_params.pred_img.type == "all":
-          viz.make_png(input_file, pickle)
-          if gs_params.pred_img.cv_vectors == True:
-            viz.cv_png(input_file, pickle)
+      best = acceptable_results[mosaicities.index(min(mosaicities))]
+      with open('{}/selected.lst'.format(os.path.abspath(gs_params.output)), \
+                                                            'a') as sel_int:
+        sel_int.write('{}\n'.format(input_file))
 
-      # Make selections & copy files
-      selected_info = []
-
-      # Total reflections
-      sel_pickle = best_by_reflections(gs_params, acceptable_pickles)
-      with open('{}/best_by_total.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
-        best_file.write('{}\n'.format(sel_pickle))
-      selected_info.append(['T', sel_pickle, os.path.split(sel_pickle)[1]])
-      if gs_params.pred_img.type == "best":
-        output_png = '{0}/t_{1}.png'.format(os.path.dirname(sel_pickle),
-                            os.path.basename(sel_pickle).split('.')[0])
-        viz.make_png(input_file, sel_pickle, output_png)
-        if gs_params.pred_img.cv_vectors == True:
-          output_png = '{0}/t_{1}_corr.png'.format(os.path.dirname(sel_pickle),
-                            os.path.basename(sel_pickle).split('.')[0])
-          viz.cv_png(input_file, sel_pickle, output_png)
-
-      # Strong reflections
-      sel_pickle = best_by_strong(gs_params, acceptable_pickles)
-      with open('{}/best_by_strong.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
-        best_file.write('{}\n'.format(sel_pickle))
-      selected_info.append(['S', sel_pickle, os.path.split(sel_pickle)[1]])
-      if gs_params.pred_img.type == "best":
-        output_png = '{0}/s_{1}.png'.format(os.path.dirname(sel_pickle),
-                            os.path.basename(sel_pickle).split('.')[0])
-        viz.make_png(input_file, sel_pickle, output_png)
-        if gs_params.pred_img.cv_vectors == True:
-          output_png = '{0}/s_{1}_corr.png'.format(os.path.dirname(sel_pickle),
-                            os.path.basename(sel_pickle).split('.')[0])
-          viz.cv_png(input_file, sel_pickle, output_png)
-
-      # Unit cell
-      sel_pickle = best_by_uc(gs_params, acceptable_pickles)
-      with open('{}/best_by_uc.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
-        best_file.write('{}\n'.format(sel_pickle))
-      selected_info.append(['U', sel_pickle, os.path.split(sel_pickle)[1]])
-      if gs_params.pred_img.type == "best":
-        output_png = '{0}/u_{1}.png'.format(os.path.dirname(sel_pickle),
-                            os.path.basename(sel_pickle).split('.')[0])
-        viz.make_png(input_file, sel_pickle, output_png)
-        if gs_params.pred_img.cv_vectors == True:
-          output_png = '{0}/u_{1}_corr.png'.format(os.path.dirname(sel_pickle),
-                            os.path.basename(sel_pickle).split('.')[0])
-          viz.cv_png(input_file, sel_pickle, output_png)
-
-      # x,y offset
-      sel_pickle = best_by_offset(acceptable_pickles)
-      with open('{}/best_by_offset.lst'.format(os.path.abspath(gs_params.output)), 'a') as best_file:
-        best_file.write('{}\n'.format(sel_pickle))
-      selected_info.append(['O', sel_pickle, os.path.split(sel_pickle)[1]])
-      if gs_params.pred_img.type == "best":
-        output_png = '{0}/o_{1}.png'.format(os.path.dirname(sel_pickle),
-                            os.path.basename(sel_pickle).split('.')[0])
-        viz.make_png(input_file, sel_pickle, output_png)
-        if gs_params.pred_img.cv_vectors == True:
-          output_png = '{0}/o_{1}_corr.png'.format(os.path.dirname(sel_pickle),
-                            os.path.basename(sel_pickle).split('.')[0])
-          viz.cv_png(input_file, sel_pickle, output_png)
-
+      selection_result = [input_file, best[1], best[1], best[2]]
 
       # Output selected file information
       ps_log_output.append('\nSelected:')
-      #logging.info('\nSelected:')
-      for sel in selected_info:
-        observations = SingleFrame(sel[1], sel[2]).miller_array
-        res = observations.d_max_min()
-        pg = observations.space_group_info()
-        uc = observations.unit_cell().parameters()
 
-        rl_observations = observations.resolution_filter(gs_params.selection_res_limit.d_max, gs_params.selection_res_limit.d_min)
-        I_over_sigI = rl_observations.data() / rl_observations.sigmas()
-        ref = len(rl_observations.data())
-        sref = len([val for val in I_over_sigI if val >= gs_params.min_sigma])
-
-        info_line = '{} {:<{pwidth}}{:>7.2f} - {:<5.2f}{:^15}{:>6.2f}, ' \
-                    '{:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, ' \
-                    '{:>6.2f}{:^12}{:^10}'.format(sel[0], sel[2], res[0],
-                    res[1], pg, uc[0], uc[1], uc[2], uc[3], uc[4], uc[5],
-                    ref, sref, pwidth=len(filename)+5)
-        ps_log_output.append(info_line)
+      pickle_name = best[0]
+      info_line = '{:^6}{:^6}{:^7.2f}{:^15}{:>6.2f}, ' \
+                  '{:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, ' \
+                  '{:>6.2f}{:^12}{:^10.2f}'.format(best[1], best[2], best[11],
+                   best[3], best[4], best[5], best[6], best[7], best[8],
+                   best[9], best[10], best[12])
+      ps_log_output.append(info_line)
 
     ps_log_output.append('\n')
-    logging.info('\n'.join(ps_log_output))
+    main_log(logfile, '\n'.join(ps_log_output))
 
-    # Progress bar for selection
-    with (open ('{0}/logs/progress.log'.format(gs_params.output), 'a')) as prog_log:
-      prog_log.write("{}\n".format(int_summary))
+  # Progress bar for selection
+  with (open ('{0}/logs/progress.log'.format(gs_params.output), 'a')) as prog_log:
+    prog_log.write("{}\n".format(int_summary))
 
-    with (open ('{0}/logs/progress.log'.format(gs_params.output), 'r')) as prog_log:
-      prog_content = prog_log.read()
-      prog_count = len(prog_content.splitlines())
+  with (open ('{0}/logs/progress.log'.format(gs_params.output), 'r')) as prog_log:
+    prog_content = prog_log.read()
+    prog_count = len(prog_content.splitlines())
 
-    gs_prog = cmd.ProgressBar(title='PICKLE SELECTION', estimate_time=False, spinner=False)
-    if prog_count >= n_int:
-      gs_prog.finished()
-    else:
-      prog_step = 100 / n_int
-      gs_prog.update(prog_count * prog_step)
+  gs_prog = cmd.ProgressBar(title='PICKLE SELECTION', estimate_time=False, spinner=False)
+  if prog_count >= n_int:
+    gs_prog.finished()
+  else:
+    prog_step = 100 / n_int
+    gs_prog.update(prog_count * prog_step)
+
+  return selection_result

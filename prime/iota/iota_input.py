@@ -45,16 +45,25 @@ advanced
   single_img = False
     .type = bool
     .help = If True, runs one image. If False, runs the whole set.
+  charts = False
+    .type = bool
+    .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
+  mosaicity_plot = False
+    .type = bool
+    .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
   debug = False
     .type = bool
     .help = If True, activates the iPython command wherever it is.
+  save_tmp_pickles = False
+    .type = bool
+    .help = If True, saves pickle for each integration attempt.
 }
 pred_img
   .help = "Visualize spotfinding / integration results."
 {
-  type = None
-    .type = str
-    .help = Visualize all (all) or chosen (best) integration results, "None" = don't visualize
+  flag = False
+    .type = bool
+    .help = Choose to visualize the results of final integration
   cv_vectors = True
     .type = bool
     .help = Include x,y offset information
@@ -113,9 +122,6 @@ target_pointgroup = P 4
 target_uc_tolerance = 0.05
   .type = float
   .help = Maximum allowed unit cell deviation from target
-bragg_tol = 0.1
-  .type = float
-  .help = Bragg vs. total spots tolerance (default 10%)
 min_sigma = 5.0
   .type = float
   .help = Minimum sigma for "strong" reflections
@@ -255,7 +261,8 @@ def make_mp_input(input_list, gs_params):
 
     current_output_dir = "{0}/tmp_{1}".format(output_dir,
                                               img_filename.split('.')[0])
-    mp_output_entry = [current_img, current_output_dir]
+    mp_output_entry = [current_output_dir, current_img,
+                       "int_{}.lst".format(img_filename.split('.')[0])]
     mp_output.append(mp_output_entry)
 
     # Create input list w/ filename and spot-finding params
@@ -263,7 +270,8 @@ def make_mp_input(input_list, gs_params):
                           gs_params.grid_search.h_max + 1):
       for spot_area in range (gs_params.grid_search.a_min,
                               gs_params.grid_search.a_max + 1):
-        mp_item = [current_img, sig_height, sig_height, spot_area]
+        mp_item = [current_img, sig_height, sig_height, spot_area,
+                   current_output_dir]
         mp_input.append(mp_item)
 
   return mp_input, mp_output
@@ -290,4 +298,31 @@ def make_dirs (input_list, gs_params):
 #     # Make directories for output / log file for the image being integrated
     if not os.path.exists(current_output_dir):
       os.makedirs(current_output_dir)
+
+# Save log from previous run and initiate a new log (run once)
+# This is only necessary if re-running selection after grid-search
+# Will likely be deprecated soon
+def main_log_init(logfile):
+
+  log_count = 0
+  log_dir = os.path.dirname(logfile)
+
+  for item in os.listdir(log_dir):
+    if item.find('iota') != -1:
+      log_count += 1
+
+  if log_count > 0:
+    old_log_filename = logfile
+    new_log_filename = '{0}/iota_{1}.log'.format(log_dir, log_count)
+    os.rename(old_log_filename, new_log_filename)
+
+  with open(logfile, 'w') as logfile:
+    logfile.write("IOTA LOG\n\n")
+
+
+# Write main log (so that I don't have to repeat this every time)
+def main_log(logfile, entry):
+
+  with open(logfile, 'a') as logfile:
+    logfile.write('{}\n'.format(entry))
 
