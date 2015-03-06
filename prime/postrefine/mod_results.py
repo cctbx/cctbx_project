@@ -24,8 +24,7 @@ class postref_results(object):
       frame_no=None,
       pickle_filename=None,
       wavelength=None,
-      crystal_orientation=None,
-      spot_radius=None):
+      crystal_orientation=None):
 
     self.observations = observations
     self.observations_original = observations_original
@@ -36,7 +35,6 @@ class postref_results(object):
     self.frame_no = frame_no
     self.pickle_filename = pickle_filename
     self.wavelength = wavelength
-    self.spot_radius = spot_radius
 
     #refined_params
     #note params = G,B,rotx,roty,ry,a,b,c,alpha,beta,gamma
@@ -46,11 +44,12 @@ class postref_results(object):
     self.roty = refined_params[3]
     self.ry = refined_params[4]
     self.rz = refined_params[5]
-    self.re = refined_params[6]
-    self.uc_params = flex.double([refined_params[7], refined_params[8], refined_params[9],
-          refined_params[10], refined_params[11], refined_params[12]])
-    self.unit_cell = unit_cell((refined_params[7], refined_params[8], refined_params[9],
-          refined_params[10], refined_params[11], refined_params[12]))
+    self.r0 = refined_params[6]
+    self.re = refined_params[7]
+    self.uc_params = flex.double([refined_params[8], refined_params[9], refined_params[10],
+          refined_params[11], refined_params[12], refined_params[13]])
+    self.unit_cell = unit_cell((refined_params[8], refined_params[9], refined_params[10],
+          refined_params[11], refined_params[12], refined_params[13]))
     self.crystal_orientation = crystal_orientation
 
     #SE, R_sq, CC_init, CC_final, R_init, R_final, R_xy_init, R_xy_final
