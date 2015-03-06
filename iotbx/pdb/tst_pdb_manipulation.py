@@ -352,40 +352,63 @@ class TestMultimerReconstruction(unittest.TestCase):
   def test_proper_biomat_application(self):
     """ Test that when building bio-molecule and then finding NCS relatin
     from it, we get the same rotation and translation"""
-    pdb_inp = pdb.input(source_info=None, lines=pdb_test_data7)
-    crystal_symmetry = pdb_inp.crystal_symmetry()
+    pdb_strings = [pdb_test_data7,pdb_test_data8]
+    methods = ['ba','cau']
+    for method,pdb_string in zip(methods,pdb_strings):
+      pdb_inp = pdb.input(source_info=None, lines=pdb_string)
+      crystal_symmetry = pdb_inp.crystal_symmetry()
+      m = multimer(
+        pdb_str=pdb_string,
+        round_coordinates=False,
+        reconstruction_type=method,
+        error_handle=True,eps=1e-2)
+      # The exact transforms from pdb_string
+      r1_expected = matrix.sqr(
+        [0.309017, -0.951057, 0.0,0.951057, 0.309017,-0.0,0.0,0.0,1.0])
+      r2_expected = matrix.sqr(
+        [-0.809017,-0.587785,0.0,0.587785,-0.809017,-0.0,0.0,0.0,1.0])
+      t1_expected = matrix.col([0,0,7])
+      t2_expected = matrix.col([0,0,0])
+      # Look at biomt records retrieved from PDB file
+      if method == 'ba':
+        rec = pdb_inp.process_BIOMT_records()
+      else:
+        rec = pdb_inp.process_mtrix_records()
+      r1 = rec.r[1]
+      r2 = rec.r[2]
+      t1 = rec.t[1]
+      t2 = rec.t[2]
+      (the_same, transpose) = is_same_transform(r1,t1,r1_expected,t1_expected)
+      self.assertTrue(the_same)
+      (the_same, transpose)= is_same_transform(r2,t2,r2_expected,t2_expected)
+      self.assertTrue(the_same)
+      # Look at the rotation and translation found by the NCS search
+      s = m.assembled_multimer.as_pdb_string(crystal_symmetry=crystal_symmetry)
+      ncs_obj = ncs.input(pdb_string=s)
+      r1 = ncs_obj.ncs_transform['002'].r
+      t1 = ncs_obj.ncs_transform['002'].t
+      r2 = ncs_obj.ncs_transform['003'].r
+      t2 = ncs_obj.ncs_transform['003'].t
+      (the_same, transpose) = is_same_transform(r1,t1,r1_expected,t1_expected)
+      self.assertTrue(the_same)
+      (the_same, transpose)= is_same_transform(r2,t2,r2_expected,t2_expected)
+      self.assertTrue(the_same)
+      self.assertEqual(ncs_obj.number_of_ncs_groups,1)
+
+  def test_ignoring_mtrix_rec(self):
+    """
+    Test ignoring MTRIX record when copies already present in file
+    """
+    pdb_inp = pdb.input(source_info=None, lines=test_pdb_9)
     m = multimer(
-      pdb_str=pdb_test_data7,
-      round_coordinates=False,
-      reconstruction_type='ba',error_handle=True,eps=1e-2)
-    # The exact transforms from pdb_test_data7
-    r1_expected = matrix.sqr(
-      [0.309017, -0.951057, 0.0,0.951057, 0.309017,-0.0,0.0,0.0,1.0])
-    r2_expected = matrix.sqr(
-      [-0.809017,-0.587785,0.0,0.587785,-0.809017,-0.0,0.0,0.0,1.0])
-    t1_expected = matrix.col([0,0,7])
-    t2_expected = matrix.col([0,0,0])
-    # Look at biomt records retrieved from PDB file
-    biomt_rec = pdb_inp.process_BIOMT_records()
-    r1 = biomt_rec.r[1]
-    r2 = biomt_rec.r[2]
-    t1 = biomt_rec.t[1]
-    t2 = biomt_rec.t[2]
-    (the_same, transpose) = is_same_transform(r1,t1,r1_expected,t1_expected)
-    self.assertTrue(the_same)
-    (the_same, transpose)= is_same_transform(r2,t2,r2_expected,t2_expected)
-    self.assertTrue(the_same)
-    # Look at the rotation and translation found by the NCS search
-    s = m.assembled_multimer.as_pdb_string(crystal_symmetry=crystal_symmetry)
-    ncs_obj = ncs.input(pdb_string=s)
-    r1 = ncs_obj.ncs_transform['002'].r
-    t1 = ncs_obj.ncs_transform['002'].t
-    r2 = ncs_obj.ncs_transform['003'].r
-    t2 = ncs_obj.ncs_transform['003'].t
-    (the_same, transpose) = is_same_transform(r1,t1,r1_expected,t1_expected)
-    self.assertTrue(the_same)
-    (the_same, transpose)= is_same_transform(r2,t2,r2_expected,t2_expected)
-    self.assertTrue(the_same)
+        pdb_str=test_pdb_9,
+        round_coordinates=False,
+        reconstruction_type='cau',
+        error_handle=True,eps=1e-2)
+    n1 = m.assembled_multimer
+    n2 = pdb_inp
+    self.assertEqual(n1,n2)
+
 
   def tearDown(self):
     '''remove temp files and folder'''
@@ -573,6 +596,67 @@ ATOM     10  CB  SER A   3      63.641-107.147 261.726  1.00126.01           C
 ATOM     11  OG  SER A   3      64.002-105.804 261.453  1.00119.04           O
 END
 '''
+
+pdb_test_data8 = '''\
+MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
+MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
+MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
+MTRIX1   2  0.309017 -0.951057  0.000000        0.00000
+MTRIX2   2  0.951057  0.309017 -0.000000        0.00000
+MTRIX3   2  0.000000  0.000000  1.000000        7.00000
+MTRIX1   3 -0.809017 -0.587785  0.000000        0.00000
+MTRIX2   3  0.587785 -0.809017 -0.000000        0.00000
+MTRIX3   3  0.000000  0.000000  1.000000        0.00000
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1
+ATOM      1  N   ALA A   2      64.807-112.186 260.746  1.00160.99           N
+ATOM      2  CA  ALA A   2      64.727-111.450 262.002  1.00159.36           C
+ATOM      3  C   ALA A   2      63.960-110.148 261.805  1.00154.38           C
+ATOM      4  O   ALA A   2      62.935-109.914 262.452  1.00149.47           O
+ATOM      5  CB  ALA A   2      66.123-111.175 262.542  1.00156.98           C
+ATOM      6  N   SER A   3      64.474-109.323 260.896  1.00135.75           N
+ATOM      7  CA  SER A   3      63.887-108.040 260.510  1.00131.97           C
+ATOM      8  C   SER A   3      64.863-107.340 259.575  1.00140.51           C
+ATOM      9  O   SER A   3      65.864-107.925 259.165  1.00148.46           O
+ATOM     10  CB  SER A   3      63.641-107.147 261.726  1.00126.01           C
+ATOM     11  OG  SER A   3      64.002-105.804 261.453  1.00119.04           O
+TER
+ATOM      1  N   PRO B  55     124.223   7.811  41.605  1.00296.52           N
+ATOM      2  CA  PRO B  55     123.317   6.636  41.748  1.00296.52           C
+ATOM      3  C   PRO B  55     122.530   6.385  40.467  1.00296.52           C
+ATOM      4  O   PRO B  55     121.712   7.210  40.060  1.00296.52           O
+ATOM      5  CB  PRO B  55     122.355   6.857  42.914  1.00296.52           C
+ATOM      6  N   GLU B  56     122.780   5.241  39.835  1.00296.52           N
+ATOM      7  CA  GLU B  56     122.076   4.876  38.610  1.00296.52           C
+ATOM      8  C   GLU B  56     120.627   4.607  38.990  1.00296.52           C
+ATOM      9  O   GLU B  56     119.838   4.104  38.191  1.00296.52           O
+ATOM     10  CB  GLU B  56     122.694   3.628  38.000  1.00296.52           C
+ATOM     11  N   THR B  57     120.292   4.951  40.228  1.00296.52           N
+ATOM     12  CA  THR B  57     118.955   4.753  40.750  1.00296.52           C
+ATOM     13  C   THR B  57     117.996   5.868  40.333  1.00296.52           C
+ATOM     14  O   THR B  57     117.192   5.699  39.415  1.00296.52           O
+ATOM     15  CB  THR B  57     119.013   4.640  42.275  1.00296.52           C
+END
+'''
+
+test_pdb_9 = """\
+MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
+MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
+MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
+MTRIX1   2  0.496590 -0.643597  0.582393        0.00000    1
+MTRIX2   2  0.867925  0.376088 -0.324443        0.00000    1
+MTRIX3   2 -0.010221  0.666588  0.745356        0.00000    1
+MTRIX1   3 -0.317946 -0.173437  0.932111        0.00000    1
+MTRIX2   3  0.760735 -0.633422  0.141629        0.00000    1
+MTRIX3   3  0.565855  0.754120  0.333333        0.00000    1
+ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
+ATOM      2  CA  THR A   2       9.559   8.931  10.615  1.00 20.00           C
+ATOM      3  C   THR A   3       9.634   7.903  11.739  1.00 20.00           C
+ATOM      4  O   THR B   4      10.449   8.027  12.653  1.00 20.00           O
+ATOM      5  CB  THR B   5      10.660   8.630   9.582  1.00 20.00           C
+ATOM      6  OG1 THR A   6      10.560   9.552   8.490  1.00 20.00           O
+ATOM      7  CG2 THR A   7      10.523   7.209   9.055  1.00 20.00           C
+END
+"""
 
 def run_selected_tests():
   """  Run selected tests

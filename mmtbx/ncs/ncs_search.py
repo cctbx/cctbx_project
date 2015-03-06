@@ -769,6 +769,8 @@ def clean_chain_matching(chain_match_list,ph,
       other_sites     = other_sites)
     r = lsq_fit_obj.r
     t = lsq_fit_obj.t
+    # todo: find r_2*A = r*A + t (where the translation is zero)
+    # use B = r*A + t, r_2*A = B , r_2 = B*A.inverse()
     other_sites_best = lsq_fit_obj.other_sites_best_fit()
     rmsd = round(ref_sites.rms_difference(other_sites_best),4)
     if rmsd <= max_rmsd:
