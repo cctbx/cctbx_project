@@ -67,8 +67,7 @@ def generate_input(gs_params):
   else:
     with open(gs_params.input_list, 'r') as listfile:
       listfile_contents = listfile.read()
-    if gs_params.advanced.single_img:
-      input_list = listfile_contents.splitlines()
+    input_list = listfile_contents.splitlines()
 
   # If grid-search turned on, check for existing output directory and remove
   if gs_params.grid_search.flag_on == True:
