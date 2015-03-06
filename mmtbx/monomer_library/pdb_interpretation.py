@@ -134,6 +134,9 @@ master_params_str = """\
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
+  c_beta_restraints=True
+    .type = bool
+    .short_caption = Use C-beta deviation restraints
   automatic_linking
     .style = box auto_align
     .short_caption = Automatic covalent linking

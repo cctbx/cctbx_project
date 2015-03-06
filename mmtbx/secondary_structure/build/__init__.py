@@ -410,7 +410,7 @@ def substitute_ss(real_h,
       "secondary_structure {h_bond_restraints.remove_outliers = False\n%s}" \
           % phil_str,
       "pdb_interpretation.peptide_link.ramachandran_restraints = True",
-      "use_c_beta_deviation_restraints = True",
+      "c_beta_restraints = True",
       "secondary_structure_restraints=True"]))).extract()
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
