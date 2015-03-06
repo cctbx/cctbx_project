@@ -438,8 +438,8 @@ def run():
         assert rf is None
       else:
         assert r[1]<0.05
-        assert r[2]<0.005
-        assert rf < 0.002
+        assert r[2]<0.0055
+        assert rf < 0.0022
 
 if (__name__ == "__main__"):
   t0=time.time()
