@@ -71,8 +71,6 @@ secondary_structure
 {
   include scope mmtbx.secondary_structure.sec_str_master_phil
 }
-c_beta_restraints=True
-  .type = bool
 """
 
 master_params_str = """
@@ -280,7 +278,7 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
 
   if(xray_structure is not None):
     restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
-  if(params.c_beta_restraints):
+  if(params.pdb_interpretation.c_beta_restraints):
     mmtbx.torsion_restraints.utils.add_c_beta_restraints(
       geometry      = restraints_manager.geometry,
       pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
