@@ -1,9 +1,10 @@
 from __future__ import division
 from iotbx.ncs.ncs_preprocess import insure_identity_is_in_transform_info
 from  iotbx.ncs.ncs_preprocess import ncs_group_object
+from  iotbx.ncs.ncs_preprocess import ncs_only
 from iotbx import crystal_symmetry_from_any
 from libtbx.utils import Sorry
-import iotbx.pdb.hierarchy
+# import iotbx.pdb.hierarchy
 from iotbx import pdb
 import os
 
@@ -78,7 +79,8 @@ class multimer(object):
       transform_info = pdb_inp.process_mtrix_records(
         error_handle=error_handle,
         eps=eps)
-      if transform_info.as_pdb_string() == '': transform_info = None
+      if transform_info.as_pdb_string() == '' or (not ncs_only(transform_info)):
+        transform_info = None
       else:
         transform_info = insure_identity_is_in_transform_info(transform_info)
       self.transform_type = 'crystall_asymmetric_unit'
