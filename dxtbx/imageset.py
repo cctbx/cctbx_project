@@ -401,6 +401,9 @@ class ImageSet(object):
     else:
       self._models = models
 
+    # Image cache
+    self.image_cache = None
+
   def __getitem__(self, item):
     ''' Get an item from the image set stream.
 
@@ -426,9 +429,13 @@ class ImageSet(object):
     Get the image at the given index
 
     '''
-    image = self.reader().read(self._indices[index])
-    if not isinstance(image, tuple):
-      image = (image,)
+    if self.image_cache is not None and self.image_cache[0] == index:
+      image = self.image_cache[1]
+    else:
+      image = self.reader().read(self._indices[index])
+      if not isinstance(image, tuple):
+        image = (image,)
+      self.image_cache = (index, image)
     return image
 
   def get_mask(self, index):
