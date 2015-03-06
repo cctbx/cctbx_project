@@ -194,10 +194,16 @@ class crystal_symmetry_builder(builder_base):
     else:
       raise CifBuilderError(
         "Not all unit cell parameters are given in the cif file")
-    if (unit_cell is not None and space_group is not None
-        and not space_group.is_compatible_unit_cell(unit_cell)):
-      raise CifBuilderError(
-        "Space group is incompatible with unit cell parameters")
+    if unit_cell is not None and space_group is not None:
+      if not space_group.is_compatible_unit_cell(unit_cell):
+        # try primitive setting
+        space_group_input = space_group
+        space_group = space_group.info().primitive_setting().group()
+        if not space_group.is_compatible_unit_cell(unit_cell):
+          raise CifBuilderError(
+            "Space group is incompatible with unit cell parameters:\n" + \
+            "  Space group: %s\n" %space_group_input.info() + \
+            "  Unit cell: %s" %unit_cell)
     self.crystal_symmetry = crystal.symmetry(unit_cell=unit_cell,
                                              space_group=space_group)
 
