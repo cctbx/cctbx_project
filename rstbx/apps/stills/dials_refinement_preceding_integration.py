@@ -133,6 +133,56 @@ class integrate_one_frame(IntegrationMetaProcedure):
     correction_vectors = correction_vectors_provisional
     ########### skip outlier rejection for this derived class
 
+    ### However must retain the ability to write out correction vectiors.
+    if True: # at Aaron's request; test later
+      correction_lengths = flex.double([v.length() for v in correction_vectors_provisional])
+      clorder = flex.sort_permutation(correction_lengths)
+      sorted_cl = correction_lengths.select(clorder)
+      indexed_pairs = []
+      correction_vectors = []
+      self.correction_vectors = []
+      for icand in xrange(len(sorted_cl)):
+        # somewhat arbitrary sigma = 1.0 cutoff for outliers
+        indexed_pairs.append(indexed_pairs_provisional[clorder[icand]])
+        correction_vectors.append(correction_vectors_provisional[clorder[icand]])
+        if cache_refinement_spots:
+          self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"].append(
+          spots[indexed_pairs[-1]["spot"]])
+        if kwargs.get("verbose_cv")==True:
+            print "CV OBSCENTER %7.2f %7.2f REFINEDCENTER %7.2f %7.2f"%(
+              float(self.inputpd["size1"])/2.,float(self.inputpd["size2"])/2.,
+              self.inputai.xbeam()/pxlsz[0], self.inputai.ybeam()/pxlsz[1]),
+            print "OBSSPOT %7.2f %7.2f PREDSPOT %7.2f %7.2f"%(
+              spots[indexed_pairs[-1]["spot"]].ctr_mass_x(),
+              spots[indexed_pairs[-1]["spot"]].ctr_mass_y(),
+              self.predicted[indexed_pairs[-1]["pred"]][0]/pxlsz[0],
+              self.predicted[indexed_pairs[-1]["pred"]][1]/pxlsz[1]),
+            the_hkl = self.hkllist[indexed_pairs[-1]["pred"]]
+            print "HKL %4d %4d %4d"%the_hkl,"%2d"%self.setting_id,
+            radial, azimuthal = spots[indexed_pairs[-1]["spot"]].get_radial_and_azimuthal_size(
+              self.inputai.xbeam()/pxlsz[0], self.inputai.ybeam()/pxlsz[1])
+            print "RADIALpx %5.3f AZIMUTpx %5.3f"%(radial,azimuthal)
+
+        # Store a list of correction vectors in self.
+        radial, azimuthal = spots[indexed_pairs[-1]['spot']].get_radial_and_azimuthal_size(
+          self.inputai.xbeam()/pxlsz[0], self.inputai.ybeam()/pxlsz[1])
+        self.correction_vectors.append(
+          dict(obscenter=(float(self.inputpd['size1']) / 2,
+                          float(self.inputpd['size2']) / 2),
+               refinedcenter=(self.inputai.xbeam() / pxlsz[0],
+                              self.inputai.ybeam() / pxlsz[1]),
+               obsspot=(spots[indexed_pairs[-1]['spot']].ctr_mass_x(),
+                        spots[indexed_pairs[-1]['spot']].ctr_mass_y()),
+               predspot=(self.predicted[indexed_pairs[-1]['pred']][0] / pxlsz[0],
+                         self.predicted[indexed_pairs[-1]['pred']][1] / pxlsz[1]),
+               hkl=(self.hkllist[indexed_pairs[-1]['pred']][0],
+                    self.hkllist[indexed_pairs[-1]['pred']][1],
+                    self.hkllist[indexed_pairs[-1]['pred']][2]),
+               setting_id=self.setting_id,
+               radial=radial,
+               azimuthal=azimuthal))
+
+
     self.inputpd["symmetry"].show_summary(prefix="SETTING ")
 
 
@@ -348,6 +398,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
     #for item in history["parameter_vector"]:
     #  print ["%8.5f"%a for a in item]
     print refiner.selection_used_for_refinement().count(True),"spots used for refinement"
+    print refiner.get_experiments()[0].beam
     print refiner.get_experiments()[0].detector
     print refiner.get_experiments()[0].crystal
     return refiner
