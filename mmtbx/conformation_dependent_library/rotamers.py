@@ -183,6 +183,7 @@ def update_restraints(hierarchy,
           angle_proxy.angle_ideal,
           angle_proxy.weight,
           )
+        assert angle_proxy.angle_ideal<181
         angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
         angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
         if verbose: print " i_seqs %-15s final   %12.3f %12.3f" % (
@@ -232,9 +233,9 @@ def update_restraints(hierarchy,
   i_seqs_restraints_reverse = {}
   #
   for model in hierarchy.models():
-    if verbose: print 'model: "%s"' % model.id
+    #if verbose: print 'model: "%s"' % model.id
     for chain in model.chains():
-      if verbose: print 'chain: "%s"' % chain.id
+      #if verbose: print 'chain: "%s"' % chain.id
       for residue_group in chain.residue_groups():
         all_dict = rotalyze.construct_complete_sidechain(residue_group)
         for atom_group in residue_group.atom_groups():
@@ -247,6 +248,7 @@ def update_restraints(hierarchy,
             )
           if rc is None: continue
           rotamer_name, chis, value = rc
+          #if verbose: print atom_group.resname, rotamer_name, chis, value
           if rotamer_name not in rdl_database[atom_group.resname]: continue
           restraints = rdl_database[atom_group.resname][rotamer_name]
           defaults = rdl_database[atom_group.resname]["default"]
@@ -255,10 +257,11 @@ def update_restraints(hierarchy,
             i_seqs = []
             if exclude_backbone and names[1] in ["N", "CA", "C"]: continue
             for name in names:
-              for atom in atom_group.atoms():
+              for atom in atom_group.atoms(): # not alt. loc. aware
                 if name.strip()==atom.name.strip():
                   i_seqs.append(atom.i_seq)
                   break
+            assert len(i_seqs)==len(names)
             i_seqs_restraints[tuple(i_seqs)] = values
             i_seqs.reverse()
             i_seqs_restraints[tuple(i_seqs)] = values
@@ -266,22 +269,27 @@ def update_restraints(hierarchy,
               i_seqs_restraints_reverse[tuple(i_seqs)] = defaults[names]
               i_seqs.reverse()
               i_seqs_restraints_reverse[tuple(i_seqs)] = defaults[names]
+
   #
   count = _set_or_reset_dihedral_restraints(geometry,
                                             i_seqs_restraints_reverse,
                                             )
-  count = _set_or_reset_dihedral_restraints(geometry,
+  count_d = _set_or_reset_dihedral_restraints(geometry,
                                             i_seqs_restraints,
                                             )
   count = _set_or_reset_angle_restraints(geometry,
                                          i_seqs_restraints_reverse,
                                          )
-  count = _set_or_reset_angle_restraints(geometry,
+  count_a = _set_or_reset_angle_restraints(geometry,
                                          i_seqs_restraints,
                                          )
   #
-  print >> log, "    Number of angles RDL adjusted : %d" % count
-  print >> log, "    Time to adjust                : %0.3f" % (time.time()-t0)
+  print >> log, "    Number of angles, dihedrals RDL adjusted : %d, %d" % (
+    count_a,
+    count_d,
+    )
+  print >> log, "    Time to adjust                           : %0.1fs" % (
+    time.time()-t0)
   return rdl_proxies
 
 def run(pdb_filename):
