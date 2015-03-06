@@ -32,6 +32,8 @@ for path in sys.argv[1:]:
     print "Not a dictionary pickle"
     continue
 
+  print "Printing contents of", path
+
   if data.has_key('TIMESTAMP'):
     # this is how FormatPYunspecified guesses the address
     if not "DETECTOR_ADDRESS" in data:
@@ -59,14 +61,22 @@ for path in sys.argv[1:]:
       uc.show_parameters()
       obs.space_group().info().show_summary()
       d = uc.d(obs.indices())
+      print "Number of observations:", len(obs.indices())
       print "Max resolution: %f"%flex.min(d)
+      print "Mean I/sigma:", flex.mean(obs.data())/flex.mean(obs.sigmas())
+      print "I/sigma > 1 count:", (obs.data()/obs.sigmas() > 1).count(True)
 
     elif key == 'mapped_predictions':
       print key, data[key][0][0], "(only first shown)"
     elif key == 'correction_vectors':
-      print key, data[key][0][0], "(only first shown)"
+      if data[key][0] is None:
+        print key, "None"
+      else:
+        print key, data[key][0][0], "(only first shown)"
     elif key == "DATA":
       print key,"len=%d max=%f min=%f dimensions=%s"%(data[key].size(),flex.max(data[key]),flex.min(data[key]),str(data[key].focus()))
+    elif key == "WAVELENGTH":
+      print "WAVELENGTH", data[key], ", converted to eV:", 12398.4187/data[key]
     else:
       print key, data[key]
 
