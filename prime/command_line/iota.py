@@ -332,7 +332,6 @@ def final_integration(sel_clean, gs_params):
                func=final_mproc_wrapper,
                processes=gs_params.n_processors,
                preserve_exception_message=True)
-  for item in result_objects: print item
   cmd.Command.end("Integrating with selected spotfinding parameters -- DONE ")
 
   clean_results = [results for results in result_objects if results != []]
@@ -426,7 +425,6 @@ if __name__ == "__main__":
   selection_results = run_pickle_selection(gs_params, mp_output_list)
   sel_clean = [entry for entry in selection_results \
                      if entry != None and entry != []]
-  for item in sel_clean: print '{0}: {1}'.format(sel_clean.index(item), item)
 
   final_int = final_integration(sel_clean, gs_params)       # final integration
   print_summary(gs_params)                                  # print summary
