@@ -6,7 +6,7 @@ Created     : 7/13/2014
 Description : Commands linked to prime.postrefine libraries.
 '''
 import os, sys
-from libtbx.easy_mp import parallel_map
+from libtbx.easy_mp import pool_map
 import numpy as np
 from cctbx.array_family import flex
 from datetime import datetime, time
@@ -118,7 +118,7 @@ if (__name__ == "__main__"):
   def determine_mean_I_mproc_wrapper(arg):
     return determine_mean_I_mproc(arg, frame_files, iparams, avg_mode)
 
-  determine_mean_I_result = parallel_map(
+  determine_mean_I_result = pool_map(
           iterable=frames,
           func=determine_mean_I_mproc_wrapper,
           processes=iparams.n_processors)
@@ -136,7 +136,7 @@ if (__name__ == "__main__"):
   def scale_frame_by_mean_I_mproc_wrapper(arg):
     return scale_frame_by_mean_I_mproc(arg, frame_files, iparams, mean_of_mean_I, avg_mode)
 
-  scale_frame_by_mean_I_result = parallel_map(
+  scale_frame_by_mean_I_result = pool_map(
           iterable=frames,
           func=scale_frame_by_mean_I_mproc_wrapper,
           processes=iparams.n_processors)
@@ -163,7 +163,7 @@ if (__name__ == "__main__"):
                                     G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort,\
                                     sin_sq_all_sort, SE_all_sort, avg_mode, iparams, pickle_filename_all_sort)
 
-      calc_average_I_result = parallel_map(
+      calc_average_I_result = pool_map(
             iterable=range(cn_group),
             func=calc_average_I_mproc_wrapper,
             processes=iparams.n_processors)
@@ -262,7 +262,7 @@ if (__name__ == "__main__"):
       return postrefine_by_frame_mproc(arg, frame_files, iparams,
                                        miller_array_ref, postrefine_by_frame_pres_list, avg_mode)
 
-    postrefine_by_frame_result = parallel_map(
+    postrefine_by_frame_result = pool_map(
             iterable=frames,
             func=postrefine_by_frame_mproc_wrapper,
             processes=iparams.n_processors)
@@ -292,7 +292,7 @@ if (__name__ == "__main__"):
                                       G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort, \
                                       sin_sq_all_sort, SE_all_sort, avg_mode, iparams, pickle_filename_all_sort)
 
-        calc_average_I_result = parallel_map(
+        calc_average_I_result = pool_map(
               iterable=range(cn_group),
               func=calc_average_I_mproc_wrapper,
               processes=iparams.n_processors)

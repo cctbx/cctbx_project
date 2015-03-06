@@ -276,8 +276,8 @@ class postref_handler(object):
 
     #4. Do least-squares refinement
     lsqrh = leastsqr_handler()
-    try:
-      refined_params, stats, n_refl_postrefined, spot_radius = lsqrh.optimize(I_ref_match,
+    #try:
+    refined_params, stats, n_refl_postrefined = lsqrh.optimize(I_ref_match,
                                                                    observations_original_sel, wavelength,
                                                                    crystal_init_orientation, alpha_angle_set,
                                                                    spot_pred_x_mm_set, spot_pred_y_mm_set,
@@ -285,11 +285,11 @@ class postref_handler(object):
                                                                    pres_in,
                                                                    observations_non_polar_sel,
                                                                    detector_distance_mm)
-    except Exception:
-      return None, 'Optimization failed. '+pickle_filepaths[len(pickle_filepaths)-1]
+    #except Exception:
+    #  return None, 'Optimization failed. '+pickle_filepaths[len(pickle_filepaths)-1]
 
     #caculate partiality for output (with target_anomalous check)
-    G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, re_fin, \
+    G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, \
         a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = refined_params
     inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
@@ -304,11 +304,12 @@ class postref_handler(object):
     from mod_leastsqr import calc_partiality_anisotropy_set
     partiality_fin, dummy, rs_fin, rh_fin = calc_partiality_anisotropy_set(uc_fin, rotx_fin, roty_fin,
                                                            observations_original.indices(),
-                                                           ry_fin, rz_fin, spot_radius, re_fin,
+                                                           ry_fin, rz_fin, r0_fin, re_fin,
                                                            two_theta, alpha_angle, wavelength, crystal_init_orientation,
                                                            spot_pred_x_mm, spot_pred_y_mm,
                                                            detector_distance_mm,
-                                                           iparams.partiality_model)
+                                                           iparams.partiality_model,
+                                                           iparams.flag_beam_divergence)
 
     #calculate the new crystal orientation
     O = sqr(uc_fin.orthogonalization_matrix()).transpose()
@@ -343,8 +344,7 @@ class postref_handler(object):
             frame_no=frame_no,
             pickle_filename=pickle_filename,
             wavelength=wavelength,
-            crystal_orientation=crystal_fin_orientation,
-            spot_radius=spot_radius)
+            crystal_orientation=crystal_fin_orientation)
 
     txt_postref = '%6.0f %5.2f %6.0f %9.0f %8.2f %8.2f %6.2f %6.2f %6.2f %6.2f %6.2f %8.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f %6.2f '%( \
       pres.frame_no, observations_non_polar.d_min(), len(observations_non_polar.indices()), \
@@ -449,7 +449,7 @@ class postref_handler(object):
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
     uc_params = observations_original.unit_cell().parameters()
     from mod_leastsqr import calc_spot_radius
-    spot_radius = calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
+    r0 = calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
                                           observations_original_sel.indices(), wavelength)
 
     G = mean_of_mean_I/np.median(observations_original_sel.data())
@@ -465,9 +465,14 @@ class postref_handler(object):
     re = iparams.gamma_e
     rotx = 0
     roty = 0
-    partiality_init, delta_xy_init, rs_init, rh_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, spot_radius, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm,iparams.partiality_model)
+    partiality_init, delta_xy_init, rs_init, rh_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(),
+                                                          rotx, roty, observations_original.indices(),
+                                                          ry, rz, r0, re, two_theta, alpha_angle, wavelength,
+                                                          crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm,
+                                                          detector_distance_mm, iparams.partiality_model,
+                                                          iparams.flag_beam_divergence)
 
-    refined_params = np.array([G,B,rotx,roty,ry,rz,re,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
+    refined_params = np.array([G,B,rotx,roty,ry,rz,r0,re,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
 
     pres = postref_results()
     pres.set_params(observations = observations_non_polar,
@@ -479,8 +484,7 @@ class postref_handler(object):
             rh_set=rh_init,
             frame_no=frame_no,
             pickle_filename=pickle_filename,
-            wavelength=wavelength,
-            spot_radius=spot_radius)
+            wavelength=wavelength)
 
     txt_scale_frame_by_mean_I = '%6.0f %6.2f %6.0f %6.0f %14.2f %14.2f %14.2f %6.2f %6.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f '%(frame_no,
       observations_original.d_min(), len(observations_original.data()), len(observations_original_sel.data()),

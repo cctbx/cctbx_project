@@ -154,16 +154,17 @@ class intensities_scaler(object):
     #calculate mosaic spread
     mosaic_radian_set = 2 * (rs_set) * (wavelength_set)
 
-    txt_obs_out += '    I_o        sigI_o    G      B     Eoc      rs    lambda rocking(deg) W     Wsig     I_full     sigI_full\n'
-    for i_o, sigi_o, g, b, eoc, rs, wavelength, mosaic_radian, se_norm, se_std_norm, i_full, sigi_full  in \
-      zip(I, sigI, G, B, p_set, rs_set, wavelength_set, mosaic_radian_set, SE_norm, SE_std_norm, I_full, sigI_full):
-      txt_obs_out += '%10.2f %10.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %6.2f %6.2f %10.2f %10.2f\n'%(\
-        i_o, sigi_o, 1/g, b, eoc, rs, wavelength, mosaic_radian*180/math.pi, se_norm, se_std_norm, i_full, sigi_full)
-    txt_obs_out += 'Merged I, sigI: %6.2f, %6.2f\n'%(I_avg, sigI_avg)
-    txt_obs_out += 'Rmeas: %6.2f Qw: %6.2f\n'%(r_meas, r_meas_w)
-    txt_obs_out += 'No. total observed: %4.0f No. after rejection: %4.0f\n'%(len(sin_theta_over_lambda_sq), len(I_full))
-    txt_obs_out += 'List of rejected observations:\n'
-    txt_obs_out += txt_reject_out
+    if iparams.flag_output_verbose:
+      txt_obs_out += '    I_o        sigI_o    G      B     Eoc      rs    lambda rocking(deg) W     Wsig     I_full     sigI_full\n'
+      for i_o, sigi_o, g, b, eoc, rs, wavelength, mosaic_radian, se_norm, se_std_norm, i_full, sigi_full  in \
+        zip(I, sigI, G, B, p_set, rs_set, wavelength_set, mosaic_radian_set, SE_norm, SE_std_norm, I_full, sigI_full):
+        txt_obs_out += '%10.2f %10.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %6.2f %6.2f %10.2f %10.2f\n'%(\
+          i_o, sigi_o, 1/g, b, eoc, rs, wavelength, mosaic_radian*180/math.pi, se_norm, se_std_norm, i_full, sigi_full)
+      txt_obs_out += 'Merged I, sigI: %6.2f, %6.2f\n'%(I_avg, sigI_avg)
+      txt_obs_out += 'Rmeas: %6.2f Qw: %6.2f\n'%(r_meas, r_meas_w)
+      txt_obs_out += 'No. total observed: %4.0f No. after rejection: %4.0f\n'%(len(sin_theta_over_lambda_sq), len(I_full))
+      txt_obs_out += 'List of rejected observations:\n'
+      txt_obs_out += txt_reject_out
 
     return miller_index, I_avg, sigI_avg, (r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, multiplicity), I_avg_even, I_avg_odd, txt_obs_out, txt_reject_out
 
@@ -218,8 +219,8 @@ class intensities_scaler(object):
           rz_all.append(pres.rz)
         if not math.isnan(pres.re):
           re_all.append(pres.re)
-        if not math.isnan(pres.spot_radius):
-          r0_all.append(pres.spot_radius)
+        if not math.isnan(pres.r0):
+          r0_all.append(pres.r0)
         if not math.isnan(pres.R_final):
           R_final_all.append(pres.R_final)
         if not math.isnan(pres.R_xy_final):
