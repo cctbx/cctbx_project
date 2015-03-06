@@ -67,6 +67,7 @@ def generate_input(gs_params):
   else:
     with open(gs_params.input_list, 'r') as listfile:
       listfile_contents = listfile.read()
+    if gs_params.advanced.single_img:
       input_list = listfile_contents.splitlines()
 
   # If grid-search turned on, check for existing output directory and remove
@@ -226,7 +227,8 @@ def run_pickle_selection(gs_params, mp_output_list):
   cmd.Command.start("Starting Pickle Selection")
   selection_results = parallel_map(iterable=mp_output_list,
                                    func=selection_mproc_wrapper,
-                                   processes=gs_params.n_processors)
+                                   processes=gs_params.n_processors,
+                                   preserve_exception_message=True)
   cmd.Command.end("Finished Pickle Selection")
 
   return selection_results
@@ -312,8 +314,8 @@ def final_integration(sel_clean, gs_params):
   else:
     inp.main_log(logfile, "\n\n{:-^80}\n".format('FINAL INTEGRATION, NO PLOTS'))
 
-#   if gs_params.advanced.single_img:
-#     current_img = selection_results[0][0]
+    #   if gs_params.advanced.single_img:
+#     current_img = sel_clean[0][0]
 #     if current_img == None:
 #       print "ERROR: No image found! Check input."
 #     selection_results = []
@@ -323,14 +325,15 @@ def final_integration(sel_clean, gs_params):
 #                               gs_params.grid_search.a_max + 1):
 #         mp_item = [current_img, sig_height, sig_height, spot_area]
 #         selection_results.append(mp_item)
-#     plot_input_list = [entry for entry in selection_results if entry != []]
-#   else:
-#     plot_input_list = [entry for entry in selection_results if entry != []]
+#     sel_clean = [entry for entry in selection_results \
+#                        if entry != [] and entry != None]
 
   cmd.Command.start("Integrating with selected spotfinding parameters")
   result_objects = parallel_map(iterable=sel_clean,
                func=final_mproc_wrapper,
-               processes=gs_params.n_processors)
+               processes=gs_params.n_processors,
+               preserve_exception_message=True)
+  for item in result_objects: print item
   cmd.Command.end("Integrating with selected spotfinding parameters -- DONE ")
 
   clean_results = [results for results in result_objects if results != []]
@@ -422,9 +425,9 @@ if __name__ == "__main__":
 
   #run pickle selection
   selection_results = run_pickle_selection(gs_params, mp_output_list)
-  sel_clean = [entry for entry in selection_results if entry != None]
-  #for item in sel_clean: print "{0}: {1}".format(sel_clean.index(item), item)
+  sel_clean = [entry for entry in selection_results \
+                     if entry != None and entry != []]
+  for item in sel_clean: print '{0}: {1}'.format(sel_clean.index(item), item)
 
-
-  final_integration(sel_clean, gs_params)           # final integration
+  final_int = final_integration(sel_clean, gs_params)       # final integration
   print_summary(gs_params)                                  # print summary

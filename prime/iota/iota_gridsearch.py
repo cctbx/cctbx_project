@@ -145,9 +145,10 @@ def integrate_one_image(mp_entry, n_int, log_dir, save_pickle, gs_params):
     # Write results file
     with open(result_file, 'a') as res_file:
       res_file.write('{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},'\
-                     '\n'.format(img_filename, spot_height, spot_area,
+                     '{13}\n'.format(img_filename, spot_height, spot_area,
                                      sg, uc[0], uc[1], uc[2], uc[3], uc[4],
-                                     uc[5], len(spots), res, mos_quality))
+                                     uc[5], len(spots), res,
+                                     mosaicity, mos_quality))
 
     cell = "{:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}"\
            "".format(float(uc[0]), float(uc[1]), float(uc[2]),
@@ -332,10 +333,10 @@ def exp_integrate_one(mp_entry, log_dir, n_int, gs_params):
     results = [img_filename, spot_height, spot_area, resol, num_corr, dom_size,\
          mosaicity, pos_rmsd]
 
-    int_status = 'RES: {:>4.2f} SPOTS: {:>{len_spots}} DOM: {:>8.2f} '\
+    int_status = 'RES: {:>4.2f} SPOTS: {:>5} DOM: {:>8.2f} '\
                  'MOS: {:>6.4f} MQ:{:>6.2f} RMSD: {:>4.2f}'\
                  ''.format(resol, num_spots, dom_size, mosaicity, mos_quality,
-                           pos_rmsd, len_spots = len(str(num_spots)))
+                           pos_rmsd)
 
     if gs_params.pred_img.flag:
       print current_img, current_file
