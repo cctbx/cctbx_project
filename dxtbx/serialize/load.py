@@ -72,7 +72,7 @@ def imageset(filename):
       return imageset_from_string(infile.read())
 
 def datablock(filename, check_format=True):
-  ''' Load a given JSONi or pickle file.
+  ''' Load a given JSON or pickle file.
 
   Params:
     filename The input filename
