@@ -454,8 +454,7 @@ class ImageSet(object):
     # Threshold the image with the trusted range
     mask = []
     for im, panel in zip(image, detector):
-      tr = panel.get_trusted_range()
-      mask.append((im > int(tr[0])) & (im < int(tr[1])))
+      mask.append(panel.get_trusted_range_mask(im))
     return tuple(mask)
 
   def __len__(self):

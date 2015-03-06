@@ -15,6 +15,8 @@
 #include <iostream>
 #include <boost/shared_ptr.hpp>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/ref_reductions.h>
 #include <dxtbx/model/pixel_to_millimeter.h>
@@ -200,6 +202,24 @@ namespace dxtbx { namespace model {
       vec3<double> s = get_slow_axis().rotate_around_origin(axis, angle);
       vec3<double> o = get_origin().rotate_around_origin(axis, angle);
       set_frame(f, s, o);
+    }
+
+    /**
+     * Apply a mask with the trusted range
+     */
+    template <typename T>
+    scitbx::af::versa<bool, scitbx::af::c_grid<2> > get_trusted_range_mask(
+        const scitbx::af::const_ref< T,scitbx::af::c_grid<2> > &image) const {
+      DXTBX_ASSERT(image.accessor()[0] == image_size_[1]);
+      DXTBX_ASSERT(image.accessor()[1] == image_size_[0]);
+      scitbx::af::versa<bool, scitbx::af::c_grid<2> > mask(
+          image.accessor(),
+          scitbx::af::init_functor_null<bool>());
+      scitbx::af::ref< bool, scitbx::af::c_grid<2> > mask_ref = mask.ref();
+      for (std::size_t i = 0; i < mask.size(); ++i) {
+        mask_ref[i] = trusted_range_[0] < image[i] && image[i] < trusted_range_[1];
+      }
+      return mask;
     }
 
     friend std::ostream& operator<<(std::ostream &os, const Panel &p);
