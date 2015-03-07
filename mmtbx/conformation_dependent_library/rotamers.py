@@ -232,6 +232,12 @@ def update_restraints(hierarchy,
   i_seqs_restraints = {}
   i_seqs_restraints_reverse = {}
   #
+  def _alt_loc_atom_generator(residue_group, atom_group):
+    atoms = []
+    for ag in residue_group.atom_groups():
+      if ag.altloc.strip()=="" or ag.altloc.strip()==atom_group.altloc.strip():
+        for atom in ag.atoms(): yield atom
+  #
   for model in hierarchy.models():
     #if verbose: print 'model: "%s"' % model.id
     for chain in model.chains():
@@ -248,7 +254,7 @@ def update_restraints(hierarchy,
             )
           if rc is None: continue
           rotamer_name, chis, value = rc
-          #if verbose: print atom_group.resname, rotamer_name, chis, value
+          if rotamer_name in ["OUTLIER"]: continue
           if rotamer_name not in rdl_database[atom_group.resname]: continue
           restraints = rdl_database[atom_group.resname][rotamer_name]
           defaults = rdl_database[atom_group.resname]["default"]
@@ -257,11 +263,11 @@ def update_restraints(hierarchy,
             i_seqs = []
             if exclude_backbone and names[1] in ["N", "CA", "C"]: continue
             for name in names:
-              for atom in atom_group.atoms(): # not alt. loc. aware
+              for atom in _alt_loc_atom_generator(residue_group, atom_group):
                 if name.strip()==atom.name.strip():
                   i_seqs.append(atom.i_seq)
                   break
-            assert len(i_seqs)==len(names)
+            assert len(i_seqs)==len(names), "%s %s" % (i_seqs, names)
             i_seqs_restraints[tuple(i_seqs)] = values
             i_seqs.reverse()
             i_seqs_restraints[tuple(i_seqs)] = values
