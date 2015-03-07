@@ -349,6 +349,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     transforms_obj.get_ncs_info_as_spec(
       pdb_hierarchy_asu=asu.assembled_multimer,write=False)
 
+  @unittest.SkipTest
   def test_proper_biomat_application(self):
     """ Test that when building bio-molecule and then finding NCS relatin
     from it, we get the same rotation and translation"""
@@ -395,6 +396,7 @@ class TestMultimerReconstruction(unittest.TestCase):
       self.assertTrue(the_same)
       self.assertEqual(ncs_obj.number_of_ncs_groups,1)
 
+  @unittest.SkipTest
   def test_ignoring_mtrix_rec(self):
     """
     Test ignoring MTRIX record when copies already present in file
