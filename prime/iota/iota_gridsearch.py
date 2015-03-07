@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 02/19/2015
+Last Changed: 03/06/2015
 Description : Runs cxi.index with signal/spot height and area grid search
 '''
 
@@ -328,20 +328,22 @@ def exp_integrate_one(mp_entry, log_dir, n_int, gs_params):
     pos_rmsd = int_results['rmsd_px']
     resol = int_final['resolution']
     num_spots = len(int_final['all_good_spots'])
+    cell = int_final['cell'].split()
+    uc = [float(cell[0]), float(cell[1]), float(cell[2]),
+          float(cell[3]), float(cell[4]), float(cell[5])]
 
 
     results = [img_filename, spot_height, spot_area, resol, num_corr, dom_size,\
-         mosaicity, pos_rmsd]
+         mosaicity, pos_rmsd, uc]
 
     int_status = 'RES: {:>4.2f} SPOTS: {:>5} DOM: {:>8.2f} '\
                  'MOS: {:>6.4f} MQ:{:>6.2f} RMSD: {:>4.2f}'\
                  ''.format(resol, num_spots, dom_size, mosaicity, mos_quality,
                            pos_rmsd)
 
-    if gs_params.pred_img.flag:
-      print current_img, current_file
+    if gs_params.advanced.pred_img.flag:
       viz.make_png(current_img, current_file)
-      if gs_params.pred_img.cv_vectors == True:
+      if gs_params.advanced.pred_img.cv_vectors == True:
         viz.cv_png(current_img, current_file)
 
   else:
