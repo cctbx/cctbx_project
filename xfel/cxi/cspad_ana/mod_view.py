@@ -25,7 +25,7 @@ from dxtbx.format.FormatPYunspecified import FormatPYunspecified
 from iotbx.detectors.npy import NpyImage
 from rstbx.viewer.frame import XrayFrame
 from xfel.cxi.cspad_ana import common_mode, cspad_tbx
-
+from xfel.cxi.cspad_ana import skip_event_flag
 
 class _ImgDict(NpyImage):
   """Minimal iotbx detector class for in-memory dictionary
@@ -399,7 +399,7 @@ class mod_view(common_mode.common_mode_correction):
       if distance is None:
         self.nfail += 1
         self.logger.warning("event(): no distance, shot skipped")
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
     else:
       distance = float('nan')

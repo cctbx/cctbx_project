@@ -7,7 +7,7 @@ import logging
 
 import libtbx
 from xfel.cxi.cspad_ana import cspad_tbx
-
+from xfel.cxi.cspad_ana import skip_event_flag
 
 class mod_event_info(object):
   """Extract basic information from the evt and env objects for each event.
@@ -101,7 +101,7 @@ class mod_event_info(object):
     if self.check_beam_status and sifoil is None:
       self.nfail += 1
       self.logger.warning("event(): no Si-foil thickness, shot skipped")
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
     if (self.sifoil is not None and self.sifoil != sifoil):
       self.logger.warning("event(): Si-foil changed mid-run: % 8i -> % 8d" %
@@ -114,7 +114,7 @@ class mod_event_info(object):
     if (self.timestamp is None):
       self.nfail += 1
       self.logger.warning("event(): no timestamp, shot skipped")
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
     if self.verbose: self.logger.info(self.timestamp)
 
@@ -124,7 +124,7 @@ class mod_event_info(object):
         if self.check_beam_status:
           self.nfail += 1
           self.logger.warning("event(): no wavelength, shot skipped")
-          evt.put(True, "skip_event")
+          evt.put(skip_event_flag(), "skip_event")
           return
         else:
           self.wavelength = 0
@@ -137,7 +137,7 @@ class mod_event_info(object):
       if self.check_beam_status:
         self.nfail += 1
         self.logger.warning("event(): no pulse length, shot skipped")
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
       else:
         self.pulse_length = 0
@@ -148,7 +148,7 @@ class mod_event_info(object):
       if self.check_beam_status:
         self.nfail += 1
         self.logger.warning("event(): no beam charge, shot skipped")
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
       else:
         self.beam_charge = 0

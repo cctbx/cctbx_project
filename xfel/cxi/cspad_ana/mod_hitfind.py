@@ -14,6 +14,7 @@ from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.hitfinder_tbx import distl_hitfinder
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import skip_event_flag
 from xfel.detector_formats import detector_format_version as detector_format_function
 import getpass
 
@@ -174,7 +175,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     if distance is None:
       self.nfail += 1
       self.logger.warning("event(): no distance, shot skipped")
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
 
     device = cspad_tbx.address_split(self.address)[2]
@@ -190,10 +191,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         if (vmax < self.m_threshold):
           if not self.m_negate_hits:
             # Tell downstream modules to skip this event if the threshold was not met.
-            evt.put(True, "skip_event")
+            evt.put(skip_event_flag(), "skip_event")
             return
         elif self.m_negate_hits:
-          evt.put(True, "skip_event")
+          evt.put(skip_event_flag(), "skip_event")
           return
 
       #    2. Apply threshold over a rectangular region of interest.
@@ -202,10 +203,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                                        self.m_roi[0]:self.m_roi[1]])
         if (vmax < self.m_threshold):
           if not self.m_negate_hits:
-            evt.put(True, "skip_event")
+            evt.put(skip_event_flag(), "skip_event")
             return
         elif self.m_negate_hits:
-          evt.put(True, "skip_event")
+          evt.put(skip_event_flag(), "skip_event")
           return
 
       #    3. Determine the spotfinder spots within the central ASICS, and accept the
@@ -252,7 +253,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
             # log misses to the database
             self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks, distance,
                               self.sifoil, self.wavelength, False))
-          evt.put(True, "skip_event")
+          evt.put(skip_event_flag(), "skip_event")
           return
         # the indexer will log this hit when it is ran. Bug: if the spotfinder is ran by itself, this
         # hit will not be logged in the db.
@@ -309,7 +310,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                           self.sifoil, self.wavelength, indexed))
 
       if (not indexed):
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
 
     elif (self.m_dispatch == "nop"):

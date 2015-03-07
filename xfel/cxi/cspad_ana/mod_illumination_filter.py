@@ -16,7 +16,7 @@ import logging
 
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana.mod_event_info import laser_status
-
+from xfel.cxi.cspad_ana import skip_event_flag
 
 class mod_illumination_filter(object):
   def __init__(self, illumination, laser_wait_time="2000"):
@@ -80,7 +80,7 @@ class mod_illumination_filter(object):
     t = cspad_tbx.evt_time(evt)
     if (t is None):
       self.logger.warning("event(): no timestamp, shot skipped")
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
 
     # Update laser status.
@@ -98,19 +98,19 @@ class mod_illumination_filter(object):
       # in the "other" category.
 
       if (self._filter != "other"):
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
 
     elif (self.laser_1.status):
       # If laser 1 is on the shot falls in the "light" category.
       if (self._filter != "light"):
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
 
     elif (not self.laser_1.status):
       # If laser 1 is off the shot falls in the "dark" category.
       if (self._filter != "dark"):
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
 
     else:
