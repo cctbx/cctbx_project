@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/28/2015
+Last Changed: 03/06/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories, etc.
 '''
 
@@ -42,9 +42,9 @@ target = target.phil
 advanced
   .help = "Advanced options, mostly for debugging."
 {
-  single_img = False
-    .type = bool
-    .help = If True, runs one image. If False, runs the whole set.
+  single_img = None
+    .type = str
+    .help = Runs grid search on specified single image
   charts = False
     .type = bool
     .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
@@ -57,26 +57,26 @@ advanced
   save_tmp_pickles = False
     .type = bool
     .help = If True, saves pickle for each integration attempt.
-}
-pred_img
-  .help = "Visualize spotfinding / integration results."
-{
-  flag = False
-    .type = bool
-    .help = Choose to visualize the results of final integration
-  cv_vectors = True
-    .type = bool
-    .help = Include x,y offset information
-}
-random_sample
-  .help = "Random grid search."
-{
-  flag_on = False
-    .type = bool
-    .help = Set to run grid search on a random set of images.
-  number = 5
-    .type = int
-    .help = Number of random samples.
+  pred_img
+    .help = "Visualize spotfinding / integration results."
+  {
+    flag = False
+      .type = bool
+      .help = Choose to visualize the results of final integration
+    cv_vectors = True
+      .type = bool
+      .help = Include x,y offset information
+  }
+  random_sample
+    .help = "Random grid search."
+  {
+    flag_on = False
+      .type = bool
+      .help = Set to run grid search on a random set of images.
+    number = 5
+      .type = int
+      .help = Number of random samples.
+  }
 }
 grid_search
   .help = "Parameters for the grid search."

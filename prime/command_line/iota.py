@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 02/19/2015
+Last Changed: 03/06/2015
 Description : IOTA command-line module. Version 0.9
 '''
 
@@ -35,6 +35,10 @@ def selection_mproc_wrapper(output_entry):
 # Multiprocessor wrapper for final integration module
 def final_mproc_wrapper(current_img):
   return gs.exp_integrate_one(current_img, log_dir, len(sel_clean), gs_params)
+
+# Multiprocessor wrapper for single image integration module
+def single_mproc_wrapper(current_img):
+  return gs.exp_integrate_one(current_img, log_dir, n_int, gs_params)
 
 def experimental_mproc_wrapper(single_entry):
   return gs.integrate_selected_image(single_entry, log_dir, gs_params)
@@ -232,6 +236,105 @@ def run_pickle_selection(gs_params, mp_output_list):
 
   return selection_results
 
+def final_integration(sel_clean, gs_params):
+
+  if os.path.isfile("{0}/logs/progress.log".format(gs_params.output)):
+    os.remove("{0}/logs/progress.log".format(gs_params.output))
+
+  if gs_params.advanced.charts:
+    inp.main_log(logfile, "\n\n{:-^80}\n".format('FINAL INTEGRATION WITH ALL PLOT PDFS'))
+  elif gs_params.advanced.mosaicity_plot:
+    inp.main_log(logfile, "\n\n{:-^80}\n".format('FINAL INTEGRATION WITH MOSAICITY PLOT PDFS'))
+  else:
+    inp.main_log(logfile, "\n\n{:-^80}\n".format('FINAL INTEGRATION, NO PLOTS'))
+
+  cmd.Command.start("Integrating with selected spotfinding parameters")
+  result_objects = parallel_map(iterable=sel_clean,
+               func=final_mproc_wrapper,
+               processes=gs_params.n_processors,
+               preserve_exception_message=True)
+  cmd.Command.end("Integrating with selected spotfinding parameters -- DONE ")
+
+  clean_results = [results for results in result_objects if results != []]
+
+  return clean_results
+
+def print_results(clean_results):
+
+  images = [results[0] for results in clean_results]
+  spot_heights = [int(results[1]) for results in clean_results]
+  spot_areas = [int(results[2]) for results in clean_results]
+  resolutions = [float(results[3]) for results in clean_results]
+  num_spots = [int(results[4]) for results in clean_results]
+  dom_sizes = [float(results[5]) for results in clean_results]
+  mosaicities = [float(results[6]) for results in clean_results]
+  rmsds = [float(results[7]) for results in clean_results]
+
+  a = [results[8][0] for results in clean_results]
+  b = [results[8][1] for results in clean_results]
+  c = [results[8][2] for results in clean_results]
+  alpha = [results[8][3] for results in clean_results]
+  beta = [results[8][4] for results in clean_results]
+  gamma = [results[8][5] for results in clean_results]
+
+
+  final_table = []
+  final_table.append("\n\n{:-^80}\n".format('ANALYSIS OF RESULTS'))
+  final_table.append("Total images:          {}".format(len(images)))
+  final_table.append("Avg. spot height:      {:<8.3f}  std. dev:    {:<6.2f}"\
+                     "  max: {:<3}  min: {:<3}".format(np.mean(spot_heights),
+                     np.std(spot_heights), max(spot_heights), min(spot_heights)))
+  final_table.append("Avg. spot areas:       {:<8.3f}  std. dev:    {:<6.2f}"\
+                    "  max: {:<3}  min: {:<3}".format(np.mean(spot_areas),
+                    np.std(spot_areas), max(spot_areas), min(spot_areas)))
+  final_table.append("Avg. number of spots:  {:<8.3f}  std. dev:    {:<6.2f}"\
+                    "".format(np.mean(num_spots), np.std(num_spots)))
+  final_table.append("Avg. domain size:      {:<8.3f}  std. dev:    {:<6.2f}"\
+                     "".format(np.mean(dom_sizes), np.std(dom_sizes)))
+  final_table.append("Avg. mosaicity:        {:<8.3f}  std. dev:    {:<6.2f}"\
+                    "".format(np.mean(mosaicities), np.std(mosaicities)))
+  final_table.append("Avg. positional RMSD:  {:<8.3f}  std. dev:    {:<6.2f}"
+                    "".format(np.mean(rmsds), np.std(rmsds)))
+  final_table.append("Avg. unit cell:        "\
+                     "{:<6.2f} ({:>4.2f}), {:<6.2f} ({:>4.2f}), "\
+                     "{:<6.2f} ({:>4.2f}), {:<6.2f} ({:>4.2f}), "\
+                     "{:<6.2f} ({:>4.2f}), {:<6.2f} ({:>4.2f})"
+                    "".format(np.mean(a), np.std(a),
+                              np.mean(b), np.std(b),
+                              np.mean(c), np.std(c),
+                              np.mean(alpha), np.std(alpha),
+                              np.mean(beta), np.std(beta),
+                              np.mean(gamma), np.std(gamma)))
+
+  bad_mos_list = [item for item in clean_results if float(item[6]) -\
+                   np.mean(mosaicities) > np.std(mosaicities) * 2]
+
+  if len(bad_mos_list) != 0:
+    final_table.append("\nImages with poor mosaicity (> 2-sigma over mean):")
+    for entry in bad_mos_list:
+      final_table.append('{:<3}  {}: H = {:<3} A = {:<3}  RES = {:<4.2F}  SPOTS = {:<6}'\
+                         ' DOM = {:<8.2f}  MOS = {:<6.4f}  RMSD = {:<6.2f}'\
+                         ''.format(bad_mos_list.index(entry), entry[0],
+                                   entry[1], entry[2], entry[3], entry[4],
+                                   entry[5], entry[6], entry[7]))
+
+  bad_rmsd_list = [item for item in clean_results if float(item[7]) - \
+                     np.mean(rmsds) > np.std(rmsds) * 2]
+
+  if len(bad_rmsd_list) != 0:
+    i = 0
+    final_table.append("\nImages with poor positional rmsd (> 2-sigma over mean):")
+    for entry in bad_rmsd_list:
+      final_table.append('{:<3}  {}: H = {:<3} A = {:<3}  RES = {:<4.2F}  SPOTS = {:<6} '\
+                         'DOM = {:<8.2f}  MOS = {:<6.4f}  RMSD = {:<6.2f}'\
+                         ''.format(bad_rmsd_list.index(entry), entry[0],
+                                   entry[1], entry[2], entry[3], entry[4],
+                                   entry[5], entry[6], entry[7]))
+
+  for item in final_table:
+      print item
+      inp.main_log(logfile, item)
+
 def print_summary(gs_params):
   """ Prints summary by reading contents of files listing
       a) images not integrated
@@ -254,10 +357,6 @@ def print_summary(gs_params):
 
   with (open ('{0}/logs/progress.log'.format(gs_params.output), 'r')) as prog_log:
     prog_content = prog_log.read()
-
-  for item in prog_content.splitlines():
-    print item
-  print '\n\n'
 
   if gs_params.random_sample.flag_on == True:
     summary.append('raw images processed:         {}'.format(gs_params_random_sample.number))
@@ -300,98 +399,40 @@ def print_summary(gs_params):
 
   inp.main_log(logfile, "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now()))
 
-def final_integration(sel_clean, gs_params):
 
-  final_table = []
-  if os.path.isfile("{0}/logs/progress.log".format(gs_params.output)):
-    os.remove("{0}/logs/progress.log".format(gs_params.output))
+def single_image_mode(gs_params):
 
-  if gs_params.advanced.charts:
-    inp.main_log(logfile, "\n\n{:-^80}\n".format('FINAL INTEGRATION WITH ALL PLOT PDFS'))
-  elif gs_params.advanced.mosaicity_plot:
-    inp.main_log(logfile, "\n\n{:-^80}\n".format('FINAL INTEGRATION WITH MOSAICITY PLOT PDFS'))
-  else:
-    inp.main_log(logfile, "\n\n{:-^80}\n".format('FINAL INTEGRATION, NO PLOTS'))
+  current_img = gs_params.advanced.single_img
 
-    #   if gs_params.advanced.single_img:
-#     current_img = sel_clean[0][0]
-#     if current_img == None:
-#       print "ERROR: No image found! Check input."
-#     selection_results = []
-#     for sig_height in range(gs_params.grid_search.h_min,
-#                           gs_params.grid_search.h_max + 1):
-#       for spot_area in range (gs_params.grid_search.a_min,
-#                               gs_params.grid_search.a_max + 1):
-#         mp_item = [current_img, sig_height, sig_height, spot_area]
-#         selection_results.append(mp_item)
-#     sel_clean = [entry for entry in selection_results \
-#                        if entry != [] and entry != None]
+  # Remove old output if found
+  if os.path.exists(os.path.abspath(gs_params.output)):
+    cmd.Command.start("Found old folder {}... deleting...".format(gs_params.output))
+    shutil.rmtree(os.path.abspath(gs_params.output))
+    cmd.Command.end("Deleted old folder {} -- DONE".format(gs_params.output))
 
-  cmd.Command.start("Integrating with selected spotfinding parameters")
-  result_objects = parallel_map(iterable=sel_clean,
-               func=final_mproc_wrapper,
-               processes=gs_params.n_processors,
-               preserve_exception_message=True)
-  cmd.Command.end("Integrating with selected spotfinding parameters -- DONE ")
+  # Make main output directory and log directory
+  os.makedirs(os.path.abspath(gs_params.output))
+  os.makedirs("{}/logs".format(os.path.abspath(gs_params.output)))
 
-  clean_results = [results for results in result_objects if results != []]
+  inp.make_dirs([current_img], gs_params)
 
-  images = [results[0] for results in clean_results]
-  spot_heights = [int(results[1]) for results in clean_results]
-  spot_areas = [int(results[2]) for results in clean_results]
-  resolutions = [float(results[3]) for results in clean_results]
-  num_spots = [int(results[4]) for results in clean_results]
-  dom_sizes = [float(results[5]) for results in clean_results]
-  mosaicities = [float(results[6]) for results in clean_results]
-  rmsds = [float(results[7]) for results in clean_results]
+  single_mp_list = []
+  for sig_height in range(gs_params.grid_search.h_min,
+                       gs_params.grid_search.h_max + 1):
+   for spot_area in range (gs_params.grid_search.a_min,
+                           gs_params.grid_search.a_max + 1):
+     mp_entry = [current_img, sig_height, sig_height, spot_area]
+     single_mp_list.append(mp_entry)
 
+  cmd.Command.start("Processing single image ")
+  int_results = parallel_map(iterable=single_mp_list,
+                                func=single_mproc_wrapper,
+                                processes=gs_params.n_processors)
+  cmd.Command.end("Processing single image -- DONE ")
 
-  final_table.append("\n\n{:-^80}\n".format('ANALYSIS OF RESULTS'))
-  final_table.append("Total images:          {}".format(len(images)))
-  final_table.append("Avg. spot height:      {:<8.3f}  std. dev:    {:<6.2f}"\
-                     "  max: {:<3}  min: {:<3}".format(np.mean(spot_heights),
-                     np.std(spot_heights), max(spot_heights), min(spot_heights)))
-  final_table.append("Avg. spot areas:       {:<8.3f}  std. dev:    {:<6.2f}"\
-                    "  max: {:<3}  min: {:<3}".format(np.mean(spot_areas),
-                    np.std(spot_areas), max(spot_areas), min(spot_areas)))
-  final_table.append("Avg. number of spots:  {:<8.3f}  std. dev:    {:<6.2f}"\
-                    "".format(np.mean(num_spots), np.std(num_spots)))
-  final_table.append("Avg. domain size:      {:<8.3f}  std. dev:    {:<6.2f}"\
-                     "".format(np.mean(dom_sizes), np.std(dom_sizes)))
-  final_table.append("Avg. mosaicity:        {:<8.3f}  std. dev:    {:<6.2f}"\
-                    "".format(np.mean(mosaicities), np.std(mosaicities)))
-  final_table.append("Avg. positional RMSD:  {:<8.3f}  std. dev:    {:<6.2f}"
-                    "".format(np.mean(rmsds), np.std(rmsds)))
+  single_img_results = [entry for entry in int_results if entry != []]
 
-
-  bad_mos_list = [item for item in clean_results if float(item[6]) -\
-                   np.mean(mosaicities) > np.std(mosaicities) * 2]
-
-  if len(bad_mos_list) != 0:
-    final_table.append("\nImages with poor mosaicity (> 2-sigma over mean):")
-    for entry in bad_mos_list:
-      final_table.append('{:<3}  {}: H = {:<3} A = {:<3}  RES = {:<4.2F}  SPOTS = {:<6}'\
-                         ' DOM = {:<8.2f}  MOS = {:<6.4f}  RMSD = {:<6.2f}'\
-                         ''.format(bad_mos_list.index(entry), entry[0],
-                                   entry[1], entry[2], entry[3], entry[4],
-                                   entry[5], entry[6], entry[7]))
-
-  bad_rmsd_list = [item for item in clean_results if float(item[7]) - \
-                     np.mean(rmsds) > np.std(rmsds) * 2]
-
-  if len(bad_rmsd_list) != 0:
-    i = 0
-    final_table.append("\nImages with poor positional rmsd (> 2-sigma over mean):")
-    for entry in bad_rmsd_list:
-      final_table.append('{:<3}  {}: H = {:<3} A = {:<3}  RES = {:<4.2F}  SPOTS = {:<6} '\
-                         'DOM = {:<8.2f}  MOS = {:<6.4f}  RMSD = {:<6.2f}'\
-                         ''.format(bad_rmsd_list.index(entry), entry[0],
-                                   entry[1], entry[2], entry[3], entry[4],
-                                   entry[5], entry[6], entry[7]))
-
-  for item in final_table:
-      print item
-      inp.main_log(logfile, item)
+  return single_img_results
 
 
 # ============================================================================ #
@@ -405,6 +446,16 @@ if __name__ == "__main__":
 
   # read parameters from *.param file
   gs_params, txt_out = inp.process_input(sys.argv[1:])
+
+  if gs_params.advanced.single_img != None:
+    log_dir = '{}/logs'.format(gs_params.output)
+    logfile = '{}/iota.log'.format(log_dir)
+    n_int = (gs_params.grid_search.a_max - gs_params.grid_search.a_min + 1) * \
+            (gs_params.grid_search.h_max - gs_params.grid_search.h_min + 1)
+    single_img_results = single_image_mode(gs_params)
+
+    print_results(single_img_results)
+    sys.exit()
 
   # generate input
   input_list, input_dir_list, output_dir_list, log_dir, logfile, \
@@ -427,4 +478,5 @@ if __name__ == "__main__":
                      if entry != None and entry != []]
 
   final_int = final_integration(sel_clean, gs_params)       # final integration
+  print_results(final_int)
   print_summary(gs_params)                                  # print summary
