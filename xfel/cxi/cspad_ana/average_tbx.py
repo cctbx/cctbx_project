@@ -13,7 +13,7 @@ from scitbx.array_family import flex
 import scitbx.math
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
-
+from xfel.cxi.cspad_ana import skip_event_flag
 
 class average_mixin(common_mode.common_mode_correction):
   def __init__(self,
@@ -156,7 +156,7 @@ class average_mixin(common_mode.common_mode_correction):
       if distance is None:
         self._nfail += 1
         self.logger.warning("event(): no distance, shot skipped")
-        evt.put(True, 'skip_event')
+        evt.put(skip_event_flag(), 'skip_event')
         return
     else:
       distance = float('nan')
@@ -186,7 +186,7 @@ class average_mixin(common_mode.common_mode_correction):
       if stats.skew < skew_threshold:
         self._nfail += 1
         self.logger.warning("event(): skew < %f, shot skipped" % skew_threshold)
-        evt.put(True, 'skip_event')
+        evt.put(skip_event_flag(), 'skip_event')
         return
       #self.cspad_img *= stats.skew
 

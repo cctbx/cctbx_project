@@ -18,6 +18,7 @@ from parse_calib         import calib2sections
 from libtbx import easy_pickle
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import skip_event_flag
 from xfel.cxi.cspad_ana.mod_event_info import mod_event_info
 
 
@@ -319,13 +320,13 @@ class common_mode_correction(mod_event_info):
       if (self.laser_1_status.status != self.filter_laser_1_status or
           (self.laser_1_ms_since_change is not None and
            self.laser_1_ms_since_change < self.filter_laser_wait_time)):
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
     if self.filter_laser_4_status is not None:
       if (self.laser_4_status.status != self.filter_laser_4_status or
           (self.laser_4_ms_since_change is not None and
            self.laser_4_ms_since_change < self.filter_laser_wait_time)):
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
 
     # Early return if the full detector image is already stored in the
@@ -363,14 +364,14 @@ class common_mode_correction(mod_event_info):
           evt, env, self.sections)
       except Exception, e:
         self.logger.error("Error reading image data: " + str(e))
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
 
     if self.cspad_img is None:
       if cspad_tbx.address_split(self.address)[2] != 'Andor':
         self.nfail += 1
         self.logger.warning("event(): no image, shot skipped")
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
       return
     self.cspad_img = flex.double(self.cspad_img.astype(numpy.float64))
     # If a dark image was provided, subtract it from the image.  There

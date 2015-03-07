@@ -6,6 +6,7 @@ from scitbx.array_family import flex
 from xfel import compute_projection
 from pyana.event import Event
 import numpy as np
+from xfel.cxi.cspad_ana import skip_event_flag
 
 class mod_spectra(common_mode.common_mode_correction):
 
@@ -216,7 +217,7 @@ class mod_spectra(common_mode.common_mode_correction):
           evt.put(oneD, "cctbx_spectra")
         else:
           self.logger.warning("event(): Event Skipped")
-          evt.put(True, "skip_event")
+          evt.put(skip_event_flag(), "skip_event")
 
 #         gas=evt.getFeeGasDet()
 #         if gas is not None:

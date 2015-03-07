@@ -7,6 +7,7 @@ from __future__ import division
 import logging, os
 
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import skip_event_flag
 from scitbx.array_family import flex
 
 class mod_mar(object):
@@ -102,16 +103,16 @@ class mod_mar(object):
     # exactly one event per calibration cycle, this should never
     # happen.
     if self._path is None:
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
 
     # Skip this event if the template isn't in the path
     if self._template is not None and not True in [t in self._path for t in self._template.split(',')]:
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
 
     if "phi" in self._path:
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
 
     # Wait for the image to appear in the file system, probing for it
@@ -125,7 +126,7 @@ class mod_mar(object):
     while not exists(self._path):
       if t_tot > 1:
         self._logger.info("Timeout waiting for path %s"%self._path)
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         self._logger.info("Image not found:  %s"%self._path)
         return
       sleep(t)
@@ -139,18 +140,18 @@ class mod_mar(object):
     if self._fmt is None:
       self._fmt = Registry.find(self._path)
       if self._fmt is None:
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
 
     img = self._fmt(self._path)
     if img is None:
       self._fmt = Registry.find(self._path)
       if self._fmt is None:
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
       img = self._fmt(self._path)
       if img is None:
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
 
     self._logger.info(

@@ -20,7 +20,7 @@ import logging
 import re
 
 from xfel.cxi.cspad_ana import cspad_tbx
-
+from xfel.cxi.cspad_ana import skip_event_flag
 
 class mod_filter(object):
   def __init__(
@@ -177,26 +177,26 @@ class mod_filter(object):
       t = cspad_tbx.evt_time(evt)
       if (t is None):
         self.logger.warning("event(): no timestamp, shot skipped")
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
       elif (self.negate and t in self.timestamps_list):
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
       elif (not self.negate and t not in self.timestamps_list):
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
 
     else:
       t = cspad_tbx.evt_time(evt)
       if (t is None):
         self.logger.warning("event(): no timestamp, shot skipped")
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
       if (self.negate and self._tir(t, self.timestamps_interval)):
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
       elif (not self.negate and not self._tir(t, self.timestamps_interval)):
-        evt.put(True, "skip_event")
+        evt.put(skip_event_flag(), "skip_event")
         return
 
     self.naccepted += 1

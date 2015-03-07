@@ -12,6 +12,7 @@ import wx
 
 from xfel.cxi.gfx import status_plot
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import skip_event_flag
 
 class StatusFrame_thread(threading.Thread):
   """The XrayFrame_thread class allows Run MainLoop() to be run as a
@@ -91,7 +92,7 @@ class mod_daq_status (object) :
     else :
       self.nfail += 1
       self.logger.warning("event(): no timestamp, shot skipped")
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
     if (not isinstance(s, float)) :
       raise RuntimeError("Wrong type for 's': %s" % type(s).__name__)
@@ -101,21 +102,21 @@ class mod_daq_status (object) :
     if (det_z is None):
       self.nfail += 1
       self.logger.warning("event(): no distance, shot skipped")
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
 
     laser01 = cspad_tbx.env_laser_status(env, 1)
     if laser01 is None:
       self.nfail += 1
       self.logger.warning("event(): no status for laser 1, shot skipped")
-      evt.put(True, 'skip_event')
+      evt.put(skip_event_flag(), 'skip_event')
       return
 
     laser04 = cspad_tbx.env_laser_status(env, 4)
     if laser04 is None:
       self.nfail += 1
       self.logger.warning("event(): no status for laser 4, shot skipped")
-      evt.put(True, 'skip_event')
+      evt.put(skip_event_flag(), 'skip_event')
       return
 
     # Laser power for fourth laser.  The control name was provided by
@@ -128,14 +129,14 @@ class mod_daq_status (object) :
     if laser04_power is None:
       self.nfail += 1
       self.logger.warning("event(): no power for laser 4, shot skipped")
-      evt.put(True, 'skip_event')
+      evt.put(skip_event_flag(), 'skip_event')
       return
 
     si_foil = cspad_tbx.env_sifoil(env)
     if (si_foil is None):
       self.nfail += 1
       self.logger.warning("event(): no Si-foil thickness, shot skipped")
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
     if (not (isinstance(si_foil, float) or isinstance(si_foil, int))) :
       raise RuntimeError("Wrong type for 'si_foil': %s"% type(si_foil).__name__)
@@ -144,7 +145,7 @@ class mod_daq_status (object) :
     if (wavelength is None):
       self.nfail += 1
       self.logger.warning("event(): no wavelength, shot skipped")
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
 
     # In order to keep all arrays the same length, only append once

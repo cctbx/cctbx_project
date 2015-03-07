@@ -7,6 +7,7 @@ from __future__ import division
 
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import skip_event_flag
 
 class mod_image_dict(common_mode.common_mode_correction):
   """Class for saving the CSPAD image dict in the psana event
@@ -59,7 +60,7 @@ class mod_image_dict(common_mode.common_mode_correction):
     if distance is None:
       self.nfail += 1
       self.logger.warning("event(): no distance, shot skipped")
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
 
     device = cspad_tbx.address_split(self.address)[2]

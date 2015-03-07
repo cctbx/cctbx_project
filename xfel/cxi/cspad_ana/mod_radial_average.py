@@ -10,6 +10,7 @@ __version__ = "$Revision$"
 
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import skip_event_flag
 import os
 
 class mod_radial_average(common_mode.common_mode_correction):
@@ -69,7 +70,7 @@ class mod_radial_average(common_mode.common_mode_correction):
     if distance is None:
       self.nfail += 1
       self.logger.warning("event(): no distance, shot skipped")
-      evt.put(True, "skip_event")
+      evt.put(skip_event_flag(), "skip_event")
       return
 
     # See r17537 of mod_average.py.
