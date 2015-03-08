@@ -1708,6 +1708,7 @@ mmtbx/command_line/select_best_starting_model.py -text
 mmtbx/command_line/show_r_factors_by_shell.py -text
 mmtbx/command_line/show_suspicious_residues.py -text
 mmtbx/command_line/simulate_low_res_data.py -text
+mmtbx/command_line/sisa.py -text
 mmtbx/command_line/sort_hetatms.py -text
 mmtbx/command_line/ssm_rmsd_for_chains.py -text
 mmtbx/command_line/strip_model.py svneol=native#text/x-python
