@@ -99,6 +99,19 @@ class mtz_handler(object):
     flex_fom = flex.double([flex_fom_all[pair[0]] for pair in matches.pairs()])
     flex_hl = flex.hendrickson_lattman([flex_hl_all[pair[0]] for pair in matches.pairs()])
 
+    #get wilson_plot
+    from mmtbx.scaling import xtriage
+    from libtbx.utils import null_out
+    xtriage_args = [
+      iparams.hkl.phibin,
+      "",
+      "",
+      "log=tst_xtriage_1.log"
+    ]
+    result = xtriage.run(args=xtriage_args, out=null_out())
+    ws = result.wilson_scaling
+
+
     flex_hla = flex.double()
     flex_hlb = flex.double()
     flex_hlc = flex.double()
@@ -145,6 +158,19 @@ class mtz_handler(object):
             data=flex_fp,
             sigmas=flex_sigmas).set_observation_type_xray_amplitude()
 
+    #check if Wilson B-factor is applied
+    if iparams.ga.flag_apply_b_factor:
+      print 'Wilson K=%6.2f B=%6.2f'%(ws.iso_p_scale, ws.iso_b_wilson)
+      sin_theta_over_lambda_sq = miller_array_out.two_theta(wavelength=iparams.ga.wavelength) \
+                                  .sin_theta_over_lambda_sq().data()
+      wilson_expect = flex.exp(-2 * ws.iso_b_wilson * sin_theta_over_lambda_sq)
+      flex_fp_for_sort = wilson_expect * flex_fp
+    else:
+      flex_fp_for_sort = flex_fp
+
+
+    flex_d_spacings = miller_array_out.d_spacings().data()
+
     mtz_dataset = miller_array_out.as_mtz_dataset(column_root_label="FP")
 
     for data,lbl,typ in [(flex_phib, "PHIB", "P"),
@@ -165,8 +191,15 @@ class mtz_handler(object):
     list_fp_sort_index: stores indices of sorted FP in descending order
     '''
     import operator
-    fp_sort_index= [i for (i,j) in sorted(enumerate(flex_fp), key=operator.itemgetter(1))]
+    fp_sort_index= [i for (i,j) in sorted(enumerate(flex_fp_for_sort), key=operator.itemgetter(1))]
     fp_sort_index.reverse()
+
+    """
+    for i in range(100):
+      print miller_indices[fp_sort_index[i]], flex_d_spacings[fp_sort_index[i]], flex_fp[fp_sort_index[i]], flex_sigmas[fp_sort_index[i]], wilson_expect[fp_sort_index[i]]
+
+    exit()
+    """
 
     #calculate sum of fp^2 from percent_f_squared
     flex_fp_squared = flex_fp ** 2
