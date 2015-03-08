@@ -68,6 +68,12 @@ ga
   sigma_min = 1.5
     .type = float
     .help = Minimum I/sigI.
+  flag_apply_b_factor = False
+    .type = bool
+    .help = Turn this flag on to apply Wilson B-factor (wavelength is needed).
+  wavelength = 1.0
+    .type = float
+    .help = Wavelength.
   n_stacks = 5
     .type = int
     .help = No. of stacks used in optimization (each stack contribute to specified percent_f_squared).
