@@ -11,12 +11,12 @@ import math
 import sys
 
 def read_input(args):
-  from sisa.optimize.mod_input import process_input
+  from mmtbx.sisa.optimize.mod_input import process_input
   iparams, txt_out_input = process_input(args)
   return iparams, txt_out_input
 
 def sisa_optimize_mproc(micro_cycle_no, stack_no, miller_arrays, indices_selected, cdf_set, iparams):
-  from sisa.optimize.mod_optimize import sisa_optimizer
+  from mmtbx.sisa.optimize.mod_optimize import sisa_optimizer
   somer = sisa_optimizer()
   result = somer.run_optimize(micro_cycle_no, stack_no, miller_arrays, indices_selected, cdf_set, iparams)
   return result
@@ -47,7 +47,7 @@ if __name__=="__main__":
   if iparams.hkl.phibin is None:
     print 'MTZ file with amplitudes, HL coefficients, and PHIB is required.'
     exit()
-  from sisa.optimize.mod_mtz import mtz_handler
+  from mmtbx.sisa.optimize.mod_mtz import mtz_handler
   mtzh = mtz_handler()
   miller_arrays, fp_sort_index_stacks, txt_out_format = mtzh.format_miller_arrays(iparams)
   print txt_out_format
@@ -61,7 +61,7 @@ if __name__=="__main__":
       i_sel = fp_sort_index_stacks[j]
 
       #generate cdf_set for selected reflections
-      from sisa.optimize.mod_optimize import sisa_optimizer
+      from mmtbx.sisa.optimize.mod_optimize import sisa_optimizer
       somer = sisa_optimizer()
       hl_selected = flex.hendrickson_lattman([miller_arrays[3].data()[ii_sel] for ii_sel in i_sel])
       cdf_set = somer.calc_pdf_cdf_from_hl(hl_selected)
