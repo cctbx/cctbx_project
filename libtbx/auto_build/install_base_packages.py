@@ -378,7 +378,7 @@ Installation of Python packages may fail.
     # installed...
 
     if 'xrender' in os.path.split(os.getcwd())[-1] and \
-      'Ubuntu' in platform.platform():
+      'Ubuntu' in platform.platform() and os.path.exists('libtool'):
       if os.path.exists(os.path.join('/', 'usr', 'bin', 'libtool')):
         self.log.write('Removing xrender libtool; replace with system')
         os.remove('libtool')
@@ -389,8 +389,8 @@ Installation of Python packages may fail.
     return
 
   def configure_and_build (self, config_args=(), log=None, make_args=()) :
-    self.workarounds()
     self.call("./configure %s" % " ".join(list(config_args)), log=log)
+    self.workarounds()
     self.call("make -j %d %s" % (self.nproc, " ".join(list(make_args))), log=log)
     self.call("make install", log=log)
 
