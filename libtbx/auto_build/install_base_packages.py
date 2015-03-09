@@ -355,7 +355,29 @@ Installation of Python packages may fail.
     self.call("%s -c 'import %s'" % (self.python_exe, module_name))
     print >> self.log, " OK"
 
+  def workarounds(self):
+    '''Look at the directory I am in at the moment and the platform I am
+    running on and (perhaps) mess with things to make the build work.'''
+
+    import os
+    import platform
+
+    # Ubuntu & Xrender - libtool is broken - replace with system one if
+    # installed...
+
+    if 'xrender' in os.path.split(os.getcwd())[-1] and \
+      'Ubuntu' in platform.platform():
+      if os.path.exists(os.path.join('/', 'usr', 'bin', 'libtool')):
+        self.log.write('Removing xrender libtool; replace with system')
+        os.path.remove('libtool')
+        os.symlink(os.path.join('/', 'usr', 'bin', 'libtool'), 'libtool')
+      else:
+        self.log.write('Cannot removing xrender libtool; not installed')
+
+    return
+
   def configure_and_build (self, config_args=(), log=None, make_args=()) :
+    self.workarounds()
     self.call("./configure %s" % " ".join(list(config_args)), log=log)
     self.call("make -j %d %s" % (self.nproc, " ".join(list(make_args))), log=log)
     self.call("make install", log=log)
